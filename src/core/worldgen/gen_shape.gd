@@ -1,13 +1,18 @@
 class_name GenShape
-## Stage 1: the island. One landmass with a sea rim on every edge, a coastline
-## of bays, headlands and the odd skerry, and no enclosed seas. Worked at half
-## resolution (the coastline is smooth at that scale) and spread to tiles.
+## Stage 1: the island. One landmass with a sea rim on every edge: a rounded,
+## slightly tilted body taller than it is wide (the journey runs south to
+## north), pushed out into peninsulas, bitten into bays, cut by a few long
+## winding sea lochs, and fringed with tidal islets and skerries. No enclosed
+## seas. Worked at half resolution (the coastline is smooth at that scale)
+## and spread to tiles.
 
 ## Share of the whole square that is land.
-const LAND_SHARE := 0.54
-## Islets smaller than this many tiles survive as skerries; bigger detached
-## land is sunk so every country is on the one walkable island.
-const ISLET_TILES := 220
+const LAND_SHARE := 0.5
+## Detached land smaller than this survives as an islet; anything bigger is
+## sunk, so every country lies on the one walkable island.
+const ISLET_TILES := 900
+## Superellipse exponent of the body: 2 is an oval, higher is squarer.
+const BODY_POWER := 2.6
 
 
 static func run(c: GenContext) -> void:
@@ -16,47 +21,82 @@ static func run(c: GenContext) -> void:
 	var hs := 2
 	var hw := GenFields.coarse_width(size, hs)
 	var hn := hw * hw
-	var continent := GenFields.noise(s, 101, 1.0 / (170.0 * c.k), 4)
-	var bays := GenFields.noise(s, 105, 1.0 / (64.0 * maxf(c.k, 0.5)), 2)
-	var coastline := GenFields.noise(s, 102, 1.0 / 22.0, 3)
-	var warp := GenFields.noise(s, 103, 1.0 / (240.0 * c.k), 2)
+	var rng := Rng.make(s, 100)
+	var ax := rng.randf_range(0.35, 0.39)
+	var ay := rng.randf_range(0.39, 0.42)
+	var tilt := rng.randf_range(-0.22, 0.22)
+	var ct := cos(tilt)
+	var st := sin(tilt)
+	# Peninsulas: bumps straddling the rim, never on the south coast's middle
+	# (the spawn bay stays a broad open shore).
+	var lobes := PackedVector3Array()
+	var lobe_amp := PackedFloat32Array()
+	var lobe_count := rng.randi_range(3, 5)
+	for k in lobe_count:
+		var ang := _rim_angle(rng)
+		var reach := rng.randf_range(0.9, 1.08)
+		lobes.append(Vector3(0.5 + cos(ang) * ax * reach, 0.5 + sin(ang) * ay * reach, rng.randf_range(0.06, 0.11)))
+		lobe_amp.append(rng.randf_range(0.35, 0.6))
+	# Islets offshore: small, close enough that some sit on the shallow shelf.
+	var islet_count := rng.randi_range(4, 8)
+	for k in islet_count:
+		var ang := rng.randf() * TAU
+		var reach := rng.randf_range(1.12, 1.24)
+		lobes.append(Vector3(0.5 + cos(ang) * ax * reach, 0.5 + sin(ang) * ay * reach, rng.randf_range(0.012, 0.022)))
+		lobe_amp.append(rng.randf_range(0.9, 1.3))
+	var continent := GenFields.sample(GenFields.noise(s, 101, 1.0 / (150.0 * c.k), 4), hw, hs)
+	var bays := GenFields.sample(GenFields.noise(s, 105, 1.0 / (58.0 * maxf(c.k, 0.5)), 3), hw, hs)
+	var coastline := GenFields.sample(GenFields.noise(s, 102, 1.0 / 20.0, 3), hw, hs)
+	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.k), 2)
+	var warp_u := GenFields.sample(warp, hw, hs)
+	var warp_v := GenFields.sample(warp, hw, hs, 731.0, -419.0)
 	var lf := PackedFloat32Array()
 	lf.resize(hn)
 	var inner := PackedByteArray()
 	inner.resize(hn)
-	var inner_count := 0
-	for gy in hw:
-		var ty := GenFields.cell_centre(gy, hs)
-		var v := ty / size
-		for gx in hw:
-			var tx := GenFields.cell_centre(gx, hs)
-			var u := tx / size
-			var i := gy * hw + gx
-			var hard := minf(minf(u, 1.0 - u), minf(v, 1.0 - v))
-			if hard < 0.05:
-				lf[i] = -1.0
-				continue
-			var wu := u + warp.get_noise_2d(tx, ty) * 0.08
-			var wv := v + warp.get_noise_2d(tx + 731.0, ty - 419.0) * 0.08
-			var e := minf(minf(wu, 1.0 - wu), minf(wv, 1.0 - wv))
-			# Rounded: a corner is further from land than an edge midpoint.
-			var cu := absf(wu - 0.5) * 2.0
-			var cv := absf(wv - 0.5) * 2.0
-			var corner := maxf(0.0, cu * cv - 0.35)
-			var h := smoothstep(0.03, 0.26, e) - corner * 0.9 - 0.5
-			# Bays and headlands bite hardest near the rim, where the coast is.
-			var rimness := 1.0 - smoothstep(0.1, 0.3, e)
-			h += continent.get_noise_2d(tx, ty) * 0.36 + bays.get_noise_2d(tx, ty) * (0.1 + 0.2 * rimness) + coastline.get_noise_2d(tx, ty) * 0.08
-			lf[i] = h
-			inner[i] = 1
-			inner_count += 1
+	GenFields.rows(hw, func(g0: int, g1: int) -> void:
+		for gy in range(g0, g1):
+			var ty := GenFields.cell_centre(gy, hs)
+			var v := ty / size
+			for gx in hw:
+				var tx := GenFields.cell_centre(gx, hs)
+				var u := tx / size
+				var i := gy * hw + gx
+				var hard := minf(minf(u, 1.0 - u), minf(v, 1.0 - v))
+				if hard < 0.035:
+					lf[i] = -1.0
+					continue
+				var wu := u + warp_u[i] * 0.05 - 0.5
+				var wv := v + warp_v[i] * 0.05 - 0.5
+				var pu := absf((wu * ct - wv * st) / ax)
+				var pv := absf((wu * st + wv * ct) / ay)
+				var r := pow(pow(pu, BODY_POWER) + pow(pv, BODY_POWER), 1.0 / BODY_POWER)
+				var h := (1.0 - r) * 1.1
+				# Bays bite hardest near the rim, where the coast is.
+				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
+				h += continent[i] * 0.26 + bays[i] * (0.06 + 0.3 * rim) + coastline[i] * (0.03 + 0.07 * rim)
+				for k in lobes.size():
+					var lb := lobes[k]
+					var du := u - lb.x
+					var dv := v - lb.y
+					var q := (du * du + dv * dv) / (lb.z * lb.z)
+					if q < 4.0:
+						h += lobe_amp[k] * exp(-q * 1.6)
+				# Never let the land run into the frame.
+				h -= (1.0 - smoothstep(0.035, 0.15, hard)) * 1.6
+				lf[i] = h
+				inner[i] = 1
+	)
 	c.mark(&"shape.noise")
-	var want := clampf(1.0 - LAND_SHARE * hn / maxf(1.0, inner_count), 0.05, 0.95)
-	var thr := GenFields.quantile(lf, inner, want, -1.5, 1.5)
+	var inner_count := inner.count(1)
+	var want := clampf(1.0 - (LAND_SHARE + 0.012) * hn / maxf(1.0, inner_count), 0.05, 0.95)
+	var thr := GenFields.quantile(lf, inner, want, -2.5, 2.5)
+	for i in hn:
+		lf[i] -= thr
+	_lochs(c, rng, lf, hw, hs, ax, ay)
 	var land_h := PackedByteArray()
 	land_h.resize(hn)
 	for i in hn:
-		lf[i] -= thr
 		land_h[i] = 1 if lf[i] > 0.0 else 0
 	c.mark(&"shape.quantile")
 	_clean(lf, land_h, hw)
@@ -64,29 +104,35 @@ static func run(c: GenContext) -> void:
 	# Tiles: bilinear, then a whisper of fine noise right at the waterline so
 	# rock shores crinkle and throw the odd skerry.
 	var full := GenFields.upsample(lf, hw, hs, size)
-	var fine := GenFields.noise(s, 104, 1.0 / 7.0, 2)
+	var fine := GenFields.sample(GenFields.noise(s, 104, 1.0 / 7.0, 2), size, 1)
 	var land := PackedByteArray()
 	land.resize(c.n)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(maxi(y0, 3), mini(y1, size - 3)):
+			var row := y * size
+			for x in range(3, size - 3):
+				var h := full[row + x]
+				if h < -0.03:
+					continue
+				if h < 0.03:
+					h += fine[row + x] * 0.022
+					if h <= 0.0:
+						continue
+				land[row + x] = 1
+	)
+	c.land = land
+	# The journey template is laid over the main body's extent, not the islets'.
 	var min_x := size
 	var min_y := size
 	var max_x := 0
 	var max_y := 0
-	for y in range(3, size - 3):
-		var row := y * size
-		for x in range(3, size - 3):
-			var h := full[row + x]
-			if h < -0.03:
-				continue
-			if h < 0.03:
-				h += fine.get_noise_2d(x, y) * 0.022
-				if h <= 0.0:
-					continue
-			land[row + x] = 1
-			min_x = mini(min_x, x)
-			min_y = mini(min_y, y)
-			max_x = maxi(max_x, x)
-			max_y = maxi(max_y, y)
-	c.land = land
+	for gy in hw:
+		for gx in hw:
+			if land_h[gy * hw + gx] != 0 and lf[gy * hw + gx] > 0.08:
+				min_x = mini(min_x, gx * hs)
+				min_y = mini(min_y, gy * hs)
+				max_x = maxi(max_x, gx * hs + hs)
+				max_y = maxi(max_y, gy * hs + hs)
 	c.land_rect = Rect2(min_x, min_y, maxi(1, max_x - min_x), maxi(1, max_y - min_y))
 	c.mark(&"shape.tiles")
 	# Distances at half resolution are plenty for ramps and profiles.
@@ -94,8 +140,14 @@ static func run(c: GenContext) -> void:
 	sea_h.resize(hn)
 	for i in hn:
 		sea_h[i] = 1 - land_h[i]
-	var inland_h := GenFields.distance8(sea_h, hw, 999.0)
-	var offshore_h := GenFields.distance8(land_h, hw, 999.0)
+	# Lambdas capture locals by value: results come back through an Array.
+	var dists: Array[PackedFloat32Array] = [PackedFloat32Array(), PackedFloat32Array()]
+	GenFields.together([
+		func() -> void: dists[0] = GenFields.distance8(sea_h, hw, 999.0),
+		func() -> void: dists[1] = GenFields.distance8(land_h, hw, 999.0),
+	])
+	var inland_h := dists[0]
+	var offshore_h := dists[1]
 	for i in hn:
 		inland_h[i] = inland_h[i] * hs - 1.0
 		offshore_h[i] = offshore_h[i] * hs - 1.0
@@ -104,6 +156,56 @@ static func run(c: GenContext) -> void:
 	c.mark(&"shape.distance")
 	c.convex = GenFields.neighbourhood_share(land, size, 4)
 	c.mark(&"shape.convex")
+
+
+## An angle around the rim (0 = east, PI/2 = south), keeping clear of the
+## middle of the south coast.
+static func _rim_angle(rng: RandomNumberGenerator) -> float:
+	for attempt in 8:
+		var a := rng.randf() * TAU
+		if absf(wrapf(a - PI * 0.5, -PI, PI)) > 0.6:
+			return a
+	return PI * 1.5
+
+
+## Sea lochs: long winding inlets cut from the open sea toward the heart of the
+## island, widest at the mouth. They make the walk go round, and put sheltered
+## water deep inland. Never more than a third of the way in, so the island
+## stays whole.
+static func _lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32Array, hw: int, hs: int, ax: float, ay: float) -> void:
+	var size := float(c.size)
+	var count := rng.randi_range(2, 3)
+	var wobble := GenFields.noise(c.s, 106, 1.0 / 30.0, 2)
+	for k in count:
+		var ang := _rim_angle(rng)
+		# Start out at sea and head for the centre, bending as it goes.
+		var p := Vector2(0.5 + cos(ang) * ax * 1.15, 0.5 + sin(ang) * ay * 1.15) * size
+		var head := Vector2(size * 0.5, size * 0.5)
+		var total := (p.distance_to(head)) * rng.randf_range(0.42, 0.55)
+		var travelled := 0.0
+		var mouth := rng.randf_range(5.0, 8.0)
+		var dir := (head - p).normalized()
+		var salt := float(k) * 97.0
+		while travelled < total:
+			var t := travelled / total
+			var radius := lerpf(mouth, 1.6, t) / hs
+			var bend := wobble.get_noise_2d(travelled, salt) * 1.3
+			var step_dir := dir.rotated(bend)
+			p += step_dir * 2.0
+			travelled += 2.0
+			var cx := p.x / hs
+			var cy := p.y / hs
+			var ri := ceili(radius + 1.0)
+			for dy in range(-ri, ri + 1):
+				for dx in range(-ri, ri + 1):
+					var gx := floori(cx) + dx
+					var gy := floori(cy) + dy
+					if gx < 1 or gy < 1 or gx >= hw - 1 or gy >= hw - 1:
+						continue
+					var d := Vector2(gx + 0.5 - cx, gy + 0.5 - cy).length()
+					if d < radius:
+						var i := gy * hw + gx
+						lf[i] = minf(lf[i], -0.06 - 0.25 * (1.0 - d / radius))
 
 
 ## Fill enclosed seas; sink detached land bigger than an islet.

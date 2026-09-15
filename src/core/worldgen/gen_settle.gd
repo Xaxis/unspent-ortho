@@ -44,19 +44,23 @@ static func villages(c: GenContext) -> void:
 	var level := w.level
 	var land := c.land
 	var water := c.water
-	for y in size:
-		var brow := (y / b) * bw
-		for x in size:
-			var i := y * size + x
-			var k := brow + x / b
-			var l := level[i]
-			# Pools may be filled for a village; rivers and the sea may not.
-			if land[i] == 0 or water[i] == 1:
-				bwet[k] = 1
-			if l < bmin[k]:
-				bmin[k] = l
-			if l > bmax[k]:
-				bmax[k] = l
+	# Bands of 24 rows keep each 8-tile block inside one band.
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var brow := (y / b) * bw
+			for x in size:
+				var i := y * size + x
+				var k := brow + x / b
+				var l := level[i]
+				# Pools may be filled for a village; rivers and the sea may not.
+				if land[i] == 0 or water[i] == 1:
+					bwet[k] = 1
+				if l < bmin[k]:
+					bmin[k] = l
+				if l > bmax[k]:
+					bmax[k] = l
+	, 24)
+	c.mark(&"settle.blocks")
 	var cands: Array[Vector3] = [] # tile x, tile y, score
 	var relaxed: Array[Vector3] = []
 	for gy in range(1, bw - 1):
@@ -238,22 +242,25 @@ static func roads(c: GenContext) -> void:
 	var land := c.land
 	var water := c.water
 	var village := c.village
-	for y in size:
-		var hrow := (y / 2) * hw
-		for x in size:
-			var i := y * size + x
-			var k := hrow + x / 2
-			var l := level[i]
-			if l < hmin[k]:
-				hmin[k] = l
-			if l > hmax[k]:
-				hmax[k] = l
-			if land[i] == 0:
-				hsea[k] = 1
-			elif water[i] > hwet[k]:
-				hwet[k] = water[i]
-			if village[i] != 0:
-				hvil[k] = 1
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var hrow := (y / 2) * hw
+			for x in size:
+				var i := y * size + x
+				var k := hrow + x / 2
+				var l := level[i]
+				if l < hmin[k]:
+					hmin[k] = l
+				if l > hmax[k]:
+					hmax[k] = l
+				if land[i] == 0:
+					hsea[k] = 1
+				elif water[i] > hwet[k]:
+					hwet[k] = water[i]
+				if village[i] != 0:
+					hvil[k] = 1
+	)
+	c.mark(&"roads.cells")
 	for hy in hw:
 		for hx in hw:
 			var k := hy * hw + hx
@@ -283,6 +290,7 @@ static func roads(c: GenContext) -> void:
 			if hvil[k] != 0:
 				wt = 0.6
 			grid.set_point_weight_scale(Vector2i(hx, hy), wt)
+	c.mark(&"roads.grid")
 	for e in _edges(vs, c.k):
 		var a: Vector2 = vs[e.x].pos
 		var b: Vector2 = vs[e.y].pos

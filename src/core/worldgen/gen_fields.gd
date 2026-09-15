@@ -15,6 +15,29 @@ static func noise(seed_value: int, salt: int, freq: float, octaves: int, kind: i
 	return n
 
 
+## Run job(y0, y1) over bands of rows [0, height) on the worker pool and wait.
+## A job may read anything but must write only inside its own rows (and never
+## read what another band writes), so results never depend on scheduling.
+## Per-tile passes over the whole world are what GDScript is slow at; this is
+## how they stay inside the start-up budget.
+static func rows(height: int, job: Callable, band: int = 12) -> void:
+	var count := ceili(float(height) / band)
+	var task := func(b: int) -> void:
+		job.call(b * band, mini(height, (b + 1) * band))
+	var id := WorkerThreadPool.add_group_task(task, count, -1, true, "worldgen")
+	WorkerThreadPool.wait_for_group_task_completion(id)
+
+
+## A private copy of a packed array, made now. duplicate() shares storage
+## until the first write, and a first write made on several worker threads at
+## once corrupts both arrays: never duplicate an array a parallel pass writes.
+static func snapshot(a: Variant) -> Variant:
+	var b: Variant = a.duplicate()
+	if b.size() > 0:
+		b[0] = b[0]
+	return b
+
+
 ## Stateless 32-bit hash to [0, 1). Cheaper than Rng.hash01 (no loop), for
 ## per-tile rolls in hot loops. Inline the body where a loop is very hot.
 static func h01(s: int, x: int, y: int, salt: int) -> float:
@@ -36,15 +59,24 @@ static func cell_centre(k: int, step: int) -> float:
 	return k * step + step * 0.5 - 0.5
 
 
-## Sample a noise at every coarse cell centre.
+## A noise sampled at the centres of a cw*cw grid of step-tile cells (step 1:
+## every tile), in [-1, 1]. Sampled natively, through Noise.get_image on a
+## copy rescaled by step: sample-by-sample calls are slow from GDScript and
+## slower still from worker threads, which contend on the noise object. The
+## image is 8-bit, so values are good to about 1/250.
 static func sample(n: FastNoiseLite, cw: int, step: int, ox: float = 0.0, oy: float = 0.0) -> PackedFloat32Array:
-	var out := PackedFloat32Array()
-	out.resize(cw * cw)
+	var m := n.duplicate() as FastNoiseLite
 	var off := step * 0.5 - 0.5
-	for gy in cw:
-		var ty := gy * step + off + oy
-		for gx in cw:
-			out[gy * cw + gx] = n.get_noise_2d(gx * step + off + ox, ty)
+	m.frequency = n.frequency * step
+	m.offset = Vector3((n.offset.x + off + ox) / step, (n.offset.y + off + oy) / step, 0.0)
+	var img := m.get_image(cw, cw, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	var out := img.get_data().to_float32_array()
+	# Bytes truncate: centre each step, then map [0, 1] to [-1, 1].
+	rows(cw, func(g0: int, g1: int) -> void:
+		for k in range(g0 * cw, g1 * cw):
+			out[k] = out[k] * 2.0 - 0.996078
+	)
 	return out
 
 
@@ -179,16 +211,25 @@ static func near_steps(mask: PackedByteArray, width: int, max_steps: int) -> Pac
 	d.resize(n)
 	d.fill(max_steps + 1)
 	# Only mask cells on the mask's edge can reach anything: start from those.
+	var band := 12
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(height) / band))
+	rows(height, func(y0: int, y1: int) -> void:
+		var edge := PackedInt32Array()
+		for y in range(y0, y1):
+			var row := y * width
+			for x in width:
+				var i := row + x
+				if mask[i] == 0:
+					continue
+				d[i] = 0
+				if (x > 0 and mask[i - 1] == 0) or (x < width - 1 and mask[i + 1] == 0) or (y > 0 and mask[i - width] == 0) or (y < height - 1 and mask[i + width] == 0):
+					edge.append(i)
+		parts[y0 / band] = edge
+	, band)
 	var frontier := PackedInt32Array()
-	for y in height:
-		var row := y * width
-		for x in width:
-			var i := row + x
-			if mask[i] == 0:
-				continue
-			d[i] = 0
-			if (x > 0 and mask[i - 1] == 0) or (x < width - 1 and mask[i + 1] == 0) or (y > 0 and mask[i - width] == 0) or (y < height - 1 and mask[i + width] == 0):
-				frontier.append(i)
+	for part in parts:
+		frontier.append_array(part)
 	for step in range(1, max_steps + 1):
 		var next := PackedInt32Array()
 		for i in frontier:
@@ -208,6 +249,13 @@ static func near_steps(mask: PackedByteArray, width: int, max_steps: int) -> Pac
 				next.append(i + width)
 		frontier = next
 	return d
+
+
+## Run every job at once on the worker pool and wait. Jobs must not write
+## what another reads.
+static func together(jobs: Array[Callable]) -> void:
+	var id := WorkerThreadPool.add_group_task(func(j: int) -> void: jobs[j].call(), jobs.size(), -1, true, "worldgen")
+	WorkerThreadPool.wait_for_group_task_completion(id)
 
 
 ## Value at the q-quantile (0..1) of the values where mask != 0, via a histogram.

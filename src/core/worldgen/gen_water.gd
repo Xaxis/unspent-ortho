@@ -352,67 +352,70 @@ static func _carve_valleys(c: GenContext) -> void:
 	var v := PackedFloat32Array()
 	v.resize(hw * hw)
 	v.fill(1e6)
-	for y in size:
-		var row := y * size
-		var hrow := (y >> 1) * hw
-		for x in size:
-			var i := row + x
-			if water[i] == 1:
-				var k := hrow + (x >> 1)
-				v[k] = minf(v[k], river_e[i] + 0.9)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * size
+			var hrow := (y >> 1) * hw
+			for x in size:
+				var i := row + x
+				if water[i] == 1:
+					var k := hrow + (x >> 1)
+					v[k] = minf(v[k], river_e[i] + 0.9)
+	)
 	GenFields.propagate_min_field(v, hw, cost)
 	var up := GenFields.upsample(v, hw, 2, size)
-	for i in c.n:
-		if land[i] != 0 and water[i] == 0 and up[i] < elev[i]:
-			elev[i] = maxf(1.0, up[i])
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			if land[i] != 0 and water[i] == 0 and up[i] < elev[i]:
+				elev[i] = maxf(1.0, up[i])
+	)
 
 
 ## Pools and tarns, on flat ground only, after terracing.
 static func still(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
-	var pools := GenFields.noise(c.s, 431, 1.0 / 8.0, 2)
+	var pools := GenFields.sample(GenFields.noise(c.s, 431, 1.0 / 8.0, 2), size, 1)
 	var fields := GenFields.field(GenFields.noise(c.s, 432, 1.0 / 46.0, 2), size, 4)
 	var land := c.land
 	var water := c.water
 	var level := w.level
 	var country := w.country
 	var blend := w.blend
-	var marked := PackedInt32Array()
-	for y in range(2, size - 2):
-		for x in range(2, size - 2):
-			var i := y * size + x
-			if land[i] == 0 or water[i] != 0:
-				continue
-			var thr := 9.0
-			var fl := fields[i]
-			match country[i]:
-				Country.MOSS:
+	c.mark(&"still.fields")
+	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
+		for y in range(maxi(y0, 2), y1):
+			for x in range(2, size - 2):
+				var i := y * size + x
+				if land[i] == 0 or water[i] != 0:
+					continue
+				var thr := 9.0
+				var fl := fields[i]
+				var cc := country[i]
+				if cc == Country.MOSS:
 					# Pools crowd together deeper into the fen.
 					thr = 0.2 + blend[i] * 0.9 - maxf(0.0, fl) * 0.3
-				Country.SNOWFIELD:
+				elif cc == Country.SNOWFIELD:
 					thr = 0.42 - maxf(0.0, fl) * 0.2
-				Country.PINEWOOD:
+				elif cc == Country.PINEWOOD:
 					thr = 0.5 - maxf(0.0, fl) * 0.1
-				Country.COAST:
+				elif cc == Country.COAST:
 					thr = 0.56 - maxf(0.0, fl) * 0.1
-			if thr > 1.0:
-				continue
-			var l := level[i]
-			if level[i - 1] != l or level[i + 1] != l or level[i - size] != l or level[i + size] != l:
-				continue
-			if pools.get_noise_2d(x, y) + fl * 0.25 < thr:
-				continue
-			water[i] = 2
-			marked.append(i)
+				if thr > 1.0:
+					continue
+				var l := level[i]
+				if level[i - 1] != l or level[i + 1] != l or level[i - size] != l or level[i + size] != l:
+					continue
+				if pools[i] + fl * 0.25 < thr:
+					continue
+				water[i] = 2
+	)
+	c.mark(&"still.pools")
 	# Erode twice: puddles and slivers go, round pools stay.
 	for round_i in 2:
-		var drop := PackedInt32Array()
-		for i in marked:
-			if water[i] != 2:
-				continue
-			var nb := int(water[i - 1] == 2) + int(water[i + 1] == 2) + int(water[i - size] == 2) + int(water[i + size] == 2)
-			if nb < 2:
-				drop.append(i)
-		for i in drop:
-			water[i] = 0
+		var was: PackedByteArray = GenFields.snapshot(water)
+		GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
+			for i in range(maxi(y0, 2) * size, y1 * size):
+				if was[i] == 2 and int(was[i - 1] == 2) + int(was[i + 1] == 2) + int(was[i - size] == 2) + int(was[i + size] == 2) < 2:
+					water[i] = 0
+		)
