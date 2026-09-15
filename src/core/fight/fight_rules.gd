@@ -77,6 +77,10 @@ const MOB_IFRAMES_CAP_MS := 360
 ## progress is lost), at most once in STALL_EVERY_MS: hit, hit, then get out.
 const STALL_MS := 280
 const STALL_EVERY_MS := 1500
+## A real hit on a machine: the part flares this long, still lit, then goes dark
+## for PART_DARK_MS. In that order, or the flare is drawn on a part already out.
+const PART_FLARE_MS := 150.0
+const PART_DARK_MS := 240.0
 ## World-layer speeds (pace, dash) were tiles/s for a player walking 5; ours walks 3.4.
 const SPEED_SCALE := 0.68
 

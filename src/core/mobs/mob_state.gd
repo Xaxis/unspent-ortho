@@ -73,7 +73,8 @@ var heard_told := false
 # dart
 var snatched := false
 var reported := false
-## Part dark (hurt) until; part flared (a blow reached it) until. View reads.
+## A blow reached the part: it flares, lit, until flare_until, then is dark
+## (hurt) until dark_until. View reads.
 var dark_until := 0.0
 var flare_until := 0.0
 ## A real hit may stall this machine again from this time.
@@ -148,6 +149,14 @@ func roused() -> bool:
 ## Hostile to the player in the sense of a fight: not a dart, and pressing.
 func engaged() -> bool:
 	return alive and not removed and approach != &"dart" and (roused() or (approach == &"errand" and closing_since >= 0.0))
+
+
+func part_flaring(now: float) -> bool:
+	return now < flare_until
+
+
+func part_dark(now: float) -> bool:
+	return now >= flare_until and now < dark_until
 
 
 func mob_iframes() -> int:

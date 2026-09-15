@@ -283,9 +283,8 @@ func _on_hit(e: Dictionary) -> void:
 		MobFx.burst(fx, impact, 0.8, int(sim.now))
 	MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
-		var mob := target.node as Mob
-		mob.flash(0.06)
-		mob.flare()
+		# The part's flare follows from the state (Mob.sync_view), in its order.
+		(target.node as Mob).flash(0.06)
 
 
 func _on_hurt(e: Dictionary) -> void:

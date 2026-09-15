@@ -466,8 +466,9 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 	m.health -= b.dmg
 	m.invuln_until = now + m.mob_iframes()
 	m.last_hit_at = now
-	m.dark_until = now + 240.0
-	m.flare_until = now + 180.0
+	# A creature has no part to flare: it is hurt at once.
+	m.flare_until = now + (FightRules.PART_FLARE_MS if m.machine else 0.0)
+	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
 	if m.row.get("stagger", false):
 		m.throw(m.pos - hero.pos, b.knock, b.knock_ms, now)
 		if m.blow_phase(now) == &"windup":

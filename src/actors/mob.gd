@@ -6,8 +6,9 @@ extends Node3D
 ##
 ## The body telegraphs so a player can learn it: the alert pose when it
 ## notices you, the windup pose (and a lean back) through a bite's tell, the
-## strike with a lean in; the working part goes dark when it is hurt and
-## flares only when a blow reached it.
+## strike with a lean in. A blow that reached the working part flares it first,
+## while it is still lit, and only then does it go dark and the body take the
+## hurt pose: a figure draws no flare on a part that is out.
 
 var kind: StringName = &""
 var pos := Vector2.ZERO
@@ -27,9 +28,12 @@ var _flashing := false
 ## The lean kept as a quaternion: slerping the node's basis frame after frame
 ## drifts it off orthonormal, which the engine then refuses to read back.
 var _tilt := Quaternion.IDENTITY
+## The flare_until this view has already flared the part for.
+var _flared_for := 0.0
 
 
-func setup(s: MobState, world: WorldData, base_material: Material) -> void:
+## `figure`: a body to draw with instead of FigureModel.create (tests).
+func setup(s: MobState, world: WorldData, base_material: Material, figure: FigureModel = null) -> void:
 	state = s
 	s.node = self
 	_world = world
@@ -40,7 +44,7 @@ func setup(s: MobState, world: WorldData, base_material: Material) -> void:
 	pivot = Node3D.new()
 	pivot.name = "pivot"
 	add_child(pivot)
-	model = FigureModel.create(s.row.get("model", kind), base_material)
+	model = figure if figure != null else FigureModel.create(s.row.get("model", kind), base_material)
 	pivot.add_child(model)
 	_placeholder = model.get_script() == FigureModel
 	if _placeholder:
@@ -66,13 +70,20 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	var p := _pose(now_ms)
 	if p != model.pose:
 		model.set_pose(p)
-	var lit := s.alive and now_ms >= s.dark_until
+	var lit := s.alive and not s.part_dark(now_ms)
 	if lit != _was_lit:
 		model.set_part_lit(lit)
 		_was_lit = lit
 	_lean(now_ms, delta)
+	var flare := s.alive and s.part_flaring(now_ms) and s.flare_until != _flared_for
+	if flare:
+		_flared_for = s.flare_until
+		model.flare_part()
 	if delta > 0.0:
 		model.animate(delta, s.speed)
+	elif flare:
+		# Held in the hitstop: the flare still has to be on the part now.
+		model.animate(0.0, 0.0)
 	var flashing := Time.get_ticks_msec() < _flash_until
 	if flashing != _flashing:
 		_flashing = flashing
@@ -90,7 +101,7 @@ func _pose(now_ms: float) -> StringName:
 		return &"windup"
 	if phase == &"active" or phase == &"recovery":
 		return &"strike"
-	if s.node != null and now_ms < s.dark_until:
+	if s.part_dark(now_ms):
 		return &"hurt"
 	match s.mood:
 		MobState.ALERTED:
@@ -145,10 +156,6 @@ func _lean(now_ms: float, delta: float) -> void:
 
 func flash(seconds: float = 0.06) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
-
-
-func flare() -> void:
-	model.flare_part()
 
 
 ## Where the working part is in the world (the body's middle when it has none,
