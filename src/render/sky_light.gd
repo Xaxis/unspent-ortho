@@ -40,6 +40,8 @@ const MOON_ELEVATION := 58.0
 ## night blue and the lamps still matter.
 const NIGHT_LEVEL := 0.70
 const REGION_GAIN := 1.3
+## Pools of lamplight the ink knows about (two mat4 globals of four columns).
+const MAX_LAMPS := 8
 ## Cool light from the open sky, added under the sun when it is low and all
 ## night: shadows keep their blue while lit faces warm at dawn and dusk.
 ## Linear colour, scaled by how low the light is.
@@ -62,7 +64,7 @@ var region_tint := Vector3.ONE
 var season_turn := 0.0
 ## Cloud shadows: xy drift offset in tiles, z coverage 0..1, w strength 0..1.
 var clouds := Vector4.ZERO
-## Fog banks: xy drift offset, z density 0..1, w heat shimmer 0..1.
+## Fog banks: xy drift offset, z density 0..1, w spare.
 var fog := Vector4.ZERO
 ## Lightning: 0..1, decays in a few frames.
 var flash := 0.0
@@ -70,6 +72,11 @@ var flash := 0.0
 var settle := Vector4.ZERO
 ## Wind for anything that sways: xy along world x/z, z gust, w phase (see sky.gdshaderinc).
 var wind := Vector4.ZERO
+## Lamp and fire pools for the ink (sky_lamps): Vector4(x, y, z, range) each,
+## at most MAX_LAMPS, filled by the lights system.
+var lamps: Array[Vector4] = []
+## 0..1 how hard the wind blows, for anything that sways (wind_strength).
+var sway := 0.4
 ## Heavy overcast takes the cast shadows away even by day.
 var cast_allowed := true
 ## What set_hour last composed, for systems that tint unlit things (particles,
@@ -119,11 +126,19 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
 	RenderingServer.global_shader_parameter_set("sky_settle", settle)
 	RenderingServer.global_shader_parameter_set("sky_wind", wind)
+	RenderingServer.global_shader_parameter_set("wind_strength", sway)
+	var texel := 14.0 / 360.0
 	if is_inside_tree():
 		var cam := get_viewport().get_camera_3d()
 		var rows := get_viewport().get_visible_rect().size.y
 		if cam != null and rows > 0.0:
-			RenderingServer.global_shader_parameter_set("sky_view", Vector4(cam.size / rows, 0.0, 0.0, 0.0))
+			texel = cam.size / rows
+	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), 0.0, 0.0))
+	var cols: Array[Vector4] = []
+	for i in MAX_LAMPS:
+		cols.append(lamps[i] if i < lamps.size() else Vector4.ZERO)
+	RenderingServer.global_shader_parameter_set("sky_lamps", Projection(cols[0], cols[1], cols[2], cols[3]))
+	RenderingServer.global_shader_parameter_set("sky_lamps2", Projection(cols[4], cols[5], cols[6], cols[7]))
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)

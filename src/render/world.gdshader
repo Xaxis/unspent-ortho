@@ -71,14 +71,15 @@ void light() {
 		// Depth of shade: 0 in cast shadow on a sunward face, 1 on a face turned away.
 		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
 		int style = ink_style(style_packed, style_blend, px);
-		float ink = (1.0 - lit) * hatch(style, px, depth);
+		// The sky lays ink on lit faces (cloud shadow, night) and lifts it (lamplight, fog).
+		vec3 sk = sky_ink(world_pos, lit);
+		float ink = max(1.0 - lit, sk.x) * hatch(style, px, depth + sk.z) * (1.0 - sk.y);
 		vec3 k = mix(shade_tint, vec3(band), lit);
 		k = mix(k, ink_tint, ink * 0.75);
 		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
 	} else {
-		// Lamps and fire: three hard steps, a warm pool that covers the ink.
-		float a = clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0);
-		a = floor(a * 3.0 + 0.5) / 3.0;
+		// Lamps and fire: a warm pool in hard steps; its ink is lifted in sky_ink().
+		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0), world_pos);
 		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }

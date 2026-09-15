@@ -153,7 +153,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.weather_tint = look.tint
 	sky.season_turn = Weather.season_turn(minutes)
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
-	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, float(look.fog), float(look.heat) * (1.0 - Weather.night_fall(game.clock.hour())))
+	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, float(look.fog), 0.0)
 	sky.flash = _flash
 	for k: String in settled:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
@@ -163,6 +163,8 @@ func _update(delta: float, snap: bool) -> void:
 	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
 	var along := _cloud_bearing * wind
 	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
+	# Tufts and crowns never hang dead still, and a storm bends them hard.
+	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.set_hour(game.clock.hour())
 	view.update(look, wind, f3, delta)

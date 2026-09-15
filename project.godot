@@ -84,6 +84,14 @@ sky_wind={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+sky_lamps={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+sky_lamps2={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
 world_px={
 "type": "vec2",
 "value": Vector2(0, 0)

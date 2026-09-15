@@ -41,7 +41,6 @@ const FALL := {
 	&"snow": {"snow": 0.8},
 	&"blizzard": {"snow": 1.0, "fog": 0.45},
 	&"fog": {"fog": 1.0},
-	&"grey": {"fog": 0.08},
 	&"ash": {"ash": 1.0, "fog": 0.2},
 	&"heat": {"heat": 1.0},
 	&"dust": {"dust": 1.0, "fog": 0.4},
