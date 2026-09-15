@@ -128,18 +128,18 @@ func animate(speed: float, delta: float) -> void:
 		if _frozen < 0.0:
 			_action_t += delta
 		if _action_len > 0.0 and _action_t >= _action_len and _frozen < 0.0:
-			_last = PersonAnim.resolve(rig, PersonAnim.action(action, _action_len, _action_len, _dims, held), held)
+			_last = _resolved(action, _action_len, _action_len)
 			_end_action()
 		else:
 			action_left = maxf(0.0, _action_len - _action_t)
 			_weight = minf(1.0, _weight + delta * 18.0) if delta > 0.0 else _weight
-			_last = PersonAnim.resolve(rig, PersonAnim.action(action, _action_t, _action_len, _dims, held), held)
+			_last = _resolved(action, _action_t, _action_len)
 	if action == &"" and _weight > 0.0:
 		_weight = maxf(0.0, _weight - delta * 7.0)
 	if _last != null and _weight > 0.0:
-		var act := _last
+		# A copy: _last may be a cached pose other people are wearing too.
+		var act := _last.copy()
 		if PersonAnim.UPPER_ONLY.has(action) and _speed > 0.3:
-			act = _last.copy()
 			var move := smoothstep(0.3, 1.5, _speed)
 			for b: StringName in PersonAnim.LOWER:
 				act.rot[b] = act.r(b).lerp(pose.r(b), move)
@@ -154,6 +154,32 @@ func animate(speed: float, delta: float) -> void:
 		var s := pose.r(&"spine")
 		pose.rot[&"spine"] = Vector3(s.x, s.y + _gaze_now * 0.25, s.z)
 	_apply(pose)
+
+
+## Resolved (IK-solved) action poses, shared by everyone of a build holding the
+## same thing: a village of workers costs a lookup a frame, not an IK solve.
+## Time is quantised to 1/60 s and folded into the loop for looping actions.
+static var _pose_cache: Dictionary = {}
+
+
+func _resolved(a: StringName, t: float, length: float) -> PersonAnim.Pose:
+	var period := PersonAnim.loop_period(a, held)
+	var tq := t
+	if period > 0.0:
+		tq = fposmod(t, period)
+	elif a == &"downed":
+		# Cheap (no IK) and it breathes for ever: never cached.
+		return PersonAnim.resolve(rig, PersonAnim.action(a, t, length, _dims, held), held)
+	var frame := roundi(tq * 60.0)
+	var key := "%s|%s|%s|%d|%d" % [look.build, held, a, roundi(length * 1000.0), frame]
+	var hit: PersonAnim.Pose = _pose_cache.get(key)
+	if hit != null:
+		return hit
+	if _pose_cache.size() > 6000:
+		_pose_cache.clear()
+	var p := PersonAnim.resolve(rig, PersonAnim.action(a, frame / 60.0 + (t - tq), length, _dims, held), held)
+	_pose_cache[key] = p
+	return p
 
 
 func _end_action() -> void:
@@ -263,90 +289,109 @@ const FACE_RIGHT := PI * 0.25
 
 
 static func gallery() -> Array:
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://src/render/world.gdshader")
+	var mat := material()
 	var out: Array = []
 
 	var player := make({}, &"knife", mat)
 	player.rotation.y = FACE_CAMERA
 	out.append({"name": "player", "node": player})
 
-	var walk := make({}, &"knife", mat)
-	walk.rotation.y = FACE_RIGHT
-	for i in 20:
-		walk.animate(PersonAnim.GAIT_WALK, 0.0165)
-	out.append({"name": "person walking", "node": walk})
-
-	var run := make({"coat": &"long", "coat_col": "earth:2", "hat": &"cap"}, &"pick", mat)
-	run.rotation.y = FACE_RIGHT
-	for i in 23:
-		run.animate(PersonAnim.GAIT_RUN, 0.0165)
-	out.append({"name": "person running", "node": run})
-
 	var builds: Array = []
 	for b: StringName in PersonLook.BUILDS:
-		builds.append([{"build": b, "hair_style": &"crop" if b != &"old" else &"thin", "hair": &"dark" if b != &"old" else &"grey"}, &"", String(b)])
-	out.append({"name": "people builds", "node": _group(builds, mat, 5, FACE_CAMERA)})
+		var old := b == &"old" or b == &"bent"
+		builds.append([{"build": b, "hair_style": &"thin" if old else &"crop", "hair": &"grey" if old else &"dark"}, &"", String(b)])
+	out.append_array(_items("people builds", builds, mat, 5, 0.52, FACE_CAMERA))
 
 	var crowd: Array = []
 	for spec: Dictionary in PersonLook.crowd(11, 10):
 		crowd.append([spec, &"", ""])
-	out.append({"name": "people looks", "node": _group(crowd, mat, 5, FACE_CAMERA)})
+	out.append_array(_items("people looks", crowd, mat, 5, 0.52, FACE_CAMERA))
+
+	var hats: Array = []
+	for h: StringName in PersonLook.HATS:
+		hats.append([{"hat": h, "hat_col": "earth:3" if hats.size() % 2 else "slate:2", "coat": PersonLook.COATS[hats.size() % PersonLook.COATS.size()]}, &"", String(h)])
+	out.append_array(_items("people hats coats", hats, mat, 4, 0.52, FACE_CAMERA))
+
+	var hair: Array = []
+	var k := 0
+	for st: StringName in PersonLook.HAIR_STYLES:
+		hair.append([{"hair_style": st, "hair": PersonLook.HAIR_PRESETS[k % PersonLook.HAIR_PRESETS.size()], "beard": PersonLook.BEARDS[k % PersonLook.BEARDS.size()], "skin": PersonLook.SKIN_WINDOWS[k % 4], "skin_v": 1 + k % 3}, &"", String(st)])
+		k += 1
+	out.append_array(_items("people hair beards", hair, mat, 4, 0.52, FACE_RIGHT))
 
 	var kit: Array = []
-	var k := 0
+	k = 0
 	for part: StringName in PersonLook.SALVAGE:
 		var spec := PersonLook.random(40 + k, k)
 		spec.salvage = [part]
 		spec.side = 1
 		kit.append([spec, &"", String(part)])
 		k += 1
-	out.append({"name": "people salvage", "node": _group(kit, mat, 4, FACE_CAMERA)})
+	out.append_array(_items("people salvage", kit, mat, 4, 0.55, FACE_CAMERA))
+
+	var gait := Node3D.new()
+	var gaits: Array = [[PersonAnim.GAIT_WALK, 0.0], [PersonAnim.GAIT_WALK, 0.25], [PersonAnim.GAIT_RUN, 0.0], [PersonAnim.GAIT_RUN, 0.25]]
+	for i in gaits.size():
+		var g: Array = gaits[i]
+		var pm := make({"coat": &"long", "coat_col": "earth:2"} if i < 2 else {}, &"knife", mat)
+		pm._phase = g[1]
+		pm.animate(g[0], 0.0)
+		pm.rotation.y = FACE_RIGHT
+		_place(gait, pm, i, 2, 1.0, "")
+	out.append({"name": "person walk run", "node": gait})
+
+	# Each swing at the moment the blow lands: the most telling frame of the fight.
+	var swings: Array = []
+	for id: StringName in [&"", &"knife", &"billhook", &"axe_hand", &"axe_felling", &"pick", &"stave", &"boathook", &"stun_hand"]:
+		var ms := HeldTools.swing_ms(id)
+		var total := float(ms[0] + ms[1] + ms[2])
+		swings.append([PersonLook.random(120, swings.size()), id, String(HeldTools.klass(id)), &"swing", (ms[0] + ms[1] * 0.45) / 1000.0])
+	out.append_array(_items("person swings", swings, mat, 3, 1.0, FACE_RIGHT))
 
 	var acts: Array = [
-		[&"dodge", 0.17, &"knife"], [&"hurt", 0.07, &"knife"], [&"eat", 0.4, &""], [&"downed", 2.0, &"knife"],
-		[&"carried", 0.6, &""], [&"work_break", 0.52, &"pick"], [&"work_dig", 0.7, &"mattock"], [&"work_fell", 0.66, &"axe_felling"],
-		[&"work_cut", 0.1, &"knife"], [&"gather", 0.45, &""],
+		[PersonLook.random(90, 0), &"knife", "dodge", &"dodge", 0.17], [PersonLook.random(90, 1), &"knife", "hurt", &"hurt", 0.07],
+		[PersonLook.random(90, 2), &"", "eat", &"eat", 0.4], [PersonLook.random(90, 3), &"knife", "downed", &"downed", 2.0],
+		[PersonLook.random(90, 4), &"", "carried", &"carried", 0.6], [PersonLook.random(90, 5), &"pick", "break", &"work_break", 0.52],
+		[PersonLook.random(90, 6), &"mattock", "dig", &"work_dig", 0.7], [PersonLook.random(90, 7), &"axe_felling", "fell", &"work_fell", 0.66],
+		[PersonLook.random(90, 8), &"knife", "cut", &"work_cut", 0.1], [PersonLook.random(90, 9), &"", "gather", &"gather", 0.45],
 	]
-	var act_group := Node3D.new()
-	for i in acts.size():
-		var a: Array = acts[i]
-		var pm := make(PersonLook.random(90, i), a[2], mat)
-		pm.pose_at(a[0], a[1])
-		pm.rotation.y = FACE_RIGHT
-		_place(act_group, pm, i, 4, 0.95, String(a[0]))
-	out.append({"name": "person actions", "node": act_group})
-
-	var swings: Array = [[&"", 0.42], [&"knife", 0.5], [&"billhook", 0.45], [&"axe_hand", 0.3], [&"axe_felling", 0.36], [&"pick", 0.55], [&"stave", 0.5], [&"boathook", 0.5], [&"stun_hand", 0.55]]
-	var sw := Node3D.new()
-	for i in swings.size():
-		var s: Array = swings[i]
-		var pm := make(PersonLook.random(120, i), s[0], mat)
-		pm.pose_at(&"swing", s[1] * PersonAnim.default_seconds(&"swing", s[0]))
-		pm.rotation.y = FACE_RIGHT
-		_place(sw, pm, i, 3, 1.05, String(HeldTools.klass(s[0])))
-	out.append({"name": "person swings", "node": sw})
+	out.append_array(_items("person actions", acts, mat, 3, 0.95, FACE_RIGHT))
 
 	var made: Array = []
 	for id: StringName in HeldTools.MADE:
 		made.append([PersonLook.random(200, made.size()), id, String(id)])
-	out.append({"name": "person tools made", "node": _group(made, mat, 4, FACE_CAMERA, 0.9)})
+	out.append_array(_items("person tools made", made, mat, 3, 0.8, FACE_CAMERA))
 	var found: Array = []
 	for id: StringName in HeldTools.FOUND:
 		found.append([PersonLook.random(300, found.size()), id, String(id)])
-	out.append({"name": "person tools found", "node": _group(found, mat, 4, FACE_CAMERA, 0.9)})
+	out.append_array(_items("person tools found", found, mat, 3, 0.8, FACE_CAMERA))
 	return out
 
 
-## A small formation of people: [spec, held, label] rows, `cols` across the screen.
-static func _group(rows: Array, mat: Material, cols: int, facing: float, spacing: float = 0.62) -> Node3D:
-	var g := Node3D.new()
-	for i in rows.size():
-		var row: Array = rows[i]
-		var pm := make(row[0], row[1], mat)
-		pm.rotation.y = facing
-		_place(g, pm, i, cols, spacing, row[2])
-	return g
+## Gallery items of people, at most two rows each so every item fits one gallery
+## square. A row is [spec, held, label] or [spec, held, label, action, seconds in].
+static func _items(title: String, rows: Array, mat: Material, cols: int, spacing: float, facing: float) -> Array:
+	var out: Array = []
+	var per := cols * 2
+	var part := 0
+	for start in range(0, rows.size(), per):
+		var g := Node3D.new()
+		var labels: PackedStringArray = []
+		for i in range(start, mini(start + per, rows.size())):
+			var row: Array = rows[i]
+			var pm := make(row[0], row[1], mat)
+			if row.size() > 4:
+				pm.pose_at(row[3], row[4])
+			pm.rotation.y = facing
+			_place(g, pm, i - start, cols, spacing, row[2])
+			if String(row[2]) != "":
+				labels.append(String(row[2]))
+		var name := title if rows.size() <= per else "%s %s" % [title, "abcdefgh"[part]]
+		if not labels.is_empty():
+			name += ": " + " ".join(labels)
+		out.append({"name": name, "node": g})
+		part += 1
+	return out
 
 
 ## Lay subject i out along screen-right (world +X-Z) in rows that step toward the camera.
@@ -355,6 +400,6 @@ static func _place(g: Node3D, n: Node3D, i: int, cols: int, spacing: float, labe
 	var down := Vector3(1, 0, 1).normalized()
 	var col := i % cols
 	var row := i / cols
-	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - 0.5) * 1.15
+	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - 0.5) * 0.85
 	g.add_child(n)
 	n.set_meta(&"label", label)

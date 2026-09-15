@@ -141,3 +141,33 @@ func test_eat_brings_food_to_the_mouth() -> void:
 	var hand := _at(p, &"hand_l")
 	var head := _at(p, &"head")
 	lt(hand.distance_to(head + Vector3(0.1, 0.05, 0)), 0.2, "at the mouth mid-bite")
+
+
+func test_looping_actions_repeat_exactly_so_their_poses_can_be_shared() -> void:
+	var d := PersonBody.dims(&"man")
+	for pair: Array in [[&"work_break", &"pick"], [&"work_dig", &"mattock"], [&"work_fell", &"axe_felling"], [&"work_cut", &"knife"], [&"gather", &""], [&"eat", &""], [&"carried", &""]]:
+		var period := PersonAnim.loop_period(pair[0], pair[1])
+		gt(period, 0.0, "%s loops" % pair[0])
+		for t: float in [0.13, 0.41]:
+			var a := PersonAnim.action(pair[0], t, 0.0, d, pair[1])
+			var b := PersonAnim.action(pair[0], t + period * 3.0, 0.0, d, pair[1])
+			for bone: StringName in [&"spine", &"arm_r", &"thigh_l", &"head"]:
+				check(a.r(bone).is_equal_approx(b.r(bone)), "%s %s repeats after %.2f s" % [pair[0], bone, period])
+
+
+func test_a_crowd_of_workers_shares_poses_without_sharing_mistakes() -> void:
+	var a := PersonModel.make({}, &"pick")
+	var b := PersonModel.make({"hat": &"cap"}, &"pick")
+	a.play_action(&"work_break", 0.0)
+	b.play_action(&"work_break", 0.0)
+	for i in 30:
+		a.animate(0.0, 1.0 / 60.0)
+		b.animate(0.0, 1.0 / 60.0)
+	b.gaze = 1.0
+	for i in 5:
+		b.animate(2.0, 1.0 / 60.0)
+	var sa := a.bone_transform(&"tool")
+	a.animate(0.0, 0.0)
+	check(sa.is_equal_approx(a.bone_transform(&"tool")), "another worker's glance and stride do not bend this one")
+	a.free()
+	b.free()

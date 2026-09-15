@@ -668,7 +668,7 @@ static func hurt(u: float, d: Dictionary) -> Pose:
 
 ## Eat: food in the left hand, bites on a loop; the head comes down to meet it.
 static func eat(t: float, d: Dictionary) -> Pose:
-	var period := 1.05
+	var period := loop_period(&"eat", &"")
 	var u := fposmod(t, period) / period
 	var head_y: float = d.get("hip_y", 0.6) + 0.05 + float(d.get("torso", 0.41))
 	var mouth := Vector3(float(d.get("head_d", 0.27)) * 0.5 + 0.06, head_y + float(d.get("head", 0.29)) * 0.15, -0.02)
@@ -739,6 +739,22 @@ static func downed(t: float, d: Dictionary) -> Pose:
 	return lying
 
 
+## Seconds before a looping action repeats exactly (0 = it does not loop): lets
+## PersonModel cache resolved poses instead of solving IK every frame.
+static func loop_period(name: StringName, tool_id: StringName) -> float:
+	match name:
+		&"work":
+			return loop_period(work_for(tool_id), tool_id)
+		&"work_break": return 0.95
+		&"work_dig": return 1.15
+		&"work_fell": return 0.9
+		&"work_cut": return 0.55
+		&"gather": return 1.7
+		&"eat": return 1.0
+		&"carried": return TAU / 1.9
+	return 0.0
+
+
 ## Work loops keyed to real seconds, so a long job keeps an honest tempo.
 static func work(verb: StringName, t: float, d: Dictionary, tool_id: StringName) -> Pose:
 	var klass := HeldTools.klass(tool_id)
@@ -746,7 +762,7 @@ static func work(verb: StringName, t: float, d: Dictionary, tool_id: StringName)
 	match verb:
 		&"work_break", &"work_dig":
 			var dig := verb == &"work_dig"
-			var period := 1.15 if dig else 0.95
+			var period := loop_period(verb, tool_id)
 			var u := fposmod(t, period) / period
 			var g := guard(&"pick", d)
 			var up := g.with({"@hips": Vector3(-0.02, -0.03, 0), "hips": Vector3(0, -0.2, 0), "spine": Vector3(0, -0.2, 0.2 - stoop * 0.5), "head": Vector3(0, 0.2, 0.05),
@@ -764,7 +780,7 @@ static func work(verb: StringName, t: float, d: Dictionary, tool_id: StringName)
 			return down if not dig else lever
 		&"work_fell":
 			# Level chops at a trunk: the twist is the power.
-			var period := 0.9
+			var period := loop_period(verb, tool_id)
 			var u := fposmod(t, period) / period
 			var two := klass == &"heavy"
 			var g := guard(klass if klass == &"axe" or klass == &"heavy" else &"axe", d)
@@ -782,7 +798,7 @@ static func work(verb: StringName, t: float, d: Dictionary, tool_id: StringName)
 			return hit
 		&"work_cut":
 			# Down on one knee, the stuff held in the left hand, short saws with the right.
-			var period := 0.55
+			var period := loop_period(verb, tool_id)
 			var u := fposmod(t, period) / period
 			var saw := sin(u * TAU)
 			var hip_y: float = d.get("hip_y", 0.6)
@@ -798,7 +814,7 @@ static func work(verb: StringName, t: float, d: Dictionary, tool_id: StringName)
 			})
 			return knee
 		&"gather":
-			var period := 1.7
+			var period := loop_period(verb, tool_id)
 			var u := fposmod(t, period) / period
 			var hip_y: float = d.get("hip_y", 0.6)
 			var st := _stand(d)

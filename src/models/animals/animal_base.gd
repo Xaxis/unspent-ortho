@@ -186,22 +186,30 @@ func size_jitter(amount: float) -> float:
 
 
 
-## The gallery row for an animal kind: several seeds, every pose.
+## The gallery for an animal kind: every pose, each a different seed, in cells of
+## four so each item fits one gallery square. poses: [pose, seconds, speed, spacing].
 static func gallery_for(kind_id: StringName, poses: Array) -> Array:
 	var mat := FigureModel._default_material()
-	var g := Node3D.new()
+	var out: Array = []
 	var across := Vector3(1, 0, -1).normalized()
 	var down := Vector3(1, 0, 1).normalized()
-	for i in poses.size():
-		var spec: Array = poses[i]
-		var m := FigureModel.create(kind_id, mat) as AnimalModel
-		if m == null:
-			continue
-		m.vary(i * 7 + 1)
-		m.rotation.y = PI * 0.25 if i % 2 == 0 else -PI * 0.25
-		m.set_pose(spec[0])
-		for f in 12:
-			m.animate(float(spec[1]) / 12.0, float(spec[2]))
-		m.position = across * ((i % 4) - 1.5) * float(spec[3]) + down * (int(i / 4) - 0.5) * float(spec[3]) * 1.2
-		g.add_child(m)
-	return [{"name": String(kind_id), "node": g}]
+	for start in range(0, poses.size(), 4):
+		var g := Node3D.new()
+		var names: PackedStringArray = []
+		for i in range(start, mini(start + 4, poses.size())):
+			var spec: Array = poses[i]
+			var m := FigureModel.create(kind_id, mat) as AnimalModel
+			if m == null:
+				continue
+			m.vary(i * 7 + 1)
+			m.rotation.y = PI * 0.25 if i % 2 == 0 else -PI * 0.25
+			m.set_pose(spec[0])
+			for f in 12:
+				m.animate(float(spec[1]) / 12.0, float(spec[2]))
+			var gap := minf(float(spec[3]), 1.35)
+			var j := i - start
+			m.position = across * ((j % 2) - 0.5) * gap * 1.5 + down * ((j / 2) - 0.5) * gap
+			g.add_child(m)
+			names.append(String(spec[0]))
+		out.append({"name": "%s: %s" % [kind_id, " ".join(names)], "node": g})
+	return out
