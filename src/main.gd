@@ -7,6 +7,7 @@ var options: BootOptions
 
 func _ready() -> void:
 	options = BootOptions.parse(OS.get_cmdline_user_args())
+	SaveSlots.use_options(options)
 	# A player launching the game gets the title; tools always pass options.
 	if OS.get_cmdline_user_args().is_empty():
 		options.scene = "title"

@@ -40,6 +40,8 @@ var _revealing := false
 var _next_seed := 0
 var _task := -1
 var _starting := false
+## The save slot Continue is starting, or -1 for a new game.
+var _continue_slot := -1
 var _hour := 12.0
 
 
@@ -228,6 +230,14 @@ func new_game() -> void:
 	Events.sfx.emit(&"menu_select", Vector3.ZERO)
 
 
+## Continue: the game in `slot`, booted where it was saved.
+func continue_game(slot: int) -> void:
+	if _starting or slot < 0:
+		return
+	_continue_slot = slot
+	new_game()
+
+
 func _exit_tree() -> void:
 	# A coast being drawn on a worker writes into this node; wait it out.
 	if _task >= 0:
@@ -243,6 +253,16 @@ func _start_game() -> void:
 	var o := BootOptions.new()
 	o.seed_value = seed_value
 	o.size = options.size
+	if _continue_slot >= 0:
+		var why := SaveSlots.options_for(_continue_slot, o)
+		_continue_slot = -1
+		if why != "":
+			# It could be read a moment ago; say so and stay on the title.
+			_starting = false
+			_fade_to = 0.0
+			menu.refresh()
+			menu.refuse(why)
+			return
 	var game := Game.new()
 	game.name = "game"
 	var parent := get_parent()

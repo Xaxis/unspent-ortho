@@ -43,6 +43,16 @@ extends GameSystem
 ##   try N ... end          run the lines between up to N times until they all
 ##                          succeed (a player who misses a blow tries again)
 ##   echo TEXT              print a line to the log
+##   key ACTION             a real key event for ACTION's first key, down then up: what
+##                          pages that read input events need (the title)
+##   same A B TOL [X,Y,W,H] shots A and B (already taken) differ by at most TOL, the mean
+##                          per-channel difference 0..1, over the whole frame or only the
+##                          rectangle given (shot pixels, 2x); fails otherwise and prints it
+## A tour outlives the game it began in: when that game gives way to the title or
+## to a loaded game, the runner stays at the tree's root and follows the next game.
+## Awaits for that: title (the title is up, its coast drawn), game (a new game has
+## started since the last action), saved (a save was written); and station:NAME
+## (a station of that name, e.g. fire, is in reach of the player).
 ## Unknown commands fail the tour (exit 1) so a typo never passes silently.
 ## Everything else (giving items, forcing weather) belongs to BootOptions flags
 ## on the boot, or to real play inside the tour.
@@ -51,10 +61,16 @@ var _lines: PackedStringArray = []
 var _name := ""
 var _out := ""
 var _held: Array[String] = []
+## The node running the tour, while one runs; later games hand themselves to it.
+static var _runner: Node = null
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
+	if is_instance_valid(_runner) and _runner != self:
+		_runner.set("game", g)
+		(_runner.get("_seen") as Dictionary)["game"] = true
+		return
 	var path := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--tour="):
@@ -71,10 +87,13 @@ func setup(g: Game) -> void:
 	_name = abs_path.get_file().get_basename()
 	_out = ProjectSettings.globalize_path("res://").path_join("shots/tour").path_join(_name)
 	DirAccess.make_dir_recursive_absolute(_out)
+	_runner = self
 	_run.call_deferred()
 
 
 func _run() -> void:
+	# Out from under the game, so the tour goes on when the game gives way.
+	reparent(get_tree().root)
 	_listen()
 	# Let the first view settle.
 	for i in 6:
@@ -98,7 +117,7 @@ func _run() -> void:
 			if not tries.is_empty():
 				tries.pop_back()
 			continue
-		if not cmd in ["wait", "shot", "echo", "await"]:
+		if not cmd in ["wait", "shot", "echo", "await", "same"]:
 			_seen.clear()
 		print("tour t=%.2fs fps=%d: %s" % [Time.get_ticks_msec() / 1000.0, Engine.get_frames_per_second(), line])
 		var ok := true
@@ -169,6 +188,10 @@ func _run() -> void:
 				ok = await TourPeople.perf(self, game, parts)
 			"echo":
 				print("tour: ", line.substr(5))
+			"key":
+				ok = await _key(parts[1])
+			"same":
+				ok = _same(parts[1], parts[2], parts[3].to_float() if parts.size() > 3 else 0.02, parts[4] if parts.size() > 4 else "")
 			_:
 				ok = false
 		if not ok and not tries.is_empty() and int(tries.back()[1]) > 0:
@@ -194,10 +217,11 @@ var _seen: Dictionary = {}
 
 
 func _listen() -> void:
+	Events.saved.connect(func(_slot: int, _reason: StringName) -> void: _seen["saved"] = true)
 	Events.hit.connect(func(_a: Object, target: Object, damage: int, plate: bool, _at: Vector3) -> void:
 		if plate:
 			_seen["ring"] = true
-		elif damage > 0 and target == game.player:
+		elif damage > 0 and is_instance_valid(game) and target == game.player:
 			_seen["hurt"] = true
 		elif damage > 0:
 			_seen["hit"] = true)
@@ -219,6 +243,13 @@ func _await(what: String, secs: float) -> bool:
 
 
 func _now_true(what: String) -> bool:
+	if what == "title":
+		var t := get_tree().root.find_child("title", true, false) as UiTitle
+		return t != null and t.world != null and t.menu.fade < 0.05
+	if not is_instance_valid(game):
+		return false
+	if what.begins_with("station:"):
+		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
 	var sim := game.player.sim
 	match what:
 		"grip":
@@ -351,11 +382,78 @@ func _teleport(p: Vector2) -> void:
 		sky.call("_update", 0.0, true)
 
 
+## A real key event for the first key bound to `action`, held across whole frames.
+func _key(action: String) -> bool:
+	if not InputMap.has_action(action):
+		return false
+	for e in InputMap.action_get_events(action):
+		var k := e as InputEventKey
+		if k == null:
+			continue
+		var down := k.duplicate() as InputEventKey
+		down.pressed = true
+		Input.parse_input_event(down)
+		for i in 3:
+			await get_tree().process_frame
+		await get_tree().physics_frame
+		var up := k.duplicate() as InputEventKey
+		up.pressed = false
+		Input.parse_input_event(up)
+		await get_tree().process_frame
+		return true
+	return false
+
+
+func _same(a: String, b: String, tol: float, crop: String) -> bool:
+	var ia := Image.load_from_file(_out.path_join(a + ".png"))
+	var ib := Image.load_from_file(_out.path_join(b + ".png"))
+	var rect := Rect2i()
+	if crop != "":
+		var c := crop.split(",")
+		if c.size() != 4:
+			return false
+		rect = Rect2i(c[0].to_int(), c[1].to_int(), c[2].to_int(), c[3].to_int())
+	var d := frame_difference(ia, ib, rect)
+	print("tour %s: %s against %s%s differs by %.4f (at most %.4f)" % [_name, a, b, "" if crop == "" else " at " + crop, d, tol])
+	return d <= tol
+
+
+## Mean per-channel difference of two frames, 0 (the same) .. 1, over `rect`
+## (the whole frame when empty); 1 when they cannot be compared (missing, not
+## the same size, or the rectangle not inside them).
+static func frame_difference(a: Image, b: Image, rect: Rect2i = Rect2i()) -> float:
+	if a == null or b == null or a.is_empty() or a.get_size() != b.get_size():
+		return 1.0
+	if rect.has_area():
+		if not Rect2i(Vector2i.ZERO, a.get_size()).encloses(rect):
+			return 1.0
+		a = a.get_region(rect)
+		b = b.get_region(rect)
+	a.convert(Image.FORMAT_RGB8)
+	b.convert(Image.FORMAT_RGB8)
+	var da := a.get_data()
+	var db := b.get_data()
+	var sum := 0
+	for i in da.size():
+		sum += absi(da[i] - db[i])
+	return sum / (255.0 * da.size())
+
+
 func _shot(label: String) -> void:
+	if not is_instance_valid(game):
+		for i in 3:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		_save_frame(label)
+		return
 	game.view.ensure_near(game.player.pos)
 	for i in 3:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
+	_save_frame(label)
+
+
+func _save_frame(label: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var path := _out.path_join(label + ".png")
