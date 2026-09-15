@@ -187,8 +187,8 @@ static func _sharp_box(k: MeshKit, c: Vector3, h: Vector3, r: Array) -> void:
 ## Vector2(radius, offset along axis) from one end to the other; `squash`
 ## scales the section (x across, y the other way) for oval and flat sections.
 ## Walls between rings, caps on both ends where the radius is not 0. `rub_ring`
-## paints the band after that ring index v5 on its upper side.
-static func lathe(k: MeshKit, c: Vector3, axis: Vector3, spec: Array[Vector2], n: int, r: Array, phase: float = 0.0, squash: Vector2 = Vector2.ONE, cap_col: Color = Color(0, 0, 0, 0), rub_ring: int = -1, caps: bool = true) -> void:
+## paints the band after that ring index v5 on its upper side, facing `rub_dir`.
+static func lathe(k: MeshKit, c: Vector3, axis: Vector3, spec: Array[Vector2], n: int, r: Array, phase: float = 0.0, squash: Vector2 = Vector2.ONE, cap_col: Color = Color(0, 0, 0, 0), rub_ring: int = -1, caps: bool = true, rub_dir: Vector3 = Vector3.RIGHT) -> void:
 	var ax := axis.normalized()
 	var u := ax.cross(UP if absf(ax.y) < 0.9 else Vector3.RIGHT).normalized()
 	var v := ax.cross(u)
@@ -210,7 +210,8 @@ static func lathe(k: MeshKit, c: Vector3, axis: Vector3, spec: Array[Vector2], n
 			if nrm == Vector3.ZERO:
 				continue
 			var col := _col(k, nrm, r)
-			if ri == rub_ring and (k._xf.basis * nrm).y > 0.2:
+			# One rubbed edge, on one side: where the thing is handled or knocked.
+			if ri == rub_ring and (k._xf.basis * nrm).y > 0.2 and nrm.dot(rub_dir) > 0.5:
 				col = r[5]
 			face(k, _dedupe(pts), col, nrm)
 	for end: int in [0, rings.size() - 1]:

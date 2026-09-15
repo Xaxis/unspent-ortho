@@ -46,7 +46,7 @@ func build() -> void:
 	var k := FoundKit.kit()
 	# Narrow at the waist, square at the shoulders, a flat shoulder line and no head.
 	var plan := FoundKit.plan_oct(0.18, 0.4, 0.05)
-	FoundKit.loft(k, [FoundKit.ring(plan, 0.0, 0.0, Vector2(0.72, 0.45)), FoundKit.ring(plan, 0.14, 0.0, Vector2(0.8, 0.5)), FoundKit.ring(plan, 0.46, 0.0), FoundKit.ring(plan, 0.5, 0.03)], R)
+	FoundKit.loft(k, [FoundKit.ring(plan, 0.0, 0.0, Vector2(0.72, 0.45)), FoundKit.ring(plan, 0.14, 0.0, Vector2(0.8, 0.5)), FoundKit.ring(plan, 0.46, 0.0), FoundKit.ring(plan, 0.5, 0.03)], R, true)
 	FoundKit.disc(k, Vector3(0, 0.515, 0), Vector3.UP, 0.055, 0.04, 8, 0.0, D, R[0], PI / 8.0)
 	FoundKit.visor(k, Vector3(0.088, 0.38, 0), Vector3(0.998, 0.06, 0), Vector3.UP, 0.24, 0.03)
 	FoundKit.streaks(k, Vector3(0.086, 0.34, 0), Vector3.RIGHT, 0.18, 0.18, 5, 151, R[1])

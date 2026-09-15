@@ -51,29 +51,30 @@ func build() -> void:
 	var hull := joint(&"hull", self, Vector3(0, HULL_Y, 0))
 	var k := FoundKit.kit()
 	var plan := FoundKit.plan_oct(1.86, 1.72, 0.34)
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.22, 0.05), FoundKit.ring(plan, -0.14), FoundKit.ring(plan, 0.22, 0.01), FoundKit.ring(plan, 0.3, 0.09)], R)
+	FoundKit.loft(k, [FoundKit.ring(plan, -0.22, 0.05), FoundKit.ring(plan, -0.14), FoundKit.ring(plan, 0.22, 0.01), FoundKit.ring(plan, 0.3, 0.09)], R, true)
 	# Skirts over the tracks.
 	for sz: float in [-1.0, 1.0]:
 		var skirt: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.9, 0.06), Vector2(-0.9, 0.06), Vector2(-1.04, 0.0), Vector2(-0.98, -0.04), Vector2(0.94, -0.04)]
 		FoundKit.slab(k, Vector3(0, 0.0, sz * TRACK_Z), Vector3.RIGHT, Vector3.BACK * sz, skirt, 0.05, R)
 		FoundKit.rivets(k, Vector3(-0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3(0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3.UP, 9, R[5])
 		FoundKit.streaks(k, Vector3(0.1, 0.12, sz * 0.861), Vector3.BACK * sz, 1.3, 0.2, 8, 31 + int(sz), R[1])
-	# The rear housing, a cold slit across its face like a cab with nobody in it.
-	var cab := FoundKit.plan_oct(0.66, 1.16, 0.2)
-	FoundKit.loft(k, [FoundKit.ring(cab, 0.28, 0.0, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.56, 0.02, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.62, 0.08, Vector2.ONE, Vector2(-0.5, 0))], R)
-	FoundKit.visor(k, Vector3(-0.169, 0.46, 0), Vector3.RIGHT, Vector3.UP, 0.62, 0.05)
-	FoundKit.streaks(k, Vector3(-0.169, 0.41, 0), Vector3.RIGHT, 0.56, 0.1, 7, 33, R[1])
-	for j in 7:
-		FoundKit.mark(k, Vector3(-0.5, 0.622, -0.3 + j * 0.1), Vector3.UP, Vector3.RIGHT, 0.34, 0.025, R[1], 0.002)
-	# Two stacks behind it, and a seam down the middle of the deck.
+	# The rear housing: low, so the whole stays a slab; a cold slit across its
+	# face like a cab window with nobody behind it, louvres on top.
+	var cab := FoundKit.plan_oct(0.66, 1.26, 0.2)
+	FoundKit.loft(k, [FoundKit.ring(cab, 0.28, 0.0, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.42, 0.02, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.47, 0.07, Vector2.ONE, Vector2(-0.5, 0))], R)
+	FoundKit.visor(k, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.UP, 0.7, 0.04)
+	FoundKit.streaks(k, Vector3(-0.169, 0.33, 0), Vector3.RIGHT, 0.64, 0.05, 7, 33, R[1])
+	for j in 9:
+		FoundKit.mark(k, Vector3(-0.5, 0.472, -0.4 + j * 0.1), Vector3.UP, Vector3.RIGHT, 0.36, 0.024, R[1], 0.002)
+	# Two short stacks behind it, and a seam down the middle of the deck.
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.tbar(k, Vector3(-0.78, 0.3, sz * 0.46), Vector3(-0.78, 0.82, sz * 0.46), 0.045, 0.04, 6, R, 0.015)
-		FoundKit.spot(k, Vector3(-0.78, 0.821, sz * 0.46), Vector3.UP, 0.028, 6, R[0], 0.002)
+		FoundKit.tbar(k, Vector3(-0.8, 0.3, sz * 0.5), Vector3(-0.8, 0.62, sz * 0.5), 0.045, 0.04, 6, R, 0.015)
+		FoundKit.spot(k, Vector3(-0.8, 0.621, sz * 0.5), Vector3.UP, 0.028, 6, R[0], 0.002)
 	FoundKit.seam(k, Vector3(-0.12, 0.301, 0), Vector3(0.66, 0.301, 0), Vector3.UP, R, 4)
 	FoundKit.panel(k, Vector3(0.3, 0.301, -0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	FoundKit.panel(k, Vector3(0.3, 0.301, 0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	body_mesh(k, hull)
-	add_scan(hull, Vector3(-0.169, 0.46, 0), Vector3.RIGHT, Vector3.BACK, 0.5, 0.045, 3.0)
+	add_scan(hull, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.BACK, 0.6, 0.035, 3.0)
 
 	for sz: float in [-1.0, 1.0]:
 		var lamp := joint(&"lamp_r" if sz > 0 else &"lamp_l", hull, Vector3(0.62, 0.1, sz * 0.66))

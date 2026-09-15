@@ -29,7 +29,7 @@ func build() -> void:
 	var body := joint(&"body", self, Vector3(0, BODY_Y, 0))
 	var k := FoundKit.kit()
 	var plan := FoundKit.plan_oct(1.24, 0.9, 0.24)
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.13, 0.1), FoundKit.ring(plan, -0.07), FoundKit.ring(plan, 0.07), FoundKit.ring(plan, 0.1, 0.035)], R, false, true)
+	FoundKit.loft(k, [FoundKit.ring(plan, -0.13, 0.1), FoundKit.ring(plan, -0.07), FoundKit.ring(plan, 0.07), FoundKit.ring(plan, 0.1, 0.035)], R, true, true)
 	# The spine plate, the conduits from each hip to the hub, rivets along the lip.
 	var spine := FoundKit.plan_oct(0.74, 0.28, 0.08)
 	FoundKit.loft(k, [FoundKit.ring(spine, 0.11), FoundKit.ring(spine, 0.16, 0.03)], R)

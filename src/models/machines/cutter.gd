@@ -32,7 +32,7 @@ func build() -> void:
 	FoundKit.loft(k, [FoundKit.ring(chassis, -0.05, 0.03), FoundKit.ring(chassis, -0.02), FoundKit.ring(chassis, 0.03, 0.02)], D)
 	var house := FoundKit.plan_oct(0.36, 0.34, 0.1)
 	var sh := Vector2(-0.1, 0)
-	FoundKit.loft(k, [FoundKit.ring(house, 0.03, 0.0, Vector2.ONE, sh), FoundKit.ring(house, 0.34, 0.02, Vector2.ONE, sh), FoundKit.ring(house, 0.42, 0.09, Vector2.ONE, sh)], R)
+	FoundKit.loft(k, [FoundKit.ring(house, 0.03, 0.0, Vector2.ONE, sh), FoundKit.ring(house, 0.34, 0.02, Vector2.ONE, sh), FoundKit.ring(house, 0.42, 0.09, Vector2.ONE, sh)], R, true)
 	FoundKit.visor(k, Vector3(0.081, 0.25, 0), Vector3.RIGHT, Vector3.UP, 0.18, 0.035)
 	FoundKit.streaks(k, Vector3(0.081, 0.21, 0), Vector3.RIGHT, 0.16, 0.14, 4, 41, R[1])
 	for sz: float in [-1.0, 1.0]:

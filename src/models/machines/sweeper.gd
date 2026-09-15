@@ -75,7 +75,7 @@ func build() -> void:
 	var hk := FoundKit.kit()
 	# Tall and narrow at the foot, flaring to a lidded mouth: the upright of the T.
 	var hp := FoundKit.plan_oct(0.42, 0.42, 0.12)
-	FoundKit.loft(hk, [FoundKit.ring(hp, 0.0, 0.0, Vector2(0.72, 0.72)), FoundKit.ring(hp, 0.6, 0.0, Vector2(0.9, 0.9)), FoundKit.ring(hp, 0.86), FoundKit.ring(hp, 0.92, 0.04)], R, true)
+	FoundKit.loft(hk, [FoundKit.ring(hp, 0.0, 0.0, Vector2(0.72, 0.72)), FoundKit.ring(hp, 0.6, 0.0, Vector2(0.9, 0.9)), FoundKit.ring(hp, 0.86), FoundKit.ring(hp, 0.92, 0.04)], R)
 	var lid := FoundKit.plan_oct(0.5, 0.5, 0.14)
 	FoundKit.loft(hk, [FoundKit.ring(lid, 0.92, 0.0, Vector2.ONE, Vector2(0.02, 0)), FoundKit.ring(lid, 0.96, 0.0, Vector2.ONE, Vector2(0.02, 0)), FoundKit.ring(lid, 1.0, 0.06, Vector2.ONE, Vector2(0.02, 0))], R)
 	FoundKit.visor(hk, Vector3(0.203, 0.72, 0), Vector3.RIGHT, Vector3.UP, 0.24, 0.035)

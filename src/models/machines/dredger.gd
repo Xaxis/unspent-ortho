@@ -28,7 +28,7 @@ func build() -> void:
 	# A low carapace with a prow, not a box: waterline full, shoulders sloped in.
 	var plan: Array[Vector2] = [Vector2(0.9, 0), Vector2(0.52, 0.44), Vector2(-0.42, 0.5), Vector2(-0.72, 0.3), Vector2(-0.72, -0.3), Vector2(-0.42, -0.5), Vector2(0.52, -0.44)]
 	var k := FoundKit.kit()
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.06, 0.12), FoundKit.ring(plan, 0.04), FoundKit.ring(plan, 0.18), FoundKit.ring(plan, 0.27, 0.12), FoundKit.ring(plan, 0.31, 0.26)], R)
+	FoundKit.loft(k, [FoundKit.ring(plan, -0.06, 0.12), FoundKit.ring(plan, 0.04), FoundKit.ring(plan, 0.18), FoundKit.ring(plan, 0.27, 0.12), FoundKit.ring(plan, 0.31, 0.26)], R, true)
 	# A dorsal keel down the middle and a stubby stack.
 	var keel: Array[Vector2] = [Vector2(0.5, 0), Vector2(0.2, 0.12), Vector2(-0.46, 0.14), Vector2(-0.6, 0.0), Vector2(-0.46, -0.14), Vector2(0.2, -0.12)]
 	FoundKit.loft(k, [FoundKit.ring(keel, 0.3), FoundKit.ring(keel, 0.38, 0.03), FoundKit.ring(keel, 0.41, 0.07)], R)

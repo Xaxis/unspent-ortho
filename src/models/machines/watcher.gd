@@ -71,6 +71,8 @@ func build() -> void:
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.disc(bk, Vector3(0, 0, sz * 0.43), Vector3.BACK, 0.064, 0.05, 8, 0.014, R, Color(0, 0, 0, 0), PI / 8.0)
 		FoundKit.mark(bk, Vector3(0.0, 0.047, sz * 0.2), Vector3.UP, Vector3.BACK, 0.016, 0.26, R[2], 0.002)
+	# The rubbed edge: along the top of the bar, where it has been handled.
+	FoundKit.mark(bk, Vector3(0.012, 0.047, 0.28), Vector3.UP, Vector3.BACK, 0.014, 0.2, R[5], 0.003)
 	# The instrument: an eight-sided barrel on the line of sight.
 	FoundKit.lathe(bk, Vector3.ZERO, Vector3.RIGHT, [Vector2(0.07, -0.19), Vector2(0.1, -0.15), Vector2(0.105, 0.08), Vector2(0.085, 0.15), Vector2(0.085, 0.17)], 8, R, PI / 8.0)
 	# Upper arm of the cross and its cap; a collar under the barrel.
