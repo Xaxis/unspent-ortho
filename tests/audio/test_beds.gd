@@ -252,3 +252,38 @@ func test_walking_over_a_border_crossfades_without_a_step() -> void:
 	var at_cross: Vector2 = t["path"][crossed]
 	# Where the countries meet, plus the fade's lag at a walk (BED_FADE s at 5 tiles/s).
 	near(at_cross.x, 48.0 + SoundMix.BED_FADE * 5.0, 2.0, "the beds cross where the countries do (%.1f)" % at_cross.x)
+
+
+func test_living_scatter_keeps_its_hours_and_its_weather() -> void:
+	var fair := {"kind": &"clear", "strength": 0.0, "wind": 0.2}
+	var gull: Array = SoundBeds.SCATTER[&"bed_shore"][0]
+	eq(gull[0], &"shore_gull")
+	check(SoundMix.scatter_allowed(gull, 12.0, fair), "gulls at noon")
+	check(not SoundMix.scatter_allowed(gull, 23.0, fair), "no gulls at night")
+	check(not SoundMix.scatter_allowed(gull, 12.0, {"kind": &"storm", "strength": 0.8, "wind": 0.9}), "no gulls in a storm")
+	check(SoundMix.scatter_allowed(gull, 12.0, {"kind": &"fog", "strength": 0.9, "wind": 0.0}), "gulls cry in fog")
+	var birds := 0
+	for bed: StringName in SoundBeds.SCATTER:
+		for entry: Array in SoundBeds.SCATTER[bed]:
+			if entry[0] == &"bird_song":
+				birds += 1
+				check(SoundMix.scatter_allowed(entry, 6.0, fair), "birds at first light in %s" % bed)
+				check(not SoundMix.scatter_allowed(entry, 14.0, fair), "not all day in %s" % bed)
+				check(not SoundMix.scatter_allowed(entry, 6.0, {"kind": &"rain", "strength": 0.7, "wind": 0.3}), "not in rain in %s" % bed)
+	gt(float(birds), 1.0, "a dawn is heard in more than one country")
+	for bed: StringName in SoundBeds.SCATTER:
+		for entry: Array in SoundBeds.SCATTER[bed]:
+			check(SoundMix.scatter_allowed([entry[0], entry[1], entry[2]], 3.0, fair), "entries without conditions always allowed")
+
+
+func test_nights_fall_calmer() -> void:
+	var w := WorldData.new(5, 48)
+	for i in 48 * 48:
+		w.level[i] = 2
+		w.ground[i] = Ground.GRASS
+		w.country[i] = Country.COAST
+	var none := {"distance": INF}
+	var weather := {"kind": &"clear", "strength": 0.0, "wind": 0.4}
+	var day := float(SoundMix.bed_levels(w, Vector2(24, 24), weather, none, none, 5.0, {"hour": 13.0})[&"bed_wind"])
+	var night := float(SoundMix.bed_levels(w, Vector2(24, 24), weather, none, none, 5.0, {"hour": 2.0})[&"bed_wind"])
+	lt(night, day * 0.8, "the wind drops at night (%.2f vs %.2f)" % [night, day])

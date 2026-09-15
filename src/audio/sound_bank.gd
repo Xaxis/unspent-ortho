@@ -57,7 +57,7 @@ const SHEET := {
 	&"bed_burning": [&"bed", -3.5, 1],
 	&"bed_river": [&"bed", -5.0, 1],
 	# Machinery nobody switched off, carried on still night air from far away.
-	&"bed_far_works": [&"bed", -7.0, 1],
+	&"bed_far_works": [&"bed", -9.0, 1],
 	# Weather beds at full strength. Rain is the reference.
 	&"weather_rain": [&"weather", 0.0, 1],
 	&"weather_storm": [&"weather", 1.5, 1],
@@ -79,6 +79,7 @@ const SHEET := {
 	&"shore_gull": [&"scatter", -7.0, 3],
 	&"fog_horn": [&"scatter", -5.0, 1],
 	&"heat_tick": [&"scatter", -11.0, 3],
+	&"bird_song": [&"scatter", -11.0, 6],
 	# Footfalls, one family per ground.
 	&"step_sand": [&"step", -3.0, 4],
 	&"step_grass": [&"step", -3.0, 4],

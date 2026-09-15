@@ -1,10 +1,10 @@
 class_name SoundCreatures
-## The living: dogs, the bull, gulls, and a body going down. Everything here
-## wanders, the opposite of a machine: pitch drifts through each call, pulses
-## jitter, no two takes share timing. Distance is timbre (gull(far = true) is
+## The living: dogs, the bull, gulls, small birds at first light, and a body
+## going down. Everything here wanders, the opposite of a machine: pitch drifts
+## through each call, pulses jitter, no two takes share timing. Distance is timbre (gull(far = true) is
 ## duller and wetter), matched on loudness to the near call by the mix sheet.
 
-const NAMES: Array[StringName] = [&"dog_bark", &"bull_snort", &"gull_cry", &"snatch_gull", &"beast_down"]
+const NAMES: Array[StringName] = [&"dog_bark", &"bull_snort", &"gull_cry", &"snatch_gull", &"beast_down", &"bird_song"]
 
 
 static func handles(name: StringName) -> bool:
@@ -18,6 +18,7 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"gull_cry": return gull(rate, variant, false)
 		&"snatch_gull": return _snatch_gull(rate, variant)
 		&"beast_down": return _beast_down(rate)
+		&"bird_song": return bird(rate, variant)
 	push_warning("no creature %s" % name)
 	return Synth.buffer(64)
 
@@ -123,6 +124,38 @@ static func gull(rate: int, v: int, far: bool) -> PackedFloat32Array:
 		Synth.lowpass(out, rate, 3800.0)
 		return Synth.reverb(out, rate, 0.7, 0.5, 0.35, 1.2)
 	return Synth.reverb(out, rate, 0.5, 0.5, 0.12, 0.4)
+
+
+## A small bird somewhere off in the stand, at first light: a phrase of three
+## to seven quick notes, each a whistle that glides and sometimes trills, the
+## phrase's shape different every take. Far and a little wet.
+static func bird(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(5801, v)
+	var out := Synth.buffer(Synth.samples(rate, 1.6))
+	var t := 0.0
+	var home := r.randf_range(2600.0, 4200.0)
+	var notes := r.randi_range(5, 10)
+	var trill := r.randf() < 0.5
+	for k in notes:
+		var secs := r.randf_range(0.018, 0.06)
+		var n := Synth.samples(rate, secs)
+		var b := Synth.buffer(n)
+		var f0 := home * r.randf_range(0.8, 1.25)
+		var f1 := f0 * r.randf_range(0.7, 1.45)
+		var ph := 0.0
+		for i in n:
+			var u := float(i) / n
+			var f := f0 * pow(f1 / f0, u)
+			if trill and k == notes - 1:
+				f *= 1.0 + 0.08 * sin(TAU * 38.0 * u * secs)
+			ph += TAU * minf(f, rate * 0.45) / rate
+			b[i] = sin(ph) * sin(PI * u)
+		Synth.add(out, b, Synth.samples(rate, t), r.randf_range(0.5, 1.0))
+		t += secs + r.randf_range(0.012, 0.05) + (0.12 if k == notes / 2 and notes > 6 else 0.0)
+		if t > 1.3:
+			break
+	Synth.lowpass(out, rate, 6500.0)
+	return Synth.reverb(out, rate, 0.4, 0.7, 0.1, 0.3)
 
 
 ## A gull down on your bag: the canvas, wingbeats beating off, one call.

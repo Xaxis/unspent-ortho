@@ -721,6 +721,31 @@ static func reverb(buf: PackedFloat32Array, rate: int, room: float = 0.75, damp:
 	return out
 
 
+## A tape-less feedback echo: repeats every `delay` seconds, each `feedback`
+## as loud and duller (a one-pole low-pass at damp_hz in the loop), mixed in
+## at `wet`. The early-90s sample machines' echo, a beat-synced repeat rather
+## than a hall. Returns a new buffer `tail` seconds longer.
+static func echo(buf: PackedFloat32Array, rate: int, delay: float, feedback: float, damp_hz: float, wet: float, tail: float) -> PackedFloat32Array:
+	var n := buf.size()
+	var total := n + samples(rate, tail)
+	var out := buffer(total)
+	var d := maxi(1, samples(rate, delay))
+	var line := buffer(d)
+	var a := exp(-TAU * damp_hz / rate)
+	var lp := 0.0
+	var idx := 0
+	for i in total:
+		var x := buf[i] if i < n else 0.0
+		var y := line[idx]
+		lp = y + a * (lp - y)
+		line[idx] = x + lp * feedback
+		out[i] = x + y * wet
+		idx += 1
+		if idx == d:
+			idx = 0
+	return out
+
+
 ## Drops a one-shot's silent tail (below `floor_db` of its peak), keeping a
 ## short fade, so reverb tails and generous buffers cost nothing to play.
 static func trim_tail(buf: PackedFloat32Array, rate: int, floor_db: float = -66.0) -> PackedFloat32Array:

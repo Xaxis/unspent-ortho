@@ -76,3 +76,76 @@ func test_music_is_rare() -> void:
 	sys.free()
 	g.player.free()
 	g.free()
+
+
+class FakeMob:
+	extends Node
+	var kind: StringName = &"dog.yard"
+	var pos: Vector2
+	var alive := true
+
+
+func _music(w: WorldData) -> Array:
+	var g := Game.new()
+	g.world = w
+	g.clock = WorldClock.new(12.0)
+	g.player = Player.new()
+	g.player.pos = w.spawn
+	var sys: MusicSystem = MusicSystem.new()
+	tree.root.add_child(sys)
+	sys.setup(g)
+	sys.set_process(false)
+	sys.bank = SoundBank.new()
+	sys.bank.threaded = false
+	var phrase := Fixture.baked(&"music_burning:0")
+	for c: int in Country.LAND:
+		for mood in 3:
+			var stand_in := SoundBank.Baked.new()
+			stand_in.key = SoundBank.key_for(SoundMusic.name_for(c), mood)
+			stand_in.rate = phrase.rate
+			stand_in.samples = phrase.samples
+			sys.bank.adopt(stand_in)
+	return [sys, g]
+
+
+func _free(parts: Array) -> void:
+	var sys: Node = parts[0]
+	var g: Game = parts[1]
+	sys.free()
+	g.player.free()
+	g.free()
+
+
+func test_the_figure_waits_out_a_fight() -> void:
+	var parts := _music(WorldGen.generate(11, 96))
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	eq(sys.process_mode, Node.PROCESS_MODE_ALWAYS, "the phrase does not freeze on the pause page")
+	var dog := FakeMob.new()
+	dog.pos = g.player.pos + Vector2(6, 0)
+	tree.root.add_child(dog)
+	dog.add_to_group(&"mobs")
+	for i in 15:
+		sys.advance(1.0)
+	eq(sys.played.size(), 0, "not with a dog six tiles off")
+	dog.alive = false
+	for i in 15:
+		sys.advance(1.0)
+	eq(sys.played.size(), 1, "once it is down, the arrival can be heard")
+	dog.free()
+	_free(parts)
+
+
+func test_getting_up_from_sleep_is_a_moment() -> void:
+	var parts := _music(WorldGen.generate(11, 96))
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	sys.last_played = -INF
+	g.clock.skip(18.0 * 60.0)
+	Events.time_skipped.emit(18.0 * 60.0, &"sleep")
+	eq(sys.played.size(), 1, "woke to the figure")
+	check(String(sys.played[0]).ends_with(":1"), "in the morning it is the dawn phrase: %s" % sys.played[0])
+	sys.player.stop()
+	Events.time_skipped.emit(30.0, &"work")
+	eq(sys.played.size(), 1, "work is not a moment, and it is too soon anyway")
+	_free(parts)

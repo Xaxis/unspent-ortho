@@ -107,9 +107,11 @@ func setup(g: Game) -> void:
 	var family := SoundEffects.step_name(_ground())
 	for v in SoundBank.variants(family):
 		bank.request(SoundBank.key_for(family, v), true)
-	for bed: StringName in targets:
-		if float(targets[bed]) > 0.01:
-			bank.request(bed)
+	# Loudest bed here first: it is most of what the first seconds sound like.
+	var here: Array = targets.keys().filter(func(b: StringName) -> bool: return float(targets[b]) > 0.01)
+	here.sort_custom(func(a: StringName, b: StringName) -> bool: return float(targets[a]) > float(targets[b]))
+	for bed: StringName in here:
+		bank.request(bed)
 	for n: StringName in WARM:
 		bank.request(SoundBank.key_for(n, 0))
 	for n: StringName in WARM:
@@ -396,12 +398,11 @@ func _scatter() -> void:
 			continue
 		for entry: Array in SoundBeds.SCATTER[bed]:
 			var name: StringName = entry[0]
+			if not SoundMix.scatter_allowed(entry, hour, weather):
+				continue
 			var spacing := 1.0
 			if name == &"shore_gull":
-				# Gulls need daylight and air they can fly in, and crowd the low
-				# tide near people.
-				if hour < 6.5 or hour > 19.5 or (s > 0.5 and kind != &"fog"):
-					continue
+				# Gulls crowd the low tide near people.
 				spacing = lerpf(0.6, 1.5, tide) * lerpf(0.7, 1.4, remote)
 			_scatter_entry(name, entry, lvl, spacing)
 	if SoundMix.WEATHER_SCATTER.has(kind) and s > 0.25:

@@ -70,6 +70,7 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 	var beat := 60.0 / bpm
 	var r := Rng.make(9001 + COUNTRY_KEYS.find(country) * 31, mood)
 	var out := Synth.buffer(Synth.samples(rate, 15.0 * beat + 1.5))
+	var lead := Synth.buffer(out.size())
 	var lead_shift := 12 if mood == 1 else 0
 	var bass_shift := -12 if mood == 2 else 0
 	# The figure, then its answer.
@@ -84,10 +85,14 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 			var onset := (bar * 4.0 + float(note[0])) * beat + r.randf_range(-0.012, 0.012)
 			var vel := r.randf_range(0.82, 1.0) * (0.9 if bar == 1 else 1.0)
 			var tone := _voice(spec["lead"], rate, _hz(midi + lead_shift), length * beat, vel, r.randi())
-			Synth.add(out, tone, maxi(0, Synth.samples(rate, onset)), 0.55)
+			Synth.add(lead, tone, maxi(0, Synth.samples(rate, onset)), 0.55)
 			if spec["lead"] == &"brass":
 				var low := _voice(&"brass", rate, _hz(midi - 12), length * beat, vel * 0.6, r.randi())
-				Synth.add(out, low, maxi(0, Synth.samples(rate, onset + 0.01)), 0.3)
+				Synth.add(lead, low, maxi(0, Synth.samples(rate, onset + 0.01)), 0.3)
+	# The lead repeats itself three quarters of a beat later, duller each time:
+	# the beat-synced echo of the sample machines, not a hall.
+	var echoed := Synth.echo(lead, rate, 0.75 * beat, 0.32, 2400.0, 0.3, 0.0)
+	Synth.add(out, echoed, 0)
 	# Harmony: three chords, four beats each, the last one ringing out.
 	var chords: Array = spec["chords"]
 	for c in chords.size():

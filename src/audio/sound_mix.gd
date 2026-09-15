@@ -282,13 +282,15 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	var shore := shore_weight(float(near_sea.get("distance", INF)))
 	var river := river_weight(float(near_river.get("distance", INF)))
 	var damp := lerpf(1.0, float(WEATHER_DAMP.get(kind, 1.0)), s)
+	var dark_share := night(float(extra.get("hour", 12.0)))
 	var weights := country_weights(world, p)
 	for bed: StringName in weights:
 		var w: float = weights[bed]
 		var lvl := w * damp * (1.0 - 0.35 * shore)
 		match bed:
 			&"bed_wind":
-				lvl *= (0.55 + 0.45 * wind) * lerpf(0.75, 1.1, g)
+				# Nights fall calmer; the sea and the far works come up through it.
+				lvl *= (0.55 + 0.45 * wind) * lerpf(0.75, 1.1, g) * lerpf(1.0, 0.75, dark_share)
 			&"bed_pines":
 				lvl *= (0.6 + 0.4 * wind) * lerpf(0.8, 1.1, g)
 			&"bed_bones":
@@ -305,11 +307,30 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	# The far works: only on still air, loudest at night and far from people,
 	# gone under any weather and under the sea.
 	var calm := 1.0 - smoothstep(0.25, 0.7, wind)
-	var dark := lerpf(0.3, 1.0, night(float(extra.get("hour", 12.0))))
+	var dark := lerpf(0.3, 1.0, dark_share)
 	var remote := clampf(float(extra.get("remote", 0.0)), 0.0, 1.0)
 	var clear := 1.0 - s * (0.4 if kind == &"heat" or kind == &"grey" else 0.9)
 	out[&"bed_far_works"] = remote * calm * dark * clear * (1.0 - 0.6 * shore)
 	return out
+
+
+## Whether a scatter entry ([name, gap, gap, {hours, fair}]) may sound now.
+static func scatter_allowed(entry: Array, hour: float, weather: Dictionary) -> bool:
+	if entry.size() < 4:
+		return true
+	var when: Dictionary = entry[3]
+	if when.has("hours"):
+		var span: Array = when["hours"]
+		if hour < float(span[0]) or hour >= float(span[1]):
+			return false
+	if when.get("fair", false):
+		var kind: StringName = weather.get("kind", &"clear")
+		var s := float(weather.get("strength", 0.0))
+		if s > 0.35 and kind != &"fog" and kind != &"grey":
+			return false
+		if absf(float(weather.get("wind", 0.0))) > 0.8:
+			return false
+	return true
 
 
 # --------------------------------------------------------------- weather

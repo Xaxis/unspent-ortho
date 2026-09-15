@@ -235,7 +235,15 @@ static func _book(rate: int, opening: bool) -> PackedFloat32Array:
 		var u := float(i) / n
 		page[i] *= pow(sin(PI * pow(u, 0.6 if opening else 0.3)), 2.0)
 	Synth.normalize(page, 1.0)
-	Synth.add(out, page, 0, 0.7)
+	Synth.add(out, page, 0, 0.45)
+	# Paper is not a hiss: it crackles where the sheet bends.
+	var crackle := Synth.buffer(n)
+	Synth.add_impulses(crackle, rate, 260.0 if opening else 180.0, 7104 if opening else 7105, 0.1, 1.0)
+	Synth.band(crackle, rate, 1800.0, 7000.0, false, false)
+	for i in n:
+		crackle[i] *= sin(PI * float(i) / n)
+	Synth.normalize(crackle, 1.0)
+	Synth.add(out, crackle, 0, 0.55)
 	# The cover meets the page block: a soft board, felt more than heard.
 	var cover := _modes(rate, 0.12, [240.0, 530.0, 1100.0], [0.5, 0.28, 0.1], [0.05, 0.035, 0.02])
 	Synth.add(cover, _burst(rate, 0.03, 7103, 500.0, 3000.0, 0.02, 0.002), 0, 0.5)

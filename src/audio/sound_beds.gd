@@ -19,15 +19,18 @@ const LENGTH := {
 }
 const SHORE_CYCLE := 5.4
 
-## Which one-shots each bed scatters, and the gap range between them in seconds.
-## Hours limit when (gulls sleep); `near` beds need the player close to the source.
+## Which one-shots each bed scatters: [name, min gap, max gap] seconds, and
+## optionally a fourth entry of conditions:
+##   hours: [from, to)   only then (living things keep hours)
+##   fair: true           only in weather a small thing would be out in
 const SCATTER := {
-	&"bed_pines": [[&"pines_snap", 6.0, 22.0], [&"pines_creak", 9.0, 30.0]],
-	&"bed_moss": [[&"moss_drip", 0.5, 2.4], [&"moss_bloop", 7.0, 26.0]],
+	&"bed_pines": [[&"pines_snap", 6.0, 22.0], [&"pines_creak", 9.0, 30.0], [&"bird_song", 5.0, 16.0, {"hours": [4.8, 9.5], "fair": true}]],
+	&"bed_moss": [[&"moss_drip", 0.5, 2.4], [&"moss_bloop", 7.0, 26.0], [&"bird_song", 9.0, 26.0, {"hours": [4.8, 9.0], "fair": true}]],
 	&"bed_snowfield": [[&"snow_creak", 10.0, 35.0]],
 	&"bed_bones": [[&"bones_tick", 5.0, 18.0]],
 	&"bed_burning": [[&"burning_crackle", 0.6, 3.5], [&"burning_thud", 9.0, 28.0]],
-	&"bed_shore": [[&"shore_gull", 7.0, 30.0]],
+	&"bed_shore": [[&"shore_gull", 7.0, 30.0, {"hours": [6.5, 19.5], "fair": true}]],
+	&"bed_wind": [[&"bird_song", 7.0, 20.0, {"hours": [5.0, 9.0], "fair": true}]],
 }
 
 
@@ -59,6 +62,7 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"burning_crackle": return _crackle(rate, variant)
 		&"burning_thud": return _thud(rate, variant)
 		&"shore_gull": return SoundCreatures.gull(rate, variant, true)
+		&"bird_song": return SoundCreatures.bird(rate, variant)
 		&"heat_tick": return _heat_tick(rate, variant)
 		&"fog_horn": return _fog_horn(rate)
 	push_warning("no bed %s" % name)
@@ -88,6 +92,22 @@ static func _curve(n: int, knots: int, seed_value: int, lo: float, hi: float, po
 		for i in n:
 			c[i] = pow(c[i], power)
 	return c
+
+
+## Periodic band noise whose centre follows `curve` (0..1 -> lo..hi Hz): wind
+## through something, climbing as it rises. Unit RMS. The swept filter has no
+## tail to prime from, so it runs past the loop and folds the overrun back.
+static func _sough(n: int, rate: int, seed_value: int, curve: PackedFloat32Array, lo: float, hi: float, q: float) -> PackedFloat32Array:
+	var extra := Synth.samples(rate, 0.5)
+	var centre := PackedFloat32Array()
+	centre.resize(n + extra)
+	for i in n + extra:
+		centre[i] = lo * pow(hi / lo, curve[i % n])
+	var b := Synth.noise(n + extra, seed_value)
+	Synth.sweep_band(b, rate, centre, q)
+	var looped := _fold_overrun(b, n)
+	Synth.scale(looped, 1.0 / maxf(1e-6, Synth.rms(looped)))
+	return looped
 
 
 static func _mix_into(dst: PackedFloat32Array, src: PackedFloat32Array, gain: float, curve: PackedFloat32Array = PackedFloat32Array()) -> void:
@@ -171,35 +191,55 @@ static func _shore(rate: int) -> PackedFloat32Array:
 	return out
 
 
-## Open-country wind: a body band and an upper band on unaligned swells, grass
-## hiss on top, and a faint moan where it finds an edge.
+## Open-country wind: a body that swells deep and slow, its band climbing as
+## it rises (air speeding up whistles higher), grass hiss riding the same
+## gusts, and a faint moan where it finds an edge.
 static func _wind(rate: int) -> PackedFloat32Array:
 	var n := _n(&"bed_wind", rate)
 	var out := Synth.buffer(n)
-	_mix_into(out, _band(n, rate, 5401, 250.0, 1100.0), 0.07, _curve(n, 8, 5402, 0.45, 1.0))
-	_mix_into(out, _band(n, rate, 5403, 1100.0, 3800.0), 0.035, _curve(n, 11, 5404, 0.3, 1.0, 2.0))
-	_mix_into(out, _band(n, rate, 5405, 3000.0, 7500.0), 0.014, _curve(n, 13, 5406, 0.3, 1.0))
+	var gusts := _curve(n, 7, 5402, 0.0, 1.0)
+	var level := PackedFloat32Array()
+	level.resize(n)
+	for i in n:
+		level[i] = lerpf(0.22, 1.0, pow(gusts[i], 1.4))
+	_mix_into(out, _sough(n, rate, 5401, gusts, 380.0, 1300.0, 1.6), 0.075, level)
+	_mix_into(out, _band(n, rate, 5403, 1100.0, 3800.0), 0.03, _curve(n, 11, 5404, 0.2, 1.0, 2.0))
+	_mix_into(out, _band(n, rate, 5405, 3000.0, 7000.0), 0.012, level)
 	var moan := Synth.noise(n, 5407)
 	Synth.resonate(moan, rate, 430.0, 7.0, true)
 	Synth.scale(moan, 1.0 / maxf(1e-6, Synth.rms(moan)))
-	_mix_into(out, moan, 0.02, _curve(n, 5, 5408, 0.0, 1.0, 3.0))
+	_mix_into(out, moan, 0.011, _curve(n, 5, 5408, 0.0, 1.0, 4.0))
 	return out
 
 
-## Pines: canopy hiss soughing in swells, a farther stand behind it, a trunk
-## band kept above the laptop line, needles shimmering high.
+## Pines: the canopy soughing, a long rise as a gust comes through the stand
+## (the needles' hiss climbing from 900 Hz toward 2.6 kHz and falling back), a
+## farther stand answering out of step, a trunk band kept above the laptop
+## line, and the top rolled off: needles hiss, they do not fizz.
 static func _pines(rate: int) -> PackedFloat32Array:
 	var n := _n(&"bed_pines", rate)
 	var out := Synth.buffer(n)
-	_mix_into(out, _band(n, rate, 5501, 900.0, 3400.0), 0.06, _curve(n, 7, 5502, 0.3, 1.0, 2.0))
-	_mix_into(out, _band(n, rate, 5503, 600.0, 2200.0), 0.03, _curve(n, 5, 5504, 0.4, 1.0))
-	_mix_into(out, _band(n, rate, 5505, 130.0, 260.0), 0.02, _curve(n, 4, 5506, 0.5, 1.0))
-	_mix_into(out, _band(n, rate, 5507, 4000.0, 7000.0), 0.008, _curve(n, 9, 5508, 0.2, 1.0, 2.0))
+	var near := _curve(n, 6, 5502, 0.0, 1.0)
+	var near_level := PackedFloat32Array()
+	near_level.resize(n)
+	for i in n:
+		near_level[i] = lerpf(0.08, 1.0, pow(near[i], 2.4))
+	_mix_into(out, _sough(n, rate, 5501, near, 900.0, 2600.0, 1.3), 0.07, near_level)
+	var far := _curve(n, 5, 5504, 0.0, 1.0)
+	var far_level := PackedFloat32Array()
+	far_level.resize(n)
+	for i in n:
+		far_level[i] = lerpf(0.3, 1.0, far[i])
+	_mix_into(out, _sough(n, rate, 5503, far, 600.0, 1500.0, 1.1), 0.035, far_level)
+	_mix_into(out, _band(n, rate, 5505, 130.0, 260.0), 0.018, _curve(n, 4, 5506, 0.5, 1.0))
+	Synth.lowpass(out, rate, 5200.0, 0.7071, true)
 	return out
 
 
-## Moss: still air under 420 Hz, a seep ticking through wet peat, and the odd
-## bubble. Drips are scattered live so they never fall in a pattern.
+## Moss: still air under 420 Hz, wet peat ticking and popping (tiny drips,
+## each at its own pitch, so they never ring into a chord), a far seep, and
+## the odd bubble. Nearer drips are scattered live so they never fall in a
+## pattern.
 static func _moss(rate: int) -> PackedFloat32Array:
 	var n := _n(&"bed_moss", rate)
 	var out := Synth.buffer(n)
@@ -207,16 +247,27 @@ static func _moss(rate: int) -> PackedFloat32Array:
 	Synth.band(air, rate, 120.0, 420.0, true)
 	Synth.scale(air, 1.0 / maxf(1e-6, Synth.rms(air)))
 	_mix_into(out, air, 0.035, _curve(n, 3, 5602, 0.7, 1.0))
-	var seep := Synth.buffer(n)
-	Synth.add_impulses(seep, rate, 38.0, 5603, 0.05, 1.0)
-	var tick := Synth.formants(seep, rate, PackedFloat32Array([1300.0, 1900.0, 2650.0]), PackedFloat32Array([25.0, 30.0, 35.0]), PackedFloat32Array([1.0, 0.7, 0.45]), true)
-	Synth.scale(tick, 1.0 / maxf(1e-6, Synth.rms(tick)))
-	_mix_into(out, tick, 0.012, _curve(n, 6, 5604, 0.3, 1.0))
+	var peat := Synth.buffer(n)
+	var r := Rng.make(5603)
+	var busy := _curve(n, 6, 5604, 0.15, 1.0, 1.5)
+	var count := roundi(26.0 * n / rate)
+	for k in count:
+		var at := r.randi_range(0, n - 1)
+		if r.randf() > busy[at]:
+			continue
+		var m := Synth.samples(rate, r.randf_range(0.008, 0.022))
+		var tick := Synth.buffer(m)
+		var f := r.randf_range(900.0, 2800.0)
+		Synth.add_chirp(tick, rate, f, f * r.randf_range(1.05, 1.5), 1.0)
+		Synth.env_perc(tick, rate, 0.0008, m / float(rate))
+		Synth.add(peat, tick, at, r.randf_range(0.2, 1.0), true)
+	Synth.scale(peat, 1.0 / maxf(1e-6, Synth.rms(peat)))
+	_mix_into(out, peat, 0.012)
 	_mix_into(out, _band(n, rate, 5605, 800.0, 2000.0), 0.004)
-	var r := Rng.make(5606)
+	var rb := Rng.make(5606)
 	for k in 5:
 		var b := _bloop(rate, k + 10)
-		Synth.add(out, b, r.randi_range(0, n - 1), 0.05, true)
+		Synth.add(out, b, rb.randi_range(0, n - 1), 0.05, true)
 	return out
 
 
@@ -246,8 +297,10 @@ static func _bones(rate: int) -> PackedFloat32Array:
 	var n := _n(&"bed_bones", rate)
 	var out := Synth.buffer(n)
 	_mix_into(out, _band(n, rate, 5801, 700.0, 2400.0), 0.05, _curve(n, 7, 5802, 0.35, 1.0, 1.5))
-	var tones := [[146.8, 5803, 5], [220.0, 5804, 6], [293.6, 5805, 4]]
-	var gains := [0.05, 0.04, 0.015]
+	# D3 and A3 as the research has them, and the octave and fifth above that
+	# a laptop can actually play, so the grikes are heard on one.
+	var tones := [[146.8, 5803, 5], [220.0, 5804, 6], [293.6, 5805, 4], [440.0, 5806, 7]]
+	var gains := [0.04, 0.035, 0.03, 0.02]
 	for k in tones.size():
 		var t: Array = tones[k]
 		var b := Synth.noise(n, t[1])
@@ -315,12 +368,12 @@ static func _far_works(rate: int) -> PackedFloat32Array:
 	var far_clank := Synth.reverb(clank, rate, 0.9, 0.6, 0.6, 2.0)
 	var clanks := 4
 	for k in clanks:
-		Synth.add(works, far_clank, k * n / clanks + n / 13, 0.09, true)
+		Synth.add(works, far_clank, k * n / clanks + n / 13, 0.2, true)
 	Synth.lowpass4(works, rate, 950.0, true)
 	var air := _curve(n, 5, 8103, 0.35, 1.0, 1.5)
 	var out := Synth.buffer(n)
 	_mix_into(out, works, 1.0, air)
-	_mix_into(out, _band(n, rate, 8104, 160.0, 900.0), 0.012, _curve(n, 4, 8105, 0.5, 1.0))
+	_mix_into(out, _band(n, rate, 8104, 160.0, 700.0, true), 0.008, _curve(n, 4, 8105, 0.5, 1.0))
 	return out
 
 
@@ -347,7 +400,7 @@ static func _rain(rate: int) -> PackedFloat32Array:
 	return out
 
 
-## Heavy rain, a wind roar in swells, a whistle, and far thunder rolling twice.
+## Heavy rain, a wind roar in swells, and a whistle.
 static func _storm(rate: int) -> PackedFloat32Array:
 	var n := _n(&"weather_storm", rate)
 	var out := Synth.buffer(n)
@@ -362,22 +415,9 @@ static func _storm(rate: int) -> PackedFloat32Array:
 	Synth.resonate(whistle, rate, 900.0, 6.0, true)
 	Synth.scale(whistle, 1.0 / maxf(1e-6, Synth.rms(whistle)))
 	_mix_into(out, whistle, 0.018, _curve(n, 7, 6208, 0.0, 1.0, 3.0))
-	for at: float in [3.5, 11.0]:
-		Synth.add(out, _roll(rate, 6210 + roundi(at), 3.8), roundi(at * rate), 0.09, true)
+	# No thunder baked in: rolls on a loop repeat where anyone can hear it. The
+	# sky strikes, and thunder is played where and when it lands.
 	return out
-
-
-## A far thunder roll: brown-ish rumble kept above 120 Hz, in bursts.
-static func _roll(rate: int, seed_value: int, seconds: float) -> PackedFloat32Array:
-	var m := Synth.samples(rate, seconds)
-	var b := Synth.pink(m, seed_value)
-	Synth.band(b, rate, 120.0, 420.0, false, true)
-	var bursts := _curve(m, 9, seed_value + 1, 0.2, 1.0, 2.0)
-	for i in m:
-		var u := float(i) / m
-		b[i] *= bursts[i] * pow(sin(PI * pow(u, 0.4)), 2.0)
-	Synth.normalize(b, 1.0)
-	return b
 
 
 ## Wind gusts that find a voice: whistles gliding through resonance.
