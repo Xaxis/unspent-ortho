@@ -15,6 +15,8 @@ extends RefCounted
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
+## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt), sky package
+## --lamp              start with the player's lantern lit, sky package
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +31,9 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
+var weather := ""
+var lamp := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +60,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"weather": o.weather = v
+			"lamp": o.lamp = true
 			_: push_warning("unknown option --%s" % k)
 	return o
