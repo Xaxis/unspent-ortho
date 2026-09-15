@@ -236,6 +236,10 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			var rad := 5.8 + fmod(h * 0.618, 1.0) * 2.8 + h * 0.035
 			var hp := vp + Vector2.from_angle(a) * rad
 			hp = hp.floor() + Vector2(0.5, 0.5)
+			# The player wakes with room around them and the view ahead open.
+			var to_spawn := hp - w.spawn
+			if to_spawn.length() < 4.5 or (to_spawn.length() < 9.0 and to_spawn.normalized().dot(Vector2.from_angle(w.spawn_facing)) > 0.5):
+				continue
 			if not _free(c, occ, hp, 1.0):
 				continue
 			var l := w.level_at(floori(hp.x), floori(hp.y))

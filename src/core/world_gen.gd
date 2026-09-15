@@ -93,28 +93,36 @@ static func distance_to_sea(w: WorldData) -> PackedFloat32Array:
 	return distance_field(solid, w.size)
 
 
-## 4-neighbour chamfer distance to the nearest cell where mask == 1.
+## 4-neighbour chamfer distance to the nearest cell where mask == 1: exactly
+## the city-block distance, which separates into a pass along every row and
+## then along every column, each row or column on its own, so it runs on the
+## worker pool.
 static func distance_field(mask: PackedByteArray, size: int) -> PackedFloat32Array:
 	var d := PackedFloat32Array()
 	d.resize(size * size)
-	for i in d.size():
-		d[i] = 0.0 if mask[i] == 1 else 1e9
-	for y in size:
-		for x in size:
-			var i := y * size + x
-			var v := d[i]
-			if x > 0:
-				v = minf(v, d[i - 1] + 1.0)
-			if y > 0:
-				v = minf(v, d[i - size] + 1.0)
-			d[i] = v
-	for y in range(size - 1, -1, -1):
-		for x in range(size - 1, -1, -1):
-			var i := y * size + x
-			var v := d[i]
-			if x < size - 1:
-				v = minf(v, d[i + 1] + 1.0)
-			if y < size - 1:
-				v = minf(v, d[i + size] + 1.0)
-			d[i] = v
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * size
+			var v := 1e9
+			for x in size:
+				v = 0.0 if mask[row + x] == 1 else v + 1.0
+				d[row + x] = v
+			v = 1e9
+			for x in range(size - 1, -1, -1):
+				v = minf(d[row + x], v + 1.0)
+				d[row + x] = v
+	)
+	GenFields.rows(size, func(x0: int, x1: int) -> void:
+		for x in range(x0, x1):
+			var v := 1e9
+			for y in size:
+				var i := y * size + x
+				v = minf(d[i], v + 1.0)
+				d[i] = v
+			v = 1e9
+			for y in range(size - 1, -1, -1):
+				var i := y * size + x
+				v = minf(d[i], v + 1.0)
+				d[i] = v
+	)
 	return d

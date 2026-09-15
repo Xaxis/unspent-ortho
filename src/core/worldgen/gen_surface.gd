@@ -87,6 +87,7 @@ static func run(c: GenContext) -> void:
 	var flows := flow_img.get_data().to_float32_array()
 	var heart := c.hearts[Country.BURNING]
 	var crater := GenRelief.crater_radius(c)
+	var spawn := w.spawn
 	var plazas := PackedByteArray()
 	plazas.resize(n)
 	for v in w.villages:
@@ -164,7 +165,7 @@ static func run(c: GenContext) -> void:
 				var gb := big[i]
 				var gm := mid[i]
 				var rs := rise[i]
-				var tame := village[i] != 0
+				var tame := village[i] != 0 or (absf(x + 0.5 - spawn.x) < 3.5 and absf(y + 0.5 - spawn.y) < 3.5)
 				if tame:
 					up = 0
 					down = 0
