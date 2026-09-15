@@ -153,7 +153,7 @@ func place_near_player(kind: StringName) -> MobState:
 				continue
 			var score := p.distance_to(hp + Vector2.from_angle(ang) * dist)
 			if not keeps.is_empty() and Ground.is_water(w.ground_at(tx, ty)):
-				score -= 4.0
+				score -= 8.0
 			if row.get("where", {}).get("rise", false) and Spawner.is_rise(w, tx, ty):
 				score -= 20.0
 			if score < best_score:

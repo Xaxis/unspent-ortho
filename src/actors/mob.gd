@@ -24,6 +24,7 @@ var _world: WorldData
 var _was_lit := true
 var _placeholder := false
 var _holding := false
+var _flashing := false
 
 
 func setup(s: MobState, world: WorldData, base_material: Material) -> void:
@@ -72,8 +73,10 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	_lean(now_ms, delta)
 	if delta > 0.0:
 		model.animate(delta, s.speed)
-	if _mat != null:
-		_mat.set_shader_parameter(&"emission_strength", 0.45 if Time.get_ticks_msec() < _flash_until else 0.0)
+	var flashing := Time.get_ticks_msec() < _flash_until
+	if flashing != _flashing:
+		_flashing = flashing
+		MobFx.set_flash(model, flashing)
 
 
 func _pose(now_ms: float) -> StringName:
@@ -145,3 +148,11 @@ func flash(seconds: float = 0.06) -> void:
 
 func flare() -> void:
 	model.flare_part()
+
+
+## Where the working part is in the world (the body's middle when it has none,
+## or when the figure cannot say).
+func part_position() -> Vector3:
+	if model.has_method(&"part_position"):
+		return model.call(&"part_position")
+	return global_position + Vector3(0, float(state.row.get("height", 1.0)) * 0.5, 0)

@@ -10,10 +10,13 @@ extends GameSystem
 const HITSTOP_HIT := 0.05
 const HITSTOP_HURT := 0.06
 const HITSTOP_KILL := 0.08
+## Seconds between the struggle's marks while held.
+const STRUGGLE_BEAT := 0.4
 
 var sim: FightSim
 var dodge_input := DodgeInput.new()
 var _stop_until := 0.0
+var _struggle_t := 0.0
 var _mend_from := 0.0
 var _last_health := 0
 ## A shot's held moment: the simulation never steps again.
@@ -85,6 +88,14 @@ func _process(delta: float) -> void:
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	game.player.draw_swing(sim.now)
+	if sim.hero.held() and not frozen:
+		# The struggle, drawn: a dashed ring at the feet on a beat while something has hold.
+		_struggle_t -= delta
+		if _struggle_t <= 0.0:
+			_struggle_t = STRUGGLE_BEAT
+			MobFx.ring(_fx_parent(), _at3(sim.hero.pos), Palette.INK[1], 0.55, 0.28)
+	else:
+		_struggle_t = 0.0
 	if game.player.model.held != game.inventory.held:
 		game.player.model.set_held(game.inventory.held)
 
@@ -120,29 +131,42 @@ func _node_of(f: Fighter) -> Object:
 	return f.node
 
 
+## Dust is the ground's own wash thrown up, a step paler.
 func _dust_colour(p: Vector2) -> Color:
 	var g := game.world.ground_at(floori(p.x), floori(p.y))
 	match g:
-		Ground.WATER, Ground.RIVER, Ground.BLACKWATER:
-			return Palette.BRINE[4]
+		Ground.WATER, Ground.RIVER, Ground.BLACKWATER, Ground.DEEP_WATER:
+			return Palette.BRINE[5]
 		Ground.SNOW, Ground.ICE:
 			return Palette.RIME[5]
-		Ground.SAND:
-			return Palette.SAND[4]
+		Ground.SAND, Ground.SHINGLE:
+			return Palette.SAND[5]
 		Ground.ASH, Ground.CLINKER:
-			return Palette.ASH[2]
+			return Palette.ASH[3]
+		Ground.LIMESTONE, Ground.BONE:
+			return Palette.LINEN[5]
+		Ground.MUD, Ground.PEAT, Ground.NEEDLES, Ground.ROAD:
+			return Palette.EARTH[4]
 		Ground.GRASS, Ground.MOSS, Ground.HEATH:
-			return Palette.SAND[3]
-	return Palette.ASH[3]
+			return Palette.SAND[4]
+	return Palette.STONE[4]
 
 
 func _fx_parent() -> Node:
 	return game
 
 
+## The working part's place in the world, or the body's middle.
+func _part_at(m: MobState) -> Vector3:
+	if m.node is Mob:
+		return (m.node as Mob).part_position()
+	return _at3(m.pos, float(m.row.get("height", 1.0)) * 0.5)
+
+
 func _handle(events: Array[Dictionary]) -> void:
 	var player := game.player
 	var hero := sim.hero
+	var fx := _fx_parent()
 	for e in events:
 		match e.type:
 			&"swing":
@@ -157,9 +181,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"dodge":
 				Events.sfx.emit(&"dodge", player.position)
 				player.model.play_action(&"dodge", FightRules.DODGE_MS / 1000.0)
-				MobFx.puff(_fx_parent(), _at3(hero.pos), -hero.dodge_dir, _dust_colour(hero.pos), 3, 0.14, int(sim.now))
+				MobFx.puff(fx, _at3(hero.pos), -hero.dodge_dir, _dust_colour(hero.pos), 0.55, int(sim.now))
 			&"evaded":
-				MobFx.puff(_fx_parent(), _at3(hero.pos), hero.dodge_dir, _dust_colour(hero.pos), 2, 0.1, int(sim.now) + 1)
+				MobFx.puff(fx, _at3(hero.pos + hero.dodge_dir * 0.3), hero.dodge_dir, _dust_colour(hero.pos), 0.4, int(sim.now) + 1)
 			&"grip":
 				var by: MobState = e.by
 				Events.sfx.emit(&"grip", player.position)
@@ -167,22 +191,24 @@ func _handle(events: Array[Dictionary]) -> void:
 				player.shudder(0.2)
 				game.camera.shake(0.08, 0.14)
 				_stop(0.04)
-				MobFx.ring(_fx_parent(), _at3(hero.pos), _dust_colour(hero.pos), 0.9, 0.35)
+				MobFx.ring(fx, _at3(hero.pos), Palette.INK[1], 0.8, 0.3)
 				if by != null:
-					MobFx.ring(_fx_parent(), _at3(by.pos), _dust_colour(by.pos), by.radius * 2.2, 0.5)
-					MobFx.puff(_fx_parent(), _at3(by.pos.lerp(hero.pos, 0.6)), hero.pos - by.pos, _dust_colour(by.pos), 5, 0.16, by.id)
-				if by != null and by.node is Mob:
-					(by.node as Mob).flash(0.05)
+					# The jaw closing is drawn like a blow, though it does no harm.
+					var jaw := by.pos + Vector2.from_angle(by.facing) * by.radius
+					MobFx.burst(fx, _at3(jaw.lerp(hero.pos, 0.4), 0.35), 0.8, by.id + int(sim.now))
+					MobFx.puffs(fx, _at3(by.pos.lerp(hero.pos, 0.6)), hero.pos - by.pos, _dust_colour(hero.pos), 3, 0.6, by.id)
+					if by.node is Mob:
+						(by.node as Mob).flash(0.05)
 			&"pull":
 				Events.sfx.emit(&"pull", player.position)
 				player.shudder(0.14)
 				game.camera.shake(0.04, 0.08)
 				var by: MobState = e.by
 				var dir := (hero.pos - by.pos) if by != null else Vector2.ZERO
-				MobFx.puff(_fx_parent(), _at3(hero.pos), dir, _dust_colour(hero.pos), 3, 0.13, int(sim.now))
+				MobFx.puff(fx, _at3(hero.pos), dir, _dust_colour(hero.pos), 0.5, int(sim.now))
 			&"loose":
 				Events.sfx.emit(&"loose", player.position)
-				MobFx.puff(_fx_parent(), _at3(hero.pos), Vector2.ZERO, _dust_colour(hero.pos), 4, 0.15, int(sim.now) + 7)
+				MobFx.puffs(fx, _at3(hero.pos), Vector2.ZERO, _dust_colour(hero.pos), 3, 0.55, int(sim.now) + 7)
 			&"hit":
 				_on_hit(e)
 			&"hurt":
@@ -194,15 +220,15 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"second_act", _at3(m.pos))
 				if m.node is Mob:
 					(m.node as Mob).flash(0.12)
-				MobFx.spark(_fx_parent(), _at3(m.pos, m.row.get("height", 1.0) * 0.6), [Palette.LENS[3], Palette.EMBER[4]], 10, 0.5, m.id)
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.8)
+				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 1.2, 0.45)
 				game.camera.shake(0.06, 0.2)
 			&"alerted":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"alert", _at3(m.pos))
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
-					var head := _at3(m.pos, float(m.row.get("height", 1.0)) * 0.92) + Vector3(cos(m.facing), 0, sin(m.facing)) * 0.2
-					MobFx.spark(_fx_parent(), head, [Palette.LENS[3], Palette.LENS[2]], 4, 0.3, m.id)
+					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
 			&"called":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"watcher_call", _at3(m.pos))
@@ -226,20 +252,22 @@ func _on_hit(e: Dictionary) -> void:
 	var gap := attacker.pos.distance_to(target.pos)
 	var meet := attacker.pos + from_dir * clampf(gap - target.radius, attacker.radius, gap)
 	var impact := _at3(meet, clampf(h * 0.5, 0.35, 0.7))
+	var fx := _fx_parent()
 	Events.hit.emit(_node_of(attacker), _node_of(target), int(e.damage), bool(e.plate), _at3(at))
 	if e.plate:
 		Events.sfx.emit(&"hit_plate", impact)
-		MobFx.spark(_fx_parent(), impact, [Palette.COLD[3], Palette.COLD[2], Palette.STONE[5]], 5, 0.25, int(sim.now))
+		MobFx.clang(fx, impact, int(sim.now))
 		game.camera.shake(0.025, 0.07)
 		return
 	Events.sfx.emit(&"hit_flesh", impact)
 	_stop(HITSTOP_HIT)
 	game.camera.shake(0.06, 0.12)
-	var warm: Array[Color] = [Palette.LENS[3], Palette.LENS[2], Palette.LINEN[5]]
-	if m != null and not m.machine:
-		warm = [Palette.LINEN[5], Palette.FLESH[4], Palette.LINEN[4]]
-	MobFx.spark(_fx_parent(), impact, warm, 9, 0.5, int(sim.now))
-	MobFx.puff(_fx_parent(), _at3(target.pos), from_dir, _dust_colour(target.pos), 4, 0.17, int(sim.now) + 3)
+	if m != null and m.machine:
+		# The blow is in the working part: the burst is drawn over it, and it flares.
+		MobFx.burst(fx, _part_at(m), 1.4, int(sim.now), Palette.LENS[3])
+	else:
+		MobFx.burst(fx, impact, 0.8, int(sim.now))
+	MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
 		var mob := target.node as Mob
 		mob.flash(0.06)
@@ -250,6 +278,7 @@ func _on_hurt(e: Dictionary) -> void:
 	var by: MobState = e.attacker
 	var hero := sim.hero
 	var player := game.player
+	var fx := _fx_parent()
 	var dir := (hero.pos - by.pos).normalized() if by != null else Vector2.ZERO
 	Events.hit.emit(_node_of(by), player, int(e.damage), false, _at3(hero.pos))
 	Events.sfx.emit(&"hit_flesh", player.position)
@@ -257,20 +286,21 @@ func _on_hurt(e: Dictionary) -> void:
 	player.flash(0.08)
 	_stop(HITSTOP_HURT)
 	game.camera.shake(0.12, 0.18)
-	MobFx.puff(_fx_parent(), _at3(hero.pos), dir, _dust_colour(hero.pos), 5, 0.18, int(sim.now) + 5)
-	MobFx.spark(_fx_parent(), _at3(hero.pos, 0.7), [Palette.LINEN[5], Palette.RUST[4]], 5, 0.3, int(sim.now) + 9)
+	MobFx.burst(fx, _at3(hero.pos - dir * 0.15, 0.75), 0.9, int(sim.now) + 9)
+	MobFx.puffs(fx, _at3(hero.pos), dir, _dust_colour(hero.pos), 2, 0.6, int(sim.now) + 5)
 
 
 func _on_killed(e: Dictionary) -> void:
 	var m: MobState = e.mob
 	var at := _at3(m.pos)
+	var fx := _fx_parent()
 	Events.killed.emit(m.kind, at)
 	if m.machine:
 		Events.sfx.emit(&"machine_down", at)
 	_stop(HITSTOP_KILL)
 	game.camera.shake(0.1, 0.22)
-	MobFx.puff(_fx_parent(), at, Vector2.ZERO, _dust_colour(m.pos), 7, 0.24, m.id)
-	MobFx.ring(_fx_parent(), at, _dust_colour(m.pos), 1.4, 0.4)
+	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)
+	MobFx.ring(fx, at, Palette.INK[1], m.radius + 1.0, 0.4)
 	var drops: int = m.row.get("drops", 0)
 	if m.machine and drops > 0:
 		game.inventory.add(&"scrap", drops)
@@ -282,8 +312,6 @@ func _on_snatch(m: MobState) -> void:
 	Events.sfx.emit(&"snatch", _at3(sim.hero.pos))
 	if String(r.line) != "":
 		Events.message.emit(String(r.line))
-	if r.took != &"":
-		Events.took.emit(r.took, -1)
 	if float(r.minutes) > 0.0:
 		var reason: StringName = &"arrested" if m.row.get("hits", {}).get("arrest", false) else &"snatched"
 		game.clock.skip(float(r.minutes))
@@ -349,7 +377,8 @@ func _play_act(spec: String) -> void:
 				_bring_to_bite(target)
 				target.start_blow(target.bite, sim.now)
 				_run_for(target.bite.windup + target.bite.active)
-				sim.slices(40)
+				# Just taken: the jaw has closed and the first pull is thrown, before it has hauled you in.
+				_run_for(24.0)
 				sim.press_swing()
 				_run_for(ms if ms >= 0.0 else 60.0)
 		"hurt":
@@ -365,6 +394,18 @@ func _play_act(spec: String) -> void:
 				hero.move = Vector2.from_angle(hero.facing + PI * 0.5)
 				sim.press_dodge()
 				_run_for(ms if ms >= 0.0 else 90.0)
+		"fx":
+			# Every mark about the player, held at MS/1000 of its life (review only).
+			MobFx.hold_at = clampf(ms / 1000.0, 0.0, 0.99) if ms >= 0.0 else 0.3
+			var p3 := game.player.position
+			var dust := _dust_colour(sim.hero.pos)
+			MobFx.burst(game, p3 + Vector3(2.0, 0.6, -2.0), 1.0, 3, Palette.LENS[3])
+			MobFx.burst(game, p3 + Vector3(-2.0, 0.6, -2.0), 0.8, 4)
+			MobFx.puff(game, p3 + Vector3(2.0, 0, 0), Vector2.RIGHT, dust, 0.6, 5)
+			MobFx.puffs(game, p3 + Vector3(0, 0, -2.5), Vector2.ZERO, dust, 4, 0.55, 6)
+			MobFx.ring(game, p3 + Vector3(-2.0, 0, 0), Palette.INK[1], 1.0, 0.3)
+			MobFx.clang(game, p3 + Vector3(0, 0.6, 2.0), 7)
+			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0
@@ -402,14 +443,17 @@ func _stand_on_part_side(m: MobState) -> void:
 	hero.facing = (m.pos - hero.pos).angle()
 
 
-## Face a body at the player and close to where its bite lands.
+## Face a body at the player and close to where its bite lands: beside it on
+## the screen where there is ground, so neither hides the other in the shot.
 func _bring_to_bite(m: MobState) -> void:
 	var hero := sim.hero
-	var to := hero.pos - m.pos
 	var d := m.radius + hero.radius + m.bite.reach * 0.6
-	var at := m.pos + to.normalized() * d
-	if game.query.standable(floori(at.x), floori(at.y)):
-		hero.pos = at
+	var tries: Array[Vector2] = [Vector2(1, -1).normalized(), Vector2(-1, 1).normalized(), (hero.pos - m.pos).normalized()]
+	for dir in tries:
+		var at := m.pos + dir * d
+		if game.query.standable(floori(at.x), floori(at.y)):
+			hero.pos = at
+			break
 	m.facing = (hero.pos - m.pos).angle()
 	m.aim = m.facing
 	hero.facing = (m.pos - hero.pos).angle()

@@ -30,6 +30,8 @@ var _flash_until := 0
 var _shudder_left := 0.0
 var _arc: MeshInstance3D
 var _arc_blow: Blow
+var _arc_mat: ShaderMaterial
+var _flashing := false
 
 
 func setup(w: WorldData, q: WorldQuery, at: Vector2, material: Material) -> void:
@@ -75,34 +77,35 @@ func sync_view(delta: float, frozen: bool = false) -> void:
 	_sync(0.0 if frozen else delta)
 
 
-## The swing's smear, from the hero's blow at simulation time `now_ms`: it
-## shows just before the box is live and sweeps out through it, then thins away.
+## The swing's stroke, from the hero's blow at simulation time `now_ms`: it
+## sweeps across the blow box through the live window, then its tail catches up
+## with its head and it is gone.
 func draw_swing(now_ms: float) -> void:
 	var b := hero.blow if hero != null else null
 	var e := now_ms - hero.blow_at if b != null else -1.0
-	var from := (b.windup - 30.0) if b != null else 0.0
-	var to := (b.windup + b.active + 80.0) if b != null else 0.0
-	if b == null or e < from or e > to:
+	var from := (b.windup - 20.0) if b != null else 0.0
+	var gone := (b.windup + b.active + 100.0) if b != null else 0.0
+	if b == null or e < from or e > gone:
 		if _arc != null:
 			_arc.visible = false
 		return
 	if _arc == null:
 		_arc = MeshInstance3D.new()
 		_arc.name = "swing"
-		_arc.material_override = MobFx.glow_material()
+		_arc_mat = MobFx.swing_material()
+		_arc.material_override = _arc_mat
 		_arc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_arc)
 	if _arc_blow != b:
 		_arc_blow = b
-		_arc.mesh = MobFx.smear_mesh(hero.radius + b.reach, b.width, Palette.LINEN[5])
+		_arc.mesh = MobFx.swing_mesh(hero.radius + b.reach, b.width)
 	_arc.visible = true
-	var k := clampf((e - from) / maxf(1.0, to - from), 0.0, 1.0)
-	_arc.position = Vector3(0, 0.55, 0)
+	var head := clampf((e - from) / (b.active + 40.0), 0.0, 1.0)
+	var tail := 0.8 * (1.0 - clampf((e - b.windup - b.active - 20.0) / 80.0, 0.0, 1.0))
+	_arc_mat.set_shader_parameter(&"head", head)
+	_arc_mat.set_shader_parameter(&"tail", minf(tail, head + 0.001))
+	_arc.position = Vector3(0, 0.5, 0)
 	_arc.rotation = Vector3(0, -hero.facing, 0)
-	# Sweep out over the first half, thin to nothing over the second.
-	var sweep := minf(1.0, k * 2.2)
-	var thin := 1.0 if k < 0.55 else lerpf(1.0, 0.1, (k - 0.55) / 0.45)
-	_arc.scale = Vector3(lerpf(0.55, 1.0, sweep), thin, lerpf(0.15, 1.0, sweep))
 
 
 ## A hit landed on this body: a short bright flash.
@@ -134,8 +137,10 @@ func _sync(delta: float) -> void:
 		_shudder_left = maxf(0.0, _shudder_left - delta)
 		if delta > 0.0:
 			model.animate(speed, delta)
-	if _mat != null:
-		_mat.set_shader_parameter(&"emission_strength", 0.7 if Time.get_ticks_msec() < _flash_until else 0.0)
+	var flashing := Time.get_ticks_msec() < _flash_until
+	if flashing != _flashing and model != null:
+		_flashing = flashing
+		MobFx.set_flash(model, flashing)
 
 
 ## Screen-relative input to world-space intent for a camera at yaw_deg.
