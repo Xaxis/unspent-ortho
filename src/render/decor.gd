@@ -199,6 +199,10 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 					if bl < 0.4:
 						kind = TUFT
 					stage = clampi(int((bl - 0.4) / 0.6 * STAGES), 0, STAGES - 1)
+				elif kind == HEATHER:
+					# Heather flowers where the hill is in bloom, and is brown elsewhere.
+					var hb := _bloom.get_noise_2d(wx + fx + 91.0, wy + fy) * 0.5 + 0.5
+					stage = 0 if hb > 0.62 else 1 + rng.randi() % 2
 				else:
 					stage = rng.randi() % STAGES
 				var tpl := template(kind, dress, stage)

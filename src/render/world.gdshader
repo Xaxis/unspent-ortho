@@ -161,7 +161,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float n = ink_vnoise(wp * 1.7) * 0.7 + ink_vnoise(wp * 4.1) * 0.3 + rag(wp);
 		if (n > 0.56) {
 			c = dn(c, 0.55);
-			if (n < 0.6 && ink_hash(px) < 0.35 && ink_vnoise(wp * 0.07 + 3.0) > 0.58) {
+			if (n < 0.59 && ink_hash(px) < 0.3 && ink_vnoise(wp * 0.07 + 3.0) > 0.7) {
 				c = ink_hash(px + 1.3) < 0.5 ? BLOOM2 : BLOOM3;
 			}
 		} else if (n < 0.3) {
@@ -264,7 +264,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float fy = (across - row * ROW);
 		float rh = ink_hash(vec2(row, 11.0));
 		float along = r.x + rh * 11.0;
-		float seg_len = 2.4 + rh * 2.2;
+		float seg_len = 1.5 + rh * 1.6;
 		float seg = floor(along / seg_len);
 		float fx = along - seg * seg_len;
 		float sh = ink_hash(vec2(row, seg));
@@ -272,8 +272,8 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 0.5;
 		float end_x = fx + lean * fy;
 		float gw = 0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp);
-		bool grike_on = ink_hash(vec2(row, floor(along / 5.1) + 20.0)) < 0.66;
-		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.7;
+		bool grike_on = ink_hash(vec2(row, floor(along / 3.4) + 20.0)) < 0.58;
+		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.82;
 		float cw = 0.08 + rag(wp);
 		c = sh < 0.3 ? dn(c, 0.1) : (sh > 0.8 ? up(c, 0.1) : c);
 		bool in_grike = grike_on && fy < gw;
@@ -621,8 +621,19 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = up(c, 0.3);
 		}
 	} else if (id == 8) {
-		// ICE: streaked blue.
-		c = ink_hash(vec2(floor(px.x / 2.0), floor(y * 6.0))) < 0.5 ? RIME3 : RIME4;
+		// ICE: a frozen face, pale blue, hung with icicle runs of uneven length
+		// from the lip, a darker melt line at the foot.
+		float ic = floor(px.x / 3.0);
+		float run = 0.08 + ink_hash(vec2(ic, 8.0)) * ink_hash(vec2(ic, 9.0)) * 0.4;
+		c = RIME4;
+		if (mod(px.x, 3.0) < 1.0 && dt < run) {
+			c = RIME5;
+		} else if (mod(px.x, 3.0) >= 2.0 && dt < run * 0.7) {
+			c = RIME3;
+		}
+		if (dt > 0.42) {
+			c = RIME3;
+		}
 	}
 	return c;
 }
