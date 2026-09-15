@@ -21,6 +21,9 @@ func _run(t: UiTitle, seconds: float, until: Callable) -> bool:
 			return true
 		t._process(dt)
 		await tree.process_frame
+		# Chunks stream from a worker in real time; a headless frame takes well
+		# under a millisecond, so give the worker a little of it per step.
+		OS.delay_msec(4)
 		waited += dt
 	return until.call()
 

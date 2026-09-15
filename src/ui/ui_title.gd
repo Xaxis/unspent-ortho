@@ -103,9 +103,8 @@ func _show(w: WorldData, s: int, v: WorldView = null, open: Array = [], now: boo
 	_focus = open[0]
 	_heading = open[1]
 	view.focus = _focus
-	if not now:
-		# One chunk a frame keeps the menu answering while the coast is drawn.
-		view.builds_per_frame = 1
+	# Unless `now`, the view streams its chunks from a worker one at a time,
+	# which keeps the menu answering while the coast is drawn.
 	add_child(view)
 	_hour = HOURS[posmod(s, HOURS.size())]
 	sky.set_hour(_hour)
