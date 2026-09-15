@@ -115,6 +115,8 @@ light, hazards, enemies, landmarks and **sentinel**, and fill every realm.
   - wet: Drowned City, Frost Sea
   - dry: Glass Desert, Mesas
   - machine-made: Server Fields, Grey Orchards
+  - urban: **Ruined Metropolis** (towers, tiered highways, living machine districts
+    beside dead ones), with the Undercroft beneath it
 - **Underground:** Crystal Hollows, the Adits, Magma Vaults, Rootways, Undercroft.
 - **Orbital realm:** Tether Station, the Foundry, the Ring (graphite on black paper),
   reached by the climber craft.

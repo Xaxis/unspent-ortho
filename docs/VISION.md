@@ -64,7 +64,7 @@ shafts, portals and crafts. Within a realm, landscapes **blend seamlessly** thro
 ecotones (ART.md §1 law 6). Every landscape has its own ground, hatch hand, props,
 decor, weather, light, hazards, sounds and **enemies**.
 
-### Surface (14)
+### Surface (15)
 | # | Landscape | Character | Hazards | Enemies (examples) |
 |---|---|---|---|---|
 | 1 | Coast | turf, heath, shingle, sea cliffs, villages | wet, tide | harvesters, flocks, runners |
@@ -81,23 +81,24 @@ decor, weather, light, hazards, sounds and **enemies**.
 | 12 | Grey Orchards | automated farms gone wrong, spore mist | toxins, spores | sprayers, pickers |
 | 13 | Mesas | red canyons, wind, cliffs | wind, falls | cliff anchors, kites |
 | 14 | Frost Sea | frozen sea, pressure ridges, ice caves | cold, cracking ice | ice cutters, sounders |
+| 15 | Ruined Metropolis | a dead megacity: collapsed towers, broken highways stacked in tiers, plazas of shattered glass, districts the machines still run (lit, clean, patrolled) beside districts left to rot; the Undercroft lies beneath it | falls, collapse, dust, dark | demolition rigs, traffic wardens that still direct nothing, tower sentries |
 
 ### Underground (6)
 | # | Landscape | Character | Hazards | Enemies |
 |---|---|---|---|---|
-| 15 | Limestone Caves | karst halls, underground rivers, glow-worms | dark, floods | blind crawlers |
-| 16 | Crystal Hollows | geode caverns, resonant stone | resonance, falls | resonators |
-| 17 | The Adits | the machines' mines, carried-off people at the faces | collapse, dust | drill rigs, overseers |
-| 18 | Magma Vaults | beneath the Burning, rivers of light | heat, fumes | slag golems, vent keepers |
-| 19 | Rootways | fungal forest in the deep, bioluminescence | spores, dark | spore-walkers |
-| 20 | Undercroft | the buried city: metro, archives, sewers | dark, toxins | archivists, sealed guards |
+| 16 | Limestone Caves | karst halls, underground rivers, glow-worms | dark, floods | blind crawlers |
+| 17 | Crystal Hollows | geode caverns, resonant stone | resonance, falls | resonators |
+| 18 | The Adits | the machines' mines, carried-off people at the faces | collapse, dust | drill rigs, overseers |
+| 19 | Magma Vaults | beneath the Burning, rivers of light | heat, fumes | slag golems, vent keepers |
+| 20 | Rootways | fungal forest in the deep, bioluminescence | spores, dark | spore-walkers |
+| 21 | Undercroft | the buried city beneath the Ruined Metropolis: metro, archives, sewers | dark, toxins | archivists, sealed guards |
 
 ### Orbital (3)
 | # | Landscape | Character | Hazards | Enemies |
 |---|---|---|---|---|
-| 21 | Tether Station | the anchor and climber platforms of the plan | vacuum at edges, falls | tether keepers |
-| 22 | The Foundry | the plan's construction in orbit, zero-g yards | vacuum, radiation, zero-g | assemblers, welders |
-| 23 | The Ring | a dead satellite ring, drifting debris | vacuum, debris, cold | salvage drones |
+| 22 | Tether Station | the anchor and climber platforms of the plan | vacuum at edges, falls | tether keepers |
+| 23 | The Foundry | the plan's construction in orbit, zero-g yards | vacuum, radiation, zero-g | assemblers, welders |
+| 24 | The Ring | a dead satellite ring, drifting debris | vacuum, debris, cold | salvage drones |
 
 ### Eras (through time portals)
 | # | Era | What it is |
