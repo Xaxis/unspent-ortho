@@ -4,8 +4,12 @@
 half-broken machines hunt the people still living in the gaps. Godot 4.7,
 GDScript, orthographic 3D rendered at 640x360 and upscaled with nearest
 filtering, drawn as a living field notebook: washes, inked contours, hatched
-shade, and machines drawn by a ruler. **`docs/ART.md` is the binding style bible.
-Nothing may look like Minecraft or any voxel game.**
+shade, and machines drawn by a ruler. **`docs/VISION.md` is the destination** (the
+machines' plan, 20+ procedurally composed landscape types across surface,
+underground and orbital realms, a mecha sentinel per landscape, portals and time,
+crafts, mended high tech). **`docs/ART.md` is the binding style bible. Nothing may
+look like Minecraft or any voxel game; every landscape must be hauntingly beautiful
+and detailed.**
 
 `../unspent` is the old Unity attempt. Read it for mechanics numbers and art
 direction (already distilled in `docs/research/`). **Never port its story, arcs,
@@ -20,6 +24,7 @@ tools/shot.sh shots/x.png [options]         # one real rendered frame, ~2 s
 tools/shot.sh shots/g.png --scene=gallery [--filter=pine]   # every model, lit, on a plinth
 tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country and ecotone
 tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
+tools/canon.sh [--accept]                   # the canon frames beside the accepted set on ONE contact sheet: shots/canon/sheet.png
 tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```

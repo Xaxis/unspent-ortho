@@ -1,5 +1,7 @@
 # Roadmap
 
+Destination: `docs/VISION.md`.
+
 Milestones end in something a person can play. Work inside a milestone runs as
 parallel packages, each in its own worktree with its own directories, merged
 one at a time behind `tools/check.sh`.
@@ -74,12 +76,61 @@ and `tours/fight.tour` (commands in CLAUDE.md).
 - Fight moments in tours are real-time: the tours retry a missed blow (`try`),
   and a hidden macOS window can stall a single shot until its timeout.
 
-## M2 — Depth (next)
+## M2 — Foundations of an immense world
 
-Interiors, NPCs with work and trade by barter, landmarks worth walking to,
-machines' second acts and the four verbs fully felt, saves, settings, web export.
+Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so
+content never needs a rewrite.
 
-## M3 — The story (after the loop is fun)
+**Wave A** (parallel):
+- **biomes**: the landscape-type registry; the six countries become data with no
+  regression; worldgen composes regions from types; two new types, Salt Flats and
+  Scrapwood, as proof.
+- **saves**: a registry where every system saves itself; slots, autosave, Continue.
+- **hazards**: one pressure model, resistances from modular gear, abilities through
+  one interface; five abilities; the MENDED idiom.
+- **disposition**: machine roles, indifference, interference per region, and stealth
+  read on the machine itself.
+- **export**: web (threads and no-threads) and macOS; loading page; `tools/web.sh`
+  boot check.
 
-A new story written from nothing (the old fiction is retired): what happened, who
-is left, what the player wants, and why it is worth walking the whole coast.
+**Wave B** (parallel, on top of A):
+- **realms**: realms and portals; the first underground type (Limestone Caves,
+  drawn as scratchboard); the first era (The Before, drawn in watercolour) with
+  edits that carry into the present.
+- **sentinels**: the boss spine, plus the Coast and Salt Flats sentinels, each beatable
+  three ways.
+- **crafts**: the vehicle spine; raft, hover sled, walker rig.
+- **tech**: the mended tech tree, with 20+ implements and 15+ modules.
+- **works**: machine depots that feed patrols, can be broken and let a region recover.
+- **landmarks**: 3-5 kinds per type, worth the walk.
+
+## M3 — The landscapes
+
+Grow to at least 20 landscape types, each with its own props, decor, life, weather,
+light, hazards, enemies, landmarks and **sentinel**, and fill every realm.
+
+- **Surface families**, built in parallel:
+  - wet: Drowned City, Frost Sea
+  - dry: Glass Desert, Mesas
+  - machine-made: Server Fields, Grey Orchards
+- **Underground:** Crystal Hollows, the Adits, Magma Vaults, Rootways, Undercroft.
+- **Orbital realm:** Tether Station, the Foundry, the Ring (graphite on black paper),
+  reached by the climber craft.
+- **The After:** the cyanotype era.
+- **Crafts:** glider wings, drill crawler, submersible, climber.
+- **Sentinels** for every new type.
+
+## M4 — The plan and the people
+
+- **Story:** the words, written from nothing. What the machines' ultimate plan is,
+  why, and how it ends.
+- **The plan:** its stages as world state, and the subarc generator (goals, methods,
+  consequences).
+- **People:** villages that live, barter, ask and remember; homes to claim and mend;
+  interiors; the carried-off to rescue.
+- **Endings:** reached through many different paths.
+
+## M5 — Ship
+
+Balance, performance on web, settings and accessibility, gamepad, Steam build,
+the owner's release.

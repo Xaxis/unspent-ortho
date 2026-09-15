@@ -5,6 +5,7 @@ extends GameSystem
 ## A tour is a text file, one command per line, `#` comments:
 ##   at X,Y                 teleport the player (tile space)
 ##   village N              teleport beside village N
+##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   hour H                 set the world clock hour (same day)
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
@@ -95,6 +96,12 @@ func _run() -> void:
 			"at":
 				var p := parts[1].split(",")
 				_teleport(Vector2(p[0].to_float(), p[1].to_float()))
+			"place":
+				var pp := GenPlaces.find(game.world, parts[1])
+				if pp.x < 0.0:
+					ok = false
+				else:
+					_teleport(pp)
 			"village":
 				var vi := parts[1].to_int()
 				if vi < game.world.villages.size():

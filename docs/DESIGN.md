@@ -55,11 +55,12 @@ that can take what grows there.
 
 ## Story
 
-**To be rewritten from nothing** (owner, 2026-09-15). Do not carry over the old
-fiction, arcs, names of arcs, keepers, Head Office, dialogue, or the docket. Build
-every system story-agnostic. A dedicated narrative milestone comes after the core
-loop is fun. What stays is the premise shape only: machines that kept running and
-turned on people, barely functioning, and people living in their gaps.
+The premise shape is the owner's (2026-09-15) and lives in **`docs/VISION.md`**: the
+few dwindling humans after the machine apocalypse; machines that still mean to end
+them, many of them indifferent unless you interfere with their **ultimate plan**; the
+plan as the core arc with generative subarcs finished many ways. The words (what the
+plan is, who is left, dialogue) are written from nothing in the story milestone.
+Never port the old game's fiction, arcs, names or text.
 
 ## Look
 
