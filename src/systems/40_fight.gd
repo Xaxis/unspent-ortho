@@ -2,7 +2,7 @@ extends GameSystem
 ## The player's two verbs and what comes of them. Reads swing and dodge,
 ## steps the one simulation (created by 30_mobs) in fixed slices, and turns
 ## what happened in it into the world: Events, sounds, the hitstop, the
-## camera's shake, dust and sparks, the clock's jumps and the lines on screen.
+## camera's shake, the ink marks (MobFx), the clock's jumps and the lines on screen.
 ##
 ## Controls: swing on `swing` (Space, J); dodge on `dodge` (K at once; Shift
 ## as DodgeInput says, holding it still runs). Held, the swing key pulls.
@@ -62,7 +62,7 @@ func _in_fight() -> bool:
 	if sim.fight_on:
 		return true
 	for m in sim.mobs:
-		if m.alive and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) <= 8.0:
+		if m.alive and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) <= FightRules.AWAY_DISTANCE:
 			return true
 	return false
 
@@ -235,6 +235,7 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
 			&"windup":
 				var m: MobState = e.mob
+				Events.sfx.emit(&"windup", _at3(m.pos))
 				if m.blow != null and m.node is Mob:
 					# On the body, so the tell goes where the body goes.
 					var mob := m.node as Mob

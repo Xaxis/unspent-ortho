@@ -24,7 +24,6 @@ var sim: FightSim = null
 var intent_move := Vector2.ZERO
 var intent_run := false
 var _z := 0.0
-var _mat: ShaderMaterial
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
 var _shudder_left := 0.0
@@ -39,15 +38,10 @@ func setup(w: WorldData, q: WorldQuery, at: Vector2, material: Material) -> void
 	query = q
 	pos = at
 	_z = w.height_at(at)
-	# Its own copy of the lit material so a hurt can flash this body and nothing else.
-	var mat: Material = material
-	if material is ShaderMaterial:
-		_mat = (material as ShaderMaterial).duplicate() as ShaderMaterial
-		mat = _mat
 	model = PersonModel.new()
 	model.name = "model"
 	add_child(model)
-	model.build(mat)
+	model.build(material)
 	_sync(0.0)
 
 

@@ -16,7 +16,6 @@ var state: MobState
 var model: FigureModel
 ## Carries the lean and the heave; the model sits on it facing +X.
 var pivot: Node3D
-var _mat: ShaderMaterial
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
@@ -35,12 +34,10 @@ func setup(s: MobState, world: WorldData, base_material: Material) -> void:
 	pos = s.pos
 	name = "mob_%s_%d" % [String(kind).replace(".", "_"), s.id]
 	add_to_group(&"mobs")
-	if base_material is ShaderMaterial:
-		_mat = (base_material as ShaderMaterial).duplicate() as ShaderMaterial
 	pivot = Node3D.new()
 	pivot.name = "pivot"
 	add_child(pivot)
-	model = FigureModel.create(s.row.get("model", kind), _mat)
+	model = FigureModel.create(s.row.get("model", kind), base_material)
 	pivot.add_child(model)
 	_placeholder = model.get_script() == FigureModel
 	if _placeholder:
