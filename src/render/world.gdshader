@@ -21,6 +21,16 @@ render_mode cull_back, specular_disabled;
 #include "res://src/render/ink.gdshaderinc"
 
 global uniform float wind_strength;
+// The machines' works cut into the ground (WorksMap): one texel per tile,
+// R cut, G scorch, B quarry, A bores. works_inv_size 0 = no map (the gallery,
+// hand-built worlds). works_dir: the survey bearing every ruled work lies on.
+uniform sampler2D works_map : hint_default_black, filter_linear, repeat_disable;
+uniform float works_inv_size = 0.0;
+uniform vec2 works_dir = vec2(1.0, 0.0);
+// The survey (GenWorks.survey_sections): R 1 where a stretch survives;
+// works_survey = (phase along, phase across, spacing along, spacing across).
+uniform sampler2D works_lines : hint_default_black, filter_linear, repeat_disable;
+uniform vec4 works_survey = vec4(0.0, 0.0, 41.0, 59.0);
 // The one-step shade: pushed toward blue-violet. Ink colour is darker still.
 uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
@@ -54,6 +64,7 @@ const vec3 EARTH0 = vec3(0.1020, 0.0706, 0.1255);
 const vec3 EARTH1 = vec3(0.2000, 0.1373, 0.1216);
 const vec3 EARTH2 = vec3(0.3098, 0.2118, 0.1529);
 const vec3 EARTH3 = vec3(0.4353, 0.3020, 0.1922);
+const vec3 EARTH4 = vec3(0.6000, 0.4392, 0.2667);
 const vec3 RUST1 = vec3(0.2902, 0.1137, 0.0941);
 const vec3 RUST2 = vec3(0.4314, 0.2000, 0.1255);
 const vec3 RUST3 = vec3(0.6039, 0.3098, 0.1569);
@@ -510,6 +521,289 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 	return c;
 }
 
+// The machines' works laid into the ground (WorksMap): the rim of a work is
+// torn by the hand's noise, what lies inside is ruled along the survey
+// bearing. `wk` is the map at this point. Which work shows depends on the
+// ground's own mark: rows in turf, drainage in the fen, tracks in the needles.
+// `stump`: works_lines G here, above 0 within a tile of a stump.
+vec3 works_mark(int m, vec3 c, vec2 wp, vec2 px, vec4 wk, float stump, int hand, inout vec3 emit, inout float unh) {
+	vec2 d = works_dir;
+	vec2 r = vec2(dot(wp, d), dot(wp, vec2(-d.y, d.x)));
+	float torn = (ink_vnoise(wp * 0.55) - 0.5) * 0.5 + (ink_vnoise(wp * 2.7 + 7.0) - 0.5) * 0.18;
+	// Where the land has begun to take a work back: patches of the ground's
+	// own wash left over the ruled pattern.
+	float regrow = ink_vnoise(wp * 0.32 + 31.0) * 0.7 + ink_vnoise(wp * 1.3 + 5.0) * 0.3 + rag(wp);
+	float sc = wk.g + torn;
+	if (sc > 0.5) {
+		// Scorched: burnt dark in lobes, a little ash combed by the wind, the
+		// odd ember still alive where it burnt hottest.
+		float lobe = ink_vnoise(wp * 0.7 + 11.0) + rag(wp);
+		c = mix(c, lobe > 0.55 ? EARTH0 : mix(INK3, EARTH1, 0.4), clamp((sc - 0.5) * 2.5, 0.0, 0.4));
+		if (stroke(px, vec2(7.0, 4.0), 41.0, 0.12, 3.0, 2.0) > 0.5) {
+			c = mix(c, ASH1, 0.6);
+		}
+		if (sc > 0.9 && ink_hash(px + 91.0) > 0.9985) {
+			float fl = flicker(vec3(floor(wp.x * 3.0), 2.0, floor(wp.y * 3.0)), 2.0);
+			c = mix(EMBER2, EMBER3, fl);
+			emit += c * 0.5 * fl;
+			unh = 1.0;
+		}
+	}
+	float cut = wk.r + torn;
+	// The pines' hand (UPRIGHT) marks a harvester's ground, whatever grows there.
+	bool pines = hand == 3;
+	if (cut > 0.5) {
+		if ((m == 40 || m == 41) && !pines) {
+			// Turf cut in rows: strips of bare peat ruled between strips left
+			// standing, each row stopped where the cutter stopped; sods stacked
+			// to dry on some standing strips; turf creeping back over the old.
+			const float ROW = 1.9;
+			float row = floor(r.y / ROW);
+			float fy = r.y - row * ROW;
+			float stop_at = (ink_hash(vec2(row, 5.0)) - 0.5) * 22.0;
+			bool cutting = (r.x > stop_at || ink_hash(vec2(row, 9.0)) < 0.25) && regrow < 0.66 + ink_hash(vec2(row, 13.0)) * 0.12;
+			if (cutting && fy < 0.5) {
+				c = mix(EARTH1, EARTH2, step(0.55, ink_hash(floor(px / vec2(3.0, 1.0)) + row)));
+				if (stroke(px, vec2(5.0, 3.0), 51.0, 0.35, 2.0, 0.5) > 0.5) {
+					c = EARTH0;
+				}
+				if (fy < 0.06) {
+					c = dn(c, 0.8);
+				}
+			} else if (cutting && fy < 0.58) {
+				c = up(c, 0.25);
+			} else if (cutting && ink_hash(vec2(row, 21.0)) < 0.4) {
+				float sx = fract(r.x / 3.1 + row * 0.37);
+				if (sx < 0.1 && fy > 1.0 && fy < 1.3 + rag(wp) * 3.0) {
+					c = sx < 0.025 ? EARTH0 : EARTH1;
+				}
+			}
+		} else if (m == 48 || m == 49 || m == 53) {
+			// Drainage cuts: water cut straight into the peat on the bearing. A cut
+			// narrows and silts up toward its ends and wherever the map fades it
+			// (before a river, a road, a house); a green wet rim where the water
+			// meets the peat, a spoil bank thrown up on one side, reeds on the
+			// other; the sky caught in the water in broken glints, oil here and there.
+			const float SPAN = 7.5;
+			float lane = floor(r.y / SPAN);
+			// Each cut was dug from its own start, and the digging stopped: it
+			// silts to nothing over a few tiles at both ends.
+			float from_x = -16.0 + ink_hash(vec2(lane, 5.0)) * 12.0;
+			float to_x = from_x + 18.0 + ink_hash(vec2(lane, 6.0)) * 18.0;
+			float live = smoothstep(0.55, 0.95, cut) * smoothstep(from_x, from_x + 4.0, r.x) * smoothstep(to_x, to_x - 4.0, r.x);
+			float wob = ink_vnoise(vec2(r.x * 0.31, lane * 7.0 + 3.0)) - 0.5;
+			float fy = r.y - (lane + 0.5) * SPAN - wob * 0.12;
+			float dd = abs(fy);
+			float wch = 0.17 * live * (0.8 + wob * 0.8);
+			// Now and then a cross cut, as tapered, ending where it ends.
+			float cx = abs(mod(r.x + ink_hash(vec2(lane, 17.0)) * 23.0, 23.0) - 11.5);
+			bool cross_cut = ink_hash(vec2(lane, 3.0)) < 0.45 && dd < SPAN * 0.5 * live;
+			float cw = 0.14 * live * smoothstep(SPAN * 0.5 * live, SPAN * 0.2 * live, dd);
+			if (dd < wch || (cross_cut && cx < cw)) {
+				// Water holding the sky, dark under its banks; silt fills the cut as
+				// it dies away, water to brown to turf.
+				float silt = clamp((0.75 - live) * 2.2, 0.0, 1.0);
+				vec3 water = dd > wch * 0.55 ? BRINE0 : mix(BRINE0, BRINE2, 0.6);
+				float g = ink_vnoise(vec2(r.x * 0.9, lane * 3.0));
+				if (dd < wch * 0.55 && g > 0.62 && ink_hash(floor(px / vec2(3.0, 1.0)) + lane) < 0.55) {
+					water = g > 0.74 ? BRINE4 : BRINE2;
+				}
+				c = mix(water, mix(EARTH1, SPRUCE2, 0.35), silt);
+				if (silt < 0.2 && ink_vnoise(wp * vec2(0.23, 0.31) + 17.0) > 0.66) {
+					float sheen = fract(r.x * 0.29 + ink_vnoise(wp * 0.8) * 1.6 + TIME * 0.02);
+					if (sheen < 0.05) {
+						c = mix(BRINE0, BLOOM2, 0.5);
+						unh = 1.0;
+					} else if (sheen > 0.4 && sheen < 0.44) {
+						c = mix(BRINE0, SPRUCE4, 0.45);
+						unh = 1.0;
+					}
+				}
+			} else if (dd < wch + 0.09 * max(live, 0.3)) {
+				// The wet rim.
+				c = mix(c, SPRUCE2, 0.75);
+			} else if (fy > 0.0 && fy < wch + (0.2 + 0.45 * live) * (0.75 + ink_vnoise(wp * 1.9) * 0.5)) {
+				// The spoil bank: peat thrown up in sods on the far side.
+				c = mix(c, EARTH2, 0.6);
+				if (stroke(px, vec2(4.0, 3.0), 61.0, 0.4, 2.0, 0.0) > 0.5) {
+					c = EARTH1;
+				} else if (ink_hash(floor(px / vec2(3.0, 2.0)) + lane) > 0.82) {
+					c = mix(c, EARTH3, 0.5);
+				}
+			} else if (fy < 0.0 && fy > -(wch + 0.5) && ink_hash(px + lane) > 0.8 && live > 0.2) {
+				// Reeds along the near side.
+				c = ink_hash(px + 3.1) < 0.5 ? SPRUCE2 : MOSS3;
+			} else if (regrow < 0.6) {
+				c = mix(c, EARTH2, 0.15);
+			}
+		} else if (m == 50 || pines) {
+			// Harvester tracks: the machine drove its lanes on the bearing, but the
+			// ground kept only pieces of them: short pairs of ruts where the wheels
+			// sank, lanes at uneven spacing, brash thrown between the wheels, and
+			// nothing near the rim of the cut or round a stump.
+			float live = smoothstep(0.62, 0.95, cut);
+			const float BAND = 4.4;
+			float band = floor(r.y / BAND);
+			float ly = r.y - band * BAND - (1.0 + ink_hash(vec2(band, 41.0)) * 2.4);
+			const float SEG = 5.0;
+			float sx0 = r.x + ink_hash(vec2(band, 43.0)) * SEG;
+			float seg = floor(sx0 / SEG);
+			float sx = sx0 - seg * SEG;
+			float piece = 1.2 + ink_hash(vec2(band, seg) + 7.0) * 2.4;
+			bool on = sx < piece && ink_hash(vec2(band, seg) + 11.0) < 0.75 && stump < 0.5;
+			float gauge = 0.42 + ink_hash(vec2(band, seg)) * 0.12;
+			float rut = min(abs(ly - gauge), abs(ly + gauge));
+			float tip = clamp(min(sx, piece - sx) * 2.5, 0.0, 1.0) * live;
+			if (regrow < 0.7) {
+				c = dn(c, 0.1 * live);
+			}
+			if (on && rut < 0.085 * tip) {
+				c = dn(c, 1.1);
+			} else if (on && rut < 0.085 * tip + 0.05) {
+				c = up(c, 0.2);
+			} else if (on && abs(ly) < gauge - 0.12 && stroke(px, vec2(4.0, 3.0), 83.0, 0.4 * live, 2.0, 1.0) > 0.5) {
+				// Brash between the wheels.
+				c = mix(c, EARTH3, 0.7);
+			}
+			if (ink_hash(px + 13.0) > 0.996) {
+				c = EARTH4;
+			}
+			if (stroke(px, vec2(7.0, 5.0), 71.0, 0.2, 3.0, -1.0) > 0.5) {
+				c = EARTH3;
+			}
+		}
+	}
+	float qu = wk.b + torn;
+	if (qu > 0.5 && (m == 45 || m == 52 || m == 43 || m == 40 || m == 41)) {
+		// Benches cut in the grid: long blocks of stone lifted row by row, each
+		// row a step down from the last; the long cuts ruled hard, the cross
+		// cuts faint and unfinished; spoil and dust where a block broke.
+		const vec2 CELL = vec2(4.6, 1.9);
+		vec2 cell = floor(r / CELL);
+		vec2 f = r - cell * CELL;
+		float h = ink_hash(cell + 17.0);
+		float depth = mod(cell.y, 3.0);
+		c = mix(LINEN4, LINEN3, 0.3 + depth * 0.22);
+		if (h > 0.84) {
+			c = up(c, 0.15);
+		}
+		if (f.y < 0.08) {
+			c = dn(c, 1.1);
+		} else if (f.y < 0.16) {
+			c = up(c, 0.35);
+		} else if (f.x < 0.06 && ink_hash(cell + 3.0) < 0.6) {
+			c = dn(c, 0.6);
+		} else if (abs(f.y - CELL.y * 0.55) < 0.05 && h > 0.5 && mod(px.x, 3.0) < 1.0) {
+			c = LINEN1;
+		}
+		if (regrow > 0.64) {
+			c = mix(c, LINEN3, 0.35);
+			if (ink_hash(px + 7.0) > 0.96) {
+				c = LINEN2;
+			}
+		}
+	}
+	float bo = wk.a + torn;
+	if (bo > 0.5) {
+		// Bores in an exact grid, and the survey's paint run between them.
+		const float BSTEP = 2.6;
+		vec2 g = r / BSTEP;
+		vec2 f = (fract(g) - 0.5) * BSTEP;
+		float dh = length(f);
+		if (dh < 0.1) {
+			c = INK1;
+		} else if (dh < 0.2) {
+			c = up(c, 0.4);
+		} else if (abs(f.y) < 0.03 && ink_hash(vec2(floor(g.y), 23.0)) < 0.5 && mod(floor(r.x * 3.0), 2.0) < 1.0) {
+			c = mix(c, RUST3, 0.7);
+		}
+	}
+	return c;
+}
+
+// The machines' survey lines, ruled across every landscape and kept in broken
+// stretches: each ground carries one its own way (a lane through the pines, a
+// ditch in the fen, prints in the snow, drill holes in the pavement, a scraped
+// strip with a line of paint on the rest).
+// `wet`: works_lines B, 1 where the survey may run as a wet ditch.
+vec3 survey_mark(int m, vec3 c, vec2 wp, vec2 px, float wet, int hand) {
+	vec2 d = works_dir;
+	vec2 r = vec2(dot(wp, d), dot(wp, vec2(-d.y, d.x)));
+	float sa = mod(r.y - works_survey.x + works_survey.z * 0.5, works_survey.z) - works_survey.z * 0.5;
+	float sb = mod(r.x - works_survey.y + works_survey.w * 0.5, works_survey.w) - works_survey.w * 0.5;
+	float da = abs(sa);
+	float db = abs(sb);
+	float dl = min(da, db);
+	float signed_off = da < db ? sa : sb;
+	if (dl > 1.2) {
+		return c;
+	}
+	float along = da < db ? r.x : r.y;
+	float lum = dot(c, vec3(0.3, 0.59, 0.11));
+	if (hand == 3 || m == 50) {
+		if (dl < 1.05) {
+			c = dn(c, 0.14);
+		}
+		if (abs(dl - 0.55) < 0.06) {
+			c = dn(c, 0.7);
+		} else if (abs(dl - 0.62) < 0.05) {
+			c = up(c, 0.2);
+		}
+	} else if (m == 48 || m == 49 || m == 53) {
+		// Deep in a wide fen the survey was cut as a ditch: narrow water with a
+		// green rim and its spoil on one side, drying to a silted groove where
+		// the fen ends or water or a house comes near. Elsewhere in the moss it is
+		// only a trodden strip with the holes of its stakes.
+		float live = smoothstep(0.3, 0.9, wet);
+		float wob = ink_vnoise(vec2(along * 0.4, 5.0)) - 0.5;
+		float off = signed_off - wob * 0.08;
+		float w = 0.11 * live * (0.8 + wob * 0.7);
+		if (live > 0.05 && abs(off) < w) {
+			float silt = clamp((0.8 - live) * 2.5, 0.0, 1.0);
+			vec3 water = abs(off) > w * 0.5 ? BRINE0 : mix(BRINE0, BRINE2, 0.6);
+			float g = ink_vnoise(vec2(along * 0.9, 9.0));
+			if (abs(off) < w * 0.5 && g > 0.6 && ink_hash(floor(px / vec2(3.0, 1.0)) + 37.0) < 0.55) {
+				water = g > 0.72 ? BRINE4 : BRINE2;
+			}
+			c = mix(water, mix(EARTH1, SPRUCE2, 0.35), silt);
+		} else if (live > 0.05 && abs(off) < w + 0.07) {
+			c = mix(c, SPRUCE2, 0.7);
+		} else if (live > 0.05 && off > 0.0 && off < w + (0.12 + 0.3 * live) * (0.75 + ink_vnoise(wp * 1.9) * 0.5)) {
+			c = mix(c, EARTH2, 0.5);
+			if (stroke(px, vec2(4.0, 3.0), 67.0, 0.35, 2.0, 0.0) > 0.5) {
+				c = EARTH1;
+			}
+		} else if (live <= 0.05 && dl < 0.28) {
+			c = mix(c, EARTH2, 0.22);
+			float hole = abs(fract(along / 1.7) - 0.5) * 1.7;
+			if (dl < 0.06 && hole < 0.06) {
+				c = BRINE0;
+			}
+		}
+	} else if (m == 44 || m == 51) {
+		if (dl < 0.3 && mod(floor(along * 2.4), 2.0) < 1.0 && ink_hash(floor(px / 2.0) + 5.0) < 0.55) {
+			c = RIME4;
+		}
+	} else if (m == 45) {
+		float hole = abs(fract(along / 1.3) - 0.5) * 1.3;
+		if (dl < 0.1 && hole < 0.1) {
+			c = INK2;
+		} else if (dl < 0.18 && hole < 0.18) {
+			c = up(c, 0.3);
+		} else if (dl < 0.03) {
+			c = mix(c, RUST3, 0.5);
+		}
+	} else {
+		if (dl < 0.3) {
+			c = lum > 0.35 ? dn(c, 0.2) : up(c, 0.22);
+		}
+		if (dl < 0.035 && mod(floor(along * 1.6), 3.0) < 2.0) {
+			c = lum > 0.35 ? mix(c, RUST2, 0.7) : mix(c, mix(LINEN3, ASH3, 0.5), 0.55);
+		}
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -708,6 +1002,16 @@ void fragment() {
 	}
 	if (m >= 40 && m < 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		if (works_inv_size > 0.0) {
+			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
+			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
+			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
+				c = works_mark(m, c, world_pos.xz, px, wk, wl.g, int((second ? s2 : s1) + 0.5), emit, unh);
+			}
+			if (wl.r > 0.5) {
+				c = survey_mark(m, c, world_pos.xz, px, wl.b, int((second ? s2 : s1) + 0.5));
+			}
+		}
 	} else if (m > 60 && m < 70) {
 		c = strata(m - 60, c, world_pos, px, emit, unh);
 	} else if (m >= 1 && m <= 16) {

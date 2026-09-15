@@ -26,6 +26,8 @@ const Rocks := preload("res://src/models/props/rocks.gd")
 const Shore := preload("res://src/models/props/shore.gd")
 const Built := preload("res://src/models/props/built.gd")
 const Houses := preload("res://src/models/props/houses.gd")
+const Remains := preload("res://src/models/props/remains.gd")
+const Works := preload("res://src/models/props/works.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -57,6 +59,15 @@ static func variants(kind: int) -> int:
 		PropKind.VENT, PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
 		PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
 			return 2
+		PropKind.SIGN:
+			return 4
+		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
+			return 3
+		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
+		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
+		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
+		PropKind.MEMORIAL:
+			return 2
 	return 1
 
 
@@ -65,11 +76,19 @@ static func pick_variant(kind: int, h: int) -> int:
 	return absi(h) % variants(kind)
 
 
+## Chunk workers bake props while the main thread may too.
+static var _lock := Mutex.new()
+
+
 static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
 	var key := (kind * 8 + variant) * 8 + country
-	if not _templates.has(key):
-		_templates[key] = _extract(build_kit(kind, variant, country))
-	return _templates[key]
+	_lock.lock()
+	var t: Template = _templates.get(key)
+	if t == null:
+		t = _extract(build_kit(kind, variant, country))
+		_templates[key] = t
+	_lock.unlock()
+	return t
 
 
 static func build_kit(kind: int, variant: int, country: int) -> Kit:
@@ -87,6 +106,13 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 			Houses.build(k, kind, variant, country)
 		PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.PYLON, PropKind.POLE:
 			Built.build(k, kind, variant, country)
+		PropKind.FENCE, PropKind.BARRICADE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.SHACK, PropKind.VEHICLE, \
+		PropKind.HULL, PropKind.SEA_WALL, PropKind.STUMP, PropKind.FIRE_TOWER, PropKind.WATER_TANK, PropKind.SLAG_HEAP, \
+		PropKind.WRECKAGE, PropKind.MEMORIAL:
+			Remains.build(k, kind, variant, country)
+		PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY, \
+		PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.ARCHIVE:
+			Works.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -214,4 +240,13 @@ static func gallery() -> Array:
 			out.append({"name": "%s %s" % [PropKind.NAMES[kind], Country.NAMES[c]], "node": node(kind, 0, c)})
 	# The but in snow: its sods carry the snow, not a lid of it.
 	out.append({"name": "%s 3 snowfield" % PropKind.NAMES[PropKind.HOUSE], "node": node(PropKind.HOUSE, 3, Country.SNOWFIELD)})
+	# The evidence each landscape dresses its own way.
+	for kind: int in DRESSED:
+		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
+			for v in variants(kind):
+				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, Country.NAMES[c]], "node": node(kind, v, c)})
 	return out
+
+
+## Kinds of evidence whose model changes with the landscape it stands in.
+const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.WRECKAGE, PropKind.MEMORIAL]

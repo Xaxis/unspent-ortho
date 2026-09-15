@@ -8,7 +8,10 @@ extends Camera3D
 @export var pitch_deg := 57.0
 ## Vertical extent of the view in world units.
 @export var view_height := 15.0
-@export var distance := 80.0
+## How far the camera stands back along its view axis. Orthographic, so it only
+## has to clear the tallest land in front of the focus; close keeps the depth
+## range (and the sun's shadow range, SkyLight) tight.
+@export var distance := 30.0
 @export var follow_rate := 10.0
 
 var target := Vector3.ZERO

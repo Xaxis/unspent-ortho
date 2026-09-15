@@ -38,7 +38,11 @@ static func _allow() -> PackedInt64Array:
 
 
 ## Kinds placed by design (villages, landmarks, the grid), allowed anywhere.
-const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKind.HOUSE, PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.TIP, PropKind.WRECK, PropKind.CAIRN, PropKind.STANDING_STONE]
+const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKind.HOUSE, PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.TIP, PropKind.WRECK, PropKind.CAIRN, PropKind.STANDING_STONE,
+	PropKind.FENCE, PropKind.BARRICADE, PropKind.SIGN, PropKind.GRAVE, PropKind.DEBRIS, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL,
+	PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.STUMP, PropKind.FIRE_TOWER,
+	PropKind.RELAY, PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK,
+	PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, PropKind.WRECKAGE, PropKind.MEMORIAL]
 
 
 ## Sites that shape grounds. Records landmarks.
@@ -217,6 +221,10 @@ static func props(c: GenContext) -> void:
 	c.mark(&"props.places")
 	_lines(c, occ)
 	c.mark(&"props.lines")
+	# The dystopian evidence of every landscape (GenWorks), before the scatter
+	# so a clearcut or a corridor stays clear.
+	GenWorks.place(c, occ)
+	c.mark(&"props.works")
 	_scatter(c, occ)
 	c.mark(&"props.scatter")
 	_way_in(c)

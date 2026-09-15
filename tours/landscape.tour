@@ -1,0 +1,91 @@
+# What every landscape holds of what happened, by day and at its own dusk
+# (SkyLight.SUNSET is 21.0): the machines' works and the survey on their
+# bearing, people's remains and shelters, neon only on the works, the relay
+# line and the shacks that wired stolen light in. Each stop teleports to a
+# place GenWorks recorded, then walks in through the real input and looks.
+#   tools/tour.sh tours/landscape.tour --seed=7 --weather=clear:0
+coast calm
+place spawn
+hour 10.5
+walk 1,1 1.6
+shot 01-spawn-what-was-lost
+# The coast: the intake humming at the shore, a trawler on the sand.
+place intake
+walk 0,1 0.8
+shot 02-coast-intake-day
+hour 21.2
+wait 0.5
+shot 03-coast-intake-dusk
+hour 10.5
+place hulk
+walk -1,0 0.8
+shot 04-coast-hulk-day
+place turf_rows
+walk 1,0 1.0
+shot 05-coast-turf-rows-day
+# The moss: the drained fen, its pump house and pipeline.
+place drained
+walk 0,-1 0.8
+shot 06-moss-drained-day
+hour 21.3
+wait 0.5
+shot 07-moss-drained-dusk
+hour 10.5
+place bog_graves
+walk 1,0 0.6
+shot 08-moss-bog-graves-day
+# The pines: a clearcut in its square, the relay corridor, the fire tower.
+place clearcut
+walk 1,-1 1.0
+shot 09-pinewood-clearcut-day
+place corridor
+walk 1,0 1.0
+shot 10-pinewood-corridor-day
+hour 21.4
+wait 0.5
+shot 11-pinewood-corridor-dusk
+hour 10.5
+place fire_tower
+walk 0,1 0.6
+shot 12-pinewood-fire-tower-day
+# The snowfield: the checkpoint gate on its road, the grid hung with ice, the stack.
+place checkpoint
+walk -1,0 0.8
+shot 13-snowfield-checkpoint-day
+hour 21.2
+wait 0.5
+shot 14-snowfield-checkpoint-dusk
+hour 12
+place iced_line
+walk 0,1 0.6
+shot 15-snowfield-iced-line-day
+place stack
+walk 0,1 1.0
+shot 16-snowfield-stack-day
+# The bonelands: the quarry benches, the drill field on its grid.
+place quarry
+walk 1,0 0.8
+shot 17-bonelands-quarry-day
+place drill_field
+walk 0,-1 0.8
+shot 18-bonelands-drill-field-day
+hour 21.2
+wait 0.5
+shot 19-bonelands-drill-field-dusk
+hour 10.5
+# The burning: slag heaps tipped on the bearing, the clerks' archive.
+place slag
+walk -1,1 0.8
+shot 20-burning-slag-day
+place archive
+walk 1,0 0.8
+shot 21-burning-archive-day
+hour 21.3
+wait 0.5
+shot 22-burning-archive-dusk
+# A shack that wired the machines' light into its wall, after dusk.
+place stolen_light
+walk 1,0 0.5
+hour 21.5
+wait 0.6
+shot 23-stolen-light-dusk

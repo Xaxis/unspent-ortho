@@ -5,9 +5,12 @@ extends Node3D
 ## and FOUND props. Props and decor are baked into one mesh each per chunk
 ## (native array transforms), so draw calls do not grow with the trees.
 ## While playing, chunks are built one at a time on a worker thread (land,
-## water and decor arrays) and turned into meshes on the main thread, so
-## streaming never stalls a frame; ensure_near() builds synchronously
-## (startup, screenshots, tests).
+## water, decor and baked prop arrays) and only turned into meshes on the main
+## thread, so streaming never stalls a frame; ensure_near() builds synchronously
+## (startup, screenshots, tests). What a worker bakes is snapshotted on the main
+## thread first (the chunk's standing props and cable spans), so survival's
+## edits to the world never race it; a chunk edited while in flight is baked
+## again when it lands.
 ##
 ## The view radius follows the camera: a chunk is wanted while it touches the
 ## square that holds the camera's ground footprint plus a margin for tall things.
@@ -36,13 +39,18 @@ var _task := -1
 var _task_key := Vector2i.ZERO
 var _task_chunk: TerrainMesher.Chunk
 var _task_decor: Array = []
+var _task_props: Array = []
 var _task_usec := 0
+## The in-flight chunk's props changed while its worker was baking them.
+var _task_dirty := false
 var _chunks: Dictionary = {} # Vector2i -> Node3D
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
 var _water_mat: ShaderMaterial
+## Where the machines cut the ground (read-only once baked; both threads read it).
+var works: WorksMap
 
 ## Build timing, for --stats: whole builds (arrays, meshes, props) and the
 ## part of each that ran on the main thread.
@@ -55,6 +63,9 @@ var main_ms_max := 0.0
 
 func setup(w: WorldData) -> void:
 	world = w
+	# The landscape types are read from chunk workers (ice on the lines): build
+	# the registry here first.
+	BiomeRegistry.all()
 	mesher = TerrainMesher.new(w)
 	decor = Decor.new(w)
 	_bg_mesher = TerrainMesher.new(w)
@@ -63,6 +74,11 @@ func setup(w: WorldData) -> void:
 	_world_mat.shader = preload("res://src/render/world.gdshader")
 	_water_mat = ShaderMaterial.new()
 	_water_mat.shader = preload("res://src/render/water.gdshader")
+	# The machines' works cut into the ground, for the shader and the decor.
+	works = WorksMap.bake(w)
+	works.bind(_world_mat)
+	decor.works = works
+	_bg_decor.works = works
 	for p in w.props:
 		var key := _key_of(p.pos)
 		if not _props_by_chunk.has(key):
@@ -138,9 +154,10 @@ func _process(_delta: float) -> void:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
 		if not _chunks.has(_task_key):
-			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec)
+			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec, [] if _task_dirty else _task_props)
 		_task_chunk = null
 		_task_decor = []
+		_task_props = []
 	var wanted := _wanted(0.0)
 	for key in wanted:
 		if _chunks.has(key) or (_task >= 0 and key == _task_key):
@@ -148,7 +165,9 @@ func _process(_delta: float) -> void:
 		if threaded:
 			if _task < 0:
 				_task_key = key
-				_task = WorkerThreadPool.add_task(_build_worker.bind(key), false, "chunk")
+				_task_dirty = false
+				var snap := _snapshot(key)
+				_task = WorkerThreadPool.add_task(_build_worker.bind(key, snap[0], snap[1]), false, "chunk")
 		else:
 			_build(key)
 		break
@@ -168,10 +187,11 @@ func _exit_tree() -> void:
 		_task = -1
 
 
-func _build_worker(key: Vector2i) -> void:
+func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	_task_chunk = _bg_mesher.build_arrays(key.x, key.y)
 	_task_decor = _bg_decor.build_arrays(_task_chunk)
+	_task_props = bake_props(_task_chunk, _bg_mesher, props, spans)
 	_task_usec = Time.get_ticks_usec() - t0
 
 
@@ -218,12 +238,15 @@ func _build(key: Vector2i) -> void:
 	var t0 := Time.get_ticks_usec()
 	var ch := mesher.build_arrays(key.x, key.y)
 	var dec := decor.build_arrays(ch)
-	_add_chunk(key, ch, dec, Time.get_ticks_usec() - t0)
+	var snap := _snapshot(key)
+	var baked := bake_props(ch, mesher, snap[0], snap[1])
+	_add_chunk(key, ch, dec, Time.get_ticks_usec() - t0, baked)
 
 
 ## Put a chunk built as arrays into the scene: meshes, decor, props.
-## `worker_usec`: what building its arrays cost.
-func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, worker_usec: int) -> void:
+## `worker_usec`: what building its arrays cost. `baked`: bake_props() output,
+## or [] to bake them here (a chunk edited while its worker ran).
+func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, worker_usec: int, baked: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	var node := Node3D.new()
 	node.name = "chunk_%d_%d" % [key.x, key.y]
@@ -249,7 +272,10 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		mi.material_override = _world_mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(mi)
-	_build_props(node, key)
+	if baked.is_empty():
+		var snap := _snapshot(key)
+		baked = bake_props(ch, mesher, snap[0], snap[1])
+	_attach_props(node, baked)
 	add_child(node)
 	_chunks[key] = node
 	var main := (Time.get_ticks_usec() - t0) / 1000.0
@@ -278,6 +304,8 @@ func refresh_props(prop: WorldProp) -> void:
 		_props_by_chunk[key] = []
 	if not _props_by_chunk[key].has(prop):
 		_props_by_chunk[key].append(prop)
+	if _task >= 0 and key == _task_key:
+		_task_dirty = true
 	if not _chunks.has(key):
 		return
 	var node: Node3D = _chunks[key]
@@ -286,7 +314,8 @@ func refresh_props(prop: WorldProp) -> void:
 		if old != null:
 			node.remove_child(old)
 			old.queue_free()
-	_build_props(node, key)
+	var snap := _snapshot(key)
+	_attach_props(node, bake_props(_data.get(key), mesher, snap[0], snap[1]))
 
 
 ## The country a prop is dressed for: its tile's, or across an ecotone the one
@@ -299,10 +328,26 @@ func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
 	return maxi(Country.COAST, world.country_at(floori(p.pos.x), floori(p.pos.y)))
 
 
-func _build_props(node: Node3D, key: Vector2i) -> void:
-	if not _props_by_chunk.has(key):
-		return
-	var ch: TerrainMesher.Chunk = _data.get(key)
+## What a chunk's props bake from, taken on the main thread: [standing props,
+## cable spans as [from prop, to prop]] (taken props left out).
+func _snapshot(key: Vector2i) -> Array:
+	var props: Array = []
+	for p: WorldProp in _props_by_chunk.get(key, []):
+		if not world.depleted.has(p.id):
+			props.append(p)
+	var spans: Array = []
+	for pair: Vector2i in _cables_by_chunk.get(key, []):
+		var a := world.props[pair.x]
+		var b := world.props[pair.y]
+		if not world.depleted.has(a.id) and not world.depleted.has(b.id):
+			spans.append([a, b])
+	return [props, spans]
+
+
+## A chunk's props baked into two surfaces' arrays: [MADE arrays or [], FOUND
+## arrays or []]. Pure given its inputs, so safe on a worker thread with that
+## worker's own mesher (`m` answers heights outside the chunk).
+func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: Array) -> Array:
 	var mv := PackedVector3Array()
 	var mn := PackedVector3Array()
 	var mc := PackedColorArray()
@@ -311,13 +356,11 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 	var fv := PackedVector3Array()
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
-	for p: WorldProp in _props_by_chunk[key]:
-		if world.depleted.has(p.id):
-			continue
+	for p: WorldProp in props:
 		var variant := PropModels.pick_variant(p.kind, Rng.hash_ints(world.seed_value, p.id, 90))
 		var country := prop_country(p, ch)
 		var tpl := PropModels.template(p.kind, variant, country)
-		var h := ch.surface(p.pos.x, p.pos.y) if ch != null else mesher.surface_height(p.pos.x, p.pos.y)
+		var h := _height(ch, m, p.pos)
 		var facing := p.rot
 		if PropModels.Trees.wind_bent(p.kind, country):
 			# Bent by the one wind off the sea, not each its own way.
@@ -336,37 +379,62 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 			fv.append_array(xf * tpl.found_v)
 			fn.append_array(nx * tpl.found_n)
 			fc.append_array(tpl.found_c)
+	if not spans.is_empty():
+		var ck := MeshKit.new()
+		var ice := MeshKit.new()
+		for span: Array in spans:
+			_string_cables(ck, span[0], span[1], ch, m, ice)
+		fv.append_array(ck.verts)
+		fn.append_array(ck.normals)
+		fc.append_array(ck.colors)
+		# Ice hung on the lines is the weather's, drawn by hand (MADE).
+		mv.append_array(ice.verts)
+		mn.append_array(ice.normals)
+		mc.append_array(ice.colors)
+		muv.append_array(ice.uvs)
+		muv2.append_array(ice.uv2s)
+	var made := []
 	if not mv.is_empty():
-		var arrays := []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = mv
-		arrays[Mesh.ARRAY_NORMAL] = mn
-		arrays[Mesh.ARRAY_COLOR] = mc
-		arrays[Mesh.ARRAY_TEX_UV] = muv
-		arrays[Mesh.ARRAY_TEX_UV2] = muv2
+		made.resize(Mesh.ARRAY_MAX)
+		made[Mesh.ARRAY_VERTEX] = mv
+		made[Mesh.ARRAY_NORMAL] = mn
+		made[Mesh.ARRAY_COLOR] = mc
+		made[Mesh.ARRAY_TEX_UV] = muv
+		made[Mesh.ARRAY_TEX_UV2] = muv2
+	var found := []
+	if not fv.is_empty():
+		found.resize(Mesh.ARRAY_MAX)
+		found[Mesh.ARRAY_VERTEX] = fv
+		found[Mesh.ARRAY_NORMAL] = fn
+		found[Mesh.ARRAY_COLOR] = fc
+	return [made, found]
+
+
+## Height of the drawn land under p: the chunk's own surface inside it, the
+## mesher's field outside.
+static func _height(ch: TerrainMesher.Chunk, m: TerrainMesher, p: Vector2) -> float:
+	if ch != null and p.x >= ch.x0 and p.y >= ch.y0 and p.x < ch.x0 + ch.w and p.y < ch.y0 + ch.h:
+		return ch.surface(p.x, p.y)
+	return m.surface_height(p.x, p.y)
+
+
+## Turn baked prop arrays into the chunk's two prop meshes (main thread).
+func _attach_props(node: Node3D, baked: Array) -> void:
+	if baked.size() < 2:
+		return
+	var made: Array = baked[0]
+	if not made.is_empty():
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made)
 		var mi := MeshInstance3D.new()
 		mi.name = "props"
 		mi.mesh = mesh
 		mi.material_override = _world_mat
 		node.add_child(mi)
-	if _cables_by_chunk.has(key):
-		var ck := MeshKit.new()
-		for pair: Vector2i in _cables_by_chunk[key]:
-			_string_cables(ck, world.props[pair.x], world.props[pair.y])
-		if ck.vertex_count() > 0:
-			fv.append_array(ck.verts)
-			fn.append_array(ck.normals)
-			fc.append_array(ck.colors)
-	if not fv.is_empty():
-		var arrays := []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = fv
-		arrays[Mesh.ARRAY_NORMAL] = fn
-		arrays[Mesh.ARRAY_COLOR] = fc
+	var found: Array = baked[1]
+	if not found.is_empty():
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, found)
 		var mi := MeshInstance3D.new()
 		mi.name = "props_found"
 		mi.mesh = mesh
@@ -381,20 +449,23 @@ static func cable_points(kind: int) -> PackedVector3Array:
 			return PackedVector3Array([Vector3(0, 3.1, 1.1), Vector3(0, 3.1, -1.1), Vector3(0, 2.4, 0.8), Vector3(0, 2.4, -0.8)])
 		PropKind.POLE:
 			return PackedVector3Array([Vector3(0, 2.7, 0.42), Vector3(0, 2.7, -0.42)])
+		PropKind.RELAY:
+			# Under the insulators on the crossarm (props/works.gd relay).
+			return PackedVector3Array([Vector3(0, 3.12, 0.55), Vector3(0, 3.12, -0.55)])
 	return PackedVector3Array()
 
 
 ## Sagging cables from mast a to mast b, each insulator to its nearer partner,
-## so a span never crosses itself however the masts are turned.
-func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp) -> void:
-	if world.depleted.has(a.id) or world.depleted.has(b.id):
-		return
+## so a span never crosses itself however the masts are turned. Where the
+## landscape under the span's middle is cold (BiomeRegistry hazards), ice hangs
+## from the cables into `ice` (MADE): beads along the sag and icicles under it.
+func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Chunk, m: TerrainMesher, ice: MeshKit = null) -> void:
 	var pa := cable_points(a.kind)
 	var pb := cable_points(b.kind)
 	if pa.is_empty() or pb.is_empty():
 		return
-	var wa := _mast_points(a, pa)
-	var wb := _mast_points(b, pb)
+	var wa := _mast_points(a, pa, ch, m)
+	var wb := _mast_points(b, pb, ch, m)
 	var span := Vector2(b.pos - a.pos).length()
 	for i in mini(wa.size(), wb.size()):
 		# Pair by rank across the span's own sideways axis.
@@ -403,16 +474,35 @@ func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp) -> void:
 		var to := _ranked(wb, side, i)
 		var prev := from
 		var n := 10
+		var icy := ice != null and float(BiomeRegistry.at(world, (a.pos + b.pos) * 0.5).hazards.get(&"cold", 0.0)) >= ICE_COLD
+		var h0 := Rng.hash_ints(world.seed_value, a.id, b.id, i)
 		for s in range(1, n + 1):
 			var t := float(s) / n
 			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
 			k.strut(prev, p, 0.014, 3, Palette.INK[1])
+			if icy:
+				_ice_on(ice, prev, p, h0 + s)
 			prev = p
 
 
-func _mast_points(p: WorldProp, local: PackedVector3Array) -> PackedVector3Array:
-	var ch := chunk_at(p.pos)
-	var h := ch.surface(p.pos.x, p.pos.y) if ch != null else mesher.surface_height(p.pos.x, p.pos.y)
+## Cold at or above which lines carry ice.
+const ICE_COLD := 0.5
+
+
+## Ice along one piece of cable: a sleeve of rime on it and icicles of uneven
+## length hanging under it, never in a row; blue-grey, so they read against snow.
+static func _ice_on(ice: MeshKit, a: Vector3, b: Vector3, h: int) -> void:
+	ice.strut(a + Vector3(0, -0.015, 0), b + Vector3(0, -0.015, 0), 0.04, 3, Palette.RIME[3])
+	var count := 2 + absi(h) % 3
+	for j in count:
+		var t := (float(j) + 0.2 + Rng.hash01(h, j, 3) * 0.6) / count
+		var top := a.lerp(b, t) + Vector3(0, -0.03, 0)
+		var length := 0.14 + Rng.hash01(h, j, 5) * 0.34
+		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.045, 4, Palette.RIME[3] if j % 2 == 0 else Palette.RIME[2])
+
+
+func _mast_points(p: WorldProp, local: PackedVector3Array, ch: TerrainMesher.Chunk, m: TerrainMesher) -> PackedVector3Array:
+	var h := _height(ch, m, p.pos)
 	var xf := Transform3D(Basis(Vector3.UP, -p.rot).scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
 	return xf * local
 
