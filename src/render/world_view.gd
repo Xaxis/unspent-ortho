@@ -271,7 +271,7 @@ func stage_usec() -> PackedInt64Array:
 
 
 ## Rebuild the props of the chunk holding `prop` (after it was taken, grew back,
-## or was put in the world at runtime).
+## or was put in the world at runtime, like a built fire).
 func refresh_props(prop: WorldProp) -> void:
 	var key := _key_of(prop.pos)
 	if not _props_by_chunk.has(key):

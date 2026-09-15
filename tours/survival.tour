@@ -1,0 +1,45 @@
+# Survival's way in, through the real keys, on the world a normal start makes:
+#   tools/tour.sh tours/survival.tour
+# Driftwood off the strand survival lays by the spawn, dead wood under a dead tree,
+# a loose stone, then a fire laid with two presses of use, seen at night.
+shot 01-spawn
+# Driftwood on the strand a few steps east of the spawn: turn to it, press use once.
+at 136.0,213.5
+walk 1,1 0.08
+press use 0.1
+wait 0.45
+shot 02-gathering-driftwood
+wait 1.3
+shot 03-driftwood-taken
+# Dead wood under the dead tree to the north-east: hold use and it gives twice.
+at 139.1,210.35
+walk 1,1 0.08
+press use 3.2
+wait 0.3
+shot 04-dead-wood-picked-over
+# A loose stone off each of two boulders.
+at 146.1,207.55
+walk 1,1 0.08
+press use 0.1
+wait 1.6
+at 140.4,197.6
+walk 1,1 0.08
+press use 0.1
+wait 1.6
+shot 05-stone
+# Open ground: the first press asks and rings the spot, the second lays the fire.
+at 143.5,205.5
+walk 1,-1 0.08
+press use 0.1
+wait 0.3
+shot 06-asked
+press use 0.1
+wait 1.5
+shot 07-fire-laid
+hour 21.5
+wait 1.0
+shot 08-fire-at-night
+# Lie down by it: the night passes and the fire has burnt through to morning.
+press use 0.1
+wait 1.0
+shot 09-morning

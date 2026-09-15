@@ -29,6 +29,14 @@ extends RefCounted
 ## --face=DEG          the player's facing in degrees, 0 east, 90 south (characters)
 ## --folk=N            N villagers in a ring round the player, for crowd shots (characters)
 ## --fauna=KIND:N,...  N animals of KIND in a ring round the player, e.g. gull:3 (characters)
+## --give=ID:N,ID:N    put items in the creel at start (survival)
+## --held=ID           hold this item at start, given if not carried (survival)
+## --use[=KIND]        at start, face the nearest workable prop (of KIND, e.g. iron_ore) and use (survival)
+## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
+## --put=KIND[,KIND]   at start, place these props (e.g. tip,driftwood) in an arc in front of the player (survival)
+## --taken             the --put props start already taken, laid in a row across the screen (their leavings show)
+## --hold=SECONDS      survival and its drawing run on fixed 1/60 s frames and stop SECONDS
+##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -56,6 +64,14 @@ var pose := ""
 var face := ""
 var folk := 0
 var fauna := ""
+var give: Dictionary = {} # StringName -> int
+var held := ""
+var use := false
+var use_kind := ""
+var build := ""
+var hold := -1.0
+var put: PackedStringArray = []
+var taken := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -94,5 +110,17 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"face": o.face = v
 			"folk": o.folk = v.to_int()
 			"fauna": o.fauna = v
+			"give":
+				for part in v.split(",", false):
+					var iv := part.split(":")
+					o.give[StringName(iv[0])] = iv[1].to_int() if iv.size() > 1 else 1
+			"held": o.held = v
+			"use":
+				o.use = true
+				o.use_kind = v.replace("_", " ")
+			"build": o.build = v
+			"hold": o.hold = v.to_float()
+			"put": o.put = v.split(",", false)
+			"taken": o.taken = true
 			_: push_warning("unknown option --%s" % k)
 	return o
