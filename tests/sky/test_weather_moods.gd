@@ -159,6 +159,34 @@ func test_in_real_dust_a_devil_is_always_in_sight() -> void:
 	check(not DustDevils.on_screen(focus + Vector2(-12, -12), focus), "far up the screen is not")
 
 
+func test_a_dry_storm_reads_before_its_first_strike() -> void:
+	var dry := WeatherLook.compose([{"kind": &"dry_storm", "strength": 1.0, "weight": 1.0}])
+	gt(float(dry.dust), DustDevils.DUSTY / 1.2, "blown dust enough to see, and to raise a devil in sight")
+	# Sheet lightning: faint stepped flickers in the cloud, no bolt.
+	var lit := 0
+	var levels := {}
+	var windows := {}
+	for i in 6000:
+		var t := i * 0.01
+		var sh := SkySystem.sheet(9, t, 1.0)
+		var level := float(sh.level)
+		check(level >= 0.0 and level <= 1.0, "level in range")
+		if level > 0.0:
+			lit += 1
+			levels[snappedf(level, 0.01)] = true
+			windows[floori(t / SkySystem.SHEET_SECONDS)] = true
+			var at: Vector2 = sh.at
+			check(at.length() >= 3.9 and at.length() <= 12.1, "the lit cloud is in view, off the player")
+	gt(float(windows.size()), 8.0, "most windows of a minute flicker in a full storm")
+	lt(float(lit), 6000.0 * 0.2, "a flicker, never a glow that stays")
+	gt(float(levels.size()), 1.0, "stepped, not one flash")
+	var calm := 0
+	for i in 6000:
+		if float(SkySystem.sheet(9, i * 0.01, 0.0).level) > 0.0:
+			calm += 1
+	eq(calm, 0, "no sheet lightning with no storm")
+
+
 func test_new_weathers_draw_their_own_airs() -> void:
 	var drizzle := WeatherLook.compose([{"kind": &"drizzle", "strength": 1.0, "weight": 1.0}])
 	gt(float(drizzle.drizzle), 0.5, "drizzle falls as drizzle")

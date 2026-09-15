@@ -105,8 +105,10 @@ func setup(cam: CameraRig) -> void:
 	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "columns": 0.45, "ground_mask": 2})
 	ember = _emitter("ember", 70, 5.0, Vector3(15.0, 1.5, 13.0), Vector3(0, 0.8, 0), true)
 	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0, "ground_mask": 2})
-	drift = _emitter("drift", 700, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
-	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.3, "length_px": Vector2(4, 8)})
+	# Blown grit: dusky streaks with pale ones among them, so dust reads over pale
+	# stone and over turf alike.
+	drift = _emitter("drift", 1600, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
+	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[2], "color_b": Palette.SAND[5], "mix_b": 0.4, "length_px": Vector2(4, 9)})
 	# Heat: wavering lines, drawn darker than pale stone and paler than ash so
 	# some always read.
 	haze = _emitter("haze", 320, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
@@ -295,8 +297,8 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var ashy := ash_drift / maxf(0.001, sand + ash_drift)
 	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
 		"facing": blow,
-		"color_a": Palette.SAND[4].lerp(Palette.ASH[1], ashy),
-		"color_b": Palette.LINEN[5].lerp(Palette.INK[2], ashy),
+		"color_a": Palette.SAND[2].lerp(Palette.ASH[1], ashy),
+		"color_b": Palette.SAND[5].lerp(Palette.INK[2], ashy),
 	})
 	# The odd flick once the wind gets up; the flick is drawn with its head
 	# leading, so it flips with the wind.

@@ -30,7 +30,8 @@ shot 05-snowfield-snow-squall
 weather whiteout:1
 wait 1.0
 shot 06-snowfield-whiteout
-# The bonelands: hard glare at noon, then a dry storm at dusk that strikes.
+# The bonelands: hard glare at noon, then a dry storm at dusk: blown dust,
+# a devil and sheet flickers before the first strike, then its afterglow.
 place bonelands
 hour 12.5
 weather glare:1
@@ -43,6 +44,9 @@ shot 08-bonelands-dry-storm
 await strike 60
 wait 0.12
 shot 09-bonelands-afterglow
+# A few frames on: the light has rolled on through the cloud and let go.
+wait 0.25
+shot 09b-bonelands-afterglow-rolls
 # The burning at dusk: ash fall, then the furnace haze.
 place burning
 hour 19.4

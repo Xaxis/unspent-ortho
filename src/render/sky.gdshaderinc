@@ -96,6 +96,7 @@ const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of falle
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
 const vec3 SKY_HAZE = vec3(0.60, 0.40, 0.28);         // furnace haze: ash lit rust from below
 const vec3 SKY_WHITEOUT = vec3(0.86, 0.90, 0.95);     // the page gone cold white
+const vec3 SKY_AFTERGLOW = vec3(0.78, 0.87, 1.0);    // lightning's light held in cloud
 // A whiteout keeps the land readable this far round the focus (tiles), and has
 // taken all of it by SKY_WHITEOUT_FAR.
 const float SKY_WHITEOUT_NEAR = 2.5;
@@ -180,8 +181,11 @@ float sky_cloud(vec3 world_pos) {
 }
 
 // The afterglow of a strike: the clouds it lit, catching and letting go as the
-// light rolls out from where it struck. 0/1 per pixel, laid in the shapes of
-// the clouds themselves with a stippled front, brightest at the front.
+// light rolls out from where it struck. 0/1 per pixel. Drawn as light IN the
+// cloud, not a bank on the ground: the lit edges of the cloud's own shapes as
+// stippled rims, and only a sparse stipple inside them, so the land always
+// shows through.
+const float SKY_GLOW_RIM = 0.02;
 float sky_afterglow(vec3 world_pos, float d) {
 	if (sky_bolt.z < 0.001) {
 		return 0.0;
@@ -193,13 +197,22 @@ float sky_afterglow(vec3 world_pos, float d) {
 	}
 	// The rolling front lights more of the cloud than what it has passed.
 	float front = smoothstep(reach - 18.0, reach - 2.0, dist);
-	// Lit cloud reads as the page showing through in the cloud's own shapes:
-	// a brighter flicker lights more of the field, and the edge is a narrow
-	// band of stipple, never a grain over everything.
-	float t = mix(0.7, 0.47, clamp(sky_bolt.z, 0.0, 1.0)) - 0.07 * front + 0.08 * smoothstep(reach - 2.0, reach + 4.0, dist);
+	// A brighter flicker lights more of the field.
+	float t = mix(0.7, 0.5, clamp(sky_bolt.z, 0.0, 1.0)) - 0.06 * front + 0.08 * smoothstep(reach - 2.0, reach + 4.0, dist);
 	float n = sky_cloud_noise(world_pos);
-	return step(d, smoothstep(t - 0.012, t + 0.012, n));
+	if (n < t) {
+		return 0.0;
+	}
+	// Only the edges that face the strike catch its light: a step toward the
+	// strike leaves the cloud there. The light thins as it goes into the cloud,
+	// in stipple, so an edge is a lit fringe and never a ruled ring.
+	vec2 toward = normalize(sky_bolt.xy - world_pos.xz + vec2(0.001));
+	float facing = step(sky_cloud_noise(world_pos + vec3(toward.x, 0.0, toward.y) * 0.7), t + SKY_GLOW_RIM * 0.5);
+	float depth = smoothstep(t, t + SKY_GLOW_RIM * 3.0, n);
+	float dots = facing * 0.5 * (1.0 - depth) + 0.035;
+	return step(d, dots * clamp(sky_bolt.z * 1.6, 0.0, 1.0));
 }
+
 // How much of a place a whiteout has taken, 0..1: nothing round the focus,
 // closing in over the distance. Smooth; callers cut it into steps.
 float sky_whiteout_at(vec3 world_pos) {
@@ -573,8 +586,10 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		c = mix(c, vec3(gl) * vec3(1.04, 1.03, 0.99) + (1.0 - vec3(gl)) * 0.17, sky_air.y * 0.5);
 	}
 	if (sky_bolt.z > 0.001) {
-		// The strike's afterglow rolling through the clouds.
-		c = mix(c, SKY_PAGE * vec3(0.9, 0.94, 1.0), sky_afterglow(world_pos, d) * 0.32);
+		// The strike's afterglow rolling through the clouds: a cold blue-white,
+		// laid thinner over bright ground so it never reads as a bank of snow.
+		float lum = dot(c, vec3(0.299, 0.587, 0.114));
+		c = mix(c, SKY_AFTERGLOW, sky_afterglow(world_pos, d) * (0.45 - 0.25 * lum));
 	}
 	if (sky_sun.w > 0.001) {
 		// Lightning: for a moment the whole page shows.

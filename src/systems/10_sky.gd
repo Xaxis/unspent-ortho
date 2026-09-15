@@ -54,6 +54,8 @@ var strikes := 0
 var _strike_at := Vector2.ZERO
 var _glow_gain := 0.0
 var _drip_scan := 0.0
+## Real seconds the sky has run, for sheet lightning's beat.
+var _sheet_clock := 0.0
 ## Home dust devils kept in sight in real dust (DustDevils.keep_one).
 var _home_devils: Array = []
 ## The landscape type whose weather falls at the focus (fall_type), last frame.
@@ -67,6 +69,16 @@ const AFTERGLOW: Array[Vector2] = [
 ]
 ## Tiles the lit patch of cloud has rolled out from the strike after 1 s.
 const AFTERGLOW_ROLL := 16.0
+## Sheet lightning between strikes: every SHEET_SECONDS a window in which a
+## patch of cloud may flicker, no bolt, no stutter, no thunder, so a storm
+## that throws lightning reads as one before the first strike. The flicker's
+## steps in real seconds: [until, level]. Faint beside a strike's afterglow.
+const SHEET_SECONDS := 3.2
+const SHEET: Array[Vector2] = [
+	Vector2(0.07, 0.5), Vector2(0.13, 0.0), Vector2(0.22, 0.35), Vector2(0.3, 0.1), Vector2(0.38, 0.25),
+]
+## How bright a sheet flicker lights the cloud, as a share of a strike's glow.
+const SHEET_GAIN := 0.45
 ## The machines' power after a strike, in real seconds: [until, level]. Their
 ## strips and beacons drop out, catch, drop again and come back.
 const STUTTER: Array[Vector2] = [
@@ -247,6 +259,13 @@ func _update(delta: float, snap: bool) -> void:
 	var t := 0.4 if _forced_bolt else since_strike
 	sky.bolt = Vector4(_strike_at.x, _strike_at.y, afterglow(t) * _glow_gain, lerpf(1.0, machine_power(t), _glow_gain))
 	sky.glow_reach = AFTERGLOW_ROLL * (0.35 + minf(t, 2.0))
+	_sheet_clock += delta
+	if sky.bolt.z <= 0.0 and Weather.strikes(wh.kind) and not _forced_bolt:
+		var sheet_now := sheet(seed_value, _sheet_clock, float(wh.strength))
+		if float(sheet_now.level) > 0.0:
+			var at: Vector2 = focus + (sheet_now.at as Vector2)
+			sky.bolt = Vector4(at.x, at.y, float(sheet_now.level) * SHEET_GAIN, 1.0)
+			sky.glow_reach = AFTERGLOW_ROLL * 0.6
 	# Sway advances faster in a strong wind, so reeds never snap to a new speed.
 	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)), TAU * 1000.0)
 	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
@@ -295,6 +314,23 @@ const WISPS := {&"moss": 1.0}
 ## Wisps: cold lights over the moss after dark, never in rain or a wind.
 static func wisp_amount(moss_share: float, night: float, rain: float, wind_now: float) -> float:
 	return clampf(moss_share * night * (1.0 - clampf(rain, 0.0, 1.0)) * (1.0 - absf(wind_now) * 1.5), 0.0, 1.0)
+
+
+## Sheet lightning at `seconds` of real time in a storm of `strength`:
+## {level: 0..1 stepped, at: Vector2 tiles from the focus the lit cloud centres
+## on}. Most windows flicker in a full storm, few in a weak one.
+static func sheet(seed_value: int, seconds: float, strength: float) -> Dictionary:
+	var e := floori(seconds / SHEET_SECONDS)
+	var into := seconds - e * SHEET_SECONDS - Rng.hash01(seed_value, e, 0x5EE1) * (SHEET_SECONDS - 0.5)
+	var out := {"level": 0.0, "at": Vector2.ZERO}
+	if into < 0.0 or Rng.hash01(seed_value, e, 0x5EE2) >= 0.25 + 0.6 * clampf(strength, 0.0, 1.0):
+		return out
+	for step: Vector2 in SHEET:
+		if into < step.x:
+			out.level = step.y * clampf(strength, 0.0, 1.0)
+			break
+	out.at = Vector2.from_angle(Rng.hash01(seed_value, e, 0x5EE3) * TAU) * lerpf(4.0, 12.0, Rng.hash01(seed_value, e, 0x5EE4))
+	return out
 
 
 ## The afterglow level `t` real seconds after a strike (AFTERGLOW), 0 after it.
