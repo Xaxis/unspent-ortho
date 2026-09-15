@@ -12,6 +12,16 @@ target="${1:-web}"; shift || true
 mode=release
 for a in "$@"; do [ "$a" = "--debug" ] && mode=debug; done
 
+# Fail up front, in one line, on anything this script runs that is missing: a
+# missing brotli used to fail silently in a background job and leave wrong sizes.
+need() {
+  local missing=() t
+  for t in "$@"; do command -v "$t" >/dev/null 2>&1 || missing+=("$t"); done
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "export FAILED: not on PATH: ${missing[*]}"; exit 1
+  fi
+}
+
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
 bytes() { stat -f %z "$1" 2>/dev/null || stat -c %s "$1"; }
 
@@ -34,13 +44,18 @@ export_one() {
 
 # Precompressed siblings: the wasm is ~40 MB raw and ~9 MB as brotli.
 compress_web() {
-  local dir="$1"
+  local dir="$1" pids=() f p
   for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.js "$dir"/*.html; do
     [ -f "$f" ] || continue
-    brotli -f -q 9 -o "$f.br" "$f" &
-    gzip -9 -k -f "$f" &
+    brotli -f -q 9 -o "$f.br" "$f" & pids+=($!)
+    gzip -9 -k -f "$f" & pids+=($!)
   done
-  wait
+  for p in "${pids[@]}"; do
+    wait "$p" || { echo "export FAILED: compressing $dir"; return 1; }
+  done
+  for f in "$dir/index.wasm" "$dir/index.pck"; do
+    [ -f "$f.br" ] && [ -f "$f.gz" ] || { echo "export FAILED: no .br/.gz beside $f"; return 1; }
+  done
 }
 
 report_web() {
@@ -59,7 +74,7 @@ report_web() {
 build_web() {
   local preset="$1" dir="$2"
   export_one "$preset" "$dir/index.html" || return 1
-  compress_web "$dir"
+  compress_web "$dir" || return 1
   report_web "$dir"
 }
 
@@ -69,6 +84,10 @@ build_mac() {
   printf "  app %s (pck %s)\n" "$(du -sh "$app" | cut -f1)" "$(human "$(bytes "$app/Contents/Resources/UNSPENT.pck")")"
 }
 
+case "$target" in
+  web|web-nothreads|all) need godot python3 bc brotli gzip ;;
+  *) need godot python3 bc ;;
+esac
 mkdir -p build && touch build/.gdignore
 tools/_import.sh
 case "$target" in
