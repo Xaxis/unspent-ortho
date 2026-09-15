@@ -12,8 +12,13 @@ extends Node
 ##            hears at the speakers in the game is the game.
 ##   save     user:// survives a reload (IndexedDB on the web): the first boot writes
 ##            SaveGame.collect() of the running game, the next reports it kept
+##   slot     a real save file (SaveFile: compressed, framed, md5-checked) of the
+##            running game in the tools' own slot folder, read back whole on the
+##            next boot: what Continue reads in a browser
 
 const FILE := "user://web_probe.json"
+## Under SaveSlots.TOOL_ROOT, never a player's slot.
+const SLOT_DIR := "web-probe"
 const AUDIO_WAIT := 30.0
 ## At most this many seconds of test tones after the first gesture.
 const TONE_SECONDS := 8.0
@@ -42,6 +47,7 @@ func _ready() -> void:
 	_check_systems()
 	_check_focus()
 	_check_save()
+	_check_slot()
 	if not OS.has_feature("web"):
 		# Only a browser holds audio back until the first key.
 		_pressed_at = 0.0
@@ -96,6 +102,37 @@ func _check_save() -> void:
 	var started := int(Time.get_unix_time_from_system() - Time.get_ticks_msec() / 1000.0)
 	if before is Dictionary and float((before as Dictionary).get("written_unix", 0.0)) < started:
 		print("web ok save kept from the boot before (%s)" % Time.get_datetime_string_from_unix_time(int((before as Dictionary).get("written_unix", 0))))
+
+
+func _check_slot() -> void:
+	var file := _global_script("SaveFile")
+	var slots := _global_script("SaveSlots")
+	var registry := _global_script("SaveGame")
+	if file == null or slots == null or registry == null:
+		print("web skip slot (no save system)")
+		return
+	var path := String((slots as GDScript).get_script_constant_map().get("TOOL_ROOT", "user://tool-saves")).path_join(SLOT_DIR).path_join("slot_1.save")
+	var started := Time.get_unix_time_from_system() - Time.get_ticks_msec() / 1000.0
+	if FileAccess.file_exists(path):
+		var r: Dictionary = file.call("read", path)
+		var at := float((r.get("header", {}) as Dictionary).get("saved_at", 0.0))
+		if bool(r.get("ok", false)) and at < started:
+			print("web ok slot kept from the boot before: %d keys read back whole (%s)" % [(r.get("data", {}) as Dictionary).size(), Time.get_datetime_string_from_unix_time(int(at))])
+		elif not bool(r.get("ok", false)):
+			print("web FAIL slot: the save file from before cannot be read (%s)" % str(r.get("why", "")))
+	if not (scene is Game):
+		print("web skip slot write (the title has no game to save)")
+		return
+	var header := {"saved_at": Time.get_unix_time_from_system(), "clock": "", "place": "web probe", "seed": (scene as Game).options.seed_value}
+	var err: int = file.call("write", path, header, registry.call("collect"))
+	if err != OK:
+		print("web FAIL slot: %s not written (%s)" % [path, error_string(err)])
+		return
+	var back: Dictionary = file.call("read", path)
+	if bool(back.get("ok", false)):
+		print("web ok slot written to %s and read back" % ProjectSettings.globalize_path(path))
+	else:
+		print("web FAIL slot: %s did not read back (%s)" % [path, str(back.get("why", ""))])
 
 
 func _global_script(cls: String) -> Script:
