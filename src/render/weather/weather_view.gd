@@ -61,7 +61,7 @@ func setup(cam: CameraRig) -> void:
 	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(2, 2), "wander": 3.0, "underline": 1.0})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
-	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[4], "mix_b": 0.45, "length_px": Vector2(1, 2), "wander": 3.0})
+	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0})
 	ember = _emitter("ember", 70, 5.0, Vector3(15.0, 1.5, 13.0), Vector3(0, 0.8, 0), true)
 	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0})
 	drift = _emitter("drift", 700, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)

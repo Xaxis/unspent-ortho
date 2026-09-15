@@ -117,6 +117,12 @@ static func lamps_wanted(hour: float) -> float:
 	return 0.0
 
 
+## 0..1 how much a pool of lamplight shows: nothing until dusk is well on,
+## full from an hour after it.
+static func pool_dark(hour: float) -> float:
+	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+
+
 ## Is this source burning at this hour? Lamps and windows light one by one;
 ## most houses go dark some time after midnight, a few keep a light all night.
 static func source_lit(src: Dictionary, hour: float) -> bool:
@@ -216,6 +222,9 @@ func _update(delta: float, snap: bool) -> void:
 	var tint: Vector3 = game.sky.last_tint
 	var sun: float = game.sky.last_energy
 	var want := lamps_wanted(hour)
+	# Lamps are lit before dark, but a pool of light only tells once the dark
+	# has come: at dusk a lamp is a flame, not a spotlight.
+	var dark := pool_dark(hour)
 	var pools: Array[Vector4] = []
 	for i in lights.size():
 		var l := lights[i]
@@ -228,13 +237,13 @@ func _update(delta: float, snap: bool) -> void:
 		var level: float = s.power
 		if kind == PropKind.FIRE or kind == PropKind.VENT or kind == PropKind.KILN:
 			# Fires burn by day too, but their light only tells after dusk.
-			level *= 0.12 + 0.88 * want
+			level *= 0.12 + 0.88 * dark
 		else:
-			level *= want
+			level *= want * dark
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and want > 0.2:
+		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and dark > 0.25:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, s.range))
 	var lit := game.body.lamp_lit
 	lantern.visible = lit
@@ -244,8 +253,8 @@ func _update(delta: float, snap: bool) -> void:
 		lantern.position = p.position + hand
 		lantern.rotation.y = -p.facing
 		lantern.position.y += sin(_time * 5.0) * 0.03 * clampf(p.speed / 3.0, 0.0, 1.0)
-		# The lantern's floor: even by day it lifts the ground a little. (source 0.45)
-		var night := maxf(want, 0.45)
+		# The lantern's floor: in any gloom it lifts the ground a little. (source 0.45)
+		var night := maxf(dark, 0.45)
 		var at := p.position + Vector3(0, LANTERN_HEIGHT, 0)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
 		if _set_light(lantern_light, at, LANTERN_RANGE, rgb):

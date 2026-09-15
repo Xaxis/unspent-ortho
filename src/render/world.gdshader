@@ -72,7 +72,7 @@ void light() {
 		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
 		int style = ink_style(style_packed, style_blend, px);
 		// The sky lays ink on lit faces (cloud shadow, night) and lifts it (lamplight, fog).
-		vec3 sk = sky_ink(world_pos, lit);
+		vec3 sk = sky_ink(world_pos, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		float ink = max(1.0 - lit, sk.x) * hatch(style, px, depth + sk.z) * (1.0 - sk.y);
 		vec3 k = mix(shade_tint, vec3(band), lit);
 		k = mix(k, ink_tint, ink * 0.75);

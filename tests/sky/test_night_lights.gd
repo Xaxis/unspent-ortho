@@ -78,3 +78,16 @@ func test_boot_option_forces_weather() -> void:
 	var o := BootOptions.parse(PackedStringArray(["--weather=fog:0.6", "--lamp"]))
 	eq(o.weather, "fog:0.6", "weather option")
 	check(o.lamp, "lamp option")
+
+
+func test_a_pool_of_lamplight_only_shows_once_it_is_dark() -> void:
+	near(Lights.pool_dark(12.0), 0.0, 1e-6, "noon")
+	near(Lights.pool_dark(19.5), 0.0, 1e-6, "lamps lit at dusk, no pool yet")
+	gt(Lights.pool_dark(20.5), 0.5, "pool as the dark comes")
+	near(Lights.pool_dark(23.0), 1.0, 1e-6, "full at night")
+	near(Lights.pool_dark(6.5), 0.0, 1e-6, "gone after dawn")
+	var prev := Lights.pool_dark(0.0)
+	for i in 24 * 60:
+		var d := Lights.pool_dark(i / 60.0)
+		lt(absf(d - prev), 0.03, "no jump at %.2f" % (i / 60.0))
+		prev = d

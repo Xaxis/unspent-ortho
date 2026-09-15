@@ -3,7 +3,7 @@
 // It is the ONLY place lit colour is tinted by time, weather or region:
 //
 //   sky_apply(albedo, world_pos, TIME)   in fragment(): the wash under this sky
-//   sky_ink(world_pos, lit)              in world.gdshader light(): how the sky
+//   sky_ink(world_pos, up)               in world.gdshader light(): how the sky
 //                                        lays or lifts hatching (cloud shadow and
 //                                        night lay it; lamplight, fog and a
 //                                        lightning flash lift it)
@@ -163,14 +163,18 @@ float sky_pool(float a, vec3 world_pos) {
 // light(). Returns x: 1 where hatching is laid on a sunlit face (a cloud's
 // shadow, or night), y: 1 where hatching is lifted (lamplight, fog, a flash),
 // z: how much deeper shade reads (night). All 0/1 per pixel, dithered.
-vec3 sky_ink(vec3 world_pos, float lit) {
+// up: the surface normal's world y. Night hatches the ground, roofs and crowns;
+// walls, people and faces keep their moonlit wash, so shapes read in the dark
+// and hatching never crosses a face.
+vec3 sky_ink(vec3 world_pos, float up) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
 	float night = sky_view.y;
 	// Under a thin cloud the hatch breaks into short lengths; under a thick one
 	// it runs whole.
 	float shaded = step(d, sky_cloud(world_pos) * 0.999) * step(sky_hash(floor(px / 3.0) + vec2(5.0, 9.0)), sky_clouds.w * 1.2 - 0.1);
-	float lay = max(step(d, night * 0.999), shaded);
+	// Night comes on a line-length at a time, so dusk never reads as grain.
+	float lay = max(step(sky_hash(floor(px / 3.0) + vec2(17.0, 2.0)), night * 0.999) * step(0.55, up), shaded);
 	float deeper = max(night * 0.3, shaded * 0.2);
 	float lift = step(0.99, sky_pool(sky_lamp_level(world_pos), world_pos));
 	// Fog thins the hatching a line-length at a time, not pixel by pixel.
@@ -222,7 +226,7 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		float a = sky_settle.y;
 		// Specks, gathering thicker where it drifts, never a flat grey bed.
 		float drift = sky_noise(world_pos.xz * 0.6 + vec2(5.0, 23.0));
-		c = mix(c, SKY_ASH * sky_tint, step(h, a * (0.06 + 0.1 * drift)));
+		c = mix(c, SKY_ASH * sky_tint, step(h, a * (0.03 + 0.06 * drift)));
 	}
 	if (sky_settle.x > 0.001) {
 		float s = sky_settle.x;
