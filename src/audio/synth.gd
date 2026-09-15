@@ -948,18 +948,19 @@ static func to_pcm16(buf: PackedFloat32Array) -> PackedByteArray:
 	return bytes
 
 
-static func wav_from_pcm(pcm: PackedByteArray, rate: int, loop: bool) -> AudioStreamWAV:
+## 16-bit PCM (interleaved when stereo) as a stream; loops run over every frame.
+static func wav_from_pcm(pcm: PackedByteArray, rate: int, loop: bool, stereo: bool = false) -> AudioStreamWAV:
 	var s := AudioStreamWAV.new()
 	s.format = AudioStreamWAV.FORMAT_16_BITS
 	s.mix_rate = rate
-	s.stereo = false
+	s.stereo = stereo
 	s.data = pcm
 	if loop:
 		s.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		s.loop_begin = 0
-		s.loop_end = pcm.size() / 2
+		s.loop_end = pcm.size() / (4 if stereo else 2)
 	return s
 
 
-static func to_wav(buf: PackedFloat32Array, rate: int, loop: bool) -> AudioStreamWAV:
-	return wav_from_pcm(to_pcm16(buf), rate, loop)
+static func to_wav(buf: PackedFloat32Array, rate: int, loop: bool, stereo: bool = false) -> AudioStreamWAV:
+	return wav_from_pcm(to_pcm16(buf), rate, loop, stereo)

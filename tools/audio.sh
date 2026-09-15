@@ -8,6 +8,12 @@
 #   tools/audio.sh --mix --seed=1 --at=100,120 --cross --name=border   # walk over a border
 #   tools/audio.sh --mix --machine=harvester:24:2 --name=harvester     # a machine coming on
 #                                  # what the player hears -> shots/audio/mix_<name>.wav/png
+#   tools/audio.sh score_coast_,score_moss_pad   # score stems (comma-separated substrings)
+#   tools/audio.sh --score                       # three minutes of every landscape's score
+#   tools/audio.sh --score --land=moss --secs=60 # one landscape, shorter
+#   tools/audio.sh --score --cross=coast,moss    # walking from one score into the next
+#                                  # through the conductor -> shots/score/<name>.wav/png, with
+#                                  # the layers, cues, form and danger drawn over the spectrogram
 # Fails (non-zero) on any script error.
 set -uo pipefail
 cd "$(dirname "$0")/.."

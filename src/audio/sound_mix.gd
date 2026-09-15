@@ -89,6 +89,7 @@ const GUSTING := {&"storm": 0.6, &"blizzard": 0.8, &"dust": 0.4, &"sand": 0.4}
 ## One-shots a weather kind scatters while it lasts: [name, min gap, max gap] s.
 const WEATHER_SCATTER := {
 	&"heat": [&"heat_tick", 4.0, 16.0],
+	&"storm": [&"thunder_roll", 25.0, 70.0],
 }
 
 ## What is left of the far works by day, remote and still: a trace, not a bed.
@@ -129,7 +130,9 @@ static func bus_db(bus: StringName) -> float:
 ## How loud a baked sound is heard, measured from its samples, its bus and its
 ## call gain, in dB relative to the weather bed at full strength.
 static func heard_db(b: SoundBank.Baked, extra_db: float = 0.0) -> float:
-	var r := Synth.loudest_rms(b.samples, b.rate, 0.5)
+	# Interleaved stereo is measured as if at twice the rate: a half-second window
+	# then holds both sides of every frame in it.
+	var r := Synth.loudest_rms(b.samples, b.rate * (2 if b.stereo else 1), 0.5)
 	return 20.0 * log(maxf(1e-9, r)) / log(10.0) + bus_db(b.bus) + b.gain_db + extra_db - REF_DBFS
 
 
@@ -160,6 +163,171 @@ static func country_weights(world: WorldData, p: Vector2) -> Dictionary:
 			_weigh_tile(world, q, w, out)
 	for bed: StringName in out:
 		out[bed] = float(out[bed]) / total
+	return out
+
+
+## The same rings as country_weights, by country id rather than bed: the score
+## maps each to its landscape. Sums to 1.
+static func country_share(world: WorldData, p: Vector2) -> Dictionary:
+	var out := {}
+	var total := 0.0
+	for ring in EAR_RADII.size():
+		var r := EAR_RADII[ring]
+		var count := 1 if r == 0.0 else EAR_RING
+		var w := EAR_WEIGHTS[ring] / count
+		for k in count:
+			var a := TAU * (k + 0.5) / count + ring * 0.13
+			var q := p + Vector2(cos(a), sin(a)) * r
+			var x := clampi(floori(q.x), 0, world.size - 1)
+			var y := clampi(floori(q.y), 0, world.size - 1)
+			var i := y * world.size + x
+			var c: int = world.country[i]
+			var c2: int = world.country2[i] if world.country2.size() > i else c
+			var bl: float = clampf(world.blend[i], 0.0, 1.0) if world.blend.size() > i else 0.0
+			out[c] = float(out.get(c, 0.0)) + w * (1.0 - bl)
+			if bl > 0.0:
+				out[c2] = float(out.get(c2, 0.0)) + w * bl
+			total += w
+	for c: int in out:
+		out[c] = float(out[c]) / total
+	return out
+
+
+# ------------------------------------------------------------------ works
+
+## Prop kinds, by name, that are the machines' installations: what hums, what a
+## relay clicks in, what the score's grid pulse belongs to. By name, so a kind a
+## landscape adds later ("relay", "substation", "mast") is heard the day it
+## exists. Neon means something (VISION §8): an installation is heard where it
+## stands, never over a whole village, so a word is a whole word of the name
+## and each has a reach (INSTALLATION_REACH, else INSTALLATION_REACH_DEFAULT).
+const INSTALLATION_WORDS: Array[String] = ["pylon", "relay", "transformer", "substation", "mast", "antenna", "array", "server", "beacon", "terminal", "junction"]
+## Tiles at which an installation's grid and hum begin; both are full within
+## INSTALLATION_NEAR of that. A lone pylon is only heard standing under it; a
+## substation fills its yard.
+const INSTALLATION_REACH := {"pylon": 6.0, "mast": 8.0, "antenna": 8.0, "beacon": 9.0}
+const INSTALLATION_REACH_DEFAULT := 14.0
+const INSTALLATION_NEAR := 0.3
+## Wires strung between poles: a faint sing in the wind, nothing more (a
+## village's power line is not the machines' grid).
+const WIRE_WORDS: Array[String] = ["pole", "wire", "cable"]
+## Wreckage the wind finds a voice in: sheet, wire, girders, hulks.
+const WRECK_WORDS: Array[String] = ["wreck", "ruin", "tip", "hulk", "girder", "fence", "barricade", "sign", "car", "rubble", "scrap", "shell", "cage", "wire", "tank", "crane", "container", "hut"]
+## Roofs, walls and pipes that gather rain into gutters and drips.
+const SHELTER_WORDS: Array[String] = ["house", "ruin", "wreck", "hut", "shelter", "shed", "tank", "container", "tower", "works", "kiln", "shell"]
+## Canopy that rain falls on as leaves and needles.
+const LEAF_WORDS: Array[String] = ["pine", "broadleaf", "bush", "gorse", "reeds"]
+## How far works_near looks (tiles).
+const WORKS_RADIUS := 22.0
+## How far strung wire is heard singing (tiles), and how loud at most (0..1 of its sheet level).
+const WIRE_REACH := 8.0
+const WIRE_FAINT := 0.4
+
+const INSTALLATION := 1
+const WRECK := 2
+const SHELTER := 4
+const CANOPY := 8
+const WIRE := 16
+
+static var _prop_classes: Dictionary = {}
+static var _prop_reach: Dictionary = {}
+
+
+## The whole words of a prop kind's name, lower case: "dead tree" is dead and
+## tree; a "scarecrow" is never a car. A plural keeps its word ("wrecks").
+static func name_words(name: String) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var word := ""
+	for ch in name.to_lower() + " ":
+		if (ch >= "a" and ch <= "z"):
+			word += ch
+		elif word != "":
+			out.append(word)
+			word = ""
+	return out
+
+
+static func _has_word(words: PackedStringArray, list: Array[String]) -> String:
+	for w in words:
+		for word in list:
+			if w == word or w == word + "s" or w == word + "es":
+				return word
+	return ""
+
+
+## Which of the word lists a prop kind's name falls in: INSTALLATION, WRECK,
+## SHELTER, CANOPY and WIRE bits. Cached per kind.
+static func prop_class(kind: int) -> int:
+	if _prop_classes.has(kind):
+		return _prop_classes[kind]
+	var words := name_words(PropKind.NAMES[kind] if kind >= 0 and kind < PropKind.NAMES.size() else "")
+	var bits := 0
+	var installation := _has_word(words, INSTALLATION_WORDS)
+	if installation != "":
+		bits |= INSTALLATION
+		_prop_reach[kind] = float(INSTALLATION_REACH.get(installation, INSTALLATION_REACH_DEFAULT))
+	for pair: Array in [[WRECK_WORDS, WRECK], [SHELTER_WORDS, SHELTER], [LEAF_WORDS, CANOPY], [WIRE_WORDS, WIRE]]:
+		if _has_word(words, pair[0]) != "":
+			bits |= int(pair[1])
+	_prop_classes[kind] = bits
+	return bits
+
+
+## Tiles at which an installation kind's grid and hum begin (0 for a kind that is not one).
+static func installation_reach(kind: int) -> float:
+	return float(_prop_reach.get(kind, 0.0)) if prop_class(kind) & INSTALLATION else 0.0
+
+
+## How much of an installation's presence reaches `d` tiles from it: 1 within
+## INSTALLATION_NEAR of its reach, 0 past it.
+static func installation_share(d: float, reach: float) -> float:
+	return smoothstep(reach, reach * INSTALLATION_NEAR, d)
+
+
+## What the made and the found around a listener sound like, from the props
+## within WORKS_RADIUS: {installation: distance to the nearest (INF when none),
+## grid: 0..1 the installations' pulse (their shares summed, so several
+## together carry further than one), hum: 0..1 their transformer hum, shelter:
+## distance to the nearest roof or wall, wreck: 0..1 how much wreckage the wind
+## can find, leaves: 0..1 how much canopy the rain can fall on, wires: 0..1
+## strung wire close enough to sing}.
+static func works_near(query: WorldQuery, p: Vector2, radius: float = WORKS_RADIUS) -> Dictionary:
+	var out := {"installation": INF, "grid": 0.0, "hum": 0.0, "shelter": INF, "wreck": 0.0, "leaves": 0.0, "wires": 0.0}
+	if query == null:
+		return out
+	var wreck := 0.0
+	var leaves := 0.0
+	var grid := 0.0
+	var hum := 0.0
+	var wires := 0.0
+	for q: WorldProp in query.props_near(p, radius):
+		if query.world.depleted.has(q.id):
+			continue
+		var bits := prop_class(q.kind)
+		if bits == 0:
+			continue
+		var d := q.pos.distance_to(p)
+		if d > radius:
+			continue
+		if bits & INSTALLATION:
+			out["installation"] = minf(float(out["installation"]), d)
+			var share := installation_share(d, installation_reach(q.kind))
+			grid += share
+			hum += pow(share, 1.5)
+		if bits & SHELTER:
+			out["shelter"] = minf(float(out["shelter"]), d)
+		var near := 1.0 - d / radius
+		if bits & WRECK:
+			wreck += near * near * maxf(1.0, q.scale)
+		if bits & CANOPY:
+			leaves += near
+		if bits & WIRE:
+			wires = maxf(wires, smoothstep(WIRE_REACH, 1.5, d))
+	out["grid"] = clampf(grid, 0.0, 1.0)
+	out["hum"] = clampf(hum, 0.0, 1.0)
+	out["wreck"] = clampf(wreck / 3.0, 0.0, 1.0)
+	out["leaves"] = clampf(leaves / 25.0, 0.0, 1.0)
+	out["wires"] = wires
 	return out
 
 
@@ -290,7 +458,8 @@ static func night(hour: float) -> float:
 ## Every bed's target level 0..1 for a listener. `near_sea` and `near_river`
 ## come from sea_near/river_near (scanned a few times a second, not per frame).
 ## `extra` (all optional): hour (for the far works), remote (remoteness()),
-## tide 0..1 (high water brings the shore closer).
+## tide 0..1 (high water brings the shore closer), wet (wetness()), and what
+## works_near found (wreck, hum, installation, shelter, leaves).
 static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_sea: Dictionary, near_river: Dictionary, seconds: float, extra: Dictionary = {}) -> Dictionary:
 	var kind: StringName = weather.get("kind", &"fair")
 	var s := clampf(float(weather.get("strength", 0.0)), 0.0, 1.0)
@@ -331,7 +500,61 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	var remote := clampf(float(extra.get("remote", 0.0)), 0.0, 1.0)
 	var clear := 1.0 - s * (0.4 if kind == &"heat" or kind == &"grey" else 0.9)
 	out[&"bed_far_works"] = remote * calm * dark * clear * (1.0 - 0.6 * shore)
+	_dystopia_levels(out, weights, kind, s, wind, g, shore, river, dark_share, remote, extra)
 	return out
+
+
+## How near the listener stands to wreckage the wind can find (0..1, from
+## works_near), an installation's hum (works_near's hum), gutters by rain lately
+## and a roof or wall nearby, and rain split over the surfaces it falls on.
+const GUTTER_NEAR := 3.0
+const GUTTER_FAR := 16.0
+const RAIN_SURFACES: Array[StringName] = [&"weather_rain", &"weather_rain_metal", &"weather_rain_leaves", &"weather_rain_water"]
+
+
+## {turf, metal, leaves, water} shares of the rain here, summing to 1.
+static func rain_surfaces(weights: Dictionary, shore: float, river: float, extra: Dictionary) -> Dictionary:
+	var wreck := clampf(float(extra.get("wreck", 0.0)), 0.0, 1.0)
+	var water := maxf(maxf(shore * 0.8, river), float(weights.get(&"bed_moss", 0.0)) * 0.7)
+	var canopy := maxf(clampf(float(extra.get("leaves", 0.0)), 0.0, 1.0), float(weights.get(&"bed_pines", 0.0)) * 0.8)
+	var metal := clampf(wreck * 0.8 + (1.0 - smoothstep(4.0, 14.0, float(extra.get("shelter", INF)))) * 0.6 + (1.0 - smoothstep(3.0, 12.0, float(extra.get("installation", INF)))) * 0.4, 0.0, 1.0)
+	var scale := 1.0 / maxf(1.0, water + canopy + metal)
+	water *= scale
+	canopy *= scale
+	metal *= scale
+	return {"turf": maxf(0.0, 1.0 - water - canopy - metal), "metal": metal, "leaves": canopy, "water": water}
+
+
+static func _dystopia_levels(out: Dictionary, weights: Dictionary, kind: StringName, s: float, wind: float, g: float, shore: float, river: float, dark_share: float, remote: float, extra: Dictionary) -> void:
+	var wreck := clampf(float(extra.get("wreck", 0.0)), 0.0, 1.0)
+	out[&"bed_wreck"] = wreck * (0.3 + 0.7 * wind) * lerpf(0.75, 1.1, g)
+	out[&"bed_hum"] = clampf(float(extra.get("hum", 0.0)), 0.0, 1.0) * lerpf(1.0, 0.8, s)
+	# The plan's machines far off: by day too, stronger away from people and on
+	# still air, gone under loud weather and against the surf.
+	var still := 1.0 - smoothstep(0.35, 0.8, wind)
+	out[&"bed_far_drone"] = lerpf(0.25, 0.7, remote) * lerpf(0.55, 1.0, dark_share) * still * (1.0 - 0.7 * s) * (1.0 - 0.6 * shore)
+	var wet := clampf(float(extra.get("wet", 0.0)), 0.0, 1.0)
+	out[&"bed_gutter"] = wet * smoothstep(GUTTER_FAR, GUTTER_NEAR, float(extra.get("shelter", INF)))
+	# Rain keeps its loudness and changes its surface: each surface at the square
+	# root of its share (equal power), turf taking what the others leave.
+	var falling := s if kind == &"rain" else (s * 0.6 if kind == &"storm" or kind == &"hail" else 0.0)
+	var shares := rain_surfaces(weights, shore, river, extra)
+	if kind == &"rain":
+		out[&"weather_rain"] = s * sqrt(float(shares["turf"]))
+	out[&"weather_rain_metal"] = falling * sqrt(float(shares["metal"]))
+	out[&"weather_rain_leaves"] = falling * sqrt(float(shares["leaves"]))
+	out[&"weather_rain_water"] = falling * sqrt(float(shares["water"]))
+
+
+## How wet the ground and the roofs are: rain now, or rain in the last half hour
+## of world time fading, so gutters run on after the rain stops.
+static func wetness(seed_value: int, minutes: float, country: int = -1) -> float:
+	var best := 0.0
+	for k in 4:
+		var w := weather_at(seed_value, minutes - k * 10.0, country)
+		if w["kind"] in [&"rain", &"storm", &"hail"]:
+			best = maxf(best, float(w["strength"]) * (1.0 - k * 0.22))
+	return best
 
 
 ## Whether a scatter entry ([name, gap, gap, {hours, fair, wet, wind}]) may

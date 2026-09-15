@@ -51,6 +51,10 @@ var weather := {"kind": &"fair", "strength": 0.0, "wind": 0.0}
 var sea := {"distance": INF, "direction": Vector2.ZERO}
 var river := {"distance": INF, "direction": Vector2.ZERO}
 var remote := 0.0
+## Wreckage, installations, roofs and canopy around the listener (SoundMix.works_near).
+var works := {"installation": INF, "grid": 0.0, "hum": 0.0, "shelter": INF, "wreck": 0.0, "leaves": 0.0, "wires": 0.0}
+## Rain now or lately (gutters run on after it stops).
+var wet := 0.0
 ## Bed name -> smoothed level 0..1 (what the players are set to).
 var levels: Dictionary = {}
 var targets: Dictionary = {}
@@ -409,6 +413,7 @@ func _scan() -> void:
 	sea = SoundMix.sea_near(game.world, game.player.pos)
 	river = SoundMix.river_near(game.world, game.player.pos)
 	remote = SoundMix.remoteness(game.world, game.player.pos)
+	works = SoundMix.works_near(game.query, game.player.pos)
 	# The next country is baked while it is still a walk away (after setup has
 	# queued what is heard here, loudest first).
 	if _bake_ahead:
@@ -419,10 +424,14 @@ func _scan() -> void:
 func _read_weather() -> void:
 	var here := SoundMix.dominant_country(game.world, game.player.pos)
 	weather = SoundMix.weather_at(game.world.seed_value, game.clock.minutes, int(here["country"]))
+	wet = SoundMix.wetness(game.world.seed_value, game.clock.minutes, int(here["country"]))
 
 
 func _extra() -> Dictionary:
-	return {"hour": game.clock.hour(), "remote": remote, "tide": SoundMix.tide_at(game.clock.minutes)}
+	return {
+		"hour": game.clock.hour(), "remote": remote, "tide": SoundMix.tide_at(game.clock.minutes), "wet": wet,
+		"wreck": works["wreck"], "installation": works["installation"], "hum": works["hum"], "shelter": works["shelter"], "leaves": works["leaves"],
+	}
 
 
 func _mix_beds(delta: float) -> void:
@@ -485,6 +494,14 @@ func _scatter() -> void:
 				# Gulls crowd the low tide near people.
 				spacing = lerpf(0.6, 1.5, tide) * lerpf(0.7, 1.4, remote)
 			_scatter_entry(name, entry, lvl, spacing)
+	# What the works around you scatter by themselves: wire singing between poles.
+	for field: String in SoundBeds.WORKS_SCATTER:
+		var lvl := SoundBeds.works_scatter_level(field, works)
+		if lvl < 0.12:
+			continue
+		for entry: Array in SoundBeds.WORKS_SCATTER[field]:
+			if SoundMix.scatter_allowed(entry, hour, weather):
+				_scatter_entry(entry[0], entry, lvl, 1.0)
 	if SoundMix.WEATHER_SCATTER.has(kind) and s > 0.25:
 		var entry: Array = SoundMix.WEATHER_SCATTER[kind]
 		_scatter_entry(entry[0], entry, s, 1.0)

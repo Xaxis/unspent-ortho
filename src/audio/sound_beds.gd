@@ -16,6 +16,8 @@ const LENGTH := {
 	&"weather_rain": 12.0, &"weather_storm": 16.0, &"weather_gust": 12.0,
 	&"weather_hail": 10.0, &"weather_snow": 12.0, &"weather_sand": 14.0,
 	&"weather_blizzard": 16.0, &"weather_ash": 14.0, &"bed_far_works": 12.0,
+	&"bed_wreck": 16.0, &"bed_hum": 8.0, &"bed_far_drone": 20.0, &"bed_gutter": 12.0,
+	&"weather_rain_metal": 12.0, &"weather_rain_leaves": 12.0, &"weather_rain_water": 12.0,
 }
 const SHORE_CYCLE := 5.4
 
@@ -37,7 +39,26 @@ const SCATTER := {
 	&"bed_burning": [[&"burning_crackle", 0.6, 3.5], [&"burning_thud", 9.0, 28.0]],
 	&"bed_shore": [[&"shore_gull", 7.0, 30.0, {"hours": [6.5, 19.5], "fair": true}]],
 	&"bed_wind": [[&"bird_song", 7.0, 20.0, {"hours": [5.0, 9.0], "fair": true}]],
+	# The dystopia in the air: what the wind finds in wreckage, what an
+	# installation does to itself, what rain does to a roof nobody mends.
+	&"bed_wreck": [[&"wreck_knock", 4.0, 16.0, {"wind": 0.3}], [&"chain_clink", 6.0, 22.0]],
+	&"bed_hum": [[&"relay_click", 3.0, 12.0], [&"arc_snap", 8.0, 30.0, {"wet": [&"rain", &"storm", &"fog", &"hail"]}]],
+	&"bed_gutter": [[&"gutter_drip", 1.2, 4.5]],
 }
+
+## One-shots scattered by what works_near found rather than by a bed: wire
+## strung on poles sings, faintly, when the wind is up. field -> entries.
+const WORKS_SCATTER := {
+	"wires": [[&"wire_sing", 10.0, 30.0, {"wind": 0.4}]],
+}
+
+
+## The level a WORKS_SCATTER field scatters at, from works_near's result.
+static func works_scatter_level(field: String, works: Dictionary) -> float:
+	match field:
+		"wires":
+			return clampf(float(works.get("wires", 0.0)), 0.0, 1.0) * SoundMix.WIRE_FAINT
+	return 0.0
 
 
 static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Array:
@@ -74,6 +95,19 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"moss_wisp": return _wisp(rate, variant)
 		&"wire_sing": return _wire_sing(rate, variant)
 		&"fog_horn": return _fog_horn(rate)
+		&"bed_wreck": return _wreck(rate)
+		&"bed_hum": return _hum(rate)
+		&"bed_far_drone": return _far_drone(rate)
+		&"bed_gutter": return _gutter(rate)
+		&"weather_rain_metal": return _rain_metal(rate)
+		&"weather_rain_leaves": return _rain_leaves(rate)
+		&"weather_rain_water": return _rain_water(rate)
+		&"wreck_knock": return _wreck_knock(rate, variant)
+		&"chain_clink": return _chain_clink(rate, variant)
+		&"relay_click": return _relay_click(rate, variant)
+		&"arc_snap": return _arc_snap(rate, variant)
+		&"gutter_drip": return _gutter_drip(rate, variant)
+		&"thunder_roll": return _thunder_roll(rate, variant)
 	push_warning("no bed %s" % name)
 	return Synth.buffer(64)
 
@@ -732,3 +766,267 @@ static func _fog_horn(rate: int) -> PackedFloat32Array:
 		Synth.add_sine(b, rate, 155.0 * h, amp * 0.3, blast, n - blast)
 	Synth.env_adsr(b, rate, 0.25, 0.3, 0.85, 2.5, 0.35)
 	return _far(b, rate, 1800.0, 0.5, 3.0)
+
+
+# ----------------------------------------------------------- the dystopia
+
+## Wind through wreckage and wire: a shell of sheet steel singing in its own
+## hollow modes as a gust rises, two strands of wire whistling out of step, loose
+## things rattling at the top of a gust, and a torn sheet flapping when it blows hard.
+static func _wreck(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_wreck", rate)
+	var out := Synth.buffer(n)
+	var gusts := _curve(n, 7, 9101, 0.0, 1.0)
+	var level := PackedFloat32Array()
+	level.resize(n)
+	for i in n:
+		level[i] = lerpf(0.15, 1.0, pow(gusts[i], 1.3))
+	var shell_in := _band(n, rate, 9102, 150.0, 1600.0)
+	for i in n:
+		shell_in[i] *= level[i]
+	var shell := Synth.formants(shell_in, rate, PackedFloat32Array([187.0, 311.0, 463.0, 742.0, 1130.0]), PackedFloat32Array([22.0, 26.0, 30.0, 24.0, 20.0]), PackedFloat32Array([1.0, 0.8, 0.6, 0.45, 0.3]), true)
+	Synth.scale(shell, 1.0 / maxf(1e-6, Synth.rms(shell)))
+	_mix_into(out, shell, 0.05)
+	_mix_into(out, _sough(n, rate, 9103, gusts, 820.0, 1500.0, 28.0), 0.02, level)
+	_mix_into(out, _sough(n, rate, 9104, _curve(n, 5, 9105, 0.0, 1.0), 1210.0, 2150.0, 32.0), 0.012, level)
+	_mix_into(out, _band(n, rate, 9106, 400.0, 1400.0), 0.03, level)
+	var rattle := Synth.buffer(n)
+	var r := Rng.make(9107)
+	for k in roundi(40.0 * n / rate):
+		var at := r.randi_range(0, n - 1)
+		if r.randf() > pow(gusts[at], 2.0):
+			continue
+		Synth.add(rattle, _burst(rate, 0.012, 9120 + k, 2200.0, 5200.0, 0.008), at, r.randf_range(0.3, 1.0), true)
+	_mix_into(out, rattle, 0.03)
+	var flap := _band(n, rate, 9108, 300.0, 900.0)
+	var w := TAU * Synth.snap_freq(7.0, rate, n) / rate
+	for i in n:
+		var gate := maxf(0.0, sin(w * i))
+		flap[i] *= gate * gate * smoothstep(0.55, 0.9, gusts[i])
+	_mix_into(out, flap, 0.03)
+	return out
+
+
+## An installation humming to itself: the 100 Hz of magnetostriction and its
+## harmonics, exact, with the fundamental left under the laptop line so the
+## harmonics carry it; a clipped copy buzzing up to 3 kHz as it breathes; a thin
+## coil whine; static in the air around it.
+static func _hum(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_hum", rate)
+	var out := Synth.buffer(n)
+	Synth.add_partials(out, rate, PackedFloat32Array([100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 800.0, 1000.0]), PackedFloat32Array([0.008, 0.05, 0.035, 0.03, 0.012, 0.018, 0.008, 0.005]), 9201)
+	var buzz := Synth.buffer(n)
+	Synth.add_partials(buzz, rate, PackedFloat32Array([100.0, 200.0]), PackedFloat32Array([1.0, 0.6]), 9202)
+	Synth.saturate(buzz, 6.0)
+	Synth.band(buzz, rate, 600.0, 3200.0, true, false)
+	Synth.scale(buzz, 1.0 / maxf(1e-6, Synth.rms(buzz)))
+	_mix_into(out, buzz, 0.012, _curve(n, 3, 9203, 0.3, 1.0, 2.0))
+	var whine := Synth.buffer(n)
+	Synth.add_sine(whine, rate, Synth.snap_freq(3150.0, rate, n), 1.0)
+	_mix_into(out, whine, 0.003, _curve(n, 4, 9204, 0.0, 1.0, 3.0))
+	var crackle := Synth.buffer(n)
+	Synth.add_impulses(crackle, rate, 60.0, 9205, 0.05, 1.0)
+	Synth.band(crackle, rate, 3000.0, 8000.0, true)
+	Synth.scale(crackle, 1.0 / maxf(1e-6, Synth.rms(crackle)))
+	_mix_into(out, crackle, 0.004, _curve(n, 5, 9206, 0.0, 1.0, 2.0))
+	return out
+
+
+## The machines at work a long way off, by day as well as night: a low wrong
+## chord (harmonics of 55 Hz with a flattened third among them) swinging slowly
+## in pitch as if something the size of a hill turned, dull with distance and
+## swelling as the air carries it.
+static func _far_drone(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_far_drone", rate)
+	var chord := Synth.buffer(n)
+	var partials: Array[float] = [165.0, 220.0, 262.0, 275.0, 330.0, 392.0, 440.0]
+	var amps: Array[float] = [0.05, 0.04, 0.02, 0.03, 0.025, 0.012, 0.01]
+	var bend := TAU / n
+	for k in partials.size():
+		var f := Synth.snap_freq(partials[k], rate, n)
+		var phk := Rng.hash01(9301, k) * TAU
+		var ph := 0.0
+		for i in n:
+			ph += TAU * f * (1.0 + 0.004 * sin(bend * i + phk)) / rate
+			chord[i] += amps[k] * sin(ph)
+	Synth.lowpass4(chord, rate, 900.0, true)
+	var out := Synth.buffer(n)
+	_mix_into(out, chord, 1.0, _curve(n, 3, 9302, 0.45, 1.0, 1.4))
+	_mix_into(out, _band(n, rate, 9303, 130.0, 320.0, true), 0.012, _curve(n, 4, 9304, 0.3, 1.0))
+	return out
+
+
+## Rain finding its way down a broken downpipe (a thin gurgle through the pipe's
+## own resonances) and dripping onto tin and into standing water.
+static func _gutter(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_gutter", rate)
+	var out := Synth.buffer(n)
+	var trickle := Synth.buffer(n)
+	var r := Rng.make(9401)
+	for k in 900:
+		var len_s := r.randf_range(0.006, 0.02)
+		var f := r.randf_range(900.0, 2600.0)
+		var b := Synth.buffer(Synth.samples(rate, len_s))
+		Synth.add_chirp(b, rate, f, f * r.randf_range(1.2, 1.8), 1.0)
+		Synth.env_perc(b, rate, 0.001, len_s)
+		Synth.add(trickle, b, r.randi_range(0, n - 1), r.randf_range(0.2, 1.0), true)
+	var pipe := Synth.formants(trickle, rate, PackedFloat32Array([460.0, 1250.0, 2300.0]), PackedFloat32Array([5.0, 6.0, 7.0]), PackedFloat32Array([1.0, 0.7, 0.4]), true)
+	Synth.scale(pipe, 1.0 / maxf(1e-6, Synth.rms(pipe)))
+	_mix_into(out, pipe, 0.04, _curve(n, 5, 9402, 0.5, 1.0))
+	var t := 0.0
+	var k := 0
+	while t < LENGTH[&"bed_gutter"] - 0.2:
+		t += r.randf_range(0.5, 1.7)
+		var at := Synth.samples(rate, t)
+		if r.randf() < 0.55:
+			var tin := Synth.modes(rate, 0.12, PackedFloat32Array([1900.0 + k * 37.0, 3150.0, 4700.0]), PackedFloat32Array([1.0, 0.5, 0.3]), PackedFloat32Array([0.07, 0.05, 0.03]))
+			Synth.add(out, tin, at, 0.05 * r.randf_range(0.5, 1.0), true)
+		else:
+			var f := r.randf_range(900.0, 1400.0)
+			var plip := Synth.buffer(Synth.samples(rate, 0.06))
+			Synth.add_chirp(plip, rate, f, f * 1.8, 1.0)
+			Synth.env_perc(plip, rate, 0.001, 0.05)
+			Synth.add(out, plip, at, 0.04 * r.randf_range(0.5, 1.0), true)
+		k += 1
+	return out
+
+
+## Rain on metal: a sheet's high modes pinged by every drop, the drum of the
+## sheet under the fat ones, a wash over both. Roofs nobody mends, hulls, cars.
+static func _rain_metal(rate: int) -> PackedFloat32Array:
+	var n := _n(&"weather_rain_metal", rate)
+	var out := Synth.buffer(n)
+	var patter := Synth.buffer(n)
+	Synth.add_impulses(patter, rate, 1600.0, 9501, 0.05, 1.0)
+	var ping := Synth.formants(patter, rate, PackedFloat32Array([2350.0, 3720.0, 5480.0, 7300.0]), PackedFloat32Array([14.0, 16.0, 18.0, 20.0]), PackedFloat32Array([1.0, 0.8, 0.6, 0.4]), true)
+	Synth.scale(ping, 1.0 / maxf(1e-6, Synth.rms(ping)))
+	_mix_into(out, ping, 0.05, _curve(n, 5, 9502, 0.8, 1.0))
+	var drops := Synth.buffer(n)
+	Synth.add_impulses(drops, rate, 70.0, 9503, 0.4, 1.0)
+	var drum := Synth.formants(drops, rate, PackedFloat32Array([410.0, 655.0, 980.0, 1460.0]), PackedFloat32Array([9.0, 10.0, 11.0, 12.0]), PackedFloat32Array([1.0, 0.8, 0.6, 0.4]), true)
+	Synth.scale(drum, 1.0 / maxf(1e-6, Synth.rms(drum)))
+	_mix_into(out, drum, 0.03)
+	_mix_into(out, _band(n, rate, 9504, 1200.0, 6000.0), 0.025)
+	return out
+
+
+## Rain on leaves and needles: a dense soft patter high up, leaves ticking, and
+## the canopy letting go of heavier drops below.
+static func _rain_leaves(rate: int) -> PackedFloat32Array:
+	var n := _n(&"weather_rain_leaves", rate)
+	var out := Synth.buffer(n)
+	var patter := Synth.buffer(n)
+	Synth.add_impulses(patter, rate, 4800.0, 9601, 0.05, 1.0)
+	Synth.band(patter, rate, 1500.0, 7000.0, true, false)
+	Synth.scale(patter, 1.0 / maxf(1e-6, Synth.rms(patter)))
+	_mix_into(out, patter, 0.06, _curve(n, 5, 9602, 0.7, 1.0))
+	var ticks := Synth.buffer(n)
+	Synth.add_impulses(ticks, rate, 260.0, 9603, 0.2, 1.0)
+	var leaf := Synth.formants(ticks, rate, PackedFloat32Array([3400.0, 4700.0]), PackedFloat32Array([5.0, 6.0]), PackedFloat32Array([1.0, 0.7]), true)
+	Synth.scale(leaf, 1.0 / maxf(1e-6, Synth.rms(leaf)))
+	_mix_into(out, leaf, 0.02)
+	var fat := Synth.buffer(n)
+	Synth.add_impulses(fat, rate, 50.0, 9604, 0.4, 1.0)
+	Synth.band(fat, rate, 600.0, 1700.0, true, false)
+	Synth.scale(fat, 1.0 / maxf(1e-6, Synth.rms(fat)))
+	_mix_into(out, fat, 0.03)
+	return out
+
+
+## Rain on water: plinks and small bubbles everywhere, a hiss, the low wash of
+## the surface taking it.
+static func _rain_water(rate: int) -> PackedFloat32Array:
+	var n := _n(&"weather_rain_water", rate)
+	var out := Synth.buffer(n)
+	var r := Rng.make(9701)
+	for k in 1400:
+		var len_s := r.randf_range(0.01, 0.03)
+		var f := r.randf_range(1100.0, 3800.0)
+		var b := Synth.buffer(Synth.samples(rate, len_s))
+		Synth.add_chirp(b, rate, f, f * r.randf_range(1.3, 1.9), 1.0)
+		Synth.env_perc(b, rate, 0.001, len_s)
+		Synth.add(out, b, r.randi_range(0, n - 1), r.randf_range(0.02, 0.06), true)
+	_mix_into(out, _band(n, rate, 9702, 2500.0, 8500.0), 0.03)
+	var wash := Synth.pink(n, 9703, true)
+	Synth.band(wash, rate, 300.0, 900.0, true)
+	Synth.scale(wash, 1.0 / maxf(1e-6, Synth.rms(wash)))
+	_mix_into(out, wash, 0.03, _curve(n, 4, 9704, 0.7, 1.0))
+	return out
+
+
+## A loose panel banging in a gust: one to three knocks of thin steel.
+static func _wreck_knock(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(9801, v)
+	var out := Synth.buffer(Synth.samples(rate, 1.2))
+	var t := 0.0
+	for k in 1 + v % 3:
+		var body := Synth.modes(rate, 0.6, PackedFloat32Array([160.0 + v * 17.0, 233.0 + v * 9.0, 377.0, 612.0]), PackedFloat32Array([1.0, 0.7, 0.45, 0.25]), PackedFloat32Array([0.35, 0.3, 0.2, 0.12]))
+		Synth.add(body, _burst(rate, 0.05, 9802 + v * 7 + k, 200.0, 1200.0, 0.04), 0, 0.4)
+		Synth.add(out, body, Synth.samples(rate, t), r.randf_range(0.5, 1.0))
+		t += r.randf_range(0.12, 0.3)
+	return _far(out, rate, 3000.0, 0.3, 1.0)
+
+
+## Chain or wire links clinking against each other.
+static func _chain_clink(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(9811, v)
+	var out := Synth.buffer(Synth.samples(rate, 0.6))
+	var t := 0.0
+	for k in 2 + v % 3:
+		var link := Synth.modes(rate, 0.1, PackedFloat32Array([2100.0 + v * 140.0 + k * 60.0, 3400.0, 5200.0]), PackedFloat32Array([1.0, 0.5, 0.3]), PackedFloat32Array([0.08, 0.05, 0.03]))
+		Synth.add(out, link, Synth.samples(rate, t), r.randf_range(0.4, 1.0))
+		t += r.randf_range(0.06, 0.14)
+	return _far(out, rate, 6000.0, 0.25, 0.6)
+
+
+## A relay somewhere in a cabinet: a hard click, a hollow tock, and sometimes
+## the release a moment later.
+static func _relay_click(rate: int, v: int) -> PackedFloat32Array:
+	var out := Synth.buffer(Synth.samples(rate, 0.3))
+	for k in 1 + v % 2:
+		var at := Synth.samples(rate, 0.03 + k * (0.04 + v * 0.01))
+		Synth.add(out, _burst(rate, 0.015, 9821 + v * 3 + k, 2000.0, 6000.0, 0.006), at, 0.5 - k * 0.2)
+		# The armature's clack in its steel housing: a body, not only a click.
+		var body := Synth.modes(rate, 0.12, PackedFloat32Array([620.0 + v * 60.0, 1340.0 + v * 45.0, 2900.0]), PackedFloat32Array([0.8, 0.5, 0.3]), PackedFloat32Array([0.05, 0.035, 0.02]))
+		Synth.add(out, body, at, 1.0 - k * 0.35)
+	return _far(out, rate, 9000.0, 0.12, 0.3)
+
+
+## Current arcing across something wet: a crack, a sizzle that thins out, and a
+## breath of 100 Hz buzz.
+static func _arc_snap(rate: int, v: int) -> PackedFloat32Array:
+	var secs := 0.45 + v * 0.15
+	var n := Synth.samples(rate, secs)
+	var out := Synth.buffer(n)
+	Synth.add(out, _burst(rate, 0.02, 9831 + v, 800.0, 8000.0, 0.012), 0, 1.0)
+	var sizzle := Synth.buffer(n)
+	Synth.add_impulses(sizzle, rate, 900.0, 9832 + v, 0.1, 1.0)
+	Synth.band(sizzle, rate, 1500.0, 7000.0, false, false)
+	Synth.env_perc(sizzle, rate, 0.002, secs * 0.8)
+	Synth.add(out, sizzle, 0, 0.5)
+	var buzz := Synth.buffer(n)
+	Synth.add_partials(buzz, rate, PackedFloat32Array([200.0, 300.0, 400.0]), PackedFloat32Array([0.3, 0.2, 0.15]))
+	Synth.env_perc(buzz, rate, 0.01, secs * 0.6)
+	Synth.add(out, buzz, 0, 0.4)
+	return _far(out, rate, 8000.0, 0.2, 0.6)
+
+
+## A fat drop off a gutter into a tin can.
+static func _gutter_drip(rate: int, v: int) -> PackedFloat32Array:
+	var out := Synth.modes(rate, 0.3, PackedFloat32Array([1450.0 + v * 120.0, 2980.0 + v * 40.0, 4400.0]), PackedFloat32Array([1.0, 0.5, 0.25]), PackedFloat32Array([0.18, 0.1, 0.06]))
+	Synth.add(out, _burst(rate, 0.02, 9841 + v, 1500.0, 6000.0, 0.01), 0, 0.3)
+	return _far(out, rate, 7000.0, 0.25, 0.5)
+
+
+## Thunder far beyond sight: a long roll of rumbles overlapping, no crack.
+static func _thunder_roll(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(9851, v)
+	var secs := 6.0 + v
+	var n := Synth.samples(rate, secs)
+	var out := Synth.buffer(n)
+	for k in r.randi_range(8, 14):
+		var len_s := r.randf_range(0.8, 2.4)
+		var b := _burst(rate, len_s, 9852 + v * 31 + k, 110.0, 700.0, len_s * 0.8, len_s * 0.3)
+		Synth.add(out, b, Synth.samples(rate, r.randf_range(0.0, secs - len_s)), r.randf_range(0.3, 1.0) * (1.0 - float(k) / 16.0))
+	Synth.lowpass(out, rate, 600.0)
+	return _far(out, rate, 500.0, 0.4, 2.0)

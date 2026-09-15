@@ -1,0 +1,33 @@
+# The score from a normal game start (seed 1, the south coast village): it wakes
+# with the coast's drone and air, the arrival phrase plays, the pad and then the
+# calm pulse come in; a run east from the village to the first pylon of the
+# machines' line (fifty tiles off) brings in the installation's grid under it;
+# there a runner that has seen the player quickens that pulse and raises the
+# dissonance, and the score resolves once the runner is gone. A layer counts
+# once it plays at 75_music's HEARD share of its level. Stems bake while it
+# runs, so it is slow on a first run and quick once the disk cache holds them.
+# The log shows every layer entering and leaving ("tour score ...").
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour
+coast calm
+await score 150
+shot 01-the-score-wakes
+await score_phrase 90
+await score_pad 300
+shot 02-the-pad-has-come
+await score_pulse 300
+shot 03-the-pulse-plays
+# From the village square, run east along the coast (around the trees at the
+# village's edge and a wreck past them) to the pylon.
+at 201,432.5
+walk 0.71,0.71 4.7 run
+walk 0.88,0.47 1.26 run
+walk 0.71,0.71 3.5 run
+await score_grid 60
+shot 04-under-the-pylon
+spawn runner
+await score_tense 90
+await score_dissonance 60
+shot 05-a-machine-closing-in
+coast calm
+await score_resolve 120
+shot 06-resolved

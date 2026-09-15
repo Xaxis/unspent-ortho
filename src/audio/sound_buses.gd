@@ -12,6 +12,8 @@ const MACHINE_LOWPASS := 0
 const MACHINE_ROOM := 1
 ## World bus effect slot.
 const WORLD_LOWPASS := 0
+## Music bus effect slot.
+const MUSIC_LOWPASS := 0
 
 
 static func ensure() -> void:
@@ -47,6 +49,11 @@ static func ensure() -> void:
 		room.dry = 0.9
 		room.hipass = 0.2
 		return [lp, room])
+	# The score's low-pass: the conductor closes it at night and in fog.
+	_ensure_effects(&"Music", func() -> Array:
+		var lp := AudioEffectLowPassFilter.new()
+		lp.cutoff_hz = 14000.0
+		return [lp])
 	_ensure_effects(&"Machines", func() -> Array:
 		var lp := AudioEffectLowPassFilter.new()
 		lp.cutoff_hz = 16000.0
@@ -70,6 +77,13 @@ static func _ensure_effects(bus: StringName, make: Callable) -> void:
 		return
 	for e: AudioEffect in fx:
 		AudioServer.add_bus_effect(idx, e)
+
+
+static func music_lowpass() -> AudioEffectLowPassFilter:
+	var idx := AudioServer.get_bus_index(&"Music")
+	if idx < 0 or AudioServer.get_bus_effect_count(idx) <= MUSIC_LOWPASS:
+		return null
+	return AudioServer.get_bus_effect(idx, MUSIC_LOWPASS) as AudioEffectLowPassFilter
 
 
 static func machine_lowpass() -> AudioEffectLowPassFilter:
