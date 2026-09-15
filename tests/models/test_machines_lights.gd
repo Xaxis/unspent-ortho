@@ -6,10 +6,13 @@ extends TestCase
 ## tested frame by frame. Also: the wear and trophies each kind carries.
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
+## Kinds with lamps. The flock has none: its amber points are its lights, and
+## the alert, windup and hurt tests each read them in a block of their own.
 const LIT: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"runner", &"clerk"]
 const SCANNERS: Array[StringName] = [&"watcher", &"warden", &"clerk"]
 const WASHES: Array[StringName] = [&"harvester", &"hauler", &"sweeper", &"cutter"]
 const STEP := 1.0 / 60.0
+const FLOCK := preload("res://src/models/machines/flock.gd")
 
 
 static func joint_state(m: MachineModel) -> Array:
@@ -151,6 +154,40 @@ func test_alert_snaps_and_locks_the_eyes() -> void:
 		for b: MeshInstance3D in beams(m, &"scan"):
 			near(float((b.material_override as ShaderMaterial).get_shader_parameter("narrow")), 0.55, 1e-4, "%s beam narrows" % kid)
 		m.free()
+	# The flock has no lamps: its points are its lights. At rest it counts
+	# itself, exactly one point dark at a time, stepping round; alert locks them
+	# all on, steady and brighter, and a walk out of alert keeps them so.
+	var f := FigureModel.create(&"flock") as MachineModel
+	f.set_pose(&"stand")
+	f.settle()
+	var rest := f.part_emission()
+	var dark_ones := {}
+	for i in 60:
+		f.animate(STEP, 0.0)
+		eq(dots_out(f).size(), 1, "the resting flock has exactly one point dark")
+		dark_ones[dots_out(f)[0]] = true
+	gt(float(dark_ones.size()), 6.0, "the dark point steps round the flock")
+	f.set_pose(&"alert")
+	for i in 20:
+		f.animate(STEP, 0.0)
+	for p: StringName in [&"alert", &"walk"]:
+		f.set_pose(p)
+		for i in 60:
+			f.animate(STEP, 2.0 if p == &"walk" else 0.0)
+			eq(dots_out(f).size(), 0, "flock %s: every point locked on" % p)
+			near(f.part_emission(), rest * FLOCK.LOCK_LIGHT, 1e-4, "flock %s: steady and brighter" % p)
+			near(float(f.get("dot_size")), FLOCK.LOCK_SIZE, 1e-5, "flock %s: and larger" % p)
+	f.free()
+
+
+## Indices of the flock's points not showing.
+static func dots_out(f: MachineModel) -> Array:
+	var out: Array = []
+	var shown: PackedByteArray = f.get("dot_shown")
+	for i in shown.size():
+		if shown[i] == 0:
+			out.append(i)
+	return out
 
 
 ## The four locked reads, checked after the lights have run a while.
@@ -251,6 +288,29 @@ func test_windup_brightens_the_working_side() -> void:
 			if l.role == &"work" and l.side:
 				check((l.hot as Node3D).visible, "%s: work lamp on the part's side goes hot" % kid)
 		m.free()
+	# The flock's points pulse together through a windup: two exact levels,
+	# PULSE long each, every point on.
+	var f := FigureModel.create(&"flock") as MachineModel
+	f.set_pose(&"stand")
+	f.settle()
+	var rest := f.part_emission()
+	f.set_pose(&"windup")
+	var levels := {}
+	var changes := 0
+	var last := -1.0
+	for i in 48:
+		f.animate(STEP, 0.0)
+		var e := f.part_emission()
+		levels["%.3f" % (e / rest)] = true
+		near(float(f.get("dot_size")), FLOCK.PULSE_BIG if e > rest else FLOCK.PULSE_SMALL, 1e-5, "flock windup: the points swell with the light")
+		if last >= 0.0 and absf(e - last) > 1e-5:
+			changes += 1
+		last = e
+		eq(dots_out(f).size(), 0, "flock windup: every point on")
+	eq(levels.keys().size(), 2, "flock windup pulses between two levels (%s)" % [levels.keys()])
+	check(levels.has("%.3f" % FLOCK.PULSE_HIGH) and levels.has("%.3f" % FLOCK.PULSE_LOW), "at exactly high and low")
+	eq(changes, int(round(47 * STEP / FLOCK.PULSE)), "one change every pulse beat")
+	f.free()
 
 
 func test_hurt_stutters_then_holds_dark() -> void:
@@ -280,6 +340,28 @@ func test_hurt_stutters_then_holds_dark() -> void:
 			eq(m.light_level(), 0.0, "%s part stays out once the stutter is over" % kid)
 		check(not m.scanning(), "%s stops looking" % kid)
 		m.free()
+	# Hurt, the flock's odd points stutter out with its light, then the dark
+	# points all show while the light holds out.
+	var f := FigureModel.create(&"flock") as MachineModel
+	f.set_pose(&"stand")
+	for i in 30:
+		f.animate(STEP, 0.0)
+	f.set_pose(&"hurt")
+	f.set_part_lit(false)
+	var patterns := {}
+	for i in int(MachineModel.STUTTER / STEP) - 1:
+		f.animate(STEP, 0.0)
+		var out := dots_out(f)
+		patterns[out.size()] = true
+		for d: int in out:
+			eq(d % 2, 1, "only the odd points stutter out")
+		eq(out.is_empty(), f.light_level() > 0.0, "the points go with the light")
+	check(patterns.has(0) and patterns.has(FLOCK.COUNT / 2), "flock points stutter")
+	for i in 20:
+		f.animate(STEP, 0.0)
+	eq(dots_out(f).size(), 0, "held dark, every dark point shows")
+	eq(f.light_level(), 0.0, "and the light stays out")
+	f.free()
 
 
 func test_the_dead_go_dark_in_sequence_with_the_part_last() -> void:
