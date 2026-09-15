@@ -7,7 +7,17 @@ class_name RemnantModels
 ##   RemnantModels.mesh(&"stump")      # shared, built once
 ##   RemnantModels.for_kind(PropKind.PINE) -> &"stump" (or &"" for nothing)
 
-const NAMES: Array[StringName] = [&"stump", &"rubble", &"stubble", &"cut"]
+const NAMES: Array[StringName] = [&"stump", &"rubble", &"stubble", &"cut", &"tapped", &"picked"]
+
+
+## The mark on a prop that is still standing but picked over for now: a tapped
+## trunk weeps resin into a cup; anything else has the leavings of the picking
+## at its foot.
+static func worked_for(kind: int) -> StringName:
+	match kind:
+		PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE:
+			return &"tapped"
+	return &"picked"
 
 static var _cache: Dictionary = {}
 
@@ -38,6 +48,10 @@ static func mesh(name: StringName) -> ArrayMesh:
 				_stubble(k)
 			&"cut":
 				_cut(k)
+			&"tapped":
+				_tapped(k)
+			&"picked":
+				_picked(k)
 		_cache[name] = k.build()
 	return _cache[name]
 
@@ -80,6 +94,26 @@ static func _cut(k: MeshKit) -> void:
 	k.block(0, -0.03, 0, 0.7, 0.06, 0.5, Palette.EARTH[0])
 	for i in 3:
 		k.block(-0.2 + i * 0.2, 0.03, 0.36, 0.14, 0.09, 0.1, Palette.EARTH[1], Palette.EARTH[2])
+
+
+## A blaze cut low in the bark, a runnel of amber, and the cup set out past the
+## crown's edge where it can be seen from above (a crown hides the trunk).
+## Faces +X; the instance is turned toward the camera's side.
+static func _tapped(k: MeshKit) -> void:
+	k.block(0.1, 0.12, 0, 0.03, 0.2, 0.09, Palette.SAND[5])
+	k.strut(Vector3(0.12, 0.1, 0.0), Vector3(0.62, 0.07, 0.03), 0.018, 3, Palette.COPPER[3])
+	k.prism(0.72, 0.0, 0.04, 0.075, 0.11, 0.085, 6, Palette.EARTH[2], Palette.COPPER[4])
+	k.block(0.72, 0.11, 0.04, 0.05, 0.012, 0.05, Palette.COPPER[4])
+
+
+## What a picking leaves: pale broken shells, a torn stem, a turned stone, at the foot.
+static func _picked(k: MeshKit) -> void:
+	for i in 6:
+		var a := Rng.hash01(101, i) * TAU
+		var r := 0.32 + Rng.hash01(102, i) * 0.2
+		k.push(Transform3D(Basis(Vector3.UP, a * 2.0), Vector3(cos(a) * r, 0.0, sin(a) * r)))
+		k.block(0, 0.0, 0, 0.07, 0.025, 0.05, Palette.LINEN[5] if i % 3 else Palette.EARTH[3])
+		k.pop()
 
 
 static func gallery() -> Array:

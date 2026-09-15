@@ -314,7 +314,8 @@ func _build_remnant_layers() -> void:
 func _refresh_remnants() -> void:
 	var w := game.world
 	var here := game.player.pos
-	var sig := "%d:%d" % [w.depleted.size(), w.props.size()]
+	var spent := SurvivalState.of(game).spent
+	var sig := "%d:%d:%d" % [w.depleted.size(), w.props.size(), spent.size()]
 	if sig == _remnant_sig and here.distance_to(_remnant_at) < 12.0:
 		return
 	_remnant_sig = sig
@@ -330,6 +331,16 @@ func _refresh_remnants() -> void:
 		if r == &"" or p.pos.distance_to(here) > REMNANT_RADIUS:
 			continue
 		lists[r].append(p)
+	# Standing but picked over: one mark per prop however many of its options are spent.
+	var marked := {}
+	for key: String in spent:
+		var id := key.get_slice(":", 0).to_int()
+		if marked.has(id) or id < 0 or id >= w.props.size() or w.depleted.has(id):
+			continue
+		marked[id] = true
+		var p := w.props[id]
+		if p.pos.distance_to(here) <= REMNANT_RADIUS:
+			lists[RemnantModels.worked_for(p.kind)].append(p)
 	for name: StringName in lists:
 		var mm: MultiMesh = _remnant_mm[name]
 		var list: Array = lists[name]
@@ -337,7 +348,9 @@ func _refresh_remnants() -> void:
 		for j in list.size():
 			var p: WorldProp = list[j]
 			var s := p.scale * (1.3 if p.kind == PropKind.BROADLEAF else 1.0)
-			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, p.rot).scaled(Vector3.ONE * s), w.to_3d(p.pos)))
+			# A tap mark faces the camera's side of the trunk (south-east), where it can be seen.
+			var turn := -PI * 0.25 if name == &"tapped" else p.rot
+			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * s), w.to_3d(p.pos)))
 			var tint := Color.WHITE
 			match p.kind:
 				PropKind.IRON_ORE:
