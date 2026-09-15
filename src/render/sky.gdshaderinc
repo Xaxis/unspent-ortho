@@ -49,6 +49,22 @@ global uniform vec4 sky_shade;
 // Sampled at world xz * sky_view.z.
 global uniform sampler2D sky_ground;
 
+// --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
+// The grade every lit wash passes through last: x darkness 0..1, y desaturation
+// 0..1, z cool shift 0..1, w contrast (crushes the mids). Written by SkyLight
+// from the hour and the landscapes in view. Emission never passes through it,
+// so neon, embers and working parts stay bright against the dark.
+global uniform vec4 neon_grade;
+// x: how wet the land lies without rain (a rain-slicked world), y: sheen,
+// z: reflection strength, w: spare. Rain adds on top (sky_settle.z).
+global uniform vec4 neon_wet;
+// The colour of each pool in sky_lamps / sky_lamps2, one per column (rgb, w =
+// the light's height above the ground it lights), for coloured pools and for
+// the streaks their light leaves on wet ground.
+global uniform mat4 neon_lamp_rgb;
+global uniform mat4 neon_lamp_rgb2;
+const vec3 NEON_COOL = vec3(0.80, 0.90, 1.10);
+
 const vec3 SKY_PAGE = vec3(0.910, 0.863, 0.753);      // LINEN[5]: the page itself
 const vec3 SKY_CLOUD_SHADE = vec3(0.88, 0.90, 0.97);  // a cloud's shade: half a step toward blue-violet
 const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a little cold
@@ -180,6 +196,25 @@ float sky_lamp_level(vec3 world_pos, float up) {
 	return a;
 }
 
+// The colour of the strongest pool at a place (rgb), and that pool's level (a).
+vec4 sky_lamp_colour(vec3 world_pos, float up) {
+	vec4 best = vec4(SKY_PAGE, 0.0);
+	for (int i = 0; i < 4; i++) {
+		float a = sky_omni(world_pos, sky_lamps[i]) * sky_lamp_gate(up, normalize(sky_lamps[i].xyz - world_pos + vec3(0.0, 0.001, 0.0)).y);
+		if (a > best.a) {
+			best = vec4(neon_lamp_rgb[i].rgb, a);
+		}
+		float b = sky_omni(world_pos, sky_lamps2[i]) * sky_lamp_gate(up, normalize(sky_lamps2[i].xyz - world_pos + vec3(0.0, 0.001, 0.0)).y);
+		if (b > best.a) {
+			best = vec4(neon_lamp_rgb2[i].rgb, b);
+		}
+	}
+	if (dot(best.rgb, vec3(1.0)) < 0.01) {
+		best.rgb = SKY_PAGE;
+	}
+	return best;
+}
+
 // Where the attenuation crosses into the bright core and into the dim ring.
 const float SKY_POOL_CORE = 0.66;
 const float SKY_POOL_RING = 0.32;
@@ -292,6 +327,78 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 	return c;
 }
 
+// The dystopian grade: darker, cooler, less colour, harder mids. FOUND keeps a
+// little more of its colour: the machines' order is the lit thing in the ruin.
+vec3 neon_graded(vec3 c, float found) {
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	vec3 g = mix(c, vec3(l), neon_grade.y * (1.0 - 0.5 * found));
+	g = mix(g, g * NEON_COOL, neon_grade.z);
+	g = pow(max(g, vec3(0.0)), vec3(1.0 + neon_grade.w));
+	return g * (1.0 - neon_grade.x);
+}
+
+// How wet the ground lies here, 0..1: the rain-slicked default plus rain, only
+// where the land can hold water (sky_ground.b) and never on water itself.
+float neon_wetness(vec3 world_pos) {
+	if (world_pos.y < 0.36) {
+		return 0.0;
+	}
+	float can = sky_ground_at(world_pos).b;
+	return clamp(max(neon_wet.x, sky_settle.z) * can, 0.0, 1.0);
+}
+
+float neon_streak(vec3 world_pos, vec2 px, vec4 lamp, float up_px) {
+	if (lamp.w <= 0.0) {
+		return 0.0;
+	}
+	// The light, and the point on this ground right under it, in screen pixels:
+	// its reflection hangs below that point as far as the light stands above it.
+	vec2 lp = sky_px(lamp.xyz);
+	vec2 gp = sky_px(vec3(lamp.x, world_pos.y, lamp.z));
+	float dy = gp.y - px.y;
+	float len = max(lp.y - gp.y, 4.0) * 1.8 + 10.0;
+	if (dy < 0.0 || dy > len) {
+		return 0.0;
+	}
+	float dx = abs(px.x - gp.x);
+	float width = 1.5 + 3.0 * (1.0 - dy / len);
+	if (dx > width) {
+		return 0.0;
+	}
+	// Broken by the rain into short dashes, fading down the streak.
+	float dash = step(sky_hash(vec2(floor(px.y / 2.0), floor(TIME * 7.0) + gp.x)), 0.72);
+	float near = 1.0 - clamp(length(world_pos.xz - lamp.xz) / (lamp.w * 1.6), 0.0, 1.0);
+	return dash * near * (1.0 - dy / len) * (1.0 - dx / (width + 1.0)) * up_px;
+}
+
+// Emission for wet flat ground: the lamps' colours mirrored as broken vertical
+// streaks, plus a faint sky sheen. Call from fragment() and ADD to EMISSION.
+vec3 neon_reflect(vec3 world_pos, vec2 px) {
+	float wet = neon_wetness(world_pos);
+	if (wet < 0.05 || neon_wet.z <= 0.0) {
+		return vec3(0.0);
+	}
+	float up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
+	if (up < 0.9) {
+		return vec3(0.0);
+	}
+	vec3 e = vec3(0.0);
+	for (int i = 0; i < 4; i++) {
+		e += neon_lamp_rgb[i].rgb * neon_streak(world_pos, px, sky_lamps[i], 1.0);
+		e += neon_lamp_rgb2[i].rgb * neon_streak(world_pos, px, sky_lamps2[i], 1.0);
+	}
+	return e * wet * neon_wet.z * 2.6;
+}
+
+// Skyglow: low cloud holds the light of everything the machines keep running,
+// so in gloom, dusk and night a wash still reads as a faint teal-indigo shape and
+// never goes to black. Emitted, because a wash multiplied by no light is black.
+// Call from fragment() with the graded albedo and ADD to EMISSION.
+vec3 neon_skyglow(vec3 graded) {
+	float gloom = max(sky_view.y, max(sky_shade.w, 1.0 - clamp(sky_sun.z, 0.0, 1.0)));
+	return (graded * vec3(0.16, 0.2, 0.26) + vec3(0.018, 0.03, 0.05)) * gloom;
+}
+
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
@@ -312,9 +419,16 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// is a lifted wash, not only a warmer one. Faces are found from screen
 	// derivatives (every face here is flat), so roofs are left out as in light().
 	float face_up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
-	float pool = sky_pool(sky_lamp_level(world_pos, face_up), world_pos);
+	vec4 lamp = sky_lamp_colour(world_pos, face_up);
+	float pool = sky_pool(lamp.a, world_pos);
 	// Water (below 0.36) takes no lamplight at all: no glow disc on the sea.
-	c = mix(c, SKY_PAGE * sky_tint, (step(0.99, pool) * 0.22 + step(0.49, pool) * 0.06) * step(0.36, world_pos.y));
+	// The pool is the light's own colour: sodium, stolen neon, a fire.
+	c = mix(c, c * (0.55 + lamp.rgb * 1.3), (step(0.99, pool) * 0.22 + step(0.49, pool) * 0.07) * step(0.36, world_pos.y));
+#ifndef SKY_FOUND
+	// Rain-slicked: wet ground is a step darker and holds the sky in a sheen.
+	float wet = neon_wetness(world_pos) * step(0.9, face_up);
+	c = mix(c, c * vec3(0.62, 0.66, 0.74) + vec3(0.02, 0.025, 0.035) * neon_wet.y, wet * step(sky_dither(px), 0.97));
+#endif
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
 		// A cloud's shade is a colour, like every shade here: one step toward
@@ -332,7 +446,11 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		// Lightning: for a moment the whole page shows.
 		c = mix(c, SKY_PAGE, sky_sun.w * 0.5);
 	}
-	return c;
+#ifdef SKY_FOUND
+	return neon_graded(c, 1.0);
+#else
+	return neon_graded(c, 0.0);
+#endif
 }
 
 #endif

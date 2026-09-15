@@ -87,6 +87,16 @@ static func window(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 0.08, v - hh * 0.75, u + hw * 0.08, v + hh * 0.75, 0.02, P.COPPER[2])
 
 
+## Ink & Neon: a tube of stolen neon fixed to a wall, lit at night: somebody
+## wired a machine's light into their house. Its colour is the house's own.
+static func neon_tube(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u0: float, u1: float, v: float, col: Color) -> void:
+	wall_rect(k.made, bl, br, tr, tl, u0 - 0.01, v - 0.02, u1 + 0.01, v + 0.02, 0.03, P.INK[1])
+	wall_rect(k.made, bl, br, tr, tl, u0, v - 0.011, u1, v + 0.011, 0.04, GroundColors.lamp(col, 2.0))
+
+
+const NEON_TUBES: Array[Color] = [Color(0.3, 0.95, 1.0), Color(1.0, 0.25, 0.8), Color(0.55, 1.0, 0.35)]
+
+
 ## A plank door, its latch.
 static func door(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, hw: float, hv: float) -> void:
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 1.2, 0.0, u + hw * 1.2, hv + 0.05, 0.012, P.EARTH[1])
@@ -162,6 +172,7 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, 0.0, 1.0, 0.07, 0.006, P.LINEN[2])
 	var door_u: float = [0.34, 0.66, 0.46][form]
 	door(k, fb[0], fb[1], fb[2], fb[3], door_u, 0.1, 0.95)
+	neon_tube(k, fb[0], fb[1], fb[2], fb[3], door_u - 0.14, door_u + 0.14, 0.86, NEON_TUBES[form % 3])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.8 if door_u < 0.5 else 0.22, 0.6, 0.08, 0.13)
 	if form == 2:
 		window(k, fb[0], fb[1], fb[2], fb[3], 0.18, 0.58, 0.07, 0.12)
@@ -213,6 +224,7 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		var vv := 0.1 + fmod(i * 0.41, 0.8)
 		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], u, vv, u + 0.06, vv + 0.07, 0.008, P.SLATE[2] if i % 2 else P.STONE[1])
 	door(k, fb[0], fb[1], fb[2], fb[3], 0.64 if form == 0 else 0.3, 0.1, 0.95)
+	neon_tube(k, fb[0], fb[1], fb[2], fb[3], (0.64 if form == 0 else 0.3) - 0.16, (0.64 if form == 0 else 0.3) + 0.16, 0.84, NEON_TUBES[(form + 1) % 3])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.24 if form == 0 else 0.74, 0.6, 0.08, 0.13)
 	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.4 if form == 0 else 0.52, 0.42)
 	# Gable roof, ridge along z, sagging. Front slope: slate low (MADE), plate high (FOUND).

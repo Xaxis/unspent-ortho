@@ -35,7 +35,7 @@ void fragment() {
 	vec3 c = COLOR.rgb * paper(px);
 	ALBEDO = sky_apply(c, world_pos, TIME);
 	ALPHA = 1.0;
-	EMISSION = c * emission_strength;
+	EMISSION = c * emission_strength + neon_skyglow(c) * 1.4;
 }
 
 void light() {

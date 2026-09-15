@@ -1,14 +1,18 @@
 # UNSPENT — the look
 
-**The coast as a field notebook.** Everything the player sees is drawn as if a
-surveyor inked and washed it into a weathered notebook, then the page came alive:
-flat washes of a worn palette, inked contours, shade laid down as hatching, and
-the machines drawn by a ruler in a colour no person would choose.
+**Ink & Neon.** A beautifully dystopian world (owner, 2026-09-15): dark,
+rain-slicked, neon-lit wastelands, a futuristic crumbling world, cyberpunk
+landscapes of ordered chaos and mystery. It is drawn, not rendered: flat washes,
+inked contours and hatched shade pinned to the world, the land in contour
+terraces. Out of that ink the machines' order shines: strip lights, beacons, lit
+districts, stolen neon in shanty windows, reflections streaking across wet
+ground. The hand draws the ruin in the dark; the ruler lights it.
 
 It must look like nothing else. **Nothing like Minecraft or any voxel game**
 (owner, 2026-09-15): the tile grid belongs to the rules, never to the eye. It is
 also not generic low-poly, not HD-2D, not cel-shaded anime, not 16-bit cosplay.
-When in doubt, ask: *could this frame be a page from someone's notebook?*
+When in doubt, ask: *is this frame dark, wet, lit by the machines' order, drawn by
+a hand, and haunting?*
 
 This document is binding. The research extract (`docs/research/art-audio-extract.md`)
 supplies palette values, silhouettes and lighting numbers; where it conflicts with
@@ -117,14 +121,33 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 - Hatching never covers a face or a working part.
 - UI is the quietest layer, and it is a device: see §9, the slate.
 
-## 6. Light, night, weather
+## 6. Light, night, weather: Ink & Neon
 
+Implemented in the neon core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo,
+`sky_light.gd` `neon_grade_at`, `15_lights.gd` neon colours):
+
+- **The grade.** Every lit wash passes through `neon_graded()` last: darker, cooler,
+  less colour, harder mids, set per hour and per landscape (`SkyLight.NEON_COUNTRY`).
+  Emission never passes through it, so neon, embers and working parts stay bright.
+  Day is overcast gloom, dusk is long, night is the stage.
+- **Skyglow.** Low cloud holds the light of everything the machines keep running:
+  in gloom every wash keeps a faint teal-indigo emitted floor (`neon_skyglow`), so
+  shapes read at any hour and nothing is ever pure black.
+- **Neon.** Light belongs to the machines' order and to what people stole from it:
+  FOUND strip lights (vertex alpha 0.5-0.98) and blinking beacons (alpha < 0.5) on
+  `found.gdshader`; stolen neon tubes and lit windows on houses (MADE lamp marks);
+  sodium village lamps; cold LED lanterns. Each landscape keeps its own neon family
+  (VISION §8). Bright saturated pixels throw a **stippled halo** into the rain and
+  haze (post pass): never a smooth bloom.
+- **Rain-slicked.** Most landscapes lie wet without rain (`NEON_COUNTRY` base wet),
+  and rain adds more. Wet flat ground is a step darker and **mirrors every lamp as
+  a broken vertical streak** of its colour, dashed by the rain (`neon_reflect`).
+- **Pools.** Lamp and fire pools are low coloured stains that lift the hatching;
+  the light itself and its reflection carry the brightness, not a painted disc.
 - Key light from the upper left of the screen; the sun swings, never flips.
-- Night is blue ink on dim washes, never black. Lamp and fire light **erase the
-  hatching** in their pool: light means safety, and the page shows it.
-- Weather is drawn: rain as short slanted ink strokes in columns, snow as paper
-  flecks, ash as dark specks, fog as the page showing through (washes lighten toward
-  linen, hatching thins), wind as the odd flick. Never a white veil, never bloom.
+- Weather is drawn: rain as short slanted strokes in columns, snow as flecks, ash
+  as dark specks, fog as haze that softens lines and spreads halos, lightning as a
+  flash of the whole page.
 - Cloud shadows drift over the land as soft-edged patches of hatch.
 
 ## 7. Motion
@@ -138,12 +161,13 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 ## 8. Review checklist (every visible change)
 
 1. Any visible square, cube or tile edge? Fix it.
-2. Any gradient on a surface, bloom, glossy highlight or pure black? Fix it.
+2. Any gradient on a surface, smooth bloom, glossy highlight or pure black? Fix it.
 3. MADE in `world.gdshader`, FOUND in `found.gdshader`, nothing mixed?
 4. Does the hatch hand match the country or thing?
 5. Readable at 640x360: player, machines, working parts, props that can be taken?
 6. At noon, dusk and night?
-7. Is it beautiful? Would it look right printed in a notebook?
+7. Is it Ink & Neon? Dark and wet, lit by the machines' order, a halo in the rain,
+   a streak on the ground, drawn by a hand, hauntingly beautiful?
 
 ## 9. The slate: every screen is a hacked tablet
 

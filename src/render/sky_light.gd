@@ -60,7 +60,7 @@ const WATER_SHADER := "res://src/render/water.gdshader"
 ## Linear energy of the figure fill at the dead of night: with the moon it lifts
 ## a person to about 0.45 of their daylight value. Warm, because people are the
 ## only warm moving thing on screen.
-const FIGURE_FILL := 1.3
+const FIGURE_FILL := 1.9
 const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 
 ## Per country id: (warmth, wetness) in -1..1, read by the source's light cast.
@@ -91,6 +91,10 @@ var wind := Vector4.ZERO
 ## Lamp and fire pools for the ink (sky_lamps): Vector4(x, y, z, range) each,
 ## at most MAX_LAMPS, filled by the lights system.
 var lamps: Array[Vector4] = []
+## The colour of each lamp pool (rgb, w spare), parallel to `lamps`.
+var lamp_colors: Array[Vector4] = []
+## Share of each country in view (Country id -> weight), for the neon grade.
+var neon_shares: Dictionary = {}
 ## 1 / world size, for the sky_ground texture (set_ground); 0 = none.
 var ground_scale := 0.0
 ## 0..1 how hard the wind blows, for anything that sways (wind_strength).
@@ -172,6 +176,12 @@ func set_hour(hour: float) -> void:
 	var packed := lamp_columns(lamps)
 	RenderingServer.global_shader_parameter_set("sky_lamps", packed[0])
 	RenderingServer.global_shader_parameter_set("sky_lamps2", packed[1])
+	var packed_rgb := lamp_columns(lamp_colors)
+	RenderingServer.global_shader_parameter_set("neon_lamp_rgb", packed_rgb[0])
+	RenderingServer.global_shader_parameter_set("neon_lamp_rgb2", packed_rgb[1])
+	var ng := neon_grade_at(hour, neon_shares)
+	RenderingServer.global_shader_parameter_set("neon_grade", ng[0])
+	RenderingServer.global_shader_parameter_set("neon_wet", ng[1])
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)
@@ -355,3 +365,41 @@ static func country_tint(country: int) -> Vector3:
 	var cl := CLIMATE[clampi(country, 0, CLIMATE.size() - 1)]
 	var c := Vector3.ONE + (cast_tint(cl.x, cl.y) - Vector3.ONE) * REGION_GAIN
 	return c / maxf(c.x, maxf(c.y, c.z))
+
+
+## Ink & Neon (docs/VISION.md section 8): the grade and the wet for an hour and
+## the landscapes in view. Returns [grade Vector4(dark, desat, cool, contrast),
+## wet Vector4(base wet, sheen, reflection, 0)]. Day is overcast gloom, dusk is
+## long, night is the stage; each landscape leans its own way.
+const NEON_DAY := Vector4(0.30, 0.38, 0.30, 0.35)
+const NEON_NIGHT := Vector4(0.0, 0.35, 0.2, 0.0)
+## Per country: [grade offset Vector4, base wet].
+const NEON_COUNTRY := {
+	Country.SEA: [Vector4(0.0, 0.0, 0.1, 0.0), 0.0],
+	Country.COAST: [Vector4(0.0, 0.0, 0.05, 0.0), 0.65],
+	Country.MOSS: [Vector4(0.04, 0.08, 0.05, 0.05), 0.9],
+	Country.PINEWOOD: [Vector4(0.06, 0.05, 0.08, 0.05), 0.7],
+	Country.SNOWFIELD: [Vector4(-0.08, 0.1, 0.2, -0.1), 0.25],
+	Country.BONELANDS: [Vector4(-0.04, 0.12, 0.0, 0.1), 0.3],
+	Country.BURNING: [Vector4(0.02, -0.2, -0.3, 0.05), 0.2],
+}
+
+
+static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
+	var night := Weather.night_fall(hour)
+	var g := NEON_DAY.lerp(NEON_NIGHT, night)
+	var wet := 0.55
+	if not shares.is_empty():
+		var off := Vector4.ZERO
+		var w := 0.0
+		var total := 0.0
+		for c: int in shares:
+			var e: Array = NEON_COUNTRY.get(c, NEON_COUNTRY[Country.COAST])
+			off += (e[0] as Vector4) * float(shares[c])
+			w += float(e[1]) * float(shares[c])
+			total += float(shares[c])
+		if total > 0.0:
+			g += off / total
+			wet = w / total
+	g = g.clamp(Vector4.ZERO, Vector4.ONE)
+	return [g, Vector4(wet, 1.0, 1.0, 0.0)]

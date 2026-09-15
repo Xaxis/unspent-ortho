@@ -108,3 +108,19 @@ wind_strength={
 "type": "float",
 "value": 0.4
 }
+neon_grade={
+"type": "vec4",
+"value": Vector4(0.25, 0.35, 0.3, 0.3)
+}
+neon_wet={
+"type": "vec4",
+"value": Vector4(0.5, 1, 1, 0)
+}
+neon_lamp_rgb={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+neon_lamp_rgb2={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}

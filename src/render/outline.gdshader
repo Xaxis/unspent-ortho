@@ -24,6 +24,9 @@ uniform float strength = 0.82;
 uniform float crease = 0.022;
 uniform float crease_strength = 0.45;
 uniform vec3 ink : source_color = vec3(0.031, 0.027, 0.059);
+// Neon halo: light spills from bright saturated pixels into the rain and haze
+// as a stippled glow, a few pixels out. Never a smooth bloom.
+uniform float halo_strength = 0.55;
 
 float linear_depth(vec2 uv, mat4 inv_proj) {
 	float d = texture(depth_tex, uv).r;
@@ -57,5 +60,26 @@ void fragment() {
 	vec2 wpx = floor(FRAGCOORD.xy) + world_px;
 	float lift = step(0.12, ink_hash(floor(wpx / 3.0) + vec2(41.0, 7.0)));
 	float cr = step(crease, fold) * (1.0 - edge) * step(e, threshold) * lift;
-	ALBEDO = mix(c, pen, max(edge * strength, cr * crease_strength));
+	vec3 outc = mix(c, pen, max(edge * strength, cr * crease_strength));
+	// Halo: look out along eight directions at three radii for neon.
+	vec3 glow = vec3(0.0);
+	float haze = 1.0 + sky_fog.z * 0.8 + sky_settle.z * 0.6;
+	for (int ri = 0; ri < 3; ri++) {
+		float rad = (ri == 0 ? 2.0 : (ri == 1 ? 3.0 : 5.0)) * haze;
+		float fall = ri == 0 ? 0.5 : (ri == 1 ? 0.3 : 0.16);
+		for (int di = 0; di < 8; di++) {
+			float a = float(di) * 0.7854 + float(ri) * 0.39;
+			vec3 s = texture(screen_tex, SCREEN_UV + vec2(cos(a), sin(a)) * px * rad).rgb;
+			float mx = max(s.r, max(s.g, s.b));
+			float mn = min(s.r, min(s.g, s.b));
+			float neon = smoothstep(0.5, 0.85, mx) * smoothstep(0.3, 0.6, (mx - mn) / max(mx, 0.001));
+			glow += s * neon * fall;
+		}
+	}
+	glow /= 8.0;
+	float gl = max(glow.r, max(glow.g, glow.b));
+	// Stipple: the glow is laid as dots whose density is its strength.
+	float dots = step(ink_hash(wpx + vec2(13.0, 77.0)), clamp(gl * 3.0 * halo_strength, 0.0, 0.7));
+	outc = mix(outc, max(outc, glow / max(gl, 0.001) * 0.85), dots);
+	ALBEDO = outc;
 }

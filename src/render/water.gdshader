@@ -128,6 +128,7 @@ void fragment() {
 		}
 	}
 	ALBEDO = sky_apply(c, world_pos, TIME);
+	EMISSION += neon_skyglow(c);
 }
 
 void light() {

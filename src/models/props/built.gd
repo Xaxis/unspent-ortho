@@ -195,6 +195,11 @@ static func pylon(k: Kit) -> void:
 				k.found.prism(p.x, yy, p.z, 0.045, yy + 0.035, 0.045, 8, P.COLD[2], P.COLD[3])
 			# WorldView strings the cables from here to the next mast.
 	k.found.prism(0, top, 0, 0.14, top + 0.22, 0.0, 4, P.PLATE[4], Color(0, 0, 0, 0), PI * 0.25)
+	# Ink & Neon: the grid keeps its lights. A beacon blinks on the top on a slow
+	# machine beat; the crossarms carry a line of cold strip light.
+	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Color(1.0, 0.18, 0.42, 0.2))
+	for arm2: Array in [[3.4, 1.15], [2.7, 0.85]]:
+		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Color(0.3, 0.95, 1.0, 0.8))
 
 
 static func _leg(l: Vector2, y: float, top: float) -> Vector3:
@@ -206,6 +211,7 @@ static func _leg(l: Vector2, y: float, top: float) -> Vector3:
 static func pole(k: Kit) -> void:
 	k.found.prism(0, -0.02, 0, 0.11, 0.18, 0.1, 8, P.PLATE[1], P.PLATE[2])
 	k.found.prism(0, 0.18, 0, 0.06, 2.8, 0.048, 8, P.PLATE[3], P.PLATE[4])
+	k.found.prism(0, 2.8, 0, 0.05, 2.9, 0.035, 6, Color(1.0, 0.3, 0.35, 0.3))
 	k.rod(Vector3(0, 2.52, -0.5), Vector3(0, 2.52, 0.5), 0.04, 4, P.PLATE[3])
 	k.rod(Vector3(0, 2.2, 0), Vector3(0, 2.52, -0.34), 0.015, 4, P.PLATE[2])
 	k.rod(Vector3(0, 2.2, 0), Vector3(0, 2.52, 0.34), 0.015, 4, P.PLATE[2])

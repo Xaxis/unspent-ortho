@@ -30,6 +30,14 @@ const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
 const LANTERN_RANGE := 3.2
+## Ink & Neon: the colour each kind of light throws into the rain. Village lamps
+## burn sodium; windows glow with stolen neon (cyan or magenta by house); fires
+## and vents stay fire; the player's salvaged lantern is a cold LED.
+const LANTERN_NEON := Vector3(0.55, 0.9, 1.0)
+const NEON_SODIUM := Vector3(1.0, 0.52, 0.16)
+const NEON_CYAN := Vector3(0.25, 0.95, 1.0)
+const NEON_MAGENTA := Vector3(1.0, 0.25, 0.8)
+const NEON_FIRE := Vector3(1.0, 0.45, 0.12)
 const LANTERN_POWER := 0.8
 ## Where the lantern's light sits in the player's frame (+X ahead, +Z to the
 ## right): above and ahead of the hand that carries it, outside the body, so
@@ -263,6 +271,7 @@ func _update(delta: float, snap: bool) -> void:
 	# A lightning flash drowns the lamps: the page shows, not the pools.
 	var dark := pool_dark(hour) * (1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0))
 	var pools: Array[Vector4] = []
+	var pool_rgb: Array[Vector4] = []
 	for i in lights.size():
 		var l := lights[i]
 		var src: Variant = _assigned[i]
@@ -282,6 +291,8 @@ func _update(delta: float, snap: bool) -> void:
 		level *= _flicker(s)
 		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and dark > 0.25:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, s.range))
+			var nc: Vector3 = neon_colour(s)
+			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
 	var lit := game.body.lamp_lit
 	lantern.visible = lit
 	if lit:
@@ -307,10 +318,23 @@ func _update(delta: float, snap: bool) -> void:
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
 			pools.push_front(Vector4(at.x, at.y, at.z, reach))
+			pool_rgb.push_front(Vector4(LANTERN_NEON.x, LANTERN_NEON.y, LANTERN_NEON.z, 0.0) * night)
 	else:
 		lantern_light.visible = false
 	pools.resize(mini(pools.size(), SkyLight.MAX_LAMPS))
+	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
+	game.sky.lamp_colors = pool_rgb
+
+
+static func neon_colour(s: Dictionary) -> Vector3:
+	match int(s.kind):
+		PropKind.LAMP:
+			return NEON_SODIUM
+		PropKind.HOUSE:
+			return NEON_CYAN if float(s.get("h", 0.5)) < 0.5 else NEON_MAGENTA
+		_:
+			return NEON_FIRE
 
 
 ## Returns whether the light is on.

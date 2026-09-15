@@ -188,6 +188,7 @@ func _update(delta: float, snap: bool) -> void:
 		_flash = FLASH_FRAMES[_flash_frame] * _flash_gain
 		_flash_frame += 1
 	var sky := game.sky
+	sky.neon_shares = shares
 	sky.region_tint = region
 	sky.weather_tint = look.tint
 	sky.season_turn = Weather.season_turn(minutes)

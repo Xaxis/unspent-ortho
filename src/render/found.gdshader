@@ -23,7 +23,19 @@ void fragment() {
 	vec3 c = COLOR.rgb;
 	vec3 tinted = sky_apply(c, world_pos, TIME);
 	ALBEDO = mix(tinted, c, night_keep * (1.0 - clamp(dot(tinted, vec3(0.333)) / max(dot(c, vec3(0.333)), 1e-3), 0.0, 1.0)));
-	EMISSION = c * emission_strength;
+	// Neon on the FOUND: vertex alpha below 1 is a light built into the machine.
+	// 0.5..0.98 a steady strip (brighter lower); below 0.5 a beacon that blinks
+	// on a slow machine beat, each beacon at its own phase.
+	float glow = 0.0;
+	if (COLOR.a < 0.98) {
+		if (COLOR.a >= 0.5) {
+			glow = (1.0 - COLOR.a) * 5.0;
+		} else {
+			float beat = fract(TIME * 0.45 + dot(floor(world_pos.xz * 0.5), vec2(0.37, 0.61)));
+			glow = step(beat, 0.18) * (1.0 - COLOR.a * 2.0) * 6.0 + 0.15;
+		}
+	}
+	EMISSION = c * emission_strength + c * glow + neon_skyglow(c);
 }
 
 void light() {

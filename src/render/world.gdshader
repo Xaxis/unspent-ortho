@@ -736,7 +736,7 @@ void fragment() {
 	unhatched = unh;
 	c *= paper(px);
 	ALBEDO = sky_apply(c, world_pos, TIME);
-	EMISSION = c * emission_strength + emit;
+	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
 }
 
 void light() {
@@ -758,6 +758,8 @@ void light() {
 		// Lamps and fire: a warm pool in hard steps; its ink is lifted in sky_ink().
 		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
-		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
+		// Ink & Neon: a pool is a low stain of coloured light on wet dark ground;
+		// the light itself and its reflection carry the brightness.
+		DIFFUSE_LIGHT += LIGHT_COLOR * a * 0.3 / PI;
 	}
 }
