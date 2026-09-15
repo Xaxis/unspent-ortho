@@ -7,6 +7,8 @@ extends UiScreen
 ## reason, since they are for making.
 
 const SKETCH := 78
+## The hardness ladder: a seam needs a tool of at least its rung.
+const LADDER: Array[StringName] = [&"wood", &"iron", &"steel", &"crucible"]
 
 var inventory: Inventory
 var body: Body
@@ -166,13 +168,19 @@ func _draw_detail(R: Rect2i) -> void:
 				names.append(PropKind.NAMES[k])
 		if not names.is_empty():
 			UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, n)), "works on", UiTheme.INK)
-			n += 1 + UiNotebook.wrapped(self, Vector2i(x0 + 6, UiNotebook.line_top(R, n + 1)), right - x0 - 6, ", ".join(names), UiTheme.INK_SOFT)
+			n += 2 + UiNotebook.wrapped(self, Vector2i(x0 + 6, UiNotebook.line_top(R, n + 1)), right - x0 - 6, ", ".join(names), UiTheme.INK_SOFT)
+	# A made tool's rung on the hardness ladder, ringed by hand: what it can take.
+	var stuff := StringName(d.get("stuff", &""))
+	if LADDER.has(stuff):
+		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, n)), "hardness", UiTheme.INK)
+		_draw_ladder(Vector2i(x0 + 6, UiNotebook.line_top(R, n + 1)), stuff)
+		n += 3
 	# What it goes into: the recipes that want it, so goods are never a dead end.
 	var demo: Array[Dictionary] = []
 	if game != null and game.options.ui_demo:
 		demo.assign(UiDemo.RECIPES)
 	var uses := UiRules.recipes_using(id, UiRules.all_recipes(demo))
-	if uses.is_empty() or n > 12:
+	if uses.is_empty() or n > 15:
 		return
 	UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, n)), "goes into", UiTheme.INK)
 	var room := 17 - n
@@ -235,6 +243,21 @@ func _facts(id: StringName, count: int) -> PackedStringArray:
 		out.append("worn: %s" % d.kit)
 	out.append("bulk %s%s" % [UiRules.num(Items.bulk(id)), " each" if count > 1 else ""])
 	return out
+
+
+func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
+	var x := at.x
+	for i in LADDER.size():
+		var word := String(LADDER[i])
+		var w := UiFont.width(word)
+		var mine := LADDER[i] == stuff
+		UiDraw.text(self, Vector2i(x, at.y), word, UiTheme.INK if mine else UiTheme.FADED)
+		if mine:
+			UiNotebook.box(self, Rect2i(x - 4, at.y - 2, w + 8, 13), UiTheme.ACCENT, i * 5 + 2)
+		x += w
+		if i < LADDER.size() - 1:
+			UiDraw.hand_hline(self, x + 8, x + 17, at.y + 5, UiTheme.FADED, i + 40)
+			x += 26
 
 
 ## The edge as notches: ten of them, worn ones left hollow.
