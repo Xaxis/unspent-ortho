@@ -85,35 +85,84 @@ music. It comes before new landscape content, so every type is born in it.
 1. **Mood core** (lead, done): a light bleak grade per landscape and hour, skyglow,
    wet reflections where wet, stippled halos, situational light (warm people, lit
    machine order, stolen neon where someone wired it in).
-2. **Wave N** (parallel):
-   - **landscape:** dense dystopian evidence in every landscape, and the machines'
-     ordered lines across the ruin.
-   - **sky:** weather and light that give each landscape its mood.
-   - **machines:** state told through restrained light, wear and trophies.
-   - **characters:** scavenging survivors.
-   - **score:** the evolving synth score and soundscapes.
-   - **slate:** the hacked-tablet UI.
-   - **saves.**
-   - **export.**
+2. **Wave N** (integrated, 2026-09-15): landscape, sky, machines, characters,
+   score, slate, saves, export, merged one at a time behind `tools/check.sh` and
+   proved by their own tours.
+
+### What is true
+
+- **The land says what happened.** 25 new prop kinds of evidence: fences, graves,
+  barricades, shacks (one in two with stolen neon wired in), drowned and burnt
+  cars, beached hulls, stumps, fire towers, and the machines' own works: warning
+  signs, intakes, pump houses, pipelines, relay masts, checkpoints, the tall
+  stack, drill fields, conveyors, survey posts, a burnt archive. `GenWorks` lays
+  every machine work on ONE survey bearing per seed, and `WorksMap` cuts turf
+  strips, drains, ruts, quarry benches, bore grids and scorched lobes into the
+  ground. All of it can be salvaged: plate off debris, cars and barricades, wood
+  off fences and stumps. Chunk props bake on the worker (3 ms a chunk on the main
+  thread, down from 16).
+- **Weather and light per landscape.** Squalls and rain on the coast, drizzle and
+  dawn mist in the moss, steady rain under the pines, snow squalls and whiteouts
+  on the snowfield, glare, dust devils and dry lightning over the bonelands, heat,
+  ash fall and furnace haze in the burning, each with its own hour-by-hour mood.
+  Lightning rolls through the cloud and stutters the machines' power; up to twelve
+  lights near the camera are mirrored in wet ground and throw shafts in fog.
+- **Machines tell their state.** Blinking status lamps (what it thinks of you),
+  eyes that lock when it has seen you, a part that runs hot before it strikes,
+  lights that go out in order as it dies; scan beams and work washes; years of
+  wear and a trophy of its trade on every kind. Each machine draws in 2-6 calls
+  instead of 13-25.
+- **The last people.** Dressed by their land's hazards and their trade (oilskins,
+  fur, respirators, goggles, salvage packs, a machine plate on the chest), thinned
+  by hunger, patched where worn; a village crowd costs ~0.02-0.13 ms a person.
+  Dogs, sheep and gulls have lived through the ruin too.
+- **The score.** A streaming synth score per landscape (drone, pad, pulse,
+  texture, grid, dissonance, phrases) driven by one conductor from the hour, the
+  weather, the danger and the installations near you, over beds of wind in
+  wreckage, transformer hum, gutters and rain split over the surfaces it falls on.
+- **The slate.** Every screen is one hacked tablet: carrying, making, the survey,
+  home, gear, machine reads and saves, with the HUD as its edge readouts and the
+  title waking on its glass. The notebook is gone.
+- **Saving.** Every system registers its own state; slots, autosave, Continue on
+  the title, and a loading page that draws the island while a world is made.
+- **It ships.** Web (threads and no threads) and macOS builds; `tools/web.sh`
+  boots the build in headless Chromium, walks it with real keys, reloads it and
+  proves a real save file comes back from IndexedDB.
+
+### Gaps (carried into M2 wave A unless fixed sooner)
+
+- Machine working parts follow `sky_power()` now, but the stolen neon marks drawn
+  into the ground by `world.gdshader` (lamp codes) do not.
+- Gulls work tips, wrecks and beached hulls; the debris the land leaves round
+  every village is not refuse they will go to.
+- The disposition a machine's status lamp blinks is its role's default until the
+  disposition system (wave A) sets it on a live machine.
+- Gear, machine reads and the felt pressures show what the game already knows
+  until hazards and disposition fill their `SlateFeeds`.
+- World generation is still one blocking step on the no-threads web build (~2.3 s),
+  `Game.setup` runs its systems in one go, and the first frame of a world stalls
+  while its shaders compile.
+- The score has been judged by spectrograms, levels and tests, and by one listen
+  on the tour; it has not had an owner's listen. Sound beds on the no-threads web
+  build still need the disk cache.
+- The browser check's audio test needs an audio device: on a machine whose
+  headless Chromium has none it reports silence (it fails the same way on the
+  package's own branch).
+- A lit lantern still lays a pale disc on snow at noon (the pool's floor in gloom).
 
 ## M2 — Foundations of an immense world
 
 Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so
 content never needs a rewrite.
 
-**Wave A** (parallel, after M2.0; slate, saves and export already moved into wave N):
+**Wave A** (parallel, after M2.0; slate, saves and export were built in wave N):
 - **biomes**: the landscape-type registry; the six countries become data with no
   regression; worldgen composes regions from types; two new types, Salt Flats and
   Scrapwood, as proof.
-- **saves**: a registry where every system saves itself; slots, autosave, Continue.
 - **hazards**: one pressure model, resistances from modular gear, abilities through
   one interface; five abilities; the MENDED idiom.
 - **disposition**: machine roles, indifference, interference per region, and stealth
   read on the machine itself.
-- **slate**: every UI screen and the HUD rebuilt as one hacked tablet made from spare
-  parts (ART.md §9), replacing the notebook pages one for one.
-- **export**: web (threads and no-threads) and macOS; loading page; `tools/web.sh`
-  boot check.
 
 **Wave B** (parallel, on top of A):
 - **realms**: realms and portals; the first underground type (Limestone Caves,

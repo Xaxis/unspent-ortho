@@ -94,6 +94,18 @@ Each row is a promise the landscape, sky, decor and audio packages keep together
 Palette values for all of the above are in `src/render/palette.gd` (from the
 extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 
+**What happened is in the land** (VISION §8). Every landscape also carries the
+evidence: what people made and lost (fences, graves, barricades, shacks with
+stolen neon wired in, drowned or burnt cars, beached hulls, stumps, fire towers)
+and what the machines put there (warning signs, intakes, pump houses, pipelines,
+relay masts, checkpoints, the tall stack, drill fields, conveyors, survey posts,
+a burnt archive). `GenWorks` places it per landscape and lays every machine work
+on ONE survey bearing per seed, 11-31 degrees off the tile axes, so the machines'
+order reads as order; `WorksMap` bakes it into the ground (turf strips, drainage
+cuts, harvester ruts, quarry benches, bore grids, scorched lobes), torn at the
+rim and ruled inside. Neon belongs to the machines' works, their relay lines and
+the shacks that stole it — nowhere else.
+
 ---
 
 ## 4. Shapes
@@ -112,6 +124,12 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 - **Machines (FOUND):** exact. Chamfered, symmetric, straight members, rivet rows,
   downward streaks, one rubbed edge, per-kind violet ramp, amber working part with
   a small glow, a cold visor slit on plated faces. Their gaits are perfectly regular.
+  They carry cold built-in lamps that mean state (a status lamp blinking what the
+  machine thinks of you, eyes that lock when it has seen you, work lamps on the
+  side it is working), a stipple scan beam or a work wash drawn as loose
+  world-pinned pixels, and ruled wear: plates cut off other machines, grime in
+  straight runs, spliced cable, and MADE trophies of their trade. The amber part
+  stays the only warm read on them.
 - **Animals:** the hand's shapes, varied by seed, readable silhouettes (wedge dog,
   brick sheep, barrel bull).
 
