@@ -28,9 +28,10 @@ void fragment() {
 void light() {
 	if (LIGHT_IS_DIRECTIONAL) {
 		float lit = step(0.05, dot(NORMAL, LIGHT)) * step(0.5, ATTENUATION);
-		DIFFUSE_LIGHT += LIGHT_COLOR * mix(shade_tint, vec3(1.0), lit) / PI;
+		DIFFUSE_LIGHT += LIGHT_COLOR * mix(shade_tint * sky_shade.rgb, vec3(1.0), lit) / PI;
 	} else {
-		float a = floor(clamp(ATTENUATION, 0.0, 1.0) * 2.0 + 0.5) / 2.0;
+		// The lamp's pool in the land's own two hard steps and stippled rim.
+		float a = sky_pool(clamp(ATTENUATION * step(-0.2, dot(NORMAL, LIGHT)), 0.0, 1.0), world_pos);
 		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }

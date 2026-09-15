@@ -14,6 +14,7 @@
 shader_type spatial;
 render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_disabled;
 
+#include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
@@ -48,7 +49,8 @@ void fragment() {
 	float b = linear_depth(SCREEN_UV - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
 	float e = max(max(r - d, l - d), max(u - d, b - d));
 	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
-	vec3 pen = mix(ink, c * 0.35, 0.25);
+	// Ink turns blue under the moon (docs/ART.md section 1, law 4).
+	vec3 pen = mix(sky_line(ink), c * 0.35, 0.25);
 	float edge = step(threshold, e);
 	// Convex folds: the pixel is nearer than the average of its neighbours.
 	float fold = max((l + r) * 0.5 - d, (u + b) * 0.5 - d);

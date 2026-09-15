@@ -47,12 +47,14 @@ void light() {
 		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
 		int style = int(mod(style_packed, 16.0) + 0.5);
 		float ink = skin > 0.5 ? 0.0 : (1.0 - lit) * hatch(style, px, depth);
-		vec3 k = mix(shade_tint, vec3(band), lit);
+		vec3 k = mix(shade_tint * sky_shade.rgb, vec3(band), lit);
 		k = mix(k, ink_tint, ink * 0.6);
 		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
 	} else {
-		float a = clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0);
-		a = floor(a * 3.0 + 0.5) / 3.0;
+		// The same pool the land draws (world.gdshader), so a person in lamplight
+		// stands in it rather than in a softer disc of their own.
+		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
 		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }

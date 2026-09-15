@@ -135,7 +135,7 @@ void light() {
 		float lit = step(0.5, ATTENUATION);
 		DIFFUSE_LIGHT += LIGHT_COLOR * mix(shade_tint, vec3(1.0), lit) / PI;
 	} else {
-		float a = floor(clamp(ATTENUATION, 0.0, 1.0) * 3.0 + 0.5) / 3.0;
+		float a = sky_pool(clamp(ATTENUATION, 0.0, 1.0), world_pos);
 		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }

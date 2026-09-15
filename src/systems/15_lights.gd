@@ -60,7 +60,6 @@ var _glow_mat: StandardMaterial3D
 var _time := 0.0
 var _lamp_down := false
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
-static var _models_have_glow_points := -1
 
 
 func setup(g: Game) -> void:
@@ -215,8 +214,10 @@ func _index_sources() -> void:
 			if p.kind == PropKind.HOUSE:
 				# Just outside the front wall, before the window and door.
 				var front := _front_of(p.kind)
-				local = Vector3(front.x, float(spec[2]), front.z + 0.5)
-			s.at = base + Basis(Vector3.UP, p.rot) * (local * p.scale)
+				var out := Vector3(front.x, 0.0, front.z).normalized() * 0.5
+				local = Vector3(front.x + out.x, float(spec[2]), front.z + out.z)
+			# Props turn by -rot (a model faces +X; WorldView draws them so).
+			s.at = base + Basis(Vector3.UP, -p.rot) * (local * p.scale)
 			s.range = float(spec[0]) * lerpf(1.0, p.scale, 0.5)
 			s.power = float(spec[1])
 			match p.kind:
@@ -414,33 +415,10 @@ func _update_glows(focus: Vector2, hour: float) -> void:
 			n.visible = fposmod(_time + float(n.get_meta("blink")) * 3.0, 3.0) < 1.1
 
 
-## Where a prop's windows, doors and flames are, in its own frame (before
-## rotation and scale): Array of {at: Vector3, size: Vector2 (0 = no pane),
-## color: Color, box: bool, rays: [inner px, outer px, flicker, spokes]}.
-## Uses PropModels.glow_points(kind) when the model package provides it (the
-## models change shape; this must follow them); otherwise the M0 geometry.
+## Where a prop gives light, in its own frame: PropModels.glow_points(kind),
+## which follows the models' own shapes.
 static func glow_points(kind: int) -> Array:
-	if _models_have_glow_points < 0:
-		_models_have_glow_points = 0
-		for m in (PropModels as GDScript).get_script_method_list():
-			if m.name == "glow_points":
-				_models_have_glow_points = 1
-	if _models_have_glow_points == 1:
-		return (PropModels as GDScript).call("glow_points", kind)
-	match kind:
-		PropKind.HOUSE:
-			return [
-				{"at": Vector3(-0.775, 0.85, 1.125), "size": Vector2(0.33, 0.3), "color": Palette.COPPER[4]},
-				{"at": Vector3(0.6, 0.5, 1.125), "size": Vector2(0.44, 0.8), "color": Palette.COPPER[3], "door": true},
-			]
-		PropKind.LAMP:
-			# Just proud of the lamp's copper head, so the lit pane replaces it.
-			return [{"at": Vector3(0, 1.7, 0), "size": Vector2(0.2, 0.21), "color": Palette.COPPER[4], "box": true, "rays": [3.0, 6.0, 0.0, 8.0]}]
-		PropKind.PYLON:
-			return [{"at": Vector3(0, 3.75, 0), "size": Vector2(0.12, 0.12), "color": Palette.RUST[4], "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
-		PropKind.FIRE:
-			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
-	return []
+	return PropModels.glow_points(kind)
 
 
 func _glow_node(s: Dictionary) -> Node3D:
@@ -451,7 +429,7 @@ func _glow_node(s: Dictionary) -> Node3D:
 	var k := MeshKit.new()
 	var root := Node3D.new()
 	root.name = "glow_%d" % p.id
-	root.transform = Transform3D(Basis(Vector3.UP, p.rot).scaled(Vector3.ONE * p.scale), game.world.to_3d(p.pos))
+	root.transform = Transform3D(Basis(Vector3.UP, -p.rot).scaled(Vector3.ONE * p.scale), game.world.to_3d(p.pos))
 	for g: Dictionary in pts:
 		var at: Vector3 = g.at
 		var sz: Vector2 = g.get("size", Vector2.ZERO)

@@ -2,7 +2,8 @@ class_name Mob
 extends Node3D
 ## A machine or creature in the world: draws a MobState (which FightSim steps)
 ## with a FigureModel. Contract for everyone else: joins group &"mobs" and
-## exposes `kind`, `pos` (tile space) and `alive`.
+## exposes `kind`, `pos` (tile space), `alive` and `hostile` (false for things
+## that only pester, like gulls, so the notebook keeps its hints near them).
 ##
 ## The body telegraphs so a player can learn it: the alert pose when it
 ## notices you, the windup pose (and a lean back) through a bite's tell, the
@@ -13,6 +14,7 @@ extends Node3D
 var kind: StringName = &""
 var pos := Vector2.ZERO
 var alive := true
+var hostile := true
 var state: MobState
 var model: FigureModel
 ## Carries the lean and the heave; the model sits on it facing +X.
@@ -38,12 +40,20 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 	_world = world
 	kind = s.kind
 	pos = s.pos
+	hostile = s.row.get("hostile", true)
 	name = "mob_%s_%d" % [String(kind).replace(".", "_"), s.id]
 	add_to_group(&"mobs")
 	pivot = Node3D.new()
 	pivot.name = "pivot"
 	add_child(pivot)
-	model = figure if figure != null else FigureModel.create(s.row.get("model", kind), base_material)
+	var model_kind: StringName = s.row.get("model", kind)
+	if figure != null:
+		model = figure
+	elif s.row.get("machine", true):
+		model = FigureModel.create(model_kind, base_material)
+	else:
+		# Animals are the hand's shapes varied by seed: no two yard dogs alike.
+		model = AnimalModel.spawn(model_kind, base_material, Rng.hash_ints(world.seed_value, s.id, 0xA11))
 	pivot.add_child(model)
 	_z = world.height_at(s.pos)
 	sync_view(0.0, 0.0)

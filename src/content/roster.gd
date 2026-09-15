@@ -183,7 +183,7 @@ const DEFS := {
 		"where": {"countries": ["coast", "pinewood", "bonelands"], "grounds": ["grass", "heath", "furrow"], "green_min": 10},
 	},
 	&"gulls": {
-		"model": &"gull", "machine": false, "approach": &"dart", "part": &"none",
+		"model": &"gull", "machine": false, "hostile": false, "approach": &"dart", "part": &"none",
 		"pace": 7.0, "dash": 10.0, "radius": 0.22, "height": 0.4, "life": 1,
 		"sees": 12, "hears": 8, "racket": 0, "reach": 1, "ready": 1, "forget": 6, "tether": 30, "safe": 10,
 		"nerve": 100, "invuln": 300, "stagger": true,

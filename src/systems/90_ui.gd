@@ -218,22 +218,15 @@ func _feed_hud() -> void:
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
-	var said: Variant = UiLink.use_hint(game)
-	if said != null:
-		if String(said) != "":
-			hud.set_hint(String(said), "e")
-			return
-		var here := UiLink.stations_here(game)
-		if not here.is_empty() and here[0] != &"hand":
-			hud.set_hint("%s - make" % here[0], "c")
-		else:
-			hud.set_hint("")
+	var said := UiLink.use_hint(game)
+	if said != "":
+		hud.set_hint(said, "e")
 		return
-	var prop := UiRules.use_target(game.query, game.player.pos, game.player.facing)
-	if prop == null:
-		hud.set_hint("")
+	var here := UiLink.stations_here(game)
+	if not here.is_empty() and here[0] != &"hand":
+		hud.set_hint("%s - make" % here[0], "c")
 	else:
-		hud.set_hint(UiRules.prop_hint(prop.kind), UiRules.hint_key(prop.kind))
+		hud.set_hint("")
 
 
 func _hostile_near() -> bool:

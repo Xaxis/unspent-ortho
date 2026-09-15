@@ -156,6 +156,27 @@ static func mesh(kind: int) -> ArrayMesh:
 	return _meshes[key]
 
 
+## Where a model gives light, in its own frame (a model faces +X): Array of
+## {at: Vector3, size: Vector2 (0 = no pane), color: Color, box: bool, door: bool,
+## rays: [inner px, outer px, flicker 0..1, spokes]} (read by 15_lights).
+## Windows and lamp glass are drawn lit by the models themselves (lamp-coded
+## washes), so these carry no panes: only where the light stands and the
+## flame strokes.
+static func glow_points(kind: int) -> Array:
+	match kind:
+		PropKind.HOUSE:
+			# The door side is +X on every house variant (props/houses.gd).
+			return [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
+		PropKind.LAMP:
+			# The lantern hangs off its arm at x 0.4 (props/built.gd lamp_post).
+			return [{"at": Vector3(0.4, 1.41, 0.02), "size": Vector2.ZERO, "color": Palette.COPPER[4], "rays": [3.0, 6.0, 0.0, 8.0]}]
+		PropKind.PYLON:
+			return [{"at": Vector3(0, 4.05, 0), "size": Vector2(0.12, 0.12), "color": Palette.RUST[4], "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
+		PropKind.FIRE:
+			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
+	return []
+
+
 ## Index of the FOUND surface in mesh(kind), or -1 when the kind has none.
 static func found_surface(kind: int) -> int:
 	var t := template(kind, 0, Country.COAST)

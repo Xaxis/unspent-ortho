@@ -53,7 +53,7 @@ func test_crafting_needs_a_station_or_hand_work() -> void:
 		eq((ui.call("top") as UiCraftingScreen).stations.back(), &"hand")
 		ui.call("top").handle(&"back")
 	else:
-		check(not opened or UiRules.station_near(g.query, g.player.pos) != &"", "no station, no making page")
+		check(not opened or Survival.station_near(g) != &"", "no station, no making page")
 	g.world.props.append(WorldProp.new(99999, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
 	g.query.add_prop(g.world.props.back())
 	check(ui.call("open_screen", &"crafting"), "opens beside a fire")

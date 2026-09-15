@@ -8,10 +8,6 @@ const HOSTILE_RADIUS := 8.0
 const PER_CELL := 3
 ## The creel: load that starts to tell (source: 40; a rig adds 20).
 const CREEL := 40.0
-## How close a prop must be to be the thing E would work on.
-const USE_REACH := 1.6
-## How close a station must be to make things at it.
-const STATION_REACH := 2.5
 
 ## What a person does to a prop, from the taking table (design-extract §9.5).
 ## Survival owns the real rule; this only names it for the hint.
@@ -107,33 +103,6 @@ static func prop_hint(kind: int) -> String:
 ## The key that does a hint's verb: stations open the making page.
 static func hint_key(kind: int) -> String:
 	return "c" if STATIONS.has(kind) else "e"
-
-
-## The prop the player would work on: nearest usable prop within reach of a
-## point a little ahead of them. null when none.
-static func use_target(query: WorldQuery, pos: Vector2, facing: float) -> WorldProp:
-	var ahead := pos + Vector2.from_angle(facing) * 0.45
-	var best: WorldProp = null
-	var best_d := USE_REACH * USE_REACH
-	for q in query.props_near(ahead, USE_REACH):
-		if query.world.depleted.has(q.id):
-			continue
-		if not PROP_VERBS.has(q.kind) and not STATIONS.has(q.kind):
-			continue
-		var d := q.pos.distance_squared_to(ahead)
-		if d <= best_d:
-			best_d = d
-			best = q
-	return best
-
-
-## The station within reach, as its recipe key (&"fire" &"bench" &"kiln"), or &"".
-static func station_near(query: WorldQuery, pos: Vector2) -> StringName:
-	var kinds: Array[int] = []
-	for k: int in STATIONS:
-		kinds.append(k)
-	var p := query.nearest_prop(pos, STATION_REACH, kinds)
-	return STATIONS[p.kind] if p != null else &""
 
 
 ## What the notebook calls a thing: its Items name, or its id made readable.

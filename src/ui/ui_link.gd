@@ -1,38 +1,8 @@
 class_name UiLink
-## The notebook's one door into rules other packages own. Survival, Crafting
-## and Inventory grow richer helpers in parallel with this package; every call
-## here uses the richer helper when it exists and falls back to the plain
-## contract (Crafting.can_make/make, Inventory.set_held) when it does not, so
-## the notebook works before, during and after those packages land. Body is
-## only ever read: what cannot be done without its owner is refused instead.
-##
-## Classes that may not exist yet are reached by global class name, never by
-## identifier, so this file parses without them.
-
-static var _scripts := {}
-
-
-## A script by its class_name, or null if no such class is registered.
-static func script_named(n: StringName) -> Script:
-	if _scripts.has(n):
-		return _scripts[n]
-	var found: Script = null
-	for c: Dictionary in ProjectSettings.get_global_class_list():
-		if c.class == n:
-			found = load(String(c.path)) as Script
-			break
-	_scripts[n] = found
-	return found
-
-
-## True if class `n` exists and has static `method`.
-static func offers(n: StringName, method: StringName) -> bool:
-	var s := script_named(n)
-	return s != null and s.has_method(method)
-
-
-static func _call(n: StringName, method: StringName, args: Array) -> Variant:
-	return script_named(n).callv(method, args)
+## The notebook's one door into rules other packages own: Survival (targets,
+## stations, eating, holding), Crafting (what is short, why not, making) and
+## Inventory (the creel, worn kit). Body is only ever read. A page shown without
+## a running game (gallery, tests) gets the plain Crafting contract instead.
 
 
 # --- the world around the player ---------------------------------------------
@@ -41,24 +11,18 @@ static func _call(n: StringName, method: StringName, args: Array) -> Variant:
 ## ending with &"hand" when any hand recipe exists.
 static func stations_here(game: Game) -> Array[StringName]:
 	var out: Array[StringName] = []
-	if game != null and offers(&"Survival", &"stations_near"):
-		out.assign(_call(&"Survival", &"stations_near", [game]))
+	if game != null:
+		out.assign(Survival.stations_near(game))
 	else:
-		if game != null:
-			var s := UiRules.station_near(game.query, game.player.pos)
-			if s != &"":
-				out.append(s)
 		out.append(&"hand")
 	if out.has(&"hand") and Crafting.recipes_at(&"hand").is_empty():
 		out.erase(&"hand")
 	return out
 
 
-## What `use` would do now ("pine - fell"), or null when survival does not say.
-static func use_hint(game: Game) -> Variant:
-	if offers(&"Survival", &"describe_target"):
-		return String(_call(&"Survival", &"describe_target", [game]))
-	return null
+## What `use` would do now ("pine - fell"), or "" with nothing in front.
+static func use_hint(game: Game) -> String:
+	return Survival.describe_target(game)
 
 
 # --- carrying ------------------------------------------------------------------
@@ -85,30 +49,29 @@ static func group_of(id: StringName) -> StringName:
 
 ## Load carried before it tells.
 static func creel(inv: Inventory, body: Body) -> float:
-	if inv != null and inv.has_method("creel"):
-		return float(inv.call("creel"))
+	if inv != null:
+		return inv.creel()
 	return UiRules.creel(body) if body != null else UiRules.CREEL
 
 
 ## The worn piece of kit, or &"".
 static func worn(inv: Inventory) -> StringName:
-	var w: Variant = inv.get("worn")
-	return w if w is StringName else &""
+	return inv.worn
 
 
 static func can_wear(inv: Inventory) -> bool:
-	return inv.has_method("wear_kit")
+	return inv != null
 
 
 ## Put on (or take off, with &"") a piece of kit.
 static func wear(inv: Inventory, id: StringName) -> bool:
-	return can_wear(inv) and bool(inv.call("wear_kit", id))
+	return inv.wear_kit(id)
 
 
 ## Hold a carried thing (&"" = bare hands). Survival also puts it in the figure's hand.
 static func hold(game: Game, inv: Inventory, id: StringName) -> void:
-	if game != null and game.inventory == inv and offers(&"Survival", &"hold"):
-		_call(&"Survival", &"hold", [game, id])
+	if game != null and game.inventory == inv:
+		Survival.hold(game, id)
 	else:
 		inv.set_held(id)
 
@@ -116,34 +79,25 @@ static func hold(game: Game, inv: Inventory, id: StringName) -> void:
 ## True when eating can be done from the notebook: survival owns hunger, so
 ## only its `eat` feeds the body. The notebook never writes Body itself.
 static func can_eat(game: Game, inv: Inventory) -> bool:
-	return game != null and game.inventory == inv and offers(&"Survival", &"eat")
+	return game != null and game.inventory == inv
 
 
 ## Eat one through survival. Returns true if it was eaten.
 static func eat(game: Game, inv: Inventory, id: StringName) -> bool:
-	return can_eat(game, inv) and bool(_call(&"Survival", &"eat", [game, id]))
+	return can_eat(game, inv) and Survival.eat(game, id)
 
 
 # --- making ----------------------------------------------------------------------
 
 ## {item: n short} for a recipe, counting kept tools as needed.
 static func missing(inv: Inventory, r: Dictionary) -> Dictionary:
-	if offers(&"Crafting", &"missing"):
-		return _call(&"Crafting", &"missing", [inv, r])
-	var out := {}
-	for group: String in ["needs", "keeps"]:
-		var d: Dictionary = r.get(group, {})
-		for id: StringName in d:
-			var short := int(d[id]) - inv.count(id)
-			if short > 0:
-				out[id] = maxi(int(out.get(id, 0)), short)
-	return out
+	return Crafting.missing(inv, r)
 
 
 ## "" if the recipe can be made here now, else one plain sentence why not.
 static func why_not(game: Game, inv: Inventory, r: Dictionary) -> String:
-	if game != null and game.inventory == inv and offers(&"Crafting", &"why_not"):
-		var why := String(_call(&"Crafting", &"why_not", [game, r]))
+	if game != null and game.inventory == inv:
+		var why := Crafting.why_not(game, r)
 		# Survival says "Not without what it needs."; the page can say exactly what.
 		if why != "" and not missing(inv, r).is_empty():
 			return short_line(inv, r)
@@ -166,18 +120,12 @@ static func short_line(inv: Inventory, r: Dictionary) -> String:
 	return "Not now."
 
 
-## Make it. Survival's make_in charges the clock, plays the work and builds
-## stations; the plain contract moves goods and the page charges the clock.
+## Make it. In a game Crafting.make_in charges the clock, plays the work and
+## builds stations; without one the plain contract only moves goods.
 static func make(game: Game, inv: Inventory, r: Dictionary) -> bool:
-	if game != null and game.inventory == inv and offers(&"Crafting", &"make_in"):
-		return bool(_call(&"Crafting", &"make_in", [game, r]))
-	if not Crafting.make(inv, r):
-		return false
-	var minutes := float(r.get("minutes", 0.0))
-	if game != null and minutes > 0.0:
-		game.clock.skip(minutes)
-		Events.time_skipped.emit(minutes, &"make")
-	return true
+	if game != null and game.inventory == inv:
+		return Crafting.make_in(game, r)
+	return Crafting.make(inv, r)
 
 
 static func count_word(n: int) -> String:

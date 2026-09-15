@@ -82,27 +82,6 @@ func test_prop_hints_name_the_verb() -> void:
 	eq(UiRules.prop_hint(PropKind.LAMP), "", "nothing to do to a lamp post")
 
 
-func test_use_target_prefers_what_is_ahead() -> void:
-	var w := WorldData.new(1, 16)
-	for i in w.level.size():
-		w.level[i] = 1
-	var behind := WorldProp.new(0, PropKind.PINE, Vector2(7.0, 8.5), 0.0, 1.0)
-	var ahead := WorldProp.new(1, PropKind.BOULDER, Vector2(9.2, 8.5), 0.0, 1.0)
-	w.props = [behind, ahead]
-	var q := WorldQuery.new(w)
-	var t := UiRules.use_target(q, Vector2(8.1, 8.5), 0.0)
-	check(t == ahead, "facing east picks the boulder")
-	t = UiRules.use_target(q, Vector2(8.1, 8.5), PI)
-	check(t == behind, "facing west picks the pine")
-	w.depleted[ahead.id] = INF
-	t = UiRules.use_target(q, Vector2(8.1, 8.5), 0.0)
-	check(t == behind, "a taken prop is not a target")
-	w.props.append(WorldProp.new(2, PropKind.FIRE, Vector2(3.5, 3.5), 0.0, 1.0))
-	q = WorldQuery.new(w)
-	eq(UiRules.station_near(q, Vector2(4.5, 4.5)), &"fire")
-	eq(UiRules.station_near(q, Vector2(12.5, 12.5)), &"")
-
-
 func test_inventory_groups_in_notebook_order() -> void:
 	var inv := Inventory.new()
 	inv.add(&"stone", 3)
