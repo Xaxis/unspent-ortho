@@ -206,7 +206,7 @@ func legacy_ground(g: int, c: int, x: float, y: float, shore: float) -> int:
 	var n := _sub.get_noise_2d(x, y)
 	match c:
 		Country.COAST:
-			if g == Ground.GRASS and n > 0.22:
+			if g == Ground.GRASS and n > 0.3:
 				return Ground.HEATH
 			if g == Ground.SAND and shore > -1.6 and n < -0.05:
 				return Ground.SHINGLE

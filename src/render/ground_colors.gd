@@ -114,7 +114,8 @@ static func _make(g: int, c: int) -> Color:
 				Country.BONELANDS: return _m(P.EARTH[3], P.SAND[3], 0.5)
 				Country.SNOWFIELD: return _m(P.EARTH[2], P.ASH[2], 0.5)
 				Country.BURNING: return P.EARTH[1]
-			return _m(P.EARTH[2], P.MOSS[2], 0.35)
+			# Heather browns under a grey-green cast, never orange.
+			return _m(P.EARTH[2], P.MOSS[2], 0.5)
 		Ground.MOSS:
 			match c:
 				Country.SNOWFIELD: return _m(P.SPRUCE[2], P.ASH[3], 0.4)
