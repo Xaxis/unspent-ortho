@@ -27,6 +27,9 @@ static func run(c: GenContext) -> void:
 	var shelf := GenFields.field(GenFields.noise(s, 305, 1.0 / 30.0, 2), size, 4)
 	var heart := c.hearts[Country.BURNING]
 	var crater := crater_radius(c)
+	# The rim is a broken ring, never a drawn circle.
+	var rim_warp := GenFields.field(GenFields.noise(s, 307, 1.0 / 26.0, 2), size, 2)
+	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
 	var offshore := c.offshore
@@ -59,7 +62,7 @@ static func run(c: GenContext) -> void:
 				if bw > 0.05:
 					var dx := x - heart.x
 					var dy := y - heart.y
-					var d := sqrt(dx * dx + dy * dy) / crater
+					var d := (sqrt(dx * dx + dy * dy) + rim_warp[i] * crater * 0.3) / crater
 					var rim := exp(-(d - 1.0) * (d - 1.0) * 5.0) * 4.5
 					var basin := -2.2 * (1.0 - smoothstep(0.2, 0.95, d))
 					e += bw * (rim + basin)

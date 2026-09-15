@@ -88,6 +88,7 @@ static func run(c: GenContext) -> void:
 	var heart := c.hearts[Country.BURNING]
 	var crater := GenRelief.crater_radius(c)
 	var spawn := w.spawn
+	var rim_warp := c.rim_warp
 	var plazas := PackedByteArray()
 	plazas.resize(n)
 	for v in w.villages:
@@ -262,10 +263,11 @@ static func run(c: GenContext) -> void:
 					var dx := x + 0.5 - heart.x
 					var dy := y + 0.5 - heart.y
 					var dist := sqrt(dx * dx + dy * dy)
+					var rim_d := dist + rim_warp[i] * crater * 0.3
 					var ai := posmod(floori((atan2(dy, dx) + PI) / TAU * FLOW_ANGLES), FLOW_ANGLES)
 					var ri := mini(FLOW_RADII - 1, floori(dist * 0.5))
 					var fv := flows[ri * FLOW_ANGLES + ai]
-					var in_crater := dist < crater * 0.8
+					var in_crater := rim_d < crater * 0.8
 					if ss <= 1:
 						g = Ground.CLINKER if gm > 0.0 else Ground.SHINGLE
 					elif up >= 2:
@@ -274,7 +276,7 @@ static func run(c: GenContext) -> void:
 						g = Ground.CLINKER
 					elif down >= 2 and gm > -0.1:
 						g = Ground.ROCK
-					elif absf(dist - crater) < 3.0 + gm * 3.0:
+					elif absf(rim_d - crater) < 3.0 + gm * 3.0:
 						g = Ground.ROCK
 					elif l >= 9 and gm > 0.3:
 						g = Ground.ROCK

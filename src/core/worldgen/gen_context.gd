@@ -42,6 +42,10 @@ var hearts: Array[Vector2] = []
 ## Float elevation in levels (land >= 1).
 var elev: PackedFloat32Array
 
+## Warp of the Burning's caldera, in crater radii / 0.3, shared by the rim's
+## relief and its rock.
+var rim_warp: PackedFloat32Array
+
 # --- water ---
 ## 0 none, 1 river, 2 still water (tarn, pool)
 var water: PackedByteArray
