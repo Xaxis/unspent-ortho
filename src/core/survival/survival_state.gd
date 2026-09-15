@@ -24,6 +24,10 @@ var wet_until := -INF
 var built: Array[WorldProp] = []
 ## Real-seconds accumulator for the regrowth sweep.
 var sweep_in := 0.0
+## World minutes of light left in the flask inside the lamp (a carried `oil` refills it).
+var lamp_oil := Condition.LAMP_FLASK_MINUTES
+## World minute the lamp's burn was last settled (-INF: not yet).
+var lamp_at := -INF
 
 
 static func of(game: Node) -> SurvivalState:

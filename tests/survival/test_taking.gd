@@ -279,20 +279,25 @@ func test_mussels_sometimes_bring_up_a_whelk_and_the_rock_stays() -> void:
 	Fx.done(g)
 
 
-func test_use_on_nothing_eats_when_hungry_then_builds_a_fire_then_sleeps_by_it() -> void:
+func test_use_on_nothing_builds_a_fire_then_eats_before_it_sleeps_by_it() -> void:
 	var g := Fx.flat(40, 20.0)
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
-	g.inventory.add(&"mussels")
+	g.inventory.add(&"mussels", 2)
 	eq(Survival.describe_target(g), "campfire - build", "fed, it is evening, no fire: build")
 	check(Survival.use(g), "built")
-	eq(g.inventory.count(&"mussels"), 1, "fed: nothing eaten")
+	eq(g.inventory.count(&"mussels"), 2, "fed: nothing eaten")
 	check(not g.world.props.is_empty() and g.world.props[-1].kind == PropKind.FIRE, "a fire stands")
-	g.clock.skip(9.0 * 60.0)
-	g.body.fed_until = g.clock.minutes - 60.0
+	g.clock.skip(3.0 * 60.0)
 	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
-	eq(Survival.describe_target(g), "fire - sleep", "sleep wins at night by a fire")
-	g.clock.skip(6.0 * 60.0)
+	eq(Survival.describe_target(g), "fire - sleep", "fed, at night by a fire: sleep")
+	g.body.fed_until = g.clock.minutes - 60.0
+	eq(Survival.describe_target(g), "mussels - eat", "hungry at night: eat first, or wake starving")
+	check(Survival.use(g), "ate")
+	g.body.busy_until = 0.0
+	eq(Survival.describe_target(g), "fire - sleep", "then sleep")
+	check(Survival.use(g), "slept")
+	eq(g.clock.hour(), 8.0, "woke at eight by a fire")
 	g.body.fed_until = g.clock.minutes - 60.0
 	eq(Survival.describe_target(g), "mussels - eat", "by day, hungry, with food: eat")
 	check(Survival.use(g), "ate")

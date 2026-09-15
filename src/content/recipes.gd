@@ -47,6 +47,8 @@ const LIST: Array[Dictionary] = [
 	{"id": &"copper", "at": &"fire", "minutes": 240.0, "needs": {&"copper_ore": 3, &"charcoal": 2}, "makes": {&"copper": 1}},
 	{"id": &"pitch", "at": &"fire", "minutes": 200.0, "needs": {&"resin": 4}, "makes": {&"pitch": 1}},
 	{"id": &"oil", "at": &"fire", "minutes": 90.0, "needs": {&"resin": 2}, "makes": {&"oil": 1}},
+	# The shore's lamp oil: whelks rendered down. Slower and dearer than pine resin.
+	{"id": &"oil_whelks", "at": &"fire", "minutes": 120.0, "needs": {&"whelks": 3}, "makes": {&"oil": 1}},
 	{"id": &"dye", "at": &"fire", "minutes": 260.0, "needs": {&"crottle": 5}, "makes": {&"dye": 1}},
 	{"id": &"soup", "at": &"fire", "minutes": 40.0, "needs": {&"mussels": 3, &"wrack": 1}, "makes": {&"soup": 2}},
 	{"id": &"stew", "at": &"fire", "minutes": 60.0, "needs": {&"mussels": 4, &"samphire": 2}, "makes": {&"stew": 2}},

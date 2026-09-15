@@ -13,11 +13,13 @@ class_name Survival
 ##   describe_target(game) -> String         what `use` would do now: "pine - fell",
 ##                                           "iron ore - too hard", "fire - sleep", "mussels - eat",
 ##                                           "campfire - build", or ""
-##   use(game) -> bool                       the `use` action: work the target; else sleep, eat or
-##                                           build a fire, whichever fits
+##   use(game) -> bool                       the `use` action: work the target; else eat (if hungry),
+##                                           sleep, or build a fire, whichever fits first
 ##   work(game, prop) -> bool                start working a prop (refusals go to Events.message)
 ##   finish_work(game) -> bool               complete the work in hand now (the system does this
 ##                                           when its real time is up; bots call it directly)
+##   interrupt(game) -> bool                 drop the work in hand: nothing taken, no time charged
+##                                           (the system calls it when a blow lands on the player)
 ##   eat(game, id) -> bool                   eat one food item from the creel
 ##   best_food(game) -> StringName           what eat would pick, or &""
 ##   sleep(game) -> bool / sleep_refusal(game) -> String ("" = can sleep)
@@ -25,11 +27,13 @@ class_name Survival
 ##   build(game, station, free) -> WorldProp any station (fire bench kiln) per its recipe
 ##   hold(game, id) -> bool                  put a carried item in hand (&"" = bare hands)
 ##   hone(game) -> bool / reedge(game) -> bool   mend the held tool (see Crafting recipes sharpen/reedge)
-##   tick(game, delta)                       per frame: finish work, body condition, regrowth
+##   lamp_oil(game) -> float                 world minutes of light left in the lamp and carried flasks
+##   tick(game, delta)                       per frame: finish work, body condition, regrowth, lamp oil
 ##
 ## Events emitted: took(item, n), made(item, n), time_skipped(minutes, reason:
 ## work eat sleep make build collapse), message(line), sfx(name, at) with names
-## work_<verb> took refuse eat sleep build_<station> make hone collapse regrow.
+## work_<verb> took refuse eat sleep build_<station> make hone collapse regrow
+## work_broken lamp_out.
 
 ## Real seconds a take plays for (the clock is charged its minutes after).
 const WORK_SECONDS := 1.2
@@ -164,10 +168,10 @@ static func describe_target(game: Game) -> String:
 				return "%s - under water" % name
 		return "%s - no tool" % name
 	match _fallback(game):
-		&"sleep":
-			return "%s - sleep" % ("fire" if fire_near(game) != null else "village")
 		&"eat":
 			return "%s - eat" % Items.display_name(best_food(game))
+		&"sleep":
+			return "%s - sleep" % ("fire" if fire_near(game) != null else "village")
 		&"build":
 			return "campfire - build"
 	return ""
@@ -176,26 +180,28 @@ static func describe_target(game: Game) -> String:
 # --- The use action -------------------------------------------------------
 
 static func use(game: Game) -> bool:
-	if busy(game):
+	# Something has hold of you: every hand is for pulling free.
+	if busy(game) or game.body.grip > 0:
 		return false
 	var t := use_target(game)
 	if t != null:
 		return work(game, t)
 	match _fallback(game):
-		&"sleep":
-			return sleep(game)
 		&"eat":
 			return eat(game, best_food(game))
+		&"sleep":
+			return sleep(game)
 		&"build":
 			return build_fire(game) != null
 	return false
 
 
+## Eating comes before sleep: a body that lies down hungry wakes starving.
 static func _fallback(game: Game) -> StringName:
-	if sleep_refusal(game) == "":
-		return &"sleep"
 	if game.body.hunger_level(game.clock.minutes) >= 1 and best_food(game) != &"":
 		return &"eat"
+	if sleep_refusal(game) == "":
+		return &"sleep"
 	if fire_near(game, 5.0) == null and _makeable_build(game, &"fire").size() > 0 and _build_spot(game, PropKind.FIRE).x > -1e8:
 		return &"build"
 	return &""
@@ -277,6 +283,19 @@ static func finish_work(game: Game) -> bool:
 	return true
 
 
+## A blow knocks the work out of your hands: nothing comes away, no time is
+## charged, the tool keeps its edge, and you can move at once.
+static func interrupt(game: Game) -> bool:
+	var state := SurvivalState.of(game)
+	if state.job.is_empty():
+		return false
+	var prop: WorldProp = state.job.prop
+	state.job = {}
+	game.body.busy_until = 0.0
+	Events.sfx.emit(&"work_broken", game.world.to_3d(prop.pos))
+	return true
+
+
 # --- Eating and sleeping ---------------------------------------------------
 
 static func best_food(game: Game) -> StringName:
@@ -313,7 +332,11 @@ static func sleep(game: Game) -> bool:
 	var roof := in_village(game)
 	var now := game.clock.minutes
 	var wake := Condition.wake_minute(now, roof)
+	# Nobody sleeps with the lamp burning: it is put out, and the oil kept.
+	burn_lamp(game)
+	game.body.lamp_lit = false
 	_skip(game, wake - now, &"sleep")
+	state.lamp_at = game.clock.minutes
 	state.woke_at = wake
 	game.body.tired = 0.0
 	if not roof and not game.inventory.has(&"oilcloth") and _weather_wets(game, wake):
@@ -401,13 +424,16 @@ static func _clear(game: Game, s: Vector2, radius: float, level: int) -> bool:
 		var ty := floori(c.y)
 		if not game.query.standable(tx, ty) or Ground.is_water(w.ground_at(tx, ty)) or w.level_at(tx, ty) != level:
 			return false
-	for q in game.query.props_near(s, 3.0):
+	for q in game.query.props_near(s, 4.0):
 		if w.depleted.has(q.id):
 			continue
 		# Not under a crown: a tree's canopy is wider than its trunk.
 		var body := maxf(q.solid, 0.25)
 		if q.kind == PropKind.PINE or q.kind == PropKind.SNOW_PINE or q.kind == PropKind.BROADLEAF:
 			body = maxf(body, 0.7 * q.scale)
+		elif q.kind == PropKind.HOUSE:
+			# Nor under the eaves: a roof reaches past the walls it stands on.
+			body = maxf(body, 2.1 * q.scale)
 		var gap := body + radius + 0.2
 		if q.pos.distance_squared_to(s) < gap * gap:
 			return false
@@ -472,6 +498,7 @@ static func sweep(game: Game, _delta: float) -> void:
 		if float(state.spent[k]) <= now:
 			state.spent.erase(k)
 			state.taken.erase(k)
+	burn_lamp(game)
 	var p := game.player.pos
 	var g := w.ground_at(floori(p.x), floori(p.y))
 	if Ground.is_water(g) or (not in_village(game) and _weather_wets(game, now)):
@@ -490,8 +517,51 @@ static func update_body(game: Game) -> void:
 	body.wet = clampf((state.wet_until - now) / Condition.WET_MINUTES, 0.0, 1.0)
 	var tired := Condition.is_tired(now, state.woke_at)
 	body.tired = 1.0 if tired else 0.0
-	var extra := Condition.step_extra(body.load, inv.creel(), body.hunger_level(now), tired, body.wet > 0.0, body.health < body.max_health)
+	var extra := Condition.step_extra(body.load, inv.creel(), body.hunger_level(now), tired, body.wet > 0.0, is_hurt(game))
 	body.move_factor = Condition.move_factor(extra)
+
+
+## Hurt: short of health, or still carrying a wound the fight left (Body.hurt_until,
+## the fight package's field, read by name so this loads before it lands).
+static func is_hurt(game: Game) -> bool:
+	var body := game.body
+	if body.health < body.max_health:
+		return true
+	var until: Variant = body.get("hurt_until")
+	return (until is float or until is int) and float(until) > game.clock.minutes
+
+
+# --- The lamp ------------------------------------------------------------------
+
+## Burn the lit lamp's oil up to now: the flask in the lamp first, then a carried
+## `oil` is poured in, one at a time. Dry, it goes out with a line. With no lamp
+## carried there is nothing to light. The sky package toggles Body.lamp_lit;
+## this only puts it out.
+static func burn_lamp(game: Game) -> void:
+	var state := SurvivalState.of(game)
+	var now := game.clock.minutes
+	var minutes := maxf(0.0, now - state.lamp_at) if state.lamp_at > -INF else 0.0
+	state.lamp_at = now
+	var body := game.body
+	if not body.lamp_lit:
+		return
+	var inv := game.inventory
+	if not inv.has(&"lamp"):
+		body.lamp_lit = false
+		Events.message.emit("You have no lamp.")
+		return
+	var r := Condition.burn_lamp(state.lamp_oil, minutes, inv.count(&"oil"))
+	if int(r.flasks) > 0:
+		inv.remove(&"oil", int(r.flasks))
+	state.lamp_oil = r.left
+	if r.out:
+		body.lamp_lit = false
+		Events.message.emit("The lamp gutters, and goes out.")
+		Events.sfx.emit(&"lamp_out", game.player.position)
+
+
+static func lamp_oil(game: Game) -> float:
+	return SurvivalState.of(game).lamp_oil + game.inventory.count(&"oil") * Condition.LAMP_FLASK_MINUTES
 
 
 ## Starving on your feet: sit down for a shift; wake as if you ate 7 h ago.

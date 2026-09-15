@@ -28,6 +28,8 @@ const COLLAPSE_MINUTES := 480.0
 const COLLAPSE_ATE_AGO_H := 7.0
 ## Eating takes this many world minutes. (source)
 const EAT_MINUTES := 10.0
+## A flask of oil keeps a lamp lit this long. (source: 6 h)
+const LAMP_FLASK_MINUTES := 360.0
 
 
 ## Step-cost extra over ordinary walking.
@@ -115,6 +117,20 @@ static func wake_minute(now: float, roof: bool) -> float:
 	if t <= now:
 		t += 1440.0
 	return t
+
+
+## Burn a lamp for `minutes`: the oil left in it first, then carried flasks one
+## at a time. Returns {left: minutes in the lamp after, flasks: flasks poured in,
+## out: true if it ran dry (left is then 0)}.
+static func burn_lamp(left: float, minutes: float, flasks: int) -> Dictionary:
+	left -= minutes
+	var used := 0
+	while left <= 0.0 and used < flasks:
+		left += LAMP_FLASK_MINUTES
+		used += 1
+	if left <= 0.0:
+		return {"left": 0.0, "flasks": used, "out": true}
+	return {"left": left, "flasks": used, "out": false}
 
 
 ## Weather kinds that wet a body out in them (names as Weather.at returns them).

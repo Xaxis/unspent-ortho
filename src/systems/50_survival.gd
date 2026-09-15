@@ -4,9 +4,12 @@ extends GameSystem
 ## the game into a survival state for shots (--give --held --use --build).
 ## The rules live in src/core/survival/; this node only feeds them input and time.
 ##
-## Keys: `use` works what is in front (else sleeps, eats or builds a fire, see
+## Keys: `use` works what is in front (else eats, sleeps or builds a fire, see
 ## Survival.use). `craft` makes the most sensible thing in reach, but only if no
 ## screen opened for the same key press (the ui package's crafting screen wins).
+## A blow that lands on the player knocks the work out of their hands.
+##
+## Screens find this node by method: eat(id) -> bool eats one through Survival.
 
 ## The start kit's knife is half worn. (source)
 const START_EDGE := 5000
@@ -24,6 +27,10 @@ func setup(g: Game) -> void:
 	var inv := g.inventory
 	if inv.has(&"knife") and inv.edge(&"knife") == 10000:
 		inv.set_edge(&"knife", START_EDGE)
+	# A lamp with one flask in it: the first night is lit, the second needs oil.
+	if not inv.has(&"lamp"):
+		inv.add(&"lamp")
+	state.lamp_at = g.clock.minutes
 	var o := g.options
 	for id: StringName in o.give:
 		if Items.def(id).is_empty():
@@ -39,6 +46,7 @@ func setup(g: Game) -> void:
 		g.player.model.set_held(inv.held)
 	inv.changed.connect(_on_inventory_changed)
 	Events.screen_changed.connect(_on_screen_changed)
+	Events.hit.connect(_on_hit)
 	if o.build != "":
 		Survival.build(g, StringName(o.build), true)
 	if o.use:
@@ -61,6 +69,25 @@ func _face_nearest_workable() -> void:
 			best = q
 	if best != null:
 		Survival.face(game, (best.pos - p).angle())
+
+
+## Eat one `id` from the creel (the inventory screen calls this when it finds it).
+func eat(id: StringName) -> bool:
+	return Survival.eat(game, id)
+
+
+func _on_hit(_attacker: Object, target: Object, damage: int, _plate: bool, _at: Vector3) -> void:
+	if game == null or target == null or damage <= 0:
+		return
+	if target == game.player or target == game.player.get("hero"):
+		Survival.interrupt(game)
+
+
+func _exit_tree() -> void:
+	if Events.hit.is_connected(_on_hit):
+		Events.hit.disconnect(_on_hit)
+	if Events.screen_changed.is_connected(_on_screen_changed):
+		Events.screen_changed.disconnect(_on_screen_changed)
 
 
 func _on_screen_changed(_screen: StringName, _open: bool) -> void:
