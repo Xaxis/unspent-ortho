@@ -63,11 +63,7 @@ turned on people, barely functioning, and people living in their gaps.
 
 ## Look
 
-- Orthographic camera, yaw 45°, pitch 57°, 640x360 internal, integer upscale.
-- MADE vs FOUND: made things in the 16 warm worn coast ramps, uneven and asymmetric;
-  machines in off-palette indigo-violet, exact and symmetric, amber working part.
-- Hard one-step shadows that are a blue-violet colour; key light upper-left of screen.
-- Night is blue, not black. Weather is a colour multiply plus particles, never a veil.
-- Ink outline on silhouettes via the depth pass.
-- **Landscape transitions are designed, not accidental**: ecotones between countries
-  mix ground grades, props and decor over 10–30 tiles.
+See **`docs/ART.md`** (binding): the coast as a living field notebook. Flat washes,
+inked contours, hatched shade pinned to the world, the hand (MADE) against the
+ruler (FOUND), countries with their own wash, hatch, decor, light and weather, and
+ecotones between them. Nothing like Minecraft or any voxel game.
