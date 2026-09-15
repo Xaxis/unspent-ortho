@@ -20,7 +20,6 @@ var _fog_drift := Vector2.ZERO
 var _cloud_bearing := Vector2.RIGHT
 var _last_minutes := 0.0
 var _flash := 0.0
-var _pending_strikes: Array = [] # [world minute, strength, minute index]
 var _pending_thunder: Array = [] # [real seconds left, Vector3]
 var _forced_bolt := false
 ## Lying snow, ash and wet around the focus (Weather.settled), eased.

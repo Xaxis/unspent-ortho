@@ -33,7 +33,7 @@ const OVERCAST := {
 	&"blizzard": 1.0, &"ash": 0.66, &"dust": 0.5,
 }
 
-## What falls or hangs, per kind: rain, hail, snow, ash, dust, fog, heat shimmer.
+## What falls or hangs, per kind: rain, hail, snow, ash, dust, fog, heat haze.
 const FALL := {
 	&"rain": {"rain": 0.75, "fog": 0.0},
 	&"storm": {"rain": 1.0, "fog": 0.15},
