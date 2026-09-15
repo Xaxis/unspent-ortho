@@ -118,6 +118,25 @@ func test_give_is_parsed_and_never_doubles() -> void:
 	eq(inv.count(&"scrap"), 2)
 
 
+func test_messages_stack_fade_and_count_repeats() -> void:
+	var m := UiMessages.new()
+	m.push("Took 2 timber.")
+	m.step(1.0)
+	m.push("The edge is going.")
+	var shown := m.visible()
+	eq(shown.size(), 2, "two said close together are both shown")
+	eq(shown[1].text, "The edge is going.", "newest last")
+	m.push("The edge is going.")
+	eq(m.visible().size(), 2, "a repeat does not stack")
+	eq(m.visible()[1].text, "The edge is going. ×2", "it is counted")
+	for i in 5:
+		m.push("line %d" % i)
+	eq(m.lines.size(), UiMessages.MAX, "at most three lines")
+	m.step(UiMessages.HOLD + UiMessages.FADE + 0.1)
+	check(m.visible().is_empty(), "all faded")
+	check(m.lines.is_empty(), "and forgotten")
+
+
 func test_a_new_country_is_announced_once_it_holds() -> void:
 	var w := UiPlaceWatch.new()
 	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")

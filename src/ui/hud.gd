@@ -31,11 +31,13 @@ var needs: Array[Dictionary] = []
 var hint := ""
 var hint_key := "e"
 var message := ""
+var messages := UiMessages.new()
 var place := ""
 
 var _canvas: Control
 var _message_age := 99.0
 var _place_age := 99.0
+var _time := 0.0
 var _wind_alpha := 0.0
 var _hint_alpha := 0.0
 var _hint_target := 0.0
@@ -105,6 +107,7 @@ func place_alpha() -> float:
 func show_message(text: String) -> void:
 	message = text
 	_message_age = 0.0
+	messages.push(text)
 
 
 ## Jump every fade to where it is heading (screenshots, tests).
@@ -127,6 +130,8 @@ func message_alpha() -> float:
 
 func _process(delta: float) -> void:
 	_message_age += delta
+	_time += delta
+	messages.step(delta)
 	_place_age += delta
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
@@ -178,6 +183,10 @@ func _draw_health(ci: Control) -> void:
 		var r := Rect2i(x, y, CELL_W, CELL_H)
 		UiDraw.rect(ci, r.grow(1), UiTheme.INK_DEEP)
 		UiDraw.rect(ci, r, Color(UiTheme.INK_SOFT, 0.9))
+		# The last cell standing breathes: its rim warms and cools, slowly.
+		if health > 0 and health <= UiRules.PER_CELL and i == 0:
+			var warm := 0.5 + 0.5 * sin(_time * 3.2)
+			UiDraw.frame(ci, r.grow(1), Color(UiTheme.ACCENT, 0.35 + 0.5 * warm))
 		for t in UiRules.PER_CELL:
 			var stroke := Rect2i(x + 1 + t * 3, y + 1, 2, CELL_H - 2)
 			if t < cells[i]:
@@ -235,9 +244,14 @@ func _draw_held(ci: Control) -> void:
 
 
 func _draw_bottom(ci: Control) -> void:
-	var a := message_alpha()
-	if a > 0.0 and message != "":
-		UiDraw.text_rimmed(ci, Vector2i(320 - UiFont.width(message) / 2, 360 - MARGIN - 24), message, Color(UiTheme.HUD_TEXT, a), Color(UiTheme.INK_DEEP, a))
+	# Newest message lowest; older ones stand above it, dimmer, until they fade.
+	var shown := messages.visible()
+	for i in shown.size():
+		var line: Dictionary = shown[shown.size() - 1 - i]
+		var a: float = line.alpha * (1.0 if i == 0 else 0.72)
+		var text: String = line.text
+		var y := 360 - MARGIN - 24 - i * 12
+		UiDraw.text_rimmed(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, Color(UiTheme.HUD_TEXT if i == 0 else UiTheme.HUD_DIM, a), Color(UiTheme.INK_DEEP, a))
 	if _hint_alpha > 0.0 and hint != "":
 		var total := 11 + 4 + UiFont.width(hint)
 		var x := 320 - total / 2
