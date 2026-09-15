@@ -94,10 +94,14 @@ func _report(w: WorldData, gen_ms: int) -> void:
 			var s := GenPlaces.ecotone_sample(w, a, b)
 			if s.x >= 0.0:
 				print("ecotone %-20s at %d,%d" % ["%s-%s" % [Country.NAMES[a], Country.NAMES[b]], s.x, s.y])
-	var lm := ""
+	var by_kind := {}
 	for m in w.landmarks:
-		lm += "%s %d,%d  " % [m.kind, m.pos.x, m.pos.y]
-	print("landmarks ", lm)
+		if not by_kind.has(m.kind):
+			by_kind[m.kind] = []
+		by_kind[m.kind].append("%d,%d" % [m.pos.x, m.pos.y])
+	for kind: StringName in by_kind:
+		var at: Array = by_kind[kind]
+		print("landmarks %-13s %3d  %s%s" % [kind, at.size(), "  ".join(PackedStringArray(at.slice(0, 8))), "  ..." if at.size() > 8 else ""])
 	var r := GenPlaces.river_sample(w)
 	var cl := GenPlaces.cliff_sample(w)
 	print("places river at %d,%d  cliff at %d,%d  rivers %d  roads %d  lines %d  props %d" % [r.x, r.y, cl.x, cl.y, w.rivers.size(), w.roads.size(), w.lines.size(), w.props.size()])

@@ -15,6 +15,8 @@ class_name GenWater
 ## Catchment in coarse cells x rain before a cell carries a river (512 world).
 const RIVER_CATCHMENT := 120.0
 const MAX_RIVERS := 11
+## A river's head is where its catchment falls to this share of RIVER_CATCHMENT.
+const HEAD_SHARE := 0.06
 
 
 static func rivers(c: GenContext) -> void:
@@ -105,10 +107,23 @@ static func rivers(c: GenContext) -> void:
 	for k in cn:
 		if is_river[k] != 0 and parent[k] >= 0:
 			has_child[parent[k]] = 1
+	# Each river's head is walked back uphill along its biggest feeder until
+	# the catchment is a mere runnel: rivers rise on the high ground.
+	var best_child := PackedInt32Array()
+	best_child.resize(cn)
+	best_child.fill(-1)
+	for k in cn:
+		var p := parent[k]
+		if p >= 0 and landc[k] != 0 and (best_child[p] < 0 or acc[k] > acc[best_child[p]]):
+			best_child[p] = k
+	var head_acc := threshold * HEAD_SHARE
 	var sources: Array[Vector2i] = []
 	for k in cn:
 		if is_river[k] != 0 and has_child[k] == 0:
-			sources.append(Vector2i(roundi(ec[k] * 100.0), k))
+			var head := k
+			while best_child[head] >= 0 and acc[best_child[head]] >= head_acc:
+				head = best_child[head]
+			sources.append(Vector2i(roundi(ec[head] * 100.0), head))
 	# Highest sources first: the long rivers claim their courses, the rest join.
 	sources.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x > b.x or (a.x == b.x and a.y < b.y))
 	var traced := PackedByteArray()

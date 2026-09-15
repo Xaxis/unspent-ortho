@@ -451,6 +451,22 @@ static func _lay_road(c: GenContext, path: Array[Vector2i], a: Vector2, b: Vecto
 		prev = w.level[i]
 		line.append(Vector2(i % size + 0.5, i / size + 0.5))
 	w.roads.append(line)
+	# Bridges: each run of road over river water, marked at its middle.
+	var run_start := -1
+	for j in tiles.size() + 1:
+		var wet := j < tiles.size() and c.water[tiles[j]] == 1
+		if wet and run_start < 0:
+			run_start = j
+		elif not wet and run_start >= 0:
+			var mid := line[(run_start + j - 1) / 2]
+			var along := (line[mini(j, line.size() - 1)] - line[maxi(run_start - 1, 0)]).normalized()
+			var known := false
+			for m in w.landmarks:
+				if m.kind == &"bridge" and (m.pos as Vector2).distance_squared_to(mid) < 16.0:
+					known = true
+			if not known:
+				w.landmarks.append({"kind": &"bridge", "pos": mid, "country": w.country_at(floori(mid.x), floori(mid.y)), "dir": along})
+			run_start = -1
 	# Fill the other corner of every stair step, so a diagonal road is a
 	# ribbon two tiles wide rather than a zigzag one tile wide.
 	for j in range(1, tiles.size() - 1):

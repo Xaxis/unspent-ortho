@@ -454,6 +454,28 @@ func test_every_prop_kind_and_ground_is_placed() -> void:
 			gt(grounds[g], 0, "seed %d %s ground" % [s, Ground.NAMES[g]])
 
 
+func test_places_worth_walking_to() -> void:
+	# Scrap tips in every country, stone circles, wrecks on the shore, bridges
+	# where roads cross rivers, falls where rivers step down.
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		var tips := PackedInt32Array()
+		tips.resize(Country.COUNT)
+		var kinds := {}
+		for m in w.landmarks:
+			kinds[m.kind] = int(kinds.get(m.kind, 0)) + 1
+			if m.kind == &"tip":
+				tips[m.country] += 1
+		for c: int in Country.LAND:
+			gt(tips[c], 0, "seed %d tips in %s" % [s, Country.NAMES[c]])
+		for kind: StringName in [&"stone_circle", &"wreck", &"ruin", &"summit", &"caldera", &"bridge", &"falls"]:
+			gt(int(kinds.get(kind, 0)), 0, "seed %d %s landmarks" % [s, kind])
+		for m in w.landmarks:
+			if m.kind == &"bridge":
+				var p: Vector2 = m.pos
+				eq(w.ground_at(floori(p.x), floori(p.y)), Ground.ROAD, "seed %d bridge at %s carries the road" % [s, p])
+
+
 func test_ore_is_richest_in_the_bonelands() -> void:
 	var w := world(WORLD_SEEDS[0])
 	var ore := PackedFloat32Array()

@@ -37,7 +37,9 @@ var roads: Array[PackedVector2Array] = []
 ## of prop ids in stringing order}. Cables run between consecutive ids.
 var lines: Array[Dictionary] = []
 ## Places worth walking to: {kind: StringName, pos: Vector2, country: int}.
-## Kinds: tip, stone_circle, wreck, ruin, cairn, caldera, summit.
+## Kinds: tip, stone_circle, wreck, ruin, summit, caldera; and for renderers
+## and sound, bridge (a road over a river; `dir` runs along the road) and
+## falls (a river's bed steps down a level; `dir` runs downstream).
 var landmarks: Array[Dictionary] = []
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.

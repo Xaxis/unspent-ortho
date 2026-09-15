@@ -24,14 +24,14 @@ static func sites(c: GenContext) -> void:
 	for cc: int in Country.LAND:
 		var want := maxi(1, roundi(tips_per[cc] * maxf(c.k, 0.4)))
 		var placed := 0
-		for attempt in 400:
+		for attempt in 2500:
 			if placed >= want:
 				break
 			var p := _random_tile(c, rng)
 			var i := p.y * c.size + p.x
 			if w.country[i] != cc or w.blend[i] > 0.42:
 				continue
-			if not _clear_site(c, p, 7, 1) or _near_landmark(w, Vector2(p), 40.0 * maxf(c.k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+			if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), 36.0 * maxf(c.k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 				continue
 			_lay_tip(c, p, rng.randf_range(4.0, 7.5))
 			w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
@@ -40,14 +40,14 @@ static func sites(c: GenContext) -> void:
 	var circles: PackedInt32Array = [0, 1, 0, 0, 0, 2, 0]
 	for cc: int in Country.LAND:
 		var placed := 0
-		for attempt in 400:
+		for attempt in 2500:
 			if placed >= circles[cc]:
 				break
 			var p := _random_tile(c, rng)
 			var i := p.y * c.size + p.x
 			if w.country[i] != cc or w.blend[i] > 0.3:
 				continue
-			if not _clear_site(c, p, 6, 0) or _near_landmark(w, Vector2(p), 30.0) or _near_village(w, Vector2(p), 26.0):
+			if not _clear_site(c, p, 5, 1) or _near_landmark(w, Vector2(p), 30.0) or _near_village(w, Vector2(p), 26.0):
 				continue
 			w.landmarks.append({"kind": &"stone_circle", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
 			placed += 1
@@ -100,6 +100,13 @@ static func sites(c: GenContext) -> void:
 	for cc: int in [Country.SNOWFIELD, Country.BONELANDS, Country.PINEWOOD, Country.COAST]:
 		if best_at[cc].x >= 0:
 			w.landmarks.append({"kind": &"summit", "pos": Vector2(best_at[cc]) + Vector2(0.5, 0.5), "country": cc})
+	# Falls: wherever a river's bed steps down a level.
+	for r in c.rivers:
+		for j in range(1, r.size()):
+			var a := r[j - 1]
+			var b := r[j]
+			if w.level_at(floori(a.x), floori(a.y)) > w.level_at(floori(b.x), floori(b.y)):
+				w.landmarks.append({"kind": &"falls", "pos": a, "country": w.country_at(floori(a.x), floori(a.y)), "dir": b - a})
 	var heart := c.hearts[Country.BURNING]
 	if heart.x >= 0.0:
 		w.landmarks.append({"kind": &"caldera", "pos": heart, "country": w.country_at(int(heart.x), int(heart.y))})
