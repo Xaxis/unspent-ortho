@@ -19,7 +19,7 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.BENCH: bench(k)
 		PropKind.KILN: kiln(k, v)
 		PropKind.PYLON: pylon(k, c)
-		PropKind.POLE: pole(k)
+		PropKind.POLE: pole(k, c)
 
 
 static func lamp_post(k: Kit, c: int) -> void:
@@ -211,7 +211,7 @@ static func pylon(k: Kit, c: int = Country.COAST) -> void:
 			for i in n:
 				var z := -hw + 0.08 + (hw * 2.0 - 0.16) * (i + Kit.j(1650, i, 0.3) + 0.5) / n
 				var length := 0.12 + Rng.hash01(1651, i, int(hw * 10.0)) * 0.3
-				k.made.prism(0.0, y - 0.03 - length, z, 0.0, y - 0.02, 0.028, 4, P.RIME[4] if i % 2 else P.RIME[5])
+				k.made.prism(0.0, y - 0.03 - length, z, 0.0, y - 0.02, 0.04, 4, P.RIME[3] if i % 2 else P.RIME[2])
 		k.made.strut(Vector3(0.0, 4.02, 0.0), Vector3(0.0, 4.12, 0.0), 0.09, 4, P.RIME[5])
 
 
@@ -221,7 +221,7 @@ static func _leg(l: Vector2, y: float, top: float) -> Vector3:
 
 
 ## FOUND: a pole with a crossarm and two insulators, exact, a plate on it.
-static func pole(k: Kit) -> void:
+static func pole(k: Kit, c: int = Country.COAST) -> void:
 	k.found.prism(0, -0.02, 0, 0.11, 0.18, 0.1, 8, P.PLATE[1], P.PLATE[2])
 	k.found.prism(0, 0.18, 0, 0.06, 2.8, 0.048, 8, P.PLATE[3], P.PLATE[4])
 	k.found.prism(0, 2.8, 0, 0.05, 2.9, 0.035, 6, Color(1.0, 0.3, 0.35, 0.3))
@@ -234,3 +234,11 @@ static func pole(k: Kit) -> void:
 		k.rod(Vector3(0, 2.68, side), Vector3(0, 2.72, side), 0.012, 4, P.INK[1])
 	k.found.quad(Vector3(0.062, 1.1, 0.07), Vector3(0.062, 1.1, -0.07), Vector3(0.062, 1.3, -0.07), Vector3(0.062, 1.3, 0.07), P.RIME[5])
 	k.found.quad(Vector3(0.064, 1.18, 0.05), Vector3(0.064, 1.18, -0.05), Vector3(0.064, 1.2, -0.05), Vector3(0.064, 1.2, 0.05), P.INK[1])
+	if c == Country.SNOWFIELD:
+		# Ice on the crossarm and a cap of rime (MADE: the weather's).
+		k.made.strut(Vector3(0.0, 2.56, -0.5), Vector3(0.0, 2.56, 0.5), 0.045, 3, P.RIME[4])
+		for i in 6:
+			var z := -0.45 + i * 0.18 + Kit.j(1660, i, 0.04)
+			var length := 0.14 + Rng.hash01(1661, i) * 0.3
+			k.made.prism(0.0, 2.5 - length, z, 0.0, 2.51, 0.04, 4, P.RIME[3] if i % 2 else P.RIME[2])
+		k.made.prism(0.0, 2.9, 0.0, 0.08, 2.98, 0.04, 5, P.RIME[5])

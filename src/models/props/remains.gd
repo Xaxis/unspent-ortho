@@ -711,11 +711,12 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 			wheels = false
 			tilt = Basis(Vector3.BACK, 0.08) * Basis(Vector3.RIGHT, -0.07)
 		Country.BURNING:
-			paint = P.STONE[1].lerp(P.RUST[1], 0.35)
-			sink = 0.12
+			# Burnt to bare metal gone to rust and ash, lighter than the ash it sits in.
+			paint = P.RUST[2].lerp(P.ASH[2], 0.45)
+			sink = 0.14
 			wheels = false
 			cave = 0.24
-			tilt = Basis(Vector3.BACK, 0.06) * Basis(Vector3.RIGHT, 0.1)
+			tilt = Basis(Vector3.BACK, -0.09) * Basis(Vector3.RIGHT, 0.17)
 	var van := v % 2 == 1
 	var hw := 0.56 if van else 0.5
 	var hole := P.INK[0]
@@ -749,7 +750,13 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 		lower.append(q)
 	var poly := PackedVector2Array(lower)
 	var tris := Geometry2D.triangulate_polygon(poly)
-	k.made.push(Transform3D(tilt, Vector3(0, -sink, 0)))
+	# Some were rolled onto their side, which shows the car's whole profile
+	# (arches, glass, pillars) to anyone looking down on it.
+	var rolled := c == Country.BURNING or (c == Country.BONELANDS and van)
+	if rolled:
+		k.made.push(Transform3D(Basis(Vector3.UP, 0.08) * Basis(Vector3.RIGHT, PI * 0.5 - 0.12), Vector3(0.0, hw - 0.06, -0.55)))
+	else:
+		k.made.push(Transform3D(tilt, Vector3(0, -sink, 0)))
 	var n := lower.size()
 	for i in n:
 		var j := (i + 1) % n
@@ -791,10 +798,26 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 	var cm := Vector3(mid_x, roof_y - cave, tz * 0.92)
 	var m := Vector3(1, 1, -1)
 	var roof := GroundColors.up(paint, 0.2)
-	k.made.quad(c3, cm, cm * m, c3 * m, roof)
-	k.made.quad(cm, c2, c2 * m, cm * m, GroundColors.down(roof, 0.12))
-	# A dent's crease across the cave.
-	k.made.quad(cm + Vector3(-0.03, 0.012, 0.0), cm + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(-0.03, 0.012, 0.0), P.INK[2])
+	if c == Country.BURNING:
+		# The roof burnt away to its rails: the black cab open to the sky, the
+		# seats' bare springs in it.
+		k.made.quad(Vector3(top0, belt + 0.03, tz), Vector3(top1 + 0.2, belt + 0.03, tz), Vector3(top1 + 0.2, belt + 0.03, -tz), Vector3(top0, belt + 0.03, -tz), hole)
+		for sz: float in [1.0, -1.0]:
+			var mz := Vector3(1, 1, sz)
+			k.limb(c3 * mz, cm * mz, 0.035, 0.035, 4, roof)
+			k.limb(cm * mz, c2 * mz, 0.035, 0.035, 4, roof)
+		k.limb(c3, c3 * m, 0.03, 0.03, 4, roof)
+		k.limb(c2, c2 * m, 0.03, 0.03, 4, roof)
+		for sx: float in [-0.45, 0.15]:
+			for sz: float in [0.22, -0.22]:
+				k.limb(Vector3(sx, belt + 0.04, sz - 0.14), Vector3(sx - 0.12, belt + 0.38, sz - 0.12), 0.018, 0.018, 3, P.RUST[1])
+				k.limb(Vector3(sx, belt + 0.04, sz + 0.14), Vector3(sx - 0.12, belt + 0.38, sz + 0.12), 0.018, 0.018, 3, P.RUST[1])
+				k.limb(Vector3(sx - 0.12, belt + 0.38, sz - 0.12), Vector3(sx - 0.12, belt + 0.38, sz + 0.12), 0.018, 0.018, 3, P.RUST[1])
+	else:
+		k.made.quad(c3, cm, cm * m, c3 * m, roof)
+		k.made.quad(cm, c2, c2 * m, cm * m, GroundColors.down(roof, 0.12))
+		# A dent's crease across the cave.
+		k.made.quad(cm + Vector3(-0.03, 0.012, 0.0), cm + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(-0.03, 0.012, 0.0), P.INK[2])
 	# The screen: a black hole in its frame, shards left in the corners.
 	var narrow := Vector3(1, 1, 0.84)
 	var scr := [c1.lerp(c2, 0.9) * narrow, c1.lerp(c2, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.9) * narrow]
@@ -872,14 +895,18 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 				k.made.prism(0, 0, 0, 0.12, 0.08, 0.12, 7, P.RUST[1], P.STONE[1])
 				k.made.pop()
 	if c == Country.BURNING:
-		# Burnt through: the roof blistered to rust in patches, scorch up the flanks.
-		for i in 3:
-			var x := top0 + 0.12 + i * (top1 - top0 - 0.24) / 3.0
-			k.made.quad(Vector3(x, roof_y - cave * 0.5 + 0.02, -0.2), Vector3(x + 0.2, roof_y - cave * 0.5 + 0.02, -0.22), Vector3(x + 0.18, roof_y - cave * 0.5 + 0.02, 0.18), Vector3(x - 0.04, roof_y - cave * 0.5 + 0.02, 0.24), P.RUST[1] if i % 2 else P.INK[1])
+		# Scorch run up the flanks from where it burnt.
 		for i in 4:
 			var x := -1.0 + i * 0.55
 			k.made.quad(Vector3(x, 0.3, hw + 0.02), Vector3(x + 0.3, 0.3, hw + 0.02), Vector3(x + 0.18, 0.62, hw + 0.02), Vector3(x + 0.06, 0.58, hw + 0.02), P.INK[1])
 	k.made.pop()
+	if not van:
+		# The torn-off door, thrown down beside the car, breaking its outline.
+		k.made.push(Transform3D(Basis(Vector3.UP, 0.5) * Basis(Vector3.RIGHT, -0.18), Vector3(0.35, 0.03, hw + 0.62)))
+		k.made.quad(Vector3(-0.3, 0.0, -0.2), Vector3(0.3, 0.0, -0.22), Vector3(0.32, 0.06, 0.22), Vector3(-0.3, 0.05, 0.2), P.INK[2])
+		k.made.quad(Vector3(-0.3, 0.05, 0.2), Vector3(0.32, 0.06, 0.22), Vector3(0.3, 0.0, -0.22), Vector3(-0.3, 0.0, -0.2), GroundColors.down(paint, 0.1))
+		k.made.quad(Vector3(-0.22, 0.064, 0.02), Vector3(0.24, 0.068, 0.02), Vector3(0.22, 0.066, -0.15), Vector3(-0.22, 0.062, -0.14), P.INK[0])
+		k.made.pop()
 	# What the land did.
 	var d := drift_of(c)
 	match c:

@@ -490,16 +490,15 @@ const ICE_COLD := 0.5
 
 
 ## Ice along one piece of cable: a sleeve of rime on it and icicles of uneven
-## length hanging under it, never in a row.
+## length hanging under it, never in a row; blue-grey, so they read against snow.
 static func _ice_on(ice: MeshKit, a: Vector3, b: Vector3, h: int) -> void:
-	var sleeve := Palette.RIME[4]
-	ice.strut(a + Vector3(0, -0.012, 0), b + Vector3(0, -0.012, 0), 0.026, 3, sleeve)
-	var count := 1 + absi(h) % 3
+	ice.strut(a + Vector3(0, -0.015, 0), b + Vector3(0, -0.015, 0), 0.04, 3, Palette.RIME[3])
+	var count := 2 + absi(h) % 3
 	for j in count:
-		var t := (float(j) + 0.3 + Rng.hash01(h, j, 3) * 0.4) / count
-		var top := a.lerp(b, t) + Vector3(0, -0.02, 0)
-		var length := 0.08 + Rng.hash01(h, j, 5) * 0.22
-		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.024, 4, Palette.RIME[5] if j % 2 == 0 else sleeve)
+		var t := (float(j) + 0.2 + Rng.hash01(h, j, 3) * 0.6) / count
+		var top := a.lerp(b, t) + Vector3(0, -0.03, 0)
+		var length := 0.14 + Rng.hash01(h, j, 5) * 0.34
+		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.045, 4, Palette.RIME[3] if j % 2 == 0 else Palette.RIME[2])
 
 
 func _mast_points(p: WorldProp, local: PackedVector3Array, ch: TerrainMesher.Chunk, m: TerrainMesher) -> PackedVector3Array:
