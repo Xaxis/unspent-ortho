@@ -36,6 +36,8 @@ const LIST: Array[Dictionary] = [
 
 	# --- Fire ---
 	{"id": &"reedge", "at": &"fire", "minutes": 45.0, "needs": {&"charcoal": 1}, "makes": {}, "action": &"reedge"},
+	# A hearthstone does what a hone does, a little slower, for anyone who sits at a fire.
+	{"id": &"sharpen_fire", "at": &"fire", "minutes": 30.0, "needs": {}, "makes": {}, "action": &"hone"},
 	{"id": &"charcoal", "at": &"fire", "minutes": 180.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}},
 	{"id": &"charcoal_wood", "at": &"fire", "minutes": 180.0, "needs": {&"timber": 2}, "makes": {&"charcoal": 2}},
 	{"id": &"tin", "at": &"fire", "minutes": 240.0, "needs": {&"tin_ore": 3, &"charcoal": 2}, "makes": {&"tin": 1}},
