@@ -84,7 +84,7 @@ func play_action(a: StringName, seconds: float) -> void:
 		_end_action()
 		return
 	if not PersonAnim.ACTIONS.has(a):
-		push_warning("PersonModel: unknown action %s" % a)
+		# Ignored, so a system with a newer verb never breaks a figure (see PersonAnim.ACTIONS).
 		return
 	action = a
 	_action_t = 0.0
