@@ -117,7 +117,7 @@ func _draw() -> void:
 		return
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "TAKES", UiTheme.FAINT)
+	UiDraw.text_right(self, right, L.position.y + 4, "TAKES", UiTheme.TEXT_DIM)
 	if menu.rows.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 6, LIST_TOP), "nothing to make here yet", UiTheme.TEXT_DIM)
 	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
@@ -137,7 +137,7 @@ func _draw() -> void:
 			col = UiTheme.BRIGHT if ok else UiTheme.TEXT
 		_draw_row_icon(r, Vector2i(x0 + 4, top - 1))
 		UiDraw.text(self, Vector2i(x0 + 17, top), String(row.title), col)
-		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.TEXT_DIM if ok else UiTheme.FAINT)
+		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.TEXT_DIM)
 	if scroll > 0:
 		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
@@ -215,8 +215,8 @@ func _draw_table(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 	var x0 := s.position.x
 	var y := s.position.y
 	UiDraw.text(self, Vector2i(x0, y), "WANTS", UiTheme.TEXT_DIM)
-	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.FAINT)
-	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.FAINT)
+	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.TEXT_DIM)
+	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.TEXT_DIM)
 	y += 11
 	UiDraw.hline(self, x0, s.end.x - 1, y, UiTheme.FAINT)
 	y += 3

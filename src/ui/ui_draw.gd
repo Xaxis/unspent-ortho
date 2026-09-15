@@ -5,8 +5,20 @@ class_name UiDraw
 ## irregularity repeatable: the same page looks the same every time it opens.
 
 
+## Tests hold what is drawn to the rules: while `taping`, every word and every
+## rect is noted on `tape` as {kind: &"text"|&"rect", ci, text, rect, col}.
+static var taping := false
+static var tape: Array[Dictionary] = []
+
+
+static func _note(kind: StringName, ci: CanvasItem, r: Rect2, col: Color, s: String = "") -> void:
+	tape.append({"kind": kind, "ci": ci, "text": s, "rect": r, "col": col})
+
+
 ## Text with its top-left at `at` (the font's line box, 10 px tall).
 static func text(ci: CanvasItem, at: Vector2i, s: String, col: Color) -> void:
+	if taping:
+		_note(&"text", ci, Rect2(at.x, at.y, UiFont.width(s), 10), col, s)
 	ci.draw_string(UiFont.font(), Vector2(at.x, at.y + UiFont.ASCENT), s, HORIZONTAL_ALIGNMENT_LEFT, -1, UiFont.SIZE, col)
 
 
@@ -27,6 +39,8 @@ static func text_rimmed(ci: CanvasItem, at: Vector2i, s: String, fill: Color, ri
 
 
 static func rect(ci: CanvasItem, r: Rect2i, col: Color) -> void:
+	if taping:
+		_note(&"rect", ci, Rect2(r), col)
 	ci.draw_rect(Rect2(r), col, true)
 
 

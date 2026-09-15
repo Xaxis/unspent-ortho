@@ -68,7 +68,7 @@ func _draw() -> void:
 			UiDraw.rect(self, Rect2i(x0 - 4, top - 1, 2, ROW_PITCH - 5), UiTheme.TEXT)
 		var empty := bool(s.get("empty", false))
 		UiDraw.text(self, Vector2i(x0 + 2, top), "%02d" % (i + 1), UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(x0 + 20, top), "empty" if empty else String(s.get("title", "")), UiTheme.FAINT if empty else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
+		UiDraw.text(self, Vector2i(x0 + 20, top), "empty" if empty else String(s.get("title", "")), UiTheme.TEXT_DIM if empty else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
 		if not empty:
 			UiDraw.text(self, Vector2i(x0 + 20, top + 10), "%s   %s" % [s.get("when", ""), s.get("place", "")], UiTheme.TEXT_DIM)
 	var px := R.position.x + UiSlate.MARGIN_L
@@ -84,7 +84,7 @@ func _draw() -> void:
 			for x in range(box.position.x, box.end.x, 2):
 				if Rng.hash01(x, y, 0, 0x5a0) < 0.14:
 					UiDraw.px(self, x, y, UiTheme.GHOST if Rng.hash01(x, y, 1, 0x5a0) < 0.7 else UiTheme.FAINT)
-		UiDraw.text_centred(self, box.position.x + box.size.x / 2, box.position.y + box.size.y / 2 - 5, "NO PICTURE", UiTheme.FAINT)
+		UiDraw.text_centred(self, box.position.x + box.size.x / 2, box.position.y + box.size.y / 2 - 5, "NO PICTURE", UiTheme.TEXT_DIM)
 	var ty := box.end.y + 12
 	if not chosen_slot.is_empty() and not bool(chosen_slot.get("empty", false)):
 		UiDraw.text(self, Vector2i(px, ty), String(chosen_slot.get("title", "")), UiTheme.BRIGHT)

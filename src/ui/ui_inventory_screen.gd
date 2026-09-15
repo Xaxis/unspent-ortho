@@ -120,7 +120,7 @@ func _draw() -> void:
 		return
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "BULK", UiTheme.FAINT)
+	UiDraw.text_right(self, right, L.position.y + 4, "BULK", UiTheme.TEXT_DIM)
 	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
 	keep_in_view(lines)
 	if menu.rows.is_empty():
@@ -240,7 +240,7 @@ func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	UiSlate.meter(self, bar, load / (cap * 2.0), 0.5)
 	var creel_x := bar.position.x + bar.size.x / 2
 	UiDraw.vline(self, creel_x, bar.position.y - 2, bar.end.y + 1, UiTheme.BRIGHT)
-	UiDraw.text(self, Vector2i(creel_x - UiFont.width("creel") / 2, bar.end.y + 1), "creel", UiTheme.FAINT)
+	UiDraw.text(self, Vector2i(creel_x - UiFont.width("creel") / 2, bar.end.y + 1), "creel", UiTheme.TEXT_DIM)
 	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
 	UiDraw.text(self, Vector2i(x0, ly + 36), "in hand", UiTheme.TEXT_DIM)
 	UiDraw.text(self, Vector2i(x0 + 48, ly + 36), held_name, UiTheme.TEXT)
@@ -279,7 +279,7 @@ func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
 		if mine:
 			UiDraw.rect(self, Rect2i(x - 3, at.y - 2, w + 6, 12), UiTheme.GLASS_LIT)
 			UiSlate.brackets(self, Rect2i(x - 3, at.y - 2, w + 6, 12), UiTheme.BRIGHT, 2)
-		UiDraw.text(self, Vector2i(x, at.y), word, UiTheme.BRIGHT if mine else UiTheme.FAINT)
+		UiDraw.text(self, Vector2i(x, at.y), word, UiTheme.BRIGHT if mine else UiTheme.TEXT_DIM)
 		x += w
 		if i < LADDER.size() - 1:
 			for k in 3:

@@ -19,8 +19,11 @@ const GLASS_LIT := Color("#12211f")
 const GLASS_SPARE := Color("#0e151b")
 const GLASS_SPARE_ROW := Color("#10181e")
 
-## The phosphor ramp, dark to bright. Text is 3; secondary 2; faded rows and
-## rules 1; burn-in ghosts 0; the chosen row and a hot readout 4.
+## The phosphor ramp, dark to bright. Text is 3; secondary 2; rules, sockets
+## and glyph outlines 1; burn-in ghosts 0; the chosen row and a hot readout 4.
+## No word is ever dimmer than TEXT_DIM (or MACHINE[2] in violet): both keep
+## 4.5:1 on the glass and 3:1 at the low-power floor. FAINT, GHOST and
+## MACHINE[0..1] are never used for words.
 const PHOSPHOR: Array[Color] = [Color("#173029"), Color("#2b5c4c"), Color("#4f9b81"), Color("#87d9b5"), Color("#c9fbe2")]
 const TEXT := Color("#87d9b5")
 const TEXT_DIM := Color("#4f9b81")
@@ -33,7 +36,7 @@ const WARN := Color("#ff6f4f")
 const WARN_DIM := Color("#8e3b2c")
 
 ## The stolen module's violet, dark to bright: machine-sourced data only.
-const MACHINE: Array[Color] = [Color("#241f38"), Color("#4b4274"), Color("#7c70b6"), Color("#b3a8ea"), Color("#e0dbff")]
+const MACHINE: Array[Color] = [Color("#241f38"), Color("#4b4274"), Color("#8579c0"), Color("#b3a8ea"), Color("#e0dbff")]
 
 ## Over the world (HUD): readouts are phosphor held by a rim of dead glass.
 const RIM := Color("#050809")

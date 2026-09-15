@@ -61,7 +61,7 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "SLOT / FITTED", UiTheme.FAINT)
+	UiDraw.text_right(self, right, L.position.y + 4, "SLOT / FITTED", UiTheme.TEXT_DIM)
 	for i in menu.rows.size():
 		var s: Dictionary = menu.rows[i].slot
 		var top := LIST_TOP + i * ROW_PITCH
@@ -73,7 +73,7 @@ func _draw() -> void:
 		var item := StringName(s.get("item", &""))
 		var mods: Array = s.get("modules", [])
 		if item == &"":
-			UiDraw.text(self, Vector2i(x0 + 58, top), "empty", UiTheme.FAINT)
+			UiDraw.text(self, Vector2i(x0 + 58, top), "empty", UiTheme.TEXT_DIM)
 		else:
 			UiIcons.draw_item(self, item, Vector2i(x0 + 58, top - 1))
 			UiDraw.text(self, Vector2i(x0 + 71, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
@@ -110,11 +110,11 @@ func _draw() -> void:
 	UiSlate.heading(self, Vector2i(px, ay), "abilities", rright)
 	var abilities: Array = _feed.get("abilities", [])
 	if abilities.is_empty():
-		UiDraw.text(self, Vector2i(px + 4, ay + 14), "none fitted: modules give them", UiTheme.FAINT)
+		UiDraw.text(self, Vector2i(px + 4, ay + 14), "none fitted: modules give them", UiTheme.TEXT_DIM)
 	for i in mini(abilities.size(), 6):
 		var a: Dictionary = abilities[i]
 		var y := ay + 14 + i * 11
-		UiDraw.text(self, Vector2i(px + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[1])
+		UiDraw.text(self, Vector2i(px + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
 		UiDraw.text_right(self, rright, y, String(a.get("note", "")), UiTheme.TEXT_DIM)
 	var keys := [["e", "fit"], ["esc", "back"]]
 	draw_keys(keys)

@@ -117,6 +117,109 @@ func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
 	check(UiSlate.device_texture(UiSlate.DEVICE.size) == tex, "baked once")
 
 
+## Every word each app draws, in every state worth drawing, reads on the glass:
+## 4.5:1 lit and 3:1 at the low-power floor. Rules, sockets and ghosts may be
+## faint; words may not.
+func test_every_word_on_the_glass_reads() -> void:
+	SlateFeeds.clear()
+	SlateFeeds.provide(&"loadout", func(_g: Game) -> Dictionary:
+		return {"slots": [{"id": &"head", "label": "head", "item": &"kit_lens", "modules": [{"id": &"m", "name": "seal", "grants": "cold"}]}, {"id": &"body", "label": "body", "item": &"", "modules": []}],
+			"resist": {&"cold": 0.5}, "abilities": [{"id": &"dash", "name": "dash", "ready": true, "note": "ready"}, {"id": &"veil", "name": "veil", "ready": false, "note": "charging"}]})
+	SlateFeeds.provide(&"reads", func(g: Game) -> Dictionary:
+		return {"interference": 0.4, "network": "coast grid", "scans": [{"id": &"a", "kind": &"runner", "name": "runner", "pos": g.player.pos + Vector2(4, 2), "disposition": &"hostile", "note": "it has your scent"}, {"id": &"b", "kind": &"watcher", "name": "watcher", "pos": g.player.pos + Vector2(-9, 5), "disposition": &"observant", "note": ""}]})
+	SlateFeeds.provide(&"saves", func(_g: Game) -> Dictionary:
+		return {"slots": [{"id": &"a", "title": "the moss", "when": "day 3", "place": "moss", "thumb": null, "empty": false}, {"id": &"b", "empty": true}], "can_save": true})
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(["--size=64", "--seed=4", "--give=knife:1,mussels:3,stone:2,wick:2,las_hand:1,kit_brace:1,scrap:1"]))
+	var ui: Node = null
+	for sys in g.systems:
+		if sys.name == "90_ui":
+			ui = sys
+	g.world.props.append(WorldProp.new(99996, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.props.back())
+	var words := {}
+	# [app, a row to choose or "", home's page]
+	# The fed apps first, then the same apps with nothing wired in (what they say empty).
+	for pick: Array in [[&"inventory", &"las_hand", ""], [&"inventory", &"mussels", ""], [&"crafting", &"", ""], [&"map", &"", ""], [&"pause", &"", ""], [&"pause", &"", "keys"], [&"loadout", &"body", ""], [&"reads", &"a", ""], [&"saves", &"b", ""],
+			[&"", &"", ""], [&"loadout", &"", ""], [&"reads", &"", ""], [&"saves", &"", ""]]:
+		if pick[0] == &"":
+			SlateFeeds.clear()
+			continue
+		if pick[0] in SlateFeeds.APPS:
+			ui.call("open_screen", &"pause")
+		check(ui.call("open_screen", pick[0]), "%s opens" % pick[0])
+		var s: UiScreen = ui.call("top")
+		s.settle()
+		if pick[1] != &"":
+			s.select(pick[1])
+		if pick[2] != "":
+			(s as UiPauseScreen).page = pick[2]
+		s.power = 0.1
+		for w: Dictionary in await _words_drawn(s):
+			words["%s|%s" % [w.text, (w.col as Color).to_html()]] = [s.screen_name, w]
+		if pick[0] == &"reads" and pick[1] == &"":
+			check(words.has("NO NETWORK READ|%s" % UiTheme.MACHINE[2].to_html()), "the empty reads were drawn too")
+		while ui.call("top") != null:
+			(ui.call("top") as UiScreen).handle(&"back")
+	g.free()
+	SlateFeeds.clear()
+	var title := UiTitleMenu.new()
+	tree.root.add_child(title)
+	title.open()
+	title.settle()
+	for page: String in ["list", "keys"]:
+		title.page = page
+		for w: Dictionary in await _words_drawn(title):
+			words["%s|%s" % [w.text, (w.col as Color).to_html()]] = [&"title", w]
+	title.free()
+	gt(words.size(), 60, "the apps said enough to judge")
+	var dim := 1.0 - UiSlate.DIM_FLOOR
+	for key: String in words:
+		var app: StringName = words[key][0]
+		var col: Color = words[key][1].col
+		var said: String = words[key][1].text
+		# Dark words cut out of a lit tag are read against the tag, not the glass.
+		if col.a < 1.0 or col.get_luminance() <= UiTheme.GLASS.get_luminance():
+			continue
+		for glass: Color in [UiTheme.GLASS, UiTheme.GLASS_SPARE]:
+			var lit := _wcag(col, glass)
+			var low := _wcag(col.lerp(UiTheme.GLASS_OFF, dim), glass.lerp(UiTheme.GLASS_OFF, dim))
+			check(lit >= 4.5, "%s: '%s' in %s is %.2f:1 on the glass" % [app, said, col.to_html(false), lit])
+			check(low >= 3.0, "%s: '%s' in %s is %.2f:1 at low power" % [app, said, col.to_html(false), low])
+	for faint: Color in [UiTheme.FAINT, UiTheme.GHOST, UiTheme.MACHINE[0], UiTheme.MACHINE[1]]:
+		check(_wcag(faint, UiTheme.GLASS) < 4.5, "%s is only for rules and glyphs" % faint.to_html(false))
+	for word_tone: Color in [UiTheme.TEXT_DIM, UiTheme.MACHINE[2], UiTheme.WARN]:
+		gt(_wcag(word_tone, UiTheme.GLASS), 4.5, "the dimmest word tone %s reads" % word_tone.to_html(false))
+
+
+## The words `s` draws on its next frame.
+func _words_drawn(s: UiScreen) -> Array[Dictionary]:
+	s.queue_redraw()
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	await tree.process_frame
+	UiDraw.taping = false
+	var out: Array[Dictionary] = []
+	for w: Dictionary in UiDraw.tape:
+		if w.kind == &"text" and w.ci == s and String(w.text).strip_edges() != "":
+			out.append(w)
+	UiDraw.tape.clear()
+	return out
+
+
+## Contrast as WCAG measures it, on linear light.
+static func _wcag(a: Color, b: Color) -> float:
+	var la := _lum(a) + 0.05
+	var lb := _lum(b) + 0.05
+	return maxf(la, lb) / minf(la, lb)
+
+
+static func _lum(c: Color) -> float:
+	var l := c.srgb_to_linear()
+	return 0.2126 * l.r + 0.7152 * l.g + 0.0722 * l.b
+
+
 static func _contrast(a: Color, b: Color) -> float:
 	var la := a.get_luminance() + 0.05
 	var lb := b.get_luminance() + 0.05

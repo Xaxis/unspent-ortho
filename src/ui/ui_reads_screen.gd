@@ -60,10 +60,10 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "DIST  DISPOSED", UiTheme.MACHINE[1])
+	UiDraw.text_right(self, right, L.position.y + 4, "DIST  DISPOSED", UiTheme.MACHINE[2])
 	if menu.rows.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP), "nothing reads back", UiTheme.MACHINE[2])
-		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP + 11), "within %d tiles" % int(SlateFeeds.READ_RADIUS), UiTheme.MACHINE[1])
+		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP + 11), "within %d tiles" % int(SlateFeeds.READ_RADIUS), UiTheme.MACHINE[2])
 	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
@@ -88,7 +88,7 @@ func _draw() -> void:
 	var dy := R.position.y + 78
 	UiSlate.heading(self, Vector2i(dx, dy), "read", rright, UiTheme.MACHINE[2])
 	if chosen_scan.is_empty():
-		UiDraw.text(self, Vector2i(dx, dy + 14), "no signature chosen", UiTheme.MACHINE[1])
+		UiDraw.text(self, Vector2i(dx, dy + 14), "no signature chosen", UiTheme.MACHINE[2])
 	else:
 		var d: Vector2 = (chosen_scan.get("pos", Vector2.ZERO) as Vector2) - _player()
 		var facts := [
@@ -98,7 +98,7 @@ func _draw() -> void:
 			["bearing", _bearing(d)],
 		]
 		for k in facts.size():
-			UiDraw.text(self, Vector2i(dx, dy + 14 + k * 11), facts[k][0], UiTheme.MACHINE[1])
+			UiDraw.text(self, Vector2i(dx, dy + 14 + k * 11), facts[k][0], UiTheme.MACHINE[2])
 			UiDraw.text(self, Vector2i(dx + 52, dy + 14 + k * 11), facts[k][1], UiTheme.WARN if facts[k][1] == "hostile" else UiTheme.MACHINE[3])
 		var note := String(chosen_scan.get("note", ""))
 		if note != "":
@@ -118,7 +118,7 @@ func _draw_interference(r: Rect2i) -> void:
 		for x in range(box.position.x + 4, box.end.x - 4, 2):
 			if Rng.hash01(x / 6, 0, 0, 0x1f7) < 0.7:
 				UiDraw.px(self, x, mid, UiTheme.MACHINE[1])
-		UiDraw.text_right(self, box.end.x - 4, box.position.y + 2, "NO NETWORK READ", UiTheme.MACHINE[1])
+		UiDraw.text_right(self, box.end.x - 4, box.position.y + 2, "NO NETWORK READ", UiTheme.MACHINE[2])
 		return
 	var amp := 1.0 + level * (box.size.y * 0.5 - 3.0)
 	var frame := floori(_time * 12.0)

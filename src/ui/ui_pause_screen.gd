@@ -107,7 +107,7 @@ func _draw() -> void:
 			UiSlate.row_bar(self, x0 - 4, right + 3, top)
 		UiDraw.text(self, Vector2i(x0 + 8, top), row.text, UiTheme.BRIGHT if chosen else UiTheme.TEXT)
 		if row.get("app", false):
-			UiDraw.text_right(self, right, top, "→", UiTheme.FAINT if not chosen else UiTheme.TEXT)
+			UiDraw.text_right(self, right, top, "→", UiTheme.TEXT_DIM if not chosen else UiTheme.TEXT)
 	var px := R.position.x + UiSlate.MARGIN_L
 	if page == "keys":
 		UiSlate.heading(self, Vector2i(px, R.position.y + 8), "keys", R.end.x - 12)
@@ -126,7 +126,7 @@ func _draw() -> void:
 	UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 12)
 	UiDraw.text(self, Vector2i(px + 4, sy + 16), "power", UiTheme.TEXT_DIM)
 	UiSlate.meter(self, Rect2i(px + 60, sy + 16, 120, 8), power, 2.0, UiTheme.WARN if power < UiSlate.LOW_POWER else UiTheme.TEXT)
-	UiDraw.text(self, Vector2i(px + 4, sy + 28), "runs off the lamp's oil, or a found charge", UiTheme.FAINT)
+	UiDraw.text(self, Vector2i(px + 4, sy + 28), "runs off the lamp's oil, or a found charge", UiTheme.TEXT_DIM)
 	draw_keys([["e", "choose"], ["esc", "resume"]])
 
 

@@ -141,7 +141,7 @@ static func status(ci: CanvasItem, app: StringName, clock: String, power: float,
 		if lit:
 			UiDraw.rect(ci, Rect2i(x - 3, y - 1, UiFont.width(label) + 6, 11), UiTheme.GLASS_LIT)
 			UiDraw.hline(ci, x - 3, x + UiFont.width(label) + 2, y + 10, UiTheme.TEXT)
-		UiDraw.text(ci, Vector2i(x, y), label, UiTheme.BRIGHT if lit else UiTheme.FAINT)
+		UiDraw.text(ci, Vector2i(x, y), label, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
 		x += UiFont.width(label) + 9
 	var right := g.end.x - MARGIN_R - 14
 	cell(ci, Vector2i(right - 13, y + 1), power)
