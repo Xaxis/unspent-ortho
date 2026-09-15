@@ -111,7 +111,7 @@ const DEFS := {
 	&"iron": {"name": "iron", "bulk": 1.0, "group": &"material"},
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
-	&"scrap": {"name": "plate", "bulk": 2.0, "group": &"material"},
+	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
 
 	# --- Food ---
 	&"mussels": {"name": "mussels", "bulk": 1.0, "group": &"food", "feeds": 4.0},
@@ -134,7 +134,7 @@ const DEFS := {
 	&"hone": {"name": "hone", "bulk": 1.0, "group": &"good"},
 
 	# --- Salvage kit, worn one at a time (§9.6) ---
-	&"kit_plate": {"name": "plate", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3},
+	&"kit_plate": {"name": "plate armour", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3},
 	&"kit_brace": {"name": "brace", "bulk": 2.0, "group": &"kit", "kit": &"brace", "wind": 700.0},
 	&"kit_rig": {"name": "rig", "bulk": 2.0, "group": &"kit", "kit": &"rig", "creel": 20.0},
 	&"kit_lens": {"name": "lens", "bulk": 1.0, "group": &"kit", "kit": &"lens", "sight": 3.0},

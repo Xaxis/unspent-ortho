@@ -229,3 +229,11 @@ func test_kit_is_worn_one_piece_at_a_time_and_the_rig_carries_more() -> void:
 	check(not inv.wear_kit(&"stone"), "stone is not kit")
 	inv.remove(&"kit_plate")
 	check(not inv.wears(&"plate"), "taken off when gone")
+
+
+func test_no_two_items_share_a_name() -> void:
+	var seen := {}
+	for id: StringName in Items.DEFS:
+		var n := Items.display_name(id)
+		check(not seen.has(n), "%s and %s are both called %s" % [seen.get(n, ""), id, n])
+		seen[n] = id

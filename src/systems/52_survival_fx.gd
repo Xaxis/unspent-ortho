@@ -544,7 +544,9 @@ func _resolve_pending() -> void:
 		var skip := false
 		var last: Dictionary = _anims[-1] if not _anims.is_empty() else {}
 		if p.made:
-			var station := Survival.fire_near(game, Survival.STATION_REACH + 1.0)
+			var kinds: Array[int] = []
+			kinds.assign(Survival.STATION_KINDS.keys())
+			var station := game.query.nearest_prop(game.player.pos, Survival.STATION_REACH + 2.0, kinds)
 			from = game.world.to_3d(station.pos) + Vector3(0, 0.35, 0) if station != null else _hands() + Vector3(0, 0.25, 0)
 		elif not last.is_empty() and int(last.frame) == frame:
 			var prop: WorldProp = last.prop
