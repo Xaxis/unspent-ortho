@@ -9,12 +9,19 @@ extends GameSystem
 ## make (made anything else), carry (the carrying page opened), lamp (lit),
 ## dodge (a dodge pressed), side (a blow reached a working part), runner and
 ## worker (said once).
+##
+## Nothing is said in a fight (lines there stack under the fight's own). When a
+## fight ends the goal is said again; a player who comes round after a bad end
+## hears the goal once they are up, and no key hint for AFTER_DOWNED seconds.
 
 ## Real seconds between two guide lines, and before the first.
 const SPACING := 4.5
 const FIRST_AT := 1.5
 ## Tiles walked that retire the walking hint.
 const WALKED := 3.0
+## Seconds after coming round before the goal is said again, and before any key hint.
+const WAKE_DELAY := 2.2
+const AFTER_DOWNED := 12.0
 ## The plate hint waits for the fight to be over (no text in a fight).
 const SIDE_LINE := "Plate rings, and does nothing. Strike the side that is lit, while the machine is spent."
 ## Said on the first kill of a game, so a player who struck it down knows it is over.
@@ -31,6 +38,7 @@ var _from := Vector2.ZERO
 var _rang := false
 var _off := false
 var _killed_one := false
+var _hints_after := 0.0
 
 
 func setup(g: Game) -> void:
@@ -60,11 +68,16 @@ func _process(delta: float) -> void:
 	_watch()
 	if _t < _next or game.input_blocked():
 		return
+	var sim := game.player.sim
+	if sim != null and sim.fight_on:
+		return
 	var goal := Guide.goal(game)
 	if goal != _goal and (_goal == "" or _t - _goal_at >= SPACING):
 		_goal = goal
 		_goal_at = _t
 		_say(goal)
+		return
+	if _t < _hints_after:
 		return
 	var h := Guide.hint_for(game, retired)
 	if h.is_empty():
@@ -120,9 +133,21 @@ func _on_killed(kind: StringName, _at: Vector3) -> void:
 	Events.message.emit(KILL_LINE if Roster.row(kind).get("machine", false) else KILL_LINE_BEAST)
 
 
-func _on_fight_ended(_outcome: StringName) -> void:
+func _on_fight_ended(outcome: StringName) -> void:
+	if _off:
+		return
+	# What to want is said again once it is over: a fight is not the goal.
+	_goal = ""
+	if outcome == &"downed" or outcome == &"carried":
+		# Coming round: the goal when up, and no keys while the hours sink in.
+		_rang = false
+		_next = _t + WAKE_DELAY
+		_hints_after = _t + AFTER_DOWNED
+		return
 	# Rang off plate and never found the part: the lesson, now the fight is over.
-	if _rang and not retired.has(&"side") and not _off:
+	if _rang and not retired.has(&"side"):
 		retired[&"side"] = true
 		_say(SIDE_LINE)
 	_rang = false
+	# The fight's own last line (a kill, an escape) is read before the goal comes back.
+	_next = maxf(_next, _t + WAKE_DELAY)

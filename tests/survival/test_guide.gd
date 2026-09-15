@@ -93,3 +93,56 @@ func test_the_first_kill_of_a_game_is_said_once() -> void:
 	Events.message.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+
+
+## The goal says where: a fire in a village is the village fire, the one the
+## player laid is theirs.
+func test_the_goal_names_the_fire_it_sends_the_player_to() -> void:
+	var g := Fx.flat()
+	g.world.villages.append({"pos": g.player.pos + Vector2(4, 0), "country": Country.COAST, "name": "v"})
+	var village_fire := Fx.put(g, PropKind.FIRE, Vector2(5, 0))
+	check(Guide.goal(g).contains("at the village fire"), "the village's own: %s" % Guide.goal(g))
+	eq(Guide.fire_name(g, village_fire), "the village fire")
+	g.world.villages.clear()
+	g.world.depleted[village_fire.id] = INF
+	check(Guide.goal(g).contains("A fire before dark"), "no fire near: lay one: %s" % Guide.goal(g))
+	var mine := Survival.build(g, &"fire", true)
+	check(Guide.goal(g).contains("at your fire"), "one laid: %s" % Guide.goal(g))
+	eq(Guide.fire_name(g, mine), "your fire")
+	check(Guide.HINTS[&"worker"][0].contains("out of its path"), "the worker hint says what disturbs one")
+	Fx.done(g)
+
+
+## After a fight the goal comes back; after coming round from a downing, the
+## goal once up, and no key hint until the hours have sunk in.
+func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	guide.call("_process", 2.0)
+	eq(said.size(), 1, "the goal at wake")
+	said.clear()
+	Events.fight_ended.emit(&"downed")
+	guide.call("_process", 1.0)
+	eq(said.size(), 0, "nothing while the body lies there")
+	guide.call("_process", 1.5)
+	eq(said, [Guide.goal(g)] as Array[String], "up: the goal again")
+	said.clear()
+	for i in 8:
+		guide.call("_process", 1.0)
+	eq(said.size(), 0, "no key hint in the first seconds after coming round: %s" % [said])
+	for i in 8:
+		guide.call("_process", 1.0)
+	gt(float(said.size()), 0.0, "then the hints resume")
+	said.clear()
+	Events.fight_ended.emit(&"won")
+	for i in 3:
+		guide.call("_process", 1.0)
+	check(said.has(Guide.goal(g)), "a fight won: the goal again: %s" % [said])
+	Events.message.disconnect(listen)
+	g.queue_free()
+	await frames(1)

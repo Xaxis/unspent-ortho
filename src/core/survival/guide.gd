@@ -26,7 +26,7 @@ const HINTS := {
 	&"dodge": ["It winds up before it strikes: K gets you out of the way.", "k"],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", "space"],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", ""],
-	&"worker": ["A worker on its round. Leave it be and it leaves you be.", ""],
+	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", ""],
 }
 
 ## Load over this share of the creel asks for the carrying page.
@@ -46,20 +46,21 @@ static func goal(game: Game) -> String:
 		return "Light the lamp against the dark."
 	if inv.has(&"pick"):
 		return "Take the pick to the ore in the rock."
-	var fire := _has_fire(game)
-	if not fire:
+	var fire := _fire(game)
+	if fire == null:
 		if Survival._makeable_build(game, &"fire").is_empty():
 			return "A fire before dark: three driftwood and two stones."
 		return "A fire before dark: lay it on open ground."
+	var at := fire_name(game, fire)
 	if not _cooking_or_has(game, &"charcoal"):
 		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
-			return "Charcoal for a pick: four driftwood or dead wood, burnt at a fire."
-		return "Charcoal for a pick: set it going at the fire (c)."
+			return "Charcoal for a pick: four driftwood or dead wood, burnt at %s." % at
+		return "Charcoal for a pick: set it going at %s (c)." % at
 	if not inv.has(&"haft"):
 		return "A haft, whittled from wood."
 	if inv.count(&"scrap") == 0:
 		return "Plate for a pick: turn over the tip."
-	return "A pick, made at the fire."
+	return "A pick, made at %s." % at
 
 
 static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
@@ -92,7 +93,7 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"carry")
 	if Survival.use_target(game) != null:
 		out.append(&"take")
-	if not _has_fire(game) and not Survival._makeable_build(game, &"fire").is_empty():
+	if _fire(game) == null and not Survival._makeable_build(game, &"fire").is_empty():
 		out.append(&"fire")
 	if Survival.station_near(game) != &"":
 		out.append(&"make")
@@ -100,11 +101,33 @@ static func _applicable(game: Game) -> Array[StringName]:
 	return out
 
 
-static func _has_fire(game: Game) -> bool:
-	for p in SurvivalState.of(game).built:
-		if p.kind == PropKind.FIRE and not game.world.depleted.has(p.id):
-			return true
-	return Survival.fire_near(game, 12.0) != null
+## The fire the goal means: the nearest of the fires the player built and any
+## fire within FIRE_NEAR tiles (a village's), or null.
+const FIRE_NEAR := 12.0
+
+
+static func _fire(game: Game) -> WorldProp:
+	var best := Survival.fire_near(game, FIRE_NEAR)
+	var p := game.player.pos
+	for q in SurvivalState.of(game).built:
+		if q.kind != PropKind.FIRE or game.world.depleted.has(q.id):
+			continue
+		if best == null or q.pos.distance_to(p) < best.pos.distance_to(p):
+			best = q
+	return best
+
+
+## Where the goal sends the player, by name: "the village fire" (a fire in a
+## village), "your fire" (one the player laid), else "the fire".
+static func fire_name(game: Game, fire: WorldProp) -> String:
+	if fire == null:
+		return "a fire"
+	for v in game.world.villages:
+		if (v.pos as Vector2).distance_to(fire.pos) <= Survival.VILLAGE_RADIUS:
+			return "the village fire"
+	if SurvivalState.of(game).built.has(fire):
+		return "your fire"
+	return "the fire"
 
 
 static func _cooking_or_has(game: Game, id: StringName) -> bool:
