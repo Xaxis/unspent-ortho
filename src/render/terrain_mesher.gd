@@ -78,8 +78,12 @@ var _cz := PackedFloat32Array([0, 0, 0, 0])
 var _poly := PackedVector3Array()
 var _k1 := 0
 var _k2 := -1
+var _bump_key := -1
+var _bump_t := -99
 const _UV_CONTOUR := Vector2(Ink.CONTOUR * 17, 0.0)
 static var _WET := PackedByteArray()
+## Hummock height by ground.
+static var _BUMP := PackedFloat32Array()
 
 # Output buffers of the chunk being built.
 var _tv: PackedVector3Array
@@ -127,6 +131,8 @@ class Chunk:
 	var feet := PackedVector3Array()
 	var feet_out := PackedVector3Array()
 	var feet_country := PackedByteArray()
+	## Per lattice point: hummock height added to the terrace (soft ground only).
+	var bump := PackedFloat32Array()
 
 	func _lat(x: float, y: float) -> int:
 		var i := clampi(roundi((x - x0) * RES), 0, n)
@@ -172,6 +178,8 @@ class Chunk:
 		var ht := TerrainMesher.level_height(l)
 		if l > 0:
 			ht += TerrainMesher._lift(key[_lat(x, y)])
+			if not bump.is_empty():
+				ht += lerpf(lerpf(bump[a], bump[a + 1], fu), lerpf(bump[a + n + 1], bump[a + n + 2], fu), fv)
 		return ht
 
 
@@ -179,6 +187,11 @@ static func _static_init() -> void:
 	_WET.resize(256)
 	for g in 256:
 		_WET[g] = 1 if Ground.is_water(g) else 0
+	_BUMP.resize(256)
+	_BUMP[Ground.MOSS] = 0.1
+	_BUMP[Ground.PEAT] = 0.06
+	_BUMP[Ground.SNOW] = 0.07
+	_BUMP[Ground.HEATH] = 0.04
 	_LIFTS.resize(32)
 	_LIFTS[0] = 0.0
 	for i in range(1, 32):
@@ -569,8 +582,28 @@ func build(cx: int, cy: int) -> Chunk:
 				depth[li] = top + ((sc + (shore[so + rw + 1] - sc) * fx) - top) * fy
 			else:
 				depth[li] = -float(MARGIN)
+	# Hummocks: soft ground (fen, peat, snow) rises and dips a little, only well
+	# inside one terrace and one ground, so edges and walking read the same.
+	ch.bump.resize(cnt)
+	for j in range(1, m):
+		for i in range(1, ch.n):
+			var li := j * np + i
+			var k := ch.key[li]
+			var amp: float = _BUMP[k & 0xFF] if (k & 0xFFFF0000) == 0 else 0.0
+			if amp <= 0.0:
+				continue
+			var t0 := ch.t[li]
+			if ch.key[li - 1] != k or ch.key[li + 1] != k or ch.key[li - np] != k or ch.key[li + np] != k \
+					or ch.key[li - np - 1] != k or ch.key[li - np + 1] != k or ch.key[li + np - 1] != k or ch.key[li + np + 1] != k \
+					or ch.t[li - 1] != t0 or ch.t[li + 1] != t0 or ch.t[li - np] != t0 or ch.t[li + np] != t0 \
+					or ch.t[li - np - 1] != t0 or ch.t[li - np + 1] != t0 or ch.t[li + np - 1] != t0 or ch.t[li + np + 1] != t0:
+				continue
+			var sx := x0 + i * 0.5
+			var sy := y0 + j * 0.5
+			ch.bump[li] = _eco.get_noise_2d(sx * 2.6 + 300.0, sy * 2.6) * amp
 	var _t4 := Time.get_ticks_usec()
 	_begin()
+	var bump := ch.bump
 	for j in m:
 		var py := y0 + j * 0.5
 		var run_start := -1
@@ -585,6 +618,12 @@ func build(cx: int, cy: int) -> Chunk:
 			var t00 := ch.t[i00]
 			var same_t := ch.t[i00 + 1] == t00 and ch.t[i00 + np] == t00 and ch.t[i00 + np + 1] == t00
 			var flat := same_t and k10 == k00 and k01 == k00 and k11 == k00
+			if flat and (bump[i00] != 0.0 or bump[i00 + 1] != 0.0 or bump[i00 + np] != 0.0 or bump[i00 + np + 1] != 0.0):
+				if run_start >= 0:
+					_flat_run(ch, run_start, i, py, run_key, run_t)
+					run_start = -1
+				_bump_cell(x0 + i * 0.5, py, t00, k00, bump[i00], bump[i00 + 1], bump[i00 + np + 1], bump[i00 + np])
+				continue
 			if flat and run_start >= 0 and (k00 != run_key or t00 != run_t):
 				_flat_run(ch, run_start, i, py, run_key, run_t)
 				run_start = -1
@@ -599,7 +638,7 @@ func build(cx: int, cy: int) -> Chunk:
 				run_start = -1
 			if same_t:
 				if t00 > 0:
-					_mixed_flat(x0 + i * 0.5, py, t00, k00, k10, k11, k01)
+					_mixed_flat(x0 + i * 0.5, py, t00, k00, k10, k11, k01, bump[i00], bump[i00 + 1], bump[i00 + np + 1], bump[i00 + np])
 				continue
 			_cell(ch, i, j)
 		if run_start >= 0:
@@ -623,26 +662,65 @@ func build(cx: int, cy: int) -> Chunk:
 
 ## A same-terrace cell whose corners carry two or more keys: one quad, the
 ## most common key as its wash and the next as the second wash.
-func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: int, k01: int) -> void:
+## One cell of a single key with hummock heights at its corners: two
+## triangles with their own normals, painted once.
+func _bump_cell(px: float, py: float, terrace: int, k: int, b00: float, b10: float, b11: float, b01: float) -> void:
+	if k != _bump_key or terrace != _bump_t:
+		_paint(k, -1, terrace)
+		_bump_key = k
+		_bump_t = terrace
+	var h := level_height(terrace)
+	var p00 := Vector3(px, h + b00, py)
+	var p10 := Vector3(px + 0.5, h + b10, py)
+	var p11 := Vector3(px + 0.5, h + b11, py + 0.5)
+	var p01 := Vector3(px, h + b01, py + 0.5)
+	var n1 := (p11 - p00).cross(p10 - p00).normalized()
+	var n2 := (p01 - p00).cross(p11 - p00).normalized()
+	_tv.append_array([p00, p10, p11, p00, p11, p01])
+	_tn.append_array([n1, n1, n1, n2, n2, n2])
+	var uv := Vector2(_style, 0.0)
+	var uv2 := Vector2(0.0, _m2)
+	var c0 := Color(_sc.r, _sc.g, _sc.b, 0.0)
+	for v in 6:
+		_tc.append(_pc)
+		_tuv.append(uv)
+		_tuv2.append(uv2)
+		_tc0.append(c0)
+
+
+func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: int, k01: int, b00: float, b10: float, b11: float, b01: float) -> void:
 	_pick_keys(k00, k10, k11, k01)
 	_ox = px
 	_oy = py
 	_paint(_k1, _k2, terrace)
+	_bump_key = -1
 	var h := level_height(terrace)
-	var h00 := h + _lift(k00)
-	var h10 := h + _lift(k10)
-	var h11 := h + _lift(k11)
-	var h01 := h + _lift(k01)
+	var h00 := h + _lift(k00) + b00
+	var h10 := h + _lift(k10) + b10
+	var h11 := h + _lift(k11) + b11
+	var h01 := h + _lift(k01) + b01
 	var s := 0.5
+	var start := _tv.size()
 	_vtop(px, h00, py)
 	_vtop(px + s, h10, py)
 	_vtop(px + s, h11, py + s)
 	_vtop(px, h00, py)
 	_vtop(px + s, h11, py + s)
 	_vtop(px, h01, py + s)
+	if b00 != 0.0 or b10 != 0.0 or b11 != 0.0 or b01 != 0.0:
+		# A hummock's faces turn toward or away from the light.
+		for tri in 2:
+			var a := _tv[start + tri * 3]
+			var n := (_tv[start + tri * 3 + 2] - a).cross(_tv[start + tri * 3 + 1] - a).normalized()
+			if n.y < 0.0:
+				n = -n
+			for v in 3:
+				_tn[start + tri * 3 + v] = n
 
 
 func _begin() -> void:
+	_bump_key = -1
+	_bump_t = -99
 	_tv = PackedVector3Array()
 	_tn = PackedVector3Array()
 	_tc = PackedColorArray()
@@ -688,6 +766,7 @@ func _finish_water() -> ArrayMesh:
 
 ## Set the paint state for tops of key k1 (and a second key k2 by corner flags).
 func _paint(k1: int, k2: int, terrace: int) -> void:
+	_bump_key = -1
 	var i1 := ((k1 & 0xFF) * Country.COUNT + ((k1 >> 8) & 0xFF)) * 2 + (terrace & 1)
 	_pc = _tab_col[i1]
 	var s1 := _tab_style[i1] if terrace > 0 else Ink.NONE

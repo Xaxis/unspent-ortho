@@ -127,6 +127,7 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 				continue
 			var country := (k >> 8) & 0xFF
 			var h := TerrainMesher.level_height(t) - 0.004
+			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
 			var shore := ch.shore[ty * ch.w + tx]
 			var wx := ch.x0 + tx
 			var wy := ch.y0 + ty
@@ -147,7 +148,8 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 				var tpl := template(kind, country, stage)
 				var s := 0.8 + _rng.randf() * 0.45
 				var basis := Basis(Vector3.UP, _rng.randf() * TAU)
-				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, h, wy + fy))
+				var hy := ch.surface(wx + fx, wy + fy) - 0.004 if soft else h
+				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, hy, wy + fy))
 				v.append_array(xf * tpl.v)
 				n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
 				c.append_array(tpl.c)

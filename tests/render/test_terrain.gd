@@ -168,3 +168,32 @@ func test_view_radius_follows_the_camera() -> void:
 	gt(small, 12.0, "sees at least the screen")
 	lt(small, 32.0, "no more than a chunk each way at play zoom")
 	gt(big, small * 1.6, "a wider view wants more land")
+
+
+func test_soft_ground_hummocks_only_inside_one_terrace() -> void:
+	var w := WorldData.new(3, 64)
+	for y in 64:
+		for x in 64:
+			var i := y * 64 + x
+			w.level[i] = 2 if x < 40 else 3
+			w.country[i] = Country.MOSS
+			w.ground[i] = Ground.MOSS
+	var ch := TerrainMesher.new(w).build(0, 0)
+	var np := ch.n + 1
+	var any := false
+	for j in ch.h * TerrainMesher.RES + 1:
+		for i in np:
+			var b := ch.bump[j * np + i]
+			if b != 0.0:
+				any = true
+				lt(absf(b), 0.12, "a hummock stays small")
+				var x := ch.x0 + i * 0.5
+				check(absf(x - 40.0) > 1.2, "no hummock at the step, x=%s" % x)
+	check(any, "fen ground is hummocked")
+	near(ch.surface(20.0, 20.0), 2 * WorldData.STEP, 0.12, "walkable height kept")
+
+
+func test_masts_carry_cables_from_their_arms() -> void:
+	eq(WorldView.cable_points(PropKind.PYLON).size(), 4, "pylon insulators")
+	eq(WorldView.cable_points(PropKind.POLE).size(), 2, "pole insulators")
+	eq(WorldView.cable_points(PropKind.PINE).size(), 0, "a tree carries none")
