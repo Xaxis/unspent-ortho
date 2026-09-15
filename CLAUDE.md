@@ -88,3 +88,25 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit -F msgfile
 
 No `Co-Authored-By`, no generated-by lines, no attribution of any kind. Messages
 lead with why, in short sentences.
+
+## Contracts between parallel work (change only with every user updated)
+
+| Seam | File | Rule |
+|---|---|---|
+| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hit, fight_ended, killed, took, made, time_skipped, screen_changed |
+| Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order; never edit `game.gd` to add one |
+| Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load; UI reads |
+| Carrying | `src/core/inventory.gd`, `src/content/items.gd` | `held` is the tool and the weapon |
+| Making | `src/core/crafting.gd` | UI calls only its static functions |
+| Figures | `src/models/figure_model.gd` | `FigureModel.create(kind)` loads `models/machines/<kind>.gd` or `models/animals/<kind>.gd` |
+| People | `src/models/person_model.gd` | `play_action`, `set_held`, `set_look` |
+| Sky | `src/render/sky.gdshaderinc` | `sky_apply()` is the only place lit colour is tinted by time/weather/region |
+| World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision |
+| Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool` |
+| Weather | `src/core/weather.gd` | `Weather.at(seed, minutes) -> {kind, strength, wind}`, pure; others check `ResourceLoader.exists` until it lands |
+| Boot options | `src/boot_options.gd` | packages may ADD options (e.g. `--spawn=`, `--weather=`, `--screen=`, `--give=`); never rename existing ones |
+| Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes, renderers blend |
+
+Native-name trap: a static func on a `class_name` script must not share a name
+with a `GDScript`/`Script` method (`is_tool`, `new`, `get_class`...): the call
+resolves to the native one.

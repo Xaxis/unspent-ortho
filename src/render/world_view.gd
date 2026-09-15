@@ -114,11 +114,25 @@ func _build(key: Vector2i) -> void:
 	chunk_built.emit(key.x, key.y)
 
 
+## Rebuild the props of the chunk holding `prop` (after it was taken or grew back).
+func refresh_props(prop: WorldProp) -> void:
+	var key := Vector2i(floori(prop.pos.x) / CHUNK, floori(prop.pos.y) / CHUNK)
+	if not _chunks.has(key):
+		return
+	var node: Node3D = _chunks[key]
+	for c in node.get_children():
+		if c is MultiMeshInstance3D:
+			c.queue_free()
+	_build_props(node, key)
+
+
 func _build_props(node: Node3D, key: Vector2i) -> void:
 	if not _props_by_chunk.has(key):
 		return
 	var by_kind: Dictionary = {}
 	for p: WorldProp in _props_by_chunk[key]:
+		if world.depleted.has(p.id):
+			continue
 		if not by_kind.has(p.kind):
 			by_kind[p.kind] = []
 		by_kind[p.kind].append(p)

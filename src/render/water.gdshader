@@ -3,7 +3,7 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
 
-global uniform vec3 sky_tint;
+#include "res://src/render/sky.gdshaderinc"
 uniform vec3 shade_tint = vec3(0.64, 0.66, 0.80);
 
 varying vec3 world_pos;
@@ -16,7 +16,7 @@ void fragment() {
 	vec3 c = COLOR.rgb;
 	float swell = sin((world_pos.x + world_pos.z) * 0.9 - TIME * 0.8) * sin(world_pos.x * 0.37 - world_pos.z * 0.23 + TIME * 0.35);
 	c *= 1.0 + step(0.72, swell) * 0.18;
-	ALBEDO = c * sky_tint;
+	ALBEDO = sky_apply(c, world_pos, TIME);
 }
 
 void light() {

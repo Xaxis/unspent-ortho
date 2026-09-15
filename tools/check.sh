@@ -10,7 +10,7 @@ tools/_import.sh
 fail=0
 echo "== tests"
 out="$(godot --headless --path . -s tests/run.gd 2>&1)"; code=$?
-echo "$out" | grep -E '^\s+(ok|FAIL)|^\s{7}|passed|LOAD FAIL|SCRIPT ERROR' | grep -v '^\s*ok ' 
+echo "$out" | grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: "
 echo "$out" | grep -E 'passed,'
 [ $code -eq 0 ] || fail=1
 echo "== shots"

@@ -23,6 +23,17 @@ static func _static_init() -> void:
 	_put(Ground.ASH, [Palette.ASH[0], Palette.ASH[1], Palette.ASH[2]], [Palette.STONE[0], Palette.STONE[1]])
 	_put(Ground.ROCK, [Palette.SLATE[2], Palette.SLATE[3], Palette.STONE[3]], [Palette.SLATE[1], Palette.SLATE[2]])
 	_put(Ground.ROAD, [Palette.EARTH[2], Palette.EARTH[3], Palette.EARTH[3].lerp(Palette.SAND[3], 0.4)], [Palette.EARTH[1], Palette.EARTH[2]])
+	# Placeholders for grounds the worldgen package adds; the landscape package tunes them.
+	_put(Ground.HEATH, [Palette.EARTH[2], Palette.EARTH[2].lerp(Palette.MOSS[2], 0.5), Palette.MOSS[2]], [Palette.SLATE[1], Palette.SLATE[2]])
+	_put(Ground.SHINGLE, [Palette.STONE[1], Palette.STONE[2], Palette.STONE[3]], [Palette.SLATE[1], Palette.SLATE[2]])
+	_put(Ground.GRAVEL, [Palette.STONE[1], Palette.STONE[2], Palette.STONE[3]], [Palette.STONE[0], Palette.STONE[1]])
+	_put(Ground.SCREE, [Palette.SLATE[1], Palette.SLATE[2], Palette.SLATE[3]], [Palette.SLATE[0], Palette.SLATE[1]])
+	_put(Ground.LIMESTONE, [Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[5]], [Palette.LINEN[2], Palette.LINEN[3]])
+	_put(Ground.CLINKER, [Palette.STONE[0], Palette.STONE[1], Palette.INK[3]], [Palette.INK[1], Palette.INK[2]])
+	_put(Ground.ICE, [Palette.RIME[3], Palette.RIME[4], Palette.RIME[5]], [Palette.RIME[2], Palette.RIME[3]])
+	_put(Ground.BLACKWATER, [Palette.BRINE[0], Palette.SPRUCE[1], Palette.SPRUCE[2]], [Palette.EARTH[1], Palette.EARTH[1]])
+	_put(Ground.PEAT, [Palette.EARTH[1], Palette.EARTH[1].lerp(Palette.EARTH[2], 0.5), Palette.EARTH[2]], [Palette.EARTH[0], Palette.EARTH[1]])
+	_put(Ground.RIVER, [Palette.BRINE[2], Palette.BRINE[3], Palette.BRINE[3]], [Palette.SLATE[1], Palette.SLATE[2]])
 	_put(Ground.FLOOR, [Palette.STONE[1], Palette.STONE[2], Palette.STONE[3]], [Palette.STONE[0], Palette.STONE[1]])
 
 

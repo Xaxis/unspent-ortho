@@ -15,15 +15,26 @@ enum {
 	ROCK,
 	ROAD,
 	FLOOR,
+	HEATH,
+	SHINGLE,
+	GRAVEL,
+	SCREE,
+	LIMESTONE,
+	CLINKER,
+	ICE,
+	BLACKWATER,
+	PEAT,
+	RIVER,
 }
 
-const COUNT := 13
+const COUNT := 23
 
 const NAMES: PackedStringArray = [
 	"deep water", "water", "sand", "grass", "moss", "mud", "needles",
 	"snow", "bone", "ash", "rock", "road", "floor",
+	"heath", "shingle", "gravel", "scree", "limestone", "clinker", "ice", "blackwater", "peat", "river",
 ]
 
 
 static func is_water(g: int) -> bool:
-	return g == DEEP_WATER or g == WATER
+	return g == DEEP_WATER or g == WATER or g == BLACKWATER or g == RIVER

@@ -70,6 +70,9 @@ static func _build(kind: int) -> ArrayMesh:
 		PropKind.BONES:
 			k.strut(Vector3(-0.2, 0.03, 0), Vector3(0.25, 0.05, 0.1), 0.04, 4, Palette.LINEN[4])
 			k.rock(0.28, 0, 0.12, 0.09, 0.12, 901, Palette.LINEN[5], 5)
+	if k.vertex_count() == 0:
+		# Placeholder until the landscape package models this kind.
+		k.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
 	return k.build()
 
 

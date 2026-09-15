@@ -13,6 +13,12 @@ var player: Player
 var camera: CameraRig
 var sky: SkyLight
 var hud: Hud
+var body: Body
+var inventory: Inventory
+## Systems loaded from res://src/systems/NN_*.gd, in file-name order.
+var systems: Array[GameSystem] = []
+## Open UI screens by name; while any is open, gameplay input is ignored.
+var open_screens: Dictionary = {}
 ## Set by scripted walks (--walk) and bots; overrides device input while > 0.
 var scripted_move := Vector2.ZERO
 var scripted_run := false
@@ -26,6 +32,11 @@ func setup(o: BootOptions) -> void:
 	var t1 := Time.get_ticks_msec()
 	query = WorldQuery.new(world)
 	clock = WorldClock.new(o.hour)
+	body = Body.new()
+	body.fed_until = clock.minutes + 6.0 * 60.0
+	inventory = Inventory.new()
+	inventory.add(&"knife")
+	inventory.set_held(&"knife")
 
 	sky = SkyLight.new()
 	sky.name = "sky"
@@ -59,11 +70,39 @@ func setup(o: BootOptions) -> void:
 
 	view.ensure_near(player.pos)
 	sky.set_hour(clock.hour())
+	Events.screen_changed.connect(func(n: StringName, open: bool) -> void:
+		if open:
+			open_screens[n] = true
+		else:
+			open_screens.erase(n))
+	_load_systems()
 	if o.walk_seconds > 0.0:
 		scripted_move = o.walk
 		scripted_run = o.run
 		scripted_seconds = o.walk_seconds
 	print("world %d gen %d ms, view %d ms" % [o.seed_value, t1 - t0, Time.get_ticks_msec() - t1])
+
+
+func _load_systems() -> void:
+	var dir := DirAccess.open("res://src/systems")
+	if dir == null:
+		return
+	var files: Array[String] = []
+	for f in dir.get_files():
+		if f.ends_with(".gd") and f.substr(0, 2).is_valid_int():
+			files.append(f)
+	files.sort()
+	for f in files:
+		var sys: GameSystem = (load("res://src/systems/" + f) as GDScript).new()
+		sys.name = f.get_basename()
+		add_child(sys)
+		sys.setup(self)
+		systems.append(sys)
+
+
+## True while gameplay input should be ignored (a screen is open, or the body is busy).
+func input_blocked() -> bool:
+	return not open_screens.is_empty()
 
 
 func _physics_process(delta: float) -> void:
@@ -76,9 +115,11 @@ func _physics_process(delta: float) -> void:
 		input = scripted_move
 		run = scripted_run
 		scripted_seconds -= delta
-	else:
+	elif not input_blocked():
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 		run = Input.is_action_pressed("run")
+	if Time.get_ticks_msec() / 1000.0 < body.busy_until:
+		input = Vector2.ZERO
 	player.drive(Player.screen_to_world(input, camera.yaw_deg), run, delta)
 
 

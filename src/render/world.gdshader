@@ -6,13 +6,19 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
 
-global uniform vec3 sky_tint;
+#include "res://src/render/sky.gdshaderinc"
 // The measured one-step darken of the source game, pushed toward blue-violet.
 uniform vec3 shade_tint = vec3(0.64, 0.66, 0.80);
 uniform float emission_strength = 0.0;
 
+varying vec3 world_pos;
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
 void fragment() {
-	ALBEDO = COLOR.rgb * sky_tint;
+	ALBEDO = sky_apply(COLOR.rgb, world_pos, TIME);
 	EMISSION = COLOR.rgb * emission_strength;
 }
 

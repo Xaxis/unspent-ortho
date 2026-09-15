@@ -15,11 +15,18 @@ var size: int
 var level: PackedInt32Array
 var ground: PackedByteArray
 var country: PackedByteArray
+## Landscape transitions: the nearest OTHER country and how far toward it this
+## tile has turned (0 = pure `country`, 0.5 = on the border). Renderers blend by it.
+var country2: PackedByteArray
+var blend: PackedFloat32Array
 var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
 var props: Array[WorldProp] = []
 var villages: Array[Dictionary] = []
 var spawn: Vector2
+## Props taken from the world: prop id -> world minute it grows back (INF = never).
+## Owned by survival rules; WorldView and WorldQuery skip depleted props.
+var depleted: Dictionary = {}
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -29,6 +36,8 @@ func _init(p_seed: int, p_size: int) -> void:
 	level.resize(n)
 	ground.resize(n)
 	country.resize(n)
+	country2.resize(n)
+	blend.resize(n)
 	moisture.resize(n)
 	temperature.resize(n)
 	spawn = Vector2(size * 0.5, size * 0.5)

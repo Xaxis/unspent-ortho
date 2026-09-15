@@ -79,6 +79,28 @@ func animate(speed: float, delta: float) -> void:
 		torso.rotation.z = 0.0
 
 
+## Contract used by fight and survival (the characters package implements it):
+##   play_action(action, seconds)  &"swing" &"dodge" &"work" &"hurt" &"eat" &"carried" &"downed"
+##   set_held(item)                show the held tool in the right hand (&"" = bare hands)
+##   set_look(spec)                NPC variety: {build, hat, coat, hair, shirt, trouser, boot, salvage}
+var action: StringName = &""
+var action_left := 0.0
+var held: StringName = &""
+
+
+func play_action(a: StringName, seconds: float) -> void:
+	action = a
+	action_left = seconds
+
+
+func set_held(item: StringName) -> void:
+	held = item
+
+
+func set_look(_spec: Dictionary) -> void:
+	pass
+
+
 func _node(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := Node3D.new()
 	n.position = pos

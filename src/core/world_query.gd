@@ -48,6 +48,8 @@ func nearest_prop(p: Vector2, r: float, kinds: Array[int] = []) -> WorldProp:
 	for q in props_near(p, r):
 		if not kinds.is_empty() and not kinds.has(q.kind):
 			continue
+		if world.depleted.has(q.id):
+			continue
 		var d := q.pos.distance_squared_to(p)
 		if d <= best_d:
 			best_d = d
@@ -85,7 +87,7 @@ func _fits(from: Vector2, to: Vector2, r: float) -> bool:
 		if not passable(ftx, fty, floori(c.x), floori(c.y)):
 			return false
 	for q in props_near(to, 2.0):
-		if q.solid <= 0.0:
+		if q.solid <= 0.0 or world.depleted.has(q.id):
 			continue
 		var rr := q.solid + r
 		var after := q.pos.distance_squared_to(to)
