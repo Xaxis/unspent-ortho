@@ -15,6 +15,9 @@ extends Node3D
 ##   animate(delta, speed)      speed in tiles/s actually moved
 ##   set_part_lit(lit)          the working part's light (off = hurt or dead)
 ##   flare_part()               brief flare when a blow reaches the working part
+##   top_toward(up)             world point of the drawn body highest along `up`
+##                              as posed now (a mark over the silhouette stands
+##                              clear of it); machines read their bones
 ##   set_hunting(on)            the mob is running something down (roused): a
 ##                              machine holds its lights locked while it walks;
 ##                              figures that do not care ignore it
@@ -88,6 +91,33 @@ func flare_part() -> void:
 
 func set_hunting(_on: bool) -> void:
 	pass
+
+
+func top_toward(up: Vector3) -> Vector3:
+	var to_world := global_transform if is_inside_tree() else transform
+	var best := to_world.origin + Vector3(0, height, 0)
+	var best_d := best.dot(up)
+	for n in find_children("*", "GeometryInstance3D", true, false):
+		var gi := n as GeometryInstance3D
+		if not gi.visible or (gi is MeshInstance3D and not ((gi as MeshInstance3D).mesh is ArrayMesh)):
+			continue
+		var box := gi.get_aabb()
+		var xf := to_world * _relative(gi)
+		for i in 8:
+			var c := xf * box.get_endpoint(i)
+			if c.dot(up) > best_d:
+				best_d = c.dot(up)
+				best = c
+	return best
+
+
+func _relative(n: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	var cur: Node = n
+	while cur != null and cur != self:
+		xf = (cur as Node3D).transform * xf
+		cur = cur.get_parent()
+	return xf
 
 
 ## Where a hit effect on the working part should appear, in world space (the

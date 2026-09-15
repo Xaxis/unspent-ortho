@@ -124,6 +124,11 @@ var _glow_size := 0.7
 var _scans: Array = []
 var _beams: Array = []
 var _dead_only: Array = []
+## [MeshInstance3D, living Mesh, dead Mesh]: the matter drawn without and with
+## the dead-only spills, so a living machine's mesh bounds are its body's alone.
+var _matter_swap: Array = []
+## Per bone, the union of its pieces' boxes in rest model space (read lazily).
+var _bone_boxes: Array[AABB] = []
 ## Lamps: {lamp: Node3D, hot: Node3D, role: StringName, side: bool, order: int}.
 var _lamps: Array = []
 ## Surface kind -> Array of [MeshKit, Node3D] waiting for finish_rig().
@@ -403,6 +408,8 @@ func set_pose(p: StringName) -> void:
 		_from[jn] = [n.position, n.rotation]
 	pose = p
 	pose_time = 0.0
+	if not _matter_swap.is_empty():
+		(_matter_swap[0] as MeshInstance3D).mesh = _matter_swap[2] if p == &"dead" else _matter_swap[1]
 
 
 func animate(delta: float, speed: float) -> void:
@@ -507,6 +514,52 @@ func lamp_levels() -> Dictionary:
 			lvl = 2 if l.hot != null and (l.hot as Node3D).visible else 1
 		(out[role] as Array).append(lvl)
 	return out
+
+
+## The point of the body as posed now that is highest along `up` (world space;
+## the camera's up for a mark over the silhouette), from each bone's box
+## carried through its pose: a raised mast counts, a hidden spill does not.
+func top_toward(up: Vector3) -> Vector3:
+	if skeleton == null:
+		return super(up)
+	if _bone_boxes.is_empty():
+		_read_bone_boxes()
+	_update_chain()
+	var to_world := global_transform if is_inside_tree() else transform
+	var best := to_world.origin + Vector3(0, height, 0)
+	var best_d := -INF
+	for b in _bone_boxes.size():
+		var box := _bone_boxes[b]
+		if box.size.x < 0.0:
+			continue
+		var c := _bone_chain[b]
+		if c >= 0 and _chain_shown[c] == 0:
+			continue
+		var xf := to_world * (Transform3D.IDENTITY if c < 0 else _chain_xf[c]) * _bone_bind[b]
+		for i in 8:
+			var w := xf * box.get_endpoint(i)
+			var d := w.dot(up)
+			if d > best_d:
+				best_d = d
+				best = w
+	return best
+
+
+func _read_bone_boxes() -> void:
+	_bone_boxes.resize(_bone_chain.size())
+	_bone_boxes.fill(AABB(Vector3.ZERO, Vector3(-1, -1, -1)))
+	var meshes: Array[Mesh] = []
+	for surface: StringName in surfaces:
+		meshes.append((surfaces[surface] as MeshInstance3D).mesh)
+	if not _matter_swap.is_empty():
+		meshes.append(_matter_swap[2])
+	for mesh in meshes:
+		var boxes: Array = RenderingServer.mesh_get_surface(mesh.get_rid(), 0).get("bone_aabbs", [])
+		for b in mini(boxes.size(), _bone_boxes.size()):
+			var box: AABB = boxes[b]
+			if box.size.x < 0.0:
+				continue
+			_bone_boxes[b] = box if _bone_boxes[b].size.x < 0.0 else _bone_boxes[b].merge(box)
 
 
 ## True while any scan highlight or beam is showing.
@@ -652,10 +705,26 @@ func _merge() -> void:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			&"matter":
 				mi.material_override = _matter_material()
+				var living: Array = (_queued[surface] as Array).filter(func(piece: Array) -> bool: return not _dead_only_under(piece[1] as Node3D))
+				if living.size() < (_queued[surface] as Array).size():
+					var alive := _merged_mesh(living, false) if not living.is_empty() else ArrayMesh.new()
+					_matter_swap = [mi, alive, lit]
+					mi.mesh = alive
 			_:
 				mi.material_override = material
 		surfaces[surface] = mi
 	_queued.clear()
+
+
+## True when `n` or a parent of it only exists once the machine is dead.
+func _dead_only_under(n: Node3D) -> bool:
+	var cur: Node = n
+	while cur != null and cur != self:
+		for d: Array in _dead_only:
+			if d[0] == cur:
+				return true
+		cur = cur.get_parent()
+	return false
 
 
 static var _matter_mat: ShaderMaterial

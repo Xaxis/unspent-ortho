@@ -105,3 +105,40 @@ func test_a_dead_lineman_lies_with_its_arms_along_it() -> void:
 	m.free()
 	lt(e.y, 0.55, "dead lineman top")
 	lt(e.z, 1.0, "dead lineman reach")
+
+
+## A mark over a machine (the windup tell) stands on the top of the body as it
+## is posed now, not on the rest rig: a mast run up, a blade lifted count, and
+## a spill that only exists once it is dead does not.
+func test_the_top_of_the_body_follows_the_pose() -> void:
+	var up := Basis.from_euler(Vector3(deg_to_rad(-57.0), deg_to_rad(45.0), 0.0)).y
+	var worst_slack := 0.0
+	for kid in KINDS:
+		if kid == &"flock":
+			continue
+		var m := FigureModel.create(kid) as MachineModel
+		for turn in 4:
+			m.rotation.y = turn * TAU / 4.0 + 0.3
+			for p: StringName in [&"stand", &"alert", &"windup", &"strike"]:
+				m.set_pose(p)
+				m.settle()
+				var drawn := -INF
+				for s: StringName in m.surfaces:
+					for v in m.posed_triangles(m.surfaces[s]):
+						drawn = maxf(drawn, (m.transform * v).dot(up))
+				var top := m.top_toward(up).dot(up)
+				gt(top, drawn - 1e-3, "%s %s: the top is never under the drawn body" % [kid, p])
+				worst_slack = maxf(worst_slack, top - drawn)
+		m.free()
+	# A box round each part overshoots at its corners (a chamfered hull, an oval
+	# carapace) by no more than half a unit: a dozen pixels at gameplay zoom.
+	lt(worst_slack, 0.5, "and never far over it (%.2f)" % worst_slack)
+	# The rest rig's mesh bounds carry no spill while the machine lives.
+	var h := FigureModel.create(&"harvester") as MachineModel
+	var matter: MeshInstance3D = h.surfaces[&"matter"]
+	lt(matter.mesh.get_aabb().end.x, 1.8, "a living harvester's matter ends at its comb")
+	h.set_pose(&"dead")
+	gt(matter.mesh.get_aabb().end.x, 2.2, "dead, the row it cut spills out past it")
+	h.set_pose(&"stand")
+	lt(matter.mesh.get_aabb().end.x, 1.8, "and a machine stood back up carries none")
+	h.free()
