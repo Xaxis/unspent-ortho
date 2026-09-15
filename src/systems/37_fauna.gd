@@ -168,7 +168,9 @@ func _ring(spec: String) -> void:
 			_add(StringName(kv[0]), p, -2, i * 101)
 
 
-const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK]
+## A beached trawler's hull is worked like a tip. Scattered debris is not: it lies
+## round villages in every landscape, and gulls over the snow would lie.
+const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.HULL]
 
 
 ## A flock over a heap of refuse: three to five gulls standing about its tips

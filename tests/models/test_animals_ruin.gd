@@ -113,7 +113,7 @@ func test_every_tip_and_wreck_near_the_player_gets_its_own_flock() -> void:
 			for v: Dictionary in w.villages:
 				d = minf(d, (v.pos as Vector2).distance_to(Vector2(x, y)))
 			for q in g.query.props_near(Vector2(x, y), 12.0):
-				if q.kind == PropKind.TIP or q.kind == PropKind.WRECK:
+				if q.kind == PropKind.TIP or q.kind == PropKind.WRECK or q.kind == PropKind.HULL:
 					d = 0.0
 			if d > far:
 				far = d
