@@ -35,6 +35,8 @@ func test_save_asks_before_writing_over_and_load_says_what_cannot_be_read() -> v
 	eq(fake.saves, [1], "an empty slot is written at once")
 	eq(s.note, "Saved to slot 1.")
 	check((s.menu.selected().entry as Dictionary).ok, "and the row now holds it")
+	eq(UiSavesScreen.played({"play_seconds": 3960.0}), "played 1 h 06 m", "a row says its time as play")
+	eq(UiSavesScreen.ago(100.0, 100.0 + 300.0), "saved 5 minutes ago", "the detail says when it was saved")
 	s.handle(&"confirm")
 	eq(fake.saves, [1], "a filled slot asks first")
 	eq(s.note, "Again, to write over slot 1.")

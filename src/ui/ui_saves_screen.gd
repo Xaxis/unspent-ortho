@@ -118,7 +118,7 @@ func _draw() -> void:
 		UiDraw.text(self, Vector2i(x0 + 14, top), SaveSlots.slot_name(int(row.slot)), col)
 		var under := UiNotebook.line_top(L, n + 1)
 		if e.ok:
-			UiDraw.text_right(self, right, top, SaveSlots.play_time(e.header), UiTheme.INK_SOFT)
+			UiDraw.text_right(self, right, top, played(e.header), UiTheme.INK_SOFT)
 			UiDraw.text(self, Vector2i(x0 + 20, under), SaveSlots.describe(e.header), UiTheme.INK_SOFT)
 		elif e.exists:
 			UiDraw.text(self, Vector2i(x0 + 20, under), "cannot be read", UiTheme.ACCENT)
@@ -159,12 +159,18 @@ func _draw_detail(R: Rect2i) -> void:
 		var h: Dictionary = e.header
 		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line)), str(h.get("clock", "")), UiTheme.INK)
 		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line + 1)), str(h.get("place", "")), UiTheme.INK_SOFT)
-		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line + 2)), "played %s" % SaveSlots.play_time(h), UiTheme.INK_SOFT)
+		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line + 2)), played(h), UiTheme.INK_SOFT)
 		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line + 3)), ago(SaveCodec.to_num(h.get("saved_at")), Time.get_unix_time_from_system()), UiTheme.FADED)
 	elif e.exists:
 		UiNotebook.wrapped(self, Vector2i(x0, UiNotebook.line_top(R, line)), THUMB.x + 20, SaveSlots.problem(slot, e.code), UiTheme.ACCENT)
 	elif mode == &"save":
 		UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, line)), "e writes the game here", UiTheme.FADED)
+
+
+## "played 1 h 06 m": said as play, so a slot's row never reads as how long ago
+## it was saved (the detail says that, under the picture).
+static func played(header: Dictionary) -> String:
+	return "played %s" % SaveSlots.play_time(header)
 
 
 ## "saved just now", "saved 5 minutes ago", "saved 2 days ago".
