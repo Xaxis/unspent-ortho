@@ -5,10 +5,12 @@ extends Node3D
 ## stays upper-left of the screen and swings only 70 degrees; nothing casts at
 ## night; weather and region are colour multiplies, never a veil.
 ##
-## One writer: only this node sets the sky_* shader globals. The 10_sky system
-## fills `weather_tint`, `region_tint`, `season_turn`, `clouds`, `fog`, `flash`,
-## `settle`, `wind` and `cast_allowed`, then calls set_hour(); everything is composed there, so
-## the order in which game.gd and the systems run never matters.
+## One writer: only this node sets the sky_* shader globals (and wind_strength,
+## which world.gdshader's sway reads). The 10_sky system fills `weather_tint`,
+## `region_tint`, `season_turn`, `clouds`, `fog`, `flash`, `settle`, `wind`,
+## `sway` and `cast_allowed`; the 15_lights system fills `lamps`. Both then
+## rely on set_hour(), which composes everything, so the order in which game.gd
+## and the systems run never matters.
 
 ## Day fraction keys: [t, tint, level]. (source, exact)
 const KEYS := [
