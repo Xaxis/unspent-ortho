@@ -1,0 +1,22 @@
+# Village people and animals through an evening: a village streams in a figure
+# a frame, villagers work and watch you pass, gulls leave at dusk, villagers walk
+# home and go in, and everyone is back out at dawn.
+# Run with: tools/tour.sh tours/characters.tour --seed=1
+village 1
+wait 1.5
+shot 01-village-streamed-in
+walk -1,-0.4 1.6
+zoom 9
+wait 0.5
+shot 02-among-them
+hour 20.4
+wait 7
+shot 03-gulls-leave
+hour 20.99
+wait 1.8
+shot 04-walking-home
+wait 12
+shot 05-indoors
+hour 5.5
+wait 3
+shot 06-dawn
