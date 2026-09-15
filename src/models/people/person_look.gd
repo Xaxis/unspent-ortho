@@ -14,7 +14,7 @@ class_name PersonLook
 ##   skin       StringName  a SKIN window;  skin_v int 1..3 (centre of 3 adjacent values)
 ##   shirt, coat_col, trouser, boot, hat_col   colour: Color, "ramp:v", or [ramp, v]
 ##   extras     Array       of EXTRAS
-##   salvage    Array       of SALVAGE (one or two parts; never the full set)
+##   salvage    Array       of SALVAGE (one or two parts, never the full set: past two are dropped)
 ##   side       int         +1 salvage on the right, -1 on the left
 ##
 ## Identity is carried by costume, never by complexion: generators pick skin
@@ -34,10 +34,14 @@ const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"t
 ## Pushed well past the source's pixel deltas: under a 57-degree ortho camera a
 ## 10% difference in chest width is invisible, and every pair must read apart.
 ##   arms: how far the arms stand off the body at rest   knees: rest knee bend
+##   waist, seat (optional, default 1): the waist's width against the chest-hip
+##   line, and how far the seat stands out past the thighs
 const BUILD_SHAPE := {
 	&"man": {"leg": 1.0, "torso": 1.0, "chest": 1.0, "hip": 1.0, "girth": 1.0, "head": 1.0, "arm": 1.0, "limb": 1.0, "stoop": 0.0, "belly": 0.0, "arms": 0.08, "knees": 0.0},
 	# The only build with hips wider than shoulders.
-	&"woman": {"leg": 0.95, "torso": 0.94, "chest": 0.72, "hip": 1.3, "girth": 0.88, "head": 0.95, "arm": 0.9, "limb": 0.8, "stoop": 0.0, "belly": 0.0, "arms": 0.14, "knees": 0.0},
+	# Narrow shoulders, a waist, and a seat that flares past the thighs; the arms
+	# hang out round the hips, so the whole outline widens toward the hem.
+	&"woman": {"leg": 0.95, "torso": 0.94, "chest": 0.64, "hip": 1.42, "girth": 0.88, "head": 0.95, "arm": 0.9, "limb": 0.78, "stoop": 0.0, "belly": 0.0, "arms": 0.27, "knees": 0.0, "waist": 0.72, "seat": 1.14},
 	&"boy": {"leg": 0.62, "torso": 0.68, "chest": 0.7, "hip": 0.74, "girth": 0.78, "head": 0.9, "arm": 0.68, "limb": 0.76, "stoop": 0.0, "belly": 0.0, "arms": 0.1, "knees": 0.0},
 	&"heavy": {"leg": 0.94, "torso": 1.04, "chest": 1.36, "hip": 1.34, "girth": 1.55, "head": 1.05, "arm": 1.0, "limb": 1.38, "stoop": 0.0, "belly": 0.1, "arms": 0.26, "knees": 0.05},
 	# Long torso over short legs.
@@ -161,7 +165,7 @@ static func normalize(spec: Dictionary) -> Dictionary:
 	out.extras = ex
 	var sv: Array = []
 	for s: Variant in out.salvage:
-		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))):
+		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))) and sv.size() < 2:
 			sv.append(StringName(str(s)))
 	out.salvage = sv
 	return out

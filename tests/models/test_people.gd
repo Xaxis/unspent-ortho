@@ -45,12 +45,46 @@ func test_unknown_names_fall_back_instead_of_breaking() -> void:
 	eq(s.salvage, [&"lens"], "unknown and repeated salvage dropped")
 
 
-func test_triangle_budget_for_the_heaviest_look_of_every_build() -> void:
-	for b: StringName in PersonLook.BUILDS:
-		var p := PersonModel.make(_heaviest(b), &"axe_felling")
-		lt(p.body_triangles(), 801, "%s body" % b)
-		gt(p.tool_triangles(), 0, "%s holds the axe" % b)
-		p.free()
+## Body triangles for a look, counted on the dressed rig (no mesh built).
+func _tris(spec: Dictionary) -> int:
+	var look := PersonLook.normalize(spec)
+	var r := PersonBody.make_rig(look.build)
+	PersonBody.dress(r, look)
+	var n := 0
+	for b in r._kits.size():
+		for entry: Array in r._kits[b]:
+			n += (entry[0] as MeshKit).verts.size() / 3
+	return n
+
+
+func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
+	# The worst look is bounded per axis, since parts on different axes add: the
+	# worst head (hat x hair x beard), the worst coat and cut, every extra at once,
+	# and the two heaviest salvage parts (normalize keeps two at most).
+	for b: StringName in [&"man", &"woman", &"heavy"]:
+		var base_spec := {"build": b, "extras": []}
+		var base := _tris(base_spec)
+		var head := 0
+		for h: StringName in PersonLook.HATS:
+			for st: StringName in PersonLook.HAIR_STYLES:
+				for bd: StringName in PersonLook.BEARDS:
+					head = maxi(head, _tris({"build": b, "extras": [], "hat": h, "hair_style": st, "beard": bd}) - base)
+		var coat := 0
+		for c: StringName in PersonLook.COATS:
+			for cut: StringName in PersonLook.SHIRT_CUTS:
+				coat = maxi(coat, _tris({"build": b, "extras": [], "coat": c, "shirt_cut": cut}) - base)
+		var extras := _tris({"build": b, "extras": PersonLook.EXTRAS.duplicate()}) - base
+		var parts: Array[int] = []
+		for sv: StringName in PersonLook.SALVAGE:
+			parts.append(_tris({"build": b, "extras": [], "salvage": [sv]}) - base)
+		parts.sort()
+		var worst := base + head + coat + extras + parts[-1] + parts[-2]
+		lt(worst, 801, "%s: worst look %d = base %d + head %d + coat %d + extras %d + salvage %d + %d" % [b, worst, base, head, coat, extras, parts[-1], parts[-2]])
+	var p := PersonModel.make({"build": &"squat", "hat": &"band", "coat": &"jerkin", "hair_style": &"bun", "beard": &"full", "extras": PersonLook.EXTRAS.duplicate(), "salvage": [&"brace", &"gauntlet", &"plate"]}, &"axe_felling")
+	eq((p.look.salvage as Array).size(), 2, "a third salvage part is dropped")
+	lt(p.body_triangles(), 801, "a heavy real look")
+	gt(p.tool_triangles(), 0, "holds the axe")
+	p.free()
 
 
 func test_every_tool_has_a_model_and_found_ones_glow() -> void:
@@ -154,8 +188,6 @@ func test_builds_differ_in_silhouette() -> void:
 			var diff := maxf(absf(da.x - db.x) / maxf(da.x, db.x), maxf(absf(da.y - db.y) / maxf(da.y, db.y), absf(da.z - db.z) / maxf(da.z, db.z)))
 			var stoop := absf(float(PersonBody.dims(a).stoop) - float(PersonBody.dims(b).stoop))
 			check(diff > 0.06 or stoop > 0.15, "%s and %s read alike (%.3f)" % [a, b, diff])
-	var woman := PersonBody.dims(&"woman")
-	check(woman.hip > woman.chest * 0.9 and woman.hip > PersonBody.dims(&"man").hip, "woman: hips wider")
 	lt(PersonBody.dims(&"boy").hip_y, PersonBody.dims(&"man").hip_y * 0.75, "boy is short")
 
 
@@ -207,3 +239,41 @@ func test_folk_look_parser() -> void:
 	eq(s.beard, &"full")
 	eq(s.salvage, [&"plate", &"lens"])
 	eq(s.extras, [&"satchel"])
+
+
+## Half-widths of the posed, skinned figure seen from the front: [hips, shoulders].
+## Hips: every part but the arms, from the crotch to the waist. Shoulders: every
+## part, arms included, across the top of the chest.
+func _outline(build: StringName) -> Vector2:
+	var p := PersonModel.make({"build": build, "extras": []})
+	var d := PersonBody.dims(build)
+	var hip_y: float = d.hip_y
+	var sh_y: float = hip_y + 0.05 + float(d.torso) - 0.075
+	var arms: Array[StringName] = [&"arm_l", &"fore_l", &"hand_l", &"arm_r", &"fore_r", &"hand_r", &"tool", &"food"]
+	var hips := 0.0
+	var shoulders := 0.0
+	for b in p.rig.names.size():
+		var xf := p.bone_transform(p.rig.names[b])
+		for entry: Array in p.rig._kits[b]:
+			for v in (entry[0] as MeshKit).verts:
+				var m := xf * v
+				if m.y > hip_y - 0.16 and m.y < hip_y + 0.08 and not arms.has(p.rig.names[b]):
+					hips = maxf(hips, absf(m.z))
+				if m.y > sh_y - 0.1 and m.y < sh_y + 0.02:
+					shoulders = maxf(shoulders, absf(m.z))
+	p.free()
+	return Vector2(hips, shoulders)
+
+
+func test_the_woman_is_the_only_build_whose_hips_outline_her_shoulders() -> void:
+	# art-audio-extract §4: the only build with hips wider than shoulders, and every
+	# pair apart by 18% in silhouette. Measured on the skinned mesh, not on dims.
+	var w := _outline(&"woman")
+	var ratio := w.x / w.y
+	gt(ratio, 1.0, "woman: hips wider than shoulders, arms and all (%.3f / %.3f)" % [w.x, w.y])
+	for b: StringName in PersonLook.BUILDS:
+		if b == &"woman":
+			continue
+		var o := _outline(b)
+		lt(o.x / o.y, 1.0, "%s: shoulders wider than hips" % b)
+		gt(ratio, o.x / o.y * 1.18, "woman's flare is 18%% past %s's" % b)
