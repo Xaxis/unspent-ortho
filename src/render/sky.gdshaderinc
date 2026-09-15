@@ -252,6 +252,12 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// onto a deep blue floor (a soft knee: light washes are left alone).
 	vec3 floor_ink = SKY_NIGHT_FLOOR * sky_view.y;
 	c = mix(mix(floor_ink, vec3(SKY_NIGHT_KNEE), c / SKY_NIGHT_KNEE), c, step(vec3(SKY_NIGHT_KNEE), c));
+	float pool = sky_pool(sky_lamp_level(world_pos), world_pos);
+	if (pool > 0.0) {
+		// Where lamplight falls the page shows through the dark a little: the
+		// light is a lifted wash, not only a warmer one.
+		c = mix(c, SKY_PAGE * sky_tint, step(0.99, pool) * 0.22);
+	}
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
 		// A cloud's shade is a colour, like every shade here: one step toward
