@@ -166,18 +166,69 @@ func test_only_the_loudest_machine_nearby_is_heard() -> void:
 	_done(parts)
 
 
-func test_thunder_waits_for_its_distance() -> void:
+func test_thunder_is_the_roll_far_off_and_the_crack_close() -> void:
 	var parts := _make()
 	var sys: AudioSystem = parts[0]
 	var g: Game = parts[1]
 	_adopt(sys, &"thunder_far")
+	_adopt(sys, &"thunder")
 	var p := g.player.pos
-	var before := sys.history.size()
+	# The sky delays thunder behind its flash; the audio system plays it on arrival.
 	sys.play(&"thunder", Vector3(p.x + 340.0, 0.0, p.y))
-	eq(sys.history.size(), before, "light first")
-	sys.advance(0.5)
-	eq(sys.history.size(), before, "still waiting at 0.5 s")
-	sys.advance(0.6)
-	eq(sys.history.size(), before + 1, "sound after ~1 s")
-	eq(sys.history.back()["key"].begins_with("thunder_far"), true, "far strikes are only the roll")
+	var far: Dictionary = sys.history.back()
+	check(String(far["key"]).begins_with("thunder_far"), "far strikes are only the roll: %s" % far["key"])
+	sys.play(&"thunder", Vector3(p.x + 12.0, 0.0, p.y))
+	var close: Dictionary = sys.history.back()
+	check(String(close["key"]).begins_with("thunder:"), "a close strike cracks: %s" % close["key"])
+	eq(close["bus"], &"SFX", "thunder is never sent through the far bus")
+	# Heard level = the sheet's level plus the distance gain the call applied.
+	var heard_far := float(SoundBank.SHEET[&"thunder_far"][1]) + float(far["db"]) - sys.bank.get_baked(far["key"]).gain_db
+	var heard_close := float(SoundBank.SHEET[&"thunder"][1]) + float(close["db"]) - sys.bank.get_baked(close["key"]).gain_db
+	gt(heard_close - heard_far, 3.0, "the close one is louder (%.1f vs %.1f dB)" % [heard_close, heard_far])
+	gt(heard_far, -8.0, "and the far one still carries over rain")
+	_done(parts)
+
+
+func test_emitted_names_find_their_sounds() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	_adopt(sys, &"ui_accept")
+	_adopt(sys, &"beast_down")
+	_adopt(sys, &"machine_down")
+	Events.sfx.emit(&"menu_select", Vector3.ZERO)
+	eq(sys.history.back()["key"], &"ui_accept", "the ui package's menu_select")
+	eq(sys.history.back()["bus"], &"UI", "on the interface bus")
+	var at := Vector3(g.player.pos.x + 2.0, 0.0, g.player.pos.y)
+	Events.killed.emit(&"dog.yard", at)
+	Events.sfx.emit(&"killed", at)
+	eq(sys.history.back()["key"], &"beast_down", "a dog goes down like something alive")
+	Events.killed.emit(&"harvester", at)
+	Events.sfx.emit(&"killed", at)
+	eq(sys.history.back()["key"], &"machine_down", "a harvester's light goes out")
+	var before := sys.history.size()
+	Events.sfx.emit(&"regrow", at)
+	eq(sys.history.size(), before, "regrowth is silent on purpose")
+	_done(parts)
+
+
+func test_a_page_muffles_the_world_and_pause_muffles_more() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	eq(sys.process_mode, Node.PROCESS_MODE_ALWAYS, "heard while the tree is paused")
+	Events.screen_changed.emit(&"inventory", true)
+	near(sys.muffle_target, SoundMix.MUFFLE_SCREEN, 1e-6, "a notebook page")
+	Events.screen_changed.emit(&"pause", true)
+	near(sys.muffle_target, SoundMix.MUFFLE_PAUSE, 1e-6, "pause over it")
+	for i in 20:
+		sys.advance(0.05)
+	var world := AudioServer.get_bus_index(&"World")
+	near(AudioServer.get_bus_volume_db(world), SoundMix.muffle_db(SoundMix.MUFFLE_PAUSE), 0.2, "world bus down")
+	check(AudioServer.is_bus_effect_enabled(world, SoundBuses.WORLD_LOWPASS), "and dulled")
+	Events.screen_changed.emit(&"pause", false)
+	Events.screen_changed.emit(&"inventory", false)
+	for i in 30:
+		sys.advance(0.05)
+	near(AudioServer.get_bus_volume_db(world), 0.0, 0.05, "open air again")
+	check(not AudioServer.is_bus_effect_enabled(world, SoundBuses.WORLD_LOWPASS), "filter off when not needed")
 	_done(parts)

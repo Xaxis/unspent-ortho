@@ -4,8 +4,9 @@ extends SceneTree
 ## LOOKED at: envelope strip, log-frequency spectrogram (the 120 Hz laptop line
 ## drawn in), and a fine linear spectrum of 0-3 kHz where a machine's integer
 ## partials show as clean lines.
-##   godot --headless --path . -s tools/gd/audio_dump.gd -- [filter] [--no-png] [--mix=...]
-## Mix mode (see SoundScene) renders what the player would hear at a place.
+##   godot --headless --path . -s tools/gd/audio_dump.gd -- [filter] [--no-png]
+##   ... -- --mix [--seed= --at= --walk= --hour= --weather= --machine= --cross --secs= --name=]
+## Mix mode (SoundScene) renders what the player would hear at a place.
 
 const OUT := "res://shots/audio"
 const SPEC_W := 600
@@ -25,16 +26,20 @@ var _png := true
 func _initialize() -> void:
 	var filter := ""
 	var mix_args: PackedStringArray = []
+	var mix := false
 	for a in OS.get_cmdline_user_args():
 		if a == "--no-png":
 			_png = false
+		elif a == "--mix":
+			mix = true
 		elif a.begins_with("--"):
 			mix_args.append(a)
 		else:
 			filter = a
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
-	if not mix_args.is_empty() and ResourceLoader.exists("res://src/audio/sound_scene.gd"):
+	if mix:
 		_run_mix(mix_args)
+		quit()
 		return
 	var t0 := Time.get_ticks_msec()
 	for k in SoundBank.all_keys():
@@ -43,22 +48,161 @@ func _initialize() -> void:
 	var group := WorkerThreadPool.add_group_task(_one, _keys.size(), -1, true, "audio dump")
 	WorkerThreadPool.wait_for_group_task_completion(group)
 	_rows.sort_custom(func(a: Array, b: Array) -> bool: return String(a[0]) < String(b[0]))
-	print("%-26s %-8s %6s %6s %4s %6s %7s %9s %6s %6s %6s" % ["key", "cat", "secs", "rate", "loop", "ms", "heard", "window", "gain", "lf120", "seam"])
+	print("%-26s %-8s %6s %6s %4s %6s %7s %9s %6s %6s %6s %6s" % ["key", "cat", "secs", "rate", "loop", "ms", "heard", "window", "gain", "lf120", "seam", "peak"])
 	var bad := 0
 	for r: Array in _rows:
 		var win: Array = SoundBank.CATEGORIES[r[1]]["window"]
 		var ok: bool = r[6] >= win[0] - 0.05 and r[6] <= win[1] + 0.05
 		if not ok:
 			bad += 1
-		print("%-26s %-8s %6.2f %6d %4s %6d %+7.1f %s%+4.0f..%+3.0f %+6.1f %5.1f%% %6s" % [r[0], r[1], r[2], r[3], "yes" if r[4] else "", r[5], r[6], " " if ok else "!", win[0], win[1], r[9], r[7] * 100.0, "%.2f" % r[8] if r[4] else ""])
+		print("%-26s %-8s %6.2f %6d %4s %6d %+7.1f %s%+4.0f..%+3.0f %+6.1f %5.1f%% %6s %+6.1f" % [r[0], r[1], r[2], r[3], "yes" if r[4] else "", r[5], r[6], " " if ok else "!", win[0], win[1], r[9], r[7] * 100.0, "%.2f" % r[8] if r[4] else "", r[10]])
 	print("audio %d sounds, %d outside their window, %d ms -> %s" % [_rows.size(), bad, Time.get_ticks_msec() - t0, ProjectSettings.globalize_path(OUT)])
 	quit()
 
 
+## --mix: what the player hears at a place, through SoundScene.
+##   --seed=N --size=N --at=X,Y --walk=DX,DY (tiles/s) --hour=H --secs=S
+##   --weather=KIND:STRENGTH[:WIND] --machine=KIND:FROM:TO (tiles) --cross --name=LABEL
+## --cross walks east across the country border nearest --at (or the spawn).
 func _run_mix(args: PackedStringArray) -> void:
-	var scene: GDScript = load("res://src/audio/sound_scene.gd")
-	scene.call("dump", args, OUT)
-	quit()
+	var t0 := Time.get_ticks_msec()
+	var scene := {}
+	var name := "mix"
+	var cross := false
+	for a in args:
+		var kv := a.trim_prefix("--").split("=", true, 1)
+		var v := kv[1] if kv.size() > 1 else ""
+		match kv[0]:
+			"seed": scene["seed"] = v.to_int()
+			"size": scene["size"] = v.to_int()
+			"at":
+				var p := v.split(",")
+				scene["at"] = Vector2(p[0].to_float(), p[1].to_float())
+			"walk":
+				var p := v.split(",")
+				scene["walk"] = Vector2(p[0].to_float(), p[1].to_float())
+			"hour": scene["hour"] = v.to_float()
+			"secs": scene["secs"] = v.to_float()
+			"weather":
+				var p := v.split(":")
+				scene["weather"] = {"kind": StringName(p[0]), "strength": p[1].to_float() if p.size() > 1 else 1.0, "wind": p[2].to_float() if p.size() > 2 else 0.3}
+			"machine":
+				var p := v.split(":")
+				scene["machine"] = {"kind": StringName(p[0]), "from": p[1].to_float() if p.size() > 1 else 20.0, "to": p[2].to_float() if p.size() > 2 else 0.0}
+			"cross": cross = true
+			"name": name = v
+	var world := WorldGen.generate(int(scene.get("seed", 1)), int(scene.get("size", Tuning.WORLD_SIZE)))
+	if cross:
+		var walk := SoundScene.border_walk(world, scene.get("at", world.spawn))
+		for k: String in walk:
+			if k != "secs" or not scene.has("secs"):
+				scene[k] = walk[k]
+	var out := SoundScene.render(scene, world)
+	var samples: PackedFloat32Array = out["samples"]
+	var file := "mix_" + name
+	var wav := Synth.to_wav(samples, SoundScene.RATE, false)
+	wav.save_to_wav(ProjectSettings.globalize_path(OUT.path_join(file + ".wav")))
+	var peak := Synth.peak(samples)
+	var heard := SoundScene.heard_db(samples, 0.0, samples.size() / float(SoundScene.RATE))
+	var lanes: Dictionary = out["lanes"]
+	var path: Array = out["path"]
+	print("mix %s: seed %d from %s to %s, %.1f s, heard %+.1f dB (loudest 0.5 s vs rain), peak %.2f" % [name, world.seed_value, str(path[0]), str(path[-1]), samples.size() / float(SoundScene.RATE), heard, peak])
+	for bed: StringName in lanes:
+		var lane: PackedFloat32Array = lanes[bed]
+		var hi := 0.0
+		for x in lane:
+			hi = maxf(hi, x)
+		if hi > 0.005:
+			print("  %-18s max %.2f  start %.2f  end %.2f" % [bed, hi, lane[0], lane[-1]])
+	if _png:
+		var img := mix_picture(out, name, heard)
+		img.save_png(ProjectSettings.globalize_path(OUT.path_join(file + ".png")))
+	print("mix -> %s (%d ms)" % [ProjectSettings.globalize_path(OUT.path_join(file + ".wav")), Time.get_ticks_msec() - t0])
+
+
+const LANE_H := 110
+const LANE_COLOURS := [
+	Color8(232, 194, 58), Color8(120, 190, 220), Color8(150, 210, 120), Color8(230, 120, 90),
+	Color8(200, 150, 230), Color8(240, 240, 240), Color8(110, 140, 230), Color8(220, 170, 120),
+]
+## sea, coast, moss, pinewood, snowfield, bonelands, burning: far apart on purpose.
+const COUNTRY_COLOURS := [
+	Color8(40, 70, 140), Color8(230, 200, 90), Color8(60, 170, 110), Color8(30, 100, 50),
+	Color8(235, 240, 250), Color8(150, 120, 200), Color8(220, 70, 40),
+]
+
+
+static func _country_names(countries: Array) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for c: int in countries:
+		var n := Country.NAMES[c]
+		if out.is_empty() or out[-1] != n:
+			out.append(n)
+	return out
+
+
+## Bed levels over time (one coloured line each, named on the right), the
+## country underfoot as a strip, then the mix: envelope and spectrogram.
+static func mix_picture(out: Dictionary, name: String, heard: float) -> Image:
+	var samples: PackedFloat32Array = out["samples"]
+	var lanes: Dictionary = out["lanes"]
+	var countries: Array = out["countries"]
+	var b := SoundBank.Baked.new()
+	b.key = StringName("mix " + name)
+	b.category = &"bed"
+	b.rate = SoundScene.RATE
+	b.samples = samples
+	var w := PAD + SPEC_W + PAD * 3 + LIN_W + PAD
+	var h := HEAD + LANE_H + 6 + PAD + ENV_H + PAD + SPEC_H + 14
+	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+	img.fill(Color8(12, 11, 20))
+	var x0 := PAD + 18
+	var spec_w := SPEC_W - 18
+	text(img, PAD, 4, "MIX %s  %.1fS  HEARD %+.1fDB" % [name.to_upper(), samples.size() / float(SoundScene.RATE), heard], Color8(232, 194, 58))
+	var top := HEAD
+	for gy: float in [0.0, 0.5, 1.0]:
+		var y := top + LANE_H - 1 - roundi(gy * (LANE_H - 1))
+		for x in range(x0, x0 + spec_w, 3):
+			img.set_pixel(x, y, Color8(50, 46, 80))
+	var k := 0
+	var label_y := top
+	for bed: StringName in lanes:
+		var lane: PackedFloat32Array = lanes[bed]
+		var hi := 0.0
+		for v in lane:
+			hi = maxf(hi, v)
+		if hi < 0.005:
+			continue
+		var col: Color = LANE_COLOURS[k % LANE_COLOURS.size()]
+		k += 1
+		var prev := -1
+		for x in spec_w:
+			var v := lane[mini(lane.size() - 1, floori(float(x) * lane.size() / spec_w))]
+			var y := top + LANE_H - 1 - roundi(clampf(v, 0.0, 1.2) / 1.2 * (LANE_H - 1))
+			if prev >= 0:
+				for yy in range(mini(prev, y), maxi(prev, y) + 1):
+					img.set_pixel(x0 + x, yy, col)
+			img.set_pixel(x0 + x, y, col)
+			prev = y
+		text(img, x0 + spec_w + PAD * 3, label_y, String(bed).to_upper(), col)
+		label_y += 8
+	var strip := top + LANE_H + 2
+	var last := -1
+	for x in spec_w:
+		var c: int = countries[mini(countries.size() - 1, floori(float(x) * countries.size() / spec_w))]
+		for y in 4:
+			img.set_pixel(x0 + x, strip + y, COUNTRY_COLOURS[clampi(c, 0, COUNTRY_COLOURS.size() - 1)])
+		if last >= 0 and c != last:
+			# Where the country underfoot changes, a line through the lanes.
+			for y in range(top, strip):
+				if y % 2 == 0:
+					img.set_pixel(x0 + x, y, Color8(150, 140, 200))
+		last = c
+	text(img, x0 + spec_w + PAD * 3, strip - 2, " ".join(_country_names(countries)).to_upper(), Color8(150, 140, 200))
+	var env_top := strip + 6 + PAD
+	_envelope(img, b, Rect2i(x0, env_top, spec_w, ENV_H))
+	_spectrogram(img, b, Rect2i(x0, env_top + ENV_H + PAD, spec_w, SPEC_H))
+	return img
 
 
 func _one(i: int) -> void:
@@ -74,7 +218,9 @@ func _one(i: int) -> void:
 		var img := picture(b, heard, lf)
 		img.save_png(ProjectSettings.globalize_path(OUT.path_join(file + ".png")))
 	_mutex.lock()
-	_rows.append([key, b.category, b.samples.size() / float(b.rate), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db])
+	# Peak after the call gain and the buses, dBFS: what the limiter would see.
+	var peak_out := 20.0 * log(maxf(1e-9, Synth.peak(b.samples))) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
+	_rows.append([key, b.category, b.samples.size() / float(b.rate), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db, peak_out])
 	_mutex.unlock()
 
 

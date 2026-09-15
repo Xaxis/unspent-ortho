@@ -11,15 +11,12 @@ static func keys_used() -> Array[StringName]:
 	var keys: Array[StringName] = [
 		&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0",
 		&"thunder_far:0", &"thunder_far:1", &"music_burning:0", &"hit_plate:1", &"hit_plate:2",
-		&"step_gravel:2", &"moss_drip:3",
+		&"step_gravel:2", &"moss_drip:3", &"heat_tick:1",
 	]
 	for name: StringName in SoundBank.SHEET:
 		var cat := SoundBank.category_of(name)
-		if cat in [&"event", &"ui", &"machine"]:
+		if cat in [&"event", &"ui", &"machine", &"step"]:
 			keys.append(SoundBank.key_for(name, 0))
-		elif cat == &"step":
-			for v in SoundBank.variants(name):
-				keys.append(SoundBank.key_for(name, v))
 	return keys
 
 

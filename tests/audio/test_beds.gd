@@ -26,15 +26,47 @@ func _world() -> WorldData:
 	return w
 
 
+## Moss west of x = 48, pinewood east of it, no sea; blend everywhere `bl`.
+func _two_countries(bl: float) -> WorldData:
+	var w := WorldData.new(4, 96)
+	for y in 96:
+		for x in 96:
+			var i := y * 96 + x
+			w.level[i] = 2
+			w.ground[i] = Ground.MOSS if x < 48 else Ground.NEEDLES
+			w.country[i] = Country.MOSS if x < 48 else Country.PINEWOOD
+			w.country2[i] = Country.PINEWOOD if x < 48 else Country.MOSS
+			w.blend[i] = bl
+	return w
+
+
 func test_country_weights_turn_toward_the_neighbour_by_blend() -> void:
-	var w := _world()
-	var at := Vector2(28.5, 20.5)
-	var weights := SoundMix.country_weights(w, at)
-	var bl: float = w.blend[20 * 96 + 28]
-	near(float(weights.get(&"bed_moss", 0.0)), 1.0 - bl, 1e-5, "moss")
-	near(float(weights.get(&"bed_pines", 0.0)), bl, 1e-5, "pines")
-	var pure := SoundMix.country_weights(w, Vector2(10.5, 5.5))
-	near(float(pure.get(&"bed_moss", 0.0)), 1.0, 1e-5, "pure moss at blend 0")
+	var pure := SoundMix.country_weights(_two_countries(0.0), Vector2(15.5, 40.5))
+	near(float(pure.get(&"bed_moss", 0.0)), 1.0, 1e-5, "deep in the moss, only moss")
+	var blended := SoundMix.country_weights(_two_countries(0.3), Vector2(15.5, 40.5))
+	near(float(blended.get(&"bed_moss", 0.0)), 0.7, 1e-5, "blend 0.3 turns it toward pinewood")
+	near(float(blended.get(&"bed_pines", 0.0)), 0.3, 1e-5, "by exactly that")
+
+
+func test_the_next_country_is_heard_before_it_is_underfoot() -> void:
+	var w := _two_countries(0.0)
+	var prev := -1.0
+	var worst := 0.0
+	for k in 81:
+		var x := 28.0 + k * 0.5
+		var weights := SoundMix.country_weights(w, Vector2(x, 40.5))
+		var sum := 0.0
+		for bed: StringName in weights:
+			sum += float(weights[bed])
+		near(sum, 1.0, 1e-5, "weights sum to 1 at %.1f" % x)
+		var pines := float(weights.get(&"bed_pines", 0.0))
+		if prev >= 0.0:
+			check(pines >= prev - 1e-6, "pines never fall walking toward them (at %.1f)" % x)
+			worst = maxf(worst, pines - prev)
+		prev = pines
+		if x == 44.5:
+			check(pines > 0.1 and pines < 0.5, "4 tiles short of the pines they are already heard: %.2f" % pines)
+	lt(worst, 0.2, "a border with no blend painted is still a crossfade, never a switch")
 
 
 func test_the_sea_is_found_with_its_distance_and_its_side() -> void:
@@ -119,3 +151,104 @@ func test_the_shore_loop_is_its_wave_cycles_and_seamless() -> void:
 	lt(Synth.seam_ratio(b.samples), 1.5, "shore seam")
 	var rain := Fixture.baked(&"weather_rain")
 	lt(Synth.seam_ratio(rain.samples), 1.5, "rain seam")
+
+
+func _stand_in_weather() -> GDScript:
+	var gd := GDScript.new()
+	gd.source_code = """extends RefCounted
+static func at(_s: int, _m: float) -> Dictionary:
+	return {"kind": &"rain", "strength": 1.0, "wind": 0.2}
+static func at_place(_s: int, _m: float, c: int) -> Dictionary:
+	return {"kind": &"snow" if c == 4 else &"rain", "strength": 0.8, "wind": -0.3}
+static func tide(_m: float) -> float:
+	return 0.9
+"""
+	gd.reload()
+	return gd
+
+
+func _restore_weather() -> void:
+	SoundMix.use_weather_script(load(SoundMix.WEATHER_PATH) if ResourceLoader.exists(SoundMix.WEATHER_PATH) else null)
+
+
+func test_weather_is_read_for_the_country_underfoot() -> void:
+	SoundMix.use_weather_script(_stand_in_weather())
+	eq(SoundMix.weather_at(1, 600.0, Country.SNOWFIELD)["kind"], &"snow", "the front snows on the snowfield")
+	eq(SoundMix.weather_at(1, 600.0, Country.COAST)["kind"], &"rain", "and rains on the coast")
+	eq(SoundMix.weather_at(1, 600.0)["kind"], &"rain", "no country: Weather.at")
+	near(SoundMix.tide_at(600.0), 0.9, 1e-6, "the tide comes from the sky's rules")
+	_restore_weather()
+
+
+func test_every_kind_the_sky_can_send_is_heard_or_deliberately_silent() -> void:
+	var w := _world()
+	var p := Vector2(40.5, 40.5)
+	var silent := [&"clear", &"grey", &"fog", &"heat"]
+	for kind: StringName in [&"clear", &"grey", &"rain", &"storm", &"fog", &"hail", &"snow", &"blizzard", &"ash", &"heat", &"dust"]:
+		var lv := SoundMix.bed_levels(w, p, {"kind": kind, "strength": 0.7, "wind": 0.1}, {"distance": INF}, {"distance": INF}, 3.0)
+		if kind in silent:
+			check(not SoundMix.WEATHER_BED.has(kind), "%s has no bed" % kind)
+			continue
+		var bed: StringName = SoundMix.WEATHER_BED.get(kind, &"")
+		check(SoundBank.has_sound(bed), "%s has a bed" % kind)
+		near(float(lv.get(bed, 0.0)), 0.7, 1e-6, "%s bed at its strength" % kind)
+		var others := 0.0
+		for other: StringName in SoundMix.WEATHER_BED.values():
+			if other != bed:
+				others += float(lv.get(other, 0.0))
+		eq(others, 0.0, "only %s's bed is up" % kind)
+	gt(float(SoundMix.bed_levels(w, p, {"kind": &"blizzard", "strength": 1.0, "wind": 0.0}, {"distance": INF}, {"distance": INF}, 3.0)[&"weather_gust"]), 0.5, "a blizzard gusts even between winds")
+	for kind: StringName in SoundMix.WEATHER_SCATTER:
+		check(SoundBank.has_sound(SoundMix.WEATHER_SCATTER[kind][0]), "weather scatter for %s" % kind)
+
+
+func test_the_far_works_carry_on_still_nights_far_from_people() -> void:
+	var w := _world()
+	w.villages.append({"pos": Vector2(40.5, 40.5), "country": Country.MOSS, "name": "x"})
+	var p := Vector2(90.5, 90.5)
+	near(SoundMix.remoteness(w, Vector2(40.5, 42.5)), 0.0, 1e-6, "no works heard in a village")
+	near(SoundMix.remoteness(w, p), 1.0, 1e-6, "well out of reach")
+	var calm := {"kind": &"clear", "strength": 0.0, "wind": 0.05}
+	var none := {"distance": INF}
+	var night := float(SoundMix.bed_levels(w, p, calm, none, none, 0.0, {"hour": 23.0, "remote": 1.0})[&"bed_far_works"])
+	var noon := float(SoundMix.bed_levels(w, p, calm, none, none, 0.0, {"hour": 12.0, "remote": 1.0})[&"bed_far_works"])
+	var windy := float(SoundMix.bed_levels(w, p, {"kind": &"clear", "strength": 0.0, "wind": 0.9}, none, none, 0.0, {"hour": 23.0, "remote": 1.0})[&"bed_far_works"])
+	var rain := float(SoundMix.bed_levels(w, p, {"kind": &"rain", "strength": 1.0, "wind": 0.05}, none, none, 0.0, {"hour": 23.0, "remote": 1.0})[&"bed_far_works"])
+	var village := float(SoundMix.bed_levels(w, p, calm, none, none, 0.0, {"hour": 23.0, "remote": 0.0})[&"bed_far_works"])
+	gt(night, 0.9, "a still night far out")
+	check(noon > 0.0 and noon < night * 0.5, "faint by day (%.2f vs %.2f)" % [noon, night])
+	lt(windy, 0.05, "wind takes it")
+	lt(rain, 0.15, "rain takes it")
+	eq(village, 0.0, "not among people")
+
+
+func test_high_water_brings_the_shore_closer() -> void:
+	var w := _world()
+	var p := Vector2(14.5, 40.5)
+	var calm := {"kind": &"clear", "strength": 0.0, "wind": 0.0}
+	var sea := SoundMix.sea_near(w, p)
+	var low := float(SoundMix.bed_levels(w, p, calm, sea, {"distance": INF}, 0.0, {"tide": 0.0})[&"bed_shore"])
+	var high := float(SoundMix.bed_levels(w, p, calm, sea, {"distance": INF}, 0.0, {"tide": 1.0})[&"bed_shore"])
+	gt(high, low * 1.2, "high water is louder (%.2f vs %.2f)" % [high, low])
+
+
+func test_walking_over_a_border_crossfades_without_a_step() -> void:
+	var w := _two_countries(0.0)
+	var t := SoundScene.levels_over_time({"at": Vector2(30.5, 40.5), "walk": Vector2(5.0, 0.0), "secs": 7.0, "hour": 12.0,
+		"weather": {"kind": &"clear", "strength": 0.0, "wind": 0.3}}, w)
+	var moss: PackedFloat32Array = t["lanes"][&"bed_moss"]
+	var pines: PackedFloat32Array = t["lanes"][&"bed_pines"]
+	gt(moss[0], pines[0] * 5.0, "starts in the moss")
+	gt(pines[-1], moss[-1] * 5.0, "ends in the pines")
+	var worst := 0.0
+	for b in range(1, moss.size()):
+		worst = maxf(worst, maxf(absf(moss[b] - moss[b - 1]), absf(pines[b] - pines[b - 1])))
+	lt(worst, 0.03, "no bed jumps more than 3% in a twentieth of a second")
+	var crossed := -1
+	for b in moss.size():
+		if pines[b] > moss[b]:
+			crossed = b
+			break
+	var at_cross: Vector2 = t["path"][crossed]
+	# Where the countries meet, plus the fade's lag at a walk (BED_FADE s at 5 tiles/s).
+	near(at_cross.x, 48.0 + SoundMix.BED_FADE * 5.0, 2.0, "the beds cross where the countries do (%.1f)" % at_cross.x)

@@ -15,6 +15,7 @@ const LENGTH := {
 	&"bed_snowfield": 16.0, &"bed_bones": 16.0, &"bed_burning": 16.0, &"bed_river": 12.0,
 	&"weather_rain": 12.0, &"weather_storm": 16.0, &"weather_gust": 12.0,
 	&"weather_hail": 10.0, &"weather_snow": 12.0, &"weather_sand": 14.0,
+	&"weather_blizzard": 16.0, &"weather_ash": 14.0, &"bed_far_works": 12.0,
 }
 const SHORE_CYCLE := 5.4
 
@@ -40,12 +41,15 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"bed_bones": return _bones(rate)
 		&"bed_burning": return _burning(rate)
 		&"bed_river": return _river(rate)
+		&"bed_far_works": return _far_works(rate)
 		&"weather_rain": return _rain(rate)
 		&"weather_storm": return _storm(rate)
 		&"weather_gust": return _gust(rate)
 		&"weather_hail": return _hail(rate)
 		&"weather_snow": return _snow(rate)
 		&"weather_sand": return _sand(rate)
+		&"weather_blizzard": return _blizzard(rate)
+		&"weather_ash": return _ash(rate)
 		&"pines_snap": return _snap(rate, variant)
 		&"pines_creak": return _creak(rate, variant)
 		&"moss_drip": return _drip(rate, variant)
@@ -54,7 +58,8 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"bones_tick": return _stone_tick(rate, variant)
 		&"burning_crackle": return _crackle(rate, variant)
 		&"burning_thud": return _thud(rate, variant)
-		&"shore_gull": return _gull(rate, variant)
+		&"shore_gull": return SoundCreatures.gull(rate, variant, true)
+		&"heat_tick": return _heat_tick(rate, variant)
 		&"fog_horn": return _fog_horn(rate)
 	push_warning("no bed %s" % name)
 	return Synth.buffer(64)
@@ -289,6 +294,36 @@ static func _river(rate: int) -> PackedFloat32Array:
 	return out
 
 
+## Machinery nobody switched off, a long way off, on still air. The machine
+## keeps the machine rules (a shaft whose fundamental is missing, 41.25 Hz, so
+## only its harmonics carry; ten identical belt slaps; four identical clanks,
+## all on exact samples), and the air between wanders: the whole of it swells
+## and sinks as the air moves, and it is dull and wet with distance.
+static func _far_works(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_far_works", rate)
+	var works := Synth.buffer(n)
+	var shaft := PackedFloat32Array([123.75, 165.0, 206.25, 247.5, 288.75, 330.0, 371.25])
+	Synth.add_partials(works, rate, shaft, PackedFloat32Array([0.03, 0.045, 0.03, 0.02, 0.014, 0.01, 0.008]), 8101)
+	var slap := Synth.noise(Synth.samples(rate, 0.12), 8102)
+	Synth.band(slap, rate, 400.0, 1800.0, false, false)
+	Synth.env_perc(slap, rate, 0.002, 0.09)
+	Synth.normalize(slap, 0.05)
+	var beats := 10
+	for k in beats:
+		Synth.add(works, slap, k * n / beats, 1.0, true)
+	var clank := Synth.modes(rate, 0.6, PackedFloat32Array([210.0, 580.0, 1134.0]), PackedFloat32Array([0.5, 0.3, 0.15]), PackedFloat32Array([0.4, 0.3, 0.2]), 0.002)
+	var far_clank := Synth.reverb(clank, rate, 0.9, 0.6, 0.6, 2.0)
+	var clanks := 4
+	for k in clanks:
+		Synth.add(works, far_clank, k * n / clanks + n / 13, 0.09, true)
+	Synth.lowpass4(works, rate, 950.0, true)
+	var air := _curve(n, 5, 8103, 0.35, 1.0, 1.5)
+	var out := Synth.buffer(n)
+	_mix_into(out, works, 1.0, air)
+	_mix_into(out, _band(n, rate, 8104, 160.0, 900.0), 0.012, _curve(n, 4, 8105, 0.5, 1.0))
+	return out
+
+
 # --------------------------------------------------------------- weather
 
 ## The reference bed. Dense patter over a soft wash, close drops on top.
@@ -415,6 +450,45 @@ static func _sand(rate: int) -> PackedFloat32Array:
 	return out
 
 
+## A blizzard: snow driven flat, a howl finding every edge, a roar under it.
+static func _blizzard(rate: int) -> PackedFloat32Array:
+	var n := _n(&"weather_blizzard", rate)
+	var out := Synth.buffer(n)
+	var gusts := _curve(n, 7, 6701, 0.45, 1.0, 1.5)
+	var hiss := Synth.buffer(n)
+	Synth.add_impulses(hiss, rate, 4200.0, 6702, 0.05, 1.0)
+	Synth.band(hiss, rate, 1500.0, 7000.0, true)
+	Synth.scale(hiss, 1.0 / maxf(1e-6, Synth.rms(hiss)))
+	_mix_into(out, hiss, 0.05, gusts)
+	_mix_into(out, _band(n, rate, 6703, 220.0, 1000.0), 0.07, gusts)
+	var extra := Synth.samples(rate, 0.5)
+	var centre := _curve(n, 11, 6704, 380.0, 1150.0)
+	var tiled := centre.duplicate()
+	tiled.append_array(centre.slice(0, extra))
+	var howl := Synth.noise(n + extra, 6705)
+	Synth.sweep_band(howl, rate, tiled, 18.0)
+	var looped := _fold_overrun(howl, n)
+	Synth.scale(looped, 1.0 / maxf(1e-6, Synth.rms(looped)))
+	_mix_into(out, looped, 0.04, _curve(n, 6, 6706, 0.0, 1.0, 2.0))
+	return out
+
+
+## Ash coming down: almost nothing. A dry hush and the smallest ticks settling.
+static func _ash(rate: int) -> PackedFloat32Array:
+	var n := _n(&"weather_ash", rate)
+	var out := Synth.buffer(n)
+	var hush := Synth.pink(n, 6801, true)
+	Synth.band(hush, rate, 500.0, 2600.0, true)
+	Synth.scale(hush, 1.0 / maxf(1e-6, Synth.rms(hush)))
+	_mix_into(out, hush, 0.03, _curve(n, 4, 6802, 0.6, 1.0))
+	var ticks := Synth.buffer(n)
+	Synth.add_impulses(ticks, rate, 24.0, 6803, 0.2, 1.0)
+	var dry := Synth.formants(ticks, rate, PackedFloat32Array([3100.0, 5200.0]), PackedFloat32Array([9.0, 10.0]), PackedFloat32Array([1.0, 0.6]), true)
+	Synth.scale(dry, 1.0 / maxf(1e-6, Synth.rms(dry)))
+	_mix_into(out, dry, 0.01, _curve(n, 6, 6804, 0.3, 1.0))
+	return out
+
+
 ## A buffer rendered past its loop length n: the overrun [n, size) continues
 ## straight on from sample n-1, so crossfading it over the start (overrun
 ## fading out, start fading in) makes sample 0 follow sample n-1. Returns n samples.
@@ -531,38 +605,18 @@ static func _thud(rate: int, v: int) -> PackedFloat32Array:
 	return _far(b, rate, 900.0, 0.35, 1.2)
 
 
-## A gull far off: two or three calls, each a gliding voiced cry through a
-## beak formant, with breath. Living, so no two calls are the same.
-static func _gull(rate: int, v: int) -> PackedFloat32Array:
-	var r := Rng.make(7601, v)
-	var total := Synth.samples(rate, 1.6)
-	var out := Synth.buffer(total)
+## Stone or iron ticking as the heat works in it: one to three small exact
+## ticks, off to one side.
+static func _heat_tick(rate: int, v: int) -> PackedFloat32Array:
+	var n := Synth.samples(rate, 0.9)
+	var b := Synth.buffer(n)
+	var r := Rng.make(7701, v)
+	var tick := Synth.modes(rate, 0.05, PackedFloat32Array([2300.0 + v * 190.0, 5150.0]), PackedFloat32Array([0.5, 0.2]), PackedFloat32Array([0.025, 0.012]))
 	var t := 0.0
-	for k in r.randi_range(2, 3):
-		var secs := r.randf_range(0.28, 0.42)
-		var n := Synth.samples(rate, secs)
-		var src := Synth.buffer(n)
-		var f0 := r.randf_range(820.0, 980.0)
-		var peak_f := f0 * r.randf_range(1.35, 1.6)
-		var ph := 0.0
-		for i in n:
-			var u := float(i) / n
-			var f := lerpf(f0, peak_f, sin(PI * pow(u, 0.5))) * (1.0 + 0.012 * sin(TAU * 23.0 * u * secs))
-			ph += f / rate
-			ph -= floorf(ph)
-			# Narrow pulse: bright and nasal.
-			src[i] = 1.0 if ph < 0.18 else -0.2
-		var voiced := Synth.formants(src, rate, PackedFloat32Array([1450.0, 2800.0, 3900.0]), PackedFloat32Array([4.0, 5.0, 6.0]), PackedFloat32Array([1.0, 0.6, 0.25]))
-		var breath := Synth.noise(n, 7602 + v * 7 + k)
-		Synth.band(breath, rate, 2000.0, 6000.0, false, false)
-		Synth.add(voiced, breath, 0, 0.08)
-		for i in n:
-			var u := float(i) / n
-			voiced[i] *= pow(sin(PI * pow(u, 0.35)), 1.2)
-		Synth.add(out, voiced, Synth.samples(rate, t))
-		t += secs + r.randf_range(0.08, 0.2)
-	Synth.normalize(out, 1.0)
-	return _far(out, rate, 3800.0, 0.35, 1.2)
+	for k in 1 + v % 3:
+		Synth.add(b, tick, Synth.samples(rate, t), r.randf_range(0.5, 1.0))
+		t += r.randf_range(0.2, 0.3)
+	return _far(b, rate, 5000.0, 0.3, 0.6)
 
 
 ## A diaphone somewhere in the fog: machinery nobody switched off, so exact

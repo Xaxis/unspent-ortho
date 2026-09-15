@@ -9,7 +9,7 @@ const Fixture := preload("res://tests/audio/audio_fixture.gd")
 
 
 func _sample_keys() -> Array[StringName]:
-	var keys: Array[StringName] = [&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0", &"thunder_far:1", &"music_burning:0"]
+	var keys: Array[StringName] = [&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0", &"thunder_far:1", &"music_burning:0", &"heat_tick:1"]
 	for name: StringName in SoundBank.SHEET:
 		var cat := SoundBank.category_of(name)
 		if cat in [&"event", &"step", &"ui", &"machine"]:
@@ -42,6 +42,10 @@ func test_heard_levels_measured_from_samples_match_the_sheet() -> void:
 		# A recipe that needs a wild gain to reach its level is a broken recipe.
 		check(b.gain_db > -30.0 and b.gain_db < 18.0, "%s needs %+.1f dB of call gain" % [key, b.gain_db])
 		lt(Synth.peak(b.samples), 0.9, "%s peak" % key)
+		# Heard levels are loudness; peaks must still fit after gain and buses,
+		# so the master limiter only ever meets sums, never one sound alone.
+		var out_db := 20.0 * log(Synth.peak(b.samples)) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
+		lt(out_db, -0.5, "%s peaks at %+.1f dBFS after its gain and bus" % [key, out_db])
 
 
 func test_nothing_carries_its_weight_below_120_hz() -> void:
@@ -99,3 +103,25 @@ func test_buses_are_made_in_code_with_the_research_levels() -> void:
 	near(db_to_linear(SoundMix.bus_db(&"Ambience")), 0.255, 0.003, "beds 0.255")
 	eq(AudioServer.get_bus_effect_count(AudioServer.get_bus_index(&"Machines")), 2, "ensure twice adds effects once")
 	check(SoundBuses.machine_lowpass() != null, "machines low-pass by distance")
+	for row: Array in SoundMix.BUSES:
+		var idx := AudioServer.get_bus_index(row[0])
+		lt(float(AudioServer.get_bus_index(row[1])), float(idx), "%s sends to a bus made before it" % row[0])
+	eq(SoundMix.bus_db(&"Machines"), SoundMix.bus_db(&"Ambience"), "a machine bed sits where the country beds sit")
+	check(SoundMix.bus_db(&"UI") < SoundMix.bus_db(&"SFX"), "the interface bus under world events")
+
+
+func test_a_page_closes_over_the_world_bus_only() -> void:
+	SoundBuses.ensure()
+	var world := AudioServer.get_bus_index(&"World")
+	SoundBuses.set_muffle(1.0)
+	near(AudioServer.get_bus_volume_db(world), SoundMix.MUFFLE_DB, 1e-4, "muffled level")
+	check(AudioServer.is_bus_effect_enabled(world, SoundBuses.WORLD_LOWPASS), "filter on")
+	var lp := AudioServer.get_bus_effect(world, SoundBuses.WORLD_LOWPASS) as AudioEffectLowPassFilter
+	near(lp.cutoff_hz, SoundMix.MUFFLE_HZ, 1.0, "cutoff")
+	for bus: StringName in [&"Machines", &"UI", &"Music"]:
+		eq(AudioServer.get_bus_send(AudioServer.get_bus_index(bus)), &"Master", "%s is not under the page" % bus)
+	for bus: StringName in [&"SFX", &"Ambience"]:
+		eq(AudioServer.get_bus_send(AudioServer.get_bus_index(bus)), &"World", "%s is under the page" % bus)
+	SoundBuses.set_muffle(0.0)
+	near(AudioServer.get_bus_volume_db(world), 0.0, 1e-4, "open air")
+	check(not AudioServer.is_bus_effect_enabled(world, SoundBuses.WORLD_LOWPASS), "filter off")

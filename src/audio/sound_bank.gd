@@ -10,10 +10,11 @@ extends RefCounted
 ## puts it at that level, so a recipe edit never silently re-balances the mix,
 ## and a recipe that needs an absurd gain fails its test instead.
 ##
-## Recipes live in SoundMachines, SoundBeds, SoundEffects and SoundMusic;
-## render() is pure and thread-safe. At run time one shared bank bakes on
-## WorkerThreadPool (at most MAX_TASKS at once, so a frame never waits) or,
-## without threads, one sound per frame.
+## Recipes live in SoundMachines, SoundBeds, SoundEffects, SoundSignals,
+## SoundCreatures, SoundWork and SoundMusic; emitted names reach the sheet
+## through SoundNames. render() is pure and thread-safe. At run time one
+## shared bank bakes on WorkerThreadPool (at most MAX_TASKS at once, so a frame
+## never waits) or, without threads, one sound per frame.
 
 const PEAK := 0.89
 const MAX_TASKS := 2
@@ -55,6 +56,8 @@ const SHEET := {
 	&"bed_bones": [&"bed", -4.5, 1],
 	&"bed_burning": [&"bed", -3.5, 1],
 	&"bed_river": [&"bed", -5.0, 1],
+	# Machinery nobody switched off, carried on still night air from far away.
+	&"bed_far_works": [&"bed", -7.0, 1],
 	# Weather beds at full strength. Rain is the reference.
 	&"weather_rain": [&"weather", 0.0, 1],
 	&"weather_storm": [&"weather", 1.5, 1],
@@ -62,6 +65,8 @@ const SHEET := {
 	&"weather_hail": [&"weather", -0.5, 1],
 	&"weather_snow": [&"weather", -2.5, 1],
 	&"weather_sand": [&"weather", 0.5, 1],
+	&"weather_blizzard": [&"weather", 1.5, 1],
+	&"weather_ash": [&"weather", -2.5, 1],
 	# Scattered over the beds.
 	&"pines_snap": [&"scatter", -8.0, 4],
 	&"pines_creak": [&"scatter", -9.0, 3],
@@ -73,6 +78,7 @@ const SHEET := {
 	&"burning_thud": [&"scatter", -6.0, 2],
 	&"shore_gull": [&"scatter", -7.0, 3],
 	&"fog_horn": [&"scatter", -5.0, 1],
+	&"heat_tick": [&"scatter", -11.0, 3],
 	# Footfalls, one family per ground.
 	&"step_sand": [&"step", -3.0, 4],
 	&"step_grass": [&"step", -3.0, 4],
@@ -100,6 +106,31 @@ const SHEET := {
 	&"machine_down": [&"event", 2.0, 1],
 	&"alert": [&"event", 0.0, 1],
 	&"downed": [&"event", 2.0, 1],
+	# What a machine does to you (SoundSignals): each alert is its own bed made urgent.
+	&"alert_watcher": [&"event", 0.0, 1],
+	&"alert_longlegs": [&"event", 0.5, 1],
+	&"alert_harvester": [&"event", 1.0, 1],
+	&"alert_cutter": [&"event", 1.0, 1],
+	&"alert_hauler": [&"event", 0.5, 1],
+	&"alert_warden": [&"event", -2.5, 1],
+	&"alert_sweeper": [&"event", -1.0, 1],
+	&"alert_dredger": [&"event", 0.5, 1],
+	&"alert_lineman": [&"event", 0.0, 1],
+	&"alert_flock": [&"event", -0.5, 1],
+	&"alert_runner": [&"event", -1.0, 1],
+	&"alert_clerk": [&"event", -1.5, 1],
+	&"watcher_call": [&"event", 1.0, 1],
+	&"second_act": [&"event", 3.0, 1],
+	&"loose": [&"event", 0.0, 1],
+	&"snatch_flock": [&"event", 1.0, 1],
+	&"snatch_warden": [&"event", 2.0, 1],
+	&"snatch_clerk": [&"event", 0.0, 1],
+	# The living (SoundCreatures).
+	&"dog_bark": [&"event", 1.0, 3],
+	&"bull_snort": [&"event", 2.0, 2],
+	&"gull_cry": [&"event", -1.0, 3],
+	&"snatch_gull": [&"event", 0.0, 2],
+	&"beast_down": [&"event", 1.0, 1],
 	# Taking and making.
 	&"break": [&"event", 1.0, 3],
 	&"dig": [&"event", -1.0, 3],
@@ -115,6 +146,17 @@ const SHEET := {
 	&"lamp_on": [&"event", -3.0, 1],
 	&"lamp_off": [&"event", -3.5, 1],
 	&"door": [&"event", -1.0, 1],
+	# Hands at work (SoundWork).
+	&"refuse": [&"event", -2.5, 1],
+	&"scrape": [&"event", -2.0, 2],
+	&"tap": [&"event", -2.0, 2],
+	&"turn": [&"event", -1.0, 2],
+	&"hone": [&"event", -2.0, 1],
+	&"reedge": [&"event", 0.0, 1],
+	&"build_fire": [&"event", -1.0, 1],
+	&"build_bench": [&"event", 0.0, 1],
+	&"build_kiln": [&"event", 0.0, 1],
+	&"sleep": [&"event", -4.0, 1],
 	# Thunder only sits above everything.
 	&"thunder": [&"thunder", 8.0, 2],
 	&"thunder_far": [&"thunder", 6.5, 2],
@@ -123,6 +165,8 @@ const SHEET := {
 	&"ui_accept": [&"ui", -9.0, 1],
 	&"ui_back": [&"ui", -9.0, 1],
 	&"ui_refuse": [&"ui", -9.0, 1],
+	&"book_open": [&"ui", -10.0, 1],
+	&"book_close": [&"ui", -10.0, 1],
 	# The figure, per country. Variants: 0 arriving, 1 dawn, 2 dusk.
 	&"music_coast": [&"music", -7.0, 3],
 	&"music_pinewood": [&"music", -7.0, 3],
@@ -261,7 +305,14 @@ static func render(key: StringName) -> Baked:
 		&"music":
 			raw = SoundMusic.make(b.name, b.variant, b.rate)
 		_:
-			raw = SoundEffects.make(b.name, b.variant, b.rate)
+			if SoundSignals.handles(b.name):
+				raw = SoundSignals.make(b.name, b.variant, b.rate)
+			elif SoundCreatures.handles(b.name):
+				raw = SoundCreatures.make(b.name, b.variant, b.rate)
+			elif SoundWork.handles(b.name):
+				raw = SoundWork.make(b.name, b.variant, b.rate)
+			else:
+				raw = SoundEffects.make(b.name, b.variant, b.rate)
 	Synth.highpass4(raw, b.rate, cat["hp"], b.loop)
 	if not b.loop:
 		raw = Synth.trim_tail(raw, b.rate)

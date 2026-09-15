@@ -12,15 +12,35 @@ class_name SoundMix
 
 const WEATHER_PATH := "res://src/core/weather.gd"
 
-## [name, send, volume dB]. Made in code by AudioSystem; Master gets a limiter.
+## [name, send, volume dB], in creation order (a bus sends only to one made
+## before it). Made in code by SoundBuses; Master gets a limiter. World holds
+## what a notebook page muffles (the ground's sounds and your own); machines
+## and the interface stay out of it, because you hear a machine before you see
+## it, page open or not.
 const BUSES := [
 	[&"Music", &"Master", -8.0],
-	[&"SFX", &"Master", -2.5],
+	[&"World", &"Master", 0.0],
+	[&"SFX", &"World", -2.5],
 	[&"SfxFar", &"SFX", -1.0],
-	[&"Ambience", &"Master", -11.9],
+	[&"Ambience", &"World", -11.9],
 	[&"Machines", &"Master", -11.9],
 	[&"UI", &"Master", -6.0],
 ]
+
+## How far a page muffles the world: 0 none, 1 fully (World low-pass at
+## MUFFLE_HZ and MUFFLE_DB down). A notebook page is a partial muffle; pause
+## is most of the way.
+const MUFFLE_SCREEN := 0.45
+const MUFFLE_PAUSE := 0.85
+const MUFFLE_HZ := 1400.0
+const MUFFLE_DB := -7.0
+
+## Beds ease toward their targets with this time constant (s); the place is
+## re-read (sea, river, remoteness) this often. SoundScene renders with the same.
+## Space already crossfades (country_weights hears around you), so the fade only
+## smooths the jumps: a scan, a weather read, a skip in time.
+const BED_FADE := 0.6
+const SCAN_EVERY := 0.5
 
 ## Footfalls: tiles travelled per step sound when walking and running, and the
 ## shortest gap between two (so a stutter at a wall does not machine-gun).
@@ -43,27 +63,47 @@ const COUNTRY_BED := {
 	Country.BURNING: &"bed_burning",
 }
 
-## Weather kind -> its bed (kinds with no bed only damp or colour the others).
+## Weather kind (Weather.KINDS) -> its bed. Kinds with no bed (clear, grey,
+## fog, heat) only damp the others or scatter something of their own.
 const WEATHER_BED := {
 	&"rain": &"weather_rain",
 	&"storm": &"weather_storm",
 	&"hail": &"weather_hail",
 	&"snow": &"weather_snow",
+	&"blizzard": &"weather_blizzard",
+	&"ash": &"weather_ash",
+	&"dust": &"weather_sand",
 	&"sand": &"weather_sand",
 }
 
-## How much a weather kind at full strength softens the country beds.
+## How much a weather kind at full strength softens the country beds. Fog and
+## snow deaden; a storm or blizzard drowns.
 const WEATHER_DAMP := {
-	&"fog": 0.8, &"snow": 0.7, &"storm": 0.5, &"rain": 0.8, &"hail": 0.75, &"sand": 0.6,
+	&"grey": 0.95, &"fog": 0.75, &"snow": 0.65, &"storm": 0.5, &"blizzard": 0.4, &"rain": 0.8,
+	&"hail": 0.75, &"sand": 0.6, &"dust": 0.6, &"ash": 0.7, &"heat": 0.85,
 }
 
+## Kinds whose wind is loud enough to gust on its own at strength.
+const GUSTING := {&"storm": 0.6, &"blizzard": 0.8, &"dust": 0.4, &"sand": 0.4}
+
+## One-shots a weather kind scatters while it lasts: [name, min gap, max gap] s.
+const WEATHER_SCATTER := {
+	&"heat": [&"heat_tick", 4.0, 16.0],
+}
+
+## Thunder is heard a long way: past THUNDER_NEAR tiles only the roll carries.
+const THUNDER_NEAR := 90.0
+
 ## Absolute heard level (dBFS, loudest 0.5 s RMS after its bus) of the weather
-## bed at full strength: 0 dB of the mix sheet. Game-typical loudness with
-## headroom for thunder at +10.
-const REF_DBFS := -24.0
+## bed at full strength: 0 dB of the mix sheet. Low enough that the spikiest
+## one-shot (a clinker footfall, all crest) still peaks under full scale after
+## its gain and bus, and thunder has its +10 without the limiter working.
+const REF_DBFS := -30.0
 
 static var _weather_script: GDScript
 static var _weather_checked := false
+static var _weather_has_place := false
+static var _weather_has_tide := false
 
 
 static func bus_db(bus: StringName) -> float:
@@ -91,10 +131,35 @@ static func heard_db(b: SoundBank.Baked, extra_db: float = 0.0) -> float:
 
 # ------------------------------------------------------------------ beds
 
-## Country bed weights at a tile: the tile's country, turning toward its
-## neighbour by WorldData.blend (0 pure, 0.5 on the border).
+## Country bed weights for a listener: the tile underfoot turning toward its
+## neighbour by WorldData.blend, and the land around it heard too, so the next
+## country is audible before it is underfoot (and a border with no blend
+## painted is still a crossfade, not a switch). Samples: the tile itself, then
+## rings of EAR_RING points at EAR_RADII, weighted by EAR_WEIGHTS. Sums to 1.
+const EAR_RADII: Array[float] = [0.0, 3.0, 7.0, 12.0]
+const EAR_WEIGHTS: Array[float] = [0.18, 0.35, 0.3, 0.2]
+const EAR_RING := 8
+
+
 static func country_weights(world: WorldData, p: Vector2) -> Dictionary:
 	var out := {}
+	var total := 0.0
+	for ring in EAR_RADII.size():
+		var r := EAR_RADII[ring]
+		var count := 1 if r == 0.0 else EAR_RING
+		var w := EAR_WEIGHTS[ring] / count
+		for k in count:
+			# Rings turned off each other, so no two samples cross a straight border together.
+			var a := TAU * (k + 0.5) / count + ring * 0.13
+			var q := p + Vector2(cos(a), sin(a)) * r
+			total += w
+			_weigh_tile(world, q, w, out)
+	for bed: StringName in out:
+		out[bed] = float(out[bed]) / total
+	return out
+
+
+static func _weigh_tile(world: WorldData, p: Vector2, weight: float, out: Dictionary) -> void:
 	var x := clampi(floori(p.x), 0, world.size - 1)
 	var y := clampi(floori(p.y), 0, world.size - 1)
 	var i := y * world.size + x
@@ -102,11 +167,10 @@ static func country_weights(world: WorldData, p: Vector2) -> Dictionary:
 	var c2: int = world.country2[i] if world.country2.size() > i else c
 	var bl: float = clampf(world.blend[i], 0.0, 1.0) if world.blend.size() > i else 0.0
 	var a: StringName = COUNTRY_BED.get(c, &"bed_wind")
-	out[a] = 1.0 - bl
+	out[a] = float(out.get(a, 0.0)) + weight * (1.0 - bl)
 	if bl > 0.0:
 		var b: StringName = COUNTRY_BED.get(c2, &"bed_wind")
-		out[b] = float(out.get(b, 0.0)) + bl
-	return out
+		out[b] = float(out.get(b, 0.0)) + weight * bl
 
 
 ## The country the player is most in (for music), from the same weights.
@@ -179,9 +243,37 @@ static func gust(seconds: float) -> float:
 	return 0.55 + 0.45 * sin(TAU * 0.041 * seconds) * sin(TAU * 0.017 * seconds + 1.1)
 
 
+## How far the listener is from people, 0 in a village to 1 well out of reach
+## of one: the machines' country, where the far works carry.
+static func remoteness(world: WorldData, p: Vector2) -> float:
+	var best := INF
+	for v: Dictionary in world.villages:
+		var at: Variant = v.get("pos")
+		if at is Vector2:
+			best = minf(best, (at as Vector2).distance_to(p))
+		elif at is Vector2i:
+			best = minf(best, Vector2(at as Vector2i).distance_to(p))
+	return smoothstep(18.0, 60.0, best) if best < INF else 1.0
+
+
+## Night 0..1 by the hour: in over 20:00-21:00, out over 04:30-06:00 (the
+## source's night fall, so the ears and the sky agree).
+static func night(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h >= 21.0 or h < 4.5:
+		return 1.0
+	if h >= 20.0:
+		return h - 20.0
+	if h < 6.0:
+		return 1.0 - (h - 4.5) / 1.5
+	return 0.0
+
+
 ## Every bed's target level 0..1 for a listener. `near_sea` and `near_river`
 ## come from sea_near/river_near (scanned a few times a second, not per frame).
-static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_sea: Dictionary, near_river: Dictionary, seconds: float) -> Dictionary:
+## `extra` (all optional): hour (for the far works), remote (remoteness()),
+## tide 0..1 (high water brings the shore closer).
+static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_sea: Dictionary, near_river: Dictionary, seconds: float, extra: Dictionary = {}) -> Dictionary:
 	var kind: StringName = weather.get("kind", &"fair")
 	var s := clampf(float(weather.get("strength", 0.0)), 0.0, 1.0)
 	var wind := clampf(absf(float(weather.get("wind", 0.0))), 0.0, 1.0)
@@ -202,27 +294,65 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 			&"bed_bones":
 				lvl *= (0.7 + 0.3 * wind) * lerpf(0.85, 1.05, g)
 		out[bed] = float(out.get(bed, 0.0)) + lvl
-	out[&"bed_shore"] = shore * lerpf(1.0, 0.8, s * float(kind == &"storm"))
+	var tide := clampf(float(extra.get("tide", 0.5)), 0.0, 1.0)
+	out[&"bed_shore"] = shore * lerpf(0.82, 1.08, tide) * lerpf(1.0, 0.8, s * float(kind == &"storm" or kind == &"blizzard"))
 	out[&"bed_river"] = river * damp
-	for k: StringName in WEATHER_BED:
-		out[WEATHER_BED[k]] = s if kind == k else 0.0
-	out[&"weather_gust"] = clampf(smoothstep(0.3, 1.0, wind) * g * g + (0.6 * s if kind == &"storm" else 0.0), 0.0, 1.0)
+	for bed: StringName in WEATHER_BED.values():
+		out[bed] = 0.0
+	if WEATHER_BED.has(kind):
+		out[WEATHER_BED[kind]] = s
+	out[&"weather_gust"] = clampf(smoothstep(0.3, 1.0, wind) * g * g + float(GUSTING.get(kind, 0.0)) * s, 0.0, 1.0)
+	# The far works: only on still air, loudest at night and far from people,
+	# gone under any weather and under the sea.
+	var calm := 1.0 - smoothstep(0.25, 0.7, wind)
+	var dark := lerpf(0.3, 1.0, night(float(extra.get("hour", 12.0))))
+	var remote := clampf(float(extra.get("remote", 0.0)), 0.0, 1.0)
+	var clear := 1.0 - s * (0.4 if kind == &"heat" or kind == &"grey" else 0.9)
+	out[&"bed_far_works"] = remote * calm * dark * clear * (1.0 - 0.6 * shore)
 	return out
 
 
 # --------------------------------------------------------------- weather
 
-## Weather.at(seed, minutes) when the sky package's core exists, else a fair
-## day with a gentle wind that still breathes.
-static func weather_at(seed_value: int, minutes: float) -> Dictionary:
+## The weather where the listener stands: Weather.at_place(seed, minutes,
+## country) when the sky's core has it (so a front that rains on the coast
+## snows on the snowfield), else Weather.at, else a fair day whose wind still
+## breathes.
+static func weather_at(seed_value: int, minutes: float, country: int = -1) -> Dictionary:
 	if not _weather_checked:
 		_weather_checked = true
 		if ResourceLoader.exists(WEATHER_PATH):
-			_weather_script = load(WEATHER_PATH)
+			use_weather_script(load(WEATHER_PATH))
 	if _weather_script == null:
 		return {"kind": &"fair", "strength": 0.0, "wind": 0.35 + 0.2 * sin(minutes / 97.0)}
-	var raw: Variant = _weather_script.call("at", seed_value, minutes)
+	var raw: Variant
+	if _weather_has_place and country >= 0:
+		raw = _weather_script.call("at_place", seed_value, minutes, country)
+	else:
+		raw = _weather_script.call("at", seed_value, minutes)
 	return normalize_weather(raw, _weather_script)
+
+
+## Tide 0..1 from the sky's core, or slack water.
+static func tide_at(minutes: float) -> float:
+	if _weather_script != null and _weather_has_tide:
+		return clampf(float(_weather_script.call("tide", minutes)), 0.0, 1.0)
+	return 0.5
+
+
+## Point the mix at a weather rules script (the sky's, or a test's stand-in).
+static func use_weather_script(script: GDScript) -> void:
+	_weather_checked = true
+	_weather_script = script
+	_weather_has_place = false
+	_weather_has_tide = false
+	if script == null:
+		return
+	for m: Dictionary in script.get_script_method_list():
+		if m.name == "at_place":
+			_weather_has_place = true
+		elif m.name == "tide":
+			_weather_has_tide = true
 
 
 ## Whatever shape Weather.at returns (kind as String, StringName or enum int),
@@ -304,3 +434,22 @@ static func sfx_gain(d: float) -> float:
 	if d >= SFX_RANGE:
 		return 0.0
 	return 1.0 / (1.0 + maxf(0.0, d - 3.0) / 7.0)
+
+
+## Thunder carries across the whole coast: which recording, and its level.
+## Emitters delay it behind the flash (the sky does, tiles / 34 beats of 0.1 s).
+static func thunder_sound(d: float) -> StringName:
+	return &"thunder_far" if d > THUNDER_NEAR else &"thunder"
+
+
+static func thunder_gain(d: float) -> float:
+	return clampf(1.0 / (1.0 + maxf(0.0, d - 20.0) / 220.0), 0.2, 1.0)
+
+
+## World bus cutoff and level for a muffle amount 0..1.
+static func muffle_cutoff(amount: float) -> float:
+	return 20000.0 * pow(MUFFLE_HZ / 20000.0, clampf(amount, 0.0, 1.0))
+
+
+static func muffle_db(amount: float) -> float:
+	return MUFFLE_DB * clampf(amount, 0.0, 1.0)

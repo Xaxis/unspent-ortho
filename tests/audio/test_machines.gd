@@ -105,3 +105,25 @@ func test_only_the_loudest_living_machine_is_chosen() -> void:
 	check(none.is_empty(), "a dog makes no machine bed")
 	for m: Node in mobs:
 		m.free()
+
+
+func test_a_machine_coming_on_gets_brighter_before_it_gets_louder() -> void:
+	var b := Fixture.baked(&"machine_harvester")
+	var scene := {"secs": 4.0, "at": Vector2(20.5, 20.5), "layers": [&"machine"], "weather": {"kind": &"clear", "strength": 0.0, "wind": 0.0},
+		"machine": {"kind": &"harvester", "from": 22.0, "to": 0.0}}
+	var w := WorldData.new(9, 48)
+	var out := SoundScene.render(scene, w, {&"machine_harvester": b})
+	var mix: PackedFloat32Array = out["samples"]
+	var early := mix.slice(Synth.samples(SoundScene.RATE, 0.2), Synth.samples(SoundScene.RATE, 1.0))
+	var late := mix.slice(Synth.samples(SoundScene.RATE, 3.2), Synth.samples(SoundScene.RATE, 4.0))
+	gt(Synth.rms(late), Synth.rms(early) * 1.6, "louder on top of you")
+	var bright_early := Synth.tone_level(early, SoundScene.RATE, 5000.0) + Synth.rms(_high(early))
+	var bright_late := Synth.tone_level(late, SoundScene.RATE, 5000.0) + Synth.rms(_high(late))
+	gt(bright_late / maxf(1e-9, Synth.rms(late)), 1.5 * bright_early / maxf(1e-9, Synth.rms(early)), "and the top comes in first: distance is timbre")
+	near(SoundScene.heard_db(mix, 3.4, 4.0), b.heard, 2.0, "on top of it, heard at its sheet level")
+
+
+func _high(buf: PackedFloat32Array) -> PackedFloat32Array:
+	var h := buf.duplicate()
+	Synth.highpass4(h, SoundScene.RATE, 3000.0)
+	return h
