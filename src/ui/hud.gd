@@ -13,8 +13,6 @@ extends CanvasLayer
 ## frame from Body, Inventory and the world; Events.message arrives directly.
 
 const MARGIN := 8
-const MESSAGE_HOLD := 2.2
-const MESSAGE_FADE := 0.6
 const CELL_W := 10
 const CELL_H := 8
 const PLACE_IN := 0.8
@@ -30,12 +28,10 @@ var held: StringName = &""
 var needs: Array[Dictionary] = []
 var hint := ""
 var hint_key := "e"
-var message := ""
 var messages := UiMessages.new()
 var place := ""
 
 var _canvas: Control
-var _message_age := 99.0
 var _place_age := 99.0
 var _time := 0.0
 var _wind_alpha := 0.0
@@ -105,8 +101,6 @@ func place_alpha() -> float:
 
 
 func show_message(text: String) -> void:
-	message = text
-	_message_age = 0.0
 	messages.push(text)
 
 
@@ -132,15 +126,7 @@ func settle() -> void:
 		_needs_alpha[n.need] = 1.0
 
 
-func message_alpha() -> float:
-	if _message_age < MESSAGE_HOLD:
-		return 1.0
-	return clampf(1.0 - (_message_age - MESSAGE_HOLD) / MESSAGE_FADE, 0.0, 1.0)
-
-
-
 func _process(delta: float) -> void:
-	_message_age += delta
 	_time += delta
 	messages.step(delta)
 	_place_age += delta
