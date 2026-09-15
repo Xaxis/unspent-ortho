@@ -20,7 +20,9 @@ static func gallery() -> Array:
 			filter = a.trim_prefix("--filter=")
 	if not filter.begins_with("review"):
 		return []
-	var words := filter.split(" ", false)
+	# A trailing "close" frames heads instead of feet, for --zoom=1.5 or so.
+	var close := filter.ends_with(" close")
+	var words := filter.trim_suffix(" close").split(" ", false)
 	var what := words[1] if words.size() > 1 else "walk"
 	var arg := words[2] if words.size() > 2 else ""
 	var arg2 := words[3] if words.size() > 3 else ""
@@ -90,6 +92,32 @@ static func gallery() -> Array:
 				var p := PersonModel.make({"build": b, "coat": StringName(arg) if arg != "" else &"none"}, &"", mat)
 				p.rotation.y = PersonModel.FACE_RIGHT if arg2 == "" else PersonModel.FACE_CAMERA
 				nodes.append(p)
+		"hats":
+			# Every hat on one head, turned: --filter="review hats camera" (camera|right|left|away|3q)
+			var face: float = {"camera": PersonModel.FACE_CAMERA, "right": PersonModel.FACE_RIGHT, "left": -PI * 0.75, "away": PI * 0.75, "3q": -PI * 0.5}.get(arg, PersonModel.FACE_CAMERA)
+			for h: StringName in PersonLook.HATS:
+				var p := PersonModel.make({"hat": h, "hat_col": "earth:3", "beard": StringName(arg2) if arg2 != "" else &"none"}, &"", mat)
+				p.rotation.y = face
+				nodes.append(p)
+		"turn":
+			# One look from eight directions: --filter="review turn brim,long"
+			for i in 8:
+				var p := PersonModel.make(load("res://src/systems/35_folk.gd").call("parse_look", arg, 1) if arg != "" else {}, &"", mat)
+				p.rotation.y = PersonModel.FACE_CAMERA + i * TAU / 8.0
+				nodes.append(p)
+		"pose":
+			# One action frozen at T seconds, from three sides: --filter="review pose dodge 0.15 knife"
+			for face: float in [PersonModel.FACE_RIGHT, PersonModel.FACE_CAMERA, -PI * 0.75, PI * 0.75]:
+				var p := PersonModel.make({}, StringName(words[4]) if words.size() > 4 else &"", mat)
+				p.rotation.y = face
+				p.pose_at(StringName(arg), arg2.to_float())
+				nodes.append(p)
+		"face":
+			# A look from the front, three-quarter and side, close: --filter="review face brim,long close"
+			for face: float in [PersonModel.FACE_CAMERA, -PI * 0.5, PersonModel.FACE_RIGHT]:
+				var p := PersonModel.make(load("res://src/systems/35_folk.gd").call("parse_look", arg, 1) if arg != "" else {}, &"", mat)
+				p.rotation.y = face
+				nodes.append(p)
 		"look":
 			for i in 6:
 				var p := PersonModel.make(PersonLook.random(arg.to_int(), i), &"", mat)
@@ -123,11 +151,19 @@ static func gallery() -> Array:
 	var spacing := 1.25 if nodes.size() > 3 else 1.6
 	if what == "builds":
 		spacing = 0.62
+	if what == "face":
+		spacing = 0.5
+	if what == "pose":
+		spacing = 1.0
+	if what == "hats" or what == "turn":
+		spacing = 0.7
 	if what == "zoo":
 		spacing = 0.95
 	if what == "animal":
 		spacing = {"rat": 0.45, "gull": 0.6, "dog": 0.95, "sheep": 1.0, "bull": 1.75}.get(arg, 1.0)
 	for i in nodes.size():
 		nodes[i].position = Vector3(1.6, 0, 0) + across * (i - (nodes.size() - 1) * 0.5) * spacing
+		if close:
+			nodes[i].position += Vector3(1, 0, 1).normalized() * 0.8
 		strip.add_child(nodes[i])
 	return [{"name": filter, "node": strip}, {"name": filter, "node": Node3D.new()}]

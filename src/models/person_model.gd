@@ -307,24 +307,24 @@ static func gallery() -> Array:
 	for b: StringName in PersonLook.BUILDS:
 		var old := b == &"old" or b == &"bent"
 		builds.append([{"build": b, "hair_style": &"thin" if old else &"crop", "hair": &"grey" if old else &"dark"}, &"", String(b)])
-	out.append_array(_items("people builds", builds, mat, 5, 0.52, FACE_CAMERA))
+	out.append_array(_items("people builds", builds, mat, 5, 0.56, FACE_CAMERA))
 
 	var crowd: Array = []
 	for spec: Dictionary in PersonLook.crowd(11, 10):
 		crowd.append([spec, &"", ""])
-	out.append_array(_items("people looks", crowd, mat, 5, 0.52, FACE_CAMERA))
+	out.append_array(_items("people looks", crowd, mat, 5, 0.56, FACE_CAMERA))
 
 	var hats: Array = []
 	for h: StringName in PersonLook.HATS:
 		hats.append([{"hat": h, "hat_col": "earth:3" if hats.size() % 2 else "slate:2", "coat": PersonLook.COATS[hats.size() % PersonLook.COATS.size()]}, &"", String(h)])
-	out.append_array(_items("people hats coats", hats, mat, 4, 0.52, FACE_CAMERA))
+	out.append_array(_items("people hats coats", hats, mat, 4, 0.62, FACE_CAMERA))
 
 	var hair: Array = []
 	var k := 0
 	for st: StringName in PersonLook.HAIR_STYLES:
 		hair.append([{"hair_style": st, "hair": PersonLook.HAIR_PRESETS[k % PersonLook.HAIR_PRESETS.size()], "beard": PersonLook.BEARDS[k % PersonLook.BEARDS.size()], "skin": PersonLook.SKIN_WINDOWS[k % 4], "skin_v": 1 + k % 3}, &"", String(st)])
 		k += 1
-	out.append_array(_items("people hair beards", hair, mat, 4, 0.52, FACE_RIGHT))
+	out.append_array(_items("people hair beards", hair, mat, 4, 0.62, FACE_RIGHT))
 
 	var kit: Array = []
 	k = 0
@@ -334,7 +334,7 @@ static func gallery() -> Array:
 		spec.side = 1
 		kit.append([spec, &"", String(part)])
 		k += 1
-	out.append_array(_items("people salvage", kit, mat, 4, 0.55, FACE_CAMERA))
+	out.append_array(_items("people salvage", kit, mat, 4, 0.72, FACE_CAMERA))
 
 	var gait := Node3D.new()
 	var gaits: Array = [[PersonAnim.GAIT_WALK, 0.0], [PersonAnim.GAIT_WALK, 0.25], [PersonAnim.GAIT_RUN, 0.0], [PersonAnim.GAIT_RUN, 0.25]]
@@ -348,21 +348,34 @@ static func gallery() -> Array:
 	out.append({"name": "person walk run", "node": gait})
 
 	# Each swing at the moment the blow lands: the most telling frame of the fight.
+	# One-handed blows share a cell in pairs; a two-handed swing reaches a whole cell.
 	var swings: Array = []
-	for id: StringName in [&"", &"knife", &"billhook", &"axe_hand", &"axe_felling", &"pick", &"stave", &"boathook", &"stun_hand"]:
+	var heavy: Array = []
+	for id: StringName in [&"", &"knife", &"billhook", &"axe_hand", &"stun_hand", &"axe_felling", &"pick", &"stave", &"boathook"]:
 		var ms := HeldTools.swing_ms(id)
-		var total := float(ms[0] + ms[1] + ms[2])
-		swings.append([PersonLook.random(120, swings.size()), id, String(HeldTools.klass(id)), &"swing", (ms[0] + ms[1] * 0.45) / 1000.0])
-	out.append_array(_items("person swings", swings, mat, 3, 1.0, FACE_RIGHT))
+		var row := [PersonLook.random(120, swings.size() + heavy.size()), id, String(HeldTools.klass(id)) + (" " + String(id) if id != &"" else ""), &"swing", (ms[0] + ms[1] * 0.45) / 1000.0]
+		if HeldTools.two_handed(id):
+			heavy.append(row)
+		else:
+			swings.append(row)
+	out.append_array(_items("person swings", swings, mat, 2, 1.5, FACE_RIGHT, 2))
+	out.append_array(_items("person swings heavy", heavy, mat, 1, 1.0, FACE_RIGHT, 1))
 
-	var acts: Array = [
-		[PersonLook.random(90, 0), &"knife", "dodge", &"dodge", 0.17], [PersonLook.random(90, 1), &"knife", "hurt", &"hurt", 0.07],
-		[PersonLook.random(90, 2), &"", "eat", &"eat", 0.4], [PersonLook.random(90, 3), &"knife", "downed", &"downed", 2.0],
-		[PersonLook.random(90, 4), &"", "carried", &"carried", 0.6], [PersonLook.random(90, 5), &"pick", "break", &"work_break", 0.52],
-		[PersonLook.random(90, 6), &"mattock", "dig", &"work_dig", 0.7], [PersonLook.random(90, 7), &"axe_felling", "fell", &"work_fell", 0.66],
-		[PersonLook.random(90, 8), &"knife", "cut", &"work_cut", 0.1], [PersonLook.random(90, 9), &"", "gather", &"gather", 0.45],
+	# Every action at its most expressive frame. The ones that throw the body across
+	# the ground (the roll, the fall, being carried) take a cell each.
+	var big: Array = [
+		[PersonLook.random(90, 0), &"knife", "dodge", &"dodge", 0.17],
+		[PersonLook.random(90, 3), &"knife", "downed", &"downed", 2.0],
+		[PersonLook.random(90, 4), &"", "carried", &"carried", 0.6],
+		[PersonLook.random(90, 9), &"", "gather", &"gather", 0.45],
 	]
-	out.append_array(_items("person actions", acts, mat, 2, 1.25, FACE_RIGHT))
+	out.append_array(_items("person actions big", big, mat, 1, 1.0, FACE_RIGHT, 1))
+	var acts: Array = [
+		[PersonLook.random(90, 1), &"knife", "hurt", &"hurt", 0.07], [PersonLook.random(90, 2), &"", "eat", &"eat", 0.4],
+		[PersonLook.random(90, 5), &"pick", "break", &"work_break", 0.52], [PersonLook.random(90, 6), &"mattock", "dig", &"work_dig", 0.7],
+		[PersonLook.random(90, 7), &"axe_felling", "fell", &"work_fell", 0.66], [PersonLook.random(90, 8), &"billhook", "cut", &"work_cut", 0.1],
+	]
+	out.append_array(_items("person actions", acts, mat, 2, 1.5, FACE_RIGHT, 2))
 
 	var made: Array = []
 	for id: StringName in HeldTools.MADE:
@@ -375,11 +388,13 @@ static func gallery() -> Array:
 	return out
 
 
-## Gallery items of people, at most two rows each so every item fits one gallery
-## square. A row is [spec, held, label] or [spec, held, label, action, seconds in].
-static func _items(title: String, rows: Array, mat: Material, cols: int, spacing: float, facing: float) -> Array:
+## Gallery items of people, `per` to an item (default two rows of `cols`) so every
+## item fits one gallery square. A row is [spec, held, label] or
+## [spec, held, label, action, seconds in].
+static func _items(title: String, rows: Array, mat: Material, cols: int, spacing: float, facing: float, per: int = 0) -> Array:
 	var out: Array = []
-	var per := cols * 2
+	if per <= 0:
+		per = cols * 2
 	var part := 0
 	for start in range(0, rows.size(), per):
 		var g := Node3D.new()
@@ -390,10 +405,10 @@ static func _items(title: String, rows: Array, mat: Material, cols: int, spacing
 			if row.size() > 4:
 				pm.pose_at(row[3], row[4])
 			pm.rotation.y = facing
-			_place(g, pm, i - start, cols, spacing, row[2])
+			_place(g, pm, i - start, cols, spacing, row[2], ceili(float(mini(per, rows.size() - start)) / cols))
 			if String(row[2]) != "":
 				labels.append(String(row[2]))
-		var name := title if rows.size() <= per else "%s %s" % [title, "abcdefgh"[part]]
+		var name := title if rows.size() <= per else "%s %s" % [title, "abcdefghijklmnop"[part]]
 		if not labels.is_empty():
 			name += ": " + " ".join(labels)
 		out.append({"name": name, "node": g})
@@ -402,11 +417,11 @@ static func _items(title: String, rows: Array, mat: Material, cols: int, spacing
 
 
 ## Lay subject i out along screen-right (world +X-Z) in rows that step toward the camera.
-static func _place(g: Node3D, n: Node3D, i: int, cols: int, spacing: float, label: String) -> void:
+static func _place(g: Node3D, n: Node3D, i: int, cols: int, spacing: float, label: String, rows: int = 2) -> void:
 	var across := Vector3(1, 0, -1).normalized()
 	var down := Vector3(1, 0, 1).normalized()
 	var col := i % cols
 	var row := i / cols
-	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - 0.5) * maxf(0.85, spacing)
+	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - (rows - 1) * 0.5) * maxf(0.85, spacing)
 	g.add_child(n)
 	n.set_meta(&"label", label)
