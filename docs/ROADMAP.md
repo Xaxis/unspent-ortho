@@ -76,26 +76,25 @@ and `tours/fight.tour` (commands in CLAUDE.md).
 - Fight moments in tours are real-time: the tours retry a missed blow (`try`),
   and a hidden macOS window can stall a single shot until its timeout.
 
-## M2.0 — Ink & Neon (first)
+## M2.0 — A dystopian world (first)
 
-The owner's look for the whole game: beautifully dystopian, dark rain-slicked
-neon-lit wastelands, cyberpunk landscapes of ordered chaos and mystery, with haunting
-evolving synth ambient music (VISION §8). It comes before new landscape content, so
-every type is born in it.
+The owner's look for the whole game: beautifully dystopian in mood, art, themes and
+every element of every landscape (VISION §8), with haunting evolving synth ambient
+music. It comes before new landscape content, so every type is born in it.
 
-1. **Style core** (lead): palette v2 (dark wet ramps plus neon families), wet sheen and
-   rain-slick reflection streaks, neon light pools that erase hatching, haze and light
-   shafts, a night-first sky, and ART.md rewritten as Ink & Neon.
-2. **Wave N** (parallel, on the core):
-   - **landscape-neon**: the six landscapes relit and re-dressed with neon props.
-   - **sky-rain**: rain-first weather, puddles, runoff, shafts, lightning.
-   - **machines-neon**: strip lights, scanners, beacons, working parts as neon.
-   - **characters-neon**: rain gear, stolen tech worn, light rims.
-   - **score**: generative evolving synth ambient music and a new sound bed per
-     landscape.
-   - **slate**: the hacked-tablet UI.
-   - **saves**.
-   - **export**.
+1. **Mood core** (lead, done): a light bleak grade per landscape and hour, skyglow,
+   wet reflections where wet, stippled halos, situational light (warm people, lit
+   machine order, stolen neon where someone wired it in).
+2. **Wave N** (parallel):
+   - **landscape:** dense dystopian evidence in every landscape, and the machines'
+     ordered lines across the ruin.
+   - **sky:** weather and light that give each landscape its mood.
+   - **machines:** state told through restrained light, wear and trophies.
+   - **characters:** scavenging survivors.
+   - **score:** the evolving synth score and soundscapes.
+   - **slate:** the hacked-tablet UI.
+   - **saves.**
+   - **export.**
 
 ## M2 — Foundations of an immense world
 
