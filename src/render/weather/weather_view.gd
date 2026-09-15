@@ -2,9 +2,11 @@ class_name WeatherView
 extends Node3D
 ## What falls through the air around the camera, drawn as marks in the notebook
 ## (docs/ART.md section 6): rain as short slanted ink strokes gathered into
-## columns, splashes as tiny ticks, hail as pale pellets, snow as paper flecks,
-## ash as dark specks with the odd ember, dust as blown streaks, heat as a
-## wavering line, wind as the odd flick, and lightning as a jagged ruled line.
+## squall curtains, drizzle as a fine pale grain, splashes as tiny ticks and
+## rings spreading where water stands, drips from eaves, arms and crowns, hail
+## as pale pellets, snow as paper flecks in squalls, ash as dark specks drifting
+## in sheets with the odd ember, dust as blown streaks and spinning devils, heat
+## as a wavering line, wind as the odd flick, and lightning as a jagged ruled line.
 ##
 ## Follows the camera focus, turned to the camera's yaw so its emission boxes
 ## cover the screen. Amounts come from WeatherLook.compose(); changing an
@@ -19,11 +21,22 @@ const TOP := 11.0
 ## drift per unit fall times this is the stroke's slant in pixels per pixel.
 const SLANT_PER_LEAN := 1.0 / 0.5446
 
-enum Mode { STROKE, FLECK, WAVE, FLICK, TICK, SPARK }
+enum Mode { STROKE, FLECK, WAVE, FLICK, TICK, SPARK, RING, SWIRL }
+
+## Marks in one dust devil's column.
+const DEVIL_MARKS := 150
 
 var camera: CameraRig
 var rain: CPUParticles3D
+## Drizzle: a fine grain of short pale strokes, slow, hardly slanted.
+var drizzle: CPUParticles3D
 var splash: CPUParticles3D
+## Rings spreading on standing water while it rains.
+var rings: CPUParticles3D
+## Drips from the drip points (Drips.points), in world space.
+var drips: CPUParticles3D
+## Spinning dust columns (DustDevils), each its own node and material.
+var devils: Array[MeshInstance3D] = []
 var hail: CPUParticles3D
 var snow: CPUParticles3D
 ## Fewer, bigger flakes nearer the eye, so snow has depth.
@@ -56,19 +69,31 @@ func setup(cam: CameraRig) -> void:
 	# Rain: mostly ink strokes, a third pale ones, so it reads on turf and on sand.
 	rain = _emitter("rain", 3400, 0.62, air, mid, false)
 	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 1.0, "ground_mask": 3})
+	drizzle = _emitter("drizzle", 3600, 1.3, air, mid, false)
+	_mat(drizzle, Mode.STROKE, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.35, "length_px": Vector2(2, 3), "columns": 0.3, "ground_mask": 3})
 	splash = _emitter("splash", 260, 0.16, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
 	_mat(splash, Mode.TICK, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.3, "columns": 0.75, "ground_mask": 3})
+	rings = _emitter("rings", 220, 0.7, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
+	_age_ramp(rings)
+	_mat(rings, Mode.RING, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.4, "length_px": Vector2(3, 5), "columns": 0.6, "ground_mask": 3})
+	drips = _emitter("drips", 260, 0.42, Vector3.ZERO, Vector3.ZERO, false)
+	drips.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINTS
+	drips.top_level = true
+	drips.gravity = Vector3(0, -9.0, 0)
+	_mat(drips, Mode.STROKE, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.45, "length_px": Vector2(2, 3), "slant": 0.0})
+	for i in DustDevils.MAX:
+		devils.append(_devil(i))
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
 	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4, "ground_mask": 3})
 	# Snow: paper flecks, each with a blue shade pixel under it so a fleck still
 	# reads over lying snow.
-	snow = _emitter("snow", 5000, 8.0, air, mid, true)
-	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(1, 2), "wander": 2.0, "underline": 1.0, "ground_mask": 1})
-	flurry = _emitter("flurry", 700, 6.0, air, mid, true)
+	snow = _emitter("snow", 6500, 8.0, air, mid, true)
+	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 0.8, "length_px": Vector2(1, 2), "wander": 2.0, "underline": 1.0, "ground_mask": 1})
+	flurry = _emitter("flurry", 1000, 6.0, air, mid, true)
 	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(2, 2), "wander": 3.0, "underline": 1.0, "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
-	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "ground_mask": 2})
+	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "columns": 0.45, "ground_mask": 2})
 	ember = _emitter("ember", 70, 5.0, Vector3(15.0, 1.5, 13.0), Vector3(0, 0.8, 0), true)
 	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0, "ground_mask": 2})
 	drift = _emitter("drift", 700, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
@@ -136,6 +161,75 @@ func _emitter(n: String, amount: int, life: float, extents: Vector3, offset: Vec
 	return p
 
 
+## A particle's age over its life, 0..1, in its colour's green channel (the
+## red channel is its random number): for marks that grow, like rings.
+func _age_ramp(p: CPUParticles3D) -> void:
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 0, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 1))
+	p.color_ramp = g
+
+
+## One dust devil: DEVIL_MARKS quads, each carrying three random numbers in its
+## colour, spun into a column by precip.gdshader's SWIRL mode about the node.
+func _devil(i: int) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var r := Rng.make(0xDE7, i)
+	for m in DEVIL_MARKS:
+		var col := Color(r.randf(), r.randf(), r.randf(), 1.0)
+		var corners: Array[Vector3] = [Vector3(-0.5, -0.5, 0), Vector3(0.5, -0.5, 0), Vector3(0.5, 0.5, 0), Vector3(-0.5, 0.5, 0)]
+		for k: int in [0, 1, 2, 0, 2, 3]:
+			st.set_color(col)
+			st.add_vertex(corners[k])
+	var mi := MeshInstance3D.new()
+	mi.name = "devil_%d" % i
+	mi.mesh = st.commit()
+	mi.top_level = true
+	mi.visible = false
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.extra_cull_margin = 16384.0
+	var m := ShaderMaterial.new()
+	m.shader = PRECIP
+	m.render_priority = 10
+	m.set_shader_parameter("mode", int(Mode.SWIRL))
+	m.set_shader_parameter("color_a", Palette.EARTH[2])
+	m.set_shader_parameter("color_b", Palette.SAND[3])
+	m.set_shader_parameter("mix_b", 0.5)
+	m.set_shader_parameter("length_px", Vector2(1, 2))
+	m.set_shader_parameter("underline", 1.0)
+	m.set_shader_parameter("seed_phase", float(i) * 1.7)
+	mi.material_override = m
+	add_child(mi)
+	return mi
+
+
+## Where drips fall from this half-second (Drips.points), world space.
+func set_drip_points(points: PackedVector3Array) -> void:
+	if points.is_empty():
+		return
+	drips.emission_points = points
+
+
+## amount 0..1 (Drips.amount); frozen: nothing drips in the snow.
+func set_drips(amount: float, frozen: bool) -> void:
+	var a := 0.0 if frozen or drips.emission_points.is_empty() else amount
+	_drive(drips, a, Vector3(0, -1, 0), 1.2, {})
+
+
+## devils: [{at: Vector3 ground point, life: 0..1, seed: int}] (DustDevils.at).
+func set_devils(list: Array[Dictionary]) -> void:
+	for i in devils.size():
+		var mi := devils[i]
+		if i >= list.size():
+			mi.visible = false
+			continue
+		var d: Dictionary = list[i]
+		mi.visible = true
+		mi.global_position = d.at
+		(mi.material_override as ShaderMaterial).set_shader_parameter("density", clampf(float(d.life), 0.0, 1.0))
+
+
 func _mat(p: CPUParticles3D, mode: Mode, params: Dictionary) -> void:
 	var m := ShaderMaterial.new()
 	m.shader = PRECIP
@@ -163,21 +257,31 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 		"slant": lean * SLANT_PER_LEAN,
 		"length_px": Vector2(5, 8) + Vector2(1, 3) * storm,
 	})
+	var fine := lean * 0.5
+	_drive(drizzle, float(look.get("drizzle", 0.0)), Vector3(fine, -1.0, 0.0), 7.5, {"slant": fine * SLANT_PER_LEAN})
 	_drive(hail, float(look.hail), Vector3(lean * 0.5, -1.0, 0.0), 22.0, {"slant": lean * 0.5 * SLANT_PER_LEAN * 0.3})
-	var blizzard := clampf(float(look.snow) - 0.8, 0.0, 0.2) * 5.0 * clampf(absf(wind) * 1.5, 0.0, 1.0)
-	_drive(snow, float(look.snow), Vector3(wind * 1.4, -1.0, 0.0), 1.1 + absf(wind) * 2.2, {"wander": 2.0 * (1.0 - absf(wind) * 0.6)})
-	_drive(flurry, float(look.snow), Vector3(wind * 1.6, -1.0, 0.0), 1.6 + absf(wind) * 2.6, {})
+	var whiteout := float(look.get("whiteout", 0.0))
+	var blizzard := maxf(clampf(float(look.snow) - 0.8, 0.0, 0.2) * 5.0 * clampf(absf(wind) * 1.5, 0.0, 1.0), whiteout)
+	# Snow comes in squalls: curtains of it sweep over, thinner between.
+	_drive(snow, float(look.snow), Vector3(wind * 1.4, -1.0, 0.0), 1.1 + absf(wind) * 2.2, {"wander": 2.0 * (1.0 - absf(wind) * 0.6), "columns": 0.2 + 0.25 * clampf(absf(wind), 0.0, 1.0)})
+	_drive(flurry, float(look.snow), Vector3(wind * 1.6, -1.0, 0.0), 1.6 + absf(wind) * 2.6, {"columns": 0.5})
 	_drive(ash, float(look.ash), Vector3(wind * 0.8, -1.0, 0.2), 0.55, {})
-	_drive(ember, float(look.ash) * 0.8 + float(look.heat) * 0.15, Vector3(wind * 0.3, 1.0, 0.0), 0.5, {})
-	_drive(haze, float(look.heat), Vector3(wind * 0.1, 1.0, 0.0), 0.3, {})
+	# Embers rise off the burning ground, most of all through its furnace haze.
+	_drive(ember, float(look.ash) * 0.8 + float(look.heat) * 0.15 + float(look.get("haze", 0.0)) * 0.7, Vector3(wind * 0.3, 1.0, 0.0), 0.5, {})
+	_drive(haze, clampf(float(look.heat) + float(look.get("glare", 0.0)) * 0.5, 0.0, 1.0), Vector3(wind * 0.1, 1.0, 0.0), 0.3, {})
 	var blow := signf(wind) if absf(wind) > 0.05 else 1.0
 	var sand := float(look.dust)
-	var drift_amount := maxf(sand, blizzard)
-	var snowy := blizzard / maxf(0.001, sand + blizzard)
+	# Ash drifts along the ground in a wind, in dark streaks.
+	var ash_drift := float(look.ash) * clampf((absf(wind) - 0.2) * 2.0, 0.0, 1.0) * 0.7
+	var drift_amount := maxf(maxf(sand, blizzard), ash_drift)
+	var total := maxf(0.001, sand + blizzard + ash_drift)
+	var snowy := blizzard / total
+	var ashy := ash_drift / total
 	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
 		"facing": blow,
-		"color_a": Palette.SAND[4].lerp(Palette.RIME[5], snowy),
-		"color_b": Palette.LINEN[5].lerp(Palette.RIME[4], snowy),
+		# Blown snow is drawn a cold blue-grey, or it vanishes into the snow it crosses.
+		"color_a": Palette.SAND[4].lerp(Palette.RIME[2], snowy).lerp(Palette.ASH[1], ashy),
+		"color_b": Palette.LINEN[5].lerp(Palette.RIME[4], snowy).lerp(Palette.INK[2], ashy),
 	})
 	# The odd flick once the wind gets up; the flick is drawn with its head
 	# leading, so it flips with the wind.
@@ -187,6 +291,9 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var wet := clampf(float(look.rain) + float(look.hail) * 0.5, 0.0, 1.0)
 	_drive(splash, wet, Vector3(0, 1, 0), 0.25, {})
 	splash.position.y = TerrainMesher.WATER_Y + 0.03 - focus.y if wet > 0.0 else 0.0
+	var ringing := clampf(wet + float(look.get("drizzle", 0.0)) * 0.6, 0.0, 1.0)
+	_drive(rings, ringing, Vector3(0, 1, 0), 0.0, {})
+	rings.position.y = TerrainMesher.WATER_Y + 0.02 - focus.y if ringing > 0.0 else 0.0
 	if not _bolt_hold and _bolt_frame < BOLT_FRAMES.size():
 		bolt.visible = BOLT_FRAMES[_bolt_frame]
 		_bolt_frame += 1

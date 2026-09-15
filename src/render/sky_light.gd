@@ -5,12 +5,18 @@ extends Node3D
 ## stays upper-left of the screen and swings only 70 degrees; nothing casts at
 ## night; weather and region are colour multiplies, never a veil.
 ##
-## One writer: only this node sets the sky_* shader globals (and wind_strength,
-## which world.gdshader's sway reads). The 10_sky system fills `weather_tint`,
-## `region_tint`, `season_turn`, `clouds`, `fog`, `flash`, `settle`, `wind`,
-## `sway` and `cast_allowed`; the 15_lights system fills `lamps`. Both then
-## rely on set_hour(), which composes everything, so the order in which game.gd
-## and the systems run never matters.
+## One writer: only this node sets the sky_*, neon_* and glint globals (and
+## wind_strength, which world.gdshader's sway reads). The 10_sky system fills
+## `weather_tint`, `region_tint`, `season_turn`, `clouds`, `fog`, `flash`,
+## `settle`, `wind`, `sway`, `air`, `bolt` and `cast_allowed`; the 15_lights
+## system fills `lamps` and `glints`. Anyone may call set_hour().
+##
+## Once a sky system drives it (`driven`), set_hour() only records the hour and
+## the node composes every global ONCE per frame in its own late _process
+## (process_priority COMPOSE_LAST), after every system has filled its fields,
+## so the order in which game.gd and the systems run never matters and nothing
+## is written twice. Undriven (the title, the gallery, a test) set_hour()
+## composes at once.
 
 ## Day fraction keys: [t, tint, level]. (source, exact)
 const KEYS := [
@@ -44,6 +50,11 @@ const NIGHT_LEVEL := 0.70
 const REGION_GAIN := 1.3
 ## Pools of lamplight the ink knows about (two mat4 globals of four columns).
 const MAX_LAMPS := 8
+## Lights mirrored in wet ground (sky_glints*, glint_rgb*): three mat4 globals
+## of four columns. Not OmniLights: a list of points the reflection draws.
+const MAX_GLINTS := 12
+## After every GameSystem (they run at 0), before nothing that reads the globals.
+const COMPOSE_LAST := 1000
 ## Cool light from the open sky, added under the sun when it is low and all
 ## night: shadows keep their blue while lit faces warm at dawn and dusk.
 ## Linear colour, scaled by how low the light is.
@@ -105,6 +116,32 @@ var cast_allowed := true
 ## lamps) to match the lit world.
 var last_tint := Vector3.ONE
 var last_energy := 1.0
+## The airs over the focus: x rain falling now (rain and drizzle), y glare,
+## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
+var air := Vector4.ZERO
+## Lightning after a strike: xy the strike's world x/z, z the afterglow rolling
+## in the clouds 0..1, w the machines' power 0..1 (1 steady; a strike stutters
+## it for a beat). (sky_bolt)
+var bolt := Vector4(0.0, 0.0, 0.0, 1.0)
+## Tiles the afterglow has rolled out from the strike (sky_view.w).
+var glow_reach := 0.0
+## Lights mirrored in wet ground: Vector4(x, y, z, level) each, at most
+## MAX_GLINTS, nearest the camera first; filled by the lights system.
+var glints: Array[Vector4] = []
+## The colour of each glint (rgb, w spare), parallel to `glints`.
+var glint_colors: Array[Vector4] = []
+## True once a sky system fills this node every frame (see the header).
+var driven := false
+## The world clock hour set_hour() last recorded.
+var clock_hour := 8.0
+## How many times the globals have been composed, and on which process frame
+## last: one writer, once a frame (tests/sky/test_one_writer.gd).
+var compose_count := 0
+var last_compose_frame := -1
+
+
+func _init() -> void:
+	process_priority = COMPOSE_LAST
 
 
 func _ready() -> void:
@@ -144,7 +181,22 @@ func _ready() -> void:
 
 
 ## hour: 0..24 of the world clock.
-func set_hour(hour: float) -> void:
+func set_hour(h: float) -> void:
+	clock_hour = h
+	if not (driven and is_inside_tree()):
+		compose()
+
+
+func _process(_delta: float) -> void:
+	if driven:
+		compose()
+
+
+## Write every sky global from the fields, for the recorded hour.
+func compose() -> void:
+	compose_count += 1
+	last_compose_frame = Engine.get_process_frames()
+	var hour := clock_hour
 	var s := sun_at(hour)
 	var total := tint_at(hour) * season_drain(season_turn) * region_tint * weather_tint
 	last_tint = total
@@ -169,7 +221,7 @@ func set_hour(hour: float) -> void:
 		var rows := get_viewport().get_visible_rect().size.y
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
-	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, 0.0))
+	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, glow_reach))
 	var glow := sun_glow(total, s)
 	var cool := shade_cool(total) / glow
 	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, dusk_lift(hour, region_tint)))
@@ -182,6 +234,16 @@ func set_hour(hour: float) -> void:
 	var ng := neon_grade_at(hour, neon_shares)
 	RenderingServer.global_shader_parameter_set("neon_grade", ng[0])
 	RenderingServer.global_shader_parameter_set("neon_wet", ng[1])
+	RenderingServer.global_shader_parameter_set("sky_air", air)
+	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
+	var gp := glint_columns(glints)
+	var gc := glint_columns(glint_colors)
+	RenderingServer.global_shader_parameter_set("sky_glints", gp[0])
+	RenderingServer.global_shader_parameter_set("sky_glints2", gp[1])
+	RenderingServer.global_shader_parameter_set("sky_glints3", gp[2])
+	RenderingServer.global_shader_parameter_set("glint_rgb", gc[0])
+	RenderingServer.global_shader_parameter_set("glint_rgb2", gc[1])
+	RenderingServer.global_shader_parameter_set("glint_rgb3", gc[2])
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)
@@ -276,6 +338,18 @@ static func lamp_columns(pools: Array[Vector4]) -> Array[Projection]:
 	return [Projection(cols[0], cols[1], cols[2], cols[3]), Projection(cols[4], cols[5], cols[6], cols[7])]
 
 
+## Glints packed for the three mat4 globals, one per column, unused columns
+## zero (level 0 = no glint). Glints past MAX_GLINTS are dropped.
+static func glint_columns(points: Array[Vector4]) -> Array[Projection]:
+	var cols: Array[Vector4] = []
+	for i in MAX_GLINTS:
+		cols.append(points[i] if i < points.size() else Vector4.ZERO)
+	var out: Array[Projection] = []
+	for m in MAX_GLINTS / 4:
+		out.append(Projection(cols[m * 4], cols[m * 4 + 1], cols[m * 4 + 2], cols[m * 4 + 3]))
+	return out
+
+
 ## The time-of-day multiply, colour times level, continuous over midnight.
 static func tint_at(hour: float) -> Vector3:
 	var t := fposmod(hour, 24.0) / 24.0
@@ -357,6 +431,43 @@ static func country_light(country: int) -> Vector3:
 	if country == Country.BURNING:
 		return Vector3(0.94, 0.8, 0.68)
 	return Vector3.ONE
+
+
+## Each landscape's light through the day (docs/VISION.md section 8): a multiply
+## on the hour's tint, keyed [hour, Vector3] and read round the clock. Never a
+## filter: noon keeps nearly all its light, and the mood leans in at the ends of
+## the day, where each place is most itself. Bleak grey on the coast, drowned
+## green gloom in the moss, an early dusk under the pines, the snowfield's long
+## blue evening, hard white noon on the bonelands, furnace dusk in the burning.
+## A landscape type not listed keeps the plain hour. New types add a row.
+const MOOD := {
+	&"coast": [[0.0, Vector3(0.98, 0.99, 1.0)], [12.0, Vector3(0.97, 0.98, 1.0)], [18.5, Vector3(0.95, 0.96, 1.0)]],
+	&"moss": [[0.0, Vector3(0.93, 0.97, 0.94)], [6.0, Vector3(0.88, 0.95, 0.9)], [12.0, Vector3(0.95, 0.98, 0.94)], [18.0, Vector3(0.9, 0.96, 0.91)]],
+	&"pinewood": [[0.0, Vector3(0.95, 0.97, 1.0)], [11.0, Vector3(0.97, 0.98, 0.97)], [15.5, Vector3(0.96, 0.96, 0.96)], [18.0, Vector3(0.8, 0.82, 0.88)], [20.5, Vector3(0.88, 0.9, 0.98)]],
+	&"snowfield": [[0.0, Vector3(0.94, 0.97, 1.0)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.5, Vector3(0.94, 0.97, 1.0)], [19.5, Vector3(0.8, 0.9, 1.0)], [21.5, Vector3(0.88, 0.94, 1.0)]],
+	&"bonelands": [[0.0, Vector3(1.0, 0.98, 0.96)], [9.0, Vector3(1.0, 0.99, 0.97)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.0, Vector3(1.0, 0.98, 0.94)], [19.5, Vector3(0.98, 0.9, 0.82)]],
+	&"burning": [[0.0, Vector3(1.0, 0.94, 0.9)], [12.0, Vector3(1.0, 0.97, 0.94)], [17.0, Vector3(1.0, 0.92, 0.84)], [19.8, Vector3(1.0, 0.8, 0.66)], [22.0, Vector3(1.0, 0.9, 0.84)]],
+}
+
+
+## The mood multiply for a landscape type at an hour (MOOD), continuous round
+## the clock: the last key eases back into the first across midnight.
+static func mood_light(type_id: StringName, hour: float) -> Vector3:
+	var keys: Array = MOOD.get(type_id, [])
+	if keys.is_empty():
+		return Vector3.ONE
+	var h := fposmod(hour, 24.0)
+	var n := keys.size()
+	for i in n:
+		var a: Array = keys[i]
+		var b: Array = keys[(i + 1) % n]
+		var ha := float(a[0])
+		var hb := float(b[0]) if i + 1 < n else float(b[0]) + 24.0
+		var hh := h if h >= ha else h + 24.0
+		if hh >= ha and hh <= hb:
+			var t := (hh - ha) / maxf(0.001, hb - ha)
+			return (a[1] as Vector3).lerp(b[1], smoothstep(0.0, 1.0, t))
+	return keys[0][1]
 
 
 ## A country's cast, pushed REGION_GAIN times further from white than the

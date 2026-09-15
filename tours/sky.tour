@@ -1,27 +1,65 @@
-# The sky through a day at the first coast, played through real input:
-# clouds walking over the land, dusk, night, the lantern on F, a lit village.
-shot 01-morning
-wait 6
-shot 02-clouds-moved
-hour 12
-wait 0.3
-shot 03-noon
-hour 19.5
-wait 0.3
-shot 04-dusk
-hour 22
+# The sky's moods, one landscape at a time, played through the real game:
+# a squall off the sea, dawn mist lying in the moss, a whiteout on the
+# snowfield, dry lightning over the bonelands, ash falling on the burning at
+# dusk, and a wet village night mirroring its lights.
+#   tools/tour.sh tours/sky.tour --seed=1
+coast calm
+# The coast: bleak grey afternoon, a squall coming in off the sea.
+place coast
+hour 15
+weather rain:1
+wait 1.0
+shot 01-coast-squall
+walk 1,-1 1.5
+shot 02-coast-squall-walked
+# The moss at dawn: the mist the rules lay in its hollows, then drizzle into it.
+place moss
+hour 6.4
+weather clear:0
+wait 1.0
+shot 03-moss-dawn-mist
+weather drizzle:0.8
+wait 1.0
+shot 04-moss-drizzle-in-mist
+# The snowfield: snow in squalls, then the horizon goes.
+place snowfield
+hour 13
+weather snow:1
+wait 1.0
+shot 05-snowfield-snow-squall
+weather whiteout:1
+wait 1.0
+shot 06-snowfield-whiteout
+# The bonelands: hard glare at noon, then a dry storm at dusk that strikes.
+place bonelands
+hour 12.5
+weather glare:1
+wait 1.0
+shot 07-bonelands-glare
+hour 20.2
+weather dry_storm:1
 wait 0.5
-shot 05-night
-press lamp 0.1
-wait 0.4
-shot 06-lantern
-walk 1,1 2.0
-shot 07-lantern-walk
-press lamp 0.1
-wait 0.4
-shot 08-lantern-out
+shot 08-bonelands-dry-storm
+await strike 60
+wait 0.12
+shot 09-bonelands-afterglow
+# The burning at dusk: ash fall, then the furnace haze.
+place burning
+hour 19.4
+weather ash:1
+wait 1.0
+shot 10-burning-ash-dusk
+weather haze:1
+wait 1.0
+shot 11-burning-furnace-haze
+# A wet night in the first village: lamps, fires and neon in the puddles, and
+# their shafts in the rain.
 village 0
+hour 22.5
+weather rain:0.8
+wait 1.0
+shot 12-village-wet-night
+tap lamp
 wait 0.5
-shot 09-village-night
-wait 0.15
-shot 10-village-hearths-flicker
+shot 13-village-wet-lantern
+weather rules

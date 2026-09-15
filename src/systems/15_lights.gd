@@ -13,6 +13,12 @@ extends GameSystem
 ##
 ## Lit windows are small flat unshaded panes; flames get a few radiating ink
 ## strokes (rays.gdshader). Only things that burn give light; nobody glows.
+##
+## The glint list (Glints): every light near the camera, pooled or not, goes to
+## the sky as a point to mirror in wet ground and to throw shafts into fog: lamps,
+## fires, hearths, stolen neon, pylon beacons, machine lenses, the lantern.
+## Machine light (beacons, neon on the machines' power, lenses) stutters with the
+## sky's power after lightning (SkyLight.bolt.w).
 
 const RAYS := preload("res://src/render/weather/rays.gdshader")
 ## Tiles from the focus within which a source may take a light or show a glow.
@@ -67,6 +73,18 @@ var _glows: Dictionary = {} # prop id -> Node3D
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
 var _lamp_down := false
+## Sources and machines near the camera that may glint, refreshed with the pool.
+var _glint_near: Array[Dictionary] = []
+## What went to the sky last frame (Glints.pick output), for tests.
+var glint_list: Array[Dictionary] = []
+## Stolen neon on the machines' power: magenta tube colour (props/houses.gd).
+const NEON_TUBE := Vector3(1.0, 0.25, 0.8)
+const BEACON := Vector3(1.0, 0.36, 0.2)
+const LENS_GLINT := Vector3(0.95, 0.76, 0.25)
+## House variants that wired a machine's light over the door (props/houses.gd:
+## washed form 1 and slated form 0). Until PropModels.glow_points says so per
+## variant, the list lives here.
+const NEON_HOUSE_VARIANTS: Array[int] = [1, 4]
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 
 
@@ -233,8 +251,11 @@ func _index_sources() -> void:
 				PropKind.VENT: s.warm = VENT_WARM
 				PropKind.HOUSE: s.warm = HEARTH_WARM
 				_: s.warm = WARM
+			if p.kind == PropKind.HOUSE and NEON_HOUSE_VARIANTS.has(PropModels.pick_variant(p.kind, Rng.hash_ints(game.world.seed_value, p.id, 90))):
+				var front := _front_of(p.kind)
+				s.neon_at = game.world.to_3d(p.pos) + Basis(Vector3.UP, -p.rot) * (Vector3(front.x, 1.05, front.z) * p.scale)
 		else:
-			s.at = game.world.to_3d(p.pos)
+			s.at = game.world.to_3d(p.pos) + Vector3(0, 4.05 * p.scale, 0)
 			s.range = 0.0
 			s.power = 0.0
 			s.warm = WARM
@@ -263,6 +284,8 @@ func _update(delta: float, snap: bool) -> void:
 		_index_sources()
 		_assign(focus, hour)
 		_update_glows(focus, hour)
+		_gather_glints(focus)
+	_blink()
 	var tint: Vector3 = game.sky.last_tint
 	var sun: float = game.sky.last_energy
 	var want := lamps_wanted(hour)
@@ -325,6 +348,64 @@ func _update(delta: float, snap: bool) -> void:
 	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
 	game.sky.lamp_colors = pool_rgb
+	_update_glints(focus3, hour, lit)
+
+
+## Every light near the camera as a glint candidate (Glints), lit as it is now.
+func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
+	var power := clampf(game.sky.bolt.w, 0.0, 1.0)
+	var want := lamps_wanted(hour)
+	var cands: Array[Dictionary] = []
+	for s: Dictionary in _glint_near:
+		if s.has("mob"):
+			var m: Node = s.mob
+			if not is_instance_valid(m) or not bool(m.get("alive")):
+				continue
+			cands.append({"at": m.call("part_position"), "rgb": LENS_GLINT, "level": 0.55 * power})
+			continue
+		var kind := int(s.kind)
+		match kind:
+			PropKind.PYLON:
+				var blink := fposmod(_time + float(s.h) * 3.0, 3.0) < 1.1
+				cands.append({"at": s.at, "rgb": BEACON, "level": (0.8 if blink and want > 0.3 else 0.0) * power})
+			PropKind.FIRE, PropKind.VENT, PropKind.KILN:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.9 if kind == PropKind.FIRE else 0.55) * _flicker(s)})
+			PropKind.LAMP:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.85 if source_lit(s, hour) else 0.0) * _flicker(s)})
+			PropKind.HOUSE:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.5 if source_lit(s, hour) else 0.0})
+				if s.has("neon_at"):
+					cands.append({"at": s.neon_at, "rgb": NEON_TUBE, "level": 0.95 * smoothstep(0.2, 0.6, want) * power})
+	if lantern_lit:
+		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_NEON, "level": 0.7})
+	glint_list = Glints.pick(cands, focus3)
+	var packed := Glints.pack(glint_list)
+	game.sky.glints = packed[0]
+	game.sky.glint_colors = packed[1]
+
+
+## The sources and machines that could glint near the focus, nearest first.
+func _gather_glints(focus: Vector2) -> void:
+	_glint_near.clear()
+	var near: Array = []
+	for s in sources:
+		var p: WorldProp = s.prop
+		if game.world.depleted.has(p.id):
+			continue
+		var d := p.pos.distance_squared_to(focus)
+		if d <= Glints.REACH * Glints.REACH:
+			near.append([d, s])
+	near.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for i in mini(near.size(), 40):
+		_glint_near.append(near[i][1])
+	if not is_inside_tree():
+		return
+	for m in get_tree().get_nodes_in_group(&"mobs"):
+		var mob := m as Mob
+		if mob == null or mob.state == null or not bool(mob.state.row.get("machine", false)) or mob.state.row.get("part", &"none") == &"none":
+			continue
+		if mob.pos.distance_squared_to(focus) <= Glints.REACH * Glints.REACH:
+			_glint_near.append({"mob": mob})
 
 
 static func neon_colour(s: Dictionary) -> Vector3:
@@ -432,11 +513,18 @@ func _update_glows(focus: Vector2, hour: float) -> void:
 		if not keep.has(id):
 			(_glows[id] as Node).queue_free()
 			_glows.erase(id)
-	# Beacons blink: a second on in three, never in step with each other.
+	_blink()
+
+
+## Beacons blink: a second on in three, never in step with each other. They run
+## on the machines' power, so a strike stutters them. Every frame, so the
+## stutter's beat is seen.
+func _blink() -> void:
+	var powered := game.sky.bolt.w > 0.5
 	for id: int in _glows:
 		var n: Node3D = _glows[id]
 		if n.has_meta("blink"):
-			n.visible = fposmod(_time + float(n.get_meta("blink")) * 3.0, 3.0) < 1.1
+			n.visible = fposmod(_time + float(n.get_meta("blink")) * 3.0, 3.0) < 1.1 and powered
 
 
 ## Where a prop gives light, in its own frame: PropModels.glow_points(kind),

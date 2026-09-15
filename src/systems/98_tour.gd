@@ -7,6 +7,7 @@ extends GameSystem
 ##   village N              teleport beside village N
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   hour H                 set the world clock hour (same day)
+##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
@@ -18,7 +19,7 @@ extends GameSystem
 ##                          free (no longer held), ring (a blow rang off plate),
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
-##                          took (something was taken)
+##                          took (something was taken), strike (lightning flashed)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -113,6 +114,11 @@ func _run() -> void:
 				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
 			"zoom":
 				game.camera.view_height = parts[1].to_float()
+			"weather":
+				var sky_sys := _system("10_sky")
+				ok = sky_sys != null and bool(sky_sys.call("apply_weather", parts[1]))
+				if ok:
+					sky_sys.call("_update", 0.0, true)
 			"walk":
 				var d := parts[1].split(",")
 				game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
@@ -205,6 +211,9 @@ func _now_true(what: String) -> bool:
 			return game.body.grip > 0
 		"free":
 			return game.body.grip <= 0
+		"strike":
+			var sky_sys := _system("10_sky")
+			return sky_sys != null and float(sky_sys.get("since_strike")) < 0.2
 		"tell":
 			if sim == null:
 				return false

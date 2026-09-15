@@ -35,7 +35,8 @@ void fragment() {
 			glow = step(beat, 0.18) * (1.0 - COLOR.a * 2.0) * 6.0 + 0.15;
 		}
 	}
-	EMISSION = c * emission_strength + c * glow + neon_skyglow(c);
+	// The machines' own light runs on their power: a lightning strike stutters it.
+	EMISSION = (c * emission_strength + c * glow) * sky_power() + neon_skyglow(c);
 }
 
 void light() {

@@ -18,7 +18,7 @@ const SMOOTH_HALVINGS := 3
 ## Per settled thing, 1 if any weather in the country's table feeds it at half
 ## strength or more: Vector3(snow, ash, wet).
 static func capable(country: int) -> Vector3:
-	var table: Array = Weather.TABLES[clampi(country, 0, Weather.TABLES.size() - 1)]
+	var table := Weather.climate(Weather.type_of(country))
 	var out := Vector3.ZERO
 	var keys := ["snow", "ash", "wet"]
 	for row: Array in table:
@@ -32,7 +32,7 @@ static func capable(country: int) -> Vector3:
 static func image(w: WorldData) -> Image:
 	var n := w.size
 	var caps: Array[Vector3] = []
-	for c in Weather.TABLES.size():
+	for c in Country.COUNT:
 		caps.append(capable(c))
 	var heights := PackedByteArray()
 	heights.resize(n * n)
