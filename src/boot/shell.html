@@ -22,7 +22,7 @@ html, body { margin: 0; padding: 0; border: 0; height: 100%; }
 body { background: #000; overflow: hidden; touch-action: none; }
 #canvas { display: block; outline: none; }
 #shell { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-#notice { position: absolute; left: 12%; right: 12%; top: 64%; color: #c9b79a; display: none; pointer-events: none;
+#notice { position: absolute; left: 12%; right: 12%; top: 64%; color: #87d9b5; display: none; pointer-events: none;
   font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; }
 </style>
 $GODOT_HEAD_INCLUDE
@@ -39,7 +39,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 (function () {
   // Kept equal to src/boot/boot_page.gd and src/ui/ui_font.gd (tests/export/test_export.gd checks).
   const SHELL_SHARE = 0.12;
-  const INK = { glass: '#08070f', rail: '#1c1a2a', tick: '#2c2940', lit: '#b07a3c', litSoft: '#4a3322', head: '#f1c98a', words: '#8b7a64' };
+  const INK = { glass: '#060a0c', rail: '#173029', tick: '#2b5c4c', lit: '#87d9b5', litSoft: '#1f443a', head: '#c9fbe2', words: '#4f9b81' };
   const LINE_Y = 214, LINE_X0 = 216, LINE_X1 = 424;
   const GLYPHS = {"a":[".....",".....",".###.","....#",".####","#...#",".####"],"c":["....","....",".###","#...","#...","#...",".###"],"d":["....#","....#",".####","#...#","#...#","#...#",".####"],"e":[".....",".....",".###.","#...#","#####","#....",".###."],"f":["..##",".#..","####",".#..",".#..",".#..",".#.."],"g":[".....",".....",".####","#...#","#...#","#...#",".####","....#",".###."],"h":["#....","#....","####.","#...#","#...#","#...#","#...#"],"i":["#",".","#","#","#","#","#"],"k":["#...","#...","#..#","#.#.","##..","#.#.","#..#"],"n":[".....",".....","####.","#...#","#...#","#...#","#...#"],"o":[".....",".....",".###.","#...#","#...#","#...#",".###."],"p":[".....",".....","####.","#...#","#...#","#...#","####.","#....","#...."],"s":["....","....",".###","#...",".##.","...#","###."],"t":[".#.",".#.","###",".#.",".#.",".#.","..#"],"w":[".....",".....","#...#","#...#","#.#.#","#.#.#",".#.#."]};
   // What a visitor's query may set. Everything else is a tool's option.

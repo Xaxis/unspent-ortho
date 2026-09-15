@@ -26,21 +26,26 @@ const WORLD_SCRIPT := "res://src/boot/boot_world.gd"
 ## (src/boot/shell.html SHELL_SHARE): the first page on the web starts there.
 const SHELL_SHARE := 0.12
 
-## The page is the ink the title fades up from, so there is no flash at the hand-over.
-const GLASS := Color("#08070f")
-const RAIL := Color("#1c1a2a")
-const TICK := Color("#2c2940")
-const LIT := Color("#b07a3c")
-const LIT_SOFT := Color("#4a3322")
-const HEAD := Color("#f1c98a")
-const WORDS := Color("#8b7a64")
-const SCAN := Color(0.55, 0.5, 0.75, 0.05)
-## The island, sketched once it exists: coast, contours, rivers.
-const COAST := Color("#6b6784")
-const CONTOUR := Color("#2c2a40")
-const RIVER := Color("#3b5270")
-const GRID := Color("#4f4872")
-const VILLAGE := Color("#9a6a3c")
+## The page is the glass the title's slate wakes on, so there is no flash at the
+## hand-over. The slate's glass and phosphor (UiTheme: GLASS_OFF, GHOST, FAINT, TEXT,
+## BRIGHT, TEXT_DIM), written out so this page names nothing heavy: the loading
+## page is the slate powering up.
+const GLASS := Color("#060a0c")
+const RAIL := Color("#173029")
+const TICK := Color("#2b5c4c")
+const LIT := Color("#87d9b5")
+const LIT_SOFT := Color("#1f443a")
+const HEAD := Color("#c9fbe2")
+const WORDS := Color("#4f9b81")
+const SCAN := Color(0.53, 0.85, 0.71, 0.04)
+## The island, sketched once it exists, as the slate's survey draws it: the coast
+## and contours in phosphor, rivers a cold step, the machines' grid in the stolen
+## module's violet (UiTheme.MACHINE), villages lit.
+const COAST := Color("#4f9b81")
+const CONTOUR := Color("#173029")
+const RIVER := Color("#2b5c4c")
+const GRID := Color("#4b4274")
+const VILLAGE := Color("#c9fbe2")
 const SKETCH := 112
 const SKETCH_AT := Vector2i(264, 70)
 const SKETCH_DRAW_SECONDS := 0.45

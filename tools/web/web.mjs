@@ -286,10 +286,12 @@ async function inspectPage(pngPath) {
     const w = x1 - x0 + 1, h = y1 - y0 + 1;
     const s = Math.max(1, Math.round(w / 640));
     const at = (gx, gy) => rgb(x0 + gx * s, y0 + gy * s);
+    // By brightness, not by one channel: the page is drawn in the slate's phosphor.
+    const lum = ([r, gg, b]) => 0.2126 * r + 0.7152 * gg + 0.0722 * b;
     let lit = -1;
-    for (let gx = 216; gx <= 424; gx += 1) if (at(gx, 214)[0] > 0x60) lit = gx - 216;
+    for (let gx = 216; gx <= 424; gx += 1) if (lum(at(gx, 214)) > 96) lit = gx - 216;
     let ink = 0;
-    for (let gy = 199; gy < 208; gy += 1) for (let gx = 216; gx < 320; gx += 1) { const [r] = at(gx, gy); if (r > 0x50) ink += 1; }
+    for (let gy = 199; gy < 208; gy += 1) for (let gx = 216; gx < 320; gx += 1) if (lum(at(gx, gy)) > 64) ink += 1;
     return { rect: [x0, y0, w, h], scale: s, lit, ink };
   }, b64);
 }
@@ -452,6 +454,7 @@ if (first) {
       console.log(`web reload first frame ${again.t.toFixed(2)} s`);
       result.reload_s = again.t;
       if (!(await waitLine(/^web ok save kept/, 20, from))) failures.push('user:// did not keep the save across a reload (IndexedDB)');
+      if (!(await waitLine(/^web ok slot kept/, 20, from))) failures.push('a real save slot did not come back whole across a reload (IndexedDB)');
     }
   }
 }
