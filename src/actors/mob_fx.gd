@@ -203,6 +203,9 @@ void fragment() {
 		discard;
 	}
 	ALBEDO = o.rgb;
+	// In the transparent pass, after the ink outline has been laid over the
+	// frame, so a mark sits on top of the page and is never drawn over by it.
+	ALPHA = 1.0;
 }
 """
 
@@ -251,6 +254,7 @@ void fragment() {
 		c = k < 0.25 ? ink_col : paper_col;
 	}
 	ALBEDO = sky_apply(c, wp, TIME);
+	ALPHA = 1.0;
 }
 """
 

@@ -235,8 +235,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"windup":
 				var m: MobState = e.mob
 				if m.blow != null and m.node is Mob:
-					var top := (m.node as Mob).global_position + Vector3(0, float(m.row.get("height", 1.0)) + 0.35, 0)
-					MobFx.tell(fx, top, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
+					# On the body, so the tell goes where the body goes.
+					var mob := m.node as Mob
+					MobFx.tell(mob, mob.global_position + Vector3(0, float(m.row.get("height", 1.0)) + 0.35, 0), m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
@@ -382,6 +383,9 @@ func _play_act(spec: String) -> void:
 	if target != null:
 		for m in sim.mobs:
 			m.calm_until = INF
+			# Held to its spot: a machine at idle would walk its beat out of the picture.
+			m.line_a = m.pos
+			m.line_b = m.pos
 		hero.facing = (target.pos - hero.pos).angle()
 		game.player.facing = hero.facing
 	match act:
