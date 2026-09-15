@@ -33,7 +33,8 @@ func setup(o: BootOptions) -> void:
 	var system_files := _system_files()
 	for f in system_files:
 		ResourceLoader.load_threaded_request("res://src/systems/" + f, "GDScript")
-	world = WorldGen.generate(o.seed_value, o.size)
+	# The loading page may have made this world (and its view) already.
+	world = BootWorld.world(o.seed_value, o.size)
 	var t1 := Time.get_ticks_msec()
 	query = WorldQuery.new(world)
 	clock = WorldClock.new(o.hour)
@@ -47,10 +48,9 @@ func setup(o: BootOptions) -> void:
 	sky.name = "sky"
 	add_child(sky)
 
-	view = WorldView.new()
+	view = BootWorld.view(world)
 	view.name = "world"
 	add_child(view)
-	view.setup(world)
 
 	var start := world.spawn
 	if o.village >= 0 and o.village < world.villages.size():
@@ -94,10 +94,9 @@ func setup(o: BootOptions) -> void:
 
 func _system_files() -> Array[String]:
 	var files: Array[String] = []
-	var dir := DirAccess.open("res://src/systems")
-	if dir == null:
-		return files
-	for f in dir.get_files():
+	# Not DirAccess: an exported build lists `10_sky.gd.remap`, and every system
+	# silently went missing on the web.
+	for f in ResourceLoader.list_directory("res://src/systems"):
 		if f.ends_with(".gd") and f.substr(0, 2).is_valid_int():
 			files.append(f)
 	files.sort()

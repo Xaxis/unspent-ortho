@@ -77,10 +77,9 @@ func _begin(s: int) -> void:
 	# World, view set-up (the mesher's fields) and the opening are all slow; none of
 	# them touch the tree, so they are made on a worker. Chunks stream in later.
 	_task = WorkerThreadPool.add_task(func() -> void:
-		var w := WorldGen.generate(s, size)
-		var v := WorldView.new()
+		var w := BootWorld.world(s, size)
+		var v := BootWorld.view(w)
 		v.name = "world"
-		v.setup(w)
 		_next_opening = UiTitle.opening(w)
 		_next_view = v
 		_next_world = w)
@@ -243,13 +242,15 @@ func _start_game() -> void:
 	var o := BootOptions.new()
 	o.seed_value = seed_value
 	o.size = options.size
-	var game := Game.new()
-	game.name = "game"
 	var parent := get_parent()
 	menu.close()
+	# The coast on show is the new game's world: hand it and its view to the loading page.
+	if world != null and world.seed_value == seed_value and view != null:
+		remove_child(view)
+		BootWorld.offer(world, view)
+		view = null
 	parent.remove_child(self)
-	parent.add_child(game)
-	game.setup(o)
+	BootPage.open_game(parent, o)
 	queue_free()
 
 
@@ -260,8 +261,6 @@ static func replace_game(game: Game) -> void:
 	var o := BootOptions.new()
 	o.seed_value = game.options.seed_value + 1
 	o.size = game.options.size
-	var t := UiTitle.new()
 	parent.remove_child(game)
 	game.queue_free()
-	parent.add_child(t)
-	t.setup(o)
+	BootPage.open_title(parent, o)

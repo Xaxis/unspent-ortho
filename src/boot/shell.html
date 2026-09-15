@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+<title>$GODOT_PROJECT_NAME</title>
+<!--
+  The web shell (export_presets.cfg html/custom_html_shell). It is the first
+  moment of the loading page: the same dark glass and the same line as
+  src/boot/boot_page.gd, filled while the engine downloads, so the engine's own
+  page takes over without a flash.
+
+  Boot arguments come from the query string: index.html?--seed=3&--scene=game
+  (tools/web.sh passes --probe this way).
+-->
+<style>
+html, body { margin: 0; padding: 0; border: 0; height: 100%; }
+body { background: #08070f; overflow: hidden; touch-action: none; }
+#canvas { display: block; outline: none; }
+#status { position: absolute; inset: 0; background: #08070f; }
+/* The line sits where the engine's page draws it: 216..424 of 640, row 214 of 360. */
+#rail { position: absolute; left: 33.75%; width: 32.5%; top: 59.44%; height: 2px; background: #1c1a2a; }
+#fill { position: absolute; left: 0; top: 0; height: 1px; width: 0; background: #b07a3c; box-shadow: 0 1px 0 #4a3322; }
+#words { position: absolute; left: 33.75%; top: calc(59.44% - 4.2vh); color: #8b7a64;
+  font: 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.04em; white-space: pre; }
+#notice { position: absolute; left: 33.75%; width: 32.5%; top: 64%; color: #c9b79a; display: none;
+  font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+</style>
+$GODOT_HEAD_INCLUDE
+</head>
+<body>
+<canvas id="canvas">This needs a browser with canvas support.</canvas>
+<noscript>This needs JavaScript.</noscript>
+<div id="status"><div id="words">fetching</div><div id="rail"><div id="fill"></div></div><div id="notice"></div></div>
+<script src="$GODOT_URL"></script>
+<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+(function () {
+  const status = document.getElementById('status');
+  const fill = document.getElementById('fill');
+  const words = document.getElementById('words');
+  const notice = document.getElementById('notice');
+
+  // ?--seed=3&--probe  ->  -- --seed=3 --probe
+  const args = [];
+  for (const [k, v] of new URLSearchParams(window.location.search)) {
+    if (k.startsWith('--')) args.push(v === '' ? k : `${k}=${v}`);
+  }
+  if (args.length) GODOT_CONFIG.args = ['--', ...args];
+
+  function fail(text) {
+    console.error(text);
+    words.textContent = 'stopped';
+    notice.textContent = text;
+    notice.style.display = 'block';
+  }
+
+  const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+  if (missing.length) {
+    fail('This build needs: ' + missing.join(', ') +
+      (GODOT_THREADS_ENABLED ? '. Threads need the page served with Cross-Origin-Opener-Policy: same-origin and Cross-Origin-Embedder-Policy: require-corp, or use the no-threads build.' : ''));
+    return;
+  }
+  const engine = new Engine(GODOT_CONFIG);
+  engine.startGame({
+    onProgress(current, total) {
+      // Downloading is the first fifth of the engine page's line.
+      if (total > 0) fill.style.width = `${Math.min(100, (current / total) * 12)}%`;
+    },
+  }).then(() => {
+    words.textContent = 'waking';
+    fill.style.width = '12%';
+    // The engine's first frame is its own loading page: drop this one then.
+    requestAnimationFrame(() => requestAnimationFrame(() => status.remove()));
+  }, (err) => fail(err && err.message ? err.message : String(err)));
+}());
+</script>
+</body>
+</html>

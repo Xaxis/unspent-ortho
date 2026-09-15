@@ -14,7 +14,7 @@ extends RefCounted
 ## --shot=PATH         capture one frame to PATH (png) and quit
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
-## --scene=NAME        which scene to boot: game (default) | gallery | title
+## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --stats             print render stats (draw calls, chunk build times) before the shot
@@ -45,6 +45,8 @@ extends RefCounted
 ## --explore=N         the map remembers N tiles of wandering from the start (ui)
 ## --ui-demo           ui shots: sample recipes, a message, a spent body (ui)
 ## --tour=PATH         play a tour (src/systems/98_tour.gd) and quit
+## --progress=F        --scene=loading: hold the loading page's line at F (0..1) (export)
+## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -86,6 +88,8 @@ var screen := ""
 var explore := 0
 var ui_demo := false
 var tour := ""
+var progress := 0.4
+var probe := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -142,5 +146,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"explore": o.explore = v.to_int()
 			"ui-demo": o.ui_demo = true
 			"tour": o.tour = v
+			"progress": o.progress = v.to_float()
+			"probe": o.probe = true
 			_: push_warning("unknown option --%s" % k)
 	return o

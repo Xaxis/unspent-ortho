@@ -1,0 +1,17 @@
+# The export package's proof on this machine: a game booted for play goes
+# through the loading page (src/boot/), which lifts off a drawn world that real
+# keys then move through. The browser half of the proof is tools/web.sh (title,
+# loading page, Enter for a new game, resize, reload) with frames in shots/export/.
+#   tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0
+echo the loading page has handed over and lifted
+wait 0.8
+shot after-the-loading-page
+walk 1,0 1.2
+walk 0,1 0.8
+shot walked-in
+tap map
+wait 0.4
+shot map-of-the-page-island
+tap map
+wait 0.3
+shot back

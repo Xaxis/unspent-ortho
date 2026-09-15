@@ -26,6 +26,9 @@ tools/map.sh --seed=N                       # top-down map + villages + a tile i
 tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
 tools/canon.sh [--accept]                   # the canon frames beside the accepted set on ONE contact sheet: shots/canon/sheet.png
 tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
+tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
+tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
+tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```
 
@@ -45,6 +48,7 @@ and saves a `FAILED-lineN` frame. The M1 proofs:
 tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fire, make, fight, night, border
 tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
 tools/tour.sh tours/fight.tour --seed=1 --hour=11
+tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0   # a game through the loading page
 ```
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
