@@ -40,7 +40,8 @@ const LEAN_PX := 260.0
 const WARM: Array[StringName] = [
 	&"ui_move", &"ui_accept", &"book_open", &"book_close", &"swing", &"hit_flesh", &"hit_plate",
 	&"whiff", &"dodge", &"pickup", &"gather", &"refuse", &"ui_refuse", &"ui_back", &"cut", &"break",
-	&"dig", &"fell", &"grip", &"pull", &"loose", &"machine_down", &"eat",
+	&"dig", &"fell", &"grip", &"pull", &"loose", &"machine_down", &"eat", &"beast_down", &"downed",
+	&"lamp_on", &"lamp_off", &"tool_snap", &"alert", &"windup", &"craft",
 ]
 
 var bank: SoundBank

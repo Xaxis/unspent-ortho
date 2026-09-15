@@ -201,7 +201,11 @@ static func _foot(family: StringName, rate: int, seed_value: int, r: RandomNumbe
 			Synth.add(b, _grains(rate, 0.16, seed_value, 800.0, 600.0, 5000.0, 0.008, 0.12), 0, 0.7)
 			Synth.add(b, _burst(rate, 0.12, seed_value + 1, 300.0, 1500.0, 0.09, 0.01), 0, 0.35)
 		&"clinker":
-			Synth.add(b, _grains(rate, 0.16, seed_value, 600.0, 2000.0, 9000.0, 0.003, 0.12), 0, 0.8)
+			# Burnt slag crunching under the sole (a dense crunch and the foot's
+			# weight), with glassy ticks of it breaking on top.
+			Synth.add(b, _grains(rate, 0.18, seed_value + 4, 2600.0, 800.0, 4500.0, 0.006, 0.13), 0, 0.55)
+			Synth.add(b, _burst(rate, 0.08, seed_value + 1, 150.0, 480.0, 0.05, 0.004), 0, 0.4 * weight)
+			Synth.add(b, _grains(rate, 0.16, seed_value, 600.0, 2000.0, 9000.0, 0.003, 0.12), 0, 0.5)
 			for k in 3:
 				var f := r.randf_range(3000.0, 4800.0)
 				Synth.add(b, _modes(rate, 0.05, [f, f * 1.52], [0.4, 0.2], [0.03, 0.02]), _at(rate, r.randf_range(0.0, 0.08)), 0.35)
