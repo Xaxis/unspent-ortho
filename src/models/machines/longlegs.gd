@@ -12,8 +12,8 @@ extends MachineModel
 ##
 ## lights a hunter runs dark: a status lamp burning low and steady on the spine,
 ##        two eyes either side of the slit that lock bright when it has you
-## wear   fence wire dragged off a boundary and wound round a shin, a rag caught
-##        on a knee, a plate from another machine over the slab, the plumb
+## wear   a fence post dragged off a boundary, wired to a shin, a long
+##        pale rag caught on a knee, a plate from another machine over the slab, the plumb
 ##        swinging its exact arc as it waits
 
 const BODY_Y := 1.5
@@ -121,13 +121,18 @@ func build() -> void:
 				FoundKit.tbar(tk, FOOT * b, FOOT * (b + 0.03), rad, 0.0, 6, FoundKit.dirty(R, 2))
 			body_mesh(tk, tube)
 		if i == 2:
-			# Fence wire off a boundary it walked through, wound round the shin.
+			# A fence post it walked through, still wired to the shin by its fence wire.
 			var fw := FoundKit.kit()
-			FoundKit.coil(fw, FOOT * 0.05, FOOT * 0.2, 0.05, 2.5, 0.014, Palette.INK[1], true)
+			FoundKit.coil(fw, FOOT * 0.06, FOOT * 0.2, 0.07, 2.5, 0.016, Palette.INK[1], true)
 			wear_mesh(fw, shin)
-		if i == 1:
+			var post := FoundKit.matter_kit(Ink.HAND)
+			post.strut(FOOT * 0.02 + Vector3(0.06, 0.0, 0.07), FOOT * 0.23 + Vector3(0.08, 0.0, 0.08), 0.045, 4, Palette.EARTH[4])
+			wear_matter(post, shin)
+		if i == 3:
+			# A rag caught on a knee, above the slab: the first thing seen over a dyke.
 			var rk := FoundKit.matter_kit(Ink.HAND)
-			FoundKit.rag(rk, KNEE + Vector3(0.02, -0.04, 0.05), 0.34, 0.13, Palette.SAND[3], 37, Vector3(1, 0, 0.3))
+			rk.strut(KNEE + Vector3(-0.02, 0.05, -0.06), KNEE + Vector3(0.05, 0.05, 0.07), 0.05, 5, Palette.LINEN[3])
+			FoundKit.rag(rk, KNEE + Vector3(0.06, 0.03, 0.06), 0.44, 0.2, Palette.LINEN[5], 37, Vector3(1, 0, 0.3))
 			wear_matter(rk, leg)
 	finish_rig()
 

@@ -77,10 +77,18 @@ func build() -> void:
 		var aw := FoundKit.kit()
 		if sz > 0.0:
 			# Line it took down, coiled on the arm, the insulators still on it.
-			FoundKit.coil(aw, Vector3(0, 0.3, 0), Vector3(0, 0.46, 0), 0.075, 2.5, 0.012, Palette.INK[2])
-			for j in 2:
-				var at := Vector3(0.08, 0.36 + j * 0.07, 0.03 - j * 0.06)
-				FoundKit.lathe(aw, at, Vector3.DOWN, [Vector2(0.018, 0.0), Vector2(0.03, 0.03), Vector2(0.02, 0.05), Vector2(0.03, 0.07)], 6, [Palette.LINEN[2], Palette.LINEN[3], Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[4], Palette.LINEN[5]])
+			FoundKit.coil(aw, Vector3(0, 0.3, 0), Vector3(0, 0.46, 0), 0.075, 2.5, 0.016, Palette.INK[2])
+			# The line runs off the coil in a loop hanging clear of the arm, the
+			# insulators still threaded on it: people's line, drawn by the hand.
+			var line := FoundKit.matter_kit(Ink.HAND)
+			var loop: Array[Vector3] = [Vector3(0.06, 0.44, 0.03), Vector3(0.14, 0.3, 0.1), Vector3(0.16, 0.12, 0.1), Vector3(0.1, 0.02, 0.04), Vector3(0.05, 0.3, -0.03)]
+			for j in loop.size() - 1:
+				line.strut(loop[j], loop[j + 1], 0.016, 4, Palette.COPPER[2])
+			for j in 3:
+				var at: Vector3 = loop[j + 1]
+				line.strut(at + Vector3(0, 0.07, 0), at - Vector3(0, 0.05, 0), 0.05, 6, Palette.LINEN[4])
+				line.strut(at + Vector3(0, 0.02, 0), at - Vector3(0, 0.0, 0), 0.062, 6, Palette.LINEN[5])
+			wear_matter(line, arm)
 		else:
 			FoundKit.tbar(aw, Vector3(0, 0.5, 0), Vector3(0, 0.6, 0), 0.058, 0.058, 8, Palette.MACHINE["cutter"])
 			FoundKit.rivets(aw, Vector3(0.059, 0.515, 0), Vector3(0.059, 0.585, 0), Vector3.RIGHT, 2, Palette.MACHINE["cutter"][5], 0.025)

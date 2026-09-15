@@ -112,13 +112,14 @@ func build() -> void:
 		if sz > 0.0:
 			# What it took off people at its post, on a wire from the brim.
 			var tk := FoundKit.matter_kit(Ink.HAND)
-			var at := Vector3(0.16, 0.0, sz * 0.13)
-			tk.strut(at, at + Vector3(0.0, -0.2, 0.02), 0.006, 3, Palette.INK[3])
-			tk.push(Transform3D(Basis(Vector3.UP, 0.4), at + Vector3(0.0, -0.24, 0.02)))
-			tk.box(Vector3(-0.004, -0.04, -0.035), Vector3(0.004, 0.04, 0.035), Palette.LINEN[4])
+			# Out past the column on the brim's end, so they hang clear of it.
+			var at := Vector3(0.12, 0.0, sz * 0.13)
+			tk.strut(at, at + Vector3(0.0, -0.26, 0.02), 0.01, 3, Palette.INK[3])
+			tk.push(Transform3D(Basis(Vector3.UP, 0.4), at + Vector3(0.0, -0.33, 0.02)))
+			tk.box(Vector3(-0.008, -0.07, -0.055), Vector3(0.008, 0.07, 0.055), Palette.LINEN[5])
 			tk.pop()
-			tk.strut(at + Vector3(-0.03, -0.14, 0.03), at + Vector3(-0.03, -0.24, 0.03), 0.01, 4, Palette.COPPER[2])
-			FoundKit.rag(tk, at + Vector3(0.04, -0.12, 0.0), 0.14, 0.05, Palette.RUST[2], 66, Vector3(1, 0, 0.2))
+			tk.strut(at + Vector3(-0.06, -0.14, 0.02), at + Vector3(-0.06, -0.3, 0.03), 0.018, 4, Palette.STONE[4])
+			FoundKit.rag(tk, at + Vector3(-0.14, -0.02, 0.0), 0.44, 0.18, Palette.LINEN[4], 66, Vector3(0.5, 0, -0.87))
 			wear_matter(tk, brim)
 	finish_rig()
 

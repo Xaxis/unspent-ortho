@@ -9,7 +9,7 @@ extends MachineModel
 ##
 ## lights a status lamp on the lid blinking three (observant); the face throws a
 ##        stipple beam down onto the ground it reads, and up at you on alert
-## wear   records jammed into the filing slot, tags of FOUND stock hanging off
+## wear   records stuffed into the filing slot and fanned out of it, tags of FOUND stock hanging off
 ##        the lid rim, a cable spliced down its neck, a crack across the slit
 
 const HIP_Y := 0.6
@@ -72,12 +72,14 @@ func build() -> void:
 	FoundKit.grime(lw, Vector3(0.262, 0.0, 0.08), Vector3.RIGHT, 0.14, 0.1, 3, 161, D)
 	wear_mesh(lw, lid)
 	var papers := FoundKit.matter_kit(Ink.HAND)
-	for j in 4:
-		var z := -0.1 + j * 0.065
-		var tilt := (Rng.hash01(162, j) - 0.5) * 0.5
-		papers.push(Transform3D(Basis(Vector3.BACK, tilt), Vector3(0.28, 0.05 + j * 0.004, z)))
-		papers.quad(Vector3(-0.03, 0, -0.026), Vector3(-0.03, 0, 0.026), Vector3(0.07, 0, 0.026), Vector3(0.07, 0, -0.026), Palette.LINEN[4] if j % 2 else Palette.LINEN[5])
-		papers.quad(Vector3(-0.03, 0, -0.026), Vector3(0.07, 0, -0.026), Vector3(0.07, 0, 0.026), Vector3(-0.03, 0, 0.026), Palette.LINEN[3])
+	for j in 5:
+		var z := -0.13 + j * 0.065
+		# Fanned up out of the slot: each sheet turned a little further up and over.
+		var tilt := 0.35 + (Rng.hash01(162, j) - 0.2) * 0.7
+		var turn := (Rng.hash01(163, j) - 0.5) * 0.5
+		papers.push(Transform3D(Basis(Vector3.UP, turn) * Basis(Vector3.BACK, tilt), Vector3(0.25, 0.05 + j * 0.006, z)))
+		papers.quad(Vector3(-0.02, 0, -0.05), Vector3(-0.02, 0, 0.05), Vector3(0.2, 0, 0.05), Vector3(0.2, 0, -0.05), Palette.LINEN[4] if j % 2 else Palette.LINEN[5])
+		papers.quad(Vector3(-0.02, 0, -0.05), Vector3(0.2, 0, -0.05), Vector3(0.2, 0, 0.05), Vector3(-0.02, 0, 0.05), Palette.LINEN[3])
 		papers.pop()
 	wear_matter(papers, lid)
 

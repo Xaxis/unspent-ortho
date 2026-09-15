@@ -685,12 +685,13 @@ static func rag(k: MeshKit, at: Vector3, drop: float, w: float, col: Color, seed
 		k.quad(a0, b0, b1, a1, c2)
 
 
-## Chaff jammed into something: `count` short stalks scattered in a box of
-## half-size `spread` round `c`, in field colours.
-static func chaff(k: MeshKit, c: Vector3, spread: Vector3, count: int, seed_value: int, cols: Array) -> void:
+## Chaff jammed into something: `count` stalks scattered in a box of half-size
+## `spread` round `c`, in field colours, `reach` to twice that long, `thick`
+## across (a wad that must read from the game's camera wants 0.04 or more).
+static func chaff(k: MeshKit, c: Vector3, spread: Vector3, count: int, seed_value: int, cols: Array, reach: float = 0.1, thick: float = 0.024) -> void:
 	for j in count:
 		var p := c + Vector3((Rng.hash01(seed_value, j, 0) - 0.5) * 2.0 * spread.x, (Rng.hash01(seed_value, j, 1) - 0.5) * 2.0 * spread.y, (Rng.hash01(seed_value, j, 2) - 0.5) * 2.0 * spread.z)
 		var a := Rng.hash01(seed_value, j, 3) * TAU
-		var tip := p + Vector3(cos(a), (Rng.hash01(seed_value, j, 4) - 0.3) * 0.8, sin(a)).normalized() * (0.1 + Rng.hash01(seed_value, j, 5) * 0.14)
-		bar(k, p, tip, 0.024, 0.02, 0.0, flat(cols[j % cols.size()]))
+		var tip := p + Vector3(cos(a), (Rng.hash01(seed_value, j, 4) - 0.3) * 0.8, sin(a)).normalized() * (reach + Rng.hash01(seed_value, j, 5) * reach * 1.4)
+		bar(k, p, tip, thick, thick * 0.84, 0.0, flat(cols[j % cols.size()]))
 

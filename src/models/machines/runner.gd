@@ -81,8 +81,8 @@ func build() -> void:
 		if sz < 0.0:
 			# A scrap of someone's coat, tied round the arm.
 			var ck2 := FoundKit.matter_kit(Ink.HAND)
-			ck2.strut(Vector3(0, -0.1, 0), Vector3(0, -0.16, 0), 0.042, 6, Palette.SAND[2])
-			FoundKit.rag(ck2, Vector3(0.04, -0.14, -0.03), 0.12, 0.05, Palette.SAND[2], 153, Vector3(1, 0, 0))
+			ck2.strut(Vector3(0, -0.08, 0), Vector3(0, -0.18, 0), 0.05, 6, Palette.SAND[4])
+			FoundKit.rag(ck2, Vector3(0.02, -0.12, -0.08), 0.36, 0.17, Palette.SAND[4], 153, Vector3(0.5, 0, -0.87))
 			wear_matter(ck2, arm)
 
 	# The satchel rides on the back below the shoulder line, so the top of the

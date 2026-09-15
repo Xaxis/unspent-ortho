@@ -9,7 +9,8 @@ extends MachineModel
 ##
 ## lights a work lamp low on the chassis lighting the cut, one over the drive
 ##        that goes hot through a windup, a status lamp blinking once
-## wear   stone dust caked pale up the legs and along the chassis, a tooth off
+## wear   blocks of the stone it cut lashed on the chassis, stone dust caked
+##        pale up the legs and along the chassis, a tooth off
 ##        another machine's disc, a spliced cable, the housing scorched by the
 ##        drive
 
@@ -61,6 +62,13 @@ func build() -> void:
 	FoundKit.cable(bw, Vector3(-0.2, 0.36, 0.172), Vector3(0.0, 0.1, 0.24), 0.03, 0.013, Palette.INK[2], Palette.MACHINE["harvester"], 4)
 	FoundKit.grime(bw, Vector3(-0.1, 0.4, -0.171), Vector3.FORWARD, 0.2, 0.2, 3, 52, D)
 	wear_mesh(bw, body)
+	# Blocks of what it cuts, carried on the chassis either side of the housing,
+	# under the disc where the camera sees them, lashed down with line.
+	var blocks := FoundKit.matter_kit(Ink.CONTOUR)
+	for b: Vector3 in [Vector3(0.2, 0.02, 0.19), Vector3(-0.16, 0.02, -0.19)]:
+		blocks.rock(b.x, b.y, b.z, 0.16, 0.2, 57 + int(b.z * 10.0), Palette.LINEN[4], 4)
+		blocks.strut(b + Vector3(-0.12, 0.09, 0.0), b + Vector3(0.12, 0.09, 0.0), 0.014, 4, Palette.INK[2])
+	wear_matter(blocks, body)
 	add_scan(body, Vector3(0.081, 0.25, 0), Vector3.RIGHT, Vector3.BACK, 0.13, 0.03, 1.6)
 
 	var pk := FoundKit.kit()

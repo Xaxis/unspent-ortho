@@ -13,8 +13,9 @@ extends MachineModel
 ## lights work lamps on the two masts and under the hood lip, lit while it
 ##        works and hot at night; they flare with the comb through a windup; a
 ##        status lamp on the housing blinks once (indifferent)
-## wear   the intake clogged with the row: chaff, a rag and a long bone jammed
-##        in the dividers; plates off other machines on the hull and hood; a
+## wear   the intake clogged with the row: straw lying over the comb ends, a
+##        rag dragged up the hood, a long bone across the dividers sticking out
+##        past the end; plates off other machines on the hull and hood; a
 ##        cable spliced from the stacks; soot round the stack foot
 
 const WHEEL_R := 0.13
@@ -130,12 +131,22 @@ func build() -> void:
 	FoundKit.grime(iw, Vector3(0.45, -0.3, 0.0), Vector3(0.66, 0.75, 0), 1.8, 0.12, 6, 45, hood_r)
 	FoundKit.patch(iw, Vector3(0.22, -0.12, -0.7), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.26, 0.2, Palette.MACHINE["lineman"], 46)
 	wear_mesh(iw, intake)
-	# The row it could not swallow, jammed in the dividers: chaff, a rag and a bone.
+	# The row it could not swallow, jammed in the dividers and lying over the comb
+	# at both ends where the camera sees it: straw, a rag dragged up the hood, and
+	# a long bone caught across the dividers that sticks out past the end.
 	var jam := FoundKit.matter_kit(Ink.HAND)
-	FoundKit.chaff(jam, Vector3(0.48, -0.4, -0.72), Vector3(0.05, 0.03, 0.18), 7, 47, [Palette.SAND[4], Palette.SAND[5], Palette.MOSS[4]])
-	FoundKit.chaff(jam, Vector3(0.48, -0.4, 0.36), Vector3(0.05, 0.03, 0.12), 4, 48, [Palette.SAND[5], Palette.EARTH[4]])
-	FoundKit.bone(jam, Vector3(0.52, -0.36, 0.6), Vector3(0.6, -0.4, 1.02), 0.03, 49)
-	FoundKit.rag(jam, Vector3(0.54, -0.38, -0.2), 0.2, 0.16, Palette.SAND[3], 50, Vector3(0.2, 0, 1))
+	var straw: Array = [Palette.SAND[4], Palette.LINEN[4], Palette.SAND[5], Palette.MOSS[4]]
+	# Wads, each a matted heap with stalks standing out of it.
+	jam.rock(0.6, -0.45, -0.8, 0.2, 0.16, 470, Palette.SAND[4], 5)
+	jam.rock(0.5, -0.4, -0.58, 0.13, 0.12, 471, Palette.LINEN[4], 5)
+	jam.rock(0.6, -0.45, 0.5, 0.16, 0.13, 472, Palette.SAND[4], 5)
+	FoundKit.chaff(jam, Vector3(0.6, -0.36, -0.78), Vector3(0.12, 0.04, 0.22), 5, 47, straw, 0.12, 0.042)
+	FoundKit.chaff(jam, Vector3(0.62, -0.38, 0.48), Vector3(0.1, 0.03, 0.14), 3, 48, straw, 0.11, 0.04)
+	FoundKit.bone(jam, Vector3(0.34, -0.34, 0.62), Vector3(0.82, -0.3, 1.32), 0.045, 49)
+	# The rag lies up the hood's slope from the lip, the way it was dragged in.
+	jam.push(Transform3D(Basis(Vector3.BACK, 0.85), Vector3(0.14, -0.02, -0.18) + Vector3(0.66, 0.75, 0.0) * 0.02))
+	FoundKit.rag(jam, Vector3.ZERO, 0.46, 0.24, Palette.LINEN[5], 50, Vector3(0.15, 0, 1))
+	jam.pop()
 	wear_matter(jam, intake)
 
 	# The comb: long amber teeth running out past the dividers, lit on top, so the

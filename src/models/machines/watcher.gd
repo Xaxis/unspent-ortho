@@ -15,8 +15,8 @@ extends MachineModel
 ##        eyes on the bar ends; a stipple beam thrown from under the objective
 ##        onto the ground it is surveying
 ## wear   a plate off another machine on the drum, a taped cable up the mast, a
-##        cracked back slit, and a strip of someone's cloth tied to a leg as a
-##        survey flag
+##        cracked back slit, and a pale strip of someone's cloth knotted high on a
+##        leg as a survey flag
 
 const HUB_Y := 0.64
 const FOOT := Vector3(0.5, -0.6, 0.0)
@@ -63,12 +63,13 @@ func build() -> void:
 		FoundKit.tbar(lk, FOOT * 0.86, FOOT * 0.86 + Vector3(0.05, 0.0, 0), 0.012, 0.012, 4, D)
 		FoundKit.lathe(lk, FOOT, Vector3.DOWN, [Vector2(0.024, 0.0), Vector2(0.0, 0.06)], 6, D)
 		body_mesh(lk, leg)
-		if i == 1:
-			# Someone's cloth, knotted round a leg: a flag on a surveyed point.
+		if i == 2:
+			# Someone's cloth, knotted high on a leg: a flag on a surveyed point. It
+			# hangs clear inside the tripod, pale against the ground under it.
 			var rk := FoundKit.matter_kit(Ink.HAND)
-			var knot := FOOT * 0.34
-			rk.strut(knot + Vector3(0, 0.02, -0.035), knot + Vector3(0, 0.02, 0.035), 0.03, 5, Palette.EARTH[3])
-			FoundKit.rag(rk, knot + Vector3(0.02, 0.0, 0.02), 0.22, 0.07, Palette.EARTH[3], 23, Vector3(0.3, 0, 1))
+			var knot := FOOT * 0.26
+			rk.strut(knot + Vector3(0, 0.03, -0.05), knot + Vector3(0, 0.03, 0.05), 0.045, 5, Palette.LINEN[4])
+			FoundKit.rag(rk, knot + Vector3(-0.01, 0.0, 0.0), 0.44, 0.23, Palette.LINEN[5], 23, Vector3(0.5, 0, 1))
 			wear_matter(rk, leg)
 
 	var mast := joint(&"mast", hub, Vector3(0, 0.6, 0))

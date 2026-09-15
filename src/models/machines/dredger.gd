@@ -88,7 +88,7 @@ func build() -> void:
 	wear_mesh(hw, hull)
 	# A long bone, caught across the left mandible and carried.
 	var catch := FoundKit.matter_kit(Ink.HAND)
-	FoundKit.bone(catch, Vector3(0.64, 0.15, -0.36), Vector3(0.94, 0.14, -0.06), 0.03, 84)
+	FoundKit.bone(catch, Vector3(0.3, 0.2, -0.66), Vector3(1.0, 0.18, -0.14), 0.048, 84)
 	wear_matter(catch, hull)
 
 	# Amber lining the notch: its floor, seen from above, and both inner walls.

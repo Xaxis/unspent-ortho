@@ -9,7 +9,8 @@ extends MachineModel
 ##
 ## lights work lamps low on the deck's leading edge, one over the vent that
 ##        goes hot through a windup, a status lamp on the lid blinking once
-## wear   needles and grit wound into the roller, a rag caught on the skirt,
+## wear   a bone and a stick jutting out from under the lid, needles and grit
+##        wound into the roller, a rag caught on the skirt,
 ##        a plate off another machine on the hopper, grime run down from the
 ##        lid, a cable spliced up the hopper seam
 
@@ -134,6 +135,11 @@ func build() -> void:
 	FoundKit.grime(hw, Vector3(0.0, HOP_H - 0.02, -face - 0.001), Vector3.FORWARD, 0.26, 0.4, 5, 75, D)
 	FoundKit.cable(hw, Vector3(0.1, HOP_H - 0.1, -face - 0.015), Vector3(0.1, 0.2, -face - 0.015), 0.0, 0.013, Palette.INK[2], Palette.MACHINE["watcher"], 4)
 	wear_mesh(hw, hopper)
+	# What it swept up and could not swallow: a long bone out from under the lid.
+	var swept := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.bone(swept, Vector3(-0.08, HOP_H + 0.02, -0.06), Vector3(0.14, HOP_H + 0.12, 0.44), 0.052, 76)
+	swept.strut(Vector3(0.06, HOP_H + 0.04, -0.1), Vector3(-0.12, HOP_H + 0.1, -0.4), 0.026, 4, Palette.EARTH[3])
+	wear_matter(swept, hopper)
 	# The vent: a tall amber grille down the back, louvres ruled across it.
 	var pk := FoundKit.kit()
 	var vc := Vector3(-face - 0.002, VENT_Y, 0)

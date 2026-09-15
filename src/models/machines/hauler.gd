@@ -10,8 +10,9 @@ extends MachineModel
 ##
 ## lights work lamps on the nose, one over the hinge that goes hot through a
 ##        windup, a status lamp on the post blinking once (indifferent)
-## wear   the front hopper carries scrap off dead machines and the bones that
-##        were in the way; the rear carries stone and a rib cage; plates off
+## wear   the front hopper carries scrap off dead machines, a plate stood on end
+##        and a long bone jutting out over the rim; the rear carries stone and
+##        a rib cage standing up out of it; plates off
 ##        other machines on the hopper flanks; a cable spliced over the hinge;
 ##        at rest the rear hopper nudges on its hinge, exactly, every few seconds
 
@@ -143,21 +144,24 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 		var scrap := FoundKit.kit()
 		var bent: Array[Vector2] = [Vector2(-0.16, -0.08), Vector2(0.14, -0.1), Vector2(0.18, 0.06), Vector2(-0.12, 0.1)]
 		FoundKit.slab(scrap, Vector3(-0.12, 0.1, 0.02), Vector3(0.9, 0.35, 0.2).normalized(), Vector3(-0.2, 0.3, 0.93).normalized(), bent, 0.02, Palette.MACHINE["runner"])
-		FoundKit.slab(scrap, Vector3(0.18, 0.08, -0.08), Vector3(0.8, -0.2, 0.55).normalized(), Vector3(0.1, 0.95, -0.2).normalized(), bent, 0.02, Palette.MACHINE["warden"])
+		# A plate off a warden stood on end in the load, over the rim.
+		FoundKit.slab(scrap, Vector3(0.2, 0.2, -0.1), Vector3(0.95, 0.0, 0.3).normalized(), Vector3(-0.1, 0.9, -0.42).normalized(), bent, 0.024, Palette.MACHINE["warden"])
 		FoundKit.disc(scrap, Vector3(0.02, 0.14, 0.1), Vector3(0.3, 1.0, 0.4), 0.11, 0.04, 6, 0.0, FoundKit.dirty(Palette.MACHINE["sweeper"]), Palette.MACHINE["sweeper"][1], PI / 6.0)
 		FoundKit.tbar(scrap, Vector3(-0.3, 0.06, -0.1), Vector3(0.28, 0.2, 0.14), 0.025, 0.025, 4, Palette.MACHINE["lineman"])
 		wear_mesh(scrap, ld)
 		var bones := FoundKit.matter_kit(Ink.HAND)
-		FoundKit.bone(bones, Vector3(-0.3, 0.15, 0.1), Vector3(0.05, 0.27, -0.06), 0.03, 58)
-		FoundKit.bone(bones, Vector3(0.1, 0.18, 0.14), Vector3(0.36, 0.14, -0.04), 0.026, 59)
-		FoundKit.rib(bones, Vector3(0.2, 0.08, -0.14), Vector3(0.36, 0.1, 0.1), Vector3(0.0, 0.16, 0.0), 0.018)
+		# A long bone jammed in the scrap, jutting up and out past the rim.
+		FoundKit.bone(bones, Vector3(-0.22, 0.12, -0.12), Vector3(0.22, 0.46, 0.5), 0.046, 58)
+		FoundKit.bone(bones, Vector3(0.1, 0.2, 0.14), Vector3(0.4, 0.18, -0.06), 0.034, 59)
+		FoundKit.rib(bones, Vector3(0.2, 0.08, -0.14), Vector3(0.36, 0.1, 0.1), Vector3(0.0, 0.2, 0.0), 0.026)
 		wear_matter(bones, ld)
 	else:
 		var ribs := FoundKit.matter_kit(Ink.HAND)
+		# A rib cage standing up out of the stone, taller than the rim.
 		for j in 3:
-			var x := -0.14 + j * 0.09
-			FoundKit.rib(ribs, Vector3(x, 0.2, -0.12), Vector3(x + 0.03, 0.2, 0.13), Vector3(0.02, 0.14, 0.0), 0.018)
-		FoundKit.bone(ribs, Vector3(-0.24, 0.22, 0.0), Vector3(0.14, 0.26, 0.0), 0.024, 60)
+			var x := -0.16 + j * 0.11
+			FoundKit.rib(ribs, Vector3(x, 0.24, -0.16), Vector3(x + 0.04, 0.24, 0.17), Vector3(0.02, 0.24, 0.0), 0.026)
+		FoundKit.bone(ribs, Vector3(-0.26, 0.3, 0.0), Vector3(0.14, 0.34, 0.0), 0.03, 60)
 		wear_matter(ribs, ld)
 	for j in (4 if is_front else 7):
 		var a := float(j) / 7.0 * TAU
