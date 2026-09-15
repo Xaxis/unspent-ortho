@@ -111,5 +111,91 @@ static func sprite_rimmed(ci: CanvasItem, rows: Array, at: Vector2i, colours: Di
 	sprite(ci, rows, at, colours)
 
 
+## How many steps a fade takes: a fading line of HUD text holds each for a
+## moment rather than sliding, so it reads as drawn, not as a video dissolve.
+const FADE_STEPS := 4
+
+static var _pictures := {}
+
+
+## A fade level stepped to FADE_STEPS: 0 < a < 1 rounds up, so it is gone only at 0.
+static func stepped(a: float) -> float:
+	if a <= 0.0:
+		return 0.0
+	return minf(1.0, ceilf(a * FADE_STEPS - 0.001) / FADE_STEPS)
+
+
+## Rimmed text at fade `a`. Opaque, it is drawn as text_rimmed. Fading, it is
+## one picture laid down once at a stepped alpha: drawn as nine translucent
+## passes, the rim piles up where passes overlap and smears grey.
+static func text_rimmed_faded(ci: CanvasItem, at: Vector2i, s: String, fill: Color, rim: Color, a: float) -> void:
+	var k := stepped(a)
+	if k <= 0.0 or s == "":
+		return
+	if k >= 1.0:
+		text_rimmed(ci, at, s, fill, rim)
+		return
+	ci.draw_texture(text_picture(s, fill, rim), Vector2(at.x - 1, at.y), Color(1, 1, 1, k))
+
+
+## A rimmed sprite at fade `a`, the same way (a need glyph fading in or out).
+static func sprite_rimmed_faded(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionary, rim: Color, a: float) -> void:
+	var k := stepped(a)
+	if k <= 0.0:
+		return
+	if k >= 1.0:
+		sprite_rimmed(ci, rows, at, colours, rim)
+		return
+	ci.draw_texture(picture("s|%s|%s|%s" % [str(rows), str(colours), rim.to_html()], rows, colours, rim, false), Vector2(at - Vector2i.ONE), Color(1, 1, 1, k))
+
+
+## Text and its eight-way rim as one texture. Drawn at text()'s `at` less one
+## column, its glyphs land exactly where text() puts them (the font sets a
+## glyph's top one row under the box; the picture's rim row fills that row).
+static func text_picture(s: String, fill: Color, rim: Color) -> ImageTexture:
+	var rows := PackedStringArray()
+	rows.resize(UiFont.ROWS)
+	for i in s.length():
+		var g := UiFont.glyph(s[i])
+		if g.is_empty():
+			g = UiFont.glyph("?")
+		for r in UiFont.ROWS:
+			rows[r] += (" " if i > 0 else "") + g[r]
+	return picture("t|%s|%s|%s" % [s, fill.to_html(), rim.to_html()], rows, {"#": fill}, rim, true)
+
+
+## Rows of characters (colours by character) with a one-pixel rim, as a cached
+## texture one pixel bigger on every side. `eight` rims the corners too.
+static func picture(key: String, rows: Array, colours: Dictionary, rim: Color, eight: bool) -> ImageTexture:
+	if _pictures.has(key):
+		return _pictures[key]
+	if _pictures.size() > 96:
+		_pictures.clear()
+	var w := 0
+	for row: String in rows:
+		w = maxi(w, row.length())
+	var h := rows.size()
+	var img := Image.create_empty(w + 2, h + 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var dirs: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
+	if eight:
+		dirs.append_array([Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)])
+	for r in h:
+		var row: String = rows[r]
+		for x in row.length():
+			if not colours.has(row[x]):
+				continue
+			for d in dirs:
+				img.set_pixel(x + 1 + d.x, r + 1 + d.y, rim)
+	for r in h:
+		var row: String = rows[r]
+		for x in row.length():
+			if colours.has(row[x]):
+				img.set_pixel(x + 1, r + 1, colours[row[x]])
+	var tex := ImageTexture.create_from_image(img)
+	_pictures[key] = tex
+	return tex
+
+
 static func _h(seed: int, salt: int) -> float:
 	return Rng.hash01(seed, salt, 7, 0x51)

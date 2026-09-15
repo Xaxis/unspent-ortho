@@ -58,3 +58,47 @@ func test_theme_uses_the_pixel_font() -> void:
 	check(t.default_font == UiFont.font(), "theme default font")
 	eq(t.default_font_size, UiFont.SIZE, "theme font size")
 	eq(UiFont.font().antialiasing, TextServer.FONT_ANTIALIASING_NONE, "no antialiasing")
+
+
+func test_fading_text_is_one_picture_with_a_clean_rim() -> void:
+	eq(UiDraw.stepped(1.0), 1.0)
+	eq(UiDraw.stepped(0.0), 0.0)
+	eq(UiDraw.stepped(0.6), 0.75, "a fade holds in steps")
+	eq(UiDraw.stepped(0.01), 0.25, "and is gone only at nothing")
+	var tex := UiDraw.text_picture("pine - fell", Color.WHITE, Color.BLACK)
+	var img := tex.get_image()
+	eq(img.get_width(), UiFont.width("pine - fell") + 2, "one rim column each side")
+	var ink := 0
+	for ch in "pine - fell":
+		for row in UiFont.glyph(ch):
+			ink += row.count("#")
+	var fill := 0
+	var rim := 0
+	var other := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a == 0.0:
+				continue
+			if c == Color.WHITE:
+				fill += 1
+			elif c == Color.BLACK:
+				rim += 1
+			else:
+				other += 1
+	eq(fill, ink, "every glyph pixel once, at full strength")
+	gt(rim, fill, "a rim all round")
+	eq(other, 0, "no in-between pixels to smear when it fades")
+	# The glyphs sit where text() puts them: row 1 of the text box is the glyph's top.
+	var p := UiDraw.text_picture("I", Color.WHITE, Color.BLACK).get_image()
+	var first := -1
+	for y in p.get_height():
+		for x in p.get_width():
+			if first < 0 and p.get_pixel(x, y) == Color.WHITE:
+				first = y
+	var glyph_top := 0
+	while not UiFont.glyph("I")[glyph_top].contains("#"):
+		glyph_top += 1
+	# text() puts a glyph's top row at at.y + ASCENT - (ROWS - 2); the picture is drawn at at.y.
+	eq(first, glyph_top + UiFont.ASCENT - (UiFont.ROWS - 2), "the picture's glyphs sit where text() draws them")
+	eq(Hud.key_rows("e").size(), 12)

@@ -177,10 +177,11 @@ func _draw_place(ci: Control) -> void:
 	var w := UiFont.width(spaced)
 	var x := 320 - w / 2
 	var y := 30
-	UiDraw.text_rimmed(ci, Vector2i(x, y), spaced, Color(UiTheme.HUD_TEXT, a), Color(UiTheme.INK_DEEP, a * 0.9))
+	UiDraw.text_rimmed_faded(ci, Vector2i(x, y), spaced, UiTheme.HUD_TEXT, UiTheme.INK_DEEP, a)
 	var half := roundi((w / 2 + 16) * clampf(_place_age / PLACE_IN, 0.0, 1.0))
-	UiDraw.rect(ci, Rect2i(320 - half - 1, y + 13, half * 2 + 2, 3), Color(UiTheme.INK_DEEP, a * 0.9))
-	UiDraw.hline(ci, 320 - half, 320 + half, y + 14, Color(UiTheme.HUD_DIM, a))
+	var k := UiDraw.stepped(a)
+	UiDraw.rect(ci, Rect2i(320 - half - 1, y + 13, half * 2 + 2, 3), Color(UiTheme.INK_DEEP, k))
+	UiDraw.hline(ci, 320 - half, 320 + half, y + 14, UiTheme.HUD_DIM.lerp(UiTheme.INK_DEEP, 1.0 - k))
 
 
 func _draw_health(ci: Control) -> void:
@@ -235,7 +236,7 @@ func _draw_clock(ci: Control) -> void:
 
 
 func _draw_faded_need(ci: Control, k: StringName, at: Vector2i, col: Color, a: float) -> void:
-	UiDraw.sprite_rimmed(ci, UiIcons.NEEDS[k], at, {"#": Color(col, a)}, Color(UiTheme.INK_DEEP, a))
+	UiDraw.sprite_rimmed_faded(ci, UiIcons.NEEDS[k], at, {"#": col}, UiTheme.INK_DEEP, a)
 
 
 func _draw_held(ci: Control) -> void:
@@ -262,20 +263,54 @@ func _draw_bottom(ci: Control) -> void:
 		var a: float = line.alpha * (1.0 if i == 0 else 0.72)
 		var text: String = line.text
 		var y := 360 - MARGIN - 24 - i * 12
-		UiDraw.text_rimmed(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, Color(UiTheme.HUD_TEXT if i == 0 else UiTheme.HUD_DIM, a), Color(UiTheme.INK_DEEP, a))
+		UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, UiTheme.HUD_TEXT if i == 0 else UiTheme.HUD_DIM, UiTheme.INK_DEEP, a)
 	if _hint_alpha > 0.0 and hint != "":
 		var total := 11 + 4 + UiFont.width(hint)
 		var x := 320 - total / 2
 		var y := 360 - MARGIN - UiFont.SIZE
-		_draw_key(ci, Vector2i(x, y), hint_key, _hint_alpha)
-		UiDraw.text_rimmed(ci, Vector2i(x + 15, y + 1), hint, Color(UiTheme.HUD_TEXT, _hint_alpha), Color(UiTheme.INK_DEEP, _hint_alpha))
+		_draw_key(ci, Vector2i(x, y), hint_key, UiDraw.stepped(_hint_alpha))
+		UiDraw.text_rimmed_faded(ci, Vector2i(x + 15, y + 1), hint, UiTheme.HUD_TEXT, UiTheme.INK_DEEP, _hint_alpha)
 
 
-## A little paper key cap with the letter in ink.
+## A little paper key cap with the letter in ink, as one picture so it fades
+## as a whole (its layers, faded one by one, would show through each other).
 static func _draw_key(ci: CanvasItem, at: Vector2i, key: String, a: float) -> void:
-	var r := Rect2i(at.x, at.y - 1, 11, 12)
-	UiDraw.rect(ci, Rect2i(r.position.x + 1, r.position.y, r.size.x - 2, r.size.y), Color(UiTheme.INK_DEEP, a))
-	UiDraw.rect(ci, Rect2i(r.position.x, r.position.y + 1, r.size.x, r.size.y - 2), Color(UiTheme.INK_DEEP, a))
-	UiDraw.rect(ci, Rect2i(r.position.x + 1, r.position.y + 1, r.size.x - 2, r.size.y - 3), Color(UiTheme.PAPER, a))
-	UiDraw.hline(ci, r.position.x + 1, r.end.x - 2, r.end.y - 2, Color(UiTheme.PAPER_DEEP, a))
-	UiDraw.text(ci, Vector2i(at.x + 6 - UiFont.width(key) / 2 - 0, at.y), key, Color(UiTheme.INK, a))
+	if a <= 0.0:
+		return
+	var rows := key_rows(key)
+	var colours := {"k": UiTheme.INK_DEEP, "p": UiTheme.PAPER, "d": UiTheme.PAPER_DEEP, "i": UiTheme.INK}
+	var top := Vector2i(at.x, at.y - 1)
+	if a >= 1.0:
+		UiDraw.sprite(ci, rows, top, colours)
+	else:
+		# picture() pads a pixel all round for a rim; a clear rim keeps the cap exact.
+		ci.draw_texture(UiDraw.picture("key|" + key, rows, colours, Color(0, 0, 0, 0), false), Vector2(top - Vector2i.ONE), Color(1, 1, 1, a))
+
+
+## The key cap's pixels: 11x12, rounded ink corners, paper face, a deeper
+## bottom edge, the letter centred in ink.
+static func key_rows(key: String) -> PackedStringArray:
+	var rows := PackedStringArray()
+	for y in 12:
+		var row := ""
+		for x in 11:
+			var corner := (x == 0 or x == 10) and (y == 0 or y == 11)
+			var edge := x == 0 or x == 10 or y == 0 or y == 11
+			if corner:
+				row += "."
+			elif edge:
+				row += "k"
+			elif y == 10:
+				row += "d"
+			else:
+				row += "p"
+		rows.append(row)
+	var g := UiFont.glyph(key)
+	var gx := 6 - UiFont.width(key) / 2
+	for r in g.size():
+		for c in g[r].length():
+			var y := r + 2
+			var x := gx + c
+			if g[r][c] == "#" and y < 12 and x < 11:
+				rows[y] = rows[y].substr(0, x) + "i" + rows[y].substr(x + 1)
+	return rows
