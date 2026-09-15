@@ -6,7 +6,7 @@ class_name SoundWork
 
 const NAMES: Array[StringName] = [
 	&"refuse", &"scrape", &"tap", &"turn", &"hone", &"reedge", &"build_fire", &"build_bench",
-	&"build_kiln", &"sleep", &"book_open", &"book_close",
+	&"build_kiln", &"sleep", &"book_open", &"book_close", &"tool_snap",
 ]
 
 
@@ -28,6 +28,7 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"sleep": return _sleep(rate)
 		&"book_open": return _book(rate, true)
 		&"book_close": return _book(rate, false)
+		&"tool_snap": return _tool_snap(rate, variant)
 	push_warning("no work sound %s" % name)
 	return Synth.buffer(64)
 
@@ -219,6 +220,34 @@ static func _sleep(rate: int) -> PackedFloat32Array:
 		breath[i] *= sin(PI * pow(u, 0.3)) * pow(1.0 - u, 0.6)
 	Synth.normalize(breath, 1.0)
 	Synth.add(out, breath, _at(rate, 0.6), 0.5)
+	return out
+
+
+# ------------------------------------------------------------------ breaking
+
+## A tool gives out in the hand: the haft splits in a run of cracks that come
+## faster as the grain lets go, then the head drops and knocks twice on the
+## ground, dull, the second bounce lower. Nothing like a gather: this one costs.
+static func _tool_snap(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(7201, v)
+	var out := Synth.buffer(_at(rate, 0.9))
+	var t := 0.0
+	var gap := r.randf_range(0.05, 0.07)
+	for k in 5:
+		var crack := _burst(rate, 0.03, 7210 + v * 9 + k, 900.0, 7000.0, 0.018, 0.0012)
+		Synth.add(crack, _modes(rate, 0.04, [r.randf_range(1100.0, 1700.0), r.randf_range(2600.0, 3400.0)], [0.4, 0.2], [0.025, 0.015]), 0, 0.5)
+		Synth.add(out, crack, _at(rate, t), lerpf(0.45, 1.0, float(k) / 4.0))
+		t += gap
+		gap *= 0.62
+	# The fibres tearing through under the cracks.
+	var tear := _grains(rate, t + 0.04, 7220 + v, 700.0, 1500.0, 6000.0, 0.03, t + 0.04)
+	Synth.add(out, tear, 0, 0.3)
+	var head := r.randf_range(480.0, 560.0)
+	var clank := _modes(rate, 0.2, [head, head * 2.63, head * 5.1], [0.5, 0.3, 0.12], [0.1, 0.07, 0.04])
+	Synth.add(clank, _burst(rate, 0.05, 7230 + v, 200.0, 1200.0, 0.04, 0.003), 0, 0.5)
+	var land := t + r.randf_range(0.14, 0.2)
+	Synth.add(out, clank, _at(rate, land), 0.7)
+	Synth.add(out, Synth.stretch(clank, 1.12), _at(rate, land + r.randf_range(0.11, 0.15)), 0.35)
 	return out
 
 

@@ -4,7 +4,7 @@ class_name SoundCreatures
 ## through each call, pulses jitter, no two takes share timing. Distance is timbre (gull(far = true) is
 ## duller and wetter), matched on loudness to the near call by the mix sheet.
 
-const NAMES: Array[StringName] = [&"dog_bark", &"bull_snort", &"gull_cry", &"snatch_gull", &"beast_down", &"bird_song"]
+const NAMES: Array[StringName] = [&"dog_bark", &"dog_growl", &"bull_snort", &"bull_paw", &"gull_cry", &"snatch_gull", &"beast_down", &"bird_song"]
 
 
 static func handles(name: StringName) -> bool:
@@ -14,7 +14,9 @@ static func handles(name: StringName) -> bool:
 static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Array:
 	match name:
 		&"dog_bark": return _dog(rate, variant)
+		&"dog_growl": return _growl(rate, variant)
 		&"bull_snort": return _bull(rate, variant)
+		&"bull_paw": return _paw(rate, variant)
 		&"gull_cry": return gull(rate, variant, false)
 		&"snatch_gull": return _snatch_gull(rate, variant)
 		&"beast_down": return _beast_down(rate)
@@ -80,6 +82,55 @@ static func _dog(rate: int, v: int) -> PackedFloat32Array:
 		_shape(bark, 0.08, 1.6)
 		Synth.add(out, bark, Synth.samples(rate, t), r.randf_range(0.8, 1.0))
 		t += secs + r.randf_range(0.14, 0.26)
+	return out
+
+
+## The dog's tell before it goes for you: a growl that tightens, the lip up.
+## Short (a dog winds up in a quarter of a second), rough (the throat jitters
+## hard), its pitch and its snarl rising into the bite.
+static func _growl(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(5351, v)
+	var secs := r.randf_range(0.26, 0.32)
+	var base := r.randf_range(150.0, 175.0)
+	var src := _voice(rate, secs, func(u: float) -> float:
+		return base * (1.0 + 0.35 * u * u) * (1.0 + 0.06 * sin(TAU * 31.0 * u * secs)), 5352 + v, 0.14, 0.18, 0.3)
+	# The snarl: formants opening as the lip comes up.
+	var growl := _formed(src, rate, [520.0, 1250.0, 2600.0], [3.0, 4.0, 5.0], [1.0, 0.7, 0.45])
+	var bright := _formed(src, rate, [780.0, 1800.0, 3200.0], [3.0, 4.0, 5.0], [1.0, 0.8, 0.5])
+	var out := Synth.buffer(Synth.samples(rate, secs + 0.05))
+	for i in growl.size():
+		var u := float(i) / growl.size()
+		var e := smoothstep(0.0, 0.25, u) * (0.55 + 0.45 * u) * (1.0 - smoothstep(0.9, 1.0, u))
+		out[i] = (growl[i] * (1.0 - u) + bright[i] * u) * e
+	return out
+
+
+## The bull's tell: a hoof dragged back through the ground twice and a hard
+## breath out through the nose, head down.
+static func _paw(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(5451, v)
+	var out := Synth.buffer(Synth.samples(rate, 0.62))
+	var t := 0.0
+	for k in 2:
+		var n := Synth.samples(rate, r.randf_range(0.11, 0.15))
+		var scrape := Synth.buffer(n)
+		Synth.add_impulses(scrape, rate, 900.0, 5452 + v * 5 + k, 0.1, 1.0)
+		Synth.add(scrape, Synth.noise(n, 5460 + v * 5 + k), 0, 0.15)
+		Synth.sweep_band(scrape, rate, Synth.glide(n, 1600.0, 500.0), 1.2)
+		_shape(scrape, 0.2, 1.5)
+		Synth.normalize(scrape, 1.0)
+		Synth.add(out, scrape, Synth.samples(rate, t), 0.7 if k == 0 else 0.85)
+		# The hoof meets the ground at the end of the drag.
+		var thud := Synth.noise(Synth.samples(rate, 0.06), 5470 + v * 5 + k)
+		Synth.band(thud, rate, 160.0, 700.0, false, false)
+		Synth.env_perc(thud, rate, 0.003, 0.05)
+		Synth.normalize(thud, 1.0)
+		Synth.add(out, thud, Synth.samples(rate, t) + n - Synth.samples(rate, 0.02), 0.5)
+		t += float(n) / rate + r.randf_range(0.04, 0.07)
+	var blow := Synth.noise(Synth.samples(rate, 0.2), 5480 + v)
+	var nose := _formed(blow, rate, [650.0, 1600.0, 3300.0], [2.5, 3.0, 4.0], [1.0, 0.6, 0.3])
+	_shape(nose, 0.08, 2.2)
+	Synth.add(out, nose, Synth.samples(rate, minf(t, 0.4)), 0.75)
 	return out
 
 

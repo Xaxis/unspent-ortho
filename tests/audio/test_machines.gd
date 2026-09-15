@@ -22,6 +22,7 @@ func test_there_are_twelve_machine_beds_in_the_sheet() -> void:
 	for kind in SoundMachines.KINDS:
 		check(SoundBank.has_sound(_key(kind)), "no sheet row for %s" % kind)
 		check(SoundMachines.RACKET.has(kind), "no racket for %s" % kind)
+	eq(SoundMachines.COUNTS[&"warden"]["ticks"], 96, "the warden keeps the research's 96 as its even count")
 
 
 func test_every_machine_loop_is_exactly_eight_seconds_at_44k() -> void:
@@ -79,13 +80,54 @@ func test_roster_ids_map_to_their_beds() -> void:
 	eq(SoundMachines.kind_of(&"dog.yard"), &"", "a dog is not a machine")
 
 
-func test_level_is_045_at_the_edge_of_the_racket_and_1_on_top() -> void:
+func test_level_follows_the_research_inside_and_fades_in_at_the_edge() -> void:
 	near(SoundMix.machine_level(0.0, 20.0), 1.0)
 	near(SoundMix.machine_level(10.0, 20.0), 0.725)
-	near(SoundMix.machine_level(19.999, 20.0), 0.45, 1e-3)
+	near(SoundMix.machine_level(17.0, 20.0), 0.45 + 0.55 * 0.15, 1e-4, "the formula holds to the edge band")
 	eq(SoundMix.machine_level(20.0, 20.0), 0.0, "silent at the racket")
+	eq(SoundMix.machine_level(3.0, 0.0), 0.0, "a racket of 0 is never heard")
+	# Coming into range it arrives, never switches on: no step between 1% moves.
+	var prev := 0.0
+	for i in range(100, -1, -1):
+		var lvl := SoundMix.machine_level(20.0 * i / 100.0, 20.0)
+		# The old edge jumped 0.45 at once; the fade spreads that over 15% of the racket.
+		lt(absf(lvl - prev), 0.06, "a jump of %.3f at %d%% of the racket" % [lvl - prev, i])
+		check(lvl >= prev - 1e-6, "louder as it comes closer (%d%%)" % i)
+		prev = lvl
+	lt(SoundMix.machine_level(19.8, 20.0), 0.01, "a whisper at the very edge")
 	gt(SoundMix.machine_cutoff(0.0, 20.0), SoundMix.machine_cutoff(10.0, 20.0), "further is duller")
 	gt(SoundMix.machine_cutoff(10.0, 20.0), SoundMix.machine_cutoff(20.0, 20.0), "further is duller")
+
+
+class RosterMob:
+	extends Node
+	var kind: StringName
+	var pos: Vector2
+	var alive := true
+	var row: Dictionary = {}
+
+
+func test_the_racket_is_the_mobs_own_when_it_has_one() -> void:
+	var watcher := RosterMob.new()
+	watcher.kind = &"watcher"
+	watcher.pos = Vector2(25, 0)
+	watcher.row = {"racket": 30}
+	near(SoundMix.racket_of(watcher, &"watcher"), 30.0, 1e-6, "the roster's number")
+	var heard := SoundMix.loudest_machine([watcher], Vector2.ZERO)
+	eq(heard.get("kind"), &"watcher", "heard at 25 tiles when its roster says 30")
+	near(float(heard.get("racket", 0.0)), 30.0, 1e-6)
+	var clerk := RosterMob.new()
+	clerk.kind = &"clerk"
+	clerk.pos = Vector2(1, 0)
+	clerk.row = {"racket": 0}
+	check(SoundMix.loudest_machine([clerk], Vector2.ZERO).is_empty(), "a clerk with racket 0 beside you is not heard")
+	var bare := FakeMob.new()
+	bare.kind = &"clerk"
+	bare.pos = Vector2(1, 0)
+	eq(SoundMix.racket_of(bare, &"clerk"), 0.0, "and the table agrees with the roster")
+	check(SoundMix.loudest_machine([bare], Vector2.ZERO).is_empty(), "the fallback clerk is silent too")
+	for m: Node in [watcher, clerk, bare]:
+		m.free()
 
 
 func test_only_the_loudest_living_machine_is_chosen() -> void:
@@ -110,6 +152,7 @@ func test_a_machine_coming_on_gets_brighter_before_it_gets_louder() -> void:
 	var b := Fixture.baked(&"machine_harvester")
 	var scene := {"secs": 4.0, "at": Vector2(20.5, 20.5), "layers": [&"machine"], "weather": {"kind": &"clear", "strength": 0.0, "wind": 0.0},
 		"machine": {"kind": &"harvester", "from": 22.0, "to": 0.0}}
+	# The approach starts at the edge of the racket, where it is only arriving.
 	var w := WorldData.new(9, 48)
 	var out := SoundScene.render(scene, w, {&"machine_harvester": b})
 	var mix: PackedFloat32Array = out["samples"]

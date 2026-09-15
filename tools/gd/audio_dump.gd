@@ -48,14 +48,14 @@ func _initialize() -> void:
 	var group := WorkerThreadPool.add_group_task(_one, _keys.size(), -1, true, "audio dump")
 	WorkerThreadPool.wait_for_group_task_completion(group)
 	_rows.sort_custom(func(a: Array, b: Array) -> bool: return String(a[0]) < String(b[0]))
-	print("%-26s %-8s %6s %6s %4s %6s %7s %9s %6s %6s %6s %6s" % ["key", "cat", "secs", "rate", "loop", "ms", "heard", "window", "gain", "lf120", "seam", "peak"])
+	print("%-26s %-8s %6s %6s %4s %6s %7s %9s %6s %6s %6s %6s %6s" % ["key", "cat", "secs", "rate", "loop", "ms", "heard", "window", "gain", "lf120", "seam", "peak", "limit"])
 	var bad := 0
 	for r: Array in _rows:
 		var win: Array = SoundBank.CATEGORIES[r[1]]["window"]
 		var ok: bool = r[6] >= win[0] - 0.05 and r[6] <= win[1] + 0.05
 		if not ok:
 			bad += 1
-		print("%-26s %-8s %6.2f %6d %4s %6d %+7.1f %s%+4.0f..%+3.0f %+6.1f %5.1f%% %6s %+6.1f" % [r[0], r[1], r[2], r[3], "yes" if r[4] else "", r[5], r[6], " " if ok else "!", win[0], win[1], r[9], r[7] * 100.0, "%.2f" % r[8] if r[4] else "", r[10]])
+		print("%-26s %-8s %6.2f %6d %4s %6d %+7.1f %s%+4.0f..%+3.0f %+6.1f %5.1f%% %6s %+6.1f %6.1f" % [r[0], r[1], r[2], r[3], "yes" if r[4] else "", r[5], r[6], " " if ok else "!", win[0], win[1], r[9], r[7] * 100.0, "%.2f" % r[8] if r[4] else "", r[10], r[11]])
 	print("audio %d sounds, %d outside their window, %d ms -> %s" % [_rows.size(), bad, Time.get_ticks_msec() - t0, ProjectSettings.globalize_path(OUT)])
 	quit()
 
@@ -220,7 +220,7 @@ func _one(i: int) -> void:
 	_mutex.lock()
 	# Peak after the call gain and the buses, dBFS: what the limiter would see.
 	var peak_out := 20.0 * log(maxf(1e-9, Synth.peak(b.samples))) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
-	_rows.append([key, b.category, b.samples.size() / float(b.rate), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db, peak_out])
+	_rows.append([key, b.category, b.samples.size() / float(b.rate), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db, peak_out, b.limited_db])
 	_mutex.unlock()
 
 

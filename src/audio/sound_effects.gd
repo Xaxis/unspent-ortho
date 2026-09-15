@@ -176,12 +176,18 @@ static func _foot(family: StringName, rate: int, seed_value: int, r: RandomNumbe
 			Synth.normalize(squeak, 1.0)
 			Synth.add(b, squeak, _at(rate, 0.02), 0.25)
 		&"ice":
-			Synth.add(b, _burst(rate, 0.02, seed_value, 2000.0, 9000.0, 0.01, 0.0005), 0, 0.8)
-			Synth.add(b, _modes(rate, 0.12, [1900.0 + r.randf_range(-80.0, 80.0), 3300.0, 5100.0], [0.5, 0.3, 0.15], [0.06, 0.04, 0.025]), 0, 0.6 * weight)
+			# A glassy tick that rings, and the boot sliding a hair on the sheen: the
+			# ring and the slide carry the weight, so the tick needs no spike.
+			Synth.add(b, _burst(rate, 0.02, seed_value, 2000.0, 9000.0, 0.012, 0.0012), 0, 0.45)
+			Synth.add(b, _modes(rate, 0.2, [1900.0 + r.randf_range(-80.0, 80.0), 3300.0, 5100.0], [0.5, 0.3, 0.15], [0.14, 0.09, 0.05]), 0, 0.6 * weight)
+			Synth.add(b, _burst(rate, 0.1, seed_value + 3, 1400.0, 6000.0, 0.08, 0.02), _at(rate, 0.005), 0.25)
 		&"stone":
-			Synth.add(b, _burst(rate, 0.03, seed_value, 900.0, 6000.0, 0.02, 0.0005), 0, 0.8)
-			Synth.add(b, _modes(rate, 0.1, [420.0 + r.randf_range(-30.0, 30.0), 950.0, 2100.0], [0.5, 0.3, 0.12], [0.05, 0.04, 0.02]), 0, 0.7 * weight)
-			Synth.add(b, _grains(rate, 0.08, seed_value + 2, 300.0, 1500.0, 6000.0, 0.002, 0.05), 0, 0.2)
+			# A hard tock with a body behind it (the slab answers) and grit under
+			# the sole, rather than a bare click.
+			Synth.add(b, _burst(rate, 0.03, seed_value, 900.0, 6000.0, 0.022, 0.0012), 0, 0.5)
+			Synth.add(b, _modes(rate, 0.16, [420.0 + r.randf_range(-30.0, 30.0), 950.0, 2100.0], [0.5, 0.3, 0.12], [0.1, 0.075, 0.04]), 0, 0.7 * weight)
+			Synth.add(b, _burst(rate, 0.08, seed_value + 3, 500.0, 3200.0, 0.06, 0.004), 0, 0.3)
+			Synth.add(b, _grains(rate, 0.1, seed_value + 2, 500.0, 1500.0, 6000.0, 0.002, 0.07), 0, 0.2)
 		&"gravel":
 			Synth.add(b, _grains(rate, 0.2, seed_value, 1600.0, 800.0, 7000.0, 0.005, 0.15), 0, 1.0)
 			Synth.add(b, _burst(rate, 0.06, seed_value + 1, 150.0, 450.0, 0.04, 0.003), 0, 0.4 * weight)

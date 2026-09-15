@@ -1,7 +1,8 @@
 class_name SoundSignals
 ## One-shots a machine makes when it does something to you: registering you
-## (alert_<kind>), calling others (watcher_call), shedding its load
-## (second_act), letting go (loose), and taking (snatch_<kind>).
+## (alert_<kind>), winding up to strike (windup_<kind>), calling others
+## (watcher_call), shedding its load (second_act), letting go (loose), and
+## taking (snatch_<kind>).
 ##
 ## The machine discipline holds here too, so a call is recognisably the thing
 ## you have been hearing: each alert is built from its own bed's partials and
@@ -15,7 +16,10 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 	var s := String(name)
 	if s.begins_with("alert_"):
 		return _alert(StringName(s.substr(6)), rate)
+	if s.begins_with("windup_"):
+		return _windup(StringName(s.substr(7)), rate)
 	match name:
+		&"windup": return _windup(&"", rate)
 		&"watcher_call": return _watcher_call(rate)
 		&"second_act": return _second_act(rate)
 		&"loose": return _loose(rate)
@@ -29,7 +33,8 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 static func handles(name: StringName) -> bool:
 	var s := String(name)
 	return (s.begins_with("alert_") and SoundMachines.RACKET.has(StringName(s.substr(6)))) \
-		or name in [&"watcher_call", &"second_act", &"loose", &"snatch_flock", &"snatch_warden", &"snatch_clerk"]
+		or (s.begins_with("windup_") and SoundMachines.RACKET.has(StringName(s.substr(7)))) \
+		or name in [&"windup", &"watcher_call", &"second_act", &"loose", &"snatch_flock", &"snatch_warden", &"snatch_clerk"]
 
 
 # ------------------------------------------------------------------ helpers
@@ -157,6 +162,111 @@ static func _alert(kind: StringName, rate: int) -> PackedFloat32Array:
 			_repeat(out, rate, blip, 0.22, 0.14, 2, 0.5)
 		_:
 			Synth.add(out, _tone(rate, 0.3, [1375.0, 2750.0], [0.4, 0.15]), _at(rate, 0.06), 0.5)
+	return out
+
+
+# ------------------------------------------------------------------ windups
+
+## The ratchet every strike is cocked on: three identical catches 30 ms apart.
+## The same in every machine that has a transient, so one sound means "it is
+## about to hit" wherever you are; what follows says which machine.
+static func _ratchet(rate: int) -> PackedFloat32Array:
+	var out := Synth.buffer(_at(rate, 0.1))
+	var click := _modes(rate, 0.025, [1800.0, 3500.0, 5200.0], [0.5, 0.3, 0.12], [0.012, 0.008, 0.005])
+	_repeat(out, rate, click, 0.0, 0.03, 3, 0.8)
+	return out
+
+
+## Steps a held tone up through `steps` ([[freqs], [amps]]), each `each` s long,
+## from `start`: pitch rising by exact steps, never a glide.
+static func _stair(out: PackedFloat32Array, rate: int, steps: Array, start: float, each: float, gain: float) -> void:
+	for k in steps.size():
+		var st: Array = steps[k]
+		var hold := each * (1.6 if k == steps.size() - 1 else 1.0)
+		Synth.add(out, _tone(rate, hold, st[0], st[1]), _at(rate, start + k * each), gain)
+
+
+## The tell before a strike: the fight reads it by ear. Short (the quickest
+## machine winds up in 220 ms, so what matters is in the first 150), taken from
+## the machine's own loop and played at its exact pitch every time, rising by
+## steps as the strike is cocked.
+static func _windup(kind: StringName, rate: int) -> PackedFloat32Array:
+	var out := Synth.buffer(_at(rate, 0.5))
+	var p: Dictionary = SoundMachines.PARTIALS
+	if kind != &"sweeper":
+		Synth.add(out, _ratchet(rate), 0, 0.45)
+	match kind:
+		&"watcher":
+			var w: Array = p[&"watcher"]
+			_stair(out, rate, [[[w[3], w[4]], [0.4, 0.2]], [[w[4], w[5]], [0.4, 0.2]], [[w[5], float(w[4]) * 2.0, 1063.0], [0.4, 0.2, 0.1]]], 0.05, 0.06, 0.45)
+		&"longlegs":
+			var hum: Array = p[&"longlegs_hum"]
+			var h := float(hum[1])
+			_stair(out, rate, [[[h, h * 2.0], [0.4, 0.2]], [[h * 4.0 / 3.0, h * 8.0 / 3.0], [0.4, 0.2]], [[h * 2.0, h * 4.0], [0.4, 0.2]]], 0.04, 0.065, 0.4)
+			var knock := _modes(rate, 0.25, [196.0, 541.0, 1058.0, 1750.0], [0.5, 0.34, 0.2, 0.11], [0.12, 0.09, 0.07, 0.05])
+			Synth.add(out, knock, _at(rate, 0.02), 0.45)
+		&"harvester":
+			var pulse := _modes(rate, 0.05, [180.0, 360.0, 540.0], [0.5, 0.3, 0.15], [0.03, 0.022, 0.015])
+			_repeat(out, rate, pulse, 0.02, 0.028, 10, 0.55)
+			var drive: Array = p[&"harvester_drive"]
+			_stair(out, rate, [[[drive[1], drive[2]], [0.3, 0.2]], [[float(drive[1]) * 4.0 / 3.0, float(drive[2]) * 4.0 / 3.0], [0.3, 0.2]]], 0.05, 0.1, 0.4)
+		&"cutter":
+			_stair(out, rate, [[[168.0 * 15.0, 168.0 * 30.0], [0.4, 0.1]], [[168.0 * 16.0, 168.0 * 32.0], [0.4, 0.1]], [[168.0 * 18.0, 168.0 * 36.0], [0.4, 0.1]]], 0.04, 0.055, 0.35)
+			var saw := _burst(rate, 0.16, 3311, 2600.0, 11000.0, 0.14, 0.01)
+			Synth.env_gate(saw, rate, 28.0, 0.62, 0.3, 0.8)
+			Synth.add(out, saw, _at(rate, 0.12), 0.35)
+		&"hauler":
+			var hiss := _burst(rate, 0.2, 3411, 1800.0, 6000.0, 0.18, 0.06)
+			Synth.add(out, hiss, _at(rate, 0.03), 0.4)
+			var one := _modes(rate, 0.16, [240.0, 610.0, 1320.0], [0.5, 0.3, 0.14], [0.1, 0.075, 0.05])
+			Synth.add(out, one, _at(rate, 0.2), 0.8)
+			var rumble: Array = p[&"hauler_rumble"]
+			_stair(out, rate, [[[rumble[1], rumble[2]], [0.3, 0.2]], [[float(rumble[1]) * 1.5, float(rumble[2]) * 1.5], [0.3, 0.2]]], 0.06, 0.09, 0.3)
+		&"warden":
+			var tick := _modes(rate, 0.02, [2475.0, 3712.5], [0.5, 0.25], [0.012, 0.008])
+			_repeat(out, rate, tick, 0.1, 0.035, 4, 0.5)
+			Synth.add(out, _tone(rate, 0.14, [402.0, 905.0], [0.35, 0.15]), _at(rate, 0.18), 0.35)
+		&"sweeper":
+			# No transient even here: the drive climbs its own harmonics under the brush.
+			var drive: Array = p[&"sweeper_drive"]
+			_stair(out, rate, [[[drive[0], drive[1]], [0.3, 0.2]], [[drive[1], drive[2]], [0.3, 0.2]], [[drive[2], float(drive[0]) * 4.0], [0.3, 0.2]]], 0.02, 0.08, 0.4)
+			var brush := _burst(rate, 0.32, 3611, 1100.0, 6800.0, 2.0, 0.0)
+			for i in brush.size():
+				brush[i] *= pow(float(i) / brush.size(), 2.0)
+			Synth.add(out, brush, _at(rate, 0.02), 0.4)
+		&"dredger":
+			var pump: Array = p[&"dredger_pump"]
+			_stair(out, rate, [[[pump[0], pump[1]], [0.3, 0.15]], [[float(pump[0]) * 1.5, float(pump[1]) * 1.5], [0.3, 0.15]], [[pump[1], float(pump[1]) * 2.0], [0.3, 0.15]]], 0.03, 0.06, 0.4)
+			var hiss := Synth.noise(_at(rate, 0.22), 3711)
+			Synth.band(hiss, rate, 300.0, 1500.0)
+			for i in hiss.size():
+				var u := float(i) / hiss.size()
+				hiss[i] *= u * u * (1.0 - smoothstep(0.9, 1.0, u))
+			Synth.normalize(hiss, 1.0)
+			Synth.add(out, hiss, _at(rate, 0.02), 0.35)
+		&"lineman":
+			var wire: Array = p[&"lineman_wire"]
+			Synth.add(out, _modes(rate, 0.3, wire, [0.4, 0.3, 0.18, 0.15], [0.22, 0.16, 0.1, 0.18]), _at(rate, 0.03), 0.5)
+			var grip := _modes(rate, 0.12, [690.0, 1490.0, 2870.0], [0.45, 0.35, 0.22], [0.08, 0.06, 0.04])
+			Synth.add(out, grip, _at(rate, 0.17), 0.55)
+		&"flock":
+			var lo := _tone(rate, 0.02, [3200.0, 4800.0], [0.4, 0.2])
+			var hi := _tone(rate, 0.02, [4266.0, 6400.0], [0.4, 0.2])
+			_repeat(out, rate, lo, 0.02, 0.03, 4, 0.55)
+			_repeat(out, rate, hi, 0.14, 0.03, 4, 0.55)
+			Synth.highpass4(out, rate, 900.0)
+		&"runner":
+			var step := _modes(rate, 0.08, [232.0, 540.0, 1180.0], [0.5, 0.34, 0.18], [0.05, 0.035, 0.025])
+			_repeat(out, rate, step, 0.02, 1.0 / 21.0, 5, 0.7)
+			Synth.add(out, _modes(rate, 0.12, [310.0, 820.0], [0.5, 0.25], [0.08, 0.05]), _at(rate, 0.26), 0.55)
+		&"clerk":
+			var carrier: Array = p[&"clerk_carrier"]
+			var blip := _tone(rate, 0.05, carrier, [0.3, 0.2])
+			_repeat(out, rate, blip, 0.05, 0.07, 3, 0.45)
+			var shutter := _modes(rate, 0.02, [3100.0, 5300.0], [0.5, 0.3], [0.01, 0.006])
+			Synth.add(out, shutter, _at(rate, 0.26), 0.6)
+		_:
+			_stair(out, rate, [[[880.0, 1760.0], [0.4, 0.15]], [[1320.0, 2640.0], [0.4, 0.15]]], 0.05, 0.08, 0.4)
 	return out
 
 

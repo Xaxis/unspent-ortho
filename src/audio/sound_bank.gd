@@ -18,6 +18,17 @@ extends RefCounted
 
 const PEAK := 0.89
 const MAX_TASKS := 2
+## Where one sound alone may peak after its call gain and bus (dBFS): under the
+## Master limiter's -0.5, so the limiter only ever meets sums. A recipe whose
+## crest would carry it over has its transients limited at bake time.
+const CEILING_DBFS := -1.5
+## Bake-time limiter release per category (s): short for transients, long for
+## thunder's roll.
+const RELEASE := {&"event": 0.008, &"step": 0.006, &"ui": 0.006, &"scatter": 0.02, &"thunder": 0.25}
+## Without worker threads these bake on the main thread (short one-shots, one a
+## frame); beds, machines, weather and music would freeze a frame for seconds,
+## so they are only played when the disk cache already holds them.
+const MAIN_THREAD_CATEGORIES: Array[StringName] = [&"event", &"step", &"ui", &"scatter"]
 
 ## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB).
 const CATEGORIES := {
@@ -129,9 +140,25 @@ const SHEET := {
 	&"snatch_flock": [&"event", 1.0, 1],
 	&"snatch_warden": [&"event", 2.0, 1],
 	&"snatch_clerk": [&"event", 0.0, 1],
+	# The tell before a strike: the fight is read by ear (SoundSignals).
+	&"windup": [&"event", 0.0, 1],
+	&"windup_watcher": [&"event", 0.0, 1],
+	&"windup_longlegs": [&"event", 0.5, 1],
+	&"windup_harvester": [&"event", 1.0, 1],
+	&"windup_cutter": [&"event", 1.0, 1],
+	&"windup_hauler": [&"event", 0.5, 1],
+	&"windup_warden": [&"event", -2.0, 1],
+	&"windup_sweeper": [&"event", -1.0, 1],
+	&"windup_dredger": [&"event", 0.5, 1],
+	&"windup_lineman": [&"event", 0.0, 1],
+	&"windup_flock": [&"event", -0.5, 1],
+	&"windup_runner": [&"event", -0.5, 1],
+	&"windup_clerk": [&"event", -1.5, 1],
 	# The living (SoundCreatures).
 	&"dog_bark": [&"event", 1.0, 3],
+	&"dog_growl": [&"event", 0.5, 2],
 	&"bull_snort": [&"event", 2.0, 2],
+	&"bull_paw": [&"event", 1.0, 2],
 	&"gull_cry": [&"event", -1.0, 3],
 	&"snatch_gull": [&"event", 0.0, 2],
 	&"beast_down": [&"event", 1.0, 1],
@@ -161,6 +188,7 @@ const SHEET := {
 	&"build_bench": [&"event", 0.0, 1],
 	&"build_kiln": [&"event", 0.0, 1],
 	&"sleep": [&"event", -4.0, 1],
+	&"tool_snap": [&"event", 1.5, 2],
 	# Thunder only sits above everything.
 	&"thunder": [&"thunder", 8.0, 2],
 	&"thunder_far": [&"thunder", 6.5, 2],
@@ -197,6 +225,8 @@ class Baked:
 	var pcm: PackedByteArray
 	var stream: AudioStreamWAV
 	var ms := 0
+	## How far its transients were limited at bake to fit under CEILING_DBFS.
+	var limited_db := 0.0
 	## Loaded from the disk cache rather than generated this run.
 	var from_disk := false
 
@@ -235,6 +265,7 @@ var _done: Dictionary = {}
 var _jobs: Dictionary = {}
 var _queue: Array[StringName] = []
 var _pumped_frame := -1
+var _on_disk: Dictionary = {}
 
 
 static func shared() -> SoundBank:
@@ -336,11 +367,29 @@ static func render(key: StringName) -> Baked:
 		raw = Synth.trim_tail(raw, b.rate)
 		Synth.fade(raw, b.rate, 0.0008, 0.006)
 	Synth.normalize(raw, PEAK)
+	b.gain_db = _gain_for(raw, b)
+	# Keep one sound under the Master limiter by its own crest: limit the
+	# transients to the ceiling its gain allows, then take the gain again (the
+	# loudest half-second hardly moves, so two or three rounds settle it).
+	# A footfall's click is shaved and let go at once, so its body is untouched;
+	# held sounds let go slower so the limiting never pumps.
+	var release: float = RELEASE.get(b.category, 0.06)
+	for _pass in 8:
+		var allowed := db_to_linear(CEILING_DBFS - b.gain_db - SoundMix.bus_db(b.bus))
+		if Synth.peak(raw) <= allowed:
+			break
+		Synth.limit(raw, b.rate, allowed * 0.97, minf(0.0015, release * 0.25), release, b.loop)
+		b.gain_db = _gain_for(raw, b)
+		b.limited_db = 20.0 * log(PEAK / maxf(1e-9, Synth.peak(raw))) / log(10.0)
 	b.samples = raw
-	var rms_db := 20.0 * log(maxf(1e-9, Synth.loudest_rms(raw, b.rate, 0.5))) / log(10.0)
-	b.gain_db = b.heard + SoundMix.REF_DBFS - rms_db - SoundMix.bus_db(b.bus)
 	b.ms = Time.get_ticks_msec() - t0
 	return b
+
+
+## The call gain (dB) that puts these samples at the sheet level after the bus.
+static func _gain_for(raw: PackedFloat32Array, b: Baked) -> float:
+	var rms_db := 20.0 * log(maxf(1e-9, Synth.loudest_rms(raw, b.rate, 0.5))) / log(10.0)
+	return b.heard + SoundMix.REF_DBFS - rms_db - SoundMix.bus_db(b.bus)
 
 
 # ------------------------------------------------------------------ disk
@@ -351,24 +400,63 @@ const CACHE_FORMAT := 1
 const CACHE_KEEP := 3
 
 
-## A fingerprint of every recipe and the sheet: any edit to src/audio or the
-## mix numbers gives a new cache folder, so a stale sound is never played.
+## A fingerprint of every recipe, the sheet, the game's version and the
+## engine's: any edit to src/audio or the mix numbers gives a new cache folder,
+## so a stale sound is never played. "" when the recipes cannot be read (then
+## there is no disk cache at all, rather than one that could be stale).
 static func recipe_version() -> String:
-	var parts: PackedStringArray = [str(CACHE_FORMAT), str(SHEET), str(CATEGORIES), str(SoundMix.REF_DBFS), str(SoundMix.BUSES)]
-	var dir := DirAccess.open("res://src/audio")
-	if dir != null:
-		var files := dir.get_files()
-		files.sort()
-		for f in files:
-			if f.ends_with(".gd"):
-				parts.append(FileAccess.get_md5("res://src/audio/" + f))
+	return version_from(recipe_digests())
+
+
+static func version_from(digests: PackedStringArray) -> String:
+	if digests.is_empty():
+		return ""
+	var parts: PackedStringArray = [str(CACHE_FORMAT), str(SHEET), str(CATEGORIES), str(SoundMix.REF_DBFS), str(SoundMix.BUSES), str(CEILING_DBFS),
+		str(ProjectSettings.get_setting("application/config/version", "")), str(Engine.get_version_info().get("hash", "")), str(Engine.get_version_info().get("string", ""))]
+	parts.append_array(digests)
 	return "\n".join(parts).md5_text().substr(0, 16)
+
+
+## One md5 per recipe script, whatever form the build keeps it in: the .gd
+## source in the editor and in text exports; in a tokenised export the
+## .gd.remap names the compiled file, and that file is hashed instead.
+static func recipe_digests(folder: String = "res://src/audio") -> PackedStringArray:
+	var out: PackedStringArray = []
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		return out
+	var files := dir.get_files()
+	files.sort()
+	for f in files:
+		var path := folder.path_join(f)
+		if f.ends_with(".gd") or f.ends_with(".gdc"):
+			out.append(FileAccess.get_md5(path))
+		elif f.ends_with(".gd.remap"):
+			var target := remap_target(FileAccess.get_file_as_string(path))
+			if target != "" and FileAccess.file_exists(target):
+				out.append(FileAccess.get_md5(target))
+	return out
+
+
+## The path a Godot .remap file points at, or "".
+static func remap_target(text: String) -> String:
+	for line in text.split("\n"):
+		var l := line.strip_edges()
+		if l.begins_with("path") and l.contains("="):
+			return l.substr(l.find("=") + 1).strip_edges().trim_prefix("\"").trim_suffix("\"")
+	return ""
 
 
 ## Turn the disk cache on under `root` (the running game does, once).
 func use_disk_cache(root: String) -> void:
+	var version := recipe_version()
+	if version == "":
+		cache_dir = ""
+		_cache_version_dir = ""
+		return
 	cache_dir = root
-	_cache_version_dir = root.path_join(recipe_version())
+	_on_disk.clear()
+	_cache_version_dir = root.path_join(version)
 	DirAccess.make_dir_recursive_absolute(_cache_version_dir)
 	_prune_cache(root)
 
@@ -463,6 +551,8 @@ static func load_cached(key: StringName, path: String) -> Baked:
 func request(key: StringName, urgent: bool = false) -> void:
 	if not enabled or _done.has(key) or _jobs.has(key) or not has_sound(key):
 		return
+	if not threaded and not bakes_here(key):
+		return
 	var at := _queue.find(key)
 	if at >= 0:
 		if urgent and at > 0:
@@ -481,6 +571,17 @@ func get_baked(key: StringName, urgent: bool = false) -> Baked:
 	if b == null:
 		request(key, urgent)
 	return b
+
+
+## Whether this bank may bake `key` at all: with threads, anything; without,
+## a short one-shot, or anything its disk cache already holds (a file read).
+func bakes_here(key: StringName) -> bool:
+	if threaded or category_of(base_name(key)) in MAIN_THREAD_CATEGORIES:
+		return true
+	if not _on_disk.has(key):
+		var path := _cache_path(key)
+		_on_disk[key] = path != "" and FileAccess.file_exists(path)
+	return _on_disk[key]
 
 
 func is_ready(key: StringName) -> bool:
@@ -520,6 +621,8 @@ func pump() -> void:
 			_jobs.erase(key)
 			_finish(job)
 	if not threaded:
+		# One thing a frame, and only what request() let in: a short one-shot or
+		# a cache file.
 		if not _queue.is_empty():
 			bake_now(_queue[0])
 		return

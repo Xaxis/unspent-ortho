@@ -17,12 +17,14 @@ const KINDS: Array[StringName] = [
 	&"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk",
 ]
 
-## Tiles at which the bed becomes audible. The clerk was silent in the source;
-## here it is heard only when it is already close.
+## Tiles at which the bed becomes audible, for a mob that does not say (the
+## running mix reads the mob's own roster racket first: SoundMix.racket_of).
+## These copy the fight roster. The clerk is 0: it is the machine that gives no
+## warning, so its bed exists (for the tools) but is never heard in play.
 const RACKET := {
 	&"watcher": 18.0, &"longlegs": 20.0, &"harvester": 22.0, &"cutter": 16.0,
 	&"hauler": 19.0, &"warden": 9.0, &"sweeper": 13.0, &"dredger": 14.0,
-	&"lineman": 11.0, &"flock": 12.0, &"runner": 10.0, &"clerk": 7.0,
+	&"lineman": 11.0, &"flock": 12.0, &"runner": 10.0, &"clerk": 0.0,
 }
 
 ## Identical events (or gate cycles) per loop. Each must divide LOOP.
@@ -204,8 +206,15 @@ static func _hauler() -> PackedFloat32Array:
 	return b
 
 
-## The quietest: sixteen even, damped footfalls over almost nothing, and the
-## mechanism ticking 96 times under them.
+## The quietest: even, damped footfalls (178/402/905 Hz) over almost nothing,
+## and the mechanism ticking 96 times under them.
+##
+## Differs from the research on purpose. Its line is "96 even, damped
+## footfalls", but 96 in an 8 s loop is twelve a second, a patter; the same
+## research draws the warden as "a bollard that walks ... on two legs at one
+## unhurried speed" (and the roster gives it a pace of 6, a walk). So the
+## footfalls are sixteen (two a second, a walk) and the 96 stay as the even
+## count: the tick of the mechanism carrying the column between steps.
 static func _warden() -> PackedFloat32Array:
 	var c: Dictionary = COUNTS[&"warden"]
 	var b := Synth.buffer(LOOP)

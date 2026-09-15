@@ -894,6 +894,42 @@ static func normalize(buf: PackedFloat32Array, target_peak: float) -> float:
 	return g
 
 
+## A look-ahead peak limiter: no sample leaves above `ceiling`. The gain is
+## already down when a peak arrives (a linear ramp over `attack` s before it)
+## and lets go over `release` s, so a transient is turned down, not clipped.
+## periodic: the gain wraps round the ends (a loop stays seamless).
+## Returns how many samples were over.
+static func limit(buf: PackedFloat32Array, rate: int, ceiling: float, attack: float = 0.0015, release: float = 0.06, periodic: bool = false) -> int:
+	var n := buf.size()
+	if n == 0 or ceiling <= 0.0:
+		return 0
+	var g := PackedFloat32Array()
+	g.resize(n)
+	var over := 0
+	for i in n:
+		var a := absf(buf[i])
+		if a > ceiling:
+			g[i] = ceiling / a
+			over += 1
+		else:
+			g[i] = 1.0
+	if over == 0:
+		return 0
+	var up := 1.0 / maxf(1.0, attack * rate)
+	var laps := 2 if periodic else 1
+	for j in range(n * laps - 2, -1, -1):
+		var i := j % n
+		g[i] = minf(g[i], g[(i + 1) % n] + up)
+	var k := exp(-1.0 / maxf(1.0, release * rate))
+	for j in range(1, n * laps):
+		var i := j % n
+		var prev := g[(i + n - 1) % n]
+		g[i] = minf(g[i], 1.0 - (1.0 - prev) * k)
+	for i in n:
+		buf[i] *= g[i]
+	return over
+
+
 ## tanh-style soft saturation; drive > 1 thickens and tames peaks.
 static func saturate(buf: PackedFloat32Array, drive: float) -> void:
 	var norm := 1.0 / tanh(drive)

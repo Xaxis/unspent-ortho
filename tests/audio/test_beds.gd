@@ -216,7 +216,7 @@ func test_the_far_works_carry_on_still_nights_far_from_people() -> void:
 	var rain := float(SoundMix.bed_levels(w, p, {"kind": &"rain", "strength": 1.0, "wind": 0.05}, none, none, 0.0, {"hour": 23.0, "remote": 1.0})[&"bed_far_works"])
 	var village := float(SoundMix.bed_levels(w, p, calm, none, none, 0.0, {"hour": 23.0, "remote": 0.0})[&"bed_far_works"])
 	gt(night, 0.9, "a still night far out")
-	check(noon > 0.0 and noon < night * 0.5, "faint by day (%.2f vs %.2f)" % [noon, night])
+	check(noon > 0.0 and noon <= SoundMix.FAR_WORKS_DAY + 1e-6, "only a trace by day (%.2f vs %.2f at night)" % [noon, night])
 	lt(windy, 0.05, "wind takes it")
 	lt(rain, 0.15, "rain takes it")
 	eq(village, 0.0, "not among people")

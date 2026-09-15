@@ -146,12 +146,7 @@ func test_only_the_loudest_machine_nearby_is_heard() -> void:
 	var p := g.player.pos
 	var mobs: Array[FakeMob] = []
 	for s: Array in [[&"machine.watcher", Vector2(6, 0)], [&"rows.harvester", Vector2(0, 4)], [&"line.lineman", Vector2(30, 0)]]:
-		var m := FakeMob.new()
-		m.kind = s[0]
-		m.pos = p + (s[1] as Vector2)
-		tree.root.add_child(m)
-		m.add_to_group(&"mobs")
-		mobs.append(m)
+		mobs.append(_mob(s[0], p + (s[1] as Vector2)))
 	sys.advance(0.2)
 	eq(sys.machine_kind, &"harvester", "the harvester is loudest")
 	near(sys.machine_target, SoundMix.machine_level(4.0, 22.0), 1e-4, "level from distance")
@@ -163,6 +158,12 @@ func test_only_the_loudest_machine_nearby_is_heard() -> void:
 	await tree.process_frame
 	sys.advance(0.2)
 	eq(sys.machine_kind, &"", "nothing near, nothing heard")
+	# The clerk gives no warning: the roster's racket 0 is obeyed.
+	var clerk := _mob(&"clerk", p + Vector2(1, 0))
+	sys.advance(0.2)
+	eq(sys.machine_kind, &"", "a clerk beside you makes no bed")
+	clerk.queue_free()
+	await tree.process_frame
 	_done(parts)
 
 
@@ -196,19 +197,129 @@ func test_emitted_names_find_their_sounds() -> void:
 	_adopt(sys, &"ui_accept")
 	_adopt(sys, &"beast_down")
 	_adopt(sys, &"machine_down")
+	_adopt(sys, &"lamp_off")
+	_adopt(sys, &"tool_snap")
 	Events.sfx.emit(&"menu_select", Vector3.ZERO)
 	eq(sys.history.back()["key"], &"ui_accept", "the ui package's menu_select")
 	eq(sys.history.back()["bus"], &"UI", "on the interface bus")
 	var at := Vector3(g.player.pos.x + 2.0, 0.0, g.player.pos.y)
-	Events.killed.emit(&"dog.yard", at)
-	Events.sfx.emit(&"killed", at)
-	eq(sys.history.back()["key"], &"beast_down", "a dog goes down like something alive")
-	Events.killed.emit(&"harvester", at)
-	Events.sfx.emit(&"killed", at)
-	eq(sys.history.back()["key"], &"machine_down", "a harvester's light goes out")
+	Events.sfx.emit(&"lamp_out", at)
+	eq(sys.history.back()["key"], &"lamp_off", "survival's lamp_out")
+	Events.sfx.emit(&"work_broken", at)
+	check(String(sys.history.back()["key"]).begins_with("tool_snap"), "a tool breaking snaps: %s" % sys.history.back()["key"])
 	var before := sys.history.size()
 	Events.sfx.emit(&"regrow", at)
 	eq(sys.history.size(), before, "regrowth is silent on purpose")
+	_done(parts)
+
+
+## The fight sends Events.killed for every death and then sfx machine_down for
+## machines only: an animal is heard going down, and a machine once, not twice.
+func test_a_death_is_heard_once_from_what_died() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	_adopt(sys, &"beast_down")
+	_adopt(sys, &"machine_down")
+	var at := Vector3(g.player.pos.x + 2.0, 0.0, g.player.pos.y)
+	var before := sys.history.size()
+	Events.killed.emit(&"dog.yard", at)
+	eq(sys.history.size(), before + 1, "the dog is heard")
+	eq(sys.history.back()["key"], &"beast_down", "going down like something alive")
+	before = sys.history.size()
+	Events.killed.emit(&"harvester", at)
+	Events.sfx.emit(&"machine_down", at)
+	eq(sys.history.size(), before + 1, "a machine's death is heard once")
+	eq(sys.history.back()["key"], &"machine_down", "its light going out")
+	# A machine_down that follows no death (or somewhere else) still plays.
+	Events.sfx.emit(&"machine_down", at)
+	eq(sys.history.size(), before + 2, "an unrelated machine_down plays")
+	_done(parts)
+
+
+func _mob(kind: StringName, at: Vector2) -> FakeMob:
+	var m := FakeMob.new()
+	m.kind = kind
+	m.pos = at
+	tree.root.add_child(m)
+	m.add_to_group(&"mobs")
+	return m
+
+
+func test_bare_alert_snatch_and_windup_are_the_nearest_mobs_own() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	for n: StringName in [&"alert_harvester", &"windup_harvester", &"dog_bark", &"dog_growl", &"snatch_flock", &"grip", &"alert", &"windup"]:
+		_adopt(sys, n)
+	var p := g.player.pos
+	var harvester := _mob(&"harvester", p + Vector2(4, 0))
+	var dog := _mob(&"dog.yard", p + Vector2(-5, 2))
+	var flock := _mob(&"flock", p + Vector2(0.8, 0.4))
+	var at3 := func(v: Vector2) -> Vector3: return Vector3(v.x, 0.3, v.y)
+	Events.sfx.emit(&"alert", at3.call(harvester.pos))
+	eq(sys.history.back()["key"], &"alert_harvester", "the harvester registers you in its own voice")
+	Events.sfx.emit(&"windup", at3.call(harvester.pos))
+	eq(sys.history.back()["key"], &"windup_harvester", "and winds up in it")
+	Events.sfx.emit(&"alert", at3.call(dog.pos))
+	check(String(sys.history.back()["key"]).begins_with("dog_bark"), "a dog barks: %s" % sys.history.back()["key"])
+	Events.sfx.emit(&"windup", at3.call(dog.pos))
+	check(String(sys.history.back()["key"]).begins_with("dog_growl"), "and growls before it bites: %s" % sys.history.back()["key"])
+	# A taking is emitted where the player stands; the flock beside them took it.
+	Events.sfx.emit(&"snatch", at3.call(p))
+	eq(sys.history.back()["key"], &"snatch_flock", "the flock's spray")
+	Events.sfx.emit(&"windup", at3.call(p + Vector2(20, 0)))
+	eq(sys.history.back()["key"], &"windup", "nobody there: the generic tell")
+	# A windup is a machine's: the same pitch every time, so it can be learned.
+	var pitches := {}
+	for i in 5:
+		sys.play(&"windup", at3.call(harvester.pos))
+		for v in sys._voices:
+			if v.playing and v.stream == sys.bank.get_baked(&"windup_harvester").stream:
+				pitches[v.pitch_scale] = true
+	eq(pitches.keys(), [1.0], "a windup is played at its exact pitch")
+	for m: Node in [harvester, dog, flock]:
+		m.queue_free()
+	await tree.process_frame
+	_done(parts)
+
+
+func test_new_ground_queues_every_take_and_a_take_never_repeats_when_another_is_ready() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	# A bank of its own that bakes nothing, so only what is handed over is ready.
+	sys.bank = SoundBank.new()
+	sys.bank.threaded = true
+	var family := SoundEffects.step_name(g.world.ground_at(floori(g.player.pos.x), floori(g.player.pos.y)))
+	g.player.speed = Tuning.WALK_SPEED
+	var start := g.player.pos
+	var dt := 1.0 / 60.0
+	for i in 30:
+		g.player.pos = start + Vector2(Tuning.WALK_SPEED * dt * (i + 1), 0.0)
+		sys.footfalls(dt)
+	for v in SoundBank.variants(family):
+		var key := SoundBank.key_for(family, v)
+		check(sys.bank._queue.has(key) or sys.bank.is_ready(key), "%s queued on the first step on new ground" % key)
+	sys.bank.drop_queue()
+	sys.bank.enabled = false
+	var fam := &"step_wood"
+	for v: int in [0, 2]:
+		var b := Fixture.baked(SoundBank.key_for(fam, v))
+		var copy := SoundBank.Baked.new()
+		copy.key = b.key
+		copy.rate = b.rate
+		copy.bus = b.bus
+		copy.samples = b.samples
+		sys.bank.adopt(copy)
+	var last := &""
+	for i in 24:
+		var baked := sys._pick_variant(fam)
+		check(baked != null, "a take is ready")
+		if baked == null:
+			break
+		check(baked.key != last, "take %d repeats %s back to back" % [i, last])
+		last = baked.key
 	_done(parts)
 
 

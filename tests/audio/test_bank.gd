@@ -72,3 +72,51 @@ func test_old_recipe_folders_are_pruned() -> void:
 	check(dir.get_directories().size() <= SoundBank.CACHE_KEEP + 1, "at most %d folders kept, found %d" % [SoundBank.CACHE_KEEP + 1, dir.get_directories().size()])
 	check(DirAccess.dir_exists_absolute(root.path_join(SoundBank.recipe_version())), "this build's folder survives")
 	_wipe(root)
+
+
+func test_the_fingerprint_works_in_an_export_and_refuses_when_blind() -> void:
+	gt(float(SoundBank.recipe_digests().size()), 5.0, "every recipe script is read")
+	eq(SoundBank.version_from(PackedStringArray()), "", "no recipes read: no fingerprint")
+	check(SoundBank.version_from(PackedStringArray(["a"])) != SoundBank.version_from(PackedStringArray(["b"])), "a recipe edit is a new folder")
+	eq(SoundBank.remap_target('[remap]\n\npath="res://.godot/exported/1/export-abc-synth.gdc"\n'), "res://.godot/exported/1/export-abc-synth.gdc", "a tokenised export's script is found through its remap")
+	eq(SoundBank.remap_target("nothing here"), "")
+	# A folder the build keeps scripts in as remaps is hashed through them.
+	var root := _root()
+	DirAccess.make_dir_recursive_absolute(root)
+	DirAccess.make_dir_recursive_absolute(root.path_join("exported"))
+	var target := root.path_join("exported").path_join("compiled.gdc")
+	var f := FileAccess.open(target, FileAccess.WRITE)
+	f.store_string("tokens v1")
+	f.close()
+	f = FileAccess.open(root.path_join("recipe.gd.remap"), FileAccess.WRITE)
+	f.store_string('[remap]\npath="%s"\n' % target)
+	f.close()
+	var one := SoundBank.recipe_digests(root)
+	eq(one.size(), 1, "the remap's target is read")
+	f = FileAccess.open(target, FileAccess.WRITE)
+	f.store_string("tokens v2")
+	f.close()
+	check(SoundBank.recipe_digests(root) != one, "a changed compiled recipe changes the digest")
+	DirAccess.remove_absolute(target)
+	DirAccess.remove_absolute(root.path_join("exported"))
+	DirAccess.remove_absolute(root.path_join("recipe.gd.remap"))
+	DirAccess.remove_absolute(root)
+
+
+func test_without_threads_only_quick_sounds_bake_and_a_frame_bakes_one() -> void:
+	var bank := SoundBank.new()
+	bank.threaded = false
+	bank.request(&"bed_moss")
+	bank.request(&"music_coast:0")
+	bank.request(&"machine_hauler")
+	eq(bank.pending(), 0, "beds, music and machines are not baked on the main thread")
+	bank.request(&"ui_move")
+	bank.request(&"ui_back")
+	eq(bank.pending(), 2, "one-shots are")
+	bank._pumped_frame = -1
+	bank.pump()
+	eq(bank.pending(), 1, "one a frame")
+	check(bank.is_ready(&"ui_move"), "the first one is ready")
+	bank.flush()
+	check(bank.is_ready(&"ui_back"), "flush finishes what may bake")
+	check(not bank.is_ready(&"bed_moss"), "a bed stays silent without a worker")

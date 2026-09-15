@@ -24,6 +24,14 @@ const UI_VOICES := 3
 const DISK_CACHE := "user://sound_cache"
 ## One-shots made by machines outside SoundSignals: played at their own pitch.
 const EXACT: Array[StringName] = [&"grip", &"machine_down", &"alert"]
+## How far from where a bare alert, snatch or windup was emitted (tiles) the
+## mob that did it may stand.
+const MOB_REACH := 6.0
+## Sfx names that repeat a death Events.killed already played.
+## Tiles within which a machine's alert and windup are baked ahead even when
+## its racket is short or none.
+const SIGHT_BAKE := 16.0
+const KILL_ECHOES: Array[StringName] = [&"machine_down", &"beast_down", &"killed"]
 ## Per sound name, how many may sound at once before the oldest is cut.
 const POLYPHONY := 3
 ## Screen offset (pixels from centre) where the sea is heard at full lean.
@@ -75,7 +83,11 @@ var _last_step := -10.0
 var _foot_clock := 0.0
 var _scatter_next: Dictionary = {}
 var _last_variant: Dictionary = {}
-var _last_killed: StringName = &""
+## A death is played from Events.killed; the sfx its emitter sends in the same
+## frame for the same place is swallowed: [frame, where].
+var _killed_frame := -1
+var _killed_at := Vector2.ZERO
+var _step_family: StringName = &""
 var _open_pages: Dictionary = {}
 var _played := 0
 var _bake_ahead := false
@@ -191,9 +203,12 @@ func advance(delta: float) -> void:
 func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0) -> void:
 	if game == null or game.player == null:
 		return
+	if emitted in KILL_ECHOES and _killed_frame == Engine.get_process_frames() and Vector2(at.x, at.z).distance_to(_killed_at) < 1.5:
+		_killed_frame = -1
+		return
 	var name := SoundNames.resolve(emitted)
-	if emitted == &"killed" and _last_killed != &"":
-		name = SoundNames.killed_sound(_last_killed)
+	if emitted in SoundNames.BY_MOB:
+		name = SoundNames.for_mob(emitted, mob_kind_at(at))
 	if name == &"" or not SoundBank.has_sound(name):
 		return
 	var cat := SoundBank.category_of(name)
@@ -233,7 +248,8 @@ func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0
 
 
 ## A baked take of `name`, never the one played last time when there is a
-## choice; if the wanted take is not baked yet, any baked take will do.
+## choice; if the wanted take is not baked yet, another baked take that is not
+## the last one, and the last one again only when it is the only take ready.
 func _pick_variant(name: StringName) -> SoundBank.Baked:
 	var count := maxi(1, SoundBank.variants(name))
 	var last := int(_last_variant.get(name, -1))
@@ -243,10 +259,16 @@ func _pick_variant(name: StringName) -> SoundBank.Baked:
 	var baked := bank.get_baked(SoundBank.key_for(name, v), true)
 	if baked == null:
 		for k in count:
-			if bank.is_ready(SoundBank.key_for(name, k)):
+			bank.request(SoundBank.key_for(name, k))
+		for j in count:
+			var k := (v + j) % count
+			if k != last and bank.is_ready(SoundBank.key_for(name, k)):
 				v = k
 				baked = bank.get_baked(SoundBank.key_for(name, k))
 				break
+		if baked == null and last >= 0 and bank.is_ready(SoundBank.key_for(name, last)):
+			v = last
+			baked = bank.get_baked(SoundBank.key_for(name, last))
 	if baked != null:
 		_last_variant[name] = v
 	return baked
@@ -295,8 +317,36 @@ func _ui_voice() -> AudioStreamPlayer:
 	return _ui_voices[0]
 
 
-func _on_killed(kind: StringName, _at: Vector3) -> void:
-	_last_killed = kind
+## What a death sounds like is known here, from what died: a machine's light
+## going out or a body going down. The fight also sends machine_down as sfx in
+## the same frame; play() swallows that echo.
+func _on_killed(kind: StringName, at: Vector3) -> void:
+	# Two deaths in one frame at one place are both heard: only the echo after each is swallowed.
+	_killed_frame = -1
+	play(SoundNames.killed_sound(kind), at)
+	_killed_frame = Engine.get_process_frames()
+	_killed_at = Vector2(at.x, at.z)
+
+
+## The roster id of the mob nearest `at` (tile space x, z) within MOB_REACH,
+## living ones first; &"" when there is none.
+func mob_kind_at(at: Vector3) -> StringName:
+	if not is_inside_tree():
+		return &""
+	var p := Vector2(at.x, at.z)
+	var best := MOB_REACH
+	var kind: StringName = &""
+	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
+		var pos: Variant = m.get("pos")
+		var k: Variant = m.get("kind")
+		if not pos is Vector2 or k == null:
+			continue
+		var alive: Variant = m.get("alive")
+		var d := (pos as Vector2).distance_to(p) + (MOB_REACH if alive is bool and not alive else 0.0)
+		if d < best:
+			best = d
+			kind = StringName(str(k))
+	return kind
 
 
 ## A page open muffles the world; the pause page most of all.
@@ -339,7 +389,13 @@ func footfalls(delta: float) -> void:
 		_stride = fmod(_stride, stride)
 		_last_step = _foot_clock
 		steps += 1
-		play(SoundEffects.step_name(_ground()), Vector3.ZERO, 1.5 if run else 0.0)
+		var family := SoundEffects.step_name(_ground())
+		if family != _step_family:
+			# New ground: every take of it, now, so the next steps have a choice.
+			_step_family = family
+			for v in SoundBank.variants(family):
+				bank.request(SoundBank.key_for(family, v), true)
+		play(family, Vector3.ZERO, 1.5 if run else 0.0)
 
 
 func _ground() -> int:
@@ -480,9 +536,16 @@ func _pick_machine() -> void:
 	for m: Node in mobs:
 		var kind := SoundMachines.kind_of(StringName(str(m.get("kind"))))
 		var pos: Variant = m.get("pos")
-		if kind != &"" and pos is Vector2 and (pos as Vector2).distance_to(game.player.pos) < SoundMachines.RACKET[kind] * 1.5:
-			bank.request(StringName("machine_" + String(kind)))
+		if kind == &"" or not pos is Vector2:
+			continue
+		var racket := SoundMix.racket_of(m, kind)
+		# Its calls are wanted even from a machine that gives no warning.
+		var d := (pos as Vector2).distance_to(game.player.pos)
+		if d < maxf(racket, SIGHT_BAKE) * 1.5:
+			if racket > 0.0:
+				bank.request(StringName("machine_" + String(kind)))
 			bank.request(StringName("alert_" + String(kind)))
+			bank.request(StringName("windup_" + String(kind)))
 	if best.is_empty():
 		machine_kind = &""
 		machine_target = 0.0
@@ -490,7 +553,7 @@ func _pick_machine() -> void:
 	machine_kind = best["kind"]
 	machine_target = best["level"]
 	_machine_distance = best["distance"]
-	_machine_racket = SoundMachines.RACKET[machine_kind]
+	_machine_racket = float(best["racket"])
 	var node: Object = best["node"]
 	_machine_at = node.get("pos")
 

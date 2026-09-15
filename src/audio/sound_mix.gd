@@ -91,14 +91,18 @@ const WEATHER_SCATTER := {
 	&"heat": [&"heat_tick", 4.0, 16.0],
 }
 
+## What is left of the far works by day, remote and still: a trace, not a bed.
+const FAR_WORKS_DAY := 0.08
+
 ## Thunder is heard a long way: past THUNDER_NEAR tiles only the roll carries.
 const THUNDER_NEAR := 90.0
 
 ## Absolute heard level (dBFS, loudest 0.5 s RMS after its bus) of the weather
-## bed at full strength: 0 dB of the mix sheet. Low enough that the spikiest
-## one-shot (a clinker footfall, all crest) still peaks under full scale after
-## its gain and bus, and thunder has its +10 without the limiter working.
-const REF_DBFS := -30.0
+## bed at full strength: 0 dB of the mix sheet. Loud enough for laptop speakers
+## (calm places sit near -24 dBFS, a storm with thunder near -12). Spiky sounds
+## keep under the Master limiter by having their own crest limited when they
+## are baked (SoundBank.CEILING_DBFS), never by turning the whole game down.
+const REF_DBFS := -20.0
 
 static var _weather_script: GDScript
 static var _weather_checked := false
@@ -321,7 +325,9 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	# The far works: only on still air, loudest at night and far from people,
 	# gone under any weather and under the sea.
 	var calm := 1.0 - smoothstep(0.25, 0.7, wind)
-	var dark := lerpf(0.3, 1.0, dark_share)
+	# By day it is only a trace under the country (FAR_WORKS_DAY); it is a
+	# night sound.
+	var dark := lerpf(FAR_WORKS_DAY, 1.0, dark_share)
 	var remote := clampf(float(extra.get("remote", 0.0)), 0.0, 1.0)
 	var clear := 1.0 - s * (0.4 if kind == &"heat" or kind == &"grey" else 0.9)
 	out[&"bed_far_works"] = remote * calm * dark * clear * (1.0 - 0.6 * shore)
@@ -425,11 +431,22 @@ static func normalize_weather(raw: Variant, script: GDScript = null) -> Dictiona
 
 # -------------------------------------------------------------- machines
 
-## Level of a machine bed at distance d: 0.45 at the edge of its racket, 1 on top.
+## Level of a machine bed at distance d: the research's 0.45 + 0.55 (1 - d/racket)
+## inside its racket, eased in from silence over the outer RACKET_EDGE share so
+## a machine coming into range is heard arriving, never switched on.
+## A racket of 0 is a machine that gives no warning: never heard.
+const RACKET_EDGE := 0.15
+
+
 static func machine_level(d: float, racket: float) -> float:
 	if racket <= 0.0 or d >= racket:
 		return 0.0
-	return 0.45 + 0.55 * (1.0 - maxf(0.0, d) / racket)
+	var inner := racket * (1.0 - RACKET_EDGE)
+	var edge := 1.0
+	if d > inner:
+		var u := (racket - d) / (racket - inner)
+		edge = u * u * (3.0 - 2.0 * u)
+	return (0.45 + 0.55 * (1.0 - maxf(0.0, d) / racket)) * edge
 
 
 ## Distance is a timbre change before it is a level change: the low-pass
@@ -443,9 +460,27 @@ static func machine_wet(d: float, racket: float) -> float:
 	return 0.03 + 0.22 * clampf(d / maxf(0.001, racket), 0.0, 1.0)
 
 
+## How far a mob's work carries (tiles): the mob's own number when it exposes
+## one (a `racket` property, or `row.racket` / `state.row.racket` as the fight
+## roster keeps it), so the fight and the ears can never disagree; the
+## SoundMachines table only for mobs that say nothing.
+static func racket_of(m: Object, kind: StringName) -> float:
+	var own: Variant = m.get("racket")
+	if own is float or own is int:
+		return float(own)
+	var row: Variant = m.get("row")
+	if not row is Dictionary:
+		var state: Variant = m.get("state")
+		if state is Object and is_instance_valid(state):
+			row = (state as Object).get("row")
+	if row is Dictionary and (row as Dictionary).has("racket"):
+		return float((row as Dictionary)["racket"])
+	return float(SoundMachines.RACKET.get(kind, 0.0))
+
+
 ## The one machine that plays: the loudest living mob within its racket.
 ## mobs: nodes exposing kind, pos (tile space) and alive. Returns
-## {kind, level, distance, node} or an empty Dictionary.
+## {kind, level, distance, racket, node} or an empty Dictionary.
 static func loudest_machine(mobs: Array, listener: Vector2) -> Dictionary:
 	var best := {}
 	var best_level := 0.0
@@ -465,10 +500,11 @@ static func loudest_machine(mobs: Array, listener: Vector2) -> Dictionary:
 		if not pos is Vector2:
 			continue
 		var d := (pos as Vector2).distance_to(listener)
-		var lvl := machine_level(d, SoundMachines.RACKET[kind])
+		var racket := racket_of(m, kind)
+		var lvl := machine_level(d, racket)
 		if lvl > best_level:
 			best_level = lvl
-			best = {"kind": kind, "level": lvl, "distance": d, "node": m}
+			best = {"kind": kind, "level": lvl, "distance": d, "racket": racket, "node": m}
 	return best
 
 

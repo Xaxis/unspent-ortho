@@ -11,7 +11,8 @@ class_name SoundScene
 ##   hour: float      world hour at the start (the clock runs 1 minute a second)
 ##   weather: {kind, strength, wind} or {} for the sky's rules
 ##   secs: float      how long
-##   machine: {kind, from, to}  one machine whose distance goes from -> to tiles
+##   machine: {kind, from, to, racket}  one machine whose distance goes from -> to
+##                    tiles (racket: the roster's, default SoundMachines.RACKET)
 ##   layers: which of [beds, steps, scatter, machine] to render (default all)
 ## render() returns {samples (mono, RATE), rate, lanes: {bed: PackedFloat32Array
 ## per block}, block (s), path (Array of Vector2 per block), countries}.
@@ -236,7 +237,7 @@ static func _lay_loop(out: PackedFloat32Array, bk: SoundBank.Baked, lane: Packed
 ## before the gain (a two-pole filter whose corner moves per block).
 static func _lay_machine(out: PackedFloat32Array, bk: SoundBank.Baked, machine: Dictionary) -> void:
 	var kind := StringName(machine.get("kind", &"watcher"))
-	var racket: float = SoundMachines.RACKET.get(kind, 12.0)
+	var racket := float(machine.get("racket", SoundMachines.RACKET.get(kind, 12.0)))
 	var d0 := float(machine.get("from", racket))
 	var d1 := float(machine.get("to", 0.0))
 	var src := bk.samples

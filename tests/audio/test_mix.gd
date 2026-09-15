@@ -47,6 +47,19 @@ func test_heard_levels_measured_from_samples_match_the_sheet() -> void:
 		# so the master limiter only ever meets sums, never one sound alone.
 		var out_db := 20.0 * log(peak) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
 		lt(out_db, -0.5, "%s peaks at %+.1f dBFS after its gain and bus" % [key, out_db])
+		# Its crest was fitted by limiting transients, not by squashing the sound.
+		lt(b.limited_db, 16.0, "%s needed %.1f dB of limiting; soften the recipe's attack" % [key, b.limited_db])
+
+
+func test_the_mix_is_loud_enough_for_laptop_speakers() -> void:
+	check(SoundMix.REF_DBFS >= -22.0 and SoundMix.REF_DBFS <= -16.0, "the reference sits near -20 dBFS, got %.1f" % SoundMix.REF_DBFS)
+	# A calm shore, deep in: the bed's loudest half-second after its gain and bus.
+	var shore := Fixture.baked(&"bed_shore")
+	var abs_db := 20.0 * log(Synth.loudest_rms(shore.samples, shore.rate, 0.5)) / log(10.0) + shore.gain_db + SoundMix.bus_db(shore.bus)
+	gt(abs_db, -26.0, "a calm place is heard (%.1f dBFS)" % abs_db)
+	var thunder := Fixture.baked(&"thunder:0")
+	var peak_db := 20.0 * log(Synth.peak(thunder.samples)) / log(10.0) + thunder.gain_db + SoundMix.bus_db(thunder.bus)
+	lt(peak_db, -0.5, "thunder alone stays under the limiter (%.1f dBFS)" % peak_db)
 
 
 func test_nothing_carries_its_weight_below_120_hz() -> void:

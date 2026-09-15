@@ -32,6 +32,16 @@ func test_the_figure_can_be_heard_in_a_phrase() -> void:
 		gt(on, off * 3.0, "figure note %.0f Hz (on %.4f, off-note %.4f)" % [f, on, off])
 
 
+## The burning drone is a line under the figure, not a wall at 120-500 Hz.
+func test_the_burning_phrase_leaves_room_under_the_figure() -> void:
+	var b := Fixture.baked(&"music_burning:0")
+	# Energy below 250 Hz over the whole phrase (an eighth-order split; a
+	# second-order band leaks the figure's own D4 into the measure). It was 0.24
+	# with the full organ and the brass doubled an octave down; the coast's is 0.03.
+	var low := Synth.low_energy_ratio(b.samples, b.rate, 250.0, 8.0)
+	lt(low, 0.08, "the phrase's weight is not under 250 Hz (%.3f of its energy)" % low)
+
+
 func test_dawn_and_dusk_are_crossed_once_including_past_midnight() -> void:
 	check(MusicSystem._crossed(5.9, 6.05, 6.0), "dawn crossed")
 	check(not MusicSystem._crossed(6.05, 6.2, 6.0), "not crossed again")

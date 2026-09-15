@@ -109,3 +109,25 @@ func test_a_baked_stream_is_16_bit_mono_and_loops_its_whole_length() -> void:
 	eq(s.data.size(), 8820, "two bytes a sample")
 	var one := Synth.to_wav(b, 22050, false)
 	eq(one.loop_mode, AudioStreamWAV.LOOP_DISABLED, "one-shots do not loop")
+
+
+func test_the_limiter_turns_a_transient_down_and_leaves_the_rest() -> void:
+	var rate := 44100
+	var buf := Synth.buffer(rate / 2)
+	Synth.add_sine(buf, rate, 440.0, 0.2)
+	var spike := Synth.modes(rate, 0.01, PackedFloat32Array([3000.0]), PackedFloat32Array([1.0]), PackedFloat32Array([0.004]))
+	Synth.add(buf, spike, rate / 4, 0.9)
+	var before := buf.duplicate()
+	var over := Synth.limit(buf, rate, 0.4, 0.0015, 0.006)
+	gt(float(over), 0.0, "the spike was over")
+	check(Synth.peak(buf) <= 0.4 + 1e-6, "nothing over the ceiling (%.3f)" % Synth.peak(buf))
+	var far := rate / 8
+	near(buf[far], before[far], 1e-6, "far from the spike, untouched")
+	near(Synth.rms(buf, 0, rate / 5), Synth.rms(before, 0, rate / 5), 1e-6, "the body before it is the same")
+	# A loop limited round its seam stays a loop.
+	var loop := Synth.buffer(44100)
+	Synth.add_sine(loop, rate, 441.0, 0.3)
+	Synth.add(loop, spike, loop.size() - 100, 0.9, true)
+	Synth.limit(loop, rate, 0.35, 0.0015, 0.05, true)
+	lt(Synth.seam_ratio(loop), 1.5, "seamless after limiting")
+	check(Synth.peak(loop) <= 0.35 + 1e-6, "the wrapped spike is under too")

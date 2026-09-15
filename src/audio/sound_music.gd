@@ -47,7 +47,7 @@ const COUNTRIES := {
 		"lead": &"koto", "pad": &"bowed_pad", "bass": &"bowed", "answer": 65,
 		"chords": [[52, [55, 59, 64]], [52, [53, 57, 60]], [52, [62, 65, 69]]],
 	},
-	# No harmony left: a drone on A-flat and E-flat, the figure alone above it.
+	# No harmony left: a thin drone on A-flat and E-flat, the figure alone above it.
 	&"burning": {
 		"lead": &"brass", "pad": &"organ", "bass": &"none", "answer": 61,
 		"chords": [[44, [51, 56]], [44, [51, 56]], [44, [51, 56]]],
@@ -86,9 +86,6 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 			var vel := r.randf_range(0.82, 1.0) * (0.9 if bar == 1 else 1.0)
 			var tone := _voice(spec["lead"], rate, _hz(midi + lead_shift), length * beat, vel, r.randi())
 			Synth.add(lead, tone, maxi(0, Synth.samples(rate, onset)), 0.55)
-			if spec["lead"] == &"brass":
-				var low := _voice(&"brass", rate, _hz(midi - 12), length * beat, vel * 0.6, r.randi())
-				Synth.add(lead, low, maxi(0, Synth.samples(rate, onset + 0.01)), 0.3)
 	# The lead repeats itself three quarters of a beat later, duller each time:
 	# the beat-synced echo of the sample machines, not a hall.
 	var echoed := Synth.echo(lead, rate, 0.75 * beat, 0.32, 2400.0, 0.3, 0.0)
@@ -203,7 +200,10 @@ static func _pad(kind: StringName, rate: int, freqs: PackedFloat32Array, hold: f
 			&"clarinet":
 				Synth.add_pulse(b, rate, f, 1.0, 0.5, from)
 			&"organ":
-				for bar: Array in [[1.0, 1.0], [2.0, 0.6], [3.0, 0.3], [4.0, 0.25]]:
+				# The lowest voice keeps its upper drawbars down, so the drone's
+				# stack does not pile up under the figure.
+				var bars: Array = [[1.0, 1.0], [2.0, 0.35], [3.0, 0.1], [4.0, 0.06]] if v == 0 else [[1.0, 1.0], [2.0, 0.5], [3.0, 0.2], [4.0, 0.12]]
+				for bar: Array in bars:
 					Synth.add_sine(b, rate, f * float(bar[0]), float(bar[1]), from)
 	match kind:
 		&"strings":
@@ -220,6 +220,9 @@ static func _pad(kind: StringName, rate: int, freqs: PackedFloat32Array, hold: f
 			Synth.lowpass(b, rate, 1500.0)
 			Synth.env_adsr(b, rate, 0.12, 0.3, 0.8, hold, 0.35)
 		&"organ":
+			# Thin: the drone is a line under the figure, not a floor of 120-500 Hz.
+			Synth.highpass(b, rate, 250.0)
+			Synth.highpass(b, rate, 250.0)
 			Synth.tremolo(b, rate, 6.5, 0.25)
 			Synth.env_adsr(b, rate, 0.08, 0.1, 0.9, hold, 0.4)
 	return b
