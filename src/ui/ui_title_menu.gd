@@ -205,15 +205,17 @@ func _process(delta: float) -> void:
 
 ## Keys are read from the action state, as the ui system reads them, so a
 ## tour's Input.action_press drives the title the way a key does. A press is
-## the first frame an action is seen down.
+## the first frame an action is seen down. Every key that went down this frame
+## is answered, in order: two presses inside one frame (a fast hand, a slow
+## frame while the coast streams in) must not lose one, or down-then-up would
+## leave the choice a row from where the player left it.
 func _read_keys() -> void:
 	for pair: Array in KEYS:
 		var now := Input.is_action_pressed(pair[0])
-		if (now and not _was.get(pair[0], false)) or Input.is_action_just_pressed(pair[0]):
-			_was[pair[0]] = now
-			handle(pair[1])
-			return
+		var went_down: bool = (now and not _was.get(pair[0], false)) or Input.is_action_just_pressed(pair[0])
 		_was[pair[0]] = now
+		if went_down:
+			handle(pair[1])
 
 
 func _draw() -> void:

@@ -381,3 +381,21 @@ func test_every_app_is_drawn_on_the_one_slate() -> void:
 		check(not content.intersects(crack) or content.end.x <= crack.position.x, "content clear of the crack: %s" % r)
 	check(UiSlate.GLASS_RECT.encloses(UiSlate.BODY), "the body is on the glass")
 	eq(UiSlate.glass_of(UiSlate.DEVICE), UiSlate.GLASS_RECT, "the glass is where the bezel leaves it")
+
+
+func test_two_keys_in_one_frame_both_reach_the_title() -> void:
+	var s := UiTitleMenu.new()
+	tree.root.add_child(s)
+	s.open()
+	eq(s.menu.selected().id, &"new")
+	# A down and an up inside one frame (a slow frame while the coast streams in):
+	# answering only the first would leave the choice a row away from where it began.
+	Input.action_press(&"move_down")
+	Input.action_press(&"move_up")
+	s._read_keys()
+	Input.action_release(&"move_down")
+	Input.action_release(&"move_up")
+	eq(s.menu.selected().id, &"new", "the choice comes back to where it was")
+	s.free()
+	for i in 2:
+		await tree.process_frame
