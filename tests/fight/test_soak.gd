@@ -61,7 +61,8 @@ func test_minutes_on_a_generated_coast() -> void:
 		for m in sim.mobs:
 			kinds[m.kind] = true
 			check(not is_nan(m.pos.x) and not is_nan(m.pos.y), "%s has a place" % m.kind)
-			check(Senses.chebyshev(m.pos, hero.pos) <= Spawner.CULL + 1.0, "%s culled past 24" % m.kind)
+			var cull := Spawner.PATROL_CULL if m.patrol else Spawner.CULL
+			check(Senses.chebyshev(m.pos, hero.pos) <= cull + 1.0, "%s culled past %d" % [m.kind, cull])
 		if hero.health <= 0:
 			hero.health = FightRules.HEALTH
 	var ms_per_second := (Time.get_ticks_usec() - t0) / 1000.0 / SECONDS

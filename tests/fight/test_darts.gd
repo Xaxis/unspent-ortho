@@ -61,6 +61,8 @@ func test_a_clerk_caught_first_files_nothing() -> void:
 func test_a_meeting_shuts_every_dart_out_for_hours() -> void:
 	var sim := F.make_sim(F.flat_world(96, Ground.ASH, Country.BURNING), Vector2(40.5, 40.5))
 	var coast := Coast.new(sim, Spawner.new())
+	# The dart gaps alone: no first meeting holding the hunters back (test_presence has that).
+	coast.rounds = false
 	check(coast.shut().is_empty(), "nothing shut on a fresh coast")
 	var c := sim.add_mob(&"clerk", Vector2(41.5, 40.5))
 	sim.snatch(c)

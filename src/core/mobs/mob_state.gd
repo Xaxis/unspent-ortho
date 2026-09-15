@@ -97,6 +97,8 @@ var crowded_since := -1.0
 ## Put out by the coast to be seen on its round (a patrol), or as the first meeting.
 var patrol := false
 var first_meeting := false
+## Sim ms it was put out on the coast (patrols come off the land after a while).
+var put_out_at := 0.0
 ## Last time this body moved meaningfully (for the view's walk cycle).
 var speed := 0.0
 

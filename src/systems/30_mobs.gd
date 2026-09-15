@@ -83,7 +83,7 @@ func _listen() -> void:
 		if Racket.should_tell(m, sim.hero.pos, visible, aerial, now_ms, _told_ms):
 			m.heard_told = true
 			_told_ms = now_ms
-			Events.message.emit(Racket.line_for(m))
+			Events.message.emit(Racket.line_for(m, sim.hero.pos))
 		elif visible:
 			# Seen first: nothing to tell about this one later.
 			m.heard_told = true

@@ -42,6 +42,25 @@ static func weight_of(row: Dictionary) -> float:
 	return w * DART_SHARE if row.get("approach", &"") == &"dart" else w
 
 
+## A hunter's share of its weight by day: rare on the first day, thicker as the
+## days go (VISION §2: more of them as interference rises; there is no
+## interference yet, so time stands in for it).
+const HUNTER_SHARE_BY_DAY: Array[float] = [0.35, 0.7, 1.0]
+
+
+static func is_hunter(row: Dictionary) -> bool:
+	return row.get("disposition", &"hostile") == &"hostile" and row.get("approach", &"") != &"dart" \
+			and row.get("hostile", true)
+
+
+## The row's weight at this moment: weight_of, thinned for hunters early on.
+static func weight_at(row: Dictionary, m: Moment) -> float:
+	var w := weight_of(row)
+	if is_hunter(row):
+		w *= HUNTER_SHARE_BY_DAY[clampi(m.day() - 1, 0, HUNTER_SHARE_BY_DAY.size() - 1)]
+	return w
+
+
 ## Does the row's moment (not its place) fit right now?
 static func moment_fits(row: Dictionary, m: Moment) -> bool:
 	var where: Dictionary = row.get("where", {})
@@ -159,7 +178,7 @@ func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centr
 		var row := Roster.row(k)
 		if not shut.has(k) and moment_fits(row, m):
 			fitting.append(k)
-			sum += weight_of(row)
+			sum += weight_at(row, m)
 	if sum <= 0.0:
 		return {}
 	if Rng.hash_ints(m.seed_value, roll_index, 0x5a17) % 2000 >= int(sum * rate):
@@ -176,12 +195,12 @@ func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centr
 		for k in fitting:
 			if place_fits(Roster.row(k), world, query, tx, ty):
 				here.append(k)
-				weight += weight_of(Roster.row(k))
+				weight += weight_at(Roster.row(k), m)
 		if here.is_empty() or weight <= 0.0:
 			continue
 		var pick := r.randf() * weight
 		for k in here:
-			pick -= weight_of(Roster.row(k))
+			pick -= weight_at(Roster.row(k), m)
 			if pick < 0.0:
 				return {"kind": k, "pos": Vector2(tx + 0.5, ty + 0.5)}
 		return {"kind": here[here.size() - 1], "pos": Vector2(tx + 0.5, ty + 0.5)}
@@ -201,5 +220,101 @@ static func ring_tile(r: RandomNumberGenerator, centre: Vector2) -> Vector2:
 	return Vector2(floori(centre.x) + o.x + 0.5, floori(centre.y) + o.y + 0.5)
 
 
-static func should_cull(mob_pos: Vector2, centre: Vector2) -> bool:
-	return Senses.chebyshev(mob_pos, centre) > CULL
+static func should_cull(mob_pos: Vector2, centre: Vector2, patrol: bool = false) -> bool:
+	return Senses.chebyshev(mob_pos, centre) > (PATROL_CULL if patrol else CULL)
+
+
+## Patrols: a worker on its round, put out where the player will see it cross
+## the land at a distance and go on its way. The line passes the player at
+## PATROL_PASS tiles, runs PATROL_LENGTH, and starts out of view.
+const PATROL_PASS_MIN := 8.0
+const PATROL_PASS_MAX := 11.0
+const PATROL_LENGTH := 26.0
+const PATROL_CULL := 34.0
+const PATROL_TRIES := 8
+
+
+## The kinds that go on rounds now: indifferent machines that walk (not errands, not darts).
+static func patrol_kinds(m: Moment) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for k: StringName in Roster.DEFS:
+		var row := Roster.row(k)
+		if row.get("machine", false) and row.get("disposition", &"hostile") == &"indifferent" \
+				and not row.get("approach", &"") in [&"errand", &"dart"] and moment_fits(row, m):
+			out.append(k)
+	return out
+
+
+## A worker's round past the player: {kind, from, to} or {}. The start is out
+## of view, the line crosses the land about the player on walkable ground, and
+## the worker fits where it starts and where it passes.
+func patrol(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centre: Vector2) -> Dictionary:
+	var kinds := patrol_kinds(m)
+	if kinds.is_empty():
+		return {}
+	var r := Rng.make(m.seed_value, roll_index * 7 + 0x9a7)
+	for i in PATROL_TRIES:
+		var a := r.randf() * TAU
+		var radial := Vector2.from_angle(a)
+		var tangent := radial.orthogonal() * (1.0 if r.randf() < 0.5 else -1.0)
+		var mid := centre + radial * r.randf_range(PATROL_PASS_MIN, PATROL_PASS_MAX)
+		var from := mid - tangent * PATROL_LENGTH * 0.5
+		var to := mid + tangent * PATROL_LENGTH * 0.5
+		if in_view(centre, from) or not _walkable_line(world, query, from, to):
+			continue
+		var here: Array[StringName] = []
+		for k in kinds:
+			var row := Roster.row(k)
+			if place_fits(row, world, query, floori(from.x), floori(from.y)) and place_fits(row, world, query, floori(mid.x), floori(mid.y)):
+				here.append(k)
+		if here.is_empty():
+			continue
+		return {"kind": here[r.randi_range(0, here.size() - 1)], "from": from, "to": to}
+	return {}
+
+
+## Dry ground all along, sampled every tile, with no cliff between two samples.
+static func _walkable_line(world: WorldData, _query: WorldQuery, a: Vector2, b: Vector2) -> bool:
+	var steps := maxi(1, ceili(a.distance_to(b)))
+	var prev := Vector2i(floori(a.x), floori(a.y))
+	for s in steps + 1:
+		var p := a.lerp(b, float(s) / steps)
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if not world.in_bounds(t.x, t.y) or Ground.is_water(world.ground_at(t.x, t.y)):
+			return false
+		if absi(world.level_at(prev.x, prev.y) - world.level_at(t.x, t.y)) > 1:
+			return false
+		prev = t
+	return true
+
+
+## Where the first meeting comes from: a tile 12-15 tiles out, out of view, on
+## ground a hunter of `kind` could stand on, at least FIRST_GREEN from a
+## village. Vector2.INF if none this time.
+const FIRST_RING_MIN := 12
+const FIRST_RING_MAX := 15
+const FIRST_GREEN := 10.0
+
+
+func first_meeting_spot(roll_index: int, world: WorldData, query: WorldQuery, kind: StringName, centre: Vector2) -> Vector2:
+	var r := Rng.make(roll_index, 0xf1257)
+	var row := Roster.row(kind)
+	var where: Dictionary = row.get("where", {})
+	for i in TILE_TRIES * 2:
+		var d := float(r.randi_range(FIRST_RING_MIN, FIRST_RING_MAX))
+		var p := centre + Vector2.from_angle(r.randf() * TAU) * d
+		var t := Vector2(floori(p.x) + 0.5, floori(p.y) + 0.5)
+		if in_view(centre, t) or not world.in_bounds(floori(t.x), floori(t.y)):
+			continue
+		var g := world.ground_at(floori(t.x), floori(t.y))
+		if Ground.is_water(g) or not query.standable(floori(t.x), floori(t.y)):
+			continue
+		var grounds: Array = where.get("grounds", [])
+		if not grounds.is_empty() and not ground_matches(g, grounds):
+			continue
+		if green_distance(world, t) < FIRST_GREEN:
+			continue
+		if not NavField.line_walkable(world, t, centre):
+			continue
+		return t
+	return Vector2.INF

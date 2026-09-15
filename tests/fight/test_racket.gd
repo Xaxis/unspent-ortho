@@ -29,3 +29,6 @@ func test_told_once_only_when_out_of_sight() -> void:
 	var other := sim.add_mob(&"hauler", Vector2(55.5, 44.5))
 	check(not Racket.should_tell(other, sim.hero.pos, false, false, 1000.0, 0.0), "not straight after another")
 	check(Racket.line_for(other) != "", "a line to say")
+	check(Racket.line_for(other, sim.hero.pos).contains("east"), "and it says which way: %s" % Racket.line_for(other, sim.hero.pos))
+	eq(Racket.bearing_words(Vector2.ZERO, Vector2(0, -5)), "north", "y grows south")
+	eq(Racket.bearing_words(Vector2.ZERO, Vector2(-3, 3)), "south-west")

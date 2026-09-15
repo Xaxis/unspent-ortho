@@ -1,0 +1,115 @@
+class_name Guide
+## The first hour's guide, as pure rules over a running game: the one-line
+## goal (what to want next) and the key hints, each with the moment it applies
+## and the use that retires it. The guide system (58_guide) says them as short
+## Events.message lines; the slate may show `goal` and `key_hint` on its own
+## rows (contract request in the M1.5 report).
+##
+##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
+##                                            food, light; or the ore once there is a pick
+##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
+##                                            {id: StringName, line: String, key: String} or {}
+##   HINTS                                    id -> [line, key] for every hint
+##
+## Hints retire on use (58_guide marks them): walk (moved), take (took), fire
+## (a fire made), make (something made at a station), carry (the carrying page
+## opened), dodge (a dodge), side (a blow reached a working part), lamp (lit),
+## runner/worker (said once when one is first in view).
+
+const HINTS := {
+	&"walk": ["WASD walks, Shift runs.", "wasd"],
+	&"take": ["E takes what is in front of you.", "e"],
+	&"fire": ["E twice on open ground lays a fire.", "e"],
+	&"make": ["C makes things at the fire. Long work cooks while you go.", "c"],
+	&"carry": ["I shows what you carry. Leave what you do not need.", "i"],
+	&"lamp": ["Night. F lights the lamp.", "f"],
+	&"dodge": ["It winds up before it strikes: K gets you out of the way.", "k"],
+	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", "space"],
+	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", ""],
+	&"worker": ["A worker on its round. Leave it be and it leaves you be.", ""],
+}
+
+## Load over this share of the creel asks for the carrying page.
+const CARRY_SHARE := 0.6
+## Nightfall past which the lamp is asked for.
+const LAMP_NIGHTFALL := 0.4
+## Tiles within which a body counts as seen for its hint (the camera shows about 13 across).
+const SIGHT := 13.0
+
+
+static func goal(game: Game) -> String:
+	var inv := game.inventory
+	var now := game.clock.minutes
+	if game.body.hunger_level(now) >= 2:
+		return "Eat something: mussels off the rocks, or berries."
+	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
+		return "Light the lamp against the dark."
+	if inv.has(&"pick"):
+		return "Take the pick to the ore in the rock."
+	var fire := _has_fire(game)
+	if not fire:
+		if Survival._makeable_build(game, &"fire").is_empty():
+			return "A fire before dark: three driftwood and two stones."
+		return "A fire before dark: lay it on open ground."
+	if not _cooking_or_has(game, &"charcoal") and inv.count(&"scrap") > 0 and not inv.has(&"haft"):
+		return "A haft and charcoal for a pick: wood at the fire."
+	if not _cooking_or_has(game, &"charcoal"):
+		return "Charcoal at the fire, for a pick."
+	if not inv.has(&"haft"):
+		return "A haft, whittled from wood."
+	if inv.count(&"scrap") == 0:
+		return "Plate for a pick: turn over the tip."
+	return "A pick, made at the fire."
+
+
+static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
+	for id: StringName in _applicable(game):
+		if not retired.has(id):
+			return {"id": id, "line": HINTS[id][0], "key": HINTS[id][1]}
+	return {}
+
+
+## The hints that fit the moment, most pressing first.
+static func _applicable(game: Game) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var sim := game.player.sim if game.player != null else null
+	if sim != null:
+		for m in sim.mobs:
+			if not m.alive or m.removed:
+				continue
+			# Said as a hunter first comes on, before it is close enough to hush the page.
+			if m.machine and not m.indifferent() and (m.roused() or m.blow_phase(sim.now) == &"windup"):
+				out.append(&"dodge")
+			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
+			if seen and m.first_meeting and not m.roused():
+				out.append(&"runner")
+			if seen and m.patrol and m.indifferent():
+				out.append(&"worker")
+	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and game.inventory.has(&"lamp"):
+		out.append(&"lamp")
+	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
+		out.append(&"carry")
+	if Survival.use_target(game) != null:
+		out.append(&"take")
+	if not _has_fire(game) and not Survival._makeable_build(game, &"fire").is_empty():
+		out.append(&"fire")
+	if Survival.station_near(game) != &"":
+		out.append(&"make")
+	out.append(&"walk")
+	return out
+
+
+static func _has_fire(game: Game) -> bool:
+	for p in SurvivalState.of(game).built:
+		if p.kind == PropKind.FIRE and not game.world.depleted.has(p.id):
+			return true
+	return Survival.fire_near(game, 12.0) != null
+
+
+static func _cooking_or_has(game: Game, id: StringName) -> bool:
+	if game.inventory.has(id):
+		return true
+	for job in Survival.cooking(game):
+		if (job.makes as Dictionary).has(id):
+			return true
+	return false
