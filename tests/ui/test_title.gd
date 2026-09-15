@@ -55,8 +55,7 @@ func test_pause_can_leave_for_the_title() -> void:
 	check(ui.call("open_screen", &"pause"))
 	check(tree.paused)
 	var pause: UiPauseScreen = ui.call("top")
-	pause.handle(&"down")
-	pause.handle(&"down")
+	pause.select(&"title")
 	pause.handle(&"confirm")
 	await tree.process_frame
 	await tree.process_frame
@@ -71,6 +70,7 @@ func test_new_game_starts_on_the_coast_shown() -> void:
 	var t := _title()
 	var holder := t.get_parent()
 	check(await _run(t, 20.0, func() -> bool: return t.world != null), "a coast is drawn")
+	t.menu.select(&"new")
 	t.menu.handle(&"confirm")
 	var started := func() -> bool: return holder.get_node_or_null("game") != null
 	check(await _run(t, 10.0, started), "new game replaces the title")

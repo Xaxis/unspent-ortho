@@ -115,6 +115,8 @@ func _load_systems(files: Array[String]) -> void:
 		add_child(sys)
 		sys.setup(self)
 		systems.append(sys)
+	for sys in systems:
+		sys.started()
 
 
 ## True while gameplay input should be ignored (a screen is open, or the body is busy).

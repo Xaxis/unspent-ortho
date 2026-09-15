@@ -19,3 +19,5 @@ signal made(item: StringName, count: int)
 signal time_skipped(minutes: float, reason: StringName)
 ## A screen opened or closed (ui); gameplay input should pause while one is open.
 signal screen_changed(name: StringName, open: bool)
+## A save was written to `slot` (0 autosave, 1-3 the player's); reason: manual sleep land hours.
+signal saved(slot: int, reason: StringName)

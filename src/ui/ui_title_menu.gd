@@ -2,10 +2,16 @@ class_name UiTitleMenu
 extends UiScreen
 ## The title's page: the name lettered on a pasted label, and a small slip
 ## with new game, the coast's seed (left/right draws another), controls, quit.
+## With a game saved, continue heads the slip (the newest readable save) and its
+## picture is pasted beside it; a save that cannot be read is said so plainly
+## under the slip.
 
 const LABEL := Rect2i(170, 42, 300, 86)
 const SLIP := Rect2i(254, 236, 132, 84)
 const LETTER_H := 34
+const ROW_H := 16
+## The continued save's picture, pasted to the right of the slip.
+const PHOTO := Rect2i(420, 222, 160, 90)
 
 var title: UiTitle
 ## 0 shows the world, 1 is ink over everything.
@@ -15,6 +21,10 @@ var fade := 1.0:
 			fade = v
 			queue_redraw()
 var page := "list"
+## The newest readable save (SaveSlots.list entry), or {}.
+var saved := {}
+var _photo: ImageTexture
+var _opening := false
 
 
 func _init() -> void:
@@ -31,8 +41,31 @@ func refresh() -> void:
 		{"id": &"controls", "text": "controls"},
 		{"id": &"quit", "text": "quit"},
 	]
+	var entries := SaveSlots.list()
+	saved = SaveSlots.newest(entries)
+	_photo = SaveSlots.thumbnail(saved.header) if not saved.is_empty() else null
+	var problems := SaveSlots.problems(entries)
+	if not saved.is_empty():
+		rows.insert(0, {"id": &"continue", "text": "continue"})
+	elif not problems.is_empty():
+		rows.insert(1, {"id": &"continue", "text": "continue", "enabled": false, "why": problems[0]})
 	menu.set_rows(rows)
+	if _opening and not saved.is_empty():
+		menu.index = 0
+	_opening = false
+	if not problems.is_empty():
+		say(problems[0])
 	queue_redraw()
+
+
+func _on_open() -> void:
+	_opening = true
+
+
+## The slip, grown upward by a row for each row past four.
+func slip() -> Rect2i:
+	var extra := maxi(0, menu.rows.size() - 4) * ROW_H
+	return Rect2i(SLIP.position.x, SLIP.position.y - extra, SLIP.size.x, SLIP.size.y + extra)
 
 
 func handle(action: StringName) -> bool:
@@ -54,6 +87,9 @@ func _on_side(dir: int) -> void:
 
 func _on_confirm(row: Dictionary) -> void:
 	match row.id:
+		&"continue":
+			if title != null:
+				title.continue_game(int(saved.get("slot", -1)))
 		&"new":
 			if title != null:
 				title.new_game()
@@ -87,6 +123,7 @@ func _draw() -> void:
 		_draw_keys()
 	else:
 		_draw_slip()
+		_draw_saved()
 	if fade > 0.0:
 		UiDraw.rect(self, Rect2i(0, 0, 640, 360), Color(UiTheme.INK_DEEP, fade))
 
@@ -114,7 +151,7 @@ func _draw_label() -> void:
 
 
 func _draw_slip() -> void:
-	var r := SLIP
+	var r := slip()
 	UiDraw.rect(self, Rect2i(r.position.x + 2, r.position.y + 2, r.size.x, r.size.y), Color(UiTheme.INK_DEEP, 0.5))
 	UiNotebook.page(self, r, 29, false, false)
 	UiDraw.frame(self, r.grow(1), UiTheme.INK_DEEP)
@@ -125,16 +162,39 @@ func _draw_slip() -> void:
 		if i == menu.index:
 			UiNotebook.cursor(self, x0 - 10, top)
 		var text: String = row.text
+		var ink := UiTheme.INK if UiMenu.enabled(row) else UiTheme.FADED
 		if row.id == &"seed" and title != null:
 			text = "coast %d" % title.seed_value
 			if i == menu.index:
 				UiDraw.text(self, Vector2i(r.end.x - 26, top), "<", UiTheme.FADED)
 				UiDraw.text(self, Vector2i(r.end.x - 16, top), ">", UiTheme.FADED)
-		UiDraw.text(self, Vector2i(x0, top), text, UiTheme.INK)
+		UiDraw.text(self, Vector2i(x0, top), text, ink)
 	UiNotebook.tape(self, Vector2i(r.position.x + r.size.x / 2 - 14, r.position.y - 3), 28)
-	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 1 * 16 - 4, UiTheme.RULE, 3)
-	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 2 * 16 - 4, UiTheme.RULE, 4)
-	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 3 * 16 - 4, UiTheme.RULE, 5)
+	for i in range(1, menu.rows.size()):
+		UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + i * ROW_H - 4, UiTheme.RULE, 2 + i)
+
+
+## The save Continue would load, as a picture pasted beside the slip with where
+## and when it stands written under it; and, under the slip, what cannot be read.
+func _draw_saved() -> void:
+	var s := slip()
+	if note != "":
+		var w := UiFont.width(note)
+		UiDraw.text_rimmed(self, Vector2i(320 - w / 2, s.end.y + 8), note, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
+	if saved.is_empty():
+		return
+	var p := PHOTO
+	var mount := Rect2i(p.position.x - 4, p.position.y - 4, p.size.x + 8, p.size.y + 20)
+	UiDraw.rect(self, Rect2i(mount.position.x + 2, mount.position.y + 2, mount.size.x, mount.size.y), Color(UiTheme.INK_DEEP, 0.5))
+	UiDraw.rect(self, mount, UiTheme.SLIP)
+	UiDraw.frame(self, mount.grow(1), UiTheme.INK_DEEP)
+	if _photo != null:
+		draw_texture_rect(_photo, Rect2(p), false)
+	else:
+		UiDraw.rect(self, p, Color(UiTheme.PAPER_SHADE, 0.6))
+	UiDraw.frame(self, p.grow(1), Color(UiTheme.INK_SOFT, 0.6))
+	UiDraw.text(self, Vector2i(p.position.x, p.end.y + 5), SaveSlots.describe(saved.header), UiTheme.INK_SOFT)
+	UiNotebook.tape(self, Vector2i(mount.end.x - 26, mount.position.y - 3), 30)
 
 
 func _draw_keys() -> void:

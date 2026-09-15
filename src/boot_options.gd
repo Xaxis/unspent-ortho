@@ -45,6 +45,10 @@ extends RefCounted
 ## --explore=N         the map remembers N tiles of wandering from the start (ui)
 ## --ui-demo           ui shots: sample recipes, a message, a spent body (ui)
 ## --tour=PATH         play a tour (src/systems/98_tour.gd) and quit
+## --load=N            boot the save in slot N (0 autosave, 1-3 the player's): its seed,
+##                     size, clock and place, then everything it holds (saves)
+## --saves=DIR         keep saves in user://DIR (default user://saves; shots and tours
+##                     use user://tool-saves so they never touch the player's) (saves)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -86,6 +90,9 @@ var screen := ""
 var explore := 0
 var ui_demo := false
 var tour := ""
+## Save slot to boot, or -1. SaveSlots.options_for fills seed, size, at and hour from it.
+var load_slot := -1
+var saves := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -142,5 +149,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"explore": o.explore = v.to_int()
 			"ui-demo": o.ui_demo = true
 			"tour": o.tour = v
+			"load": o.load_slot = v.to_int()
+			"saves": o.saves = v
 			_: push_warning("unknown option --%s" % k)
 	return o

@@ -17,3 +17,10 @@ var game: Game
 ## Called once, after the world, player, camera and view exist.
 func setup(_game: Game) -> void:
 	game = _game
+
+
+## Called once, after every system's setup and before the first frame is drawn:
+## the moment a loaded game is applied (05_save), so nothing a later setup does
+## overwrites it.
+func started() -> void:
+	pass

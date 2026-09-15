@@ -42,6 +42,7 @@ func setup(g: Game) -> void:
 	_add(UiMapScreen.new())
 	_add(UiPauseScreen.new())
 	_add(UiSheetScreen.new())
+	_add(UiSavesScreen.new())
 	# Survival gives these first when it is loaded; this never adds twice.
 	UiRules.apply_give(g.inventory, g.options.give)
 	if g.options.ui_demo:

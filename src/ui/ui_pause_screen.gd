@@ -35,6 +35,8 @@ func _on_open() -> void:
 func refresh() -> void:
 	var rows: Array[Dictionary] = [
 		{"id": &"resume", "text": "resume"},
+		{"id": &"save", "text": "save"},
+		{"id": &"load", "text": "load"},
 		{"id": &"controls", "text": "controls"},
 		{"id": &"title", "text": "to the title", "enabled": true},
 		{"id": &"quit", "text": "quit"},
@@ -61,12 +63,29 @@ func _on_confirm(row: Dictionary) -> void:
 		&"controls":
 			page = "keys"
 			queue_redraw()
+		&"save", &"load":
+			open_saves(row.id)
 		&"title":
 			close()
 			if to_title.is_valid():
 				to_title.call()
 		&"quit":
 			get_tree().quit()
+
+
+## Save or load: the saves page opens over this one (UiSavesScreen), through the
+## ui system so it takes the keys and Esc comes back here.
+func open_saves(mode: StringName) -> void:
+	if game == null:
+		return
+	for sys in game.systems:
+		if sys.name == "90_ui":
+			var s: UiSavesScreen = (sys.get("screens") as Dictionary).get(&"saves")
+			if s == null:
+				return
+			s.mode = mode
+			if not bool(sys.call("open_screen", &"saves")):
+				say("Not with that so close.")
 
 
 ## The keys, one to a ruled line, starting with the first line's top at `at`.
@@ -96,6 +115,8 @@ func _draw() -> void:
 	if game != null:
 		var p := game.player.pos
 		var place := Country.NAMES[game.world.country_at(floori(p.x), floori(p.y))]
-		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, 9), game.clock.label(), UiTheme.FADED)
-		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, 10), place, UiTheme.FADED)
+		var below := menu.rows.size() * 2
+		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, below), game.clock.label(), UiTheme.FADED)
+		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, below + 1), place, UiTheme.FADED)
 	UiNotebook.footer(self, P, "e choose     esc resume")
+	UiNotebook.note(self, P, note, note_age)

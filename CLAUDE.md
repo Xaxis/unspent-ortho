@@ -66,7 +66,7 @@ tools print their own summaries.
 | `src/render/` | Terrain mesher, transitions, decor, world view (chunk streaming on a worker), camera, sky light, weather visuals, shaders, palette. |
 | `src/models/` | Procedural meshes: `props/`, `machines/`, `people/`, `animals/`. Any script here with `static func gallery() -> Array` shows up in the gallery. |
 | `src/actors/` | Nodes in the world: player, mobs, hit marks (`MobFx`). |
-| `src/systems/` | `NN_name.gd` game systems, loaded in order: 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 98 tour. |
+| `src/systems/` | `NN_name.gd` game systems, loaded in order: 05 save, 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 98 tour. |
 | `src/ui/` | The notebook: HUD, pages (carrying, making, map, pause, title), pixel font, sketches. |
 | `src/audio/` | Procedural synthesis, the sound sheet, beds, machines, music, the mix. |
 | `src/game.gd` | Wires one running game together from BootOptions. |
@@ -127,7 +127,7 @@ lead with why, in short sentences.
 
 | Seam | File | Rule |
 |---|---|---|
-| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hit, fight_ended, killed, took, made, time_skipped, screen_changed. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. |
+| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hit, fight_ended, killed, took, made, time_skipped, screen_changed, saved. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. |
 | Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order (scripts compile on loader threads during world gen); never edit `game.gd` to add one |
 | Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load/lamp oil; the lamp action (15_lights) owns `lamp_lit`; UI only reads |
 | The player's body | `Player.hero` / `Player.sim` | in a running game the fight body owns position and facing: anything that moves or turns the player sets `hero.pos`/`hero.facing` too (`Survival.face`, the tour's `at`) |
@@ -141,7 +141,7 @@ lead with why, in short sentences.
 | Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the notebook hides hints only near hostiles) |
 | Weather | `src/core/weather.gd` | `Weather.at(seed, minutes)`, `Weather.at_place(seed, minutes, country)` -> `{kind, strength, wind}`, `Weather.settled(...)`; pure. Survival (wetness), mobs, landscape sway and audio call it directly. |
 | Boot options | `src/boot_options.gd` | packages may ADD options; never rename existing ones; keep the header list complete |
-| Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup; JSON-safe values |
+| Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup. `save` returns JSON-safe values (`SaveCodec` for INF, vectors, bytes); `load` gets them back through JSON (numbers as floats, keys as Strings: convert with `SaveCodec.to_int/to_vec2/to_counts`). A loaded game is applied in `GameSystem.started()` (after every setup, before the first frame) in registration order; 05_save registers the core state first (`SaveCore`: world edits, clock, player, body, inventory, survival, explored, weather). Keys nobody registers are carried forward. Slots: `SaveSlots` (0 autosave, 1-3 manual; `--load=N`, `--saves=DIR`); file: `SaveFile` (bump `VERSION`, add a `migrate` step). |
 | Landscape types | `src/core/biome/` | `BiomeRegistry.at(world, pos) -> BiomeDef` (hazards, roster, sentinel, hatch, sound); never branch on Country in new code |
 | Stealth and gear on the body | `src/core/body.gd` | `crouched`, `spoof_until`, `resist`, `pressure` |
 | Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
