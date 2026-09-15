@@ -214,7 +214,7 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 		[-0.14, hd * 0.4, hz * 0.44, -0.01, 0.0],
 		[0.04, hd * 0.52, lerpf(hz, cz, 0.5) * 0.52, 0.0, 0.0],
 		[0.11, hd * 0.49, cz * 0.49, 0.0, 0.0],
-	], 8, [w.trouser, top], true, false, PI / 8, 0.03, w.seed_value + 1)
+	], 8, [w.trouser, top], false, false, PI / 8, 0.03, w.seed_value + 1)
 	if cut == &"tucked" and not w.long_coat and w.extras.has(&"buckle"):
 		var bx := hd * 0.5 * 0.93 + 0.004
 		Sculpt.card(k, Vector3(bx, 0.07, -0.028), Vector3(bx, 0.07, 0.028), Vector3(bx, 0.11, 0.028), Vector3(bx, 0.11, -0.028), Palette.COPPER[3], Vector3.RIGHT)
