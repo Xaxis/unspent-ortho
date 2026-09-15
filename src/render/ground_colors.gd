@@ -191,11 +191,12 @@ static func _make_cliff(g: int, c: int) -> Color:
 			return P.RIME[3]
 	match c:
 		Country.MOSS: return P.EARTH[1]
-		Country.PINEWOOD: return _m(P.SLATE[1], P.SPRUCE[1], 0.4)
+		Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.4)
 		Country.SNOWFIELD: return _m(P.SLATE[2], P.RIME[2], 0.5)
 		Country.BONELANDS: return P.LINEN[3]
 		Country.BURNING: return P.STONE[0]
-	return P.SLATE[2]
+	# Weathered coast rock, grey warmed by the soil washed over it.
+	return _m(P.STONE[3], P.EARTH[3], 0.3)
 
 
 ## Wash of ground g in country c.

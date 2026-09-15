@@ -209,22 +209,39 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = dn(c, 0.4);
 		}
 	} else if (m == 44) {
-		// SNOW: drifts as long shapes laid by the wind; each drawn by its blue
-		// lee and a broken crest line. Soot in some lees, the odd glint.
-		vec2 wd = vec2(0.83, 0.55);
-		float across = dot(wp, wd);
-		float along = dot(wp, vec2(-wd.y, wd.x));
-		float d = ink_vnoise(vec2(along * 0.1, across * 0.42)) * 0.75 + ink_vnoise(wp * 0.6) * 0.25;
-		if (d > 0.6 && d < 0.68) {
-			c = RIME4;
-			if (d < 0.615 && ink_hash(px) < 0.5) {
-				c = RIME5;
+		// SNOW: drifts laid by one wind as short crescents, horns downwind:
+		// a blue lee inside the curve, a broken pale crest on its back, soot in
+		// a few lees. Open shapes, never closed loops, so no drift reads as a
+		// frozen stream.
+		vec2 wd = vec2(0.83, -0.55);
+		vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) / vec2(3.4, 2.3);
+		vec2 qi = floor(q);
+		for (int yy = -1; yy <= 1; yy++) {
+			for (int xx = -1; xx <= 1; xx++) {
+				vec2 g = qi + vec2(float(xx), float(yy));
+				float h = ink_hash(g + vec2(41.0, 7.0));
+				if (h > 0.36) {
+					continue;
+				}
+				vec2 ctr = g + vec2(ink_hash(g + 3.1), ink_hash(g + 8.7)) * 0.7 + 0.15;
+				vec2 l = (q - ctr) * vec2(3.4, 2.3);
+				// Long across the wind, thin along it; one horn often cut short.
+				float squash = 0.38 + ink_hash(g + 5.5) * 0.3;
+				float r = 0.6 + h * 1.6;
+				float edge = rag(wp) * 1.5;
+				float da = length(l * vec2(1.0, squash)) + edge;
+				float db = length((l - vec2(r * (0.16 + ink_hash(g + 6.6) * 0.12), 0.0)) * vec2(1.0, squash * 1.05)) + edge;
+				float horn = ink_hash(g + 9.9) < 0.5 ? l.y : -l.y;
+				if (da < r && db > r * 0.9 && horn < r * (0.9 + ink_hash(g + 2.2) * 1.2)) {
+					c = RIME4;
+					if (da > r - 0.04 && ink_hash(floor(px / vec2(3.0, 1.0))) < 0.75) {
+						// The crest, drawn on the drift's windward back.
+						c = RIME3;
+					} else if (h < 0.08 && db > r * 0.96 && ink_hash(px + 7.0) < 0.3) {
+						c = ASH3;
+					}
+				}
 			}
-			if (ink_vnoise(wp * 0.7 + 11.0) > 0.74 && ink_hash(px + 7.0) < 0.12) {
-				c = ASH3;
-			}
-		} else if (d >= 0.68 && d < 0.7 && ink_hash(floor(px / vec2(3.0, 1.0))) > 0.3) {
-			c = RIME3;
 		}
 		float g = ink_hash(px + 3.7);
 		if (g > 0.997 && fract(TIME * 0.21 + g * 91.0) < 0.12) {
@@ -458,18 +475,23 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 	float col = floor(px.x / 2.0);
 	float vn = ink_vnoise(vec2(px.x * 0.07, y * 3.0));
 	if (id == 1) {
-		// COAST: thin slate beds, a soil line, white streaks under ledges.
+		// COAST: a turf-cut face, dark roots under the sod, then pale weathered
+		// beds with white streaks below the ledges: lighter than any water, so
+		// a one-level step never reads as a ditch.
 		float b = (y + (vn - 0.5) * 0.05) / 0.11;
 		float h = ink_hash(vec2(floor(b), 3.0));
-		c = h < 0.35 ? dn(c, 0.3) : (h > 0.75 ? up(c, 0.25) : c);
-		if (fract(b) < 0.2) {
-			c = dn(c, 0.7);
+		c = h < 0.35 ? dn(c, 0.2) : (h > 0.75 ? up(c, 0.2) : c);
+		if (fract(b) < 0.14) {
+			c = dn(c, 0.45);
 		}
-		if (dt < 0.05 + vn * 0.04) {
-			c = EARTH1;
+		float sod = 0.07 + vn * 0.05;
+		if (dt < sod) {
+			c = dt < sod - 0.025 ? EARTH3 : EARTH1;
+		} else if (ink_hash(vec2(px.x, 5.0)) > 0.9 && dt < sod + ink_hash(vec2(px.x, 6.0)) * 0.12) {
+			c = EARTH2;
 		}
 		float st = ink_hash(vec2(col, 9.0));
-		if (st > 0.975 && dt < 0.06 + fract(st * 31.0) * 0.14) {
+		if (st > 0.975 && dt > sod && dt < sod + 0.03 + fract(st * 31.0) * 0.14) {
 			c = LINEN4;
 		}
 	} else if (id == 2) {
