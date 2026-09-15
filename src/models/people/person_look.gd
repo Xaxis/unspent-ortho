@@ -37,11 +37,11 @@ const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"t
 const BUILD_SHAPE := {
 	&"man": {"leg": 1.0, "torso": 1.0, "chest": 1.0, "hip": 1.0, "girth": 1.0, "head": 1.0, "arm": 1.0, "limb": 1.0, "stoop": 0.0, "belly": 0.0, "arms": 0.08, "knees": 0.0},
 	# The only build with hips wider than shoulders.
-	&"woman": {"leg": 0.94, "torso": 0.95, "chest": 0.78, "hip": 1.2, "girth": 0.9, "head": 0.95, "arm": 0.92, "limb": 0.84, "stoop": 0.0, "belly": 0.0, "arms": 0.12, "knees": 0.0},
+	&"woman": {"leg": 0.95, "torso": 0.94, "chest": 0.72, "hip": 1.3, "girth": 0.88, "head": 0.95, "arm": 0.9, "limb": 0.8, "stoop": 0.0, "belly": 0.0, "arms": 0.14, "knees": 0.0},
 	&"boy": {"leg": 0.62, "torso": 0.68, "chest": 0.7, "hip": 0.74, "girth": 0.78, "head": 0.9, "arm": 0.68, "limb": 0.76, "stoop": 0.0, "belly": 0.0, "arms": 0.1, "knees": 0.0},
 	&"heavy": {"leg": 0.94, "torso": 1.04, "chest": 1.36, "hip": 1.34, "girth": 1.55, "head": 1.05, "arm": 1.0, "limb": 1.38, "stoop": 0.0, "belly": 0.1, "arms": 0.26, "knees": 0.05},
 	# Long torso over short legs.
-	&"slight": {"leg": 0.84, "torso": 1.16, "chest": 0.8, "hip": 0.84, "girth": 0.8, "head": 0.94, "arm": 0.95, "limb": 0.78, "stoop": 0.0, "belly": 0.0, "arms": 0.05, "knees": 0.0},
+	&"slight": {"leg": 0.8, "torso": 1.22, "chest": 0.78, "hip": 0.82, "girth": 0.78, "head": 0.92, "arm": 0.95, "limb": 0.76, "stoop": 0.04, "belly": 0.0, "arms": 0.05, "knees": 0.0},
 	&"old": {"leg": 0.88, "torso": 0.95, "chest": 0.9, "hip": 0.95, "girth": 0.9, "head": 0.98, "arm": 0.98, "limb": 0.82, "stoop": 0.34, "belly": 0.03, "arms": 0.1, "knees": 0.24},
 	# Short torso over long legs.
 	&"tall": {"leg": 1.3, "torso": 0.9, "chest": 0.98, "hip": 0.94, "girth": 0.92, "head": 0.98, "arm": 1.16, "limb": 0.92, "stoop": 0.0, "belly": 0.0, "arms": 0.06, "knees": 0.0},

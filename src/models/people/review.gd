@@ -85,6 +85,11 @@ static func gallery() -> Array:
 				var p := PersonModel.make({"salvage": [StringName(arg)], "coat": &"jerkin"}, &"", mat)
 				p.rotation.y = face
 				nodes.append(p)
+		"builds":
+			for b: StringName in PersonLook.BUILDS:
+				var p := PersonModel.make({"build": b, "coat": StringName(arg) if arg != "" else &"none"}, &"", mat)
+				p.rotation.y = PersonModel.FACE_RIGHT if arg2 == "" else PersonModel.FACE_CAMERA
+				nodes.append(p)
 		"look":
 			for i in 6:
 				var p := PersonModel.make(PersonLook.random(arg.to_int(), i), &"", mat)
@@ -117,6 +122,8 @@ static func gallery() -> Array:
 	var strip := Node3D.new()
 	var across := Vector3(1, 0, -1).normalized()
 	var spacing := 1.25 if nodes.size() > 3 else 1.6
+	if what == "builds":
+		spacing = 0.62
 	if what == "zoo":
 		spacing = 0.95
 	if what == "animal":

@@ -138,7 +138,7 @@ static func found_material(lit: bool) -> ShaderMaterial:
 		for glow: bool in [false, true]:
 			var m := ShaderMaterial.new()
 			m.shader = preload("res://src/render/found.gdshader")
-			m.set_shader_parameter("emission_strength", 0.9 if glow else 0.0)
+			m.set_shader_parameter("emission_strength", 0.55 if glow else 0.0)
 			_found_cache.append(m)
 	return _found_cache[1 if lit else 0]
 

@@ -302,7 +302,9 @@ static func _cap(k: MeshKit, y: float, r: float, c: Color) -> void:
 
 ## A blade of light: a flat, pointed, perfectly symmetric bar.
 static func _light_blade(g: MeshKit, y0: float, y1: float, w: float, light: Color, core: Color) -> void:
-	Sculpt.slab(g, PackedVector2Array([Vector2(-w, y0), Vector2(w, y0), Vector2(w, y1 - w * 2.0), Vector2(0.0, y1), Vector2(-w, y1 - w * 2.0)]), w * 0.6, light, core)
+	# Violet through: a paler core only down the middle of the flat, never on the edges.
+	Sculpt.slab(g, PackedVector2Array([Vector2(-w, y0), Vector2(w, y0), Vector2(w, y1 - w * 2.0), Vector2(0.0, y1), Vector2(-w, y1 - w * 2.0)]), w * 0.6, light, light)
+	Sculpt.slab(g, PackedVector2Array([Vector2(-w * 0.35, y0 + 0.02), Vector2(w * 0.35, y0 + 0.02), Vector2(w * 0.35, y1 - w * 2.5), Vector2(0.0, y1 - w), Vector2(-w * 0.35, y1 - w * 2.5)]), w * 0.62, core, core)
 
 
 ## A chamfered rectangle, w by h, centred at (0, y): exact.

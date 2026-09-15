@@ -691,7 +691,7 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				Sculpt.loft(k, [
 					[-0.01, d.head_d * 0.36, d.head_w * 0.36, d.head_d * 0.1, 0.0],
 					[d.head * 0.34, d.head_d * 0.54, d.head_w * 0.52, d.head_d * 0.02, 0.0],
-				], 6, Palette.SLATE[2], false, false, 0.0, 0.05, w.seed_value + 61, 0.6, 0.0)
+				], 6, Palette.SLATE[3], false, false, 0.0, 0.05, w.seed_value + 61, 0.6, 0.0)
 				var can := r.kit(r.find(&"head"), &"salvage", SkinRig.FOUND)
 				var cz: float = side * (d.head_w * 0.5 + 0.03)
 				Sculpt.loft(can, [[d.head * 0.02, 0.035, 0.035, d.head_d * 0.2, cz], [d.head * 0.3, 0.035, 0.035, d.head_d * 0.2, cz]], 6, Palette.FOUND[2], true, true, 0.0)
