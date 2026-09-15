@@ -19,11 +19,15 @@ tools/test.sh [filter]                      # headless tests only, ~5 s
 tools/shot.sh shots/x.png [options]         # one real rendered frame, ~2 s
 tools/shot.sh shots/g.png --scene=gallery [--filter=pine]   # every model, lit, on a plinth
 tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country
+tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
 godot --path .                              # play it (WASD, Shift run, Space swing, K dodge, E use)
 ```
 
 Shot options (`src/boot_options.gd`): `--seed=N --size=N --at=X,Y --village=N
 --hour=H --zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery`.
+
+**Tours** (`tours/*.tour`, format in `src/systems/98_tour.gd`) are how a feature is
+proven reachable: walk there, press the real action, shoot what happened.
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
