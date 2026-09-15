@@ -38,9 +38,13 @@ var haze: CPUParticles3D
 var flicks: CPUParticles3D
 ## Wisps: cold lights drifting low over the moss at night.
 var wisps: CPUParticles3D
-var bolt: MeshInstance3D
-var _bolt_left := 0.0
+var bolt: BoltDraw
+var _bolt_layer: CanvasLayer
+## Frames since the last strike, and whether it is held lit (forced shots).
+var _bolt_frame := 0
 var _bolt_hold := false
+## A strike shows on these frames after it lands: on, on, off, on, gone.
+const BOLT_FRAMES: Array[bool] = [true, true, false, true]
 var _mats: Dictionary = {} # CPUParticles3D -> ShaderMaterial
 
 
@@ -49,8 +53,8 @@ func setup(cam: CameraRig) -> void:
 	var air := Vector3(16.0, TOP * 0.5, 14.0)
 	var mid := Vector3(0, TOP * 0.5, 0)
 	# Rain: mostly ink strokes, a third pale ones, so it reads on turf and on sand.
-	rain = _emitter("rain", 2600, 0.62, air, mid, false)
-	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 0.7})
+	rain = _emitter("rain", 3400, 0.62, air, mid, false)
+	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 1.0})
 	splash = _emitter("splash", 260, 0.16, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
 	_mat(splash, Mode.TICK, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.3, "columns": 0.75})
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
@@ -70,23 +74,22 @@ func setup(cam: CameraRig) -> void:
 	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.3, "length_px": Vector2(4, 8)})
 	# Heat: wavering lines, drawn darker than pale stone and paler than ash so
 	# some always read.
-	haze = _emitter("haze", 120, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
-	_mat(haze, Mode.WAVE, {"color_a": Palette.SAND[2], "color_b": Palette.LINEN[5], "mix_b": 0.4})
+	haze = _emitter("haze", 320, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
+	_mat(haze, Mode.WAVE, {"color_a": Palette.SAND[1], "color_b": Palette.SAND[2], "mix_b": 0.5})
 	flicks = _emitter("flicks", 18, 0.9, Vector3(16.0, 1.5, 14.0), Vector3(0, 1.0, 0), true)
 	_mat(flicks, Mode.FLICK, {"color_a": Palette.LINEN[4], "color_b": Palette.INK[3], "mix_b": 0.4, "length_px": Vector2(6, 10)})
 	wisps = _emitter("wisps", 40, 7.0, Vector3(15.0, 0.5, 13.0), Vector3(0, 0.7, 0), true)
 	_mat(wisps, Mode.SPARK, {"color_a": Palette.SPRUCE[5], "color_b": Palette.RIME[5], "mix_b": 0.4, "length_px": Vector2(1, 2), "wander": 5.0, "glow": 1.0, "flicker_rate": 0.7})
-	bolt = MeshInstance3D.new()
+	# The bolt is drawn on the page itself, in whole screen pixels, under the HUD.
+	_bolt_layer = CanvasLayer.new()
+	_bolt_layer.name = "bolt_layer"
+	_bolt_layer.layer = -1
+	add_child(_bolt_layer)
+	bolt = BoltDraw.new()
 	bolt.name = "bolt"
+	bolt.camera = cam
 	bolt.visible = false
-	bolt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	bolt.extra_cull_margin = 16384.0
-	var bm := StandardMaterial3D.new()
-	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bm.vertex_color_use_as_albedo = true
-	bm.render_priority = 20
-	bolt.material_override = bm
-	add_child(bolt)
+	_bolt_layer.add_child(bolt)
 
 
 func _texel() -> float:
@@ -182,10 +185,11 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var wet := clampf(float(look.rain) + float(look.hail) * 0.5, 0.0, 1.0)
 	_drive(splash, wet, Vector3(0, 1, 0), 0.25, {})
 	splash.position.y = TerrainMesher.WATER_Y + 0.03 - focus.y if wet > 0.0 else 0.0
-	if bolt.visible and not _bolt_hold:
-		_bolt_left -= delta
-		# Three frames of flicker: on, off, on, then gone.
-		bolt.visible = _bolt_left > 0.0 and (_bolt_left > 0.18 or _bolt_left < 0.12)
+	if not _bolt_hold and _bolt_frame < BOLT_FRAMES.size():
+		bolt.visible = BOLT_FRAMES[_bolt_frame]
+		_bolt_frame += 1
+	elif not _bolt_hold:
+		bolt.visible = false
 
 
 func _drive(p: CPUParticles3D, amount: float, dir: Vector3, speed: float, params: Dictionary) -> void:
@@ -212,67 +216,13 @@ func _drive(p: CPUParticles3D, amount: float, dir: Vector3, speed: float, params
 		p.restart()
 
 
-## A jagged bolt from the sky to `at` (world space), seeded so shots repeat:
-## a paper-white line one or two pixels wide with ink beside it, the way a
-## pen draws a strike. hold = stay lit until the next strike (forced shots).
+## A jagged bolt from the top of the screen to `at` (world space), seeded so
+## shots repeat (BoltDraw). hold = stay lit until the next strike (forced shots).
 func strike(at: Vector3, seed_value: int, hold: bool = false) -> void:
-	var r := Rng.make(seed_value, 0xB017)
-	var k := SurfaceTool.new()
-	k.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var top := at + Vector3(r.randf_range(-3.0, 3.0), 26.0, r.randf_range(-3.0, 3.0))
-	var tx := _texel()
-	var path := _bolt_points(top, at, 12, r)
-	# Ink first, a pixel wider on each side, then the white core over it.
-	_bolt_path(k, path, tx * 1.5, Palette.INK[1], 0.0)
-	_bolt_path(k, path, tx * 0.5, Palette.LINEN[5], 0.02)
-	for i in 2:
-		var t := r.randf_range(0.2, 0.55)
-		var from := top.lerp(at, t) + Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))
-		var to := from + Vector3(r.randf_range(-5.0, 5.0), -r.randf_range(4.0, 8.0), r.randf_range(-5.0, 5.0))
-		var fork := _bolt_points(from, to, 5, r)
-		_bolt_path(k, fork, tx * 1.0, Palette.INK[1], 0.0)
-		_bolt_path(k, fork, tx * 0.5, Palette.RIME[5], 0.02)
-	bolt.mesh = k.commit()
-	bolt.global_transform = Transform3D.IDENTITY
+	var rise := 400.0
+	if camera != null and camera.is_inside_tree():
+		rise = maxf(240.0, camera.unproject_position(at).y - camera.unproject_position(at + Vector3(0, 26.0, 0)).y)
+	bolt.set_strike(at, seed_value, rise)
 	bolt.visible = true
-	_bolt_left = 0.3
+	_bolt_frame = 0
 	_bolt_hold = hold
-
-
-func _cam_basis() -> Basis:
-	if camera != null:
-		return camera.global_transform.basis
-	return Basis.from_euler(Vector3(deg_to_rad(-57.0), deg_to_rad(45.0), 0.0))
-
-
-func _bolt_points(a: Vector3, b: Vector3, steps: int, r: RandomNumberGenerator) -> PackedVector3Array:
-	var cb := _cam_basis()
-	var out := PackedVector3Array([a])
-	for i in range(1, steps + 1):
-		var t := float(i) / steps
-		var p := a.lerp(b, t)
-		if i < steps:
-			p += cb.x.normalized() * r.randf_range(-0.7, 0.7) + cb.z * r.randf_range(-0.3, 0.3)
-		out.append(p)
-	return out
-
-
-## One ribbon along the path facing the camera; `toward` pulls it a little
-## toward the eye so the core is drawn over its ink.
-func _bolt_path(k: SurfaceTool, pts: PackedVector3Array, width: float, col: Color, toward: float) -> void:
-	var cb := _cam_basis()
-	var right := cb.x.normalized()
-	var eye := cb.z.normalized() * toward
-	for i in range(1, pts.size()):
-		var t := float(i) / (pts.size() - 1)
-		var w0 := right * width * (1.0 - (t - 1.0 / (pts.size() - 1)) * 0.4)
-		var w1 := right * width * (1.0 - t * 0.4)
-		var a := pts[i - 1] + eye
-		var b := pts[i] + eye
-		k.set_color(col)
-		k.add_vertex(a - w0)
-		k.add_vertex(a + w0)
-		k.add_vertex(b + w1)
-		k.add_vertex(a - w0)
-		k.add_vertex(b + w1)
-		k.add_vertex(b - w1)

@@ -92,6 +92,14 @@ sky_lamps2={
 "type": "mat4",
 "value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
+sky_shade={
+"type": "vec4",
+"value": Vector4(1, 1, 1, 0)
+}
+sky_ground={
+"type": "sampler2D",
+"value": ""
+}
 world_px={
 "type": "vec2",
 "value": Vector2(0, 0)

@@ -49,6 +49,19 @@ const MAX_LAMPS := 8
 ## Linear colour, scaled by how low the light is.
 const SKY_AMBIENT := Color(0.18, 0.26, 0.52)
 const SKY_AMBIENT_ENERGY := 0.16
+## Render layers the sky's lights sort by (bit masks, set on nodes as they enter
+## the tree, so no model or view has to know). People take a fill light of their
+## own in low light (docs/ART.md section 5: the player reads at any hour, with
+## or without a lantern; the source's player light floor is 0.45). Water takes
+## no lamplight, so a lamp by the sea never lays a glow disc on it (section 6).
+const LAYER_FIGURES := 1 << 17
+const LAYER_WATER := 1 << 18
+const WATER_SHADER := "res://src/render/water.gdshader"
+## Linear energy of the figure fill at the dead of night: with the moon it lifts
+## a person to about 0.45 of their daylight value. Warm, because people are the
+## only warm moving thing on screen.
+const FIGURE_FILL := 0.85
+const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 
 ## Per country id: (warmth, wetness) in -1..1, read by the source's light cast.
 ## Sea, coast, moss, pinewood, snowfield, bonelands, burning.
@@ -58,6 +71,7 @@ const CLIMATE: Array[Vector2] = [
 ]
 
 var sun: DirectionalLight3D
+var figure_light: DirectionalLight3D
 var env: WorldEnvironment
 ## Multiplies composed onto the time-of-day tint. 1 = none.
 var weather_tint := Vector3.ONE
@@ -77,6 +91,8 @@ var wind := Vector4.ZERO
 ## Lamp and fire pools for the ink (sky_lamps): Vector4(x, y, z, range) each,
 ## at most MAX_LAMPS, filled by the lights system.
 var lamps: Array[Vector4] = []
+## 1 / world size, for the sky_ground texture (set_ground); 0 = none.
+var ground_scale := 0.0
 ## 0..1 how hard the wind blows, for anything that sways (wind_strength).
 var sway := 0.4
 ## Heavy overcast takes the cast shadows away even by day.
@@ -97,6 +113,20 @@ func _ready() -> void:
 	sun.directional_shadow_max_distance = 120.0
 	sun.light_energy = 1.0
 	add_child(sun)
+	figure_light = DirectionalLight3D.new()
+	figure_light.name = "figure_light"
+	figure_light.shadow_enabled = false
+	figure_light.light_specular = 0.0
+	figure_light.light_cull_mask = LAYER_FIGURES
+	figure_light.light_color = FIGURE_FILL_COLOR
+	# From over the camera's shoulder and a little from the key's side, so every
+	# face the camera sees takes it and the figure still shows two values.
+	figure_light.rotation_degrees = Vector3(-42.0, 20.0, 0.0)
+	figure_light.light_energy = 0.0
+	add_child(figure_light)
+	get_tree().node_added.connect(_on_node_added)
+	if get_parent() != null:
+		_tag_tree(get_parent())
 	env = WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
@@ -135,7 +165,10 @@ func set_hour(hour: float) -> void:
 		var rows := get_viewport().get_visible_rect().size.y
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
-	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), 0.0, 0.0))
+	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, 0.0))
+	var glow := sun_glow(total, s)
+	var cool := shade_cool(total) / glow
+	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, low_light(hour)))
 	var packed := lamp_columns(lamps)
 	RenderingServer.global_shader_parameter_set("sky_lamps", packed[0])
 	RenderingServer.global_shader_parameter_set("sky_lamps2", packed[1])
@@ -145,11 +178,75 @@ func set_hour(hour: float) -> void:
 	# The renderer lights in linear space and encodes the result for display
 	# (measured: out = srgb(lin(albedo) * lin(colour) * energy)), while the
 	# source's levels are display multiplies. Energy is linear, so decode.
-	sun.light_energy = pow(float(s.energy), 2.2)
+	sun.light_energy = pow(float(s.energy) * glow, 2.2)
 	sun.shadow_enabled = bool(s.casts) and cast_allowed
+	if figure_light != null:
+		figure_light.light_energy = FIGURE_FILL * low_light(hour)
+		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
 		env.environment.ambient_light_color = SKY_AMBIENT
 		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * low_light(hour)
+
+
+## What the land can hold (SkyGround), for snow, ash, wet and fog.
+func set_ground(tex: Texture2D, world_size: int) -> void:
+	RenderingServer.global_shader_parameter_set("sky_ground", tex)
+	ground_scale = 1.0 / maxf(1.0, float(world_size))
+
+
+func _on_node_added(n: Node) -> void:
+	if n is GeometryInstance3D:
+		var g := n as GeometryInstance3D
+		g.layers = layers_for(g, g.layers)
+
+
+func _tag_tree(n: Node) -> void:
+	_on_node_added(n)
+	for c in n.get_children():
+		_tag_tree(c)
+
+
+## The render layers a piece of geometry should have: water is on LAYER_WATER
+## alone (lamps cull it); anything inside a PersonModel adds LAYER_FIGURES.
+static func layers_for(g: GeometryInstance3D, current: int) -> int:
+	var m := g.material_override
+	if m is ShaderMaterial and (m as ShaderMaterial).shader != null and (m as ShaderMaterial).shader.resource_path == WATER_SHADER:
+		return LAYER_WATER
+	var p := g.get_parent()
+	for i in 8:
+		if p == null:
+			break
+		if p is PersonModel:
+			return current | LAYER_FIGURES
+		p = p.get_parent()
+	return current
+
+
+## A low sun lays its warmth on what it lights: lit faces take up to GLOW more
+## light at a warm tint while the sun still casts (shade_cool divides it back
+## out of shade), so dawn and dusk read warm and clear rather than dim.
+const GLOW := 0.2
+
+
+static func sun_glow(tint: Vector3, sun: Dictionary) -> float:
+	if not bool(sun.casts):
+		return 1.0
+	var lum := (tint.x + tint.y + tint.z) / 3.0
+	return 1.0 + GLOW * clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.8, 0.0, 1.0)
+
+
+## The multiply for faces in shade under a tint: the tint's warmth taken back
+## out (its hue divided away, its level kept) and a little blue added, so at
+## dawn and dusk the sun is warm on what it lights and shade stays cool. At a
+## neutral tint it is white.
+static func shade_cool(tint: Vector3) -> Vector3:
+	var lum := (tint.x + tint.y + tint.z) / 3.0
+	var out := Vector3.ZERO
+	for i in 3:
+		out[i] = lum / maxf(0.05, tint[i])
+	var warm := clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.5, 0.0, 1.0)
+	out = Vector3.ONE.lerp(out, 0.85 * warm) * Vector3(1.0 - 0.04 * warm, 1.0, 1.0 + 0.08 * warm)
+	return out
 
 
 ## Lamp pools packed for the two mat4 globals, one pool per column, unused

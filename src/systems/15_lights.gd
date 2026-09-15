@@ -23,23 +23,28 @@ const GLOW_REACH := 24.0
 ## sky's tint at runtime, so it stays warm under a blue night.
 const WARM := Vector3(0.96, 0.74, 0.53)
 const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
+## A house's door and window: hearth light, between a lamp and an open fire.
+const HEARTH_WARM := Vector3(0.95, 0.66, 0.42)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
-const LANTERN_RANGE := 3.9
+const LANTERN_RANGE := 3.2
 const LANTERN_POWER := 0.8
-const LANTERN_HEIGHT := 1.0
+## Where the lantern's light sits in the player's frame (+X ahead, +Z to the
+## right): above and ahead of the hand that carries it, outside the body, so
+## the figure's own faces turn toward it instead of all away.
+const LANTERN_LIGHT := Vector3(0.42, 1.05, 0.44)
 
 ## Per source kind: [omni range in tiles, power, height of the light above the
-## prop's foot]. The ink-free pool on the ground is where attenuation >= 0.5,
-## about 0.74 of the range from the light.
+## prop's foot]. The clean core of the pool on the ground is where attenuation
+## >= POOL_CORE, about 0.66 of the range from the light; the ring reaches 0.79.
 const SOURCES := {
-	PropKind.LAMP: [4.6, 1.0, 1.7],
-	PropKind.HOUSE: [2.7, 0.75, 0.9],
-	PropKind.FIRE: [4.2, 0.9, 0.5],
-	PropKind.VENT: [3.0, 0.6, 0.7],
-	PropKind.KILN: [2.8, 0.55, 0.6],
+	PropKind.LAMP: [3.8, 1.0, 1.7],
+	PropKind.HOUSE: [2.3, 0.75, 0.9],
+	PropKind.FIRE: [3.2, 0.9, 0.5],
+	PropKind.VENT: [2.6, 0.6, 0.7],
+	PropKind.KILN: [2.4, 0.55, 0.6],
 }
 
 var lights: Array[OmniLight3D] = []
@@ -86,6 +91,8 @@ func _new_light(n: String) -> OmniLight3D:
 	# edge, which sky_pool() cuts into hard steps.
 	l.omni_attenuation = 0.0
 	l.light_specular = 0.0
+	# Water is on its own layer and never takes lamplight (SkyLight.LAYER_WATER).
+	l.light_cull_mask = 0xFFFFF & ~SkyLight.LAYER_WATER
 	l.visible = false
 	add_child(l)
 	return l
@@ -176,10 +183,17 @@ static func omni_attenuation(d: float, reach: float) -> float:
 	return nd * nd
 
 
-## Radius on flat ground of the ink-free pool of a light `height` above it:
-## where the renderer's attenuation (1 - (d/range)^4)^2 reaches 0.5.
-static func pool_radius(reach: float, height: float) -> float:
-	var d := reach * pow(1.0 - sqrt(0.5), 0.25)
+## Attenuation at which a pool's clean core ends and its dim ring ends
+## (sky.gdshaderinc SKY_POOL_CORE, SKY_POOL_RING).
+const POOL_CORE := 0.66
+const POOL_RING := 0.32
+
+
+## Radius on flat ground of a light `height` above it where the renderer's
+## attenuation (1 - (d/range)^4)^2 falls to `level`: POOL_CORE for the clean
+## core, POOL_RING for the ring round it.
+static func pool_radius(reach: float, height: float, level: float = POOL_CORE) -> float:
+	var d := reach * pow(1.0 - sqrt(level), 0.25)
 	return sqrt(maxf(0.0, d * d - height * height))
 
 
@@ -206,7 +220,11 @@ func _index_sources() -> void:
 			s.at = base + Basis(Vector3.UP, p.rot) * (local * p.scale)
 			s.range = float(spec[0]) * lerpf(1.0, p.scale, 0.5)
 			s.power = float(spec[1])
-			s.warm = FIRE_WARM if p.kind == PropKind.FIRE else (VENT_WARM if p.kind == PropKind.VENT else WARM)
+			match p.kind:
+				PropKind.FIRE: s.warm = FIRE_WARM
+				PropKind.VENT: s.warm = VENT_WARM
+				PropKind.HOUSE: s.warm = HEARTH_WARM
+				_: s.warm = WARM
 		else:
 			s.at = game.world.to_3d(p.pos)
 			s.range = 0.0
@@ -274,7 +292,7 @@ func _update(delta: float, snap: bool) -> void:
 		lantern.position.y += sin(_time * 5.0) * 0.03 * clampf(p.speed / 3.0, 0.0, 1.0)
 		# The lantern's floor: in any gloom it lifts the ground a little. (source 0.45)
 		var night := maxf(dark, 0.45)
-		var at := p.position + Vector3(0, LANTERN_HEIGHT, 0)
+		var at := p.position + Basis(Vector3.UP, -p.facing) * LANTERN_LIGHT
 		# Where a lamp already lights the ground the lantern hardly adds: two
 		# pools stacked read as two ruled discs.
 		var covered := 0.0
@@ -309,16 +327,25 @@ func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3) -> bool
 
 ## Stepped, not smooth: a flame changes its mind a dozen times a second.
 func _flicker(s: Dictionary) -> float:
+	return flicker(s, _time)
+
+
+## A light's flicker at `time` seconds: a multiply on its level, stepped.
+static func flicker(s: Dictionary, time: float) -> float:
 	var kind := int(s.kind)
 	var h: float = s.h
 	if kind == PropKind.FIRE:
-		var step := floori(_time * 11.0 + h * 50.0)
+		var step := floori(time * 11.0 + h * 50.0)
 		return 0.86 + 0.14 * Rng.hash01(step, int(h * 1000.0))
 	if kind == PropKind.VENT:
 		# A vent breathes.
-		return 0.75 + 0.25 * sin(_time * 1.3 + h * TAU)
+		return 0.75 + 0.25 * sin(time * 1.3 + h * TAU)
+	if kind == PropKind.HOUSE:
+		# The hearth inside, seen through the door: a fire's flicker, gentled.
+		var step := floori(time * 9.0 + h * 40.0)
+		return 0.9 + 0.1 * Rng.hash01(step, int(h * 1000.0) + 3)
 	if kind == PropKind.LAMP:
-		var step := floori(_time * 6.0 + h * 30.0)
+		var step := floori(time * 6.0 + h * 30.0)
 		return 0.96 + 0.04 * Rng.hash01(step, 7)
 	return 1.0
 

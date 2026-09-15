@@ -11,8 +11,11 @@ func test_pool_radius_is_where_the_light_is_half() -> void:
 		var reach := float(spec[0])
 		var h := float(spec[2])
 		var r := Lights.pool_radius(reach, h)
-		gt(r, 1.0, "a pool you can stand in")
-		near(Lights.omni_attenuation(sqrt(r * r + h * h), reach), 0.5, 1e-3, "half light at the pool's edge")
+		gt(r, 0.6, "a core you can stand in")
+		lt(r, 2.2, "a pool, not a floodlit square")
+		near(Lights.omni_attenuation(sqrt(r * r + h * h), reach), Lights.POOL_CORE, 1e-3, "the core ends where the light crosses the core step")
+		var ring := Lights.pool_radius(reach, h, Lights.POOL_RING)
+		gt(ring - r, 0.35, "a ring wide enough to read as a second step")
 	lt(Lights.pool_radius(4.0, 9.0), 1e-6, "a light too high leaves no pool")
 
 
@@ -48,7 +51,9 @@ func test_lamps_hand_their_pools_to_the_ink_at_night_only() -> void:
 	check(not g.sky.lamps.is_empty(), "lantern pool")
 	if not g.sky.lamps.is_empty():
 		var first: Vector4 = g.sky.lamps[0]
-		near(Vector2(first.x, first.z).distance_to(Vector2(g.player.position.x, g.player.position.z)), 0.0, 0.01, "lantern pool on the player")
+		var off := Vector2(first.x, first.z).distance_to(Vector2(g.player.position.x, g.player.position.z))
+		gt(off, 0.3, "the lantern's light is out of the body")
+		lt(off, 0.8, "and still at the player's hand")
 
 	# By day nobody's lamp leaves a pool in the ink.
 	g.body.lamp_lit = false

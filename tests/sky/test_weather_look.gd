@@ -53,3 +53,16 @@ func test_each_country_signature_weather_draws_its_marks() -> void:
 
 func _near3(a: Vector3, b: Vector3, msg: String) -> void:
 	lt((a - b).length(), 1e-4, "%s: %s vs %s" % [msg, a, b])
+
+
+func test_a_fair_sky_shades_at_most_a_quarter_of_the_land() -> void:
+	for k: StringName in WeatherLook.COVER:
+		lt(float((WeatherLook.COVER[k] as Array)[0]), 0.25, "%s at strength 0 leaves the day bright" % k)
+	var fair := WeatherLook.compose([{"kind": &"clear", "strength": 0.0, "weight": 1.0}])
+	lt(float(fair.cover), 0.25, "a clear day's clouds are a scatter, not an overcast")
+
+
+func test_a_storm_rains_without_a_fog_veil() -> void:
+	var storm := WeatherLook.compose([{"kind": &"storm", "strength": 1.0, "weight": 1.0}])
+	near(float(storm.fog), 0.0, 1e-6, "no fog in a storm")
+	gt(float(storm.rain), 0.9, "it pours")

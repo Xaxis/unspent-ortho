@@ -20,6 +20,11 @@ var _fog_drift := Vector2.ZERO
 var _cloud_bearing := Vector2.RIGHT
 var _last_minutes := 0.0
 var _flash := 0.0
+## What the page does on the frames after a strike: a pale step, half of it,
+## nothing, a flicker, gone. Two or three frames, never a white veil.
+const FLASH_FRAMES: Array[float] = [0.36, 0.18, 0.0, 0.12]
+var _flash_frame := FLASH_FRAMES.size()
+var _flash_gain := 0.0
 var _pending_thunder: Array = [] # [real seconds left, Vector3]
 var _forced_bolt := false
 ## Lying snow, ash and wet around the focus (Weather.settled), eased.
@@ -27,11 +32,16 @@ var settled := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_target := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_minute := -INF
 var _sway_phase := 0.0
+## Milliseconds the sky_ground texture took to build (start-up budget).
+var ground_ms := 0
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 	_apply_forced(g.options.weather)
+	var t0 := Time.get_ticks_msec()
+	g.sky.set_ground(SkyGround.texture(g.world), g.world.size)
+	ground_ms = Time.get_ticks_msec() - t0
 	var a := Rng.hash01(g.world.seed_value, 0xC10D) * TAU
 	_cloud_bearing = Vector2.from_angle(a)
 	_last_minutes = g.clock.minutes
@@ -99,6 +109,21 @@ func sample_countries(focus: Vector2) -> Dictionary:
 	return shares
 
 
+## What the sky draws from the focus country alone (WeatherLook.compose keys).
+const FALL_KEYS: Array[String] = ["rain", "hail", "snow", "ash", "dust", "fog", "heat", "storm"]
+
+
+## The country whose weather falls at a point: the tile's own, or the one it
+## has turned toward once past the middle of an ecotone.
+static func fall_country(w: WorldData, at: Vector2) -> int:
+	var x := clampi(floori(at.x), 0, w.size - 1)
+	var y := clampi(floori(at.y), 0, w.size - 1)
+	var i := y * w.size + x
+	if w.blend.size() > i and w.blend[i] > 0.5 and w.country2.size() > i:
+		return int(w.country2[i])
+	return int(w.country[i])
+
+
 func _update(delta: float, snap: bool) -> void:
 	var f3 := _focus()
 	var focus := Vector2(f3.x, f3.z)
@@ -115,8 +140,18 @@ func _update(delta: float, snap: bool) -> void:
 		target_region += SkyLight.country_tint(c) * float(shares[c])
 		target_wind += float(wx.wind) * float(shares[c])
 	var target := WeatherLook.compose(entries)
-	target.wisp = wisp_amount(float(shares.get(Country.MOSS, 0.0)), Weather.night_fall(game.clock.hour()), float(target.rain), target_wind)
+	# The light and the clouds blend across a border, but what falls through the
+	# air is one country's: the one under the focus. A frame at a triple border
+	# must not snow, rain ash and lie in fog all at once.
+	var here := fall_country(game.world, focus)
+	var wh := Weather.at_place(seed_value, minutes, here)
+	var falls := WeatherLook.compose([{"kind": wh.kind, "strength": wh.strength, "weight": 1.0}])
+	for k: String in FALL_KEYS:
+		target[k] = falls[k]
+	target.wisp = wisp_amount(1.0 if here == Country.MOSS else 0.0, Weather.night_fall(game.clock.hour()), float(target.rain), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
+	# Each thing is the most any country in view has left; the sky_ground mask
+	# lays it only on the countries that make it.
 	if snap or absf(minutes - _settle_minute) >= 1.0:
 		_settle_minute = minutes
 		for k: String in _settle_target:
@@ -124,7 +159,7 @@ func _update(delta: float, snap: bool) -> void:
 		for c: int in shares:
 			var st := Weather.settled(seed_value, minutes, c)
 			for k: String in _settle_target:
-				_settle_target[k] = float(_settle_target[k]) + float(st[k]) * float(shares[c])
+				_settle_target[k] = maxf(float(_settle_target[k]), float(st[k]))
 
 	var kr := 1.0 if snap else 1.0 - exp(-delta / REGION_EASE)
 	var kw := 1.0 if snap else 1.0 - exp(-delta / WEATHER_EASE)
@@ -146,8 +181,12 @@ func _update(delta: float, snap: bool) -> void:
 	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind))
 	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind))
 
-	# A forced bolt (shots) holds its strike lit; real strikes fade in a few frames.
-	_flash = 0.5 if _forced_bolt else maxf(0.0, _flash - delta * 5.0)
+	# A forced bolt (shots) holds its strike drawn with no flash on the page;
+	# real strikes flash for a few frames.
+	_flash = 0.0
+	if not _forced_bolt and _flash_frame < FLASH_FRAMES.size():
+		_flash = FLASH_FRAMES[_flash_frame] * _flash_gain
+		_flash_frame += 1
 	var sky := game.sky
 	sky.region_tint = region
 	sky.weather_tint = look.tint
@@ -193,7 +232,8 @@ func _scan_lightning(from_minutes: float, to_minutes: float, seed_value: int) ->
 func _strike(strength: float, minute: int, hold: bool) -> void:
 	var seed_value := game.world.seed_value
 	var dist := Weather.strike_distance(seed_value, minute, strength)
-	_flash = maxf(_flash, clampf(300.0 / dist, 0.3, 1.0))
+	_flash_gain = clampf(300.0 / dist, 0.3, 1.0)
+	_flash_frame = 0
 	var f3 := _focus()
 	var r := Rng.make(seed_value, minute)
 	var at := Vector2(f3.x, f3.z) + Vector2(r.randf_range(-9.0, 9.0), r.randf_range(-6.0, 6.0))
@@ -209,8 +249,6 @@ func _strike(strength: float, minute: int, hold: bool) -> void:
 		view.strike(ground, seed_value ^ minute, hold)
 	# Thunder comes tiles/34 beats (0.1 s) after the light. (source)
 	_pending_thunder.append([dist / 34.0 * 0.1, ground])
-	if hold:
-		_flash = 0.55
 
 
 const STRIKE_HEIGHT := {

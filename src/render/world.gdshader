@@ -74,12 +74,13 @@ void light() {
 		// The sky lays ink on lit faces (cloud shadow, night) and lifts it (lamplight, fog).
 		vec3 sk = sky_ink(world_pos, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		float ink = max(1.0 - lit, sk.x) * hatch(style, px, depth + sk.z) * (1.0 - sk.y);
-		vec3 k = mix(shade_tint, vec3(band), lit);
+		vec3 k = mix(shade_tint * sky_shade.rgb, vec3(band), lit);
 		k = mix(k, ink_tint, ink * 0.75);
 		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
 	} else {
 		// Lamps and fire: a warm pool in hard steps; its ink is lifted in sky_ink().
-		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0), world_pos);
+		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
 		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }

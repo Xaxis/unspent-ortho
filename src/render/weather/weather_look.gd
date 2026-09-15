@@ -19,12 +19,13 @@ const MULTIPLY := {
 	&"dust": Vector3(0.94, 0.84, 0.68),
 }
 
-## Cloud cover at strength 0 and at strength 1. Fair days keep a few clouds, so
-## their shadows always walk over the land.
+## Cloud cover (the share of the land in cloud shade) at strength 0 and at
+## strength 1. Fair days keep a few clouds, about a fifth of the land, so their
+## shadows always walk over it without dimming the day.
 const COVER := {
-	&"clear": [0.34, 0.34], &"grey": [0.4, 0.92], &"rain": [0.42, 0.95], &"storm": [0.5, 1.0],
-	&"fog": [0.3, 0.15], &"hail": [0.45, 0.9], &"snow": [0.4, 0.9], &"blizzard": [0.5, 1.0],
-	&"ash": [0.3, 0.7], &"heat": [0.2, 0.06], &"dust": [0.3, 0.45],
+	&"clear": [0.18, 0.18], &"grey": [0.2, 0.9], &"rain": [0.2, 0.95], &"storm": [0.24, 1.0],
+	&"fog": [0.15, 0.1], &"hail": [0.22, 0.9], &"snow": [0.2, 0.85], &"blizzard": [0.24, 1.0],
+	&"ash": [0.18, 0.7], &"heat": [0.1, 0.03], &"dust": [0.18, 0.45],
 }
 
 ## How far a kind at full strength hides the sun: at 0.6 and over, nothing casts.
@@ -36,14 +37,14 @@ const OVERCAST := {
 ## What falls or hangs, per kind: rain, hail, snow, ash, dust, fog, heat haze.
 const FALL := {
 	&"rain": {"rain": 0.75, "fog": 0.0},
-	&"storm": {"rain": 1.0, "fog": 0.15},
+	&"storm": {"rain": 1.0},
 	&"hail": {"hail": 1.0, "rain": 0.25},
 	&"snow": {"snow": 0.8},
-	&"blizzard": {"snow": 1.0, "fog": 0.45},
+	&"blizzard": {"snow": 1.0, "fog": 0.3},
 	&"fog": {"fog": 1.0},
-	&"ash": {"ash": 1.0, "fog": 0.2},
+	&"ash": {"ash": 1.0},
 	&"heat": {"heat": 1.0},
-	&"dust": {"dust": 1.0, "fog": 0.4},
+	&"dust": {"dust": 1.0, "fog": 0.25},
 }
 
 

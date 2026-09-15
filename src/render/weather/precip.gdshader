@@ -67,8 +67,8 @@ void vertex() {
 		lo = vec2(0.0, -underline);
 		hi = vec2(len, len);
 	} else if (mode == 2) {
-		lo = vec2(-3.0, -2.0);
-		hi = vec2(4.0, 3.0);
+		lo = vec2(-5.0, -2.0);
+		hi = vec2(6.0, 3.0);
 	} else if (mode == 3) {
 		lo = vec2(facing > 0.0 ? -len : 0.0, -2.0);
 		hi = vec2(facing > 0.0 ? 1.0 : len + 1.0, 3.0);
@@ -83,9 +83,13 @@ void vertex() {
 	// as it fades, so marks never go translucent), and into columns.
 	float keep = density * step(fract(rnd * 53.1), alive);
 	if (columns > 0.0) {
+		// Curtains: bands a few tiles wide across the screen, bending a little
+		// with depth so they read as squalls and not stripes, sweeping over the
+		// land. Inside a curtain it pours; between them only a few drops fall.
 		float across = dot(origin, vec3(0.7071, 0.0, -0.7071));
-		float col = sky_noise(vec2(across * 0.16 + TIME * 0.35, TIME * 0.05 + 3.0)) * 0.7 + sky_noise(vec2(across * 0.5 - TIME * 0.2, 9.0)) * 0.3;
-		keep *= mix(1.0, smoothstep(0.3, 0.62, col) * 1.3, columns);
+		float along = dot(origin, vec3(0.7071, 0.0, 0.7071));
+		float col = sky_noise(vec2(across * 0.16 + along * 0.06 - TIME * 0.5, along * 0.03 + 3.0)) * 0.8 + sky_noise(vec2(across * 0.5 - TIME * 0.3, along * 0.1 + 9.0)) * 0.2;
+		keep *= mix(1.0, 0.07 + 1.4 * smoothstep(0.5, 0.58, col), columns);
 	}
 	if (rnd > keep) {
 		POSITION = vec4(2.0, 2.0, 2.0, 1.0);
@@ -105,11 +109,11 @@ void fragment() {
 		shade = underline > 0.5 && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
 		on = on || shade;
 	} else if (mode == 2) {
-		// A wavering line: ~ drawn in five pixels, its phase walking with time.
+		// A wavering line: ~~ drawn in nine pixels, its phase walking with time.
 		float ph = floor(fract(TIME * 1.5 + v_rnd * 7.0) * 4.0);
 		float y = mod(q.x + 3.0 + ph, 4.0);
 		float wave = y < 1.0 ? 0.0 : (y < 2.0 ? 1.0 : (y < 3.0 ? 0.0 : -1.0));
-		on = abs(q.x) <= 2.0 && q.y == wave;
+		on = abs(q.x) <= 4.0 && q.y == wave;
 	} else if (mode == 3) {
 		// A flick: a flat stroke that lifts at its head.
 		float x = q.x * sign(facing);
