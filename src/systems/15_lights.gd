@@ -30,9 +30,9 @@ const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
 const LANTERN_RANGE := 3.2
-## Ink & Neon: the colour each kind of light throws into the rain. Village lamps
-## burn sodium; windows glow with stolen neon (cyan or magenta by house); fires
-## and vents stay fire; the player's salvaged lantern is a cold LED.
+## The colour each kind of light throws (pools and wet reflections). People's
+## lamps, windows and fires are warm; the player's salvaged lantern is a cold LED;
+## stolen neon belongs to the houses that wired it in (a few, not all).
 const LANTERN_NEON := Vector3(0.55, 0.9, 1.0)
 const NEON_SODIUM := Vector3(1.0, 0.52, 0.16)
 const NEON_CYAN := Vector3(0.25, 0.95, 1.0)
@@ -330,9 +330,9 @@ func _update(delta: float, snap: bool) -> void:
 static func neon_colour(s: Dictionary) -> Vector3:
 	match int(s.kind):
 		PropKind.LAMP:
-			return NEON_SODIUM
+			return Vector3(1.0, 0.72, 0.42)
 		PropKind.HOUSE:
-			return NEON_CYAN if float(s.get("h", 0.5)) < 0.5 else NEON_MAGENTA
+			return Vector3(1.0, 0.68, 0.4)
 		_:
 			return NEON_FIRE
 

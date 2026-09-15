@@ -367,28 +367,28 @@ static func country_tint(country: int) -> Vector3:
 	return c / maxf(c.x, maxf(c.y, c.z))
 
 
-## Ink & Neon (docs/VISION.md section 8): the grade and the wet for an hour and
-## the landscapes in view. Returns [grade Vector4(dark, desat, cool, contrast),
-## wet Vector4(base wet, sheen, reflection, 0)]. Day is overcast gloom, dusk is
-## long, night is the stage; each landscape leans its own way.
-const NEON_DAY := Vector4(0.16, 0.34, 0.28, 0.45)
-const NEON_NIGHT := Vector4(0.0, 0.3, 0.2, 0.2)
+## The dystopian grade (docs/ART.md section 6): a light, bleak desaturation that
+## sets the mood without hiding the land, and how wet each landscape lies without
+## rain. Returns [grade Vector4(dark, desat, cool, contrast), wet Vector4(base
+## wet, sheen, reflection, 0)]. Day stays day; each landscape leans its own way.
+const NEON_DAY := Vector4(0.04, 0.22, 0.10, 0.18)
+const NEON_NIGHT := Vector4(0.0, 0.25, 0.12, 0.10)
 ## Per country: [grade offset Vector4, base wet].
 const NEON_COUNTRY := {
-	Country.SEA: [Vector4(0.0, 0.0, 0.1, 0.0), 0.0],
-	Country.COAST: [Vector4(0.0, 0.0, 0.05, 0.0), 0.65],
-	Country.MOSS: [Vector4(0.04, 0.08, 0.05, 0.05), 0.9],
-	Country.PINEWOOD: [Vector4(0.06, 0.05, 0.08, 0.05), 0.7],
-	Country.SNOWFIELD: [Vector4(-0.08, 0.1, 0.2, -0.1), 0.25],
-	Country.BONELANDS: [Vector4(-0.04, 0.12, 0.0, 0.1), 0.3],
-	Country.BURNING: [Vector4(0.02, -0.2, -0.3, 0.05), 0.2],
+	Country.SEA: [Vector4(0.0, 0.0, 0.04, 0.0), 0.0],
+	Country.COAST: [Vector4(0.0, 0.0, 0.03, 0.0), 0.15],
+	Country.MOSS: [Vector4(0.03, 0.1, 0.02, 0.05), 0.5],
+	Country.PINEWOOD: [Vector4(0.03, 0.05, 0.04, 0.05), 0.25],
+	Country.SNOWFIELD: [Vector4(-0.04, 0.08, 0.08, -0.05), 0.0],
+	Country.BONELANDS: [Vector4(-0.02, 0.15, -0.02, 0.1), 0.0],
+	Country.BURNING: [Vector4(0.03, -0.1, -0.15, 0.08), 0.0],
 }
 
 
 static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
 	var night := Weather.night_fall(hour)
 	var g := NEON_DAY.lerp(NEON_NIGHT, night)
-	var wet := 0.55
+	var wet := 0.1
 	if not shares.is_empty():
 		var off := Vector4.ZERO
 		var w := 0.0

@@ -199,7 +199,7 @@ static func pylon(k: Kit) -> void:
 	# machine beat; the crossarms carry a line of cold strip light.
 	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Color(1.0, 0.18, 0.42, 0.2))
 	for arm2: Array in [[3.4, 1.15], [2.7, 0.85]]:
-		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Color(0.3, 0.95, 1.0, 0.8))
+		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Color(0.3, 0.95, 1.0, 0.9))
 
 
 static func _leg(l: Vector2, y: float, top: float) -> Vector3:

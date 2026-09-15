@@ -172,7 +172,9 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, 0.0, 1.0, 0.07, 0.006, P.LINEN[2])
 	var door_u: float = [0.34, 0.66, 0.46][form]
 	door(k, fb[0], fb[1], fb[2], fb[3], door_u, 0.1, 0.95)
-	neon_tube(k, fb[0], fb[1], fb[2], fb[3], door_u - 0.14, door_u + 0.14, 0.86, NEON_TUBES[form % 3])
+	if form == 1:
+		# One house in three wired a machine's light over its door.
+		neon_tube(k, fb[0], fb[1], fb[2], fb[3], door_u - 0.14, door_u + 0.14, 0.86, NEON_TUBES[form % 3])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.8 if door_u < 0.5 else 0.22, 0.6, 0.08, 0.13)
 	if form == 2:
 		window(k, fb[0], fb[1], fb[2], fb[3], 0.18, 0.58, 0.07, 0.12)
@@ -224,7 +226,8 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		var vv := 0.1 + fmod(i * 0.41, 0.8)
 		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], u, vv, u + 0.06, vv + 0.07, 0.008, P.SLATE[2] if i % 2 else P.STONE[1])
 	door(k, fb[0], fb[1], fb[2], fb[3], 0.64 if form == 0 else 0.3, 0.1, 0.95)
-	neon_tube(k, fb[0], fb[1], fb[2], fb[3], (0.64 if form == 0 else 0.3) - 0.16, (0.64 if form == 0 else 0.3) + 0.16, 0.84, NEON_TUBES[(form + 1) % 3])
+	if form == 0:
+		neon_tube(k, fb[0], fb[1], fb[2], fb[3], 0.48, 0.8, 0.84, NEON_TUBES[1])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.24 if form == 0 else 0.74, 0.6, 0.08, 0.13)
 	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.4 if form == 0 else 0.52, 0.42)
 	# Gable roof, ridge along z, sagging. Front slope: slate low (MADE), plate high (FOUND).

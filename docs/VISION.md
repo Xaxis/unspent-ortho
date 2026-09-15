@@ -212,29 +212,29 @@ asks, the gear answers, the combinations make builds.
 
 ## 8. Look across realms (extends ART.md)
 
-**Beautifully dystopian: Ink & Neon** (owner, 2026-09-15). The whole game is a
-futuristic, sci-fi, crumbling world: **dark, rain-slicked, neon-lit wastelands**,
-cyberpunk landscapes of **ordered chaos and mystery** that pull the player in.
+**Beautifully dystopian** (owner, 2026-09-15). The whole game is a futuristic,
+sci-fi, crumbling world, cyberpunk landscapes of **ordered chaos and mystery**. The
+dystopia is in the mood, the art, the themes, and **every element of every
+landscape**, not in a filter.
 
-- **Dark first.** The world lives in overcast day, long dusk and deep night. Grounds
-  are wet and dark; value is carried by light, not by pale washes.
-- **Neon is the machines' order.** Light comes from what the machines keep running
-  and what people stole from them: strip lights on FOUND bodies, beacons on pylons,
-  lit districts, signs that still advertise nothing, stolen tech in windows, sodium
-  lamps in villages. Each landscape has its own neon family (magenta and cyan in the
-  metropolis, sickly green in the orchards, cold blue on the frost sea, furnace
-  amber in the burning).
-- **Rain-slicked.** Rain is the default weather in many landscapes. Wet ground mirrors
-  light in long streaks; puddles hold neon; drips and runoff move; haze turns light
-  into shafts.
-- **Ordered chaos.** Exact grids of machine light, rails and arrays run straight
-  through chaotic ruin, overgrowth and hand-built shanties. The FOUND is ruler-straight
-  and lit; the MADE is crooked, patched and dark. The contrast is the mood.
+- **The land tells what happened.** Every landscape is dense with its own
+  dystopian evidence: collapsed and half-reclaimed structures, dead and still-running
+  infrastructure, machine scars (cut lines, drill fields, quarries, drained basins),
+  wrecks and debris, fences, barricades and warning signs, abandoned vehicles,
+  graves and memorials, poisoned water and scorched ground, and the patched, wired,
+  scavenged places where people still live.
+- **Ordered chaos.** The machines' exact grids (rails, relay lines, arrays, fields
+  sown in perfect rows, lit districts) run straight through chaotic ruin, overgrowth
+  and hand-built shelter. The FOUND is ruler-straight; the MADE is crooked and patched.
+- **Mood by landscape and hour.** Each landscape has its own weather and light: bleak
+  grey days on the coast, drowned green gloom in the moss, hard white glare on the
+  bonelands, furnace dusk in the burning. Night, storms and fog are where the mood
+  deepens and where light becomes precious.
+- **Neon and rain are accents that mean something:** machine districts, relay
+  corridors, the metropolis, the server fields, settlements running stolen tech;
+  rain-slick streets where it rains. Never everywhere.
 - **Mystery.** Silhouettes on the horizon, lights that move where nothing should,
-  districts that hum, landmarks glimpsed through rain.
-- **The ink stays.** The spine of the look does not change: no grid, contour terraces,
-  hatching pinned to the world, the hand against the ruler. Hatching becomes the
-  grime and shadow of a wet night; neon light erases it in its pools.
+  districts that hum, landmarks glimpsed through weather.
 
 **Sound: haunting, synthesizer-heavy, evolving ambient** (owner, 2026-09-15).
 Generative synth drones, pads, pulses and slow arpeggios that evolve with the hour,

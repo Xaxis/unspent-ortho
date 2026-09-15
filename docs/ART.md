@@ -1,18 +1,22 @@
 # UNSPENT — the look
 
-**Ink & Neon.** A beautifully dystopian world (owner, 2026-09-15): dark,
-rain-slicked, neon-lit wastelands, a futuristic crumbling world, cyberpunk
-landscapes of ordered chaos and mystery. It is drawn, not rendered: flat washes,
-inked contours and hatched shade pinned to the world, the land in contour
-terraces. Out of that ink the machines' order shines: strip lights, beacons, lit
-districts, stolen neon in shanty windows, reflections streaking across wet
-ground. The hand draws the ruin in the dark; the ruler lights it.
+**Beautifully dystopian, drawn by hand.** The mood, the art and the themes are
+dystopian all the way through (owner, 2026-09-15), and that lives in **what every
+landscape contains**: ruin, decay, dead infrastructure, the machines' order cut
+across the land, wreckage, fences and warning signs nobody reads, poisoned water,
+scorched ground, graves, and people scavenging and patching technology in the gaps.
+It is drawn, not rendered: flat washes, inked contours and hatched shade pinned to
+the world, the land in contour terraces, the hand against the ruler. Light, weather
+and colour set the mood per landscape and hour; neon, rain-slick streets and deep
+dark are **accents where they belong** (machine districts, relay lines, the
+metropolis, server fields, settlements running stolen tech, storms, night), never a
+filter over everything.
 
 It must look like nothing else. **Nothing like Minecraft or any voxel game**
 (owner, 2026-09-15): the tile grid belongs to the rules, never to the eye. It is
 also not generic low-poly, not HD-2D, not cel-shaded anime, not 16-bit cosplay.
-When in doubt, ask: *is this frame dark, wet, lit by the machines' order, drawn by
-a hand, and haunting?*
+When in doubt, ask: *does everything in this frame say what was lost and what the
+machines are doing, is it drawn by a hand, and is it haunting?*
 
 This document is binding. The research extract (`docs/research/art-audio-extract.md`)
 supplies palette values, silhouettes and lighting numbers; where it conflicts with
@@ -121,33 +125,25 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 - Hatching never covers a face or a working part.
 - UI is the quietest layer, and it is a device: see §9, the slate.
 
-## 6. Light, night, weather: Ink & Neon
+## 6. Light, night, weather
 
-Implemented in the neon core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo,
-`sky_light.gd` `neon_grade_at`, `15_lights.gd` neon colours):
+The mood core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo, `sky_light.gd`
+`neon_grade_at`, `15_lights.gd`):
 
-- **The grade.** Every lit wash passes through `neon_graded()` last: darker, cooler,
-  less colour, harder mids, set per hour and per landscape (`SkyLight.NEON_COUNTRY`).
-  Emission never passes through it, so neon, embers and working parts stay bright.
-  Day is overcast gloom, dusk is long, night is the stage.
-- **Skyglow.** Low cloud holds the light of everything the machines keep running:
-  in gloom every wash keeps a faint teal-indigo emitted floor (`neon_skyglow`), so
-  shapes read at any hour and nothing is ever pure black.
-- **Neon.** Light belongs to the machines' order and to what people stole from it:
-  FOUND strip lights (vertex alpha 0.5-0.98) and blinking beacons (alpha < 0.5) on
-  `found.gdshader`; stolen neon tubes and lit windows on houses (MADE lamp marks);
-  sodium village lamps; cold LED lanterns. Each landscape keeps its own neon family
-  (VISION §8). Bright saturated pixels throw a **stippled halo** into the rain and
-  haze (post pass): never a smooth bloom.
-- **Rain-slicked.** Most landscapes lie wet without rain (`NEON_COUNTRY` base wet),
-  and rain adds more. Wet flat ground is a step darker and **mirrors every lamp as
-  a broken vertical streak** of its colour, dashed by the rain (`neon_reflect`).
-- **Pools.** Lamp and fire pools are low coloured stains that lift the hatching;
-  the light itself and its reflection carry the brightness, not a painted disc.
+- **The grade** is light: a bleak desaturation and a slight cool, per landscape and
+  hour (`SkyLight.NEON_COUNTRY`). Day stays day and every landscape stays readable
+  and distinct. Emission never passes through it.
+- **Skyglow** keeps shapes readable in dusk, storms and night; nothing is pure black.
+- **Wet** where the land is wet (the moss, rain, a storm): wet flat ground is a step
+  darker and mirrors lights as broken streaks. Dry landscapes stay dry.
+- **Artificial light is situational and means something.** People's lamps, windows
+  and fires are warm. The machines' order lights itself: beacons on the grid, strip
+  lights on machines and arrays, lit districts. Stolen neon shows up where people
+  wired machine light into their lives, in some houses and not all. Bright saturated
+  light throws a stippled halo into rain and haze: never a smooth bloom.
 - Key light from the upper left of the screen; the sun swings, never flips.
-- Weather is drawn: rain as short slanted strokes in columns, snow as flecks, ash
-  as dark specks, fog as haze that softens lines and spreads halos, lightning as a
-  flash of the whole page.
+- Weather is drawn: rain as short slanted strokes, snow as flecks, ash as dark
+  specks, fog as haze that softens lines and spreads halos, lightning as a flash.
 - Cloud shadows drift over the land as soft-edged patches of hatch.
 
 ## 7. Motion
@@ -166,8 +162,9 @@ Implemented in the neon core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo,
 4. Does the hatch hand match the country or thing?
 5. Readable at 640x360: player, machines, working parts, props that can be taken?
 6. At noon, dusk and night?
-7. Is it Ink & Neon? Dark and wet, lit by the machines' order, a halo in the rain,
-   a streak on the ground, drawn by a hand, hauntingly beautiful?
+7. Is it dystopian in its content (ruin, machine order, scavenged tech, what was lost),
+   is the light and weather right for this landscape and hour, is it hauntingly
+   beautiful? Neon and rain only where they belong.
 
 ## 9. The slate: every screen is a hacked tablet
 
