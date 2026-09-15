@@ -73,13 +73,16 @@ func test_a_refusal_is_a_different_sound_not_a_louder_one() -> void:
 	var yes := Fixture.baked(&"ui_accept")
 	var no := Fixture.baked(&"ui_back")
 	check(SoundMix.heard_db(no) <= SoundMix.heard_db(yes) + 0.05, "back is no louder than accept")
-	# Accept climbs to B5; back falls to E4. Same loudness, other notes.
-	var yes_b5 := Synth.tone_level(yes.samples, yes.rate, 987.77, 0, 8192)
-	var no_b5 := Synth.tone_level(no.samples, no.rate, 987.77, 0, 8192)
-	gt(yes_b5, no_b5 * 4.0, "accept has B5 (%.4f vs %.4f)" % [yes_b5, no_b5])
-	var yes_e4 := Synth.tone_level(yes.samples, yes.rate, 329.63, 0, 8192)
-	var no_e4 := Synth.tone_level(no.samples, no.rate, 329.63, 0, 8192)
-	gt(no_e4, yes_e4 * 4.0, "back has E4 (%.4f vs %.4f)" % [no_e4, yes_e4])
+	# Accept climbs E5 to B5; back falls A4 to E4. The notes share harmonics (an
+	# E4 string rings at B5 too), so judge the notes back has that accept cannot,
+	# and where each sound's weight sits.
+	for f: float in [329.63, 440.0]:
+		var yes_lo := Synth.tone_level(yes.samples, yes.rate, f, 0, 8192)
+		var no_lo := Synth.tone_level(no.samples, no.rate, f, 0, 8192)
+		gt(no_lo, yes_lo * 4.0, "back has %.0f Hz and accept does not (%.4f vs %.4f)" % [f, no_lo, yes_lo])
+	var yes_c := Synth.centroid(yes.samples, yes.rate, 0, 8192)
+	var no_c := Synth.centroid(no.samples, no.rate, 0, 8192)
+	gt(yes_c, no_c * 1.3, "accept sits higher than back (%.0f Hz vs %.0f Hz)" % [yes_c, no_c])
 
 
 func test_buses_are_made_in_code_with_the_research_levels() -> void:

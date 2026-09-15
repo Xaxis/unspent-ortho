@@ -824,6 +824,24 @@ static func tone_level(buf: PackedFloat32Array, rate: int, freq: float, from: in
 	return sqrt(maxf(0.0, power)) * 4.0 / count
 
 
+## Where a sound's weight sits: the amplitude-weighted mean frequency of `count`
+## samples from `from`, over tone_level probes a third of an octave apart
+## (60 Hz to 12 kHz). Cheap enough for tests; not a spectrum analyser.
+static func centroid(buf: PackedFloat32Array, rate: int, from: int = 0, count: int = -1) -> float:
+	if count < 0:
+		count = buf.size() - from
+	count = mini(count, buf.size() - from)
+	var f := 60.0
+	var num := 0.0
+	var den := 0.0
+	while f < minf(12000.0, rate * 0.45):
+		var a := tone_level(buf, rate, f, from, count)
+		num += a * f
+		den += a
+		f *= pow(2.0, 1.0 / 3.0)
+	return num / maxf(1e-12, den)
+
+
 ## How unusual the wrap from the last sample to the first is, against the
 ## buffer's own sample-to-sample steps: ~1 or less is seamless.
 static func seam_ratio(buf: PackedFloat32Array) -> float:
