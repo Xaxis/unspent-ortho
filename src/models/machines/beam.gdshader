@@ -55,7 +55,8 @@ void fragment() {
 	if (along > 0.86) {
 		d = 0.26 * (1.0 - smoothstep(0.7, 1.0, across));
 	}
-	if (along < 0.06) {
+	// Clear of the eye and whatever amber sits beside it.
+	if (along < 0.12) {
 		d = 0.0;
 	}
 	d *= clamp(strength, 0.0, 2.0) * mix(day_floor, 1.0, night);

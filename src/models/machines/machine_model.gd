@@ -914,10 +914,10 @@ func _run_lights() -> void:
 		mi.visible = bv
 		if work:
 			var hard := bool(b[3]) and (pose == &"windup" or pose == &"strike")
-			mat.set_shader_parameter("strength", 1.6 if hard else 1.0)
+			mat.set_shader_parameter("strength", 1.2 if hard else 0.6)
 			mat.set_shader_parameter("narrow", 1.0)
 		else:
-			mat.set_shader_parameter("strength", 1.5 if locked else 1.0)
+			mat.set_shader_parameter("strength", 1.4 if locked else 0.85)
 			mat.set_shader_parameter("narrow", 0.55 if locked else 1.0)
 
 

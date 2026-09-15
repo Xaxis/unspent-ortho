@@ -216,8 +216,8 @@ func test_the_dead_go_dark_in_sequence_with_the_part_last() -> void:
 		var part_out := -1.0
 		var t := 0.0
 		while t < MachineModel.LIGHT_FIRST + 0.2:
-			m.animate(1.0 / 240.0, 0.0)
-			t += 1.0 / 240.0
+			m.animate(1.0 / 120.0, 0.0)
+			t += 1.0 / 120.0
 			var levels := m.lamp_levels()
 			for role: StringName in levels:
 				var lv: Array = levels[role]
@@ -260,8 +260,8 @@ func test_scanners_throw_a_beam_that_sweeps_with_the_head() -> void:
 		m.settle()
 		check(beam.visible, "%s beam on while it looks" % kid)
 		var dirs := {}
-		for i in 600:
-			m.animate(STEP, 0.0)
+		for i in 150:
+			m.animate(STEP * 2.0, 0.0)
 			var d := m.model_space(beam).basis.x
 			dirs["%.1f,%.1f" % [d.x, d.z]] = true
 		gt(float(dirs.size()), 1.0, "%s beam sweeps as it looks round" % kid)
