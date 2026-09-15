@@ -47,8 +47,11 @@ const _KEY_WET := 1 << 16
 ## How far a bank at the level of the water beside it lips up: just above the
 ## inland sheet (WADE). Keys carry the shore profile index in bits 17-21.
 const BANK_LIFT := 0.36
-## Inland wetness at which the land is under the sheet.
+## Inland wetness at which the land is under the sheet, and where its lip begins.
 const WET_EDGE := 0.4
+const LIP_START := 0.3
+## How much lower inland water counts in the smoothed elevation field.
+const WATER_BIAS := 0.7
 static var _LIFTS := PackedFloat32Array()
 var _blur: Dictionary = {}
 ## Cumulative build time by stage (usec) and vertices, for tools/gd/bench_chunks.gd.
@@ -179,7 +182,7 @@ static func _static_init() -> void:
 	_LIFTS.resize(32)
 	_LIFTS[0] = 0.0
 	for i in range(1, 32):
-		_LIFTS[i] = _profile(0.12 + (i - 1) / 30.0 * 0.88)
+		_LIFTS[i] = _profile(LIP_START + (i - 1) / 30.0 * (1.0 - LIP_START))
 
 
 func _init(w: WorldData) -> void:
@@ -235,19 +238,20 @@ static func _lift(k: int) -> float:
 
 ## Shore profile index (0 = none) for an inland wetness value wf.
 static func _shore_lift(wf: float) -> int:
-	if wf < 0.12:
+	if wf < LIP_START:
 		return 0
-	return 1 + roundi(clampf((wf - 0.12) / 0.88, 0.0, 1.0) * 30.0)
+	return 1 + roundi(clampf((wf - LIP_START) / (1.0 - LIP_START), 0.0, 1.0) * 30.0)
 
 
 static func _profile(wf: float) -> float:
-	if wf < 0.12:
+	if wf < LIP_START:
 		return 0.0
-	if wf < 0.34:
-		return lerpf(0.0, BANK_LIFT, (wf - 0.12) / 0.22)
+	var mid := (LIP_START + WET_EDGE) * 0.5
+	if wf < mid:
+		return lerpf(0.0, BANK_LIFT, (wf - LIP_START) / (mid - LIP_START))
 	if wf < WET_EDGE:
-		return lerpf(BANK_LIFT, WADE, (wf - 0.34) / (WET_EDGE - 0.34))
-	return lerpf(WADE, -WET_SINK, clampf((wf - WET_EDGE) / 0.3, 0.0, 1.0))
+		return lerpf(BANK_LIFT, WADE, (wf - mid) / (WET_EDGE - mid))
+	return lerpf(WADE, -WET_SINK, clampf((wf - WET_EDGE) / 0.15, 0.0, 1.0))
 
 
 ## Wetness of inland water at `terrace` at (x, y), from the blurred tile window
@@ -264,7 +268,8 @@ func _wet_field(x: float, y: float, terrace: int, wl: PackedInt32Array, rx0: int
 					for dx in range(-1, 2):
 						if wl[ny + clampi(xx + dx, 0, rw - 1)] == terrace:
 							sum += (2 - absi(dx)) * (2 - absi(dy))
-				bw[yy * rw + xx] = sum / 16.0
+				var own := wl[yy * rw + xx] == terrace
+				bw[yy * rw + xx] = maxf(0.6, sum / 16.0) if own else minf(sum / 16.0 * 0.8, 0.26)
 		_blur[terrace] = bw
 	var b: PackedFloat32Array = _blur[terrace]
 	var gx := x - 0.5
@@ -299,17 +304,22 @@ static func level_height(l: int) -> float:
 
 
 func _lv(x: int, y: int) -> float:
-	return float(world.level_at(clampi(x, 0, world.size - 1), clampi(y, 0, world.size - 1)))
+	var i := clampi(y, 0, world.size - 1) * world.size + clampi(x, 0, world.size - 1)
+	var l := world.level[i]
+	return float(l) - (WATER_BIAS if l > 0 and _WET[world.ground[i]] == 1 else 0.0)
 
 
 ## A tile's level blurred over its neighbours, but never out of its own
 ## terrace: the shape between tile centres is smoothed, the rules are not.
+## Inland water counts a little lower, so a one-tile river keeps its terrace
+## right across its width instead of pinching to a thread between its banks.
 func smooth_level(x: int, y: int) -> float:
 	var c := _lv(x, y)
+	var own := float(world.level_at(clampi(x, 0, world.size - 1), clampi(y, 0, world.size - 1)))
 	var sum := c * 4.0
 	sum += (_lv(x - 1, y) + _lv(x + 1, y) + _lv(x, y - 1) + _lv(x, y + 1)) * 2.0
 	sum += _lv(x - 1, y - 1) + _lv(x + 1, y - 1) + _lv(x - 1, y + 1) + _lv(x + 1, y + 1)
-	return clampf(sum / 16.0, c - 0.45, c + 0.45)
+	return clampf(sum / 16.0, own - 0.45, own + 0.45)
 
 
 ## Near an edge the field is read through a gentle domain warp (the contour
@@ -457,10 +467,15 @@ func build(cx: int, cy: int) -> Chunk:
 	var ah := ch.h + 6
 	var raw := PackedInt32Array()
 	raw.resize(aw * ah)
+	var biased := PackedFloat32Array()
+	biased.resize(aw * ah)
 	for yy in ah:
 		var ty := clampi(y0 - 3 + yy, 0, size - 1) * size
 		for xx in aw:
-			raw[yy * aw + xx] = level[ty + clampi(x0 - 3 + xx, 0, size - 1)]
+			var ti := ty + clampi(x0 - 3 + xx, 0, size - 1)
+			var l: int = level[ti]
+			raw[yy * aw + xx] = l
+			biased[yy * aw + xx] = float(l) - (WATER_BIAS if l > 0 and _WET[ground[ti]] == 1 else 0.0)
 	var sw := ch.w + 4
 	var smooth := PackedFloat32Array()
 	smooth.resize(sw * (ch.h + 4))
@@ -468,7 +483,7 @@ func build(cx: int, cy: int) -> Chunk:
 		for xx in sw:
 			var a := (yy + 1) * aw + xx + 1
 			var c := float(raw[a])
-			var sum := c * 4.0 + float(raw[a - 1] + raw[a + 1] + raw[a - aw] + raw[a + aw]) * 2.0 + float(raw[a - aw - 1] + raw[a - aw + 1] + raw[a + aw - 1] + raw[a + aw + 1])
+			var sum := biased[a] * 4.0 + (biased[a - 1] + biased[a + 1] + biased[a - aw] + biased[a + aw]) * 2.0 + biased[a - aw - 1] + biased[a - aw + 1] + biased[a + aw - 1] + biased[a + aw + 1]
 			smooth[yy * sw + xx] = clampf(sum / 16.0, c - 0.45, c + 0.45)
 	var cnt := np * (m + 1)
 	ch.f.resize(cnt)
@@ -525,10 +540,13 @@ func build(cx: int, cy: int) -> Chunk:
 				var extra := 0
 				var wf := 0.0
 				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:
-					# Inland water is a smooth field, read through the same warp as the
-					# grounds: its shore slopes up to a lip and down to a bed, so the
-					# sheet meets the land on a curve instead of a tile edge.
-					wf = _wet_field(wx, wy, terrace, wl, rx0, ry0, rw, rh)
+					# Inland water is a smooth field read through a small warp: its
+					# shore slopes up to a narrow lip and down to a bed, so the sheet
+					# meets the land on a curve, while every water tile's centre stays
+					# wet and every dry tile's centre stays dry and unlifted.
+					var qx := sx + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
+					var qy := sy + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
+					wf = _wet_field(qx, qy, terrace, wl, rx0, ry0, rw, rh)
 					extra = _shore_lift(wf) << 17
 					if wf >= WET_EDGE:
 						extra |= _KEY_WET
@@ -1186,7 +1204,24 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 			var hd := fill[d] if fill[d] != INF else lo
 			var h0 := ha if ha != INF else lo
 			var px := ch.x0 + i * 0.5
-			_water_quad(px, px + 0.5, py, h0, hb, hc, hd, col[a] if ha != INF else wet_c, col[b] if fill[b] != INF else wet_c, col[c] if fill[c] != INF else wet_c, col[d] if fill[d] != INF else wet_c)
+			var ca2 := col[a] if ha != INF else wet_c
+			var cb2 := col[b] if fill[b] != INF else wet_c
+			var cc2 := col[c] if fill[c] != INF else wet_c
+			var cd2 := col[d] if fill[d] != INF else wet_c
+			# Where two waters at different levels meet, the sheet falls and breaks
+			# white. A sheet tucked under a bank slopes too, but is no fall.
+			var wet_lo := INF
+			var wet_hi := -INF
+			for q: int in [a, b, c, d]:
+				if sheet[q] != INF:
+					wet_lo = minf(wet_lo, sheet[q])
+					wet_hi = maxf(wet_hi, sheet[q])
+			if wet_hi - wet_lo > 0.1:
+				ca2.r = 4.0 / 8.0
+				cb2.r = 4.0 / 8.0
+				cc2.r = 4.0 / 8.0
+				cd2.r = 4.0 / 8.0
+			_water_quad(px, px + 0.5, py, h0, hb, hc, hd, ca2, cb2, cc2, cd2)
 		if run >= 0:
 			_water_quad(ch.x0 + run * 0.5, ch.x0 + ch.n * 0.5, py, run_h, run_h, run_h, run_h, run_c, run_c, run_c, run_c)
 

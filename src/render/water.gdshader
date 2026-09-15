@@ -1,5 +1,5 @@
 // Water, drawn like a chart. TerrainMesher writes per vertex:
-//   COLOR.r  kind / 8: 0 sea, 1 river or still water, 2 blackwater
+//   COLOR.r  kind / 8: 0 sea, 1 river or still water, 2 blackwater, 4 a fall
 //   COLOR.gb flow direction * 0.5 + 0.5 (zero: still water)
 //   COLOR.a  depth: 0 at the waterline .. 1 deep
 // The sea is cut into flat depth bands with an inked sounding line at each
@@ -111,12 +111,10 @@ void fragment() {
 				c = h < 0.08 ? FOAM : BRINE4;
 			}
 		}
-		// Where running water falls it breaks white (a sheet tucked under a bank
-		// slopes too, but it is at the waterline, not in the stream).
-		float slope = fwidth(world_pos.y) / max(fwidth(wp.x) + fwidth(wp.y), 1e-4);
-		if (slope > 0.25 && fl > 0.2 && d > 0.05) {
-			float streak = ink_hash(vec2(floor(px.x / 2.0), floor((px.y + TIME * 24.0) / 3.0)));
-			c = streak < 0.5 ? FOAM : BRINE4;
+		if (kind == 4) {
+			// A fall: white water in running streaks, broken by dark gaps.
+			float streak = ink_hash(vec2(floor(px.x / 2.0), floor((px.y + TIME * 20.0) / 4.0)));
+			c = streak < 0.45 ? FOAM : (streak < 0.8 ? BRINE4 : BRINE3);
 		}
 	}
 	ALBEDO = sky_apply(c, world_pos, TIME);
