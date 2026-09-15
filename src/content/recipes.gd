@@ -15,18 +15,22 @@ class_name Recipes
 ##   action: StringName    works on the held tool instead of making: hone reedge
 ##
 ## Design notes where this departs from the source:
-## - Tools take a `haft`, whittled from driftwood or timber with a blade. The
-##   source used timber, which needs an axe, which needs timber; without trade
-##   that loop had no way in. Driftwood is the way in.
-## - Every made tool also has an iron rung (iron for plate), so ore matters.
+## - Tools take a `haft`, whittled from driftwood, dead wood or timber with a
+##   blade. The source used timber, which needs an axe, which needs timber;
+##   without trade that loop had no way in. Wood picked up is the way in.
+## - Plate from a tip makes only the way-in tools: a knife and a pick. Every
+##   other edge (axe, mattock, billhook) needs iron, and iron comes only from
+##   ore, so the first pick has a job to do. (The source bought these.)
 ## - Re-edging costs charcoal, not coin.
 
 const LIST: Array[Dictionary] = [
 	# --- By hand, anywhere ---
 	{"id": &"campfire", "at": &"hand", "minutes": 20.0, "needs": {&"driftwood": 3, &"stone": 2}, "makes": {}, "builds": &"fire"},
 	{"id": &"campfire_timber", "at": &"hand", "minutes": 20.0, "needs": {&"timber": 1, &"stone": 2}, "makes": {}, "builds": &"fire"},
+	{"id": &"campfire_deadwood", "at": &"hand", "minutes": 20.0, "needs": {&"deadwood": 3, &"stone": 2}, "makes": {}, "builds": &"fire"},
 	{"id": &"campfire_peat", "at": &"hand", "minutes": 20.0, "needs": {&"peat": 3, &"stone": 2}, "makes": {}, "builds": &"fire"},
 	{"id": &"haft", "at": &"hand", "minutes": 30.0, "needs": {&"driftwood": 2}, "makes": {&"haft": 1}, "tool": &"cut"},
+	{"id": &"haft_deadwood", "at": &"hand", "minutes": 30.0, "needs": {&"deadwood": 2}, "makes": {&"haft": 1}, "tool": &"cut"},
 	{"id": &"haft_timber", "at": &"hand", "minutes": 30.0, "needs": {&"timber": 1}, "makes": {&"haft": 2}, "tool": &"cut"},
 	{"id": &"hone", "at": &"hand", "minutes": 25.0, "needs": {&"stone": 1}, "makes": {&"hone": 1}},
 	{"id": &"sharpen", "at": &"hand", "minutes": 20.0, "needs": {}, "makes": {}, "keeps": {&"hone": 1}, "action": &"hone"},
@@ -39,11 +43,11 @@ const LIST: Array[Dictionary] = [
 	# A hearthstone does what a hone does, a little slower, for anyone who sits at a fire.
 	{"id": &"sharpen_fire", "at": &"fire", "minutes": 30.0, "needs": {}, "makes": {}, "action": &"hone"},
 	{"id": &"charcoal", "at": &"fire", "minutes": 180.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}},
+	{"id": &"charcoal_deadwood", "at": &"fire", "minutes": 180.0, "needs": {&"deadwood": 4}, "makes": {&"charcoal": 2}},
 	{"id": &"charcoal_wood", "at": &"fire", "minutes": 180.0, "needs": {&"timber": 2}, "makes": {&"charcoal": 2}},
 	{"id": &"tin", "at": &"fire", "minutes": 240.0, "needs": {&"tin_ore": 3, &"charcoal": 2}, "makes": {&"tin": 1}},
-	{"id": &"iron", "at": &"fire", "minutes": 300.0, "needs": {&"iron_ore": 3, &"charcoal": 3}, "makes": {&"iron": 1}},
+	{"id": &"iron", "at": &"fire", "minutes": 300.0, "needs": {&"iron_ore": 3, &"charcoal": 2}, "makes": {&"iron": 1}},
 	{"id": &"iron_coal", "at": &"fire", "minutes": 300.0, "needs": {&"iron_ore": 3, &"coal": 2}, "makes": {&"iron": 1}},
-	{"id": &"iron_scrap", "at": &"fire", "minutes": 240.0, "needs": {&"scrap": 3, &"charcoal": 2}, "makes": {&"iron": 1}},
 	{"id": &"copper", "at": &"fire", "minutes": 240.0, "needs": {&"copper_ore": 3, &"charcoal": 2}, "makes": {&"copper": 1}},
 	{"id": &"pitch", "at": &"fire", "minutes": 200.0, "needs": {&"resin": 4}, "makes": {&"pitch": 1}},
 	{"id": &"oil", "at": &"fire", "minutes": 90.0, "needs": {&"resin": 2}, "makes": {&"oil": 1}},
@@ -53,14 +57,12 @@ const LIST: Array[Dictionary] = [
 	{"id": &"soup", "at": &"fire", "minutes": 40.0, "needs": {&"mussels": 3, &"wrack": 1}, "makes": {&"soup": 2}},
 	{"id": &"stew", "at": &"fire", "minutes": 60.0, "needs": {&"mussels": 4, &"samphire": 2}, "makes": {&"stew": 2}},
 	{"id": &"smoked", "at": &"fire", "minutes": 200.0, "needs": {&"whelks": 5, &"driftwood": 3}, "makes": {&"smoked": 2}},
+	# The way in: plate beaten to an edge. Nothing else is made from plate alone.
 	{"id": &"knife_made", "at": &"fire", "minutes": 150.0, "needs": {&"scrap": 1, &"charcoal": 1}, "makes": {&"knife": 1}},
 	{"id": &"pick_made", "at": &"fire", "minutes": 240.0, "needs": {&"scrap": 1, &"haft": 1, &"charcoal": 1}, "makes": {&"pick": 1}},
 	{"id": &"pick_iron", "at": &"fire", "minutes": 240.0, "needs": {&"iron": 1, &"haft": 1, &"charcoal": 1}, "makes": {&"pick": 1}},
-	{"id": &"axe_made", "at": &"fire", "minutes": 270.0, "needs": {&"scrap": 1, &"haft": 1, &"charcoal": 2}, "makes": {&"axe_hand": 1}},
-	{"id": &"axe_iron", "at": &"fire", "minutes": 270.0, "needs": {&"iron": 1, &"haft": 1, &"charcoal": 2}, "makes": {&"axe_hand": 1}},
-	{"id": &"mattock_made", "at": &"fire", "minutes": 300.0, "needs": {&"scrap": 2, &"haft": 1, &"charcoal": 1}, "makes": {&"mattock": 1}},
+	{"id": &"axe_iron", "at": &"fire", "minutes": 270.0, "needs": {&"iron": 1, &"haft": 1, &"charcoal": 1}, "makes": {&"axe_hand": 1}},
 	{"id": &"mattock_iron", "at": &"fire", "minutes": 300.0, "needs": {&"iron": 2, &"haft": 1, &"charcoal": 1}, "makes": {&"mattock": 1}},
-	{"id": &"billhook_made", "at": &"fire", "minutes": 210.0, "needs": {&"scrap": 1, &"haft": 1, &"charcoal": 1}, "makes": {&"billhook": 1}},
 	{"id": &"billhook_iron", "at": &"fire", "minutes": 210.0, "needs": {&"iron": 1, &"haft": 1, &"charcoal": 1}, "makes": {&"billhook": 1}},
 	{"id": &"boathook_made", "at": &"fire", "minutes": 150.0, "needs": {&"scrap": 1, &"haft": 2, &"charcoal": 1}, "makes": {&"boathook": 1}},
 

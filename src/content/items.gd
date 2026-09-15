@@ -86,6 +86,8 @@ const DEFS := {
 
 	# --- Materials (§9.4) ---
 	&"driftwood": {"name": "driftwood", "bulk": 3.0, "group": &"material"},
+	# Not in the source: fallen wood picked up under any tree, so a fire needs no shore.
+	&"deadwood": {"name": "dead wood", "bulk": 2.0, "group": &"material"},
 	&"wrack": {"name": "wrack", "bulk": 2.0, "group": &"material"},
 	&"wool": {"name": "raw wool", "bulk": 1.0, "group": &"material"},
 	&"reeds": {"name": "reeds", "bulk": 2.0, "group": &"material"},

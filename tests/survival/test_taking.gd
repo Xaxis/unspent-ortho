@@ -115,16 +115,25 @@ func test_bare_handed_options_leave_the_prop_standing_and_come_back() -> void:
 	_listen()
 	var g := Fx.flat()
 	var pine := Fx.put(g, PropKind.PINE, Vector2(0.9, 0))
-	eq(Survival.describe_target(g), "pine - tap", "a knife taps a pine")
+	eq(Survival.describe_target(g), "pine - gather", "dead wood under a pine, by hand")
+	check(Fx.take(g), "gathered")
+	eq(g.inventory.count(&"deadwood"), 1)
+	eq(Survival.describe_target(g), "pine - tap", "then a knife taps it")
 	check(Fx.take(g), "tapped")
 	eq(g.inventory.count(&"resin"), 1)
 	check(not g.world.depleted.has(pine.id), "a tapped pine still stands")
 	check(not Fx.take(g), "tapped out")
 	eq(_messages[-1], "There is nothing more on it yet.")
 	eq(Survival.describe_target(g), "pine - picked over")
-	g.clock.skip(96.0 * 60.0 + 1.0)
+	g.clock.skip(36.0 * 60.0 + 1.0)
 	Survival.sweep(g, 1.0)
-	check(Fx.take(g), "resin again after four days")
+	eq(Survival.describe_target(g), "pine - gather", "dead wood again in a day and a half")
+	check(Fx.take(g))
+	check(not Fx.take(g), "but the resin is not back yet")
+	g.clock.skip(60.0 * 60.0)
+	Survival.sweep(g, 1.0)
+	check(Fx.take(g) and Fx.take(g), "dead wood, then resin again after four days")
+	eq(g.inventory.count(&"resin"), 2)
 	Fx.done(g)
 
 
@@ -284,8 +293,15 @@ func test_use_on_nothing_builds_a_fire_then_eats_before_it_sleeps_by_it() -> voi
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
 	g.inventory.add(&"mussels", 2)
-	eq(Survival.describe_target(g), "campfire - build", "fed, it is evening, no fire: build")
+	eq(Survival.describe_target(g), "campfire - build?", "fed, it is evening, no fire: build, if pressed twice")
+	var props := g.world.props.size()
+	check(Survival.use(g), "the first press asks")
+	eq(g.world.props.size(), props, "and lays nothing")
+	eq(g.inventory.count(&"driftwood"), 3, "nor spends anything")
+	check(Survival.build_asked(g).is_finite(), "the spot is marked")
+	eq(Survival.describe_target(g), "campfire - build", "a second press will build")
 	check(Survival.use(g), "built")
+	check(not Survival.build_asked(g).is_finite(), "the ask is spent")
 	eq(g.inventory.count(&"mussels"), 2, "fed: nothing eaten")
 	check(not g.world.props.is_empty() and g.world.props[-1].kind == PropKind.FIRE, "a fire stands")
 	g.clock.skip(3.0 * 60.0)
@@ -344,3 +360,44 @@ func test_holding_use_keeps_working_a_vein_until_it_is_gone() -> void:
 	check(not SurvivalState.of(game).spent.has(SurvivalState.key(rock.id, 0)), "rock not picked over")
 	game.queue_free()
 	await tree.process_frame
+
+
+func test_a_press_on_open_ground_asks_and_a_late_or_moved_second_press_asks_again() -> void:
+	var g := Fx.flat(40, 12.0)
+	g.inventory.add(&"deadwood", 3)
+	g.inventory.add(&"stone", 2)
+	Survival.fixed_now = 100.0
+	check(Survival.use(g), "asked")
+	eq(g.inventory.count(&"deadwood"), 3, "nothing spent")
+	Survival.fixed_now += Survival.BUILD_ASK_SECONDS + 0.1
+	eq(Survival.describe_target(g), "campfire - build?", "the ask has lapsed")
+	check(Survival.use(g), "asked again")
+	eq(g.world.props.size(), 0, "a lapsed ask builds nothing")
+	g.player.facing = PI
+	check(Survival.use(g), "turned round: that is a new spot, so it asks again")
+	eq(g.world.props.size(), 0)
+	Survival.fixed_now += 0.5
+	check(Survival.use(g), "built from dead wood")
+	eq(g.world.props.size(), 1)
+	eq(g.inventory.count(&"deadwood"), 0)
+	Survival.fixed_now = -1.0
+	Fx.done(g)
+
+
+func test_dead_wood_and_plate_by_hand_open_the_way_in_away_from_the_shore() -> void:
+	var g := Fx.flat()
+	Survival.hold(g, &"")
+	var dead := Fx.put(g, PropKind.DEAD_TREE, Vector2(0.9, 0))
+	Fx.face(g, dead)
+	eq(Survival.describe_target(g), "dead tree - gather")
+	check(Fx.take(g) and Fx.take(g), "two armfuls")
+	eq(g.inventory.count(&"deadwood"), 4)
+	check(not g.world.depleted.has(dead.id), "the tree stands")
+	eq(Survival.describe_target(g), "dead tree - picked over")
+	g.world.depleted[dead.id] = INF
+	var ruin := Fx.put(g, PropKind.RUIN, Vector2(-1.2, 0))
+	Fx.face(g, ruin, Vector2(1, 0))
+	eq(Survival.describe_target(g), "ruin - turn")
+	check(Fx.take(g), "turned over")
+	eq(g.inventory.count(&"scrap"), 1, "a piece of plate out of the rubble")
+	Fx.done(g)

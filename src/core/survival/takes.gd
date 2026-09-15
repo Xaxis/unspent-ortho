@@ -26,6 +26,8 @@ class_name Takes
 ## - Ore is broken with a pick OR dug with a mattock, and iron needs only iron,
 ##   so the first pick opens the iron rung. Copper (not in the source) needs steel.
 ## - Driftwood comes two at a time: the first fire should not be a chore.
+## - Any tree gives dead wood by hand, and a ruin gives a little plate, so the
+##   way in (a fire, a haft, a pick) opens inland as well as on the shore.
 
 const NEVER := -1.0
 
@@ -55,10 +57,15 @@ static func _o(verb: StringName, item: StringName, n: int, minutes: float, regro
 static func _build() -> Dictionary:
 	var t := {}
 	var fell_tree := _o(&"fell", &"timber", 2, 18.0, NEVER, {"stuff": &"iron"})
-	t[PropKind.PINE] = [fell_tree, _o(&"tap", &"resin", 1, 8.0, 96.0, {"keep": true})]
-	t[PropKind.SNOW_PINE] = [fell_tree, _o(&"tap", &"resin", 1, 8.0, 96.0, {"keep": true})]
-	t[PropKind.BROADLEAF] = [fell_tree]
-	t[PropKind.DEAD_TREE] = [_o(&"fell", &"timber", 1, 11.0, NEVER, {"stuff": &"iron"})]
+	# Fallen wood under a crown, picked up by hand: a live tree drops a little, slowly.
+	var deadfall := _o(&"gather", &"deadwood", 1, 5.0, 36.0, {"keep": true})
+	var resin := _o(&"tap", &"resin", 1, 8.0, 96.0, {"keep": true})
+	t[PropKind.PINE] = [fell_tree, deadfall, resin]
+	t[PropKind.SNOW_PINE] = [fell_tree, deadfall, resin]
+	t[PropKind.BROADLEAF] = [fell_tree, deadfall]
+	# A dead tree sheds its own limbs: more of them, and they come back sooner.
+	t[PropKind.DEAD_TREE] = [_o(&"fell", &"timber", 1, 11.0, NEVER, {"stuff": &"iron"}),
+		_o(&"gather", &"deadwood", 2, 6.0, 24.0, {"keep": true, "uses": 2})]
 	t[PropKind.BUSH] = [
 		_o(&"gather", &"samphire", 1, 5.0, 18.0, {"keep": true, "ground": [Ground.SAND, Ground.SHINGLE, Ground.MUD]}),
 		_o(&"gather", &"berries", 1, 5.0, 36.0, {"keep": true, "ground": [Ground.GRASS, Ground.HEATH, Ground.MOSS,
@@ -81,7 +88,9 @@ static func _build() -> Dictionary:
 		_o(&"gather", &"stone", 1, 10.0, 24.0, {"keep": true}),
 		crottle,
 	]
-	t[PropKind.RUIN] = [_o(&"break", &"stone", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 2})]
+	# A fallen roof was patched in plate: turned over by hand, a piece or two comes out of the rubble.
+	t[PropKind.RUIN] = [_o(&"break", &"stone", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 2}),
+		_o(&"turn", &"scrap", 1, 60.0, 96.0, {"keep": true})]
 	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER, {"stuff": &"iron", "uses": 2})]
 	for pair: Array in [[PropKind.COAL_ORE, &"coal", 22.0, &"iron"], [PropKind.TIN_ORE, &"tin_ore", 22.0, &"iron"],
 			[PropKind.IRON_ORE, &"iron_ore", 30.0, &"iron"], [PropKind.COPPER_ORE, &"copper_ore", 34.0, &"steel"]]:

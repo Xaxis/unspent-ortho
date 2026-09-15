@@ -12,9 +12,15 @@ class_name Survival
 ##                                           taken, within reach in front of the player; or null
 ##   describe_target(game) -> String         what `use` would do now: "pine - fell",
 ##                                           "iron ore - too hard", "fire - sleep", "mussels - eat",
-##                                           "campfire - build", or ""
+##                                           "campfire - build?" (a press asks), "campfire - build"
+##                                           (a press builds), or ""
 ##   use(game) -> bool                       the `use` action: work the target; else eat (if hungry),
-##                                           sleep, or build a fire, whichever fits first
+##                                           sleep, or build a fire, whichever fits first. A fire
+##                                           takes two presses: the first asks (a ring is drawn
+##                                           where it would go), a second within BUILD_ASK_SECONDS
+##                                           on the same spot builds, so a walker tapping `use`
+##                                           never burns their makings by accident
+##   build_asked(game) -> Vector2            where an asked-for fire would go, or Vector2.INF
 ##   work(game, prop) -> bool                start working a prop (refusals go to Events.message)
 ##   can_work(game, prop) -> bool            work would start, with the held or a carried tool
 ##   finish_work(game) -> bool               complete the work in hand now (the system does this
@@ -33,8 +39,8 @@ class_name Survival
 ##
 ## Events emitted: took(item, n), made(item, n), time_skipped(minutes, reason:
 ## work eat sleep make build collapse), message(line), sfx(name, at) with names
-## work_<verb> took refuse eat sleep build_<station> make hone collapse regrow
-## work_broken lamp_out.
+## work_<verb> took refuse eat sleep build_ask build_<station> make hone collapse
+## regrow work_broken lamp_out.
 
 ## Real seconds a take plays for (the clock is charged its minutes after).
 const WORK_SECONDS := 1.2
@@ -49,6 +55,8 @@ const CONE := 0.42
 const FIRE_WARMTH := 3.0
 const VILLAGE_RADIUS := 11.0
 const BUILD_DISTANCE := 1.25
+## Real seconds a first press on open ground waits for the second that builds.
+const BUILD_ASK_SECONDS := 2.0
 
 const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], PropKind.KILN: [&"kiln"],
 	PropKind.HOUSE: [&"bench", &"wheel", &"loom"]}
@@ -180,7 +188,7 @@ static func describe_target(game: Game) -> String:
 		&"sleep":
 			return "%s - sleep" % ("fire" if fire_near(game) != null else "village")
 		&"build":
-			return "campfire - build"
+			return "campfire - build" if build_asked(game).is_finite() else "campfire - build?"
 	return ""
 
 
@@ -199,8 +207,29 @@ static func use(game: Game) -> bool:
 		&"sleep":
 			return sleep(game)
 		&"build":
-			return build_fire(game) != null
+			return _ask_or_build(game)
 	return false
+
+
+## The first press asks and marks the spot; a second press in time on the same spot builds.
+static func _ask_or_build(game: Game) -> bool:
+	var state := SurvivalState.of(game)
+	var spot := _build_spot(game, PropKind.FIRE)
+	var asked := build_asked(game)
+	if asked.is_finite() and asked.distance_to(spot) < 0.6:
+		state.build_ask = {}
+		return build_fire(game) != null
+	state.build_ask = {"at": spot, "until": now_real() + BUILD_ASK_SECONDS}
+	Events.message.emit("Again, and a fire is laid here.")
+	Events.sfx.emit(&"build_ask", game.world.to_3d(spot))
+	return true
+
+
+static func build_asked(game: Game) -> Vector2:
+	var ask := SurvivalState.of(game).build_ask
+	if ask.is_empty() or now_real() >= float(ask.until):
+		return Vector2.INF
+	return ask.at
 
 
 ## Eating comes before sleep: a body that lies down hungry wakes starving.
@@ -398,11 +427,11 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 	return prop
 
 
-## A new prop in the world: data, collision and view.
-static func add_prop(game: Game, kind: int, pos: Vector2) -> WorldProp:
+## A new prop in the world: data, collision and view. `rot` NAN = turned by its id.
+static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0) -> WorldProp:
 	var w := game.world
 	var id := w.props.size()
-	var prop := WorldProp.new(id, kind, pos, Rng.hash01(w.seed_value, id, 77) * TAU, 1.0)
+	var prop := WorldProp.new(id, kind, pos, Rng.hash01(w.seed_value, id, 77) * TAU if is_nan(rot) else rot, scale)
 	w.props.append(prop)
 	game.query.add_prop(prop)
 	if game.view != null:

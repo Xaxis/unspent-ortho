@@ -51,7 +51,7 @@ func test_build_a_campfire_from_driftwood_and_stone() -> void:
 	check(Survival.build_fire(g) == null, "nothing to build with")
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
-	eq(Survival.describe_target(g), "campfire - build")
+	eq(Survival.describe_target(g), "campfire - build?")
 	var t0 := g.clock.minutes
 	var props_before := g.world.props.size()
 	var fire := Survival.build_fire(g)
@@ -141,10 +141,10 @@ func test_a_made_tool_goes_in_empty_hands_but_not_over_a_different_tool() -> voi
 	eq(inv.held, &"pick", "empty hands take it")
 	inv.add(&"knife")
 	inv.set_held(&"knife")
-	inv.add(&"scrap")
+	inv.add(&"iron")
 	inv.add(&"haft")
 	inv.add(&"charcoal", 2)
-	check(Crafting.make(inv, Crafting.recipe(&"axe_made")))
+	check(Crafting.make(inv, Crafting.recipe(&"axe_iron")))
 	eq(inv.held, &"knife", "the knife stays in hand")
 
 

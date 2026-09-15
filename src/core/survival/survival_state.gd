@@ -20,6 +20,9 @@ var spent: Dictionary = {}
 var woke_at := 0.0
 ## World minute the body stays wet until.
 var wet_until := -INF
+## A campfire asked for by `use` on open ground, waiting for the second press:
+## {at: Vector2 where it would go, until: real seconds}. Empty when not asked.
+var build_ask: Dictionary = {}
 ## Stations the player put in the world, in order.
 var built: Array[WorldProp] = []
 ## Real-seconds accumulator for the regrowth sweep.

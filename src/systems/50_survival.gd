@@ -1,7 +1,8 @@
 extends GameSystem
-## The player's survival in the running game: the `use` key, the start kit,
-## the body's condition every frame, regrowth, and the boot options that put
-## the game into a survival state for shots (--give --held --use --build).
+## The player's survival in the running game: the strand near the spawn
+## (Strand), the `use` key, the start kit, the body's condition every frame,
+## regrowth, and the boot options that put the game into a survival state for
+## shots (--give --held --use --build --put --hold).
 ## The rules live in src/core/survival/; this node only feeds them input and time.
 ##
 ## Keys: `use` works what is in front (else eats, sleeps or builds a fire, see
@@ -28,6 +29,8 @@ var _screen_touched := false
 
 func setup(g: Game) -> void:
 	super.setup(g)
+	# The way in within a walk of the spawn, where the generator has not put it.
+	Strand.lay(g)
 	Crafting.bind(g)
 	Survival.fixed_now = 0.0 if g.options.hold >= 0.0 else -1.0
 	Survival.fixed_step = 0.0

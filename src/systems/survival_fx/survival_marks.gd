@@ -61,7 +61,7 @@ class Pool:
 static func material() -> ShaderMaterial:
 	if _mat == null:
 		_mat = ShaderMaterial.new()
-		_mat.shader = preload("res://src/models/mark.gdshader")
+		_mat.shader = preload("res://src/systems/survival_fx/mark.gdshader")
 		# After the full-screen outline pass, which would otherwise paint over them.
 		_mat.render_priority = 10
 	return _mat
@@ -83,7 +83,7 @@ static func is_found_glyph(mesh: Mesh) -> bool:
 static func overlay() -> ShaderMaterial:
 	if _over == null:
 		_over = ShaderMaterial.new()
-		_over.shader = preload("res://src/models/mark_over.gdshader")
+		_over.shader = preload("res://src/systems/survival_fx/mark_over.gdshader")
 		_over.render_priority = 11
 	return _over
 
