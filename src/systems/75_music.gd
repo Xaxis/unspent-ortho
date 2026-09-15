@@ -41,6 +41,9 @@ const HIT_HOLD := 6.0
 const SENTINEL_REACH := 30.0
 const FORGET_AFTER := 180.0
 const CUE_VOICES := 3
+## A layer is heard (by a tour, and in its log) from this share of its sheet
+## level: about 10 dB under it, plainly there, not a trace.
+const HEARD := 0.3
 ## Seconds into a game before the score asks for anything to be baked: the
 ## first seconds' CPU belongs to the land streaming in, and the score fades in
 ## over tens of seconds anyway. A game that ends sooner (a test, the title
@@ -342,9 +345,10 @@ func _forget_unheard() -> void:
 
 # ------------------------------------------------------------------ proofs and saves
 
-## For tours: whether the player could hear WHAT now. score (any layer),
-## score_pad, score_pulse, score_tense, score_grid, score_dissonance, score_texture;
-## score_phrase, score_resolve, score_motif (that cue has been played).
+## For tours: whether the player could hear WHAT now, a layer playing at HEARD
+## or more: score (any layer), score_pad, score_pulse (calm), score_tense (the
+## quickened pulse), score_grid, score_dissonance, score_texture; score_phrase,
+## score_resolve, score_motif (that cue has been played).
 func tour_seen(what: String) -> bool:
 	if not what.begins_with("score"):
 		return false
@@ -355,16 +359,16 @@ func tour_seen(what: String) -> bool:
 	var layer := StringName(what.trim_prefix("score_")) if what != "score" else &""
 	for key: StringName in players:
 		var p: AudioStreamPlayer = players[key]
-		if p.playing and float(conductor.levels.get(key, 0.0)) >= 0.05 and (layer == &"" or ScoreConductor.layer_of(key) == layer):
+		if p.playing and float(conductor.levels.get(key, 0.0)) >= HEARD and (layer == &"" or ScoreConductor.layer_of(key) == layer):
 			return true
 	return false
 
 
-## One line whenever the set of layers heard changes (at a tenth of full level).
+## One line whenever the set of layers heard (at HEARD) changes.
 func _log_layers() -> void:
 	var heard: PackedStringArray = []
 	for key: StringName in players:
-		if (players[key] as AudioStreamPlayer).playing and float(conductor.levels.get(key, 0.0)) >= 0.1:
+		if (players[key] as AudioStreamPlayer).playing and float(conductor.levels.get(key, 0.0)) >= HEARD:
 			heard.append(String(key).trim_prefix("score_"))
 	heard.sort()
 	var line := ", ".join(heard)
