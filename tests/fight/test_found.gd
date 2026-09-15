@@ -66,3 +66,26 @@ func test_kit_counts() -> void:
 	if &"worn" in inv:
 		inv.set(&"worn", &"")
 	check(not FightRules.wears(inv, &"brace"))
+
+
+func test_a_flash_puts_the_body_back_as_it_was() -> void:
+	var root := Node3D.new()
+	var body := MeshInstance3D.new()
+	var k := MeshKit.new()
+	k.box(Vector3(-0.5, 0, -0.5), Vector3(0.5, 1, 0.5), Palette.FOUND[3], Palette.FOUND[4], true)
+	body.mesh = k.build()
+	var own := ShaderMaterial.new()
+	body.material_override = own
+	root.add_child(body)
+	var card := MeshInstance3D.new()
+	card.mesh = QuadMesh.new()
+	var glow := ShaderMaterial.new()
+	card.material_override = glow
+	root.add_child(card)
+	MobFx.set_flash(root, true)
+	check(body.material_override != own, "the body flashes")
+	eq(card.material_override, glow, "a glow card never does")
+	MobFx.set_flash(root, true)
+	MobFx.set_flash(root, false)
+	eq(body.material_override, own, "and is itself again, even flashed twice")
+	root.free()

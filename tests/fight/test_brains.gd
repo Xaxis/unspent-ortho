@@ -159,3 +159,42 @@ func test_a_standing_machine_eases_the_player_out_of_itself() -> void:
 	sim.hero.pos = h.pos + Vector2(0.2, 0.1)
 	F.ms(sim, 600)
 	gt(sim.hero.pos.distance_to(h.pos), h.radius, "no longer inside it")
+
+
+func test_a_charge_shoulders_the_player_off_its_line_and_never_hides_them() -> void:
+	var sim := F.make_sim(F.flat_world(96), Vector2(40.5, 40.5))
+	var h := sim.add_mob(&"harvester", Vector2(46.5, 40.5))
+	h.facing = PI
+	h.aim = PI
+	h.calm_until = 0.0
+	h.set_mood(MobState.ATTACKING, sim.now)
+	var inside := 0
+	var samples := 0
+	for i in 150:
+		F.ms(sim, 40)
+		sim.hero.health = FightRules.HEALTH
+		samples += 1
+		if h.pos.distance_to(sim.hero.pos) < h.radius:
+			inside += 1
+	lt(float(inside) / samples, 0.05, "inside the hull %d of %d looks" % [inside, samples])
+
+
+func test_the_tell_and_the_run_are_announced() -> void:
+	var sim := F.make_sim(F.flat_world(96), Vector2(40.5, 40.5))
+	var h := sim.add_mob(&"harvester", Vector2(45.5, 40.5))
+	h.facing = PI
+	h.aim = PI
+	h.calm_until = 0.0
+	h.set_mood(MobState.ATTACKING, sim.now)
+	var windup := {}
+	var charge := {}
+	for i in 60:
+		F.ms(sim, 40)
+		for e in sim.drain():
+			if e.type == &"windup" and windup.is_empty():
+				windup = e
+				eq(h.blow_phase(sim.now) in [&"windup", &"active"], true, "said as the tell starts")
+			elif e.type == &"charge" and charge.is_empty():
+				charge = e
+	check(not charge.is_empty() and charge.mob == h, "a run is announced")
+	check(not windup.is_empty() and windup.mob == h, "and so is a bite")
