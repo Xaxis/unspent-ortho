@@ -9,6 +9,8 @@ extends RefCounted
 ##   marks    L8     what stands on a tile, for map symbols (MARK_*)
 ##   palette  RGBA8  32x1 wash colour per ground id
 ##   country  RGBA8  country in R, the ecotone's other country in G, its weight in B
+## and, for lettering, `ink`: a summed-area table of how much ink the map draws
+## on each tile (cliffs, shore, symbols), so a name can find a clear place.
 
 const MARK_NONE := 0
 const MARK_CONIFER := 1
@@ -28,6 +30,8 @@ var coast: ImageTexture
 var marks: ImageTexture
 var palette: ImageTexture
 var country: ImageTexture
+## (size+1)^2 summed-area table of ink per tile; see ink_in().
+var ink := PackedInt32Array()
 var ready := false
 var build_ms := 0
 
@@ -74,6 +78,7 @@ func _finish_textures() -> void:
 	marks = ImageTexture.create_from_image(_images.marks)
 	palette = ImageTexture.create_from_image(_images.palette)
 	country = ImageTexture.create_from_image(_images.country)
+	ink = _images.ink
 	_images.clear()
 	ready = true
 
@@ -84,7 +89,9 @@ func _build_images() -> void:
 	_images.ground = Image.create_from_data(n, n, false, Image.FORMAT_L8, world.ground)
 	_images.level = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, world.level.to_byte_array())
 	_images.coast = Image.create_from_data(n, n, false, Image.FORMAT_L8, shore_distance(world))
-	_images.marks = Image.create_from_data(n, n, false, Image.FORMAT_L8, mark_bytes(world))
+	var mk := mark_bytes(world)
+	_images.marks = Image.create_from_data(n, n, false, Image.FORMAT_L8, mk)
+	_images.ink = ink_table(world, mk)
 	_images.country = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, country_bytes(world))
 	var pal := Image.create_empty(32, 1, false, Image.FORMAT_RGBA8)
 	for g in Ground.COUNT:
@@ -202,3 +209,52 @@ static func mark_bytes(w: WorldData) -> PackedByteArray:
 				if w.in_bounds(x + d.x, y + d.y) and out[i + d.y * n + d.x] == MARK_NONE:
 					out[i + d.y * n + d.x] = MARK_WOOD
 	return out
+
+
+## Ink the map lays on each tile, summed: a cliff is drawn hardest, then the
+## shore and symbols, then a terrace step. Returns a (size+1)^2 summed-area table.
+static func ink_table(w: WorldData, marks: PackedByteArray) -> PackedInt32Array:
+	var n := w.size
+	var out := PackedInt32Array()
+	out.resize((n + 1) * (n + 1))
+	var lv := w.level
+	for y in n:
+		var row := 0
+		for x in n:
+			var i := y * n + x
+			var me := lv[i]
+			var v := 0
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+				var qx := x + d.x
+				var qy := y + d.y
+				if qx < 0 or qy < 0 or qx >= n or qy >= n:
+					continue
+				var o := lv[qy * n + qx]
+				if (me > 0) != (o > 0):
+					v = maxi(v, 2)
+				elif absi(me - o) >= 2:
+					v = maxi(v, 4)
+				elif me != o:
+					v = maxi(v, 1)
+			var m := marks[i] if marks.size() == n * n else MARK_NONE
+			if m == MARK_WOOD:
+				v += 1
+			elif m != MARK_NONE:
+				v += 2
+			row += v
+			out[(y + 1) * (n + 1) + x + 1] = out[y * (n + 1) + x + 1] + row
+	return out
+
+
+## Total ink over tiles in `r` (clipped to the world), from an ink_table.
+static func ink_in(table: PackedInt32Array, n: int, r: Rect2i) -> int:
+	if table.size() != (n + 1) * (n + 1):
+		return 0
+	var x0 := clampi(r.position.x, 0, n)
+	var y0 := clampi(r.position.y, 0, n)
+	var x1 := clampi(r.end.x, 0, n)
+	var y1 := clampi(r.end.y, 0, n)
+	if x1 <= x0 or y1 <= y0:
+		return 0
+	var w := n + 1
+	return table[y1 * w + x1] - table[y0 * w + x1] - table[y1 * w + x0] + table[y0 * w + x0]

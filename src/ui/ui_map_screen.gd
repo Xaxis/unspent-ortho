@@ -188,6 +188,73 @@ static func fold_x() -> int:
 	return UiNotebook.LEFT.end.x - MAP_RECT.position.x
 
 
+## Where to letter a country name (top-left, screen px), or x < -1000 when no
+## candidate is free. `free` says whether a box is clear of other lettering.
+func place_region(label: Dictionary, free: Callable) -> Vector2i:
+	var text: String = label.text
+	var w := UiFont.width(text)
+	var s := to_screen(label.at)
+	var best := Vector2i(-9999, 0)
+	var best_score := INF
+	var gx := MAP_RECT.position.x + fold_x()
+	# Left edges to try: on the spot, nudged, and set just clear of either side of the fold.
+	var xs: Array[int] = [s.x - w / 2, s.x - w / 2 - w / 4, s.x - w / 2 + w / 4, gx + 10, gx - 6 - w]
+	for dy: int in [0, -12, 12, -24, 24]:
+		for x: int in xs:
+			var at := Vector2i(x, s.y - 5 + dy)
+			var moved := absi(x - (s.x - w / 2)) + absi(dy)
+			var text_r := Rect2i(at, Vector2i(w, 10))
+			var box := text_r.grow(3)
+			if not MAP_RECT.grow(-6).encloses(text_r) or not free.call(box):
+				continue
+			if moved > w:
+				continue
+			var t := to_tiles(box)
+			var mid := t.get_center()
+			# Never letter a name off its own land (into the unknown or a neighbour).
+			if moved > 0 and (explored == null or not explored.seen(mid.x, mid.y) or game.world.country_at(mid.x, mid.y) != int(label.country)):
+				continue
+			var mean := 0.0
+			if data != null:
+				mean = UiMapData.ink_in(data.ink, game.world.size, t) / float(maxi(1, t.get_area()))
+			var score := mean + moved * 0.012
+			# A name broken by the gutter is hard to read.
+			if box.position.x < gx + 6 and box.end.x > gx - 2:
+				score += 1.5
+			if score < best_score:
+				best_score = score
+				best = at
+	return best
+
+
+func _free_of(placed: Array[Rect2i]) -> Callable:
+	return func(box: Rect2i) -> bool: return not placed.any(func(o: Rect2i) -> bool: return o.intersects(box))
+
+
+## The tiles under a screen rect.
+func to_tiles(r: Rect2i) -> Rect2i:
+	var a := r.position - MAP_RECT.position + origin_px
+	var b := r.end - MAP_RECT.position + origin_px
+	var lo := Vector2i(floori(a.x / float(map_scale)), floori(a.y / float(map_scale)))
+	var hi := Vector2i(ceili(b.x / float(map_scale)), ceili(b.y / float(map_scale)))
+	return Rect2i(lo, hi - lo)
+
+
+## A paper clearing for a name over the map: nearly opaque, its corners and the
+## odd pixel of its edge left open, so it reads as ink rubbed back, not a sticker.
+static func clearing(ci: CanvasItem, box: Rect2i, seed: int) -> void:
+	var col := Color(UiTheme.PAPER, 0.9)
+	UiDraw.rect(ci, Rect2i(box.position.x + 1, box.position.y + 1, box.size.x - 2, box.size.y - 2), col)
+	for x in range(box.position.x + 2, box.end.x - 2):
+		if Rng.hash01(seed, x, 0, 0xc1) > 0.18:
+			UiDraw.px(ci, x, box.position.y, col)
+		if Rng.hash01(seed, x, 1, 0xc1) > 0.18:
+			UiDraw.px(ci, x, box.end.y - 1, col)
+	for y in range(box.position.y + 2, box.end.y - 2):
+		UiDraw.px(ci, box.position.x, y, Color(col, 0.6))
+		UiDraw.px(ci, box.end.x - 1, y, Color(col, 0.6))
+
+
 ## Put tile-space point `p` in the middle of the map's window.
 func centre_on(p: Vector2) -> void:
 	origin_px = Vector2i(roundi(p.x * map_scale), roundi(p.y * map_scale)) - _anchor()
@@ -307,22 +374,17 @@ func _draw_overlay() -> void:
 		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
 		villages.append({"at": s, "name": name, "box": box})
 	# Countries, lettered across the land they cover, spaced out like a region on a
-	# chart; nudged up or down a line if something is in the way, else left out.
+	# chart. Of the nearby places free of other names, the one over the least ink
+	# (cliffs, shore, symbols) is chosen, and the name sits on a paper clearing.
 	for label: Dictionary in _regions:
-		var s := to_screen(label.at)
 		var text: String = label.text
-		var w := UiFont.width(text)
-		for dy: int in [0, -12, 12, -24, 24]:
-			var at := Vector2i(s.x - w / 2, s.y - 5 + dy)
-			var box := Rect2i(at, Vector2i(w, 10)).grow(3)
-			if not r.grow(-6).encloses(Rect2i(at, Vector2i(w, 10))):
-				continue
-			if placed.any(func(o: Rect2i) -> bool: return o.intersects(box)):
-				continue
-			placed.append(box)
-			# Lettered with a paper halo, the way a chart keeps a name readable over detail.
-			UiDraw.text_rimmed(ci, at, text, Palette.EARTH[2], Color(UiTheme.PAPER, 0.8))
-			break
+		var at := place_region(label, _free_of(placed))
+		if at.x < -1000:
+			continue
+		var box := Rect2i(at, Vector2i(UiFont.width(text), 10)).grow(3)
+		placed.append(box)
+		UiMapScreen.clearing(ci, box, hash(text))
+		UiDraw.text(ci, at, text, Palette.EARTH[1])
 	# The way the player came, dotted in the accent, fading toward the start.
 	if explored != null:
 		var n := explored.trail.size()

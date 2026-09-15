@@ -147,3 +147,24 @@ func test_the_map_keeps_the_player_and_small_land_out_of_the_fold() -> void:
 		var wf := UiMapScreen.fit(wide, p, window, UiMapScreen.SCALES, fold)
 		var at := _wx(wf, p.x, window)
 		check(at < fold - 8 or at > fold + 4 + 8, "player at %s drawn at %s, clear of the fold at %d" % [p, at, fold])
+
+
+func test_names_look_for_the_least_ink() -> void:
+	var w := _island(32)
+	# A cliff runs down x = 12: land at level 2 steps to level 5.
+	for y in 32:
+		for x in range(12, 24):
+			if w.level[y * 32 + x] > 0:
+				w.level[y * 32 + x] = 5
+	var marks := PackedByteArray()
+	marks.resize(32 * 32)
+	var table := UiMapData.ink_table(w, marks)
+	eq(UiMapData.ink_in(table, 32, Rect2i(0, 0, 32, 32)), UiMapData.ink_in(table, 32, Rect2i(-5, -5, 50, 50)), "clipped to the world")
+	var flat := UiMapData.ink_in(table, 32, Rect2i(16, 14, 4, 4))
+	var cliff := UiMapData.ink_in(table, 32, Rect2i(10, 14, 4, 4))
+	var shore := UiMapData.ink_in(table, 32, Rect2i(6, 14, 4, 4))
+	eq(flat, 0, "open ground inside a terrace draws no ink")
+	gt(cliff, shore, "a cliff is drawn harder than a shore")
+	gt(shore, flat, "and a shore harder than open ground")
+	marks[15 * 32 + 17] = UiMapData.MARK_HOUSE
+	gt(UiMapData.ink_in(UiMapData.ink_table(w, marks), 32, Rect2i(16, 14, 4, 4)), 0, "a symbol is ink too")
