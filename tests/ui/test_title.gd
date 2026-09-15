@@ -75,3 +75,34 @@ func test_new_game_starts_on_the_coast_shown() -> void:
 	if game != null:
 		eq(game.options.seed_value, 5, "same coast")
 	holder.free()
+
+
+func test_a_new_coast_fades_up_only_once_it_is_drawn() -> void:
+	var t := _title()
+	var holder := t.get_parent()
+	check(await _run(t, 20.0, func() -> bool: return t.world != null), "a coast is drawn")
+	check(t.view.pending() > 0, "its chunks stream in rather than all in one frame")
+	var early := [false]
+	var revealed := func() -> bool:
+		if t.view.pending() > 0 and t._fade_to < 1.0:
+			early[0] = true
+		return t._fade_to == 0.0
+	check(await _run(t, 20.0, revealed), "it fades up")
+	check(not early[0], "never while chunks are still missing")
+	eq(t.view.pending(), 0)
+	holder.free()
+
+
+func test_the_title_opens_on_land_away_from_villages() -> void:
+	for s: int in [1, 4]:
+		var w := WorldGen.generate(s, 256)
+		var o := UiTitle.opening(w)
+		var p: Vector2 = o[0]
+		var d: Vector2 = o[1]
+		gt(w.level_at(floori(p.x), floori(p.y)), 0, "seed %d opens on land" % s)
+		check(UiTitle._village_clearance(w, p) >= UiTitle.VILLAGE_CLEAR, "seed %d opens clear of villages: %.0f" % [s, UiTitle._village_clearance(w, p)])
+		near(d.length(), 1.0, 1e-4)
+		var worst := INF
+		for i in 10:
+			worst = minf(worst, UiTitle._village_clearance(w, p + d * UiTitle.DRIFT_AHEAD * i / 9.0))
+		check(worst > UiTitle.VILLAGE_CLEAR * 0.75, "seed %d drifts clear of villages for a while: %.0f" % [s, worst])
