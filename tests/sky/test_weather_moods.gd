@@ -201,3 +201,38 @@ func test_each_landscape_leans_its_own_way_by_hour_and_noon_stays_day() -> void:
 	var moss := SkyLight.mood_light(&"moss", 6.0)
 	gt(moss.y, moss.x, "the moss's gloom is green")
 	eq(SkyLight.mood_light(&"salt_flats", 9.0), Vector3.ONE, "a type with no mood keeps the plain hour")
+
+
+func test_the_sky_reads_landscape_types_through_the_registry_not_countries() -> void:
+	# A Salt Flats or Scrapwood row in CLIMATES, MOOD, CAST or CANOPY_DRIP must be
+	# read the moment BiomeRegistry names that type: the sky never goes through
+	# Country or the legacy at_place.
+	var text := FileAccess.get_file_as_string("res://src/systems/10_sky.gd")
+	for banned: String in ["Country.", "at_place(", "type_of(", "Weather.settled("]:
+		eq(text.find(banned), -1, "10_sky does not use %s" % banned)
+	var salt := BiomeDef.new()
+	salt.id = &"salt_flats"
+	salt.light_tint = Color(0.9, 0.8, 0.7)
+	var l := SkyLight.type_light(salt, 12.0)
+	lt((l - Vector3(0.9, 0.8, 0.7)).length(), 1e-4, "a new type's own light_tint is its light until it has rows")
+	var burn := SkyLight.type_light(BiomeRegistry.get_def(&"burning"), 19.8)
+	gt(burn.x, burn.z + 0.3, "the burning's dusk light is a furnace")
+	eq(SkyLight.type_light(null, 9.0), Vector3.ONE, "nothing named, nothing added")
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 12.0
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	var sky_sys: Node = null
+	for s in g.systems:
+		if s.get_script() == SkySystem:
+			sky_sys = s
+	await frames(2)
+	var f := g.camera.target
+	eq(sky_sys.get("here"), BiomeRegistry.at(g.world, Vector2(f.x, f.z)).id, "the weather that falls is the registry's type under the focus")
+	var shares: Dictionary = g.sky.neon_shares
+	for k: Variant in shares:
+		check(k is StringName, "light and mood blend by type id: %s" % [k])
+	g.queue_free()
+	await frames(1)

@@ -53,7 +53,7 @@ func test_lamplight_stays_warm_under_a_blue_night() -> void:
 	lt(noon.length(), 0.05, "no pool at noon")
 
 
-func test_sky_system_blends_countries_at_a_border() -> void:
+func test_sky_system_blends_landscape_types_at_a_border() -> void:
 	var w := WorldData.new(1, 16)
 	for i in w.country.size():
 		w.country[i] = Country.COAST if (i % 16) < 8 else Country.SNOWFIELD
@@ -61,15 +61,18 @@ func test_sky_system_blends_countries_at_a_border() -> void:
 	var g := Game.new()
 	g.world = w
 	sys.game = g
-	var inside := sys.sample_countries(Vector2(2, 8))
-	near(float(inside.get(Country.COAST, 0.0)), 5.0 / 6.0, 1e-6, "mostly coast near the west edge")
-	var border := sys.sample_countries(Vector2(8, 8))
-	gt(float(border.get(Country.SNOWFIELD, 0.0)), 0.5, "snowfield once over the line")
-	gt(float(border.get(Country.COAST, 0.0)), 0.0, "coast still in the mix")
-	w.blend[8 * 16 + 8] = 0.5
-	w.country2[8 * 16 + 8] = Country.COAST
-	var soft := sys.sample_countries(Vector2(8, 8))
-	gt(float(soft.get(Country.COAST, 0.0)), float(border.get(Country.COAST, 0.0)), "ecotone blend shares the tile")
+	var inside := sys.sample_types(Vector2(2, 8))
+	gt(float(inside.get(&"coast", 0.0)), 0.8, "mostly coast near the west edge")
+	var total := 0.0
+	for id: StringName in inside:
+		total += float(inside[id])
+	near(total, 1.0, 1e-6, "shares sum to one")
+	var border := sys.sample_types(Vector2(8, 8))
+	gt(float(border.get(&"snowfield", 0.0)), 0.5, "snowfield once over the line")
+	gt(float(border.get(&"coast", 0.0)), 0.0, "coast still in the mix")
+	var nearer := sys.sample_types(Vector2(6, 8))
+	gt(float(nearer.get(&"snowfield", 0.0)), 0.0, "the far ring sees the snowfield coming")
+	lt(float(nearer.get(&"snowfield", 0.0)), float(border.get(&"snowfield", 0.0)), "and it grows as the border is walked")
 	sys.free()
 	g.free()
 

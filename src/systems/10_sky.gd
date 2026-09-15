@@ -1,6 +1,7 @@
 extends GameSystem
-## The sky over the running game: reads the weather of every landscape around
-## the camera, mixes it (WeatherLook), eases the regional light cast, drifts
+## The sky over the running game: reads the weather of every landscape type
+## around the camera (BiomeRegistry, Weather.at_type), mixes it (WeatherLook),
+## eases each type's light and mood, drifts
 ## clouds and fog, lays the dawn mist, throws lightning (storms and the dry
 ## lightning of the bonelands) with its afterglow and the machines' stutter, and
 ## hands it all to SkyLight (the one writer of the sky shader globals, composed
@@ -9,8 +10,15 @@ extends GameSystem
 ## Seconds for the light cast and the weather mix to settle after a border.
 const REGION_EASE := 2.5
 const WEATHER_EASE := 1.2
-## Tiles around the focus that are sampled for country and weather.
+## Tiles around the focus that are sampled for landscape type and weather.
 const SAMPLE_REACH := 7.0
+## Where the types around the focus are read, and how much each counts: the
+## focus twice, a near ring and a far ring, so light and mood turn gradually
+## as a border is walked rather than in one step.
+const SAMPLES: Array[Vector3] = [
+	Vector3(0, 0, 2), Vector3(0.5, 0, 1), Vector3(-0.5, 0, 1), Vector3(0, 0.5, 1), Vector3(0, -0.5, 1),
+	Vector3(1, 0, 1), Vector3(-1, 0, 1), Vector3(0, 1, 1), Vector3(0, -1, 1),
+]
 
 var view: WeatherView
 ## The last composed look (WeatherLook.compose), eased, plus `mist`. Other
@@ -46,8 +54,8 @@ var strikes := 0
 var _strike_at := Vector2.ZERO
 var _glow_gain := 0.0
 var _drip_scan := 0.0
-## The country whose weather falls at the focus (fall_country), last frame.
-var here := Country.COAST
+## The landscape type whose weather falls at the focus (fall_type), last frame.
+var here: StringName = &"coast"
 
 ## The afterglow rolling through the clouds after a strike, in real seconds:
 ## [until, level]. Stepped, a lit patch catching and letting go, never a fade.
@@ -122,43 +130,35 @@ func _focus() -> Vector3:
 	return game.player.position
 
 
-## Countries around the focus with their share, blending across ecotones.
-func sample_countries(focus: Vector2) -> Dictionary:
+## Landscape type ids around the focus with their share (BiomeRegistry.at at
+## SAMPLES), summing to 1.
+func sample_types(focus: Vector2) -> Dictionary:
 	var w := game.world
 	var shares := {}
-	var offsets: Array[Vector2] = [Vector2.ZERO, Vector2(SAMPLE_REACH, 0), Vector2(-SAMPLE_REACH, 0), Vector2(0, SAMPLE_REACH), Vector2(0, -SAMPLE_REACH)]
-	for o in offsets:
-		var x := clampi(floori(focus.x + o.x), 0, w.size - 1)
-		var y := clampi(floori(focus.y + o.y), 0, w.size - 1)
-		var i := y * w.size + x
-		var weight := 2.0 if o == Vector2.ZERO else 1.0
-		var c := int(w.country[i])
-		var b := clampf(w.blend[i], 0.0, 1.0) if w.blend.size() > i else 0.0
-		var c2 := int(w.country2[i]) if w.country2.size() > i else c
-		shares[c] = float(shares.get(c, 0.0)) + weight * (1.0 - b)
-		if b > 0.0:
-			shares[c2] = float(shares.get(c2, 0.0)) + weight * b
 	var total := 0.0
-	for c: int in shares:
-		total += float(shares[c])
-	for c: int in shares:
-		shares[c] = float(shares[c]) / total
+	for o in SAMPLES:
+		var at := _clamped(w, focus + Vector2(o.x, o.y) * SAMPLE_REACH)
+		var id := BiomeRegistry.at(w, at).id
+		shares[id] = float(shares.get(id, 0.0)) + o.z
+		total += o.z
+	for id: StringName in shares:
+		shares[id] = float(shares[id]) / total
 	return shares
 
 
-## What the sky draws from the focus country alone (WeatherLook.compose keys).
+## What the sky draws from the focus type alone (WeatherLook.compose keys).
 const FALL_KEYS: Array[String] = ["rain", "drizzle", "hail", "snow", "ash", "dust", "fog", "heat", "whiteout", "glare", "haze", "bolt", "storm"]
 
 
-## The country whose weather falls at a point: the tile's own, or the one it
-## has turned toward once past the middle of an ecotone.
-static func fall_country(w: WorldData, at: Vector2) -> int:
-	var x := clampi(floori(at.x), 0, w.size - 1)
-	var y := clampi(floori(at.y), 0, w.size - 1)
-	var i := y * w.size + x
-	if w.blend.size() > i and w.blend[i] > 0.5 and w.country2.size() > i:
-		return int(w.country2[i])
-	return int(w.country[i])
+## The landscape type whose weather falls at a point: the one under it.
+static func fall_type(w: WorldData, at: Vector2) -> StringName:
+	return BiomeRegistry.at(w, _clamped(w, at)).id
+
+
+## A tile position pulled onto the map, so the edge reads its own land and not
+## the sea beyond it.
+static func _clamped(w: WorldData, at: Vector2) -> Vector2:
+	return Vector2(clampf(at.x, 0.0, w.size - 1.0), clampf(at.y, 0.0, w.size - 1.0))
 
 
 func _update(delta: float, snap: bool) -> void:
@@ -166,38 +166,39 @@ func _update(delta: float, snap: bool) -> void:
 	var focus := Vector2(f3.x, f3.z)
 	var minutes := game.clock.minutes
 	var seed_value := game.world.seed_value
-	var shares := sample_countries(focus)
+	var shares := sample_types(focus)
+	var hour := game.clock.hour()
 
 	var entries: Array = []
 	var target_region := Vector3.ZERO
 	var target_wind := 0.0
 	var target_mist := 0.0
-	for c: int in shares:
-		var wx := Weather.at_place(seed_value, minutes, c)
-		entries.append({"kind": wx.kind, "strength": wx.strength, "weight": shares[c]})
-		target_region += SkyLight.country_tint(c) * SkyLight.country_light(c) * SkyLight.mood_light(Weather.type_of(c), game.clock.hour()) * float(shares[c])
-		target_wind += float(wx.wind) * float(shares[c])
-		target_mist += float(wx.mist) * float(shares[c])
+	for id: StringName in shares:
+		var wx := Weather.at_type(seed_value, minutes, id)
+		entries.append({"kind": wx.kind, "strength": wx.strength, "weight": shares[id]})
+		target_region += SkyLight.type_light(BiomeRegistry.get_def(id), hour) * float(shares[id])
+		target_wind += float(wx.wind) * float(shares[id])
+		target_mist += float(wx.mist) * float(shares[id])
 	var target := WeatherLook.compose(entries)
 	# The light and the clouds blend across a border, but what falls through the
-	# air is one country's: the one under the focus. A frame at a triple border
+	# air is one landscape's: the one under the focus. A frame at a triple border
 	# must not snow, rain ash and lie in fog all at once.
-	here = fall_country(game.world, focus)
-	var wh := Weather.at_place(seed_value, minutes, here)
+	here = fall_type(game.world, focus)
+	var wh := Weather.at_type(seed_value, minutes, here)
 	var falls := WeatherLook.compose([{"kind": wh.kind, "strength": wh.strength, "weight": 1.0}])
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
-	target.wisp = wisp_amount(1.0 if here == Country.MOSS else 0.0, Weather.night_fall(game.clock.hour()), float(target.rain) + float(target.drizzle), target_wind)
+	target.wisp = wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
-	# Each thing is the most any country in view has left; the sky_ground mask
-	# lays it only on the countries that make it.
+	# Each thing is the most any landscape in view has left; the sky_ground mask
+	# lays it only on the land that makes it.
 	if snap or absf(minutes - _settle_minute) >= 1.0:
 		_settle_minute = minutes
 		for k: String in _settle_target:
 			_settle_target[k] = 0.0
-		for c: int in shares:
-			var st := Weather.settled(seed_value, minutes, c)
+		for id: StringName in shares:
+			var st := Weather.settled_type(seed_value, minutes, id)
 			for k: String in _settle_target:
 				_settle_target[k] = maxf(float(_settle_target[k]), float(st[k]))
 
@@ -253,7 +254,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.focus = f3
-	sky.set_hour(game.clock.hour())
+	sky.set_hour(hour)
 	view.update(look, wind, f3, delta)
 	_update_ground_marks(focus, minutes, seed_value, delta, snap)
 	_tick_thunder(delta)
@@ -265,7 +266,7 @@ func _update(delta: float, snap: bool) -> void:
 func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta: float, snap: bool) -> void:
 	var drip := Drips.amount(float(look.rain) + float(look.drizzle) * 0.5, float(settled.wet))
 	# Under a canopy the rain comes down as drips.
-	drip = clampf(drip * float(CANOPY_DRIP.get(Weather.type_of(here), 1.0)), 0.0, 1.0)
+	drip = clampf(drip * float(CANOPY_DRIP.get(here, 1.0)), 0.0, 1.0)
 	_drip_scan -= delta
 	if drip > 0.01 and (snap or _drip_scan <= 0.0):
 		_drip_scan = 0.5
@@ -282,6 +283,8 @@ func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta
 
 ## Landscape types whose canopy turns rain into drips: how much more they drip.
 const CANOPY_DRIP := {&"pinewood": 1.5}
+## Landscape types where cold lights drift low after dark, and how many.
+const WISPS := {&"moss": 1.0}
 
 
 ## Wisps: cold lights over the moss after dark, never in rain or a wind.

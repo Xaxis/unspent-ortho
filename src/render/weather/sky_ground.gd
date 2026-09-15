@@ -15,10 +15,10 @@ const HEIGHT_RANGE := 8.0
 const SMOOTH_HALVINGS := 3
 
 
-## Per settled thing, 1 if any weather in the country's table feeds it at half
-## strength or more: Vector3(snow, ash, wet).
-static func capable(country: int) -> Vector3:
-	var table := Weather.climate(Weather.type_of(country))
+## Per settled thing, 1 if any weather in the landscape type's climate feeds it
+## at half strength or more: Vector3(snow, ash, wet).
+static func capable(type_id: StringName) -> Vector3:
+	var table := Weather.climate(type_id)
 	var out := Vector3.ZERO
 	var keys := ["snow", "ash", "wet"]
 	for row: Array in table:
@@ -31,18 +31,29 @@ static func capable(country: int) -> Vector3:
 
 static func image(w: WorldData) -> Image:
 	var n := w.size
+	# What each land id on the map can hold, read through the landscape type
+	# BiomeRegistry finds there. Land ids cover wide regions, so a coarse pass
+	# finds every one (an ecotone's neighbour is land of its own somewhere).
 	var caps: Array[Vector3] = []
-	for c in Country.COUNT:
-		caps.append(capable(c))
+	caps.resize(256)
+	caps.fill(capable(&""))
+	var seen := PackedByteArray()
+	seen.resize(256)
+	for y in range(0, n, 4):
+		for x in range(0, n, 4):
+			var c := int(w.country[y * n + x])
+			if seen[c] == 0:
+				seen[c] = 1
+				caps[c] = capable(BiomeRegistry.at(w, Vector2(x, y)).id)
 	var heights := PackedByteArray()
 	heights.resize(n * n)
 	var rgba := PackedByteArray()
 	rgba.resize(n * n * 4)
 	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
 	for i in n * n:
-		var cap := caps[mini(int(w.country[i]), caps.size() - 1)]
+		var cap := caps[int(w.country[i])]
 		if has_blend and w.blend[i] > 0.0:
-			cap = cap.lerp(caps[mini(int(w.country2[i]), caps.size() - 1)], clampf(w.blend[i], 0.0, 1.0))
+			cap = cap.lerp(caps[int(w.country2[i])], clampf(w.blend[i], 0.0, 1.0))
 		var h := maxf(float(w.level[i]) * WorldData.STEP, TerrainMesher.WATER_Y)
 		var o := i * 4
 		rgba[o] = int(cap.x * 255.0)

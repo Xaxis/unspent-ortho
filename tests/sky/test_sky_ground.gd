@@ -7,14 +7,14 @@ const SkySystem := preload("res://src/systems/10_sky.gd")
 
 
 func test_each_thing_lies_only_on_the_countries_that_make_it() -> void:
-	var snow := SkyGround.capable(Country.SNOWFIELD)
-	var burn := SkyGround.capable(Country.BURNING)
+	var snow := SkyGround.capable(&"snowfield")
+	var burn := SkyGround.capable(&"burning")
 	eq(snow.x, 1.0, "snow lies on the snowfield")
 	eq(snow.y, 0.0, "no ash on the snowfield")
 	eq(burn.y, 1.0, "ash lies on the burning")
 	eq(burn.x, 0.0, "no snow on burning clinker")
 	eq(burn.z, 0.0, "the burning never rains, so it is never wet")
-	eq(SkyGround.capable(Country.MOSS).z, 1.0, "the moss gets wet")
+	eq(SkyGround.capable(&"moss").z, 1.0, "the moss gets wet")
 
 
 func test_the_mask_blends_across_an_ecotone_and_knows_a_hollow() -> void:
@@ -42,19 +42,14 @@ func test_the_mask_blends_across_an_ecotone_and_knows_a_hollow() -> void:
 	gt(around_hollow - 0.5, 1.0, "a hollow sits well below its neighbourhood, so fog lies in it")
 
 
-func test_marks_in_the_air_follow_the_country_under_the_focus() -> void:
+func test_marks_in_the_air_follow_the_landscape_under_the_focus() -> void:
 	var w := WorldData.new(1, 16)
 	for i in w.country.size():
 		w.country[i] = Country.SNOWFIELD if (i % 16) < 8 else Country.BURNING
-	eq(SkySystem.fall_country(w, Vector2(3, 3)), Country.SNOWFIELD, "snowfield")
-	eq(SkySystem.fall_country(w, Vector2(12, 3)), Country.BURNING, "burning")
-	var i := 3 * 16 + 7
-	w.blend[i] = 0.4
-	w.country2[i] = Country.BURNING
-	eq(SkySystem.fall_country(w, Vector2(7.5, 3.5)), Country.SNOWFIELD, "short of the ecotone's middle, still its own")
-	w.blend[i] = 0.6
-	eq(SkySystem.fall_country(w, Vector2(7.5, 3.5)), Country.BURNING, "past the middle, the neighbour's")
-	eq(SkySystem.fall_country(w, Vector2(-5, 99)), Country.SNOWFIELD, "clamped to the map")
+	eq(SkySystem.fall_type(w, Vector2(3, 3)), BiomeRegistry.at(w, Vector2(3, 3)).id, "the type BiomeRegistry finds")
+	eq(SkySystem.fall_type(w, Vector2(3, 3)), &"snowfield", "snowfield")
+	eq(SkySystem.fall_type(w, Vector2(12, 3)), &"burning", "burning")
+	eq(SkySystem.fall_type(w, Vector2(-5, 99)), &"snowfield", "clamped to the map, never the sea beyond it")
 
 
 func test_a_game_at_a_border_falls_one_country_and_lays_each_where_it_belongs() -> void:
@@ -70,8 +65,8 @@ func test_a_game_at_a_border_falls_one_country_and_lays_each_where_it_belongs() 
 			sky_sys = s
 	check(sky_sys != null, "sky system loaded")
 	var focus := Vector2(g.player.position.x, g.player.position.z)
-	var here := SkySystem.fall_country(g.world, focus)
-	var wx := Weather.at_place(g.world.seed_value, g.clock.minutes, here)
+	var here := SkySystem.fall_type(g.world, focus)
+	var wx := Weather.at_type(g.world.seed_value, g.clock.minutes, here)
 	var own := WeatherLook.compose([{"kind": wx.kind, "strength": wx.strength, "weight": 1.0}])
 	await frames(2)
 	for k: String in SkySystem.FALL_KEYS:

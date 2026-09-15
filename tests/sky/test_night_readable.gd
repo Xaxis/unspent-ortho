@@ -168,8 +168,8 @@ func test_the_lamp_action_lights_and_puts_out_the_lantern() -> void:
 
 
 func test_a_burning_dusk_keeps_its_warm_darks() -> void:
-	var cold := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.SNOWFIELD))
-	var burning := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.BURNING))
+	var cold := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"snowfield"))
+	var burning := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"burning"))
 	gt(cold, 0.8, "a snowfield dusk lifts its darks to blue")
 	lt(burning, cold * 0.5, "a burning dusk keeps them warm")
 	near(SkyLight.dusk_lift(12.0, Vector3.ONE), 0.0, 0.02, "nothing to lift at noon")

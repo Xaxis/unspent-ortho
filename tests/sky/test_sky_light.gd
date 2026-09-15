@@ -62,9 +62,10 @@ func test_shadows_are_short_at_noon_and_long_at_the_day_ends() -> void:
 
 func test_region_cast_follows_the_source_formula() -> void:
 	_v(SkyLight.cast_tint(0.0, 0.0), Vector3.ONE, "neutral")
-	var fire := SkyLight.country_tint(Country.BURNING)
-	var ice := SkyLight.country_tint(Country.SNOWFIELD)
-	var fen := SkyLight.country_tint(Country.MOSS)
+	var fire := SkyLight.type_tint(&"burning")
+	var ice := SkyLight.type_tint(&"snowfield")
+	var fen := SkyLight.type_tint(&"moss")
+	eq(SkyLight.type_tint(&"salt_flats"), Vector3.ONE, "a type with no cast is neutral")
 	near(maxf(fire.x, maxf(fire.y, fire.z)), 1.0, 1e-6, "normalised")
 	gt(fire.x, fire.z, "burning is warm")
 	gt(ice.z, ice.x, "snowfield is cold")

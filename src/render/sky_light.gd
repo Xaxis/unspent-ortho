@@ -74,12 +74,13 @@ const WATER_SHADER := "res://src/render/water.gdshader"
 const FIGURE_FILL := 1.9
 const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 
-## Per country id: (warmth, wetness) in -1..1, read by the source's light cast.
-## Sea, coast, moss, pinewood, snowfield, bonelands, burning.
-const CLIMATE: Array[Vector2] = [
-	Vector2(0.0, 0.3), Vector2(0.0, 0.0), Vector2(-0.1, 1.0), Vector2(-0.6, 0.35),
-	Vector2(-1.0, -0.3), Vector2(0.35, -1.0), Vector2(1.0, -0.6),
-]
+## Per landscape type id: (warmth, wetness) in -1..1, read by the source's
+## light cast. A type not listed casts neutral light (its BiomeDef.light_tint
+## still multiplies on top). New types add a row.
+const CAST := {
+	&"sea": Vector2(0.0, 0.3), &"coast": Vector2(0.0, 0.0), &"moss": Vector2(-0.1, 1.0), &"pinewood": Vector2(-0.6, 0.35),
+	&"snowfield": Vector2(-1.0, -0.3), &"bonelands": Vector2(0.35, -1.0), &"burning": Vector2(1.0, -0.6),
+}
 
 var sun: DirectionalLight3D
 var figure_light: DirectionalLight3D
@@ -104,7 +105,7 @@ var wind := Vector4.ZERO
 var lamps: Array[Vector4] = []
 ## The colour of each lamp pool (rgb, w spare), parallel to `lamps`.
 var lamp_colors: Array[Vector4] = []
-## Share of each country in view (Country id -> weight), for the neon grade.
+## Share of each landscape type in view (type id -> weight), for the neon grade.
 var neon_shares: Dictionary = {}
 ## 1 / world size, for the sky_ground texture (set_ground); 0 = none.
 var ground_scale := 0.0
@@ -429,12 +430,20 @@ static func cast_tint(warmth: float, wetness: float) -> Vector3:
 	return c / maxf(c.x, maxf(c.y, c.z))
 
 
-## What a country does to the light's level, on top of its cast: the Burning
-## lies under warm, low light even at noon (docs/ART.md section 3).
-static func country_light(country: int) -> Vector3:
-	if country == Country.BURNING:
-		return Vector3(0.94, 0.8, 0.68)
-	return Vector3.ONE
+## What a landscape type does to the light's level, on top of its cast: the
+## Burning lies under warm, low light even at noon (docs/ART.md section 3).
+const LEVEL := {&"burning": Vector3(0.94, 0.8, 0.68)}
+
+
+## The light a landscape type lays over the hour: its cast, its level, its mood
+## at this hour and its own BiomeDef.light_tint, one multiply. null reads as a
+## type with nothing of its own.
+static func type_light(def: BiomeDef, hour: float) -> Vector3:
+	var id: StringName = def.id if def != null else &""
+	var own := Vector3.ONE
+	if def != null:
+		own = Vector3(def.light_tint.r, def.light_tint.g, def.light_tint.b)
+	return type_tint(id) * (LEVEL.get(id, Vector3.ONE) as Vector3) * mood_light(id, hour) * own
 
 
 ## Each landscape's light through the day (docs/VISION.md section 8): a multiply
@@ -474,10 +483,10 @@ static func mood_light(type_id: StringName, hour: float) -> Vector3:
 	return keys[0][1]
 
 
-## A country's cast, pushed REGION_GAIN times further from white than the
-## source's formula so that crossing a border is felt in the light itself.
-static func country_tint(country: int) -> Vector3:
-	var cl := CLIMATE[clampi(country, 0, CLIMATE.size() - 1)]
+## A landscape type's cast, pushed REGION_GAIN times further from white than
+## the source's formula so that crossing a border is felt in the light itself.
+static func type_tint(type_id: StringName) -> Vector3:
+	var cl: Vector2 = CAST.get(type_id, Vector2.ZERO)
 	var c := Vector3.ONE + (cast_tint(cl.x, cl.y) - Vector3.ONE) * REGION_GAIN
 	return c / maxf(c.x, maxf(c.y, c.z))
 
@@ -500,6 +509,15 @@ const NEON_COUNTRY := {
 }
 
 
+## The NEON_COUNTRY row for a share's key: a landscape type id (what the sky
+## samples), or a Country id (how the table is keyed until it moves to type
+## ids). An unknown landscape reads the coast's.
+static func neon_row(key: Variant) -> Array:
+	var c := Weather.COUNTRY_TYPES.find(key) if key is StringName else int(key)
+	return NEON_COUNTRY.get(c, NEON_COUNTRY[Country.COAST])
+
+
+## shares: landscape type id (or Country id) -> weight.
 static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
 	var night := Weather.night_fall(hour)
 	var g := NEON_DAY.lerp(NEON_NIGHT, night)
@@ -508,11 +526,11 @@ static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
 		var off := Vector4.ZERO
 		var w := 0.0
 		var total := 0.0
-		for c: int in shares:
-			var e: Array = NEON_COUNTRY.get(c, NEON_COUNTRY[Country.COAST])
-			off += (e[0] as Vector4) * float(shares[c])
-			w += float(e[1]) * float(shares[c])
-			total += float(shares[c])
+		for k: Variant in shares:
+			var e: Array = neon_row(k)
+			off += (e[0] as Vector4) * float(shares[k])
+			w += float(e[1]) * float(shares[k])
+			total += float(shares[k])
 		if total > 0.0:
 			g += off / total
 			wet = w / total
