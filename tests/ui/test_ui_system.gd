@@ -99,3 +99,41 @@ static func _mob_script() -> GDScript:
 	s.source_code = "extends Node\nvar pos := Vector2.ZERO\nvar alive := true\nvar kind := &\"runner\"\n"
 	s.reload()
 	return s
+
+
+func _tap(action: StringName) -> void:
+	Input.action_press(action)
+	await tree.process_frame
+	await tree.process_frame
+	Input.action_release(action)
+	await tree.process_frame
+
+
+func test_the_real_actions_open_and_close_pages() -> void:
+	# Tours press actions (Input.action_press), not key events: the notebook answers both.
+	var g := _make()
+	var ui := _ui(g)
+	await tree.process_frame
+	await _tap(&"inventory")
+	var s: UiScreen = ui.call("top")
+	check(s != null and s.screen_name == &"inventory", "the inventory action opens the carrying page")
+	await tree.process_frame
+	check(ui.call("top") == s, "and it stays open")
+	await _tap(&"pause")
+	check(ui.call("top") == null, "esc closes the page")
+	check(not tree.paused, "and does not fall through to pause")
+	await _tap(&"map")
+	var m: UiScreen = ui.call("top")
+	check(m != null and m.screen_name == &"map", "the map action opens the map")
+	await _tap(&"map")
+	check(ui.call("top") == null, "and closes it")
+	# After a slow frame physics catches up in one go: a tap can go down and up
+	# between two _process calls. The physics step notes it.
+	Input.action_press(&"inventory")
+	ui.call("_physics_process", 1.0 / 60.0)
+	Input.action_release(&"inventory")
+	ui.call("_physics_process", 1.0 / 60.0)
+	ui.call("_process", 0.016)
+	var q: UiScreen = ui.call("top")
+	check(q != null and q.screen_name == &"inventory", "a tap seen only by physics still opens the page")
+	g.free()

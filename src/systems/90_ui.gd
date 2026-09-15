@@ -15,6 +15,10 @@ var map_data: UiMapData
 var _places := UiPlaceWatch.new()
 var _pending_screen := ""
 var _vertical := UiMenu.new()
+## Which page and opening actions were down last frame, and which went down
+## during physics steps since.
+var _held := {}
+var _seen_down := {}
 var _horizontal := UiMenu.new()
 ## Real seconds until the map's data is packed in the background: after the
 ## world's first chunks, so start-up is not slowed, and before anyone opens it.
@@ -116,23 +120,49 @@ func _on_closed(s: UiScreen) -> void:
 		game.hud.visible = true
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey) or not event.is_pressed() or event.is_echo():
-		return
+## Keys on a page: action -> what the page is told.
+const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"]]
+## Keys that open a page from play.
+const OPEN_KEYS := {&"inventory": &"inventory", &"craft": &"crafting", &"map": &"map", &"pause": &"pause"}
+
+
+## Keys are read from the action state, not from input events, so a tour's
+## Input.action_press opens and drives the notebook the way a key does. A press
+## is the frame an action is first seen down (it may have gone down after this
+## node's _process last ran, so "just pressed" alone would miss it).
+## Returns true when a page was open (it had the keys this frame).
+func _read_keys() -> bool:
+	var down := {}
+	for pair: Array in PAGE_KEYS:
+		down[pair[0]] = _went_down(pair[0])
 	var s := top()
 	if s != null:
-		for pair: Array in [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"]]:
-			if event.is_action_pressed(pair[0]):
+		for pair: Array in PAGE_KEYS:
+			if down[pair[0]]:
 				s.handle(pair[1])
 				break
-		get_viewport().set_input_as_handled()
-		return
-	var opens := {&"inventory": &"inventory", &"craft": &"crafting", &"map": &"map", &"pause": &"pause"}
-	for action: StringName in opens:
-		if event.is_action_pressed(action):
-			open_screen(opens[action])
-			get_viewport().set_input_as_handled()
-			return
+		return true
+	for action: StringName in OPEN_KEYS:
+		if down[action]:
+			open_screen(OPEN_KEYS[action])
+			break
+	return false
+
+
+func _went_down(action: StringName) -> bool:
+	var now := Input.is_action_pressed(action) or _seen_down.has(action) or Input.is_action_just_pressed(action)
+	_seen_down.erase(action)
+	var was: bool = _held.get(action, false)
+	_held[action] = now
+	return now and not was
+
+
+func _physics_process(_delta: float) -> void:
+	# After a slow frame the physics steps catch up several at once, and a short
+	# press can go down and up between two _process calls: note it here.
+	for pair: Array in PAGE_KEYS:
+		if Input.is_action_pressed(pair[0]):
+			_seen_down[pair[0]] = true
 
 
 func _process(delta: float) -> void:
@@ -153,8 +183,10 @@ func _process(delta: float) -> void:
 			if parts.size() > 1:
 				top().select(StringName(parts[1]))
 		_pending_screen = ""
-	var s := top()
-	if s != null:
+	if _read_keys():
+		var s := top()
+		if s == null:
+			return
 		_repeat(s, _vertical, _device_dir(&"move_up", &"move_down"), delta, &"up", &"down")
 		_repeat(s, _horizontal, _device_dir(&"move_left", &"move_right"), delta, &"left", &"right")
 		return
