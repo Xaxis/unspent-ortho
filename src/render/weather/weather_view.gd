@@ -93,9 +93,9 @@ func setup(cam: CameraRig) -> void:
 	# Snow: cold blue-grey flakes with a pale glint on the top-left pixel, so snow
 	# reads falling over snow lying on the page (a pale fleck vanishes into it).
 	snow = _emitter("snow", 8000, 8.0, air, mid, true)
-	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
+	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.3, "length_px": Vector2(1, 2.4), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
 	# Flakes near the eye: fewer, three pixels across, falling faster past.
-	flurry = _emitter("flurry", 900, 5.0, Vector3(16.0, 2.0, 14.0), Vector3(0, TOP * 0.8, 0), true)
+	flurry = _emitter("flurry", 2200, 5.0, Vector3(16.0, 2.0, 14.0), Vector3(0, TOP * 0.8, 0), true)
 	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 1.0, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
 	# Blown snow: long low streaks racing along the ground in a blizzard and a
 	# whiteout, cold blue-grey with a pale head, so the wind itself is drawn.
@@ -108,8 +108,8 @@ func setup(cam: CameraRig) -> void:
 	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0, "ground_mask": 2})
 	# Blown grit: dusky streaks with pale ones among them, so dust reads over pale
 	# stone and over turf alike.
-	drift = _emitter("drift", 1600, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
-	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[2], "color_b": Palette.SAND[5], "mix_b": 0.4, "length_px": Vector2(4, 9)})
+	drift = _emitter("drift", 3200, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
+	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[1], "color_b": Palette.SAND[5], "mix_b": 0.55, "length_px": Vector2(5, 12)})
 	# Heat: wavering lines, drawn darker than pale stone and paler than ash so
 	# some always read.
 	haze = _emitter("haze", 320, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
@@ -280,7 +280,7 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var blizzard := maxf(clampf(float(look.snow) - 0.8, 0.0, 0.2) * 5.0 * clampf(absf(wind) * 1.5, 0.0, 1.0), whiteout)
 	# Snow comes in squalls: dense curtains sweep over with only a thin fall
 	# between them. A whiteout is snow everywhere, no gaps.
-	var curtains := 0.85 * (1.0 - whiteout)
+	var curtains := 0.7 * (1.0 - whiteout)
 	var gale := maxf(absf(wind), whiteout)
 	_drive(snow, float(look.snow), Vector3(wind * 1.4 + whiteout * signf(wind + 0.001) * 1.2, -1.0, 0.0), 1.1 + gale * 2.2, {"wander": 2.0 * (1.0 - gale * 0.6), "columns": curtains})
 	_drive(flurry, float(look.snow), Vector3(wind * 1.6 + whiteout * signf(wind + 0.001) * 1.4, -1.0, 0.0), 1.8 + gale * 2.6, {"columns": curtains})
@@ -298,7 +298,7 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var ashy := ash_drift / maxf(0.001, sand + ash_drift)
 	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
 		"facing": blow,
-		"color_a": Palette.SAND[2].lerp(Palette.ASH[1], ashy),
+		"color_a": Palette.SAND[1].lerp(Palette.ASH[1], ashy),
 		"color_b": Palette.SAND[5].lerp(Palette.INK[2], ashy),
 	})
 	# The odd flick once the wind gets up; the flick is drawn with its head
