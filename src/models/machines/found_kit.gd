@@ -1,0 +1,517 @@
+class_name FoundKit
+## Mesh vocabulary for FOUND things (machines and what comes off them), on top of
+## MeshKit. Everything here is exact: symmetric, straight, chamfered, riveted.
+## MADE things never use it. docs/ART.md §4: a FOUND shape is never a plain box
+## at a glance, so the kit's first words are lathes, tapered lofts and extruded
+## plates; cbox is for small fittings.
+##
+## Colour follows art-audio-extract §2c on a per-kind ramp `r` (6 values,
+## Palette.MACHINE[kind]), always an exact ramp value, chosen from the face's
+## normal in the kit's frame at build time:
+##   up faces v3 (body fill)       up-facing bevels and shoulders v4 (lit rim)
+##   walls v2 (dark rim)           down-facing bevels v1, undersides v0
+## so a machine reads as a dark violet mass ruled with bright chamfer lines.
+##   rivets, fasteners and the one rubbed edge v5
+##
+## All helpers draw through the MeshKit transform stack (k.push / k.at).
+
+const UP := Vector3.UP
+
+
+## A MeshKit set up for FOUND geometry: no hatch hand, rigid.
+static func kit() -> MeshKit:
+	var k := MeshKit.new()
+	k.style = Ink.NONE
+	k.style2 = Ink.NONE
+	return k
+
+
+# -- colour -------------------------------------------------------------------
+
+## Body colour for a face by its normal in the kit's frame.
+static func _col(k: MeshKit, local_n: Vector3, r: Array) -> Color:
+	var n := (k._xf.basis * local_n).normalized()
+	# Gentle slopes are still the top; only a steep bevel catches the rim light.
+	if n.y > 0.8:
+		return r[3]
+	if n.y > 0.3:
+		return r[4]
+	if n.y < -0.7:
+		return r[0]
+	if n.y < -0.3:
+		return r[1]
+	return r[2]
+
+
+## The ramp stepped down `steps` values: legs and undercarriage only get dirtier.
+static func dirty(r: Array, steps: int = 1) -> Array:
+	var out: Array = []
+	for j in r.size():
+		out.append(r[maxi(0, j - steps)])
+	return out
+
+
+## One colour on every face (loads, dark cavities).
+static func flat(col: Color) -> Array:
+	return [col, col, col, col, col, col]
+
+
+# -- primitive faces ------------------------------------------------------------
+
+## A flat convex polygon, fan-triangulated, wound so its normal agrees with `out`.
+static func face(k: MeshKit, pts: Array[Vector3], col: Color, out: Vector3) -> void:
+	for t in range(1, pts.size() - 1):
+		var a := pts[0]
+		var b := pts[t]
+		var c := pts[t + 1]
+		if (b - a).cross(c - a).dot(out) >= 0.0:
+			k.tri(a, b, c, col)
+		else:
+			k.tri(a, c, b, col)
+
+
+## A flat mark lying on a face: centre `c`, facing `n`, `up` along the face,
+## size w (across) x h (along up), lifted a hair off the surface. 2 triangles.
+static func mark(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, col: Color, lift: float = 0.004) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var rr := uu.cross(nn)
+	var o := c + nn * lift
+	var hw := rr * (w * 0.5)
+	var hh := uu * (h * 0.5)
+	face(k, [o - hw - hh, o + hw - hh, o + hw + hh, o - hw + hh], col, nn)
+
+
+## A flat regular polygon on a face (round lenses, hub caps, bolt heads).
+static func spot(k: MeshKit, c: Vector3, n: Vector3, rad: float, sides: int, col: Color, lift: float = 0.004, phase: float = 0.0) -> void:
+	var nn := n.normalized()
+	var u := nn.cross(UP if absf(nn.y) < 0.9 else Vector3.RIGHT).normalized()
+	var v := nn.cross(u)
+	var pts: Array[Vector3] = []
+	for j in sides:
+		var a := phase + float(j) / sides * TAU
+		pts.append(c + nn * lift + (u * cos(a) + v * sin(a)) * rad)
+	face(k, pts, col, nn)
+
+
+# -- solids ---------------------------------------------------------------------
+
+## Chamfered box centred on `c`, full size `s`, chamfer `ch`. `rub` paints one
+## upper edge v5 (the rubbed-bright edge of the biggest panel): 0 +X, 1 -X,
+## 2 +Z, 3 -Z, -1 none. 44 triangles (12 when ch is 0). For fittings only.
+static func cbox(k: MeshKit, c: Vector3, s: Vector3, ch: float, r: Array, rub: int = -1) -> void:
+	var h := s * 0.5
+	ch = minf(ch, minf(h.x, minf(h.y, h.z)) * 0.9)
+	if ch <= 0.0:
+		_sharp_box(k, c, h, r)
+		return
+	var i := h - Vector3(ch, ch, ch)
+	for a in 3:
+		for sa: float in [-1.0, 1.0]:
+			var b := (a + 1) % 3
+			var d := (a + 2) % 3
+			var pts: Array[Vector3] = []
+			for q: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+				var p := Vector3.ZERO
+				p[a] = sa * h[a]
+				p[b] = q.x * i[b]
+				p[d] = q.y * i[d]
+				pts.append(c + p)
+			var n := Vector3.ZERO
+			n[a] = sa
+			face(k, pts, _col(k, n, r), n)
+	for a in 3:
+		var b := (a + 1) % 3
+		var d := (a + 2) % 3
+		for sa: float in [-1.0, 1.0]:
+			for sb: float in [-1.0, 1.0]:
+				var pts: Array[Vector3] = []
+				for sd: float in [-1.0, 1.0]:
+					var p := Vector3.ZERO
+					p[a] = sa * h[a]
+					p[b] = sb * i[b]
+					p[d] = sd * i[d]
+					pts.append(c + p)
+				for sd: float in [1.0, -1.0]:
+					var p := Vector3.ZERO
+					p[a] = sa * i[a]
+					p[b] = sb * h[b]
+					p[d] = sd * i[d]
+					pts.append(c + p)
+				var n := Vector3.ZERO
+				n[a] = sa
+				n[b] = sb
+				var col := _col(k, n, r)
+				if rub >= 0 and n.y > 0.0 and _rub_matches(rub, n):
+					col = r[5]
+				face(k, pts, col, n)
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var sg := Vector3(sx, sy, sz)
+				var pts: Array[Vector3] = []
+				for a in 3:
+					var p := i * sg
+					p[a] = h[a] * sg[a]
+					pts.append(c + p)
+				face(k, pts, _col(k, sg, r), sg)
+
+
+static func _rub_matches(rub: int, n: Vector3) -> bool:
+	match rub:
+		0: return n.x > 0.0
+		1: return n.x < 0.0
+		2: return n.z > 0.0
+		3: return n.z < 0.0
+	return false
+
+
+static func _sharp_box(k: MeshKit, c: Vector3, h: Vector3, r: Array) -> void:
+	for a in 3:
+		for sa: float in [-1.0, 1.0]:
+			var b := (a + 1) % 3
+			var d := (a + 2) % 3
+			var pts: Array[Vector3] = []
+			for q: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+				var p := Vector3.ZERO
+				p[a] = sa * h[a]
+				p[b] = q.x * h[b]
+				p[d] = q.y * h[d]
+				pts.append(c + p)
+			var n := Vector3.ZERO
+			n[a] = sa
+			face(k, pts, _col(k, n, r), n)
+
+
+## Rings turned about an axis: the machines' main solid. `spec` lists
+## Vector2(radius, offset along axis) from one end to the other; `squash`
+## scales the section (x across, y the other way) for oval and flat sections.
+## Walls between rings, caps on both ends where the radius is not 0. `rub_ring`
+## paints the band after that ring index v5 on its upper side, facing `rub_dir`.
+static func lathe(k: MeshKit, c: Vector3, axis: Vector3, spec: Array[Vector2], n: int, r: Array, phase: float = 0.0, squash: Vector2 = Vector2.ONE, cap_col: Color = Color(0, 0, 0, 0), rub_ring: int = -1, caps: bool = true, rub_dir: Vector3 = Vector3.RIGHT) -> void:
+	var ax := axis.normalized()
+	var u := ax.cross(UP if absf(ax.y) < 0.9 else Vector3.RIGHT).normalized()
+	var v := ax.cross(u)
+	var rings: Array = []
+	for sp: Vector2 in spec:
+		var ring: Array[Vector3] = []
+		for j in n:
+			var a := phase + float(j) / n * TAU
+			ring.append(c + ax * sp.y + (u * cos(a) * squash.x + v * sin(a) * squash.y) * sp.x)
+		rings.append(ring)
+	for ri in rings.size() - 1:
+		var r0: Array[Vector3] = rings[ri]
+		var r1: Array[Vector3] = rings[ri + 1]
+		var mid_axis := c + ax * (spec[ri].y + spec[ri + 1].y) * 0.5
+		for j in n:
+			var j2 := (j + 1) % n
+			var pts: Array[Vector3] = [r0[j], r0[j2], r1[j2], r1[j]]
+			var nrm := _quad_normal(pts, mid_axis)
+			if nrm == Vector3.ZERO:
+				continue
+			var col := _col(k, nrm, r)
+			# One rubbed edge, on one side: where the thing is handled or knocked.
+			if ri == rub_ring and (k._xf.basis * nrm).y > 0.2 and nrm.dot(rub_dir) > 0.5:
+				col = r[5]
+			face(k, _dedupe(pts), col, nrm)
+	for end: int in [0, rings.size() - 1]:
+		if not caps or spec[end].x <= 0.0:
+			continue
+		var ring: Array[Vector3] = rings[end]
+		var out := ax * (1.0 if end > 0 else -1.0)
+		if spec.size() > 1:
+			out = ax * signf(spec[end].y - spec[1 if end == 0 else end - 1].y)
+		var col := cap_col if cap_col.a > 0.0 else _col(k, out, r)
+		face(k, ring, col, out)
+
+
+static func _quad_normal(pts: Array[Vector3], centre: Vector3) -> Vector3:
+	var nrm := (pts[1] - pts[0]).cross(pts[3] - pts[0])
+	if nrm.length_squared() < 1e-12:
+		nrm = (pts[2] - pts[1]).cross(pts[3] - pts[1])
+	if nrm.length_squared() < 1e-12:
+		return Vector3.ZERO
+	nrm = nrm.normalized()
+	var mid := (pts[0] + pts[1] + pts[2] + pts[3]) * 0.25
+	return nrm if nrm.dot(mid - centre) >= 0.0 else -nrm
+
+
+static func _dedupe(pts: Array[Vector3]) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for p in pts:
+		if out.is_empty() or (out[out.size() - 1] - p).length_squared() > 1e-12:
+			out.append(p)
+	if out.size() > 1 and (out[0] - out[out.size() - 1]).length_squared() < 1e-12:
+		out.pop_back()
+	return out
+
+
+## A straight member from a to b: an n-sided section tapering from r0 to r1,
+## capped. Legs, masts, struts, arms. `ch` > 0 chamfers both ends.
+static func tbar(k: MeshKit, a: Vector3, b: Vector3, r0: float, r1: float, n: int, r: Array, ch: float = 0.0) -> void:
+	var length := (b - a).length()
+	if length < 1e-5:
+		return
+	var spec: Array[Vector2] = []
+	if ch > 0.0:
+		ch = minf(ch, length * 0.3)
+		spec = [Vector2(r0 - ch * 0.6, 0.0), Vector2(r0, ch), Vector2(r1, length - ch), Vector2(r1 - ch * 0.6, length)]
+	else:
+		spec = [Vector2(r0, 0.0), Vector2(r1, length)]
+	lathe(k, a, b - a, spec, n, r, PI / n)
+
+
+## A member with a flat w x d section and a chamfer (plated struts, brackets).
+## Its flat sides keep facing +-Z where they can.
+static func bar(k: MeshKit, a: Vector3, b: Vector3, w: float, d: float, ch: float, r: Array) -> void:
+	var axis := b - a
+	var length := axis.length()
+	if length < 1e-5:
+		return
+	var y := axis / length
+	var ref := Vector3.BACK if absf(y.z) < 0.9 else Vector3.RIGHT
+	var x := y.cross(ref).normalized()
+	var z := x.cross(y)
+	k.push(Transform3D(Basis(x, y, z), a))
+	cbox(k, Vector3(0, length * 0.5, 0), Vector3(w, length, d), ch, r)
+	k.pop()
+
+
+## A chamfered n-gon slab (disc, wheel, drum, hub) centred on `c`, its round
+## faces normal to `axis`. Radius `rad`, thickness `th`, chamfer `ch` on both rims.
+static func disc(k: MeshKit, c: Vector3, axis: Vector3, rad: float, th: float, n: int, ch: float, r: Array, cap: Color = Color(0, 0, 0, 0), phase: float = 0.0) -> void:
+	var half := th * 0.5
+	ch = minf(ch, minf(half, rad) * 0.9)
+	var spec: Array[Vector2] = []
+	if ch > 0.0:
+		spec = [Vector2(rad - ch, -half), Vector2(rad, -half + ch), Vector2(rad, half - ch), Vector2(rad - ch, half)]
+	else:
+		spec = [Vector2(rad, -half), Vector2(rad, half)]
+	lathe(k, c, axis, spec, n, r, phase, Vector2.ONE, cap)
+
+
+## A convex outline `poly` (points in the plane of u, v about `o`) extruded
+## `th` along u x v, centred on the plane: fins, lids, brackets, blades.
+static func slab(k: MeshKit, o: Vector3, u: Vector3, v: Vector3, poly: Array[Vector2], th: float, r: Array, bevel: float = 0.0) -> void:
+	var nn := u.cross(v).normalized()
+	var front: Array[Vector3] = []
+	var back: Array[Vector3] = []
+	var centre := Vector2.ZERO
+	for p in poly:
+		centre += p
+	centre /= poly.size()
+	for p in poly:
+		var q := p
+		if bevel > 0.0:
+			q = p - (p - centre).normalized() * bevel
+		front.append(o + u * q.x + v * q.y + nn * (th * 0.5))
+		back.append(o + u * q.x + v * q.y - nn * (th * 0.5))
+	if bevel > 0.0:
+		var mid_f: Array[Vector3] = []
+		var mid_b: Array[Vector3] = []
+		for p in poly:
+			mid_f.append(o + u * p.x + v * p.y + nn * (th * 0.5 - bevel))
+			mid_b.append(o + u * p.x + v * p.y - nn * (th * 0.5 - bevel))
+		_band(k, front, mid_f, r)
+		_band(k, mid_f, mid_b, r)
+		_band(k, mid_b, back, r)
+	else:
+		_band(k, front, back, r)
+	face(k, front, _col(k, nn, r), nn)
+	face(k, back, _col(k, -nn, r), -nn)
+
+
+static func _band(k: MeshKit, a: Array[Vector3], b: Array[Vector3], r: Array) -> void:
+	var centre := Vector3.ZERO
+	for p in a:
+		centre += p
+	for p in b:
+		centre += p
+	centre /= (a.size() + b.size())
+	for j in a.size():
+		var j2 := (j + 1) % a.size()
+		var pts: Array[Vector3] = [a[j], a[j2], b[j2], b[j]]
+		var nrm := _quad_normal(pts, centre)
+		if nrm != Vector3.ZERO:
+			face(k, pts, _col(k, nrm, r), nrm)
+
+
+## A hull from stacked rings of equal point count (bottom first, each ring a
+## convex outline around the Y axis): walls between rings, a cap on the last,
+## and on the first when `bottom`. Sloped shoulders take the lit rim.
+static func loft(k: MeshKit, rings: Array, r: Array, rub_front: bool = false, bottom: bool = false) -> void:
+	for ri in rings.size() - 1:
+		var a: Array = rings[ri]
+		var b: Array = rings[ri + 1]
+		var ring_c := Vector3.ZERO
+		for p: Vector3 in a:
+			ring_c += p
+		for p: Vector3 in b:
+			ring_c += p
+		ring_c /= (a.size() + b.size())
+		for j in a.size():
+			var j2 := (j + 1) % a.size()
+			var pts: Array[Vector3] = [a[j], a[j2], b[j2], b[j]]
+			var n := _quad_normal(pts, ring_c)
+			if n == Vector3.ZERO:
+				continue
+			var col := _col(k, n, r)
+			if rub_front and ri == rings.size() - 2 and n.x > 0.3:
+				col = r[5]
+			face(k, _dedupe(pts), col, n)
+	var top: Array = rings[rings.size() - 1]
+	var tp: Array[Vector3] = []
+	for p: Vector3 in top:
+		tp.append(p)
+	face(k, tp, _col(k, Vector3.UP, r), Vector3.UP)
+	if bottom:
+		var bp: Array[Vector3] = []
+		for p: Vector3 in rings[0]:
+			bp.append(p)
+		face(k, bp, _col(k, Vector3.DOWN, r), Vector3.DOWN)
+
+
+## A plan outline (x, z points, convex, in order) placed at height y, inset by
+## `inset` toward its centre, then scaled by `s` about it and moved by `shift`.
+static func ring(plan: Array[Vector2], y: float, inset: float = 0.0, s: Vector2 = Vector2.ONE, shift: Vector2 = Vector2.ZERO) -> Array:
+	var c := Vector2.ZERO
+	for p in plan:
+		c += p
+	c /= plan.size()
+	var out: Array = []
+	for p in plan:
+		var q := p
+		if inset > 0.0:
+			q = p - (p - c).normalized() * inset
+		q = c + (q - c) * s + shift
+		out.append(Vector3(q.x, y, q.y))
+	return out
+
+
+## A chamfered rectangle plan w (x) by d (z): eight points in order from +X.
+static func plan_oct(w: float, d: float, ch: float) -> Array[Vector2]:
+	var hx := w * 0.5
+	var hz := d * 0.5
+	ch = minf(ch, minf(hx, hz) * 0.95)
+	return [Vector2(hx, -hz + ch), Vector2(hx, hz - ch), Vector2(hx - ch, hz), Vector2(-hx + ch, hz), Vector2(-hx, hz - ch), Vector2(-hx, -hz + ch), Vector2(-hx + ch, -hz), Vector2(hx - ch, -hz)]
+
+
+# -- the idiom: fittings and marks ------------------------------------------------
+
+## An inset panel on a face: a dark frame line with a fastener in each corner.
+static func panel(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array) -> void:
+	var uu := up.normalized()
+	var rr := uu.cross(n.normalized())
+	var line := 0.018
+	mark(k, c + uu * (h * 0.5), n, uu, w, line, r[2], 0.003)
+	mark(k, c - uu * (h * 0.5), n, uu, w, line, r[2], 0.003)
+	mark(k, c + rr * (w * 0.5), n, uu, line, h, r[2], 0.003)
+	mark(k, c - rr * (w * 0.5), n, uu, line, h, r[2], 0.003)
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			mark(k, c + rr * (w * 0.5 - 0.035) * sx + uu * (h * 0.5 - 0.035) * sy, n, uu, 0.03, 0.03, r[5], 0.006)
+
+
+## A row of `count` rivets from a to b on a face with normal n.
+static func rivets(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, count: int, col: Color, size: float = 0.035) -> void:
+	var up := (b - a).normalized() if (b - a).length() > 1e-5 else UP
+	if absf(up.dot(n.normalized())) > 0.9:
+		up = UP if absf(n.normalized().y) < 0.9 else Vector3.RIGHT
+	for j in count:
+		var t := 0.5 if count == 1 else float(j) / (count - 1)
+		mark(k, a.lerp(b, t), n, up, size, size, col, 0.006)
+
+
+## A seam: a dark line from a to b with a rivet each side at every step.
+static func seam(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, r: Array, count: int = 4) -> void:
+	var along := b - a
+	var up := along.normalized()
+	mark(k, (a + b) * 0.5, n, up, 0.018, along.length(), r[1], 0.003)
+	var side := up.cross(n.normalized()) * 0.035
+	for j in count:
+		var t := (float(j) + 0.5) / count
+		var p := a.lerp(b, t)
+		mark(k, p + side, n, up, 0.03, 0.03, r[5], 0.006)
+		mark(k, p - side, n, up, 0.03, 0.03, r[5], 0.006)
+
+
+## Downward wear streaks under a feature: `count` dark columns from `top` spread
+## across `w`, lengths hashed from `seed_value` so every copy of a kind carries
+## the same streaks ("off the same line").
+static func streaks(k: MeshKit, top: Vector3, n: Vector3, w: float, max_len: float, count: int, seed_value: int, col: Color) -> void:
+	var nn := n.normalized()
+	var across := UP.cross(nn).normalized()
+	for j in count:
+		var t := 0.5 if count == 1 else float(j) / (count - 1) - 0.5
+		var length := max_len * (0.35 + 0.65 * Rng.hash01(seed_value, j, 77))
+		mark(k, top + across * (t * w) - UP * length * 0.5, nn, UP, 0.024, length, col, 0.003)
+
+
+## Graduations along a member, as on a rule: short ticks with every fifth long.
+## The machines were drawn with one and still carry it.
+static func ticks(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, count: int, col: Color, w: float = 0.03) -> void:
+	var along := (b - a).normalized()
+	var across := along.cross(n.normalized())
+	for j in count:
+		var t := float(j) / maxi(1, count - 1)
+		var length := w * (1.8 if j % 5 == 0 else 1.0)
+		mark(k, a.lerp(b, t) + across * (length * 0.5 - w * 0.5), n, across, 0.014, length, col, 0.004)
+
+
+## The COLD visor slit on a plated face: a dark socket with the slit in COLD 1/2.
+## "Armour, nothing to reach." The moving scan highlight is a separate node.
+static func visor(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float) -> void:
+	mark(k, c, n, up, w + 0.05, h + 0.045, Palette.INK[1], 0.003)
+	mark(k, c, n, up, w, h, Palette.COLD[1], 0.006)
+	mark(k, c + up.normalized() * h * 0.25, n, up, w * 0.94, h * 0.34, Palette.COLD[2], 0.008)
+
+
+## An amber cavity: a dark recessed frame with the LENS core and a hot centre.
+## Built into the PART mesh so the light can go out.
+static func lens(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float) -> void:
+	mark(k, c, n, up, w + 0.06, h + 0.06, Palette.LENS[0], 0.004)
+	mark(k, c, n, up, w, h, Palette.LENS[2], 0.008)
+	mark(k, c, n, up, w * 0.45, h * 0.45, Palette.LENS[3], 0.012)
+
+
+## A round amber optic: bezel, core, hot centre. Part mesh.
+static func optic(k: MeshKit, c: Vector3, n: Vector3, rad: float) -> void:
+	spot(k, c, n, rad * 1.35, 8, Palette.LENS[0], 0.003, PI / 8.0)
+	spot(k, c, n, rad, 8, Palette.LENS[2], 0.007, PI / 8.0)
+	spot(k, c, n, rad * 0.45, 6, Palette.LENS[3], 0.011)
+
+
+## The same part with its light out: amber goes to the cavity's dead values.
+static func dark_colour(col: Color) -> Color:
+	if col == Palette.LENS[3]:
+		return Palette.LENS[1]
+	if col == Palette.LENS[2]:
+		return Palette.LENS[0]
+	if col == Palette.LENS[1] or col == Palette.LENS[0]:
+		return Palette.INK[1]
+	if col == Palette.COLD[3] or col == Palette.COLD[2]:
+		return Palette.COLD[0]
+	return col
+
+
+## Copy a kit with every lit colour swapped for its dark value.
+static func darkened(k: MeshKit) -> MeshKit:
+	var d := MeshKit.new()
+	d.verts = k.verts.duplicate()
+	d.normals = k.normals.duplicate()
+	d.uvs = k.uvs.duplicate()
+	d.uv2s = k.uv2s.duplicate()
+	d.custom0 = k.custom0.duplicate()
+	d.colors = PackedColorArray()
+	for col in k.colors:
+		d.colors.append(dark_colour(col))
+	return d
+
+
+## Natural matter a machine carries or spills (ore, spoil, sweepings, a cut
+## row) is not FOUND: it is drawn by the hand on the world material. A kit for it.
+static func matter_kit(hatch: int = Ink.CONTOUR) -> MeshKit:
+	var k := MeshKit.new()
+	k.style = hatch
+	k.style2 = hatch
+	return k

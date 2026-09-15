@@ -8,7 +8,8 @@ extends Node3D
 ##                              Loads res://src/models/machines/<kind>.gd or
 ##                              res://src/models/animals/<kind>.gd (a script that
 ##                              extends FigureModel and overrides build()); falls
-##                              back to a placeholder block so nothing crashes.
+##                              back to a placeholder block so nothing crashes,
+##                              also for helper scripts sharing those directories.
 ##   set_pose(pose)             &"stand" &"walk" &"alert" &"windup" &"strike"
 ##                              &"hurt" &"dead" (unknown poses are ignored)
 ##   animate(delta, speed)      speed in tiles/s actually moved
@@ -29,7 +30,7 @@ static func create(kind_id: StringName, mat: Material = null) -> FigureModel:
 	for dir: String in ["res://src/models/machines/", "res://src/models/animals/"]:
 		var path := dir + String(kind_id) + ".gd"
 		if ResourceLoader.exists(path):
-			m = (load(path) as GDScript).new()
+			m = _instance_of(load(path) as GDScript)
 			break
 	if m == null:
 		m = FigureModel.new()
@@ -37,6 +38,19 @@ static func create(kind_id: StringName, mat: Material = null) -> FigureModel:
 	m.material = mat if mat != null else _default_material()
 	m.build()
 	return m
+
+
+## A figure from a kind script, or null when the file is not one: helper scripts
+## that share the directory (a mesh kit, a gallery) are never kinds.
+static func _instance_of(script: GDScript) -> FigureModel:
+	if script == null or not script.can_instantiate():
+		return null
+	var obj: Object = script.new()
+	if obj is FigureModel:
+		return obj as FigureModel
+	if obj is Node:
+		(obj as Node).free()
+	return null
 
 
 static func _default_material() -> Material:
@@ -67,6 +81,44 @@ func set_part_lit(_lit: bool) -> void:
 
 func flare_part() -> void:
 	pass
+
+
+## Where a hit effect on the working part should appear, in world space (the
+## figure's middle when it has no part). Machines override with the part itself.
+func part_position() -> Vector3:
+	var base := global_position if is_inside_tree() else position
+	return base + Vector3(0, height * 0.5, 0)
+
+
+## Triangles this figure draws, MultiMesh instances included. Budget: a machine
+## 2000, an animal 800 (art-audio-extract §8).
+func triangle_count() -> int:
+	return _tris_under(self)
+
+
+static func _tris_under(n: Node) -> int:
+	var total := 0
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		total += _mesh_tris((n as MeshInstance3D).mesh)
+	elif n is MultiMeshInstance3D and (n as MultiMeshInstance3D).multimesh != null:
+		var mm := (n as MultiMeshInstance3D).multimesh
+		if mm.mesh != null:
+			total += _mesh_tris(mm.mesh) * mm.instance_count
+	for c in n.get_children():
+		total += _tris_under(c)
+	return total
+
+
+static func _mesh_tris(m: Mesh) -> int:
+	var total := 0
+	for s in m.get_surface_count():
+		var arrays := m.surface_get_arrays(s)
+		var idx: Variant = arrays[Mesh.ARRAY_INDEX]
+		if idx is PackedInt32Array and (idx as PackedInt32Array).size() > 0:
+			total += (idx as PackedInt32Array).size() / 3
+		else:
+			total += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+	return total
 
 
 ## Helper for subclasses: add a MeshKit as a child mesh on `parent` (default self).
