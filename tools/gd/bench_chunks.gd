@@ -15,16 +15,21 @@ func _initialize() -> void:
 	for i in 1000000:
 		acc += sqrt(float(i & 255))
 	print("bench calibration %.1f ms (about 30 when the machine is idle)" % ((Time.get_ticks_usec() - c0) / 1000.0))
+	var d := Decor.new(w)
+	var decor_ms := 0.0
 	var n := 0
 	var total := 0.0
 	var cn := ceili(float(w.size) / TerrainMesher.CHUNK)
 	for cy in range(1, cn - 1):
 		for cx in range(1, cn - 1):
 			var a := Time.get_ticks_usec()
-			m.build_chunk(cx, cy)
+			var ch := m.build(cx, cy)
+			var b := Time.get_ticks_usec()
+			d.build(ch)
+			decor_ms += (Time.get_ticks_usec() - b) / 1000.0
 			total += (Time.get_ticks_usec() - a) / 1000.0
 			n += 1
-	print("bench %d chunks: %.1f ms avg" % [n, total / n])
+	print("bench %d chunks: %.1f ms avg with decor (decor %.1f)" % [n, total / n, decor_ms / n])
 	var pr := TerrainMesher.PROF
 	print("bench mesher: fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f commit %.1f ms, %d verts" % [pr[0] / 1000.0 / n, pr[1] / 1000.0 / n, pr[2] / 1000.0 / n, pr[7] / 1000.0 / n, pr[3] / 1000.0 / n, pr[4] / 1000.0 / n, pr[5] / 1000.0 / n, pr[6] / n])
 	quit()

@@ -13,6 +13,8 @@ extends Node3D
 signal chunk_built(cx: int, cy: int)
 
 const CHUNK := TerrainMesher.CHUNK
+## Rotation that turns a model's +X downwind (east-north-east).
+const WIND_BEARING := 0.42
 
 ## Extra tiles around the camera footprint built before they are seen.
 @export var margin := 6.0
@@ -237,9 +239,14 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 		if world.depleted.has(p.id):
 			continue
 		var variant := PropModels.pick_variant(p.kind, Rng.hash_ints(world.seed_value, p.id, 90))
-		var tpl := PropModels.template(p.kind, variant, prop_country(p, ch))
+		var country := prop_country(p, ch)
+		var tpl := PropModels.template(p.kind, variant, country)
 		var h := ch.surface(p.pos.x, p.pos.y) if ch != null else mesher.surface_height(p.pos.x, p.pos.y)
-		var rot := Basis(Vector3.UP, p.rot)
+		var angle := p.rot
+		if PropModels.Trees.wind_bent(p.kind, country):
+			# Bent by the one wind off the sea, not each its own way.
+			angle = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
+		var rot := Basis(Vector3.UP, angle)
 		var xf := Transform3D(rot.scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
 		var nx := Transform3D(rot, Vector3.ZERO)
 		if not tpl.made_v.is_empty():

@@ -540,11 +540,11 @@ void fragment() {
 		emit += c * (float(m) / 8.0) * fl;
 		unh = 1.0;
 	} else if (m >= 17 && m <= 32) {
-		// A lamp: glass by day, lit when the light goes.
+		// A lamp or a window: dark glass by day, lit when the light goes.
 		float dim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
 		float on = clamp((0.9 - dim) * 6.0, 0.0, 1.0);
 		emit += c * (float(m - 16) / 8.0) * on;
-		c = mix(dn(c, 1.0), c, on);
+		c = mix(BRINE2, c, on);
 		unh = on;
 	} else if (m == 33) {
 		// A glint: glass or ice catching the light for a moment.
