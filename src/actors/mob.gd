@@ -11,6 +11,9 @@ extends Node3D
 ## while it is still lit, and only then does it go dark and the body take the
 ## hurt pose: a figure draws no flare on a part that is out.
 
+## An opening older than this when first drawn is not flared (a view catching up).
+const OPEN_FLARE_MS := 200.0
+
 var kind: StringName = &""
 var pos := Vector2.ZERO
 var alive := true
@@ -31,6 +34,8 @@ var _flashing := false
 var _tilt := Quaternion.IDENTITY
 ## The flare_until this view has already flared the part for.
 var _flared_for := 0.0
+## The opening (MobState.opened_at) this view has already flared the part for.
+var _opened_for := -INF
 
 
 ## `figure`: a body to draw with instead of FigureModel.create (tests).
@@ -66,6 +71,8 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	_holding = holding
 	pos = s.pos
 	alive = s.alive
+	# A worker going about its round is not a threat to hush the notebook for.
+	hostile = bool(s.row.get("hostile", true)) and not (s.indifferent() and not s.roused())
 	var ground := _world.height_at(s.pos)
 	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
@@ -82,6 +89,13 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	if flare:
 		_flared_for = s.flare_until
 		model.flare_part()
+	# Its bite spent and missed: the working part flares once, while it is still
+	# lit and the body is in its strike, so the opening is seen and not only timed.
+	var opened := s.alive and s.opened_at != _opened_for and now_ms - s.opened_at < OPEN_FLARE_MS and lit
+	if opened:
+		_opened_for = s.opened_at
+		model.flare_part()
+		flare = true
 	if delta > 0.0:
 		model.animate(delta, s.speed)
 	elif flare:
@@ -106,6 +120,12 @@ func _pose(now_ms: float) -> StringName:
 		return &"strike"
 	if s.part_dark(now_ms):
 		return &"hurt"
+	if s.machine and s.spent(now_ms):
+		# Winding back after a bite it missed: powered down, not on guard.
+		return &"stand"
+	if s.crowded_since >= 0.0 or now_ms < s.glance_until:
+		# A worker looking up at someone, or at someone in its way.
+		return &"alert"
 	match s.mood:
 		MobState.ALERTED:
 			return &"alert"

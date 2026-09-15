@@ -15,6 +15,8 @@ const ERRAND_CLOSE_MS := 3000
 const ERRAND_REST_MS := 4000
 ## A run that covers less than this share of its expected distance hit something.
 const BLOCKED_SHARE := 0.35
+## Radians off its facing a machine's close bite may be thrown at.
+const FACING_BITE := 0.6
 
 
 static func think(m: MobState, sim: FightSim) -> void:
@@ -82,6 +84,11 @@ static func strike_range(m: MobState, sim: FightSim) -> float:
 
 
 static func _idle(m: MobState, sim: FightSim) -> void:
+	if m.machine and (m.crowded_since >= 0.0 or sim.now < m.glance_until):
+		# Something in its way, or something it looked up at: it stands and faces it.
+		m.want = Vector2.ZERO
+		m.aim = (sim.hero.pos - m.pos).angle()
+		return
 	if m.machine:
 		if m.line_a.distance_squared_to(m.line_b) < 0.01:
 			m.want = Vector2.ZERO
@@ -164,6 +171,12 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 		m.aim = to.angle()
 		return
 	if not m.charging:
+		if m.machine and m.locked_out(now):
+			# Spent after a bite: no new run until the drive has wound back. It stands
+			# and grinds round (slowly, FightSim), and whatever side it bit with is open.
+			m.want = Vector2.ZERO
+			m.aim = to.angle()
+			return
 		var off := wrapf(to.angle() - m.facing, -PI, PI)
 		if absf(off) > 0.6:
 			# Not yet round: keep turning.
@@ -206,13 +219,21 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 	var skin := m.radius + hero.radius
 	var strike := strike_range(m, sim)
 	m.aim = to.angle()
+	if m.machine and m.spent(now):
+		# Overrun and winding back (FightSim carries it on through the recovery):
+		# it neither presses nor circles until the bite's cooldown is over.
+		m.want = Vector2.ZERO
+		return
 	if d > maxf(1.9 * skin, strike) + 0.8:
 		_seek(m, sim, hero.pos, m.quick)
 		return
 	var cyc := fposmod(now + m.phase_ms, LUNGE_CYCLE_MS)
 	if cyc < LUNGE_PRESS_MS:
 		m.want = dir * m.quick if d > skin * 0.95 else Vector2.ZERO
-		if d <= strike and can_bite(m, now):
+		# Only a bite it faces: a machine turning slowly with the player at its back
+		# does not snap at the air in front of it.
+		var off := absf(wrapf(to.angle() - m.facing, -PI, PI))
+		if d <= strike and (off < FACING_BITE or not m.machine) and can_bite(m, now):
 			bite(m, sim)
 	else:
 		var side := 1.0 if m.id % 2 == 0 else -1.0

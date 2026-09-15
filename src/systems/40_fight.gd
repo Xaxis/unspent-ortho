@@ -213,8 +213,22 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"swing", player.position)
 				if b != null:
 					player.model.play_action(&"swing", b.committed() / 1000.0)
-				if e.get("dulled", false):
-					Events.message.emit(FightRules.DULL_LINE)
+			&"dulled":
+				Events.message.emit(FightRules.DULL_LINE)
+			&"opened":
+				# Its bite went past: the drive lets go audibly and the part catches the
+				# light, so the window to strike is heard and seen, not only timed.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"loose", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.55)
+			&"crowded":
+				# A worker stopped by someone standing in its way: it says so before it acts.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"alert", _at3(m.pos))
+			&"disturbed":
+				var m: MobState = e.mob
+				Events.sfx.emit(&"second_act", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.7)
 			&"whiff":
 				Events.sfx.emit(&"whiff", player.position)
 			&"dodge":

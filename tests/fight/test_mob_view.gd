@@ -97,6 +97,33 @@ func test_the_part_goes_dark_only_after_the_flare_has_shown() -> void:
 		near(float(relit.at) - float(dark.at), FightRules.PART_DARK_MS, FightRules.SLICE_MS + 0.1, "dark for its time")
 
 
+func test_a_spent_bite_flares_the_part_once_while_it_is_lit() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 40.5))
+	var m := F.still(sim, &"runner", Vector2(20.5, 20.5), 0.0)
+	var fig := Recorder.new()
+	var mob := Mob.new()
+	mob.setup(m, sim.world, null, fig)
+	m.start_blow(m.bite, sim.now)
+	var opened_at := -1.0
+	for i in 160:
+		sim.slices(1)
+		fig.now = sim.now
+		if opened_at < 0.0 and F.count(sim.drain(), &"opened") > 0:
+			opened_at = sim.now
+		mob.sync_view(FightRules.SLICE_MS / 1000.0, sim.now)
+	check(opened_at > 0.0, "the bite went spent")
+	var flares := fig.calls.filter(func(c: Dictionary) -> bool: return c.call == &"flare_part")
+	eq(flares.size(), 1, "one flare for one opening")
+	if flares.size() == 1:
+		eq(flares[0].lit, true, "on a lit part")
+		check(flares[0].pose != &"hurt", "not in the hurt pose (%s)" % flares[0].pose)
+		lt(absf(float(flares[0].at) - opened_at), FightRules.SLICE_MS * 2.0 + 0.1, "as it opens")
+	check(not fig.first(&"set_pose", &"stand").is_empty(), "and it stands spent")
+	fig.get_parent().remove_child(fig)
+	mob.free()
+	fig.free()
+
+
 func test_a_creature_has_no_flare_and_is_hurt_at_once() -> void:
 	var sim := F.make_sim()
 	var at := Vector2(30.5, 20.5)

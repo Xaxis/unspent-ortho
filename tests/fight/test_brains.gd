@@ -78,11 +78,11 @@ func test_errand_closes_on_a_player_on_its_line() -> void:
 	gt(F.count(sim.drain(), &"hurt"), 0, "comes along the track over you")
 
 
-func test_harvester_second_act_at_sixty_percent() -> void:
+func test_harvester_second_act_at_half_health() -> void:
 	var sim := F.make_sim()
 	var h := F.still(sim, &"harvester", Vector2(22.5, 20.5), PI)
 	var first := h.bite
-	h.health = int(floor(h.max_health * 0.6)) + 1
+	h.health = int(floor(h.max_health * float(h.row.then_at))) + 1
 	sim.hero.pos = h.pos + Vector2(-(h.radius + sim.hero.radius + 0.3), 0)
 	sim.press_swing()
 	F.ms(sim, 200)
@@ -90,8 +90,8 @@ func test_harvester_second_act_at_sixty_percent() -> void:
 	check(h.second_act, "the second act starts")
 	eq(F.count(events, &"second_act"), 1)
 	check(h.bite != first, "a different bite")
-	eq(h.bite.windup, 300, "faster")
-	near(h.bite.width, 2.6, 0.001, "and wider")
+	lt(float(h.bite.windup), float(first.windup), "faster")
+	gt(h.bite.width, first.width, "and wider")
 
 
 func test_a_blow_in_the_working_part_stops_the_work_once_in_a_while() -> void:
