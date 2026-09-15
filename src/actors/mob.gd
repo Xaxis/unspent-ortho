@@ -24,6 +24,9 @@ var _was_lit := true
 var _placeholder := false
 var _holding := false
 var _flashing := false
+## The lean kept as a quaternion: slerping the node's basis frame after frame
+## drifts it off orthonormal, which the engine then refuses to read back.
+var _tilt := Quaternion.IDENTITY
 
 
 func setup(s: MobState, world: WorldData, base_material: Material) -> void:
@@ -136,7 +139,8 @@ func _lean(now_ms: float, delta: float) -> void:
 	pivot.position = pivot.position.lerp(fwd * target_push + Vector3(0, target_rise, 0), rate)
 	# Tilt about the body's own right axis: positive leans the front down.
 	var right := Vector3(-sin(s.facing), 0.0, cos(s.facing))
-	pivot.basis = pivot.basis.slerp(Basis(right, -target_tilt), rate)
+	_tilt = _tilt.slerp(Quaternion(right, -target_tilt), rate).normalized()
+	pivot.quaternion = _tilt
 
 
 func flash(seconds: float = 0.06) -> void:

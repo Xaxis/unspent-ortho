@@ -3,8 +3,12 @@ extends TestCase
 ## put on the coast gets a Mob node that keeps the contract, and a blow thrown
 ## through the running game reaches it.
 
+const ErrorLog := preload("res://tests/fight/error_log.gd")
+
 
 func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
+	var errors := ErrorLog.new()
+	OS.add_logger(errors)
 	var o := BootOptions.parse(PackedStringArray(["--seed=4", "--size=128", "--spawn=dog"]))
 	var game := Game.new()
 	tree.root.add_child(game)
@@ -55,3 +59,5 @@ func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
 	check(lines.has(Outcomes.DOWNED_LINE), "and was told so, plainly")
 	game.queue_free()
 	await frames(1)
+	OS.remove_logger(errors)
+	eq(errors.errors(), PackedStringArray(), "the run logged no engine errors")
