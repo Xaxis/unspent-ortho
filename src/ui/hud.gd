@@ -288,7 +288,7 @@ func _draw_wrist(ci: Control) -> void:
 	if _charge_alpha > 0.0:
 		var k := UiDraw.stepped(_charge_alpha)
 		var text := "%d" % charges
-		var cw := Rect2i(win.end.x + 6, win.position.y, 13 + UiFont.width(text) + 4, 11)
+		var cw := Rect2i(win.end.x + 6, win.position.y, 13 + UiFont.width(text) + 8, 11)
 		if k >= 1.0:
 			clip(ci, cw, false)
 			_charge_glyph(ci, Vector2i(cw.position.x + 2, cw.position.y + 2), UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
@@ -305,7 +305,7 @@ static func _charge_glyph(ci: CanvasItem, at: Vector2i, col: Color) -> void:
 
 
 func _draw_clock(ci: Control) -> void:
-	var w := UiFont.width(clock_text) + 22
+	var w := UiFont.width(clock_text) + 24
 	var win := Rect2i(640 - MARGIN - w, MARGIN, w, 11)
 	clip(ci, win, false)
 	UiSlate.cell(ci, Vector2i(win.position.x + 3, win.position.y + 2), power)
@@ -335,17 +335,17 @@ func _draw_clock(ci: Control) -> void:
 ## A felt pressure: its glyph on a scrap of glass, a meter under it filling
 ## with how hard it presses.
 func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float, a: float) -> void:
+	# Fading, the whole tile steps in and out together (its glass holds the glyph).
 	var k := UiDraw.stepped(a)
-	if k >= 1.0:
-		var r := Rect2i(at, GAUGE)
-		UiDraw.rect(ci, r.grow(1), UiTheme.RIM)
-		UiDraw.rect(ci, r, UiTheme.GLASS)
-		UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": col})
-		var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
-		UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), UiTheme.GHOST)
-		UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), col)
-	else:
-		UiDraw.sprite_rimmed_faded(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": col}, UiTheme.RIM, k)
+	if k <= 0.0:
+		return
+	var r := Rect2i(at, GAUGE)
+	UiDraw.rect(ci, r.grow(1), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, r, Color(UiTheme.GLASS, k))
+	UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": Color(col, k)})
+	var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
+	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), Color(UiTheme.GHOST, k))
+	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), Color(col, k))
 
 
 func _draw_held(ci: Control) -> void:

@@ -240,6 +240,15 @@ func _process(delta: float) -> void:
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots).
 		var parts := _pending_screen.split(":")
+		if parts[0] == "lowpower":
+			# Shot staging: the lamp nearly dry and no charge carried, then NAME after it.
+			SurvivalState.of(game).lamp_oil = UiRules.POWER_LAMP_MINUTES * 0.08
+			game.inventory.remove(&"oil", game.inventory.count(&"oil"))
+			game.inventory.remove(&"wick", game.inventory.count(&"wick"))
+			_step_power()
+			parts.remove_at(0)
+			if parts.is_empty():
+				parts.append("")
 		# Gear, reads and saves live under home, as a player reaches them.
 		if StringName(parts[0]) in SlateFeeds.APPS:
 			open_screen(&"pause")

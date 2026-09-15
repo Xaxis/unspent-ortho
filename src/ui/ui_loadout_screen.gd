@@ -49,7 +49,7 @@ func hazards() -> Array[StringName]:
 	for h: Variant in (_feed.get("resist", {}) as Dictionary):
 		if not out.has(StringName(h)):
 			out.append(StringName(h))
-	out.sort()
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
 	return out
 
 
