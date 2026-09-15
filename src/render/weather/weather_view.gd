@@ -46,6 +46,7 @@ var _bolt_hold := false
 ## A strike shows on these frames after it lands: on, on, off, on, gone.
 const BOLT_FRAMES: Array[bool] = [true, true, false, true]
 var _mats: Dictionary = {} # CPUParticles3D -> ShaderMaterial
+var _masks: Dictionary = {} # CPUParticles3D -> ground_mask it was made with
 
 
 func setup(cam: CameraRig) -> void:
@@ -54,22 +55,22 @@ func setup(cam: CameraRig) -> void:
 	var mid := Vector3(0, TOP * 0.5, 0)
 	# Rain: mostly ink strokes, a third pale ones, so it reads on turf and on sand.
 	rain = _emitter("rain", 3400, 0.62, air, mid, false)
-	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 1.0})
+	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 1.0, "ground_mask": 3})
 	splash = _emitter("splash", 260, 0.16, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
-	_mat(splash, Mode.TICK, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.3, "columns": 0.75})
+	_mat(splash, Mode.TICK, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.3, "columns": 0.75, "ground_mask": 3})
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
-	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4})
+	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4, "ground_mask": 3})
 	# Snow: paper flecks, each with a blue shade pixel under it so a fleck still
 	# reads over lying snow.
 	snow = _emitter("snow", 5000, 8.0, air, mid, true)
-	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(1, 2), "wander": 2.0, "underline": 1.0})
+	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(1, 2), "wander": 2.0, "underline": 1.0, "ground_mask": 1})
 	flurry = _emitter("flurry", 700, 6.0, air, mid, true)
-	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(2, 2), "wander": 3.0, "underline": 1.0})
+	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(2, 2), "wander": 3.0, "underline": 1.0, "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
-	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0})
+	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "ground_mask": 2})
 	ember = _emitter("ember", 70, 5.0, Vector3(15.0, 1.5, 13.0), Vector3(0, 0.8, 0), true)
-	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0})
+	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0, "ground_mask": 2})
 	drift = _emitter("drift", 700, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
 	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.3, "length_px": Vector2(4, 8)})
 	# Heat: wavering lines, drawn darker than pale stone and paler than ash so
@@ -144,6 +145,7 @@ func _mat(p: CPUParticles3D, mode: Mode, params: Dictionary) -> void:
 		m.set_shader_parameter(k, params[k])
 	p.material_override = m
 	_mats[p] = m
+	_masks[p] = int(params.get("ground_mask", 0))
 
 
 ## look: WeatherLook.compose() output; wind -1..1; focus: the camera's target.
@@ -206,6 +208,8 @@ func _drive(p: CPUParticles3D, amount: float, dir: Vector3, speed: float, params
 	# Density is not linear in what the eye reads: a light rain wants more than
 	# a tenth of the drops of a downpour.
 	m.set_shader_parameter("density", sqrt(clampf(amount, 0.0, 1.0)))
+	# Forced weather (shots) falls wherever it is asked for.
+	m.set_shader_parameter("ground_mask", 0 if Weather.forced_kind != &"" else int(_masks[p]))
 	for k: String in params:
 		m.set_shader_parameter(k, params[k])
 	if not p.emitting:

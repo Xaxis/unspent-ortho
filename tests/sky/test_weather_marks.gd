@@ -59,3 +59,21 @@ func test_lamp_pools_pack_one_per_column_for_the_ink() -> void:
 		many.append(Vector4(i, 0, 0, 1))
 	var q := SkyLight.lamp_columns(many)
 	eq(q[1].w, Vector4(7, 0, 0, 1), "eighth pool is the last")
+
+
+func test_marks_fall_only_over_the_countries_that_make_them_unless_forced() -> void:
+	Weather.unforce()
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var look := WeatherLook.compose([{"kind": &"ash", "strength": 1.0, "weight": 0.5}, {"kind": &"snow", "strength": 1.0, "weight": 0.25}, {"kind": &"rain", "strength": 1.0, "weight": 0.25}])
+	v.update(look, 0.2, Vector3.ZERO, 0.016)
+	eq(int((v.ash.material_override as ShaderMaterial).get_shader_parameter("ground_mask")), 2, "ash over ash country")
+	eq(int((v.snow.material_override as ShaderMaterial).get_shader_parameter("ground_mask")), 1, "snow over snow country")
+	eq(int((v.rain.material_override as ShaderMaterial).get_shader_parameter("ground_mask")), 3, "rain over country that gets wet")
+	Weather.force(&"ash", 1.0)
+	v.update(look, 0.2, Vector3.ZERO, 0.016)
+	eq(int((v.ash.material_override as ShaderMaterial).get_shader_parameter("ground_mask")), 0, "forced weather falls anywhere")
+	Weather.unforce()
+	v.queue_free()
+	await frames(1)

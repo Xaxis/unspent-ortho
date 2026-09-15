@@ -38,6 +38,11 @@ uniform float flicker_rate = 12.0;
 uniform float underline = 0.0;
 // Flicks lead with their head: +1 moving screen-right, -1 moving left.
 uniform float facing = 1.0;
+// Which sky_ground channel says this weather belongs over the land below the
+// mark: 0 anywhere, 1 snow country, 2 ash country, 3 wet country. Marks over
+// other countries are dropped, so ash never falls over the snowfield beside
+// the burning, nor snow over the clinker.
+uniform int ground_mask = 0;
 
 varying vec2 v_px;
 varying vec3 v_col;
@@ -82,6 +87,11 @@ void vertex() {
 	// Thin the marks: by density, by the lifetime fade (a random share drops out
 	// as it fades, so marks never go translucent), and into columns.
 	float keep = density * step(fract(rnd * 53.1), alive);
+	if (ground_mask > 0) {
+		vec4 g = textureLod(sky_ground, origin.xz * sky_view.z, 0.0);
+		float m = ground_mask == 1 ? g.r : (ground_mask == 2 ? g.g : g.b);
+		keep *= smoothstep(0.15, 0.85, m);
+	}
 	if (columns > 0.0) {
 		// Curtains: bands a few tiles wide across the screen, bending a little
 		// with depth so they read as squalls and not stripes, sweeping over the
