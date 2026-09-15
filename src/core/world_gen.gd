@@ -7,15 +7,15 @@ class_name WorldGen
 ##   1. shape      GenShape      one island: peninsulas, bays, sea lochs, islets, sea on every edge
 ##   2. layout     GenCountries  countries as a journey north from the south coast, balanced shares
 ##   3. relief     GenRelief     float elevation per country; beaches, dunes, sea cliffs, stacks, caldera
-##   4. tiles      GenCountries  country, country2 and blend per tile (ecotones), on the worker pool
+##   4. tiles      GenCountries  country per tile, shares rebalanced, enclaves folded in, ecotones
 ##   5. rivers     GenWater      drainage from high ground to the sea, beds and valleys
 ##   6. terrace    GenRelief     integer levels
-##   7. still      GenWater      blackwater pools, frozen tarns
-##   8. settle     GenSettle     villages (levelled), roads (graded, bridged), spawn
+##   7. still      GenWater      round blackwater pools, frozen tarns
+##   8. settle     GenSettle     villages (middles levelled), roads (graded, bridged), spawn
 ##   9. access     GenAccess     scree breaches so every region can be walked to
-##  10. sites      GenScatter    tips, circles, wrecks, ruins, summits, falls
-##  11. surface    GenSurface    grounds from world-position fields and the lie of the land
-##  12. props      GenScatter    villages, landmarks, the machines' grid, scatter
+##  10. sites      GenScatter    tips, circles, ruins, fumaroles, summits, falls
+##  11. surface    GenSurface    grounds as washes from walk-scale fields; GenTidy takes out specks and stairs
+##  12. props      GenScatter    wrecks, villages, the spawn's first frame, landmarks, the grid, scatter
 
 const DEFAULT_SIZE := Tuning.WORLD_SIZE
 const MAX_LEVEL := GenRelief.MAX_LEVEL

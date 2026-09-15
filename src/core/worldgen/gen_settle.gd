@@ -564,6 +564,128 @@ static func spawn(c: GenContext) -> void:
 	w.spawn_facing = best_facing
 
 
+## Once the grounds and houses exist, move the waking place to the spot beside
+## the spawn village with the best first frame: some of the village in view, a
+## road leading off, water or a copse, several grounds and a terrace or two,
+## and not one dark ground filling the page. Keeps clear of every house.
+static func frame_spawn(c: GenContext) -> void:
+	var w := c.w
+	if w.villages.is_empty():
+		return
+	var v: Dictionary = w.villages[0]
+	var vp: Vector2 = v.pos
+	var lv: int = v.level
+	var houses: Array[Vector2] = []
+	for prop in w.props:
+		if prop.kind == PropKind.HOUSE:
+			houses.append(prop.pos)
+	var best := w.spawn
+	var best_score := _frame_score(c, w.spawn, houses) + 0.5
+	for ang_i in 24:
+		var ang := ang_i / 24.0 * TAU
+		for rad: float in [9.5, 11.0, 12.5, 14.0, 15.5]:
+			var p := vp + Vector2.from_angle(ang) * rad
+			var tx := floori(p.x)
+			var ty := floori(p.y)
+			if not _dry_flat(c, tx, ty, lv) or w.country_at(tx, ty) != Country.COAST:
+				continue
+			var q := Vector2(tx + 0.5, ty + 0.5)
+			var crowded := false
+			for h in houses:
+				if maxf(absf(h.x - q.x), absf(h.y - q.y)) < 5.5:
+					crowded = true
+			if crowded:
+				continue
+			var sc := _frame_score(c, q, houses)
+			if sc > best_score:
+				best_score = sc
+				best = q
+	if best == w.spawn:
+		return
+	w.spawn = best
+	var best_facing := w.spawn_facing
+	var best_open := -1e9
+	for face_i in 8:
+		var face := face_i / 8.0 * TAU
+		var open := _openness(c, best, face)
+		var away := Vector2.from_angle(face).dot((best - vp).normalized())
+		var sc := open + away * 6.0 - Vector2.from_angle(face).y * 5.0
+		if sc > best_open:
+			best_open = sc
+			best_facing = face
+	w.spawn_facing = best_facing
+
+
+## How good a first frame the ground round p makes (see frame_spawn).
+static func _frame_score(c: GenContext, p: Vector2, houses: Array[Vector2]) -> float:
+	var w := c.w
+	var size := c.size
+	var counts := PackedInt32Array()
+	counts.resize(Ground.COUNT)
+	var field := 0
+	var road := 0
+	var wet := 0
+	var copse := 0
+	var other_level := 0
+	var total := 0
+	var cx := floori(p.x)
+	var cy := floori(p.y)
+	var l0 := w.level_at(cx, cy)
+	for dy in range(-10, 11):
+		for dx in range(-10, 11):
+			if dx * dx + dy * dy > 100:
+				continue
+			var x := cx + dx
+			var y := cy + dy
+			if not w.in_bounds(x, y):
+				continue
+			var i := y * size + x
+			total += 1
+			var g := w.ground[i]
+			if w.level[i] <= 0 or Ground.is_water(g):
+				wet += 1
+				continue
+			if g == Ground.ROAD:
+				road += 1
+				continue
+			counts[g] += 1
+			field += 1
+			if w.level[i] != l0:
+				other_level += 1
+			if g == Ground.GRASS and c.forest[i] > 0.25:
+				copse += 1
+	var score := 0.0
+	var top := 0
+	for g in Ground.COUNT:
+		if counts[g] >= 8:
+			score += 1.5
+		top = maxi(top, counts[g])
+	score = minf(score, 7.5)
+	var f := maxf(1.0, field)
+	if top / f > 0.6:
+		score -= (top / f - 0.6) * 10.0
+	var dark := (counts[Ground.HEATH] + counts[Ground.PEAT] + counts[Ground.MUD]) / f
+	if dark > 0.3:
+		score -= (dark - 0.3) * 12.0
+	if road >= 3:
+		score += 2.0
+	var wet_share := float(wet) / maxf(1.0, total)
+	if wet >= 6 and wet_share < 0.35:
+		score += 2.0
+	if copse >= 10:
+		score += 1.5
+	var lv_share := float(other_level) / f
+	if lv_share > 0.1 and lv_share < 0.5:
+		score += 1.0
+	var seen := 0
+	for h in houses:
+		var d := h.distance_to(p)
+		if d > 5.5 and d < 11.0:
+			seen += 1
+	score += minf(3.0, seen) * 1.2
+	return score
+
+
 static func _dry_flat(c: GenContext, tx: int, ty: int, lv: int) -> bool:
 	var w := c.w
 	if tx < 2 or ty < 2 or tx >= c.size - 2 or ty >= c.size - 2:

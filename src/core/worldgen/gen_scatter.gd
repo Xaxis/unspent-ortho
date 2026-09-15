@@ -212,6 +212,7 @@ static func props(c: GenContext) -> void:
 	occ.resize(c.n)
 	_wrecks(c)
 	_villages(c, occ)
+	GenSettle.frame_spawn(c)
 	_landmarks(c, occ)
 	c.mark(&"props.places")
 	_lines(c, occ)
@@ -445,6 +446,8 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 				var q := (vp + Vector2.from_angle(a / 16.0 * TAU + rad) * rad).floor() + Vector2(0.5, 0.5)
 				var qi := floori(q.y) * c.size + floori(q.x)
 				if want == Ground.SAND and (c.sea_steps[qi] < 3 or w.ground[qi - 1] != want or w.ground[qi + 1] != want):
+					continue
+				if (q - w.spawn).length() < 7.0:
 					continue
 				if w.ground_at(floori(q.x), floori(q.y)) == want and _free(c, occ, q, 1.0):
 					_add(c, PropKind.KILN, q)
