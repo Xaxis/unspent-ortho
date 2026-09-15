@@ -141,6 +141,9 @@ lead with why, in short sentences.
 | Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the notebook hides hints only near hostiles) |
 | Weather | `src/core/weather.gd` | `Weather.at(seed, minutes)`, `Weather.at_place(seed, minutes, country)` -> `{kind, strength, wind}`, `Weather.settled(...)`; pure. Survival (wetness), mobs, landscape sway and audio call it directly. |
 | Boot options | `src/boot_options.gd` | packages may ADD options; never rename existing ones; keep the header list complete |
+| Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup; JSON-safe values |
+| Landscape types | `src/core/biome/` | `BiomeRegistry.at(world, pos) -> BiomeDef` (hazards, roster, sentinel, hatch, sound); never branch on Country in new code |
+| Stealth and gear on the body | `src/core/body.gd` | `crouched`, `spoof_until`, `resist`, `pressure` |
 | Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
 | Palette | `src/render/palette.gd` | MACHINE and FOUND ramps are cold, low-chroma violets with a compressed top: the amber `LENS` is the only saturated thing on a machine. `PLATE` sits near slate so a patched roof never reads as a live machine. |
 

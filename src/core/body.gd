@@ -36,6 +36,16 @@ var lamp_lit := false
 ## Times a machine has filed the player (manipulate): machine sight grows with it.
 var filed := 0
 
+## --- M2 contracts (disposition, hazards, gear) ---
+## Crouched: slower, quieter, lower (disposition/stealth owns).
+var crouched := false
+## World minute until which machines misread the player as one of theirs (hazards/gear ability writes, disposition reads).
+var spoof_until := 0.0
+## Hazard id -> resistance 0..1 from worn gear and modules (gear writes, hazards reads).
+var resist: Dictionary = {}
+## Hazard id -> current felt pressure 0..1 (hazards writes; HUD and audio read).
+var pressure: Dictionary = {}
+
 ## Busy until this real time (working, eating): movement is refused.
 var busy_until := 0.0
 
