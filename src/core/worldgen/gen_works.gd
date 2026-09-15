@@ -116,6 +116,9 @@ class Lay:
 	var nrm: Vector2
 	## The type being laid (empty while laying what every type shares).
 	var id: StringName = &""
+	## Lay small things that can be walked through on any free tile, however
+	## close to others (the crowded ground round the spawn).
+	var tight := false
 	var _ids: Array[StringName] = []
 	var _type: PackedByteArray
 
@@ -348,7 +351,8 @@ static func _about(L: Lay, kind: int, centre: Vector2, count: int, r0: float, r1
 		if placed >= count:
 			break
 		var q := centre + Vector2.from_angle(L.rng.randf() * TAU) * L.rng.randf_range(r0, r1)
-		if _put(L, kind, q, L.rng.randf() * TAU, level, 0.3) != null:
+		var clear := 0.0 if L.tight and PropKind.SOLID[kind] <= 0.0 else 0.3
+		if _put(L, kind, q, L.rng.randf() * TAU, level, clear) != null:
 			placed += 1
 	return placed
 
@@ -1180,22 +1184,24 @@ static func _spawn_view(L: Lay) -> void:
 	var table: Array = evidence(L.type_at(floori(sp.x), floori(sp.y))).vignettes
 	var rng := Rng.make(L.c.s, 0x5B4)
 	var placed := 0
+	L.tight = true
 	for attempt in 200:
-		if placed >= 4:
+		if placed >= 5:
 			break
 		var a := rng.randf() * TAU
 		var at := sp + Vector2.from_angle(a) * rng.randf_range(5.0, 13.0)
 		var turn := rng.randf()
 		var pick := _pick(table, rng.randf())
-		if not w.in_bounds(floori(at.x), floori(at.y)) or _near_road(L.c, at, 1) or _in_village(w, at, 1.5):
+		if not w.in_bounds(floori(at.x), floori(at.y)) or _near_road(L.c, at, 1) or _in_village(w, at, 0.9):
 			continue
 		# Ahead, only what can be walked through (_put keeps solids off the first steps).
 		if Vector2.from_angle(a).dot(face) > 0.7 and (pick == &"wreck" or pick == &"barricade" or pick == &"sunk_wreck"):
 			pick = &"debris_field"
 		if placed == 0 or pick == &"shelter" or pick == &"stump_rows" or pick == &"survey_posts" or pick == &"snow_fence":
-			pick = [&"grave_cluster", &"debris_field", &"wreck_parts", &"fence_corner"][placed]
+			pick = [&"grave_cluster", &"debris_field", &"wreck_parts", &"fence_corner", &"debris_field"][placed]
 		if _compose(L, pick, at, turn, a + PI) > 0:
 			placed += 1
+	L.tight = false
 
 
 # --- the walk between places --------------------------------------------------------
@@ -1301,7 +1307,7 @@ static func _compose(L: Lay, name: StringName, at: Vector2, turn: float, angle: 
 			for g in count:
 				var a := angle + PI + (g - (count - 1) * 0.5) * 0.55
 				var q := at + Vector2.from_angle(a) * (1.7 + rng.randf() * 0.5)
-				if _put(L, PropKind.GRAVE, q, a + PI + rng.randf_range(-0.2, 0.2), -99, 0.25) != null:
+				if _put(L, PropKind.GRAVE, q, a + PI + rng.randf_range(-0.2, 0.2), -99, 0.0 if L.tight else 0.25) != null:
 					n += 1
 		&"tipped_signs":
 			if _put(L, PropKind.SIGN, at, angle, -99, 0.2) != null:

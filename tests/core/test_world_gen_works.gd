@@ -128,6 +128,16 @@ func test_places_worth_walking_to_are_recorded() -> void:
 				break
 
 
+func test_the_first_frame_shows_what_was_lost() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var n := 0
+		for p in w.props:
+			if p.kind >= FIRST and absf(p.pos.x - w.spawn.x) < 16.0 and absf(p.pos.y - w.spawn.y) < 12.0:
+				n += 1
+		gt(n, 10, "seed %d: evidence round the spawn" % s)
+
+
 func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
