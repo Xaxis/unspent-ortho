@@ -25,7 +25,8 @@ var intent_move := Vector2.ZERO
 var intent_run := false
 var _z := 0.0
 var _mat: ShaderMaterial
-var _flash_left := 0.0
+## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
+var _flash_until := 0
 var _shudder_left := 0.0
 var _arc: MeshInstance3D
 var _arc_blow: Blow
@@ -106,7 +107,7 @@ func draw_swing(now_ms: float) -> void:
 
 ## A hit landed on this body: a short bright flash.
 func flash(seconds: float = 0.07) -> void:
-	_flash_left = seconds
+	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
 ## Something has hold: the figure shudders against it.
@@ -121,16 +122,20 @@ func _sync(delta: float) -> void:
 	if model:
 		model.rotation.y = -facing
 		model.position = Vector3.ZERO
-		if _shudder_left > 0.0 or (hero != null and hero.held()):
+		var held := hero != null and hero.held()
+		# Held: pulled over toward the jaw, heels lifting.
+		model.rotation.z = lerpf(model.rotation.z, -0.28 if held else 0.0, 1.0 if delta == 0.0 else 1.0 - exp(-18.0 * delta))
+		if held:
+			model.position.y = 0.05
+		if _shudder_left > 0.0 or held:
 			var t := Time.get_ticks_msec() * 0.001
 			var k := 0.05 if _shudder_left > 0.0 else 0.02
-			model.position = Vector3(sin(t * 91.0) * k, 0.0, cos(t * 77.0) * k)
+			model.position += Vector3(sin(t * 91.0) * k, 0.0, cos(t * 77.0) * k)
 		_shudder_left = maxf(0.0, _shudder_left - delta)
 		if delta > 0.0:
 			model.animate(speed, delta)
 	if _mat != null:
-		_mat.set_shader_parameter(&"emission_strength", 0.9 if _flash_left > 0.0 else 0.0)
-		_flash_left = maxf(0.0, _flash_left - delta)
+		_mat.set_shader_parameter(&"emission_strength", 0.7 if Time.get_ticks_msec() < _flash_until else 0.0)
 
 
 ## Screen-relative input to world-space intent for a camera at yaw_deg.

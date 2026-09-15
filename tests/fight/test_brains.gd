@@ -94,6 +94,24 @@ func test_harvester_second_act_at_sixty_percent() -> void:
 	near(h.bite.width, 2.6, 0.001, "and wider")
 
 
+func test_a_blow_in_the_working_part_stops_the_work_once_in_a_while() -> void:
+	var sim := F.make_sim()
+	var h := F.still(sim, &"harvester", Vector2(23.5, 20.5), PI)
+	sim.hero.pos = h.pos + Vector2(-(h.radius + sim.hero.radius + 0.3), 0)
+	h.start_blow(h.bite, sim.now)
+	sim.press_swing()
+	F.ms(sim, 120)
+	check(h.stunned(sim.now), "stalled")
+	eq(h.blow, null, "its tell is lost")
+	var ready := h.stall_ready_at
+	near(ready - (sim.now - 120.0), float(FightRules.STALL_EVERY_MS), 130.0)
+	F.ms(sim, 500)
+	h.start_blow(h.bite, sim.now)
+	sim.press_swing()
+	F.ms(sim, 120)
+	check(h.blow != null, "a second blow inside the rhythm does not stop it")
+
+
 func test_watcher_that_sees_you_calls_the_others() -> void:
 	var w := F.flat_world(96)
 	var sim := F.make_sim(w, Vector2(40.5, 40.5))

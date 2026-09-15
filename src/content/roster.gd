@@ -35,7 +35,8 @@ class_name Roster
 ##   through: bool           moves through the player's body (charges, sweepers)
 ##   sight_only: bool        notices by eye alone
 
-const WET := ["water", "blackwater", "river", "mud", "peat", "moss", "marsh", "shallow", "tarn"]
+## Standing water and the mud at its edge: where a dredger may go (a bank of turf is the answer to one).
+const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
 ## The five countries that are not burning.
 const GREEN_COUNTRIES := ["coast", "moss", "pinewood", "snowfield", "bonelands"]
 
@@ -59,7 +60,7 @@ const DEFS := {
 	},
 	&"harvester": {
 		"model": &"harvester", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
-		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.0, "height": 1.2, "life": 90,
+		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 90,
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
 		"nerve": 100, "invuln": 500, "through": true,
 		"bite": {"swing": [560, 150, 340, 620], "reach": 1.4, "width": 2.2, "dmg": 4, "knock": 8.0, "knock_ms": 300},

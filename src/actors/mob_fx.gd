@@ -113,14 +113,15 @@ static func smear_mesh(reach: float, width: float, col: Color) -> ArrayMesh:
 	var r := reach
 	var spread := clampf(atan2(width * 0.5, maxf(0.3, r)) * 1.6, 0.6, 1.5)
 	var k := MeshKit.new()
-	var steps := 8
+	var steps := 9
 	for i in steps:
 		var a0 := lerpf(-spread, spread, float(i) / steps)
 		var a1 := lerpf(-spread, spread, float(i + 1) / steps)
 		var f := float(i + 1) / steps
-		var inner := r * lerpf(0.75, 0.45, f)
-		var thick := 0.02 + 0.05 * f
-		var c := col if i >= steps - 3 else col.darkened(0.35 * (1.0 - f))
+		# A crescent that thickens toward the end of the swing: a slash, not a fan.
+		var inner := r * lerpf(0.92, 0.7, f)
+		var thick := 0.015 + 0.03 * f
+		var c := col if i >= steps - 4 else col.darkened(0.4 * (1.0 - f))
 		var p0 := Vector3(cos(a0) * r, 0.0, sin(a0) * r)
 		var p1 := Vector3(cos(a1) * r, 0.0, sin(a1) * r)
 		var q0 := Vector3(cos(a0) * inner, 0.0, sin(a0) * inner)

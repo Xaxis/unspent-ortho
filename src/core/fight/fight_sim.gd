@@ -273,6 +273,7 @@ func _move_hero(dt: float) -> void:
 			var mouth := h.pos + Vector2.from_angle(h.facing) * (h.radius + hero.radius * 0.6)
 			var to := mouth - hero.pos
 			v = to.limit_length(1.5) * 3.0
+			hero.facing = (h.pos - hero.pos).angle()
 	elif hero.stunned(now):
 		v = Vector2.ZERO
 	elif since_dodge < FightRules.DODGE_MS:
@@ -315,7 +316,8 @@ func _move_mob(m: MobState, dt: float) -> void:
 		if m.approach != &"charge" and phase != &"":
 			match phase:
 				&"windup": v *= 0.2
-				&"active": v = Vector2.from_angle(m.facing) * m.quick * 1.4
+				# A small follow-through: enough to see, never enough to outreach its box.
+				&"active": v = Vector2.from_angle(m.facing) * m.quick * 0.5
 				&"recovery": v *= 0.3
 	v += m.throw_velocity(now)
 	# Hostiles keep a tile apart from each other; never from the player.
@@ -403,13 +405,13 @@ func _land(t0: float, t1: float) -> void:
 			continue
 		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
-		if hero.invulnerable(now):
-			# Slipping: not struck, so the rest of the live window can still land.
-			if not m.struck.has(&"evaded"):
-				m.struck[&"evaded"] = true
-				emit(&"evaded", {"by": m, "dodge": FightRules.dodge_invulnerable(now - hero.dodge_at)})
-			continue
 		m.struck[&"hero"] = true
+		if hero.invulnerable(now):
+			# Slipped: a blow met first inside the window is spent. The source let the
+			# rest of the live window land, which made a dodge read right into a hit
+			# whenever the box outlasted 90 ms; the timing is the skill, not the luck.
+			emit(&"evaded", {"by": m, "dodge": FightRules.dodge_invulnerable(now - hero.dodge_at)})
+			continue
 		if m.blow.grip > 0:
 			if hero.seize(m, m.blow.grip, now):
 				hero.blow = null
@@ -427,6 +429,15 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 	m.flare_until = now + 180.0
 	if m.row.get("stagger", false):
 		m.throw(m.pos - hero.pos, b.knock, b.knock_ms, now)
+		if m.blow_phase(now) == &"windup":
+			m.blow = null
+	elif m.machine and now >= m.stall_ready_at:
+		# A machine never flinches, but a blow in its working part stops the work:
+		# the light goes out, a tell in progress is lost, and it stands a moment.
+		# Once in a while only, so it is an opening and not a lock.
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		m.charging = false
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
 	emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})

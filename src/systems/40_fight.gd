@@ -166,6 +166,9 @@ func _handle(events: Array[Dictionary]) -> void:
 				game.camera.shake(0.08, 0.14)
 				_stop(0.04)
 				MobFx.ring(_fx_parent(), _at3(hero.pos), _dust_colour(hero.pos), 0.9, 0.35)
+				if by != null:
+					MobFx.ring(_fx_parent(), _at3(by.pos), _dust_colour(by.pos), by.radius * 2.2, 0.5)
+					MobFx.puff(_fx_parent(), _at3(by.pos.lerp(hero.pos, 0.6)), hero.pos - by.pos, _dust_colour(by.pos), 5, 0.16, by.id)
 				if by != null and by.node is Mob:
 					(by.node as Mob).flash(0.05)
 			&"pull":
@@ -194,6 +197,10 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"alerted":
 				var m: MobState = e.mob
 				Events.sfx.emit(StringName("alert_" + String(m.row.get("model", m.kind))), _at3(m.pos))
+				if m.row.get("sight_only", false):
+					# The lens catches the light as it finds you: the only warning it gives by eye.
+					var head := _at3(m.pos, float(m.row.get("height", 1.0)) * 0.92) + Vector3(cos(m.facing), 0, sin(m.facing)) * 0.2
+					MobFx.spark(_fx_parent(), head, [Palette.LENS[3], Palette.LENS[2]], 4, 0.3, m.id)
 			&"called":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"watcher_call", _at3(m.pos))
@@ -213,7 +220,10 @@ func _on_hit(e: Dictionary) -> void:
 	var m := target as MobState
 	var h: float = m.row.get("height", 1.0) if m != null else 1.0
 	var from_dir := (target.pos - attacker.pos).normalized()
-	var impact := _at3(target.pos - from_dir * target.radius * 0.8, h * 0.5)
+	# Where the blow met the body: the near edge of it, at the height of the blow.
+	var gap := attacker.pos.distance_to(target.pos)
+	var meet := attacker.pos + from_dir * clampf(gap - target.radius, attacker.radius, gap)
+	var impact := _at3(meet, clampf(h * 0.5, 0.35, 0.7))
 	Events.hit.emit(_node_of(attacker), _node_of(target), int(e.damage), bool(e.plate), _at3(at))
 	if e.plate:
 		Events.sfx.emit(&"hit_plate", impact)
@@ -226,7 +236,7 @@ func _on_hit(e: Dictionary) -> void:
 	var warm: Array[Color] = [Palette.LENS[3], Palette.LENS[2], Palette.LINEN[5]]
 	if m != null and not m.machine:
 		warm = [Palette.LINEN[5], Palette.FLESH[4], Palette.LINEN[4]]
-	MobFx.spark(_fx_parent(), impact, warm, 7, 0.34, int(sim.now))
+	MobFx.spark(_fx_parent(), impact, warm, 9, 0.5, int(sim.now))
 	MobFx.puff(_fx_parent(), _at3(target.pos), from_dir, _dust_colour(target.pos), 4, 0.17, int(sim.now) + 3)
 	if target.node is Mob:
 		var mob := target.node as Mob

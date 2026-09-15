@@ -74,6 +74,8 @@ var reported := false
 ## Part dark (hurt) until; part flared (a blow reached it) until. View reads.
 var dark_until := 0.0
 var flare_until := 0.0
+## A real hit may stall this machine again from this time.
+var stall_ready_at := 0.0
 ## Last time this body moved meaningfully (for the view's walk cycle).
 var speed := 0.0
 
@@ -108,10 +110,11 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	aim = facing
 	last_think_pos = at
 	# Charges turn badly (that is the whole answer to them); errands sweep slowly.
+	# Machines turn at one exact rate, slower than a dog: getting round one is possible.
 	match approach:
 		&"charge": turn_rate = 2.4
 		&"errand": turn_rate = 1.6
-		_: turn_rate = 9.0
+		_: turn_rate = 4.0 if machine else 9.0
 	var stretch: float = row.get("stretch", 0)
 	if stretch <= 0.0 and approach != &"errand" and machine and kind != &"cutter":
 		# Idle machines keep to a beat of their own: up the row and back.

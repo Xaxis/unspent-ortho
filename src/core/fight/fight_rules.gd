@@ -66,6 +66,10 @@ const MACHINE_LIFE_SCALE := 1.0 / 6.0
 ## Source i-frames (400-600 ms) outlast a knife's lockout, so every other good
 ## swing did nothing. Capped so a blow read right always lands.
 const MOB_IFRAMES_CAP_MS := 360
+## A blow that reaches a machine's working part stalls it this long (a tell in
+## progress is lost), at most once in STALL_EVERY_MS: hit, hit, then get out.
+const STALL_MS := 280
+const STALL_EVERY_MS := 1500
 ## World-layer speeds (pace, dash) were tiles/s for a player walking 5; ours walks 3.4.
 const SPEED_SCALE := 0.68
 

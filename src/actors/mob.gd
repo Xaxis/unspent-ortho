@@ -18,10 +18,12 @@ var model: FigureModel
 var pivot: Node3D
 var _mat: ShaderMaterial
 var _z := 0.0
-var _flash_left := 0.0
+## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
+var _flash_until := 0
 var _world: WorldData
 var _was_lit := true
 var _placeholder := false
+var _holding := false
 
 
 func setup(s: MobState, world: WorldData, base_material: Material) -> void:
@@ -50,8 +52,10 @@ func setup(s: MobState, world: WorldData, base_material: Material) -> void:
 
 
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).
-func sync_view(delta: float, now_ms: float) -> void:
+## `holding`: this body has hold of the player.
+func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	var s := state
+	_holding = holding
 	pos = s.pos
 	alive = s.alive
 	var ground := _world.height_at(s.pos)
@@ -69,14 +73,15 @@ func sync_view(delta: float, now_ms: float) -> void:
 	if delta > 0.0:
 		model.animate(delta, s.speed)
 	if _mat != null:
-		_mat.set_shader_parameter(&"emission_strength", 0.8 if _flash_left > 0.0 else 0.0)
-	_flash_left = maxf(0.0, _flash_left - delta)
+		_mat.set_shader_parameter(&"emission_strength", 0.45 if Time.get_ticks_msec() < _flash_until else 0.0)
 
 
 func _pose(now_ms: float) -> StringName:
 	var s := state
 	if not s.alive:
 		return &"dead"
+	if _holding:
+		return &"strike"
 	var phase := s.blow_phase(now_ms)
 	if phase == &"windup":
 		return &"windup"
@@ -103,7 +108,12 @@ func _lean(now_ms: float, delta: float) -> void:
 	var target_tilt := 0.0
 	var target_push := 0.0
 	var target_rise := 0.0
-	if s.alive and s.approach != &"errand" and s.blow != null:
+	if s.alive and _holding:
+		# Hauling: jaw down, bearing back against the pull.
+		var t := Time.get_ticks_msec() * 0.001
+		target_tilt = 0.12 + sin(t * 9.0) * 0.03
+		target_push = -0.05
+	elif s.alive and s.approach != &"errand" and s.blow != null:
 		var e := now_ms - s.blow_at
 		var b := s.blow
 		if e < b.windup:
@@ -130,7 +140,7 @@ func _lean(now_ms: float, delta: float) -> void:
 
 
 func flash(seconds: float = 0.06) -> void:
-	_flash_left = seconds
+	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
 func flare() -> void:

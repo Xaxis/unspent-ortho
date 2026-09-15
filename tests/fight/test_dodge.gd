@@ -71,9 +71,15 @@ func test_a_blow_at_the_press_lands() -> void:
 	eq(r.health, FightRules.HEALTH - 2, "hit in the first 50 ms")
 
 
-func test_a_blow_still_live_after_the_window_lands() -> void:
-	var r := _bite_against_dodge(96.0, 120)
-	eq(r.health, FightRules.HEALTH - 2, "slipping does not spend the blow; it lands after 140 ms")
+func test_a_blow_met_inside_the_window_is_spent_even_if_it_outlasts_it() -> void:
+	var r := _bite_against_dodge(96.0, 160)
+	eq(r.health, FightRules.HEALTH, "read right, the whole blow passes")
+	eq(F.count(r.events, &"evaded"), 1)
+
+
+func test_a_blow_that_goes_live_after_the_window_lands() -> void:
+	var r := _bite_against_dodge(150.0, 60)
+	eq(r.health, FightRules.HEALTH - 2, "too early a dodge is no dodge")
 
 
 func test_dodge_locks_swing_and_dodge_until_420() -> void:

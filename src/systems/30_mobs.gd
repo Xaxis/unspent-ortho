@@ -75,7 +75,7 @@ func _process(delta: float) -> void:
 		if mob.state.removed:
 			mob.queue_free()
 			continue
-		mob.sync_view(0.0 if frozen else delta, sim.now)
+		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state)
 
 
 func _ensure_nodes() -> void:
@@ -110,18 +110,22 @@ func place_near_player(kind: StringName) -> MobState:
 	var hp := sim.hero.pos
 	var index := sim.mobs.size()
 	var r: float = row.get("radius", 0.5)
-	# Toward the camera and a little to the right, fanned out for several.
-	var ang := PI * 0.25 + index * 0.9
+	# Screen up and right of the player (world north): the body faces back toward
+	# the camera side, so its front and the player's blow are both in view; several fan out.
+	var ang := -PI * 0.5 + index * 0.9
+	if float(row.get("height", 1.0)) < 1.0:
+		# Low bodies go screen right instead, or the player would stand in front of them.
+		ang = -PI * 0.25 + index * 0.9
 	var dist := 1.6 + r + Tuning.PLAYER_RADIUS + 0.4
 	if row.get("where", {}).get("rise", false):
-		dist = 6.0
+		dist = 4.5
 	var best := hp + Vector2.from_angle(ang) * dist
 	var best_score := INF
 	var keeps: Array = row.get("keeps_to", [])
-	for ring in range(0, 9):
-		for i in 16:
-			var a := ang + float(i) / 16.0 * TAU
-			var p := hp + Vector2.from_angle(a) * (dist + ring * 0.75)
+	for ring in range(0, 24):
+		for i in 24:
+			var a := ang + float(i) / 24.0 * TAU
+			var p := hp + Vector2.from_angle(a) * (dist + ring * 0.5)
 			var tx := floori(p.x)
 			var ty := floori(p.y)
 			if not game.query.standable(tx, ty):
@@ -131,6 +135,8 @@ func place_near_player(kind: StringName) -> MobState:
 			if keeps.is_empty() and Ground.is_water(w.ground_at(tx, ty)):
 				continue
 			var score := p.distance_to(hp + Vector2.from_angle(ang) * dist)
+			if not keeps.is_empty() and Ground.is_water(w.ground_at(tx, ty)):
+				score -= 4.0
 			if row.get("where", {}).get("rise", false) and Spawner.is_rise(w, tx, ty):
 				score -= 20.0
 			if score < best_score:
