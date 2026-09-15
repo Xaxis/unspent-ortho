@@ -1,6 +1,6 @@
 class_name UiTitle
 extends Node3D
-## The title: UNSPENT lettered on a label over a live coast that drifts slowly
+## The title: the slate waking over a live coast that drifts slowly
 ## past, a new seed every little while. New game starts on the coast being
 ## shown. Built like Game (world, view, sky, camera) but with no player.
 ##   godot --path .                              (no arguments boots here)
@@ -29,13 +29,13 @@ var _layer: CanvasLayer
 var _focus := Vector2.ZERO
 var _heading := Vector2.ONE
 var _shown_for := 0.0
-var _fade := 1.0 # 1 = ink
+var _fade := 1.0 # 1 = dark
 var _fade_to := 0.0
 var _next_world: WorldData
 ## The next coast's view and opening, set up on the worker alongside its world.
 var _next_view: WorldView
 var _next_opening: Array = []
-## A new coast's chunks are streaming in behind the ink; it fades up once they are all built.
+## A new coast's chunks are streaming in behind the dark; it fades up once they are all built.
 var _revealing := false
 var _next_seed := 0
 var _task := -1
@@ -59,6 +59,10 @@ func setup(o: BootOptions) -> void:
 	_layer = CanvasLayer.new()
 	_layer.layer = 20
 	add_child(_layer)
+	# The title's slate bakes on a worker; until it is in, a plain frame shows.
+	UiSlate.warm(UiTitleMenu.DEVICE.size)
+	if o.shot != "":
+		UiSlate.wait()
 	menu = UiTitleMenu.new()
 	menu.title = self
 	_layer.add_child(menu)
@@ -69,6 +73,15 @@ func setup(o: BootOptions) -> void:
 	else:
 		_begin(seed_value)
 	menu.open()
+	# --screen=keys shows the keys; --screen=wake:SECS holds the slate that far
+	# into waking (shots of the wake). A shot otherwise shows it lit.
+	var screen := o.screen.split(":")
+	if screen[0] == "keys":
+		menu.page = "keys"
+	if screen[0] == "wake" and screen.size() > 1:
+		menu.hold_wake(screen[1].to_float())
+	elif o.shot != "":
+		menu.settle()
 
 
 func _begin(s: int) -> void:
@@ -217,7 +230,7 @@ func change_seed(d: int) -> void:
 	_begin(maxi(1, seed_value + d))
 
 
-## A coast is on its way (on the worker, or waiting behind the ink) or the game is starting.
+## A coast is on its way (on the worker, or waiting behind the dark) or the game is starting.
 func _drawing() -> bool:
 	return _task >= 0 or _next_world != null or _starting
 
@@ -227,7 +240,9 @@ func new_game() -> void:
 		return
 	_starting = true
 	_fade_to = 1.0
-	Events.sfx.emit(&"menu_select", Vector3.ZERO)
+	Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
+	if menu != null:
+		menu.sleep()
 
 
 ## Continue: the game in `slot`, booted where it was saved.
@@ -239,6 +254,7 @@ func continue_game(slot: int) -> void:
 
 
 func _exit_tree() -> void:
+	UiSlate.wait()
 	# A coast being drawn on a worker writes into this node; wait it out.
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
@@ -266,7 +282,7 @@ func _start_game() -> void:
 	var game := Game.new()
 	game.name = "game"
 	var parent := get_parent()
-	menu.close()
+	menu.close(true)
 	parent.remove_child(self)
 	parent.add_child(game)
 	game.setup(o)

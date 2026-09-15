@@ -16,8 +16,8 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	var saver := Sx.system(a, "05_save")
 	check(saver != null, "the save system is loaded")
 	var keys := SaveGame.keys()
-	for k: StringName in [&"world", &"clock", &"player", &"body", &"inventory", &"survival", &"explored", &"weather", &"play"]:
-		check(keys.has(k), "core key %s registered" % k)
+	for k: StringName in [&"world", &"clock", &"player", &"body", &"inventory", &"survival", &"weather", &"play", &"ui"]:
+		check(keys.has(k), "key %s registered" % k)
 	eq(keys[0], &"world", "core state registers first, so it applies first")
 	var why: String = saver.call("save_to", 2)
 	eq(why, "", "saved to slot 2")

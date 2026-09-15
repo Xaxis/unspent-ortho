@@ -1,13 +1,16 @@
 class_name UiCraftingScreen
 extends UiScreen
-## The making page (C). Left: what can be made where the player stands, under
-## a heading per station in reach ("at the fire") and "by hand"; rows that
-## cannot be made now are faded but choosable, and say why. Right: the chosen
-## recipe sketched, a printed slip of what it wants against what is carried,
-## and the station it is made at. E makes it through UiLink (Crafting's own
-## make_in when survival provides it, which charges the clock and builds).
+## The making app (C). The list: what can be made where the player stands,
+## under a heading per station in reach ("at the fire") and "by hand"; rows
+## that cannot be made now are dim but choosable, and say why. The replacement
+## sub-panel: the chosen recipe scanned, a table of what it wants against what
+## is carried, and the station it is made at. E makes it through UiLink
+## (Crafting's own make_in when survival provides it, which charges the clock
+## and builds).
 
-## Stations in reach, nearest first, &"hand" last; set by whoever opens the page.
+const LIST_TOP := 50
+
+## Stations in reach, nearest first, &"hand" last; set by whoever opens the app.
 var stations: Array[StringName] = [&"fire"]
 var inventory: Inventory
 ## Recipes source for tests and demo shots; empty = Crafting.recipes_at.
@@ -30,7 +33,7 @@ func _on_open() -> void:
 	UiSketch.warm(outs, UiInventoryScreen.SKETCH, stations)
 
 
-## The recipes on the page, in the order drawn.
+## The recipes in the app, in the order drawn.
 func recipes() -> Array[Dictionary]:
 	if not recipes_override.is_empty():
 		return recipes_override
@@ -93,7 +96,7 @@ func _on_confirm(row: Dictionary) -> void:
 	if not UiLink.make(game, inventory, r):
 		refuse("It did not come right.")
 		return
-	Events.sfx.emit(&"menu_select", Vector3.ZERO)
+	Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 	var builds := StringName(r.get("builds", &""))
 	if builds != &"":
 		say("Built a %s." % builds)
@@ -105,40 +108,42 @@ func _on_confirm(row: Dictionary) -> void:
 
 
 func _draw() -> void:
-	UiNotebook.spread(self, 23)
-	var L := UiNotebook.LEFT
-	var R := UiNotebook.RIGHT
-	UiNotebook.title(self, L, "making", 9)
+	draw_frame()
+	var L := UiSlate.LIST
+	UiSlate.title(self, L, "MAKING")
+	UiSlate.spare(self)
 	if inventory == null:
+		draw_keys([["esc", "back"]])
 		return
-	var x0 := L.position.x + UiNotebook.MARGIN_X
-	var right := L.end.x - 10
-	UiDraw.text_right(self, right, L.position.y + 11, "takes", UiTheme.FADED)
+	var x0 := L.position.x + UiSlate.MARGIN_L
+	var right := L.end.x - 8
+	UiDraw.text_right(self, right, L.position.y + 4, "TAKES", UiTheme.TEXT_DIM)
 	if menu.rows.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 6, UiNotebook.line_top(L, 0)), "nothing to make here yet", UiTheme.FADED)
-	var lines := UiNotebook.rule_count(L) - 2
+		UiDraw.text(self, Vector2i(x0 + 6, LIST_TOP), "nothing to make here yet", UiTheme.TEXT_DIM)
+	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
 		var row := menu.rows[i]
-		var top := UiNotebook.line_top(L, n)
+		var top := UiSlate.line_top(LIST_TOP, n)
 		if row.has("header"):
-			UiNotebook.heading(self, Vector2i(x0 + 6, top), String(row.header), i * 7)
+			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
 		var r: Dictionary = row.recipe
 		var ok := UiMenu.enabled(row)
+		var col := UiTheme.TEXT if ok else UiTheme.TEXT_DIM
 		if i == menu.index:
-			UiNotebook.cursor(self, x0 + 4, top)
-		_draw_row_icon(r, Vector2i(x0 + 11, top - 1))
-		UiDraw.text(self, Vector2i(x0 + 24, top), String(row.title), UiTheme.INK if ok else UiTheme.FADED)
-		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.INK_SOFT if ok else UiTheme.FADED)
+			UiSlate.row_bar(self, x0 - 4, right + 3, top, UiTheme.TEXT if ok else UiTheme.WARN)
+			col = UiTheme.BRIGHT if ok else UiTheme.TEXT
+		_draw_row_icon(r, Vector2i(x0 + 4, top - 1))
+		UiDraw.text(self, Vector2i(x0 + 17, top), String(row.title), col)
+		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.TEXT_DIM)
 	if scroll > 0:
-		UiDraw.text_right(self, right, L.position.y + 22, "↑", UiTheme.FADED)
+		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiNotebook.line_top(L, lines), "↓", UiTheme.FADED)
-	UiNotebook.footer(self, L, "e make     c close     esc")
-	_draw_recipe(R)
-	UiNotebook.note(self, R, note, note_age)
+		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
+	_draw_recipe(UiSlate.SPARE)
+	draw_keys([["e", "make"], ["c", "close"], ["esc", "back"]])
 
 
 func _draw_row_icon(r: Dictionary, at: Vector2i) -> void:
@@ -156,44 +161,43 @@ func _draw_recipe(R: Rect2i) -> void:
 	if row.is_empty():
 		return
 	var r: Dictionary = row.recipe
-	var x0 := R.position.x + 26
+	var x0 := R.position.x + UiSlate.MARGIN_L
 	var at := StringName(r.get("at", &""))
-	var box := Rect2i(x0, R.position.y + 14, 84, 84)
+	var box := Rect2i(x0, R.position.y + 8, 84, 84)
 	var out := UiRules.recipe_output(r)
 	if out != &"":
-		UiNotebook.sketch_box(self, box, out, 13)
+		UiSlate.scan_box(self, box, out)
 	else:
-		UiDraw.rect(self, box.grow(-1), Color(UiTheme.PAPER_SHADE, 0.22))
-		UiNotebook.box(self, box, UiTheme.INK_SOFT, 13)
+		UiSlate.brackets(self, box, UiTheme.TEXT_DIM, 6)
 		var built := StringName(r.get("builds", &""))
 		if built != &"":
 			UiSketch.draw_station(self, built, box.position + Vector2i(3, 22), 78)
 		else:
 			UiSketch.draw_item(self, &"hone", box.position + Vector2i(3, 3), 78)
-		UiNotebook.tape(self, Vector2i(box.position.x + 30, box.position.y - 3), 24)
+		UiDraw.text(self, Vector2i(box.position.x + 3, box.end.y + 2), "SCAN", UiTheme.TEXT_DIM)
 	var tx := box.end.x + 12
-	UiDraw.text(self, Vector2i(tx, R.position.y + 18), String(row.title), UiTheme.INK)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 31), UiRules.station_words(at), UiTheme.INK_SOFT)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 10), String(row.title), UiTheme.BRIGHT)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 23), UiRules.station_words(at), UiTheme.TEXT_DIM)
 	var minutes := float(r.get("minutes", 0.0))
 	var takes := "takes %s" % UiRules.duration(minutes)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 34), takes, UiTheme.TEXT_DIM)
 	if game != null:
-		takes += ", done %s" % UiRules.clock_at(game.clock.minutes + minutes, game.clock.minutes)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 42), takes, UiTheme.INK_SOFT)
-	var slip_bottom := _draw_slip(Rect2i(R.position.x + 16, R.position.y + 112, R.size.x - 34, 0), r, row)
-	# Where it is made, sketched at the foot of the page, if there is room.
-	var sk := UiSketch.station_size(96)
-	var sk_at := Vector2i(R.position.x + 34, R.end.y - 34 - sk.y)
-	if sk_at.y > slip_bottom + 10:
-		UiSketch.draw_station(self, at if at != &"" else &"hand", sk_at, 96)
+		UiDraw.text(self, Vector2i(tx, R.position.y + 45), "done %s" % UiRules.clock_at(game.clock.minutes + minutes, game.clock.minutes), UiTheme.TEXT_DIM)
+	var table_bottom := _draw_table(Rect2i(x0, R.position.y + 110, R.size.x - UiSlate.MARGIN_L - 12, 0), r, row)
+	# Where it is made, scanned at the foot of the panel, if there is room.
+	var sk := UiSketch.station_size(72)
+	var sk_at := Vector2i(x0 + 4, R.end.y - 8 - sk.y)
+	if sk_at.y > table_bottom + 10:
+		UiSketch.draw_station(self, at if at != &"" else &"hand", sk_at, 72)
 		var caption := "made by hand, anywhere" if at == &"hand" else "the %s" % at
-		UiDraw.text(self, Vector2i(sk_at.x + sk.x + 10, sk_at.y + sk.y - 18), caption, UiTheme.FADED)
-		UiDraw.hand_hline(self, sk_at.x - 6, sk_at.x + sk.x + 4, sk_at.y + sk.y + 2, UiTheme.INK_SOFT, 71)
+		UiDraw.text(self, Vector2i(sk_at.x + sk.x + 10, sk_at.y + sk.y - 12), caption, UiTheme.TEXT_DIM)
+		UiSlate.brackets(self, Rect2i(sk_at - Vector2i(4, 4), sk + Vector2i(8, 8)), UiTheme.FAINT, 4)
 
 
-## The recipe as a printed slip pasted into the notebook: the one strict,
-## institutional surface here, with a heavy grid, thick rules and capital
-## labels. Returns the slip's bottom y.
-func _draw_slip(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
+## What one making wants against what is carried, as the slate tabulates it:
+## capitals, ruled, a shortfall in the warning with a bracket round it.
+## Returns the table's bottom y.
+func _draw_table(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 	var lines: Array[Dictionary] = []
 	var needs: Dictionary = r.get("needs", {})
 	for id: StringName in needs:
@@ -204,34 +208,21 @@ func _draw_slip(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 	var tool := StringName(r.get("tool", &""))
 	if tool != &"":
 		lines.append({"tool": tool, "want": 1, "have": 1 if _carries_verb(tool) else 0})
-	const HEAD := 26
-	const ROW := 15
-	var h := HEAD + ROW * maxi(1, lines.size()) + 20
-	var s := Rect2i(at.position.x, at.position.y, at.size.x, h)
-	UiDraw.rect(self, Rect2i(s.position.x + 2, s.position.y + 2, s.size.x, s.size.y), Color(UiTheme.INK_DEEP, 0.16))
-	UiDraw.rect(self, s, UiTheme.SLIP)
-	UiDraw.frame(self, s, UiTheme.INK)
-	UiDraw.frame(self, s.grow(-2), UiTheme.INK)
-	UiDraw.rect(self, Rect2i(s.position.x + 2, s.position.y + 2, s.size.x - 4, 12), UiTheme.INK)
-	UiDraw.text(self, Vector2i(s.position.x + 6, s.position.y + 3), "MATERIALS FOR ONE MAKING", UiTheme.SLIP)
-	var no := "No. %03d" % (absi(hash(String(r.get("id", "")))) % 1000)
-	UiDraw.text_right(self, s.end.x - 6, s.position.y + 3, no, UiTheme.SLIP)
-	var col_have := s.end.x - 12
+	const ROW := 13
+	var s := at
+	var col_have := s.end.x - 2
 	var col_want := col_have - 36
-	var x0 := s.position.x + 8
-	var y := s.position.y + HEAD - 10
-	UiDraw.text(self, Vector2i(x0 + 13, y), "ITEM", UiTheme.INK_SOFT)
-	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.INK_SOFT)
-	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.INK_SOFT)
-	y = s.position.y + HEAD
-	UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y - 1, UiTheme.INK)
-	UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y, UiTheme.INK)
-	var sep_want := col_want - UiFont.width("WANT") - 5
-	var sep_have := col_want + 5
+	var x0 := s.position.x
+	var y := s.position.y
+	UiDraw.text(self, Vector2i(x0, y), "WANTS", UiTheme.TEXT_DIM)
+	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.TEXT_DIM)
+	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.TEXT_DIM)
+	y += 11
+	UiDraw.hline(self, x0, s.end.x - 1, y, UiTheme.FAINT)
+	y += 3
 	if lines.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 13, y + 3), "NOTHING", UiTheme.INK_SOFT)
+		UiDraw.text(self, Vector2i(x0 + 13, y + 1), "NOTHING", UiTheme.TEXT_DIM)
 		y += ROW
-		UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y, UiTheme.INK_SOFT)
 	for l in lines:
 		var want: int = l.want
 		var have: int = l.have
@@ -239,28 +230,24 @@ func _draw_slip(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 		var label := ""
 		if l.has("tool"):
 			label = "SOMETHING TO %s WITH" % String(l.tool).to_upper()
-			UiIcons.draw_item(self, &"knife", Vector2i(x0, y + 3))
+			UiIcons.draw_item(self, &"knife", Vector2i(x0, y))
 		else:
-			UiIcons.draw_item(self, l.id, Vector2i(x0, y + 3))
-			label = UiRules.bare_name(l.id) + (", KEPT" if l.has("kept") else "")
-		UiDraw.text(self, Vector2i(x0 + 13, y + 3), label, UiTheme.INK)
-		UiDraw.text_right(self, col_want, y + 3, str(want) if not l.has("tool") else "-", UiTheme.INK)
+			UiIcons.draw_item(self, l.id, Vector2i(x0, y))
+			label = UiRules.bare_name(l.id).to_upper() + (", KEPT" if l.has("kept") else "")
+		UiDraw.text(self, Vector2i(x0 + 13, y + 1), label, UiTheme.TEXT)
+		UiDraw.text_right(self, col_want, y + 1, str(want) if not l.has("tool") else "-", UiTheme.TEXT)
 		var have_text := str(have) if not l.has("tool") else ("YES" if have > 0 else "NO")
-		UiDraw.text_right(self, col_have, y + 3, have_text, UiTheme.ACCENT if short else UiTheme.INK)
+		UiDraw.text_right(self, col_have, y + 1, have_text, UiTheme.WARN if short else UiTheme.TEXT)
 		if short:
-			# The shortfall ringed in the one accent, by hand, over the print.
 			var w := UiFont.width(have_text)
-			UiNotebook.box(self, Rect2i(col_have - w - 4, y + 1, w + 7, 12), UiTheme.ACCENT, have * 7 + want)
+			UiSlate.brackets(self, Rect2i(col_have - w - 5, y - 2, w + 10, 14), UiTheme.WARN, 2)
 		y += ROW
-		UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y, UiTheme.INK_SOFT)
-	UiDraw.vline(self, sep_want, s.position.y + HEAD - 12, y, UiTheme.INK_SOFT)
-	UiDraw.vline(self, sep_have, s.position.y + HEAD - 12, y, UiTheme.INK_SOFT)
+		for k in range(x0, s.end.x, 2):
+			UiDraw.px(self, k, y - 2, UiTheme.GHOST)
 	var ok := UiMenu.enabled(row)
 	var verdict := "ALL IN HAND" if ok else String(row.get("why", "")).to_upper().trim_suffix(".")
-	UiDraw.text(self, Vector2i(x0, y + 5), verdict, UiTheme.INK if ok else UiTheme.ACCENT)
-	UiNotebook.tape(self, Vector2i(s.position.x - 6, s.position.y - 3), 24)
-	UiNotebook.tape(self, Vector2i(s.end.x - 18, s.position.y - 3), 24)
-	return s.end.y
+	UiDraw.text(self, Vector2i(x0, y + 3), verdict, UiTheme.BRIGHT if ok else UiTheme.WARN)
+	return y + 14
 
 
 func _carries_verb(verb: StringName) -> bool:

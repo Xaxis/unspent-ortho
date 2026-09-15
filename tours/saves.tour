@@ -1,5 +1,5 @@
 # Saving through the real keys: play a little (walk off the square, lay a fire),
-# save to a slot from the pause page, leave for the title, continue, and the
+# save to a slot from the slate's saves app, leave for the title, continue, and the
 # world that comes back is the one that was saved.
 #   tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4
 # (A tour saves under user://tool-saves/<tour name>, never over a player's games
@@ -19,9 +19,10 @@ shot 02-before
 await station:fire 1
 tap pause
 wait 0.5
-choose save
+choose saves
 tap use
-wait 0.5
+await app:saves 2
+wait 0.3
 shot 03-save-page
 # An empty slot is written at once; one that holds a game (an earlier run's) asks
 # first, and the second press writes over it.
@@ -60,13 +61,16 @@ shot 06-after
 same 02-before 06-after 0.02
 same 02-before 06-after 0.014 560,230,220,150
 await station:fire 1
-# Load from the pause page too: the autosave and the three slots, and slot 1 taken up again.
+# Load from home's saves app too (right turns it to loading): the autosave and the
+# three slots, and slot 1 taken up again.
 walk 1,0 1
 tap pause
 wait 0.5
-choose load
+choose saves
 tap use
-wait 0.5
+await app:saves 2
+tap move_right
+wait 0.3
 choose slot_1
 wait 0.3
 shot 07-load-page

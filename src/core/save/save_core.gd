@@ -11,7 +11,6 @@ class_name SaveCore
 ##   body       condition: health, wind, hunger, wet, wounds, lamp lit, arrests...
 ##   inventory  items, edges, held, worn kit, dull notices given
 ##   survival   when the body woke, wet until, lamp oil and when it was settled
-##   explored   the map's seen mask and the trail (a system's public `explored`, 90_ui today)
 ##   weather    a forced sky (--weather), if any
 ##
 ## Props: the world holds its generated props, then whatever the systems' setup
@@ -23,6 +22,7 @@ class_name SaveCore
 ##
 ## Transient state is not saved: the work in hand (a save drops it, as a blow
 ## would), real-time timers (busy, stun, invulnerable, grip), mobs on the coast.
+## The map's memory is the slate's own key (90_ui registers &"ui").
 
 const META_BASE := &"save_props_base"
 const BODY_FLOATS: Array[String] = ["max_wind", "wind", "hurt_until", "fed_until", "wet", "load", "tired",
@@ -40,8 +40,6 @@ static func register(game: Game) -> void:
 	SaveGame.register(&"inventory", func() -> Variant: return save_inventory(game.inventory),
 		func(v: Variant) -> void: load_inventory(game, v))
 	SaveGame.register(&"survival", func() -> Variant: return save_survival(game), func(v: Variant) -> void: load_survival(game, v))
-	SaveGame.register(&"explored", func() -> Variant: return save_explored(explored_of(game)),
-		func(v: Variant) -> void: load_explored(explored_of(game), v))
 	SaveGame.register(&"weather", func() -> Variant: return {"kind": String(Weather.forced_kind), "strength": Weather.forced_strength},
 		func(v: Variant) -> void: load_weather(v))
 
@@ -286,36 +284,6 @@ static func explored_of(game: Game) -> UiExplored:
 		if e is UiExplored:
 			return e
 	return null
-
-
-static func save_explored(e: UiExplored) -> Dictionary:
-	if e == null:
-		return {}
-	var trail := PackedFloat32Array()
-	trail.resize(e.trail.size() * 2)
-	for i in e.trail.size():
-		trail[i * 2] = e.trail[i].x
-		trail[i * 2 + 1] = e.trail[i].y
-	return {"size": e.size, "mask": SaveCodec.bytes(e.mask), "trail": SaveCodec.floats(trail),
-		"bounds": [e.bounds.position.x, e.bounds.position.y, e.bounds.size.x, e.bounds.size.y]}
-
-
-static func load_explored(e: UiExplored, v: Variant) -> void:
-	var d := _d(v)
-	if e == null or SaveCodec.to_int(d.get("size"), -1) != e.size:
-		return
-	var mask := SaveCodec.to_bytes(d.get("mask"))
-	if mask.size() == e.mask.size():
-		e.mask = mask
-	var flat := SaveCodec.to_floats(d.get("trail"))
-	var trail := PackedVector2Array()
-	trail.resize(flat.size() / 2)
-	for i in trail.size():
-		trail[i] = Vector2(flat[i * 2], flat[i * 2 + 1])
-	e.trail = trail
-	var b: Variant = d.get("bounds", [])
-	if b is Array and (b as Array).size() == 4:
-		e.bounds = Rect2i(SaveCodec.to_int(b[0]), SaveCodec.to_int(b[1]), SaveCodec.to_int(b[2]), SaveCodec.to_int(b[3]))
 
 
 static func load_weather(v: Variant) -> void:

@@ -222,7 +222,7 @@ func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read
 	eq(_ids(menu), [&"continue", &"new", &"seed", &"controls", &"quit"], "continue heads the slip")
 	eq(menu.menu.selected().get("id"), &"continue", "and is chosen")
 	eq(int(menu.saved.get("slot", -1)), 2, "the newest save")
-	eq(menu.slip().size.y, UiTitleMenu.SLIP.size.y + UiTitleMenu.ROW_H, "the slip grows a row")
+	check(menu.photo_rect().has_area(), "its picture takes a place on the glass")
 	menu.close()
 
 	for slot: int in [1, 2]:

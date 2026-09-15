@@ -1,8 +1,8 @@
 class_name UiExplored
 extends RefCounted
 ## The land the player has seen, one byte per tile (0 unseen .. 255 seen), for
-## the notebook map. Walking reveals a disc around the player whose rim is a
-## soft ramp, so the map's edge of the known world is drawn like a pencil
+## the survey map. Walking reveals a disc around the player whose rim is a
+## soft ramp, so the map's edge of the known world is drawn like a scan
 ## fading out rather than a hard circle.
 
 ## Tiles fully seen around the player; the rim fades out over RIM more.

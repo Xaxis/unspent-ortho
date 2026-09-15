@@ -1,5 +1,5 @@
 class_name UiLink
-## The notebook's one door into rules other packages own: Survival (targets,
+## The slate's one door into rules other packages own: Survival (targets,
 ## stations, eating, holding), Crafting (what is short, why not, making) and
 ## Inventory (the creel, worn kit). Body is only ever read. A page shown without
 ## a running game (gallery, tests) gets the plain Crafting contract instead.
@@ -27,7 +27,7 @@ static func use_hint(game: Game) -> String:
 
 # --- carrying ------------------------------------------------------------------
 
-## The heading a thing is listed under in the notebook.
+## The heading a thing is listed under on the slate.
 static func group_of(id: StringName) -> StringName:
 	var d := Items.def(id)
 	match d.get("group", &""):
@@ -76,8 +76,8 @@ static func hold(game: Game, inv: Inventory, id: StringName) -> void:
 		inv.set_held(id)
 
 
-## True when eating can be done from the notebook: survival owns hunger, so
-## only its `eat` feeds the body. The notebook never writes Body itself.
+## True when eating can be done from the slate: survival owns hunger, so
+## only its `eat` feeds the body. The slate never writes Body itself.
 static func can_eat(game: Game, inv: Inventory) -> bool:
 	return game != null and game.inventory == inv
 

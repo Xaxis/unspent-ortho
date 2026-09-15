@@ -14,7 +14,7 @@ const DESCENT := 2
 ## Glyph rows: 0..6 sit above the baseline, 7..8 below it.
 const ROWS := 9
 
-## Each glyph: rows top to bottom, '#' ink, anything else paper. Width is the
+## Each glyph: rows top to bottom, '#' lit, anything else clear. Width is the
 ## longest row. Trailing empty rows may be left out.
 const GLYPHS := {
 	" ": ["...", "...", "...", "...", "...", "...", "..."],
@@ -112,7 +112,7 @@ const GLYPHS := {
 	"|": ["#", "#", "#", "#", "#", "#", "#", "#"],
 	"}": ["##..", "..#.", "..#.", "...#", "..#.", "..#.", "##.."],
 	"~": [".....", ".....", ".##.#", "#.##."],
-	# A few marks the notebook uses beyond ASCII.
+	# A few marks the slate uses beyond ASCII.
 	"·": [".", ".", ".", "#"],
 	"—": [".....", ".....", ".....", "#####"],
 	"…": [".....", ".....", ".....", ".....", ".....", ".....", "#.#.#"],

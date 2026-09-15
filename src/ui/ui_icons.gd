@@ -1,11 +1,13 @@
 class_name UiIcons
-## Tiny drawn pictures: one 9x9 icon per kind of thing carried, and the HUD's
-## need glyphs. Drawn at whole-number scales only (1x in lists, 3x on a page).
+## Tiny pictures on the slate's glass: one 9x9 icon per kind of thing carried,
+## and the HUD's pressure glyphs. Drawn at whole-number scales only.
 ##
-## Shape rows: '.' clear, 'k' ink rim, '1' '2' '3' the body ramp dark to light,
-## '4' '5' '6' the second ramp (a haft, a filling), 'w' the body's brightest
-## step (a rivet, a glint), 'l' the machine amber. Items pick a shape and ramps
-## by id; an id nobody listed gets a shape from what it does (Items schema).
+## Shape rows: '.' clear, 'k' the outline (dim), '1' '2' '3' the
+## body dark to light, '4' '5' '6' the second part (a haft, a filling), 'w' the
+## body's brightest step (a rivet, a glint), 'l' a working part. Items pick a
+## shape and ramps by id (the ramps name the sketches' world colours); an id
+## nobody listed gets a shape from what it does (Items schema). On the glass
+## every icon is phosphor, or the module's violet for found things.
 
 const SIZE := 9
 
@@ -131,20 +133,34 @@ const ITEMS := {
 	&"letter": [&"paper", &"linen", &"linen"],
 }
 
-## Stations at list size, same rules as SHAPES; drawn with the stone and earth ramps.
+## Stations at list size, same rules as SHAPES.
 const STATION_MARKS := {
 	&"fire": ["....k....", "...k6k...", "..k656k..", "..k565k..", ".k56665k.", "kk45554kk", "k3kkkkk3k", "k21k.k21k", ".kk...kk."],
 	&"bench": [".........", ".........", "kkkkkkkkk", "k5555554k", "kkkkkkkkk", ".k4k.k4k.", ".k4kkk4k.", ".k4k.k4k.", ".kkk.kkk."],
 	&"kiln": ["...kkk...", "..k656k..", ".k65554k.", "k6554544k", "k55kkk44k", "k54k6k44k", "k54k5k44k", "kkkkkkkkk", "........."],
 }
 
-## HUD need glyphs: one colour ('#') plus an ink rim added when drawn.
+## Felt pressures as 9x9 glyphs, one colour ('#'): the body's needs and every
+## hazard id the landscape registry names (BiomeDef.hazards). An id with no
+## glyph of its own shows PRESSURE_ANY.
 const NEEDS := {
 	&"hunger": ["....#....", "...#.....", "....#....", ".........", "#########", ".#######.", "..#####..", "...###...", "........."],
 	&"wet": ["....#....", "....#....", "...###...", "..#####..", ".#######.", ".#######.", "..#####..", "...###...", "........."],
 	&"load": ["...###...", "..#...#..", ".#######.", ".#######.", "####.####", "#########", ".#######.", ".........", "........."],
 	&"tired": ["..###....", ".##......", "##.......", "##.......", "##.......", ".##......", "..###....", ".........", "........."],
+	&"cold": ["....#....", ".#..#..#.", "..#.#.#..", "...###...", "#########", "...###...", "..#.#.#..", ".#..#..#.", "....#...."],
+	&"heat": ["...#.....", "..##..#..", "..###.##.", ".#####.#.", ".###.###.", "###...###", "##..#..##", ".#.###.#.", "..#####.."],
+	&"fumes": [".........", "..##.....", ".#..#.##.", ".#...#..#", "..###...#", "....#.##.", ".##..#...", "#..#.....", ".##......"],
+	&"toxins": ["....#....", "...###...", "..#####..", ".##.#.##.", ".###.###.", ".##.#.##.", "..#####..", "...###...", "........."],
+	&"radiation": [".........", ".##...##.", "###...###", "###.#.###", "...###...", "....#....", "...###...", "..#####..", "..#####.."],
+	&"dark": ["..####...", ".##......", "##.......", "##.......", "##.......", "##.......", ".##......", "..####...", "........."],
+	&"vacuum": ["..#####..", ".#.....#.", "#..#.#..#", "#.......#", "#...#...#", "#.......#", "#..#.#..#", ".#.....#.", "..#####.."],
+	&"pressure": ["#...#...#", ".#..#..#.", "..#.#.#..", ".........", "###...###", ".........", "..#.#.#..", ".#..#..#.", "#...#...#"],
+	&"em": ["....##...", "...##....", "..##.....", ".######..", "....##...", "...##....", "..##.....", ".##......", "#........"],
+	&"resonance": ["#.......#", "#..#.#..#", "#.#...#.#", "#.#.#.#.#", "#.#...#.#", "#..#.#..#", "#.......#", ".........", "........."],
+	&"time_shear": ["#########", ".#.....#.", "..#...#..", "...#.#...", "....#....", "...#.#...", "..#.#.#..", ".#.###.#.", "#########"],
 }
+const PRESSURE_ANY := ["...###...", "..#...#..", ".#..#..#.", "#...#...#", "#...#...#", "#.......#", ".#..#..#.", "..#...#..", "...###..."]
 
 
 ## Shape name and ramps for an item id.
@@ -168,6 +184,19 @@ static func style_of(id: StringName) -> Array:
 	return [&"bundle", &"sand", &"earth"]
 
 
+## A thing taken whole from the machines (found tech, a charge, salvage kit): the
+## slate reads it in the stolen module's violet.
+static func is_found(id: StringName) -> bool:
+	if id == &"":
+		return false
+	var d := Items.def(id)
+	if d.get("stuff", &"") == &"found" or d.get("group", &"") == &"found" or d.has("kit"):
+		return true
+	return UiSketch.FOUND_SHAPES.has(style_of(id)[0])
+
+
+## The world's colour ramps by name, for the sketches' intermediate drawing (the
+## slate shows them as phosphor tones: UiSketch.to_phosphor).
 static func ramp(name: StringName) -> Array[Color]:
 	match name:
 		&"stone": return Palette.STONE
@@ -192,18 +221,18 @@ static func ramp(name: StringName) -> Array[Color]:
 	return Palette.STONE
 
 
-## Character -> colour for an item's icon.
+## The tones an icon is shown in: phosphor for what people made, the module's
+## violet for what was taken from the machines.
+static func tones_for(id: StringName) -> Array[Color]:
+	return UiTheme.MACHINE if is_found(id) else UiTheme.PHOSPHOR
+
+
+## Character -> colour for an item's icon on the glass: its outline in the
+## dimmest tone that still reads, the body stepping up to bright, the second
+## part (a haft, a filling) a step under it, and a working part the hottest.
 static func colours_for(id: StringName) -> Dictionary:
-	var st := style_of(id)
-	var a := ramp(st[1])
-	var b := ramp(st[2])
-	var lens := Palette.LENS
-	return {
-		"k": UiTheme.INK_DEEP,
-		"1": _shade(a, 0), "2": _shade(a, 1), "3": _shade(a, 2), "w": a[a.size() - 1],
-		"4": _shade(b, 0), "5": _shade(b, 1), "6": _shade(b, 2),
-		"l": lens[2],
-	}
+	var t := tones_for(id)
+	return {"k": t[1], "1": t[2], "2": t[3], "3": t[3], "w": t[4], "4": t[2], "5": t[2], "6": t[3], "l": t[4]}
 
 
 static func shape_of(id: StringName) -> Array:
@@ -218,20 +247,14 @@ static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, scale: int =
 ## A station's small mark, for list rows (building one, making at one).
 static func draw_station_mark(ci: CanvasItem, station: StringName, at: Vector2i) -> void:
 	var rows: Array = STATION_MARKS.get(station, STATION_MARKS[&"bench"])
-	var a := Palette.STONE
-	var b := Palette.EARTH if station == &"bench" else Palette.EMBER
-	UiDraw.sprite(ci, rows, at, {"k": UiTheme.INK_DEEP, "1": a[2], "2": a[3], "3": a[4], "4": b[2], "5": b[3], "6": b[4]})
+	var t := UiTheme.PHOSPHOR
+	UiDraw.sprite(ci, rows, at, {"k": t[1], "1": t[2], "2": t[3], "3": t[3], "4": t[2], "5": t[3], "6": t[4]})
 
 
-## Draw a need glyph in `col` with an ink rim (for the HUD over the world).
+static func pressure_rows(id: StringName) -> Array:
+	return NEEDS.get(id, PRESSURE_ANY)
+
+
+## Draw a pressure glyph in `col` held by a rim of dead glass (over the world).
 static func draw_need(ci: CanvasItem, need: StringName, at: Vector2i, col: Color) -> void:
-	UiDraw.sprite_rimmed(ci, NEEDS[need], at, {"#": col}, UiTheme.INK_DEEP)
-
-
-## Dark, mid, light steps of a ramp, chosen so all three read on paper.
-static func _shade(r: Array[Color], k: int) -> Color:
-	if r.size() >= 6:
-		return r[[2, 3, 4][k]]
-	if r.size() >= 4:
-		return r[[1, 2, 3][k]]
-	return r[mini(k, r.size() - 1)]
+	UiDraw.sprite_rimmed(ci, pressure_rows(need), at, {"#": col}, UiTheme.RIM)

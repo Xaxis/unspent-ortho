@@ -1,0 +1,88 @@
+# The slate through its real keys, from a normal start: it wakes over the
+# drifting coast, a new game starts, its edge overlay in the world, then every
+# app opened with the keys a player presses, and shot.
+#   tools/tour.sh tours/slate.tour --scene=title
+wait 0.1
+shot 01-title-asleep
+await title 40
+shot 02-title-awake
+tap move_down
+wait 0.2
+shot 02b-title-coast-row
+tap move_down
+tap use
+wait 0.3
+shot 03-title-keys
+tap pause
+wait 0.2
+tap move_up
+tap move_up
+wait 0.2
+shot 04-title-new-game
+tap use
+await game 40
+wait 2.5
+shot 05-hud-in-the-world
+walk 1,0 1.2
+shot 06-hud-walked
+# Carrying, then the map by its own key: the glass switches app.
+tap inventory
+await app:inventory 3
+shot 07-carrying
+tap move_down
+wait 0.2
+shot 08-carrying-down
+tap map
+await app:map 3
+shot 09-map
+tap use
+wait 0.3
+shot 10-map-scaled
+tap map
+await app:none 3
+# Making: the spawn stands by the village square's fire.
+try 3
+tap craft
+await app:crafting 3
+end
+shot 11-making
+tap pause
+await app:none 3
+# Home, and the apps that live under it.
+tap pause
+await app:pause 3
+shot 12-home
+# Home's tabs name their keys: carrying's opens over home, and Esc comes back.
+tap inventory
+await app:inventory 3
+shot 12b-carrying-over-home
+tap pause
+await app:pause 3
+tap move_down
+tap use
+await app:loadout 3
+shot 13-gear
+tap pause
+await app:pause 3
+tap move_down
+tap use
+await app:reads 3
+shot 14-machine-reads
+tap pause
+await app:pause 3
+tap move_down
+tap use
+await app:saves 3
+shot 15-saves
+tap pause
+await app:pause 3
+tap move_down
+tap use
+wait 0.3
+shot 16-controls
+tap pause
+wait 0.2
+tap pause
+await app:none 3
+wait 0.5
+shot 17-back-in-the-world

@@ -101,4 +101,44 @@ func test_fading_text_is_one_picture_with_a_clean_rim() -> void:
 		glyph_top += 1
 	# text() puts a glyph's top row at at.y + ASCENT - (ROWS - 2); the picture is drawn at at.y.
 	eq(first, glyph_top + UiFont.ASCENT - (UiFont.ROWS - 2), "the picture's glyphs sit where text() draws them")
-	eq(Hud.key_rows("e").size(), 12)
+
+
+## Every character the slate can be asked to letter has a glyph: every string
+## written in the slate's own source, every thing's name, every place's name.
+func test_every_word_the_slate_writes_has_its_glyphs() -> void:
+	var missing := {}
+	var re := RegEx.create_from_string("\"((?:[^\"\\\\]|\\\\.)*)\"")
+	for path: String in _sources():
+		var text := FileAccess.get_file_as_string(path)
+		for line in text.split("\n"):
+			var code := line.strip_edges()
+			if code.begins_with("#") or code.contains("res://") or code.contains("RegEx"):
+				continue
+			for m in re.search_all(line):
+				_check_chars(m.get_string(1).replace("\\\"", "\"").replace("\\\\", "\\"), path.get_file(), missing)
+	for id: StringName in Items.DEFS:
+		_check_chars(UiRules.item_name(id), "item %s" % id, missing)
+	for n in PropKind.NAMES:
+		_check_chars(n, "prop", missing)
+	for d in BiomeRegistry.all():
+		_check_chars(d.display_name.to_upper(), "landscape %s" % d.id, missing)
+	for ch: String in missing:
+		fail("no glyph for '%s' (U+%04X), wanted by %s" % [ch, ch.unicode_at(0), missing[ch]])
+
+
+func _check_chars(s: String, where: String, missing: Dictionary) -> void:
+	for i in s.length():
+		var ch := s[i]
+		if ch == "\t" or ch == "\n":
+			continue
+		if not UiFont.GLYPHS.has(ch) and not missing.has(ch):
+			missing[ch] = where
+
+
+func _sources() -> Array[String]:
+	var out: Array[String] = ["res://src/systems/90_ui.gd"]
+	var dir := DirAccess.open("res://src/ui")
+	for f in dir.get_files():
+		if f.ends_with(".gd"):
+			out.append("res://src/ui/" + f)
+	return out

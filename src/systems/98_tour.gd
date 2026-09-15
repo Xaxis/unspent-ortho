@@ -53,7 +53,16 @@ extends GameSystem
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
 ## started since the last action), saved (a save was written); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
+##   await title SECS       the title's slate has woken over its coast (a tour booted
+##                          with --scene=title, or one whose game gave way to the title)
+##   await game SECS        a new game has started since the last action (new game or
+##                          Continue on the title, a load); every command after it drives it
+##   await app:NAME SECS    the slate shows app NAME (inventory crafting map pause
+##                          loadout reads saves), awake; app:none = no app is up
 ## Unknown commands fail the tour (exit 1) so a typo never passes silently.
+## A tour booted on the title (--scene=title) is run by a runner main.gd puts
+## beside the title; when new game starts, the game's own tour system hands the
+## game to that runner instead of starting the tour again.
 ## Everything else (giving items, forcing weather) belongs to BootOptions flags
 ## on the boot, or to real play inside the tour.
 
@@ -63,6 +72,8 @@ var _out := ""
 var _held: Array[String] = []
 ## The node running the tour, while one runs; later games hand themselves to it.
 static var _runner: Node = null
+## Set when the tour began on the title.
+var title: UiTitle
 
 
 func setup(g: Game) -> void:
@@ -71,6 +82,18 @@ func setup(g: Game) -> void:
 		_runner.set("game", g)
 		(_runner.get("_seen") as Dictionary)["game"] = true
 		return
+	_start()
+
+
+## main.gd's hook: run the tour from the title, before any game exists.
+func run_on_title(t: UiTitle) -> void:
+	title = t
+	name = "tour"
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_start()
+
+
+func _start() -> void:
 	var path := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--tour="):
@@ -119,6 +142,9 @@ func _run() -> void:
 			continue
 		if not cmd in ["wait", "shot", "echo", "await", "same"]:
 			_seen.clear()
+		if not cmd in ["wait", "shot", "echo", "await", "tap", "press", "key", "same"] and not is_instance_valid(game):
+			# On the title there is no game to walk or teleport yet.
+			cmd = "no game"
 		print("tour t=%.2fs fps=%d: %s" % [Time.get_ticks_msec() / 1000.0, Engine.get_frames_per_second(), line])
 		var ok := true
 		match cmd:
@@ -244,10 +270,16 @@ func _await(what: String, secs: float) -> bool:
 
 func _now_true(what: String) -> bool:
 	if what == "title":
-		var t := get_tree().root.find_child("title", true, false) as UiTitle
-		return t != null and t.world != null and t.menu.fade < 0.05
+		# Lit, and the coast faded up behind it.
+		var t := title if is_instance_valid(title) else get_tree().root.find_child("title", true, false) as UiTitle
+		return t != null and t.world != null and t.menu != null and t.menu.is_lit() and t.menu.fade < 0.05
 	if not is_instance_valid(game):
 		return false
+	if what.begins_with("app:"):
+		var ui := _system("90_ui")
+		var top: UiScreen = ui.call("top") if ui != null else null
+		var want := what.substr(4)
+		return (top == null and want == "none") or (top != null and String(top.screen_name) == want and top.wake >= 1.0)
 	if what.begins_with("station:"):
 		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
 	var sim := game.player.sim

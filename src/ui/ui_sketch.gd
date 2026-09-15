@@ -1,5 +1,5 @@
 class_name UiSketch
-## Things drawn into the notebook at their real pixel size, the way the world
+## Things scanned onto the slate at their real pixel size. Each is first drawn the way the world
 ## is drawn: a flat palette wash, a hand-inked contour, and shadow put in as
 ## pixel hatching on the side away from the light (key light upper left).
 ##
@@ -24,6 +24,11 @@ class_name UiSketch
 ## pixels, never scaled.
 
 const GRID := 32.0
+## The drawing's own inks, before the scanner turns it to tones: the contour, a
+## hatched shade cast behind the thing, and the light it is washed toward.
+const INK := Color(0.0706, 0.0667, 0.1137)
+const CAST := Color(0.0, 0.0, 0.0, 0.55)
+const LIGHT := Color(0.93, 0.93, 0.9)
 
 ## Every shape an item can take. Tools lie on the diagonal, head up and right.
 const SHAPES := {
@@ -418,15 +423,54 @@ static func _item_image(id: StringName, size: int) -> Image:
 	var st := UiIcons.style_of(id)
 	var shape: StringName = st[0]
 	var parts: Array = SHAPES.get(shape, SHAPES[&"bundle"])
-	return render(parts, Vector2(GRID, GRID), Vector2i(size, size), st[1], st[2], FOUND_SHAPES.has(shape), hash(id))
+	var img := render(parts, Vector2(GRID, GRID), Vector2i(size, size), st[1], st[2], FOUND_SHAPES.has(shape), hash(id))
+	return to_phosphor(img, UiIcons.tones_for(id))
 
 
 static func _station_image(station: StringName, w: int) -> Image:
 	var st: Array = STATIONS.get(station, STATIONS[&"hand"])
-	return render(st[0], Vector2(48, 32), station_size(w), st[1], st[2], st[3], hash(station))
+	var img := render(st[0], Vector2(48, 32), station_size(w), st[1], st[2], st[3], hash(station))
+	return to_phosphor(img, UiTheme.PHOSPHOR)
 
 
-## The sketch as an image with transparent paper around it.
+## The drawing as the slate's scanner shows it: the inked contour bright, the
+## washes stepped down to the glass by their value through an ordered dither,
+## the hatched shade and bled wash as the faintest tone, and a working part as
+## the hottest pixel. `tones` is a five-step ramp (phosphor, or the violet).
+static func to_phosphor(src: Image, tones: Array[Color]) -> Image:
+	const BAYER := [0.0, 0.5, 0.75, 0.25]
+	var w := src.get_width()
+	var h := src.get_height()
+	var out := Image.create_empty(w, h, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	for y in h:
+		for x in w:
+			var c := src.get_pixel(x, y)
+			if c.a <= 0.01:
+				continue
+			var col: Color
+			if c.a < 0.7 and c.r + c.g + c.b < 0.05:
+				# Hatched shade cast on the glass behind the thing.
+				col = tones[1]
+			elif c.a > 0.75 and c.r < 0.12 and c.g < 0.12 and c.b < 0.16:
+				col = tones[3]
+			elif c.r > 0.85 and c.g > 0.6 and c.b < 0.8 and c.r > c.b + 0.2:
+				col = tones[4]
+			elif c.a < 0.7:
+				col = tones[1]
+			else:
+				var lum := c.r * 0.3 + c.g * 0.55 + c.b * 0.15
+				var level := clampf(lum * 3.4, 0.0, 2.99)
+				var idx := floori(level)
+				if level - idx > BAYER[(y % 2) * 2 + x % 2]:
+					idx += 1
+				col = tones[clampi(idx, 0, 3)]
+			out.set_pixel(x, y, col)
+	return out
+
+
+## The sketch as a colour drawing with a clear ground round it (the scanner
+## takes it from here: to_phosphor).
 static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName, ramp_b: StringName, found: bool, seed: int) -> Image:
 	var w := px.x
 	var h := px.y
@@ -451,13 +495,13 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 			ids[y * w + x] = got
 	var img := Image.create_empty(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	var ink := UiTheme.INK
+	var ink := INK
 	var shade_k := maxi(2, roundi(w * 0.09))
 	var glows: Array[Vector3] = []
 	for part: Array in parts:
 		if part[0] == "glow":
 			glows.append(Vector3(part[1], part[2], part[3]))
-	# 2. Cast shadow on the paper, hatched, down and right of the thing.
+	# 2. Cast shadow behind the thing, hatched, down and right of it.
 	if not found:
 		for y in h:
 			for x in w:
@@ -465,7 +509,7 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 					continue
 				for c in range(2, shade_k + 2):
 					if _id(ids, w, h, x - c, y - c) >= 0 and _id(ids, w, h, x - c + 1, y - c + 1) >= 0:
-						img.set_pixel(x, y, Color(UiTheme.PAPER_DEEP, 0.55))
+						img.set_pixel(x, y, CAST)
 						break
 	# 3. Wash, light and hatching.
 	for y in h:
@@ -494,16 +538,16 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 				elif lit:
 					col = base.lerp(Color.WHITE, 0.18)
 			else:
-				col = base.lerp(UiTheme.PAPER, 0.12)
+				col = base.lerp(LIGHT, 0.12)
 				if lit:
-					col = base.lerp(UiTheme.PAPER, 0.38)
+					col = base.lerp(LIGHT, 0.38)
 				elif shaded and posmod(x - y, 3) == 0:
 					col = base.lerp(ink, 0.55)
 			if i < 0:
 				# Wash that slipped past the line: thin, like it bled.
 				col = Color(col, 0.55)
 			img.set_pixel(x, y, col)
-	# 4. The contour: where a part meets paper or a part under it.
+	# 4. The contour: where a part meets the clear ground or a part under it.
 	for y in h:
 		for x in w:
 			var i := ids[y * w + x]
@@ -541,7 +585,7 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 				var c := Vector2i(roundi(float(part[1]) * s - 0.5), roundi(float(part[2]) * s - 0.5))
 				_plot(img, c.x, c.y, Palette.PLATE[5] if found else ink)
 				if found:
-					_plot(img, c.x + 1, c.y + 1, UiTheme.INK)
+					_plot(img, c.x + 1, c.y + 1, INK)
 				elif w >= 64:
 					_plot(img, c.x + 1, c.y, ink)
 	for g in glows:

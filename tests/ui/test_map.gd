@@ -128,25 +128,46 @@ func _wx(f: Dictionary, x: float, window: Vector2i) -> float:
 	return (x - (f.centre as Vector2).x) * int(f.scale) + window.x / 2.0
 
 
-func test_the_map_keeps_the_player_and_small_land_out_of_the_fold() -> void:
+func test_the_survey_keeps_the_player_and_the_seen_land_in_its_window() -> void:
 	var window := UiMapScreen.MAP_RECT.size
-	var fold := UiMapScreen.fold_x()
-	check(fold > window.x / 2 - 12 and fold < window.x / 2 + 12, "the gutter runs down the middle of the window: %d" % fold)
-	# The start: a disc seen round the player, who stands in its middle.
 	var e := UiExplored.new(256)
 	e.visit(Vector2(120.5, 90.5))
-	var f := UiMapScreen.fit(e.bounds, Vector2(120.5, 90.5), window, UiMapScreen.SCALES, fold)
+	var f := UiMapScreen.fit(e.bounds, Vector2(120.5, 90.5), window, UiMapScreen.SCALES)
 	var l := _wx(f, e.bounds.position.x, window)
 	var r := _wx(f, e.bounds.end.x, window)
-	check(r < fold - 8 or l > fold + 4 + 8, "all the seen land is on one page: %d..%d, fold %d" % [l, r, fold])
-	check(l >= 0 and r <= window.x, "and on the window")
-	# Wide land crosses the fold, but the player is never in it.
-	var wide := Rect2i(20, 40, 200, 90)
-	for px: float in [118.0, 120.0, 122.0]:
-		var p := Vector2(px, 80.0)
-		var wf := UiMapScreen.fit(wide, p, window, UiMapScreen.SCALES, fold)
-		var at := _wx(wf, p.x, window)
-		check(at < fold - 8 or at > fold + 4 + 8, "player at %s drawn at %s, clear of the fold at %d" % [p, at, fold])
+	check(l >= 0 and r <= window.x, "all the seen land is in the window: %d..%d" % [l, r])
+	var wide := Rect2i(20, 40, 400, 90)
+	var p := Vector2(400.0, 80.0)
+	var wf := UiMapScreen.fit(wide, p, window, UiMapScreen.SCALES)
+	var at := _wx(wf, p.x, window)
+	check(at > 0 and at < window.x, "the player at the far end of wide land is still in the window: %s" % at)
+
+
+func test_the_survey_is_clear_of_the_glass_flaws() -> void:
+	# Its brackets run two pixels outside it.
+	var r := UiMapScreen.MAP_RECT.grow(2)
+	check(not r.intersects(UiSlate.crack_zone(UiSlate.DEVICE)), "the crack is not over the survey")
+	check(r.position.x > UiSlate.dead_column_x(UiSlate.DEVICE), "nor the dead column")
+	check(UiSlate.BODY.encloses(UiMapScreen.MAP_RECT), "it sits in the glass's body")
+
+
+func test_discoveries_are_the_landmarks_seen() -> void:
+	var w := _island(64)
+	w.landmarks = [
+		{"kind": &"stone_circle", "pos": Vector2(20.5, 20.5), "country": 1},
+		{"kind": &"wreck", "pos": Vector2(40.5, 40.5), "country": 1},
+		{"kind": &"bridge", "pos": Vector2(21.5, 21.5), "country": 1},
+	]
+	var e := UiExplored.new(64)
+	check(UiMapScreen.discoveries(w, e).is_empty(), "nothing seen, nothing found")
+	e.visit(Vector2(20.5, 20.5))
+	var found := UiMapScreen.discoveries(w, e)
+	eq(found.size(), 1, "the circle is found, a bridge is not a discovery")
+	eq(found[0].kind, &"stone_circle")
+	check(not found[0].machine, "a stone circle is not the machines' work")
+	e.visit(Vector2(40.5, 40.5))
+	var machine := UiMapScreen.discoveries(w, e).filter(func(d: Dictionary) -> bool: return d.kind == &"wreck")
+	check(machine.size() == 1 and machine[0].machine, "a wreck is shown as the machines'")
 
 
 func test_names_look_for_the_least_ink() -> void:

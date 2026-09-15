@@ -1,7 +1,9 @@
 extends TestCase
-## Sketches are drawn at their pixel size in the two idioms: made things with a
-## hand (hatched shadow cast on the page), found things with a ruler (no
-## hatching, an amber working part).
+## Sketches are drawn at their pixel size in the two idioms, then shown as the
+## slate's scanner shows them: made things drawn by hand (hatched shade cast
+## behind them), found things with a ruler (no hatching, a working part), all
+## in the slate's tones: phosphor for what people made, violet for what was
+## taken from the machines.
 
 
 func _count(img: Image, pred: Callable) -> int:
@@ -22,16 +24,20 @@ func _is_amber(c: Color) -> bool:
 
 
 func _is_cast_hatch(c: Color) -> bool:
-	return c.a > 0.3 and c.a < 0.7 and absf(c.r - UiTheme.PAPER_DEEP.r) < 0.05
+	return c.a > 0.3 and c.a < 0.7 and c.r + c.g + c.b < 0.05
 
 
-func test_every_shape_is_drawn_in_ink() -> void:
+func _is(c: Color, tone: Color) -> bool:
+	return c.a > 0.99 and absf(c.r - tone.r) < 0.01 and absf(c.g - tone.g) < 0.01 and absf(c.b - tone.b) < 0.01
+
+
+func test_every_shape_is_drawn_with_a_contour() -> void:
 	for shape: StringName in UiSketch.SHAPES:
 		var parts: Array = UiSketch.SHAPES[shape]
 		var img := UiSketch.render(parts, Vector2(32, 32), Vector2i(48, 48), &"stone", &"earth", UiSketch.FOUND_SHAPES.has(shape), 3)
 		var filled := _count(img, func(c: Color) -> bool: return c.a > 0.5)
 		check(filled > 48 * 48 / 10, "%s covers some of its box: %d" % [shape, filled])
-		check(filled < 48 * 48, "%s leaves paper round it" % shape)
+		check(filled < 48 * 48, "%s leaves glass round it" % shape)
 		gt(_count(img, _is_ink), 30, "%s has an inked contour" % shape)
 	for st: StringName in UiSketch.STATIONS:
 		var img := UiSketch.render(UiSketch.STATIONS[st][0], Vector2(48, 32), Vector2i(96, 64), &"stone", &"earth", false, 1)
@@ -41,10 +47,34 @@ func test_every_shape_is_drawn_in_ink() -> void:
 func test_made_is_hatched_and_found_is_ruled() -> void:
 	var made := UiSketch.render(UiSketch.SHAPES[&"axe"], Vector2(32, 32), Vector2i(64, 64), &"stone", &"earth", false, 1)
 	var found := UiSketch.render(UiSketch.SHAPES[&"beam"], Vector2(32, 32), Vector2i(64, 64), &"found", &"lens", true, 1)
-	gt(_count(made, _is_cast_hatch), 10, "a made thing casts hatched shade on the page")
+	gt(_count(made, _is_cast_hatch), 10, "a made thing casts hatched shade")
 	eq(_count(found, _is_cast_hatch), 0, "a found thing casts no hatching")
-	gt(_count(found, _is_amber), 4, "a found thing's working part glows amber")
-	eq(_count(made, _is_amber), 0, "a made tool has no amber part")
+	gt(_count(found, _is_amber), 4, "a found thing's working part glows")
+	eq(_count(made, _is_amber), 0, "a made tool has no working part")
+
+
+func test_the_scanner_shows_every_pixel_in_the_slate_tones() -> void:
+	var made := UiSketch.to_phosphor(UiSketch.render(UiSketch.SHAPES[&"axe"], Vector2(32, 32), Vector2i(64, 64), &"stone", &"earth", false, 1), UiTheme.PHOSPHOR)
+	var tones := UiTheme.PHOSPHOR
+	var other := _count(made, func(c: Color) -> bool: return c.a > 0.0 and not tones.any(func(t: Color) -> bool: return _is(c, t)))
+	eq(other, 0, "nothing but phosphor tones")
+	gt(_count(made, func(c: Color) -> bool: return _is(c, tones[3])), 30, "the contour is bright")
+	gt(_count(made, func(c: Color) -> bool: return _is(c, tones[1])), 10, "the cast shade is the faint tone")
+	var found := UiSketch.to_phosphor(UiSketch.render(UiSketch.SHAPES[&"beam"], Vector2(32, 32), Vector2i(64, 64), &"found", &"lens", true, 1), UiTheme.MACHINE)
+	gt(_count(found, func(c: Color) -> bool: return _is(c, UiTheme.MACHINE[4])), 4, "a found working part is the hottest violet")
+	eq(_count(found, func(c: Color) -> bool: return tones.any(func(t: Color) -> bool: return _is(c, t))), 0, "a found thing has no phosphor in it")
+
+
+func test_items_scan_in_their_own_tone() -> void:
+	check(UiIcons.is_found(&"las_hand"), "a found weapon")
+	check(UiIcons.is_found(&"wick"), "a charge")
+	check(UiIcons.is_found(&"kit_lens"), "salvage kit")
+	check(not UiIcons.is_found(&"knife"), "a made knife")
+	eq(UiIcons.tones_for(&"las_hand"), UiTheme.MACHINE)
+	eq(UiIcons.tones_for(&"axe_hand"), UiTheme.PHOSPHOR)
+	for id: StringName in [&"knife", &"las_hand"]:
+		for v: Color in UiIcons.colours_for(id).values():
+			check(UiIcons.tones_for(id).has(v), "%s's icon is in its tones" % id)
 
 
 func test_every_carried_thing_has_a_sketch_and_a_mark() -> void:
