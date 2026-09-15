@@ -165,5 +165,5 @@ func _routine(delta: float, on: bool) -> void:
 	if not on:
 		return
 	_read_t += delta
-	if pose == &"stand" or pose == &"walk":
+	if looking_round():
 		(joints[&"head"] as Node3D).rotation.y += (0.12 if fposmod(_read_t, 2.0) < 1.0 else -0.12)

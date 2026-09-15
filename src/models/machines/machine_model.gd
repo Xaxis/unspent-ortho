@@ -11,6 +11,9 @@ extends FigureModel
 ##            lamps blink the machine's disposition (DISPOSITION_CODE)
 ##   alert    snaps into its silhouette (a servo, not a blend), scans stop dead
 ##            centre and the optics lock bright; the status lamps double-blink
+##   hunting  a walk that is a chase (the mob's walk after alert, windup, strike
+##            or hurt, until it stands; or whatever set_hunting says): the lights
+##            stay locked as on alert while the body walks
 ##   windup   the working side brightens: the part climbs toward twice its light
 ##            and the lamps on the part's side go hot
 ##   hurt     the part's light stutters and goes out; the lamps stutter; nothing
@@ -96,6 +99,9 @@ var walk_w := 0.0
 var speed_now := 0.0
 ## What the status lamps blink (DISPOSITION_CODE key).
 var disposition: StringName = &"indifferent"
+## True while the machine's walk is running something down: the lights hold
+## locked (optics hot, scans centred, beams narrowed, status double-blink).
+var hunting := false
 ## The merged meshes by surface kind, once built.
 var surfaces: Dictionary = {}
 var skeleton: Skeleton3D
@@ -136,6 +142,8 @@ var _bone_last: Array[Transform3D] = []
 var _bone_was_shown: PackedByteArray = PackedByteArray()
 ## The delta of the animate() call in progress (0 while settling).
 var _dt := 0.0
+## Set once anything calls set_hunting(): the poses stop being read for it.
+var _hunt_told := false
 
 
 ## Offsets for one joint in a pose: position offset and euler rotation offset.
@@ -382,6 +390,13 @@ func finish_rig() -> void:
 func set_pose(p: StringName) -> void:
 	if p == pose or not POSES.has(p):
 		return
+	if not _hunt_told:
+		# A mob walks both its errands and its chases: a walk straight out of a
+		# lock, a blow or a hit is a chase, and it stays one until the body stands.
+		if p == &"walk":
+			hunting = hunting or pose == &"alert" or pose == &"windup" or pose == &"strike" or pose == &"hurt"
+		elif p == &"stand" or p == &"dead":
+			hunting = false
 	for jn: StringName in joints:
 		var n: Node3D = joints[jn]
 		_from[jn] = [n.position, n.rotation]
@@ -411,6 +426,23 @@ func animate(delta: float, speed: float) -> void:
 
 func set_part_lit(lit: bool) -> void:
 	_lit = lit
+
+
+## The mob says whether it is running something down (FigureModel contract).
+## Once told, the machine trusts this over what it reads from its poses.
+func set_hunting(on: bool) -> void:
+	_hunt_told = true
+	hunting = on
+
+
+## True while the eyes hold on something: alert, a blow, or a walk that hunts.
+func locked() -> bool:
+	return pose == &"alert" or pose == &"windup" or pose == &"strike" or (hunting and pose == &"walk")
+
+
+## True while the head may look round on its routine: standing, or a walk that is not a chase.
+func looking_round() -> bool:
+	return (pose == &"stand" or pose == &"walk") and not locked()
 
 
 func flare_part() -> void:
@@ -805,13 +837,13 @@ func _show_dead_only() -> void:
 
 
 func _run_scans() -> void:
-	var locked := pose == &"alert" or pose == &"windup" or pose == &"strike"
+	var lock := locked()
 	for s: Array in _scans:
 		var hold: Node3D = s[0]
 		var period: float = s[4]
 		# Across, hold, back, hold: the same sweep forever, until it locks.
 		var x := 0.5
-		if not locked:
+		if not lock:
 			var t := fposmod(clock, period) / period
 			x = 0.0
 			if t < 0.35:
@@ -901,7 +933,7 @@ func _run_lights() -> void:
 		elif hurt_like:
 			sv = flick and _dark_t < STUTTER
 		(s[0] as Node3D).visible = sv
-	var locked := pose == &"alert" or pose == &"windup" or pose == &"strike"
+	var lock := locked()
 	for b: Array in _beams:
 		var mi: MeshInstance3D = b[0]
 		var mat: ShaderMaterial = b[1]
@@ -917,20 +949,21 @@ func _run_lights() -> void:
 			mat.set_shader_parameter("strength", 1.2 if hard else 0.6)
 			mat.set_shader_parameter("narrow", 1.0)
 		else:
-			mat.set_shader_parameter("strength", 1.4 if locked else 0.85)
-			mat.set_shader_parameter("narrow", 0.55 if locked else 1.0)
+			mat.set_shader_parameter("strength", 1.4 if lock else 0.85)
+			mat.set_shader_parameter("narrow", 0.55 if lock else 1.0)
 
 
 ## A running machine's lamp: 0 out, 1 lit, 2 hot.
 func _lamp_level(role: StringName, side: bool, order: int, dark: float) -> int:
-	var locked := pose == &"alert" or pose == &"windup" or pose == &"strike"
+	var lock := locked()
+	var blow := pose == &"windup" or pose == &"strike"
 	match role:
 		&"status":
-			if pose == &"alert":
+			if lock and not blow:
 				# Double-blink, fast and hard, over and over.
 				var t := fposmod(clock + order * 0.05, 0.6)
 				return 2 if t < 0.08 or (t >= 0.16 and t < 0.24) else 0
-			if pose == &"windup" or pose == &"strike":
+			if blow:
 				return 2
 			var code: int = DISPOSITION_CODE.get(disposition, 1)
 			if code == 0:
@@ -941,11 +974,11 @@ func _lamp_level(role: StringName, side: bool, order: int, dark: float) -> int:
 			var slot := int(t2 / 0.3)
 			return 2 if slot < code and fposmod(t2, 0.3) < 0.12 else 0
 		&"optic":
-			return 2 if locked else 1
+			return 2 if lock else 1
 		&"work":
-			if side and (pose == &"windup" or pose == &"strike"):
+			if side and blow:
 				return 2
-			if pose == &"alert":
+			if lock and not blow:
 				return 2
 			return 2 if dark > 0.25 else 1
 	return 1

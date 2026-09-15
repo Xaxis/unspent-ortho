@@ -15,6 +15,9 @@ extends Node3D
 ##   animate(delta, speed)      speed in tiles/s actually moved
 ##   set_part_lit(lit)          the working part's light (off = hurt or dead)
 ##   flare_part()               brief flare when a blow reaches the working part
+##   set_hunting(on)            the mob is running something down (roused): a
+##                              machine holds its lights locked while it walks;
+##                              figures that do not care ignore it
 ##   part_side                  &"front" &"back" &"left" &"right" &"none"
 ##   height                     world units, for hit effects and labels
 
@@ -80,6 +83,10 @@ func set_part_lit(_lit: bool) -> void:
 
 
 func flare_part() -> void:
+	pass
+
+
+func set_hunting(_on: bool) -> void:
 	pass
 
 

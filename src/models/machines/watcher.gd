@@ -230,7 +230,7 @@ func _routine(_delta: float, on: bool) -> void:
 	var yaw := (joints[&"head"] as Node3D).get_parent() as Node3D
 	if not on:
 		return
-	if pose == &"stand" or pose == &"walk":
+	if looking_round():
 		# Centre, left, centre, right: an exact hold, then a servo move to the next.
 		var t := fposmod(clock, 6.0) / 6.0
 		var slot := int(t * 4.0)

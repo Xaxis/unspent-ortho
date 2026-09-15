@@ -153,6 +153,85 @@ func test_alert_snaps_and_locks_the_eyes() -> void:
 		m.free()
 
 
+## The four locked reads, checked after the lights have run a while.
+func check_locked(m: MachineModel, kid: StringName, why: String) -> void:
+	for x: float in m.scan_positions():
+		near(x, 0.5, 1e-4, "%s %s: scan held dead centre" % [kid, why])
+	for lvl: int in m.lamp_levels().get(&"optic", []):
+		eq(lvl, 2, "%s %s: optics hot" % [kid, why])
+	for b: MeshInstance3D in beams(m, &"scan"):
+		near(float((b.material_override as ShaderMaterial).get_shader_parameter("narrow")), 0.55, 1e-4, "%s %s: beam narrowed" % [kid, why])
+	eq(count_blinks(m, m.clock + 0.3, 0.6), 2, "%s %s: status double-blinks" % [kid, why])
+
+
+## A mob walks the same `walk` pose on an errand and in a chase. A walk out of
+## alert is a chase: it keeps every locked read until the body stands again.
+func test_a_chase_keeps_the_lights_locked() -> void:
+	for kid in LIT:
+		var m := FigureModel.create(kid) as MachineModel
+		m.set_pose(&"stand")
+		m.settle()
+		m.set_pose(&"alert")
+		for i in 20:
+			m.animate(STEP, 0.0)
+		m.set_pose(&"walk")
+		for i in 90:
+			m.animate(STEP, 2.0)
+		check(m.hunting, "%s: a walk out of alert hunts" % kid)
+		check_locked(m, kid, "walking out of alert")
+		# The head does not look round while it runs you down: the beam holds its bearing.
+		var dirs := {}
+		for i in 200:
+			m.animate(STEP * 2.0, 2.0)
+			for b: MeshInstance3D in beams(m, &"scan"):
+				var d := m.model_space(b).basis.x
+				dirs["%.2f,%.2f" % [d.x, d.z]] = true
+		check(dirs.size() <= 1, "%s: a hunting beam holds its bearing (%d seen)" % [kid, dirs.size()])
+		# A blow and the walk after it, and a hit and the walk after that.
+		for p: StringName in [&"windup", &"walk", &"hurt", &"walk"]:
+			m.set_pose(p)
+			for i in 30:
+				m.animate(STEP, 2.0 if p == &"walk" else 0.0)
+		check(m.hunting, "%s: still hunting after a hit" % kid)
+		check_locked(m, kid, "walking after a hit")
+		# Standing ends the chase; the next walk is an errand and looks round.
+		m.set_pose(&"stand")
+		m.animate(STEP, 0.0)
+		m.set_pose(&"walk")
+		for i in 30:
+			m.animate(STEP, 2.0)
+		check(not m.hunting, "%s: a walk from a stand is an errand" % kid)
+		var code: int = MachineModel.DISPOSITION_CODE[m.disposition]
+		if code > 0:
+			eq(count_blinks(m, 0.2, 0.3 * code + 1.6), code, "%s: an errand blinks its disposition again" % kid)
+		for b: MeshInstance3D in beams(m, &"scan"):
+			near(float((b.material_override as ShaderMaterial).get_shader_parameter("narrow")), 1.0, 1e-4, "%s: an errand's beam sweeps wide" % kid)
+		m.free()
+
+
+## When the mob says so, the machine believes it over its poses both ways.
+func test_set_hunting_is_the_last_word() -> void:
+	var m := FigureModel.create(&"warden") as MachineModel
+	m.settle()
+	m.set_hunting(true)
+	m.set_pose(&"walk")
+	for i in 30:
+		m.animate(STEP, 2.0)
+	check_locked(m, &"warden", "told it hunts")
+	m.set_hunting(false)
+	m.set_pose(&"alert")
+	m.set_pose(&"walk")
+	for i in 30:
+		m.animate(STEP, 2.0)
+	check(not m.hunting, "told it does not hunt, a walk out of alert is an errand")
+	check(not m.locked(), "and its lights look round")
+	m.free()
+	# Every figure takes the call, machine or not.
+	var f := FigureModel.create(&"no_such_figure")
+	f.set_hunting(true)
+	f.free()
+
+
 func test_windup_brightens_the_working_side() -> void:
 	for kid in LIT:
 		var m := FigureModel.create(kid) as MachineModel

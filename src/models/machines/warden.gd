@@ -172,7 +172,7 @@ func _gait_deltas(phase: float) -> Dictionary:
 func _routine(_delta: float, on: bool) -> void:
 	if not on:
 		return
-	if pose == &"stand" or pose == &"walk":
+	if looking_round():
 		# Hold, a quarter turn; hold, back; hold, the other quarter; hold, back.
 		var t := fposmod(clock, 9.0) / 9.0
 		var slot := int(t * 4.0)
