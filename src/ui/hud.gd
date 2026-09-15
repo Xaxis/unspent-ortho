@@ -13,8 +13,9 @@ extends CanvasLayer
 ## frame from Body, Inventory and the world; Events.message arrives directly.
 
 const MARGIN := 8
-const CELL_W := 10
 const CELL_H := 8
+## One cell of the health tally: three strokes and the gap after them.
+const TALLY_W := 12
 const PLACE_IN := 0.8
 const PLACE_HOLD := 2.6
 const PLACE_OUT := 1.4
@@ -198,37 +199,44 @@ func _draw_place(ci: Control) -> void:
 
 
 func _draw_health(ci: Control) -> void:
-	# Cells of three, kept like a tally: three upright strokes to a box. A spent
-	# stroke leaves a hollow; a fresh loss flashes paper-white before it goes.
+	# Health kept as a tally on a paper tag: three pen strokes to a cell, leaning
+	# a little the way a hand makes them. A spent stroke is left as a pencil
+	# ghost; a fresh loss shows in the accent before it goes. With one cell left
+	# the strokes turn to the accent and the tag's rim warms and cools.
 	var cells := UiRules.health_cells(health, max_health)
 	var lost_cells := UiRules.health_cells(_lost_from, max_health)
 	var x := MARGIN
 	var y := MARGIN
+	var w := cells.size() * TALLY_W + 1
+	var tag := Rect2i(x, y, w, CELL_H + 3)
+	var last := health > 0 and health <= UiRules.PER_CELL
+	UiDraw.rect(ci, Rect2i(tag.position.x + 1, tag.position.y - 1, tag.size.x - 2, tag.size.y + 2), UiTheme.INK_DEEP)
+	UiDraw.rect(ci, tag.grow_individual(1, 0, 1, 0), UiTheme.INK_DEEP)
+	if last:
+		var warm := 0.5 + 0.5 * sin(_time * 3.2)
+		UiDraw.frame(ci, tag.grow(1), Color(UiTheme.ACCENT_BRIGHT, 0.3 + 0.55 * warm))
+	UiDraw.rect(ci, tag, UiTheme.PAPER)
+	UiDraw.hline(ci, tag.position.x, tag.end.x - 1, tag.end.y - 1, UiTheme.PAPER_SHADE)
 	for i in cells.size():
-		var r := Rect2i(x, y, CELL_W, CELL_H)
-		UiDraw.rect(ci, r.grow(1), UiTheme.INK_DEEP)
-		UiDraw.rect(ci, r, Color(UiTheme.INK_SOFT, 0.9))
-		# The last cell standing breathes: its rim warms and cools, slowly.
-		if health > 0 and health <= UiRules.PER_CELL and i == 0:
-			var warm := 0.5 + 0.5 * sin(_time * 3.2)
-			UiDraw.frame(ci, r.grow(1), Color(UiTheme.ACCENT, 0.35 + 0.5 * warm))
+		var cx := x + 3 + i * TALLY_W
 		for t in UiRules.PER_CELL:
-			var stroke := Rect2i(x + 1 + t * 3, y + 1, 2, CELL_H - 2)
-			if t < cells[i]:
-				UiDraw.rect(ci, stroke, UiTheme.ACCENT_BRIGHT)
-				UiDraw.px(ci, stroke.position.x, stroke.position.y, Palette.RUST[5])
-			elif _hurt_flash > 0.0 and t < lost_cells[i]:
-				UiDraw.rect(ci, stroke, Color(Palette.LINEN[5], clampf(_hurt_flash * 2.0, 0.0, 1.0)))
-			else:
-				UiDraw.rect(ci, stroke, Color(UiTheme.INK_DEEP, 0.6))
-		x += CELL_W + 3
+			var sx := cx + t * 3
+			var col := UiTheme.ACCENT if last else UiTheme.INK
+			if t >= cells[i]:
+				col = UiTheme.PAPER_SHADE
+				if _hurt_flash > 0.0 and t < lost_cells[i]:
+					col = UiTheme.ACCENT_BRIGHT
+			# Each stroke leans: its top a pixel right of its foot, and no two alike.
+			var jog := 3 + (i * 7 + t * 5) % 2
+			UiDraw.vline(ci, sx + 1, y + 1, y + jog - 1, col)
+			UiDraw.vline(ci, sx, y + jog, y + CELL_H, col)
 	if _wind_alpha > 0.0:
-		# Wind: one thin line under the cells, pale as breath, only while some is spent.
-		var w := cells.size() * (CELL_W + 3) - 3
-		var fill := roundi(w * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
-		var wy := y + CELL_H + 3
-		UiDraw.rect(ci, Rect2i(MARGIN - 1, wy - 1, w + 2, 3), Color(UiTheme.INK_DEEP, _wind_alpha * 0.8))
-		UiDraw.rect(ci, Rect2i(MARGIN, wy, fill, 1), Color(Palette.RIME[5], _wind_alpha))
+		# Wind: one thin line under the tag, pale as breath, only while some is spent.
+		var fill := roundi((w - 2) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
+		var wy := tag.end.y + 3
+		var k := UiDraw.stepped(_wind_alpha)
+		UiDraw.rect(ci, Rect2i(MARGIN, wy - 1, w, 3), Color(UiTheme.INK_DEEP, k * 0.8))
+		UiDraw.rect(ci, Rect2i(MARGIN + 1, wy, fill, 1), Color(Palette.RIME[5], k))
 
 
 func _draw_clock(ci: Control) -> void:
