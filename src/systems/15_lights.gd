@@ -21,7 +21,7 @@ const GLOW_REACH := 24.0
 ## What a surface looks like at the centre of a pool, as a display multiply on
 ## its albedo: lamplight is an ochre wash, dimmer than day. Divided by the
 ## sky's tint at runtime, so it stays warm under a blue night.
-const WARM := Vector3(0.86, 0.72, 0.53)
+const WARM := Vector3(0.96, 0.74, 0.53)
 const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.

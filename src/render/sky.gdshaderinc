@@ -45,6 +45,8 @@ const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a lit
 const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of fallen ash
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
 const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under the moon
+const vec3 SKY_NIGHT_FLOOR = vec3(0.08, 0.10, 0.21);  // the darkest a wash goes at night
+const float SKY_NIGHT_KNEE = 0.32;
 
 // The screen pixel a world point falls on. The camera never rotates (yaw 45,
 // pitch 57) and is snapped to whole texels, so this is pinned to the world.
@@ -242,8 +244,11 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
 	vec3 c = sky_settled(albedo * sky_tint, albedo, world_pos, px);
-	// Night is blue ink on dim washes: the darkest washes go to deep blue, never black.
-	c = mix(c, SKY_NIGHT_INK * 0.6, sky_view.y * 0.14);
+	// Night is blue ink on dim washes, never black. The renderer's linear light
+	// crushes dark washes to nothing under the moon, so the darks are lifted
+	// onto a deep blue floor (a soft knee: light washes are left alone).
+	vec3 floor_ink = SKY_NIGHT_FLOOR * sky_view.y;
+	c = mix(mix(floor_ink, vec3(SKY_NIGHT_KNEE), c / SKY_NIGHT_KNEE), c, step(vec3(SKY_NIGHT_KNEE), c));
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
 		// A cloud's shade is a colour, like every shade here: one step toward
