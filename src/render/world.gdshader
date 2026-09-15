@@ -252,21 +252,50 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			emit += vec3(0.25);
 		}
 	} else if (m == 45) {
-		// PAVEMENT: clints of pale limestone split by grikes. The grikes are ink
-		// cuts that wander and break off; they never make a grid.
-		vec2 r = vec2(dot(wp, vec2(0.96, 0.28)), dot(wp, vec2(-0.28, 0.96)));
-		vec2 warp = vec2(ink_vnoise(wp * 0.5), ink_vnoise(wp * 0.5 + 9.0)) - 0.5;
-		vec3 v = cells(vec2(r.x * 0.32, r.y * 0.6) + warp * 0.45);
-		c = v.z < 0.25 ? dn(c, 0.22) : (v.z > 0.85 ? up(c, 0.15) : c);
-		float edge = v.y - v.x;
-		float gate = ink_vnoise(wp * 1.1 + 4.0);
-		if (edge < 0.04 && gate > 0.42) {
-			c = gate > 0.74 ? MOSS2 : LINEN1;
-		} else if (edge < 0.075 && gate > 0.42) {
-			c = up(c, 0.3);
-		} else if (v.z > 0.9 && edge > 0.3 && edge < 0.34 && mod(px.x, 3.0) < 1.0) {
-			// A row of drill holes across a clint: the machine age in the stone.
-			c = LINEN1;
+		// PAVEMENT: clints of pale limestone, long blocks laid along one
+		// dominant joint, cut by grikes: deep ink cuts with a worn pale lip and
+		// moss down in them. A grike runs a few blocks and stops; cross joints
+		// break a clint into lengths, offset row to row, so it never makes a
+		// grid. Drill-hole rows on a few clints.
+		vec2 r = vec2(dot(wp, vec2(0.94, 0.34)), dot(wp, vec2(-0.34, 0.94)));
+		float across = r.y + (ink_vnoise(vec2(r.x * 0.06, 3.0)) - 0.5) * 0.9;
+		const float ROW = 1.9;
+		float row = floor(across / ROW);
+		float fy = (across - row * ROW);
+		float rh = ink_hash(vec2(row, 11.0));
+		float along = r.x + rh * 11.0;
+		float seg_len = 2.4 + rh * 2.2;
+		float seg = floor(along / seg_len);
+		float fx = along - seg * seg_len;
+		float sh = ink_hash(vec2(row, seg));
+		// A clint's own slightly leaning edges, so blocks are not rectangles.
+		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 0.5;
+		float end_x = fx + lean * fy;
+		float gw = 0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp);
+		bool grike_on = ink_hash(vec2(row, floor(along / 5.1) + 20.0)) < 0.66;
+		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.7;
+		float cw = 0.08 + rag(wp);
+		c = sh < 0.3 ? dn(c, 0.1) : (sh > 0.8 ? up(c, 0.1) : c);
+		bool in_grike = grike_on && fy < gw;
+		bool in_cross = cross_on && end_x > 0.0 && end_x < cw;
+		if (in_grike || in_cross) {
+			c = ink_vnoise(wp * 0.7 + 2.0) > 0.55 ? MOSS2 : LINEN2;
+			if ((in_grike && fy > gw * 0.3 && fy < gw * 0.75) || (in_cross && end_x > cw * 0.3 && end_x < cw * 0.7)) {
+				c = INK3;
+			}
+		} else if ((grike_on && fy < gw + 0.06) || (cross_on && end_x >= cw && end_x < cw + 0.06)) {
+			c = up(c, 0.2);
+		} else if (grike_on && fy > ROW - 0.05) {
+			c = dn(c, 0.28);
+		} else {
+			float pan = ink_vnoise(wp * 1.1 + vec2(row * 3.0, seg)) + rag(wp);
+			if (pan > 0.87) {
+				c = dn(c, 0.2);
+			}
+			if (sh > 0.88 && abs(fy - ROW * 0.5) < 0.06 && mod(px.x, 3.0) < 1.0 && fx > seg_len * 0.25 && fx < seg_len * 0.7) {
+				// A row of drill holes across a clint: the machine age in the stone.
+				c = LINEN1;
+			}
 		}
 	} else if (m == 46) {
 		// ASH: laid by the wind in long drifts, pale crests and scorched

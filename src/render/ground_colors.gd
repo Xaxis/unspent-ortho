@@ -141,7 +141,8 @@ static func _make(g: int, c: int) -> Color:
 		Ground.BONE, Ground.LIMESTONE:
 			if c == Country.BURNING:
 				return _m(P.LINEN[3], P.ASH[3], 0.5)
-			return P.LINEN[4]
+			# Bone-pale, cooled a touch toward the grey of weathered stone.
+			return _m(_m(P.LINEN[4], P.LINEN[5], 0.45), P.STONE[4], 0.15)
 		Ground.SCREE:
 			match c:
 				Country.BONELANDS: return _m(P.SLATE[3], P.LINEN[3], 0.35)
