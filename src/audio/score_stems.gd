@@ -8,7 +8,8 @@ class_name ScoreStems
 ##   texture     the air: 0 its own, 1 rain, 2 fog, 3 snow, 4 ash
 ##   grid        a machine installation's exact sequenced pulse and neon hum
 ##   dissonance  beating clusters while danger stands
-##   melody      six phrase shapes on the landscape's instrument (one-shots)
+##   melody      twelve phrase shapes on the landscape's instrument (one-shots),
+##               each starting from its own place in the landscape's pool
 ##   resolve     the chord and a bell when danger passes (one-shot)
 ##   motif       the landscape's sentinel figure (one-shot)
 ##
@@ -28,7 +29,7 @@ const LAYERS := {
 	&"texture": {"bars": 7, "variants": 5, "category": &"score_texture", "heard": -16.0},
 	&"grid": {"bars": 2, "variants": 1, "category": &"score_grid", "heard": -15.0},
 	&"dissonance": {"bars": 5, "variants": 1, "category": &"score_dissonance", "heard": -14.0},
-	&"melody": {"bars": 4, "variants": 6, "category": &"score_cue", "heard": -10.0},
+	&"melody": {"bars": 4, "variants": 12, "category": &"score_cue", "heard": -10.0},
 	&"resolve": {"bars": 3, "variants": 1, "category": &"score_cue", "heard": -10.5},
 	&"motif": {"bars": 4, "variants": 1, "category": &"score_cue", "heard": -9.0},
 }
@@ -375,7 +376,19 @@ static func _melody(j: ScoreRender, s: Dictionary, variant: int, seed_value: int
 		2: shape = [[0, 1.0], [0, 1.0], [0, 1.5], [-2, 3.0]]
 		3: shape = [[-4, 1.5], [4, 2.5], [-2, 3.0]]
 		4: shape = [[-1, 0.3], [1, 6.0]]
-		_: shape = [[0, 1.0], [1, 0.5], [-1, 1.5], [-2, 1.0], [1, 3.0]]
+		5: shape = [[0, 1.0], [1, 0.5], [-1, 1.5], [-2, 1.0], [1, 3.0]]
+		# A long fall.
+		6: shape = [[0, 3.0], [2, 1.0], [-1, 1.0], [-3, 5.0]]
+		# A slow arpeggio climbing, then dropping away.
+		7: shape = [[-2, 0.5], [1, 0.5], [1, 0.5], [1, 0.5], [-4, 6.0]]
+		# A question left open.
+		8: shape = [[0, 1.5], [-2, 1.5], [0, 1.0], [3, 4.0]]
+		# Two long tones: a sigh.
+		9: shape = [[0, 4.0], [-1, 4.0]]
+		# Climbing in thirds and settling back a step.
+		10: shape = [[-5, 1.0], [2, 1.0], [2, 1.0], [2, 1.0], [-1, 5.0]]
+		# A call repeated, answered higher.
+		_: shape = [[0, 0.5], [0, 0.5], [-1, 3.0], [1, 0.5], [1, 4.0]]
 	var t := beat * 0.5
 	for k in shape.size():
 		var step: Array = shape[k]

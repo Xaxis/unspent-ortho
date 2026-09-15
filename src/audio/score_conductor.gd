@@ -95,7 +95,10 @@ var _last_motif := -INF
 var _sentinel_was := 0.0
 var _next_phrase := INF
 var _phrase_count := 0
-var _last_phrase := -1
+## Landscape -> its last two phrase shapes (never played again straight away),
+## and the section the last phrase was played in.
+var _recent_phrases: Dictionary = {}
+var _phrase_section := 0
 var _pending: Array = []
 var _dominant: StringName = &""
 var _dominant_since := 0.0
@@ -280,18 +283,28 @@ func _phrase_gap() -> float:
 	return lerpf(PHRASE_GAP_SPARSE, PHRASE_GAP_FULL, u) * lerpf(1.0, 2.0, night) * lerpf(0.85, 1.15, Rng.hash01(seed_value, _phrase_count, 0x9e))
 
 
-func next_phrase_variant() -> int:
+## The shape the next phrase in `land` will be: chosen by the world, the
+## landscape, how many phrases have played and the section the last one played
+## in, never one of that landscape's last two. It holds until that phrase is
+## played, so what wanted() bakes ahead is what is heard.
+func next_phrase_variant(land: StringName) -> int:
 	var count := int(ScoreStems.LAYERS[&"melody"]["variants"])
-	var v := floori(Rng.hash01(seed_value, _phrase_count, 0x9d) * count)
-	if v == _last_phrase:
-		v = (v + 1) % count
-	return v
+	var recent: Array = _recent_phrases.get(land, [])
+	var choices: Array[int] = []
+	for v in count:
+		if not recent.has(v):
+			choices.append(v)
+	var h := Rng.hash_ints(seed_value, String(land).hash(), _phrase_count, _phrase_section, 0x9d)
+	return choices[h % choices.size()]
 
 
 func _queue_phrase(land: StringName, gain: float) -> void:
-	var v := next_phrase_variant()
-	_last_phrase = v
+	var v := next_phrase_variant(land)
+	var recent: Array = _recent_phrases.get(land, [])
+	recent.append(v)
+	_recent_phrases[land] = recent.slice(-2)
 	_phrase_count += 1
+	_phrase_section = section
 	_queue(ScoreStems.key_for(land, &"melody", v), gain)
 
 
@@ -354,7 +367,7 @@ func wanted() -> Array[StringName]:
 	var ahead: Array[StringName] = []
 	for p: Array in _pending:
 		ahead.append(p[1])
-	ahead.append(ScoreStems.key_for(land, &"melody", next_phrase_variant()))
+	ahead.append(ScoreStems.key_for(land, &"melody", next_phrase_variant(land)))
 	ahead.append(ScoreStems.key_for(land, &"pad", 0))
 	ahead.append(ScoreStems.key_for(land, &"pad", 1))
 	ahead.append(ScoreStems.key_for(land, &"pulse", 0))

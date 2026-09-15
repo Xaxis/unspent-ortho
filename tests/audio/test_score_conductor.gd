@@ -75,6 +75,41 @@ func test_layers_enter_over_minutes_and_leave_again() -> void:
 		near(fmod(float(p[0]) + 0.001, ScoreLandscapes.BAR), 0.0, STEP + 0.01, "a cue waits for its bar line")
 
 
+## Hours of play never hear the same few recordings in the same order: each
+## landscape draws its own shapes from twelve, never one of its last two, and
+## what is baked ahead is the phrase that plays.
+func test_phrases_vary_by_landscape_and_never_repeat_a_recent_shape() -> void:
+	gt(float(ScoreStems.LAYERS[&"melody"]["variants"]), 9.0, "enough shapes to go round")
+	var orders := {}
+	for land: StringName in [&"coast", &"moss", &"burning"]:
+		var c := ScoreConductor.new(7)
+		var shapes: Array[int] = []
+		var predicted := -1
+		for i in roundi(45.0 * 60.0 / STEP):
+			var count := c._phrase_count
+			var before := c.next_phrase_variant(land)
+			c.tick(STEP, _input(land))
+			if c._phrase_count > count:
+				# Queued for its bar line, or already fired when it fell on one.
+				var key: StringName = c._pending[-1][1] if not c._pending.is_empty() else c.played[-1][1]
+				eq(int(ScoreStems.parse(key)["variant"]), before, "%s: the phrase baked ahead is the one played" % land)
+				shapes.append(before)
+				predicted = before
+		gt(float(shapes.size()), 15.0, "%s: phrases over three quarters of an hour (%d)" % [land, shapes.size()])
+		for i in range(1, shapes.size()):
+			check(shapes[i] != shapes[i - 1] and (i < 2 or shapes[i] != shapes[i - 2]), "%s: phrase %d (shape %d) is not one of the last two" % [land, i, shapes[i]])
+		var distinct := {}
+		for v in shapes:
+			distinct[v] = true
+		gt(float(distinct.size()), 7.0, "%s: most of the shapes are heard (%d)" % [land, distinct.size()])
+		orders[land] = shapes.slice(0, 6)
+		check(predicted >= 0, "%s played phrases" % land)
+	var lands := orders.keys()
+	for i in lands.size():
+		for j in range(i + 1, lands.size()):
+			check(str(orders[lands[i]]) != str(orders[lands[j]]), "%s and %s do not open with the same phrases" % [lands[i], lands[j]])
+
+
 func test_night_is_deeper_and_sparser() -> void:
 	var day := ScoreConductor.new(3)
 	var night := ScoreConductor.new(3)
