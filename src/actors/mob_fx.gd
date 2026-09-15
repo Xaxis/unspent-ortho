@@ -20,6 +20,7 @@ uniform float seed = 0.0;
 uniform vec3 col_a = vec3(0.91, 0.86, 0.75);
 uniform vec3 col_b = vec3(0.71, 0.86, 0.93);
 uniform vec3 ink_col = vec3(0.031, 0.027, 0.059);
+uniform vec2 dir = vec2(1.0, 0.0);
 varying vec3 wp;
 """
 
@@ -187,6 +188,28 @@ vec4 tell(vec2 p, float pw, float pr) {
 	return vec4(0.0);
 }
 
+// Speed lines: three ink dashes trailing a body that has just shot away along
+// `dir` (screen, UV space), the middle one longest. They slide back and thin.
+vec4 streak(vec2 p, float pw, float pr) {
+	vec2 d = normalize(dir);
+	vec2 n = vec2(-d.y, d.x);
+	for (int i = 0; i < 3; i++) {
+		float fi = float(i) - 1.0;
+		float off = fi * 0.32;
+		float len = i == 1 ? 1.2 : 0.75;
+		float start = -0.1 - pr * 0.5 - abs(fi) * 0.15;
+		float along = dot(p, -d);
+		float across = abs(dot(p, n) - off);
+		if (along < start + 0.2 || along > start + 0.2 + len * (1.0 - pr * 0.6)) {
+			continue;
+		}
+		if (across < pw * (pr < 0.5 ? 0.9 : 0.55)) {
+			return vec4(sky_apply(ink_col, wp, TIME), 1.0);
+		}
+	}
+	return vec4(0.0);
+}
+
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
@@ -199,6 +222,7 @@ void fragment() {
 	else if (mode == 3) { o = clang(p, pw, pr); }
 	else if (mode == 4) { o = glint(p, pw, pr); }
 	else if (mode == 5) { o = tell(p, pw, pr); }
+	else if (mode == 6) { o = streak(p, pw, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -273,6 +297,7 @@ const RING := 2
 const CLANG := 3
 const GLINT := 4
 const TELL := 5
+const STREAK := 6
 
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
@@ -409,6 +434,22 @@ static func tell(parent: Node, at: Vector3, seconds: float, seed_value: int = 0,
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0]), maxf(0.12, seconds))
+
+
+## Speed lines left behind a body that shot off along `dir` (tile space) as a
+## camera at `yaw_deg`/`pitch_deg` sees it.
+static func streak(parent: Node, at: Vector3, dir: Vector2, yaw_deg: float, pitch_deg: float, seed_value: int = 0, size: float = 1.1) -> void:
+	if not _ok(parent) or dir.length() < 0.01:
+		return
+	var yaw := deg_to_rad(yaw_deg)
+	var right := Vector2(cos(yaw), -sin(yaw))
+	var up := Vector2(-sin(yaw), -cos(yaw))
+	var d := dir.normalized()
+	# UV y runs down the screen; the ground's up is foreshortened by the pitch.
+	var screen := Vector2(d.dot(right), -d.dot(up) * sin(deg_to_rad(pitch_deg)))
+	var mi := _mark(parent, at, size, STREAK, &"over", seed_value, Palette.INK[0], Palette.INK[0])
+	(mi.material_override as ShaderMaterial).set_shader_parameter(&"dir", screen.normalized())
+	_run(mi, 0.2)
 
 
 ## Compile every mark's shader before the first blow needs it, so the first hit

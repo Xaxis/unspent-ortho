@@ -185,6 +185,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"dodge", player.position)
 				player.model.play_action(&"dodge", FightRules.DODGE_MS / 1000.0)
 				MobFx.puff(fx, _at3(hero.pos), -hero.dodge_dir, _dust_colour(hero.pos), 0.55, int(sim.now))
+				MobFx.streak(fx, _at3(hero.pos - hero.dodge_dir * 0.2, 0.55), hero.dodge_dir, game.camera.yaw_deg, game.camera.pitch_deg, int(sim.now))
 			&"evaded":
 				MobFx.puff(fx, _at3(hero.pos + hero.dodge_dir * 0.3), hero.dodge_dir, _dust_colour(hero.pos), 0.4, int(sim.now) + 1)
 			&"grip":
@@ -440,6 +441,8 @@ func _play_act(spec: String) -> void:
 			MobFx.ring(game, p3 + Vector3(-2.0, 0, 0), Palette.INK[1], 1.0, 0.3)
 			MobFx.clang(game, p3 + Vector3(0, 0.6, 2.0), 7)
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
+			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_deg, game.camera.pitch_deg, 10)
+			MobFx.tell(game, p3 + Vector3(0, 0.6, 0) + Vector3(-1.2, 0, 1.2) * 2.0, 0.4, 11)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0
