@@ -69,6 +69,44 @@ func flare_part() -> void:
 	pass
 
 
+## Where a hit effect on the working part should appear, in world space (the
+## figure's middle when it has no part). Machines override with the part itself.
+func part_position() -> Vector3:
+	var base := global_position if is_inside_tree() else position
+	return base + Vector3(0, height * 0.5, 0)
+
+
+## Triangles this figure draws, MultiMesh instances included. Budget: a machine
+## 2000, an animal 800 (art-audio-extract §8).
+func triangle_count() -> int:
+	return _tris_under(self)
+
+
+static func _tris_under(n: Node) -> int:
+	var total := 0
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		total += _mesh_tris((n as MeshInstance3D).mesh)
+	elif n is MultiMeshInstance3D and (n as MultiMeshInstance3D).multimesh != null:
+		var mm := (n as MultiMeshInstance3D).multimesh
+		if mm.mesh != null:
+			total += _mesh_tris(mm.mesh) * mm.instance_count
+	for c in n.get_children():
+		total += _tris_under(c)
+	return total
+
+
+static func _mesh_tris(m: Mesh) -> int:
+	var total := 0
+	for s in m.get_surface_count():
+		var arrays := m.surface_get_arrays(s)
+		var idx: Variant = arrays[Mesh.ARRAY_INDEX]
+		if idx is PackedInt32Array and (idx as PackedInt32Array).size() > 0:
+			total += (idx as PackedInt32Array).size() / 3
+		else:
+			total += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+	return total
+
+
 ## Helper for subclasses: add a MeshKit as a child mesh on `parent` (default self).
 func add_mesh(k: MeshKit, parent: Node3D = null) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
