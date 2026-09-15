@@ -16,6 +16,7 @@ class_name Survival
 ##   use(game) -> bool                       the `use` action: work the target; else eat (if hungry),
 ##                                           sleep, or build a fire, whichever fits first
 ##   work(game, prop) -> bool                start working a prop (refusals go to Events.message)
+##   can_work(game, prop) -> bool            work would start, with the held or a carried tool
 ##   finish_work(game) -> bool               complete the work in hand now (the system does this
 ##                                           when its real time is up; bots call it directly)
 ##   interrupt(game) -> bool                 drop the work in hand: nothing taken, no time charged
@@ -215,6 +216,13 @@ static func _fallback(game: Game) -> StringName:
 
 static func busy(game: Game) -> bool:
 	return not SurvivalState.of(game).job.is_empty() or now_real() < game.body.busy_until
+
+
+static func can_work(game: Game, prop: WorldProp) -> bool:
+	if prop == null or game.world.depleted.has(prop.id):
+		return false
+	var state := SurvivalState.of(game)
+	return _choose(game, state, prop).ok or _tool_for(game, state, prop) != &""
 
 
 static func work(game: Game, prop: WorldProp) -> bool:

@@ -7,14 +7,22 @@ extends GameSystem
 ## Keys: `use` works what is in front (else eats, sleeps or builds a fire, see
 ## Survival.use). `craft` makes the most sensible thing in reach, but only if no
 ## screen opened for the same key press (the ui package's crafting screen wins).
-## A blow that lands on the player knocks the work out of their hands.
+## A blow that lands on the player knocks the work out of their hands. Holding
+## `use` keeps working the same thing while it still gives (a vein, a mussel rock).
 ##
 ## Screens find this node by method: eat(id) -> bool eats one through Survival.
 
 ## The start kit's knife is half worn. (source)
 const START_EDGE := 5000
 
+## Seconds between one take and the next while `use` is held: long enough to see it land.
+const AGAIN_SECONDS := 0.15
+
 var _craft_wait := -1
+## Bots and tests hold `use` down without a device.
+var scripted_use_held := false
+var _again_prop: WorldProp = null
+var _again_at := 0.0
 var _screen_touched := false
 
 
@@ -49,12 +57,30 @@ func setup(g: Game) -> void:
 	inv.changed.connect(_on_inventory_changed)
 	Events.screen_changed.connect(_on_screen_changed)
 	Events.hit.connect(_on_hit)
+	_put_props(o.put)
 	if o.build != "":
 		Survival.build(g, StringName(o.build), true)
 	if o.use:
+		# A held shot holds the key too, so a vein can be caught worked right out.
+		scripted_use_held = o.hold >= 0.0
 		_face_nearest_workable()
 		Survival.use(g)
 	Survival.update_body(g)
+
+
+## --put: props the generator may not place yet, set out in front for a shot:
+## the first straight ahead in reach, the rest fanned round the player.
+func _put_props(kinds: PackedStringArray) -> void:
+	var i := 0
+	for name in kinds:
+		var kind := PropKind.NAMES.find(name.replace("_", " "))
+		if kind < 0:
+			push_warning("--put: unknown prop kind %s" % name)
+			continue
+		var turn := [0.0, 1.1, -1.1, 2.2, -2.2, PI][i % 6] as float
+		var reach := 0.75 + PropKind.SOLID[kind]
+		Survival.add_prop(game, kind, game.player.pos + Vector2.from_angle(game.player.facing + turn) * reach)
+		i += 1
 
 
 func _face_nearest_workable() -> void:
@@ -128,3 +154,25 @@ func _process(delta: float) -> void:
 		Survival.fixed_now += Survival.fixed_step
 		delta = Survival.fixed_step
 	Survival.tick(game, delta)
+	_again((scripted_use_held or Input.is_action_pressed("use")) and not game.input_blocked())
+
+
+## Held `use`: once a take finishes, work the same prop again if it is still in
+## front and will still give. Anything else (a refusal, a new target) ends it quietly.
+func _again(held: bool) -> void:
+	var job := SurvivalState.of(game).job
+	if not job.is_empty():
+		_again_prop = job.prop
+		_again_at = Survival.now_real() + AGAIN_SECONDS
+		return
+	if _again_prop == null:
+		return
+	if not held:
+		_again_prop = null
+		return
+	if Survival.now_real() < _again_at or Survival.busy(game):
+		return
+	var prop := _again_prop
+	_again_prop = null
+	if Survival.use_target(game) == prop and Survival.can_work(game, prop):
+		Survival.work(game, prop)
