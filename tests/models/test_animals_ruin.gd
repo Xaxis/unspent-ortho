@@ -91,7 +91,7 @@ func test_the_bull_is_kept_ringed_and_tagged() -> void:
 		b.free()
 
 
-func test_a_village_with_a_tip_near_sends_its_gulls_to_the_refuse() -> void:
+func test_every_tip_and_wreck_near_the_player_gets_its_own_flock() -> void:
 	var w := WorldGen.generate(5)
 	var g := Game.new()
 	g.world = w
@@ -101,28 +101,45 @@ func test_a_village_with_a_tip_near_sends_its_gulls_to_the_refuse() -> void:
 	g.player.query = g.query
 	var f: GameSystem = (load("res://src/systems/37_fauna.gd") as GDScript).new()
 	f.game = g
-	var v: Vector2 = w.villages[0].pos
-	# A tip on standing ground a few tiles out from the square.
-	var at := v
-	for i in 24:
-		var p := v + Vector2.from_angle(TAU * i / 24.0) * 6.0
-		if g.query.standable(floori(p.x), floori(p.y)):
-			at = p
-			break
-	var tip := WorldProp.new(987654, PropKind.TIP, at, 0.0, 1.0)
-	w.props.append(tip)
-	g.query.add_prop(tip)
-	var spot: Vector2 = f.call("_refuse", v, 18.0)
-	check(spot.x >= 0.0, "a spot beside the tip")
-	lt(spot.distance_to(at), tip.solid + 1.2, "right beside it")
-	g.player.pos = v
-	f.call("_populate", 0, v)
-	var gulls := (f.get("queue") as Array).filter(func(q: Dictionary) -> bool: return q.kind == &"gull")
-	if gulls.is_empty():
-		check(false, "gulls came for the refuse")
+	# A tip on standing ground as far from every village as the island allows:
+	# the flock must not wait for a village to be near.
+	var at := Vector2(-1, -1)
+	var far := 0.0
+	for y in range(8, w.size - 8, 6):
+		for x in range(8, w.size - 8, 6):
+			if not g.query.standable(x, y) or Ground.is_water(w.ground_at(x, y)):
+				continue
+			var d := 1e9
+			for v: Dictionary in w.villages:
+				d = minf(d, (v.pos as Vector2).distance_to(Vector2(x, y)))
+			for q in g.query.props_near(Vector2(x, y), 12.0):
+				if q.kind == PropKind.TIP or q.kind == PropKind.WRECK:
+					d = 0.0
+			if d > far:
+				far = d
+				at = Vector2(x + 0.5, y + 0.5)
+	gt(far, 40.0, "a spot well away from any village (%.0f tiles)" % far)
+	var tip := Survival.add_prop(g, PropKind.TIP, at)
+	g.player.pos = at + Vector2(6, 0)
+	f.call("_stream", false)
+	var key: int = int(f.get("REFUSE_KEY")) - tip.id
+	var gulls := (f.get("queue") as Array).filter(func(q: Dictionary) -> bool: return q.kind == &"gull" and q.village == key)
+	gt(gulls.size(), 2, "a flock came for the tip")
 	for q: Dictionary in gulls:
-		lt((q.pos as Vector2).distance_to(at), tip.solid + 3.0, "the flock works the tip, not the tideline")
-	w.props.pop_back()
+		lt((q.pos as Vector2).distance_to(at), tip.solid + 2.0, "working the heap, not the tideline")
+	# Built, then left behind: gone when the player walks off.
+	while f.call("pump"):
+		pass
+	var here := (f.get("beasts") as Array).filter(func(b: Dictionary) -> bool: return b.village == key).size()
+	eq(here, gulls.size(), "the flock is built")
+	g.player.pos = at + Vector2(200, 200).limit_length(float(w.size))
+	g.player.pos = Vector2(clampf(g.player.pos.x, 0, w.size - 1), clampf(g.player.pos.y, 0, w.size - 1))
+	if g.player.pos.distance_to(at) > float(f.get("FAR")):
+		f.call("_stream", false)
+		eq((f.get("beasts") as Array).filter(func(b: Dictionary) -> bool: return b.village == key).size(), 0, "and let go when the player is far")
+	# Worldgen's own tips and wrecks are sites too.
+	var sites: Array = f.get("sites")
+	gt(sites.size(), 1, "the island's refuse is found (%d sites)" % sites.size())
 	f.free()
 	g.player.free()
 	g.free()

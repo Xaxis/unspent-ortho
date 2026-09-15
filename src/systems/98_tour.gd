@@ -18,10 +18,11 @@ extends GameSystem
 ##                          free (no longer held), ring (a blow rang off plate),
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
-##                          took (something was taken), folk (a villager dressed
-##                          for their land and trade stands in view)
-##   walkto folk SECS       steer the real walk toward the nearest villager out of
-##                          doors, stopping at arm's length (fails if none is reached)
+##                          took (something was taken); folk, crowd, dog, gulls
+##                          (people and animals: see src/systems/tour/tour_people.gd)
+##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
+##                          or within sight of a tip's gulls (tour_people.gd)
+##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -149,10 +150,12 @@ func _run() -> void:
 			"coast":
 				ok = _coast(parts[1] == "calm")
 			"walkto":
-				if parts[1] == "folk":
-					ok = await _walk_to_folk(parts[2].to_float() if parts.size() > 2 else 1.0)
+				if parts[1] in ["folk", "refuse", "dog"]:
+					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
 					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
+			"perf":
+				ok = await TourPeople.perf(self, game, parts)
 			"echo":
 				print("tour: ", line.substr(5))
 			_:
@@ -217,56 +220,9 @@ func _now_true(what: String) -> bool:
 			for m in sim.mobs:
 				if m.alive and m.blow_phase(sim.now) == &"windup":
 					return true
-		"folk":
-			var cam := get_viewport().get_camera_3d()
-			var folk := _system("folk")
-			if folk == null or cam == null:
-				return false
-			for f: Dictionary in folk.get("folk"):
-				var pm := f.model as PersonModel
-				if pm.visible and pm.look.trade != &"" and cam.is_position_in_frustum(pm.global_position + Vector3(0, 0.7, 0)):
-					return true
+		"folk", "crowd", "dog", "gulls":
+			return TourPeople.sees(game, what)
 	return false
-
-
-## Walk the real way to the nearest villager out of doors (characters).
-func _walk_to_folk(secs: float) -> bool:
-	var folk := _system("folk")
-	if folk == null:
-		return false
-	var until := Time.get_ticks_msec() + int(secs * 1000.0)
-	var reached := false
-	# Stuck on a wall: sidestep round it the way a player does, for a moment.
-	var stuck := 0.0
-	var sidestep := 0.0
-	var turn := 1.0
-	while Time.get_ticks_msec() < until:
-		var best: Dictionary = {}
-		for f: Dictionary in folk.get("folk"):
-			if f.state == &"out" and (best.is_empty() or (f.pos as Vector2).distance_to(game.player.pos) < (best.pos as Vector2).distance_to(game.player.pos)):
-				best = f
-		if best.is_empty():
-			break
-		var d: Vector2 = (best.pos as Vector2) - game.player.pos
-		if d.length() <= 1.6:
-			reached = true
-			break
-		var dir := d.normalized()
-		var step := get_physics_process_delta_time()
-		stuck = stuck + step if game.player.speed < 0.3 and sidestep <= 0.0 else 0.0
-		if stuck > 0.25:
-			stuck = 0.0
-			sidestep = 0.7
-			turn = -turn
-		if sidestep > 0.0:
-			sidestep -= step
-			dir = dir.rotated(turn * PI * 0.5)
-		game.scripted_move = Vector2(dir.x - dir.y, dir.x + dir.y) * 0.7071
-		game.scripted_run = d.length() > 6.0
-		game.scripted_seconds = 0.05
-		await get_tree().physics_frame
-	game.scripted_seconds = 0.0
-	return reached
 
 
 func _walk_to(what: String, secs: float) -> bool:

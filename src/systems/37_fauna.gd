@@ -1,12 +1,14 @@
 extends GameSystem
 ## The animals that live beside people and are no threat: a dog about each
 ## village, a few sheep grazing the nearest grass, gulls working the nearest
-## beach. They are not mobs (no group, no fight); fight's hostile animals come
-## from FigureModel.create through the mob package. Streamed with the villages.
+## beach, and a flock over every tip and wreck. They are not mobs (no group, no
+## fight); fight's hostile animals come from FigureModel.create through the mob
+## package. Streamed with the villages, and with the refuse near the player.
 ##
 ##   dog    wanders the village, stops to watch you, trots off again
 ##   sheep  graze in a loose flock and scatter when you walk into them
-##   gulls  peck along the tideline and lift off when you come close, then
+##   gulls  work the refuse (a flock to each tip or wreck, whatever village is
+##          near) and peck along the tideline; they lift off when you come close, then
 ##          land again further along; at dusk they fly off out of sight, and
 ##          at dawn they fly back in and land
 ##
@@ -29,6 +31,13 @@ var beasts: Array[Dictionary] = []
 ## Animals waiting to be built: {kind, pos, village, seed}.
 var queue: Array[Dictionary] = []
 var _spawned: Dictionary = {}
+## Refuse the gulls work: {key, pos} per heap of tips and wrecks lying within
+## SITE_JOIN of each other. Keys are REFUSE_KEY - the first prop's id, so they
+## share _spawned and a beast's `village` with the villages (which are >= 0).
+var sites: Array[Dictionary] = []
+var _props_seen := 0
+const REFUSE_KEY := -1000
+const SITE_JOIN := 7.0
 ## Half a period behind 35_folk, so the two never stream in the same frame.
 var _check := 0.25
 
@@ -66,20 +75,48 @@ func _stream(now: bool = false) -> void:
 	var at: Vector2 = game.player.pos
 	for i in game.world.villages.size():
 		var vp: Vector2 = game.world.villages[i].get("pos", Vector2(-9999, -9999))
-		var d := vp.distance_to(at)
-		if d < NEAR and not _spawned.has(i):
-			_spawned[i] = true
-			_populate(i, vp)
-			if now:
-				while pump():
-					pass
-		elif d > FAR and _spawned.has(i):
-			_spawned.erase(i)
-			queue = queue.filter(func(q: Dictionary) -> bool: return q.village != i)
-			for b: Dictionary in beasts.duplicate():
-				if b.village == i:
-					(b.model as Node).queue_free()
-					beasts.erase(b)
+		_stream_one(i, vp, at, now, _populate)
+	_find_sites()
+	for site in sites:
+		_stream_one(int(site.key), site.pos, at, now, _populate_refuse)
+
+
+func _stream_one(key: int, centre: Vector2, at: Vector2, now: bool, populate: Callable) -> void:
+	var d := centre.distance_to(at)
+	if d < NEAR and not _spawned.has(key):
+		_spawned[key] = true
+		populate.call(key, centre)
+		if now:
+			while pump():
+				pass
+	elif d > FAR and _spawned.has(key):
+		_spawned.erase(key)
+		queue = queue.filter(func(q: Dictionary) -> bool: return q.village != key)
+		for b: Dictionary in beasts.duplicate():
+			if b.village == key:
+				(b.model as Node).queue_free()
+				beasts.erase(b)
+
+
+## Gather the tips and wrecks into sites. Props are only ever appended (worldgen,
+## then the strand and whatever is built), so only the new ones are looked at.
+func _find_sites() -> void:
+	var props := game.world.props
+	if props.size() < _props_seen:
+		sites.clear()
+		_props_seen = 0
+	for n in range(_props_seen, props.size()):
+		var p := props[n]
+		if not REFUSE.has(p.kind):
+			continue
+		var joined := false
+		for site in sites:
+			if (site.pos as Vector2).distance_to(p.pos) < SITE_JOIN:
+				joined = true
+				break
+		if not joined:
+			sites.append({"key": REFUSE_KEY - p.id, "pos": p.pos})
+	_props_seen = props.size()
 
 
 ## Build the next queued animal. Returns false when there was none.
@@ -108,10 +145,8 @@ func _populate(index: int, centre: Vector2) -> void:
 			var p := pasture + Vector2(Rng.hash01(s, index, n, 3) - 0.5, Rng.hash01(s, index, n, 4) - 0.5) * 3.0
 			if _ok(p):
 				_enqueue(&"sheep", p, index, s * 13 + index * 5 + n)
-	# Gulls work the refuse before the tideline: a tip or a wreck near the village.
-	var beach := _refuse(centre, 18.0)
-	if beach.x < 0.0:
-		beach = _find(centre, 16.0, SHORE, 37 + index)
+	# Refuse has its own flock (_populate_refuse); the village's gulls keep the tideline.
+	var beach := _find(centre, 16.0, SHORE, 37 + index)
 	if beach.x > -1.0:
 		var n_gulls := 2 + int(Rng.hash01(s, index, 5) * 3.0)
 		for n in n_gulls:
@@ -136,23 +171,31 @@ func _ring(spec: String) -> void:
 const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK]
 
 
-## A standable spot beside the nearest tip or wreck within r of `at`, or (-1, -1).
-func _refuse(at: Vector2, r: float) -> Vector2:
-	var best := Vector2(-1, -1)
-	var bd := r * r
-	for p in game.query.props_near(at, r):
-		if not REFUSE.has(p.kind) or game.world.depleted.has(p.id):
-			continue
-		var d := p.pos.distance_squared_to(at)
-		if d >= bd:
-			continue
-		for i in 8:
-			var spot := p.pos + Vector2.from_angle(TAU * i / 8.0) * (p.solid + 0.9)
-			if _ok(spot):
-				best = spot
-				bd = d
-				break
-	return best
+## A flock over a heap of refuse: three to five gulls standing about its tips
+## and wrecks, each beside its own heap and on its own side of it.
+func _populate_refuse(key: int, centre: Vector2) -> void:
+	var s := game.world.seed_value
+	var heaps: Array[WorldProp] = []
+	for p in game.query.props_near(centre, SITE_JOIN):
+		if REFUSE.has(p.kind) and not heaps.has(p):
+			heaps.append(p)
+	if heaps.is_empty():
+		return
+	var n_gulls := 3 + int(Rng.hash01(s, key, 5) * 3.0)
+	for n in n_gulls:
+		var spot := _beside(heaps[n % heaps.size()], Rng.hash01(s, key, n, 6), Rng.hash01(s, key, n, 7))
+		if spot.x > -1.0:
+			_enqueue(&"gull", spot, key, s * 19 + absi(key) * 3 + n)
+
+
+## A standable spot beside a heap, starting `turn` (0..1) of the way round it and
+## `out` (0..1) further off than its edge; (-1, -1) if it is walled in.
+func _beside(p: WorldProp, turn: float, out: float) -> Vector2:
+	for i in 8:
+		var spot := p.pos + Vector2.from_angle(TAU * (turn + i / 8.0)) * (p.solid + 0.5 + out * 1.2)
+		if _ok(spot):
+			return spot
+	return Vector2(-1, -1)
 
 
 ## A standable tile near `at` (within r) whose ground is one of `grounds` (any if empty).

@@ -1,9 +1,11 @@
 # The last people, from a normal start. Seed 1 wakes beside Oyster Row: walk
 # up toward the square with the real keys, wait to see a villager dressed for
-# the coast and their trade, and walk up to one. Watch the village into the
-# evening (rims at dusk, the lantern lit with its key and the slate on the
-# wrist marking the player), everyone indoors at night and out at dawn. Then
-# the villages of the other lands, each dressed for its own weather.
+# the coast and their trade, walk up beside one on the camera's side, and to the
+# village dog. Walk out to the refuse the island dumps and watch its gulls work
+# it. Oyster Row busy in the afternoon; the village into the evening (warm by
+# its fires, the lantern lit with its key and the slate marking the player),
+# everyone indoors at night and out at dawn. Then the villages of the other
+# lands, each dressed for its own weather. Last, what a crowd costs on screen.
 #   tools/tour.sh tours/characters.tour --seed=1
 coast calm
 wait 1.0
@@ -17,45 +19,66 @@ zoom 5
 wait 0.4
 shot 03-a-villager-close
 zoom 9
-walk -1,-0.3 1.3
-wait 0.6
-shot 04-villagers-and-the-dog
+walkto dog 20
+zoom 8
+await dog 10
+wait 0.8
+shot 04-the-village-dog
+# Gulls over the refuse: the nearest tip or wreck, whatever village is near.
+zoom 15
+walkto refuse 60
+zoom 9
+await gulls 40
+wait 0.5
+shot 05-gulls-on-the-refuse
+# Oyster Row in the afternoon, several out at once.
+village 0
+hour 15.5
+zoom 15
+await crowd 20
+wait 0.5
+shot 06-oyster-row-afternoon
 hour 19.6
 wait 2.5
-shot 05-dusk
+shot 07-dusk
 hour 20.7
 wait 2.0
 tap lamp
 wait 1.0
 zoom 5
-shot 06-lantern-slate-and-rims
+shot 08-lantern-slate-and-rims
 zoom 9
 hour 21.02
 wait 12
-shot 07-indoors
+shot 09-indoors
 hour 5.6
 wait 3
-shot 08-dawn
+shot 10-dawn
 # The other lands: teleports, then the same wait and walk to someone.
 hour 11
 zoom 12
 village 10
 await folk 8
 walkto folk 12
-zoom 6
+zoom 7
 wait 0.5
-shot 09-snowfield-hush-fold
+shot 11-snowfield-hush-fold
 zoom 12
 village 6
 await folk 8
 walkto folk 12
-zoom 6
+zoom 7
 wait 0.5
-shot 10-burning-cinderstead
+shot 12-burning-cinderstead
 zoom 12
 village 1
 await folk 8
 walkto folk 12
-zoom 6
+zoom 7
 wait 0.5
-shot 11-moss-fennick
+shot 13-moss-fennick
+# What 24 villagers cost drawn on screen, against the same frames without them:
+# a budget of 7 draw calls and 1 ms of frame a person.
+zoom 15
+perf folk 24 3 7 1.0
+shot 14-crowd-of-24
