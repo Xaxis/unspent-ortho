@@ -118,6 +118,27 @@ func test_give_is_parsed_and_never_doubles() -> void:
 	eq(inv.count(&"scrap"), 2)
 
 
+func test_a_new_country_is_announced_once_it_holds() -> void:
+	var w := UiPlaceWatch.new()
+	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")
+	eq(w.step(Country.COAST, 5.0), -1, "and only once")
+	eq(w.step(Country.MOSS, 0.5), -1, "a step over the border is not yet a crossing")
+	eq(w.step(Country.COAST, 0.5), -1, "back again: nothing")
+	eq(w.step(Country.MOSS, 0.1), -1)
+	var got := -1
+	for i in 20:
+		var r := w.step(Country.MOSS, 0.1)
+		if r >= 0:
+			got = r
+	eq(got, Country.MOSS, "holding the new country names it")
+	eq(w.step(Country.SEA, 3.0), -1, "wading out to sea names nothing")
+
+
+func test_clock_at_names_the_day_only_when_it_changes() -> void:
+	eq(UiRules.clock_at(8.0 * 60.0 + 270.0, 8.0 * 60.0), "12:30")
+	eq(UiRules.clock_at(22.0 * 60.0 + 300.0, 22.0 * 60.0), "day 2 03:00")
+
+
 func test_durations_read_like_a_notebook() -> void:
 	eq(UiRules.duration(45.0), "45 min")
 	eq(UiRules.duration(240.0), "4 h")

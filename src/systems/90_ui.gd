@@ -12,6 +12,7 @@ var layer: CanvasLayer
 var screens := {}
 var stack: Array[UiScreen] = []
 var map_data: UiMapData
+var _places := UiPlaceWatch.new()
 var _pending_screen := ""
 var _vertical := UiMenu.new()
 var _horizontal := UiMenu.new()
@@ -153,6 +154,10 @@ func _process(delta: float) -> void:
 		return
 	explored.visit(game.player.pos)
 	_feed_hud()
+	var p := game.player.pos
+	var entered := _places.step(game.world.country_at(floori(p.x), floori(p.y)), delta)
+	if entered >= 0 and not _hostile_near():
+		game.hud.show_place(Country.NAMES[entered])
 
 
 func _repeat(s: UiScreen, r: UiMenu, dir: int, delta: float, neg: StringName, pos: StringName) -> void:
@@ -202,6 +207,10 @@ func _demo() -> void:
 	if game.options.walk_seconds <= 0.0:
 		_stand_by_something(24.0)
 	game.hud.show_message("Took 2 timber.")
+	var p := game.player.pos
+	var here := _places.step(game.world.country_at(floori(p.x), floori(p.y)), 0.0)
+	if here >= 0:
+		game.hud.show_place(Country.NAMES[here])
 	_feed_hud()
 	game.hud.settle()
 

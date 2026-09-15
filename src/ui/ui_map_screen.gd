@@ -19,6 +19,7 @@ var _rect: ColorRect
 var _overlay: Control
 var _material: ShaderMaterial
 var _seen_tex: ImageTexture
+var _regions: Array[Dictionary] = []
 
 
 func _init() -> void:
@@ -59,13 +60,47 @@ func _on_open() -> void:
 	_material.set_shader_parameter("seen_tex", _seen_tex)
 	_material.set_shader_parameter("rect_size", Vector2(MAP_RECT.size))
 	_material.set_shader_parameter("world_size", float(game.world.size))
+	_regions = UiMapScreen.region_labels(game.world, explored)
 	centre_on(game.player.pos)
 
 
-## Put tile-space point `p` in the middle of the window.
+## Where to letter each country the player has seen enough of: the middle of
+## its seen tiles. [{text, at: Vector2}]
+static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
+	const STEP := 3
+	const ENOUGH := 120 # seen tiles before a country is worth naming
+	var sums := {}
+	for y in range(0, w.size, STEP):
+		for x in range(0, w.size, STEP):
+			if not seen.seen(x, y) or w.level_at(x, y) <= 0:
+				continue
+			var c := w.country_at(x, y)
+			if not sums.has(c):
+				sums[c] = [Vector2.ZERO, 0]
+			sums[c][0] += Vector2(x, y)
+			sums[c][1] += 1
+	var out: Array[Dictionary] = []
+	for c: int in sums:
+		var n: int = sums[c][1]
+		if n * STEP * STEP < ENOUGH:
+			continue
+		var name := String(Country.NAMES[c]).to_upper()
+		var spaced := ""
+		for i in name.length():
+			spaced += (" " if i > 0 else "") + name[i]
+		out.append({"text": spaced, "at": (sums[c][0] as Vector2) / n, "country": c})
+	return out
+
+
+## Put tile-space point `p` in the middle of the right-hand page, clear of the fold.
 func centre_on(p: Vector2) -> void:
-	origin_px = Vector2i(roundi(p.x * map_scale), roundi(p.y * map_scale)) - MAP_RECT.size / 2
+	origin_px = Vector2i(roundi(p.x * map_scale), roundi(p.y * map_scale)) - _anchor()
 	_apply()
+
+
+## The window pixel the map centres on: the middle of the right-hand page.
+func _anchor() -> Vector2i:
+	return Vector2i((UiNotebook.RIGHT.position.x + UiNotebook.RIGHT.end.x) / 2, MAP_RECT.position.y + MAP_RECT.size.y / 2) - MAP_RECT.position
 
 
 func handle(action: StringName) -> bool:
@@ -77,7 +112,7 @@ func handle(action: StringName) -> bool:
 		&"left": _pan(Vector2i(-PAN_STEP, 0))
 		&"right": _pan(Vector2i(PAN_STEP, 0))
 		&"confirm":
-			var centre := (Vector2(origin_px) + Vector2(MAP_RECT.size) * 0.5) / map_scale
+			var centre := Vector2(origin_px + _anchor()) / map_scale
 			map_scale = SCALES[(SCALES.find(map_scale) + 1) % SCALES.size()]
 			centre_on(centre)
 			Events.sfx.emit(&"menu_move", Vector3.ZERO)
@@ -139,6 +174,17 @@ func _draw_overlay() -> void:
 	UiNotebook.box(ci, r.grow(4), Color(UiTheme.INK, 0.45), 6)
 	if game == null:
 		return
+	var me := to_screen(game.player.pos)
+	var me_rect := Rect2i(me.x - 6, me.y - 6, 13, 13)
+	# Countries, lettered across the land they cover, spaced out like a region on a chart.
+	for label: Dictionary in _regions:
+		var s := to_screen(label.at)
+		var text: String = label.text
+		var w := UiFont.width(text)
+		var at := Vector2i(s.x - w / 2, s.y - 5)
+		if r.grow(-6).encloses(Rect2i(at, Vector2i(w, 10))):
+			UiDraw.text(ci, at + Vector2i(1, 1), text, Color(UiTheme.PAPER, 0.7))
+			UiDraw.text(ci, at, text, Color(Palette.EARTH[2], 0.85))
 	# Villages the player has seen: a house mark and the name, lettered on a clearing.
 	for v in game.world.villages:
 		var vp: Vector2 = v.pos
@@ -151,7 +197,7 @@ func _draw_overlay() -> void:
 		var w := UiFont.width(name)
 		var tx := clampi(s.x - w / 2, r.position.x + 2, r.end.x - w - 2)
 		var ty := s.y + 6
-		if ty + 10 > r.end.y:
+		if ty + 10 > r.end.y or Rect2i(tx - 2, ty - 1, w + 4, 11).intersects(me_rect):
 			ty = s.y - 16
 		UiDraw.rect(ci, Rect2i(tx - 2, ty - 1, w + 4, 11), Color(UiTheme.PAPER, 0.85))
 		UiDraw.text(ci, Vector2i(tx, ty), name, UiTheme.INK)
@@ -159,7 +205,6 @@ func _draw_overlay() -> void:
 		UiDraw.frame(ci, Rect2i(s.x - 2, s.y - 2, 5, 5), UiTheme.INK)
 		UiDraw.px(ci, s.x, s.y, UiTheme.ACCENT)
 	# You are here: an accent cross in a paper clearing.
-	var me := to_screen(game.player.pos)
 	if r.has_point(me):
 		UiDraw.rect(ci, Rect2i(me.x - 4, me.y - 4, 9, 9), Color(UiTheme.PAPER, 0.7))
 		for i in range(-3, 4):

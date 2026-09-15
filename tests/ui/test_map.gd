@@ -62,6 +62,21 @@ func test_marks_put_symbols_on_tiles() -> void:
 	eq(m[20 * 32 + 20], UiMapData.MARK_HOUSE, "a house outranks a rock")
 
 
+func test_countries_are_lettered_once_enough_is_seen() -> void:
+	var w := _island(64)
+	for i in w.country.size():
+		w.country[i] = Country.MOSS if i % 64 < 32 else Country.COAST
+	var e := UiExplored.new(64)
+	check(UiMapScreen.region_labels(w, e).is_empty(), "nothing seen, nothing named")
+	e.visit(Vector2(24.5, 32.5))
+	var labels := UiMapScreen.region_labels(w, e)
+	var names: Array = labels.map(func(l: Dictionary) -> String: return l.text)
+	check(names.has("M O S S"), "moss seen: %s" % str(names))
+	for l in labels:
+		if l.country == Country.MOSS:
+			check((l.at as Vector2).x < 32.0, "lettered over the moss side")
+
+
 func test_map_data_builds_textures() -> void:
 	var w := _island(32)
 	var data := UiMapData.new(w)

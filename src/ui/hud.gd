@@ -17,6 +17,9 @@ const MESSAGE_HOLD := 2.2
 const MESSAGE_FADE := 0.6
 const CELL_W := 10
 const CELL_H := 8
+const PLACE_IN := 0.8
+const PLACE_HOLD := 2.6
+const PLACE_OUT := 1.4
 
 var clock_text := ""
 var health := 12
@@ -28,9 +31,11 @@ var needs: Array[Dictionary] = []
 var hint := ""
 var hint_key := "e"
 var message := ""
+var place := ""
 
 var _canvas: Control
 var _message_age := 99.0
+var _place_age := 99.0
 var _wind_alpha := 0.0
 var _hint_alpha := 0.0
 var _hint_target := 0.0
@@ -83,6 +88,20 @@ func set_hint(text: String, key: String = "e") -> void:
 	_hint_target = 1.0 if text != "" else 0.0
 
 
+## Letter a place name across the top: faded in, held, faded out.
+func show_place(text: String) -> void:
+	place = text
+	_place_age = 0.0
+
+
+func place_alpha() -> float:
+	if _place_age < PLACE_IN:
+		return _place_age / PLACE_IN
+	if _place_age < PLACE_IN + PLACE_HOLD:
+		return 1.0
+	return clampf(1.0 - (_place_age - PLACE_IN - PLACE_HOLD) / PLACE_OUT, 0.0, 1.0)
+
+
 func show_message(text: String) -> void:
 	message = text
 	_message_age = 0.0
@@ -93,6 +112,8 @@ func settle() -> void:
 	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_hint_alpha = _hint_target
 	_hurt_flash = 0.0
+	if _place_age < PLACE_IN:
+		_place_age = PLACE_IN
 	for n in needs:
 		_needs_alpha[n.need] = 1.0
 
@@ -106,6 +127,7 @@ func message_alpha() -> float:
 
 func _process(delta: float) -> void:
 	_message_age += delta
+	_place_age += delta
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
@@ -125,6 +147,24 @@ func _draw_hud() -> void:
 	_draw_clock(ci)
 	_draw_held(ci)
 	_draw_bottom(ci)
+	_draw_place(ci)
+
+
+func _draw_place(ci: Control) -> void:
+	var a := place_alpha()
+	if a <= 0.0 or place == "":
+		return
+	# Spaced capitals, the way a map letters a region, with a rule drawn out from the middle.
+	var spaced := ""
+	for i in place.length():
+		spaced += (" " if i > 0 else "") + place[i].to_upper()
+	var w := UiFont.width(spaced)
+	var x := 320 - w / 2
+	var y := 30
+	UiDraw.text_rimmed(ci, Vector2i(x, y), spaced, Color(UiTheme.HUD_TEXT, a), Color(UiTheme.INK_DEEP, a * 0.9))
+	var half := roundi((w / 2 + 16) * clampf(_place_age / PLACE_IN, 0.0, 1.0))
+	UiDraw.rect(ci, Rect2i(320 - half - 1, y + 13, half * 2 + 2, 3), Color(UiTheme.INK_DEEP, a * 0.9))
+	UiDraw.hline(ci, 320 - half, 320 + half, y + 14, Color(UiTheme.HUD_DIM, a))
 
 
 func _draw_health(ci: Control) -> void:
