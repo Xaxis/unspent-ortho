@@ -1,0 +1,29 @@
+# The notebook through its real keys: carrying, making, the map and pause.
+#   tools/tour.sh tours/notebook.tour --give=knife:1,axe_hand:1,mussels:3,scrap:2,timber:2
+walk 1,0 2
+shot 01-walked
+tap inventory
+wait 0.5
+shot 02-carrying
+tap move_down
+wait 0.2
+shot 03-carrying-down
+tap inventory
+wait 0.3
+tap craft
+wait 0.4
+shot 04-nothing-to-make-at
+tap map
+wait 0.5
+shot 05-map
+tap use
+wait 0.3
+shot 06-map-scale
+tap map
+wait 0.3
+tap pause
+wait 0.5
+shot 07-pause
+tap pause
+wait 0.4
+shot 08-back

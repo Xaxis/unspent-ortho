@@ -1,0 +1,251 @@
+class_name UiNotebook
+## The notebook itself: cloth cover, linen pages ruled by hand, a rust margin,
+## grain, thumbed corners, a ribbon. Every screen is written on these pages.
+## Layout constants are shared so all screens line up on the same rules.
+
+## The open book across the screen: cover, then two pages meeting at the gutter.
+const COVER := Rect2i(16, 10, 608, 342)
+const LEFT := Rect2i(22, 14, 296, 331)
+const RIGHT := Rect2i(322, 14, 296, 331)
+## A single page centred (pause, keys).
+const SINGLE := Rect2i(214, 70, 212, 212)
+
+## First ruled line below a page's top edge, then one every UiTheme.LINE.
+const FIRST_RULE := 36
+## Left margin, where the rust line runs.
+const MARGIN_X := 22
+const BOTTOM_KEEP := 20
+
+
+## Dim the world under the book.
+static func veil(ci: CanvasItem) -> void:
+	# A little past the frame, so a page lifting into view never shows an edge.
+	UiDraw.rect(ci, Rect2i(0, -UiScreen.LIFT_PX, 640, 360 + UiScreen.LIFT_PX * 2), UiTheme.VEIL)
+
+
+## The open book. Returns nothing; pages are LEFT and RIGHT.
+static func spread(ci: CanvasItem, seed: int) -> void:
+	veil(ci)
+	_cover(ci, COVER)
+	page(ci, LEFT, seed * 31 + 1, true, true)
+	page(ci, RIGHT, seed * 31 + 2, true, false)
+	# The gutter: the pages curve into the binding.
+	var gx := LEFT.end.x
+	UiDraw.rect(ci, Rect2i(gx, LEFT.position.y, RIGHT.position.x - gx, LEFT.size.y), UiTheme.PAPER_DEEP)
+	for i in 4:
+		var a := 0.42 - i * 0.1
+		UiDraw.vline(ci, gx - 1 - i, LEFT.position.y, LEFT.end.y - 1, Color(UiTheme.PAPER_EDGE, a))
+		UiDraw.vline(ci, RIGHT.position.x + i, RIGHT.position.y, RIGHT.end.y - 1, Color(UiTheme.PAPER_EDGE, a * 0.8))
+	UiDraw.vline(ci, gx + 1, LEFT.position.y, LEFT.end.y - 1, UiTheme.PAPER_EDGE)
+	# Page numbers in the outer corners, small and faded, like any bound book.
+	var folio := 2 * (seed % 40) + 12
+	UiDraw.text(ci, Vector2i(LEFT.position.x + 7, LEFT.end.y - 13), str(folio), Color(UiTheme.FADED, 0.8))
+	UiDraw.text_right(ci, RIGHT.end.x - 6, RIGHT.end.y - 13, str(folio + 1), Color(UiTheme.FADED, 0.8))
+	# Stitches through the fold.
+	var y := LEFT.position.y + 22
+	while y < LEFT.end.y - 16:
+		UiDraw.vline(ci, gx + 1, y, y + 4, UiTheme.INK_SOFT)
+		y += 38
+	# Some pages carry a cup ring; which ones is fixed by the page.
+	if seed % 3 != 0:
+		stain(ci, Vector2i(RIGHT.position.x + 190 + seed % 50, RIGHT.position.y + 150 + (seed * 7) % 90), 22 + seed % 7, seed)
+	_ribbon(ci, gx + 1, seed)
+
+
+## A single loose page with a cover edge behind it.
+static func single(ci: CanvasItem, r: Rect2i, seed: int) -> void:
+	veil(ci)
+	_cover(ci, r.grow(5))
+	page(ci, r, seed, true, true)
+
+
+## One page: paper, grain, hand-ruled lines, optionally the margin line.
+static func page(ci: CanvasItem, r: Rect2i, seed: int, ruled: bool, margin: bool) -> void:
+	# The stack of pages under this one shows at the bottom and outer edge.
+	UiDraw.hline(ci, r.position.x + 1, r.end.x - 2, r.end.y, UiTheme.PAPER_DEEP)
+	UiDraw.hline(ci, r.position.x + 2, r.end.x - 3, r.end.y + 1, UiTheme.PAPER_EDGE)
+	UiDraw.rect(ci, r, UiTheme.PAPER)
+	# Slow tone: a few broad, faint washes, so the paper is not a flat fill.
+	for i in 7:
+		var w := 40 + int(_h(seed, i, 1) * 120)
+		var hgt := 20 + int(_h(seed, i, 2) * 70)
+		var x := r.position.x + int(_h(seed, i, 3) * (r.size.x - w))
+		var y := r.position.y + int(_h(seed, i, 4) * (r.size.y - hgt))
+		UiDraw.rect(ci, Rect2i(x, y, w, hgt), Color(UiTheme.PAPER_SHADE, 0.07))
+	# Grain.
+	var specks := r.size.x * r.size.y / 55
+	for i in specks:
+		var x := r.position.x + int(_h(seed, i, 5) * r.size.x)
+		var y := r.position.y + int(_h(seed, i, 6) * r.size.y)
+		var dark := _h(seed, i, 7) < 0.8
+		UiDraw.px(ci, x, y, Color(UiTheme.PAPER_SHADE, 0.55) if dark else Color(1, 1, 0.94, 0.5))
+	if ruled:
+		var y := r.position.y + FIRST_RULE
+		var n := 0
+		while y < r.end.y - BOTTOM_KEEP:
+			UiDraw.hand_hline(ci, r.position.x + 3, r.end.x - 4, y, UiTheme.RULE, seed * 7 + n)
+			y += UiTheme.LINE
+			n += 1
+	if margin:
+		UiDraw.hand_vline(ci, r.position.x + MARGIN_X, r.position.y, r.end.y - 1, Color(UiTheme.ACCENT, 0.5), seed + 3)
+	# Thumbed bottom corners and a darker outer edge.
+	UiDraw.frame(ci, r, Color(UiTheme.PAPER_DEEP, 0.55))
+	for c: int in [0, 1]:
+		var cx := r.position.x if c == 0 else r.end.x - 1
+		var dir := 1 if c == 0 else -1
+		for i in 14:
+			var x := cx + dir * int(_h(seed, i, 10 + c) * 9.0)
+			var y := r.end.y - 1 - int(_h(seed, i, 12 + c) * 7.0)
+			UiDraw.px(ci, x, y, Color(UiTheme.PAPER_DEEP, 0.45))
+		UiDraw.px(ci, cx, r.end.y - 1, UiTheme.PAPER_EDGE)
+	# The rubbed-bright top edge.
+	UiDraw.hline(ci, r.position.x + 1, r.end.x - 2, r.position.y, Color(1, 0.98, 0.9, 0.55))
+
+
+## y of the n-th ruled line (0 = first) on a page.
+static func rule_y(r: Rect2i, n: int) -> int:
+	return r.position.y + FIRST_RULE + n * UiTheme.LINE
+
+
+## Top of text that sits on the n-th rule (its baseline is the rule).
+static func line_top(r: Rect2i, n: int) -> int:
+	return rule_y(r, n) - UiFont.ASCENT
+
+
+## How many ruled lines fit on a page.
+static func rule_count(r: Rect2i) -> int:
+	return (r.size.y - FIRST_RULE - BOTTOM_KEEP) / UiTheme.LINE + 1
+
+
+## Lower-case title, written in the head space, underlined twice by hand.
+## `crossed` is an earlier word for it, struck out before it.
+static func title(ci: CanvasItem, r: Rect2i, text: String, seed: int, crossed: String = "") -> void:
+	var x := r.position.x + MARGIN_X + 6
+	var y := r.position.y + 11
+	if crossed != "":
+		x += struck(ci, Vector2i(x, y), crossed, seed + 9) + 6
+	UiDraw.text(ci, Vector2i(x, y), text, UiTheme.INK)
+	var w := UiFont.width(text)
+	UiDraw.hand_hline(ci, x - 2, x + w + 5, y + 11, UiTheme.INK, seed, 1)
+	UiDraw.hand_hline(ci, x + 1, x + w + 12, y + 13, Color(UiTheme.INK, 0.6), seed + 1, 1)
+
+
+## Fixed words at the foot of a page, ending with esc.
+static func footer(ci: CanvasItem, r: Rect2i, words: String) -> void:
+	UiDraw.text(ci, Vector2i(r.position.x + MARGIN_X + 6, r.end.y - 14), words, UiTheme.FADED)
+
+
+## A note at the foot of a page (right-aligned), fading in the last second.
+static func note(ci: CanvasItem, r: Rect2i, text: String, age: float) -> void:
+	if text == "" or age > 4.0:
+		return
+	var a := clampf(4.0 - age, 0.0, 1.0)
+	UiDraw.text_right(ci, r.end.x - 10, r.end.y - 14, text, Color(UiTheme.ACCENT, a))
+
+
+## "> " in the accent, before the chosen row.
+static func cursor(ci: CanvasItem, x: int, top: int) -> void:
+	UiDraw.text(ci, Vector2i(x, top), ">", UiTheme.ACCENT)
+
+
+## A ring left by a wet cup: uneven, darker where the rim sat heaviest.
+static func stain(ci: CanvasItem, c: Vector2i, r: int, seed: int) -> void:
+	var steps := int(TAU * r * 1.2)
+	var heavy := _h(seed, 0, 40) * TAU
+	for i in steps:
+		var a := i * TAU / steps
+		var w := 0.5 + 0.5 * cos(a - heavy)
+		if _h(seed, i, 41) > 0.35 + w * 0.6:
+			continue
+		var rr := r + (1 if _h(seed, i, 42) < 0.3 else 0)
+		var p := c + Vector2i(roundi(cos(a) * rr), roundi(sin(a) * rr))
+		UiDraw.px(ci, p.x, p.y, Color(UiTheme.PAPER_DEEP, 0.18 + 0.2 * w))
+	# The faint wash inside the ring.
+	UiDraw.rect(ci, Rect2i(c.x - r + 2, c.y - r / 2, r * 2 - 4, r), Color(UiTheme.PAPER_SHADE, 0.06))
+	UiDraw.rect(ci, Rect2i(c.x - r / 2, c.y - r + 2, r, r * 2 - 4), Color(UiTheme.PAPER_SHADE, 0.06))
+
+
+## A word written and struck out: the notebook keeps its corrections.
+static func struck(ci: CanvasItem, at: Vector2i, word: String, seed: int) -> int:
+	var w := UiFont.width(word)
+	UiDraw.text(ci, at, word, UiTheme.INK_SOFT)
+	UiDraw.hand_hline(ci, at.x - 1, at.x + w, at.y + 4, UiTheme.INK, seed)
+	return w
+
+
+## A group heading in a list: written small and faded, a short stroke under it.
+static func heading(ci: CanvasItem, at: Vector2i, text: String, seed: int) -> void:
+	UiDraw.text(ci, at, text, UiTheme.FADED)
+	UiDraw.hand_hline(ci, at.x - 1, at.x + 2 + UiFont.width(text), at.y + 9, UiTheme.FADED, seed)
+
+
+## An item sketched into a ruled-off box on the page, a strip of tape over its top.
+static func sketch_box(ci: CanvasItem, r: Rect2i, id: StringName, seed: int) -> void:
+	UiDraw.rect(ci, r.grow(-1), Color(UiTheme.PAPER_SHADE, 0.22))
+	box(ci, r, UiTheme.INK_SOFT, seed)
+	var size := mini(r.size.x, r.size.y) - 6 # 84 box -> UiInventoryScreen.SKETCH
+	UiSketch.draw_item(ci, id, r.position + (r.size - Vector2i(size, size)) / 2, size)
+	tape(ci, Vector2i(r.position.x + r.size.x / 2 - 12, r.position.y - 3), 24)
+
+
+## Words wrapped onto successive ruled lines from `at`. Returns the lines used.
+static func wrapped(ci: CanvasItem, at: Vector2i, width: int, text: String, col: Color) -> int:
+	var line := ""
+	var y := at.y
+	var used := 0
+	for word in text.split(" "):
+		var next := word if line == "" else line + " " + word
+		if UiFont.width(next) > width and line != "":
+			UiDraw.text(ci, Vector2i(at.x, y), line, col)
+			y += UiTheme.LINE
+			used += 1
+			line = word
+		else:
+			line = next
+	if line != "":
+		UiDraw.text(ci, Vector2i(at.x, y), line, col)
+		used += 1
+	return used
+
+
+## A hand-drawn box.
+static func box(ci: CanvasItem, r: Rect2i, col: Color, seed: int) -> void:
+	UiDraw.hand_hline(ci, r.position.x, r.end.x - 1, r.position.y, col, seed)
+	UiDraw.hand_hline(ci, r.position.x + 1, r.end.x, r.end.y - 1, col, seed + 1)
+	UiDraw.vline(ci, r.position.x, r.position.y + 1, r.end.y - 2, col)
+	UiDraw.vline(ci, r.end.x - 1, r.position.y + 1, r.end.y - 1, col)
+
+
+## A strip of tape holding something to the page.
+static func tape(ci: CanvasItem, at: Vector2i, w: int) -> void:
+	UiDraw.rect(ci, Rect2i(at.x, at.y, w, 6), Color(UiTheme.PAPER_SHADE, 0.7))
+	UiDraw.hline(ci, at.x, at.x + w - 1, at.y + 5, Color(UiTheme.PAPER_DEEP, 0.5))
+	for i in range(0, w, 3):
+		UiDraw.px(ci, at.x + i, at.y, Color(UiTheme.PAPER, 0.9))
+
+
+static func _cover(ci: CanvasItem, r: Rect2i) -> void:
+	UiDraw.rect(ci, r.grow(1), UiTheme.INK_DEEP)
+	UiDraw.rect(ci, r, UiTheme.COVER)
+	# Worn cloth: the rubbed edge along the top and the corners gone pale.
+	UiDraw.hline(ci, r.position.x + 2, r.end.x - 3, r.position.y, UiTheme.COVER_LIGHT)
+	for i in 3:
+		UiDraw.px(ci, r.position.x + i, r.position.y, UiTheme.COVER_LIGHT)
+		UiDraw.px(ci, r.end.x - 1 - i, r.end.y - 1, UiTheme.COVER_LIGHT)
+
+
+static func _ribbon(ci: CanvasItem, x: int, seed: int) -> void:
+	var top := COVER.end.y - 40
+	var bottom := COVER.end.y + 5
+	UiDraw.rect(ci, Rect2i(x - 1, top, 4, bottom - top), UiTheme.ACCENT)
+	UiDraw.vline(ci, x - 1, top, bottom - 1, Palette.RUST[2])
+	UiDraw.vline(ci, x + 2, top, bottom - 1, Palette.RUST[4])
+	# A notched end.
+	UiDraw.rect(ci, Rect2i(x - 1, bottom, 1, 2), UiTheme.ACCENT)
+	UiDraw.rect(ci, Rect2i(x + 2, bottom, 1, 2), UiTheme.ACCENT)
+	UiDraw.px(ci, x, bottom, UiTheme.ACCENT)
+	UiDraw.px(ci, x + 1, bottom, UiTheme.ACCENT)
+
+
+static func _h(seed: int, i: int, salt: int) -> float:
+	return Rng.hash01(seed, i, salt, 0x0b00c)

@@ -7,12 +7,19 @@ var options: BootOptions
 
 func _ready() -> void:
 	options = BootOptions.parse(OS.get_cmdline_user_args())
+	# A player launching the game gets the title; tools always pass options.
+	if OS.get_cmdline_user_args().is_empty():
+		options.scene = "title"
 	var root: Node
 	match options.scene:
 		"gallery":
 			root = load("res://src/gallery.gd").new()
 			add_child(root)
 			root.call("setup", options)
+		"title":
+			root = UiTitle.new()
+			add_child(root)
+			(root as UiTitle).setup(options)
 		_:
 			var game := Game.new()
 			game.name = "game"

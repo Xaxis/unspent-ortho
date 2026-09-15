@@ -14,7 +14,7 @@ extends RefCounted
 ## --shot=PATH         capture one frame to PATH (png) and quit
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
-## --scene=NAME        which scene to boot: game (default) | gallery
+## --scene=NAME        which scene to boot: game (default) | gallery | title
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --stats             print render stats (draw calls, chunk build times) before the shot
@@ -41,6 +41,10 @@ extends RefCounted
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
 ##                     (MS = simulation time after the press; each has a default);
 ##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
+## --screen=NAME       open a ui screen once loaded: inventory | crafting | map | pause | controls (ui)
+## --explore=N         the map remembers N tiles of wandering from the start (ui)
+## --ui-demo           ui shots: sample recipes, a message, a spent body (ui)
+## --tour=PATH         play a tour (src/systems/98_tour.gd) and quit
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -78,6 +82,10 @@ var put: PackedStringArray = []
 var taken := false
 var spawn: PackedStringArray = []
 var act := ""
+var screen := ""
+var explore := 0
+var ui_demo := false
+var tour := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -116,6 +124,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"face": o.face = v
 			"folk": o.folk = v.to_int()
 			"fauna": o.fauna = v
+			"screen": o.screen = v
 			"give":
 				for part in v.split(",", false):
 					var iv := part.split(":")
@@ -130,5 +139,8 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"taken": o.taken = true
 			"spawn": o.spawn = v.split(",", false)
 			"act": o.act = v
+			"explore": o.explore = v.to_int()
+			"ui-demo": o.ui_demo = true
+			"tour": o.tour = v
 			_: push_warning("unknown option --%s" % k)
 	return o
