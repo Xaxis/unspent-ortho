@@ -306,37 +306,73 @@ static func quantile(v: PackedFloat32Array, mask: PackedByteArray, q: float, lo:
 
 
 ## Label 4-connected components of cells where mask != 0. Returns labels
-## (-1 for masked-out cells) and fills `sizes` with each label's cell count.
+## (-1 for masked-out cells; a label is the index of one cell in the
+## component) and fills `sizes`, indexed by label. Union-find in bands on the
+## worker pool, stitched along the band seams.
 static func components(mask: PackedByteArray, width: int, sizes: PackedInt32Array) -> PackedInt32Array:
 	var n := mask.size()
+	var height := n / width
+	var up := PackedInt32Array()
+	up.resize(n)
+	const BAND := 16
+	rows(height, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * width
+			for x in width:
+				var i := row + x
+				if mask[i] == 0:
+					up[i] = -1
+					continue
+				up[i] = i
+				if x > 0 and mask[i - 1] != 0:
+					var a := i - 1
+					while up[a] != a:
+						up[a] = up[up[a]]
+						a = up[a]
+					up[i] = a
+				if y > y0 and mask[i - width] != 0:
+					var a := i - width
+					while up[a] != a:
+						up[a] = up[up[a]]
+						a = up[a]
+					var b := i
+					while up[b] != b:
+						up[b] = up[up[b]]
+						b = up[b]
+					if a != b:
+						up[maxi(a, b)] = mini(a, b)
+	, BAND)
+	for y in range(BAND, height, BAND):
+		var row := y * width
+		for x in width:
+			var i := row + x
+			if mask[i] == 0 or mask[i - width] == 0:
+				continue
+			var a := i - width
+			while up[a] != a:
+				up[a] = up[up[a]]
+				a = up[a]
+			var b := i
+			while up[b] != b:
+				up[b] = up[up[b]]
+				b = up[b]
+			if a != b:
+				up[maxi(a, b)] = mini(a, b)
 	var label := PackedInt32Array()
 	label.resize(n)
-	label.fill(-1)
-	var stack := PackedInt32Array()
-	sizes.clear()
-	for start in n:
-		if mask[start] == 0 or label[start] != -1:
-			continue
-		var id := sizes.size()
-		var count := 0
-		label[start] = id
-		stack.append(start)
-		while not stack.is_empty():
-			var i := stack[stack.size() - 1]
-			stack.resize(stack.size() - 1)
-			count += 1
-			var x := i % width
-			if x > 0 and mask[i - 1] != 0 and label[i - 1] == -1:
-				label[i - 1] = id
-				stack.append(i - 1)
-			if x < width - 1 and mask[i + 1] != 0 and label[i + 1] == -1:
-				label[i + 1] = id
-				stack.append(i + 1)
-			if i >= width and mask[i - width] != 0 and label[i - width] == -1:
-				label[i - width] = id
-				stack.append(i - width)
-			if i < n - width and mask[i + width] != 0 and label[i + width] == -1:
-				label[i + width] = id
-				stack.append(i + width)
-		sizes.append(count)
+	rows(height, func(y0: int, y1: int) -> void:
+		for i in range(y0 * width, y1 * width):
+			var a := up[i]
+			if a < 0:
+				label[i] = -1
+				continue
+			while up[a] != a:
+				a = up[a]
+			label[i] = a
+	)
+	sizes.resize(n)
+	sizes.fill(0)
+	for i in n:
+		if label[i] >= 0:
+			sizes[label[i]] += 1
 	return label

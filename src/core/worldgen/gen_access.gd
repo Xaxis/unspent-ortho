@@ -18,29 +18,44 @@ static func run(c: GenContext) -> void:
 	var sizes := PackedInt32Array()
 	var label := regions(w.level, size, sizes)
 	c.mark(&"access.regions")
-	# Cheapest breach per pair of regions, found along every region boundary.
-	var best := {} # pair key -> Vector3i(upper tile, lower tile, drop)
+	# Cheapest breach per pair of regions, found along every region boundary:
+	# one dictionary per band, merged in band order so the first cheapest
+	# breach in reading order wins, as a single pass would choose.
 	var level := w.level
-	for y in range(1, size - 1):
-		for x in range(1, size - 1):
-			var i := y * size + x
-			var la := label[i]
-			if la < 0 or sizes[la] < MIN_REGION:
-				continue
-			for side in 2:
-				var j := i + 1 if side == 0 else i + size
-				var lb := label[j]
-				if lb == la or lb < 0 or sizes[lb] < MIN_REGION:
+	const BAND := 12
+	var parts: Array[Dictionary] = []
+	parts.resize(ceili(float(size) / BAND))
+	GenFields.rows(size - 1, func(y0: int, y1: int) -> void:
+		var found := {} # pair key -> Vector3i(upper tile, lower tile, drop)
+		for y in range(maxi(y0, 1), y1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				var la := label[i]
+				if la < 0 or sizes[la] < MIN_REGION:
 					continue
-				var hi := i if level[i] > level[j] else j
-				var lo := j if hi == i else i
-				var drop := level[hi] - level[lo]
-				var key := mini(la, lb) * 1048576 + maxi(la, lb)
-				var cur: Vector3i = best.get(key, Vector3i(-1, -1, 99))
-				if drop >= cur.z:
-					continue
-				if _ramp_fits(c, label, hi, lo, drop):
-					best[key] = Vector3i(hi, lo, drop)
+				for side in 2:
+					var j := i + 1 if side == 0 else i + size
+					var lb := label[j]
+					if lb == la or lb < 0 or sizes[lb] < MIN_REGION:
+						continue
+					var hi := i if level[i] > level[j] else j
+					var lo := j if hi == i else i
+					var drop := level[hi] - level[lo]
+					var key := mini(la, lb) * 1048576 + maxi(la, lb)
+					var cur: Vector3i = found.get(key, Vector3i(-1, -1, 99))
+					if drop >= cur.z:
+						continue
+					if _ramp_fits(c, label, hi, lo, drop):
+						found[key] = Vector3i(hi, lo, drop)
+		parts[y0 / BAND] = found
+	, BAND)
+	var best := {}
+	for part in parts:
+		for key: int in part:
+			var e: Vector3i = part[key]
+			var cur: Vector3i = best.get(key, Vector3i(-1, -1, 99))
+			if e.z < cur.z:
+				best[key] = e
 	c.mark(&"access.scan")
 	var edges: Array[Vector3i] = []
 	for key: int in best:
@@ -61,51 +76,84 @@ static func run(c: GenContext) -> void:
 
 
 ## Walkable regions: 4-connected, a step of at most one level, deep water
-## (level < 0) excluded. Returns labels (-1 = deep water) and fills sizes.
+## (level < 0) excluded. Returns labels (-1 = deep water; a label is the index
+## of one tile in the region) and fills sizes, indexed by label.
+##
+## Union-find, band by band on the worker pool (each band only links its own
+## tiles), then the bands are stitched together along their seams.
 static func regions(level: PackedInt32Array, size: int, sizes: PackedInt32Array) -> PackedInt32Array:
 	var n := level.size()
+	var up := PackedInt32Array()
+	up.resize(n)
+	const BAND := 16
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * size
+			for x in size:
+				var i := row + x
+				var l := level[i]
+				if l < 0:
+					up[i] = -1
+					continue
+				up[i] = i
+				if x > 0:
+					var lw := level[i - 1]
+					if lw >= 0 and lw - l <= 1 and l - lw <= 1:
+						var a := i - 1
+						while up[a] != a:
+							up[a] = up[up[a]]
+							a = up[a]
+						up[i] = a
+				if y > y0:
+					var ln := level[i - size]
+					if ln >= 0 and ln - l <= 1 and l - ln <= 1:
+						var a := i - size
+						while up[a] != a:
+							up[a] = up[up[a]]
+							a = up[a]
+						var b := i
+						while up[b] != b:
+							up[b] = up[up[b]]
+							b = up[b]
+						if a != b:
+							up[maxi(a, b)] = mini(a, b)
+	, BAND)
+	for y in range(BAND, size, BAND):
+		var row := y * size
+		for x in size:
+			var i := row + x
+			var l := level[i]
+			var ln := level[i - size]
+			if l < 0 or ln < 0 or ln - l > 1 or l - ln > 1:
+				continue
+			var a := i - size
+			while up[a] != a:
+				up[a] = up[up[a]]
+				a = up[a]
+			var b := i
+			while up[b] != b:
+				up[b] = up[up[b]]
+				b = up[b]
+			if a != b:
+				up[maxi(a, b)] = mini(a, b)
 	var label := PackedInt32Array()
 	label.resize(n)
-	label.fill(-1)
-	sizes.clear()
-	var stack := PackedInt32Array()
-	stack.resize(n)
-	for start in n:
-		if label[start] != -1 or level[start] < 0:
-			continue
-		var id := sizes.size()
-		var count := 0
-		label[start] = id
-		var top := 0
-		stack[0] = start
-		top = 1
-		while top > 0:
-			top -= 1
-			var i := stack[top]
-			count += 1
-			var l := level[i]
-			var x := i % size
-			var j := i - 1
-			if x > 0 and label[j] == -1 and level[j] >= 0 and absi(level[j] - l) <= 1:
-				label[j] = id
-				stack[top] = j
-				top += 1
-			j = i + 1
-			if x < size - 1 and label[j] == -1 and level[j] >= 0 and absi(level[j] - l) <= 1:
-				label[j] = id
-				stack[top] = j
-				top += 1
-			j = i - size
-			if j >= 0 and label[j] == -1 and level[j] >= 0 and absi(level[j] - l) <= 1:
-				label[j] = id
-				stack[top] = j
-				top += 1
-			j = i + size
-			if j < n and label[j] == -1 and level[j] >= 0 and absi(level[j] - l) <= 1:
-				label[j] = id
-				stack[top] = j
-				top += 1
-		sizes.append(count)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			var a := up[i]
+			if a < 0:
+				label[i] = -1
+				continue
+			while up[a] != a:
+				a = up[a]
+			label[i] = a
+	)
+	sizes.resize(n)
+	sizes.fill(0)
+	for i in n:
+		var a := label[i]
+		if a >= 0:
+			sizes[a] += 1
 	return label
 
 
