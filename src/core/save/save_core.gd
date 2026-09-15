@@ -11,7 +11,7 @@ class_name SaveCore
 ##   body       condition: health, wind, hunger, wet, wounds, lamp lit, arrests...
 ##   inventory  items, edges, held, worn kit, dull notices given
 ##   survival   when the body woke, wet until, lamp oil and when it was settled
-##   explored   the map's seen mask and the trail (90_ui's public `explored`)
+##   explored   the map's seen mask and the trail (a system's public `explored`, 90_ui today)
 ##   weather    a forced sky (--weather), if any
 ##
 ## Props: the world holds its generated props, then whatever the systems' setup
@@ -278,11 +278,13 @@ static func load_survival(game: Game, v: Variant) -> void:
 
 # --- the map and the sky ------------------------------------------------------
 
-## 90_ui's map memory, through its public field; null without the ui system.
+## The map's memory: the public `explored` of whichever system keeps it (90_ui
+## today), found by the field rather than the name; null without one.
 static func explored_of(game: Game) -> UiExplored:
 	for sys in game.systems:
-		if sys.name == "90_ui":
-			return sys.get("explored") as UiExplored
+		var e: Variant = sys.get("explored")
+		if e is UiExplored:
+			return e
 	return null
 
 

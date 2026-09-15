@@ -67,7 +67,8 @@ func test_the_running_game_autosaves_on_sleep_but_not_with_a_machine_on_it() -> 
 	check(not SaveSlots.exists(SaveSlots.AUTO), "no autosave file yet")
 	eq(saver.call("save_to", 1), "Not with that so close.", "nor a manual one")
 	g.player.sim.clear_mobs()
-	await _frames(4)
+	# The body's node goes on the next frame or so; a loaded machine may take a few more.
+	await _until(func() -> bool: return not written.is_empty(), 240)
 	check(bool(saver.call("calm")), "calm again")
 	eq(written, [[SaveSlots.AUTO, &"sleep"]], "the sleep's save, once it is over")
 	var r := SaveFile.read(SaveSlots.path(SaveSlots.AUTO))
@@ -76,7 +77,7 @@ func test_the_running_game_autosaves_on_sleep_but_not_with_a_machine_on_it() -> 
 	check(r.data.has("inventory") and r.data.has("world"), "with the game in it")
 	# Three hours on the clock asks again.
 	g.clock.minutes += AutosaveRules.EVERY_MINUTES + 1.0
-	await _frames(3)
+	await _until(func() -> bool: return written.size() > 1, 240)
 	eq(written.back(), [SaveSlots.AUTO, &"hours"], "three hours on")
 	Sx.end(g)
 	Sx.finish()
@@ -84,4 +85,12 @@ func test_the_running_game_autosaves_on_sleep_but_not_with_a_machine_on_it() -> 
 
 func _frames(n: int) -> void:
 	for i in n:
+		await tree.process_frame
+
+
+## Process frames until `done` holds, or `most` frames have gone.
+func _until(done: Callable, most: int) -> void:
+	for i in most:
+		if done.call():
+			return
 		await tree.process_frame

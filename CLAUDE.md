@@ -45,6 +45,7 @@ and saves a `FAILED-lineN` frame. The M1 proofs:
 tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fire, make, fight, night, border
 tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
 tools/tour.sh tours/fight.tour --seed=1 --hour=11
+tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4   # save, title, continue, load: frames match
 ```
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
