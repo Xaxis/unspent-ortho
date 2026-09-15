@@ -595,48 +595,54 @@ static func swing(klass: StringName, u: float, ms: Array[int], d: Dictionary) ->
 	return mix_keys(keys[2], g, smoothstep(0.15, 1.0, rec))
 
 
-## Dodge: a committed tuck-and-roll along the facing. The burst is the first
-## ~70% of the lock; the rest is landing low and coming up.
+## Dodge: a committed tuck-and-roll along the facing. The body closes into a
+## ball BEFORE it turns and opens only after it has come round, so every frame of
+## the roll is one round outline with the tool pulled in, never limbs mid-turn.
+## The burst is the first ~72% of the lock; the rest is landing low and rising.
 static func dodge(t: float, seconds: float, d: Dictionary) -> Pose:
 	var dur := seconds if seconds > 0.0 else 0.42
 	var hip_y: float = d.get("hip_y", 0.6)
-	var crouch := minf(0.05, dur * 0.12)
-	var roll_end := dur * 0.7
+	var coil_end := minf(0.06, dur * 0.14)
+	var roll_end := dur * 0.72
 	var st := _stand(d)
 	var tuck := st.with({
-		"@hips": Vector3(0, -hip_y * 0.42, 0),
-		"spine": Vector3(0, 0, -1.1), "head": Vector3(0, 0, -0.5),
-		"thigh_l": Vector3(0, 0, 1.9), "shin_l": Vector3(0, 0, -2.2), "thigh_r": Vector3(0, 0, 1.7), "shin_r": Vector3(0, 0, -2.3),
-		"foot_l": Vector3(0, 0, 0.3), "foot_r": Vector3(0, 0, 0.4),
-		"arm_l": Vector3(0.2, 0, 1.2), "fore_l": Vector3(0, 0, 1.9), "arm_r": Vector3(-0.2, 0, 1.2), "fore_r": Vector3(0, 0, 1.9),
-		"hem": Vector3(0, 0, -1.2), "aerial": Vector3(0, 0, -0.9), "tool": Vector3(0, 0, -2.6),
+		# Sat back on the hips with the knees at the chest and the back rounded over
+		# them: a ball from any side, since the camera mostly sees the curved back.
+		"@hips": Vector3(-0.04, -hip_y * 0.45, 0),
+		"hips": Vector3(0, 0, 0.55),
+		"spine": Vector3(0, 0, -1.05), "head": Vector3(0, 0, -0.85),
+		"thigh_l": Vector3(0.1, 0, 2.05), "shin_l": Vector3(0, 0, -2.6), "thigh_r": Vector3(-0.1, 0, 2.0), "shin_r": Vector3(0, 0, -2.6),
+		"foot_l": Vector3(0, 0, 0.6), "foot_r": Vector3(0, 0, 0.6),
+		"arm_l": Vector3(0.1, 0, 0.75), "fore_l": Vector3(0, 0, 2.1), "arm_r": Vector3(-0.1, 0, 0.75), "fore_r": Vector3(0, 0, 2.1),
+		"hem": Vector3(0, 0, -0.9), "aerial": Vector3(0, 0, -1.2), "aerial_tip": Vector3(0, 0, -0.4), "tool": Vector3(0, 0, -0.2),
 	})
 	var coil := st.with({
-		"@hips": Vector3(0.02, -0.16, 0), "spine": Vector3(0, 0, -0.6), "head": Vector3(0, 0, 0.3),
-		"thigh_l": Vector3(0.05, 0, 0.9), "shin_l": Vector3(0, 0, -1.3), "thigh_r": Vector3(-0.05, 0, 0.3), "shin_r": Vector3(0, 0, -1.2),
-		"foot_l": Vector3(0, 0, 0.4), "foot_r": Vector3(0, 0, 0.9),
-		"arm_l": Vector3(0.3, 0, -0.7), "fore_l": Vector3(0, 0, 0.5), "arm_r": Vector3(-0.3, 0, -0.7), "fore_r": Vector3(0, 0, 0.5),
-		"hem": Vector3(0, 0, -0.4),
+		"@hips": Vector3(0.03, -hip_y * 0.3, 0), "spine": Vector3(0, 0, -0.85), "head": Vector3(0, 0, 0.1),
+		"thigh_l": Vector3(0.08, 0, 1.3), "shin_l": Vector3(0, 0, -1.7), "thigh_r": Vector3(-0.08, 0, 0.5), "shin_r": Vector3(0, 0, -1.5),
+		"foot_l": Vector3(0, 0, 0.4), "foot_r": Vector3(0, 0, 1.0),
+		"arm_l": Vector3(0.25, 0, 0.9), "fore_l": Vector3(0, 0, 1.6), "arm_r": Vector3(-0.25, 0, 0.9), "fore_r": Vector3(0, 0, 1.6),
+		"hem": Vector3(0, 0, -0.5), "tool": Vector3(0, 0, -0.35),
 	})
 	var land := st.with({
-		"@hips": Vector3(0, -0.2, 0), "spine": Vector3(0, 0, -0.5), "head": Vector3(0, 0, 0.35),
-		"thigh_l": Vector3(0.1, 0, 1.2), "shin_l": Vector3(0, 0, -1.5), "thigh_r": Vector3(-0.1, 0, -0.1), "shin_r": Vector3(0, 0, -1.6),
-		"foot_l": Vector3(0, 0, 0.3), "foot_r": Vector3(0, 0, 0.8),
-		"arm_l": Vector3(0.6, 0, 0.8), "fore_l": Vector3(0, 0, 0.6), "arm_r": Vector3(-0.6, 0, 0.5), "fore_r": Vector3(0, 0, 0.6),
-		"hem": Vector3(0, 0, 0.3),
+		"@hips": Vector3(0, -hip_y * 0.28, 0), "spine": Vector3(0, 0, -0.55), "head": Vector3(0, 0, 0.4),
+		"thigh_l": Vector3(0.1, 0, 1.25), "shin_l": Vector3(0, 0, -1.6), "thigh_r": Vector3(-0.1, 0, -0.1), "shin_r": Vector3(0, 0, -1.7),
+		"foot_l": Vector3(0, 0, 0.35), "foot_r": Vector3(0, 0, 0.9),
+		"arm_l": Vector3(0.6, 0, 0.9), "fore_l": Vector3(0, 0, 0.7), "arm_r": Vector3(-0.55, 0, 0.6), "fore_r": Vector3(0, 0, 0.8),
+		"hem": Vector3(0, 0, 0.3), "tool": Vector3(0, 0, -1.6),
 	})
-	if t < crouch:
-		return mix_keys(st, coil, _ease_out(t / crouch))
+	if t < coil_end:
+		return mix_keys(st, coil, _ease_out(t / coil_end))
 	if t < roll_end:
-		var u := (t - crouch) / (roll_end - crouch)
-		var into := mix_keys(coil, tuck, smoothstep(0.0, 0.25, u))
-		var p := mix_keys(into, land, smoothstep(0.8, 1.0, u))
-		# One full turn about the lateral axis, pivoting at the tucked body's middle.
-		var ang := -TAU * smoothstep(0.08, 0.92, u)
-		var centre := Vector3(0, hip_y * 0.55, 0)
+		var u := (t - coil_end) / (roll_end - coil_end)
+		var p := mix_keys(coil, tuck, smoothstep(0.0, 0.16, u))
+		p = mix_keys(p, land, smoothstep(0.86, 1.0, u))
+		# One full turn about the lateral axis, only while balled, pivoting at the
+		# ball's middle; the ball rides a low arc over the ground.
+		var ang := -TAU * smoothstep(0.14, 0.86, u)
+		var centre := Vector3(0.04, hip_y * 0.42, 0)
 		var basis := Basis(Vector3.BACK, ang)
 		p.rot[&"root"] = Vector3(0, 0, ang)
-		p.off[&"root"] = centre - basis * centre + Vector3(0, sin(u * PI) * 0.06, 0)
+		p.off[&"root"] = centre - basis * centre + Vector3(0, sin(u * PI) * 0.05, 0)
 		return p
 	return mix_keys(land, st, smoothstep(0.0, 1.0, (t - roll_end) / maxf(1e-3, dur - roll_end)))
 

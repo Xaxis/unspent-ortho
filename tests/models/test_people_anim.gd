@@ -103,10 +103,30 @@ func test_dodge_turns_once_and_lands_upright() -> void:
 	var mid := PersonAnim.dodge(0.17, 0.42, d)
 	check(absf(mid.r(&"root").z) > 1.5, "mid-roll is upside down-ish")
 	var landed := PersonAnim.dodge(0.3, 0.42, d)
-	near(fposmod(landed.r(&"root").z, TAU), 0.0, 0.05, "a whole turn")
+	near(wrapf(landed.r(&"root").z, -PI, PI), 0.0, 0.05, "a whole turn")
+	near(absf(landed.r(&"root").z), TAU, 0.05, "and only one")
 	var done := PersonAnim.dodge(0.42, 0.42, d)
 	near(done.r(&"root").z, 0.0, 1e-3, "upright at the end")
 	near(done.o(&"hips").y, 0.0, 0.01, "standing at the end")
+
+
+func test_the_roll_stays_a_ball_while_it_turns() -> void:
+	# No knot of limbs mid-roll: the body closes into a ball before it starts to
+	# turn and opens only once it is upright again. While turned at all, the feet
+	# are in at the seat, the head is down at the knees and the hands hold the shins.
+	var d := PersonBody.dims(&"man")
+	var turned := 0
+	for i in 43:
+		var t := 0.42 * i / 42.0
+		var p := PersonAnim.dodge(t, 0.42, d)
+		if absf(wrapf(p.r(&"root").z, -PI, PI)) < 0.05:
+			continue
+		turned += 1
+		var hips := _at(p, &"hips")
+		lt(_at(p, &"head").distance_to(_at(p, &"foot_l")), 0.5, "t=%.2f: head down at the feet" % t)
+		lt(_at(p, &"foot_l").distance_to(hips), 0.24, "t=%.2f: feet in at the seat" % t)
+		lt(_at(p, &"hand_l").distance_to(hips), 0.56, "t=%.2f: hands in round the shins" % t)
+	gt(turned, 12, "the roll turns for a good part of the lock")
 
 
 func test_downed_lies_flat_and_carried_hangs_limp() -> void:
