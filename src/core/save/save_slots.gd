@@ -16,8 +16,9 @@ const MANUAL: Array[int] = [1, 2, 3]
 const COUNT := 4
 
 const PLAYER_ROOT := "user://saves"
-## Shots and tours save here unless told otherwise, so running the tools never
-## overwrites a player's autosave.
+## Shots save here unless told otherwise, and each tour in a folder of its own
+## under it (TOOL_ROOT/<tour name>), so running the tools never overwrites a
+## player's autosave, and a tour run beside another never continues its save.
 const TOOL_ROOT := "user://tool-saves"
 
 ## A process run as a script (the test runner) keeps its saves here.
@@ -33,7 +34,9 @@ static var root := TEST_ROOT if OS.get_cmdline_args().has("-s") else PLAYER_ROOT
 static func use_options(o: BootOptions) -> void:
 	if o.saves != "":
 		root = "user://".path_join(o.saves)
-	elif o.shot != "" or o.tour != "":
+	elif o.tour != "":
+		root = TOOL_ROOT.path_join(o.tour.get_file().get_basename())
+	elif o.shot != "":
 		root = TOOL_ROOT
 	if o.load_slot >= 0:
 		var why := options_for(o.load_slot, o)

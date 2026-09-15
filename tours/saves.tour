@@ -2,7 +2,8 @@
 # save to a slot from the pause page, leave for the title, continue, and the
 # world that comes back is the one that was saved.
 #   tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4
-# (Tours save under user://tool-saves, never over a player's games.)
+# (A tour saves under user://tool-saves/<tour name>, never over a player's games
+# nor into the folder of another tour run beside it.)
 coast calm
 walk -1,0.4 2.2
 tap use
@@ -15,6 +16,8 @@ walk 0,1 0.6
 # Long enough for the lines about the fire to fade: the frame to match has no words on it.
 wait 5
 shot 02-before
+# The fire laid is in reach where the game is saved.
+await station:fire 1
 tap pause
 wait 0.5
 choose save
@@ -43,7 +46,12 @@ coast calm
 # The place name letters itself on arrival and fades; then the world as it was saved.
 wait 6
 shot 06-after
+# The whole frame: the same place, light and notebook. Then close around the player
+# and the fire (the fire is a sixth of that crop: losing it doubles the difference
+# there, while the whole frame barely moves), and the fire in reach again.
 same 02-before 06-after 0.02
+same 02-before 06-after 0.014 560,230,220,150
+await station:fire 1
 # Load from the pause page too: the autosave and the three slots, and slot 1 taken up again.
 walk 1,0 1
 tap pause
@@ -60,3 +68,5 @@ coast calm
 wait 6
 shot 08-loaded
 same 02-before 08-loaded 0.02
+same 02-before 08-loaded 0.014 560,230,220,150
+await station:fire 1

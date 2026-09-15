@@ -46,5 +46,7 @@ func test_every_slot_lives_under_user() -> void:
 	eq(SaveSlots.root, "user://elsewhere", "--saves picks a folder under user://")
 	SaveSlots.use_options(BootOptions.parse(PackedStringArray(["--shot=x.png"])))
 	eq(SaveSlots.root, SaveSlots.TOOL_ROOT, "a shot keeps clear of the player's saves")
+	SaveSlots.use_options(BootOptions.parse(PackedStringArray(["--tour=tours/saves.tour"])))
+	eq(SaveSlots.root, SaveSlots.TOOL_ROOT.path_join("saves"), "a tour keeps its own, clear of other tours run beside it")
 	SaveSlots.root = was
 	check(SaveSlots.root.begins_with(SaveSlots.TEST_ROOT), "tests run clear of the player's saves too: %s" % SaveSlots.root)

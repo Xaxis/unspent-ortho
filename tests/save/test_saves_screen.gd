@@ -126,6 +126,13 @@ func test_the_tour_tells_matching_frames_from_different_ones() -> void:
 	c.fill(Color(0.9, 0.1, 0.1))
 	gt(float(tour.call("frame_difference", a, c)), 0.2, "another picture differs a lot")
 	eq(float(tour.call("frame_difference", a, Image.create(10, 10, false, Image.FORMAT_RGB8))), 1.0, "sizes that differ cannot match")
+	# A small thing lost in a big frame hides in the mean; a crop around it does not.
+	var lost := a.duplicate() as Image
+	lost.fill_rect(Rect2i(30, 10, 6, 6), Color(0.3, 0.4, 0.1))
+	lt(float(tour.call("frame_difference", a, lost)), 0.01, "over the whole frame a small loss is under a loose tolerance")
+	gt(float(tour.call("frame_difference", a, lost, Rect2i(26, 6, 14, 14))), 0.02, "around it, it is not")
+	near(float(tour.call("frame_difference", a, lost, Rect2i(0, 20, 20, 16))), 0.0, 1e-6, "a crop elsewhere is unchanged")
+	eq(float(tour.call("frame_difference", a, lost, Rect2i(60, 30, 10, 10))), 1.0, "a crop off the frame cannot match")
 
 
 func _put(path: String, bytes: PackedByteArray) -> void:

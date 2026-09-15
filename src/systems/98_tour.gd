@@ -35,12 +35,14 @@ extends GameSystem
 ##   echo TEXT              print a line to the log
 ##   key ACTION             a real key event for ACTION's first key, down then up: what
 ##                          pages that read input events need (the title)
-##   same A B TOL           shots A and B (already taken) differ by at most TOL, the mean
-##                          per-channel difference 0..1; fails otherwise and prints it
+##   same A B TOL [X,Y,W,H] shots A and B (already taken) differ by at most TOL, the mean
+##                          per-channel difference 0..1, over the whole frame or only the
+##                          rectangle given (shot pixels, 2x); fails otherwise and prints it
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
-## started since the last action), saved (a save was written).
+## started since the last action), saved (a save was written); and station:NAME
+## (a station of that name, e.g. fire, is in reach of the player).
 ## Unknown commands fail the tour (exit 1) so a typo never passes silently.
 ## Everything else (giving items, forcing weather) belongs to BootOptions flags
 ## on the boot, or to real play inside the tour.
@@ -169,7 +171,7 @@ func _run() -> void:
 			"key":
 				ok = await _key(parts[1])
 			"same":
-				ok = _same(parts[1], parts[2], parts[3].to_float() if parts.size() > 3 else 0.02)
+				ok = _same(parts[1], parts[2], parts[3].to_float() if parts.size() > 3 else 0.02, parts[4] if parts.size() > 4 else "")
 			_:
 				ok = false
 		if not ok and not tries.is_empty() and int(tries.back()[1]) > 0:
@@ -226,6 +228,8 @@ func _now_true(what: String) -> bool:
 		return t != null and t.world != null and t.menu.fade < 0.05
 	if not is_instance_valid(game):
 		return false
+	if what.begins_with("station:"):
+		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
 	var sim := game.player.sim
 	match what:
 		"grip":
@@ -372,19 +376,31 @@ func _key(action: String) -> bool:
 	return false
 
 
-func _same(a: String, b: String, tol: float) -> bool:
+func _same(a: String, b: String, tol: float, crop: String) -> bool:
 	var ia := Image.load_from_file(_out.path_join(a + ".png"))
 	var ib := Image.load_from_file(_out.path_join(b + ".png"))
-	var d := frame_difference(ia, ib)
-	print("tour %s: %s against %s differs by %.4f (at most %.4f)" % [_name, a, b, d, tol])
+	var rect := Rect2i()
+	if crop != "":
+		var c := crop.split(",")
+		if c.size() != 4:
+			return false
+		rect = Rect2i(c[0].to_int(), c[1].to_int(), c[2].to_int(), c[3].to_int())
+	var d := frame_difference(ia, ib, rect)
+	print("tour %s: %s against %s%s differs by %.4f (at most %.4f)" % [_name, a, b, "" if crop == "" else " at " + crop, d, tol])
 	return d <= tol
 
 
-## Mean per-channel difference of two frames, 0 (the same) .. 1; 1 when they
-## cannot be compared (missing, or not the same size).
-static func frame_difference(a: Image, b: Image) -> float:
+## Mean per-channel difference of two frames, 0 (the same) .. 1, over `rect`
+## (the whole frame when empty); 1 when they cannot be compared (missing, not
+## the same size, or the rectangle not inside them).
+static func frame_difference(a: Image, b: Image, rect: Rect2i = Rect2i()) -> float:
 	if a == null or b == null or a.is_empty() or a.get_size() != b.get_size():
 		return 1.0
+	if rect.has_area():
+		if not Rect2i(Vector2i.ZERO, a.get_size()).encloses(rect):
+			return 1.0
+		a = a.get_region(rect)
+		b = b.get_region(rect)
 	a.convert(Image.FORMAT_RGB8)
 	b.convert(Image.FORMAT_RGB8)
 	var da := a.get_data()
