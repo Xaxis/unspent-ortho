@@ -76,12 +76,33 @@ and `tours/fight.tour` (commands in CLAUDE.md).
 - Fight moments in tours are real-time: the tours retry a missed blow (`try`),
   and a hidden macOS window can stall a single shot until its timeout.
 
+## M2.0 — Ink & Neon (first)
+
+The owner's look for the whole game: beautifully dystopian, dark rain-slicked
+neon-lit wastelands, cyberpunk landscapes of ordered chaos and mystery, with haunting
+evolving synth ambient music (VISION §8). It comes before new landscape content, so
+every type is born in it.
+
+1. **Style core** (lead): palette v2 (dark wet ramps plus neon families), wet sheen and
+   rain-slick reflection streaks, neon light pools that erase hatching, haze and light
+   shafts, a night-first sky, and ART.md rewritten as Ink & Neon.
+2. **Wave N** (parallel, on the core):
+   - **landscape-neon**: the six landscapes relit and re-dressed with neon props.
+   - **sky-rain**: rain-first weather, puddles, runoff, shafts, lightning.
+   - **machines-neon**: strip lights, scanners, beacons, working parts as neon.
+   - **characters-neon**: rain gear, stolen tech worn, light rims.
+   - **score**: generative evolving synth ambient music and a new sound bed per
+     landscape.
+   - **slate**: the hacked-tablet UI.
+   - **saves**.
+   - **export**.
+
 ## M2 — Foundations of an immense world
 
 Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so
 content never needs a rewrite.
 
-**Wave A** (parallel):
+**Wave A** (parallel, after M2.0; slate, saves and export already moved into wave N):
 - **biomes**: the landscape-type registry; the six countries become data with no
   regression; worldgen composes regions from types; two new types, Salt Flats and
   Scrapwood, as proof.
