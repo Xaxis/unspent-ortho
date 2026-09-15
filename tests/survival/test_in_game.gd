@@ -84,6 +84,22 @@ func test_survival_works_builds_and_draws_inside_a_running_game() -> void:
 	game.body.fed_until = game.clock.minutes - 60.0
 	check(sys.call("eat", &"mussels"), "eaten through the system")
 	eq(game.inventory.count(&"mussels"), 1)
+	await _run(1.0)
+
+	# The real key: a press is read from the action's held state, whenever in a frame
+	# it was made (a device, or a tour's Input.action_press), and holding it is one press.
+	game.player.facing += PI * 0.5
+	var reeds := _put(PropKind.REEDS)
+	Input.action_press("use")
+	await tree.process_frame
+	await tree.process_frame
+	check(Survival.busy(game), "a press of the use key started the work")
+	var started_at: float = SurvivalState.of(game).job.get("done_at", -1.0)
+	await tree.process_frame
+	eq(SurvivalState.of(game).job.get("done_at", -1.0), started_at, "held down, it is still the one press")
+	Input.action_release("use")
+	await _run(1.5)
+	check(game.world.depleted.has(reeds.id), "and the reeds were cut")
 	game.queue_free()
 	await tree.process_frame
 	eq(Survival.fixed_now, -1.0, "real time again once the game is gone")

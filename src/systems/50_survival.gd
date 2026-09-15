@@ -25,6 +25,9 @@ var scripted_use_held := false
 var _again_prop: WorldProp = null
 var _again_at := 0.0
 var _screen_touched := false
+var _screen_frame := -10
+var _use_down := false
+var _craft_down := false
 
 
 func setup(g: Game) -> void:
@@ -149,6 +152,7 @@ func _exit_tree() -> void:
 
 func _on_screen_changed(_screen: StringName, _open: bool) -> void:
 	_screen_touched = true
+	_screen_frame = Engine.get_process_frames()
 
 
 func _on_inventory_changed() -> void:
@@ -156,12 +160,22 @@ func _on_inventory_changed() -> void:
 		game.player.model.set_held(game.inventory.held)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if game == null or game.input_blocked() or event.is_echo():
+## The keys are read as the edge of the action's held state, not from input events
+## or "just pressed", so a press made by a device and one made by a tour
+## (Input.action_press, at any point in a frame) take the same path. A press on the
+## frame a screen opened or closed belongs to that screen.
+func _read_keys() -> void:
+	var use_down := Input.is_action_pressed("use")
+	var craft_down := Input.is_action_pressed("craft")
+	var use_pressed := use_down and not _use_down
+	var craft_pressed := craft_down and not _craft_down
+	_use_down = use_down
+	_craft_down = craft_down
+	if game.input_blocked() or Engine.get_process_frames() - _screen_frame <= 1:
 		return
-	if event.is_action_pressed("use"):
+	if use_pressed:
 		Survival.use(game)
-	elif event.is_action_pressed("craft"):
+	elif craft_pressed:
 		_craft_wait = 2
 		_screen_touched = false
 
@@ -169,6 +183,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if game == null:
 		return
+	_read_keys()
 	if _craft_wait >= 0:
 		_craft_wait -= 1
 		# Only if no screen opened or closed on the same press: a crafting screen owns the key.
