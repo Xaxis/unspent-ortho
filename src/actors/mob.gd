@@ -22,7 +22,6 @@ var _z := 0.0
 var _flash_until := 0
 var _world: WorldData
 var _was_lit := true
-var _placeholder := false
 var _holding := false
 var _flashing := false
 ## The lean kept as a quaternion: slerping the node's basis frame after frame
@@ -46,12 +45,6 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 	add_child(pivot)
 	model = figure if figure != null else FigureModel.create(s.row.get("model", kind), base_material)
 	pivot.add_child(model)
-	_placeholder = model.get_script() == FigureModel
-	if _placeholder:
-		# The machines package's figure is not here yet: size the stand-in to the body so a fight still reads.
-		var r: float = s.radius
-		var h: float = s.row.get("height", 1.0)
-		model.scale = Vector3(r * 2.2 / 0.8, h, r * 2.2 / 0.8)
 	_z = world.height_at(s.pos)
 	sync_view(0.0, 0.0)
 
@@ -156,6 +149,28 @@ func _lean(now_ms: float, delta: float) -> void:
 
 func flash(seconds: float = 0.06) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+
+
+## The point of the drawn body highest on screen (`up`: the camera's up), so a
+## mark can stand clear of the whole silhouette, a long body's far end included.
+func screen_top(up: Vector3) -> Vector3:
+	var best := global_position + Vector3(0, float(state.row.get("height", 1.0)), 0)
+	var best_d := best.dot(up)
+	for n in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or not mi.is_visible_in_tree() or not (mi.mesh is ArrayMesh):
+			continue
+		# The mesh's own box corners carried into the world one by one: a box of the
+		# carried box would stand far above a body turned across the camera.
+		var box := mi.mesh.get_aabb()
+		var xf := mi.global_transform
+		for i in 8:
+			var c := xf * box.get_endpoint(i)
+			var d := c.dot(up)
+			if d > best_d:
+				best_d = d
+				best = c
+	return best
 
 
 ## Where the working part is in the world (the body's middle when it has none,

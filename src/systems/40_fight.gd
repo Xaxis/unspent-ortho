@@ -21,6 +21,8 @@ var _stop_until := 0.0
 var _struggle_t := 0.0
 var _mend_from := 0.0
 var _last_health := 0
+## Simulation ms at which a dodge in progress lands (its dust is drawn then), or -1.
+var _land_at := -1.0
 ## A shot's held moment: the simulation never steps again.
 var _held := false
 
@@ -32,6 +34,7 @@ func setup(g: Game) -> void:
 		return
 	_mend_from = g.clock.minutes
 	_last_health = g.body.health
+	_keep_texel()
 	MobFx.warm(g, g.player.position)
 	g.player.model.set_held(g.inventory.held)
 	if g.options.act != "":
@@ -82,12 +85,14 @@ func _physics_process(delta: float) -> void:
 		sim.real_s = now_s
 		sim.step(delta)
 	_handle(sim.drain())
+	_landing()
 	_mend()
 
 
 func _process(delta: float) -> void:
 	if sim == null:
 		return
+	_keep_texel()
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	game.player.draw_swing(sim.now)
@@ -101,6 +106,27 @@ func _process(delta: float) -> void:
 		_struggle_t = 0.0
 	if game.player.model.held != game.inventory.held:
 		game.player.model.set_held(game.inventory.held)
+
+
+## Marks are sized in screen pixels of the camera players actually have.
+func _keep_texel() -> void:
+	var h := game.camera.get_viewport().get_visible_rect().size.y if game.camera.is_inside_tree() else 360.0
+	MobFx.texel = game.camera.view_height / maxf(1.0, h)
+
+
+## The camera's up on screen, as a world direction (a tell stands above a body along it).
+func _screen_up() -> Vector3:
+	return game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
+
+
+## A dodge's dust is thrown where it lands, after the body has gone from where it
+## started: drawn at the start it merged with the speed lines into one glyph.
+func _landing() -> void:
+	if _land_at < 0.0 or sim.now < _land_at:
+		return
+	_land_at = -1.0
+	var hero := sim.hero
+	MobFx.puff(_fx_parent(), _at3(hero.pos + hero.dodge_dir * 0.15), hero.dodge_dir, _dust_colour(hero.pos), 0.5, int(sim.now) + 2)
 
 
 ## One point of health back per hour of the world's clock, counted from the last hurt.
@@ -184,10 +210,14 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"dodge":
 				Events.sfx.emit(&"dodge", player.position)
 				player.model.play_action(&"dodge", FightRules.DODGE_MS / 1000.0)
-				MobFx.puff(fx, _at3(hero.pos), -hero.dodge_dir, _dust_colour(hero.pos), 0.55, int(sim.now))
-				MobFx.streak(fx, _at3(hero.pos - hero.dodge_dir * 0.2, 0.55), hero.dodge_dir, game.camera.yaw_deg, game.camera.pitch_deg, int(sim.now))
+				# The lines trail from one body width behind where it set off: the
+				# body shoots away from them, and nothing else is drawn there.
+				MobFx.streak(fx, _at3(hero.pos - hero.dodge_dir * hero.radius * 2.0, 0.5), hero.dodge_dir, game.camera.yaw_deg, game.camera.pitch_deg, int(sim.now))
+				_land_at = sim.now + FightRules.DODGE_MS
 			&"evaded":
-				MobFx.puff(fx, _at3(hero.pos + hero.dodge_dir * 0.3), hero.dodge_dir, _dust_colour(hero.pos), 0.4, int(sim.now) + 1)
+				# Heard, not drawn (a mark here lands on the speed lines): its blow met air.
+				var by: MobState = e.by
+				Events.sfx.emit(&"whiff", _at3(by.pos) if by != null else player.position)
 			&"grip":
 				var by: MobState = e.by
 				Events.sfx.emit(&"grip", player.position)
@@ -239,7 +269,8 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.blow != null and m.node is Mob:
 					# On the body, so the tell goes where the body goes.
 					var mob := m.node as Mob
-					MobFx.tell(mob, mob.global_position + Vector3(0, float(m.row.get("height", 1.0)) + 0.35, 0), m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
+					var up := _screen_up()
+					MobFx.tell(mob, mob.screen_top(up), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
@@ -277,11 +308,13 @@ func _on_hit(e: Dictionary) -> void:
 	_stop(HITSTOP_HIT)
 	game.camera.shake(0.06, 0.12)
 	if m != null and m.machine:
-		# The blow is in the working part: the burst is drawn over it, and it flares.
-		MobFx.burst(fx, _part_at(m), 1.4, int(sim.now), Palette.LENS[3])
+		# The blow is in the working part: the burst is drawn over it, and it flares
+		# (Mob). A machine is not knocked about, so no dust: one mark, read at a glance.
+		# Lifted a little up the screen, so the swinger's own body is not under it.
+		MobFx.burst(fx, _part_at(m) + _screen_up() * MobFx.px(6.0), 1.1, int(sim.now), Palette.LENS[3])
 	else:
 		MobFx.burst(fx, impact, 0.8, int(sim.now))
-	MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
+		MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
 		# The part's flare follows from the state (Mob.sync_view), in its order.
 		(target.node as Mob).flash(0.06)
@@ -326,7 +359,7 @@ func _on_snatch(m: MobState) -> void:
 	# It came in close and went: dust where it turned, and a flicker over the player.
 	var fx := _fx_parent()
 	MobFx.puffs(fx, _at3(m.pos.lerp(sim.hero.pos, 0.5)), m.pos - sim.hero.pos, _dust_colour(sim.hero.pos), 2, 0.5, m.id)
-	MobFx.tell(game.player, game.player.global_position + Vector3(0, 1.7, 0), 0.25, m.id, 0.7)
+	MobFx.tell(game.player, game.player.global_position + Vector3(0, 1.7, 0), _screen_up(), 0.25, m.id, 0.7)
 	if String(r.line) != "":
 		Events.message.emit(String(r.line))
 	var arrest: bool = m.row.get("hits", {}).get("arrest", false)
@@ -460,7 +493,7 @@ func _play_act(spec: String) -> void:
 			MobFx.clang(game, p3 + Vector3(0, 0.6, 2.0), 7)
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
 			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_deg, game.camera.pitch_deg, 10)
-			MobFx.tell(game, p3 + Vector3(0, 0.6, 0) + Vector3(-1.2, 0, 1.2) * 2.0, 0.4, 11)
+			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0
@@ -469,6 +502,7 @@ func _play_act(spec: String) -> void:
 			push_warning("unknown --act %s" % act)
 	_handle(sim.drain())
 	game.player.sync_view(0.0, true)
+	game.camera.snap_to(game.player.position)
 	_held = true
 	sim.hold = true
 
@@ -477,10 +511,18 @@ func _run_for(ms: float) -> void:
 	var n := maxi(0, roundi(ms / FightRules.SLICE_MS))
 	var hero := sim.hero
 	var move := hero.move
+	var dt := FightRules.SLICE_MS / 1000.0
 	for i in n:
 		hero.move = move
 		sim.slices(1)
 		_handle(sim.drain())
+		_landing()
+		# The bodies are drawn along with it, so a held moment shows its poses
+		# (a windup blended in, a swing half thrown) and not the first frame of each.
+		game.player.sync_view(dt)
+		for m in sim.mobs:
+			if m.node is Mob:
+				(m.node as Mob).sync_view(dt, sim.now, hero.holder == m)
 
 
 ## Put the player where the blow will reach the working part, facing the body.
