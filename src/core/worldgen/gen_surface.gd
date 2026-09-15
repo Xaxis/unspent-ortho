@@ -89,8 +89,21 @@ static func run(c: GenContext) -> void:
 	var river_steps := steps[3]
 	var pool_steps := steps[4]
 	c.mark(&"surface.steps")
-	var elev_s := GenFields.smooth(elev, size, 2)
-	var broad := GenFields.smooth(elev, size, 4)
+	# Ecotone islands: warped, so a neighbour arrives in long tongues and
+	# drifts rather than round blots.
+	var patch_noise := GenFields.noise(s, 503, 1.0 / 22.0, 2)
+	patch_noise.domain_warp_enabled = true
+	patch_noise.domain_warp_amplitude = 18.0
+	patch_noise.domain_warp_frequency = 1.0 / 40.0
+	var fl := GenFields.batch(size, [
+		[GenFields.SMOOTH, elev, 2],
+		[GenFields.SMOOTH, elev, 4],
+		[GenFields.FIELD, GenFields.noise(s, 501, 1.0 / 48.0, 2), 8],
+		[GenFields.FIELD, patch_noise, 2],
+		[GenFields.FIELD, GenFields.noise(s, 504, 1.0 / 30.0, 2), 4],
+	])
+	var elev_s := fl[0]
+	var broad := fl[1]
 	c.rise = PackedFloat32Array()
 	c.rise.resize(n)
 	var rise := c.rise
@@ -99,15 +112,9 @@ static func run(c: GenContext) -> void:
 			rise[i] = elev_s[i] - broad[i]
 	)
 	c.mark(&"surface.rise")
-	var big := GenFields.field(GenFields.noise(s, 501, 1.0 / 48.0, 2), size, 8)
-	# Ecotone islands: warped, so a neighbour arrives in long tongues and
-	# drifts rather than round blots.
-	var patch_noise := GenFields.noise(s, 503, 1.0 / 22.0, 2)
-	patch_noise.domain_warp_enabled = true
-	patch_noise.domain_warp_amplitude = 18.0
-	patch_noise.domain_warp_frequency = 1.0 / 40.0
-	var patch := GenFields.field(patch_noise, size, 2)
-	c.forest = GenFields.field(GenFields.noise(s, 504, 1.0 / 30.0, 2), size, 4)
+	var big := fl[2]
+	var patch := fl[3]
+	c.forest = fl[4]
 	var forest := c.forest
 	c.mark(&"surface.noise")
 	# Lava flows run out from the caldera: noise on a polar grid, stretched

@@ -6,6 +6,8 @@ extends TestCase
 const WORLD_SEEDS: Array[int] = [1, 42, 90210]
 ## Layout-only seeds for country shares.
 const SHARE_SEEDS: Array[int] = [1, 2, 3, 4, 5, 7, 11, 42, 99, 1337, 4242, 90210]
+## World size the gate checks layouts at (see test_country_shares_on_twelve_seeds).
+const GATE_SHARE_SIZE := 256
 
 static var _worlds: Dictionary = {}
 
@@ -111,18 +113,31 @@ func test_small_worlds_still_generate() -> void:
 
 
 func test_country_shares_on_twelve_seeds() -> void:
+	# The gate checks the layout at half size, where it costs a quarter as much
+	# and the same balancing holds the same proportions. Run the full-size sweep
+	# with: tools/test.sh world_gen_slow
+	_check_shares(GATE_SHARE_SIZE)
+
+
+func test_country_shares_on_twelve_seeds_full_size_world_gen_slow() -> void:
+	if not OS.get_cmdline_user_args().has("world_gen_slow"):
+		return
+	_check_shares(Tuning.WORLD_SIZE)
+
+
+func _check_shares(size: int) -> void:
 	var t := Time.get_ticks_msec()
 	for s in SHARE_SEEDS:
-		var w := WorldGen.generate(s, Tuning.WORLD_SIZE, &"tiles")
+		var w := WorldGen.generate(s, size, &"tiles")
 		var shares := _shares(w)
 		for c: int in Country.LAND:
 			gt(shares[c], 0.06, "seed %d %s share" % [s, Country.NAMES[c]])
 		check(shares[Country.COAST] >= 0.3 and shares[Country.COAST] <= 0.4, "seed %d coast share %.3f" % [s, shares[Country.COAST]])
-		# Balanced to 13% each on the coarse layout; borders wander a little
-		# after that ("roughly 10-15%").
+		# Balanced to 13% each, on the coarse layout and again after the borders
+		# wander (the brief's "roughly 10-15%").
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
-			check(shares[c] >= 0.095 and shares[c] <= 0.16, "seed %d %s share %.3f" % [s, Country.NAMES[c], shares[c]])
-	print("       layouts for %d seeds: %d ms" % [SHARE_SEEDS.size(), Time.get_ticks_msec() - t])
+			check(shares[c] >= 0.10 and shares[c] <= 0.15, "seed %d %s share %.3f at size %d" % [s, Country.NAMES[c], shares[c], size])
+	print("       layouts for %d seeds at %d: %d ms" % [SHARE_SEEDS.size(), size, Time.get_ticks_msec() - t])
 
 
 func test_full_worlds_keep_their_shares() -> void:
@@ -229,17 +244,23 @@ func test_country2_never_flips_where_it_shows() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var size := w.size
-		var d := GenFields.distance8(_borders(w), size, 999.0)
+		# Steps (4-neighbour) are never shorter than the true distance.
+		var d := GenFields.near_steps(_borders(w), size, 3)
+		var country := w.country
+		var country2 := w.country2
+		var blend := w.blend
 		var visible := 0
 		for y in range(1, size - 1):
 			for x in range(1, size - 1):
 				var i := y * size + x
-				var c := w.country[i]
-				if c == Country.SEA or d[i] < 3.0:
+				var c := country[i]
+				if c == Country.SEA or d[i] < 3 or blend[i] == 0.0 and blend[i + 1] == 0.0 and blend[i + size] == 0.0:
 					continue
-				for j: int in [i + 1, i + size]:
-					if w.country[j] == c and w.country2[j] != w.country2[i] and maxf(w.blend[i], w.blend[j]) > 0.1:
-						visible += 1
+				var c2 := country2[i]
+				if country[i + 1] == c and country2[i + 1] != c2 and maxf(blend[i], blend[i + 1]) > 0.1:
+					visible += 1
+				if country[i + size] == c and country2[i + size] != c2 and maxf(blend[i], blend[i + size]) > 0.1:
+					visible += 1
 		lt(visible, 12, "seed %d country2 flips under a visible blend" % s)
 
 
@@ -247,15 +268,20 @@ static func _borders(w: WorldData) -> PackedByteArray:
 	var size := w.size
 	var border := PackedByteArray()
 	border.resize(size * size)
+	var country := w.country
+	const SEA := Country.SEA
 	for y in range(1, size - 1):
 		for x in range(1, size - 1):
 			var i := y * size + x
-			var c := w.country[i]
-			if c == Country.SEA:
+			var c := country[i]
+			if c == SEA:
 				continue
-			for j: int in [i - 1, i + 1, i - size, i + size]:
-				if w.country[j] != Country.SEA and w.country[j] != c:
-					border[i] = 1
+			var a := country[i - 1]
+			var b := country[i + 1]
+			var u := country[i - size]
+			var d := country[i + size]
+			if (a != SEA and a != c) or (b != SEA and b != c) or (u != SEA and u != c) or (d != SEA and d != c):
+				border[i] = 1
 	return border
 
 

@@ -23,6 +23,7 @@ func test_grounds_are_washes_not_salad() -> void:
 		field.resize(Country.COUNT)
 		var edge := PackedFloat32Array()
 		edge.resize(Country.COUNT)
+		var ground := w.ground
 		for y in range(1, size - 1):
 			for x in range(1, size - 1):
 				var i := y * size + x
@@ -34,11 +35,12 @@ func test_grounds_are_washes_not_salad() -> void:
 				if _line(g):
 					continue
 				field[c] += 1.0
-				for j: int in [i - 1, i + 1, i - size, i + size]:
-					var h := w.ground[j]
-					if h != g and not _line(h):
-						edge[c] += 1.0
-						break
+				var a := ground[i - 1]
+				var b := ground[i + 1]
+				var u := ground[i - size]
+				var d := ground[i + size]
+				if (a != g and not _line(a)) or (b != g and not _line(b)) or (u != g and not _line(u)) or (d != g and not _line(d)):
+					edge[c] += 1.0
 		var specks := PackedFloat32Array()
 		specks.resize(Country.COUNT)
 		var sizes := PackedInt32Array()
@@ -65,6 +67,7 @@ func test_no_stair_notches_or_chequers() -> void:
 		var notches := 0
 		var chequers := 0
 		var field := 0
+		var ground := w.ground
 		for y in range(1, size - 1):
 			for x in range(1, size - 1):
 				var i := y * size + x
@@ -72,18 +75,21 @@ func test_no_stair_notches_or_chequers() -> void:
 				if w.level[i] <= 0 or _line(g):
 					continue
 				field += 1
-				var counts := {}
-				for j: int in [i - 1, i + 1, i - size, i + size]:
-					var h := w.ground[j]
-					if h != g and not _line(h):
-						counts[h] = int(counts.get(h, 0)) + 1
-				for h: int in counts:
-					if counts[h] >= 3:
+				var a := ground[i - 1]
+				var b := ground[i + 1]
+				var u := ground[i - size]
+				var d := ground[i + size]
+				if a != g or b != g or u != g or d != g:
+					# Three of the four sides one other field ground.
+					var h := -1
+					if a == b and (a == u or a == d):
+						h = a
+					elif u == d and (u == a or u == b):
+						h = u
+					if h >= 0 and h != g and not _line(h):
 						notches += 1
-				var r := w.ground[i + 1]
-				var d := w.ground[i + size]
-				var dr := w.ground[i + size + 1]
-				if not _line(r) and not _line(d) and not _line(dr) and g == dr and r == d and g != r:
+				var dr := ground[i + size + 1]
+				if b == d and g == dr and g != b and not _line(b) and not _line(dr):
 					chequers += 1
 		lt(float(notches) / field, 0.001, "seed %d notches %d" % [s, notches])
 		lt(float(chequers) / field, 0.0005, "seed %d chequers %d" % [s, chequers])

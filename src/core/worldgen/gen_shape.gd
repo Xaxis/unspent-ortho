@@ -44,12 +44,22 @@ static func run(c: GenContext) -> void:
 		var reach := rng.randf_range(1.12, 1.24)
 		lobes.append(Vector3(0.5 + cos(ang) * ax * reach, 0.5 + sin(ang) * ay * reach, rng.randf_range(0.012, 0.022)))
 		lobe_amp.append(rng.randf_range(0.9, 1.3))
-	var continent := GenFields.sample(GenFields.noise(s, 101, 1.0 / (150.0 * c.k), 4), hw, hs)
-	var bays := GenFields.sample(GenFields.noise(s, 105, 1.0 / (58.0 * maxf(c.k, 0.5)), 3), hw, hs)
-	var coastline := GenFields.sample(GenFields.noise(s, 102, 1.0 / 20.0, 3), hw, hs)
 	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.k), 2)
-	var warp_u := GenFields.sample(warp, hw, hs)
-	var warp_v := GenFields.sample(warp, hw, hs, 731.0, -419.0)
+	const N := GenFields.NOISE
+	var fl := GenFields.batch(size, [
+		[N, GenFields.noise(s, 101, 1.0 / (150.0 * c.k), 4), hw, hs],
+		[N, GenFields.noise(s, 105, 1.0 / (58.0 * maxf(c.k, 0.5)), 3), hw, hs],
+		[N, GenFields.noise(s, 102, 1.0 / 20.0, 3), hw, hs],
+		[N, warp, hw, hs],
+		[N, warp, hw, hs, 731.0, -419.0],
+		# Fine noise right at the waterline (used below).
+		[N, GenFields.noise(s, 104, 1.0 / 7.0, 2), size, 1],
+	])
+	var continent := fl[0]
+	var bays := fl[1]
+	var coastline := fl[2]
+	var warp_u := fl[3]
+	var warp_v := fl[4]
 	var lf := PackedFloat32Array()
 	lf.resize(hn)
 	var inner := PackedByteArray()
@@ -104,7 +114,7 @@ static func run(c: GenContext) -> void:
 	# Tiles: bilinear, then a whisper of fine noise right at the waterline so
 	# rock shores crinkle and throw the odd skerry.
 	var full := GenFields.upsample(lf, hw, hs, size)
-	var fine := GenFields.sample(GenFields.noise(s, 104, 1.0 / 7.0, 2), size, 1)
+	var fine := fl[5]
 	var land := PackedByteArray()
 	land.resize(c.n)
 	var islet := PackedByteArray()
@@ -153,14 +163,10 @@ static func run(c: GenContext) -> void:
 	sea_h.resize(hn)
 	for i in hn:
 		sea_h[i] = 1 - land_h[i]
-	# Lambdas capture locals by value: results come back through an Array.
-	var dists: Array[PackedFloat32Array] = [PackedFloat32Array(), PackedFloat32Array()]
-	GenFields.together([
-		func() -> void: dists[0] = GenFields.distance8(sea_h, hw, 999.0),
-		func() -> void: dists[1] = GenFields.distance8(land_h, hw, 999.0),
-	])
-	var inland_h := dists[0]
-	var offshore_h := dists[1]
+	# Exact to 48 tiles, which is farther than anything reads it (the spawn
+	# village looks up to 40 tiles inland).
+	var inland_h := GenFields.distance8_banded(sea_h, hw, 999.0, 24)
+	var offshore_h := GenFields.distance8_banded(land_h, hw, 999.0, 24)
 	for i in hn:
 		inland_h[i] = inland_h[i] * hs - 1.0
 		offshore_h[i] = offshore_h[i] * hs - 1.0

@@ -93,6 +93,81 @@ static func field(n: FastNoiseLite, size: int, step: int, ox: float = 0.0, oy: f
 	return upsample(sample(n, cw, step, ox, oy), cw, step, size)
 
 
+## Kinds of job for batch().
+const NOISE := 0
+const FIELD := 1
+const UP := 2
+const SMOOTH := 3
+
+
+## Build several fields at once, one worker each, all of it native image work
+## (a noise generator or an Image is slow from GDScript and slower still when
+## threads share it). Results come back in spec order; size is full resolution.
+##   [NOISE, noise, cw, step, ox = 0, oy = 0]  like sample()
+##   [FIELD, noise, step, ox = 0, oy = 0]      like field()
+##   [UP, grid, cw, step]                      like upsample()
+##   [SMOOTH, values, levels]                  like smooth()
+static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	out.resize(specs.size())
+	# Generators are copied here, not on the workers, so no two threads touch
+	# one object.
+	var gens: Array[FastNoiseLite] = []
+	gens.resize(specs.size())
+	for j in specs.size():
+		var spec: Array = specs[j]
+		if spec[0] == NOISE or spec[0] == FIELD:
+			var src: FastNoiseLite = spec[1]
+			var step: int = spec[3] if spec[0] == NOISE else spec[2]
+			var ox: float = 0.0
+			var oy: float = 0.0
+			var at := 4 if spec[0] == NOISE else 3
+			if spec.size() > at + 1:
+				ox = spec[at]
+				oy = spec[at + 1]
+			var m := src.duplicate() as FastNoiseLite
+			var off := step * 0.5 - 0.5
+			m.frequency = src.frequency * step
+			m.offset = Vector3((src.offset.x + off + ox) / step, (src.offset.y + off + oy) / step, 0.0)
+			gens[j] = m
+	var job := func(j: int) -> void:
+		var spec: Array = specs[j]
+		var kind: int = spec[0]
+		if kind == NOISE:
+			var cw: int = spec[2]
+			var img := gens[j].get_image(cw, cw, false, false, false)
+			img.convert(Image.FORMAT_RF)
+			out[j] = img.get_data().to_float32_array()
+		elif kind == FIELD:
+			var step: int = spec[2]
+			var cw := coarse_width(size, step)
+			var img := gens[j].get_image(cw, cw, false, false, false)
+			img.convert(Image.FORMAT_RF)
+			if step > 1:
+				img.resize(cw * step, cw * step, Image.INTERPOLATE_BILINEAR)
+				if cw * step != size:
+					img.crop(size, size)
+			out[j] = img.get_data().to_float32_array()
+		elif kind == UP:
+			out[j] = upsample(spec[1], spec[2], spec[3], size)
+		else:
+			out[j] = smooth(spec[1], size, spec[2])
+	var id := WorkerThreadPool.add_group_task(job, specs.size(), -1, true, "worldgen")
+	WorkerThreadPool.wait_for_group_task_completion(id)
+	for j in specs.size():
+		if specs[j][0] != NOISE and specs[j][0] != FIELD:
+			continue
+		# Bytes truncate: centre each step, then map [0, 1] to [-1, 1]. An
+		# affine map commutes with the bilinear spread.
+		var a := out[j]
+		var width := int(sqrt(float(a.size())))
+		rows(width, func(g0: int, g1: int) -> void:
+			for k in range(g0 * width, g1 * width):
+				a[k] = a[k] * 2.0 - 0.996078
+		)
+	return out
+
+
 ## Bilinear upsample of a cw*cw coarse grid to size*size tiles.
 static func upsample(g: PackedFloat32Array, cw: int, step: int, size: int) -> PackedFloat32Array:
 	var img := Image.create_from_data(cw, cw, false, Image.FORMAT_RF, g.to_byte_array())
@@ -144,6 +219,59 @@ static func smooth(v: PackedFloat32Array, size: int, levels: int) -> PackedFloat
 	if p2 != size:
 		img.crop(size, size)
 	return img.get_data().to_float32_array()
+
+
+## A two-sweep propagation (a distance transform, a carve) run in bands of
+## rows on the worker pool. sweep(arrays: Array, width: int) -> Array takes
+## private copies of `arrays` covering a band plus `reach` rows either side
+## and returns them swept; each band keeps only its own rows. Results are
+## exact wherever the value a cell ends with came from within `reach` rows,
+## so reach must cover the farthest distance anything downstream reads.
+## Returns the swept arrays, in the order given.
+static func banded(arrays: Array, width: int, reach: int, sweep: Callable, band: int = 24) -> Array:
+	var height: int = arrays[0].size() / width
+	var count := ceili(float(height) / band)
+	var parts := []
+	parts.resize(count)
+	var job := func(b: int) -> void:
+		var y0 := b * band
+		var y1 := mini(height, y0 + band)
+		var a := maxi(0, y0 - reach)
+		var z := mini(height, y1 + reach)
+		var local := []
+		for arr: Variant in arrays:
+			local.append(arr.slice(a * width, z * width))
+		local = sweep.call(local, width)
+		var core := []
+		for arr: Variant in local:
+			core.append(arr.slice((y0 - a) * width, (y1 - a) * width))
+		parts[b] = core
+	var id := WorkerThreadPool.add_group_task(job, count, -1, true, "worldgen")
+	WorkerThreadPool.wait_for_group_task_completion(id)
+	var out := []
+	for j in arrays.size():
+		var acc: Variant = parts[0][j]
+		for b in range(1, count):
+			acc.append_array(parts[b][j])
+		out.append(acc)
+	return out
+
+
+## 8-neighbour chamfer distance (1, 1.41) to the nearest cell where mask != 0,
+## capped at `cap`. With reach > 0 it runs banded (see banded()): exact up to
+## `reach` cells, and never less than the true distance beyond.
+static func distance8_banded(mask: PackedByteArray, width: int, cap: float, reach: int) -> PackedFloat32Array:
+	var d := PackedFloat32Array()
+	d.resize(mask.size())
+	rows(mask.size() / width, func(y0: int, y1: int) -> void:
+		for i in range(y0 * width, y1 * width):
+			d[i] = 0.0 if mask[i] != 0 else cap
+	)
+	return banded([d], width, reach, func(arrays: Array, w: int) -> Array:
+		var v: PackedFloat32Array = arrays[0]
+		propagate_min(v, w, 1.0)
+		return [v]
+	)[0]
 
 
 ## 8-neighbour chamfer distance (1, 1.41) to the nearest cell where mask != 0,

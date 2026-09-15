@@ -12,25 +12,45 @@ static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.upsample_params(c, [&"base", &"hills", &"ridge", &"terrace", &"cliff"])
-	var base: PackedFloat32Array = p[&"base"]
-	var hills_amp: PackedFloat32Array = p[&"hills"]
-	var ridge_amp: PackedFloat32Array = p[&"ridge"]
-	var terrace: PackedFloat32Array = p[&"terrace"]
-	var cliff_bias: PackedFloat32Array = p[&"cliff"]
-	var burning := GenFields.upsample(c.soft[Country.BURNING], c.cw, GenContext.STEP, size)
-	var hills := GenFields.field(GenFields.noise(s, 301, 1.0 / 58.0, 4), size, 2)
-	var ridge := GenFields.field(GenFields.noise(s, 302, 1.0 / 92.0, 3), size, 2)
-	var detail := GenFields.sample(GenFields.noise(s, 303, 1.0 / 13.0, 2), size, 1)
-	var cliffn := GenFields.field(GenFields.noise(s, 304, 1.0 / 44.0, 2), size, 4)
-	var shoren := GenFields.field(GenFields.noise(s, 306, 1.0 / 60.0, 2), size, 8)
-	var shelf := GenFields.field(GenFields.noise(s, 305, 1.0 / 30.0, 2), size, 4)
-	var dunes := GenFields.sample(GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1)
-	var coastal := GenFields.upsample(c.soft[Country.COAST], c.cw, GenContext.STEP, size)
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"terrace", &"cliff"])
+	c.mark(&"relief.params")
+	const F := GenFields.FIELD
+	const U := GenFields.UP
+	const N := GenFields.NOISE
+	var cw := c.cw
+	var step := GenContext.STEP
+	var fl := GenFields.batch(size, [
+		[U, p[&"base"], cw, step], [U, p[&"hills"], cw, step], [U, p[&"ridge"], cw, step],
+		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
+		[U, c.soft[Country.BURNING], cw, step], [U, c.soft[Country.COAST], cw, step],
+		[F, GenFields.noise(s, 301, 1.0 / 58.0, 4), 2],
+		[F, GenFields.noise(s, 302, 1.0 / 92.0, 3), 2],
+		[N, GenFields.noise(s, 303, 1.0 / 13.0, 2), size, 1],
+		[F, GenFields.noise(s, 304, 1.0 / 44.0, 2), 4],
+		[F, GenFields.noise(s, 306, 1.0 / 60.0, 2), 8],
+		[F, GenFields.noise(s, 305, 1.0 / 30.0, 2), 4],
+		[N, GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1],
+		# The rim is a broken ring, never a drawn circle.
+		[F, GenFields.noise(s, 307, 1.0 / 26.0, 2), 2],
+	])
+	c.mark(&"relief.batch")
+	var base := fl[0]
+	var hills_amp := fl[1]
+	var ridge_amp := fl[2]
+	var terrace := fl[3]
+	var cliff_bias := fl[4]
+	var burning := fl[5]
+	var coastal := fl[6]
+	var hills := fl[7]
+	var ridge := fl[8]
+	var detail := fl[9]
+	var cliffn := fl[10]
+	var shoren := fl[11]
+	var shelf := fl[12]
+	var dunes := fl[13]
 	var heart := c.hearts[Country.BURNING]
 	var crater := crater_radius(c)
-	# The rim is a broken ring, never a drawn circle.
-	var rim_warp := GenFields.field(GenFields.noise(s, 307, 1.0 / 26.0, 2), size, 2)
+	var rim_warp := fl[14]
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland

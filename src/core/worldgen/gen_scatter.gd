@@ -224,27 +224,53 @@ static func props(c: GenContext) -> void:
 ## round it, never on shingle or turf.
 static func _wrecks(c: GenContext) -> void:
 	var w := c.w
+	var size := c.size
 	var rng := Rng.make(c.s, 82)
+	var level := w.level
+	var convex := c.convex
+	var inland := c.inland
+	var water := c.water
+	var road := c.road
+	var ground := w.ground
+	var country := w.country
+	const SAND := Ground.SAND
+	const BURNING := Country.BURNING
+	const SNOWFIELD := Country.SNOWFIELD
+	# Every bay-beach tile with sand all round, found in one pass.
+	var band := 12
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(size) / band))
+	GenFields.rows(size - 3, func(y0: int, y1: int) -> void:
+		var found := PackedInt32Array()
+		for y in range(maxi(y0, 3), y1):
+			for x in range(3, size - 3):
+				var i := y * size + x
+				if ground[i] != SAND or level[i] != 1 or convex[i] < 0.5 or inland[i] > 3.5 or water[i] != 0 or road[i] != 0:
+					continue
+				var cc := country[i]
+				if cc == BURNING or cc == SNOWFIELD:
+					continue
+				# Hauled up on the sand, not lying in the wash.
+				if ground[i - 1] != SAND or ground[i + 1] != SAND or ground[i - size] != SAND or ground[i + size] != SAND:
+					continue
+				if ground[i - size - 1] != SAND or ground[i - size + 1] != SAND or ground[i + size - 1] != SAND or ground[i + size + 1] != SAND:
+					continue
+				found.append(i)
+		parts[y0 / band] = found
+	, band)
+	var cands := PackedInt32Array()
+	for part in parts:
+		cands.append_array(part)
 	var wrecks := 0
-	for attempt in 4000:
-		if wrecks >= maxi(1, roundi(4 * maxf(c.k, 0.3))):
+	var want := maxi(1, roundi(4 * maxf(c.k, 0.3)))
+	for attempt in mini(400, cands.size() * 2):
+		if wrecks >= want:
 			break
-		var p := _random_tile(c, rng)
-		var i := p.y * c.size + p.x
-		if c.land[i] == 0 or w.level[i] != 1 or c.convex[i] < 0.5 or c.inland[i] > 3.5 or c.water[i] != 0 or c.road[i] != 0:
-			continue
-		if w.country[i] == Country.BURNING or w.country[i] == Country.SNOWFIELD:
-			continue
-		var sandy := true
-		for d: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var g := w.ground_at(p.x + d.x, p.y + d.y)
-			if g != Ground.SAND and not (d != Vector2i.ZERO and Ground.is_water(g)):
-				sandy = false
-		if not sandy:
-			continue
+		var i := cands[rng.randi_range(0, cands.size() - 1)]
+		var p := Vector2i(i % size, i / size)
 		if _near_landmark(w, Vector2(p), 50.0 * maxf(c.k, 0.4)) or _near_village(w, Vector2(p), 16.0):
 			continue
-		w.landmarks.append({"kind": &"wreck", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": w.country[i]})
+		w.landmarks.append({"kind": &"wreck", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": country[i]})
 		wrecks += 1
 
 
@@ -312,7 +338,8 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			hp = hp.floor() + Vector2(0.5, 0.5)
 			# The player wakes with room around them and the view ahead open.
 			var to_spawn := hp - w.spawn
-			if to_spawn.length() < 4.5 or (to_spawn.length() < 9.0 and to_spawn.normalized().dot(Vector2.from_angle(w.spawn_facing)) > 0.5):
+			# Clear of the box a query round the spawn looks in, too.
+			if maxf(absf(to_spawn.x), absf(to_spawn.y)) < 5.5 or (to_spawn.length() < 9.0 and to_spawn.normalized().dot(Vector2.from_angle(w.spawn_facing)) > 0.5):
 				continue
 			if not _free(c, occ, hp, 1.0):
 				continue
@@ -518,8 +545,12 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	var forest := c.forest
 	var rise := c.rise
 	var recipe := c.recipe
-	var clump := GenFields.field(GenFields.noise(c.s, 611, 1.0 / 11.0, 2), size, 2)
-	var fissure := GenFields.sample(GenFields.noise(c.s, 612, 1.0 / 26.0, 2), size, 1)
+	var fl := GenFields.batch(size, [
+		[GenFields.FIELD, GenFields.noise(c.s, 611, 1.0 / 11.0, 2), 2],
+		[GenFields.NOISE, GenFields.noise(c.s, 612, 1.0 / 26.0, 2), size, 1],
+	])
+	var clump := fl[0]
+	var fissure := fl[1]
 	var sp := w.spawn
 	var face := Vector2.from_angle(w.spawn_facing)
 	var land := c.land
