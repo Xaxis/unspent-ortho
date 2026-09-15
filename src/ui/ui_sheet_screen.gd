@@ -55,14 +55,14 @@ func _draw() -> void:
 		shapes.erase(st)
 		if x > g.end.x - 60:
 			x = x0
-			y += 50
-		UiSketch.draw_item(self, id, Vector2i(x, y), 48)
-		x += 50
-	y += 50
+			y += 40
+		UiSketch.draw_item(self, id, Vector2i(x, y), 38)
+		x += 40
+	y += 40
 	x = x0
 	for st: StringName in UiSketch.STATIONS:
-		UiSketch.draw_station(self, st, Vector2i(x, y), 48)
-		x += 52
+		UiSketch.draw_station(self, st, Vector2i(x, y), 42)
+		x += 46
 	for k: StringName in UiIcons.NEEDS:
 		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 4), {"#": UiTheme.TEXT})
 		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 16), {"#": UiTheme.WARN})
