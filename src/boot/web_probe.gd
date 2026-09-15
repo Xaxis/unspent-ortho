@@ -42,9 +42,9 @@ func _ready() -> void:
 
 
 func _check_systems() -> void:
-	if scene == null or scene.name != "game":
+	if not (scene is Game):
 		return
-	var systems: Array = scene.get("systems")
+	var systems: Array = (scene as Game).systems
 	var expected := BootPage.system_scripts().size()
 	if systems.size() == expected and expected > 0:
 		print("web ok systems %d loaded" % systems.size())
@@ -69,7 +69,7 @@ func _check_save() -> void:
 		before = JSON.parse_string(FileAccess.get_file_as_string(FILE))
 	var doc := {"written_unix": int(Time.get_unix_time_from_system()), "token": str(Time.get_ticks_usec()), "scene": str(scene.name) if scene != null else ""}
 	var save_script := _global_script("SaveGame")
-	if save_script != null and scene != null and scene.name == "game":
+	if save_script != null and scene is Game:
 		doc["state"] = save_script.call("collect")
 	var f := FileAccess.open(FILE, FileAccess.WRITE)
 	if f == null:
@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 		if not _path_ok:
 			print("web FAIL audio path: a test tone on the master bus never reached the meter (%s)" % _players())
 			_audio_done = true
-		elif scene == null or scene.name != "game":
+		elif scene is UiTitle or not (scene is Game):
 			print("web skip audio game (the title makes no sound)")
 			_audio_done = true
 		_finish_if_done()
