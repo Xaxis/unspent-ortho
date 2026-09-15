@@ -537,7 +537,7 @@ vec3 works_mark(int m, vec3 c, vec2 wp, vec2 px, vec4 wk, int hand, inout vec3 e
 		// Scorched: burnt dark in lobes, a little ash combed by the wind, the
 		// odd ember still alive where it burnt hottest.
 		float lobe = ink_vnoise(wp * 0.7 + 11.0) + rag(wp);
-		c = mix(c, lobe > 0.55 ? EARTH0 : mix(INK3, EARTH1, 0.4), clamp((sc - 0.5) * 2.5, 0.0, 0.58));
+		c = mix(c, lobe > 0.55 ? EARTH0 : mix(INK3, EARTH1, 0.4), clamp((sc - 0.5) * 2.5, 0.0, 0.4));
 		if (stroke(px, vec2(7.0, 4.0), 41.0, 0.12, 3.0, 2.0) > 0.5) {
 			c = mix(c, ASH1, 0.6);
 		}
@@ -733,8 +733,8 @@ vec3 survey_mark(int m, vec3 c, vec2 wp, vec2 px, int hand) {
 		if (dl < 0.3) {
 			c = lum > 0.35 ? dn(c, 0.2) : up(c, 0.22);
 		}
-		if (dl < 0.05 && mod(floor(along * 1.6), 3.0) < 2.0) {
-			c = lum > 0.35 ? RUST2 : mix(LINEN3, ASH3, 0.5);
+		if (dl < 0.035 && mod(floor(along * 1.6), 3.0) < 2.0) {
+			c = lum > 0.35 ? mix(c, RUST2, 0.7) : mix(c, mix(LINEN3, ASH3, 0.5), 0.55);
 		}
 	}
 	return c;

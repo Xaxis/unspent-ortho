@@ -231,6 +231,21 @@ static func _about(c: GenContext, occ: PackedByteArray, rng: RandomNumberGenerat
 	return placed
 
 
+## Every tile within r of p on p's level and dry.
+static func _flat(c: GenContext, p: Vector2, r: int) -> bool:
+	var x0 := floori(p.x)
+	var y0 := floori(p.y)
+	if x0 < r + 1 or y0 < r + 1 or x0 >= c.size - r - 1 or y0 >= c.size - r - 1:
+		return false
+	var l := c.w.level[y0 * c.size + x0]
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var i := (y0 + dy) * c.size + x0 + dx
+			if c.w.level[i] != l or c.water[i] != 0 or Ground.is_water(c.w.ground[i]):
+				return false
+	return true
+
+
 static func _level(c: GenContext, p: Vector2i) -> int:
 	return c.w.level[p.y * c.size + p.x]
 
@@ -296,6 +311,9 @@ static func _coast(c: GenContext, occ: PackedByteArray, rng: RandomNumberGenerat
 		var at := Vector2(p) + Vector2(0.5, 0.5)
 		var hull: WorldProp = null
 		for back in 4:
+			# A hull lies whole on one terrace, never hung over a bank.
+			if not _flat(c, (at - sea * back).floor(), 1):
+				continue
 			hull = _put(c, occ, PropKind.HULL, at - sea * back, (Vector2(-sea.y, sea.x)).angle() + rng.randf_range(-0.4, 0.4), -99, 0.8)
 			if hull != null:
 				at = hull.pos

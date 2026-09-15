@@ -805,7 +805,7 @@ static func hull(k: Kit, v: int, c: int) -> void:
 		k.made.push(Transform3D(Basis(Vector3.RIGHT, 0.18) * Basis(Vector3.BACK, 0.1), Vector3(0.55, -0.3, 0.0)))
 		_hull_part(k, 3, 8, s, false)
 		k.made.pop()
-		k.made.push(Transform3D(Basis(Vector3.UP, 0.55) * Basis(Vector3.RIGHT, -0.62), Vector3(-0.9, -0.42, 0.55)))
+		k.made.push(Transform3D(Basis(Vector3.UP, 0.55) * Basis(Vector3.RIGHT, -0.34), Vector3(-0.9, -0.3, 0.55)))
 		_hull_part(k, 0, 4, s + 1, true)
 		k.made.pop()
 		banks(k, [[-1.8, 1.3, 0.5, 0.3], [0.5, -1.0, 0.55, 0.3], [1.9, -0.7, 0.45, 0.24], [-0.3, 0.25, 0.4, 0.2], [2.5, 0.4, 0.35, 0.18]], drift[0], s + 60)
@@ -850,7 +850,8 @@ static func _hull_part(k: Kit, from: int, to: int, s: int, stern: bool) -> void:
 				var p1 := a[e + 1] * Vector3(1, 1, sgn)
 				var q0 := bb[e] * Vector3(1, 1, sgn)
 				var q1 := bb[e + 1] * Vector3(1, 1, sgn)
-				var col := bottom if e == 0 else (band if e == 3 else hullc)
+				# Strakes of rust and bare plate by turns below the waterline.
+				var col := (bottom if (r + from) % 2 == 0 else P.RUST[2]) if e <= 1 else (band if e == 3 else hullc)
 				if e == 2 and (r + from) % 3 == 1:
 					col = hullc.lerp(P.RUST[2], 0.5)
 				if sgn > 0.0:
@@ -861,6 +862,14 @@ static func _hull_part(k: Kit, from: int, to: int, s: int, stern: bool) -> void:
 		var ds := a[4] + Vector3(0, -0.04, 0)
 		var dq := bb[4] + Vector3(0, -0.04, 0)
 		k.made.quad(ds, dq, dq * Vector3(1, 1, -1), ds * Vector3(1, 1, -1), P.EARTH[2])
+		# Planks gone grey in lines along the deck, a hatch left open on it.
+		for pz: float in [-0.3, 0.0, 0.3]:
+			var a0 := Vector3(ds.x, ds.y + 0.012, ds.z * pz)
+			var a1 := Vector3(dq.x, dq.y + 0.012, dq.z * pz)
+			k.made.quad(a0 + Vector3(0, 0, 0.02), a1 + Vector3(0, 0, 0.02), a1 - Vector3(0, 0, 0.02), a0 - Vector3(0, 0, 0.02), P.EARTH[1])
+		if (r + from) % 3 == 2:
+			var hc := ds.lerp(dq, 0.5) + Vector3(0, 0.02, 0)
+			k.made.quad(hc + Vector3(-0.18, 0, 0.2), hc + Vector3(0.18, 0, 0.2), hc + Vector3(0.18, 0, -0.2), hc + Vector3(-0.18, 0, -0.2), P.INK[1])
 		# Rust weeping from the scuppers down the topsides.
 		if r % 2 == 0:
 			var mid := a[4].lerp(bb[4], 0.5)
