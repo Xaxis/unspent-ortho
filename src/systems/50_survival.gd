@@ -21,6 +21,8 @@ var _screen_touched := false
 func setup(g: Game) -> void:
 	super.setup(g)
 	Crafting.bind(g)
+	Survival.fixed_now = 0.0 if g.options.hold >= 0.0 else -1.0
+	Survival.fixed_step = 0.0
 	var state := SurvivalState.of(g)
 	# The body woke an hour before the game opened.
 	state.woke_at = g.clock.minutes - 60.0
@@ -119,4 +121,10 @@ func _process(delta: float) -> void:
 			var r := Crafting.suggest(game)
 			if not r.is_empty():
 				Crafting.make_in(game, r)
+	var hold := game.options.hold
+	if hold >= 0.0:
+		# A held shot: every frame is 1/60 s however long it took to draw, until the moment.
+		Survival.fixed_step = minf(1.0 / 60.0, maxf(0.0, hold - Survival.fixed_now))
+		Survival.fixed_now += Survival.fixed_step
+		delta = Survival.fixed_step
 	Survival.tick(game, delta)

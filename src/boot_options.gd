@@ -19,6 +19,8 @@ extends RefCounted
 ## --held=ID           hold this item at start, given if not carried (survival)
 ## --use[=KIND]        at start, face the nearest workable prop (of KIND, e.g. iron_ore) and use (survival)
 ## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
+## --hold=SECONDS      survival and its drawing run on fixed 1/60 s frames and stop SECONDS
+##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -38,6 +40,7 @@ var held := ""
 var use := false
 var use_kind := ""
 var build := ""
+var hold := -1.0
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -73,5 +76,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 				o.use = true
 				o.use_kind = v.replace("_", " ")
 			"build": o.build = v
+			"hold": o.hold = v.to_float()
 			_: push_warning("unknown option --%s" % k)
 	return o

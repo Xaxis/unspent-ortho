@@ -54,8 +54,14 @@ const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], Pr
 const BUILD_KINDS := {&"fire": PropKind.FIRE, &"bench": PropKind.BENCH, &"kiln": PropKind.KILN}
 
 
+## Real seconds, unless a shot runs survival on fixed frames (BootOptions --hold):
+## then the system advances `fixed_now` by `fixed_step` each frame and stops.
+static var fixed_now := -1.0
+static var fixed_step := 0.0
+
+
 static func now_real() -> float:
-	return Time.get_ticks_msec() / 1000.0
+	return fixed_now if fixed_now >= 0.0 else Time.get_ticks_msec() / 1000.0
 
 
 # --- Stations -------------------------------------------------------------

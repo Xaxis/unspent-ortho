@@ -70,3 +70,46 @@ func test_fire_light_follows_the_dark() -> void:
 	near(FireModel.darkness_at(3.0), 1.0, 1e-6, "full before dawn")
 	check(FireModel.darkness_at(20.0) > 0.0 and FireModel.darkness_at(20.0) < 1.0, "coming in at dusk")
 	near(FireModel.darkness_at(8.0), 0.0, 1e-6, "gone by morning")
+
+
+func test_every_item_hops_into_the_hands_as_a_drawn_token() -> void:
+	for id: StringName in Items.DEFS:
+		var g := SurvivalMarks.glyph_for(id)
+		check(SurvivalMarks.GLYPHS.has(g), "%s has a token (%s)" % [id, g])
+	for g in SurvivalMarks.GLYPHS:
+		gt(SurvivalMarks.glyph(g).get_surface_count(), 0, "%s token has a mesh" % g)
+	gt(SurvivalMarks.dot().get_surface_count(), 0)
+	gt(SurvivalMarks.tick().get_surface_count(), 0)
+	gt(SurvivalMarks.shard().get_surface_count(), 0)
+	check(SurvivalMarks.overlay().render_priority > 0 and SurvivalMarks.material().render_priority > 0,
+		"marks draw after the outline pass, or it paints them out")
+
+
+func test_a_held_shot_catches_the_blow_and_the_fall_the_same_way_every_time() -> void:
+	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=96", "--held=axe_hand", "--hold=0.4"]))
+	near(o.hold, 0.4, 1e-6, "--hold parsed")
+	var game := Game.new()
+	tree.root.add_child(game)
+	game.setup(o)
+	var fx: Node = null
+	for s in game.systems:
+		if String(s.name).contains("survival_fx"):
+			fx = s
+	var pine := Fx.put(game, PropKind.PINE, Vector2.from_angle(game.player.facing) * 0.9)
+	check(Survival.use(game), "felling")
+	for i in 60:
+		await tree.process_frame
+	near(Survival.fixed_now, 0.4, 1e-4, "stopped at the moment asked for")
+	check(Survival.busy(game), "still at work: the blow is caught, not finished")
+	eq((fx.get("_tick") as Array).size(), 5, "one blow's ink burst is on the page")
+	gt((fx.get("_fleck") as Array).size(), 0, "and flecks of wood")
+	# Let it run on: the work finishes, the tree falls, its timber comes to hand.
+	game.options.hold = 2.0
+	for i in 110:
+		await tree.process_frame
+	check(not Survival.busy(game), "the work finished")
+	check(game.world.depleted.has(pine.id), "the pine is down")
+	eq(game.inventory.count(&"timber"), 2)
+	game.queue_free()
+	await tree.process_frame
+	eq(Survival.fixed_now, -1.0, "real time again once the game is gone")
