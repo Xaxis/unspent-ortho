@@ -40,7 +40,12 @@ class_name Survival
 ##   threat_near(game) -> bool               a hostile body close enough that nothing long may be
 ##                                           started (making, a long take, eating, sleeping, building)
 ##   drop(game, id, n) -> int                put down n of a carried thing (what the slate's drop
-##                                           verb calls); returns how many went. Never drops the lamp lit.
+##                                           verb calls) on a heap in front of the player, which `use`
+##                                           takes back; returns how many went (0 with a hostile close,
+##                                           or nowhere to put it). Never drops the lamp lit.
+##   take_back(game, heap) -> int            pick up everything on a heap the player left; how many
+##   heap_near(game) -> WorldProp            the player's own heap in reach, or null
+##   last_weapon(game, id) -> bool           id is the only carried thing that fights better than fists
 ##   set_going(game, recipe) -> WorldProp    a long station recipe put on the station to cook in
 ##                                           world time (Crafting.make_in calls it); the station prop
 ##   cooking(game) -> Array[Dictionary]      what stations are working on: {station, recipe, makes,
@@ -195,7 +200,7 @@ static func use_target(game: Game) -> WorldProp:
 	var state := SurvivalState.of(game)
 	var reach := DARK_REACH if in_the_dark(game) else REACH
 	for q in game.query.props_near(p, REACH + 2.0):
-		if not Takes.workable(q.kind) or game.world.depleted.has(q.id):
+		if not (Takes.workable(q.kind) or state.left.has(q.id)) or game.world.depleted.has(q.id):
 			continue
 		var to := q.pos - p
 		var edge := to.length() - q.solid
@@ -206,7 +211,7 @@ static func use_target(game: Game) -> WorldProp:
 		if dot < CONE and not (edge < 0.35 and dot > -0.2):
 			continue
 		var score := edge + (1.0 - dot) * 0.6
-		if not _choose(game, state, q).ok:
+		if not state.left.has(q.id) and not _choose(game, state, q).ok:
 			score += 0.8
 		if score < best_score:
 			best_score = score
@@ -240,6 +245,8 @@ static func _tool_for(game: Game, state: SurvivalState, prop: WorldProp) -> Stri
 
 static func describe_target(game: Game) -> String:
 	var t := use_target(game)
+	if t != null and SurvivalState.of(game).left.has(t.id):
+		return "your things - take back"
 	if t != null:
 		var c := _choose(game, SurvivalState.of(game), t)
 		var name := PropKind.NAMES[t.kind]
@@ -273,6 +280,8 @@ static func use(game: Game) -> bool:
 	if busy(game) or game.body.grip > 0:
 		return false
 	var t := use_target(game)
+	if t != null and SurvivalState.of(game).left.has(t.id):
+		return take_back(game, t) > 0
 	if t != null:
 		return work(game, t)
 	match _fallback(game):
@@ -665,23 +674,112 @@ static func _lamp_low(game: Game) -> void:
 
 # --- Putting down -------------------------------------------------------------
 
-## Put down `n` of a carried thing (the slate's drop verb). The held tool goes
-## to bare hands, worn kit comes off. Returns how many were put down.
+## Put down `n` of a carried thing (the slate's drop verb) on a heap in front of
+## the player: the one already in reach, or a new cairn. `use` on it takes it all
+## back. Refused with a hostile close (a knife is not put down in a fight), or
+## where there is no ground for a heap. The held tool goes to bare hands, worn
+## kit comes off. Returns how many were put down.
 static func drop(game: Game, id: StringName, n: int = 1) -> int:
 	var inv := game.inventory
 	var have := inv.count(id)
 	var k := mini(n, have)
 	if k <= 0:
 		return 0
+	if threat_near(game):
+		Events.message.emit(THREAT_LINE)
+		Events.sfx.emit(&"refuse", game.player.position)
+		return 0
+	var state := SurvivalState.of(game)
+	var heap := heap_near(game)
+	if heap == null:
+		var spot := _build_spot(game, PropKind.CAIRN)
+		if spot.x < -1e8:
+			Events.message.emit("Not here.")
+			return 0
+		heap = add_prop(game, PropKind.CAIRN, spot)
+		state.left[heap.id] = {}
 	if id == &"lamp" and game.body.lamp_lit and k >= have:
 		game.body.lamp_lit = false
+	var edge := inv.edge(id)
 	inv.remove(id, k)
+	var goods: Dictionary = state.left[heap.id]
+	goods[id] = int(goods.get(id, 0)) + k
+	if Items.has_edge(id):
+		# The edge stays with the tool: a knife taken back is as worn as it was left.
+		goods["edge:%s" % id] = edge
 	if inv.held == &"" and game.player != null and game.player.model != null:
 		game.player.model.set_held(&"")
 	update_body(game)
-	Events.sfx.emit(&"took", game.player.position)
+	Events.sfx.emit(&"took", game.world.to_3d(heap.pos))
 	Events.message.emit("Left %s." % _count_words(id, k))
 	return k
+
+
+## The player's own heap within STATION_REACH, or null.
+static func heap_near(game: Game) -> WorldProp:
+	var state := SurvivalState.of(game)
+	var best: WorldProp = null
+	var best_d := INF
+	for q in game.query.props_near(game.player.pos, STATION_REACH + 2.0):
+		if not state.left.has(q.id) or game.world.depleted.has(q.id):
+			continue
+		var d := q.pos.distance_to(game.player.pos) - q.solid
+		if d <= STATION_REACH and d < best_d:
+			best_d = d
+			best = q
+	return best
+
+
+## Everything on a heap the player left comes back into the creel, and the
+## heap is gone. No time passes. Returns how many things came back.
+static func take_back(game: Game, heap: WorldProp) -> int:
+	var state := SurvivalState.of(game)
+	if heap == null or not state.left.has(heap.id):
+		return 0
+	var goods: Dictionary = state.left[heap.id]
+	state.left.erase(heap.id)
+	var inv := game.inventory
+	var got := 0
+	var parts: PackedStringArray = []
+	for key: Variant in goods:
+		if String(key).begins_with("edge:"):
+			continue
+		var id := StringName(key)
+		var n := int(goods[key])
+		var had := inv.has(id)
+		var kept := inv.edge(id)
+		inv.add(id, n)
+		if goods.has("edge:%s" % id):
+			# Edges are per id, the best copy's (Inventory).
+			var left := int(goods["edge:%s" % id])
+			inv.set_edge(id, maxi(kept, left) if had else left)
+		Events.took.emit(id, n)
+		parts.append(_count_words(id, n))
+		got += n
+	game.world.depleted[heap.id] = INF
+	if game.view != null:
+		game.view.refresh_props(heap)
+	update_body(game)
+	Events.sfx.emit(&"took", game.world.to_3d(heap.pos))
+	if not parts.is_empty():
+		Events.message.emit("Took back %s." % ", ".join(parts))
+	return got
+
+
+## The only thing carried that fights better than bare hands: the hold-to-drop
+## key puts it away instead of leaving it on the ground.
+static func last_weapon(game: Game, id: StringName) -> bool:
+	if id == &"" or not _fights(id) or game.inventory.count(id) > 1:
+		return false
+	for other: StringName in game.inventory.items:
+		if other != id and _fights(other):
+			return false
+	return true
+
+
+static func _fights(id: StringName) -> bool:
+	var d := Items.def(id)
+	return bool(d.get("tool", false)) and int(d.get("dmg", 1)) > int(Items.FISTS.dmg)
 
 
 static func _count_words(id: StringName, n: int) -> String:

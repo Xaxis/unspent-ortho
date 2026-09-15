@@ -41,6 +41,9 @@ var hunger_said := 0
 var starving_since := INF
 ## The low-oil line has been said for this flask.
 var lamp_low_said := false
+## What the player left on the ground: heap prop id -> {item id: count}. A heap is
+## a cairn in the world; `use` on it takes everything back (Survival.take_back).
+var left: Dictionary = {}
 
 
 static func of(game: Node) -> SurvivalState:

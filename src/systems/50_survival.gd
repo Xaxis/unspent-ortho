@@ -10,8 +10,9 @@ extends GameSystem
 ## screen opened for the same key press (the ui package's crafting screen wins).
 ## A blow that lands on the player knocks the work out of their hands. Holding
 ## `use` keeps working the same thing while it still gives (a vein, a mussel rock).
-## Holding `drop` (X) puts down what is in hand. A press of `use` while a take
-## plays out is kept and tried when the hands are free.
+## Holding `drop` (X) puts down what is in hand on a heap that `use` takes back,
+## except the last thing that fights, which is only put away (bare hands). A
+## press of `use` while a take plays out is kept and tried when the hands are free.
 ##
 ## Screens find this node by method: eat(id) -> bool eats one through Survival.
 
@@ -37,6 +38,7 @@ const USE_BUFFER_SECONDS := 1.5
 ## hold, not a tap, so a stray key never leaves the knife on the shore. The
 ## carrying page's drop verb (the slate) calls Survival.drop for any good.
 const DROP_HOLD_SECONDS := 0.5
+const PUT_AWAY_LINE := "You put the %s away. It is the only blade you have."
 var _drop_held := 0.0
 var _dropped_this_hold := false
 
@@ -232,8 +234,20 @@ func _read_drop(delta: float) -> void:
 	if _dropped_this_hold or _drop_held < DROP_HOLD_SECONDS or Survival.busy(game):
 		return
 	_dropped_this_hold = true
-	if game.inventory.held != &"":
-		Survival.drop(game, game.inventory.held, 1)
+	var held := game.inventory.held
+	if held == &"":
+		return
+	if Survival.threat_near(game):
+		# Nothing is put down or put away with a hostile close.
+		Events.message.emit(Survival.THREAT_LINE)
+		Events.sfx.emit(&"refuse", game.player.position)
+		return
+	if Survival.last_weapon(game, held):
+		# X sits beside C: a slip must never leave the only blade on the ground.
+		Survival.hold(game, &"")
+		Events.message.emit(PUT_AWAY_LINE % Items.display_name(held))
+		return
+	Survival.drop(game, held, 1)
 
 
 ## Held `use`: once a take finishes, work the same prop again if it is still in

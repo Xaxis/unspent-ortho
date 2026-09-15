@@ -31,6 +31,57 @@ func test_drop_puts_things_down_and_empties_the_hand() -> void:
 	Fx.done(g)
 
 
+## Nothing put down is gone: it lies on one heap in front of the player, and
+## `use` on the heap takes it all back, the knife as worn as it was left.
+func test_what_is_put_down_lies_on_a_heap_that_use_takes_back() -> void:
+	var g := Fx.flat()
+	g.inventory.add(&"driftwood", 4)
+	var props := g.world.props.size()
+	Survival.drop(g, &"driftwood", 3)
+	Survival.drop(g, &"knife", 1)
+	eq(g.world.props.size(), props + 1, "one heap for both")
+	var heap := Survival.heap_near(g)
+	check(heap != null and heap.kind == PropKind.CAIRN, "a heap in reach")
+	if heap == null:
+		Fx.done(g)
+		return
+	g.player.pos = heap.pos + Vector2(-(heap.solid + Tuning.PLAYER_RADIUS + 0.2), 0)
+	g.player.facing = 0.0
+	eq(Survival.use_target(g), heap, "use finds it")
+	eq(Survival.describe_target(g), "your things - take back")
+	var t0 := g.clock.minutes
+	check(Survival.use(g), "use takes it back")
+	eq(g.inventory.count(&"driftwood"), 4, "all the wood")
+	eq(g.inventory.count(&"knife"), 1, "and the knife")
+	eq(g.inventory.edge(&"knife"), 5000, "as worn as it was left")
+	near(g.clock.minutes, t0, 0.001, "no time")
+	check(g.world.depleted.has(heap.id), "the heap is gone")
+	check(Survival.heap_near(g) == null, "and nothing is left to take")
+	Fx.done(g)
+
+
+func test_nothing_is_put_down_with_a_hostile_close() -> void:
+	var g := Fx.flat()
+	var sim := FightSim.new(g.world, g.query)
+	sim.hero.pos = g.player.pos
+	g.player.sim = sim
+	sim.add_mob(&"runner", g.player.pos + Vector2(-5, 0))
+	eq(Survival.drop(g, &"knife", 1), 0, "not with a runner five tiles off")
+	eq(g.inventory.held, &"knife", "still in hand")
+	g.player.sim = null
+	Fx.done(g)
+
+
+func test_the_last_blade_counts_as_the_last_weapon() -> void:
+	var g := Fx.flat()
+	check(Survival.last_weapon(g, &"knife"), "the start knife is the only blade")
+	g.inventory.add(&"driftwood", 2)
+	check(not Survival.last_weapon(g, &"driftwood"), "wood does not fight")
+	g.inventory.add(&"pick")
+	check(not Survival.last_weapon(g, &"knife"), "with a pick carried the knife is not the last")
+	Fx.done(g)
+
+
 func test_the_first_fire_charcoal_and_haft_leave_room_in_the_creel() -> void:
 	# Nine driftwood and two stone make a fire, charcoal and a haft (the playtest
 	# was laden before the first fire with eight driftwood and a stone).
@@ -140,6 +191,16 @@ func test_holding_drop_in_a_running_game_puts_down_what_is_in_hand_once() -> voi
 	eq(g.inventory.count(&"driftwood"), 2, "once per hold")
 	Input.action_release(&"drop")
 	sys.call("_process", 0.1)
+	check(Survival.heap_near(g) != null, "on a heap in front of the player")
+	# The knife is the last blade: held X puts it away, and it stays in the creel.
+	Survival.hold(g, &"knife")
+	Input.action_press(&"drop")
+	sys.call("_process", 0.3)
+	sys.call("_process", 0.3)
+	Input.action_release(&"drop")
+	sys.call("_process", 0.1)
+	eq(g.inventory.count(&"knife"), 1, "the only blade is never left on the ground")
+	eq(g.inventory.held, &"", "it is put away")
 	g.queue_free()
 	await frames(1)
 
