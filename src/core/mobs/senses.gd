@@ -1,17 +1,17 @@
 class_name Senses
 ## How a machine or creature notices the player (design-extract §7.4).
 ##   sight   = sees x (1 - 0.8 x nightfall x 0.62), undone by a lit lamp,
-##             x weather, x records (each filing +20%), with a clear line
-##   hearing = hears x (1 + 0.35 x laden tier) x (1.35 running): never night, never weather
+##             x weather, x records (each filing +25%, four at most), with a clear line
+##   hearing = hears x (1 + 0.35 x laden tier): never night, never weather, and
+##             not how fast you go (running is the way to get away)
 ## You hear it before you see it; it hears you whatever the dark.
 
 ## The source's darkest night is 0.62 of full dark.
 const DARKEST := 0.62
 const NIGHT_SIGHT := 0.8
-const FILED_SIGHT := 0.2
-const FILED_CAP := 5
+const FILED_SIGHT := 0.25
+const FILED_CAP := 4
 const LADEN_HEARING := 0.35
-const RUN_HEARING := 1.35
 ## A tile at least this many levels above both ends of a line hides one from the other.
 const RIDGE_LEVELS := 2
 ## Props at least this wide (solid radius) block a line: houses, boulders, heaps. Trees do not.
@@ -31,7 +31,7 @@ static func hearing_range(row: Dictionary, m: Moment) -> float:
 	if row.get("sight_only", false):
 		return 0.0
 	var hears: float = row.get("hears", 0)
-	return hears * (1.0 + LADEN_HEARING * m.laden_tier) * (RUN_HEARING if m.running else 1.0)
+	return hears * (1.0 + LADEN_HEARING * m.laden_tier)
 
 
 ## Distances are Chebyshev on the grid, as the source measured them.

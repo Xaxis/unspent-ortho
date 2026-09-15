@@ -98,7 +98,6 @@ func _read_moment() -> void:
 	moment.lamp_lit = game.body.lamp_lit
 	moment.filed = game.body.filed
 	moment.laden_tier = FightRules.laden_tier(game.body.load)
-	moment.running = game.player.intent_run and game.player.intent_move.length() > 0.1
 	moment.read_weather()
 
 

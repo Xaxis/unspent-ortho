@@ -10,7 +10,6 @@ var minutes := 8.0 * 60.0
 var lamp_lit := false
 var filed := 0
 var laden_tier := 0
-var running := false
 ## Weather kind (lowercase: fair grey rain storm fog snow hail sand heat ...), strength 0..1, wind -1..1.
 var weather: StringName = &"fair"
 var weather_strength := 0.0

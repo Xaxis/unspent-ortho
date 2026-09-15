@@ -42,7 +42,9 @@ func test_filing_raises_sight() -> void:
 	var m := _at(12.0)
 	var before := Senses.sight_range(row, m)
 	m.filed = 2
-	near(Senses.sight_range(row, m), before * 1.4, 0.001, "two filings, 40% further")
+	near(Senses.sight_range(row, m), before * 1.5, 0.001, "two filings, half as far again")
+	m.filed = 9
+	near(Senses.sight_range(row, m), before * 2.0, 0.001, "never more than double")
 
 
 func test_a_watcher_goes_by_eye_alone() -> void:
