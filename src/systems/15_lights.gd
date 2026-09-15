@@ -51,6 +51,8 @@ var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
+## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
+static var _models_have_glow_points := -1
 
 
 func setup(g: Game) -> void:
@@ -364,11 +366,13 @@ func _update_glows(focus: Vector2, hour: float) -> void:
 ## Uses PropModels.glow_points(kind) when the model package provides it (the
 ## models change shape; this must follow them); otherwise the M0 geometry.
 static func glow_points(kind: int) -> Array:
-	if PropModels != null:
-		var s: GDScript = PropModels
-		for m in s.get_script_method_list():
+	if _models_have_glow_points < 0:
+		_models_have_glow_points = 0
+		for m in (PropModels as GDScript).get_script_method_list():
 			if m.name == "glow_points":
-				return s.call("glow_points", kind)
+				_models_have_glow_points = 1
+	if _models_have_glow_points == 1:
+		return (PropModels as GDScript).call("glow_points", kind)
 	match kind:
 		PropKind.HOUSE:
 			return [

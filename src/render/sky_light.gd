@@ -134,11 +134,9 @@ func set_hour(hour: float) -> void:
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
 	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), 0.0, 0.0))
-	var cols: Array[Vector4] = []
-	for i in MAX_LAMPS:
-		cols.append(lamps[i] if i < lamps.size() else Vector4.ZERO)
-	RenderingServer.global_shader_parameter_set("sky_lamps", Projection(cols[0], cols[1], cols[2], cols[3]))
-	RenderingServer.global_shader_parameter_set("sky_lamps2", Projection(cols[4], cols[5], cols[6], cols[7]))
+	var packed := lamp_columns(lamps)
+	RenderingServer.global_shader_parameter_set("sky_lamps", packed[0])
+	RenderingServer.global_shader_parameter_set("sky_lamps2", packed[1])
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)
@@ -150,6 +148,15 @@ func set_hour(hour: float) -> void:
 	if env != null:
 		env.environment.ambient_light_color = SKY_AMBIENT
 		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * low_light(hour)
+
+
+## Lamp pools packed for the two mat4 globals, one pool per column, unused
+## columns zero (range 0 = no pool). Pools past MAX_LAMPS are dropped.
+static func lamp_columns(pools: Array[Vector4]) -> Array[Projection]:
+	var cols: Array[Vector4] = []
+	for i in MAX_LAMPS:
+		cols.append(pools[i] if i < pools.size() else Vector4.ZERO)
+	return [Projection(cols[0], cols[1], cols[2], cols[3]), Projection(cols[4], cols[5], cols[6], cols[7])]
 
 
 ## The time-of-day multiply, colour times level, continuous over midnight.
