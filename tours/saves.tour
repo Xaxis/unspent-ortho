@@ -5,14 +5,13 @@
 # (A tour saves under user://tool-saves/<tour name>, never over a player's games
 # nor into the folder of another tour run beside it.)
 coast calm
-walk -1,0.4 2.2
+walk -1,0 2.2
 tap use
 wait 0.4
 tap use
 await made 3
 wait 0.5
 shot 01-played
-walk 0,1 0.6
 # Long enough for the lines about the fire to fade: the frame to match has no words on it.
 wait 5
 shot 02-before
