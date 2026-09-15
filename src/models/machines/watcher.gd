@@ -7,9 +7,16 @@ extends MachineModel
 ## way it looks.
 ##
 ## alert  the inner mast runs up out of its sleeve, showing its graduations, and
-##        fins stand out above and below the bar ends
+##        fins stand out above and below the bar ends; the beam stops and narrows
 ## dead   the light dies, the legs fold shut up the mast and the post is left
 ##        standing on its plumb point
+##
+## lights a status lamp on the drum blinks three (observant); two rangefinder
+##        eyes on the bar ends; a stipple beam thrown from under the objective
+##        onto the ground it is surveying
+## wear   a plate off another machine on the drum, a taped cable up the mast, a
+##        cracked back slit, and a pale strip of someone's cloth knotted high on a
+##        leg as a survey flag
 
 const HUB_Y := 0.64
 const FOOT := Vector3(0.5, -0.6, 0.0)
@@ -32,12 +39,18 @@ func build() -> void:
 	FoundKit.tbar(hk, Vector3(0, 0.05, 0), Vector3(0, 0.6, 0), 0.052, 0.044, 8, R)
 	FoundKit.disc(hk, Vector3(0, 0.6, 0), Vector3.UP, 0.066, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
 	FoundKit.disc(hk, Vector3(0, 0.08, 0), Vector3.UP, 0.062, 0.03, 8, 0.01, R, Color(0, 0, 0, 0), PI / 8.0)
-	for j in 6:
+	for j in range(1, 6):
 		var a := float(j) / 6.0 * TAU
 		var n := Vector3(cos(a), 0, sin(a))
 		FoundKit.mark(hk, n * 0.131, n, Vector3.UP, 0.03, 0.03, R[5], 0.004)
 	FoundKit.streaks(hk, Vector3(0.047, 0.56, 0.0), Vector3.RIGHT, 0.05, 0.3, 2, 11, R[2])
 	body_mesh(hk, hub)
+	add_lamp(hub, Vector3(0.131, 0.0, 0), Vector3.RIGHT, Vector3.UP, 0.04, 0.04, &"status")
+	var hw := FoundKit.kit()
+	var back_face := Vector3(cos(TAU / 3.0), 0, sin(TAU / 3.0))
+	FoundKit.patch(hw, back_face * 0.132, back_face, Vector3.UP, 0.1, 0.07, Palette.MACHINE["lineman"], 17)
+	FoundKit.grime(hw, Vector3(-0.131, -0.02, 0), Vector3.LEFT, 0.08, 0.1, 3, 18, D)
+	wear_mesh(hw, hub)
 
 	for i in 3:
 		var leg := joint(StringName("leg%d" % i), hub, Vector3(0.1, -0.02, 0), Vector3(0, BEARINGS[i], 0))
@@ -50,6 +63,14 @@ func build() -> void:
 		FoundKit.tbar(lk, FOOT * 0.86, FOOT * 0.86 + Vector3(0.05, 0.0, 0), 0.012, 0.012, 4, D)
 		FoundKit.lathe(lk, FOOT, Vector3.DOWN, [Vector2(0.024, 0.0), Vector2(0.0, 0.06)], 6, D)
 		body_mesh(lk, leg)
+		if i == 2:
+			# Someone's cloth, knotted high on a leg: a flag on a surveyed point. It
+			# hangs clear inside the tripod, pale against the ground under it.
+			var rk := FoundKit.matter_kit(Ink.HAND)
+			var knot := FOOT * 0.26
+			rk.strut(knot + Vector3(0, 0.03, -0.05), knot + Vector3(0, 0.03, 0.05), 0.045, 5, Palette.LINEN[4])
+			FoundKit.rag(rk, knot + Vector3(-0.01, 0.0, 0.0), 0.44, 0.23, Palette.LINEN[5], 23, Vector3(0.5, 0, 1))
+			wear_matter(rk, leg)
 
 	var mast := joint(&"mast", hub, Vector3(0, 0.6, 0))
 	var mk := FoundKit.kit()
@@ -58,6 +79,10 @@ func build() -> void:
 	FoundKit.ticks(mk, Vector3(0.03, -0.3, 0), Vector3(0.03, 0.42, 0), Vector3.RIGHT, 16, R[5], 0.022)
 	FoundKit.ticks(mk, Vector3(0, -0.3, 0.03), Vector3(0, 0.42, 0.03), Vector3.BACK, 16, R[5], 0.022)
 	body_mesh(mk, mast)
+	# A cable up the mast, taped at two points by whatever mended it.
+	var mw := FoundKit.kit()
+	FoundKit.cable(mw, Vector3(-0.036, 0.46, -0.018), Vector3(-0.036, 0.02, -0.03), 0.0, 0.011, Palette.INK[2], Palette.MACHINE["hauler"], 4)
+	wear_mesh(mw, mast)
 
 	# The scan yaw sits between mast and head and is driven by the routine, not the pose.
 	var yaw := Node3D.new()
@@ -86,8 +111,19 @@ func build() -> void:
 		var a := float(j) / 8.0 * TAU + PI / 8.0
 		FoundKit.mark(bk, Vector3(0.171, sin(a) * 0.122, cos(a) * 0.122), Vector3.RIGHT, Vector3.UP, 0.02, 0.02, R[5], 0.004)
 	FoundKit.streaks(bk, Vector3(0.14, -0.06, 0.0), Vector3.RIGHT, 0.08, 0.05, 3, 12, R[2])
+	# Rangefinder housings on the bar ends, an eye in each.
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.cbox(bk, Vector3(0.06, 0.0, sz * 0.43), Vector3(0.07, 0.07, 0.06), 0.012, R)
 	body_mesh(bk, head)
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(head, Vector3(0.096, 0.0, sz * 0.43), Vector3.RIGHT, Vector3.UP, 0.035, 0.035, &"optic")
 	add_scan(head, Vector3(-0.19, 0.0, 0), Vector3.LEFT, Vector3.BACK, 0.07, 0.02, 2.4)
+	add_beam(head, Vector3(0.18, -0.05, 0), Vector3(2.2, -1.6, 0), 2.6, 1.5)
+	var cw := FoundKit.kit()
+	# The back slit took a blow: a crack across it, never replaced.
+	FoundKit.mark(cw, Vector3(-0.19, 0.0, 0.01), Vector3.LEFT, Vector3(0, 1, 0.8), 0.008, 0.07, Palette.INK[0], 0.012)
+	FoundKit.scorch(cw, Vector3(-0.14, -0.08, -0.05), Vector3(-0.5, -0.4, -0.7), 0.04, 19)
+	wear_mesh(cw, head)
 
 	var iris := joint(&"iris", head, Vector3(0.172, 0, 0))
 	var ik := FoundKit.kit()
@@ -195,7 +231,7 @@ func _routine(_delta: float, on: bool) -> void:
 	var yaw := (joints[&"head"] as Node3D).get_parent() as Node3D
 	if not on:
 		return
-	if pose == &"stand" or pose == &"walk":
+	if looking_round():
 		# Centre, left, centre, right: an exact hold, then a servo move to the next.
 		var t := fposmod(clock, 6.0) / 6.0
 		var slot := int(t * 4.0)

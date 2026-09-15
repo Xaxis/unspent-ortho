@@ -9,6 +9,12 @@ extends MachineModel
 ## alert  stands taller: knees straighten and the legs splay
 ## dead   the knees give, the shins telescope shut, and the slab lands flat
 ##        between four bent legs whose feet have not moved
+##
+## lights a hunter runs dark: a status lamp burning low and steady on the spine,
+##        two eyes either side of the slit that lock bright when it has you
+## wear   a fence post dragged off a boundary, wired to a shin, a long
+##        pale rag caught on a knee, a plate from another machine over the slab, the plumb
+##        swinging its exact arc as it waits
 
 const BODY_Y := 1.5
 const HIP := Vector2(0.44, 0.3)
@@ -53,6 +59,18 @@ func build() -> void:
 	# The hub: a drum on the back face.
 	FoundKit.disc(k, Vector3(-0.66, 0.0, 0), Vector3.RIGHT, 0.17, 0.1, 8, 0.03, R, R[2], PI / 8.0)
 	body_mesh(k, body)
+	add_lamp(body, Vector3(0.3, 0.162, 0), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(body, Vector3(0.622, 0.0, sz * 0.22), Vector3.RIGHT, Vector3.UP, 0.04, 0.032, &"optic")
+	var ww := FoundKit.kit()
+	FoundKit.patch(ww, Vector3(-0.32, 0.101, 0.28), Vector3.UP, Vector3.RIGHT, 0.26, 0.2, Palette.MACHINE["hauler"], 31)
+	FoundKit.patch(ww, Vector3(0.34, 0.101, -0.3), Vector3.UP, Vector3.RIGHT, 0.14, 0.12, Palette.FOUND, 32)
+	FoundKit.scorch(ww, Vector3(-0.5, 0.101, -0.2), Vector3.UP, 0.08, 33)
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.grime(ww, Vector3(0.1, -0.03, sz * 0.452), Vector3.BACK * sz, 0.8, 0.09, 4, 34 + int(sz), D)
+	# A conduit cut and spliced back by another machine.
+	FoundKit.cable(ww, Vector3(-HIP.x + 0.1, 0.19, 0.2), Vector3(-0.3, 0.19, 0.1), 0.02, 0.016, Palette.INK[2], Palette.MACHINE["lineman"], 4)
+	wear_mesh(ww, body)
 	# A plumb weight hung under the slab on a line; when the slab comes down it
 	# is laid flat underneath it.
 	var plumb := joint(&"plumb", body, Vector3(0, -0.12, 0))
@@ -97,11 +115,25 @@ func build() -> void:
 			var b: float = STAGES[st + 1]
 			FoundKit.tbar(tk, FOOT * a, FOOT * b, rad, rad * 0.94, 6, D if st < 3 else FoundKit.dirty(R, 2))
 			if st < 3:
-				FoundKit.disc(tk, FOOT * b, FOOT.normalized(), rad + 0.005, 0.024, 6, 0.006, R)
+				FoundKit.disc(tk, FOOT * b, FOOT.normalized(), rad + 0.005, 0.024, 6, 0.0, R)
 			FoundKit.ticks(tk, FOOT * (a + 0.06) + Vector3(0, 0, rad), FOOT * (b - 0.03) + Vector3(0, 0, rad), Vector3.BACK, 4, R[4], 0.018)
 			if st == 3:
 				FoundKit.tbar(tk, FOOT * b, FOOT * (b + 0.03), rad, 0.0, 6, FoundKit.dirty(R, 2))
 			body_mesh(tk, tube)
+		if i == 2:
+			# A fence post it walked through, still wired to the shin by its fence wire.
+			var fw := FoundKit.kit()
+			FoundKit.coil(fw, FOOT * 0.06, FOOT * 0.2, 0.07, 2.5, 0.016, Palette.INK[1], true)
+			wear_mesh(fw, shin)
+			var post := FoundKit.matter_kit(Ink.HAND)
+			post.strut(FOOT * 0.02 + Vector3(0.06, 0.0, 0.07), FOOT * 0.23 + Vector3(0.08, 0.0, 0.08), 0.045, 4, Palette.EARTH[4])
+			wear_matter(post, shin)
+		if i == 3:
+			# A rag caught on a knee, above the slab: the first thing seen over a dyke.
+			var rk := FoundKit.matter_kit(Ink.HAND)
+			rk.strut(KNEE + Vector3(-0.02, 0.05, -0.06), KNEE + Vector3(0.05, 0.05, 0.07), 0.05, 5, Palette.LINEN[3])
+			FoundKit.rag(rk, KNEE + Vector3(0.06, 0.03, 0.06), 0.44, 0.2, Palette.LINEN[5], 37, Vector3(1, 0, 0.3))
+			wear_matter(rk, leg)
 	finish_rig()
 
 
@@ -150,6 +182,13 @@ func _timing(p: StringName, j: StringName) -> Vector2:
 		if j == &"plumb":
 			return Vector2(LIGHT_FIRST + 0.35, 0.3)
 	return super(p, j)
+
+
+## The plumb swings its exact arc while it waits; nothing else moves.
+func _routine(_delta: float, on: bool) -> void:
+	if not on or pose != &"stand":
+		return
+	(joints[&"plumb"] as Node3D).rotation.x += sin(clock * 2.1) * 0.12
 
 
 ## Diagonal pairs swing together; the pair in the air lifts at the knee.

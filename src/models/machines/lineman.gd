@@ -7,6 +7,12 @@ extends MachineModel
 ## alert  lets go and comes down: the arms telescope in and reach forward
 ## dead   the arms come down first, then the body goes over backwards and lies
 ##        with its arms along its sides
+##
+## lights a work lamp in each grip, facing its work, hot through a windup; a
+##        status lamp on the lid blinking once (indifferent)
+## wear   a coil of salvaged line looped on its right arm with insulators still
+##        on it, a splice sleeve on the left, the lid plated over by another
+##        machine, soot down the motor face
 
 const SLEEVE := 0.8
 const FORE := 0.8
@@ -40,6 +46,12 @@ func build() -> void:
 		FoundKit.streaks(k, Vector3(0.0, 0.42, sz * 0.305), Vector3.BACK * sz, 0.24, 0.2, 4, 133 + int(sz), R[1])
 	body_mesh(k, body)
 	add_scan(body, Vector3(-0.199, 0.46, 0), Vector3.LEFT, Vector3.BACK, 0.3, 0.035, 2.8)
+	add_lamp(body, Vector3(0.1, 0.641, 0.2), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	var bw := FoundKit.kit()
+	FoundKit.patch(bw, Vector3(-0.08, 0.641, -0.16), Vector3.UP, Vector3.RIGHT, 0.14, 0.16, Palette.MACHINE["warden"], 101)
+	FoundKit.grime(bw, Vector3(0.21, 0.2, 0.08), Vector3.RIGHT, 0.1, 0.16, 3, 102, D)
+	FoundKit.scorch(bw, Vector3(0.206, 0.46, -0.1), Vector3.RIGHT, 0.05, 103)
+	wear_mesh(bw, body)
 	var pk := FoundKit.kit()
 	FoundKit.optic(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, 0.075)
 	FoundKit.mark(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, Vector3.UP, 0.2, 0.02, Palette.LENS[1], 0.013)
@@ -62,6 +74,25 @@ func build() -> void:
 		FoundKit.disc(ak, Vector3(0, SLEEVE, 0), Vector3.UP, 0.058, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
 		FoundKit.streaks(ak, Vector3(0.045, SLEEVE - 0.04, 0), Vector3.RIGHT, 0.0, 0.3, 1, 132, R[1])
 		body_mesh(ak, arm)
+		var aw := FoundKit.kit()
+		if sz > 0.0:
+			# Line it took down, coiled on the arm, the insulators still on it.
+			FoundKit.coil(aw, Vector3(0, 0.3, 0), Vector3(0, 0.46, 0), 0.075, 2.5, 0.016, Palette.INK[2])
+			# The line runs off the coil in a loop hanging clear of the arm, the
+			# insulators still threaded on it: people's line, drawn by the hand.
+			var line := FoundKit.matter_kit(Ink.HAND)
+			var loop: Array[Vector3] = [Vector3(0.06, 0.44, 0.03), Vector3(0.14, 0.3, 0.1), Vector3(0.16, 0.12, 0.1), Vector3(0.1, 0.02, 0.04), Vector3(0.05, 0.3, -0.03)]
+			for j in loop.size() - 1:
+				line.strut(loop[j], loop[j + 1], 0.016, 4, Palette.COPPER[2])
+			for j in 3:
+				var at: Vector3 = loop[j + 1]
+				line.strut(at + Vector3(0, 0.07, 0), at - Vector3(0, 0.05, 0), 0.05, 6, Palette.LINEN[4])
+				line.strut(at + Vector3(0, 0.02, 0), at - Vector3(0, 0.0, 0), 0.062, 6, Palette.LINEN[5])
+			wear_matter(line, arm)
+		else:
+			FoundKit.tbar(aw, Vector3(0, 0.5, 0), Vector3(0, 0.6, 0), 0.058, 0.058, 8, Palette.MACHINE["cutter"])
+			FoundKit.rivets(aw, Vector3(0.059, 0.515, 0), Vector3(0.059, 0.585, 0), Vector3.RIGHT, 2, Palette.MACHINE["cutter"][5], 0.025)
+		wear_mesh(aw, arm)
 		var fore := joint(StringName("fore_" + side), arm, Vector3(0, SLEEVE - 0.05, 0))
 		var fk := FoundKit.kit()
 		FoundKit.tbar(fk, Vector3(0, -0.25, 0), Vector3(0, FORE, 0), 0.03, 0.03, 6, D)
@@ -71,6 +102,7 @@ func build() -> void:
 		var gk := FoundKit.kit()
 		FoundKit.disc(gk, Vector3(0, 0.03, 0), Vector3.UP, 0.055, 0.06, 6, 0.012, R)
 		body_mesh(gk, grip)
+		add_lamp(grip, Vector3(0.05, 0.03, 0), Vector3.RIGHT, Vector3.UP, 0.03, 0.03, &"work", true)
 		for sx: float in [-1.0, 1.0]:
 			var prong := joint(StringName("prong_%s%d" % [side, int(sx > 0)]), grip, Vector3(sx * 0.035, 0.06, 0))
 			var ck := FoundKit.kit()

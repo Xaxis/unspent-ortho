@@ -7,11 +7,31 @@ extends MachineModel
 ## alert, hurt  closes up
 ## windup       draws back and thickens; strike stretches out at you
 ## dead         the lights go out and the shards fall where they are
+##
+## lights it has no lamps: its amber points are its lights and tell its state
+##        in exact patterns. At rest it counts itself, one point dark at a time
+##        round all thirty-six (DOT_RATE a second); on alert and while it hunts
+##        every point locks on steady, larger and brighter; through a windup
+##        they swell and shrink together (PULSE); striking they hold large; hurt, the odd points stutter
+##        out with the light; dying, they go out one by one before a shard falls
 
 const COUNT := 36
 const STEP := 0.36
 const ORBIT := 0.07
 const OMEGA := 5.5
+## Points counted dark per second at rest.
+const DOT_RATE := 12.0
+## A windup's pulse: this long a beat, bright then low.
+const PULSE := 0.1
+## The points' light, and their size, locked and through a windup's pulse. The
+## size carries the read: amber driven harder than this burns cream at night and
+## stops reading warm, so the light only climbs a little and dips deep.
+const LOCK_LIGHT := 1.1
+const PULSE_HIGH := 1.15
+const PULSE_LOW := 0.6
+const LOCK_SIZE := 1.35
+const PULSE_BIG := 1.55
+const PULSE_SMALL := 0.9
 
 var _home: PackedVector3Array = PackedVector3Array()
 var _axis: PackedVector3Array = PackedVector3Array()
@@ -26,6 +46,10 @@ var _orbit_t := 0.0
 ## Where every shard is, model space. Kept here as well as in the MultiMesh
 ## because a headless run cannot read MultiMesh transforms back.
 var shard_xforms: Array[Transform3D] = []
+## 1 where an amber point shows, for the same reason.
+var dot_shown := PackedByteArray()
+## How large every point is drawn now (1 at rest).
+var dot_size := 1.0
 
 
 func build() -> void:
@@ -67,9 +91,10 @@ func build() -> void:
 	dmi.material_override = part_material
 	dmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(dmi)
-	_part_meshes.append([dmi, _dots.mesh, FoundKit.darkened(dk).build()])
+	_part_swaps.append([_dots, &"mesh", _dots.mesh, FoundKit.darkened(dk).build()])
 	finish_rig()
 	_place(0.0)
+	_show_dots()
 
 
 func _multimesh(mesh: Mesh) -> MultiMesh:
@@ -78,15 +103,6 @@ func _multimesh(mesh: Mesh) -> MultiMesh:
 	mm.mesh = mesh
 	mm.instance_count = COUNT
 	return mm
-
-
-## The dark twin of the dots mesh is swapped onto the MultiMesh, not the instance.
-func _apply_light(delta: float) -> void:
-	var before := _shown_light
-	super(delta)
-	if _shown_light != before and _part_meshes.size() > 0:
-		var pm: Array = _part_meshes[0]
-		_dots.mesh = pm[1] if _shown_light > 0.0 else pm[2]
 
 
 func _apply_pose() -> void:
@@ -137,4 +153,57 @@ func _place(delta: float) -> void:
 			shard_xforms.resize(COUNT)
 		shard_xforms[i] = xf
 		_shards.set_instance_transform(i, xf)
-		_dots.set_instance_transform(i, xf)
+
+
+func _run_lights() -> void:
+	super()
+	_show_dots()
+
+
+## The part's light for the pose: locked steady and brighter, pulsing together
+## through a windup, full in the strike.
+func _light_scale() -> float:
+	match pose:
+		&"windup":
+			return PULSE_HIGH if _pulse_high() else PULSE_LOW
+		&"strike":
+			return PULSE_HIGH
+	return LOCK_LIGHT if locked() else 1.0
+
+
+func _pulse_high() -> bool:
+	return fposmod(pose_time, PULSE * 2.0) < PULSE
+
+
+func _dot_scale() -> float:
+	match pose:
+		&"windup":
+			return PULSE_BIG if _pulse_high() else PULSE_SMALL
+		&"strike":
+			return PULSE_BIG
+	return LOCK_SIZE if locked() else 1.0
+
+
+func _dot_on(i: int) -> bool:
+	if pose == &"dead":
+		# Dying, the points go out one at a time before anything falls.
+		return pose_time < PART_OUT * Rng.hash01(147, i)
+	if not running():
+		# Hurt: the odd points go with the light's stutter; once it holds dark,
+		# the dark points all show.
+		return i % 2 == 0 or light_level() > 0.0 or _dark_t >= STUTTER
+	if locked() or pose == &"windup" or pose == &"strike":
+		return true
+	return i != int(floorf(clock * DOT_RATE)) % COUNT
+
+
+func _show_dots() -> void:
+	if shard_xforms.size() < COUNT:
+		return
+	dot_shown.resize(COUNT)
+	dot_size = _dot_scale() if running() else 1.0
+	for i in COUNT:
+		var on := _dot_on(i)
+		dot_shown[i] = 1 if on else 0
+		var xf := shard_xforms[i]
+		_dots.set_instance_transform(i, Transform3D(xf.basis.scaled_local(Vector3.ONE * dot_size), xf.origin) if on else Transform3D(Basis().scaled(Vector3.ZERO), xf.origin))

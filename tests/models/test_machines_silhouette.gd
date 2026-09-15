@@ -30,10 +30,12 @@ static func silhouette(m: FigureModel, yaw: float = YAW) -> PackedByteArray:
 
 static func _raster_node(root: FigureModel, n: Node, xf: Transform3D, right: Vector3, up: Vector3, mask: PackedByteArray) -> void:
 	if n is Node3D and n != root:
-		if not (n as Node3D).visible or n.name == &"glow":
+		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"beam":
 			return
 		xf = xf * (n as Node3D).transform
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+	if n is MeshInstance3D and (n as MeshInstance3D).skin != null and root is MachineModel:
+		_raster_tris((root as MachineModel).posed_triangles(n as MeshInstance3D), xf, right, up, mask)
+	elif n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
 		_raster_mesh((n as MeshInstance3D).mesh, xf, right, up, mask)
 	elif n is MultiMeshInstance3D:
 		# Headless runs keep no MultiMesh transforms; the flock keeps its own.
@@ -47,7 +49,11 @@ static func _raster_node(root: FigureModel, n: Node, xf: Transform3D, right: Vec
 
 
 static func _raster_mesh(mesh: Mesh, xf: Transform3D, right: Vector3, up: Vector3, mask: PackedByteArray) -> void:
-	var verts := mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	_raster_tris(mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array, xf, right, up, mask)
+
+
+## Triangles (three points each) through `xf` into the mask.
+static func _raster_tris(verts: PackedVector3Array, xf: Transform3D, right: Vector3, up: Vector3, mask: PackedByteArray) -> void:
 	var pts := PackedVector2Array()
 	pts.resize(verts.size())
 	for i in verts.size():

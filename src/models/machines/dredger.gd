@@ -8,6 +8,12 @@ extends MachineModel
 ##
 ## alert  heaves up out of the water, prow lifted, jaw thrown wide
 ## dead   the fen closes over it: it settles down onto the bed, legs slack
+##
+## lights a hunter runs dark: a status lamp burning low and steady on the keel,
+##        two eyes either side of the prow slit; at rest its jaws chew slowly
+## wear   weed and silt trailing from its knees, a long bone caught across a
+##        mandible, plates off other machines on the carapace, a cable spliced
+##        down the stack
 
 const WATERLINE := 0.22
 const HULL_Y := 0.3
@@ -71,6 +77,19 @@ func build() -> void:
 	FoundKit.cbox(k, Vector3(0.6, -0.0, 0), Vector3(0.12, 0.14, 0.2), 0.0, FoundKit.flat(R[0]))
 	body_mesh(k, hull)
 	add_scan(hull, Vector3(0.601, 0.1, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.025, 1.8)
+	add_lamp(hull, Vector3(0.15, 0.332, 0), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(hull, Vector3(0.602, 0.1, sz * 0.172), Vector3.RIGHT, Vector3.UP, 0.03, 0.03, &"optic")
+	var hw := FoundKit.kit()
+	FoundKit.patch(hw, Vector3(-0.1, 0.253, 0.3), Vector3(0, 0.95, 0.3).normalized(), Vector3.RIGHT, 0.24, 0.12, Palette.MACHINE["runner"], 81)
+	FoundKit.patch(hw, Vector3(0.2, 0.253, -0.28), Vector3(0, 0.95, -0.3).normalized(), Vector3.RIGHT, 0.14, 0.1, Palette.FOUND, 82)
+	FoundKit.cable(hw, Vector3(-0.47, 0.42, 0.03), Vector3(-0.3, 0.3, 0.16), 0.03, 0.012, Palette.INK[2], Palette.MACHINE["sweeper"], 4)
+	FoundKit.scorch(hw, Vector3(-0.44, 0.335, -0.08), Vector3.UP, 0.05, 83)
+	wear_mesh(hw, hull)
+	# A long bone, caught across the left mandible and carried.
+	var catch := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.bone(catch, Vector3(0.3, 0.2, -0.66), Vector3(1.0, 0.18, -0.14), 0.048, 84)
+	wear_matter(catch, hull)
 
 	# Amber lining the notch: its floor, seen from above, and both inner walls.
 	var pk := FoundKit.kit()
@@ -107,6 +126,16 @@ func build() -> void:
 		FoundKit.tbar(lk, KNEE, FOOT, 0.028, 0.016, 6, DD)
 		FoundKit.tbar(lk, FOOT, FOOT + Vector3(0.03, 0.0, 0), 0.014, 0.0, 4, DD)
 		body_mesh(lk, leg)
+		if i % 2 == 0:
+			# Weed and silt off the bed, hanging from the knee.
+			# Draped along the shin, so it lies on the bed with the leg, never under it.
+			var weed := FoundKit.matter_kit(Ink.STIPPLE)
+			var shin := (FOOT - KNEE).normalized()
+			weed.push(Transform3D(Basis(shin.cross(Vector3.BACK), -shin, Vector3.BACK), KNEE + Vector3(0.0, 0.03, 0.0)))
+			FoundKit.rag(weed, Vector3(0.0, 0.0, 0.0), 0.3, 0.06, Palette.MOSS[3], 85 + i, Vector3(0, 0, 1))
+			FoundKit.rag(weed, Vector3(0.025, -0.12, 0.02), 0.2, 0.045, Palette.SPRUCE[3], 91 + i, Vector3(0, 0, 1))
+			weed.pop()
+			wear_matter(weed, leg)
 	finish_rig()
 
 
@@ -152,6 +181,16 @@ func _timing(p: StringName, j: StringName) -> Vector2:
 	if p == &"dead" and j == &"hull":
 		return Vector2(LIGHT_FIRST + 0.3, 1.6)
 	return super(p, j)
+
+
+## At rest the jaws chew: open slowly, snap shut, the same every time.
+func _routine(_delta: float, on: bool) -> void:
+	if not on or pose != &"stand":
+		return
+	var t := fposmod(clock, 2.8)
+	var open := smoothstep(0.0, 1.6, t) * (1.0 - smoothstep(2.3, 2.4, t)) * 0.3
+	(joints[&"jaw_l"] as Node3D).rotation.y += open
+	(joints[&"jaw_r"] as Node3D).rotation.y -= open
 
 
 ## Rowing tripods: each leg sweeps back along the bed, then lifts and reaches.

@@ -6,6 +6,13 @@ extends MachineModel
 ##
 ## alert  the hopper lifts on its ram and leans out over the front
 ## dead   the hopper tips off backwards and what it swept spills out
+##
+## lights work lamps low on the deck's leading edge, one over the vent that
+##        goes hot through a windup, a status lamp on the lid blinking once
+## wear   a bone and a stick jutting out from under the lid, needles and grit
+##        wound into the roller, a rag caught on the skirt,
+##        a plate off another machine on the hopper, grime run down from the
+##        lid, a cable spliced up the hopper seam
 
 const WHEEL_R := 0.17
 const DECK_Y := 0.22
@@ -60,6 +67,16 @@ func build() -> void:
 		FoundKit.tbar(k, Vector3(0, 0.08, sz * 0.07), Vector3(0, 0.62, sz * 0.07), 0.026, 0.026, 6, D)
 	body_mesh(k, deck)
 	for sz: float in [-1.0, 1.0]:
+		add_lamp(deck, Vector3(0.212, 0.0, sz * 0.46), Vector3.RIGHT, Vector3.UP, 0.07, 0.035, &"work")
+	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.3, 2.0, &"work")
+	var dw := FoundKit.kit()
+	FoundKit.dirt_line(dw, Vector3(0.212, -0.03, -0.66), Vector3(0.212, -0.03, 0.66), Vector3.RIGHT, 0.02, R[0])
+	FoundKit.scorch(dw, Vector3(-0.1, 0.061, -0.5), Vector3.UP, 0.07, 71)
+	wear_mesh(dw, deck)
+	var rag := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.rag(rag, Vector3(DECK_L * 0.5 + 0.05, -0.06, 0.3), 0.1, 0.1, Palette.EARTH[2], 72, Vector3(0.1, 0, 1))
+	wear_matter(rag, deck)
+	for sz: float in [-1.0, 1.0]:
 		var w := Node3D.new()
 		w.position = Vector3(0.0, WHEEL_R - DECK_Y, sz * WHEEL_Z)
 		deck.add_child(w)
@@ -89,6 +106,10 @@ func build() -> void:
 		var a := float(j) / 8.0 * TAU
 		FoundKit.tbar(rk, Vector3(cos(a) * 0.08, sin(a) * 0.08, -(DECK_W - 0.56) * 0.5), Vector3(cos(a) * 0.08, sin(a) * 0.08, (DECK_W - 0.56) * 0.5), 0.011, 0.011, 3, pale)
 	body_mesh(rk, _roller)
+	# What the bristles could not let go of.
+	var clog := FoundKit.matter_kit(Ink.UPRIGHT)
+	FoundKit.chaff(clog, Vector3.ZERO, Vector3(0.07, 0.07, 0.45), 12, 73, [Palette.EARTH[2], Palette.SPRUCE[2], Palette.EARTH[3]])
+	wear_matter(clog, _roller)
 
 	# The upright: a tall narrow hopper standing out of the collar, a lidded mouth
 	# on top, the vent down its back.
@@ -107,6 +128,18 @@ func build() -> void:
 	FoundKit.rivets(hk, Vector3(-face, 0.2, -0.1), Vector3(-face, 0.2, 0.1), Vector3.LEFT, 3, R[5])
 	body_mesh(hk, hopper)
 	add_scan(hopper, Vector3(face, HOP_H - 0.2, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.03, 2.2)
+	add_lamp(hopper, Vector3(0.03, HOP_H + 0.081, 0.1), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
+	add_lamp(hopper, Vector3(-face - 0.002, VENT_Y + VENT_H * 0.5 + 0.1, 0), Vector3.LEFT, Vector3.UP, 0.12, 0.035, &"work", true)
+	var hw := FoundKit.kit()
+	FoundKit.patch(hw, Vector3(0.02, 0.44, face + 0.001), Vector3.BACK, Vector3.UP, 0.18, 0.22, Palette.MACHINE["dredger"], 74)
+	FoundKit.grime(hw, Vector3(0.0, HOP_H - 0.02, -face - 0.001), Vector3.FORWARD, 0.26, 0.4, 5, 75, D)
+	FoundKit.cable(hw, Vector3(0.1, HOP_H - 0.1, -face - 0.015), Vector3(0.1, 0.2, -face - 0.015), 0.0, 0.013, Palette.INK[2], Palette.MACHINE["watcher"], 4)
+	wear_mesh(hw, hopper)
+	# What it swept up and could not swallow: a long bone out from under the lid.
+	var swept := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.bone(swept, Vector3(-0.08, HOP_H + 0.02, -0.06), Vector3(0.14, HOP_H + 0.12, 0.44), 0.052, 76)
+	swept.strut(Vector3(0.06, HOP_H + 0.04, -0.1), Vector3(-0.12, HOP_H + 0.1, -0.4), 0.026, 4, Palette.EARTH[3])
+	wear_matter(swept, hopper)
 	# The vent: a tall amber grille down the back, louvres ruled across it.
 	var pk := FoundKit.kit()
 	var vc := Vector3(-face - 0.002, VENT_Y, 0)

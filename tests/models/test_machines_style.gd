@@ -14,7 +14,7 @@ const ASYMMETRIC: Array[StringName] = [&"hauler", &"lineman", &"clerk", &"flock"
 
 
 static func geometry(n: Node, out: Array) -> void:
-	if n is GeometryInstance3D and n.name != &"glow":
+	if n is GeometryInstance3D and n.name != &"glow" and n.name != &"beam":
 		out.append(n)
 	for c in n.get_children():
 		geometry(c, out)
@@ -129,22 +129,71 @@ func test_plated_faces_carry_a_cold_slit() -> void:
 
 
 func test_body_colours_are_exact_ramp_values() -> void:
-	var allowed: Array = []
+	# The machine as built: its own ramp and the shared lens, cold, ink, brine
+	# and linen values, nothing else.
+	var shared: Array = []
 	for ramp: Array in [Palette.LENS, Palette.COLD, Palette.INK, Palette.BRINE, Palette.LINEN]:
-		allowed.append_array(ramp)
+		shared.append_array(ramp)
+	# What the years did: patches are plate cut off other machines, so wear may
+	# carry any machine's ramp, or salvage's.
+	var worn: Array = Palette.FOUND.duplicate()
+	for other: String in Palette.MACHINE:
+		worn.append_array(Palette.MACHINE[other])
 	for kid in KINDS:
-		var m := FigureModel.create(kid)
+		var m := FigureModel.create(kid) as MachineModel
 		var mine: Array = Palette.MACHINE[String(kid)]
+		var wear_bones := {}
+		for bone in m._bone_chain.size():
+			var c := m._bone_chain[bone]
+			var n: Node = m._chain[c] if c >= 0 else null
+			while n != null and n != m:
+				if n.name == &"wear":
+					wear_bones[bone] = true
+					break
+				n = n.get_parent()
+		var own_ramp := 0
+		for surface: StringName in m.surfaces:
+			if surface == &"matter":
+				continue
+			var mi: MeshInstance3D = m.surfaces[surface]
+			var arrays := mi.mesh.surface_get_arrays(0)
+			var cols := arrays[Mesh.ARRAY_COLOR] as PackedColorArray
+			var bones := arrays[Mesh.ARRAY_BONES] as PackedInt32Array
+			var bpv := bones.size() / maxi(1, cols.size())
+			for i in cols.size():
+				var c := cols[i]
+				if any_same(mine, c):
+					own_ramp += 1
+					continue
+				if any_same(shared, c):
+					continue
+				if wear_bones.has(bones[i * bpv]) and any_same(worn, c):
+					continue
+				fail("%s %s: %s is not on the kind's ramp%s" % [kid, surface, c, " (and not on a wear holder)" if any_same(worn, c) else ""])
+				break
+		# Pieces drawn outside the merged rig (the flock's shards) are all as built.
 		var geo: Array = []
 		geometry(m, geo)
 		for g: GeometryInstance3D in geo:
-			if g.name == &"matter":
+			if m.surfaces.values().has(g) or g.name == &"matter":
 				continue
 			for c in colours(g):
-				if not any_same(mine, c) and not any_same(allowed, c):
+				if any_same(mine, c):
+					own_ramp += 1
+				elif not any_same(shared, c):
 					fail("%s %s: %s is not on the kind's ramp" % [kid, g.name, c])
 					break
+		gt(float(own_ramp), 0.0, "%s is built in its own ramp" % kid)
 		m.free()
+	# The rule has teeth: another kind's plate off a wear holder is refused.
+	var h := FigureModel.create(&"harvester") as MachineModel
+	var foreign := 0
+	var body: MeshInstance3D = h.surfaces[&"body"]
+	for c in body.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR] as PackedColorArray:
+		if any_same(Palette.MACHINE["cutter"], c) and not any_same(Palette.MACHINE["harvester"], c):
+			foreign += 1
+	gt(float(foreign), 0.0, "the harvester's cutter patch is there to be judged")
+	h.free()
 
 
 ## Seen straight from the front, the rest silhouette is mirror-exact.
@@ -159,6 +208,9 @@ func test_rest_silhouettes_are_mirror_exact() -> void:
 		var mask := PackedByteArray()
 		mask.resize(w * h)
 		var texel := 0.04
+		# The machine as it was built: the years' wear is not mirrored.
+		for wear: Node in m.find_children("wear", "Node3D", true, false):
+			(wear as Node3D).visible = false
 		_front_mask(m, m, Transform3D.IDENTITY, mask, w, h, texel)
 		var diff := 0
 		var total := 0
@@ -175,11 +227,13 @@ func test_rest_silhouettes_are_mirror_exact() -> void:
 
 static func _front_mask(root: Node3D, n: Node, xf: Transform3D, mask: PackedByteArray, w: int, h: int, texel: float) -> void:
 	if n is Node3D and n != root:
-		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"scan":
+		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"beam" or n.name == &"lights":
 			return
 		xf = xf * (n as Node3D).transform
 	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
 		var verts := (n as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		if (n as MeshInstance3D).skin != null and root is MachineModel:
+			verts = (root as MachineModel).posed_triangles(n as MeshInstance3D)
 		for t in range(0, verts.size(), 3):
 			var pts: Array[Vector2] = []
 			for i in 3:

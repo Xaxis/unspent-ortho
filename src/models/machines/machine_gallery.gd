@@ -11,6 +11,8 @@ extends RefCounted
 ##   ... --filter=sheet_watcher --zoom=6     one kind: a person, stand, alert, windup, strike, dead
 ##   ... --filter=sheet_watcher_snow         the same on snow (lineup_snow for the lineup)
 ##   ... --filter=gait_watcher               six phases of one stride
+##   ... --filter=terrace --zoom=10 --hour=23  watchers and harvesters throwing their
+##                                          light into a raised step and over a ledge
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
 const SHOWN: Array[StringName] = [&"stand", &"alert", &"windup", &"dead"]
@@ -32,6 +34,9 @@ static func gallery() -> Array:
 			if filter.contains(String(bp)):
 				back_pose = bp
 		out.append({"name": filter, "node": lineup(silhouette, filter.contains("snow"), back_pose)})
+		return out
+	if filter == "terrace":
+		out.append({"name": filter, "node": terrace()})
 		return out
 	if filter.begins_with("sheet_") or filter.begins_with("gait_"):
 		var kid := StringName(filter.trim_prefix("sheet_").trim_prefix("gait_").trim_suffix("_snow"))
@@ -117,6 +122,53 @@ static func lineup(silhouette: bool, snow: bool = false, back_pose: StringName =
 		for c in root.get_children():
 			if c != ground:
 				_blacken(c)
+	return holder
+
+
+## Three terrace levels a step apart across X (raised to the west, lowered to
+## the east, the walls facing the camera), with a watcher and a harvester on
+## the middle level turned toward each edge: a beam must land on the step's
+## wall and stop at the ledge, never hang in the air or show inside the step.
+static func terrace() -> Node3D:
+	var holder := Node3D.new()
+	var root := Node3D.new()
+	root.position = Vector3(1.6, 0, 0)
+	holder.add_child(root)
+	var step := WorldData.STEP
+	# The raised step is nearer: a harvester's wash starts well out past its comb.
+	var west := -2.0
+	var edge := 2.4
+	var g := MeshKit.new()
+	g.style = Ink.WIND
+	g.style2 = g.style
+	var tops := [[-7.0, west, step * 2.0], [west, edge, step], [edge, 7.0, 0.004]]
+	for t: Array in tops:
+		var x0: float = t[0]
+		var x1: float = t[1]
+		var y: float = t[2]
+		g.quad(Vector3(x0, y, -6.5), Vector3(x0, y, 6.5), Vector3(x1, y, 6.5), Vector3(x1, y, -6.5), Palette.MOSS[3])
+	g.style = Ink.NONE
+	g.style2 = g.style
+	for w: Array in [[west, step, step * 2.0], [edge, 0.004, step]]:
+		var x: float = w[0]
+		var y0: float = w[1]
+		var y1: float = w[2]
+		g.quad(Vector3(x, y1, 6.5), Vector3(x, y0, 6.5), Vector3(x, y0, -6.5), Vector3(x, y1, -6.5), Palette.STONE[2])
+	var ground := MeshInstance3D.new()
+	ground.name = "ground"
+	ground.mesh = g.build()
+	var gmat := ShaderMaterial.new()
+	gmat.shader = preload("res://src/render/world.gdshader")
+	ground.material_override = gmat
+	root.add_child(ground)
+	# [kind, x, z, facing]: each looks at the nearer edge.
+	for spot: Array in [[&"watcher", -0.6, -3.6, PI], [&"watcher", 1.2, -1.2, 0.0], [&"harvester", 0.0, 1.6, PI], [&"harvester", 0.2, 4.8, 0.0]]:
+		var m := FigureModel.create(spot[0])
+		m.position = Vector3(float(spot[1]), step, float(spot[2]))
+		m.rotation.y = -float(spot[3])
+		m.set_pose(&"stand")
+		root.add_child(m)
+		(m as MachineModel).settle()
 	return holder
 
 
@@ -221,7 +273,7 @@ static func _blacken(n: Node) -> void:
 
 
 static func _blacken_with(n: Node, black: Material) -> void:
-	if n.name == &"glow":
+	if n.name == &"glow" or n.name == &"beam":
 		(n as Node3D).visible = false
 	elif n is GeometryInstance3D:
 		(n as GeometryInstance3D).material_override = black

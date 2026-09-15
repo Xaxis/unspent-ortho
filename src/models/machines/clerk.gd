@@ -6,6 +6,11 @@ extends MachineModel
 ##
 ## alert  the head comes up on a graduated neck that was not there
 ## dead   the legs go out sideways; the head comes down last
+##
+## lights a status lamp on the lid blinking three (observant); the face throws a
+##        stipple beam down onto the ground it reads, and up at you on alert
+## wear   records stuffed into the filing slot and fanned out of it, tags of FOUND stock hanging off
+##        the lid rim, a cable spliced down its neck, a crack across the slit
 
 const HIP_Y := 0.6
 
@@ -59,18 +64,43 @@ func build() -> void:
 		FoundKit.panel(k, Vector3(0.13, 0.03, sz * 0.23), n, Vector3.UP, 0.18, 0.14, R)
 	FoundKit.seam(k, Vector3(-0.262, -0.06, 0.0), Vector3(-0.262, 0.14, 0.0), Vector3.LEFT, R, 2)
 	body_mesh(k, lid)
+	add_lamp(lid, Vector3(-0.1, 0.237, 0.1), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	var lw := FoundKit.kit()
+	for j in 3:
+		var a := -0.9 - j * 0.35
+		FoundKit.tag(lw, Vector3(cos(a) * 0.28, 0.14, sin(a) * 0.3), 0.08 + j * 0.03, 0.05, 0.06, Palette.MACHINE["watcher"] if j != 1 else Palette.FOUND, a)
+	FoundKit.grime(lw, Vector3(0.262, 0.0, 0.08), Vector3.RIGHT, 0.14, 0.1, 3, 161, D)
+	wear_mesh(lw, lid)
+	var papers := FoundKit.matter_kit(Ink.HAND)
+	for j in 5:
+		var z := -0.13 + j * 0.065
+		# Fanned up out of the slot: each sheet turned a little further up and over.
+		var tilt := 0.35 + (Rng.hash01(162, j) - 0.2) * 0.7
+		var turn := (Rng.hash01(163, j) - 0.5) * 0.5
+		papers.push(Transform3D(Basis(Vector3.UP, turn) * Basis(Vector3.BACK, tilt), Vector3(0.25, 0.05 + j * 0.006, z)))
+		papers.quad(Vector3(-0.02, 0, -0.05), Vector3(-0.02, 0, 0.05), Vector3(0.2, 0, 0.05), Vector3(0.2, 0, -0.05), Palette.LINEN[4] if j % 2 else Palette.LINEN[5])
+		papers.quad(Vector3(-0.02, 0, -0.05), Vector3(0.2, 0, -0.05), Vector3(0.2, 0, 0.05), Vector3(-0.02, 0, 0.05), Palette.LINEN[3])
+		papers.pop()
+	wear_matter(papers, lid)
 
 	var neck := joint(&"neck", lid, Vector3(0, 0.2, 0))
 	var nk := FoundKit.kit()
 	FoundKit.tbar(nk, Vector3(0, -0.34, 0), Vector3(0, 0.0, 0), 0.04, 0.04, 8, D)
 	FoundKit.ticks(nk, Vector3(0.04, -0.3, 0), Vector3(0.04, -0.02, 0), Vector3.RIGHT, 8, R[5], 0.02)
 	body_mesh(nk, neck)
+	var nw := FoundKit.kit()
+	FoundKit.cable(nw, Vector3(-0.045, -0.02, 0.02), Vector3(-0.045, -0.3, 0.01), 0.0, 0.012, Palette.INK[2], Palette.MACHINE["hauler"], 3)
+	wear_mesh(nw, neck)
 	var head := joint(&"head", neck, Vector3.ZERO)
 	var ek := FoundKit.kit()
 	FoundKit.lathe(ek, Vector3(0.02, 0.0, 0), Vector3.UP, [Vector2(0.16, 0.0), Vector2(0.26, 0.04), Vector2(0.26, 0.08), Vector2(0.2, 0.11)], 6, R, PI / 6.0, Vector2(1.0, 1.0), Color(0, 0, 0, 0), 2)
 	FoundKit.visor(ek, Vector3(0.245, 0.06, 0), Vector3.RIGHT, Vector3.UP, 0.18, 0.026)
 	body_mesh(ek, head)
 	add_scan(head, Vector3(0.245, 0.06, 0), Vector3.RIGHT, Vector3.BACK, 0.14, 0.022, 1.6)
+	add_beam(head, Vector3(0.25, 0.04, 0), Vector3(1.0, -1.25, 0), 1.35, 0.9)
+	var hw := FoundKit.kit()
+	FoundKit.mark(hw, Vector3(0.247, 0.06, 0.03), Vector3.RIGHT, Vector3(0, 1, 0.9), 0.008, 0.05, Palette.INK[0], 0.012)
+	wear_mesh(hw, head)
 	finish_rig()
 
 
@@ -137,5 +167,5 @@ func _routine(delta: float, on: bool) -> void:
 	if not on:
 		return
 	_read_t += delta
-	if pose == &"stand" or pose == &"walk":
+	if looking_round():
 		(joints[&"head"] as Node3D).rotation.y += (0.12 if fposmod(_read_t, 2.0) < 1.0 else -0.12)

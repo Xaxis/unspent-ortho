@@ -9,6 +9,11 @@ extends MachineModel
 ## walk   a real stride with knees; no sway, no torso turn, arms hanging still
 ## alert  stops and squares up: planted wide, arms held out still, flap open
 ## dead   folds at the knees, goes down on its front; the satchel falls open
+##
+## lights a hunter runs dark: a status lamp burning low and steady on the
+##        shoulder plate, two pin eyes at the ends of the chest slit
+## wear   a scrap of someone's coat tied round its upper arm, a strap mended
+##        with cable, a plate off another machine on the chest, grime
 
 const HIP_Y := 0.72
 
@@ -56,6 +61,13 @@ func build() -> void:
 		FoundKit.rivets(k, Vector3(-0.06, 0.47, sz * 0.2), Vector3(0.06, 0.47, sz * 0.2), Vector3.BACK * sz, 3, R[5])
 	body_mesh(k, torso)
 	add_scan(torso, Vector3(0.088, 0.38, 0), Vector3.RIGHT, Vector3.BACK, 0.18, 0.026, 1.2)
+	add_lamp(torso, Vector3(0.0, 0.503, 0.13), Vector3.UP, Vector3.RIGHT, 0.035, 0.035, &"status")
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(torso, Vector3(0.095, 0.43, sz * 0.1), Vector3(0.998, 0.06, 0), Vector3.UP, 0.022, 0.026, &"optic")
+	var tw := FoundKit.kit()
+	FoundKit.patch(tw, Vector3(0.089, 0.2, 0.06), Vector3.RIGHT, Vector3.UP, 0.1, 0.12, Palette.MACHINE["longlegs"], 151)
+	FoundKit.grime(tw, Vector3(0.0, 0.46, 0.201), Vector3.BACK, 0.16, 0.2, 3, 152, D)
+	wear_mesh(tw, torso)
 
 	for sz: float in [-1.0, 1.0]:
 		var s := "r" if sz > 0 else "l"
@@ -66,6 +78,12 @@ func build() -> void:
 		var hand: Array[Vector2] = [Vector2(-0.03, 0.0), Vector2(0.03, 0.0), Vector2(0.025, -0.09), Vector2(-0.025, -0.08)]
 		FoundKit.slab(ak, Vector3(0, -0.47, 0), Vector3.RIGHT, Vector3.UP, hand, 0.05, DD, 0.01)
 		body_mesh(ak, arm)
+		if sz < 0.0:
+			# A scrap of someone's coat, tied round the arm.
+			var ck2 := FoundKit.matter_kit(Ink.HAND)
+			ck2.strut(Vector3(0, -0.08, 0), Vector3(0, -0.18, 0), 0.05, 6, Palette.SAND[4])
+			FoundKit.rag(ck2, Vector3(0.02, -0.12, -0.08), 0.36, 0.17, Palette.SAND[4], 153, Vector3(0.5, 0, -0.87))
+			wear_matter(ck2, arm)
 
 	# The satchel rides on the back below the shoulder line, so the top of the
 	# figure stays flat: headless, not hooded.
@@ -80,6 +98,9 @@ func build() -> void:
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.mark(bk, Vector3(0.0, 0.121, sz * 0.11), Vector3.UP, Vector3.RIGHT, 0.2, 0.04, R[1], 0.003)
 	body_mesh(bk, satchel)
+	var sw := FoundKit.kit()
+	FoundKit.cable(sw, Vector3(-0.02, 0.125, -0.13), Vector3(-0.06, -0.12, -0.172), 0.02, 0.012, Palette.INK[2], Palette.MACHINE["clerk"], 3)
+	wear_mesh(sw, satchel)
 	var pk := FoundKit.kit()
 	var pc := Vector3(-0.141, -0.03, 0)
 	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.28, 0.14, Palette.LENS[0], 0.003)

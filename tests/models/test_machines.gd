@@ -98,6 +98,16 @@ func test_triangle_budget() -> void:
 		m.free()
 
 
+## Merged by surface kind: body, part, lights, matter, the part's halo, a beam.
+func test_draw_call_budget() -> void:
+	for kid in KINDS:
+		var m := FigureModel.create(kid)
+		lt(float(m.draw_calls()), 7.0, "%s draw calls" % kid)
+		var meshes := m.find_children("*", "GeometryInstance3D", true, false).size()
+		lt(float(meshes), 7.0, "%s mesh nodes" % kid)
+		m.free()
+
+
 func test_hurt_puts_the_light_out_and_nothing_flinches() -> void:
 	for kid in KINDS:
 		var m := FigureModel.create(kid) as MachineModel
@@ -129,8 +139,14 @@ func test_dead_is_light_first_then_the_collapse() -> void:
 		var standing := joint_state(m)
 		m.set_pose(&"dead")
 		m.animate(0.1, 0.0)
-		eq(m.light_level(), 0.0, "%s light out at once" % kid)
-		check(same_state(standing, joint_state(m), 1e-4), "%s moved before its light went out" % kid)
+		# The working part is the last light to go ...
+		gt(m.light_level(), 0.0, "%s part still lit as the other lights go" % kid)
+		for i in 8:
+			m.animate(1.0 / 30.0, 0.0)
+		# ... and it is out before anything falls.
+		lt(m.pose_time, MachineModel.LIGHT_FIRST, "%s still inside the light sequence" % kid)
+		eq(m.light_level(), 0.0, "%s part out before the collapse" % kid)
+		check(same_state(standing, joint_state(m), 1e-4), "%s moved before its lights went out" % kid)
 		for i in 90:
 			m.animate(1.0 / 30.0, 0.0)
 		check(not same_state(standing, joint_state(m), 0.05), "%s never collapsed" % kid)
