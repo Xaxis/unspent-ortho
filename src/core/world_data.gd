@@ -22,8 +22,25 @@ var blend: PackedFloat32Array
 var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
 var props: Array[WorldProp] = []
+## {pos: Vector2 square centre, country: int, name: String, level: int,
+## radius: float (cleared core), id: int}. Village 0 is the spawn village.
 var villages: Array[Dictionary] = []
 var spawn: Vector2
+## Radians the player faces on waking (0 = east, -PI/2 = north): toward open land.
+var spawn_facing := -PI * 0.5
+## Each river as tile-centre points from source to mouth (a tributary ends
+## where it joins). Flow runs in point order.
+var rivers: Array[PackedVector2Array] = []
+## Each road as tile-centre points between two village squares.
+var roads: Array[PackedVector2Array] = []
+## The machines' grid: {kind: PropKind.PYLON or POLE, props: PackedInt32Array
+## of prop ids in stringing order}. Cables run between consecutive ids.
+var lines: Array[Dictionary] = []
+## Places worth walking to: {kind: StringName, pos: Vector2, country: int}.
+## Kinds: tip, stone_circle, wreck, ruin, summit, caldera, fumarole; and for renderers
+## and sound, bridge (a road over a river; `dir` runs along the road) and
+## falls (a river's bed steps down a level; `dir` runs downstream).
+var landmarks: Array[Dictionary] = []
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.
 var depleted: Dictionary = {}

@@ -52,10 +52,14 @@ func setup(o: BootOptions) -> void:
 		start = (world.villages[o.village].pos as Vector2) + Vector2(3, 3)
 	elif o.at.x >= 0:
 		start = o.at
+	elif o.place != "" and GenPlaces.find(world, o.place).x >= 0:
+		start = GenPlaces.find(world, o.place)
 	player = Player.new()
 	player.name = "player"
 	add_child(player)
 	player.setup(world, query, start, view.world_material())
+	if start == world.spawn:
+		player.facing = world.spawn_facing
 
 	camera = CameraRig.new()
 	camera.name = "camera"

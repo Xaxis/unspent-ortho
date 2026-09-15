@@ -3,4 +3,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 tools/_import.sh
-godot --headless --path . -s tools/gd/map.gd -- "$@" 2>&1 | grep -E '^(village|spawn|country|map)|ERROR'
+godot --headless --path . -s tools/gd/map.gd -- "$@" 2>&1 | grep -E '^(village|spawn|shares|country|ecotone|landmarks|places|timings|map)|ERROR|SCRIPT|Parse'

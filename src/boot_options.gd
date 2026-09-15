@@ -15,6 +15,8 @@ extends RefCounted
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
+## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
+##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +31,7 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+var place := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +58,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"place": o.place = v
 			_: push_warning("unknown option --%s" % k)
 	return o

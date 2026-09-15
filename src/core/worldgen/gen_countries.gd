@@ -1,0 +1,702 @@
+class_name GenCountries
+## Stage 2 (coarse layout) and stage 4 (tiles, ecotones): where each country is.
+##
+## The island is laid out as a JOURNEY. The Coast holds the south shore where
+## the player wakes; a middle belt (Moss, Pinewood, Bonelands) crosses the
+## island's waist; the far north is Snowfield and the Burning. Sites follow a
+## template (mirrored and jittered per seed, fitted to the island's extent),
+## countries are a warped power diagram of their sites, and additive weights
+## are balanced on the coarse grid until every country holds its share.
+##
+## Tiles then take the best two countries, fingered by noise so borders
+## interleave, with snow pulled down onto high ground. country2/blend record the
+## second country and how far toward it a tile has turned (0.5 on the border,
+## 0 at 12 to 24 tiles).
+
+const TARGET: PackedFloat32Array = [0.0, 0.35, 0.13, 0.13, 0.13, 0.13, 0.13]
+## Sampled passes that rebalance shares after the borders wander, and the
+## sample's stride in tiles.
+const BALANCE_PASSES := 3
+const BALANCE_STRIDE := 4
+## A piece of a country cut off inside another and smaller than this (512
+## world) joins the country round it: a blot of ash in the limestone is noise,
+## not a place.
+const ENCLAVE_TILES := 400
+
+## Relief and climate by country id (sea, coast, moss, pinewood, snowfield,
+## bonelands, burning). Levels are WorldData levels.
+const BASE: PackedFloat32Array = [0.0, 2.6, 1.3, 4.4, 7.8, 5.8, 4.6]
+const HILLS: PackedFloat32Array = [0.0, 3.4, 0.7, 4.2, 3.0, 2.4, 2.0]
+const RIDGE: PackedFloat32Array = [0.0, 1.0, 0.0, 2.2, 6.5, 0.6, 1.8]
+const TERRACE: PackedFloat32Array = [0.0, 0.0, 0.0, 0.0, 0.2, 1.0, 0.25]
+## Cost in levels per tile of a river valley's side: low is a broad vale, high a gorge.
+const VALLEY: PackedFloat32Array = [0.5, 0.42, 0.3, 0.55, 0.85, 1.25, 0.7]
+const RAIN: PackedFloat32Array = [0.0, 1.0, 1.35, 1.2, 1.1, 0.45, 0.12]
+const TEMP: PackedFloat32Array = [0.5, 0.58, 0.46, 0.36, 0.08, 0.5, 0.95]
+const MOIST: PackedFloat32Array = [1.0, 0.55, 0.92, 0.66, 0.5, 0.22, 0.08]
+## Headland cliff tendency.
+const CLIFF: PackedFloat32Array = [0.0, 0.0, -0.6, 0.1, 0.3, 0.45, 0.2]
+
+const PARAMS := [&"base", &"hills", &"ridge", &"terrace", &"valley", &"rain", &"temp", &"moist", &"cliff"]
+
+
+static func coarse(c: GenContext) -> void:
+	var rng := Rng.make(c.s, 201)
+	var sites := _sites(c, rng)
+	var cw := c.cw
+	var cn := cw * cw
+	var step := GenContext.STEP
+	var size := c.size
+	var warp := GenFields.noise(c.s, 202, 1.0 / (190.0 * c.k), 3)
+	var wamp := 58.0 * c.k
+	var own: Array[FastNoiseLite] = []
+	for cc in Country.COUNT:
+		own.append(GenFields.noise(c.s, 210 + cc, 1.0 / (90.0 * c.k), 3))
+	var oamp := 38.0 * c.k
+	# dist[cc * cn + k]: warped distance from cell k to country cc's nearest site.
+	var dist := PackedFloat32Array()
+	dist.resize(Country.COUNT * cn)
+	dist.fill(1e9)
+	var land := c.land
+	var landc := PackedByteArray()
+	landc.resize(cn)
+	const N := GenFields.NOISE
+	var specs := [[N, warp, cw, step], [N, warp, cw, step, 613.0, -287.0]]
+	for cc in range(1, Country.COUNT):
+		specs.append([N, own[cc], cw, step])
+	var fl := GenFields.batch(size, specs)
+	var wx := fl[0]
+	var wy := fl[1]
+	# Each country's own wander, end to end: cc * cn + k.
+	var ownf := PackedFloat32Array()
+	ownf.resize(cn)
+	for cc in range(1, Country.COUNT):
+		ownf.append_array(fl[cc + 1])
+	var site_xyz := PackedVector3Array(sites)
+	GenFields.rows(cw, func(g0: int, g1: int) -> void:
+		for gy in range(g0, g1):
+			var ty := GenFields.cell_centre(gy, step)
+			for gx in cw:
+				var tx := GenFields.cell_centre(gx, step)
+				var k := gy * cw + gx
+				var ix := clampi(roundi(tx), 0, size - 1)
+				var iy := clampi(roundi(ty), 0, size - 1)
+				landc[k] = land[iy * size + ix]
+				var px := tx + wx[k] * wamp
+				var py := ty + wy[k] * wamp
+				for site in site_xyz:
+					var dx := px - site.x
+					var dy := py - site.y
+					var d := sqrt(dx * dx + dy * dy)
+					var j := int(site.z) * cn + k
+					if d < dist[j]:
+						dist[j] = d
+				for cc in range(1, Country.COUNT):
+					dist[cc * cn + k] += ownf[cc * cn + k] * oamp
+	)
+	# Balance additive weights so shares hit TARGET: coarse passes on every
+	# other cell, then fine passes on every land cell.
+	var weight := PackedFloat32Array()
+	weight.resize(Country.COUNT)
+	var full_passes := 0
+	var it := 0
+	while it < 40:
+		var sparse := it < 30
+		var gain := size * (0.5 if sparse else 0.3)
+		var counts := _assign_counts(dist, weight, landc, cw, sparse)
+		var total := 0.0
+		for cc in Country.COUNT:
+			total += counts[cc]
+		total = maxf(1.0, total)
+		var worst := 0.0
+		for cc: int in Country.LAND:
+			var err := TARGET[cc] - counts[cc] / total
+			worst = maxf(worst, absf(err))
+			weight[cc] += err * gain
+		# Close enough on the sample: go on to every cell. The tiles are
+		# balanced again after their borders wander (fine()).
+		if sparse and worst < 0.006 and it >= 8:
+			it = 29
+		if not sparse:
+			full_passes += 1
+			if worst < 0.004 and full_passes >= 3:
+				break
+		it += 1
+	c.scores.clear()
+	c.soft.clear()
+	var flat := PackedFloat32Array()
+	flat.resize(Country.COUNT * cn)
+	# Soft membership for blending relief and climate: broad, so a mountain
+	# range rises over many tiles rather than at a border line.
+	var temp := 22.0
+	var softm := PackedFloat32Array()
+	softm.resize(Country.COUNT * cn)
+	GenFields.rows(cw, func(g0: int, g1: int) -> void:
+		for k in range(g0 * cw, g1 * cw):
+			var top := -1e9
+			for cc in range(1, Country.COUNT):
+				var v := weight[cc] - dist[cc * cn + k]
+				flat[cc * cn + k] = v
+				top = maxf(top, v)
+			var sum := 0.0
+			for cc in range(1, Country.COUNT):
+				var e := exp((weight[cc] - dist[cc * cn + k] - top) / temp)
+				softm[cc * cn + k] = e
+				sum += e
+			for cc in range(1, Country.COUNT):
+				softm[cc * cn + k] /= sum
+	)
+	for cc in Country.COUNT:
+		c.scores.append(flat.slice(cc * cn, (cc + 1) * cn))
+		c.soft.append(softm.slice(cc * cn, (cc + 1) * cn))
+	c.hearts.clear()
+	for cc in Country.COUNT:
+		c.hearts.append(Vector2(-1, -1))
+	for site: Vector3 in sites:
+		if c.hearts[int(site.z)].x < 0.0:
+			c.hearts[int(site.z)] = Vector2(site.x, site.y)
+
+
+## Land cells each country would win with these weights (every other cell
+## in each direction when sparse).
+static func _assign_counts(dist: PackedFloat32Array, weight: PackedFloat32Array, landc: PackedByteArray, cw: int, sparse: bool) -> PackedInt32Array:
+	var cn := cw * cw
+	var band := 12
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(cw) / band))
+	GenFields.rows(cw, func(g0: int, g1: int) -> void:
+		var counts := PackedInt32Array()
+		counts.resize(Country.COUNT)
+		for gy in range(g0, g1):
+			if sparse and gy % 2 != 0:
+				continue
+			var gstep := 2 if sparse else 1
+			for gx in range(0, cw, gstep):
+				var k := gy * cw + gx
+				if landc[k] == 0:
+					continue
+				var best := 1
+				var best_v := -1e12
+				for cc in range(1, Country.COUNT):
+					var v := weight[cc] - dist[cc * cn + k]
+					if v > best_v:
+						best_v = v
+						best = cc
+				counts[best] += 1
+		parts[g0 / band] = counts
+	, band)
+	var total := PackedInt32Array()
+	total.resize(Country.COUNT)
+	for part in parts:
+		for cc in Country.COUNT:
+			total[cc] += part[cc]
+	return total
+
+
+## Journey template: x = u across the island's extent, y = v down it, z = country.
+static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
+	var middle: Array[int] = [Country.MOSS, Country.PINEWOOD, Country.BONELANDS]
+	if rng.randf() < 0.4:
+		middle = [Country.PINEWOOD, Country.MOSS, Country.BONELANDS]
+	var raw: Array[Vector3] = [
+		# The first site of a country is its heart.
+		Vector3(0.5, 0.87, Country.COAST),
+		Vector3(0.17, 0.82, Country.COAST),
+		Vector3(0.83, 0.82, Country.COAST),
+		Vector3(0.17, 0.53, middle[0]),
+		Vector3(0.5, 0.52, middle[1]),
+		Vector3(0.83, 0.53, middle[2]),
+		Vector3(0.3, 0.19, Country.SNOWFIELD),
+		Vector3(0.73, 0.2, Country.BURNING),
+	]
+	# Optional second sites give each seed its own silhouette.
+	if rng.randf() < 0.5:
+		raw.append(Vector3(0.5, 0.33, Country.PINEWOOD))
+	if rng.randf() < 0.5:
+		raw.append(Vector3(0.1, 0.34, Country.SNOWFIELD))
+	if rng.randf() < 0.5:
+		raw.append(Vector3(0.9, 0.36, Country.BURNING))
+	var mirror := rng.randf() < 0.5
+	var r := c.land_rect
+	var out: Array[Vector3] = []
+	for p in raw:
+		var u := p.x + rng.randf_range(-0.05, 0.05)
+		var v := p.y + rng.randf_range(-0.035, 0.035)
+		if mirror:
+			u = 1.0 - u
+		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, p.z))
+	return out
+
+
+## Upsample the named per-country parameters to tile resolution.
+static func params(c: GenContext, names: Array) -> Dictionary:
+	var tables := {
+		&"base": BASE, &"hills": HILLS, &"ridge": RIDGE, &"terrace": TERRACE, &"valley": VALLEY,
+		&"rain": RAIN, &"temp": TEMP, &"moist": MOIST, &"cliff": CLIFF,
+	}
+	var cw := c.cw
+	var cn := cw * cw
+	var out := {}
+	# Locals, not soft[cc][k]: indexing an Array of packed arrays per element is
+	# many times slower.
+	var s1 := c.soft[1]
+	var s2 := c.soft[2]
+	var s3 := c.soft[3]
+	var s4 := c.soft[4]
+	var s5 := c.soft[5]
+	var s6 := c.soft[6]
+	for name: StringName in names:
+		var table: PackedFloat32Array = tables[name]
+		var t1 := table[1]
+		var t2 := table[2]
+		var t3 := table[3]
+		var t4 := table[4]
+		var t5 := table[5]
+		var t6 := table[6]
+		var g := PackedFloat32Array()
+		g.resize(cn)
+		GenFields.rows(cw, func(g0: int, g1: int) -> void:
+			for k in range(g0 * cw, g1 * cw):
+				g[k] = s1[k] * t1 + s2[k] * t2 + s3[k] * t3 + s4[k] * t4 + s5[k] * t5 + s6[k] * t6
+		)
+		out[name] = g
+	return out
+
+
+
+## Tiles take their country and the runner-up.
+##
+## The smooth margin between a tile's best two countries (scores, plus snow
+## pulled onto high ground, plus pinewood tongues into the moss) is divided by
+## its own gradient at that tile, so it reads as tiles to the border however
+## the warps have stretched the field. Finger and bend noise then shift the
+## border itself by a known number of tiles, so every border wanders. _blend
+## then measures the ecotones from the borders that resulted.
+static func fine(c: GenContext, with_blend: bool = true) -> void:
+	var w := c.w
+	var size := c.size
+	var n := c.n
+	var cw := c.cw
+	var step := GenContext.STEP
+	var elev := c.elev
+	const F := GenFields.FIELD
+	const U := GenFields.UP
+	var fl := GenFields.batch(size, [
+		[U, c.scores[1], cw, step], [U, c.scores[2], cw, step], [U, c.scores[3], cw, step],
+		[U, c.scores[4], cw, step], [U, c.scores[5], cw, step], [U, c.scores[6], cw, step],
+		[F, GenFields.noise(c.s, 221, 1.0 / 15.0, 3), 2],
+		# Bends at the scale of a walk, so no border runs ruler-straight.
+		[F, GenFields.noise(c.s, 224, 1.0 / 70.0, 2), 4],
+		[F, GenFields.noise(c.s, 222, 1.0 / 34.0, 2, FastNoiseLite.TYPE_PERLIN), 4],
+		[F, GenFields.noise(c.s, 223, 1.0 / 70.0, 2), 8],
+		[GenFields.SMOOTH, elev, 3],
+	])
+	# Scores for countries 1..6, upsampled, end to end: (cc - 1) * n + i.
+	var flat := PackedFloat32Array()
+	for cc in range(1, Country.COUNT):
+		flat.append_array(fl[cc - 1])
+	var finger := fl[6]
+	var bend := fl[7]
+	var tongue := fl[8]
+	var widen := fl[9]
+	var elev_smooth := fl[10]
+	var land := c.land
+	var country := w.country
+	var country2 := w.country2
+	# Coarse pass: climate with a lapse rate, and the leading country for sea
+	# tiles.
+	var coarse_p := params(c, [&"temp", &"moist"])
+	var ct: PackedFloat32Array = coarse_p[&"temp"]
+	var top1 := PackedByteArray()
+	top1.resize(cw * cw)
+	var sc1 := c.scores[1]
+	var sc2 := c.scores[2]
+	var sc3 := c.scores[3]
+	var sc4 := c.scores[4]
+	var sc5 := c.scores[5]
+	var sc6 := c.scores[6]
+	GenFields.rows(cw, func(g0: int, g1: int) -> void:
+		for gy in range(g0, g1):
+			var ty := clampi(roundi(gy * step + step * 0.5 - 0.5), 0, size - 1)
+			for gx in cw:
+				var k := gy * cw + gx
+				var tx := clampi(roundi(gx * step + step * 0.5 - 0.5), 0, size - 1)
+				ct[k] = clampf(ct[k] - maxf(0.0, elev[ty * size + tx] - 5.0) * 0.035, 0.0, 1.0)
+				var best := 1
+				var bv := sc1[k]
+				if sc2[k] > bv:
+					best = 2
+					bv = sc2[k]
+				if sc3[k] > bv:
+					best = 3
+					bv = sc3[k]
+				if sc4[k] > bv:
+					best = 4
+					bv = sc4[k]
+				if sc5[k] > bv:
+					best = 5
+					bv = sc5[k]
+				if sc6[k] > bv:
+					best = 6
+				top1[k] = best
+	)
+	w.temperature = GenFields.upsample(ct, cw, step, size)
+	w.moisture = GenFields.upsample(coarse_p[&"moist"], cw, step, size)
+	c.mark(&"tiles.coarse")
+	const MOSS := Country.MOSS
+	const PINEWOOD := Country.PINEWOOD
+	const SNOWFIELD := Country.SNOWFIELD
+	# Tiles each country's borders are pushed out by (negative: pulled in),
+	# found by balancing on a sparse sample below.
+	var push := PackedFloat32Array()
+	push.resize(Country.COUNT)
+	# stride 1 writes every tile; a larger stride only counts a sample, by
+	# country, into parts (one count per band).
+	var assign := func(stride: int, parts: Array[PackedInt32Array]) -> void:
+		GenFields.rows(size, func(y0: int, y1: int) -> void:
+			var counts := PackedInt32Array()
+			counts.resize(Country.COUNT)
+			for y in range(y0, y1):
+				if y % stride != 0:
+					continue
+				var row := y * size
+				for x in range(0, size, stride):
+					var i := row + x
+					if land[i] == 0:
+						if stride == 1:
+							country[i] = Country.SEA
+							country2[i] = top1[(y / step) * cw + x / step]
+						continue
+					var a := 1
+					var b := 2
+					var sa := flat[i]
+					var sb := flat[n + i]
+					if sb > sa:
+						a = 2
+						b = 1
+						sa = flat[n + i]
+						sb = flat[i]
+					for cc in range(3, 7):
+						var v := flat[(cc - 1) * n + i]
+						if v > sa:
+							b = a
+							sb = sa
+							a = cc
+							sa = v
+						elif v > sb:
+							b = cc
+							sb = v
+					var lo := mini(a, b)
+					var hi := maxi(a, b)
+					var bl := (lo - 1) * n
+					var bh := (hi - 1) * n
+					var m := sa - sb if a == lo else sb - sa
+					var win := lo
+					if m > 200.0 or m < -200.0:
+						# Far past anything the noise can move a border (the margin
+						# rarely changes by 5 a tile; the shifts reach ~50 tiles).
+						win = lo if m > 0.0 else hi
+					else:
+						# The margin's gradient, over four tiles each way.
+						var xa := maxi(x - 2, 0)
+						var xb := mini(x + 2, size - 1)
+						var ya := maxi(y - 2, 0)
+						var yb := mini(y + 2, size - 1)
+						var ia := row + xa
+						var ib := row + xb
+						var ja := ya * size + x
+						var jb := yb * size + x
+						var gx := (flat[bl + ib] - flat[bh + ib]) - (flat[bl + ia] - flat[bh + ia])
+						var gy := (flat[bl + jb] - flat[bh + jb]) - (flat[bl + ja] - flat[bh + ja])
+						var amp := 9.0
+						if lo == MOSS and hi == PINEWOOD:
+							# Long tongues of pinewood reach into the moss along drier
+							# ground, and the fen runs back up the wet hollows.
+							m -= tongue[i] * 30.0
+							gx -= (tongue[ib] - tongue[ia]) * 30.0
+							gy -= (tongue[jb] - tongue[ja]) * 30.0
+							amp = 13.0
+						elif hi == SNOWFIELD or lo == SNOWFIELD:
+							# Snow takes the high ground: the local lie of the land moves
+							# the border, the broad slope sets how far.
+							var sgn := -1.0 if hi == SNOWFIELD else 1.0
+							m += sgn * (elev[i] - 6.5) * 2.4
+							gx += sgn * (elev_smooth[ib] - elev_smooth[ia]) * 2.4
+							gy += sgn * (elev_smooth[jb] - elev_smooth[ja]) * 2.4
+						var grad := maxf(0.25, sqrt(gx * gx + gy * gy) / float(maxi(1, xb - xa + yb - ya) / 2))
+						var d := m / grad + finger[i] * amp + bend[i] * 22.0 + push[lo] - push[hi]
+						win = hi if d < 0.0 else lo
+					if stride == 1:
+						country[i] = win
+						country2[i] = hi if win == lo else lo
+					else:
+						counts[win] += 1
+			if stride > 1:
+				parts[y0 / 12] = counts
+		)
+	# The layout was balanced on the coarse grid; the fingers, bends, tongues
+	# and snow line then move every border. Measure the shares that result on a
+	# sample, push each border out or in by the error, and measure again, so
+	# every seed keeps its countries near TARGET.
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(size) / 12))
+	var gain := 60.0 * size / 512.0
+	for it in BALANCE_PASSES:
+		assign.call(BALANCE_STRIDE, parts)
+		var counts := PackedFloat32Array()
+		counts.resize(Country.COUNT)
+		var total := 0.0
+		for part in parts:
+			for cc in Country.COUNT:
+				counts[cc] += part[cc]
+				total += part[cc]
+		for cc: int in Country.LAND:
+			push[cc] = clampf(push[cc] + (TARGET[cc] - counts[cc] / maxf(1.0, total)) * gain, -12.0, 12.0)
+	c.mark(&"tiles.balance")
+	assign.call(1, parts)
+	c.mark(&"tiles.assign")
+	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.k * c.k))
+	c.mark(&"tiles.enclaves")
+	if with_blend:
+		_blend(c, widen)
+	c.mark(&"tiles.blend")
+
+
+## Pieces of a country smaller than min_tiles take the land country most
+## common along their edge (islets, with no land neighbours, stay). Runs before
+## the ecotones are measured, so the blend follows the borders that remain.
+static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
+	var size := c.size
+	var country := c.w.country
+	var country2 := c.w.country2
+	var sea := PackedByteArray()
+	sea.resize(c.n)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			sea[i] = 1 if country[i] == Country.SEA else 0
+	)
+	var sizes := PackedInt32Array()
+	var label := GenFields.patches(country, sea, size, sizes)
+	var band := 12
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(size) / band))
+	GenFields.rows(size - 1, func(y0: int, y1: int) -> void:
+		var found := PackedInt32Array()
+		for y in range(maxi(y0, 1), y1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				var la := label[i]
+				if la >= 0 and sizes[la] < min_tiles:
+					found.append(i)
+		parts[y0 / band] = found
+	, band)
+	var votes := {}
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			var v: PackedInt32Array = votes.get(la, PackedInt32Array())
+			if v.is_empty():
+				v.resize(Country.COUNT)
+			for j: int in [i - 1, i + 1, i - size, i + size]:
+				if label[j] >= 0 and label[j] != la:
+					v[country[j]] += 1
+			votes[la] = v
+	var winner := {}
+	for la: int in votes:
+		var v: PackedInt32Array = votes[la]
+		var best := 0
+		for cc in range(1, Country.COUNT):
+			if v[cc] > v[best]:
+				best = cc
+		if best > 0:
+			winner[la] = best
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			if winner.has(la):
+				country2[i] = country[i]
+				country[i] = winner[la]
+
+
+## blend from the true distance to the nearest border, so 0.5 on the border
+## always falls to 0 over the stated width however the score fields were
+## warped. Borders are found per tile; distance is spread at half resolution
+## carrying the pair of countries that meet there, so country2 is the country
+## actually across the nearest border (the score runner-up only at a junction).
+static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
+	var w := c.w
+	var size := c.size
+	var country := w.country
+	var country2 := w.country2
+	var blend := w.blend
+	var hw := GenFields.coarse_width(size, 2)
+	var hn := hw * hw
+	var dist := PackedFloat32Array()
+	dist.resize(hn)
+	dist.fill(1e4)
+	var pair := PackedByteArray()
+	pair.resize(hn)
+	var edge := PackedByteArray()
+	edge.resize(c.n)
+	const SEA := Country.SEA
+	# Bands are an even number of rows, so each half-resolution cell is written
+	# by exactly one band.
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * size
+			var hrow := (y >> 1) * hw
+			for x in size:
+				var i := row + x
+				var a := country[i]
+				if a == SEA:
+					continue
+				var b := SEA
+				if x < size - 1 and country[i + 1] != a:
+					b = country[i + 1]
+				if b == SEA and y < size - 1 and country[i + size] != a:
+					b = country[i + size]
+				if b == SEA and x > 0 and country[i - 1] != a:
+					b = country[i - 1]
+				if b == SEA and y > 0 and country[i - size] != a:
+					b = country[i - size]
+				if b == SEA:
+					continue
+				var pk := mini(a, b) * 8 + maxi(a, b)
+				edge[i] = pk
+				dist[hrow + (x >> 1)] = 0.0
+				pair[hrow + (x >> 1)] = pk
+	, 12)
+	# Exact to 28 tiles, past the widest ecotone.
+	var spread := GenFields.banded([dist, pair], hw, 14, func(arrays: Array, width: int) -> Array:
+		var dd: PackedFloat32Array = arrays[0]
+		var pp: PackedByteArray = arrays[1]
+		_spread_labelled(dd, pp, width, 2.0)
+		return [dd, pp]
+	)
+	dist = spread[0]
+	pair = spread[1]
+	var up := GenFields.upsample(dist, hw, 2, size)
+	# Where the nearest border changes from one neighbour to another, country2
+	# flips along a straight line. Fade the blend to nothing along those seams
+	# (except hard by a border), so a renderer mixing in country2's wash never
+	# shows the flip.
+	var seam := PackedByteArray()
+	seam.resize(hn)
+	var other_h := PackedByteArray()
+	other_h.resize(hn)
+	var own_h := PackedByteArray()
+	own_h.resize(hn)
+	GenFields.rows(hw, func(g0: int, g1: int) -> void:
+		for gy in range(g0, g1):
+			var trow := mini(gy * 2, size - 1) * size
+			for gx in hw:
+				var k := gy * hw + gx
+				var own := country[trow + mini(gx * 2, size - 1)]
+				own_h[k] = own
+				var pk := pair[k]
+				if own == pk >> 3:
+					other_h[k] = pk & 7
+				elif own == pk & 7:
+					other_h[k] = pk >> 3
+	)
+	GenFields.rows(hw - 1, func(g0: int, g1: int) -> void:
+		for gy in range(maxi(g0, 1), g1):
+			for gx in range(1, hw - 1):
+				var k := gy * hw + gx
+				var o := other_h[k]
+				if o == 0:
+					continue
+				var own := own_h[k]
+				var r := other_h[k + 1]
+				var dn := other_h[k + hw]
+				var l := other_h[k - 1]
+				var u := other_h[k - hw]
+				if (own_h[k + 1] == own and r != 0 and r != o) or (own_h[k + hw] == own and dn != 0 and dn != o) or (own_h[k - 1] == own and l != 0 and l != o) or (own_h[k - hw] == own and u != 0 and u != o):
+					seam[k] = 1
+	)
+	# Only the first few cells from a seam matter to the fade.
+	var seam_img := Image.create_from_data(hw, hw, false, Image.FORMAT_L8, GenFields.near_steps(seam, hw, 5))
+	seam_img.convert(Image.FORMAT_RF)
+	seam_img.resize(hw * 2, hw * 2, Image.INTERPOLATE_BILINEAR)
+	if hw * 2 != size:
+		seam_img.crop(size, size)
+	var seam_d := seam_img.get_data().to_float32_array()
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * size
+			var hrow := (y >> 1) * hw
+			for x in size:
+				var i := row + x
+				var own := country[i]
+				if own == SEA:
+					continue
+				var pk := edge[i]
+				var d := 0.0
+				if pk == 0:
+					pk = pair[hrow + (x >> 1)]
+					d = maxf(0.0, up[i])
+				var lo := pk >> 3
+				var hi := pk & 7
+				var other := country2[i]
+				if lo == own:
+					other = hi
+				elif hi == own:
+					other = lo
+				country2[i] = other
+				# 12 to 24 tiles, wandering along the border. Every ecotone keeps
+				# inside it, the Burning's ash included.
+				var width := 12.0 + 12.0 * clampf(0.5 + widen[i] * 1.4, 0.0, 1.0)
+				var fade := maxf(clampf((seam_d[i] * 510.0 - 1.0) / 8.0, 0.0, 1.0), 1.0 - d / 2.0)
+				blend[i] = (0.5 - 0.5 * d / width) * fade if d < width else 0.0
+	)
+
+
+## Two-sweep 8-neighbour chamfer distance (cell = `unit` tiles) that also
+## carries each source's label to the cells it is nearest.
+static func _spread_labelled(d: PackedFloat32Array, label: PackedByteArray, width: int, unit: float) -> void:
+	var height := d.size() / width
+	var dc := unit * 1.4142
+	for y in height:
+		var row := y * width
+		for x in width:
+			var i := row + x
+			var m := d[i]
+			var lb := label[i]
+			if x > 0 and d[i - 1] + unit < m:
+				m = d[i - 1] + unit
+				lb = label[i - 1]
+			if y > 0:
+				var j := i - width
+				if d[j] + unit < m:
+					m = d[j] + unit
+					lb = label[j]
+				if x > 0 and d[j - 1] + dc < m:
+					m = d[j - 1] + dc
+					lb = label[j - 1]
+				if x < width - 1 and d[j + 1] + dc < m:
+					m = d[j + 1] + dc
+					lb = label[j + 1]
+			d[i] = m
+			label[i] = lb
+	for y in range(height - 1, -1, -1):
+		var row := y * width
+		for x in range(width - 1, -1, -1):
+			var i := row + x
+			var m := d[i]
+			var lb := label[i]
+			if x < width - 1 and d[i + 1] + unit < m:
+				m = d[i + 1] + unit
+				lb = label[i + 1]
+			if y < height - 1:
+				var j := i + width
+				if d[j] + unit < m:
+					m = d[j] + unit
+					lb = label[j]
+				if x < width - 1 and d[j + 1] + dc < m:
+					m = d[j + 1] + dc
+					lb = label[j + 1]
+				if x > 0 and d[j - 1] + dc < m:
+					m = d[j - 1] + dc
+					lb = label[j - 1]
+			d[i] = m
+			label[i] = lb

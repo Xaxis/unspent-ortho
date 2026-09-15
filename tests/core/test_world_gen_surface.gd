@@ -1,0 +1,290 @@
+extends TestCase
+## Grounds read as washes: big patches with long edges, no specks, no stair
+## notches, each country's grounds kept to that country, villages and pools
+## drawn as places rather than stamps. Uses the cached default-size worlds.
+
+const Worlds := preload("res://tests/core/test_world_gen.gd")
+
+
+static func _line(g: int) -> bool:
+	return Ground.is_water(g) or g == Ground.ROAD or g == Ground.ICE
+
+
+func test_grounds_are_washes_not_salad() -> void:
+	# Edge tiles: field tiles (not water, road or ice) touching another field
+	# ground. Specks: patches of one ground of four tiles or fewer.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var size := w.size
+		var n := size * size
+		var land := PackedFloat32Array()
+		land.resize(Country.COUNT)
+		var field := PackedFloat32Array()
+		field.resize(Country.COUNT)
+		var edge := PackedFloat32Array()
+		edge.resize(Country.COUNT)
+		var ground := w.ground
+		for y in range(1, size - 1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				if w.level[i] <= 0:
+					continue
+				var c := w.country[i]
+				land[c] += 1.0
+				var g := w.ground[i]
+				if _line(g):
+					continue
+				field[c] += 1.0
+				var a := ground[i - 1]
+				var b := ground[i + 1]
+				var u := ground[i - size]
+				var d := ground[i + size]
+				if (a != g and not _line(a)) or (b != g and not _line(b)) or (u != g and not _line(u)) or (d != g and not _line(d)):
+					edge[c] += 1.0
+		var specks := PackedFloat32Array()
+		specks.resize(Country.COUNT)
+		var sizes := PackedInt32Array()
+		var lines := PackedByteArray()
+		lines.resize(n)
+		for i in n:
+			lines[i] = 1 if w.level[i] <= 0 or _line(w.ground[i]) else 0
+		var label := GenFields.patches(w.ground, lines, size, sizes)
+		for i in n:
+			if label[i] == i and sizes[i] <= 4:
+				specks[w.country[i]] += 1.0
+		for c: int in Country.LAND:
+			lt(edge[c] / field[c], 0.25, "seed %d %s edge share" % [s, Country.NAMES[c]])
+			lt(specks[c] * 1000.0 / land[c], 10.0, "seed %d %s specks per 1000 tiles" % [s, Country.NAMES[c]])
+
+
+func test_no_stair_notches_or_chequers() -> void:
+	# A field tile enclosed on three sides by one other field ground is a notch;
+	# a 2x2 of two grounds touching only corner to corner is a chequer. Both
+	# draw as tile stairs.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var size := w.size
+		var notches := 0
+		var chequers := 0
+		var field := 0
+		var ground := w.ground
+		for y in range(1, size - 1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				var g := w.ground[i]
+				if w.level[i] <= 0 or _line(g):
+					continue
+				field += 1
+				var a := ground[i - 1]
+				var b := ground[i + 1]
+				var u := ground[i - size]
+				var d := ground[i + size]
+				if a != g or b != g or u != g or d != g:
+					# Three of the four sides one other field ground.
+					var h := -1
+					if a == b and (a == u or a == d):
+						h = a
+					elif u == d and (u == a or u == b):
+						h = u
+					if h >= 0 and h != g and not _line(h):
+						notches += 1
+				var dr := ground[i + size + 1]
+				if b == d and g == dr and g != b and not _line(b) and not _line(dr):
+					chequers += 1
+		lt(float(notches) / field, 0.001, "seed %d notches %d" % [s, notches])
+		lt(float(chequers) / field, 0.0005, "seed %d chequers %d" % [s, chequers])
+
+
+func test_snow_and_ash_keep_to_their_countries() -> void:
+	# Snow creeps down ridges and ash drifts over the rim, inside the ecotone:
+	# never more than 3% of another country.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var land := PackedFloat32Array()
+		land.resize(Country.COUNT)
+		var snow := PackedFloat32Array()
+		snow.resize(Country.COUNT)
+		var ash := PackedFloat32Array()
+		ash.resize(Country.COUNT)
+		for i in w.ground.size():
+			if w.level[i] <= 0:
+				continue
+			var c := w.country[i]
+			land[c] += 1.0
+			if w.ground[i] == Ground.SNOW:
+				snow[c] += 1.0
+			elif w.ground[i] == Ground.ASH:
+				ash[c] += 1.0
+		for c: int in Country.LAND:
+			if c != Country.SNOWFIELD:
+				lt(snow[c] / land[c], 0.03, "seed %d snow in %s" % [s, Country.NAMES[c]])
+			if c != Country.BURNING:
+				lt(ash[c] / land[c], 0.03, "seed %d ash in %s" % [s, Country.NAMES[c]])
+
+
+func test_heath_drapes_across_terraces() -> void:
+	# Heath is drawn from smooth float elevation, not from the integer level:
+	# where a terrace edge crosses heath, the heath carries on over it. (About
+	# 0.8 of heath edges carry over; a rule on the level itself gives 0.55.)
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var size := w.size
+		var across := 0.0
+		var both := 0.0
+		for y in range(1, size - 1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				if w.country[i] != Country.COAST or w.level[i] <= 0:
+					continue
+				for j: int in [i + 1, i + size]:
+					if absi(w.level[j] - w.level[i]) != 1 or _line(w.ground[j]) or _line(w.ground[i]):
+						continue
+					var hi := w.ground[i] == Ground.HEATH
+					var hj := w.ground[j] == Ground.HEATH
+					if hi or hj:
+						across += 1.0
+						if hi and hj:
+							both += 1.0
+		gt(both / maxf(1.0, across), 0.7, "seed %d heath carried over terrace edges" % s)
+
+
+func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var size := w.size
+		var n := size * size
+		var not_pool := PackedByteArray()
+		not_pool.resize(n)
+		for i in n:
+			not_pool[i] = 0 if w.ground[i] == Ground.BLACKWATER else 1
+		var sizes := PackedInt32Array()
+		var label := GenFields.patches(w.ground, not_pool, size, sizes)
+		var pools := 0
+		for i in n:
+			if label[i] == i:
+				pools += 1
+				gt(sizes[i], 9, "seed %d blackwater pool at %d,%d tiles" % [s, i % size, i / size])
+		gt(pools, 4, "seed %d blackwater pools in the Moss" % s)
+		# A rim of peat or mud round the black water.
+		var shore := 0.0
+		var rimmed := 0.0
+		for y in range(1, size - 1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				var g := w.ground[i]
+				if _line(g) or w.level[i] <= 0:
+					continue
+				if w.ground[i - 1] == Ground.BLACKWATER or w.ground[i + 1] == Ground.BLACKWATER or w.ground[i - size] == Ground.BLACKWATER or w.ground[i + size] == Ground.BLACKWATER:
+					shore += 1.0
+					if g == Ground.PEAT or g == Ground.MUD:
+						rimmed += 1.0
+		gt(rimmed / maxf(1.0, shore), 0.9, "seed %d blackwater rimmed with peat or mud" % s)
+		for p in w.props:
+			if p.kind != PropKind.HOUSE:
+				continue
+			var reach := ceili(p.solid + 3.0)
+			for dy in range(-reach, reach + 1):
+				for dx in range(-reach, reach + 1):
+					var g := w.ground_at(floori(p.pos.x) + dx, floori(p.pos.y) + dy)
+					if g == Ground.BLACKWATER and Vector2(dx, dy).length() <= p.solid + 3.0:
+						fail("seed %d blackwater within 3 tiles of a house at %s" % [s, p.pos])
+
+
+func test_villages_stand_in_clearings_with_a_square() -> void:
+	# No scree, rock, clinker, shingle, mud or peat in a village's core; a
+	# square of trodden ground in its middle, not a road splat.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for v in w.villages:
+			var vp: Vector2 = v.pos
+			var square := 0
+			var total := 0
+			for dy in range(-10, 11):
+				for dx in range(-10, 11):
+					var x := floori(vp.x) + dx
+					var y := floori(vp.y) + dy
+					var d := Vector2(x + 0.5, y + 0.5).distance_to(vp)
+					var g := w.ground_at(x, y)
+					if d < 8.0 and g in [Ground.SCREE, Ground.ROCK, Ground.CLINKER, Ground.SHINGLE, Ground.MUD, Ground.PEAT]:
+						fail("seed %d village %s has %s in its core" % [s, v.name, Ground.NAMES[g]])
+					if d < 2.5:
+						total += 1
+						if g == Ground.GRAVEL or g == Ground.GRASS or g == Ground.ROAD:
+							square += 1
+			gt(float(square) / total, 0.9, "seed %d village %s square" % [s, v.name])
+
+
+func test_props_keep_to_their_country() -> void:
+	# Scatter follows the ground's recipe and each country's list: no reeds or
+	# peat banks on the Snowfield, no pines in the Burning, no snow pines in the
+	# Moss, no clints or standing stones on the Coast.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var bad := {}
+		for p in w.props:
+			if p.kind in GenScatter.PLACED:
+				continue
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			if (GenScatter.ALLOW[cc] >> p.kind) & 1 == 0:
+				var key := "%s in %s" % [PropKind.NAMES[p.kind], Country.NAMES[cc]]
+				bad[key] = int(bad.get(key, 0)) + 1
+		check(bad.is_empty(), "seed %d off-theme props: %s" % [s, bad])
+		for p in w.props:
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			if p.kind == PropKind.STANDING_STONE or p.kind == PropKind.CLINTS or p.kind == PropKind.PEAT_BANK:
+				check(cc != Country.COAST, "seed %d %s on the Coast" % [s, PropKind.NAMES[p.kind]])
+
+
+func test_the_burning_has_things_to_find() -> void:
+	# Dead-tree groves, vents, fumarole fields: the Burning is as full as the
+	# other countries, and has landmarks of its own.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var land := PackedFloat32Array()
+		land.resize(Country.COUNT)
+		for i in w.level.size():
+			if w.level[i] > 0:
+				land[w.country[i]] += 1.0
+		var props := PackedFloat32Array()
+		props.resize(Country.COUNT)
+		var vents := 0
+		var dead := 0
+		for p in w.props:
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			props[cc] += 1.0
+			if cc == Country.BURNING:
+				if p.kind == PropKind.VENT:
+					vents += 1
+				elif p.kind == PropKind.DEAD_TREE:
+					dead += 1
+		gt(props[Country.BURNING] * 1000.0 / land[Country.BURNING], 60.0, "seed %d burning props per 1000 tiles" % s)
+		gt(vents, 100, "seed %d vents in the burning" % s)
+		gt(dead, 200, "seed %d dead trees in the burning" % s)
+		var fumaroles := 0
+		for m in w.landmarks:
+			if m.kind == &"fumarole":
+				fumaroles += 1
+				eq(w.country_at(floori(m.pos.x), floori(m.pos.y)), Country.BURNING, "seed %d fumarole country" % s)
+		gt(fumaroles, 1, "seed %d fumaroles" % s)
+
+
+func test_wrecks_on_sand_and_kilns_by_villages() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for p in w.props:
+			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
+			if p.kind == PropKind.WRECK:
+				check(g == Ground.SAND or g == Ground.GRAVEL or g == Ground.CLINKER, "seed %d wreck at %s on %s" % [s, p.pos, Ground.NAMES[g]])
+			elif p.kind == PropKind.KILN:
+				check(g == Ground.SAND or g == Ground.LIMESTONE, "seed %d kiln at %s on %s" % [s, p.pos, Ground.NAMES[g]])
+				var near := false
+				for v in w.villages:
+					if (v.pos as Vector2).distance_to(p.pos) < 40.0:
+						near = true
+				check(near, "seed %d kiln at %s far from any village" % [s, p.pos])
+				if g == Ground.SAND:
+					var beach := false
+					for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+						if w.level_at(floori(p.pos.x) + d.x, floori(p.pos.y) + d.y) <= 0:
+							beach = true
+					check(not beach, "seed %d kiln on a beach at %s" % [s, p.pos])

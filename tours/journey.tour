@@ -1,0 +1,35 @@
+# The journey north across seed 1: wake on the south coast, walk inland, then
+# stand in each ecotone and walk across it, so the land can be seen turning.
+#   tools/tour.sh tours/journey.tour --seed=1
+# Coordinates come from `tools/map.sh --seed=1` (country and ecotone samples).
+zoom 30
+shot 01-spawn
+walk 0,-1 2.5 run
+shot 02-inland
+# coast into moss
+at 307,355
+shot 03-coast-moss
+walk 0,-1 2.5 run
+shot 04-coast-moss-walked
+# moss into pinewood
+at 310,322
+shot 05-moss-pinewood
+walk 1,-1 2.5 run
+shot 06-moss-pinewood-walked
+# pinewood up onto the snow
+at 340,187
+shot 07-pinewood-snowfield
+walk 0,-1 2.5 run
+shot 08-pinewood-snowfield-walked
+# bonelands to the rim of the burning
+at 190,175
+shot 09-bonelands-burning
+walk -1,-1 2.5 run
+shot 10-bonelands-burning-walked
+# a fumarole field out on the Burning's slopes
+at 207,145
+shot 11-fumarole
+# the caldera
+at 134,142
+zoom 44
+shot 12-caldera
