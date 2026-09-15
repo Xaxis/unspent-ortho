@@ -61,6 +61,10 @@ func _process(delta: float) -> void:
 		if mob == null:
 			continue
 		if mob.state.removed:
+			if not mob.state.alive and sim.now - mob.state.dead_at >= float(mob.state.stat("linger", 30.0)) * 1000.0 - 50.0:
+				# A body that has lain its time comes apart where it lay, not in a blink.
+				var dust := Palette.STONE[4] if mob.state.machine else Palette.SAND[4]
+				MobFx.puffs(game, mob.global_position, Vector2.ZERO, dust, 3, 0.5 + mob.state.radius * 0.6, mob.state.id)
 			mob.queue_free()
 			continue
 		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state)

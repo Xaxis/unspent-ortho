@@ -10,6 +10,8 @@ extends GameSystem
 const HITSTOP_HIT := 0.05
 const HITSTOP_HURT := 0.06
 const HITSTOP_KILL := 0.08
+## Seconds a body lies before it gets up after being downed or carried off.
+const WAKE_SECONDS := 1.6
 ## Seconds between the struggle's marks while held.
 const STRUGGLE_BEAT := 0.4
 
@@ -337,7 +339,7 @@ func _on_outcome(e: Dictionary) -> void:
 		&"downed":
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")
 			hero.health = game.body.health
-			player.model.play_action(&"downed", 1.2)
+			_wake()
 			Events.sfx.emit(&"downed", player.position)
 			Events.time_skipped.emit(float(r.minutes), &"downed")
 			Events.message.emit(String(r.line))
@@ -349,9 +351,19 @@ func _on_outcome(e: Dictionary) -> void:
 			player.sync_view(0.0)
 			game.view.ensure_near(hero.pos)
 			game.camera.snap_to(player.position)
-			player.model.play_action(&"carried", 1.2)
+			_wake()
 			Events.time_skipped.emit(float(r.minutes), &"carried")
 			Events.message.emit(String(r.line))
+
+
+## Coming round after a bad end: the body lies a moment and gets up before it
+## will walk, so the hours that went by are felt and not skipped past.
+func _wake() -> void:
+	# The hours lost were lost lying there: they mend nothing. Mending counts from waking.
+	_mend_from = game.clock.minutes
+	_last_health = game.body.health
+	game.player.model.play_action(&"downed", WAKE_SECONDS)
+	game.body.busy_until = maxf(game.body.busy_until, Time.get_ticks_msec() / 1000.0 + WAKE_SECONDS)
 
 
 # --- held moments for shots (--act) -------------------------------------------

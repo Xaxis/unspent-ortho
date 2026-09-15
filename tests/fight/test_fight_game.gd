@@ -33,5 +33,25 @@ func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
 	await frames(20)
 	check(not dog.alive, "a blow thrown through the running game lands")
 	eq(killed, [&"dog.yard"] as Array[StringName], "Events.killed")
+	# And a bad end reaches the world: the clock, the body, the coast, the lines.
+	var lines: Array[String] = []
+	Events.message.connect(func(t: String) -> void: lines.append(t))
+	var mobs_system: Node = game.get_node("30_mobs")
+	var biter: MobState = mobs_system.call(&"place_near_player", &"dog.feral")
+	biter.pos = sim.hero.pos + Vector2(0.8, 0.0)
+	biter.calm_until = 0.0
+	biter.set_mood(MobState.ATTACKING, sim.now)
+	game.body.health = 1
+	var before := game.clock.minutes
+	for i in 120:
+		await frames(1)
+		if ended.has(&"downed"):
+			break
+	check(ended.has(&"downed"), "downed through the running game: %s" % [ended])
+	gt(game.clock.minutes - before, FightRules.DOWNED_MINUTES, "the clock lost the hours")
+	eq(game.body.health, FightRules.DOWNED_WAKE_HEALTH, "woke hurt")
+	gt(game.body.busy_until, Time.get_ticks_msec() / 1000.0, "and lies a moment before walking")
+	eq(sim.living(), 0, "the coast was cleared")
+	check(lines.has(Outcomes.DOWNED_LINE), "and was told so, plainly")
 	game.queue_free()
 	await frames(1)
