@@ -33,7 +33,7 @@ static func geology(c: int) -> Array[Color]:
 		Country.PINEWOOD: return [P.SLATE[2].lerp(P.SPRUCE[2], 0.3), P.SLATE[1], P.MOSS[2].lerp(P.SPRUCE[3], 0.4)]
 		Country.SNOWFIELD: return [P.SLATE[3].lerp(P.RIME[3], 0.3), P.SLATE[2], P.RIME[5]]
 		Country.BONELANDS: return [P.LINEN[3], P.LINEN[2], P.LINEN[4]]
-		Country.BURNING: return [P.INK[3], P.STONE[0], P.RUST[2]]
+		Country.BURNING: return [P.STONE[1], P.STONE[0], P.RUST[2]]
 	return [P.SLATE[3], P.SLATE[2], P.LINEN[3]]
 
 

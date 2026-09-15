@@ -184,7 +184,7 @@ static func vent(k: Kit, v: int, _c: int) -> void:
 	if v % 2 == 0:
 		# A vent in the ground: a clinker cone, a glowing mouth, a sulphur crust.
 		k.stone(0, -0.06, 0, 0.65, 0.45, 11001, P.STONE[0], 8, 0.0, P.INK[2])
-		k.stone(0.14, -0.06, 0.22, 0.4, 0.26, 11002, P.INK[2], 7, 0.2)
+		k.stone(0.14, -0.06, 0.22, 0.4, 0.26, 11002, P.STONE[1], 7, 0.2)
 		k.made.prism(0, 0.32, 0, 0.2, 0.44, 0.14, 8, P.INK[1], GroundColors.glow(P.EMBER[3], 1.3))
 		k.made.prism(0, 0.44, 0, 0.1, 0.446, 0.1, 8, P.EMBER[4], GroundColors.glow(P.EMBER[5], 1.6))
 		for i in 7:
@@ -197,7 +197,7 @@ static func vent(k: Kit, v: int, _c: int) -> void:
 			k.fleck(p, p + Vector3(0.05, 0.0, 0.02), p + Vector3(0.01, 0.02, 0.05), GroundColors.glow(P.EMBER[3], 0.8))
 	else:
 		# FOUND: a flanged pipe, bolted, still breathing heat.
-		k.stone(0, -0.08, 0, 0.55, 0.16, 11011, P.STONE[0], 8, 0.0, P.INK[3])
+		k.stone(0, -0.08, 0, 0.55, 0.16, 11011, P.STONE[0], 8, 0.0, P.STONE[1])
 		k.found.prism(0, 0.0, 0, 0.22, 0.5, 0.22, 12, P.PLATE[2])
 		k.found.prism(0, 0.5, 0, 0.3, 0.58, 0.3, 12, P.PLATE[3], P.PLATE[4])
 		k.found.prism(0, 0.0, 0, 0.3, 0.06, 0.3, 12, P.PLATE[1], P.PLATE[2])

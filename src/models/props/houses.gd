@@ -394,7 +394,7 @@ static func ruin(k: Kit, v: int, c: int) -> void:
 	if c == Country.BONELANDS:
 		stone = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.STONE[3]]
 	elif c == Country.BURNING:
-		stone = [P.INK[3], P.STONE[0], P.STONE[1], P.INK[2]]
+		stone = [P.STONE[1], P.STONE[0], P.ASH[1], P.STONE[0]]
 	var s := 1700 + v * 31
 	var runs: Array = []
 	match v % 3:

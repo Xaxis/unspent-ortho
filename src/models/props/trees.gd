@@ -48,7 +48,7 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 			lean = Vector2(0.09 if c == Country.COAST else 0.13, 0.02)
 			height *= 0.85
 		Country.BURNING:
-			greens = [P.INK[2], P.INK[3], P.EARTH[1]]
+			greens = [P.STONE[0], P.ASH[1], P.EARTH[1]]
 			under = P.INK[1]
 			trunk = P.INK[1]
 			tiers = maxi(2, tiers - 1)
@@ -63,7 +63,7 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 	k.limb(Vector3.ZERO, top, 0.11, 0.03, 5, trunk, Vector3(Kit.j(s, 3, 0.05), 0, Kit.j(s, 4, 0.05)))
 	for i in 3:
 		var a := float(i) / 3.0 * TAU + Kit.j(s, 10 + i, 0.5)
-		k.limb(Vector3(0, 0.14, 0), Vector3(cos(a) * 0.24, -0.02, sin(a) * 0.24), 0.05, 0.02, 4, trunk)
+		k.spike(Vector3(0, 0.14, 0), Vector3(cos(a) * 0.24, -0.02, sin(a) * 0.24), 0.05, 3, trunk)
 	var start := k.made.vertex_count()
 	var y0 := height * 0.2
 	var y1 := height * 0.8
@@ -76,11 +76,11 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 		var col := greens[mini(2, int(f * 2.99))]
 		var cx := lean.x * y + Kit.j(s, 20 + t, 0.04)
 		var cz := lean.y * y + Kit.j(s, 30 + t, 0.04)
-		k.tier(cx, y, cz, r, rise, points, droop, s + t * 11, col, under)
+		k.tier(cx, y, cz, r, rise, points, droop, s + t * 11, col, under if t == 0 else Color(0, 0, 0, 0))
 		if snow and c != Country.BURNING:
 			# Snow lies on the upper face of each tier; the green shows at the rim.
 			var sr := r * (0.78 if laden else 0.62)
-			k.tier(cx + Kit.j(s, 40 + t, 0.02), y + droop * 0.35 + 0.03, cz, sr, rise * 0.62, points, droop * 0.7, s + t * 11 + 5, P.RIME[5], P.RIME[4])
+			k.tier(cx + Kit.j(s, 40 + t, 0.02), y + droop * 0.35 + 0.03, cz, sr, rise * 0.62, points, droop * 0.7, s + t * 11 + 5, P.RIME[5], Color(0, 0, 0, 0))
 	k.sway_by_height(start, y0 - 0.1, height, 0.7)
 	if v % 4 == 3 and not laden:
 		# A dead spike where the leader broke.
@@ -264,7 +264,7 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 	var s := 5000 + v * 23 + c
 	var greens: Array[Color] = [P.SPRUCE[2], P.MOSS[2], P.SPRUCE[2].lerp(P.MOSS[3], 0.5)]
 	if c == Country.BURNING:
-		greens = [P.EARTH[1], P.INK[3], P.EARTH[2]]
+		greens = [P.EARTH[1], P.ASH[1], P.EARTH[2]]
 	elif c == Country.SNOWFIELD:
 		greens = [P.SPRUCE[1], P.SPRUCE[1], P.SPRUCE[2]]
 	var start := k.made.vertex_count()

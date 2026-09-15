@@ -98,7 +98,8 @@ static func _make(g: int, c: int) -> Color:
 		Ground.GRASS:
 			match c:
 				Country.MOSS: return P.MOSS[2]
-				Country.PINEWOOD: return _m(P.MOSS[2], P.SPRUCE[2], 0.5)
+				# A clearing: the light gets in.
+				Country.PINEWOOD: return _m(P.MOSS[3], P.SPRUCE[3], 0.45)
 				# Frost-bitten turf between drifts.
 				Country.SNOWFIELD: return _m(P.MOSS[3], P.ASH[3], 0.55)
 				# Bleached sheep-bitten grass on the limestone.
@@ -142,18 +143,18 @@ static func _make(g: int, c: int) -> Color:
 		Ground.SCREE:
 			match c:
 				Country.BONELANDS: return _m(P.SLATE[3], P.LINEN[3], 0.35)
-				Country.BURNING: return P.INK[3]
+				Country.BURNING: return P.STONE[1]
 			return P.SLATE[3]
 		Ground.ROCK:
 			match c:
 				Country.BONELANDS: return _m(P.LINEN[3], P.SLATE[3], 0.4)
-				Country.BURNING: return _m(P.INK[3], P.STONE[1], 0.5)
+				Country.BURNING: return _m(P.STONE[1], P.ASH[1], 0.5)
 				Country.SNOWFIELD: return _m(P.SLATE[3], P.RIME[3], 0.4)
 				Country.MOSS: return _m(P.SLATE[2], P.SPRUCE[2], 0.35)
 				Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.25)
 			return P.SLATE[3]
 		Ground.ASH: return P.ASH[2]
-		Ground.CLINKER: return _m(P.INK[3], P.STONE[1], 0.5)
+		Ground.CLINKER: return _m(P.STONE[1], P.ASH[1], 0.4)
 	return P.BLOOM[3]
 
 
@@ -190,7 +191,7 @@ static func _make_cliff(g: int, c: int) -> Color:
 		Country.PINEWOOD: return _m(P.SLATE[1], P.SPRUCE[1], 0.4)
 		Country.SNOWFIELD: return _m(P.SLATE[2], P.RIME[2], 0.5)
 		Country.BONELANDS: return P.LINEN[3]
-		Country.BURNING: return P.INK[2]
+		Country.BURNING: return P.STONE[0]
 	return P.SLATE[2]
 
 

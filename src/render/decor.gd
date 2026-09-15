@@ -66,6 +66,12 @@ func _init(w: WorldData) -> void:
 	_table(Ground.CLINKER, 0.45, [GLASS, 26, CINDER, 40])
 	_table(Ground.ROCK, 0.35, [LICHEN, 30, STONE, 34, TUFT, 6])
 	_table(Ground.ROAD, 0.08, [PEBBLES, 10, TUFT, 3])
+	# Country versions of a ground, keyed ground * 8 + country + 1000.
+	_table(Ground.GRASS * 8 + Country.PINEWOOD + 1000, 1.2, [FERN, 30, BRACKEN, 26, TUFT_TALL, 14, MUSHROOM, 4, CONE, 6])
+	_table(Ground.GRASS * 8 + Country.SNOWFIELD + 1000, 0.7, [SNOW_TUFT, 30, TUFT, 20, CROTTLE, 6])
+	_table(Ground.GRASS * 8 + Country.BONELANDS + 1000, 1.0, [TUFT, 40, FLOWER, 14, STONE, 10, THISTLE, 6, BONE, 2])
+	_table(Ground.GRASS * 8 + Country.BURNING + 1000, 0.6, [TWIG, 20, ASH_FLAKE, 30, TUFT, 12, CINDER, 10])
+	_table(Ground.GRASS * 8 + Country.MOSS + 1000, 1.2, [SEDGE, 30, TUFT_TALL, 20, BOG_COTTON, 14, SPHAGNUM, 8])
 
 
 func _table(g: int, density: float, pairs: Array) -> void:
@@ -113,7 +119,7 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 			if not ok:
 				continue
 			var g := k & 0xFF
-			var table: Array = _tables.get(g, [])
+			var table: Array = _tables.get(g * 8 + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
 			if table.is_empty():
 				continue
 			var count := int(float(table[2]) + _rng.randf())
@@ -225,7 +231,7 @@ static func grass(c: int) -> Array[Color]:
 static func rock_of(c: int) -> Color:
 	match c:
 		Country.BONELANDS: return P.LINEN[3]
-		Country.BURNING: return P.INK[3]
+		Country.BURNING: return P.STONE[1]
 		Country.SNOWFIELD: return P.SLATE[2]
 		Country.MOSS, Country.PINEWOOD: return P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	return P.SLATE[2]

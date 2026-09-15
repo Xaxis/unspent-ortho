@@ -37,6 +37,19 @@ func still() -> void:
 
 # --- MADE shapes -------------------------------------------------------------
 
+## A thin tapering spike from a to b, one segment, no cap: roots, twigs.
+func spike(a: Vector3, b: Vector3, r: float, sides: int, col: Color) -> void:
+	var axis := b - a
+	var length := axis.length()
+	if length < 1e-5:
+		return
+	var up := axis / length
+	var side := up.cross(Vector3.FORWARD if absf(up.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT).normalized()
+	made.push(Transform3D(Basis(side, up, side.cross(up)), a))
+	made.prism(0, 0, 0, r, length, 0.0, sides, col)
+	made.pop()
+
+
 ## A tapered, slightly bent limb from a to b: trunks, branches, posts, logs.
 func limb(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Color, bend: Vector3 = Vector3.ZERO) -> void:
 	var mid := a.lerp(b, 0.5) + bend
@@ -107,7 +120,8 @@ func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int,
 
 
 ## One tier of a conifer: a jagged star of drooping branch tips round an
-## off-centre apex, with a darker skirt underneath. Never a smooth cone.
+## off-centre apex. Never a smooth cone. The camera never sees under a tier, so
+## only the lowest (`under` alpha > 0) gets a darker skirt, for its shadow rim.
 func tier(cx: float, y_rim: float, cz: float, r: float, rise: float, points: int, droop: float, seed_value: int, col: Color, under: Color) -> void:
 	var rot := Rng.hash01(seed_value, 61) * TAU
 	var ring: Array[Vector3] = []
@@ -125,7 +139,8 @@ func tier(cx: float, y_rim: float, cz: float, r: float, rise: float, points: int
 	for i in n:
 		var m := (i + 1) % n
 		made.tri(apex, ring[m], ring[i], col if i % 2 == 0 else tone(col, 0.93))
-		made.tri(hub, ring[i], ring[m], under)
+		if under.a > 0.0 and i % 2 == 0:
+			made.tri(hub, ring[i], ring[(i + 2) % n], under)
 
 
 ## A small two-sided triangle: a fleck of flower, ember, shell, chip.

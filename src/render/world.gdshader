@@ -233,7 +233,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float edge = v.y - v.x;
 		float gate = ink_vnoise(wp * 1.1 + 4.0);
 		if (edge < 0.04 && gate > 0.42) {
-			c = gate > 0.74 ? MOSS2 : INK3;
+			c = gate > 0.74 ? MOSS2 : LINEN1;
 		} else if (edge < 0.075 && gate > 0.42) {
 			c = up(c, 0.3);
 		} else if (v.z > 0.9 && edge > 0.3 && edge < 0.34 && mod(px.x, 3.0) < 1.0) {
@@ -321,6 +321,11 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 	} else if (m == 50) {
 		// NEEDLES: a brown floor swept into long curves by something on its
 		// round: the contours of a slow field, drawn faint and broken.
+		// Shafts of light fall through the canopy as long pale bands.
+		float shaft = ink_vnoise(vec2(dot(wp, vec2(0.7, 0.7)) * 0.07, dot(wp, vec2(-0.7, 0.7)) * 0.55));
+		if (shaft > 0.66 || (shaft > 0.63 && ink_hash(px + 3.0) < 0.5)) {
+			c = up(c, 0.35);
+		}
 		float f = ink_vnoise(wp * 0.07) * 0.8 + ink_vnoise(wp * 0.21) * 0.2;
 		float arc = fract(f * 9.0);
 		float gate = ink_vnoise(wp * 0.6 + 2.0);
@@ -469,7 +474,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		float cx = floor((px.x + floor(ink_hash(vec2(floor(y / 0.35), 1.0)) * 3.0)) / 5.0);
 		float lx = px.x - cx * 5.0;
 		float h = ink_hash(vec2(cx, floor((y + ink_hash(vec2(cx, 2.0)) * 0.4) / 0.45)));
-		c = h < 0.33 ? INK2 : (h < 0.7 ? STONE0 : INK3);
+		c = h < 0.33 ? STONE0 : (h < 0.7 ? mix(STONE0, STONE1, 0.5) : STONE1);
 		if (lx < 1.0) {
 			c = up(c, 0.6);
 		} else if (lx > 3.5) {
