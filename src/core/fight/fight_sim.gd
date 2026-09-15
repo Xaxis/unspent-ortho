@@ -649,6 +649,7 @@ func _wake(m: MobState) -> void:
 	m.calm_until = 0.0
 	m.crowded_since = -1.0
 	m.crowd_warned = false
+	m.via = Vector2.INF
 	if m.disposition == &"indifferent" and not m.disturbed:
 		m.disturbed = true
 		emit(&"disturbed", {"mob": m})

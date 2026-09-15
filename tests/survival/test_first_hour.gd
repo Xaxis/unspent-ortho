@@ -54,9 +54,28 @@ func test_what_is_put_down_lies_on_a_heap_that_use_takes_back() -> void:
 	eq(g.inventory.count(&"driftwood"), 4, "all the wood")
 	eq(g.inventory.count(&"knife"), 1, "and the knife")
 	eq(g.inventory.edge(&"knife"), 5000, "as worn as it was left")
+	eq(g.inventory.held, &"knife", "and back in the empty hand")
 	near(g.clock.minutes, t0, 0.001, "no time")
 	check(g.world.depleted.has(heap.id), "the heap is gone")
 	check(Survival.heap_near(g) == null, "and nothing is left to take")
+	Fx.done(g)
+
+
+func test_a_heap_can_be_left_under_the_trees() -> void:
+	var g := Fx.flat()
+	for off: Vector2 in [Vector2(1.1, 0.4), Vector2(1.0, -0.6), Vector2(-0.3, 1.2), Vector2(-1.1, -0.4), Vector2(0.2, -1.3)]:
+		Fx.put(g, PropKind.BROADLEAF, off)
+	eq(Survival.drop(g, &"knife", 1), 1, "in a grove, still somewhere to put it")
+	var heap := Survival.heap_near(g)
+	check(heap != null, "a heap under the crowns")
+	if heap != null:
+		g.player.facing += PI
+		eq(Survival.use_target(g), heap, "turned away, the heap at your feet is still what E takes")
+		g.player.facing -= PI
+		eq(Survival.use_target(g), heap, "before the tree in front of you")
+		for q in g.query.props_near(heap.pos, 2.0):
+			if q != heap:
+				gt(q.pos.distance_to(heap.pos), q.solid + heap.solid, "clear of every trunk")
 	Fx.done(g)
 
 

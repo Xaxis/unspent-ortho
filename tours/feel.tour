@@ -2,7 +2,8 @@
 # wake and read the goal, a worker on its round seen across the fields,
 # gather, lay a fire, set charcoal going and walk off while it cooks, a pick
 # before noon, the first meeting won by reading the runner's tell and
-# striking its working side, a slide round a tree, and something put down.
+# striking its working side, a slide round a tree, and something put down and
+# taken back. tours/wild.tour is the same first minutes with nothing scripted.
 #   TOUR_TIMEOUT=420 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1
 # (--give brings the tip's plate and tops the wood up, as core_loop does.)
 #
@@ -135,7 +136,12 @@ shot 15-before-the-tree
 walk 1,0 1.4 run
 wait 0.2
 shot 16-slid-round-the-tree
-# Something put down: hold X, and what is in hand is left.
+# Something put down: hold X, and the knife in hand is left on a heap (the
+# pick is carried, so it is not the only blade). E takes it back.
 press drop 0.8
 wait 0.3
 shot 17-put-down
+press use 0.1
+await took 2
+wait 0.3
+shot 18-taken-back

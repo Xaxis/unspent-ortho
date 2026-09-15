@@ -45,6 +45,8 @@ extends RefCounted
 ## --explore=N         the map remembers N tiles of wandering from the start (ui)
 ## --ui-demo           ui shots: sample recipes, a message, a spent body (ui)
 ## --tour=PATH         play a tour (src/systems/98_tour.gd) and quit
+## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
+##                     must be survived through real play fails if it is not (fight)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -86,6 +88,7 @@ var screen := ""
 var explore := 0
 var ui_demo := false
 var tour := ""
+var fail_downed := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -142,5 +145,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"explore": o.explore = v.to_int()
 			"ui-demo": o.ui_demo = true
 			"tour": o.tour = v
+			"fail-downed": o.fail_downed = true
 			_: push_warning("unknown option --%s" % k)
 	return o

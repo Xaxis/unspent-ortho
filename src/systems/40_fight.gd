@@ -230,18 +230,18 @@ func _handle(events: Array[Dictionary]) -> void:
 				# A worker stopped by someone standing in its way: it says so before it acts.
 				var m: MobState = e.mob
 				Events.sfx.emit(&"alert", _at3(m.pos))
+				if not _crowd_told:
+					# The first time in a game, said as it stops, with the time to act on it.
+					_crowd_told = true
+					Events.message.emit(CROWD_LINE)
 			&"crowd_warning":
-				# Half way to taking it as interference: its part flares, a ring goes out
-				# from it, and the first time in a game it is said what it wants.
+				# Half way to taking it as interference: its part flares and a ring goes out from it.
 				var m: MobState = e.mob
 				Events.sfx.emit(&"alert", _at3(m.pos))
 				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.7)
 				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 0.9, 0.4)
 				if m.node is Mob:
 					(m.node as Mob).flash(0.08)
-				if not _crowd_told:
-					_crowd_told = true
-					Events.message.emit(CROWD_LINE)
 			&"disturbed":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"second_act", _at3(m.pos))
@@ -425,6 +425,9 @@ func _on_outcome(e: Dictionary) -> void:
 	var player := game.player
 	var hero := sim.hero
 	Events.fight_ended.emit(outcome)
+	if game.options.fail_downed and (outcome == &"downed" or outcome == &"carried"):
+		printerr("ERROR fight: the player was %s (--fail-downed)" % outcome)
+		get_tree().quit(1)
 	match outcome:
 		&"downed":
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")

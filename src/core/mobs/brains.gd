@@ -17,6 +17,11 @@ const ERRAND_REST_MS := 4000
 const BLOCKED_SHARE := 0.35
 ## Radians off its facing a machine's close bite may be thrown at.
 const FACING_BITE := 0.6
+## A worker goes round someone standing on its round this far ahead (tiles),
+## passing them with this much room past both bodies.
+const GO_ROUND_AHEAD := 6.0
+const GO_ROUND_CLEAR := 0.9
+const VIA_RETRY_MS := 4000.0
 
 
 static func think(m: MobState, sim: FightSim) -> void:
@@ -84,17 +89,19 @@ static func strike_range(m: MobState, sim: FightSim) -> float:
 
 
 static func _idle(m: MobState, sim: FightSim) -> void:
-	if m.machine and m.indifferent() and FightSim.in_way_of(m, sim.hero.pos, sim.hero.radius):
-		# Held up by someone on its path: it stands and faces them. A glance does
-		# not stop or turn it; only being in its way does.
-		m.want = Vector2.ZERO
-		m.aim = (sim.hero.pos - m.pos).angle()
-		return
+	if m.machine and m.indifferent():
+		if FightSim.in_way_of(m, sim.hero.pos, sim.hero.radius):
+			# Held up by someone right in front of it: it stands and faces them. A
+			# glance does not stop or turn it; only being in its way does.
+			m.want = Vector2.ZERO
+			m.aim = (sim.hero.pos - m.pos).angle()
+			return
+		_go_round(m, sim)
 	if m.machine:
 		if m.line_a.distance_squared_to(m.line_b) < 0.01:
 			m.want = Vector2.ZERO
 			return
-		_walk_line(m, m.pace * 0.6)
+		_walk_line(m, m.pace * 0.6, sim.now)
 		return
 	# Animals graze about home: a hashed heading for a second in every three.
 	var slot := floori(sim.now / 3000.0)
@@ -110,7 +117,53 @@ static func _idle(m: MobState, sim: FightSim) -> void:
 	m.aim = dir.angle()
 
 
-static func _walk_line(m: MobState, speed: float) -> void:
+## Someone standing on its round further ahead: a worker goes round them, by a
+## point beside them on the side they are not, on ground it can stand on. It is
+## only held up (and only then takes it amiss) by someone who steps right in
+## front of it.
+static func _go_round(m: MobState, sim: FightSim) -> void:
+	if m.via.is_finite():
+		if m.pos.distance_to(m.via) < 0.4:
+			m.via = Vector2.INF
+		return
+	if sim.now < m.via_retry_at:
+		return
+	var dir := m.path_dir()
+	if dir == Vector2.ZERO:
+		return
+	var hero := sim.hero
+	var off := hero.pos - m.pos
+	var along := off.dot(dir)
+	var across := off.dot(dir.orthogonal())
+	var near := m.radius + hero.radius + FightSim.CROWD_AHEAD
+	if along <= near or along > GO_ROUND_AHEAD or absf(across) >= m.radius + hero.radius + GO_ROUND_CLEAR:
+		return
+	var clear := m.radius + hero.radius + GO_ROUND_CLEAR
+	var first := -1.0 if across > 0.0 else 1.0
+	for side: float in [first, -first]:
+		var p := hero.pos + dir.orthogonal() * side * clear + dir * (m.radius + 0.5)
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if sim.world != null and (not sim.world.in_bounds(t.x, t.y) or Ground.is_water(sim.world.ground_at(t.x, t.y))):
+			continue
+		if sim.query != null and not sim.query.standable(t.x, t.y):
+			continue
+		m.via = p
+		return
+
+
+static func _walk_line(m: MobState, speed: float, now: float = 0.0) -> void:
+	if m.via.is_finite():
+		var to_via := m.via - m.pos
+		if m.pos.distance_to(m.last_think_pos) < speed * 0.064 * 0.2 and m.speed < 0.05 and m.want.length() > 0.0:
+			# Something stops it going round: it stands a beat, then keeps to its round
+			# (turning back if that is blocked too) and does not try again for a while.
+			m.via = Vector2.INF
+			m.via_retry_at = now + VIA_RETRY_MS
+			m.want = Vector2.ZERO
+			return
+		m.want = to_via.normalized() * speed if to_via.length() > 0.05 else Vector2.ZERO
+		m.aim = to_via.angle()
+		return
 	var target := m.line_b if m.line_to_b else m.line_a
 	var to := target - m.pos
 	if to.length() < 0.3 or (m.pos.distance_to(m.last_think_pos) < speed * 0.064 * 0.2 and m.speed < 0.05 and m.want.length() > 0.0):

@@ -173,9 +173,11 @@ func test_struck_a_worker_turns_on_the_player() -> void:
 	check(h.roused(), "and roused")
 
 
+## Right in front of its hull (stepped into its way, head on), a worker is held
+## up: it stops, warns, and only then takes it as interference.
 func test_stood_in_its_way_a_worker_warns_then_turns_on_the_player() -> void:
 	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
-	var h := sim.add_mob(&"hauler", Vector2(23.0, 20.5))
+	var h := sim.add_mob(&"hauler", Vector2(20.5 + 0.6 + 0.28 + 0.9, 20.5))
 	h.facing = PI
 	h.aim = PI
 	h.line_a = Vector2(30.5, 20.5)
@@ -201,6 +203,33 @@ func test_stood_in_its_way_a_worker_warns_then_turns_on_the_player() -> void:
 	check(disturbed_at > warned_at, "and, left there, takes it as interference")
 	gt(disturbed_at - crowded_at, FightSim.CROWD_MS - 150.0, "only after being held up %d ms" % FightSim.CROWD_MS)
 	gt(disturbed_at - warned_at, FightSim.CROWD_MS * 0.5 - 150.0, "with half of that to step aside")
+
+
+## A player who stands still on a worker's round, and a worker coming along it
+## from well off: it goes round them and on its way, and never takes it amiss.
+func test_a_worker_goes_round_a_player_standing_on_its_round() -> void:
+	for kind: StringName in [&"hauler", &"harvester"]:
+		var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+		var h := sim.add_mob(kind, Vector2(32.5, 20.5))
+		h.line_a = Vector2(32.5, 20.5)
+		h.line_b = Vector2(8.5, 20.5)
+		h.line_to_b = true
+		h.facing = PI
+		h.aim = PI
+		var bad := 0
+		var passed := false
+		for i in 900:
+			F.ms(sim, 16)
+			sim.hero.health = FightRules.HEALTH
+			for e in sim.drain():
+				if e.type in [&"crowded", &"crowd_warning", &"disturbed", &"hurt"]:
+					bad += 1
+			if h.pos.x < 16.5:
+				passed = true
+				break
+		eq(bad, 0, "%s: never held up, warned, disturbed or touched" % kind)
+		check(passed, "%s went round the player and on along its round (at %s)" % [kind, h.pos])
+		check(h.indifferent(), "%s still at its work" % kind)
 
 
 ## A harvester on its round, and a player who walks up from the side to look at
@@ -233,7 +262,9 @@ func test_walking_up_to_look_at_a_worker_never_disturbs_it() -> void:
 					bad += 1
 		eq(bad, 0, "%.1f tiles beside its round: never warned or disturbed" % across)
 		check(h.indifferent() and not h.roused(), "still at its work")
-		eq(turned, 0, "a glance never turned its hull off its row while it walked")
+		if across >= h.radius + sim.hero.radius + Brains.GO_ROUND_CLEAR:
+			# (Nearer its row it goes round the player: a turn it chooses, not a glance.)
+			eq(turned, 0, "a glance never turned its hull off its row while it walked")
 
 
 func test_looked_at_a_worker_walks_on_without_stopping() -> void:

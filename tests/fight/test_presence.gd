@@ -146,9 +146,58 @@ func test_workers_cross_the_land_in_view_and_leave_a_still_player_be() -> void:
 			break
 	check(seen, "the player sees it go by")
 	gt(nearest, Spawner.PATROL_PASS_MIN - 1.5, "at a distance (%.1f)" % nearest)
+	check(p.removed, "and, its crossing done, it comes off the land out of sight")
 	eq(sim.fight_on, false, "no fight")
 
 
 func test_a_patrol_is_culled_further_out_than_a_hunter() -> void:
 	check(not Spawner.should_cull(Vector2(30, 0), Vector2.ZERO, true), "a patrol at 30 stays")
 	check(Spawner.should_cull(Vector2(30, 0), Vector2.ZERO, false), "a hunter at 30 goes")
+
+
+func test_the_first_meeting_is_alone() -> void:
+	var c := _coast()
+	var sim := c.sim
+	sim.now = Coast.FIRST_MEETING_MS + 10.0
+	var worker := sim.add_mob(&"hauler", sim.hero.pos + Vector2(8, 0))
+	worker.line_a = worker.pos
+	worker.line_b = worker.pos
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 0, "not with a worker eight tiles off")
+	sim.remove_mob(worker)
+	sim.now += Coast.FIRST_RETRY_MS
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 1, "alone, it comes")
+	for p: MobState in sim.mobs.filter(func(m: MobState) -> bool: return m.patrol):
+		sim.remove_mob(p)
+	sim.slices(1)
+	sim.now += Coast.PATROL_EVERY_MS * 3.0
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.patrol and not m.removed).size(), 0, "and no patrol is put out while it is on")
+
+
+## A patrol turned back by something in its way turns back; one that reached the
+## end of its line in sight carries on. Neither stands pacing on one spot.
+func test_a_patrol_blocked_on_its_round_turns_back_and_goes_on() -> void:
+	var c := _coast()
+	var sim := c.sim
+	var w := sim.world
+	# A cliff across its way two tiles on.
+	for y in range(40, 58):
+		w.level[y * w.size + 60] = 6
+	var m := sim.add_mob(&"hauler", Vector2(56.5, 48.5))
+	m.line_a = Vector2(44.5, 48.5)
+	m.line_b = Vector2(70.5, 48.5)
+	m.line_to_b = true
+	m.patrol = true
+	m.put_out_at = sim.now
+	c.rounds = false
+	var start := m.pos
+	var furthest := 0.0
+	for i in 20 * 60:
+		sim.slices(2)
+		c.tick()
+		if m.removed:
+			break
+		furthest = maxf(furthest, start.distance_to(m.pos))
+	gt(furthest, 6.0, "it turned back and went on its way (%.1f tiles)" % furthest)

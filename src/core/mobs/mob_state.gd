@@ -96,9 +96,16 @@ var glance_until := -INF
 var crowded_since := -1.0
 ## It has warned the player standing in its way (half way to taking it as interference).
 var crowd_warned := false
+## A point beside someone standing on its round that it walks to first, going
+## round them (Vector2.INF: none).
+var via := Vector2.INF
+## Sim ms before which it will not try going round again (the last way round was blocked).
+var via_retry_at := 0.0
 ## Put out by the coast to be seen on its round (a patrol), or as the first meeting.
 var patrol := false
 var first_meeting := false
+## Times a patrol has carried its round on past the end of its line (Coast).
+var legs := 0
 ## Sim ms it was put out on the coast (patrols come off the land after a while).
 var put_out_at := 0.0
 ## Last time this body moved meaningfully (for the view's walk cycle).
@@ -211,6 +218,8 @@ func turn_rate_at(now: float) -> float:
 ## that stands. At the end of a leg it is the next leg: a worker about to turn
 ## back is about to come the other way.
 func path_dir() -> Vector2:
+	if via.is_finite() and via.distance_to(pos) >= 0.3:
+		return (via - pos).normalized()
 	if line_a.distance_squared_to(line_b) < 0.01:
 		return Vector2.ZERO
 	var target := line_b if line_to_b else line_a

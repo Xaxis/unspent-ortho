@@ -26,6 +26,8 @@ const PATROL_EVERY_MS := 3000.0
 ## A patrol this long out comes off the land once the camera cannot see it,
 ## so another can cross somewhere else.
 const PATROL_LIFE_MS := 45000.0
+## Times a patrol still in sight at the end of its line carries on over the land.
+const PATROL_LEGS := 2
 ## The first meeting comes this long into a game (sim ms), tried again every
 ## FIRST_RETRY_MS until there is ground for it.
 const FIRST_MEETING_MS := 75000.0
@@ -33,6 +35,11 @@ const FIRST_RETRY_MS := 2000.0
 ## The kind the first meeting is, and nothing hostile nearer than this when it comes.
 const FIRST_KIND := &"runner"
 const FIRST_CLEAR := 24.0
+## A first meeting is one machine: no worker on its round nearer the player
+## than this when it comes (a hunter no nearer than FIRST_CLEAR), no patrol put
+## out while it is on, nor in the FIRST_HUSH_MS before it is due.
+const FIRST_ALONE := 8.0
+const FIRST_HUSH_MS := 20000.0
 ## The first meeting waits for a player at this health or more, and this long
 ## (sim ms) after any fight ended.
 const FIRST_MIN_HEALTH := 9
@@ -89,7 +96,21 @@ func tick() -> void:
 		_first_meeting()
 	for m in sim.mobs:
 		var gone := Spawner.should_cull(m.pos, sim.hero.pos, m.patrol and not m.roused())
-		if not gone and m.patrol and not m.roused() and sim.now - m.put_out_at > PATROL_LIFE_MS and m.alive:
+		# A patrol is a crossing: once it has walked its round to the end (or been
+		# out long), it comes off the land as soon as the camera cannot see it,
+		# rather than pacing back and forth past the player.
+		if m.patrol and m.alive and not m.roused() and not m.line_to_b and m.legs < PATROL_LEGS \
+				and m.pos.distance_to(m.line_b) < 1.0 and spawner.in_view(sim.hero.pos, m.pos, 2.0):
+			# At the end of its line (not turned back by something in its way) and still
+			# in sight: it carries on the same way, off over the land, rather than
+			# turning back past the player.
+			var on := (m.line_b - m.line_a).normalized()
+			m.line_a = m.line_b
+			m.line_b = m.line_b + on * Spawner.PATROL_LENGTH * 0.5
+			m.line_to_b = true
+			m.legs += 1
+		var crossed := not m.line_to_b or m.legs > 0 or sim.now - m.put_out_at > PATROL_LIFE_MS
+		if not gone and m.patrol and not m.roused() and m.alive and crossed:
 			gone = not spawner.in_view(sim.hero.pos, m.pos, 2.0)
 		if gone:
 			if m.snatched and not m.reported and m.row.get("hits", {}).get("files", false):
@@ -125,7 +146,7 @@ func shut() -> Dictionary:
 
 ## Keep one worker on its round within sight of the land about the player.
 func _patrols() -> void:
-	if sim.now < _patrol_at:
+	if sim.now < _patrol_at or first_meeting == 0 or sim.fight_on or _first_due():
 		return
 	_patrol_at = sim.now + PATROL_EVERY_MS
 	for m in sim.mobs:
@@ -164,8 +185,10 @@ func _first_meeting() -> void:
 	if not ready_for_first_meeting():
 		return
 	for m in sim.mobs:
-		if m.alive and not m.removed and not m.indifferent() and m.row.get("hostile", true) \
-				and Senses.chebyshev(m.pos, sim.hero.pos) <= FIRST_CLEAR:
+		if not m.alive or m.removed or not m.row.get("hostile", true):
+			continue
+		var d := Senses.chebyshev(m.pos, sim.hero.pos)
+		if d <= FIRST_ALONE or (not m.indifferent() and d <= FIRST_CLEAR):
 			return
 	if Spawner.green_distance(sim.world, sim.hero.pos) < Spawner.FIRST_GREEN - 2.0:
 		return
@@ -190,6 +213,13 @@ func _first_meeting() -> void:
 	_first_mob = m
 	first_meeting = 0
 	sim.emit(&"first_meeting", {"mob": m})
+
+
+## The first meeting is due and the player is where it could come: a new
+## patrol would only stand in its way.
+func _first_due() -> bool:
+	return first_meeting < 0 and sim.now >= _first_try_at - FIRST_HUSH_MS and sim.moment.day() <= 1 \
+			and Spawner.green_distance(sim.world, sim.hero.pos) >= Spawner.FIRST_GREEN - 2.0
 
 
 ## The player is fit for a first meeting: health enough to take a bite or two,

@@ -207,11 +207,18 @@ static func use_target(game: Game) -> WorldProp:
 		if edge > reach:
 			continue
 		var dot := ahead.dot(to.normalized()) if to.length() > 0.01 else 1.0
-		# Something you are pressed against counts even a little to the side.
-		if dot < CONE and not (edge < 0.35 and dot > -0.2):
+		# Something you are pressed against counts even a little to the side; your
+		# own heap at your feet counts whichever way you face.
+		var mine := state.left.has(q.id) and edge < HEAP_REACH
+		if dot < CONE and not (edge < 0.35 and dot > -0.2) and not mine:
 			continue
 		var score := edge + (1.0 - dot) * 0.6
-		if not state.left.has(q.id) and not _choose(game, state, q).ok:
+		if mine:
+			# What the player left at their feet comes first: it is what they turned back for.
+			score = edge - 1.0
+		elif state.left.has(q.id):
+			score -= 0.5
+		elif not _choose(game, state, q).ok:
 			score += 0.8
 		if score < best_score:
 			best_score = score
@@ -692,11 +699,11 @@ static func drop(game: Game, id: StringName, n: int = 1) -> int:
 	var state := SurvivalState.of(game)
 	var heap := heap_near(game)
 	if heap == null:
-		var spot := _build_spot(game, PropKind.CAIRN)
+		var spot := _heap_spot(game)
 		if spot.x < -1e8:
 			Events.message.emit("Not here.")
 			return 0
-		heap = add_prop(game, PropKind.CAIRN, spot)
+		heap = add_prop(game, PropKind.CAIRN, spot, NAN, HEAP_SCALE)
 		state.left[heap.id] = {}
 	if id == &"lamp" and game.body.lamp_lit and k >= have:
 		game.body.lamp_lit = false
@@ -713,6 +720,37 @@ static func drop(game: Game, id: StringName, n: int = 1) -> int:
 	Events.sfx.emit(&"took", game.world.to_3d(heap.pos))
 	Events.message.emit("Left %s." % _count_words(id, k))
 	return k
+
+
+## A heap is a small cairn: a few stones over what was left.
+const HEAP_SCALE := 0.6
+## A heap this close (edge, tiles) is found by `use` whichever way the player faces.
+const HEAP_REACH := 0.8
+
+
+## Where a heap goes: just in front of the player, else anywhere round them, on
+## their own level, dry, and clear of trunks and rocks (a heap may lie under a
+## crown, unlike a fire). Vector2(-INF) if nowhere.
+static func _heap_spot(game: Game) -> Vector2:
+	var p := game.player.pos
+	var w := game.world
+	var here := w.level_at(floori(p.x), floori(p.y))
+	var radius: float = PropKind.SOLID[PropKind.CAIRN] * HEAP_SCALE
+	for turn: float in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.5, -2.5, PI]:
+		var at := p + Vector2.from_angle(game.player.facing + turn) * (Tuning.PLAYER_RADIUS + radius + 0.15)
+		var t := Vector2i(floori(at.x), floori(at.y))
+		if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)) or w.level_at(t.x, t.y) != here:
+			continue
+		var clear := true
+		for q in game.query.props_near(at, 2.0):
+			if w.depleted.has(q.id) or q.solid <= 0.0:
+				continue
+			if q.pos.distance_to(at) < q.solid + radius + 0.05:
+				clear = false
+				break
+		if clear:
+			return at
+	return Vector2(-INF, -INF)
 
 
 ## The player's own heap within STATION_REACH, or null.
@@ -756,6 +794,9 @@ static func take_back(game: Game, heap: WorldProp) -> int:
 		Events.took.emit(id, n)
 		parts.append(_count_words(id, n))
 		got += n
+		if inv.held == &"" and _fights(id):
+			# Empty hands take the blade back into them.
+			hold(game, id)
 	game.world.depleted[heap.id] = INF
 	if game.view != null:
 		game.view.refresh_props(heap)
