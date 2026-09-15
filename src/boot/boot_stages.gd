@@ -79,6 +79,9 @@ func step(threaded: bool) -> bool:
 	if _started_usec == 0:
 		_started_usec = Time.get_ticks_usec()
 	if _run_one(s):
+		# On the main thread a stage's time is the wall time it was current,
+		# frames between its pieces included.
+		s.ms = (Time.get_ticks_usec() - _started_usec) / 1000.0
 		next += 1
 		_started_usec = Time.get_ticks_usec()
 	return done()

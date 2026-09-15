@@ -44,7 +44,7 @@ func _check_game_page(threads: bool) -> void:
 		eq(game.systems.size(), BootPage.system_scripts().size(), "every system loaded")
 	check(not BootWorld.offered(), "the world was taken, not left on offer")
 	var t := page.stages.timings()
-	for id: StringName in [&"code", &"world", &"view", &"near", &"start"]:
+	for id: StringName in [&"code", &"world", &"view", &"near", &"start", &"draw"]:
 		check(t.has(id), "stage %s ran (%s)" % [id, "threads" if threads else "no threads"])
 	eq(page.progress(), 1.0, "the line is full at the hand-over")
 	for i in range(1, seen.size()):

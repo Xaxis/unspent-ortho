@@ -67,13 +67,15 @@ var _sketch_image: Image
 var _sketch: ImageTexture
 var _sketch_t := 0.0
 var _mark := Vector2i(-1, -1)
+## The glass, and the ink on it (sketch, line, words): the ink lifts first.
 var _sheet: Control
+var _ink: Control
 var _t := 0.0
 var _shown := 0
 var _lift := -1.0
 var _handed := false
-## Frames drawn since the scene was made; the page lifts once it has drawn.
-var _after := 0
+## Frames drawn since the scene was made (-1 before).
+var _drawn := -1
 
 
 ## True where slow jobs may go to the worker pool (not the no-threads web build).
@@ -118,7 +120,7 @@ static func preview(parent: Node, o: BootOptions) -> Node:
 	page._sketch_image = BootPage._sketch_of(bw, w)
 	page._mark = Vector2i(((w.spawn as Vector2) * SKETCH / float(w.size)).floor())
 	page._sketch_t = SKETCH_DRAW_SECONDS
-	for s: Array in [[&"code", "waking"], [&"world", "raising the land"], [&"view", "laying out the ground"], [&"near", "drawing what is near"], [&"start", "setting out"]]:
+	for s: Array in [[&"code", "waking"], [&"world", "raising the land"], [&"view", "laying out the ground"], [&"near", "drawing what is near"], [&"start", "setting out"], [&"draw", "looking up"]]:
 		page.stages.add(s[0], s[1], 500.0, func() -> void: pass)
 	parent.add_child(page)
 	return page
@@ -192,6 +194,13 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		_world = null
 		_view = null
 		scene = BootPage._make_game(_parent, o) if what == "game" else BootPage._make_title(_parent, o), false)
+	# A world's first frame compiles its shaders and stalls (seconds on the web):
+	# the line ends when that frame is drawn, not before.
+	stages.add(&"draw", "looking up", 1200.0, func() -> bool:
+		if _drawn < 0:
+			_drawn = 0
+			RenderingServer.frame_post_draw.connect(_on_drawn)
+		return _drawn >= 2 or BootPage.headless(), false)
 
 
 ## Every system script the game loads (Game._system_files), as res:// paths.
@@ -213,15 +222,24 @@ func _ready() -> void:
 	_sheet.name = "sheet"
 	_sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_sheet.draw.connect(_draw_page)
+	_sheet.draw.connect(_draw_glass)
 	add_child(_sheet)
+	_ink = Control.new()
+	_ink.name = "ink"
+	_ink.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ink.draw.connect(_draw_page)
+	add_child(_ink)
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	_sheet.queue_redraw()
+	_ink.queue_redraw()
+	if _lift >= 0.0:
+		_ink.modulate.a = 1.0 - clampf(_lift / (LIFT_SECONDS * 0.5), 0.0, 1.0)
 	var cur := stages.current()
-	if _sketch == null and _sketch_image != null and (kind == "preview" or cur == null or cur.id == &"near" or cur.id == &"start"):
+	if _sketch == null and _sketch_image != null and (kind == "preview" or cur == null or not cur.worker):
 		_sketch = ImageTexture.create_from_image(_sketch_image)
 		if kind != "preview":
 			print("boot sketch %s: the island is drawn in" % kind)
@@ -235,10 +253,7 @@ func _process(delta: float) -> void:
 			queue_free()
 		return
 	if _handed:
-		# Lift once the scene has drawn a couple of frames under the page.
-		_after += 1
-		if _after >= 2:
-			_lift = 0.0
+		_lift = 0.0
 		return
 	# Draw the page once before the first stage, so the first frame is the page.
 	_shown += 1
@@ -255,7 +270,13 @@ func _process(delta: float) -> void:
 	handed_over.emit(scene)
 
 
+func _on_drawn() -> void:
+	_drawn += 1
+
+
 func _exit_tree() -> void:
+	if RenderingServer.frame_post_draw.is_connected(_on_drawn):
+		RenderingServer.frame_post_draw.disconnect(_on_drawn)
 	# A page closed mid-way (the game quit) waits out its worker, and must not
 	# leave a view nobody frees.
 	stages.wait()
@@ -268,14 +289,16 @@ func progress() -> float:
 	return held_progress if held_progress >= 0.0 else stages.progress()
 
 
-func _draw_page() -> void:
+## The glass goes once the ink on it has faded.
+func _draw_glass() -> void:
 	var a := 1.0
 	if _lift >= 0.0:
-		a = 1.0 - clampf(_lift / LIFT_SECONDS, 0.0, 1.0)
-	var ci := _sheet
-	UiDraw.rect(ci, Rect2i(0, 0, 640, 360), Color(GLASS, a))
-	if a < 1.0:
-		return
+		a = 1.0 - clampf((_lift - LIFT_SECONDS * 0.4) / (LIFT_SECONDS * 0.6), 0.0, 1.0)
+	UiDraw.rect(_sheet, Rect2i(0, 0, 640, 360), Color(GLASS, a))
+
+
+func _draw_page() -> void:
+	var ci := _ink
 	# A faint band drifting down the glass: the page is alive while a stage runs.
 	var band_y := int(fmod(_t * 22.0, 400.0)) - 20
 	UiDraw.rect(ci, Rect2i(0, band_y, 640, 14), SCAN)
@@ -305,7 +328,7 @@ func _draw_page() -> void:
 	var breathe := 0.65 + 0.35 * sin(_t * 5.0)
 	UiDraw.rect(ci, Rect2i(head - 1, LINE_Y, 2, 1), Color(HEAD, breathe))
 	var cur := stages.current()
-	var words := cur.label if cur != null else "setting out"
+	var words := cur.label if cur != null else "looking up"
 	if held_progress >= 0.0:
 		words = _label_at(p)
 	UiDraw.text(ci, Vector2i(x0, LINE_Y - 16), words, WORDS)
