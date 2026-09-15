@@ -2,8 +2,10 @@
 
 *UNSPENT*, rebuilt: a real-time action-survival game on a generated coast where
 half-broken machines hunt the people still living in the gaps. Godot 4.7,
-GDScript, orthographic low-poly 3D rendered at 640x360 and upscaled with
-nearest filtering, so it reads as pixel art with real light and shadow.
+GDScript, orthographic 3D rendered at 640x360 and upscaled with nearest
+filtering, drawn as a living field notebook: washes, inked contours, hatched
+shade, and machines drawn by a ruler. **`docs/ART.md` is the binding style bible.
+Nothing may look like Minecraft or any voxel game.**
 
 `../unspent` is the old Unity attempt. Read it for mechanics numbers and art
 direction (already distilled in `docs/research/`). **Never port its story, arcs,
@@ -55,8 +57,13 @@ tools print their own summaries.
   or audio. Meshes via `MeshKit`, colours via `Palette`, sounds generated.
 - **Colours are sRGB palette values straight into `ALBEDO`.** The Compatibility
   renderer does no linear→sRGB conversion; converting made everything black.
-- **One lit material** (`src/render/world.gdshader`) for all MADE and FOUND geometry:
-  vertex colour albedo, hard shadow that is a colour, `sky_tint` global multiply.
+- **Two lit materials.** MADE geometry uses `src/render/world.gdshader` (hatched
+  shade, paper, ragged ground blends, sway); FOUND geometry (machines, pylons,
+  plate, glims) uses `src/render/found.gdshader` (clean, unhatched, glowing parts).
+  Write the ink vertex channels through `MeshKit` state (`style`, `style2`,
+  `style_blend`, `wash2`, `wash_blend`, `sway`, `sway_phase`). See docs/ART.md §2.
+- **No grid on screen.** Terrain is contour terraces; never add per-tile colour or
+  square geometry. Boxes only as parts that are chamfered, tapered or broken up.
 - **Coordinates.** Tile space `Vector2(x, y)`, x east, y south; 3D is `Vector3(x, h, y)`.
   Level `l` is `l * WorldData.STEP` high. A body steps ±1 level; 2+ is a cliff.
   Rotation: a model faces +X at `rotation.y = 0`; set `rotation.y = -facing`.
