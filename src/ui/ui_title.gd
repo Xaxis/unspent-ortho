@@ -131,6 +131,13 @@ func new_game() -> void:
 	Events.sfx.emit(&"menu_select", Vector3.ZERO)
 
 
+func _exit_tree() -> void:
+	# A coast being drawn on a worker writes into this node; wait it out.
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+
+
 func _start_game() -> void:
 	var o := BootOptions.new()
 	o.seed_value = seed_value

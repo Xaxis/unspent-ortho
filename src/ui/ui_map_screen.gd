@@ -5,7 +5,7 @@ extends UiScreen
 ## (held keys repeat, per the menu standard); E changes the scale; M or Esc close.
 
 ## The map's window on the spread, in screen pixels.
-const MAP_RECT := Rect2i(30, 44, 580, 280)
+const MAP_RECT := Rect2i(32, 50, 576, 272)
 const PAN_STEP := 12
 const SCALES: Array[int] = [1, 2, 3]
 
@@ -120,7 +120,7 @@ func _draw() -> void:
 	var place := Country.NAMES[c]
 	UiDraw.text_right(self, R.end.x - 16, R.position.y + 11, "%s   %s" % [place, game.clock.label()], UiTheme.INK_SOFT)
 	UiNotebook.footer(self, UiNotebook.LEFT, "wasd look     e scale     m close     esc")
-	UiDraw.text_right(self, R.end.x - 16, R.end.y - 14, "%d%% of the coast seen" % roundi(explored.fraction() * 100.0) if explored != null else "", UiTheme.FADED)
+	UiDraw.text_right(self, R.end.x - 28, R.end.y - 14, "%d%% of the coast seen" % roundi(explored.fraction() * 100.0) if explored != null else "", UiTheme.FADED)
 
 
 func _draw_overlay() -> void:

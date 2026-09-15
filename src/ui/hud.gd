@@ -15,8 +15,8 @@ extends CanvasLayer
 const MARGIN := 8
 const MESSAGE_HOLD := 2.2
 const MESSAGE_FADE := 0.6
-const CELL_W := 8
-const CELL_H := 7
+const CELL_W := 10
+const CELL_H := 8
 
 var clock_text := ""
 var health := 12
@@ -92,6 +92,7 @@ func show_message(text: String) -> void:
 func settle() -> void:
 	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_hint_alpha = _hint_target
+	_hurt_flash = 0.0
 	for n in needs:
 		_needs_alpha[n.need] = 1.0
 
@@ -127,6 +128,8 @@ func _draw_hud() -> void:
 
 
 func _draw_health(ci: Control) -> void:
+	# Cells of three, kept like a tally: three upright strokes to a box. A spent
+	# stroke leaves a hollow; a fresh loss flashes paper-white before it goes.
 	var cells := UiRules.health_cells(health, max_health)
 	var lost_cells := UiRules.health_cells(_lost_from, max_health)
 	var x := MARGIN
@@ -134,23 +137,24 @@ func _draw_health(ci: Control) -> void:
 	for i in cells.size():
 		var r := Rect2i(x, y, CELL_W, CELL_H)
 		UiDraw.rect(ci, r.grow(1), UiTheme.INK_DEEP)
-		UiDraw.rect(ci, r, Color(UiTheme.INK_SOFT, 0.85))
-		# Thirds fill left to right, a column of 2 px each inside a 1 px lining.
+		UiDraw.rect(ci, r, Color(UiTheme.INK_SOFT, 0.9))
 		for t in UiRules.PER_CELL:
-			var col_rect := Rect2i(x + 1 + t * 2, y + 1, 2, CELL_H - 2)
+			var stroke := Rect2i(x + 1 + t * 3, y + 1, 2, CELL_H - 2)
 			if t < cells[i]:
-				UiDraw.rect(ci, col_rect, UiTheme.ACCENT_BRIGHT)
-				UiDraw.hline(ci, col_rect.position.x, col_rect.end.x - 1, y + 1, Palette.RUST[5])
+				UiDraw.rect(ci, stroke, UiTheme.ACCENT_BRIGHT)
+				UiDraw.px(ci, stroke.position.x, stroke.position.y, Palette.RUST[5])
 			elif _hurt_flash > 0.0 and t < lost_cells[i]:
-				UiDraw.rect(ci, col_rect, Color(Palette.LINEN[5], _hurt_flash * 2.0))
+				UiDraw.rect(ci, stroke, Color(Palette.LINEN[5], clampf(_hurt_flash * 2.0, 0.0, 1.0)))
+			else:
+				UiDraw.rect(ci, stroke, Color(UiTheme.INK_DEEP, 0.6))
 		x += CELL_W + 3
 	if _wind_alpha > 0.0:
+		# Wind: one thin line under the cells, pale as breath, only while some is spent.
 		var w := cells.size() * (CELL_W + 3) - 3
 		var fill := roundi(w * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
 		var wy := y + CELL_H + 3
-		UiDraw.rect(ci, Rect2i(MARGIN - 1, wy - 1, w + 2, 4), Color(UiTheme.INK_DEEP, _wind_alpha))
-		UiDraw.rect(ci, Rect2i(MARGIN, wy, w, 2), Color(UiTheme.INK_SOFT, _wind_alpha))
-		UiDraw.rect(ci, Rect2i(MARGIN, wy, fill, 2), Color(Palette.RIME[4], _wind_alpha))
+		UiDraw.rect(ci, Rect2i(MARGIN - 1, wy - 1, w + 2, 3), Color(UiTheme.INK_DEEP, _wind_alpha * 0.8))
+		UiDraw.rect(ci, Rect2i(MARGIN, wy, fill, 1), Color(Palette.RIME[5], _wind_alpha))
 
 
 func _draw_clock(ci: Control) -> void:
@@ -175,12 +179,19 @@ func _draw_faded_need(ci: Control, k: StringName, at: Vector2i, col: Color, a: f
 
 
 func _draw_held(ci: Control) -> void:
-	var y := 360 - MARGIN - UiFont.SIZE
-	var name := Items.display_name(held) if held != &"" else "hands"
+	# The thing in hand on a little paper tag, so its colours read on any ground.
+	var y := 360 - MARGIN - 13
+	var x := MARGIN
+	var name := UiRules.item_name(held) if held != &"" else "hands"
 	if held != &"":
-		UiDraw.sprite_rimmed(ci, UiIcons.shape_of(held), Vector2i(MARGIN, y), UiIcons.colours_for(held), UiTheme.INK_DEEP)
-		# A second rim in paper makes the icon a little cut-out: legible on dark ground.
-	UiDraw.text_rimmed(ci, Vector2i(MARGIN + (UiIcons.SIZE + 4 if held != &"" else 0), y + 1), name, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
+		var tag := Rect2i(x, y, 13, 13)
+		UiDraw.rect(ci, Rect2i(tag.position.x + 1, tag.position.y - 1, tag.size.x - 2, tag.size.y + 2), UiTheme.INK_DEEP)
+		UiDraw.rect(ci, tag.grow_individual(1, 0, 1, 0), UiTheme.INK_DEEP)
+		UiDraw.rect(ci, tag, UiTheme.PAPER)
+		UiDraw.hline(ci, tag.position.x, tag.end.x - 1, tag.end.y - 1, UiTheme.PAPER_SHADE)
+		UiIcons.draw_item(ci, held, tag.position + Vector2i(2, 2))
+		x += 17
+	UiDraw.text_rimmed(ci, Vector2i(x, y + 2), name, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
 
 
 func _draw_bottom(ci: Control) -> void:

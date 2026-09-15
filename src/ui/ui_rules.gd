@@ -136,6 +136,30 @@ static func station_near(query: WorldQuery, pos: Vector2) -> StringName:
 	return STATIONS[p.kind] if p != null else &""
 
 
+## What the notebook calls a thing: its Items name, or its id made readable.
+static func item_name(id: StringName) -> String:
+	return Items.display_name(id).replace("_", " ")
+
+
+## Every recipe, at every station, that wants `id`. [{recipe, station}]
+static func recipes_using(id: StringName, recipes: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for r in recipes:
+		if (r.get("needs", {}) as Dictionary).has(id):
+			out.append(r)
+	return out
+
+
+## Recipes at every station kind, from Crafting (or a stand-in list).
+static func all_recipes(extra: Array[Dictionary] = []) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for st: StringName in [&"fire", &"bench", &"kiln", &"wheel", &"loom"]:
+		out.append_array(Crafting.recipes_at(st))
+	if out.is_empty():
+		out.append_array(extra)
+	return out
+
+
 static func item_group(id: StringName) -> StringName:
 	var d := Items.def(id)
 	if d.get("stuff", &"") == &"found" or id == &"wick":
@@ -178,6 +202,17 @@ static func duration(minutes: float) -> String:
 	if m % 60 == 0:
 		return "%d h" % (m / 60)
 	return "%d h %02d" % [m / 60, m % 60]
+
+
+## The clock face at a world minute: "12:30", or "day 3 04:00" once it passes midnight
+## of the day `now_minutes` is in.
+static func clock_at(minutes: float, now_minutes: float = -1.0) -> String:
+	var h := floori(fposmod(minutes, 1440.0) / 60.0)
+	var m := floori(fposmod(minutes, 60.0))
+	var day := floori(minutes / 1440.0)
+	if now_minutes >= 0.0 and day != floori(now_minutes / 1440.0):
+		return "day %d %02d:%02d" % [day + 1, h, m]
+	return "%02d:%02d" % [h, m]
 
 
 ## "a:3,b" -> {a: 3, b: 1}. The --give boot option.

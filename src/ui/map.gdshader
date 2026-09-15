@@ -117,12 +117,14 @@ void fragment() {
 	vec2 tp = (mp + 0.5) / scale; // tile-space point
 	ivec2 t = ivec2(floor(tp));
 	vec3 col = PAPER;
+	float alpha = 0.0;
 
 	float seen = seen_smooth(tp);
 	float edge_noise = hash(floor(mp / 2.0) * 1.37) * 0.45 + hash(mp) * 0.15;
 	float known = step(0.28 + edge_noise, seen);
 
 	if (known > 0.5) {
+		alpha = 1.0;
 		int lv = level_at(t);
 		int g = ground_at(t);
 		ivec2 tr = ivec2(floor((mp + vec2(1.0, 0.0) + 0.5) / scale));
@@ -159,9 +161,12 @@ void fragment() {
 			bool sea_next = lr <= 0 || lb <= 0 || level_at(tl) <= 0 || level_at(tt) <= 0;
 			if (sea_next) {
 				col = INK;
-			} else if (step_r != 0 || step_b != 0) {
-				int big = max(abs(step_r), abs(step_b));
-				col = mix(col, big >= 2 ? INK : SEPIA, big >= 2 ? 0.8 : 0.42);
+			} else if (abs(step_r) >= 2 || abs(step_b) >= 2) {
+				// A cliff: a hard ink line.
+				col = mix(col, INK, 0.78);
+			} else if ((lv / 2 != lr / 2) || (lv / 2 != lb / 2)) {
+				// A contour every second level, in brown ink, so hills read without clutter.
+				col = mix(col, SEPIA, 0.38);
 			} else if (is_inland_water(g) && (!is_inland_water(ground_at(tr)) || !is_inland_water(ground_at(tb)) || !is_inland_water(ground_at(tl)) || !is_inland_water(ground_at(tt)))) {
 				col = mix(col, BRINE, 0.75);
 			} else if (g == 11) {
@@ -183,11 +188,10 @@ void fragment() {
 		if (m > 0 && level_at(ct) > 0 && glyph(m, local)) {
 			col = mix(col, mark_colour(m), m == 5 ? 0.95 : 0.75);
 		}
-		// Near the edge of what is known, the wash thins toward the paper.
-		col = mix(PAPER, col, clamp((seen - 0.28 - edge_noise) * 4.0, 0.35, 1.0));
+		// Near the edge of what is known, the wash thins into the page.
+		alpha = clamp((seen - 0.28 - edge_noise) * 4.0, 0.4, 1.0);
+		// Paper grain through the wash, locked to the page, not the map.
+		col *= 0.985 + 0.02 * hash(floor(FRAGCOORD.xy));
 	}
-	// Paper grain over everything, locked to the page, not the map.
-	float grain = hash(floor(FRAGCOORD.xy));
-	col *= 0.985 + 0.02 * grain;
-	COLOR = vec4(col, 1.0);
+	COLOR = vec4(col, alpha);
 }

@@ -44,6 +44,15 @@ func build_async() -> void:
 	_task = WorkerThreadPool.add_task(_build_images)
 
 
+## Wait out a background build, if one is running (before the world goes away).
+func wait() -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		if not ready:
+			_finish_textures()
+
+
 ## Make sure textures exist (waits for a running build). Main thread only.
 func ensure() -> void:
 	if ready:
@@ -53,6 +62,10 @@ func ensure() -> void:
 		_task = -1
 	else:
 		_build_images()
+	_finish_textures()
+
+
+func _finish_textures() -> void:
 	ground = ImageTexture.create_from_image(_images.ground)
 	level = ImageTexture.create_from_image(_images.level)
 	coast = ImageTexture.create_from_image(_images.coast)

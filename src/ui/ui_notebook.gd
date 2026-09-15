@@ -8,7 +8,7 @@ const COVER := Rect2i(16, 10, 608, 342)
 const LEFT := Rect2i(22, 14, 296, 331)
 const RIGHT := Rect2i(322, 14, 296, 331)
 ## A single page centred (pause, keys).
-const SINGLE := Rect2i(204, 40, 232, 280)
+const SINGLE := Rect2i(214, 70, 212, 212)
 
 ## First ruled line below a page's top edge, then one every UiTheme.LINE.
 const FIRST_RULE := 36
@@ -36,11 +36,18 @@ static func spread(ci: CanvasItem, seed: int) -> void:
 		UiDraw.vline(ci, gx - 1 - i, LEFT.position.y, LEFT.end.y - 1, Color(UiTheme.PAPER_EDGE, a))
 		UiDraw.vline(ci, RIGHT.position.x + i, RIGHT.position.y, RIGHT.end.y - 1, Color(UiTheme.PAPER_EDGE, a * 0.8))
 	UiDraw.vline(ci, gx + 1, LEFT.position.y, LEFT.end.y - 1, UiTheme.PAPER_EDGE)
+	# Page numbers in the outer corners, small and faded, like any bound book.
+	var folio := 2 * (seed % 40) + 12
+	UiDraw.text(ci, Vector2i(LEFT.position.x + 7, LEFT.end.y - 13), str(folio), Color(UiTheme.FADED, 0.8))
+	UiDraw.text_right(ci, RIGHT.end.x - 6, RIGHT.end.y - 13, str(folio + 1), Color(UiTheme.FADED, 0.8))
 	# Stitches through the fold.
 	var y := LEFT.position.y + 22
 	while y < LEFT.end.y - 16:
 		UiDraw.vline(ci, gx + 1, y, y + 4, UiTheme.INK_SOFT)
 		y += 38
+	# Some pages carry a cup ring; which ones is fixed by the page.
+	if seed % 3 != 0:
+		stain(ci, Vector2i(RIGHT.position.x + 190 + seed % 50, RIGHT.position.y + 150 + (seed * 7) % 90), 22 + seed % 7, seed)
 	_ribbon(ci, gx + 1, seed)
 
 
@@ -110,9 +117,12 @@ static func rule_count(r: Rect2i) -> int:
 
 
 ## Lower-case title, written in the head space, underlined twice by hand.
-static func title(ci: CanvasItem, r: Rect2i, text: String, seed: int) -> void:
+## `crossed` is an earlier word for it, struck out before it.
+static func title(ci: CanvasItem, r: Rect2i, text: String, seed: int, crossed: String = "") -> void:
 	var x := r.position.x + MARGIN_X + 6
 	var y := r.position.y + 11
+	if crossed != "":
+		x += struck(ci, Vector2i(x, y), crossed, seed + 9) + 6
 	UiDraw.text(ci, Vector2i(x, y), text, UiTheme.INK)
 	var w := UiFont.width(text)
 	UiDraw.hand_hline(ci, x - 2, x + w + 5, y + 11, UiTheme.INK, seed, 1)
@@ -135,6 +145,31 @@ static func note(ci: CanvasItem, r: Rect2i, text: String, age: float) -> void:
 ## "> " in the accent, before the chosen row.
 static func cursor(ci: CanvasItem, x: int, top: int) -> void:
 	UiDraw.text(ci, Vector2i(x, top), ">", UiTheme.ACCENT)
+
+
+## A ring left by a wet cup: uneven, darker where the rim sat heaviest.
+static func stain(ci: CanvasItem, c: Vector2i, r: int, seed: int) -> void:
+	var steps := int(TAU * r * 1.2)
+	var heavy := _h(seed, 0, 40) * TAU
+	for i in steps:
+		var a := i * TAU / steps
+		var w := 0.5 + 0.5 * cos(a - heavy)
+		if _h(seed, i, 41) > 0.35 + w * 0.6:
+			continue
+		var rr := r + (1 if _h(seed, i, 42) < 0.3 else 0)
+		var p := c + Vector2i(roundi(cos(a) * rr), roundi(sin(a) * rr))
+		UiDraw.px(ci, p.x, p.y, Color(UiTheme.PAPER_DEEP, 0.18 + 0.2 * w))
+	# The faint wash inside the ring.
+	UiDraw.rect(ci, Rect2i(c.x - r + 2, c.y - r / 2, r * 2 - 4, r), Color(UiTheme.PAPER_SHADE, 0.06))
+	UiDraw.rect(ci, Rect2i(c.x - r / 2, c.y - r + 2, r, r * 2 - 4), Color(UiTheme.PAPER_SHADE, 0.06))
+
+
+## A word written and struck out: the notebook keeps its corrections.
+static func struck(ci: CanvasItem, at: Vector2i, word: String, seed: int) -> int:
+	var w := UiFont.width(word)
+	UiDraw.text(ci, at, word, UiTheme.INK_SOFT)
+	UiDraw.hand_hline(ci, at.x - 1, at.x + w, at.y + 4, UiTheme.INK, seed)
+	return w
 
 
 ## A hand-drawn box.

@@ -11,9 +11,13 @@ var explored: UiExplored
 var layer: CanvasLayer
 var screens := {}
 var stack: Array[UiScreen] = []
+var map_data: UiMapData
 var _pending_screen := ""
 var _vertical := UiMenu.new()
 var _horizontal := UiMenu.new()
+## Real seconds until the map's data is packed in the background: after the
+## world's first chunks, so start-up is not slowed, and before anyone opens it.
+var _map_build_in := 2.0
 
 
 func setup(g: Game) -> void:
@@ -21,6 +25,7 @@ func setup(g: Game) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	explored = UiExplored.new(g.world.size)
 	explored.visit(g.player.pos)
+	map_data = UiMapData.new(g.world)
 	if g.options.explore > 0:
 		explored.wander(g.world, g.player.pos, g.options.explore, g.options.seed_value)
 	layer = CanvasLayer.new()
@@ -31,6 +36,7 @@ func setup(g: Game) -> void:
 	_add(UiCraftingScreen.new())
 	_add(UiMapScreen.new())
 	_add(UiPauseScreen.new())
+	_add(UiSheetScreen.new())
 	if g.options.give != "":
 		UiRules.apply_give(g.inventory, UiRules.parse_give(g.options.give))
 	if g.options.ui_demo:
@@ -46,8 +52,17 @@ func _add(s: UiScreen) -> void:
 	s.closed.connect(_on_closed)
 	if s is UiMapScreen:
 		(s as UiMapScreen).explored = explored
+		(s as UiMapScreen).data = map_data
 	if s is UiPauseScreen:
 		(s as UiPauseScreen).to_title = func() -> void: UiTitle.replace_game.call_deferred(game)
+
+
+func _exit_tree() -> void:
+	# A background build reads the world; never let the world go first.
+	if map_data != null:
+		map_data.wait()
+	if get_tree() != null and stack.has(screens.get(&"pause")):
+		get_tree().paused = false
 
 
 func top() -> UiScreen:
@@ -56,6 +71,13 @@ func top() -> UiScreen:
 
 ## Open a screen by name. Returns false (and says why) when it cannot open now.
 func open_screen(n: StringName) -> bool:
+	if n == &"controls":
+		# The keys live one level down the pause page.
+		if not open_screen(&"pause"):
+			return false
+		(screens[&"pause"] as UiPauseScreen).page = "keys"
+		top().queue_redraw()
+		return true
 	if not screens.has(n):
 		return false
 	var s: UiScreen = screens[n]
@@ -114,8 +136,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	if _map_build_in > 0.0:
+		_map_build_in -= delta
+		if _map_build_in <= 0.0:
+			map_data.build_async()
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
-		open_screen(StringName(_pending_screen))
+		# --screen=NAME or NAME:ROW (a row id to choose, for shots).
+		var parts := _pending_screen.split(":")
+		if open_screen(StringName(parts[0])) and parts.size() > 1:
+			top().select(StringName(parts[1]))
 		_pending_screen = ""
 	var s := top()
 	if s != null:
@@ -170,6 +199,28 @@ func _demo() -> void:
 	b.wind = 1500.0
 	b.fed_until = game.clock.minutes - 240.0
 	b.wet = 0.5
+	if game.options.walk_seconds <= 0.0:
+		_stand_by_something(24.0)
 	game.hud.show_message("Took 2 timber.")
 	_feed_hud()
 	game.hud.settle()
+
+
+## Put the player beside the nearest thing that can be worked, facing it, so
+## the use hint shows in a shot.
+func _stand_by_something(r: float) -> void:
+	var p := game.player
+	var kinds: Array[int] = []
+	for k: int in UiRules.PROP_VERBS:
+		kinds.append(k)
+	var target := game.query.nearest_prop(p.pos, r, kinds)
+	if target == null:
+		return
+	for a in 8:
+		var dir := Vector2.from_angle(a * TAU / 8.0)
+		var spot := target.pos - dir * (target.solid + 0.7)
+		if game.query.standable(floori(spot.x), floori(spot.y)):
+			p.pos = spot
+			p.facing = dir.angle()
+			p.drive(Vector2.ZERO, false, 0.0)
+			return

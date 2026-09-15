@@ -5,7 +5,7 @@ extends UiScreen
 
 const LABEL := Rect2i(170, 42, 300, 86)
 const SLIP := Rect2i(254, 236, 132, 84)
-const LETTER_PX := 5
+const LETTER_H := 34
 
 var title: UiTitle
 ## 0 shows the world, 1 is ink over everything.
@@ -102,10 +102,10 @@ func _draw_label() -> void:
 	UiDraw.hline(self, r.position.x + 8, r.end.x - 9, r.end.y - 11, UiTheme.INK)
 	UiDraw.hline(self, r.position.x + 8, r.end.x - 9, r.end.y - 9, UiTheme.INK)
 	var word := "UNSPENT"
-	var w := UiLettering.width(word, LETTER_PX)
-	var at := Vector2i(r.position.x + (r.size.x - w) / 2, r.position.y + 22)
-	UiLettering.draw(self, word, at + Vector2i(2, 2), LETTER_PX, Color(UiTheme.ACCENT, 0.9), 0)
-	UiLettering.draw(self, word, at, LETTER_PX, UiTheme.INK, 7)
+	var w := UiLettering.width(word, LETTER_H)
+	var at := Vector2i(r.position.x + (r.size.x - w) / 2, r.position.y + (r.size.y - LETTER_H) / 2)
+	UiLettering.draw(self, word, at + Vector2i(2, 2), LETTER_H, Color(UiTheme.ACCENT, 0.9), 7)
+	UiLettering.draw(self, word, at, LETTER_H, UiTheme.INK, 7)
 	UiNotebook.tape(self, Vector2i(r.position.x - 8, r.position.y - 2), 30)
 	UiNotebook.tape(self, Vector2i(r.end.x - 22, r.end.y - 5), 30)
 

@@ -93,5 +93,8 @@ func _draw() -> void:
 			UiNotebook.cursor(self, x0 + 6, top)
 		UiDraw.text(self, Vector2i(x0 + 16, top), row.text, UiTheme.INK)
 	if game != null:
-		UiDraw.text(self, Vector2i(x0 + 8, UiNotebook.line_top(P, 12)), game.clock.label(), UiTheme.FADED)
+		var p := game.player.pos
+		var place := Country.NAMES[game.world.country_at(floori(p.x), floori(p.y))]
+		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, 9), game.clock.label(), UiTheme.FADED)
+		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, 10), place, UiTheme.FADED)
 	UiNotebook.footer(self, P, "e choose     esc resume")

@@ -46,10 +46,10 @@ func _on_confirm(row: Dictionary) -> void:
 		Events.sfx.emit(&"menu_select", Vector3.ZERO)
 		if inventory.held == id:
 			inventory.set_held(&"")
-			say("Put the %s away." % Items.display_name(id))
+			say("Put the %s away." % UiRules.item_name(id))
 		else:
 			inventory.set_held(id)
-			say("The %s in hand." % Items.display_name(id))
+			say("The %s in hand." % UiRules.item_name(id))
 	elif g == &"food":
 		eat(id)
 	refresh()
@@ -63,7 +63,7 @@ func eat(id: StringName) -> void:
 			if s.has_method("eat"):
 				if s.call("eat", id):
 					Events.sfx.emit(&"menu_select", Vector3.ZERO)
-					say("Ate the %s." % Items.display_name(id))
+					say("Ate the %s." % UiRules.item_name(id))
 				return
 	if not inventory.remove(id):
 		return
@@ -71,14 +71,14 @@ func eat(id: StringName) -> void:
 	if body != null:
 		body.fed_until = maxf(body.fed_until, now) + float(Items.def(id).get("feeds", 0.0)) * 60.0
 	Events.sfx.emit(&"eat", Vector3.ZERO)
-	say("Ate the %s." % Items.display_name(id))
+	say("Ate the %s." % UiRules.item_name(id))
 
 
 func _draw() -> void:
 	UiNotebook.spread(self, 11)
 	var L := UiNotebook.LEFT
 	var R := UiNotebook.RIGHT
-	UiNotebook.title(self, L, "carrying", 5)
+	UiNotebook.title(self, L, "carrying", 5, "bag")
 	if inventory == null:
 		return
 	var x0 := L.position.x + UiNotebook.MARGIN_X
@@ -100,19 +100,17 @@ func _draw() -> void:
 		var row := menu.rows[i]
 		var top := UiNotebook.line_top(L, n)
 		if row.has("header"):
+			# A heading is written small in the margin's shadow, with a short stroke under it.
 			var h := String(row.header)
 			UiDraw.text(self, Vector2i(x0 + 6, top), h, UiTheme.FADED)
-			var hx := x0 + 10 + UiFont.width(h)
-			while hx < right - 2:
-				UiDraw.px(self, hx, top + 6, UiTheme.FADED)
-				hx += 3
+			UiDraw.hand_hline(self, x0 + 5, x0 + 8 + UiFont.width(h), top + 9, UiTheme.FADED, i * 13)
 			continue
 		var id: StringName = row.id
 		var col := UiTheme.INK if UiMenu.enabled(row) or UiRules.item_group(id) == &"goods" else UiTheme.FADED
 		if i == menu.index:
 			UiNotebook.cursor(self, x0 + 4, top)
 		UiIcons.draw_item(self, id, Vector2i(x0 + 11, top - 1))
-		var name := Items.display_name(id)
+		var name := UiRules.item_name(id)
 		UiDraw.text(self, Vector2i(x0 + 24, top), name, col)
 		var nx := x0 + 24 + UiFont.width(name)
 		if int(row.count) > 1:
@@ -147,7 +145,7 @@ func _draw_detail(R: Rect2i) -> void:
 	# The creel mark: past it, load starts to tell.
 	var cx := bar.position.x + 1 + int((bar.size.x - 3) * 0.5)
 	UiDraw.vline(self, cx, bar.position.y - 2, bar.end.y + 1, UiTheme.ACCENT)
-	var held_name := Items.display_name(inventory.held) if inventory.held != &"" else "bare hands"
+	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
 	UiDraw.text(self, Vector2i(x0, ly + 16), "in hand", UiTheme.INK)
 	UiDraw.text_right(self, R.end.x - 16, ly + 16, held_name, UiTheme.INK_SOFT)
 
@@ -162,12 +160,42 @@ func _draw_detail(R: Rect2i) -> void:
 	UiNotebook.tape(self, Vector2i(box.position.x + 12, box.position.y - 3), 22)
 	var tx := box.end.x + 10
 	var d := Items.def(id)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 18), Items.display_name(id), UiTheme.INK)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 18), UiRules.item_name(id), UiTheme.INK)
 	var lines := _detail_lines(id, int(row.count))
 	for i in lines.size():
 		UiDraw.text(self, Vector2i(tx, R.position.y + 31 + i * 11), lines[i], UiTheme.INK_SOFT)
 	if d.get("tool", false):
 		_draw_edge(Vector2i(tx, R.position.y + 31 + lines.size() * 11), inventory.edge(id))
+	# A tool: what it works on in the world, by its verb.
+	var verb := String(d.get("verb", ""))
+	if verb != "":
+		var names := PackedStringArray()
+		for k: int in UiRules.PROP_VERBS:
+			if UiRules.PROP_VERBS[k] == verb and not names.has(PropKind.NAMES[k]):
+				names.append(PropKind.NAMES[k])
+		if not names.is_empty():
+			UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, 6)), "works on", UiTheme.INK)
+			_draw_wrapped(Vector2i(x0 + 6, UiNotebook.line_top(R, 7)), R.end.x - 16 - x0 - 6, ", ".join(names), UiTheme.INK_SOFT)
+	# What it goes into: the recipes that want it, so goods are never a dead end.
+	var demo: Array[Dictionary] = []
+	if game != null and game.options.ui_demo:
+		demo.assign(UiDemo.RECIPES)
+	var uses := UiRules.recipes_using(id, UiRules.all_recipes(demo))
+	if uses.is_empty():
+		return
+	var n0 := 6
+	UiDraw.text(self, Vector2i(x0, UiNotebook.line_top(R, n0)), "goes into", UiTheme.INK)
+	var shown := mini(uses.size(), 6)
+	for i in shown:
+		var r: Dictionary = uses[i]
+		var out: StringName = (r.makes as Dictionary).keys()[0]
+		var top := UiNotebook.line_top(R, n0 + 1 + i)
+		UiIcons.draw_item(self, out, Vector2i(x0 + 6, top - 1))
+		UiDraw.text(self, Vector2i(x0 + 19, top), UiRules.item_name(out), UiTheme.INK_SOFT)
+		var want := int((r.needs as Dictionary)[id])
+		UiDraw.text_right(self, R.end.x - 16, top, "%d at the %s" % [want, r.get("at", "")], UiTheme.FADED)
+	if uses.size() > shown:
+		UiDraw.text(self, Vector2i(x0 + 19, UiNotebook.line_top(R, n0 + 1 + shown)), "and %d more" % (uses.size() - shown), UiTheme.FADED)
 
 
 func _detail_lines(id: StringName, count: int) -> PackedStringArray:
@@ -181,6 +209,22 @@ func _detail_lines(id: StringName, count: int) -> PackedStringArray:
 		out.append("feeds %s" % UiRules.duration(float(d.feeds) * 60.0))
 	out.append("bulk %s%s" % [_num(Items.bulk(id)), " each" if count > 1 else ""])
 	return out
+
+
+## Words wrapped onto successive ruled lines.
+func _draw_wrapped(at: Vector2i, width: int, text: String, col: Color) -> void:
+	var line := ""
+	var y := at.y
+	for word in text.split(" "):
+		var next := word if line == "" else line + " " + word
+		if UiFont.width(next) > width and line != "":
+			UiDraw.text(self, Vector2i(at.x, y), line, col)
+			y += UiTheme.LINE
+			line = word
+		else:
+			line = next
+	if line != "":
+		UiDraw.text(self, Vector2i(at.x, y), line, col)
 
 
 ## The edge as notches: ten of them, worn ones left hollow.

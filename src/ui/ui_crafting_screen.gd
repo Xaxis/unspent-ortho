@@ -48,7 +48,7 @@ func _short_of(r: Dictionary) -> String:
 	for id: StringName in needs:
 		if inventory.count(id) < int(needs[id]):
 			var missing := int(needs[id]) - inventory.count(id)
-			return "Short of %s %s." % [_count_word(missing), Items.display_name(id)]
+			return "Short of %s %s." % [_count_word(missing), UiRules.item_name(id)]
 	return "Not now."
 
 
@@ -90,6 +90,11 @@ func _draw() -> void:
 		UiIcons.draw_item(self, out_id, Vector2i(x0 + 11, top - 1))
 		UiDraw.text(self, Vector2i(x0 + 24, top), _makes_text(r), col)
 		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.INK_SOFT if UiMenu.enabled(row) else UiTheme.FADED)
+	# The station itself, sketched at the foot of the page.
+	var sk := Vector2i(L.position.x + 58, L.end.y - 78)
+	UiIcons.draw_station(self, station, sk, 4)
+	UiDraw.text(self, Vector2i(sk.x + 60, sk.y + 30), "the %s, as found" % station, UiTheme.FADED)
+	UiDraw.hand_hline(self, sk.x - 8, sk.x + 58, sk.y + 45, UiTheme.INK_SOFT, 71)
 	UiNotebook.footer(self, L, "e make     c close     esc")
 	_draw_recipe(R)
 	UiNotebook.note(self, R, note, note_age)
@@ -110,38 +115,63 @@ func _draw_recipe(R: Rect2i) -> void:
 	var tx := box.end.x + 10
 	UiDraw.text(self, Vector2i(tx, R.position.y + 18), _makes_text(r), UiTheme.INK)
 	UiDraw.text(self, Vector2i(tx, R.position.y + 31), "at the %s" % station, UiTheme.INK_SOFT)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 42), "takes %s" % UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.INK_SOFT)
+	var minutes := float(r.get("minutes", 0.0))
+	var takes := "takes %s" % UiRules.duration(minutes)
+	if game != null:
+		takes += ", done %s" % UiRules.clock_at(game.clock.minutes + minutes, game.clock.minutes)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 42), takes, UiTheme.INK_SOFT)
+	_draw_slip(Rect2i(R.position.x + 16, R.position.y + 84, R.size.x - 34, 0), r, row)
 
-	# The table: a heavy-ruled grid, the one place the notebook is strict.
+
+## The recipe as a printed slip pasted into the notebook: the one strict,
+## institutional surface here, with a heavy grid, thick rules and capital labels.
+func _draw_slip(at: Rect2i, r: Dictionary, row: Dictionary) -> void:
 	var needs: Dictionary = r.get("needs", {})
-	var top := UiNotebook.rule_y(R, 5) - 8
-	var col_have := R.end.x - 20
-	var col_need := col_have - 34
-	var grid_l := x0 - 4
-	var grid_r := R.end.x - 12
-	UiDraw.text(self, Vector2i(x0 + 13, top - 12), "needs", UiTheme.INK)
-	UiDraw.text_right(self, col_need, top - 12, "want", UiTheme.FADED)
-	UiDraw.text_right(self, col_have, top - 12, "have", UiTheme.FADED)
-	UiDraw.hline(self, grid_l, grid_r, top - 1, UiTheme.INK)
-	UiDraw.hline(self, grid_l, grid_r, top, UiTheme.INK)
-	var y := top + 3
+	const HEAD := 26
+	const ROW := 15
+	var h := HEAD + ROW * maxi(1, needs.size()) + 20
+	var s := Rect2i(at.position.x, at.position.y, at.size.x, h)
+	UiDraw.rect(self, Rect2i(s.position.x + 2, s.position.y + 2, s.size.x, s.size.y), Color(UiTheme.INK_DEEP, 0.16))
+	UiDraw.rect(self, s, UiTheme.SLIP)
+	UiDraw.frame(self, s, UiTheme.INK)
+	UiDraw.frame(self, s.grow(-2), UiTheme.INK)
+	UiDraw.rect(self, Rect2i(s.position.x + 2, s.position.y + 2, s.size.x - 4, 12), UiTheme.INK)
+	UiDraw.text(self, Vector2i(s.position.x + 6, s.position.y + 3), "MATERIALS FOR ONE MAKING", UiTheme.SLIP)
+	var no := "No. %03d" % (absi(hash(String(r.get("id", "")))) % 1000)
+	UiDraw.text_right(self, s.end.x - 6, s.position.y + 3, no, UiTheme.SLIP)
+	var col_have := s.end.x - 12
+	var col_want := col_have - 36
+	var x0 := s.position.x + 8
+	var y := s.position.y + HEAD - 10
+	UiDraw.text(self, Vector2i(x0 + 13, y), "ITEM", UiTheme.INK_SOFT)
+	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.INK_SOFT)
+	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.INK_SOFT)
+	y = s.position.y + HEAD
+	UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y - 1, UiTheme.INK)
+	UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y, UiTheme.INK)
+	var sep_want := col_want - UiFont.width("WANT") - 5
+	var sep_have := col_want + 5
 	for id: StringName in needs:
 		var want := int(needs[id])
 		var have := inventory.count(id)
-		UiIcons.draw_item(self, id, Vector2i(x0, y))
-		UiDraw.text(self, Vector2i(x0 + 13, y + 1), Items.display_name(id), UiTheme.INK)
-		UiDraw.text_right(self, col_need, y + 1, str(want), UiTheme.INK_SOFT)
 		var short := have < want
-		UiDraw.text_right(self, col_have, y + 1, str(have), UiTheme.ACCENT if short else UiTheme.INK)
+		UiIcons.draw_item(self, id, Vector2i(x0, y + 3))
+		UiDraw.text(self, Vector2i(x0 + 13, y + 3), UiRules.item_name(id), UiTheme.INK)
+		UiDraw.text_right(self, col_want, y + 3, str(want), UiTheme.INK)
+		UiDraw.text_right(self, col_have, y + 3, str(have), UiTheme.ACCENT if short else UiTheme.INK)
 		if short:
-			UiDraw.hand_hline(self, col_have - UiFont.width(str(have)) - 2, col_have + 1, y + 11, UiTheme.ACCENT, have * 7 + want)
-		y += 13
-		UiDraw.hline(self, grid_l, grid_r, y - 1, UiTheme.RULE)
-	UiDraw.hline(self, grid_l, grid_r, y, UiTheme.INK)
-	UiDraw.vline(self, col_need - UiFont.width("want") - 6, top - 12, y, UiTheme.RULE)
-	UiDraw.vline(self, col_need + 5, top - 12, y, UiTheme.RULE)
-	if not UiMenu.enabled(row):
-		UiDraw.text(self, Vector2i(x0, y + 8), String(row.get("why", "")).to_lower().trim_suffix("."), UiTheme.ACCENT)
+			# The shortfall ringed in the one accent, by hand, over the print.
+			var w := UiFont.width(str(have))
+			UiNotebook.box(self, Rect2i(col_have - w - 4, y + 1, w + 7, 12), UiTheme.ACCENT, have * 7 + want)
+		y += ROW
+		UiDraw.hline(self, s.position.x + 2, s.end.x - 3, y, UiTheme.INK_SOFT)
+	UiDraw.vline(self, sep_want, s.position.y + HEAD - 12, y, UiTheme.INK_SOFT)
+	UiDraw.vline(self, sep_have, s.position.y + HEAD - 12, y, UiTheme.INK_SOFT)
+	var ok := UiMenu.enabled(row)
+	var verdict := "ALL IN HAND" if ok else String(row.get("why", "")).to_upper().trim_suffix(".")
+	UiDraw.text(self, Vector2i(x0, y + 5), verdict, UiTheme.INK if ok else UiTheme.ACCENT)
+	UiNotebook.tape(self, Vector2i(s.position.x - 6, s.position.y - 3), 24)
+	UiNotebook.tape(self, Vector2i(s.end.x - 18, s.position.y - 3), 24)
 
 
 static func _first_output(r: Dictionary) -> StringName:
@@ -156,7 +186,7 @@ static func _makes_text(r: Dictionary) -> String:
 	var parts := PackedStringArray()
 	for id: StringName in makes:
 		var n := int(makes[id])
-		parts.append(Items.display_name(id) + (" ×%d" % n if n > 1 else ""))
+		parts.append(UiRules.item_name(id) + (" ×%d" % n if n > 1 else ""))
 	return ", ".join(parts)
 
 

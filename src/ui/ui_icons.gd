@@ -13,16 +13,16 @@ const SHAPES := {
 	&"knife": [".......kk", "......k3k", ".....k32k", "....k32k.", "...k21k..", "..kkkk...", ".k54k....", "k54k.....", "kkk......"],
 	&"axe": ["..kkkk...", ".k3332k..", "k33221kk.", "k3221k5k.", ".kkkkk5k.", ".....k5k.", ".....k5k.", ".....k4k.", ".....kkk."],
 	&"pick": [".kkkkkkk.", "k3322221k", "kk.k5k.kk", "...k5k...", "...k5k...", "...k5k...", "...k5k...", "...k4k...", "...kkk..."],
-	&"mattock": ["kkkkkkk..", "k332221k.", "k21k5kkk.", "kkkk5k...", "...k5k...", "...k5k...", "...k5k...", "...k4k...", "...kkk..."],
+	&"mattock": ["kkkk.....", "k332kkkk.", "k3221221k", "k21kk5kk.", "kkk.k5k..", "....k5k..", "....k5k..", "....k4k..", "....kkk.."],
 	&"billhook": ["..kkk....", ".k332k...", "k3k.k2k..", "kk..k2k..", "....k21k.", "....kkkk.", ".....k5k.", ".....k4k.", ".....kkk."],
 	&"stave": [".......kk", "......k6k", ".....k5k.", "....k5k..", "...k5k...", "..k5k....", ".k5k.....", "k4k......", "kk......."],
 	&"boathook": ["....kkk..", "...k3.3k.", "....kk3k.", "....k5k..", "...k5k...", "..k5k....", ".k5k.....", "k4k......", "kk......."],
 	&"glim": ["....kkk..", "...k3l3k.", "...k2l2k.", "...k232k.", "....k2k..", "....k2k..", "...k121k.", "...kk1kk.", "....kkk.."],
 	&"stone": [".........", "..kkkk...", ".k3332k..", "k332222k.", "k322221k.", "k222211k.", ".k2111k..", "..kkkk...", "........."],
 	&"timber": [".........", ".........", "..kkkkkk.", ".k3k5555k", "k323k544k", "k232k444k", ".k3k4444k", "..kkkkkk.", "........."],
-	&"driftwood": [".........", "......kk.", ".....k3k.", "kkk.k32k.", "k33k32k..", ".k2222k..", "..k21k...", "...kk....", "........."],
+	&"driftwood": [".........", ".....kk..", "....k3k..", ".kkkk32k.", "k33333kkk", "k2222222k", ".k111k11k", "..kkk.kk.", "........."],
 	&"scrap": [".........", ".kkkkk...", ".k3332kk.", ".k3w222k.", ".k22222k.", "..k2w21k.", "..k2111k.", "..kkkkkk.", "........."],
-	&"shell": [".........", "...kkk...", "..k3w2k..", ".k32221k.", ".k22211k.", "..k211k..", "...k1k...", "....k....", "........."],
+	&"shell": [".........", "......kk.", "....kkwk.", "...k332k.", "..k3321k.", ".k3221k..", "k3211k...", "k211k....", ".kkk....."],
 	&"greens": ["....k....", "...k3k...", "..k32k.k.", "..k2k.k3k", ".k2k.k32k", ".k2kk21k.", "..k21k1k.", "...kkkk..", "........."],
 	&"bread": [".........", ".........", "..kkkkk..", ".k3w332k.", "k3232322k", "k2222221k", ".kkkkkkk.", ".........", "........."],
 	&"bowl": [".........", "...k.k...", "..k.k....", "kkkkkkkkk", "k6554444k", ".k32221k.", ".k22211k.", "..kkkkk..", "........."],
@@ -61,7 +61,7 @@ const ITEMS := {
 	&"timber": [&"timber", &"sand", &"earth"],
 	&"driftwood": [&"driftwood", &"ash", &"ash"],
 	&"scrap": [&"scrap", &"plate", &"plate"],
-	&"mussels": [&"shell", &"ink", &"ink"],
+	&"mussels": [&"shell", &"brine", &"brine"],
 	&"whelks": [&"shell", &"sand", &"sand"],
 	&"samphire": [&"greens", &"moss", &"moss"],
 	&"wrack": [&"greens", &"earth", &"earth"],
@@ -99,10 +99,53 @@ const ITEMS := {
 	&"letter": [&"paper", &"linen", &"linen"],
 }
 
+## Stations, drawn larger as sketches on the making page: [rows, body ramp, second ramp].
+const STATIONS := {
+	&"fire": [[
+		"......k......",
+		".....k3k.....",
+		"....k323k....",
+		"...k32w23k...",
+		"...k2w1w2k...",
+		"..k21w6w12k..",
+		"..k1566651k..",
+		".kkk56665kkk.",
+		"k45kkkkkkk54k",
+		"k5456k4k6545k",
+		".kkkkkkkkkkk.",
+	], &"ember", &"stone"],
+	&"bench": [[
+		".............",
+		"..kk.........",
+		".k32k........",
+		"kkkkkkkkkkkkk",
+		"k66666666666k",
+		"k55555555554k",
+		"kkkkkkkkkkkkk",
+		".k4k.....k4k.",
+		".k4kkkkkkk4k.",
+		".k4k.....k4k.",
+		".kkk.....kkk.",
+	], &"stone", &"earth"],
+	&"kiln": [[
+		"....kkkkk....",
+		"...k66665k...",
+		"..k6655554k..",
+		".k665555544k.",
+		".k655kkk544k.",
+		"k6555k3k5444k",
+		"k6554kwk4444k",
+		"k5554k2k4444k",
+		"k5544k1k4444k",
+		"kkkkkkkkkkkkk",
+		".............",
+	], &"ember", &"rust"],
+}
+
 ## HUD need glyphs: one colour ('#') plus an ink rim added when drawn.
 const NEEDS := {
-	&"hunger": [".........", ".........", "..#.#.#..", ".........", "#.......#", "##.....##", ".#######.", "..#####..", "........."],
-	&"wet": ["....#....", "....#....", "...###...", "..#####..", ".###.###.", ".##.####.", "..#####..", "...###...", "........."],
+	&"hunger": [".........", ".........", ".........", "#.......#", "#.......#", "##.....##", ".#######.", "..#####..", "........."],
+	&"wet": ["....#....", "....#....", "...###...", "..#####..", ".#######.", ".#######.", "..#####..", "...###...", "........."],
 	&"load": ["...###...", "..#...#..", ".#######.", ".#######.", "####.####", "#########", ".#######.", ".........", "........."],
 	&"tired": ["..###....", ".##......", "##.......", "##.......", "##.......", ".##......", "..###....", ".........", "........."],
 }
@@ -174,6 +217,21 @@ static func shape_of(id: StringName) -> Array:
 ## Draw an item's icon with its top-left at `at`.
 static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, scale: int = 1) -> void:
 	UiDraw.sprite(ci, shape_of(id), at, colours_for(id), scale)
+
+
+## Draw a station sketch (13x11 cells) at a whole-number scale.
+static func draw_station(ci: CanvasItem, station: StringName, at: Vector2i, scale: int) -> void:
+	if not STATIONS.has(station):
+		return
+	var st: Array = STATIONS[station]
+	var a := ramp(st[1])
+	var b := ramp(st[2])
+	var cols := {
+		"k": UiTheme.INK_DEEP,
+		"1": _shade(a, 0), "2": _shade(a, 1), "3": _shade(a, 2), "w": a[a.size() - 1],
+		"4": _shade(b, 0), "5": _shade(b, 1), "6": _shade(b, 2),
+	}
+	UiDraw.sprite(ci, st[0], at, cols, scale)
 
 
 ## Draw a need glyph in `col` with an ink rim (for the HUD over the world).

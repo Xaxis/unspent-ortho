@@ -15,6 +15,8 @@ const FADED := Color("#6c6555")
 ## The one accent: cursor, margin, a wound, a shortfall.
 const ACCENT := Color("#9a4f28") # rust 3
 const ACCENT_BRIGHT := Color("#c47438") # rust 4, for the HUD over the world
+## Printed forms pasted into the notebook: a whiter, harder stock.
+const SLIP := Color("#efe8d6")
 ## Blue-grey of the printed rules on the paper.
 const RULE := Color("#b9b8a8")
 ## Covers and cloth behind the pages.

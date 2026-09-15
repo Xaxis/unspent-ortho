@@ -90,6 +90,16 @@ func handle(action: StringName) -> bool:
 	return false
 
 
+## Move the choice to the row whose id is `id`, if there is one (shots, links).
+func select(id: StringName) -> void:
+	for i in menu.rows.size():
+		if UiMenu.selectable(menu.rows[i]) and menu.rows[i].get("id") == id:
+			menu.index = i
+			_on_choice_changed()
+			queue_redraw()
+			return
+
+
 func refuse(why: String) -> void:
 	Events.sfx.emit(&"refused", Vector3.ZERO)
 	say(why)
