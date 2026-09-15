@@ -187,6 +187,19 @@ func test_text_already_on_screen_leaves_when_a_fight_comes() -> void:
 	hud.free()
 
 
+func test_a_line_said_on_a_page_is_not_said_again_after() -> void:
+	var hud := Hud.new()
+	tree.root.add_child(hud)
+	Events.screen_changed.emit(&"inventory", true)
+	Events.message.emit("The knife in hand.")
+	check(hud.messages.lines.is_empty(), "the page took it; the HUD does not queue it")
+	Events.screen_changed.emit(&"inventory", false)
+	check(hud.messages.lines.is_empty(), "nor play it when the page closes")
+	Events.message.emit("Took 2 timber.")
+	eq(hud.messages.lines.size(), 1, "with no page open, the HUD says it")
+	hud.free()
+
+
 func test_a_new_country_is_announced_once_it_holds() -> void:
 	var w := UiPlaceWatch.new()
 	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")

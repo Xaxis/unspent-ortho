@@ -42,6 +42,9 @@ var _hint_target := 0.0
 var _hurt_flash := 0.0
 var _lost_from := 0
 var _needs_alpha := {}
+## Pages open now. A page takes the messages said while it is up, so the HUD
+## does not queue them to play a second time when it closes.
+var _pages := {}
 
 
 func _ready() -> void:
@@ -54,6 +57,7 @@ func _ready() -> void:
 	_canvas.draw.connect(_draw_hud)
 	add_child(_canvas)
 	Events.message.connect(show_message)
+	Events.screen_changed.connect(_on_screen_changed)
 
 
 func set_clock(text: String) -> void:
@@ -115,7 +119,16 @@ func place_alpha() -> float:
 
 
 func show_message(text: String) -> void:
+	if not _pages.is_empty():
+		return
 	messages.push(text)
+
+
+func _on_screen_changed(n: StringName, open: bool) -> void:
+	if open:
+		_pages[n] = true
+	else:
+		_pages.erase(n)
 
 
 ## A line said at once, even with a hostile close.
