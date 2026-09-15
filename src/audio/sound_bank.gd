@@ -197,6 +197,8 @@ class Baked:
 	var pcm: PackedByteArray
 	var stream: AudioStreamWAV
 	var ms := 0
+	## Loaded from the disk cache rather than generated this run.
+	var from_disk := false
 
 
 class Job:
@@ -204,10 +206,18 @@ class Job:
 	var key: StringName
 	var result: Baked
 	var task := -1
+	## A cache file to read instead of rendering, and to write after (or "").
+	var cache_path := ""
 
 	func run() -> void:
+		if cache_path != "":
+			result = SoundBank.load_cached(key, cache_path)
+			if result != null:
+				return
 		result = SoundBank.render(key)
 		result.pcm = Synth.to_pcm16(result.samples)
+		if cache_path != "":
+			SoundBank.save_cached(result, cache_path)
 
 
 static var _shared: SoundBank
@@ -217,6 +227,10 @@ var threaded := true
 var keep_samples := false
 ## False in screenshot runs: nothing bakes, so nothing plays.
 var enabled := true
+## Baked PCM kept between runs, under a folder per recipe version, so a second
+## start plays at once. Empty = no disk (tests and tools never touch it).
+var cache_dir := ""
+var _cache_version_dir := ""
 var _done: Dictionary = {}
 var _jobs: Dictionary = {}
 var _queue: Array[StringName] = []
@@ -329,6 +343,120 @@ static func render(key: StringName) -> Baked:
 	return b
 
 
+# ------------------------------------------------------------------ disk
+
+const CACHE_MAGIC := "USND"
+const CACHE_FORMAT := 1
+## Version folders kept; older ones (other branches, older recipes) are removed.
+const CACHE_KEEP := 3
+
+
+## A fingerprint of every recipe and the sheet: any edit to src/audio or the
+## mix numbers gives a new cache folder, so a stale sound is never played.
+static func recipe_version() -> String:
+	var parts: PackedStringArray = [str(CACHE_FORMAT), str(SHEET), str(CATEGORIES), str(SoundMix.REF_DBFS), str(SoundMix.BUSES)]
+	var dir := DirAccess.open("res://src/audio")
+	if dir != null:
+		var files := dir.get_files()
+		files.sort()
+		for f in files:
+			if f.ends_with(".gd"):
+				parts.append(FileAccess.get_md5("res://src/audio/" + f))
+	return "\n".join(parts).md5_text().substr(0, 16)
+
+
+## Turn the disk cache on under `root` (the running game does, once).
+func use_disk_cache(root: String) -> void:
+	cache_dir = root
+	_cache_version_dir = root.path_join(recipe_version())
+	DirAccess.make_dir_recursive_absolute(_cache_version_dir)
+	_prune_cache(root)
+
+
+func _cache_path(key: StringName) -> String:
+	if _cache_version_dir == "":
+		return ""
+	return _cache_version_dir.path_join(String(key).replace(":", "_") + ".usnd")
+
+
+func _prune_cache(root: String) -> void:
+	var dir := DirAccess.open(root)
+	if dir == null:
+		return
+	var folders: Array = []
+	for d in dir.get_directories():
+		var marker := root.path_join(d)
+		folders.append([FileAccess.get_modified_time(marker) if FileAccess.file_exists(marker) else _folder_time(marker), d])
+	folders.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) > int(b[0]))
+	for i in range(CACHE_KEEP, folders.size()):
+		var gone := root.path_join(String(folders[i][1]))
+		if gone == _cache_version_dir:
+			continue
+		var sub := DirAccess.open(gone)
+		if sub != null:
+			for f in sub.get_files():
+				sub.remove(f)
+		DirAccess.remove_absolute(gone)
+
+
+static func _folder_time(path: String) -> int:
+	var newest := 0
+	var dir := DirAccess.open(path)
+	if dir != null:
+		for f in dir.get_files():
+			newest = maxi(newest, FileAccess.get_modified_time(path.path_join(f)))
+	return newest
+
+
+## Writes a baked sound (its PCM, rate, loop and gain) atomically: to a
+## temporary name, then renamed, so two games starting at once never read half
+## a file.
+static func save_cached(b: Baked, path: String) -> void:
+	var tmp := "%s.%d.tmp" % [path, OS.get_thread_caller_id()]
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_buffer(CACHE_MAGIC.to_ascii_buffer())
+	f.store_32(CACHE_FORMAT)
+	f.store_32(b.rate)
+	f.store_8(1 if b.loop else 0)
+	f.store_float(b.gain_db)
+	f.store_32(b.pcm.size())
+	f.store_buffer(b.pcm)
+	f.close()
+	DirAccess.rename_absolute(tmp, path)
+
+
+## The baked sound for `key` from its cache file, or null when missing or not
+## what this build would make.
+static func load_cached(key: StringName, path: String) -> Baked:
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() < 17:
+		return null
+	if f.get_buffer(4).get_string_from_ascii() != CACHE_MAGIC or f.get_32() != CACHE_FORMAT:
+		return null
+	var b := Baked.new()
+	b.key = key
+	b.name = base_name(key)
+	b.variant = variant_of(key)
+	var row: Array = SHEET.get(b.name, [&"event", 0.0, 1])
+	b.category = row[0]
+	b.heard = row[1]
+	var cat: Dictionary = CATEGORIES[b.category]
+	b.bus = cat["bus"]
+	b.rate = f.get_32()
+	b.loop = f.get_8() == 1
+	b.gain_db = f.get_float()
+	var size := f.get_32()
+	b.pcm = f.get_buffer(size)
+	if b.pcm.size() != size or b.rate != int(cat["rate"]) or b.loop != bool(cat["loop"]):
+		return null
+	b.from_disk = true
+	return b
+
+
 # ----------------------------------------------------------------- baking
 
 ## Queue a key for baking (no-op if baked or queued). urgent jumps the queue.
@@ -369,6 +497,7 @@ func bake_now(key: StringName) -> Baked:
 		return _done[key]
 	var job := Job.new()
 	job.key = key
+	job.cache_path = _cache_path(key)
 	job.run()
 	_queue.erase(key)
 	_finish(job)
@@ -397,6 +526,7 @@ func pump() -> void:
 	while _jobs.size() < MAX_TASKS and not _queue.is_empty():
 		var job := Job.new()
 		job.key = _queue.pop_front()
+		job.cache_path = _cache_path(job.key)
 		job.task = WorkerThreadPool.add_task(job.run, false, "bake %s" % job.key)
 		_jobs[job.key] = job
 

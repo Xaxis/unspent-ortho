@@ -36,15 +36,16 @@ func test_heard_levels_measured_from_samples_match_the_sheet() -> void:
 	for key in _sample_keys():
 		var b := Fixture.baked(key)
 		var win: Array = SoundBank.CATEGORIES[b.category]["window"]
-		var heard := SoundMix.heard_db(b)
+		var heard := float(Fixture.facts(key)["heard"])
 		check(heard >= win[0] - 0.05 and heard <= win[1] + 0.05, "%s heard %+.2f dB outside %s" % [key, heard, str(win)])
 		near(heard, b.heard, 0.05, "%s measured vs sheet" % key)
 		# A recipe that needs a wild gain to reach its level is a broken recipe.
 		check(b.gain_db > -30.0 and b.gain_db < 18.0, "%s needs %+.1f dB of call gain" % [key, b.gain_db])
-		lt(Synth.peak(b.samples), 0.9, "%s peak" % key)
+		var peak := float(Fixture.facts(key)["peak"])
+		lt(peak, 0.9, "%s peak" % key)
 		# Heard levels are loudness; peaks must still fit after gain and buses,
 		# so the master limiter only ever meets sums, never one sound alone.
-		var out_db := 20.0 * log(Synth.peak(b.samples)) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
+		var out_db := 20.0 * log(peak) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
 		lt(out_db, -0.5, "%s peaks at %+.1f dBFS after its gain and bus" % [key, out_db])
 
 
@@ -52,7 +53,7 @@ func test_nothing_carries_its_weight_below_120_hz() -> void:
 	for key in _sample_keys():
 		var b := Fixture.baked(key)
 		var limit := 0.15 if b.category == &"thunder" else 0.06
-		lt(Synth.low_energy_ratio(b.samples, b.rate, 120.0), limit, "%s below 120 Hz" % key)
+		lt(float(Fixture.facts(key)["lf120"]), limit, "%s below 120 Hz" % key)
 
 
 func test_interface_is_quietest_and_thunder_is_loudest() -> void:

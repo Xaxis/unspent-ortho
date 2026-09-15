@@ -159,6 +159,20 @@ static func country_weights(world: WorldData, p: Vector2) -> Dictionary:
 	return out
 
 
+## The country beds within `radius` tiles (a ring of samples): what is about
+## to be heard, so it can be baked before the ear reaches it.
+static func beds_ahead(world: WorldData, p: Vector2, radius: float = 30.0) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for k in 12:
+		var a := TAU * k / 12.0
+		var q := p + Vector2(cos(a), sin(a)) * radius
+		var c := world.country_at(clampi(floori(q.x), 0, world.size - 1), clampi(floori(q.y), 0, world.size - 1))
+		var bed: StringName = COUNTRY_BED.get(c, &"bed_wind")
+		if not out.has(bed):
+			out.append(bed)
+	return out
+
+
 static func _weigh_tile(world: WorldData, p: Vector2, weight: float, out: Dictionary) -> void:
 	var x := clampi(floori(p.x), 0, world.size - 1)
 	var y := clampi(floori(p.y), 0, world.size - 1)

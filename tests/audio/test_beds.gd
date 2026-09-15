@@ -302,3 +302,11 @@ func test_night_wet_and_windy_scatter_conditions() -> void:
 	var wire := [&"wire_sing", 1.0, 2.0, {"wind": 0.45}]
 	check(not SoundMix.scatter_allowed(wire, 12.0, calm), "wires quiet in a calm")
 	check(SoundMix.scatter_allowed(wire, 12.0, {"kind": &"clear", "strength": 0.0, "wind": -0.7}), "wires sing in a wind from either side")
+
+
+func test_the_next_country_is_baked_while_it_is_a_walk_away() -> void:
+	var w := _two_countries(0.0)
+	var ahead := SoundMix.beds_ahead(w, Vector2(24.5, 40.5))
+	check(ahead.has(&"bed_moss"), "here")
+	check(ahead.has(&"bed_pines"), "and the pines 24 tiles east")
+	eq(SoundMix.beds_ahead(w, Vector2(24.5, 40.5), 10.0), [&"bed_moss"] as Array[StringName], "not when far off")

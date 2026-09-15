@@ -64,8 +64,7 @@ func test_the_watcher_holds_its_note_and_its_bearing() -> void:
 
 func test_nothing_below_120_hz_carries_a_machine() -> void:
 	for kind in SoundMachines.KINDS:
-		var b := Fixture.baked(_key(kind))
-		lt(Synth.low_energy_ratio(b.samples, b.rate, 120.0), 0.05, "%s below 120 Hz" % kind)
+		lt(float(Fixture.facts(_key(kind))["lf120"]), 0.05, "%s below 120 Hz" % kind)
 	var flock := Fixture.baked(&"machine_flock")
 	lt(Synth.low_energy_ratio(flock.samples, flock.rate, 900.0), 0.05, "the flock must have nothing below 900 Hz so wind masks it")
 	var lineman := Fixture.baked(&"machine_lineman")

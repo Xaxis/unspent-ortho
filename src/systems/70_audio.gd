@@ -21,6 +21,7 @@ const MACHINE_FADE := 0.35
 const MUFFLE_FADE := 0.12
 const VOICES := 14
 const UI_VOICES := 3
+const DISK_CACHE := "user://sound_cache"
 ## Per sound name, how many may sound at once before the oldest is cut.
 const POLYPHONY := 3
 ## Screen offset (pixels from centre) where the sea is heard at full lean.
@@ -83,6 +84,9 @@ func setup(g: Game) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	bank = SoundBank.shared()
 	bank.enabled = game.options == null or game.options.shot == ""
+	# Only a real run keeps sounds on disk; tests build games without options.
+	if game.options != null and game.options.shot == "" and bank.cache_dir == "":
+		bank.use_disk_cache(DISK_CACHE)
 	SoundBuses.ensure()
 	for i in VOICES:
 		_voices.append(_player(&"SFX"))
@@ -334,6 +338,9 @@ func _scan() -> void:
 	sea = SoundMix.sea_near(game.world, game.player.pos)
 	river = SoundMix.river_near(game.world, game.player.pos)
 	remote = SoundMix.remoteness(game.world, game.player.pos)
+	# The next country is baked while it is still a walk away.
+	for bed in SoundMix.beds_ahead(game.world, game.player.pos):
+		bank.request(bed)
 
 
 func _read_weather() -> void:
