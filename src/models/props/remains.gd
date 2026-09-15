@@ -476,6 +476,9 @@ static func _wired(k: Kit, wall_a: Vector3, wall_b: Vector3, out: Vector3, roof:
 	k.rod(roof + Vector3(0.02, 0.62, -0.18), roof + Vector3(0.02, 0.62, 0.18), 0.008, 4, P.PLATE[3])
 	k.rod(roof + Vector3(0.02, 0.5, -0.12), roof + Vector3(0.02, 0.5, 0.12), 0.008, 4, P.PLATE[3])
 	k.found.prism(roof.x + 0.02, roof.y + 0.75, roof.z, 0.03, roof.y + 0.82, 0.02, 6, Color(1.0, 0.25, 0.3, 0.3))
+	# A loop of the same tube wound up the aerial, so the stolen light shows
+	# whichever way the shack is turned.
+	k.made.prism(roof.x + 0.02, roof.y + 0.22, roof.z, 0.05, roof.y + 0.46, 0.05, 6, GroundColors.lamp(col, 2.0))
 
 
 static func _fish_shack(k: Kit, s: int, lit: bool) -> void:
