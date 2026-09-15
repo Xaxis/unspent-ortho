@@ -11,7 +11,7 @@ extends MachineModel
 ## dead   the light dies, the legs fold shut up the mast and the post is left
 ##        standing on its plumb point
 
-const HUB_Y := 0.62
+const HUB_Y := 0.64
 const FOOT := Vector3(0.5, -0.6, 0.0)
 const BEARINGS := [PI, PI / 3.0, -PI / 3.0]
 const FIN_Z := 0.31
@@ -74,7 +74,8 @@ func build() -> void:
 	# The rubbed edge: along the top of the bar, where it has been handled.
 	FoundKit.mark(bk, Vector3(0.012, 0.047, 0.28), Vector3.UP, Vector3.BACK, 0.014, 0.2, R[5], 0.003)
 	# The instrument: an eight-sided barrel on the line of sight.
-	FoundKit.lathe(bk, Vector3.ZERO, Vector3.RIGHT, [Vector2(0.07, -0.19), Vector2(0.1, -0.15), Vector2(0.105, 0.08), Vector2(0.085, 0.15), Vector2(0.085, 0.17)], 8, R, PI / 8.0)
+	# It flares to a hood at the front round a wide objective.
+	FoundKit.lathe(bk, Vector3.ZERO, Vector3.RIGHT, [Vector2(0.07, -0.19), Vector2(0.1, -0.15), Vector2(0.1, 0.05), Vector2(0.14, 0.12), Vector2(0.14, 0.17)], 8, R, PI / 8.0)
 	# Upper arm of the cross and its cap; a collar under the barrel.
 	FoundKit.tbar(bk, Vector3(0, 0.09, 0), Vector3(0, 0.42, 0), 0.028, 0.022, 8, R)
 	FoundKit.disc(bk, Vector3(0, 0.43, 0), Vector3.UP, 0.045, 0.03, 8, 0.01, R, Color(0, 0, 0, 0), PI / 8.0)
@@ -83,16 +84,22 @@ func build() -> void:
 	FoundKit.visor(bk, Vector3(-0.19, 0.0, 0), Vector3.LEFT, Vector3.UP, 0.1, 0.022)
 	for j in 8:
 		var a := float(j) / 8.0 * TAU + PI / 8.0
-		FoundKit.mark(bk, Vector3(0.151, sin(a) * 0.072, cos(a) * 0.072), Vector3.RIGHT, Vector3.UP, 0.02, 0.02, R[5], 0.004)
+		FoundKit.mark(bk, Vector3(0.171, sin(a) * 0.122, cos(a) * 0.122), Vector3.RIGHT, Vector3.UP, 0.02, 0.02, R[5], 0.004)
 	FoundKit.streaks(bk, Vector3(0.14, -0.06, 0.0), Vector3.RIGHT, 0.08, 0.05, 3, 12, R[2])
 	body_mesh(bk, head)
 	add_scan(head, Vector3(-0.19, 0.0, 0), Vector3.LEFT, Vector3.BACK, 0.07, 0.02, 2.4)
 
 	var iris := joint(&"iris", head, Vector3(0.172, 0, 0))
 	var ik := FoundKit.kit()
-	FoundKit.optic(ik, Vector3.ZERO, Vector3.RIGHT, 0.058)
+	FoundKit.optic(ik, Vector3.ZERO, Vector3.RIGHT, 0.085)
+	# The level vial along the top of the barrel, lit with the optic: from the
+	# game's high camera it is the part of the eye you always see.
+	var vial := Vector3(-0.1, 0.1 * cos(PI / 8.0) + 0.001, 0.0) - Vector3(0.172, 0, 0)
+	FoundKit.mark(ik, vial, Vector3.UP, Vector3.RIGHT, 0.08, 0.12, Palette.LENS[0], 0.003)
+	FoundKit.mark(ik, vial, Vector3.UP, Vector3.RIGHT, 0.05, 0.09, Palette.LENS[2], 0.006)
+	FoundKit.mark(ik, vial + Vector3(0.015, 0, 0), Vector3.UP, Vector3.RIGHT, 0.024, 0.03, Palette.LENS[3], 0.009)
 	part_mesh(ik, iris)
-	set_part_anchor(head, Vector3(0.18, 0, 0), 0.5)
+	set_part_anchor(head, Vector3(0.18, 0, 0), 0.55)
 
 	# Fins: blades folded flat along the bar at rest, stood out on alert.
 	for i in 4:
@@ -141,22 +148,22 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"hub"] = pr(Vector3(0, 0.05, 0))
 			return d
 		&"windup":
+			# The post leans back on its tripod; the feet stay where they are.
 			var d := _fins_out(0.6)
-			d[&"mast"] = pr(Vector3(0, 0.2, 0))
+			d[&"mast"] = pr(Vector3(0, 0.2, 0), Vector3(0, 0, 0.14))
 			d[&"head"] = r(Vector3(0, 0, -0.36))
-			d[&"hub"] = r(Vector3(0, 0, 0.12))
 			return d
 		&"strike":
 			var d := _fins_out(1.0)
-			d[&"mast"] = pr(Vector3(0, 0.08, 0))
+			d[&"mast"] = pr(Vector3(0.04, 0.08, 0), Vector3(0, 0, -0.3))
 			d[&"head"] = r(Vector3(0, 0, -0.55))
-			d[&"hub"] = pr(Vector3(0.1, -0.04, 0), Vector3(0, 0, -0.26))
+			d[&"hub"] = pr(Vector3(0.04, 0.0, 0))
 			return d
 		&"dead":
 			# Folded shut like a put-away tripod, the plumb point in the ground:
 			# the post stays standing.
 			var d := {}
-			d[&"hub"] = pr(Vector3(0, -HUB_Y + 0.17, 0))
+			d[&"hub"] = pr(Vector3(0, -HUB_Y + 0.2, 0))
 			for i in 3:
 				d[StringName("leg%d" % i)] = r(Vector3(0, 0, 2.18))
 			d[&"mast"] = pr(Vector3(0, -0.3, 0))
@@ -189,13 +196,13 @@ func _routine(_delta: float, on: bool) -> void:
 	if not on:
 		return
 	if pose == &"stand" or pose == &"walk":
-		# Centre, left, centre, right: a servo move then an exact hold.
+		# Centre, left, centre, right: an exact hold, then a servo move to the next.
 		var t := fposmod(clock, 6.0) / 6.0
 		var slot := int(t * 4.0)
 		var within := t * 4.0 - slot
 		var bearings := [0.0, 0.55, 0.0, -0.55]
-		var from: float = bearings[(slot + 3) % 4]
-		var to: float = bearings[slot]
-		yaw.rotation.y = lerpf(from, to, smoothstep(0.0, 1.0, clampf(within / 0.25, 0.0, 1.0)))
+		var from: float = bearings[slot]
+		var to: float = bearings[(slot + 1) % 4]
+		yaw.rotation.y = lerpf(from, to, smoothstep(0.0, 1.0, clampf((within - 0.75) / 0.25, 0.0, 1.0)))
 	else:
 		yaw.rotation.y = move_toward(yaw.rotation.y, 0.0, 0.15)

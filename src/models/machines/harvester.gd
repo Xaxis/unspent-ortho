@@ -7,7 +7,8 @@ extends MachineModel
 ## walk   the hull pitches and yaws over the ground on an exact cycle
 ## alert  the intake drops and two lamp masts rise out of the hull
 ## hurt   lamps out, comb stops
-## dead   settles on its tracks, intake down, and the row spills out in front
+## dead   lists onto one track, intake on the ground, the comb dropped askew in
+##        front of it, lamps and stacks folded; the row spills out
 
 const WHEEL_R := 0.13
 const HULL_Y := 0.5
@@ -66,15 +67,20 @@ func build() -> void:
 	FoundKit.streaks(k, Vector3(-0.169, 0.33, 0), Vector3.RIGHT, 0.64, 0.05, 7, 33, R[1])
 	for j in 9:
 		FoundKit.mark(k, Vector3(-0.5, 0.472, -0.4 + j * 0.1), Vector3.UP, Vector3.RIGHT, 0.36, 0.024, R[1], 0.002)
-	# Two short stacks behind it, and a seam down the middle of the deck.
-	for sz: float in [-1.0, 1.0]:
-		FoundKit.tbar(k, Vector3(-0.8, 0.3, sz * 0.5), Vector3(-0.8, 0.62, sz * 0.5), 0.045, 0.04, 6, R, 0.015)
-		FoundKit.spot(k, Vector3(-0.8, 0.621, sz * 0.5), Vector3.UP, 0.028, 6, R[0], 0.002)
 	FoundKit.seam(k, Vector3(-0.12, 0.301, 0), Vector3(0.66, 0.301, 0), Vector3.UP, R, 4)
 	FoundKit.panel(k, Vector3(0.3, 0.301, -0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	FoundKit.panel(k, Vector3(0.3, 0.301, 0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	body_mesh(k, hull)
 	add_scan(hull, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.BACK, 0.6, 0.035, 3.0)
+	# Two short stacks behind the housing on a hinged foot, the way a stack is
+	# made to fold for a low bridge; dead, they fold.
+	var stacks := joint(&"stacks", hull, Vector3(-0.8, 0.3, 0))
+	var sk2 := FoundKit.kit()
+	FoundKit.tbar(sk2, Vector3(0, 0.0, -0.56), Vector3(0, 0.0, 0.56), 0.03, 0.03, 6, D)
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.tbar(sk2, Vector3(0, 0.0, sz * 0.5), Vector3(0, 0.32, sz * 0.5), 0.045, 0.04, 6, R, 0.015)
+		FoundKit.spot(sk2, Vector3(0, 0.321, sz * 0.5), Vector3.UP, 0.028, 6, R[0], 0.002)
+	body_mesh(sk2, stacks)
 
 	for sz: float in [-1.0, 1.0]:
 		var lamp := joint(&"lamp_r" if sz > 0 else &"lamp_l", hull, Vector3(0.62, 0.1, sz * 0.66))
@@ -89,25 +95,30 @@ func build() -> void:
 	var intake := joint(&"intake", hull, Vector3(0.86, 0.22, 0))
 	var ik := FoundKit.kit()
 	var hood: Array[Vector2] = [Vector2(0.0, 0.08), Vector2(0.5, -0.36), Vector2(0.5, -0.52), Vector2(0.08, -0.5)]
-	FoundKit.slab(ik, Vector3.ZERO, Vector3.RIGHT, Vector3.UP, hood, 2.46, R, 0.03)
+	# The hood is the biggest plate on it: body fill, so the lit rim stays on bevels.
+	var hood_r: Array = [R[0], R[1], R[2], R[3], R[3], R[5]]
+	FoundKit.slab(ik, Vector3.ZERO, Vector3.RIGHT, Vector3.UP, hood, 2.46, hood_r, 0.03)
 	FoundKit.rivets(ik, Vector3(0.1, 0.01, -1.1), Vector3(0.1, 0.01, 1.1), Vector3(0.66, 0.75, 0), 12, R[5])
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.seam(ik, Vector3(0.1, 0.0, sz * 0.4), Vector3(0.46, -0.32, sz * 0.4), Vector3(0.66, 0.75, 0), R, 3)
 	# Pointed dividers along the lip: the saw-edge you see coming.
 	for j in 7:
 		var z := -1.08 + j * 0.36
-		FoundKit.lathe(ik, Vector3(0.44, -0.46, z), Vector3(1, -0.22, 0), [Vector2(0.075, 0.0), Vector2(0.06, 0.08), Vector2(0.0, 0.34)], 4, R, PI * 0.25)
+		FoundKit.lathe(ik, Vector3(0.44, -0.46, z), Vector3(1, -0.22, 0), [Vector2(0.075, 0.0), Vector2(0.06, 0.06), Vector2(0.0, 0.22)], 4, R, PI * 0.25)
 	body_mesh(ik, intake)
 
+	# The comb: long amber teeth running out past the dividers, lit on top, so the
+	# dangerous end reads as the soft one from wherever you stand.
 	var comb := joint(&"comb", intake, Vector3(0.5, -0.5, 0))
 	var ck2 := FoundKit.kit()
-	for j in 12:
-		var z := -0.99 + j * 0.18
-		var tooth: Array[Vector2] = [Vector2(-0.02, 0.03), Vector2(0.16, 0.0), Vector2(-0.02, -0.03)]
-		FoundKit.slab(ck2, Vector3(0, 0, z), Vector3.RIGHT, Vector3.BACK, tooth, 0.03, [Palette.LENS[0], Palette.LENS[1], Palette.LENS[2], Palette.LENS[2], Palette.LENS[3], Palette.LENS[3]])
-	FoundKit.tbar(ck2, Vector3(-0.02, 0, -1.08), Vector3(-0.02, 0, 1.08), 0.02, 0.02, 4, [Palette.LENS[0], Palette.LENS[0], Palette.LENS[1], Palette.LENS[1], Palette.LENS[2], Palette.LENS[2]])
+	var amber: Array = [Palette.LENS[0], Palette.LENS[1], Palette.LENS[2], Palette.LENS[3], Palette.LENS[3], Palette.LENS[3]]
+	for j in 13:
+		var z := -1.08 + j * 0.18
+		var tooth: Array[Vector2] = [Vector2(-0.04, 0.05), Vector2(0.3, 0.012), Vector2(0.3, -0.012), Vector2(-0.04, -0.05)]
+		FoundKit.slab(ck2, Vector3(0, 0, z), Vector3.RIGHT, Vector3.BACK, tooth, 0.045, amber)
+	FoundKit.tbar(ck2, Vector3(-0.03, 0, -1.12), Vector3(-0.03, 0, 1.12), 0.035, 0.035, 4, [Palette.LENS[0], Palette.LENS[0], Palette.LENS[1], Palette.LENS[2], Palette.LENS[2], Palette.LENS[2]])
 	part_mesh(ck2, comb)
-	set_part_anchor(intake, Vector3(0.6, -0.48, 0), 0.9)
+	set_part_anchor(intake, Vector3(0.7, -0.48, 0), 1.0)
 
 	# The row it was cutting, only once it is dead: made of the field, drawn by the hand.
 	var spill := Node3D.new()
@@ -140,13 +151,19 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"lamp_l"] = pr(Vector3(0, 0.36, 0))
 			d[&"lamp_r"] = pr(Vector3(0, 0.36, 0))
 		&"strike":
-			d[&"intake"] = pr(Vector3(0, -0.04, 0), Vector3(0, 0, -0.3))
+			d[&"intake"] = pr(Vector3(0, 0.05, 0), Vector3(0, 0, -0.26))
 			d[&"hull"] = pr(Vector3(0.22, -0.02, 0), Vector3(0, 0, -0.05))
 			d[&"lamp_l"] = pr(Vector3(0, 0.36, 0))
 			d[&"lamp_r"] = pr(Vector3(0, 0.36, 0))
 		&"dead":
-			d[&"hull"] = pr(Vector3(0, -0.035, 0), Vector3(0.03, 0.0, -0.04))
-			d[&"intake"] = pr(Vector3(0, -0.02, 0), Vector3(0, 0, -0.24))
+			# Settles listing onto one track; the intake comes down on the ground,
+			# the comb drops off it askew, lamps and stacks fold over.
+			d[&"hull"] = pr(Vector3(0, -0.05, 0), Vector3(0.13, 0.04, 0.05))
+			d[&"intake"] = pr(Vector3(0.02, -0.08, 0), Vector3(-0.1, 0, -0.26))
+			d[&"comb"] = pr(Vector3(0.22, 0.1, 0.1), Vector3(-0.03, 0.28, 0.21))
+			d[&"lamp_l"] = r(Vector3(-0.7, 0, 0.25))
+			d[&"lamp_r"] = r(Vector3(0.45, 0, -0.35))
+			d[&"stacks"] = r(Vector3(0, 0, 1.2))
 	return d
 
 

@@ -3,7 +3,7 @@ extends TestCase
 ## them: each machine is rasterised flat black through the game camera at
 ## gameplay texel size, and silhouettes are compared cell by cell.
 ##
-##   alert changes the silhouette more than any walk pose does
+##   alert and dead change the silhouette more than any walk pose does
 ##   every machine is visibly bigger than nothing and fits its footprint
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
@@ -99,7 +99,7 @@ static func posed(kid: StringName, p: StringName, phase: float = 0.0) -> FigureM
 	return m
 
 
-func test_alert_changes_the_silhouette_more_than_any_walk_pose() -> void:
+func test_alert_and_dead_change_the_silhouette_more_than_any_walk_pose() -> void:
 	# Seen from the side-ish and from the front-ish: the gate must hold both ways.
 	for yaw: float in [0.6, 2.3]:
 		for kid in KINDS:
@@ -115,6 +115,11 @@ func test_alert_changes_the_silhouette_more_than_any_walk_pose() -> void:
 				walk_change = maxi(walk_change, diff(base, silhouette(w, yaw)))
 				w.free()
 			gt(float(alert_change), float(walk_change), "%s yaw %.1f: alert (%d px) vs walk (%d px)" % [kid, yaw, alert_change, walk_change])
+			# A dead machine must be told from a live one at a glance, too.
+			var dead := posed(kid, &"dead")
+			var dead_change := diff(base, silhouette(dead, yaw))
+			dead.free()
+			gt(float(dead_change), float(walk_change), "%s yaw %.1f: dead (%d px) vs walk (%d px)" % [kid, yaw, dead_change, walk_change])
 
 
 func test_every_machine_reads_at_gameplay_zoom() -> void:

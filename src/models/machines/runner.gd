@@ -1,13 +1,13 @@
 extends MachineModel
-## A runner: almost a person, and headless. A tapered torso with square
-## shoulders and nothing above them but a capped socket; a satchel sits high on
-## its back where a head would hang, and a visor slit runs across the chest
-## instead of a face. It strides like a person, except that every step is the
+## A runner: almost a person, and headless. A tapered torso with square flat
+## shoulders and nothing above them but a bolted plate; a satchel rides on its
+## back at the shoulder line, and a visor slit runs across the chest instead of
+## a face. It strides like a person, except that every step is the
 ## same step, the weight never shifts, and the arms hang still. The satchel is
 ## the working part (back).
 ##
 ## walk   a real stride with knees; no sway, no torso turn, arms hanging still
-## alert  stops and squares up: stance set, arms up and out, satchel flap up
+## alert  stops and squares up: planted wide, arms held out still, flap open
 ## dead   folds at the knees, goes down on its front; the satchel falls open
 
 const HIP_Y := 0.72
@@ -47,7 +47,9 @@ func build() -> void:
 	# Narrow at the waist, square at the shoulders, a flat shoulder line and no head.
 	var plan := FoundKit.plan_oct(0.18, 0.4, 0.05)
 	FoundKit.loft(k, [FoundKit.ring(plan, 0.0, 0.0, Vector2(0.72, 0.45)), FoundKit.ring(plan, 0.14, 0.0, Vector2(0.8, 0.5)), FoundKit.ring(plan, 0.46, 0.0), FoundKit.ring(plan, 0.5, 0.03)], R, true)
-	FoundKit.disc(k, Vector3(0, 0.515, 0), Vector3.UP, 0.055, 0.04, 8, 0.0, D, R[0], PI / 8.0)
+	# Nothing above the shoulders: a flat plate bolted over where a neck would be.
+	FoundKit.mark(k, Vector3(0, 0.501, 0), Vector3.UP, Vector3.RIGHT, 0.2, 0.09, R[2], 0.002)
+	FoundKit.rivets(k, Vector3(0, 0.503, -0.04), Vector3(0, 0.503, 0.04), Vector3.UP, 2, R[5], 0.025)
 	FoundKit.visor(k, Vector3(0.088, 0.38, 0), Vector3(0.998, 0.06, 0), Vector3.UP, 0.24, 0.03)
 	FoundKit.streaks(k, Vector3(0.086, 0.34, 0), Vector3.RIGHT, 0.18, 0.18, 5, 151, R[1])
 	for sz: float in [-1.0, 1.0]:
@@ -65,26 +67,32 @@ func build() -> void:
 		FoundKit.slab(ak, Vector3(0, -0.47, 0), Vector3.RIGHT, Vector3.UP, hand, 0.05, DD, 0.01)
 		body_mesh(ak, arm)
 
-	var satchel := joint(&"satchel", torso, Vector3(-0.08, 0.36, 0))
+	# The satchel rides on the back below the shoulder line, so the top of the
+	# figure stays flat: headless, not hooded.
+	var satchel := joint(&"satchel", torso, Vector3(-0.09, 0.3, 0))
 	var bk := FoundKit.kit()
-	var bag: Array[Vector2] = [Vector2(-0.14, -0.12), Vector2(0.14, -0.12), Vector2(0.16, -0.07), Vector2(0.16, 0.13), Vector2(-0.16, 0.13), Vector2(-0.16, -0.07)]
-	FoundKit.slab(bk, Vector3(-0.08, 0.02, 0), Vector3.BACK, Vector3.UP, bag, 0.14, R, 0.025)
-	FoundKit.rivets(bk, Vector3(-0.14, -0.07, 0.161), Vector3(-0.02, -0.07, 0.161), Vector3.BACK, 3, R[5], 0.03)
-	FoundKit.rivets(bk, Vector3(-0.14, -0.07, -0.161), Vector3(-0.02, -0.07, -0.161), Vector3.FORWARD, 3, R[5], 0.03)
-	FoundKit.streaks(bk, Vector3(-0.151, -0.06, 0), Vector3.LEFT, 0.2, 0.05, 5, 152, R[1])
+	var bag: Array[Vector2] = [Vector2(-0.15, -0.16), Vector2(0.15, -0.16), Vector2(0.17, -0.11), Vector2(0.17, 0.12), Vector2(-0.17, 0.12), Vector2(-0.17, -0.11)]
+	FoundKit.slab(bk, Vector3(-0.07, 0.0, 0), Vector3.BACK, Vector3.UP, bag, 0.14, R, 0.025)
+	FoundKit.rivets(bk, Vector3(-0.13, -0.1, 0.171), Vector3(-0.01, -0.1, 0.171), Vector3.BACK, 3, R[5], 0.03)
+	FoundKit.rivets(bk, Vector3(-0.13, -0.1, -0.171), Vector3(-0.01, -0.1, -0.171), Vector3.FORWARD, 3, R[5], 0.03)
+	FoundKit.streaks(bk, Vector3(-0.141, -0.1, 0), Vector3.LEFT, 0.22, 0.05, 5, 152, R[1])
+	# Two straps over the shoulders to the chest.
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.mark(bk, Vector3(0.0, 0.121, sz * 0.11), Vector3.UP, Vector3.RIGHT, 0.2, 0.04, R[1], 0.003)
 	body_mesh(bk, satchel)
 	var pk := FoundKit.kit()
-	FoundKit.mark(pk, Vector3(-0.151, 0.0, 0), Vector3.LEFT, Vector3.UP, 0.24, 0.07, Palette.LENS[0], 0.003)
-	FoundKit.mark(pk, Vector3(-0.151, 0.0, 0), Vector3.LEFT, Vector3.UP, 0.2, 0.04, Palette.LENS[2], 0.007)
-	FoundKit.mark(pk, Vector3(-0.151, 0.0, 0), Vector3.LEFT, Vector3.UP, 0.1, 0.018, Palette.LENS[3], 0.01)
+	var pc := Vector3(-0.141, -0.03, 0)
+	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.28, 0.14, Palette.LENS[0], 0.003)
+	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.24, 0.1, Palette.LENS[2], 0.007)
+	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.14, 0.035, Palette.LENS[3], 0.01)
 	part_mesh(pk, satchel)
-	set_part_anchor(satchel, Vector3(-0.16, 0.0, 0), 0.45)
+	set_part_anchor(satchel, pc + Vector3(-0.01, 0, 0), 0.5)
 
-	var flap := joint(&"flap", satchel, Vector3(-0.15, 0.15, 0))
+	var flap := joint(&"flap", satchel, Vector3(-0.14, 0.12, 0))
 	var fk := FoundKit.kit()
-	var lid: Array[Vector2] = [Vector2(-0.16, 0.0), Vector2(0.16, 0.0), Vector2(0.15, -0.1), Vector2(0.0, -0.14), Vector2(-0.15, -0.1)]
+	var lid: Array[Vector2] = [Vector2(-0.17, 0.0), Vector2(0.17, 0.0), Vector2(0.16, -0.08), Vector2(0.0, -0.11), Vector2(-0.16, -0.08)]
 	FoundKit.slab(fk, Vector3(-0.012, 0.0, 0), Vector3.BACK, Vector3.UP, lid, 0.025, R, 0.008)
-	FoundKit.spot(fk, Vector3(-0.026, -0.13, 0), Vector3.LEFT, 0.025, 6, R[5], 0.002)
+	FoundKit.spot(fk, Vector3(-0.026, -0.1, 0), Vector3.LEFT, 0.025, 6, R[5], 0.002)
 	body_mesh(fk, flap)
 
 	# What it was carrying, once it is down: paper, the only made thing it holds.
@@ -107,16 +115,16 @@ func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
 		&"alert":
-			d[&"hips"] = pr(Vector3(0, -0.12, 0))
-			d[&"thigh_l"] = r(Vector3(0.22, 0, 0.45))
-			d[&"thigh_r"] = r(Vector3(-0.22, 0, 0.45))
-			d[&"shin_l"] = r(Vector3(-0.12, 0, -0.8))
-			d[&"shin_r"] = r(Vector3(0.12, 0, -0.8))
-			d[&"torso"] = r(Vector3(0, 0, 0.12))
-			# Arms up and out in a V, flap up: the shape stops being a person.
-			d[&"arm_l"] = r(Vector3(2.35, 0, 0))
-			d[&"arm_r"] = r(Vector3(-2.35, 0, 0))
-			d[&"flap"] = r(Vector3(0, 0, -2.2))
+			# Stops and squares up: feet planted wide and flat, knees set, arms
+			# held out from the sides and still, the satchel flap thrown open.
+			d[&"hips"] = pr(Vector3(0, -0.085, 0))
+			d[&"thigh_l"] = r(Vector3(0.3, 0, 0.45))
+			d[&"thigh_r"] = r(Vector3(-0.3, 0, 0.45))
+			d[&"shin_l"] = r(Vector3(-0.3, 0, -0.45))
+			d[&"shin_r"] = r(Vector3(0.3, 0, -0.45))
+			d[&"arm_l"] = r(Vector3(0.8, 0, 0))
+			d[&"arm_r"] = r(Vector3(-0.8, 0, 0))
+			d[&"flap"] = r(Vector3(0, 0, -2.4))
 		&"windup":
 			d[&"torso"] = r(Vector3(0, 0, -0.22))
 			d[&"arm_r"] = r(Vector3(-0.2, 0, -1.1))
@@ -124,6 +132,7 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"thigh_l"] = r(Vector3(0, 0, 0.35))
 			d[&"shin_l"] = r(Vector3(0, 0, -0.35))
 			d[&"thigh_r"] = r(Vector3(0, 0, -0.25))
+			d[&"shin_r"] = r(Vector3(0, 0, 0.2))
 			d[&"hips"] = pr(Vector3(0, -0.05, 0))
 		&"strike":
 			d[&"torso"] = pr(Vector3(0.06, 0, 0), Vector3(0, 0, -0.3))
@@ -132,9 +141,10 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"thigh_l"] = r(Vector3(0, 0, 0.5))
 			d[&"shin_l"] = r(Vector3(0, 0, -0.2))
 			d[&"thigh_r"] = r(Vector3(0, 0, -0.4))
+			d[&"shin_r"] = r(Vector3(0, 0, 0.32))
 			d[&"hips"] = pr(Vector3(0.1, -0.06, 0))
 		&"dead":
-			d[&"hips"] = pr(Vector3(0.05, -0.54, 0))
+			d[&"hips"] = pr(Vector3(0.05, -0.48, 0))
 			d[&"thigh_l"] = r(Vector3(0, 0, 1.45))
 			d[&"thigh_r"] = r(Vector3(0, 0, 1.4))
 			d[&"shin_l"] = r(Vector3(0, 0, -2.95))

@@ -199,3 +199,14 @@ func test_walk_moves_the_body() -> void:
 		m.settle()
 		check(not same_state(a, joint_state(m), 0.01), "%s does not move when it walks" % kid)
 		m.free()
+
+
+func test_helpers_beside_the_kinds_are_never_created_as_kinds() -> void:
+	for helper: StringName in [&"machine_model", &"found_kit", &"machine_gallery"]:
+		var m := FigureModel.create(helper)
+		check(m != null, "%s gives a placeholder" % helper)
+		check(m.get_script() == FigureModel or helper == &"machine_model", "%s is not a kind" % helper)
+		eq(m.kind, helper, "kind")
+		m.set_pose(&"dead")
+		m.animate(0.1, 0.0)
+		m.free()

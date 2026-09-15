@@ -10,6 +10,7 @@ extends MachineModel
 
 const HIP_Y := 0.5
 const COL_R := 0.22
+const BAND_Y := 0.46
 
 var _yaw: Node3D
 
@@ -50,20 +51,20 @@ func build() -> void:
 		if cos(a) < -0.5:
 			FoundKit.visor(ck, n * apo + Vector3(0, 0.44, 0), n, Vector3.UP, 0.12, 0.03)
 		elif cos(a) > 0.5:
-			FoundKit.streaks(ck, n * apo + Vector3(0, 0.38, 0), n, 0.1, 0.18, 2, 90 + j, R[1])
+			FoundKit.streaks(ck, n * apo + Vector3(0, BAND_Y - 0.11, 0), n, 0.1, 0.16, 2, 90 + j, R[1])
 	body_mesh(ck, column)
 	add_scan(column, Vector3(-apo, 0.44, 0), Vector3.LEFT, Vector3.BACK, 0.08, 0.025, 4.0)
-	# The band: three front faces of the column, amber at chest height.
+	# The band: the five front faces of the column, a hand's width of amber at
+	# chest height, hottest dead ahead.
 	var bk := FoundKit.kit()
-	for j: int in [-1, 0, 1]:
+	for j: int in [-2, -1, 0, 1, 2]:
 		var a := float(j) / 8.0 * TAU
 		var n := Vector3(cos(a), 0, sin(a))
-		var along := Vector3.UP.cross(n)
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0), n, Vector3.UP, 0.175, 0.1, Palette.LENS[0], 0.003)
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0), n, Vector3.UP, 0.175, 0.055, Palette.LENS[2], 0.006)
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0) + along * 0.0, n, Vector3.UP, 0.12 if j == 0 else 0.05, 0.018, Palette.LENS[3], 0.009)
+		FoundKit.mark(bk, n * apo + Vector3(0, BAND_Y, 0), n, Vector3.UP, 0.172, 0.22, Palette.LENS[0], 0.003)
+		FoundKit.mark(bk, n * apo + Vector3(0, BAND_Y, 0), n, Vector3.UP, 0.172, 0.16, Palette.LENS[2], 0.006)
+		FoundKit.mark(bk, n * apo + Vector3(0, BAND_Y + 0.02, 0), n, Vector3.UP, 0.172 if absi(j) < 2 else 0.08, 0.05, Palette.LENS[3], 0.009)
 	part_mesh(bk, column)
-	set_part_anchor(column, Vector3(apo, 0.46, 0), 0.7)
+	set_part_anchor(column, Vector3(apo, BAND_Y, 0), 0.75)
 
 	_yaw = Node3D.new()
 	_yaw.name = "yaw"
@@ -114,7 +115,8 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"brim_l"] = r(Vector3(0.75, 0, 0))
 			d[&"brim_r"] = r(Vector3(-0.75, 0, 0))
 		&"dead":
-			d[&"base"] = pr(Vector3(0, 0.24, 0), Vector3(0, 0, PI * 0.5))
+			# Over backwards, the feet kicked forward: it lies where it stood.
+			d[&"base"] = pr(Vector3(0.55, 0.24, 0), Vector3(0, 0, PI * 0.5))
 	return d
 
 
@@ -127,9 +129,9 @@ func _timing(p: StringName, j: StringName) -> Vector2:
 func _gait_deltas(phase: float) -> Dictionary:
 	var s := sin(phase * TAU)
 	return {
-		&"leg_l": r(Vector3(0, 0, s * 0.34)),
-		&"leg_r": r(Vector3(0, 0, -s * 0.34)),
-		&"hips": pr(Vector3(0, -absf(s) * 0.03, 0)),
+		&"leg_l": r(Vector3(0, 0, s * 0.28)),
+		&"leg_r": r(Vector3(0, 0, -s * 0.28)),
+		&"hips": pr(Vector3(0, -absf(s) * 0.018, 0)),
 	}
 
 
@@ -137,11 +139,11 @@ func _routine(_delta: float, on: bool) -> void:
 	if not on:
 		return
 	if pose == &"stand" or pose == &"walk":
-		# A quarter turn, hold; back, hold; the other quarter, hold; back.
+		# Hold, a quarter turn; hold, back; hold, the other quarter; hold, back.
 		var t := fposmod(clock, 9.0) / 9.0
 		var slot := int(t * 4.0)
-		var within := smoothstep(0.0, 1.0, clampf((t * 4.0 - slot) / 0.3, 0.0, 1.0))
+		var within := smoothstep(0.0, 1.0, clampf((t * 4.0 - slot - 0.7) / 0.3, 0.0, 1.0))
 		var bearings := [0.0, 0.9, 0.0, -0.9]
-		_yaw.rotation.y = lerpf(float(bearings[(slot + 3) % 4]), float(bearings[slot]), within)
+		_yaw.rotation.y = lerpf(float(bearings[slot]), float(bearings[(slot + 1) % 4]), within)
 	else:
 		_yaw.rotation.y = 0.0

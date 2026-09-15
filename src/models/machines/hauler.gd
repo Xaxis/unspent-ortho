@@ -5,7 +5,7 @@ extends MachineModel
 ## a cold slit, so the body is deliberately not mirrored there.
 ##
 ## walk   the rear hopper swings on the hinge in an exact sway; wheels turn with distance
-## alert  both hoppers jack up on their rams
+## alert  jacks up on its rams, the hoppers tipped apart at the hinge
 ## dead   the hinge folds and the rear hopper tips its load out
 
 const WHEEL_R := 0.11
@@ -67,6 +67,9 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 	FoundKit.loft(ck, [FoundKit.ring(beam, 0.09), FoundKit.ring(beam, 0.16, 0.02)], DD)
 	for x: float in [-0.3, 0.3]:
 		FoundKit.tbar(ck, Vector3(x, 0.14, 0), Vector3(x, 0.3, 0), 0.04, 0.04, 6, D)
+		# The jack's ram, sleeved inside the hopper until it runs out.
+		FoundKit.tbar(ck, Vector3(x, 0.28, 0), Vector3(x, 0.58, 0), 0.024, 0.024, 6, R)
+		FoundKit.ticks(ck, Vector3(x + 0.024, 0.32, 0), Vector3(x + 0.024, 0.56, 0), Vector3.RIGHT, 5, R[5], 0.02)
 	FoundKit.tbar(ck, Vector3(0, WHEEL_R, -SEG_W * 0.5 - 0.02), Vector3(0, WHEEL_R, SEG_W * 0.5 + 0.02), 0.02, 0.02, 4, DD)
 	body_mesh(ck, seg)
 	for x: float in [-0.34, 0.0, 0.34]:
@@ -99,6 +102,9 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 		var nose: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(0.14, 0.02), Vector2(0.1, 0.26), Vector2(0.0, 0.3)]
 		FoundKit.slab(bk, Vector3(SEG_L * 0.5 - 0.02, 0.02, 0), Vector3.RIGHT, Vector3.UP, nose, SEG_W * 0.8, R, 0.02)
 		FoundKit.visor(bk, Vector3(SEG_L * 0.5 + 0.1, 0.18, 0), Vector3(0.99, 0.16, 0), Vector3(-0.16, 0.99, 0), 0.3, 0.035)
+	# The ram's rod under the hopper, running down into the sleeve.
+	for x: float in [-0.3, 0.3]:
+		FoundKit.tbar(bk, Vector3(x, 0.02, 0), Vector3(x, -0.18, 0), 0.034, 0.034, 6, D)
 	bk.pop()
 	body_mesh(bk, box)
 	if is_front:
@@ -122,8 +128,14 @@ func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
 		&"alert":
-			d[&"box_f"] = pr(Vector3(0, 0.34, 0))
-			d[&"box_r"] = pr(Vector3(0, 0.34, 0))
+			# Jacks up on its rams, and the two hoppers break apart at the hinge,
+			# each tipped its own way: nothing on it is level.
+			d[&"front"] = pr(Vector3(0, 0.05, 0), Vector3(0, 0, 0.08))
+			d[&"rear"] = r(Vector3(0, 0.22, -0.16))
+			d[&"box_f"] = pr(Vector3(0, 0.46, 0), Vector3(-0.16, 0, 0.14))
+			d[&"box_r"] = pr(Vector3(0, 0.4, 0), Vector3(0.12, 0, -0.18))
+			d[&"load_f"] = r(Vector3(0.1, 0, 0.08))
+			d[&"load_r"] = r(Vector3(-0.08, 0, -0.1))
 		&"windup":
 			d[&"front"] = pr(Vector3(-0.08, 0.05, 0), Vector3(0, 0, 0.12))
 			d[&"box_f"] = pr(Vector3(0, 0.14, 0))
@@ -136,8 +148,9 @@ func _pose_deltas(p: StringName) -> Dictionary:
 		&"dead":
 			d[&"rear"] = r(Vector3(0, 0.78, 0))
 			d[&"box_r"] = pr(Vector3(0, -0.2, 0.04), Vector3(1.3, 0, 0))
-			d[&"load_r"] = pr(Vector3(0.05, -0.2, 0.62), Vector3(0.3, 0.4, 0))
-			d[&"box_f"] = pr(Vector3(0, -0.06, 0))
+			d[&"load_r"] = pr(Vector3(0.05, 0.39, 0.37), Vector3(-1.2, 0.4, 0))
+			d[&"box_f"] = pr(Vector3(0, -0.095, 0), Vector3(0.05, 0, 0.03))
+			d[&"load_f"] = pr(Vector3(0, -0.06, 0), Vector3(0.06, 0, 0))
 			d[&"front"] = r(Vector3(-0.03, 0, 0))
 	return d
 

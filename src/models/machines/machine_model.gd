@@ -15,6 +15,11 @@ extends FigureModel
 ##
 ## Kind scripts override: build(), _pose_deltas(), _gait_deltas(), _timing(),
 ## _routine(). Joint targets are [dpos, drot] offsets from rest; see pr().
+##
+## This directory is where FigureModel.create(kind) looks for `<kind>.gd`, so
+## machine_model, found_kit and machine_gallery are reserved names, never kinds:
+## create() hands back its placeholder for the two helpers, and a bare
+## MachineModel builds a placeholder rig of its own.
 
 const POSES: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"hurt", &"dead"]
 ## Seconds to blend into each pose (per joint; _timing can override).
@@ -74,6 +79,16 @@ static func r(drot: Vector3) -> Array:
 
 
 # -- building ---------------------------------------------------------------
+
+## Kinds override this without calling it. A bare MachineModel (never a kind)
+## still gets a rig, so nothing downstream finds its materials missing.
+func build() -> void:
+	begin_rig()
+	var k := FoundKit.kit()
+	FoundKit.lathe(k, Vector3.ZERO, Vector3.UP, [Vector2(0.3, 0.0), Vector2(0.3, 0.8), Vector2(0.2, 0.9)], 8, ramp, PI / 8.0)
+	body_mesh(k, joint(&"body", self, Vector3.ZERO))
+	finish_rig()
+
 
 ## Call first in build(): ramp, materials, part side. Machines are FOUND: every
 ## part of them is on found.gdshader whatever material the caller offered (the
@@ -394,7 +409,9 @@ func _apply_light(delta: float) -> void:
 	# Emission tops the part up to its own colour however dark the sky is: by day
 	# the sun already lights it, by night the light is all its own.
 	var dark := darkness()
-	var glow := emission * (0.55 + 3.2 * dark)
+	# The floor is high enough that a part in its own shadow at noon is still
+	# the brightest warm thing on sand: the soft side must read by day.
+	var glow := emission * (1.0 + 3.0 * dark)
 	part_material.set_shader_parameter("emission_strength", (glow * _light_scale() + _flare * 2.5) * shown * _dim)
 	cold_material.set_shader_parameter("emission_strength", (0.2 + 0.6 * dark) * shown)
 	if _glow != null:

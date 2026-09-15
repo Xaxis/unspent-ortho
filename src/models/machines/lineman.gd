@@ -5,7 +5,8 @@ extends MachineModel
 ## in its front is the working part.
 ##
 ## alert  lets go and comes down: the arms telescope in and reach forward
-## dead   the arms come down first, then the body goes over
+## dead   the arms come down first, then the body goes over backwards and lies
+##        with its arms along its sides
 
 const SLEEVE := 0.8
 const FORE := 0.8
@@ -63,7 +64,7 @@ func build() -> void:
 		body_mesh(ak, arm)
 		var fore := joint(StringName("fore_" + side), arm, Vector3(0, SLEEVE - 0.05, 0))
 		var fk := FoundKit.kit()
-		FoundKit.tbar(fk, Vector3(0, -0.4, 0), Vector3(0, FORE, 0), 0.03, 0.03, 6, D)
+		FoundKit.tbar(fk, Vector3(0, -0.25, 0), Vector3(0, FORE, 0), 0.03, 0.03, 6, D)
 		FoundKit.ticks(fk, Vector3(0.03, 0.1, 0), Vector3(0.03, 0.6, 0), Vector3.RIGHT, 11, R[4], 0.02)
 		body_mesh(fk, fore)
 		var grip := joint(StringName("grip_" + side), fore, Vector3(0, FORE, 0))
@@ -106,22 +107,24 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"body"] = pr(Vector3(0.1, -0.02, 0), Vector3(0, 0, -0.1))
 			for s: String in ["l", "r"]:
 				d[StringName("arm_" + s)] = r(Vector3(0, 0, -1.5))
-				d[StringName("fore_" + s)] = pr(Vector3(0, 0.3, 0))
+				d[StringName("fore_" + s)] = pr(Vector3(0, -0.36, 0))
 		&"dead":
-			d[&"arm_l"] = r(Vector3(-1.45, 0, 0))
-			d[&"arm_r"] = r(Vector3(1.45, 0, 0))
-			d[&"fore_l"] = pr(Vector3(0, -0.3, 0))
-			d[&"fore_r"] = pr(Vector3(0, -0.3, 0))
-			d[&"body"] = pr(Vector3(-0.12, -0.1, 0), Vector3(0, 0, 1.25))
+			# The arms telescope in and come down in front, on down past the
+			# body's sides; then the body goes over backwards and lies with its
+			# arms laid along it, grips at its feet, the motor face up.
+			for s: String in ["l", "r"]:
+				d[StringName("arm_" + s)] = r(Vector3(0, 0, -PI - 0.15))
+				d[StringName("fore_" + s)] = pr(Vector3(0, -0.6, 0))
+			d[&"body"] = pr(Vector3(0.0, -0.09, 0), Vector3(0, 0, PI * 0.5))
 	return d
 
 
 func _timing(p: StringName, j: StringName) -> Vector2:
 	if p == &"dead":
 		match j:
-			&"arm_l", &"arm_r": return Vector2(LIGHT_FIRST, 0.45)
-			&"fore_l", &"fore_r": return Vector2(LIGHT_FIRST + 0.2, 0.3)
-			&"body": return Vector2(LIGHT_FIRST + 0.75, 0.55)
+			&"fore_l", &"fore_r": return Vector2(LIGHT_FIRST, 0.3)
+			&"arm_l", &"arm_r": return Vector2(LIGHT_FIRST + 0.1, 0.7)
+			&"body": return Vector2(LIGHT_FIRST + 0.5, 0.5)
 	return super(p, j)
 
 

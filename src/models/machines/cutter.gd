@@ -123,7 +123,12 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"body"] = pr(Vector3(-0.06, 0.04, 0), Vector3(0, 0, 0.12))
 		&"strike":
 			d[&"arm"] = r(Vector3(0, 0, -0.48))
-			d[&"body"] = pr(Vector3(0.16, -0.04, 0), Vector3(0, 0, -0.1))
+			d[&"body"] = pr(Vector3(0.16, 0.0, 0), Vector3(0, 0, -0.1))
+			# The fore legs take the dip.
+			for i: int in [0, 3]:
+				d[StringName("leg%d" % i)] = r(Vector3(0, 0, 0.16))
+			for i: int in [1, 4]:
+				d[StringName("leg%d" % i)] = r(Vector3(0, 0, 0.08))
 		&"dead":
 			d[&"body"] = pr(Vector3(0, -0.24, 0), Vector3(0.06, 0, -0.04))
 			d[&"arm"] = r(Vector3(0, 0, -0.3))

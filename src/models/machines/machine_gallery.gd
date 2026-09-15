@@ -5,6 +5,7 @@ extends RefCounted
 ##
 ##   tools/shot.sh shots/machines/all.png --scene=gallery --filter=watcher
 ##   ... --filter=lineup --zoom=14          every kind beside a person, stand and alert rows
+##   ... --filter=lineup_dead --zoom=14     the back row in another pose (windup, strike, dead, walk, hurt)
 ##   ... --filter=walk                      four gait phases per kind
 ##   ... --silhouette                       flat black bodies: the readability check
 ##   ... --filter=sheet_watcher --zoom=6     one kind: a person, stand, alert, windup, strike, dead
@@ -26,7 +27,11 @@ static func gallery() -> Array:
 	var silhouette := BootOptions.parse(args).silhouette
 	var out: Array = []
 	if filter.contains("lineup"):
-		out.append({"name": filter, "node": lineup(silhouette, filter.contains("snow"))})
+		var back_pose := &"alert"
+		for bp: StringName in [&"windup", &"strike", &"dead", &"walk", &"hurt"]:
+			if filter.contains(String(bp)):
+				back_pose = bp
+		out.append({"name": filter, "node": lineup(silhouette, filter.contains("snow"), back_pose)})
 		return out
 	if filter.begins_with("sheet_") or filter.begins_with("gait_"):
 		var kid := StringName(filter.trim_prefix("sheet_").trim_prefix("gait_").trim_suffix("_snow"))
@@ -77,7 +82,7 @@ static func gallery_yaw(side: StringName, turn: float = 30.0) -> float:
 
 ## Every kind in a row across the screen beside a person, stand in front and
 ## alert behind: scale and silhouette at gameplay zoom (--zoom=14).
-static func lineup(silhouette: bool, snow: bool = false) -> Node3D:
+static func lineup(silhouette: bool, snow: bool = false, back_pose: StringName = &"alert") -> Node3D:
 	var holder := Node3D.new()
 	var root := Node3D.new()
 	var across := Vector3(1, 0, -1).normalized()
@@ -104,7 +109,7 @@ static func lineup(silhouette: bool, snow: bool = false) -> Node3D:
 		x += 1.0
 		for kid in KINDS:
 			var wdt: float = widths[kid]
-			var m := make(kid, &"stand" if row == 0 else &"alert")
+			var m := make(kid, &"stand" if row == 0 else back_pose, 0.3)
 			m.position = across * (x + wdt * 0.5) + back * (row * 4.0)
 			root.add_child(m)
 			x += wdt
@@ -153,7 +158,8 @@ static func sheet(kid: StringName, silhouette: bool, snow: bool, gait: bool = fa
 	root.add_child(ground)
 	var poses: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"dead"]
 	var gap := maxf(float(WIDTHS[kid]) * 1.1, 1.5)
-	var x := -gap * (poses.size() * 0.5)
+	# The person stands 0.3 of a gap before the first pose: centre the whole row.
+	var x := -gap * (poses.size() + 0.3) * 0.5
 	var person := PersonModel.new()
 	var pmat := ShaderMaterial.new()
 	pmat.shader = preload("res://src/render/world.gdshader")

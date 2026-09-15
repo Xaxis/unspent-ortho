@@ -7,13 +7,21 @@ extends MachineModel
 ##
 ## walk   diagonal pairs; the swinging pair lifts at the knee
 ## alert  stands taller: knees straighten and the legs splay
-## dead   the legs splay outward and the slab drops flat between them
+## dead   the knees give, the shins telescope shut, and the slab lands flat
+##        between four bent legs whose feet have not moved
 
 const BODY_Y := 1.5
 const HIP := Vector2(0.44, 0.3)
 ## Knee and foot relative to the hip, in the leg's own frame (+X outward).
 const KNEE := Vector3(0.3, 0.78, 0.0)
 const FOOT_OUT := 0.42
+## Knee to foot, in the shin's frame at rest.
+const FOOT := Vector3(FOOT_OUT, -(BODY_Y + 0.02 + KNEE.y), 0.0)
+## Where each telescope stage of the shin starts, as a fraction of knee to foot
+## (the last runs to 0.97 and ends in a point).
+const STAGES := [0.0, 0.25, 0.49, 0.73, 0.97]
+## How far each stage runs up into the sleeve when the legs give.
+const COLLAPSE := [0.0, 0.22, 0.44, 0.66]
 
 
 func build() -> void:
@@ -44,10 +52,14 @@ func build() -> void:
 	FoundKit.streaks(k, Vector3(0.621, -0.04, 0), Vector3.RIGHT, 0.26, 0.08, 4, 22, R[2])
 	# The hub: a drum on the back face.
 	FoundKit.disc(k, Vector3(-0.66, 0.0, 0), Vector3.RIGHT, 0.17, 0.1, 8, 0.03, R, R[2], PI / 8.0)
-	# A plumb weight hung under the slab on a line: the only thing that sways, and exactly.
-	FoundKit.tbar(k, Vector3(0, -0.13, 0), Vector3(0, -0.36, 0), 0.008, 0.008, 4, D)
-	FoundKit.lathe(k, Vector3(0, -0.36, 0), Vector3.DOWN, [Vector2(0.0, -0.02), Vector2(0.05, 0.03), Vector2(0.0, 0.14)], 6, R)
 	body_mesh(k, body)
+	# A plumb weight hung under the slab on a line; when the slab comes down it
+	# is laid flat underneath it.
+	var plumb := joint(&"plumb", body, Vector3(0, -0.12, 0))
+	var bk := FoundKit.kit()
+	FoundKit.tbar(bk, Vector3.ZERO, Vector3(0, -0.24, 0), 0.008, 0.008, 4, D)
+	FoundKit.lathe(bk, Vector3(0, -0.24, 0), Vector3.DOWN, [Vector2(0.0, -0.02), Vector2(0.05, 0.03), Vector2(0.0, 0.14)], 6, R)
+	body_mesh(bk, plumb)
 	add_scan(body, Vector3(0.621, 0.0, 0), Vector3.RIGHT, Vector3.BACK, 0.2, 0.035, 3.2)
 
 	var hub := joint(&"hub", body, Vector3(-0.715, 0, 0))
@@ -70,13 +82,26 @@ func build() -> void:
 		FoundKit.mark(lk, KNEE + Vector3(0, 0, 0.036), Vector3.BACK, Vector3.UP, 0.03, 0.03, R[5], 0.003)
 		FoundKit.mark(lk, KNEE - Vector3(0, 0, 0.036), Vector3.FORWARD, Vector3.UP, 0.03, 0.03, R[5], 0.003)
 		body_mesh(lk, leg)
+		# The shin is a telescope in four stages, each thinner than the last and
+		# graduated like a rule; when the legs give they run up inside the sleeve.
 		var shin := joint(StringName("shin%d" % i), leg, KNEE)
-		var foot := Vector3(FOOT_OUT, -(BODY_Y + 0.02 + KNEE.y), 0)
 		var sk := FoundKit.kit()
-		FoundKit.tbar(sk, Vector3.ZERO, foot * 0.96, 0.028, 0.014, 6, D)
-		FoundKit.ticks(sk, foot * 0.2 + Vector3(0, 0, 0.022), foot * 0.5 + Vector3(0, 0, 0.022), Vector3.BACK, 6, R[4], 0.02)
-		FoundKit.tbar(sk, foot * 0.96, foot, 0.024, 0.0, 6, FoundKit.dirty(R, 2))
+		FoundKit.tbar(sk, Vector3.ZERO, FOOT * STAGES[1], 0.03, 0.029, 6, D)
+		FoundKit.disc(sk, FOOT * STAGES[1], FOOT.normalized(), 0.036, 0.03, 6, 0.008, R)
 		body_mesh(sk, shin)
+		for st in range(1, 4):
+			var tube := joint(StringName("tube%d_%d" % [i, st]), shin, Vector3.ZERO)
+			var tk := FoundKit.kit()
+			var rad := 0.03 - st * 0.0045
+			var a: float = STAGES[st] - 0.03
+			var b: float = STAGES[st + 1]
+			FoundKit.tbar(tk, FOOT * a, FOOT * b, rad, rad * 0.94, 6, D if st < 3 else FoundKit.dirty(R, 2))
+			if st < 3:
+				FoundKit.disc(tk, FOOT * b, FOOT.normalized(), rad + 0.005, 0.024, 6, 0.006, R)
+			FoundKit.ticks(tk, FOOT * (a + 0.06) + Vector3(0, 0, rad), FOOT * (b - 0.03) + Vector3(0, 0, rad), Vector3.BACK, 4, R[4], 0.018)
+			if st == 3:
+				FoundKit.tbar(tk, FOOT * b, FOOT * (b + 0.03), rad, 0.0, 6, FoundKit.dirty(R, 2))
+			body_mesh(tk, tube)
 	finish_rig()
 
 
@@ -95,23 +120,35 @@ func _pose_deltas(p: StringName) -> Dictionary:
 					d[StringName("leg%d" % i)] = r(Vector3(0, 0, 0.3))
 					d[StringName("shin%d" % i)] = r(Vector3(0, 0, -0.2))
 				else:
+					# The hind rods take up the pitch.
 					d[StringName("leg%d" % i)] = r(Vector3(0, 0, -0.12))
+					d[StringName("tube%d_3" % i)] = pr(-FOOT * 0.055)
 		&"strike":
 			d[&"body"] = pr(Vector3(0.26, -0.18, 0), Vector3(0, 0, -0.14))
 			for i in 4:
 				d[StringName("leg%d" % i)] = r(Vector3(0, 0, 0.14))
 				d[StringName("shin%d" % i)] = r(Vector3(0, 0, 0.1 if i < 2 else -0.08))
+				if i < 2:
+					d[StringName("tube%d_3" % i)] = pr(-FOOT * 0.09)
 		&"dead":
-			d[&"body"] = pr(Vector3(0, -BODY_Y + 0.14, 0), Vector3(0.04, 0, -0.03))
+			# The slab comes down flat. Every stage of every shin runs up into its
+			# sleeve and the knees give outward, low and bent, feet tucked in.
+			d[&"body"] = pr(Vector3(0, -BODY_Y + 0.15, 0), Vector3(0.0, 0, -0.015))
+			d[&"plumb"] = pr(Vector3(0, 0.05, 0), Vector3(0, 0, 1.5))
 			for i in 4:
-				d[StringName("leg%d" % i)] = r(Vector3(0, 0, 0.32))
-				d[StringName("shin%d" % i)] = r(Vector3(0, 0, 1.06))
+				d[StringName("leg%d" % i)] = r(Vector3(0, 0, -0.85))
+				d[StringName("shin%d" % i)] = r(Vector3(0, 0, -0.28))
+				for st in range(1, 4):
+					d[StringName("tube%d_%d" % [i, st])] = pr(-FOOT * float(COLLAPSE[st]))
 	return d
 
 
 func _timing(p: StringName, j: StringName) -> Vector2:
-	if p == &"dead" and j == &"body":
-		return Vector2(LIGHT_FIRST + 0.1, 0.5)
+	if p == &"dead":
+		if j == &"body" or String(j).begins_with("tube"):
+			return Vector2(LIGHT_FIRST + 0.1, 0.5)
+		if j == &"plumb":
+			return Vector2(LIGHT_FIRST + 0.35, 0.3)
 	return super(p, j)
 
 
