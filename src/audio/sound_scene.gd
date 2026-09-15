@@ -12,7 +12,7 @@ class_name SoundScene
 ##   weather: {kind, strength, wind} or {} for the sky's rules
 ##   secs: float      how long
 ##   machine: {kind, from, to}  one machine whose distance goes from -> to tiles
-##   layers: which of [beds, steps, machine] to render (default all)
+##   layers: which of [beds, steps, scatter, machine] to render (default all)
 ## render() returns {samples (mono, RATE), rate, lanes: {bed: PackedFloat32Array
 ## per block}, block (s), path (Array of Vector2 per block), countries}.
 
@@ -26,7 +26,7 @@ static func render(scene: Dictionary, world: WorldData = null, baked: Dictionary
 	var secs := float(scene.get("secs", 12.0))
 	var walk: Vector2 = scene.get("walk", Vector2.ZERO)
 	var machine: Dictionary = scene.get("machine", {})
-	var layers: Array = scene.get("layers", [&"beds", &"steps", &"machine"])
+	var layers: Array = scene.get("layers", [&"beds", &"steps", &"scatter", &"machine"])
 	var timeline := levels_over_time(scene, world)
 	var lanes: Dictionary = timeline["lanes"]
 	var path: Array[Vector2] = timeline["path"]
@@ -43,6 +43,10 @@ static func render(scene: Dictionary, world: WorldData = null, baked: Dictionary
 	for st: Array in steps:
 		if not wanted.has(st[1]):
 			wanted.append(st[1])
+	var scatter := _scatter(scene, lanes, timeline["weather"]) if &"scatter" in layers else []
+	for sc: Array in scatter:
+		if not wanted.has(sc[1]):
+			wanted.append(sc[1])
 	var machine_key := StringName("machine_" + String(machine.get("kind", &"watcher")))
 	if not machine.is_empty() and &"machine" in layers:
 		wanted.append(machine_key)
@@ -70,6 +74,12 @@ static func render(scene: Dictionary, world: WorldData = null, baked: Dictionary
 		if bk == null:
 			continue
 		Synth.add(out, _resample(bk.samples, bk.rate), Synth.samples(RATE, st[0]), db_to_linear(bk.gain_db + SoundMix.bus_db(bk.bus)))
+	for sc: Array in scatter:
+		var key := SoundBank.key_for(sc[1], sc[2])
+		var bk: SoundBank.Baked = baked.get(key, baked.get(sc[1]))
+		if bk == null:
+			continue
+		Synth.add(out, _resample(bk.samples, bk.rate), Synth.samples(RATE, sc[0]), float(sc[3]) * db_to_linear(bk.gain_db + SoundMix.bus_db(bk.bus)))
 	if not machine.is_empty() and &"machine" in layers:
 		_lay_machine(out, baked[machine_key], machine)
 	return {"samples": out, "rate": RATE, "lanes": lanes, "block": BLOCK, "path": path, "countries": timeline["countries"]}
@@ -124,7 +134,7 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 			var lane: PackedFloat32Array = lanes[bed]
 			lane[b] = lvl
 			lanes[bed] = lane
-	return {"lanes": lanes, "path": path, "countries": countries}
+	return {"lanes": lanes, "path": path, "countries": countries, "weather": weather}
 
 
 ## Bakes keys on every core; returns key -> Baked. Footfall families bake all takes.
@@ -149,6 +159,31 @@ static func bake(keys: Array[StringName]) -> Dictionary:
 		if not done.has(k):
 			done[k] = done.get(SoundBank.key_for(k, 0))
 	return done
+
+
+## [seconds, name, variant, level] for the one-shots the beds scatter, by the
+## same rules as the running system: a bed must be up (0.12), the entry's hours
+## and weather must allow it, gaps drawn from its range.
+static func _scatter(scene: Dictionary, lanes: Dictionary, weather: Dictionary) -> Array:
+	var out := []
+	var secs := float(scene.get("secs", 12.0))
+	var hour0 := float(scene.get("hour", Tuning.START_HOUR))
+	for bed: StringName in SoundBeds.SCATTER:
+		if not lanes.has(bed):
+			continue
+		var lane: PackedFloat32Array = lanes[bed]
+		for entry: Array in SoundBeds.SCATTER[bed]:
+			var name: StringName = entry[0]
+			var k := 0
+			var t := lerpf(float(entry[1]), float(entry[2]), Rng.hash01(int(name.hash()), k, 0x5c)) * 0.5
+			while t < secs:
+				var lvl := lane[mini(lane.size() - 1, floori(t / BLOCK))]
+				var hour := fposmod(hour0 + t * Tuning.MINUTES_PER_SECOND / 60.0, 24.0)
+				if lvl >= 0.12 and SoundMix.scatter_allowed(entry, hour, weather):
+					out.append([t, name, floori(Rng.hash01(int(name.hash()), k, 0x77) * 16.0), lvl])
+				k += 1
+				t += lerpf(float(entry[1]), float(entry[2]), Rng.hash01(int(name.hash()), k, 0x5c))
+	return out
 
 
 ## [seconds, step name, variant] for a listener walking `speed` tiles/s.

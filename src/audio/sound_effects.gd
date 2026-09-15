@@ -551,9 +551,12 @@ static func _thunder(rate: int, v: int, near: bool) -> PackedFloat32Array:
 
 # --------------------------------------------------------------- interface
 
+## Moving down the page: a pencil tick on paper over a desk. Dry, short, woody,
+## the quietest thing the game makes.
 static func _ui_move(rate: int) -> PackedFloat32Array:
-	var out := _modes(rate, 0.07, [1600.0, 4100.0], [0.5, 0.2], [0.035, 0.015])
-	Synth.add(out, _burst(rate, 0.005, 8801, 3000.0, 9000.0, 0.003), 0, 0.2)
+	var out := _out(rate, 0.06)
+	Synth.add(out, _burst(rate, 0.012, 8801, 2200.0, 7500.0, 0.006, 0.0002), 0, 0.8)
+	Synth.add(out, _modes(rate, 0.04, [1150.0, 2450.0], [0.5, 0.2], [0.014, 0.008]), 0, 0.45)
 	return out
 
 
