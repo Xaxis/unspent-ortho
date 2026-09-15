@@ -34,26 +34,29 @@ func _build_rig() -> void:
 	# The lumpy outline: fleece clumps along the back and down the flanks, never symmetric.
 	for i in 9:
 		var u := i / 8.0
-		var x := lerpf(-0.3, 0.26, u) * s + (rng.randf() - 0.5) * 0.05 * s
+		var x := lerpf(-0.3, 0.18, u) * s + (rng.randf() - 0.5) * 0.05 * s
 		var z := (0.13 if i % 2 == 0 else -0.13) * s + (rng.randf() - 0.5) * 0.08 * s
 		var r := (0.085 + rng.randf() * 0.045) * s
 		var y := (0.12 + rng.randf() * 0.04) * s if i % 3 != 2 else -0.02 * s
 		Sculpt.clump(bk, Vector3(x, y, z * (1.25 if i % 3 == 2 else 1.0)), Vector3(r, r * 0.75, r), f1 if i % 3 else f0, sd + 10 + i, 5)
-	var head := rig.bone(&"head", body, Vector3(0.3 * s, -0.02 * s, 0))
+	var head := rig.bone(&"head", body, Vector3(0.37 * s, 0.05 * s, 0))
 	var hk := rig.kit(head)
-	# Carried low: the face hangs forward and down from a woolly poll.
-	hk.push(Transform3D(Basis(Vector3(0, 0, 1), -0.55), Vector3.ZERO))
+	# Carried low and well out in front of the fleece: a long face that hangs
+	# forward and down from a small woolly poll, with ears that stick out sideways
+	# past the fleece line, so the head reads from above and in front.
+	hk.push(Transform3D(Basis(Vector3(0, 0, 1), -0.5), Vector3.ZERO))
 	trunk(hk, [
-		[-0.02 * s, 0.06 * s, 0.06 * s, 0.0],
-		[0.08 * s, 0.07 * s, 0.06 * s, -0.01 * s],
-		[0.19 * s, 0.045 * s, 0.035 * s, -0.02 * s],
+		[-0.03 * s, 0.085 * s, 0.085 * s, 0.0],
+		[0.1 * s, 0.095 * s, 0.088 * s, -0.01 * s],
+		[0.26 * s, 0.06 * s, 0.05 * s, -0.025 * s],
 	], 6, [face, face], sd + 2)
 	hk.pop()
-	Sculpt.clump(hk, Vector3(0.02 * s, 0.06 * s, 0), Vector3(0.07 * s, 0.045 * s, 0.07 * s), f1, sd + 3, 4)
+	# A tuft on the poll, set back so the dark face in front of it stays clear.
+	Sculpt.clump(hk, Vector3(-0.05 * s, 0.07 * s, 0), Vector3(0.045 * s, 0.035 * s, 0.05 * s), f1, sd + 3, 4)
 	for side: int in [-1, 1]:
-		flap(hk, Vector3(0.02 * s, 0.02 * s, side * 0.05 * s), Vector3(0.05 * s, 0.0, side * 0.06 * s), Vector3(-0.01 * s, -0.03 * s, side * 0.13 * s), face, face.darkened(0.2))
-		var ex := 0.09 * s
-		Sculpt.card(hk, Vector3(ex, -0.03 * s, side * 0.052 * s), Vector3(ex + 0.02 * s, -0.045 * s, side * 0.05 * s), Vector3(ex + 0.02 * s, -0.03 * s, side * 0.05 * s), Vector3(ex, -0.015 * s, side * 0.052 * s), Palette.LINEN[4] if dark_face else Palette.INK[1], Vector3(0.3, 0.2, side).normalized())
+		flap(hk, Vector3(-0.02 * s, 0.05 * s, side * 0.06 * s), Vector3(0.08 * s, 0.04 * s, side * 0.07 * s), Vector3(0.02 * s, 0.1 * s, side * 0.27 * s), face, face.darkened(0.2))
+		var ex := 0.1 * s
+		Sculpt.card(hk, Vector3(ex, -0.03 * s, side * 0.068 * s), Vector3(ex + 0.025 * s, -0.05 * s, side * 0.065 * s), Vector3(ex + 0.025 * s, -0.03 * s, side * 0.065 * s), Vector3(ex, -0.012 * s, side * 0.068 * s), Palette.LINEN[4] if dark_face else Palette.INK[1], Vector3(0.3, 0.2, side).normalized())
 	var leg_c := face if dark_face else Palette.EARTH[1]
 	for side: int in [-1, 1]:
 		var sfx := "l" if side < 0 else "r"
@@ -77,7 +80,7 @@ func _pose(p: StringName, t: float, speed: float) -> Dictionary:
 			# Graze: head down for a while, up to chew and look.
 			var cycle := fposmod(clock, 7.0)
 			var down := smoothstep(0.0, 0.6, cycle) * (1.0 - smoothstep(4.2, 4.9, cycle))
-			d[&"head"] = Vector3(0, sin(clock * 0.5) * 0.2 * (1.0 - down), lerpf(0.1, -0.9, down) + sin(clock * 9.0) * 0.03 * (1.0 - down))
+			d[&"head"] = Vector3(0, sin(clock * 0.5) * 0.2 * (1.0 - down), lerpf(0.15, -0.6, down) + sin(clock * 9.0) * 0.03 * (1.0 - down))
 		&"walk":
 			var bob := quad_gait(d, gait_phase, &"walk", 0.35, 0.7)
 			d["@body"] = Vector3(0, (bob - 0.5) * 0.02, 0)

@@ -1,5 +1,6 @@
 extends AnimalModel
-## A bull: a barrel. Rust-brown, a pale face, horns, dewlap, hump, a tufted tail,
+## A bull: a barrel, about as tall as it is long. Rust-brown, a pale face, horns
+## that sweep out and forward, a dewlap, a hump over the shoulders, a tufted tail,
 ## and no daylight under the belly. When it lowers its head, get off the field.
 
 const HIDES := [[Color("6e3320"), Color("9a4f28")], [Color("4f3627"), Color("6f4d31")], [Color("4a1d18"), Color("6e3320")], [Color("33231f"), Color("4f3627")], [Color("6f4d31"), Color("997044")]]
@@ -18,64 +19,70 @@ func _build_rig() -> void:
 	var h1: Color = hide[1]
 	var pale: Color = [Palette.LINEN[3], Palette.SAND[4], Palette.LINEN[4]][rng.randi_range(0, 2)]
 	var horn := Palette.LINEN[4]
-	var horn_len := 0.2 + rng.randf() * 0.1
+	var horn_len := 1.0 + rng.randf() * 0.3
 	var sd := seed_value * 23 + 11
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
-	var body := rig.bone(&"body", root, Vector3(0, 0.66 * s, 0))
+	var body := rig.bone(&"body", root, Vector3(0, 0.64 * s, 0))
 	var bk := rig.kit(body)
-	# The barrel: deep and round all along, the belly low between short legs so
-	# no daylight shows under it, a hump rising over the shoulders.
+	# The barrel: short and deep, the forequarters heavier than the rump, the belly
+	# low between the legs so no daylight shows under it.
 	trunk(bk, [
-		[-0.53 * s, 0.08 * s, 0.08 * s, 0.07 * s],
-		[-0.47 * s, 0.22 * s, 0.2 * s, 0.05 * s],
-		[-0.36 * s, 0.3 * s, 0.28 * s, 0.02 * s],
-		[-0.2 * s, 0.32 * s, 0.31 * s, -0.04 * s],
-		[0.0, 0.34 * s, 0.33 * s, -0.08 * s],
-		[0.18 * s, 0.37 * s, 0.33 * s, -0.06 * s],
-		[0.34 * s, 0.34 * s, 0.3 * s, -0.02 * s],
-		[0.46 * s, 0.24 * s, 0.22 * s, 0.02 * s],
-		[0.51 * s, 0.1 * s, 0.1 * s, 0.03 * s],
-	], 8, [h0, h0, h1, h1, h1, h1, h0, h0], sd, 0.05)
-	# The hump over the shoulders.
-	Sculpt.clump(bk, Vector3(0.22 * s, 0.3 * s, 0), Vector3(0.24 * s, 0.16 * s, 0.2 * s), h1, sd + 1, 6)
+		[-0.44 * s, 0.08 * s, 0.08 * s, 0.04 * s],
+		[-0.39 * s, 0.22 * s, 0.2 * s, 0.02 * s],
+		[-0.24 * s, 0.29 * s, 0.28 * s, -0.02 * s],
+		[0.0, 0.33 * s, 0.31 * s, -0.06 * s],
+		[0.2 * s, 0.37 * s, 0.32 * s, -0.05 * s],
+		[0.36 * s, 0.33 * s, 0.28 * s, -0.02 * s],
+		[0.44 * s, 0.14 * s, 0.14 * s, 0.02 * s],
+	], 8, [h0, h1, h1, h1, h0, h0], sd, 0.05)
+	# The hump: a hard rise of muscle over the shoulders, darker than the back,
+	# so the top line climbs from the rump to a peak just behind the head.
+	Sculpt.clump(bk, Vector3(0.22 * s, 0.33 * s, 0), Vector3(0.21 * s, 0.22 * s, 0.2 * s), h0.lerp(h1, 0.45), sd + 1, 6)
 	if rng.randf() < 0.35:
 		Sculpt.clump(bk, Vector3(-0.1 * s, -0.05 * s, 0.25 * s), Vector3(0.15 * s, 0.12 * s, 0.07 * s), pale, sd + 2, 4)
-	var neck := rig.bone(&"neck", body, Vector3(0.44 * s, 0.02 * s, 0))
+	var neck := rig.bone(&"neck", body, Vector3(0.38 * s, 0.06 * s, 0))
 	var nk := rig.kit(neck)
-	trunk(nk, [[-0.1 * s, 0.28 * s, 0.24 * s, -0.04 * s], [0.22 * s, 0.2 * s, 0.18 * s, -0.14 * s]], 6, h0, sd + 3, 0.05, false)
+	trunk(nk, [[-0.08 * s, 0.27 * s, 0.22 * s, 0.0], [0.18 * s, 0.19 * s, 0.17 * s, -0.12 * s]], 6, h0, sd + 3, 0.05, false)
 	# Dewlap: a fold of hide hanging under the throat.
-	flap(nk, Vector3(-0.05 * s, -0.3 * s, 0), Vector3(0.18 * s, -0.28 * s, 0), Vector3(0.08 * s, -0.46 * s, 0), h0, h0)
-	var head := rig.bone(&"head", neck, Vector3(0.2 * s, -0.08 * s, 0))
+	flap(nk, Vector3(-0.08 * s, -0.24 * s, 0), Vector3(0.16 * s, -0.26 * s, 0), Vector3(0.04 * s, -0.48 * s, 0), h0, h0)
+	var head := rig.bone(&"head", neck, Vector3(0.17 * s, -0.1 * s, 0))
 	var hk := rig.kit(head)
 	# Carried low and square, the pale face a broad plate in front.
 	hk.push(Transform3D(Basis(Vector3(0, 0, 1), -0.9), Vector3(0.02 * s, -0.04 * s, 0)))
 	trunk(hk, [
-		[-0.06 * s, 0.14 * s, 0.16 * s, 0.0],
-		[0.12 * s, 0.15 * s, 0.16 * s, 0.0],
-		[0.28 * s, 0.1 * s, 0.11 * s, -0.02 * s],
-		[0.34 * s, 0.07 * s, 0.09 * s, -0.02 * s],
+		[-0.06 * s, 0.15 * s, 0.17 * s, 0.0],
+		[0.12 * s, 0.15 * s, 0.17 * s, 0.0],
+		[0.28 * s, 0.11 * s, 0.12 * s, -0.02 * s],
+		[0.34 * s, 0.08 * s, 0.1 * s, -0.02 * s],
 	], 6, [h1, pale, pale], sd + 4, 0.04)
 	hk.pop()
 	var nose := Vector3(0.22 * s, -0.33 * s, 0)
-	Sculpt.loft(hk, [[nose.y - 0.03 * s, 0.05 * s, 0.08 * s, nose.x, 0.0], [nose.y + 0.04 * s, 0.05 * s, 0.085 * s, nose.x, 0.0]], 6, Palette.INK[2], false, true, PI / 6)
+	Sculpt.loft(hk, [[nose.y - 0.03 * s, 0.05 * s, 0.09 * s, nose.x, 0.0], [nose.y + 0.04 * s, 0.05 * s, 0.095 * s, nose.x, 0.0]], 6, Palette.INK[2], false, true, PI / 6)
 	for side: int in [-1, 1]:
-		# Horns: out to the side, then up and forward.
-		hk.push(Transform3D(Basis(Vector3(1, 0, 0), side * 1.3), Vector3(0.08 * s, 0.06 * s, side * 0.13 * s)))
-		Sculpt.loft(hk, [[0.0, 0.055 * s, 0.055 * s, 0.0, 0.0], [horn_len * 0.7 * s, 0.04 * s, 0.04 * s, 0.03 * s, 0.0], [horn_len * s, 0.03 * s, 0.03 * s, 0.07 * s, 0.0]], 5, horn, false, false, 0.0, 0.04, sd + 5)
-		hk.pop()
-		var tipb := Vector3(0.06 * s, 0.1 * s + horn_len * 0.2 * s, side * (0.14 + horn_len * 0.95) * s)
-		Sculpt.loft(hk, [[tipb.y, 0.03 * s, 0.03 * s, tipb.x, tipb.z], [tipb.y + 0.12 * s, 0.0, 0.0, tipb.x + 0.05 * s, tipb.z - side * 0.03 * s]], 5, [Palette.LINEN[5]], false, false, 0.0)
-		flap(hk, Vector3(-0.04 * s, 0.02 * s, side * 0.15 * s), Vector3(0.02 * s, 0.0, side * 0.16 * s), Vector3(-0.04 * s, -0.05 * s, side * 0.25 * s), h0, h1)
-		Sculpt.card(hk, Vector3(0.1 * s, -0.04 * s, side * 0.155 * s), Vector3(0.14 * s, -0.06 * s, side * 0.15 * s), Vector3(0.14 * s, -0.035 * s, side * 0.15 * s), Vector3(0.1 * s, -0.015 * s, side * 0.155 * s), Palette.INK[0], Vector3(0.2, 0.1, side).normalized())
-	var tail := rig.bone(&"tail", body, Vector3(-0.48 * s, 0.2 * s, 0))
-	Sculpt.loft(rig.kit(tail), [[-0.5 * s, 0.02 * s, 0.02 * s, 0.0, 0.0], [0.0, 0.03 * s, 0.03 * s, 0.0, 0.0]], 4, h0, false, false, PI / 4, 0.05, sd + 6)
-	var tuft := rig.bone(&"tail2", tail, Vector3(0, -0.5 * s, 0))
-	Sculpt.clump(rig.kit(tuft), Vector3(0, -0.07 * s, 0), Vector3(0.04 * s, 0.08 * s, 0.04 * s), Palette.INK[2], sd + 7, 4)
+		# Horns: out from the poll, sweeping forward and up at the tips, pale to a
+		# dark point. Wide enough that from any side both show.
+		var pts: Array[Vector3] = [
+			Vector3(0.04 * s, 0.06 * s, side * 0.13 * s),
+			Vector3(0.02 * s, 0.07 * s, side * 0.32 * s * horn_len),
+			Vector3(0.14 * s, 0.12 * s, side * 0.44 * s * horn_len),
+			Vector3(0.3 * s, 0.2 * s, side * 0.42 * s * horn_len),
+		]
+		var radii: Array[float] = [0.052 * s, 0.04 * s, 0.028 * s, 0.0]
+		for i in 3:
+			var length := Sculpt.aim(hk, pts[i], pts[i + 1], Vector3(0, 1, 0))
+			Sculpt.loft(hk, [[-0.01, radii[i], radii[i], 0.0, 0.0], [length, radii[i + 1] + 0.004, radii[i + 1] + 0.004, 0.0, 0.0]], 5, horn if i < 2 else Palette.INK[2], false, i == 2, 0.0, 0.04, sd + 5 + i)
+			hk.pop()
+		flap(hk, Vector3(-0.04 * s, 0.0, side * 0.16 * s), Vector3(0.02 * s, -0.02 * s, side * 0.17 * s), Vector3(-0.06 * s, -0.07 * s, side * 0.28 * s), h0, h1)
+		Sculpt.card(hk, Vector3(0.1 * s, -0.05 * s, side * 0.165 * s), Vector3(0.14 * s, -0.07 * s, side * 0.16 * s), Vector3(0.14 * s, -0.045 * s, side * 0.16 * s), Vector3(0.1 * s, -0.025 * s, side * 0.165 * s), Palette.INK[0], Vector3(0.2, 0.1, side).normalized())
+	var tail := rig.bone(&"tail", body, Vector3(-0.4 * s, 0.22 * s, 0))
+	Sculpt.loft(rig.kit(tail), [[-0.46 * s, 0.02 * s, 0.02 * s, 0.0, 0.0], [0.0, 0.03 * s, 0.03 * s, 0.0, 0.0]], 4, h0, false, false, PI / 4, 0.05, sd + 9)
+	var tuft := rig.bone(&"tail2", tail, Vector3(0, -0.46 * s, 0))
+	Sculpt.clump(rig.kit(tuft), Vector3(0, -0.07 * s, 0), Vector3(0.04 * s, 0.08 * s, 0.04 * s), Palette.INK[2], sd + 10, 4)
 	for side: int in [-1, 1]:
 		var sfx := "l" if side < 0 else "r"
-		leg("f" + sfx, body, Vector3(0.28 * s, -0.36 * s, side * 0.18 * s), 0.16 * s, 0.15 * s, 0.15 * s, h0, Palette.INK[1], 0.03)
-		leg("b" + sfx, body, Vector3(-0.32 * s, -0.36 * s, side * 0.18 * s), 0.16 * s, 0.15 * s, 0.16 * s, h0, Palette.INK[1], 0.03)
-	height = 1.15 * s
+		leg("f" + sfx, body, Vector3(0.24 * s, -0.28 * s, side * 0.17 * s), 0.19 * s, 0.18 * s, 0.16 * s, h0, Palette.INK[1], 0.035)
+		leg("b" + sfx, body, Vector3(-0.28 * s, -0.24 * s, side * 0.17 * s), 0.2 * s, 0.2 * s, 0.17 * s, h0, Palette.INK[1], 0.035)
+	height = 1.2 * s
 
 
 func _stride(speed: float) -> float:
