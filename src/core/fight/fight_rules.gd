@@ -58,6 +58,13 @@ const MEND_MINUTES := 60.0
 ## Wounded condition after a bad end, in world minutes.
 const HURT_MINUTES := 600.0
 
+# --- tools ---
+## The edge at which a worn tool is noticed (source: "It is not biting the way it did.").
+const DULL_EDGE := 3500
+const DULL_LINE := "It is not biting the way it did."
+## A found weapon's charge, the item its `wick` counts.
+const CHARGE := &"wick"
+
 # --- machines ---
 ## Made tools could never spend a machine's source life (60-90 against a
 ## billhook's 2); the rebuild wants a machine beaten by finding its side, so
@@ -151,10 +158,15 @@ static func laden_tier(carried: float) -> int:
 	return 0
 
 
-## Wearing a piece of salvage kit: any carried item whose def names that slot.
+## Wearing a piece of salvage kit for `slot`. A bag that keeps one worn piece
+## (`worn`, the survival package's) is asked for that; a bag without one counts
+## any carried piece, so kit works before and after the two are merged.
 static func wears(inv: Inventory, slot: StringName) -> bool:
 	if inv == null:
 		return false
+	if &"worn" in inv:
+		var worn: StringName = inv.get(&"worn")
+		return worn != &"" and Items.def(worn).get("kit", &"") == slot
 	for id: StringName in inv.items:
 		if Items.def(id).get("kit", &"") == slot:
 			return true
@@ -162,10 +174,25 @@ static func wears(inv: Inventory, slot: StringName) -> bool:
 
 
 ## Wear a tool by `uses` (edge = 10000 - spent x 10000 / bite). Never breaks.
-static func wear(inv: Inventory, id: StringName, uses: int) -> void:
-	if inv == null or id == &"" or not inv.edges.has(id):
-		return
+## Returns true the one time the edge falls far enough to be noticed. A bag
+## that wears its own tools (and remembers that notice) is left to do it.
+static func wear(inv: Inventory, id: StringName, uses: int) -> bool:
+	if inv == null or id == &"" or not inv.has(id):
+		return false
+	if inv.has_method(&"wear"):
+		return bool(inv.call(&"wear", id, uses))
 	var bite: int = Items.def(id).get("bite", 0)
-	if bite <= 0:
-		return
-	inv.edges[id] = maxi(0, int(inv.edges[id]) - uses * 10000 / bite)
+	if bite <= 0 or not inv.edges.has(id):
+		return false
+	var before: int = inv.edges[id]
+	inv.edges[id] = maxi(0, before - roundi(uses * 10000.0 / bite))
+	return before > DULL_EDGE and int(inv.edges[id]) <= DULL_EDGE
+
+
+## Spend a found weapon's charges from the bag. False (and nothing spent) when there are too few.
+static func spend_charges(inv: Inventory, wick: int) -> bool:
+	if wick <= 0:
+		return true
+	if inv == null or not inv.has(CHARGE, wick):
+		return false
+	return inv.remove(CHARGE, wick)

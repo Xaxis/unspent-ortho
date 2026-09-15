@@ -84,15 +84,48 @@ func test_won_when_every_hostile_is_dead() -> void:
 
 
 func test_away_when_the_hostile_is_left_behind() -> void:
-	var sim := F.make_sim(F.flat_world(96), Vector2(20.5, 20.5))
+	var sim := F.make_sim(F.flat_world(128), Vector2(20.5, 20.5))
 	var dog := F.still(sim, &"dog.yard", Vector2(23.5, 20.5), PI)
 	dog.calm_until = 0.0
 	dog.set_mood(MobState.CHASING, sim.now)
+	# An old dog: slower than a running player.
+	dog.dash = 2.0
+	dog.quick = 2.0
 	F.ms(sim, 16)
 	check(sim.fight_on)
-	# Carry the player off faster than anything runs.
-	dog.pos = Vector2(60.5, 60.5)
-	dog.home = dog.pos
-	F.ms(sim, 2200)
-	eq(F.first(sim.drain(), &"outcome").get("outcome", &""), &"away")
+	var outcome := &""
+	sim.hero.move = Vector2(-1, 1).normalized()
+	sim.hero.run = true
+	for i in 100:
+		F.ms(sim, 100)
+		dog.lost_beats = 0
+		var e := F.first(sim.drain(), &"outcome")
+		if not e.is_empty():
+			outcome = e.outcome
+			break
+	eq(outcome, &"away")
+	gt(Senses.chebyshev(dog.pos, sim.hero.pos), FightRules.AWAY_DISTANCE, "it was left behind")
 	gt(dog.calm_until, sim.now, "the survivor calms before it can start again")
+
+
+func test_something_coming_from_far_off_is_not_yet_a_fight() -> void:
+	var sim := F.make_sim(F.flat_world(96), Vector2(20.5, 20.5))
+	var dog := F.still(sim, &"dog.yard", Vector2(34.5, 20.5), PI)
+	dog.calm_until = 0.0
+	dog.set_mood(MobState.CHASING, sim.now)
+	F.ms(sim, 16)
+	eq(sim.fight_on, false, "fourteen tiles off, it is only coming")
+	var began := -1.0
+	var outcome := &""
+	for i in 60:
+		F.ms(sim, 100)
+		for e in sim.drain():
+			if e.type == &"fight_started" and began < 0.0:
+				began = sim.now
+			elif e.type == &"outcome":
+				outcome = e.outcome
+		if dog.mood == MobState.ATTACKING:
+			break
+	gt(began, 0.0, "it became a fight when it arrived")
+	lt(Senses.chebyshev(dog.pos, sim.hero.pos), FightRules.AWAY_DISTANCE + 1.0)
+	eq(outcome, &"", "and it was never called away while it closed")

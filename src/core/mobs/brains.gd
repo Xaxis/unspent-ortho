@@ -247,6 +247,16 @@ static func _seek(m: MobState, sim: FightSim, target: Vector2, speed: float) -> 
 		m.want = Vector2.ZERO
 		return
 	var dir := to.normalized()
+	# Going for the player where the straight line meets a cliff or the sea: take
+	# the ground's way round instead.
+	if sim.nav != null and target.distance_squared_to(sim.hero.pos) < 0.25 \
+			and not NavField.line_walkable(sim.world, m.pos, sim.hero.pos, minf(m.radius, 0.45)):
+		sim.refresh_nav()
+		var way := sim.nav.direction(m.pos)
+		if way != Vector2.ZERO:
+			m.want = way * speed
+			m.aim = way.angle()
+			return
 	if sim.now < m.detour_until:
 		dir = (dir * 0.4 + m.detour).normalized()
 	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < speed * 0.064 * BLOCKED_SHARE:

@@ -150,6 +150,8 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"swing", player.position)
 				if b != null:
 					player.model.play_action(&"swing", b.committed() / 1000.0)
+				if e.get("dulled", false):
+					Events.message.emit(FightRules.DULL_LINE)
 			&"whiff":
 				Events.sfx.emit(&"whiff", player.position)
 			&"dodge":
@@ -196,7 +198,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				game.camera.shake(0.06, 0.2)
 			&"alerted":
 				var m: MobState = e.mob
-				Events.sfx.emit(StringName("alert_" + String(m.row.get("model", m.kind))), _at3(m.pos))
+				Events.sfx.emit(&"alert", _at3(m.pos))
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
 					var head := _at3(m.pos, float(m.row.get("height", 1.0)) * 0.92) + Vector3(cos(m.facing), 0, sin(m.facing)) * 0.2
@@ -263,7 +265,8 @@ func _on_killed(e: Dictionary) -> void:
 	var m: MobState = e.mob
 	var at := _at3(m.pos)
 	Events.killed.emit(m.kind, at)
-	Events.sfx.emit(&"killed", at)
+	if m.machine:
+		Events.sfx.emit(&"machine_down", at)
 	_stop(HITSTOP_KILL)
 	game.camera.shake(0.1, 0.22)
 	MobFx.puff(_fx_parent(), at, Vector2.ZERO, _dust_colour(m.pos), 7, 0.24, m.id)
@@ -276,7 +279,7 @@ func _on_killed(e: Dictionary) -> void:
 
 func _on_snatch(m: MobState) -> void:
 	var r := Snatch.apply(m.kind, game.body, game.inventory, game.clock.minutes)
-	Events.sfx.emit(StringName("snatch_" + String(m.row.get("model", m.kind))), _at3(sim.hero.pos))
+	Events.sfx.emit(&"snatch", _at3(sim.hero.pos))
 	if String(r.line) != "":
 		Events.message.emit(String(r.line))
 	if r.took != &"":
@@ -298,6 +301,7 @@ func _on_outcome(e: Dictionary) -> void:
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")
 			hero.health = game.body.health
 			player.model.play_action(&"downed", 1.2)
+			Events.sfx.emit(&"downed", player.position)
 			Events.time_skipped.emit(float(r.minutes), &"downed")
 			Events.message.emit(String(r.line))
 		&"carried":

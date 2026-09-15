@@ -9,6 +9,8 @@ const ORE := [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKi
 const ROCK := [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE]
 ## Uses a hard-enough breaking tool loses over a forced shift (the source's 16 at iron).
 const SHIFT_WEAR := 16
+## Rock faces tried, nearest first, before giving up on a place to stand.
+const BESIDE_TRIES := 12
 
 const DOWNED_LINE := "You come to on the ground where it left you. The light has moved."
 const CARRIED_LINE := "You wake against cold rock with sore hands, a long way from where you were. The lamp is dry."
@@ -49,17 +51,27 @@ static func carried(body: Body, inv: Inventory, clock: WorldClock, world: WorldD
 ## A standable place beside the nearest ore (else bare rock) within `range_tiles`,
 ## and the facing that looks at it. {} if there is none.
 static func working_near(world: WorldData, query: WorldQuery, from: Vector2, range_tiles: float) -> Dictionary:
+	var r2 := range_tiles * range_tiles
 	for kinds: Array in [ORE, ROCK]:
-		var props: Array[WorldProp] = []
+		# Distances once, then nearest-first by selection: a large coast has tens of
+		# thousands of props, and only the first few candidates are ever looked at.
+		var cands: Array[WorldProp] = []
+		var dists: PackedFloat32Array = []
 		for p in world.props:
-			if kinds.has(p.kind) and not world.depleted.has(p.id) and p.pos.distance_squared_to(from) <= range_tiles * range_tiles:
-				props.append(p)
-		props.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
-			return a.pos.distance_squared_to(from) < b.pos.distance_squared_to(from))
-		for p in props:
-			var spot := _beside(world, query, p)
+			if kinds.has(p.kind) and not world.depleted.has(p.id):
+				var d := p.pos.distance_squared_to(from)
+				if d <= r2:
+					cands.append(p)
+					dists.append(d)
+		for attempt in mini(cands.size(), BESIDE_TRIES):
+			var best := 0
+			for i in dists.size():
+				if dists[i] < dists[best]:
+					best = i
+			var spot := _beside(world, query, cands[best])
 			if not spot.is_empty():
 				return spot
+			dists[best] = INF
 	return {}
 
 

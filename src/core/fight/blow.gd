@@ -31,6 +31,8 @@ var cuts := false
 var verb: StringName = &""
 ## Wind a swing of this blow costs: 120 + 60 x bulk (design-extract §6.4).
 var wind_cost := 180.0
+## A found weapon's charges spent per swing (0 = made, spends nothing).
+var wick := 0
 
 
 func committed() -> int:
@@ -102,5 +104,13 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 	b.verb = d.get("verb", &"")
 	var bulk: float = d.get("bulk", 1.0)
 	b.wind_cost = 120.0 + 60.0 * bulk
-	b.dmg = FightRules.damage_at_edge(int(d.get("dmg", 1)), edge)
+	b.wick = int(d.get("wick", 0))
+	# A found weapon has no edge to lose: it is charged or it is dry.
+	b.dmg = int(d.get("dmg", 1)) if b.wick > 0 else FightRules.damage_at_edge(int(d.get("dmg", 1)), edge)
 	return b
+
+
+## The same blow thrown with too few charges: it still swings, and does what a fist does.
+func dry() -> void:
+	dmg = 1
+	cuts = false

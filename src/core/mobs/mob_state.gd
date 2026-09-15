@@ -68,6 +68,8 @@ var line_to_b := true
 var rest_until := 0.0
 var closing_since := -1.0
 var call_ready_at := 0.0
+## The player has been told this one is heard out of sight (Racket).
+var heard_told := false
 # dart
 var snatched := false
 var reported := false

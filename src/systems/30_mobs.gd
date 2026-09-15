@@ -11,6 +11,7 @@ var sim: FightSim
 var moment: Moment
 var spawner: Spawner
 var _rolls_done := -1
+var _told_ms := -Racket.QUIET_MS
 var _layer: Node3D
 
 
@@ -54,6 +55,7 @@ func _physics_process(_delta: float) -> void:
 		var s := spawner.roll(_rolls_done, game.world, game.query, moment, sim.hero.pos, sim.living())
 		if not s.is_empty():
 			sim.add_mob(s.kind, s.pos)
+	_listen()
 	for m in sim.mobs:
 		if Spawner.should_cull(m.pos, sim.hero.pos):
 			if m.snatched and not m.reported and m.row.get("hits", {}).get("files", false):
@@ -76,6 +78,21 @@ func _process(delta: float) -> void:
 			mob.queue_free()
 			continue
 		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state)
+
+
+## A machine heard and not yet seen: say so, once (Racket).
+func _listen() -> void:
+	var now_ms := float(Time.get_ticks_msec())
+	var aerial := FightRules.wears(game.inventory, &"aerial")
+	for m in sim.mobs:
+		var visible := spawner.in_view(sim.hero.pos, m.pos, 0.0)
+		if Racket.should_tell(m, sim.hero.pos, visible, aerial, now_ms, _told_ms):
+			m.heard_told = true
+			_told_ms = now_ms
+			Events.message.emit(Racket.line_for(m))
+		elif visible:
+			# Seen first: nothing to tell about this one later.
+			m.heard_told = true
 
 
 func _ensure_nodes() -> void:

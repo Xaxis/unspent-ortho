@@ -15,11 +15,15 @@ extends RefCounted
 ##   swing whiff dodge evaded pull loose grip hit(ring) hurt killed second_act
 ##   alerted called snatch filed removed fight_started outcome
 
+const NAV_EVERY_MS := 240.0
+
 var world: WorldData
 var query: WorldQuery
 var hero: Hero
 var moment: Moment
 var mobs: Array[MobState] = []
+## Steps to the player over the ground, for chasers that meet a cliff.
+var nav: NavField
 ## Simulation milliseconds.
 var now := 0.0
 ## Real seconds that `now` corresponds to (Body stores real-time seconds).
@@ -34,6 +38,8 @@ var fight_mobs: Dictionary = {} # id -> MobState
 var fight_kills := 0
 var last_outcome: StringName = &""
 var _far_since := -1.0
+var _nav_at := -100000.0
+var _far_best := INF
 var _best_d := INF
 var _best_at := 0.0
 var _carry := 0.0
@@ -47,6 +53,7 @@ func _init(w: WorldData, q: WorldQuery, h: Hero = null, m: Moment = null) -> voi
 	query = q
 	hero = h if h != null else Hero.new()
 	moment = m if m != null else Moment.new()
+	nav = NavField.new(w, q) if w != null and q != null else null
 
 
 func add_mob(kind: StringName, at: Vector2) -> MobState:
@@ -151,10 +158,13 @@ func _swing() -> void:
 			best = m
 	if best != null:
 		hero.facing = (best.pos - hero.pos).angle()
+	var dry := b.wick > 0 and not FightRules.spend_charges(inv, b.wick)
+	if dry:
+		b.dry()
 	hero.start_swing(b, now)
 	_whiff_checked = false
-	FightRules.wear(inv, held, 1)
-	emit(&"swing", {"item": held})
+	var dulled := FightRules.wear(inv, held, 1)
+	emit(&"swing", {"item": held, "dry": dry, "dulled": dulled})
 
 
 func _dodge() -> void:
@@ -564,7 +574,7 @@ func _settle() -> void:
 		return
 	var engaged := false
 	for m in mobs:
-		if m.engaged() or hero.holder == m:
+		if _pressing(m):
 			engaged = true
 			if fight_on and not fight_mobs.has(m.id):
 				fight_mobs[m.id] = m
@@ -578,7 +588,7 @@ func _settle() -> void:
 		var m: MobState = fight_mobs[id]
 		if not m.alive or m.removed:
 			continue
-		nearest = minf(nearest, Senses.chebyshev(m.pos, hero.pos))
+		nearest = minf(nearest, ground_distance(m.pos))
 		if m.engaged() or hero.holder == m:
 			pressing = true
 	if nearest == INF:
@@ -587,14 +597,18 @@ func _settle() -> void:
 	if not pressing:
 		_end(&"away")
 		return
+	# Left behind: far off for a while and not closing. Something still coming
+	# round a cliff to you is closing, and is still a fight.
 	if nearest > FightRules.AWAY_DISTANCE:
-		if _far_since < 0.0:
+		if _far_since < 0.0 or nearest < _far_best - 0.5:
 			_far_since = now
+			_far_best = nearest
 		elif now - _far_since >= FightRules.AWAY_MS:
 			_end(&"away")
 			return
 	else:
 		_far_since = -1.0
+		_far_best = INF
 	if nearest > 3.0:
 		if nearest < _best_d - 0.5:
 			_best_d = nearest
@@ -606,15 +620,51 @@ func _settle() -> void:
 		_best_at = now
 
 
+## Bring the ground field to the player's tile, at most every NAV_EVERY_MS: a
+## field a tile stale still leads round the same cliff, and a build is not free.
+func refresh_nav() -> void:
+	if nav == null:
+		return
+	if nav.builds > 0 and now - _nav_at < NAV_EVERY_MS:
+		return
+	var before := nav.builds
+	nav.update(hero.pos)
+	if nav.builds != before:
+		_nav_at = now
+
+
+## Tiles to the player over the ground (the way round a cliff, not through it),
+## or the straight Chebyshev distance where the ground field does not reach.
+func ground_distance(p: Vector2) -> float:
+	var straight := Senses.chebyshev(p, hero.pos)
+	if nav == null or straight > NavField.RADIUS or NavField.line_walkable(world, p, hero.pos):
+		return straight
+	refresh_nav()
+	var s := nav.steps(floori(p.x), floori(p.y))
+	if s >= NavField.FAR:
+		return straight
+	return maxf(straight, float(s) / NavField.STRAIGHT)
+
+
+## Pressing the player closely enough to count as a fight. Something coming from
+## the edge of sight is not a fight yet: it would count as left behind before it
+## ever arrived, and the player's run would cost wind for a walk.
+func _pressing(m: MobState) -> bool:
+	if hero.holder == m:
+		return true
+	return m.engaged() and Senses.chebyshev(m.pos, hero.pos) <= FightRules.AWAY_DISTANCE
+
+
 func _begin() -> void:
 	fight_on = true
 	fight_started = now
 	fight_kills = 0
 	fight_mobs.clear()
 	for m in mobs:
-		if m.engaged() or hero.holder == m:
+		if _pressing(m):
 			fight_mobs[m.id] = m
 	_far_since = -1.0
+	_far_best = INF
 	_best_d = INF
 	_best_at = now
 	emit(&"fight_started", {})
