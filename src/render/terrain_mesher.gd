@@ -30,10 +30,11 @@ const WATER_Y := 0.3
 const SEA_FLOOR := -1.0
 ## Lattice samples per tile. 2 = half-tile cells.
 const RES := 2
-## How far (in levels) the noise warps the field: shapes curves, never moves a cliff far.
-const WARP := 0.2
-## How far (in tiles) a terrace edge may wander from the tile rows it follows.
-const DOMAIN_WARP := 1.1
+## How far (in tiles) a terrace edge may wander from the tile rows it follows,
+## and over how many tiles it wanders. Slow on purpose: a fast or strong warp
+## folds the field and kinks every edge into right-angled zigzags.
+const DOMAIN_WARP := 1.0
+const WARP_SCALE := 0.45
 ## Inland water: the sheet stands this far above its tile's level (a walker's shins)...
 const WADE := 0.3
 ## ...and the bed sinks this far below it.
@@ -52,6 +53,8 @@ const WET_EDGE := 0.4
 const LIP_START := 0.3
 ## How much lower inland water counts in the smoothed elevation field.
 const WATER_BIAS := 0.7
+## Passes of the spur and notch filter on drawn levels (drawn_levels()).
+const SPUR_PASSES := 2
 static var _LIFTS := PackedFloat32Array()
 var _blur: Dictionary = {}
 ## Cumulative build time by stage (usec) and vertices, for tools/gd/bench_chunks.gd.
@@ -131,6 +134,8 @@ class Chunk:
 	var feet := PackedVector3Array()
 	var feet_out := PackedVector3Array()
 	var feet_country := PackedByteArray()
+	## Terrace edges as drawn: the top of every wall, as point pairs.
+	var edges := PackedVector3Array()
 	## Per lattice point: hummock height added to the terrace (soft ground only).
 	var bump := PackedFloat32Array()
 
@@ -310,6 +315,86 @@ func _water_ground(x: float, y: float, terrace: int, wl: PackedInt32Array, tg: P
 	return Ground.RIVER
 
 
+## How grid-like drawn terrace edges are (for tests and tuning): chains the
+## edge segments of a chunk into polylines, walks each at quarter-tile steps and
+## counts CORNERS, places where the line turns more than 60 degrees within half
+## a tile either side. Returns [edge length in tiles, corners].
+static func edge_corners(edges: PackedVector3Array) -> PackedFloat32Array:
+	var ends := {}
+	var nseg := edges.size() / 2
+	for s in nseg:
+		for e in 2:
+			var p := edges[s * 2 + e]
+			var key := Vector3i(roundi(p.x * 500.0), roundi(p.y * 500.0), roundi(p.z * 500.0))
+			if not ends.has(key):
+				ends[key] = PackedInt32Array()
+			var arr: PackedInt32Array = ends[key]
+			arr.append(s * 2 + e)
+			ends[key] = arr
+	var used := PackedByteArray()
+	used.resize(nseg)
+	var length := 0.0
+	var corners := 0.0
+	for s0 in nseg:
+		if used[s0] == 1:
+			continue
+		# Walk back to a chain's start (or once round a loop), then forward.
+		var cur := s0 * 2
+		var guard := nseg
+		while guard > 0:
+			guard -= 1
+			var p := edges[cur]
+			var key := Vector3i(roundi(p.x * 500.0), roundi(p.y * 500.0), roundi(p.z * 500.0))
+			var arr: PackedInt32Array = ends[key]
+			if arr.size() != 2:
+				break
+			var other := arr[0] if arr[0] != cur else arr[1]
+			var nxt := other ^ 1
+			if nxt / 2 == s0:
+				break
+			cur = nxt
+		var pts := PackedVector3Array()
+		pts.append(edges[cur])
+		var seg := cur
+		while true:
+			var sidx := seg / 2
+			if used[sidx] == 1:
+				break
+			used[sidx] = 1
+			var far := edges[seg ^ 1]
+			pts.append(far)
+			var key := Vector3i(roundi(far.x * 500.0), roundi(far.y * 500.0), roundi(far.z * 500.0))
+			var arr: PackedInt32Array = ends[key]
+			if arr.size() != 2:
+				break
+			seg = arr[0] if arr[0] != (seg ^ 1) else arr[1]
+		# Resample at a quarter tile.
+		var rs := PackedVector2Array()
+		rs.append(Vector2(pts[0].x, pts[0].z))
+		var carry := 0.0
+		for i in range(1, pts.size()):
+			var a := Vector2(pts[i - 1].x, pts[i - 1].z)
+			var b := Vector2(pts[i].x, pts[i].z)
+			var d := a.distance_to(b)
+			length += d
+			var t := 0.25 - carry
+			while t <= d:
+				rs.append(a.lerp(b, t / d))
+				t += 0.25
+			carry = d - (t - 0.25)
+		var in_corner := false
+		for i in range(2, rs.size() - 2):
+			var u := rs[i] - rs[i - 2]
+			var v := rs[i + 2] - rs[i]
+			if u.length() < 0.3 or v.length() < 0.3:
+				continue
+			var sharp := absf(u.angle_to(v)) > deg_to_rad(60.0)
+			if sharp and not in_corner:
+				corners += 1.0
+			in_corner = sharp
+	return PackedFloat32Array([length, corners])
+
+
 static func level_height(l: int) -> float:
 	if l > 0:
 		return l * WorldData.STEP
@@ -318,29 +403,89 @@ static func level_height(l: int) -> float:
 
 func _lv(x: int, y: int) -> float:
 	var i := clampi(y, 0, world.size - 1) * world.size + clampi(x, 0, world.size - 1)
-	var l := world.level[i]
+	var l := drawn_levels(x, y, 1, 1)[0]
 	return float(l) - (WATER_BIAS if l > 0 and _WET[world.ground[i]] == 1 else 0.0)
 
 
-## A tile's level blurred over its neighbours, but never out of its own
+## The levels the land is DRAWN at over the tile rectangle (x0, y0, w, h),
+## row-major. The rules' level everywhere, except that a dry tile standing out
+## of its neighbours alone (a one-tile spur, notch or pit: at most one of its
+## four neighbours shares its level, and five of its eight share another) is
+## drawn at theirs. Contours are forced through every tile centre's own side,
+## so without this each such tile turns the wall in a right-angled notch.
+## Two passes, so a two-tile finger goes as well. Inland water and the sea are
+## never moved, and nothing is drawn into the sea.
+func drawn_levels(x0: int, y0: int, w: int, h: int) -> PackedInt32Array:
+	const PAD := SPUR_PASSES
+	var size := world.size
+	var ww := w + PAD * 2
+	var wh := h + PAD * 2
+	var lv := PackedInt32Array()
+	lv.resize(ww * wh)
+	var dry := PackedByteArray()
+	dry.resize(ww * wh)
+	for yy in wh:
+		var ty := clampi(y0 - PAD + yy, 0, size - 1) * size
+		for xx in ww:
+			var ti := ty + clampi(x0 - PAD + xx, 0, size - 1)
+			var l: int = world.level[ti]
+			lv[yy * ww + xx] = l
+			dry[yy * ww + xx] = 1 if l > 0 and _WET[world.ground[ti]] == 0 else 0
+	for _pass in SPUR_PASSES:
+		var out := lv.duplicate()
+		for yy in range(1, wh - 1):
+			for xx in range(1, ww - 1):
+				var i := yy * ww + xx
+				if dry[i] == 0:
+					continue
+				var l := lv[i]
+				var a := lv[i - 1]
+				var b := lv[i + 1]
+				var c := lv[i - ww]
+				var d := lv[i + ww]
+				if int(a == l) + int(b == l) + int(c == l) + int(d == l) >= 2:
+					continue
+				var best := l
+				var best_n := 0
+				for o: int in [i - 1, i + 1, i - ww, i + ww, i - ww - 1, i - ww + 1, i + ww - 1, i + ww + 1]:
+					var m := lv[o]
+					if m == l or m < 1 or m == best:
+						continue
+					var cnt := int(a == m) + int(b == m) + int(c == m) + int(d == m) + int(lv[i - ww - 1] == m) + int(lv[i - ww + 1] == m) + int(lv[i + ww - 1] == m) + int(lv[i + ww + 1] == m)
+					if cnt > best_n:
+						best_n = cnt
+						best = m
+				if best_n >= 5:
+					out[i] = best
+		lv = out
+	if PAD == 0:
+		return lv
+	var inner := PackedInt32Array()
+	inner.resize(w * h)
+	for yy in h:
+		for xx in w:
+			inner[yy * w + xx] = lv[(yy + PAD) * ww + xx + PAD]
+	return inner
+
+
+## A tile's drawn level blurred over its neighbours, but never out of its own
 ## terrace: the shape between tile centres is smoothed, the rules are not.
 ## Inland water counts a little lower, so a one-tile river keeps its terrace
 ## right across its width instead of pinching to a thread between its banks.
 func smooth_level(x: int, y: int) -> float:
 	var c := _lv(x, y)
-	var own := float(world.level_at(clampi(x, 0, world.size - 1), clampi(y, 0, world.size - 1)))
+	var own := float(drawn_levels(x, y, 1, 1)[0])
 	var sum := c * 4.0
 	sum += (_lv(x - 1, y) + _lv(x + 1, y) + _lv(x, y - 1) + _lv(x, y + 1)) * 2.0
 	sum += _lv(x - 1, y - 1) + _lv(x + 1, y - 1) + _lv(x - 1, y + 1) + _lv(x + 1, y + 1)
 	return clampf(sum / 16.0, own - 0.45, own + 0.45)
 
 
-## Near an edge the field is read through a gentle domain warp (the contour
-## wanders like a drawn coast instead of running along tile rows) plus a finer
-## value warp. `smooth` is a window of smooth_level() starting at (ox-1, oy-1).
+## Near an edge the field is read through a gentle domain warp, so the contour
+## wanders like a drawn coast instead of running along tile rows. `smooth` is a window of smooth_level() starting at (ox-1, oy-1).
 func _edge_field(x: float, y: float, smooth: PackedFloat32Array, sw: int, ox: int, oy: int) -> float:
-	var px := x + _warp.get_noise_2d(x * 0.9 + 70.0, y * 0.9) * DOMAIN_WARP
-	var py := y + _warp.get_noise_2d(x * 0.9, y * 0.9 + 70.0) * DOMAIN_WARP
+	var px := x + _warp.get_noise_2d(x * WARP_SCALE + 70.0, y * WARP_SCALE) * DOMAIN_WARP
+	var py := y + _warp.get_noise_2d(x * WARP_SCALE, y * WARP_SCALE + 70.0) * DOMAIN_WARP
 	var gx := px - 0.5
 	var gy := py - 0.5
 	var ix := floori(gx)
@@ -356,8 +501,7 @@ func _edge_field(x: float, y: float, smooth: PackedFloat32Array, sw: int, ox: in
 	var lb := smooth[ay + bx]
 	var lc := smooth[by + ax]
 	var ld := smooth[by + bx]
-	var v := (la + (lb - la) * fx) + ((lc + (ld - lc) * fx) - (la + (lb - la) * fx)) * fy
-	return v + _warp.get_noise_2d(x * 4.0, y * 4.0) * WARP
+	return (la + (lb - la) * fx) + ((lc + (ld - lc) * fx) - (la + (lb - la) * fx)) * fy
 
 
 ## The continuous elevation field, in levels, at tile-space point (x, y).
@@ -478,16 +622,14 @@ func build(cx: int, cy: int) -> Chunk:
 	# instead of stepping round every tile. Raw covers x0-3 .. x1+2.
 	var aw := ch.w + 6
 	var ah := ch.h + 6
-	var raw := PackedInt32Array()
-	raw.resize(aw * ah)
+	var raw := drawn_levels(x0 - 3, y0 - 3, aw, ah)
 	var biased := PackedFloat32Array()
 	biased.resize(aw * ah)
 	for yy in ah:
 		var ty := clampi(y0 - 3 + yy, 0, size - 1) * size
 		for xx in aw:
 			var ti := ty + clampi(x0 - 3 + xx, 0, size - 1)
-			var l: int = level[ti]
-			raw[yy * aw + xx] = l
+			var l: int = raw[yy * aw + xx]
 			biased[yy * aw + xx] = float(l) - (WATER_BIAS if l > 0 and _WET[ground[ti]] == 1 else 0.0)
 	var sw := ch.w + 4
 	var smooth := PackedFloat32Array()
@@ -537,8 +679,8 @@ func build(cx: int, cy: int) -> Chunk:
 			else:
 				# Ground under a warp, so type boundaries (and the edges of inland
 				# water) wander with the contours instead of following tiles.
-				var wx := sx + 0.01 + _warp.get_noise_2d(sx * 0.9 + 70.0, sy * 0.9) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
-				var wy := sy + 0.01 + _warp.get_noise_2d(sx * 0.9, sy * 0.9 + 70.0) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
+				var wx := sx + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE + 70.0, sy * WARP_SCALE) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
+				var wy := sy + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE, sy * WARP_SCALE + 70.0) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
 				var otx := clampi(floori(wx), rx0, rx0 + rw - 1)
 				var oty := clampi(floori(wy), ry0, ry0 + rh - 1)
 				var o := (oty - ry0) * rw + (otx - rx0)
@@ -1020,6 +1162,8 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		dz = -dz
 	var inv := 1.0 / sqrt(len2)
 	var nrm := Vector3(dz * inv, 0.0, -dx * inv)
+	ch.edges.append(Vector3(px, h, pz))
+	ch.edges.append(Vector3(qx, h, qz))
 	var gi := ((k & 0xFF) * Country.COUNT + ((k >> 8) & 0xFF)) * 2 + (L & 1)
 	var col := _tab_cliff[gi]
 	var c0 := Color(col.r, col.g, col.b, 0.0)

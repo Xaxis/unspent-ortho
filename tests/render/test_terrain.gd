@@ -56,6 +56,27 @@ func test_neighbouring_chunks_agree_on_their_border() -> void:
 		eq(left.key[a], right.key[b], "key at border row %d" % j)
 
 
+## Rough terraced country the way generation leaves it: blocky steps along
+## rows, with one-tile spurs, notches and pits sprinkled over them.
+static func rough() -> WorldData:
+	var w := WorldData.new(11, 96)
+	for y in 96:
+		for x in 96:
+			var i := y * 96 + x
+			var l := clampi(int(2.5 + sin(x * 0.13) * 1.4 + cos(y * 0.11 + x * 0.05) * 1.4), 1, 5)
+			if x >= 60 and x < 72 and y >= 20 and y < 28:
+				l = 5
+			var h := Rng.hash01(11, x, y)
+			if h < 0.025:
+				l += 1
+			elif h > 0.975:
+				l = maxi(1, l - 1)
+			w.level[i] = l
+			w.country[i] = Country.COAST
+			w.ground[i] = Ground.GRASS
+	return w
+
+
 func test_terrace_edges_do_not_follow_the_tile_grid() -> void:
 	var w := fixture()
 	var ch := TerrainMesher.new(w).build(0, 0)
@@ -73,14 +94,55 @@ func test_terrace_edges_do_not_follow_the_tile_grid() -> void:
 			off_grid += 1
 	gt(walls, 50, "walls drawn")
 	gt(float(off_grid) / maxf(1.0, walls), 0.4, "share of wall vertices off the half-tile lattice")
+	# No right-angled turns: an edge bends like a drawn contour, it does not
+	# step round single tiles.
+	var m := TerrainMesher.new(rough())
+	var length := 0.0
+	var corners := 0.0
+	for cy in 3:
+		for cx in 3:
+			var r := TerrainMesher.edge_corners(m.build(cx, cy).edges)
+			length += r[0]
+			corners += r[1]
+	gt(length, 400.0, "rough country has edges")
+	lt(corners * 10.0 / length, 0.25, "sharp corners per 10 tiles of edge (%d in %d tiles)" % [corners, length])
+
+
+func test_one_tile_spurs_and_notches_are_drawn_at_their_neighbours_level() -> void:
+	var w := WorldData.new(2, 32)
+	for i in 32 * 32:
+		w.level[i] = 2
+		w.country[i] = Country.COAST
+		w.ground[i] = Ground.GRASS
+	for x in range(16, 32):
+		for y in 32:
+			w.level[y * 32 + x] = 3
+	w.level[10 * 32 + 16] = 2 # a notch into the high side
+	w.level[20 * 32 + 15] = 3 # a spur out of it
+	w.level[5 * 32 + 5] = 3 # a lone pip
+	w.level[25 * 32 + 5] = 1 # a lone pit
+	for y in range(12, 16): # a two-tile-wide ridge is a shape, not noise
+		w.level[y * 32 + 8] = 3
+		w.level[y * 32 + 9] = 3
+	var d := TerrainMesher.new(w).drawn_levels(0, 0, 32, 32)
+	eq(d[10 * 32 + 16], 3, "notch filled")
+	eq(d[20 * 32 + 15], 2, "spur cut")
+	eq(d[5 * 32 + 5], 2, "pip levelled")
+	eq(d[25 * 32 + 5], 2, "pit filled")
+	eq(d[13 * 32 + 8], 3, "ridge kept")
+	eq(d[13 * 32 + 9], 3, "ridge kept")
+	eq(d[10 * 32 + 20], 3, "the plateau stays")
 
 
 func test_a_tile_centre_stays_on_its_own_terrace() -> void:
 	var w := fixture()
 	var m := TerrainMesher.new(w)
+	var d := m.drawn_levels(0, 0, 64, 64)
 	for y in range(2, 62, 3):
 		for x in range(10, 62, 3):
-			eq(floori(m.smooth_level(x, y) + 0.5), w.level_at(x, y), "smoothed level at %d,%d" % [x, y])
+			eq(floori(m.smooth_level(x, y) + 0.5), d[y * 64 + x], "smoothed level at %d,%d" % [x, y])
+			if w.level_at(x - 1, y) == w.level_at(x, y) and w.level_at(x + 1, y) == w.level_at(x, y):
+				eq(d[y * 64 + x], w.level_at(x, y), "only lone tiles are redrawn, %d,%d" % [x, y])
 
 
 func test_sea_sheet_sits_at_water_level_and_inland_water_hides_shins() -> void:
