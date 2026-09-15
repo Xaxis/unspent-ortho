@@ -146,6 +146,54 @@ func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read
 	Sx.finish()
 
 
+func test_new_game_over_a_readable_autosave_asks_once_more() -> void:
+	Sx.use_root("title-new")
+	var menu := UiTitleMenu.new()
+	menu.title = null
+	tree.root.add_child(menu)
+	menu.open()
+	menu.select(&"new")
+	menu.handle(&"confirm")
+	eq(menu.note, "", "nothing saved: new game starts at once, no question")
+	menu.close()
+
+	eq(SaveFile.write(SaveSlots.path(1), HEADER, DATA), OK)
+	menu.open()
+	menu.select(&"new")
+	menu.handle(&"confirm")
+	eq(menu.note, "", "a manual slot is never written over by a new game: no question")
+	menu.close()
+
+	eq(SaveFile.write(SaveSlots.path(SaveSlots.AUTO), HEADER, DATA), OK)
+	var title := UiTitle.new()
+	title.options = BootOptions.new()
+	menu.title = title
+	menu.open()
+	menu.select(&"new")
+	menu.handle(&"confirm")
+	eq(menu.note, UiTitleMenu.ASK_NEW, "an autosave that reads: asked once more")
+	check(not bool(title.get("_starting")), "and nothing starts yet")
+	menu.handle(&"up")
+	menu.handle(&"down")
+	menu.handle(&"confirm")
+	check(not bool(title.get("_starting")), "moving away forgets the ask: asked again")
+	menu.handle(&"confirm")
+	check(bool(title.get("_starting")), "the second press starts the new game")
+	menu.close()
+
+	# A damaged autosave is nothing to lose.
+	title.set("_starting", false)
+	_put(SaveSlots.path(SaveSlots.AUTO), "garbage".to_utf8_buffer())
+	menu.open()
+	menu.select(&"new")
+	menu.handle(&"confirm")
+	check(bool(title.get("_starting")), "a damaged autosave: new game at once")
+	menu.close()
+	menu.free()
+	title.free()
+	Sx.finish()
+
+
 func _ids(menu: UiTitleMenu) -> Array:
 	var out: Array = []
 	for r in menu.menu.rows:

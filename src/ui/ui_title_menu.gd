@@ -4,7 +4,8 @@ extends UiScreen
 ## with new game, the coast's seed (left/right draws another), controls, quit.
 ## With a game saved, continue heads the slip (the newest readable save) and its
 ## picture is pasted beside it; a save that cannot be read is said so plainly
-## under the slip.
+## under the slip. New game over a readable autosave asks once more: the new
+## game's first autosave writes over it.
 
 const LABEL := Rect2i(170, 42, 300, 86)
 const SLIP := Rect2i(254, 236, 132, 84)
@@ -12,6 +13,9 @@ const LETTER_H := 34
 const ROW_H := 16
 ## The continued save's picture, pasted to the right of the slip.
 const PHOTO := Rect2i(420, 222, 160, 90)
+## Real seconds a first press of new game waits for the second.
+const ASK_SECONDS := 3.0
+const ASK_NEW := "Again, to start afresh: the autosave will be written over."
 
 var title: UiTitle
 ## 0 shows the world, 1 is ink over everything.
@@ -24,6 +28,9 @@ var page := "list"
 ## The newest readable save (SaveSlots.list entry), or {}.
 var saved := {}
 var _photo: ImageTexture
+## The autosave slot holds a game that reads.
+var _autosave := false
+var _ask_until := 0
 var _opening := false
 
 
@@ -43,6 +50,8 @@ func refresh() -> void:
 	]
 	var entries := SaveSlots.list()
 	saved = SaveSlots.newest(entries)
+	_autosave = bool(entries[SaveSlots.AUTO].ok)
+	_ask_until = 0
 	_photo = SaveSlots.thumbnail(saved.header) if not saved.is_empty() else null
 	var problems := SaveSlots.problems(entries)
 	if not saved.is_empty():
@@ -91,6 +100,13 @@ func _on_confirm(row: Dictionary) -> void:
 			if title != null:
 				title.continue_game(int(saved.get("slot", -1)))
 		&"new":
+			var now := Time.get_ticks_msec()
+			if _autosave and (_ask_until == 0 or now > _ask_until):
+				_ask_until = now + int(ASK_SECONDS * 1000.0)
+				Events.sfx.emit(&"menu_move", Vector3.ZERO)
+				say(ASK_NEW)
+				return
+			_ask_until = 0
 			if title != null:
 				title.new_game()
 		&"seed":
@@ -101,6 +117,10 @@ func _on_confirm(row: Dictionary) -> void:
 			queue_redraw()
 		&"quit":
 			get_tree().quit()
+
+
+func _on_choice_changed() -> void:
+	_ask_until = 0
 
 
 func _unhandled_input(event: InputEvent) -> void:
