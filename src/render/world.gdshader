@@ -43,6 +43,7 @@ const vec3 INK2 = vec3(0.1176, 0.1098, 0.1804);
 const vec3 INK3 = vec3(0.1843, 0.1725, 0.2706);
 const vec3 STONE0 = vec3(0.1059, 0.1216, 0.1686);
 const vec3 STONE1 = vec3(0.1843, 0.2118, 0.2745);
+const vec3 STONE2 = vec3(0.2902, 0.3333, 0.4000);
 const vec3 SLATE1 = vec3(0.1373, 0.1843, 0.2392);
 const vec3 SLATE2 = vec3(0.2157, 0.2824, 0.3529);
 const vec3 BRINE0 = vec3(0.0392, 0.0824, 0.1412);
@@ -53,6 +54,7 @@ const vec3 EARTH0 = vec3(0.1020, 0.0706, 0.1255);
 const vec3 EARTH1 = vec3(0.2000, 0.1373, 0.1216);
 const vec3 EARTH2 = vec3(0.3098, 0.2118, 0.1529);
 const vec3 EARTH3 = vec3(0.4353, 0.3020, 0.1922);
+const vec3 RUST1 = vec3(0.2902, 0.1137, 0.0941);
 const vec3 RUST2 = vec3(0.4314, 0.2000, 0.1255);
 const vec3 RUST3 = vec3(0.6039, 0.3098, 0.1569);
 const vec3 MOSS2 = vec3(0.1725, 0.2667, 0.1882);
@@ -128,6 +130,12 @@ vec3 cells(vec2 p) {
 		}
 	}
 	return vec3(sqrt(d1), sqrt(d2), id);
+}
+
+// Pixel-scale raggedness for any threshold drawn on a world field, so every
+// patch edge is the same crisp, torn line as a ground edge.
+float rag(vec2 wp) {
+	return (ink_vnoise(wp * 7.1 + 3.0) - 0.5) * 0.06;
 }
 
 float flicker(vec3 p, float rate) {
@@ -241,50 +249,94 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = LINEN1;
 		}
 	} else if (m == 46) {
-		// ASH: soft drifts, flakes, ember glints (unhatched, glowing) and now
-		// and then a leaf of burnt ruled paper.
-		float dr = ink_vnoise(vec2(dot(wp, vec2(0.7, -0.7)) * 0.12, dot(wp, vec2(0.7, 0.7)) * 0.5));
-		if (dr > 0.66) {
-			c = up(c, 0.22);
-		} else if (dr < 0.3) {
-			c = dn(c, 0.25);
+		// ASH: laid by the wind in long drifts, pale crests and scorched
+		// troughs. In some stretches the ground is cracked and the cracks
+		// still glow (unhatched): the embers gather there, never sprinkled
+		// evenly. Now and then a leaf of burnt ruled paper.
+		vec2 ad = vec2(0.9, -0.44);
+		float along = dot(wp, ad);
+		float across = dot(wp, vec2(-ad.y, ad.x));
+		float band = ink_vnoise(vec2(along * 0.05, across * 0.45)) * 0.88 + ink_vnoise(wp * 0.3) * 0.12 + rag(wp);
+		if (band > 0.66) {
+			c = up(c, 0.3);
+		} else if (band < 0.2) {
+			c = mix(dn(c, 0.35), EARTH1, 0.25);
+			if (stroke(px, vec2(6.0, 5.0), 17.0, 0.35, 2.0, -1.0) > 0.5) {
+				c = dn(c, 0.6);
+			}
+		} else if (band > 0.58 && stroke(px, vec2(7.0, 3.0), 23.0, 0.3, 3.0, 2.0) > 0.5) {
+			// Wind-combed streaks on the lee of a drift.
+			c = up(c, 0.25);
 		}
-		vec2 cell = floor(px / vec2(9.0, 7.0));
-		vec2 lp = px - cell * vec2(9.0, 7.0);
-		float eh = ink_hash(cell + vec2(41.0, 17.0));
-		if (eh < 0.02 && lp == floor(vec2(ink_hash(cell), ink_hash(cell + 2.0)) * vec2(8.0, 6.0))) {
-			float fl = flicker(vec3(cell.x, 0.0, cell.y), 3.0 + eh * 40.0);
-			c = mix(EMBER3, EMBER4, fl);
-			emit += c * (0.6 + 0.6 * fl);
-			unh = 1.0;
-		} else if (stroke(px, vec2(6.0, 5.0), 17.0, 0.3, 2.0, -1.0) > 0.5) {
-			c = dn(c, 0.6);
+		float field = ink_vnoise(wp * 0.13 + vec2(17.0, 3.0));
+		if (field > 0.66) {
+			// Crust broken into plates; some seams still glow.
+			vec3 cr = cells(wp * 0.9 + (vec2(ink_vnoise(wp * 1.7), ink_vnoise(wp * 1.7 + 9.0)) - 0.5) * 0.35);
+			float seam = cr.y - cr.x;
+			float width = 0.05 * clamp((field - 0.66) * 10.0, 0.0, 1.0);
+			bool live = ink_hash(vec2(floor(cr.z * 97.0), floor((cr.x + cr.y) * 3.0))) < 0.55;
+			if (seam < width) {
+				c = INK2;
+				float eh = ink_hash(px);
+				if (live && eh < 0.6) {
+					float fl = flicker(vec3(floor(wp.x * 3.0), 0.0, floor(wp.y * 3.0)), 1.5 + eh * 5.0);
+					c = mix(EMBER2, eh < 0.25 ? EMBER4 : EMBER3, fl);
+					emit += c * (0.5 + 0.7 * fl);
+					unh = 1.0;
+				}
+			} else if (seam < width * 2.2) {
+				c = mix(dn(c, 0.45), RUST1, live ? 0.4 : 0.1);
+			}
 		}
-		vec2 pc = floor(wp / 2.3);
-		vec2 pl = (wp - pc * 2.3) * 26.0;
-		if (ink_hash(pc + 5.0) < 0.1 && pl.x > 20.0 && pl.x < 27.0 && pl.y > 30.0 && pl.y < 35.0) {
-			c = abs(pl.y - 32.0) < 0.7 ? LINEN2 : LINEN3;
+		vec2 pc = floor(wp / 3.1);
+		vec2 pl = wp - pc * 3.1;
+		if (ink_hash(pc + 5.0) < 0.14) {
+			vec2 o = vec2(0.6, 0.6) + vec2(ink_hash(pc + 8.0), ink_hash(pc + 9.0)) * 1.6;
+			vec2 q = pl - o;
+			float ang = ink_hash(pc + 11.0) * 3.0;
+			vec2 r = vec2(dot(q, vec2(cos(ang), sin(ang))), dot(q, vec2(-sin(ang), cos(ang))));
+			vec2 half_size = vec2(0.2, 0.14);
+			vec2 e = abs(r) / half_size;
+			float edge = max(e.x, e.y) + (ink_vnoise(wp * 9.0) - 0.5) * 0.35;
+			if (edge < 1.0) {
+				c = edge > 0.72 ? mix(EARTH1, INK2, 0.4) : LINEN4;
+				if (edge <= 0.72 && abs(r.y + 0.02) < 0.018) {
+					c = RIME3;
+				} else if (edge <= 0.72 && abs(r.y - 0.06) < 0.014) {
+					c = LINEN3;
+				}
+			}
 		}
 	} else if (m == 47) {
-		// CLINKER: slag grit, with pools of vitrified black glass here and there
-		// that catch a green glint; rust where water stood.
-		float n = ink_vnoise(wp * 0.45) * 0.7 + ink_vnoise(wp * 1.6) * 0.3;
-		if (n > 0.66) {
-			c = n > 0.7 ? mix(INK1, SPRUCE1, 0.45) : INK2;
-			if (ink_hash(px + 2.0) > 0.99) {
-				c = SPRUCE4;
-			}
-		} else if (ink_hash(px + 5.0) > 0.93) {
+		// CLINKER: slag grit, rusted where water stood, with small pools of
+		// vitrified glass: ink and spruce, a green glint, a rust rim that
+		// here and there still glows. Never a large area of near black.
+		float grit = ink_vnoise(wp * 0.3 + 2.0);
+		if (grit > 0.55 && ink_hash(px + 5.0) > 0.86) {
 			c = dn(c, 0.6);
-		} else if (ink_hash(px + 6.0) > 0.975) {
-			c = up(c, 0.4);
+		} else if (grit < 0.4 && ink_hash(px + 6.0) > 0.93) {
+			c = up(c, 0.45);
 		}
-		float crack = abs(ink_vnoise(wp * 0.9 + 3.0) - 0.5);
-		if (crack < 0.012 && n <= 0.66) {
-			c = dn(c, 0.8);
+		if (ink_vnoise(wp * 0.5 + 8.0) > 0.72) {
+			c = mix(c, RUST2, 0.35);
 		}
-		if (ink_vnoise(wp * 0.5 + 8.0) > 0.82) {
-			c = mix(c, RUST2, 0.3);
+		vec3 v = cells(wp * 0.45);
+		float r = 0.08 + v.z * 0.3;
+		float dd = v.x + (ink_vnoise(wp * 3.1) - 0.5) * 0.16 + rag(wp);
+		if (v.z < 0.3 && dd < r) {
+			c = dd < r * 0.55 ? mix(INK1, SPRUCE1, 0.55) : INK3;
+			float g = ink_hash(px + 2.0);
+			if (dd < r * 0.7 && g > 0.94) {
+				c = g > 0.975 ? SPRUCE4 : SPRUCE2;
+			}
+		} else if (v.z < 0.3 && dd < r + 0.03) {
+			c = mix(RUST1, RUST2, step(0.5, ink_hash(floor(px / 2.0))));
+			if (v.z < 0.07 && ink_hash(px + 4.0) < 0.5) {
+				float fl = flicker(vec3(floor(wp * 4.0), 1.0).xzy, 1.5);
+				c = mix(EMBER2, EMBER3, fl);
+				emit += c * (0.4 + 0.4 * fl);
+				unh = 1.0;
+			}
 		}
 	} else if (m == 48) {
 		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
@@ -470,20 +522,38 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = LINEN1;
 		}
 	} else if (id == 6) {
-		// BURNING: basalt columns, and a few joints still glowing.
-		float cx = floor((px.x + floor(ink_hash(vec2(floor(y / 0.35), 1.0)) * 3.0)) / 5.0);
-		float lx = px.x - cx * 5.0;
-		float h = ink_hash(vec2(cx, floor((y + ink_hash(vec2(cx, 2.0)) * 0.4) / 0.45)));
+		// BURNING: basalt in upright columns, each its own width, a lit facet
+		// and a shaded one, joints dark and a few still glowing. At the lip
+		// the column heads stand as pale, uneven caps.
+		float span = 6.0;
+		float cx = floor(px.x / span);
+		float lx = px.x - cx * span;
+		float w = 4.0 + floor(ink_hash(vec2(cx, 1.0)) * 3.0);
+		float h = ink_hash(vec2(cx, 2.0));
 		c = h < 0.33 ? STONE0 : (h < 0.7 ? mix(STONE0, STONE1, 0.5) : STONE1);
-		if (lx < 1.0) {
-			c = up(c, 0.6);
-		} else if (lx > 3.5) {
-			c = dn(c, 0.6);
-			if (ink_hash(vec2(cx, floor(y * 12.0))) > 0.93) {
-				float fl = flicker(vec3(cx, y * 4.0, 0.0), 2.0);
+		float cap = 0.05 + ink_hash(vec2(cx, 3.0)) * 0.06;
+		if (lx >= w) {
+			// The joint between two columns.
+			c = INK1;
+			if (ink_hash(vec2(cx, floor(y * 10.0))) > 0.9 && dt > cap) {
+				float fl = flicker(vec3(cx, floor(y * 10.0), 0.0), 1.6);
 				c = mix(EMBER2, EMBER3, fl);
 				emit += c * (0.5 + 0.5 * fl);
 				unh = 1.0;
+			}
+		} else if (dt < cap) {
+			c = lx < w * 0.5 ? ASH3 : mix(ASH3, STONE2, 0.6);
+		} else if (dt < cap + 0.02) {
+			c = INK2;
+		} else {
+			if (lx < 1.0) {
+				c = up(c, 0.7);
+			} else if (lx >= w * 0.55) {
+				c = dn(c, 0.4);
+			}
+			// A rare cross-joint, as columns break.
+			if (abs(fract(y * 1.7 + h * 3.0) - 0.5) < 0.012 && ink_hash(vec2(cx, 4.0)) < 0.35) {
+				c = INK2;
 			}
 		}
 	} else if (id == 7) {
@@ -525,17 +595,23 @@ void vertex() {
 void fragment() {
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	int m1 = int(COLOR.a * 255.0 + 0.5);
-	int m2 = patch_raw >= 1.5 ? int(patch_raw - 2.0 + 0.5) : m1;
+	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
+	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
 	float patchy = min(patch_raw, 1.0);
-	// A second wash (another ground, another country) meets this one on a ragged
-	// pixel edge: never a muddy average, never a tile square.
-	// The weight is bent by a world field first, so the edge wanders freely
-	// inside its half-tile band instead of tracing the lattice's diagonals.
-	float wb = wash_blend;
-	if (wb > 0.0 && wb < 1.0) {
-		wb = clamp(wb + (ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.9, 0.0, 1.0);
+	// A second wash (another ground, another country) meets this one on a
+	// crisp, ragged edge: never a muddy average, never a dither, never a tile
+	// square. The weight is bent by a world field so the edge wanders freely
+	// inside its band, and the lighter wash is inked along it, broken like a
+	// pen lifting (docs/ART.md: one edge language for every patch).
+	bool second = false;
+	bool edge_ink = false;
+	if (wash_blend > 0.0) {
+		float e = wash_blend - 0.5 + bend * ((ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.7 + (ink_vnoise(world_pos.xz * 7.1 + 3.0) - 0.5) * 0.2);
+		second = e > 0.0;
+		float fw = fwidth(e) * 0.9;
+		bool second_lighter = dot(wash2, vec3(0.3, 0.59, 0.11)) > dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
+		edge_ink = (second_lighter ? (e > 0.0 && e < fw) : (e <= 0.0 && e > -fw)) && ink_hash(floor(px / vec2(3.0, 2.0)) + 71.0) > 0.18;
 	}
-	bool second = wb > 0.0 && ink_edge(wb, px) > 0.5;
 	vec3 c = second ? wash2 : COLOR.rgb;
 	int m = second ? m2 : m1;
 	float s1 = mod(style_packed, 16.0);
@@ -544,8 +620,8 @@ void fragment() {
 	float unh = 0.0;
 	vec3 emit = vec3(0.0);
 	if (patchy > 0.0) {
-		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35;
-		c *= 1.0 + patchy * (step(0.64, pn) * 0.055 - step(pn, 0.34) * 0.05);
+		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
+		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
 	if (m >= 40 && m < 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
@@ -570,6 +646,9 @@ void fragment() {
 			c = up(c, 1.6);
 			emit += c * 0.3;
 		}
+	}
+	if (edge_ink && unh < 0.5) {
+		c = dn(c, 0.75);
 	}
 	unhatched = unh;
 	c *= paper(px);

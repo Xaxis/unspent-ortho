@@ -75,7 +75,8 @@ static func _make(g: int, c: int) -> Color:
 		Ground.ROAD:
 			match c:
 				Country.SNOWFIELD: return _m(P.ASH[3], P.EARTH[3], 0.35)
-				Country.BURNING: return P.ASH[1]
+				# A track trodden through the ash, darker and browner than the drifts.
+				Country.BURNING: return _m(P.ASH[2], P.EARTH[2], 0.45)
 				Country.BONELANDS: return _m(P.LINEN[3], P.EARTH[3], 0.4)
 			return _m(P.EARTH[3], P.SAND[3], 0.4)
 		Ground.SAND:
@@ -154,7 +155,8 @@ static func _make(g: int, c: int) -> Color:
 				Country.MOSS: return _m(P.SLATE[2], P.SPRUCE[2], 0.35)
 				Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.25)
 			return P.SLATE[3]
-		Ground.ASH: return P.ASH[2]
+		# Ash over a fire that has not gone out: warmed off the cold grey.
+		Ground.ASH: return _m(P.ASH[2], P.EARTH[2], 0.22)
 		Ground.CLINKER: return _m(P.STONE[1], P.ASH[1], 0.4)
 	return P.BLOOM[3]
 

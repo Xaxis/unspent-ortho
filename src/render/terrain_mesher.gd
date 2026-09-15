@@ -916,7 +916,9 @@ func _paint(k1: int, k2: int, terrace: int) -> void:
 		var i2 := ((k2 & 0xFF) * Country.COUNT + ((k2 >> 8) & 0xFF)) * 2 + (terrace & 1)
 		_sc = _tab_col[i2]
 		_style = s1 + (_tab_style[i2] if terrace > 0 else Ink.NONE) * 16
-		_m2 = 2.0 + _sc.a * 255.0
+		# +256 when the keys are in the other order, so the shader bends a shared
+		# edge the same way from both sides of a cell seam.
+		_m2 = 2.0 + _sc.a * 255.0 + (256.0 if k1 > k2 else 0.0)
 	else:
 		_sc = _pc
 		_style = s1 * 17
