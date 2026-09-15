@@ -349,6 +349,7 @@ const CLANG_PX := 30.0
 const GLINT_PX := 9.0
 const TELL_PX := 30.0
 const STREAK_PX := 40.0
+const MARK_PRIORITY := 12
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
 ## How far into its life a held mark is stopped (0..1).
@@ -395,8 +396,9 @@ static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: Str
 	mat.set_shader_parameter(&"ink_col", _v3(Palette.INK[0]))
 	mat.set_shader_parameter(&"paper_col", _v3(Palette.LINEN[5]))
 	mat.set_shader_parameter(&"progress", 0.0)
-	# Marks draw after the land and bodies they sit on.
-	mat.render_priority = 4
+	# Marks draw after the land, the bodies and a part's light (priority 10): a
+	# burst is the thing to read at the moment of a hit, and a flare swallowed it.
+	mat.render_priority = MARK_PRIORITY
 	var mi := MeshInstance3D.new()
 	mi.mesh = _quad
 	mi.material_override = mat
@@ -591,7 +593,7 @@ static func swing_material() -> ShaderMaterial:
 	mat.shader = _shader(&"swing")
 	mat.set_shader_parameter(&"paper_col", _v3(Palette.LINEN[5]))
 	mat.set_shader_parameter(&"ink_col", _v3(Palette.INK[0]))
-	mat.render_priority = 4
+	mat.render_priority = MARK_PRIORITY
 	return mat
 
 

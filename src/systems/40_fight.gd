@@ -5,7 +5,7 @@ extends GameSystem
 ## camera's shake, the ink marks (MobFx), the clock's jumps and the lines on screen.
 ##
 ## Controls: swing on `swing` (Space, J); dodge on `dodge` (K at once; Shift
-## as DodgeInput says, holding it still runs). Held, the swing key pulls.
+## as DodgeInput says, holding it still runs). Pressed while held, swing pulls.
 
 const HITSTOP_HIT := 0.05
 const HITSTOP_HURT := 0.06
@@ -17,6 +17,7 @@ const STRUGGLE_BEAT := 0.4
 
 var sim: FightSim
 var dodge_input := DodgeInput.new()
+var _shift_down := false
 var _stop_until := 0.0
 var _struggle_t := 0.0
 var _mend_from := 0.0
@@ -25,6 +26,8 @@ var _last_health := 0
 var _land_at := -1.0
 ## A shot's held moment: the simulation never steps again.
 var _held := false
+## Where a held moment keeps the camera (the game points it at the player every frame).
+var _focus := Vector3.ZERO
 
 
 func setup(g: Game) -> void:
@@ -41,23 +44,27 @@ func setup(g: Game) -> void:
 		_play_act(g.options.act)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if sim == null or game.input_blocked() or _held:
-		return
-	if event.is_echo():
-		return
-	var key := event as InputEventKey
-	var shift := key != null and (key.physical_keycode == KEY_SHIFT or key.keycode == KEY_SHIFT)
-	if event.is_action_pressed(&"swing"):
-		sim.press_swing()
-	elif shift:
-		var t := Time.get_ticks_msec()
-		if key.pressed:
-			if dodge_input.shift_pressed(t, _in_fight()):
+## Read by polling the actions, not from input events, so the real bindings,
+## a tour's pressed actions and a bot all reach the same verbs. Shift's own
+## edges are watched for DodgeInput; the dodge action pressed without Shift
+## down (K, or an action pressed by a tour) dodges at once.
+func _read_input() -> void:
+	var shift := Input.is_physical_key_pressed(KEY_SHIFT)
+	var t := Time.get_ticks_msec()
+	var blocked := game.input_blocked() or _held
+	if shift != _shift_down:
+		_shift_down = shift
+		if not blocked:
+			if shift:
+				if dodge_input.shift_pressed(t, _in_fight()):
+					sim.press_dodge()
+			elif dodge_input.shift_released(t):
 				sim.press_dodge()
-		elif dodge_input.shift_released(t):
-			sim.press_dodge()
-	elif event.is_action_pressed(&"dodge"):
+	if blocked:
+		return
+	if Input.is_action_just_pressed(&"swing"):
+		sim.press_swing()
+	if Input.is_action_just_pressed(&"dodge") and not shift:
 		sim.press_dodge()
 
 
@@ -73,6 +80,7 @@ func _in_fight() -> bool:
 func _physics_process(delta: float) -> void:
 	if sim == null:
 		return
+	_read_input()
 	var now_s := Time.get_ticks_msec() / 1000.0
 	var hero := sim.hero
 	var player := game.player
@@ -93,6 +101,8 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	_keep_texel()
+	if _held:
+		game.camera.snap_to(_focus)
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	game.player.draw_swing(sim.now)
@@ -502,7 +512,13 @@ func _play_act(spec: String) -> void:
 			push_warning("unknown --act %s" % act)
 	_handle(sim.drain())
 	game.player.sync_view(0.0, true)
-	game.camera.snap_to(game.player.position)
+	# Framed on the meeting: between the player and the body, so a watcher on its
+	# rise four tiles off is in the picture with the one it watches.
+	var focus := game.player.position
+	if target != null and target.node is Mob:
+		focus = focus.lerp((target.node as Mob).global_position, 0.5)
+	_focus = focus
+	game.camera.snap_to(focus)
 	_held = true
 	sim.hold = true
 
