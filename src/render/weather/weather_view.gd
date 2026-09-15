@@ -17,9 +17,14 @@ var rain: CPUParticles3D
 var splash: CPUParticles3D
 var hail: CPUParticles3D
 var snow: CPUParticles3D
+## Fewer, bigger flakes nearer the eye, so snow has depth.
+var flurry: CPUParticles3D
 var ash: CPUParticles3D
 var ember: CPUParticles3D
-var dust: CPUParticles3D
+## Blown streaks: sand in a dust storm, snow in a blizzard.
+var drift: CPUParticles3D
+## Pale specks rising in the heat.
+var motes: CPUParticles3D
 var bolt: MeshInstance3D
 var _bolt_left := 0.0
 var _bolt_hold := false
@@ -29,23 +34,29 @@ var _mats: Dictionary = {} # CPUParticles3D -> ShaderMaterial
 func setup(cam: CameraRig) -> void:
 	camera = cam
 	var tx := _texel()
-	rain = _emitter("rain", 1600, 0.62, Vector3(15.0, TOP * 0.5, 13.0), Vector3(0, TOP * 0.5, 0))
-	_mat(rain, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.18, "size": Vector2(tx, 0.5), "opacity": 0.62})
-	splash = _emitter("splash", 260, 0.22, Vector3(14.0, 0.02, 12.0), Vector3.ZERO)
-	_mat(splash, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.5, "flake": 1.0, "size": Vector2(0, tx * 1.2), "opacity": 0.7, "texel": tx})
-	hail = _emitter("hail", 900, 0.5, Vector3(15.0, TOP * 0.5, 13.0), Vector3(0, TOP * 0.5, 0))
-	_mat(hail, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "size": Vector2(tx, 0.16), "opacity": 0.9})
-	snow = _emitter("snow", 1400, 8.0, Vector3(16.0, TOP * 0.5, 14.0), Vector3(0, TOP * 0.5, 0))
-	_mat(snow, {"color_a": Palette.RIME[5], "color_b": Palette.RIME[4], "mix_b": 0.35, "flake": 1.0, "size": Vector2(0, tx * 1.6), "sway": 0.35, "opacity": 0.95, "texel": tx})
-	ash = _emitter("ash", 900, 12.0, Vector3(16.0, TOP * 0.5, 14.0), Vector3(0, TOP * 0.5, 0))
-	_mat(ash, {"color_a": Palette.ASH[1], "color_b": Palette.LINEN[4], "mix_b": 0.12, "flake": 1.0, "size": Vector2(0, tx * 1.7), "sway": 0.6, "opacity": 0.9, "texel": tx})
-	ember = _emitter("ember", 60, 5.0, Vector3(14.0, 1.5, 12.0), Vector3(0, 0.8, 0))
-	_mat(ember, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "flake": 1.0, "size": Vector2(0, tx * 1.1), "sway": 0.25, "opacity": 1.0, "glow": 1.0, "texel": tx})
-	dust = _emitter("dust", 700, 3.5, Vector3(18.0, 2.0, 14.0), Vector3(0, 1.4, 0))
-	_mat(dust, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.25, "size": Vector2(tx, 0.55), "opacity": 0.5})
-	# Particles that fall fade in at the top and out at the bottom only where
-	# they drift (snow, ash, dust, embers); rain and hail are whole to the ground.
-	for p: CPUParticles3D in [snow, ash, dust, ember, splash]:
+	var air := Vector3(16.0, TOP * 0.5, 14.0)
+	var mid := Vector3(0, TOP * 0.5, 0)
+	rain = _emitter("rain", 1700, 0.62, air, mid)
+	_mat(rain, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.2, "size": Vector2(tx, 0.5), "opacity": 0.62})
+	splash = _emitter("splash", 320, 0.2, Vector3(15.0, 0.02, 13.0), Vector3.ZERO)
+	_mat(splash, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.5, "flake": 1.0, "size": Vector2(0, tx * 1.2), "opacity": 0.75, "texel": tx})
+	hail = _emitter("hail", 1000, 0.5, air, mid)
+	_mat(hail, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "size": Vector2(tx, 0.14), "opacity": 0.95})
+	snow = _emitter("snow", 2600, 8.0, air, mid)
+	_mat(snow, {"color_a": Palette.RIME[5], "color_b": Palette.RIME[4], "mix_b": 0.3, "flake": 1.0, "size": Vector2(0, tx * 2.0), "sway": 0.35, "opacity": 1.0, "texel": tx})
+	flurry = _emitter("flurry", 160, 6.0, air, mid)
+	_mat(flurry, {"color_a": Palette.RIME[5], "color_b": Palette.RIME[5], "flake": 1.0, "size": Vector2(0, tx * 3.0), "sway": 0.6, "opacity": 1.0, "texel": tx})
+	ash = _emitter("ash", 1700, 12.0, air, mid)
+	_mat(ash, {"color_a": Palette.ASH[3], "color_b": Palette.LINEN[4], "mix_b": 0.18, "flake": 1.0, "size": Vector2(0, tx * 2.0), "sway": 0.7, "opacity": 0.95, "texel": tx})
+	ember = _emitter("ember", 90, 5.0, Vector3(15.0, 1.5, 13.0), Vector3(0, 0.8, 0))
+	_mat(ember, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "flake": 1.0, "size": Vector2(0, tx * 1.2), "sway": 0.25, "opacity": 1.0, "glow": 1.0, "texel": tx})
+	drift = _emitter("drift", 1300, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0))
+	_mat(drift, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.3, "size": Vector2(tx, 0.7), "opacity": 0.7})
+	motes = _emitter("motes", 140, 6.0, Vector3(15.0, 1.0, 13.0), Vector3(0, 0.3, 0))
+	_mat(motes, {"color_a": Palette.LINEN[5], "color_b": Palette.EMBER[5], "mix_b": 0.2, "flake": 1.0, "size": Vector2(0, tx * 1.1), "sway": 0.2, "opacity": 0.55, "texel": tx})
+	# Marks that drift fade in and out over their life; rain and hail are whole
+	# all the way to the ground.
+	for p: CPUParticles3D in [snow, flurry, ash, drift, ember, splash, motes]:
 		var g := Gradient.new()
 		g.set_color(0, Color(1, 1, 1, 0))
 		g.set_color(1, Color(1, 1, 1, 0))
@@ -120,11 +131,21 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var lean := wind * 0.45
 	_drive(rain, float(look.rain), Vector3(lean, -1.0, 0.0), 19.0, {"fall": _world_dir(Vector3(lean, -1.0, 0.0)), "size": Vector2(tx, 0.42 + 0.2 * float(look.storm))})
 	_drive(hail, float(look.hail), Vector3(lean * 0.5, -1.0, 0.0), 22.0, {"fall": _world_dir(Vector3(lean * 0.5, -1.0, 0.0))})
-	_drive(snow, float(look.snow), Vector3(wind * 1.4, -1.0, 0.0), 1.1 + absf(wind) * 1.6, {"sway": 0.35 * (1.0 - absf(wind) * 0.6)})
+	var blizzard := clampf(float(look.snow) - 0.8, 0.0, 0.2) * 5.0 * clampf(absf(wind) * 1.5, 0.0, 1.0)
+	_drive(snow, float(look.snow), Vector3(wind * 1.4, -1.0, 0.0), 1.1 + absf(wind) * 2.2, {"sway": 0.35 * (1.0 - absf(wind) * 0.6)})
+	_drive(flurry, float(look.snow), Vector3(wind * 1.6, -1.0, 0.0), 1.6 + absf(wind) * 2.6, {})
 	_drive(ash, float(look.ash), Vector3(wind * 0.8, -1.0, 0.2), 0.55, {})
-	_drive(ember, float(look.ash) * 0.8 + float(look.heat) * 0.15, Vector3(wind * 0.3, 1.0, 0.0), 0.5, {})
+	_drive(ember, float(look.ash) * 0.8 + float(look.heat) * 0.2, Vector3(wind * 0.3, 1.0, 0.0), 0.5, {})
+	_drive(motes, float(look.heat), Vector3(wind * 0.2, 1.0, 0.0), 0.35, {})
 	var blow := signf(wind) if absf(wind) > 0.05 else 1.0
-	_drive(dust, float(look.dust), Vector3(blow, -0.08, 0.1), 4.0 + absf(wind) * 5.0, {"fall": _world_dir(Vector3(-blow, 0.0, 0.0))})
+	var sand := float(look.dust)
+	var drift_amount := maxf(sand, blizzard)
+	var snowy := blizzard / maxf(0.001, sand + blizzard)
+	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
+		"fall": _world_dir(Vector3(-blow, 0.0, 0.0)),
+		"color_a": Palette.SAND[4].lerp(Palette.RIME[5], snowy),
+		"color_b": Palette.LINEN[5].lerp(Palette.RIME[4], snowy),
+	})
 	var wet := clampf(float(look.rain) + float(look.hail) * 0.5, 0.0, 1.0)
 	_drive(splash, wet, Vector3(0, 1, 0), 0.25, {})
 	splash.position.y = TerrainMesher.WATER_Y + 0.03 - focus.y if wet > 0.0 else 0.0

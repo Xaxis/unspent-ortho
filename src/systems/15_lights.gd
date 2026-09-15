@@ -12,17 +12,20 @@ const POOL := 8
 ## Tiles from the focus within which a source may take a light or show a glow.
 const REACH := 19.0
 const GLOW_REACH := 26.0
-## The warmth a light adds at the centre of its pool, as a multiply on albedo.
-## Divided by the sky's tint at runtime, so lamplight stays warm under a blue night.
-const WARM := Vector3(0.80, 0.54, 0.22)
-const FIRE_WARM := Vector3(0.95, 0.52, 0.16)
-const VENT_WARM := Vector3(0.75, 0.30, 0.10)
-const LANTERN_RANGE := 6.0
+## What a surface looks like at the centre of a pool, as a display multiply on
+## its albedo: lamplight is warm and a little dimmer than day. Divided by the
+## sky's tint at runtime, so it stays warm under a blue night.
+const WARM := Vector3(0.92, 0.76, 0.52)
+const FIRE_WARM := Vector3(1.0, 0.66, 0.38)
+const VENT_WARM := Vector3(0.86, 0.44, 0.22)
+const LANTERN_RANGE := 4.6
+## The lantern is a hand light: dimmer than a village lamp.
+const LANTERN_POWER := 0.62
 
 ## Per source kind: [range tiles, power, height above the prop's foot].
 const SOURCES := {
 	PropKind.LAMP: [5.5, 1.0, 1.7],
-	PropKind.HOUSE: [3.4, 0.7, 0.9],
+	PropKind.HOUSE: [3.0, 0.5, 0.9],
 	PropKind.FIRE: [6.5, 1.1, 0.6],
 	PropKind.VENT: [3.6, 0.55, 0.8],
 	PropKind.KILN: [3.0, 0.45, 0.6],
@@ -64,7 +67,9 @@ func _new_light(n: String) -> OmniLight3D:
 	var l := OmniLight3D.new()
 	l.name = n
 	l.shadow_enabled = false
-	l.omni_attenuation = 0.6
+	# No distance decay, only the range window: a broad even pool with a firm
+	# edge, which light() cuts into three rings.
+	l.omni_attenuation = 0.0
 	l.light_specular = 0.0
 	l.visible = false
 	add_child(l)
@@ -124,10 +129,16 @@ static func source_lit(src: Dictionary, hour: float) -> bool:
 	return false
 
 
-## The light colour (as colour times energy) that adds `warm` to the albedo
-## under a sky tint: world colour is albedo * tint * light, so divide it out.
-static func compensate(warm: Vector3, tint: Vector3) -> Vector3:
-	return Vector3(warm.x / maxf(0.2, tint.x), warm.y / maxf(0.2, tint.y), warm.z / maxf(0.2, tint.z))
+## The linear light (colour times energy) a pool needs so that a surface under
+## it shows `target` times its albedo on screen. The renderer shows
+## srgb(lin(albedo * tint) * light), so the sky tint and the moon's own light
+## (display level `sun`) are taken out in linear terms.
+static func compensate(target: Vector3, tint: Vector3, sun: float) -> Vector3:
+	var base := pow(clampf(sun, 0.0, 1.0), 2.2)
+	var out := Vector3.ZERO
+	for i in 3:
+		out[i] = maxf(0.0, pow(target[i] / maxf(0.15, tint[i]), 2.2) - base)
+	return out
 
 
 func _index_sources() -> void:
@@ -173,6 +184,7 @@ func _update(delta: float, snap: bool) -> void:
 		_assign(focus, hour)
 		_update_glows(focus, hour)
 	var tint: Vector3 = game.sky.last_tint
+	var sun: float = game.sky.last_energy
 	var want := lamps_wanted(hour)
 	for i in lights.size():
 		var l := lights[i]
@@ -189,7 +201,7 @@ func _update(delta: float, snap: bool) -> void:
 		else:
 			level *= want
 		level *= _flicker(s)
-		_set_light(l, s.at, s.range, compensate(s.warm, tint) * level, snap, delta)
+		_set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level, snap, delta)
 	var lit := game.body.lamp_lit
 	lantern.visible = lit
 	if lit:
@@ -201,7 +213,7 @@ func _update(delta: float, snap: bool) -> void:
 		lantern.position.y += sway
 		# The lantern's floor: even by day it lifts the ground a little. (source 0.45)
 		var night := maxf(want, 0.25)
-		_set_light(lantern_light, p.position + Vector3(0, 1.1, 0) + hand * 0.4, LANTERN_RANGE, compensate(WARM, tint) * night * (0.93 + 0.07 * _flicker({"kind": PropKind.LAMP, "h": 0.5})), true, delta)
+		_set_light(lantern_light, p.position + Vector3(0, 1.1, 0) + hand * 0.4, LANTERN_RANGE, compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.93 + 0.07 * _flicker({"kind": PropKind.LAMP, "h": 0.5})), true, delta)
 	else:
 		lantern_light.visible = false
 
@@ -214,7 +226,9 @@ func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3, _snap: 
 	l.visible = true
 	l.position = at
 	l.omni_range = reach
-	l.light_color = Color(rgb.x / e, rgb.y / e, rgb.z / e)
+	# Godot takes light_color as sRGB and linearises it before shading, but the
+	# world shader works in display values: hand it the colour pre-encoded.
+	l.light_color = Color(rgb.x / e, rgb.y / e, rgb.z / e).linear_to_srgb()
 	l.light_energy = e
 
 

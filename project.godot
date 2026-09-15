@@ -72,3 +72,7 @@ sky_fog={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+sky_view={
+"type": "vec4",
+"value": Vector4(0.039, 0, 0, 0)
+}

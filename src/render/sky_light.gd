@@ -34,6 +34,17 @@ const SUNSET := 21.0
 const SHADOW_NOON := 0.5
 const SHADOW_LOW := 1.35
 const MOON_ELEVATION := 58.0
+## Display level of the light at the dead of night. The source's rule is 0.58
+## (Weather.light_level, which sight still uses), but our terrain albedos are
+## darker than its sprites and at 0.58 the land sank to black; 0.70 keeps the
+## night blue and the lamps still matter.
+const NIGHT_LEVEL := 0.70
+const REGION_GAIN := 1.3
+## Cool light from the open sky, added under the sun when it is low and all
+## night: shadows keep their blue while lit faces warm at dawn and dusk.
+## Linear colour, scaled by how low the light is.
+const SKY_AMBIENT := Color(0.18, 0.26, 0.52)
+const SKY_AMBIENT_ENERGY := 0.16
 
 ## Per country id: (warmth, wetness) in -1..1, read by the source's light cast.
 ## Sea, coast, moss, pinewood, snowfield, bonelands, burning.
@@ -102,11 +113,22 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set("sky_sun", Vector4(proj.x, proj.y, s.energy, flash))
 	RenderingServer.global_shader_parameter_set("sky_clouds", Vector4(clouds.x, clouds.y, clouds.z, clouds.w * daylight))
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
+	if is_inside_tree():
+		var cam := get_viewport().get_camera_3d()
+		var rows := get_viewport().get_visible_rect().size.y
+		if cam != null and rows > 0.0:
+			RenderingServer.global_shader_parameter_set("sky_view", Vector4(cam.size / rows, 0.0, 0.0, 0.0))
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)
-	sun.light_energy = s.energy
+	# The renderer lights in linear space and encodes the result for display
+	# (measured: out = srgb(lin(albedo) * lin(colour) * energy)), while the
+	# source's levels are display multiplies. Energy is linear, so decode.
+	sun.light_energy = pow(float(s.energy), 2.2)
 	sun.shadow_enabled = bool(s.casts) and cast_allowed
+	if env != null:
+		env.environment.ambient_light_color = SKY_AMBIENT
+		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * low_light(hour)
 
 
 ## The time-of-day multiply, colour times level, continuous over midnight.
@@ -130,7 +152,7 @@ static func season_drain(turn: float) -> Vector3:
 
 
 ## Sun by day, moon by night, one continuous bearing so faces never flip:
-## {azimuth, elevation (degrees), energy 0..1, casts: bool}.
+## {azimuth, elevation (degrees), energy: display level 0..1, casts: bool}.
 static func sun_at(hour: float) -> Dictionary:
 	var h := fposmod(hour, 24.0)
 	var az: float
@@ -149,7 +171,16 @@ static func sun_at(hour: float) -> Dictionary:
 		var edge := _elevation_for_shadow(az, SHADOW_LOW)
 		el = lerpf(edge, MOON_ELEVATION, sin(n * PI))
 	var nf := Weather.night_fall(h)
-	return {"azimuth": az, "elevation": el, "energy": Weather.light_level(h), "casts": nf < 0.5}
+	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL), "casts": nf < 0.5}
+
+
+## 0 at midday, 1 from dusk to dawn: how much of the light is the cool sky
+## rather than the sun.
+static func low_light(hour: float) -> float:
+	var t := tint_at(hour)
+	var noon := tint_at(12.0)
+	var warm_or_dim := clampf((noon.x + noon.y + noon.z - (t.x + t.y + t.z)) / 1.2, 0.0, 1.0)
+	return maxf(warm_or_dim, Weather.night_fall(hour))
 
 
 ## Elevation at which a caster's shadow is `ratio` times its own height ON
@@ -175,6 +206,9 @@ static func cast_tint(warmth: float, wetness: float) -> Vector3:
 	return c / maxf(c.x, maxf(c.y, c.z))
 
 
+## A country's cast, pushed REGION_GAIN times further from white than the
+## source's formula so that crossing a border is felt in the light itself.
 static func country_tint(country: int) -> Vector3:
 	var cl := CLIMATE[clampi(country, 0, CLIMATE.size() - 1)]
-	return cast_tint(cl.x, cl.y)
+	var c := Vector3.ONE + (cast_tint(cl.x, cl.y) - Vector3.ONE) * REGION_GAIN
+	return c / maxf(c.x, maxf(c.y, c.z))

@@ -40,11 +40,17 @@ func test_fires_always_burn() -> void:
 
 func test_lamplight_stays_warm_under_a_blue_night() -> void:
 	var night := SkyLight.tint_at(1.0)
-	var add := Lights.compensate(Lights.WARM, night)
-	# What the eye sees at the centre of the pool is albedo * tint * (moon + lamp).
-	var seen := night * (Vector3.ONE * Weather.light_level(1.0) + add)
+	var moon: float = SkyLight.sun_at(1.0).energy
+	var add := Lights.compensate(Lights.WARM, night, moon)
+	# On screen at the centre of the pool: srgb(lin(tint) * (lin(moon) + lamp)).
+	var seen := Vector3.ZERO
+	for i in 3:
+		seen[i] = pow(pow(night[i], 2.2) * (pow(moon, 2.2) + add[i]), 1.0 / 2.2)
+	lt((seen - Lights.WARM).length(), 1e-3, "the pool shows the lamp's own colour: %s" % seen)
 	gt(seen.x, seen.z, "the pool is warm, not blue")
-	gt(seen.x, 0.8, "the pool is bright")
+	# By day a lamp adds nothing a surface would show.
+	var noon := Lights.compensate(Lights.WARM, SkyLight.tint_at(12.0), 1.0)
+	lt(noon.length(), 0.05, "no pool at noon")
 
 
 func test_sky_system_blends_countries_at_a_border() -> void:

@@ -132,7 +132,8 @@ func _update(delta: float, snap: bool) -> void:
 	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind))
 	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind))
 
-	_flash = maxf(0.0, _flash - delta * 5.0)
+	# A forced bolt (shots) holds its strike lit; real strikes fade in a few frames.
+	_flash = 0.5 if _forced_bolt else maxf(0.0, _flash - delta * 5.0)
 	var sky := game.sky
 	sky.region_tint = region
 	sky.weather_tint = look.tint

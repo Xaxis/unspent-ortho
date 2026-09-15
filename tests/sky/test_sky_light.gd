@@ -22,7 +22,7 @@ func test_tint_is_continuous_across_the_whole_day_and_midnight() -> void:
 
 
 func test_night_is_blue_not_black() -> void:
-	var t := SkyLight.tint_at(2.0) * Weather.light_level(2.0)
+	var t := SkyLight.tint_at(2.0) * float(SkyLight.sun_at(2.0).energy)
 	gt(t.z, t.x, "blue over red")
 	gt(t.z, 0.35, "blue channel keeps light")
 	gt(t.x + t.y + t.z, 0.8, "not black")
