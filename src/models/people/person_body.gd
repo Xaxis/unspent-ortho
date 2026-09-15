@@ -451,7 +451,7 @@ static func _hair(k: MeshKit, w: Wear, hat: StringName) -> void:
 				[hh * 0.62, hd * 0.56, hw * 0.55, -0.02, 0.0],
 			], 6, h0, false, false, 0.0, 0.08, s + 2, 0.6, PI)
 		&"tail":
-			k.push(Transform3D(Basis(Vector3(0, 0, 1), -0.35), Vector3(-hd * 0.52, hh * 0.46, 0)))
+			k.push(Transform3D(Basis(Vector3(0, 0, 1), -0.12), Vector3(-hd * 0.5, hh * 0.5, 0)))
 			Sculpt.loft(k, [[0.02, 0.035, 0.04, 0.0, 0.0], [-hh * 0.95, 0.018, 0.02, 0.0, 0.0]], 4, [h0], true, false, 0.0, 0.1, s + 3)
 			k.pop()
 		&"bun":
@@ -522,7 +522,7 @@ static func _hat(k: MeshKit, w: Wear, hat: StringName) -> void:
 			Sculpt.loft(k, [[hh * 0.66, rx * 1.02, rz * 1.02, -0.012, 0.0], [hh * 0.98, rx * 0.9, rz * 0.9, -0.02, 0.0], [hh * 1.07, rx * 0.5, rz * 0.5, -0.03, 0.0]], 8, [c, hi], false, false, PI / 8, 0.04, s)
 			var vy := hh * 0.7
 			var vx := hd * 0.5
-			k.quad(Vector3(vx, vy, -hw * 0.34), Vector3(vx, vy, hw * 0.34), Vector3(vx + 0.13, vy - 0.03, hw * 0.26), Vector3(vx + 0.13, vy - 0.03, -hw * 0.26), lo)
+			k.quad(Vector3(vx, vy, -hw * 0.34), Vector3(vx, vy, hw * 0.34), Vector3(vx + 0.13, vy - 0.03, hw * 0.26), Vector3(vx + 0.13, vy - 0.03, -hw * 0.26), c)
 			k.quad(Vector3(vx + 0.13, vy - 0.035, -hw * 0.26), Vector3(vx + 0.13, vy - 0.035, hw * 0.26), Vector3(vx, vy - 0.005, hw * 0.34), Vector3(vx, vy - 0.005, -hw * 0.34), Palette.INK[2])
 		&"knit":
 			Sculpt.loft(k, [
@@ -600,32 +600,38 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 	for part: StringName in w.salvage:
 		match part:
 			&"plate":
-				# A slab of machine plate over one shoulder, off the same line as the roofs.
+				# A pauldron of machine plate, bent over one shoulder: off the same line as the roofs.
 				var k := r.kit(r.find(StringName("arm" + sfx)), &"salvage", SkinRig.FOUND)
 				var t: float = d.arm_t
-				k.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.25), Vector3(0, 0.02, side * (t * 0.5 + 0.03))))
-				Sculpt.slab(k, _hexplate(t * 1.9, 0.24, 0.05, 0.07), 0.016, Palette.PLATE[3], Palette.PLATE[2])
-				for x: float in [-t * 0.62, t * 0.62]:
-					Sculpt.card(k, Vector3(x - 0.012, 0.02, side * 0.0175), Vector3(x + 0.012, 0.02, side * 0.0175), Vector3(x + 0.012, 0.044, side * 0.0175), Vector3(x - 0.012, 0.044, side * 0.0175), Palette.PLATE[5], Vector3(0, 0, side))
-				k.pop()
-				var tie := r.kit(r.find(StringName("arm" + sfx)), &"salvage")
-				Sculpt.loft(tie, [[-0.09, t * 0.5, t * 0.5, 0.0, 0.0], [-0.06, t * 0.5, t * 0.5, 0.0, 0.0]], 5, Palette.EARTH[1], false, false, 0.0)
+				# A half shell of plate over the outside of the shoulder, exact and unhatched.
+				Sculpt.skirt(k, [
+					[t * 0.5, t * 0.3, t * 0.3, 0.0, side * t * 0.12],
+					[t * 0.08, t * 0.72, t * 0.74, 0.0, side * 0.006],
+					[-0.14, t * 0.66, t * 0.7, 0.0, side * 0.012],
+				], 4, [Palette.PLATE[4], Palette.PLATE[3]], Palette.PLATE[1], 0.52, side * PI * 0.5)
+				for x: float in [-t * 0.36, t * 0.36]:
+					var rz := side * (t * 0.7 + 0.016)
+					Sculpt.card(k, Vector3(x - 0.012, -0.07, rz), Vector3(x + 0.012, -0.07, rz), Vector3(x + 0.012, -0.046, rz), Vector3(x - 0.012, -0.046, rz), Palette.PLATE[5], Vector3(0, 0, side))
+				var strap := r.kit(r.find(&"spine"), &"salvage")
+				var fx: float = d.depth * 0.56 + 0.006
+				var sz: float = side * d.chest * 0.44
+				Sculpt.card(strap, Vector3(fx, d.torso - 0.05, sz), Vector3(fx, d.torso - 0.09, sz - side * 0.03), Vector3(fx, d.torso * 0.3, -sz * 0.4), Vector3(fx, d.torso * 0.36, -sz * 0.3), Palette.EARTH[1], Vector3.RIGHT)
 			&"brace":
+				# A machine strut down the outside of one leg, hinged at the knee.
+				var z: float = side * (d.shin_t * 0.52 + 0.022)
 				var sh := r.kit(r.find(StringName("shin" + sfx)), &"salvage", SkinRig.FOUND)
-				var z: float = side * (d.shin_t * 0.52 + 0.02)
-				sh.push(Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(0, 0, z)))
-				Sculpt.slab(sh, _chamfered(0.045, d.shin * 0.9, 0.012, -d.shin * 0.45), 0.01, Palette.FOUND[2], Palette.FOUND[1])
+				sh.push(Transform3D(Basis.IDENTITY, Vector3(0, 0, z)))
+				Sculpt.slab(sh, _chamfered(0.05, d.shin * 0.86, 0.014, -d.shin * 0.46), 0.011, Palette.PLATE[3], Palette.PLATE[2])
 				sh.pop()
-				sh.push(Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(0, 0, z + side * 0.012)))
-				Sculpt.slab(sh, _octagon(0.035), 0.012, Palette.FOUND[3], Palette.FOUND[1])
+				sh.push(Transform3D(Basis.IDENTITY, Vector3(0, 0, z + side * 0.014)))
+				Sculpt.slab(sh, _octagon(0.04), 0.009, Palette.FOUND[4], Palette.FOUND[2])
 				sh.pop()
 				var th := r.kit(r.find(StringName("thigh" + sfx)), &"salvage", SkinRig.FOUND)
-				var tz: float = side * (d.thigh_t * 0.56 + 0.02)
-				th.push(Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(0, 0, tz)))
-				Sculpt.slab(th, _chamfered(0.045, d.thigh * 0.62, 0.012, -d.thigh * 0.62), 0.01, Palette.FOUND[2], Palette.FOUND[1])
+				th.push(Transform3D(Basis.IDENTITY, Vector3(0, 0, side * (d.thigh_t * 0.56 + 0.022))))
+				Sculpt.slab(th, _chamfered(0.05, d.thigh * 0.6, 0.014, -d.thigh * 0.66), 0.011, Palette.PLATE[3], Palette.PLATE[2])
 				th.pop()
-				var strap := r.kit(r.find(StringName("shin" + sfx)), &"salvage")
-				Sculpt.loft(strap, [[-d.shin * 0.5, d.shin_t * 0.56, d.shin_t * 0.56, 0.0, 0.0], [-d.shin * 0.42, d.shin_t * 0.56, d.shin_t * 0.56, 0.0, 0.0]], 6, Palette.EARTH[1], false, false, PI / 6)
+				var band := r.kit(r.find(StringName("shin" + sfx)), &"salvage")
+				Sculpt.loft(band, [[-d.shin * 0.5, d.shin_t * 0.56, d.shin_t * 0.56, 0.0, 0.0], [-d.shin * 0.42, d.shin_t * 0.56, d.shin_t * 0.56, 0.0, 0.0]], 6, Palette.EARTH[1], false, false, PI / 6)
 			&"rig":
 				# Canvas webbing across the chest (MADE) held by a machine clasp (FOUND).
 				var k := r.kit(r.find(&"spine"), &"salvage")
@@ -639,29 +645,32 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				Sculpt.slab(clasp, _octagon(0.042), 0.01, Palette.FOUND[3], Palette.FOUND[2])
 				clasp.pop()
 			&"gauntlet":
+				# A forearm sleeved in ribbed machine conduit, one live stud still warm.
 				var k := r.kit(r.find(StringName("fore" + sfx)), &"salvage", SkinRig.FOUND)
 				var t: float = d.arm_t
 				var rings: Array = []
-				for i in 4:
-					var y: float = -d.fore * (0.2 + i * 0.24)
-					var rr := t * (0.54 if i % 2 == 0 else 0.48)
+				for i in 5:
+					var y: float = -d.fore * (0.12 + i * 0.2)
+					var rr := t * (0.56 if i % 2 == 0 else 0.5)
 					rings.append([y, rr, rr, 0.0, 0.0])
-				Sculpt.loft(k, rings, 6, [Palette.FOUND[1], Palette.FOUND[2], Palette.FOUND[1]], true, true, PI / 6)
+				Sculpt.loft(k, rings, 6, [Palette.PLATE[3], Palette.PLATE[2], Palette.PLATE[3], Palette.PLATE[2]], true, true, PI / 6)
+				var stud := r.kit(r.find(StringName("fore" + sfx)), &"salvage_glow", SkinRig.GLOW)
+				Sculpt.loft(stud, [[-d.fore * 0.5, 0.0, 0.0, 0.0, side * t * 0.54], [-d.fore * 0.42, 0.022, 0.022, 0.0, side * t * 0.6], [-d.fore * 0.34, 0.0, 0.0, 0.0, side * t * 0.54]], 4, Palette.EMBER[4], false, false, PI / 4)
 			&"tally":
 				var k := r.kit(r.find(&"tally"), &"salvage", SkinRig.FOUND)
 				for i in 3:
-					var x := -0.075 + i * 0.075
-					k.push(Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(x, -0.12 - (i % 2) * 0.03, side * 0.01)))
-					Sculpt.slab(k, _chamfered(0.05, 0.08, 0.012, 0.0), 0.008, Palette.PLATE[3], Palette.PLATE[2])
+					var x := -0.085 + i * 0.085
+					k.push(Transform3D(Basis(Vector3(1, 0, 0), (i - 1) * 0.12), Vector3(x, -0.13 - (i % 2) * 0.035, 0.012)))
+					Sculpt.slab(k, _chamfered(0.065, 0.1, 0.016, 0.0), 0.008, Palette.PLATE[4] if i == 1 else Palette.PLATE[3], Palette.PLATE[2])
 					k.pop()
 				var cord := r.kit(r.find(&"tally"), &"salvage")
-				Sculpt.card(cord, Vector3(-0.11, -0.02, 0.012), Vector3(0.11, -0.02, 0.012), Vector3(0.11, -0.005, 0.012), Vector3(-0.11, -0.005, 0.012), Palette.EARTH[1], Vector3(0, 0, 1))
+				Sculpt.card(cord, Vector3(-0.12, -0.02, 0.012), Vector3(0.12, -0.02, 0.012), Vector3(0.12, -0.005, 0.012), Vector3(-0.12, -0.005, 0.012), Palette.EARTH[1], Vector3(0, 0, 1))
 			&"aerial":
 				var base := r.kit(r.find(&"aerial"), &"salvage", SkinRig.FOUND)
-				Sculpt.loft(base, [[-0.04, 0.035, 0.035, 0.0, 0.0], [0.02, 0.035, 0.035, 0.0, 0.0]], 4, Palette.FOUND[2], true, true, PI / 4)
-				Sculpt.loft(base, [[0.02, 0.012, 0.012, 0.0, 0.0], [0.31, 0.009, 0.009, 0.0, 0.0]], 4, Palette.FOUND[3], false, true, PI / 4)
+				Sculpt.loft(base, [[-0.04, 0.035, 0.035, 0.0, 0.0], [0.02, 0.035, 0.035, 0.0, 0.0]], 4, Palette.PLATE[3], false, true, PI / 4)
+				Sculpt.loft(base, [[0.02, 0.018, 0.018, 0.0, 0.0], [0.31, 0.014, 0.014, 0.0, 0.0]], 4, Palette.PLATE[2], false, false, PI / 4)
 				var tip := r.kit(r.find(&"aerial_tip"), &"salvage", SkinRig.FOUND)
-				Sculpt.loft(tip, [[0.0, 0.008, 0.008, 0.0, 0.0], [0.26, 0.005, 0.005, 0.0, 0.0]], 4, Palette.FOUND[4], false, false, PI / 4)
+				Sculpt.loft(tip, [[0.0, 0.014, 0.014, 0.0, 0.0], [0.26, 0.01, 0.01, 0.0, 0.0]], 4, Palette.PLATE[2], false, false, PI / 4)
 				var live := r.kit(r.find(&"aerial_tip"), &"salvage_glow", SkinRig.GLOW)
 				Sculpt.loft(live, [[0.23, 0.0, 0.0, 0.0, 0.0], [0.27, 0.03, 0.03, 0.0, 0.0], [0.31, 0.0, 0.0, 0.0, 0.0]], 4, Palette.EMBER[4], false, false, PI / 4)
 			&"lens":

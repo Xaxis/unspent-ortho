@@ -80,6 +80,11 @@ static func gallery() -> Array:
 				var p := PersonModel.make({"build": StringName(arg)}, &"", mat)
 				p.rotation.y = face
 				nodes.append(p)
+		"salvage":
+			for face: float in [PersonModel.FACE_RIGHT, PersonModel.FACE_CAMERA, -PI * 0.75, PI * 0.75]:
+				var p := PersonModel.make({"salvage": [StringName(arg)], "coat": &"jerkin"}, &"", mat)
+				p.rotation.y = face
+				nodes.append(p)
 		"look":
 			for i in 6:
 				var p := PersonModel.make(PersonLook.random(arg.to_int(), i), &"", mat)
