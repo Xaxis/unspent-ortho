@@ -10,7 +10,7 @@ class_name Drips
 ## drip points round the centre, points per prop]. Heights follow the models
 ## (props/*.gd); a kind not listed does not drip.
 const SOURCES := {
-	PropKind.HOUSE: [1.25, 1.35, 6],
+	PropKind.HOUSE: [1.3, 1.85, 8],
 	PropKind.PYLON: [3.6, 0.7, 4],
 	PropKind.POLE: [2.1, 0.25, 2],
 	PropKind.LAMP: [1.55, 0.4, 2],

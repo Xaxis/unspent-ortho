@@ -241,7 +241,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
 	sky.air = Vector4(clampf(float(look.rain) + float(look.drizzle) * 0.6 + float(look.hail) * 0.5, 0.0, 1.0), float(look.glare), WeatherLook.haze_share(look), float(look.whiteout))
 	# A held bolt (shots) holds the afterglow and the machines' dip where they read.
-	var t := 0.5 if _forced_bolt else since_strike
+	var t := 0.4 if _forced_bolt else since_strike
 	sky.bolt = Vector4(_strike_at.x, _strike_at.y, afterglow(t) * _glow_gain, lerpf(1.0, machine_power(t), _glow_gain))
 	sky.glow_reach = AFTERGLOW_ROLL * (0.35 + minf(t, 2.0))
 	# Sway advances faster in a strong wind, so reeds never snap to a new speed.
@@ -263,9 +263,8 @@ func _update(delta: float, snap: bool) -> void:
 ## terrain here and drawn by the view.
 func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta: float, snap: bool) -> void:
 	var drip := Drips.amount(float(look.rain) + float(look.drizzle) * 0.5, float(settled.wet))
-	# Under the pinewood's crowns the rain comes down as drips.
-	if here == Country.PINEWOOD:
-		drip = clampf(drip * 1.5, 0.0, 1.0)
+	# Under a canopy the rain comes down as drips.
+	drip = clampf(drip * float(CANOPY_DRIP.get(Weather.type_of(here), 1.0)), 0.0, 1.0)
 	_drip_scan -= delta
 	if drip > 0.01 and (snap or _drip_scan <= 0.0):
 		_drip_scan = 0.5
@@ -278,6 +277,10 @@ func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta
 	for d: Dictionary in devils:
 		placed.append({"at": game.world.to_3d(d.pos), "life": d.life, "seed": d.seed})
 	view.set_devils(placed)
+
+
+## Landscape types whose canopy turns rain into drips: how much more they drip.
+const CANOPY_DRIP := {&"pinewood": 1.5}
 
 
 ## Wisps: cold lights over the moss after dark, never in rain or a wind.

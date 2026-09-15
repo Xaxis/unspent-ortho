@@ -76,11 +76,13 @@ func setup(cam: CameraRig) -> void:
 	rings = _emitter("rings", 220, 0.7, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
 	_age_ramp(rings)
 	_mat(rings, Mode.RING, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.4, "length_px": Vector2(3, 5), "columns": 0.6, "ground_mask": 3})
-	drips = _emitter("drips", 260, 0.42, Vector3.ZERO, Vector3.ZERO, false)
+	drips = _emitter("drips", 720, 0.5, Vector3.ZERO, Vector3.ZERO, false)
 	drips.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINTS
 	drips.top_level = true
 	drips.gravity = Vector3(0, -9.0, 0)
-	_mat(drips, Mode.STROKE, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.45, "length_px": Vector2(2, 3), "slant": 0.0})
+	# Drips are the palest water in the frame, a bead and its short fall, so they
+	# read against the dark under an eave.
+	_mat(drips, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.RIME[3], "mix_b": 0.3, "length_px": Vector2(2, 4), "slant": 0.0})
 	for i in DustDevils.MAX:
 		devils.append(_devil(i))
 	hail = _emitter("hail", 900, 0.5, air, mid, false)

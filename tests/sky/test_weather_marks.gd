@@ -77,3 +77,32 @@ func test_marks_fall_only_over_the_countries_that_make_them_unless_forced() -> v
 	Weather.unforce()
 	v.queue_free()
 	await frames(1)
+
+
+func test_drizzle_rings_drips_and_devils_come_with_their_weather() -> void:
+	Weather.unforce()
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var drizzle := WeatherLook.compose([{"kind": &"drizzle", "strength": 1.0, "weight": 1.0}])
+	v.update(drizzle, 0.1, Vector3.ZERO, 0.016)
+	check(v.drizzle.emitting, "drizzle falls as its own fine grain")
+	check(not v.rain.emitting, "not as rain strokes")
+	check(v.rings.emitting, "and rings spread on standing water")
+	var pts := PackedVector3Array([Vector3(1, 2, 1), Vector3(2, 2, 1)])
+	v.set_drip_points(pts)
+	v.set_drips(0.6, false)
+	check(v.drips.emitting, "wet eaves drip")
+	eq(v.drips.emission_points, pts, "from the points they were given")
+	v.set_drips(0.6, true)
+	check(not v.drips.emitting, "nothing drips in the snow")
+	var devils: Array[Dictionary] = [{"at": Vector3(3, 1, 4), "life": 0.8, "seed": 5}]
+	v.set_devils(devils)
+	check(v.devils[0].visible, "a devil spins where it was placed")
+	near((v.devils[0].global_position - Vector3(3, 1, 4)).length(), 0.0, 1e-4, "on its ground point")
+	check(not v.devils[1].visible, "only as many as there are")
+	var none: Array[Dictionary] = []
+	v.set_devils(none)
+	check(not v.devils[0].visible, "and gone when the dust settles")
+	v.queue_free()
+	await frames(1)
