@@ -115,7 +115,7 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
   own darkest ramp step as a line). They are the only warm moving thing on screen.
 - **Working parts** are the brightest warm pixels in a frame except fire and lamps.
 - Hatching never covers a face or a working part.
-- UI is the quietest layer: linen paper, ink, one accent (`ui` package).
+- UI is the quietest layer, and it is a device: see §9, the slate.
 
 ## 6. Light, night, weather
 
@@ -144,3 +144,34 @@ extract §2). Stay on the ramps. Mix between ramps only for a named reason.
 5. Readable at 640x360: player, machines, working parts, props that can be taken?
 6. At noon, dusk and night?
 7. Is it beautiful? Would it look right printed in a notebook?
+
+## 9. The slate: every screen is a hacked tablet
+
+(owner, 2026-09-15) The interface is not paper. It is a **tablet the player hacked
+together from spare parts**: a display module stolen from a machine, a bezel
+patched from two others, hand-soldered wiring, tape, a cracked corner that never
+got fixed. The world is post-apocalyptic and still full of technology, some
+scavenged and some stolen from the machines. The slate is the most personal
+piece of it.
+
+- **One device, every screen.** The HUD, carrying, making, map, pause, title,
+  loadout, trade and saves are apps or overlays of the same slate. They share its
+  frame, glass, type and sounds. Nothing in the UI may look like it came from
+  elsewhere.
+- **Two idioms in one object.** The stolen display is FOUND: exact pixels,
+  machine-violet chrome, a cold light. The repairs are MADE: tape, solder blobs,
+  a mismatched knob, a scratched label in the pixel font. Both show at once, like
+  every mended thing.
+- **The screen is honest about being salvaged.** It has a few dead pixel columns,
+  a faint scan shimmer when it wakes, a slightly off-colour sub-panel where a
+  replacement module sits, and brightness that dips when the lamp oil or charge is
+  low. Every one is subtle and never hurts legibility.
+- **The HUD is the slate's edge overlay.** Small, quiet readouts clipped to the
+  corners, as if the slate were strapped to a wrist or projected on a salvaged
+  lens. There is no text in a fight beyond what the readouts already show.
+- **Type and colour.** Keep the crisp pixel font. Text is a phosphor tone on dark
+  glass (amber or cold green; pick one and keep it), with a single warning colour.
+  Machine-sourced data (scans, interference, sentinel reads) shows in the stolen
+  module's violet.
+- **640x360 pixel-perfect**, integer sizes only, and the same menu standard
+  (up/down, enter, esc).

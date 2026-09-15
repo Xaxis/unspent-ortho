@@ -228,3 +228,6 @@ The notebook changes medium with where you are, so each realm is unmistakable:
 - **The After**: cyanotype: white line on Prussian blue, everything ruled.
 - **Portals**: a torn page between two media.
 - **Mended things**: FOUND parts with MADE bindings, both idioms visible at once.
+- **The slate** (every UI screen): a tablet the player hacked together from spare
+  parts: a stolen machine display in a patched bezel. The world is full of
+  technology, scavenged and stolen, and the slate is its most personal piece (ART.md §9).
