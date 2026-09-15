@@ -1,0 +1,122 @@
+# The core loop on a normal new game (seed 1, the default), through the real keys:
+# wake by the square, take driftwood, stone and dead wood, lay a fire, make
+# charcoal, a haft and a pick at it, meet a machine and find its working side,
+# see the night in with the lamp, and walk over the border into a second country.
+#   tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1
+# (--give tops the creel up so the making does not need twenty trips to the
+# strand, and brings one plate from the tip fifty tiles inland.)
+shot 01-wake-by-the-square
+# The scripted stretch is not a random fight: nothing new comes until the machine is met.
+coast calm
+# Driftwood on the strand south-east of the spawn: step to it, press use.
+at 163.69,404.79
+walk 0,1 0.08
+press use 0.1
+await took 3
+wait 0.2
+shot 02-driftwood-taken
+at 166.7,401.6
+walk 1,1 0.08
+press use 0.1
+await took 3
+# Dead wood fallen under the broadleaf by the strand.
+at 162.45,403.25
+walk 0,1 0.08
+press use 0.1
+await took 8
+wait 0.2
+shot 03-dead-wood
+# A loose stone off each of two boulders.
+at 156.95,408.87
+walk -1,1 0.08
+press use 0.1
+await took 14
+at 164.05,389.53
+walk 1,-1 0.08
+press use 0.1
+await took 14
+wait 0.2
+shot 04-stone
+# Open ground north of the strand: the first press asks, the second lays the fire.
+at 166.5,393.5
+walk 1,0 0.08
+press use 0.1
+wait 0.3
+shot 05-asked-where
+press use 0.1
+await made 4
+wait 0.5
+shot 06-fire-laid
+# Making at the fire: the page lists what this fire can make.
+tap craft
+wait 0.6
+shot 07-making-page
+choose charcoal
+tap use
+await made 3
+wait 0.3
+shot 08-charcoal-made
+choose haft
+tap use
+await made 3
+choose pick_made
+tap use
+await made 3
+wait 0.3
+shot 09-a-pick-from-plate
+tap pause
+wait 0.4
+tap inventory
+wait 0.6
+shot 10-carrying-the-pick
+tap inventory
+wait 0.4
+# A runner in the field north of the village. Met face on, the blow rings off
+# its plate; its working part is at its back, and there the blow goes home.
+at 130,370
+zoom 10
+wait 1.0
+spawn runner
+wait 0.3
+walkto mob 1.5
+tap swing
+await ring 1.5
+wait 0.04
+shot 11-plate-rings
+walkto part 3
+tap swing
+await hit 1.5
+wait 0.04
+shot 12-the-working-side
+walkto part 2
+tap swing
+wait 0.5
+walkto part 2
+tap swing
+wait 0.5
+walkto part 2
+tap swing
+wait 0.6
+shot 13-after-the-fight
+coast calm
+# Back to the fire as the light goes: the lamp against the dark.
+zoom 15
+at 165.5,393.5
+hour 21.5
+wait 0.6
+shot 14-night-at-the-fire
+press lamp 0.1
+wait 0.5
+walk -1,-1 1.2
+shot 15-lamp-lit
+walk 1,1 1.2
+press use 0.1
+wait 1.2
+shot 16-slept-to-morning
+# North to the border: the land turns to limestone and the notebook names it.
+at 160.5,352.5
+wait 0.5
+shot 17-coast-before-the-border
+walk 1,-1 4.5 run
+wait 1.2
+shot 18-into-the-bonelands

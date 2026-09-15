@@ -424,6 +424,8 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 		if charge:
 			_skip(game, minutes, &"build")
 	Events.sfx.emit(StringName("build_%s" % station), game.world.to_3d(spot))
+	# A station built is a thing made: the notebook and the tours hear of it.
+	Events.made.emit(station, 1)
 	return prop
 
 

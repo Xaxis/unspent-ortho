@@ -1,0 +1,41 @@
+# The six countries at their hearts and the land turning at three borders,
+# on seed 1 at a clear late morning, each with a short real walk.
+# Places come from `tools/map.sh --seed=1` (country and ecotone samples).
+#   tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
+coast calm
+at 338,398
+wait 2.0
+shot 01-coast-heart
+walk 0,-1 1.2
+shot 02-coast-walked
+at 262,242
+wait 2.0
+shot 03-moss-heart
+at 362,222
+wait 2.0
+shot 04-pinewood-heart
+at 374,146
+wait 2.0
+shot 05-snowfield-heart
+at 138,242
+wait 2.0
+shot 06-bonelands-heart
+at 162,126
+wait 2.0
+shot 07-burning-heart
+# Borders: stand in the band, then walk across it.
+at 307,355
+wait 2.0
+shot 08-coast-moss
+walk 1,-1 2.5 run
+shot 09-coast-moss-crossed
+at 340,187
+wait 2.0
+shot 10-pinewood-snowfield
+walk 1,-1 2.5 run
+shot 11-pinewood-snowfield-crossed
+at 190,175
+wait 2.0
+shot 12-bonelands-burning
+walk 1,-1 2.5 run
+shot 13-bonelands-burning-crossed

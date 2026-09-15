@@ -1,19 +1,64 @@
-# A fight through the real input path: a yard dog put in front of the player,
-# walked up to, struck, dodged, struck again. Boot with:
-#   tools/tour.sh tours/fight.tour --seed=1 --at=58,100 --hour=12 --spawn=dog.yard
-wait 0.4
-shot 01-met
-walk 1,-1 0.35
-tap swing
-wait 0.12
-shot 02-swing
-wait 0.35
+# Machines through the real keys, on a normal seed-1 coast at late morning:
+# telegraphs read, a dodge through a bite, a blow ringing off plate, a real hit
+# on a working part, a grip and the pull free. The tour waits on what a player
+# would see (await) and fails if it never comes.
+#   tools/tour.sh tours/fight.tour --seed=1 --hour=11
+zoom 11
+# A runner: its working part is at its back, so met face on it is all plate.
+spawn runner
+await tell 4
+shot 01-runner-tell
 tap dodge
-wait 0.06
-shot 03-dodge
-wait 0.3
+wait 0.08
+shot 02-dodge-through-the-bite
+walkto mob 1.5
 tap swing
-wait 0.15
-shot 04-again
-wait 1.2
-shot 05-after
+await ring 1.5
+wait 0.05
+shot 03-blow-rings-off-plate
+# Away from it (far past its tether), to a watcher out in a field.
+at 130,370
+wait 1.5
+spawn watcher
+wait 0.6
+walkto mob 2
+shot 04-up-to-the-watchers-lens
+tap swing
+await hit 1.5
+wait 0.04
+shot 05-real-hit-on-the-working-part
+tap swing
+wait 0.5
+tap swing
+wait 0.6
+shot 06-watcher-after
+# A lineman's hook: stand in its reach through the tell, and it takes hold;
+# then pull (swing) until it lets go.
+at 160,352
+wait 1.5
+spawn lineman
+await tell 5
+shot 07-lineman-tell
+walkto mob 0.5
+await grip 4
+wait 0.1
+shot 08-gripped
+tap swing
+wait 0.2
+tap swing
+wait 0.2
+tap swing
+wait 0.2
+tap swing
+await free 4
+wait 0.1
+shot 09-pulled-free
+# The harvester's long tell, read from outside its reach, back by the village.
+at 160.5,400.5
+wait 1.5
+spawn harvester
+await tell 6
+shot 10-harvester-tell
+tap dodge
+wait 0.1
+shot 11-out-of-the-row
