@@ -51,10 +51,10 @@ static func goal(game: Game) -> String:
 		if Survival._makeable_build(game, &"fire").is_empty():
 			return "A fire before dark: three driftwood and two stones."
 		return "A fire before dark: lay it on open ground."
-	if not _cooking_or_has(game, &"charcoal") and inv.count(&"scrap") > 0 and not inv.has(&"haft"):
-		return "A haft and charcoal for a pick: wood at the fire."
 	if not _cooking_or_has(game, &"charcoal"):
-		return "Charcoal at the fire, for a pick."
+		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
+			return "Charcoal for a pick: four driftwood or dead wood, burnt at a fire."
+		return "Charcoal for a pick: set it going at the fire (c)."
 	if not inv.has(&"haft"):
 		return "A haft, whittled from wood."
 	if inv.count(&"scrap") == 0:

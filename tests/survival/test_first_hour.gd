@@ -125,6 +125,35 @@ func test_long_takes_and_meals_wait_until_the_hunter_is_gone() -> void:
 	Fx.done(g)
 
 
+func test_holding_drop_in_a_running_game_puts_down_what_is_in_hand_once() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--give=driftwood:3", "--held=driftwood"])))
+	var sys: Node = g.get_node("50_survival")
+	eq(g.inventory.held, &"driftwood")
+	Input.action_press(&"drop")
+	sys.call("_process", 0.2)
+	eq(g.inventory.count(&"driftwood"), 3, "a tap is not a drop")
+	sys.call("_process", 0.4)
+	eq(g.inventory.count(&"driftwood"), 2, "held, one is put down")
+	sys.call("_process", 0.4)
+	eq(g.inventory.count(&"driftwood"), 2, "once per hold")
+	Input.action_release(&"drop")
+	sys.call("_process", 0.1)
+	g.queue_free()
+	await frames(1)
+
+
+func test_patrols_may_pass_nearer_a_village_than_workers_are_put_out() -> void:
+	var w := load("res://tests/fight/fixture.gd").flat_world(96) as WorldData
+	w.villages.append({"pos": Vector2(48.5, 48.5), "country": Country.COAST, "name": "v"})
+	var q := WorldQuery.new(w)
+	var row := Roster.row(&"harvester")
+	check(not Spawner.place_fits(row, w, q, 48 + 15, 48), "a harvester is not put to work 15 tiles from a green")
+	check(Spawner.place_fits(Spawner._on_round(row), w, q, 48 + 15, 48), "but on its round it may pass there")
+	check(not Spawner.place_fits(Spawner._on_round(row), w, q, 48 + 6, 48), "never into the village")
+
+
 func test_a_press_of_use_on_nothing_is_answered() -> void:
 	var g := Fx.flat()
 	var heard: Array[StringName] = []
