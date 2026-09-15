@@ -396,7 +396,8 @@ func test_roads_join_every_village_and_are_walkable() -> void:
 				if dl > 1:
 					fail("seed %d road climbs %d levels at %s" % [s, dl, b])
 					break
-		# Walk road tiles from the spawn village's square.
+		# Walk road tiles from the spawn village's square (roads meet on its
+		# gravel).
 		var seen := PackedByteArray()
 		seen.resize(size * size)
 		var start: Vector2 = w.villages[0].pos
@@ -406,12 +407,20 @@ func test_roads_join_every_village_and_are_walkable() -> void:
 			var i := stack[stack.size() - 1]
 			stack.resize(stack.size() - 1)
 			for j: int in [i - 1, i + 1, i - size, i + size]:
-				if seen[j] == 0 and w.ground[j] == Ground.ROAD:
+				if seen[j] == 0 and (w.ground[j] == Ground.ROAD or (w.ground[j] == Ground.GRAVEL and _in_square(w, j))):
 					seen[j] = 1
 					stack.append(j)
 		for v in w.villages:
 			var p: Vector2 = v.pos
 			check(seen[floori(p.y) * size + floori(p.x)] != 0, "seed %d village %s not on the road network" % [s, v.name])
+
+
+static func _in_square(w: WorldData, i: int) -> bool:
+	var p := Vector2(i % w.size + 0.5, i / w.size + 0.5)
+	for v in w.villages:
+		if (v.pos as Vector2).distance_to(p) < 5.5:
+			return true
+	return false
 
 
 func test_villages_spread_across_countries_with_a_square() -> void:

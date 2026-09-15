@@ -205,3 +205,79 @@ func test_villages_stand_in_clearings_with_a_square() -> void:
 						if g == Ground.GRAVEL or g == Ground.GRASS or g == Ground.ROAD:
 							square += 1
 			gt(float(square) / total, 0.9, "seed %d village %s square" % [s, v.name])
+
+
+func test_props_keep_to_their_country() -> void:
+	# Scatter follows the ground's recipe and each country's list: no reeds or
+	# peat banks on the Snowfield, no pines in the Burning, no snow pines in the
+	# Moss, no clints or standing stones on the Coast.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var bad := {}
+		for p in w.props:
+			if p.kind in GenScatter.PLACED:
+				continue
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			if (GenScatter.ALLOW[cc] >> p.kind) & 1 == 0:
+				var key := "%s in %s" % [PropKind.NAMES[p.kind], Country.NAMES[cc]]
+				bad[key] = int(bad.get(key, 0)) + 1
+		check(bad.is_empty(), "seed %d off-theme props: %s" % [s, bad])
+		for p in w.props:
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			if p.kind == PropKind.STANDING_STONE or p.kind == PropKind.CLINTS or p.kind == PropKind.PEAT_BANK:
+				check(cc != Country.COAST, "seed %d %s on the Coast" % [s, PropKind.NAMES[p.kind]])
+
+
+func test_the_burning_has_things_to_find() -> void:
+	# Dead-tree groves, vents, fumarole fields: the Burning is as full as the
+	# other countries, and has landmarks of its own.
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var land := PackedFloat32Array()
+		land.resize(Country.COUNT)
+		for i in w.level.size():
+			if w.level[i] > 0:
+				land[w.country[i]] += 1.0
+		var props := PackedFloat32Array()
+		props.resize(Country.COUNT)
+		var vents := 0
+		var dead := 0
+		for p in w.props:
+			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
+			props[cc] += 1.0
+			if cc == Country.BURNING:
+				if p.kind == PropKind.VENT:
+					vents += 1
+				elif p.kind == PropKind.DEAD_TREE:
+					dead += 1
+		gt(props[Country.BURNING] * 1000.0 / land[Country.BURNING], 60.0, "seed %d burning props per 1000 tiles" % s)
+		gt(vents, 100, "seed %d vents in the burning" % s)
+		gt(dead, 200, "seed %d dead trees in the burning" % s)
+		var fumaroles := 0
+		for m in w.landmarks:
+			if m.kind == &"fumarole":
+				fumaroles += 1
+				eq(w.country_at(floori(m.pos.x), floori(m.pos.y)), Country.BURNING, "seed %d fumarole country" % s)
+		gt(fumaroles, 1, "seed %d fumaroles" % s)
+
+
+func test_wrecks_on_sand_and_kilns_by_villages() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for p in w.props:
+			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
+			if p.kind == PropKind.WRECK:
+				check(g == Ground.SAND or g == Ground.GRAVEL or g == Ground.CLINKER, "seed %d wreck at %s on %s" % [s, p.pos, Ground.NAMES[g]])
+			elif p.kind == PropKind.KILN:
+				check(g == Ground.SAND or g == Ground.LIMESTONE, "seed %d kiln at %s on %s" % [s, p.pos, Ground.NAMES[g]])
+				var near := false
+				for v in w.villages:
+					if (v.pos as Vector2).distance_to(p.pos) < 40.0:
+						near = true
+				check(near, "seed %d kiln at %s far from any village" % [s, p.pos])
+				if g == Ground.SAND:
+					var beach := false
+					for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+						if w.level_at(floori(p.pos.x) + d.x, floori(p.pos.y) + d.y) <= 0:
+							beach = true
+					check(not beach, "seed %d kiln on a beach at %s" % [s, p.pos])

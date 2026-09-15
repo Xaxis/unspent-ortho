@@ -18,9 +18,12 @@ const QUOTA: PackedInt32Array = [0, 3, 2, 2, 1, 2, 1]
 const MAX_VILLAGES := 12
 const MIN_VILLAGES := 10
 const CORE := 9.5
-## Tiles over which the ground eases from the core's level back to the land's,
-## a level every APRON_RUN tiles, so a village never stands on a plinth.
-const APRON := 14.0
+## Only the square and the first ring of houses is levelled; the rest of the
+## core keeps the lie of the land, so terraces run on through a village.
+const FLAT := 6.5
+## Tiles over which the ground eases from the levelled middle back to the
+## land's, never faster than a level every APRON_RUN tiles.
+const APRON := 13.0
 const APRON_RUN := 2.0
 ## Farthest a house's footprint reaches from its square (see GenScatter).
 const HOUSE_REACH := 14.5
@@ -207,14 +210,19 @@ static func _level_here(c: GenContext, tx: int, ty: int) -> int:
 	return maxi(1, best)
 
 
-## Level the core; ease an apron so nothing around it is a cliff. The core's
-## edge wanders (never a drawn circle) and the apron is wide and gentle.
+## Level the core; ease an apron so nothing around it is a cliff and no
+## village stands on a plinth. The core's edge wanders (never a drawn circle);
+## beyond it the float elevation eases from the core's level back to the land's
+## along a smoothstep, so terraces open out round the village instead of
+## stacking at its edge, and the grounds (read from float elevation) follow.
 static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 	var w := c.w
 	var size := c.size
 	var reach := ceili(CORE * 1.2 + APRON)
 	var ph1 := GenFields.h01(c.s, tx, ty, 63) * TAU
 	var ph2 := GenFields.h01(c.s, tx, ty, 64) * TAU
+	var ph3 := GenFields.h01(c.s, tx, ty, 67) * TAU
+	var elev := c.elev
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var x := tx + dx
@@ -226,14 +234,24 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 				continue
 			var d := sqrt(float(dx * dx + dy * dy))
 			var ang := atan2(float(dy), float(dx))
-			var core := CORE * (1.0 + 0.12 * sin(ang * 2.0 + ph1) + 0.08 * sin(ang * 3.0 + ph2))
-			if d <= core:
-				w.level[i] = lv
+			var wander := 1.0 + 0.12 * sin(ang * 2.0 + ph1) + 0.08 * sin(ang * 3.0 + ph2)
+			if d <= CORE * wander:
 				c.village[i] = 1
 				c.water[i] = 0
-			elif d <= core + APRON:
-				var allow := ceili((d - core) / APRON_RUN)
-				w.level[i] = clampi(w.level[i], maxi(1, lv - allow), lv + allow)
+			var core := FLAT * wander
+			if d <= core:
+				w.level[i] = lv
+				elev[i] = lv + 0.5
+				continue
+			# The apron's reach wanders too.
+			var run := APRON * (1.0 + 0.3 * sin(ang * 4.0 + ph3))
+			if d > core + run:
+				continue
+			var t := smoothstep(0.0, 1.0, (d - core) / run)
+			var e := lerpf(lv + 0.5, elev[i], t)
+			var allow := ceili((d - core) / APRON_RUN)
+			elev[i] = e
+			w.level[i] = clampi(floori(e), maxi(1, lv - allow), lv + allow)
 
 
 ## Radius of a village's square at an angle: about three and a half tiles,

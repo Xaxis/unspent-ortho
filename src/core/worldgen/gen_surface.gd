@@ -25,6 +25,8 @@ const FLOW_ANGLES := 360
 const FLOW_RADII := 96
 ## Tiles per radius bin: the flows are long tongues running out of the caldera.
 const FLOW_BIN := 4.0
+## Tiles past a village's core over which its grazing gives way to the wild.
+const TENDED := 12.0
 
 
 static func run(c: GenContext) -> void:
@@ -118,7 +120,9 @@ static func run(c: GenContext) -> void:
 	var crater := GenRelief.crater_radius(c)
 	var spawn := w.spawn
 	var rim_warp := c.rim_warp
-	var clearing := _clearings(c, patch)
+	var tended := PackedFloat32Array()
+	tended.resize(n)
+	var clearing := _clearings(c, patch, tended)
 	c.recipe = PackedByteArray()
 	c.recipe.resize(n)
 	var recipe := c.recipe
@@ -146,7 +150,8 @@ static func run(c: GenContext) -> void:
 					fixed[i] = 1
 					continue
 				if road[i] != 0:
-					ground[i] = Ground.ROAD
+					# Roads run into the square and become it.
+					ground[i] = Ground.GRAVEL if clearing[i] - float((int(clearing[i]) >> 4) << 4) >= 1.0 else Ground.ROAD
 					fixed[i] = 1
 					continue
 				var wat := water[i]
@@ -190,8 +195,14 @@ static func run(c: GenContext) -> void:
 				var cv := clearing[i]
 				if cv > 0.0:
 					# A village clears its ground; the square is trodden bare.
-					ground[i] = _village_ground(own, cv)
-					recipe[i] = own
+					var vc := int(cv) >> 4
+					var part := cv - (vc << 4)
+					ground[i] = _village_ground(vc, part)
+					recipe[i] = vc
+					if part >= 1.0:
+						# The square keeps its drawn edge: roads can leave it in pieces
+						# the tidy pass would otherwise sweep away.
+						fixed[i] = 1
 					continue
 				var lx := level[i - 1]
 				var rx := level[i + 1]
@@ -307,6 +318,11 @@ static func run(c: GenContext) -> void:
 					if own != BURNING and g != Ground.SCREE:
 						# Only the ash travels.
 						g = Ground.ASH
+				var td := tended[i]
+				if td > 0.0 and not shore and td > 0.45 + patch[i] * 0.6:
+					# Round a village the wild grounds give way to grazing, raggedly.
+					if g == Ground.HEATH or g == Ground.SCREE or g == Ground.ROCK or g == Ground.CLINKER or g == Ground.PEAT or g == Ground.MUD or g == Ground.GRAVEL:
+						g = _village_ground(cc, 0.5)
 				if rim:
 					fixed[i] = 1
 				ground[i] = g
@@ -332,17 +348,18 @@ static func _flow_at(flows: PackedFloat32Array, dx: float, dy: float, dist: floa
 	return lerpf(top, bot, tr)
 
 
-## Village clearings: 0 outside; in (0, 1) on the cleared ground, fading out
-## with a ragged edge; >= 1 on the square. Written per village over a box, so
-## it costs nothing where there are no villages.
-static func _clearings(c: GenContext, patch: PackedFloat32Array) -> PackedFloat32Array:
+## Village clearings: 0 outside; otherwise country * 16 plus 0.5 on the
+## cleared ground (its edge ragged with the patch field) or 1 on the square.
+## Written per village over a box, so it costs nothing where there are none.
+static func _clearings(c: GenContext, patch: PackedFloat32Array, tended: PackedFloat32Array) -> PackedFloat32Array:
 	var w := c.w
 	var size := c.size
 	var out := PackedFloat32Array()
 	out.resize(c.n)
-	var reach := ceili(GenSettle.CORE + 4.0)
+	var reach := ceili(GenSettle.CORE + TENDED)
 	for v in w.villages:
 		var vp: Vector2 = v.pos
+		var vc: int = v.country
 		var cx := floori(vp.x)
 		var cy := floori(vp.y)
 		for dy in range(-reach, reach + 1):
@@ -356,31 +373,26 @@ static func _clearings(c: GenContext, patch: PackedFloat32Array) -> PackedFloat3
 					continue
 				var p := Vector2(x + 0.5, y + 0.5) - vp
 				var d := p.length()
+				tended[i] = maxf(tended[i], 1.0 - smoothstep(GenSettle.CORE * 0.8, GenSettle.CORE + TENDED, d))
 				var sq := GenSettle.square_radius(c, v, p.angle())
 				if d < sq:
-					out[i] = 1.0
+					out[i] = vc * 16 + 1.0
 					continue
 				# The cleared ground's edge wanders with the patch field.
 				var edge := maxf(8.6, GenSettle.CORE * (1.0 + patch[i] * 0.5))
-				if d < edge:
-					out[i] = maxf(out[i], 0.5)
+				if d < edge and out[i] == 0.0:
+					out[i] = vc * 16 + 0.5
 	return out
 
 
 ## Ground of a village clearing (cv in (0, 1)) or square (cv >= 1).
 static func _village_ground(cc: int, cv: float) -> int:
 	if cv >= 1.0:
-		# Trodden green in the wet countries, raked gravel in the hard ones.
-		return Ground.GRASS if cc == Country.MOSS or cc == Country.PINEWOOD else Ground.GRAVEL
-	match cc:
-		Country.SNOWFIELD:
-			return Ground.SNOW
-		Country.BONELANDS:
-			return Ground.GRASS
-		Country.BURNING:
-			return Ground.ASH
-		Country.MOSS:
-			return Ground.GRASS
-		Country.PINEWOOD:
-			return Ground.GRASS
+		# The square is trodden to gravel.
+		return Ground.GRAVEL
+	# Round it a green is kept, except where nothing green will grow.
+	if cc == Country.SNOWFIELD:
+		return Ground.SNOW
+	if cc == Country.BURNING:
+		return Ground.ASH
 	return Ground.GRASS
