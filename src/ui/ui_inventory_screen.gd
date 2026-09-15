@@ -16,10 +16,21 @@ func _init() -> void:
 	own_action = &"inventory"
 
 
-func refresh() -> void:
+func _on_open() -> void:
 	if inventory == null and game != null:
 		inventory = game.inventory
 		body = game.body
+	# Things can arrive or go while the page is open (a fire finishing, a theft).
+	if inventory != null and not inventory.changed.is_connected(refresh):
+		inventory.changed.connect(refresh)
+
+
+func _on_close() -> void:
+	if inventory != null and inventory.changed.is_connected(refresh):
+		inventory.changed.disconnect(refresh)
+
+
+func refresh() -> void:
 	if inventory == null:
 		return
 	var rows := UiRules.inventory_rows(inventory)

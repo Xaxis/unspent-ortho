@@ -24,6 +24,19 @@ func test_walking_reveals_a_disc_with_a_soft_rim() -> void:
 	check(e.fraction() > 0.0 and e.fraction() < 0.25)
 
 
+func test_the_trail_keeps_the_journey() -> void:
+	var e := UiExplored.new(64)
+	for i in 40:
+		e.visit(Vector2(10.0 + i * 0.25, 20.0))
+	eq(e.trail[0], Vector2(10.0, 20.0), "starts where the walk began")
+	check(e.trail.size() >= 6 and e.trail.size() <= 8, "a point every 1.5 tiles: %d" % e.trail.size())
+	var many := UiExplored.new(64)
+	for i in UiExplored.TRAIL_MAX + 10:
+		many.note_trail(Vector2(fposmod(i * 2.0, 60.0), float(i % 50)))
+	check(many.trail.size() <= UiExplored.TRAIL_MAX, "bounded")
+	eq(many.trail[0], Vector2(0.0, 0.0), "the start survives thinning")
+
+
 func test_reveal_is_clipped_to_the_world() -> void:
 	var e := UiExplored.new(16)
 	e.visit(Vector2(0.5, 0.5))

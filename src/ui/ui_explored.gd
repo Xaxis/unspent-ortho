@@ -9,8 +9,14 @@ extends RefCounted
 const RADIUS := 10
 const RIM := 3
 
+## Where the player has walked, a point every TRAIL_STEP tiles: the map draws it
+## as a dotted route, the journey so far.
+const TRAIL_STEP := 1.5
+const TRAIL_MAX := 30000
+
 var size: int
 var mask := PackedByteArray()
+var trail := PackedVector2Array()
 var _last := Vector2i(-1000000, -1000000)
 
 
@@ -31,12 +37,26 @@ func value(x: int, y: int) -> int:
 
 ## Record the player at tile-space `p`. Only does work when the tile changes.
 func visit(p: Vector2) -> bool:
+	note_trail(p)
 	var t := Vector2i(floori(p.x), floori(p.y))
 	if t == _last:
 		return false
 	_last = t
 	reveal(t, RADIUS)
 	return true
+
+
+## Add `p` to the trail if the player has come far enough from the last point.
+func note_trail(p: Vector2) -> void:
+	if not trail.is_empty() and trail[trail.size() - 1].distance_to(p) < TRAIL_STEP:
+		return
+	if trail.size() >= TRAIL_MAX:
+		# Keep the whole journey at half the detail rather than lose its start.
+		var halved := PackedVector2Array()
+		for i in range(0, trail.size(), 2):
+			halved.append(trail[i])
+		trail = halved
+	trail.append(p)
 
 
 func reveal(c: Vector2i, r: int) -> void:

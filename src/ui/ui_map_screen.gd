@@ -88,7 +88,9 @@ static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 		var spaced := ""
 		for i in name.length():
 			spaced += (" " if i > 0 else "") + name[i]
-		out.append({"text": spaced, "at": (sums[c][0] as Vector2) / n, "country": c})
+		out.append({"text": spaced, "at": (sums[c][0] as Vector2) / n, "country": c, "seen": n})
+	# The country seen most is lettered first; a crowded label gives way to it.
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.seen > b.seen)
 	return out
 
 
@@ -177,14 +179,42 @@ func _draw_overlay() -> void:
 	var me := to_screen(game.player.pos)
 	var me_rect := Rect2i(me.x - 6, me.y - 6, 13, 13)
 	# Countries, lettered across the land they cover, spaced out like a region on a chart.
+	var placed: Array[Rect2i] = []
 	for label: Dictionary in _regions:
 		var s := to_screen(label.at)
 		var text: String = label.text
 		var w := UiFont.width(text)
 		var at := Vector2i(s.x - w / 2, s.y - 5)
+		var box := Rect2i(at, Vector2i(w, 10)).grow(3)
+		if placed.any(func(o: Rect2i) -> bool: return o.intersects(box)):
+			continue
+		placed.append(box)
 		if r.grow(-6).encloses(Rect2i(at, Vector2i(w, 10))):
 			UiDraw.text(ci, at + Vector2i(1, 1), text, Color(UiTheme.PAPER, 0.7))
 			UiDraw.text(ci, at, text, Color(Palette.EARTH[2], 0.85))
+	# The way the player came, dotted in the accent, fading toward the start.
+	if explored != null:
+		var n := explored.trail.size()
+		var inner := r.grow(-1)
+		var step := 0
+		for i in range(1, n):
+			var a0 := to_screen(explored.trail[i - 1])
+			var a1 := to_screen(explored.trail[i])
+			# A jump (carried off, a teleport) is not walked: leave a gap.
+			if explored.trail[i - 1].distance_to(explored.trail[i]) > 4.0:
+				continue
+			if not inner.has_point(a0) and not inner.has_point(a1):
+				continue
+			var col := Color(UiTheme.ACCENT, 0.35 + 0.55 * float(i) / n)
+			var d := a1 - a0
+			var len := maxi(absi(d.x), absi(d.y))
+			for k in len:
+				step += 1
+				if step % 3 == 0:
+					continue
+				var p := a0 + Vector2i(roundi(d.x * k / float(len)), roundi(d.y * k / float(len)))
+				if inner.has_point(p):
+					UiDraw.px(ci, p.x, p.y, col)
 	# Villages the player has seen: a house mark and the name, lettered on a clearing.
 	for v in game.world.villages:
 		var vp: Vector2 = v.pos

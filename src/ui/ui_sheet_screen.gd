@@ -59,3 +59,8 @@ func _draw() -> void:
 	for id: StringName in hud_icons:
 		UiDraw.sprite_rimmed(self, UiIcons.shape_of(id), Vector2i(x, y + 4), UiIcons.colours_for(id), UiTheme.INK_DEEP)
 		x += 16
+	x = 8
+	y += 34
+	for st: StringName in UiIcons.STATIONS:
+		UiIcons.draw_station(self, st, Vector2i(x, y), 4)
+		x += 64

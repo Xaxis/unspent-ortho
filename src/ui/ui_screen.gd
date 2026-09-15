@@ -38,6 +38,9 @@ func open() -> void:
 	note = ""
 	_on_open()
 	refresh()
+	# The HUD steps aside while a page is open; its messages land on the page.
+	if not Events.message.is_connected(say):
+		Events.message.connect(say)
 	Events.screen_changed.emit(screen_name, true)
 	Events.sfx.emit(&"open_book", Vector3.ZERO)
 
@@ -47,6 +50,8 @@ func close() -> void:
 		return
 	is_open = false
 	visible = false
+	if Events.message.is_connected(say):
+		Events.message.disconnect(say)
 	_on_close()
 	Events.screen_changed.emit(screen_name, false)
 	Events.sfx.emit(&"close_book", Vector3.ZERO)

@@ -102,16 +102,16 @@ const ITEMS := {
 ## Stations, drawn larger as sketches on the making page: [rows, body ramp, second ramp].
 const STATIONS := {
 	&"fire": [[
-		"......k......",
-		".....k3k.....",
-		"....k323k....",
-		"...k32w23k...",
-		"...k2w1w2k...",
-		"..k21w6w12k..",
-		"..k1566651k..",
-		".kkk56665kkk.",
-		"k45kkkkkkk54k",
-		"k5456k4k6545k",
+		".....k.......",
+		"....k3k...k..",
+		"....k3wk.k3k.",
+		"...k3ww3kk3k.",
+		"..k32ww23k3k.",
+		"..k2w22w2k2k.",
+		"..k21221211k.",
+		".kk5k111k5kk.",
+		"k45kk5k5kk54k",
+		"k5456kkk6545k",
 		".kkkkkkkkkkk.",
 	], &"ember", &"stone"],
 	&"bench": [[
