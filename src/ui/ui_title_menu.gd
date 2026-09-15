@@ -128,13 +128,14 @@ func _draw_slip() -> void:
 				UiDraw.text(self, Vector2i(r.end.x - 26, top), "<", UiTheme.FADED)
 				UiDraw.text(self, Vector2i(r.end.x - 16, top), ">", UiTheme.FADED)
 		UiDraw.text(self, Vector2i(x0, top), text, UiTheme.INK)
+	UiNotebook.tape(self, Vector2i(r.position.x + r.size.x / 2 - 14, r.position.y - 3), 28)
 	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 1 * 16 - 4, UiTheme.RULE, 3)
 	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 2 * 16 - 4, UiTheme.RULE, 4)
 	UiDraw.hand_hline(self, r.position.x + 6, r.end.x - 7, r.position.y + 10 + 3 * 16 - 4, UiTheme.RULE, 5)
 
 
 func _draw_keys() -> void:
-	var r := Rect2i(230, 150, 180, 172)
+	var r := Rect2i(216, 146, 208, 176)
 	UiDraw.rect(self, Rect2i(r.position.x + 2, r.position.y + 2, r.size.x, r.size.y), Color(UiTheme.INK_DEEP, 0.5))
 	UiNotebook.page(self, r, 31, false, false)
 	UiDraw.frame(self, r.grow(1), UiTheme.INK_DEEP)

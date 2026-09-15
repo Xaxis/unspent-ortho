@@ -11,10 +11,27 @@ const FADE := 0.6
 
 ## Oldest first: {text, count, age}
 var lines: Array[Dictionary] = []
+## No text in a fight: while quiet (a hostile close), lines wait here, oldest
+## first, and are said once it is over.
+var waiting: PackedStringArray = []
+var quiet := false:
+	set(v):
+		quiet = v
+		if not quiet:
+			for t in waiting:
+				push(t)
+			waiting.clear()
 
 
-func push(text: String) -> void:
+## `now` says it even in a fight (a refusal the player must hear at once).
+func push(text: String, now: bool = false) -> void:
 	if text == "":
+		return
+	if quiet and not now:
+		if not waiting.has(text):
+			waiting.append(text)
+		while waiting.size() > MAX:
+			waiting.remove_at(0)
 		return
 	if not lines.is_empty() and lines.back().text == text:
 		lines.back().count += 1

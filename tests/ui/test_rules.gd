@@ -144,6 +144,19 @@ func test_messages_stack_fade_and_count_repeats() -> void:
 	check(m.lines.is_empty(), "and forgotten")
 
 
+func test_nothing_is_said_in_a_fight_until_it_is_over() -> void:
+	var m := UiMessages.new()
+	m.quiet = true
+	m.push("It is not biting the way it did.")
+	m.push("Took 1 plate.")
+	check(m.visible().is_empty(), "no text while a hostile is close")
+	m.push("Not with that so close.", true)
+	eq(m.visible().size(), 1, "a refusal is said at once")
+	m.quiet = false
+	var said: Array = m.visible().map(func(l: Dictionary) -> String: return l.text)
+	eq(said, ["Not with that so close.", "It is not biting the way it did.", "Took 1 plate."], "the rest follow, in order")
+
+
 func test_a_new_country_is_announced_once_it_holds() -> void:
 	var w := UiPlaceWatch.new()
 	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")

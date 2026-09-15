@@ -5,14 +5,15 @@ extends UiScreen
 
 const KEYS := [
 	["wasd", "walk"],
-	["shift", "run, or dodge"],
-	["space", "swing"],
+	["shift", "run, tap to dodge"],
+	["k", "dodge"],
+	["space  j", "swing, or pull free"],
 	["e", "use what is in reach"],
 	["f", "lamp"],
 	["tab  i", "carrying"],
-	["c", "make, at a station"],
+	["c", "making"],
 	["m", "map"],
-	["esc", "pause"],
+	["esc", "pause, or back"],
 ]
 
 ## "list" or "keys".
@@ -73,7 +74,7 @@ static func draw_keys(ci: CanvasItem, at: Vector2i) -> void:
 	for i in KEYS.size():
 		var top := at.y + i * UiTheme.LINE
 		UiDraw.text(ci, Vector2i(at.x, top), KEYS[i][0], UiTheme.INK)
-		UiDraw.text(ci, Vector2i(at.x + 50, top), KEYS[i][1], UiTheme.INK_SOFT)
+		UiDraw.text(ci, Vector2i(at.x + 56, top), KEYS[i][1], UiTheme.INK_SOFT)
 
 
 func _draw() -> void:

@@ -110,6 +110,17 @@ func show_message(text: String) -> void:
 	messages.push(text)
 
 
+## A line said at once, even with a hostile close.
+func say_now(text: String) -> void:
+	messages.push(text, true)
+
+
+## While true (a fight is near), messages wait until it is over.
+func set_quiet(q: bool) -> void:
+	if q != messages.quiet:
+		messages.quiet = q
+
+
 ## Jump every fade to where it is heading (screenshots, tests).
 func settle() -> void:
 	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0

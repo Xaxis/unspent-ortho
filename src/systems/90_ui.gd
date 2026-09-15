@@ -86,7 +86,7 @@ func open_screen(n: StringName) -> bool:
 		return true
 	if n != &"pause" and _hostile_near():
 		Events.sfx.emit(&"refused", Vector3.ZERO)
-		Events.message.emit("Not with that so close.")
+		game.hud.say_now("Not with that so close.")
 		return false
 	if n == &"crafting":
 		var here := UiLink.stations_here(game)
@@ -153,6 +153,7 @@ func _process(delta: float) -> void:
 		_repeat(s, _horizontal, _device_dir(&"move_left", &"move_right"), delta, &"left", &"right")
 		return
 	explored.visit(game.player.pos)
+	game.hud.set_quiet(_hostile_near())
 	_feed_hud()
 	var p := game.player.pos
 	var entered := _places.step(game.world.country_at(floori(p.x), floori(p.y)), delta)
