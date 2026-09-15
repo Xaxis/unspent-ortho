@@ -341,16 +341,44 @@ func test_rivers_run_downhill_to_the_sea() -> void:
 
 
 func test_river_channels_widen_toward_the_mouth_and_stay_wadeable() -> void:
-	var w := world(WORLD_SEEDS[0])
-	var counts := PackedInt32Array()
-	counts.resize(Ground.COUNT)
-	for g in w.ground:
-		counts[g] += 1
-	gt(counts[Ground.RIVER], 400, "river tiles")
-	for i in w.ground.size():
-		if w.ground[i] == Ground.RIVER:
-			check(w.level[i] >= 1, "river tile below land")
-			break
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		# Wadeable: river water is never deep water, and stands on land levels.
+		for i in w.ground.size():
+			if w.ground[i] == Ground.RIVER:
+				check(w.level[i] >= 1, "seed %d river tile below land" % s)
+				break
+		# The longest river that reaches the sea: a runnel at its head, a
+		# broad channel at its mouth.
+		var longest := PackedVector2Array()
+		for r in w.rivers:
+			var e := r[r.size() - 1]
+			var at_sea := false
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if w.level_at(floori(e.x) + d.x, floori(e.y) + d.y) <= 0:
+					at_sea = true
+			if at_sea and r.size() > longest.size():
+				longest = r
+		gt(longest.size(), 40, "seed %d a long river reaches the sea" % s)
+		var head := _water_width(w, longest.slice(4, 16))
+		var mouth := _water_width(w, longest.slice(longest.size() - 20, longest.size() - 8))
+		lt(head, 2.0, "seed %d river width at its head" % s)
+		gt(mouth, head + 0.8, "seed %d river widens to its mouth (%.1f to %.1f)" % [s, head, mouth])
+
+
+## Mean count of water tiles across the channel (the 5x5 around each point,
+## divided by 5).
+static func _water_width(w: WorldData, pts: PackedVector2Array) -> float:
+	var total := 0.0
+	for p in pts:
+		var wet := 0
+		for dy in range(-2, 3):
+			for dx in range(-2, 3):
+				var g := w.ground_at(floori(p.x) + dx, floori(p.y) + dy)
+				if g == Ground.RIVER or g == Ground.ICE or g == Ground.WATER:
+					wet += 1
+		total += wet / 5.0
+	return total / maxf(1.0, pts.size())
 
 
 func test_roads_join_every_village_and_are_walkable() -> void:
