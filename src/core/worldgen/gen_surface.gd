@@ -67,7 +67,13 @@ static func run(c: GenContext) -> void:
 	c.mark(&"surface.rise")
 	var big := GenFields.field(GenFields.noise(s, 501, 1.0 / 48.0, 3), size, 8)
 	var mid := GenFields.field(GenFields.noise(s, 502, 1.0 / 16.0, 2), size, 4)
-	var patch := GenFields.field(GenFields.noise(s, 503, 1.0 / 13.0, 3), size, 2)
+	# Ecotone islands: warped, so a neighbour arrives in long tongues and
+	# drifts rather than round blots.
+	var patch_noise := GenFields.noise(s, 503, 1.0 / 20.0, 3)
+	patch_noise.domain_warp_enabled = true
+	patch_noise.domain_warp_amplitude = 18.0
+	patch_noise.domain_warp_frequency = 1.0 / 40.0
+	var patch := GenFields.field(patch_noise, size, 2)
 	c.forest = GenFields.field(GenFields.noise(s, 504, 1.0 / 30.0, 3), size, 4)
 	var forest := c.forest
 	var veins := GenFields.sample(GenFields.noise(s, 505, 1.0 / 24.0, 3), size, 1)
@@ -243,16 +249,14 @@ static func run(c: GenContext) -> void:
 					elif down >= 2:
 						g = Ground.LIMESTONE
 					elif bank or rs < -0.45 - pave[i] * 0.3:
-						# Green dales between the pavements.
-						g = Ground.GRASS if gm < 0.35 else Ground.HEATH
+						# Green dales between the pavements, heath up their sides.
+						g = Ground.HEATH if rs > -0.6 and gm > 0.25 else Ground.GRASS
 					elif flat and l >= 3:
 						g = Ground.GRAVEL if absf(veins[i]) < 0.05 else Ground.LIMESTONE
-					elif gb > 0.38:
+					elif gb > 0.5:
 						g = Ground.BONE
-					elif gm > 0.3:
-						g = Ground.HEATH
 					else:
-						g = Ground.LIMESTONE if rs > 0.2 else Ground.GRASS
+						g = Ground.LIMESTONE if rs > -0.1 else Ground.GRASS
 				elif cc == BURNING:
 					var dx := x + 0.5 - heart.x
 					var dy := y + 0.5 - heart.y

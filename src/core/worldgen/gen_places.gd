@@ -136,9 +136,9 @@ static func cliff_sample(w: WorldData) -> Vector2:
 	var solid := solid_mask(w)
 	var best := Vector2(-1, -1)
 	var best_rise := 2
-	for y in range(8, w.size - 8, 2):
-		for x in range(8, w.size - 8, 2):
-			if not standable(w, solid, x, y):
+	for y in range(20, w.size - 20, 2):
+		for x in range(20, w.size - 20, 2):
+			if not standable(w, solid, x, y) or not _mainland(w, x, y):
 				continue
 			var i := y * w.size + x
 			var l := w.level[i]
@@ -147,6 +147,16 @@ static func cliff_sample(w: WorldData) -> Vector2:
 				best_rise = rise
 				best = Vector2(x + 0.5, y + 0.5)
 	return best
+
+
+## Mostly land for 20 tiles around: the island, not a stack or a skerry.
+static func _mainland(w: WorldData, x: int, y: int) -> bool:
+	var land := 0
+	for dy in range(-20, 21, 5):
+		for dx in range(-20, 21, 5):
+			if w.level_at(x + dx, y + dy) > 0:
+				land += 1
+	return land >= 45
 
 
 ## The nearest standable tile to p (searching outward), or p itself.

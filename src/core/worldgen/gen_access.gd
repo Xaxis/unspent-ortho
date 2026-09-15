@@ -52,8 +52,8 @@ static func run(c: GenContext) -> void:
 	for r in root.size():
 		root[r] = r
 	for e in edges:
-		var ra := _find(root, label[e.x])
-		var rb := _find(root, label[e.y])
+		var ra := find_root(root, label[e.x])
+		var rb := find_root(root, label[e.y])
 		if ra == rb:
 			continue
 		root[ra] = rb
@@ -109,7 +109,7 @@ static func regions(level: PackedInt32Array, size: int, sizes: PackedInt32Array)
 	return label
 
 
-static func _find(root: PackedInt32Array, a: int) -> int:
+static func find_root(root: PackedInt32Array, a: int) -> int:
 	while root[a] != a:
 		root[a] = root[root[a]]
 		a = root[a]

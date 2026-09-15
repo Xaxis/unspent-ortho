@@ -10,9 +10,9 @@ class_name GenSettle
 ## are graded so every step along them is walkable.
 
 ## Villages wanted per country id (sea, coast, moss, pinewood, snowfield, bonelands, burning).
-const QUOTA: PackedInt32Array = [0, 3, 1, 2, 1, 2, 1]
+const QUOTA: PackedInt32Array = [0, 3, 2, 2, 1, 2, 1]
 const MAX_VILLAGES := 12
-const MIN_VILLAGES := 8
+const MIN_VILLAGES := 10
 const CORE := 9.5
 const APRON := 7.0
 
@@ -63,6 +63,9 @@ static func villages(c: GenContext) -> void:
 	c.mark(&"settle.blocks")
 	var cands: Array[Vector3] = [] # tile x, tile y, score
 	var relaxed: Array[Vector3] = []
+	# Rough ground is levelled for a village only where nothing better exists
+	# (a mountain country's one outpost).
+	var rough: Array[Vector3] = []
 	for gy in range(1, bw - 1):
 		for gx in range(1, bw - 1):
 			var ks: PackedInt32Array = [(gy - 1) * bw + gx - 1, (gy - 1) * bw + gx, gy * bw + gx - 1, gy * bw + gx]
@@ -77,7 +80,8 @@ static func villages(c: GenContext) -> void:
 				continue
 			var tx := gx * b
 			var ty := gy * b
-			if w.blend[ty * size + tx] > 0.4:
+			# Villages stand on the island, where a road can reach them.
+			if w.blend[ty * size + tx] > 0.4 or c.islet[ty * size + tx] != 0:
 				continue
 			var near_water := 0.0
 			for dk: Vector2i in [Vector2i(-2, 0), Vector2i(1, 0), Vector2i(0, -2), Vector2i(0, 1)]:
@@ -90,10 +94,13 @@ static func villages(c: GenContext) -> void:
 				cands.append(Vector3(tx, ty, score + (1.0 if mx == mn else 0.6)))
 			elif mx - mn <= 2:
 				relaxed.append(Vector3(tx, ty, score))
+			elif mx - mn <= 4:
+				rough.append(Vector3(tx, ty, score))
 	var by_score := func(p: Vector3, q: Vector3) -> bool: return p.z > q.z
 	cands.sort_custom(by_score)
 	relaxed.sort_custom(by_score)
-	var gap := maxf(26.0, 64.0 * c.k)
+	rough.sort_custom(by_score)
+	var gap := maxf(26.0, 56.0 * c.k)
 	var chosen: Array[Vector3] = []
 	# The spawn village: as far south as flat coast allows, a short walk from the sea.
 	var r := c.land_rect
@@ -118,7 +125,7 @@ static func villages(c: GenContext) -> void:
 	var counts := PackedInt32Array()
 	counts.resize(Country.COUNT)
 	counts[Country.COAST] = 1
-	for pool: Array[Vector3] in [cands, relaxed]:
+	for pool: Array[Vector3] in [cands, relaxed, rough]:
 		for cc: int in [Country.MOSS, Country.PINEWOOD, Country.BONELANDS, Country.SNOWFIELD, Country.BURNING, Country.COAST]:
 			for p in pool:
 				if counts[cc] >= QUOTA[cc]:
@@ -291,19 +298,43 @@ static func roads(c: GenContext) -> void:
 				wt = 0.6
 			grid.set_point_weight_scale(Vector2i(hx, hy), wt)
 	c.mark(&"roads.grid")
+	var root := PackedInt32Array()
+	for j in vs.size():
+		root.append(j)
 	for e in _edges(vs, c.k):
-		var a: Vector2 = vs[e.x].pos
-		var b: Vector2 = vs[e.y].pos
-		var ha := Vector2i(clampi(int(a.x) / 2, 0, hw - 1), clampi(int(a.y) / 2, 0, hw - 1))
-		var hb := Vector2i(clampi(int(b.x) / 2, 0, hw - 1), clampi(int(b.y) / 2, 0, hw - 1))
-		if grid.is_point_solid(ha) or grid.is_point_solid(hb):
+		if _connect(c, grid, hw, e.x, e.y):
+			root[GenAccess.find_root(root, e.x)] = GenAccess.find_root(root, e.y)
+	# A tree edge can fail (a loch in the way, no footing): join any village
+	# still cut off to its nearest neighbour that the road can reach.
+	for j in vs.size():
+		if GenAccess.find_root(root, j) == GenAccess.find_root(root, 0):
 			continue
-		var path := grid.get_id_path(ha, hb)
-		if path.size() < 2:
-			continue
-		for hp in path:
-			grid.set_point_weight_scale(hp, minf(grid.get_point_weight_scale(hp), 0.45))
-		_lay_road(c, path, a, b)
+		var others: Array[Vector2] = []
+		for k in vs.size():
+			if GenAccess.find_root(root, k) != GenAccess.find_root(root, j):
+				others.append(Vector2((vs[k].pos as Vector2).distance_to(vs[j].pos), k))
+		others.sort()
+		for o in others:
+			if _connect(c, grid, hw, j, int(o.y)):
+				root[GenAccess.find_root(root, j)] = GenAccess.find_root(root, int(o.y))
+				break
+
+
+static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: int) -> bool:
+	var vs := c.w.villages
+	var a: Vector2 = vs[from].pos
+	var b: Vector2 = vs[to].pos
+	var ha := Vector2i(clampi(int(a.x) / 2, 0, hw - 1), clampi(int(a.y) / 2, 0, hw - 1))
+	var hb := Vector2i(clampi(int(b.x) / 2, 0, hw - 1), clampi(int(b.y) / 2, 0, hw - 1))
+	if grid.is_point_solid(ha) or grid.is_point_solid(hb):
+		return false
+	var path := grid.get_id_path(ha, hb)
+	if path.size() < 2:
+		return false
+	for hp in path:
+		grid.set_point_weight_scale(hp, minf(grid.get_point_weight_scale(hp), 0.45))
+	_lay_road(c, path, a, b)
+	return true
 
 
 ## A spanning tree over village squares plus a few short loops, as index pairs.

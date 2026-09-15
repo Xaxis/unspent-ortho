@@ -99,7 +99,7 @@ static func run(c: GenContext) -> void:
 	for i in hn:
 		land_h[i] = 1 if lf[i] > 0.0 else 0
 	c.mark(&"shape.quantile")
-	_clean(lf, land_h, hw)
+	var islet_h := _clean(lf, land_h, hw)
 	c.mark(&"shape.clean")
 	# Tiles: bilinear, then a whisper of fine noise right at the waterline so
 	# rock shores crinkle and throw the odd skerry.
@@ -107,6 +107,8 @@ static func run(c: GenContext) -> void:
 	var fine := GenFields.sample(GenFields.noise(s, 104, 1.0 / 7.0, 2), size, 1)
 	var land := PackedByteArray()
 	land.resize(c.n)
+	var islet := PackedByteArray()
+	islet.resize(c.n)
 	# The crinkle only where the coast really is: inland the field can lie
 	# close to zero for miles, and noise there would pock the land with pits.
 	var shore_h := PackedByteArray()
@@ -125,11 +127,12 @@ static func run(c: GenContext) -> void:
 				var k := hrow + (x >> 1)
 				if shore_h[k] == 0:
 					land[row + x] = land_h[k]
-					continue
-				var h := full[row + x] + fine[row + x] * 0.022
-				if h > 0.0:
+				elif full[row + x] + fine[row + x] * 0.022 > 0.0:
 					land[row + x] = 1
+				if land[row + x] != 0:
+					islet[row + x] = islet_h[k]
 	)
+	c.islet = islet
 	c.land = land
 	# The journey template is laid over the main body's extent, not the islets'.
 	var min_x := size
@@ -220,8 +223,9 @@ static func _lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32A
 						lf[i] = minf(lf[i], -0.06 - 0.25 * (1.0 - d / radius))
 
 
-## Fill enclosed seas; sink detached land bigger than an islet.
-static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> void:
+## Fill enclosed seas; sink detached land bigger than an islet. Returns 1
+## on the islets that stay.
+static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> PackedByteArray:
 	var hn := hw * hw
 	var sea := PackedByteArray()
 	sea.resize(hn)
@@ -246,3 +250,8 @@ static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> 
 		if id >= 0 and id != main and lsizes[id] > islet_cells:
 			land_h[i] = 0
 			lf[i] = -0.04
+	var islets := PackedByteArray()
+	islets.resize(hn)
+	for i in hn:
+		islets[i] = 1 if land_h[i] != 0 and llabels[i] != main else 0
+	return islets

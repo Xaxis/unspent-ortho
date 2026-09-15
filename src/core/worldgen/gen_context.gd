@@ -23,6 +23,8 @@ var land: PackedByteArray
 ## Tiles inland from the sea (land) or out from the land (sea), smooth.
 var inland: PackedFloat32Array
 var offshore: PackedFloat32Array
+## 1 on land that is not the main island: skerries, stacks, tidal islets.
+var islet: PackedByteArray
 ## Share of land within ~24 tiles: < 0.5 on headlands, > 0.5 in bays.
 var convex: PackedFloat32Array
 var land_rect := Rect2()

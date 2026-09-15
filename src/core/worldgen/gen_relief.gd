@@ -31,6 +31,7 @@ static func run(c: GenContext) -> void:
 	var inland := c.inland
 	var offshore := c.offshore
 	var convex := c.convex
+	var islet := c.islet
 	var elev := PackedFloat32Array()
 	elev.resize(n)
 	c.mark(&"relief.fields")
@@ -75,6 +76,9 @@ static func run(c: GenContext) -> void:
 					if d_in < 1.3:
 						headland = 1.0
 					e = lerpf(beach, headland, smoothstep(0.4, 0.62, cl))
+				if islet[i] != 0 and cliffn[i] < 0.25:
+					# Most islets are low skerries; the rest stand as stacks.
+					e = 1.0 + minf(1.6, d_in * 0.35)
 				elev[i] = clampf(e, 1.0, MAX_LEVEL + 0.99)
 	)
 	c.elev = elev

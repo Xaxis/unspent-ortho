@@ -42,6 +42,54 @@ func test_deterministic_for_a_seed() -> void:
 	eq(a.roads.size(), b.roads.size(), "roads")
 
 
+func test_deterministic_at_full_size_on_worker_threads() -> void:
+	# Per-tile passes run in parallel bands: the same seed must still give the
+	# same world however the bands were scheduled.
+	var a := world(WORLD_SEEDS[0])
+	var b := WorldGen.generate(WORLD_SEEDS[0])
+	check(a.level == b.level, "levels differ")
+	check(a.ground == b.ground, "grounds differ")
+	check(a.country2 == b.country2 and a.blend == b.blend, "ecotones differ")
+	eq(a.props.size(), b.props.size(), "prop count")
+	for i in mini(a.props.size(), b.props.size()):
+		if a.props[i].kind != b.props[i].kind or a.props[i].pos != b.props[i].pos:
+			fail("prop %d differs" % i)
+			break
+
+
+func test_no_pits_in_the_land() -> void:
+	# A lone tile of sea inside the land reads as a hole and grows a beach.
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		var size := w.size
+		var pits := 0
+		for y in range(1, size - 1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				if w.level[i] <= 0 and w.level[i - 1] > 0 and w.level[i + 1] > 0 and w.level[i - size] > 0 and w.level[i + size] > 0:
+					pits += 1
+		lt(pits, 4, "seed %d one-tile pits of sea inside the land" % s)
+
+
+func test_coast_is_varied_country() -> void:
+	# The first country the player sees is not a lawn: uplands of heath, dunes
+	# and shingle, marsh at the river mouths.
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		var counts := PackedFloat32Array()
+		counts.resize(Ground.COUNT)
+		var total := 0.0
+		for i in w.ground.size():
+			if w.country[i] == Country.COAST and w.level[i] > 0:
+				counts[w.ground[i]] += 1.0
+				total += 1.0
+		lt(counts[Ground.GRASS] / total, 0.7, "seed %d coast grass share" % s)
+		gt(counts[Ground.HEATH] / total, 0.08, "seed %d coast heath share" % s)
+		gt(counts[Ground.SAND] / total, 0.02, "seed %d coast sand share" % s)
+		gt(counts[Ground.MUD] / total, 0.01, "seed %d coast marsh share" % s)
+		gt(counts[Ground.SHINGLE] / total, 0.002, "seed %d coast shingle share" % s)
+
+
 func test_differs_between_seeds() -> void:
 	var a := WorldGen.generate(1, 160)
 	var b := WorldGen.generate(2, 160)
