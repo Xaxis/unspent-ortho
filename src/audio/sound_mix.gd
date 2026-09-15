@@ -314,22 +314,32 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	return out
 
 
-## Whether a scatter entry ([name, gap, gap, {hours, fair}]) may sound now.
+## Whether a scatter entry ([name, gap, gap, {hours, fair, wet, wind}]) may
+## sound now (SoundBeds.SCATTER has the vocabulary).
 static func scatter_allowed(entry: Array, hour: float, weather: Dictionary) -> bool:
 	if entry.size() < 4:
 		return true
 	var when: Dictionary = entry[3]
+	var kind: StringName = weather.get("kind", &"clear")
+	var s := float(weather.get("strength", 0.0))
+	var wind := absf(float(weather.get("wind", 0.0)))
 	if when.has("hours"):
 		var span: Array = when["hours"]
-		if hour < float(span[0]) or hour >= float(span[1]):
+		var from := float(span[0])
+		var to := float(span[1])
+		var inside := (hour >= from and hour < to) if from <= to else (hour >= from or hour < to)
+		if not inside:
 			return false
 	if when.get("fair", false):
-		var kind: StringName = weather.get("kind", &"clear")
-		var s := float(weather.get("strength", 0.0))
 		if s > 0.35 and kind != &"fog" and kind != &"grey":
 			return false
-		if absf(float(weather.get("wind", 0.0))) > 0.8:
+		if wind > 0.8:
 			return false
+	if when.has("wet"):
+		if not (kind in (when["wet"] as Array)) or s < 0.2:
+			return false
+	if when.has("wind") and wind < float(when["wind"]):
+		return false
 	return true
 
 

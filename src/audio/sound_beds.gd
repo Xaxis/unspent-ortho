@@ -20,13 +20,19 @@ const LENGTH := {
 const SHORE_CYCLE := 5.4
 
 ## Which one-shots each bed scatters: [name, min gap, max gap] seconds, and
-## optionally a fourth entry of conditions:
-##   hours: [from, to)   only then (living things keep hours)
+## optionally a fourth entry of conditions (SoundMix.scatter_allowed):
+##   hours: [from, to)   only then; wraps past midnight when from > to
 ##   fair: true           only in weather a small thing would be out in
+##   wet: [kinds]         only while one of these is falling
+##   wind: w              only in at least this much wind
+## Together with the beds these keep ART.md's promise per country: the moss's
+## still air and wisps, the pines' rain drip, the snowfield's poles.
 const SCATTER := {
-	&"bed_pines": [[&"pines_snap", 6.0, 22.0], [&"pines_creak", 9.0, 30.0], [&"bird_song", 5.0, 16.0, {"hours": [4.8, 9.5], "fair": true}]],
-	&"bed_moss": [[&"moss_drip", 0.5, 2.4], [&"moss_bloop", 7.0, 26.0], [&"bird_song", 9.0, 26.0, {"hours": [4.8, 9.0], "fair": true}]],
-	&"bed_snowfield": [[&"snow_creak", 10.0, 35.0]],
+	&"bed_pines": [[&"pines_snap", 6.0, 22.0], [&"pines_creak", 9.0, 30.0], [&"bird_song", 5.0, 16.0, {"hours": [4.8, 9.5], "fair": true}],
+		[&"pines_drip", 1.2, 4.0, {"wet": [&"rain", &"storm", &"hail"]}]],
+	&"bed_moss": [[&"moss_drip", 0.5, 2.4], [&"moss_bloop", 7.0, 26.0], [&"bird_song", 9.0, 26.0, {"hours": [4.8, 9.0], "fair": true}],
+		[&"moss_wisp", 14.0, 40.0, {"hours": [21.0, 4.5]}]],
+	&"bed_snowfield": [[&"snow_creak", 10.0, 35.0], [&"wire_sing", 9.0, 26.0, {"wind": 0.45}]],
 	&"bed_bones": [[&"bones_tick", 5.0, 18.0]],
 	&"bed_burning": [[&"burning_crackle", 0.6, 3.5], [&"burning_thud", 9.0, 28.0]],
 	&"bed_shore": [[&"shore_gull", 7.0, 30.0, {"hours": [6.5, 19.5], "fair": true}]],
@@ -64,6 +70,9 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"shore_gull": return SoundCreatures.gull(rate, variant, true)
 		&"bird_song": return SoundCreatures.bird(rate, variant)
 		&"heat_tick": return _heat_tick(rate, variant)
+		&"pines_drip": return _pines_drip(rate, variant)
+		&"moss_wisp": return _wisp(rate, variant)
+		&"wire_sing": return _wire_sing(rate, variant)
 		&"fog_horn": return _fog_horn(rate)
 	push_warning("no bed %s" % name)
 	return Synth.buffer(64)
@@ -657,6 +666,58 @@ static func _heat_tick(rate: int, v: int) -> PackedFloat32Array:
 		Synth.add(b, tick, Synth.samples(rate, t), r.randf_range(0.5, 1.0))
 		t += r.randf_range(0.2, 0.3)
 	return _far(b, rate, 5000.0, 0.3, 0.6)
+
+
+## Rain collecting in the canopy and letting go: fat drops onto needles and
+## the floor, a few at a time, never together.
+static func _pines_drip(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(7801, v)
+	var out := Synth.buffer(Synth.samples(rate, 1.8))
+	for k in r.randi_range(3, 7):
+		var at := Synth.samples(rate, r.randf_range(0.0, 1.4))
+		var f := r.randf_range(620.0, 1700.0)
+		var drop := Synth.buffer(Synth.samples(rate, 0.05))
+		Synth.add_chirp(drop, rate, f, f * r.randf_range(1.3, 2.0), 1.0)
+		Synth.env_perc(drop, rate, 0.001, 0.04)
+		Synth.add(out, drop, at, r.randf_range(0.4, 1.0))
+		var tap := _burst(rate, 0.03, 7802 + v * 9 + k, 1200.0, 5000.0, 0.02)
+		Synth.add(out, tap, at, r.randf_range(0.2, 0.5))
+	return _far(out, rate, 5500.0, 0.25, 0.5)
+
+
+## Something cold and lit over the black water at night: a thin glassy chord
+## that swells in and out, its partials beating slowly against each other.
+static func _wisp(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(7901, v)
+	var secs := r.randf_range(1.8, 2.6)
+	var n := Synth.samples(rate, secs)
+	var out := Synth.buffer(n)
+	var base := r.randf_range(1900.0, 2600.0)
+	for k: float in [1.0, 1.498, 2.013]:
+		Synth.add_sine(out, rate, base * k, 0.3 / k)
+		Synth.add_sine(out, rate, base * k * 1.0035, 0.2 / k)
+	for i in n:
+		out[i] *= pow(sin(PI * float(i) / n), 3.0)
+	return _far(out, rate, 7000.0, 0.4, 1.4)
+
+
+## Wind on the lines between the poles: an aeolian tone that rises with the
+## gust and wavers, with its octave, and dies off.
+static func _wire_sing(rate: int, v: int) -> PackedFloat32Array:
+	var r := Rng.make(8001, v)
+	var secs := r.randf_range(2.2, 3.4)
+	var n := Synth.samples(rate, secs)
+	var out := Synth.buffer(n)
+	var f0 := r.randf_range(420.0, 760.0)
+	var drift := Synth.wander(n, 5, 8002 + v, 0.97, 1.05)
+	var ph := 0.0
+	for i in n:
+		var u := float(i) / n
+		ph += TAU * f0 * drift[i] * lerpf(0.96, 1.04, sin(PI * u)) / rate
+		out[i] = (sin(ph) + 0.35 * sin(2.0 * ph) + 0.1 * sin(3.0 * ph)) * pow(sin(PI * pow(u, 0.7)), 2.0)
+	var air := _burst(rate, secs, 8003 + v, 1500.0, 5000.0, secs, 0.3)
+	Synth.add(out, air, 0, 0.08)
+	return _far(out, rate, 4000.0, 0.3, 1.0)
 
 
 ## A diaphone somewhere in the fog: machinery nobody switched off, so exact

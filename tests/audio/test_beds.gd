@@ -287,3 +287,18 @@ func test_nights_fall_calmer() -> void:
 	var day := float(SoundMix.bed_levels(w, Vector2(24, 24), weather, none, none, 5.0, {"hour": 13.0})[&"bed_wind"])
 	var night := float(SoundMix.bed_levels(w, Vector2(24, 24), weather, none, none, 5.0, {"hour": 2.0})[&"bed_wind"])
 	lt(night, day * 0.8, "the wind drops at night (%.2f vs %.2f)" % [night, day])
+
+
+func test_night_wet_and_windy_scatter_conditions() -> void:
+	var calm := {"kind": &"clear", "strength": 0.0, "wind": 0.1}
+	var wisp := [&"moss_wisp", 1.0, 2.0, {"hours": [21.0, 4.5]}]
+	check(SoundMix.scatter_allowed(wisp, 23.5, calm), "wisps before midnight")
+	check(SoundMix.scatter_allowed(wisp, 2.0, calm), "and after it")
+	check(not SoundMix.scatter_allowed(wisp, 12.0, calm), "not at noon")
+	var drip := [&"pines_drip", 1.0, 2.0, {"wet": [&"rain", &"storm"]}]
+	check(not SoundMix.scatter_allowed(drip, 12.0, calm), "no drip in the dry")
+	check(SoundMix.scatter_allowed(drip, 12.0, {"kind": &"rain", "strength": 0.6, "wind": 0.2}), "drip in rain")
+	check(not SoundMix.scatter_allowed(drip, 12.0, {"kind": &"rain", "strength": 0.05, "wind": 0.2}), "not at the first spots")
+	var wire := [&"wire_sing", 1.0, 2.0, {"wind": 0.45}]
+	check(not SoundMix.scatter_allowed(wire, 12.0, calm), "wires quiet in a calm")
+	check(SoundMix.scatter_allowed(wire, 12.0, {"kind": &"clear", "strength": 0.0, "wind": -0.7}), "wires sing in a wind from either side")

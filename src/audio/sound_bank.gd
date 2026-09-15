@@ -80,6 +80,9 @@ const SHEET := {
 	&"fog_horn": [&"scatter", -5.0, 1],
 	&"heat_tick": [&"scatter", -11.0, 3],
 	&"bird_song": [&"scatter", -11.0, 6],
+	&"pines_drip": [&"scatter", -10.0, 4],
+	&"moss_wisp": [&"scatter", -12.5, 3],
+	&"wire_sing": [&"scatter", -11.0, 3],
 	# Footfalls, one family per ground.
 	&"step_sand": [&"step", -3.0, 4],
 	&"step_grass": [&"step", -3.0, 4],
