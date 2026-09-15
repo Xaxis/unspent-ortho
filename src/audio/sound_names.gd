@@ -36,6 +36,7 @@ const ALIAS := {
 	&"work_broken": &"tool_snap",
 	# survival: asking where to build is a question on the page, not the build.
 	&"build_ask": &"ui_move",
+	&"ask_fire": &"ui_move",
 	# fight: a taking with no mob found to say whose.
 	&"snatch": &"grip",
 }
@@ -65,7 +66,7 @@ const EMITTED: Array[StringName] = [
 	&"loose", &"second_act", &"alert", &"windup", &"watcher_call", &"machine_down", &"snatch",
 	&"downed",
 	# survival (survival.gd, crafting.gd, takes.gd verbs, recipes.gd actions)
-	&"build_ask", &"refuse", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"work_gather",
+	&"build_ask", &"ask_fire", &"refuse", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"work_gather",
 	&"work_scrape", &"work_tap", &"work_turn", &"took", &"work_broken", &"sleep", &"build_fire",
 	&"build_bench", &"build_kiln", &"regrow", &"lamp_out", &"collapse", &"make", &"hone", &"reedge",
 	# sky (10_sky.gd, 15_lights.gd)
