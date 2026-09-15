@@ -14,13 +14,23 @@ extends RefCounted
 ## SoundCreatures and SoundWork; emitted names reach the sheet through
 ## SoundNames. The score's stems (score_<landscape>_<layer>) are rows of their
 ## own, answered by ScoreStems, and are stereo. render() is pure and
-## thread-safe. At run time one shared bank bakes on WorkerThreadPool (at most
-## MAX_TASKS at once, so a frame never waits) or, without threads, one short
-## sound per frame, and the score a few milliseconds per frame (ScoreRender
-## stops and resumes), so a browser without threads still hears the score.
+## thread-safe. At run time one shared bank bakes on WorkerThreadPool or,
+## without threads, one short sound per frame, and the score a few milliseconds
+## per frame (ScoreRender stops and resumes), so a browser without threads still
+## hears the score.
+##
+## Two lanes. The world's sounds (a blow, a machine's warning, a footfall) are
+## never kept waiting by the score: every score key queues behind every other
+## key (urgent only among score keys), a score job never takes the last free
+## worker, and without threads a frame serves the queue's one-shot before it
+## gives the score its slice.
 
 const PEAK := 0.89
+## Workers the world's sounds may hold at once.
 const MAX_TASKS := 2
+## Workers the score may hold at once: this many, and one more only while no
+## other sound is baking. Either way one worker is left free for the world's.
+const SCORE_TASKS := 1
 ## Where one sound alone may peak after its call gain and bus (dBFS): under the
 ## Master limiter's -0.5, so the limiter only ever meets sums. A recipe whose
 ## crest would carry it over has its transients limited at bake time.
@@ -35,6 +45,7 @@ const MAIN_THREAD_CATEGORIES: Array[StringName] = [&"event", &"step", &"ui", &"s
 ## Categories rendered by a resumable ScoreRender: without threads they bake a
 ## slice at a time on the main thread (SCORE_BUDGET_USEC a frame).
 const SCORE_CATEGORIES: Array[StringName] = [&"score_drone", &"score_pad", &"score_pulse", &"score_texture", &"score_grid", &"score_dissonance", &"score_cue"]
+## What one frame gives the main-thread baking, one-shot and score slice together.
 const SCORE_BUDGET_USEC := 3000
 
 ## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB),
@@ -268,13 +279,20 @@ class Job:
 	var task := -1
 	## A cache file to read instead of rendering, and to write after (or "").
 	var cache_path := ""
+	## Score keys: what makes the stem's ScoreRender (the bank's score_job).
+	var score := Callable()
 
 	func run() -> void:
 		if cache_path != "":
 			result = SoundBank.load_cached(key, cache_path)
 			if result != null:
 				return
-		result = SoundBank.render(key)
+		if score.is_valid():
+			var stem: ScoreRender = score.call(key)
+			stem.run()
+			result = SoundBank.from_score(stem)
+		else:
+			result = SoundBank.render(key)
 		if result.pcm.is_empty():
 			result.pcm = Synth.to_pcm16(result.samples)
 		if cache_path != "":
@@ -294,14 +312,19 @@ var cache_dir := ""
 var _cache_version_dir := ""
 var _done: Dictionary = {}
 var _jobs: Dictionary = {}
+## The world's sounds, then the score's: a score key never waits in front of another.
 var _queue: Array[StringName] = []
+var _score_queue: Array[StringName] = []
 var _pumped_frame := -1
 var _on_disk: Dictionary = {}
 ## Makes the job for a score key (ScoreStems.job; a test hands in a small one).
 var score_job: Callable = ScoreStems.job
-## Without threads: the score stem being built a slice a frame, and its cache path.
+## Without threads: the score stem being built a slice a frame, its cache path,
+## and once built, the sound it made (written to disk and turned into a stream
+## on the frames after, never on the frame that finished it).
 var _slow: ScoreRender
 var _slow_path := ""
+var _slow_baked: Baked
 ## Microseconds the last pump() spent on the main thread (the no-thread budget is held to it).
 var last_pump_usec := 0
 
@@ -631,24 +654,26 @@ static func load_cached(key: StringName, path: String) -> Baked:
 
 # ----------------------------------------------------------------- baking
 
-## Queue a key for baking (no-op if baked or queued). urgent jumps the queue.
+## Queue a key for baking (no-op if baked or queued). urgent jumps its lane:
+## any sound's the whole queue, a score stem's only the other score stems.
 func request(key: StringName, urgent: bool = false) -> void:
 	if not enabled or _done.has(key) or _jobs.has(key) or not has_sound(key):
 		return
-	if _slow != null and _slow.key == key:
+	if (_slow != null and _slow.key == key) or (_slow_baked != null and _slow_baked.key == key):
 		return
 	if not threaded and not bakes_here(key):
 		return
-	var at := _queue.find(key)
+	var lane := _score_queue if is_score(base_name(key)) else _queue
+	var at := lane.find(key)
 	if at >= 0:
 		if urgent and at > 0:
-			_queue.remove_at(at)
-			_queue.push_front(key)
+			lane.remove_at(at)
+			lane.push_front(key)
 		return
 	if urgent:
-		_queue.push_front(key)
+		lane.push_front(key)
 	else:
-		_queue.append(key)
+		lane.append(key)
 
 
 ## The baked sound if ready, else null (and it is requested).
@@ -677,7 +702,15 @@ func is_ready(key: StringName) -> bool:
 
 
 func pending() -> int:
-	return _jobs.size() + _queue.size() + (1 if _slow != null else 0)
+	return _jobs.size() + _queue.size() + _score_queue.size() + (1 if _slow != null or _slow_baked != null else 0)
+
+
+## Keys waiting, the world's first then the score's (tests and tools).
+func queued() -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.append_array(_queue)
+	out.append_array(_score_queue)
+	return out
 
 
 ## Drop a baked sound from memory (the disk cache keeps it): a landscape's score
@@ -691,13 +724,21 @@ func forget(key: StringName) -> void:
 func bake_now(key: StringName) -> Baked:
 	if _done.has(key):
 		return _done[key]
+	var job := _job(key)
+	job.run()
+	_queue.erase(key)
+	_score_queue.erase(key)
+	_finish(job)
+	return _done[key]
+
+
+func _job(key: StringName) -> Job:
 	var job := Job.new()
 	job.key = key
 	job.cache_path = _cache_path(key)
-	job.run()
-	_queue.erase(key)
-	_finish(job)
-	return _done[key]
+	if is_score(base_name(key)):
+		job.score = score_job
+	return job
 
 
 ## Reap finished jobs and start new ones. Call once per frame; extra calls in
@@ -720,38 +761,79 @@ func pump() -> void:
 		_pump_main_thread()
 		last_pump_usec = Time.get_ticks_usec() - t0
 		return
-	while _jobs.size() < MAX_TASKS and not _queue.is_empty():
-		var job := Job.new()
-		job.key = _queue.pop_front()
-		job.cache_path = _cache_path(job.key)
-		job.task = WorkerThreadPool.add_task(job.run, false, "bake %s" % job.key)
-		_jobs[job.key] = job
+	var score_jobs := 0
+	for job: Job in _jobs.values():
+		score_jobs += 1 if job.score.is_valid() else 0
+	while _jobs.size() - score_jobs < MAX_TASKS and not _queue.is_empty():
+		_start(_queue.pop_front())
+	# A score job leaves a worker free: a machine's call asked for mid-build finds one.
+	var world_jobs := _jobs.size() - score_jobs
+	var score_cap := SCORE_TASKS + (1 if world_jobs == 0 else 0)
+	while _queue.is_empty() and not _score_queue.is_empty() and score_jobs < score_cap and _jobs.size() + 1 < MAX_TASKS + SCORE_TASKS:
+		_start(_score_queue.pop_front())
+		score_jobs += 1
 
 
-## Without threads, one thing a frame, and only what request() let in: a short
-## one-shot, a cache file, or a slice of the score stem being built. A score
-## stem is never started in a frame that already baked something.
+func _start(key: StringName) -> void:
+	var job := _job(key)
+	job.task = WorkerThreadPool.add_task(job.run, false, "bake %s" % job.key)
+	_jobs[job.key] = job
+
+
+## Without threads, inside SCORE_BUDGET_USEC a frame: first one thing from the
+## world's queue (a short one-shot or a cache file), so a blow or an alert asked
+## for while the score builds is ready on the next frame; then, with what is
+## left, a slice of the score stem being built. A finished stem is written to
+## disk on the next frame and becomes a stream on the one after. A new stem is
+## never started in a frame that already baked something.
 func _pump_main_thread() -> void:
+	var t0 := Time.get_ticks_usec()
+	var served := false
+	if not _queue.is_empty():
+		bake_now(_queue[0])
+		served = true
+	elif not _score_queue.is_empty():
+		# A score stem already on disk is only a file read.
+		for key in _score_queue:
+			if _on_disk_now(key):
+				bake_now(key)
+				served = true
+				break
+	if _slow_baked != null:
+		if served:
+			return
+		if _slow_path != "":
+			save_cached(_slow_baked, _slow_path)
+			_slow_path = ""
+			return
+		var job := Job.new()
+		job.key = _slow_baked.key
+		job.result = _slow_baked
+		_slow_baked = null
+		_finish(job)
+		return
 	if _slow != null:
-		if _slow.step(SCORE_BUDGET_USEC):
-			var job := Job.new()
-			job.key = _slow.key
-			job.result = from_score(_slow)
-			if _slow_path != "":
-				save_cached(job.result, _slow_path)
+		var left := SCORE_BUDGET_USEC - (Time.get_ticks_usec() - t0)
+		if left <= 0:
+			return
+		if _slow.step(left):
+			_slow_baked = from_score(_slow)
 			_slow = null
-			_finish(job)
 		return
-	if _queue.is_empty():
+	if served or _score_queue.is_empty():
 		return
-	var key := _queue[0]
+	var key: StringName = _score_queue.pop_front()
+	_slow = score_job.call(key)
+	_slow_path = _cache_path(key)
+
+
+func _on_disk_now(key: StringName) -> bool:
 	var path := _cache_path(key)
-	if is_score(base_name(key)) and (path == "" or not FileAccess.file_exists(path)):
-		_queue.pop_front()
-		_slow = score_job.call(key)
-		_slow_path = path
-		return
-	bake_now(key)
+	if path == "":
+		return false
+	if not _on_disk.has(key):
+		_on_disk[key] = FileAccess.file_exists(path)
+	return _on_disk[key]
 
 
 ## Block until everything queued is baked (tools and tests).
@@ -773,18 +855,22 @@ func adopt(b: Baked) -> void:
 	job.result = b
 	b.pcm = Synth.to_pcm16(b.samples)
 	_queue.erase(b.key)
+	_score_queue.erase(b.key)
 	_finish(job)
 
 
 ## Forget what is queued; what is already baking finishes and is kept.
 func drop_queue() -> void:
 	_queue.clear()
+	_score_queue.clear()
 
 
 ## Drop everything queued and wait out what is already running (quitting).
 func cancel() -> void:
 	_queue.clear()
+	_score_queue.clear()
 	_slow = null
+	_slow_baked = null
 	for key: StringName in _jobs.keys():
 		var job: Job = _jobs[key]
 		WorkerThreadPool.wait_for_task_completion(job.task)

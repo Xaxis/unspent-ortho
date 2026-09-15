@@ -191,21 +191,58 @@ func test_without_threads_the_score_is_built_a_slice_a_frame() -> void:
 	bank.request(key)
 	eq(bank.pending(), 1, "queued")
 	var frames := 0
-	var spent: Array[int] = []
 	while not bank.is_ready(key) and frames < 5000:
 		bank._pumped_frame = -1
 		bank.pump()
-		spent.append(bank.last_pump_usec)
 		frames += 1
 	check(bank.is_ready(key), "it is built")
 	gt(float(frames), 3.0, "over many frames (%d)" % frames)
-	# A frame does one budget and at most one block or slice past it. Judged by
-	# the typical frame, not the worst: a loaded machine can stall any thread.
-	spent.sort()
-	var typical := spent[spent.size() * 9 / 10]
-	lt(float(typical), SoundBank.SCORE_BUDGET_USEC * 3.0 + 6000.0, "no frame waits on it (nine frames in ten under %d us, budget %d us)" % [typical, SoundBank.SCORE_BUDGET_USEC])
 	var whole := _small_job(key)
 	whole.run()
 	check(bank.get_baked(key).samples == whole.samples, "the same samples as built in one go")
 	check(bank.get_baked(key).stream.stereo, "a stereo stream")
 	eq(bank.pending(), 0, "nothing left")
+
+
+## A real stem cut to under a second: its own voices and effects, so its
+## blocks cost what the real one's do, over a loop short enough to try again.
+static func _cut(key: StringName) -> ScoreRender:
+	var j := ScoreStems.job(key, 1)
+	j.frames = roundi(0.8 * j.rate)
+	return j
+
+
+## The thickest pad and a drone (its long high-pass priming), cut short, built by
+## a no-thread bank that keeps a disk cache: no frame, the finishing ones
+## included, runs far past the budget. Wall time on a shared machine stalls at
+## random, so the best of several short attempts is judged; the structure that
+## keeps it so is proven without a stopwatch in test_score and test_bank.
+func test_without_threads_no_frame_waits_on_a_real_stem() -> void:
+	var root := "user://score_budget_test_%d" % Time.get_ticks_usec()
+	var limit := SoundBank.SCORE_BUDGET_USEC + 3000
+	for key: StringName in [ScoreStems.key_for(&"burning", &"pad", 1), ScoreStems.key_for(&"coast", &"drone", 0)]:
+		var best := 1 << 30
+		for attempt in 8:
+			var bank := SoundBank.new()
+			bank.threaded = false
+			bank.score_job = _cut
+			bank.use_disk_cache(root)
+			bank.request(key)
+			var worst := 0
+			var frames := 0
+			while not bank.is_ready(key) and frames < 20000:
+				bank._pumped_frame = -1
+				bank.pump()
+				worst = maxi(worst, bank.last_pump_usec)
+				frames += 1
+			check(bank.is_ready(key), "%s is built" % key)
+			best = mini(best, worst)
+			DirAccess.remove_absolute(bank._cache_path(key))
+			if best <= limit:
+				break
+		lt(float(best), float(limit), "%s: the longest frame is %d us (budget %d us)" % [key, best, SoundBank.SCORE_BUDGET_USEC])
+	var dir := DirAccess.open(root)
+	if dir != null:
+		for d in dir.get_directories():
+			DirAccess.remove_absolute(root.path_join(d))
+		DirAccess.remove_absolute(root)

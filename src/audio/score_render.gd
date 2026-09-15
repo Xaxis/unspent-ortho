@@ -13,8 +13,13 @@ extends RefCounted
 ## on whole cycles; the effects run over a pre-roll of their own memory before
 ## frame 0, which is thrown away. The frame after the last is then the first.
 
-const BLOCK := 256
-const POST_SLICE := 16384
+## Samples of voices and effects between two looks at the clock: a thick pad's
+## block is about a millisecond of GDScript.
+const BLOCK := 128
+## Samples of the finishing stages (high-pass, measure, encode) between two looks
+## at the clock: about half a millisecond of GDScript, so a slice never carries
+## a frame far past its budget.
+const POST_SLICE := 2048
 ## Samples of a loop's tail the high-pass runs over before its pass, so its state
 ## at frame 0 is its state at the end.
 const PRIME := 16000
@@ -67,6 +72,15 @@ var _z1 := 0.0
 var _z2 := 0.0
 var _hops := PackedFloat64Array()
 var _hop := 1
+var _prime_pos := -1
+## What the last unit of work (a block or a slice) cost, and whether this step
+## has done one: a step stops before a unit that would carry it past its budget.
+var _unit_usec := 0
+var _did := false
+## The most one step() has spent, microseconds, and the units of work (blocks,
+## slices) the last step did (tests and tools read them).
+var worst_step_usec := 0
+var last_units := 0
 
 
 func _init(p_key: StringName = &"", p_rate: int = 22050, p_stereo: bool = true, p_loop: bool = true, p_frames: int = 0) -> void:
@@ -112,27 +126,51 @@ func run() -> void:
 	stage = Stage.DONE
 
 
-## Works until `budget_usec` microseconds have passed (checked between blocks
-## and slices); true once the stem is finished.
+## Works until `budget_usec` microseconds have passed; true once the stem is
+## finished. The clock is read between units of work (a block of voices and
+## effects, a slice of a finishing stage), and a unit is not begun when the last
+## one's cost would carry the step past its budget, so a step overshoots by
+## little more than the difference between two units. Every step does at least
+## one unit, so a zero budget still finishes.
 func step(budget_usec: int) -> bool:
 	var t0 := Time.get_ticks_usec()
 	var until := t0 + budget_usec
+	_did = false
+	last_units = 0
 	while stage != Stage.DONE:
+		var stopped := false
 		match stage:
 			Stage.PREPARE:
+				var t := Time.get_ticks_usec()
 				_prepare()
+				_mark(t)
 			Stage.RENDER:
-				_render(until)
+				stopped = _render(until)
 			Stage.HIGHPASS:
-				_highpass(until)
+				stopped = _highpass(until)
 			Stage.MEASURE:
-				_measure(until)
+				stopped = _measure(until)
 			Stage.ENCODE:
-				_encode(until)
-		if Time.get_ticks_usec() >= until:
+				stopped = _encode(until)
+		if stopped or not _fits(until):
 			break
-	busy_usec += Time.get_ticks_usec() - t0
+	var spent := Time.get_ticks_usec() - t0
+	busy_usec += spent
+	worst_step_usec = maxi(worst_step_usec, spent)
 	return stage == Stage.DONE
+
+
+## Whether another unit of work fits before `until`.
+func _fits(until: int) -> bool:
+	return not _did or Time.get_ticks_usec() + _unit_usec < until
+
+
+## A unit is judged by the dearest of the last few (a decaying peak), not the
+## last alone: the block a chord starts in costs more than the one before it.
+func _mark(since: int) -> void:
+	_unit_usec = maxi(Time.get_ticks_usec() - since, _unit_usec * 3 / 4)
+	_did = true
+	last_units += 1
 
 
 func _prepare() -> void:
@@ -183,8 +221,12 @@ func _prepare() -> void:
 	stage = Stage.RENDER
 
 
-func _render(until: int) -> void:
+## True when it stopped for the budget.
+func _render(until: int) -> bool:
 	while _cursor < frames:
+		if not _fits(until):
+			return true
+		var t := Time.get_ticks_usec()
 		var n := mini(BLOCK, frames - _cursor)
 		while _next < _list.size() and int(_list[_next][0]) < _cursor + n:
 			var e: Array = _list[_next]
@@ -214,18 +256,20 @@ func _render(until: int) -> void:
 			for i in range(from, n):
 				right[c + i] = _br[i]
 		_cursor += n
-		if Time.get_ticks_usec() >= until:
-			return
+		_mark(t)
 	_active.clear()
 	_list.clear()
 	_pass = 0
 	_pos = 0
+	_prime_pos = -1
 	_primed = not loop
 	stage = Stage.HIGHPASS if highpass > 0.0 else Stage.MEASURE
+	return false
 
 
-## Two Butterworth sections per channel, each primed from the loop's tail first.
-func _highpass(until: int) -> void:
+## Two Butterworth sections per channel, each primed from the loop's tail first
+## (the priming sliced like the pass itself).
+func _highpass(until: int) -> bool:
 	var channels := 2 if stereo else 1
 	while _pass < channels * 2:
 		var buf := _left if _pass < 2 else _right
@@ -235,16 +279,31 @@ func _highpass(until: int) -> void:
 		var b2 := c[2]
 		var a1 := c[3]
 		var a2 := c[4]
-		var z1 := _z1
-		var z2 := _z2
-		if not _primed:
-			for i in range(maxi(0, frames - PRIME), frames):
+		while not _primed:
+			if _prime_pos < 0:
+				_prime_pos = maxi(0, frames - PRIME)
+			if not _fits(until):
+				return true
+			var t := Time.get_ticks_usec()
+			var z1 := _z1
+			var z2 := _z2
+			var end := mini(frames, _prime_pos + POST_SLICE)
+			for i in range(_prime_pos, end):
 				var x := buf[i]
 				var y := b0 * x + z1
 				z1 = b1 * x - a1 * y + z2
 				z2 = b2 * x - a2 * y
-			_primed = true
+			_z1 = z1
+			_z2 = z2
+			_prime_pos = end
+			_primed = _prime_pos >= frames
+			_mark(t)
 		while _pos < frames:
+			if not _fits(until):
+				return true
+			var t := Time.get_ticks_usec()
+			var z1 := _z1
+			var z2 := _z2
 			var end := mini(frames, _pos + POST_SLICE)
 			for i in range(_pos, end):
 				var x := buf[i]
@@ -252,27 +311,26 @@ func _highpass(until: int) -> void:
 				z1 = b1 * x - a1 * y + z2
 				z2 = b2 * x - a2 * y
 				buf[i] = y
+			_z1 = z1
+			_z2 = z2
 			_pos = end
-			if Time.get_ticks_usec() >= until and _pos < frames:
-				_z1 = z1
-				_z2 = z2
-				return
+			_mark(t)
 		_pass += 1
 		_pos = 0
 		_z1 = 0.0
 		_z2 = 0.0
+		_prime_pos = -1
 		_primed = not loop
-		if Time.get_ticks_usec() >= until:
-			return
 	_pos = 0
 	stage = Stage.MEASURE
+	return false
 
 
 ## Peak, and the energy of every eighth of a half-second, for the loudest window.
-func _measure(until: int) -> void:
+func _measure(until: int) -> bool:
 	var w := Synth.samples(rate, 0.5)
 	_hop = maxi(1, w / 8)
-	if _pos == 0:
+	if _pos == 0 and _hops.is_empty():
 		_hops.resize(ceili(float(frames) / _hop))
 		_hops.fill(0.0)
 		raw_peak = 0.0
@@ -281,6 +339,9 @@ func _measure(until: int) -> void:
 	var hops := _hops
 	var hop := _hop
 	while _pos < frames:
+		if not _fits(until):
+			return true
+		var t := Time.get_ticks_usec()
 		var end := mini(frames, _pos + POST_SLICE)
 		var pk := raw_peak
 		for i in range(_pos, end):
@@ -294,8 +355,7 @@ func _measure(until: int) -> void:
 			hops[i / hop] += e
 		raw_peak = pk
 		_pos = end
-		if Time.get_ticks_usec() >= until and _pos < frames:
-			return
+		_mark(t)
 	var best := 0.0
 	if frames <= w:
 		for h in _hops:
@@ -313,18 +373,26 @@ func _measure(until: int) -> void:
 	_hops = PackedFloat64Array()
 	_pos = 0
 	stage = Stage.ENCODE
+	return false
 
 
-func _encode(until: int) -> void:
+func _encode(until: int) -> bool:
 	var channels := 2 if stereo else 1
-	if _pos == 0:
+	if samples.size() != frames * channels:
+		if not _fits(until):
+			return true
+		var t := Time.get_ticks_usec()
 		samples.resize(frames * channels)
 		pcm.resize(frames * channels * 2)
+		_mark(t)
 	var g := norm
 	var fade_from := frames if loop else frames - Synth.samples(rate, 0.05)
 	var left := _left
 	var right := _right
 	while _pos < frames:
+		if not _fits(until):
+			return true
+		var t := Time.get_ticks_usec()
 		var end := mini(frames, _pos + POST_SLICE)
 		for i in range(_pos, end):
 			var gi := g
@@ -341,8 +409,8 @@ func _encode(until: int) -> void:
 				samples[i] = x
 				pcm.encode_s16(i * 2, roundi(clampf(x, -1.0, 1.0) * 32767.0))
 		_pos = end
-		if Time.get_ticks_usec() >= until and _pos < frames:
-			return
+		_mark(t)
 	_left = PackedFloat32Array()
 	_right = PackedFloat32Array()
 	stage = Stage.DONE
+	return false

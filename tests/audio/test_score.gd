@@ -40,6 +40,31 @@ func test_a_stem_is_the_same_however_it_is_sliced_across_frames() -> void:
 		check(whole.raw_peak > 0.01, "it made sound")
 
 
+## The clock is read between units small enough that a frame never waits: a
+## step with no budget left does exactly one (a block of voices, or a slice of
+## the high-pass, its priming, the measure or the encode), however a stem is
+## made. Load-proof, unlike a stopwatch.
+func test_a_step_past_its_budget_does_one_small_unit() -> void:
+	lt(float(ScoreRender.BLOCK), 257.0, "a block of voices is short")
+	lt(float(ScoreRender.POST_SLICE), 2049.0, "a finishing slice is short")
+	var j := _small(true)
+	var post := {}
+	var steps := 0
+	while true:
+		var st := j.stage
+		var fin := j.step(0)
+		check(j.last_units <= 1, "one unit per step with no budget (stage %d did %d)" % [st, j.last_units])
+		post[st] = int(post.get(st, 0)) + 1
+		steps += 1
+		if fin:
+			break
+	var channels := 2
+	# Each high-pass pass primes over PRIME samples of the tail, then runs the loop.
+	var hp_slices := channels * 2 * (ceili(float(mini(ScoreRender.PRIME, j.frames)) / ScoreRender.POST_SLICE) + ceili(float(j.frames) / ScoreRender.POST_SLICE))
+	gt(float(post.get(ScoreRender.Stage.HIGHPASS, 0)), float(hp_slices - 1), "the high-pass and its priming are sliced (%d steps)" % post.get(ScoreRender.Stage.HIGHPASS, 0))
+	gt(float(post.get(ScoreRender.Stage.ENCODE, 0)), float(ceili(float(j.frames) / ScoreRender.POST_SLICE)), "so is the encode")
+
+
 func test_a_loop_runs_seamlessly_into_itself() -> void:
 	var j := _small(true)
 	j.run()
