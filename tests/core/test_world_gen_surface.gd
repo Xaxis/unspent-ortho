@@ -124,7 +124,8 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 
 func test_heath_drapes_across_terraces() -> void:
 	# Heath is drawn from smooth float elevation, not from the integer level:
-	# where a terrace edge crosses heath, the heath carries on over it.
+	# where a terrace edge crosses heath, the heath carries on over it. (About
+	# 0.8 of heath edges carry over; a rule on the level itself gives 0.55.)
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var size := w.size
@@ -144,7 +145,7 @@ func test_heath_drapes_across_terraces() -> void:
 						across += 1.0
 						if hi and hj:
 							both += 1.0
-		gt(both / maxf(1.0, across), 0.6, "seed %d heath carried over terrace edges" % s)
+		gt(both / maxf(1.0, across), 0.7, "seed %d heath carried over terrace edges" % s)
 
 
 func test_pools_are_round_rimmed_and_clear_of_houses() -> void:

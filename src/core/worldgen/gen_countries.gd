@@ -18,6 +18,10 @@ const TARGET: PackedFloat32Array = [0.0, 0.35, 0.13, 0.13, 0.13, 0.13, 0.13]
 ## sample's stride in tiles.
 const BALANCE_PASSES := 3
 const BALANCE_STRIDE := 4
+## A piece of a country cut off inside another and smaller than this (512
+## world) joins the country round it: a blot of ash in the limestone is noise,
+## not a place.
+const ENCLAVE_TILES := 400
 
 ## Relief and climate by country id (sea, coast, moss, pinewood, snowfield,
 ## bonelands, burning). Levels are WorldData levels.
@@ -451,9 +455,67 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
+	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.k * c.k))
+	c.mark(&"tiles.enclaves")
 	if with_blend:
 		_blend(c, widen)
 	c.mark(&"tiles.blend")
+
+
+## Pieces of a country smaller than min_tiles take the land country most
+## common along their edge (islets, with no land neighbours, stay). Runs before
+## the ecotones are measured, so the blend follows the borders that remain.
+static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
+	var size := c.size
+	var country := c.w.country
+	var country2 := c.w.country2
+	var sea := PackedByteArray()
+	sea.resize(c.n)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			sea[i] = 1 if country[i] == Country.SEA else 0
+	)
+	var sizes := PackedInt32Array()
+	var label := GenFields.patches(country, sea, size, sizes)
+	var band := 12
+	var parts: Array[PackedInt32Array] = []
+	parts.resize(ceili(float(size) / band))
+	GenFields.rows(size - 1, func(y0: int, y1: int) -> void:
+		var found := PackedInt32Array()
+		for y in range(maxi(y0, 1), y1):
+			for x in range(1, size - 1):
+				var i := y * size + x
+				var la := label[i]
+				if la >= 0 and sizes[la] < min_tiles:
+					found.append(i)
+		parts[y0 / band] = found
+	, band)
+	var votes := {}
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			var v: PackedInt32Array = votes.get(la, PackedInt32Array())
+			if v.is_empty():
+				v.resize(Country.COUNT)
+			for j: int in [i - 1, i + 1, i - size, i + size]:
+				if label[j] >= 0 and label[j] != la:
+					v[country[j]] += 1
+			votes[la] = v
+	var winner := {}
+	for la: int in votes:
+		var v: PackedInt32Array = votes[la]
+		var best := 0
+		for cc in range(1, Country.COUNT):
+			if v[cc] > v[best]:
+				best = cc
+		if best > 0:
+			winner[la] = best
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			if winner.has(la):
+				country2[i] = country[i]
+				country[i] = winner[la]
 
 
 ## blend from the true distance to the nearest border, so 0.5 on the border

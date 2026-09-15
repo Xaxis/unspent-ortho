@@ -37,7 +37,7 @@ var roads: Array[PackedVector2Array] = []
 ## of prop ids in stringing order}. Cables run between consecutive ids.
 var lines: Array[Dictionary] = []
 ## Places worth walking to: {kind: StringName, pos: Vector2, country: int}.
-## Kinds: tip, stone_circle, wreck, ruin, summit, caldera; and for renderers
+## Kinds: tip, stone_circle, wreck, ruin, summit, caldera, fumarole; and for renderers
 ## and sound, bridge (a road over a river; `dir` runs along the road) and
 ## falls (a river's bed steps down a level; `dir` runs downstream).
 var landmarks: Array[Dictionary] = []

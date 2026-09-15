@@ -186,6 +186,10 @@ static func run(c: GenContext) -> void:
 					if c2 == BURNING:
 						# Ash drifts out thin, and thinner with every tile from the rim.
 						pb = bl * near * 0.28
+					elif own == BURNING:
+						# Little that is not burnt survives inside the rim: the
+						# neighbour's ground reaches in only near the border.
+						pb = bl * near * 0.7
 					elif c2 == SNOWFIELD:
 						# Snow creeps down only the high ground, and only as far as
 						# the ecotone reaches: tongues down the ridges.
