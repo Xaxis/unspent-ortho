@@ -123,9 +123,13 @@ func build() -> void:
 		var dir := Vector3(cos(a), sin(a), 0)
 		var tan := Vector3(-sin(a), cos(a), 0)
 		var tooth: Array[Vector2] = [Vector2(-0.07, 0.0), Vector2(0.05, 0.0), Vector2(0.02, 0.1), Vector2(-0.02, 0.09)]
-		# One tooth came off another machine's disc.
-		var tooth_r: Array = [R[3], R[3], R[4], R[4], R[5], R[5]] if j != 5 else FoundKit.dirty(Palette.MACHINE["runner"], 1)
-		FoundKit.slab(dk, dir * (DISC_R - 0.02), tan, dir, tooth, 0.05, tooth_r)
+		if j == 5:
+			# One tooth came off another machine's disc: wear, like any patch.
+			var tw := FoundKit.kit()
+			FoundKit.slab(tw, dir * (DISC_R - 0.02), tan, dir, tooth, 0.05, FoundKit.dirty(Palette.MACHINE["runner"], 1))
+			wear_mesh(tw, disc)
+		else:
+			FoundKit.slab(dk, dir * (DISC_R - 0.02), tan, dir, tooth, 0.05, [R[3], R[3], R[4], R[4], R[5], R[5]])
 		for sz: float in [-1.0, 1.0]:
 			var mid := Vector3(cos(a + PI / 8.0), sin(a + PI / 8.0), 0)
 			FoundKit.mark(dk, mid * 0.34 + Vector3(0, 0, sz * 0.016), Vector3.BACK * sz, mid, 0.03, 0.3, R[2], 0.002)
