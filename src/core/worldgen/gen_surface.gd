@@ -330,6 +330,13 @@ static func run(c: GenContext) -> void:
 					if own != BURNING and g != Ground.SCREE:
 						# Only the ash travels.
 						g = Ground.ASH
+				if cc != own and bl < 0.32 and not shore and not rim:
+					# Out in the far half of an ecotone the neighbour arrives as its
+					# plain wash first; its dark and broken grounds (peat hags, mud,
+					# heath, scree) only come in toward the border, so the land turns
+					# by degrees instead of wearing blotches of the next country.
+					if g == Ground.PEAT or g == Ground.MUD or g == Ground.HEATH or g == Ground.SCREE or g == Ground.ROCK or g == Ground.GRAVEL:
+						g = _plain_ground(cc)
 				var td := tended[i]
 				if td > 0.0 and not shore and td > 0.45 + patch[i] * 0.6:
 					# Round a village the wild grounds give way to grazing, raggedly.
@@ -342,6 +349,17 @@ static func run(c: GenContext) -> void:
 	c.mark(&"surface.tiles")
 	GenTidy.run(c, fixed)
 	c.mark(&"surface.tidy")
+
+
+## A country's plainest ground: what its wash is where nothing breaks it.
+static func _plain_ground(cc: int) -> int:
+	match cc:
+		Country.MOSS: return Ground.MOSS
+		Country.PINEWOOD: return Ground.NEEDLES
+		Country.SNOWFIELD: return Ground.SNOW
+		Country.BONELANDS: return Ground.LIMESTONE
+		Country.BURNING: return Ground.ASH
+	return Ground.GRASS
 
 
 ## Bilinear sample of the polar flow grid at an offset from the caldera's heart.
