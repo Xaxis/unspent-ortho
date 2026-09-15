@@ -99,3 +99,24 @@ func test_map_data_builds_textures() -> void:
 	eq(data.ground.get_width(), 32)
 	eq(data.level.get_image().get_pixel(16, 16).r8, 2, "level in the red channel")
 	eq(data.palette.get_width(), 32)
+
+
+func test_the_map_opens_on_everything_seen() -> void:
+	var e := UiExplored.new(256)
+	eq(e.bounds.size, Vector2i.ZERO, "nothing seen, no bounds")
+	e.visit(Vector2(40.5, 40.5))
+	e.visit(Vector2(40.5, 130.5))
+	check(e.bounds.has_point(Vector2i(30, 30)) and e.bounds.has_point(Vector2i(50, 140)), "bounds hold both walks: %s" % e.bounds)
+	var window := UiMapScreen.MAP_RECT.size
+	var f := UiMapScreen.fit(e.bounds, Vector2(40.5, 130.5), window, UiMapScreen.SCALES)
+	eq(f.scale, 2, "a hundred tiles of height fit at 2 px a tile, not 3")
+	near((f.centre as Vector2).y, 85.5, 1.0, "centred on the land seen")
+	var small := UiExplored.new(256)
+	small.visit(Vector2(10.5, 10.5))
+	eq(UiMapScreen.fit(small.bounds, Vector2(10.5, 10.5), window, UiMapScreen.SCALES).scale, 3, "a little seen is drawn large")
+	var huge := Rect2i(0, 0, 256, 256)
+	var hf := UiMapScreen.fit(huge, Vector2(250.0, 250.0), window, UiMapScreen.SCALES)
+	eq(hf.scale, 1)
+	var reach: Vector2 = Vector2(window) * 0.5 / float(hf.scale)
+	var off: Vector2 = ((hf.centre as Vector2) - Vector2(250, 250)).abs()
+	check(off.x < reach.x and off.y < reach.y, "the player stays on the page")

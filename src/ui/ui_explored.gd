@@ -17,6 +17,8 @@ const TRAIL_MAX := 30000
 var size: int
 var mask := PackedByteArray()
 var trail := PackedVector2Array()
+## Tiles seen at all, as a bounding box; zero size until something is seen.
+var bounds := Rect2i()
 var _last := Vector2i(-1000000, -1000000)
 
 
@@ -70,6 +72,8 @@ func reveal(c: Vector2i, r: int) -> void:
 			var v := 255 if d <= r else int(255.0 * (outer - d) / RIM)
 			if v > mask[row + x]:
 				mask[row + x] = v
+	var disc := Rect2i(c.x - r, c.y - r, r * 2 + 1, r * 2 + 1).intersection(Rect2i(0, 0, size, size))
+	bounds = disc if bounds.size == Vector2i.ZERO else bounds.merge(disc)
 
 
 ## Share of the world's tiles seen, 0..1.

@@ -8,6 +8,7 @@ extends RefCounted
 ##                  for sea, how far to land (ripple lines); for land, to sea
 ##   marks    L8     what stands on a tile, for map symbols (MARK_*)
 ##   palette  RGBA8  32x1 wash colour per ground id
+##   country  RGBA8  country in R, the ecotone's other country in G, its weight in B
 
 const MARK_NONE := 0
 const MARK_CONIFER := 1
@@ -26,6 +27,7 @@ var level: ImageTexture
 var coast: ImageTexture
 var marks: ImageTexture
 var palette: ImageTexture
+var country: ImageTexture
 var ready := false
 var build_ms := 0
 
@@ -71,6 +73,7 @@ func _finish_textures() -> void:
 	coast = ImageTexture.create_from_image(_images.coast)
 	marks = ImageTexture.create_from_image(_images.marks)
 	palette = ImageTexture.create_from_image(_images.palette)
+	country = ImageTexture.create_from_image(_images.country)
 	_images.clear()
 	ready = true
 
@@ -82,11 +85,26 @@ func _build_images() -> void:
 	_images.level = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, world.level.to_byte_array())
 	_images.coast = Image.create_from_data(n, n, false, Image.FORMAT_L8, shore_distance(world))
 	_images.marks = Image.create_from_data(n, n, false, Image.FORMAT_L8, mark_bytes(world))
+	_images.country = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, country_bytes(world))
 	var pal := Image.create_empty(32, 1, false, Image.FORMAT_RGBA8)
 	for g in Ground.COUNT:
 		pal.set_pixel(g, 0, GroundColors.top(g, 1))
 	_images.palette = pal
 	build_ms = Time.get_ticks_msec() - t0
+
+
+## Country, ecotone neighbour and blend weight per tile, four bytes each.
+static func country_bytes(w: WorldData) -> PackedByteArray:
+	var n := w.size * w.size
+	var out := PackedByteArray()
+	out.resize(n * 4)
+	var has2 := w.country2.size() == n and w.blend.size() == n
+	for i in n:
+		out[i * 4] = w.country[i]
+		out[i * 4 + 1] = w.country2[i] if has2 else w.country[i]
+		out[i * 4 + 2] = clampi(roundi(w.blend[i] * 255.0), 0, 255) if has2 else 0
+		out[i * 4 + 3] = 255
+	return out
 
 
 ## Octagonal chamfer distance across the shoreline, in 1/16 tiles, capped at 255.

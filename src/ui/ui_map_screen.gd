@@ -16,6 +16,8 @@ var map_scale := 2
 var origin_px := Vector2i.ZERO
 
 var _rect: ColorRect
+## The map is drawn once into this each time it moves, not every frame.
+var _viewport: SubViewport
 var _overlay: Control
 var _material: ShaderMaterial
 var _seen_tex: ImageTexture
@@ -28,13 +30,27 @@ func _init() -> void:
 	own_action = &"map"
 	_material = ShaderMaterial.new()
 	_material.shader = preload("res://src/ui/map.gdshader")
+	_viewport = SubViewport.new()
+	_viewport.name = "sheet"
+	_viewport.size = MAP_RECT.size
+	_viewport.transparent_bg = true
+	_viewport.disable_3d = true
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_viewport)
 	_rect = ColorRect.new()
 	_rect.name = "map"
-	_rect.position = Vector2(MAP_RECT.position)
 	_rect.size = Vector2(MAP_RECT.size)
 	_rect.material = _material
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_rect)
+	_viewport.add_child(_rect)
+	var shown := TextureRect.new()
+	shown.name = "shown"
+	shown.position = Vector2(MAP_RECT.position)
+	shown.size = Vector2(MAP_RECT.size)
+	shown.texture = _viewport.get_texture()
+	shown.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shown)
 	_overlay = Control.new()
 	_overlay.name = "marks"
 	_overlay.size = Vector2(640, 360)
@@ -57,52 +73,89 @@ func _on_open() -> void:
 	_material.set_shader_parameter("coast_tex", data.coast)
 	_material.set_shader_parameter("marks_tex", data.marks)
 	_material.set_shader_parameter("palette_tex", data.palette)
+	_material.set_shader_parameter("country_tex", data.country)
 	_material.set_shader_parameter("seen_tex", _seen_tex)
 	_material.set_shader_parameter("rect_size", Vector2(MAP_RECT.size))
 	_material.set_shader_parameter("world_size", float(game.world.size))
 	_regions = UiMapScreen.region_labels(game.world, explored)
-	centre_on(game.player.pos)
+	var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, SCALES)
+	map_scale = f.scale
+	centre_on(f.centre)
 
 
-## Where to letter each country the player has seen enough of: the middle of
-## its seen tiles. [{text, at: Vector2}]
+## The scale and centre that show the land seen so far: the largest scale at
+## which all of it fits the window, centred on it, but never with the player
+## off the page. {scale: int, centre: Vector2 (tiles)}
+static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[int]) -> Dictionary:
+	const MARGIN := 24
+	# A little land running off the page is better than all of it drawn too small.
+	const OVERFLOW := 1.3
+	var s := scales[0]
+	for k in scales:
+		if seen.size.x * k <= (window.x - MARGIN * 2) * OVERFLOW and seen.size.y * k <= (window.y - MARGIN * 2) * OVERFLOW:
+			s = maxi(s, k)
+	var centre := Vector2(seen.get_center()) if seen.size != Vector2i.ZERO else player
+	var reach := (Vector2(window) * 0.5 - Vector2(MARGIN, MARGIN)) / s
+	centre = centre.clamp(player - reach, player + reach)
+	return {"scale": s, "centre": centre}
+
+
+## Where to letter each country the player has seen enough of: the seen tile
+## of that country deepest inside it (most of its neighbourhood the same
+## country), so a name sits over its own land rather than a neighbour's.
+## [{text, at: Vector2, country, seen}]
 static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
-	const STEP := 3
+	const STEP := 4
 	const ENOUGH := 120 # seen tiles before a country is worth naming
-	var sums := {}
-	for y in range(0, w.size, STEP):
-		for x in range(0, w.size, STEP):
-			if not seen.seen(x, y) or w.level_at(x, y) <= 0:
+	const REACH := 2 # neighbourhood, in coarse cells
+	var n := ceili(w.size / float(STEP))
+	var cells := PackedInt32Array()
+	cells.resize(n * n)
+	var counts := {}
+	for cy in n:
+		for cx in n:
+			var x := cx * STEP + STEP / 2
+			var y := cy * STEP + STEP / 2
+			var c := -1
+			if x < w.size and y < w.size and seen.seen(x, y) and w.level_at(x, y) > 0:
+				c = w.country_at(x, y)
+				counts[c] = int(counts.get(c, 0)) + 1
+			cells[cy * n + cx] = c
+	var best := {}
+	for cy in n:
+		for cx in n:
+			var c := cells[cy * n + cx]
+			if c < 0 or int(counts[c]) * STEP * STEP < ENOUGH:
 				continue
-			var c := w.country_at(x, y)
-			if not sums.has(c):
-				sums[c] = [Vector2.ZERO, 0]
-			sums[c][0] += Vector2(x, y)
-			sums[c][1] += 1
+			var score := 0
+			for dy in range(-REACH, REACH + 1):
+				for dx in range(-REACH, REACH + 1):
+					var qx := cx + dx
+					var qy := cy + dy
+					if qx >= 0 and qy >= 0 and qx < n and qy < n and cells[qy * n + qx] == c:
+						score += 1
+			if not best.has(c) or score > int(best[c][0]):
+				best[c] = [score, Vector2(cx * STEP + STEP / 2.0, cy * STEP + STEP / 2.0)]
 	var out: Array[Dictionary] = []
-	for c: int in sums:
-		var n: int = sums[c][1]
-		if n * STEP * STEP < ENOUGH:
-			continue
+	for c: int in best:
 		var name := String(Country.NAMES[c]).to_upper()
 		var spaced := ""
 		for i in name.length():
 			spaced += (" " if i > 0 else "") + name[i]
-		out.append({"text": spaced, "at": (sums[c][0] as Vector2) / n, "country": c, "seen": n})
+		out.append({"text": spaced, "at": best[c][1], "country": c, "seen": int(counts[c]) * STEP * STEP})
 	# The country seen most is lettered first; a crowded label gives way to it.
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.seen > b.seen)
 	return out
 
 
-## Put tile-space point `p` in the middle of the right-hand page, clear of the fold.
+## Put tile-space point `p` in the middle of the map's window.
 func centre_on(p: Vector2) -> void:
 	origin_px = Vector2i(roundi(p.x * map_scale), roundi(p.y * map_scale)) - _anchor()
 	_apply()
 
 
-## The window pixel the map centres on: the middle of the right-hand page.
 func _anchor() -> Vector2i:
-	return Vector2i((UiNotebook.RIGHT.position.x + UiNotebook.RIGHT.end.x) / 2, MAP_RECT.position.y + MAP_RECT.size.y / 2) - MAP_RECT.position
+	return MAP_RECT.size / 2
 
 
 func handle(action: StringName) -> bool:
@@ -145,6 +198,7 @@ func _apply() -> void:
 		origin_px.y = clampi(origin_px.y, -half.y, maxi(-half.y, world_px - half.y))
 	_material.set_shader_parameter("origin_px", Vector2(origin_px))
 	_material.set_shader_parameter("scale", float(map_scale))
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	queue_redraw()
 	_overlay.queue_redraw()
 
@@ -186,20 +240,43 @@ func _draw_overlay() -> void:
 		return
 	var me := to_screen(game.player.pos)
 	var me_rect := Rect2i(me.x - 6, me.y - 6, 13, 13)
-	# Countries, lettered across the land they cover, spaced out like a region on a chart.
-	var placed: Array[Rect2i] = []
+	# Villages first, so a country's name gives way to a village's, not over it.
+	var placed: Array[Rect2i] = [me_rect.grow(2)]
+	var villages: Array[Dictionary] = []
+	for v in game.world.villages:
+		var vp: Vector2 = v.pos
+		if explored == null or not explored.seen(floori(vp.x), floori(vp.y)):
+			continue
+		var s := to_screen(vp)
+		if not r.grow(-4).has_point(s):
+			continue
+		var name := String(v.name).to_lower()
+		var w := UiFont.width(name)
+		var tx := clampi(s.x - w / 2, r.position.x + 2, r.end.x - w - 2)
+		var ty := s.y + 6
+		if ty + 10 > r.end.y or Rect2i(tx - 2, ty - 1, w + 4, 11).intersects(me_rect):
+			ty = s.y - 16
+		var box := Rect2i(tx - 2, ty - 1, w + 4, 11)
+		placed.append(box.grow(2))
+		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
+		villages.append({"at": s, "name": name, "box": box})
+	# Countries, lettered across the land they cover, spaced out like a region on a
+	# chart; nudged up or down a line if something is in the way, else left out.
 	for label: Dictionary in _regions:
 		var s := to_screen(label.at)
 		var text: String = label.text
 		var w := UiFont.width(text)
-		var at := Vector2i(s.x - w / 2, s.y - 5)
-		var box := Rect2i(at, Vector2i(w, 10)).grow(3)
-		if placed.any(func(o: Rect2i) -> bool: return o.intersects(box)):
-			continue
-		placed.append(box)
-		if r.grow(-6).encloses(Rect2i(at, Vector2i(w, 10))):
-			UiDraw.text(ci, at + Vector2i(1, 1), text, Color(UiTheme.PAPER, 0.7))
-			UiDraw.text(ci, at, text, Color(Palette.EARTH[2], 0.85))
+		for dy: int in [0, -12, 12, -24, 24]:
+			var at := Vector2i(s.x - w / 2, s.y - 5 + dy)
+			var box := Rect2i(at, Vector2i(w, 10)).grow(3)
+			if not r.grow(-6).encloses(Rect2i(at, Vector2i(w, 10))):
+				continue
+			if placed.any(func(o: Rect2i) -> bool: return o.intersects(box)):
+				continue
+			placed.append(box)
+			# Lettered with a paper halo, the way a chart keeps a name readable over detail.
+			UiDraw.text_rimmed(ci, at, text, Palette.EARTH[2], Color(UiTheme.PAPER, 0.8))
+			break
 	# The way the player came, dotted in the accent, fading toward the start.
 	if explored != null:
 		var n := explored.trail.size()
@@ -225,21 +302,11 @@ func _draw_overlay() -> void:
 				if inner.has_point(p):
 					UiDraw.px(ci, p.x, p.y, col)
 	# Villages the player has seen: a house mark and the name, lettered on a clearing.
-	for v in game.world.villages:
-		var vp: Vector2 = v.pos
-		if explored == null or not explored.seen(floori(vp.x), floori(vp.y)):
-			continue
-		var s := to_screen(vp)
-		if not r.grow(-4).has_point(s):
-			continue
-		var name := String(v.name).to_lower()
-		var w := UiFont.width(name)
-		var tx := clampi(s.x - w / 2, r.position.x + 2, r.end.x - w - 2)
-		var ty := s.y + 6
-		if ty + 10 > r.end.y or Rect2i(tx - 2, ty - 1, w + 4, 11).intersects(me_rect):
-			ty = s.y - 16
-		UiDraw.rect(ci, Rect2i(tx - 2, ty - 1, w + 4, 11), Color(UiTheme.PAPER, 0.85))
-		UiDraw.text(ci, Vector2i(tx, ty), name, UiTheme.INK)
+	for v: Dictionary in villages:
+		var s: Vector2i = v.at
+		var box: Rect2i = v.box
+		UiDraw.rect(ci, box, Color(UiTheme.PAPER, 0.85))
+		UiDraw.text(ci, box.position + Vector2i(2, 1), v.name, UiTheme.INK)
 		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), UiTheme.PAPER)
 		UiDraw.frame(ci, Rect2i(s.x - 2, s.y - 2, 5, 5), UiTheme.INK)
 		UiDraw.px(ci, s.x, s.y, UiTheme.ACCENT)

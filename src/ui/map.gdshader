@@ -1,13 +1,18 @@
-// The notebook map: explored land painted in ink and wash on the page.
-// Every value is computed per SCREEN pixel from integer coordinates, so the map
-// is crisp at any whole-number scale and pans a pixel at a time.
-//   sea      pale brine wash; ripple lines that follow the shore outward
-//   land     ground colour thinned toward the paper; contour at every level
-//            change, heavier at cliffs; coast line in ink
+// The notebook map: explored land inked and washed onto the page, in the same
+// hands the world is drawn in (docs/ART.md). Every value is computed per MAP
+// pixel from integer coordinates, so the map is crisp at any whole scale and
+// its hatching belongs to the land, moving with it when the map is panned.
+//   sea      a chart: depth bands washed paler to darker, each band edge inked,
+//            ripple lines hugging the shore, a few wave ticks far out
+//   land     ground wash thinned toward the paper; each country's own hatch hand
+//            laid lightly over it and heavily on slopes turned from the light;
+//            a contour every second level, heavier at cliffs; coast in ink
 //   marks    little drawn trees, rocks, reeds, houses, on a hand-jittered grid
 //   unseen   bare paper; the edge of the known is a ragged pencil fade
 shader_type canvas_item;
 render_mode unshaded;
+
+#include "res://src/render/ink.gdshaderinc"
 
 uniform sampler2D ground_tex : filter_nearest;
 uniform sampler2D level_tex : filter_nearest;
@@ -15,6 +20,7 @@ uniform sampler2D coast_tex : filter_nearest;
 uniform sampler2D marks_tex : filter_nearest;
 uniform sampler2D seen_tex : filter_nearest;
 uniform sampler2D palette_tex : filter_nearest;
+uniform sampler2D country_tex : filter_nearest;
 uniform vec2 rect_size = vec2(580.0, 290.0);
 // Map pixel (in tile * scale units) at the rect's top-left pixel.
 uniform vec2 origin_px = vec2(0.0);
@@ -27,6 +33,7 @@ const vec3 SEPIA = vec3(0.3098, 0.2118, 0.1529);
 const vec3 BRINE = vec3(0.1686, 0.3882, 0.5373);
 const vec3 BRINE_PALE = vec3(0.2627, 0.5725, 0.6902);
 const vec3 GREEN_INK = vec3(0.1137, 0.2353, 0.2549);
+const vec3 HATCH_INK = vec3(0.1843, 0.1725, 0.2706);
 
 float hash(vec2 p) {
 	p = fract(p * vec2(443.897, 441.423));
@@ -86,8 +93,81 @@ float seen_smooth(vec2 tp) {
 	return mix(mix(a, c, f.x), mix(d, e, f.x), f.y);
 }
 
+// Distance across the shore, signed: positive on land, negative at sea. Its zero
+// crossing, interpolated, is a coast that curves instead of stepping by tiles.
+float shore_at(ivec2 t) {
+	float d = coast_at(t);
+	return level_at(t) > 0 ? d : -d;
+}
+
+float shore_smooth(vec2 tp) {
+	vec2 q = tp - 0.5;
+	ivec2 b = ivec2(floor(q));
+	vec2 f = q - vec2(b);
+	float a = shore_at(b), c = shore_at(b + ivec2(1, 0));
+	float d = shore_at(b + ivec2(0, 1)), e = shore_at(b + ivec2(1, 1));
+	return mix(mix(a, c, f.x), mix(d, e, f.x), f.y);
+}
+
+float level_smooth(vec2 tp) {
+	vec2 q = tp - 0.5;
+	ivec2 b = ivec2(floor(q));
+	vec2 f = q - vec2(b);
+	float a = float(max(level_at(b), 0)), c = float(max(level_at(b + ivec2(1, 0)), 0));
+	float d = float(max(level_at(b + ivec2(0, 1)), 0)), e = float(max(level_at(b + ivec2(1, 1)), 0));
+	return mix(mix(a, c, f.x), mix(d, e, f.x), f.y);
+}
+
+float level_soft(vec2 tp) {
+	return (level_smooth(tp) * 2.0 + level_smooth(tp + vec2(0.75, 0.75)) + level_smooth(tp + vec2(-0.75, 0.75))
+		+ level_smooth(tp + vec2(0.75, -0.75)) + level_smooth(tp + vec2(-0.75, -0.75))) / 6.0;
+}
+
+// Tile fields are integer steps; drawn straight they are a staircase, which is
+// the tile grid on the page. Five bilinear taps a tile apart round every step
+// into a curve before a line is drawn along it.
+float shore_soft(vec2 tp) {
+	return (shore_smooth(tp) * 2.0 + shore_smooth(tp + vec2(0.75, 0.75)) + shore_smooth(tp + vec2(-0.75, 0.75))
+		+ shore_smooth(tp + vec2(0.75, -0.75)) + shore_smooth(tp + vec2(-0.75, -0.75))) / 6.0;
+}
+
+// The tile whose ground shows at a point: jittered by slow noise so grounds
+// meet on ragged, wandering edges rather than along the tile grid.
+ivec2 ground_tile(vec2 mp, vec2 tp) {
+	vec2 slow = vec2(ink_vnoise(tp * 0.8), ink_vnoise(tp * 0.8 + vec2(19.0, 7.0))) - 0.5;
+	vec2 fringe = vec2(hash(mp), hash(mp + vec2(3.3, 8.1))) - 0.5;
+	return ivec2(floor(tp + slow * 1.6 + fringe * 0.7));
+}
+
+// The land's elevation in levels, the way the terrain mesher builds it: tile
+// levels between tile centres, softened, and warped a little where the height
+// changes, so the map's contours are the world's terrace edges.
+float land_field(vec2 tp) {
+	float v = level_soft(tp);
+	vec2 q = tp - 0.5;
+	ivec2 b = ivec2(floor(q));
+	int lo = min(min(level_at(b), level_at(b + ivec2(1, 0))), min(level_at(b + ivec2(0, 1)), level_at(b + ivec2(1, 1))));
+	int hi = max(max(level_at(b), level_at(b + ivec2(1, 0))), max(level_at(b + ivec2(0, 1)), level_at(b + ivec2(1, 1))));
+	if (hi != lo) {
+		v += (ink_vnoise(tp * 1.15) - 0.5) * 0.64;
+	}
+	return v;
+}
+
+// The country's hatch hand at a tile, dithered across an ecotone as the world does.
+int hand_at(ivec2 t, vec2 mp) {
+	vec4 c = texelFetch(country_tex, clamp_tile(t), 0);
+	int c1 = int(c.r * 255.0 + 0.5);
+	int c2 = int(c.g * 255.0 + 0.5);
+	return ink_hash(mp + vec2(17.0, 91.0)) < c.b ? c2 : c1;
+}
+
 bool is_inland_water(int g) {
 	return g == 1 || g == 20 || g == 22; // WATER, BLACKWATER, RIVER
+}
+
+int sea_band(float d) {
+	return d < 2.6 ? 0 : (d < 7.0 ? 1 : 2);
 }
 
 // 5x5 symbols: bit (row * 5 + column), row 0 at the top.
@@ -125,53 +205,77 @@ void fragment() {
 
 	if (known > 0.5) {
 		alpha = 1.0;
-		int lv = level_at(t);
-		int g = ground_at(t);
-		ivec2 tr = ivec2(floor((mp + vec2(1.0, 0.0) + 0.5) / scale));
-		ivec2 tb = ivec2(floor((mp + vec2(0.0, 1.0) + 0.5) / scale));
-		ivec2 tl = ivec2(floor((mp + vec2(-1.0, 0.0) + 0.5) / scale));
-		ivec2 tt = ivec2(floor((mp + vec2(0.0, -1.0) + 0.5) / scale));
-		if (lv <= 0) {
-			float d = coast_smooth(tp);
-			col = mix(PAPER, BRINE_PALE, 0.16 + 0.14 * clamp(d / 12.0, 0.0, 1.0));
-			// Ripple lines hugging the shore, thinning and fading outward.
+		float shore = shore_soft(tp);
+		float lv = land_field(tp);
+		// Terrace 1 and up is land, as in the world.
+		bool land = lv >= 0.5;
+		if (!land) {
+			float d = max(-shore, 0.0);
+			int band = sea_band(d);
+			col = mix(PAPER, BRINE_PALE, 0.13 + 0.09 * float(band));
+			// Each depth band's edge inked, the way a chart draws soundings.
+			float dr = -shore_soft((mp + vec2(1.0, 0.0) + 0.5) / scale);
+			float db = -shore_soft((mp + vec2(0.0, 1.0) + 0.5) / scale);
+			if (band > 0 && (sea_band(dr) != band || sea_band(db) != band)) {
+				col = mix(col, BRINE, 0.42);
+			}
+			// Two ripple lines hugging the shore, the outer one broken.
 			float px_w = 0.75 / scale;
-			for (int k = 0; k < 4; k++) {
-				float at = 1.1 + float(k) * (1.4 + float(k) * 0.55);
-				if (abs(d - at) < px_w) {
-					float a = 0.55 - float(k) * 0.12;
-					// Broken strokes, the way a pen skips.
-					if (hash(floor(mp / (4.0 + float(k)))) > 0.18 + float(k) * 0.1) {
-						col = mix(col, BRINE, a);
-					}
+			for (int k = 0; k < 2; k++) {
+				float at = 0.7 + float(k) * 0.9;
+				if (abs(d - at) < px_w && hash(floor(mp / (3.0 + float(k) * 2.0))) > 0.12 + float(k) * 0.25) {
+					col = mix(col, BRINE, 0.6 - float(k) * 0.2);
+				}
+			}
+			// Wave ticks well out: a short dash in some cells of a loose grid.
+			if (band == 2) {
+				vec2 cell = floor(mp / vec2(11.0, 7.0));
+				vec2 o = floor(vec2(hash(cell + 1.3), hash(cell + 5.1)) * vec2(7.0, 5.0));
+				vec2 l = mp - cell * vec2(11.0, 7.0) - o;
+				if (hash(cell + 9.7) < 0.3 && l.y == 0.0 && l.x >= 0.0 && l.x < 3.0) {
+					col = mix(col, BRINE, 0.5);
 				}
 			}
 		} else {
+			ivec2 gt = ground_tile(mp, tp);
+			int g = ground_at(gt);
 			vec3 wash = texelFetch(palette_tex, ivec2(g, 0), 0).rgb;
-			col = mix(PAPER, wash, 0.52);
-			// Height as a soft darkening, so hills read before the contours do.
-			col *= 1.0 - float(clamp(lv - 1, 0, 12)) * 0.012;
+			col = mix(PAPER, wash, 0.5);
+			float lr = land_field((mp + vec2(1.0, 0.0) + 0.5) / scale);
+			float lb = land_field((mp + vec2(0.0, 1.0) + 0.5) / scale);
+			float ll = land_field((mp + vec2(-1.0, 0.0) + 0.5) / scale);
+			float lt = land_field((mp + vec2(0.0, -1.0) + 0.5) / scale);
 			if (is_inland_water(g)) {
 				col = mix(PAPER, BRINE_PALE, 0.42);
+				int gr = ground_at(ground_tile(mp + vec2(1.0, 0.0), (mp + vec2(1.5, 0.5)) / scale));
+				int gb = ground_at(ground_tile(mp + vec2(0.0, 1.0), (mp + vec2(0.5, 1.5)) / scale));
+				if (!is_inland_water(gr) || !is_inland_water(gb)) {
+					col = mix(col, BRINE, 0.75);
+				}
+			} else {
+				// The country's hand: laid faintly on all its land, and heavily where
+				// the ground turns away from the light (north-west).
+				float slope = level_soft(tp + vec2(-0.8, -0.8)) - level_soft(tp + vec2(0.8, 0.8));
+				float depth = clamp(slope * 0.45, 0.0, 1.0);
+				float ink = hatch(hand_at(gt, mp), mp, depth);
+				if (ink > 0.5) {
+					col = mix(col, HATCH_INK, depth > 0.2 ? 0.28 + 0.3 * depth : 0.1);
+				}
+				if (g == 11 && mod(mp.x + mp.y, 4.0) < 2.0) {
+					// Roads: a dashed pen line.
+					col = mix(col, SEPIA, 0.55);
+				}
 			}
-			int lr = level_at(tr);
-			int lb = level_at(tb);
-			int step_r = lv - lr;
-			int step_b = lv - lb;
-			bool sea_next = lr <= 0 || lb <= 0 || level_at(tl) <= 0 || level_at(tt) <= 0;
-			if (sea_next) {
+			float steep = (abs(lr - lv) + abs(lb - lv)) * scale;
+			float tv = floor(lv + 0.5);
+			if (lr < 0.5 || lb < 0.5 || ll < 0.5 || lt < 0.5) {
 				col = INK;
-			} else if (abs(step_r) >= 2 || abs(step_b) >= 2) {
+			} else if (steep > 1.4 && (tv != floor(lr + 0.5) || tv != floor(lb + 0.5))) {
 				// A cliff: a hard ink line.
 				col = mix(col, INK, 0.78);
-			} else if ((lv / 2 != lr / 2) || (lv / 2 != lb / 2)) {
-				// A contour every second level, in brown ink, so hills read without clutter.
+			} else if (floor((lv + 0.5) / 2.0) != floor((lr + 0.5) / 2.0) || floor((lv + 0.5) / 2.0) != floor((lb + 0.5) / 2.0)) {
+				// A contour every second terrace, in brown ink, so hills read without clutter.
 				col = mix(col, SEPIA, 0.38);
-			} else if (is_inland_water(g) && (!is_inland_water(ground_at(tr)) || !is_inland_water(ground_at(tb)) || !is_inland_water(ground_at(tl)) || !is_inland_water(ground_at(tt)))) {
-				col = mix(col, BRINE, 0.75);
-			} else if (g == 11) {
-				// Roads: a dashed pen line.
-				if (mod(mp.x + mp.y, 4.0) < 2.0) col = mix(col, SEPIA, 0.55);
 			}
 		}
 		// Symbols on a 6 px grid, each nudged by hand.
@@ -185,7 +289,7 @@ void fragment() {
 			int n = max(max(mark_at(ct + ivec2(1, 0)), mark_at(ct + ivec2(-1, 0))), max(mark_at(ct + ivec2(0, 1)), mark_at(ct + ivec2(0, -1))));
 			m = (n == 1 || n == 2) ? n : 0;
 		}
-		if (m > 0 && level_at(ct) > 0 && glyph(m, local)) {
+		if (m > 0 && land && glyph(m, local)) {
 			col = mix(col, mark_colour(m), m == 5 ? 0.95 : 0.75);
 		}
 		// Near the edge of what is known, the wash thins into the page.
