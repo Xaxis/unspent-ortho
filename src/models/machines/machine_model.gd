@@ -149,6 +149,9 @@ func set_part_anchor(parent: Node3D, pos: Vector3, glow_size: float = 0.7) -> vo
 	_glow.mesh = q
 	_glow_mat = ShaderMaterial.new()
 	_glow_mat.shader = preload("res://src/models/machines/part_glow.gdshader")
+	# After the screen-space outline, which redraws the frame from a copy taken
+	# before transparent geometry; and a light has no ink round it anyway.
+	_glow_mat.render_priority = 10
 	_glow.material_override = _glow_mat
 	_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_glow.position = part_normal * 0.06
@@ -366,13 +369,35 @@ func _apply_light(delta: float) -> void:
 			if pm[0] is MeshInstance3D:
 				(pm[0] as MeshInstance3D).mesh = pm[1] if shown > 0.0 else pm[2]
 		_shown_light = shown
-	part_material.set_shader_parameter("emission_strength", (emission * _light_scale() + _flare * 2.5) * shown * _dim)
-	cold_material.set_shader_parameter("emission_strength", 0.25 * shown)
+	# Emission tops the part up to its own colour however dark the sky is: by day
+	# the sun already lights it, by night the light is all its own.
+	var dark := darkness()
+	var glow := emission * (0.55 + 3.2 * dark)
+	part_material.set_shader_parameter("emission_strength", (glow * _light_scale() + _flare * 2.5) * shown * _dim)
+	cold_material.set_shader_parameter("emission_strength", (0.2 + 0.6 * dark) * shown)
 	if _glow != null:
 		_glow.visible = shown > 0.0
 		_glow_mat.set_shader_parameter("strength", shown * (0.55 + _flare * 1.6) * lerpf(0.8, 1.0, _dim))
 		var s := 1.0 + _flare * 0.6
 		_glow.scale = Vector3(s, s, s)
+
+
+static var _dark_frame := -1
+static var _dark := 0.0
+
+
+## 0 in full daylight .. ~0.5 at night, from the sky package's global tint
+## (read once a frame for every machine).
+static func darkness() -> float:
+	var f := Engine.get_process_frames()
+	if f != _dark_frame:
+		_dark_frame = f
+		var tint: Variant = RenderingServer.global_shader_parameter_get(&"sky_tint")
+		var lum := 1.0
+		if tint is Vector3:
+			lum = ((tint as Vector3).x + (tint as Vector3).y + (tint as Vector3).z) / 3.0
+		_dark = clampf(1.0 - lum, 0.0, 1.0)
+	return _dark
 
 
 ## Dot of the working part's outward normal with the direction to the camera.

@@ -25,7 +25,8 @@ void vertex() {
 
 void fragment() {
 	float r = length(UV - 0.5) * 2.0;
-	float a = r < 0.3 ? 0.5 : (r < 0.62 ? 0.24 : (r < 1.0 ? 0.09 : 0.0));
-	ALBEDO = glow * strength * night;
+	float a = r < 0.28 ? 0.7 : (r < 0.6 ? 0.34 : (r < 1.0 ? 0.12 : 0.0));
+	// Pushed past the palette on purpose: added over blue night it must still be amber.
+	ALBEDO = glow * vec3(1.45, 1.2, 0.8) * strength * night;
 	ALPHA = a;
 }

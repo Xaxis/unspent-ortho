@@ -16,6 +16,8 @@ extends RefCounted
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
 ## --silhouette        gallery: machines (and the lineup's people) drawn flat black
+## --parade=K,K[:POSE] stand machines round the player (K a kind or `all`; POSE a
+##                     FigureModel pose or `walk`): review only, never mobs
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -31,6 +33,7 @@ var frames := 8
 var scale := 2
 var scene := "game"
 var silhouette := false
+var parade := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -58,5 +61,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"silhouette": o.silhouette = true
+			"parade": o.parade = v
 			_: push_warning("unknown option --%s" % k)
 	return o
