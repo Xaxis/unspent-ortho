@@ -376,6 +376,7 @@ static func still(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
 	var pools := GenFields.sample(GenFields.noise(c.s, 431, 1.0 / 8.0, 2), size, 1)
+	var tarns := GenFields.field(GenFields.noise(c.s, 433, 1.0 / 18.0, 2), size, 2)
 	var fields := GenFields.field(GenFields.noise(c.s, 432, 1.0 / 46.0, 2), size, 4)
 	var land := c.land
 	var water := c.water
@@ -392,21 +393,24 @@ static func still(c: GenContext) -> void:
 				var thr := 9.0
 				var fl := fields[i]
 				var cc := country[i]
+				# The fen is pocked with small black pools, crowding deeper in;
+				# elsewhere a tarn is a rarer, rounder thing.
+				var v := tarns[i] + fl * 0.25
 				if cc == Country.MOSS:
-					# Pools crowd together deeper into the fen.
 					thr = 0.2 + blend[i] * 0.9 - maxf(0.0, fl) * 0.3
+					v = pools[i] + fl * 0.25
 				elif cc == Country.SNOWFIELD:
-					thr = 0.42 - maxf(0.0, fl) * 0.2
+					thr = 0.5 - maxf(0.0, fl) * 0.2
 				elif cc == Country.PINEWOOD:
-					thr = 0.5 - maxf(0.0, fl) * 0.1
-				elif cc == Country.COAST:
 					thr = 0.56 - maxf(0.0, fl) * 0.1
+				elif cc == Country.COAST:
+					thr = 0.6 - maxf(0.0, fl) * 0.1
 				if thr > 1.0:
 					continue
 				var l := level[i]
 				if level[i - 1] != l or level[i + 1] != l or level[i - size] != l or level[i + size] != l:
 					continue
-				if pools[i] + fl * 0.25 < thr:
+				if v < thr:
 					continue
 				water[i] = 2
 	)

@@ -20,6 +20,11 @@ static func noise(seed_value: int, salt: int, freq: float, octaves: int, kind: i
 ## read what another band writes), so results never depend on scheduling.
 ## Per-tile passes over the whole world are what GDScript is slow at; this is
 ## how they stay inside the start-up budget.
+##
+## Inside a job, stay on the fast paths or the threads queue behind one lock:
+## no method calls on shared objects (noise: use sample()), no `match` on
+## another class's constants (copy them to local consts, use if/elif), no
+## ints passed to float utilities (maxf(0.0, some_int)).
 static func rows(height: int, job: Callable, band: int = 12) -> void:
 	var count := ceili(float(height) / band)
 	var task := func(b: int) -> void:
@@ -116,6 +121,28 @@ static func neighbourhood_share(mask: PackedByteArray, size: int, levels: int) -
 	img.convert(Image.FORMAT_RF)
 	img.resize(p2, p2, Image.INTERPOLATE_BILINEAR)
 	img.crop(size, size)
+	return img.get_data().to_float32_array()
+
+
+## A float field averaged over blocks of 2^levels tiles and spread back
+## bilinearly: the lie of the land around each tile, natively.
+static func smooth(v: PackedFloat32Array, size: int, levels: int) -> PackedFloat32Array:
+	var p2 := 1
+	while p2 < size:
+		p2 *= 2
+	var src := v
+	if p2 != size:
+		src = PackedFloat32Array()
+		src.resize(p2 * p2)
+		for y in p2:
+			for x in p2:
+				src[y * p2 + x] = v[mini(y, size - 1) * size + mini(x, size - 1)]
+	var img := Image.create_from_data(p2, p2, false, Image.FORMAT_RF, src.to_byte_array())
+	for i in levels:
+		img.shrink_x2()
+	img.resize(p2, p2, Image.INTERPOLATE_BILINEAR)
+	if p2 != size:
+		img.crop(size, size)
 	return img.get_data().to_float32_array()
 
 

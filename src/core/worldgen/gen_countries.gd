@@ -17,9 +17,9 @@ const TARGET: PackedFloat32Array = [0.0, 0.35, 0.13, 0.13, 0.13, 0.13, 0.13]
 
 ## Relief and climate by country id (sea, coast, moss, pinewood, snowfield,
 ## bonelands, burning). Levels are WorldData levels.
-const BASE: PackedFloat32Array = [0.0, 2.3, 1.3, 4.4, 7.8, 5.8, 4.6]
-const HILLS: PackedFloat32Array = [0.0, 2.4, 0.7, 4.2, 3.0, 2.4, 2.0]
-const RIDGE: PackedFloat32Array = [0.0, 0.6, 0.0, 2.2, 6.5, 0.6, 1.8]
+const BASE: PackedFloat32Array = [0.0, 2.6, 1.3, 4.4, 7.8, 5.8, 4.6]
+const HILLS: PackedFloat32Array = [0.0, 3.4, 0.7, 4.2, 3.0, 2.4, 2.0]
+const RIDGE: PackedFloat32Array = [0.0, 1.0, 0.0, 2.2, 6.5, 0.6, 1.8]
 const TERRACE: PackedFloat32Array = [0.0, 0.0, 0.0, 0.0, 0.2, 1.0, 0.25]
 ## Cost in levels per tile of a river valley's side: low is a broad vale, high a gorge.
 const VALLEY: PackedFloat32Array = [0.5, 0.42, 0.3, 0.55, 0.85, 1.25, 0.7]

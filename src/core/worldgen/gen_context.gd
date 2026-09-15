@@ -61,6 +61,9 @@ var site_ground: PackedByteArray
 var sea_steps: PackedByteArray
 ## Woodland field shared by grounds and props, so the floor lies under the trees.
 var forest: PackedFloat32Array
+## Levels a tile stands above the land around it (about 30 tiles): tops and
+## ridges positive, dales and hollows negative.
+var rise: PackedFloat32Array
 
 var timings: Dictionary = {}
 var _tick := 0

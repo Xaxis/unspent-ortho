@@ -26,7 +26,7 @@ static func run(c: GenContext) -> void:
 	var shoren := GenFields.field(GenFields.noise(s, 306, 1.0 / 60.0, 2), size, 8)
 	var shelf := GenFields.field(GenFields.noise(s, 305, 1.0 / 30.0, 2), size, 4)
 	var heart := c.hearts[Country.BURNING]
-	var crater := 30.0 * maxf(0.6, c.k)
+	var crater := crater_radius(c)
 	var land := c.land
 	var inland := c.inland
 	var offshore := c.offshore
@@ -78,6 +78,11 @@ static func run(c: GenContext) -> void:
 				elev[i] = clampf(e, 1.0, MAX_LEVEL + 0.99)
 	)
 	c.elev = elev
+
+
+## Radius in tiles of the Burning's caldera rim.
+static func crater_radius(c: GenContext) -> float:
+	return 30.0 * maxf(0.6, c.k)
 
 
 ## Float elevation to integer levels; lonely one-tile spikes and pits removed.

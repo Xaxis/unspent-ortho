@@ -420,6 +420,21 @@ static func _lay_road(c: GenContext, path: Array[Vector2i], a: Vector2, b: Vecto
 		prev = w.level[i]
 		line.append(Vector2(i % size + 0.5, i / size + 0.5))
 	w.roads.append(line)
+	# Fill the other corner of every stair step, so a diagonal road is a
+	# ribbon two tiles wide rather than a zigzag one tile wide.
+	for j in range(1, tiles.size() - 1):
+		var i := tiles[j]
+		var pv := tiles[j - 1]
+		var nx := tiles[j + 1]
+		if pv % size == nx % size or pv / size == nx / size:
+			continue
+		var other := pv + nx - i
+		if other < 0 or other >= c.n or c.road[other] != 0:
+			continue
+		if c.land[other] == 0 or c.water[other] != 0 or absi(w.level[other] - w.level[i]) > 1:
+			continue
+		w.level[other] = w.level[i]
+		c.road[other] = 1
 
 
 ## Wake beside the spawn village, on dry coast, facing the most open land.

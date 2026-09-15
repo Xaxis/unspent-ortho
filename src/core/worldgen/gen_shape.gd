@@ -7,7 +7,7 @@ class_name GenShape
 ## and spread to tiles.
 
 ## Share of the whole square that is land.
-const LAND_SHARE := 0.5
+const LAND_SHARE := 0.47
 ## Detached land smaller than this survives as an islet; anything bigger is
 ## sunk, so every country lies on the one walkable island.
 const ISLET_TILES := 900
@@ -22,8 +22,8 @@ static func run(c: GenContext) -> void:
 	var hw := GenFields.coarse_width(size, hs)
 	var hn := hw * hw
 	var rng := Rng.make(s, 100)
-	var ax := rng.randf_range(0.35, 0.39)
-	var ay := rng.randf_range(0.39, 0.42)
+	var ax := rng.randf_range(0.34, 0.38)
+	var ay := rng.randf_range(0.38, 0.41)
 	var tilt := rng.randf_range(-0.22, 0.22)
 	var ct := cos(tilt)
 	var st := sin(tilt)
@@ -74,7 +74,7 @@ static func run(c: GenContext) -> void:
 				var h := (1.0 - r) * 1.1
 				# Bays bite hardest near the rim, where the coast is.
 				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
-				h += continent[i] * 0.26 + bays[i] * (0.06 + 0.3 * rim) + coastline[i] * (0.03 + 0.07 * rim)
+				h += continent[i] * 0.26 + bays[i] * (0.08 + 0.36 * rim) + coastline[i] * (0.03 + 0.07 * rim)
 				for k in lobes.size():
 					var lb := lobes[k]
 					var du := u - lb.x
@@ -83,7 +83,7 @@ static func run(c: GenContext) -> void:
 					if q < 4.0:
 						h += lobe_amp[k] * exp(-q * 1.6)
 				# Never let the land run into the frame.
-				h -= (1.0 - smoothstep(0.035, 0.15, hard)) * 1.6
+				h -= (1.0 - smoothstep(0.035, 0.09, hard)) * 1.6
 				lf[i] = h
 				inner[i] = 1
 	)
@@ -107,18 +107,28 @@ static func run(c: GenContext) -> void:
 	var fine := GenFields.sample(GenFields.noise(s, 104, 1.0 / 7.0, 2), size, 1)
 	var land := PackedByteArray()
 	land.resize(c.n)
+	# The crinkle only where the coast really is: inland the field can lie
+	# close to zero for miles, and noise there would pock the land with pits.
+	var shore_h := PackedByteArray()
+	shore_h.resize(hn)
+	for gy in range(1, hw - 1):
+		for gx in range(1, hw - 1):
+			var k := gy * hw + gx
+			var a := land_h[k]
+			if land_h[k - 1] != a or land_h[k + 1] != a or land_h[k - hw] != a or land_h[k + hw] != a:
+				shore_h[k] = 1
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for y in range(maxi(y0, 3), mini(y1, size - 3)):
 			var row := y * size
+			var hrow := (y >> 1) * hw
 			for x in range(3, size - 3):
-				var h := full[row + x]
-				if h < -0.03:
+				var k := hrow + (x >> 1)
+				if shore_h[k] == 0:
+					land[row + x] = land_h[k]
 					continue
-				if h < 0.03:
-					h += fine[row + x] * 0.022
-					if h <= 0.0:
-						continue
-				land[row + x] = 1
+				var h := full[row + x] + fine[row + x] * 0.022
+				if h > 0.0:
+					land[row + x] = 1
 	)
 	c.land = land
 	# The journey template is laid over the main body's extent, not the islets'.
@@ -188,11 +198,13 @@ static func _lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32A
 		var salt := float(k) * 97.0
 		while travelled < total:
 			var t := travelled / total
-			var radius := lerpf(mouth, 1.6, t) / hs
+			# Never narrower than about three tiles: a thinner channel breaks
+			# into a dotted line of pits.
+			var radius := lerpf(mouth, 3.0, t) / hs
 			var bend := wobble.get_noise_2d(travelled, salt) * 1.3
 			var step_dir := dir.rotated(bend)
-			p += step_dir * 2.0
-			travelled += 2.0
+			p += step_dir
+			travelled += 1.0
 			var cx := p.x / hs
 			var cy := p.y / hs
 			var ri := ceili(radius + 1.0)
@@ -221,7 +233,7 @@ static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> 
 	for i in hn:
 		if labels[i] >= 0 and labels[i] != ocean:
 			land_h[i] = 1
-			lf[i] = 0.04
+			lf[i] = maxf(lf[i], 0.12)
 	var lsizes := PackedInt32Array()
 	var llabels := GenFields.components(land_h, hw, lsizes)
 	var main := 0

@@ -58,6 +58,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	GenAccess.run(c)
 	t = _mark(c, marks, &"access", t)
 	GenScatter.sites(c)
+	c.mark(&"surface.sites")
 	GenSurface.run(c)
 	t = _mark(c, marks, &"surface", t)
 	GenScatter.props(c)
