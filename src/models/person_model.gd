@@ -23,7 +23,7 @@ var action: StringName = &""
 var action_left := 0.0
 var rig: SkinRig
 
-var _mat: Material
+const PERSON_SHADER := preload("res://src/models/people/person.gdshader")
 var _dims: Dictionary = PersonBody.dims(&"man")
 var _phase := 0.0
 var _clock := 0.0
@@ -41,8 +41,9 @@ var _gaze_now := 0.0
 var _applied: PersonAnim.Pose
 
 
-func build(material: Material) -> void:
-	_mat = material
+func build(mat: Material) -> void:
+	if mat is ShaderMaterial and (mat as ShaderMaterial).shader == PERSON_SHADER:
+		_person_mat = mat
 	_clock = float(hash(PersonLook.signature(look)) % 1000) * 0.013
 	_make_rig()
 	animate(0.0, 0.0)
@@ -184,22 +185,36 @@ func _make_rig() -> void:
 	_dims = PersonBody.dims(look.build)
 	PersonBody.dress(rig, look)
 	HeldTools.build(rig, held)
-	rig.attach(self, _material())
+	rig.attach(self, _material(), true)
 
 
 func _dress() -> void:
 	rig.clear_parts()
 	PersonBody.dress(rig, look)
 	HeldTools.build(rig, held)
-	rig.rebuild(_material())
+	rig.rebuild(_material(), true)
 
 
 func _material() -> Material:
-	if _mat == null:
-		var m := ShaderMaterial.new()
-		m.shader = preload("res://src/render/world.gdshader")
-		_mat = m
-	return _mat
+	return material()
+
+
+static var _person_mat: ShaderMaterial
+
+
+## The material every person draws with (src/models/people/person.gdshader): the
+## MADE look plus the readability rim, in the pass after the ink outline. A
+## material passed to build() is used only if it is already on that shader.
+static func material() -> ShaderMaterial:
+	if _person_mat == null:
+		_person_mat = ShaderMaterial.new()
+		_person_mat.shader = PERSON_SHADER
+		_person_mat.render_priority = 10
+		var rim := ShaderMaterial.new()
+		rim.shader = preload("res://src/models/people/person_rim.gdshader")
+		rim.render_priority = 10
+		_person_mat.next_pass = rim
+	return _person_mat
 
 
 ## Triangles in the body (and clothes, hair, salvage), excluding the held tool.
@@ -233,11 +248,11 @@ func tool_tip() -> Vector3:
 	return bone_transform(&"tool") * Vector3(0, reach, 0)
 
 
-static func make(spec: Dictionary, item: StringName = &"", material: Material = null) -> PersonModel:
+static func make(spec: Dictionary, item: StringName = &"", mat: Material = null) -> PersonModel:
 	var p := PersonModel.new()
 	p.set_look(spec)
 	p.held = item
-	p.build(material)
+	p.build(mat)
 	return p
 
 

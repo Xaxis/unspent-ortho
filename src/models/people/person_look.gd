@@ -76,7 +76,7 @@ const WEAR: Array[StringName] = [&"stone", &"brine", &"slate", &"earth", &"rust"
 
 const BASE := {
 	"build": &"man", "hat": &"none", "coat": &"none", "shirt_cut": &"tucked", "beard": &"none",
-	"hair_style": &"crop", "hair": &"fair", "skin": &"brown", "skin_v": 3,
+	"hair_style": &"crop", "hair": &"dark", "skin": &"brown", "skin_v": 3,
 	"shirt": "linen:2", "coat_col": "earth:2", "trouser": "slate:1", "boot": "earth:1", "hat_col": "slate:2",
 	"extras": [&"neckerchief", &"satchel"], "salvage": [], "side": 1,
 }

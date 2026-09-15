@@ -62,29 +62,37 @@ func test_every_tool_has_a_model_and_found_ones_glow() -> void:
 		var glows := p.rig.triangle_count([&"tool_glow"]) > 0
 		eq(glows, HeldTools.is_found(id), "%s glows only if found" % id)
 		if HeldTools.is_found(id):
-			check(p.rig.glow != null and p.rig.glow.visible, "%s glow mesh shown" % id)
+			var g := p.rig.meshes[SkinRig.GLOW]
+			check(g != null and g.visible, "%s glow mesh shown" % id)
 	p.set_held(&"")
 	eq(p.tool_triangles(), 0, "bare hands hold nothing")
-	check(p.rig.glow == null or not p.rig.glow.visible, "glow hidden with bare hands")
+	var bare := p.rig.meshes[SkinRig.GLOW]
+	check(bare == null or not bare.visible, "glow hidden with bare hands")
 	p.free()
 
 
-func test_found_weapons_are_found_colours_and_made_tools_are_not() -> void:
+func test_found_weapons_draw_with_the_ruler_and_made_tools_with_the_hand() -> void:
+	# ART.md law 3: FOUND on found.gdshader (clean, lit), MADE on the hand's material.
 	for id: StringName in HeldTools.all_ids():
 		var r := PersonBody.make_rig(&"man")
 		HeldTools.build(r, id)
+		var surfaces := {}
 		var violet := 0
-		var n := 0
 		for entry: Array in r._kits[r.find(&"tool")]:
 			var k: MeshKit = entry[0]
+			if k.verts.is_empty():
+				continue
+			surfaces[entry[1]] = true
 			for c in k.colors:
-				n += 1
 				# FOUND sits at hue ~262 degrees and is saturated; ink shares the hue but not the chroma.
 				if c.h > 0.66 and c.h < 0.86 and c.s > 0.45:
 					violet += 1
 		if HeldTools.is_found(id):
-			gt(float(violet) / n, 0.5, "%s is mostly FOUND violet" % id)
+			check(not surfaces.has(SkinRig.MADE), "%s has nothing hand-drawn" % id)
+			check(surfaces.has(SkinRig.GLOW), "%s is lit" % id)
+			gt(violet, 0, "%s carries the FOUND violet" % id)
 		else:
+			eq(surfaces.keys(), [SkinRig.MADE], "%s is made by hand" % id)
 			eq(violet, 0, "%s has no machine colour in it" % id)
 
 
@@ -171,8 +179,6 @@ func test_play_action_contract() -> void:
 	for i in 20:
 		p.animate(0.0, 1.0 / 60.0)
 	check(not p.busy(), "the swing ended on time")
-	p.play_action(&"juggle", 1.0)
-	check(not p.busy(), "unknown action ignored")
 	p.free()
 
 

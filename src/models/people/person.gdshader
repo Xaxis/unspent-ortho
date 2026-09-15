@@ -1,0 +1,58 @@
+// MADE, for people: world.gdshader's wash, paper and hatched shade in the hand
+// (Ink.HAND), plus the two things docs/ART.md section 5 asks of people only:
+//
+//  * no ink outline. People draw in the transparent pass AFTER the camera's
+//    outline quad (render_priority 10, ALPHA 1), so the depth copy the outline
+//    reads never contains them and nothing inks their silhouette. They still
+//    write and test depth, so the world occludes them and they occlude
+//    themselves. Their shadow comes from a shadows-only twin (SkinRig).
+//  * a readability rim instead, drawn by the next pass (person_rim.gdshader).
+//
+// Hatching never covers a face: skin (UV2.y > 0.5 marks it) takes the shade
+// colour but no ink strokes.
+shader_type spatial;
+render_mode cull_back, specular_disabled, depth_draw_always;
+
+#include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
+
+uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
+uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
+uniform float emission_strength = 0.0;
+
+varying vec3 world_pos;
+varying float style_packed;
+varying float skin;
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	style_packed = UV.x;
+	skin = UV2.y;
+}
+
+void fragment() {
+	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	vec3 c = COLOR.rgb * paper(px);
+	ALBEDO = sky_apply(c, world_pos, TIME);
+	ALPHA = 1.0;
+	EMISSION = c * emission_strength;
+}
+
+void light() {
+	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	float ndl = dot(NORMAL, LIGHT);
+	if (LIGHT_IS_DIRECTIONAL) {
+		float lit = step(0.0, ndl) * step(0.5, ATTENUATION);
+		float band = ndl > 0.42 ? 1.0 : 0.9;
+		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
+		int style = int(mod(style_packed, 16.0) + 0.5);
+		float ink = skin > 0.5 ? 0.0 : (1.0 - lit) * hatch(style, px, depth);
+		vec3 k = mix(shade_tint, vec3(band), lit);
+		k = mix(k, ink_tint, ink * 0.6);
+		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
+	} else {
+		float a = clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0);
+		a = floor(a * 3.0 + 0.5) / 3.0;
+		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
+	}
+}

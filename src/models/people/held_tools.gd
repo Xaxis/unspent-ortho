@@ -99,157 +99,220 @@ static func build(r: SkinRig, id: StringName) -> bool:
 	var b := r.find(&"tool")
 	if b < 0 or id == &"":
 		return false
+	if is_found(id):
+		_found(r.kit(b, &"tool", SkinRig.FOUND), r.kit(b, &"tool_glow", SkinRig.GLOW), id)
+		return true
 	var k := r.kit(b, &"tool")
-	var g := r.kit(b, &"tool_glow", true)
+	var seed_value := hash(id)
+	var wood := Palette.EARTH[3]
+	var iron := Palette.SLATE[3]
+	var edge := Palette.STONE[4]
 	match id:
 		&"knife":
-			k.block(0, -0.07, 0, 0.04, 0.12, 0.035, Palette.EARTH[2], Palette.EARTH[3])
-			k.block(0.004, 0.05, 0, 0.05, 0.012, 0.045, Palette.COPPER[2])
-			k.block(0.008, 0.06, 0, 0.045, 0.16, 0.012, Palette.STONE[3], Palette.STONE[4])
-			k.block(0.018, 0.22, 0, 0.025, 0.04, 0.012, Palette.STONE[4])
+			_grip(k, -0.07, 0.05, 0.022, Palette.EARTH[2], seed_value)
+			_band(k, 0.045, 0.03, Palette.COPPER[2])
+			_blade(k, 0.06, 0.24, 0.03, 0.018, Palette.STONE[3], edge)
 		&"knife_shear":
-			k.block(0, -0.07, 0, 0.042, 0.12, 0.036, Palette.LINEN[2], Palette.RUST[2])
-			k.block(0, -0.02, 0, 0.046, 0.015, 0.04, Palette.RUST[2])
-			k.block(0.004, 0.05, 0, 0.06, 0.014, 0.05, Palette.STONE[4])
-			k.block(0.01, 0.064, 0, 0.055, 0.2, 0.012, Palette.STONE[4], Palette.STONE[5])
-			k.block(0.036, 0.064, 0, 0.008, 0.2, 0.014, Palette.STONE[5])
-			k.block(0.022, 0.26, 0, 0.03, 0.04, 0.012, Palette.STONE[5])
+			_grip(k, -0.075, 0.055, 0.024, Palette.LINEN[2], seed_value)
+			_band(k, -0.02, 0.028, Palette.RUST[2])
+			_band(k, 0.05, 0.034, Palette.STONE[4])
+			_blade(k, 0.064, 0.29, 0.034, 0.02, Palette.STONE[4], Palette.STONE[5])
 		&"billhook":
-			k.block(0, -0.1, 0, 0.045, 0.2, 0.04, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(0.005, 0.1, 0, 0.065, 0.24, 0.014, Palette.SLATE[3], Palette.SLATE[4])
-			k.block(0.05, 0.3, 0, 0.1, 0.06, 0.014, Palette.SLATE[3], Palette.SLATE[4])
-			k.block(0.1, 0.24, 0, 0.035, 0.08, 0.014, Palette.STONE[4])
+			_grip(k, -0.1, 0.1, 0.026, wood, seed_value)
+			_band(k, 0.095, 0.03, iron)
+			# A broad blade that runs up and curls forward into the hook.
+			Sculpt.slab(k, PackedVector2Array([Vector2(-0.012, 0.1), Vector2(0.05, 0.1), Vector2(0.07, 0.26), Vector2(0.05, 0.33), Vector2(-0.02, 0.3)]), 0.008, Palette.SLATE[3], edge)
+			Sculpt.slab(k, PackedVector2Array([Vector2(0.05, 0.33), Vector2(0.07, 0.26), Vector2(0.13, 0.26), Vector2(0.12, 0.3)]), 0.007, Palette.SLATE[3], edge)
 		&"axe_hand":
-			_haft(k, -0.14, 0.46, 0.045, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(0.07, 0.33, 0, 0.14, 0.1, 0.05, Palette.SLATE[3], Palette.SLATE[4])
-			k.block(0.155, 0.3, 0, 0.04, 0.16, 0.045, Palette.STONE[4], Palette.STONE[5])
-			k.block(-0.045, 0.35, 0, 0.05, 0.07, 0.055, Palette.SLATE[2])
+			_haft(k, -0.14, 0.46, 0.024, wood, seed_value, 0.012)
+			_axe_head(k, 0.37, 0.11, 0.06, 0.06, Palette.SLATE[3], edge)
 		&"axe_felling":
-			_haft(k, -0.42, 0.56, 0.05, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(-0.405, -0.44, 0, 0.065, 0.05, 0.065, Palette.EARTH[2])
-			k.block(0.08, 0.42, 0, 0.17, 0.12, 0.06, Palette.STONE[3], Palette.STONE[4])
-			k.block(0.18, 0.37, 0, 0.05, 0.22, 0.055, Palette.STONE[4], Palette.STONE[5])
-			k.block(-0.055, 0.44, 0, 0.07, 0.09, 0.065, Palette.STONE[2])
+			_haft(k, -0.44, 0.58, 0.026, wood, seed_value, 0.02)
+			Sculpt.loft(k, [[-0.46, 0.03, 0.03, 0.0, 0.0], [-0.42, 0.032, 0.032, 0.0, 0.0]], 6, Palette.EARTH[2], true, true, PI / 6, 0.05, seed_value)
+			_axe_head(k, 0.48, 0.16, 0.08, 0.07, Palette.STONE[3], Palette.STONE[5])
 		&"axe_works":
 			# Out of the Works: a crucible head too good for this coast, on a bound haft.
-			_haft(k, -0.2, 0.5, 0.05, Palette.EARTH[2], Palette.EARTH[3])
-			k.block(0.0, 0.0, 0, 0.056, 0.14, 0.056, Palette.INK[3])
-			k.block(0.08, 0.36, 0, 0.16, 0.13, 0.06, Palette.INK[3], Palette.STONE[3])
-			k.block(0.18, 0.31, 0, 0.05, 0.22, 0.05, Palette.STONE[5], Palette.RIME[5])
-			k.block(0.08, 0.41, 0, 0.1, 0.02, 0.065, Palette.COPPER[3])
+			_haft(k, -0.22, 0.52, 0.026, Palette.EARTH[2], seed_value, 0.0)
+			_band(k, 0.0, 0.032, Palette.INK[3])
+			_band(k, 0.08, 0.032, Palette.INK[3])
+			_axe_head(k, 0.42, 0.16, 0.09, 0.075, Palette.INK[3], Palette.RIME[5])
+			_band(k, 0.42, 0.04, Palette.COPPER[3])
 		&"pick":
-			_haft(k, -0.4, 0.5, 0.05, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(0.0, 0.44, 0, 0.44, 0.07, 0.06, Palette.SLATE[3], Palette.SLATE[4])
-			k.block(0.25, 0.43, 0, 0.08, 0.05, 0.04, Palette.STONE[4])
-			k.block(-0.25, 0.43, 0, 0.08, 0.05, 0.04, Palette.STONE[4])
-			k.block(0.0, 0.42, 0, 0.08, 0.11, 0.08, Palette.SLATE[2])
+			_haft(k, -0.42, 0.46, 0.026, wood, seed_value, 0.015)
+			_pick_head(k, 0.44, Palette.SLATE[3], Palette.STONE[4], true)
 		&"mattock", &"mattock_steel":
 			var steel := id == &"mattock_steel"
-			var m0: Color = Palette.STONE[3] if steel else Palette.SLATE[3]
-			var m1: Color = Palette.STONE[5] if steel else Palette.STONE[4]
-			_haft(k, -0.4, 0.5, 0.05, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(0.14, 0.4, 0, 0.26, 0.07, 0.07, m0, m1)
-			k.block(0.28, 0.36, 0, 0.05, 0.11, 0.13, m1)
-			k.block(-0.16, 0.43, 0, 0.22, 0.05, 0.05, m0)
-			k.block(0.0, 0.4, 0, 0.08, 0.12, 0.08, Palette.SLATE[2])
+			_haft(k, -0.42, 0.46, 0.026, wood, seed_value, 0.015)
+			_pick_head(k, 0.42, Palette.STONE[3] if steel else Palette.SLATE[3], Palette.STONE[5] if steel else Palette.STONE[4], false)
 		&"stave":
-			_haft(k, -0.62, 0.72, 0.045, Palette.EARTH[3], Palette.EARTH[4])
-			k.block(0, 0.62, 0, 0.05, 0.1, 0.05, Palette.EARTH[4], Palette.EARTH[5])
-			k.block(0, -0.06, 0, 0.052, 0.14, 0.052, Palette.LINEN[2])
+			_haft(k, -0.64, 0.74, 0.024, wood, seed_value, 0.03, 0.8)
+			_band(k, 0.7, 0.028, Palette.EARTH[5])
+			_band(k, -0.04, 0.03, Palette.LINEN[2])
 		&"boathook":
-			_haft(k, -0.58, 0.88, 0.042, Palette.EARTH[2], Palette.EARTH[3])
-			k.block(0, 0.84, 0, 0.06, 0.08, 0.06, Palette.SLATE[2])
-			k.block(0, 0.92, 0, 0.022, 0.18, 0.022, Palette.SLATE[3], Palette.STONE[4])
-			k.block(-0.06, 0.9, 0, 0.1, 0.022, 0.022, Palette.SLATE[3])
-			k.block(-0.1, 0.82, 0, 0.022, 0.1, 0.022, Palette.SLATE[3], Palette.STONE[4])
+			_haft(k, -0.6, 0.9, 0.021, Palette.EARTH[2], seed_value, 0.025, 0.85)
+			_band(k, 0.86, 0.026, Palette.SLATE[2])
+			# A spike straight on, a hook turned back beside it.
+			Sculpt.loft(k, [[0.88, 0.016, 0.016, 0.0, 0.0], [1.08, 0.0, 0.0, 0.0, 0.0]], 4, iron, true, false, PI / 4)
+			Sculpt.slab(k, PackedVector2Array([Vector2(-0.015, 0.88), Vector2(0.012, 0.88), Vector2(-0.07, 0.99), Vector2(-0.1, 0.99)]), 0.008, iron, edge)
+			Sculpt.slab(k, PackedVector2Array([Vector2(-0.1, 0.99), Vector2(-0.07, 0.99), Vector2(-0.075, 0.9), Vector2(-0.095, 0.92)]), 0.008, iron, edge)
 		_:
-			if not is_found(id):
-				return false
-			_found(k, g, id)
+			return false
 	return true
 
 
-static func _haft(k: MeshKit, y0: float, y1: float, t: float, c: Color, top: Color) -> void:
-	# Two segments at a hair's difference in thickness: a hand-cut haft, not a dowel.
-	var mid := lerpf(y0, y1, 0.55)
-	k.block(0, y0, 0, t, mid - y0, t, c)
-	k.block(0.002, mid, 0, t * 0.92, y1 - mid, t * 0.96, c, top)
+## A wooden haft: six-sided, a hair thicker at the grip, with a little bend in it.
+static func _haft(k: MeshKit, y0: float, y1: float, r: float, col: Color, seed_value: int, bend: float, taper: float = 0.9) -> void:
+	var mid := lerpf(y0, y1, 0.5)
+	Sculpt.loft(k, [[y0, r, r, 0.0, 0.0], [mid, r * lerpf(1.0, taper, 0.5), r * lerpf(1.0, taper, 0.5), bend, 0.0], [y1, r * taper, r * taper, 0.0, 0.0]], 6, col, true, true, PI / 6, 0.06, seed_value)
 
 
+## A short handle for a knife or a hook.
+static func _grip(k: MeshKit, y0: float, y1: float, r: float, col: Color, seed_value: int) -> void:
+	Sculpt.loft(k, [[y0, r * 0.9, r * 0.8, 0.0, 0.0], [lerpf(y0, y1, 0.4), r * 1.08, r, 0.0, 0.0], [y1, r, r * 0.9, 0.0, 0.0]], 6, col, true, true, PI / 6, 0.05, seed_value)
+
+
+## A collar round the handle: ferrule, bolster, binding.
+static func _band(k: MeshKit, y: float, r: float, col: Color) -> void:
+	Sculpt.loft(k, [[y - 0.012, r, r, 0.0, 0.0], [y + 0.012, r, r, 0.0, 0.0]], 6, col, true, true, PI / 6)
+
+
+## A blade: back straight, edge swept up to the point, a bright line of edge.
+static func _blade(k: MeshKit, y0: float, y1: float, w: float, t: float, col: Color, edge: Color) -> void:
+	Sculpt.slab(k, PackedVector2Array([Vector2(-0.006, y0), Vector2(w, y0), Vector2(w * 0.9, lerpf(y0, y1, 0.7)), Vector2(0.004, y1), Vector2(-0.008, lerpf(y0, y1, 0.8))]), t * 0.3, col, edge)
+
+
+## An axe head: a wedge that flares toward the bit (+X), a poll behind the eye.
+static func _axe_head(k: MeshKit, y: float, reach: float, h: float, t: float, col: Color, edge: Color) -> void:
+	Sculpt.slab(k, PackedVector2Array([Vector2(-0.035, y - h * 0.35), Vector2(reach * 0.55, y - h * 0.3), Vector2(reach, y - h * 0.7), Vector2(reach + 0.012, y + h * 0.45), Vector2(reach * 0.55, y + h * 0.28), Vector2(-0.035, y + h * 0.35)]), t * 0.28, col, edge)
+	Sculpt.loft(k, [[y - h * 0.36, t * 0.5, t * 0.45, -0.01, 0.0], [y + h * 0.36, t * 0.5, t * 0.45, -0.01, 0.0]], 6, col, true, true, PI / 6)
+
+
+## A pick (two points) or a mattock (a point behind, a broad adze ahead).
+static func _pick_head(k: MeshKit, y: float, col: Color, edge: Color, pick: bool) -> void:
+	Sculpt.loft(k, [[y - 0.045, 0.035, 0.034, 0.0, 0.0], [y + 0.045, 0.035, 0.034, 0.0, 0.0]], 6, col, true, true, PI / 6)
+	for dir: float in [1.0, -1.0]:
+		var reach := 0.24 if pick or dir < 0.0 else 0.2
+		k.push(Transform3D(Basis(Vector3(0, 0, 1), -dir * (PI * 0.5 + 0.18)), Vector3(0, y, 0)))
+		if pick or dir < 0.0:
+			Sculpt.loft(k, [[0.02, 0.024, 0.022, 0.0, 0.0], [reach * 0.6, 0.016, 0.015, 0.0, 0.0], [reach, 0.0, 0.0, 0.0, 0.0]], 5, [col, edge], false, false, 0.0)
+		else:
+			k.pop()
+			k.push(Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(0, y, 0)))
+			Sculpt.slab(k, PackedVector2Array([Vector2(-0.03, 0.02), Vector2(0.03, 0.02), Vector2(0.055, -0.2), Vector2(-0.055, -0.2)]), 0.0, col, edge)
+			k.pop()
+			k.push(Transform3D(Basis(Vector3(0, 0, 1), -(PI * 0.5 + 0.25)), Vector3(0, y, 0)))
+			Sculpt.slab(k, PackedVector2Array([Vector2(-0.028, 0.02), Vector2(0.028, 0.02), Vector2(0.052, reach), Vector2(-0.052, reach)]), 0.007, col, edge)
+		k.pop()
+
+
+## FOUND weapons: exact, symmetric, chamfered, on the found surface; their light
+## on the glow surface. Anyone should see at a glance that nobody here made one.
 static func _found(k: MeshKit, g: MeshKit, id: StringName) -> void:
 	var v0 := Palette.FOUND[1]
 	var v1 := Palette.FOUND[2]
 	var v2 := Palette.FOUND[3]
-	var rivet := Palette.FOUND[5]
 	var light := Palette.FOUND[4]
 	var core := Palette.FOUND[5]
 	match id:
 		&"las_hand":
-			_grip(k, -0.08, 0.1, 0.05, v1, v2)
-			k.block(0, 0.1, 0, 0.08, 0.04, 0.08, v0, v2)
-			g.block(0, 0.14, 0, 0.045, 0.3, 0.045, light, core)
-			g.block(0, 0.44, 0, 0.03, 0.03, 0.03, core)
+			_hilt(k, -0.08, 0.1, 0.024, v1, v2)
+			_guard(k, 0.1, 0.05, 0.035, v0, v2)
+			_light_blade(g, 0.135, 0.44, 0.02, light, core)
 		&"las_long":
-			_grip(k, -0.3, 0.12, 0.055, v1, v2)
-			k.block(0, 0.12, 0, 0.1, 0.05, 0.1, v0, v2)
-			k.block(0, -0.32, 0, 0.07, 0.04, 0.07, v2, rivet)
-			g.block(0, 0.17, 0, 0.05, 0.7, 0.05, light, core)
+			_hilt(k, -0.32, 0.12, 0.026, v1, v2)
+			_guard(k, 0.12, 0.06, 0.04, v0, v2)
+			_cap(k, -0.33, 0.034, v2)
+			_light_blade(g, 0.155, 0.9, 0.022, light, core)
 		&"las_broad":
-			_grip(k, -0.24, 0.12, 0.055, v1, v2)
-			k.block(0.06, 0.12, 0, 0.22, 0.05, 0.08, v0, v2)
-			g.block(0.07, 0.17, 0, 0.2, 0.34, 0.03, light, core)
-			g.block(0.07, 0.51, 0, 0.12, 0.03, 0.025, core)
+			_hilt(k, -0.24, 0.12, 0.026, v1, v2)
+			_guard(k, 0.12, 0.1, 0.035, v0, v2)
+			g.push(Transform3D(Basis.IDENTITY, Vector3(0.05, 0, 0)))
+			Sculpt.slab(g, PackedVector2Array([Vector2(-0.07, 0.15), Vector2(0.07, 0.15), Vector2(0.09, 0.2), Vector2(0.09, 0.46), Vector2(0.0, 0.54), Vector2(-0.09, 0.46), Vector2(-0.09, 0.2)]), 0.01, light, core)
+			g.pop()
 		&"mono_blade":
-			_grip(k, -0.08, 0.1, 0.04, v1, v2)
-			k.block(0, 0.1, 0, 0.06, 0.02, 0.06, v2, rivet)
-			g.block(0.0, 0.12, 0, 0.012, 0.42, 0.012, core)
+			_hilt(k, -0.08, 0.1, 0.02, v1, v2)
+			_guard(k, 0.1, 0.03, 0.03, v2, core)
+			Sculpt.loft(g, [[0.12, 0.006, 0.006, 0.0, 0.0], [0.56, 0.0, 0.0, 0.0, 0.0]], 4, core, true, false, PI / 4)
 		&"plasma_torch":
-			_grip(k, -0.08, 0.12, 0.05, v1, v2)
-			k.prism(0, 0.12, 0, 0.05, 0.2, 0.035, 6, v0, v2)
-			g.prism(0, 0.2, 0, 0.035, 0.46, 0.0, 6, Palette.RIME[4], Palette.RIME[5])
+			_hilt(k, -0.08, 0.12, 0.024, v1, v2)
+			Sculpt.loft(k, [[0.12, 0.03, 0.03, 0.0, 0.0], [0.2, 0.045, 0.045, 0.0, 0.0], [0.22, 0.04, 0.04, 0.0, 0.0]], 8, [v0, v2], true, true, PI / 8)
+			Sculpt.loft(g, [[0.22, 0.034, 0.034, 0.0, 0.0], [0.36, 0.022, 0.022, 0.0, 0.0], [0.5, 0.0, 0.0, 0.0, 0.0]], 6, [Palette.RIME[4], Palette.RIME[5]], true, false, PI / 6)
 		&"arc_cut":
-			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
-			k.block(0, 0.06, 0, 0.1, 0.08, 0.08, v0, v2)
+			_hilt(k, -0.08, 0.06, 0.024, v1, v2)
+			_guard(k, 0.06, 0.045, 0.045, v0, v2)
 			for z: float in [-0.028, 0.028]:
-				k.block(0, 0.14, z, 0.02, 0.12, 0.02, v2, rivet)
-			g.block(0, 0.2, 0, 0.012, 0.06, 0.036, core)
+				Sculpt.loft(k, [[0.08, 0.01, 0.01, 0.0, z], [0.22, 0.008, 0.008, 0.0, z]], 4, v2, false, true, PI / 4)
+			Sculpt.loft(g, [[0.19, 0.0, 0.0, 0.0, 0.0], [0.215, 0.018, 0.03, 0.0, 0.0], [0.24, 0.0, 0.0, 0.0, 0.0]], 4, core, false, false, PI / 4)
 		&"stun_hand":
-			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
-			k.prism(0, 0.06, 0, 0.06, 0.2, 0.06, 8, v1, v2)
-			g.prism(0, 0.2, 0, 0.06, 0.26, 0.0, 8, light, core)
+			_hilt(k, -0.08, 0.06, 0.024, v1, v2)
+			Sculpt.loft(k, [[0.06, 0.03, 0.03, 0.0, 0.0], [0.2, 0.07, 0.07, 0.0, 0.0]], 8, [v1], true, false, PI / 8)
+			Sculpt.loft(g, [[0.2, 0.064, 0.064, 0.0, 0.0], [0.24, 0.0, 0.0, 0.0, 0.0]], 8, light, false, false, PI / 8)
 		&"rep_light":
-			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
-			k.block(0, 0.06, 0, 0.09, 0.16, 0.07, v0, v2)
+			_hilt(k, -0.08, 0.06, 0.024, v1, v2)
+			Sculpt.slab(k, _chamfer(0.1, 0.16, 0.02, 0.14), 0.035, v0, v2)
 			for i in 3:
-				g.block(0, 0.22, -0.024 + i * 0.024, 0.018, 0.022, 0.016, light, core)
+				Sculpt.loft(g, [[0.22, 0.012, 0.012, 0.0, -0.028 + i * 0.028], [0.24, 0.012, 0.012, 0.0, -0.028 + i * 0.028]], 4, core, false, true, PI / 4)
 		&"flash_burst":
-			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
-			k.prism(0, 0.06, 0, 0.03, 0.2, 0.11, 8, v1, v0)
-			g.prism(0, 0.19, 0, 0.09, 0.2, 0.09, 8, light, core)
+			_hilt(k, -0.08, 0.06, 0.024, v1, v2)
+			Sculpt.loft(k, [[0.06, 0.025, 0.025, 0.0, 0.0], [0.18, 0.11, 0.11, 0.0, 0.0], [0.2, 0.11, 0.11, 0.0, 0.0]], 8, [v1, v2], true, false, PI / 8)
+			Sculpt.loft(g, [[0.19, 0.095, 0.095, 0.0, 0.0], [0.2, 0.0, 0.0, 0.0, 0.0]], 8, light, false, false, PI / 8)
 		&"pulse_hammer":
-			_grip(k, -0.34, 0.36, 0.05, v1, v2)
-			k.block(0, 0.34, 0, 0.26, 0.14, 0.14, v1, v2)
-			for x: float in [-0.135, 0.135]:
-				g.block(x, 0.37, 0, 0.012, 0.08, 0.08, light, core)
-			k.block(0, 0.48, 0, 0.1, 0.02, 0.1, rivet)
+			_hilt(k, -0.34, 0.34, 0.024, v1, v2)
+			k.push(Transform3D(Basis(Vector3(0, 0, 1), -PI * 0.5), Vector3(0, 0.41, 0)))
+			Sculpt.loft(k, [[-0.14, 0.06, 0.06, 0.0, 0.0], [-0.12, 0.075, 0.075, 0.0, 0.0], [0.12, 0.075, 0.075, 0.0, 0.0], [0.14, 0.06, 0.06, 0.0, 0.0]], 8, [v2, v1, v2], true, true, PI / 8)
+			Sculpt.loft(g, [[0.14, 0.045, 0.045, 0.0, 0.0], [0.15, 0.045, 0.045, 0.0, 0.0]], 8, light, false, true, PI / 8)
+			Sculpt.loft(g, [[-0.15, 0.045, 0.045, 0.0, 0.0], [-0.14, 0.045, 0.045, 0.0, 0.0]], 8, light, true, false, PI / 8)
+			k.pop()
 		&"beam_lance":
-			_grip(k, -0.5, 0.7, 0.04, v1, v2)
-			k.block(0, 0.7, 0, 0.08, 0.06, 0.08, v0, v2)
-			k.block(0, -0.52, 0, 0.06, 0.04, 0.06, v2, rivet)
-			g.block(0, 0.76, 0, 0.02, 0.3, 0.02, light, core)
+			_hilt(k, -0.52, 0.7, 0.02, v1, v2)
+			_guard(k, 0.7, 0.04, 0.04, v0, v2)
+			_cap(k, -0.53, 0.03, v2)
+			Sculpt.loft(g, [[0.73, 0.012, 0.012, 0.0, 0.0], [1.05, 0.004, 0.004, 0.0, 0.0]], 4, core, true, true, PI / 4)
 		&"sonic_wave":
-			_grip(k, -0.22, 0.1, 0.05, v1, v2)
-			k.block(0, 0.1, 0, 0.18, 0.05, 0.06, v0, v2)
-			for x: float in [-0.07, 0.07]:
-				k.block(x, 0.15, 0, 0.03, 0.26, 0.04, v2, rivet)
+			_hilt(k, -0.22, 0.1, 0.024, v1, v2)
+			Sculpt.slab(k, _chamfer(0.18, 0.04, 0.012, 0.12), 0.03, v0, v2)
+			for x: float in [-0.075, 0.075]:
+				k.push(Transform3D(Basis.IDENTITY, Vector3(x, 0, 0)))
+				Sculpt.slab(k, _chamfer(0.028, 0.26, 0.008, 0.27), 0.018, v2, v1)
+				k.pop()
 			for i in 3:
-				g.block(0, 0.2 + i * 0.08, 0, 0.1, 0.012, 0.012, light)
+				Sculpt.slab(g, _chamfer(0.11, 0.012, 0.0, 0.2 + i * 0.08), 0.006, light, core)
 
 
-## An exact machined grip: banded, symmetric, rivets at both ends.
-static func _grip(k: MeshKit, y0: float, y1: float, t: float, c: Color, band: Color) -> void:
-	k.block(0, y0, 0, t, y1 - y0, t, c)
-	var n := maxi(2, int((y1 - y0) / 0.09))
+## A machined grip: exact octagon, banded, a rivet ring at each end.
+static func _hilt(k: MeshKit, y0: float, y1: float, r: float, c: Color, band: Color) -> void:
+	var rings: Array = []
+	var n := maxi(2, int((y1 - y0) / 0.07))
+	for i in n + 1:
+		var y := lerpf(y0, y1, float(i) / n)
+		rings.append([y, r, r, 0.0, 0.0])
+	var cols: Array = []
 	for i in n:
-		var y := lerpf(y0, y1, (i + 0.5) / n)
-		k.block(0, y, 0, t + 0.012, 0.018, t + 0.012, band)
+		cols.append(band if i % 2 == 0 else c)
+	Sculpt.loft(k, rings, 8, cols, true, true, PI / 8)
+
+
+static func _guard(k: MeshKit, y: float, w: float, d: float, c: Color, rim: Color) -> void:
+	Sculpt.slab(k, _chamfer(w * 2.0, 0.03, 0.01, y + 0.015), d, c, rim)
+
+
+static func _cap(k: MeshKit, y: float, r: float, c: Color) -> void:
+	Sculpt.loft(k, [[y - 0.015, r, r, 0.0, 0.0], [y + 0.015, r, r, 0.0, 0.0]], 8, c, true, true, PI / 8)
+
+
+## A blade of light: a flat, pointed, perfectly symmetric bar.
+static func _light_blade(g: MeshKit, y0: float, y1: float, w: float, light: Color, core: Color) -> void:
+	Sculpt.slab(g, PackedVector2Array([Vector2(-w, y0), Vector2(w, y0), Vector2(w, y1 - w * 2.0), Vector2(0.0, y1), Vector2(-w, y1 - w * 2.0)]), w * 0.6, light, core)
+
+
+## A chamfered rectangle, w by h, centred at (0, y): exact.
+static func _chamfer(w: float, h: float, c: float, y: float) -> PackedVector2Array:
+	var x := w * 0.5
+	var y0 := y - h * 0.5
+	var y1 := y + h * 0.5
+	if c <= 0.0:
+		return PackedVector2Array([Vector2(-x, y0), Vector2(x, y0), Vector2(x, y1), Vector2(-x, y1)])
+	return PackedVector2Array([
+		Vector2(-x + c, y0), Vector2(x - c, y0), Vector2(x, y0 + c), Vector2(x, y1 - c),
+		Vector2(x - c, y1), Vector2(-x + c, y1), Vector2(-x, y1 - c), Vector2(-x, y0 + c),
+	])
