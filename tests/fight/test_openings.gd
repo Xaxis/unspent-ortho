@@ -138,7 +138,7 @@ func test_struck_a_worker_turns_on_the_player() -> void:
 	check(h.roused(), "and roused")
 
 
-func test_stood_in_its_way_a_worker_turns_on_the_player() -> void:
+func test_stood_in_its_way_a_worker_warns_then_turns_on_the_player() -> void:
 	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
 	var h := sim.add_mob(&"hauler", Vector2(23.0, 20.5))
 	h.facing = PI
@@ -146,18 +146,79 @@ func test_stood_in_its_way_a_worker_turns_on_the_player() -> void:
 	h.line_a = Vector2(30.5, 20.5)
 	h.line_b = Vector2(10.5, 20.5)
 	h.line_to_b = true
-	var crowded := 0
-	var disturbed := 0
-	for i in 60:
+	var crowded_at := -1.0
+	var warned_at := -1.0
+	var disturbed_at := -1.0
+	for i in 200:
 		F.ms(sim, 50)
 		sim.hero.health = FightRules.HEALTH
 		for e in sim.drain():
-			crowded += int(e.type == &"crowded")
-			disturbed += int(e.type == &"disturbed")
-		if disturbed > 0:
+			if e.type == &"crowded" and crowded_at < 0.0:
+				crowded_at = sim.now
+			if e.type == &"crowd_warning" and warned_at < 0.0:
+				warned_at = sim.now
+			if e.type == &"disturbed" and disturbed_at < 0.0:
+				disturbed_at = sim.now
+		if disturbed_at >= 0.0:
 			break
-	gt(float(crowded), 0.0, "it stops at the player in its way")
-	gt(float(disturbed), 0.0, "and, left there, takes it as interference")
+	check(crowded_at >= 0.0, "it stops at the player on its path")
+	check(warned_at > crowded_at, "it warns first")
+	check(disturbed_at > warned_at, "and, left there, takes it as interference")
+	gt(disturbed_at - crowded_at, FightSim.CROWD_MS - 150.0, "only after being held up %d ms" % FightSim.CROWD_MS)
+	gt(disturbed_at - warned_at, FightSim.CROWD_MS * 0.5 - 150.0, "with half of that to step aside")
+
+
+## A harvester on its round, and a player who walks up from the side to look at
+## it and stands there: looked at, walked past, turned round at the end of its
+## row, it never takes the player as interference.
+func test_walking_up_to_look_at_a_worker_never_disturbs_it() -> void:
+	for across: float in [2.5, 1.5]:
+		var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 28.5))
+		var h := sim.add_mob(&"harvester", Vector2(17.5, 20.5))
+		h.line_a = Vector2(14.5, 20.5)
+		h.line_b = Vector2(26.5, 20.5)
+		h.line_to_b = true
+		h.facing = 0.0
+		h.aim = 0.0
+		var stand := Vector2(20.5, 20.5 + across)
+		var bad := 0
+		var turned := 0
+		var t := 0.0
+		while t < 14000.0:
+			var to := stand - sim.hero.pos
+			sim.hero.move = to.normalized() if to.length() > 0.1 else Vector2.ZERO
+			F.ms(sim, 32)
+			t += 32.0
+			sim.hero.health = FightRules.HEALTH
+			# Mid-row, well clear of where it turns back at either end.
+			if h.speed > 0.2 and h.pos.x > 19.5 and h.pos.x < 21.5 and absf(sin(h.facing)) > 0.35:
+				turned += 1
+			for e in sim.drain():
+				if e.type in [&"disturbed", &"alerted", &"crowd_warning"]:
+					bad += 1
+		eq(bad, 0, "%.1f tiles beside its round: never warned or disturbed" % across)
+		check(h.indifferent() and not h.roused(), "still at its work")
+		eq(turned, 0, "a glance never turned its hull off its row while it walked")
+
+
+func test_looked_at_a_worker_walks_on_without_stopping() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 24.5))
+	var h := sim.add_mob(&"hauler", Vector2(14.5, 20.5))
+	h.line_a = Vector2(14.5, 20.5)
+	h.line_b = Vector2(28.5, 20.5)
+	h.line_to_b = true
+	h.facing = 0.0
+	h.aim = 0.0
+	var noticed := 0
+	var stood := 0
+	for i in 150:
+		F.ms(sim, 32)
+		for e in sim.drain():
+			noticed += int(e.type == &"noticed")
+		if i > 5 and h.speed < 0.2:
+			stood += 1
+	gt(float(noticed), 0.0, "it looked up at the player")
+	eq(stood, 0, "and kept walking its round")
 
 
 func test_a_watcher_calls_hunters_not_workers() -> void:

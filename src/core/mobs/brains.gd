@@ -84,8 +84,9 @@ static func strike_range(m: MobState, sim: FightSim) -> float:
 
 
 static func _idle(m: MobState, sim: FightSim) -> void:
-	if m.machine and (m.crowded_since >= 0.0 or sim.now < m.glance_until):
-		# Something in its way, or something it looked up at: it stands and faces it.
+	if m.machine and m.indifferent() and FightSim.in_way_of(m, sim.hero.pos, sim.hero.radius):
+		# Held up by someone on its path: it stands and faces them. A glance does
+		# not stop or turn it; only being in its way does.
 		m.want = Vector2.ZERO
 		m.aim = (sim.hero.pos - m.pos).angle()
 		return

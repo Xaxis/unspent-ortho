@@ -92,8 +92,10 @@ var disposition: StringName = &"hostile"
 var disturbed := false
 ## Sim ms until which a body that noticed the player only looks up.
 var glance_until := -INF
-## Sim ms since which the player has stood in an indifferent body's way (-1 = not).
+## Sim ms since which the player has held up an indifferent body on its round (-1 = not).
 var crowded_since := -1.0
+## It has warned the player standing in its way (half way to taking it as interference).
+var crowd_warned := false
 ## Put out by the coast to be seen on its round (a patrol), or as the first meeting.
 var patrol := false
 var first_meeting := false
@@ -195,14 +197,27 @@ func spent(now: float) -> bool:
 func turn_rate_at(now: float) -> float:
 	if not machine:
 		return turn_rate
-	if indifferent() and (crowded_since >= 0.0 or now < glance_until):
-		# A worker looking round at someone: unhurried, not a turret.
+	if indifferent() and crowded_since >= 0.0:
+		# A worker held up, looking round at what is in its way: unhurried, not a turret.
 		return minf(turn_rate, FightRules.PAUSE_TURN)
 	if blow_phase(now) == &"cooldown":
 		return minf(turn_rate, float(row.get("recover_turn", FightRules.RECOVER_TURN)))
 	if now < pause_until:
 		return minf(turn_rate, FightRules.PAUSE_TURN)
 	return turn_rate
+
+
+## Which way it is going along its round (a unit vector), or ZERO for a body
+## that stands. At the end of a leg it is the next leg: a worker about to turn
+## back is about to come the other way.
+func path_dir() -> Vector2:
+	if line_a.distance_squared_to(line_b) < 0.01:
+		return Vector2.ZERO
+	var target := line_b if line_to_b else line_a
+	var to := target - pos
+	if to.length() < 0.3:
+		to = (line_a if line_to_b else line_b) - pos
+	return to.normalized() if to.length() > 0.01 else Vector2.ZERO
 
 
 ## Works on whatever the player does, until disturbed.

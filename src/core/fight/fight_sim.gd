@@ -16,15 +16,17 @@ extends RefCounted
 ##   alerted called snatch filed removed fight_started outcome
 ##   opened (a machine's bite is spent: its working part is open), dulled (a
 ##   blow that met a body wore the edge past dull), noticed (an indifferent
-##   body looked up), crowded (the player stands in its way), disturbed
+##   body looked up), crowded (the player holds a worker up on its round),
+##   crowd_warning (half way to it taking that as interference), disturbed
 
 const NAV_EVERY_MS := 240.0
 ## Tiles/s at most that a standing body eases the player out of itself.
 const SHOULDER_SPEED := 4.0
-## An indifferent worker the player stands in front of stops and faces them;
-## this long in its way and it takes it as interference.
-const CROWD_MS := 1400.0
-## Tiles ahead of its hull that count as its way.
+## An indifferent worker the player holds up on its round stops and faces them;
+## this long held up and it takes it as interference. It warns at half. Looking
+## at a worker, walking beside its round or past it is never interference.
+const CROWD_MS := 3000.0
+## Tiles ahead of its hull, along its round, that count as its way.
 const CROWD_AHEAD := 1.1
 ## How long a body that noticed the player only looks up, and how long before it looks again.
 const GLANCE_MS := 900.0
@@ -277,25 +279,42 @@ func _beat() -> void:
 						m.set_mood(MobState.IDLE, now)
 
 
-## An indifferent worker on its round with the player planted in its way: it
-## stops and faces them (the brain), and past CROWD_MS takes it as
-## interference and turns on them. Errands have their own way of coming over you.
+## An indifferent worker on its round with the player planted on its path: it
+## stops (the brain) and, held up past CROWD_MS, takes it as interference and
+## turns on them. The way is measured along the round it walks, never along
+## where it happens to face, so a worker that looks at someone does not put
+## them in its way by looking. Errands have their own way of coming over you.
 func _crowding(m: MobState) -> void:
 	if m.approach == &"errand" or m.approach == &"dart":
 		return
-	var local := (hero.pos - m.pos).rotated(-m.facing)
-	var ahead := m.radius + hero.radius + CROWD_AHEAD
-	var in_way := local.x > 0.0 and local.x < ahead and absf(local.y) < m.radius + hero.radius * 0.5
-	if not in_way:
-		# Stepping out of its way for a moment is not leaving it be.
-		if m.crowded_since >= 0.0 and Senses.chebyshev(m.pos, hero.pos) > ahead + 1.5:
+	var in_way := in_way_of(m, hero.pos, hero.radius)
+	if not in_way or m.speed > 0.2:
+		if not in_way and m.crowded_since >= 0.0:
+			# Out of its path: it goes on, and the next time starts from nothing.
 			m.crowded_since = -1.0
+			m.crowd_warned = false
 		return
 	if m.crowded_since < 0.0:
 		m.crowded_since = now
 		emit(&"crowded", {"mob": m})
 	elif now - m.crowded_since >= CROWD_MS:
 		_wake(m)
+	elif not m.crowd_warned and now - m.crowded_since >= CROWD_MS * 0.5:
+		m.crowd_warned = true
+		emit(&"crowd_warning", {"mob": m})
+
+
+## Is a body of radius `r` at `p` on this worker's path: ahead of its hull along
+## the round it walks, within CROWD_AHEAD, and close enough across the path that
+## the hull would meet it.
+static func in_way_of(m: MobState, p: Vector2, r: float) -> bool:
+	var dir := m.path_dir()
+	if dir == Vector2.ZERO:
+		return false
+	var off := p - m.pos
+	var along := off.dot(dir)
+	var across := absf(off.dot(dir.orthogonal()))
+	return along > 0.0 and along < m.radius + r + CROWD_AHEAD and across < m.radius + r * 0.5
 
 
 ## An errand that works by eye has registered the player: every machine within
@@ -624,6 +643,7 @@ func _wake(m: MobState) -> void:
 	m.lost_beats = 0
 	m.calm_until = 0.0
 	m.crowded_since = -1.0
+	m.crowd_warned = false
 	if m.disposition == &"indifferent" and not m.disturbed:
 		m.disturbed = true
 		emit(&"disturbed", {"mob": m})

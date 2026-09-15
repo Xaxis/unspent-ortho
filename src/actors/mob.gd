@@ -123,8 +123,8 @@ func _pose(now_ms: float) -> StringName:
 	if s.machine and s.spent(now_ms):
 		# Winding back after a bite it missed: powered down, not on guard.
 		return &"stand"
-	if s.crowded_since >= 0.0 or now_ms < s.glance_until:
-		# A worker looking up at someone, or at someone in its way.
+	if s.crowded_since >= 0.0 or (now_ms < s.glance_until and s.speed <= 0.2):
+		# A worker held up by someone in its way, or one standing that looked up.
 		return &"alert"
 	match s.mood:
 		MobState.ALERTED:

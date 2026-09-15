@@ -14,6 +14,8 @@ const HITSTOP_KILL := 0.08
 const WAKE_SECONDS := 1.6
 ## Seconds between the struggle's marks while held.
 const STRUGGLE_BEAT := 0.4
+## Said the first time in a game a worker warns someone holding it up.
+const CROWD_LINE := "It will not go round you. Step out of its path."
 
 var sim: FightSim
 var dodge_input := DodgeInput.new()
@@ -28,6 +30,7 @@ var _land_at := -1.0
 var _held := false
 ## Where a held moment keeps the camera (the game points it at the player every frame).
 var _focus := Vector3.ZERO
+var _crowd_told := false
 
 
 func setup(g: Game) -> void:
@@ -225,6 +228,18 @@ func _handle(events: Array[Dictionary]) -> void:
 				# A worker stopped by someone standing in its way: it says so before it acts.
 				var m: MobState = e.mob
 				Events.sfx.emit(&"alert", _at3(m.pos))
+			&"crowd_warning":
+				# Half way to taking it as interference: its part flares, a ring goes out
+				# from it, and the first time in a game it is said what it wants.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"alert", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.7)
+				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 0.9, 0.4)
+				if m.node is Mob:
+					(m.node as Mob).flash(0.08)
+				if not _crowd_told:
+					_crowd_told = true
+					Events.message.emit(CROWD_LINE)
 			&"disturbed":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"second_act", _at3(m.pos))
