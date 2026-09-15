@@ -147,9 +147,12 @@ static func kiln(k: Kit, v: int) -> void:
 	else:
 		var stone := P.LINEN[3]
 		k.hand(Ink.CROSS)
-		k.slab(0, 0, 0, 1.44, 1.05, 1.44, 2101, stone, P.LINEN[4], 0.05, 0.12)
-		k.slab(-0.08, 0.98, 0, 1.0, 0.18, 1.0, 2102, P.LINEN[2], P.INK[1], 0.04, 0.1)
-		var fx := 0.735
+		# A squat battered drum of rubble with a dark charging hole, built into
+		# the slope, its draw arch standing out in front.
+		k.stone(-0.05, -0.06, 0, 0.8, 1.1, 2101, stone, 9, 0.0, P.LINEN[2])
+		k.made.prism(-0.05, 1.0, 0, 0.26, 1.03, 0.24, 8, P.INK[1], P.INK[0])
+		k.slab(0.6, -0.05, 0, 0.3, 0.72, 0.72, 2103, P.LINEN[2], P.LINEN[3], 0.04, 0.15)
+		var fx := 0.755
 		k.made.quad(Vector3(fx, 0.0, 0.26), Vector3(fx, 0.0, -0.26), Vector3(fx, 0.42, -0.26), Vector3(fx, 0.42, 0.26), P.INK[1])
 		k.made.tri(Vector3(fx, 0.42, 0.26), Vector3(fx, 0.42, -0.26), Vector3(fx - 0.01, 0.64, 0.0), P.INK[1])
 		k.made.quad(Vector3(fx + 0.01, 0.02, 0.16), Vector3(fx + 0.01, 0.02, -0.16), Vector3(fx + 0.01, 0.22, -0.16), Vector3(fx + 0.01, 0.22, 0.16), GroundColors.glow(P.EMBER[3], 1.3))

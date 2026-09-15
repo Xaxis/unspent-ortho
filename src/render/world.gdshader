@@ -276,8 +276,8 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (ink_hash(px + 2.0) > 0.994 && n > 0.5) {
 			c = SPRUCE4;
 		}
-		if (ink_vnoise(wp * 0.5 + 8.0) > 0.76) {
-			c = mix(c, RUST2, 0.5);
+		if (ink_vnoise(wp * 0.5 + 8.0) > 0.82) {
+			c = mix(c, RUST2, 0.3);
 		}
 	} else if (m == 48) {
 		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
@@ -406,7 +406,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = EARTH1;
 		}
 		float st = ink_hash(vec2(col, 9.0));
-		if (st > 0.94 && dt < 0.1 + fract(st * 31.0) * 0.3) {
+		if (st > 0.975 && dt < 0.06 + fract(st * 31.0) * 0.14) {
 			c = LINEN4;
 		}
 	} else if (id == 2) {

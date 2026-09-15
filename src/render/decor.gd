@@ -48,8 +48,8 @@ func _init(w: WorldData) -> void:
 	_bloom.seed = Rng.hash_ints(w.seed_value, 0xB100) & 0x7FFFFFFF
 	_bloom.frequency = 1.0 / 38.0
 	_bloom.fractal_octaves = 2
-	_table(Ground.GRASS, 1.1, [TUFT, 46, TUFT_TALL, 12, FLOWER, 12, STONE, 5, THISTLE, 3, MOLEHILL, 2])
-	_table(Ground.HEATH, 1.2, [HEATHER, 50, TUFT, 14, STONE, 5, FLOWER, 4, BRACKEN, 7])
+	_table(Ground.GRASS, 1.1, [TUFT, 46, TUFT_TALL, 12, FLOWER, 12, STONE, 2, THISTLE, 3, MOLEHILL, 2])
+	_table(Ground.HEATH, 1.2, [HEATHER, 50, TUFT, 14, STONE, 2, FLOWER, 4, BRACKEN, 7])
 	_table(Ground.SAND, 0.3, [MARRAM, 26, SHELL, 16, PEBBLES, 10, TWIG, 5, WRACK_BIT, 6])
 	_table(Ground.SHINGLE, 0.5, [PEBBLES, 40, SEA_GLASS, 5, SHELL, 10, WRACK_BIT, 8, STONE, 12])
 	_table(Ground.GRAVEL, 0.3, [PEBBLES, 30, STONE, 10, TUFT, 6])
@@ -57,7 +57,7 @@ func _init(w: WorldData) -> void:
 	_table(Ground.MUD, 0.4, [SEDGE, 20, TWIG, 8, PEBBLES, 6])
 	_table(Ground.PEAT, 0.7, [HEATHER, 30, BOG_COTTON, 28, SEDGE, 18])
 	_table(Ground.NEEDLES, 0.8, [CONE, 30, BRACKEN, 20, TWIG, 18, MUSHROOM, 6, FERN, 8])
-	_table(Ground.SNOW, 0.28, [SNOW_TUFT, 40, CROTTLE, 12, STONE, 8, TWIG, 4])
+	_table(Ground.SNOW, 0.28, [SNOW_TUFT, 40, CROTTLE, 5, STONE, 3, TWIG, 4])
 	_table(Ground.ICE, 0.08, [ICE_SHARD, 10])
 	_table(Ground.BONE, 0.45, [FERN, 22, STONE, 26, TUFT, 20, FLOWER, 7, BONE, 3])
 	_table(Ground.LIMESTONE, 0.45, [FERN, 22, STONE, 26, TUFT, 20, FLOWER, 7, BONE, 3])
@@ -226,9 +226,9 @@ static func rock_of(c: int) -> Color:
 	match c:
 		Country.BONELANDS: return P.LINEN[3]
 		Country.BURNING: return P.INK[3]
-		Country.SNOWFIELD: return P.SLATE[3]
+		Country.SNOWFIELD: return P.SLATE[2]
 		Country.MOSS, Country.PINEWOOD: return P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
-	return P.SLATE[3]
+	return P.SLATE[2]
 
 
 static func kit(kind: int, c: int, stage: int) -> Kit:

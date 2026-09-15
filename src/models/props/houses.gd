@@ -234,7 +234,12 @@ static func slated(k: Kit, c: int) -> void:
 	_chimney(k, cx + 0.05, yr - 0.55, d * 0.5 - 0.24, 1.0, s + 10)
 	turf_foot(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
-		k.made.quad(Vector3(cx + ex * 0.55, lerpf(h, yr, 0.45) + 0.05, ez), Vector3(cx + ex * 0.55, lerpf(h, yr, 0.45) + 0.05, -ez), Vector3(cx, yr + 0.05, -ez), Vector3(cx, yr + 0.05, ez), P.RIME[5])
+		# Snow over both slopes, the eaves left dark.
+		var sl := Vector3(0, 0.05, 0)
+		k.made.quad(Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, P.RIME[5])
+		k.made.tri(Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr, ez) + sl, P.RIME[5])
+		k.made.tri(Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx, yr, -ez) + sl, P.RIME[5])
+		k.made.quad(Vector3(cx - ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx - ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, P.RIME[4])
 
 
 ## "long": a low stone house under deep thatch roped down with cable and
@@ -303,9 +308,10 @@ static func but(k: Kit, c: int) -> void:
 	var w := 2.1
 	var d := 2.6
 	var h := 1.15
-	var plate := P.PLATE[3]
-	var lit := P.PLATE[4]
-	var dark := P.PLATE[2]
+	# Weathered: a housing that has stood in the rain for years, not a live machine.
+	var plate := P.PLATE[2]
+	var lit := P.PLATE[3]
+	var dark := P.PLATE[1]
 	k.chamfer(0, 0, 0, w, h, d, 0.24, plate, lit)
 	# The bullnose lid.
 	k.chamfer(0, h - 0.02, 0, w - 0.3, 0.28, d - 0.3, 0.3, plate, lit)
