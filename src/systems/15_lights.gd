@@ -132,6 +132,11 @@ func _new_light(n: String) -> OmniLight3D:
 
 
 func toggle_lantern() -> void:
+	if not game.body.lamp_lit:
+		# Settle the unlit time first: survival burns oil once a second from its
+		# last settle, so a clock that jumped since (a tour's `hour`) would
+		# otherwise drain the flask the moment the lamp is lit.
+		Survival.burn_lamp(game)
 	game.body.lamp_lit = not game.body.lamp_lit
 	Events.sfx.emit(&"lamp_on" if game.body.lamp_lit else &"lamp_off", game.player.position)
 

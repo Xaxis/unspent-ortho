@@ -167,6 +167,31 @@ func test_the_lamp_action_lights_and_puts_out_the_lantern() -> void:
 	await _drawn(1)
 
 
+func test_lighting_the_lamp_after_the_clock_jumps_keeps_its_oil() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 8.0
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	g.inventory.add(&"lamp")
+	await _drawn(2)
+	var lights: GameSystem = null
+	for sys in g.systems:
+		if sys.name == "15_lights":
+			lights = sys
+	check(lights != null, "the lights system is loaded")
+	var oil := Survival.lamp_oil(g)
+	g.clock.minutes += 15.0 * 60.0
+	lights.call("toggle_lantern")
+	Survival.burn_lamp(g)
+	check(g.body.lamp_lit, "a lamp lit after a jump in the clock stays lit")
+	near(Survival.lamp_oil(g), oil, 1.0, "the dark hours before it was lit burnt no oil")
+	g.body.lamp_lit = false
+	g.queue_free()
+	await _drawn(1)
+
+
 func test_a_burning_dusk_keeps_its_warm_darks() -> void:
 	var cold := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"snowfield"))
 	var burning := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"burning"))
