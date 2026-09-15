@@ -1,26 +1,37 @@
 extends GameSystem
-## People in the villages, and the player's own figure kept in step with what
-## they carry. Villagers are costume, not yet characters (M2 gives them work and
-## talk): they stand at their doors, work at the nearest tree or rock, walk the
-## square, and turn their heads to watch you pass.
+## People in the villages. Villagers are costume, not yet characters (M2 gives
+## them work and talk): they work at the nearest tree or rock, walk the square,
+## stand at their doors, and turn their heads to watch you pass. At dusk they
+## put down their work and walk home; each goes in at their door (or as soon as
+## nobody can see them) and comes out again at dawn.
 ##
-## Also the shot flags for people (parsed here so no shared file changes):
-##   --held=ID            put ID in the player's hand (added to the inventory)
-##   --look=TOKENS        the player's look: comma list of build/hat/coat/hair/beard/
-##                        salvage names, or seed:N for a generated person
-##   --act=NAME[:T]       player plays NAME on a loop, or frozen T seconds in
-##   --face=DEG           player facing in degrees (0 east, 90 south)
-##   --folk=N             N villagers in a ring around the player, for crowd shots
+## Building a person costs ~3 ms, so figures are built from a queue, one on every
+## even frame (37_fauna takes the odd ones): walking up to a village never stalls.
+## Only setup builds straight away, so the first frame and shots are complete.
+##
+## Shot options (BootOptions, characters):
+##   --hand=ID      put ID in the player's hand (added to the inventory)
+##   --look=TOKENS  the player's look: build/hat/coat/hair/beard/salvage names, or seed:N
+##   --pose=NAME[:T] the player plays NAME on a loop, or frozen T seconds in
+##   --face=DEG     the player's facing in degrees (0 east, 90 south)
+##   --folk=N       N villagers in a ring around the player, for crowd shots
 
 const NEAR := 34.0
 const FAR := 46.0
 const PER_VILLAGE := 6
+## Hours: villagers head home from DUSK and are out again from DAWN.
+const DUSK := 21.0
+const DAWN := 5.5
+const PACE := 1.5
 const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE]
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const GREEN: Array[int] = [PropKind.REEDS, PropKind.BUSH, PropKind.GORSE]
 
-## One villager: {model, pos, home, role, target, facing, t, wait, work, tool}.
+## One villager: {model, pos, home, door, role, target, facing, t, wait, work, tool,
+## job_pos, job_facing, village, state}. state: &"out" | &"home" (walking in) | &"in".
 var folk: Array[Dictionary] = []
+## Villagers waiting to be built: {look, home, door, role, village, h}.
+var queue: Array[Dictionary] = []
 var _spawned: Dictionary = {} # village index -> true
 var _act := &""
 var _act_at := -1.0
@@ -31,20 +42,10 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	name = "folk"
 	_player_flags()
-	if game.inventory != null:
-		game.inventory.changed.connect(_sync_held)
-	_sync_held()
-	var ring := int(_arg("folk", "0"))
+	var ring := game.options.folk if game.options != null else 0
 	if ring > 0:
 		_ring(ring)
 	_stream(true)
-
-
-func _arg(key: String, fallback: String) -> String:
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--" + key + "="):
-			return a.trim_prefix("--" + key + "=")
-	return fallback
 
 
 func _player_model() -> PersonModel:
@@ -53,29 +54,29 @@ func _player_model() -> PersonModel:
 	return game.player.get("model") as PersonModel
 
 
-func _sync_held() -> void:
-	var m := _player_model()
-	if m != null and game.inventory != null:
-		m.set_held(game.inventory.held)
-
-
 func _player_flags() -> void:
 	var m := _player_model()
-	var held := _arg("held", "")
-	if held != "" and game.inventory != null:
-		game.inventory.add(StringName(held))
-		game.inventory.set_held(StringName(held))
-	var look := _arg("look", "")
-	if look != "" and m != null:
-		m.set_look(parse_look(look, game.options.seed_value if game.options != null else 1))
-	var face := _arg("face", "")
-	if face != "" and game.player != null:
-		game.player.facing = deg_to_rad(face.to_float())
-		if m != null:
-			m.rotation.y = -game.player.facing
-	var act := _arg("act", "")
-	if act != "" and m != null:
-		var parts := act.split(":")
+	var o := game.options
+	if m == null:
+		return
+	# Only the starting hand: keeping the model in step with later changes is the
+	# fight and survival systems' job (they own what is held and when).
+	if game.inventory != null:
+		m.set_held(game.inventory.held)
+	if o == null:
+		return
+	if o.hand != "" and game.inventory != null:
+		game.inventory.add(StringName(o.hand))
+		game.inventory.set_held(StringName(o.hand))
+	if o.hand != "":
+		m.set_held(StringName(o.hand))
+	if o.look != "":
+		m.set_look(parse_look(o.look, o.seed_value))
+	if o.face != "" and game.player != null:
+		game.player.facing = deg_to_rad(o.face.to_float())
+		m.rotation.y = -game.player.facing
+	if o.pose != "":
+		var parts := o.pose.split(":")
 		_act = StringName(parts[0])
 		_act_at = parts[1].to_float() if parts.size() > 1 else -1.0
 		if _act_at >= 0.0:
@@ -109,8 +110,17 @@ static func parse_look(text: String, seed_value: int) -> Dictionary:
 	return spec
 
 
+## Night for villagers: from DUSK to DAWN.
+static func is_night(hour: float) -> bool:
+	return hour >= DUSK or hour < DAWN
+
+
+func _hour() -> float:
+	return game.clock.hour() if game.clock != null else 12.0
+
+
 func _process(delta: float) -> void:
-	if game == null or game.world == null:
+	if game == null or game.world == null or game.player == null:
 		return
 	var m := _player_model()
 	if m != null and _act != &"" and _act_at < 0.0 and not m.busy():
@@ -119,8 +129,9 @@ func _process(delta: float) -> void:
 	if _check <= 0.0:
 		_check = 0.5
 		_stream(false)
-	var hour := game.clock.hour() if game.clock != null else 12.0
-	var night := hour < 5.5 or hour > 22.0
+	if not queue.is_empty() and Engine.get_process_frames() % 2 == 0:
+		pump()
+	var night := is_night(_hour())
 	for f in folk:
 		_step(f, delta, night)
 
@@ -136,12 +147,25 @@ func _stream(now: bool) -> void:
 		if d < NEAR and not _spawned.has(i):
 			_spawned[i] = true
 			_populate(i, vp)
+			if now:
+				while not queue.is_empty():
+					pump()
 		elif d > FAR and _spawned.has(i):
 			_spawned.erase(i)
+			queue = queue.filter(func(q: Dictionary) -> bool: return q.village != i)
 			for f: Dictionary in folk.duplicate():
 				if f.get("village", -1) == i:
 					(f.model as Node).queue_free()
 					folk.erase(f)
+
+
+## Build the next queued villager. Returns false when there was none.
+func pump() -> bool:
+	if queue.is_empty():
+		return false
+	var q: Dictionary = queue.pop_front()
+	_add(q.look, q.home, q.role, q.village, q.h, q.door)
+	return true
 
 
 func _populate(index: int, centre: Vector2) -> void:
@@ -154,12 +178,17 @@ func _populate(index: int, centre: Vector2) -> void:
 	for n in looks.size():
 		var h := Rng.hash01(w.seed_value, index, n, 71)
 		var home := centre + Vector2(Rng.hash01(w.seed_value, index, n, 72) - 0.5, Rng.hash01(w.seed_value, index, n, 73) - 0.5) * 8.0
+		var door := home
 		if not houses.is_empty():
 			var house := houses[n % houses.size()]
-			home = house.pos + Vector2(sin(house.rot), cos(house.rot)) * (2.0 + h)
+			var out := Vector2(sin(house.rot), cos(house.rot))
+			door = house.pos + out * (house.solid + 0.3)
+			home = house.pos + out * (2.0 + h)
 			home += Vector2(cos(h * TAU), sin(h * TAU)) * 0.7
 		if not _standable(home):
 			continue
+		if not _standable(door):
+			door = home
 		var role := &"idle"
 		if looks[n].build == &"boy":
 			role = &"play"
@@ -167,7 +196,7 @@ func _populate(index: int, centre: Vector2) -> void:
 			role = &"work"
 		elif h < 0.7:
 			role = &"walk"
-		_add(looks[n], home, role, index, h)
+		queue.append({"look": looks[n], "home": home, "door": door, "role": role, "village": index, "h": h})
 
 
 func _ring(n: int) -> void:
@@ -176,13 +205,14 @@ func _ring(n: int) -> void:
 	for i in looks.size():
 		var a := TAU * i / looks.size()
 		var p := at + Vector2(cos(a), sin(a)) * (1.6 + 0.25 * (i % 2))
-		_add(looks[i], p, &"idle", -2, float(i) / n)
+		_add(looks[i], p, &"idle", -2, float(i) / n, p)
 
 
-func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: float) -> void:
+func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: float, door: Vector2) -> void:
 	var f := {
-		"pos": home, "home": home, "role": role, "village": village, "t": h * 5.0,
+		"pos": home, "home": home, "door": door, "role": role, "village": village, "t": h * 5.0,
 		"facing": h * TAU, "target": home, "wait": h * 3.0, "tool": &"", "work": &"",
+		"job_pos": home, "job_facing": h * TAU, "state": &"out",
 	}
 	if role == &"work":
 		var job := _job(home)
@@ -192,12 +222,19 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 			f.tool = job.tool
 			f.work = job.work
 			f.pos = job.pos
+			f.job_pos = job.pos
 			f.facing = job.facing
-	var model := PersonModel.make(look, f.tool, game.view.world_material())
+			f.job_facing = job.facing
+	var model := PersonModel.make(look, f.tool, game.view.world_material() if game.view != null else null)
 	model.name = "villager_%d" % folk.size()
 	add_child(model)
 	f.model = model
-	if f.role == &"work":
+	if village >= 0 and is_night(_hour()):
+		# Built after dark: already indoors.
+		f.state = &"in"
+		f.pos = door
+		model.visible = false
+	elif f.role == &"work":
 		model.play_action(f.work, 0.0)
 	_place(f)
 	folk.append(f)
@@ -243,38 +280,78 @@ func _standable(p: Vector2) -> bool:
 	return w.in_bounds(floori(p.x), floori(p.y)) and not Ground.is_water(g) and w.level_at(floori(p.x), floori(p.y)) > 0
 
 
+## Whether the camera can see a spot. False with no camera (tests, headless):
+## then nobody is watching and villagers may vanish at once.
+func _seen(p: Vector2) -> bool:
+	if not is_inside_tree():
+		return false
+	var cam := get_viewport().get_camera_3d()
+	return cam != null and cam.is_position_in_frustum(game.world.to_3d(p) + Vector3(0, 0.6, 0))
+
+
 # ---------------------------------------------------------------- behaviour
 
 func _step(f: Dictionary, delta: float, night: bool) -> void:
 	var model: PersonModel = f.model
-	model.visible = not night
-	if night:
+	if f.village < 0:
+		night = false
+	if night and f.state == &"out":
+		f.state = &"home"
+		f.wait = 0.0
+		if model.busy():
+			model.play_action(&"", 0.0)
+	elif not night and f.state != &"out":
+		# Dawn: out of the door and back to the day's work.
+		f.state = &"out"
+		f.pos = f.door
+		f.target = f.door
+		f.wait = Rng.hash01(int(f.home.x * 7.0), int(f.home.y * 7.0)) * 2.0
+		model.visible = true
+	if f.state == &"in":
 		return
 	f.t = float(f.t) + delta
 	var speed := 0.0
 	var player_pos: Vector2 = game.player.pos
 	var to_player := player_pos - (f.pos as Vector2)
-	match f.role:
-		&"walk", &"play":
-			var target: Vector2 = f.target
-			var d := target - (f.pos as Vector2)
-			if f.wait > 0.0:
-				f.wait = float(f.wait) - delta
-			elif d.length() < 0.15:
-				var h := Rng.hash01(int(f.t * 10.0), int(f.home.x), int(f.home.y))
-				var r := 3.5 if f.role == &"walk" else 2.5
-				var next: Vector2 = (f.home as Vector2) + Vector2(cos(h * TAU), sin(h * TAU)) * r * (0.4 + h * 0.6)
-				if _standable(next):
-					f.target = next
-				f.wait = (1.5 + h * 3.0) if f.role == &"walk" else h * 0.6
-			else:
-				var pace := 1.5 if f.role == &"walk" else 4.8
-				var step := d.normalized() * minf(d.length(), pace * delta)
-				f.pos = (f.pos as Vector2) + step
-				f.facing = lerp_angle(float(f.facing), step.angle(), 1.0 - exp(-10.0 * delta))
-				speed = pace
+	if f.state == &"home":
+		speed = _walk_to(f, f.door, PACE, delta)
+		if speed == 0.0 or not _seen(f.pos):
+			f.state = &"in"
+			model.visible = false
+			return
+	else:
+		match f.role:
+			&"walk", &"play":
+				var target: Vector2 = f.target
+				var d := target - (f.pos as Vector2)
+				if f.wait > 0.0:
+					f.wait = float(f.wait) - delta
+				elif d.length() < 0.15:
+					var h := Rng.hash01(int(f.t * 10.0), int(f.home.x), int(f.home.y))
+					var r := 3.5 if f.role == &"walk" else 2.5
+					var next: Vector2 = (f.home as Vector2) + Vector2(cos(h * TAU), sin(h * TAU)) * r * (0.4 + h * 0.6)
+					if _standable(next):
+						f.target = next
+					f.wait = (1.5 + h * 3.0) if f.role == &"walk" else h * 0.6
+				else:
+					speed = _walk_to(f, target, PACE if f.role == &"walk" else 4.8, delta)
+			&"work":
+				if (f.pos as Vector2).distance_to(f.job_pos) > 0.05:
+					if f.wait > 0.0:
+						f.wait = float(f.wait) - delta
+					else:
+						speed = _walk_to(f, f.job_pos, PACE, delta)
+				else:
+					f.facing = lerp_angle(float(f.facing), float(f.job_facing), 1.0 - exp(-8.0 * delta))
+					if not model.busy():
+						model.play_action(f.work, 0.0)
+			_:
+				if (f.pos as Vector2).distance_to(f.home) > 0.05 and f.wait <= 0.0:
+					speed = _walk_to(f, f.home, PACE, delta)
+				elif f.wait > 0.0:
+					f.wait = float(f.wait) - delta
 	# Heads turn to watch the player go by.
-	if to_player.length() < 5.0 and f.role != &"work":
+	if to_player.length() < 5.0 and not model.busy():
 		var rel := wrapf(to_player.angle() - float(f.facing), -PI, PI)
 		model.gaze = clampf(-rel, -1.3, 1.3)
 		if absf(rel) > 1.9 and speed == 0.0:
@@ -283,6 +360,19 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 		model.gaze = NAN
 	_place(f)
 	model.animate(speed, delta)
+
+
+## One step toward `target` at `pace` tiles/s, turning to face the way. Returns
+## the speed moved (0 once there).
+func _walk_to(f: Dictionary, target: Vector2, pace: float, delta: float) -> float:
+	var d := target - (f.pos as Vector2)
+	if d.length() < 0.05:
+		f.pos = target
+		return 0.0
+	var step := d.normalized() * minf(d.length(), pace * delta)
+	f.pos = (f.pos as Vector2) + step
+	f.facing = lerp_angle(float(f.facing), step.angle(), 1.0 - exp(-10.0 * delta))
+	return step.length() / maxf(delta, 1e-5)
 
 
 func _place(f: Dictionary) -> void:

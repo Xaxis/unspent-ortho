@@ -22,10 +22,29 @@ var rng: RandomNumberGenerator
 var pose_time := 0.0
 var clock := 0.0
 var gait_phase := 0.0
+## How many times the rig has been built (spawn builds once; create + vary twice).
+var builds := 0
 ## Last applied pose, for blending into the next one.
 var _from: Dictionary = {}
 var _blend := 1.0
 var _speed := 0.0
+
+
+## An animal of `kind_id` built once, already varied by `seed_v`. Prefer this to
+## FigureModel.create + vary(), which builds the figure twice (~4 ms each).
+## Kinds with no animal script fall back to FigureModel.create.
+static func spawn(kind_id: StringName, mat: Material, seed_v: int) -> FigureModel:
+	var path := "res://src/models/animals/%s.gd" % kind_id
+	if not ResourceLoader.exists(path):
+		return FigureModel.create(kind_id, mat)
+	var m := (load(path) as GDScript).new() as AnimalModel
+	if m == null:
+		return FigureModel.create(kind_id, mat)
+	m.kind = kind_id
+	m.material = mat if mat != null else FigureModel._default_material()
+	m.seed_value = seed_v
+	m.build()
+	return m
 
 
 func build() -> void:
@@ -39,6 +58,7 @@ func vary(new_seed: int) -> void:
 
 
 func _rebuild() -> void:
+	builds += 1
 	rng = Rng.make(seed_value, hash(String(kind)))
 	if rig != null and rig.skeleton != null:
 		remove_child(rig.skeleton)
@@ -198,10 +218,9 @@ static func gallery_for(kind_id: StringName, poses: Array) -> Array:
 		var names: PackedStringArray = []
 		for i in range(start, mini(start + 4, poses.size())):
 			var spec: Array = poses[i]
-			var m := FigureModel.create(kind_id, mat) as AnimalModel
+			var m := AnimalModel.spawn(kind_id, mat, i * 7 + 1) as AnimalModel
 			if m == null:
 				continue
-			m.vary(i * 7 + 1)
 			m.rotation.y = PI * 0.25 if i % 2 == 0 else -PI * 0.25
 			m.set_pose(spec[0])
 			for f in 12:

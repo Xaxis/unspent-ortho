@@ -7,36 +7,43 @@ extends GameSystem
 ##   dog    wanders the village, stops to watch you, trots off again
 ##   sheep  graze in a loose flock and scatter when you walk into them
 ##   gulls  peck along the tideline and lift off when you come close, then
-##          land again further along
+##          land again further along; at dusk they fly off out of sight, and
+##          at dawn they fly back in and land
 ##
-## Shot flag (parsed here so no shared file changes):
+## Animals are built from a queue, one on every odd frame (35_folk takes the even
+## ones), each built once already varied: a village streaming in never stalls.
+##
+## Shot option (BootOptions, characters):
 ##   --fauna=KIND:N[,KIND:N]   N of KIND in a ring round the player, e.g. gull:3,sheep:4
 
 const NEAR := 36.0
 const FAR := 48.0
 const GRAZE: Array[int] = [Ground.GRASS, Ground.HEATH, Ground.MOSS]
 const SHORE: Array[int] = [Ground.SAND, Ground.SHINGLE]
+## Hours: gulls leave from DUSK and come back from DAWN.
+const DUSK := 20.5
+const DAWN := 5.5
 
 ## One animal: {model, kind, pos, home, facing, state, t, wait, target, village, fly}
 var beasts: Array[Dictionary] = []
+## Animals waiting to be built: {kind, pos, village, seed}.
+var queue: Array[Dictionary] = []
 var _spawned: Dictionary = {}
-var _check := 0.0
+## Half a period behind 35_folk, so the two never stream in the same frame.
+var _check := 0.25
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 	name = "fauna"
-	var ring := _arg("fauna", "")
+	var ring := game.options.fauna if game.options != null else ""
 	if ring != "":
 		_ring(ring)
-	_stream()
+	_stream(true)
 
 
-func _arg(key: String, fallback: String) -> String:
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--" + key + "="):
-			return a.trim_prefix("--" + key + "=")
-	return fallback
+static func is_night(hour: float) -> bool:
+	return hour >= DUSK or hour < DAWN
 
 
 func _process(delta: float) -> void:
@@ -45,16 +52,17 @@ func _process(delta: float) -> void:
 	_check -= delta
 	if _check <= 0.0:
 		_check = 0.5
-		_stream()
-	var hour := game.clock.hour() if game.clock != null else 12.0
-	var night := hour < 5.5 or hour > 21.5
+		_stream(false)
+	if not queue.is_empty() and Engine.get_process_frames() % 2 == 1:
+		pump()
+	var night := is_night(game.clock.hour() if game.clock != null else 12.0)
 	for b in beasts:
 		_step(b, delta, night)
 
 
 # ---------------------------------------------------------------- streaming
 
-func _stream() -> void:
+func _stream(now: bool = false) -> void:
 	var at: Vector2 = game.player.pos
 	for i in game.world.villages.size():
 		var vp: Vector2 = game.world.villages[i].get("pos", Vector2(-9999, -9999))
@@ -62,12 +70,29 @@ func _stream() -> void:
 		if d < NEAR and not _spawned.has(i):
 			_spawned[i] = true
 			_populate(i, vp)
+			if now:
+				while pump():
+					pass
 		elif d > FAR and _spawned.has(i):
 			_spawned.erase(i)
+			queue = queue.filter(func(q: Dictionary) -> bool: return q.village != i)
 			for b: Dictionary in beasts.duplicate():
 				if b.village == i:
 					(b.model as Node).queue_free()
 					beasts.erase(b)
+
+
+## Build the next queued animal. Returns false when there was none.
+func pump() -> bool:
+	if queue.is_empty():
+		return false
+	var q: Dictionary = queue.pop_front()
+	_add(q.kind, q.pos, q.village, q.seed)
+	return true
+
+
+func _enqueue(kind: StringName, at: Vector2, village: int, seed_value: int) -> void:
+	queue.append({"kind": kind, "pos": at, "village": village, "seed": seed_value})
 
 
 func _populate(index: int, centre: Vector2) -> void:
@@ -75,21 +100,21 @@ func _populate(index: int, centre: Vector2) -> void:
 	if Rng.hash01(s, index, 1) < 0.85:
 		var spot := _find(centre, 4.0, [], 11 + index)
 		if spot.x > -1.0:
-			_add(&"dog", spot, index, s * 7 + index)
+			_enqueue(&"dog", spot, index, s * 7 + index)
 	var pasture := _find(centre, 12.0, GRAZE, 23 + index)
 	if pasture.x > -1.0:
 		var flock := 2 + int(Rng.hash01(s, index, 2) * 3.0)
 		for n in flock:
 			var p := pasture + Vector2(Rng.hash01(s, index, n, 3) - 0.5, Rng.hash01(s, index, n, 4) - 0.5) * 3.0
 			if _ok(p):
-				_add(&"sheep", p, index, s * 13 + index * 5 + n)
+				_enqueue(&"sheep", p, index, s * 13 + index * 5 + n)
 	var beach := _find(centre, 16.0, SHORE, 37 + index)
 	if beach.x > -1.0:
 		var n_gulls := 2 + int(Rng.hash01(s, index, 5) * 3.0)
 		for n in n_gulls:
 			var p := beach + Vector2(Rng.hash01(s, index, n, 6) - 0.5, Rng.hash01(s, index, n, 7) - 0.5) * 2.5
 			if _ok(p):
-				_add(&"gull", p, index, s * 17 + index * 3 + n)
+				_enqueue(&"gull", p, index, s * 17 + index * 3 + n)
 
 
 func _ring(spec: String) -> void:
@@ -127,9 +152,7 @@ func _ok(p: Vector2) -> bool:
 
 
 func _add(kind: StringName, at: Vector2, village: int, seed_value: int) -> void:
-	var m := FigureModel.create(kind, game.view.world_material() if game.view != null else null)
-	if m is AnimalModel:
-		(m as AnimalModel).vary(seed_value)
+	var m := AnimalModel.spawn(kind, game.view.world_material() if game.view != null else null, seed_value)
 	m.name = "%s_%d" % [kind, beasts.size()]
 	add_child(m)
 	var b := {
@@ -146,10 +169,8 @@ func _add(kind: StringName, at: Vector2, village: int, seed_value: int) -> void:
 func _step(b: Dictionary, delta: float, night: bool) -> void:
 	var m: FigureModel = b.model
 	var kind: StringName = b.kind
-	if kind == &"gull":
-		m.visible = not night
-		if night:
-			return
+	if kind == &"gull" and _gull_night(b, night):
+		return
 	b.t = float(b.t) + delta
 	var to_player: Vector2 = game.player.pos - (b.pos as Vector2)
 	var near := to_player.length()
@@ -187,6 +208,49 @@ func _sheep(b: Dictionary, delta: float, near: float, to_player: Vector2) -> flo
 	return _wander(b, delta, 3.0, 0.8, 4.0, 9.0)
 
 
+## Dusk sends gulls off out of sight; dawn brings them back. Returns true while
+## the gull is away (nothing else to do this frame).
+func _gull_night(b: Dictionary, night: bool) -> bool:
+	var m := b.model as AnimalModel
+	if night and not b.get("away", false):
+		if not b.get("leaving", false):
+			b.leaving = true
+			var dir := Vector2.from_angle(Rng.hash01(int(b.seed), 31) * TAU)
+			if b.state != &"flee" and b.state != &"fly":
+				b.state = &"flee"
+			b.target = (b.pos as Vector2) + dir * 40.0
+			b.wait = 1.0
+		elif m.pose_time > 1.0 and not _seen(b.pos):
+			b.away = true
+			b.leaving = false
+			m.visible = false
+		return false
+	if b.get("away", false):
+		if night:
+			return true
+		# Back in from off-screen, down onto its own stretch of shore.
+		b.away = false
+		var from := Vector2.from_angle(Rng.hash01(int(b.seed), 32) * TAU) * 18.0
+		b.pos = (b.home as Vector2) + from
+		b.target = b.home
+		b.state = &"fly"
+		b.wait = 0.0
+		m.set_pose(&"fly")
+		m.visible = true
+	elif not night and b.get("leaving", false):
+		b.leaving = false
+		b.target = b.home
+	return false
+
+
+## Whether the camera can see a spot. False with no camera (tests, headless).
+func _seen(p: Vector2) -> bool:
+	if not is_inside_tree():
+		return false
+	var cam := get_viewport().get_camera_3d()
+	return cam != null and cam.is_position_in_frustum(game.world.to_3d(p) + Vector3(0, 0.3, 0))
+
+
 func _gull(b: Dictionary, delta: float, near: float, to_player: Vector2) -> float:
 	var m := b.model as AnimalModel
 	if b.state == &"land":
@@ -198,7 +262,7 @@ func _gull(b: Dictionary, delta: float, near: float, to_player: Vector2) -> floa
 		b.wait = float(b.wait) - delta
 		var target: Vector2 = b.target
 		var d := target - (b.pos as Vector2)
-		if float(b.wait) < 0.0 and d.length() < 0.3:
+		if float(b.wait) < 0.0 and d.length() < 0.3 and not b.get("leaving", false):
 			b.state = &"land"
 			return 0.0
 		if m.pose_time > 0.6:

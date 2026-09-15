@@ -103,8 +103,7 @@ static func gallery() -> Array:
 		"zoo":
 			for k: StringName in [&"dog", &"sheep", &"bull", &"rat", &"gull"]:
 				for v in 2:
-					var m := FigureModel.create(k, mat) as AnimalModel
-					m.vary(v * 31 + arg.to_int())
+					var m := AnimalModel.spawn(k, mat, v * 31 + arg.to_int()) as AnimalModel
 					m.rotation.y = PersonModel.FACE_RIGHT if v == 0 else PersonModel.FACE_CAMERA
 					m.animate(0.5, 0.0)
 					nodes.append(m)

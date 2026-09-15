@@ -15,6 +15,12 @@ extends RefCounted
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
+## --hand=ID           the player holds ID (given if not carried), characters
+## --look=TOKENS       the player's look: build,hat,coat,hair,beard,salvage names, or seed:N (characters)
+## --pose=NAME[:T]     the player plays a PersonModel action on a loop, or frozen T s in (characters)
+## --face=DEG          the player's facing in degrees, 0 east, 90 south (characters)
+## --folk=N            N villagers in a ring round the player, for crowd shots (characters)
+## --fauna=KIND:N,...  N animals of KIND in a ring round the player, e.g. gull:3 (characters)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +35,12 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+var hand := ""
+var look := ""
+var pose := ""
+var face := ""
+var folk := 0
+var fauna := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +67,11 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"hand": o.hand = v
+			"look": o.look = v
+			"pose": o.pose = v
+			"face": o.face = v
+			"folk": o.folk = v.to_int()
+			"fauna": o.fauna = v
 			_: push_warning("unknown option --%s" % k)
 	return o
