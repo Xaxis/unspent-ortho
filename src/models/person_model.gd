@@ -355,7 +355,7 @@ static func gallery() -> Array:
 		[PersonLook.random(90, 6), &"mattock", "dig", &"work_dig", 0.7], [PersonLook.random(90, 7), &"axe_felling", "fell", &"work_fell", 0.66],
 		[PersonLook.random(90, 8), &"knife", "cut", &"work_cut", 0.1], [PersonLook.random(90, 9), &"", "gather", &"gather", 0.45],
 	]
-	out.append_array(_items("person actions", acts, mat, 3, 0.95, FACE_RIGHT))
+	out.append_array(_items("person actions", acts, mat, 2, 1.25, FACE_RIGHT))
 
 	var made: Array = []
 	for id: StringName in HeldTools.MADE:
@@ -400,6 +400,6 @@ static func _place(g: Node3D, n: Node3D, i: int, cols: int, spacing: float, labe
 	var down := Vector3(1, 0, 1).normalized()
 	var col := i % cols
 	var row := i / cols
-	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - 0.5) * 0.85
+	n.position = across * (col - (cols - 1) * 0.5) * spacing + down * (row - 0.5) * maxf(0.85, spacing)
 	g.add_child(n)
 	n.set_meta(&"label", label)

@@ -8,6 +8,7 @@ extends RefCounted
 ##   --filter="review swing pick"      guard, windup, strike, follow, recovery
 ##   --filter="review build heavy"     one build from the side and the front
 ##   --filter="review animal dog"      every pose of an animal
+##   --filter="review item person actions b"   one gallery item alone, centred
 ##
 ## Every item's name is the filter itself, so the gallery keeps them all.
 
@@ -23,6 +24,21 @@ static func gallery() -> Array:
 	var what := words[1] if words.size() > 1 else "walk"
 	var arg := words[2] if words.size() > 2 else ""
 	var arg2 := words[3] if words.size() > 3 else ""
+	if what == "item":
+		# One gallery item alone, centred: --filter="review item people builds"
+		var want := " ".join(words.slice(2))
+		var found: Array = []
+		for script: GDScript in [PersonModel, preload("res://src/models/animals/dog.gd"), preload("res://src/models/animals/sheep.gd"), preload("res://src/models/animals/bull.gd"), preload("res://src/models/animals/rat.gd"), preload("res://src/models/animals/gull.gd")]:
+			for it: Dictionary in script.call("gallery"):
+				if String(it.name).begins_with(want) and found.is_empty():
+					found.append(it.node)
+				else:
+					(it.node as Node).free()
+		var holder := Node3D.new()
+		if not found.is_empty():
+			(found[0] as Node3D).position = Vector3(1.6, 0, 0)
+			holder.add_child(found[0])
+		return [{"name": filter, "node": holder}, {"name": filter, "node": Node3D.new()}]
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://src/render/world.gdshader")
 	var nodes: Array[Node3D] = []

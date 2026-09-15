@@ -329,7 +329,7 @@ static func _arms(r: SkinRig, w: Wear) -> void:
 			[t * 0.3, t * 0.36, t * 0.36, 0.0, 0.0],
 			[0.0, t * 0.56, t * 0.56, 0.0, 0.0],
 			[-float(d.upper) - 0.01, t * 0.44, t * 0.46, 0.006, 0.0],
-		], 6, [shoulder, sleeve], false, false, PI / 6, 0.05, s)
+		], 6, [shoulder, sleeve], true, false, PI / 6, 0.05, s)
 		var fk := r.kit(r.find(StringName("fore" + sfx)))
 		var fl: float = d.fore
 		if rolled:
@@ -391,7 +391,7 @@ static func _head(r: SkinRig, w: Wear) -> void:
 	var ey := hh * 0.5
 	for side: int in [-1, 1]:
 		var z := side * hw * 0.2
-		Sculpt.card(k, Vector3(face + 0.003, ey - 0.03, z - 0.02), Vector3(face + 0.003, ey - 0.03, z + 0.02), Vector3(face + 0.003, ey + 0.045, z + 0.02), Vector3(face + 0.003, ey + 0.045, z - 0.02), Palette.INK[1], Vector3.RIGHT)
+		Sculpt.card(k, Vector3(face + 0.003, ey - 0.025, z - 0.016), Vector3(face + 0.003, ey - 0.025, z + 0.016), Vector3(face + 0.003, ey + 0.04, z + 0.016), Vector3(face + 0.003, ey + 0.04, z - 0.016), Palette.INK[2], Vector3.RIGHT)
 	# Nose: a small wedge one step lighter, so a profile has a point.
 	var nb := Vector3(face - 0.004, hh * 0.52, 0)
 	var nt := Vector3(face + 0.05, hh * 0.34, 0)
@@ -430,8 +430,8 @@ static func _hair(k: MeshKit, w: Wear, hat: StringName) -> void:
 		var lift := 0.03 if style == &"unkempt" else 0.012
 		k.push(Transform3D(Basis(Vector3(0, 0, 1), 0.42), pivot))
 		Sculpt.loft(k, [
-			[hh * -0.08, hd * 0.55, hw * 0.53, -0.018, 0.0],
-			[hh * 0.24, hd * 0.53 + lift, hw * 0.51 + lift, -0.02, 0.0],
+			[hh * 0.02, hd * 0.55, hw * 0.53, -0.018, 0.0],
+			[hh * 0.25, hd * 0.53 + lift, hw * 0.51 + lift, -0.02, 0.0],
 			[hh * 0.44 + lift, hd * 0.3, hw * 0.3, -0.03, 0.0],
 		], 8, [h0, h1], false, true, PI / 8, wob, s)
 		k.pop()
@@ -443,7 +443,7 @@ static func _hair(k: MeshKit, w: Wear, hat: StringName) -> void:
 		Sculpt.loft(k, [
 			[back_lo, hd * 0.53, hw * 0.52, -0.012, 0.0],
 			[hh * (0.6 if style == &"bald" else 0.74), hd * 0.54, hw * 0.52, -0.014, 0.0],
-		], 6, h0, false, false, 0.0, 0.05, s + 1, 0.55, PI)
+		], 5, h0, false, false, 0.0, 0.05, s + 1, 0.4, PI)
 	match style:
 		&"long":
 			Sculpt.loft(k, [
