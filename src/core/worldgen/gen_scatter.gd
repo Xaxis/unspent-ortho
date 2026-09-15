@@ -444,6 +444,8 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 				break
 			for a in 16:
 				var q := (vp + Vector2.from_angle(a / 16.0 * TAU + rad) * rad).floor() + Vector2(0.5, 0.5)
+				if q.x < 1.0 or q.y < 1.0 or q.x >= c.size - 1 or q.y >= c.size - 1:
+					continue
 				var qi := floori(q.y) * c.size + floori(q.x)
 				if want == Ground.SAND and (c.sea_steps[qi] < 3 or w.ground[qi - 1] != want or w.ground[qi + 1] != want):
 					continue
