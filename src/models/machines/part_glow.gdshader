@@ -27,7 +27,9 @@ void vertex() {
 	float s = length(MODEL_MATRIX[0].xyz);
 	vec3 v = origin.xyz + vec3(VERTEX.xy * s, toward_camera);
 	POSITION = PROJECTION_MATRIX * vec4(v, 1.0);
-	vec3 tint = sky_apply(vec3(1.0), NODE_POSITION_WORLD, TIME);
+	// sky_apply() takes screen derivatives, which a vertex stage cannot; the
+	// light's own colour carries time, weather and region.
+	vec3 tint = sky_tint;
 	// 0 under a full day sky (the sun outshines it), ~1 at night.
 	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
 }
