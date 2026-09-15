@@ -182,13 +182,20 @@ static func plate_both(k: Kit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, t
 	patch(k, d, c, b, a, tone)
 
 
-## A tube of stolen neon on a plane: dark mount, then the tube, lit at night.
+## A tube of stolen neon along a wall from a to b, standing out along `out`:
+## a dark mount, then the tube, lit when the light goes.
 static func neon_tube(k: Kit, a: Vector3, b: Vector3, out: Vector3, col: Color) -> void:
-	var up := Vector3(0, 0.022, 0)
 	var o := out.normalized()
-	k.made.quad(a - up + o * 0.01, b - up + o * 0.01, b + up + o * 0.01, a + up + o * 0.01, P.INK[1])
-	var up2 := Vector3(0, 0.012, 0)
-	k.made.quad(a - up2 + o * 0.02, b - up2 + o * 0.02, b + up2 + o * 0.02, a + up2 + o * 0.02, GroundColors.lamp(col, 2.0))
+	_facing_quad(k.made, a + o * 0.01 + Vector3(0, -0.045, 0), b + o * 0.01 + Vector3(0, -0.045, 0), Vector3(0, 0.09, 0), o, P.INK[1])
+	_facing_quad(k.made, a + o * 0.02 + Vector3(0, -0.028, 0), b + o * 0.02 + Vector3(0, -0.028, 0), Vector3(0, 0.056, 0), o, GroundColors.lamp(col, 2.0))
+
+
+## The quad (a, b, b + rise, a + rise), wound so its front faces `out`.
+static func _facing_quad(pen: MeshKit, a: Vector3, b: Vector3, rise: Vector3, out: Vector3, col: Color) -> void:
+	if (b - a).cross(rise).dot(out) >= 0.0:
+		pen.quad(a, b, b + rise, a + rise, col)
+	else:
+		pen.quad(b, a, a + rise, b + rise, col)
 
 
 ## A wheel on its side axis (z): tyre and hub.
@@ -456,18 +463,19 @@ static func shack(k: Kit, v: int, c: int) -> void:
 
 
 ## Stolen tech on a wall: a FOUND light panel, the neon tube it feeds, a cable
-## down to the ground and an aerial on the roof line.
+## down to the ground and an aerial on the roof line. Sized to read at 640x360.
 static func _wired(k: Kit, wall_a: Vector3, wall_b: Vector3, out: Vector3, roof: Vector3, col: Color) -> void:
 	var mid := wall_a.lerp(wall_b, 0.5)
 	var o := out.normalized()
-	k.found.quad(mid + o * 0.02 + Vector3(-0.0, 0.0, 0.0) - (wall_b - wall_a).normalized() * 0.12, mid + o * 0.02 + (wall_b - wall_a).normalized() * 0.12, mid + o * 0.02 + (wall_b - wall_a).normalized() * 0.12 + Vector3(0, 0.16, 0), mid + o * 0.02 - (wall_b - wall_a).normalized() * 0.12 + Vector3(0, 0.16, 0), P.PLATE[1])
-	k.found.quad(mid + o * 0.03 - (wall_b - wall_a).normalized() * 0.09 + Vector3(0, 0.03, 0), mid + o * 0.03 + (wall_b - wall_a).normalized() * 0.09 + Vector3(0, 0.03, 0), mid + o * 0.03 + (wall_b - wall_a).normalized() * 0.09 + Vector3(0, 0.13, 0), mid + o * 0.03 - (wall_b - wall_a).normalized() * 0.09 + Vector3(0, 0.13, 0), Color(col.r, col.g, col.b, 0.86))
-	neon_tube(k, wall_a + Vector3(0, 0.34, 0) + o * 0.01, wall_b + Vector3(0, 0.34, 0) + o * 0.01, o, col)
+	var u := (wall_b - wall_a).normalized()
+	_facing_quad(k.found, mid + o * 0.02 - u * 0.18 - Vector3(0, 0.02, 0), mid + o * 0.02 + u * 0.18 - Vector3(0, 0.02, 0), Vector3(0, 0.26, 0), o, P.PLATE[1])
+	_facing_quad(k.found, mid + o * 0.03 - u * 0.14 + Vector3(0, 0.02, 0), mid + o * 0.03 + u * 0.14 + Vector3(0, 0.02, 0), Vector3(0, 0.18, 0), o, Color(col.r, col.g, col.b, 0.7))
+	neon_tube(k, wall_a + Vector3(0, 0.4, 0), wall_b + Vector3(0, 0.4, 0), o, col)
 	k.sag(mid + o * 0.04, mid + o * 0.3 + Vector3(0, -mid.y, 0), 0.02, 3, 0.008, P.INK[1])
 	k.rod(roof, roof + Vector3(0.02, 0.75, 0.0), 0.012, 4, P.PLATE[3])
 	k.rod(roof + Vector3(0.02, 0.62, -0.18), roof + Vector3(0.02, 0.62, 0.18), 0.008, 4, P.PLATE[3])
 	k.rod(roof + Vector3(0.02, 0.5, -0.12), roof + Vector3(0.02, 0.5, 0.12), 0.008, 4, P.PLATE[3])
-	k.found.prism(roof.x + 0.02, roof.y + 0.75, roof.z, 0.02, roof.y + 0.8, 0.012, 6, Color(1.0, 0.25, 0.3, 0.3))
+	k.found.prism(roof.x + 0.02, roof.y + 0.75, roof.z, 0.03, roof.y + 0.82, 0.02, 6, Color(1.0, 0.25, 0.3, 0.3))
 
 
 static func _fish_shack(k: Kit, s: int, lit: bool) -> void:

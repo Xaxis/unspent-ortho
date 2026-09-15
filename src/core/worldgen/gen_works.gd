@@ -1170,8 +1170,9 @@ static func _remains(L: Lay) -> void:
 					_about(L, PropKind.VEHICLE, at, 1, 4.0, 7.0)
 
 
-## The first frame of a game shows what was lost: past the first steps, round
-## the sides and behind, a few of the spawn's own landscape's compositions.
+## The first frame of a game shows what was lost: in view of the spawn, past
+## its first steps and the village square it wakes by, a few of its own
+## landscape's compositions (graves round a memorial first).
 static func _spawn_view(L: Lay) -> void:
 	var w := L.w
 	var sp := w.spawn
@@ -1179,18 +1180,21 @@ static func _spawn_view(L: Lay) -> void:
 	var table: Array = evidence(L.type_at(floori(sp.x), floori(sp.y))).vignettes
 	var rng := Rng.make(L.c.s, 0x5B4)
 	var placed := 0
-	for attempt in 40:
-		if placed >= 3:
+	for attempt in 200:
+		if placed >= 4:
 			break
-		var a := face.angle() + PI * (0.35 + rng.randf() * 0.65) * (1.0 if attempt % 2 == 0 else -1.0)
-		var at := sp + Vector2.from_angle(a) * rng.randf_range(6.0, 11.0)
+		var a := rng.randf() * TAU
+		var at := sp + Vector2.from_angle(a) * rng.randf_range(5.0, 13.0)
 		var turn := rng.randf()
 		var pick := _pick(table, rng.randf())
-		if not w.in_bounds(floori(at.x), floori(at.y)) or _near_road(L.c, at, 1):
+		if not w.in_bounds(floori(at.x), floori(at.y)) or _near_road(L.c, at, 1) or _in_village(w, at, 1.5):
 			continue
-		if pick == &"shelter" or pick == &"stump_rows" or pick == &"survey_posts":
-			pick = &"grave_cluster" if placed == 0 else &"debris_field"
-		if _compose(L, pick, at, turn, a) > 0:
+		# Ahead, only what can be walked through (_put keeps solids off the first steps).
+		if Vector2.from_angle(a).dot(face) > 0.7 and (pick == &"wreck" or pick == &"barricade" or pick == &"sunk_wreck"):
+			pick = &"debris_field"
+		if placed == 0 or pick == &"shelter" or pick == &"stump_rows" or pick == &"survey_posts" or pick == &"snow_fence":
+			pick = [&"grave_cluster", &"debris_field", &"wreck_parts", &"fence_corner"][placed]
+		if _compose(L, pick, at, turn, a + PI) > 0:
 			placed += 1
 
 

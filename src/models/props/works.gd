@@ -243,7 +243,7 @@ static func intake(k: Kit, v: int, c: int) -> void:
 		k.found.quad(Vector3(-1.401, y, 0.5), Vector3(-1.401, y, -0.5), Vector3(-1.401, y + 0.08, -0.5), Vector3(-1.401, y + 0.08, 0.5), P.PLATE[0])
 	for sz: float in [1.0, -1.0]:
 		var z := 0.951 * sz
-		k.found.quad(Vector3(-1.3, 1.02, z), Vector3(0.1, 1.02, z), Vector3(0.1, 1.06, z), Vector3(-1.3, 1.06, z), STRIP)
+		Remains._facing_quad(k.found, Vector3(-1.3, 0.99, z), Vector3(0.1, 0.99, z), Vector3(0, 0.09, 0), Vector3(0, 0, sz), STRIP)
 		rivets(k, Vector3(-1.3, 0.2, z), Vector3(0.1, 0.2, z), 8, Vector3(0, 0, sz))
 		run(k, Vector3(-0.4, 0.98, z + 0.004 * sz), 0.05, 0.5, Vector3(0, 0, sz))
 		run(k, Vector3(-1.0, 0.98, z + 0.004 * sz), 0.04, 0.72, Vector3(0, 0, sz))
@@ -292,7 +292,7 @@ static func pump_house(k: Kit, v: int, c: int) -> void:
 	k.found.pop()
 	k.chamfer(0.0, 1.2, 0.0, 1.2, 0.3, 1.0, 0.1, P.PLATE[1], P.PLATE[2])
 	for sz: float in [0.751, -0.751]:
-		k.found.quad(Vector3(-0.7, 0.95, sz), Vector3(0.7, 0.95, sz), Vector3(0.7, 0.99, sz), Vector3(-0.7, 0.99, sz), STRIP if alive else P.PLATE[0])
+		Remains._facing_quad(k.found, Vector3(-0.7, 0.92, sz), Vector3(0.7, 0.92, sz), Vector3(0, 0.08, 0), Vector3(0, 0, signf(sz)), STRIP if alive else P.PLATE[0])
 		rivets(k, Vector3(-0.7, 0.12, sz), Vector3(0.7, 0.12, sz), 7, Vector3(0, 0, signf(sz)))
 		run(k, Vector3(0.3, 0.92, sz * 1.004), 0.05, 0.62, Vector3(0, 0, signf(sz)))
 	if alive:
@@ -387,8 +387,8 @@ static func relay(k: Kit, v: int, c: int) -> void:
 			var k0 := 1.0 - y0 / top * 0.65
 			var k1 := 1.0 - y1 / top * 0.65
 			k.rod(Vector3(a.x * k0, y0, a.y * k0), Vector3(b.x * k1, y1, b.y * k1), 0.012, 4, P.PLATE[2])
-	k.found.quad(Vector3(0.1, 0.4, -0.012), Vector3(0.1, 0.4, 0.012), Vector3(0.1, top - 0.2, 0.012), Vector3(0.1, top - 0.2, -0.012), STRIP)
-	k.found.quad(Vector3(0.1, top - 0.2, -0.012), Vector3(0.1, top - 0.2, 0.012), Vector3(0.1, 0.4, 0.012), Vector3(0.1, 0.4, -0.012), STRIP)
+	k.found.quad(Vector3(0.1, 0.4, -0.035), Vector3(0.1, 0.4, 0.035), Vector3(0.1, top - 0.2, 0.035), Vector3(0.1, top - 0.2, -0.035), STRIP)
+	k.found.quad(Vector3(0.1, top - 0.2, -0.035), Vector3(0.1, top - 0.2, 0.035), Vector3(0.1, 0.4, 0.035), Vector3(0.1, 0.4, -0.035), STRIP)
 	# Arms carry the line (WorldView.cable_points), a dish looks down the cut.
 	k.rod(Vector3(0, top - 0.3, -0.6), Vector3(0, top - 0.3, 0.6), 0.025, 4, P.PLATE[3])
 	for sz: float in [-0.55, 0.55]:
@@ -426,20 +426,21 @@ static func checkpoint(k: Kit, v: int, c: int) -> void:
 	k.chamfer(0.0, 1.88, 0.0, 0.8, 0.1, 0.7, 0.1, P.PLATE[2], P.PLATE[3])
 	# The visor slit on the road face and both ends, the lens in the road face.
 	var slit := P.COLD[1]
-	k.found.quad(Vector3(0.36, 1.18, 0.501), Vector3(-0.36, 1.18, 0.501), Vector3(-0.36, 1.34, 0.501), Vector3(0.36, 1.34, 0.501), P.PLATE[0])
-	k.found.quad(Vector3(0.33, 1.21, 0.503), Vector3(-0.33, 1.21, 0.503), Vector3(-0.33, 1.31, 0.503), Vector3(0.33, 1.31, 0.503), slit)
+	var on := func(a: Vector3, b: Vector3, rise: float, out: Vector3, col: Color) -> void:
+		Remains._facing_quad(k.found, a, b, Vector3(0, rise, 0), out, col)
+	on.call(Vector3(0.36, 1.18, 0.501), Vector3(-0.36, 1.18, 0.501), 0.16, Vector3.BACK, P.PLATE[0])
+	on.call(Vector3(0.33, 1.21, 0.504), Vector3(-0.33, 1.21, 0.504), 0.1, Vector3.BACK, slit)
 	for sx: float in [0.551, -0.551]:
 		var sg := signf(sx)
-		k.found.quad(Vector3(sx, 1.18, -0.3 * sg), Vector3(sx, 1.18, 0.3 * sg), Vector3(sx, 1.34, 0.3 * sg), Vector3(sx, 1.34, -0.3 * sg), P.PLATE[0])
-		k.found.quad(Vector3(sx + 0.002 * sg, 1.21, -0.27 * sg), Vector3(sx + 0.002 * sg, 1.21, 0.27 * sg), Vector3(sx + 0.002 * sg, 1.31, 0.27 * sg), Vector3(sx + 0.002 * sg, 1.31, -0.27 * sg), slit)
+		on.call(Vector3(sx, 1.18, -0.3), Vector3(sx, 1.18, 0.3), 0.16, Vector3(sg, 0, 0), P.PLATE[0])
+		on.call(Vector3(sx + 0.003 * sg, 1.21, -0.27), Vector3(sx + 0.003 * sg, 1.21, 0.27), 0.1, Vector3(sg, 0, 0), slit)
 	k.found.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.16, 1.26, 0.505)))
-	k.found.prism(0, 0, 0, 0.045, 0.02, 0.045, 8, lit(P.LENS[2], 0.86) if alive else P.PLATE[4])
+	k.found.prism(0, 0, 0, 0.07, 0.025, 0.07, 8, lit(P.LENS[2], 0.8) if alive else P.PLATE[4])
 	k.found.pop()
 	# A hatch on the far end, a vent grille, rivets, rust in straight runs.
-	k.found.quad(Vector3(-0.552, 0.1, -0.22), Vector3(-0.552, 0.1, 0.22), Vector3(-0.552, 0.98, 0.22), Vector3(-0.552, 0.98, -0.22), P.PLATE[1])
+	on.call(Vector3(-0.552, 0.1, -0.22), Vector3(-0.552, 0.1, 0.22), 0.88, Vector3.LEFT, P.PLATE[1])
 	for i in 4:
-		var y := 0.2 + i * 0.1
-		k.found.quad(Vector3(0.36, y, 0.502), Vector3(-0.1, y, 0.502), Vector3(-0.1, y + 0.04, 0.502), Vector3(0.36, y + 0.04, 0.502), P.PLATE[0])
+		on.call(Vector3(0.36, 0.2 + i * 0.1, 0.502), Vector3(-0.1, 0.2 + i * 0.1, 0.502), 0.04, Vector3.BACK, P.PLATE[0])
 	rivets(k, Vector3(-0.42, 1.05, 0.502), Vector3(0.42, 1.05, 0.502), 7, Vector3(0, 0, 1))
 	run(k, Vector3(0.2, 1.16, 0.503), 0.05, 0.6, Vector3(0, 0, 1))
 	run(k, Vector3(-0.3, 1.7, 0.503), 0.035, 0.4, Vector3(0, 0, 1))
@@ -449,10 +450,14 @@ static func checkpoint(k: Kit, v: int, c: int) -> void:
 	# over the boom and looking down at the road.
 	k.rod(Vector3(-0.45, 1.88, -0.4), Vector3(-0.45, 3.1, -0.4), 0.035, 6, P.PLATE[3])
 	k.rod(Vector3(-0.45, 3.0, -0.4), Vector3(-0.2, 3.12, 0.55), 0.025, 4, P.PLATE[3])
-	var head := Basis(Vector3.RIGHT, -0.75) if alive else Basis(Vector3.RIGHT, 0.9) * Basis(Vector3.BACK, 0.4)
+	# Its lamp face looks out over the road (+Z) and down, where the camera sees it.
+	var head := Basis(Vector3.RIGHT, 0.12) if alive else Basis(Vector3.RIGHT, -0.9) * Basis(Vector3.BACK, 0.4)
 	k.found.push(Transform3D(head, Vector3(-0.2, 3.02, 0.62)))
-	k.chamfer(0.0, -0.08, 0.0, 0.46, 0.16, 0.24, 0.04, P.PLATE[1], P.PLATE[2])
-	k.found.quad(Vector3(0.2, -0.085, -0.1), Vector3(-0.2, -0.085, -0.1), Vector3(-0.2, -0.085, 0.1), Vector3(0.2, -0.085, 0.1), lit(STRIP, 0.92) if alive else P.PLATE[0])
+	k.chamfer(0.0, -0.14, 0.0, 0.5, 0.28, 0.2, 0.04, P.PLATE[1], P.PLATE[2])
+	on.call(Vector3(0.21, -0.12, 0.103), Vector3(-0.21, -0.12, 0.103), 0.24, Vector3.BACK, lit(STRIP, 0.8) if alive else P.PLATE[0])
+	if alive:
+		# The lamp's heat vent on top catches its light, so it reads from any side.
+		k.found.quad(Vector3(-0.18, 0.141, -0.04), Vector3(-0.18, 0.141, 0.08), Vector3(0.18, 0.141, 0.08), Vector3(0.18, 0.141, -0.04), lit(STRIP, 0.86))
 	k.found.pop()
 	# The pivot post and its counterweight, the striped boom over the road.
 	k.chamfer(0.0, -0.1, 0.85, 0.26, 1.12, 0.26, 0.06, P.PLATE[2], P.PLATE[3])
