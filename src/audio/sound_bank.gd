@@ -576,7 +576,9 @@ static func remap_target(text: String) -> String:
 ## Turn the disk cache on under `root` (the running game does, once).
 func use_disk_cache(root: String) -> void:
 	var version := recipe_version()
-	if version == "":
+	# On the web user:// is IndexedDB, synced whole after every file closed: baked
+	# PCM written from worker threads overlapped those syncs and failed them.
+	if version == "" or OS.has_feature("web"):
 		cache_dir = ""
 		_cache_version_dir = ""
 		return

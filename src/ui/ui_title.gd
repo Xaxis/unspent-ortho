@@ -25,6 +25,10 @@ var sky: SkyLight
 var camera: CameraRig
 var menu: UiTitleMenu
 
+## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
+## there a coast is made on the main thread and would hold the title still for seconds.
+var cycle_coasts := BootPage.has_threads()
+
 var _layer: CanvasLayer
 var _focus := Vector2.ZERO
 var _heading := Vector2.ONE
@@ -92,10 +96,9 @@ func _begin(s: int) -> void:
 	# World, view set-up (the mesher's fields) and the opening are all slow; none of
 	# them touch the tree, so they are made on a worker. Chunks stream in later.
 	_task = WorkerThreadPool.add_task(func() -> void:
-		var w := WorldGen.generate(s, size)
-		var v := WorldView.new()
+		var w := BootWorld.world(s, size)
+		var v := BootWorld.view(w)
 		v.name = "world"
-		v.setup(w)
 		_next_opening = UiTitle.opening(w)
 		_next_view = v
 		_next_world = w)
@@ -219,7 +222,7 @@ func _process(delta: float) -> void:
 	camera.target = world.to_3d(_focus)
 	view.focus = _focus
 	sky.set_hour(_hour + _shown_for / 60.0)
-	if _shown_for > SEED_SECONDS and not _drawing():
+	if _shown_for > SEED_SECONDS and not _drawing() and cycle_coasts:
 		_begin(seed_value + 1)
 
 
@@ -279,13 +282,16 @@ func _start_game() -> void:
 			menu.refresh()
 			menu.refuse(why)
 			return
-	var game := Game.new()
-	game.name = "game"
 	var parent := get_parent()
 	menu.close(true)
+	# The coast on show is the new game's world (not a continued save's elsewhere):
+	# hand it and its view to the loading page.
+	if world != null and world.seed_value == o.seed_value and world.size == o.size and view != null:
+		remove_child(view)
+		BootWorld.offer(world, view)
+		view = null
 	parent.remove_child(self)
-	parent.add_child(game)
-	game.setup(o)
+	BootPage.open_game(parent, o)
 	queue_free()
 
 
@@ -296,8 +302,6 @@ static func replace_game(game: Game) -> void:
 	var o := BootOptions.new()
 	o.seed_value = game.options.seed_value + 1
 	o.size = game.options.size
-	var t := UiTitle.new()
 	parent.remove_child(game)
 	game.queue_free()
-	parent.add_child(t)
-	t.setup(o)
+	BootPage.open_title(parent, o)

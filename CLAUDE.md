@@ -27,6 +27,9 @@ tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through R
 tools/canon.sh [--accept]                   # the canon frames beside the accepted set on ONE contact sheet: shots/canon/sheet.png
 tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
 tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score per landscape -> shots/score/
+tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
+tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
+tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```
 
@@ -52,6 +55,7 @@ tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fi
 tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
 tools/tour.sh tours/fight.tour --seed=1 --hour=11
 tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4   # save, leave, continue, load: frames and fire match
+tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0   # a game through the loading page
 ```
 
 **Look at the pictures.** A green test says nothing about how the game looks. After

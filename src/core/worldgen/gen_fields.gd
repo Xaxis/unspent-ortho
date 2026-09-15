@@ -29,7 +29,20 @@ static func rows(height: int, job: Callable, band: int = 12) -> void:
 	var count := ceili(float(height) / band)
 	var task := func(b: int) -> void:
 		job.call(b * band, mini(height, (b + 1) * band))
-	var id := WorkerThreadPool.add_group_task(task, count, -1, true, "worldgen")
+	parallel(task, count)
+
+
+## job(i) for i in [0, count) on the worker pool, waiting for all of them. Called
+## from inside another group's element (together() of passes that use rows())
+## it runs inline: a pool thread waiting on a nested group holds its thread, and
+## with few threads (4 on the web build, 4-thread machines) every thread ends up
+## waiting on another and world generation never finishes.
+static func parallel(job: Callable, count: int) -> void:
+	if WorkerThreadPool.get_caller_group_id() >= 0:
+		for i in count:
+			job.call(i)
+		return
+	var id := WorkerThreadPool.add_group_task(job, count, -1, true, "worldgen")
 	WorkerThreadPool.wait_for_group_task_completion(id)
 
 
@@ -152,8 +165,7 @@ static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
 			out[j] = upsample(spec[1], spec[2], spec[3], size)
 		else:
 			out[j] = smooth(spec[1], size, spec[2])
-	var id := WorkerThreadPool.add_group_task(job, specs.size(), -1, true, "worldgen")
-	WorkerThreadPool.wait_for_group_task_completion(id)
+	parallel(job, specs.size())
 	for j in specs.size():
 		if specs[j][0] != NOISE and specs[j][0] != FIELD:
 			continue
@@ -246,8 +258,7 @@ static func banded(arrays: Array, width: int, reach: int, sweep: Callable, band:
 		for arr: Variant in local:
 			core.append(arr.slice((y0 - a) * width, (y1 - a) * width))
 		parts[b] = core
-	var id := WorkerThreadPool.add_group_task(job, count, -1, true, "worldgen")
-	WorkerThreadPool.wait_for_group_task_completion(id)
+	parallel(job, count)
 	var out := []
 	for j in arrays.size():
 		var acc: Variant = parts[0][j]
@@ -409,8 +420,7 @@ static func near_steps(mask: PackedByteArray, width: int, max_steps: int) -> Pac
 ## Run every job at once on the worker pool and wait. Jobs must not write
 ## what another reads.
 static func together(jobs: Array[Callable]) -> void:
-	var id := WorkerThreadPool.add_group_task(func(j: int) -> void: jobs[j].call(), jobs.size(), -1, true, "worldgen")
-	WorkerThreadPool.wait_for_group_task_completion(id)
+	parallel(func(j: int) -> void: jobs[j].call(), jobs.size())
 
 
 ## Value at the q-quantile (0..1) of the values where mask != 0, via a histogram.

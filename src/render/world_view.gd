@@ -139,6 +139,20 @@ func ensure_near(p: Vector2) -> void:
 			_build(key)
 
 
+## Build the nearest missing chunk round `p` on this thread (the view need not be
+## in the tree yet) and return how many near `p` are still missing, 0 when all are
+## built. The loading page draws the first view this way, one chunk a frame.
+func build_one_near(p: Vector2) -> int:
+	focus = p
+	var missing := 0
+	for key in _wanted(0.0):
+		if not _chunks.has(key):
+			if missing == 0:
+				_build(key)
+			missing += 1
+	return maxi(0, missing - 1)
+
+
 func pending() -> int:
 	var n := 0
 	for key in _wanted(0.0):

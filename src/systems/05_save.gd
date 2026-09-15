@@ -201,8 +201,8 @@ func _write(slot: int, reason: StringName, thumb: PackedByteArray) -> String:
 	return ""
 
 
-## A game booted from `o` takes this one's place in the tree, after the page has
-## drawn a frame saying so (generating the world holds the screen still).
+## A game booted from `o` takes this one's place in the tree, after the app has
+## drawn a frame saying so; the loading page takes it from there.
 func _replace_soon(o: BootOptions) -> void:
 	for i in 2:
 		await get_tree().process_frame
@@ -217,10 +217,9 @@ func _replace(o: BootOptions) -> void:
 	get_tree().paused = false
 	parent.remove_child(g)
 	g.queue_free()
-	var next := Game.new()
-	next.name = "game"
-	parent.add_child(next)
-	next.setup(o)
+	# Through the loading page, like every start (BootWorld contract): the window
+	# keeps drawing while the saved world is made.
+	BootPage.open_game(parent, o)
 
 
 func _land() -> StringName:
