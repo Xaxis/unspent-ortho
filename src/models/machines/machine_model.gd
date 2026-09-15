@@ -25,6 +25,7 @@ const LIGHT_FIRST := 0.3
 ## camera never rotates). Used when no live camera is available (tests, gallery).
 const TO_CAMERA := Vector3(0.3848, 0.8387, 0.3848)
 const FOUND_SHADER := preload("res://src/render/found.gdshader")
+const NIGHT_KEEP := 0.6
 
 var ramp: Array = []
 var part_material: ShaderMaterial
@@ -89,6 +90,8 @@ static func found_material(emission_strength: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = FOUND_SHADER
 	m.set_shader_parameter("emission_strength", emission_strength)
+	# A live machine keeps more of its colour at night than salvage does.
+	m.set_shader_parameter("night_keep", NIGHT_KEEP)
 	return m
 
 
@@ -113,6 +116,23 @@ func joint(jname: StringName, parent: Node3D, pos: Vector3, rot: Vector3 = Vecto
 
 func body_mesh(k: MeshKit, parent: Node3D) -> MeshInstance3D:
 	return add_mesh(k, parent)
+
+
+static var _matter_mat: ShaderMaterial
+
+
+## A mesh of natural matter (ore, spoil, a cut row) on the MADE material: the
+## load is the land's, drawn by the hand, even when a machine carries it.
+func matter_mesh(k: MeshKit, parent: Node3D) -> MeshInstance3D:
+	if _matter_mat == null:
+		_matter_mat = ShaderMaterial.new()
+		_matter_mat.shader = preload("res://src/render/world.gdshader")
+	var mi := MeshInstance3D.new()
+	mi.name = "matter"
+	mi.mesh = k.build()
+	mi.material_override = _matter_mat
+	parent.add_child(mi)
+	return mi
 
 
 ## A mesh on the part material: glows, and swaps to its dark twin when the light goes out.
@@ -153,9 +173,6 @@ func set_part_anchor(parent: Node3D, pos: Vector3, glow_size: float = 0.7) -> vo
 	_glow.mesh = q
 	_glow_mat = ShaderMaterial.new()
 	_glow_mat.shader = preload("res://src/models/machines/part_glow.gdshader")
-	# After the screen-space outline, which redraws the frame from a copy taken
-	# before transparent geometry; and a light has no ink round it anyway.
-	_glow_mat.render_priority = 10
 	_glow.material_override = _glow_mat
 	_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_glow.position = part_normal * 0.06
@@ -168,7 +185,7 @@ func add_scan(parent: Node3D, c: Vector3, n: Vector3, along: Vector3, span: floa
 	var holder := Node3D.new()
 	holder.name = "scan"
 	parent.add_child(holder)
-	var k := MeshKit.new()
+	var k := FoundKit.kit()
 	FoundKit.mark(k, Vector3.ZERO, n, Vector3.UP if absf(n.y) < 0.9 else along.cross(n), minf(0.08, span * 0.3), h, Palette.COLD[3], 0.011)
 	cold_mesh(k, holder)
 	_scans.append([holder, c, along.normalized(), span, period])
@@ -388,20 +405,42 @@ func _apply_light(delta: float) -> void:
 
 static var _dark_frame := -1
 static var _dark := 0.0
+static var _sun: WeakRef
 
 
-## 0 in full daylight .. ~0.5 at night, from the sky package's global tint
-## (read once a frame for every machine).
+## 0 in full daylight .. about 0.5 at night, read once a frame for every machine.
+## A global shader parameter cannot be read back outside the editor, so this asks
+## the scene: a sky node's darkness() when it has one, else the key light's
+## energy and colour (the sky dims its sun at night).
 static func darkness() -> float:
 	var f := Engine.get_process_frames()
-	if f != _dark_frame:
-		_dark_frame = f
-		var tint: Variant = RenderingServer.global_shader_parameter_get(&"sky_tint")
-		var lum := 1.0
-		if tint is Vector3:
-			lum = ((tint as Vector3).x + (tint as Vector3).y + (tint as Vector3).z) / 3.0
-		_dark = clampf(1.0 - lum, 0.0, 1.0)
+	if f == _dark_frame:
+		return _dark
+	_dark_frame = f
+	var sun := _find_sun()
+	if sun == null:
+		_dark = 0.0
+		return _dark
+	var sky := sun.get_parent()
+	if sky != null and sky.has_method(&"darkness"):
+		_dark = clampf(float(sky.call(&"darkness")), 0.0, 1.0)
+	else:
+		var c := sun.light_color
+		_dark = clampf(1.0 - sun.light_energy * (c.r + c.g + c.b) / 3.0, 0.0, 1.0)
 	return _dark
+
+
+static func _find_sun() -> DirectionalLight3D:
+	if _sun != null and _sun.get_ref() != null:
+		return _sun.get_ref() as DirectionalLight3D
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	var found := tree.root.find_children("*", "DirectionalLight3D", true, false)
+	if found.is_empty():
+		return null
+	_sun = weakref(found[0])
+	return found[0] as DirectionalLight3D
 
 
 ## Dot of the working part's outward normal with the direction to the camera.

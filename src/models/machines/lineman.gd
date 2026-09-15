@@ -1,13 +1,13 @@
 extends MachineModel
-## A lineman: a staple. A small body with both arms straight up, made to hang
-## from a span and work along it hand over hand. On the ground it still walks
-## with its arms up, grips opening and closing on nothing. The motor in its front
-## is the working part.
+## A lineman: a staple. A small coffin-shaped body with both arms straight up,
+## made to hang from a span and work along it hand over hand. On the ground it
+## still walks with its arms up, grips opening and closing on nothing. The motor
+## in its front is the working part.
 ##
 ## alert  lets go and comes down: the arms telescope in and reach forward
 ## dead   the arms come down first, then the body goes over
 
-const SLEEVE := 0.78
+const SLEEVE := 0.8
 const FORE := 0.8
 
 var _grip_t := 0.0
@@ -17,62 +17,65 @@ func build() -> void:
 	part_side = &"front"
 	height = 2.62
 	stride = 0.8
+	gallery_turn = 25.0
 	begin_rig()
 	var R := ramp
 	var D := FoundKit.dirty(R)
 	var DD := FoundKit.dirty(R, 2)
 
 	var body := joint(&"body", self, Vector3(0, 0.3, 0))
-	var k := MeshKit.new()
-	FoundKit.cbox(k, Vector3(0, 0.3, 0), Vector3(0.42, 0.58, 0.6), 0.07, R, 2)
-	FoundKit.cbox(k, Vector3(0, 0.62, 0), Vector3(0.3, 0.09, 0.9), 0.03, R)
-	FoundKit.cbox(k, Vector3(0, 0.02, 0), Vector3(0.34, 0.06, 0.46), 0.02, D)
-	FoundKit.disc(k, Vector3(0.225, 0.34, 0), Vector3.RIGHT, 0.14, 0.05, 8, 0.015, R, R[1], PI / 8.0)
-	FoundKit.streaks(k, Vector3(0.211, 0.19, 0), Vector3.RIGHT, 0.3, 0.12, 4, 131, R[2])
-	FoundKit.visor(k, Vector3(-0.211, 0.42, 0), Vector3.LEFT, Vector3.UP, 0.4, 0.045)
-	FoundKit.seam(k, Vector3(-0.211, 0.1, 0), Vector3(-0.211, 0.34, 0), Vector3.LEFT, R, 3)
+	var k := FoundKit.kit()
+	# Coffin plan: narrow at the foot, widest at the shoulders, a sloped lid.
+	var plan := FoundKit.plan_oct(0.4, 0.62, 0.12)
+	FoundKit.loft(k, [FoundKit.ring(plan, 0.0, 0.0, Vector2(0.8, 0.62)), FoundKit.ring(plan, 0.44, 0.0, Vector2(1.0, 1.0)), FoundKit.ring(plan, 0.56, 0.0, Vector2(0.96, 0.96)), FoundKit.ring(plan, 0.64, 0.08)], R, true)
+	# The shoulder yoke the arms ride in.
+	FoundKit.tbar(k, Vector3(0, 0.6, -0.46), Vector3(0, 0.6, 0.46), 0.05, 0.05, 8, R, 0.015)
+	FoundKit.disc(k, Vector3(0.205, 0.3, 0), Vector3.RIGHT, 0.13, 0.05, 8, 0.015, R, R[1], PI / 8.0)
+	FoundKit.streaks(k, Vector3(0.2, 0.16, 0), Vector3.RIGHT, 0.22, 0.12, 4, 131, R[1])
+	FoundKit.visor(k, Vector3(-0.199, 0.46, 0), Vector3.LEFT, Vector3.UP, 0.36, 0.04)
+	FoundKit.seam(k, Vector3(-0.185, 0.08, 0), Vector3(-0.199, 0.34, 0), Vector3.LEFT, R, 3)
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.panel(k, Vector3(0, 0.3, sz * 0.301), Vector3.BACK * sz, Vector3.UP, 0.26, 0.4, R)
+		FoundKit.rivets(k, Vector3(-0.12, 0.5, sz * 0.311), Vector3(0.12, 0.5, sz * 0.311), Vector3.BACK * sz, 4, R[5])
+		FoundKit.streaks(k, Vector3(0.0, 0.42, sz * 0.305), Vector3.BACK * sz, 0.24, 0.2, 4, 133 + int(sz), R[1])
 	body_mesh(k, body)
-	add_scan(body, Vector3(-0.211, 0.42, 0), Vector3.LEFT, Vector3.BACK, 0.34, 0.04, 2.8)
-	var pk := MeshKit.new()
-	FoundKit.disc(pk, Vector3(0.252, 0.34, 0), Vector3.RIGHT, 0.1, 0.01, 8, 0.0, R, Palette.LENS[2], PI / 8.0)
-	FoundKit.mark(pk, Vector3(0.258, 0.34, 0), Vector3.RIGHT, Vector3.UP, 0.12, 0.03, Palette.LENS[3], 0.002)
-	FoundKit.mark(pk, Vector3(0.258, 0.34, 0), Vector3.RIGHT, Vector3.UP, 0.03, 0.12, Palette.LENS[3], 0.003)
+	add_scan(body, Vector3(-0.199, 0.46, 0), Vector3.LEFT, Vector3.BACK, 0.3, 0.035, 2.8)
+	var pk := FoundKit.kit()
+	FoundKit.optic(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, 0.075)
+	FoundKit.mark(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, Vector3.UP, 0.2, 0.02, Palette.LENS[1], 0.013)
 	part_mesh(pk, body)
-	set_part_anchor(body, Vector3(0.26, 0.34, 0), 0.6)
+	set_part_anchor(body, Vector3(0.24, 0.3, 0), 0.55)
 
 	for sz: float in [-1.0, 1.0]:
-		var leg := joint(&"leg_r" if sz > 0 else &"leg_l", body, Vector3(0, 0.02, sz * 0.16))
-		var lk := MeshKit.new()
-		FoundKit.bar(lk, Vector3.ZERO, Vector3(0, -0.27, 0), 0.09, 0.09, 0.015, DD)
-		FoundKit.cbox(lk, Vector3(0.03, -0.285, 0), Vector3(0.2, 0.04, 0.12), 0.01, DD)
+		var leg := joint(&"leg_r" if sz > 0 else &"leg_l", body, Vector3(0, 0.04, sz * 0.12))
+		var lk := FoundKit.kit()
+		FoundKit.tbar(lk, Vector3.ZERO, Vector3(0, -0.28, 0), 0.05, 0.04, 6, DD)
+		var shoe: Array[Vector2] = [Vector2(-0.07, 0.0), Vector2(0.12, 0.0), Vector2(0.08, 0.04), Vector2(-0.05, 0.04)]
+		FoundKit.slab(lk, Vector3(0, -0.3, 0), Vector3.RIGHT, Vector3.UP, shoe, 0.1, DD, 0.01)
 		body_mesh(lk, leg)
 
 		var side := "r" if sz > 0 else "l"
-		var arm := joint(StringName("arm_" + side), body, Vector3(0, 0.62, sz * 0.46))
-		var ak := MeshKit.new()
-		FoundKit.cbox(ak, Vector3.ZERO, Vector3(0.14, 0.14, 0.12), 0.03, R)
-		FoundKit.bar(ak, Vector3.ZERO, Vector3(0, SLEEVE, 0), 0.085, 0.085, 0.015, R)
-		FoundKit.cbox(ak, Vector3(0, SLEEVE, 0), Vector3(0.11, 0.05, 0.11), 0.015, R)
-		FoundKit.streaks(ak, Vector3(0.043, SLEEVE - 0.04, 0), Vector3.RIGHT, 0.0, 0.3, 1, 132, R[2])
+		var arm := joint(StringName("arm_" + side), body, Vector3(0, 0.6, sz * 0.5))
+		var ak := FoundKit.kit()
+		FoundKit.disc(ak, Vector3.ZERO, Vector3.BACK, 0.075, 0.1, 8, 0.02, R, Color(0, 0, 0, 0), PI / 8.0)
+		FoundKit.tbar(ak, Vector3.ZERO, Vector3(0, SLEEVE, 0), 0.05, 0.042, 8, R, 0.015)
+		FoundKit.disc(ak, Vector3(0, SLEEVE, 0), Vector3.UP, 0.058, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
+		FoundKit.streaks(ak, Vector3(0.045, SLEEVE - 0.04, 0), Vector3.RIGHT, 0.0, 0.3, 1, 132, R[1])
 		body_mesh(ak, arm)
 		var fore := joint(StringName("fore_" + side), arm, Vector3(0, SLEEVE - 0.05, 0))
-		var fk := MeshKit.new()
-		FoundKit.bar(fk, Vector3(0, -0.4, 0), Vector3(0, FORE, 0), 0.055, 0.055, 0.01, D)
-		for y: float in [0.2, 0.45]:
-			FoundKit.mark(fk, Vector3(0.028, y, 0), Vector3.RIGHT, Vector3.UP, 0.04, 0.02, R[1])
+		var fk := FoundKit.kit()
+		FoundKit.tbar(fk, Vector3(0, -0.4, 0), Vector3(0, FORE, 0), 0.03, 0.03, 6, D)
+		FoundKit.ticks(fk, Vector3(0.03, 0.1, 0), Vector3(0.03, 0.6, 0), Vector3.RIGHT, 11, R[4], 0.02)
 		body_mesh(fk, fore)
 		var grip := joint(StringName("grip_" + side), fore, Vector3(0, FORE, 0))
-		var gk := MeshKit.new()
-		FoundKit.cbox(gk, Vector3(0, 0.03, 0), Vector3(0.12, 0.07, 0.1), 0.02, R)
+		var gk := FoundKit.kit()
+		FoundKit.disc(gk, Vector3(0, 0.03, 0), Vector3.UP, 0.055, 0.06, 6, 0.012, R)
 		body_mesh(gk, grip)
 		for sx: float in [-1.0, 1.0]:
-			var prong := joint(StringName("prong_%s%d" % [side, int(sx > 0)]), grip, Vector3(sx * 0.04, 0.06, 0))
-			var ck := MeshKit.new()
+			var prong := joint(StringName("prong_%s%d" % [side, int(sx > 0)]), grip, Vector3(sx * 0.035, 0.06, 0))
+			var ck := FoundKit.kit()
 			var pale: Array = [R[3], R[3], R[4], R[5], R[5], R[5]]
-			FoundKit.bar(ck, Vector3.ZERO, Vector3(sx * 0.02, 0.11, 0), 0.03, 0.04, 0.0, pale)
-			FoundKit.bar(ck, Vector3(sx * 0.02, 0.11, 0), Vector3(-sx * 0.035, 0.16, 0), 0.028, 0.04, 0.0, pale)
+			FoundKit.tbar(ck, Vector3.ZERO, Vector3(sx * 0.03, 0.12, 0), 0.016, 0.014, 4, pale)
+			FoundKit.tbar(ck, Vector3(sx * 0.03, 0.12, 0), Vector3(-sx * 0.03, 0.18, 0), 0.014, 0.006, 4, pale)
 			body_mesh(ck, prong)
 	finish_rig()
 
@@ -109,7 +112,7 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"arm_r"] = r(Vector3(1.45, 0, 0))
 			d[&"fore_l"] = pr(Vector3(0, -0.3, 0))
 			d[&"fore_r"] = pr(Vector3(0, -0.3, 0))
-			d[&"body"] = pr(Vector3(-0.12, -0.08, 0), Vector3(0, 0, 1.2))
+			d[&"body"] = pr(Vector3(-0.12, -0.1, 0), Vector3(0, 0, 1.25))
 	return d
 
 

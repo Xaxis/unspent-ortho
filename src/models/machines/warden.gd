@@ -1,87 +1,89 @@
 extends MachineModel
-## A warden: a bollard that walks. A solid column under a broad head, on two
-## straight legs at one unhurried speed. The band round its front at a person's
-## chest height is what reads you and the working part (front). It turns its head
-## a quarter and holds it, and back, all night.
+## A warden: a bollard that walks. An eight-sided column under a broad flat cap,
+## on two short straight legs at one unhurried speed. The amber band round its
+## front at a person's chest height is what reads you, and the working part
+## (front). It turns its head a quarter and holds it, and back, all night.
 ##
-## alert  squares up: stance wide, head up, the brims slide out, band at full
+## alert  squares up: stance wide, cap up on its collar, the brims slide out, band at full
 ## hurt   the band goes out and nothing else moves
 ## dead   it falls over backwards and is still a column
 
-const HIP_Y := 0.56
+const HIP_Y := 0.5
+const COL_R := 0.22
 
 var _yaw: Node3D
 
 
 func build() -> void:
 	part_side = &"front"
-	height = 1.68
+	height = 1.66
 	stride = 1.2
 	begin_rig()
 	var R := ramp
 	var D := FoundKit.dirty(R)
+	var DD := FoundKit.dirty(R, 2)
 
 	var base := joint(&"base", self, Vector3.ZERO)
 	var hips := joint(&"hips", base, Vector3(0, HIP_Y, 0))
-	var hk := MeshKit.new()
-	FoundKit.cbox(hk, Vector3(0, 0, 0), Vector3(0.3, 0.14, 0.44), 0.03, D)
+	var hk := FoundKit.kit()
+	FoundKit.disc(hk, Vector3(0, -0.02, 0), Vector3.UP, 0.2, 0.08, 8, 0.02, D, Color(0, 0, 0, 0), PI / 8.0)
 	body_mesh(hk, hips)
 	for sz: float in [-1.0, 1.0]:
-		var leg := joint(&"leg_r" if sz > 0 else &"leg_l", hips, Vector3(0, -0.05, sz * 0.13))
-		var lk := MeshKit.new()
-		FoundKit.bar(lk, Vector3.ZERO, Vector3(0, -0.44, 0), 0.13, 0.13, 0.025, D)
-		FoundKit.mark(lk, Vector3(0.066, -0.22, 0), Vector3.RIGHT, Vector3.UP, 0.1, 0.03, R[1])
-		FoundKit.cbox(lk, Vector3(0.04, -0.475, 0), Vector3(0.27, 0.07, 0.17), 0.02, FoundKit.dirty(R, 2))
+		var leg := joint(&"leg_r" if sz > 0 else &"leg_l", hips, Vector3(0, -0.05, sz * 0.12))
+		var lk := FoundKit.kit()
+		FoundKit.tbar(lk, Vector3.ZERO, Vector3(0, -0.4, 0), 0.07, 0.06, 8, D, 0.02)
+		FoundKit.mark(lk, Vector3(0.066, -0.2, 0), Vector3.RIGHT, Vector3.UP, 0.05, 0.02, R[5], 0.004)
+		var shoe: Array[Vector2] = [Vector2(-0.1, 0.0), Vector2(0.16, 0.0), Vector2(0.12, 0.05), Vector2(-0.08, 0.06)]
+		FoundKit.slab(lk, Vector3(0, -HIP_Y + 0.05, 0), Vector3.RIGHT, Vector3.UP, shoe, 0.13, DD, 0.012)
 		body_mesh(lk, leg)
 
-	var column := joint(&"column", hips, Vector3(0, 0.07, 0))
-	var ck := MeshKit.new()
-	FoundKit.disc(ck, Vector3(0, 0.37, 0), Vector3.UP, 0.225, 0.74, 8, 0.03, R, R[3], PI / 8.0)
-	FoundKit.disc(ck, Vector3(0, 0.03, 0), Vector3.UP, 0.25, 0.06, 8, 0.015, D, D[3], PI / 8.0)
-	FoundKit.disc(ck, Vector3(0, 0.6, 0), Vector3.UP, 0.24, 0.035, 8, 0.0, R, R[3], PI / 8.0)
-	var apo := 0.225 * cos(PI / 8.0) + 0.002
+	var column := joint(&"column", hips, Vector3(0, 0.04, 0))
+	var ck := FoundKit.kit()
+	# The column: eight flat sides, a plinth ring at the foot and a collar at the top.
+	FoundKit.lathe(ck, Vector3.ZERO, Vector3.UP, [Vector2(0.2, 0.0), Vector2(0.24, 0.04), Vector2(0.24, 0.1), Vector2(COL_R, 0.13), Vector2(COL_R, 0.72), Vector2(0.235, 0.74), Vector2(0.235, 0.8), Vector2(0.18, 0.84)], 8, R, PI / 8.0)
+	var apo := COL_R * cos(PI / 8.0) + 0.002
 	for j in 8:
 		var a := float(j) / 8.0 * TAU
 		var n := Vector3(cos(a), 0, sin(a))
-		FoundKit.rivets(ck, n * apo + Vector3(0, 0.16, 0), n * apo + Vector3(0, 0.16, 0), n, 1, R[5])
-		FoundKit.rivets(ck, n * apo + Vector3(0, 0.68, 0), n * apo + Vector3(0, 0.68, 0), n, 1, R[5])
-		if cos(a) > 0.5:
-			FoundKit.streaks(ck, n * apo + Vector3(0, 0.37, 0), n, 0.12, 0.18, 2, 90 + j, R[2])
-		else:
-			FoundKit.mark(ck, n * apo + Vector3(0, 0.42, 0), n, Vector3.UP, 0.15, 0.1, R[2])
+		FoundKit.mark(ck, n * apo + Vector3(0, 0.2, 0), n, Vector3.UP, 0.035, 0.035, R[5], 0.004)
+		FoundKit.mark(ck, n * apo + Vector3(0, 0.62, 0), n, Vector3.UP, 0.035, 0.035, R[5], 0.004)
+		if cos(a) < -0.5:
+			FoundKit.visor(ck, n * apo + Vector3(0, 0.44, 0), n, Vector3.UP, 0.12, 0.03)
+		elif cos(a) > 0.5:
+			FoundKit.streaks(ck, n * apo + Vector3(0, 0.38, 0), n, 0.1, 0.18, 2, 90 + j, R[1])
 	body_mesh(ck, column)
-	var bk := MeshKit.new()
+	add_scan(column, Vector3(-apo, 0.44, 0), Vector3.LEFT, Vector3.BACK, 0.08, 0.025, 4.0)
+	# The band: three front faces of the column, amber at chest height.
+	var bk := FoundKit.kit()
 	for j: int in [-1, 0, 1]:
 		var a := float(j) / 8.0 * TAU
 		var n := Vector3(cos(a), 0, sin(a))
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.42, 0), n, Vector3.UP, 0.17, 0.11, Palette.LENS[0], 0.002)
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.42, 0), n, Vector3.UP, 0.17, 0.065, Palette.LENS[2], 0.005)
-		FoundKit.mark(bk, n * apo + Vector3(0, 0.42, 0), n, Vector3.UP, 0.17, 0.02, Palette.LENS[3], 0.008)
+		var along := Vector3.UP.cross(n)
+		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0), n, Vector3.UP, 0.175, 0.1, Palette.LENS[0], 0.003)
+		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0), n, Vector3.UP, 0.175, 0.055, Palette.LENS[2], 0.006)
+		FoundKit.mark(bk, n * apo + Vector3(0, 0.46, 0) + along * 0.0, n, Vector3.UP, 0.12 if j == 0 else 0.05, 0.018, Palette.LENS[3], 0.009)
 	part_mesh(bk, column)
-	set_part_anchor(column, Vector3(apo, 0.42, 0), 0.75)
+	set_part_anchor(column, Vector3(apo, 0.46, 0), 0.7)
 
 	_yaw = Node3D.new()
 	_yaw.name = "yaw"
-	_yaw.position = Vector3(0, 0.74, 0)
+	_yaw.position = Vector3(0, 0.84, 0)
 	column.add_child(_yaw)
 	var head := joint(&"head", _yaw, Vector3.ZERO)
-	var k := MeshKit.new()
-	FoundKit.cbox(k, Vector3(0, 0.0, 0), Vector3(0.56, 0.05, 0.94), 0.015, D)
-	FoundKit.cbox(k, Vector3(0, 0.14, 0), Vector3(0.5, 0.24, 0.8), 0.07, R, 2)
-	FoundKit.cbox(k, Vector3(0, 0.285, 0), Vector3(0.32, 0.06, 0.5), 0.02, R)
-	FoundKit.seam(k, Vector3(0.251, 0.04, 0), Vector3(0.251, 0.22, 0), Vector3.RIGHT, R, 2)
-	FoundKit.panel(k, Vector3(0.251, 0.13, -0.24), Vector3.RIGHT, Vector3.UP, 0.22, 0.14, R)
-	FoundKit.panel(k, Vector3(0.251, 0.13, 0.24), Vector3.RIGHT, Vector3.UP, 0.22, 0.14, R)
-	FoundKit.visor(k, Vector3(-0.251, 0.15, 0), Vector3.LEFT, Vector3.UP, 0.5, 0.04)
-	FoundKit.streaks(k, Vector3(-0.251, 0.1, 0), Vector3.LEFT, 0.44, 0.07, 5, 93, R[2])
-	FoundKit.panel(k, Vector3(0, 0.266, 0), Vector3.UP, Vector3.RIGHT, 0.4, 0.66, R)
-	body_mesh(k, head)
-	add_scan(head, Vector3(-0.251, 0.15, 0), Vector3.LEFT, Vector3.BACK, 0.42, 0.035, 4.0)
+	var k := FoundKit.kit()
+	# The cap: broad, flat, oval across the shoulders, eight-sided like the column.
+	FoundKit.lathe(k, Vector3.ZERO, Vector3.UP, [Vector2(0.18, 0.0), Vector2(0.4, 0.05), Vector2(0.43, 0.09), Vector2(0.43, 0.13), Vector2(0.34, 0.2), Vector2(0.16, 0.24)], 8, R, PI / 8.0, Vector2(1.0, 0.62), Color(0, 0, 0, 0), 3)
+	FoundKit.disc(k, Vector3(0, 0.26, 0), Vector3.UP, 0.08, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
 	for sz: float in [-1.0, 1.0]:
-		var brim := joint(&"brim_r" if sz > 0 else &"brim_l", head, Vector3(0, 0.14, sz * 0.3))
-		var mk := MeshKit.new()
-		FoundKit.cbox(mk, Vector3(0, 0, sz * 0.02), Vector3(0.42, 0.16, 0.12), 0.03, R, 2 if sz > 0 else 3)
-		FoundKit.mark(mk, Vector3(0.211, 0, sz * 0.02), Vector3.RIGHT, Vector3.UP, 0.06, 0.06, R[5])
+		FoundKit.rivets(k, Vector3(-0.1, 0.19, sz * 0.24), Vector3(0.1, 0.19, sz * 0.24), Vector3(0, 0.8, sz * 0.6).normalized(), 3, R[5])
+	FoundKit.streaks(k, Vector3(0.255, 0.06, 0), Vector3.RIGHT, 0.2, 0.05, 4, 93, R[1])
+	body_mesh(k, head)
+	for sz: float in [-1.0, 1.0]:
+		var brim := joint(&"brim_r" if sz > 0 else &"brim_l", head, Vector3(0, 0.09, sz * 0.33))
+		var mk := FoundKit.kit()
+		var blade: Array[Vector2] = [Vector2(-0.2, 0.0), Vector2(0.2, 0.0), Vector2(0.14, 0.14), Vector2(-0.14, 0.14)]
+		FoundKit.slab(mk, Vector3.ZERO, Vector3.RIGHT, Vector3.BACK * sz, blade, 0.04, R, 0.01)
+		FoundKit.mark(mk, Vector3(0, 0.021, sz * 0.12), Vector3.UP, Vector3.RIGHT, 0.26, 0.016, R[5], 0.002)
 		body_mesh(mk, brim)
 	finish_rig()
 
@@ -94,23 +96,23 @@ func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
 		&"alert":
-			d[&"leg_l"] = r(Vector3(0.1, 0, 0))
-			d[&"leg_r"] = r(Vector3(-0.1, 0, 0))
-			d[&"hips"] = pr(Vector3(0, -0.02, 0))
-			d[&"column"] = pr(Vector3(0, 0.08, 0))
-			d[&"head"] = pr(Vector3(0, 0.1, 0))
-			d[&"brim_l"] = pr(Vector3(0, 0.02, -0.26))
-			d[&"brim_r"] = pr(Vector3(0, 0.02, 0.26))
+			d[&"leg_l"] = r(Vector3(0.14, 0, 0))
+			d[&"leg_r"] = r(Vector3(-0.14, 0, 0))
+			d[&"hips"] = pr(Vector3(0, -0.03, 0))
+			d[&"column"] = pr(Vector3(0, 0.06, 0))
+			d[&"head"] = pr(Vector3(0, 0.16, 0))
+			d[&"brim_l"] = pr(Vector3(0, 0.02, -0.05), Vector3(0.75, 0, 0))
+			d[&"brim_r"] = pr(Vector3(0, 0.02, 0.05), Vector3(-0.75, 0, 0))
 		&"windup":
 			d[&"hips"] = r(Vector3(0, 0, -0.1))
-			d[&"head"] = pr(Vector3(0, 0.06, 0), Vector3(0, 0, -0.18))
-			d[&"brim_l"] = pr(Vector3(0, 0, -0.18))
-			d[&"brim_r"] = pr(Vector3(0, 0, 0.18))
+			d[&"head"] = pr(Vector3(0, 0.08, 0), Vector3(0, 0, -0.16))
+			d[&"brim_l"] = r(Vector3(0.45, 0, 0))
+			d[&"brim_r"] = r(Vector3(-0.45, 0, 0))
 		&"strike":
 			d[&"hips"] = pr(Vector3(0.12, 0, 0), Vector3(0, 0, -0.22))
 			d[&"head"] = pr(Vector3(0, 0.06, 0), Vector3(0, 0, -0.1))
-			d[&"brim_l"] = pr(Vector3(0, 0, -0.26))
-			d[&"brim_r"] = pr(Vector3(0, 0, 0.26))
+			d[&"brim_l"] = r(Vector3(0.75, 0, 0))
+			d[&"brim_r"] = r(Vector3(-0.75, 0, 0))
 		&"dead":
 			d[&"base"] = pr(Vector3(0, 0.24, 0), Vector3(0, 0, PI * 0.5))
 	return d
@@ -125,8 +127,8 @@ func _timing(p: StringName, j: StringName) -> Vector2:
 func _gait_deltas(phase: float) -> Dictionary:
 	var s := sin(phase * TAU)
 	return {
-		&"leg_l": r(Vector3(0, 0, s * 0.32)),
-		&"leg_r": r(Vector3(0, 0, -s * 0.32)),
+		&"leg_l": r(Vector3(0, 0, s * 0.34)),
+		&"leg_r": r(Vector3(0, 0, -s * 0.34)),
 		&"hips": pr(Vector3(0, -absf(s) * 0.03, 0)),
 	}
 

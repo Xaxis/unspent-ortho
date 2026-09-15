@@ -1,16 +1,16 @@
 extends MachineModel
-## A hauler: a line. Two ore boxes on six wheels a side, pivoting on a hinge,
-## carrying stone that is never loaded level. It will not turn for you. The
-## hinge is open on the LEFT flank only; the right carries a cover plate, so the
-## body is deliberately not mirrored there.
+## A hauler: a line. Two flared ore hoppers on six wheels a side, pivoting on a
+## hinge, carrying stone that is never loaded level. It will not turn for you.
+## The hinge is open on the LEFT flank only; the right carries a cover plate with
+## a cold slit, so the body is deliberately not mirrored there.
 ##
-## walk   the rear box swings on the hinge in an exact sway; wheels turn with distance
-## alert  both boxes jack up on their struts
-## dead   the hinge folds and the rear box tips its load out
+## walk   the rear hopper swings on the hinge in an exact sway; wheels turn with distance
+## alert  both hoppers jack up on their rams
+## dead   the hinge folds and the rear hopper tips its load out
 
-const WHEEL_R := 0.12
-const SEG_L := 1.05
-const SEG_W := 0.62
+const WHEEL_R := 0.11
+const SEG_L := 1.0
+const SEG_W := 0.58
 
 var _travel := 0.0
 var _wheels: Array[Node3D] = []
@@ -18,96 +18,104 @@ var _wheels: Array[Node3D] = []
 
 func build() -> void:
 	part_side = &"left"
-	height = 0.95
+	height = 0.9
 	stride = 1.4
+	gallery_turn = 20.0
 	begin_rig()
 	var R := ramp
 	var D := FoundKit.dirty(R)
 
-	var front := joint(&"front", self, Vector3(0.58, 0, 0))
+	var front := joint(&"front", self, Vector3(0.6, 0, 0))
 	_segment(front, true)
-	var rear := joint(&"rear", front, Vector3(-0.6, 0, 0))
-	var rear_seg := joint(&"rear_seg", rear, Vector3(-0.58, 0, 0))
+	var rear := joint(&"rear", front, Vector3(-0.62, 0, 0))
+	var rear_seg := joint(&"rear_seg", rear, Vector3(-0.6, 0, 0))
 	_segment(rear_seg, false)
 
-	# The hinge: a post between the boxes, open on the left, plated on the right.
-	var hk := MeshKit.new()
-	FoundKit.cbox(hk, Vector3(0, 0.42, 0), Vector3(0.14, 0.52, 0.14), 0.03, R)
-	FoundKit.cbox(hk, Vector3(0, 0.2, 0), Vector3(0.36, 0.08, 0.2), 0.02, D)
-	FoundKit.cbox(hk, Vector3(0, 0.44, -0.28), Vector3(0.3, 0.3, 0.16), 0.03, R)
-	FoundKit.cbox(hk, Vector3(0, 0.44, 0.27), Vector3(0.34, 0.34, 0.12), 0.03, R, 0)
-	FoundKit.visor(hk, Vector3(0, 0.46, 0.331), Vector3.BACK, Vector3.UP, 0.2, 0.035)
-	FoundKit.rivets(hk, Vector3(-0.13, 0.31, 0.331), Vector3(0.13, 0.31, 0.331), Vector3.BACK, 4, R[5])
-	FoundKit.streaks(hk, Vector3(0, 0.42, 0.331), Vector3.BACK, 0.16, 0.12, 3, 51, R[2])
+	# The hinge: a post between the hoppers, open on the left, plated on the right.
+	var hk := FoundKit.kit()
+	FoundKit.tbar(hk, Vector3(0, 0.12, 0), Vector3(0, 0.66, 0), 0.07, 0.06, 8, R, 0.02)
+	FoundKit.disc(hk, Vector3(0, 0.68, 0), Vector3.UP, 0.09, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
+	FoundKit.disc(hk, Vector3(0, 0.2, 0), Vector3.UP, 0.12, 0.06, 8, 0.015, D, Color(0, 0, 0, 0), PI / 8.0)
+	FoundKit.tbar(hk, Vector3(-0.22, 0.16, 0), Vector3(0.22, 0.16, 0), 0.035, 0.035, 6, D)
+	# Left: the open socket, a dark frame round the hinge.
+	var sock: Array[Vector2] = [Vector2(-0.14, -0.12), Vector2(0.14, -0.12), Vector2(0.17, 0.0), Vector2(0.14, 0.14), Vector2(-0.14, 0.14), Vector2(-0.17, 0.0)]
+	FoundKit.slab(hk, Vector3(0, 0.42, -0.2), Vector3.RIGHT, Vector3.UP, sock, 0.1, FoundKit.dirty(R, 2), 0.02)
+	# Right: the cover plate, riveted, with its slit.
+	var cover: Array[Vector2] = [Vector2(-0.16, -0.16), Vector2(0.16, -0.16), Vector2(0.2, -0.08), Vector2(0.2, 0.12), Vector2(0.14, 0.18), Vector2(-0.14, 0.18), Vector2(-0.2, 0.12), Vector2(-0.2, -0.08)]
+	FoundKit.slab(hk, Vector3(0, 0.42, 0.19), Vector3.RIGHT, Vector3.UP, cover, 0.07, R, 0.02)
+	FoundKit.visor(hk, Vector3(0, 0.47, 0.226), Vector3.BACK, Vector3.UP, 0.22, 0.03)
+	FoundKit.rivets(hk, Vector3(-0.15, 0.3, 0.226), Vector3(0.15, 0.3, 0.226), Vector3.BACK, 4, R[5])
+	FoundKit.streaks(hk, Vector3(0, 0.44, 0.226), Vector3.BACK, 0.18, 0.12, 3, 51, R[1])
 	body_mesh(hk, rear)
-	add_scan(rear, Vector3(0, 0.46, 0.331), Vector3.BACK, Vector3.RIGHT, 0.14, 0.03, 2.0)
-	var pk := MeshKit.new()
-	FoundKit.mark(pk, Vector3(0, 0.44, -0.361), Vector3.FORWARD, Vector3.UP, 0.24, 0.24, Palette.LENS[0], 0.002)
-	FoundKit.mark(pk, Vector3(0, 0.44, -0.361), Vector3.FORWARD, Vector3.UP, 0.08, 0.22, Palette.LENS[2], 0.006)
-	FoundKit.mark(pk, Vector3(0, 0.52, -0.361), Vector3.FORWARD, Vector3.UP, 0.18, 0.04, Palette.LENS[2], 0.008)
-	FoundKit.mark(pk, Vector3(0, 0.36, -0.361), Vector3.FORWARD, Vector3.UP, 0.18, 0.04, Palette.LENS[2], 0.008)
-	FoundKit.mark(pk, Vector3(0, 0.44, -0.361), Vector3.FORWARD, Vector3.UP, 0.05, 0.05, Palette.LENS[3], 0.01)
+	add_scan(rear, Vector3(0, 0.47, 0.226), Vector3.BACK, Vector3.RIGHT, 0.16, 0.025, 2.0)
+	var pk := FoundKit.kit()
+	FoundKit.optic(pk, Vector3(0, 0.42, -0.251), Vector3.FORWARD, 0.08)
+	FoundKit.mark(pk, Vector3(0, 0.42, -0.251), Vector3.FORWARD, Vector3.UP, 0.03, 0.24, Palette.LENS[1], 0.014)
 	part_mesh(pk, rear)
-	set_part_anchor(rear, Vector3(0, 0.44, -0.37), 0.7)
+	set_part_anchor(rear, Vector3(0, 0.42, -0.27), 0.6)
 	finish_rig()
 
 
-## One ore box: chassis, wheels, struts, the box on its jack, and its load.
+## One hopper: chassis, wheels, rams, the flared hopper on its hinge, and its load.
 func _segment(seg: Node3D, is_front: bool) -> void:
 	var R := ramp
 	var D := FoundKit.dirty(R)
 	var DD := FoundKit.dirty(R, 2)
 	var tag := "f" if is_front else "r"
-	var ck := MeshKit.new()
-	FoundKit.cbox(ck, Vector3(0, 0.13, 0), Vector3(SEG_L * 0.94, 0.06, SEG_W * 0.7), 0.02, DD)
-	for x: float in [-0.34, 0.34]:
-		for sz: float in [-1.0, 1.0]:
-			FoundKit.bar(ck, Vector3(x, 0.14, sz * 0.2), Vector3(x, 0.58, sz * 0.2), 0.05, 0.05, 0.01, D)
+	var ck := FoundKit.kit()
+	var beam := FoundKit.plan_oct(SEG_L * 0.92, 0.3, 0.08)
+	FoundKit.loft(ck, [FoundKit.ring(beam, 0.09), FoundKit.ring(beam, 0.16, 0.02)], DD)
+	for x: float in [-0.3, 0.3]:
+		FoundKit.tbar(ck, Vector3(x, 0.14, 0), Vector3(x, 0.3, 0), 0.04, 0.04, 6, D)
+	FoundKit.tbar(ck, Vector3(0, WHEEL_R, -SEG_W * 0.5 - 0.02), Vector3(0, WHEEL_R, SEG_W * 0.5 + 0.02), 0.02, 0.02, 4, DD)
 	body_mesh(ck, seg)
-	for x: float in [-0.36, 0.0, 0.36]:
+	for x: float in [-0.34, 0.0, 0.34]:
 		for sz: float in [-1.0, 1.0]:
 			var w := Node3D.new()
 			w.position = Vector3(x, WHEEL_R, sz * (SEG_W * 0.5 + 0.02))
 			seg.add_child(w)
-			var wk := MeshKit.new()
-			FoundKit.disc(wk, Vector3.ZERO, Vector3.BACK, WHEEL_R, 0.07, 8, 0.012, DD, D[2])
-			FoundKit.mark(wk, Vector3(0, 0.07, sz * 0.036), Vector3.BACK * sz, Vector3.UP, 0.025, 0.05, R[1], 0.002)
-			FoundKit.mark(wk, Vector3(0, 0, sz * 0.036), Vector3.BACK * sz, Vector3.UP, 0.04, 0.04, R[4], 0.003)
+			var wk := FoundKit.kit()
+			FoundKit.disc(wk, Vector3.ZERO, Vector3.BACK, WHEEL_R, 0.06, 8, 0.012, DD, D[2], PI / 8.0)
+			FoundKit.spot(wk, Vector3(0, 0, sz * 0.031), Vector3.BACK * sz, 0.04, 6, R[4], 0.002)
+			FoundKit.mark(wk, Vector3(0, 0.07, sz * 0.031), Vector3.BACK * sz, Vector3.UP, 0.02, 0.04, R[1], 0.003)
 			body_mesh(wk, w)
 			_wheels.append(w)
 
-	# The box pivots on its right bottom edge, so it can tip over that edge.
-	var box := joint(StringName("box_" + tag), seg, Vector3(0, 0.24, SEG_W * 0.5))
-	var bk := MeshKit.new()
+	# The hopper pivots on its right bottom edge, so it can tip over that edge.
+	var box := joint(StringName("box_" + tag), seg, Vector3(0, 0.26, SEG_W * 0.5))
+	var bk := FoundKit.kit()
 	bk.push(Transform3D(Basis.IDENTITY, Vector3(0, 0, -SEG_W * 0.5)))
-	FoundKit.cbox(bk, Vector3(0, 0.2, 0), Vector3(SEG_L, 0.36, SEG_W), 0.05, R, 2 if is_front else -1)
-	FoundKit.cbox(bk, Vector3(0, 0.39, 0), Vector3(SEG_L + 0.04, 0.04, SEG_W + 0.04), 0.015, R)
+	var plan := FoundKit.plan_oct(SEG_L, SEG_W, 0.12)
+	FoundKit.loft(bk, [FoundKit.ring(plan, 0.0, 0.0, Vector2(0.82, 0.8)), FoundKit.ring(plan, 0.04, 0.0, Vector2(0.86, 0.84)), FoundKit.ring(plan, 0.32), FoundKit.ring(plan, 0.36, 0.035)], R, is_front)
+	FoundKit.mark(bk, Vector3(0, 0.362, 0), Vector3.UP, Vector3.RIGHT, SEG_W - 0.1, SEG_L - 0.14, R[0], 0.002)
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.seam(bk, Vector3(-0.2, 0.05, sz * (SEG_W * 0.5 + 0.001)), Vector3(-0.2, 0.34, sz * (SEG_W * 0.5 + 0.001)), Vector3.BACK * sz, R, 3)
-		FoundKit.seam(bk, Vector3(0.2, 0.05, sz * (SEG_W * 0.5 + 0.001)), Vector3(0.2, 0.34, sz * (SEG_W * 0.5 + 0.001)), Vector3.BACK * sz, R, 3)
-		FoundKit.streaks(bk, Vector3(0, 0.36, sz * (SEG_W * 0.5 + 0.001)), Vector3.BACK * sz, SEG_L * 0.8, 0.14, 6, 52 if is_front else 53, R[2])
-		FoundKit.mark(bk, Vector3(0, 0.05, sz * (SEG_W * 0.5 + 0.001)), Vector3.BACK * sz, Vector3.UP, SEG_L - 0.1, 0.06, R[2], 0.002)
+		var n := Vector3(0, -0.16, sz).normalized()
+		for x: float in [-0.26, 0.0, 0.26]:
+			FoundKit.mark(bk, Vector3(x, 0.18, sz * 0.265), n, Vector3(0, 1, sz * 0.16), 0.022, 0.26, R[1], 0.003)
+		FoundKit.rivets(bk, Vector3(-0.4, 0.3, sz * 0.291), Vector3(0.4, 0.3, sz * 0.291), n, 8, R[5], 0.03)
+		FoundKit.streaks(bk, Vector3(0.13, 0.28, sz * 0.285), n, 0.16, 0.14, 3, 52 + int(sz) + int(is_front) * 4, R[1])
 	if is_front:
-		FoundKit.cbox(bk, Vector3(SEG_L * 0.5 + 0.06, 0.16, 0), Vector3(0.14, 0.26, SEG_W * 0.8), 0.04, R)
-		FoundKit.visor(bk, Vector3(SEG_L * 0.5 + 0.131, 0.19, 0), Vector3.RIGHT, Vector3.UP, 0.36, 0.045)
-		FoundKit.rivets(bk, Vector3(SEG_L * 0.5 + 0.131, 0.08, -0.18), Vector3(SEG_L * 0.5 + 0.131, 0.08, 0.18), Vector3.RIGHT, 4, R[5])
+		# A sloped nose plate with the slit.
+		var nose: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(0.14, 0.02), Vector2(0.1, 0.26), Vector2(0.0, 0.3)]
+		FoundKit.slab(bk, Vector3(SEG_L * 0.5 - 0.02, 0.02, 0), Vector3.RIGHT, Vector3.UP, nose, SEG_W * 0.8, R, 0.02)
+		FoundKit.visor(bk, Vector3(SEG_L * 0.5 + 0.1, 0.18, 0), Vector3(0.99, 0.16, 0), Vector3(-0.16, 0.99, 0), 0.3, 0.035)
 	bk.pop()
 	body_mesh(bk, box)
 	if is_front:
-		add_scan(box, Vector3(SEG_L * 0.5 + 0.131, 0.19, -SEG_W * 0.5), Vector3.RIGHT, Vector3.BACK, 0.3, 0.035, 2.6)
+		add_scan(box, Vector3(SEG_L * 0.5 + 0.1, 0.18, -SEG_W * 0.5), Vector3(0.99, 0.16, 0), Vector3.BACK, 0.24, 0.03, 2.6)
 
-	# The load: stone heaped to one side, never level.
-	var ld := joint(StringName("load_" + tag), box, Vector3(0, 0.38, -SEG_W * 0.5))
-	var lk := MeshKit.new()
+	# The load: stone heaped to one side, never level. The land's, not the machine's.
+	var ld := joint(StringName("load_" + tag), box, Vector3(0, 0.36, -SEG_W * 0.5))
+	var lk := FoundKit.matter_kit(Ink.CONTOUR)
 	var sgn := 1.0 if is_front else -1.0
 	for j in 7:
 		var a := float(j) / 7.0 * TAU
-		var rx := cos(a) * 0.32
-		var rz := sin(a) * 0.17 + sgn * 0.05
-		var hgt := 0.16 + 0.12 * (0.5 + 0.5 * sin(a * sgn + 0.6)) + Rng.hash01(61, j, int(is_front)) * 0.05
-		lk.rock(rx, 0.0, rz, 0.16, hgt, 600 + j * 3 + int(is_front), Palette.STONE[2] if j % 3 == 0 else Palette.STONE[3], 5)
-	lk.rock(0.02, 0.0, sgn * 0.06, 0.24, 0.3, 640 + int(is_front), Palette.STONE[3], 6)
-	body_mesh(lk, ld)
+		var rx := cos(a) * 0.3
+		var rz := sin(a) * 0.15 + sgn * 0.04
+		var hgt := 0.12 + 0.12 * (0.5 + 0.5 * sin(a * sgn + 0.6)) + Rng.hash01(61, j, int(is_front)) * 0.05
+		lk.rock(rx, -0.02, rz, 0.14, hgt, 600 + j * 3 + int(is_front), Palette.STONE[2] if j % 3 == 0 else Palette.STONE[3], 5)
+	lk.rock(0.03 * sgn, -0.02, sgn * 0.06, 0.22, 0.28, 640 + int(is_front), Palette.STONE[4], 6)
+	matter_mesh(lk, ld)
 
 
 func _pose_deltas(p: StringName) -> Dictionary:

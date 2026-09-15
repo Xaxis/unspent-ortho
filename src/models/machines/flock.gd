@@ -47,9 +47,10 @@ func build() -> void:
 		var dist := 0.2 + Rng.hash01(145, i) * 0.75
 		_fallen.append(Vector3(cos(a) * dist, 0.02, sin(a) * dist))
 
-	var sk := MeshKit.new()
-	FoundKit.cbox(sk, Vector3.ZERO, Vector3(0.13, 0.03, 0.08), 0.0, R)
-	FoundKit.mark(sk, Vector3(0.0, -0.016, 0), Vector3.DOWN, Vector3.RIGHT, 0.1, 0.05, R[1], 0.001)
+	# A shard: a flat lozenge with a ridge, sharp at both ends, like a cut vane.
+	var sk := FoundKit.kit()
+	var vane: Array[Vector2] = [Vector2(0.09, 0.0), Vector2(0.01, 0.05), Vector2(-0.07, 0.0), Vector2(0.01, -0.05)]
+	FoundKit.slab(sk, Vector3.ZERO, Vector3.RIGHT, Vector3.FORWARD, vane, 0.03, R, 0.01)
 	_shards = _multimesh(sk.build())
 	var smi := MultiMeshInstance3D.new()
 	smi.name = "shards"
@@ -57,8 +58,8 @@ func build() -> void:
 	smi.material_override = material
 	add_child(smi)
 
-	var dk := MeshKit.new()
-	FoundKit.mark(dk, Vector3(0, 0.016, 0), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, Palette.LENS[2], 0.002)
+	var dk := FoundKit.kit()
+	FoundKit.spot(dk, Vector3(0.01, 0.016, 0), Vector3.UP, 0.022, 4, Palette.LENS[2], 0.002)
 	_dots = _multimesh(dk.build())
 	var dmi := MultiMeshInstance3D.new()
 	dmi.name = "dots"

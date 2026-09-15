@@ -1,7 +1,7 @@
 extends MachineModel
 ## A dredger: a low hull with something moving underneath, six legs working the
 ## bed below the waterline. The jaw is a notch in the middle of the underside at
-## the front, lined with amber: mouth and weak place at once.
+## the prow, lined with amber: mouth and weak place at once.
 ##
 ## Origin is the bed it walks on; `waterline` is where the water should stand.
 ##
@@ -9,6 +9,7 @@ extends MachineModel
 ## dead   the fen closes over it: it settles down through the surface
 
 const WATERLINE := 0.36
+const KNEE := Vector3(0.3, 0.3, 0.0)
 
 var waterline := WATERLINE
 
@@ -17,22 +18,25 @@ func build() -> void:
 	part_side = &"front"
 	height = 0.95
 	stride = 1.3
+	gallery_turn = 30.0
 	begin_rig()
 	var R := ramp
 	var D := FoundKit.dirty(R)
 	var DD := FoundKit.dirty(R, 2)
 
-	var hull := joint(&"hull", self, Vector3(0, 0.42, 0))
+	var hull := joint(&"hull", self, Vector3(0, 0.4, 0))
 	# A low carapace with a prow, not a box: waterline full, shoulders sloped in.
-	var plan: Array[Vector2] = [Vector2(0.92, 0), Vector2(0.55, -0.5), Vector2(-0.5, -0.58), Vector2(-0.82, -0.34), Vector2(-0.82, 0.34), Vector2(-0.5, 0.58), Vector2(0.55, 0.5)]
-	var k := MeshKit.new()
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.08, 0.1), FoundKit.ring(plan, 0.06), FoundKit.ring(plan, 0.2), FoundKit.ring(plan, 0.31, 0.15), FoundKit.ring(plan, 0.36, 0.27)], R, true)
-	FoundKit.cbox(k, Vector3(-0.12, 0.41, 0), Vector3(0.62, 0.12, 0.26), 0.04, R)
-	FoundKit.cbox(k, Vector3(-0.52, 0.42, 0), Vector3(0.12, 0.1, 0.18), 0.03, D)
-	FoundKit.visor(k, Vector3(0.191, 0.415, 0), Vector3.RIGHT, Vector3.UP, 0.18, 0.035)
-	FoundKit.panel(k, Vector3(-0.12, 0.471, 0), Vector3.UP, Vector3.RIGHT, 0.48, 0.18, R)
-	FoundKit.seam(k, Vector3(-0.4, 0.361, 0.2), Vector3(0.36, 0.361, 0.16), Vector3.UP, R, 4)
-	FoundKit.seam(k, Vector3(-0.4, 0.361, -0.2), Vector3(0.36, 0.361, -0.16), Vector3.UP, R, 4)
+	var plan: Array[Vector2] = [Vector2(0.92, 0), Vector2(0.55, 0.5), Vector2(-0.5, 0.58), Vector2(-0.84, 0.34), Vector2(-0.84, -0.34), Vector2(-0.5, -0.58), Vector2(0.55, -0.5)]
+	var k := FoundKit.kit()
+	FoundKit.loft(k, [FoundKit.ring(plan, -0.06, 0.12), FoundKit.ring(plan, 0.04), FoundKit.ring(plan, 0.18), FoundKit.ring(plan, 0.27, 0.12), FoundKit.ring(plan, 0.31, 0.26)], R)
+	# A dorsal keel down the middle and a stubby stack.
+	var keel: Array[Vector2] = [Vector2(0.5, 0), Vector2(0.2, 0.12), Vector2(-0.46, 0.14), Vector2(-0.6, 0.0), Vector2(-0.46, -0.14), Vector2(0.2, -0.12)]
+	FoundKit.loft(k, [FoundKit.ring(keel, 0.3), FoundKit.ring(keel, 0.38, 0.03), FoundKit.ring(keel, 0.41, 0.07)], R)
+	FoundKit.tbar(k, Vector3(-0.44, 0.38, 0), Vector3(-0.44, 0.56, 0), 0.05, 0.045, 6, D, 0.012)
+	FoundKit.spot(k, Vector3(-0.44, 0.561, 0), Vector3.UP, 0.032, 6, R[0], 0.002)
+	FoundKit.visor(k, Vector3(0.27, 0.36, 0), Vector3(0.6, 0.8, 0), Vector3(-0.8, 0.6, 0), 0.16, 0.03)
+	for x: float in [-0.3, -0.1, 0.1]:
+		FoundKit.mark(k, Vector3(x, 0.411, 0), Vector3.UP, Vector3.BACK, 0.2, 0.018, R[2], 0.002)
 	for sz: float in [-1.0, 1.0]:
 		# Along each flank: wet below the waterline, a pale tide mark, streaks from the shoulder.
 		var a := Vector2(0.55, 0.5 * sz)
@@ -45,44 +49,47 @@ func build() -> void:
 		var along3 := Vector3(along.x, 0, along.y)
 		var mid := (a + b) * 0.5
 		var c := Vector3(mid.x, 0.0, mid.y)
-		FoundKit.mark(k, c + Vector3(0, 0.1, 0), n, Vector3.UP, 0.98, 0.08, R[1], 0.003)
-		FoundKit.mark(k, c + Vector3(0, 0.145, 0), n, Vector3.UP, 0.98, 0.014, Palette.BRINE[4], 0.004)
-		FoundKit.streaks(k, c + Vector3(0, 0.2, 0), n, 0.8, 0.07, 6, 121 + int(sz), R[2])
-		FoundKit.rivets(k, c + along3 * 0.4 + Vector3(0, 0.18, 0), c - along3 * 0.4 + Vector3(0, 0.18, 0), n, 6, R[5])
+		FoundKit.mark(k, c + Vector3(0, 0.08, 0), n, Vector3.UP, 0.98, 0.08, R[1], 0.003)
+		FoundKit.mark(k, c + Vector3(0, 0.125, 0), n, Vector3.UP, 0.98, 0.014, Palette.BRINE[4], 0.004)
+		FoundKit.streaks(k, c + Vector3(0, 0.18, 0), n, 0.8, 0.06, 6, 121 + int(sz), R[1])
+		FoundKit.rivets(k, c + along3 * 0.4 + Vector3(0, 0.165, 0), c - along3 * 0.4 + Vector3(0, 0.165, 0), n, 6, R[5])
+		FoundKit.seam(k, Vector3(-0.4, 0.32, sz * 0.24), Vector3(0.36, 0.32, sz * 0.2), Vector3(0, 0.9, sz * 0.4).normalized(), R, 4)
 	# The jaw cavity under the prow.
-	FoundKit.cbox(k, Vector3(0.74, -0.03, 0), Vector3(0.28, 0.12, 0.3), 0.0, [R[0], R[0], R[0], R[0], R[1], R[1]])
+	FoundKit.cbox(k, Vector3(0.7, -0.03, 0), Vector3(0.3, 0.1, 0.3), 0.0, FoundKit.flat(R[0]))
 	body_mesh(k, hull)
-	add_scan(hull, Vector3(0.191, 0.415, 0), Vector3.RIGHT, Vector3.BACK, 0.12, 0.03, 1.8)
+	add_scan(hull, Vector3(0.27, 0.36, 0), Vector3(0.6, 0.8, 0), Vector3.BACK, 0.1, 0.025, 1.8)
 
-	var pk := MeshKit.new()
-	FoundKit.mark(pk, Vector3(0.881, -0.03, 0), Vector3.RIGHT, Vector3.UP, 0.26, 0.07, Palette.LENS[2], 0.004)
-	FoundKit.mark(pk, Vector3(0.881, -0.03, 0), Vector3.RIGHT, Vector3.UP, 0.14, 0.025, Palette.LENS[3], 0.008)
-	FoundKit.mark(pk, Vector3(0.74, 0.031, 0), Vector3.UP, Vector3.RIGHT, 0.2, 0.2, Palette.LENS[1], 0.004)
+	var pk := FoundKit.kit()
+	FoundKit.mark(pk, Vector3(0.851, -0.03, 0), Vector3.RIGHT, Vector3.UP, 0.28, 0.08, Palette.LENS[2], 0.004)
+	FoundKit.mark(pk, Vector3(0.851, -0.03, 0), Vector3.RIGHT, Vector3.UP, 0.16, 0.025, Palette.LENS[3], 0.008)
+	FoundKit.mark(pk, Vector3(0.72, 0.021, 0), Vector3.UP, Vector3.RIGHT, 0.22, 0.2, Palette.LENS[1], 0.004)
 	part_mesh(pk, hull)
-	set_part_anchor(hull, Vector3(0.92, -0.02, 0), 0.7)
+	set_part_anchor(hull, Vector3(0.9, -0.02, 0), 0.7)
 
 	for sz: float in [-1.0, 1.0]:
-		var jaw := joint(&"jaw_r" if sz > 0 else &"jaw_l", hull, Vector3(0.8, -0.03, sz * 0.12))
-		var jk := MeshKit.new()
-		FoundKit.cbox(jk, Vector3(0.12, 0, sz * 0.02), Vector3(0.26, 0.1, 0.04), 0.012, D)
-		FoundKit.cbox(jk, Vector3(0.25, -0.02, -sz * 0.0), Vector3(0.05, 0.06, 0.06), 0.01, R)
+		var jaw := joint(&"jaw_r" if sz > 0 else &"jaw_l", hull, Vector3(0.78, -0.03, sz * 0.13))
+		var jk := FoundKit.kit()
+		var blade: Array[Vector2] = [Vector2(0.0, -0.05), Vector2(0.28, -0.03), Vector2(0.3, 0.03), Vector2(0.0, 0.05)]
+		FoundKit.slab(jk, Vector3(0, 0, sz * 0.02), Vector3.RIGHT, Vector3.UP, blade, 0.04, D, 0.01)
 		body_mesh(jk, jaw)
-		var tk := MeshKit.new()
+		var tk := FoundKit.kit()
 		for t in 3:
-			FoundKit.mark(tk, Vector3(0.05 + t * 0.07, -0.01, -sz * 0.001), Vector3.BACK * -sz, Vector3.UP, 0.035, 0.06, Palette.LENS[2], 0.004)
+			FoundKit.mark(tk, Vector3(0.06 + t * 0.08, -0.01, -sz * 0.001), Vector3.BACK * -sz, Vector3.UP, 0.035, 0.06, Palette.LENS[2], 0.004)
 		part_mesh(tk, jaw)
 
-	# Legs like a strider's: knee at the deck, foot far out on the bed.
+	# Legs like a strider's: knee above the deck, foot far out on the bed.
 	for i in 6:
 		var sz := -1.0 if i < 3 else 1.0
-		var x: float = [0.38, -0.05, -0.48][i % 3]
+		var x: float = [0.36, -0.06, -0.46][i % 3]
 		var fan: float = [0.55, 0.0, -0.5][i % 3]
-		var leg := joint(StringName("leg%d" % i), hull, Vector3(x, 0.14, sz * 0.52), Vector3(0, -sz * (PI * 0.5 - fan), 0))
-		var lk := MeshKit.new()
-		FoundKit.cbox(lk, Vector3.ZERO, Vector3(0.09, 0.09, 0.09), 0.025, D)
-		FoundKit.bar(lk, Vector3.ZERO, Vector3(0.32, 0.26, 0), 0.05, 0.045, 0.01, R)
-		FoundKit.cbox(lk, Vector3(0.32, 0.26, 0), Vector3(0.07, 0.07, 0.07), 0.018, R)
-		FoundKit.bar(lk, Vector3(0.32, 0.26, 0), Vector3(0.66, -0.56, 0), 0.04, 0.035, 0.008, DD)
+		var leg := joint(StringName("leg%d" % i), hull, Vector3(x, 0.12, sz * 0.52), Vector3(0, -sz * (PI * 0.5 - fan), 0))
+		var lk := FoundKit.kit()
+		FoundKit.disc(lk, Vector3.ZERO, Vector3.UP, 0.05, 0.06, 6, 0.012, D)
+		FoundKit.tbar(lk, Vector3.ZERO, KNEE, 0.03, 0.024, 6, R)
+		FoundKit.disc(lk, KNEE, Vector3.BACK, 0.035, 0.05, 6, 0.01, R)
+		var foot := Vector3(0.7, -0.52, 0)
+		FoundKit.tbar(lk, KNEE, foot, 0.022, 0.014, 6, DD)
+		FoundKit.tbar(lk, foot, foot + Vector3(0.02, -0.04, 0), 0.016, 0.0, 4, DD)
 		body_mesh(lk, leg)
 	finish_rig()
 
@@ -91,15 +98,15 @@ func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
 		&"alert":
-			d[&"hull"] = pr(Vector3(0, 0.22, 0), Vector3(0, 0, 0.09))
-			d[&"jaw_l"] = r(Vector3(0, 0.55, 0))
-			d[&"jaw_r"] = r(Vector3(0, -0.55, 0))
+			d[&"hull"] = pr(Vector3(0, 0.24, 0), Vector3(0, 0, 0.1))
+			d[&"jaw_l"] = r(Vector3(0, 0.6, 0))
+			d[&"jaw_r"] = r(Vector3(0, -0.6, 0))
 			for i in 6:
-				d[StringName("leg%d" % i)] = r(Vector3(0, 0, -0.3))
+				d[StringName("leg%d" % i)] = r(Vector3(0, 0, -0.32))
 		&"windup":
 			d[&"hull"] = pr(Vector3(-0.1, 0.16, 0), Vector3(0, 0, 0.22))
-			d[&"jaw_l"] = r(Vector3(0, 0.75, 0))
-			d[&"jaw_r"] = r(Vector3(0, -0.75, 0))
+			d[&"jaw_l"] = r(Vector3(0, 0.8, 0))
+			d[&"jaw_r"] = r(Vector3(0, -0.8, 0))
 			for i in 6:
 				d[StringName("leg%d" % i)] = r(Vector3(0, 0, -0.2))
 		&"strike":

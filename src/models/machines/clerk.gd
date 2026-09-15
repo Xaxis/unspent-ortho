@@ -1,10 +1,10 @@
 extends MachineModel
-## A clerk: an archway walking, all head and all legs. A filing case carried
-## between two long legs that rise above it at the knee, stooped, head down at
-## hip height, reading the ground. It was never built to be near anything: no
-## working part. What it sees goes through the slit in its face.
+## A clerk: an archway walking, all head and all legs. A six-sided filing case
+## carried between two long legs that rise above it at the knee, stooped, head
+## down at hip height, reading the ground. It was never built to be near
+## anything: no working part. What it sees goes through the slit in its face.
 ##
-## alert  the head comes up on a neck that was not there
+## alert  the head comes up on a graduated neck that was not there
 ## dead   the legs go out sideways; the head comes down last
 
 const HIP_Y := 0.6
@@ -17,6 +17,7 @@ func build() -> void:
 	height = 1.05
 	stride = 0.7
 	nominal_speed = 1.2
+	gallery_turn = 20.0
 	begin_rig()
 	var R := ramp
 	var D := FoundKit.dirty(R)
@@ -26,45 +27,49 @@ func build() -> void:
 	for sz: float in [-1.0, 1.0]:
 		var s := "r" if sz > 0 else "l"
 		var thigh := joint(StringName("thigh_" + s), hips, Vector3(0, 0.0, sz * 0.31))
-		var tk := MeshKit.new()
-		FoundKit.cbox(tk, Vector3.ZERO, Vector3(0.1, 0.1, 0.08), 0.025, R)
-		FoundKit.bar(tk, Vector3.ZERO, Vector3(0, 0.42, sz * 0.22), 0.055, 0.055, 0.012, R)
-		FoundKit.cbox(tk, Vector3(0, 0.42, sz * 0.22), Vector3(0.085, 0.085, 0.085), 0.022, R)
+		var tk := FoundKit.kit()
+		FoundKit.disc(tk, Vector3.ZERO, Vector3.BACK, 0.05, 0.07, 6, 0.012, R)
+		FoundKit.tbar(tk, Vector3.ZERO, Vector3(0, 0.42, sz * 0.22), 0.03, 0.024, 6, R)
+		FoundKit.disc(tk, Vector3(0, 0.42, sz * 0.22), Vector3.BACK, 0.04, 0.06, 6, 0.01, R)
 		body_mesh(tk, thigh)
 		var shin := joint(StringName("shin_" + s), thigh, Vector3(0, 0.42, sz * 0.22))
-		var sk := MeshKit.new()
-		FoundKit.bar(sk, Vector3.ZERO, Vector3(0, -1.0, -sz * 0.03), 0.045, 0.045, 0.01, D)
-		FoundKit.cbox(sk, Vector3(0.02, -1.005, -sz * 0.03), Vector3(0.14, 0.03, 0.08), 0.01, DD)
+		var sk := FoundKit.kit()
+		FoundKit.tbar(sk, Vector3.ZERO, Vector3(0, -0.98, -sz * 0.03), 0.024, 0.014, 6, D)
+		FoundKit.tbar(sk, Vector3(0, -0.98, -sz * 0.03), Vector3(0.0, -1.02, -sz * 0.03), 0.016, 0.0, 4, DD)
+		FoundKit.tbar(sk, Vector3(-0.04, -0.94, -sz * 0.03), Vector3(0.08, -0.94, -sz * 0.03), 0.01, 0.01, 4, DD)
 		body_mesh(sk, shin)
 
 	# The case hangs stooped from the hips: front edge down.
 	var lid := joint(&"lid", hips, Vector3(0.02, 0.02, 0), Vector3(0, 0, -0.32))
-	var k := MeshKit.new()
-	FoundKit.cbox(k, Vector3(0, 0.06, 0), Vector3(0.54, 0.26, 0.54), 0.05, R, 2)
-	FoundKit.cbox(k, Vector3(0, -0.1, 0), Vector3(0.5, 0.05, 0.5), 0.02, D)
-	FoundKit.mark(k, Vector3(0.291, 0.02, 0), Vector3.RIGHT, Vector3.UP, 0.4, 0.04, R[0], 0.003)
-	FoundKit.mark(k, Vector3(0.291, 0.04, 0), Vector3.RIGHT, Vector3.UP, 0.32, 0.012, Palette.LINEN[4], 0.005)
-	FoundKit.streaks(k, Vector3(0.291, 0.0, 0), Vector3.RIGHT, 0.36, 0.1, 6, 161, R[2])
-	FoundKit.rivets(k, Vector3(0.291, 0.16, -0.22), Vector3(0.291, 0.16, 0.22), Vector3.RIGHT, 5, R[5])
+	var k := FoundKit.kit()
+	var hexa: Array[Vector2] = []
+	for j in 6:
+		var a := float(j) / 6.0 * TAU + PI / 6.0
+		hexa.append(Vector2(cos(a) * 0.3, sin(a) * 0.32))
+	FoundKit.loft(k, [FoundKit.ring(hexa, -0.12, 0.03), FoundKit.ring(hexa, -0.08), FoundKit.ring(hexa, 0.14), FoundKit.ring(hexa, 0.2, 0.05)], R, false, true)
+	FoundKit.loft(k, [FoundKit.ring(hexa, 0.2, 0.08), FoundKit.ring(hexa, 0.23, 0.12)], R)
+	# The filing slot across the front, paper edges showing in it.
+	FoundKit.mark(k, Vector3(0.262, 0.04, 0), Vector3.RIGHT, Vector3.UP, 0.3, 0.045, R[0], 0.003)
+	FoundKit.mark(k, Vector3(0.262, 0.05, 0), Vector3.RIGHT, Vector3.UP, 0.24, 0.012, Palette.LINEN[4], 0.005)
+	FoundKit.streaks(k, Vector3(0.262, 0.01, 0), Vector3.RIGHT, 0.24, 0.08, 5, 161, R[1])
+	FoundKit.rivets(k, Vector3(0.262, 0.12, -0.12), Vector3(0.262, 0.12, 0.12), Vector3.RIGHT, 4, R[5])
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.panel(k, Vector3(0, 0.06, sz * 0.281), Vector3.BACK * sz, Vector3.UP, 0.44, 0.18, R)
-	FoundKit.seam(k, Vector3(-0.291, -0.04, 0.0), Vector3(-0.291, 0.16, 0.0), Vector3.LEFT, R, 2)
+		var n := Vector3(0.5, 0, sz * 0.866)
+		FoundKit.panel(k, Vector3(0.13, 0.03, sz * 0.23), n, Vector3.UP, 0.18, 0.14, R)
+	FoundKit.seam(k, Vector3(-0.262, -0.06, 0.0), Vector3(-0.262, 0.14, 0.0), Vector3.LEFT, R, 2)
 	body_mesh(k, lid)
 
 	var neck := joint(&"neck", lid, Vector3(0, 0.2, 0))
-	var nk := MeshKit.new()
-	FoundKit.cbox(nk, Vector3(0, -0.14, 0), Vector3(0.1, 0.3, 0.1), 0.02, D)
-	for y: float in [-0.08, -0.02]:
-		FoundKit.mark(nk, Vector3(0.051, y, 0), Vector3.RIGHT, Vector3.UP, 0.06, 0.012, R[1])
+	var nk := FoundKit.kit()
+	FoundKit.tbar(nk, Vector3(0, -0.34, 0), Vector3(0, 0.0, 0), 0.04, 0.04, 8, D)
+	FoundKit.ticks(nk, Vector3(0.04, -0.3, 0), Vector3(0.04, -0.02, 0), Vector3.RIGHT, 8, R[5], 0.02)
 	body_mesh(nk, neck)
 	var head := joint(&"head", neck, Vector3.ZERO)
-	var ek := MeshKit.new()
-	FoundKit.cbox(ek, Vector3(0.02, 0.05, 0), Vector3(0.5, 0.1, 0.52), 0.03, R, 0)
-	FoundKit.cbox(ek, Vector3(0.25, 0.04, 0), Vector3(0.04, 0.06, 0.44), 0.012, R)
-	FoundKit.visor(ek, Vector3(0.271, 0.04, 0), Vector3.RIGHT, Vector3.UP, 0.38, 0.03)
-	FoundKit.panel(ek, Vector3(0.0, 0.101, 0), Vector3.UP, Vector3.RIGHT, 0.36, 0.38, R)
+	var ek := FoundKit.kit()
+	FoundKit.lathe(ek, Vector3(0.02, 0.0, 0), Vector3.UP, [Vector2(0.16, 0.0), Vector2(0.26, 0.04), Vector2(0.26, 0.08), Vector2(0.2, 0.11)], 6, R, PI / 6.0, Vector2(1.0, 1.0), Color(0, 0, 0, 0), 2)
+	FoundKit.visor(ek, Vector3(0.245, 0.06, 0), Vector3.RIGHT, Vector3.UP, 0.18, 0.026)
 	body_mesh(ek, head)
-	add_scan(head, Vector3(0.271, 0.04, 0), Vector3.RIGHT, Vector3.BACK, 0.32, 0.028, 1.6)
+	add_scan(head, Vector3(0.245, 0.06, 0), Vector3.RIGHT, Vector3.BACK, 0.14, 0.022, 1.6)
 	finish_rig()
 
 
@@ -78,15 +83,15 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"shin_l"] = r(Vector3(1.2, 0, 0))
 			d[&"shin_r"] = r(Vector3(-1.2, 0, 0))
 			d[&"lid"] = r(Vector3(0, 0, 0.32))
-			d[&"neck"] = pr(Vector3(0, 0.4, 0))
+			d[&"neck"] = pr(Vector3(0, 0.36, 0))
 			d[&"head"] = r(Vector3(0, 0, 0.12))
 		&"windup":
 			d[&"lid"] = r(Vector3(0, 0, 0.22))
-			d[&"neck"] = pr(Vector3(0.04, 0.3, 0))
+			d[&"neck"] = pr(Vector3(0.04, 0.28, 0))
 			d[&"head"] = r(Vector3(0, 0, -0.45))
 		&"strike":
 			d[&"lid"] = r(Vector3(0, 0, 0.1))
-			d[&"neck"] = pr(Vector3(0.2, 0.26, 0))
+			d[&"neck"] = pr(Vector3(0.2, 0.24, 0))
 			d[&"head"] = r(Vector3(0, 0, -0.6))
 			d[&"hips"] = pr(Vector3(0.08, -0.04, 0))
 		&"dead":
@@ -96,7 +101,7 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"shin_l"] = r(Vector3(-0.55, 0, 0))
 			d[&"shin_r"] = r(Vector3(0.55, 0, 0))
 			d[&"lid"] = pr(Vector3(0, 0.02, 0), Vector3(0.1, 0, 0.26))
-			d[&"neck"] = pr(Vector3(0.1, 0.14, 0))
+			d[&"neck"] = pr(Vector3(0.1, 0.12, 0))
 			d[&"head"] = pr(Vector3(0.12, -0.24, 0.05), Vector3(0.3, 0, -1.1))
 	return d
 
