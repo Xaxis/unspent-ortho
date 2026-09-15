@@ -6,22 +6,13 @@ extends TestCase
 const Lights := preload("res://src/systems/15_lights.gd")
 
 
-## The renderer's OmniLight3D attenuation with omni_attenuation = 0 (the same
-## formula sky.gdshaderinc's sky_omni() uses).
-func _omni(d: float, reach: float) -> float:
-	var nd := d / reach
-	nd *= nd
-	nd = maxf(1.0 - nd * nd, 0.0)
-	return nd * nd
-
-
 func test_pool_radius_is_where_the_light_is_half() -> void:
 	for spec: Array in Lights.SOURCES.values():
 		var reach := float(spec[0])
 		var h := float(spec[2])
 		var r := Lights.pool_radius(reach, h)
 		gt(r, 1.0, "a pool you can stand in")
-		near(_omni(sqrt(r * r + h * h), reach), 0.5, 1e-3, "half light at the pool's edge")
+		near(Lights.omni_attenuation(sqrt(r * r + h * h), reach), 0.5, 1e-3, "half light at the pool's edge")
 	lt(Lights.pool_radius(4.0, 9.0), 1e-6, "a light too high leaves no pool")
 
 

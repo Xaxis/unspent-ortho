@@ -25,6 +25,8 @@ const WARM := Vector3(0.96, 0.74, 0.53)
 const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
+## compensate() never divides by a sky tint channel darker than this.
+const TINT_FLOOR := 0.45
 const LANTERN_RANGE := 3.9
 const LANTERN_POWER := 0.8
 const LANTERN_HEIGHT := 1.0
@@ -156,8 +158,22 @@ static func compensate(target: Vector3, tint: Vector3, sun: float) -> Vector3:
 	var base := pow(clampf(sun, 0.0, 1.0), 2.2)
 	var out := Vector3.ZERO
 	for i in 3:
-		out[i] = maxf(0.0, pow(target[i] / maxf(0.15, tint[i]), 2.2) - base)
+		# A tint below the floor is gloom (a storm at night): the pool does not
+		# chase it, or lamps would blaze in the dark. The sky also lifts dark
+		# washes at night, which the floor stands in for.
+		out[i] = maxf(0.0, pow(target[i] / maxf(TINT_FLOOR, tint[i]), 2.2) - base)
 	return out
+
+
+## The renderer's OmniLight3D attenuation with omni_attenuation = 0, at
+## distance d from a light of range `reach` (sky.gdshaderinc sky_omni()).
+static func omni_attenuation(d: float, reach: float) -> float:
+	if reach <= 0.0:
+		return 0.0
+	var nd := d / reach
+	nd *= nd
+	nd = maxf(1.0 - nd * nd, 0.0)
+	return nd * nd
 
 
 ## Radius on flat ground of the ink-free pool of a light `height` above it:
@@ -226,7 +242,8 @@ func _update(delta: float, snap: bool) -> void:
 	var want := lamps_wanted(hour)
 	# Lamps are lit before dark, but a pool of light only tells once the dark
 	# has come: at dusk a lamp is a flame, not a spotlight.
-	var dark := pool_dark(hour)
+	# A lightning flash drowns the lamps: the page shows, not the pools.
+	var dark := pool_dark(hour) * (1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0))
 	var pools: Array[Vector4] = []
 	for i in lights.size():
 		var l := lights[i]
@@ -258,6 +275,12 @@ func _update(delta: float, snap: bool) -> void:
 		# The lantern's floor: in any gloom it lifts the ground a little. (source 0.45)
 		var night := maxf(dark, 0.45)
 		var at := p.position + Vector3(0, LANTERN_HEIGHT, 0)
+		# Where a lamp already lights the ground the lantern hardly adds: two
+		# pools stacked read as two ruled discs.
+		var covered := 0.0
+		for pool in pools:
+			covered = maxf(covered, omni_attenuation(p.position.distance_to(Vector3(pool.x, pool.y, pool.z)), pool.w))
+		night *= 1.0 - 0.85 * smoothstep(0.35, 0.75, covered)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
 		if _set_light(lantern_light, at, LANTERN_RANGE, rgb):
 			# The player's own pool comes first: it is the one that matters.

@@ -234,7 +234,7 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		float s = sky_settle.x;
 		float lie = smoothstep(0.0, 0.025, lay - 1.0 + s * 0.75);
 		// Flecks outrun the drift, so snow arrives as paper showing through.
-		float fleck = step(h, s * 0.3) * step(0.5, sky_hash(px * 0.5 + vec2(3.0, 1.0)));
+		float fleck = step(h, s * 0.12) * step(0.5, sky_hash(px * 0.5 + vec2(3.0, 1.0)));
 		c = mix(c, SKY_SNOW * sky_tint, max(step(h, lie), fleck));
 	}
 	return c;
