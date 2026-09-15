@@ -524,10 +524,17 @@ static func swing_material() -> ShaderMaterial:
 
 
 ## Paper-white over every drawn part of a body while `on` (skips glow cards,
-## which are not ArrayMeshes, so a halo never flashes as a square).
-## MultiMesh parts (a flock's shards) flash too.
+## which are not ArrayMeshes, so a halo never flashes as a square, and
+## shadow-only twins). MultiMesh parts (a flock's shards) flash too.
+##
+## A figure that can flash itself (`set_flash(on)`, a uniform in its own shader)
+## is asked to. Otherwise each material_override is set aside and put back after;
+## a figure that assigned its own material in between keeps what it assigned.
 static func set_flash(root: Node, on: bool) -> void:
 	if root == null:
+		return
+	if root.has_method(&"set_flash"):
+		root.call(&"set_flash", on)
 		return
 	_flash_material()
 	_flash_under(root, on)
@@ -545,15 +552,16 @@ static func _flash_under(n: Node, on: bool) -> void:
 	var gi := n as GeometryInstance3D
 	if gi != null:
 		var mi := n as MeshInstance3D
-		var drawn := mi == null or mi.mesh is ArrayMesh
+		var drawn := (mi == null or mi.mesh is ArrayMesh) and gi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 		if drawn:
-			# The body's own material is set aside for the flash and put back after.
 			# (An overlay pass would be kinder, but the Compatibility renderer draws none.)
 			if on and not gi.has_meta(&"unflashed"):
 				gi.set_meta(&"unflashed", gi.material_override)
 				gi.material_override = _flash_mat
 			elif not on and gi.has_meta(&"unflashed"):
-				gi.material_override = gi.get_meta(&"unflashed") as Material
+				# Put back only over our own flash: a material the figure chose since is its own.
+				if gi.material_override == _flash_mat:
+					gi.material_override = gi.get_meta(&"unflashed") as Material
 				gi.remove_meta(&"unflashed")
 	for c in n.get_children():
 		_flash_under(c, on)

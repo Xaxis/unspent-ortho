@@ -89,3 +89,57 @@ func test_a_flash_puts_the_body_back_as_it_was() -> void:
 	MobFx.set_flash(root, false)
 	eq(body.material_override, own, "and is itself again, even flashed twice")
 	root.free()
+
+
+func test_a_material_changed_during_a_flash_is_kept() -> void:
+	var root := Node3D.new()
+	var part := MeshInstance3D.new()
+	var k := MeshKit.new()
+	k.box(Vector3(-0.5, 0, -0.5), Vector3(0.5, 1, 0.5), Palette.FOUND[3], Palette.FOUND[4], true)
+	part.mesh = k.build()
+	var lit := ShaderMaterial.new()
+	part.material_override = lit
+	root.add_child(part)
+	var shadow := MeshInstance3D.new()
+	shadow.mesh = part.mesh
+	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	var shadow_mat := ShaderMaterial.new()
+	shadow.material_override = shadow_mat
+	root.add_child(shadow)
+	MobFx.set_flash(root, true)
+	eq(shadow.material_override, shadow_mat, "a shadow-only twin never flashes")
+	# The figure relights its part mid-flash, as a machine does.
+	var dark := ShaderMaterial.new()
+	part.material_override = dark
+	MobFx.set_flash(root, false)
+	eq(part.material_override, dark, "the figure's own choice stands")
+	check(not part.has_meta(&"unflashed"), "and nothing is left set aside")
+	MobFx.set_flash(root, true)
+	MobFx.set_flash(root, false)
+	eq(part.material_override, dark, "a later flash puts back the new one")
+	root.free()
+
+
+## A figure with its own flash is asked, and nothing of it is swapped.
+class SelfFlashing:
+	extends Node3D
+	var flashes: Array[bool] = []
+
+	func set_flash(on: bool) -> void:
+		flashes.append(on)
+
+
+func test_a_figure_that_flashes_itself_is_asked_to() -> void:
+	var fig := SelfFlashing.new()
+	var body := MeshInstance3D.new()
+	var k := MeshKit.new()
+	k.box(Vector3(-0.5, 0, -0.5), Vector3(0.5, 1, 0.5), Palette.FOUND[3], Palette.FOUND[4], true)
+	body.mesh = k.build()
+	var own := ShaderMaterial.new()
+	body.material_override = own
+	fig.add_child(body)
+	MobFx.set_flash(fig, true)
+	eq(body.material_override, own, "no swap")
+	MobFx.set_flash(fig, false)
+	eq(fig.flashes, [true, false] as Array[bool])
+	fig.free()
