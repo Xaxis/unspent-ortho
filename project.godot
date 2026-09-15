@@ -84,3 +84,11 @@ sky_wind={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+world_px={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+wind_strength={
+"type": "float",
+"value": 0.4
+}

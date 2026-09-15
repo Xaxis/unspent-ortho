@@ -17,6 +17,21 @@ extends RefCounted
 var verts := PackedVector3Array()
 var normals := PackedVector3Array()
 var colors := PackedColorArray()
+var uvs := PackedVector2Array()
+var uv2s := PackedVector2Array()
+var custom0 := PackedFloat32Array()
+
+## Ink channels (docs/ART.md) applied to every vertex pushed while set.
+## Hatch style ids: see src/render/ink.gdshaderinc and Ink.
+var style := Ink.HAND
+var style2 := Ink.HAND
+var style_blend := 0.0
+## Ecotone second wash and how far toward it (0 = none).
+var wash2 := Color.BLACK
+var wash_blend := 0.0
+## Wind sway weight for vertices (0 rigid). Set per part: crown tips high, trunks 0.
+var sway := 0.0
+var sway_phase := 0.0
 var _xf := Transform3D.IDENTITY
 var _stack: Array[Transform3D] = []
 var _has_xf := false
@@ -53,12 +68,17 @@ func tri(a: Vector3, b: Vector3, c: Vector3, col: Color) -> MeshKit:
 	verts.append(a)
 	verts.append(c)
 	verts.append(b)
-	normals.append(n)
-	normals.append(n)
-	normals.append(n)
-	colors.append(col)
-	colors.append(col)
-	colors.append(col)
+	var uv := Vector2(style + style2 * 16, style_blend)
+	var uv2 := Vector2(sway, sway_phase)
+	for i in 3:
+		normals.append(n)
+		colors.append(col)
+		uvs.append(uv)
+		uv2s.append(uv2)
+		custom0.append(wash2.r)
+		custom0.append(wash2.g)
+		custom0.append(wash2.b)
+		custom0.append(wash_blend)
 	return self
 
 
@@ -165,5 +185,9 @@ func build(into: ArrayMesh = null) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
+	arrays[Mesh.ARRAY_CUSTOM0] = custom0
+	var flags := Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
 	return mesh
