@@ -40,6 +40,9 @@ func add(id: StringName, n: int = 1) -> void:
 	if Items.has_edge(id):
 		edges[id] = 10000
 		_dull_noticed.erase(id)
+	# The first piece of kit goes on: there is nothing else to do with it.
+	if worn == &"" and Items.def(id).get("kit", &"") != &"":
+		worn = id
 	changed.emit()
 
 
@@ -90,6 +93,11 @@ func wear(id: StringName, uses: int = 1) -> bool:
 		_dull_noticed[id] = true
 		return true
 	return false
+
+
+## True if the worn piece of kit is for `slot` (plate brace rig lens aerial).
+func wears(slot: StringName) -> bool:
+	return worn != &"" and Items.def(worn).get("kit", &"") == slot
 
 
 ## Wear one piece of salvage kit (one at a time); &"" takes it off.

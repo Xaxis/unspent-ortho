@@ -104,14 +104,15 @@ func _chip_colors(kind: int, verb: StringName) -> Array[Color]:
 			return [Palette.COPPER[4], Palette.COPPER[3]]
 		return [Palette.SAND[5], Palette.EARTH[2], Palette.EARTH[4], Palette.SAND[4]]
 	match kind:
+		# Broken rock shows its pale inside, so chips read on any ground; the ore shows its colour.
 		PropKind.IRON_ORE:
-			return [Palette.STONE[3], Palette.RUST[3], Palette.RUST[4], Palette.STONE[4]]
+			return [Palette.STONE[5], Palette.RUST[4], Palette.RUST[5], Palette.RUST[3]]
 		PropKind.COPPER_ORE:
-			return [Palette.STONE[3], Palette.SPRUCE[4], Palette.SPRUCE[5], Palette.STONE[4]]
+			return [Palette.STONE[5], Palette.SPRUCE[4], Palette.SPRUCE[5], Palette.STONE[4]]
 		PropKind.COAL_ORE:
-			return [Palette.INK[3], Palette.INK[4], Palette.STONE[2]]
+			return [Palette.INK[2], Palette.STONE[5], Palette.INK[3]]
 		PropKind.TIN_ORE:
-			return [Palette.STONE[4], Palette.STONE[5], Palette.ASH[4]]
+			return [Palette.STONE[5], Palette.RIME[5], Palette.ASH[4]]
 		PropKind.CLINTS:
 			return [Palette.LINEN[5], Palette.LINEN[4], Palette.STONE[4]]
 		PropKind.DRIFTWOOD:
@@ -127,7 +128,7 @@ func _chip_colors(kind: int, verb: StringName) -> Array[Color]:
 		PropKind.GORSE:
 			return [Palette.MOSS[3], Palette.COPPER[4], Palette.MOSS[2]]
 	if ROCKS.has(kind):
-		return [Palette.STONE[3], Palette.STONE[4], Palette.SLATE[3]]
+		return [Palette.STONE[5], Palette.STONE[4], Palette.LINEN[4]]
 	if SCRAP.has(kind):
 		return [Palette.PLATE[3], Palette.RUST[3], Palette.STONE[2], Palette.PLATE[4]]
 	return [Palette.MOSS[4], Palette.MOSS[3], Palette.SAND[4]]

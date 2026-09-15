@@ -12,6 +12,7 @@ extends GameSystem
 const START_EDGE := 5000
 
 var _craft_wait := -1
+var _screen_touched := false
 
 
 func setup(g: Game) -> void:
@@ -36,6 +37,7 @@ func setup(g: Game) -> void:
 	elif g.player.model != null:
 		g.player.model.set_held(inv.held)
 	inv.changed.connect(_on_inventory_changed)
+	Events.screen_changed.connect(_on_screen_changed)
 	if o.build != "":
 		Survival.build(g, StringName(o.build), true)
 	if o.use:
@@ -48,8 +50,9 @@ func _face_nearest_workable() -> void:
 	var p := game.player.pos
 	var best: WorldProp = null
 	var best_d := INF
+	var only := PropKind.NAMES.find(game.options.use_kind) if game.options.use_kind != "" else -1
 	for q in game.query.props_near(p, 3.0):
-		if not Takes.workable(q.kind) or game.world.depleted.has(q.id):
+		if not Takes.workable(q.kind) or game.world.depleted.has(q.id) or (only >= 0 and q.kind != only):
 			continue
 		var d := q.pos.distance_to(p) - q.solid
 		if d < best_d:
@@ -58,6 +61,10 @@ func _face_nearest_workable() -> void:
 	if best != null:
 		game.player.facing = (best.pos - p).angle()
 		game.player.drive(Vector2.ZERO, false, 0.0)
+
+
+func _on_screen_changed(_screen: StringName, _open: bool) -> void:
+	_screen_touched = true
 
 
 func _on_inventory_changed() -> void:
@@ -72,6 +79,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		Survival.use(game)
 	elif event.is_action_pressed("craft"):
 		_craft_wait = 2
+		_screen_touched = false
 
 
 func _process(delta: float) -> void:
@@ -79,7 +87,8 @@ func _process(delta: float) -> void:
 		return
 	if _craft_wait >= 0:
 		_craft_wait -= 1
-		if _craft_wait < 0 and not game.input_blocked() and not Survival.busy(game):
+		# Only if no screen opened or closed on the same press: a crafting screen owns the key.
+		if _craft_wait < 0 and not _screen_touched and not game.input_blocked() and not Survival.busy(game):
 			var r := Crafting.suggest(game)
 			if not r.is_empty():
 				Crafting.make_in(game, r)

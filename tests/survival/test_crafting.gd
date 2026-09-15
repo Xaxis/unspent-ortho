@@ -192,3 +192,19 @@ func test_suggest_prefers_a_first_tool() -> void:
 	g.inventory.add(&"charcoal")
 	eq(Crafting.suggest(g).get("id", &""), &"pick_made", "a pick before more charcoal")
 	Fx.done(g)
+
+
+func test_kit_is_worn_one_piece_at_a_time_and_the_rig_carries_more() -> void:
+	var inv := Inventory.new()
+	near(inv.creel(), 40.0, 0.001)
+	inv.add(&"kit_rig")
+	check(inv.wears(&"rig"), "the first piece goes on")
+	near(inv.creel(), 60.0, 0.001, "a rig carries twenty more")
+	inv.add(&"kit_plate")
+	check(inv.wears(&"rig") and not inv.wears(&"plate"), "one piece at a time")
+	check(inv.wear_kit(&"kit_plate"))
+	check(inv.wears(&"plate") and not inv.wears(&"rig"))
+	near(inv.creel(), 40.0, 0.001)
+	check(not inv.wear_kit(&"stone"), "stone is not kit")
+	inv.remove(&"kit_plate")
+	check(not inv.wears(&"plate"), "taken off when gone")

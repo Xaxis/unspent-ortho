@@ -159,6 +159,30 @@ func test_a_boulder_gives_a_loose_stone_by_hand_and_breaks_with_a_pick() -> void
 	Fx.done(g)
 
 
+func test_a_snowfield_boulder_gives_crottle_after_its_loose_stone() -> void:
+	var g := Fx.flat()
+	var b := Fx.put(g, PropKind.BOULDER, Vector2(1.0, 0))
+	var w := g.world
+	w.ground[floori(b.pos.y) * w.size + floori(b.pos.x)] = Ground.SNOW
+	Fx.face(g, b)
+	check(Fx.take(g))
+	eq(g.inventory.count(&"stone"), 1, "stone first")
+	eq(Survival.describe_target(g), "boulder - scrape")
+	check(Fx.take(g))
+	eq(g.inventory.count(&"crottle"), 1, "then crottle off the crust")
+	eq(Survival.describe_target(g), "boulder - picked over")
+	Fx.done(g)
+
+
+func test_every_verb_in_the_source_is_used_by_some_prop() -> void:
+	var verbs := {}
+	for kind: int in Takes.table():
+		for o: Dictionary in Takes.options(kind):
+			verbs[o.verb] = true
+	for v: StringName in [&"break", &"dig", &"fell", &"cut", &"gather", &"scrape", &"tap", &"turn"]:
+		check(verbs.has(v), "no prop is worked by %s" % v)
+
+
 func test_regrowth_brings_driftwood_back_and_resets_its_takes() -> void:
 	var g := Fx.flat()
 	var d := Fx.put(g, PropKind.DRIFTWOOD, Vector2(0.8, 0))
@@ -252,6 +276,30 @@ func test_mussels_sometimes_bring_up_a_whelk_and_the_rock_stays() -> void:
 	whelks = g.inventory.count(&"whelks")
 	eq(g.inventory.count(&"mussels"), 12)
 	check(whelks > 0 and whelks < 12, "some whelks, not always: %d" % whelks)
+	Fx.done(g)
+
+
+func test_use_on_nothing_eats_when_hungry_then_builds_a_fire_then_sleeps_by_it() -> void:
+	var g := Fx.flat(40, 20.0)
+	g.inventory.add(&"driftwood", 3)
+	g.inventory.add(&"stone", 2)
+	g.inventory.add(&"mussels")
+	eq(Survival.describe_target(g), "campfire - build", "fed, it is evening, no fire: build")
+	check(Survival.use(g), "built")
+	eq(g.inventory.count(&"mussels"), 1, "fed: nothing eaten")
+	check(not g.world.props.is_empty() and g.world.props[-1].kind == PropKind.FIRE, "a fire stands")
+	g.clock.skip(9.0 * 60.0)
+	g.body.fed_until = g.clock.minutes - 60.0
+	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
+	eq(Survival.describe_target(g), "fire - sleep", "sleep wins at night by a fire")
+	g.clock.skip(6.0 * 60.0)
+	g.body.fed_until = g.clock.minutes - 60.0
+	eq(Survival.describe_target(g), "mussels - eat", "by day, hungry, with food: eat")
+	check(Survival.use(g), "ate")
+	eq(g.inventory.count(&"mussels"), 0)
+	g.body.busy_until = 0.0
+	eq(Survival.describe_target(g), "", "nothing left to do here")
+	check(not Survival.use(g), "use on nothing does nothing")
 	Fx.done(g)
 
 

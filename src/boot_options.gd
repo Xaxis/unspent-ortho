@@ -17,7 +17,7 @@ extends RefCounted
 ## --scene=NAME        which scene to boot: game (default) | gallery
 ## --give=ID:N,ID:N    put items in the creel at start (survival)
 ## --held=ID           hold this item at start, given if not carried (survival)
-## --use               at start, face the nearest workable prop and work it (survival)
+## --use[=KIND]        at start, face the nearest workable prop (of KIND, e.g. iron_ore) and use (survival)
 ## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
 
 var seed_value := 1
@@ -36,6 +36,7 @@ var scene := "game"
 var give: Dictionary = {} # StringName -> int
 var held := ""
 var use := false
+var use_kind := ""
 var build := ""
 
 
@@ -68,7 +69,9 @@ static func parse(args: PackedStringArray) -> BootOptions:
 					var iv := part.split(":")
 					o.give[StringName(iv[0])] = iv[1].to_int() if iv.size() > 1 else 1
 			"held": o.held = v
-			"use": o.use = true
+			"use":
+				o.use = true
+				o.use_kind = v.replace("_", " ")
 			"build": o.build = v
 			_: push_warning("unknown option --%s" % k)
 	return o

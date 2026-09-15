@@ -69,13 +69,17 @@ static func _build() -> Dictionary:
 	t[PropKind.GORSE] = [_o(&"cut", &"gorse_cut", 1, 9.0, 72.0, {"stuff": &"iron"})]
 	t[PropKind.PEAT_BANK] = [_o(&"cut", &"peat", 3, 10.0, NEVER, {"stuff": &"iron", "uses": 2}),
 		_o(&"dig", &"peat", 3, 10.0, NEVER, {"stuff": &"iron", "uses": 2})]
+	# Rock out in the snow grows crottle on its crust: scraped by hand once the loose stone is had.
+	var crottle := _o(&"scrape", &"crottle", 1, 12.0, 240.0, {"keep": true, "ground": [Ground.SNOW, Ground.ICE]})
 	t[PropKind.BOULDER] = [
 		_o(&"break", &"stone", 2, 20.0, NEVER, {"stuff": &"iron", "uses": 2}),
 		_o(&"gather", &"stone", 1, 10.0, 24.0, {"keep": true}),
+		crottle,
 	]
 	t[PropKind.STONE_ORE] = [
 		_o(&"break", &"stone", 2, 14.0, NEVER, {"stuff": &"iron", "uses": 3}),
 		_o(&"gather", &"stone", 1, 10.0, 24.0, {"keep": true}),
+		crottle,
 	]
 	t[PropKind.RUIN] = [_o(&"break", &"stone", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 2})]
 	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER, {"stuff": &"iron", "uses": 2})]

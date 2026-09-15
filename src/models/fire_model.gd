@@ -12,7 +12,7 @@ extends Node3D
 ##   var f := FireModel.new(); f.build(world_material, prop.id); add_child(f)
 ##   f.darkness = 0..1     # 0 full day (no pool), 1 night (full pool)
 
-const SMOKE := 8
+const SMOKE := 6
 const SPARKS := 6
 const LIGHT_COLOR := Color(1.0, 0.5, 0.18)
 const LIGHT_RANGE := 4.5
@@ -102,14 +102,14 @@ func step(delta: float) -> void:
 	_light.visible = darkness > 0.02
 	# Smoke: a thin column of pale wisps that rise, sway, lean with the air and
 	# shrink away; small enough that the ink outline reads them as smoke, not stones.
-	var life := 2.6
+	var life := 3.0
 	var lean := Vector3(wind.x, 0.0, wind.y)
 	for i in SMOKE:
 		var age := fposmod(t + i * (life / SMOKE), life)
 		var k := age / life
 		var sway := Vector3(sin(t * 1.7 + i * 2.1) * 0.08 * k, 0.0, cos(t * 1.3 + i) * 0.06 * k)
 		var pos := Vector3(0.0, 0.6 + age * 0.85, 0.0) + sway + lean * age * age * 0.3
-		var s := (1.0 - k) * (0.35 + 0.65 * sin(minf(k * 4.0, 1.0) * PI * 0.5))
+		var s := (0.45 + 1.4 * k) * (1.0 - smoothstep(0.65, 1.0, k))
 		_smoke.set_instance_transform(i, Transform3D(Basis(Vector3.UP, i * 1.3 + age * 0.4).scaled(Vector3.ONE * s), pos))
 		_smoke.set_instance_color(i, Palette.ASH[4].lerp(Palette.ASH[3], k))
 	for i in SPARKS:
