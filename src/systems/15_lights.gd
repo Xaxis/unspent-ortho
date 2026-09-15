@@ -81,6 +81,13 @@ var glint_list: Array[Dictionary] = []
 const NEON_TUBE := Vector3(1.0, 0.25, 0.8)
 const BEACON := Vector3(1.0, 0.36, 0.2)
 const LENS_GLINT := Vector3(0.95, 0.76, 0.25)
+## How strongly each light throws shafts into fog (Glints `shaft`). A fire, whose
+## strokes already flicker out of it, throws none; a lamp, a beacon or the
+## lantern, which draw their own strokes, only a weak few; a window, a neon
+## tube or a machine strip, which draw none, throw the most.
+const SHAFT_RAYED := 0.3
+const SHAFT_LENS := 0.5
+const SHAFT_MACHINE := 0.8
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -374,29 +381,29 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 			var m: Node = s.mob
 			if not is_instance_valid(m) or not bool(m.get("alive")):
 				continue
-			cands.append({"at": m.call("part_position"), "rgb": LENS_GLINT, "level": 0.55 * power})
+			cands.append({"at": m.call("part_position"), "rgb": LENS_GLINT, "level": 0.55 * power, "shaft": SHAFT_LENS})
 			continue
 		var kind := int(s.kind)
 		if s.has("machine_points"):
 			var mp: Array[Vector3] = s.machine_points
 			var mc: Array[Vector3] = s.machine_rgb
 			for j in mp.size():
-				cands.append({"at": mp[j], "rgb": mc[j], "level": 0.7 * power})
+				cands.append({"at": mp[j], "rgb": mc[j], "level": 0.7 * power, "shaft": SHAFT_MACHINE})
 			continue
 		match kind:
 			PropKind.PYLON:
 				var blink := fposmod(_time + float(s.h) * 3.0, 3.0) < 1.1
-				cands.append({"at": s.at, "rgb": BEACON, "level": (0.8 if blink and want > 0.3 else 0.0) * power})
+				cands.append({"at": s.at, "rgb": BEACON, "level": (0.8 if blink and want > 0.3 else 0.0) * power, "shaft": SHAFT_RAYED})
 			PropKind.FIRE, PropKind.VENT, PropKind.KILN:
-				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.9 if kind == PropKind.FIRE else 0.55) * _flicker(s)})
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.9 if kind == PropKind.FIRE else 0.55) * _flicker(s), "shaft": 0.0 if kind == PropKind.FIRE else SHAFT_RAYED})
 			PropKind.LAMP:
-				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.85 if source_lit(s, hour) else 0.0) * _flicker(s)})
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.85 if source_lit(s, hour) else 0.0) * _flicker(s), "shaft": SHAFT_RAYED})
 			PropKind.HOUSE:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.5 if source_lit(s, hour) else 0.0})
 				if s.has("neon_at"):
 					cands.append({"at": s.neon_at, "rgb": NEON_TUBE, "level": 0.95 * smoothstep(0.2, 0.6, want) * power})
 	if lantern_lit:
-		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_NEON, "level": 0.7})
+		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_NEON, "level": 0.7, "shaft": SHAFT_RAYED})
 	glint_list = Glints.pick(cands, focus3)
 	var packed := Glints.pack(glint_list)
 	game.sky.glints = packed[0]

@@ -14,7 +14,8 @@
 //
 // Fog softens the pen: inside a bank the line lifts a length at a time and pales
 // toward the bank, and a whiteout nearly takes it. Near lights in fog, rain or
-// haze throw stippled shafts (the glint list, sky.gdshaderinc), never a bloom.
+// haze throw stippled shafts downward (the glint list, sky.gdshaderinc), never
+// a bloom, and never over anything that stands in front of the light.
 shader_type spatial;
 render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_disabled;
 
@@ -32,32 +33,45 @@ uniform vec3 ink : source_color = vec3(0.031, 0.027, 0.059);
 // as a stippled glow, a few pixels out. Never a smooth bloom.
 uniform float halo_strength = 0.55;
 // Stippled shafts from the glint list's lights in fog and rain.
-uniform float shaft_strength = 0.45;
+uniform float shaft_strength = 0.9;
 
-// A light's shafts at this pixel: thin rays fanning out from it, longest
-// downward where the light falls, each a dotted line one pixel wide, a few lit
-// at a time and changing their minds slowly. Returns the dot density 0..1.
-// to_px: this pixel minus the light's, in pixels (y down).
-const float SHAFT_RAYS = 22.0;
+// A light's shafts at this pixel: a few thin rays falling from it, fanned no
+// more than SHAFT_FAN either side of straight down (light falls; it never
+// sprays up over a roof), each a band of loose stipple that widens as it falls,
+// longest straight down, a few lit at a time and changing their minds slowly. Returns the dot
+// density 0..1. to_px: this pixel minus the light's, in pixels (y down).
+const float SHAFT_RAYS = 6.0;
+const float SHAFT_FAN = 0.87;
 float shaft(vec2 to_px, float level, float air, float seed) {
 	float r = length(to_px);
-	float reach = 10.0 + 44.0 * air * (0.6 + 0.4 * level);
-	if (r > reach || r < 3.0) {
+	float reach = 14.0 + 34.0 * air * (0.6 + 0.4 * level);
+	// The rays open a few pixels below the light, so a fan never draws its apex
+	// as a tent over the window.
+	if (r > reach || r < 6.0 || to_px.y <= 0.0) {
 		return 0.0;
 	}
-	float a = atan(to_px.y, to_px.x) + seed;
-	float bin = floor(a / 6.2832 * SHAFT_RAYS + 0.5);
-	float centre = bin / SHAFT_RAYS * 6.2832;
-	// One pixel wide at any distance: the pixel's distance off the ray's line.
+	// 0 straight down, negative toward screen-left.
+	float a = atan(to_px.x, to_px.y);
+	if (abs(a) > SHAFT_FAN + 0.12) {
+		return 0.0;
+	}
+	float bin = clamp(floor((a + SHAFT_FAN) / (2.0 * SHAFT_FAN) * SHAFT_RAYS), 0.0, SHAFT_RAYS - 1.0);
+	float centre = -SHAFT_FAN + (bin + 0.5) / SHAFT_RAYS * 2.0 * SHAFT_FAN + (ink_hash(vec2(bin, 3.0 + seed)) - 0.5) * 0.12;
+	// Thin at the light, a loose band a pixel or two across further down: the
+	// pixel's distance off the ray's line against that width.
 	float off = abs(r * sin(a - centre));
-	if (off > 0.6) {
-		return 0.0;
-	}
+	float width = 0.6 + r * 0.02;
 	float lit_ray = step(0.4, ink_hash(vec2(bin, floor(TIME * 0.7 + seed * 3.0))));
-	float down = 0.15 + 0.85 * clamp(to_px.y / max(r, 1.0), 0.0, 1.0);
-	float len = reach * down * (0.6 + 0.4 * ink_hash(vec2(bin, 7.0 + seed)));
-	float fall = 1.0 - r / max(len, 0.001);
-	return lit_ray * clamp(fall * 1.3, 0.0, 1.0) * (0.4 + 0.6 * level) * (0.5 + air);
+	float c4 = pow(cos(centre), 4.0);
+	float len = reach * (0.35 + 0.65 * c4) * (0.65 + 0.35 * ink_hash(vec2(bin, 7.0 + seed)));
+	float t = r / max(len, 0.001);
+	// Even along its length, a long dotted fall rather than a burst at the
+	// light; it thins out only near its end.
+	float ray = step(off, width) * step(t, 1.0) * lit_ray * (1.0 - t * t);
+	// Between the rays the cone holds a sparse stipple of the same light, so the
+	// fan reads as light falling through the air and never as a drawn glyph.
+	float cone = step(abs(a), SHAFT_FAN) * 0.16 * (1.0 - smoothstep(0.35, 1.0, r / reach)) * c4;
+	return max(ray, cone) * (0.55 + 0.45 * level) * (0.6 + 0.4 * air);
 }
 
 float linear_depth(vec2 uv, mat4 inv_proj) {
@@ -138,29 +152,37 @@ void fragment() {
 			mat4 rgb = m == 0 ? glint_rgb : (m == 1 ? glint_rgb2 : glint_rgb3);
 			for (int i = 0; i < 4; i++) {
 				vec4 g = pos[i];
-				if (g.w <= 0.0) {
+				if (g.w <= 0.0 || rgb[i].w <= 0.0) {
 					continue;
 				}
+				// Weak or no shafts from a light that draws its own strokes (glint_rgb.w).
+				float weight = rgb[i].w;
 				// Screen pixels from the light, y down the screen. The camera is
 				// orthographic, so the pinned pixels of any two world points differ
 				// by exactly their offset on the screen.
 				vec2 to_px = here_px - sky_px(g.xyz);
 				to_px.y = -to_px.y;
-				if (abs(to_px.x) > 56.0 || abs(to_px.y) > 56.0) {
+				if (to_px.y <= 0.0 || abs(to_px.x) > 46.0 || to_px.y > 46.0) {
 					continue;
 				}
-				// A light hidden behind a roof throws nothing over the roof: the
-				// scene at the light's own pixel (and the pixels beside it, so a
-				// pixel's rounding never decides) is nearer than the light.
+				float sd = shaft(to_px, g.w, air, float(m * 4 + i) * 1.37) * weight;
+				if (sd <= 0.0 || step(ink_hash(wpx + vec2(31.0, 11.0 + float(i))), sd * shaft_strength) < 0.5) {
+					continue;
+				}
+				// A dot lies on whatever the scene shows at its pixel: where that is
+				// nearer the eye than the light (a roof, a wall in front, the ground
+				// the shaft has already gone a little way into), the shaft is behind it.
+				float ldepth = -(VIEW_MATRIX * vec4(g.xyz, 1.0)).z;
+				if (d < ldepth - 0.7) {
+					continue;
+				}
+				// A light hidden behind a roof throws nothing at all: the scene at the
+				// light's own pixel (and the pixels beside it, so a pixel's rounding
+				// never decides) is nearer than the light.
 				vec2 guv = SCREEN_UV - vec2(to_px.x, -to_px.y) * px;
 				float gdepth = max(linear_depth(guv, INV_PROJECTION_MATRIX), max(linear_depth(guv + vec2(px.x, 0.0), INV_PROJECTION_MATRIX), linear_depth(guv - vec2(px.x, 0.0), INV_PROJECTION_MATRIX)));
-				float ldepth = -(VIEW_MATRIX * vec4(g.xyz, 1.0)).z;
-				if (gdepth < ldepth - 0.5) {
-					continue;
-				}
-				float sd = shaft(to_px, g.w, air, float(m * 4 + i) * 1.37);
-				if (sd > 0.0 && step(ink_hash(wpx + vec2(31.0, 11.0 + float(i))), sd * shaft_strength * 1.6) > 0.5) {
-					outc = mix(outc, max(outc, rgb[i].rgb), 0.75);
+				if (gdepth >= ldepth - 0.5) {
+					outc = mix(outc, max(outc, rgb[i].rgb), 0.6);
 				}
 			}
 		}

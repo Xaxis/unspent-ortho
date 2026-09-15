@@ -31,7 +31,9 @@ func test_glints_pack_for_the_three_matrices() -> void:
 	var list: Array[Dictionary] = [{"at": Vector3(1, 2, 3), "rgb": Vector3(0.1, 0.2, 0.3), "level": 1.4}]
 	var packed := Glints.pack(list)
 	eq((packed[0] as Array)[0], Vector4(1, 2, 3, 1), "position and a level clamped to 1")
-	eq((packed[1] as Array)[0], Vector4(0.1, 0.2, 0.3, 0), "colour")
+	eq((packed[1] as Array)[0], Vector4(0.1, 0.2, 0.3, 1), "colour, and full shafts by default")
+	var fire: Array[Dictionary] = [{"at": Vector3.ZERO, "rgb": Vector3.ONE, "level": 1.0, "shaft": 0.0}]
+	eq(((Glints.pack(fire)[1] as Array)[0] as Vector4).w, 0.0, "a light may throw no shafts")
 	var many: Array[Vector4] = []
 	for i in 20:
 		many.append(Vector4(i, 0, 0, 1))
@@ -72,6 +74,18 @@ func test_a_night_village_hands_its_lights_to_the_sky_and_a_strike_dims_machine_
 			if Vector2(at.x, at.z).distance_to(p.pos) < 1.2:
 				kinds[p.kind] = true
 	check(kinds.has(PropKind.FIRE), "the fire glints")
+	# Lights that draw their own strokes throw no shafts (a fire) or weak ones (a
+	# lamp), or a fire in fog becomes a spark burst; a window throws the most.
+	var weighed := 0
+	for c: Dictionary in lights.get("glint_list"):
+		var at: Vector3 = c.at
+		if Vector2(at.x, at.z).distance_to(fire.pos) < 0.6:
+			eq(float(c.shaft), 0.0, "a fire throws no shafts")
+			weighed += 1
+		elif Vector2(at.x, at.z).distance_to(lamp.pos) < 0.6:
+			lt(float(c.shaft), 0.5, "a lamp throws only weak shafts")
+			weighed += 1
+	eq(weighed, 2, "the fire and the lamp were both weighed")
 	check(kinds.has(PropKind.LAMP), "the lamp glints")
 	gt(float(g.sky.glints.size()), 1.0, "glints reach the sky: %s" % [g.sky.glints])
 	eq(g.sky.glints.size(), g.sky.glint_colors.size(), "a colour for each")

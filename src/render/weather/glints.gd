@@ -6,8 +6,12 @@ class_name Glints
 ## in, the few that matter out, packed for SkyLight.glints.
 ##
 ## A candidate is {at: Vector3 world position of the light, rgb: Vector3 its
-## colour (display, 0..1), level: float 0..1 how bright it is now}. Machine
-## lights are already multiplied by the sky's power (sky_power) when they come in.
+## colour (display, 0..1), level: float 0..1 how bright it is now, shaft: float
+## 0..1 how strongly it throws shafts into fog (default 1)}. A light that already
+## draws its own strokes (rays.gdshader: fires, lamps, beacons, the lantern)
+## throws weak shafts or none, or a fire in fog turns into a spark burst.
+## Machine lights are already multiplied by the sky's power (sky_power) when
+## they come in.
 
 ## Tiles from the focus within which a light may glint.
 const REACH := 18.0
@@ -36,7 +40,7 @@ static func pick(candidates: Array[Dictionary], focus: Vector3, count: int = Sky
 	return out
 
 
-## [positions: Array[Vector4] (xyz, level), colours: Array[Vector4] (rgb, 0)].
+## [positions: Array[Vector4] (xyz, level), colours: Array[Vector4] (rgb, shaft)].
 static func pack(list: Array[Dictionary]) -> Array:
 	var pos: Array[Vector4] = []
 	var rgb: Array[Vector4] = []
@@ -44,5 +48,5 @@ static func pack(list: Array[Dictionary]) -> Array:
 		var at: Vector3 = c.at
 		var col: Vector3 = c.rgb
 		pos.append(Vector4(at.x, at.y, at.z, clampf(float(c.level), 0.0, 1.0)))
-		rgb.append(Vector4(col.x, col.y, col.z, 0.0))
+		rgb.append(Vector4(col.x, col.y, col.z, clampf(float(c.get("shaft", 1.0)), 0.0, 1.0)))
 	return [pos, rgb]
