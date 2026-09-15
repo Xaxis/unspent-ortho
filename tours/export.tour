@@ -3,8 +3,11 @@
 # keys then move through. The browser half of the proof is tools/web.sh (title,
 # loading page, Enter for a new game, resize, reload) with frames in shots/export/.
 #   tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0
-echo the loading page has handed over and lifted
-wait 0.8
+# The tour starts with the game's systems, at the page's "start" stage: the page
+# is still on the screen while the first frame compiles its shaders. The wait
+# covers its "draw" stage and its lift, so the first frame shows the game alone.
+echo the game is made under the loading page; waiting for the page to lift
+wait 1.5
 shot after-the-loading-page
 walk 1,0 1.2
 walk 0,1 0.8

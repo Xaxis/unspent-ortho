@@ -140,6 +140,7 @@ await context.addInitScript(() => {
     if (typeof AudioDestinationNode !== 'undefined' && dest instanceof AudioDestinationNode) {
       const tap = this.context.createAnalyser();
       tap.fftSize = 2048;
+      tap.smoothingTimeConstant = 0;
       connect.call(this, tap);
       window.__taps.push(tap);
     }
@@ -177,11 +178,14 @@ await context.addInitScript(() => {
 // share of the power at that loudest moment.
 async function listen(secs, { until = true } = {}) {
   let heard = { peak: 0, hz: 0, share: 0 };
-  const end = Date.now() + secs * 1000;
-  while (Date.now() < end && !(until && heard.peak >= 0.001)) {
+  let end = Date.now() + secs * 1000;
+  let caught = false;
+  while (Date.now() < end) {
     const now = await page.evaluate(() => window.__loudness());
     if (now.peak > heard.peak) heard = now;
-    await page.waitForTimeout(50);
+    // Once something is heard, a second more: the loudest moment of a sound, not its first edge.
+    if (until && !caught && heard.peak >= 0.001) { caught = true; end = Math.min(end, Date.now() + 1000); }
+    await page.waitForTimeout(40);
   }
   return heard;
 }
@@ -356,8 +360,7 @@ if (await page.waitForFunction(() => window.unspentShell && window.unspentShell(
   const hand = await inspectPage(handFile);
   console.log(`web shell ${shellFile}: glass ${shell.rect.join(',')} x${shell.scale}, line lit ${shell.lit} px, words ${shell.ink} px ('${state.words}', ${(state.progress * 100).toFixed(0)}%)`);
   console.log(`web handover ${handFile}: glass ${hand.rect.join(',')} x${hand.scale}, line lit ${hand.lit} px, words ${hand.ink} px`);
-  const dpr = await page.evaluate(() => window.devicePixelRatio || 1);
-  const want = [state.rect.x, state.rect.y, state.rect.w, state.rect.h].map((v) => Math.round(v * dpr));
+  const want = [state.rect.x, state.rect.y, state.rect.w, state.rect.h];
   if (!gone) failures.push('the engine\'s loading page never took over from the shell');
   if (shell.rect.join() !== want.join()) failures.push(`the shell's glass ${shell.rect.join(',')} is not where the game will be drawn (${want.join(',')})`);
   if (hand.rect.join() !== shell.rect.join()) failures.push(`the glass moved at the hand-over: shell ${shell.rect.join(',')}, engine ${hand.rect.join(',')}`);

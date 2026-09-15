@@ -21,7 +21,7 @@
 html, body { margin: 0; padding: 0; border: 0; height: 100%; }
 body { background: #000; overflow: hidden; touch-action: none; }
 #canvas { display: block; outline: none; }
-#shell { position: absolute; left: 0; top: 0; width: 640px; height: 360px; image-rendering: pixelated; pointer-events: none; }
+#shell { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 #notice { position: absolute; left: 12%; right: 12%; top: 64%; color: #c9b79a; display: none; pointer-events: none;
   font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; }
 </style>
@@ -30,7 +30,7 @@ $GODOT_HEAD_INCLUDE
 <body>
 <canvas id="canvas">This needs a browser with canvas support.</canvas>
 <noscript>This needs JavaScript.</noscript>
-<canvas id="shell" width="640" height="360"></canvas>
+<canvas id="shell"></canvas>
 <div id="notice"></div>
 <script src="$GODOT_URL"></script>
 <script>
@@ -53,7 +53,8 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
   const t0 = performance.now();
 
   // The rectangle Godot draws 640x360 into (scene/main/window.cpp, keep aspect,
-  // integer stretch), in CSS pixels. tools/web.sh checks it against the engine's.
+  // integer stretch), in device pixels of a canvas sized like Godot's (the
+  // window times the pixel ratio). tools/web.sh checks it against the engine's.
   function gameRect() {
     const dpr = window.devicePixelRatio || 1;
     const vw = Math.floor(window.innerWidth * dpr), vh = Math.floor(window.innerHeight * dpr);
@@ -69,12 +70,16 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     // Godot rounds the bar below the game (GL counts rows from the bottom), so
     // an odd leftover row goes to the bar above: measured on 1440x789, top 34.
     const my = sh < vh ? (vh - sh) - Math.round((vh - sh) / 2) : 0;
-    return { x: mx / dpr, y: my / dpr, w: sw / dpr, h: sh / dpr, scale };
+    return { x: mx, y: my, w: sw, h: sh, scale, dpr };
   }
 
+  // The shell covers the window at device resolution, as the engine's canvas
+  // does, so the glass lands on the same device pixels (a CSS offset of half a
+  // pixel on a Retina screen was rounded a row away).
   function place() {
-    const r = gameRect();
-    Object.assign(shell.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+    const dpr = window.devicePixelRatio || 1;
+    shell.width = Math.floor(window.innerWidth * dpr);
+    shell.height = Math.floor(window.innerHeight * dpr);
   }
 
   function text(x, y, s, colour) {
@@ -90,13 +95,22 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     }
   }
 
-  // The engine page's _draw_glass and _draw_page, before any stage has run.
+  // The engine page's _draw_glass and _draw_page, before any stage has run, in
+  // game pixels scaled by whole numbers into the game's rectangle.
   function draw() {
     const t = (performance.now() - t0) / 1000;
+    const r = gameRect();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, shell.width, shell.height);
+    g.setTransform(r.scale, 0, 0, r.scale, r.x, r.y);
     g.fillStyle = INK.glass;
     g.fillRect(0, 0, 640, 360);
+    // The drifting scan band, cut to the glass as the engine's viewport cuts it.
+    const band = Math.floor((t * 22) % 400) - 20;
+    const b0 = Math.max(0, band), b1 = Math.min(360, band + 14);
     g.fillStyle = 'rgba(140, 128, 191, 0.05)';
-    g.fillRect(0, Math.floor((t * 22) % 400) - 20, 640, 14);
+    if (b1 > b0) g.fillRect(0, b0, 640, b1 - b0);
     const span = LINE_X1 - LINE_X0;
     g.fillStyle = INK.rail;
     g.fillRect(LINE_X0, LINE_Y, span + 1, 1);

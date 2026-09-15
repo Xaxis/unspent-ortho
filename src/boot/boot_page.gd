@@ -80,6 +80,8 @@ var _ink: Control
 var _t := 0.0
 var _shown := 0
 var _lift := -1.0
+## Off the screen (and out of the boot_page group), with only _after_lift left.
+var _lifted := false
 var _handed := false
 ## Frames drawn since the scene was made (-1 before).
 var _drawn := -1
@@ -159,9 +161,8 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 	if OS.has_feature("web") and not BootPage._after_shell:
 		stages.start_at = SHELL_SHARE
 	BootPage._after_shell = true
-	# What must be compiled before the scene is made. The game's systems compile
-	# for the title too (threads only, after its coast is made), so New game finds
-	# them ready instead of waiting on them.
+	# What must be compiled before the scene is made. With threads, a title's page
+	# also starts the game's systems compiling once the title is up (_after_lift).
 	var needed := PackedStringArray([SCENES_SCRIPT])
 	if what == "game":
 		needed.append_array(BootPage.system_scripts())
@@ -207,9 +208,6 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		if threaded:
 			for path in needed:
 				ResourceLoader.load_threaded_get(path)
-			if what == "title":
-				for path in BootPage.system_scripts():
-					ResourceLoader.load_threaded_request(path, "GDScript")
 		_bw.call("offer", _world, _view)
 		_world = null
 		_view = null
@@ -262,8 +260,9 @@ func _hand_from_shell() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_sheet.queue_redraw()
-	_ink.queue_redraw()
+	if not _lifted:
+		_sheet.queue_redraw()
+		_ink.queue_redraw()
 	if _lift >= 0.0:
 		_ink.modulate.a = 1.0 - clampf(_lift / (LIFT_SECONDS * 0.5), 0.0, 1.0)
 	var cur := stages.current()
@@ -277,7 +276,11 @@ func _process(delta: float) -> void:
 		return
 	if _lift >= 0.0:
 		_lift += delta
-		if _lift >= LIFT_SECONDS:
+		if _lift >= LIFT_SECONDS and not _lifted:
+			_lifted = true
+			remove_from_group(&"boot_page")
+			hide()
+		if _lifted and _after_lift():
 			queue_free()
 		return
 	if _handed:
@@ -302,6 +305,23 @@ func _process(delta: float) -> void:
 		parts.append("%s %d" % [k, held[k]])
 	print("boot held %s: %s ms" % [kind, ", ".join(parts)])
 	handed_over.emit(scene)
+
+
+## What a page still does once it has lifted; true when there is nothing left.
+## A title's page (threads only) waits for the coast to finish streaming in, then
+## has the loader threads compile the game's systems, so New game waits on none of
+## them. Asked for as the title opened, they took the pool from the coast's chunks
+## and the title's first full frame came 1.5 s later on the web.
+func _after_lift() -> bool:
+	if kind != "title" or not threaded:
+		return true
+	if is_instance_valid(scene) and scene.is_inside_tree():
+		var view: Variant = scene.get("view")
+		if view == null or int(view.call("pending")) > 0:
+			return false
+	for path in BootPage.system_scripts():
+		ResourceLoader.load_threaded_request(path, "GDScript")
+	return true
 
 
 func _on_drawn() -> void:
