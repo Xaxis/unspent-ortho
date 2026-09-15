@@ -37,7 +37,7 @@ const LANTERN_HEIGHT := 1.0
 const SOURCES := {
 	PropKind.LAMP: [4.6, 1.0, 1.7],
 	PropKind.HOUSE: [2.7, 0.75, 0.9],
-	PropKind.FIRE: [4.8, 1.0, 0.5],
+	PropKind.FIRE: [4.2, 0.9, 0.5],
 	PropKind.VENT: [3.0, 0.6, 0.7],
 	PropKind.KILN: [2.8, 0.55, 0.6],
 }
