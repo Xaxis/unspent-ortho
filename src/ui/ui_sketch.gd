@@ -319,6 +319,11 @@ const STATIONS := {
 }
 
 static var _cache := {}
+## Images drawn ahead on a worker (a sketch takes tens of milliseconds), waiting
+## to become textures on the main thread.
+static var _ready := {}
+static var _lock := Mutex.new()
+static var _tasks: Array[int] = []
 
 
 ## Draw item `id` sketched `size` pixels square with its top-left at `at`.
@@ -327,26 +332,84 @@ static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, size: int) -
 
 
 static func item_texture(id: StringName, size: int) -> ImageTexture:
-	var key := "i|%s|%d" % [id, size]
-	if not _cache.has(key):
-		var st := UiIcons.style_of(id)
-		var shape: StringName = st[0]
-		var parts: Array = SHAPES.get(shape, SHAPES[&"bundle"])
-		_cache[key] = ImageTexture.create_from_image(render(parts, Vector2(GRID, GRID), Vector2i(size, size), st[1], st[2], FOUND_SHAPES.has(shape), hash(id)))
-	return _cache[key]
+	return _texture("i|%s|%d" % [id, size], func() -> Image: return _item_image(id, size))
 
 
 ## Draw a station sketched `w` pixels wide (height follows the 48x32 grid).
 static func draw_station(ci: CanvasItem, station: StringName, at: Vector2i, w: int) -> void:
-	var key := "s|%s|%d" % [station, w]
-	if not _cache.has(key):
-		var st: Array = STATIONS.get(station, STATIONS[&"hand"])
-		_cache[key] = ImageTexture.create_from_image(render(st[0], Vector2(48, 32), Vector2i(w, roundi(w * 32.0 / 48.0)), st[1], st[2], st[3], hash(station)))
-	ci.draw_texture(_cache[key], Vector2(at))
+	ci.draw_texture(_texture("s|%s|%d" % [station, w], func() -> Image: return _station_image(station, w)), Vector2(at))
 
 
 static func station_size(w: int) -> Vector2i:
 	return Vector2i(w, roundi(w * 32.0 / 48.0))
+
+
+## Draw these sketches ahead, off the main thread, so a page that shows them
+## next does not stall. Items at `size`, stations at `station_w`.
+static func warm(ids: Array[StringName], size: int, stations: Array[StringName] = [], station_w: int = 96) -> void:
+	var jobs: Array[Array] = []
+	for id in ids:
+		jobs.append(["i|%s|%d" % [id, size], func() -> Image: return _item_image(id, size)])
+	for st in stations:
+		jobs.append(["s|%s|%d" % [st, station_w], func() -> Image: return _station_image(st, station_w)])
+	jobs = jobs.filter(func(j: Array) -> bool: return not _cache.has(j[0]) and not _has_ready(j[0]))
+	_reap()
+	if jobs.is_empty():
+		return
+	_tasks.append(WorkerThreadPool.add_task(func() -> void:
+		for j: Array in jobs:
+			var img: Image = (j[1] as Callable).call()
+			_lock.lock()
+			_ready[j[0]] = img
+			_lock.unlock()))
+
+
+## Wait out every sketch still being drawn ahead (before the game goes away).
+static func wait() -> void:
+	for t in _tasks:
+		WorkerThreadPool.wait_for_task_completion(t)
+	_tasks.clear()
+
+
+static func _reap() -> void:
+	for t: int in _tasks.duplicate():
+		if WorkerThreadPool.is_task_completed(t):
+			WorkerThreadPool.wait_for_task_completion(t)
+			_tasks.erase(t)
+
+
+static func _has_ready(key: String) -> bool:
+	_lock.lock()
+	var has := _ready.has(key)
+	_lock.unlock()
+	return has
+
+
+static func _texture(key: String, make: Callable) -> ImageTexture:
+	if _cache.has(key):
+		return _cache[key]
+	_reap()
+	_lock.lock()
+	var img: Image = _ready.get(key)
+	_ready.erase(key)
+	_lock.unlock()
+	if img == null:
+		img = make.call()
+	var tex := ImageTexture.create_from_image(img)
+	_cache[key] = tex
+	return tex
+
+
+static func _item_image(id: StringName, size: int) -> Image:
+	var st := UiIcons.style_of(id)
+	var shape: StringName = st[0]
+	var parts: Array = SHAPES.get(shape, SHAPES[&"bundle"])
+	return render(parts, Vector2(GRID, GRID), Vector2i(size, size), st[1], st[2], FOUND_SHAPES.has(shape), hash(id))
+
+
+static func _station_image(station: StringName, w: int) -> Image:
+	var st: Array = STATIONS.get(station, STATIONS[&"hand"])
+	return render(st[0], Vector2(48, 32), station_size(w), st[1], st[2], st[3], hash(station))
 
 
 ## The sketch as an image with transparent paper around it.

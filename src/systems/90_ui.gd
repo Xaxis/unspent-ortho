@@ -62,6 +62,7 @@ func _exit_tree() -> void:
 	# A background build reads the world; never let the world go first.
 	if map_data != null:
 		map_data.wait()
+	UiSketch.wait()
 	if get_tree() != null and stack.has(screens.get(&"pause")):
 		get_tree().paused = false
 
@@ -141,6 +142,9 @@ func _process(delta: float) -> void:
 		_map_build_in -= delta
 		if _map_build_in <= 0.0:
 			map_data.build_async()
+			var carried: Array[StringName] = []
+			carried.assign(game.inventory.items.keys())
+			UiSketch.warm(carried, UiInventoryScreen.SKETCH, [&"fire", &"bench", &"kiln", &"hand"])
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots).
 		var parts := _pending_screen.split(":")

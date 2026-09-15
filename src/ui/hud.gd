@@ -144,6 +144,9 @@ func _process(delta: float) -> void:
 	_time += delta
 	messages.step(delta)
 	_place_age += delta
+	if messages.quiet and _place_age < PLACE_IN + PLACE_HOLD:
+		# A place name is text too: it gives way to a fight at once.
+		_place_age = PLACE_IN + PLACE_HOLD
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))

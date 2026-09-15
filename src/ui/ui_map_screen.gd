@@ -22,6 +22,7 @@ var _overlay: Control
 var _material: ShaderMaterial
 var _seen_tex: ImageTexture
 var _regions: Array[Dictionary] = []
+var _seen_share := 0.0
 
 
 func _init() -> void:
@@ -78,6 +79,7 @@ func _on_open() -> void:
 	_material.set_shader_parameter("rect_size", Vector2(MAP_RECT.size))
 	_material.set_shader_parameter("world_size", float(game.world.size))
 	_regions = UiMapScreen.region_labels(game.world, explored)
+	_seen_share = explored.fraction()
 	var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, SCALES)
 	map_scale = f.scale
 	centre_on(f.centre)
@@ -219,7 +221,7 @@ func _draw() -> void:
 	var place := Country.NAMES[c]
 	UiDraw.text_right(self, R.end.x - 16, R.position.y + 11, "%s   %s" % [place, game.clock.label()], UiTheme.INK_SOFT)
 	UiNotebook.footer(self, UiNotebook.LEFT, "wasd look     e scale     m close     esc")
-	UiDraw.text_right(self, R.end.x - 28, R.end.y - 14, "%d%% of the coast seen" % roundi(explored.fraction() * 100.0) if explored != null else "", UiTheme.FADED)
+	UiDraw.text_right(self, R.end.x - 28, R.end.y - 14, "%d%% of the coast seen" % roundi(_seen_share * 100.0), UiTheme.FADED)
 
 
 func _draw_overlay() -> void:

@@ -22,6 +22,12 @@ func _init() -> void:
 
 func _on_open() -> void:
 	scroll = 0
+	var outs: Array[StringName] = []
+	for r in recipes():
+		var out := UiRules.recipe_output(r)
+		if out != &"" and not outs.has(out):
+			outs.append(out)
+	UiSketch.warm(outs, UiInventoryScreen.SKETCH, stations)
 
 
 ## The recipes on the page, in the order drawn.

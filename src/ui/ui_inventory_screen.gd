@@ -6,6 +6,8 @@ extends UiScreen
 ## hold a tool (or put it away), eat food, wear kit; goods are refused with the
 ## reason, since they are for making.
 
+const SKETCH := 78
+
 var inventory: Inventory
 var body: Body
 
@@ -21,6 +23,10 @@ func _on_open() -> void:
 		inventory = game.inventory
 		body = game.body
 	scroll = 0
+	if inventory != null:
+		var ids: Array[StringName] = []
+		ids.assign(inventory.items.keys())
+		UiSketch.warm(ids, SKETCH)
 	# Things can arrive or go while the page is open (a fire finishing, a theft).
 	if inventory != null and not inventory.changed.is_connected(refresh):
 		inventory.changed.connect(refresh)

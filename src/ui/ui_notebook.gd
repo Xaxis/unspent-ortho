@@ -182,7 +182,7 @@ static func heading(ci: CanvasItem, at: Vector2i, text: String, seed: int) -> vo
 static func sketch_box(ci: CanvasItem, r: Rect2i, id: StringName, seed: int) -> void:
 	UiDraw.rect(ci, r.grow(-1), Color(UiTheme.PAPER_SHADE, 0.22))
 	box(ci, r, UiTheme.INK_SOFT, seed)
-	var size := mini(r.size.x, r.size.y) - 6
+	var size := mini(r.size.x, r.size.y) - 6 # 84 box -> UiInventoryScreen.SKETCH
 	UiSketch.draw_item(ci, id, r.position + (r.size - Vector2i(size, size)) / 2, size)
 	tape(ci, Vector2i(r.position.x + r.size.x / 2 - 12, r.position.y - 3), 24)
 

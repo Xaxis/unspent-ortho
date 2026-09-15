@@ -133,6 +133,11 @@ func say(text: String) -> void:
 	queue_redraw()
 
 
+func _exit_tree() -> void:
+	# Sketches this page asked for may still be drawing on a worker.
+	UiSketch.wait()
+
+
 func _process(delta: float) -> void:
 	if is_open and note != "":
 		note_age += delta
