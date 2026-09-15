@@ -221,7 +221,7 @@ static func _blacken(n: Node) -> void:
 
 
 static func _blacken_with(n: Node, black: Material) -> void:
-	if n.name == &"glow":
+	if n.name == &"glow" or n.name == &"beam":
 		(n as Node3D).visible = false
 	elif n is GeometryInstance3D:
 		(n as GeometryInstance3D).material_override = black

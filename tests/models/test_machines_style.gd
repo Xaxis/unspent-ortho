@@ -14,7 +14,7 @@ const ASYMMETRIC: Array[StringName] = [&"hauler", &"lineman", &"clerk", &"flock"
 
 
 static func geometry(n: Node, out: Array) -> void:
-	if n is GeometryInstance3D and n.name != &"glow":
+	if n is GeometryInstance3D and n.name != &"glow" and n.name != &"beam":
 		out.append(n)
 	for c in n.get_children():
 		geometry(c, out)
@@ -175,11 +175,13 @@ func test_rest_silhouettes_are_mirror_exact() -> void:
 
 static func _front_mask(root: Node3D, n: Node, xf: Transform3D, mask: PackedByteArray, w: int, h: int, texel: float) -> void:
 	if n is Node3D and n != root:
-		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"scan":
+		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"beam" or n.name == &"lights":
 			return
 		xf = xf * (n as Node3D).transform
 	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
 		var verts := (n as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		if (n as MeshInstance3D).skin != null and root is MachineModel:
+			verts = (root as MachineModel).posed_triangles(n as MeshInstance3D)
 		for t in range(0, verts.size(), 3):
 			var pts: Array[Vector2] = []
 			for i in 3:

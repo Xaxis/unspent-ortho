@@ -67,7 +67,7 @@ func build() -> void:
 	dmi.material_override = part_material
 	dmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(dmi)
-	_part_meshes.append([dmi, _dots.mesh, FoundKit.darkened(dk).build()])
+	_part_swaps.append([_dots, &"mesh", _dots.mesh, FoundKit.darkened(dk).build()])
 	finish_rig()
 	_place(0.0)
 
@@ -78,15 +78,6 @@ func _multimesh(mesh: Mesh) -> MultiMesh:
 	mm.mesh = mesh
 	mm.instance_count = COUNT
 	return mm
-
-
-## The dark twin of the dots mesh is swapped onto the MultiMesh, not the instance.
-func _apply_light(delta: float) -> void:
-	var before := _shown_light
-	super(delta)
-	if _shown_light != before and _part_meshes.size() > 0:
-		var pm: Array = _part_meshes[0]
-		_dots.mesh = pm[1] if _shown_light > 0.0 else pm[2]
 
 
 func _apply_pose() -> void:
@@ -137,4 +128,8 @@ func _place(delta: float) -> void:
 			shard_xforms.resize(COUNT)
 		shard_xforms[i] = xf
 		_shards.set_instance_transform(i, xf)
-		_dots.set_instance_transform(i, xf)
+		# Dying, the points go out one at a time before anything falls.
+		var dot := xf
+		if pose == &"dead" and pose_time >= PART_OUT * Rng.hash01(147, i):
+			dot = Transform3D(Basis().scaled(Vector3.ZERO), pos)
+		_dots.set_instance_transform(i, dot)

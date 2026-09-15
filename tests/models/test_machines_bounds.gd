@@ -23,10 +23,12 @@ static func extent(m: FigureModel) -> Vector3:
 
 static func _extent_node(root: FigureModel, n: Node, xf: Transform3D, out: Vector3) -> Vector3:
 	if n != root and n is Node3D:
-		if not (n as Node3D).visible or n.name == &"glow":
+		if not (n as Node3D).visible or n.name == &"glow" or n.name == &"beam":
 			return out
 		xf = xf * (n as Node3D).transform
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+	if n is MeshInstance3D and (n as MeshInstance3D).skin != null and root is MachineModel:
+		out = _extent_points((root as MachineModel).posed_triangles(n as MeshInstance3D), xf, out)
+	elif n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
 		out = _extent_mesh((n as MeshInstance3D).mesh, xf, out)
 	elif n is MultiMeshInstance3D:
 		var mm := (n as MultiMeshInstance3D).multimesh
@@ -40,7 +42,10 @@ static func _extent_node(root: FigureModel, n: Node, xf: Transform3D, out: Vecto
 
 
 static func _extent_mesh(mesh: Mesh, xf: Transform3D, out: Vector3) -> Vector3:
-	var verts := mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	return _extent_points(mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array, xf, out)
+
+
+static func _extent_points(verts: PackedVector3Array, xf: Transform3D, out: Vector3) -> Vector3:
 	for v in verts:
 		var p := xf * v
 		out.x = minf(out.x, p.y)

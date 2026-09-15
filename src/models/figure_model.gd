@@ -96,6 +96,23 @@ func triangle_count() -> int:
 	return _tris_under(self)
 
 
+## Draw calls this figure can cost in the colour pass at worst (every light on):
+## one per surface of every mesh, one per MultiMesh. Budget: a machine 6.
+func draw_calls() -> int:
+	return _draws_under(self)
+
+
+static func _draws_under(n: Node) -> int:
+	var total := 0
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		total += (n as MeshInstance3D).mesh.get_surface_count()
+	elif n is MultiMeshInstance3D and (n as MultiMeshInstance3D).multimesh != null:
+		total += 1
+	for c in n.get_children():
+		total += _draws_under(c)
+	return total
+
+
 static func _tris_under(n: Node) -> int:
 	var total := 0
 	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
