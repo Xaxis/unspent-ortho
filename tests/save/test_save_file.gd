@@ -92,7 +92,9 @@ func test_damaged_and_missing_files_never_throw_and_say_so() -> void:
 	eq(SaveFile.read(SaveSlots.path(1)).code, &"damaged", "a compressed file of something else")
 	# A good header over a data line that is not what the header promised.
 	f = FileAccess.open_compressed(SaveSlots.path(2), FileAccess.WRITE, SaveFile.MODE)
-	f.store_line(JSON.stringify({"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "data_md5": "0"}))
+	var whole := {"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "data_md5": "0", "thumb_md5": "".md5_text()}
+	whole["head_md5"] = SaveFile.header_md5(whole)
+	f.store_line(JSON.stringify(whole))
 	f.store_line("{\"clock\": ")
 	f.close()
 	var half := SaveFile.read(SaveSlots.path(2))
@@ -111,6 +113,94 @@ func test_damaged_and_missing_files_never_throw_and_say_so() -> void:
 	var o := BootOptions.new()
 	eq(SaveSlots.options_for(0, o), SaveFile.WHY_DAMAGED, "a damaged slot does not boot")
 	Sx.finish()
+
+
+func test_a_header_is_checked_whole_and_a_damaged_picture_is_only_dropped() -> void:
+	Sx.use_root("header")
+	var picture := Image.create(160, 90, false, Image.FORMAT_RGB8)
+	for y in 90:
+		for x in 160:
+			picture.set_pixel(x, y, Color(Rng.hash01(1, x, y, 1), Rng.hash01(1, x, y, 2), Rng.hash01(1, x, y, 3)))
+	var png := picture.save_png_to_buffer()
+	check(SaveSlots.is_png(png), "a PNG is a PNG")
+	var header := HEADER.duplicate()
+	header["thumb"] = Marshalls.raw_to_base64(png)
+	var data := DATA.duplicate(true)
+	data["world"] = {"seed": 3, "size": 64}
+	data["player"] = {"pos": [10.5, 20.25], "facing": 0.0}
+	var p := SaveSlots.path(1)
+	eq(SaveFile.write(p, header, data), OK)
+	var good := SaveFile.read_header(p)
+	check(good.ok, "whole: %s" % good.why)
+	check(SaveSlots.thumbnail(good.header) != null, "with its picture")
+	var o := BootOptions.new()
+	eq(SaveSlots.options_for(1, o), "", "it boots")
+	eq(o.seed_value, 3)
+	eq(o.at, Vector2(10.5, 20.25))
+
+	# The header's seed changed after it was written: the digits a flipped byte could hit.
+	for field: String in ["seed", "size", "pos", "minutes", "data_md5"]:
+		var head := _head_of(p)
+		match field:
+			"pos": head[field] = [11.5, 20.25]
+			"data_md5": head[field] = "0" + str(head[field]).substr(1)
+			_: head[field] = SaveCodec.to_num(head[field]) + 1.0
+		_rewrite(SaveSlots.path(2), head, _data_line_of(p))
+		var r := SaveFile.read_header(SaveSlots.path(2))
+		check(not r.ok, "a header whose %s changed is not trusted" % field)
+		eq(r.code, &"damaged", "%s:" % field)
+		eq(SaveSlots.options_for(2, BootOptions.new()), SaveFile.WHY_DAMAGED, "%s: and does not boot" % field)
+
+	# The picture's bytes changed: the save reads, without a picture, and the decoder never sees them.
+	var head := _head_of(p)
+	var bad := Marshalls.base64_to_raw(str(head.thumb))
+	for i in 40:
+		bad[200 + i] = bad[200 + i] ^ 0x5a
+	head["thumb"] = Marshalls.raw_to_base64(bad)
+	_rewrite(SaveSlots.path(3), head, _data_line_of(p))
+	var r3 := SaveFile.read_header(SaveSlots.path(3))
+	check(r3.ok, "a damaged picture does not lose the save")
+	eq(str(r3.header.get("thumb")), "", "the picture is dropped")
+	eq(SaveSlots.thumbnail(r3.header), null, "and none is shown")
+	# Bytes that are not a whole PNG are refused before decoding.
+	check(not SaveSlots.is_png(bad.slice(0, bad.size() - 1)), "a PNG cut short")
+	check(not SaveSlots.is_png("not a png at all, but long enough to be one maybe".to_utf8_buffer()), "text")
+	eq(SaveSlots.thumbnail({"thumb": Marshalls.raw_to_base64(png.slice(0, 100))}), null)
+
+	# The data's world must be the header's.
+	var liar := DATA.duplicate(true)
+	liar["world"] = {"seed": 4, "size": 64}
+	eq(SaveFile.write(SaveSlots.path(2), header, liar), OK)
+	eq(SaveSlots.options_for(2, BootOptions.new()), SaveFile.WHY_DAMAGED, "a header and data that disagree on the world do not boot")
+
+	# Bytes flipped anywhere in a whole file: it reads as damaged, or it reads with
+	# the header exactly as written (at most without its picture).
+	var raw := FileAccess.get_file_as_bytes(p)
+	var want := SaveFile.header_md5(good.header)
+	for at in range(20, raw.size() - 8, maxi(1, raw.size() / 60)):
+		_put(SaveSlots.path(2), _flip(raw, at, mini(40, raw.size() - 4 - at)))
+		var r := SaveFile.read_header(SaveSlots.path(2))
+		if r.ok:
+			eq(SaveFile.header_md5(r.header), want, "flipped at %d: read, and the header as written" % at)
+	Sx.finish()
+
+
+func _head_of(path: String) -> Dictionary:
+	var f := FileAccess.open_compressed(path, FileAccess.READ, SaveFile.MODE)
+	return JSON.parse_string(f.get_line())
+
+
+func _data_line_of(path: String) -> String:
+	var f := FileAccess.open_compressed(path, FileAccess.READ, SaveFile.MODE)
+	f.get_line()
+	return f.get_line()
+
+
+func _rewrite(path: String, head: Dictionary, body: String) -> void:
+	var f := FileAccess.open_compressed(path, FileAccess.WRITE, SaveFile.MODE)
+	f.store_line(JSON.stringify(head, "", false, true))
+	f.store_line(body)
+	f.close()
 
 
 func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read() -> void:

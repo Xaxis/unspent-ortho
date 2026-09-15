@@ -110,13 +110,18 @@ static func options_for(slot: int, o: BootOptions) -> String:
 	if not r.ok:
 		return r.why
 	var h: Dictionary = r.header
-	var size := SaveCodec.to_int(h.get("size"), 0)
-	if size <= 0:
+	# The world it boots is the data's; the header, which lists the slot, must agree.
+	var world: Dictionary = r.data.get("world") if r.data.get("world") is Dictionary else {}
+	var world_seed := SaveCodec.to_int(world.get("seed"), -1)
+	var size := SaveCodec.to_int(world.get("size"), 0)
+	if size <= 0 or world_seed != SaveCodec.to_int(h.get("seed"), -2) or size != SaveCodec.to_int(h.get("size"), -2):
 		return SaveFile.WHY_DAMAGED
-	o.seed_value = SaveCodec.to_int(h.get("seed"), 1)
+	var player: Dictionary = r.data.get("player") if r.data.get("player") is Dictionary else {}
+	var clock: Dictionary = r.data.get("clock") if r.data.get("clock") is Dictionary else {}
+	o.seed_value = world_seed
 	o.size = size
-	o.at = SaveCodec.to_vec2(h.get("pos"), Vector2(-1, -1))
-	o.hour = SaveCodec.to_num(h.get("minutes"), Tuning.START_HOUR * 60.0) / 60.0
+	o.at = SaveCodec.to_vec2(player.get("pos"), SaveCodec.to_vec2(h.get("pos"), Vector2(-1, -1)))
+	o.hour = SaveCodec.to_num(clock.get("minutes"), SaveCodec.to_num(h.get("minutes"), Tuning.START_HOUR * 60.0)) / 60.0
 	o.load_slot = slot
 	return ""
 
@@ -138,11 +143,35 @@ static func play_time(header: Dictionary) -> String:
 	return "%d h %02d m" % [m / 60, m % 60]
 
 
+## The save's picture, or null. Bytes that are not a whole PNG are never handed
+## to the decoder, which would fill the log with CRC errors.
 static func thumbnail(header: Dictionary) -> ImageTexture:
 	var b64 := str(header.get("thumb", ""))
 	if b64 == "":
 		return null
+	var png := Marshalls.base64_to_raw(b64)
+	if not is_png(png):
+		return null
 	var img := Image.new()
-	if img.load_png_from_buffer(Marshalls.base64_to_raw(b64)) != OK:
+	if img.load_png_from_buffer(png) != OK or img.is_empty():
 		return null
 	return ImageTexture.create_from_image(img)
+
+
+const PNG_MAGIC: Array[int] = [137, 80, 78, 71, 13, 10, 26, 10]
+## The IEND chunk every whole PNG ends on: length 0, "IEND", its CRC.
+const PNG_END: Array[int] = [0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]
+
+
+## Starts as a PNG and ends as one.
+static func is_png(b: PackedByteArray) -> bool:
+	if b.size() < PNG_MAGIC.size() + PNG_END.size() + 25:
+		return false
+	for i in PNG_MAGIC.size():
+		if b[i] != PNG_MAGIC[i]:
+			return false
+	var tail := b.size() - PNG_END.size()
+	for i in PNG_END.size():
+		if b[tail + i] != PNG_END[i]:
+			return false
+	return true

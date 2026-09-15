@@ -1,13 +1,17 @@
 class_name SaveFile
 ## One save on disk. JSON inside FileAccess.open_compressed (zstd), two lines:
 ##   1. the header: {format, version, saved_at, day, hour, clock, minutes, landscape,
-##      place, play_seconds, seed, size, pos, data_md5, thumb (base64 PNG)}
+##      place, play_seconds, seed, size, pos, data_md5, thumb (base64 PNG), thumb_md5,
+##      head_md5}
 ##   2. the data: SaveGame.collect(), keyed by registered key
 ## The header is read alone for slot lists and the title (only its blocks are
 ## decompressed). Every read checks the file's block table against its length,
-## the data line against the header's md5, and both lines parse as JSON objects,
-## because a truncated or damaged compressed file otherwise reads back silently
-## as garbage. Nothing here throws or asserts: a read returns
+## the header against its own md5 (every field but the picture), the data line
+## against the header's md5, and both lines parse as JSON objects, because a
+## truncated or damaged compressed file otherwise reads back silently as garbage
+## (zstd frames here carry no checksum). A picture that fails its md5 is dropped
+## and the save still reads: nothing but the picture was lost. Nothing here
+## throws or asserts: a read returns
 ##   {ok: bool, code: StringName (&"" missing damaged newer older), why: String (a plain
 ##    sentence for the player), header, data, version}
 ##
@@ -37,6 +41,8 @@ static func write(path: String, header: Dictionary, data: Dictionary) -> Error:
 	head["format"] = FORMAT
 	head["version"] = VERSION
 	head["data_md5"] = body.md5_text()
+	head["thumb_md5"] = str(head.get("thumb", "")).md5_text()
+	head["head_md5"] = header_md5(head)
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var tmp := path + ".tmp"
 	var f := FileAccess.open_compressed(tmp, FileAccess.WRITE, MODE)
@@ -86,6 +92,12 @@ static func _read(path: String, with_data: bool) -> Dictionary:
 		out.code = &"older"
 		out.why = WHY_OLDER
 		return out
+	# A version this build reads: its header is whole, or nothing of it is trusted.
+	if str(header.get("head_md5", "")) != header_md5(header):
+		out.header = {}
+		return out
+	if str(header.get("thumb", "")).md5_text() != str(header.get("thumb_md5", "")):
+		header["thumb"] = ""
 	if not with_data:
 		out.ok = true
 		out.code = &""
@@ -102,6 +114,15 @@ static func _read(path: String, with_data: bool) -> Dictionary:
 	out.code = &""
 	out.why = ""
 	return out
+
+
+## The md5 of a header's fields but the picture and this md5 itself, spelled one
+## way (SaveCodec.canonical) so the header read back gives the same.
+static func header_md5(header: Dictionary) -> String:
+	var h := header.duplicate()
+	h.erase("thumb")
+	h.erase("head_md5")
+	return SaveCodec.canonical(h).md5_text()
 
 
 ## JSON text to a value, or null; quietly (JSON.parse_string logs an engine error).
