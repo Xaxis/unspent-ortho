@@ -77,6 +77,92 @@ func test_pages_are_refused_with_a_hostile_close() -> void:
 	g.free()
 
 
+func test_home_is_no_way_round_the_hostile_rule() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	# A fire in reach, so making would open if nothing were near.
+	g.world.props.append(WorldProp.new(99998, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.props.back())
+	var mob := _mob(g.player.pos + Vector2(1, 1), &"runner")
+	await _tap(&"pause")
+	var home: UiScreen = ui.call("top")
+	check(home != null and home.screen_name == &"pause", "home opens beside a runner")
+	home.select(&"loadout")
+	await _tap(&"use")
+	var gear: UiScreen = ui.call("top")
+	check(gear != null and gear.screen_name == &"loadout", "gear only reads: it opens over home")
+	for key: StringName in [&"inventory", &"craft", &"map"]:
+		await _tap(key)
+		var top: UiScreen = ui.call("top")
+		check(top != null and top.screen_name == &"loadout", "%s from gear is refused with a runner that close" % key)
+		check(top.note_warn and top.note == (ui.get_script() as GDScript).get_script_constant_map()["NEAR_LINE"], "and the glass says why: %s" % top.note)
+	await _tap(&"pause")
+	for key: StringName in [&"inventory", &"craft"]:
+		await _tap(key)
+		var top: UiScreen = ui.call("top")
+		check(top != null and top.screen_name == &"pause", "%s on home is refused too" % key)
+	check(not (ui.get("screens") as Dictionary)[&"inventory"].is_open, "carrying never opened")
+	check(not (ui.get("screens") as Dictionary)[&"crafting"].is_open, "making never opened")
+	await _tap(&"pause")
+	check(ui.call("top") == null, "esc closes home")
+	mob.free()
+	g.free()
+
+
+func test_app_keys_open_their_apps_over_home() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	await _tap(&"pause")
+	for pair: Array in [[&"inventory", &"inventory"], [&"map", &"map"]]:
+		await _tap(pair[0])
+		var top: UiScreen = ui.call("top")
+		check(top != null and top.screen_name == pair[1], "%s on home opens %s" % pair)
+		check(tree.paused, "the world stays stopped")
+		await _tap(&"pause")
+		var back: UiScreen = ui.call("top")
+		check(back != null and back.screen_name == &"pause", "esc backs out to home")
+	# Making still needs somewhere to make things: beside a fire it opens over home.
+	g.world.props.append(WorldProp.new(99997, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.props.back())
+	await _tap(&"craft")
+	var made: UiScreen = ui.call("top")
+	check(made != null and made.screen_name == &"crafting", "c on home opens making beside a fire")
+	await _tap(&"pause")
+	await _tap(&"pause")
+	check(ui.call("top") == null and not tree.paused, "and the world goes on")
+	g.free()
+
+
+func test_machine_reads_list_machines_not_animals() -> void:
+	var g := _make()
+	_calm(g)
+	var dog := _mob(g.player.pos + Vector2(2, 0), &"dog.yard")
+	var gull := _mob(g.player.pos + Vector2(0, 2), &"gulls")
+	var runner := _mob(g.player.pos + Vector2(3, 0), &"runner")
+	var feed := SlateFeeds.default_reads(g)
+	var kinds: Array = (feed.scans as Array).map(func(s: Dictionary) -> StringName: return s.kind)
+	eq(kinds, [&"runner"], "only the machine gives a signature")
+	for m: Node in [dog, gull, runner]:
+		m.free()
+	g.free()
+
+
+func _mob(at: Vector2, kind: StringName) -> Node:
+	var mob := Node.new()
+	mob.set_script(_mob_script())
+	mob.set("pos", at)
+	mob.set("kind", kind)
+	mob.add_to_group(&"mobs")
+	tree.root.add_child(mob)
+	return mob
+
+
 func test_give_and_screen_options() -> void:
 	var g := _make(["--give=stone:3,scrap:2", "--screen=inventory"])
 	eq(g.inventory.count(&"stone"), 3)

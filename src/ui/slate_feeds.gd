@@ -20,8 +20,9 @@ class_name SlateFeeds
 ##   {interference: float 0..1 (or -1 unknown), network: String,
 ##    scans: [{id: StringName, kind: StringName, name: String, pos: Vector2,
 ##             disposition: StringName (hostile wary observant indifferent), note: String}]}
-##   default: every living mob within READ_RADIUS tiles, hostile or indifferent
-##   by its `hostile` flag; interference unknown.
+##   default: every living machine (roster `machine: true`) within READ_RADIUS
+##   tiles, hostile or indifferent by its `hostile` flag; animals give no
+##   signature; interference unknown.
 ##
 ## saves (the saves package):
 ##   {slots: [{id: StringName, title: String, when: String, place: String,
@@ -110,9 +111,12 @@ static func default_reads(game: Game) -> Dictionary:
 				continue
 			if (mp as Vector2).distance_to(p) > READ_RADIUS:
 				continue
-			var hostile: Variant = m.get("hostile")
 			var k: Variant = m.get("kind")
 			var kind := StringName(k) if k != null else &""
+			# The stolen module reads machine signatures: a dog or a gull gives none.
+			if not bool(Roster.row(kind).get("machine", false)):
+				continue
+			var hostile: Variant = m.get("hostile")
 			scans.append({"id": StringName("scan_%d" % m.get_instance_id()), "kind": kind, "name": String(kind).get_slice(".", 0).replace("_", " "), "pos": mp,
 				"disposition": &"hostile" if hostile == null or bool(hostile) else &"indifferent", "note": ""})
 		scans.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a.pos as Vector2).distance_to(p) < (b.pos as Vector2).distance_to(p))

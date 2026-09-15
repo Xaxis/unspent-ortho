@@ -5,8 +5,8 @@ extends GameSystem
 ##   - records the land the player has seen, for the survey, and saves it
 ##   - opens apps on their keys (Tab/I carrying, C making, M map, Esc home) and
 ##     routes menu input to the top one (draw order = input priority); an app's
-##     key while another app is up switches the glass to it; gear, machine reads
-##     and saves open from home
+##     key while another app is up switches the glass to it, and on home opens
+##     it over home; gear, machine reads and saves open from home
 ##   - the slate's power: its glass dims and it whines once when power runs low
 ## It reads the game's data and acts only through Inventory, Crafting, Survival's
 ## `eat` / `use_hint`, and SlateFeeds for the apps other packages fill.
@@ -106,6 +106,10 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 		return true
 	var why := why_not_open(n)
 	if why != "":
+		if top() != null:
+			# The HUD is hidden under an open app: say it on the glass.
+			top().refuse(why)
+			return false
 		Events.sfx.emit(&"ui_slate_deny", Vector3.ZERO)
 		if n == &"crafting" and why != NEAR_LINE:
 			Events.message.emit(why)
@@ -136,10 +140,13 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 const NEAR_LINE := "Not with that so close."
 
 
-## "" if app `n` can open now, else one plain line why not.
+## "" if app `n` can open now, else one plain line why not. Home opens beside
+## a hostile, and so do the apps that only read (gear, machine reads, saves)
+## once home is up; carrying and making never do, however they are reached, or
+## home would be a way round the rule (making skips world time; eating works).
 func why_not_open(n: StringName) -> String:
-	var over_home := stack.has(screens.get(&"pause"))
-	if n != &"pause" and not over_home and _hostile_near():
+	var reads_only := n in SlateFeeds.APPS and stack.has(screens.get(&"pause"))
+	if n != &"pause" and not reads_only and _hostile_near():
 		return NEAR_LINE
 	if n == &"crafting":
 		var here := UiLink.stations_here(game)
@@ -193,6 +200,9 @@ func _read_keys() -> bool:
 			var target: StringName = OPEN_KEYS.get(pair[0], &"")
 			if target != &"" and target != &"pause" and target != s.screen_name and APPS.has(s.screen_name):
 				switch_to(target)
+			elif target != &"" and target != &"pause" and s.screen_name == &"pause":
+				# Home lists carrying, making and the map: their keys open them over it.
+				open_screen(target)
 			else:
 				s.handle(pair[1])
 			break
