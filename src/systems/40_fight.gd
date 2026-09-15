@@ -249,8 +249,8 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"snatch":
 				_on_snatch(e.mob)
 			&"filed":
+				# Nothing is said: machines seeing further is what the player notices.
 				Snatch.file(game.body)
-				Events.message.emit("Somewhere, what it read of you has been put away.")
 			&"outcome":
 				_on_outcome(e)
 

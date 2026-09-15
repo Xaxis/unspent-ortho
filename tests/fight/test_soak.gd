@@ -33,6 +33,8 @@ func test_minutes_on_a_generated_coast() -> void:
 	var kinds := {}
 	var outcomes := {}
 	var most := 0
+	var meetings := 0
+	var start_minutes := moment.minutes
 	var t0 := Time.get_ticks_usec()
 	var steps := int(SECONDS * 1000.0 / 16.0)
 	for i in steps:
@@ -53,6 +55,8 @@ func test_minutes_on_a_generated_coast() -> void:
 		for e in sim.drain():
 			if e.type == &"outcome":
 				outcomes[e.outcome] = int(outcomes.get(e.outcome, 0)) + 1
+			elif e.type == &"snatch":
+				meetings += 1
 		most = maxi(most, sim.living())
 		for m in sim.mobs:
 			kinds[m.kind] = true
@@ -61,7 +65,10 @@ func test_minutes_on_a_generated_coast() -> void:
 		if hero.health <= 0:
 			hero.health = FightRules.HEALTH
 	var ms_per_second := (Time.get_ticks_usec() - t0) / 1000.0 / SECONDS
-	print("  soak: %d kinds %s, most living %d, outcomes %s, %.2f ms per second played" % [kinds.size(), kinds.keys(), most, outcomes, ms_per_second])
+	var game_hours := (moment.minutes - start_minutes) / 60.0
+	print("  soak: %d kinds %s, most living %d, outcomes %s, %d dart meetings in %.1f game hours, %.2f ms per second played" % [kinds.size(), kinds.keys(), most, outcomes, meetings, game_hours, ms_per_second])
+	# Even at ten times the trickle, darts keep to their gap: seen, met rarely.
+	lt(float(meetings), game_hours * 60.0 / Coast.MEETING_GAP + 1.01, "dart meetings per game hour")
 	lt(float(most), float(Spawner.MAX_LIVING) + 0.5, "six living at most")
 	gt(float(kinds.size()), 1.0, "the coast put more than one kind out")
 	check(not is_nan(hero.pos.x) and w.in_bounds(floori(hero.pos.x), floori(hero.pos.y)), "the player is still on the coast")

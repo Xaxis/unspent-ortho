@@ -39,6 +39,8 @@ var fight_started := 0.0
 var fight_mobs: Dictionary = {} # id -> MobState
 var fight_kills := 0
 var last_outcome: StringName = &""
+## World minutes when a dart last reached the player (Coast keeps darts away after).
+var last_meeting_minutes := -INF
 var _far_since := -1.0
 var _nav_at := -100000.0
 var _far_best := INF
@@ -546,6 +548,8 @@ func snatch(m: MobState) -> void:
 	if m.snatched:
 		return
 	m.snatched = true
+	if moment != null:
+		last_meeting_minutes = moment.minutes
 	m.flee_home = false
 	m.set_mood(MobState.FLEEING, now)
 	emit(&"snatch", {"mob": m})

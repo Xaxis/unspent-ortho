@@ -56,3 +56,82 @@ func test_a_clerk_caught_first_files_nothing() -> void:
 	eq(F.count(events, &"killed"), 1, "life 6 scales to one blow")
 	check(not c.alive)
 	eq(F.count(events, &"filed"), 0)
+
+
+func test_a_meeting_shuts_every_dart_out_for_hours() -> void:
+	var sim := F.make_sim(F.flat_world(96, Ground.ASH, Country.BURNING), Vector2(40.5, 40.5))
+	var coast := Coast.new(sim, Spawner.new())
+	check(coast.shut().is_empty(), "nothing shut on a fresh coast")
+	var c := sim.add_mob(&"clerk", Vector2(41.5, 40.5))
+	sim.snatch(c)
+	var shut := coast.shut()
+	check(shut.has(&"clerk") and shut.has(&"warden") and shut.has(&"gulls") and shut.has(&"flock"), "every dart: %s" % [shut.keys()])
+	check(not shut.has(&"harvester") and not shut.has(&"dog.yard"), "the fights still come")
+	sim.moment.minutes += Coast.MEETING_GAP - 1.0
+	check(coast.shut().has(&"gulls"), "still shut just before the gap is up")
+	sim.moment.minutes += 2.0
+	check(coast.shut().is_empty(), "and open after")
+
+
+func test_a_dart_out_keeps_its_own_kind_back() -> void:
+	var sim := F.make_sim(F.flat_world(96, Ground.ASH, Country.BURNING), Vector2(40.5, 40.5))
+	var spawner := Spawner.new()
+	spawner.rate = 200.0
+	var coast := Coast.new(sim, spawner)
+	var most := 0
+	var checked := false
+	for i in 50:
+		sim.slices(25)
+		coast.tick()
+		var n := _count(sim, &"clerk")
+		most = maxi(most, n)
+		if n == 1 and not checked and sim.last_meeting_minutes < 0.0:
+			checked = true
+			check(coast.shut().has(&"clerk"), "the clerk is shut for its gap")
+			check(not coast.shut().has(&"gulls"), "another dart is not, until one meets you")
+	check(checked, "a clerk came out")
+	eq(most, 1, "one clerk out however hard the coast rolls")
+
+
+func _count(sim: FightSim, kind: StringName) -> int:
+	var n := 0
+	for m in sim.mobs:
+		if m.kind == kind:
+			n += 1
+	return n
+
+
+## A day in a clerk's country, standing about: the coast must not read the
+## player more than the gaps allow, and must still read the player at all.
+func test_a_day_in_clerk_country_meets_a_few_darts_not_dozens() -> void:
+	var w := F.flat_world(96, Ground.ASH, Country.BURNING)
+	var sim := F.make_sim(w, Vector2(48.5, 48.5))
+	sim.moment.minutes = 2.0 * 1440.0 + 8.0 * 60.0
+	var spawner := Spawner.new()
+	var coast := Coast.new(sim, spawner)
+	# The clock runs six times as fast as play: a day in four minutes of the sim.
+	# The gaps are in world minutes, so this only makes the rolls scarcer per hour.
+	const WORLD_PER_MS := 6.0 / 1000.0
+	var meetings := 0
+	var filings := 0
+	var hours := 24.0
+	var steps := int(hours * 60.0 / WORLD_PER_MS / 16.0)
+	var wander := Rng.make(5, 5)
+	for i in steps:
+		sim.moment.minutes += 16.0 * WORLD_PER_MS
+		coast.tick()
+		if i % 300 == 0:
+			sim.hero.move = Vector2.from_angle(wander.randf() * TAU) * 0.5
+		if sim.hero.pos.distance_to(Vector2(48.5, 48.5)) > 12.0:
+			sim.hero.move = (Vector2(48.5, 48.5) - sim.hero.pos).normalized() * 0.5
+		sim.slices(2)
+		for e in sim.drain():
+			if e.type == &"snatch":
+				meetings += 1
+			elif e.type == &"filed":
+				filings += 1
+	var per_hour := meetings / hours
+	print("  a day among clerks: %d meetings, %d filings (%.2f an hour)" % [meetings, filings, per_hour])
+	gt(float(meetings), 0.0, "a clerk country still reads you")
+	lt(per_hour, 60.0 / Coast.MEETING_GAP + 0.05, "no more than the gap allows")
+	check(filings <= meetings, "a filing is a meeting that got away")

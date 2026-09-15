@@ -27,8 +27,19 @@ var yaw_deg := 45.0
 var pitch_deg := 57.0
 var view_height := 14.0
 var aspect := 16.0 / 9.0
+## A dart (warden, flock, clerk, gulls) comes to take and go; nothing to fight,
+## so it counts this share of its weight in the gate and the pick. At the full
+## weight a clerk country read the player every minute.
+const DART_SHARE := 0.3
+
 ## Rate against the source's (whose every-200-ms gate filled a ring of six in seconds; the coast here wants a trickle).
 var rate := 0.3
+
+
+## A row's weight in a roll: its chance, a dart's at DART_SHARE.
+static func weight_of(row: Dictionary) -> float:
+	var w := float(row.get("chance", 0))
+	return w * DART_SHARE if row.get("approach", &"") == &"dart" else w
 
 
 ## Does the row's moment (not its place) fit right now?
@@ -137,18 +148,19 @@ func in_view(centre: Vector2, p: Vector2, margin: float = 2.0) -> bool:
 	return sx <= half_w + margin and sy <= half_h + margin
 
 
-## One roll. Returns {kind, pos} or {} for nothing this time.
-func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centre: Vector2, living: int) -> Dictionary:
+## One roll. Returns {kind, pos} or {} for nothing this time. `shut`: kinds
+## that may not come out now (Coast's cooldowns), as keys.
+func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centre: Vector2, living: int, shut: Dictionary = {}) -> Dictionary:
 	if living >= MAX_LIVING:
 		return {}
 	var fitting: Array[StringName] = []
-	var sum := 0
+	var sum := 0.0
 	for k: StringName in Roster.DEFS:
 		var row := Roster.row(k)
-		if moment_fits(row, m):
+		if not shut.has(k) and moment_fits(row, m):
 			fitting.append(k)
-			sum += int(row.get("chance", 0))
-	if sum <= 0:
+			sum += weight_of(row)
+	if sum <= 0.0:
 		return {}
 	if Rng.hash_ints(m.seed_value, roll_index, 0x5a17) % 2000 >= int(sum * rate):
 		return {}
@@ -160,18 +172,19 @@ func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centr
 		var tx := floori(tile.x)
 		var ty := floori(tile.y)
 		var here: Array[StringName] = []
-		var weight := 0
+		var weight := 0.0
 		for k in fitting:
 			if place_fits(Roster.row(k), world, query, tx, ty):
 				here.append(k)
-				weight += int(Roster.row(k).get("chance", 0))
-		if here.is_empty():
+				weight += weight_of(Roster.row(k))
+		if here.is_empty() or weight <= 0.0:
 			continue
-		var pick := r.randi_range(0, weight - 1)
+		var pick := r.randf() * weight
 		for k in here:
-			pick -= int(Roster.row(k).get("chance", 0))
-			if pick < 0:
+			pick -= weight_of(Roster.row(k))
+			if pick < 0.0:
 				return {"kind": k, "pos": Vector2(tx + 0.5, ty + 0.5)}
+		return {"kind": here[here.size() - 1], "pos": Vector2(tx + 0.5, ty + 0.5)}
 	return {}
 
 
