@@ -101,16 +101,22 @@ float sky_cloud(vec3 world_pos) {
 	return smoothstep(t - 0.02, t + 0.02, n);
 }
 
-// 0..1 fog at a place: banks that drift with the wind, lie thick on water and
-// in hollows, and thin up the hills so high ground stands out of them.
-float sky_fog_at(vec3 world_pos, float time) {
+// Fog at a place, as whole steps: 0 clear, 0.5 a thin bank, 1 a thick one.
+// Banks drift with the wind, lie thick on water and in hollows, and thin up
+// the hills so high ground stands out. Each step's edge is a narrow band of
+// stipple; inside a bank the page is flat. Density moves the edges, never the
+// value inside, so thin fog is smaller banks, not a grain over everything.
+float sky_fog_at(vec3 world_pos, vec2 px, float band) {
 	if (sky_fog.z < 0.001) {
 		return 0.0;
 	}
 	vec2 p = world_pos.xz - sky_fog.xy;
-	float n = sky_fbm(p * vec2(0.045, 0.032) + vec2(41.0, 7.0));
-	float low = 1.0 - smoothstep(0.1, 3.5, world_pos.y);
-	return smoothstep(0.40, 0.60, n + low * 0.2 - (1.0 - sky_fog.z) * 0.3) * sky_fog.z;
+	float n = sky_fbm(p * vec2(0.045, 0.032) + vec2(41.0, 7.0)) + sky_noise(p * 0.13 + vec2(9.0, 2.0)) * 0.08 + sky_noise(p * vec2(0.55, 0.3) + vec2(1.0, 5.0)) * 0.05;
+	n += (1.0 - smoothstep(0.1, 3.5, world_pos.y)) * 0.16;
+	float t1 = mix(0.92, 0.46, sky_fog.z);
+	float t2 = t1 + 0.13;
+	float h = sky_hash(px + vec2(61.0, 17.0));
+	return step(h, smoothstep(t1 - band, t1 + band, n)) * 0.55 + step(h, smoothstep(t2 - band, t2 + band, n)) * 0.45;
 }
 
 // Distance attenuation of an OmniLight3D with omni_attenuation = 0, as the
@@ -135,9 +141,14 @@ float sky_lamp_level(vec3 world_pos) {
 }
 
 // A pool of lamplight in two hard steps: the full pool, then a thin rim that
-// breaks into stipple. Never a smooth falloff, never concentric target rings.
+// breaks into stipple. Its edge wanders with the ground, the way a wash of
+// light is laid by hand. Never a smooth falloff, never a ruled circle.
 float sky_pool(float a, vec3 world_pos) {
+	if (a <= 0.0) {
+		return 0.0;
+	}
 	float h = sky_hash(sky_px(world_pos) + vec2(29.0, 13.0));
+	a += (sky_noise(world_pos.xz * 0.8 + vec2(3.0, 71.0)) - 0.5) * 0.3 + (sky_noise(world_pos.xz * 2.6) - 0.5) * 0.1;
 	if (a >= 0.5) {
 		// The inner edge is ragged: stipple eats a little way into the pool.
 		return (a < 0.54 && h > (a - 0.5) / 0.04) ? 0.35 : 1.0;
@@ -163,7 +174,7 @@ vec3 sky_ink(vec3 world_pos, float lit) {
 	float deeper = max(night * 0.3, shaded * 0.2);
 	float lift = step(0.99, sky_pool(sky_lamp_level(world_pos), world_pos));
 	// Fog thins the hatching a line-length at a time, not pixel by pixel.
-	lift = max(lift, step(sky_hash(floor(px / 3.0) + vec2(41.0, 3.0)), sky_fog_at(world_pos, 0.0) * 1.1 - 0.15));
+	lift = max(lift, step(sky_hash(floor(px / 3.0) + vec2(41.0, 3.0)), sky_fog_at(world_pos, px, 0.01) * 0.9));
 	lift = max(lift, step(0.3, sky_sun.w));
 	return vec3(lay, lift, deeper);
 }
@@ -227,18 +238,20 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
 	vec3 c = sky_settled(albedo * sky_tint, albedo, world_pos, px);
+	// Night is blue ink on dim washes: the darkest washes go to deep blue, never black.
+	c = mix(c, SKY_NIGHT_INK * 0.6, sky_view.y * 0.14);
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
 		// A cloud's shade is a colour, like every shade here: one step toward
 		// blue-violet (the hatching is laid in light()), with a stippled edge.
 		c *= mix(vec3(1.0), SKY_CLOUD_SHADE, step(d, cloud * 0.999) * sky_clouds.w);
 	}
-	float fog = sky_fog_at(world_pos, time);
+	// Each bank's edge is a band of stipple a few pixels wide wherever it lies.
+	float fog = sky_fog_at(world_pos, px, max(fwidth(world_pos.x) + fwidth(world_pos.z), 0.01) * 0.035);
 	if (fog > 0.0) {
-		// The page showing through: washes lighten toward linen in two steps,
-		// dithered between. Under the moon the page is blue too.
-		float level = (step(d, fog * 1.6 - 0.1) + step(d, fog * 1.6 - 0.7)) * 0.5;
-		c = mix(c, SKY_PAGE * sky_tint, level * 0.5);
+		// The page showing through: washes lighten toward linen in two steps.
+		// Under the moon the page is blue too.
+		c = mix(c, SKY_PAGE * sky_tint, fog * 0.5);
 	}
 	if (sky_sun.w > 0.001) {
 		// Lightning: for a moment the whole page shows.
