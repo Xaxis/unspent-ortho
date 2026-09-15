@@ -44,6 +44,13 @@ const MARGIN := 10
 const ECO_SPREAD := 0.95
 
 const _KEY_WET := 1 << 16
+## How far a bank at the level of the water beside it lips up: just above the
+## inland sheet (WADE). Keys carry the shore profile index in bits 17-21.
+const BANK_LIFT := 0.36
+## Inland wetness at which the land is under the sheet.
+const WET_EDGE := 0.4
+static var _LIFTS := PackedFloat32Array()
+var _blur: Dictionary = {}
 ## Cumulative build time by stage (usec) and vertices, for tools/gd/bench_chunks.gd.
 static var PROF := PackedInt64Array([0, 0, 0, 0, 0, 0, 0, 0])
 ## Tiles of country and shore data kept around a chunk for warped lookups.
@@ -160,8 +167,8 @@ class Chunk:
 		var val := lerpf(lerpf(f[a], f[a + 1], fu), lerpf(f[a + n + 1], f[a + n + 2], fu), fv)
 		var l := floori(val + 0.5)
 		var ht := TerrainMesher.level_height(l)
-		if l > 0 and (key[_lat(x, y)] & TerrainMesher._KEY_WET) != 0:
-			ht -= TerrainMesher.WET_SINK
+		if l > 0:
+			ht += TerrainMesher._lift(key[_lat(x, y)])
 		return ht
 
 
@@ -169,6 +176,10 @@ static func _static_init() -> void:
 	_WET.resize(256)
 	for g in 256:
 		_WET[g] = 1 if Ground.is_water(g) else 0
+	_LIFTS.resize(32)
+	_LIFTS[0] = 0.0
+	for i in range(1, 32):
+		_LIFTS[i] = _profile(0.12 + (i - 1) / 30.0 * 0.88)
 
 
 func _init(w: WorldData) -> void:
@@ -214,6 +225,71 @@ func _init(w: WorldData) -> void:
 				var fr := Palette.RIME[4] if snow else GroundColors.down(col, 1.0)
 				fr.a = 1.0
 				_tab_front[i] = fr
+
+
+## Vertical offset of a land vertex with key k: the shore profile of inland
+## water (a lip, then down to the bed).
+static func _lift(k: int) -> float:
+	return _LIFTS[(k >> 17) & 31]
+
+
+## Shore profile index (0 = none) for an inland wetness value wf.
+static func _shore_lift(wf: float) -> int:
+	if wf < 0.12:
+		return 0
+	return 1 + roundi(clampf((wf - 0.12) / 0.88, 0.0, 1.0) * 30.0)
+
+
+static func _profile(wf: float) -> float:
+	if wf < 0.12:
+		return 0.0
+	if wf < 0.34:
+		return lerpf(0.0, BANK_LIFT, (wf - 0.12) / 0.22)
+	if wf < WET_EDGE:
+		return lerpf(BANK_LIFT, WADE, (wf - 0.34) / (WET_EDGE - 0.34))
+	return lerpf(WADE, -WET_SINK, clampf((wf - WET_EDGE) / 0.3, 0.0, 1.0))
+
+
+## Wetness of inland water at `terrace` at (x, y), from the blurred tile window
+## for that level (made on first use per chunk).
+func _wet_field(x: float, y: float, terrace: int, wl: PackedInt32Array, rx0: int, ry0: int, rw: int, rh: int) -> float:
+	if not _blur.has(terrace):
+		var bw := PackedFloat32Array()
+		bw.resize(rw * rh)
+		for yy in rh:
+			for xx in rw:
+				var sum := 0
+				for dy in range(-1, 2):
+					var ny := clampi(yy + dy, 0, rh - 1) * rw
+					for dx in range(-1, 2):
+						if wl[ny + clampi(xx + dx, 0, rw - 1)] == terrace:
+							sum += (2 - absi(dx)) * (2 - absi(dy))
+				bw[yy * rw + xx] = sum / 16.0
+		_blur[terrace] = bw
+	var b: PackedFloat32Array = _blur[terrace]
+	var gx := x - 0.5
+	var gy := y - 0.5
+	var ix := clampi(floori(gx) - rx0, 0, rw - 2)
+	var iy := clampi(floori(gy) - ry0, 0, rh - 2)
+	var fx := clampf(gx - (ix + rx0), 0.0, 1.0)
+	var fy := clampf(gy - (iy + ry0), 0.0, 1.0)
+	var a := iy * rw + ix
+	var top := b[a] + (b[a + 1] - b[a]) * fx
+	var bot := b[a + rw] + (b[a + rw + 1] - b[a + rw]) * fx
+	return top + (bot - top) * fy
+
+
+## The ground of the inland water at `terrace` nearest (x, y).
+func _water_ground(x: float, y: float, terrace: int, wl: PackedInt32Array, tg: PackedByteArray, rx0: int, ry0: int, rw: int, rh: int) -> int:
+	var tx := clampi(floori(x) - rx0, 0, rw - 1)
+	var ty := clampi(floori(y) - ry0, 0, rh - 1)
+	for r in 3:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var o := clampi(ty + dy, 0, rh - 1) * rw + clampi(tx + dx, 0, rw - 1)
+				if wl[o] == terrace:
+					return tg[o]
+	return Ground.RIVER
 
 
 static func level_height(l: int) -> float:
@@ -344,6 +420,13 @@ func build(cx: int, cy: int) -> Chunk:
 	# worlds get their sub-grounds here) and whether it holds inland water.
 	var tg := PackedByteArray()
 	tg.resize(rw * rh)
+	var inland := false
+	_blur.clear()
+	# Level of the inland water in each ring tile (0 none), and nearness to it.
+	var wl := PackedInt32Array()
+	wl.resize(rw * rh)
+	var near := PackedByteArray()
+	near.resize(rw * rh)
 	for yy in rh:
 		var ty := clampi(ry0 + yy, 0, size - 1)
 		for xx in rw:
@@ -352,7 +435,22 @@ func build(cx: int, cy: int) -> Chunk:
 			var g: int = ground[ty * size + tx]
 			if legacy and _WET[g] == 0:
 				g = eco.legacy_ground(g, rc[o], tx + 0.5, ty + 0.5, shore[o])
+			elif _WET[g] == 1 and level[ty * size + tx] > 0:
+				inland = true
+				wl[o] = level[ty * size + tx]
 			tg[o] = g
+	if inland:
+		# Lattice points within reach of inland water (the field and its warp).
+		for yy in rh:
+			for xx in rw:
+				if wl[yy * rw + xx] == 0:
+					continue
+				for dy in range(-2, 3):
+					for dx in range(-2, 3):
+						var ny := yy + dy
+						var nx := xx + dx
+						if nx >= 0 and ny >= 0 and nx < rw and ny < rh:
+							near[ny * rw + nx] = 1
 	# Raw and smoothed tile levels: contours run straight along a diagonal coast
 	# instead of stepping round every tile. Raw covers x0-3 .. x1+2.
 	var aw := ch.w + 6
@@ -405,18 +503,17 @@ func build(cx: int, cy: int) -> Chunk:
 			ch.f[li] = v
 			var terrace := floori(v + 0.5)
 			ch.t[li] = terrace
-			# Wet is read from the tile itself (a warped lookup would float water
-			# over a bank): the sea below the shore contour, inland water above it.
-			var uo := (floori(sy) - ry0) * rw + (floori(sx) - rx0)
-			var wet := terrace <= 0 or (_WET[tg[uo]] == 1 and level[clampi(floori(sy), 0, size - 1) * size + clampi(floori(sx), 0, size - 1)] > 0)
 			if terrace <= 0:
 				# The sea bed is never seen: one key, so it merges into runs.
 				ch.key[li] = Ground.WATER | _KEY_WET
 			else:
-				# Ground under a warp, so type boundaries wander with the contours.
+				# Ground under a warp, so type boundaries (and the edges of inland
+				# water) wander with the contours instead of following tiles.
 				var wx := sx + 0.01 + _warp.get_noise_2d(sx * 0.9 + 70.0, sy * 0.9) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
 				var wy := sy + 0.01 + _warp.get_noise_2d(sx * 0.9, sy * 0.9 + 70.0) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
-				var o := (clampi(floori(wy), ry0, ry0 + rh - 1) - ry0) * rw + (clampi(floori(wx), rx0, rx0 + rw - 1) - rx0)
+				var otx := clampi(floori(wx), rx0, rx0 + rw - 1)
+				var oty := clampi(floori(wy), ry0, ry0 + rh - 1)
+				var o := (oty - ry0) * rw + (otx - rx0)
 				var g: int = tg[o]
 				var c: int = rc[o]
 				var dc := c
@@ -424,13 +521,26 @@ func build(cx: int, cy: int) -> Chunk:
 				if b > 0.0 and rc2[o] != c and _eco.get_noise_2d(sx, sy) < (b - 0.5) * ECO_SPREAD:
 					dc = rc2[o]
 					if legacy and _WET[g] == 0:
-						g = eco.legacy_ground(GroundColors.morph(ground[clampi(floori(wy), 0, size - 1) * size + clampi(floori(wx), 0, size - 1)], dc), dc, sx, sy, shore[o])
-				if wet:
-					if _WET[g] == 0:
-						g = tg[uo]
-				elif _WET[g] == 1:
-					g = tg[uo] if _WET[tg[uo]] == 0 else Ground.SAND
-				ch.key[li] = g | (dc << 8) | (_KEY_WET if wet else 0)
+						g = eco.legacy_ground(GroundColors.morph(ground[clampi(oty, 0, size - 1) * size + clampi(otx, 0, size - 1)], dc), dc, sx, sy, shore[o])
+				var extra := 0
+				var wf := 0.0
+				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:
+					# Inland water is a smooth field, read through the same warp as the
+					# grounds: its shore slopes up to a lip and down to a bed, so the
+					# sheet meets the land on a curve instead of a tile edge.
+					wf = _wet_field(wx, wy, terrace, wl, rx0, ry0, rw, rh)
+					extra = _shore_lift(wf) << 17
+					if wf >= WET_EDGE:
+						extra |= _KEY_WET
+						if _WET[g] == 0:
+							g = _water_ground(wx, wy, terrace, wl, tg, rx0, ry0, rw, rh)
+				if _WET[g] == 1 and (extra & _KEY_WET) == 0:
+					g = GroundColors.bank(dc)
+				ch.key[li] = g | (dc << 8) | extra
+				if (extra & _KEY_WET) != 0:
+					# Inland depth from the same field, so bands follow the shore.
+					depth[li] = (wf - WET_EDGE) * 6.0
+					continue
 			if has_water:
 				# Signed tiles to the waterline, bilinear between tile centres.
 				var so := clampi(iy - ry0, 0, rh - 2) * rw + clampi(ix - rx0, 0, rw - 2)
@@ -501,10 +611,10 @@ func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: in
 	_oy = py
 	_paint(_k1, _k2, terrace)
 	var h := level_height(terrace)
-	var h00 := h - WET_SINK if (k00 & _KEY_WET) != 0 else h
-	var h10 := h - WET_SINK if (k10 & _KEY_WET) != 0 else h
-	var h11 := h - WET_SINK if (k11 & _KEY_WET) != 0 else h
-	var h01 := h - WET_SINK if (k01 & _KEY_WET) != 0 else h
+	var h00 := h + _lift(k00)
+	var h10 := h + _lift(k10)
+	var h11 := h + _lift(k11)
+	var h01 := h + _lift(k01)
 	var s := 0.5
 	_vtop(px, h00, py)
 	_vtop(px + s, h10, py)
@@ -598,8 +708,7 @@ func _flat_run(ch: Chunk, i0: int, i1: int, py: float, k: int, terrace: int) -> 
 	_w11 = 0.0
 	_w01 = 0.0
 	var h := level_height(terrace)
-	if terrace > 0 and (k & _KEY_WET) != 0:
-		h -= WET_SINK
+	h += _lift(k)
 	var xa := ch.x0 + i0 * 0.5
 	var xb := ch.x0 + i1 * 0.5
 	var yb := py + 0.5
@@ -654,14 +763,14 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 		# Under the sea sheet the lowest terrace is never seen.
 		_paint(_k1, _k2, lo)
 		var h0 := level_height(lo)
-		var ha := h0 - WET_SINK if (_ck[0] & _KEY_WET) != 0 else h0
-		var hc := h0 - WET_SINK if (_ck[2] & _KEY_WET) != 0 else h0
+		var ha := h0 + _lift(_ck[0])
+		var hc := h0 + _lift(_ck[2])
 		_vtop(px, ha, py)
-		_vtop(px + s, h0 - WET_SINK if (_ck[1] & _KEY_WET) != 0 else h0, py)
+		_vtop(px + s, h0 + _lift(_ck[1]), py)
 		_vtop(px + s, hc, py + s)
 		_vtop(px, ha, py)
 		_vtop(px + s, hc, py + s)
-		_vtop(px, h0 - WET_SINK if (_ck[3] & _KEY_WET) != 0 else h0, py + s)
+		_vtop(px, h0 + _lift(_ck[3]), py + s)
 	for L in range(maxi(lo + 1, 1), hi + 1):
 		var thr := L - 0.5
 		var h := level_height(L)
@@ -683,7 +792,7 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 			var a := _cv[e]
 			var ina := a >= thr
 			if ina:
-				_poly.append(Vector3(_cx[e], h - WET_SINK if (_ck[e] & _KEY_WET) != 0 else h, _cz[e]))
+				_poly.append(Vector3(_cx[e], h + _lift(_ck[e]), _cz[e]))
 				if near_e < 0:
 					near_e = e
 			if ina != (_cv[e2] >= thr):
@@ -740,7 +849,7 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 		var bz := _cz[e] + (_cz[e0] - _cz[e]) * tb
 		var ax := _cx[e] + (_cx[e2] - _cx[e]) * ta
 		var az := _cz[e] + (_cz[e2] - _cz[e]) * ta
-		var hc := h - WET_SINK if (_ck[e] & _KEY_WET) != 0 else h
+		var hc := h + _lift(_ck[e])
 		if ina and not centre:
 			# Separate islands at the inside corners.
 			_vtop(_cx[e], hc, _cz[e])
@@ -1003,21 +1112,8 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				col[li] = Color(0.0, 0.5, 0.5, clampf(depth[li] / 9.0, 0.0, 1.0))
 				continue
 			var lx := ch.x0 + i * 0.5
-			var h := terrace * WorldData.STEP + WADE
-			# A same-level bank keeps its water below its lip. Read from the tiles
-			# that touch the point, so neighbouring chunks agree.
-			var ta := floori(lx - 0.49)
-			var tb := floori(lx + 0.49)
-			var ya := floori(ly - 0.49)
-			var yb := floori(ly + 0.49)
-			for ty: int in [ya, yb]:
-				for tx: int in [ta, tb]:
-					if tx < 0 or ty < 0 or tx >= size or ty >= size:
-						continue
-					var ti := ty * size + tx
-					if w.level[ti] > 0 and _WET[w.ground[ti]] == 0:
-						h = minf(h, w.level[ti] * WorldData.STEP - 0.08)
-			sheet[li] = h
+			# Level water: a sheet over its terrace, under any bank (which lips up).
+			sheet[li] = terrace * WorldData.STEP + WADE
 			var kind := 2 if (k & 0xFF) == Ground.BLACKWATER else 1
 			var flow := Vector2.ZERO
 			if kind == 1:
@@ -1046,7 +1142,10 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 			if j < m and sheet[li + np] != INF and (from < 0 or sheet[li + np] < sheet[from]):
 				from = li + np
 			if from >= 0:
-				fill[li] = sheet[from]
+				# Tuck the sheet's edge under the land, so the waterline is where
+				# the two cross and never a square of water over a bank.
+				var t := ch.t[li]
+				fill[li] = sheet[from] if t <= 0 else minf(sheet[from], level_height(t) + _lift(ch.key[li]) - 0.03)
 				var c := col[from]
 				col[li] = Color(c.r, c.g, c.b, 0.0)
 	for j in m:

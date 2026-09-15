@@ -111,9 +111,10 @@ void fragment() {
 				c = h < 0.08 ? FOAM : BRINE4;
 			}
 		}
-		// Where the sheet falls it breaks white.
+		// Where running water falls it breaks white (a sheet tucked under a bank
+		// slopes too, but it is at the waterline, not in the stream).
 		float slope = fwidth(world_pos.y) / max(fwidth(wp.x) + fwidth(wp.y), 1e-4);
-		if (slope > 0.25) {
+		if (slope > 0.25 && fl > 0.2 && d > 0.05) {
 			float streak = ink_hash(vec2(floor(px.x / 2.0), floor((px.y + TIME * 24.0) / 3.0)));
 			c = streak < 0.5 ? FOAM : BRINE4;
 		}

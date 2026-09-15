@@ -254,6 +254,18 @@ static func morph(g: int, to: int) -> int:
 	return g
 
 
+## What the bank of inland water is drawn as where the tile under it is wet
+## but the terrace is not.
+static func bank(c: int) -> int:
+	match c:
+		Country.MOSS: return Ground.PEAT
+		Country.PINEWOOD: return Ground.NEEDLES
+		Country.SNOWFIELD: return Ground.SNOW
+		Country.BONELANDS: return Ground.GRAVEL
+		Country.BURNING: return Ground.ASH
+	return Ground.SAND
+
+
 static func home_turf(c: int) -> int:
 	match c:
 		Country.MOSS: return Ground.MOSS
