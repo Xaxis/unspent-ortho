@@ -256,7 +256,7 @@ void fragment() {
 
 const _FLASH := """
 shader_type spatial;
-render_mode unshaded, cull_back, depth_draw_never, shadows_disabled, fog_disabled;
+render_mode unshaded, cull_back, shadows_disabled, fog_disabled;
 uniform vec3 col = vec3(0.91, 0.86, 0.75);
 void fragment() {
 	ALBEDO = col;
@@ -480,6 +480,7 @@ static func swing_material() -> ShaderMaterial:
 
 ## Paper-white over every drawn part of a body while `on` (skips glow cards,
 ## which are not ArrayMeshes, so a halo never flashes as a square).
+## MultiMesh parts (a flock's shards) flash too.
 static func set_flash(root: Node, on: bool) -> void:
 	if root == null:
 		return
@@ -501,9 +502,13 @@ static func _flash_under(n: Node, on: bool) -> void:
 		var mi := n as MeshInstance3D
 		var drawn := mi == null or mi.mesh is ArrayMesh
 		if drawn:
-			if on and gi.material_overlay == null:
-				gi.material_overlay = _flash_mat
-			elif not on and gi.material_overlay == _flash_mat:
-				gi.material_overlay = null
+			# The body's own material is set aside for the flash and put back after.
+			# (An overlay pass would be kinder, but the Compatibility renderer draws none.)
+			if on and not gi.has_meta(&"unflashed"):
+				gi.set_meta(&"unflashed", gi.material_override)
+				gi.material_override = _flash_mat
+			elif not on and gi.has_meta(&"unflashed"):
+				gi.material_override = gi.get_meta(&"unflashed") as Material
+				gi.remove_meta(&"unflashed")
 	for c in n.get_children():
 		_flash_under(c, on)

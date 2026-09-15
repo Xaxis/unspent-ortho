@@ -161,7 +161,7 @@ const DEFS := {
 		"sees": 8, "hears": 14, "racket": 0, "reach": 1, "ready": 2, "forget": 24, "tether": 20, "safe": 12,
 		"nerve": 34, "invuln": 500, "stagger": true,
 		"bite": {"swing": [280, 90, 200, 380], "reach": 0.85, "width": 0.9, "dmg": 2, "knock": 5.0, "knock_ms": 220},
-		"takes": 25.0, "drops": 0, "linger": 45.0, "chance": 9,
+		"takes": 25.0, "drops": 0, "linger": 45.0, "chance": 4,
 		"where": {"countries": GREEN_COUNTRIES, "green_max": 40},
 	},
 	&"dog.feral": {

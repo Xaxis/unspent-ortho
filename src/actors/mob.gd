@@ -143,7 +143,8 @@ func _lean(now_ms: float, delta: float) -> void:
 
 
 func flash(seconds: float = 0.06) -> void:
-	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+	# A shot's held moment keeps the flash, as it keeps every other mark.
+	_flash_until = Time.get_ticks_msec() + (100000000 if MobFx.hold else int(seconds * 1000.0))
 
 
 func flare() -> void:

@@ -110,7 +110,8 @@ func draw_swing(now_ms: float) -> void:
 
 ## A hit landed on this body: a short bright flash.
 func flash(seconds: float = 0.07) -> void:
-	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+	# A shot's held moment keeps the flash, as it keeps every other mark.
+	_flash_until = Time.get_ticks_msec() + (100000000 if MobFx.hold else int(seconds * 1000.0))
 
 
 ## Something has hold: the figure shudders against it.
