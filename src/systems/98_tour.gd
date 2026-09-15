@@ -110,6 +110,11 @@ func _run() -> void:
 
 
 func _teleport(p: Vector2) -> void:
+	# The fight body owns the player's place in a running game; move it too, or
+	# the next step puts the player straight back.
+	if game.player.hero != null:
+		game.player.hero.pos = p
+		game.player.hero.move = Vector2.ZERO
 	game.player.pos = p
 	game.player.position = game.world.to_3d(p)
 	game.view.ensure_near(p)

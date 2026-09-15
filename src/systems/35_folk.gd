@@ -73,7 +73,7 @@ func _player_flags() -> void:
 	if o.look != "":
 		m.set_look(parse_look(o.look, o.seed_value))
 	if o.face != "" and game.player != null:
-		game.player.facing = deg_to_rad(o.face.to_float())
+		Survival.face(game, deg_to_rad(o.face.to_float()))
 		m.rotation.y = -game.player.facing
 	if o.pose != "":
 		var parts := o.pose.split(":")

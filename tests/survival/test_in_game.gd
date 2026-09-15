@@ -156,4 +156,8 @@ func _system(part: String) -> Node:
 
 ## A prop just in front of the player, wherever it stands.
 func _put(kind: int) -> WorldProp:
+	# In a running game the fight body owns facing and hands it back to the
+	# player every frame: turn both, or the turn is undone before a key is read.
+	if game.player.hero != null:
+		game.player.hero.facing = game.player.facing
 	return Fx.put(game, kind, Vector2.from_angle(game.player.facing) * (0.55 + PropKind.SOLID[kind]))
