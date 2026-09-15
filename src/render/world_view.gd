@@ -49,6 +49,8 @@ var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
 var _water_mat: ShaderMaterial
+## Where the machines cut the ground (read-only once baked; both threads read it).
+var works: WorksMap
 
 ## Build timing, for --stats: whole builds (arrays, meshes, props) and the
 ## part of each that ran on the main thread.
@@ -69,6 +71,11 @@ func setup(w: WorldData) -> void:
 	_world_mat.shader = preload("res://src/render/world.gdshader")
 	_water_mat = ShaderMaterial.new()
 	_water_mat.shader = preload("res://src/render/water.gdshader")
+	# The machines' works cut into the ground, for the shader and the decor.
+	works = WorksMap.bake(w)
+	works.bind(_world_mat)
+	decor.works = works
+	_bg_decor.works = works
 	for p in w.props:
 		var key := _key_of(p.pos)
 		if not _props_by_chunk.has(key):
@@ -432,6 +439,9 @@ static func cable_points(kind: int) -> PackedVector3Array:
 			return PackedVector3Array([Vector3(0, 3.1, 1.1), Vector3(0, 3.1, -1.1), Vector3(0, 2.4, 0.8), Vector3(0, 2.4, -0.8)])
 		PropKind.POLE:
 			return PackedVector3Array([Vector3(0, 2.7, 0.42), Vector3(0, 2.7, -0.42)])
+		PropKind.RELAY:
+			# Under the insulators on the crossarm (props/works.gd relay).
+			return PackedVector3Array([Vector3(0, 3.12, 0.55), Vector3(0, 3.12, -0.55)])
 	return PackedVector3Array()
 
 

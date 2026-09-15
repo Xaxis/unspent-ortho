@@ -31,6 +31,9 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 
 var world: WorldData
+## The machines' works (WorksMap), when a view has baked one: scrap gathers in
+## them and the growing things thin.
+var works: WorksMap
 var _bloom: FastNoiseLite
 ## Where small life gathers: specks come in drifts and the ground between is
 ## left bare (docs/ART.md: masses stay flat, interest lives in rare places).

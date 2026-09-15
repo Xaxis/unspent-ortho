@@ -376,14 +376,19 @@ static func country_tint(country: int) -> Vector3:
 const NEON_DAY := Vector4(0.04, 0.22, 0.10, 0.18)
 const NEON_NIGHT := Vector4(0.0, 0.25, 0.12, 0.10)
 ## Per country: [grade offset Vector4, base wet].
+## The land now carries its own evidence (GenWorks, WorksMap), so the grade
+## leans each landscape only as far as its light: a bleak grey coast, the moss's
+## green gloom kept readable enough to see the cuts in it, the pines a shade
+## under their canopy, the snow's cold glare, the bones' hard white, the
+## burning's warm low furnace.
 const NEON_COUNTRY := {
 	Country.SEA: [Vector4(0.0, 0.0, 0.04, 0.0), 0.0],
-	Country.COAST: [Vector4(0.0, 0.0, 0.03, 0.0), 0.15],
-	Country.MOSS: [Vector4(0.03, 0.1, 0.02, 0.05), 0.5],
-	Country.PINEWOOD: [Vector4(0.03, 0.05, 0.04, 0.05), 0.25],
-	Country.SNOWFIELD: [Vector4(-0.04, 0.08, 0.08, -0.05), 0.0],
-	Country.BONELANDS: [Vector4(-0.02, 0.15, -0.02, 0.1), 0.0],
-	Country.BURNING: [Vector4(0.03, -0.1, -0.15, 0.08), 0.0],
+	Country.COAST: [Vector4(0.0, 0.04, 0.03, 0.02), 0.15],
+	Country.MOSS: [Vector4(0.0, 0.08, 0.0, 0.06), 0.35],
+	Country.PINEWOOD: [Vector4(0.015, 0.05, 0.03, 0.06), 0.2],
+	Country.SNOWFIELD: [Vector4(-0.04, 0.08, 0.08, -0.03), 0.0],
+	Country.BONELANDS: [Vector4(-0.03, 0.14, -0.02, 0.12), 0.0],
+	Country.BURNING: [Vector4(0.02, -0.1, -0.15, 0.1), 0.0],
 }
 
 
