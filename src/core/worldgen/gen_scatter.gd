@@ -1,9 +1,9 @@
 class_name GenScatter
-## Stages 8 and 10: places worth walking to, then every prop.
+## Stages 10 and 12: places worth walking to, then every prop.
 ##
 ## Sites (before grounds, since a tip lays its own gravel): tips of machine
 ## leavings in every country, stone circles, wrecks on bay beaches, ruins,
-## cairns on summits, the caldera.
+## cairns on summits, falls where rivers step down, the caldera.
 ##
 ## Props (after grounds): villages first (square with lamp, fire and bench;
 ## houses facing in), then landmarks, then the machines' grid (pylon and pole

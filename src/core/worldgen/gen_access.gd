@@ -1,5 +1,5 @@
 class_name GenAccess
-## Stage 7: every piece of land worth standing on can be walked to.
+## Stage 9: every piece of land worth standing on can be walked to.
 ##
 ## Terraces, scarps, gorges and calderas make cliffs, and cliffs can wall a
 ## plateau off. Walkable regions are labelled (a body steps one level; deep

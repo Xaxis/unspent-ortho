@@ -1,18 +1,20 @@
 class_name WorldGen
-## seed -> WorldData. Deterministic, no side effects, no nodes.
+## seed -> WorldData. Deterministic, no side effects, no nodes. Per-tile passes
+## run in row bands on the WorkerThreadPool (GenFields.rows); results never
+## depend on scheduling.
 ##
 ## Stages (src/core/worldgen/), each reading only what earlier ones wrote:
-##   1. shape      GenShape      one island, bays and headlands, sea on every edge
+##   1. shape      GenShape      one island: peninsulas, bays, sea lochs, islets, sea on every edge
 ##   2. layout     GenCountries  countries as a journey north from the south coast, balanced shares
-##   3. relief     GenRelief     float elevation per country; beaches, sea cliffs, shingle ledges
-##   4. tiles      GenCountries  country, country2 and blend per tile (ecotones)
+##   3. relief     GenRelief     float elevation per country; beaches, dunes, sea cliffs, stacks, caldera
+##   4. tiles      GenCountries  country, country2 and blend per tile (ecotones), on the worker pool
 ##   5. rivers     GenWater      drainage from high ground to the sea, beds and valleys
 ##   6. terrace    GenRelief     integer levels
 ##   7. still      GenWater      blackwater pools, frozen tarns
 ##   8. settle     GenSettle     villages (levelled), roads (graded, bridged), spawn
 ##   9. access     GenAccess     scree breaches so every region can be walked to
-##  10. sites      GenScatter    tips, circles, wrecks, ruins, summits
-##  11. surface    GenSurface    grounds from world-position fields
+##  10. sites      GenScatter    tips, circles, wrecks, ruins, summits, falls
+##  11. surface    GenSurface    grounds from world-position fields and the lie of the land
 ##  12. props      GenScatter    villages, landmarks, the machines' grid, scatter
 
 const DEFAULT_SIZE := Tuning.WORLD_SIZE

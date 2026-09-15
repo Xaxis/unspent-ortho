@@ -1,5 +1,5 @@
 class_name GenRelief
-## Stage 3: float elevation, in levels. Each country has its own relief (low
+## Stages 3 and 6: float elevation, in levels. Each country has its own relief (low
 ## fen, rolling coast, pine hills, a limestone plateau of stepped scarps, a
 ## ridged range, a caldera), blended by soft membership so land rises and
 ## falls over many tiles. The shore is a beach in bays and a cliff on

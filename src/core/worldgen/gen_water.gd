@@ -1,5 +1,5 @@
 class_name GenWater
-## Stage 4: rivers and still water.
+## Stages 5 and 7: rivers and still water.
 ##
 ## Rivers are traced, not painted: a priority flood from the sea over the
 ## coarse elevation gives every cell a way downhill to the sea (through any

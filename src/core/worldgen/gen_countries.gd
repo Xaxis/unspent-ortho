@@ -1,5 +1,5 @@
 class_name GenCountries
-## Stage 2 (coarse layout) and stage 5 (tiles, ecotones): where each country is.
+## Stage 2 (coarse layout) and stage 4 (tiles, ecotones): where each country is.
 ##
 ## The island is laid out as a JOURNEY. The Coast holds the south shore where
 ## the player wakes; a middle belt (Moss, Pinewood, Bonelands) crosses the

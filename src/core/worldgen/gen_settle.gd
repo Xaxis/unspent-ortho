@@ -1,13 +1,17 @@
 class_name GenSettle
-## Stage 6: villages, the roads between them, and where the player wakes.
+## Stage 8: villages, the roads between them, and where the player wakes.
 ##
-## Villages sit on flat dry ground, spread across countries by quota (the
-## Coast holds the most; the Burning gets one hard outpost), each with its
-## core levelled so houses stand square. Village 0 is on the south coast: the
-## spawn village. Roads are least-cost paths over a half-resolution grid that
-## prefer flat ground, avoid cliffs, share existing road, and cross rivers
-## where they must (the crossing tile becomes road: a bridge). Rasterised roads
-## are graded so every step along them is walkable.
+## Villages sit on flat dry ground on the island (never an islet), spread
+## across countries by quota (the Coast holds the most; the Snowfield and the
+## Burning get one hard outpost each, levelled out of rough ground if need
+## be), each with its core levelled so houses stand square. Village 0 is on
+## the south coast: the spawn village. Roads are least-cost paths over a
+## half-resolution grid that prefer flat ground, avoid cliffs, share existing
+## road, and cross rivers where they must (the crossing tiles become road and
+## a `bridge` landmark). Rasterised roads are graded so every step along them
+## is walkable, cut down to fords rather than lifting a river, and widened to
+## ribbons on the diagonals. A village a tree edge fails to reach is joined to
+## its nearest reachable neighbour.
 
 ## Villages wanted per country id (sea, coast, moss, pinewood, snowfield, bonelands, burning).
 const QUOTA: PackedInt32Array = [0, 3, 2, 2, 1, 2, 1]

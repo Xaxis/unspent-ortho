@@ -1,5 +1,5 @@
 class_name GenSurface
-## Stage 9: what every tile's surface is made of.
+## Stage 11: what every tile's surface is made of.
 ##
 ## Each country has a recipe read from smooth world-position fields, never
 ## per-tile noise, and from the lie of the land: `rise` is how far a tile
