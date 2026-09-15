@@ -153,3 +153,26 @@ func test_a_body_reports_the_top_of_its_whole_silhouette() -> void:
 	gt(top.dot(up), base + 0.5, "the top is above the feet on screen")
 	mob.queue_free()
 	await frames(1)
+
+
+func test_a_mob_says_when_it_has_noticed_and_tells_its_machine_it_hunts() -> void:
+	var w := F.flat_world(32)
+	var s := MobState.new(&"runner", Vector2(10.5, 10.5), 9)
+	var mob := Mob.new()
+	tree.root.add_child(mob)
+	mob.setup(s, w, null)
+	var machine := mob.model as MachineModel
+	check(machine != null, "a runner is drawn by its machine")
+	check(not mob.aware and not machine.hunting, "idle: nothing noticed, nothing hunted")
+	s.mood = MobState.ALERTED
+	mob.sync_view(0.016, 0.0)
+	check(mob.aware, "alerted: it has noticed")
+	check(not machine.hunting, "but it is not running anyone down yet")
+	s.mood = MobState.CHASING
+	mob.sync_view(0.016, 16.0)
+	check(mob.aware and machine.hunting, "chasing: aware, and its eyes lock on the hunt")
+	s.mood = MobState.IDLE
+	mob.sync_view(0.016, 32.0)
+	check(not mob.aware and not machine.hunting, "given up: neither")
+	mob.queue_free()
+	await frames(1)

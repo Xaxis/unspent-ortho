@@ -2,8 +2,9 @@ class_name Mob
 extends Node3D
 ## A machine or creature in the world: draws a MobState (which FightSim steps)
 ## with a FigureModel. Contract for everyone else: joins group &"mobs" and
-## exposes `kind`, `pos` (tile space), `alive` and `hostile` (false for things
-## that only pester, like gulls, so the notebook keeps its hints near them).
+## exposes `kind`, `pos` (tile space), `alive`, `hostile` (false for things
+## that only pester, like gulls, so the slate keeps its hints near them) and
+## `aware` (it has noticed the player: alerted, chasing or attacking).
 ##
 ## The body telegraphs so a player can learn it: the alert pose when it
 ## notices you, the windup pose (and a lean back) through a bite's tell, the
@@ -15,6 +16,8 @@ var kind: StringName = &""
 var pos := Vector2.ZERO
 var alive := true
 var hostile := true
+## Noticed the player: alerted, chasing or attacking (the score tenses for it).
+var aware := false
 var state: MobState
 var model: FigureModel
 ## Carries the lean and the heave; the model sits on it facing +X.
@@ -31,6 +34,8 @@ var _flashing := false
 var _tilt := Quaternion.IDENTITY
 ## The flare_until this view has already flared the part for.
 var _flared_for := 0.0
+## What the figure was last told about running something down: -1 nothing yet.
+var _hunting := -1
 
 
 ## `figure`: a body to draw with instead of FigureModel.create (tests).
@@ -66,6 +71,12 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	_holding = holding
 	pos = s.pos
 	alive = s.alive
+	aware = s.alive and (s.mood == MobState.ALERTED or s.mood == MobState.CHASING or s.mood == MobState.ATTACKING)
+	# The machine's eyes lock on a hunt, not on an errand that only walks near.
+	var hunting := s.alive and s.approach != &"errand" and (s.mood == MobState.CHASING or s.mood == MobState.ATTACKING)
+	if int(hunting) != _hunting:
+		_hunting = int(hunting)
+		model.set_hunting(hunting)
 	var ground := _world.height_at(s.pos)
 	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
@@ -163,24 +174,13 @@ func flash(seconds: float = 0.06) -> void:
 
 ## The point of the drawn body highest on screen (`up`: the camera's up), so a
 ## mark can stand clear of the whole silhouette, a long body's far end included.
+## The figure says where its posed body reaches (FigureModel.top_toward: a
+## machine reads its bones as posed, a raised mast included); never lower than
+## the roster's height.
 func screen_top(up: Vector3) -> Vector3:
 	var best := global_position + Vector3(0, float(state.row.get("height", 1.0)), 0)
-	var best_d := best.dot(up)
-	for n in model.find_children("*", "MeshInstance3D", true, false):
-		var mi := n as MeshInstance3D
-		if mi.mesh == null or not mi.is_visible_in_tree() or not (mi.mesh is ArrayMesh):
-			continue
-		# The mesh's own box corners carried into the world one by one: a box of the
-		# carried box would stand far above a body turned across the camera.
-		var box := mi.mesh.get_aabb()
-		var xf := mi.global_transform
-		for i in 8:
-			var c := xf * box.get_endpoint(i)
-			var d := c.dot(up)
-			if d > best_d:
-				best_d = d
-				best = c
-	return best
+	var top := model.top_toward(up)
+	return top if top.dot(up) > best.dot(up) else best
 
 
 ## Where the working part is in the world (the body's middle when it has none,
