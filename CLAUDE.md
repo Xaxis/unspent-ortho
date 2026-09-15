@@ -14,20 +14,33 @@ dialogue or lore**: all fiction is being rewritten (see `docs/DESIGN.md` §Story
 ## The loop (memorise this)
 
 ```sh
-tools/check.sh                              # THE gate: tests + 4 real frames. ~11 s. Run before every commit.
-tools/test.sh [filter]                      # headless tests only, ~5 s
+tools/check.sh                              # THE gate: 3 test shards + 4 real frames side by side. ~35 s. Run before every commit.
+tools/test.sh [filter]                      # headless tests only (one process, ~45 s for all; filter by "file:method" substring)
 tools/shot.sh shots/x.png [options]         # one real rendered frame, ~2 s
 tools/shot.sh shots/g.png --scene=gallery [--filter=pine]   # every model, lit, on a plinth
-tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country
+tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country and ecotone
 tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
-godot --path .                              # play it (WASD, Shift run, Space swing, K dodge, E use)
+tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
+godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```
 
-Shot options (`src/boot_options.gd`): `--seed=N --size=N --at=X,Y --village=N
---hour=H --zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery`.
+Shot and boot options live in `src/boot_options.gd` (its header lists every one).
+The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
+--zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery|title
+--stats`; staging a moment: `--weather=KIND:S --lamp --spawn=K,K --act=NAME[:MS]
+--give=ID:N --held=ID --build=STATION --put=KIND --use[=KIND] --hold=SECS
+--screen=NAME --explore=N --parade=K --folk=N --fauna=KIND:N --look= --pose= --face=`.
 
-**Tours** (`tours/*.tour`, format in `src/systems/98_tour.gd`) are how a feature is
-proven reachable: walk there, press the real action, shoot what happened.
+**Tours** (`tours/*.tour`, commands in the header of `src/systems/98_tour.gd`) are
+how a feature is proven reachable: walk there, press the real action, `await`
+what a player would see, shoot it. A tour fails if an awaited thing never comes,
+and saves a `FAILED-lineN` frame. The M1 proofs:
+
+```sh
+tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fire, make, fight, night, border
+tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
+tools/tour.sh tours/fight.tour --seed=1 --hour=11
+```
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
@@ -40,18 +53,23 @@ tools print their own summaries.
 
 | Path | What |
 |---|---|
-| `src/core/` | Pure rules and data: world gen, world data, queries, clock, RNG. No nodes, no rendering. Headless-testable. |
-| `src/content/` | Tunables and data tables as GDScript consts (one copy, parser-checked). |
-| `src/render/` | Everything that draws the world: terrain mesher, world view (chunk streaming), camera, sky/light, shaders, palette. |
-| `src/models/` | Procedural meshes for props, people, machines, animals. Any script here with `static func gallery() -> Array` shows up in the gallery. |
-| `src/actors/` | Nodes that live in the world: player, mobs. |
-| `src/ui/` | HUD and screens (CanvasLayer, 640x360 pixel space). |
-| `src/audio/` | Procedural audio generation and mixing. |
+| `src/core/` | Pure rules and data: world data, queries, clock, RNG, body, inventory, crafting, weather. No nodes, no rendering. Headless-testable. |
+| `src/core/worldgen/` | World generation stages (`WorldGen.generate` runs them): shape, countries, relief, water, settlements, access, surface, scatter, places. |
+| `src/core/fight/`, `src/core/mobs/` | The fight simulation (`FightSim`, fixed 8 ms slices), blows, plate, grip, outcomes; mob state, senses, brains, spawner. |
+| `src/core/survival/` | Taking from the world (`Takes`), stations, eating, sleeping, lamp oil, the strand laid by the spawn. |
+| `src/content/` | Tunables and data tables as GDScript consts: `tuning`, `items`, `recipes`, `roster`. |
+| `src/render/` | Terrain mesher, transitions, decor, world view (chunk streaming on a worker), camera, sky light, weather visuals, shaders, palette. |
+| `src/models/` | Procedural meshes: `props/`, `machines/`, `people/`, `animals/`. Any script here with `static func gallery() -> Array` shows up in the gallery. |
+| `src/actors/` | Nodes in the world: player, mobs, hit marks (`MobFx`). |
+| `src/systems/` | `NN_name.gd` game systems, loaded in order: 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 98 tour. |
+| `src/ui/` | The notebook: HUD, pages (carrying, making, map, pause, title), pixel font, sketches. |
+| `src/audio/` | Procedural synthesis, the sound sheet, beds, machines, music, the mix. |
 | `src/game.gd` | Wires one running game together from BootOptions. |
 | `src/main.gd` | Entry point; boot scene selection; `--shot` capture. |
 | `tests/` | `tests/**/test_*.gd`, extend `TestCase`, methods `test_*`. Runner loads every `src` script too. |
 | `tools/` | The loop above. Keep it small: a new tool must replace work you do every day. |
-| `docs/` | `DESIGN.md` (what the game is), `ROADMAP.md` (what's next), `research/` (distilled from the old repo). |
+| `tours/` | Scripted real-input proofs (see Tours above). |
+| `docs/` | `ART.md` (binding look), `DESIGN.md` (what the game is), `ROADMAP.md` (what's next), `research/`. |
 
 ## Conventions
 
@@ -104,19 +122,22 @@ lead with why, in short sentences.
 
 | Seam | File | Rule |
 |---|---|---|
-| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hit, fight_ended, killed, took, made, time_skipped, screen_changed |
-| Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order; never edit `game.gd` to add one |
-| Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load; UI reads |
-| Carrying | `src/core/inventory.gd`, `src/content/items.gd` | `held` is the tool and the weapon |
-| Making | `src/core/crafting.gd` | UI calls only its static functions |
-| Figures | `src/models/figure_model.gd` | `FigureModel.create(kind)` loads `models/machines/<kind>.gd` or `models/animals/<kind>.gd` |
-| People | `src/models/person_model.gd` | `play_action`, `set_held`, `set_look` |
-| Sky | `src/render/sky.gdshaderinc` | `sky_apply()` is the only place lit colour is tinted by time/weather/region |
-| World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision |
-| Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool` |
-| Weather | `src/core/weather.gd` | `Weather.at(seed, minutes) -> {kind, strength, wind}`, pure; others check `ResourceLoader.exists` until it lands |
-| Boot options | `src/boot_options.gd` | packages may ADD options (e.g. `--spawn=`, `--weather=`, `--screen=`, `--give=`); never rename existing ones |
-| Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes, renderers blend |
+| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hit, fight_ended, killed, took, made, time_skipped, screen_changed. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. |
+| Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order (scripts compile on loader threads during world gen); never edit `game.gd` to add one |
+| Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load/lamp oil; the lamp action (15_lights) owns `lamp_lit`; UI only reads |
+| The player's body | `Player.hero` / `Player.sim` | in a running game the fight body owns position and facing: anything that moves or turns the player sets `hero.pos`/`hero.facing` too (`Survival.face`, the tour's `at`) |
+| Carrying | `src/core/inventory.gd`, `src/content/items.gd` | `held` is the tool and the weapon; `wear(id, uses)` wears an edge; `worn`/`wear_kit` for salvage kit |
+| Making | `src/core/crafting.gd` | UI calls `Crafting.missing / why_not / make_in` and `Survival.stations_near / describe_target / eat / hold` directly (`UiLink`) |
+| Figures | `src/models/figure_model.gd` | `FigureModel.create(kind)` loads `models/machines/<kind>.gd` (always FOUND, whatever material is passed) or `models/animals/<kind>.gd`; animal mobs use `AnimalModel.spawn(kind, mat, seed)` so none look alike. Poses stand walk alert windup strike hurt dead; `part_position()`, `set_part_lit`, `flare_part` |
+| People | `src/models/person_model.gd` | `play_action` (swing dodge hurt work downed carried), `set_held`, `set_look`; people draw after the outline pass (render priority 10) and are held by their rim, never inked |
+| Props | `src/models/prop_models.gd` | `PropModels.node(kind, variant, country)` (surface 1 is FOUND on found.gdshader: never set material_override); `glow_points(kind)` says where a model's light and flame are (15_lights reads it). Props turn by `-rot`. |
+| Sky | `src/render/sky.gdshaderinc` | `sky_apply()` is the only place lit colour is tinted by time/weather/region. Lit shaders also use `sky_ink` (world), `sky_pool` for lamp and fire light (world, found, water, person), `sky_line` (outline) and `sky_shade`. FOUND shaders `#define SKY_FOUND` before the include (nothing settles on a machine). |
+| World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision; `Survival.add_prop` puts a new one in the world |
+| Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the notebook hides hints only near hostiles) |
+| Weather | `src/core/weather.gd` | `Weather.at(seed, minutes)`, `Weather.at_place(seed, minutes, country)` -> `{kind, strength, wind}`, `Weather.settled(...)`; pure. Survival (wetness), mobs, landscape sway and audio call it directly. |
+| Boot options | `src/boot_options.gd` | packages may ADD options; never rename existing ones; keep the header list complete |
+| Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
+| Palette | `src/render/palette.gd` | MACHINE and FOUND ramps are cold, low-chroma violets with a compressed top: the amber `LENS` is the only saturated thing on a machine. `PLATE` sits near slate so a patched roof never reads as a live machine. |
 
 Native-name trap: a static func on a `class_name` script must not share a name
 with a `GDScript`/`Script` method (`is_tool`, `new`, `get_class`...): the call
