@@ -10,6 +10,8 @@ extends GameSystem
 ## screen opened for the same key press (the ui package's crafting screen wins).
 ## A blow that lands on the player knocks the work out of their hands. Holding
 ## `use` keeps working the same thing while it still gives (a vein, a mussel rock).
+## Holding `drop` (X) puts down what is in hand. A press of `use` while a take
+## plays out is kept and tried when the hands are free.
 ##
 ## Screens find this node by method: eat(id) -> bool eats one through Survival.
 
@@ -31,6 +33,12 @@ var _craft_down := false
 ## A press of `use` made while busy is tried once the hands are free, until this real second.
 var _use_buffered_until := -1.0
 const USE_BUFFER_SECONDS := 1.5
+## Holding `drop` (X) this long puts down what is in hand, once per hold: a
+## hold, not a tap, so a stray key never leaves the knife on the shore. The
+## carrying page's drop verb (the slate) calls Survival.drop for any good.
+const DROP_HOLD_SECONDS := 0.5
+var _drop_held := 0.0
+var _dropped_this_hold := false
 
 
 func setup(g: Game) -> void:
@@ -191,6 +199,7 @@ func _process(delta: float) -> void:
 	if game == null:
 		return
 	_read_keys()
+	_read_drop(delta)
 	if _use_buffered_until > 0.0 and not Survival.busy(game) and not game.input_blocked():
 		if Survival.now_real() <= _use_buffered_until:
 			Survival.use(game)
@@ -212,6 +221,19 @@ func _process(delta: float) -> void:
 		delta = Survival.fixed_step
 	Survival.tick(game, delta)
 	_again((scripted_use_held or Input.is_action_pressed("use")) and not game.input_blocked())
+
+
+func _read_drop(delta: float) -> void:
+	if not InputMap.has_action(&"drop") or not Input.is_action_pressed(&"drop") or game.input_blocked():
+		_drop_held = 0.0
+		_dropped_this_hold = false
+		return
+	_drop_held += delta
+	if _dropped_this_hold or _drop_held < DROP_HOLD_SECONDS or Survival.busy(game):
+		return
+	_dropped_this_hold = true
+	if game.inventory.held != &"":
+		Survival.drop(game, game.inventory.held, 1)
 
 
 ## Held `use`: once a take finishes, work the same prop again if it is still in

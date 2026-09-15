@@ -264,13 +264,30 @@ func patrol(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, cen
 			continue
 		var here: Array[StringName] = []
 		for k in kinds:
-			var row := Roster.row(k)
+			var row := _on_round(Roster.row(k))
 			if place_fits(row, world, query, floori(from.x), floori(from.y)) and place_fits(row, world, query, floori(mid.x), floori(mid.y)):
 				here.append(k)
 		if here.is_empty():
 			continue
 		return {"kind": here[r.randi_range(0, here.size() - 1)], "from": from, "to": to}
 	return {}
+
+
+## A worker on its round keeps out of a village but passes nearer one than it
+## would be put out to work: from the spawn, on a village's edge, the fields
+## are where the first machines are seen.
+const PATROL_GREEN := 12.0
+
+
+static func _on_round(row: Dictionary) -> Dictionary:
+	var where: Dictionary = row.get("where", {})
+	if float(where.get("green_min", 0.0)) <= PATROL_GREEN:
+		return row
+	var r := row.duplicate()
+	var w := where.duplicate()
+	w["green_min"] = PATROL_GREEN
+	r["where"] = w
+	return r
 
 
 ## Dry ground all along, sampled every tile, with no cliff between two samples.

@@ -77,8 +77,9 @@ static func _applicable(game: Game) -> Array[StringName]:
 		for m in sim.mobs:
 			if not m.alive or m.removed:
 				continue
-			# Said as a hunter first comes on, before it is close enough to hush the page.
-			if m.machine and not m.indifferent() and (m.roused() or m.blow_phase(sim.now) == &"windup"):
+			# Said as a hunter first comes on, before it is close enough to hush the page
+			# (a line said in a fight waits until it is over, out of its moment).
+			if m.machine and not m.indifferent() and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) > Survival.THREAT_RADIUS:
 				out.append(&"dodge")
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
 			if seen and m.first_meeting and not m.roused():

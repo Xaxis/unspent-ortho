@@ -86,6 +86,22 @@ func test_a_runner_that_misses_leaves_its_back_to_a_dodge() -> void:
 	check(reached, "a walk reached its back before it wound back")
 
 
+func test_walking_into_a_standing_machine_slides_round_to_its_back() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+	var r := F.still(sim, &"runner", Vector2(21.9, 20.5), PI)
+	r.bite = null
+	var back := r.pos + Vector2(r.radius + sim.hero.radius + 0.45, 0)
+	var reached := false
+	for i in 150:
+		sim.hero.move = (back - sim.hero.pos).normalized()
+		sim.slices(1)
+		if sim.hero.pos.distance_to(back) < 0.25:
+			reached = true
+			break
+	check(reached, "straight at its back through its body, the walk went round (%s)" % sim.hero.pos)
+	lt(float(sim.now), 1400.0, "in about a second (%d ms)" % sim.now)
+
+
 func test_a_machine_only_bites_what_it_faces() -> void:
 	var sim := F.make_sim()
 	var r := F.still(sim, &"runner", Vector2(21.2, 20.5), 0.0)

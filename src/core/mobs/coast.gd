@@ -150,12 +150,14 @@ func _first_meeting() -> void:
 		return
 	var m := sim.add_mob(FIRST_KIND, at)
 	m.first_meeting = true
-	# On its round, across the player's way, so it is seen before it sees.
+	# On its round, slanting in toward where the player is: seen before it sees,
+	# and it comes within its sight of them unless they walk away.
 	var radial := (at - sim.hero.pos).normalized()
-	m.facing = radial.orthogonal().angle()
+	m.line_a = at
+	m.line_b = at - radial * 6.0 + radial.orthogonal() * 3.0
+	m.line_to_b = true
+	m.facing = (m.line_b - at).angle()
 	m.aim = m.facing
-	m.line_a = at - radial.orthogonal() * 4.0
-	m.line_b = at + radial.orthogonal() * 4.0
 	_first_mob = m
 	first_meeting = 0
 	sim.emit(&"first_meeting", {"mob": m})

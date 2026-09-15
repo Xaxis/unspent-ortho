@@ -387,6 +387,13 @@ func _shouldered(dt: float) -> Vector2:
 			push += side * SHOULDER_SPEED * 1.5
 		else:
 			push += dir * minf(inside / dt, SHOULDER_SPEED)
+			if hero.move.length() > 0.1 and hero.move.dot(-dir) > 0.2:
+				# Walking into a standing body slides round it, as round a trunk: the
+				# way to a machine's back goes past its flank, not dead into its front.
+				var round := dir.orthogonal()
+				if round.dot(hero.move) < 0.0:
+					round = -round
+				push += round * SHOULDER_SPEED * 0.9
 	return push
 
 
