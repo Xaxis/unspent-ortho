@@ -54,6 +54,8 @@ var strikes := 0
 var _strike_at := Vector2.ZERO
 var _glow_gain := 0.0
 var _drip_scan := 0.0
+## Home dust devils kept in sight in real dust (DustDevils.keep_one).
+var _home_devils: Array = []
 ## The landscape type whose weather falls at the focus (fall_type), last frame.
 var here: StringName = &"coast"
 
@@ -274,7 +276,10 @@ func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta
 		view.set_drip_points(Drips.points(props, focus, seed_value, game.world.to_3d, game.world.depleted))
 	view.set_drips(drip, float(look.snow) > 0.2)
 	var dusty := clampf(float(look.dust) * 1.2 + float(look.glare) * 0.5, 0.0, 1.0)
-	var devils := DustDevils.at(seed_value, minutes, focus, dusty, _cloud_bearing * signf(wind if absf(wind) > 0.01 else 1.0))
+	var bearing := _cloud_bearing * signf(wind if absf(wind) > 0.01 else 1.0)
+	var kept := DustDevils.keep_one(DustDevils.at(seed_value, minutes, focus, dusty, bearing), _home_devils, seed_value, minutes, focus, dusty, bearing, snap)
+	_home_devils = kept.homes
+	var devils: Array[Dictionary] = kept.list
 	var placed: Array[Dictionary] = []
 	for d: Dictionary in devils:
 		placed.append({"at": game.world.to_3d(d.pos), "life": d.life, "seed": d.seed})

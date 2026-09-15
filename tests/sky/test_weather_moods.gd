@@ -129,6 +129,36 @@ func test_dust_devils_rise_on_dusty_ground_and_wander() -> void:
 	check(moved, "a devil wanders")
 
 
+func test_in_real_dust_a_devil_is_always_in_sight() -> void:
+	var focus := Vector2(200, 200)
+	var homes: Array = []
+	var spawned := 0
+	var minute := 5000.0
+	for step in 240:
+		# Walk a while, then stand, then walk back: a devil stays on screen.
+		if step < 80:
+			focus += Vector2(1.6, 0.4)
+		elif step > 160:
+			focus -= Vector2(0.9, 1.3)
+		var list := DustDevils.at(3, minute, focus, 0.7, Vector2.RIGHT)
+		var kept := DustDevils.keep_one(list, homes, 3, minute, focus, 0.7, Vector2.RIGHT, step == 0)
+		if kept.homes.size() > homes.size() or (kept.homes.size() > 0 and homes.size() > 0 and kept.homes[-1] != homes[-1]):
+			spawned += 1
+		homes = kept.homes
+		var in_sight := false
+		for d: Dictionary in kept.list:
+			if DustDevils.on_screen(d.pos, focus) and float(d.life) > 0.0:
+				in_sight = true
+		check(in_sight, "a devil in sight at step %d" % step)
+		lt(float(kept.list.size()), DustDevils.MAX + 1.0, "never more than a few drawn")
+		minute += 1.0
+	lt(float(spawned), 60.0, "a home devil lives its life rather than being replaced every step")
+	var calm := DustDevils.keep_one(DustDevils.at(3, minute, focus, 0.3, Vector2.RIGHT), [], 3, minute, focus, 0.3, Vector2.RIGHT)
+	eq((calm.homes as Array).size(), 0, "light dust raises no devil just to be seen")
+	check(DustDevils.on_screen(focus + Vector2(2, 2), focus), "just below the player is on screen")
+	check(not DustDevils.on_screen(focus + Vector2(-12, -12), focus), "far up the screen is not")
+
+
 func test_new_weathers_draw_their_own_airs() -> void:
 	var drizzle := WeatherLook.compose([{"kind": &"drizzle", "strength": 1.0, "weight": 1.0}])
 	gt(float(drizzle.drizzle), 0.5, "drizzle falls as drizzle")

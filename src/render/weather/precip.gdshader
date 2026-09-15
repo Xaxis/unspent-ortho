@@ -20,6 +20,10 @@ render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_dis
 uniform int mode = 0;
 // Swirl: a per-devil phase, so no two spin in step.
 uniform float seed_phase = 0.0;
+// Swirl: the stipple scuffed into the ground round a devil's foot.
+uniform vec3 scuff_color : source_color = vec3(0.31, 0.21, 0.15);
+// Swirl: the share of a devil's marks lying in the scuff ring on the ground.
+uniform float scuff_share = 0.25;
 uniform vec3 color_a : source_color = vec3(0.18, 0.17, 0.27);
 uniform vec3 color_b : source_color = vec3(0.59, 0.75, 0.82);
 // Share of marks drawn in color_b.
@@ -66,14 +70,23 @@ void vertex() {
 	float alive = COLOR.a;
 	v_rnd = rnd;
 	v_age = COLOR.g;
-	if (mode == 7) {
+	if (mode == 7 && COLOR.b < scuff_share) {
+		// The scuff: grit dragged round the foot in a ragged ring of stipple,
+		// turning slowly the way the column turns.
+		float a = rnd * 6.2832 + TIME * 0.9 + seed_phase;
+		float rr = mix(0.9, 1.7, COLOR.g) * (0.85 + 0.3 * sin(a * 3.0 + seed_phase));
+		origin += vec3(cos(a) * rr, 0.03, sin(a) * rr * 0.9);
+		alive = 1.0;
+		v_age = 1.0;
+	} else if (mode == 7) {
 		// Up a column that widens toward the top, round and round, leaning a
 		// little with the wind; marks near the top thin out as the grit falls.
-		float spin = TIME * (3.2 + 1.8 * COLOR.b) + rnd * 6.2832 + seed_phase;
-		float rise = fract(COLOR.g + TIME * (0.22 + 0.2 * COLOR.b) + seed_phase * 0.13);
-		float r = mix(0.12, 1.2, rise * rise) * (0.7 + 0.3 * COLOR.b);
-		origin += vec3(cos(spin) * r + rise * sin(TIME * 0.6 + seed_phase) * 0.5, rise * 3.4, sin(spin) * r * 0.8);
-		alive = step(rise, 0.92) * step(0.03, rise);
+		float b = (COLOR.b - scuff_share) / max(1.0 - scuff_share, 0.001);
+		float spin = TIME * (3.2 + 1.8 * b) + rnd * 6.2832 + seed_phase;
+		float rise = fract(COLOR.g + TIME * (0.22 + 0.2 * b) + seed_phase * 0.13);
+		float r = mix(0.2, 1.8, rise * rise) * (0.7 + 0.3 * b);
+		origin += vec3(cos(spin) * r + rise * sin(TIME * 0.6 + seed_phase) * 0.7, rise * 5.0, sin(spin) * r * 0.8);
+		alive = step(rise, 0.94) * step(0.02, rise);
 		v_age = 0.0;
 	}
 	float len = floor(mix(length_px.x, length_px.y + 0.999, fract(rnd * 7.31)));
@@ -140,6 +153,7 @@ void fragment() {
 	bool on = false;
 	bool shade = false;
 	bool glint = false;
+	bool scuff = false;
 	if (mode == 0) {
 		// One pixel per row down the stroke, stepped sideways by the slant.
 		on = q.y < 0.0 && q.y >= -v_len && q.x == floor(-slant * (q.y + 1.0) + 0.5);
@@ -178,7 +192,11 @@ void fragment() {
 		float d = length(vec2(q.x, q.y / 0.55));
 		float dash = step(0.3, fract(atan(q.y, q.x) * 1.27 + v_rnd * 5.0));
 		on = abs(d - rad) < 0.6 && (v_age < 0.35 || dash > 0.5) && v_age < 0.92;
+	} else if (mode == 7 && v_age > 0.5) {
+		on = q.x == 0.0 && q.y == 0.0;
+		scuff = true;
 	} else if (mode == 7) {
+		// A grain of grit with its ink shade pixel under it.
 		on = q.x >= 0.0 && q.y >= -1.0 && q.x < v_len && q.y < v_len;
 		shade = q.y == -1.0;
 	} else {
@@ -189,6 +207,9 @@ void fragment() {
 		discard;
 	}
 	vec3 col = glint ? color_b : (shade ? color_a : v_col);
+	if (scuff) {
+		col = scuff_color;
+	}
 	// Marks in the air take the sky's light, but keep a floor so snow and rain
 	// read as weather at night instead of vanishing into the dark.
 	vec3 light = max(sky_tint * mix(1.0, sky_sun.z, 0.5) * 1.1, vec3(0.42, 0.48, 0.66));

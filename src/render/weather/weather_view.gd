@@ -24,7 +24,7 @@ const SLANT_PER_LEAN := 1.0 / 0.5446
 enum Mode { STROKE, FLECK, WAVE, FLICK, TICK, SPARK, RING, SWIRL }
 
 ## Marks in one dust devil's column.
-const DEVIL_MARKS := 150
+const DEVIL_MARKS := 260
 
 var camera: CameraRig
 var rain: CPUParticles3D
@@ -202,9 +202,13 @@ func _devil(i: int) -> MeshInstance3D:
 	m.shader = PRECIP
 	m.render_priority = 10
 	m.set_shader_parameter("mode", int(Mode.SWIRL))
-	m.set_shader_parameter("color_a", Palette.EARTH[2])
-	m.set_shader_parameter("color_b", Palette.SAND[3])
-	m.set_shader_parameter("mix_b", 0.5)
+	# Light sand grit, each grain with an ink shade pixel under it, so the whirl
+	# reads over pale stone and over turf; the scuff round its foot is darker.
+	m.set_shader_parameter("color_a", Palette.INK[3])
+	m.set_shader_parameter("color_b", Palette.SAND[5])
+	m.set_shader_parameter("mix_b", 0.8)
+	m.set_shader_parameter("scuff_color", Palette.EARTH[2])
+	m.set_shader_parameter("scuff_share", 0.3)
 	m.set_shader_parameter("length_px", Vector2(1, 2))
 	m.set_shader_parameter("underline", 1.0)
 	m.set_shader_parameter("seed_phase", float(i) * 1.7)
