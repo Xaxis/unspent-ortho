@@ -47,8 +47,9 @@ extends RefCounted
 ## --tour=PATH         play a tour (src/systems/98_tour.gd) and quit
 ## --load=N            boot the save in slot N (0 autosave, 1-3 the player's): its seed,
 ##                     size, clock and place, then everything it holds (saves)
-## --saves=DIR         keep saves in user://DIR (default user://saves; shots and tours
-##                     use user://tool-saves so they never touch the player's) (saves)
+## --saves=DIR         keep saves in user://DIR (default user://saves; shots use
+##                     user://tool-saves and each tour user://tool-saves/<tour name>, so
+##                     they never touch the player's nor each other's) (saves)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
