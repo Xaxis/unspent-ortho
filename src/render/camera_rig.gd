@@ -76,3 +76,6 @@ func _apply() -> void:
 	local.y = roundf(local.y / texel) * texel
 	var focus := b * local
 	global_position = focus + b.z * distance
+	# Ink patterns are drawn in screen pixels; shifting them by the camera's own
+	# texel offset pins every hatch line to the world instead of the glass.
+	RenderingServer.global_shader_parameter_set("world_px", Vector2(roundf(local.x / texel), roundf(local.y / texel)))
