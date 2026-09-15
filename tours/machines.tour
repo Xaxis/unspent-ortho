@@ -2,11 +2,25 @@
 # on a normal seed-1 coast late at night: a harvester working a dark field with
 # its lamps and their wash on the row ahead, its windup brightening the comb; a
 # watcher's stipple beam sweeping; a real hit stuttering its lights out; and a
-# kill, where the lights go in order and the working part goes last.
+# kill, where the lights go in order and the working part goes last; then a
+# runner coming after you with its lights held locked.
 #   tools/tour.sh tours/machines.tour --seed=1 --hour=22.5 --weather=clear:0
-zoom 9
+# A runner coming after you: its walk is a hunt, so the slit's scan holds dead
+# centre and its eyes stay hot all the way in, never looking round as on an errand.
+at 132,366
+zoom 7
 coast calm
+wait 1.0
+spawn runner
+wait 0.8
+walk 0,1 0.5 run
+shot 00-runner-hunts-lights-locked
+walk 0,1 0.4 run
+shot 00b-still-locked-as-it-comes
+coast calm
+zoom 9
 # A harvester's field on the first coast.
+coast calm
 at 200.5,431.5
 wait 1.5
 spawn harvester
@@ -19,8 +33,9 @@ tap dodge
 wait 0.1
 tap dodge
 wait 0.6
-# Away from it, to a watcher out in a field.
+# Away from it, to a watcher out in a field, drawn back so its mast shows.
 at 130,370
+zoom 13
 wait 1.5
 coast calm
 spawn watcher
