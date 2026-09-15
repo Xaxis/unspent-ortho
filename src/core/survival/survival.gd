@@ -403,7 +403,11 @@ static func _clear(game: Game, s: Vector2, radius: float, level: int) -> bool:
 	for q in game.query.props_near(s, 3.0):
 		if w.depleted.has(q.id):
 			continue
-		var gap := maxf(q.solid, 0.25) + radius + 0.2
+		# Not under a crown: a tree's canopy is wider than its trunk.
+		var body := maxf(q.solid, 0.25)
+		if q.kind == PropKind.PINE or q.kind == PropKind.SNOW_PINE or q.kind == PropKind.BROADLEAF:
+			body = maxf(body, 0.7 * q.scale)
+		var gap := body + radius + 0.2
 		if q.pos.distance_squared_to(s) < gap * gap:
 			return false
 	return true
@@ -515,17 +519,28 @@ static func _act(game: Game, action: StringName, seconds: float) -> void:
 
 static var _weather: GDScript = null
 static var _weather_checked := false
+static var _weather_by_place := false
 
 
-## Is the sky wetting a body at `minutes`? False until src/core/weather.gd exists.
+## Is the sky wetting a body at `minutes`, where it stands? False until
+## src/core/weather.gd exists (it is the sky package's; reached by name so this
+## file loads before it lands).
 static func _weather_wets(game: Game, minutes: float) -> bool:
 	if not _weather_checked:
 		_weather_checked = true
 		if ResourceLoader.exists("res://src/core/weather.gd"):
 			_weather = load("res://src/core/weather.gd")
+			for m: Dictionary in _weather.get_script_method_list():
+				if m.name == "at_place":
+					_weather_by_place = true
 	if _weather == null:
 		return false
-	var wx: Variant = _weather.call("at", game.world.seed_value, minutes)
+	var wx: Variant
+	if _weather_by_place:
+		var p := game.player.pos
+		wx = _weather.call("at_place", game.world.seed_value, minutes, game.world.country_at(floori(p.x), floori(p.y)))
+	else:
+		wx = _weather.call("at", game.world.seed_value, minutes)
 	if not wx is Dictionary:
 		return false
 	var d: Dictionary = wx

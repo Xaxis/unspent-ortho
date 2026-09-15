@@ -114,9 +114,14 @@ func _build(key: Vector2i) -> void:
 	chunk_built.emit(key.x, key.y)
 
 
-## Rebuild the props of the chunk holding `prop` (after it was taken or grew back).
+## Rebuild the props of the chunk holding `prop` (after it was taken, grew back,
+## or was put in the world at runtime, like a built fire).
 func refresh_props(prop: WorldProp) -> void:
 	var key := Vector2i(floori(prop.pos.x) / CHUNK, floori(prop.pos.y) / CHUNK)
+	if not _props_by_chunk.has(key):
+		_props_by_chunk[key] = []
+	if not _props_by_chunk[key].has(prop):
+		_props_by_chunk[key].append(prop)
 	if not _chunks.has(key):
 		return
 	var node: Node3D = _chunks[key]

@@ -119,4 +119,4 @@ static func wake_minute(now: float, roof: bool) -> float:
 
 ## Weather kinds that wet a body out in them (names as Weather.at returns them).
 static func wets(kind: String, strength: float) -> bool:
-	return strength >= 0.25 and kind in ["rain", "storm", "snow", "hail", "sleet", "drizzle"]
+	return strength >= 0.25 and kind in ["rain", "storm", "snow", "hail", "blizzard", "sleet", "drizzle"]
