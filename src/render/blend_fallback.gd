@@ -12,6 +12,10 @@ extends RefCounted
 ## warp. A tile's `country2` is the strongest other country near it, and
 ## blend = share of that country, capped at 0.5 on the border. Sea tiles report
 ## the strongest land country as `country` so water can take on its look.
+##
+## `active` also marks a LEGACY world (one generated before the richer grounds):
+## renderers may then interleave grounds across an ecotone and draw the
+## sub-grounds (heath, shingle, peat, scree, clinker) the generator will place.
 
 const CELL := 4
 ## Mip level read back: CELL * 2^LEVEL tiles per texel, which sets the ecotone
@@ -29,6 +33,7 @@ var _mw := 0
 var _mh := 0
 var _span := 1.0
 var _warp: FastNoiseLite
+var _sub: FastNoiseLite
 
 
 func _init(w: WorldData) -> void:
@@ -38,6 +43,10 @@ func _init(w: WorldData) -> void:
 	_warp.seed = Rng.hash_ints(w.seed_value, 0xB1E4D) & 0x7FFFFFFF
 	_warp.frequency = 1.0 / 23.0
 	_warp.fractal_octaves = 2
+	_sub = FastNoiseLite.new()
+	_sub.seed = Rng.hash_ints(w.seed_value, 0x5B6) & 0x7FFFFFFF
+	_sub.frequency = 1.0 / 11.0
+	_sub.fractal_octaves = 3
 	# Sea tiles need a land country even when real transitions exist.
 	_build_masks()
 
@@ -143,8 +152,9 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 		for x in range(x0, x1):
 			var o := (y - y0) * cw + (x - x0)
 			if not w.in_bounds(x, y):
-				out_country[o] = Country.COAST
-				out_country2[o] = Country.COAST
+				var jj := (clampi(floori(float(y) / SAMPLE) - gy0, 0, gh - 1)) * gw + clampi(floori(float(x) / SAMPLE) - gx0, 0, gw - 1)
+				out_country[o] = first[jj]
+				out_country2[o] = first[jj]
 				out_blend[o] = 0.0
 				continue
 			var i := y * w.size + x
@@ -185,3 +195,38 @@ func _strongest(weights: PackedFloat32Array, not_c: int) -> int:
 			best_w = weights[c]
 			best = c
 	return best
+
+
+## The ground a legacy world's tile is drawn as: what the richer generator will
+## place there (heath in coast turf, shingle on stretches of shore, peat in the
+## fen, scree and clinker among rock). Identity for a world that has them.
+func legacy_ground(g: int, c: int, x: float, y: float, shore: float) -> int:
+	if not active:
+		return g
+	var n := _sub.get_noise_2d(x, y)
+	match c:
+		Country.COAST:
+			if g == Ground.GRASS and n > 0.22:
+				return Ground.HEATH
+			if g == Ground.SAND and shore > -1.6 and n < -0.05:
+				return Ground.SHINGLE
+		Country.MOSS:
+			if g == Ground.MUD:
+				return Ground.PEAT
+			if g == Ground.MOSS and n > 0.35:
+				return Ground.HEATH
+		Country.PINEWOOD:
+			if g == Ground.GRASS and n > 0.3:
+				return Ground.HEATH
+		Country.BONELANDS:
+			if g == Ground.BONE:
+				return Ground.LIMESTONE
+			if g == Ground.ROCK:
+				return Ground.SCREE
+		Country.BURNING:
+			if g == Ground.ROCK and n > -0.1:
+				return Ground.CLINKER
+		Country.SNOWFIELD:
+			if g == Ground.ROCK and n > 0.25:
+				return Ground.SCREE
+	return g

@@ -26,7 +26,7 @@ func _process(delta: float) -> void:
 		if wx is Dictionary and (wx as Dictionary).has("wind"):
 			target = clampf(float((wx as Dictionary)["wind"]), 0.0, 1.0)
 	_wind = lerpf(_wind, target, 1.0 - exp(-0.5 * delta))
-	game.view.world_material().set_shader_parameter("wind", _wind)
+	RenderingServer.global_shader_parameter_set("wind_strength", _wind)
 	if game.options.stats and _frames == maxi(3, game.options.frames - 1):
 		print(stats_line(game.view))
 

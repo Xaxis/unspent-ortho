@@ -1,236 +1,122 @@
-// Water sheets. UV.x is the water kind (TerrainMesher.WATER_*), COLOR.rg the
-// downstream direction for rivers, UV2 the tile-space position. The waterline
-// distance comes from the world's field texture, so the sea deepens in warped
-// bands, foam laps the shore in step with the wet strand on the land side
-// (world.gdshader shares `lap`), rivers run, blackwater keeps green edges and
-// an oily film, and cold water carries floes. Never a shimmer: slow, stepped.
+// Water, drawn like a chart. TerrainMesher writes per vertex:
+//   COLOR.r  kind / 8: 0 sea, 1 river or still water, 2 blackwater
+//   COLOR.gb flow direction * 0.5 + 0.5 (zero: still water)
+//   COLOR.a  depth: 0 at the waterline .. 1 deep
+// The sea is cut into flat depth bands with an inked sounding line at each
+// edge, foam that laps in and draws back along the shore, and wave ticks that
+// come and go. Rivers carry short dashes downstream and break white where the
+// sheet falls. Blackwater is near-black with green edges and an oily marbling.
+// No gradients, no gloss.
 shader_type spatial;
-render_mode cull_back, specular_disabled, world_vertex_coords;
+render_mode cull_back, specular_disabled;
 
 #include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
 
-uniform vec3 shade_tint = vec3(0.64, 0.66, 0.80);
-uniform bool has_terrain = false;
-uniform sampler2D field_lin : filter_linear;
-uniform sampler2D palette_tex : filter_nearest;
-uniform vec2 world_size = vec2(256.0);
+uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 
-const int INK = 0;
-const int BRINE = 2;
-const int SPRUCE = 7;
-const int ASH = 12;
-const int RIME = 14;
-const int BLOOM = 15;
-
-const int W_SEA = 0;
-const int W_RIVER = 1;
-const int W_BLACK = 2;
-const int W_COLD = 3;
-const int W_FALL = 4;
-const int W_OPEN = 5;
-
-const vec3 STEP = vec3(0.700, 0.704, 0.749);
+const vec3 BRINE0 = vec3(0.0392, 0.0824, 0.1412);
+const vec3 BRINE1 = vec3(0.0627, 0.1490, 0.2471);
+const vec3 BRINE2 = vec3(0.1059, 0.2471, 0.3765);
+const vec3 BRINE3 = vec3(0.1686, 0.3882, 0.5373);
+const vec3 BRINE4 = vec3(0.2627, 0.5725, 0.6902);
+const vec3 BRINE5 = vec3(0.4980, 0.7961, 0.8471);
+const vec3 SPRUCE1 = vec3(0.0824, 0.1451, 0.1882);
+const vec3 SPRUCE2 = vec3(0.1137, 0.2353, 0.2549);
+const vec3 SPRUCE3 = vec3(0.1647, 0.3529, 0.3255);
+const vec3 INK1 = vec3(0.0706, 0.0667, 0.1137);
+const vec3 SAND3 = vec3(0.5216, 0.4392, 0.3529);
+const vec3 FOAM = vec3(0.8667, 0.9412, 0.9686);
+const vec3 LINE = vec3(0.0392, 0.0824, 0.1412);
 
 varying vec3 world_pos;
-varying vec2 tile_pos;
-varying flat int wkind;
-varying vec2 flow;
-
-uint hu(uint x) {
-	x ^= x >> 16u;
-	x *= 2146121005u;
-	x ^= x >> 15u;
-	x *= 2221713035u;
-	x ^= x >> 16u;
-	return x;
-}
-
-float hash(ivec2 p, int salt) {
-	uint h = hu(uint(p.x) + hu(uint(p.y) + hu(uint(salt))));
-	return float(h >> 8u) / 16777216.0;
-}
-
-float vnoise(vec2 p, int salt) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	ivec2 ii = ivec2(i);
-	float a = hash(ii, salt);
-	float b = hash(ii + ivec2(1, 0), salt);
-	float c = hash(ii + ivec2(0, 1), salt);
-	float d = hash(ii + ivec2(1, 1), salt);
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
-vec3 voronoi(vec2 p, int salt) {
-	ivec2 ip = ivec2(floor(p));
-	vec2 fp = fract(p);
-	float f1 = 8.0;
-	float f2 = 8.0;
-	float id = 0.0;
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			ivec2 cell = ip + ivec2(x, y);
-			vec2 o = vec2(float(x), float(y)) + vec2(hash(cell, salt), hash(cell, salt + 7)) * 0.85 + 0.075;
-			float d = length(o - fp);
-			if (d < f1) {
-				f2 = f1;
-				f1 = d;
-				id = hash(cell, salt + 13);
-			} else if (d < f2) {
-				f2 = d;
-			}
-		}
-	}
-	return vec3(f1, f2, id);
-}
-
-vec3 pal(int ramp, int i) {
-	return texelFetch(palette_tex, ivec2(i, ramp), 0).rgb;
-}
-
-vec3 dn(vec3 c, float n) {
-	return c * pow(STEP, vec3(n));
-}
-
-vec3 upc(vec3 c, float n) {
-	return min(c * pow(STEP, vec3(-n)), vec3(1.0));
-}
-
-float lap(vec2 p) {
-	return 0.5 + 0.5 * sin(TIME * 1.15 + vnoise(p * 0.35, 7) * 6.2831);
-}
 
 void vertex() {
-	world_pos = VERTEX;
-	tile_pos = UV2;
-	wkind = int(UV.x + 0.5);
-	flow = COLOR.rg * 2.0 - 1.0;
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
-// Stepped swell: bands drift on a period of four, never a shimmer.
-float swell(vec2 p) {
-	float t = floor(TIME * 4.0) / 4.0;
-	return sin((p.x + p.y) * 0.9 - t * 0.8) * sin(p.x * 0.37 - p.y * 0.23 + t * 0.35);
+float band_edge(float d, float t, float w) {
+	return 1.0 - smoothstep(0.0, w, abs(d - t));
 }
 
-vec3 sea(vec2 p, float sd, bool cold) {
-	float dn_ = sd + (vnoise(p * 0.45, 11) - 0.5) * 1.1;
-	vec3 c;
-	if (cold) {
-		c = dn_ < 1.4 ? pal(RIME, 3) : (dn_ < 4.0 ? pal(RIME, 2) : (dn_ < 9.0 ? mix(pal(RIME, 1), pal(BRINE, 1), 0.5) : pal(BRINE, 1)));
-	} else {
-		c = dn_ < 1.3 ? pal(BRINE, 3) : (dn_ < 3.5 ? mix(pal(BRINE, 3), pal(BRINE, 2), 0.5) : (dn_ < 8.0 ? pal(BRINE, 2) : pal(BRINE, 1)));
-	}
-	float sw = swell(p);
-	if (sw > 0.74) {
-		c = upc(c, 0.4);
-	} else if (sw < -0.8 && dn_ > 3.0) {
-		c = dn(c, 0.3);
-	}
-	if (cold) {
-		// Floes: plates of ice thickest near the shore, drifting a little.
-		vec2 q = p * 0.55 + vec2(TIME * 0.01, 0.0);
-		vec3 v = voronoi(q, 21);
-		float want = 0.25 + 0.5 * clamp(1.0 - sd / 7.0, 0.0, 1.0);
-		if (v.z < want && v.y - v.x > 0.07) {
-			c = v.y - v.x < 0.12 ? pal(RIME, 5) : pal(RIME, 4);
-		}
-	}
-	// Foam that laps: a front that runs in and draws back, broken along its length.
-	float l = lap(p);
-	float front = sd - (0.04 + 0.38 * l);
-	float broken = vnoise(p * 2.6 + vec2(0.0, TIME * 0.15), 31);
-	if (front < 0.0 && sd < 0.75) {
-		c = broken > 0.3 ? pal(RIME, 5) : upc(c, 0.8);
-	} else if (front < 0.12) {
-		c = broken > 0.55 ? pal(BRINE, 5) : c;
-	}
-	// A second, fainter line further out, coming in as the first draws back.
-	float outer = abs(sd - (0.8 + 0.6 * (1.0 - l)));
-	if (outer < 0.05 && broken > 0.45) {
-		c = upc(c, 0.55);
-	}
-	return c;
-}
-
-vec3 river(vec2 p, float sd, vec2 dir) {
-	vec2 d = length(dir) > 0.1 ? normalize(dir) : vec2(1.0, 0.0);
-	float along = dot(p, d);
-	float across = dot(p, vec2(-d.y, d.x));
-	vec3 c = sd < 0.9 ? pal(BRINE, 3) : pal(BRINE, 2);
-	if (sd > 2.2) {
-		c = mix(pal(BRINE, 2), pal(BRINE, 1), 0.5);
-	}
-	// Dashes carried downstream in lanes, each lane its own speed.
-	float lane = floor(across * 3.0);
-	float lh = hash(ivec2(int(lane), 0), 41);
-	float run = fract(along * (0.55 + lh * 0.3) - TIME * (0.45 + lh * 0.35) + lh * 7.0);
-	if (lh > 0.35 && run < 0.16 && fract(across * 3.0) > 0.3 && fract(across * 3.0) < 0.7) {
-		c = upc(c, 0.55);
-	}
-	// Riffles along the banks.
-	if (sd < 0.35 && vnoise(vec2(along * 2.0 - TIME * 1.2, across * 6.0), 42) > 0.55) {
-		c = pal(BRINE, 5);
-	}
-	return c;
-}
-
-vec3 blackwater(vec2 p, float sd) {
-	vec3 c = pal(BRINE, 0);
-	// Green at the edges.
-	float edge = sd + (vnoise(p * 1.4, 51) - 0.5) * 0.35;
-	if (edge < 0.28) {
-		c = pal(SPRUCE, 2);
-	} else if (edge < 0.62) {
-		c = pal(SPRUCE, 1);
-	}
-	// An oily film in marbled bands on the still water.
-	float m = vnoise(p * 0.5 + vec2(TIME * 0.01, 0.0), 52) * 3.0 + vnoise(p * 1.3, 53);
-	float band = fract(m * 1.7);
-	if (edge > 0.62 && band < 0.05) {
-		c = mix(c, pal(BLOOM, 1), 0.6);
-	} else if (edge > 0.62 && band > 0.5 && band < 0.54) {
-		c = mix(c, pal(SPRUCE, 3), 0.45);
-	}
-	// A rare slow ring where something rose.
-	vec2 cell = floor(p * 0.25);
-	float rh = hash(ivec2(cell), 54);
-	vec2 centre = (cell + vec2(hash(ivec2(cell), 55), hash(ivec2(cell), 56))) * 4.0;
-	float age = fract(TIME * 0.08 + rh * 13.0);
-	if (rh > 0.6 && abs(length(p - centre) - age * 1.4) < 0.05 && age < 0.6) {
-		c = upc(c, 1.0);
-	}
-	return c;
-}
-
-vec3 fall(vec2 p, float y) {
-	float col = floor((p.x + p.y) * 7.0);
-	float h = hash(ivec2(int(col), 0), 61);
-	float run = fract(y * 2.2 + TIME * (1.4 + h) + h * 5.0);
-	return run < 0.45 ? pal(RIME, 5) : (h > 0.5 ? pal(BRINE, 4) : pal(BRINE, 5));
+// The swash: 0 drawn back .. 1 run up. Travels along the shore, so the foam
+// laps in one stretch while it draws back in the next.
+float swash(vec2 wp) {
+	return 0.5 + 0.5 * sin(TIME * 1.05 + (wp.x + wp.y) * 0.45 + ink_vnoise(wp * 0.2) * 4.0);
 }
 
 void fragment() {
-	vec2 p = tile_pos;
-	float sd = 12.0;
-	if (has_terrain && wkind != W_OPEN) {
-		sd = (texture(field_lin, p / world_size).a * 255.0 - 128.0) / 10.0;
-	}
+	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	vec2 wp = world_pos.xz;
+	int kind = int(COLOR.r * 8.0 + 0.5);
+	float d = COLOR.a;
+	float w = max(fwidth(d), 1e-4) * 1.2;
 	vec3 c;
-	if (wkind == W_RIVER) {
-		c = river(p, sd, flow);
-	} else if (wkind == W_BLACK) {
-		c = blackwater(p, sd);
-	} else if (wkind == W_FALL) {
-		c = fall(p, world_pos.y);
-	} else if (wkind == W_OPEN) {
-		c = pal(BRINE, 1);
-		if (swell(world_pos.xz) > 0.8) {
-			c = upc(c, 0.35);
+	if (kind == 0) {
+		c = d < 0.12 ? BRINE3 : (d < 0.45 ? BRINE2 : BRINE1);
+		// Soundings: a solid line at the shallows, a dotted one further out.
+		if (band_edge(d, 0.12, w) > 0.5) {
+			c = mix(c, LINE, 0.5);
+		} else if (band_edge(d, 0.45, w) > 0.5 && mod(px.x + px.y, 3.0) < 1.0) {
+			c = mix(c, LINE, 0.6);
+		}
+		float s = swash(wp);
+		float lap = 0.006 + 0.03 * s;
+		if (d < lap && (d < lap - 0.012 || ink_hash(px) < 0.7)) {
+			c = FOAM;
+		} else if (d < lap + 0.02 && ink_hash(px) < 0.5) {
+			c = BRINE4;
+		} else if (abs(d - (0.075 + 0.03 * (1.0 - s))) < 0.006 && ink_hash(floor(px / vec2(2.0, 1.0))) < 0.7) {
+			// The line the last wave left.
+			c = mix(c, FOAM, 0.6);
+		}
+		// Wave ticks: short dashes that appear and fade on a slow beat.
+		float beat = floor(TIME * 0.9);
+		vec2 cell = floor(px / vec2(11.0, 7.0));
+		float h = ink_hash(cell + vec2(beat * 7.0, beat * 3.0));
+		vec2 local = px - cell * vec2(11.0, 7.0);
+		if (d > 0.18 && h < 0.08 && local.y == 3.0 && local.x >= 3.0 && local.x < 6.0 + floor(h * 20.0)) {
+			c = mix(c, FOAM, d > 0.45 ? 0.35 : 0.5);
+		}
+	} else if (kind == 2) {
+		// Blackwater: green at the edges, an oily film in marbled bands.
+		c = d < 0.08 ? SPRUCE2 : (d < 0.22 ? SPRUCE1 : BRINE0);
+		if (band_edge(d, 0.08, w) > 0.5) {
+			c = SPRUCE3;
+		}
+		float marb = fract(ink_vnoise(wp * 0.35 + TIME * 0.01) * 5.0 + wp.x * 0.1);
+		if (d >= 0.22 && marb < 0.06) {
+			c = INK1;
+		} else if (d >= 0.22 && marb > 0.5 && marb < 0.53 && ink_hash(px) < 0.5) {
+			c = SPRUCE2;
 		}
 	} else {
-		c = sea(p, sd, wkind == W_COLD);
+		vec2 flow = COLOR.gb * 2.0 - 1.0;
+		float fl = length(flow);
+		c = d < 0.1 ? BRINE3 : BRINE2;
+		if (band_edge(d, 0.1, w) > 0.5) {
+			c = mix(c, LINE, 0.4);
+		}
+		if (d < 0.02 + 0.03 * swash(wp * 2.0)) {
+			c = BRINE4;
+		}
+		if (kind == 1 && fl > 0.2) {
+			// Dashes carried downstream, in whole pixels.
+			vec2 dir = flow / fl;
+			float along = dot(wp, dir) * 3.0 - TIME * 1.6;
+			float across = dot(wp, vec2(-dir.y, dir.x)) * 5.0;
+			vec2 cell = vec2(floor(along), floor(across));
+			float h = ink_hash(cell + 3.0);
+			if (h < 0.22 && fract(along) < 0.45 && fract(across) < 0.3) {
+				c = h < 0.08 ? FOAM : BRINE4;
+			}
+		}
+		// Where the sheet falls it breaks white.
+		float slope = fwidth(world_pos.y) / max(fwidth(wp.x) + fwidth(wp.y), 1e-4);
+		if (slope > 0.25) {
+			float streak = ink_hash(vec2(floor(px.x / 2.0), floor((px.y + TIME * 24.0) / 3.0)));
+			c = streak < 0.5 ? FOAM : BRINE4;
+		}
 	}
 	ALBEDO = sky_apply(c, world_pos, TIME);
 }

@@ -1,711 +1,584 @@
-// The one lit material for everything MADE and FOUND: terrain, props, people,
-// machines. Albedo is the vertex colour (palette sRGB). Lighting follows the art
-// direction: a hard one-step shadow that is a COLOUR (blue-violet), a second
-// band on grazing faces, no specular, no smooth falloff. Day, night, weather and
-// region are multiplies set on the global `sky_tint` (sky.gdshaderinc).
+// MADE: everything a person or the land made. Terrain, props, houses, people.
+// A flat palette wash, lit in two bands; shade is a colour AND ink hatching in
+// the style of the country (or of the hand, for made things). See docs/ART.md.
 //
-// Vertex channels (TerrainMesher documents them): UV.y is a KIND, UV.x its
-// parameter, UV2 the tile-space position. Plain models have UV = 0 and draw
-// their vertex colour. Kinds:
-//   1 terrain top   the ground, painted from per-tile data textures by world fields
-//   2 cliff face    strata by country; COLOR carries (country, country2, blend, lip)
-//   3 glow          emissive embers and lamps, UV.x strength
-//   4 sway          wind moves it, UV.x weight (0 base .. 1 tip)
-//   5 glint         sea glass, frost, wet glass: an occasional sparkle
-// Every pattern colour is a palette value or a whole or half ramp step of the
-// ground's own colour (STEP), so the frame stays on the palette.
+// Vertex channels (MeshKit writes them):
+//   COLOR.rgb  wash colour (palette sRGB)
+//   COLOR.a    MARK code / 255 (GroundColors): 0 or 1.0 = plain. Marks are ink
+//              and wash details drawn into a surface by what it is: turf ticks,
+//              grikes, drifts, strata, embers (glow), lamps, glints.
+//   CUSTOM0    rgb = second wash for an ecotone or ground edge, a = weight (0..1)
+//   UV.x       hatch styles, style1 + style2 * 16; style2 is used where the
+//              second wash shows.   UV.y  weight of that edge (terrain: = CUSTOM0.a)
+//   UV2.x      wind sway weight (0 = rigid)
+//   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
+//              breaks into large organic light/dark patches (0..1). Terrain
+//              writes 2 + the second wash's mark code (patches at full).
 shader_type spatial;
-render_mode cull_back, specular_disabled, world_vertex_coords;
+render_mode cull_back, specular_disabled;
 
 #include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
 
-// The measured one-step darken of the source game, pushed toward blue-violet.
-uniform vec3 shade_tint = vec3(0.64, 0.66, 0.80);
+global uniform float wind_strength;
+// The one-step shade: pushed toward blue-violet. Ink colour is darker still.
+uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
+uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
 uniform float emission_strength = 0.0;
-// Wind 0 calm .. 1 gale, and its bearing in tile space.
-uniform float wind = 0.35;
-uniform vec2 wind_dir = vec2(0.83, 0.55);
-// World units per screen pixel: sway moves in whole pixels, never a smear.
-uniform float texel = 0.0417;
-
-// Terrain data, bound only on WorldView's materials.
-uniform bool has_terrain = false;
-uniform sampler2D tile_tex : filter_nearest;
-uniform sampler2D field_tex : filter_nearest;
-uniform sampler2D field_lin : filter_linear;
-uniform sampler2D palette_tex : filter_nearest;
-uniform vec2 world_size = vec2(256.0);
-// World xz of tile (0, 0): models find the tile under them from it.
-uniform vec2 tile_origin = vec2(0.0);
-
-// Ramp rows of TerrainMesher.palette_image().
-const int INK = 0;
-const int STONE = 1;
-const int BRINE = 2;
-const int SLATE = 3;
-const int EARTH = 4;
-const int RUST = 5;
-const int MOSS = 6;
-const int SPRUCE = 7;
-const int SAND = 8;
-const int LINEN = 9;
-const int ASH = 12;
-const int EMBER = 13;
-const int RIME = 14;
-const int BLOOM = 15;
-
-// Ground ids (src/core/ground.gd).
-const int G_DEEP_WATER = 0;
-const int G_WATER = 1;
-const int G_SAND = 2;
-const int G_GRASS = 3;
-const int G_MOSS = 4;
-const int G_MUD = 5;
-const int G_NEEDLES = 6;
-const int G_SNOW = 7;
-const int G_BONE = 8;
-const int G_ASH = 9;
-const int G_ROCK = 10;
-const int G_ROAD = 11;
-const int G_FLOOR = 12;
-const int G_HEATH = 13;
-const int G_SHINGLE = 14;
-const int G_GRAVEL = 15;
-const int G_SCREE = 16;
-const int G_LIMESTONE = 17;
-const int G_CLINKER = 18;
-const int G_ICE = 19;
-const int G_BLACKWATER = 20;
-const int G_PEAT = 21;
-const int G_RIVER = 22;
-
-// Country ids (src/core/country.gd).
-const int C_COAST = 1;
-const int C_MOSS = 2;
-const int C_PINEWOOD = 3;
-const int C_SNOWFIELD = 4;
-const int C_BONELANDS = 5;
-const int C_BURNING = 6;
-
-const vec3 STEP = vec3(0.700, 0.704, 0.749);
 
 varying vec3 world_pos;
-varying vec2 tile_pos;
-varying flat int kind;
-varying float param;
+varying vec3 wash2;
+varying float wash_blend;
+varying float style_packed;
+varying float style_blend;
+varying float patch_raw;
+varying float sway_w;
+// Written in fragment(), read in light().
+varying float style_sel;
+varying float unhatched;
 
-uint hu(uint x) {
-	x ^= x >> 16u;
-	x *= 2146121005u;
-	x ^= x >> 15u;
-	x *= 2221713035u;
-	x ^= x >> 16u;
-	return x;
-}
-
-float hash(ivec2 p, int salt) {
-	uint h = hu(uint(p.x) + hu(uint(p.y) + hu(uint(salt))));
-	return float(h >> 8u) / 16777216.0;
-}
-
-float vnoise(vec2 p, int salt) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	ivec2 ii = ivec2(i);
-	float a = hash(ii, salt);
-	float b = hash(ii + ivec2(1, 0), salt);
-	float c = hash(ii + ivec2(0, 1), salt);
-	float d = hash(ii + ivec2(1, 1), salt);
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
-// (F1, F2, id of the nearest cell)
-vec3 voronoi(vec2 p, int salt) {
-	ivec2 ip = ivec2(floor(p));
-	vec2 fp = fract(p);
-	float f1 = 8.0;
-	float f2 = 8.0;
-	float id = 0.0;
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			ivec2 cell = ip + ivec2(x, y);
-			vec2 o = vec2(float(x), float(y)) + vec2(hash(cell, salt), hash(cell, salt + 7)) * 0.85 + 0.075;
-			float d = length(o - fp);
-			if (d < f1) {
-				f2 = f1;
-				f1 = d;
-				id = hash(cell, salt + 13);
-			} else if (d < f2) {
-				f2 = d;
-			}
-		}
-	}
-	return vec3(f1, f2, id);
-}
+const vec3 STEP = vec3(0.700, 0.704, 0.749);
+const vec3 INK1 = vec3(0.0706, 0.0667, 0.1137);
+const vec3 INK2 = vec3(0.1176, 0.1098, 0.1804);
+const vec3 INK3 = vec3(0.1843, 0.1725, 0.2706);
+const vec3 STONE0 = vec3(0.1059, 0.1216, 0.1686);
+const vec3 STONE1 = vec3(0.1843, 0.2118, 0.2745);
+const vec3 SLATE1 = vec3(0.1373, 0.1843, 0.2392);
+const vec3 SLATE2 = vec3(0.2157, 0.2824, 0.3529);
+const vec3 BRINE0 = vec3(0.0392, 0.0824, 0.1412);
+const vec3 BRINE2 = vec3(0.1059, 0.2471, 0.3765);
+const vec3 BRINE4 = vec3(0.2627, 0.5725, 0.6902);
+const vec3 BRINE5 = vec3(0.4980, 0.7961, 0.8471);
+const vec3 EARTH0 = vec3(0.1020, 0.0706, 0.1255);
+const vec3 EARTH1 = vec3(0.2000, 0.1373, 0.1216);
+const vec3 EARTH2 = vec3(0.3098, 0.2118, 0.1529);
+const vec3 EARTH3 = vec3(0.4353, 0.3020, 0.1922);
+const vec3 RUST2 = vec3(0.4314, 0.2000, 0.1255);
+const vec3 RUST3 = vec3(0.6039, 0.3098, 0.1569);
+const vec3 MOSS2 = vec3(0.1725, 0.2667, 0.1882);
+const vec3 MOSS3 = vec3(0.2745, 0.4118, 0.2275);
+const vec3 MOSS4 = vec3(0.4275, 0.5725, 0.2784);
+const vec3 SPRUCE1 = vec3(0.0824, 0.1451, 0.1882);
+const vec3 SPRUCE2 = vec3(0.1137, 0.2353, 0.2549);
+const vec3 SPRUCE4 = vec3(0.2588, 0.5176, 0.4157);
+const vec3 SAND2 = vec3(0.3608, 0.3020, 0.2706);
+const vec3 SAND3 = vec3(0.5216, 0.4392, 0.3529);
+const vec3 LINEN1 = vec3(0.2980, 0.2667, 0.2471);
+const vec3 LINEN2 = vec3(0.4353, 0.3961, 0.3490);
+const vec3 LINEN3 = vec3(0.5882, 0.5412, 0.4627);
+const vec3 LINEN4 = vec3(0.7529, 0.7020, 0.5804);
+const vec3 LINEN5 = vec3(0.9098, 0.8627, 0.7529);
+const vec3 ASH1 = vec3(0.2314, 0.2510, 0.2902);
+const vec3 ASH3 = vec3(0.5255, 0.5529, 0.6000);
+const vec3 ASH4 = vec3(0.7216, 0.7490, 0.7882);
+const vec3 EMBER2 = vec3(0.5765, 0.2000, 0.0471);
+const vec3 EMBER3 = vec3(0.7843, 0.3529, 0.0824);
+const vec3 EMBER4 = vec3(0.9608, 0.6471, 0.1843);
+const vec3 RIME2 = vec3(0.2078, 0.3451, 0.4314);
+const vec3 RIME3 = vec3(0.3647, 0.5451, 0.6275);
+const vec3 RIME4 = vec3(0.5882, 0.7529, 0.8157);
+const vec3 RIME5 = vec3(0.8667, 0.9412, 0.9686);
+const vec3 BLOOM2 = vec3(0.6275, 0.2392, 0.4235);
+const vec3 BLOOM3 = vec3(0.8157, 0.4353, 0.5725);
 
 vec3 dn(vec3 c, float n) {
 	return c * pow(STEP, vec3(n));
 }
 
-vec3 upc(vec3 c, float n) {
-	return min(c * pow(STEP, vec3(-n)), vec3(1.0));
+vec3 up(vec3 c, float n) {
+	return min(c / pow(STEP, vec3(n)), vec3(1.0));
 }
 
-vec3 pal(int ramp, int i) {
-	return texelFetch(palette_tex, ivec2(i, ramp), 0).rgb;
-}
-
-bool is_wet(int g) {
-	return g == G_DEEP_WATER || g == G_WATER || g == G_BLACKWATER || g == G_RIVER;
-}
-
-// The swash: 0 drawn back .. 1 run up the shore. Shared with water.gdshader.
-float lap(vec2 p) {
-	return 0.5 + 0.5 * sin(TIME * 1.15 + vnoise(p * 0.35, 7) * 6.2831);
-}
-
-float shore_distance(vec2 p) {
-	return (texture(field_lin, p / world_size).a * 255.0 - 128.0) / 10.0;
-}
-
-vec3 limestone(vec3 c, vec2 p, float spacing) {
-	vec2 da = vec2(0.985, 0.17);
-	vec2 db = vec2(-0.17, 0.985);
-	float sa = 2.1 * spacing;
-	float sb = 1.45 * spacing;
-	float su = dot(p, da) / sa + (vnoise(p * 0.21, 81) - 0.5) * 0.5;
-	float row = floor(su);
-	float sv = dot(p, db) / sb + hash(ivec2(int(row), 0), 82) * 3.0 + (vnoise(p * 0.33, 83) - 0.5) * 0.35;
-	float fu = fract(su);
-	float fv = fract(sv);
-	float clint = hash(ivec2(int(row), int(floor(sv))), 84);
-	c = clint < 0.3 ? dn(c, 0.22) : (clint > 0.8 ? upc(c, 0.18) : c);
-	float to_a = fu * sa;
-	float to_b = (1.0 - fu) * sa;
-	float to_c = fv * sb;
-	float to_d = (1.0 - fv) * sb;
-	float gd = min(min(to_a, to_b), min(to_c, to_d));
-	if (gd < 0.05) {
-		// The grike: a dark slot, some with grass or ferns down in it.
-		c = vnoise(p * 0.8, 85) > 0.62 ? pal(MOSS, 2) : pal(SLATE, 1);
-	} else if (to_b < 0.1 || to_d < 0.09) {
-		c = dn(c, 0.9);
-	} else if (to_a < 0.13 || to_c < 0.11) {
-		// The rubbed-bright edge on the side toward the light.
-		c = upc(c, 0.35);
+// A short pen stroke in a cell of `size` pixels: one cell in (1 - density) is
+// empty; `len` pixels long, leaning `lean` pixels per pixel.
+float stroke(vec2 px, vec2 size, float salt, float density, float len, float lean) {
+	vec2 cell = floor(px / size);
+	if (ink_hash(cell + vec2(salt, salt * 0.37)) > density) {
+		return 0.0;
 	}
-	// Rows of drill holes along some joints, the machine age in the stone.
-	if (hash(ivec2(int(row), 5), 86) > 0.7 && to_a > 0.1 && to_a < 0.2 && fract(dot(p, db) * 3.0) < 0.3) {
-		c = dn(c, 1.4);
+	vec2 lp = px - cell * size;
+	float ox = floor(ink_hash(cell + vec2(13.1, salt)) * max(size.x - 1.0 - abs(lean) * len, 1.0));
+	float oy = floor(ink_hash(cell + vec2(salt, 27.7)) * max(size.y - len, 1.0));
+	float dy = lp.y - oy;
+	if (dy < 0.0 || dy >= len) {
+		return 0.0;
 	}
-	return c;
+	return lp.x == ox + floor(dy * lean) ? 1.0 : 0.0;
 }
 
-// The ground's own pattern. `emit` collects embers.
-vec3 paint(int g, vec3 c, vec2 p, inout vec3 emit) {
-	if (g == G_GRASS) {
-		vec2 q = p * 5.0;
-		ivec2 qi = ivec2(floor(q));
-		vec2 fq = fract(q) - 0.5 - (vec2(hash(qi, 32), hash(qi, 33)) - 0.5) * 0.4;
-		float h = hash(qi, 31);
-		float r = length(fq);
-		if (h < 0.16 && r < 0.2) {
-			c = dn(c, 0.55);
-		} else if (h > 0.93 && r < 0.17) {
-			c = upc(c, 0.45);
+// Jittered-cell distances: (nearest, second nearest, id of nearest).
+vec3 cells(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	float id = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 g = vec2(float(x), float(y));
+			vec2 o = g + vec2(ink_hash(i + g), ink_hash(i + g + vec2(5.3, 1.7))) * 0.8 + 0.1 - f;
+			float d = dot(o, o);
+			if (d < d1) {
+				d2 = d1;
+				d1 = d;
+				id = ink_hash(i + g + vec2(9.1, 3.3));
+			} else if (d < d2) {
+				d2 = d;
+			}
 		}
-		if (vnoise(p * 0.35, 34) > 0.76) {
-			c = mix(c, pal(EARTH, 3), 0.3);
-		}
-	} else if (g == G_HEATH) {
-		vec3 v = voronoi(p * 1.5, 41);
-		if (v.z < 0.45) {
-			c = dn(c, 0.4);
-		} else if (v.z > 0.78) {
-			c = mix(c, pal(MOSS, 2), 0.55);
-		}
-		if (v.y - v.x < 0.07) {
-			c = dn(c, 0.7);
-		} else if (v.z < 0.45 && v.x < 0.22 && vnoise(p * 0.12, 42) > 0.45) {
-			c = v.z < 0.2 ? pal(BLOOM, 2) : pal(BLOOM, 1);
-		}
-		if (vnoise(p * 0.18, 43) > 0.8) {
-			c = mix(c, pal(INK, 2), 0.5);
-		}
-	} else if (g == G_SAND) {
-		float rip = sin((p.x * 0.6 + p.y * 1.1) * 6.0 + vnoise(p * 0.5, 51) * 6.0);
-		if (rip > 0.9) {
+	}
+	return vec3(sqrt(d1), sqrt(d2), id);
+}
+
+float flicker(vec3 p, float rate) {
+	return step(0.35, ink_hash(vec2(floor(TIME * rate), floor(p.x * 5.0) + floor(p.z * 7.0) * 13.0)));
+}
+
+// The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
+// and interest lives at edges and in rare features (docs/ART.md). Nothing
+// tessellates. Returns the colour; may add emission and lift the hatching.
+vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float unh) {
+	if (m == 40) {
+		// TURF: tussock ticks leaning with the weather, a few bright blades.
+		if (ink_vnoise(wp * 0.9) > 0.7) {
 			c = dn(c, 0.3);
-		} else if (rip < -0.94) {
-			c = upc(c, 0.3);
 		}
-		float sh = hash(ivec2(floor(p * 7.0)), 52);
-		if (sh > 0.988) {
-			c = pal(LINEN, 5);
-		} else if (sh < 0.012) {
+		if (stroke(px, vec2(5.0, 4.0), 3.0, 0.42, 2.0, 0.5) > 0.5) {
 			c = dn(c, 0.8);
+		} else if (stroke(px, vec2(7.0, 6.0), 9.0, 0.16, 2.0, 0.5) > 0.5) {
+			c = up(c, 0.5);
 		}
-	} else if (g == G_SHINGLE || g == G_GRAVEL) {
-		float scale = g == G_SHINGLE ? 3.2 : 5.5;
-		vec3 v = voronoi(p * scale, 61);
-		float tone = v.z;
-		c = tone < 0.25 ? dn(c, 0.6) : (tone < 0.55 ? c : (tone < 0.86 ? upc(c, 0.3) : mix(c, pal(SAND, 3), 0.5)));
-		if (v.y - v.x < 0.08) {
-			c = dn(c, 1.0);
-		} else if (v.x < 0.13 && tone > 0.5) {
-			c = upc(c, 0.4);
+	} else if (m == 41) {
+		// HEATH: dark clumps with heather in bloom on their rims.
+		float n = ink_vnoise(wp * 1.7) * 0.7 + ink_vnoise(wp * 4.1) * 0.3;
+		if (n > 0.56) {
+			c = dn(c, 0.55);
+			if (n < 0.61 && ink_hash(px) < 0.35 && ink_vnoise(wp * 0.09 + 3.0) > 0.4) {
+				c = ink_hash(px + 1.3) < 0.5 ? BLOOM2 : BLOOM3;
+			}
+		} else if (n < 0.3) {
+			c = up(c, 0.25);
 		}
-		if (g == G_SHINGLE && tone > 0.992) {
-			c = hash(ivec2(floor(p * scale)), 62) > 0.5 ? pal(SPRUCE, 4) : pal(BRINE, 5);
-		}
-	} else if (g == G_SCREE) {
-		vec3 v = voronoi(p * 2.2, 71);
-		c = v.z < 0.3 ? dn(c, 0.45) : (v.z > 0.75 ? upc(c, 0.3) : c);
-		if (v.y - v.x < 0.09) {
-			c = dn(c, 1.2);
-		}
-		if (v.z > 0.93) {
-			c = mix(c, pal(LINEN, 3), 0.5);
-		}
-	} else if (g == G_LIMESTONE) {
-		c = limestone(c, p, 1.0);
-	} else if (g == G_BONE) {
-		c = limestone(c, p, 1.6);
-	} else if (g == G_SNOW) {
-		vec2 wd = vec2(0.89, 0.45);
-		float across = dot(p, wd);
-		float along = dot(p, vec2(-wd.y, wd.x));
-		float ridge = across * 0.42 + vnoise(vec2(along * 0.16, across * 0.05), 91) * 2.6 + vnoise(p * 0.45, 92) * 0.5;
-		float fr = fract(ridge);
-		if (fr > 0.9) {
-			c = upc(c, 0.3);
-		} else if (fr < 0.16) {
-			c = dn(c, 0.75);
-		} else if (fr < 0.34) {
-			c = dn(c, 0.35);
-		}
-		// Soot in the lee of the drifts.
-		if (fr < 0.12 && vnoise(p * 1.3, 93) > 0.74) {
-			c = mix(c, pal(ASH, 2), 0.5);
-		}
-		float gh = hash(ivec2(floor(p * 9.0)), 94);
-		if (gh > 0.994 && fract(TIME * 0.23 + gh * 97.0) < 0.2) {
-			c = vec3(1.0);
-		}
-	} else if (g == G_ICE) {
-		vec3 v = voronoi(p * 0.9, 101);
-		if (vnoise(p * 0.3, 102) < 0.4) {
-			c = dn(c, 0.5);
-		}
-		if (v.y - v.x < 0.03) {
-			c = pal(RIME, 5);
-		} else if (v.y - v.x < 0.065) {
+		if (stroke(px, vec2(4.0, 4.0), 5.0, 0.3, 2.0, 0.0) > 0.5) {
 			c = dn(c, 0.6);
 		}
-		if (hash(ivec2(floor(p * 6.0)), 103) > 0.985) {
-			c = upc(c, 0.6);
+	} else if (m == 42) {
+		// SAND: wind ripples in broken lines, a speckle of shell and grit.
+		float q = dot(wp, vec2(0.6, 0.8)) * 2.4 + ink_vnoise(wp * 0.3) * 2.5;
+		float fr = fract(q);
+		float gate = ink_vnoise(wp * vec2(1.3, 0.7));
+		if (fr < 0.07 && gate > 0.35) {
+			c = up(c, 0.3);
+		} else if (fr > 0.07 && fr < 0.13 && gate > 0.45) {
+			c = dn(c, 0.2);
 		}
-		if (vnoise(vec2(dot(p, vec2(0.89, 0.45)) * 0.2, dot(p, vec2(-0.45, 0.89)) * 1.6), 104) > 0.72) {
-			c = mix(c, pal(RIME, 5), 0.7);
-		}
-	} else if (g == G_ASH) {
-		float drift = sin(dot(p, vec2(0.7, 1.0)) * 2.2 + vnoise(p * 0.4, 111) * 5.0);
-		if (drift > 0.8) {
-			c = upc(c, 0.3);
-		} else if (drift < -0.85) {
-			c = dn(c, 0.35);
-		}
-		vec2 q = p * 6.0;
-		float eh = hash(ivec2(floor(q)), 112);
-		vec2 ef = fract(q) - 0.5;
-		if (eh > 0.986 && length(ef) < 0.3) {
-			float fl = step(0.5, fract(TIME * (0.6 + eh * 2.0) + eh * 13.0));
-			c = mix(pal(EMBER, 2), pal(EMBER, 4), fl);
-			emit += pal(EMBER, 3) * (0.5 + 0.7 * fl);
-		} else if (eh < 0.01 && abs(ef.y) < 0.18 && abs(ef.x) < 0.34) {
-			// A leaf of burnt ruled paper.
-			c = abs(ef.y) < 0.05 ? pal(LINEN, 2) : pal(LINEN, 3);
-		} else if (eh > 0.94 && length(ef) < 0.22) {
-			c = pal(ASH, 0);
-		}
-	} else if (g == G_CLINKER) {
-		vec3 v = voronoi(p * 1.15, 121);
-		if (v.y - v.x < 0.09) {
-			c = pal(STONE, 1);
-		} else {
-			c = mix(pal(INK, 1), pal(SPRUCE, 1), v.z * 0.8);
-			if (v.x > 0.22 && v.x < 0.3 && v.z > 0.4) {
-				c = pal(SPRUCE, 2);
-			}
-			if (hash(ivec2(floor(p * 8.0)), 123) > 0.985) {
-				c = pal(SPRUCE, 4);
-			}
-		}
-		if (vnoise(p * 0.5, 122) > 0.76) {
-			c = mix(c, pal(RUST, 2), 0.45);
-		}
-	} else if (g == G_NEEDLES) {
-		float s = p.x * 0.3 + p.y * 0.18 + vnoise(p * 0.07, 131) * 7.0;
-		float st = fract(s * 2.6);
-		if (st < 0.1) {
-			c = upc(c, 0.4);
-		} else if (st > 0.5 && st < 0.58) {
-			c = dn(c, 0.55);
-		}
-		float nh = hash(ivec2(floor(p * 6.0)), 132);
-		if (nh > 0.975) {
-			c = pal(EARTH, 3);
-		} else if (nh < 0.03) {
+		float h = ink_hash(px);
+		if (h > 0.995) {
+			c = LINEN5;
+		} else if (h < 0.006) {
 			c = dn(c, 0.9);
 		}
-	} else if (g == G_MOSS) {
-		vec3 v = voronoi(p * 0.85, 141);
-		if (v.x < 0.3) {
-			c = mix(upc(c, 0.35), pal(SPRUCE, 3), 0.25);
-		} else if (v.x > 0.62) {
+	} else if (m == 43) {
+		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with
+		// the ground showing between; now and then a piece of sea glass.
+		vec2 q = wp * 6.0;
+		vec2 i = floor(q);
+		vec2 f = fract(q) - 0.5;
+		float h = ink_hash(i + 3.0);
+		vec2 o = (vec2(ink_hash(i + 7.0), ink_hash(i + 11.0)) - 0.5) * 0.3;
+		vec2 e = (f - o) * vec2(1.0, 1.35 + h * 0.5);
+		float r = 0.28 + h * 0.16;
+		float dd = length(e);
+		if (h > 0.18 && dd < r) {
+			c = h < 0.45 ? dn(c, 0.35) : (h > 0.8 ? up(c, 0.3) : c);
+			if (dd > r - 0.1) {
+				c = (e.x + e.y) > 0.0 ? dn(c, 0.9) : up(c, 0.3);
+			}
+			if (h > 0.992) {
+				c = h > 0.996 ? SPRUCE4 : BRINE5;
+			}
+		} else if (ink_hash(px + 2.0) < 0.2) {
+			c = dn(c, 0.4);
+		}
+	} else if (m == 44) {
+		// SNOW: drifts as long shapes laid by the wind; each drawn by its blue
+		// lee and a broken crest line. Soot in some lees, the odd glint.
+		vec2 wd = vec2(0.83, 0.55);
+		float across = dot(wp, wd);
+		float along = dot(wp, vec2(-wd.y, wd.x));
+		float d = ink_vnoise(vec2(along * 0.1, across * 0.42)) * 0.75 + ink_vnoise(wp * 0.6) * 0.25;
+		if (d > 0.6 && d < 0.68) {
+			c = RIME4;
+			if (d < 0.615 && ink_hash(px) < 0.5) {
+				c = RIME5;
+			}
+			if (ink_vnoise(wp * 0.7 + 11.0) > 0.74 && ink_hash(px + 7.0) < 0.12) {
+				c = ASH3;
+			}
+		} else if (d >= 0.68 && d < 0.7 && ink_hash(floor(px / vec2(3.0, 1.0))) > 0.3) {
+			c = RIME3;
+		}
+		float g = ink_hash(px + 3.7);
+		if (g > 0.997 && fract(TIME * 0.21 + g * 91.0) < 0.12) {
+			c = vec3(1.0);
+			emit += vec3(0.25);
+		}
+	} else if (m == 45) {
+		// PAVEMENT: clints of pale limestone split by grikes. The grikes are ink
+		// cuts that wander and break off; they never make a grid.
+		vec2 r = vec2(dot(wp, vec2(0.96, 0.28)), dot(wp, vec2(-0.28, 0.96)));
+		vec2 warp = vec2(ink_vnoise(wp * 0.5), ink_vnoise(wp * 0.5 + 9.0)) - 0.5;
+		vec3 v = cells(vec2(r.x * 0.32, r.y * 0.6) + warp * 0.45);
+		c = v.z < 0.25 ? dn(c, 0.22) : (v.z > 0.85 ? up(c, 0.15) : c);
+		float edge = v.y - v.x;
+		float gate = ink_vnoise(wp * 1.1 + 4.0);
+		if (edge < 0.04 && gate > 0.42) {
+			c = gate > 0.74 ? MOSS2 : INK3;
+		} else if (edge < 0.075 && gate > 0.42) {
+			c = up(c, 0.3);
+		} else if (v.z > 0.9 && edge > 0.3 && edge < 0.34 && mod(px.x, 3.0) < 1.0) {
+			// A row of drill holes across a clint: the machine age in the stone.
+			c = LINEN1;
+		}
+	} else if (m == 46) {
+		// ASH: soft drifts, flakes, ember glints (unhatched, glowing) and now
+		// and then a leaf of burnt ruled paper.
+		float dr = ink_vnoise(vec2(dot(wp, vec2(0.7, -0.7)) * 0.12, dot(wp, vec2(0.7, 0.7)) * 0.5));
+		if (dr > 0.66) {
+			c = up(c, 0.22);
+		} else if (dr < 0.3) {
+			c = dn(c, 0.25);
+		}
+		vec2 cell = floor(px / vec2(9.0, 7.0));
+		vec2 lp = px - cell * vec2(9.0, 7.0);
+		float eh = ink_hash(cell + vec2(41.0, 17.0));
+		if (eh < 0.02 && lp == floor(vec2(ink_hash(cell), ink_hash(cell + 2.0)) * vec2(8.0, 6.0))) {
+			float fl = flicker(vec3(cell.x, 0.0, cell.y), 3.0 + eh * 40.0);
+			c = mix(EMBER3, EMBER4, fl);
+			emit += c * (0.6 + 0.6 * fl);
+			unh = 1.0;
+		} else if (stroke(px, vec2(6.0, 5.0), 17.0, 0.3, 2.0, -1.0) > 0.5) {
+			c = dn(c, 0.6);
+		}
+		vec2 pc = floor(wp / 2.3);
+		vec2 pl = (wp - pc * 2.3) * 26.0;
+		if (ink_hash(pc + 5.0) < 0.1 && pl.x > 20.0 && pl.x < 27.0 && pl.y > 30.0 && pl.y < 35.0) {
+			c = abs(pl.y - 32.0) < 0.7 ? LINEN2 : LINEN3;
+		}
+	} else if (m == 47) {
+		// CLINKER: vitrified black glass, a few long cracks, green glints, rust.
+		float n = ink_vnoise(wp * 0.8);
+		c = n > 0.55 ? mix(INK1, SPRUCE1, 0.5) : c;
+		float crack = abs(ink_vnoise(wp * 0.9 + 3.0) - 0.5);
+		if (crack < 0.018) {
+			c = STONE1;
+		}
+		if (ink_hash(px + 2.0) > 0.994 && n > 0.5) {
+			c = SPRUCE4;
+		}
+		if (ink_vnoise(wp * 0.5 + 8.0) > 0.76) {
+			c = mix(c, RUST2, 0.5);
+		}
+	} else if (m == 48) {
+		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
+		float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3;
+		if (n > 0.64) {
+			c = up(c, 0.4);
+			if (ink_hash(px) > 0.985) {
+				c = LINEN5;
+			}
+		} else if (n < 0.2) {
+			c = n < 0.165 ? BRINE0 : SPRUCE2;
+		} else if (n < 0.33) {
+			c = dn(c, 0.5);
+		}
+		if (ink_vnoise(wp * 0.45 + 20.0) > 0.78 && n > 0.33) {
+			c = mix(c, RUST2, 0.55);
+		}
+		if (stroke(px, vec2(4.0, 4.0), 31.0, 0.22, 1.0, 0.0) > 0.5) {
 			c = dn(c, 0.7);
 		}
-		if (v.x < 0.25 && v.z > 0.72) {
-			c = mix(c, pal(RUST, 2), 0.5);
+	} else if (m == 49) {
+		// PEAT: spade-cut lines, black wet patches, a little heather.
+		float cut = fract(wp.y * 1.2 + ink_vnoise(wp * 0.3) * 0.7);
+		if (cut < 0.06 && ink_vnoise(wp * 1.3) > 0.35) {
+			c = dn(c, 0.9);
+		} else if (cut < 0.1) {
+			c = up(c, 0.25);
 		}
-		if (v.x > 0.76 && v.z < 0.3) {
-			c = v.x > 0.8 ? pal(BRINE, 0) : pal(SPRUCE, 2);
+		if (ink_vnoise(wp * 0.8) > 0.74) {
+			c = mix(c, BRINE0, 0.6);
 		}
-		if (hash(ivec2(floor(p * 7.0)), 142) > 0.988) {
-			c = pal(LINEN, 4);
+		if (stroke(px, vec2(5.0, 5.0), 12.0, 0.18, 2.0, 0.0) > 0.5) {
+			c = BLOOM2;
 		}
-	} else if (g == G_PEAT) {
-		float cut = fract(p.y * 1.6 + vnoise(p * 0.3, 151) * 0.8);
-		if (cut < 0.08) {
-			c = dn(c, 0.8);
-		} else if (cut < 0.14) {
-			c = upc(c, 0.25);
+	} else if (m == 50) {
+		// NEEDLES: a brown floor swept into long curves by something on its
+		// round: the contours of a slow field, drawn faint and broken.
+		float f = ink_vnoise(wp * 0.07) * 0.8 + ink_vnoise(wp * 0.21) * 0.2;
+		float arc = fract(f * 9.0);
+		float gate = ink_vnoise(wp * 0.6 + 2.0);
+		if (arc < 0.06 && gate > 0.3) {
+			c = up(c, 0.3);
+		} else if (arc > 0.5 && arc < 0.54 && gate > 0.5) {
+			c = dn(c, 0.3);
 		}
-		if (vnoise(p * 0.9, 152) > 0.76) {
-			c = mix(c, pal(BRINE, 0), 0.5);
+		if (stroke(px, vec2(4.0, 3.0), 7.0, 0.35, 2.0, 1.0) > 0.5) {
+			c = dn(c, 0.6);
+		} else if (stroke(px, vec2(5.0, 4.0), 13.0, 0.15, 2.0, -1.0) > 0.5) {
+			c = up(c, 0.35);
 		}
-	} else if (g == G_MUD) {
-		float pu = vnoise(p * 0.55, 161) + vnoise(p * 1.7, 162) * 0.25;
-		if (pu > 0.86) {
-			c = pal(BRINE, 2);
-		} else if (pu > 0.8) {
+	} else if (m == 51) {
+		// ICE: pale streaks, long cracks, trapped bubbles.
+		float st = ink_vnoise(vec2(dot(wp, vec2(0.89, 0.45)) * 0.25, dot(wp, vec2(-0.45, 0.89)) * 1.6));
+		if (st > 0.7) {
+			c = RIME5;
+		} else if (st < 0.3) {
+			c = dn(c, 0.3);
+		}
+		float crack = abs(ink_vnoise(wp * 0.6 + 5.0) - 0.5);
+		if (crack < 0.012) {
+			c = RIME3;
+		} else if (crack < 0.03 && ink_hash(px) < 0.3) {
+			c = RIME5;
+		}
+		if (ink_hash(px + 6.0) > 0.993) {
+			c = RIME5;
+		}
+	} else if (m == 52) {
+		// ROCK: bare stone: a few long cracks, lichen in small blooms.
+		if (ink_vnoise(wp * 0.35) > 0.62) {
+			c = dn(c, 0.25);
+		}
+		float crack = abs(ink_vnoise(wp * 0.8 + 1.0) - 0.5);
+		if (crack < 0.014 && ink_vnoise(wp * 1.5) > 0.4) {
+			c = dn(c, 1.0);
+		} else if (crack < 0.03 && crack > 0.014) {
+			c = up(c, 0.2);
+		}
+		float lich = ink_vnoise(wp * 2.2 + 6.0);
+		if (lich > 0.8 && ink_hash(px + 8.0) < 0.45) {
+			c = ink_vnoise(wp * 0.3) > 0.5 ? LINEN3 : MOSS3;
+		}
+	} else if (m == 53) {
+		// MUD: puddles holding the sky, hoof-pocked.
+		float pu = ink_vnoise(wp * 0.6) + ink_vnoise(wp * 1.8) * 0.25;
+		if (pu > 0.9) {
+			c = BRINE2;
+		} else if (pu > 0.84) {
 			c = dn(c, 0.6);
 		}
-	} else if (g == G_ROCK) {
-		vec3 v = voronoi(p * 1.3, 171);
-		c = v.z < 0.3 ? dn(c, 0.3) : (v.z > 0.8 ? upc(c, 0.25) : c);
-		if (v.y - v.x < 0.05) {
-			c = dn(c, 1.0);
+		if (stroke(px, vec2(6.0, 5.0), 21.0, 0.25, 1.0, 0.0) > 0.5) {
+			c = dn(c, 0.7);
 		}
-		if (hash(ivec2(floor(p * 6.0)), 172) > 0.975) {
-			c = mix(c, v.z > 0.5 ? pal(LINEN, 3) : pal(MOSS, 4), 0.7);
-		}
-	} else if (g == G_ROAD) {
-		float rh = hash(ivec2(floor(p * 5.0)), 181);
-		if (rh > 0.9) {
+	} else if (m == 54) {
+		// ROAD: worn, stones trodden in.
+		float h = ink_hash(px);
+		if (h > 0.96) {
 			c = dn(c, 0.5);
-		} else if (rh < 0.05) {
-			c = upc(c, 0.3);
+		} else if (h < 0.03) {
+			c = up(c, 0.3);
 		}
-	} else if (g == G_FLOOR) {
-		vec2 q = p * vec2(2.0, 2.5);
-		q.x += hash(ivec2(0, int(floor(q.y))), 191);
-		vec2 fq = fract(q);
-		if (fq.x < 0.08 || fq.y < 0.1) {
-			c = dn(c, 0.9);
-		} else if (hash(ivec2(floor(q)), 192) < 0.3) {
+		if (ink_vnoise(wp * 0.7) > 0.7) {
 			c = dn(c, 0.2);
 		}
 	}
 	return c;
 }
 
-// The neighbouring country creeping in across an ecotone: its weather on this
-// ground. t = 0 deep in the country .. 1 on the border.
-vec3 dust(vec3 c, int g, int c2, float t, vec2 p) {
-	if (t <= 0.01) {
-		return c;
-	}
-	float m = vnoise(p * 0.42, 201) * 0.7 + vnoise(p * 1.9, 202) * 0.3;
-	if (c2 == C_SNOWFIELD && g != G_SNOW && g != G_ICE) {
-		float k = t * 0.62;
-		if (m < k - 0.04) {
-			c = pal(RIME, 5);
-		} else if (m < k + 0.01) {
-			c = pal(RIME, 4);
+// Terrace walls: each country's rock, banded by world height. dt: depth below
+// the wall's top (a wall is one level tall).
+vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
+	float y = wp.y;
+	float top = (floor(y / 0.5 - 0.002) + 1.0) * 0.5;
+	float dt = top - y;
+	float col = floor(px.x / 2.0);
+	float vn = ink_vnoise(vec2(px.x * 0.07, y * 3.0));
+	if (id == 1) {
+		// COAST: thin slate beds, a soil line, white streaks under ledges.
+		float b = (y + (vn - 0.5) * 0.05) / 0.11;
+		float h = ink_hash(vec2(floor(b), 3.0));
+		c = h < 0.35 ? dn(c, 0.3) : (h > 0.75 ? up(c, 0.25) : c);
+		if (fract(b) < 0.2) {
+			c = dn(c, 0.7);
 		}
-	} else if (c2 == C_BURNING && g != G_ASH && g != G_CLINKER) {
-		if (m < t * 0.5 - 0.02) {
-			c = vnoise(p * 3.0, 203) > 0.5 ? pal(ASH, 2) : pal(ASH, 1);
-		} else if (hash(ivec2(floor(p * 6.0)), 204) < t * 0.07) {
-			c = pal(ASH, 0);
+		if (dt < 0.05 + vn * 0.04) {
+			c = EARTH1;
 		}
-	} else if (c2 == C_MOSS && g != G_MOSS && g != G_PEAT && g != G_MUD) {
-		if (m < t * 0.14) {
-			c = m < t * 0.1 ? pal(BRINE, 0) : pal(SPRUCE, 2);
-		} else if (m < t * 0.45) {
-			c = dn(c, 0.55);
+		float st = ink_hash(vec2(col, 9.0));
+		if (st > 0.94 && dt < 0.1 + fract(st * 31.0) * 0.3) {
+			c = LINEN4;
 		}
-	} else if (c2 == C_BONELANDS && g != G_LIMESTONE && g != G_BONE && g != G_SCREE) {
-		vec3 v = voronoi(p * 2.2, 205);
-		if (v.z < t * 0.4 && v.x < 0.34) {
-			c = v.y - v.x < 0.06 ? pal(LINEN, 2) : (v.z > t * 0.2 ? pal(LINEN, 4) : pal(LINEN, 3));
+	} else if (id == 2) {
+		// MOSS: a deep peat bank, fibrous, over dark wet rock.
+		if (dt < 0.3 + (vn - 0.5) * 0.12) {
+			c = ink_hash(vec2(col, floor(y * 30.0))) < 0.3 ? EARTH0 : EARTH1;
+			if (fract(y * 11.0 + vn) < 0.1) {
+				c = EARTH2;
+			}
+		} else {
+			c = SLATE1;
+			if (ink_hash(vec2(floor(px.x / 3.0), 2.0)) > 0.75) {
+				c = SPRUCE2;
+			}
 		}
-	} else if (c2 == C_PINEWOOD && g != G_NEEDLES) {
-		float s = fract((p.x * 0.3 + p.y * 0.18 + vnoise(p * 0.07, 131) * 7.0) * 2.6);
-		if (m < t * 0.55 && s > 0.45 && s < 0.7) {
-			c = mix(c, pal(EARTH, 1), 0.7);
+	} else if (id == 3) {
+		// PINEWOOD: dark rock in joints, roots hanging from the soil.
+		float jh = ink_hash(vec2(floor(px.x / 7.0), 4.0));
+		c = jh < 0.4 ? dn(c, 0.25) : c;
+		if (mod(px.x, 7.0) < 1.0) {
+			c = dn(c, 0.8);
 		}
-	} else if (c2 == C_COAST && g != G_GRASS) {
-		if (hash(ivec2(floor(p * 5.0)), 206) < t * 0.18) {
-			c = pal(MOSS, 3);
+		if (dt < 0.08 + vn * 0.05) {
+			c = EARTH1;
+		} else if (ink_hash(vec2(px.x, 5.0)) > 0.86 && dt < 0.12 + ink_hash(vec2(px.x, 6.0)) * 0.22) {
+			c = EARTH2;
 		}
+	} else if (id == 4) {
+		// SNOWFIELD: a snow cap with a ragged hem and icicle runs over blue rock.
+		float hem = 0.07 + ink_hash(vec2(col, 1.0)) * 0.06;
+		if (dt < hem) {
+			c = RIME5;
+		} else if (ink_hash(vec2(col, 2.0)) > 0.78 && dt < hem + ink_hash(vec2(col, 3.0)) * 0.24) {
+			c = RIME4;
+		} else {
+			float b = floor((y + (vn - 0.5) * 0.08) / 0.17);
+			c = ink_hash(vec2(b, 4.0)) < 0.5 ? SLATE2 : RIME2;
+		}
+	} else if (id == 5) {
+		// BONELANDS: thick limestone beds, dark bedding planes, joints as ink cuts.
+		float b = (y + (vn - 0.5) * 0.04) / 0.24;
+		c = ink_hash(vec2(floor(b), 1.0)) < 0.5 ? LINEN3 : LINEN4;
+		if (fract(b) < 0.09) {
+			c = LINEN1;
+		} else if (fract(b) > 0.88) {
+			c = up(c, 0.2);
+		}
+		float jx = floor(px.x / 13.0);
+		if (px.x - jx * 13.0 == floor(ink_hash(vec2(jx, floor(b))) * 12.0)) {
+			c = LINEN1;
+		}
+	} else if (id == 6) {
+		// BURNING: basalt columns, and a few joints still glowing.
+		float cx = floor((px.x + floor(ink_hash(vec2(floor(y / 0.35), 1.0)) * 3.0)) / 5.0);
+		float lx = px.x - cx * 5.0;
+		float h = ink_hash(vec2(cx, floor((y + ink_hash(vec2(cx, 2.0)) * 0.4) / 0.45)));
+		c = h < 0.33 ? INK2 : (h < 0.7 ? STONE0 : INK3);
+		if (lx < 1.0) {
+			c = up(c, 0.6);
+		} else if (lx > 3.5) {
+			c = dn(c, 0.6);
+			if (ink_hash(vec2(cx, floor(y * 12.0))) > 0.93) {
+				float fl = flicker(vec3(cx, y * 4.0, 0.0), 2.0);
+				c = mix(EMBER2, EMBER3, fl);
+				emit += c * (0.5 + 0.5 * fl);
+				unh = 1.0;
+			}
+		}
+	} else if (id == 7) {
+		// SAND and SHINGLE banks: soft layers.
+		float b = (y + (vn - 0.5) * 0.03) / 0.07;
+		c = mod(floor(b), 3.0) < 1.0 ? dn(c, 0.4) : c;
+		if (dt < 0.03) {
+			c = up(c, 0.3);
+		}
+	} else if (id == 8) {
+		// ICE: streaked blue.
+		c = ink_hash(vec2(floor(px.x / 2.0), floor(y * 6.0))) < 0.5 ? RIME3 : RIME4;
 	}
 	return c;
-}
-
-vec3 terrain_top(vec2 p, inout vec3 emit) {
-	ivec2 hi = ivec2(world_size) - 1;
-	ivec2 ti = clamp(ivec2(floor(p)), ivec2(0), hi);
-	vec2 wv = vec2(vnoise(p * 1.9, 3), vnoise(p * 1.9 + vec2(17.3, 5.1), 4)) - 0.5;
-	ivec2 tw = clamp(ivec2(floor(p + wv * 0.75)), ivec2(0), hi);
-	vec4 f0 = texelFetch(field_tex, ti, 0);
-	vec4 fld = texelFetch(field_tex, tw, 0);
-	vec4 tile = texelFetch(tile_tex, tw, 0);
-	int g = int(tile.a * 255.0 + 0.5);
-	// Organic edges between grounds, but never borrowed across a step or from water.
-	if (abs(fld.r - f0.r) > 0.001 || is_wet(g)) {
-		fld = f0;
-		tile = texelFetch(tile_tex, ti, 0);
-		g = int(tile.a * 255.0 + 0.5);
-	}
-	vec3 c = tile.rgb;
-	// Large grades from world-position fields: masses stay nearly flat.
-	float gr = vnoise(p / 23.0, 21) * 0.65 + vnoise(p / 9.0, 22) * 0.35;
-	if (gr < 0.36) {
-		c = dn(c, 0.3);
-	} else if (gr > 0.66) {
-		c = upc(c, 0.22);
-	}
-	c = paint(g, c, p, emit);
-	int cc = int(fld.g * 255.0 + 0.5);
-	float t = fld.b;
-	c = dust(c, g, cc / 16, t, p);
-	// The strand darkens where the swash reaches.
-	float sd = shore_distance(p);
-	if (sd > -1.2 && sd < 0.2 && !is_wet(g)) {
-		if (sd > -0.16 - 0.26 * lap(p)) {
-			c = dn(c, 0.55);
-		}
-	}
-	return c;
-}
-
-vec3 cliff(vec2 p, float y, int g, vec4 data, inout vec3 emit) {
-	int c = int(data.r * 8.0 + 0.5);
-	int c2 = int(data.g * 8.0 + 0.5);
-	float blend = data.b * 0.5;
-	float top = data.a * 8.0;
-	float s = p.x + p.y;
-	float depth = top - y;
-	int cc = hash(ivec2(int(floor(s * 1.5)), int(floor(y * 3.0))), 301) < blend ? c2 : c;
-	if (g == G_SAND || g == G_SHINGLE || g == G_GRAVEL || g == G_ASH) {
-		float b = floor((y + (vnoise(vec2(s * 0.8, y * 2.0), 311) - 0.5) * 0.08) / 0.09);
-		vec3 base = g == G_SAND ? pal(SAND, 3) : (g == G_ASH ? pal(ASH, 1) : pal(STONE, 2));
-		return mod(b, 3.0) < 1.0 ? dn(base, 0.45) : base;
-	}
-	if (g == G_ICE) {
-		float b = fract((y + vnoise(vec2(s * 2.0, y), 312) * 0.2) / 0.2);
-		return b < 0.3 ? pal(RIME, 3) : pal(RIME, 4);
-	}
-	if (cc == C_BONELANDS) {
-		float warp = (vnoise(vec2(s * 0.35, y), 321) - 0.5) * 0.12;
-		float bed = (y + warp) / 0.3;
-		float bi = floor(bed);
-		float bf = fract(bed);
-		vec3 col = hash(ivec2(int(bi), 1), 322) < 0.5 ? pal(LINEN, 3) : pal(LINEN, 4);
-		if (bf < 0.1) {
-			col = pal(LINEN, 1);
-		} else if (bf > 0.86) {
-			col = upc(col, 0.3);
-		}
-		if (fract(s * 0.8 + hash(ivec2(int(bi), 2), 323) * 5.0) < 0.05) {
-			col = pal(LINEN, 2);
-		}
-		return col;
-	}
-	if (cc == C_BURNING) {
-		float colx = s * 3.1 + (vnoise(vec2(s * 0.5, y * 0.6), 331) - 0.5) * 0.4;
-		float ci = floor(colx);
-		float cf = fract(colx);
-		float lift = hash(ivec2(int(ci), 0), 332) * 0.6;
-		float tier = floor((y + lift) / 1.3);
-		float h = hash(ivec2(int(ci), int(tier)), 333);
-		vec3 col = h < 0.33 ? pal(INK, 2) : (h < 0.7 ? pal(STONE, 0) : pal(INK, 3));
-		if (cf < 0.12) {
-			col = upc(col, 0.55);
-		} else if (cf > 0.9) {
-			col = dn(col, 0.8);
-			if (hash(ivec2(int(ci), int(floor(y * 5.0))), 334) > 0.9) {
-				float fl = step(0.4, fract(TIME * 0.7 + h * 11.0));
-				col = pal(EMBER, 3);
-				emit += pal(EMBER, 3) * (0.4 + 0.6 * fl);
-			}
-		}
-		if (fract((y + lift) / 1.3) < 0.04) {
-			col = pal(INK, 1);
-		}
-		return col;
-	}
-	if (g == G_SNOW || cc == C_SNOWFIELD) {
-		if (depth < 0.09 + vnoise(vec2(s * 3.0, 0.5), 341) * 0.1) {
-			return pal(RIME, 5);
-		}
-		float bed = (y + (vnoise(vec2(s * 0.6, y), 342) - 0.5) * 0.1) / 0.2;
-		vec3 col = hash(ivec2(int(floor(bed)), 4), 343) < 0.5 ? pal(SLATE, 2) : pal(RIME, 2);
-		if (hash(ivec2(int(floor(s * 6.0)), 1), 344) > 0.8 && depth < 0.3 + fract(s * 13.0) * 0.6) {
-			col = pal(RIME, 3);
-		}
-		return col;
-	}
-	if (cc == C_MOSS) {
-		float peat = 0.32 + (vnoise(vec2(s * 1.5, 1.0), 351) - 0.5) * 0.12;
-		if (depth < peat) {
-			vec3 col = fract(y * 9.0 + vnoise(vec2(s * 2.0, y), 352)) < 0.35 ? pal(EARTH, 0) : pal(EARTH, 1);
-			if (fract(s * 5.0 + vnoise(vec2(s, y * 3.0), 353)) < 0.06) {
-				col = pal(EARTH, 2);
-			}
-			return col;
-		}
-		vec3 col = pal(SLATE, 1);
-		if (hash(ivec2(int(floor(s * 5.0)), 2), 354) > 0.7 && fract(s * 5.0) < 0.35) {
-			col = pal(SPRUCE, 2);
-		}
-		return col;
-	}
-	if (cc == C_PINEWOOD) {
-		if (depth < 0.22 + (vnoise(vec2(s * 1.2, 2.0), 361) - 0.5) * 0.1) {
-			vec3 col = pal(EARTH, 1);
-			if (fract(s * 4.0 + vnoise(vec2(s * 0.5, y * 4.0), 362) * 0.8) < 0.07) {
-				col = pal(EARTH, 3);
-			}
-			return col;
-		}
-		float bed = (y + (vnoise(vec2(s * 0.6, y), 363) - 0.5) * 0.1) / 0.18;
-		float h = hash(ivec2(int(floor(bed)), 5), 364);
-		vec3 col = h < 0.4 ? pal(SLATE, 1) : (h < 0.8 ? mix(pal(SLATE, 2), pal(SPRUCE, 1), 0.5) : pal(SLATE, 2));
-		if (fract(bed) < 0.1) {
-			col = dn(col, 0.6);
-		}
-		return col;
-	}
-	// The coast: thin slate beds, a soil line, and white streaks where birds sit.
-	float bed = (y + (vnoise(vec2(s * 0.7, y * 1.5), 371) - 0.5) * 0.1) / 0.16;
-	float h = hash(ivec2(int(floor(bed)), 3), 372);
-	vec3 col = h < 0.35 ? pal(SLATE, 1) : (h < 0.75 ? pal(SLATE, 2) : mix(pal(SLATE, 2), pal(STONE, 2), 0.5));
-	if (fract(bed) < 0.12) {
-		col = dn(col, 0.6);
-	}
-	if (depth < 0.1) {
-		col = pal(EARTH, 1);
-	}
-	float streak = hash(ivec2(int(floor(s * 7.0)), 9), 373);
-	if (streak > 0.93 && depth < 0.25 + fract(streak * 31.0) * 0.8) {
-		col = mix(col, pal(LINEN, 4), 0.6);
-	}
-	return col;
 }
 
 void vertex() {
-	kind = int(UV.y + 0.5);
-	param = UV.x;
-	if (kind == 4 && UV.x > 0.0) {
-		float ph = dot(VERTEX.xz, vec2(0.37, 0.23));
-		float gust = 0.55 + 0.45 * sin(TIME * 0.5 + VERTEX.x * 0.045 - VERTEX.z * 0.03);
-		float osc = sin(TIME * (1.7 + wind * 1.3) + ph * 2.0) * 0.65 + sin(TIME * 2.9 + ph * 3.1) * 0.35;
-		float amp = (0.02 + 0.13 * wind) * gust;
-		vec2 d = wind_dir * amp * (0.45 + 0.55 * osc) * UV.x;
-		vec3 dv = (VIEW_MATRIX * vec4(d.x, 0.0, d.y, 0.0)).xyz;
-		dv.xy = round(dv.xy / texel) * texel;
-		VERTEX += (INV_VIEW_MATRIX * vec4(dv, 0.0)).xyz;
+	sway_w = UV2.x;
+	if (sway_w > 0.0) {
+		vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
+		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
+		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
+		// Move in whole texels, so a blade steps a pixel and never smears.
+		vec3 vp = mat3(VIEW_MATRIX) * push;
+		float texel = 2.0 / max(abs(PROJECTION_MATRIX[1][1]) * VIEWPORT_SIZE.y, 1.0);
+		vp.xy = round(vp.xy / texel) * texel;
+		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * vp);
 	}
-	if (kind == 3 && UV.x >= 5.0 && UV.x < 10.0) {
-		// Flames lick: a stepped sideways and upward jitter, eight times a second.
-		float t = floor(TIME * 8.0);
-		float h = fract(sin(dot(VERTEX.xz, vec2(12.9898, 78.233)) + t * 0.731) * 43758.5453);
-		vec3 dv = (VIEW_MATRIX * vec4((h - 0.5) * 0.06, h * 0.05, 0.0, 0.0)).xyz;
-		dv.xy = round(dv.xy / texel) * texel;
-		VERTEX += (INV_VIEW_MATRIX * vec4(dv, 0.0)).xyz;
-	}
-	world_pos = VERTEX;
-	tile_pos = UV2;
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wash2 = CUSTOM0.rgb;
+	// A mesh without CUSTOM0 reads (0, 0, 0, 1): no second wash is ever pure black.
+	wash_blend = dot(CUSTOM0.rgb, vec3(1.0)) > 0.0 ? CUSTOM0.a : 0.0;
+	style_packed = UV.x;
+	style_blend = UV.y;
+	patch_raw = UV2.x > 0.0 ? 0.0 : UV2.y;
 }
 
 void fragment() {
-	vec3 c = COLOR.rgb;
+	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	int m1 = int(COLOR.a * 255.0 + 0.5);
+	int m2 = patch_raw >= 1.5 ? int(patch_raw - 2.0 + 0.5) : m1;
+	float patchy = min(patch_raw, 1.0);
+	// A second wash (another ground, another country) meets this one on a ragged
+	// pixel edge: never a muddy average, never a tile square.
+	bool second = wash_blend > 0.0 && ink_edge(wash_blend, px) > 0.5;
+	vec3 c = second ? wash2 : COLOR.rgb;
+	int m = second ? m2 : m1;
+	float s1 = mod(style_packed, 16.0);
+	float s2 = floor(style_packed / 16.0 + 0.01);
+	style_sel = second ? s2 : s1;
+	float unh = 0.0;
 	vec3 emit = vec3(0.0);
-	if (kind == 1 && has_terrain) {
-		c = terrain_top(tile_pos, emit);
-	} else if (kind == 2 && has_terrain) {
-		c = cliff(tile_pos, world_pos.y, int(param + 0.5), COLOR, emit);
-	} else {
-		if (has_terrain) {
-			// Wading: whatever stands on a wet tile is hidden below its wade line.
-			vec2 tp = world_pos.xz - tile_origin;
-			ivec2 ti = clamp(ivec2(floor(tp)), ivec2(0), ivec2(world_size) - 1);
-			int g = int(texelFetch(tile_tex, ti, 0).a * 255.0 + 0.5);
-			if (is_wet(g) && all(greaterThanEqual(tp, vec2(0.0))) && all(lessThan(tp, world_size))) {
-				float l = texelFetch(field_tex, ti, 0).r * 255.0 - 64.0;
-				float wade = l <= 0.0 ? 0.3 : l * 0.5 + 0.22;
-				if (world_pos.y < wade) {
-					discard;
-				}
-			}
-		}
-		if (kind == 3) {
-			float fl = 0.8 + 0.2 * step(0.5, fract(TIME * 1.7 + dot(world_pos.xz, vec2(3.1, 1.7))));
-			float strength = param;
-			if (param >= 10.0) {
-				// Lamps: lit only when the sky has gone dim.
-				float dim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
-				strength = (param - 10.0) * clamp((0.9 - dim) * 5.0, 0.0, 1.0);
-			} else if (param >= 5.0) {
-				strength = param - 5.0;
-			}
-			emit = COLOR.rgb * strength * fl;
-		} else if (kind == 5) {
-			float gh = fract(dot(floor(world_pos.xz * 8.0), vec2(0.1031, 0.1373)) * 43.7);
-			if (fract(TIME * 0.31 + gh * 17.0) < 0.07) {
-				c = upc(c, 1.5);
-			}
+	if (patchy > 0.0) {
+		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35;
+		c *= 1.0 + patchy * (step(0.64, pn) * 0.055 - step(pn, 0.34) * 0.05);
+	}
+	if (m >= 40 && m < 60) {
+		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+	} else if (m > 60 && m < 70) {
+		c = strata(m - 60, c, world_pos, px, emit, unh);
+	} else if (m >= 1 && m <= 16) {
+		// Embers and flames: they give light, so they are never shaded or hatched.
+		float fl = 0.8 + 0.2 * flicker(world_pos, 6.0);
+		emit += c * (float(m) / 8.0) * fl;
+		unh = 1.0;
+	} else if (m >= 17 && m <= 32) {
+		// A lamp: glass by day, lit when the light goes.
+		float dim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+		float on = clamp((0.9 - dim) * 6.0, 0.0, 1.0);
+		emit += c * (float(m - 16) / 8.0) * on;
+		c = mix(dn(c, 1.0), c, on);
+		unh = on;
+	} else if (m == 33) {
+		// A glint: glass or ice catching the light for a moment.
+		float gh = ink_hash(floor(world_pos.xz * 7.0) + floor(world_pos.y * 7.0));
+		if (fract(TIME * 0.27 + gh * 17.0) < 0.06) {
+			c = up(c, 1.6);
+			emit += c * 0.3;
 		}
 	}
+	unhatched = unh;
+	c *= paper(px);
 	ALBEDO = sky_apply(c, world_pos, TIME);
-	EMISSION = COLOR.rgb * emission_strength + emit;
+	EMISSION = c * emission_strength + emit;
 }
 
 void light() {
+	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	float ndl = dot(NORMAL, LIGHT);
+	int style = int(style_sel + 0.5);
 	if (LIGHT_IS_DIRECTIONAL) {
 		float lit = step(0.0, ndl) * step(0.5, ATTENUATION);
-		float band = ndl > 0.4 ? 1.0 : 0.88;
-		vec3 k = mix(shade_tint, vec3(band), lit);
-		if (kind == 1) {
-			// Hillside relief: undulating ground turns a half step toward or away from the sun.
-			vec3 up_v = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-			float rel = ndl - dot(up_v, LIGHT);
-			if (rel > 0.05) {
-				k *= 1.07;
-			} else if (rel < -0.05) {
-				k *= mix(vec3(1.0), shade_tint, 0.45);
-			}
-		}
+		float band = ndl > 0.42 ? 1.0 : 0.9;
+		// Depth of shade: 0 in cast shadow on a sunward face, 1 on a face turned away.
+		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
+		float ink = (1.0 - lit) * hatch(style, px, depth) * (1.0 - unhatched);
+		vec3 k = mix(shade_tint, vec3(band), max(lit, unhatched));
+		k = mix(k, ink_tint, ink * 0.75);
 		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
 	} else {
-		// Lamps and fire: quantised to three steps so pools of light have edges.
+		// Lamps and fire: three hard steps, and inside the pool the page is
+		// clean: light adds back what the hatching took (docs/ART.md §6).
 		float a = clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0);
 		a = floor(a * 3.0 + 0.5) / 3.0;
-		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
+		float erase = hatch(style, px, 1.0) * step(0.3, a) * 0.9;
+		DIFFUSE_LIGHT += LIGHT_COLOR * a * (1.0 + erase) / PI;
 	}
 }

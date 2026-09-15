@@ -1,116 +1,267 @@
 class_name GroundColors
-## Ground colours per Ground type AND per country, from art-audio-extract §2b.
+## The washes of the land (docs/ART.md §3): what colour a ground is in each
+## country, which ink MARK world.gdshader draws into it, and what its cliffs are
+## made of. Every wash is a palette value or a named mix of two.
 ##
-## A tile's base colour is table[ground][country] mixed toward
-## table[ground][country2] by blend, so the same grass is grey-green on the coast,
-## blue-dark under pines, frost-bitten toward the snow, bleached on the bones and
-## scorched near the burning. Grades, patterns and dusting are drawn on top by
-## world.gdshader from world-position fields (never per-tile noise).
-##
-## Every colour here is a palette value or a fixed mix of two palette values.
+## Marks are stored in a vertex colour's alpha as `code / 255` (see
+## world.gdshader). 0 and 255 are plain, so an ordinary palette colour
+## (alpha 1) never carries a mark.
 
 ## The measured one-ramp-step darken of the source game (art-audio-extract §8).
 const STEP_DOWN := Vector3(0.700, 0.704, 0.749)
+const P := preload("res://src/render/palette.gd")
 
-static var _table: Array[Color] = []
-static var _side: Array = []
+## Mark codes. Keep in sync with world.gdshader.
+const PLAIN := 0
+## 1..16: glowing (ember, flame), strength code / 8. 17..32: a lamp, lit when
+## the sky is dim, strength (code - 16) / 8.
+const GLOW := 0
+const LAMP := 16
+const GLINT := 33
+const TURF := 40
+const HEATH := 41
+const SAND := 42
+const SHINGLE := 43
+const SNOW := 44
+const PAVEMENT := 45
+const ASH := 46
+const CLINKER := 47
+const FEN := 48
+const PEAT := 49
+const NEEDLES := 50
+const ICE := 51
+const ROCK := 52
+const MUD := 53
+const ROAD := 54
+## Cliff strata: STRATA + one of the STRATA_* ids.
+const STRATA := 60
+const STRATA_COAST := 1
+const STRATA_MOSS := 2
+const STRATA_PINE := 3
+const STRATA_SNOW := 4
+const STRATA_BONE := 5
+const STRATA_BASALT := 6
+const STRATA_SAND := 7
+const STRATA_ICE := 8
+
+static var _wash: PackedColorArray
+static var _marks: PackedInt32Array
+static var _cliff: PackedColorArray
 
 
 static func _static_init() -> void:
-	_table.resize(Ground.COUNT * Country.COUNT)
+	_wash.resize(Ground.COUNT * Country.COUNT)
+	_marks.resize(Ground.COUNT * Country.COUNT)
+	_cliff.resize(Ground.COUNT * Country.COUNT)
 	for g in Ground.COUNT:
 		for c in Country.COUNT:
-			_table[g * Country.COUNT + c] = _make(g, c)
-	_side.resize(Ground.COUNT)
-	for g in Ground.COUNT:
-		var b := base(g, Country.COAST)
-		_side[g] = [down(b, 1.0), down(b, 1.6)]
+			var i := g * Country.COUNT + c
+			_wash[i] = _make(g, c)
+			_marks[i] = _make_mark(g, c)
+			_cliff[i] = _make_cliff(g, c)
 
 
 static func _m(a: Color, b: Color, t: float) -> Color:
 	return a.lerp(b, t)
 
 
-## The home look of a ground, before any country's mood.
-static func _native(g: int) -> Color:
-	match g:
-		Ground.DEEP_WATER: return Palette.BRINE[1]
-		Ground.WATER: return _m(Palette.SAND[3], Palette.BRINE[2], 0.4)
-		Ground.SAND: return Palette.SAND[4]
-		Ground.GRASS: return _m(Palette.MOSS[3], Palette.MOSS[2], 0.4)
-		Ground.MOSS: return _m(Palette.MOSS[2], Palette.SPRUCE[2], 0.3)
-		Ground.MUD: return _m(Palette.EARTH[2], Palette.EARTH[1], 0.3)
-		Ground.NEEDLES: return _m(Palette.EARTH[2], Palette.EARTH[1], 0.3)
-		Ground.SNOW: return Palette.RIME[5]
-		Ground.BONE: return _m(Palette.LINEN[4], Palette.LINEN[5], 0.25)
-		Ground.ASH: return _m(Palette.ASH[1], Palette.ASH[2], 0.45)
-		Ground.ROCK: return Palette.SLATE[2]
-		Ground.ROAD: return _m(Palette.EARTH[3], Palette.SAND[3], 0.3)
-		Ground.FLOOR: return Palette.STONE[2]
-		Ground.HEATH: return _m(Palette.EARTH[2], Palette.MOSS[2], 0.45)
-		Ground.SHINGLE: return _m(Palette.STONE[2], Palette.SAND[2], 0.25)
-		Ground.GRAVEL: return _m(Palette.STONE[2], Palette.SAND[3], 0.3)
-		Ground.SCREE: return _m(Palette.SLATE[2], Palette.SLATE[1], 0.3)
-		Ground.LIMESTONE: return Palette.LINEN[4]
-		Ground.CLINKER: return _m(Palette.STONE[0], Palette.INK[2], 0.4)
-		Ground.ICE: return _m(Palette.RIME[4], Palette.RIME[3], 0.2)
-		Ground.BLACKWATER: return Palette.BRINE[0]
-		Ground.PEAT: return _m(Palette.EARTH[1], Palette.EARTH[2], 0.3)
-		Ground.RIVER: return _m(Palette.SAND[3], Palette.BRINE[2], 0.4)
-	return Palette.BLOOM[3]
-
-
-## Which country a ground belongs to; elsewhere it takes that country's mood.
-static func _home(g: int) -> int:
-	match g:
-		Ground.MOSS, Ground.MUD, Ground.PEAT, Ground.BLACKWATER: return Country.MOSS
-		Ground.NEEDLES: return Country.PINEWOOD
-		Ground.SNOW, Ground.ICE: return Country.SNOWFIELD
-		Ground.BONE, Ground.LIMESTONE, Ground.SCREE: return Country.BONELANDS
-		Ground.ASH, Ground.CLINKER: return Country.BURNING
-	return Country.COAST
-
-
+## The wash of ground g as drawn in country c.
 static func _make(g: int, c: int) -> Color:
-	var col := _native(g)
-	# Rock takes the country's geology rather than a mood.
 	match g:
-		Ground.ROCK, Ground.SCREE, Ground.SHINGLE, Ground.GRAVEL:
+		Ground.DEEP_WATER: return P.BRINE[1]
+		Ground.WATER, Ground.RIVER: return _m(P.SAND[2], P.BRINE[2], 0.5)
+		Ground.BLACKWATER: return P.BRINE[0]
+		Ground.FLOOR: return P.STONE[2]
+		Ground.ROAD:
 			match c:
-				Country.BONELANDS: return _m(col, Palette.LINEN[3], 0.45)
-				Country.BURNING: return _m(col, Palette.INK[3], 0.55)
-				Country.SNOWFIELD: return _m(col, Palette.RIME[3], 0.3)
-				Country.MOSS: return _m(col, Palette.SPRUCE[2], 0.25)
-				Country.PINEWOOD: return _m(col, Palette.SPRUCE[1], 0.2)
-			return col
+				Country.SNOWFIELD: return _m(P.ASH[3], P.EARTH[3], 0.35)
+				Country.BURNING: return P.ASH[1]
+				Country.BONELANDS: return _m(P.LINEN[3], P.EARTH[3], 0.4)
+			return _m(P.EARTH[3], P.SAND[3], 0.4)
+		Ground.SAND:
+			match c:
+				Country.SNOWFIELD: return _m(P.SAND[4], P.RIME[4], 0.45)
+				Country.BURNING: return _m(P.SAND[3], P.ASH[2], 0.5)
+				Country.MOSS: return P.SAND[3]
+			return P.SAND[4]
+		Ground.SHINGLE:
+			match c:
+				Country.BURNING: return P.STONE[1]
+				Country.SNOWFIELD: return _m(P.STONE[3], P.RIME[3], 0.3)
+			# Warm grey, not yellow: shingle is stone that the sea sorted.
+			return _m(P.STONE[3], P.SAND[3], 0.3)
+		Ground.GRAVEL:
+			match c:
+				Country.BONELANDS: return _m(P.STONE[3], P.LINEN[3], 0.5)
+				Country.BURNING: return P.STONE[1]
+			return _m(P.STONE[3], P.SAND[3], 0.45)
+		Ground.GRASS:
+			match c:
+				Country.MOSS: return P.MOSS[2]
+				Country.PINEWOOD: return _m(P.MOSS[2], P.SPRUCE[2], 0.5)
+				# Frost-bitten turf between drifts.
+				Country.SNOWFIELD: return _m(P.MOSS[3], P.ASH[3], 0.55)
+				# Bleached sheep-bitten grass on the limestone.
+				Country.BONELANDS: return _m(P.MOSS[4], P.SAND[4], 0.5)
+				# Scorched: what grass is left near the burning.
+				Country.BURNING: return _m(P.EARTH[3], P.ASH[2], 0.5)
+			# Grey-green coast turf.
+			return _m(P.MOSS[3], P.SLATE[3], 0.22)
+		Ground.HEATH:
+			match c:
+				Country.MOSS: return _m(P.EARTH[1], P.MOSS[1], 0.5)
+				Country.BONELANDS: return _m(P.EARTH[3], P.SAND[3], 0.5)
+				Country.SNOWFIELD: return _m(P.EARTH[2], P.ASH[2], 0.5)
+				Country.BURNING: return P.EARTH[1]
+			return _m(P.EARTH[2], P.MOSS[2], 0.35)
+		Ground.MOSS:
+			match c:
+				Country.SNOWFIELD: return _m(P.SPRUCE[2], P.ASH[3], 0.4)
+				Country.BURNING: return _m(P.MOSS[1], P.ASH[1], 0.4)
+			return _m(P.MOSS[2], P.SPRUCE[2], 0.4)
+		Ground.PEAT: return _m(P.EARTH[1], P.EARTH[2], 0.35)
+		Ground.MUD:
+			if c == Country.MOSS:
+				return _m(P.EARTH[1], P.EARTH[2], 0.35)
+			return P.EARTH[2]
+		Ground.NEEDLES:
+			match c:
+				Country.SNOWFIELD: return _m(P.EARTH[2], P.ASH[3], 0.35)
+				Country.BURNING: return P.EARTH[1]
+			return _m(P.EARTH[2], P.EARTH[3], 0.45)
 		Ground.SNOW:
 			match c:
-				Country.BURNING: return _m(Palette.RIME[4], Palette.ASH[3], 0.5)
-				Country.SNOWFIELD: return col
-			return _m(col, Palette.RIME[4], 0.35)
-	if c == _home(g) or c == Country.SEA:
-		return col
+				Country.BURNING: return _m(P.RIME[4], P.ASH[3], 0.55)
+				Country.SNOWFIELD: return P.RIME[5]
+			return _m(P.RIME[5], P.RIME[4], 0.4)
+		Ground.ICE: return P.RIME[4]
+		Ground.BONE, Ground.LIMESTONE:
+			if c == Country.BURNING:
+				return _m(P.LINEN[3], P.ASH[3], 0.5)
+			return P.LINEN[4]
+		Ground.SCREE:
+			match c:
+				Country.BONELANDS: return _m(P.SLATE[3], P.LINEN[3], 0.35)
+				Country.BURNING: return P.INK[3]
+			return P.SLATE[3]
+		Ground.ROCK:
+			match c:
+				Country.BONELANDS: return _m(P.LINEN[3], P.SLATE[3], 0.4)
+				Country.BURNING: return _m(P.INK[3], P.STONE[1], 0.5)
+				Country.SNOWFIELD: return _m(P.SLATE[3], P.RIME[3], 0.4)
+				Country.MOSS: return _m(P.SLATE[2], P.SPRUCE[2], 0.35)
+				Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.25)
+			return P.SLATE[3]
+		Ground.ASH: return P.ASH[2]
+		Ground.CLINKER: return _m(P.INK[2], P.STONE[0], 0.5)
+	return P.BLOOM[3]
+
+
+static func _make_mark(g: int, c: int) -> int:
+	match g:
+		Ground.GRASS: return TURF
+		Ground.HEATH: return HEATH
+		Ground.SAND: return SAND
+		Ground.SHINGLE, Ground.GRAVEL: return SHINGLE
+		Ground.SNOW: return SNOW
+		Ground.BONE, Ground.LIMESTONE: return PAVEMENT
+		Ground.ASH: return ASH
+		Ground.CLINKER: return CLINKER
+		Ground.MOSS: return FEN
+		Ground.PEAT: return PEAT
+		Ground.MUD: return PEAT if c == Country.MOSS else MUD
+		Ground.NEEDLES: return NEEDLES
+		Ground.ICE: return ICE
+		Ground.ROCK, Ground.SCREE: return ROCK
+		Ground.ROAD: return ROAD
+	return PLAIN
+
+
+## The base wash of a terrace wall under ground g in country c; strata() says
+## how world.gdshader bands it.
+static func _make_cliff(g: int, c: int) -> Color:
+	match g:
+		Ground.SAND, Ground.SHINGLE, Ground.GRAVEL:
+			return P.SAND[3] if g == Ground.SAND else P.STONE[2]
+		Ground.ICE:
+			return P.RIME[3]
 	match c:
-		Country.COAST: return _m(col, Palette.MOSS[3], 0.1)
-		Country.MOSS: return _m(col, Palette.SPRUCE[1], 0.2)
-		Country.PINEWOOD: return _m(col, Palette.SPRUCE[2], 0.16)
-		Country.SNOWFIELD: return _m(col, Palette.RIME[4], 0.32)
-		Country.BONELANDS: return _m(col, Palette.LINEN[4], 0.22)
-		Country.BURNING: return _m(col, Palette.ASH[1], 0.4)
-	return col
+		Country.MOSS: return P.EARTH[1]
+		Country.PINEWOOD: return _m(P.SLATE[1], P.SPRUCE[1], 0.4)
+		Country.SNOWFIELD: return _m(P.SLATE[2], P.RIME[2], 0.5)
+		Country.BONELANDS: return P.LINEN[3]
+		Country.BURNING: return P.INK[2]
+	return P.SLATE[2]
 
 
-## Base colour of a ground in a country.
-static func base(g: int, c: int) -> Color:
-	return _table[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
+## Wash of ground g in country c.
+static func wash(g: int, c: int) -> Color:
+	return _wash[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
 
 
-## A tile's base colour across an ecotone. blend 0.5 on the border meets the
-## neighbour's colour exactly, so there is no seam.
-static func tile(g: int, c: int, c2: int, blend: float) -> Color:
-	if blend <= 0.0:
-		return base(g, c)
-	return base(g, c).lerp(base(g, c2), blend)
+## Ink mark code of ground g in country c.
+static func mark(g: int, c: int) -> int:
+	return _marks[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
+
+
+static func cliff(g: int, c: int) -> Color:
+	return _cliff[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
+
+
+## Strata id for a wall under ground g in country c.
+static func strata(g: int, c: int) -> int:
+	match g:
+		Ground.SAND, Ground.SHINGLE, Ground.GRAVEL: return STRATA_SAND
+		Ground.ICE: return STRATA_ICE
+		Ground.SNOW: return STRATA_SNOW
+	match c:
+		Country.MOSS: return STRATA_MOSS
+		Country.PINEWOOD: return STRATA_PINE
+		Country.SNOWFIELD: return STRATA_SNOW
+		Country.BONELANDS: return STRATA_BONE
+		Country.BURNING: return STRATA_BASALT
+	return STRATA_COAST
+
+
+## A colour carrying mark `code` in its alpha.
+static func marked(col: Color, code: int) -> Color:
+	return Color(col.r, col.g, col.b, clampi(code, 0, 255) / 255.0)
+
+
+## Glowing: embers, flames, a kiln mouth. strength 0.125..2.
+static func glow(col: Color, strength: float) -> Color:
+	return marked(col, GLOW + clampi(roundi(strength * 8.0), 1, 16))
+
+
+## A lamp: glows only when the light is going.
+static func lamp(col: Color, strength: float) -> Color:
+	return marked(col, LAMP + clampi(roundi(strength * 8.0), 1, 16))
+
+
+static func glint(col: Color) -> Color:
+	return marked(col, GLINT)
+
+
+## Ground a turf of country `from` becomes when drawn as country `to`, so an
+## ecotone interleaves each country's own ground (used only when world gen has
+## not dithered the grounds itself). Rock, sand, water and roads stay.
+static func morph(g: int, to: int) -> int:
+	match g:
+		Ground.GRASS, Ground.HEATH, Ground.MOSS, Ground.MUD, Ground.PEAT, Ground.NEEDLES, Ground.SNOW, Ground.BONE, Ground.LIMESTONE, Ground.ASH:
+			return home_turf(to)
+		Ground.ROCK, Ground.SCREE, Ground.CLINKER:
+			return Ground.CLINKER if to == Country.BURNING else (Ground.SCREE if to == Country.BONELANDS else Ground.ROCK)
+	return g
+
+
+static func home_turf(c: int) -> int:
+	match c:
+		Country.MOSS: return Ground.MOSS
+		Country.PINEWOOD: return Ground.NEEDLES
+		Country.SNOWFIELD: return Ground.SNOW
+		Country.BONELANDS: return Ground.LIMESTONE
+		Country.BURNING: return Ground.ASH
+	return Ground.GRASS
 
 
 ## n ramp steps darker (fractional allowed), the palette's own blue-violet step.
@@ -120,21 +271,13 @@ static func down(col: Color, n: float = 1.0) -> Color:
 
 ## n ramp steps lighter.
 static func up(col: Color, n: float = 1.0) -> Color:
-	return down(col, -n).clamp()
+	var c := down(col, -n)
+	return Color(minf(c.r, 1.0), minf(c.g, 1.0), minf(c.b, 1.0), col.a)
 
 
-## Legacy grades (0 dark, 1 base, 2 light) of the coast look; the map tool uses them.
-static func top(g: int, grade: int) -> Color:
-	var b := base(g, Country.COAST)
-	match grade:
-		0: return down(b, 0.4)
-		2: return up(b, 0.3)
-	return b
-
-
-## Legacy cliff bands (0 or 1) of the coast look.
-static func side(g: int, band: int) -> Color:
-	return _side[clampi(g, 0, Ground.COUNT - 1)][band & 1]
+## The map tool's colour for a tile.
+static func top(g: int, c: int = Country.COAST) -> Color:
+	return wash(g, c)
 
 
 static func luminance(col: Color) -> float:
