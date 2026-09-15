@@ -245,3 +245,25 @@ func test_why_not_names_the_shortfall() -> void:
 	eq(UiLink.group_of(&"knife"), &"tools")
 	eq(UiLink.group_of(&"mussels"), &"food")
 	eq(UiLink.group_of(&"stone"), &"goods")
+
+
+func test_a_shortfall_reads_as_plain_english() -> void:
+	eq(UiRules.counted("a piece of plate", 1), "a piece of plate", "one of a thing that counts itself keeps its article")
+	eq(UiRules.counted("a piece of plate", 2), "two pieces of plate", "more than one: the number takes the article's place")
+	eq(UiRules.counted("an axe", 3), "three axes")
+	eq(UiRules.counted("a box of matches", 2), "two boxes of matches")
+	eq(UiRules.counted("a berry", 4), "four berries")
+	eq(UiRules.counted("some salt", 2), "two salt")
+	eq(UiRules.counted("driftwood", 3), "three driftwood", "a stuff name is counted as it is")
+	eq(UiRules.counted("mussels", 1), "one mussels")
+	eq(UiRules.bare("a piece of plate"), "piece of plate")
+	var inv := Inventory.new()
+	var r := {"id": &"brace", "at": &"bench", "needs": {&"scrap": 2}, "makes": {&"kit_brace": 1}}
+	var line := UiLink.why_not(null, inv, r)
+	eq(line, "Short of %s." % UiRules.counted(UiRules.item_name(&"scrap"), 2))
+	for bad: String in ["one a ", "two a ", "one an ", "two an "]:
+		check(not line.contains(bad), "no number before an article: %s" % line)
+	inv.add(&"scrap", 3)
+	var rows := UiRules.inventory_rows(inv)
+	eq(UiRules.list_name(&"scrap", 3), UiRules.plural(UiRules.item_name(&"scrap")), "a list row of several says the plural")
+	eq(rows.size(), 2)

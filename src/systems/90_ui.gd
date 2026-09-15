@@ -95,7 +95,7 @@ func open_screen(n: StringName) -> bool:
 			here.append(&"fire")
 		if here.is_empty():
 			Events.sfx.emit(&"refused", Vector3.ZERO)
-			Events.message.emit("Nothing to make things at here.")
+			Events.message.emit("Nothing here to make things at.")
 			return false
 		(s as UiCraftingScreen).stations = here
 	stack.append(s)

@@ -242,7 +242,7 @@ func _draw_slip(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 			UiIcons.draw_item(self, &"knife", Vector2i(x0, y + 3))
 		else:
 			UiIcons.draw_item(self, l.id, Vector2i(x0, y + 3))
-			label = UiRules.item_name(l.id) + (", KEPT" if l.has("kept") else "")
+			label = UiRules.bare_name(l.id) + (", KEPT" if l.has("kept") else "")
 		UiDraw.text(self, Vector2i(x0 + 13, y + 3), label, UiTheme.INK)
 		UiDraw.text_right(self, col_want, y + 3, str(want) if not l.has("tool") else "-", UiTheme.INK)
 		var have_text := str(have) if not l.has("tool") else ("YES" if have > 0 else "NO")

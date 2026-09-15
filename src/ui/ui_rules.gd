@@ -141,6 +141,61 @@ static func item_name(id: StringName) -> String:
 	return Items.display_name(id).replace("_", " ")
 
 
+const ARTICLES: PackedStringArray = ["a ", "an ", "some "]
+
+
+## True if a name counts itself ("a piece of plate"), so a number must
+## replace the article rather than stand before it.
+static func has_article(name: String) -> bool:
+	for a in ARTICLES:
+		if name.begins_with(a):
+			return true
+	return false
+
+
+## A name with no article, for "the ..." and for a slip's item column.
+static func bare(name: String) -> String:
+	for a in ARTICLES:
+		if name.begins_with(a):
+			return name.substr(a.length())
+	return name
+
+
+## More than one of a thing that counts itself: "a piece of plate" -> "pieces
+## of plate". A name without an article is left as it is ("driftwood", "mussels").
+static func plural(name: String) -> String:
+	if not name.begins_with("a ") and not name.begins_with("an "):
+		return bare(name)
+	var n := bare(name)
+	var cut := n.find(" of ")
+	var head := n if cut < 0 else n.substr(0, cut)
+	var tail := "" if cut < 0 else n.substr(cut)
+	for end: String in ["s", "x", "ch", "sh"]:
+		if head.ends_with(end):
+			return head + "es" + tail
+	if head.length() > 1 and head.ends_with("y") and not "aeiou".contains(head[head.length() - 2]):
+		return head.substr(0, head.length() - 1) + "ies" + tail
+	return head + "s" + tail
+
+
+## A number of a thing in words: "a piece of plate", "two pieces of plate",
+## "one driftwood", "three driftwood".
+static func counted(name: String, n: int) -> String:
+	if has_article(name):
+		return name if n == 1 else "%s %s" % [UiLink.count_word(n), plural(name)]
+	return "%s %s" % [UiLink.count_word(n), name]
+
+
+static func bare_name(id: StringName) -> String:
+	return bare(item_name(id))
+
+
+## A list row's name before its "×n": "wick", "pieces of plate".
+static func list_name(id: StringName, n: int) -> String:
+	var name := item_name(id)
+	return plural(name) if n > 1 and has_article(name) else name
+
+
 ## Every recipe, at every station, that wants `id`. [{recipe, station}]
 static func recipes_using(id: StringName, recipes: Array[Dictionary]) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -250,7 +305,7 @@ static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String
 		var makes: Dictionary = r.get("makes", {})
 		for id: StringName in makes:
 			var n := int(makes[id])
-			parts.append(item_name(id) + (" ×%d" % n if n > 1 else ""))
+			parts.append(list_name(id, n) + (" ×%d" % n if n > 1 else ""))
 		title = ", ".join(parts)
 	var twins: Array[Dictionary] = []
 	for o in among:

@@ -164,7 +164,7 @@ static func why_not(game: Game, inv: Inventory, r: Dictionary) -> String:
 static func short_line(inv: Inventory, r: Dictionary) -> String:
 	var m := missing(inv, r)
 	for id: StringName in m:
-		return "Short of %s %s." % [count_word(int(m[id])), UiRules.item_name(id)]
+		return "Short of %s." % UiRules.counted(UiRules.item_name(id), int(m[id]))
 	return "Not now."
 
 

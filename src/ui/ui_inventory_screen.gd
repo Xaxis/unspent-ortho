@@ -70,7 +70,7 @@ func refresh() -> void:
 
 func _on_confirm(row: Dictionary) -> void:
 	var id: StringName = row.id
-	var name := UiRules.item_name(id)
+	var name := UiRules.bare_name(id)
 	match row.get("verb", &""):
 		&"hold":
 			Events.sfx.emit(&"menu_select", Vector3.ZERO)
@@ -121,7 +121,7 @@ func _draw() -> void:
 		if i == menu.index:
 			UiNotebook.cursor(self, x0 + 4, top)
 		UiIcons.draw_item(self, id, Vector2i(x0 + 11, top - 1))
-		var name := UiRules.item_name(id)
+		var name := UiRules.list_name(id, int(row.count))
 		UiDraw.text(self, Vector2i(x0 + 24, top), name, col)
 		var nx := x0 + 24 + UiFont.width(name)
 		if int(row.count) > 1:
