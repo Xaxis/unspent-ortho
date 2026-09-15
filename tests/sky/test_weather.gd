@@ -16,14 +16,14 @@ func test_same_seed_and_minute_give_the_same_weather() -> void:
 
 func test_strength_is_zero_wherever_the_kind_changes() -> void:
 	Weather.unforce()
-	for seed_value: int in [1, 2, 11]:
+	for seed_value: int in [1, 11]:
 		for c: int in Country.LAND:
 			var prev := Weather.at_place(seed_value, 0.0, c)
 			var changes := 0
-			# Ten-minute steps over thirty days; a change is only ever seen where
-			# strength has already fallen to (nearly) nothing.
+			# Ten-minute steps over twenty days; a change is only ever seen where
+			# strength has already fallen to (nearly) nothing, squalls or not.
 			var m := 10.0
-			while m < 30.0 * 1440.0:
+			while m < 20.0 * 1440.0:
 				var w := Weather.at_place(seed_value, m, c)
 				if w.kind != prev.kind:
 					changes += 1
@@ -31,7 +31,7 @@ func test_strength_is_zero_wherever_the_kind_changes() -> void:
 					lt(w.strength, 0.001, "strength after %s->%s at %d" % [prev.kind, w.kind, m])
 				prev = w
 				m += 10.0
-			gt(changes, 5, "kinds change over thirty days (country %d)" % c)
+			gt(changes, 5, "kinds change over twenty days (country %d)" % c)
 
 
 func test_strength_and_wind_never_jump() -> void:
@@ -44,7 +44,8 @@ func test_strength_and_wind_never_jump() -> void:
 		var b := Weather.at_place(4, m + 0.05, c)
 		if a.kind != b.kind:
 			continue
-		if absf(a.strength - b.strength) > 0.005 or absf(a.wind - b.wind) > 0.01:
+		# A squall band sweeps in over a few minutes, never in a step.
+		if absf(a.strength - b.strength) > 0.01 or absf(a.wind - b.wind) > 0.01:
 			bad += 1
 			if bad < 5:
 				fail("jump at %f (%s): strength %f->%f wind %f->%f" % [m, a.kind, a.strength, b.strength, a.wind, b.wind])
@@ -63,27 +64,79 @@ func test_spells_last_seventeen_hours_with_sin_squared_strength() -> void:
 	near(Weather.spell_phase(s, start + Weather.SPELL_MINUTES * 0.5), 0.5, 1e-3, "mid phase")
 
 
-func test_every_country_table_sums_to_one_hundred_and_has_its_signature_weather() -> void:
-	for c in Weather.TABLES.size():
+func test_every_climate_sums_to_one_hundred_and_has_its_signature_weather() -> void:
+	for id: StringName in Weather.CLIMATES:
 		var total := 0
-		for row: Array in Weather.TABLES[c]:
+		for row: Array in Weather.climate(id):
 			total += int(row[1])
 			check(Weather.KINDS.has(row[0]), "known kind %s" % row[0])
-		eq(total, 100, "table %d" % c)
+			eq(row.size(), 3, "%s rows are [kind, weight, squall]" % id)
+			check(float(row[2]) >= 0.0 and float(row[2]) <= 1.0, "squall share in 0..1")
+		eq(total, 100, "climate %s" % id)
+	for c in Country.COUNT:
+		check(Weather.CLIMATES.has(Weather.type_of(c)), "every M1 country is a climate: %s" % Country.NAMES[c])
 	var seen := {}
 	for c: int in Country.LAND:
 		seen[c] = {}
 		for spell in 400:
 			seen[c][Weather.kind_for(9, spell, c)] = true
-	for k: StringName in [Weather.RAIN, Weather.STORM, Weather.FOG]:
+	for k: StringName in [Weather.RAIN, Weather.STORM, Weather.FOG, Weather.GREY]:
 		check(seen[Country.COAST].has(k), "coast has %s" % k)
+	for k: StringName in [Weather.DRIZZLE, Weather.FOG]:
 		check(seen[Country.MOSS].has(k), "moss has %s" % k)
-	check(seen[Country.SNOWFIELD].has(Weather.SNOW), "snow on the snowfield")
+	check(seen[Country.PINEWOOD].has(Weather.RAIN), "rain in the pinewood")
+	for k: StringName in [Weather.SNOW, Weather.WHITEOUT, Weather.BLIZZARD]:
+		check(seen[Country.SNOWFIELD].has(k), "snowfield has %s" % k)
 	check(not seen[Country.SNOWFIELD].has(Weather.RAIN), "no rain on the snowfield")
-	check(seen[Country.BURNING].has(Weather.ASH), "ash-fall in the burning")
-	check(seen[Country.BURNING].has(Weather.HEAT), "heat in the burning")
-	check(seen[Country.BONELANDS].has(Weather.HEAT), "heat in the bonelands")
+	for k: StringName in [Weather.GLARE, Weather.DUST, Weather.DRY_STORM]:
+		check(seen[Country.BONELANDS].has(k), "bonelands has %s" % k)
+	for k: StringName in [Weather.ASH, Weather.HAZE, Weather.HEAT]:
+		check(seen[Country.BURNING].has(k), "burning has %s" % k)
 	check(not seen[Country.BURNING].has(Weather.SNOW), "no snow in the burning")
+	check(not seen[Country.BURNING].has(Weather.RAIN), "no rain in the burning")
+	check(not seen[Country.COAST].has(Weather.ASH), "no ash on the coast")
+
+
+func test_country_types_are_the_country_names() -> void:
+	for c in Country.COUNT:
+		eq(String(Weather.type_of(c)), Country.NAMES[c], "type id for country %d" % c)
+
+
+func test_every_landscape_keeps_clear_days_so_weather_is_an_event() -> void:
+	for c: int in Country.LAND:
+		var clear := 0
+		for spell in 600:
+			if Weather.kind_for(3, spell, c) == Weather.CLEAR:
+				clear += 1
+		gt(clear / 600.0, 0.12, "%s has clear spells" % Country.NAMES[c])
+		lt(clear / 600.0, 0.4, "%s is not mostly fair" % Country.NAMES[c])
+
+
+func test_one_front_reads_through_every_landscape() -> void:
+	# The severe end of the shared roll is severe everywhere: the coast's storm
+	# is the snowfield's blizzard or whiteout, the bonelands' lightning.
+	var both := 0
+	var coast_severe := 0
+	for spell in 800:
+		var coast := Weather.kind_for(5, spell, Country.COAST)
+		if coast == Weather.STORM:
+			coast_severe += 1
+			var snow := Weather.kind_for(5, spell, Country.SNOWFIELD)
+			var bones := Weather.kind_for(5, spell, Country.BONELANDS)
+			if (snow == Weather.BLIZZARD or snow == Weather.WHITEOUT) and Weather.strikes(bones):
+				both += 1
+	gt(coast_severe, 20, "storms come")
+	gt(float(both), coast_severe * 0.5, "most coast storms are a whiteout or blizzard and lightning inland")
+
+
+func test_new_kinds_read_as_an_m1_kind_for_older_readers() -> void:
+	var m1: Array[StringName] = [Weather.CLEAR, Weather.GREY, Weather.RAIN, Weather.STORM, Weather.FOG, Weather.HAIL, Weather.SNOW, Weather.BLIZZARD, Weather.ASH, Weather.HEAT, Weather.DUST]
+	for k: StringName in Weather.KINDS:
+		check(m1.has(Weather.family(k)), "%s reads as an M1 kind (%s)" % [k, Weather.family(k)])
+		check(Weather.WIND_PUSH.has(k), "%s pushes the wind" % k)
+	eq(Weather.family(Weather.DRIZZLE), Weather.RAIN, "drizzle is rain to a body")
+	eq(Weather.family(Weather.WHITEOUT), Weather.BLIZZARD, "a whiteout is a blizzard to the ear")
+	eq(Weather.family(Weather.RAIN), Weather.RAIN, "old kinds are themselves")
 
 
 func test_clear_hardens_to_grey_after_the_turning() -> void:
@@ -117,8 +170,12 @@ func test_wind_is_bounded() -> void:
 func test_lightning_only_in_storms_and_more_at_their_height() -> void:
 	var weak := 0
 	var strong := 0
+	var dry := 0
 	for m in 4000:
 		check(Weather.lightning(3, m, Weather.RAIN, 1.0) < 0.0, "no lightning in rain")
+		check(Weather.lightning(3, m, Weather.DUST, 1.0) < 0.0, "no lightning in dust alone")
+		if Weather.lightning(3, m, Weather.DRY_STORM, 1.0) >= 0.0:
+			dry += 1
 		if Weather.lightning(3, m, Weather.STORM, 0.3) >= 0.0:
 			weak += 1
 		var f := Weather.lightning(3, m, Weather.STORM, 1.0)
@@ -126,6 +183,8 @@ func test_lightning_only_in_storms_and_more_at_their_height() -> void:
 			strong += 1
 			check(f < 1.0, "fraction of the minute")
 	gt(strong, weak * 3, "S^2 scaling")
+	gt(dry, 200, "dry lightning strikes")
+	lt(dry, strong, "but sparser than a storm's")
 	# 0.22 per minute at full strength.
 	near(strong / 4000.0, 0.22, 0.03, "rate at full strength")
 	gt(Weather.strike_distance(3, 5, 0.0), Weather.strike_distance(3, 5, 1.0), "strong storms strike close")

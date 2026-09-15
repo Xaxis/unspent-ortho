@@ -1,18 +1,25 @@
 class_name Weather
-## The sky's rules as pure functions of (seed, world minute, country): weather
-## spells, wind, lightning, the night, the season and the tide. No nodes, no
-## colours; the renderers in src/render/weather/ and 10_sky draw what this says.
+## The sky's rules as pure functions of (seed, world minute, landscape): weather
+## spells, squalls, dawn mist, wind, lightning, the night, the season and the
+## tide. No nodes, no colours; the renderers in src/render/weather/ and 10_sky
+## draw what this says.
 ##
 ## Contract (CLAUDE.md, Weather):
-##   Weather.at(seed, minutes)                -> {kind: StringName, strength: float, wind: float}
+##   Weather.at(seed, minutes)                -> {kind: StringName, strength: float, wind: float, mist: float}
 ##   Weather.at_place(seed, minutes, country) -> same, for one country
+##   Weather.at_type(seed, minutes, type_id)  -> same, for a landscape type id (BiomeDef.id)
+##   Weather.family(kind)                     -> the M1 kind a newer kind behaves like, for
+##                                               readers that only know the M1 set
 ##
 ## A spell lasts SPELL_MINUTES (17 h, coprime with the day, so a storm visits
 ## every hour of the clock over the weeks). Its strength is sin^2 over the spell,
 ## so it is 0 exactly at the joins and the kind only ever changes where nothing
-## is falling. One roll per spell is shared by every country and read through
-## each country's table, so a front that rains on the coast snows on the
-## snowfield and drops ash on the burning at the same moment.
+## is falling. Inside a spell some kinds come in squalls: bands that sweep in for
+## a quarter of an hour and pass, so rain on the coast is an event and not a
+## wash. One roll per spell is shared by every landscape and read through each
+## landscape's climate, so a front that squalls on the coast snows on the
+## snowfield, throws dry lightning over the bonelands and drops ash on the
+## burning at the same moment.
 
 const SPELL_MINUTES := 1020.0
 ## After this day fair weather hardens to grey. (source: Turning = 22)
@@ -33,37 +40,74 @@ const BLIZZARD := &"blizzard"
 const ASH := &"ash"
 const HEAT := &"heat"
 const DUST := &"dust"
+## M2.0: the landscapes' own weathers.
+const DRIZZLE := &"drizzle"
+const WHITEOUT := &"whiteout"
+const GLARE := &"glare"
+const DRY_STORM := &"dry_storm"
+const HAZE := &"haze"
 
-const KINDS: Array[StringName] = [CLEAR, GREY, RAIN, STORM, FOG, HAIL, SNOW, BLIZZARD, ASH, HEAT, DUST]
+const KINDS: Array[StringName] = [CLEAR, GREY, RAIN, STORM, FOG, HAIL, SNOW, BLIZZARD, ASH, HEAT, DUST, DRIZZLE, WHITEOUT, GLARE, DRY_STORM, HAZE]
 
-## Per country id (Country enum order: sea, coast, moss, pinewood, snowfield,
-## bonelands, burning): [kind, weight] with weights summing to 100. Numbers are
-## the source's rolls, with sand renamed to dust on the bones and to ash-fall in
-## the burning, heat haze added to the bones, and more fog in the moss.
-const TABLES: Array = [
-	[[CLEAR, 22], [GREY, 30], [RAIN, 20], [FOG, 14], [STORM, 14]],
-	[[CLEAR, 26], [GREY, 28], [RAIN, 22], [FOG, 8], [HAIL, 6], [STORM, 10]],
-	[[CLEAR, 18], [GREY, 28], [RAIN, 26], [FOG, 20], [STORM, 8]],
-	[[CLEAR, 22], [GREY, 32], [RAIN, 26], [FOG, 12], [STORM, 8]],
-	[[CLEAR, 30], [GREY, 26], [SNOW, 30], [HAIL, 6], [BLIZZARD, 8]],
-	[[CLEAR, 26], [GREY, 20], [DUST, 20], [HEAT, 14], [FOG, 10], [STORM, 10]],
-	[[CLEAR, 30], [HEAT, 28], [ASH, 28], [GREY, 14]],
-]
+## What each newer kind behaves like, for a reader that only knows the M1 kinds
+## (a sound bed, whether a body gets wet, how far a machine sees).
+const FAMILY := {
+	&"drizzle": &"rain", &"whiteout": &"blizzard", &"glare": &"heat", &"dry_storm": &"dust", &"haze": &"fog",
+}
+
+## Per landscape type id: rows [kind, weight, squall] with weights summing to
+## 100. Squall 0..1 is how much of the kind's strength comes and goes in passing
+## bands (0 = steady). Rows run in the same order of mood everywhere (fair,
+## bleak, falling, lying, severe) because the one shared roll is read through
+## every table: the coast's storm is the snowfield's whiteout and the bonelands'
+## dry lightning. Every landscape keeps a real share of clear days, so weather
+## is an event. New landscape types add a row here (docs/VISION.md section 3).
+const CLIMATES := {
+	&"sea": [[CLEAR, 22, 0.0], [GREY, 30, 0.0], [RAIN, 20, 0.7], [FOG, 14, 0.0], [STORM, 14, 0.5]],
+	# Bleak grey days and rain in squalls off the sea; sea fret at dawn.
+	&"coast": [[CLEAR, 24, 0.0], [GREY, 30, 0.0], [RAIN, 20, 0.75], [FOG, 8, 0.0], [HAIL, 6, 0.6], [STORM, 12, 0.45]],
+	# Drowned green gloom: drizzle and fog lying in the hollows, still air.
+	&"moss": [[CLEAR, 16, 0.0], [GREY, 20, 0.0], [DRIZZLE, 28, 0.0], [FOG, 24, 0.0], [RAIN, 6, 0.3], [STORM, 6, 0.3]],
+	# Steady rain that drips through the canopy long after it stops.
+	&"pinewood": [[CLEAR, 22, 0.0], [GREY, 26, 0.0], [RAIN, 28, 0.15], [FOG, 14, 0.0], [STORM, 10, 0.3]],
+	# Bright flat days, snow in squalls, whiteouts that take the horizon.
+	&"snowfield": [[CLEAR, 30, 0.0], [GREY, 18, 0.0], [SNOW, 28, 0.65], [HAIL, 6, 0.5], [BLIZZARD, 10, 0.3], [WHITEOUT, 8, 0.0]],
+	# Hard white glare, dust on the wind, dry lightning with no rain in it.
+	&"bonelands": [[CLEAR, 20, 0.0], [GLARE, 24, 0.0], [GREY, 10, 0.0], [DUST, 18, 0.6], [FOG, 6, 0.0], [DRY_STORM, 16, 0.4], [STORM, 6, 0.4]],
+	# Heat, ash fall and a furnace haze that lies in the low ground.
+	&"burning": [[CLEAR, 22, 0.0], [HEAT, 16, 0.0], [GREY, 10, 0.0], [ASH, 30, 0.35], [HAZE, 22, 0.0]],
+}
+
+## Dawn mist per landscape at its deepest (0..1 of fog density): the moss lies
+## drowned in it most mornings, the pinewood holds some under its crowns, the
+## coast gets a thin sea fret. Nothing on dry or burning ground.
+const MIST := {&"sea": 0.2, &"coast": 0.22, &"moss": 1.0, &"pinewood": 0.5, &"snowfield": 0.12}
 
 ## How much a kind pushes the wind at full strength (fog and heat are still air).
 const WIND_PUSH := {
 	&"clear": 0.0, &"grey": 0.2, &"rain": 0.4, &"storm": 1.3, &"fog": -0.75, &"hail": 0.8,
 	&"snow": 0.1, &"blizzard": 1.5, &"ash": -0.3, &"heat": -0.6, &"dust": 1.0,
+	&"drizzle": -0.4, &"whiteout": 1.6, &"glare": -0.55, &"dry_storm": 1.1, &"haze": -0.7,
 }
 
-## Sight is cut by c * strength. (source; blizzard and ash added)
+## Sight is cut by c * strength. (source; blizzard and ash added, M2.0 kinds)
 const SIGHT_CUT := {
 	&"dust": 0.55, &"fog": 0.45, &"storm": 0.30, &"blizzard": 0.45, &"snow": 0.25,
 	&"hail": 0.20, &"ash": 0.25, &"rain": 0.10,
+	&"drizzle": 0.15, &"whiteout": 0.75, &"glare": 0.10, &"dry_storm": 0.35, &"haze": 0.35,
 }
 
-## Set only from BootOptions (--weather=kind:strength) so shots and every system
-## that asks see the same forced sky. Empty = the rules decide.
+## Strikes per world minute at full strength (times strength^2). (source: storm 0.22)
+const LIGHTNING := {&"storm": 0.22, &"dry_storm": 0.12}
+
+## Minutes between squall bands, before the seed's own stretch.
+const SQUALL_MINUTES := 61.0
+## What is left of a squally kind's strength between bands, at squall 1.
+const SQUALL_FLOOR := 0.12
+
+## Set only from BootOptions (--weather=kind:strength) or a tour's `weather`
+## line, so shots and every system that asks see the same forced sky. Empty =
+## the rules decide.
 static var forced_kind: StringName = &""
 static var forced_strength := 0.0
 
@@ -78,12 +122,34 @@ static func unforce() -> void:
 	forced_strength = 0.0
 
 
+static func family(kind: StringName) -> StringName:
+	return FAMILY.get(kind, kind)
+
+
+## The M1 countries as landscape type ids, in Country order (Country.NAMES).
+const COUNTRY_TYPES: Array[StringName] = [&"sea", &"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
+
+
+## The landscape type id for a Country id (the M1 countries are the first types).
+static func type_of(country: int) -> StringName:
+	return COUNTRY_TYPES[clampi(country, 0, COUNTRY_TYPES.size() - 1)]
+
+
+## A landscape's climate rows; an unknown type reads the coast's.
+static func climate(type_id: StringName) -> Array:
+	return CLIMATES.get(type_id, CLIMATES[&"coast"])
+
+
 ## The weather where no country is named: the coast's reading of the front.
 static func at(seed_value: int, minutes: float) -> Dictionary:
 	return at_place(seed_value, minutes, Country.COAST)
 
 
 static func at_place(seed_value: int, minutes: float, country: int) -> Dictionary:
+	return at_type(seed_value, minutes, type_of(country))
+
+
+static func at_type(seed_value: int, minutes: float, type_id: StringName) -> Dictionary:
 	var kind: StringName
 	var strength: float
 	if forced_kind != &"":
@@ -93,9 +159,15 @@ static func at_place(seed_value: int, minutes: float, country: int) -> Dictionar
 		var s := spell_index(seed_value, minutes)
 		# The season is read where the spell begins, or the Turning would flip a
 		# fair spell to grey at midnight with rain half-fallen.
-		kind = kind_for(seed_value, s, country, day_of(spell_start(seed_value, s)))
-		strength = 0.0 if kind == CLEAR else pow(sin(PI * spell_phase(seed_value, minutes)), 2.0)
-	return {"kind": kind, "strength": strength, "wind": wind_at(seed_value, minutes, kind, strength)}
+		var row := row_for(seed_value, s, type_id, day_of(spell_start(seed_value, s)))
+		kind = row[0]
+		if kind == CLEAR:
+			strength = 0.0
+		else:
+			strength = pow(sin(PI * spell_phase(seed_value, minutes)), 2.0)
+			strength *= squall_gain(seed_value, minutes, float(row[2]))
+	var wind := wind_at(seed_value, minutes, kind, strength)
+	return {"kind": kind, "strength": strength, "wind": wind, "mist": mist(seed_value, minutes, type_id, kind, strength, wind)}
 
 
 ## Spells are offset per seed so every world does not start on the same beat.
@@ -124,18 +196,60 @@ static func day_of(minutes: float) -> int:
 
 
 static func kind_for(seed_value: int, spell: int, country: int, day: int = 0) -> StringName:
-	var table: Array = TABLES[clampi(country, 0, TABLES.size() - 1)]
+	return row_for(seed_value, spell, type_of(country), day)[0]
+
+
+## The climate row [kind, weight, squall] a spell rolls in a landscape.
+static func row_for(seed_value: int, spell: int, type_id: StringName, day: int = 0) -> Array:
+	var table := climate(type_id)
 	var r := Rng.hash_ints(seed_value, spell, 0x3EA7) % 100
-	var kind: StringName = CLEAR
+	var row: Array = table[0]
 	var acc := 0
-	for row: Array in table:
-		acc += int(row[1])
+	for t: Array in table:
+		acc += int(t[1])
 		if r < acc:
-			kind = row[0]
+			row = t
 			break
-	if kind == CLEAR and day + 1 > TURNING_DAY:
-		kind = GREY
-	return kind
+	if row[0] == CLEAR and day + 1 > TURNING_DAY:
+		return [GREY, row[1], 0.0]
+	return row
+
+
+## 0..1: a squall band passing at this minute. Smooth and seeded: two slow
+## waves, the second stretching the first, cut into bands about a third of the
+## time.
+static func squall_pulse(seed_value: int, minutes: float) -> float:
+	var a := Rng.hash01(seed_value, 0x5A11) * TAU
+	var b := Rng.hash01(seed_value, 0x5A12) * TAU
+	var stretch := lerpf(0.8, 1.25, Rng.hash01(seed_value, 0x5A13))
+	var w := 0.7 * (0.5 + 0.5 * sin(TAU * minutes / (SQUALL_MINUTES * stretch) + a)) + 0.3 * (0.5 + 0.5 * sin(TAU * minutes / 23.0 + b))
+	return smoothstep(0.42, 0.82, w)
+
+
+## The share of a kind's strength that shows at this minute: 1 for a steady
+## kind; between SQUALL_FLOOR and 1 as squall bands pass for a squally one.
+static func squall_gain(seed_value: int, minutes: float, squall: float) -> float:
+	if squall <= 0.0:
+		return 1.0
+	var floor_share := lerpf(1.0, SQUALL_FLOOR, clampf(squall, 0.0, 1.0))
+	return lerpf(floor_share, 1.0, squall_pulse(seed_value, minutes))
+
+
+## Dawn mist 0..1 in a landscape: forms in the small hours, deepest about
+## sunrise, burnt off by mid-morning; thicker on some mornings than others,
+## blown away by a wind, beaten down by anything falling hard.
+static func mist(seed_value: int, minutes: float, type_id: StringName, kind: StringName = CLEAR, strength: float = 0.0, wind: float = 0.0) -> float:
+	var deep := float(MIST.get(type_id, 0.0))
+	if deep <= 0.0:
+		return 0.0
+	var h := fposmod(minutes, 1440.0) / 60.0
+	var shape := smoothstep(2.5, 5.2, h) * (1.0 - smoothstep(6.8, 9.5, h))
+	if shape <= 0.0:
+		return 0.0
+	var morning := lerpf(0.45, 1.0, Rng.hash01(seed_value, day_of(minutes), 0x3157))
+	var still := 1.0 - clampf(absf(wind) * 1.6, 0.0, 1.0)
+	var beaten := 1.0 - clampf(float(WIND_PUSH.get(kind, 0.0)), 0.0, 1.0) * strength
+	return clampf(deep * shape * morning * still * beaten, 0.0, 1.0)
 
 
 ## Scalar wind -1..1 (no bearing yet). Continuous in time: the base is a sum of
@@ -159,12 +273,18 @@ static func sight_factor(kind: StringName, strength: float) -> float:
 	return 1.0 - float(SIGHT_CUT.get(kind, 0.0)) * strength
 
 
-## Lightning in a storm: chance 0.22 * S^2 per world minute (source). Returns the
-## fraction of that minute at which the strike lands, or -1 for none.
+## Does this kind throw lightning at all?
+static func strikes(kind: StringName) -> bool:
+	return LIGHTNING.has(kind)
+
+
+## Lightning: chance rate * S^2 per world minute (source: storms 0.22; dry
+## lightning over the bonelands is sparser). Returns the fraction of that minute
+## at which the strike lands, or -1 for none.
 static func lightning(seed_value: int, minute: int, kind: StringName, strength: float) -> float:
-	if kind != STORM:
+	if not LIGHTNING.has(kind):
 		return -1.0
-	if Rng.hash01(seed_value, minute, 0x7B01) >= 0.22 * strength * strength:
+	if Rng.hash01(seed_value, minute, 0x7B01) >= float(LIGHTNING[kind]) * strength * strength:
 		return -1.0
 	return Rng.hash01(seed_value, minute, 0x7B02)
 
@@ -184,24 +304,30 @@ const SETTLE_STEP := 30.0
 ## Per settled thing: what feeds it (kind -> share of strength), minutes to
 ## build at full strength, minutes to fade once it stops.
 const SETTLE := {
-	"snow": {"feed": {&"snow": 1.0, &"blizzard": 1.0, &"hail": 0.35}, "build": 150.0, "fade": 540.0},
-	"ash": {"feed": {&"ash": 1.0}, "build": 200.0, "fade": 600.0},
-	"wet": {"feed": {&"rain": 1.0, &"storm": 1.0, &"hail": 0.6, &"fog": 0.12, &"blizzard": 0.2}, "build": 45.0, "fade": 110.0},
+	"snow": {"feed": {&"snow": 1.0, &"blizzard": 1.0, &"whiteout": 1.0, &"hail": 0.35}, "build": 150.0, "fade": 540.0},
+	"ash": {"feed": {&"ash": 1.0, &"haze": 0.2}, "build": 200.0, "fade": 600.0},
+	"wet": {"feed": {&"rain": 1.0, &"storm": 1.0, &"drizzle": 0.75, &"hail": 0.6, &"fog": 0.12, &"blizzard": 0.2}, "build": 45.0, "fade": 110.0},
 }
 
 
 static func settled(seed_value: int, minutes: float, country: int) -> Dictionary:
+	return settled_type(seed_value, minutes, type_of(country))
+
+
+static func settled_type(seed_value: int, minutes: float, type_id: StringName) -> Dictionary:
 	var out := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 	# Whole steps on a fixed grid, so the answer changes smoothly with time.
 	var end := floorf(minutes / SETTLE_STEP) * SETTLE_STEP
 	var steps := int(SETTLE_HOURS * 60.0 / SETTLE_STEP)
-	var t := end - steps * SETTLE_STEP
-	for i in steps + 1:
-		var w := at_place(seed_value, t, country)
-		_settle_step(out, w.kind, float(w.strength), SETTLE_STEP)
-		t += SETTLE_STEP
-	# The part of the current step already walked.
-	var w := at_place(seed_value, minutes, country)
+	var t0 := end - steps * SETTLE_STEP
+	var frac := (minutes - end) / SETTLE_STEP
+	# The window slides: its oldest step shrinks as the newest part grows, and
+	# every step reads the sky at its own middle, so crossing a step's end
+	# changes nothing and a squall builds cover smoothly.
+	for i in steps:
+		var w := at_type(seed_value, t0 + (i + 0.5) * SETTLE_STEP, type_id)
+		_settle_step(out, w.kind, float(w.strength), SETTLE_STEP * (1.0 - frac) if i == 0 else SETTLE_STEP)
+	var w := at_type(seed_value, (end + minutes) * 0.5, type_id)
 	_settle_step(out, w.kind, float(w.strength), minutes - end)
 	return out
 

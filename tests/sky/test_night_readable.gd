@@ -147,27 +147,35 @@ func test_the_lamp_action_lights_and_puts_out_the_lantern() -> void:
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(o)
-	await frames(2)
+	# The lamp action is polled on drawn frames: after a slow frame physics can
+	# step several times before one is drawn, so count drawn frames here.
+	await _drawn(2)
 	check(not g.body.lamp_lit, "starts dark")
 	Input.action_press("lamp")
-	await frames(5)
+	await _drawn(5)
 	check(g.body.lamp_lit, "a press of the lamp action lights it")
-	await frames(5)
+	await _drawn(5)
 	check(g.body.lamp_lit, "holding it does not flicker it off")
 	Input.action_release("lamp")
-	await frames(3)
+	await _drawn(3)
 	Input.action_press("lamp")
-	await frames(3)
+	await _drawn(3)
 	Input.action_release("lamp")
-	await frames(3)
+	await _drawn(3)
 	check(not g.body.lamp_lit, "a second press puts it out")
 	g.queue_free()
-	await frames(1)
+	await _drawn(1)
 
 
 func test_a_burning_dusk_keeps_its_warm_darks() -> void:
-	var cold := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.SNOWFIELD))
-	var burning := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.BURNING))
+	var cold := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"snowfield"))
+	var burning := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"burning"))
 	gt(cold, 0.8, "a snowfield dusk lifts its darks to blue")
 	lt(burning, cold * 0.5, "a burning dusk keeps them warm")
 	near(SkyLight.dusk_lift(12.0, Vector3.ONE), 0.0, 0.02, "nothing to lift at noon")
+
+
+## n drawn (process) frames: what a system that polls input in _process sees.
+func _drawn(n: int) -> void:
+	for i in n:
+		await tree.process_frame

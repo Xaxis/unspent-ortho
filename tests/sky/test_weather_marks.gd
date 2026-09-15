@@ -77,3 +77,88 @@ func test_marks_fall_only_over_the_countries_that_make_them_unless_forced() -> v
 	Weather.unforce()
 	v.queue_free()
 	await frames(1)
+
+
+func test_drizzle_rings_drips_and_devils_come_with_their_weather() -> void:
+	Weather.unforce()
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var drizzle := WeatherLook.compose([{"kind": &"drizzle", "strength": 1.0, "weight": 1.0}])
+	v.update(drizzle, 0.1, Vector3.ZERO, 0.016)
+	check(v.drizzle.emitting, "drizzle falls as its own fine grain")
+	check(not v.rain.emitting, "not as rain strokes")
+	check(v.rings.emitting, "and rings spread on standing water")
+	var pts := PackedVector3Array([Vector3(1, 2, 1), Vector3(2, 2, 1)])
+	v.set_drip_points(pts)
+	v.set_drips(0.6, false)
+	check(v.drips.emitting, "wet eaves drip")
+	eq(v.drips.emission_points, pts, "from the points they were given")
+	v.set_drips(0.6, true)
+	check(not v.drips.emitting, "nothing drips in the snow")
+	var devils: Array[Dictionary] = [{"at": Vector3(3, 1, 4), "life": 0.8, "seed": 5}]
+	v.set_devils(devils)
+	check(v.devils[0].visible, "a devil spins where it was placed")
+	near((v.devils[0].global_position - Vector3(3, 1, 4)).length(), 0.0, 1e-4, "on its ground point")
+	check(not v.devils[1].visible, "only as many as there are")
+	var none: Array[Dictionary] = []
+	v.set_devils(none)
+	check(not v.devils[0].visible, "and gone when the dust settles")
+	v.queue_free()
+	await frames(1)
+
+
+func test_snow_squall_and_whiteout_are_told_apart_at_a_glance() -> void:
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var snow_mat: ShaderMaterial = v.snow.material_override
+	# Flakes are a cold body with a pale glint, or they vanish over lying snow.
+	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes carry a highlight")
+	var body: Color = snow_mat.get_shader_parameter("color_a")
+	lt(body.get_luminance(), 0.5, "the flake's body is darker than the snow it falls over")
+	v.update(WeatherLook.compose([{"kind": &"snow", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
+	check(v.snow.emitting and v.flurry.emitting, "snow falls, with big flakes near the eye")
+	check(not v.spindrift.emitting, "a squall in a light wind does not blow along the ground")
+	gt(float(snow_mat.get_shader_parameter("columns")), 0.6, "a squall comes in dense curtains")
+	v.update(WeatherLook.compose([{"kind": &"whiteout", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
+	check(v.spindrift.emitting, "a whiteout blows snow along the ground")
+	near(float((v.spindrift.material_override as ShaderMaterial).get_shader_parameter("density")), 1.0, 1e-3, "at full strength")
+	lt(float(snow_mat.get_shader_parameter("columns")), 0.05, "and has no gaps between curtains")
+	v.update(WeatherLook.compose([]), 0.2, Vector3.ZERO, 0.016)
+	check(not v.snow.emitting and not v.spindrift.emitting, "a clear day has none of it")
+	v.queue_free()
+	await frames(1)
+
+
+func test_the_sky_knows_where_the_player_is_for_a_whiteout() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 13.0
+	o.weather = "whiteout:1"
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	await frames(2)
+	var f := g.camera.target
+	near(Vector2(g.sky.focus.x, g.sky.focus.z).distance_to(Vector2(f.x, f.z)), 0.0, 0.5, "the whiteout closes in on the camera's focus")
+	gt(g.sky.air.w, 0.9, "a whiteout")
+	g.queue_free()
+	await frames(1)
+	Weather.unforce()
+
+
+func test_drips_are_drops_under_a_crown_not_lines() -> void:
+	lt(float(Drips.SOURCES[PropKind.PINE][2]), 3.0, "a pine drips from a couple of points")
+	lt(float(Drips.SOURCES[PropKind.BROADLEAF][2]), 4.0, "a crown from a few")
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var m: ShaderMaterial = v.drips.material_override
+	eq(m.get_shader_parameter("color_a"), Palette.RIME[3], "drips are water-blue")
+	lt(float(m.get_shader_parameter("mix_b")), 0.2, "only now and then a pale bead")
+	# About one drop at a time per drip point over a short fall.
+	lt(float(v.drips.amount) / float(Drips.MAX_POINTS), 1.5, "never a queue of drops making a line")
+	lt(v.drips.lifetime, 0.35, "a short fall")
+	v.queue_free()
+	await frames(1)

@@ -1,24 +1,20 @@
 extends GameSystem
-## The landscape's live inputs: wind for everything that sways (from Weather
-## once the sky package lands it), and --stats, which prints what a frame cost
-## just before a shot is taken.
+## The landscape's live inputs: --stats, which prints what a frame cost just
+## before a shot is taken. Wind for everything that sways (wind_strength) is the
+## sky's: SkyLight is its one writer, so a storm's sway is never overwritten.
 
 
 var _frames := 0
-var _wind := 0.35
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if game == null or game.view == null:
 		return
 	_frames += 1
-	var target := clampf(float(Weather.at(game.world.seed_value, game.clock.minutes).get("wind", 0.35)), 0.0, 1.0)
-	_wind = lerpf(_wind, target, 1.0 - exp(-0.5 * delta))
-	RenderingServer.global_shader_parameter_set("wind_strength", _wind)
 	if game.options.stats and _frames == maxi(3, game.options.frames - 1):
 		print(stats_line(game.view))
 
