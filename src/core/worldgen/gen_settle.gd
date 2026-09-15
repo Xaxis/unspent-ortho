@@ -18,7 +18,12 @@ const QUOTA: PackedInt32Array = [0, 3, 2, 2, 1, 2, 1]
 const MAX_VILLAGES := 12
 const MIN_VILLAGES := 10
 const CORE := 9.5
-const APRON := 7.0
+## Tiles over which the ground eases from the core's level back to the land's,
+## a level every APRON_RUN tiles, so a village never stands on a plinth.
+const APRON := 14.0
+const APRON_RUN := 2.0
+## Farthest a house's footprint reaches from its square (see GenScatter).
+const HOUSE_REACH := 14.5
 
 ## Placeholder names until the story milestone names the land.
 const NAMES := {
@@ -160,6 +165,8 @@ static func villages(c: GenContext) -> void:
 			"level": _level_here(c, tx, ty),
 			"radius": CORE,
 		})
+		# Pools keep three tiles clear of the farthest house.
+		GenWater.drain_pools(c, Vector2(tx + 0.5, ty + 0.5), HOUSE_REACH + 3.0)
 		_flatten(c, tx, ty, w.villages[id].level)
 
 
@@ -200,11 +207,14 @@ static func _level_here(c: GenContext, tx: int, ty: int) -> int:
 	return maxi(1, best)
 
 
-## Level the core; blend an apron so nothing around it is a cliff.
+## Level the core; ease an apron so nothing around it is a cliff. The core's
+## edge wanders (never a drawn circle) and the apron is wide and gentle.
 static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 	var w := c.w
 	var size := c.size
-	var reach := ceili(CORE + APRON)
+	var reach := ceili(CORE * 1.2 + APRON)
+	var ph1 := GenFields.h01(c.s, tx, ty, 63) * TAU
+	var ph2 := GenFields.h01(c.s, tx, ty, 64) * TAU
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var x := tx + dx
@@ -215,13 +225,24 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 			if c.land[i] == 0 or c.water[i] == 1:
 				continue
 			var d := sqrt(float(dx * dx + dy * dy))
-			if d <= CORE:
+			var ang := atan2(float(dy), float(dx))
+			var core := CORE * (1.0 + 0.12 * sin(ang * 2.0 + ph1) + 0.08 * sin(ang * 3.0 + ph2))
+			if d <= core:
 				w.level[i] = lv
 				c.village[i] = 1
 				c.water[i] = 0
-			elif d <= CORE + APRON:
-				var allow := ceili(d - CORE)
+			elif d <= core + APRON:
+				var allow := ceili((d - core) / APRON_RUN)
 				w.level[i] = clampi(w.level[i], maxi(1, lv - allow), lv + allow)
+
+
+## Radius of a village's square at an angle: about three and a half tiles,
+## lobed so it reads as trodden ground, not a stamp.
+static func square_radius(c: GenContext, v: Dictionary, ang: float) -> float:
+	var vp: Vector2 = v.pos
+	var ph1 := GenFields.h01(c.s, floori(vp.x), floori(vp.y), 65) * TAU
+	var ph2 := GenFields.h01(c.s, floori(vp.x), floori(vp.y), 66) * TAU
+	return 3.9 + 0.7 * sin(ang * 2.0 + ph1) + 0.45 * sin(ang * 3.0 + ph2)
 
 
 static func roads(c: GenContext) -> void:
@@ -322,6 +343,7 @@ static func roads(c: GenContext) -> void:
 			if _connect(c, grid, hw, j, int(o.y)):
 				root[GenAccess.find_root(root, j)] = GenAccess.find_root(root, int(o.y))
 				break
+	GenWater.drain_crossed(c)
 
 
 static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: int) -> bool:

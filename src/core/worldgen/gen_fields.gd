@@ -305,6 +305,78 @@ static func quantile(v: PackedFloat32Array, mask: PackedByteArray, q: float, lo:
 	return hi
 
 
+## Label 4-connected patches of equal value among cells where fixed == 0.
+## Returns labels (-1 on fixed cells) and fills `sizes`, like components().
+static func patches(values: PackedByteArray, fixed: PackedByteArray, width: int, sizes: PackedInt32Array) -> PackedInt32Array:
+	var n := values.size()
+	var height := n / width
+	var up := PackedInt32Array()
+	up.resize(n)
+	const BAND := 16
+	rows(height, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var row := y * width
+			for x in width:
+				var i := row + x
+				if fixed[i] != 0:
+					up[i] = -1
+					continue
+				var v := values[i]
+				up[i] = i
+				if x > 0 and fixed[i - 1] == 0 and values[i - 1] == v:
+					var a := i - 1
+					while up[a] != a:
+						up[a] = up[up[a]]
+						a = up[a]
+					up[i] = a
+				if y > y0 and fixed[i - width] == 0 and values[i - width] == v:
+					var a := i - width
+					while up[a] != a:
+						up[a] = up[up[a]]
+						a = up[a]
+					var b := i
+					while up[b] != b:
+						up[b] = up[up[b]]
+						b = up[b]
+					if a != b:
+						up[maxi(a, b)] = mini(a, b)
+	, BAND)
+	for y in range(BAND, height, BAND):
+		var row := y * width
+		for x in width:
+			var i := row + x
+			if fixed[i] != 0 or fixed[i - width] != 0 or values[i] != values[i - width]:
+				continue
+			var a := i - width
+			while up[a] != a:
+				up[a] = up[up[a]]
+				a = up[a]
+			var b := i
+			while up[b] != b:
+				up[b] = up[up[b]]
+				b = up[b]
+			if a != b:
+				up[maxi(a, b)] = mini(a, b)
+	var label := PackedInt32Array()
+	label.resize(n)
+	rows(height, func(y0: int, y1: int) -> void:
+		for i in range(y0 * width, y1 * width):
+			var a := up[i]
+			if a < 0:
+				label[i] = -1
+				continue
+			while up[a] != a:
+				a = up[a]
+			label[i] = a
+	)
+	sizes.resize(n)
+	sizes.fill(0)
+	for i in n:
+		if label[i] >= 0:
+			sizes[label[i]] += 1
+	return label
+
+
 ## Label 4-connected components of cells where mask != 0. Returns labels
 ## (-1 for masked-out cells; a label is the index of one cell in the
 ## component) and fills `sizes`, indexed by label. Union-find in bands on the

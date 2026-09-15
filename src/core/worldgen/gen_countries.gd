@@ -9,9 +9,9 @@ class_name GenCountries
 ## are balanced on the coarse grid until every country holds its share.
 ##
 ## Tiles then take the best two countries, fingered by noise so borders
-## interleave, with snow pulled down onto high ground and ash blown further out
-## of the Burning than anything else travels. country2/blend record the second
-## country and how far toward it a tile has turned (0.5 on the border).
+## interleave, with snow pulled down onto high ground. country2/blend record the
+## second country and how far toward it a tile has turned (0.5 on the border,
+## 0 at 12 to 24 tiles).
 
 const TARGET: PackedFloat32Array = [0.0, 0.35, 0.13, 0.13, 0.13, 0.13, 0.13]
 
@@ -482,10 +482,9 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				elif hi == own:
 					other = lo
 				country2[i] = other
+				# 12 to 24 tiles, wandering along the border. Every ecotone keeps
+				# inside it, the Burning's ash included.
 				var width := 12.0 + 12.0 * clampf(0.5 + widen[i] * 1.4, 0.0, 1.0)
-				if other == Country.BURNING:
-					# Ash blows further out of the Burning than anything else travels.
-					width *= 1.6
 				var fade := maxf(clampf((seam_d[i] * 510.0 - 1.0) / 8.0, 0.0, 1.0), 1.0 - d / 2.0)
 				blend[i] = (0.5 - 0.5 * d / width) * fade if d < width else 0.0
 	)

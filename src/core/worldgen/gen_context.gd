@@ -68,8 +68,17 @@ var sea_steps: PackedByteArray
 ## Woodland field shared by grounds and props, so the floor lies under the trees.
 var forest: PackedFloat32Array
 ## Levels a tile stands above the land around it (about 30 tiles): tops and
-## ridges positive, dales and hollows negative.
+## ridges positive, dales and hollows negative. From float elevation, so it
+## drapes across terrace edges.
 var rise: PackedFloat32Array
+## The country whose recipe a tile's ground followed (its own, or the
+## neighbour's in an ecotone island). Props follow the same recipe.
+var recipe: PackedByteArray
+## Still pools and tarns: x, y centre (tiles) and radius, in the order laid.
+var pools: PackedVector3Array = PackedVector3Array()
+## Ground of each still-water tile (the country of the pool's centre decides,
+## so one pool is one water).
+var pool_ground: PackedByteArray
 
 var timings: Dictionary = {}
 var _tick := 0
@@ -95,6 +104,7 @@ func _init(p_world: WorldData) -> void:
 	road = _bytes()
 	ramp = _bytes()
 	site_ground = _bytes()
+	pool_ground = _bytes()
 
 
 func _bytes() -> PackedByteArray:

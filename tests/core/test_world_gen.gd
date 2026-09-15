@@ -196,12 +196,12 @@ func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
 		gt(deep, 1000, "seed %d tiles untouched by any ecotone" % s)
 
 
-func test_blend_falls_from_the_border_over_12_to_40_tiles() -> void:
+func test_blend_falls_from_the_border_over_12_to_24_tiles() -> void:
 	var w := world(WORLD_SEEDS[0])
 	var size := w.size
 	var d := GenFields.distance8(_borders(w), size, 999.0)
 	# Mean blend by distance band: 0.5 on the line, about half by 12 tiles,
-	# nothing past 40 (the widest, ash out of the Burning).
+	# nothing past 24 (two tiles of slack for the half-resolution spread).
 	var sums := PackedFloat32Array()
 	sums.resize(64)
 	var counts := PackedFloat32Array()
@@ -213,13 +213,13 @@ func test_blend_falls_from_the_border_over_12_to_40_tiles() -> void:
 		var k := mini(63, int(d[i]))
 		sums[k] += w.blend[i]
 		counts[k] += 1.0
-		if d[i] > 40.0 and w.blend[i] > 0.0:
+		if d[i] > 26.0 and w.blend[i] > 0.0:
 			far_blended += 1
 	var at := func(k: int) -> float: return sums[k] / maxf(1.0, counts[k])
 	gt(at.call(0), 0.45, "blend on the border")
 	check(at.call(12) > 0.08 and at.call(12) < 0.3, "blend 12 tiles out %.2f" % at.call(12))
-	lt(at.call(30), 0.02, "blend 30 tiles out")
-	eq(far_blended, 0, "tiles blended further than 40 from any border")
+	lt(at.call(22), 0.03, "blend 22 tiles out")
+	eq(far_blended, 0, "tiles blended further than 26 from any border")
 
 
 func test_country2_never_flips_where_it_shows() -> void:

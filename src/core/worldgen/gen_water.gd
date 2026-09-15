@@ -361,55 +361,130 @@ static func _carve_valleys(c: GenContext) -> void:
 	)
 
 
-## Pools and tarns, on flat ground only, after terracing.
+## Pools and tarns, after terracing: round, a dozen tiles or more, on flat
+## dry ground, sited on a jittered grid so they never crowd. Blackwater pools
+## pock the Moss (more of them deeper in), tarns freeze on the Snowfield's
+## flats, the odd tarn lies in the Pinewood and behind the Coast. Each is a
+## distance field about its centre, lobed so no two are the same shape.
+const POOL_GROUND: PackedByteArray = [Ground.WATER, Ground.RIVER, Ground.BLACKWATER, Ground.RIVER, Ground.ICE, Ground.RIVER, Ground.RIVER]
+
+
 static func still(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
-	var pools := GenFields.sample(GenFields.noise(c.s, 431, 1.0 / 8.0, 2), size, 1)
-	var tarns := GenFields.field(GenFields.noise(c.s, 433, 1.0 / 18.0, 2), size, 2)
-	var fields := GenFields.field(GenFields.noise(c.s, 432, 1.0 / 46.0, 2), size, 4)
 	var land := c.land
 	var water := c.water
 	var level := w.level
 	var country := w.country
 	var blend := w.blend
-	c.mark(&"still.fields")
-	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
-		for y in range(maxi(y0, 2), y1):
-			for x in range(2, size - 2):
-				var i := y * size + x
-				if land[i] == 0 or water[i] != 0:
+	# Cell size in tiles, chance a cell holds a pool, radius range, by country.
+	const CELL: PackedInt32Array = [0, 44, 18, 40, 30, 0, 0]
+	const CHANCE: PackedFloat32Array = [0.0, 0.3, 0.85, 0.35, 0.5, 0.0, 0.0]
+	const R_MIN: PackedFloat32Array = [0.0, 2.2, 2.6, 2.4, 2.6, 0.0, 0.0]
+	const R_MAX: PackedFloat32Array = [0.0, 3.6, 4.8, 4.2, 4.8, 0.0, 0.0]
+	var laid := PackedVector3Array()
+	for cc: int in [Country.MOSS, Country.SNOWFIELD, Country.PINEWOOD, Country.COAST]:
+		var cell := CELL[cc]
+		var cells := size / cell
+		for gy in cells:
+			for gx in cells:
+				var salt := cc * 7919
+				var cx0 := (gx + 0.5) * cell
+				var cy0 := (gy + 0.5) * cell
+				var ci := clampi(floori(cy0), 0, size - 1) * size + clampi(floori(cx0), 0, size - 1)
+				if country[ci] != cc:
 					continue
-				var thr := 9.0
-				var fl := fields[i]
-				var cc := country[i]
-				# The fen is pocked with small black pools, crowding deeper in;
-				# elsewhere a tarn is a rarer, rounder thing.
-				var v := tarns[i] + fl * 0.25
-				if cc == Country.MOSS:
-					thr = 0.2 + blend[i] * 0.9 - maxf(0.0, fl) * 0.3
-					v = pools[i] + fl * 0.25
-				elif cc == Country.SNOWFIELD:
-					thr = 0.5 - maxf(0.0, fl) * 0.2
-				elif cc == Country.PINEWOOD:
-					thr = 0.56 - maxf(0.0, fl) * 0.1
-				elif cc == Country.COAST:
-					thr = 0.6 - maxf(0.0, fl) * 0.1
-				if thr > 1.0:
+				if GenFields.h01(c.s, gx, gy, 442 + salt) > CHANCE[cc] * (1.0 - blend[ci]):
 					continue
-				var l := level[i]
-				if level[i - 1] != l or level[i + 1] != l or level[i - size] != l or level[i + size] != l:
+				var r := lerpf(R_MIN[cc], R_MAX[cc], GenFields.h01(c.s, gx, gy, 443 + salt))
+				# A few spots in the cell: pools need a flat to lie on.
+				for attempt in 5:
+					var px := (gx + 0.2 + GenFields.h01(c.s, gx * 8 + attempt, gy, 440 + salt) * 0.6) * cell
+					var py := (gy + 0.2 + GenFields.h01(c.s, gx * 8 + attempt, gy, 441 + salt) * 0.6) * cell
+					var tx := floori(px)
+					var ty := floori(py)
+					if tx < 8 or ty < 8 or tx >= size - 8 or ty >= size - 8:
+						continue
+					var i0 := ty * size + tx
+					if country[i0] != cc or land[i0] == 0 or c.inland[i0] < 6.0:
+						continue
+					var centre := Vector3(px, py, r)
+					var crowded := false
+					for q in laid:
+						if Vector2(q.x, q.y).distance_to(Vector2(px, py)) < q.z + r + 5.0:
+							crowded = true
+							break
+					if not crowded and _lay_pool(c, centre, gx * 31 + gy * 17 + cc, POOL_GROUND[cc]):
+						laid.append(centre)
+						break
+	c.pools = laid
+
+
+## Pool tiles for a centre: lobed disc, only where level matches the centre.
+## Writes water = 2 and returns true if the pool is whole enough to keep.
+static func _lay_pool(c: GenContext, p: Vector3, salt: int, g: int) -> bool:
+	var size := c.size
+	var level := c.w.level
+	var l0 := level[floori(p.y) * size + floori(p.x)]
+	var ri := ceili(p.z * 1.3) + 2
+	var ph1 := GenFields.h01(c.s, salt, 0, 444) * TAU
+	var ph2 := GenFields.h01(c.s, salt, 1, 444) * TAU
+	var inside := PackedInt32Array()
+	var total := 0
+	for dy in range(-ri, ri + 1):
+		for dx in range(-ri, ri + 1):
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			var i := y * size + x
+			var q := Vector2(x + 0.5 - p.x, y + 0.5 - p.y)
+			var ang := q.angle()
+			var edge := p.z * (1.0 + 0.2 * sin(ang * 2.0 + ph1) + 0.1 * sin(ang * 3.0 + ph2))
+			var d := q.length()
+			if d < edge + 2.0:
+				# The pool and the ground round it: dry land, no river.
+				if c.land[i] == 0 or c.water[i] != 0:
+					return false
+			if d >= edge:
+				continue
+			total += 1
+			if level[i] == l0 and level[i - 1] >= l0 and level[i + 1] >= l0 and level[i - size] >= l0 and level[i + size] >= l0:
+				inside.append(i)
+	if inside.size() < 12 or inside.size() < total * 0.8:
+		return false
+	for i in inside:
+		c.water[i] = 2
+		c.pool_ground[i] = g
+	return true
+
+
+## Drain every pool with a tile inside the circle (whole pools only, so none
+## is left as a sliver).
+static func drain_pools(c: GenContext, at: Vector2, radius: float) -> void:
+	for q in c.pools:
+		if Vector2(q.x, q.y).distance_to(at) >= radius + q.z * 1.3:
+			continue
+		var ri := ceili(q.z * 1.3) + 1
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				var x := floori(q.x) + dx
+				var y := floori(q.y) + dy
+				if x < 0 or y < 0 or x >= c.size or y >= c.size:
 					continue
-				if v < thr:
-					continue
-				water[i] = 2
-	)
-	c.mark(&"still.pools")
-	# Erode twice: puddles and slivers go, round pools stay.
-	for round_i in 2:
-		var was: PackedByteArray = GenFields.snapshot(water)
-		GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
-			for i in range(maxi(y0, 2) * size, y1 * size):
-				if was[i] == 2 and int(was[i - 1] == 2) + int(was[i + 1] == 2) + int(was[i - size] == 2) + int(was[i + size] == 2) < 2:
-					water[i] = 0
-		)
+				var i := y * c.size + x
+				if c.water[i] == 2:
+					c.water[i] = 0
+
+
+## Drain every pool a road runs through, whole, so none is left as slivers.
+static func drain_crossed(c: GenContext) -> void:
+	for q in c.pools:
+		var ri := ceili(q.z * 1.3) + 1
+		var crossed := false
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				var x := floori(q.x) + dx
+				var y := floori(q.y) + dy
+				if x >= 0 and y >= 0 and x < c.size and y < c.size and c.road[y * c.size + x] != 0:
+					crossed = true
+		if crossed:
+			drain_pools(c, Vector2(q.x, q.y), 0.0)
