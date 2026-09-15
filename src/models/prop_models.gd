@@ -65,11 +65,19 @@ static func pick_variant(kind: int, h: int) -> int:
 	return absi(h) % variants(kind)
 
 
+## Chunk workers bake props while the main thread may too.
+static var _lock := Mutex.new()
+
+
 static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
 	var key := (kind * 8 + variant) * 8 + country
-	if not _templates.has(key):
-		_templates[key] = _extract(build_kit(kind, variant, country))
-	return _templates[key]
+	_lock.lock()
+	var t: Template = _templates.get(key)
+	if t == null:
+		t = _extract(build_kit(kind, variant, country))
+		_templates[key] = t
+	_lock.unlock()
+	return t
 
 
 static func build_kit(kind: int, variant: int, country: int) -> Kit:

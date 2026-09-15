@@ -114,7 +114,9 @@ func _ready() -> void:
 	sun.shadow_bias = 0.03
 	sun.shadow_normal_bias = 0.6
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 120.0
+	# From the camera (CameraRig.distance 30): the view's depth plus tall land
+	# behind it, and no further, so a 2048 atlas keeps crisp shadow texels.
+	sun.directional_shadow_max_distance = 50.0
 	sun.light_energy = 1.0
 	add_child(sun)
 	figure_light = DirectionalLight3D.new()
