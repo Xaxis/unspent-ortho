@@ -15,7 +15,7 @@ class_name RemnantModels
 ##   RemnantModels.is_found(&"plate") -> true      draw it with found.gdshader
 
 const NAMES: Array[StringName] = [&"stump", &"rubble", &"stubble", &"cut", &"tapped", &"picked", &"plate"]
-const FOUND_KINDS: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.POLE, PropKind.PYLON]
+const FOUND_KINDS: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE]
 
 
 ## The mark on a prop that is still standing but picked over for now: a tapped
@@ -42,8 +42,13 @@ static func for_kind(kind: int) -> StringName:
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, \
 				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN:
 			return &"rubble"
-		PropKind.WRECK, PropKind.POLE, PropKind.PYLON:
+		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, PropKind.DEBRIS:
 			return &"plate"
+		PropKind.FENCE:
+			# The post's stub where it was cut off at the ground.
+			return &"stump"
+		PropKind.STUMP:
+			return &"picked"
 		PropKind.REEDS, PropKind.GORSE:
 			return &"stubble"
 		PropKind.PEAT_BANK:

@@ -369,3 +369,24 @@ func test_dead_wood_and_plate_by_hand_open_the_way_in_away_from_the_shore() -> v
 	check(Fx.take(g), "turned over")
 	eq(g.inventory.count(&"scrap"), 1, "a piece of plate out of the rubble")
 	Fx.done(g)
+
+
+func test_what_was_lost_is_salvage() -> void:
+	var g := Fx.flat()
+	Survival.hold(g, &"")
+	var debris := Fx.put(g, PropKind.DEBRIS, Vector2(0.9, 0))
+	Fx.face(g, debris)
+	eq(Survival.describe_target(g), "debris - turn")
+	check(Fx.take(g), "turned over")
+	eq(g.inventory.count(&"scrap"), 1, "a piece of plate out of the debris")
+	check(g.world.depleted.has(debris.id), "and it is picked up for good")
+	var fence := Fx.put(g, PropKind.FENCE, Vector2(-1.0, 0))
+	Fx.face(g, fence, Vector2(1, 0))
+	eq(Survival.describe_target(g), "fence - gather")
+	check(Fx.take(g), "a rail pulled off")
+	eq(g.inventory.count(&"deadwood"), 1)
+	check(not g.world.depleted.has(fence.id), "the fence still stands")
+	for kind: int in [PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, PropKind.STUMP]:
+		check(Takes.workable(kind), "%s can be worked" % PropKind.NAMES[kind])
+		check(UiRules.PROP_VERBS.has(kind), "and the slate says how")
+	Fx.done(g)

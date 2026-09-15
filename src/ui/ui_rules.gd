@@ -18,6 +18,8 @@ const PROP_VERBS := {
 	PropKind.REEDS: "cut", PropKind.GORSE: "cut", PropKind.PEAT_BANK: "cut",
 	PropKind.DRIFTWOOD: "gather", PropKind.WRACK: "gather", PropKind.MUSSEL_ROCK: "gather",
 	PropKind.TIP: "turn",
+	PropKind.DEBRIS: "turn", PropKind.VEHICLE: "break", PropKind.BARRICADE: "break", PropKind.HULL: "break",
+	PropKind.FENCE: "fell", PropKind.STUMP: "fell",
 }
 const STATIONS := {PropKind.FIRE: &"fire", PropKind.BENCH: &"bench", PropKind.KILN: &"kiln"}
 
