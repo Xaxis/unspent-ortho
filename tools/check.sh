@@ -29,6 +29,9 @@ for i in 0 1 2; do
   wait "${tpids[$i]}" || fail=1
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
   grep -E 'passed,' "${logs[$i]}"
+  # A test that hits a script error stops where it was and the runner counts
+  # it passed if it had recorded no failed check: the error itself fails the gate.
+  if grep -qE "SCRIPT ERROR" "${logs[$i]}"; then echo "script error in shard $i"; fail=1; fi
   rm -f "${logs[$i]}"
 done
 if [ $web -eq 1 ]; then
