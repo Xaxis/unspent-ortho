@@ -32,9 +32,6 @@ const EAR_REACH := 44.0
 const BEAST_SHARE := 0.5
 ## Seconds a blow on the player holds danger at full.
 const HIT_HOLD := 6.0
-## Tiles: an installation this close is the whole grid; it begins at GRID_FAR.
-const GRID_NEAR := 3.0
-const GRID_FAR := 14.0
 ## A sentinel's reach when it does not say (tiles).
 const SENTINEL_REACH := 30.0
 const FORGET_AFTER := 180.0
@@ -206,8 +203,9 @@ func _read_works() -> void:
 	if game.query == null:
 		_grid = 0.0
 		return
-	var works := SoundMix.works_near(game.query, game.player.pos)
-	_grid = smoothstep(GRID_FAR, GRID_NEAR, float(works["installation"]))
+	# Each installation's reach is its own (a pylon only underneath it, a
+	# substation over its yard): SoundMix.works_near sums them.
+	_grid = float(SoundMix.works_near(game.query, game.player.pos)["grid"])
 
 
 func _sentinel(p: Vector2) -> Dictionary:

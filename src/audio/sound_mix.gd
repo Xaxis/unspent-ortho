@@ -197,46 +197,109 @@ static func country_share(world: WorldData, p: Vector2) -> Dictionary:
 
 ## Prop kinds, by name, that are the machines' installations: what hums, what a
 ## relay clicks in, what the score's grid pulse belongs to. By name, so a kind a
-## landscape adds later ("relay", "substation", "mast") is heard the day it exists.
-const INSTALLATION_WORDS: Array[String] = ["pylon", "pole", "relay", "transformer", "substation", "mast", "antenna", "array", "server", "beacon", "works", "pump", "tower", "cable", "junction", "terminal", "gate", "node"]
+## landscape adds later ("relay", "substation", "mast") is heard the day it
+## exists. Neon means something (VISION §8): an installation is heard where it
+## stands, never over a whole village, so a word is a whole word of the name
+## and each has a reach (INSTALLATION_REACH, else INSTALLATION_REACH_DEFAULT).
+const INSTALLATION_WORDS: Array[String] = ["pylon", "relay", "transformer", "substation", "mast", "antenna", "array", "server", "beacon", "terminal", "junction"]
+## Tiles at which an installation's grid and hum begin; both are full within
+## INSTALLATION_NEAR of that. A lone pylon is only heard standing under it; a
+## substation fills its yard.
+const INSTALLATION_REACH := {"pylon": 6.0, "mast": 8.0, "antenna": 8.0, "beacon": 9.0}
+const INSTALLATION_REACH_DEFAULT := 14.0
+const INSTALLATION_NEAR := 0.3
+## Wires strung between poles: a faint sing in the wind, nothing more (a
+## village's power line is not the machines' grid).
+const WIRE_WORDS: Array[String] = ["pole", "wire", "cable"]
 ## Wreckage the wind finds a voice in: sheet, wire, girders, hulks.
-const WRECK_WORDS: Array[String] = ["wreck", "ruin", "tip", "hulk", "girder", "fence", "barricade", "sign", "car", "rubble", "scrap", "shell", "cage", "wire", "pylon", "pole", "tank", "crane", "container", "hut"]
+const WRECK_WORDS: Array[String] = ["wreck", "ruin", "tip", "hulk", "girder", "fence", "barricade", "sign", "car", "rubble", "scrap", "shell", "cage", "wire", "tank", "crane", "container", "hut"]
 ## Roofs, walls and pipes that gather rain into gutters and drips.
 const SHELTER_WORDS: Array[String] = ["house", "ruin", "wreck", "hut", "shelter", "shed", "tank", "container", "tower", "works", "kiln", "shell"]
 ## Canopy that rain falls on as leaves and needles.
 const LEAF_WORDS: Array[String] = ["pine", "broadleaf", "bush", "gorse", "reeds"]
 ## How far works_near looks (tiles).
 const WORKS_RADIUS := 22.0
+## How far strung wire is heard singing (tiles), and how loud at most (0..1 of its sheet level).
+const WIRE_REACH := 8.0
+const WIRE_FAINT := 0.4
+
+const INSTALLATION := 1
+const WRECK := 2
+const SHELTER := 4
+const CANOPY := 8
+const WIRE := 16
 
 static var _prop_classes: Dictionary = {}
+static var _prop_reach: Dictionary = {}
 
 
-## Which of the word lists a prop kind's name falls in: bit 1 installation,
-## 2 wreckage, 4 shelter, 8 canopy. Cached per kind.
+## The whole words of a prop kind's name, lower case: "dead tree" is dead and
+## tree; a "scarecrow" is never a car. A plural keeps its word ("wrecks").
+static func name_words(name: String) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var word := ""
+	for ch in name.to_lower() + " ":
+		if (ch >= "a" and ch <= "z"):
+			word += ch
+		elif word != "":
+			out.append(word)
+			word = ""
+	return out
+
+
+static func _has_word(words: PackedStringArray, list: Array[String]) -> String:
+	for w in words:
+		for word in list:
+			if w == word or w == word + "s" or w == word + "es":
+				return word
+	return ""
+
+
+## Which of the word lists a prop kind's name falls in: INSTALLATION, WRECK,
+## SHELTER, CANOPY and WIRE bits. Cached per kind.
 static func prop_class(kind: int) -> int:
 	if _prop_classes.has(kind):
 		return _prop_classes[kind]
-	var name := PropKind.NAMES[kind] if kind >= 0 and kind < PropKind.NAMES.size() else ""
+	var words := name_words(PropKind.NAMES[kind] if kind >= 0 and kind < PropKind.NAMES.size() else "")
 	var bits := 0
-	for pair: Array in [[INSTALLATION_WORDS, 1], [WRECK_WORDS, 2], [SHELTER_WORDS, 4], [LEAF_WORDS, 8]]:
-		for word: String in pair[0]:
-			if name.contains(word):
-				bits |= int(pair[1])
-				break
+	var installation := _has_word(words, INSTALLATION_WORDS)
+	if installation != "":
+		bits |= INSTALLATION
+		_prop_reach[kind] = float(INSTALLATION_REACH.get(installation, INSTALLATION_REACH_DEFAULT))
+	for pair: Array in [[WRECK_WORDS, WRECK], [SHELTER_WORDS, SHELTER], [LEAF_WORDS, CANOPY], [WIRE_WORDS, WIRE]]:
+		if _has_word(words, pair[0]) != "":
+			bits |= int(pair[1])
 	_prop_classes[kind] = bits
 	return bits
 
 
+## Tiles at which an installation kind's grid and hum begin (0 for a kind that is not one).
+static func installation_reach(kind: int) -> float:
+	return float(_prop_reach.get(kind, 0.0)) if prop_class(kind) & INSTALLATION else 0.0
+
+
+## How much of an installation's presence reaches `d` tiles from it: 1 within
+## INSTALLATION_NEAR of its reach, 0 past it.
+static func installation_share(d: float, reach: float) -> float:
+	return smoothstep(reach, reach * INSTALLATION_NEAR, d)
+
+
 ## What the made and the found around a listener sound like, from the props
 ## within WORKS_RADIUS: {installation: distance to the nearest (INF when none),
-## shelter: distance to the nearest roof or wall, wreck: 0..1 how much wreckage
-## the wind can find, leaves: 0..1 how much canopy the rain can fall on}.
+## grid: 0..1 the installations' pulse (their shares summed, so several
+## together carry further than one), hum: 0..1 their transformer hum, shelter:
+## distance to the nearest roof or wall, wreck: 0..1 how much wreckage the wind
+## can find, leaves: 0..1 how much canopy the rain can fall on, wires: 0..1
+## strung wire close enough to sing}.
 static func works_near(query: WorldQuery, p: Vector2, radius: float = WORKS_RADIUS) -> Dictionary:
-	var out := {"installation": INF, "shelter": INF, "wreck": 0.0, "leaves": 0.0}
+	var out := {"installation": INF, "grid": 0.0, "hum": 0.0, "shelter": INF, "wreck": 0.0, "leaves": 0.0, "wires": 0.0}
 	if query == null:
 		return out
 	var wreck := 0.0
 	var leaves := 0.0
+	var grid := 0.0
+	var hum := 0.0
+	var wires := 0.0
 	for q: WorldProp in query.props_near(p, radius):
 		if query.world.depleted.has(q.id):
 			continue
@@ -246,17 +309,25 @@ static func works_near(query: WorldQuery, p: Vector2, radius: float = WORKS_RADI
 		var d := q.pos.distance_to(p)
 		if d > radius:
 			continue
-		if bits & 1:
+		if bits & INSTALLATION:
 			out["installation"] = minf(float(out["installation"]), d)
-		if bits & 4:
+			var share := installation_share(d, installation_reach(q.kind))
+			grid += share
+			hum += pow(share, 1.5)
+		if bits & SHELTER:
 			out["shelter"] = minf(float(out["shelter"]), d)
 		var near := 1.0 - d / radius
-		if bits & 2:
+		if bits & WRECK:
 			wreck += near * near * maxf(1.0, q.scale)
-		if bits & 8:
+		if bits & CANOPY:
 			leaves += near
+		if bits & WIRE:
+			wires = maxf(wires, smoothstep(WIRE_REACH, 1.5, d))
+	out["grid"] = clampf(grid, 0.0, 1.0)
+	out["hum"] = clampf(hum, 0.0, 1.0)
 	out["wreck"] = clampf(wreck / 3.0, 0.0, 1.0)
 	out["leaves"] = clampf(leaves / 25.0, 0.0, 1.0)
+	out["wires"] = wires
 	return out
 
 
@@ -387,7 +458,8 @@ static func night(hour: float) -> float:
 ## Every bed's target level 0..1 for a listener. `near_sea` and `near_river`
 ## come from sea_near/river_near (scanned a few times a second, not per frame).
 ## `extra` (all optional): hour (for the far works), remote (remoteness()),
-## tide 0..1 (high water brings the shore closer).
+## tide 0..1 (high water brings the shore closer), wet (wetness()), and what
+## works_near found (wreck, hum, installation, shelter, leaves).
 static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_sea: Dictionary, near_river: Dictionary, seconds: float, extra: Dictionary = {}) -> Dictionary:
 	var kind: StringName = weather.get("kind", &"fair")
 	var s := clampf(float(weather.get("strength", 0.0)), 0.0, 1.0)
@@ -433,17 +505,11 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 
 
 ## How near the listener stands to wreckage the wind can find (0..1, from
-## works_near), hum by the distance to an installation, gutters by rain lately
+## works_near), an installation's hum (works_near's hum), gutters by rain lately
 ## and a roof or wall nearby, and rain split over the surfaces it falls on.
-const HUM_NEAR := 2.0
-const HUM_FAR := 14.0
 const GUTTER_NEAR := 3.0
 const GUTTER_FAR := 16.0
 const RAIN_SURFACES: Array[StringName] = [&"weather_rain", &"weather_rain_metal", &"weather_rain_leaves", &"weather_rain_water"]
-
-
-static func hum_weight(installation_distance: float) -> float:
-	return pow(smoothstep(HUM_FAR, HUM_NEAR, installation_distance), 1.5)
 
 
 ## {turf, metal, leaves, water} shares of the rain here, summing to 1.
@@ -462,7 +528,7 @@ static func rain_surfaces(weights: Dictionary, shore: float, river: float, extra
 static func _dystopia_levels(out: Dictionary, weights: Dictionary, kind: StringName, s: float, wind: float, g: float, shore: float, river: float, dark_share: float, remote: float, extra: Dictionary) -> void:
 	var wreck := clampf(float(extra.get("wreck", 0.0)), 0.0, 1.0)
 	out[&"bed_wreck"] = wreck * (0.3 + 0.7 * wind) * lerpf(0.75, 1.1, g)
-	out[&"bed_hum"] = hum_weight(float(extra.get("installation", INF))) * lerpf(1.0, 0.8, s)
+	out[&"bed_hum"] = clampf(float(extra.get("hum", 0.0)), 0.0, 1.0) * lerpf(1.0, 0.8, s)
 	# The plan's machines far off: by day too, stronger away from people and on
 	# still air, gone under loud weather and against the surf.
 	var still := 1.0 - smoothstep(0.35, 0.8, wind)

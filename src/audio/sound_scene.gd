@@ -44,7 +44,7 @@ static func render(scene: Dictionary, world: WorldData = null, baked: Dictionary
 	for st: Array in steps:
 		if not wanted.has(st[1]):
 			wanted.append(st[1])
-	var scatter := _scatter(scene, lanes, timeline["weather"]) if &"scatter" in layers else []
+	var scatter := _scatter(scene, lanes, timeline["weather"], timeline["works"]) if &"scatter" in layers else []
 	for sc: Array in scatter:
 		if not wanted.has(sc[1]):
 			wanted.append(sc[1])
@@ -106,6 +106,11 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 	var remote := 0.0
 	var weather := {}
 	var works := {}
+	var works_lanes := {}
+	for field: String in SoundBeds.WORKS_SCATTER:
+		var fresh := PackedFloat32Array()
+		fresh.resize(blocks)
+		works_lanes[field] = fresh
 	var wet := 0.0
 	var query := WorldQuery.new(world)
 	var fade := 1.0 - exp(-BLOCK / SoundMix.BED_FADE)
@@ -126,6 +131,10 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 			wet = float(weather.get("strength", 0.0)) if forced.has("kind") and forced["kind"] in [&"rain", &"storm", &"hail"] else SoundMix.wetness(world.seed_value, minutes, int(here["country"]))
 		var extra := {"hour": fposmod(minutes / 60.0, 24.0), "remote": remote, "tide": SoundMix.tide_at(minutes), "wet": wet}
 		extra.merge(works)
+		for field: String in works_lanes:
+			var wl: PackedFloat32Array = works_lanes[field]
+			wl[b] = SoundBeds.works_scatter_level(field, works)
+			works_lanes[field] = wl
 		var targets := SoundMix.bed_levels(world, p, weather, sea, river, t, extra)
 		for bed: StringName in targets:
 			if not levels.has(bed):
@@ -141,7 +150,7 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 			var lane: PackedFloat32Array = lanes[bed]
 			lane[b] = lvl
 			lanes[bed] = lane
-	return {"lanes": lanes, "path": path, "countries": countries, "weather": weather}
+	return {"lanes": lanes, "path": path, "countries": countries, "weather": weather, "works": works_lanes}
 
 
 ## Bakes keys on every core; returns key -> Baked. Footfall families bake all takes.
@@ -171,15 +180,20 @@ static func bake(keys: Array[StringName]) -> Dictionary:
 ## [seconds, name, variant, level] for the one-shots the beds scatter, by the
 ## same rules as the running system: a bed must be up (0.12), the entry's hours
 ## and weather must allow it, gaps drawn from its range.
-static func _scatter(scene: Dictionary, lanes: Dictionary, weather: Dictionary) -> Array:
+static func _scatter(scene: Dictionary, lanes: Dictionary, weather: Dictionary, works_lanes: Dictionary = {}) -> Array:
 	var out := []
 	var secs := float(scene.get("secs", 12.0))
 	var hour0 := float(scene.get("hour", Tuning.START_HOUR))
+	var sources := {}
 	for bed: StringName in SoundBeds.SCATTER:
-		if not lanes.has(bed):
-			continue
-		var lane: PackedFloat32Array = lanes[bed]
-		for entry: Array in SoundBeds.SCATTER[bed]:
+		if lanes.has(bed):
+			sources[bed] = [lanes[bed], SoundBeds.SCATTER[bed]]
+	for field: String in SoundBeds.WORKS_SCATTER:
+		if works_lanes.has(field):
+			sources[field] = [works_lanes[field], SoundBeds.WORKS_SCATTER[field]]
+	for source: Variant in sources:
+		var lane: PackedFloat32Array = sources[source][0]
+		for entry: Array in sources[source][1]:
 			var name: StringName = entry[0]
 			var k := 0
 			var t := lerpf(float(entry[1]), float(entry[2]), Rng.hash01(int(name.hash()), k, 0x5c)) * 0.5

@@ -46,6 +46,20 @@ const SCATTER := {
 	&"bed_gutter": [[&"gutter_drip", 1.2, 4.5]],
 }
 
+## One-shots scattered by what works_near found rather than by a bed: wire
+## strung on poles sings, faintly, when the wind is up. field -> entries.
+const WORKS_SCATTER := {
+	"wires": [[&"wire_sing", 10.0, 30.0, {"wind": 0.4}]],
+}
+
+
+## The level a WORKS_SCATTER field scatters at, from works_near's result.
+static func works_scatter_level(field: String, works: Dictionary) -> float:
+	match field:
+		"wires":
+			return clampf(float(works.get("wires", 0.0)), 0.0, 1.0) * SoundMix.WIRE_FAINT
+	return 0.0
+
 
 static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Array:
 	match name:

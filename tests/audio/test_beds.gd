@@ -122,12 +122,85 @@ func test_the_works_around_the_listener_are_found_by_name() -> void:
 		id += 1
 	var some := SoundMix.works_near(q, at)
 	near(float(some["installation"]), 6.0, 0.01, "the pylon six tiles off")
+	eq(float(some["grid"]), 0.0, "is too far off to hear its grid")
 	near(float(some["shelter"]), 3.6, 0.1, "a wreck is a roof the rain drums on, nearer than the house")
 	gt(float(some["wreck"]), 0.1, "wreckage the wind can find")
 	gt(float(some["leaves"]), 0.0, "and canopy")
 	eq(SoundMix.prop_class(PropKind.BOULDER), 0, "a boulder is none of these")
 	w.depleted[800001] = INF
 	lt(float(SoundMix.works_near(q, at)["wreck"]), float(some["wreck"]), "a wreck taken apart is no longer heard")
+
+
+## Neon means something only where it stands (VISION §8): a village's power
+## poles only sing faintly in the wind, a lone pylon's grid and hum are heard
+## under it, several together carry further, and a name is judged by whole words.
+func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> void:
+	eq(SoundMix.name_words("Dead tree-stump"), PackedStringArray(["dead", "tree", "stump"]), "whole words")
+	eq(SoundMix._has_word(SoundMix.name_words("scarecrow"), SoundMix.WRECK_WORDS), "", "a scarecrow is no car")
+	eq(SoundMix._has_word(SoundMix.name_words("rusted wrecks"), SoundMix.WRECK_WORDS), "wreck", "wrecks are wreckage")
+	eq(SoundMix._has_word(SoundMix.name_words("gatehouse"), SoundMix.INSTALLATION_WORDS), "", "no installation hides inside a longer word")
+	var pole := SoundMix.prop_class(PropKind.POLE)
+	eq(pole & SoundMix.INSTALLATION, 0, "a pole is not an installation")
+	eq(pole & SoundMix.WRECK, 0, "nor wreckage")
+	check(pole & SoundMix.WIRE != 0, "it carries wire")
+	check(SoundMix.prop_class(PropKind.PYLON) & SoundMix.INSTALLATION != 0, "a pylon is the machines'")
+	var w := _two_countries(0.0)
+	var q := WorldQuery.new(w)
+	var at := Vector2(30.5, 30.5)
+	var pole_prop := WorldProp.new(810000, PropKind.POLE, at + Vector2(1.5, 0), 0.0, 1.0)
+	w.props.append(pole_prop)
+	q.add_prop(pole_prop)
+	var by_pole := SoundMix.works_near(q, at)
+	eq(float(by_pole["grid"]), 0.0, "no grid under a pole")
+	eq(float(by_pole["hum"]), 0.0, "no transformer hum")
+	gt(float(by_pole["wires"]), 0.9, "only its wire")
+	lt(SoundBeds.works_scatter_level("wires", by_pole), SoundMix.WIRE_FAINT + 1e-6, "singing faintly")
+	q.remove_prop(pole_prop)
+	var pylon := WorldProp.new(810001, PropKind.PYLON, at + Vector2(1.5, 0), 0.0, 1.0)
+	w.props.append(pylon)
+	q.add_prop(pylon)
+	var under := SoundMix.works_near(q, at)
+	gt(float(under["grid"]), 0.95, "under a pylon, its whole grid")
+	gt(float(under["hum"]), 0.9, "and its hum")
+	var reach := SoundMix.installation_reach(PropKind.PYLON)
+	var lone := float(SoundMix.works_near(q, at + Vector2(-2.5, 0))["grid"])
+	lt(lone, 0.5, "four tiles from a lone pylon, less than half (%.2f)" % lone)
+	eq(float(SoundMix.works_near(q, at + Vector2(-reach, 0))["grid"]), 0.0, "past its reach, nothing")
+	var id := 810002
+	for off: Vector2 in [Vector2(1.5, 2.0), Vector2(1.5, -2.0)]:
+		var more := WorldProp.new(id, PropKind.PYLON, at + off, 0.0, 1.0)
+		w.props.append(more)
+		q.add_prop(more)
+		id += 1
+	gt(float(SoundMix.works_near(q, at + Vector2(-2.5, 0))["grid"]), lone * 2.0, "several together carry further")
+
+
+## On a real island the grid and the hum stay where the machines' lines run.
+func test_the_grid_and_hum_are_never_everywhere() -> void:
+	var world := WorldGen.generate(1, Tuning.WORLD_SIZE)
+	var q := WorldQuery.new(world)
+	var land := 0
+	var grid := 0
+	var hum := 0
+	var village := 0
+	var village_grid := 0
+	for y in range(3, world.size, 8):
+		for x in range(3, world.size, 8):
+			if Ground.is_water(world.ground[y * world.size + x]):
+				continue
+			var p := Vector2(x + 0.5, y + 0.5)
+			var works := SoundMix.works_near(q, p)
+			land += 1
+			grid += 1 if float(works["grid"]) > 0.0 else 0
+			hum += 1 if float(works["hum"]) > 0.05 else 0
+			for v: Dictionary in world.villages:
+				if (v["pos"] as Vector2).distance_to(p) < 20.0:
+					village += 1
+					village_grid += 1 if float(works["grid"]) > 0.0 else 0
+					break
+	lt(100.0 * grid / land, 8.0, "the grid on %.1f%% of the land" % (100.0 * grid / land))
+	lt(100.0 * hum / land, 8.0, "the hum on %.1f%% of the land" % (100.0 * hum / land))
+	lt(100.0 * village_grid / maxi(1, village), 15.0, "and on %.1f%% of the ground by the villages" % (100.0 * village_grid / maxi(1, village)))
 
 
 func test_the_dystopia_is_heard_where_it_stands() -> void:
@@ -144,10 +217,11 @@ func test_the_dystopia_is_heard_where_it_stands() -> void:
 	gt(float(wrecked[&"bed_wreck"]), float(wrecked_calm[&"bed_wreck"]) * 1.8, "the wreckage sings in a gale, murmurs in a calm")
 	var prev := 1.1
 	for d: float in [1.0, 4.0, 8.0, 12.0, 16.0]:
-		var hum := float(SoundMix.bed_levels(w, p, calm, far, far, 0.0, {"installation": d})[&"bed_hum"])
+		var share := pow(SoundMix.installation_share(d, SoundMix.INSTALLATION_REACH_DEFAULT), 1.5)
+		var hum := float(SoundMix.bed_levels(w, p, calm, far, far, 0.0, {"hum": share})[&"bed_hum"])
 		check(hum <= prev, "the hum falls away with distance (%.2f at %.0f tiles)" % [hum, d])
 		prev = hum
-	eq(prev, 0.0, "gone past %.0f tiles" % SoundMix.HUM_FAR)
+	eq(prev, 0.0, "gone past %.0f tiles" % SoundMix.INSTALLATION_REACH_DEFAULT)
 	gt(float(open[&"bed_far_drone"]) + float(wrecked_calm[&"bed_far_drone"]), 0.0, "the machines far off are there by day")
 	var night_remote := SoundMix.bed_levels(w, p, calm, far, far, 0.0, {"hour": 23.0, "remote": 1.0})
 	var day_village := SoundMix.bed_levels(w, p, calm, far, far, 0.0, {"hour": 12.0, "remote": 0.0})
