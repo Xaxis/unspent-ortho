@@ -23,8 +23,15 @@ enum {
 	SNOW_TUFT, ASH_FLAKE, EMBER, GLASS, LICHEN, CONE, BRACKEN, MUSHROOM,
 	BOG_COTTON, SEDGE, MARRAM, TWIG, CINDER, SPHAGNUM, ICE_SHARD, RUBBLE,
 	SEA_GLASS, MOLEHILL, FERN, WRACK_BIT, CROTTLE,
+	# What the world before left in the grass, and what the works shed.
+	SCRAP, WIRE, CAN, SHELL_CASE, BOLT, SPOIL,
 }
-const KINDS := 30
+const KINDS := 36
+## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
+const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
+## Share of a tile's items that are litter outside any work, and inside one.
+const LITTER_STRAY := 0.04
+const LITTER_WORKS := 0.45
 const STAGES := 3
 
 const Kit := preload("res://src/models/props/kit.gd")
@@ -67,7 +74,7 @@ func _init(w: WorldData) -> void:
 	_clump.fractal_octaves = 2
 	if _SPECK.is_empty():
 		_SPECK.resize(KINDS)
-		for kd: int in [EMBER, ASH_FLAKE, CINDER, GLASS, SHELL, BOG_COTTON, PEBBLES, SEA_GLASS, CROTTLE, LICHEN, FLOWER, THISTLE, MUSHROOM, BONE, TWIG, ICE_SHARD, WRACK_BIT, SPHAGNUM]:
+		for kd: int in [EMBER, ASH_FLAKE, CINDER, GLASS, SHELL, BOG_COTTON, PEBBLES, SEA_GLASS, CROTTLE, LICHEN, FLOWER, THISTLE, MUSHROOM, BONE, TWIG, ICE_SHARD, WRACK_BIT, SPHAGNUM, CAN, SHELL_CASE, BOLT]:
 			_SPECK[kd] = 1
 	_table(Ground.GRASS, 1.1, [TUFT, 46, TUFT_TALL, 12, FLOWER, 12, STONE, 2, THISTLE, 3, MOLEHILL, 2])
 	_table(Ground.HEATH, 1.2, [HEATHER, 50, TUFT, 14, STONE, 2, FLOWER, 4, BRACKEN, 7])
@@ -196,6 +203,23 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 					kind = PEBBLES if g == Ground.SHINGLE else (MARRAM if g == Ground.SAND else TUFT)
 				var fx := 0.08 + rng.randf() * 0.84
 				var fy := 0.08 + rng.randf() * 0.84
+				# Litter: a stray piece anywhere, thick where the machines worked.
+				var lr := rng.randf()
+				if works != null:
+					var strongest := -1
+					var best := 0.3
+					for wc in 4:
+						var wv := works.at(wx, wy, wc)
+						if wv > best:
+							best = wv
+							strongest = wc
+					if strongest >= 0 and lr < LITTER_WORKS * best:
+						var pool: Array = WORKS_LITTER[strongest]
+						kind = pool[int(lr * 97.0) % pool.size()]
+						dress = country
+					elif lr < LITTER_STRAY and g != Ground.ICE:
+						kind = [SCRAP, WIRE, CAN, SHELL_CASE][int(lr * 997.0) % 4]
+						dress = country
 				var stage := 0
 				if kind == FLOWER:
 					var bl := _bloom.get_noise_2d(wx + fx, wy + fy) * 0.5 + 0.5
@@ -447,6 +471,28 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 		WRACK_BIT:
 			k.made.quad(Vector3(-0.12, 0.012, -0.02), Vector3(-0.1, 0.012, 0.03), Vector3(0.12, 0.012, 0.02), Vector3(0.1, 0.012, -0.03), P.EARTH[1])
 			k.made.quad(Vector3(-0.02, 0.014, -0.08), Vector3(-0.01, 0.014, 0.07), Vector3(0.03, 0.014, 0.07), Vector3(0.02, 0.014, -0.08), P.SPRUCE[1])
+		SCRAP:
+			# A shard of plate or panel, bent, rust at its edge.
+			var col: Color = [P.RUST[2], P.SLATE[3], P.RUST[3]][stage]
+			k.made.quad(Vector3(-0.1, 0.012, -0.05), Vector3(0.09, 0.014, -0.07), Vector3(0.11, 0.04, 0.05), Vector3(-0.08, 0.02, 0.06), col)
+			k.made.quad(Vector3(-0.08, 0.02, 0.06), Vector3(0.11, 0.04, 0.05), Vector3(0.1, 0.012, 0.09), Vector3(-0.09, 0.012, 0.1), GroundColors.down(col, 0.4))
+		WIRE:
+			k.sag(Vector3(-0.16, 0.015, -0.04), Vector3(0.05, 0.02, 0.08), -0.02, 3, 0.006, P.INK[2])
+			k.sag(Vector3(0.05, 0.02, 0.08), Vector3(0.15, 0.015, -0.06), -0.015, 2, 0.006, P.COPPER[2] if stage == 0 else P.INK[2])
+		CAN:
+			k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 0.03, 0.0)))
+			k.made.prism(0, -0.04, 0, 0.028, 0.04, 0.028, 6, [P.RUST[3], P.SLATE[3], P.BRINE[2]][stage], P.STONE[3])
+			k.made.pop()
+		SHELL_CASE:
+			k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5) * Basis(Vector3.UP, stage), Vector3(0.0, 0.012, 0.0)))
+			k.made.prism(0, -0.03, 0, 0.011, 0.03, 0.011, 5, P.COPPER[3], P.COPPER[2])
+			k.made.pop()
+		BOLT:
+			k.made.prism(0, 0.0, 0, 0.022, 0.018, 0.022, 6, P.STONE[2], P.STONE[3])
+			k.made.prism(0.03, 0.0, 0.01, 0.009, 0.012, 0.009, 4, P.RUST[2])
+		SPOIL:
+			k.stone(0, -0.02, 0, 0.09, 0.05, s, P.LINEN[4] if c == Country.BONELANDS else P.STONE[3], 5, 0.2)
+			k.stone(0.1, -0.02, 0.04, 0.05, 0.04, s + 1, P.LINEN[3], 4)
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)
 			k.fleck(Vector3(-0.04, 0.075, -0.03), Vector3(-0.03, 0.08, 0.04), Vector3(0.04, 0.075, 0.03), P.LINEN[3])

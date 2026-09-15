@@ -63,3 +63,26 @@ func test_prop_templates_are_safe_to_build_from_two_threads() -> void:
 	WorkerThreadPool.wait_for_task_completion(task)
 	for kd: int in kinds:
 		gt(PropModels.template(kd, 1, Country.MOSS).made_v.size() + PropModels.template(kd, 1, Country.MOSS).found_v.size(), 11, "%s built once, whole" % PropKind.NAMES[kd])
+
+
+func test_litter_gathers_where_the_machines_worked() -> void:
+	var w := Terrain.fixture()
+	var ch := TerrainMesher.new(w).build(0, 0)
+	var plain := Decor.new(w)
+	var worked := Decor.new(w)
+	w.landmarks.append({"kind": &"turf_rows", "pos": Vector2(20, 16), "dir": Vector2.RIGHT, "half": Vector2(8, 12), "mark": &"cut"})
+	worked.works = WorksMap.bake(w)
+	var a := _rust(plain.build_arrays(ch))
+	var b := _rust(worked.build_arrays(ch))
+	gt(b, a * 3.0 + 20.0, "scrap in the cut (%d rust vertices, %d outside any work)" % [b, a])
+	eq(_rust(worked.build_arrays(ch)), b, "litter is deterministic")
+
+
+static func _rust(arrays: Array) -> int:
+	if arrays.is_empty():
+		return 0
+	var n := 0
+	for c: Color in (arrays[Mesh.ARRAY_COLOR] as PackedColorArray):
+		if c.is_equal_approx(Palette.RUST[2]) or c.is_equal_approx(GroundColors.down(Palette.RUST[2], 0.4)):
+			n += 1
+	return n

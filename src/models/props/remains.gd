@@ -1024,9 +1024,9 @@ static func stump(k: Kit, v: int, c: int) -> void:
 			for i in 7:
 				var a := Kit.j(s, i, 1.8) + i * 0.9
 				var from := Vector3(cos(a) * 0.3, 0.05 + i * 0.02, sin(a) * 0.3)
-				k.limb(from, from + Vector3(cos(a + 0.4) * 0.7, 0.05, sin(a + 0.4) * 0.7), 0.025, 0.008, 3, P.EARTH[2])
+				k.limb(from, from + Vector3(cos(a + 0.4) * 0.42, 0.04, sin(a + 0.4) * 0.42), 0.03, 0.014, 3, P.EARTH[2])
 				if c != Country.BURNING:
-					k.blade(from + Vector3(cos(a + 0.4) * 0.5, 0.06, sin(a + 0.4) * 0.5), from + Vector3(cos(a + 0.4) * 0.75, 0.16, sin(a + 0.4) * 0.75), 0.14, a, P.EARTH[3] if i % 2 else P.RUST[3])
+					k.clump(from.x + cos(a + 0.4) * 0.36, 0.0, from.z + sin(a + 0.4) * 0.36, 0.13, 0.08, s + 40 + i, P.EARTH[3] if i % 2 else P.RUST[2], 5)
 			k.sway_by_height(bs, 0.0, 0.3, 0.05)
 	if c == Country.SNOWFIELD:
 		k.clump(0.0, 0.2, 0.0, r * 0.9, 0.1, s + 5, P.RIME[5], 6)
