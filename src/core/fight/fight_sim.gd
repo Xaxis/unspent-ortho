@@ -54,6 +54,10 @@ var fight_kills := 0
 var last_outcome: StringName = &""
 ## World minutes when a dart last reached the player (Coast keeps darts away after).
 var last_meeting_minutes := -INF
+## Sim ms the last fight ended (any outcome), and the last time the player was
+## downed or carried off: the coast keeps new hunters away from a hurt player.
+var last_fight_end_at := -INF
+var last_downed_at := -INF
 var _far_since := -1.0
 var _nav_at := -100000.0
 var _far_best := INF
@@ -572,14 +576,15 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false) -> bool:
 
 
 ## A machine's bite met the player: it has what it came for, so it neither
-## overcommits nor stands spent, and it is ready again soon. The opening
-## belongs to whoever got out of the way, not to whoever took the bite.
+## overcommits nor stands spent. The opening belongs to whoever got out of the
+## way, not to whoever took the bite; but its next tell waits until the one it
+## bit is on their feet again (LANDED_COOLDOWN_MS), so one bite is one bite.
 func _landed(m: MobState) -> void:
 	if not m.machine or m.blow == null:
 		return
 	var b := m.blow.copy()
 	b.recovery = mini(b.recovery, FightRules.LANDED_RECOVERY_MS)
-	b.cooldown = mini(b.cooldown, FightRules.LANDED_COOLDOWN_MS)
+	b.cooldown = FightRules.LANDED_COOLDOWN_MS
 	m.blow = b
 	m.landed_at = m.blow_at
 
@@ -850,6 +855,9 @@ func _begin() -> void:
 func _end(outcome: StringName) -> void:
 	fight_on = false
 	last_outcome = outcome
+	last_fight_end_at = now
+	if outcome == &"downed" or outcome == &"carried":
+		last_downed_at = now
 	var by := hero.last_hit_by as MobState
 	if outcome == &"carried":
 		by = hero.holder as MobState

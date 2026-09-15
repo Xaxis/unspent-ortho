@@ -76,8 +76,10 @@ const DEFS := {
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"indifferent", "guarded": true,
 		"bite": {"swing": [560, 150, 700, 900], "reach": 1.4, "width": 2.2, "dmg": 3, "knock": 8.0, "knock_ms": 300},
-		"then_at": 0.5,
-		"then": {"swing": [440, 170, 600, 700], "reach": 1.5, "width": 2.6, "dmg": 4, "knock": 9.0, "knock_ms": 320},
+		# Its second act is faster and wider, but no harder: a first-hour worker at the
+		# end of its strength does not take a player from half health to down in a second.
+		"then_at": 0.35,
+		"then": {"swing": [480, 170, 600, 700], "reach": 1.5, "width": 2.6, "dmg": 3, "knock": 9.0, "knock_ms": 320},
 		"takes": 60.0, "drops": 2, "linger": 50.0, "chance": 5,
 		"where": {"countries": ["coast"], "grounds": ["grass", "heath", "furrow"], "green_min": 22},
 	},

@@ -305,33 +305,46 @@ static func _walkable_line(world: WorldData, _query: WorldQuery, a: Vector2, b: 
 	return true
 
 
-## Where the first meeting comes from: a tile 12-15 tiles out, out of view, on
-## ground a hunter of `kind` could stand on, at least FIRST_GREEN from a
-## village. Vector2.INF if none this time.
-const FIRST_RING_MIN := 12
-const FIRST_RING_MAX := 15
+## Where the first meeting walks its round: from a tile FIRST_RING_MIN to
+## FIRST_RING_MAX out (straight line), well inside the camera's view, further
+## than `notice` (Chebyshev) so it is seen before it notices, on ground a hunter
+## of `kind` could stand on at least FIRST_GREEN from a village; to a point
+## FIRST_PASS beside the player, across their front, on walkable ground all the
+## way. {from, to}, or {} if none this time.
+const FIRST_RING_MIN := 8.0
+const FIRST_RING_MAX := 10.5
 const FIRST_GREEN := 10.0
+const FIRST_PASS := 4.0
+## Tiles inside the edge of the view the start must be.
+const FIRST_VIEW_MARGIN := -1.0
 
 
-func first_meeting_spot(roll_index: int, world: WorldData, query: WorldQuery, kind: StringName, centre: Vector2) -> Vector2:
+func first_meeting_spot(roll_index: int, world: WorldData, query: WorldQuery, kind: StringName, centre: Vector2, notice: float) -> Dictionary:
 	var r := Rng.make(roll_index, 0xf1257)
 	var row := Roster.row(kind)
 	var where: Dictionary = row.get("where", {})
-	for i in TILE_TRIES * 2:
-		var d := float(r.randi_range(FIRST_RING_MIN, FIRST_RING_MAX))
-		var p := centre + Vector2.from_angle(r.randf() * TAU) * d
-		var t := Vector2(floori(p.x) + 0.5, floori(p.y) + 0.5)
-		if in_view(centre, t) or not world.in_bounds(floori(t.x), floori(t.y)):
+	var grounds: Array = where.get("grounds", [])
+	for i in TILE_TRIES * 3:
+		var d := r.randf_range(FIRST_RING_MIN, FIRST_RING_MAX)
+		var radial := Vector2.from_angle(r.randf() * TAU)
+		var t := centre + radial * d
+		var tile := Vector2i(floori(t.x), floori(t.y))
+		if not world.in_bounds(tile.x, tile.y) or not in_view(centre, t, FIRST_VIEW_MARGIN):
 			continue
-		var g := world.ground_at(floori(t.x), floori(t.y))
-		if Ground.is_water(g) or not query.standable(floori(t.x), floori(t.y)):
+		if Senses.chebyshev(t, centre) <= notice + 1.5:
 			continue
-		var grounds: Array = where.get("grounds", [])
+		var g := world.ground_at(tile.x, tile.y)
+		if Ground.is_water(g) or not query.standable(tile.x, tile.y):
+			continue
 		if not grounds.is_empty() and not ground_matches(g, grounds):
 			continue
 		if green_distance(world, t) < FIRST_GREEN:
 			continue
-		if not NavField.line_walkable(world, t, centre):
+		var side := 1.0 if r.randf() < 0.5 else -1.0
+		var to := centre + radial.orthogonal() * side * FIRST_PASS + radial * 1.0
+		if not world.in_bounds(floori(to.x), floori(to.y)) or not query.standable(floori(to.x), floori(to.y)):
 			continue
-		return t
-	return Vector2.INF
+		if not NavField.line_walkable(world, t, to) or not NavField.line_walkable(world, t, centre):
+			continue
+		return {"from": t, "to": to}
+	return {}

@@ -36,7 +36,7 @@ func test_no_hunter_comes_out_before_the_first_meeting() -> void:
 	check(not shut.has(&"harvester"), "workers are not")
 
 
-func test_the_first_meeting_is_one_runner_a_fair_walk_off_out_of_view() -> void:
+func test_the_first_meeting_is_one_runner_seen_on_its_round_before_it_sees() -> void:
 	var c := _coast()
 	var sim := c.sim
 	c.tick()
@@ -49,10 +49,32 @@ func test_the_first_meeting_is_one_runner_a_fair_walk_off_out_of_view() -> void:
 		return
 	var r: MobState = runners[0]
 	eq(r.kind, Coast.FIRST_KIND)
-	var d := r.pos.distance_to(sim.hero.pos)
-	check(d >= Spawner.FIRST_RING_MIN - 1.0 and d <= Spawner.FIRST_RING_MAX + 1.0, "12-15 tiles off: %.1f" % d)
-	check(not c.spawner.in_view(sim.hero.pos, r.pos), "out of view")
+	check(c.spawner.in_view(sim.hero.pos, r.pos, Spawner.FIRST_VIEW_MARGIN + 0.01), "put out in view")
+	gt(Senses.chebyshev(r.pos, sim.hero.pos), Coast.FIRST_SEES + 1.0, "further off than it notices (%.1f)" % Senses.chebyshev(r.pos, sim.hero.pos))
+	check(not Senses.notices(r.row, r.pos, sim.hero.pos, sim.moment, sim.world, sim.query), "it has not noticed the player")
 	eq(c.first_meeting, 0, "out on the coast")
+	# The player stands and watches it come along its round.
+	for p: MobState in sim.mobs.filter(func(m: MobState) -> bool: return m.patrol):
+		sim.remove_mob(p)
+	var seen_ms := 0.0
+	var noticed_at := -1.0
+	var chased_at := -1.0
+	for i in 40 * 60:
+		sim.slices(2)
+		c.tick()
+		if c.spawner.in_view(sim.hero.pos, r.pos, 0.0) and noticed_at < 0.0:
+			seen_ms += 16.0
+		for e in sim.drain():
+			if e.type == &"alerted" and noticed_at < 0.0:
+				noticed_at = sim.now
+		if r.roused():
+			chased_at = sim.now
+			break
+	print("  info first meeting: in view %d ms before it noticed, came %d ms after" % [seen_ms, chased_at - noticed_at])
+	gt(seen_ms, 2000.0, "in view for a good while before it noticed (%d ms)" % seen_ms)
+	check(noticed_at > 0.0, "it notices a player who stays")
+	gt(chased_at - noticed_at, 600.0, "and stands a moment, seen to see, before it comes")
+	eq(r.row, Roster.row(&"runner"), "roused, it has a runner's senses again")
 	sim.now += 10000.0
 	c.tick()
 	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 1, "never a second")
@@ -60,6 +82,43 @@ func test_the_first_meeting_is_one_runner_a_fair_walk_off_out_of_view() -> void:
 	c.tick()
 	eq(c.first_meeting, 1, "met, it is over")
 	check(not c.shut().has(&"runner"), "and hunters may come again")
+
+
+func test_the_first_meeting_waits_for_a_player_who_is_well_and_rested() -> void:
+	var c := _coast()
+	var sim := c.sim
+	sim.now = Coast.FIRST_MEETING_MS + 10.0
+	sim.hero.health = Coast.FIRST_MIN_HEALTH - 1
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 0, "not on a hurt player")
+	sim.hero.health = FightRules.HEALTH
+	sim.last_fight_end_at = sim.now - 10000.0
+	sim.now += Coast.FIRST_RETRY_MS
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 0, "not straight after a fight")
+	sim.now = sim.last_fight_end_at + Coast.FIRST_QUIET_MS + Coast.FIRST_RETRY_MS
+	c.tick()
+	eq(sim.mobs.filter(func(m: MobState) -> bool: return m.first_meeting).size(), 1, "well, and a while after, it comes")
+
+
+func test_no_hunter_comes_out_for_a_while_after_a_bad_end() -> void:
+	var c := _coast()
+	var sim := c.sim
+	c.first_meeting = 1
+	check(not c.shut().has(&"runner"), "after the first meeting hunters may come")
+	var dog := sim.add_mob(&"dog.feral", sim.hero.pos + Vector2(0.8, 0))
+	dog.calm_until = 0.0
+	dog.set_mood(MobState.ATTACKING, sim.now)
+	sim.hero.health = 1
+	for i in 400:
+		sim.slices(2)
+		if sim.last_outcome == &"downed":
+			break
+	eq(sim.last_outcome, &"downed", "downed")
+	check(c.shut().has(&"runner") and c.shut().has(&"dog.yard"), "hunters kept off a player who just came round")
+	check(not c.shut().has(&"harvester"), "workers are not")
+	sim.now += Coast.AFTER_DOWNED_MS
+	check(not c.shut().has(&"runner"), "a few minutes on, they may come again")
 
 
 func test_workers_cross_the_land_in_view_and_leave_a_still_player_be() -> void:

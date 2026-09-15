@@ -17,7 +17,7 @@ const FIRST: Array[StringName] = [&"runner", &"dog.yard", &"harvester"]
 const STARTS := 8
 
 
-static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0) -> Dictionary:
+static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0, take_hits: int = 0) -> Dictionary:
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
 	sim.hero.inventory.add(&"knife")
 	sim.hero.inventory.set_held(&"knife")
@@ -35,18 +35,26 @@ static func bout(kind: StringName, careful: bool, start: int, seconds: float = 6
 	var player: Variant = Reader.new(sim) if careful else Masher.new(sim)
 	if careful:
 		player.react_ms = react_ms
+		player.take_hits = take_hits
 	var hurts := 0
 	var outcome := &""
 	var t := 0.0
 	var opened := 0
 	var hits := 0
+	# Hurts that came within a second of the one before: one bite chained into the next.
+	var chained := 0
+	var last_hurt := -INF
 	while t < seconds * 1000.0:
 		player.act()
 		sim.slices(2)
 		t += 16.0
 		for e in sim.drain():
 			match e.type:
-				&"hurt": hurts += int(e.damage)
+				&"hurt":
+					hurts += int(e.damage)
+					if sim.now - last_hurt < 1000.0:
+						chained += 1
+					last_hurt = sim.now
 				&"opened": opened += 1
 				&"hit":
 					if not e.plate and e.target == m:
@@ -58,7 +66,7 @@ static func bout(kind: StringName, careful: bool, start: int, seconds: float = 6
 			break
 	var downed := outcome == &"downed" or outcome == &"carried"
 	return {"kind": kind, "start": start, "won": not m.alive and not downed, "downed": downed,
-		"t": snappedf(t / 1000.0, 0.1), "lost_health": hurts, "hits": hits, "opened": opened, "left": m.health}
+		"t": snappedf(t / 1000.0, 0.1), "lost_health": hurts, "hits": hits, "opened": opened, "left": m.health, "chained": chained}
 
 
 func test_a_careful_first_hour_player_beats_each_first_meeting_from_every_start() -> void:
@@ -87,6 +95,22 @@ func test_a_slow_reader_still_wins_most_first_meetings() -> void:
 			lost += int(r.lost_health)
 		print("  info slow reader against %s: won %d of %d, lost %d health" % [kind, won, STARTS, lost])
 		gt(float(won), STARTS * 0.74, "%s is still fair to slow eyes" % kind)
+
+
+## One bite taken is one bite: the machine's next tell waits until the player
+## is on their feet, so a reader who lets the first tell land still wins.
+func test_a_reader_who_takes_one_bite_on_purpose_still_wins() -> void:
+	for kind in FIRST:
+		var bitten := 0
+		for i in STARTS:
+			var r := bout(kind, true, i, 60.0, 220.0, 1)
+			check(r.won and not r.downed, "%s from start %d beat a reader who took one bite: %s" % [kind, i, r])
+			eq(int(r.chained), 0, "%s start %d: no bite followed the taken one within a second (%s)" % [kind, i, r])
+			bitten += int(int(r.lost_health) > 0)
+		print("  info took a bite on purpose against %s: bitten in %d of %d, won them all" % [kind, bitten, STARTS])
+		if Roster.row(kind).get("machine", false):
+			# A knife outreaches a dog, which may be down before it bites; a machine is not.
+			eq(bitten, STARTS, "%s: every bout had the bite in it" % kind)
 
 
 func test_a_careless_player_loses_to_the_first_machines() -> void:

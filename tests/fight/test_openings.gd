@@ -46,7 +46,42 @@ func test_a_bite_that_lands_opens_nothing() -> void:
 	eq(F.count(events, &"hurt"), 1, "the bite met the player")
 	eq(F.count(events, &"opened"), 0, "and nothing opened")
 	check(not m.spent(sim.now), "not spent")
-	lt(float(m.blow.recovery + m.blow.cooldown), float(m.bite.recovery + m.bite.cooldown), "and ready again sooner")
+	# Its next tell waits until the player has control back: never a bite chained
+	# into the next while the player is still thrown and flinching.
+	gt(float(m.blow.recovery + m.blow.cooldown), float(FightRules.HURT_IFRAMES_MS + m.bite.knock_ms), "and the next tell waits for the player to be up")
+
+
+## One landed bite is one bite: whatever a machine does next, its next tell
+## starts after the player it bit is thrown, up and past their flinch, with a
+## human's reaction to spare. At 560 ms a harvester took 8 health to 4 in 950 ms.
+func test_a_landed_bite_never_chains_into_the_next_tell() -> void:
+	for kind in _biters():
+		var row := Roster.row(kind)
+		if int(row.bite.get("grip", 0)) > 0:
+			continue
+		var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+		var m := F.still(sim, kind, Vector2(20.5 + row.radius + 0.28 + 0.5, 20.5), PI)
+		m.calm_until = 0.0
+		m.disturbed = true
+		m.set_mood(MobState.ATTACKING, sim.now)
+		var hurt_at := -1.0
+		var next_tell := -1.0
+		for i in 600:
+			sim.slices(1)
+			sim.hero.pos = Vector2(20.5, 20.5)
+			sim.hero.health = FightRules.HEALTH
+			m.pos = Vector2(20.5 + m.radius + 0.28 + 0.5, 20.5)
+			for e in sim.drain():
+				if e.type == &"hurt" and hurt_at < 0.0:
+					hurt_at = sim.now
+				elif e.type == &"windup" and hurt_at >= 0.0 and next_tell < 0.0:
+					next_tell = sim.now
+			if next_tell >= 0.0:
+				break
+		if hurt_at < 0.0:
+			continue
+		check(next_tell < 0.0 or next_tell - hurt_at >= FightRules.HURT_IFRAMES_MS + 220.0,
+			"%s: next tell %d ms after its bite landed" % [kind, next_tell - hurt_at])
 
 
 func test_machines_turn_slower_than_a_player_walks_round_them() -> void:

@@ -142,7 +142,8 @@ func _landing() -> void:
 	MobFx.puff(_fx_parent(), _at3(hero.pos + hero.dodge_dir * 0.15), hero.dodge_dir, _dust_colour(hero.pos), 0.5, int(sim.now) + 2)
 
 
-## One point of health back per hour of the world's clock, counted from the last hurt.
+## One point of health back per hour of the world's clock, counted from the last
+## hurt; four an hour by a fire.
 func _mend() -> void:
 	var b := game.body
 	if b.health < _last_health:
@@ -151,8 +152,9 @@ func _mend() -> void:
 	if b.health >= b.max_health:
 		_mend_from = game.clock.minutes
 		return
-	while game.clock.minutes - _mend_from >= FightRules.MEND_MINUTES and b.health < b.max_health:
-		_mend_from += FightRules.MEND_MINUTES
+	var per := FightRules.mend_minutes(Survival.fire_near(game) != null)
+	while game.clock.minutes - _mend_from >= per and b.health < b.max_health:
+		_mend_from += per
 		b.health += 1
 	_last_health = b.health
 

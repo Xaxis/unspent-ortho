@@ -8,8 +8,10 @@ extends RefCounted
 ## Seen often, met rarely (M1.5): the land is watched by workers crossing it on
 ## their rounds at a distance (patrols, indifferent until disturbed), hunters
 ## are thin on the first days, and the first hunter of a game is a lone runner
-## put out a fair distance away within the first minutes, with nothing else
-## hostile about until that meeting is over.
+## put out in view within the first minutes, with nothing else hostile about
+## until that meeting is over. It is fair: it waits for a player who is well and
+## has not just fought, and it is seen on its round before it notices them.
+## After a bad end no hunter comes out for a while.
 
 ## Never more than this many rolls in one tick, however long the frame was.
 const MAX_ROLLS_PER_TICK := 4
@@ -31,6 +33,20 @@ const FIRST_RETRY_MS := 2000.0
 ## The kind the first meeting is, and nothing hostile nearer than this when it comes.
 const FIRST_KIND := &"runner"
 const FIRST_CLEAR := 24.0
+## The first meeting waits for a player at this health or more, and this long
+## (sim ms) after any fight ended.
+const FIRST_MIN_HEALTH := 9
+const FIRST_QUIET_MS := 120000.0
+## On its round it is not hunting: it notices only this close (Chebyshev tiles,
+## sight and hearing), stands this many beats when it does before it comes, and
+## walks at this share of its pace. It is put out further off than that and in
+## view, so the player sees it before it sees them. Roused, it is a runner again.
+const FIRST_SEES := 5.0
+const FIRST_HEARS := 3.0
+const FIRST_READY := 8
+const FIRST_ROUND_PACE := 0.45
+## After the player is downed or carried off, no hunter comes out for this long (sim ms).
+const AFTER_DOWNED_MS := 180000.0
 
 var sim: FightSim
 var spawner: Spawner
@@ -83,6 +99,9 @@ func tick() -> void:
 	if first_meeting == 0 and (_first_mob == null or _first_mob.removed or not _first_mob.alive):
 		first_meeting = 1
 		_first_mob = null
+	elif first_meeting == 0 and _first_mob.roused() and _first_mob.row.get("on_round", false):
+		# Roused: off its round, and a runner's eyes and ears again.
+		_first_mob.row = Roster.row(_first_mob.kind)
 
 
 ## The kinds that may not come out right now: darts on their gaps, and every
@@ -91,9 +110,10 @@ func shut() -> Dictionary:
 	var out := {}
 	var minutes := sim.moment.minutes
 	var met := minutes - sim.last_meeting_minutes < MEETING_GAP
+	var sore := sim.now - sim.last_downed_at < AFTER_DOWNED_MS
 	for k: StringName in Roster.DEFS:
 		var row := Roster.row(k)
-		if rounds and first_meeting < 0 and Spawner.is_hunter(row):
+		if Spawner.is_hunter(row) and (sore or (rounds and first_meeting < 0)):
 			out[k] = true
 			continue
 		if row.get("approach", &"") != &"dart":
@@ -129,8 +149,10 @@ func _patrols() -> void:
 	sim.emit(&"patrol", {"mob": m})
 
 
-## A lone runner, a fair walk off and out of view, once the game is a minute
-## or so old and the player is out of the village. It comes when it notices.
+## A lone runner on its round in view, once the game is a minute or so old,
+## the player is out of the village, well, and not just out of a fight. Its
+## round crosses in front of the player, near enough that it notices them if
+## they stay; they see it first either way.
 func _first_meeting() -> void:
 	if first_meeting >= 0 or sim.now < _first_try_at or sim.fight_on:
 		return
@@ -139,25 +161,38 @@ func _first_meeting() -> void:
 		first_meeting = 1
 		return
 	_first_try_at = sim.now + FIRST_RETRY_MS
+	if not ready_for_first_meeting():
+		return
 	for m in sim.mobs:
 		if m.alive and not m.removed and not m.indifferent() and m.row.get("hostile", true) \
 				and Senses.chebyshev(m.pos, sim.hero.pos) <= FIRST_CLEAR:
 			return
 	if Spawner.green_distance(sim.world, sim.hero.pos) < Spawner.FIRST_GREEN - 2.0:
 		return
-	var at := spawner.first_meeting_spot(sim.moment.seed_value * 31 + floori(sim.now / FIRST_RETRY_MS), sim.world, sim.query, FIRST_KIND, sim.hero.pos)
-	if not at.is_finite():
+	var spot := spawner.first_meeting_spot(sim.moment.seed_value * 31 + floori(sim.now / FIRST_RETRY_MS), sim.world, sim.query, FIRST_KIND, sim.hero.pos, maxf(FIRST_SEES, FIRST_HEARS))
+	if spot.is_empty():
 		return
+	var at: Vector2 = spot.from
 	var m := sim.add_mob(FIRST_KIND, at)
 	m.first_meeting = true
-	# On its round, slanting in toward where the player is: seen before it sees,
-	# and it comes within its sight of them unless they walk away.
-	var radial := (at - sim.hero.pos).normalized()
+	var row := m.row.duplicate()
+	row["sees"] = FIRST_SEES
+	row["hears"] = FIRST_HEARS
+	row["ready"] = FIRST_READY
+	row["on_round"] = true
+	m.row = row
+	m.pace *= FIRST_ROUND_PACE
 	m.line_a = at
-	m.line_b = at - radial * 6.0 + radial.orthogonal() * 3.0
+	m.line_b = spot.to
 	m.line_to_b = true
 	m.facing = (m.line_b - at).angle()
 	m.aim = m.facing
 	_first_mob = m
 	first_meeting = 0
 	sim.emit(&"first_meeting", {"mob": m})
+
+
+## The player is fit for a first meeting: health enough to take a bite or two,
+## and a while since any fight ended.
+func ready_for_first_meeting() -> bool:
+	return sim.hero.health >= FIRST_MIN_HEALTH and sim.now - sim.last_fight_end_at >= FIRST_QUIET_MS

@@ -12,6 +12,9 @@ extends RefCounted
 ## knife, a person meeting it for the first time cannot either.
 
 var react_ms := 220.0
+## Tells let through on purpose before the reader starts answering them: a
+## player who takes a bite while learning must still be able to win.
+var take_hits := 0
 ## How long after the bite's live window the escape keeps being held.
 const ESCAPE_HOLD_MS := 60.0
 
@@ -65,6 +68,9 @@ func _tell_to_answer(m: MobState) -> bool:
 		return false
 	_answered = m.blow_at
 	if not _in_box(m, hero.pos, 0.5):
+		return false
+	if take_hits > 0:
+		take_hits -= 1
 		return false
 	var b := m.blow
 	var local := (hero.pos - m.pos).rotated(-m.facing)
