@@ -75,6 +75,11 @@ func test_damaged_and_missing_files_never_throw_and_say_so() -> void:
 		"block table flipped": _flip(raw, 20, 4),
 		"tail magic gone": _flip(raw, raw.size() - 2, 1),
 	}
+	# A save read just before a damaged one: the damaged one never reads back as it.
+	# (A broken zstd block leaves the engine's buffer holding what it last held.)
+	_write_raw_save(SaveSlots.path(2), SaveFile.VERSION + 1)
+	eq(SaveFile.read(SaveSlots.path(2)).code, &"newer")
+	cases["read after another save"] = _flip(raw, 20, 4)
 	# A payload flipped inside the compressed data: the framing holds, the data's md5 does not.
 	var payload := _flip(raw, raw.size() - 40, 6)
 	cases["payload flipped"] = payload
@@ -86,17 +91,17 @@ func test_damaged_and_missing_files_never_throw_and_say_so() -> void:
 		eq(r.code, &"damaged", "%s:" % name)
 		eq(r.why, SaveFile.WHY_DAMAGED, "%s:" % name)
 	# Compressed, whole, but not a save inside.
-	var f := FileAccess.open_compressed(SaveSlots.path(1), FileAccess.WRITE, SaveFile.MODE)
-	f.store_line("{\"format\": \"something else\"}")
-	f.close()
+	eq(SaveFile.store(SaveSlots.path(1), PackedStringArray(["{\"format\": \"something else\"}"])), OK)
 	eq(SaveFile.read(SaveSlots.path(1)).code, &"damaged", "a compressed file of something else")
+	# A compressed save with no trailer (the engine's own file, not ours).
+	var bare := FileAccess.open_compressed(SaveSlots.path(1), FileAccess.WRITE, SaveFile.MODE)
+	bare.store_line(JSON.stringify(HEADER))
+	bare.close()
+	eq(SaveFile.read(SaveSlots.path(1)).code, &"damaged", "frames with no trailer")
 	# A good header over a data line that is not what the header promised.
-	f = FileAccess.open_compressed(SaveSlots.path(2), FileAccess.WRITE, SaveFile.MODE)
 	var whole := {"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "data_md5": "0", "thumb_md5": "".md5_text()}
 	whole["head_md5"] = SaveFile.header_md5(whole)
-	f.store_line(JSON.stringify(whole))
-	f.store_line("{\"clock\": ")
-	f.close()
+	eq(SaveFile.store(SaveSlots.path(2), PackedStringArray([JSON.stringify(whole), "{\"clock\": "])), OK)
 	var half := SaveFile.read(SaveSlots.path(2))
 	eq(half.code, &"damaged", "a data line cut short")
 	check(SaveFile.read_header(SaveSlots.path(2)).ok, "its header alone still lists")
@@ -197,10 +202,7 @@ func _data_line_of(path: String) -> String:
 
 
 func _rewrite(path: String, head: Dictionary, body: String) -> void:
-	var f := FileAccess.open_compressed(path, FileAccess.WRITE, SaveFile.MODE)
-	f.store_line(JSON.stringify(head, "", false, true))
-	f.store_line(body)
-	f.close()
+	SaveFile.store(path, PackedStringArray([JSON.stringify(head, "", false, true), body]))
 
 
 func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read() -> void:
@@ -297,11 +299,7 @@ func _write_raw_save(path: String, version: int) -> void:
 	head["format"] = SaveFile.FORMAT
 	head["version"] = version
 	head["data_md5"] = body.md5_text()
-	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
-	var f := FileAccess.open_compressed(path, FileAccess.WRITE, SaveFile.MODE)
-	f.store_line(JSON.stringify(head))
-	f.store_line(body)
-	f.close()
+	SaveFile.store(path, PackedStringArray([JSON.stringify(head), body]))
 
 
 func _flip(raw: PackedByteArray, at: int, n: int) -> PackedByteArray:

@@ -4,14 +4,15 @@ class_name SaveFile
 ##      place, play_seconds, seed, size, pos, data_md5, thumb (base64 PNG), thumb_md5,
 ##      head_md5}
 ##   2. the data: SaveGame.collect(), keyed by registered key
-## The header is read alone for slot lists and the title (only its blocks are
-## decompressed). Every read checks the file's block table against its length,
-## the header against its own md5 (every field but the picture), the data line
-## against the header's md5, and both lines parse as JSON objects, because a
-## truncated or damaged compressed file otherwise reads back silently as garbage
-## (zstd frames here carry no checksum). A picture that fails its md5 is dropped
-## and the save still reads: nothing but the picture was lost. Nothing here
-## throws or asserts: a read returns
+## Behind the compressed frames sits a trailer: "USUM" and the md5 of every byte
+## before it. Nothing is decompressed until that md5 holds, because a damaged zstd
+## block is not caught by the engine: FileAccessCompressed hands back whatever its
+## buffer last held (another save's header, once), and zstd frames here carry no
+## checksum. Past it, the header is checked against its own md5 (every field but
+## the picture), the data line against the header's, and both lines must parse as
+## JSON objects. The header is read alone for slot lists and the title. A picture
+## that fails its md5 is dropped and the save still reads. Nothing here throws or
+## asserts: a read returns
 ##   {ok: bool, code: StringName (&"" missing damaged newer older), why: String (a plain
 ##    sentence for the player), header, data, version}
 ##
@@ -28,6 +29,9 @@ const OLDEST := 1
 const MODE := FileAccess.COMPRESSION_ZSTD
 ## FileAccessCompressed's framing: "GCPF", mode, block size, total, a u32 per block, data, "GCPF".
 const MAGIC := "GCPF"
+## After it: "USUM" and the md5 of everything before.
+const SUM_MAGIC := "USUM"
+const TRAILER := 20
 
 const WHY_MISSING := "Nothing is saved there."
 const WHY_DAMAGED := "That save is damaged and cannot be read."
@@ -43,18 +47,41 @@ static func write(path: String, header: Dictionary, data: Dictionary) -> Error:
 	head["data_md5"] = body.md5_text()
 	head["thumb_md5"] = str(head.get("thumb", "")).md5_text()
 	head["head_md5"] = header_md5(head)
+	return store(path, PackedStringArray([JSON.stringify(head, "", false, true), body]))
+
+
+## Lines, compressed, with the trailer, to `<path>.tmp` and renamed over `path`.
+## (write builds the lines; tests store hand-made ones.)
+static func store(path: String, lines: PackedStringArray) -> Error:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var tmp := path + ".tmp"
 	var f := FileAccess.open_compressed(tmp, FileAccess.WRITE, MODE)
 	if f == null:
 		return FileAccess.get_open_error()
-	f.store_line(JSON.stringify(head, "", false, true))
-	f.store_line(body)
+	for line in lines:
+		f.store_line(line)
 	f.close()
+	var sum := _md5(FileAccess.get_file_as_bytes(tmp))
+	var t := FileAccess.open(tmp, FileAccess.READ_WRITE)
+	if t == null:
+		DirAccess.remove_absolute(tmp)
+		return FileAccess.get_open_error()
+	t.seek_end()
+	t.store_buffer(SUM_MAGIC.to_ascii_buffer())
+	t.store_buffer(sum)
+	t.close()
 	var err := DirAccess.rename_absolute(tmp, path)
 	if err != OK:
 		DirAccess.remove_absolute(tmp)
 	return err
+
+
+static func _md5(b: PackedByteArray) -> PackedByteArray:
+	var h := HashingContext.new()
+	h.start(HashingContext.HASH_MD5)
+	if not b.is_empty():
+		h.update(b)
+	return h.finish()
 
 
 ## The header alone (for lists). `data` is left empty.
@@ -133,30 +160,31 @@ static func _parse(text: String) -> Variant:
 	return json.data
 
 
-## True when the file is whole: its magic at both ends and a block table whose
-## sizes add up to its length.
+## True when the file is whole: its magic at both ends of the frames, a block
+## table whose sizes add up to its length, and the trailer's md5 over it all.
 static func framed(path: String) -> bool:
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
+	var raw := FileAccess.get_file_as_bytes(path)
+	var length := raw.size()
+	if length < 24 + TRAILER or raw.slice(0, 4).get_string_from_ascii() != MAGIC:
 		return false
-	var length := f.get_length()
-	if length < 24 or f.get_buffer(4).get_string_from_ascii() != MAGIC:
-		return false
-	f.get_32() # mode
-	var block := f.get_32()
-	var total := f.get_32()
+	var block := raw.decode_u32(8)
+	var total := raw.decode_u32(12)
 	if block == 0:
 		return false
 	var blocks := total / block + 1
-	if 16 + blocks * 4 + 4 > length:
+	var frames := length - TRAILER
+	if 16 + blocks * 4 + 4 > frames:
 		return false
 	var sum := 0
 	for i in blocks:
-		sum += f.get_32()
-	if 16 + blocks * 4 + sum + 4 != length:
+		sum += raw.decode_u32(16 + i * 4)
+	if 16 + blocks * 4 + sum + 4 != frames:
 		return false
-	f.seek(length - 4)
-	return f.get_buffer(4).get_string_from_ascii() == MAGIC
+	if raw.slice(frames - 4, frames).get_string_from_ascii() != MAGIC:
+		return false
+	if raw.slice(frames, frames + 4).get_string_from_ascii() != SUM_MAGIC:
+		return false
+	return raw.slice(frames + 4) == _md5(raw.slice(0, frames))
 
 
 ## Bring data saved by an older version up to VERSION, one step at a time. Each
