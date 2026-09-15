@@ -43,18 +43,21 @@ func test_system_is_loaded_and_opens_screens() -> void:
 	g.free()
 
 
-func test_crafting_needs_a_station() -> void:
+func test_crafting_needs_a_station_or_hand_work() -> void:
 	var g := _make()
 	var ui := _ui(g)
-	var said: Array = []
-	var listen := func(t: String) -> void: said.append(t)
-	Events.message.connect(listen)
-	check(not ui.call("open_screen", &"crafting") or UiRules.station_near(g.query, g.player.pos) != &"", "no station, no making page")
+	var hand := not Crafting.recipes_at(&"hand").is_empty()
+	var opened: bool = ui.call("open_screen", &"crafting")
+	if hand:
+		check(opened, "things made by hand can be made anywhere")
+		eq((ui.call("top") as UiCraftingScreen).stations.back(), &"hand")
+		ui.call("top").handle(&"back")
+	else:
+		check(not opened or UiRules.station_near(g.query, g.player.pos) != &"", "no station, no making page")
 	g.world.props.append(WorldProp.new(99999, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
 	g.query.add_prop(g.world.props.back())
 	check(ui.call("open_screen", &"crafting"), "opens beside a fire")
-	eq((ui.call("top") as UiCraftingScreen).station, &"fire")
-	Events.message.disconnect(listen)
+	eq((ui.call("top") as UiCraftingScreen).stations[0], &"fire", "the fire's recipes come first")
 	g.free()
 
 

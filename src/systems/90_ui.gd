@@ -38,8 +38,8 @@ func setup(g: Game) -> void:
 	_add(UiMapScreen.new())
 	_add(UiPauseScreen.new())
 	_add(UiSheetScreen.new())
-	if g.options.give != "":
-		UiRules.apply_give(g.inventory, UiRules.parse_give(g.options.give))
+	# Survival gives these first when it is loaded; this never adds twice.
+	UiRules.apply_give(g.inventory, g.options.give)
 	if g.options.ui_demo:
 		_demo()
 	_pending_screen = g.options.screen
@@ -89,14 +89,14 @@ func open_screen(n: StringName) -> bool:
 		Events.message.emit("Not with that so close.")
 		return false
 	if n == &"crafting":
-		var station := UiRules.station_near(game.query, game.player.pos)
-		if station == &"" and game.options.ui_demo:
-			station = &"fire"
-		if station == &"":
+		var here := UiLink.stations_here(game)
+		if here.is_empty() and game.options.ui_demo:
+			here.append(&"fire")
+		if here.is_empty():
 			Events.sfx.emit(&"refused", Vector3.ZERO)
 			Events.message.emit("Nothing to make things at here.")
 			return false
-		(s as UiCraftingScreen).station = station
+		(s as UiCraftingScreen).stations = here
 	stack.append(s)
 	s.open()
 	_vertical.absorb(_device_dir(&"move_up", &"move_down"))
@@ -174,17 +174,22 @@ func _feed_hud() -> void:
 	var b := game.body
 	hud.set_body(b.health, b.max_health, b.wind, b.max_wind)
 	hud.set_held(game.inventory.held)
-	hud.set_needs(UiRules.needs(b, game.clock.minutes, game.inventory.bulk()))
+	hud.set_needs(UiRules.needs(b, game.clock.minutes, game.inventory.bulk(), UiLink.creel(game.inventory, b)))
 	var busy := Time.get_ticks_msec() / 1000.0 < b.busy_until
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
-	for sys in game.systems:
-		if sys != self and sys.has_method("use_hint"):
-			var h: Variant = sys.call("use_hint")
-			if h is Dictionary:
-				hud.set_hint(String(h.get("text", "")), String(h.get("key", "e")))
-				return
+	var said: Variant = UiLink.use_hint(game)
+	if said != null:
+		if String(said) != "":
+			hud.set_hint(String(said), "e")
+			return
+		var here := UiLink.stations_here(game)
+		if not here.is_empty() and here[0] != &"hand":
+			hud.set_hint("%s - make" % here[0], "c")
+		else:
+			hud.set_hint("")
+		return
 	var prop := UiRules.use_target(game.query, game.player.pos, game.player.facing)
 	if prop == null:
 		hud.set_hint("")

@@ -33,11 +33,18 @@ func test_needs_appear_only_when_they_matter() -> void:
 	var b := Body.new()
 	b.fed_until = 1000.0
 	check(UiRules.needs(b, 900.0, 10.0).is_empty(), "fed, dry, light: nothing")
-	var peckish := UiRules.needs(b, 1100.0, 10.0)
+	# Survival owns where peckish and hungry begin; find them rather than assume.
+	var t := 1000.0
+	while b.hunger_level(t) < 1:
+		t += 10.0
+	var peckish := UiRules.needs(b, t, 10.0)
 	eq(peckish.size(), 1)
 	eq(peckish[0].need, &"hunger")
 	eq(peckish[0].level, 1, "peckish is quiet")
-	eq(UiRules.needs(b, 1000.0 + 300.0, 10.0)[0].level, 2, "hungry is the accent")
+	while b.hunger_level(t) < 2:
+		t += 10.0
+	eq(UiRules.needs(b, t, 10.0)[0].level, 2, "hungry is the accent")
+	check(UiRules.needs(b, 900.0, 45.0, 60.0).is_empty(), "a bigger creel carries more before it tells")
 	b.wet = 0.9
 	var list := UiRules.needs(b, 900.0, UiRules.CREEL * 2.0)
 	var names: Array = list.map(func(n: Dictionary) -> StringName: return n.need)
@@ -108,7 +115,7 @@ func test_inventory_groups_in_notebook_order() -> void:
 
 
 func test_give_is_parsed_and_never_doubles() -> void:
-	var g := UiRules.parse_give("stone:3, timber ,scrap:2")
+	var g := BootOptions.parse(["--give=stone:3,timber,scrap:2"]).give
 	eq(g, {&"stone": 3, &"timber": 1, &"scrap": 2})
 	var inv := Inventory.new()
 	inv.add(&"stone", 1)

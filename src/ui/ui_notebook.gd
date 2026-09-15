@@ -172,6 +172,41 @@ static func struck(ci: CanvasItem, at: Vector2i, word: String, seed: int) -> int
 	return w
 
 
+## A group heading in a list: written small and faded, a short stroke under it.
+static func heading(ci: CanvasItem, at: Vector2i, text: String, seed: int) -> void:
+	UiDraw.text(ci, at, text, UiTheme.FADED)
+	UiDraw.hand_hline(ci, at.x - 1, at.x + 2 + UiFont.width(text), at.y + 9, UiTheme.FADED, seed)
+
+
+## An item sketched into a ruled-off box on the page, a strip of tape over its top.
+static func sketch_box(ci: CanvasItem, r: Rect2i, id: StringName, seed: int) -> void:
+	UiDraw.rect(ci, r.grow(-1), Color(UiTheme.PAPER_SHADE, 0.22))
+	box(ci, r, UiTheme.INK_SOFT, seed)
+	var size := mini(r.size.x, r.size.y) - 6
+	UiSketch.draw_item(ci, id, r.position + (r.size - Vector2i(size, size)) / 2, size)
+	tape(ci, Vector2i(r.position.x + r.size.x / 2 - 12, r.position.y - 3), 24)
+
+
+## Words wrapped onto successive ruled lines from `at`. Returns the lines used.
+static func wrapped(ci: CanvasItem, at: Vector2i, width: int, text: String, col: Color) -> int:
+	var line := ""
+	var y := at.y
+	var used := 0
+	for word in text.split(" "):
+		var next := word if line == "" else line + " " + word
+		if UiFont.width(next) > width and line != "":
+			UiDraw.text(ci, Vector2i(at.x, y), line, col)
+			y += UiTheme.LINE
+			used += 1
+			line = word
+		else:
+			line = next
+	if line != "":
+		UiDraw.text(ci, Vector2i(at.x, y), line, col)
+		used += 1
+	return used
+
+
 ## A hand-drawn box.
 static func box(ci: CanvasItem, r: Rect2i, col: Color, seed: int) -> void:
 	UiDraw.hand_hline(ci, r.position.x, r.end.x - 1, r.position.y, col, seed)

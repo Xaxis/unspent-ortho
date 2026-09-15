@@ -35,19 +35,26 @@ func _draw() -> void:
 			y += 12
 		UiIcons.draw_item(self, id, Vector2i(x, y))
 		x += 12
-	y += 16
+	y += 14
 	x = 8
 	for id: StringName in UiIcons.ITEMS:
 		var st: StringName = UiIcons.style_of(id)[0]
 		if not shapes.has(st):
 			continue
 		shapes.erase(st)
-		if x > 600:
+		if x > 590:
 			x = 8
-			y += 34
-		UiDraw.rect(self, Rect2i(x - 1, y - 1, 29, 29), Color(UiTheme.PAPER_SHADE, 0.4))
-		UiIcons.draw_item(self, id, Vector2i(x, y), 3)
-		x += 32
+			y += 50
+		UiSketch.draw_item(self, id, Vector2i(x, y), 48)
+		x += 52
+	y += 50
+	x = 8
+	for id: StringName in [&"knife", &"axe_hand", &"pick", &"stone", &"timber", &"scrap", &"mussels", &"charcoal", &"las_hand", &"bread"]:
+		UiSketch.draw_item(self, id, Vector2i(x, y), 24)
+		x += 28
+	for st: StringName in UiSketch.STATIONS:
+		UiSketch.draw_station(self, st, Vector2i(x, y - 4), 48)
+		x += 52
 	y += 36
 	x = 8
 	UiDraw.rect(self, Rect2i(0, y - 4, 640, 30), Palette.SLATE[1])
@@ -59,8 +66,3 @@ func _draw() -> void:
 	for id: StringName in hud_icons:
 		UiDraw.sprite_rimmed(self, UiIcons.shape_of(id), Vector2i(x, y + 4), UiIcons.colours_for(id), UiTheme.INK_DEEP)
 		x += 16
-	x = 8
-	y += 34
-	for st: StringName in UiIcons.STATIONS:
-		UiIcons.draw_station(self, st, Vector2i(x, y), 4)
-		x += 64

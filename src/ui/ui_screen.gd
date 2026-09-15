@@ -21,6 +21,8 @@ var game: Game
 var note := ""
 var note_age := 0.0
 var is_open := false
+## First row drawn of a list longer than its page.
+var scroll := 0
 
 
 func _init() -> void:
@@ -103,6 +105,21 @@ func select(id: StringName) -> void:
 			_on_choice_changed()
 			queue_redraw()
 			return
+
+
+## Move `scroll` so the chosen row is among the `lines` drawn, keeping a
+## group's heading in view with its first row.
+func keep_in_view(lines: int) -> void:
+	if menu.index < 0:
+		scroll = 0
+		return
+	if menu.index < scroll:
+		scroll = menu.index
+	elif menu.index >= scroll + lines:
+		scroll = menu.index - lines + 1
+	if scroll > 0 and menu.index == scroll and menu.rows[scroll - 1].has("header"):
+		scroll -= 1
+	scroll = clampi(scroll, 0, maxi(0, menu.rows.size() - lines))
 
 
 func refuse(why: String) -> void:

@@ -61,7 +61,7 @@ const ITEMS := {
 	&"timber": [&"timber", &"sand", &"earth"],
 	&"driftwood": [&"driftwood", &"ash", &"ash"],
 	&"scrap": [&"scrap", &"plate", &"plate"],
-	&"mussels": [&"shell", &"brine", &"brine"],
+	&"mussels": [&"shell", &"slate", &"brine"],
 	&"whelks": [&"shell", &"sand", &"sand"],
 	&"samphire": [&"greens", &"moss", &"moss"],
 	&"wrack": [&"greens", &"earth", &"earth"],
@@ -94,52 +94,16 @@ const ITEMS := {
 	&"pitch": [&"flask", &"ash", &"ink"],
 	&"dye": [&"flask", &"ash", &"bloom"],
 	&"hone": [&"hone", &"slate", &"slate"],
-	&"wick": [&"dram", &"lens", &"lens"],
+	&"wick": [&"dram", &"found", &"lens"],
 	&"photograph": [&"paper", &"linen", &"linen"],
 	&"letter": [&"paper", &"linen", &"linen"],
 }
 
-## Stations, drawn larger as sketches on the making page: [rows, body ramp, second ramp].
-const STATIONS := {
-	&"fire": [[
-		".....k.......",
-		"....k3k...k..",
-		"....k3wk.k3k.",
-		"...k3ww3kk3k.",
-		"..k32ww23k3k.",
-		"..k2w22w2k2k.",
-		"..k21221211k.",
-		".kk5k111k5kk.",
-		"k45kk5k5kk54k",
-		"k5456kkk6545k",
-		".kkkkkkkkkkk.",
-	], &"ember", &"stone"],
-	&"bench": [[
-		".............",
-		"..kk.........",
-		".k32k........",
-		"kkkkkkkkkkkkk",
-		"k66666666666k",
-		"k55555555554k",
-		"kkkkkkkkkkkkk",
-		".k4k.....k4k.",
-		".k4kkkkkkk4k.",
-		".k4k.....k4k.",
-		".kkk.....kkk.",
-	], &"stone", &"earth"],
-	&"kiln": [[
-		"....kkkkk....",
-		"...k66665k...",
-		"..k6655554k..",
-		".k665555544k.",
-		".k655kkk544k.",
-		"k6555k3k5444k",
-		"k6554kwk4444k",
-		"k5554k2k4444k",
-		"k5544k1k4444k",
-		"kkkkkkkkkkkkk",
-		".............",
-	], &"ember", &"rust"],
+## Stations at list size, same rules as SHAPES; drawn with the stone and earth ramps.
+const STATION_MARKS := {
+	&"fire": ["....k....", "...k6k...", "..k656k..", "..k565k..", ".k56665k.", "kk45554kk", "k3kkkkk3k", "k21k.k21k", ".kk...kk."],
+	&"bench": [".........", ".........", "kkkkkkkkk", "k5555554k", "kkkkkkkkk", ".k4k.k4k.", ".k4kkk4k.", ".k4k.k4k.", ".kkk.kkk."],
+	&"kiln": ["...kkk...", "..k656k..", ".k65554k.", "k6554544k", "k55kkk44k", "k54k6k44k", "k54k5k44k", "kkkkkkkkk", "........."],
 }
 
 ## HUD need glyphs: one colour ('#') plus an ink rim added when drawn.
@@ -219,19 +183,12 @@ static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, scale: int =
 	UiDraw.sprite(ci, shape_of(id), at, colours_for(id), scale)
 
 
-## Draw a station sketch (13x11 cells) at a whole-number scale.
-static func draw_station(ci: CanvasItem, station: StringName, at: Vector2i, scale: int) -> void:
-	if not STATIONS.has(station):
-		return
-	var st: Array = STATIONS[station]
-	var a := ramp(st[1])
-	var b := ramp(st[2])
-	var cols := {
-		"k": UiTheme.INK_DEEP,
-		"1": _shade(a, 0), "2": _shade(a, 1), "3": _shade(a, 2), "w": a[a.size() - 1],
-		"4": _shade(b, 0), "5": _shade(b, 1), "6": _shade(b, 2),
-	}
-	UiDraw.sprite(ci, st[0], at, cols, scale)
+## A station's small mark, for list rows (building one, making at one).
+static func draw_station_mark(ci: CanvasItem, station: StringName, at: Vector2i) -> void:
+	var rows: Array = STATION_MARKS.get(station, STATION_MARKS[&"bench"])
+	var a := Palette.STONE
+	var b := Palette.EARTH if station == &"bench" else Palette.EMBER
+	UiDraw.sprite(ci, rows, at, {"k": UiTheme.INK_DEEP, "1": a[2], "2": a[3], "3": a[4], "4": b[2], "5": b[3], "6": b[4]})
 
 
 ## Draw a need glyph in `col` with an ink rim (for the HUD over the world).

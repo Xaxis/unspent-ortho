@@ -43,7 +43,7 @@ static func wind_shown(wind: float, max_wind: float) -> bool:
 	return wind < max_wind - 0.5
 
 
-## The creel a body carries before load tells. Survival may put `max_load` on Body.
+## The creel a body carries before load tells, when nothing better says (UiLink.creel).
 static func creel(body: Body) -> float:
 	var v: Variant = body.get("max_load")
 	return float(v) if v != null and float(v) > 0.0 else CREEL
@@ -51,15 +51,15 @@ static func creel(body: Body) -> float:
 
 ## Needs that matter now, most pressing first: [{need, level}] where level 1 is
 ## a quiet mark and 2 is the accent (act on it).
-static func needs(body: Body, minutes: float, load: float) -> Array[Dictionary]:
+## `cap` is the load carried before it tells.
+static func needs(body: Body, minutes: float, load: float, cap: float = CREEL) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var hunger := body.hunger_level(minutes)
 	if hunger >= 1:
 		out.append({"need": &"hunger", "level": 2 if hunger >= 2 else 1})
 	if body.wet > 0.3:
 		out.append({"need": &"wet", "level": 2 if body.wet > 0.75 else 1})
-	var cap := creel(body)
-	if load >= cap:
+	if load > cap:
 		out.append({"need": &"load", "level": 2 if load >= cap * 2.0 else 1})
 	if body.tired > 0.6:
 		out.append({"need": &"tired", "level": 2 if body.tired > 0.9 else 1})
@@ -153,7 +153,7 @@ static func recipes_using(id: StringName, recipes: Array[Dictionary]) -> Array[D
 ## Recipes at every station kind, from Crafting (or a stand-in list).
 static func all_recipes(extra: Array[Dictionary] = []) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for st: StringName in [&"fire", &"bench", &"kiln", &"wheel", &"loom"]:
+	for st: StringName in [&"hand", &"fire", &"bench", &"kiln", &"wheel", &"loom"]:
 		out.append_array(Crafting.recipes_at(st))
 	if out.is_empty():
 		out.append_array(extra)
@@ -161,16 +161,7 @@ static func all_recipes(extra: Array[Dictionary] = []) -> Array[Dictionary]:
 
 
 static func item_group(id: StringName) -> StringName:
-	var d := Items.def(id)
-	if d.get("stuff", &"") == &"found" or id == &"wick":
-		return &"found"
-	if d.get("tool", false):
-		return &"tools"
-	if d.has("kit"):
-		return &"to wear"
-	if float(d.get("feeds", 0.0)) > 0.0:
-		return &"food"
-	return &"goods"
+	return UiLink.group_of(id)
 
 
 ## The notebook's rows: group headers followed by that group's items, by name.
@@ -215,18 +206,6 @@ static func clock_at(minutes: float, now_minutes: float = -1.0) -> String:
 	return "%02d:%02d" % [h, m]
 
 
-## "a:3,b" -> {a: 3, b: 1}. The --give boot option.
-static func parse_give(spec: String) -> Dictionary:
-	var out := {}
-	for part in spec.split(",", false):
-		var kv := part.split(":")
-		var id := StringName(kv[0].strip_edges())
-		if id == &"":
-			continue
-		out[id] = kv[1].to_int() if kv.size() > 1 else 1
-	return out
-
-
 ## Make sure the inventory holds at least n of each; never adds twice, so it
 ## is safe if another system applies the same --give.
 static func apply_give(inv: Inventory, give: Dictionary) -> void:
@@ -234,3 +213,50 @@ static func apply_give(inv: Inventory, give: Dictionary) -> void:
 		var want: int = give[id]
 		if inv.count(id) < want:
 			inv.add(id, want - inv.count(id))
+
+
+## 3 -> "3", 2.5 -> "2.5".
+static func num(v: float) -> String:
+	return str(int(v)) if is_equal_approx(v, roundf(v)) else "%.1f" % v
+
+
+## Where a recipe is made, in words: "by hand", "at the fire".
+static func station_words(at: StringName) -> String:
+	return "by hand" if at == &"hand" or at == &"" else "at the %s" % at
+
+
+## The thing a recipe is drawn by: its first output, or the station it builds,
+## or the held tool it mends.
+static func recipe_output(r: Dictionary) -> StringName:
+	for id: StringName in r.get("makes", {}):
+		return id
+	return &""
+
+
+## A recipe's line in a list: what it makes ("charcoal ×2"), what it builds
+## ("build a fire") or what it does ("sharpen what is in hand"). When another
+## recipe in `among` makes the same, the first input that tells them apart is
+## added: "pick, of iron".
+static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String:
+	var builds := StringName(r.get("builds", &""))
+	if builds != &"":
+		return "build a %s" % builds
+	match StringName(r.get("action", &"")):
+		&"hone": return "sharpen what is in hand"
+		&"reedge": return "re-edge what is in hand"
+	var makes: Dictionary = r.get("makes", {})
+	var parts := PackedStringArray()
+	for id: StringName in makes:
+		var n := int(makes[id])
+		parts.append(item_name(id) + (" ×%d" % n if n > 1 else ""))
+	var title := ", ".join(parts)
+	var twins: Array[Dictionary] = []
+	for o in among:
+		if o != r and o.get("makes", {}) == makes and o.get("builds", &"") == &"":
+			twins.append(o)
+	if twins.is_empty():
+		return title
+	for id: StringName in r.get("needs", {}):
+		if twins.all(func(o: Dictionary) -> bool: return not (o.get("needs", {}) as Dictionary).has(id)):
+			return "%s, of %s" % [title, item_name(id)]
+	return title

@@ -16,7 +16,7 @@ extends RefCounted
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery | title
 ## --screen=NAME       open a ui screen once loaded: inventory | crafting | map | pause | controls
-## --give=ID:N,...     carry at least N of each item (idempotent)
+## --give=ID:N,ID:N    put items in the creel at start (survival)
 ## --explore=N         the map remembers N tiles of wandering from the start
 ## --ui-demo           ui shots: sample recipes, a message, a spent body
 
@@ -34,7 +34,7 @@ var frames := 8
 var scale := 2
 var scene := "game"
 var screen := ""
-var give := ""
+var give: Dictionary = {} # StringName -> int
 var explore := 0
 var ui_demo := false
 
@@ -64,7 +64,10 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"screen": o.screen = v
-			"give": o.give = v
+			"give":
+				for part in v.split(",", false):
+					var iv := part.split(":")
+					o.give[StringName(iv[0])] = iv[1].to_int() if iv.size() > 1 else 1
 			"explore": o.explore = v.to_int()
 			"ui-demo": o.ui_demo = true
 			_: push_warning("unknown option --%s" % k)
