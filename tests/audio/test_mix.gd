@@ -9,7 +9,7 @@ const Fixture := preload("res://tests/audio/audio_fixture.gd")
 
 
 func _sample_keys() -> Array[StringName]:
-	var keys: Array[StringName] = [&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0", &"thunder_far:1", &"music_burning:0", &"heat_tick:1"]
+	var keys: Array[StringName] = [&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0", &"thunder_far:1", &"heat_tick:1"]
 	for name: StringName in SoundBank.SHEET:
 		var cat := SoundBank.category_of(name)
 		if cat in [&"event", &"step", &"ui", &"machine"]:

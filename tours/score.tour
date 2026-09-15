@@ -1,0 +1,25 @@
+# The score from a normal game start (seed 1, the south coast village): it wakes
+# with the coast's drone and air, the arrival phrase plays, the pad comes in, a
+# machine closing in quickens the pulse and raises the dissonance, the score
+# resolves once the machine is gone, and walking to the pylon by the village
+# brings in the installation's grid. Stems bake while it runs, so it is slow on
+# a first run and quick once the disk cache holds them. The log shows every
+# layer entering and leaving ("tour score ...").
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour
+coast calm
+await score 150
+shot 01-the-score-wakes
+await score_phrase 90
+await score_pad 300
+shot 02-the-pad-has-come
+spawn runner
+await score_tense 90
+await score_dissonance 60
+shot 03-a-machine-closing-in
+coast calm
+await score_resolve 120
+shot 04-resolved
+# North-west along the village to the pylon twelve tiles off.
+walk -0.35,-0.94 3.4
+await score_grid 150
+shot 05-by-the-pylon

@@ -18,7 +18,10 @@ extends GameSystem
 ##                          free (no longer held), ring (a blow rang off plate),
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
-##                          took (something was taken)
+##                          took (something was taken); and whatever a system
+##                          answers for with tour_seen(what) (75_music: score,
+##                          score_pad, score_pulse, score_tense, score_dissonance,
+##                          score_grid, score_texture, score_phrase, score_resolve)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -211,6 +214,9 @@ func _now_true(what: String) -> bool:
 			for m in sim.mobs:
 				if m.alive and m.blow_phase(sim.now) == &"windup":
 					return true
+	for sys in game.systems:
+		if sys.has_method("tour_seen") and bool(sys.call("tour_seen", what)):
+			return true
 	return false
 
 

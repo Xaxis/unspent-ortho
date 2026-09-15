@@ -107,9 +107,8 @@ func test_without_threads_only_quick_sounds_bake_and_a_frame_bakes_one() -> void
 	var bank := SoundBank.new()
 	bank.threaded = false
 	bank.request(&"bed_moss")
-	bank.request(&"music_coast:0")
 	bank.request(&"machine_hauler")
-	eq(bank.pending(), 0, "beds, music and machines are not baked on the main thread")
+	eq(bank.pending(), 0, "beds and machines are not baked on the main thread")
 	bank.request(&"ui_move")
 	bank.request(&"ui_back")
 	eq(bank.pending(), 2, "one-shots are")

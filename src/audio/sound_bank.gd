@@ -11,10 +11,13 @@ extends RefCounted
 ## and a recipe that needs an absurd gain fails its test instead.
 ##
 ## Recipes live in SoundMachines, SoundBeds, SoundEffects, SoundSignals,
-## SoundCreatures, SoundWork and SoundMusic; emitted names reach the sheet
-## through SoundNames. render() is pure and thread-safe. At run time one
-## shared bank bakes on WorkerThreadPool (at most MAX_TASKS at once, so a frame
-## never waits) or, without threads, one sound per frame.
+## SoundCreatures and SoundWork; emitted names reach the sheet through
+## SoundNames. The score's stems (score_<landscape>_<layer>) are rows of their
+## own, answered by ScoreStems, and are stereo. render() is pure and
+## thread-safe. At run time one shared bank bakes on WorkerThreadPool (at most
+## MAX_TASKS at once, so a frame never waits) or, without threads, one short
+## sound per frame, and the score a few milliseconds per frame (ScoreRender
+## stops and resumes), so a browser without threads still hears the score.
 
 const PEAK := 0.89
 const MAX_TASKS := 2
@@ -29,8 +32,18 @@ const RELEASE := {&"event": 0.008, &"step": 0.006, &"ui": 0.006, &"scatter": 0.0
 ## frame); beds, machines, weather and music would freeze a frame for seconds,
 ## so they are only played when the disk cache already holds them.
 const MAIN_THREAD_CATEGORIES: Array[StringName] = [&"event", &"step", &"ui", &"scatter"]
+## Categories rendered by a resumable ScoreRender: without threads they bake a
+## slice at a time on the main thread (SCORE_BUDGET_USEC a frame).
+const SCORE_CATEGORIES: Array[StringName] = [&"score_drone", &"score_pad", &"score_pulse", &"score_texture", &"score_grid", &"score_dissonance", &"score_cue"]
+const SCORE_BUDGET_USEC := 3000
 
-## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB).
+## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB),
+## stereo (interleaved; default mono).
+##
+## The score sits under the world: at full density its layers together are
+## heard near -7 dB (the weather bed is 0), a quiet stretch under -15. Synths
+## keep the laptop rule like everything else: drones imply their octave below
+## with harmonics, and nothing carries its weight under 120 Hz.
 const CATEGORIES := {
 	&"machine": {"rate": 44100, "loop": true, "bus": &"Machines", "hp": 110.0, "window": [-7.0, 1.0]},
 	&"bed": {"rate": 22050, "loop": true, "bus": &"Ambience", "hp": 100.0, "window": [-10.0, -2.0]},
@@ -40,7 +53,13 @@ const CATEGORIES := {
 	&"step": {"rate": 44100, "loop": false, "bus": &"SFX", "hp": 90.0, "window": [-4.0, 5.0]},
 	&"thunder": {"rate": 22050, "loop": false, "bus": &"SFX", "hp": 55.0, "window": [6.0, 10.0]},
 	&"ui": {"rate": 44100, "loop": false, "bus": &"UI", "hp": 150.0, "window": [-18.0, -6.0]},
-	&"music": {"rate": 22050, "loop": false, "bus": &"Music", "hp": 80.0, "window": [-12.0, -3.0]},
+	&"score_drone": {"rate": 11025, "loop": true, "stereo": false, "bus": &"Music", "hp": 130.0, "window": [-18.0, -8.0]},
+	&"score_pad": {"rate": 16000, "loop": true, "stereo": true, "bus": &"Music", "hp": 110.0, "window": [-16.0, -7.0]},
+	&"score_pulse": {"rate": 16000, "loop": true, "stereo": true, "bus": &"Music", "hp": 120.0, "window": [-18.0, -9.0]},
+	&"score_texture": {"rate": 16000, "loop": true, "stereo": false, "bus": &"Music", "hp": 150.0, "window": [-22.0, -10.0]},
+	&"score_grid": {"rate": 16000, "loop": true, "stereo": true, "bus": &"Music", "hp": 150.0, "window": [-20.0, -9.0]},
+	&"score_dissonance": {"rate": 16000, "loop": true, "stereo": false, "bus": &"Music", "hp": 120.0, "window": [-18.0, -9.0]},
+	&"score_cue": {"rate": 22050, "loop": false, "stereo": true, "bus": &"Music", "hp": 110.0, "window": [-14.0, -5.0]},
 }
 
 ## name: [category, heard dB, variants]
@@ -69,6 +88,12 @@ const SHEET := {
 	&"bed_river": [&"bed", -5.0, 1],
 	# Machinery nobody switched off, carried on still night air from far away.
 	&"bed_far_works": [&"bed", -9.0, 1],
+	# What the dystopia sounds like where it stands: wreckage in the wind, an
+	# installation humming at you, the plan's machines far off, broken gutters.
+	&"bed_wreck": [&"bed", -6.5, 1],
+	&"bed_hum": [&"bed", -7.0, 1],
+	&"bed_far_drone": [&"bed", -9.5, 1],
+	&"bed_gutter": [&"bed", -8.0, 1],
 	# Weather beds at full strength. Rain is the reference.
 	&"weather_rain": [&"weather", 0.0, 1],
 	&"weather_storm": [&"weather", 1.5, 1],
@@ -78,6 +103,10 @@ const SHEET := {
 	&"weather_sand": [&"weather", 0.5, 1],
 	&"weather_blizzard": [&"weather", 1.5, 1],
 	&"weather_ash": [&"weather", -2.5, 1],
+	# Rain as the surface it falls on: turf is weather_rain; these share its strength.
+	&"weather_rain_metal": [&"weather", -0.5, 1],
+	&"weather_rain_leaves": [&"weather", -1.0, 1],
+	&"weather_rain_water": [&"weather", -1.0, 1],
 	# Scattered over the beds.
 	&"pines_snap": [&"scatter", -8.0, 4],
 	&"pines_creak": [&"scatter", -9.0, 3],
@@ -94,6 +123,12 @@ const SHEET := {
 	&"pines_drip": [&"scatter", -10.0, 4],
 	&"moss_wisp": [&"scatter", -12.5, 3],
 	&"wire_sing": [&"scatter", -11.0, 3],
+	&"wreck_knock": [&"scatter", -8.0, 4],
+	&"chain_clink": [&"scatter", -11.0, 3],
+	&"relay_click": [&"scatter", -11.5, 4],
+	&"arc_snap": [&"scatter", -9.5, 3],
+	&"gutter_drip": [&"scatter", -10.0, 4],
+	&"thunder_roll": [&"scatter", -5.0, 2],
 	# Footfalls, one family per ground.
 	&"step_sand": [&"step", -3.0, 4],
 	&"step_grass": [&"step", -3.0, 4],
@@ -199,13 +234,6 @@ const SHEET := {
 	&"ui_refuse": [&"ui", -9.0, 1],
 	&"book_open": [&"ui", -10.0, 1],
 	&"book_close": [&"ui", -10.0, 1],
-	# The figure, per country. Variants: 0 arriving, 1 dawn, 2 dusk.
-	&"music_coast": [&"music", -7.0, 3],
-	&"music_pinewood": [&"music", -7.0, 3],
-	&"music_moss": [&"music", -7.0, 3],
-	&"music_snowfield": [&"music", -7.0, 3],
-	&"music_bonelands": [&"music", -7.0, 3],
-	&"music_burning": [&"music", -7.0, 3],
 }
 
 
@@ -217,6 +245,8 @@ class Baked:
 	var category: StringName
 	var rate := 44100
 	var loop := false
+	## Interleaved left and right (score stems); samples then hold two per frame.
+	var stereo := false
 	var bus: StringName
 	## Level it is heard at (sheet), and the call gain that achieves it.
 	var heard := 0.0
@@ -245,7 +275,8 @@ class Job:
 			if result != null:
 				return
 		result = SoundBank.render(key)
-		result.pcm = Synth.to_pcm16(result.samples)
+		if result.pcm.is_empty():
+			result.pcm = Synth.to_pcm16(result.samples)
 		if cache_path != "":
 			SoundBank.save_cached(result, cache_path)
 
@@ -266,6 +297,13 @@ var _jobs: Dictionary = {}
 var _queue: Array[StringName] = []
 var _pumped_frame := -1
 var _on_disk: Dictionary = {}
+## Makes the job for a score key (ScoreStems.job; a test hands in a small one).
+var score_job: Callable = ScoreStems.job
+## Without threads: the score stem being built a slice a frame, and its cache path.
+var _slow: ScoreRender
+var _slow_path := ""
+## Microseconds the last pump() spent on the main thread (the no-thread budget is held to it).
+var last_pump_usec := 0
 
 
 static func shared() -> SoundBank:
@@ -292,16 +330,29 @@ static func variant_of(key: StringName) -> int:
 	return s.substr(c + 1).to_int() if c >= 0 else 0
 
 
+## [category, heard dB, variants] for a name: the sheet's, or a score stem's; [] when unknown.
+static func row(name: StringName) -> Array:
+	if SHEET.has(name):
+		return SHEET[name]
+	return ScoreStems.sheet_row(name)
+
+
 static func has_sound(key: StringName) -> bool:
-	return SHEET.has(base_name(key))
+	return not row(base_name(key)).is_empty()
 
 
 static func variants(name: StringName) -> int:
-	return int(SHEET[name][2]) if SHEET.has(name) else 0
+	var r := row(name)
+	return int(r[2]) if not r.is_empty() else 0
 
 
 static func category_of(name: StringName) -> StringName:
-	return SHEET[name][0] if SHEET.has(name) else &""
+	var r := row(name)
+	return r[0] if not r.is_empty() else &""
+
+
+static func is_score(name: StringName) -> bool:
+	return category_of(name) in SCORE_CATEGORIES
 
 
 ## The key for a name and a variant number (wrapped into range).
@@ -312,10 +363,19 @@ static func key_for(name: StringName, variant: int) -> StringName:
 	return StringName("%s:%d" % [name, posmod(variant, v)])
 
 
-static func names_in(category: StringName) -> Array[StringName]:
+## Every name: the sheet's, then the score's for the landscapes it has entries for.
+static func all_names() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for k: StringName in SHEET:
-		if SHEET[k][0] == category:
+		out.append(k)
+	out.append_array(ScoreStems.names())
+	return out
+
+
+static func names_in(category: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for k in all_names():
+		if category_of(k) == category:
 			out.append(k)
 	return out
 
@@ -323,8 +383,8 @@ static func names_in(category: StringName) -> Array[StringName]:
 ## Every key, variants expanded.
 static func all_keys() -> Array[StringName]:
 	var out: Array[StringName] = []
-	for k: StringName in SHEET:
-		for i in maxi(1, int(SHEET[k][2])):
+	for k in all_names():
+		for i in maxi(1, variants(k)):
 			out.append(key_for(k, i))
 	return out
 
@@ -333,26 +393,19 @@ static func all_keys() -> Array[StringName]:
 ## peak normalisation, then the call gain for its sheet level. Pure: the same
 ## key gives the same samples on any thread.
 static func render(key: StringName) -> Baked:
+	if is_score(base_name(key)):
+		var job := ScoreStems.job(key)
+		job.run()
+		return from_score(job)
 	var t0 := Time.get_ticks_msec()
-	var b := Baked.new()
-	b.key = key
-	b.name = base_name(key)
-	b.variant = variant_of(key)
-	var row: Array = SHEET.get(b.name, [&"event", 0.0, 1])
-	b.category = row[0]
-	b.heard = row[1]
+	var b := _header(key)
 	var cat: Dictionary = CATEGORIES[b.category]
-	b.rate = cat["rate"]
-	b.loop = cat["loop"]
-	b.bus = cat["bus"]
 	var raw: PackedFloat32Array
 	match b.category:
 		&"machine":
 			raw = SoundMachines.make(StringName(String(b.name).trim_prefix("machine_")))
 		&"bed", &"weather", &"scatter":
 			raw = SoundBeds.make(b.name, b.variant, b.rate)
-		&"music":
-			raw = SoundMusic.make(b.name, b.variant, b.rate)
 		_:
 			if SoundSignals.handles(b.name):
 				raw = SoundSignals.make(b.name, b.variant, b.rate)
@@ -386,6 +439,44 @@ static func render(key: StringName) -> Baked:
 	return b
 
 
+## A Baked with its sheet row, category, rate, loop, stereo and bus filled in.
+static func _header(key: StringName) -> Baked:
+	var b := Baked.new()
+	b.key = key
+	b.name = base_name(key)
+	b.variant = variant_of(key)
+	var r := row(b.name)
+	if r.is_empty():
+		r = [&"event", 0.0, 1]
+	b.category = r[0]
+	b.heard = r[1]
+	var cat: Dictionary = CATEGORIES[b.category]
+	b.rate = cat["rate"]
+	b.loop = cat["loop"]
+	b.stereo = bool(cat.get("stereo", false))
+	b.bus = cat["bus"]
+	return b
+
+
+## The Baked of a finished score stem. Its measure was taken as it finished; the
+## call gain puts it at its sheet level, and if its normalised peak would then
+## cross the ceiling the whole stem is turned down (a score stem is never limited:
+## its attacks are soft by design, and a test holds that under a decibel).
+static func from_score(job: ScoreRender) -> Baked:
+	var b := _header(job.key)
+	b.samples = job.samples
+	b.pcm = job.pcm
+	var rms_db := 20.0 * log(maxf(1e-9, job.loudest)) / log(10.0)
+	b.gain_db = b.heard + SoundMix.REF_DBFS - rms_db - SoundMix.bus_db(b.bus)
+	var allowed_db := CEILING_DBFS - b.gain_db - SoundMix.bus_db(b.bus)
+	var peak_db := 20.0 * log(PEAK) / log(10.0)
+	if peak_db > allowed_db:
+		b.limited_db = peak_db - allowed_db
+		b.gain_db -= b.limited_db
+	b.ms = roundi(job.busy_usec / 1000.0)
+	return b
+
+
 ## The call gain (dB) that puts these samples at the sheet level after the bus.
 static func _gain_for(raw: PackedFloat32Array, b: Baked) -> float:
 	var rms_db := 20.0 * log(maxf(1e-9, Synth.loudest_rms(raw, b.rate, 0.5))) / log(10.0)
@@ -395,7 +486,7 @@ static func _gain_for(raw: PackedFloat32Array, b: Baked) -> float:
 # ------------------------------------------------------------------ disk
 
 const CACHE_MAGIC := "USND"
-const CACHE_FORMAT := 1
+const CACHE_FORMAT := 2
 ## Version folders kept; older ones (other branches, older recipes) are removed.
 const CACHE_KEEP := 3
 
@@ -411,7 +502,7 @@ static func recipe_version() -> String:
 static func version_from(digests: PackedStringArray) -> String:
 	if digests.is_empty():
 		return ""
-	var parts: PackedStringArray = [str(CACHE_FORMAT), str(SHEET), str(CATEGORIES), str(SoundMix.REF_DBFS), str(SoundMix.BUSES), str(CEILING_DBFS),
+	var parts: PackedStringArray = [str(CACHE_FORMAT), str(SHEET), str(CATEGORIES), str(ScoreStems.LAYERS), str(SoundMix.REF_DBFS), str(SoundMix.BUSES), str(CEILING_DBFS),
 		str(ProjectSettings.get_setting("application/config/version", "")), str(Engine.get_version_info().get("hash", "")), str(Engine.get_version_info().get("string", ""))]
 	parts.append_array(digests)
 	return "\n".join(parts).md5_text().substr(0, 16)
@@ -507,7 +598,7 @@ static func save_cached(b: Baked, path: String) -> void:
 	f.store_buffer(CACHE_MAGIC.to_ascii_buffer())
 	f.store_32(CACHE_FORMAT)
 	f.store_32(b.rate)
-	f.store_8(1 if b.loop else 0)
+	f.store_8((1 if b.loop else 0) | (2 if b.stereo else 0))
 	f.store_float(b.gain_db)
 	f.store_32(b.pcm.size())
 	f.store_buffer(b.pcm)
@@ -525,21 +616,14 @@ static func load_cached(key: StringName, path: String) -> Baked:
 		return null
 	if f.get_buffer(4).get_string_from_ascii() != CACHE_MAGIC or f.get_32() != CACHE_FORMAT:
 		return null
-	var b := Baked.new()
-	b.key = key
-	b.name = base_name(key)
-	b.variant = variant_of(key)
-	var row: Array = SHEET.get(b.name, [&"event", 0.0, 1])
-	b.category = row[0]
-	b.heard = row[1]
+	var b := _header(key)
 	var cat: Dictionary = CATEGORIES[b.category]
-	b.bus = cat["bus"]
-	b.rate = f.get_32()
-	b.loop = f.get_8() == 1
+	var rate := f.get_32()
+	var flags := f.get_8()
 	b.gain_db = f.get_float()
 	var size := f.get_32()
 	b.pcm = f.get_buffer(size)
-	if b.pcm.size() != size or b.rate != int(cat["rate"]) or b.loop != bool(cat["loop"]):
+	if b.pcm.size() != size or rate != int(cat["rate"]) or (flags & 1 == 1) != b.loop or (flags & 2 == 2) != b.stereo:
 		return null
 	b.from_disk = true
 	return b
@@ -550,6 +634,8 @@ static func load_cached(key: StringName, path: String) -> Baked:
 ## Queue a key for baking (no-op if baked or queued). urgent jumps the queue.
 func request(key: StringName, urgent: bool = false) -> void:
 	if not enabled or _done.has(key) or _jobs.has(key) or not has_sound(key):
+		return
+	if _slow != null and _slow.key == key:
 		return
 	if not threaded and not bakes_here(key):
 		return
@@ -574,9 +660,11 @@ func get_baked(key: StringName, urgent: bool = false) -> Baked:
 
 
 ## Whether this bank may bake `key` at all: with threads, anything; without,
-## a short one-shot, or anything its disk cache already holds (a file read).
+## a short one-shot, a score stem (built a slice a frame), or anything its disk
+## cache already holds (a file read).
 func bakes_here(key: StringName) -> bool:
-	if threaded or category_of(base_name(key)) in MAIN_THREAD_CATEGORIES:
+	var cat := category_of(base_name(key))
+	if threaded or cat in MAIN_THREAD_CATEGORIES or cat in SCORE_CATEGORIES:
 		return true
 	if not _on_disk.has(key):
 		var path := _cache_path(key)
@@ -589,7 +677,14 @@ func is_ready(key: StringName) -> bool:
 
 
 func pending() -> int:
-	return _jobs.size() + _queue.size()
+	return _jobs.size() + _queue.size() + (1 if _slow != null else 0)
+
+
+## Drop a baked sound from memory (the disk cache keeps it): a landscape's score
+## that has not been heard for minutes. Players holding its stream keep it alive
+## until they let go.
+func forget(key: StringName) -> void:
+	_done.erase(key)
 
 
 ## Bake synchronously (tests, tools, and the no-thread fallback).
@@ -621,10 +716,9 @@ func pump() -> void:
 			_jobs.erase(key)
 			_finish(job)
 	if not threaded:
-		# One thing a frame, and only what request() let in: a short one-shot or
-		# a cache file.
-		if not _queue.is_empty():
-			bake_now(_queue[0])
+		var t0 := Time.get_ticks_usec()
+		_pump_main_thread()
+		last_pump_usec = Time.get_ticks_usec() - t0
 		return
 	while _jobs.size() < MAX_TASKS and not _queue.is_empty():
 		var job := Job.new()
@@ -632,6 +726,32 @@ func pump() -> void:
 		job.cache_path = _cache_path(job.key)
 		job.task = WorkerThreadPool.add_task(job.run, false, "bake %s" % job.key)
 		_jobs[job.key] = job
+
+
+## Without threads, one thing a frame, and only what request() let in: a short
+## one-shot, a cache file, or a slice of the score stem being built. A score
+## stem is never started in a frame that already baked something.
+func _pump_main_thread() -> void:
+	if _slow != null:
+		if _slow.step(SCORE_BUDGET_USEC):
+			var job := Job.new()
+			job.key = _slow.key
+			job.result = from_score(_slow)
+			if _slow_path != "":
+				save_cached(job.result, _slow_path)
+			_slow = null
+			_finish(job)
+		return
+	if _queue.is_empty():
+		return
+	var key := _queue[0]
+	var path := _cache_path(key)
+	if is_score(base_name(key)) and (path == "" or not FileAccess.file_exists(path)):
+		_queue.pop_front()
+		_slow = score_job.call(key)
+		_slow_path = path
+		return
+	bake_now(key)
 
 
 ## Block until everything queued is baked (tools and tests).
@@ -664,6 +784,7 @@ func drop_queue() -> void:
 ## Drop everything queued and wait out what is already running (quitting).
 func cancel() -> void:
 	_queue.clear()
+	_slow = null
 	for key: StringName in _jobs.keys():
 		var job: Job = _jobs[key]
 		WorkerThreadPool.wait_for_task_completion(job.task)
@@ -673,7 +794,7 @@ func cancel() -> void:
 
 func _finish(job: Job) -> void:
 	var b := job.result
-	b.stream = Synth.wav_from_pcm(b.pcm, b.rate, b.loop)
+	b.stream = Synth.wav_from_pcm(b.pcm, b.rate, b.loop, b.stereo)
 	if not keep_samples:
 		b.samples = PackedFloat32Array()
 	b.pcm = PackedByteArray()

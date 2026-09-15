@@ -1,0 +1,211 @@
+extends TestCase
+## The score in a running game (75_music): it listens to the world (landscape,
+## machines closing in, a blow, an installation, a sentinel), plays the stems the
+## conductor asks for once they are baked, keeps them on the bar lines, and a
+## browser without threads builds them a slice a frame without a long frame.
+
+const MusicSystem := preload("res://src/systems/75_music.gd")
+
+static var _world: WorldData
+
+
+class FakeMob:
+	extends Node
+	var kind: StringName = &"watcher"
+	var pos: Vector2
+	var alive := true
+	var hostile := true
+
+
+class FakeSentinel:
+	extends Node
+	var pos: Vector2
+	var reach := 20.0
+	var alive := true
+	var land: StringName = &"coast"
+
+
+## A one-second stand-in for any stem, so a system can play what it wants at once.
+static func _stand_in(key: StringName) -> SoundBank.Baked:
+	var b := SoundBank._header(key)
+	var frames := b.rate
+	b.samples.resize(frames * (2 if b.stereo else 1))
+	for i in b.samples.size():
+		b.samples[i] = 0.2 * sin(TAU * 440.0 * float(i) / b.rate)
+	b.gain_db = -12.0
+	return b
+
+
+func _make() -> Array:
+	if _world == null:
+		_world = WorldGen.generate(11, 96)
+	# The running game's buses (70_audio makes them before the score starts).
+	SoundBuses.ensure()
+	var g := Game.new()
+	g.world = _world
+	g.query = WorldQuery.new(_world)
+	g.clock = WorldClock.new(12.0)
+	g.player = Player.new()
+	g.player.pos = _world.spawn
+	var sys: MusicSystem = MusicSystem.new()
+	tree.root.add_child(sys)
+	var t0 := Time.get_ticks_usec()
+	sys.setup(g)
+	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	sys.set_process(false)
+	sys.bank = SoundBank.new()
+	sys.bank.threaded = false
+	# Everything the score asks for is ready at once: this test is about playing, not baking.
+	sys.bank.enabled = false
+	return [sys, g, ms]
+
+
+func _done(parts: Array) -> void:
+	var sys: Node = parts[0]
+	var g: Game = parts[1]
+	sys.free()
+	g.player.free()
+	g.free()
+
+
+## Advance, handing the bank a stand-in for anything the conductor wants.
+func _advance(sys: MusicSystem, secs: float, step: float = 0.25) -> void:
+	for i in roundi(secs / step):
+		for key in sys.conductor.wanted():
+			if not sys.bank.is_ready(key):
+				sys.bank.adopt(_stand_in(key))
+		sys.advance(step)
+
+
+func test_setup_does_no_sound_work() -> void:
+	var parts := _make()
+	lt(float(parts[2]), 50.0, "the score's setup costs the start nothing (%.1f ms)" % parts[2])
+	var sys: MusicSystem = parts[0]
+	eq(sys.process_mode, Node.PROCESS_MODE_ALWAYS, "the score does not stop on the pause page")
+	check(SaveGame.keys().has(&"score"), "the score saves itself")
+	_done(parts)
+
+
+func test_the_score_plays_the_landscape_underfoot_on_the_bar_lines() -> void:
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	check(not sys.tour_seen("score"), "silent before anything is baked")
+	_advance(sys, 30.0)
+	var here := sys._land_id(int(SoundMix.dominant_country(g.world, g.player.pos)["country"]))
+	var drone := ScoreStems.key_for(here, &"drone", 0)
+	check(sys.players.has(drone), "the drone of %s is playing" % here)
+	check(sys.tour_seen("score"), "a tour can hear it")
+	var p: AudioStreamPlayer = sys.players[drone]
+	eq(p.bus, &"Music", "on the Music bus")
+	near(p.volume_db, sys.bank.get_baked(drone).gain_db + linear_to_db(float(sys.conductor.levels[drone])), 0.01, "at the conductor's level")
+	near(sys._loop_position(4.8), fposmod(sys.conductor.time + sys._sync, 4.8), 1e-6, "a new loop starts at the music clock's place in it")
+	_done(parts)
+
+
+func test_machines_closing_in_quicken_the_score_and_a_blow_holds_it() -> void:
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	_advance(sys, 20.0)
+	var mob := FakeMob.new()
+	mob.pos = g.player.pos + Vector2(60, 0)
+	tree.root.add_child(mob)
+	mob.add_to_group(&"mobs")
+	_advance(sys, 1.0)
+	eq(float(sys.inputs["danger"]), 0.0, "a machine far off is no danger")
+	mob.pos = g.player.pos + Vector2(30, 0)
+	_advance(sys, 1.0)
+	eq(float(sys.inputs["near"]), 1.0, "but within earshot its tense stems are baked")
+	mob.pos = g.player.pos + Vector2(5, 0)
+	_advance(sys, 5.0)
+	eq(float(sys.inputs["danger"]), 1.0, "close, it is danger")
+	var here := sys._land_id(int(SoundMix.dominant_country(g.world, g.player.pos)["country"]))
+	gt(float(sys.conductor.levels.get(ScoreStems.key_for(here, &"pulse", 1), 0.0)), 0.5, "the pulse has quickened")
+	check(sys.tour_seen("score_tense"), "and a tour hears it")
+	mob.hostile = false
+	_advance(sys, 1.0)
+	eq(float(sys.inputs["danger"]), 0.0, "an indifferent machine is no danger")
+	Events.hit.emit(mob, g.player, 2, false, Vector3.ZERO)
+	_advance(sys, 1.0)
+	eq(float(sys.inputs["danger"]), 1.0, "a blow on the player is")
+	mob.free()
+	_done(parts)
+
+
+func test_an_installation_and_a_sentinel_are_heard() -> void:
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	var pylon := WorldProp.new(900001, PropKind.PYLON, g.player.pos + Vector2(2, 0), 0.0, 1.0)
+	g.world.props.append(pylon)
+	g.query.add_prop(pylon)
+	var s := FakeSentinel.new()
+	s.pos = g.player.pos + Vector2(4, 0)
+	tree.root.add_child(s)
+	s.add_to_group(&"sentinels")
+	_advance(sys, 20.0)
+	gt(float(sys.inputs["grid"]), 0.9, "a pylon beside you is the whole grid")
+	check(sys.tour_seen("score_grid"), "its pulse is heard")
+	gt(float((sys.inputs["sentinel"] as Dictionary)["strength"]), 0.9, "inside a sentinel's reach")
+	check(sys.cues_played.any(func(k: StringName) -> bool: return String(k).ends_with("_motif")), "its motif played")
+	s.free()
+	g.query.remove_prop(pylon)
+	g.world.props.erase(pylon)
+	_done(parts)
+
+
+func test_night_closes_the_scores_low_pass() -> void:
+	SoundBuses.ensure()
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	_advance(sys, 2.0)
+	var day := SoundBuses.music_lowpass().cutoff_hz
+	g.clock.minutes = 23.5 * 60.0
+	_advance(sys, 2.0)
+	lt(SoundBuses.music_lowpass().cutoff_hz, day * 0.5, "deeper at night")
+	g.clock.minutes = 12.0 * 60.0
+	_advance(sys, 1.0)
+	_done(parts)
+
+
+## A small stem under a real score key, so the no-thread bank can be watched
+## building one across frames.
+static func _small_job(key: StringName) -> ScoreRender:
+	var j := ScoreRender.new(key, 16000, true, true, roundi(0.6 * 16000))
+	j.highpass = 110.0
+	j.hold(ScoreVoices.Analog, {"freqs": [220.0, 330.0], "unison": 2, "detune": 6.0, "cut": 900.0})
+	j.note(0.1, ScoreVoices.Fm, {"freq": 660.0, "ratio": 3.5, "index": 2.0, "hold": 0.2, "r": 0.2})
+	j.fx(ScoreFx.Hall, {"t60": 0.5, "wet": 0.3})
+	return j
+
+
+func test_without_threads_the_score_is_built_a_slice_a_frame() -> void:
+	var bank := SoundBank.new()
+	bank.threaded = false
+	bank.keep_samples = true
+	bank.score_job = _small_job
+	var key := &"score_coast_grid"
+	check(bank.bakes_here(key), "a score stem may bake on the main thread")
+	bank.request(key)
+	eq(bank.pending(), 1, "queued")
+	var frames := 0
+	var spent: Array[int] = []
+	while not bank.is_ready(key) and frames < 5000:
+		bank._pumped_frame = -1
+		bank.pump()
+		spent.append(bank.last_pump_usec)
+		frames += 1
+	check(bank.is_ready(key), "it is built")
+	gt(float(frames), 3.0, "over many frames (%d)" % frames)
+	# A frame does one budget and at most one block or slice past it. Judged by
+	# the typical frame, not the worst: a loaded machine can stall any thread.
+	spent.sort()
+	var typical := spent[spent.size() * 9 / 10]
+	lt(float(typical), SoundBank.SCORE_BUDGET_USEC * 3.0 + 6000.0, "no frame waits on it (nine frames in ten under %d us, budget %d us)" % [typical, SoundBank.SCORE_BUDGET_USEC])
+	var whole := _small_job(key)
+	whole.run()
+	check(bank.get_baked(key).samples == whole.samples, "the same samples as built in one go")
+	check(bank.get_baked(key).stream.stereo, "a stereo stream")
+	eq(bank.pending(), 0, "nothing left")

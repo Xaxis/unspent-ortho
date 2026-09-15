@@ -11,8 +11,8 @@ static var _mutex := Mutex.new()
 static func keys_used() -> Array[StringName]:
 	var keys: Array[StringName] = [
 		&"weather_rain", &"bed_shore", &"shore_gull:0", &"pines_creak:2", &"thunder:0",
-		&"thunder_far:0", &"thunder_far:1", &"music_burning:0", &"hit_plate:1", &"hit_plate:2",
-		&"step_gravel:2", &"moss_drip:3", &"heat_tick:1",
+		&"thunder_far:0", &"thunder_far:1", &"hit_plate:1", &"hit_plate:2",
+		&"step_gravel:2", &"moss_drip:3", &"heat_tick:1", &"bed_hum",
 	]
 	for name: StringName in SoundBank.SHEET:
 		var cat := SoundBank.category_of(name)

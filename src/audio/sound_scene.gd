@@ -105,6 +105,9 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 	var river := {}
 	var remote := 0.0
 	var weather := {}
+	var works := {}
+	var wet := 0.0
+	var query := WorldQuery.new(world)
 	var fade := 1.0 - exp(-BLOCK / SoundMix.BED_FADE)
 	for b in blocks:
 		var t := b * BLOCK
@@ -119,7 +122,10 @@ static func levels_over_time(scene: Dictionary, world: WorldData) -> Dictionary:
 			river = SoundMix.river_near(world, p)
 			remote = SoundMix.remoteness(world, p)
 			weather = forced if not forced.is_empty() else SoundMix.weather_at(world.seed_value, minutes, int(here["country"]))
-		var extra := {"hour": fposmod(minutes / 60.0, 24.0), "remote": remote, "tide": SoundMix.tide_at(minutes)}
+			works = SoundMix.works_near(query, p)
+			wet = float(weather.get("strength", 0.0)) if forced.has("kind") and forced["kind"] in [&"rain", &"storm", &"hail"] else SoundMix.wetness(world.seed_value, minutes, int(here["country"]))
+		var extra := {"hour": fposmod(minutes / 60.0, 24.0), "remote": remote, "tide": SoundMix.tide_at(minutes), "wet": wet}
+		extra.merge(works)
 		var targets := SoundMix.bed_levels(world, p, weather, sea, river, t, extra)
 		for bed: StringName in targets:
 			if not levels.has(bed):

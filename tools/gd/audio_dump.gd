@@ -27,11 +27,14 @@ func _initialize() -> void:
 	var filter := ""
 	var mix_args: PackedStringArray = []
 	var mix := false
+	var score := false
 	for a in OS.get_cmdline_user_args():
 		if a == "--no-png":
 			_png = false
 		elif a == "--mix":
 			mix = true
+		elif a == "--score":
+			score = true
 		elif a.begins_with("--"):
 			mix_args.append(a)
 		else:
@@ -41,9 +44,18 @@ func _initialize() -> void:
 		_run_mix(mix_args)
 		quit()
 		return
+	if score:
+		_run_score(mix_args)
+		quit()
+		return
 	var t0 := Time.get_ticks_msec()
+	# Several substrings may be given, comma-separated: a key matching any is rendered.
+	var wants := filter.split(",", false)
 	for k in SoundBank.all_keys():
-		if filter == "" or String(k).contains(filter):
+		var hit := wants.is_empty()
+		for w in wants:
+			hit = hit or String(k).contains(w)
+		if hit:
 			_keys.append(k)
 	var group := WorkerThreadPool.add_group_task(_one, _keys.size(), -1, true, "audio dump")
 	WorkerThreadPool.wait_for_group_task_completion(group)
@@ -118,6 +130,207 @@ func _run_mix(args: PackedStringArray) -> void:
 		var img := mix_picture(out, name, heard)
 		img.save_png(ProjectSettings.globalize_path(OUT.path_join(file + ".png")))
 	print("mix -> %s (%d ms)" % [ProjectSettings.globalize_path(OUT.path_join(file + ".wav")), Time.get_ticks_msec() - t0])
+
+
+const SCORE_OUT := "res://shots/score"
+## Layer -> lane colour in the score picture.
+const LAYER_COLOURS := {
+	&"drone": Color8(120, 190, 220), &"pad": Color8(200, 150, 230), &"pulse": Color8(150, 210, 120),
+	&"tense": Color8(240, 120, 90), &"texture": Color8(170, 170, 170), &"dissonance": Color8(230, 70, 70),
+	&"grid": Color8(90, 230, 230),
+}
+
+
+## --score: three minutes of each landscape's score through the conductor
+## (ScoreScene.excerpt), or --cross=A,B walking from one into the other, as
+## shots/score/<name>.wav and a picture: layer lanes, cues, the danger and form
+## strips, and the spectrogram of the middle.
+##   --land=ID (one landscape) --seed=N --secs=S --cross=A,B
+func _run_score(args: PackedStringArray) -> void:
+	var t0 := Time.get_ticks_msec()
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SCORE_OUT))
+	var lands: Array[StringName] = ScoreLandscapes.ids()
+	var seed_value := 1
+	var secs := -1.0
+	var cross: PackedStringArray = []
+	for a in args:
+		var kv := a.trim_prefix("--").split("=", true, 1)
+		var v := kv[1] if kv.size() > 1 else ""
+		match kv[0]:
+			"land":
+				lands.clear()
+				lands.append(StringName(v))
+			"seed": seed_value = v.to_int()
+			"secs": secs = v.to_float()
+			"cross": cross = v.split(",")
+	var scenes := {}
+	if cross.size() == 2:
+		scenes["cross_%s_%s" % [cross[0], cross[1]]] = ScoreScene.crossing(StringName(cross[0]), StringName(cross[1]), seed_value)
+	else:
+		for land in lands:
+			scenes["score_" + String(land)] = ScoreScene.excerpt(land, seed_value)
+	# Rules first, every stem any scene wants baked once on every core, then the mixes.
+	var wanted: Array[StringName] = []
+	var timelines := {}
+	for name: String in scenes:
+		var scene: Dictionary = scenes[name]
+		if secs > 0.0:
+			scene["secs"] = secs
+		var tl := ScoreScene.timeline(scene)
+		timelines[name] = tl
+		for key: StringName in tl["lanes"]:
+			if not wanted.has(key):
+				wanted.append(key)
+		for c: Array in tl["cues"]:
+			if not wanted.has(c[1]):
+				wanted.append(c[1])
+	var t1 := Time.get_ticks_msec()
+	var baked := ScoreScene.bake(wanted)
+	var slowest := 0
+	for k: StringName in baked:
+		var b: SoundBank.Baked = baked[k]
+		slowest = maxi(slowest, b.ms)
+	print("score: %d stems baked in %d ms (slowest %d ms)" % [baked.size(), Time.get_ticks_msec() - t1, slowest])
+	for name: String in scenes:
+		var out := ScoreScene.render(scenes[name], baked)
+		var samples: PackedFloat32Array = out["samples"]
+		var rate: int = out["rate"]
+		var wav := Synth.to_wav(samples, rate, false, true)
+		wav.save_to_wav(ProjectSettings.globalize_path(SCORE_OUT.path_join(name + ".wav")))
+		var tl: Dictionary = out["timeline"]
+		var total := float(tl["secs"])
+		print("%s: %.0f s, loudest %+.1f dB, mean %+.1f dB" % [name, total, ScoreScene.heard_db(samples, rate, 0.0, total), ScoreScene.mean_db(samples, rate, 0.0, total)])
+		var t := 0.0
+		while t < total - 0.1:
+			var to := minf(total, t + 30.0)
+			print("  %3.0f-%3.0f s  loudest %+6.1f  mean %+6.1f  form %.1f  %s" % [t, to, ScoreScene.heard_db(samples, rate, t, to), ScoreScene.mean_db(samples, rate, t, to), _mean(tl["form"], t, to, tl), ", ".join(_layers_in(tl, t, to))])
+			t = to
+		var cue_names: PackedStringArray = []
+		for c: Array in tl["cues"]:
+			cue_names.append("%s@%.0f" % [String(c[1]).trim_prefix("score_"), float(c[0])])
+		print("  cues: %s" % ", ".join(cue_names))
+		if _png:
+			score_picture(out, name).save_png(ProjectSettings.globalize_path(SCORE_OUT.path_join(name + ".png")))
+	print("score -> %s (%d ms)" % [ProjectSettings.globalize_path(SCORE_OUT), Time.get_ticks_msec() - t0])
+
+
+static func _mean(values: PackedFloat32Array, from: float, to: float, tl: Dictionary) -> float:
+	var step := float(tl["step"])
+	var a := floori(from / step)
+	var b := mini(values.size(), floori(to / step))
+	var s := 0.0
+	for i in range(a, b):
+		s += values[i]
+	return s / maxf(1.0, float(b - a))
+
+
+## Stems whose mean level over a stretch is at least 0.08, loudest first.
+static func _layers_in(tl: Dictionary, from: float, to: float) -> PackedStringArray:
+	var lanes: Dictionary = tl["lanes"]
+	var rows: Array = []
+	for key: StringName in lanes:
+		var m := _mean(lanes[key], from, to, tl)
+		if m >= 0.08:
+			rows.append([m, String(key).trim_prefix("score_")])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	var out: PackedStringArray = []
+	for r: Array in rows:
+		out.append("%s %.2f" % [r[1], r[0]])
+	return out
+
+
+static func score_picture(out: Dictionary, name: String) -> Image:
+	var samples: PackedFloat32Array = out["samples"]
+	var rate: int = out["rate"]
+	var tl: Dictionary = out["timeline"]
+	var lanes: Dictionary = tl["lanes"]
+	var mono := SoundBank.Baked.new()
+	mono.key = StringName(name)
+	mono.category = &"bed"
+	mono.rate = rate
+	mono.samples.resize(samples.size() / 2)
+	for i in mono.samples.size():
+		mono.samples[i] = (samples[i * 2] + samples[i * 2 + 1]) * 0.5
+	var w := PAD + SPEC_W + PAD * 3 + LIN_W + PAD
+	var strip_h := 10
+	var h := HEAD + LANE_H + 4 + strip_h * 3 + PAD + ENV_H + PAD + SPEC_H + 14
+	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+	img.fill(Color8(12, 11, 20))
+	var x0 := PAD + 18
+	var spec_w := SPEC_W - 18
+	var total := float(tl["secs"])
+	text(img, PAD, 4, "SCORE %s  %.0fS  LOUDEST %+.1fDB  MEAN %+.1fDB" % [name.to_upper(), total, ScoreScene.heard_db(samples, rate, 0.0, total), ScoreScene.mean_db(samples, rate, 0.0, total)], Color8(232, 194, 58))
+	var top := HEAD
+	for gy: float in [0.0, 0.5, 1.0]:
+		var y := top + LANE_H - 1 - roundi(gy * (LANE_H - 1))
+		for x in range(x0, x0 + spec_w, 3):
+			img.set_pixel(x, y, Color8(50, 46, 80))
+	# Thirty-second ticks.
+	for s in range(0, ceili(total) + 1, 30):
+		var x := x0 + roundi(s / total * (spec_w - 1))
+		for y in range(top, top + LANE_H, 2):
+			img.set_pixel(x, y, Color8(40, 38, 64))
+		text(img, x + 1, top + LANE_H - 6, "%d" % s, Color8(90, 90, 120))
+	var label_y := top
+	var by_layer := {}
+	for key: StringName in lanes:
+		var layer := ScoreConductor.layer_of(key)
+		var sum: PackedFloat32Array = by_layer.get(layer, PackedFloat32Array())
+		var lane: PackedFloat32Array = lanes[key]
+		if sum.size() < lane.size():
+			sum.resize(lane.size())
+		for i in lane.size():
+			sum[i] = maxf(sum[i], lane[i])
+		by_layer[layer] = sum
+	for layer: StringName in LAYER_COLOURS:
+		if not by_layer.has(layer):
+			continue
+		var lane: PackedFloat32Array = by_layer[layer]
+		var col: Color = LAYER_COLOURS[layer]
+		var prev := -1
+		for x in spec_w:
+			var v := lane[mini(lane.size() - 1, floori(float(x) * lane.size() / spec_w))]
+			var y := top + LANE_H - 1 - roundi(clampf(v, 0.0, 1.1) / 1.1 * (LANE_H - 1))
+			if prev >= 0:
+				for yy in range(mini(prev, y), maxi(prev, y) + 1):
+					img.set_pixel(x0 + x, yy, col)
+			prev = y
+		text(img, x0 + spec_w + PAD * 3, label_y, String(layer).to_upper(), col)
+		label_y += 8
+	for c: Array in tl["cues"]:
+		var x := x0 + roundi(float(c[0]) / total * (spec_w - 1))
+		var layer := String(ScoreStems.parse(c[1]).get("layer", &""))
+		var col := Color8(232, 194, 58) if layer == "melody" else (Color8(255, 255, 255) if layer == "resolve" else Color8(255, 120, 200))
+		for y in range(top, top + LANE_H):
+			if y % 3 != 0:
+				img.set_pixel(x, y, col)
+		text(img, x + 2, top + 2 + (label_y % 3) * 0, layer.substr(0, 3).to_upper(), col)
+	label_y += 4
+	text(img, x0 + spec_w + PAD * 3, label_y, "MEL RES MOT: CUES", Color8(232, 194, 58))
+	var strips := [["FORM", tl["form"], 3.0, Color8(150, 140, 200)], ["DANGER", tl["danger"], 1.0, Color8(240, 120, 90)], ["CUTOFF", tl["cutoff"], 14000.0, Color8(120, 190, 220)]]
+	var sy := top + LANE_H + 4
+	for s: Array in strips:
+		var vals: PackedFloat32Array = s[1]
+		var col: Color = s[3]
+		for x in spec_w:
+			var v := vals[mini(vals.size() - 1, floori(float(x) * vals.size() / spec_w))] / float(s[2])
+			var hh := roundi(clampf(v, 0.0, 1.0) * (strip_h - 2))
+			for y in hh:
+				img.set_pixel(x0 + x, sy + strip_h - 2 - y, col)
+		text(img, x0 + spec_w + PAD * 3, sy + 2, String(s[0]), col)
+		sy += strip_h
+	var weathers: Array = tl["weather"]
+	var last := ""
+	for x in spec_w:
+		var wth: Dictionary = weathers[mini(weathers.size() - 1, floori(float(x) * weathers.size() / spec_w))]
+		var label := String(wth["kind"]).to_upper()
+		if label != last:
+			text(img, x0 + x + 1, top + LANE_H + 4 + strip_h * 3 - 8, label, Color8(170, 170, 170))
+			last = label
+	var env_top := sy + PAD
+	_envelope(img, mono, Rect2i(x0, env_top, spec_w, ENV_H))
+	_spectrogram(img, mono, Rect2i(x0, env_top + ENV_H + PAD, spec_w, SPEC_H))
+	return img
 
 
 const LANE_H := 110
@@ -209,19 +422,58 @@ func _one(i: int) -> void:
 	var key := _keys[i]
 	var b := SoundBank.render(key)
 	var file := String(key).replace(":", "_")
-	var wav := Synth.to_wav(b.samples, b.rate, b.loop)
+	var wav := Synth.to_wav(b.samples, b.rate, b.loop, b.stereo)
 	wav.save_to_wav(ProjectSettings.globalize_path(OUT.path_join(file + ".wav")))
 	var heard := SoundMix.heard_db(b)
-	var lf := Synth.low_energy_ratio(b.samples, b.rate, 120.0)
-	var seam := Synth.seam_ratio(b.samples) if b.loop else 0.0
+	# A stereo stem is judged and drawn by its middle (what a laptop's speakers,
+	# a few centimetres apart, mostly play); its seam by the worse side.
+	var mono := mid(b)
+	var lf := Synth.low_energy_ratio(mono.samples, b.rate, 120.0)
+	var seam := 0.0
+	if b.loop:
+		for side in sides(b):
+			seam = maxf(seam, Synth.seam_ratio(side))
 	if _png:
-		var img := picture(b, heard, lf)
+		var img := picture(mono, heard, lf)
 		img.save_png(ProjectSettings.globalize_path(OUT.path_join(file + ".png")))
 	_mutex.lock()
 	# Peak after the call gain and the buses, dBFS: what the limiter would see.
 	var peak_out := 20.0 * log(maxf(1e-9, Synth.peak(b.samples))) / log(10.0) + b.gain_db + SoundMix.bus_db(b.bus)
-	_rows.append([key, b.category, b.samples.size() / float(b.rate), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db, peak_out, b.limited_db])
+	_rows.append([key, b.category, b.samples.size() / float(b.rate * (2 if b.stereo else 1)), b.rate, b.loop, b.ms, heard, lf, seam, b.gain_db, peak_out, b.limited_db])
 	_mutex.unlock()
+
+
+## A mono Baked of a stem's middle ((L + R) / 2); a mono stem as it is.
+static func mid(b: SoundBank.Baked) -> SoundBank.Baked:
+	if not b.stereo:
+		return b
+	var m := SoundBank.Baked.new()
+	m.key = b.key
+	m.category = b.category
+	m.rate = b.rate
+	m.loop = b.loop
+	m.gain_db = b.gain_db
+	m.bus = b.bus
+	var n := b.samples.size() / 2
+	m.samples.resize(n)
+	for i in n:
+		m.samples[i] = (b.samples[i * 2] + b.samples[i * 2 + 1]) * 0.5
+	return m
+
+
+## Each channel of a stem as its own buffer.
+static func sides(b: SoundBank.Baked) -> Array[PackedFloat32Array]:
+	if not b.stereo:
+		return [b.samples]
+	var n := b.samples.size() / 2
+	var l := PackedFloat32Array()
+	var r := PackedFloat32Array()
+	l.resize(n)
+	r.resize(n)
+	for i in n:
+		l[i] = b.samples[i * 2]
+		r[i] = b.samples[i * 2 + 1]
+	return [l, r]
 
 
 # ---------------------------------------------------------------- picture
