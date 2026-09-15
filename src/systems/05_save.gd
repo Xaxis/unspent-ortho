@@ -6,7 +6,8 @@ extends GameSystem
 ##     after every setup and before the first frame; the world was generated from
 ##     the save's seed with the first chunks drawn where the save stood
 ##   - autosaves to slot 0 on sleep, on coming into another landscape and every
-##     three world hours, never while a fight is on (AutosaveRules)
+##     three world hours, never while a fight is on (AutosaveRules); and on leaving
+##     (to the title, quit, the window closed) when calm
 ##   - an autosave also waits while any page is open (the map, carrying and making
 ##     do not pause the world), and for a few frames after the last closes, so its
 ##     picture is the world and never a page
@@ -16,6 +17,8 @@ extends GameSystem
 ## Screens reach it through the game's systems by name (UiSavesScreen):
 ##   save_to(slot) -> String    "" or why not
 ##   load_from(slot) -> String  "" (the game is replaced next frame) or why not
+##   save_on_leaving() -> String  the autosave, before the game goes ("" or why not)
+##   last_saved_at               unix seconds this game was last saved (or loaded), -1 never
 ## Once a load is on its way this game takes no more saves or loads.
 
 signal wrote(slot: int, reason: StringName)
@@ -29,6 +32,8 @@ var rules: AutosaveRules
 var play_seconds := 0.0
 ## The slot this game was loaded from, or -1.
 var loaded_from := -1
+## When this game was last saved, or loaded (it stands as saved), in unix seconds; -1 never.
+var last_saved_at := -1.0
 ## The world with no page over it, taken as the first page opened.
 var _world_thumb := PackedByteArray()
 ## Frames in a row with no page open.
@@ -58,6 +63,7 @@ func started() -> void:
 		if r.ok:
 			SaveGame.apply(r.data)
 			loaded_from = slot
+			last_saved_at = Time.get_unix_time_from_system()
 			_forced_weather = Weather.forced_kind != &""
 		else:
 			push_warning("save: slot %d: %s" % [slot, r.why])
@@ -151,6 +157,25 @@ func save_to(slot: int) -> String:
 	return _write(slot, &"manual", thumb)
 
 
+## Leaving the game: the autosave takes it as it stands, when calm, so to the
+## title or quit never throws play away. Its picture is the world from before
+## the pause page. The test runner's own folder takes none (see _process).
+func save_on_leaving() -> String:
+	if _loading or rules == null:
+		return WHY_LOADING if _loading else ""
+	if SaveSlots.root == SaveSlots.TEST_ROOT:
+		return ""
+	if not calm():
+		return "Not with that so close."
+	var thumb := _world_thumb if not game.open_screens.is_empty() else thumbnail()
+	return _write(SaveSlots.AUTO, &"quit", thumb)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and game != null and is_inside_tree():
+		save_on_leaving()
+
+
 func load_from(slot: int) -> String:
 	if _loading:
 		return WHY_LOADING
@@ -169,6 +194,7 @@ func _write(slot: int, reason: StringName, thumb: PackedByteArray) -> String:
 		push_warning("save: slot %d not written (%s)" % [slot, error_string(err)])
 		return "It would not save."
 	rules.saved(game.clock.minutes)
+	last_saved_at = Time.get_unix_time_from_system()
 	wrote.emit(slot, reason)
 	Events.saved.emit(slot, reason)
 	return ""

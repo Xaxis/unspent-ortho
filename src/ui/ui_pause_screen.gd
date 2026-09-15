@@ -66,11 +66,39 @@ func _on_confirm(row: Dictionary) -> void:
 		&"save", &"load":
 			open_saves(row.id)
 		&"title":
+			_save_on_leaving()
 			close()
 			if to_title.is_valid():
 				to_title.call()
 		&"quit":
+			_save_on_leaving()
 			get_tree().quit()
+
+
+## The save system's (05_save), when the game has one.
+func _saver() -> Node:
+	if game == null:
+		return null
+	for sys in game.systems:
+		if sys.name == "05_save":
+			return sys
+	return null
+
+
+## Leaving the game: the autosave takes it first, when calm.
+func _save_on_leaving() -> void:
+	var s := _saver()
+	if s != null:
+		s.call("save_on_leaving")
+
+
+## "saved 4 minutes ago", "not saved yet"; "" without a save system.
+func saved_line() -> String:
+	var s := _saver()
+	if s == null:
+		return ""
+	var at := float(s.get("last_saved_at"))
+	return "not saved yet" if at < 0.0 else UiSavesScreen.ago(at, Time.get_unix_time_from_system())
 
 
 ## Save or load: the saves page opens over this one (UiSavesScreen), through the
@@ -118,5 +146,6 @@ func _draw() -> void:
 		var below := menu.rows.size() * 2
 		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, below), game.clock.label(), UiTheme.FADED)
 		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, below + 1), place, UiTheme.FADED)
+		UiDraw.text_right(self, P.end.x - 12, UiNotebook.line_top(P, below + 2), saved_line(), UiTheme.FADED)
 	UiNotebook.footer(self, P, "e choose     esc resume")
 	UiNotebook.note(self, P, note, note_age)

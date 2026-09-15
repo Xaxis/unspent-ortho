@@ -36,10 +36,19 @@ tap pause
 wait 0.4
 choose title
 tap use
+# Leaving writes the autosave, so to the title never throws play away.
+await saved 2
 await title 30
 wait 0.5
 shot 05-title
-# The title reads its keys as key events: Continue is chosen, E takes it.
+# The title reads its keys as key events. New game would write over that autosave,
+# so it asks once more; going back up to Continue forgets the question.
+key move_down
+key use
+wait 0.4
+shot 05b-new-asks
+key move_up
+# Continue is the newest save: the autosave made on leaving, the game as it was saved.
 key use
 await game 30
 coast calm

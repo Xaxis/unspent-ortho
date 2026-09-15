@@ -156,6 +156,49 @@ func test_no_autosave_under_an_open_page_nor_on_the_frame_it_closes() -> void:
 	Sx.finish()
 
 
+func test_leaving_for_the_title_writes_the_autosave_when_calm() -> void:
+	Sx.use_root("autosave-leaving")
+	var g := Sx.game(tree, ["--seed=1", "--size=48"])
+	var saver := Sx.system(g, "05_save")
+	var ui := Sx.system(g, "90_ui")
+	var written: Array = []
+	saver.connect("wrote", func(slot: int, reason: StringName) -> void: written.append([slot, reason]))
+	var mobs := Sx.system(g, "30_mobs")
+	mobs.get("coast").set("spawning", false)
+	g.player.sim.clear_mobs()
+	# A machine close: leaving cannot save.
+	check(mobs.call("place_near_player", &"runner") != null, "a runner beside the player")
+	await _frames(3)
+	check(not bool(saver.call("calm")), "not calm")
+	check(bool(ui.call("open_screen", &"pause")), "paused")
+	var pause: UiPauseScreen = ui.call("top")
+	eq(pause.saved_line(), "not saved yet", "the pause page says nothing is saved")
+	var went := [0]
+	pause.to_title = func() -> void: went[0] += 1
+	pause.select(&"title")
+	pause.handle(&"confirm")
+	eq(went[0], 1, "to the title")
+	eq(written, [], "not with a machine on the player")
+	g.player.sim.clear_mobs()
+	await _until(func() -> bool: return bool(saver.call("calm")), 240)
+	# Calm: to the title writes the autosave first.
+	check(bool(ui.call("open_screen", &"pause")), "paused again")
+	pause.select(&"title")
+	pause.handle(&"confirm")
+	eq(went[0], 2)
+	eq(written, [[SaveSlots.AUTO, &"quit"]], "leaving wrote the autosave")
+	var r := SaveFile.read(SaveSlots.path(SaveSlots.AUTO))
+	check(r.ok, "and it reads: %s" % r.why)
+	check(bool(ui.call("open_screen", &"pause")), "paused once more")
+	eq(pause.saved_line(), "saved just now", "the pause page says when it was saved")
+	pause.handle(&"back")
+	# The window closed from play: the same.
+	saver.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	eq(written.size(), 2, "closing the window saves too")
+	Sx.end(g)
+	Sx.finish()
+
+
 func _frames(n: int) -> void:
 	for i in n:
 		await tree.process_frame
