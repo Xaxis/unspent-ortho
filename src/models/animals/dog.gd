@@ -38,13 +38,14 @@ func _build_rig() -> void:
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.4 * s, 0))
 	# The wedge: a deep chest, the waist tucked up under the loin, a small rump.
-	trunk(rig.kit(body), [
+	var rings: Array = [
 		[-0.25 * s, 0.05 * s, 0.045 * s, 0.03 * s],
 		[-0.19 * s, 0.1 * s, 0.08 * s * lean, 0.01 * s],
 		[-0.04 * s, 0.08 * s, 0.066 * s * lean, 0.035 * s],
 		[0.1 * s, 0.16 * s, 0.095 * s * lean, -0.03 * s],
 		[0.22 * s, 0.11 * s, 0.075 * s * lean, 0.04 * s],
-	], 6, [c0, c0, c1, c1], sd)
+	]
+	trunk(rig.kit(body), rings, 6, [c0, c0, c1, c1], sd)
 	_torn = [0, 0, -1, 1][rng.randi_range(0, 3)]
 	# Mange: bald patches where the coat has come away, and the ribs showing.
 	var mk := rig.kit(body)
@@ -61,11 +62,20 @@ func _build_rig() -> void:
 			Sculpt.card(mk, Vector3(px - sz, py - sz * 0.7, pz), Vector3(px + sz, py - sz, pz), Vector3(px + sz * 0.7, py + sz, pz), Vector3(px - sz, py + sz * 0.8, pz), bare, Vector3(0, 0, signf(pz)))
 	if lean < 0.9:
 		var rib := c0.darkened(0.4)
+		# Three a side over the deep of the chest, laid on the trunk's own faces from
+		# the upper flank to just under its widest line, never down past the belly.
 		for side: int in [-1, 1]:
-			var rz := side * (0.085 * s * lean + 0.006)
 			for i in 3:
-				var rx := (0.02 + i * 0.045) * s
-				Sculpt.card(mk, Vector3(rx - 0.006 * s, -0.1 * s, rz), Vector3(rx + 0.006 * s, -0.1 * s, rz), Vector3(rx + 0.014 * s, 0.01 * s, rz), Vector3(rx + 0.002 * s, 0.01 * s, rz), rib, Vector3(0, 0, side))
+				var rx := (0.015 + i * 0.038) * s
+				var lip := 0.006 * s
+				var hi_a := _flank(rings, sd, rx + lip, side, 0.55, s)
+				var hi_b := _flank(rings, sd, rx - lip, side, 0.55, s)
+				var mid_a := _flank(rings, sd, rx + lip * 0.6, side, 0.0, s)
+				var mid_b := _flank(rings, sd, rx - lip * 1.4, side, 0.0, s)
+				var lo_a := _flank(rings, sd, rx - lip * 0.2, side, -0.3, s)
+				var lo_b := _flank(rings, sd, rx - lip * 1.8, side, -0.3, s)
+				Sculpt.card(mk, hi_a, hi_b, mid_b, mid_a, rib, Vector3(0, 0.5, side))
+				Sculpt.card(mk, mid_a, mid_b, lo_b, lo_a, rib, Vector3(0, -0.3, side))
 	var neck := rig.bone(&"neck", body, Vector3(0.19 * s, 0.08 * s, 0))
 	Sculpt.loft(rig.kit(neck), [[-0.08 * s, 0.085 * s, 0.07 * s, -0.01 * s, 0.0], [0.2 * s, 0.06 * s, 0.055 * s, 0.01 * s, 0.0]], 5, [c1], false, false, 0.0, 0.06, sd + 1)
 	# The collar: cord, or cable pulled off a machine, with a machine's plate for a tag.
@@ -109,6 +119,34 @@ func _build_rig() -> void:
 		leg("f" + sfx, body, Vector3(0.14 * s, -0.1 * s, side * 0.055 * s), 0.15 * s, 0.15 * s, 0.075 * s, leg_c, c0.darkened(0.3), 0.05 * s)
 		leg("b" + sfx, body, Vector3(-0.19 * s, -0.04 * s, side * 0.06 * s), 0.17 * s, 0.19 * s, 0.08 * s, leg_c, c0.darkened(0.3), 0.05 * s)
 	height = 0.62 * s
+
+
+## A point on the trunk's surface (the rings given to trunk() with 6 sides and
+## its default wobble, so it sits exactly on the faces), a hair proud of them:
+## at body x, on `side` (+1 is +Z), `u` from the widest line up the upper flank
+## toward the back (1) or down the lower flank toward the belly (-1).
+static func _flank(rings: Array, seed_value: int, x: float, side: int, u: float, s: float) -> Vector3:
+	var ri := 0
+	while ri < rings.size() - 2 and float(rings[ri + 1][0]) < x:
+		ri += 1
+	var t := clampf((x - float(rings[ri][0])) / (float(rings[ri + 1][0]) - float(rings[ri][0])), 0.0, 1.0)
+	# Hexagon corners, as Sculpt.loft lays them at phase PI / 6: +Z takes corners
+	# 3 (lower), 4 (widest) and 5 (upper); -Z takes 2, 1 and 0.
+	var mid_i := 4 if side > 0 else 1
+	var end_i := (5 if side > 0 else 0) if u >= 0.0 else (3 if side > 0 else 2)
+	var p := Vector3.ZERO
+	for k in 2:
+		var ring: Array = rings[ri + k]
+		var m := _corner(ring, seed_value, ri + k, mid_i)
+		var e := _corner(ring, seed_value, ri + k, end_i)
+		p += m.lerp(e, absf(u)) * (t if k == 1 else 1.0 - t)
+	return p + Vector3(0, 0.002 * s * signf(u), side * 0.005 * s)
+
+
+static func _corner(ring: Array, seed_value: int, ri: int, i: int) -> Vector3:
+	var a := PI / 6.0 + float(i) / 6.0 * TAU
+	var j := 1.0 + (Rng.hash01(seed_value, ri, i) - 0.5) * 2.0 * 0.06
+	return Vector3(float(ring[0]), float(ring[3]) + cos(a) * float(ring[1]) * j, -sin(a) * float(ring[2]) * j)
 
 
 ## A blunt nose: a little dark pyramid on the end of the muzzle.

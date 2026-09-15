@@ -44,12 +44,14 @@ var pose_hz := 0.0
 ## Skeleton poses applied so far (tests and budgets count them).
 var poses_applied := 0
 const CROWD_HZ := 12.0
+## The key light of the world this figure stands in (SkyLight.sun), set by
+## whoever places it (35_folk for villagers and the player). Null: the shadow
+## twin always shows.
+var sun: DirectionalLight3D
 
 var _dims: Dictionary = PersonBody.dims(&"man")
 var _step_left := -1.0
 var _posed_frozen := false
-var _sun: DirectionalLight3D
-var _sun_looked := false
 var _sun_check := 0.0
 var _phase := 0.0
 var _clock := 0.0
@@ -225,7 +227,8 @@ func _pose_due(delta: float) -> bool:
 
 ## The shadow twin draws only while the sun casts shadows: at night, in heavy
 ## overcast, and indoors it is a skinned mesh drawn into a shadow map for nothing.
-## The sun is found once, from the Game (or gallery) this figure stands in.
+## Whoever stands the figure in a world hands it that world's sun (`sun`); with
+## none the twin always shows.
 func _shadow_follows_sun(delta: float) -> void:
 	if rig == null or rig.shadow == null:
 		return
@@ -233,29 +236,8 @@ func _shadow_follows_sun(delta: float) -> void:
 	if _sun_check > 0.0:
 		return
 	_sun_check = 0.25
-	if _sun != null and not is_instance_valid(_sun):
-		_sun = null
-		_sun_looked = false
-	if not _sun_looked and is_inside_tree():
-		# Looked for once the figure stands somewhere; before that it keeps its shadow.
-		_sun_looked = true
-		_sun = find_sun(self)
-	rig.shadow.visible = _sun == null or (_sun.visible and _sun.shadow_enabled)
-
-
-## The sun a node is lit by: the SkyLight of the Game or gallery above it, or null.
-static func find_sun(n: Node) -> DirectionalLight3D:
-	var p := n.get_parent()
-	while p != null:
-		var sky: Variant = p.get("sky") if p is Game else null
-		if sky is SkyLight and (sky as SkyLight).sun != null:
-			return (sky as SkyLight).sun
-		if not p is GameSystem:
-			for c in p.get_children():
-				if c is SkyLight and (c as SkyLight).sun != null:
-					return (c as SkyLight).sun
-		p = p.get_parent()
-	return null
+	var s: DirectionalLight3D = sun if is_instance_valid(sun) else null
+	rig.shadow.visible = s == null or (s.visible and s.shadow_enabled)
 
 
 ## Resolved (IK-solved) action poses, shared by everyone of a build holding the
@@ -290,6 +272,8 @@ func _end_action() -> void:
 	_action_t = 0.0
 	_action_len = 0.0
 	_frozen = -1.0
+	# A released freeze moves again on the next step.
+	_posed_frozen = false
 
 
 static func _smooth(w: float) -> float:

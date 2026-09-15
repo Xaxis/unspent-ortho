@@ -13,6 +13,7 @@ shader_type spatial;
 render_mode unshaded, cull_front, depth_draw_always, skip_vertex_transform, fog_disabled, shadows_disabled;
 
 #include "res://src/render/sky.gdshaderinc"
+#include "res://src/models/people/person_light.gdshaderinc"
 
 uniform vec3 step_down = vec3(0.700, 0.704, 0.749);
 // Rim width in texels of the 640x360 image.
@@ -40,43 +41,28 @@ void vertex() {
 	rim_dir = dir;
 }
 
-// The strongest light near a point, reached a little past its pool: rgb its
-// colour, a its level 0..1; `at` its position.
-vec4 nearest_light(vec3 p, out vec3 at) {
-	vec4 best = vec4(0.0);
-	at = p;
-	for (int i = 0; i < 4; i++) {
-		vec4 l1 = sky_lamps[i];
-		float a1 = sky_omni(p, vec4(l1.xyz, l1.w * reach));
-		if (a1 > best.a) {
-			best = vec4(neon_lamp_rgb[i].rgb, a1);
-			at = l1.xyz;
-		}
-		vec4 l2 = sky_lamps2[i];
-		float a2 = sky_omni(p, vec4(l2.xyz, l2.w * reach));
-		if (a2 > best.a) {
-			best = vec4(neon_lamp_rgb2[i].rgb, a2);
-			at = l2.xyz;
-		}
-	}
-	return best;
-}
-
 void fragment() {
 	vec3 c = COLOR.rgb;
 	vec3 lit = toward > -0.2 ? min(c / step_down, vec3(1.0)) : c * step_down;
 	vec3 at;
-	vec4 lamp = nearest_light(world_pos, at);
-	float strength = dot(lamp.rgb, vec3(1.0)) > 0.01 ? clamp(lamp.a * 1.5, 0.0, 1.0) : 0.0;
-	// A little of the light's own colour in the line: warm by a fire, cold by the lantern.
-	lit = mix(lit, lit * (0.5 + lamp.rgb * 0.75), strength * 0.55);
-	vec3 col = sky_apply(lit, world_pos, TIME);
+	vec4 lamp = person_nearest_light(world_pos, reach, at);
+	float strength = clamp(lamp.a * 1.5, 0.0, 1.0);
 	float gloom = max(sky_view.y, sky_shade.w);
-	// The side of the outline that faces the light catches it, in whole steps.
+	vec3 col = sky_apply(lit, world_pos, TIME);
+	// The whole line takes the light's colour in the pool: warm by a fire, cold by
+	// the lantern (the same stepped wash as the body, so line and body agree).
+	col = person_in_light(col, lit, lamp, sky_pool(lamp.a, world_pos) * step(0.35, gloom));
+	// The side of the outline that faces the light catches it: a whole ramp step
+	// lighter than the lit rim, in the light's colour.
 	vec2 to_light = (VIEW_MATRIX * vec4(at - world_pos, 0.0)).xy;
 	float facing = length(to_light) > 1e-4 ? dot(rim_dir, normalize(to_light)) : 0.0;
-	float catch_light = step(0.35, facing) * step(0.08, strength) * gloom;
-	col = mix(col, lit * 0.4 + lamp.rgb * 0.4, catch_light * (0.25 + 0.3 * step(0.5, strength)));
+	// Only on the silhouette, where a back face turns edge-on: the inside of an
+	// open hem seen from above is a back face too, facing the camera, and must
+	// never light up as a sheet.
+	float edge = step(abs(normalize(NORMAL).z), 0.6);
+	float catch_light = step(0.2, facing) * step(0.3, strength) * step(0.35, gloom) * edge;
+	vec3 caught = min(min(lit / step_down, vec3(1.0)) / step_down, vec3(1.0)) * (0.45 + lamp.rgb * 0.75);
+	col = mix(col, caught, catch_light);
 	ALBEDO = col;
 	ALPHA = 1.0;
 }

@@ -9,7 +9,9 @@ class_name PersonGear
 ## screen, a charge pip, a radio's lamp). Lights are dim colours on the GLOW
 ## surface: a smudge by day, a mark in the dark.
 ##
-## Sizes are for the game camera (a person is ~34 px tall): nothing that must read
+## Sizes are for the game camera (a person is ~34 px tall): every piece has one FOUND
+## mark at least ~0.1 units (2 px) across (the filter block, the lenses, the screen,
+## the cell, the aerial), nothing that must read
 ## is under ~0.05 units across, and every piece changes the outline or sits where
 ## the camera looks (head, chest, back, the top of the wrist).
 
@@ -67,8 +69,10 @@ static func _respirator(r: SkinRig, w: PersonBody.Wear) -> void:
 	var mx := PersonBody.face_x(d, 0.24, 0.0) + 0.012
 	var mouth := Vector3(mx, hh * 0.22, 0.0)
 	Sculpt.aim(f, mouth, mouth + Vector3(1.0, -0.5, 0.0).normalized())
-	Sculpt.loft(f, [[0.0, 0.048, 0.048, 0.0, 0.0], [0.07, 0.056, 0.056, 0.0, 0.0]], 6, Palette.PLATE[3], false, false, 0.0)
-	Sculpt.loft(f, [[0.07, 0.056, 0.056, 0.0, 0.0], [0.074, 0.0, 0.0, 0.0, 0.0]], 6, Palette.PLATE[0], false, false, 0.0)
+	# A square filter block, the lightest plate on the face: the mark that reads
+	# at the game camera (at least 2 px across), its intake face dark.
+	Sculpt.loft(f, [[0.0, 0.066, 0.066, 0.0, 0.0], [0.1, 0.078, 0.078, 0.0, 0.0]], 4, Palette.PLATE[4], false, false, PI / 4)
+	Sculpt.loft(f, [[0.1, 0.078, 0.078, 0.0, 0.0], [0.104, 0.05, 0.05, 0.0, 0.0], [0.106, 0.0, 0.0, 0.0, 0.0]], 4, [Palette.PLATE[3], Palette.PLATE[0]], false, false, PI / 4)
 	f.pop()
 	var can_at := Vector3(hd * 0.2, hh * 0.1, side * (hw * 0.5 + 0.035))
 	var can_dir := Vector3(0.45, -1.0, side * 0.3).normalized()
@@ -100,8 +104,9 @@ static func _goggles(r: SkinRig, w: PersonBody.Wear) -> void:
 		var z := sd * hw * 0.22
 		var at := Vector3(PersonBody.face_x(d, yf, z) - 0.008 + lift, y, z)
 		f.push(Transform3D(aim, at))
-		Sculpt.loft(f, [[0.0, 0.058, 0.058, 0.0, 0.0], [0.042, 0.052, 0.052, 0.0, 0.0]], 6, Palette.PLATE[1], false, false, 0.0)
-		Sculpt.loft(f, [[0.036, 0.046, 0.046, 0.0, 0.0], [0.04, 0.0, 0.0, 0.0, 0.0]], 6, Palette.COLD[2], false, false, 0.0)
+		Sculpt.loft(f, [[0.0, 0.066, 0.066, 0.0, 0.0], [0.046, 0.06, 0.06, 0.0, 0.0]], 6, Palette.PLATE[1], false, false, 0.0)
+		# The glass a step brighter than the rim, so each lens is a light mark.
+		Sculpt.loft(f, [[0.04, 0.054, 0.054, 0.0, 0.0], [0.044, 0.0, 0.0, 0.0, 0.0]], 6, Palette.COLD[3], false, false, 0.0)
 		f.pop()
 	# The bridge between the lenses.
 	var bx := PersonBody.face_x(d, yf, 0.0) + lift + 0.02
@@ -130,20 +135,22 @@ static func _slate(r: SkinRig, w: PersonBody.Wear) -> void:
 	var xf := Transform3D(Basis(v, u, n), Vector3(0, y, 0) + n * (t * 0.46 + 0.016))
 	var f := r.kit(fore, &"gear", SkinRig.FOUND)
 	f.push(xf)
-	Sculpt.slab(f, _rect(0.09, 0.13, 0.016), 0.012, Palette.PLATE[2], Palette.PLATE[1])
+	# Wider than the forearm it is strapped to: the screen must be a mark at the
+	# game camera, not a pixel.
+	Sculpt.slab(f, _rect(0.13, 0.18, 0.02), 0.012, Palette.PLATE[2], Palette.PLATE[1])
 	# The crack across one corner of the glass.
-	Sculpt.card(f, Vector3(0.012, 0.046, 0.0136), Vector3(0.016, 0.05, 0.0136), Vector3(0.032, 0.028, 0.0136), Vector3(0.028, 0.024, 0.0136), Palette.PLATE[0], Vector3.BACK)
+	Sculpt.card(f, Vector3(0.018, 0.066, 0.0136), Vector3(0.023, 0.071, 0.0136), Vector3(0.046, 0.04, 0.0136), Vector3(0.041, 0.035, 0.0136), Palette.PLATE[0], Vector3.BACK)
 	f.pop()
 	var glow := r.kit(fore, &"gear_glow", SkinRig.GLOW)
 	glow.push(xf)
-	Sculpt.card(glow, Vector3(-0.03, -0.045, 0.013), Vector3(0.03, -0.045, 0.013), Vector3(0.03, 0.045, 0.013), Vector3(-0.03, 0.045, 0.013), Palette.RIME[2], Vector3.BACK)
+	Sculpt.card(glow, Vector3(-0.05, -0.066, 0.013), Vector3(0.05, -0.066, 0.013), Vector3(0.05, 0.066, 0.013), Vector3(-0.05, 0.066, 0.013), Palette.RIME[2], Vector3.BACK)
 	glow.pop()
 	var tape := r.kit(fore, &"gear")
 	tape.push(xf)
-	for ty: float in [-0.056, 0.058]:
-		Sculpt.card(tape, Vector3(-0.05, ty - 0.012, 0.0138), Vector3(0.05, ty - 0.012, 0.0138), Vector3(0.05, ty + 0.012, 0.0138), Vector3(-0.05, ty + 0.012, 0.0138), TAPE, Vector3.BACK)
+	for ty: float in [-0.078, 0.08]:
+		Sculpt.card(tape, Vector3(-0.07, ty - 0.012, 0.0138), Vector3(0.07, ty - 0.012, 0.0138), Vector3(0.07, ty + 0.012, 0.0138), Vector3(-0.07, ty + 0.012, 0.0138), TAPE, Vector3.BACK)
 	tape.pop()
-	for ty: float in [-0.056, 0.058]:
+	for ty: float in [-0.078, 0.08]:
 		Sculpt.loft(tape, [[y + ty - 0.012, t * 0.5, t * 0.52, 0.0, 0.0], [y + ty + 0.012, t * 0.5, t * 0.52, 0.004, 0.0]], 5, TAPE, false, false, PI / 5)
 
 
@@ -163,7 +170,7 @@ static func _battery(r: SkinRig, w: PersonBody.Wear) -> void:
 	f.pop()
 	var pip := r.kit(hips, &"gear_glow", SkinRig.GLOW)
 	var top := at + Vector3(0, 0.056, 0)
-	Sculpt.card(pip, top + Vector3(-0.012, 0, side * 0.02), top + Vector3(0.012, 0, side * 0.02), top + Vector3(0.012, 0, side * 0.045), top + Vector3(-0.012, 0, side * 0.045), Palette.EMBER[4], Vector3.UP)
+	Sculpt.card(pip, top + Vector3(-0.024, 0.001, side * 0.004), top + Vector3(0.024, 0.001, side * 0.004), top + Vector3(0.024, 0.001, side * 0.05), top + Vector3(-0.024, 0.001, side * 0.05), Palette.EMBER[4], Vector3.UP)
 	var strap := r.kit(hips, &"gear")
 	strap.push(Transform3D(back, at))
 	Sculpt.card(strap, Vector3(-0.014, -0.068, 0.028), Vector3(0.014, -0.068, 0.028), Vector3(0.014, 0.068, 0.028), Vector3(-0.014, 0.068, 0.028), Palette.EARTH[1], Vector3.BACK)
@@ -204,11 +211,12 @@ static func _radio(r: SkinRig, w: PersonBody.Wear) -> void:
 	var foot := Vector3(x - 0.012, y + 0.07, z + side * 0.03)
 	# Up and out past the shoulder, where the outline shows it.
 	Sculpt.aim(f, foot, foot + Vector3(-0.2, 1.0, -side * 0.5).normalized())
-	Sculpt.loft(f, [[0.0, 0.014, 0.014, 0.0, 0.0], [0.3, 0.009, 0.009, 0.0, 0.0]], 3, Palette.PLATE[1], false, false, 0.0)
-	Sculpt.loft(f, [[0.3, 0.02, 0.02, 0.0, 0.0], [0.33, 0.0, 0.0, 0.0, 0.0]], 4, Palette.PLATE[2], true, false, 0.0)
+	# Tall and thick enough to stand a line of pixels past the shoulder, a knob on its end.
+	Sculpt.loft(f, [[0.0, 0.022, 0.022, 0.0, 0.0], [0.44, 0.014, 0.014, 0.0, 0.0]], 4, Palette.PLATE[3], false, false, PI / 4)
+	Sculpt.loft(f, [[0.43, 0.034, 0.034, 0.0, 0.0], [0.48, 0.0, 0.0, 0.0, 0.0]], 4, Palette.PLATE[4], true, false, PI / 4)
 	f.pop()
 	var lamp := r.kit(spine, &"gear_glow", SkinRig.GLOW)
-	Sculpt.card(lamp, Vector3(fx + 0.001, y + 0.024, z - 0.04), Vector3(fx + 0.001, y + 0.024, z - 0.014), Vector3(fx + 0.001, y + 0.05, z - 0.014), Vector3(fx + 0.001, y + 0.05, z - 0.04), Palette.EMBER[4], Vector3.RIGHT)
+	Sculpt.card(lamp, Vector3(fx + 0.001, y + 0.018, z - 0.046), Vector3(fx + 0.001, y + 0.018, z - 0.006), Vector3(fx + 0.001, y + 0.056, z - 0.006), Vector3(fx + 0.001, y + 0.056, z - 0.046), Palette.EMBER[4], Vector3.RIGHT)
 	var cord := r.kit(spine, &"gear")
 	# Tape round its middle where the case split.
 	Sculpt.loft(cord, [[y - 0.004, 0.056, 0.084, x, z], [y + 0.018, 0.056, 0.084, x, z]], 4, TAPE, false, false, PI / 4)

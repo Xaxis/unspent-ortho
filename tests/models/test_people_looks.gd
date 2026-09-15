@@ -207,3 +207,38 @@ func test_every_new_coat_and_hat_dresses_every_build() -> void:
 						n += (entry[0] as MeshKit).verts.size() / 3
 				gt(n, 600, "%s in %s and %s is dressed" % [b, c, h])
 				lt(n, 1301, "%s in %s and %s fits the budget" % [b, c, h])
+
+
+func test_a_village_dressed_for_one_weather_never_repeats_a_silhouette() -> void:
+	# The way 35_folk dresses a village: a crowd, each dressed for the land and a
+	# trade, then set apart from the neighbours already built.
+	for land: StringName in [&"snowfield", &"burning", &"moss", &"coast"]:
+		var hz := _hazards(land)
+		var warm := 0
+		var n := 0
+		for v in 12:
+			var taken := {}
+			var sigs := {}
+			var i := 0
+			for spec: Dictionary in PersonLook.crowd(v * 31 + 7, 6):
+				var trade: StringName = PersonLook.TRADES[(v + i) % PersonLook.TRADES.size()]
+				if spec.build == &"boy":
+					trade = &"child"
+				var d := PersonLook.set_apart(PersonLook.dress(spec, hz, trade, v * 977 + i), taken, hz, v * 977 + i)
+				var sig := PersonLook.signature(d)
+				check(not sigs.has(sig), "%s village %d: %s worn twice" % [land, v, sig])
+				sigs[sig] = true
+				check(PersonLook.contrast_ok(d), "%s: set apart still meets the contrast bar" % land)
+				if land == &"coast":
+					check(d.coat != &"fur" and d.hat != &"furhat" and d.coat != &"wrap", "no furs or ash wraps put on the coast to set someone apart")
+				if land == &"snowfield" and (d.coat == &"fur" or d.hat == &"furhat" or d.hat == &"knit" or d.hat == &"hood"):
+					warm += 1
+				n += 1
+				i += 1
+		if land == &"snowfield":
+			gt(float(warm) / n, 0.8, "set apart in the snow, still dressed for it")
+	# Forty in one place, the gallery's and a busy square's worst case.
+	var sigs40 := {}
+	for d: Dictionary in PersonLook.villagers(3, 40, _hazards(&"snowfield")):
+		check(not sigs40.has(PersonLook.signature(d)), "forty in the snow, no two alike")
+		sigs40[PersonLook.signature(d)] = true

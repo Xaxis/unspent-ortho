@@ -808,14 +808,20 @@ static func _hat(k: MeshKit, w: Wear, hat: StringName) -> void:
 				[hh * 0.86, rx * 1.04, rz * 1.04, -0.022, 0.0],
 				[hh * 1.16, rx * 0.9, rz * 0.88, -0.04, 0.0],
 			], 7, [PersonLook.step(w.look.hat_col, 2), c, c], false, true, 0.0, 0.12, s)
-			# Tufts of pelt standing off the crown, so it never reads as a helmet.
+			# Shag, so it never reads as a helmet: many short tufts lying flat off the
+			# crown's edge and hanging off the rolled brim. Short and flat, the
+			# outline goes ragged all round instead of rising into two points.
 			var trim := PersonLook.step(w.look.hat_col, 1)
-			for i in 6:
-				var a := float(i) / 6.0 * TAU + Rng.hash01(s, i, 7) * 0.5
-				var base := Vector3(-0.04 + cos(a) * rx * 0.8, hh * 1.1, sin(a) * rz * 0.8)
-				var side_v := Vector3(-sin(a), 0, cos(a)) * 0.03
-				var tip := Vector3(-0.04 + cos(a) * rx * 1.05, hh * (1.2 + Rng.hash01(s, i, 8) * 0.1), sin(a) * rz * 1.05)
+			for i in 9:
+				var a := float(i) / 9.0 * TAU + Rng.hash01(s, i, 7) * 0.4
+				var out := Vector3(cos(a), 0, sin(a))
+				var base := Vector3(-0.04 + cos(a) * rx * 0.78, hh * 1.15, sin(a) * rz * 0.76)
+				var side_v := Vector3(-sin(a), 0, cos(a)) * 0.022
+				var tip := Vector3(-0.04 + cos(a) * rx * (0.98 + Rng.hash01(s, i, 8) * 0.1), hh * (1.16 + Rng.hash01(s, i, 9) * 0.04), sin(a) * rz * (0.98 + Rng.hash01(s, i, 8) * 0.1))
 				flap(k, base - side_v, tip, base + side_v, trim if i % 2 else hi, lo)
+				var b2 := Vector3(-0.02 + cos(a) * rx * 1.18, hh * 0.8, sin(a) * rz * 1.18) + out * 0.004
+				var t2 := Vector3(-0.02 + cos(a) * rx * 1.3, hh * (0.68 - Rng.hash01(s, i, 10) * 0.05), sin(a) * rz * 1.3)
+				flap(k, b2 - side_v, t2, b2 + side_v, trim if i % 2 == 0 else c, lo)
 			for side: int in [-1, 1]:
 				var ez := side * (rz * 1.12)
 				var a := Vector3(-0.05, hh * 0.64, ez)

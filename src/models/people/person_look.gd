@@ -535,7 +535,10 @@ static func dress(spec: Dictionary, hazards: Dictionary, trade: StringName, seed
 	s.gear = kit
 	s.salvage = salvage
 	s.extras = extras
-	var out := normalize(s)
+	return _keep_contrast(normalize(s))
+
+
+static func _keep_contrast(out: Dictionary) -> Dictionary:
 	if not contrast_ok(out):
 		out.trouser = "slate:0"
 	var covered: bool = out.coat != &"none" and out.coat != &"jerkin"
@@ -549,21 +552,126 @@ static func dress(spec: Dictionary, hazards: Dictionary, trade: StringName, seed
 	return out
 
 
+## A dressed look set apart from its neighbours: dress() puts most of a snowfield
+## in furs and most of the burning in wraps, so two villagers of one build would
+## share a silhouette and differ only in colour. Swaps the hat, then the coat,
+## then both, among what the land still allows (the weather's own first), until
+## its {build, hat, coat} is not in `taken` (signature -> true); then adds it.
+## Deterministic in (spec, taken, hazards, seed). Keeps the contrast bar.
+static func set_apart(spec: Dictionary, taken: Dictionary, hazards: Dictionary, seed_value: int) -> Dictionary:
+	var out := normalize(spec)
+	if taken.has(signature(out)):
+		var r := Rng.make(seed_value, 5227)
+		var hats := _hats_for(hazards, r)
+		var coats := _coats_for(hazards, r)
+		var hat0: StringName = out.hat
+		var coat0: StringName = out.coat
+		# The hat alone first, then the coat alone, then both.
+		var tries: Array[Array] = []
+		for h in hats:
+			if h != hat0:
+				tries.append([h, coat0])
+		for c in coats:
+			if c != coat0:
+				tries.append([hat0, c])
+		for h in hats:
+			for c in coats:
+				if h != hat0 and c != coat0:
+					tries.append([h, c])
+		for t: Array in tries:
+			if not taken.has("%s/%s/%s" % [out.build, t[0], t[1]]):
+				_wear_hat(out, t[0], r)
+				_wear_coat(out, t[1], r)
+				break
+		out = _keep_contrast(normalize(out))
+	taken[signature(out)] = true
+	return out
+
+
+## Hats a land allows, its weather's first (in a seeded order), then the fair ones.
+static func _hats_for(hazards: Dictionary, r: RandomNumberGenerator) -> Array[StringName]:
+	var cold := _hazard(hazards, "cold")
+	var hot := maxf(_hazard(hazards, "heat"), maxf(_hazard(hazards, "fumes"), maxf(_hazard(hazards, "toxins"), _hazard(hazards, "radiation"))))
+	var wet := _hazard(hazards, "wet")
+	var first: Array[StringName] = []
+	if cold >= 0.3:
+		first.append_array([&"furhat", &"knit", &"hood", &"scarf"])
+	if hot >= 0.4:
+		first.append_array([&"hood", &"scarf", &"brim", &"band"])
+	if wet >= 0.25:
+		first.append_array([&"souwester", &"hood", &"knit"])
+	return _then(_shuffled(first, r), _shuffled(FAIR_HATS, r))
+
+
+static func _coats_for(hazards: Dictionary, r: RandomNumberGenerator) -> Array[StringName]:
+	var cold := _hazard(hazards, "cold")
+	var hot := maxf(_hazard(hazards, "heat"), maxf(_hazard(hazards, "fumes"), maxf(_hazard(hazards, "toxins"), _hazard(hazards, "radiation"))))
+	var wet := _hazard(hazards, "wet")
+	var first: Array[StringName] = []
+	if cold >= 0.3:
+		first.append_array([&"fur", &"long", &"oilskin"])
+	if hot >= 0.3:
+		first.append_array([&"wrap", &"long", &"jerkin"])
+	if wet >= 0.25:
+		first.append_array([&"oilskin", &"long", &"jerkin"])
+	return _then(_shuffled(first, r), _shuffled(FAIR_COATS, r))
+
+
+static func _shuffled(list: Array[StringName], r: RandomNumberGenerator) -> Array[StringName]:
+	var out: Array[StringName] = list.duplicate()
+	for i in range(out.size() - 1, 0, -1):
+		var j := r.randi_range(0, i)
+		var t := out[i]
+		out[i] = out[j]
+		out[j] = t
+	return out
+
+
+static func _then(a: Array[StringName], b: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for x in a + b:
+		if not out.has(x):
+			out.append(x)
+	return out
+
+
+static func _wear_hat(s: Dictionary, h: StringName, r: RandomNumberGenerator) -> void:
+	if s.hat == h:
+		return
+	s.hat = h
+	if h == &"furhat":
+		s.hat_col = _wear(r, FUR_WEAR)
+	elif h == &"hood":
+		s.hat_col = _wear(r, HOOD_WEAR)
+
+
+static func _wear_coat(s: Dictionary, c: StringName, r: RandomNumberGenerator) -> void:
+	if s.coat == c:
+		return
+	s.coat = c
+	match c:
+		&"fur": s.coat_col = _wear(r, FUR_WEAR)
+		&"wrap": s.coat_col = _wear(r, WRAP_WEAR)
+		&"oilskin": s.coat_col = _wear(r, OILSKIN_WEAR)
+
+
 ## Outer colours tried in turn when a dressed look fails the contrast bar.
 ## Mid values first: a fix must not turn a village into clean pale coats.
 const CONTRAST_FIXES: Array[String] = ["earth:3", "stone:3", "rust:3", "moss:3", "sand:3", "linen:2", "earth:2", "linen:3", "linen:4"]
 
 
 ## n villagers of a land: a crowd (nobody repeats another's silhouette) dressed
-## for `hazards`, their trades dealt round TRADES by seed.
+## for `hazards`, their trades dealt round TRADES by seed, and set apart again
+## after dressing.
 static func villagers(seed_value: int, n: int, hazards: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	var taken := {}
 	var i := 0
 	for p: Dictionary in crowd(seed_value, n):
 		var trade: StringName = TRADES[int(Rng.hash01(seed_value, i, 41) * (TRADES.size() - 1))]
 		if p.build == &"boy":
 			trade = &"child"
-		out.append(dress(p, hazards, trade, seed_value * 17 + i))
+		out.append(set_apart(dress(p, hazards, trade, seed_value * 17 + i), taken, hazards, seed_value * 23 + i))
 		i += 1
 	return out
 

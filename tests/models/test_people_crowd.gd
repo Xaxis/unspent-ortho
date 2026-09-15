@@ -112,6 +112,10 @@ func test_hidden_offscreen_and_frozen_figures_are_not_posed() -> void:
 	for f in 30:
 		frozen.animate(0.0, FRAME)
 	eq(frozen.poses_applied, f0, "a frozen pose already on the skeleton is left alone")
+	frozen.play_action(&"", 0.0)
+	for f in 30:
+		frozen.animate(0.0, FRAME)
+	gt(frozen.poses_applied, f0, "released from the freeze, it poses again on its steps")
 	frozen.free()
 	for n: Node in [hidden, cam, away, seen]:
 		n.queue_free()
@@ -181,7 +185,7 @@ func test_the_shadow_twin_shows_only_while_the_sun_casts() -> void:
 	var p := PersonModel.make({})
 	stage.add_child(p)
 	check(p.rig.shadow != null, "people have a shadow twin")
-	eq(PersonModel.find_sun(p), sky.sun, "the sun is found from where the figure stands")
+	p.sun = sky.sun
 	sky.set_hour(12.0)
 	p.animate(0.0, 0.3)
 	eq(p.rig.shadow.visible, sky.sun.shadow_enabled, "at noon the twin follows the sun")
