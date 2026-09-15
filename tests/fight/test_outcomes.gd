@@ -129,3 +129,24 @@ func test_something_coming_from_far_off_is_not_yet_a_fight() -> void:
 	gt(began, 0.0, "it became a fight when it arrived")
 	lt(Senses.chebyshev(dog.pos, sim.hero.pos), FightRules.AWAY_DISTANCE + 1.0)
 	eq(outcome, &"", "and it was never called away while it closed")
+
+
+func test_an_arrest_leaves_you_beside_the_track() -> void:
+	var w := F.flat_world(48, Ground.NEEDLES, Country.PINEWOOD)
+	# A track three tiles wide running north-south at x 20..22.
+	for y in 48:
+		for x in range(20, 23):
+			w.ground[y * 48 + x] = Ground.ROAD
+	# West of it a cliff, so the nearest ground a step away is to the east.
+	for y in 48:
+		w.level[y * 48 + 19] = 5
+	var q := WorldQuery.new(w)
+	var r := Outcomes.off_the_track(w, q, Vector2(20.6, 10.5))
+	check(r.moved, "moved")
+	var at: Vector2 = r.pos
+	eq(w.ground_at(floori(at.x), floori(at.y)), Ground.NEEDLES, "off the road")
+	eq(floori(at.x), 23, "on the near side that is not a cliff")
+	lt(absf(at.y - 10.5), 1.01, "beside where you stood, not down the track")
+	var already := Outcomes.off_the_track(w, q, Vector2(30.5, 10.5))
+	eq(already.moved, false, "already off it: stay")
+	eq(already.pos, Vector2(30.5, 10.5))

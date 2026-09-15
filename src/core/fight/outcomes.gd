@@ -12,6 +12,9 @@ const SHIFT_WEAR := 16
 ## Rock faces tried, nearest first, before giving up on a place to stand.
 const BESIDE_TRIES := 12
 
+## Tiles searched out from the track for somewhere to be stood after an arrest.
+const OFF_TRACK_RANGE := 8
+
 const DOWNED_LINE := "You come to where you fell. Hours have gone."
 const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The lamp is out."
 
@@ -44,6 +47,57 @@ static func carried(body: Body, inv: Inventory, clock: WorldClock, world: WorldD
 		result.facing = spot.facing
 		result.moved = true
 	return result
+
+
+## Where a warden leaves the player it arrested: the nearest ground beside the
+## track that is not track (road or floor), not water, a step at most up or down
+## from where they stood, and clear of solid props. Returns {pos, moved};
+## `moved` false (pos = from) when already off the track or nowhere fits.
+static func off_the_track(world: WorldData, query: WorldQuery, from: Vector2) -> Dictionary:
+	var fx := floori(from.x)
+	var fy := floori(from.y)
+	if not _on_track(world.ground_at(fx, fy)):
+		return {"pos": from, "moved": false}
+	# Walked out from where you stood, a step up or down at a time, so the side
+	# of the track you are left on is one you could have walked to.
+	var best := Vector2.ZERO
+	var best_d := INF
+	var seen := {Vector2i(fx, fy): true}
+	var frontier: Array[Vector2i] = [Vector2i(fx, fy)]
+	var steps: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while not frontier.is_empty():
+		var next: Array[Vector2i] = []
+		for c in frontier:
+			for s in steps:
+				var t := c + s
+				if seen.has(t) or maxi(absi(t.x - fx), absi(t.y - fy)) > OFF_TRACK_RANGE:
+					continue
+				seen[t] = true
+				if not query.passable(c.x, c.y, t.x, t.y) or Ground.is_water(world.ground_at(t.x, t.y)):
+					continue
+				if _on_track(world.ground_at(t.x, t.y)):
+					next.append(t)
+					continue
+				var at := Vector2(t.x + 0.5, t.y + 0.5)
+				var d := at.distance_to(from)
+				if d < best_d and not _blocked(query, at, null):
+					best = at
+					best_d = d
+		frontier = next
+	if best_d < INF:
+		return {"pos": best, "moved": true}
+	return {"pos": from, "moved": false}
+
+
+static func _on_track(g: int) -> bool:
+	return g == Ground.ROAD or g == Ground.FLOOR
+
+
+static func _blocked(query: WorldQuery, at: Vector2, except: WorldProp) -> bool:
+	for q in query.props_near(at, 2.0):
+		if q != except and q.solid > 0.0 and q.pos.distance_to(at) < q.solid + Tuning.PLAYER_RADIUS:
+			return true
+	return false
 
 
 ## A standable place beside the nearest ore (else bare rock) within `range_tiles`,
@@ -82,12 +136,7 @@ static func _beside(world: WorldData, query: WorldQuery, p: WorldProp) -> Dictio
 		var ty := floori(at.y)
 		if not query.standable(tx, ty) or Ground.is_water(world.ground_at(tx, ty)):
 			continue
-		var blocked := false
-		for q in query.props_near(at, 2.0):
-			if q != p and q.solid > 0.0 and q.pos.distance_to(at) < q.solid + Tuning.PLAYER_RADIUS:
-				blocked = true
-				break
-		if blocked:
+		if _blocked(query, at, p):
 			continue
 		return {"pos": at, "facing": (p.pos - at).angle(), "prop": p}
 	return {}

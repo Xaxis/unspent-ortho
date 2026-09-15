@@ -329,10 +329,16 @@ func _on_snatch(m: MobState) -> void:
 	MobFx.tell(game.player, game.player.global_position + Vector3(0, 1.7, 0), 0.25, m.id, 0.7)
 	if String(r.line) != "":
 		Events.message.emit(String(r.line))
+	var arrest: bool = m.row.get("hits", {}).get("arrest", false)
 	if float(r.minutes) > 0.0:
-		var reason: StringName = &"arrested" if m.row.get("hits", {}).get("arrest", false) else &"snatched"
+		var reason: StringName = &"arrested" if arrest else &"snatched"
 		game.clock.skip(float(r.minutes))
 		Events.time_skipped.emit(float(r.minutes), reason)
+	if arrest:
+		# Stood at the side of the track, as the line says: the hours pass off it.
+		var off := Outcomes.off_the_track(game.world, game.query, sim.hero.pos)
+		if off.moved:
+			_put_hero(off.pos, sim.hero.facing)
 
 
 func _on_outcome(e: Dictionary) -> void:
@@ -360,6 +366,18 @@ func _on_outcome(e: Dictionary) -> void:
 			_wake()
 			Events.time_skipped.emit(float(r.minutes), &"carried")
 			Events.message.emit(String(r.line))
+
+
+## Moved while the hours went by: the player, the land about them and the camera all at once.
+func _put_hero(at: Vector2, facing: float) -> void:
+	var hero := sim.hero
+	hero.pos = at
+	hero.facing = facing
+	hero.throw_until = 0.0
+	hero.move = Vector2.ZERO
+	game.player.sync_view(0.0)
+	game.view.ensure_near(hero.pos)
+	game.camera.snap_to(game.player.position)
 
 
 ## Coming round after a bad end: the body lies a moment and gets up before it

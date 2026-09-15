@@ -57,6 +57,22 @@ func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
 	gt(game.body.busy_until, Time.get_ticks_msec() / 1000.0, "and lies a moment before walking")
 	eq(sim.living(), 0, "the coast was cleared")
 	check(lines.has(Outcomes.DOWNED_LINE), "and was told so, plainly")
+	# A warden's arrest leaves the player at the side of the track, camera and all.
+	var w := game.world
+	var hp := sim.hero.pos
+	for dy in range(-6, 7):
+		for dx in range(-1, 2):
+			var tx := floori(hp.x) + dx
+			var ty := floori(hp.y) + dy
+			if w.in_bounds(tx, ty) and w.ground_at(tx, ty) != Ground.DEEP_WATER:
+				w.ground[ty * w.size + tx] = Ground.ROAD
+	var warden: MobState = mobs_system.call(&"place_near_player", &"warden")
+	sim.snatch(warden)
+	await frames(3)
+	var at := sim.hero.pos
+	check(w.ground_at(floori(at.x), floori(at.y)) != Ground.ROAD, "arrested and stood off the track")
+	lt(at.distance_to(hp), 4.0, "beside where it met you")
+	lt(Vector2(game.camera.target.x, game.camera.target.z).distance_to(at), 1.0, "and the camera went with you")
 	game.queue_free()
 	await frames(1)
 	OS.remove_logger(errors)
