@@ -478,7 +478,7 @@ func _sea_lean() -> Vector2:
 ## the same variant twice running, placed somewhere left or right.
 func _scatter() -> void:
 	var hour := game.clock.hour()
-	var kind: StringName = weather.get("kind", &"fair")
+	var kind: StringName = Weather.family(StringName(weather.get("kind", &"fair")))
 	var s := float(weather.get("strength", 0.0))
 	var tide := SoundMix.tide_at(game.clock.minutes)
 	for bed: StringName in SoundBeds.SCATTER:

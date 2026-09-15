@@ -144,6 +144,12 @@ func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> vo
 	eq(pole & SoundMix.WRECK, 0, "nor wreckage")
 	check(pole & SoundMix.WIRE != 0, "it carries wire")
 	check(SoundMix.prop_class(PropKind.PYLON) & SoundMix.INSTALLATION != 0, "a pylon is the machines'")
+	for k: int in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.RELAY]:
+		check(SoundMix.prop_class(k) & SoundMix.INSTALLATION != 0, "the land's %s is the machines' and hums" % PropKind.NAMES[k])
+	for k: int in [PropKind.DEBRIS, PropKind.VEHICLE, PropKind.HULL, PropKind.FENCE, PropKind.BARRICADE]:
+		check(SoundMix.prop_class(k) & SoundMix.WRECK != 0, "a %s is wreckage the wind finds" % PropKind.NAMES[k])
+	check(SoundMix.prop_class(PropKind.SHACK) & SoundMix.SHELTER != 0, "a shack's roof takes the rain")
+	eq(SoundMix.prop_class(PropKind.GRAVE) & SoundMix.INSTALLATION, 0, "a grave hums nothing")
 	var w := _two_countries(0.0)
 	var q := WorldQuery.new(w)
 	var at := Vector2(30.5, 30.5)
@@ -374,6 +380,12 @@ func test_every_kind_the_sky_can_send_is_heard_or_deliberately_silent() -> void:
 				others += float(lv.get(other, 0.0))
 		eq(others, 0.0, "only %s's bed is up" % kind)
 	gt(float(SoundMix.bed_levels(w, p, {"kind": &"blizzard", "strength": 1.0, "wind": 0.0}, {"distance": INF}, {"distance": INF}, 3.0)[&"weather_gust"]), 0.5, "a blizzard gusts even between winds")
+	# The landscapes' own kinds sound as the kind each acts like (Weather.family).
+	for kind: StringName in Weather.FAMILY:
+		var fam: StringName = Weather.family(kind)
+		var lv := SoundMix.bed_levels(w, p, {"kind": kind, "strength": 0.7, "wind": 0.1}, {"distance": INF}, {"distance": INF}, 3.0)
+		var same := SoundMix.bed_levels(w, p, {"kind": fam, "strength": 0.7, "wind": 0.1}, {"distance": INF}, {"distance": INF}, 3.0)
+		eq(lv, same, "%s is heard as %s" % [kind, fam])
 	for kind: StringName in SoundMix.WEATHER_SCATTER:
 		check(SoundBank.has_sound(SoundMix.WEATHER_SCATTER[kind][0]), "weather scatter for %s" % kind)
 

@@ -76,3 +76,14 @@ func test_lines_are_broken_by_ridges_and_big_props_not_trees() -> void:
 	var q2 := WorldQuery.new(w2)
 	check(not Senses.line_clear(w2, q2, Vector2(10.5, 10.5), Vector2(18.5, 10.5)), "a house hides you")
 	check(Senses.line_clear(w2, q2, Vector2(10.5, 20.5), Vector2(18.5, 20.5)), "a pine does not")
+
+
+func test_every_weather_the_sky_sends_cuts_sight_by_its_own_measure() -> void:
+	var m := _at(12.0)
+	m.weather_strength = 1.0
+	for kind: StringName in [&"whiteout", &"dry_storm", &"haze", &"dust"]:
+		m.weather = kind
+		near(m.weather_sight(), Weather.sight_factor(kind, 1.0), 1e-6, "%s" % kind)
+		lt(m.weather_sight(), 0.9, "%s takes sight" % kind)
+	m.weather = &"sand"
+	near(m.weather_sight(), Weather.sight_factor(&"dust", 1.0), 1e-6, "the roster's sand is the sky's dust")

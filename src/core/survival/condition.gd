@@ -133,6 +133,8 @@ static func burn_lamp(left: float, minutes: float, flasks: int) -> Dictionary:
 	return {"left": left, "flasks": used, "out": false}
 
 
-## Weather kinds that wet a body out in them (names as Weather.at returns them).
+## Weather kinds that wet a body out in them (names as Weather.at returns them;
+## a newer kind wets as the kind it acts like: a whiteout as a blizzard).
 static func wets(kind: String, strength: float) -> bool:
-	return strength >= 0.25 and kind in ["rain", "storm", "snow", "hail", "blizzard", "sleet", "drizzle"]
+	var k := String(Weather.family(StringName(kind)))
+	return strength >= 0.25 and (k in ["rain", "storm", "snow", "hail", "blizzard", "sleet"] or kind == "drizzle")

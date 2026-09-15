@@ -201,20 +201,24 @@ static func country_share(world: WorldData, p: Vector2) -> Dictionary:
 ## exists. Neon means something (VISION §8): an installation is heard where it
 ## stands, never over a whole village, so a word is a whole word of the name
 ## and each has a reach (INSTALLATION_REACH, else INSTALLATION_REACH_DEFAULT).
-const INSTALLATION_WORDS: Array[String] = ["pylon", "relay", "transformer", "substation", "mast", "antenna", "array", "server", "beacon", "terminal", "junction"]
+const INSTALLATION_WORDS: Array[String] = ["pylon", "relay", "transformer", "substation", "mast", "antenna", "array", "server", "beacon", "terminal", "junction",
+	"intake", "pump", "checkpoint", "stack", "drill", "conveyor"]
 ## Tiles at which an installation's grid and hum begin; both are full within
 ## INSTALLATION_NEAR of that. A lone pylon is only heard standing under it; a
 ## substation fills its yard.
-const INSTALLATION_REACH := {"pylon": 6.0, "mast": 8.0, "antenna": 8.0, "beacon": 9.0}
+const INSTALLATION_REACH := {"pylon": 6.0, "mast": 8.0, "antenna": 8.0, "beacon": 9.0,
+	# The land's works stand in lines and fields: each alone is heard close, the
+	# field together further (shares add), and never over most of the island.
+	"relay": 4.0, "drill": 4.0, "conveyor": 4.0, "pump": 6.0, "checkpoint": 7.0, "intake": 8.0, "stack": 9.0}
 const INSTALLATION_REACH_DEFAULT := 14.0
 const INSTALLATION_NEAR := 0.3
 ## Wires strung between poles: a faint sing in the wind, nothing more (a
 ## village's power line is not the machines' grid).
 const WIRE_WORDS: Array[String] = ["pole", "wire", "cable"]
 ## Wreckage the wind finds a voice in: sheet, wire, girders, hulks.
-const WRECK_WORDS: Array[String] = ["wreck", "ruin", "tip", "hulk", "girder", "fence", "barricade", "sign", "car", "rubble", "scrap", "shell", "cage", "wire", "tank", "crane", "container", "hut"]
+const WRECK_WORDS: Array[String] = ["wreck", "ruin", "tip", "hulk", "girder", "fence", "barricade", "sign", "car", "rubble", "scrap", "shell", "cage", "wire", "tank", "crane", "container", "hut", "debris", "vehicle", "hull", "slag"]
 ## Roofs, walls and pipes that gather rain into gutters and drips.
-const SHELTER_WORDS: Array[String] = ["house", "ruin", "wreck", "hut", "shelter", "shed", "tank", "container", "tower", "works", "kiln", "shell"]
+const SHELTER_WORDS: Array[String] = ["house", "ruin", "wreck", "hut", "shelter", "shed", "tank", "container", "tower", "works", "kiln", "shell", "shack", "archive", "checkpoint", "vehicle", "hull"]
 ## Canopy that rain falls on as leaves and needles.
 const LEAF_WORDS: Array[String] = ["pine", "broadleaf", "bush", "gorse", "reeds"]
 ## How far works_near looks (tiles).
@@ -461,7 +465,9 @@ static func night(hour: float) -> float:
 ## tide 0..1 (high water brings the shore closer), wet (wetness()), and what
 ## works_near found (wreck, hum, installation, shelter, leaves).
 static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_sea: Dictionary, near_river: Dictionary, seconds: float, extra: Dictionary = {}) -> Dictionary:
-	var kind: StringName = weather.get("kind", &"fair")
+	# A kind the beds were not written for sounds like the M1 kind it acts like
+	# (drizzle as rain, a whiteout as a blizzard, dry lightning as dust...).
+	var kind: StringName = Weather.family(StringName(weather.get("kind", &"fair")))
 	var s := clampf(float(weather.get("strength", 0.0)), 0.0, 1.0)
 	var wind := clampf(absf(float(weather.get("wind", 0.0))), 0.0, 1.0)
 	var g := gust(seconds)

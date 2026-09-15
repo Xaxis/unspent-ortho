@@ -29,16 +29,13 @@ func nightfall() -> float:
 	return FightRules.nightfall(hour())
 
 
-## Sight x (1 - c x strength) per weather kind (design-extract §5). Hearing never.
+## Sight x (1 - c x strength) per weather kind (design-extract §5; the sky's
+## Weather.SIGHT_CUT, which covers every kind it can send). Hearing never.
 func weather_sight() -> float:
-	var c := 0.0
-	match String(weather):
-		"sand", "sandstorm": c = 0.55
-		"fog": c = 0.45
-		"storm": c = 0.30
-		"snow": c = 0.25
-		"hail": c = 0.20
-	return 1.0 - c * clampf(weather_strength, 0.0, 1.0)
+	var k := weather
+	if k == &"sand" or k == &"sandstorm":
+		k = &"dust"
+	return Weather.sight_factor(k, clampf(weather_strength, 0.0, 1.0))
 
 
 ## Reads the weather: Weather.at(seed, minutes) -> {kind, strength, wind}.

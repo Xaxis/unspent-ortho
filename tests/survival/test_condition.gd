@@ -147,3 +147,11 @@ func test_wake_minute_is_the_next_one() -> void:
 	near(Condition.wake_minute(22.0 * 60.0, false), 32.0 * 60.0, 1e-6)
 	near(Condition.wake_minute(3.0 * 60.0, true), 6.0 * 60.0, 1e-6)
 	near(Condition.wake_minute(1440.0 + 7.0 * 60.0, true), 2880.0 + 6.0 * 60.0, 1e-6)
+
+
+func test_the_landscapes_own_weathers_wet_as_the_kinds_they_act_like() -> void:
+	check(Condition.wets("whiteout", 0.8), "a whiteout wets like a blizzard")
+	check(Condition.wets("drizzle", 0.5), "drizzle wets")
+	check(not Condition.wets("glare", 1.0), "glare does not")
+	check(not Condition.wets("dry_storm", 1.0), "nor dry lightning")
+	check(not Condition.wets("haze", 1.0), "nor haze")
