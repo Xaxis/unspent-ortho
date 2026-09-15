@@ -216,7 +216,10 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 		var foot := ch.feet[fi]
 		var out := ch.feet_out[fi]
 		var country := int(ch.feet_country[fi])
-		var chance := 0.55 if country == Country.BONELANDS or country == Country.BURNING or country == Country.SNOWFIELD else 0.35
+		# Rubble gathers under the stretches of face that are falling, and the
+		# rest of the foot is clean: never a dotted line along every contour.
+		var fall := _clump.get_noise_2d(foot.x * 1.7 + 400.0, foot.z * 1.7) * 0.5 + 0.5
+		var chance := (0.5 if country == Country.BONELANDS or country == Country.BURNING else 0.3) * clampf((fall - 0.45) * 3.0, 0.0, 1.0)
 		if rng.randf() > chance:
 			continue
 		var p := foot + out * (0.05 + rng.randf() * 0.25)
@@ -291,7 +294,7 @@ static func rock_of(c: int) -> Color:
 	match c:
 		Country.BONELANDS: return P.LINEN[3]
 		Country.BURNING: return P.STONE[1]
-		Country.SNOWFIELD: return P.SLATE[2]
+		Country.SNOWFIELD: return P.SLATE[3]
 		Country.MOSS, Country.PINEWOOD: return P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	return P.SLATE[2]
 

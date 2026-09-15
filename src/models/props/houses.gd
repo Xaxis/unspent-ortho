@@ -240,7 +240,7 @@ static func slated(k: Kit, c: int, form: int) -> void:
 			# Half the slates held; the rest were replaced in plate course by course.
 			var plate := (i >= 4 and half == 1) if form == 0 else (i <= 1 or (i == 2 and half == 0))
 			var pen := k.found if plate else k.made
-			var col: Color = (P.PLATE[3] if i % 2 == 0 else P.PLATE[2]) if plate else (P.SLATE[1] if i % 2 == 0 else P.SLATE[0])
+			var col: Color = (P.PLATE[3] if i % 2 == 0 else P.PLATE[2]) if plate else (P.SLATE[3] if i % 2 == 0 else P.SLATE[2])
 			pen.quad(b0, a0, a1, b1, col)
 	# Back slope: plate, with one patch of old slate.
 	var bk0 := Vector3(cx - ex, h - 0.05, -ez)
@@ -248,9 +248,9 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	var rr0 := Vector3(cx, yr, -ez)
 	var rr1 := Vector3(cx, yr, ez)
 	var rrm := Vector3(cx, yr - sag, 0.0)
-	k.made.tri(bk0, bk1, rrm, P.SLATE[0])
-	k.made.tri(bk0, rrm, rr0, P.SLATE[0])
-	k.made.tri(bk1, rr1, rrm, P.SLATE[0])
+	k.made.tri(bk0, bk1, rrm, P.SLATE[2])
+	k.made.tri(bk0, rrm, rr0, P.SLATE[2])
+	k.made.tri(bk1, rr1, rrm, P.SLATE[2])
 	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
 	# Gable ends in stone.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), Vector3(cx, yr - 0.06, t[6].z + 0.004), GroundColors.down(rubble, 0.3))

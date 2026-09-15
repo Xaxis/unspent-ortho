@@ -158,7 +158,8 @@ static func _make(g: int, c: int) -> Color:
 			return P.SLATE[3]
 		# Ash over a fire that has not gone out: warmed off the cold grey.
 		Ground.ASH: return _m(P.ASH[2], P.EARTH[2], 0.22)
-		Ground.CLINKER: return _m(P.STONE[1], P.ASH[1], 0.4)
+		# Slag grit: a dark rust-grey, never near black; the glass lies in pools.
+		Ground.CLINKER: return _m(P.STONE[2], P.RUST[1], 0.3)
 	return P.BLOOM[3]
 
 

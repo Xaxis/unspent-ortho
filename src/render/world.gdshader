@@ -317,13 +317,13 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// Wind-combed streaks on the lee of a drift.
 			c = up(c, 0.25);
 		}
-		float field = ink_vnoise(wp * 0.13 + vec2(17.0, 3.0));
-		if (field > 0.66) {
+		float field = ink_vnoise(wp * 0.13 + vec2(17.0, 3.0)) * 0.75 + ink_vnoise(wp * 0.05 + 9.0) * 0.25;
+		if (field > 0.68) {
 			// Crust broken into plates; some seams still glow.
 			vec3 cr = cells(wp * 0.9 + (vec2(ink_vnoise(wp * 1.7), ink_vnoise(wp * 1.7 + 9.0)) - 0.5) * 0.35);
 			float seam = cr.y - cr.x;
-			float width = 0.05 * clamp((field - 0.66) * 10.0, 0.0, 1.0);
-			bool live = ink_hash(vec2(floor(cr.z * 97.0), floor((cr.x + cr.y) * 3.0))) < 0.55;
+			float width = 0.045 * clamp((field - 0.68) * 12.0, 0.0, 1.0);
+			bool live = ink_hash(vec2(floor(cr.z * 97.0), floor((cr.x + cr.y) * 3.0))) < 0.4 && field > 0.72;
 			if (seam < width) {
 				c = INK2;
 				float eh = ink_hash(px);
@@ -577,36 +577,38 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = LINEN1;
 		}
 	} else if (id == 6) {
-		// BURNING: basalt in upright columns, each its own width, a lit facet
-		// and a shaded one, joints dark and a few still glowing. At the lip
-		// the column heads stand as pale, uneven caps.
-		float span = 6.0;
-		float cx = floor(px.x / span);
-		float lx = px.x - cx * span;
-		float w = 4.0 + floor(ink_hash(vec2(cx, 1.0)) * 3.0);
+		// BURNING: basalt in upright columns of uneven width, each with a lit
+		// facet, a flat face and a shaded one; joints dark and broken, a few
+		// still glowing; at the lip the column heads stand as pale caps, some
+		// higher than others.
+		float span = 9.0;
+		float shift = floor(ink_hash(vec2(floor(px.x / 37.0), 5.0)) * 9.0);
+		float cx = floor((px.x + shift) / span);
+		float lx = px.x + shift - cx * span;
+		float jw = 6.0 + floor(ink_hash(vec2(cx, 1.0)) * 3.0);
 		float h = ink_hash(vec2(cx, 2.0));
-		c = h < 0.33 ? STONE0 : (h < 0.7 ? mix(STONE0, STONE1, 0.5) : STONE1);
-		float cap = 0.05 + ink_hash(vec2(cx, 3.0)) * 0.06;
-		if (lx >= w) {
-			// The joint between two columns.
-			c = INK1;
-			if (ink_hash(vec2(cx, floor(y * 10.0))) > 0.9 && dt > cap) {
+		c = h < 0.33 ? STONE1 : (h < 0.7 ? mix(STONE1, STONE2, 0.45) : mix(STONE0, STONE1, 0.6));
+		float cap = 0.04 + ink_hash(vec2(cx, 3.0)) * 0.08;
+		bool joint = lx >= jw && ink_hash(vec2(cx, floor(y * 4.0) + 9.0)) < 0.8;
+		if (dt < cap) {
+			c = lx < jw * 0.45 ? ASH3 : (lx < jw ? mix(ASH3, STONE2, 0.55) : STONE1);
+		} else if (dt < cap + 0.018) {
+			c = INK2;
+		} else if (joint) {
+			c = INK2;
+			// Only a few joints still burn, and those along a stretch of face.
+			if (ink_vnoise(vec2(px.x * 0.02, y * 0.5 + 3.0)) > 0.62 && ink_hash(vec2(cx, floor(y * 10.0))) > 0.7) {
 				float fl = flicker(vec3(cx, floor(y * 10.0), 0.0), 1.6);
 				c = mix(EMBER2, EMBER3, fl);
 				emit += c * (0.5 + 0.5 * fl);
 				unh = 1.0;
 			}
-		} else if (dt < cap) {
-			c = lx < w * 0.5 ? ASH3 : mix(ASH3, STONE2, 0.6);
-		} else if (dt < cap + 0.02) {
-			c = INK2;
 		} else {
-			if (lx < 1.0) {
-				c = up(c, 0.7);
-			} else if (lx >= w * 0.55) {
-				c = dn(c, 0.4);
+			if (lx < 2.0) {
+				c = up(c, 0.75);
+			} else if (lx >= jw * 0.6) {
+				c = dn(c, 0.35);
 			}
-			// A rare cross-joint, as columns break.
 			if (abs(fract(y * 1.7 + h * 3.0) - 0.5) < 0.012 && ink_hash(vec2(cx, 4.0)) < 0.35) {
 				c = INK2;
 			}
@@ -663,8 +665,13 @@ void fragment() {
 	if (wash_blend > 0.0) {
 		float e = wash_blend - 0.5 + bend * ((ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.36 + (ink_vnoise(world_pos.xz * 7.1 + 3.0) - 0.5) * 0.14);
 		second = e > 0.0;
-		float fw = fwidth(e) * 0.9;
-		bool second_lighter = dot(wash2, vec3(0.3, 0.59, 0.11)) > dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
+		float l2 = dot(wash2, vec3(0.3, 0.59, 0.11));
+		float l1 = dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
+		bool second_lighter = l2 > l1;
+		// Where a pale wash lies on a dark one (snow on turf or ash) the pale
+		// side's edge is a wider pen, so the patch has a drawn rim and not a
+		// cut-paper edge.
+		float fw = fwidth(e) * (abs(l2 - l1) > 0.3 ? 2.2 : 0.9);
 		edge_ink = (second_lighter ? (e > 0.0 && e < fw) : (e <= 0.0 && e > -fw)) && ink_hash(floor(px / vec2(3.0, 2.0)) + 71.0) > 0.18;
 	}
 	vec3 c = second ? wash2 : COLOR.rgb;
