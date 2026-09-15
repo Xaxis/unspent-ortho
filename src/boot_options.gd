@@ -15,6 +15,9 @@ extends RefCounted
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
+## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
+## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge
+##                     (MS = simulation time after the press; each has a default)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +32,8 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+var spawn: PackedStringArray = []
+var act := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +60,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"spawn": o.spawn = v.split(",", false)
+			"act": o.act = v
 			_: push_warning("unknown option --%s" % k)
 	return o
