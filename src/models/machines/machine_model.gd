@@ -24,6 +24,7 @@ const LIGHT_FIRST := 0.3
 ## Direction from a model toward the fixed game camera (yaw 45, pitch 57; the
 ## camera never rotates). Used when no live camera is available (tests, gallery).
 const TO_CAMERA := Vector3(0.3848, 0.8387, 0.3848)
+const FOUND_SHADER := preload("res://src/render/found.gdshader")
 
 var ramp: Array = []
 var part_material: ShaderMaterial
@@ -73,19 +74,22 @@ static func r(drot: Vector3) -> Array:
 
 # -- building ---------------------------------------------------------------
 
-## Call first in build(): ramp, materials, part side.
+## Call first in build(): ramp, materials, part side. Machines are FOUND: every
+## part of them is on found.gdshader whatever material the caller offered (the
+## world's MADE material would hatch them, and they must never look drawn).
 func begin_rig() -> void:
 	ramp = Palette.MACHINE.get(String(kind), Palette.FOUND)
-	var base_shader := preload("res://src/render/world.gdshader")
-	if material is ShaderMaterial and (material as ShaderMaterial).shader == base_shader:
-		part_material = (material as ShaderMaterial).duplicate() as ShaderMaterial
-		cold_material = (material as ShaderMaterial).duplicate() as ShaderMaterial
-	else:
-		part_material = ShaderMaterial.new()
-		part_material.shader = base_shader
-		cold_material = ShaderMaterial.new()
-		cold_material.shader = base_shader
+	material = found_material(0.0)
+	part_material = found_material(emission)
+	cold_material = found_material(0.2)
 	part_normal = side_normal(part_side)
+
+
+static func found_material(emission_strength: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = FOUND_SHADER
+	m.set_shader_parameter("emission_strength", emission_strength)
+	return m
 
 
 static func side_normal(side: StringName) -> Vector3:

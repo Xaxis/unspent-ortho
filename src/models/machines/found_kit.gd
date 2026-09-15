@@ -335,6 +335,9 @@ static func darkened(k: MeshKit) -> MeshKit:
 	var d := MeshKit.new()
 	d.verts = k.verts.duplicate()
 	d.normals = k.normals.duplicate()
+	d.uvs = k.uvs.duplicate()
+	d.uv2s = k.uv2s.duplicate()
+	d.custom0 = k.custom0.duplicate()
 	d.colors = PackedColorArray()
 	for col in k.colors:
 		d.colors.append(dark_colour(col))
