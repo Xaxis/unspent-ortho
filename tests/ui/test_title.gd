@@ -55,8 +55,7 @@ func test_pause_can_leave_for_the_title() -> void:
 	check(ui.call("open_screen", &"pause"))
 	check(tree.paused)
 	var pause: UiPauseScreen = ui.call("top")
-	pause.handle(&"down")
-	pause.handle(&"down")
+	pause.select(&"title")
 	pause.handle(&"confirm")
 	await tree.process_frame
 	await tree.process_frame

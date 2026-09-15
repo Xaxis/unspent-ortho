@@ -179,20 +179,65 @@ func test_a_line_said_on_a_page_is_not_said_again_after() -> void:
 	hud.free()
 
 
-func test_a_new_country_is_announced_once_it_holds() -> void:
+func test_a_new_landscape_is_pinged_once_it_holds() -> void:
 	var w := UiPlaceWatch.new()
-	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")
-	eq(w.step(Country.COAST, 5.0), -1, "and only once")
-	eq(w.step(Country.MOSS, 0.5), -1, "a step over the border is not yet a crossing")
-	eq(w.step(Country.COAST, 0.5), -1, "back again: nothing")
-	eq(w.step(Country.MOSS, 0.1), -1)
-	var got := -1
+	eq(w.step(&"coast", 0.016), &"coast", "the start is named at once")
+	eq(w.step(&"coast", 5.0), &"", "and only once")
+	eq(w.step(&"moss", 0.5), &"", "a step over the border is not yet a crossing")
+	eq(w.step(&"coast", 0.5), &"", "back again: nothing")
+	eq(w.step(&"moss", 0.1), &"")
+	var got := &""
 	for i in 20:
-		var r := w.step(Country.MOSS, 0.1)
-		if r >= 0:
+		var r := w.step(&"moss", 0.1)
+		if r != &"":
 			got = r
-	eq(got, Country.MOSS, "holding the new country names it")
-	eq(w.step(Country.SEA, 3.0), -1, "wading out to sea names nothing")
+	eq(got, &"moss", "holding the new landscape names it")
+	eq(w.step(&"sea", 3.0), &"", "wading out to sea names nothing")
+
+
+func test_the_slate_runs_off_the_lamp_or_a_charge_and_dims_when_low() -> void:
+	eq(UiRules.slate_power(UiRules.POWER_LAMP_MINUTES, 0), 1.0, "a full flask")
+	eq(UiRules.slate_power(0.0, UiRules.POWER_CHARGES), 1.0, "or enough charges")
+	near(UiRules.slate_power(UiRules.POWER_LAMP_MINUTES * 0.5, 1), 0.5, 1e-4, "whichever holds more")
+	eq(UiRules.slate_power(0.0, 0), 0.0, "nothing left")
+	eq(UiRules.brightness(1.0), 1.0)
+	eq(UiRules.brightness(UiSlate.LOW_POWER), 1.0, "full brightness down to the low line")
+	check(UiRules.brightness(UiSlate.LOW_POWER * 0.5) < 1.0, "it dips below it")
+	eq(UiRules.brightness(0.0), UiSlate.DIM_FLOOR, "never darker than the floor")
+	check(UiSlate.DIM_FLOOR >= 0.75, "the floor keeps it readable")
+	eq(UiRules.cell_segments(1.0), 4)
+	eq(UiRules.cell_segments(0.5), 2)
+	eq(UiRules.cell_segments(0.2), 1, "a sliver still shows a segment")
+	eq(UiRules.cell_segments(0.0), 0)
+
+
+func test_charges_show_only_with_something_that_spends_them() -> void:
+	check(not UiRules.charge_shown(&""), "bare hands")
+	check(not UiRules.charge_shown(&"knife"), "a made tool spends nothing")
+	check(UiRules.charge_shown(&"las_hand"), "a found weapon spends charges")
+
+
+func test_pressures_are_gauges_only_while_they_matter() -> void:
+	var b := Body.new()
+	b.fed_until = 1000.0
+	check(UiRules.pressures(b, 900.0, 5.0).is_empty(), "fed, dry, light, no hazard: no gauges")
+	b.pressure = {&"cold": 0.1}
+	check(UiRules.pressures(b, 900.0, 5.0).is_empty(), "a hazard too faint to feel is not shown")
+	b.pressure = {&"heat": 0.4, &"cold": 0.9}
+	var list := UiRules.pressures(b, 900.0, 5.0)
+	var ids: Array = list.map(func(p: Dictionary) -> StringName: return p.id)
+	eq(ids, [&"cold", &"heat"], "felt hazards, in a fixed order")
+	eq(list[0].level, 2, "a hard pressure is the warning")
+	eq(list[1].level, 1, "a lighter one is quiet")
+	b.wet = 0.9
+	eq(UiRules.pressures(b, 900.0, 5.0)[0].id, &"wet", "the body's needs come first")
+
+
+func test_a_share_never_reads_nothing_once_something_is_seen() -> void:
+	eq(UiRules.share(0.0), "0%")
+	eq(UiRules.share(0.0004), "0.1%")
+	eq(UiRules.share(0.034), "3.4%")
+	eq(UiRules.share(0.5), "50%")
 
 
 func test_clock_at_names_the_day_only_when_it_changes() -> void:

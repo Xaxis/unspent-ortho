@@ -1,26 +1,33 @@
 class_name Hud
 extends CanvasLayer
-## The quiet layer, drawn at the 640x360 base so every pixel is a screen pixel.
-## Nothing sits over the middle of the screen, where the fight is:
+## The slate's edge overlay, drawn at the 640x360 base so every pixel is a
+## screen pixel. Small readouts clipped to the corners, as if strapped to the
+## wrist or thrown onto a salvaged lens (docs/ART.md §9). Nothing sits over the
+## middle of the screen, where the fight is, and nothing in a fight is text
+## beyond the readouts:
 ##
-##   top left     health, a gauge of cells of three (no numbers); wind under it,
-##                only while some is spent
-##   top right    the clock; under it the needs that matter now, as glyphs
-##   bottom left  the thing in hand: its icon and name
-##   bottom mid   a message that fades; under it what E would do here
+##   top left     the wrist unit: health as cells of three segments (no numbers);
+##                wind under it only while some is spent; charges beside it only
+##                while the thing in hand spends them
+##   top right    the clock and the slate's cell; under it the felt pressures,
+##                a small gauge each, only while they matter
+##   top middle   the location ping, when the player crosses into a landscape
+##   bottom left  the thing in hand
+##   bottom mid   a message line that fades; under it what E would do here
 ##
 ## The HUD owns no rules. The ui system (src/systems/90_ui.gd) feeds it every
 ## frame from Body, Inventory and the world; Events.message arrives directly.
 
 const MARGIN := 8
-const CELL_H := 8
-## One cell of the health tally: three strokes and the gap after them.
-const TALLY_W := 12
+## One health cell: three segments and the gap after them.
+const CELL_W := 12
 const PLACE_IN := 0.8
 const PLACE_HOLD := 2.6
 const PLACE_OUT := 1.4
 ## A place name gives way to a fight this fast.
 const PLACE_HUSH := 0.3
+## A pressure gauge's tile, and the gap between tiles.
+const GAUGE := Vector2i(13, 16)
 
 var clock_text := ""
 var health := 12
@@ -28,22 +35,26 @@ var max_health := 12
 var wind := 1.0
 var max_wind := 1.0
 var held: StringName = &""
-var needs: Array[Dictionary] = []
+var pressures: Array[Dictionary] = []
 var hint := ""
 var hint_key := "e"
 var messages := UiMessages.new()
 var place := ""
+var charge_shown := false
+var charges := 0
+var power := 1.0
 
 var _canvas: Control
 var _place_age := 99.0
 var _time := 0.0
 var _wind_alpha := 0.0
+var _charge_alpha := 0.0
 var _hint_alpha := 0.0
 var _hint_target := 0.0
 var _hurt_flash := 0.0
 var _lost_from := 0
-var _needs_alpha := {}
-## Pages open now. A page takes the messages said while it is up, so the HUD
+var _gauge_alpha := {}
+## Apps open now. An app takes the messages said while it is up, so the HUD
 ## does not queue them to play a second time when it closes.
 var _pages := {}
 
@@ -64,7 +75,8 @@ func _ready() -> void:
 func set_clock(text: String) -> void:
 	if text != clock_text:
 		clock_text = text
-		_canvas.queue_redraw()
+		if _canvas != null:
+			_canvas.queue_redraw()
 
 
 func set_body(p_health: int, p_max_health: int, p_wind: float, p_max_wind: float) -> void:
@@ -81,8 +93,28 @@ func set_held(id: StringName) -> void:
 	held = id
 
 
+## Charges carried, shown only while `shown` (the thing in hand spends them).
+func set_charge(shown: bool, count: int) -> void:
+	charge_shown = shown
+	charges = count
+
+
+## The slate's power 0..1: the readouts dim with it, as the glass does.
+func set_power(p: float) -> void:
+	power = p
+
+
+## Felt pressures as UiRules.pressures gives them: [{id, level, value}].
+func set_pressures(list: Array[Dictionary]) -> void:
+	pressures = list
+
+
+## Needs as UiRules.needs gives them ([{need, level}]), shown as pressures.
 func set_needs(list: Array[Dictionary]) -> void:
-	needs = list
+	var out: Array[Dictionary] = []
+	for n in list:
+		out.append({"id": n.need, "level": n.level, "value": 0.5 if n.level == 1 else 1.0})
+	pressures = out
 
 
 ## text "" hides the hint (it fades out rather than blinking off).
@@ -93,7 +125,7 @@ func set_hint(text: String, key: String = "e") -> void:
 	_hint_target = 1.0 if text != "" else 0.0
 
 
-## Letter a place name across the top: faded in, held, faded out.
+## Ping a place name at the top: faded in, held, faded out.
 func show_place(text: String) -> void:
 	place = text
 	_place_age = 0.0
@@ -143,15 +175,26 @@ func set_quiet(q: bool) -> void:
 		messages.quiet = q
 
 
+## How visible each readout is now, 0..1, by name (tests, and what is drawn):
+## health clock held always; wind, charge, hint, place and each pressure id by their fades.
+func shown() -> Dictionary:
+	var out := {&"health": 1.0, &"clock": 1.0, &"held": 1.0, &"wind": _wind_alpha, &"charge": _charge_alpha, &"hint": _hint_alpha, &"place": place_alpha()}
+	for k: StringName in _gauge_alpha:
+		out[k] = _gauge_alpha[k]
+	return out
+
+
 ## Jump every fade to where it is heading (screenshots, tests).
 func settle() -> void:
 	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
+	_charge_alpha = 1.0 if charge_shown else 0.0
 	_hint_alpha = _hint_target
 	_hurt_flash = 0.0
 	if _place_age < PLACE_IN:
 		_place_age = PLACE_IN
-	for n in needs:
-		_needs_alpha[n.need] = 1.0
+	_gauge_alpha.clear()
+	for p in pressures:
+		_gauge_alpha[p.id] = 1.0
 
 
 func _process(delta: float) -> void:
@@ -161,177 +204,206 @@ func _process(delta: float) -> void:
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
+	_charge_alpha = move_toward(_charge_alpha, 1.0 if charge_shown else 0.0, delta * 4.0)
 	_hint_alpha = move_toward(_hint_alpha, _hint_target, delta * 6.0)
 	var present := {}
-	for n in needs:
-		present[n.need] = true
-	for k: StringName in [&"hunger", &"wet", &"load", &"tired"]:
-		var a: float = _needs_alpha.get(k, 0.0)
-		_needs_alpha[k] = move_toward(a, 1.0 if present.has(k) else 0.0, delta * 1.5)
-	_canvas.queue_redraw()
+	for p in pressures:
+		present[p.id] = true
+	for k: StringName in present:
+		if not _gauge_alpha.has(k):
+			_gauge_alpha[k] = 0.0
+	for k: StringName in _gauge_alpha.keys():
+		var a: float = _gauge_alpha[k]
+		a = move_toward(a, 1.0 if present.has(k) else 0.0, delta * 1.5)
+		if a <= 0.0 and not present.has(k):
+			_gauge_alpha.erase(k)
+		else:
+			_gauge_alpha[k] = a
+	if _canvas != null:
+		var b := UiRules.brightness(power)
+		_canvas.modulate = Color(b, b, b, 1.0)
+		_canvas.queue_redraw()
 
 
 func _draw_hud() -> void:
 	var ci := _canvas
-	_draw_health(ci)
+	_draw_wrist(ci)
 	_draw_clock(ci)
 	_draw_held(ci)
 	_draw_bottom(ci)
 	_draw_place(ci)
 
 
-func _draw_place(ci: Control) -> void:
-	var a := place_alpha()
-	if a <= 0.0 or place == "":
-		return
-	# Spaced capitals, the way a map letters a region, with a rule drawn out from the middle.
-	var spaced := ""
-	for i in place.length():
-		spaced += (" " if i > 0 else "") + place[i].to_upper()
-	var w := UiFont.width(spaced)
-	var x := 320 - w / 2
-	var y := 30
-	UiDraw.text_rimmed_faded(ci, Vector2i(x, y), spaced, UiTheme.HUD_TEXT, UiTheme.INK_DEEP, a)
-	var half := roundi((w / 2 + 16) * clampf(_place_age / PLACE_IN, 0.0, 1.0))
-	var k := UiDraw.stepped(a)
-	UiDraw.rect(ci, Rect2i(320 - half - 1, y + 13, half * 2 + 2, 3), Color(UiTheme.INK_DEEP, k))
-	UiDraw.hline(ci, 320 - half, 320 + half, y + 14, UiTheme.HUD_DIM.lerp(UiTheme.INK_DEEP, 1.0 - k))
+## A small window of the slate's glass in a violet clip, held on by a strap
+## (left) or a strip of tape (right): every corner readout sits in one.
+static func clip(ci: CanvasItem, r: Rect2i, strap_left: bool) -> void:
+	var F := Palette.FOUND
+	UiDraw.rect(ci, Rect2i(r.position.x - 1, r.position.y - 2, r.size.x + 2, r.size.y + 4), UiTheme.RIM)
+	UiDraw.rect(ci, Rect2i(r.position.x - 2, r.position.y - 1, r.size.x + 4, r.size.y + 2), UiTheme.RIM)
+	UiDraw.frame(ci, r.grow(1), F[1])
+	UiDraw.hline(ci, r.position.x, r.end.x - 1, r.position.y - 1, F[3])
+	UiDraw.rect(ci, r, UiTheme.GLASS)
+	for y in range(r.position.y + 1, r.end.y, 2):
+		UiDraw.hline(ci, r.position.x, r.end.x - 1, y, UiTheme.GLASS_ROW)
+	if strap_left:
+		# The strap it is buckled to, running off the edge of the wrist.
+		var A := Palette.ASH
+		UiDraw.rect(ci, Rect2i(0, r.position.y + 2, r.position.x - 2, r.size.y - 4), A[1])
+		UiDraw.hline(ci, 0, r.position.x - 3, r.position.y + 2, A[2])
+		for x in range(1, r.position.x - 2, 3):
+			UiDraw.px(ci, x, r.position.y + r.size.y / 2, A[0])
+	else:
+		# A strip of tape over its top corner.
+		var A := Palette.ASH
+		for k in 5:
+			UiDraw.hline(ci, r.end.x - 7 + k, r.end.x + 1 + k, r.position.y - 3 + k, A[4] if k != 4 else A[3])
 
 
-func _draw_health(ci: Control) -> void:
-	# Health kept as a tally on a paper tag: three pen strokes to a cell, leaning
-	# a little the way a hand makes them. A spent stroke is left as a pencil
-	# ghost; a fresh loss shows in the accent before it goes. With one cell left
-	# the strokes turn to the accent and the tag's rim warms and cools.
+func _draw_wrist(ci: Control) -> void:
 	var cells := UiRules.health_cells(health, max_health)
 	var lost_cells := UiRules.health_cells(_lost_from, max_health)
-	var x := MARGIN
-	var y := MARGIN
-	var w := cells.size() * TALLY_W + 1
-	var tag := Rect2i(x, y, w, CELL_H + 3)
 	var last := health > 0 and health <= UiRules.PER_CELL
-	UiDraw.rect(ci, Rect2i(tag.position.x + 1, tag.position.y - 1, tag.size.x - 2, tag.size.y + 2), UiTheme.INK_DEEP)
-	UiDraw.rect(ci, tag.grow_individual(1, 0, 1, 0), UiTheme.INK_DEEP)
+	var w := cells.size() * CELL_W + 3
+	var win := Rect2i(MARGIN + 6, MARGIN, w, 11)
+	clip(ci, win, true)
 	if last:
 		var warm := 0.5 + 0.5 * sin(_time * 3.2)
-		UiDraw.frame(ci, tag.grow(1), Color(UiTheme.ACCENT_BRIGHT, 0.3 + 0.55 * warm))
-	UiDraw.rect(ci, tag, UiTheme.PAPER)
-	UiDraw.hline(ci, tag.position.x, tag.end.x - 1, tag.end.y - 1, UiTheme.PAPER_SHADE)
+		UiDraw.frame(ci, win.grow(1), Color(UiTheme.WARN, 0.3 + 0.55 * warm))
 	for i in cells.size():
-		var cx := x + 3 + i * TALLY_W
+		var cx := win.position.x + 3 + i * CELL_W
 		for t in UiRules.PER_CELL:
-			var sx := cx + t * 3
-			var col := UiTheme.ACCENT if last else UiTheme.INK
+			var col := UiTheme.WARN if last else UiTheme.TEXT
 			if t >= cells[i]:
-				col = UiTheme.PAPER_SHADE
+				col = UiTheme.GHOST
 				if _hurt_flash > 0.0 and t < lost_cells[i]:
-					col = UiTheme.ACCENT_BRIGHT
-			# Each stroke leans: its top a pixel right of its foot, and no two alike.
-			var jog := 3 + (i * 7 + t * 5) % 2
-			UiDraw.vline(ci, sx + 1, y + 1, y + jog - 1, col)
-			UiDraw.vline(ci, sx, y + jog, y + CELL_H, col)
+					col = UiTheme.WARN
+			UiDraw.rect(ci, Rect2i(cx + t * 3, win.position.y + 2, 2, 7), col)
 	if _wind_alpha > 0.0:
-		# Wind: one thin line under the tag, pale as breath, only while some is spent.
-		var fill := roundi((w - 2) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
-		var wy := tag.end.y + 3
+		# Wind: one thin line under the window, only while some is spent.
 		var k := UiDraw.stepped(_wind_alpha)
-		UiDraw.rect(ci, Rect2i(MARGIN, wy - 1, w, 3), Color(UiTheme.INK_DEEP, k * 0.8))
-		UiDraw.rect(ci, Rect2i(MARGIN + 1, wy, fill, 1), Color(Palette.RIME[5], k))
+		var fill := roundi((w - 2) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
+		var wy := win.end.y + 3
+		UiDraw.rect(ci, Rect2i(win.position.x - 1, wy - 1, w + 2, 3), Color(UiTheme.RIM, k * 0.85))
+		UiDraw.rect(ci, Rect2i(win.position.x, wy, fill, 1), Color(UiTheme.PHOSPHOR[2], k))
+	if _charge_alpha > 0.0:
+		var k := UiDraw.stepped(_charge_alpha)
+		var text := "%d" % charges
+		var cw := Rect2i(win.end.x + 6, win.position.y, 13 + UiFont.width(text) + 4, 11)
+		if k >= 1.0:
+			clip(ci, cw, false)
+			_charge_glyph(ci, Vector2i(cw.position.x + 2, cw.position.y + 2), UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
+			UiDraw.text(ci, Vector2i(cw.position.x + 13, cw.position.y), text, UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
+		else:
+			UiDraw.text_rimmed_faded(ci, Vector2i(cw.position.x + 13, cw.position.y), text, UiTheme.MACHINE[3], UiTheme.RIM, k)
+
+
+## A found charge: a small violet cell with its slot lit.
+static func _charge_glyph(ci: CanvasItem, at: Vector2i, col: Color) -> void:
+	UiDraw.frame(ci, Rect2i(at.x, at.y, 9, 7), col)
+	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + 2, 5, 3), col)
+	UiDraw.vline(ci, at.x + 9, at.y + 2, at.y + 4, col)
 
 
 func _draw_clock(ci: Control) -> void:
-	var w := UiFont.width(clock_text)
-	UiDraw.text_rimmed(ci, Vector2i(640 - MARGIN - w, MARGIN - 1), clock_text, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
-	# Needs, right to left under the clock, in a fixed order so they never swap places.
-	var x := 640 - MARGIN - UiIcons.SIZE
+	var w := UiFont.width(clock_text) + 22
+	var win := Rect2i(640 - MARGIN - w, MARGIN, w, 11)
+	clip(ci, win, false)
+	UiSlate.cell(ci, Vector2i(win.position.x + 3, win.position.y + 2), power)
+	UiDraw.text(ci, Vector2i(win.position.x + 19, win.position.y), clock_text, UiTheme.TEXT)
+	# Felt pressures, right to left under the clock, in a fixed order so they never swap.
+	var x := 640 - MARGIN - GAUGE.x
 	var level := {}
-	for n in needs:
-		level[n.need] = n.level
+	var value := {}
+	for p in pressures:
+		level[p.id] = p.level
+		value[p.id] = p.value
+	var order: Array = _gauge_alpha.keys()
+	order.sort()
 	for k: StringName in [&"hunger", &"wet", &"load", &"tired"]:
-		var a: float = _needs_alpha.get(k, 0.0)
+		if order.has(k):
+			order.erase(k)
+			order.push_front(k)
+	for k: StringName in order:
+		var a: float = _gauge_alpha.get(k, 0.0)
 		if a <= 0.0:
 			continue
-		var col := UiTheme.ACCENT_BRIGHT if level.get(k, 1) >= 2 else UiTheme.HUD_TEXT
-		_draw_faded_need(ci, k, Vector2i(x, MARGIN + 12), col, a)
-		x -= UiIcons.SIZE + 4
+		var warn := int(level.get(k, 1)) >= 2
+		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), UiTheme.WARN if warn else UiTheme.TEXT, float(value.get(k, 0.5)), a)
+		x -= GAUGE.x + 5
 
 
-func _draw_faded_need(ci: Control, k: StringName, at: Vector2i, col: Color, a: float) -> void:
-	UiDraw.sprite_rimmed_faded(ci, UiIcons.NEEDS[k], at, {"#": col}, UiTheme.INK_DEEP, a)
+## A felt pressure: its glyph on a scrap of glass, a meter under it filling
+## with how hard it presses.
+func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float, a: float) -> void:
+	var k := UiDraw.stepped(a)
+	if k >= 1.0:
+		var r := Rect2i(at, GAUGE)
+		UiDraw.rect(ci, r.grow(1), UiTheme.RIM)
+		UiDraw.rect(ci, r, UiTheme.GLASS)
+		UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": col})
+		var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
+		UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), UiTheme.GHOST)
+		UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), col)
+	else:
+		UiDraw.sprite_rimmed_faded(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": col}, UiTheme.RIM, k)
 
 
 func _draw_held(ci: Control) -> void:
-	# The thing in hand on a little paper tag, so its colours read on any ground.
-	var y := 360 - MARGIN - 13
-	var x := MARGIN
 	var name := UiRules.item_name(held) if held != &"" else "hands"
+	var w := UiFont.width(name) + (19 if held != &"" else 6)
+	var win := Rect2i(MARGIN + 6, 360 - MARGIN - 11, w, 11)
+	clip(ci, win, true)
+	var x := win.position.x + 3
 	if held != &"":
-		var tag := Rect2i(x, y, 13, 13)
-		UiDraw.rect(ci, Rect2i(tag.position.x + 1, tag.position.y - 1, tag.size.x - 2, tag.size.y + 2), UiTheme.INK_DEEP)
-		UiDraw.rect(ci, tag.grow_individual(1, 0, 1, 0), UiTheme.INK_DEEP)
-		UiDraw.rect(ci, tag, UiTheme.PAPER)
-		UiDraw.hline(ci, tag.position.x, tag.end.x - 1, tag.end.y - 1, UiTheme.PAPER_SHADE)
-		UiIcons.draw_item(ci, held, tag.position + Vector2i(2, 2))
-		x += 17
-	UiDraw.text_rimmed(ci, Vector2i(x, y + 2), name, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
+		UiIcons.draw_item(ci, held, Vector2i(x, win.position.y + 1))
+		x += 13
+	UiDraw.text(ci, Vector2i(x, win.position.y), name, UiTheme.MACHINE[3] if UiIcons.is_found(held) else UiTheme.TEXT)
 
 
 func _draw_bottom(ci: Control) -> void:
 	# Newest message lowest; older ones stand above it, dimmer, until they fade.
-	var shown := messages.visible()
-	for i in shown.size():
-		var line: Dictionary = shown[shown.size() - 1 - i]
+	var lines := messages.visible()
+	for i in lines.size():
+		var line: Dictionary = lines[lines.size() - 1 - i]
 		var a: float = line.alpha * (1.0 if i == 0 else 0.72)
 		var text: String = line.text
-		var y := 360 - MARGIN - 24 - i * 12
-		UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, UiTheme.HUD_TEXT if i == 0 else UiTheme.HUD_DIM, UiTheme.INK_DEEP, a)
+		var y := 360 - MARGIN - 25 - i * 12
+		UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, UiTheme.TEXT if i == 0 else UiTheme.TEXT_DIM, UiTheme.RIM, a)
 	if _hint_alpha > 0.0 and hint != "":
-		var total := 11 + 4 + UiFont.width(hint)
+		var cap := maxi(9, UiFont.width(hint_key) + 4)
+		var total := cap + 5 + UiFont.width(hint)
 		var x := 320 - total / 2
-		var y := 360 - MARGIN - UiFont.SIZE
-		_draw_key(ci, Vector2i(x, y), hint_key, UiDraw.stepped(_hint_alpha))
-		UiDraw.text_rimmed_faded(ci, Vector2i(x + 15, y + 1), hint, UiTheme.HUD_TEXT, UiTheme.INK_DEEP, _hint_alpha)
+		var y := 360 - MARGIN - 11
+		var k := UiDraw.stepped(_hint_alpha)
+		UiSlate.key_cap(ci, Vector2i(x, y), hint_key, k)
+		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 5, y + 1), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
 
 
-## A little paper key cap with the letter in ink, as one picture so it fades
-## as a whole (its layers, faded one by one, would show through each other).
-static func _draw_key(ci: CanvasItem, at: Vector2i, key: String, a: float) -> void:
-	if a <= 0.0:
+## The location ping: a ring goes out from the top middle, then the landscape's
+## name in spaced capitals between brackets drawn out from the middle.
+func _draw_place(ci: Control) -> void:
+	var a := place_alpha()
+	if a <= 0.0 or place == "":
 		return
-	var rows := key_rows(key)
-	var colours := {"k": UiTheme.INK_DEEP, "p": UiTheme.PAPER, "d": UiTheme.PAPER_DEEP, "i": UiTheme.INK}
-	var top := Vector2i(at.x, at.y - 1)
-	if a >= 1.0:
-		UiDraw.sprite(ci, rows, top, colours)
-	else:
-		# picture() pads a pixel all round for a rim; a clear rim keeps the cap exact.
-		ci.draw_texture(UiDraw.picture("key|" + key, rows, colours, Color(0, 0, 0, 0), false), Vector2(top - Vector2i.ONE), Color(1, 1, 1, a))
-
-
-## The key cap's pixels: 11x12, rounded ink corners, paper face, a deeper
-## bottom edge, the letter centred in ink.
-static func key_rows(key: String) -> PackedStringArray:
-	var rows := PackedStringArray()
-	for y in 12:
-		var row := ""
-		for x in 11:
-			var corner := (x == 0 or x == 10) and (y == 0 or y == 11)
-			var edge := x == 0 or x == 10 or y == 0 or y == 11
-			if corner:
-				row += "."
-			elif edge:
-				row += "k"
-			elif y == 10:
-				row += "d"
-			else:
-				row += "p"
-		rows.append(row)
-	var g := UiFont.glyph(key)
-	var gx := 6 - UiFont.width(key) / 2
-	for r in g.size():
-		for c in g[r].length():
-			var y := r + 2
-			var x := gx + c
-			if g[r][c] == "#" and y < 12 and x < 11:
-				rows[y] = rows[y].substr(0, x) + "i" + rows[y].substr(x + 1)
-	return rows
+	var spaced := ""
+	for i in place.length():
+		spaced += (" " if i > 0 else "") + place[i].to_upper()
+	var w := UiFont.width(spaced)
+	var y := 30
+	var k := UiDraw.stepped(a)
+	var grow := clampf(_place_age / PLACE_IN, 0.0, 1.0)
+	if _place_age < PLACE_IN * 1.5:
+		var pr := 3.0 + (_place_age / (PLACE_IN * 1.5)) * 22.0
+		var ring_a := UiDraw.stepped(1.0 - _place_age / (PLACE_IN * 1.5)) * 0.8
+		for s in 28:
+			var an := s * TAU / 28.0
+			UiDraw.px(ci, 320 + roundi(cos(an) * pr * 1.6), y + 4 + roundi(sin(an) * pr * 0.5), Color(UiTheme.BRIGHT, ring_a))
+	UiDraw.text_rimmed_faded(ci, Vector2i(320 - w / 2, y), spaced, UiTheme.BRIGHT, UiTheme.RIM, a)
+	UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", UiTheme.TEXT_DIM, UiTheme.RIM, a * grow)
+	var half := roundi((w / 2 + 12) * grow)
+	for side: int in [-1, 1]:
+		var bx := 320 + side * half
+		UiDraw.rect(ci, Rect2i(bx - 1, y - 2, 3, 13), Color(UiTheme.RIM, k))
+		UiDraw.vline(ci, bx, y - 1, y + 10, Color(UiTheme.TEXT, k))
+		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), y - 1, Color(UiTheme.TEXT, k))
+		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), y + 10, Color(UiTheme.TEXT, k))

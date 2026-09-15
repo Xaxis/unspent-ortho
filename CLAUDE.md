@@ -67,7 +67,7 @@ tools print their own summaries.
 | `src/models/` | Procedural meshes: `props/`, `machines/`, `people/`, `animals/`. Any script here with `static func gallery() -> Array` shows up in the gallery. |
 | `src/actors/` | Nodes in the world: player, mobs, hit marks (`MobFx`). |
 | `src/systems/` | `NN_name.gd` game systems, loaded in order: 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 98 tour. |
-| `src/ui/` | The notebook: HUD, pages (carrying, making, map, pause, title), pixel font, sketches. |
+| `src/ui/` | The slate (docs/ART.md §9): one hacked tablet drawn in code (`UiSlate`), its apps (carrying, making, map, home, gear, machine reads, saves, title), the HUD as its edge overlay, the pixel font, scans; `SlateFeeds` lets other packages fill gear, reads and saves. |
 | `src/audio/` | Procedural synthesis, the sound sheet, beds, machines, music, the mix. |
 | `src/game.gd` | Wires one running game together from BootOptions. |
 | `src/main.gd` | Entry point; boot scene selection; `--shot` capture. |

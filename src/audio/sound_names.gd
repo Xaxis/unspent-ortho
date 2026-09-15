@@ -73,6 +73,9 @@ const EMITTED: Array[StringName] = [
 	&"lamp_on", &"lamp_off",
 	# ui
 	&"menu_move", &"menu_select", &"open_book", &"close_book", &"refused",
+	# slate (src/ui, src/systems/90_ui.gd)
+	&"ui_slate_click", &"ui_slate_confirm", &"ui_slate_back", &"ui_slate_deny", &"ui_slate_wake",
+	&"ui_slate_sleep", &"ui_slate_switch", &"ui_slate_whine", &"ui_slate_ping",
 ]
 
 ## Names that resolve to nothing on purpose (tests tell these from typos).

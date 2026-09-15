@@ -199,6 +199,16 @@ const SHEET := {
 	&"ui_refuse": [&"ui", -9.0, 1],
 	&"book_open": [&"ui", -10.0, 1],
 	&"book_close": [&"ui", -10.0, 1],
+	# The slate (SoundSlate): synthetic, a little broken.
+	&"ui_slate_click": [&"ui", -13.0, 1],
+	&"ui_slate_confirm": [&"ui", -10.0, 1],
+	&"ui_slate_back": [&"ui", -10.5, 1],
+	&"ui_slate_deny": [&"ui", -10.0, 1],
+	&"ui_slate_wake": [&"ui", -8.0, 1],
+	&"ui_slate_sleep": [&"ui", -11.0, 1],
+	&"ui_slate_switch": [&"ui", -12.0, 1],
+	&"ui_slate_whine": [&"ui", -9.0, 1],
+	&"ui_slate_ping": [&"ui", -8.0, 1],
 	# The figure, per country. Variants: 0 arriving, 1 dawn, 2 dusk.
 	&"music_coast": [&"music", -7.0, 3],
 	&"music_pinewood": [&"music", -7.0, 3],
@@ -360,6 +370,8 @@ static func render(key: StringName) -> Baked:
 				raw = SoundCreatures.make(b.name, b.variant, b.rate)
 			elif SoundWork.handles(b.name):
 				raw = SoundWork.make(b.name, b.variant, b.rate)
+			elif SoundSlate.handles(b.name):
+				raw = SoundSlate.make(b.name, b.variant, b.rate)
 			else:
 				raw = SoundEffects.make(b.name, b.variant, b.rate)
 	Synth.highpass4(raw, b.rate, cat["hp"], b.loop)

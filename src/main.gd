@@ -20,6 +20,11 @@ func _ready() -> void:
 			root = UiTitle.new()
 			add_child(root)
 			(root as UiTitle).setup(options)
+			if options.tour != "":
+				# The tour outlives the title: it waits for the slate, starts a game, drives it.
+				var runner: Node = load("res://src/systems/98_tour.gd").new()
+				add_child(runner)
+				runner.call("run_on_title", root)
 		_:
 			var game := Game.new()
 			game.name = "game"

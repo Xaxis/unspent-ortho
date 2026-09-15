@@ -21,7 +21,7 @@ const PROP_VERBS := {
 }
 const STATIONS := {PropKind.FIRE: &"fire", PropKind.BENCH: &"bench", PropKind.KILN: &"kiln"}
 
-## Inventory groups, in the order the notebook lists them.
+## Inventory groups, in the order the slate lists them.
 const GROUPS: Array[StringName] = [&"tools", &"found", &"to wear", &"food", &"goods"]
 
 
@@ -37,6 +37,59 @@ static func health_cells(health: int, max_health: int) -> PackedInt32Array:
 ## Wind is only worth a line on screen once some of it is spent.
 static func wind_shown(wind: float, max_wind: float) -> bool:
 	return wind < max_wind - 0.5
+
+
+# --- the slate's power and the felt pressures --------------------------------------
+
+## A felt pressure (a hazard the body is under) is only a gauge once it is this strong.
+const PRESSURE_SHOWN := 0.25
+## ... and it is the warning once it is this strong.
+const PRESSURE_WARN := 0.7
+## The slate runs off the lamp's reserve (a flask lights it this long) or the
+## found charges carried, whichever holds more (docs/ART.md §9: brightness dips
+## when the lamp oil or charge is low).
+const POWER_LAMP_MINUTES := 360.0
+const POWER_CHARGES := 3
+
+
+## Power 0..1 from the lamp's minutes of light and the charges carried.
+static func slate_power(lamp_minutes: float, charges: int) -> float:
+	return clampf(maxf(lamp_minutes / POWER_LAMP_MINUTES, charges / float(POWER_CHARGES)), 0.0, 1.0)
+
+
+## How bright the glass is at a power: full down to UiSlate.LOW_POWER, then
+## dipping toward UiSlate.DIM_FLOOR, never so far that it cannot be read.
+static func brightness(power: float) -> float:
+	if power >= UiSlate.LOW_POWER:
+		return 1.0
+	return lerpf(UiSlate.DIM_FLOOR, 1.0, clampf(power / UiSlate.LOW_POWER, 0.0, 1.0))
+
+
+## Segments lit in the four-segment cell glyph.
+static func cell_segments(power: float) -> int:
+	return clampi(ceili(power * 4.0 - 0.001), 0, 4)
+
+
+## The charge readout is only on the wrist while the thing in hand spends charges.
+static func charge_shown(held: StringName) -> bool:
+	return held != &"" and int(Items.def(held).get("wick", 0)) > 0
+
+
+## Felt pressures, the HUD's gauges, in a fixed order so they never swap places:
+## the body's needs that matter now, then every hazard pressure (Body.pressure,
+## written by the hazards package) strong enough to be felt.
+## [{id: StringName, level: 1 quiet | 2 warning, value: 0..1}]
+static func pressures(body: Body, minutes: float, load: float, cap: float = CREEL) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for n in needs(body, minutes, load, cap):
+		out.append({"id": n.need, "level": n.level, "value": 0.5 if n.level == 1 else 1.0})
+	var ids: Array = body.pressure.keys()
+	ids.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
+	for id: Variant in ids:
+		var v := float(body.pressure[id])
+		if v >= PRESSURE_SHOWN:
+			out.append({"id": StringName(id), "level": 2 if v >= PRESSURE_WARN else 1, "value": clampf(v, 0.0, 1.0)})
+	return out
 
 
 ## The creel a body carries before load tells, when nothing better says (UiLink.creel).
@@ -105,7 +158,7 @@ static func hint_key(kind: int) -> String:
 	return "c" if STATIONS.has(kind) else "e"
 
 
-## What the notebook calls a thing: its Items name, or its id made readable.
+## What the slate calls a thing: its Items name, or its id made readable.
 static func item_name(id: StringName) -> String:
 	return Items.display_name(id).replace("_", " ")
 
@@ -188,7 +241,7 @@ static func item_group(id: StringName) -> StringName:
 	return UiLink.group_of(id)
 
 
-## The notebook's rows: group headers followed by that group's items, by name.
+## The carrying app's rows: group headers followed by that group's items, by name.
 ## [{header: StringName}] or [{id: StringName, count: int}].
 static func inventory_rows(inv: Inventory) -> Array[Dictionary]:
 	var by_group := {}
@@ -209,7 +262,7 @@ static func inventory_rows(inv: Inventory) -> Array[Dictionary]:
 	return out
 
 
-## Whole hours and minutes, the way a notebook would say it: "4 h", "1 h 30", "45 min".
+## Whole hours and minutes, said plainly: "4 h", "1 h 30", "45 min".
 static func duration(minutes: float) -> String:
 	var m := roundi(minutes)
 	if m < 60:
@@ -237,6 +290,14 @@ static func apply_give(inv: Inventory, give: Dictionary) -> void:
 		var want: int = give[id]
 		if inv.count(id) < want:
 			inv.add(id, want - inv.count(id))
+
+
+## A share as a percentage that never reads 0 once anything is there: "12%", "0.4%".
+static func share(f: float) -> String:
+	var p := f * 100.0
+	if p > 0.0 and p < 9.95:
+		return "%.1f%%" % maxf(0.1, p)
+	return "%d%%" % roundi(p)
 
 
 ## 3 -> "3", 2.5 -> "2.5".

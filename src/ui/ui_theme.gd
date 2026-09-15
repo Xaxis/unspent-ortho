@@ -1,37 +1,57 @@
 class_name UiTheme
-## The notebook's colours and the Godot Theme built from them. The player's UI
-## is a hand-ruled notebook: linen paper, ink, and ONE accent (a rust-red ink,
-## the colour of the margin line). Nothing else on a page is saturated.
+## The slate's colours (docs/ART.md §9) and the Godot Theme built from them.
+##
+## The slate is a display module stolen from a machine in a patched bezel. Its
+## glass is near-black, never black. Everything the player's own slate says is
+## ONE phosphor, a cold green (amber would compete with the machines' working
+## parts, the brightest warm pixels in a frame). One warning colour, used only
+## for what needs acting on. What the stolen module reads off the machines
+## (scans, interference, found tech) is shown in the module's own violet.
 
-const PAPER := Color("#e8dcc0") # linen 5
-const PAPER_SHADE := Color("#c0b394") # linen 4
-const PAPER_DEEP := Color("#968a76") # linen 3
-const PAPER_EDGE := Color("#6f6559") # linen 2
-const INK := Color("#12111d") # ink 1: text on paper
-const INK_DEEP := Color("#08070f") # ink 0: outlines, never pure black
-const INK_SOFT := Color("#2f2c45") # ink 3: second-level text
-## Rows that cannot be chosen now: still selectable, confirming says why.
-const FADED := Color("#6c6555")
-## The one accent: cursor, margin, a wound, a shortfall.
-const ACCENT := Color("#9a4f28") # rust 3
-const ACCENT_BRIGHT := Color("#c47438") # rust 4, for the HUD over the world
-## Printed forms pasted into the notebook: a whiter, harder stock.
-const SLIP := Color("#efe8d6")
-## Blue-grey of the printed rules on the paper.
-const RULE := Color("#b9b8a8")
-## Covers and cloth behind the pages.
-const COVER := Color("#33231f") # earth 1
-const COVER_LIGHT := Color("#4f3627") # earth 2
-## HUD text over the world: paper-coloured with an ink rim, readable on snow and sea.
-const HUD_TEXT := Color("#e8dcc0")
-const HUD_DIM := Color("#c0b394")
-## Dims the world behind an open notebook.
-const VEIL := Color(0.031, 0.027, 0.059, 0.62)
+## The glass, dark to lit.
+const GLASS_OFF := Color("#060a0c") # asleep: the powered-down glass, never pure black
+const GLASS := Color("#0b1315")
+## Every other row of the glass is a hair lighter: the module's scan structure.
+const GLASS_ROW := Color("#0d1618")
+## The bar under a chosen row.
+const GLASS_LIT := Color("#12211f")
+## The replacement sub-panel: a module from another device, bluer and a step lighter.
+const GLASS_SPARE := Color("#0e151b")
+const GLASS_SPARE_ROW := Color("#10181e")
 
-## Line pitch of ruled paper and of every list: one text line plus a clear row.
+## The phosphor ramp, dark to bright. Text is 3; secondary 2; faded rows and
+## rules 1; burn-in ghosts 0; the chosen row and a hot readout 4.
+const PHOSPHOR: Array[Color] = [Color("#173029"), Color("#2b5c4c"), Color("#4f9b81"), Color("#87d9b5"), Color("#c9fbe2")]
+const TEXT := Color("#87d9b5")
+const TEXT_DIM := Color("#4f9b81")
+const FAINT := Color("#2b5c4c")
+const GHOST := Color("#173029")
+const BRIGHT := Color("#c9fbe2")
+
+## The one warning: a wound, a shortfall, a refusal, the last cell.
+const WARN := Color("#ff6f4f")
+const WARN_DIM := Color("#8e3b2c")
+
+## The stolen module's violet, dark to bright: machine-sourced data only.
+const MACHINE: Array[Color] = [Color("#241f38"), Color("#4b4274"), Color("#7c70b6"), Color("#b3a8ea"), Color("#e0dbff")]
+
+## Over the world (HUD): readouts are phosphor held by a rim of dead glass.
+const RIM := Color("#050809")
+## Dims the world behind the awake slate.
+const VEIL := Color(0.02, 0.03, 0.035, 0.66)
+
+## Line pitch of every list: one text line plus a clear row.
 const LINE := 11
 
 static var _theme: Theme
+
+
+## Every colour the slate draws its screens with (tests hold these to the rules).
+static func all_colours() -> Array[Color]:
+	var out: Array[Color] = [GLASS_OFF, GLASS, GLASS_ROW, GLASS_LIT, GLASS_SPARE, GLASS_SPARE_ROW, TEXT, TEXT_DIM, FAINT, GHOST, BRIGHT, WARN, WARN_DIM, RIM]
+	out.append_array(PHOSPHOR)
+	out.append_array(MACHINE)
+	return out
 
 
 static func theme() -> Theme:
@@ -40,26 +60,26 @@ static func theme() -> Theme:
 	var t := Theme.new()
 	t.default_font = UiFont.font()
 	t.default_font_size = UiFont.SIZE
-	t.set_color("font_color", "Label", INK)
+	t.set_color("font_color", "Label", TEXT)
 	t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0))
 	t.set_constant("line_spacing", "Label", 1)
-	var paper := StyleBoxFlat.new()
-	paper.bg_color = PAPER
-	paper.border_color = INK_DEEP
-	paper.set_border_width_all(1)
-	paper.anti_aliasing = false
-	paper.set_content_margin_all(6)
-	t.set_stylebox("panel", "Panel", paper)
-	t.set_stylebox("panel", "PanelContainer", paper)
+	var glass := StyleBoxFlat.new()
+	glass.bg_color = GLASS
+	glass.border_color = FAINT
+	glass.set_border_width_all(1)
+	glass.anti_aliasing = false
+	glass.set_content_margin_all(6)
+	t.set_stylebox("panel", "Panel", glass)
+	t.set_stylebox("panel", "PanelContainer", glass)
 	for kind: String in ["Button", "LineEdit"]:
 		t.set_font("font", kind, UiFont.font())
 		t.set_font_size("font_size", kind, UiFont.SIZE)
-		t.set_color("font_color", kind, INK)
-		t.set_stylebox("normal", kind, paper)
-		var focus := paper.duplicate() as StyleBoxFlat
-		focus.border_color = ACCENT
+		t.set_color("font_color", kind, TEXT)
+		t.set_stylebox("normal", kind, glass)
+		var focus := glass.duplicate() as StyleBoxFlat
+		focus.border_color = BRIGHT
 		t.set_stylebox("focus", kind, focus)
-		t.set_stylebox("hover", kind, paper)
+		t.set_stylebox("hover", kind, glass)
 		t.set_stylebox("pressed", kind, focus)
 	_theme = t
 	return t
