@@ -105,54 +105,96 @@ static func bones(k: Kit, v: int, c: int) -> void:
 			k.stone(0.1, -0.01, -0.1, 0.1, 0.1, s + 3, P.LINEN[5], 5)
 
 
-## FOUND: a machine's hull on its side, ribbed, banded violet and rust, its
-## visor slit dark, a crane arm still up. Exact: straight members, rivet rows.
+## FOUND: a machine's hull run aground years ago: tilted, half sunk in the
+## drift, one end torn open to its ribs. Exact even in ruin: straight members,
+## rivet rows, the plate banded weathered violet and rust. The drift that
+## buried it is MADE.
 static func wreck(k: Kit, v: int, c: int) -> void:
-	# Years on the shore: the plate has gone to weathered violet, not a live machine's.
 	var body := P.PLATE[2]
 	var dark := P.PLATE[1]
 	var lit := P.PLATE[3]
+	var rust := P.RUST[2]
 	var drift := P.SAND[4] if c != Country.SNOWFIELD else P.RIME[5]
 	if c == Country.BURNING:
 		drift = P.ASH[2]
+	elif c == Country.MOSS or c == Country.PINEWOOD:
+		drift = P.EARTH[2]
 	if v % 2 == 0:
-		k.chamfer(0.0, -0.15, 0.0, 2.7, 0.95, 1.1, 0.22, body, lit)
-		k.chamfer(0.0, 0.8, 0.0, 2.2, 0.16, 0.8, 0.1, dark, body)
-		for i in 7:
-			var x := -1.2 + i * 0.4
-			k.chamfer(x, -0.14, 0.0, 0.08, 1.0, 1.14, 0.02, dark, body)
-		for i in 3:
-			k.found.quad(Vector3(-0.95 + i * 0.8, 0.1, 0.556), Vector3(-0.65 + i * 0.8, 0.1, 0.556), Vector3(-0.65 + i * 0.8, 0.6, 0.556), Vector3(-0.95 + i * 0.8, 0.6, 0.556), P.RUST[2])
-			k.found.quad(Vector3(-0.86 + i * 0.8, 0.12, 0.56), Vector3(-0.74 + i * 0.8, 0.12, 0.56), Vector3(-0.74 + i * 0.8, 0.42, 0.56), Vector3(-0.86 + i * 0.8, 0.42, 0.56), P.RUST[3])
-		for i in 13:
-			var x := -1.2 + i * 0.2
-			k.found.quad(Vector3(x - 0.015, 0.64, 0.557), Vector3(x + 0.015, 0.64, 0.557), Vector3(x + 0.015, 0.67, 0.557), Vector3(x - 0.015, 0.67, 0.557), P.PLATE[5])
-		# The visor slit, dark: the light went out.
-		k.found.quad(Vector3(1.36, 0.35, 0.3), Vector3(1.36, 0.35, -0.3), Vector3(1.36, 0.45, -0.3), Vector3(1.36, 0.45, 0.3), P.COLD[0])
-		# The crane arm, a straight lattice, broken off square.
-		k.rod(Vector3(0.8, 0.95, 0), Vector3(1.3, 2.15, 0), 0.05, 4, body)
-		k.rod(Vector3(0.95, 0.95, 0.12), Vector3(1.45, 2.05, 0.12), 0.03, 4, dark)
-		k.rod(Vector3(0.95, 0.95, -0.12), Vector3(1.45, 2.05, -0.12), 0.03, 4, dark)
-		for i in 4:
-			var t := 0.2 + i * 0.2
-			k.rod(Vector3(0.8, 0.95, 0).lerp(Vector3(1.3, 2.15, 0), t), Vector3(0.95, 0.95, 0.12).lerp(Vector3(1.45, 2.05, 0.12), t + 0.1), 0.015, 4, dark)
-		k.chamfer(1.3, 2.05, 0.0, 0.16, 0.12, 0.16, 0.04, dark, lit)
-		k.stone(-1.25, -0.14, 0.5, 0.6, 0.3, 10601, drift, 7, 0.0)
-		k.stone(0.4, -0.14, -0.62, 0.5, 0.24, 10603, drift, 7, 0.0)
-	else:
-		# A cab half sunk and tipped, its visor slit dark.
-		k.found.push(Transform3D(Basis(Vector3.BACK, 0.18), Vector3(0, -0.25, 0)))
-		k.chamfer(0.0, 0.0, 0.0, 1.4, 1.2, 1.2, 0.2, body, lit)
-		k.found.quad(Vector3(0.71, 0.72, 0.4), Vector3(0.71, 0.72, -0.4), Vector3(0.71, 0.86, -0.4), Vector3(0.71, 0.86, 0.4), P.COLD[0])
-		k.found.quad(Vector3(0.715, 0.76, 0.34), Vector3(0.715, 0.76, -0.34), Vector3(0.715, 0.79, -0.34), Vector3(0.715, 0.79, 0.34), P.COLD[1])
-		k.chamfer(0.0, 1.2, 0.0, 1.1, 0.12, 0.9, 0.08, dark, body)
-		for i in 5:
-			k.found.quad(Vector3(0.712, 0.2 + i * 0.18, -0.56), Vector3(0.712, 0.2 + i * 0.18, -0.53), Vector3(0.712, 0.23 + i * 0.18, -0.53), Vector3(0.712, 0.23 + i * 0.18, -0.56), P.PLATE[5])
-		k.found.quad(Vector3(-0.3, 0.1, 0.61), Vector3(0.1, 0.1, 0.61), Vector3(0.1, 0.5, 0.61), Vector3(-0.3, 0.5, 0.61), P.RUST[2])
+		# The hull, rolled 20 degrees and nose down, its back third gone.
+		k.found.push(Transform3D(Basis(Vector3.UP, 0.25) * Basis(Vector3.RIGHT, 0.36) * Basis(Vector3.BACK, -0.1), Vector3(0.0, -0.3, 0.0)))
+		const LEN := 3.0
+		const SEG := 10
+		# The hull's section: eight sides, flat bottom, rounded shoulders.
+		var sec: Array[Vector2] = [Vector2(0.62, 0.0), Vector2(0.66, 0.3), Vector2(0.66, 0.8), Vector2(0.44, 1.18),
+			Vector2(-0.44, 1.18), Vector2(-0.66, 0.8), Vector2(-0.66, 0.3), Vector2(-0.62, 0.0)]
+		for i in SEG:
+			var x0 := -LEN * 0.5 + i * LEN / SEG
+			var x1 := x0 + LEN / SEG
+			if i < 3:
+				# The torn end: ribs standing, a few ragged plates hanging on.
+				var rib := PackedVector3Array()
+				for q in sec:
+					rib.append(Vector3(x1 - 0.02, q.y, q.x) * Vector3(1.0, 1.0 - (2 - i) * 0.04, 1.0))
+				for e in rib.size() - 1:
+					if i == 0 and e == 3:
+						continue
+					k.rod(rib[e], rib[e + 1], 0.03, 4, dark)
+				if i == 2:
+					k.found.quad(Vector3(x0, 0.3, 0.66), Vector3(x1, 0.3, 0.66), Vector3(x1, 0.8, 0.66), Vector3(x0 + 0.1, 0.72, 0.66), rust)
+				if i == 1:
+					k.found.quad(Vector3(x0 + 0.06, 1.12, -0.3), Vector3(x1, 1.18, -0.44), Vector3(x1, 1.18, 0.2), Vector3(x0 + 0.1, 1.1, 0.1), body)
+				continue
+			# Bands: every third plate rust, the rest weathered violet, alternating.
+			var col := rust if i % 3 == 1 else (body if i % 2 == 0 else lit)
+			for e in sec.size() - 1:
+				var a := sec[e]
+				var b2 := sec[e + 1]
+				var shade := col if e >= 2 and e <= 4 else GroundColors.down(col, 0.1)
+				k.found.quad(Vector3(x0, a.y, a.x), Vector3(x1, a.y, a.x), Vector3(x1, b2.y, b2.x), Vector3(x0, b2.y, b2.x), shade)
+			# A rib standing proud between plates, with its rivet row.
+			for e in sec.size() - 1:
+				var a := sec[e] * 1.03
+				var b2 := sec[e + 1] * 1.03
+				k.found.quad(Vector3(x1 - 0.025, a.y, a.x), Vector3(x1 + 0.025, a.y, a.x), Vector3(x1 + 0.025, b2.y, b2.x), Vector3(x1 - 0.025, b2.y, b2.x), dark)
+			for rr in 3:
+				k.found.quad(Vector3(x0 + 0.06, 0.4 + rr * 0.2, 0.667), Vector3(x0 + 0.1, 0.4 + rr * 0.2, 0.667), Vector3(x0 + 0.1, 0.43 + rr * 0.2, 0.667), Vector3(x0 + 0.06, 0.43 + rr * 0.2, 0.667), P.PLATE[5])
+		# The nose cap.
+		for e in range(1, sec.size() - 1):
+			k.found.tri(Vector3(LEN * 0.5, sec[0].y, sec[0].x), Vector3(LEN * 0.5, sec[e].y, sec[e].x), Vector3(LEN * 0.5, sec[e + 1].y, sec[e + 1].x), GroundColors.down(body, 0.2))
+		# The visor slit at the nose, dark: the light went out.
+		k.found.quad(Vector3(LEN * 0.5 + 0.004, 0.62, -0.34), Vector3(LEN * 0.5 + 0.004, 0.62, 0.34), Vector3(LEN * 0.5 + 0.004, 0.74, 0.34), Vector3(LEN * 0.5 + 0.004, 0.74, -0.34), P.COLD[0])
+		# The crane arm, a straight lattice snapped and folded back on the hull.
+		k.rod(Vector3(0.8, 1.15, 0), Vector3(1.2, 1.9, 0), 0.05, 4, body)
+		k.rod(Vector3(1.2, 1.9, 0), Vector3(0.3, 1.5, 0.25), 0.04, 4, body)
+		k.rod(Vector3(0.95, 1.15, 0.12), Vector3(1.3, 1.82, 0.12), 0.025, 4, dark)
 		k.found.pop()
-		for i in 3:
-			k.chamfer(-0.9 + i * 0.9, -0.08, -0.9, 0.12, 0.3, 0.9, 0.03, dark, body)
-		k.stone(0.6, -0.14, 0.6, 0.72, 0.36, 10602, drift, 7, 0.0)
+		# The drift over its lower side and its torn end.
+		_drift(k, [[-1.3, 0.2, 0.8, 0.5], [-0.4, 0.75, 0.7, 0.4], [0.5, 0.8, 0.8, 0.36], [1.3, 0.55, 0.5, 0.3], [-1.0, -0.6, 0.5, 0.26]], drift, 10601)
+	else:
+		# A cab sunk to its shoulders and tipped hard over, bands of rust on its
+		# violet, the visor slit dark, a leg sticking up out of the drift.
+		k.found.push(Transform3D(Basis(Vector3.BACK, 0.42) * Basis(Vector3.RIGHT, -0.15), Vector3(0, -0.5, 0)))
+		k.chamfer(0.0, 0.0, 0.0, 1.5, 1.3, 1.3, 0.24, body, lit)
+		for yy: float in [0.3, 0.7]:
+			k.chamfer(0.0, yy, 0.0, 1.52, 0.16, 1.32, 0.24, rust, P.RUST[3])
+		k.found.quad(Vector3(0.761, 0.96, 0.4), Vector3(0.761, 0.96, -0.4), Vector3(0.761, 1.1, -0.4), Vector3(0.761, 1.1, 0.4), P.COLD[0])
+		k.chamfer(0.0, 1.3, 0.0, 1.2, 0.14, 1.0, 0.1, dark, body)
+		for i in 5:
+			k.found.quad(Vector3(0.762, 0.2 + i * 0.22, -0.6), Vector3(0.762, 0.2 + i * 0.22, -0.56), Vector3(0.762, 0.24 + i * 0.22, -0.56), Vector3(0.762, 0.24 + i * 0.22, -0.6), P.PLATE[5])
+		k.found.pop()
+		# The leg: two exact members and a foot, jammed up at an angle.
+		k.rod(Vector3(-0.9, -0.1, -0.7), Vector3(-1.2, 0.9, -0.95), 0.07, 6, body)
+		k.rod(Vector3(-1.2, 0.9, -0.95), Vector3(-0.95, 1.4, -1.25), 0.055, 6, dark)
+		k.hoop(Vector3(-1.2, 0.9, -0.95), 0.09, 8, 0.02, rust, Vector3(0.3, 1.0, -0.2))
+		_drift(k, [[0.5, 0.5, 0.8, 0.5], [0.9, -0.2, 0.6, 0.36], [-0.7, -0.5, 0.6, 0.3], [-0.2, 0.8, 0.5, 0.26]], drift, 10602)
+
+
+## Drifted sand, snow or ash banked against a wreck: soft lumps [x, z, r, h],
+## lit on top and shaded under, their feet sunk into the ground.
+static func _drift(k: Kit, lumps: Array, col: Color, seed_value: int) -> void:
+	for i in lumps.size():
+		var l: Array = lumps[i]
+		k.clump(l[0], -0.2, l[1], l[2], float(l[3]) + 0.2, seed_value + i, col if i % 2 == 0 else GroundColors.down(col, 0.08), 9)
 
 
 static func tip(k: Kit, v: int, _c: int) -> void:

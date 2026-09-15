@@ -18,11 +18,19 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	if kind == PropKind.RUIN:
 		ruin(k, v, c)
 		return
-	match v % 4:
-		0: washed(k, c)
-		1: slated(k, c)
+	match v:
+		0: washed(k, c, 0)
+		1: slated(k, c, 0)
 		2: long_house(k, c)
-		_: but(k, c)
+		3: but(k, c)
+		4: washed(k, c, 1)
+		5: slated(k, c, 1)
+		_: washed(k, c, 2)
+
+
+## Variants of HOUSE (PropModels.variants): three washed, two slated, the long
+## house and the but, so a village is never a row of one house.
+const VARIANTS := 7
 
 
 ## Four leaning walls on an irregular footprint. Returns the corners as
@@ -135,35 +143,51 @@ static func hipped(k: Kit, pen: MeshKit, t: Array[Vector3], over: float, rise: f
 
 
 ## "washed": lime-washed rubble walls under a hipped roof re-laid in plate,
-## a few old slates left where they held, a cable off the ridge to a pole.
-static func washed(k: Kit, c: int) -> void:
-	var s := 1400
-	var w := 2.3
-	var d := 2.9
-	var h := 1.35
-	var t := walls(k, w, d, h, s, P.LINEN[4], P.LINEN[3])
+## a few old slates left where they held. `form` varies the proportions, where
+## the wash has come off, where the roof failed and was plated, and the chimney,
+## so no two in a village are the same drawing.
+static func washed(k: Kit, c: int, form: int) -> void:
+	var s := 1400 + form * 37
+	var w: float = [2.3, 2.0, 2.6][form]
+	var d: float = [2.9, 2.5, 3.3][form]
+	var h: float = [1.35, 1.2, 1.45][form]
+	var wash: Color = [P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form]
+	var t := walls(k, w, d, h, s, wash, GroundColors.down(wash, 0.35))
 	var fb := [t[2], t[1], t[5], t[6]]
 	# Wash off in patches where the roof drips and boots scuff: rubble shows.
-	wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.62, 0.0, 0.9, 0.22, 0.008, P.STONE[2])
-	wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.05, 0.72, 0.3, 0.9, 0.008, P.STONE[2])
+	for i in 2 + form:
+		var u0 := fmod(0.13 + i * 0.41 + form * 0.23, 0.8)
+		var v0 := fmod(0.05 + i * 0.57 + form * 0.31, 0.75)
+		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], u0, v0, u0 + 0.12 + fmod(i * 0.13, 0.12), v0 + 0.1 + fmod(i * 0.07, 0.12), 0.008, P.STONE[2] if i % 2 == 0 else P.STONE[3])
 	wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, 0.0, 1.0, 0.07, 0.006, P.LINEN[2])
-	door(k, fb[0], fb[1], fb[2], fb[3], 0.34, 0.1, 0.95)
-	window(k, fb[0], fb[1], fb[2], fb[3], 0.78, 0.6, 0.08, 0.13)
-	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.58, 0.44)
+	var door_u: float = [0.34, 0.66, 0.46][form]
+	door(k, fb[0], fb[1], fb[2], fb[3], door_u, 0.1, 0.95)
+	window(k, fb[0], fb[1], fb[2], fb[3], 0.8 if door_u < 0.5 else 0.22, 0.6, 0.08, 0.13)
+	if form == 2:
+		window(k, fb[0], fb[1], fb[2], fb[3], 0.18, 0.58, 0.07, 0.12)
+	struck_plate(k, fb[0], fb[1], fb[2], fb[3], [0.58, 0.36, 0.72][form], [0.44, 0.5, 0.4][form])
 	var sb := [t[3], t[2], t[6], t[7]]
-	window(k, sb[0], sb[1], sb[2], sb[3], 0.4, 0.58, 0.08, 0.13)
+	window(k, sb[0], sb[1], sb[2], sb[3], [0.4, 0.62, 0.3][form], 0.58, 0.08, 0.13)
 	# The roof: old slate by hand, with plate off a machine laid where it failed.
-	var r := hipped(k, k.made, t, 0.24, 1.05, d * 0.2, 0.12, P.SLATE[2], P.SLATE[1], P.SLATE[2].lerp(P.SLATE[1], 0.5))
+	var r := hipped(k, k.made, t, 0.24, [1.05, 0.9, 1.2][form], d * 0.2, [0.12, 0.16, 0.08][form], P.SLATE[2], P.SLATE[1], P.SLATE[2].lerp(P.SLATE[1], 0.5))
 	for i in 3:
 		var f := 0.25 + i * 0.25
 		var a := r[1].lerp(r[4], f) + Vector3(0.01, 0.012, 0)
 		var b := r[2].lerp(r[6], f) + Vector3(0.01, 0.012, 0)
 		k.made.quad(b, a, a + Vector3(-0.03, 0.02, 0), b + Vector3(-0.03, 0.02, 0), P.SLATE[1])
-	_patch(k, r[1], r[2], r[6], r[4], 0.15, 0.55, 0.45, 0.85)
-	_patch(k, r[1], r[2], r[6], r[4], 0.62, 0.15, 0.9, 0.4)
+	match form:
+		0:
+			_patch(k, r[1], r[2], r[6], r[4], 0.15, 0.5, 0.42, 0.82)
+			_patch(k, r[1], r[2], r[6], r[4], 0.64, 0.12, 0.92, 0.36)
+		1:
+			# A whole strip along the eave, where the rot started.
+			_patch(k, r[1], r[2], r[6], r[4], 0.04, 0.04, 0.5, 0.26)
+			_patch(k, r[1], r[2], r[6], r[4], 0.5, 0.06, 0.96, 0.3)
+		_:
+			_patch(k, r[1], r[2], r[6], r[4], 0.36, 0.34, 0.64, 0.7)
 	k.made.strut(r[4] + Vector3(0, 0.02, 0), r[5] + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
 	k.made.strut(r[5] + Vector3(0, 0.02, 0), r[6] + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
-	_chimney(k, -0.45, h - 0.2, -d * 0.3, 1.45, s + 10)
+	_chimney(k, [-0.45, 0.35, -0.3][form], h - 0.2, [-d * 0.3, d * 0.32, -d * 0.05][form], [1.45, 1.3, 1.6][form], s + 10)
 	turf_foot(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
 		_snow_on(k, r)
@@ -171,24 +195,26 @@ static func washed(k: Kit, c: int) -> void:
 
 ## "slated": a gable house of rubble; half its slates, the other half replaced
 ## in plate course by course.
-static func slated(k: Kit, c: int) -> void:
-	var s := 1500
-	var w := 2.2
-	var d := 3.1
-	var h := 1.3
-	var t := walls(k, w, d, h, s, P.STONE[2], GroundColors.down(P.STONE[2], 0.25), Vector3(-0.04, 0, 0.02))
+static func slated(k: Kit, c: int, form: int) -> void:
+	var s := 1500 + form * 41
+	var w := 2.2 if form == 0 else 1.9
+	var d := 3.1 if form == 0 else 3.6
+	var h := 1.3 if form == 0 else 1.15
+	# Warm grey rubble, a clear step lighter than the slate over it.
+	var rubble: Color = P.STONE[3].lerp(P.SAND[3], 0.4) if form == 0 else P.STONE[3].lerp(P.LINEN[3], 0.35)
+	var t := walls(k, w, d, h, s, rubble, GroundColors.down(rubble, 0.3), Vector3(-0.04, 0, 0.02) if form == 0 else Vector3(0.03, 0, -0.03))
 	var fb := [t[2], t[1], t[5], t[6]]
 	# Quoins lighter at the corners, a few dark stones in the courses.
 	for i in 5:
-		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, i * 0.2, 0.08 + (i % 2) * 0.04, i * 0.2 + 0.16, 0.008, P.STONE[3])
-		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.9 - (i % 2) * 0.04, i * 0.2 + 0.04, 1.0, i * 0.2 + 0.18, 0.008, P.STONE[3])
+		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, i * 0.2, 0.08 + (i % 2) * 0.04, i * 0.2 + 0.16, 0.008, GroundColors.up(rubble, 0.35))
+		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.9 - (i % 2) * 0.04, i * 0.2 + 0.04, 1.0, i * 0.2 + 0.18, 0.008, GroundColors.up(rubble, 0.35))
 	for i in 8:
 		var u := 0.15 + fmod(i * 0.37, 0.7)
 		var vv := 0.1 + fmod(i * 0.41, 0.8)
 		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], u, vv, u + 0.06, vv + 0.07, 0.008, P.SLATE[2] if i % 2 else P.STONE[1])
-	door(k, fb[0], fb[1], fb[2], fb[3], 0.64, 0.1, 0.95)
-	window(k, fb[0], fb[1], fb[2], fb[3], 0.24, 0.6, 0.08, 0.13)
-	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.4, 0.42)
+	door(k, fb[0], fb[1], fb[2], fb[3], 0.64 if form == 0 else 0.3, 0.1, 0.95)
+	window(k, fb[0], fb[1], fb[2], fb[3], 0.24 if form == 0 else 0.74, 0.6, 0.08, 0.13)
+	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.4 if form == 0 else 0.52, 0.42)
 	# Gable roof, ridge along z, sagging. Front slope: slate low (MADE), plate high (FOUND).
 	var over := 0.2
 	var yr := h + 1.05
@@ -212,9 +238,9 @@ static func slated(k: Kit, c: int) -> void:
 			var a1 := Vector3(cx + ex * (1.0 - f1), ya1 - (s1 if z0 == 0.0 else 0.0), z0)
 			var b1 := Vector3(cx + ex * (1.0 - f1), ya1 - (s1 if z1 == 0.0 else 0.0), z1)
 			# Half the slates held; the rest were replaced in plate course by course.
-			var plate := i >= 4 and half == 1
+			var plate := (i >= 4 and half == 1) if form == 0 else (i <= 1 or (i == 2 and half == 0))
 			var pen := k.found if plate else k.made
-			var col: Color = (P.PLATE[2] if i % 2 == 0 else P.PLATE[1]) if plate else (P.SLATE[2] if i % 2 == 0 else P.SLATE[1])
+			var col: Color = (P.PLATE[3] if i % 2 == 0 else P.PLATE[2]) if plate else (P.SLATE[1] if i % 2 == 0 else P.SLATE[0])
 			pen.quad(b0, a0, a1, b1, col)
 	# Back slope: plate, with one patch of old slate.
 	var bk0 := Vector3(cx - ex, h - 0.05, -ez)
@@ -222,16 +248,17 @@ static func slated(k: Kit, c: int) -> void:
 	var rr0 := Vector3(cx, yr, -ez)
 	var rr1 := Vector3(cx, yr, ez)
 	var rrm := Vector3(cx, yr - sag, 0.0)
-	k.made.tri(bk0, bk1, rrm, P.SLATE[1])
-	k.made.tri(bk0, rrm, rr0, P.SLATE[1])
-	k.made.tri(bk1, rr1, rrm, P.SLATE[1])
+	k.made.tri(bk0, bk1, rrm, P.SLATE[0])
+	k.made.tri(bk0, rrm, rr0, P.SLATE[0])
+	k.made.tri(bk1, rr1, rrm, P.SLATE[0])
 	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
 	# Gable ends in stone.
-	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), Vector3(cx, yr - 0.06, t[6].z + 0.004), P.STONE[2])
-	k.made.tri(t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), Vector3(cx, yr - 0.06, t[4].z - 0.004), GroundColors.down(P.STONE[2], 0.3))
-	k.made.strut(rr0 + Vector3(0, 0.03, 0), rrm + Vector3(0, 0.03, 0), 0.035, 4, P.SLATE[3])
-	k.made.strut(rrm + Vector3(0, 0.03, 0), rr1 + Vector3(0, 0.03, 0), 0.035, 4, P.SLATE[3])
-	_chimney(k, cx + 0.05, yr - 0.55, d * 0.5 - 0.24, 1.0, s + 10)
+	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), Vector3(cx, yr - 0.06, t[6].z + 0.004), GroundColors.down(rubble, 0.3))
+	k.made.tri(t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), Vector3(cx, yr - 0.06, t[4].z - 0.004), GroundColors.down(rubble, 0.5))
+	# The ridge, lighter than the eaves.
+	k.made.strut(rr0 + Vector3(0, 0.03, 0), rrm + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
+	k.made.strut(rrm + Vector3(0, 0.03, 0), rr1 + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
+	_chimney(k, cx + 0.05, yr - 0.55, (d * 0.5 - 0.24) * (1.0 if form == 0 else -1.0), 1.0, s + 10)
 	turf_foot(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
 		# Snow over both slopes, the eaves left dark.
@@ -356,7 +383,15 @@ static func but(k: Kit, c: int) -> void:
 	var foot: Array[Vector3] = [Vector3(-w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, d * 0.5), Vector3(-w * 0.5, 0, d * 0.5)]
 	turf_foot(k, foot, 1320, c)
 	if c == Country.SNOWFIELD:
-		k.clump(0, top + 0.08, 0, 0.75, 0.14, 1340, P.RIME[5], 8)
+		# Snow lying on each sod and drifted against the chimney, the lid's
+		# ruled edge left showing where the wind cleared it.
+		for i in 5:
+			var z := -d * 0.5 + 0.42 + i * 0.44
+			var x := Kit.j(1301, i, 0.08)
+			k.clump(x - 0.1 + fmod(i * 0.37, 0.2), top + 0.05, z, (w - 0.8) * 0.5, 0.12 + fmod(i * 0.13, 0.05), 1350 + i, P.RIME[5], 7)
+			k.clump(x + 0.35 - fmod(i * 0.23, 0.2), top + 0.05, z + 0.08, 0.2, 0.1, 1370 + i, P.RIME[4], 6)
+		k.clump(-0.4, top + 0.05, -0.62, 0.26, 0.2, 1360, P.RIME[5], 7)
+		k.clump(w * 0.5 - 0.1, -0.04, -0.9, 0.34, 0.3, 1361, P.RIME[5], 7)
 
 
 ## A plate taken off a machine, laid on a front roof slope (e10, e11, r1, r0)
