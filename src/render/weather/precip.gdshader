@@ -41,6 +41,11 @@ uniform float flicker_rate = 12.0;
 // Pale marks read on dark ground and dark marks on pale: color_b flecks get a
 // shade pixel under them in color_a when this is 1.
 uniform float underline = 0.0;
+// Flecks drawn as a body in color_a with a color_b highlight on the top-left
+// pixel (snow: a cold blue-grey flake with a pale glint, so it reads falling
+// over lying snow); a fleck three pixels across is a small cross. For a
+// one-pixel fleck, mix_b is the share that is all glint.
+uniform float highlight = 0.0;
 // Flicks lead with their head: +1 moving screen-right, -1 moving left.
 uniform float facing = 1.0;
 // Which sky_ground channel says this weather belongs over the land below the
@@ -122,21 +127,31 @@ void vertex() {
 		float across = dot(origin, vec3(0.7071, 0.0, -0.7071));
 		float along = dot(origin, vec3(0.7071, 0.0, 0.7071));
 		float col = sky_noise(vec2(across * 0.16 + along * 0.06 - TIME * 0.5, along * 0.03 + 3.0)) * 0.8 + sky_noise(vec2(across * 0.5 - TIME * 0.3, along * 0.1 + 9.0)) * 0.2;
-		keep *= mix(1.0, 0.07 + 1.4 * smoothstep(0.5, 0.58, col), columns);
+		keep *= mix(1.0, 0.04 + 1.5 * smoothstep(0.5, 0.56, col), columns);
 	}
 	if (rnd > keep) {
 		POSITION = vec4(2.0, 2.0, 2.0, 1.0);
 	}
-	v_col = fract(rnd * 31.17) < mix_b ? color_b : color_a;
+	v_col = fract(rnd * 31.17) < mix_b && highlight < 0.5 ? color_b : color_a;
 }
 
 void fragment() {
 	vec2 q = floor(v_px);
 	bool on = false;
 	bool shade = false;
+	bool glint = false;
 	if (mode == 0) {
 		// One pixel per row down the stroke, stepped sideways by the slant.
 		on = q.y < 0.0 && q.y >= -v_len && q.x == floor(-slant * (q.y + 1.0) + 0.5);
+	} else if (mode == 1 && highlight > 0.5) {
+		// y runs up the screen here: the top-left pixel is (0, len - 1).
+		if (v_len > 2.5) {
+			on = (q.x == 1.0 && q.y >= 0.0 && q.y <= 2.0) || (q.y == 1.0 && q.x >= 0.0 && q.x <= 2.0);
+			glint = q.x == 1.0 && q.y == 2.0;
+		} else {
+			on = q.x >= 0.0 && q.y >= 0.0 && q.x < v_len && q.y < v_len;
+			glint = v_len > 1.5 ? (q.x == 0.0 && q.y == 1.0) : fract(v_rnd * 71.3) < mix_b;
+		}
 	} else if (mode == 1) {
 		on = q.x >= 0.0 && q.y >= 0.0 && q.x < v_len && q.y < v_len;
 		shade = underline > 0.5 && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
@@ -173,7 +188,7 @@ void fragment() {
 	if (!on) {
 		discard;
 	}
-	vec3 col = shade ? color_a : v_col;
+	vec3 col = glint ? color_b : (shade ? color_a : v_col);
 	// Marks in the air take the sky's light, but keep a floor so snow and rain
 	// read as weather at night instead of vanishing into the dark.
 	vec3 light = max(sky_tint * mix(1.0, sky_sun.z, 0.5) * 1.1, vec3(0.42, 0.48, 0.66));

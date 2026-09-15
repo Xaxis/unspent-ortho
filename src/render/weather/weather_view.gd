@@ -41,6 +41,8 @@ var hail: CPUParticles3D
 var snow: CPUParticles3D
 ## Fewer, bigger flakes nearer the eye, so snow has depth.
 var flurry: CPUParticles3D
+## Blown snow streaking along the ground (blizzard, whiteout).
+var spindrift: CPUParticles3D
 var ash: CPUParticles3D
 var ember: CPUParticles3D
 ## Blown streaks: sand in a dust storm, snow in a blizzard.
@@ -87,12 +89,17 @@ func setup(cam: CameraRig) -> void:
 		devils.append(_devil(i))
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
 	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4, "ground_mask": 3})
-	# Snow: paper flecks, each with a blue shade pixel under it so a fleck still
-	# reads over lying snow.
-	snow = _emitter("snow", 6500, 8.0, air, mid, true)
-	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 0.8, "length_px": Vector2(1, 2), "wander": 2.0, "underline": 1.0, "ground_mask": 1})
-	flurry = _emitter("flurry", 1000, 6.0, air, mid, true)
-	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.LINEN[5], "mix_b": 1.0, "length_px": Vector2(2, 2), "wander": 3.0, "underline": 1.0, "ground_mask": 1})
+	# Snow: cold blue-grey flakes with a pale glint on the top-left pixel, so snow
+	# reads falling over snow lying on the page (a pale fleck vanishes into it).
+	snow = _emitter("snow", 8000, 8.0, air, mid, true)
+	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
+	# Flakes near the eye: fewer, three pixels across, falling faster past.
+	flurry = _emitter("flurry", 900, 5.0, Vector3(16.0, 2.0, 14.0), Vector3(0, TOP * 0.8, 0), true)
+	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 1.0, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
+	# Blown snow: long low streaks racing along the ground in a blizzard and a
+	# whiteout, cold blue-grey with a pale head, so the wind itself is drawn.
+	spindrift = _emitter("spindrift", 2400, 2.5, Vector3(19.0, 1.0, 15.0), Vector3(0, 0.9, 0), true)
+	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.35, "length_px": Vector2(6, 14), "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
 	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "columns": 0.45, "ground_mask": 2})
@@ -264,9 +271,14 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	_drive(hail, float(look.hail), Vector3(lean * 0.5, -1.0, 0.0), 22.0, {"slant": lean * 0.5 * SLANT_PER_LEAN * 0.3})
 	var whiteout := float(look.get("whiteout", 0.0))
 	var blizzard := maxf(clampf(float(look.snow) - 0.8, 0.0, 0.2) * 5.0 * clampf(absf(wind) * 1.5, 0.0, 1.0), whiteout)
-	# Snow comes in squalls: curtains of it sweep over, thinner between.
-	_drive(snow, float(look.snow), Vector3(wind * 1.4, -1.0, 0.0), 1.1 + absf(wind) * 2.2, {"wander": 2.0 * (1.0 - absf(wind) * 0.6), "columns": 0.2 + 0.25 * clampf(absf(wind), 0.0, 1.0)})
-	_drive(flurry, float(look.snow), Vector3(wind * 1.6, -1.0, 0.0), 1.6 + absf(wind) * 2.6, {"columns": 0.5})
+	# Snow comes in squalls: dense curtains sweep over with only a thin fall
+	# between them. A whiteout is snow everywhere, no gaps.
+	var curtains := 0.85 * (1.0 - whiteout)
+	var gale := maxf(absf(wind), whiteout)
+	_drive(snow, float(look.snow), Vector3(wind * 1.4 + whiteout * signf(wind + 0.001) * 1.2, -1.0, 0.0), 1.1 + gale * 2.2, {"wander": 2.0 * (1.0 - gale * 0.6), "columns": curtains})
+	_drive(flurry, float(look.snow), Vector3(wind * 1.6 + whiteout * signf(wind + 0.001) * 1.4, -1.0, 0.0), 1.8 + gale * 2.6, {"columns": curtains})
+	var blow_snow := signf(wind) if absf(wind) > 0.05 else 1.0
+	_drive(spindrift, blizzard, Vector3(blow_snow, -0.04, 0.1), 7.0 + absf(wind) * 6.0, {"facing": blow_snow})
 	_drive(ash, float(look.ash), Vector3(wind * 0.8, -1.0, 0.2), 0.55, {})
 	# Embers rise off the burning ground, most of all through its furnace haze.
 	_drive(ember, float(look.ash) * 0.8 + float(look.heat) * 0.15 + float(look.get("haze", 0.0)) * 0.7, Vector3(wind * 0.3, 1.0, 0.0), 0.5, {})
@@ -275,15 +287,12 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var sand := float(look.dust)
 	# Ash drifts along the ground in a wind, in dark streaks.
 	var ash_drift := float(look.ash) * clampf((absf(wind) - 0.2) * 2.0, 0.0, 1.0) * 0.7
-	var drift_amount := maxf(maxf(sand, blizzard), ash_drift)
-	var total := maxf(0.001, sand + blizzard + ash_drift)
-	var snowy := blizzard / total
-	var ashy := ash_drift / total
+	var drift_amount := maxf(sand, ash_drift)
+	var ashy := ash_drift / maxf(0.001, sand + ash_drift)
 	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
 		"facing": blow,
-		# Blown snow is drawn a cold blue-grey, or it vanishes into the snow it crosses.
-		"color_a": Palette.SAND[4].lerp(Palette.RIME[2], snowy).lerp(Palette.ASH[1], ashy),
-		"color_b": Palette.LINEN[5].lerp(Palette.RIME[4], snowy).lerp(Palette.INK[2], ashy),
+		"color_a": Palette.SAND[4].lerp(Palette.ASH[1], ashy),
+		"color_b": Palette.LINEN[5].lerp(Palette.INK[2], ashy),
 	})
 	# The odd flick once the wind gets up; the flick is drawn with its head
 	# leading, so it flips with the wind.

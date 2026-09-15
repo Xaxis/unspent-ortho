@@ -252,6 +252,7 @@ func _update(delta: float, snap: bool) -> void:
 	# Tufts and crowns never hang dead still, and a storm bends them hard.
 	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
 	sky.cast_allowed = float(look.overcast) < 0.6
+	sky.focus = f3
 	sky.set_hour(game.clock.hour())
 	view.update(look, wind, f3, delta)
 	_update_ground_marks(focus, minutes, seed_value, delta, snap)

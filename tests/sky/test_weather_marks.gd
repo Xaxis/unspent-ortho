@@ -106,3 +106,43 @@ func test_drizzle_rings_drips_and_devils_come_with_their_weather() -> void:
 	check(not v.devils[0].visible, "and gone when the dust settles")
 	v.queue_free()
 	await frames(1)
+
+
+func test_snow_squall_and_whiteout_are_told_apart_at_a_glance() -> void:
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var snow_mat: ShaderMaterial = v.snow.material_override
+	# Flakes are a cold body with a pale glint, or they vanish over lying snow.
+	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes carry a highlight")
+	var body: Color = snow_mat.get_shader_parameter("color_a")
+	lt(body.get_luminance(), 0.5, "the flake's body is darker than the snow it falls over")
+	v.update(WeatherLook.compose([{"kind": &"snow", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
+	check(v.snow.emitting and v.flurry.emitting, "snow falls, with big flakes near the eye")
+	check(not v.spindrift.emitting, "a squall in a light wind does not blow along the ground")
+	gt(float(snow_mat.get_shader_parameter("columns")), 0.6, "a squall comes in dense curtains")
+	v.update(WeatherLook.compose([{"kind": &"whiteout", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
+	check(v.spindrift.emitting, "a whiteout blows snow along the ground")
+	near(float((v.spindrift.material_override as ShaderMaterial).get_shader_parameter("density")), 1.0, 1e-3, "at full strength")
+	lt(float(snow_mat.get_shader_parameter("columns")), 0.05, "and has no gaps between curtains")
+	v.update(WeatherLook.compose([]), 0.2, Vector3.ZERO, 0.016)
+	check(not v.snow.emitting and not v.spindrift.emitting, "a clear day has none of it")
+	v.queue_free()
+	await frames(1)
+
+
+func test_the_sky_knows_where_the_player_is_for_a_whiteout() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 13.0
+	o.weather = "whiteout:1"
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	await frames(2)
+	var f := g.camera.target
+	near(Vector2(g.sky.focus.x, g.sky.focus.z).distance_to(Vector2(f.x, f.z)), 0.0, 0.5, "the whiteout closes in on the camera's focus")
+	gt(g.sky.air.w, 0.9, "a whiteout")
+	g.queue_free()
+	await frames(1)
+	Weather.unforce()

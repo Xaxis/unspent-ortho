@@ -378,8 +378,12 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 	var cands: Array[Dictionary] = []
 	for s: Dictionary in _glint_near:
 		if s.has("mob"):
+			# A mob freed since the last gather (killed, despawned) must be checked
+			# before it is held in a typed variable.
+			if not is_instance_valid(s.mob):
+				continue
 			var m: Node = s.mob
-			if not is_instance_valid(m) or not bool(m.get("alive")):
+			if not bool(m.get("alive")):
 				continue
 			cands.append({"at": m.call("part_position"), "rgb": LENS_GLINT, "level": 0.55 * power, "shaft": SHAFT_LENS})
 			continue

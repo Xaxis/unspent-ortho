@@ -39,6 +39,9 @@ global uniform vec4 sky_view;
 // y glare 0..1 (hard white light bleaching the washes), z how warm the fog is
 // drawn (0 page-pale mist, 1 furnace haze), w whiteout 0..1.
 global uniform vec4 sky_air;
+// Where the player is looking: xyz the camera's focus in world space, w spare.
+// A whiteout closes in from the distance toward it.
+global uniform vec4 sky_focus;
 // Lightning after a strike: xy the strike's world x/z, z the afterglow rolling
 // through the clouds 0..1 (stepped), w the machines' power 0..1 (1 = steady).
 global uniform vec4 sky_bolt;
@@ -93,6 +96,10 @@ const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of falle
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
 const vec3 SKY_HAZE = vec3(0.60, 0.40, 0.28);         // furnace haze: ash lit rust from below
 const vec3 SKY_WHITEOUT = vec3(0.86, 0.90, 0.95);     // the page gone cold white
+// A whiteout keeps the land readable this far round the focus (tiles), and has
+// taken all of it by SKY_WHITEOUT_FAR.
+const float SKY_WHITEOUT_NEAR = 2.5;
+const float SKY_WHITEOUT_FAR = 10.0;
 const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under the moon
 const vec3 SKY_NIGHT_FLOOR = vec3(0.08, 0.10, 0.21);  // the darkest a wash goes at night
 const float SKY_NIGHT_KNEE = 0.32;
@@ -193,6 +200,16 @@ float sky_afterglow(vec3 world_pos, float d) {
 	float n = sky_cloud_noise(world_pos);
 	return step(d, smoothstep(t - 0.012, t + 0.012, n));
 }
+// How much of a place a whiteout has taken, 0..1: nothing round the focus,
+// closing in over the distance. Smooth; callers cut it into steps.
+float sky_whiteout_at(vec3 world_pos) {
+	if (sky_air.w < 0.001) {
+		return 0.0;
+	}
+	float dist = length(world_pos.xz - sky_focus.xz);
+	return sky_air.w * smoothstep(SKY_WHITEOUT_NEAR, SKY_WHITEOUT_FAR, dist);
+}
+
 vec4 sky_ground_at(vec3 world_pos) {
 	return texture(sky_ground, world_pos.xz * sky_view.z);
 }
@@ -325,7 +342,7 @@ vec3 sky_ink(vec3 world_pos, float up) {
 	// The core of a pool is clean page; its ring keeps half its hatching.
 	float lift = max(step(0.99, pool), step(0.49, pool) * step(sky_hash(floor(px / 3.0) + vec2(23.0, 7.0)), 0.5));
 	// Fog thins the hatching a line-length at a time, not pixel by pixel.
-	lift = max(lift, step(sky_hash(floor(px / 3.0) + vec2(41.0, 3.0)), sky_fog_at(world_pos, px, 0.01) * 0.9));
+	lift = max(lift, step(sky_hash(floor(px / 3.0) + vec2(41.0, 3.0)), max(sky_fog_at(world_pos, px, 0.01) * 0.9, sky_whiteout_at(world_pos) * 1.2)));
 	lift = max(lift, step(0.3, sky_sun.w));
 	return vec3(lay, lift, deeper);
 }
@@ -535,12 +552,19 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// Furnace haze is drawn in ash lit rust from below, keeping some of the
 	// furnace's warmth at dusk; a whiteout is the page gone cold white.
 	vec3 fog_col = mix(SKY_PAGE * sky_tint, SKY_HAZE * mix(sky_tint, vec3(1.0, 0.7, 0.45), 0.55), sky_air.z);
-	fog_col = mix(fog_col, SKY_WHITEOUT * max(sky_tint, vec3(0.55)), sky_air.w);
-	if (fog > 0.0 || sky_air.w > 0.0) {
+	vec3 white = SKY_WHITEOUT * max(sky_tint, vec3(0.55));
+	fog_col = mix(fog_col, white, sky_air.w);
+	if (fog > 0.0) {
 		// The page showing through: washes lighten toward linen in two steps.
-		// Under the moon the page is blue too. In a whiteout even the gaps
-		// between the banks go pale, and the banks nearly swallow the land.
-		c = mix(c, fog_col, mix(fog * (0.42 + 0.12 * sky_air.z), 0.36 + fog * 0.46, sky_air.w));
+		// Under the moon the page is blue too.
+		c = mix(c, fog_col, fog * (0.42 + 0.12 * sky_air.z));
+	}
+	if (sky_air.w > 0.001) {
+		// A whiteout: the land round the player still reads, and the page takes
+		// the rest in whole steps with a stippled edge between them, until at
+		// the edge of the screen there is only blowing white.
+		float veil = 0.1 * sky_air.w + 0.9 * sky_whiteout_at(world_pos);
+		c = mix(c, white, floor(veil * 4.0 + sky_dither(px + vec2(37.0, 5.0))) / 4.0);
 	}
 	if (sky_air.y > 0.001) {
 		// Glare: hard white light bleaches the washes toward a lifted grey and

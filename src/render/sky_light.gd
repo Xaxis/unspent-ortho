@@ -8,7 +8,7 @@ extends Node3D
 ## One writer: only this node sets the sky_*, neon_* and glint globals (and
 ## wind_strength, which world.gdshader's sway reads). The 10_sky system fills
 ## `weather_tint`, `region_tint`, `season_turn`, `clouds`, `fog`, `flash`,
-## `settle`, `wind`, `sway`, `air`, `bolt` and `cast_allowed`; the 15_lights
+## `settle`, `wind`, `sway`, `air`, `bolt`, `focus` and `cast_allowed`; the 15_lights
 ## system fills `lamps` and `glints`. Anyone may call set_hour().
 ##
 ## Once a sky system drives it (`driven`), set_hour() only records the hour and
@@ -123,6 +123,9 @@ var air := Vector4.ZERO
 ## in the clouds 0..1, w the machines' power 0..1 (1 steady; a strike stutters
 ## it for a beat). (sky_bolt)
 var bolt := Vector4(0.0, 0.0, 0.0, 1.0)
+## The camera's focus in world space, for weather that closes in on the
+## player (sky_focus: a whiteout).
+var focus := Vector3.ZERO
 ## Tiles the afterglow has rolled out from the strike (sky_view.w).
 var glow_reach := 0.0
 ## Lights mirrored in wet ground: Vector4(x, y, z, level) each, at most
@@ -236,6 +239,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("neon_wet", ng[1])
 	RenderingServer.global_shader_parameter_set("sky_air", air)
 	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
+	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, 0.0))
 	var gp := glint_columns(glints)
 	var gc := glint_columns(glint_colors)
 	RenderingServer.global_shader_parameter_set("sky_glints", gp[0])

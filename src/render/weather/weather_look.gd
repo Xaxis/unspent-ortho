@@ -58,7 +58,7 @@ const FALL := {
 	&"heat": {"heat": 1.0},
 	&"dust": {"dust": 1.0, "fog": 0.25},
 	&"drizzle": {"drizzle": 1.0, "fog": 0.35},
-	&"whiteout": {"snow": 0.9, "fog": 0.95, "whiteout": 1.0},
+	&"whiteout": {"snow": 1.0, "fog": 0.45, "whiteout": 1.0},
 	&"glare": {"glare": 1.0, "heat": 0.45},
 	&"dry_storm": {"dust": 0.3, "bolt": 1.0},
 	&"haze": {"haze": 1.0, "fog": 0.8, "ash": 0.2, "heat": 0.25},

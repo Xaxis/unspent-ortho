@@ -117,9 +117,11 @@ void fragment() {
 	vec3 wp = (INV_VIEW_MATRIX * vec4(vp.xyz / vp.w, 1.0)).xyz;
 	if (sky_fog.z > 0.001 || sky_air.w > 0.001) {
 		// Where this pixel's ground lies in a bank, the pen lifts a length at a
-		// time and what is left pales toward the bank.
-		float fogged = max(sky_fog_at(wp, wpx, 0.02), sky_air.w);
-		float kept = step(ink_hash(floor(wpx / vec2(4.0, 2.0)) + vec2(9.0, 33.0)), 1.0 - fogged * 0.55);
+		// time and what is left pales toward the bank. A whiteout takes the pen
+		// altogether away from the player: only the lines near them are drawn.
+		float white = sky_whiteout_at(wp);
+		float fogged = max(sky_fog_at(wp, wpx, 0.02) * (1.0 - 0.5 * sky_air.w), white);
+		float kept = step(ink_hash(floor(wpx / vec2(4.0, 2.0)) + vec2(9.0, 33.0)), 1.0 - fogged * (0.55 + 0.45 * sky_air.w));
 		ink_amount *= kept * (1.0 - fogged * 0.45);
 	}
 	vec3 outc = mix(c, pen, ink_amount);
