@@ -40,7 +40,7 @@ global uniform mat4 sky_lamps;
 global uniform mat4 sky_lamps2;
 
 const vec3 SKY_PAGE = vec3(0.910, 0.863, 0.753);      // LINEN[5]: the page itself
-const vec3 SKY_CLOUD_SHADE = vec3(0.86, 0.87, 0.95);  // a cloud's shade: a step toward blue-violet
+const vec3 SKY_CLOUD_SHADE = vec3(0.82, 0.84, 0.94);  // a cloud's shade: a step toward blue-violet
 const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a little cold
 const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of fallen ash
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
@@ -98,9 +98,12 @@ float sky_cloud(vec3 world_pos) {
 	}
 	vec2 q = world_pos.xz + sky_sun.xy * world_pos.y;
 	float n = sky_fbm((q - sky_clouds.xy) * 0.03) * 0.74 + sky_noise((q - sky_clouds.xy * 0.63) * 0.085 + vec2(17.0, 3.0)) * 0.26;
+	// A fine wobble so the edge is laid by hand, then a band of stipple only a
+	// few pixels deep: soft, but still a shape.
+	n += (sky_noise(q * 0.8 + vec2(3.0, 11.0)) - 0.5) * 0.03;
 	// n sits near 0.5 with a spread of about 0.12: this maps cover to area.
 	float t = mix(0.68, 0.32, sky_clouds.z);
-	return smoothstep(t - 0.02, t + 0.02, n);
+	return smoothstep(t - 0.006, t + 0.006, n);
 }
 
 // Fog at a place, as whole steps: 0 clear, 0.5 a thin bank, 1 a thick one.

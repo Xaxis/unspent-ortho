@@ -68,8 +68,10 @@ func setup(cam: CameraRig) -> void:
 	_mat(ember, Mode.FLECK, {"color_a": Palette.EMBER[4], "color_b": Palette.EMBER[5], "mix_b": 0.3, "length_px": Vector2(1, 1), "wander": 1.0, "glow": 1.0})
 	drift = _emitter("drift", 700, 3.0, Vector3(19.0, 2.2, 15.0), Vector3(0, 1.6, 0), true)
 	_mat(drift, Mode.FLICK, {"color_a": Palette.SAND[4], "color_b": Palette.LINEN[5], "mix_b": 0.3, "length_px": Vector2(4, 8)})
-	haze = _emitter("haze", 60, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
-	_mat(haze, Mode.WAVE, {"color_a": Palette.LINEN[5], "color_b": Palette.EMBER[5], "mix_b": 0.25})
+	# Heat: wavering lines, drawn darker than pale stone and paler than ash so
+	# some always read.
+	haze = _emitter("haze", 120, 4.0, Vector3(15.0, 0.6, 13.0), Vector3(0, 0.3, 0), true)
+	_mat(haze, Mode.WAVE, {"color_a": Palette.SAND[2], "color_b": Palette.LINEN[5], "mix_b": 0.4})
 	flicks = _emitter("flicks", 18, 0.9, Vector3(16.0, 1.5, 14.0), Vector3(0, 1.0, 0), true)
 	_mat(flicks, Mode.FLICK, {"color_a": Palette.LINEN[4], "color_b": Palette.INK[3], "mix_b": 0.4, "length_px": Vector2(6, 10)})
 	wisps = _emitter("wisps", 40, 7.0, Vector3(15.0, 0.5, 13.0), Vector3(0, 0.7, 0), true)
