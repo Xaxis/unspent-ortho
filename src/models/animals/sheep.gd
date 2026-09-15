@@ -1,6 +1,10 @@
 extends AnimalModel
 ## A sheep: a brick. No waist, no neck, the head carried low, a lumpy fleece
 ## outline. Fleeces run clean to muddy; faces dark or pale, by seed.
+##
+## Every sheep here is counted by someone: a plate tag off a machine clipped
+## through one ear, a painted mark on the fleece (the keeper's raddle, or the
+## violet of a machine's census), and fleece matted with the mud of the ruin.
 
 const FLEECE := [[Color("c0b394"), Color("e8dcc0")], [Color("ad9370"), Color("d8c193")], [Color("968a76"), Color("c0b394")], [Color("868d99"), Color("b8bfc9")], [Color("33231f"), Color("4f3627")]]
 const FACE := [Color("1e1c2e"), Color("2f2c45"), Color("c0b394"), Color("33231f")]
@@ -31,6 +35,9 @@ func _build_rig() -> void:
 		[0.24 * s, 0.17 * s, 0.19 * s, 0.0],
 		[0.33 * s, 0.1 * s, 0.12 * s, 0.0],
 	], 7, [f0, f1, f1, f0], sd, 0.12)
+	var paint: Color = Palette.RUST[3] if rng.randf() < 0.6 else Palette.FOUND[3]
+	var marked := rng.randi_range(0, 2)
+	var matted := f0.lerp(Palette.EARTH[1], 0.55)
 	# The lumpy outline: fleece clumps along the back and down the flanks, never symmetric.
 	for i in 9:
 		var u := i / 8.0
@@ -38,7 +45,13 @@ func _build_rig() -> void:
 		var z := (0.13 if i % 2 == 0 else -0.13) * s + (rng.randf() - 0.5) * 0.08 * s
 		var r := (0.085 + rng.randf() * 0.045) * s
 		var y := (0.12 + rng.randf() * 0.04) * s if i % 3 != 2 else -0.02 * s
-		Sculpt.clump(bk, Vector3(x, y, z * (1.25 if i % 3 == 2 else 1.0)), Vector3(r, r * 0.75, r), f1 if i % 3 else f0, sd + 10 + i, 5)
+		var col := f1 if i % 3 else f0
+		if i % 3 != 2 and (i / 3) == marked:
+			# The painted mark, laid across the back clumps.
+			col = f1.lerp(paint, 0.7)
+		elif i % 3 == 2 and rng.randf() < 0.5:
+			col = matted
+		Sculpt.clump(bk, Vector3(x, y, z * (1.25 if i % 3 == 2 else 1.0)), Vector3(r, r * 0.75, r), col, sd + 10 + i, 5)
 	var head := rig.bone(&"head", body, Vector3(0.37 * s, 0.05 * s, 0))
 	var hk := rig.kit(head)
 	# Carried low and well out in front of the fleece: a long face that hangs
@@ -53,8 +66,11 @@ func _build_rig() -> void:
 	hk.pop()
 	# A tuft on the poll, set back so the dark face in front of it stays clear.
 	Sculpt.clump(hk, Vector3(-0.05 * s, 0.07 * s, 0), Vector3(0.045 * s, 0.035 * s, 0.05 * s), f1, sd + 3, 4)
+	var tag_side := 1 if rng.randf() < 0.5 else -1
 	for side: int in [-1, 1]:
 		flap(hk, Vector3(-0.02 * s, 0.05 * s, side * 0.06 * s), Vector3(0.08 * s, 0.04 * s, side * 0.07 * s), Vector3(0.02 * s, 0.1 * s, side * 0.27 * s), face, face.darkened(0.2))
+		if side == tag_side:
+			machine_tag(head, Vector3(0.03 * s, 0.085 * s, side * 0.21 * s), Vector3(0.2, -1.0, side * 0.3), Vector3(0.3, 0.6, side), 0.075 * s, rng.randf() < 0.15)
 		var ex := 0.1 * s
 		Sculpt.card(hk, Vector3(ex, -0.03 * s, side * 0.068 * s), Vector3(ex + 0.025 * s, -0.05 * s, side * 0.065 * s), Vector3(ex + 0.025 * s, -0.03 * s, side * 0.065 * s), Vector3(ex, -0.012 * s, side * 0.068 * s), Palette.LINEN[4] if dark_face else Palette.INK[1], Vector3(0.3, 0.2, side).normalized())
 	var leg_c := face if dark_face else Palette.EARTH[1]

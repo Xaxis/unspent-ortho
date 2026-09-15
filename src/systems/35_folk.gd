@@ -92,6 +92,7 @@ static func parse_look(text: String, seed_value: int) -> Dictionary:
 	var spec := {}
 	var salvage: Array = []
 	var extras: Array = []
+	var gear: Array = []
 	for tok: String in text.split(",", false):
 		var s := StringName(tok)
 		if PersonLook.BUILDS.has(s): spec.build = s
@@ -103,6 +104,9 @@ static func parse_look(text: String, seed_value: int) -> Dictionary:
 		elif PersonLook.SALVAGE.has(s): salvage.append(s)
 		elif PersonLook.EXTRAS.has(s): extras.append(s)
 		elif PersonLook.HAIR.has(s): spec.hair = s
+		elif PersonLook.GEAR.has(s): gear.append(s)
+	if not gear.is_empty():
+		spec.gear = gear
 	if not salvage.is_empty():
 		spec.salvage = salvage
 	if not extras.is_empty():
@@ -225,7 +229,10 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 			f.job_pos = job.pos
 			f.facing = job.facing
 			f.job_facing = job.facing
+	# Dressed for the land they live on and the work they were given (characters).
+	look = PersonLook.dress(look, BiomeRegistry.at(game.world, home).hazards, PersonLook.trade_for(f.role, f.tool), int(h * 1000003.0) + village * 7919)
 	var model := PersonModel.make(look, f.tool, game.view.world_material() if game.view != null else null)
+	model.pose_hz = PersonModel.CROWD_HZ
 	model.name = "villager_%d" % folk.size()
 	add_child(model)
 	f.model = model

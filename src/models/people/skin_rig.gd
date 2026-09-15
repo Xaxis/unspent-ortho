@@ -17,17 +17,23 @@ extends RefCounted
 ## Parts go on one of three surfaces (docs/ART.md law 3):
 ##   MADE   the hand: the material given to attach() (world or person shader)
 ##   FOUND  the ruler: found.gdshader, clean, unhatched (plate salvage, glim bodies)
-##   GLOW   found.gdshader with emission: a glim's light, a live aerial tip
+##   GLOW   a light built into the FOUND: a glim's light, a live aerial tip, a
+##          slate's screen. Drawn in the FOUND mesh with vertex alpha LIT_ALPHA,
+##          which found.gdshader lights as a steady strip: one draw call fewer
+##          for every figure that carries a light.
 ## Every MeshKit ink channel (style, sway, wash2) is carried through.
 
 enum { MADE, FOUND, GLOW }
+## found.gdshader lights a vertex with alpha in 0.5..0.98 at (1 - alpha) * 5: 0.55.
+const LIT_ALPHA := 0.89
 
 var names: Array[StringName] = []
 var parents: PackedInt32Array = []
 var rest: Array[Vector3] = []
 var skeleton: Skeleton3D
 var body: MeshInstance3D
-## One mesh node per surface kind, indexed by MADE / FOUND / GLOW (null = never used).
+## One mesh node per surface kind, indexed by MADE / FOUND (null = never used).
+## GLOW parts are inside the FOUND mesh, so meshes[GLOW] stays null.
 var meshes: Array[MeshInstance3D] = [null, null, null]
 ## A shadows-only twin, for materials that draw in the transparent pass (people):
 ## those cast no shadow of their own.
@@ -91,7 +97,7 @@ func attach(parent: Node3D, material: Material, shadow_twin: bool = false) -> vo
 
 func rebuild(material: Material, shadow_twin: bool = false) -> void:
 	tris = {}
-	for s: int in [MADE, FOUND, GLOW]:
+	for s: int in [MADE, FOUND]:
 		var mesh := ArrayMesh.new()
 		var used := _merge(s, mesh)
 		var mi: MeshInstance3D = meshes[s]
@@ -101,7 +107,7 @@ func rebuild(material: Material, shadow_twin: bool = false) -> void:
 			continue
 		if mi == null:
 			mi = MeshInstance3D.new()
-			mi.name = ["body", "found", "glow"][s]
+			mi.name = ["body", "found"][s]
 			skeleton.add_child(mi)
 			mi.skeleton = NodePath("..")
 			meshes[s] = mi
@@ -109,9 +115,7 @@ func rebuild(material: Material, shadow_twin: bool = false) -> void:
 		mi.mesh = mesh
 		# material_override, not a surface material: the gallery fills in any
 		# empty override with its own material.
-		mi.material_override = material if s == MADE else found_material(s == GLOW)
-		if s == GLOW:
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.material_override = material if s == MADE else found_material(false)
 	body = meshes[MADE]
 	var made: MeshInstance3D = meshes[MADE]
 	if shadow_twin and made != null and made.visible:
@@ -172,7 +176,8 @@ func _merge(surface: int, mesh: ArrayMesh) -> bool:
 	for b in _kits.size():
 		var off := global_rest(b)
 		for entry: Array in _kits[b]:
-			if entry[1] != surface:
+			var lit: bool = entry[1] == GLOW
+			if entry[1] != surface and not (lit and surface == FOUND):
 				continue
 			var k: MeshKit = entry[0]
 			var n := k.verts.size()
@@ -188,7 +193,11 @@ func _merge(surface: int, mesh: ArrayMesh) -> bool:
 				weights.append_array([1.0, 0.0, 0.0, 0.0])
 			nm.append_array(k.normals)
 			tan.append_array(_smooth_normals(k))
-			c.append_array(k.colors)
+			if lit:
+				for col in k.colors:
+					c.append(Color(col.r, col.g, col.b, LIT_ALPHA))
+			else:
+				c.append_array(k.colors)
 			uv.append_array(k.uvs)
 			uv2.append_array(k.uv2s)
 			cu.append_array(k.custom0)

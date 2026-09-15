@@ -57,34 +57,61 @@ func _tris(spec: Dictionary) -> int:
 	return n
 
 
+## A person's triangle ceiling. The M1 figure fit 800; the last people carry
+## their whole scavenged kit on top (gear, patches, weather coats), and the worst
+## case below adds every axis's heaviest choice at once, which nobody wears.
+const BUDGET := 1300
+
+
 func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
 	# The worst look is bounded per axis, since parts on different axes add: the
 	# worst head (hat x hair x beard), the worst coat and cut, every extra at once,
-	# and the two heaviest salvage parts (normalize keeps two at most).
+	# the two heaviest salvage parts (normalize keeps two at most), the three
+	# heaviest pieces of gear, and every patch.
 	for b: StringName in [&"man", &"woman", &"heavy"]:
-		var base_spec := {"build": b, "extras": []}
-		var base := _tris(base_spec)
+		var bare := {"build": b, "extras": [], "gear": [], "patches": 0}
+		var base := _tris(bare)
 		var head := 0
 		for h: StringName in PersonLook.HATS:
 			for st: StringName in PersonLook.HAIR_STYLES:
 				for bd: StringName in PersonLook.BEARDS:
-					head = maxi(head, _tris({"build": b, "extras": [], "hat": h, "hair_style": st, "beard": bd}) - base)
+					head = maxi(head, _tris(_with(bare, {"hat": h, "hair_style": st, "beard": bd})) - base)
 		var coat := 0
 		for c: StringName in PersonLook.COATS:
 			for cut: StringName in PersonLook.SHIRT_CUTS:
-				coat = maxi(coat, _tris({"build": b, "extras": [], "coat": c, "shirt_cut": cut}) - base)
-		var extras := _tris({"build": b, "extras": PersonLook.EXTRAS.duplicate()}) - base
+				coat = maxi(coat, _tris(_with(bare, {"coat": c, "shirt_cut": cut})) - base)
+		var extras := _tris(_with(bare, {"extras": PersonLook.EXTRAS.duplicate()})) - base
 		var parts: Array[int] = []
 		for sv: StringName in PersonLook.SALVAGE:
-			parts.append(_tris({"build": b, "extras": [], "salvage": [sv]}) - base)
+			parts.append(_tris(_with(bare, {"salvage": [sv]})) - base)
 		parts.sort()
-		var worst := base + head + coat + extras + parts[-1] + parts[-2]
-		lt(worst, 801, "%s: worst look %d = base %d + head %d + coat %d + extras %d + salvage %d + %d" % [b, worst, base, head, coat, extras, parts[-1], parts[-2]])
-	var p := PersonModel.make({"build": &"squat", "hat": &"band", "coat": &"jerkin", "hair_style": &"bun", "beard": &"full", "extras": PersonLook.EXTRAS.duplicate(), "salvage": [&"brace", &"gauntlet", &"plate"]}, &"axe_felling")
+		var kit: Array[int] = []
+		for g: StringName in PersonLook.GEAR:
+			kit.append(_tris(_with(bare, {"gear": [g]})) - base)
+		kit.sort()
+		var patches := _tris(_with(bare, {"patches": 3, "coat": &"long"})) - _tris(_with(bare, {"coat": &"long"}))
+		var worst := base + head + coat + extras + parts[-1] + parts[-2] + kit[-1] + kit[-2] + kit[-3] + patches
+		lt(worst, BUDGET + 1, "%s: worst look %d = base %d + head %d + coat %d + extras %d + salvage %d + %d + gear %d + %d + %d + patches %d" % [b, worst, base, head, coat, extras, parts[-1], parts[-2], kit[-1], kit[-2], kit[-3], patches])
+		for g: StringName in PersonLook.GEAR:
+			lt(_tris(_with(bare, {"gear": [g]})) - base, 160, "%s: %s is kit, not luggage" % [b, g])
+	var p := PersonModel.make({"build": &"squat", "hat": &"band", "coat": &"jerkin", "hair_style": &"bun", "beard": &"full", "extras": PersonLook.EXTRAS.duplicate(), "salvage": [&"brace", &"gauntlet", &"plate"], "gear": [&"pack", &"respirator", &"radio", &"coil"], "patches": 3}, &"axe_felling")
 	eq((p.look.salvage as Array).size(), 2, "a third salvage part is dropped")
-	lt(p.body_triangles(), 801, "a heavy real look")
+	eq((p.look.gear as Array).size(), PersonLook.GEAR_MAX, "gear past the most a body carries is dropped")
+	lt(p.body_triangles(), BUDGET + 1, "a heavy real look")
 	gt(p.tool_triangles(), 0, "holds the axe")
 	p.free()
+	# What a village actually wears stays well inside it.
+	var total := 0
+	var folk := PersonLook.villagers(9, 24, {&"wet": 0.3})
+	for spec: Dictionary in folk:
+		total += _tris(spec)
+	lt(total / folk.size(), 1000, "a typical villager")
+
+
+func _with(a: Dictionary, b: Dictionary) -> Dictionary:
+	var out := a.duplicate()
+	out.merge(b, true)
+	return out
 
 
 func test_every_tool_has_a_model_and_found_ones_glow() -> void:
@@ -96,13 +123,24 @@ func test_every_tool_has_a_model_and_found_ones_glow() -> void:
 		var glows := p.rig.triangle_count([&"tool_glow"]) > 0
 		eq(glows, HeldTools.is_found(id), "%s glows only if found" % id)
 		if HeldTools.is_found(id):
-			var g := p.rig.meshes[SkinRig.GLOW]
-			check(g != null and g.visible, "%s glow mesh shown" % id)
+			var g := p.rig.meshes[SkinRig.FOUND]
+			check(g != null and g.visible and _lit_vertices(g) > 0, "%s light drawn in the FOUND mesh" % id)
 	p.set_held(&"")
 	eq(p.tool_triangles(), 0, "bare hands hold nothing")
-	var bare := p.rig.meshes[SkinRig.GLOW]
-	check(bare == null or not bare.visible, "glow hidden with bare hands")
+	eq(p.rig.triangle_count([&"tool_glow"]), 0, "no tool light with bare hands")
+	p.set_look({"gear": []})
+	var bare := p.rig.meshes[SkinRig.FOUND]
+	check(bare == null or not bare.visible or _lit_vertices(bare) == 0, "no light with bare hands and no lit kit")
+	check(p.rig.meshes[SkinRig.GLOW] == null, "lights never take a mesh of their own")
 	p.free()
+
+
+func _lit_vertices(mi: MeshInstance3D) -> int:
+	var n := 0
+	for c: Color in mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]:
+		if c.a < 0.98 and c.a >= 0.5:
+			n += 1
+	return n
 
 
 func test_found_weapons_draw_with_the_ruler_and_made_tools_with_the_hand() -> void:
