@@ -169,3 +169,36 @@ func test_durations_read_like_a_notebook() -> void:
 	eq(UiRules.duration(45.0), "45 min")
 	eq(UiRules.duration(240.0), "4 h")
 	eq(UiRules.duration(270.0), "4 h 30")
+
+
+func test_recipes_are_named_by_what_they_make_and_told_apart() -> void:
+	var fire_a := {"id": &"campfire", "at": &"hand", "needs": {&"driftwood": 3, &"stone": 2}, "makes": {}, "builds": &"fire"}
+	var fire_b := {"id": &"campfire_timber", "at": &"hand", "needs": {&"timber": 1, &"stone": 2}, "makes": {}, "builds": &"fire"}
+	var coal := {"id": &"charcoal", "at": &"fire", "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}}
+	var haft_a := {"id": &"haft", "at": &"hand", "needs": {&"driftwood": 2}, "makes": {&"haft": 1}}
+	var haft_b := {"id": &"haft_timber", "at": &"hand", "needs": {&"timber": 1}, "makes": {&"haft": 2}}
+	var hone := {"id": &"sharpen", "at": &"hand", "needs": {}, "makes": {}, "action": &"hone"}
+	var all: Array[Dictionary] = [fire_a, fire_b, coal, haft_a, haft_b, hone]
+	eq(UiRules.recipe_title(coal, all), "charcoal ×2", "alone, just what it makes")
+	eq(UiRules.recipe_title(fire_a, all), "build a fire, of driftwood", "two ways to a fire, told apart")
+	eq(UiRules.recipe_title(fire_b, all), "build a fire, of timber")
+	eq(UiRules.recipe_title(haft_b, all), "haft ×2, of timber", "the same thing in other numbers is still a twin")
+	eq(UiRules.recipe_title(hone, all), "sharpen what is in hand")
+	eq(UiRules.recipe_output(coal), &"charcoal")
+	eq(UiRules.station_words(&"hand"), "by hand")
+	eq(UiRules.station_words(&"kiln"), "at the kiln")
+
+
+func test_why_not_names_the_shortfall() -> void:
+	var inv := Inventory.new()
+	inv.add(&"driftwood", 1)
+	var r := {"id": &"charcoal", "at": &"fire", "minutes": 180.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}}
+	eq(UiLink.why_not(null, inv, r), "Short of three driftwood.")
+	eq(UiLink.missing(inv, r), {&"driftwood": 3})
+	inv.add(&"driftwood", 3)
+	eq(UiLink.why_not(null, inv, r), "", "all in hand")
+	check(UiLink.make(null, inv, r), "made without a game")
+	eq(inv.count(&"charcoal"), 2)
+	eq(UiLink.group_of(&"knife"), &"tools")
+	eq(UiLink.group_of(&"mussels"), &"food")
+	eq(UiLink.group_of(&"stone"), &"goods")

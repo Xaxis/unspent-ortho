@@ -59,14 +59,21 @@ func refresh() -> void:
 			stations = here
 	var list := recipes()
 	var rows: Array[Dictionary] = []
-	var last_at := &"~"
-	for r in list:
-		var at := StringName(r.get("at", &""))
-		if at != last_at and recipes_override.is_empty():
-			rows.append({"header": UiRules.station_words(at)})
-			last_at = at
+	var group: Array[Dictionary] = []
+	for i in list.size():
+		var r := list[i]
 		var why := UiLink.why_not(game, inventory, r)
-		rows.append({"id": r.get("id", &""), "recipe": r, "enabled": why == "", "why": why, "title": UiRules.recipe_title(r, list)})
+		group.append({"id": r.get("id", &""), "recipe": r, "enabled": why == "", "why": why, "title": UiRules.recipe_title(r, list)})
+		var at := StringName(r.get("at", &""))
+		if i + 1 < list.size() and StringName(list[i + 1].get("at", &"")) == at:
+			continue
+		# A station's recipes that can be made now come first; the rest keep their order.
+		if recipes_override.is_empty():
+			rows.append({"header": UiRules.station_words(at)})
+		var ready := group.filter(func(row: Dictionary) -> bool: return row.enabled)
+		rows.append_array(ready)
+		rows.append_array(group.filter(func(row: Dictionary) -> bool: return not row.enabled))
+		group.clear()
 	menu.set_rows(rows)
 	queue_redraw()
 

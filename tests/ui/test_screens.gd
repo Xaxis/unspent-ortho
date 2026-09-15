@@ -184,3 +184,18 @@ func test_map_pans_by_steps_and_changes_scale() -> void:
 	s.handle(&"map")
 	check(not s.is_open, "M closes the map")
 	s.free()
+
+
+func test_making_lists_what_can_be_made_first_under_its_station() -> void:
+	var s := UiCraftingScreen.new()
+	s.inventory = Inventory.new()
+	s.inventory.add(&"driftwood", 4)
+	tree.root.add_child(s)
+	var a := {"id": &"a", "at": &"fire", "minutes": 60.0, "needs": {&"scrap": 9}, "makes": {&"iron": 1}}
+	var b := {"id": &"b", "at": &"fire", "minutes": 60.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}}
+	var c := {"id": &"c", "at": &"hand", "minutes": 20.0, "needs": {&"driftwood": 2}, "makes": {&"haft": 1}}
+	s.recipes_override = [a, b, c]
+	s.open()
+	var order: Array = s.menu.rows.map(func(r: Dictionary) -> StringName: return r.id)
+	eq(order, [&"b", &"a", &"c"], "within the fire, the makeable first")
+	s.free()

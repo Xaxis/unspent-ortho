@@ -238,21 +238,23 @@ static func recipe_output(r: Dictionary) -> StringName:
 ## recipe in `among` makes the same, the first input that tells them apart is
 ## added: "pick, of iron".
 static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String:
+	var title := ""
 	var builds := StringName(r.get("builds", &""))
-	if builds != &"":
-		return "build a %s" % builds
 	match StringName(r.get("action", &"")):
-		&"hone": return "sharpen what is in hand"
-		&"reedge": return "re-edge what is in hand"
-	var makes: Dictionary = r.get("makes", {})
-	var parts := PackedStringArray()
-	for id: StringName in makes:
-		var n := int(makes[id])
-		parts.append(item_name(id) + (" ×%d" % n if n > 1 else ""))
-	var title := ", ".join(parts)
+		&"hone": title = "sharpen what is in hand"
+		&"reedge": title = "re-edge what is in hand"
+	if builds != &"":
+		title = "build a %s" % builds
+	if title == "":
+		var parts := PackedStringArray()
+		var makes: Dictionary = r.get("makes", {})
+		for id: StringName in makes:
+			var n := int(makes[id])
+			parts.append(item_name(id) + (" ×%d" % n if n > 1 else ""))
+		title = ", ".join(parts)
 	var twins: Array[Dictionary] = []
 	for o in among:
-		if o != r and o.get("makes", {}) == makes and o.get("builds", &"") == &"":
+		if o != r and _same_result(o, r):
 			twins.append(o)
 	if twins.is_empty():
 		return title
@@ -260,3 +262,15 @@ static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String
 		if twins.all(func(o: Dictionary) -> bool: return not (o.get("needs", {}) as Dictionary).has(id)):
 			return "%s, of %s" % [title, item_name(id)]
 	return title
+
+
+## Two recipes that end in the same thing: the same outputs (in any number), the
+## same station built, or the same mend.
+static func _same_result(a: Dictionary, b: Dictionary) -> bool:
+	if a.get("builds", &"") != b.get("builds", &"") or a.get("action", &"") != b.get("action", &""):
+		return false
+	var ka: Array = (a.get("makes", {}) as Dictionary).keys()
+	var kb: Array = (b.get("makes", {}) as Dictionary).keys()
+	ka.sort()
+	kb.sort()
+	return ka == kb
