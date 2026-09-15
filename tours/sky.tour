@@ -1,0 +1,27 @@
+# The sky through a day at the first coast, played through real input:
+# clouds walking over the land, dusk, night, the lantern on F, a lit village.
+shot 01-morning
+wait 6
+shot 02-clouds-moved
+hour 12
+wait 0.3
+shot 03-noon
+hour 19.5
+wait 0.3
+shot 04-dusk
+hour 22
+wait 0.5
+shot 05-night
+press lamp 0.1
+wait 0.4
+shot 06-lantern
+walk 1,1 2.0
+shot 07-lantern-walk
+press lamp 0.1
+wait 0.4
+shot 08-lantern-out
+village 0
+wait 0.5
+shot 09-village-night
+wait 0.15
+shot 10-village-hearths-flicker

@@ -60,6 +60,46 @@ sky_tint={
 "type": "vec3",
 "value": Vector3(1, 1, 1)
 }
+sky_sun={
+"type": "vec4",
+"value": Vector4(0, 0, 1, 0)
+}
+sky_clouds={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+sky_fog={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+sky_view={
+"type": "vec4",
+"value": Vector4(0.039, 0, 0, 0)
+}
+sky_settle={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+sky_wind={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+sky_lamps={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+sky_lamps2={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+sky_shade={
+"type": "vec4",
+"value": Vector4(1, 1, 1, 0)
+}
+sky_ground={
+"type": "sampler2D",
+"value": ""
+}
 world_px={
 "type": "vec2",
 "value": Vector2(0, 0)

@@ -18,6 +18,8 @@ extends RefCounted
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --stats             print render stats (draw calls, chunk build times) before the shot
+## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt), sky package
+## --lamp              start with the player's lantern lit, sky package
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -34,6 +36,9 @@ var scale := 2
 var scene := "game"
 var place := ""
 var stats := false
+## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
+var weather := ""
+var lamp := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -62,5 +67,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scene": o.scene = v
 			"place": o.place = v
 			"stats": o.stats = true
+			"weather": o.weather = v
+			"lamp": o.lamp = true
 			_: push_warning("unknown option --%s" % k)
 	return o

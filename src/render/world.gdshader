@@ -738,16 +738,16 @@ void light() {
 		float band = ndl > 0.42 ? 1.0 : 0.9;
 		// Depth of shade: 0 in cast shadow on a sunward face, 1 on a face turned away.
 		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
-		float ink = (1.0 - lit) * hatch(style, px, depth) * (1.0 - unhatched);
-		vec3 k = mix(shade_tint, vec3(band), max(lit, unhatched));
+		// The sky lays ink on lit faces (cloud shadow, night) and lifts it (lamplight, fog).
+		vec3 sk = sky_ink(world_pos, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
+		float ink = max(1.0 - lit, sk.x) * hatch(style, px, depth + sk.z) * (1.0 - sk.y) * (1.0 - unhatched);
+		vec3 k = mix(shade_tint * sky_shade.rgb, vec3(band), max(lit, unhatched));
 		k = mix(k, ink_tint, ink * 0.75);
 		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
 	} else {
-		// Lamps and fire: three hard steps, and inside the pool the page is
-		// clean: light adds back what the hatching took (docs/ART.md §6).
-		float a = clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0);
-		a = floor(a * 3.0 + 0.5) / 3.0;
-		float erase = hatch(style, px, 1.0) * step(0.3, a) * 0.9;
-		DIFFUSE_LIGHT += LIGHT_COLOR * a * (1.0 + erase) / PI;
+		// Lamps and fire: a warm pool in hard steps; its ink is lifted in sky_ink().
+		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
+		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
 	}
 }
