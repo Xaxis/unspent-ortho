@@ -4,7 +4,7 @@ class_name Tuning
 ## original game's content and engine (docs/research/design-extract.md).
 
 # --- World ---
-const WORLD_SIZE := 256
+const WORLD_SIZE := 512
 ## Game-world minutes per real second. 1 = a day in 24 real minutes. (source)
 const MINUTES_PER_SECOND := 1.0
 const START_HOUR := 8.0
