@@ -1,0 +1,124 @@
+extends TestCase
+## What the quiet layer shows and when.
+
+
+class FakeMob:
+	extends RefCounted
+	var pos := Vector2.ZERO
+	var alive := true
+	var kind := &"runner"
+
+
+func _mob(p: Vector2, alive: bool = true) -> FakeMob:
+	var m := FakeMob.new()
+	m.pos = p
+	m.alive = alive
+	return m
+
+
+func test_health_is_cells_of_three() -> void:
+	eq(UiRules.health_cells(12, 12), PackedInt32Array([3, 3, 3, 3]), "full")
+	eq(UiRules.health_cells(8, 12), PackedInt32Array([3, 3, 2, 0]), "hurt")
+	eq(UiRules.health_cells(0, 12), PackedInt32Array([0, 0, 0, 0]), "down")
+	eq(UiRules.health_cells(15, 15).size(), 5, "plate adds a cell")
+	eq(UiRules.health_cells(13, 13), PackedInt32Array([3, 3, 3, 3, 1]), "a part cell")
+
+
+func test_wind_only_shows_when_spent() -> void:
+	check(not UiRules.wind_shown(2400.0, 2400.0), "full wind hidden")
+	check(UiRules.wind_shown(1700.0, 2400.0), "spent wind shown")
+
+
+func test_needs_appear_only_when_they_matter() -> void:
+	var b := Body.new()
+	b.fed_until = 1000.0
+	check(UiRules.needs(b, 900.0, 10.0).is_empty(), "fed, dry, light: nothing")
+	var peckish := UiRules.needs(b, 1100.0, 10.0)
+	eq(peckish.size(), 1)
+	eq(peckish[0].need, &"hunger")
+	eq(peckish[0].level, 1, "peckish is quiet")
+	eq(UiRules.needs(b, 1000.0 + 300.0, 10.0)[0].level, 2, "hungry is the accent")
+	b.wet = 0.9
+	var list := UiRules.needs(b, 900.0, UiRules.CREEL * 2.0)
+	var names: Array = list.map(func(n: Dictionary) -> StringName: return n.need)
+	check(names.has(&"wet") and names.has(&"load"), "wet and laden: %s" % str(names))
+	for n in list:
+		if n.need == &"load":
+			eq(n.level, 2, "twice the creel is the accent")
+
+
+func test_hostile_near_ignores_the_dead_and_the_far() -> void:
+	var p := Vector2(50, 50)
+	check(not UiRules.hostile_near([], p), "nobody")
+	check(not UiRules.hostile_near([_mob(Vector2(59, 50))], p), "9 tiles is not near")
+	check(UiRules.hostile_near([_mob(Vector2(56, 55))], p), "within 8")
+	check(not UiRules.hostile_near([_mob(Vector2(51, 50), false)], p), "dead does not count")
+	near(UiRules.nearest_hostile([_mob(Vector2(53, 54)), _mob(Vector2(60, 50))], p), 5.0, 1e-4)
+
+
+func test_use_hint_hides_in_a_fight_busy_or_paged() -> void:
+	var p := Vector2(10, 10)
+	check(UiRules.hint_allowed(false, false, [], p), "calm")
+	check(not UiRules.hint_allowed(false, false, [_mob(Vector2(14, 10))], p), "hostile near")
+	check(UiRules.hint_allowed(false, false, [_mob(Vector2(30, 10))], p), "hostile far")
+	check(not UiRules.hint_allowed(true, false, [], p), "busy")
+	check(not UiRules.hint_allowed(false, true, [], p), "a page is open")
+
+
+func test_prop_hints_name_the_verb() -> void:
+	eq(UiRules.prop_hint(PropKind.PINE), "pine - fell")
+	eq(UiRules.prop_hint(PropKind.BOULDER), "boulder - break")
+	eq(UiRules.prop_hint(PropKind.MUSSEL_ROCK), "mussel rock - gather")
+	eq(UiRules.prop_hint(PropKind.FIRE), "fire - make")
+	eq(UiRules.hint_key(PropKind.FIRE), "c")
+	eq(UiRules.hint_key(PropKind.PINE), "e")
+	eq(UiRules.prop_hint(PropKind.LAMP), "", "nothing to do to a lamp post")
+
+
+func test_use_target_prefers_what_is_ahead() -> void:
+	var w := WorldData.new(1, 16)
+	for i in w.level.size():
+		w.level[i] = 1
+	var behind := WorldProp.new(0, PropKind.PINE, Vector2(7.0, 8.5), 0.0, 1.0)
+	var ahead := WorldProp.new(1, PropKind.BOULDER, Vector2(9.2, 8.5), 0.0, 1.0)
+	w.props = [behind, ahead]
+	var q := WorldQuery.new(w)
+	var t := UiRules.use_target(q, Vector2(8.1, 8.5), 0.0)
+	check(t == ahead, "facing east picks the boulder")
+	t = UiRules.use_target(q, Vector2(8.1, 8.5), PI)
+	check(t == behind, "facing west picks the pine")
+	w.depleted[ahead.id] = INF
+	t = UiRules.use_target(q, Vector2(8.1, 8.5), 0.0)
+	check(t == behind, "a taken prop is not a target")
+	w.props.append(WorldProp.new(2, PropKind.FIRE, Vector2(3.5, 3.5), 0.0, 1.0))
+	q = WorldQuery.new(w)
+	eq(UiRules.station_near(q, Vector2(4.5, 4.5)), &"fire")
+	eq(UiRules.station_near(q, Vector2(12.5, 12.5)), &"")
+
+
+func test_inventory_groups_in_notebook_order() -> void:
+	var inv := Inventory.new()
+	inv.add(&"stone", 3)
+	inv.add(&"mussels", 2)
+	inv.add(&"knife")
+	var rows := UiRules.inventory_rows(inv)
+	var shape: Array = rows.map(func(r: Dictionary) -> String: return String(r.get("header", r.get("id"))))
+	eq(shape, ["tools", "knife", "food", "mussels", "goods", "stone"])
+	eq(rows[5].count, 3, "count")
+
+
+func test_give_is_parsed_and_never_doubles() -> void:
+	var g := UiRules.parse_give("stone:3, timber ,scrap:2")
+	eq(g, {&"stone": 3, &"timber": 1, &"scrap": 2})
+	var inv := Inventory.new()
+	inv.add(&"stone", 1)
+	UiRules.apply_give(inv, g)
+	UiRules.apply_give(inv, g)
+	eq(inv.count(&"stone"), 3, "topped up to 3, once")
+	eq(inv.count(&"scrap"), 2)
+
+
+func test_durations_read_like_a_notebook() -> void:
+	eq(UiRules.duration(45.0), "45 min")
+	eq(UiRules.duration(240.0), "4 h")
+	eq(UiRules.duration(270.0), "4 h 30")

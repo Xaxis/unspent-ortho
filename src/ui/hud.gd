@@ -1,27 +1,205 @@
 class_name Hud
 extends CanvasLayer
-## The quiet layer. For now: the clock, top right. Everything on it is drawn at
-## the 640x360 base resolution, so text is pixel-crisp.
+## The quiet layer, drawn at the 640x360 base so every pixel is a screen pixel.
+## Nothing sits over the middle of the screen, where the fight is:
+##
+##   top left     health, a gauge of cells of three (no numbers); wind under it,
+##                only while some is spent
+##   top right    the clock; under it the needs that matter now, as glyphs
+##   bottom left  the thing in hand: its icon and name
+##   bottom mid   a message that fades; under it what E would do here
+##
+## The HUD owns no rules. The ui system (src/systems/90_ui.gd) feeds it every
+## frame from Body, Inventory and the world; Events.message arrives directly.
 
-var _clock: Label
+const MARGIN := 8
+const MESSAGE_HOLD := 2.2
+const MESSAGE_FADE := 0.6
+const CELL_W := 8
+const CELL_H := 7
+
+var clock_text := ""
+var health := 12
+var max_health := 12
+var wind := 1.0
+var max_wind := 1.0
+var held: StringName = &""
+var needs: Array[Dictionary] = []
+var hint := ""
+var hint_key := "e"
+var message := ""
+
+var _canvas: Control
+var _message_age := 99.0
+var _wind_alpha := 0.0
+var _hint_alpha := 0.0
+var _hint_target := 0.0
+var _hurt_flash := 0.0
+var _lost_from := 0
+var _needs_alpha := {}
 
 
 func _ready() -> void:
-	_clock = Label.new()
-	_clock.name = "clock"
-	_clock.anchor_left = 1.0
-	_clock.anchor_right = 1.0
-	_clock.offset_left = -120
-	_clock.offset_right = -8
-	_clock.offset_top = 4
-	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_clock.add_theme_font_size_override("font_size", 10)
-	_clock.add_theme_color_override("font_color", Palette.LINEN[5])
-	_clock.add_theme_color_override("font_shadow_color", Palette.INK[0])
-	_clock.add_theme_constant_override("shadow_offset_x", 1)
-	_clock.add_theme_constant_override("shadow_offset_y", 1)
-	add_child(_clock)
+	layer = 10
+	_canvas = Control.new()
+	_canvas.name = "canvas"
+	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_canvas.theme = UiTheme.theme()
+	_canvas.draw.connect(_draw_hud)
+	add_child(_canvas)
+	Events.message.connect(show_message)
 
 
 func set_clock(text: String) -> void:
-	_clock.text = text
+	if text != clock_text:
+		clock_text = text
+		_canvas.queue_redraw()
+
+
+func set_body(p_health: int, p_max_health: int, p_wind: float, p_max_wind: float) -> void:
+	if p_health < health:
+		_lost_from = health
+		_hurt_flash = 0.5
+	health = p_health
+	max_health = p_max_health
+	wind = p_wind
+	max_wind = p_max_wind
+
+
+func set_held(id: StringName) -> void:
+	held = id
+
+
+func set_needs(list: Array[Dictionary]) -> void:
+	needs = list
+
+
+## text "" hides the hint (it fades out rather than blinking off).
+func set_hint(text: String, key: String = "e") -> void:
+	if text != "":
+		hint = text
+		hint_key = key
+	_hint_target = 1.0 if text != "" else 0.0
+
+
+func show_message(text: String) -> void:
+	message = text
+	_message_age = 0.0
+
+
+## Jump every fade to where it is heading (screenshots, tests).
+func settle() -> void:
+	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
+	_hint_alpha = _hint_target
+	for n in needs:
+		_needs_alpha[n.need] = 1.0
+
+
+func message_alpha() -> float:
+	if _message_age < MESSAGE_HOLD:
+		return 1.0
+	return clampf(1.0 - (_message_age - MESSAGE_HOLD) / MESSAGE_FADE, 0.0, 1.0)
+
+
+
+func _process(delta: float) -> void:
+	_message_age += delta
+	_hurt_flash = maxf(0.0, _hurt_flash - delta)
+	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
+	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
+	_hint_alpha = move_toward(_hint_alpha, _hint_target, delta * 6.0)
+	var present := {}
+	for n in needs:
+		present[n.need] = true
+	for k: StringName in [&"hunger", &"wet", &"load", &"tired"]:
+		var a: float = _needs_alpha.get(k, 0.0)
+		_needs_alpha[k] = move_toward(a, 1.0 if present.has(k) else 0.0, delta * 1.5)
+	_canvas.queue_redraw()
+
+
+func _draw_hud() -> void:
+	var ci := _canvas
+	_draw_health(ci)
+	_draw_clock(ci)
+	_draw_held(ci)
+	_draw_bottom(ci)
+
+
+func _draw_health(ci: Control) -> void:
+	var cells := UiRules.health_cells(health, max_health)
+	var lost_cells := UiRules.health_cells(_lost_from, max_health)
+	var x := MARGIN
+	var y := MARGIN
+	for i in cells.size():
+		var r := Rect2i(x, y, CELL_W, CELL_H)
+		UiDraw.rect(ci, r.grow(1), UiTheme.INK_DEEP)
+		UiDraw.rect(ci, r, Color(UiTheme.INK_SOFT, 0.85))
+		# Thirds fill left to right, a column of 2 px each inside a 1 px lining.
+		for t in UiRules.PER_CELL:
+			var col_rect := Rect2i(x + 1 + t * 2, y + 1, 2, CELL_H - 2)
+			if t < cells[i]:
+				UiDraw.rect(ci, col_rect, UiTheme.ACCENT_BRIGHT)
+				UiDraw.hline(ci, col_rect.position.x, col_rect.end.x - 1, y + 1, Palette.RUST[5])
+			elif _hurt_flash > 0.0 and t < lost_cells[i]:
+				UiDraw.rect(ci, col_rect, Color(Palette.LINEN[5], _hurt_flash * 2.0))
+		x += CELL_W + 3
+	if _wind_alpha > 0.0:
+		var w := cells.size() * (CELL_W + 3) - 3
+		var fill := roundi(w * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
+		var wy := y + CELL_H + 3
+		UiDraw.rect(ci, Rect2i(MARGIN - 1, wy - 1, w + 2, 4), Color(UiTheme.INK_DEEP, _wind_alpha))
+		UiDraw.rect(ci, Rect2i(MARGIN, wy, w, 2), Color(UiTheme.INK_SOFT, _wind_alpha))
+		UiDraw.rect(ci, Rect2i(MARGIN, wy, fill, 2), Color(Palette.RIME[4], _wind_alpha))
+
+
+func _draw_clock(ci: Control) -> void:
+	var w := UiFont.width(clock_text)
+	UiDraw.text_rimmed(ci, Vector2i(640 - MARGIN - w, MARGIN - 1), clock_text, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
+	# Needs, right to left under the clock, in a fixed order so they never swap places.
+	var x := 640 - MARGIN - UiIcons.SIZE
+	var level := {}
+	for n in needs:
+		level[n.need] = n.level
+	for k: StringName in [&"hunger", &"wet", &"load", &"tired"]:
+		var a: float = _needs_alpha.get(k, 0.0)
+		if a <= 0.0:
+			continue
+		var col := UiTheme.ACCENT_BRIGHT if level.get(k, 1) >= 2 else UiTheme.HUD_TEXT
+		_draw_faded_need(ci, k, Vector2i(x, MARGIN + 12), col, a)
+		x -= UiIcons.SIZE + 4
+
+
+func _draw_faded_need(ci: Control, k: StringName, at: Vector2i, col: Color, a: float) -> void:
+	UiDraw.sprite_rimmed(ci, UiIcons.NEEDS[k], at, {"#": Color(col, a)}, Color(UiTheme.INK_DEEP, a))
+
+
+func _draw_held(ci: Control) -> void:
+	var y := 360 - MARGIN - UiFont.SIZE
+	var name := Items.display_name(held) if held != &"" else "hands"
+	if held != &"":
+		UiDraw.sprite_rimmed(ci, UiIcons.shape_of(held), Vector2i(MARGIN, y), UiIcons.colours_for(held), UiTheme.INK_DEEP)
+		# A second rim in paper makes the icon a little cut-out: legible on dark ground.
+	UiDraw.text_rimmed(ci, Vector2i(MARGIN + (UiIcons.SIZE + 4 if held != &"" else 0), y + 1), name, UiTheme.HUD_TEXT, UiTheme.INK_DEEP)
+
+
+func _draw_bottom(ci: Control) -> void:
+	var a := message_alpha()
+	if a > 0.0 and message != "":
+		UiDraw.text_rimmed(ci, Vector2i(320 - UiFont.width(message) / 2, 360 - MARGIN - 24), message, Color(UiTheme.HUD_TEXT, a), Color(UiTheme.INK_DEEP, a))
+	if _hint_alpha > 0.0 and hint != "":
+		var total := 11 + 4 + UiFont.width(hint)
+		var x := 320 - total / 2
+		var y := 360 - MARGIN - UiFont.SIZE
+		_draw_key(ci, Vector2i(x, y), hint_key, _hint_alpha)
+		UiDraw.text_rimmed(ci, Vector2i(x + 15, y + 1), hint, Color(UiTheme.HUD_TEXT, _hint_alpha), Color(UiTheme.INK_DEEP, _hint_alpha))
+
+
+## A little paper key cap with the letter in ink.
+static func _draw_key(ci: CanvasItem, at: Vector2i, key: String, a: float) -> void:
+	var r := Rect2i(at.x, at.y - 1, 11, 12)
+	UiDraw.rect(ci, Rect2i(r.position.x + 1, r.position.y, r.size.x - 2, r.size.y), Color(UiTheme.INK_DEEP, a))
+	UiDraw.rect(ci, Rect2i(r.position.x, r.position.y + 1, r.size.x, r.size.y - 2), Color(UiTheme.INK_DEEP, a))
+	UiDraw.rect(ci, Rect2i(r.position.x + 1, r.position.y + 1, r.size.x - 2, r.size.y - 3), Color(UiTheme.PAPER, a))
+	UiDraw.hline(ci, r.position.x + 1, r.end.x - 2, r.end.y - 2, Color(UiTheme.PAPER_DEEP, a))
+	UiDraw.text(ci, Vector2i(at.x + 6 - UiFont.width(key) / 2 - 0, at.y), key, Color(UiTheme.INK, a))

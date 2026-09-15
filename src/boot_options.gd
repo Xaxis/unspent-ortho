@@ -14,7 +14,11 @@ extends RefCounted
 ## --shot=PATH         capture one frame to PATH (png) and quit
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
-## --scene=NAME        which scene to boot: game (default) | gallery
+## --scene=NAME        which scene to boot: game (default) | gallery | title
+## --screen=NAME       open a ui screen once loaded: inventory | crafting | map | pause | controls
+## --give=ID:N,...     carry at least N of each item (idempotent)
+## --explore=N         the map remembers N tiles of wandering from the start
+## --ui-demo           ui shots: sample recipes, a message, a spent body
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +33,10 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+var screen := ""
+var give := ""
+var explore := 0
+var ui_demo := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +63,9 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"screen": o.screen = v
+			"give": o.give = v
+			"explore": o.explore = v.to_int()
+			"ui-demo": o.ui_demo = true
 			_: push_warning("unknown option --%s" % k)
 	return o

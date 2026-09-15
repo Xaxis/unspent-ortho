@@ -1,0 +1,128 @@
+class_name UiScreen
+extends Control
+## A full-screen page of the notebook. Screens take abstract actions, never
+## devices, so tests drive them directly:
+##   up down left right   choose / change a value
+##   confirm              do the chosen row (E, Enter, Space)
+##   back                 close, one level (Esc)
+##   <own_action>         the key that opened the screen also closes it
+## Opening and closing emit Events.screen_changed(screen_name, open), which is
+## what pauses gameplay input, and the book sounds.
+
+signal closed(screen: UiScreen)
+
+## Set by subclasses in _init.
+var screen_name: StringName = &"screen"
+var own_action: StringName = &""
+var menu := UiMenu.new()
+## The running game, or null (title, tests without a world).
+var game: Game
+## A short line at the foot of the page: why a row was refused, what was made.
+var note := ""
+var note_age := 0.0
+var is_open := false
+
+
+func _init() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	theme = UiTheme.theme()
+	visible = false
+
+
+func open() -> void:
+	if is_open:
+		return
+	is_open = true
+	visible = true
+	note = ""
+	_on_open()
+	refresh()
+	Events.screen_changed.emit(screen_name, true)
+	Events.sfx.emit(&"open_book", Vector3.ZERO)
+
+
+func close() -> void:
+	if not is_open:
+		return
+	is_open = false
+	visible = false
+	_on_close()
+	Events.screen_changed.emit(screen_name, false)
+	Events.sfx.emit(&"close_book", Vector3.ZERO)
+	closed.emit(self)
+
+
+## Rebuild rows from the game's data and redraw.
+func refresh() -> void:
+	queue_redraw()
+
+
+## Returns true if the action was used.
+func handle(action: StringName) -> bool:
+	if not is_open:
+		return false
+	match action:
+		&"up", &"down":
+			if menu.move(-1 if action == &"up" else 1):
+				Events.sfx.emit(&"menu_move", Vector3.ZERO)
+				_on_choice_changed()
+				queue_redraw()
+			return true
+		&"left", &"right":
+			_on_side(-1 if action == &"left" else 1)
+			return true
+		&"confirm":
+			var row := menu.selected()
+			if row.is_empty():
+				return true
+			if not UiMenu.enabled(row):
+				refuse(String(row.get("why", "Not now.")))
+			else:
+				_on_confirm(row)
+			return true
+		&"back":
+			close()
+			return true
+	if own_action != &"" and action == own_action:
+		close()
+		return true
+	return false
+
+
+func refuse(why: String) -> void:
+	Events.sfx.emit(&"refused", Vector3.ZERO)
+	say(why)
+
+
+func say(text: String) -> void:
+	note = text
+	note_age = 0.0
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	if is_open and note != "":
+		note_age += delta
+
+
+# --- for subclasses ---
+
+func _on_open() -> void:
+	pass
+
+
+func _on_close() -> void:
+	pass
+
+
+func _on_confirm(_row: Dictionary) -> void:
+	Events.sfx.emit(&"menu_select", Vector3.ZERO)
+
+
+func _on_side(_dir: int) -> void:
+	pass
+
+
+func _on_choice_changed() -> void:
+	pass
