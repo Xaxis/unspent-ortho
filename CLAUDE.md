@@ -1,0 +1,90 @@
+# CLAUDE.md — unspent-ortho
+
+*UNSPENT*, rebuilt: a real-time action-survival game on a generated coast where
+half-broken machines hunt the people still living in the gaps. Godot 4.7,
+GDScript, orthographic low-poly 3D rendered at 640x360 and upscaled with
+nearest filtering, so it reads as pixel art with real light and shadow.
+
+`../unspent` is the old Unity attempt. Read it for mechanics numbers and art
+direction (already distilled in `docs/research/`). **Never port its story, arcs,
+dialogue or lore**: all fiction is being rewritten (see `docs/DESIGN.md` §Story).
+
+## The loop (memorise this)
+
+```sh
+tools/check.sh                              # THE gate: tests + 4 real frames. ~11 s. Run before every commit.
+tools/test.sh [filter]                      # headless tests only, ~5 s
+tools/shot.sh shots/x.png [options]         # one real rendered frame, ~2 s
+tools/shot.sh shots/g.png --scene=gallery [--filter=pine]   # every model, lit, on a plinth
+tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country
+godot --path .                              # play it (WASD, Shift run, Space swing, K dodge, E use)
+```
+
+Shot options (`src/boot_options.gd`): `--seed=N --size=N --at=X,Y --village=N
+--hour=H --zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery`.
+
+**Look at the pictures.** A green test says nothing about how the game looks. After
+any visible change, shoot the affected place and Read the PNG. After any model
+change, shoot the gallery. Judge beauty, not just correctness.
+
+Never pipe a gate through `tail`/`head` in a way that hides its exit code. The
+tools print their own summaries.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/core/` | Pure rules and data: world gen, world data, queries, clock, RNG. No nodes, no rendering. Headless-testable. |
+| `src/content/` | Tunables and data tables as GDScript consts (one copy, parser-checked). |
+| `src/render/` | Everything that draws the world: terrain mesher, world view (chunk streaming), camera, sky/light, shaders, palette. |
+| `src/models/` | Procedural meshes for props, people, machines, animals. Any script here with `static func gallery() -> Array` shows up in the gallery. |
+| `src/actors/` | Nodes that live in the world: player, mobs. |
+| `src/ui/` | HUD and screens (CanvasLayer, 640x360 pixel space). |
+| `src/audio/` | Procedural audio generation and mixing. |
+| `src/game.gd` | Wires one running game together from BootOptions. |
+| `src/main.gd` | Entry point; boot scene selection; `--shot` capture. |
+| `tests/` | `tests/**/test_*.gd`, extend `TestCase`, methods `test_*`. Runner loads every `src` script too. |
+| `tools/` | The loop above. Keep it small: a new tool must replace work you do every day. |
+| `docs/` | `DESIGN.md` (what the game is), `ROADMAP.md` (what's next), `research/` (distilled from the old repo). |
+
+## Conventions
+
+- **Typed GDScript.** `untyped_declaration` is an error. Use `:=` or explicit types;
+  type `for` loop variables over untyped arrays (`for r: int in [...]`).
+- **Everything built in code.** No `.tscn` beyond `src/main.tscn`, no imported art
+  or audio. Meshes via `MeshKit`, colours via `Palette`, sounds generated.
+- **Colours are sRGB palette values straight into `ALBEDO`.** The Compatibility
+  renderer does no linear→sRGB conversion; converting made everything black.
+- **One lit material** (`src/render/world.gdshader`) for all MADE and FOUND geometry:
+  vertex colour albedo, hard shadow that is a colour, `sky_tint` global multiply.
+- **Coordinates.** Tile space `Vector2(x, y)`, x east, y south; 3D is `Vector3(x, h, y)`.
+  Level `l` is `l * WorldData.STEP` high. A body steps ±1 level; 2+ is a cliff.
+  Rotation: a model faces +X at `rotation.y = 0`; set `rotation.y = -facing`.
+- **Determinism.** No `randf()`. Positional: `Rng.hash01(seed, x, y, salt)`.
+  Sequences: `Rng.make(seed, salt)`.
+- **`class_name` must not shadow a native class** (`Sky` failed). New class names
+  need the import cache refreshed; the tools do it automatically.
+- **Game logic in `src/core` or in an actor's `drive/step` methods that take
+  explicit inputs and delta**, so tests and bots can run them without devices.
+- Comments say *why* and give the contract. No narration of what the next line does.
+
+## Working in parallel
+
+- One builder, one worktree, one branch, one **owned directory set** (named in its
+  brief). Touch shared files (`game.gd`, `tuning.gd`, `project.godot`, `world_view.gd`)
+  with the smallest possible additive edit, so merges stay mechanical.
+- A branch is done when: `tools/check.sh` is green in its worktree, its own new
+  shots were looked at, and the feature is **reachable from a normal game start**
+  (or from `--scene=gallery` for models). Unreachable code is not a feature.
+- Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
+
+## Commits
+
+Author is always the owner, set on the command itself:
+
+```sh
+git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit -F msgfile
+```
+
+No `Co-Authored-By`, no generated-by lines, no attribution of any kind. Messages
+lead with why, in short sentences.

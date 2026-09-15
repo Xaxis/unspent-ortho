@@ -1,0 +1,9 @@
+node_modules/
+dist/
+shots/
+.vite/
+*.log
+.DS_Store
+.env
+.godot/
+build/
