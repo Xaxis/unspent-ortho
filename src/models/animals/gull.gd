@@ -6,6 +6,9 @@ extends AnimalModel
 
 const MANTLES := [[Color("52667a"), Color("75899c")], [Color("75899c"), Color("a3b4c4")], [Color("37485a"), Color("52667a")], [Color("868d99"), Color("b8bfc9")]]
 
+## Seconds the land pose takes to come down from flying height.
+const LAND_SECONDS := 0.7
+
 var _mantle: Array = []
 
 
@@ -112,6 +115,18 @@ func _pose(p: StringName, t: float, speed: float) -> Dictionary:
 			d[&"body"] = Vector3(0, 0, 0.15 * lift)
 			d[&"head"] = Vector3(0, 0, -0.1)
 			d["@root"] = Vector3(0, lift * (1.4 + beat * 0.03), 0)
+		&"land":
+			# Down out of the air: wings held up and back to brake, feet reaching.
+			var down := smoothstep(0.0, LAND_SECONDS, t)
+			var beat := sin(clock * TAU * 2.4) * (1.0 - down)
+			d[&"wing_l"] = Vector3(0.6 + beat * 0.5, 0.35 * down, -0.2 * down)
+			d[&"wing_r"] = Vector3(-0.6 - beat * 0.5, -0.35 * down, -0.2 * down)
+			d[&"tip_l"] = Vector3(0.3, 0, 0)
+			d[&"tip_r"] = Vector3(-0.3, 0, 0)
+			d[&"leg_l"] = Vector3(0, 0, 0.5 * (1.0 - down))
+			d[&"leg_r"] = Vector3(0, 0, 0.5 * (1.0 - down))
+			d[&"body"] = Vector3(0, 0, -0.25 * (1.0 - down))
+			d["@root"] = Vector3(0, 1.4 * (1.0 - down), 0)
 		&"windup":
 			d[&"head"] = Vector3(0, 0, 0.5)
 			d["@head"] = Vector3(-0.03, 0.04, 0)

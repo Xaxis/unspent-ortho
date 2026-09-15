@@ -21,11 +21,12 @@ func _build_rig() -> void:
 	var body := rig.bone(&"body", root, Vector3(0, 0.075 * s, 0))
 	# A teardrop: heavy haunches, the shoulders narrowing into the head.
 	trunk(rig.kit(body), [
-		[-0.14 * s, 0.03 * s, 0.03 * s, -0.01 * s],
-		[-0.08 * s, 0.062 * s, 0.058 * s, 0.0],
-		[0.02 * s, 0.05 * s, 0.045 * s, 0.0],
+		[-0.155 * s, 0.012 * s, 0.012 * s, -0.005 * s],
+		[-0.13 * s, 0.045 * s, 0.045 * s, 0.0],
+		[-0.07 * s, 0.064 * s, 0.06 * s, 0.004 * s],
+		[0.02 * s, 0.05 * s, 0.045 * s, 0.002 * s],
 		[0.1 * s, 0.03 * s, 0.03 * s, 0.0],
-	], 6, [c0, c1, c1], sd, 0.08)
+	], 6, [c0, c0, c1, c1], sd, 0.08)
 	var head := rig.bone(&"head", body, Vector3(0.09 * s, 0.0, 0))
 	var hk := rig.kit(head)
 	trunk(hk, [[-0.01 * s, 0.035 * s, 0.035 * s, 0.0], [0.05 * s, 0.03 * s, 0.03 * s, -0.005 * s], [0.12 * s, 0.008 * s, 0.008 * s, -0.018 * s]], 5, [c1, c0], sd + 1, 0.04)

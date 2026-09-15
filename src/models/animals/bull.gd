@@ -26,13 +26,16 @@ func _build_rig() -> void:
 	# The barrel: deep and round all along, the belly low between short legs so
 	# no daylight shows under it, a hump rising over the shoulders.
 	trunk(bk, [
-		[-0.5 * s, 0.14 * s, 0.14 * s, 0.04 * s],
-		[-0.42 * s, 0.28 * s, 0.26 * s, 0.0],
-		[-0.18 * s, 0.35 * s, 0.32 * s, -0.05 * s],
-		[0.14 * s, 0.37 * s, 0.33 * s, -0.05 * s],
-		[0.38 * s, 0.3 * s, 0.27 * s, 0.0],
-		[0.48 * s, 0.18 * s, 0.18 * s, 0.03 * s],
-	], 7, [h0, h1, h1, h1, h0], sd, 0.06)
+		[-0.53 * s, 0.08 * s, 0.08 * s, 0.07 * s],
+		[-0.47 * s, 0.22 * s, 0.2 * s, 0.05 * s],
+		[-0.36 * s, 0.3 * s, 0.28 * s, 0.02 * s],
+		[-0.2 * s, 0.32 * s, 0.31 * s, -0.04 * s],
+		[0.0, 0.34 * s, 0.33 * s, -0.08 * s],
+		[0.18 * s, 0.37 * s, 0.33 * s, -0.06 * s],
+		[0.34 * s, 0.34 * s, 0.3 * s, -0.02 * s],
+		[0.46 * s, 0.24 * s, 0.22 * s, 0.02 * s],
+		[0.51 * s, 0.1 * s, 0.1 * s, 0.03 * s],
+	], 8, [h0, h0, h1, h1, h1, h1, h0, h0], sd, 0.05)
 	# The hump over the shoulders.
 	Sculpt.clump(bk, Vector3(0.22 * s, 0.3 * s, 0), Vector3(0.24 * s, 0.16 * s, 0.2 * s), h1, sd + 1, 6)
 	if rng.randf() < 0.35:

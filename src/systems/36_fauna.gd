@@ -189,13 +189,17 @@ func _sheep(b: Dictionary, delta: float, near: float, to_player: Vector2) -> flo
 
 func _gull(b: Dictionary, delta: float, near: float, to_player: Vector2) -> float:
 	var m := b.model as AnimalModel
+	if b.state == &"land":
+		if m.pose_time >= 0.75:
+			b.state = &"stand"
+			b.wait = 2.0 + Rng.hash01(int(b.seed), int(b.t * 10.0)) * 4.0
+		return 0.0
 	if b.state == &"flee" or b.state == &"fly":
 		b.wait = float(b.wait) - delta
 		var target: Vector2 = b.target
 		var d := target - (b.pos as Vector2)
 		if float(b.wait) < 0.0 and d.length() < 0.3:
-			b.state = &"stand"
-			b.wait = 2.0 + Rng.hash01(int(b.seed), int(b.t * 10.0)) * 4.0
+			b.state = &"land"
 			return 0.0
 		if m.pose_time > 0.6:
 			b.state = &"fly"

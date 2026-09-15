@@ -6,13 +6,13 @@ extends FigureModel
 ##
 ## Poses (FigureModel.set_pose): &"stand" &"walk" &"alert" &"flee" &"windup"
 ## &"strike" &"hurt" &"dead", plus &"idle" (= stand), &"attack" (= strike) and,
-## for birds, &"fly". Unknown poses are ignored.
+## for birds, &"fly" and &"land". Unknown poses are ignored.
 ##
 ## Subclasses implement _build_rig() (bones and parts into `rig`, using `rng` for
 ## variation) and _pose(pose, t, speed) -> {bone: euler, "@bone": offset}.
 ## Limb conventions follow PersonAnim: +Z swings a hanging limb forward.
 
-const POSES: Array[StringName] = [&"stand", &"walk", &"alert", &"flee", &"windup", &"strike", &"hurt", &"dead", &"fly"]
+const POSES: Array[StringName] = [&"stand", &"walk", &"alert", &"flee", &"windup", &"strike", &"hurt", &"dead", &"fly", &"land"]
 
 var rig: SkinRig
 var seed_value := 0
