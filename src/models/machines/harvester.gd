@@ -9,6 +9,13 @@ extends MachineModel
 ## hurt   lamps out, comb stops
 ## dead   lists onto one track, intake on the ground, the comb dropped askew in
 ##        front of it, lamps and stacks folded; the row spills out
+##
+## lights work lamps on the two masts and under the hood lip, lit while it
+##        works and hot at night; they flare with the comb through a windup; a
+##        status lamp on the housing blinks once (indifferent)
+## wear   the intake clogged with the row: chaff, a rag and a long bone jammed
+##        in the dividers; plates off other machines on the hull and hood; a
+##        cable spliced from the stacks; soot round the stack foot
 
 const WHEEL_R := 0.13
 const HULL_Y := 0.5
@@ -71,6 +78,16 @@ func build() -> void:
 	FoundKit.panel(k, Vector3(0.3, 0.301, -0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	FoundKit.panel(k, Vector3(0.3, 0.301, 0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	body_mesh(k, hull)
+	add_lamp(hull, Vector3(-0.32, 0.473, 0.46), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
+	var hw := FoundKit.kit()
+	FoundKit.patch(hw, Vector3(0.36, 0.302, -0.02), Vector3.UP, Vector3.RIGHT, 0.34, 0.22, Palette.MACHINE["cutter"], 41)
+	FoundKit.patch(hw, Vector3(-0.62, 0.473, -0.34), Vector3.UP, Vector3.RIGHT, 0.2, 0.26, Palette.FOUND, 42)
+	FoundKit.scorch(hw, Vector3(-0.74, 0.473, 0.22), Vector3.UP, 0.09, 43)
+	FoundKit.scorch(hw, Vector3(-0.74, 0.473, -0.22), Vector3.UP, 0.07, 44)
+	FoundKit.cable(hw, Vector3(-0.8, 0.52, 0.5), Vector3(-0.42, 0.48, 0.58), 0.05, 0.018, Palette.INK[2], Palette.MACHINE["sweeper"], 4)
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.dirt_line(hw, Vector3(-0.9, -0.1, sz * 0.862), Vector3(0.85, -0.1, sz * 0.862), Vector3.BACK * sz, 0.07, R[1])
+	wear_mesh(hw, hull)
 	add_scan(hull, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.BACK, 0.6, 0.035, 3.0)
 	# Two short stacks behind the housing on a hinged foot, the way a stack is
 	# made to fold for a low bridge; dead, they fold.
@@ -88,9 +105,7 @@ func build() -> void:
 		FoundKit.tbar(mk, Vector3(0, -0.1, 0), Vector3(0, 0.3, 0), 0.026, 0.022, 6, D)
 		FoundKit.lathe(mk, Vector3(0, 0.34, 0), Vector3.RIGHT, [Vector2(0.04, -0.07), Vector2(0.07, -0.02), Vector2(0.07, 0.05)], 6, R)
 		body_mesh(mk, lamp)
-		var ck := FoundKit.kit()
-		FoundKit.spot(ck, Vector3(0.05, 0.34, 0), Vector3.RIGHT, 0.05, 6, Palette.COLD[3], 0.004)
-		cold_mesh(ck, lamp)
+		add_lamp(lamp, Vector3(0.051, 0.34, 0), Vector3.RIGHT, Vector3.UP, 0.075, 0.07, &"work", true)
 
 	var intake := joint(&"intake", hull, Vector3(0.86, 0.22, 0))
 	var ik := FoundKit.kit()
@@ -106,6 +121,22 @@ func build() -> void:
 		var z := -1.08 + j * 0.36
 		FoundKit.lathe(ik, Vector3(0.44, -0.46, z), Vector3(1, -0.22, 0), [Vector2(0.075, 0.0), Vector2(0.06, 0.06), Vector2(0.0, 0.22)], 4, R, PI * 0.25)
 	body_mesh(ik, intake)
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(intake, Vector3(0.501, -0.4, sz * 0.54), Vector3.RIGHT, Vector3.UP, 0.07, 0.05, &"work", true)
+	# The lamps' wash on the row ahead, starting past the comb's teeth; hung on
+	# the hull so it stays on the ground when the intake pitches.
+	add_beam(hull, Vector3(1.72, -0.22, 0), Vector3(1.3, -0.18, 0), 1.5, 2.8, &"work", true)
+	var iw := FoundKit.kit()
+	FoundKit.grime(iw, Vector3(0.45, -0.3, 0.0), Vector3(0.66, 0.75, 0), 1.8, 0.12, 6, 45, hood_r)
+	FoundKit.patch(iw, Vector3(0.22, -0.12, -0.7), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.26, 0.2, Palette.MACHINE["lineman"], 46)
+	wear_mesh(iw, intake)
+	# The row it could not swallow, jammed in the dividers: chaff, a rag and a bone.
+	var jam := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.chaff(jam, Vector3(0.48, -0.4, -0.72), Vector3(0.05, 0.03, 0.18), 7, 47, [Palette.SAND[4], Palette.SAND[5], Palette.MOSS[4]])
+	FoundKit.chaff(jam, Vector3(0.48, -0.4, 0.36), Vector3(0.05, 0.03, 0.12), 4, 48, [Palette.SAND[5], Palette.EARTH[4]])
+	FoundKit.bone(jam, Vector3(0.52, -0.36, 0.6), Vector3(0.6, -0.4, 1.02), 0.03, 49)
+	FoundKit.rag(jam, Vector3(0.54, -0.38, -0.2), 0.2, 0.16, Palette.SAND[3], 50, Vector3(0.2, 0, 1))
+	wear_matter(jam, intake)
 
 	# The comb: long amber teeth running out past the dividers, lit on top, so the
 	# dangerous end reads as the soft one from wherever you stand.
@@ -125,7 +156,7 @@ func build() -> void:
 	add_child(spill)
 	var sk := FoundKit.matter_kit(Ink.HAND)
 	var stalk: Array[Color] = [Palette.SAND[3], Palette.SAND[4], Palette.MOSS[3], Palette.LINEN[3]]
-	for j in 22:
+	for j in 16:
 		var a := Rng.hash01(71, j) * TAU
 		var dist := 0.2 + Rng.hash01(72, j) * 0.7
 		var base := Vector3(1.75 + cos(a) * dist * 0.6, 0.03, sin(a) * dist * 1.5)

@@ -63,8 +63,10 @@ const ROLE_DISPOSITION := {
 }
 ## Vertex alpha the FOUND shader reads as a built-in light (found.gdshader:
 ## 0.5..0.98 steady, brighter lower). A lamp's lens and its hot core.
-const LAMP_ALPHA := 0.9
-const HOT_ALPHA := 0.66
+const LAMP_ALPHA := 0.8
+const HOT_ALPHA := 0.55
+## Smallest lamp that still reads as a lit pixel or two at gameplay zoom.
+const LAMP_MIN := Vector2(0.05, 0.045)
 ## Direction from a model toward the fixed game camera (yaw 45, pitch 57; the
 ## camera never rotates). Used when no live camera is available (tests, gallery).
 const TO_CAMERA := Vector3(0.3848, 0.8387, 0.3848)
@@ -212,6 +214,24 @@ func body_mesh(k: MeshKit, parent: Node3D) -> void:
 	_queue(&"body", k, parent)
 
 
+## Wear on `parent` (patches, grime, cable repairs): FOUND body geometry that
+## rides on the joint's `wear` holder, so the machine as built can be told from
+## what the years did to it (the mirror test takes the wear off).
+func wear_mesh(k: MeshKit, parent: Node3D) -> void:
+	_queue(&"body", k, _wear_on(parent))
+
+
+## A trophy of the trade on `parent` (chaff in an intake, bones in a load, a
+## rag on a knee): matter drawn by the hand, on the same `wear` holder.
+func wear_matter(k: MeshKit, parent: Node3D) -> void:
+	_queue(&"matter", k, _wear_on(parent))
+
+
+func _wear_on(parent: Node3D) -> Node3D:
+	var w := parent.get_node_or_null(^"wear") as Node3D
+	return w if w != null else holder("wear", parent)
+
+
 ## Natural matter (ore, spoil, a cut row, bones) on the MADE material: the load
 ## is the land's, drawn by the hand, even when a machine carries it.
 func matter_mesh(k: MeshKit, parent: Node3D) -> void:
@@ -229,7 +249,7 @@ func cold_mesh(k: MeshKit, parent: Node3D) -> void:
 	var lamp := holder("cold", parent)
 	_set_alpha(k, LAMP_ALPHA)
 	_queue(&"lights", k, lamp)
-	_lamps.append({"lamp": lamp, "hot": null, "role": &"optic", "side": false, "order": _lamps.size()})
+	_lamps.append({"lamp": lamp, "hot": null, "role": &"optic", "side": false, "order": _lamps.size(), "ri": _role_count(&"optic")})
 
 
 ## A lamp built into the plate at `c` (local to `parent`), facing `n`: a dark
@@ -242,6 +262,8 @@ func cold_mesh(k: MeshKit, parent: Node3D) -> void:
 ## `on_part_side` marks a lamp that brightens with the working part.
 func add_lamp(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, role: StringName, on_part_side: bool = false, col: Color = Palette.COLD[3]) -> void:
 	var nn := n.normalized()
+	w = maxf(w * 1.3, LAMP_MIN.x)
+	h = maxf(h * 1.3, LAMP_MIN.y)
 	var socket := FoundKit.kit()
 	FoundKit.mark(socket, c, nn, up, w + 0.03, h + 0.03, Palette.INK[1], 0.003)
 	FoundKit.mark(socket, c, nn, up, w, h, Palette.COLD[0], 0.005)
@@ -253,10 +275,18 @@ func add_lamp(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: 
 	_queue(&"lights", lk, lamp)
 	var hot := holder("hot", parent, c)
 	var hk := FoundKit.kit()
-	FoundKit.mark(hk, Vector3.ZERO, nn, up, maxf(0.022, w * 0.5), maxf(0.022, h * 0.5), Palette.COLD[3], 0.011)
+	FoundKit.mark(hk, Vector3.ZERO, nn, up, maxf(0.03, w * 0.55), maxf(0.03, h * 0.55), Palette.COLD[3], 0.011)
 	_set_alpha(hk, HOT_ALPHA)
 	_queue(&"lights", hk, hot)
-	_lamps.append({"lamp": lamp, "hot": hot, "role": role, "side": on_part_side, "order": _lamps.size()})
+	_lamps.append({"lamp": lamp, "hot": hot, "role": role, "side": on_part_side, "order": _lamps.size(), "ri": _role_count(role)})
+
+
+func _role_count(role: StringName) -> int:
+	var n := 0
+	for l: Dictionary in _lamps:
+		if l.role == role:
+			n += 1
+	return n
 
 
 ## Where the working part is (local to `parent`), and how big its halo is.
@@ -292,12 +322,14 @@ func add_scan(parent: Node3D, c: Vector3, n: Vector3, along: Vector3, span: floa
 	_scans.append([hold, c, along.normalized(), span, period])
 
 
-## The scanning beam: a stipple wedge of cold light thrown from `apex` along
-## `dir` (local to `parent`), `length` long and `spread` wide at its far end,
-## falling on what the machine reads. Drawn by beam.gdshader on a plain quad (a
-## light has no plate to flash or blacken); it sweeps with its joint, locks and
-## narrows on alert, stutters hurt and dies early.
-func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread: float) -> void:
+## A beam: a stipple wedge of cold light thrown from `apex` along `dir` (local
+## to `parent`), `length` long and `spread` wide at its far end. Drawn by
+## beam.gdshader on a plain quad (a light has no plate to flash or blacken).
+##   scan  what a watcher, warden or clerk reads: faint by day, it sweeps with
+##         its joint, locks and narrows on alert, stutters hurt and dies early
+##   work  the wash of a worker's lamps on the ground it works: dark by day, on
+##         through dusk and night, harder through a windup when `on_part_side`
+func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread: float, role: StringName = &"scan", on_part_side: bool = false) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "beam"
 	var q := QuadMesh.new()
@@ -309,6 +341,8 @@ func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread
 	mat.set_shader_parameter("beam_length", length)
 	mat.set_shader_parameter("beam_spread", spread)
 	mat.set_shader_parameter("col", Vector3(Palette.COLD[3].r, Palette.COLD[3].g, Palette.COLD[3].b))
+	mat.set_shader_parameter("day_floor", 0.2 if role == &"scan" else 0.0)
+	mat.set_shader_parameter("root_width", 0.0 if role == &"scan" else 0.45)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = length + spread
@@ -321,7 +355,7 @@ func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread
 	side = side.normalized()
 	mi.basis = Basis(d, side.cross(d), side)
 	parent.add_child(mi)
-	_beams.append([mi, mat])
+	_beams.append([mi, mat, role, on_part_side])
 
 
 ## A node that only exists once the machine is dead (a spill, a split load),
@@ -645,12 +679,11 @@ func _merged_mesh(pieces: Array, dark: bool) -> ArrayMesh:
 		var n: Node3D = piece[1]
 		var b := _bone_for(n)
 		var xf := _bone_bind[b].affine_inverse()
-		var nb := xf.basis
-		for i in k.verts.size():
-			verts.append(xf * k.verts[i])
-			normals.append((nb * k.normals[i]).normalized())
-			bones.append_array([b, 0, 0, 0])
-			weights.append_array([1.0, 0.0, 0.0, 0.0])
+		# Rigid pieces: whole arrays through the rest transform at once (joints never scale).
+		verts.append_array(xf * k.verts)
+		normals.append_array(Transform3D(xf.basis, Vector3.ZERO) * k.normals)
+		bones.append_array(_repeat_ints(b, k.verts.size()))
+		weights.append_array(_repeat_weights(k.verts.size()))
 		if dark:
 			for col in k.colors:
 				colors.append(FoundKit.dark_colour(col))
@@ -672,6 +705,26 @@ func _merged_mesh(pieces: Array, dark: bool) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 	return mesh
+
+
+## [b, 0, 0, 0] repeated `count` times, built by doubling.
+static func _repeat_ints(b: int, count: int) -> PackedInt32Array:
+	var out := PackedInt32Array([b, 0, 0, 0])
+	while out.size() < count * 4:
+		out.append_array(out.slice(0, mini(out.size(), count * 4 - out.size())))
+	return out
+
+
+static var _weights_cache := PackedFloat32Array()
+
+
+## [1, 0, 0, 0] repeated `count` times.
+static func _repeat_weights(count: int) -> PackedFloat32Array:
+	while _weights_cache.size() < count * 4:
+		if _weights_cache.is_empty():
+			_weights_cache = PackedFloat32Array([1.0, 0.0, 0.0, 0.0])
+		_weights_cache.append_array(_weights_cache)
+	return _weights_cache.slice(0, count * 4)
 
 
 ## Model-space transform and shown flag for every chain node, parents first.
@@ -832,7 +885,7 @@ func _run_lights() -> void:
 		var role: StringName = l.role
 		var lvl := 0
 		if pose == &"dead":
-			var at: float = float(DIE_AT.get(role, 0.1)) + minf(0.1, int(l.order) * 0.025)
+			var at: float = float(DIE_AT.get(role, 0.1)) + minf(0.06, int(l.ri) * 0.02)
 			lvl = 1 if pose_time < minf(at, PART_OUT - 0.02) else 0
 		elif hurt_like:
 			lvl = 1 if flick and (int(l.order) % 2 == 0 or _dark_t < STUTTER) else 0
@@ -852,14 +905,20 @@ func _run_lights() -> void:
 	for b: Array in _beams:
 		var mi: MeshInstance3D = b[0]
 		var mat: ShaderMaterial = b[1]
-		var bv := run
+		var work: bool = b[2] == &"work"
+		var bv := run and (not work or dark > 0.12)
 		if pose == &"dead":
-			bv = pose_time < float(DIE_AT[&"beam"])
+			bv = pose_time < float(DIE_AT[&"work" if work else &"beam"]) and (not work or dark > 0.12)
 		elif hurt_like:
-			bv = flick and _dark_t < STUTTER
+			bv = flick and _dark_t < STUTTER and (not work or dark > 0.12)
 		mi.visible = bv
-		mat.set_shader_parameter("strength", 1.5 if locked else 1.0)
-		mat.set_shader_parameter("narrow", 0.55 if locked else 1.0)
+		if work:
+			var hard := bool(b[3]) and (pose == &"windup" or pose == &"strike")
+			mat.set_shader_parameter("strength", 1.6 if hard else 1.0)
+			mat.set_shader_parameter("narrow", 1.0)
+		else:
+			mat.set_shader_parameter("strength", 1.5 if locked else 1.0)
+			mat.set_shader_parameter("narrow", 0.55 if locked else 1.0)
 
 
 ## A running machine's lamp: 0 out, 1 lit, 2 hot.

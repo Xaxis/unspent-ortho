@@ -130,8 +130,11 @@ func test_plated_faces_carry_a_cold_slit() -> void:
 
 func test_body_colours_are_exact_ramp_values() -> void:
 	var allowed: Array = []
-	for ramp: Array in [Palette.LENS, Palette.COLD, Palette.INK, Palette.BRINE, Palette.LINEN]:
+	for ramp: Array in [Palette.LENS, Palette.COLD, Palette.INK, Palette.BRINE, Palette.LINEN, Palette.FOUND]:
 		allowed.append_array(ramp)
+	# Patches are plate cut off other machines.
+	for other: String in Palette.MACHINE:
+		allowed.append_array(Palette.MACHINE[other])
 	for kid in KINDS:
 		var m := FigureModel.create(kid)
 		var mine: Array = Palette.MACHINE[String(kid)]
@@ -159,6 +162,9 @@ func test_rest_silhouettes_are_mirror_exact() -> void:
 		var mask := PackedByteArray()
 		mask.resize(w * h)
 		var texel := 0.04
+		# The machine as it was built: the years' wear is not mirrored.
+		for wear: Node in m.find_children("wear", "Node3D", true, false):
+			(wear as Node3D).visible = false
 		_front_mask(m, m, Transform3D.IDENTITY, mask, w, h, texel)
 		var diff := 0
 		var total := 0

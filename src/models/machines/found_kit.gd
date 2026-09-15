@@ -30,17 +30,21 @@ static func kit() -> MeshKit:
 
 ## Body colour for a face by its normal in the kit's frame.
 static func _col(k: MeshKit, local_n: Vector3, r: Array) -> Color:
+	return r[_col_index(k, local_n)]
+
+
+static func _col_index(k: MeshKit, local_n: Vector3) -> int:
 	var n := (k._xf.basis * local_n).normalized()
 	# Gentle slopes are still the top; only a steep bevel catches the rim light.
 	if n.y > 0.8:
-		return r[3]
+		return 3
 	if n.y > 0.3:
-		return r[4]
+		return 4
 	if n.y < -0.7:
-		return r[0]
+		return 0
 	if n.y < -0.3:
-		return r[1]
-	return r[2]
+		return 1
+	return 2
 
 
 ## The ramp stepped down `steps` values: legs and undercarriage only get dirtier.
@@ -515,3 +519,178 @@ static func matter_kit(hatch: int = Ink.CONTOUR) -> MeshKit:
 	k.style = hatch
 	k.style2 = hatch
 	return k
+
+
+# -- wear: what the years and the other machines did ---------------------------
+# The machines were drawn exact and have been running ever since. Wear is still
+# FOUND (ramp values, INK and COLD only) and still ruled: a patch is a straight
+# plate set a few degrees off the panel grid, a cable is a clean line that sags.
+# Pieces of wear go on a model's `wear` holders (MachineModel.wear_mesh), so a
+# test can take them off and find the machine as built still mirror-exact.
+
+## Down a face with normal n (the face's own down, for walls and slopes).
+static func _down_on(n: Vector3) -> Vector3:
+	var d := Vector3.DOWN - n * Vector3.DOWN.dot(n)
+	return d.normalized() if d.length() > 0.1 else Vector3.LEFT
+
+
+## Grime run down a face from `top`: `count` drips across `w`, lengths hashed
+## from `seed_value`, each a dark column narrowing to a darker bead at its foot.
+static func grime(k: MeshKit, top: Vector3, n: Vector3, w: float, max_len: float, count: int, seed_value: int, r: Array) -> void:
+	var nn := n.normalized()
+	var down := _down_on(nn)
+	var across := down.cross(nn).normalized()
+	for j in count:
+		var t := 0.0 if count == 1 else float(j) / (count - 1) - 0.5
+		t += (Rng.hash01(seed_value, j, 5) - 0.5) * 0.3 / maxf(1.0, count)
+		var length := max_len * (0.3 + 0.7 * Rng.hash01(seed_value, j, 6))
+		var width := 0.018 + 0.02 * Rng.hash01(seed_value, j, 7)
+		var p := top + across * (t * w)
+		mark(k, p + down * length * 0.3, nn, -down, width, length * 0.6, r[1], 0.003)
+		mark(k, p + down * length * 0.8, nn, -down, width * 0.6, length * 0.4, r[0], 0.0035)
+		mark(k, p + down * length, nn, -down, width * 1.1, 0.022, r[0], 0.004)
+
+
+## A band of dirt along the lower edge of a face, from a to b, `h` deep.
+static func dirt_line(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, h: float, col: Color) -> void:
+	var along := b - a
+	mark(k, (a + b) * 0.5, n, along, h, along.length(), col, 0.0025)
+
+
+## A plate welded over damage by another machine: its own ramp `rp` one value
+## off the face it covers, set a few degrees off the panel grid, a dark weld
+## line round it and a bead at three corners (the fourth was never done).
+static func patch(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, rp: Array, seed_value: int, lift: float = 0.005) -> void:
+	var nn := n.normalized()
+	var u := up.normalized().rotated(nn, (Rng.hash01(seed_value, 1) - 0.5) * 0.22)
+	var rr := u.cross(nn)
+	var idx := clampi(_col_index(k, nn) + (1 if Rng.hash01(seed_value, 2) > 0.5 else -1), 1, 4)
+	mark(k, c, nn, u, w + 0.028, h + 0.028, Palette.INK[1], lift)
+	mark(k, c, nn, u, w, h, rp[idx], lift + 0.003)
+	var skip := int(Rng.hash01(seed_value, 3) * 4.0)
+	var corner := 0
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			if corner != skip:
+				mark(k, c + rr * (w * 0.5 - 0.03) * sx + u * (h * 0.5 - 0.03) * sy, nn, u, 0.028, 0.028, rp[5], lift + 0.006)
+			corner += 1
+
+
+## A burn: an uneven dark octagon on a face, blacker at its heart.
+static func scorch(k: MeshKit, c: Vector3, n: Vector3, rad: float, seed_value: int) -> void:
+	var nn := n.normalized()
+	var u := nn.cross(UP if absf(nn.y) < 0.9 else Vector3.RIGHT).normalized()
+	var v := nn.cross(u)
+	for layer in 2:
+		var pts: Array[Vector3] = []
+		var sc := 1.0 if layer == 0 else 0.5
+		for j in 8:
+			var a := float(j) / 8.0 * TAU
+			var rr := rad * sc * (0.6 + 0.4 * Rng.hash01(seed_value, j, layer))
+			pts.append(c + nn * (0.004 + layer * 0.002) + (u * cos(a) + v * sin(a)) * rr)
+		face(k, pts, Palette.INK[2 - layer], nn)
+
+
+## A cable run from a to b sagging `sag` at its middle, in `col`, clamped at
+## both ends; `sleeve` (a ramp, or empty) is the splice another machine made.
+static func cable(k: MeshKit, a: Vector3, b: Vector3, sag: float, rad: float, col: Color, sleeve: Array = [], segments: int = 4) -> void:
+	var pts: Array[Vector3] = []
+	for i in segments + 1:
+		var t := float(i) / segments
+		pts.append(a.lerp(b, t) + Vector3.DOWN * sag * 4.0 * t * (1.0 - t))
+	var line := flat(col)
+	for i in segments:
+		lathe(k, pts[i], pts[i + 1] - pts[i], [Vector2(rad, 0.0), Vector2(rad, (pts[i + 1] - pts[i]).length())], 4, line, PI / 4.0, Vector2.ONE, Color(0, 0, 0, 0), -1, false)
+	var clamp_r: Array = dirty(sleeve, 1) if not sleeve.is_empty() else flat(Palette.INK[2])
+	for end: int in [0, segments]:
+		var dir := (pts[1] - pts[0]) if end == 0 else (pts[segments] - pts[segments - 1])
+		dir = dir.normalized()
+		tbar(k, pts[end] - dir * rad * 2.0, pts[end] + dir * rad * 2.0, rad * 2.0, rad * 2.0, 4, clamp_r)
+	if not sleeve.is_empty():
+		var m := int(segments * 0.5)
+		var d2 := (pts[m + 1] - pts[m]).normalized()
+		tbar(k, pts[m] - d2 * rad * 3.5, pts[m] + d2 * rad * 3.5, rad * 1.9, rad * 1.9, 4, sleeve)
+
+
+## Wire wound round a member from a to b: `turns` turns at radius `rad`, a barb
+## standing off every few steps when `barbed` (fence wire a hunter dragged away).
+static func coil(k: MeshKit, a: Vector3, b: Vector3, rad: float, turns: float, wire_r: float, col: Color, barbed: bool = false) -> void:
+	var ax := b - a
+	var span := ax.length()
+	if span < 1e-5:
+		return
+	var axn := ax / span
+	var u := axn.cross(UP if absf(axn.y) < 0.9 else Vector3.RIGHT).normalized()
+	var v := axn.cross(u)
+	var steps := maxi(6, int(turns * 5.0))
+	var prev := a + u * rad
+	var line := flat(col)
+	for i in range(1, steps + 1):
+		var t := float(i) / steps
+		var ang := t * turns * TAU
+		var p := a + axn * span * t + (u * cos(ang) + v * sin(ang)) * rad
+		lathe(k, prev, p - prev, [Vector2(wire_r, 0.0), Vector2(wire_r, (p - prev).length())], 3, line, 0.0, Vector2.ONE, Color(0, 0, 0, 0), -1, false)
+		if barbed and i % 3 == 0:
+			var out := (p - (a + axn * span * t)).normalized()
+			tbar(k, p, p + out * 0.04 + axn * 0.012, wire_r * 0.9, 0.0, 3, line)
+		prev = p
+
+
+## A tag of FOUND stock hung on a wire from `at`: seals, records, plates cut
+## off other machines. `turn` swings the plate about the wire.
+static func tag(k: MeshKit, at: Vector3, drop: float, w: float, h: float, r: Array, turn: float = 0.0) -> void:
+	tbar(k, at, at + Vector3.DOWN * drop, 0.006, 0.006, 3, flat(Palette.INK[2]))
+	k.push(Transform3D(Basis(Vector3.UP, turn), at + Vector3.DOWN * (drop + h * 0.5)))
+	cbox(k, Vector3.ZERO, Vector3(0.014, h, w), 0.0, r)
+	k.pop()
+
+
+# -- matter the machines carry: the land's and the dead's, drawn by the hand ----
+
+## A long bone from a to b, knuckled at both ends.
+static func bone(k: MeshKit, a: Vector3, b: Vector3, rad: float, seed_value: int) -> void:
+	k.strut(a, b, rad, 4, Palette.LINEN[4])
+	for i in 2:
+		var p := a if i == 0 else b
+		k.rock(p.x, p.y - rad * 1.6, p.z, rad * 2.2, rad * 3.2, seed_value + i, Palette.LINEN[5], 4)
+
+
+## A rib or a jaw: a bow of thin bone through `count` joints from `a` bulging
+## toward `bulge`.
+static func rib(k: MeshKit, a: Vector3, b: Vector3, bulge: Vector3, rad: float) -> void:
+	var prev := a
+	for i in range(1, 4):
+		var t := i / 3.0
+		var p := a.lerp(b, t) + bulge * 4.0 * t * (1.0 - t)
+		k.strut(prev, p, rad * (1.0 - t * 0.4), 3, Palette.LINEN[4])
+		prev = p
+
+
+## A torn strip of cloth hanging from `at`, kinked by seed, visible from both sides.
+static func rag(k: MeshKit, at: Vector3, drop: float, w: float, col: Color, seed_value: int, across: Vector3 = Vector3.BACK) -> void:
+	var side := across.normalized()
+	var pts: Array[Vector3] = []
+	var widths := [w, w * 0.85, w * 0.45]
+	for i in 3:
+		var t := i / 2.0
+		var j := Vector3((Rng.hash01(seed_value, i) - 0.5) * 0.08, 0.0, (Rng.hash01(seed_value, i, 1) - 0.5) * 0.04) * t
+		pts.append(at + Vector3.DOWN * drop * t + j)
+	for i in 2:
+		var a0: Vector3 = pts[i] - side * float(widths[i]) * 0.5
+		var a1: Vector3 = pts[i] + side * float(widths[i]) * 0.5
+		var b0: Vector3 = pts[i + 1] - side * float(widths[i + 1]) * 0.5
+		var b1: Vector3 = pts[i + 1] + side * float(widths[i + 1]) * 0.5
+		var c2 := col if i == 0 else col.darkened(0.12)
+		k.quad(a0, a1, b1, b0, c2)
+		k.quad(a0, b0, b1, a1, c2)
+
+
+## Chaff jammed into something: `count` short stalks scattered in a box of
+## half-size `spread` round `c`, in field colours.
+static func chaff(k: MeshKit, c: Vector3, spread: Vector3, count: int, seed_value: int, cols: Array) -> void:
+	for j in count:
+		var p := c + Vector3((Rng.hash01(seed_value, j, 0) - 0.5) * 2.0 * spread.x, (Rng.hash01(seed_value, j, 1) - 0.5) * 2.0 * spread.y, (Rng.hash01(seed_value, j, 2) - 0.5) * 2.0 * spread.z)
+		var a := Rng.hash01(seed_value, j, 3) * TAU
+		var tip := p + Vector3(cos(a), (Rng.hash01(seed_value, j, 4) - 0.3) * 0.8, sin(a)).normalized() * (0.1 + Rng.hash01(seed_value, j, 5) * 0.14)
+		bar(k, p, tip, 0.024, 0.02, 0.0, flat(cols[j % cols.size()]))
+

@@ -20,6 +20,10 @@ uniform float beam_spread = 1.2;
 uniform float narrow = 1.0;
 // 1 sweeping; higher when locked.
 uniform float strength = 1.0;
+// How much of it the day leaves: a scan shows faintly, a work lamp not at all.
+uniform float day_floor = 0.2;
+// Width at the root as a fraction of the far end: 0 a scan's point, more for a lamp bar.
+uniform float root_width = 0.0;
 
 varying float night;
 varying vec2 wedge;
@@ -27,7 +31,7 @@ varying vec2 wedge;
 void vertex() {
 	float along = UV.x;
 	float across = (UV.y - 0.5) * 2.0;
-	VERTEX = vec3(along * beam_length, 0.0, across * along * beam_spread * 0.5 * narrow);
+	VERTEX = vec3(along * beam_length, 0.0, across * mix(root_width, 1.0, along) * beam_spread * 0.5 * narrow);
 	wedge = vec2(along, across);
 	vec3 tint = sky_tint;
 	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
@@ -46,15 +50,15 @@ void fragment() {
 	float across = abs(wedge.y);
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	// Thins along its length, sheds its edges, and lands in a lip at the end.
-	float d = 0.2 * (1.0 - along * 0.75);
+	float d = 0.24 * (1.0 - along * 0.75);
 	d *= 1.0 - smoothstep(0.55, 1.0, across);
 	if (along > 0.86) {
-		d = 0.3 * (1.0 - smoothstep(0.7, 1.0, across));
+		d = 0.26 * (1.0 - smoothstep(0.7, 1.0, across));
 	}
 	if (along < 0.06) {
 		d = 0.0;
 	}
-	d *= clamp(strength, 0.0, 2.0) * mix(0.3, 1.0, night);
+	d *= clamp(strength, 0.0, 2.0) * mix(day_floor, 1.0, night);
 	if (bayer4(px) >= d) {
 		discard;
 	}

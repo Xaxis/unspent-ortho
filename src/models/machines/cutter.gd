@@ -6,6 +6,12 @@ extends MachineModel
 ##
 ## alert  the blade lifts on its boom and the body rises on its legs
 ## dead   the disc stops, the legs give, and the body sinks onto its own spoil
+##
+## lights a work lamp low on the chassis lighting the cut, one over the drive
+##        that goes hot through a windup, a status lamp blinking once
+## wear   stone dust caked pale up the legs and along the chassis, a tooth off
+##        another machine's disc, a spliced cable, the housing scorched by the
+##        drive
 
 const BODY_Y := 0.3
 const DISC_R := 0.47
@@ -42,6 +48,19 @@ func build() -> void:
 	FoundKit.disc(k, Vector3(-0.3, 0.17, 0), Vector3.RIGHT, 0.13, 0.08, 8, 0.02, R, R[2], PI / 8.0)
 	FoundKit.cbox(k, Vector3(-0.12, 0.44, 0), Vector3(0.24, 0.05, 0.08), 0.015, D)
 	body_mesh(k, body)
+	add_lamp(body, Vector3(0.02, 0.422, 0.1), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	add_lamp(body, Vector3(0.332, -0.01, 0), Vector3.RIGHT, Vector3.UP, 0.08, 0.035, &"work")
+	add_beam(body, Vector3(0.4, -0.02, 0), Vector3(1.0, -0.3, 0), 1.1, 0.8, &"work")
+	add_lamp(body, Vector3(-0.282, 0.34, 0), Vector3.LEFT, Vector3.UP, 0.05, 0.04, &"work", true)
+	var dust: Array = [Palette.LINEN[2], Palette.LINEN[3], Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[4], Palette.LINEN[4]]
+	var bw := FoundKit.kit()
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.dirt_line(bw, Vector3(-0.28, -0.035, sz * 0.251), Vector3(0.28, -0.035, sz * 0.251), Vector3.BACK * sz, 0.03, Palette.LINEN[3])
+	FoundKit.dirt_line(bw, Vector3(0.331, -0.04, -0.15), Vector3(0.331, -0.04, 0.15), Vector3.RIGHT, 0.025, Palette.LINEN[3])
+	FoundKit.scorch(bw, Vector3(-0.281, 0.25, 0.0), Vector3.LEFT, 0.06, 51)
+	FoundKit.cable(bw, Vector3(-0.2, 0.36, 0.172), Vector3(0.0, 0.1, 0.24), 0.03, 0.013, Palette.INK[2], Palette.MACHINE["harvester"], 4)
+	FoundKit.grime(bw, Vector3(-0.1, 0.4, -0.171), Vector3.FORWARD, 0.2, 0.2, 3, 52, D)
+	wear_mesh(bw, body)
 	add_scan(body, Vector3(0.081, 0.25, 0), Vector3.RIGHT, Vector3.BACK, 0.13, 0.03, 1.6)
 
 	var pk := FoundKit.kit()
@@ -64,6 +83,10 @@ func build() -> void:
 			FoundKit.tbar(lk, KNEE, foot, 0.02, 0.012, 6, D)
 			FoundKit.tbar(lk, foot, foot + Vector3(0.012, -0.02, 0), 0.014, 0.0, 4, DD)
 			body_mesh(lk, leg)
+			# Stone dust caked pale up the lower leg.
+			var lw := FoundKit.kit()
+			FoundKit.tbar(lw, KNEE.lerp(foot, 0.55), foot, 0.022, 0.015, 4, dust)
+			wear_mesh(lw, leg)
 
 	# The boom carries the disc up and over the front of the housing, clear of it.
 	var arm := joint(&"arm", body, Vector3(-0.12, 0.44, 0))
@@ -92,7 +115,9 @@ func build() -> void:
 		var dir := Vector3(cos(a), sin(a), 0)
 		var tan := Vector3(-sin(a), cos(a), 0)
 		var tooth: Array[Vector2] = [Vector2(-0.07, 0.0), Vector2(0.05, 0.0), Vector2(0.02, 0.1), Vector2(-0.02, 0.09)]
-		FoundKit.slab(dk, dir * (DISC_R - 0.02), tan, dir, tooth, 0.05, [R[3], R[3], R[4], R[4], R[5], R[5]])
+		# One tooth came off another machine's disc.
+		var tooth_r: Array = [R[3], R[3], R[4], R[4], R[5], R[5]] if j != 5 else FoundKit.dirty(Palette.MACHINE["runner"], 1)
+		FoundKit.slab(dk, dir * (DISC_R - 0.02), tan, dir, tooth, 0.05, tooth_r)
 		for sz: float in [-1.0, 1.0]:
 			var mid := Vector3(cos(a + PI / 8.0), sin(a + PI / 8.0), 0)
 			FoundKit.mark(dk, mid * 0.34 + Vector3(0, 0, sz * 0.016), Vector3.BACK * sz, mid, 0.03, 0.3, R[2], 0.002)

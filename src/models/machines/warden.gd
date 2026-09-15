@@ -7,6 +7,13 @@ extends MachineModel
 ## alert  squares up: stance wide, cap up on its collar, the brims slide out, band at full
 ## hurt   the band goes out and nothing else moves
 ## dead   it falls over backwards and is still a column
+##
+## lights a status lamp in the cap's front rim blinking twice (wary); an eye
+##        under the cap that throws a stipple beam onto the route it holds,
+##        sweeping with the head and locking, narrowed, on alert
+## wear   the cap dented and plated over by another machine, a cable run down
+##        its back, the column scorched; on a wire from its brim hang what it
+##        has taken off people at its post: a plate, a key, a scrap of cloth
 
 const HIP_Y := 0.5
 const COL_R := 0.22
@@ -54,6 +61,12 @@ func build() -> void:
 			FoundKit.streaks(ck, n * apo + Vector3(0, BAND_Y - 0.11, 0), n, 0.1, 0.16, 2, 90 + j, R[1])
 	body_mesh(ck, column)
 	add_scan(column, Vector3(-apo, 0.44, 0), Vector3.LEFT, Vector3.BACK, 0.08, 0.025, 4.0)
+	var cw := FoundKit.kit()
+	FoundKit.cable(cw, Vector3(-apo - 0.012, 0.76, 0.05), Vector3(-apo - 0.012, 0.16, 0.07), 0.0, 0.013, Palette.INK[2], Palette.MACHINE["clerk"], 4)
+	var side := Vector3(cos(TAU * 0.25), 0, sin(TAU * 0.25))
+	FoundKit.scorch(cw, side * apo + Vector3(0, 0.3, 0), side, 0.07, 61)
+	FoundKit.grime(cw, side * apo + Vector3(0, 0.7, 0), side, 0.12, 0.3, 3, 62, D)
+	wear_mesh(cw, column)
 	# The band: the five front faces of the column, a hand's width of amber at
 	# chest height, hottest dead ahead.
 	var bk := FoundKit.kit()
@@ -78,7 +91,17 @@ func build() -> void:
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.rivets(k, Vector3(-0.1, 0.19, sz * 0.24), Vector3(0.1, 0.19, sz * 0.24), Vector3(0, 0.8, sz * 0.6).normalized(), 3, R[5])
 	FoundKit.streaks(k, Vector3(0.255, 0.06, 0), Vector3.RIGHT, 0.2, 0.05, 4, 93, R[1])
+	# The eye under the cap's front.
+	FoundKit.cbox(k, Vector3(0.3, -0.01, 0), Vector3(0.07, 0.05, 0.1), 0.012, D)
 	body_mesh(k, head)
+	add_lamp(head, Vector3(0.432, 0.11, 0), Vector3.RIGHT, Vector3.UP, 0.04, 0.03, &"status")
+	add_lamp(head, Vector3(0.336, -0.01, 0), Vector3.RIGHT, Vector3.UP, 0.05, 0.028, &"optic")
+	add_beam(head, Vector3(0.34, -0.02, 0), Vector3(2.0, -1.36, 0), 2.4, 1.1)
+	var capw := FoundKit.kit()
+	FoundKit.patch(capw, Vector3(-0.08, 0.241, 0.08), Vector3.UP, Vector3.RIGHT, 0.16, 0.12, Palette.MACHINE["hauler"], 63)
+	FoundKit.patch(capw, Vector3(0.05, 0.17, -0.2), Vector3(0.0, 0.8, -0.6).normalized(), Vector3.RIGHT, 0.2, 0.08, Palette.FOUND, 64)
+	FoundKit.grime(capw, Vector3(-0.04, 0.08, 0.262), Vector3.BACK, 0.2, 0.06, 3, 65, D)
+	wear_mesh(capw, head)
 	for sz: float in [-1.0, 1.0]:
 		var brim := joint(&"brim_r" if sz > 0 else &"brim_l", head, Vector3(0, 0.09, sz * 0.33))
 		var mk := FoundKit.kit()
@@ -86,6 +109,17 @@ func build() -> void:
 		FoundKit.slab(mk, Vector3.ZERO, Vector3.RIGHT, Vector3.BACK * sz, blade, 0.04, R, 0.01)
 		FoundKit.mark(mk, Vector3(0, 0.021, sz * 0.12), Vector3.UP, Vector3.RIGHT, 0.26, 0.016, R[5], 0.002)
 		body_mesh(mk, brim)
+		if sz > 0.0:
+			# What it took off people at its post, on a wire from the brim.
+			var tk := FoundKit.matter_kit(Ink.HAND)
+			var at := Vector3(0.16, 0.0, sz * 0.13)
+			tk.strut(at, at + Vector3(0.0, -0.2, 0.02), 0.006, 3, Palette.INK[3])
+			tk.push(Transform3D(Basis(Vector3.UP, 0.4), at + Vector3(0.0, -0.24, 0.02)))
+			tk.box(Vector3(-0.004, -0.04, -0.035), Vector3(0.004, 0.04, 0.035), Palette.LINEN[4])
+			tk.pop()
+			tk.strut(at + Vector3(-0.03, -0.14, 0.03), at + Vector3(-0.03, -0.24, 0.03), 0.01, 4, Palette.COPPER[2])
+			FoundKit.rag(tk, at + Vector3(0.04, -0.12, 0.0), 0.14, 0.05, Palette.RUST[2], 66, Vector3(1, 0, 0.2))
+			wear_matter(tk, brim)
 	finish_rig()
 
 
