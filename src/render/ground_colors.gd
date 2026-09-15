@@ -197,8 +197,9 @@ static func _make_cliff(g: int, c: int) -> Color:
 		Country.SNOWFIELD: return _m(P.SLATE[2], P.RIME[2], 0.5)
 		Country.BONELANDS: return P.LINEN[3]
 		Country.BURNING: return P.STONE[0]
-	# Weathered coast rock, grey warmed by the soil washed over it.
-	return _m(P.STONE[3], P.EARTH[3], 0.3)
+	# A turf-cut earth bank over sandy beds: warm, so its shaded face reads as
+	# a bank of soil and never as a blue ditch or a run of water.
+	return _m(P.EARTH[3], P.SAND[3], 0.4)
 
 
 ## Wash of ground g in country c.

@@ -522,21 +522,20 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// COAST: a turf-cut face, dark roots under the sod, then pale weathered
 		// beds with white streaks below the ledges: lighter than any water, so
 		// a one-level step never reads as a ditch.
-		float b = (y + (vn - 0.5) * 0.05) / 0.11;
-		float h = ink_hash(vec2(floor(b), 3.0));
-		c = h < 0.35 ? dn(c, 0.2) : (h > 0.75 ? up(c, 0.2) : c);
-		if (fract(b) < 0.14) {
-			c = dn(c, 0.45);
+		// Beds run with the wall at a slant and break off, so a long one-step
+		// wall is a bank of soil, not a rail with posts along it.
+		float b = (y + (vn - 0.5) * 0.08 + px.x * 0.004) / 0.11;
+		float h = ink_hash(vec2(floor(b), floor(px.x / 23.0) + 3.0));
+		c = h < 0.3 ? dn(c, 0.15) : (h > 0.8 ? up(c, 0.12) : c);
+		if (fract(b) < 0.1 && ink_vnoise(vec2(px.x * 0.05, floor(b))) > 0.45) {
+			c = dn(c, 0.3);
 		}
 		float sod = 0.07 + vn * 0.05;
 		if (dt < sod) {
 			c = dt < sod - 0.025 ? EARTH3 : EARTH1;
 		} else if (ink_hash(vec2(px.x, 5.0)) > 0.9 && dt < sod + ink_hash(vec2(px.x, 6.0)) * 0.12) {
+			// Roots hanging from the sod, uneven.
 			c = EARTH2;
-		}
-		float st = ink_hash(vec2(col, 9.0));
-		if (st > 0.975 && dt > sod && dt < sod + 0.03 + fract(st * 31.0) * 0.14) {
-			c = LINEN4;
 		}
 	} else if (id == 2) {
 		// MOSS: a deep peat bank, fibrous, over dark wet rock.
