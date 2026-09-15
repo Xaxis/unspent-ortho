@@ -1,6 +1,10 @@
 extends SceneTree
 ## Headless test runner.
-##   godot --headless --path . -s tests/run.gd [-- filter]
+##   godot --headless --path . -s tests/run.gd [-- filter] [--shard=I/N]
+##
+## --shard=I/N runs every Nth test file starting at the Ith (0-based), so the
+## gate can run N processes side by side. Whole files stay together, so a file's
+## cached worlds are built once. Scripts under src are loaded in each.
 ##
 ## 1. Loads every script under res://src so a parse error anywhere fails the run,
 ##    even in a file no test touches.
@@ -20,9 +24,16 @@ func _initialize() -> void:
 func _run() -> void:
 	var t0 := Time.get_ticks_msec()
 	var filter := ""
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		filter = args[0]
+	var shard := 0
+	var shards := 1
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--shard="):
+			var sp := a.trim_prefix("--shard=").split("/")
+			shard = sp[0].to_int()
+			shards = maxi(1, sp[1].to_int())
+		elif a != "":
+			filter = a
+	var index := -1
 
 	for path in _find("res://src", ".gd"):
 		var s: Script = load(path)
@@ -36,6 +47,9 @@ func _run() -> void:
 
 	for path in _find("res://tests", ".gd"):
 		if not path.get_file().begins_with("test_") or path.get_file() == "test_case.gd":
+			continue
+		index += 1
+		if index % shards != shard:
 			continue
 		var script: GDScript = load(path)
 		if script == null:
