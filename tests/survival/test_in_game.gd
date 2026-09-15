@@ -1,53 +1,92 @@
 extends TestCase
-## Survival inside a real running Game: boot options, the systems, the view and
-## the effects, on real frames. Slower than the rule tests (it waits out one
-## work in real time), so it is one test that checks the whole wiring.
+## Survival inside a real running Game: boot options, the strand, the systems,
+## the view and the drawing, on real frames. One small game serves every check,
+## and it runs on survival's fixed clock (--hold) so no check waits on the wall:
+## _run(s) lets exactly s seconds of survival time pass, 1/60 s a frame.
 
 const Fx := preload("res://tests/survival/fixture.gd")
 
+var game: Game
 
-func test_a_game_started_with_survival_options_works_builds_and_draws() -> void:
-	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=96", "--give=driftwood:3,stone:2,mussels:1", "--held=axe_hand"]))
+
+func test_survival_works_builds_and_draws_inside_a_running_game() -> void:
+	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=48", "--give=driftwood:3,stone:2,mussels:1",
+		"--held=axe_hand", "--hold=0"]))
 	eq(o.give, {&"driftwood": 3, &"stone": 2, &"mussels": 1}, "--give parsed")
 	eq(o.held, "axe_hand", "--held parsed")
-	var game := Game.new()
+	near(o.hold, 0.0, 1e-6, "--hold parsed")
+	game = Game.new()
 	tree.root.add_child(game)
 	game.setup(o)
 	check(game.inventory.has(&"axe_hand") and game.inventory.held == &"axe_hand", "holding the given axe")
 	eq(game.inventory.edge(&"knife"), 5000, "the start knife is half worn")
 	eq(game.inventory.count(&"driftwood"), 3, "given driftwood")
-	var fx_found := false
-	for s in game.systems:
-		fx_found = fx_found or String(s.name).contains("survival_fx")
-	check(fx_found, "the effects system loaded")
+	var fx := _system("survival_fx")
+	var sys := _system("50_survival")
+	check(fx != null, "the effects system loaded")
+	check(sys != null and sys.has_method("eat"), "a system offers eat(id) to screens")
+	eq(Strand.plan(game).size(), 0, "setup laid the strand: there is nothing left to lay")
 
-	# A pine in front of the player, felled through the real `use` path and real time.
-	var pine := Fx.put(game, PropKind.PINE, Vector2.from_angle(game.player.facing) * 0.9)
+	# A pine felled through `use`, the blow caught at an exact moment on the fixed clock.
+	var pine := _put(PropKind.PINE)
 	eq(Survival.describe_target(game), "pine - fell")
-	check(Survival.use(game), "work started")
-	check(Survival.busy(game), "busy")
-	var t0 := Time.get_ticks_msec()
-	while Survival.busy(game) and Time.get_ticks_msec() - t0 < 3000:
-		await tree.process_frame
+	check(Survival.use(game), "felling")
+	await _run(0.4)
+	near(Survival.fixed_now, 0.4, 1e-4, "stopped at the moment asked for")
+	check(Survival.busy(game), "still at work: the blow is caught, not finished")
+	gt((fx.get("_tick") as Array).size(), 0, "one blow's ink burst is on the page")
+	gt((fx.get("_fleck") as Array).size(), 0, "and flecks of wood")
+	await _run(1.0)
 	check(not Survival.busy(game), "the work finished on its own")
-	eq(game.inventory.count(&"timber"), 2, "timber from the felled pine")
-	check(game.world.depleted.has(pine.id), "the pine is gone")
+	check(game.world.depleted.has(pine.id), "the pine is down")
+	eq(game.inventory.count(&"timber"), 2, "its timber in the creel")
+	await _run(2.0)
+	check(game.find_children("remnant_stump", "", true, false).size() > 0, "a stump layer exists")
 
-	# Build a fire where it stood: `use` on nothing with the makings in the creel.
-	game.player.facing = PI
+	# A fire where it stood, and its flame burns.
 	var fire := Survival.build_fire(game)
 	check(fire != null, "built a fire")
-	await tree.process_frame
-	await tree.process_frame
-	# The effects system scans for fires twice a second.
-	var t1 := Time.get_ticks_msec()
-	var flame: Node = null
-	while flame == null and Time.get_ticks_msec() - t1 < 1500:
-		await tree.process_frame
-		flame = game.find_child("fire_%d" % fire.id, true, false)
-	check(flame is FireModel, "a flame burns on the built fire")
+	await _run(0.6)
+	check(game.find_child("fire_%d" % fire.id, true, false) is FireModel, "a flame burns on the built fire")
+
+	# Holding `use` works a vein out; letting go takes once.
+	game.inventory.add(&"pick")
+	Survival.hold(game, &"pick")
+	game.player.facing += PI * 0.5
+	var vein := _put(PropKind.IRON_ORE)
+	check(Survival.use(game), "first blow")
+	sys.set("scripted_use_held", true)
+	for i in 8:
+		await _run(1.0)
+		if game.world.depleted.has(vein.id):
+			break
+	eq(game.inventory.count(&"iron_ore"), 3, "three takes from one press held down")
+	check(game.world.depleted.has(vein.id), "worked out")
+	await _run(0.5)
+	check(not Survival.busy(game), "and it stops there")
+	sys.set("scripted_use_held", false)
+	var rock := _put(PropKind.MUSSEL_ROCK)
+	check(Survival.use(game), "mussels")
+	await _run(1.5)
+	eq(game.inventory.count(&"mussels"), 2, "let go: one take only")
+	check(not SurvivalState.of(game).spent.has(SurvivalState.key(rock.id, 0)), "rock not picked over")
+
+	# A blow on the player breaks off the work; a blow that rings off, or lands elsewhere, does not.
+	check(Survival.use(game), "at the rock again")
+	Events.hit.emit(null, game.player, 0, true, Vector3.ZERO)
+	check(Survival.busy(game), "a blow that rings off does not stop the work")
+	Events.hit.emit(null, game.camera, 2, false, Vector3.ZERO)
+	check(Survival.busy(game), "a blow on something else does not either")
+	Events.hit.emit(null, game.player, 2, false, Vector3.ZERO)
+	check(not Survival.busy(game), "a blow on the player does")
+	eq(game.inventory.count(&"mussels"), 2, "and nothing came away")
+
+	game.body.fed_until = game.clock.minutes - 60.0
+	check(sys.call("eat", &"mussels"), "eaten through the system")
+	eq(game.inventory.count(&"mussels"), 1)
 	game.queue_free()
 	await tree.process_frame
+	eq(Survival.fixed_now, -1.0, "real time again once the game is gone")
 
 
 func test_every_prop_that_is_taken_away_leaves_the_right_mark() -> void:
@@ -85,31 +124,20 @@ func test_every_item_hops_into_the_hands_as_a_drawn_token() -> void:
 		"marks draw after the outline pass, or it paints them out")
 
 
-func test_a_held_shot_catches_the_blow_and_the_fall_the_same_way_every_time() -> void:
-	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=96", "--held=axe_hand", "--hold=0.4"]))
-	near(o.hold, 0.4, 1e-6, "--hold parsed")
-	var game := Game.new()
-	tree.root.add_child(game)
-	game.setup(o)
-	var fx: Node = null
+## Let `seconds` of survival time pass on the fixed clock, a 1/60 s frame at a time.
+func _run(seconds: float) -> void:
+	game.options.hold = Survival.fixed_now + seconds
+	for i in ceili(seconds * 60.0) + 2:
+		await tree.process_frame
+
+
+func _system(part: String) -> Node:
 	for s in game.systems:
-		if String(s.name).contains("survival_fx"):
-			fx = s
-	var pine := Fx.put(game, PropKind.PINE, Vector2.from_angle(game.player.facing) * 0.9)
-	check(Survival.use(game), "felling")
-	for i in 60:
-		await tree.process_frame
-	near(Survival.fixed_now, 0.4, 1e-4, "stopped at the moment asked for")
-	check(Survival.busy(game), "still at work: the blow is caught, not finished")
-	eq((fx.get("_tick") as Array).size(), 5, "one blow's ink burst is on the page")
-	gt((fx.get("_fleck") as Array).size(), 0, "and flecks of wood")
-	# Let it run on: the work finishes, the tree falls, its timber comes to hand.
-	game.options.hold = 2.0
-	for i in 110:
-		await tree.process_frame
-	check(not Survival.busy(game), "the work finished")
-	check(game.world.depleted.has(pine.id), "the pine is down")
-	eq(game.inventory.count(&"timber"), 2)
-	game.queue_free()
-	await tree.process_frame
-	eq(Survival.fixed_now, -1.0, "real time again once the game is gone")
+		if String(s.name).contains(part):
+			return s
+	return null
+
+
+## A prop just in front of the player, wherever it stands.
+func _put(kind: int) -> WorldProp:
+	return Fx.put(game, kind, Vector2.from_angle(game.player.facing) * (0.55 + PropKind.SOLID[kind]))

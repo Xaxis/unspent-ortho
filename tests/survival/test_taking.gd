@@ -330,38 +330,6 @@ func test_the_tide_rule_is_the_source_curve() -> void:
 	check(Takes.tide_is_low(1490.0), "low again after 24 h 50 m")
 
 
-func test_holding_use_keeps_working_a_vein_until_it_is_gone() -> void:
-	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=96", "--held=pick", "--hold=30"]))
-	var game := Game.new()
-	tree.root.add_child(game)
-	game.setup(o)
-	var sys: Node = null
-	for s in game.systems:
-		if s.has_method("eat"):
-			sys = s
-	var vein := Fx.put(game, PropKind.IRON_ORE, Vector2.from_angle(game.player.facing) * 1.0)
-	check(Survival.use(game), "first blow")
-	sys.set("scripted_use_held", true)
-	for i in 600:
-		await tree.process_frame
-		if game.world.depleted.has(vein.id):
-			break
-	eq(game.inventory.count(&"iron_ore"), 3, "three takes from one press held down")
-	check(game.world.depleted.has(vein.id), "worked out")
-	for i in 30:
-		await tree.process_frame
-	check(not Survival.busy(game), "and it stops there")
-	var rock := Fx.put(game, PropKind.MUSSEL_ROCK, Vector2.from_angle(game.player.facing) * 1.0)
-	sys.set("scripted_use_held", false)
-	check(Survival.use(game), "mussels")
-	for i in 80:
-		await tree.process_frame
-	eq(game.inventory.count(&"mussels"), 1, "let go: one take only")
-	check(not SurvivalState.of(game).spent.has(SurvivalState.key(rock.id, 0)), "rock not picked over")
-	game.queue_free()
-	await tree.process_frame
-
-
 func test_a_press_on_open_ground_asks_and_a_late_or_moved_second_press_asks_again() -> void:
 	var g := Fx.flat(40, 12.0)
 	g.inventory.add(&"deadwood", 3)

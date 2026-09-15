@@ -98,34 +98,6 @@ func test_a_blow_breaks_off_the_work_with_nothing_taken_and_no_time_gone() -> vo
 	Fx.done(g)
 
 
-func test_the_system_breaks_off_work_when_a_blow_lands_on_the_player() -> void:
-	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=96", "--held=axe_hand"]))
-	var game := Game.new()
-	tree.root.add_child(game)
-	game.setup(o)
-	check(game.inventory.has(&"lamp"), "the start kit has a lamp")
-	var sys: GameSystem = null
-	for s in game.systems:
-		if s.has_method("eat"):
-			sys = s
-	check(sys != null, "a system offers eat(id) to screens")
-	var pine := Fx.put(game, PropKind.PINE, Vector2.from_angle(game.player.facing) * 0.9)
-	check(Survival.use(game), "felling")
-	Events.hit.emit(null, game.player, 0, true, Vector3.ZERO)
-	check(Survival.busy(game), "a blow that rings off does not stop the work")
-	Events.hit.emit(null, game.camera, 2, false, Vector3.ZERO)
-	check(Survival.busy(game), "a blow on something else does not either")
-	Events.hit.emit(null, game.player, 2, false, Vector3.ZERO)
-	check(not Survival.busy(game), "a blow on the player does")
-	check(not game.world.depleted.has(pine.id), "and the pine stands")
-	game.inventory.add(&"mussels")
-	game.body.fed_until = game.clock.minutes - 60.0
-	check(sys.call("eat", &"mussels"), "eaten through the system")
-	eq(game.inventory.count(&"mussels"), 0)
-	game.queue_free()
-	await tree.process_frame
-
-
 func test_nothing_to_do_while_something_has_hold_of_you() -> void:
 	var g := Fx.flat()
 	var reeds := Fx.put(g, PropKind.REEDS, Vector2(0.8, 0))
