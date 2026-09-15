@@ -129,6 +129,10 @@ func place_near_player(kind: StringName) -> MobState:
 	var best := hp + Vector2.from_angle(ang) * dist
 	var best_score := INF
 	var keeps: Array = row.get("keeps_to", [])
+	# Where the top of the body lands on the ground plane, seen down the camera.
+	var yaw := deg_to_rad(spawner.yaw_deg)
+	var screen_up := Vector2(-sin(yaw), -cos(yaw))
+	var head_lift := screen_up * float(row.get("height", 1.0)) / tan(deg_to_rad(spawner.pitch_deg))
 	for ring in range(0, 24):
 		for i in 24:
 			var a := ang + float(i) / 24.0 * TAU
@@ -146,6 +150,11 @@ func place_near_player(kind: StringName) -> MobState:
 				score -= 8.0
 			if row.get("where", {}).get("rise", false) and Spawner.is_rise(w, tx, ty):
 				score -= 20.0
+			# Placed for a shot or a test: somewhere the camera shows, head and feet
+			# both well inside the frame.
+			var margin := -0.15 * spawner.view_height
+			if not spawner.in_view(hp, p, margin) or not spawner.in_view(hp, p + head_lift, margin):
+				score += 100.0
 			if score < best_score:
 				best_score = score
 				best = p
