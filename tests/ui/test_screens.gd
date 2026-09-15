@@ -55,7 +55,7 @@ func test_open_and_close_emit_screen_changed() -> void:
 	_unlisten()
 
 
-func test_inventory_holds_tools_and_eats_food() -> void:
+func test_inventory_holds_tools_and_never_feeds_the_body_itself() -> void:
 	_listen()
 	var s := _inventory_screen()
 	var inv := s.inventory
@@ -70,10 +70,14 @@ func test_inventory_holds_tools_and_eats_food() -> void:
 	eq(inv.held, &"", "confirm again puts it away")
 	s.handle(&"down")
 	eq(s.menu.selected().id, &"mussels")
+	# Survival owns hunger: with no game to eat through, the row is refused with a reason.
 	var before := s.body.fed_until
+	check(not UiMenu.enabled(s.menu.selected()), "food with no one to eat it through is faded")
+	_sounds.clear()
 	s.handle(&"confirm")
-	eq(inv.count(&"mussels"), 1, "ate one")
-	gt(s.body.fed_until, before + 60.0, "fed for hours")
+	eq(inv.count(&"mussels"), 2, "nothing eaten")
+	eq(s.body.fed_until, before, "the notebook never writes the body")
+	check(_sounds.has(&"refused") and s.note != "", "refused, saying why: %s" % s.note)
 	s.handle(&"down")
 	eq(s.menu.selected().id, &"stone")
 	check(not UiMenu.enabled(s.menu.selected()), "stone is faded")
@@ -86,13 +90,22 @@ func test_inventory_holds_tools_and_eats_food() -> void:
 	_unlisten()
 
 
-func test_eating_the_last_one_keeps_the_cursor_nearby() -> void:
+func test_only_found_tools_are_held() -> void:
+	var s := _inventory_screen()
+	eq(s.verb_for(&"knife"), &"hold")
+	eq(UiRules.item_group(&"wick"), &"found", "a charge is listed with found things")
+	eq(s.verb_for(&"wick"), &"", "but a charge is not held")
+	check(UiInventoryScreen.why_refused(&"wick").ends_with("."), "one plain sentence: %s" % UiInventoryScreen.why_refused(&"wick"))
+	s.free()
+
+
+func test_a_thing_leaving_keeps_the_cursor_nearby() -> void:
 	var s := _inventory_screen()
 	s.inventory.add(&"knife")
 	s.inventory.add(&"mussels", 1)
 	s.open()
 	s.handle(&"down")
-	s.handle(&"confirm")
+	s.inventory.remove(&"mussels")
 	eq(s.inventory.count(&"mussels"), 0)
 	check(not s.menu.selected().is_empty(), "cursor still on a row")
 	s.free()

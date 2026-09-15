@@ -2,8 +2,9 @@ class_name UiLink
 ## The notebook's one door into rules other packages own. Survival, Crafting
 ## and Inventory grow richer helpers in parallel with this package; every call
 ## here uses the richer helper when it exists and falls back to the plain
-## contract (Crafting.can_make/make, Inventory.add/remove, Body fields) when it
-## does not, so the notebook works before, during and after those packages land.
+## contract (Crafting.can_make/make, Inventory.set_held) when it does not, so
+## the notebook works before, during and after those packages land. Body is
+## only ever read: what cannot be done without its owner is refused instead.
 ##
 ## Classes that may not exist yet are reached by global class name, never by
 ## identifier, so this file parses without them.
@@ -112,18 +113,15 @@ static func hold(game: Game, inv: Inventory, id: StringName) -> void:
 		inv.set_held(id)
 
 
-## Eat one. Returns true if it was eaten. Survival charges the clock and the
-## body; without it the notebook feeds the body by the item's hours.
-static func eat(game: Game, inv: Inventory, body: Body, id: StringName) -> bool:
-	if game != null and game.inventory == inv and offers(&"Survival", &"eat"):
-		return bool(_call(&"Survival", &"eat", [game, id]))
-	if not inv.remove(id):
-		return false
-	var now := game.clock.minutes if game != null else 0.0
-	if body != null:
-		body.fed_until = maxf(body.fed_until, now) + float(Items.def(id).get("feeds", 0.0)) * 60.0
-	Events.sfx.emit(&"eat", Vector3.ZERO)
-	return true
+## True when eating can be done from the notebook: survival owns hunger, so
+## only its `eat` feeds the body. The notebook never writes Body itself.
+static func can_eat(game: Game, inv: Inventory) -> bool:
+	return game != null and game.inventory == inv and offers(&"Survival", &"eat")
+
+
+## Eat one through survival. Returns true if it was eaten.
+static func eat(game: Game, inv: Inventory, id: StringName) -> bool:
+	return can_eat(game, inv) and bool(_call(&"Survival", &"eat", [game, id]))
 
 
 # --- making ----------------------------------------------------------------------

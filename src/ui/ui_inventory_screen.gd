@@ -39,16 +39,30 @@ func _on_close() -> void:
 		inventory.changed.disconnect(refresh)
 
 
-## What E does to a row's thing: &"hold" &"eat" &"wear", or &"" (refused).
+## What E does to a row's thing: &"hold" &"eat" &"wear", or &"" (refused,
+## with why_refused saying why in one plain sentence).
 func verb_for(id: StringName) -> StringName:
 	match UiRules.item_group(id):
-		&"tools", &"found":
+		&"tools":
 			return &"hold"
+		&"found":
+			return &"hold" if Items.def(id).get("tool", false) else &""
 		&"food":
-			return &"eat"
+			return &"eat" if UiLink.can_eat(game, inventory) else &""
 		&"to wear":
 			return &"wear" if UiLink.can_wear(inventory) else &""
 	return &""
+
+
+static func why_refused(id: StringName) -> String:
+	match UiRules.item_group(id):
+		&"goods":
+			return "That is for making things with."
+		&"found":
+			return "A found tool spends that; it is not held."
+		&"food":
+			return "Eating is not in the game yet."
+	return "Nothing to do with that yet."
 
 
 func refresh() -> void:
@@ -63,7 +77,7 @@ func refresh() -> void:
 		row["verb"] = v
 		row["enabled"] = v != &""
 		if v == &"":
-			row["why"] = "That is for making things with." if UiRules.item_group(id) == &"goods" else "Nothing to do with that yet."
+			row["why"] = why_refused(id)
 	menu.set_rows(rows)
 	queue_redraw()
 
@@ -81,7 +95,7 @@ func _on_confirm(row: Dictionary) -> void:
 				UiLink.hold(game, inventory, id)
 				say("The %s in hand." % name)
 		&"eat":
-			if UiLink.eat(game, inventory, body, id):
+			if UiLink.eat(game, inventory, id):
 				say("Ate the %s." % name)
 			else:
 				refuse("Not while your hands are full.")
