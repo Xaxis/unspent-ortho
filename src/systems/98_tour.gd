@@ -86,8 +86,11 @@ func _run() -> void:
 				await get_tree().create_timer(secs).timeout
 				Input.action_release(parts[1])
 			"tap":
+				# Hold across whole process AND physics frames, or a press made right
+				# after a shot can be released before any system polls it.
 				Input.action_press(parts[1])
-				await get_tree().physics_frame
+				for i in 3:
+					await get_tree().process_frame
 				await get_tree().physics_frame
 				Input.action_release(parts[1])
 			"wait":

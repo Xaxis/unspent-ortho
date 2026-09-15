@@ -13,7 +13,7 @@ pid=$!
 deadline=$(( $(date +%s) + ${TOUR_TIMEOUT:-180} ))
 status=0
 while kill -0 "$pid" 2>/dev/null; do
-  if grep -qE 'SCRIPT ERROR|Parse Error|Compile Error' "$log"; then sleep 0.3; kill "$pid" 2>/dev/null; status=1; break; fi
+  if grep -qE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error' "$log"; then sleep 0.3; kill "$pid" 2>/dev/null; status=1; break; fi
   if [ "$(date +%s)" -ge "$deadline" ]; then kill "$pid" 2>/dev/null; status=2; break; fi
   sleep 0.2
 done

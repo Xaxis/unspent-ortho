@@ -4,7 +4,7 @@ extends Node3D
 ##   tools/shot.sh shots/gallery.png --scene=gallery [--filter=pine] [--hour=21]
 ##
 ## Discovery is by convention so parallel work never edits a shared list: any
-## script under res://src/models/ (recursively) that defines
+## script under res://src/models/ or res://src/systems/ (recursively) that defines
 ##   static func gallery() -> Array   # of {"name": String, "node": Node3D}
 ## contributes its items. Nodes that need the world material get it via
 ## `material` meta; see _material_for().
@@ -23,7 +23,9 @@ func setup(o: BootOptions) -> void:
 	sky.set_hour(o.hour)
 
 	var items: Array = []
-	for path in _find("res://src/models"):
+	var paths := _find("res://src/models")
+	paths.append_array(_find("res://src/systems"))
+	for path in paths:
 		var s: GDScript = load(path)
 		if s == null:
 			continue

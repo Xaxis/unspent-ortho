@@ -32,8 +32,10 @@ func remove_prop(p: WorldProp) -> void:
 ## Every prop whose tile is within r tiles (square) of p.
 func props_near(p: Vector2, r: float) -> Array[WorldProp]:
 	var out: Array[WorldProp] = []
-	for ty in range(floori(p.y - r), floori(p.y + r) + 1):
-		for tx in range(floori(p.x - r), floori(p.x + r) + 1):
+	# Clamp to the map: an unclamped tx past the east edge would wrap into the
+	# next row's keys and return props twice.
+	for ty in range(maxi(0, floori(p.y - r)), mini(world.size - 1, floori(p.y + r)) + 1):
+		for tx in range(maxi(0, floori(p.x - r)), mini(world.size - 1, floori(p.x + r)) + 1):
 			var k := ty * world.size + tx
 			if _cells.has(k):
 				for q: WorldProp in _cells[k]:
