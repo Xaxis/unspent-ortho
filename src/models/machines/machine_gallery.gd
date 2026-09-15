@@ -9,6 +9,7 @@ extends RefCounted
 ##   ... --silhouette                       flat black bodies: the readability check
 ##   ... --filter=sheet_watcher --zoom=6     one kind: a person, stand, alert, windup, strike, dead
 ##   ... --filter=sheet_watcher_snow         the same on snow (lineup_snow for the lineup)
+##   ... --filter=gait_watcher               six phases of one stride
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
 const SHOWN: Array[StringName] = [&"stand", &"alert", &"windup", &"dead"]
@@ -27,10 +28,10 @@ static func gallery() -> Array:
 	if filter.contains("lineup"):
 		out.append({"name": filter, "node": lineup(silhouette, filter.contains("snow"))})
 		return out
-	if filter.begins_with("sheet_"):
-		var kid := StringName(filter.trim_prefix("sheet_").trim_suffix("_snow"))
+	if filter.begins_with("sheet_") or filter.begins_with("gait_"):
+		var kid := StringName(filter.trim_prefix("sheet_").trim_prefix("gait_").trim_suffix("_snow"))
 		if KINDS.has(kid):
-			out.append({"name": filter, "node": sheet(kid, silhouette, filter.ends_with("_snow"))})
+			out.append({"name": filter, "node": sheet(kid, silhouette, filter.ends_with("_snow"), filter.begins_with("gait_"))})
 		return out
 	for kid in KINDS:
 		if filter.contains("walk"):
@@ -142,7 +143,7 @@ static func review_ground(size: Vector2, silhouette: bool, snow: bool) -> MeshIn
 
 ## One kind across the screen: a person for scale, then every pose that
 ## changes the shape, each labelled. Centred where the gallery aims.
-static func sheet(kid: StringName, silhouette: bool, snow: bool) -> Node3D:
+static func sheet(kid: StringName, silhouette: bool, snow: bool, gait: bool = false) -> Node3D:
 	var holder := Node3D.new()
 	var root := Node3D.new()
 	var across := Vector3(1, 0, -1).normalized()
@@ -160,12 +161,19 @@ static func sheet(kid: StringName, silhouette: bool, snow: bool) -> Node3D:
 	person.rotation.y = -PI * 0.25
 	person.position = across * (x + gap * 0.3)
 	root.add_child(person)
-	for p in poses:
+	for i in poses.size():
 		x += gap
-		var m := make(kid, p, 0.3)
+		var p := poses[i]
+		var phase := 0.3
+		var label := String(p)
+		if gait:
+			p = &"walk"
+			phase = i / float(poses.size())
+			label = "walk %d/%d" % [i, poses.size()]
+		var m := make(kid, p, phase)
 		m.position = across * x
 		root.add_child(m)
-		_label_later(root, String(p), across * x + Vector3(0.6, 0.0, 0.6))
+		_label_later(root, label, across * x + Vector3(0.6, 0.0, 0.6))
 	if silhouette:
 		for c in root.get_children():
 			if c != ground and not c is Label3D:

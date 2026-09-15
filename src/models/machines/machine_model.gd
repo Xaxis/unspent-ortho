@@ -173,6 +173,7 @@ func set_part_anchor(parent: Node3D, pos: Vector3, glow_size: float = 0.7) -> vo
 	_glow.mesh = q
 	_glow_mat = ShaderMaterial.new()
 	_glow_mat.shader = preload("res://src/models/machines/part_glow.gdshader")
+	_glow_mat.render_priority = 10
 	_glow.material_override = _glow_mat
 	_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_glow.position = part_normal * 0.06

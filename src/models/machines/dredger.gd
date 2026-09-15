@@ -26,7 +26,7 @@ func build() -> void:
 
 	var hull := joint(&"hull", self, Vector3(0, 0.4, 0))
 	# A low carapace with a prow, not a box: waterline full, shoulders sloped in.
-	var plan: Array[Vector2] = [Vector2(0.92, 0), Vector2(0.55, 0.5), Vector2(-0.5, 0.58), Vector2(-0.84, 0.34), Vector2(-0.84, -0.34), Vector2(-0.5, -0.58), Vector2(0.55, -0.5)]
+	var plan: Array[Vector2] = [Vector2(0.9, 0), Vector2(0.52, 0.44), Vector2(-0.42, 0.5), Vector2(-0.72, 0.3), Vector2(-0.72, -0.3), Vector2(-0.42, -0.5), Vector2(0.52, -0.44)]
 	var k := FoundKit.kit()
 	FoundKit.loft(k, [FoundKit.ring(plan, -0.06, 0.12), FoundKit.ring(plan, 0.04), FoundKit.ring(plan, 0.18), FoundKit.ring(plan, 0.27, 0.12), FoundKit.ring(plan, 0.31, 0.26)], R)
 	# A dorsal keel down the middle and a stubby stack.
@@ -39,8 +39,8 @@ func build() -> void:
 		FoundKit.mark(k, Vector3(x, 0.411, 0), Vector3.UP, Vector3.BACK, 0.2, 0.018, R[2], 0.002)
 	for sz: float in [-1.0, 1.0]:
 		# Along each flank: wet below the waterline, a pale tide mark, streaks from the shoulder.
-		var a := Vector2(0.55, 0.5 * sz)
-		var b := Vector2(-0.5, 0.58 * sz)
+		var a := Vector2(0.52, 0.44 * sz)
+		var b := Vector2(-0.42, 0.5 * sz)
 		var along := (b - a).normalized()
 		var out2 := Vector2(-along.y, along.x)
 		if out2.y * sz < 0.0:
@@ -49,10 +49,10 @@ func build() -> void:
 		var along3 := Vector3(along.x, 0, along.y)
 		var mid := (a + b) * 0.5
 		var c := Vector3(mid.x, 0.0, mid.y)
-		FoundKit.mark(k, c + Vector3(0, 0.08, 0), n, Vector3.UP, 0.98, 0.08, R[1], 0.003)
-		FoundKit.mark(k, c + Vector3(0, 0.125, 0), n, Vector3.UP, 0.98, 0.014, Palette.BRINE[4], 0.004)
-		FoundKit.streaks(k, c + Vector3(0, 0.18, 0), n, 0.8, 0.06, 6, 121 + int(sz), R[1])
-		FoundKit.rivets(k, c + along3 * 0.4 + Vector3(0, 0.165, 0), c - along3 * 0.4 + Vector3(0, 0.165, 0), n, 6, R[5])
+		FoundKit.mark(k, c + Vector3(0, 0.08, 0), n, Vector3.UP, 0.86, 0.08, R[1], 0.003)
+		FoundKit.mark(k, c + Vector3(0, 0.125, 0), n, Vector3.UP, 0.86, 0.014, Palette.BRINE[4], 0.004)
+		FoundKit.streaks(k, c + Vector3(0, 0.18, 0), n, 0.7, 0.06, 6, 121 + int(sz), R[1])
+		FoundKit.rivets(k, c + along3 * 0.36 + Vector3(0, 0.165, 0), c - along3 * 0.36 + Vector3(0, 0.165, 0), n, 5, R[5])
 		FoundKit.seam(k, Vector3(-0.4, 0.32, sz * 0.24), Vector3(0.36, 0.32, sz * 0.2), Vector3(0, 0.9, sz * 0.4).normalized(), R, 4)
 	# The jaw cavity under the prow.
 	FoundKit.cbox(k, Vector3(0.7, -0.03, 0), Vector3(0.3, 0.1, 0.3), 0.0, FoundKit.flat(R[0]))
@@ -80,9 +80,9 @@ func build() -> void:
 	# Legs like a strider's: knee above the deck, foot far out on the bed.
 	for i in 6:
 		var sz := -1.0 if i < 3 else 1.0
-		var x: float = [0.36, -0.06, -0.46][i % 3]
+		var x: float = [0.32, -0.04, -0.4][i % 3]
 		var fan: float = [0.55, 0.0, -0.5][i % 3]
-		var leg := joint(StringName("leg%d" % i), hull, Vector3(x, 0.12, sz * 0.52), Vector3(0, -sz * (PI * 0.5 - fan), 0))
+		var leg := joint(StringName("leg%d" % i), hull, Vector3(x, 0.12, sz * 0.46), Vector3(0, -sz * (PI * 0.5 - fan), 0))
 		var lk := FoundKit.kit()
 		FoundKit.disc(lk, Vector3.ZERO, Vector3.UP, 0.05, 0.06, 6, 0.012, D)
 		FoundKit.tbar(lk, Vector3.ZERO, KNEE, 0.03, 0.024, 6, R)

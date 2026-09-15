@@ -47,7 +47,8 @@ func build() -> void:
 		var a := float(j) / 6.0 * TAU + PI / 6.0
 		hexa.append(Vector2(cos(a) * 0.3, sin(a) * 0.32))
 	FoundKit.loft(k, [FoundKit.ring(hexa, -0.12, 0.03), FoundKit.ring(hexa, -0.08), FoundKit.ring(hexa, 0.14), FoundKit.ring(hexa, 0.2, 0.05)], R, false, true)
-	FoundKit.loft(k, [FoundKit.ring(hexa, 0.2, 0.08), FoundKit.ring(hexa, 0.23, 0.12)], R)
+	FoundKit.loft(k, [FoundKit.ring(hexa, 0.2, 0.08), FoundKit.ring(hexa, 0.235, 0.1)], R)
+	FoundKit.mark(k, Vector3(0.0, 0.237, 0), Vector3.UP, Vector3.RIGHT, 0.26, 0.018, R[2], 0.002)
 	# The filing slot across the front, paper edges showing in it.
 	FoundKit.mark(k, Vector3(0.262, 0.04, 0), Vector3.RIGHT, Vector3.UP, 0.3, 0.045, R[0], 0.003)
 	FoundKit.mark(k, Vector3(0.262, 0.05, 0), Vector3.RIGHT, Vector3.UP, 0.24, 0.012, Palette.LINEN[4], 0.005)

@@ -5,7 +5,9 @@
 // little toward the camera and depth-tested, so when the part is on the far side
 // the body hides the ring and only the spill round the silhouette shows ("over
 // the shoulder"). Thicker as the sky darkens; the machine's own light is never
-// tinted by it.
+// tinted by it. Drawn in the transparent pass (ALPHA is written, always whole)
+// with a high render priority, after the ink outline repaints the frame: a
+// light has no ink round it.
 shader_type spatial;
 render_mode unshaded, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 
@@ -26,7 +28,8 @@ void vertex() {
 	vec3 v = origin.xyz + vec3(VERTEX.xy * s, toward_camera);
 	POSITION = PROJECTION_MATRIX * vec4(v, 1.0);
 	vec3 tint = sky_apply(vec3(1.0), NODE_POSITION_WORLD, TIME);
-	night = clamp(1.25 - dot(tint, vec3(0.3333)), 0.2, 1.0);
+	// 0 under a full day sky (the sun outshines it), ~1 at night.
+	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
 }
 
 float bayer4(vec2 p) {
@@ -52,4 +55,5 @@ void fragment() {
 		discard;
 	}
 	ALBEDO = r < 0.62 ? core : rim;
+	ALPHA = 1.0;
 }
