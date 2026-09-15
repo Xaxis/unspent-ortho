@@ -67,6 +67,35 @@ static func mask(text: String, height: int, seed: int) -> Image:
 	return img
 
 
+## The shade a lettered word casts, `off` pixels down and right, laid as the
+## hand's hatching (short back-diagonals with gaps) wherever the word itself is
+## not: a mask sized to the word plus the offset.
+static func shade_texture(text: String, height: int, seed: int, off: int) -> ImageTexture:
+	var key := "shade|%s|%d|%d|%d" % [text, height, seed, off]
+	if _cache.has(key):
+		return _cache[key]
+	var m := mask(text, height, seed)
+	var w := m.get_width()
+	var h := m.get_height()
+	var img := Image.create_empty(w + off, h + off, false, Image.FORMAT_LA8)
+	img.fill(Color(1, 1, 1, 0))
+	for y in h + off:
+		for x in w + off:
+			var sx := x - off
+			var sy := y - off
+			if sx < 0 or sy < 0 or sx >= w or sy >= h or m.get_pixel(sx, sy).a < 0.5:
+				continue
+			if x < w and y < h and m.get_pixel(x, y).a >= 0.5:
+				continue
+			# Ink.HAND: every fourth back-diagonal, broken now and then.
+			if posmod(x - y, 3) != 0 or Rng.hash01(seed, (x + y) / 3, (x - y) / 4, 0x4a) < 0.15:
+				continue
+			img.set_pixel(x, y, Color(1, 1, 1, 1))
+	var tex := ImageTexture.create_from_image(img)
+	_cache[key] = tex
+	return tex
+
+
 ## Draw lettering with its top-left at `at`.
 static func draw(ci: CanvasItem, text: String, at: Vector2i, height: int, col: Color, seed: int) -> void:
 	ci.draw_texture(texture(text, height, seed), Vector2(at), col)

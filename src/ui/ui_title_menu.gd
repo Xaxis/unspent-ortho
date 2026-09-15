@@ -104,7 +104,9 @@ func _draw_label() -> void:
 	var word := "UNSPENT"
 	var w := UiLettering.width(word, LETTER_H)
 	var at := Vector2i(r.position.x + (r.size.x - w) / 2, r.position.y + (r.size.y - LETTER_H) / 2)
-	UiLettering.draw(self, word, at + Vector2i(2, 2), LETTER_H, Color(UiTheme.ACCENT, 0.9), 7)
+	# Printed a hair off register in the accent, with its shade hatched onto the label.
+	draw_texture(UiLettering.shade_texture(word, LETTER_H, 7, 4), Vector2(at), UiTheme.INK_SOFT)
+	UiLettering.draw(self, word, at + Vector2i(1, 1), LETTER_H, Color(UiTheme.ACCENT, 0.9), 7)
 	UiLettering.draw(self, word, at, LETTER_H, UiTheme.INK, 7)
 	UiNotebook.tape(self, Vector2i(r.position.x - 8, r.position.y - 2), 30)
 	UiNotebook.tape(self, Vector2i(r.end.x - 22, r.end.y - 5), 30)
