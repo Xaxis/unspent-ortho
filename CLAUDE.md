@@ -26,6 +26,7 @@ tools/map.sh --seed=N                       # top-down map + villages + a tile i
 tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
 tools/canon.sh [--accept]                   # the canon frames beside the accepted set on ONE contact sheet: shots/canon/sheet.png
 tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
+tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score per landscape -> shots/score/
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```
 
@@ -145,6 +146,7 @@ lead with why, in short sentences.
 | Landscape types | `src/core/biome/` | `BiomeRegistry.at(world, pos) -> BiomeDef` (hazards, roster, sentinel, hatch, sound); never branch on Country in new code |
 | Stealth and gear on the body | `src/core/body.gd` | `crouched`, `spoof_until`, `resist`, `pressure` |
 | Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
+| Score and soundscape | `src/audio/score_*.gd`, `src/systems/75_music.gd`, `src/audio/sound_mix.gd` | A landscape type's music is `ScoreLandscapes.SPECS[id]` (key, mode, rhythm, chords, timbres); a type without one gets a score composed from its id, and `BiomeDef.music_motif` may name another's. Installations (hum, grid pulse), wreckage (wind in metal), roofs (gutters) and canopy (rain on leaves) are prop kinds whose NAME contains a word in `SoundMix.INSTALLATION_WORDS` / `WRECK_WORDS` / `SHELTER_WORDS` / `LEAF_WORDS`. A sentinel joins group `&"sentinels"` exposing `pos`, `reach`, `alive`, `land`. Any system can answer a tour's `await WHAT` with `tour_seen(what) -> bool`. |
 | Palette | `src/render/palette.gd` | MACHINE and FOUND ramps are cold, low-chroma violets with a compressed top: the amber `LENS` is the only saturated thing on a machine. `PLATE` sits near slate so a patched roof never reads as a live machine. |
 
 Native-name trap: a static func on a `class_name` script must not share a name

@@ -296,7 +296,7 @@ static func _texture(j: ScoreRender, s: Dictionary, variant: int, seed_value: in
 		RAIN:
 			# Rain on glass that is tuned: drops ring in the landscape's mode, high.
 			_pings(j, seed_value, 5.0, ScoreLandscapes.scale_notes(s, tonic + 36, tonic + 52), 0.25, 0.9, 0.12, 0.45, 0.15)
-			_swells(j, seed_value + 1, 4.0, 10.0, {"cut": 4200.0, "q": 0.7, "mode": 2, "sweep": 0.4, "gain": 0.3})
+			_swells(j, seed_value + 1, 4.0, 10.0, {"cut": 4200.0, "q": 0.7, "mode": 2, "sweep": 0.4, "gain": 0.14})
 			j.fx(ScoreFx.Echo, {"time": BAR * 3.0 / 16.0, "fb": 0.3, "damp_hz": 5000.0, "low_hz": 400.0, "wet": 0.25, "ping": false})
 			j.fx(ScoreFx.Hall, {"t60": 4.0, "wet": 0.35, "damp": 6000.0})
 		FOG:

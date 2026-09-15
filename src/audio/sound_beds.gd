@@ -968,12 +968,14 @@ static func _chain_clink(rate: int, v: int) -> PackedFloat32Array:
 ## A relay somewhere in a cabinet: a hard click, a hollow tock, and sometimes
 ## the release a moment later.
 static func _relay_click(rate: int, v: int) -> PackedFloat32Array:
-	var out := Synth.buffer(Synth.samples(rate, 0.25))
+	var out := Synth.buffer(Synth.samples(rate, 0.3))
 	for k in 1 + v % 2:
 		var at := Synth.samples(rate, 0.03 + k * (0.04 + v * 0.01))
-		Synth.add(out, _burst(rate, 0.01, 9821 + v * 3 + k, 2000.0, 6000.0, 0.003), at, 1.0 - k * 0.4)
-		Synth.add(out, Synth.modes(rate, 0.05, PackedFloat32Array([900.0 + v * 80.0, 1850.0]), PackedFloat32Array([0.6, 0.3]), PackedFloat32Array([0.02, 0.015])), at)
-	return _far(out, rate, 9000.0, 0.1, 0.3)
+		Synth.add(out, _burst(rate, 0.015, 9821 + v * 3 + k, 2000.0, 6000.0, 0.006), at, 0.5 - k * 0.2)
+		# The armature's clack in its steel housing: a body, not only a click.
+		var body := Synth.modes(rate, 0.12, PackedFloat32Array([620.0 + v * 60.0, 1340.0 + v * 45.0, 2900.0]), PackedFloat32Array([0.8, 0.5, 0.3]), PackedFloat32Array([0.05, 0.035, 0.02]))
+		Synth.add(out, body, at, 1.0 - k * 0.35)
+	return _far(out, rate, 9000.0, 0.12, 0.3)
 
 
 ## Current arcing across something wet: a crack, a sizzle that thins out, and a

@@ -132,6 +132,40 @@ func test_score_names_are_known_and_nonsense_is_not() -> void:
 		eq(SoundBank.CATEGORIES[row[0]]["bus"], &"Music", "%s plays on the Music bus" % name)
 
 
+## The score sits under the world: its layers at full density together near
+## -7 dB of the weather bed, a quiet stretch (drone and air) under -10, and the
+## offline mix lays a stem at level 1 exactly at its sheet level.
+func test_the_score_sits_under_the_world() -> void:
+	var heard := func(layers: Array) -> float:
+		var power := 0.0
+		for pair: Array in layers:
+			var db := float(ScoreStems.LAYERS[pair[0]]["heard"]) + 20.0 * log(float(pair[1])) / log(10.0)
+			power += pow(10.0, db / 10.0)
+		return 10.0 * log(power) / log(10.0)
+	var full: float = heard.call([[&"drone", 1.0], [&"pad", 1.0], [&"pulse", 1.0], [&"texture", 1.0]])
+	check(full > -10.0 and full < -4.0, "all of it together at %+.1f dB" % full)
+	var quiet: float = heard.call([[&"drone", 0.8], [&"texture", 0.6]])
+	lt(quiet, -10.0, "a rest is quiet (%+.1f dB)" % quiet)
+	gt(quiet, -18.0, "but still there")
+	for name: StringName in SoundBank.SHEET:
+		if SoundBank.category_of(name) in [&"bed", &"weather"]:
+			gt(float(SoundBank.SHEET[name][1]), full - 6.0, "%s is not buried by the score" % name)
+	# A stand-in stem at its sheet level, laid at level 1 by the offline mixer.
+	var b := SoundBank._header(&"score_coast_drone")
+	b.samples.resize(b.rate * 2)
+	for i in b.samples.size():
+		b.samples[i] = 0.5 * sin(TAU * 220.0 * i / b.rate)
+	b.gain_db = SoundBank._gain_for(b.samples, b)
+	var out := PackedFloat32Array()
+	out.resize(22050 * 2 * 2)
+	out.fill(0.0)
+	var lane := PackedFloat32Array()
+	lane.resize(40)
+	lane.fill(1.0)
+	ScoreScene._lay_loop(out, 22050, b, lane, 0.05, db_to_linear(SoundMix.bus_db(&"Music")))
+	near(ScoreScene.heard_db(out, 22050, 0.0, 2.0), float(ScoreStems.LAYERS[&"drone"]["heard"]), 0.15, "the mixer honours the sheet and the bus")
+
+
 ## Night drones reach lowest: rendered for two bars each, they must still keep
 ## their weight above 120 Hz, sit at their sheet level, and fit under the ceiling.
 func test_night_drones_are_deep_without_mud() -> void:
