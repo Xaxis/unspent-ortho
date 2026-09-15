@@ -238,19 +238,53 @@ static func mussel_rock(k: Kit, v: int, _c: int) -> void:
 
 static func peat_bank(k: Kit, v: int, _c: int) -> void:
 	var s := 9100 + v * 5
-	# A cut bank: two steps, dark faces with spade marks, heather on top.
-	k.slab(0.0, -0.06, -0.2, 1.3, 0.5, 0.62, s, P.EARTH[1], P.MOSS[1], 0.04, 0.04)
-	k.slab(0.05, -0.06, 0.26, 1.1, 0.26, 0.36, s + 1, P.EARTH[0], P.EARTH[1], 0.04)
-	for i in 7:
-		var x := -0.55 + i * 0.18
-		k.made.quad(Vector3(x, 0.05, 0.115), Vector3(x + 0.03, 0.05, 0.115), Vector3(x + 0.03, 0.42, 0.105), Vector3(x, 0.42, 0.105), P.EARTH[0])
+	# A cut bank: a long low hump of moor, one side sliced back to a dark face
+	# with spade marks, heather grown over the top.
+	var n := 7
+	var len := 1.2
+	var top: Array[Vector3] = []
+	var back: Array[Vector3] = []
+	var face_top: Array[Vector3] = []
+	var face_bot: Array[Vector3] = []
+	for i in n:
+		var t := float(i) / (n - 1)
+		var x := (t - 0.5) * len
+		var bow := sin(t * PI) * 0.12
+		var hh := 0.28 + sin(t * PI) * 0.22 + Kit.j(s, i, 0.04)
+		face_bot.append(Vector3(x, -0.04, 0.16 + bow))
+		face_top.append(Vector3(x + Kit.j(s, i + 10, 0.03), hh, 0.12 + bow + Kit.j(s, i + 20, 0.02)))
+		top.append(Vector3(x, hh + 0.04, -0.12 + bow * 0.5))
+		back.append(Vector3(x * 0.9, -0.04, -0.5 + bow * 0.3))
+	for i in n - 1:
+		# The cut face, dark, and the moor on top and behind.
+		k.made.quad(face_bot[i], face_bot[i + 1], face_top[i + 1], face_top[i], P.EARTH[1])
+		k.made.quad(face_top[i], face_top[i + 1], top[i + 1], top[i], P.MOSS[1])
+		k.made.quad(top[i], top[i + 1], back[i + 1], back[i], P.EARTH[1].lerp(P.MOSS[1], 0.5))
+	k.fleck(face_bot[0], back[0], top[0], P.EARTH[1])
+	k.fleck(face_bot[0], top[0], face_top[0], P.EARTH[1])
+	k.fleck(back[n - 1], face_bot[n - 1], top[n - 1], P.EARTH[1])
+	k.fleck(top[n - 1], face_bot[n - 1], face_top[n - 1], P.EARTH[1])
+	# Spade marks: short dark cuts down the face.
+	for i in 9:
+		var t := 0.08 + i * 0.105
+		var seg := clampi(int(t * (n - 1)), 0, n - 2)
+		var f := t * (n - 1) - seg
+		var a := face_top[seg].lerp(face_top[seg + 1], f).lerp(face_bot[seg].lerp(face_bot[seg + 1], f), 0.25) + Vector3(0, 0, 0.02)
+		var b := face_top[seg].lerp(face_top[seg + 1], f).lerp(face_bot[seg].lerp(face_bot[seg + 1], f), 0.7 + Kit.j(s, 60 + i, 0.15)) + Vector3(0, 0, 0.02)
+		k.made.quad(b + Vector3(0.03, 0, 0), b, a, a + Vector3(0.03, 0, 0), P.EARTH[0])
 	var hs := k.made.vertex_count()
-	for i in 5:
-		k.clump(-0.5 + i * 0.26, 0.4, -0.25 + Kit.j(s, i, 0.1), 0.16, 0.16, s + 10 + i, P.BLOOM[1] if i % 2 else P.MOSS[2], 6)
-	k.sway_by_height(hs, 0.4, 0.6, 0.2)
-	# Cut peats stacked to dry.
-	for i in 3:
-		k.slab(0.86, -0.03 + i * 0.1, 0.2 + (i % 2) * 0.04, 0.24, 0.09, 0.14, s + 20 + i, P.EARTH[1], P.EARTH[2], 0.015)
+	for i in 6:
+		var p := top[1 + i % (n - 2)].lerp(top[mini(n - 1, 2 + i % (n - 2))], Kit.j(s, 40 + i, 0.5) + 0.5)
+		k.clump(p.x, p.y - 0.08, p.z + Kit.j(s, 30 + i, 0.08), 0.2, 0.2, s + 10 + i, P.EARTH[2].lerp(P.MOSS[2], 0.6) if i % 2 else P.MOSS[2], 6)
+		k.fleck(p + Vector3(0.02, 0.08, 0.02), p + Vector3(0.06, 0.09, 0.03), p + Vector3(0.03, 0.12, 0.0), P.BLOOM[2] if i % 2 else P.BLOOM[1])
+	k.sway_by_height(hs, 0.3, 0.6, 0.2)
+	# Black water gathered at the foot of the cut.
+	k.made.tri(Vector3(-0.3, 0.004, 0.22), Vector3(0.2, 0.004, 0.24), Vector3(-0.05, 0.004, 0.38), P.BRINE[0])
+	# Cut peats stood up in a little cone to dry.
+	for i in 4:
+		var a := float(i) / 4.0 * TAU + 0.4
+		var foot := Vector3(0.95 + cos(a) * 0.12, -0.03, 0.4 + sin(a) * 0.12)
+		k.limb(foot, Vector3(0.95, 0.24, 0.4), 0.05, 0.03, 4, P.EARTH[1] if i % 2 else P.EARTH[2])
 	if v % 3 == 1:
 		# A pipe through the face, an ochre stain fanning from it.
 		k.rod(Vector3(-0.2, 0.3, -0.35), Vector3(-0.2, 0.3, 0.2), 0.07, 8, P.PLATE[2])
@@ -258,6 +292,5 @@ static func peat_bank(k: Kit, v: int, _c: int) -> void:
 		k.found.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(-0.2, 0.3, 0.205)))
 		k.found.prism(0, 0, 0, 0.055, 0.004, 0.055, 8, P.INK[1])
 		k.found.pop()
-		k.made.tri(Vector3(-0.2, 0.25, 0.12), Vector3(-0.44, -0.02, 0.13), Vector3(0.04, -0.02, 0.13), P.RUST[4])
-		k.made.tri(Vector3(-0.2, 0.2, 0.125), Vector3(-0.32, 0.0, 0.135), Vector3(-0.08, 0.0, 0.135), P.RUST[3])
-		k.made.quad(Vector3(-0.5, 0.004, 0.22), Vector3(-0.5, 0.004, 0.7), Vector3(0.1, 0.004, 0.7), Vector3(0.1, 0.004, 0.22), P.RUST[3])
+		k.fleck(Vector3(-0.2, 0.25, 0.2), Vector3(-0.44, -0.02, 0.24), Vector3(0.04, -0.02, 0.24), P.RUST[4])
+		k.made.tri(Vector3(-0.2, 0.006, 0.25), Vector3(-0.42, 0.006, 0.5), Vector3(0.02, 0.006, 0.54), P.RUST[2])

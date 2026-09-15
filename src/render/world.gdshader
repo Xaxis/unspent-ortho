@@ -266,15 +266,22 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = abs(pl.y - 32.0) < 0.7 ? LINEN2 : LINEN3;
 		}
 	} else if (m == 47) {
-		// CLINKER: vitrified black glass, a few long cracks, green glints, rust.
-		float n = ink_vnoise(wp * 0.8);
-		c = n > 0.55 ? mix(INK1, SPRUCE1, 0.5) : c;
-		float crack = abs(ink_vnoise(wp * 0.9 + 3.0) - 0.5);
-		if (crack < 0.018) {
-			c = STONE1;
+		// CLINKER: slag grit, with pools of vitrified black glass here and there
+		// that catch a green glint; rust where water stood.
+		float n = ink_vnoise(wp * 0.45) * 0.7 + ink_vnoise(wp * 1.6) * 0.3;
+		if (n > 0.66) {
+			c = n > 0.7 ? mix(INK1, SPRUCE1, 0.45) : INK2;
+			if (ink_hash(px + 2.0) > 0.99) {
+				c = SPRUCE4;
+			}
+		} else if (ink_hash(px + 5.0) > 0.93) {
+			c = dn(c, 0.6);
+		} else if (ink_hash(px + 6.0) > 0.975) {
+			c = up(c, 0.4);
 		}
-		if (ink_hash(px + 2.0) > 0.994 && n > 0.5) {
-			c = SPRUCE4;
+		float crack = abs(ink_vnoise(wp * 0.9 + 3.0) - 0.5);
+		if (crack < 0.012 && n <= 0.66) {
+			c = dn(c, 0.8);
 		}
 		if (ink_vnoise(wp * 0.5 + 8.0) > 0.82) {
 			c = mix(c, RUST2, 0.3);
@@ -299,17 +306,16 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = dn(c, 0.7);
 		}
 	} else if (m == 49) {
-		// PEAT: spade-cut lines, black wet patches, a little heather.
-		float cut = fract(wp.y * 1.2 + ink_vnoise(wp * 0.3) * 0.7);
-		if (cut < 0.06 && ink_vnoise(wp * 1.3) > 0.35) {
-			c = dn(c, 0.9);
-		} else if (cut < 0.1) {
-			c = up(c, 0.25);
+		// PEAT: fibrous dark ground, wet black patches, a little heather.
+		if (stroke(px, vec2(4.0, 3.0), 12.0, 0.45, 2.0, 0.5) > 0.5) {
+			c = dn(c, 0.6);
+		} else if (stroke(px, vec2(5.0, 4.0), 19.0, 0.2, 2.0, -0.5) > 0.5) {
+			c = up(c, 0.3);
 		}
 		if (ink_vnoise(wp * 0.8) > 0.74) {
 			c = mix(c, BRINE0, 0.6);
 		}
-		if (stroke(px, vec2(5.0, 5.0), 12.0, 0.18, 2.0, 0.0) > 0.5) {
+		if (stroke(px, vec2(6.0, 6.0), 23.0, 0.12, 1.0, 0.0) > 0.5) {
 			c = BLOOM2;
 		}
 	} else if (m == 50) {
@@ -357,7 +363,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = up(c, 0.2);
 		}
 		float lich = ink_vnoise(wp * 2.2 + 6.0);
-		if (lich > 0.8 && ink_hash(px + 8.0) < 0.45) {
+		if (lich > 0.87 && ink_hash(px + 8.0) < 0.3) {
 			c = ink_vnoise(wp * 0.3) > 0.5 ? LINEN3 : MOSS3;
 		}
 	} else if (m == 53) {
@@ -518,7 +524,13 @@ void fragment() {
 	float patchy = min(patch_raw, 1.0);
 	// A second wash (another ground, another country) meets this one on a ragged
 	// pixel edge: never a muddy average, never a tile square.
-	bool second = wash_blend > 0.0 && ink_edge(wash_blend, px) > 0.5;
+	// The weight is bent by a world field first, so the edge wanders freely
+	// inside its half-tile band instead of tracing the lattice's diagonals.
+	float wb = wash_blend;
+	if (wb > 0.0 && wb < 1.0) {
+		wb = clamp(wb + (ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.9, 0.0, 1.0);
+	}
+	bool second = wb > 0.0 && ink_edge(wb, px) > 0.5;
 	vec3 c = second ? wash2 : COLOR.rgb;
 	int m = second ? m2 : m1;
 	float s1 = mod(style_packed, 16.0);

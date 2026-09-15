@@ -153,7 +153,7 @@ static func _make(g: int, c: int) -> Color:
 				Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.25)
 			return P.SLATE[3]
 		Ground.ASH: return P.ASH[2]
-		Ground.CLINKER: return _m(P.INK[2], P.STONE[0], 0.5)
+		Ground.CLINKER: return _m(P.INK[3], P.STONE[1], 0.5)
 	return P.BLOOM[3]
 
 

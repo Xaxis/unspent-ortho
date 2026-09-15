@@ -108,9 +108,10 @@ static func bones(k: Kit, v: int, c: int) -> void:
 ## FOUND: a machine's hull on its side, ribbed, banded violet and rust, its
 ## visor slit dark, a crane arm still up. Exact: straight members, rivet rows.
 static func wreck(k: Kit, v: int, c: int) -> void:
-	var body := P.PLATE[3]
+	# Years on the shore: the plate has gone to weathered violet, not a live machine's.
+	var body := P.PLATE[2]
 	var dark := P.PLATE[1]
-	var lit := P.PLATE[4]
+	var lit := P.PLATE[3]
 	var drift := P.SAND[4] if c != Country.SNOWFIELD else P.RIME[5]
 	if c == Country.BURNING:
 		drift = P.ASH[2]
@@ -157,8 +158,9 @@ static func wreck(k: Kit, v: int, c: int) -> void:
 static func tip(k: Kit, v: int, _c: int) -> void:
 	var s := 10800 + v * 17
 	# A heap: soil and slag under (MADE), scrap on top (FOUND).
-	k.stone(0, -0.12, 0, 1.4, 0.7, s, P.STONE[1], 9, 0.05, P.EARTH[1])
-	k.stone(0.4, 0.18, -0.3, 0.8, 0.5, s + 1, P.EARTH[1], 7, 0.0, P.EARTH[2])
+	k.clump(0, -0.12, 0, 1.3, 0.72, s, P.STONE[1], 10)
+	k.clump(0.45, 0.1, -0.3, 0.75, 0.55, s + 1, P.EARTH[1], 8)
+	k.clump(-0.7, -0.1, 0.5, 0.5, 0.3, s + 2, P.STONE[2], 7)
 	for i in 9:
 		var a := float(i) * 2.39996 + v
 		var r := 0.3 + fmod(float(i) * 0.19, 0.8)
