@@ -168,7 +168,7 @@ func _add_open_sea() -> void:
 	var m := 200.0
 	var k := MeshKit.new()
 	var y := TerrainMesher.WATER_Y - 0.02
-	var c := Palette.BRINE[1]
+	var c := Color(1, 1, 1, 1)
 	k.quad(Vector3(-m, y, -m), Vector3(-m, y, s + m), Vector3(s + m, y, s + m), Vector3(s + m, y, -m), c)
 	var sea := MeshInstance3D.new()
 	sea.name = "open_sea"
