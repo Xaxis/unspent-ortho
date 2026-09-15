@@ -185,14 +185,15 @@ func _merge(surface: int, mesh: ArrayMesh) -> bool:
 				continue
 			var layer: StringName = entry[2]
 			tris[layer] = int(tris.get(layer, 0)) + n / 3
-			var base := v.size()
-			v.append_array(k.verts)
-			for j in n:
-				v[base + j] += off
-				bones.append_array([b, 0, 0, 0])
-				weights.append_array([1.0, 0.0, 0.0, 0.0])
+			# Whole arrays at a time: a village builds a person on a frame, and a
+			# per-vertex loop here was most of that frame.
+			v.append_array(Transform3D(Basis.IDENTITY, off) * k.verts)
+			bones.append_array(_repeat_ints(PackedInt32Array([b, 0, 0, 0]), n))
+			weights.append_array(_repeat_floats(PackedFloat32Array([1.0, 0.0, 0.0, 0.0]), n))
 			nm.append_array(k.normals)
-			tan.append_array(_smooth_normals(k))
+			if surface == MADE:
+				# Only the hand's surface draws the rim that pushes along these.
+				tan.append_array(_smooth_normals(k))
 			if lit:
 				for col in k.colors:
 					c.append(Color(col.r, col.g, col.b, LIT_ALPHA))
@@ -207,7 +208,8 @@ func _merge(surface: int, mesh: ArrayMesh) -> bool:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = v
 	arrays[Mesh.ARRAY_NORMAL] = nm
-	arrays[Mesh.ARRAY_TANGENT] = tan
+	if surface == MADE:
+		arrays[Mesh.ARRAY_TANGENT] = tan
 	arrays[Mesh.ARRAY_COLOR] = c
 	arrays[Mesh.ARRAY_TEX_UV] = uv
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2
@@ -223,21 +225,50 @@ func _merge(surface: int, mesh: ArrayMesh) -> bool:
 ## part, as a tangent (x, y, z, w=1). A rim pass pushes along it: flat normals
 ## would split the rim open at every hard edge.
 static func _smooth_normals(k: MeshKit) -> PackedFloat32Array:
-	var acc := {}
+	# One dictionary pass: each vertex takes a slot per distinct corner, normals
+	# add up per slot, and the second pass reads slots with no lookups.
+	var slot_of := {}
 	var n := k.verts.size()
+	var slots := PackedInt32Array()
+	slots.resize(n)
+	var acc := PackedVector3Array()
 	for j in n:
 		var key := Vector3i((k.verts[j] * 512.0).round())
-		acc[key] = (acc.get(key, Vector3.ZERO) as Vector3) + k.normals[j]
+		var i: int = slot_of.get(key, -1)
+		if i < 0:
+			i = acc.size()
+			slot_of[key] = i
+			acc.append(Vector3.ZERO)
+		acc[i] += k.normals[j]
+		slots[j] = i
 	var out := PackedFloat32Array()
 	out.resize(n * 4)
 	for j in n:
-		var key := Vector3i((k.verts[j] * 512.0).round())
-		var v: Vector3 = acc[key]
-		v = v.normalized() if v.length() > 1e-5 else k.normals[j]
+		var v: Vector3 = acc[slots[j]]
+		v = v.normalized() if v.length_squared() > 1e-10 else k.normals[j]
 		out[j * 4] = v.x
 		out[j * 4 + 1] = v.y
 		out[j * 4 + 2] = v.z
 		out[j * 4 + 3] = 1.0
+	return out
+
+
+## `pattern` repeated `n` times, by doubling.
+static func _repeat_ints(pattern: PackedInt32Array, n: int) -> PackedInt32Array:
+	var out := pattern.duplicate()
+	var want := pattern.size() * n
+	while out.size() < want:
+		out.append_array(out)
+	out.resize(want)
+	return out
+
+
+static func _repeat_floats(pattern: PackedFloat32Array, n: int) -> PackedFloat32Array:
+	var out := pattern.duplicate()
+	var want := pattern.size() * n
+	while out.size() < want:
+		out.append_array(out)
+	out.resize(want)
 	return out
 
 

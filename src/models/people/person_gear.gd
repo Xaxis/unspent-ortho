@@ -248,7 +248,7 @@ static func _pack(r: SkinRig, w: PersonBody.Wear) -> void:
 	Sculpt.card(scrap, Vector3(-chest * 0.38, top * 0.3, 0.015), Vector3(-chest * 0.06, top * 0.3, 0.015), Vector3(-chest * 0.06, top * 0.35, 0.015), Vector3(-chest * 0.38, top * 0.35, 0.015), Palette.FOUND[1], Vector3.BACK)
 	scrap.pop()
 	scrap.push(Transform3D(back.rotated(Vector3(1, 0, 0), -tilt - 0.3), Vector3(x - 0.068, top * 0.72, chest * 0.08)))
-	Sculpt.slab(scrap, _rect(chest * 0.58, top * 0.5, 0.035), 0.012, Palette.FOUND[2], Palette.FOUND[1])
+	Sculpt.slab(scrap, _rect(chest * 0.58, top * 0.5, 0.0), 0.012, Palette.FOUND[2], Palette.FOUND[1])
 	scrap.pop()
 	# A coil of cable on top of the load, above the shoulders.
 	var cy := high - 0.02
@@ -279,7 +279,7 @@ static func _coil(r: SkinRig, w: PersonBody.Wear) -> void:
 	var top: float = d.torso - 0.04
 	var rope := Rng.hash01(w.seed_value, 111) < 0.5
 	var k := r.kit(spine, &"gear", SkinRig.MADE if rope else SkinRig.FOUND)
-	var cols: Array = [Palette.SAND[3], Palette.SAND[4]] if rope else [Palette.INK[3], Palette.INK[2]]
+	var cols: Array = [Palette.SAND[3], Palette.SAND[4], Palette.SAND[2]] if rope else [Palette.INK[3], Palette.PLATE[2], Palette.INK[2]]
 	var mid_y := top * 0.5
 	var ring := PersonBody.torso_ring(w, mid_y)
 	# The loop's long axis runs from over the left shoulder to past the right hip.
@@ -287,23 +287,23 @@ static func _coil(r: SkinRig, w: PersonBody.Wear) -> void:
 	var c := Vector3(ring.z, mid_y + 0.02, 0.0)
 	var half := top * 0.72
 	var depth := ring.x + 0.034
-	var segs := 10
+	var segs := 7
 	var pts: Array[Vector3] = []
 	for i in segs:
 		var a := float(i) / segs * TAU
 		pts.append(c + along * cos(a) * half + Vector3(1, 0, 0) * sin(a) * depth)
-	# Two turns side by side, their colours out of step, so it reads as a coil and
-	# not a strap.
-	var tube := 0.022
+	# Three turns side by side, each its own shade, so it reads as a coil and not
+	# a strap.
+	var tube := 0.017
 	var n0 := Vector3.RIGHT.cross(along).normalized()
-	for turn in 2:
-		var shift := n0 * (turn - 0.5) * 0.042
+	for turn in 3:
+		var shift := n0 * (turn - 1.0) * 0.034 + Vector3.RIGHT * (0.006 if turn == 1 else 0.0)
 		for i in segs:
 			var p0 := pts[i] + shift
 			var p1 := pts[(i + 1) % segs] + shift
 			var t := (p1 - p0).normalized()
 			var b0 := t.cross(n0).normalized()
-			var col: Color = cols[(i + turn) % cols.size()]
+			var col: Color = cols[turn % cols.size()] if i % 3 else cols[(turn + 1) % cols.size()]
 			for j in 3:
 				var q0 := (n0 * cos(j / 3.0 * TAU) + b0 * sin(j / 3.0 * TAU)) * tube
 				var q1 := (n0 * cos((j + 1) / 3.0 * TAU) + b0 * sin((j + 1) / 3.0 * TAU)) * tube
@@ -319,10 +319,12 @@ static func _coil(r: SkinRig, w: PersonBody.Wear) -> void:
 
 # ---------------------------------------------------------------- shapes
 
-## A rectangle with its corners cut, centred, counter-clockwise.
+## A rectangle with its corners cut (none when `cut` is 0), centred, counter-clockwise.
 static func _rect(wd: float, ht: float, cut: float) -> PackedVector2Array:
 	var x := wd * 0.5
 	var y := ht * 0.5
+	if cut <= 0.0:
+		return PackedVector2Array([Vector2(-x, -y), Vector2(x, -y), Vector2(x, y), Vector2(-x, y)])
 	return PackedVector2Array([
 		Vector2(-x + cut, -y), Vector2(x - cut, -y), Vector2(x, -y + cut), Vector2(x, y - cut),
 		Vector2(x - cut, y), Vector2(-x + cut, y), Vector2(-x, y - cut), Vector2(-x, -y + cut),
