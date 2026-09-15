@@ -17,6 +17,7 @@ extends RefCounted
 ## --scene=NAME        which scene to boot: game (default) | gallery
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
+## --stats             print render stats (draw calls, chunk build times) before the shot
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -32,6 +33,7 @@ var frames := 8
 var scale := 2
 var scene := "game"
 var place := ""
+var stats := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -59,5 +61,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"place": o.place = v
+			"stats": o.stats = true
 			_: push_warning("unknown option --%s" % k)
 	return o

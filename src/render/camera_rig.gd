@@ -7,7 +7,7 @@ extends Camera3D
 @export var yaw_deg := 45.0
 @export var pitch_deg := 57.0
 ## Vertical extent of the view in world units.
-@export var view_height := 14.0
+@export var view_height := 15.0
 @export var distance := 80.0
 @export var follow_rate := 10.0
 
