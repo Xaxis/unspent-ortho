@@ -99,3 +99,63 @@ func test_a_night_village_hands_its_lights_to_the_sky_and_a_strike_dims_machine_
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()
+
+
+## The land's own lights (landscape): a shack's stolen neon, the machines' cold
+## strip and flood, a relay's beacon. Each lights a pool or glints where its
+## model says, in its own colour, and nothing is lit on a variant that has none.
+func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 23.0
+	o.weather = "rain:1"
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	var lights: Node = null
+	for s in g.systems:
+		if s.get_script() == Lights:
+			lights = s
+	var base := g.player.pos
+	var add := func(kind: int, at: Vector2, lit_variant: bool) -> WorldProp:
+		var id := g.world.props.size()
+		# An id whose variant is (or is not) the one with a light.
+		while (PropModels.pick_variant(kind, Rng.hash_ints(g.world.seed_value, id, 90)) % 2 == 1) != lit_variant:
+			id += 1
+		while g.world.props.size() < id:
+			g.world.props.append(WorldProp.new(g.world.props.size(), PropKind.BOULDER, Vector2(-50, -50), 0.0, 1.0))
+		var p := WorldProp.new(id, kind, base + at, 0.0, 1.0)
+		g.world.props.append(p)
+		return p
+	var shack: WorldProp = add.call(PropKind.SHACK, Vector2(3, 0), true)
+	var dark_shack: WorldProp = add.call(PropKind.SHACK, Vector2(-3, 0), false)
+	var gate: WorldProp = add.call(PropKind.CHECKPOINT, Vector2(0, 3), false)
+	var relay: WorldProp = add.call(PropKind.RELAY, Vector2(0, -4), false)
+	await frames(20)
+	var by_prop := {}
+	for src: Dictionary in lights.get("sources"):
+		by_prop[(src.prop as WorldProp).id] = src
+	check(by_prop.has(shack.id), "a shack with stolen tech is a light")
+	check(not by_prop.has(dark_shack.id), "one with nothing wired in is not")
+	check(by_prop.has(gate.id) and float(by_prop[gate.id].range) > 0.0, "the gate's flood throws a pool")
+	check(by_prop.has(relay.id) and by_prop[relay.id].get("blink", false), "the relay's beacon blinks")
+	var near := func(p: WorldProp, list: Array) -> bool:
+		for c: Dictionary in list:
+			var at: Vector3 = c.at
+			if Vector2(at.x, at.z).distance_to(p.pos) < 1.5 and float(c.level) > 0.0:
+				return true
+		return false
+	check(near.call(shack, lights.get("glint_list")), "the neon is mirrored in the wet ground")
+	check(near.call(gate, lights.get("glint_list")), "and the flood")
+	var c: Color = PropModels.glow_points(PropKind.SHACK, 1, maxi(Country.COAST, g.world.country_at(floori(shack.pos.x), floori(shack.pos.y))))[0].color
+	check(Lights.neon_colour(by_prop[shack.id]).is_equal_approx(Vector3(c.r, c.g, c.b)), "the shack's light is its tube's own colour")
+	eq(Lights.neon_colour(by_prop[gate.id]), Lights.MACHINE_COLD, "the gate's is the machines' cold")
+	var pools: Array = g.sky.lamps
+	var pooled := false
+	for pool: Vector4 in pools:
+		if Vector2(pool.x, pool.z).distance_to(gate.pos) < 1.5:
+			pooled = true
+	check(pooled, "the flood's pool reaches the sky")
+	g.queue_free()
+	await frames(1)
+	Weather.unforce()

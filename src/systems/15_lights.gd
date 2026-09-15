@@ -59,7 +59,22 @@ const SOURCES := {
 	PropKind.FIRE: [3.2, 0.9, 0.5],
 	PropKind.VENT: [2.6, 0.6, 0.7],
 	PropKind.KILN: [2.4, 0.55, 0.6],
+	# The land's lights (landscape: props/remains.gd, props/works.gd), where their
+	# models say they are (PropModels.glow_points by variant and country): the
+	# stolen neon a shack wired in, a lookout's lamp, and the machines' cold
+	# strips and flood, which run on the machines' power.
+	PropKind.SHACK: [2.4, 0.6, 0.9],
+	PropKind.FIRE_TOWER: [7.5, 0.55, 4.7],
+	PropKind.INTAKE: [2.6, 0.45, 1.0],
+	PropKind.PUMP_HOUSE: [2.4, 0.45, 1.0],
+	PropKind.CHECKPOINT: [5.2, 0.8, 2.9],
 }
+## Sources whose light is the machines' (cold, stuttering after a strike).
+const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
+## Sources placed at their model's own glow point, lit only on the variants that have one.
+const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
+## The machines' cold strip light, for a pool and a glint.
+const MACHINE_COLD := Vector3(0.45, 0.9, 1.0)
 
 var lights: Array[OmniLight3D] = []
 ## One entry per light-giving prop: {prop, at: Vector3, range, power, warm, kind, h, h2}.
@@ -180,6 +195,10 @@ static func source_lit(src: Dictionary, hour: float) -> bool:
 			return true
 		PropKind.LAMP:
 			return want > 0.05 + 0.35 * h
+		PropKind.SHACK, PropKind.FIRE_TOWER:
+			return want > 0.1 + 0.3 * h
+		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
+			return want > 0.3
 		PropKind.HOUSE:
 			if want <= 0.15 + 0.7 * h:
 				return false
@@ -251,7 +270,7 @@ func _index_sources() -> void:
 					var c: Color = g.color
 					rgb.append(Vector3(c.r, c.g, c.b))
 				sources.append({"prop": p, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
-					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb})
+					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb, "blink": bool(pts[0].get("blink", false))})
 			continue
 		var s := {
 			"prop": p, "kind": p.kind,
@@ -262,6 +281,16 @@ func _index_sources() -> void:
 			var spec: Array = SOURCES[p.kind]
 			var base := game.world.to_3d(p.pos)
 			var local := Vector3(0, float(spec[2]), 0)
+			if PLACED_SOURCES.has(p.kind):
+				var variant := PropModels.pick_variant(p.kind, Rng.hash_ints(game.world.seed_value, p.id, 90))
+				var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+				var pts := PropModels.glow_points(p.kind, variant, country)
+				if pts.is_empty():
+					# A dead pump, a shack with nothing wired in: no light to give.
+					continue
+				local = pts[0].at
+				var c: Color = pts[0].color
+				s.neon = Vector3(c.r, c.g, c.b)
 			if p.kind == PropKind.HOUSE:
 				# Just outside the front wall, before the window and door.
 				var front := _front_of(p.kind)
@@ -275,6 +304,8 @@ func _index_sources() -> void:
 				PropKind.FIRE: s.warm = FIRE_WARM
 				PropKind.VENT: s.warm = VENT_WARM
 				PropKind.HOUSE: s.warm = HEARTH_WARM
+				PropKind.SHACK: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.35)
+				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
 			if p.kind == PropKind.HOUSE and NEON_HOUSE_VARIANTS.has(PropModels.pick_variant(p.kind, Rng.hash_ints(game.world.seed_value, p.id, 90))):
 				var front := _front_of(p.kind)
@@ -334,6 +365,8 @@ func _update(delta: float, snap: bool) -> void:
 			level *= 0.12 + 0.88 * dark
 		else:
 			level *= want * dark
+			if MACHINE_SOURCES.has(kind):
+				level *= clampf(game.sky.bolt.w, 0.0, 1.0)
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
@@ -396,8 +429,10 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 		if s.has("machine_points"):
 			var mp: Array[Vector3] = s.machine_points
 			var mc: Array[Vector3] = s.machine_rgb
+			# A beacon (a relay's) blinks like a pylon's, a second in three.
+			var on := 1.0 if not s.get("blink", false) or fposmod(_time + float(s.h) * 3.0, 3.0) < 1.1 else 0.0
 			for j in mp.size():
-				cands.append({"at": mp[j], "rgb": mc[j], "level": 0.7 * power, "shaft": SHAFT_MACHINE})
+				cands.append({"at": mp[j], "rgb": mc[j], "level": 0.7 * power * on, "shaft": SHAFT_MACHINE})
 			continue
 		match kind:
 			PropKind.PYLON:
@@ -411,6 +446,12 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.5 if source_lit(s, hour) else 0.0})
 				if s.has("neon_at"):
 					cands.append({"at": s.neon_at, "rgb": NEON_TUBE, "level": 0.95 * smoothstep(0.2, 0.6, want) * power})
+			PropKind.SHACK:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.95 * power if source_lit(s, hour) else 0.0), "shaft": SHAFT_MACHINE})
+			PropKind.FIRE_TOWER:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * _flicker(s), "shaft": SHAFT_RAYED})
+			PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * power, "shaft": SHAFT_MACHINE})
 	if lantern_lit:
 		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_NEON, "level": 0.7, "shaft": SHAFT_RAYED})
 	glint_list = Glints.pick(cands, focus3)
@@ -459,6 +500,12 @@ static func neon_colour(s: Dictionary) -> Vector3:
 			return Vector3(1.0, 0.72, 0.42)
 		PropKind.HOUSE:
 			return Vector3(1.0, 0.68, 0.4)
+		PropKind.SHACK:
+			return s.get("neon", NEON_MAGENTA)
+		PropKind.FIRE_TOWER:
+			return Vector3(1.0, 0.72, 0.42)
+		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
+			return MACHINE_COLD
 		_:
 			return NEON_FIRE
 

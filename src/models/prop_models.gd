@@ -188,8 +188,41 @@ static func mesh(kind: int) -> ArrayMesh:
 ## Windows and lamp glass are drawn lit by the models themselves (lamp-coded
 ## washes), so these carry no panes: only where the light stands and the
 ## flame strokes.
-static func glow_points(kind: int) -> Array:
+static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST) -> Array:
+	var cold := Color(0.3, 0.95, 1.0)
+	var beacon := Color(1.0, 0.2, 0.36)
 	match kind:
+		PropKind.SHACK:
+			# Only the shacks that wired stolen tech in (props/remains.gd _wired):
+			# the middle of the neon tube, in that landscape's colour.
+			if variant % 2 == 0:
+				return []
+			var n := Remains.NEON
+			match country:
+				Country.MOSS: return [{"at": Vector3(0.62, 1.27, -0.285), "size": Vector2.ZERO, "color": n[2], "neon": true}]
+				Country.PINEWOOD: return [{"at": Vector3(0.64, 1.75, 0.4), "size": Vector2.ZERO, "color": n[0], "neon": true}]
+				Country.SNOWFIELD: return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+				Country.BONELANDS: return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
+				Country.BURNING: return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
+		PropKind.INTAKE:
+			# The cold strip along both eaves (props/works.gd intake).
+			return [{"at": Vector3(-0.6, 1.03, 0.97), "size": Vector2.ZERO, "color": cold}, {"at": Vector3(-0.6, 1.03, -0.97), "size": Vector2.ZERO, "color": cold}]
+		PropKind.PUMP_HOUSE:
+			if variant % 2 == 1:
+				return []
+			return [{"at": Vector3(0.0, 0.96, 0.77), "size": Vector2.ZERO, "color": cold}, {"at": Vector3(0.0, 0.96, -0.77), "size": Vector2.ZERO, "color": cold}]
+		PropKind.CHECKPOINT:
+			# The flood over the gate burns even when the gate is broken.
+			return [{"at": Vector3(-0.2, 2.9, 0.74), "size": Vector2.ZERO, "color": cold}]
+		PropKind.FIRE_TOWER:
+			# A lookout's lamp left on the sill, on the towers still standing.
+			if variant % 2 == 1:
+				return []
+			return [{"at": Vector3(0.35, 4.69, 0.2), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
+		PropKind.RELAY:
+			# The beacon on the mast's top, on the machines' beat.
+			return [{"at": Vector3(0.0, 3.76, 0.0), "size": Vector2.ZERO, "color": beacon, "blink": true}]
 		PropKind.HOUSE:
 			# The door side is +X on every house variant (props/houses.gd).
 			return [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
