@@ -254,15 +254,3 @@ static func glyph(name: StringName) -> ArrayMesh:
 				k.rock(0, 0, 0, 0.08, 0.09, 21, Palette.SAND[4], 5)
 		_glyphs[name] = k.build()
 	return _glyphs[name]
-
-
-static func gallery() -> Array:
-	var out: Array = []
-	for name in GLYPHS:
-		var mi := MeshInstance3D.new()
-		mi.mesh = glyph(name)
-		mi.scale = Vector3.ONE * 4.0
-		if name == &"plate":
-			mi.material_override = found_material()
-		out.append({"name": "took %s" % name, "node": mi})
-	return out

@@ -210,12 +210,18 @@ func _gives(prop: WorldProp, state: SurvivalState) -> StringName:
 func _find(items: Array[StringName]) -> WorldProp:
 	var state := SurvivalState.of(g)
 	var here := g.player.pos
+	# Only kinds that can give one of `items` at all are worth a look.
+	var kinds := {}
+	for kind: int in Takes.table():
+		for o: Dictionary in Takes.options(kind):
+			if items.has(o.item):
+				kinds[kind] = true
 	var near: Array = []
+	var far2 := FAR * FAR
 	for p in g.world.props:
-		var d := p.pos.distance_to(here)
-		if d > FAR or not Takes.workable(p.kind) or g.world.depleted.has(p.id):
+		if not kinds.has(p.kind) or p.pos.distance_squared_to(here) > far2 or g.world.depleted.has(p.id):
 			continue
-		near.append([d, p])
+		near.append([p.pos.distance_squared_to(here), p])
 	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for pair: Array in near:
 		var p: WorldProp = pair[1]

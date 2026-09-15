@@ -18,6 +18,13 @@ extends GameSystem
 ## across and five or more long, dots two pixels. Ink marks take ink or paper from
 ## what is drawn behind them (SurvivalMarks.CONTRAST), never from a list of kinds.
 ## Reads SurvivalState, WorldData and Events; writes nothing but its own nodes.
+##
+## Review it in real frames (it lives outside src/models, so not in the gallery):
+##   tools/shot.sh s.png --put=pine --held=axe_hand --use --hold=0.4 --frames=40    a blow, caught
+##   tools/shot.sh s.png --put=pine --held=axe_hand --use --hold=1.9 --frames=130   the tree down
+##   tools/shot.sh s.png --put=pine,iron_ore,reeds,wreck,tip,peat_bank --taken      what each leaves
+##   tools/shot.sh s.png --build=fire --hour=22 --frames=90                          a fire at night
+##   tools/shot.sh s.png --give=driftwood:3,stone:2 --use --hold=0.6 --frames=50    the ring an ask draws
 
 const FPS := 15.0
 const DOTS := 320
@@ -83,7 +90,7 @@ var _remnant_sig := ""
 var _remnant_at := Vector2(-1e9, -1e9)
 var _fires: Dictionary = {} # prop id -> FireModel
 var _scan_in := 0.0
-## The dots of the ring drawn round an asked-for fire.
+## The dashes of the ring drawn round an asked-for fire.
 var _ring: Array[Dictionary] = []
 var _time := 0.0
 var _acc := 0.0
@@ -448,14 +455,13 @@ func _give_out(prop: WorldProp) -> void:
 	away = away.normalized() if away.length() > 0.01 else Vector2.RIGHT
 	var kind := &"lift"
 	if TREES.has(prop.kind):
+		kind = &"fall"
 		# Over across the page, not into it: a tree falling toward or away from the eye
 		# is foreshortened to a blob. It goes to whichever side is further from the worker.
 		var b := _page_basis()
 		var side := Vector2(b.x.x, b.x.z).normalized()
 		side = side if side.dot(away) >= 0.0 else -side
 		away = (side + away * 0.3).normalized()
-	if TREES.has(prop.kind):
-		kind = &"fall"
 	elif ROCKS.has(prop.kind) or SCRAP.has(prop.kind) or prop.kind == PropKind.PEAT_BANK:
 		kind = &"split"
 	_anims.append({"pivot": pivot, "t": 0.0, "kind": kind, "away": away, "prop": prop, "stage": 0, "frame": Engine.get_process_frames()})
@@ -541,7 +547,7 @@ func _step_anim(a: Dictionary, _dt: float) -> bool:
 			return k >= 1.0
 
 
-## Dots (and a few flecks when `fleck_share` > 0) laid along a fallen trunk.
+## Dots laid along a fallen trunk, drifting and rising a little.
 func _along_trunk(prop: WorldProp, away: Vector2, n: int, colors: Array[Color], rise: float, life: float, drift: float = 0.35) -> void:
 	var length := 2.1 * prop.scale
 	for i in n:

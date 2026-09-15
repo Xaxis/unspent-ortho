@@ -220,14 +220,3 @@ static func _chip(k: MeshKit, at: Vector3, sz: float, turn: float, col: Color) -
 	k.tri(b, c, top, col.darkened(0.12))
 	k.tri(c, a, top, col.darkened(0.06))
 	k.pop()
-
-
-static func gallery() -> Array:
-	var out: Array = []
-	for name in NAMES:
-		var mi := MeshInstance3D.new()
-		mi.mesh = mesh(name)
-		if is_found(name):
-			mi.material_override = SurvivalMarks.found_material()
-		out.append({"name": String(name), "node": mi})
-	return out

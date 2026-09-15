@@ -259,12 +259,3 @@ static func darkness_at(hour: float) -> float:
 	if h >= 12.0:
 		return clampf((h - 19.0) / 2.0, 0.0, 1.0)
 	return clampf((6.5 - h) / 2.0, 0.0, 1.0)
-
-
-static func gallery() -> Array:
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://src/render/world.gdshader")
-	var f := FireModel.new()
-	f.build(mat, 7)
-	f.darkness = 0.0 # its pool would light every model on the plinth
-	return [{"name": "fire", "node": f}]

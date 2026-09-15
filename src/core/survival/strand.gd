@@ -118,11 +118,15 @@ static func _lay_tip(game: Game, laid: Array[Dictionary]) -> void:
 	var best := Vector2(INF, INF)
 	var best_score := INF
 	var r := int(TIP_RADIUS)
-	for y in range(floori(home.y) - r, floori(home.y) + r + 1, 2):
-		for x in range(floori(home.x) - r, floori(home.x) + r + 1, 2):
+	for y in range(maxi(1, floori(home.y) - r), mini(w.size - 1, floori(home.y) + r + 1), 2):
+		for x in range(maxi(1, floori(home.x) - r), mini(w.size - 1, floori(home.x) + r + 1), 2):
 			var c := Vector2(x + 0.5, y + 0.5)
 			var d := c.distance_to(home)
-			if d < 8.0 or d > TIP_RADIUS or not w.in_bounds(x, y):
+			if d < 8.0 or d > TIP_RADIUS:
+				continue
+			# A walk of about sixteen tiles is best; the seed breaks the ties.
+			var score := absf(d - 16.0) / 16.0 + Rng.hash01(s, x, y, 41) * 0.6
+			if score >= best_score:
 				continue
 			var level := w.level_at(x, y)
 			var g := w.ground_at(x, y)
@@ -131,10 +135,8 @@ static func _lay_tip(game: Game, laid: Array[Dictionary]) -> void:
 			# Somewhere the whole heap fits: flat for two tiles around, and clear.
 			if not _flat(w, x, y, 2, level) or not _room(game, laid, c, 2.4, 0.0):
 				continue
-			var score := absf(d - 16.0) / 16.0 + Rng.hash01(s, x, y, 41) * 0.6
-			if score < best_score:
-				best_score = score
-				best = c
+			best_score = score
+			best = c
 	if not best.is_finite():
 		return
 	var solid: float = PropKind.SOLID[PropKind.TIP]
