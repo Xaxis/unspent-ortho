@@ -279,7 +279,11 @@ func _gull(b: Dictionary, delta: float, near: float, to_player: Vector2) -> floa
 		var away := -to_player.normalized().rotated((Rng.hash01(int(b.seed), int(b.t)) - 0.5) * 1.2)
 		var land := _find((b.pos as Vector2) + away * 9.0, 4.0, SHORE, int(b.seed) + int(b.t * 7.0))
 		if land.x < 0.0:
-			land = (b.home as Vector2)
+			# No shore that way (inland, or a shingle-less spit): any standing
+			# ground away from the stranger, never back at its feet.
+			land = _find((b.pos as Vector2) + away * 7.0, 3.0, [] as Array[int], int(b.seed) + int(b.t * 11.0))
+		if land.x < 0.0:
+			land = (b.pos as Vector2) + away * 6.0
 		b.target = land
 		return 0.0
 	return _wander(b, delta, 1.5, 0.7, 1.5, 5.0)
