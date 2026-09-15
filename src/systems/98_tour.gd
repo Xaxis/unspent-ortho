@@ -29,6 +29,8 @@ extends GameSystem
 ##                          (so a scripted stretch is not a random fight); wild: resume
 ##   spawn KIND             put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot
+##   try N ... end          run the lines between up to N times until they all
+##                          succeed (a player who misses a blow tries again)
 ##   echo TEXT              print a line to the log
 ## Unknown commands fail the tour (exit 1) so a typo never passes silently.
 ## Everything else (giving items, forcing weather) belongs to BootOptions flags
@@ -66,14 +68,25 @@ func _run() -> void:
 	# Let the first view settle.
 	for i in 6:
 		await get_tree().process_frame
-	var n := 0
-	for raw in _lines:
-		n += 1
-		var line := raw.strip_edges()
+	# Open try blocks: [line index of `try`, attempts left].
+	var tries: Array[Array] = []
+	var li := -1
+	while li + 1 < _lines.size():
+		li += 1
+		var n := li + 1
+		var line := _lines[li].strip_edges()
 		if line == "" or line.begins_with("#"):
 			continue
 		var parts := line.split(" ", false)
 		var cmd := parts[0]
+		if cmd == "try":
+			if tries.is_empty() or tries.back()[0] != li:
+				tries.append([li, maxi(1, parts[1].to_int() if parts.size() > 1 else 3) - 1])
+			continue
+		if cmd == "end":
+			if not tries.is_empty():
+				tries.pop_back()
+			continue
 		if not cmd in ["wait", "shot", "echo", "await"]:
 			_seen.clear()
 		print("tour t=%.2fs fps=%d: %s" % [Time.get_ticks_msec() / 1000.0, Engine.get_frames_per_second(), line])
@@ -131,8 +144,17 @@ func _run() -> void:
 				print("tour: ", line.substr(5))
 			_:
 				ok = false
+		if not ok and not tries.is_empty() and int(tries.back()[1]) > 0:
+			# A player who misses tries again: back to the top of the block.
+			tries.back()[1] = int(tries.back()[1]) - 1
+			print("tour %s line %d: '%s' did not come; trying the block again" % [_name, n, line])
+			li = int(tries.back()[0])
+			await get_tree().create_timer(0.6).timeout
+			continue
 		if not ok:
 			printerr("tour %s line %d: cannot do '%s'" % [_name, n, line])
+			# What the page showed when it failed, to see why.
+			await _shot("FAILED-line%d" % n)
 			get_tree().quit(1)
 			return
 	print("tour %s done -> %s" % [_name, _out])

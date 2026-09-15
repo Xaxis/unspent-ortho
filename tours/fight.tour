@@ -11,9 +11,11 @@ shot 01-runner-tell
 tap dodge
 wait 0.08
 shot 02-dodge-through-the-bite
+try 5
 walkto mob 1.5
 tap swing
 await ring 1.5
+end
 wait 0.05
 shot 03-blow-rings-off-plate
 # Away from it (far past its tether), to a watcher out in a field.
@@ -23,8 +25,11 @@ spawn watcher
 wait 0.6
 walkto mob 2
 shot 04-up-to-the-watchers-lens
+try 5
+walkto mob 1
 tap swing
 await hit 1.5
+end
 wait 0.04
 shot 05-real-hit-on-the-working-part
 tap swing
@@ -39,8 +44,10 @@ wait 1.5
 spawn lineman
 await tell 5
 shot 07-lineman-tell
+try 4
 walkto mob 0.5
 await grip 4
+end
 wait 0.1
 shot 08-gripped
 tap swing
@@ -53,8 +60,8 @@ tap swing
 await free 4
 wait 0.1
 shot 09-pulled-free
-# The harvester's long tell, read from outside its reach, back by the village.
-at 160.5,400.5
+# The harvester's long tell, read from outside its reach, on the first coast.
+at 200.5,431.5
 wait 1.5
 spawn harvester
 await tell 6

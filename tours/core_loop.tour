@@ -71,30 +71,42 @@ wait 0.6
 shot 10-carrying-the-pick
 tap inventory
 wait 0.4
-# A runner in the field north of the village. Met face on, the blow rings off
-# its plate; its working part is at its back, and there the blow goes home.
+# Making took the afternoon; the fight is shown in the day it would have been
+# met in (a clock jump, like the teleports).
+hour 13
+# A runner in the field north of the village: met face on, the blow rings off
+# its plate and does nothing.
 at 130,370
 zoom 10
 wait 1.0
+coast wild
 spawn runner
+await tell 4
+tap dodge
 wait 0.3
+try 5
 walkto mob 1.5
 tap swing
 await ring 1.5
+end
 wait 0.04
 shot 11-plate-rings
-walkto part 3
+# A watcher stands its ground further on. Its working part is its lens, in
+# front: there the blow goes home.
+coast calm
+at 160,352
+wait 1.0
+spawn watcher
+wait 0.5
+try 5
+walkto mob 2
 tap swing
 await hit 1.5
+end
 wait 0.04
 shot 12-the-working-side
-walkto part 2
 tap swing
-wait 0.5
-walkto part 2
-tap swing
-wait 0.5
-walkto part 2
+wait 0.6
 tap swing
 wait 0.6
 shot 13-after-the-fight
