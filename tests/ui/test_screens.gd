@@ -199,3 +199,22 @@ func test_making_lists_what_can_be_made_first_under_its_station() -> void:
 	var order: Array = s.menu.rows.map(func(r: Dictionary) -> StringName: return r.id)
 	eq(order, [&"b", &"a", &"c"], "within the fire, the makeable first")
 	s.free()
+
+
+func test_a_page_lifts_into_view_at_whole_pixels() -> void:
+	var s := UiPauseScreen.new()
+	tree.root.add_child(s)
+	s.open()
+	eq(s.position.y, float(UiScreen.LIFT_PX), "starts a little low")
+	s._process(UiScreen.LIFT_SECONDS * 0.4)
+	check(s.position.y > 0.0 and s.position.y < UiScreen.LIFT_PX, "on its way: %s" % s.position.y)
+	eq(s.position.y, roundf(s.position.y), "never between pixels")
+	s._process(UiScreen.LIFT_SECONDS)
+	eq(s.position.y, 0.0, "in place")
+	eq(s.modulate.a, 1.0)
+	var title := UiTitleMenu.new()
+	tree.root.add_child(title)
+	title.open()
+	eq(title.position.y, 0.0, "the title does not lift")
+	s.free()
+	title.free()

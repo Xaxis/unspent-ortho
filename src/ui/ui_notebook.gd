@@ -19,7 +19,8 @@ const BOTTOM_KEEP := 20
 
 ## Dim the world under the book.
 static func veil(ci: CanvasItem) -> void:
-	UiDraw.rect(ci, Rect2i(0, 0, 640, 360), UiTheme.VEIL)
+	# A little past the frame, so a page lifting into view never shows an edge.
+	UiDraw.rect(ci, Rect2i(0, -UiScreen.LIFT_PX, 640, 360 + UiScreen.LIFT_PX * 2), UiTheme.VEIL)
 
 
 ## The open book. Returns nothing; pages are LEFT and RIGHT.

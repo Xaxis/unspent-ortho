@@ -148,8 +148,10 @@ func _process(delta: float) -> void:
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots).
 		var parts := _pending_screen.split(":")
-		if open_screen(StringName(parts[0])) and parts.size() > 1:
-			top().select(StringName(parts[1]))
+		if open_screen(StringName(parts[0])):
+			top().settle()
+			if parts.size() > 1:
+				top().select(StringName(parts[1]))
 		_pending_screen = ""
 	var s := top()
 	if s != null:

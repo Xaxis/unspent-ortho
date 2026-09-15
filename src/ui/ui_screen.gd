@@ -21,6 +21,12 @@ var game: Game
 var note := ""
 var note_age := 0.0
 var is_open := false
+## 0..1: the page is lifted into view over a moment when it opens, the way a
+## notebook is brought up, at whole pixels so nothing blurs. Title pages stay put.
+var reveal := 1.0
+var lifts := true
+const LIFT_PX := 8
+const LIFT_SECONDS := 0.14
 ## First row drawn of a list longer than its page.
 var scroll := 0
 
@@ -37,6 +43,8 @@ func open() -> void:
 		return
 	is_open = true
 	visible = true
+	reveal = 0.0 if lifts else 1.0
+	_place_reveal()
 	note = ""
 	_on_open()
 	refresh()
@@ -138,7 +146,22 @@ func _exit_tree() -> void:
 	UiSketch.wait()
 
 
+## Jump the opening lift to its end (screenshots).
+func settle() -> void:
+	reveal = 1.0
+	_place_reveal()
+
+
+func _place_reveal() -> void:
+	var t := 1.0 - pow(1.0 - reveal, 3.0)
+	position.y = roundi((1.0 - t) * LIFT_PX)
+	modulate.a = clampf(reveal * 1.6, 0.0, 1.0)
+
+
 func _process(delta: float) -> void:
+	if is_open and reveal < 1.0:
+		reveal = minf(1.0, reveal + delta / LIFT_SECONDS)
+		_place_reveal()
 	if is_open and note != "":
 		note_age += delta
 

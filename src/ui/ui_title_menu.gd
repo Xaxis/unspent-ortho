@@ -20,6 +20,7 @@ var page := "list"
 func _init() -> void:
 	super()
 	screen_name = &"title"
+	lifts = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
