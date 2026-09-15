@@ -65,3 +65,13 @@ func test_warmed_sketches_are_ready_when_asked_for() -> void:
 	eq(tex.get_size(), Vector2(40, 40))
 	check(not UiSketch._has_ready("i|pot|40"), "and taken up as a texture")
 	eq(UiSketch.station_size(60), Vector2i(60, 40))
+
+
+func test_an_amber_part_is_lit_from_inside() -> void:
+	# A slot of charge takes no shade: all of its wash stays amber.
+	var slot := [["poly", "a3", [2.0, 2.0, 30.0, 2.0, 30.0, 30.0, 2.0, 30.0]], ["poly", "l", [10.0, 12.0, 22.0, 12.0, 22.0, 20.0, 10.0, 20.0]]]
+	var img := UiSketch.render(slot, Vector2(32, 32), Vector2i(64, 64), &"plate", &"lens", true, 1)
+	var amber := _count(img, func(c: Color) -> bool: return c.a > 0.99 and absf(c.r - Palette.LENS[2].r) < 0.01 and absf(c.g - Palette.LENS[2].g) < 0.01 and absf(c.b - Palette.LENS[2].b) < 0.01)
+	gt(amber, 20 * 12, "the slot is flat amber inside its ruled line: %d" % amber)
+	var wick := UiSketch.render(UiSketch.SHAPES[&"dram"], Vector2(32, 32), Vector2i(96, 96), &"found", &"lens", true, 1)
+	gt(_count(wick, _is_amber), 60, "a wick shows its charge")
