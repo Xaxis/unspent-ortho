@@ -120,6 +120,8 @@ func test_the_survey_is_pure_and_broken_into_stretches() -> void:
 
 func test_works_map_paints_each_work_into_its_channel() -> void:
 	var w := WorldData.new(3, 64)
+	w.ground.fill(Ground.GRASS)
+	w.level.fill(1)
 	w.landmarks.append({"kind": &"clearcut", "pos": Vector2(20, 20), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"cut"})
 	w.landmarks.append({"kind": &"slag", "pos": Vector2(44, 44), "dir": Vector2.RIGHT, "half": Vector2(3, 2), "mark": &"scorch"})
 	w.landmarks.append({"kind": &"tip", "pos": Vector2(40, 12)})
@@ -130,6 +132,54 @@ func test_works_map_paints_each_work_into_its_channel() -> void:
 	near(m.at(40, 12, 0) + m.at(40, 12, 1) + m.at(40, 12, 2) + m.at(40, 12, 3), 0.0, 1e-3, "a place with no mark paints nothing")
 	lt(m.at(26, 20, 0), 0.9, "the edge fades")
 	near(m.at(30, 20, 0), 0.0, 1e-3, "and is gone past the feather")
+
+
+func test_works_map_keeps_off_roads_villages_and_houses() -> void:
+	var w := WorldData.new(3, 64)
+	w.ground.fill(Ground.GRASS)
+	w.level.fill(1)
+	for y in 64:
+		w.ground[y * 64 + 30] = Ground.ROAD
+	w.villages.append({"name": "test", "pos": Vector2(12, 50), "radius": 4.0})
+	w.props.append(WorldProp.new(0, PropKind.HOUSE, Vector2(50.5, 12.5), 0.0, 1.0))
+	w.landmarks.append({"kind": &"turf_rows", "pos": Vector2(32, 32), "dir": Vector2.RIGHT, "half": Vector2(30, 30), "mark": &"cut"})
+	var m := WorksMap.bake(w)
+	near(m.at(30, 20, 0), 0.0, 1e-3, "nothing on the road")
+	near(m.at(12, 50, 0), 0.0, 1e-3, "nothing in the square")
+	near(m.at(50, 12, 0), 0.0, 1e-3, "nothing under a house")
+	near(m.at(20, 20, 0), 1.0, 1e-3, "full in open ground")
+	check(m.at(32, 20, 0) > 0.0 and m.at(32, 20, 0) < 1.0, "fading back in beside the road")
+
+
+func test_the_works_keep_off_roads_and_village_squares_on_every_seed() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var m := WorksMap.bake(w)
+		var road := 0
+		var square := 0
+		for y in w.size:
+			for x in w.size:
+				var i := (y * w.size + x) * 4
+				if m.bytes[i] == 0 and m.bytes[i + 1] == 0 and m.bytes[i + 2] == 0 and m.bytes[i + 3] == 0:
+					continue
+				if w.ground[y * w.size + x] == Ground.ROAD:
+					road += 1
+				for v in w.villages:
+					if (v.pos as Vector2).distance_to(Vector2(x + 0.5, y + 0.5)) < float(v.get("radius", 4.0)):
+						square += 1
+						break
+		eq(road, 0, "seed %d: road tiles under the works" % s)
+		eq(square, 0, "seed %d: village tiles under the works" % s)
+		# The corridor a visitor is sent to carries masts.
+		var corridor := GenPlaces.find(w, "corridor")
+		if corridor.x >= 0.0:
+			var masts := 0
+			for p in w.props:
+				if p.kind == PropKind.RELAY and p.pos.distance_to(corridor) < 12.0:
+					masts += 1
+			gt(masts, 0, "seed %d: masts in view of the corridor" % s)
+			for v in w.villages:
+				gt((v.pos as Vector2).distance_to(corridor), float(v.get("radius", 4.0)) + 4.0, "seed %d: the corridor stop is out of %s" % [s, v.name])
 
 
 func test_evidence_models_are_drawn_in_the_right_pen() -> void:

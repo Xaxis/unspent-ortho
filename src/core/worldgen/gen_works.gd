@@ -453,49 +453,32 @@ static func _pinewood(c: GenContext, occ: PackedByteArray, rng: RandomNumberGene
 			ends[side] = t
 		var from := mid - along * ends[0]
 		var length := ends[0] + ends[1]
-		if length > 20.0:
-			var centre := from + along * length * 0.5
-			_clear_rect(c, occ, centre, along, Vector2(length * 0.5, 2.6))
-			_record(c, &"corridor", centre, along, Vector2(length * 0.5, 2.8), CUT)
-			var masts := PackedInt32Array()
-			var tt := 4.0
-			while tt < length - 2.0:
-				var q := from + along * tt
-				var mast: WorldProp = null
-				for nudge: float in [0.0, 1.0, -1.0, 2.0]:
-					# Masts stand in the cut: its tiles are taken, so they are put by hand.
-					var qq := q + along * nudge
-					var tx := floori(qq.x)
-					var ty := floori(qq.y)
-					var i := ty * c.size + tx
-					if tx < 3 or ty < 3 or tx >= c.size - 3 or ty >= c.size - 3:
-						continue
-					if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
-						continue
-					if (qq - w.spawn).length_squared() < 100.0:
-						continue
-					mast = GenScatter._add(c, PropKind.RELAY, qq.floor() + Vector2(0.5, 0.5), fposmod(along.angle(), TAU))
-					mast.scale = 1.0
-					mast.solid = PropKind.SOLID[PropKind.RELAY]
-					break
-				if mast != null:
-					masts.append(mast.id)
-				elif masts.size() >= 2:
-					w.lines.append({"kind": PropKind.RELAY, "props": masts})
-					masts = PackedInt32Array()
-				else:
-					masts.clear()
-				tt += 11.0
-			if masts.size() >= 2:
-				w.lines.append({"kind": PropKind.RELAY, "props": masts})
-			# Stumps along both edges of the cut, where the trees were felled for it.
-			var sn := Vector2(-along.y, along.x)
-			var st := 2.0
-			while st < length - 1.0:
-				for sgn: float in [-1.0, 1.0]:
-					if rng.randf() < 0.55:
-						_put(c, occ, PropKind.STUMP, from + along * (st + rng.randf_range(-0.4, 0.4)) + sn * sgn * rng.randf_range(3.1, 3.8), rng.randf() * TAU, -99, 0.0)
-				st += 2.6
+		# The cut stops short of a village and resumes past it: split the line
+		# into the stretches that keep clear of every square.
+		var stretches: Array[Vector2] = []
+		var t0 := -1.0
+		var tt := 0.0
+		while tt <= length:
+			var q := from + along * tt
+			var open := not GenScatter._near_village(w, q, _village_clear(w, q))
+			if open and t0 < 0.0:
+				t0 = tt
+			elif not open and t0 >= 0.0:
+				stretches.append(Vector2(t0, tt - 1.0))
+				t0 = -1.0
+			tt += 1.0
+		if t0 >= 0.0:
+			stretches.append(Vector2(t0, length))
+		var kept: Array = []
+		for st: Vector2 in stretches:
+			if st.y - st.x >= 14.0:
+				kept.append([st, _corridor(c, occ, rng, from, along, st.x, st.y)])
+		# The stretch with the most masts is recorded first: it is the one a
+		# visitor is sent to (GenPlaces "corridor").
+		kept.sort_custom(func(x: Array, y: Array) -> bool: return int(x[1]) > int(y[1]))
+		for kv: Array in kept:
+			var st: Vector2 = kv[0]
+			_record(c, &"corridor", from + along * (st.x + st.y) * 0.5, along, Vector2((st.y - st.x) * 0.5, 2.8), CUT)
 	# Clearcuts in exact squares: stumps in the harvester's rows, the wood
 	# standing thick round the edge, a warning at the corner.
 	for n in _n(c, 3.0):
@@ -548,6 +531,65 @@ static func _pinewood(c: GenContext, occ: PackedByteArray, rng: RandomNumberGene
 		_about(c, occ, rng, PropKind.STUMP, at, 4, 0.5, r)
 		_clear_rect(c, occ, at, d, Vector2(r, r * 0.8))
 		_record(c, &"burned_grove", at, d, Vector2(r, r * 0.8), SCORCH)
+
+
+## How far a work keeps from the village nearest p: its square and a margin.
+static func _village_clear(w: WorldData, p: Vector2) -> float:
+	var r := 0.0
+	for v in w.villages:
+		if (v.pos as Vector2).distance_squared_to(p) < 900.0:
+			r = maxf(r, float(v.get("radius", 4.0)))
+	return r + 7.0
+
+
+## One stretch [t0, t1] of the relay corridor along `along` from `from`: its
+## cut cleared, masts strung every 11 tiles with the machines' light on them,
+## stumps at its edges where the trees were felled for it. Returns the masts.
+static func _corridor(c: GenContext, occ: PackedByteArray, rng: RandomNumberGenerator, from: Vector2, along: Vector2, t0: float, t1: float) -> int:
+	var w := c.w
+	var length := t1 - t0
+	_clear_rect(c, occ, from + along * (t0 + length * 0.5), along, Vector2(length * 0.5, 2.6))
+	var masts := PackedInt32Array()
+	var placed := 0
+	var tt := t0 + 4.0
+	while tt < t1 - 2.0:
+		var q := from + along * tt
+		var mast: WorldProp = null
+		for nudge: float in [0.0, 1.0, -1.0, 2.0]:
+			# Masts stand in the cut: its tiles are taken, so they are put by hand.
+			var qq := q + along * nudge
+			var tx := floori(qq.x)
+			var ty := floori(qq.y)
+			var i := ty * c.size + tx
+			if tx < 3 or ty < 3 or tx >= c.size - 3 or ty >= c.size - 3:
+				continue
+			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
+				continue
+			if (qq - w.spawn).length_squared() < 100.0:
+				continue
+			mast = GenScatter._add(c, PropKind.RELAY, qq.floor() + Vector2(0.5, 0.5), fposmod(along.angle(), TAU))
+			mast.scale = 1.0
+			mast.solid = PropKind.SOLID[PropKind.RELAY]
+			break
+		if mast != null:
+			masts.append(mast.id)
+			placed += 1
+		elif masts.size() >= 2:
+			w.lines.append({"kind": PropKind.RELAY, "props": masts})
+			masts = PackedInt32Array()
+		else:
+			masts.clear()
+		tt += 11.0
+	if masts.size() >= 2:
+		w.lines.append({"kind": PropKind.RELAY, "props": masts})
+	var sn := Vector2(-along.y, along.x)
+	var st := t0 + 2.0
+	while st < t1 - 1.0:
+		for sgn: float in [-1.0, 1.0]:
+			if rng.randf() < 0.55:
+				_put(c, occ, PropKind.STUMP, from + along * (st + rng.randf_range(-0.4, 0.4)) + sn * sgn * rng.randf_range(3.1, 3.8), rng.randf() * TAU, -99, 0.0)
+		st += 2.6
+	return placed
 
 
 # --- the snowfield -----------------------------------------------------------------
