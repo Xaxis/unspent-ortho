@@ -60,7 +60,7 @@ const WATER_SHADER := "res://src/render/water.gdshader"
 ## Linear energy of the figure fill at the dead of night: with the moon it lifts
 ## a person to about 0.45 of their daylight value. Warm, because people are the
 ## only warm moving thing on screen.
-const FIGURE_FILL := 0.85
+const FIGURE_FILL := 1.3
 const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 
 ## Per country id: (warmth, wetness) in -1..1, read by the source's light cast.
