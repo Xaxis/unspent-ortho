@@ -28,6 +28,11 @@ var scripted_seconds := 0.0
 func setup(o: BootOptions) -> void:
 	options = o
 	var t0 := Time.get_ticks_msec()
+	# Systems compile on loader threads while the world is generated: parsing
+	# them one after another on the main thread cost over half a second.
+	var system_files := _system_files()
+	for f in system_files:
+		ResourceLoader.load_threaded_request("res://src/systems/" + f, "GDScript")
 	world = WorldGen.generate(o.seed_value, o.size)
 	var t1 := Time.get_ticks_msec()
 	query = WorldQuery.new(world)
@@ -79,7 +84,7 @@ func setup(o: BootOptions) -> void:
 			open_screens[n] = true
 		else:
 			open_screens.erase(n))
-	_load_systems()
+	_load_systems(system_files)
 	if o.walk_seconds > 0.0:
 		scripted_move = o.walk
 		scripted_run = o.run
@@ -87,17 +92,25 @@ func setup(o: BootOptions) -> void:
 	print("world %d gen %d ms, view %d ms" % [o.seed_value, t1 - t0, Time.get_ticks_msec() - t1])
 
 
-func _load_systems() -> void:
+func _system_files() -> Array[String]:
+	var files: Array[String] = []
 	var dir := DirAccess.open("res://src/systems")
 	if dir == null:
-		return
-	var files: Array[String] = []
+		return files
 	for f in dir.get_files():
 		if f.ends_with(".gd") and f.substr(0, 2).is_valid_int():
 			files.append(f)
 	files.sort()
+	return files
+
+
+func _load_systems(files: Array[String]) -> void:
 	for f in files:
-		var sys: GameSystem = (load("res://src/systems/" + f) as GDScript).new()
+		var path := "res://src/systems/" + f
+		var script := ResourceLoader.load_threaded_get(path) as GDScript
+		if script == null:
+			script = load(path) as GDScript
+		var sys: GameSystem = script.new()
 		sys.name = f.get_basename()
 		add_child(sys)
 		sys.setup(self)
