@@ -385,13 +385,25 @@ static func _lay_road(c: GenContext, path: Array[Vector2i], a: Vector2, b: Vecto
 			last = i
 	var line := PackedVector2Array()
 	var prev := w.level[tiles[0]]
-	for i in tiles:
+	for j in tiles.size():
+		var i := tiles[j]
 		if c.land[i] == 0:
 			# A causeway over a shallow gap.
 			c.land[i] = 1
 			w.level[i] = maxi(1, prev - 1)
 		var l := w.level[i]
-		if l > prev + 1:
+		if c.water[i] == 1:
+			# A crossing never lifts the river (its bed only falls downstream):
+			# the road cuts down to the ford instead.
+			for back in range(j - 1, -1, -1):
+				var t := tiles[back]
+				if c.water[t] == 1:
+					break
+				var lt := clampi(w.level[t], l - (j - back), l + (j - back))
+				if lt == w.level[t]:
+					break
+				w.level[t] = maxi(1, lt)
+		elif l > prev + 1:
 			l = prev + 1
 		elif l < prev - 1:
 			l = prev - 1

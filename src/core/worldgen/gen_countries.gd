@@ -384,15 +384,141 @@ static func fine(c: GenContext) -> void:
 				m += (elev[i] - 6.5) * 2.4
 			# Distance to the border in tiles, the border shifted by the fingers.
 			var d := m / grad_t[i] + finger[i] * amp
-			var cc := lo
-			var c2 := hi
 			if d < 0.0:
-				cc = hi
-				c2 = lo
-				d = -d
+				country[i] = hi
+				country2[i] = lo
+			else:
+				country[i] = lo
+				country2[i] = hi
+	c.mark(&"tiles.assign")
+	_blend(c, widen)
+	c.mark(&"tiles.blend")
+
+
+## blend from the true distance to the nearest border, so 0.5 on the border
+## always falls to 0 over the stated width however the score fields were
+## warped. Borders are found per tile; distance is spread at half resolution
+## carrying the pair of countries that meet there, so country2 is the country
+## actually across the nearest border (the score runner-up only at a junction).
+static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
+	var w := c.w
+	var size := c.size
+	var country := w.country
+	var country2 := w.country2
+	var blend := w.blend
+	var hw := GenFields.coarse_width(size, 2)
+	var hn := hw * hw
+	var dist := PackedFloat32Array()
+	dist.resize(hn)
+	dist.fill(1e4)
+	var pair := PackedByteArray()
+	pair.resize(hn)
+	var edge := PackedByteArray()
+	edge.resize(c.n)
+	const SEA := Country.SEA
+	for y in size - 1:
+		var row := y * size
+		var hrow := (y >> 1) * hw
+		var hrow2 := ((y + 1) >> 1) * hw
+		for x in size - 1:
+			var i := row + x
+			var a := country[i]
+			if a == SEA:
+				continue
+			var b := country[i + 1]
+			if b != SEA and b != a:
+				var pk := mini(a, b) * 8 + maxi(a, b)
+				edge[i] = pk
+				edge[i + 1] = pk
+				dist[hrow + (x >> 1)] = 0.0
+				pair[hrow + (x >> 1)] = pk
+				dist[hrow + ((x + 1) >> 1)] = 0.0
+				pair[hrow + ((x + 1) >> 1)] = pk
+			b = country[i + size]
+			if b != SEA and b != a:
+				var pk := mini(a, b) * 8 + maxi(a, b)
+				edge[i] = pk
+				edge[i + size] = pk
+				dist[hrow + (x >> 1)] = 0.0
+				pair[hrow + (x >> 1)] = pk
+				dist[hrow2 + (x >> 1)] = 0.0
+				pair[hrow2 + (x >> 1)] = pk
+	_spread_labelled(dist, pair, hw, 2.0)
+	var up := GenFields.upsample(dist, hw, 2, size)
+	for y in size:
+		var row := y * size
+		var hrow := (y >> 1) * hw
+		for x in size:
+			var i := row + x
+			var own := country[i]
+			if own == SEA:
+				continue
+			var pk := edge[i]
+			var d := 0.0
+			if pk == 0:
+				pk = pair[hrow + (x >> 1)]
+				d = maxf(0.0, up[i])
+			var lo := pk >> 3
+			var hi := pk & 7
+			var other := country2[i]
+			if lo == own:
+				other = hi
+			elif hi == own:
+				other = lo
+			country2[i] = other
 			var width := 12.0 + 12.0 * clampf(0.5 + widen[i] * 1.4, 0.0, 1.0)
-			if c2 == Country.BURNING:
+			if other == Country.BURNING:
+				# Ash blows further out of the Burning than anything else travels.
 				width *= 1.6
-			country[i] = cc
-			country2[i] = c2
 			blend[i] = 0.5 - 0.5 * d / width if d < width else 0.0
+
+
+## Two-sweep 8-neighbour chamfer distance (cell = `unit` tiles) that also
+## carries each source's label to the cells it is nearest.
+static func _spread_labelled(d: PackedFloat32Array, label: PackedByteArray, width: int, unit: float) -> void:
+	var height := d.size() / width
+	var dc := unit * 1.4142
+	for y in height:
+		var row := y * width
+		for x in width:
+			var i := row + x
+			var m := d[i]
+			var lb := label[i]
+			if x > 0 and d[i - 1] + unit < m:
+				m = d[i - 1] + unit
+				lb = label[i - 1]
+			if y > 0:
+				var j := i - width
+				if d[j] + unit < m:
+					m = d[j] + unit
+					lb = label[j]
+				if x > 0 and d[j - 1] + dc < m:
+					m = d[j - 1] + dc
+					lb = label[j - 1]
+				if x < width - 1 and d[j + 1] + dc < m:
+					m = d[j + 1] + dc
+					lb = label[j + 1]
+			d[i] = m
+			label[i] = lb
+	for y in range(height - 1, -1, -1):
+		var row := y * width
+		for x in range(width - 1, -1, -1):
+			var i := row + x
+			var m := d[i]
+			var lb := label[i]
+			if x < width - 1 and d[i + 1] + unit < m:
+				m = d[i + 1] + unit
+				lb = label[i + 1]
+			if y < height - 1:
+				var j := i + width
+				if d[j] + unit < m:
+					m = d[j] + unit
+					lb = label[j]
+				if x < width - 1 and d[j + 1] + dc < m:
+					m = d[j + 1] + dc
+					lb = label[j + 1]
+				if x > 0 and d[j - 1] + dc < m:
+					m = d[j - 1] + dc
+					lb = label[j - 1]
+			d[i] = m
+			label[i] = lb

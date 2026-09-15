@@ -146,26 +146,41 @@ func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
 		gt(deep, 1000, "seed %d tiles untouched by any ecotone" % s)
 
 
-func test_ecotones_are_12_to_40_tiles_wide() -> void:
+func test_blend_falls_from_the_border_over_12_to_40_tiles() -> void:
 	var w := world(WORLD_SEEDS[0])
 	var size := w.size
-	# From each border crossing along a row, walk away until blend is 0.
-	var widths := PackedFloat32Array()
-	for y in range(20, size - 20, 16):
-		for x in range(30, size - 30):
+	var border := PackedByteArray()
+	border.resize(size * size)
+	for y in range(1, size - 1):
+		for x in range(1, size - 1):
 			var i := y * size + x
-			if w.country[i] == Country.SEA or w.country[i + 1] == Country.SEA or w.country[i] == w.country[i + 1]:
+			var c := w.country[i]
+			if c == Country.SEA:
 				continue
-			var run := 0
-			while x - run > 0 and w.blend[i - run] > 0.0 and w.country[i - run] != Country.SEA:
-				run += 1
-			widths.append(run)
-	gt(widths.size(), 10, "border crossings sampled")
-	var sum := 0.0
-	for v in widths:
-		sum += v
-	var mean := sum / maxf(1.0, widths.size())
-	check(mean >= 10.0 and mean <= 40.0, "mean ecotone half-width along rows %.1f" % mean)
+			for j: int in [i - 1, i + 1, i - size, i + size]:
+				if w.country[j] != Country.SEA and w.country[j] != c:
+					border[i] = 1
+	var d := GenFields.distance8(border, size, 999.0)
+	# Mean blend by distance band: 0.5 on the line, about half by 12 tiles,
+	# nothing past 40 (the widest, ash out of the Burning).
+	var sums := PackedFloat32Array()
+	sums.resize(64)
+	var counts := PackedFloat32Array()
+	counts.resize(64)
+	var far_blended := 0
+	for i in size * size:
+		if w.country[i] == Country.SEA:
+			continue
+		var k := mini(63, int(d[i]))
+		sums[k] += w.blend[i]
+		counts[k] += 1.0
+		if d[i] > 40.0 and w.blend[i] > 0.0:
+			far_blended += 1
+	var at := func(k: int) -> float: return sums[k] / maxf(1.0, counts[k])
+	gt(at.call(0), 0.45, "blend on the border")
+	check(at.call(12) > 0.08 and at.call(12) < 0.3, "blend 12 tiles out %.2f" % at.call(12))
+	lt(at.call(30), 0.02, "blend 30 tiles out")
+	eq(far_blended, 0, "tiles blended further than 40 from any border")
 
 
 func test_every_country_reachable_on_foot_from_spawn() -> void:
