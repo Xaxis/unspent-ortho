@@ -16,6 +16,7 @@ extends GameSystem
 ## Screens reach it through the game's systems by name (UiSavesScreen):
 ##   save_to(slot) -> String    "" or why not
 ##   load_from(slot) -> String  "" (the game is replaced next frame) or why not
+## Once a load is on its way this game takes no more saves or loads.
 
 signal wrote(slot: int, reason: StringName)
 
@@ -33,6 +34,8 @@ var _world_thumb := PackedByteArray()
 ## Frames in a row with no page open.
 var _clear_frames := 0
 var _forced_weather := false
+## A load is on its way: this game is about to give way.
+var _loading := false
 ## The landscapes a loaded game had entered, until the rules exist to hold them.
 var _lands: Array = []
 
@@ -102,7 +105,7 @@ func _on_screen_changed(_screen: StringName, open: bool) -> void:
 
 
 func _process(delta: float) -> void:
-	if game == null or rules == null:
+	if game == null or rules == null or _loading:
 		return
 	play_seconds += delta
 	_clear_frames = 0 if not game.open_screens.is_empty() else _clear_frames + 1
@@ -134,7 +137,12 @@ func quiet() -> bool:
 	return _clear_frames >= CLEAR_FRAMES and calm()
 
 
+const WHY_LOADING := "Another game is on its way."
+
+
 func save_to(slot: int) -> String:
+	if _loading:
+		return WHY_LOADING
 	if not SaveSlots.MANUAL.has(slot) and slot != SaveSlots.AUTO:
 		return "There is no such slot."
 	if not calm():
@@ -144,10 +152,13 @@ func save_to(slot: int) -> String:
 
 
 func load_from(slot: int) -> String:
+	if _loading:
+		return WHY_LOADING
 	var o := BootOptions.new()
 	var why := SaveSlots.options_for(slot, o)
 	if why != "":
 		return why
+	_loading = true
 	_replace_soon(o)
 	return ""
 
@@ -173,6 +184,8 @@ func _replace_soon(o: BootOptions) -> void:
 
 func _replace(o: BootOptions) -> void:
 	var g := game
+	if not is_instance_valid(g) or g.get_parent() == null:
+		return
 	var parent := g.get_parent()
 	get_tree().paused = false
 	parent.remove_child(g)

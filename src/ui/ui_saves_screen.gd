@@ -20,6 +20,8 @@ var _entries: Array[Dictionary] = []
 var _thumbs: Dictionary = {} # slot -> ImageTexture or null
 var _ask_slot := -1
 var _ask_until := 0
+## Loading has begun: the page takes no more keys while the game gives way.
+var _loading := false
 
 
 func _init() -> void:
@@ -30,6 +32,7 @@ func _init() -> void:
 func _on_open() -> void:
 	scroll = 0
 	_ask_slot = -1
+	_loading = false
 	if saver == null and game != null:
 		for sys in game.systems:
 			if sys.name == "05_save":
@@ -66,6 +69,7 @@ func _on_confirm(row: Dictionary) -> void:
 			refuse(why)
 			return
 		Events.sfx.emit(&"menu_select", Vector3.ZERO)
+		_loading = true
 		say("Loading %s..." % SaveSlots.slot_name(slot))
 		return
 	var entry: Dictionary = row.entry
@@ -84,6 +88,12 @@ func _on_confirm(row: Dictionary) -> void:
 	Events.sfx.emit(&"menu_select", Vector3.ZERO)
 	refresh()
 	say("Saved to %s." % SaveSlots.slot_name(slot))
+
+
+func handle(action: StringName) -> bool:
+	if is_open and _loading:
+		return true
+	return super(action)
 
 
 func _on_choice_changed() -> void:

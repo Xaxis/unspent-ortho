@@ -63,6 +63,16 @@ func test_save_asks_before_writing_over_and_load_says_what_cannot_be_read() -> v
 	s.handle(&"confirm")
 	eq(fake.loads, [1], "a good slot loads")
 	eq(s.note, "Loading slot 1...")
+	s.handle(&"confirm")
+	s.handle(&"down")
+	s.handle(&"back")
+	eq(fake.loads, [1], "once loading, the page takes no more keys")
+	check(s.is_open, "not even esc")
+	s.close()
+	s.open()
+	s.select(&"slot_1")
+	s.handle(&"confirm")
+	eq(fake.loads, [1, 1], "opened again, it listens again")
 	s.close()
 	s.free()
 	Sx.finish()
@@ -100,10 +110,16 @@ func test_load_from_the_pause_page_replaces_the_game_with_the_saved_one() -> voi
 	page.select(&"slot_1")
 	page.handle(&"confirm")
 	eq(saver.get("loaded_from"), -1)
+	# E lands twice before the game gives way: one load, and no more saves.
+	page.handle(&"confirm")
+	eq(saver.call("load_from", 1), "Another game is on its way.", "a second load is refused")
+	eq(saver.call("save_to", 2), "Another game is on its way.", "and so is a save")
 	for i in 4:
 		await tree.process_frame
 	var next := holder.get_node_or_null("game") as Game
 	check(next != null and next != g, "a new game stands in the old one's place")
+	eq(holder.get_child_count(), 1, "one game, not two")
+	check(not SaveSlots.exists(2), "the refused save wrote nothing")
 	if next != null and next != g:
 		check(not tree.paused, "unpaused")
 		eq(next.inventory.count(&"stone"), 5, "carrying what was saved")
