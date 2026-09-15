@@ -91,3 +91,12 @@ func test_a_pool_of_lamplight_only_shows_once_it_is_dark() -> void:
 		var d := Lights.pool_dark(i / 60.0)
 		lt(absf(d - prev), 0.03, "no jump at %.2f" % (i / 60.0))
 		prev = d
+
+
+func test_wisps_only_over_the_moss_on_a_still_dry_night() -> void:
+	gt(SkySystem.wisp_amount(1.0, 1.0, 0.0, 0.0), 0.9, "a still night on the moss")
+	near(SkySystem.wisp_amount(0.0, 1.0, 0.0, 0.0), 0.0, 1e-6, "not on the coast")
+	near(SkySystem.wisp_amount(1.0, 0.0, 0.0, 0.0), 0.0, 1e-6, "not by day")
+	near(SkySystem.wisp_amount(1.0, 1.0, 1.0, 0.0), 0.0, 1e-6, "not in rain")
+	near(SkySystem.wisp_amount(1.0, 1.0, 0.0, 0.8), 0.0, 1e-6, "not in a wind")
+	lt(SkySystem.wisp_amount(0.5, 1.0, 0.0, 0.0), SkySystem.wisp_amount(1.0, 1.0, 0.0, 0.0), "thinner at the moss's edge")

@@ -19,7 +19,7 @@ const TOP := 11.0
 ## drift per unit fall times this is the stroke's slant in pixels per pixel.
 const SLANT_PER_LEAN := 1.0 / 0.5446
 
-enum Mode { STROKE, FLECK, WAVE, FLICK, TICK }
+enum Mode { STROKE, FLECK, WAVE, FLICK, TICK, SPARK }
 
 var camera: CameraRig
 var rain: CPUParticles3D
@@ -36,6 +36,8 @@ var drift: CPUParticles3D
 var haze: CPUParticles3D
 ## Wind: a few flicks racing along with a strong wind.
 var flicks: CPUParticles3D
+## Wisps: cold lights drifting low over the moss at night.
+var wisps: CPUParticles3D
 var bolt: MeshInstance3D
 var _bolt_left := 0.0
 var _bolt_hold := false
@@ -70,6 +72,8 @@ func setup(cam: CameraRig) -> void:
 	_mat(haze, Mode.WAVE, {"color_a": Palette.LINEN[5], "color_b": Palette.EMBER[5], "mix_b": 0.25})
 	flicks = _emitter("flicks", 18, 0.9, Vector3(16.0, 1.5, 14.0), Vector3(0, 1.0, 0), true)
 	_mat(flicks, Mode.FLICK, {"color_a": Palette.LINEN[4], "color_b": Palette.INK[3], "mix_b": 0.4, "length_px": Vector2(6, 10)})
+	wisps = _emitter("wisps", 40, 7.0, Vector3(15.0, 0.5, 13.0), Vector3(0, 0.7, 0), true)
+	_mat(wisps, Mode.SPARK, {"color_a": Palette.SPRUCE[5], "color_b": Palette.RIME[5], "mix_b": 0.4, "length_px": Vector2(1, 2), "wander": 5.0, "glow": 1.0, "flicker_rate": 0.7})
 	bolt = MeshInstance3D.new()
 	bolt.name = "bolt"
 	bolt.visible = false
@@ -172,6 +176,7 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	# leading, so it flips with the wind.
 	var gusty := clampf((absf(wind) - 0.35) / 0.5, 0.0, 1.0) * (1.0 - float(look.fog))
 	_drive(flicks, gusty, Vector3(blow, 0.0, 0.0), 9.0 + absf(wind) * 6.0, {"facing": blow})
+	_drive(wisps, float(look.get("wisp", 0.0)), Vector3(wind * 0.2 + 0.1, 0.05, 0.1), 0.25, {})
 	var wet := clampf(float(look.rain) + float(look.hail) * 0.5, 0.0, 1.0)
 	_drive(splash, wet, Vector3(0, 1, 0), 0.25, {})
 	splash.position.y = TerrainMesher.WATER_Y + 0.03 - focus.y if wet > 0.0 else 0.0

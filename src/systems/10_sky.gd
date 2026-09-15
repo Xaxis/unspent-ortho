@@ -116,6 +116,7 @@ func _update(delta: float, snap: bool) -> void:
 		target_region += SkyLight.country_tint(c) * float(shares[c])
 		target_wind += float(wx.wind) * float(shares[c])
 	var target := WeatherLook.compose(entries)
+	target.wisp = wisp_amount(float(shares.get(Country.MOSS, 0.0)), Weather.night_fall(game.clock.hour()), float(target.rain), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	if snap or absf(minutes - _settle_minute) >= 1.0:
 		_settle_minute = minutes
@@ -169,6 +170,11 @@ func _update(delta: float, snap: bool) -> void:
 	sky.set_hour(game.clock.hour())
 	view.update(look, wind, f3, delta)
 	_tick_thunder(delta)
+
+
+## Wisps: cold lights over the moss after dark, never in rain or a wind.
+static func wisp_amount(moss_share: float, night: float, rain: float, wind: float) -> float:
+	return clampf(moss_share * night * (1.0 - rain) * (1.0 - absf(wind) * 1.5), 0.0, 1.0)
 
 
 func _scan_lightning(from_minutes: float, to_minutes: float, seed_value: int) -> void:

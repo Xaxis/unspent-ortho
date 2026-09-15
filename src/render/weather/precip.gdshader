@@ -12,7 +12,8 @@ render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_dis
 
 #include "res://src/render/sky.gdshaderinc"
 
-// 0 stroke, 1 fleck, 2 heat wave, 3 wind flick, 4 splash tick.
+// 0 stroke, 1 fleck, 2 heat wave, 3 wind flick, 4 splash tick, 5 spark (a
+// small cross of light, for wisps).
 uniform int mode = 0;
 uniform vec3 color_a : source_color = vec3(0.18, 0.17, 0.27);
 uniform vec3 color_b : source_color = vec3(0.59, 0.75, 0.82);
@@ -30,6 +31,8 @@ uniform float columns = 0.0;
 uniform float wander = 0.0;
 // 1 = the mark gives light (embers): not dimmed by the night, and it flickers.
 uniform float glow = 0.0;
+// Flickers per second of a glowing mark: embers change their minds, wisps pulse.
+uniform float flicker_rate = 12.0;
 // Pale marks read on dark ground and dark marks on pale: color_b flecks get a
 // shade pixel under them in color_a when this is 1.
 uniform float underline = 0.0;
@@ -51,7 +54,7 @@ void vertex() {
 	vec4 c = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(origin, 1.0));
 	vec2 ndc = c.xy / c.w;
 	vec2 pix = floor((ndc * 0.5 + 0.5) * VIEWPORT_SIZE);
-	if (mode == 1 && wander > 0.0) {
+	if ((mode == 1 || mode == 5) && wander > 0.0) {
 		pix.x += floor(sin(TIME * (0.8 + rnd) + rnd * 60.0) * wander + 0.5);
 	}
 	// The mark's box in pixels, relative to the anchor pixel.
@@ -70,8 +73,8 @@ void vertex() {
 		lo = vec2(facing > 0.0 ? -len : 0.0, -2.0);
 		hi = vec2(facing > 0.0 ? 1.0 : len + 1.0, 3.0);
 	} else {
-		lo = vec2(-2.0, -1.0);
-		hi = vec2(3.0, 2.0);
+		lo = vec2(-2.0, -2.0);
+		hi = vec2(3.0, 3.0);
 	}
 	vec2 corner = mix(lo, hi, VERTEX.xy + 0.5);
 	v_px = corner;
@@ -112,6 +115,10 @@ void fragment() {
 		float x = q.x * sign(facing);
 		float t = -x / max(v_len, 1.0);
 		on = x <= 0.0 && x > -v_len && q.y == floor((1.0 - t) * (1.0 - t) * 1.6);
+	} else if (mode == 5) {
+		// A spark: a centre and its four neighbours; big ones reach two pixels.
+		float r = abs(q.x) + abs(q.y);
+		on = (q.x == 0.0 || q.y == 0.0) && r <= (v_len > 1.5 ? 2.0 : 1.0);
 	} else {
 		// A splash: two tiny ticks leaning out from where the drop landed.
 		on = (q.y == 0.0 && abs(q.x) == 1.0) || (q.y == 1.0 && abs(q.x) == 2.0 && fract(v_rnd * 17.0) < 0.5);
@@ -124,7 +131,7 @@ void fragment() {
 	// read as weather at night instead of vanishing into the dark.
 	vec3 light = max(sky_tint * mix(1.0, sky_sun.z, 0.5) * 1.1, vec3(0.42, 0.48, 0.66));
 	vec3 lit = col * min(light, vec3(1.0));
-	float flick = step(0.35, fract(sin(floor(TIME * 12.0) + v_rnd * 91.0) * 43.7));
+	float flick = step(0.35, fract(sin(floor(TIME * flicker_rate + v_rnd * 13.0) + v_rnd * 91.0) * 43.7));
 	vec3 c = mix(lit, col, glow);
 	if (glow > 0.5 && flick < 0.5) {
 		discard;
