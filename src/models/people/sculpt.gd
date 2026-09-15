@@ -16,6 +16,21 @@ class_name Sculpt
 ## Array with one Color per band (rings - 1); caps take the end bands' colours.
 ## `arc` < 1 leaves the ring open (a collar, a hairline), centred on `arc_mid`.
 static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool = true, cap_hi: bool = true, phase: float = 0.0, wob: float = 0.0, seed_value: int = 0, arc: float = 1.0, arc_mid: float = PI) -> void:
+	if rings.size() >= 2 and float(rings[rings.size() - 1][0]) < float(rings[0][0]):
+		# Rings listed downward (a limb from its joint): walk them upward so every
+		# face still turns outward; the caps and band colours follow.
+		rings = rings.duplicate()
+		rings.reverse()
+		if cols is Array:
+			var bands: Array = (cols as Array).duplicate()
+			while bands.size() < rings.size() - 1:
+				bands.append(bands[bands.size() - 1])
+			bands.resize(rings.size() - 1)
+			bands.reverse()
+			cols = bands
+		var t := cap_lo
+		cap_lo = cap_hi
+		cap_hi = t
 	var closed := arc >= 0.999
 	var count := n if closed else n + 1
 	var pts: Array[PackedVector3Array] = []
@@ -123,3 +138,13 @@ static func card(k: MeshKit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col
 		k.quad(a, b, c, d, col)
 	else:
 		k.quad(d, c, b, a, col)
+
+
+## An open loft seen from both sides: a coat skirt split at the front, a hood.
+## The inside faces take `lining` (usually one step darker).
+static func skirt(k: MeshKit, rings: Array, n: int, col: Variant, lining: Color, arc: float, arc_mid: float = PI, wob: float = 0.0, seed_value: int = 0) -> void:
+	var t := MeshKit.new()
+	loft(t, rings, n, col, false, false, 0.0, wob, seed_value, arc, arc_mid)
+	for i in range(0, t.verts.size(), 3):
+		k.tri(t.verts[i], t.verts[i + 2], t.verts[i + 1], t.colors[i])
+		k.tri(t.verts[i], t.verts[i + 1], t.verts[i + 2], lining)

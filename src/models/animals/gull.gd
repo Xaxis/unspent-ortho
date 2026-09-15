@@ -22,37 +22,44 @@ func _build_rig() -> void:
 	var m1: Color = _mantle[1]
 	var white := Palette.LINEN[5]
 	var white_lo := Palette.LINEN[4]
+	var sd := seed_value * 29 + 13
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.2 * s, 0))
 	var bk := rig.kit(body)
-	bk.block(0.02 * s, -0.075 * s, 0, 0.26 * s, 0.13 * s, 0.14 * s, white_lo, white)
-	bk.block(-0.02 * s, 0.035 * s, 0, 0.2 * s, 0.04 * s, 0.13 * s, m0, m1)
-	bk.block(-0.17 * s, -0.03 * s, 0, 0.1 * s, 0.04 * s, 0.09 * s, white)
-	# Black wingtips crossed above the tail.
-	bk.block(-0.2 * s, 0.02 * s, -0.012, 0.12 * s, 0.015, 0.022, Palette.INK[1])
-	bk.block(-0.22 * s, 0.035 * s, 0.012, 0.12 * s, 0.015, 0.022, Palette.INK[1])
+	# The lozenge: full breast, tapering to a tail that points up and back.
+	trunk(bk, [
+		[-0.22 * s, 0.012 * s, 0.03 * s, 0.03 * s],
+		[-0.12 * s, 0.05 * s, 0.06 * s, 0.0],
+		[0.03 * s, 0.075 * s, 0.075 * s, -0.01 * s],
+		[0.12 * s, 0.05 * s, 0.055 * s, 0.02 * s],
+	], 6, [white, white_lo, white], sd, 0.03)
 	var head := rig.bone(&"head", body, Vector3(0.13 * s, 0.05 * s, 0))
 	var hk := rig.kit(head)
-	hk.block(0.02 * s, -0.02 * s, 0, 0.1 * s, 0.09 * s, 0.08 * s, white, white)
-	hk.block(0.1 * s, 0.01 * s, 0, 0.08 * s, 0.028 * s, 0.028 * s, Palette.COPPER[4])
-	hk.block(0.14 * s, -0.01 * s, 0, 0.022, 0.025 * s, 0.026 * s, Palette.COPPER[3])
-	hk.block(0.115 * s, 0.002, 0, 0.02, 0.012, 0.03 * s, Palette.RUST[3])
+	trunk(hk, [[-0.04 * s, 0.035 * s, 0.035 * s, 0.0], [0.02 * s, 0.05 * s, 0.045 * s, 0.01 * s], [0.07 * s, 0.03 * s, 0.03 * s, 0.0]], 6, white, sd + 1, 0.02)
+	# A heavy hooked bill with the red spot near the tip.
+	trunk(hk, [[0.06 * s, 0.016 * s, 0.013 * s, -0.004 * s], [0.12 * s, 0.012 * s, 0.009 * s, -0.004 * s], [0.145 * s, 0.006 * s, 0.004 * s, -0.012 * s]], 4, [Palette.COPPER[4], Palette.RUST[3]], sd + 2, 0.0)
 	for side: int in [-1, 1]:
-		hk.block(0.05 * s, 0.04 * s, side * 0.041 * s, 0.018, 0.016, 0.004, Palette.INK[0])
+		Sculpt.card(hk, Vector3(0.03 * s, 0.022 * s, side * 0.043 * s), Vector3(0.045 * s, 0.022 * s, side * 0.04 * s), Vector3(0.045 * s, 0.034 * s, side * 0.04 * s), Vector3(0.03 * s, 0.034 * s, side * 0.043 * s), Palette.INK[0], Vector3(0.3, 0.2, side).normalized())
 	for side: int in [-1, 1]:
 		var sfx := "_l" if side < 0 else "_r"
-		var w := rig.bone(StringName("wing" + sfx), body, Vector3(0.0, 0.03 * s, side * 0.07 * s))
-		rig.kit(w).block(-0.03 * s, -0.01, side * 0.11 * s, 0.14 * s, 0.022, 0.22 * s, m0, m1)
-		var tip := rig.bone(StringName("tip" + sfx), w, Vector3(-0.02 * s, 0, side * 0.22 * s))
+		var w := rig.bone(StringName("wing" + sfx), body, Vector3(0.0, 0.03 * s, side * 0.06 * s))
+		# Wings are flat slabs along +Z (their span): mantle grey, black at the tip.
+		var wk := rig.kit(w)
+		wk.push(Transform3D(Basis(Vector3(1, 0, 0), PI * 0.5 * side), Vector3.ZERO))
+		Sculpt.slab(wk, PackedVector2Array([Vector2(-0.1 * s, 0.0), Vector2(0.06 * s, 0.0), Vector2(0.03 * s, 0.17 * s), Vector2(-0.08 * s, 0.17 * s)]), 0.008, m1, m0)
+		wk.pop()
+		var tip := rig.bone(StringName("tip" + sfx), w, Vector3(-0.02 * s, 0, side * 0.17 * s))
 		var tk := rig.kit(tip)
-		tk.block(-0.04 * s, -0.008, side * 0.09 * s, 0.1 * s, 0.016, 0.18 * s, m0, m1)
-		tk.block(-0.05 * s, -0.008, side * 0.2 * s, 0.07 * s, 0.017, 0.06 * s, Palette.INK[1])
+		tk.push(Transform3D(Basis(Vector3(1, 0, 0), PI * 0.5 * side), Vector3.ZERO))
+		Sculpt.slab(tk, PackedVector2Array([Vector2(-0.06 * s, 0.0), Vector2(0.05 * s, 0.0), Vector2(0.0, 0.1 * s), Vector2(-0.07 * s, 0.07 * s)]), 0.007, m1, m0)
+		Sculpt.slab(tk, PackedVector2Array([Vector2(-0.07 * s, 0.07 * s), Vector2(0.0, 0.1 * s), Vector2(-0.06 * s, 0.17 * s)]), 0.007, Palette.INK[1], Palette.INK[1])
+		tk.pop()
 	for side: int in [-1, 1]:
 		var sfx := "_l" if side < 0 else "_r"
 		var lg := rig.bone(StringName("leg" + sfx), body, Vector3(0.0, -0.07 * s, side * 0.03 * s))
 		var lk := rig.kit(lg)
-		lk.block(0, -0.13 * s, 0, 0.018, 0.13 * s, 0.018, Palette.FLESH[3])
-		lk.block(0.025, -0.13 * s, 0, 0.06, 0.012, 0.04, Palette.FLESH[2])
+		Sculpt.loft(lk, [[-0.13 * s, 0.008, 0.008, 0.0, 0.0], [0.0, 0.01, 0.01, 0.0, 0.0]], 4, Palette.FLESH[3], false, false, PI / 4)
+		flap(lk, Vector3(-0.01, -0.13 * s, 0.0), Vector3(0.05, -0.13 * s, -0.025), Vector3(0.05, -0.13 * s, 0.025), Palette.FLESH[2], Palette.FLESH[2])
 	height = 0.36 * s
 
 
@@ -63,10 +70,10 @@ func _stride(speed: float) -> float:
 func _wings_folded(d: Dictionary) -> void:
 	# Folded along the flanks, tips swept back over the tail.
 	# Span swung back (Y), chord hung down on edge (Z): the wing drapes the flank.
-	d[&"wing_l"] = Vector3(0, 1.5, -1.3)
-	d[&"wing_r"] = Vector3(0, -1.5, -1.3)
-	d[&"tip_l"] = Vector3(0, 0.12, 0)
-	d[&"tip_r"] = Vector3(0, -0.12, 0)
+	d[&"wing_l"] = Vector3(0, 1.52, -0.45)
+	d[&"wing_r"] = Vector3(0, -1.52, -0.45)
+	d[&"tip_l"] = Vector3(0, -0.3, 0.1)
+	d[&"tip_r"] = Vector3(0, 0.3, 0.1)
 
 
 func _pose(p: StringName, t: float, speed: float) -> Dictionary:

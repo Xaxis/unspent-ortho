@@ -247,11 +247,16 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 		lo = w.shirt_lo
 	if length > 0.0:
 		var y1 := -length
-		Sculpt.loft(hem, [
+		var rings: Array = [
 			[0.08, hd * 0.53, cz * 0.53, 0.0, 0.0],
 			[-length * 0.45, hd * 0.55 + flare * 0.5, hz * 0.56 + flare * 0.45, -flare * 0.2, 0.0],
 			[y1, hd * 0.55 + flare * 1.04, hz * 0.56 + flare * 1.04, -flare * 0.48, 0.0],
-		], 8, [col, lo], false, false, PI / 8, 0.06, w.seed_value + 2)
+		]
+		if length > d.thigh * 0.5:
+			# Long skirts part at the front so the legs stride through them.
+			Sculpt.skirt(hem, rings, 6, col, lo, 0.8, PI, 0.06, w.seed_value + 2)
+		else:
+			Sculpt.loft(hem, rings, 8, [col, lo], false, false, PI / 8, 0.06, w.seed_value + 2)
 	if w.extras.has(&"apron"):
 		var ay: float = -d.thigh * 0.8
 		var ax: float = hd * 0.55 + flare + 0.018

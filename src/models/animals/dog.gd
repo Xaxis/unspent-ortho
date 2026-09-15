@@ -24,44 +24,62 @@ func _build_rig() -> void:
 	var has_patch := rng.randf() < 0.55
 	_ears_up = rng.randf() < 0.6
 	_tail_curl = rng.randf() * 0.6
+	var lean := 0.9 + rng.randf() * 0.25
 	var ink := Palette.INK[0]
 	var leg_c := c0.lerp(c1, 0.3)
+	var sd := seed_value * 13 + 5
 
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.4 * s, 0))
-	var bk := rig.kit(body)
-	# Deep chest, tucked waist, rump: the wedge.
-	bk.block(0.16 * s, -0.19 * s, 0, 0.25 * s, 0.32 * s, 0.2 * s, c0, c1)
-	bk.block(-0.07 * s, 0.0, 0, 0.22 * s, 0.12 * s, 0.13 * s, c0, c1)
-	bk.block(-0.24 * s, -0.07 * s, 0, 0.16 * s, 0.2 * s, 0.17 * s, c0, c1)
-	if has_patch:
-		bk.block(0.29 * s, -0.17 * s, 0, 0.012, 0.2 * s, 0.1 * s, patch)
-	var neck := rig.bone(&"neck", body, Vector3(0.24 * s, 0.08 * s, 0))
-	rig.kit(neck).block(0.0, -0.04, 0, 0.12 * s, 0.24 * s, 0.11 * s, c0, c1)
-	var head := rig.bone(&"head", neck, Vector3(0.0, 0.19 * s, 0))
+	# The wedge: a deep chest, the waist tucked up under the loin, a small rump.
+	trunk(rig.kit(body), [
+		[-0.25 * s, 0.05 * s, 0.045 * s, 0.03 * s],
+		[-0.19 * s, 0.1 * s, 0.08 * s * lean, 0.01 * s],
+		[-0.04 * s, 0.08 * s, 0.066 * s * lean, 0.035 * s],
+		[0.1 * s, 0.16 * s, 0.095 * s * lean, -0.03 * s],
+		[0.22 * s, 0.11 * s, 0.075 * s * lean, 0.04 * s],
+	], 6, [c0, c0, c1, c1], sd)
+	var neck := rig.bone(&"neck", body, Vector3(0.19 * s, 0.08 * s, 0))
+	Sculpt.loft(rig.kit(neck), [[-0.08 * s, 0.085 * s, 0.07 * s, -0.01 * s, 0.0], [0.2 * s, 0.06 * s, 0.055 * s, 0.01 * s, 0.0]], 5, [c1], false, false, 0.0, 0.06, sd + 1)
+	var head := rig.bone(&"head", neck, Vector3(0.0, 0.17 * s, 0))
 	var hk := rig.kit(head)
-	hk.block(0.02 * s, -0.05 * s, 0, 0.15 * s, 0.12 * s, 0.14 * s, c0, c1)
-	hk.block(0.13 * s, -0.06 * s, 0, 0.1 * s, 0.07 * s, 0.08 * s, patch if has_patch else c0, c1)
-	hk.block(0.185 * s, -0.025 * s, 0, 0.022, 0.03, 0.035, ink)
+	hk.push(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 1.3), Vector3.ZERO))
+	# Skull, stop, muzzle, nose: a wedge again, pointing where it is going.
+	trunk(hk, [
+		[-0.07 * s, 0.055 * s, 0.055 * s, -0.005 * s],
+		[0.03 * s, 0.07 * s, 0.068 * s, -0.005 * s],
+		[0.09 * s, 0.045 * s, 0.042 * s, -0.03 * s],
+		[0.16 * s, 0.032 * s, 0.03 * s, -0.04 * s],
+	], 6, [c0, c1, patch if has_patch else c1], sd + 2)
+	k_nose(hk, Vector3(0.165 * s, -0.035 * s, 0), 0.02 * s, ink)
 	for side: int in [-1, 1]:
-		hk.block(0.09 * s, 0.01 * s, side * 0.04 * s, 0.012, 0.022, 0.022, ink)
+		var z := side * 0.04 * s
+		Sculpt.card(hk, Vector3(0.07 * s, 0.0, z - 0.012 * s), Vector3(0.07 * s, 0.0, z + 0.012 * s), Vector3(0.07 * s, 0.018 * s, z + 0.012 * s), Vector3(0.07 * s, 0.018 * s, z - 0.012 * s), ink, Vector3(1, 0.4, side * 0.6).normalized())
 		if _ears_up:
-			hk.block(-0.01 * s, 0.06 * s, side * 0.045 * s, 0.035 * s, 0.07 * s, 0.035 * s, c0, c1)
+			flap(hk, Vector3(-0.02 * s, 0.03 * s, side * 0.025 * s), Vector3(0.03 * s, 0.035 * s, side * 0.045 * s), Vector3(-0.01 * s, 0.11 * s, side * 0.05 * s), c1, c0)
 		else:
-			hk.block(-0.005 * s, -0.04 * s, side * 0.078 * s, 0.05 * s, 0.1 * s, 0.018, c0.darkened(0.15))
-	var jaw := rig.bone(&"jaw", head, Vector3(0.08 * s, -0.06 * s, 0))
+			flap(hk, Vector3(-0.03 * s, 0.04 * s, side * 0.05 * s), Vector3(0.03 * s, 0.04 * s, side * 0.055 * s), Vector3(-0.005 * s, -0.06 * s, side * 0.07 * s), c0.darkened(0.15), c0)
+	hk.pop()
+	var jaw := rig.bone(&"jaw", head, Vector3(0.1 * s, -0.075 * s, 0))
 	var jk := rig.kit(jaw)
-	jk.block(0.06 * s, -0.025 * s, 0, 0.12 * s, 0.025 * s, 0.07 * s, c0)
-	jk.block(0.11 * s, 0.0, 0, 0.02, 0.012, 0.06 * s, Palette.LINEN[4])
-	var tail := rig.bone(&"tail", body, Vector3(-0.33 * s, 0.08 * s, 0))
-	rig.kit(tail).block(0, 0, 0, 0.035 * s, 0.14 * s, 0.035 * s, c0, c1)
+	jk.push(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 1.3), Vector3.ZERO))
+	trunk(jk, [[-0.02 * s, 0.014 * s, 0.03 * s, 0.0], [0.08 * s, 0.01 * s, 0.02 * s, 0.004 * s]], 4, c0, sd + 3, 0.0)
+	flap(jk, Vector3(0.07 * s, 0.012 * s, -0.012 * s), Vector3(0.07 * s, 0.012 * s, 0.012 * s), Vector3(0.09 * s, 0.03 * s, 0.0), Palette.LINEN[4], Palette.LINEN[4])
+	jk.pop()
+	var tail := rig.bone(&"tail", body, Vector3(-0.26 * s, 0.08 * s, 0))
+	Sculpt.loft(rig.kit(tail), [[0.0, 0.022 * s, 0.022 * s, 0.0, 0.0], [0.15 * s, 0.017 * s, 0.017 * s, 0.0, 0.0]], 4, c0, true, false, PI / 4, 0.05, sd + 4)
 	var tip := rig.bone(&"tail2", tail, Vector3(0, 0.14 * s, 0))
-	rig.kit(tip).block(0, 0, 0, 0.028 * s, 0.13 * s, 0.028 * s, c1)
+	Sculpt.loft(rig.kit(tip), [[0.0, 0.017 * s, 0.017 * s, 0.0, 0.0], [0.13 * s, 0.0, 0.0, 0.0, 0.0]], 4, c1, false, false, PI / 4, 0.05, sd + 5)
 	for side: int in [-1, 1]:
 		var sfx := "l" if side < 0 else "r"
-		leg("f" + sfx, body, Vector3(0.22 * s, -0.1 * s, side * 0.065 * s), 0.15 * s, 0.15 * s, 0.055 * s, leg_c, c0.darkened(0.3), 0.06 * s)
-		leg("b" + sfx, body, Vector3(-0.26 * s, -0.04 * s, side * 0.07 * s), 0.17 * s, 0.19 * s, 0.06 * s, leg_c, c0.darkened(0.3), 0.06 * s)
+		leg("f" + sfx, body, Vector3(0.14 * s, -0.1 * s, side * 0.055 * s), 0.15 * s, 0.15 * s, 0.075 * s, leg_c, c0.darkened(0.3), 0.05 * s)
+		leg("b" + sfx, body, Vector3(-0.19 * s, -0.04 * s, side * 0.06 * s), 0.17 * s, 0.19 * s, 0.08 * s, leg_c, c0.darkened(0.3), 0.05 * s)
 	height = 0.62 * s
+
+
+## A blunt nose: a little dark pyramid on the end of the muzzle.
+static func k_nose(k: MeshKit, at: Vector3, r: float, col: Color) -> void:
+	Sculpt.loft(k, [[at.y - r, r, r, at.x, at.z], [at.y + r * 0.6, r * 0.7, r * 0.8, at.x + r * 0.3, at.z]], 4, col, false, true, PI / 4)
 
 
 func _stride(speed: float) -> float:

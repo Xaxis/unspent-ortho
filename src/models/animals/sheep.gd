@@ -19,32 +19,48 @@ func _build_rig() -> void:
 	var f1: Color = fl[1]
 	var face: Color = pick(FACE)
 	var dark_face := face.get_luminance() < 0.3
+	var sd := seed_value * 17 + 3
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.4 * s, 0))
 	var bk := rig.kit(body)
-	bk.block(0, -0.18 * s, 0, 0.62 * s, 0.34 * s, 0.4 * s, f0, f1)
-	# The lumpy outline: tufts along the back and flanks, never symmetric.
-	for i in 7:
-		var x := lerpf(-0.26, 0.24, i / 6.0) * s + (rng.randf() - 0.5) * 0.05
-		var side := -1.0 if i % 2 else 1.0
-		var tuft := 0.1 + rng.randf() * 0.06
-		bk.block(x, 0.12 * s, (rng.randf() - 0.5) * 0.18 * s, tuft * s, 0.05 * s, tuft * 1.2 * s, f1)
-		bk.block(x, -0.14 * s + rng.randf() * 0.1, side * 0.2 * s, tuft * s, tuft * s, 0.04, f0 if i % 3 else f1)
-	bk.block(-0.32 * s, -0.12 * s, 0, 0.06 * s, 0.24 * s, 0.3 * s, f0, f1)
+	# The brick: no waist, no neck, square in section, then broken up by fleece.
+	trunk(bk, [
+		[-0.36 * s, 0.1 * s, 0.12 * s, -0.02 * s],
+		[-0.27 * s, 0.17 * s, 0.19 * s, -0.01 * s],
+		[0.0, 0.18 * s, 0.2 * s, -0.01 * s],
+		[0.24 * s, 0.17 * s, 0.19 * s, 0.0],
+		[0.33 * s, 0.1 * s, 0.12 * s, 0.0],
+	], 7, [f0, f1, f1, f0], sd, 0.12)
+	# The lumpy outline: fleece clumps along the back and down the flanks, never symmetric.
+	for i in 9:
+		var u := i / 8.0
+		var x := lerpf(-0.3, 0.26, u) * s + (rng.randf() - 0.5) * 0.05 * s
+		var z := (0.13 if i % 2 == 0 else -0.13) * s + (rng.randf() - 0.5) * 0.08 * s
+		var r := (0.085 + rng.randf() * 0.045) * s
+		var y := (0.12 + rng.randf() * 0.04) * s if i % 3 != 2 else -0.02 * s
+		Sculpt.clump(bk, Vector3(x, y, z * (1.25 if i % 3 == 2 else 1.0)), Vector3(r, r * 0.75, r), f1 if i % 3 else f0, sd + 10 + i, 5)
 	var head := rig.bone(&"head", body, Vector3(0.3 * s, -0.02 * s, 0))
 	var hk := rig.kit(head)
-	hk.block(0.08 * s, -0.12 * s, 0, 0.17 * s, 0.15 * s, 0.13 * s, face)
-	hk.block(0.0, 0.0, 0, 0.1 * s, 0.05 * s, 0.14 * s, f1)
+	# Carried low: the face hangs forward and down from a woolly poll.
+	hk.push(Transform3D(Basis(Vector3(0, 0, 1), -0.55), Vector3.ZERO))
+	trunk(hk, [
+		[-0.02 * s, 0.06 * s, 0.06 * s, 0.0],
+		[0.08 * s, 0.07 * s, 0.06 * s, -0.01 * s],
+		[0.19 * s, 0.045 * s, 0.035 * s, -0.02 * s],
+	], 6, [face, face], sd + 2)
+	hk.pop()
+	Sculpt.clump(hk, Vector3(0.02 * s, 0.06 * s, 0), Vector3(0.07 * s, 0.045 * s, 0.07 * s), f1, sd + 3, 4)
 	for side: int in [-1, 1]:
-		hk.block(0.02 * s, -0.06 * s, side * 0.1 * s, 0.05 * s, 0.03 * s, 0.07 * s, face)
-		hk.block(0.12 * s, -0.05 * s, side * 0.067 * s, 0.022, 0.022, 0.012, Palette.LINEN[4] if dark_face else Palette.INK[1])
+		flap(hk, Vector3(0.02 * s, 0.02 * s, side * 0.05 * s), Vector3(0.05 * s, 0.0, side * 0.06 * s), Vector3(-0.01 * s, -0.03 * s, side * 0.13 * s), face, face.darkened(0.2))
+		var ex := 0.09 * s
+		Sculpt.card(hk, Vector3(ex, -0.03 * s, side * 0.052 * s), Vector3(ex + 0.02 * s, -0.045 * s, side * 0.05 * s), Vector3(ex + 0.02 * s, -0.03 * s, side * 0.05 * s), Vector3(ex, -0.015 * s, side * 0.052 * s), Palette.LINEN[4] if dark_face else Palette.INK[1], Vector3(0.3, 0.2, side).normalized())
 	var leg_c := face if dark_face else Palette.EARTH[1]
 	for side: int in [-1, 1]:
 		var sfx := "l" if side < 0 else "r"
-		leg("f" + sfx, body, Vector3(0.2 * s, -0.16 * s, side * 0.11 * s), 0.12 * s, 0.12 * s, 0.045 * s, leg_c, Palette.INK[2], 0.03)
-		leg("b" + sfx, body, Vector3(-0.21 * s, -0.16 * s, side * 0.11 * s), 0.12 * s, 0.12 * s, 0.05 * s, leg_c, Palette.INK[2], 0.03)
+		leg("f" + sfx, body, Vector3(0.2 * s, -0.16 * s, side * 0.11 * s), 0.12 * s, 0.12 * s, 0.05 * s, leg_c, Palette.INK[2], 0.02)
+		leg("b" + sfx, body, Vector3(-0.21 * s, -0.16 * s, side * 0.11 * s), 0.12 * s, 0.12 * s, 0.055 * s, leg_c, Palette.INK[2], 0.02)
 	var tail := rig.bone(&"tail", body, Vector3(-0.33 * s, 0.02 * s, 0))
-	rig.kit(tail).block(-0.02, -0.1 * s, 0, 0.05 * s, 0.1 * s, 0.08 * s, f0)
+	Sculpt.clump(rig.kit(tail), Vector3(-0.02 * s, -0.06 * s, 0), Vector3(0.035 * s, 0.06 * s, 0.04 * s), f0, sd + 4, 4)
 	height = 0.66 * s
 
 

@@ -100,7 +100,7 @@ func _apply(target: Dictionary, w: float) -> void:
 ## Override.
 func _build_rig() -> void:
 	var b := rig.bone(&"root", -1, Vector3.ZERO)
-	rig.kit(b).block(0, 0, 0, 0.4, 0.4, 0.3, Palette.EARTH[2])
+	trunk(rig.kit(b), [[-0.2, 0.15, 0.12, 0.3], [0.2, 0.15, 0.12, 0.3]], 6, Palette.EARTH[2], seed_value)
 
 
 ## Override.
@@ -110,15 +110,41 @@ func _pose(_p: StringName, _t: float, _speed: float) -> Dictionary:
 
 # ---------------------------------------------------------------- helpers
 
-## A two-segment leg: upper from the body, lower below, a foot block. Returns the upper bone.
+## A two-segment leg: a tapered upper from the body, a thinner lower, and a paw
+## or hoof that sits on the ground. Returns the upper bone.
 func leg(n: String, parent: int, at: Vector3, upper: float, lower: float, thick: float, col: Color, foot: Color, foot_len: float = 0.06) -> int:
 	var u := rig.bone(StringName(n + "_u"), parent, at)
 	var l := rig.bone(StringName(n + "_l"), u, Vector3(0, -upper, 0))
-	rig.kit(u).block(0, -upper - 0.01, 0, thick * 1.15, upper + 0.03, thick * 1.1, col)
+	var sd := seed_value * 7 + hash(n)
+	Sculpt.loft(rig.kit(u), [
+		[thick * 0.35, thick * 0.4, thick * 0.4, 0.0, 0.0],
+		[0.0, thick * 0.66, thick * 0.56, 0.0, 0.0],
+		[-upper - 0.01, thick * 0.44, thick * 0.42, 0.0, 0.0],
+	], 5, col, false, false, 0.0, 0.08, sd)
 	var lk := rig.kit(l)
-	lk.block(0, -lower, 0, thick, lower + 0.01, thick, col)
-	lk.block(foot_len * 0.3, -lower, 0, thick + foot_len * 0.6, 0.03, thick * 1.1, foot)
+	Sculpt.loft(lk, [[0.01, thick * 0.44, thick * 0.42, 0.0, 0.0], [-lower + thick * 0.3, thick * 0.3, thick * 0.3, 0.004, 0.0]], 5, col, true, false, 0.0, 0.08, sd + 1)
+	Sculpt.loft(lk, [
+		[-lower + thick * 0.35, thick * 0.34, thick * 0.34, foot_len * 0.1, 0.0],
+		[-lower, thick * 0.34 + foot_len * 0.45, thick * 0.46, foot_len * 0.3, 0.0],
+	], 5, foot, false, true, 0.0, 0.06, sd + 2)
 	return u
+
+
+## A lofted trunk along +X: rings of [x, half height, half width, centre y].
+## The body of every animal is one of these.
+static func trunk(k: MeshKit, rings: Array, n: int, cols: Variant, seed_value: int, wob: float = 0.06, caps: bool = true) -> void:
+	var r: Array = []
+	for ring: Array in rings:
+		r.append([ring[0], ring[1], ring[2], ring[3], ring[4] if ring.size() > 4 else 0.0])
+	k.push(Transform3D(Basis(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, -1)), Vector3.ZERO))
+	Sculpt.loft(k, r, n, cols, caps, caps, PI / n, wob, seed_value)
+	k.pop()
+
+
+## A flat triangle seen from both sides: ears, fins, tufts.
+static func flap(k: MeshKit, a: Vector3, b: Vector3, c: Vector3, col: Color, back: Color) -> void:
+	k.tri(a, b, c, col)
+	k.tri(a, c, b, back)
 
 
 ## Four-legged gait. `phase` 0..1; `kind` &"walk" (four-beat), &"trot", &"gallop".

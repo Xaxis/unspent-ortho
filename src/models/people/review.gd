@@ -74,6 +74,14 @@ static func gallery() -> Array:
 				var p := PersonModel.make({}, StringName(arg), mat)
 				p.rotation.y = face
 				nodes.append(p)
+		"zoo":
+			for k: StringName in [&"dog", &"sheep", &"bull", &"rat", &"gull"]:
+				for v in 2:
+					var m := FigureModel.create(k, mat) as AnimalModel
+					m.vary(v * 31 + arg.to_int())
+					m.rotation.y = PersonModel.FACE_RIGHT if v == 0 else PersonModel.FACE_CAMERA
+					m.animate(0.5, 0.0)
+					nodes.append(m)
 		"animal":
 			for pose: StringName in [&"stand", &"walk", &"alert", &"flee", &"windup", &"strike", &"hurt", &"dead"]:
 				var m := FigureModel.create(StringName(arg), mat)
@@ -88,6 +96,8 @@ static func gallery() -> Array:
 	var strip := Node3D.new()
 	var across := Vector3(1, 0, -1).normalized()
 	var spacing := 1.25 if nodes.size() > 3 else 1.6
+	if what == "zoo":
+		spacing = 0.95
 	if what == "animal":
 		spacing = {"rat": 0.45, "gull": 0.6, "dog": 0.95, "sheep": 1.0, "bull": 1.75}.get(arg, 1.0)
 	for i in nodes.size():

@@ -16,27 +16,31 @@ func _build_rig() -> void:
 	var c0: Color = fur[0]
 	var c1: Color = fur[1]
 	var pink := Palette.FLESH[3]
+	var sd := seed_value * 19 + 7
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.075 * s, 0))
-	var bk := rig.kit(body)
-	bk.block(0.02 * s, -0.045 * s, 0, 0.14 * s, 0.085 * s, 0.09 * s, c0, c1)
-	bk.block(-0.08 * s, -0.05 * s, 0, 0.1 * s, 0.1 * s, 0.11 * s, c0, c1)
+	# A teardrop: heavy haunches, the shoulders narrowing into the head.
+	trunk(rig.kit(body), [
+		[-0.14 * s, 0.03 * s, 0.03 * s, -0.01 * s],
+		[-0.08 * s, 0.062 * s, 0.058 * s, 0.0],
+		[0.02 * s, 0.05 * s, 0.045 * s, 0.0],
+		[0.1 * s, 0.03 * s, 0.03 * s, 0.0],
+	], 6, [c0, c1, c1], sd, 0.08)
 	var head := rig.bone(&"head", body, Vector3(0.09 * s, 0.0, 0))
 	var hk := rig.kit(head)
-	hk.block(0.04 * s, -0.035 * s, 0, 0.08 * s, 0.065 * s, 0.07 * s, c0, c1)
-	hk.block(0.095 * s, -0.03 * s, 0, 0.04 * s, 0.035 * s, 0.035 * s, c0)
-	hk.block(0.118 * s, -0.02 * s, 0, 0.014, 0.014, 0.018, pink)
+	trunk(hk, [[-0.01 * s, 0.035 * s, 0.035 * s, 0.0], [0.05 * s, 0.03 * s, 0.03 * s, -0.005 * s], [0.12 * s, 0.008 * s, 0.008 * s, -0.018 * s]], 5, [c1, c0], sd + 1, 0.04)
+	Sculpt.loft(hk, [[-0.024 * s, 0.008 * s, 0.008 * s, 0.12 * s, 0.0], [-0.012 * s, 0.01 * s, 0.01 * s, 0.123 * s, 0.0]], 4, pink, false, true, PI / 4)
 	for side: int in [-1, 1]:
-		hk.block(0.02 * s, 0.02 * s, side * 0.035 * s, 0.03 * s, 0.03 * s, 0.012, pink.darkened(0.2))
-		hk.block(0.06 * s, 0.0, side * 0.036 * s, 0.012, 0.012, 0.008, Palette.INK[0])
+		flap(hk, Vector3(0.01 * s, 0.02 * s, side * 0.02 * s), Vector3(0.035 * s, 0.025 * s, side * 0.025 * s), Vector3(0.015 * s, 0.055 * s, side * 0.04 * s), pink.darkened(0.2), c0)
+		Sculpt.card(hk, Vector3(0.055 * s, 0.004 * s, side * 0.026 * s), Vector3(0.07 * s, 0.004 * s, side * 0.024 * s), Vector3(0.07 * s, 0.018 * s, side * 0.024 * s), Vector3(0.055 * s, 0.018 * s, side * 0.026 * s), Palette.INK[0], Vector3(0.2, 0.3, side).normalized())
 	var tail := rig.bone(&"tail", body, Vector3(-0.13 * s, -0.01 * s, 0))
-	rig.kit(tail).block(-0.07 * s, -0.008, 0, 0.14 * s, 0.016, 0.016, pink.darkened(0.15))
+	trunk(rig.kit(tail), [[0.0, 0.012, 0.012, 0.0], [-0.14 * s, 0.009, 0.009, 0.0]], 4, pink.darkened(0.15), sd + 2, 0.0, false)
 	var tail2 := rig.bone(&"tail2", tail, Vector3(-0.14 * s, 0, 0))
-	rig.kit(tail2).block(-0.07 * s, -0.006, 0, 0.14 * s, 0.012, 0.012, pink.darkened(0.25))
+	trunk(rig.kit(tail2), [[0.0, 0.009, 0.009, 0.0], [-0.15 * s, 0.002, 0.002, 0.0]], 4, pink.darkened(0.25), sd + 3, 0.0, false)
 	for side: int in [-1, 1]:
 		var sfx := "l" if side < 0 else "r"
-		leg("f" + sfx, body, Vector3(0.05 * s, -0.03 * s, side * 0.035 * s), 0.025 * s, 0.022 * s, 0.018, c0, pink, 0.02)
-		leg("b" + sfx, body, Vector3(-0.08 * s, -0.03 * s, side * 0.04 * s), 0.025 * s, 0.022 * s, 0.022, c0, pink, 0.02)
+		leg("f" + sfx, body, Vector3(0.05 * s, -0.03 * s, side * 0.035 * s), 0.025 * s, 0.022 * s, 0.022, c0, pink, 0.02)
+		leg("b" + sfx, body, Vector3(-0.08 * s, -0.03 * s, side * 0.045 * s), 0.025 * s, 0.022 * s, 0.028, c0, pink, 0.025)
 	height = 0.16 * s
 
 
