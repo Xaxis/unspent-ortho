@@ -414,7 +414,8 @@ static func relay(k: Kit, v: int, c: int) -> void:
 ## narrow the way. The booth has a visor slit on three faces with an amber lens
 ## watching the road, a floodlight on a mast leaning out over the boom, a
 ## beacon. Snow drifts against the booth's back and the posts in the snowfield.
-## 1: dead: the boom snapped, its end on the road, the lens and the flood dark.
+## 1: the boom snapped, its end on the road, the lens and beacon dark; the
+## flood still burns over the broken gate, knocked askew.
 static func checkpoint(k: Kit, v: int, c: int) -> void:
 	var s := 31300 + v + c
 	var alive := v % 2 == 0
@@ -451,13 +452,12 @@ static func checkpoint(k: Kit, v: int, c: int) -> void:
 	k.rod(Vector3(-0.45, 1.88, -0.4), Vector3(-0.45, 3.1, -0.4), 0.035, 6, P.PLATE[3])
 	k.rod(Vector3(-0.45, 3.0, -0.4), Vector3(-0.2, 3.12, 0.55), 0.025, 4, P.PLATE[3])
 	# Its lamp face looks out over the road (+Z) and down, where the camera sees it.
-	var head := Basis(Vector3.RIGHT, 0.12) if alive else Basis(Vector3.RIGHT, -0.9) * Basis(Vector3.BACK, 0.4)
+	var head := Basis(Vector3.RIGHT, 0.12) if alive else Basis(Vector3.RIGHT, 0.3) * Basis(Vector3.BACK, 0.35)
 	k.found.push(Transform3D(head, Vector3(-0.2, 3.02, 0.62)))
 	k.chamfer(0.0, -0.14, 0.0, 0.5, 0.28, 0.2, 0.04, P.PLATE[1], P.PLATE[2])
-	on.call(Vector3(0.21, -0.12, 0.12), Vector3(-0.21, -0.12, 0.12), 0.24, Vector3.BACK, lit(STRIP, 0.8) if alive else P.PLATE[0])
-	if alive:
-		# The lamp's heat vent on top catches its light, so it reads from any side.
-		k.found.quad(Vector3(-0.18, 0.16, -0.05), Vector3(-0.18, 0.16, 0.09), Vector3(0.18, 0.16, 0.09), Vector3(0.18, 0.16, -0.05), lit(STRIP, 0.8))
+	on.call(Vector3(0.21, -0.12, 0.12), Vector3(-0.21, -0.12, 0.12), 0.24, Vector3.BACK, lit(STRIP, 0.8))
+	# The lamp's heat vent on top catches its light, so it reads from any side.
+	k.found.quad(Vector3(-0.18, 0.16, -0.05), Vector3(-0.18, 0.16, 0.09), Vector3(0.18, 0.16, 0.09), Vector3(0.18, 0.16, -0.05), lit(STRIP, 0.8))
 	k.found.pop()
 	# The pivot post and its counterweight, the striped boom over the road.
 	k.chamfer(0.0, -0.1, 0.85, 0.26, 1.12, 0.26, 0.06, P.PLATE[2], P.PLATE[3])
