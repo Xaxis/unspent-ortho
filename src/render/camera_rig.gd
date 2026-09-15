@@ -44,6 +44,23 @@ func snap_to(p: Vector3) -> void:
 	_apply()
 
 
+## A short shake of `strength` world units, decaying over `seconds`. Moves only
+## h_offset/v_offset, rounded to whole texels so the pixel grid holds.
+func shake(strength: float, seconds: float = 0.12) -> void:
+	if not is_inside_tree():
+		return
+	var texel := view_height / float(get_viewport().get_visible_rect().size.y)
+	var seed_ms := Time.get_ticks_msec()
+	var tw := create_tween()
+	tw.tween_method(func(t: float) -> void:
+		var k := strength * (1.0 - t)
+		h_offset = roundf(sin(t * 47.0 + seed_ms) * k / texel) * texel
+		v_offset = roundf(cos(t * 61.0 + seed_ms * 0.7) * k / texel) * texel, 0.0, 1.0, seconds)
+	tw.tween_callback(func() -> void:
+		h_offset = 0.0
+		v_offset = 0.0)
+
+
 func _process(delta: float) -> void:
 	_smoothed = _smoothed.lerp(target, 1.0 - exp(-follow_rate * delta))
 	_apply()

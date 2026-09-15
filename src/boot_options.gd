@@ -37,6 +37,10 @@ extends RefCounted
 ## --taken             the --put props start already taken, laid in a row across the screen (their leavings show)
 ## --hold=SECONDS      survival and its drawing run on fixed 1/60 s frames and stop SECONDS
 ##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
+## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
+## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
+##                     (MS = simulation time after the press; each has a default);
+##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -72,6 +76,8 @@ var build := ""
 var hold := -1.0
 var put: PackedStringArray = []
 var taken := false
+var spawn: PackedStringArray = []
+var act := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -122,5 +128,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"hold": o.hold = v.to_float()
 			"put": o.put = v.split(",", false)
 			"taken": o.taken = true
+			"spawn": o.spawn = v.split(",", false)
+			"act": o.act = v
 			_: push_warning("unknown option --%s" % k)
 	return o

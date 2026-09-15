@@ -1,0 +1,19 @@
+# A fight through the real input path: a yard dog put in front of the player,
+# walked up to, struck, dodged, struck again. Boot with:
+#   tools/tour.sh tours/fight.tour --seed=1 --at=58,100 --hour=12 --spawn=dog.yard
+wait 0.4
+shot 01-met
+walk 1,-1 0.35
+tap swing
+wait 0.12
+shot 02-swing
+wait 0.35
+tap dodge
+wait 0.06
+shot 03-dodge
+wait 0.3
+tap swing
+wait 0.15
+shot 04-again
+wait 1.2
+shot 05-after

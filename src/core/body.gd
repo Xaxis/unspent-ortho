@@ -15,6 +15,12 @@ var stun_until := 0.0
 ## >0 while something has hold of the player (ensnare). Pulls remaining.
 var grip := 0
 var grip_since := 0.0
+## In a dodge's burst this instant (the view and HUD may show it).
+var dodging := false
+## World minute until which the body is wounded (a bad end to a fight, a spraying).
+var hurt_until := 0.0
+## Times a warden has held the player: each meeting costs more (fight owns).
+var arrests := 0
 
 # --- survival ---
 ## World minute until which the player is fed. Hungry when clock passes it.
