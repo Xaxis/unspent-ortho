@@ -157,6 +157,36 @@ func test_nothing_is_said_in_a_fight_until_it_is_over() -> void:
 	eq(said, ["Not with that so close.", "It is not biting the way it did.", "Took 1 plate."], "the rest follow, in order")
 
 
+func test_text_already_on_screen_leaves_when_a_fight_comes() -> void:
+	var m := UiMessages.new()
+	m.push("Took 2 timber.")
+	m.step(0.5)
+	m.push("Not with that so close.", true)
+	m.quiet = true
+	m.step(UiMessages.HUSH * 0.5)
+	var said: Array = m.visible().map(func(l: Dictionary) -> String: return l.text)
+	eq(said.size(), 2, "half way through the hush both still show")
+	check(m.visible()[0].alpha < 0.75, "but the old line is already fading: %s" % m.visible()[0].alpha)
+	m.step(UiMessages.HUSH * 0.5 + 0.02)
+	said = m.visible().map(func(l: Dictionary) -> String: return l.text)
+	eq(said, ["Not with that so close."], "gone within the hush; a refusal said now stays")
+	var hud := Hud.new()
+	hud.show_place("moss")
+	for i in 60:
+		hud.step_place(1.0 / 60.0)
+	eq(hud.place_alpha(), 1.0, "a place name holds in calm")
+	hud.messages.quiet = true
+	hud.step_place(1.0 / 60.0)
+	check(hud.place_alpha() > 0.9, "and fades from where it stood, no pop: %s" % hud.place_alpha())
+	for i in 18:
+		hud.step_place(1.0 / 60.0)
+	eq(hud.place_alpha(), 0.0, "gone within %s s of a fight" % Hud.PLACE_HUSH)
+	hud.messages.quiet = false
+	hud.step_place(1.0 / 60.0)
+	eq(hud.place_alpha(), 0.0, "and it does not come back after")
+	hud.free()
+
+
 func test_a_new_country_is_announced_once_it_holds() -> void:
 	var w := UiPlaceWatch.new()
 	eq(w.step(Country.COAST, 0.016), Country.COAST, "the start is named at once")

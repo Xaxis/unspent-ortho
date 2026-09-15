@@ -8,14 +8,22 @@ extends RefCounted
 const MAX := 3
 const HOLD := 2.2
 const FADE := 0.6
+## How fast a line already on screen gives way when a fight comes close.
+const HUSH := 0.3
 
-## Oldest first: {text, count, age}
+## Oldest first: {text, count, age, now, hush}
 var lines: Array[Dictionary] = []
 ## No text in a fight: while quiet (a hostile close), lines wait here, oldest
-## first, and are said once it is over.
+## first, and are said once it is over. Lines already on screen fade out in
+## HUSH seconds; only a line said `now` stays.
 var waiting: PackedStringArray = []
 var quiet := false:
 	set(v):
+		if v and not quiet:
+			for l in lines:
+				if not l.now:
+					l.age = maxf(l.age, HOLD)
+					l.hush = true
 		quiet = v
 		if not quiet:
 			for t in waiting:
@@ -36,15 +44,17 @@ func push(text: String, now: bool = false) -> void:
 	if not lines.is_empty() and lines.back().text == text:
 		lines.back().count += 1
 		lines.back().age = 0.0
+		lines.back().hush = false
+		lines.back().now = now
 		return
-	lines.append({"text": text, "count": 1, "age": 0.0})
+	lines.append({"text": text, "count": 1, "age": 0.0, "now": now, "hush": false})
 	while lines.size() > MAX:
 		lines.pop_front()
 
 
 func step(delta: float) -> void:
 	for l in lines:
-		l.age += delta
+		l.age += delta * (FADE / HUSH if l.hush else 1.0)
 	while not lines.is_empty() and lines[0].age > HOLD + FADE:
 		lines.pop_front()
 

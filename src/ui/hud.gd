@@ -18,6 +18,8 @@ const CELL_H := 8
 const PLACE_IN := 0.8
 const PLACE_HOLD := 2.6
 const PLACE_OUT := 1.4
+## A place name gives way to a fight this fast.
+const PLACE_HUSH := 0.3
 
 var clock_text := ""
 var health := 12
@@ -92,6 +94,18 @@ func show_place(text: String) -> void:
 	_place_age = 0.0
 
 
+## A place name is text too: in a fight it fades from wherever it stands to
+## nothing in PLACE_HUSH seconds, and does not come back after.
+func step_place(delta: float) -> void:
+	if messages.quiet:
+		var a := place_alpha()
+		if a > 0.0:
+			_place_age = PLACE_IN + PLACE_HOLD + PLACE_OUT * (1.0 - a)
+		_place_age += delta * PLACE_OUT / PLACE_HUSH
+	else:
+		_place_age += delta
+
+
 func place_alpha() -> float:
 	if _place_age < PLACE_IN:
 		return _place_age / PLACE_IN
@@ -129,10 +143,7 @@ func settle() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	messages.step(delta)
-	_place_age += delta
-	if messages.quiet and _place_age < PLACE_IN + PLACE_HOLD:
-		# A place name is text too: it gives way to a fight at once.
-		_place_age = PLACE_IN + PLACE_HOLD
+	step_place(delta)
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
