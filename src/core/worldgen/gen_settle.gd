@@ -114,21 +114,26 @@ static func villages(c: GenContext) -> void:
 	rough.sort_custom(by_score)
 	var gap := maxf(26.0, 56.0 * c.k)
 	var chosen: Array[Vector3] = []
-	# The spawn village: as far south as flat coast allows, a short walk from the sea.
+	# The spawn village: as far south as flat coast allows, and close enough to
+	# the sea that the first frame holds the square and the water together (a
+	# village deep inland wakes the player in a field). Wider only if none fits.
 	var r := c.land_rect
 	var best := Vector3(-1, -1, -1e9)
-	for pool: Array[Vector3] in [cands, relaxed]:
-		for p in pool:
-			var i := int(p.y) * size + int(p.x)
-			if w.country[i] != Country.COAST:
-				continue
-			var d_in := c.inland[i]
-			if d_in < 11.0 or d_in > 40.0:
-				continue
-			var south := (p.y - r.position.y) / r.size.y
-			var sc := south * 3.0 + p.z * 0.5
-			if sc > best.z:
-				best = Vector3(p.x, p.y, sc)
+	for far: float in [18.0, 24.0, 40.0]:
+		for pool: Array[Vector3] in [cands, relaxed]:
+			for p in pool:
+				var i := int(p.y) * size + int(p.x)
+				if w.country[i] != Country.COAST:
+					continue
+				var d_in := c.inland[i]
+				if d_in < 9.0 or d_in > far:
+					continue
+				var south := (p.y - r.position.y) / r.size.y
+				var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 12.0) * 0.08
+				if sc > best.z:
+					best = Vector3(p.x, p.y, sc)
+			if best.x >= 0.0:
+				break
 		if best.x >= 0.0:
 			break
 	if best.x < 0.0:
@@ -541,25 +546,29 @@ static func spawn(c: GenContext) -> void:
 	var best := vp + Vector2(3, 3)
 	var best_facing := -PI * 0.5
 	var best_score := -1e9
+	# The square's fire stands at the centre (GenScatter._villages): wake where
+	# the frame holds it and the sea together. Houses keep clear of this spot.
+	var square: Array[Vector2] = [vp + Vector2(-0.3, -0.5)]
 	for ang_i in 16:
 		var ang := ang_i / 16.0 * TAU
-		for rad: float in [12.5, 14.0, 11.0]:
+		for rad: float in [7.5, 9.0, 11.0, 12.5]:
 			var p := vp + Vector2.from_angle(ang) * rad
 			var tx := floori(p.x)
 			var ty := floori(p.y)
 			if not _dry_flat(c, tx, ty, lv):
 				continue
+			var q := Vector2(tx + 0.5, ty + 0.5)
+			var view := _frame_view(c, q, square) * 2.0 - rad * 0.15
 			for face_i in 8:
 				var face := face_i / 8.0 * TAU
-				var open := _openness(c, Vector2(tx + 0.5, ty + 0.5), face)
+				var open := _openness(c, q, face)
 				# Look inland (north-ish) and away from the houses.
 				var away := Vector2.from_angle(face).dot((p - vp).normalized())
-				var sc := open + away * 6.0 - Vector2.from_angle(face).y * 5.0
+				var sc := view + open + away * 6.0 - Vector2.from_angle(face).y * 5.0
 				if sc > best_score:
 					best_score = sc
-					best = Vector2(tx + 0.5, ty + 0.5)
+					best = q
 					best_facing = face
-			break
 	w.spawn = best
 	w.spawn_facing = best_facing
 
@@ -579,11 +588,15 @@ static func frame_spawn(c: GenContext) -> void:
 	for prop in w.props:
 		if prop.kind == PropKind.HOUSE:
 			houses.append(prop.pos)
+	var square: Array[Vector2] = []
+	for prop in w.props:
+		if (prop.kind == PropKind.FIRE or prop.kind == PropKind.BENCH or prop.kind == PropKind.LAMP) and prop.pos.distance_to(vp) < 5.0:
+			square.append(prop.pos)
 	var best := w.spawn
-	var best_score := _frame_score(c, w.spawn, houses) + 0.5
+	var best_score := _frame_score(c, w.spawn, houses) + _frame_view(c, w.spawn, square) * 2.0 + 0.5
 	for ang_i in 24:
 		var ang := ang_i / 24.0 * TAU
-		for rad: float in [9.5, 11.0, 12.5, 14.0, 15.5]:
+		for rad: float in [6.5, 8.0, 9.5, 11.0, 12.5, 14.0, 15.5]:
 			var p := vp + Vector2.from_angle(ang) * rad
 			var tx := floori(p.x)
 			var ty := floori(p.y)
@@ -596,7 +609,7 @@ static func frame_spawn(c: GenContext) -> void:
 					crowded = true
 			if crowded:
 				continue
-			var sc := _frame_score(c, q, houses)
+			var sc := _frame_score(c, q, houses) + _frame_view(c, q, square) * 2.0
 			if sc > best_score:
 				best_score = sc
 				best = q
@@ -614,6 +627,37 @@ static func frame_spawn(c: GenContext) -> void:
 			best_open = sc
 			best_facing = face
 	w.spawn_facing = best_facing
+
+
+## What the camera actually frames from p (yaw 45, 640x360 at view height 15:
+## about 12 tiles either side, 8 up and down): the sea along one side and the
+## village square (fire, bench, lamp) readable, not cut by the frame's edge.
+static func _frame_view(c: GenContext, p: Vector2, square: Array[Vector2]) -> float:
+	var w := c.w
+	var sea := 0
+	var total := 0
+	for sy in range(-8, 9, 2):
+		for sx in range(-12, 13, 2):
+			# Screen right is world (1,-1)/sqrt2, screen down is (1,1)/sqrt2.
+			var d := Vector2(sx + sy, sy - sx) * 0.7071
+			var x := floori(p.x + d.x)
+			var y := floori(p.y + d.y)
+			total += 1
+			if not w.in_bounds(x, y) or w.level_at(x, y) <= 0:
+				sea += 1
+	var score := 0.0
+	var share := float(sea) / maxf(1.0, total)
+	if share >= 0.04 and share <= 0.4:
+		score += 6.0
+	elif share > 0.0 and share < 0.55:
+		score += 2.0
+	for q in square:
+		var d := q - p
+		var sx := (d.x - d.y) * 0.7071
+		var sy := (d.x + d.y) * 0.7071
+		if absf(sx) < 9.5 and sy > -6.5 and sy < 5.0 and d.length() > 3.5:
+			score += 3.0
+	return score
 
 
 ## How good a first frame the ground round p makes (see frame_spawn).

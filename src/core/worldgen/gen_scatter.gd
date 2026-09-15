@@ -219,6 +219,76 @@ static func props(c: GenContext) -> void:
 	c.mark(&"props.lines")
 	_scatter(c, occ)
 	c.mark(&"props.scatter")
+	_way_in(c)
+
+
+## The first iron within a morning's walk of the spawn. The coast's own rock is
+## mostly far up in the hills, and the way in (knife, fire, haft, pick, iron,
+## axe) stalls without a vein; so a small scree outcrop with two iron seams and
+## a stone seam is set at the foot of a rise inland of the spawn, unless iron
+## already shows that close.
+const WAY_IN_NEAR := 22.0
+const WAY_IN_FAR := 46.0
+
+static func _way_in(c: GenContext) -> void:
+	var w := c.w
+	var sp := w.spawn
+	var taken := {}
+	for prop in w.props:
+		if prop.pos.distance_squared_to(sp) > (WAY_IN_FAR + 4.0) * (WAY_IN_FAR + 4.0):
+			continue
+		if prop.kind == PropKind.IRON_ORE and prop.pos.distance_to(sp) < WAY_IN_FAR:
+			return
+		taken[Vector2i(floori(prop.pos.x), floori(prop.pos.y))] = true
+	var best := Vector2i(-1, -1)
+	var best_score := -1e9
+	var r := int(WAY_IN_FAR)
+	for y in range(floori(sp.y) - r, floori(sp.y) + r + 1, 2):
+		for x in range(floori(sp.x) - r, floori(sp.x) + r + 1, 2):
+			if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+				continue
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(sp)
+			if d < WAY_IN_NEAR or d > WAY_IN_FAR:
+				continue
+			var i := y * c.size + x
+			var l := w.level[i]
+			if l <= 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
+				continue
+			var g := w.ground[i]
+			if g == Ground.SAND or g == Ground.SHINGLE or g == Ground.MUD or Ground.is_water(g):
+				continue
+			var ok := true
+			for dy in range(-2, 3):
+				for dx in range(-2, 3):
+					var j := (y + dy) * c.size + x + dx
+					if w.level[j] != l or c.water[j] != 0 or c.road[j] != 0 or taken.has(Vector2i(x + dx, y + dy)):
+						ok = false
+			if not ok:
+				continue
+			# At the foot of a rise the seams read as the rise's own rock.
+			var rise := 0
+			for k: Vector2i in [Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, 3), Vector2i(0, -3)]:
+				if w.level_at(x + k.x, y + k.y) > l:
+					rise = 1
+			var sc := float(rise) * 2.0 - absf(d - 30.0) * 0.08 + GenFields.h01(c.s, x, y, 91) * 0.8
+			if sc > best_score:
+				best_score = sc
+				best = Vector2i(x, y)
+	if best.x < 0:
+		return
+	var centre := Vector2(best.x + 0.5, best.y + 0.5)
+	# A lobed scree patch under the seams, never a square.
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var j := (best.y + dy) * c.size + best.x + dx
+			var ang := atan2(dy, dx)
+			var edge := 2.2 + 0.6 * sin(ang * 3.0 + best.x) + 0.3 * sin(ang * 5.0 + best.y)
+			if dx * dx + dy * dy <= edge * edge and w.level[j] == w.level[best.y * c.size + best.x] and c.water[j] == 0 and c.road[j] == 0:
+				w.ground[j] = Ground.SCREE
+	var a := GenFields.h01(c.s, best.x, best.y, 92) * TAU
+	_add(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a) * 0.9)
+	_add(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a + 2.3) * 1.1)
+	_add(c, PropKind.STONE_ORE, centre + Vector2.from_angle(a + 4.2) * 1.2)
 
 
 ## Wrecks on beaches in bays: sited once the grounds exist, on sand with sand

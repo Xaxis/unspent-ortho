@@ -210,10 +210,11 @@ static func run(c: GenContext) -> void:
 					var part := cv - (vc << 4)
 					ground[i] = _village_ground(vc, part)
 					recipe[i] = vc
-					if part >= 1.0:
-						# The square keeps its drawn edge: roads can leave it in pieces
-						# the tidy pass would otherwise sweep away.
-						fixed[i] = 1
+					# The square keeps its drawn edge: roads can leave it in pieces
+					# the tidy pass would otherwise sweep away. The cleared ground
+					# is kept too: a road can cut a sliver of it off, and the tidy
+					# pass would hand the sliver to the wild ground outside.
+					fixed[i] = 1
 					continue
 				var lx := level[i - 1]
 				var rx := level[i + 1]

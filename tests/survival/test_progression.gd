@@ -79,6 +79,10 @@ func _play(s: int) -> void:
 	_make(&"pick_made")
 	check(g.inventory.has(&"pick"), "a pick")
 	check(g.inventory.has(&"scrap"), "a spare plate left over")
+	# The second haft may want another armful: how much the first run gave
+	# depends on what lay nearest (two driftwood a take, one dead wood).
+	if Crafting.why_not(g, Crafting.recipe(&"haft")) != "" and Crafting.why_not(g, Crafting.recipe(&"haft_deadwood")) != "":
+		_gather_wood(2)
 	_make_any([&"haft", &"haft_deadwood"])
 	# Plate makes the way in and nothing more: the axe waits for iron.
 	for r: Dictionary in Recipes.LIST:
