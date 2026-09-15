@@ -1,0 +1,62 @@
+# Saving through the real keys: play a little (walk off the square, lay a fire),
+# save to a slot from the pause page, leave for the title, continue, and the
+# world that comes back is the one that was saved.
+#   tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4
+# (Tours save under user://tool-saves, never over a player's games.)
+coast calm
+walk -1,0.4 2.2
+tap use
+wait 0.4
+tap use
+await made 3
+wait 0.5
+shot 01-played
+walk 0,1 0.6
+# Long enough for the lines about the fire to fade: the frame to match has no words on it.
+wait 5
+shot 02-before
+tap pause
+wait 0.5
+choose save
+tap use
+wait 0.5
+shot 03-save-page
+# An empty slot is written at once; one that holds a game (an earlier run's) asks
+# first, and the second press writes over it.
+try 2
+tap use
+await saved 1.5
+end
+wait 0.3
+shot 04-saved
+tap pause
+wait 0.4
+choose title
+tap use
+await title 30
+wait 0.5
+shot 05-title
+# The title reads its keys as key events: Continue is chosen, E takes it.
+key use
+await game 30
+coast calm
+# The place name letters itself on arrival and fades; then the world as it was saved.
+wait 6
+shot 06-after
+same 02-before 06-after 0.02
+# Load from the pause page too: the autosave and the three slots, and slot 1 taken up again.
+walk 1,0 1
+tap pause
+wait 0.5
+choose load
+tap use
+wait 0.5
+choose slot_1
+wait 0.3
+shot 07-load-page
+tap use
+await game 30
+coast calm
+wait 6
+shot 08-loaded
+same 02-before 08-loaded 0.02

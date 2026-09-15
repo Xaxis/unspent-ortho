@@ -117,7 +117,10 @@ func _draw() -> void:
 	var verb := "e save" if mode == &"save" else "e load"
 	UiNotebook.footer(self, L, "%s     esc back" % verb)
 	_draw_detail(R)
-	UiNotebook.note(self, R, note, note_age)
+	# The page's word on what just happened, under the facts, where the folio cannot cross it.
+	if note != "" and note_age < 4.0:
+		var a := clampf(4.0 - note_age, 0.0, 1.0)
+		UiDraw.text(self, Vector2i(R.position.x + (R.size.x - THUMB.x) / 2, UiNotebook.line_top(R, 18)), note, Color(UiTheme.ACCENT, a))
 
 
 func _draw_detail(R: Rect2i) -> void:

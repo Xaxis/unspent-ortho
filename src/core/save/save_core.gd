@@ -188,6 +188,8 @@ static func load_player(game: Game, v: Variant) -> void:
 		p.hero.facing = p.facing
 		p.hero.move = Vector2.ZERO
 	p.drive(Vector2.ZERO, false, 0.0)
+	if p.world != null:
+		p.position = p.world.to_3d(p.pos)
 	if game.camera != null:
 		game.camera.snap_to(p.position)
 	if game.view != null:

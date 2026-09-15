@@ -124,10 +124,12 @@ static func describe(header: Dictionary) -> String:
 	return "%s  %s" % [str(header.get("clock", "")), str(header.get("place", ""))]
 
 
-## "1 h 20 m" of play.
+## "1 h 20 m" of play ("a moment" under a minute).
 static func play_time(header: Dictionary) -> String:
 	var s := SaveCodec.to_num(header.get("play_seconds"), 0.0)
 	var m := floori(s / 60.0)
+	if m < 1:
+		return "a moment"
 	if m < 60:
 		return "%d m" % m
 	return "%d h %02d m" % [m / 60, m % 60]
