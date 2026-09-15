@@ -15,19 +15,38 @@ class_name PersonLook
 ##   shirt, coat_col, trouser, boot, hat_col   colour: Color, "ramp:v", or [ramp, v]
 ##   extras     Array       of EXTRAS
 ##   salvage    Array       of SALVAGE (one or two parts, never the full set: past two are dropped)
+##   gear       Array       of GEAR: scavenged tech and kit, MENDED (FOUND parts bound
+##                          with MADE cord); up to GEAR_MAX, the rest dropped
+##   patches    int         0..3 patches sewn on coat, sleeves and knees
+##   gaunt      int         0..2 how hunger has thinned the body
 ##   side       int         +1 salvage on the right, -1 on the left
+##   trade      StringName  one of TRADES or &"" (what dress() dressed them for)
 ##
 ## Identity is carried by costume, never by complexion: generators pick skin
 ## independently of everything else.
+##
+## Nobody here is dressed from a shop. Everything is worn, patched, taken off a
+## machine or off the dead, and tied on: dress() puts on the weather gear a land
+## demands (read from its hazards, so a new landscape type dresses its people
+## with no change here), the kit of a trade, and the hunger of the last people.
 
 const BUILDS: Array[StringName] = [&"man", &"woman", &"boy", &"heavy", &"slight", &"old", &"tall", &"stark", &"squat", &"bent"]
-const HATS: Array[StringName] = [&"none", &"band", &"brim", &"cap", &"knit", &"scarf", &"souwester"]
-const COATS: Array[StringName] = [&"none", &"jerkin", &"long", &"oilskin"]
+const HATS: Array[StringName] = [&"none", &"band", &"brim", &"cap", &"knit", &"scarf", &"souwester", &"hood", &"furhat"]
+const COATS: Array[StringName] = [&"none", &"jerkin", &"long", &"oilskin", &"fur", &"wrap"]
 const SHIRT_CUTS: Array[StringName] = [&"tucked", &"loose", &"smock"]
 const BEARDS: Array[StringName] = [&"none", &"chin", &"full", &"stache"]
 const HAIR_STYLES: Array[StringName] = [&"bald", &"bun", &"crop", &"long", &"tail", &"thin", &"unkempt"]
 const EXTRAS: Array[StringName] = [&"rolled", &"apron", &"buckle", &"shawl", &"neckerchief", &"satchel"]
-const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"tally", &"aerial", &"lens", &"mask"]
+const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"tally", &"aerial", &"lens", &"mask", &"breastplate"]
+## Mended tech and scavenging kit (PersonGear):
+##   respirator  a machine filter on a rag mask      goggles  two machine lenses on a strap
+##   slate       the wrist slate, its screen faint   battery  a machine cell at the back, cabled
+##   radio       a box on the chest strap, a stub    pack     a frame of bundled scrap and cable
+##   coil        rope or cable coiled across the body
+const GEAR: Array[StringName] = [&"respirator", &"goggles", &"slate", &"battery", &"radio", &"pack", &"coil"]
+const GEAR_MAX := 3
+## What a villager does, which decides their kit (dress()).
+const TRADES: Array[StringName] = [&"cutter", &"digger", &"gatherer", &"scavenger", &"keeper", &"child"]
 
 ## Body proportions as multipliers on the base man. stoop is radians of spine lean.
 ##   leg torso: lengths   chest hip girth: width, width, depth   head arm limb: sizes
@@ -78,11 +97,13 @@ const HAIR_PRESETS: Array[StringName] = [&"black", &"dark", &"red", &"fair", &"g
 ## Wearable ramps: ink and copper are reserved and never recoloured.
 const WEAR: Array[StringName] = [&"stone", &"brine", &"slate", &"earth", &"rust", &"moss", &"spruce", &"sand", &"linen"]
 
+## The player: the wrist slate is the most personal thing they own (ART.md §9).
 const BASE := {
 	"build": &"man", "hat": &"none", "coat": &"none", "shirt_cut": &"tucked", "beard": &"none",
 	"hair_style": &"crop", "hair": &"dark", "skin": &"brown", "skin_v": 3,
 	"shirt": "linen:2", "coat_col": "earth:2", "trouser": "slate:1", "boot": "earth:1", "hat_col": "slate:2",
 	"extras": [&"neckerchief", &"satchel"], "salvage": [], "side": 1,
+	"gear": [&"slate"], "patches": 1, "gaunt": 0, "trade": &"",
 }
 
 
@@ -168,6 +189,14 @@ static func normalize(spec: Dictionary) -> Dictionary:
 		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))) and sv.size() < 2:
 			sv.append(StringName(str(s)))
 	out.salvage = sv
+	var gv: Array = []
+	for g: Variant in out.gear:
+		if GEAR.has(StringName(str(g))) and not gv.has(StringName(str(g))) and gv.size() < GEAR_MAX:
+			gv.append(StringName(str(g)))
+	out.gear = gv
+	out.patches = clampi(int(out.patches), 0, 3)
+	out.gaunt = clampi(int(out.gaunt), 0, 2)
+	out.trade = StringName(str(out.trade)) if TRADES.has(StringName(str(out.trade))) else &""
 	return out
 
 
@@ -264,8 +293,10 @@ static func _roll(r: RandomNumberGenerator) -> Dictionary:
 		beard = BEARDS[r.randi_range(1, BEARDS.size() - 1)]
 	if build == &"woman" and hair_style == &"bald":
 		hair_style = &"bun"
-	var hat: StringName = HATS[r.randi_range(0, HATS.size() - 1)] if r.randf() < 0.75 else &"none"
-	var coat: StringName = COATS[r.randi_range(0, COATS.size() - 1)] if r.randf() < 0.7 else &"none"
+	# Weather hats and coats (hood, furhat; fur, wrap) come from dress(), where the
+	# land asks for them: a random stranger wears what any coast would.
+	var hat: StringName = FAIR_HATS[r.randi_range(0, FAIR_HATS.size() - 1)] if r.randf() < 0.75 else &"none"
+	var coat: StringName = FAIR_COATS[r.randi_range(0, FAIR_COATS.size() - 1)] if r.randf() < 0.7 else &"none"
 	var extras: Array = []
 	for e: StringName in EXTRAS:
 		if r.randf() < 0.16:
@@ -277,6 +308,10 @@ static func _roll(r: RandomNumberGenerator) -> Dictionary:
 			var second: StringName = SALVAGE[r.randi_range(0, SALVAGE.size() - 1)]
 			if not salvage.has(second):
 				salvage.append(second)
+	# Some scavenged tech on most people; the slate is the player's own.
+	var gear: Array = []
+	if r.randf() < 0.45:
+		gear.append(STRANGER_GEAR[r.randi_range(0, STRANGER_GEAR.size() - 1)])
 	return {
 		"build": build, "hat": hat, "coat": coat,
 		"shirt_cut": SHIRT_CUTS[r.randi_range(0, SHIRT_CUTS.size() - 1)],
@@ -285,7 +320,13 @@ static func _roll(r: RandomNumberGenerator) -> Dictionary:
 		"shirt": _wear(r, SHIRT_WEAR), "coat_col": _wear(r, COAT_WEAR), "trouser": _wear(r, TROUSER_WEAR),
 		"boot": _wear(r, BOOT_WEAR), "hat_col": _wear(r, HAT_WEAR),
 		"extras": extras, "salvage": salvage, "side": 1 if r.randf() < 0.6 else -1,
+		"gear": gear, "patches": r.randi_range(0, 3), "gaunt": [0, 1, 1, 2][r.randi_range(0, 3)],
 	}
+
+
+const FAIR_HATS: Array[StringName] = [&"none", &"band", &"brim", &"cap", &"knit", &"scarf", &"souwester"]
+const FAIR_COATS: Array[StringName] = [&"none", &"jerkin", &"long", &"oilskin"]
+const STRANGER_GEAR: Array[StringName] = [&"respirator", &"goggles", &"battery", &"radio", &"pack", &"coil"]
 
 
 ## Wool and canvas live on the muted middle of the wearable ramps: [ramp, lo, hi].
@@ -300,6 +341,339 @@ const HAT_WEAR := [["earth", 1, 3], ["slate", 1, 3], ["spruce", 1, 2], ["moss", 
 static func _wear(r: RandomNumberGenerator, table: Array) -> String:
 	var e: Array = table[r.randi_range(0, table.size() - 1)]
 	return "%s:%d" % [e[0], r.randi_range(int(e[1]), int(e[2]))]
+
+
+## Weather cloth on the wearable ramps, faded: [ramp, lo, hi].
+## Oilskin gone dark with years of grease and weather, never new yellow.
+const OILSKIN_WEAR := [["sand", 2, 3], ["earth", 2, 3], ["moss", 1, 2], ["spruce", 1, 2], ["brine", 1, 2], ["ash", 2, 2]]
+## Hides, not fleece: the shag at the edges is the light part (PersonBody's trim).
+const FUR_WEAR := [["earth", 2, 3], ["sand", 2, 3], ["rust", 1, 2], ["linen", 2, 2], ["earth", 3, 4]]
+const WRAP_WEAR := [["linen", 2, 3], ["sand", 3, 3], ["ash", 2, 3], ["stone", 2, 3], ["rust", 2, 2]]
+## Hoods are the dirtiest cloth anyone owns, and never the colour of hair.
+const HOOD_WEAR := [["ash", 1, 2], ["stone", 1, 2], ["sand", 2, 3], ["moss", 1, 2], ["slate", 1, 2], ["linen", 1, 2]]
+
+
+## The trade a villager's day gives them: from what folk has them do (role) and
+## the tool in their hand.
+static func trade_for(role: StringName, tool_id: StringName) -> StringName:
+	match role:
+		&"play":
+			return &"child"
+		&"walk":
+			return &"scavenger"
+		&"idle":
+			return &"keeper"
+	var t := String(tool_id)
+	if t.begins_with("axe"):
+		return &"cutter"
+	if t.begins_with("pick") or t.begins_with("mattock"):
+		return &"digger"
+	if t != "":
+		return &"gatherer"
+	return &"keeper"
+
+
+static func _hazard(hazards: Dictionary, id: String) -> float:
+	return float(hazards.get(StringName(id), hazards.get(id, 0.0)))
+
+
+## A person dressed for the land they live on and the trade they live by.
+## `hazards` is a landscape type's hazard table (BiomeDef.hazards: wet, cold,
+## heat, fumes, toxins, dark, radiation...); `trade` one of TRADES or &"".
+## Deterministic in (spec, hazards, trade, seed). Keeps the contrast bar.
+static func dress(spec: Dictionary, hazards: Dictionary, trade: StringName, seed_value: int) -> Dictionary:
+	var s := normalize(spec)
+	var r := Rng.make(seed_value, 5113)
+	var wet := _hazard(hazards, "wet")
+	var cold := _hazard(hazards, "cold")
+	var heat := _hazard(hazards, "heat")
+	var air := maxf(_hazard(hazards, "fumes"), maxf(_hazard(hazards, "toxins"), _hazard(hazards, "radiation")))
+	var glare := maxf(heat, maxf(cold * 0.8, _hazard(hazards, "radiation")))
+	var dark := _hazard(hazards, "dark")
+	var gear: Array = []
+	var salvage: Array = (s.salvage as Array).duplicate()
+	var extras: Array = (s.extras as Array).duplicate()
+	s.trade = trade if TRADES.has(trade) else &""
+
+	# The last people are hungry: most are thin, a few are starving, and the heavy
+	# are rare enough to be remarked on.
+	if trade == &"child":
+		s.build = &"boy"
+	elif (s.build == &"heavy" or s.build == &"squat") and r.randf() < 0.6:
+		s.build = [&"stark", &"slight", &"tall"][r.randi_range(0, 2)]
+	elif trade == &"keeper" and r.randf() < 0.45:
+		s.build = [&"old", &"bent"][r.randi_range(0, 1)]
+	s.gaunt = [0, 1, 1, 1, 2, 2][r.randi_range(0, 5)]
+	if s.build == &"heavy" or s.build == &"squat":
+		s.gaunt = mini(s.gaunt, 1)
+	s.patches = r.randi_range(1, 3)
+
+	# A weather coat stays only where its weather is.
+	if s.coat == &"fur" and cold < 0.3:
+		s.coat = &"long"
+	if s.coat == &"wrap" and maxf(heat, air) < 0.3:
+		s.coat = &"none"
+	if s.hat == &"furhat" and cold < 0.3:
+		s.hat = &"knit"
+
+	# What the land asks for first.
+	var weather_coat := false
+	if cold >= 0.3:
+		if r.randf() < smoothstep(0.3, 0.7, cold) * 0.8:
+			s.coat = &"fur"
+			s.coat_col = _wear(r, FUR_WEAR)
+			weather_coat = true
+		elif r.randf() < 0.6:
+			s.coat = [&"long", &"oilskin"][r.randi_range(0, 1)]
+			weather_coat = true
+		var hr := r.randf()
+		if hr < 0.45:
+			s.hat = &"furhat"
+			s.hat_col = _wear(r, FUR_WEAR)
+		elif hr < 0.8:
+			s.hat = &"knit"
+		elif hr < 0.9:
+			s.hat = &"hood"
+			s.hat_col = _wear(r, HOOD_WEAR)
+		if r.randf() < 0.35 and not extras.has(&"shawl"):
+			extras.append(&"shawl")
+	if maxf(heat, air) >= 0.4 and not weather_coat:
+		if r.randf() < smoothstep(0.3, 0.7, maxf(heat, air)) * 0.85:
+			s.coat = &"wrap"
+			s.coat_col = _wear(r, WRAP_WEAR)
+			weather_coat = true
+		var hr := r.randf()
+		if hr < 0.5:
+			s.hat = &"hood"
+			s.hat_col = _wear(r, HOOD_WEAR)
+		elif hr < 0.85:
+			s.hat = &"scarf"
+	elif heat >= 0.2 and r.randf() < 0.45:
+		s.hat = &"brim"
+	if wet >= 0.25 and not weather_coat:
+		if r.randf() < wet * 0.95:
+			s.coat = &"oilskin"
+			s.coat_col = _wear(r, OILSKIN_WEAR)
+			weather_coat = true
+		var hr := r.randf()
+		if hr < wet * 0.8:
+			s.hat = &"souwester"
+		elif hr < wet * 1.2:
+			s.hat = &"hood"
+			s.hat_col = _wear(r, HOOD_WEAR)
+	if dark >= 0.3 and s.hat == &"none" and r.randf() < 0.35:
+		s.hat = &"hood"
+		s.hat_col = _wear(r, HOOD_WEAR)
+	if air > 0.05 and r.randf() < clampf(air * 1.15, 0.0, 0.85):
+		gear.append(&"respirator")
+	if glare >= 0.2 and r.randf() < glare * 0.7:
+		gear.append(&"goggles")
+
+	# Then the trade's kit.
+	match trade:
+		&"cutter":
+			if not weather_coat and r.randf() < 0.45:
+				s.coat = &"jerkin"
+			if r.randf() < 0.5 and not extras.has(&"rolled"):
+				extras.append(&"rolled")
+			if r.randf() < 0.55:
+				gear.append(&"coil")
+			if r.randf() < 0.25:
+				salvage.append(&"gauntlet")
+		&"digger":
+			if r.randf() < 0.45:
+				gear.append(&"goggles")
+			if r.randf() < 0.25:
+				gear.append(&"respirator")
+			if r.randf() < 0.35:
+				gear.append(&"battery")
+			if r.randf() < 0.3:
+				salvage.append(&"brace")
+			elif r.randf() < 0.25:
+				salvage.append(&"lens")
+		&"gatherer":
+			if r.randf() < 0.5 and not extras.has(&"satchel"):
+				extras.append(&"satchel")
+			if r.randf() < 0.35 and not extras.has(&"apron"):
+				extras.append(&"apron")
+			if r.randf() < 0.3:
+				gear.append(&"pack")
+		&"scavenger":
+			if r.randf() < 0.8:
+				gear.append(&"pack")
+			if r.randf() < 0.45:
+				gear.append(&"coil")
+			if r.randf() < 0.3:
+				gear.append(&"radio")
+			if r.randf() < 0.25:
+				gear.append(&"battery")
+			var pr := r.randf()
+			if pr < 0.3:
+				salvage.append(&"breastplate")
+			elif pr < 0.55:
+				salvage.append(&"plate")
+			if r.randf() < 0.2:
+				salvage.append(&"lens")
+		&"keeper":
+			if not weather_coat and r.randf() < 0.4:
+				s.coat = &"long"
+			if r.randf() < 0.35:
+				gear.append(&"radio")
+			if r.randf() < 0.45:
+				salvage.append(&"tally")
+		&"child":
+			salvage.clear()
+			if r.randf() < 0.35:
+				gear.append(&"goggles")
+			s.patches = r.randi_range(2, 3)
+			s.beard = &"none"
+	# Children carry nothing heavy; nobody here has the slate but the player.
+	var kit: Array = []
+	for g: StringName in gear:
+		if not kit.has(g) and g != &"slate" and not (trade == &"child" and (g == &"pack" or g == &"battery")):
+			kit.append(g)
+	s.gear = kit
+	s.salvage = salvage
+	s.extras = extras
+	return _keep_contrast(normalize(s))
+
+
+static func _keep_contrast(out: Dictionary) -> Dictionary:
+	if not contrast_ok(out):
+		out.trouser = "slate:0"
+	var covered: bool = out.coat != &"none" and out.coat != &"jerkin"
+	for c: String in CONTRAST_FIXES:
+		if contrast_ok(out):
+			break
+		if covered:
+			out.coat_col = c
+		else:
+			out.shirt = c
+	return out
+
+
+## A dressed look set apart from its neighbours: dress() puts most of a snowfield
+## in furs and most of the burning in wraps, so two villagers of one build would
+## share a silhouette and differ only in colour. Swaps the hat, then the coat,
+## then both, among what the land still allows (the weather's own first), until
+## its {build, hat, coat} is not in `taken` (signature -> true); then adds it.
+## Deterministic in (spec, taken, hazards, seed). Keeps the contrast bar.
+static func set_apart(spec: Dictionary, taken: Dictionary, hazards: Dictionary, seed_value: int) -> Dictionary:
+	var out := normalize(spec)
+	if taken.has(signature(out)):
+		var r := Rng.make(seed_value, 5227)
+		var hats := _hats_for(hazards, r)
+		var coats := _coats_for(hazards, r)
+		var hat0: StringName = out.hat
+		var coat0: StringName = out.coat
+		# The hat alone first, then the coat alone, then both.
+		var tries: Array[Array] = []
+		for h in hats:
+			if h != hat0:
+				tries.append([h, coat0])
+		for c in coats:
+			if c != coat0:
+				tries.append([hat0, c])
+		for h in hats:
+			for c in coats:
+				if h != hat0 and c != coat0:
+					tries.append([h, c])
+		for t: Array in tries:
+			if not taken.has("%s/%s/%s" % [out.build, t[0], t[1]]):
+				_wear_hat(out, t[0], r)
+				_wear_coat(out, t[1], r)
+				break
+		out = _keep_contrast(normalize(out))
+	taken[signature(out)] = true
+	return out
+
+
+## Hats a land allows, its weather's first (in a seeded order), then the fair ones.
+static func _hats_for(hazards: Dictionary, r: RandomNumberGenerator) -> Array[StringName]:
+	var cold := _hazard(hazards, "cold")
+	var hot := maxf(_hazard(hazards, "heat"), maxf(_hazard(hazards, "fumes"), maxf(_hazard(hazards, "toxins"), _hazard(hazards, "radiation"))))
+	var wet := _hazard(hazards, "wet")
+	var first: Array[StringName] = []
+	if cold >= 0.3:
+		first.append_array([&"furhat", &"knit", &"hood", &"scarf"])
+	if hot >= 0.4:
+		first.append_array([&"hood", &"scarf", &"brim", &"band"])
+	if wet >= 0.25:
+		first.append_array([&"souwester", &"hood", &"knit"])
+	return _then(_shuffled(first, r), _shuffled(FAIR_HATS, r))
+
+
+static func _coats_for(hazards: Dictionary, r: RandomNumberGenerator) -> Array[StringName]:
+	var cold := _hazard(hazards, "cold")
+	var hot := maxf(_hazard(hazards, "heat"), maxf(_hazard(hazards, "fumes"), maxf(_hazard(hazards, "toxins"), _hazard(hazards, "radiation"))))
+	var wet := _hazard(hazards, "wet")
+	var first: Array[StringName] = []
+	if cold >= 0.3:
+		first.append_array([&"fur", &"long", &"oilskin"])
+	if hot >= 0.3:
+		first.append_array([&"wrap", &"long", &"jerkin"])
+	if wet >= 0.25:
+		first.append_array([&"oilskin", &"long", &"jerkin"])
+	return _then(_shuffled(first, r), _shuffled(FAIR_COATS, r))
+
+
+static func _shuffled(list: Array[StringName], r: RandomNumberGenerator) -> Array[StringName]:
+	var out: Array[StringName] = list.duplicate()
+	for i in range(out.size() - 1, 0, -1):
+		var j := r.randi_range(0, i)
+		var t := out[i]
+		out[i] = out[j]
+		out[j] = t
+	return out
+
+
+static func _then(a: Array[StringName], b: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for x in a + b:
+		if not out.has(x):
+			out.append(x)
+	return out
+
+
+static func _wear_hat(s: Dictionary, h: StringName, r: RandomNumberGenerator) -> void:
+	if s.hat == h:
+		return
+	s.hat = h
+	if h == &"furhat":
+		s.hat_col = _wear(r, FUR_WEAR)
+	elif h == &"hood":
+		s.hat_col = _wear(r, HOOD_WEAR)
+
+
+static func _wear_coat(s: Dictionary, c: StringName, r: RandomNumberGenerator) -> void:
+	if s.coat == c:
+		return
+	s.coat = c
+	match c:
+		&"fur": s.coat_col = _wear(r, FUR_WEAR)
+		&"wrap": s.coat_col = _wear(r, WRAP_WEAR)
+		&"oilskin": s.coat_col = _wear(r, OILSKIN_WEAR)
+
+
+## Outer colours tried in turn when a dressed look fails the contrast bar.
+## Mid values first: a fix must not turn a village into clean pale coats.
+const CONTRAST_FIXES: Array[String] = ["earth:3", "stone:3", "rust:3", "moss:3", "sand:3", "linen:2", "earth:2", "linen:3", "linen:4"]
+
+
+## n villagers of a land: a crowd (nobody repeats another's silhouette) dressed
+## for `hazards`, their trades dealt round TRADES by seed, and set apart again
+## after dressing.
+static func villagers(seed_value: int, n: int, hazards: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var taken := {}
+	var i := 0
+	for p: Dictionary in crowd(seed_value, n):
+		var trade: StringName = TRADES[int(Rng.hash01(seed_value, i, 41) * (TRADES.size() - 1))]
+		if p.build == &"boy":
+			trade = &"child"
+		out.append(set_apart(dress(p, hazards, trade, seed_value * 17 + i), taken, hazards, seed_value * 23 + i))
+		i += 1
+	return out
 
 
 ## n people where nobody repeats another's {build, hat, coat}.

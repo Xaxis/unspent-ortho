@@ -33,6 +33,8 @@ var folk: Array[Dictionary] = []
 ## Villagers waiting to be built: {look, home, door, role, village, h}.
 var queue: Array[Dictionary] = []
 var _spawned: Dictionary = {} # village index -> true
+## Village index -> the silhouettes its villagers already wear (PersonLook.set_apart).
+var _worn: Dictionary = {}
 var _act := &""
 var _act_at := -1.0
 var _check := 0.0
@@ -59,6 +61,7 @@ func _player_flags() -> void:
 	var o := game.options
 	if m == null:
 		return
+	m.sun = _sun()
 	# Only the starting hand: keeping the model in step with later changes is the
 	# fight and survival systems' job (they own what is held and when).
 	if game.inventory != null:
@@ -92,6 +95,7 @@ static func parse_look(text: String, seed_value: int) -> Dictionary:
 	var spec := {}
 	var salvage: Array = []
 	var extras: Array = []
+	var gear: Array = []
 	for tok: String in text.split(",", false):
 		var s := StringName(tok)
 		if PersonLook.BUILDS.has(s): spec.build = s
@@ -103,6 +107,9 @@ static func parse_look(text: String, seed_value: int) -> Dictionary:
 		elif PersonLook.SALVAGE.has(s): salvage.append(s)
 		elif PersonLook.EXTRAS.has(s): extras.append(s)
 		elif PersonLook.HAIR.has(s): spec.hair = s
+		elif PersonLook.GEAR.has(s): gear.append(s)
+	if not gear.is_empty():
+		spec.gear = gear
 	if not salvage.is_empty():
 		spec.salvage = salvage
 	if not extras.is_empty():
@@ -152,6 +159,7 @@ func _stream(now: bool) -> void:
 					pump()
 		elif d > FAR and _spawned.has(i):
 			_spawned.erase(i)
+			_worn.erase(i)
 			queue = queue.filter(func(q: Dictionary) -> bool: return q.village != i)
 			for f: Dictionary in folk.duplicate():
 				if f.get("village", -1) == i:
@@ -225,7 +233,17 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 			f.job_pos = job.pos
 			f.facing = job.facing
 			f.job_facing = job.facing
+	# Dressed for the land they live on and the work they were given (characters).
+	var hazards := BiomeRegistry.at(game.world, home).hazards
+	var seed_v := int(h * 1000003.0) + village * 7919
+	look = PersonLook.dress(look, hazards, PersonLook.trade_for(f.role, f.tool), seed_v)
+	# Dressing for one weather makes neighbours alike: nobody in a village shares a silhouette.
+	if not _worn.has(village):
+		_worn[village] = {}
+	look = PersonLook.set_apart(look, _worn[village], hazards, seed_v)
 	var model := PersonModel.make(look, f.tool, game.view.world_material() if game.view != null else null)
+	model.pose_hz = PersonModel.CROWD_HZ
+	model.sun = _sun()
 	model.name = "villager_%d" % folk.size()
 	add_child(model)
 	f.model = model
@@ -238,6 +256,11 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 		model.play_action(f.work, 0.0)
 	_place(f)
 	folk.append(f)
+
+
+## The world's sun, for people's shadow twins (PersonModel.sun).
+func _sun() -> DirectionalLight3D:
+	return game.sky.sun if game.sky != null else null
 
 
 ## The nearest thing to work near a spot, and the tool and verb for it.

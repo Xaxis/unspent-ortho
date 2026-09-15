@@ -3,6 +3,9 @@ extends AnimalModel
 ## red spot, flesh legs, black wingtips crossed over the tail. It lifts when
 ## approached: &"flee" and &"fly" take it into the air (the root rises; the
 ## caller moves it across the ground).
+##
+## Gulls of the refuse: some oiled grey on the breast, some with a strip of rag,
+## cable or plastic trailing from the bill, a few ringed with a machine's band.
 
 const MANTLES := [[Color("52667a"), Color("75899c")], [Color("75899c"), Color("a3b4c4")], [Color("37485a"), Color("52667a")], [Color("868d99"), Color("b8bfc9")]]
 
@@ -25,6 +28,9 @@ func _build_rig() -> void:
 	var m1: Color = _mantle[1]
 	var white := Palette.LINEN[5]
 	var white_lo := Palette.LINEN[4]
+	if rng.randf() < 0.45:
+		# Oiled: the breast gone grey with what the tip leaks.
+		white_lo = Palette.ASH[3]
 	var sd := seed_value * 29 + 13
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.2 * s, 0))
@@ -41,6 +47,14 @@ func _build_rig() -> void:
 	trunk(hk, [[-0.04 * s, 0.035 * s, 0.035 * s, 0.0], [0.02 * s, 0.05 * s, 0.045 * s, 0.01 * s], [0.07 * s, 0.03 * s, 0.03 * s, 0.0]], 6, white, sd + 1, 0.02)
 	# A heavy hooked bill with the red spot near the tip.
 	trunk(hk, [[0.06 * s, 0.016 * s, 0.013 * s, -0.004 * s], [0.12 * s, 0.012 * s, 0.009 * s, -0.004 * s], [0.145 * s, 0.006 * s, 0.004 * s, -0.012 * s]], 4, [Palette.COPPER[4], Palette.RUST[3]], sd + 2, 0.0)
+	if rng.randf() < 0.4:
+		# Refuse trailing from the bill.
+		var junk: Color = [Palette.INK[3], Palette.RUST[3], Palette.COLD[2], Palette.LINEN[3]][rng.randi_range(0, 3)]
+		var tip := Vector3(0.14 * s, -0.012 * s, 0.0)
+		var hang := Vector3(0.1 * s, -0.12 * s, 0.02 * s)
+		var rk := rig.kit(head, &"refuse")
+		Sculpt.card(rk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk, Vector3(1, 0, 0))
+		Sculpt.card(rk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk.darkened(0.2), Vector3(-1, 0, 0))
 	for side: int in [-1, 1]:
 		Sculpt.card(hk, Vector3(0.03 * s, 0.022 * s, side * 0.043 * s), Vector3(0.045 * s, 0.022 * s, side * 0.04 * s), Vector3(0.045 * s, 0.034 * s, side * 0.04 * s), Vector3(0.03 * s, 0.034 * s, side * 0.043 * s), Palette.INK[0], Vector3(0.3, 0.2, side).normalized())
 	for side: int in [-1, 1]:
@@ -63,6 +77,8 @@ func _build_rig() -> void:
 		var lk := rig.kit(lg)
 		Sculpt.loft(lk, [[-0.13 * s, 0.008, 0.008, 0.0, 0.0], [0.0, 0.01, 0.01, 0.0, 0.0]], 4, Palette.FLESH[3], false, false, PI / 4)
 		flap(lk, Vector3(-0.01, -0.13 * s, 0.0), Vector3(0.05, -0.13 * s, -0.025), Vector3(0.05, -0.13 * s, 0.025), Palette.FLESH[2], Palette.FLESH[2])
+		if side > 0 and rng.randf() < 0.3:
+			Sculpt.loft(rig.kit(lg, &"tag", SkinRig.FOUND), [[-0.1 * s, 0.016, 0.016, 0.0, 0.0], [-0.075 * s, 0.016, 0.016, 0.0, 0.0]], 4, Palette.PLATE[4], true, true, PI / 4)
 	height = 0.36 * s
 
 

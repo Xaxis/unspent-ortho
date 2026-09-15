@@ -2,6 +2,8 @@ extends AnimalModel
 ## A bull: a barrel, about as tall as it is long. Rust-brown, a pale face, horns
 ## that sweep out and forward, a dewlap, a hump over the shoulders, a tufted tail,
 ## and no daylight under the belly. When it lowers its head, get off the field.
+##
+## Kept, not wild: a ring of machine alloy through the nose and a plate tag in one ear.
 
 const HIDES := [[Color("6e3320"), Color("9a4f28")], [Color("4f3627"), Color("6f4d31")], [Color("4a1d18"), Color("6e3320")], [Color("33231f"), Color("4f3627")], [Color("6f4d31"), Color("997044")]]
 
@@ -58,7 +60,26 @@ func _build_rig() -> void:
 	hk.pop()
 	var nose := Vector3(0.22 * s, -0.33 * s, 0)
 	Sculpt.loft(hk, [[nose.y - 0.03 * s, 0.05 * s, 0.09 * s, nose.x, 0.0], [nose.y + 0.04 * s, 0.05 * s, 0.095 * s, nose.x, 0.0]], 6, Palette.INK[2], false, true, PI / 6)
+	# The nose ring: flat alloy, seen from both sides.
+	var ring := rig.kit(head, &"tag", SkinRig.FOUND)
+	var rc := nose + Vector3(0.03 * s, -0.08 * s, 0.0)
+	var ro := 0.055 * s
+	var ri := 0.036 * s
+	for i in 8:
+		var a0 := float(i) / 8.0 * TAU
+		var a1 := float(i + 1) / 8.0 * TAU
+		var p0 := rc + Vector3(cos(a0), sin(a0), 0.0)
+		var p1 := rc + Vector3(cos(a1), sin(a1), 0.0)
+		var o0 := rc + (p0 - rc) * ro
+		var o1 := rc + (p1 - rc) * ro
+		var i0 := rc + (p0 - rc) * ri
+		var i1 := rc + (p1 - rc) * ri
+		ring.quad(i0, o0, o1, i1, Palette.PLATE[4])
+		ring.quad(i1, o1, o0, i0, Palette.PLATE[3])
+	var tag_side := 1 if rng.randf() < 0.5 else -1
 	for side: int in [-1, 1]:
+		if side == tag_side:
+			machine_tag(head, Vector3(-0.05 * s, -0.05 * s, side * 0.25 * s), Vector3(0.0, -1.0, side * 0.2), Vector3(0.4, 0.5, side), 0.09 * s, rng.randf() < 0.2)
 		# Horns: out from the poll, sweeping forward and up at the tips, pale to a
 		# dark point. Wide enough that from any side both show.
 		var pts: Array[Vector3] = [

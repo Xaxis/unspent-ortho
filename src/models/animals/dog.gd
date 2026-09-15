@@ -2,11 +2,17 @@ extends AnimalModel
 ## A dog: a wedge. Deep chest, tucked waist, head carried above the back, tail a
 ## line. Coats from the source (earth 2, ink 2, ash 1, ink 3, earth 1, ash 2),
 ## never earth 3, which is the colour of the road it stands on.
+##
+## A dog of the ruin: thin enough to count its ribs, its coat come away in mangy
+## patches, an ear torn, and a collar somebody made it from cord or machine cable
+## with a plate tag off a machine (a few still show a live pip).
 
 const COATS := [[Color("4f3627"), Color("6f4d31")], [Color("1e1c2e"), Color("2f2c45")], [Color("3b404a"), Color("5c626e")], [Color("2f2c45"), Color("454263")], [Color("33231f"), Color("4f3627")], [Color("5c626e"), Color("868d99")]]
 
 var _ears_up := true
 var _tail_curl := 0.0
+## Which ear is torn short: -1, +1, or 0 for neither.
+var _torn := 0
 
 
 func build() -> void:
@@ -24,7 +30,7 @@ func _build_rig() -> void:
 	var has_patch := rng.randf() < 0.55
 	_ears_up = rng.randf() < 0.6
 	_tail_curl = rng.randf() * 0.6
-	var lean := 0.9 + rng.randf() * 0.25
+	var lean := 0.76 + rng.randf() * 0.22
 	var ink := Palette.INK[0]
 	var leg_c := c0.lerp(c1, 0.3)
 	var sd := seed_value * 13 + 5
@@ -32,15 +38,51 @@ func _build_rig() -> void:
 	var root := rig.bone(&"root", -1, Vector3.ZERO)
 	var body := rig.bone(&"body", root, Vector3(0, 0.4 * s, 0))
 	# The wedge: a deep chest, the waist tucked up under the loin, a small rump.
-	trunk(rig.kit(body), [
+	var rings: Array = [
 		[-0.25 * s, 0.05 * s, 0.045 * s, 0.03 * s],
 		[-0.19 * s, 0.1 * s, 0.08 * s * lean, 0.01 * s],
 		[-0.04 * s, 0.08 * s, 0.066 * s * lean, 0.035 * s],
 		[0.1 * s, 0.16 * s, 0.095 * s * lean, -0.03 * s],
 		[0.22 * s, 0.11 * s, 0.075 * s * lean, 0.04 * s],
-	], 6, [c0, c0, c1, c1], sd)
+	]
+	trunk(rig.kit(body), rings, 6, [c0, c0, c1, c1], sd)
+	_torn = [0, 0, -1, 1][rng.randi_range(0, 3)]
+	# Mange: bald patches where the coat has come away, and the ribs showing.
+	var mk := rig.kit(body)
+	var bare: Color = [Palette.FLESH[2].lerp(c0, 0.35), Palette.ASH[3].lerp(c0, 0.3)][rng.randi_range(0, 1)]
+	for i in rng.randi_range(1, 3):
+		var px := lerpf(-0.2, 0.14, rng.randf()) * s
+		var sz := (0.025 + rng.randf() * 0.025) * s
+		if rng.randf() < 0.4:
+			var py := 0.095 * s
+			Sculpt.card(mk, Vector3(px - sz, py, -sz * 0.8), Vector3(px + sz, py, -sz), Vector3(px + sz * 0.8, py, sz), Vector3(px - sz, py, sz * 0.7), bare, Vector3.UP)
+		else:
+			var pz := (1 if rng.randf() < 0.5 else -1) * (0.072 * s * lean + 0.008)
+			var py := (rng.randf() - 0.6) * 0.07 * s
+			Sculpt.card(mk, Vector3(px - sz, py - sz * 0.7, pz), Vector3(px + sz, py - sz, pz), Vector3(px + sz * 0.7, py + sz, pz), Vector3(px - sz, py + sz * 0.8, pz), bare, Vector3(0, 0, signf(pz)))
+	if lean < 0.9:
+		var rib := c0.darkened(0.4)
+		# Three a side over the deep of the chest, laid on the trunk's own faces from
+		# the upper flank to just under its widest line, never down past the belly.
+		for side: int in [-1, 1]:
+			for i in 3:
+				var rx := (0.015 + i * 0.038) * s
+				var lip := 0.006 * s
+				var hi_a := _flank(rings, sd, rx + lip, side, 0.55, s)
+				var hi_b := _flank(rings, sd, rx - lip, side, 0.55, s)
+				var mid_a := _flank(rings, sd, rx + lip * 0.6, side, 0.0, s)
+				var mid_b := _flank(rings, sd, rx - lip * 1.4, side, 0.0, s)
+				var lo_a := _flank(rings, sd, rx - lip * 0.2, side, -0.3, s)
+				var lo_b := _flank(rings, sd, rx - lip * 1.8, side, -0.3, s)
+				Sculpt.card(mk, hi_a, hi_b, mid_b, mid_a, rib, Vector3(0, 0.5, side))
+				Sculpt.card(mk, mid_a, mid_b, lo_b, lo_a, rib, Vector3(0, -0.3, side))
 	var neck := rig.bone(&"neck", body, Vector3(0.19 * s, 0.08 * s, 0))
 	Sculpt.loft(rig.kit(neck), [[-0.08 * s, 0.085 * s, 0.07 * s, -0.01 * s, 0.0], [0.2 * s, 0.06 * s, 0.055 * s, 0.01 * s, 0.0]], 5, [c1], false, false, 0.0, 0.06, sd + 1)
+	# The collar: cord, or cable pulled off a machine, with a machine's plate for a tag.
+	var cable := rng.randf() < 0.45
+	var ck := rig.kit(neck, &"collar", SkinRig.FOUND if cable else SkinRig.MADE)
+	Sculpt.loft(ck, [[0.03 * s, 0.092 * s, 0.08 * s, -0.005 * s, 0.0], [0.065 * s, 0.09 * s, 0.078 * s, -0.004 * s, 0.0]], 6, Palette.INK[3] if cable else [Palette.SAND[3], Palette.EARTH[2]][rng.randi_range(0, 1)], false, false, PI / 6)
+	machine_tag(neck, Vector3(0.09 * s, 0.035 * s, 0.0), Vector3(-0.3, -1.0, 0.0), Vector3(1, 0, 0), 0.07 * s, rng.randf() < 0.3)
 	var head := rig.bone(&"head", neck, Vector3(0.0, 0.17 * s, 0))
 	var hk := rig.kit(head)
 	hk.push(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 1.3), Vector3.ZERO))
@@ -56,7 +98,9 @@ func _build_rig() -> void:
 		var z := side * 0.04 * s
 		Sculpt.card(hk, Vector3(0.07 * s, 0.0, z - 0.012 * s), Vector3(0.07 * s, 0.0, z + 0.012 * s), Vector3(0.07 * s, 0.018 * s, z + 0.012 * s), Vector3(0.07 * s, 0.018 * s, z - 0.012 * s), ink, Vector3(1, 0.4, side * 0.6).normalized())
 		if _ears_up:
-			flap(hk, Vector3(-0.02 * s, 0.03 * s, side * 0.025 * s), Vector3(0.03 * s, 0.035 * s, side * 0.045 * s), Vector3(-0.01 * s, 0.11 * s, side * 0.05 * s), c1, c0)
+			# One ear torn short in a fight, on some.
+			var tip := 0.065 if side == _torn else 0.11
+			flap(hk, Vector3(-0.02 * s, 0.03 * s, side * 0.025 * s), Vector3(0.03 * s, 0.035 * s, side * 0.045 * s), Vector3(-0.01 * s, tip * s, side * 0.05 * s), c1, c0)
 		else:
 			flap(hk, Vector3(-0.03 * s, 0.04 * s, side * 0.05 * s), Vector3(0.03 * s, 0.04 * s, side * 0.055 * s), Vector3(-0.005 * s, -0.06 * s, side * 0.07 * s), c0.darkened(0.15), c0)
 	hk.pop()
@@ -75,6 +119,34 @@ func _build_rig() -> void:
 		leg("f" + sfx, body, Vector3(0.14 * s, -0.1 * s, side * 0.055 * s), 0.15 * s, 0.15 * s, 0.075 * s, leg_c, c0.darkened(0.3), 0.05 * s)
 		leg("b" + sfx, body, Vector3(-0.19 * s, -0.04 * s, side * 0.06 * s), 0.17 * s, 0.19 * s, 0.08 * s, leg_c, c0.darkened(0.3), 0.05 * s)
 	height = 0.62 * s
+
+
+## A point on the trunk's surface (the rings given to trunk() with 6 sides and
+## its default wobble, so it sits exactly on the faces), a hair proud of them:
+## at body x, on `side` (+1 is +Z), `u` from the widest line up the upper flank
+## toward the back (1) or down the lower flank toward the belly (-1).
+static func _flank(rings: Array, seed_value: int, x: float, side: int, u: float, s: float) -> Vector3:
+	var ri := 0
+	while ri < rings.size() - 2 and float(rings[ri + 1][0]) < x:
+		ri += 1
+	var t := clampf((x - float(rings[ri][0])) / (float(rings[ri + 1][0]) - float(rings[ri][0])), 0.0, 1.0)
+	# Hexagon corners, as Sculpt.loft lays them at phase PI / 6: +Z takes corners
+	# 3 (lower), 4 (widest) and 5 (upper); -Z takes 2, 1 and 0.
+	var mid_i := 4 if side > 0 else 1
+	var end_i := (5 if side > 0 else 0) if u >= 0.0 else (3 if side > 0 else 2)
+	var p := Vector3.ZERO
+	for k in 2:
+		var ring: Array = rings[ri + k]
+		var m := _corner(ring, seed_value, ri + k, mid_i)
+		var e := _corner(ring, seed_value, ri + k, end_i)
+		p += m.lerp(e, absf(u)) * (t if k == 1 else 1.0 - t)
+	return p + Vector3(0, 0.002 * s * signf(u), side * 0.005 * s)
+
+
+static func _corner(ring: Array, seed_value: int, ri: int, i: int) -> Vector3:
+	var a := PI / 6.0 + float(i) / 6.0 * TAU
+	var j := 1.0 + (Rng.hash01(seed_value, ri, i) - 0.5) * 2.0 * 0.06
+	return Vector3(float(ring[0]), float(ring[3]) + cos(a) * float(ring[1]) * j, -sin(a) * float(ring[2]) * j)
 
 
 ## A blunt nose: a little dark pyramid on the end of the muzzle.

@@ -190,6 +190,28 @@ static func quad_gait(d: Dictionary, phase: float, kind: StringName, swing: floa
 	return 0.5 + 0.5 * cos(2.0 * TAU * phase)
 
 
+## Something taken off a machine and hung on an animal: a plate tag on `bone`,
+## hanging from `at` along `down` with its face toward `out` (FOUND, exact), and,
+## when `lit`, a status pip that never went out (GLOW). `size` is its long side.
+func machine_tag(bone: int, at: Vector3, down: Vector3, out: Vector3, size: float, lit: bool) -> void:
+	var k := rig.kit(bone, &"tag", SkinRig.FOUND)
+	var y := -down.normalized()
+	var z := out - y * out.dot(y)
+	z = z.normalized()
+	var x := y.cross(z)
+	k.push(Transform3D(Basis(x, y, z), at))
+	var w := size * 0.72
+	Sculpt.slab(k, PackedVector2Array([Vector2(-w * 0.5, -size), Vector2(w * 0.5, -size), Vector2(w * 0.5, -size * 0.18), Vector2(0.0, 0.0), Vector2(-w * 0.5, -size * 0.18)]), size * 0.08, Palette.PLATE[4], Palette.PLATE[1])
+	Sculpt.card(k, Vector3(-w * 0.34, -size * 0.62, size * 0.085), Vector3(w * 0.34, -size * 0.62, size * 0.085), Vector3(w * 0.34, -size * 0.5, size * 0.085), Vector3(-w * 0.34, -size * 0.5, size * 0.085), Palette.FOUND[1], Vector3.BACK)
+	k.pop()
+	if lit:
+		var g := rig.kit(bone, &"tag", SkinRig.GLOW)
+		g.push(Transform3D(Basis(x, y, z), at))
+		var p := size * 0.14
+		Sculpt.card(g, Vector3(-p, -size * 0.36 - p, size * 0.09), Vector3(p, -size * 0.36 - p, size * 0.09), Vector3(p, -size * 0.36 + p, size * 0.09), Vector3(-p, -size * 0.36 + p, size * 0.09), Palette.EMBER[4], Vector3.BACK)
+		g.pop()
+
+
 ## Override: ground covered by one gait cycle at a speed.
 func _stride(speed: float) -> float:
 	return 0.5 + speed * 0.12

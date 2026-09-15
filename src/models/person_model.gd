@@ -21,6 +21,14 @@ extends Node3D
 ##   set_held(item)                the held tool in the right hand (&"" = bare hands)
 ##   set_look(spec)                see PersonLook: build, hat, coat, hair, shirt, trouser, boot, salvage...
 ## Read-only helpers: busy(), action_progress(), hand_position(), tool_tip().
+##
+## Cost (a village is dozens of these): `pose_hz` > 0 poses the skeleton on a
+## stepped clock at that rate instead of every frame, staggered per person so a
+## crowd never poses on the same frame, and skips the pose while the figure is
+## hidden, off camera, or frozen and already posed. Timers, gait and actions
+## still advance every call, so busy() and action_progress() stay exact. The
+## player keeps 0 (every frame: a fight must read on the frame it happens);
+## villagers use CROWD_HZ. The shadow twin shows only while the sun casts.
 
 var look: Dictionary = PersonLook.normalize({})
 var held: StringName = &""
@@ -31,7 +39,20 @@ var rig: SkinRig
 
 const PERSON_SHADER := preload("res://src/models/people/person.gdshader")
 
+## Poses per second; 0 = every animate() call. See the header.
+var pose_hz := 0.0
+## Skeleton poses applied so far (tests and budgets count them).
+var poses_applied := 0
+const CROWD_HZ := 12.0
+## The key light of the world this figure stands in (SkyLight.sun), set by
+## whoever places it (35_folk for villagers and the player). Null: the shadow
+## twin always shows.
+var sun: DirectionalLight3D
+
 var _dims: Dictionary = PersonBody.dims(&"man")
+var _step_left := -1.0
+var _posed_frozen := false
+var _sun_check := 0.0
 var _phase := 0.0
 var _clock := 0.0
 var _speed := 0.0
@@ -58,9 +79,9 @@ func build(mat: Material) -> void:
 
 func set_look(spec: Dictionary) -> void:
 	var next := PersonLook.normalize(spec)
-	var rebuild_bones: bool = rig != null and next.build != look.build
+	var rebuild_bones: bool = rig != null and (next.build != look.build or next.gaunt != look.gaunt)
 	look = next
-	_dims = PersonBody.dims(look.build)
+	_dims = PersonBody.dims(look.build, look.gaunt)
 	if rig == null:
 		return
 	if rebuild_bones:
@@ -93,6 +114,7 @@ func play_action(a: StringName, seconds: float) -> void:
 		_action_len = 0.0
 	action_left = _action_len
 	_frozen = -1.0
+	_posed_frozen = false
 	# Swings and dodges must read on the first frame: no blend-in to wait for.
 	if a == &"swing" or a == &"dodge" or a == &"hurt":
 		_weight = 1.0
@@ -104,6 +126,8 @@ func pose_at(a: StringName, t: float, seconds: float = 0.0) -> void:
 	_action_t = t
 	_frozen = t
 	_weight = 1.0
+	_posed_frozen = false
+	_step_left = 0.0
 	animate(0.0, 0.0)
 
 
@@ -129,20 +153,36 @@ func animate(speed: float, delta: float) -> void:
 	var leg: float = _dims.thigh + _dims.shin + _dims.boot
 	if _speed > 0.05:
 		_phase = fposmod(_phase + delta * _speed / PersonAnim.cycle_length(_speed, leg), 1.0)
-	var klass := HeldTools.klass(held)
-	var pose := PersonAnim.locomotion(_phase, _speed, _clock, _dims, klass)
+	_shadow_follows_sun(delta)
+	# The action's clock runs on every call; only the pose waits for its step.
+	var ended := &""
+	var ended_len := 0.0
 	if action != &"":
 		if _frozen < 0.0:
 			_action_t += delta
 		if _action_len > 0.0 and _action_t >= _action_len and _frozen < 0.0:
-			_last = _resolved(action, _action_len, _action_len)
+			ended = action
+			ended_len = _action_len
 			_end_action()
 		else:
 			action_left = maxf(0.0, _action_len - _action_t)
 			_weight = minf(1.0, _weight + delta * 18.0) if delta > 0.0 else _weight
-			_last = _resolved(action, _action_t, _action_len)
-	if action == &"" and _weight > 0.0:
+	if action == &"" and ended == &"" and _weight > 0.0:
 		_weight = maxf(0.0, _weight - delta * 7.0)
+	var want := 0.0 if is_nan(gaze) or _weight > 0.0 else gaze
+	_gaze_now = lerpf(_gaze_now, want, 1.0 - exp(-5.0 * delta)) if delta > 0.0 else want
+	if not _pose_due(delta):
+		if ended != &"":
+			# The last frame of an action that ended between steps is still what
+			# the body blends out of.
+			_last = _resolved(ended, ended_len, ended_len)
+		return
+	var klass := HeldTools.klass(held)
+	var pose := PersonAnim.locomotion(_phase, _speed, _clock, _dims, klass)
+	if ended != &"":
+		_last = _resolved(ended, ended_len, ended_len)
+	elif action != &"":
+		_last = _resolved(action, _action_t, _action_len)
 	if _last != null and _weight > 0.0:
 		# A copy: _last may be a cached pose other people are wearing too.
 		var act := _last.copy()
@@ -152,8 +192,6 @@ func animate(speed: float, delta: float) -> void:
 				act.rot[b] = act.r(b).lerp(pose.r(b), move)
 				act.off[b] = act.o(b).lerp(pose.o(b), move)
 		pose = PersonAnim.mix(pose, act, _smooth(_weight))
-	var want := 0.0 if is_nan(gaze) or _weight > 0.0 else gaze
-	_gaze_now = lerpf(_gaze_now, want, 1.0 - exp(-5.0 * delta)) if delta > 0.0 else want
 	if absf(_gaze_now) > 0.002 and _weight <= 0.0:
 		# A watched head overrides the idle glance; the chest turns a little with it.
 		var h := pose.r(&"head")
@@ -161,6 +199,45 @@ func animate(speed: float, delta: float) -> void:
 		var s := pose.r(&"spine")
 		pose.rot[&"spine"] = Vector3(s.x, s.y + _gaze_now * 0.25, s.z)
 	_apply(pose)
+	_posed_frozen = _frozen >= 0.0
+
+
+## Whether this call should pose the skeleton (see the header). Always on a
+## zero delta (a posed frame for a shot, a test or a rebuild).
+func _pose_due(delta: float) -> bool:
+	if pose_hz <= 0.0 or delta <= 0.0:
+		return true
+	if _step_left < 0.0:
+		# The stagger: each person's first step lands at its own point in the period.
+		_step_left = float(get_instance_id() % 97) / 97.0 / pose_hz
+	_step_left -= delta
+	if _step_left > 0.0:
+		return false
+	_step_left = fmod(_step_left, 1.0 / pose_hz) + 1.0 / pose_hz
+	if _posed_frozen:
+		return false
+	if is_inside_tree():
+		if not is_visible_in_tree():
+			return false
+		var cam := get_viewport().get_camera_3d()
+		if cam != null and not cam.is_position_in_frustum(global_position + Vector3(0, 0.7, 0)) and not cam.is_position_in_frustum(global_position):
+			return false
+	return true
+
+
+## The shadow twin draws only while the sun casts shadows: at night, in heavy
+## overcast, and indoors it is a skinned mesh drawn into a shadow map for nothing.
+## Whoever stands the figure in a world hands it that world's sun (`sun`); with
+## none the twin always shows.
+func _shadow_follows_sun(delta: float) -> void:
+	if rig == null or rig.shadow == null:
+		return
+	_sun_check -= delta
+	if _sun_check > 0.0:
+		return
+	_sun_check = 0.25
+	var s: DirectionalLight3D = sun if is_instance_valid(sun) else null
+	rig.shadow.visible = s == null or (s.visible and s.shadow_enabled)
 
 
 ## Resolved (IK-solved) action poses, shared by everyone of a build holding the
@@ -178,7 +255,7 @@ func _resolved(a: StringName, t: float, length: float) -> PersonAnim.Pose:
 		# Cheap (no IK) and it breathes for ever: never cached.
 		return PersonAnim.resolve(rig, PersonAnim.action(a, t, length, _dims, held), held)
 	var frame := roundi(tq * 60.0)
-	var key := "%s|%s|%s|%d|%d" % [look.build, held, a, roundi(length * 1000.0), frame]
+	var key := "%s|%d|%s|%s|%d|%d" % [look.build, look.gaunt, held, a, roundi(length * 1000.0), frame]
 	var hit: PersonAnim.Pose = _pose_cache.get(key)
 	if hit != null:
 		return hit
@@ -195,6 +272,8 @@ func _end_action() -> void:
 	_action_t = 0.0
 	_action_len = 0.0
 	_frozen = -1.0
+	# A released freeze moves again on the next step.
+	_posed_frozen = false
 
 
 static func _smooth(w: float) -> float:
@@ -203,6 +282,7 @@ static func _smooth(w: float) -> float:
 
 func _apply(p: PersonAnim.Pose) -> void:
 	_applied = p
+	poses_applied += 1
 	for i in rig.names.size():
 		var n := rig.names[i]
 		rig.pose(i, p.r(n), p.o(n))
@@ -214,8 +294,8 @@ func _make_rig() -> void:
 	if rig != null and rig.skeleton != null:
 		remove_child(rig.skeleton)
 		rig.skeleton.queue_free()
-	rig = PersonBody.make_rig(look.build)
-	_dims = PersonBody.dims(look.build)
+	rig = PersonBody.make_rig(look.build, look.gaunt)
+	_dims = PersonBody.dims(look.build, look.gaunt)
 	PersonBody.dress(rig, look)
 	HeldTools.build(rig, held)
 	rig.attach(self, _material(), true)
@@ -252,7 +332,7 @@ static func material() -> ShaderMaterial:
 
 ## Triangles in the body (and clothes, hair, salvage), excluding the held tool.
 func body_triangles() -> int:
-	return rig.triangle_count([&"body", &"salvage", &"salvage_glow", &"food"])
+	return rig.triangle_count([&"body", &"salvage", &"salvage_glow", &"gear", &"gear_glow", &"food"])
 
 
 func tool_triangles() -> int:
@@ -335,6 +415,43 @@ static func gallery() -> Array:
 		kit.append([spec, &"", String(part)])
 		k += 1
 	out.append_array(_items("people salvage", kit, mat, 4, 0.72, FACE_CAMERA))
+
+	# The last people of each land, dressed by its hazards: four to a land.
+	for def: BiomeDef in BiomeRegistry.all():
+		var folk: Array = []
+		var n := 0
+		for spec: Dictionary in PersonLook.villagers(500 + hash(def.id) % 1000, 4, def.hazards):
+			folk.append([spec, &"", String(spec.trade) if n == 0 else ""])
+			n += 1
+		out.append_array(_items("people land %s" % def.id, folk, mat, 4, 0.6, FACE_CAMERA))
+
+	# Each piece of mended gear, seen from the front and from behind.
+	var gear_rows: Array = []
+	k = 0
+	for g: StringName in PersonLook.GEAR:
+		var spec := PersonLook.random(60 + k, k)
+		spec.gear = [g]
+		spec.salvage = []
+		spec.coat = [&"none", &"jerkin"][k % 2]
+		spec.hat = &"none" if g == &"goggles" else spec.hat
+		gear_rows.append([spec, &"", String(g)])
+		k += 1
+	for start in range(0, gear_rows.size(), 2):
+		var g2 := Node3D.new()
+		var labels: PackedStringArray = []
+		for i in range(start, mini(start + 2, gear_rows.size())):
+			var row: Array = gear_rows[i]
+			for turn in 2:
+				var pm := make(row[0], &"", mat)
+				pm.rotation.y = FACE_CAMERA + (PI if turn == 1 else 0.0)
+				_place(g2, pm, (i - start) * 2 + turn, 2, 0.7, row[2])
+			labels.append(String(row[2]))
+		out.append({"name": "people gear: " + " ".join(labels), "node": g2})
+
+	var trades: Array = []
+	for tr: StringName in PersonLook.TRADES:
+		trades.append([PersonLook.dress(PersonLook.random(77, trades.size()), {}, tr, 77 + trades.size()), &"", String(tr)])
+	out.append_array(_items("people trades", trades, mat, 3, 0.62, FACE_CAMERA))
 
 	var gait := Node3D.new()
 	var gaits: Array = [[PersonAnim.GAIT_WALK, 0.0], [PersonAnim.GAIT_WALK, 0.25], [PersonAnim.GAIT_RUN, 0.0], [PersonAnim.GAIT_RUN, 0.25]]

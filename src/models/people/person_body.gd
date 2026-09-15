@@ -25,11 +25,32 @@ const BONES: Array[StringName] = [
 ]
 
 
-## Every size a builder or animator needs, in units, for a build.
-static func dims(build: StringName) -> Dictionary:
+## How hunger thins a body, per `gaunt` step: [chest, hip, girth, limb, stoop +, cheek].
+## Width goes first and the limbs with it; height never changes, so the rig's
+## lengths and every pose stay the build's own.
+const GAUNT := [
+	[1.0, 1.0, 1.0, 1.0, 0.0, 1.0],
+	[0.93, 0.94, 0.88, 0.86, 0.03, 0.94],
+	[0.86, 0.88, 0.78, 0.74, 0.07, 0.88],
+]
+
+
+## Every size a builder or animator needs, in units, for a build (and how gaunt).
+static func dims(build: StringName, gaunt: int = 0) -> Dictionary:
 	var s := PersonLook.shape(build)
+	var g: Array = GAUNT[clampi(gaunt, 0, 2)]
+	if gaunt > 0:
+		s = s.duplicate()
+		s.chest = float(s.chest) * float(g[0])
+		s.hip = float(s.hip) * float(g[1])
+		s.girth = float(s.girth) * float(g[2])
+		s.limb = float(s.limb) * float(g[3])
+		s.stoop = float(s.stoop) + float(g[4])
+		s.belly = 0.0
 	var leg: float = s.leg
 	var d := {}
+	d.gaunt = clampi(gaunt, 0, 2)
+	d.cheek = float(g[5])
 	# Heights run ~8% over the source's 1.35 so the figure survives the camera's
 	# vertical foreshortening; heads are taller than they are deep, because the
 	# crown is seen nearly as large as the face from this pitch.
@@ -59,8 +80,8 @@ static func dims(build: StringName) -> Dictionary:
 	return d
 
 
-static func make_rig(build: StringName) -> SkinRig:
-	var d := dims(build)
+static func make_rig(build: StringName, gaunt: int = 0) -> SkinRig:
+	var d := dims(build, gaunt)
 	var r := SkinRig.new()
 	var root := r.bone(&"root", -1, Vector3.ZERO)
 	var hips := r.bone(&"hips", root, Vector3(0, d.hip_y, 0))
@@ -110,16 +131,24 @@ class Wear:
 	var hat: Color
 	var hat_hi: Color
 	var hat_lo: Color
-	## Coat that covers the torso and sleeves (long, oilskin).
+	## Coat that covers the torso and sleeves (long, oilskin, fur).
 	var long_coat := false
+	## How far the outer layer stands off the body (a fur coat is bulky).
+	var pad := 0.0
 	var extras: Array = []
 	var salvage: Array = []
+	var gear: Array = []
+
+
+## The resolved Wear for a normalized look (PersonGear and tests read it).
+static func wear_of(look: Dictionary) -> Wear:
+	return _wear(look)
 
 
 static func _wear(look: Dictionary) -> Wear:
 	var w := Wear.new()
 	w.look = look
-	w.d = dims(look.build)
+	w.d = dims(look.build, int(look.get("gaunt", 0)))
 	w.seed_value = hash(PersonLook.signature(look) + str(look.get("hair", "")) + str(look.get("shirt", "")))
 	w.skin = PersonLook.skin_values(look)
 	w.hair = PersonLook.hair_values(look)
@@ -136,10 +165,48 @@ static func _wear(look: Dictionary) -> Wear:
 	w.hat = PersonLook.colour(look.hat_col)
 	w.hat_hi = PersonLook.step(look.hat_col, 1)
 	w.hat_lo = PersonLook.step(look.hat_col, -1)
-	w.long_coat = look.coat == &"long" or look.coat == &"oilskin"
+	w.long_coat = look.coat == &"long" or look.coat == &"oilskin" or look.coat == &"fur"
+	w.pad = 0.03 if look.coat == &"fur" else (0.012 if w.long_coat else 0.0)
 	w.extras = look.extras
 	w.salvage = look.salvage
+	w.gear = look.get("gear", [])
 	return w
+
+
+## The torso's section at height `y` on the spine bone: Vector3(rx, rz, cx) of
+## the outer layer, following the rings _torso() lofts.
+static func torso_ring(w: Wear, y: float) -> Vector3:
+	var d := w.d
+	var top: float = d.torso - 0.04
+	var hd: float = d.depth
+	var belly: float = d.belly
+	var rows: Array = [
+		[0.0, hd * 0.5, d.waist * 0.5, 0.0],
+		[top * 0.42, hd * 0.52 + belly * 0.6, lerpf(d.waist, d.chest, 0.65) * 0.5, belly * 0.7],
+		[top * 0.8, hd * 0.56, d.chest * 0.5, 0.008],
+		[top, hd * 0.44, d.chest * 0.45, -0.006],
+	]
+	var a: Array = rows[0]
+	var b: Array = rows[rows.size() - 1]
+	var t := 0.0
+	if y <= float(a[0]):
+		b = a
+	elif y >= float(b[0]):
+		a = b
+	else:
+		for i in rows.size() - 1:
+			if y >= float(rows[i][0]) and y <= float(rows[i + 1][0]):
+				a = rows[i]
+				b = rows[i + 1]
+				t = (y - float(a[0])) / maxf(1e-5, float(b[0]) - float(a[0]))
+	return Vector3(lerpf(a[1], b[1], t) + w.pad, lerpf(a[2], b[2], t) + w.pad, lerpf(a[3], b[3], t))
+
+
+## How far forward (or back) of the spine the outer layer's flat face is at `y`.
+static func torso_x(w: Wear, y: float, back: bool = false) -> float:
+	var ring := torso_ring(w, y)
+	# 8 sides with a flat face front and back: the face is cos(PI/8) of the radius.
+	return ring.z - ring.x * 0.924 if back else ring.z + ring.x * 0.924
 
 
 ## Dress a fresh rig with a normalized look. Geometry only; call rig.attach/rebuild after.
@@ -152,9 +219,17 @@ static func dress(r: SkinRig, look: Dictionary) -> void:
 	_head(r, w)
 	_extras(r, w)
 	_salvage(r, w)
+	_patches(r, w)
+	PersonGear.build(r, w)
 	# Food (hidden at rest by bone scale; shown while eating): a heel of bread.
 	var food := r.kit(r.find(&"food"), &"food")
 	Sculpt.loft(food, [[-0.035, 0.03, 0.03, 0.02, 0.0], [0.0, 0.06, 0.045, 0.02, 0.0], [0.04, 0.035, 0.03, 0.02, 0.0]], 3, [Palette.SAND[3], Palette.SAND[4]], false, true, 0.3, 0.12, 11)
+
+
+## A triangle seen from both sides: pelt ends, rag strips.
+static func flap(k: MeshKit, a: Vector3, b: Vector3, c: Vector3, col: Color, back: Color) -> void:
+	k.tri(a, b, c, col)
+	k.tri(a, c, b, back)
 
 
 static func _skin(k: MeshKit, on: bool) -> void:
@@ -244,6 +319,9 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 		&"jerkin":
 			length = d.thigh * 0.28
 			flare = 0.03
+		&"fur":
+			length = d.thigh + d.shin * 0.3
+			flare = 0.13
 	if length == 0.0 and cut == &"smock":
 		length = d.thigh * 0.6
 		flare = 0.06
@@ -264,11 +342,41 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 			[y2, hd * 0.55 * lerpf(1.0, seat, 0.5) + flare * 0.5, over + flare * 0.45, -flare * 0.2, 0.0],
 			[y1, hd * 0.55 * lerpf(1.0, seat, 0.5) + flare * 1.04, over + flare * 1.04, -flare * 0.48, 0.0],
 		]
+		var fur: bool = w.look.coat == &"fur"
 		if length > d.thigh * 0.5:
 			# Long skirts part at the front so the legs stride through them.
-			Sculpt.skirt(hem, rings, 5, col, lo, 0.8, PI, 0.06, w.seed_value + 2)
+			Sculpt.skirt(hem, rings, 5, col, lo, 0.8, PI, 0.16 if fur else 0.06, w.seed_value + 2)
 		else:
 			Sculpt.loft(hem, rings, 6, [col, lo], false, false, PI / 6, 0.06, w.seed_value + 2)
+		if fur:
+			# A ragged hem of pelt ends hanging past the skirt's edge.
+			var trim := PersonLook.step(w.look.coat_col, 2)
+			var rx: float = rings[2][1]
+			var rz: float = rings[2][2]
+			var cx: float = rings[2][3]
+			for i in 7:
+				var a := PI * 0.3 + (i + 0.5) / 7.0 * PI * 1.4
+				var da := PI * 1.4 / 7.0 * 0.45
+				var drop := 0.05 + Rng.hash01(w.seed_value, i, 85) * 0.05
+				var e0 := Vector3(cx + cos(a - da) * rx, y1 + 0.01, sin(a - da) * rz)
+				var e1 := Vector3(cx + cos(a + da) * rx, y1 + 0.01, sin(a + da) * rz)
+				var tip := Vector3(cx + cos(a) * rx * 1.04, y1 - drop, sin(a) * rz * 1.04)
+				flap(hem, e0, tip, e1, trim if i % 2 else w.coat_lo, w.coat_lo)
+	if w.look.coat == &"wrap":
+		# A rope sash over the wrap's ends, and strips of the same cloth hanging
+		# from it: no hem, just what was left of the length.
+		Sculpt.loft(k, [[0.06, hd * 0.53, cz * 0.53 + 0.004, 0.0, 0.0], [0.11, hd * 0.52, cz * 0.52 + 0.004, 0.0, 0.0]], 6, Palette.SAND[3], false, false, PI / 6, 0.05, w.seed_value + 3)
+		for i in 5:
+			var a := PI * 0.55 + i / 4.0 * PI * 0.9 + (Rng.hash01(w.seed_value, i, 86) - 0.5) * 0.3
+			var half := 0.035 + Rng.hash01(w.seed_value, i, 87) * 0.02
+			var drop: float = d.thigh * (0.38 + Rng.hash01(w.seed_value, i, 88) * 0.3)
+			var o := Vector3(cos(a) * (hd * 0.56 + 0.012), 0.08, sin(a) * (cz * 0.56 + 0.012))
+			var side := Vector3(-sin(a), 0, cos(a)) * half
+			var out := Vector3(cos(a), 0, sin(a))
+			var sway := out * (0.02 + drop * 0.12)
+			var c := w.coat if i % 2 == 0 else w.coat_lo
+			hem.quad(o - side, o + side, o + side + Vector3(0, -drop, 0) + sway, o - side * 0.6 + Vector3(0, -drop * 0.9, 0) + sway, c)
+			hem.quad(o - side * 0.6 + Vector3(0, -drop * 0.9, 0) + sway, o + side + Vector3(0, -drop, 0) + sway, o + side, o - side, w.coat_lo)
 	if w.extras.has(&"apron"):
 		var ay: float = -d.thigh * 0.8
 		var ax: float = hd * 0.55 + flare + 0.018
@@ -287,7 +395,7 @@ static func _torso(r: SkinRig, w: Wear) -> void:
 	var coat: StringName = w.look.coat
 	var body := w.coat if w.long_coat else w.shirt
 	var body_hi := w.coat_hi if w.long_coat else w.shirt_hi
-	var pad := 0.012 if w.long_coat else 0.0
+	var pad := w.pad
 	Sculpt.loft(k, [
 		[0.0, hd * 0.5 + pad, waist * 0.5 + pad, 0.0, 0.0],
 		[top * 0.42, hd * 0.52 + belly * 0.6 + pad, lerpf(waist, d.chest, 0.65) * 0.5 + pad, belly * 0.7, 0.0],
@@ -296,7 +404,7 @@ static func _torso(r: SkinRig, w: Wear) -> void:
 		[top + 0.045, 0.075, 0.085, -0.012, 0.0],
 	], 8, [body, body, body, body_hi], false, true, PI / 8, 0.035, w.seed_value + 4)
 	# Neck: in shade, so the head reads as sitting on the shoulders, not floating.
-	if coat != &"oilskin" and not w.extras.has(&"neckerchief"):
+	if coat != &"oilskin" and coat != &"fur" and not w.extras.has(&"neckerchief"):
 		_skin(k, true)
 		Sculpt.loft(k, [[top + 0.02, 0.05, 0.055, -0.01, 0.0], [top + 0.1, 0.048, 0.052, -0.004, 0.0]], 5, w.skin[0], false, false, PI / 5)
 		_skin(k, false)
@@ -320,6 +428,35 @@ static func _torso(r: SkinRig, w: Wear) -> void:
 			for i in 3:
 				var y := top * (0.2 + i * 0.24)
 				Sculpt.card(k, Vector3(front + 0.004, y, -0.014), Vector3(front + 0.004, y, 0.014), Vector3(front + 0.004, y + 0.028, 0.014), Vector3(front + 0.004, y + 0.028, -0.014), Palette.COPPER[2], Vector3.RIGHT)
+		&"fur":
+			# A shaggy collar of pelts turned up round the neck: the outline of a
+			# person dressed in whatever died.
+			var trim := PersonLook.step(w.look.coat_col, 2)
+			var ring_x := hd * 0.47 + pad
+			var ring_z: float = d.chest * 0.46 + pad
+			var n := 9
+			for i in n:
+				var a := float(i) / n * TAU + Rng.hash01(w.seed_value, i, 81) * 0.3
+				var a2 := a + TAU / n * 1.1
+				var base_y := top - 0.03
+				var p0 := Vector3(cos(a) * ring_x, base_y, sin(a) * ring_z)
+				var p1 := Vector3(cos(a2) * ring_x, base_y, sin(a2) * ring_z)
+				var am := (a + a2) * 0.5
+				var reach := 1.3 + Rng.hash01(w.seed_value, i, 82) * 0.25
+				var tip := Vector3(cos(am) * ring_x * reach, top + 0.05 + Rng.hash01(w.seed_value, i, 83) * 0.04, sin(am) * ring_z * reach)
+				flap(k, p0, tip, p1, trim if i % 2 == 0 else w.coat_hi, w.coat_lo)
+		&"wrap":
+			# Cloth bound round and round over the shirt against heat and ash: bands
+			# laid on the slant, each crossing the last.
+			var tilts: Array[float] = [0.42, -0.36, 0.3]
+			var heights: Array[float] = [top * 0.28, top * 0.56, top * 0.82]
+			for i in 3:
+				var ring := torso_ring(w, heights[i])
+				var t := tilts[i] + (Rng.hash01(w.seed_value, i, 84) - 0.5) * 0.12
+				var rz := ring.y / cos(t) + 0.014
+				k.push(Transform3D(Basis(Vector3(1, 0, 0), t), Vector3(0, heights[i], 0)))
+				Sculpt.loft(k, [[-0.036, ring.x + 0.016, rz, ring.z, 0.0], [0.036, ring.x + 0.014, rz - 0.004, ring.z, 0.0]], 7, w.coat if i % 2 == 0 else w.coat_hi, false, false, PI / 7, 0.06, w.seed_value + 90 + i)
+				k.pop()
 
 
 # ---------------------------------------------------------------- arms and hands
@@ -342,8 +479,17 @@ static func _arms(r: SkinRig, w: Wear) -> void:
 			[0.0, t * 0.56, t * 0.56, 0.0, 0.0],
 			[-float(d.upper) - 0.01, t * 0.44, t * 0.46, 0.006, 0.0],
 		], 5, [shoulder, sleeve], true, false, PI / 5, 0.05, s)
+		if coat == &"fur":
+			# Pelt sleeves: bulkier, the cuff turned back in the trim.
+			Sculpt.loft(ak, [[-float(d.upper) * 0.2, t * 0.62, t * 0.64, 0.0, 0.0], [-float(d.upper) * 0.8, t * 0.56, t * 0.58, 0.004, 0.0]], 5, w.coat_lo, false, false, PI / 5, 0.12, s + 5)
 		var fk := r.kit(r.find(StringName("fore" + sfx)))
 		var fl: float = d.fore
+		if coat == &"wrap":
+			for i in 2:
+				var by := -fl * (0.25 + i * 0.42)
+				Sculpt.loft(fk, [[by - 0.028, t * 0.5, t * 0.52, 0.0, 0.0], [by + 0.028, t * 0.5, t * 0.52, 0.004, 0.0]], 5, w.coat if i == 0 else w.coat_hi, false, false, PI / 5, 0.08, s + 6 + i)
+		elif coat == &"fur":
+			Sculpt.loft(fk, [[-fl * 0.82, t * 0.52, t * 0.54, 0.008, 0.0], [-fl * 0.66, t * 0.54, t * 0.56, 0.006, 0.0]], 5, PersonLook.step(w.look.coat_col, 2), false, false, PI / 5, 0.14, s + 6)
 		if rolled:
 			_skin(fk, true)
 			Sculpt.loft(fk, [
@@ -413,10 +559,12 @@ static func _skull_rows(d: Dictionary, hatted: bool) -> Array:
 	var hh: float = d.head
 	var hw: float = d.head_w
 	var hd: float = d.head_d
+	# Hunger hollows the cheeks first.
+	var cheek: float = d.get("cheek", 1.0)
 	var rows: Array = [
-		[0.0, hd * 0.24, hw * 0.2, hd * 0.2, 0.0],
-		[hh * 0.2, hd * 0.44, hw * 0.37, hd * 0.12, 0.0],
-		[hh * 0.46, hd * 0.54, hw * 0.5, hd * 0.03, 0.0],
+		[0.0, hd * 0.24, hw * 0.2 * cheek, hd * 0.2, 0.0],
+		[hh * 0.2, hd * 0.44, hw * 0.37 * cheek * cheek, hd * 0.12, 0.0],
+		[hh * 0.46, hd * 0.54, hw * 0.5 * cheek, hd * 0.03, 0.0],
 		[hh * 0.72, hd * 0.53, hw * 0.49, -0.006, 0.0],
 	]
 	if not hatted:
@@ -631,6 +779,57 @@ static func _hat(k: MeshKit, w: Wear, hat: StringName) -> void:
 				[hh * 1.08, rx * 0.4, rz * 0.44, -0.04, 0.0],
 			], 7, [c, hi], false, true, 0.0, 0.05, s + 3)
 			Sculpt.loft(k, [[hh * 0.3, 0.045, 0.06, -hd * 0.58, 0.0], [-hh * 0.4, 0.02, 0.07, -hd * 0.66, 0.03]], 4, lo, true, true, PI / 4, 0.12, s + 2)
+		&"hood":
+			# A cloth hood pulled up: open round the face, a slack peak falling back.
+			# The lower part is open at the front; the crown is closed, so the
+			# camera's pitch never looks into it.
+			Sculpt.skirt(k, [
+				[hh * 0.08, rx * 1.16, rz * 1.14, -0.02, 0.0],
+				[hh * 0.74, rx * 1.1, rz * 1.1, -0.02, 0.0],
+			], 6, c, lo, 0.74, PI, 0.06, s)
+			Sculpt.loft(k, [
+				[hh * 0.72, rx * 1.1, rz * 1.1, -0.02, 0.0],
+				[hh * 1.02, rx * 0.98, rz * 0.98, -0.04, 0.0],
+				[hh * 1.18, rx * 0.5, rz * 0.52, -0.1, 0.0],
+			], 7, [c, hi], false, false, 0.0, 0.07, s + 3)
+			# The slack point sags down the back of the head.
+			var ring: Array[Vector3] = []
+			for i in 7:
+				var a := float(i) / 7.0 * TAU
+				ring.append(Vector3(-0.1 + cos(a) * rx * 0.5, hh * 1.18, sin(a) * rz * 0.52))
+			var point := Vector3(-hd * 0.95, hh * 0.9, 0.0)
+			for i in 7:
+				k.tri(ring[(i + 1) % 7], ring[i], point, lo if i % 2 else c)
+		&"furhat":
+			# A pelt crown with a rolled brim and flaps down over the ears.
+			Sculpt.loft(k, [
+				[hh * 0.6, rx * 1.14, rz * 1.14, -0.015, 0.0],
+				[hh * 0.76, rx * 1.22, rz * 1.22, -0.02, 0.0],
+				[hh * 0.86, rx * 1.04, rz * 1.04, -0.022, 0.0],
+				[hh * 1.16, rx * 0.9, rz * 0.88, -0.04, 0.0],
+			], 7, [PersonLook.step(w.look.hat_col, 2), c, c], false, true, 0.0, 0.12, s)
+			# Shag, so it never reads as a helmet: many short tufts lying flat off the
+			# crown's edge and hanging off the rolled brim. Short and flat, the
+			# outline goes ragged all round instead of rising into two points.
+			var trim := PersonLook.step(w.look.hat_col, 1)
+			for i in 9:
+				var a := float(i) / 9.0 * TAU + Rng.hash01(s, i, 7) * 0.4
+				var out := Vector3(cos(a), 0, sin(a))
+				var base := Vector3(-0.04 + cos(a) * rx * 0.78, hh * 1.15, sin(a) * rz * 0.76)
+				var side_v := Vector3(-sin(a), 0, cos(a)) * 0.022
+				var tip := Vector3(-0.04 + cos(a) * rx * (0.98 + Rng.hash01(s, i, 8) * 0.1), hh * (1.16 + Rng.hash01(s, i, 9) * 0.04), sin(a) * rz * (0.98 + Rng.hash01(s, i, 8) * 0.1))
+				flap(k, base - side_v, tip, base + side_v, trim if i % 2 else hi, lo)
+				var b2 := Vector3(-0.02 + cos(a) * rx * 1.18, hh * 0.8, sin(a) * rz * 1.18) + out * 0.004
+				var t2 := Vector3(-0.02 + cos(a) * rx * 1.3, hh * (0.68 - Rng.hash01(s, i, 10) * 0.05), sin(a) * rz * 1.3)
+				flap(k, b2 - side_v, t2, b2 + side_v, trim if i % 2 == 0 else c, lo)
+			for side: int in [-1, 1]:
+				var ez := side * (rz * 1.12)
+				var a := Vector3(-0.05, hh * 0.64, ez)
+				var b := Vector3(0.06, hh * 0.64, ez)
+				var cc := Vector3(0.045, hh * 0.22, ez + side * 0.012)
+				var dd := Vector3(-0.035, hh * 0.18, ez + side * 0.012)
+				Sculpt.card(k, a, b, cc, dd, c, Vector3(0, 0, side))
+				Sculpt.card(k, a, b, cc, dd, lo, Vector3(0, 0, -side))
 		&"souwester":
 			# Brim turned up in front and long and low behind, to shed rain off the collar.
 			Sculpt.loft(k, [[hh * 0.64, rx * 1.03, rz * 1.03, -0.014, 0.0], [hh * 1.12, rx * 0.72, rz * 0.72, -0.035, 0.0]], 7, c, false, true, 0.0, 0.04, s)
@@ -673,6 +872,13 @@ static func _extras(r: SkinRig, w: Wear) -> void:
 			[top * 0.5, hd * 0.66, d.chest * 0.6, -0.03, 0.0],
 			[top + 0.06, hd * 0.4, d.chest * 0.34, -0.012, 0.0],
 		], 6, w.hat, false, false, PI / 6, 0.08, w.seed_value + 51, 0.8, PI)
+	if w.look.hat == &"hood":
+		# The hood's cape, over the shoulders: it stays with the body when the head turns.
+		var pad := w.pad
+		Sculpt.skirt(tk, [
+			[top - 0.13, hd * 0.64 + pad, d.chest * 0.6 + pad, -0.012, 0.0],
+			[top + 0.07, hd * 0.44 + pad, d.chest * 0.34 + pad, -0.02, 0.0],
+		], 7, w.hat, w.hat_lo, 0.8, PI, 0.08, w.seed_value + 50)
 	if w.extras.has(&"neckerchief"):
 		var nx := hd * 0.44
 		tk.tri(Vector3(nx, top + 0.03, -0.07), Vector3(nx + 0.04, top - 0.07, 0.0), Vector3(nx, top + 0.03, 0.07), Palette.RUST[3])
@@ -805,6 +1011,29 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				glass.pop()
 				var band := r.kit(r.find(&"head"), &"salvage")
 				Sculpt.loft(band, [[d.head * (EYE_Y - 0.04), d.head_d * 0.56, d.head_w * 0.53, 0.0, 0.0], [d.head * (EYE_Y + 0.08), d.head_d * 0.56, d.head_w * 0.53, -0.004, 0.0]], 7, Palette.INK[2], false, false, 0.0)
+			&"breastplate":
+				# A machine's panel worn over the chest, laced on with cord over both
+				# shoulders; its ruled stencil still says what it was cut from.
+				var top: float = d.torso - 0.04
+				var y: float = top * 0.56
+				var px: float = torso_x(w, y) + 0.016
+				var k := r.kit(r.find(&"spine"), &"salvage", SkinRig.FOUND)
+				k.push(Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)).rotated(Vector3(0, 0, 1), 0.12), Vector3(px, y, 0.0)))
+				var pw: float = d.chest * 0.62
+				Sculpt.slab(k, _hexplate(pw, top * 0.62, 0.05, 0.0), 0.012, face, edge)
+				Sculpt.slab(k, PackedVector2Array([Vector2(-0.012, -top * 0.26), Vector2(0.012, -top * 0.26), Vector2(0.012, top * 0.26), Vector2(-0.012, top * 0.26)]), 0.018, dim, edge)
+				var mark := Palette.FOUND[1]
+				Sculpt.card(k, Vector3(-pw * 0.38, top * 0.19, 0.0125), Vector3(-pw * 0.08, top * 0.19, 0.0125), Vector3(-pw * 0.08, top * 0.23, 0.0125), Vector3(-pw * 0.38, top * 0.23, 0.0125), mark, Vector3.BACK)
+				k.pop()
+				var lace := r.kit(r.find(&"spine"), &"salvage")
+				var sx: float = torso_x(w, top) + 0.008
+				var bx: float = torso_x(w, top, true) - 0.008
+				for sd: int in [-1, 1]:
+					var pz: float = sd * pw * 0.42
+					Sculpt.card(lace, Vector3(px + 0.004, y + top * 0.28, pz - 0.014), Vector3(px + 0.004, y + top * 0.28, pz + 0.014), Vector3(sx, top + 0.02, sd * d.chest * 0.3 + 0.014), Vector3(sx, top + 0.02, sd * d.chest * 0.3 - 0.014), Palette.SAND[4], Vector3(1, 0.4, 0))
+					Sculpt.card(lace, Vector3(sx, top + 0.02, sd * d.chest * 0.3 - 0.014), Vector3(sx, top + 0.02, sd * d.chest * 0.3 + 0.014), Vector3(bx, top * 0.4, sd * d.chest * 0.2 + 0.014), Vector3(bx, top * 0.4, sd * d.chest * 0.2 - 0.014), Palette.SAND[3], Vector3(-1, 0.4, 0))
+					# A binding round the plate's edge where the cord knots on.
+					Sculpt.card(lace, Vector3(px + 0.02, y - top * 0.05, pz - 0.018), Vector3(px + 0.02, y - top * 0.05, pz + 0.018), Vector3(px + 0.02, y + top * 0.02, pz + 0.018), Vector3(px + 0.02, y + top * 0.02, pz - 0.018), Palette.SAND[4], Vector3.RIGHT)
 			&"mask":
 				var k := r.kit(r.find(&"head"), &"salvage")
 				Sculpt.loft(k, [
@@ -815,6 +1044,67 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				var cz: float = side * (d.head_w * 0.5 + 0.045)
 				Sculpt.loft(can, [[-d.head * 0.06, 0.05, 0.05, d.head_d * 0.2, cz], [d.head * 0.34, 0.05, 0.05, d.head_d * 0.2, cz]], 5, face, false, true, 0.0)
 				Sculpt.loft(can, [[-d.head * 0.16, 0.0, 0.0, d.head_d * 0.2, cz], [-d.head * 0.06, 0.035, 0.035, d.head_d * 0.2, cz]], 4, edge, false, false, 0.0)
+
+
+## Patches sewn over the worn places, each a scrap of some other cloth with a
+## dark seam round it, set a little crooked. Spots are taken in a seeded order;
+## a spot under plate, webbing or wraps is skipped.
+static func _patches(r: SkinRig, w: Wear) -> void:
+	var n: int = w.look.get("patches", 0)
+	if n <= 0:
+		return
+	var d := w.d
+	var top: float = d.torso - 0.04
+	var side: int = w.look.side
+	var spots: Array = []
+	var chest_y := top * 0.58
+	var chest_free: bool = w.look.coat != &"wrap" and not w.salvage.has(&"breastplate") and not w.salvage.has(&"rig") and not w.gear.has(&"radio")
+	if chest_free:
+		spots.append([&"spine", Vector3(torso_x(w, chest_y) + 0.006, chest_y, -side * d.chest * 0.18), Vector3.RIGHT, Vector2(0.055, 0.05)])
+	var back_y := top * 0.45
+	if not w.gear.has(&"pack") and w.look.coat != &"wrap":
+		spots.append([&"spine", Vector3(torso_x(w, back_y, true) - 0.006, back_y, side * d.chest * 0.12), Vector3.LEFT, Vector2(0.06, 0.05)])
+	for sd: int in [-side, side]:
+		var sfx := "_r" if sd > 0 else "_l"
+		# The knee: the front of the thigh just above the joint.
+		var ky: float = -d.thigh * 0.8
+		var kx: float = lerpf(d.thigh_t * 0.56, d.shin_t * 0.5 * 1.05, 0.8) * 0.97 + 0.008
+		if not (w.salvage.has(&"brace") and sd == side):
+			spots.append([StringName("thigh" + sfx), Vector3(kx, ky, 0.0), Vector3.RIGHT, Vector2(0.045, 0.05)])
+		# The elbow: the outside of the upper sleeve.
+		var t: float = d.arm_t
+		if not (w.salvage.has(&"plate") and sd == side):
+			spots.append([StringName("arm" + sfx), Vector3(0.0, -float(d.upper) * 0.72, sd * (t * 0.48 + 0.01)), Vector3(0, 0, sd), Vector2(0.04, 0.045)])
+	if w.long_coat:
+		var hy: float = -d.thigh * 0.5
+		spots.append([&"hem", Vector3(-(d.depth * 0.55 + 0.05), hy, -side * 0.05), Vector3.LEFT, Vector2(0.06, 0.06)])
+	# A seeded order, so two people with the same count wear them in different places.
+	var order: Array = []
+	for i in spots.size():
+		order.append([Rng.hash01(w.seed_value, i, 91), i])
+	order.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for j in mini(n, spots.size()):
+		var spot: Array = spots[int(order[j][1])]
+		var k := r.kit(r.find(spot[0]))
+		var at: Vector3 = spot[1]
+		var out: Vector3 = spot[2]
+		var half: Vector2 = spot[3]
+		var up := Vector3.UP
+		var across := up.cross(out).normalized()
+		var tilt := (Rng.hash01(w.seed_value, j, 92) - 0.5) * 0.5
+		across = across.rotated(out, tilt)
+		up = up.rotated(out, tilt)
+		var e: Array = PATCH_WEAR[int(Rng.hash01(w.seed_value, j, 93) * PATCH_WEAR.size()) % PATCH_WEAR.size()]
+		var col := PersonLook.colour(e)
+		var seam := PersonLook.step(e, -1)
+		var h0 := half + Vector2(0.01, 0.01)
+		Sculpt.card(k, at - across * h0.x - up * h0.y, at + across * h0.x - up * h0.y, at + across * h0.x + up * h0.y, at - across * h0.x + up * h0.y, seam, out)
+		var a2 := at + out * 0.003
+		Sculpt.card(k, a2 - across * half.x - up * half.y, a2 + across * half.x - up * half.y, a2 + across * half.x + up * half.y * 0.9, a2 - across * half.x * 0.85 + up * half.y, col, out)
+
+
+## Patch cloth: scraps off other clothes, on the muted middle of the ramps.
+const PATCH_WEAR := [["earth", 2], ["rust", 2], ["moss", 2], ["slate", 2], ["sand", 3], ["linen", 2], ["brine", 2], ["stone", 2], ["ash", 2]]
 
 
 ## A long hexagon: a plate with its corners cut at top and bottom.

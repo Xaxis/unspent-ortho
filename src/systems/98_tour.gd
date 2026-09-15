@@ -19,7 +19,12 @@ extends GameSystem
 ##                          free (no longer held), ring (a blow rang off plate),
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
-##                          took (something was taken), strike (lightning flashed)
+##                          took (something was taken), strike (lightning flashed);
+##                          folk, crowd, dog, gulls
+##                          (people and animals: see src/systems/tour/tour_people.gd)
+##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
+##                          or within sight of a tip's gulls (tour_people.gd)
+##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -152,7 +157,12 @@ func _run() -> void:
 			"coast":
 				ok = _coast(parts[1] == "calm")
 			"walkto":
-				ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
+				if parts[1] in ["folk", "refuse", "dog"]:
+					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
+				else:
+					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
+			"perf":
+				ok = await TourPeople.perf(self, game, parts)
 			"echo":
 				print("tour: ", line.substr(5))
 			_:
@@ -220,6 +230,8 @@ func _now_true(what: String) -> bool:
 			for m in sim.mobs:
 				if m.alive and m.blow_phase(sim.now) == &"windup":
 					return true
+		"folk", "crowd", "dog", "gulls":
+			return TourPeople.sees(game, what)
 	return false
 
 
