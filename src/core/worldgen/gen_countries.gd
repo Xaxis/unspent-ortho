@@ -453,7 +453,13 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				if (own_h[k + 1] == own and r != 0 and r != o) or (own_h[k + hw] == own and dn != 0 and dn != o) or (own_h[k - 1] == own and l != 0 and l != o) or (own_h[k - hw] == own and u != 0 and u != o):
 					seam[k] = 1
 	)
-	var seam_d := GenFields.upsample(GenFields.distance8(seam, hw, 64.0), hw, 2, size)
+	# Only the first few cells from a seam matter to the fade.
+	var seam_img := Image.create_from_data(hw, hw, false, Image.FORMAT_L8, GenFields.near_steps(seam, hw, 5))
+	seam_img.convert(Image.FORMAT_RF)
+	seam_img.resize(hw * 2, hw * 2, Image.INTERPOLATE_BILINEAR)
+	if hw * 2 != size:
+		seam_img.crop(size, size)
+	var seam_d := seam_img.get_data().to_float32_array()
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for y in range(y0, y1):
 			var row := y * size
@@ -480,7 +486,7 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				if other == Country.BURNING:
 					# Ash blows further out of the Burning than anything else travels.
 					width *= 1.6
-				var fade := maxf(clampf((seam_d[i] * 2.0 - 1.0) / 8.0, 0.0, 1.0), 1.0 - d / 2.0)
+				var fade := maxf(clampf((seam_d[i] * 510.0 - 1.0) / 8.0, 0.0, 1.0), 1.0 - d / 2.0)
 				blend[i] = (0.5 - 0.5 * d / width) * fade if d < width else 0.0
 	)
 

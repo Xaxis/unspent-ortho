@@ -52,6 +52,10 @@ func _save(w: WorldData, layer: String, out: String) -> void:
 			_segment(img, w.props[ids[j]].pos * scale, w.props[ids[j + 1]].pos * scale, col)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos * scale
+		if m.kind == &"falls" or m.kind == &"bridge":
+			# Small marks: there are many, and they sit on rivers.
+			img.fill_rect(Rect2i(int(p.x) - 1, int(p.y) - 1, 3, 3), Palette.RIME[5] if m.kind == &"falls" else Palette.INK[0])
+			continue
 		img.fill_rect(Rect2i(int(p.x) - 3, int(p.y) - 3, 7, 7), Palette.INK[0])
 		img.fill_rect(Rect2i(int(p.x) - 2, int(p.y) - 2, 5, 5), Palette.COPPER[4])
 	for v in w.villages:
