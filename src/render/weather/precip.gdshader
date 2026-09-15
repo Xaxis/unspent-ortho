@@ -68,7 +68,10 @@ void vertex() {
 void fragment() {
 	// Marks in the air catch more light than the ground they fall on, or snow
 	// vanishes against snow; at night they still go dark with everything.
-	vec3 lit = v_col * clamp(sky_tint * sky_sun.z * 1.3, vec3(0.0), vec3(1.0));
+	// A pale blue floor keeps flakes and streaks reading as weather at night
+	// rather than as dark specks of dirt.
+	vec3 light = max(sky_tint * sky_sun.z * 1.3, vec3(0.42, 0.48, 0.64));
+	vec3 lit = v_col * clamp(light, vec3(0.0), vec3(1.0));
 	vec3 c = mix(lit, v_col, glow);
 	c = mix(c, vec3(0.9, 0.95, 1.0), sky_sun.w * 0.6 * (1.0 - glow));
 	ALBEDO = c;

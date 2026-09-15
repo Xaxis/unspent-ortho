@@ -9,6 +9,7 @@ extends GameSystem
 ## things that burn emit, and nobody glows.
 
 const POOL := 8
+const HALO := preload("res://src/render/weather/halo.gdshader")
 ## Tiles from the focus within which a source may take a light or show a glow.
 const REACH := 19.0
 const GLOW_REACH := 26.0
@@ -58,6 +59,9 @@ func setup(g: Game) -> void:
 		_assigned.append(null)
 	lantern_light = _new_light("lantern_light")
 	lantern = _lantern_mesh()
+	var lh := halo(Palette.COPPER[4], 0.34)
+	lh.position = Vector3(0, 0.08, 0)
+	lantern.add_child(lh)
 	add_child(lantern)
 	_index_sources()
 	_update(0.0, true)
@@ -285,7 +289,7 @@ func _update_glows(focus: Vector2, hour: float) -> void:
 		var on := false
 		if int(s.kind) == PropKind.PYLON:
 			on = lamps_wanted(hour) > 0.3
-		elif int(s.kind) == PropKind.HOUSE or int(s.kind) == PropKind.LAMP:
+		elif int(s.kind) == PropKind.HOUSE or int(s.kind) == PropKind.LAMP or int(s.kind) == PropKind.FIRE:
 			on = source_lit(s, hour)
 		if not on:
 			continue
@@ -322,9 +326,12 @@ static func glow_points(kind: int) -> Array:
 				{"at": Vector3(0.8, 0.57, 1.125), "size": Vector2(0.08, 0.9), "color": Palette.COPPER[3]},
 			]
 		PropKind.LAMP:
-			return [{"at": Vector3(0, 1.7, 0), "size": Vector2(0.14, 0.16), "color": Palette.EMBER[5], "box": true}]
+			# Just proud of the lamp's copper head, so the lit pane replaces it.
+			return [{"at": Vector3(0, 1.7, 0), "size": Vector2(0.2, 0.21), "color": Palette.COPPER[4], "box": true, "halo": 0.62}]
 		PropKind.PYLON:
-			return [{"at": Vector3(0, 3.75, 0), "size": Vector2(0.12, 0.12), "color": Palette.RUST[4], "box": true}]
+			return [{"at": Vector3(0, 3.75, 0), "size": Vector2(0.12, 0.12), "color": Palette.RUST[4], "box": true, "halo": 0.4}]
+		PropKind.FIRE:
+			return [{"at": Vector3(0, 0.35, 0), "size": Vector2(0.0, 0.0), "color": Palette.EMBER[4], "halo": 1.0}]
 	return []
 
 
@@ -338,18 +345,47 @@ func _glow_node(s: Dictionary) -> Node3D:
 		var at: Vector3 = g.at
 		var sz: Vector2 = g.size
 		var col: Color = g.color
+		if sz.x <= 0.0:
+			continue
 		if g.get("box", false):
 			k.block(at.x, at.y - sz.y * 0.5, at.z, sz.x, sz.y, sz.x, col, col)
 		else:
 			k.quad(at + Vector3(-sz.x * 0.5, -sz.y * 0.5, 0), at + Vector3(sz.x * 0.5, -sz.y * 0.5, 0), at + Vector3(sz.x * 0.5, sz.y * 0.5, 0), at + Vector3(-sz.x * 0.5, sz.y * 0.5, 0), col)
-	var mi := MeshInstance3D.new()
-	mi.name = "glow_%d" % p.id
-	mi.mesh = k.build()
-	mi.material_override = _glow_mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.transform = Transform3D(Basis(Vector3.UP, p.rot).scaled(Vector3.ONE * p.scale), game.world.to_3d(p.pos))
+	var root := Node3D.new()
+	root.name = "glow_%d" % p.id
+	root.transform = Transform3D(Basis(Vector3.UP, p.rot).scaled(Vector3.ONE * p.scale), game.world.to_3d(p.pos))
+	if k.vertex_count() > 0:
+		var mi := MeshInstance3D.new()
+		mi.mesh = k.build()
+		mi.material_override = _glow_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi)
+	for g: Dictionary in pts:
+		if g.has("halo"):
+			var h := halo(g.color, float(g.halo))
+			h.position = g.at
+			root.add_child(h)
 	if p.kind == PropKind.PYLON:
-		mi.set_meta("blink", float(s.h))
+		root.set_meta("blink", float(s.h))
+	return root
+
+
+## A stepped additive disc around a flame, `size` tiles across.
+func halo(col: Color, size: float) -> MeshInstance3D:
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	var mat := ShaderMaterial.new()
+	mat.shader = HALO
+	mat.set_shader_parameter("color", col)
+	mat.set_shader_parameter("strength", 0.42)
+	mat.render_priority = 5
+	var mi := MeshInstance3D.new()
+	mi.name = "halo"
+	mi.mesh = q
+	mi.material_override = mat
+	mi.scale = Vector3.ONE * size
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.extra_cull_margin = 2.0
 	return mi
 
 
