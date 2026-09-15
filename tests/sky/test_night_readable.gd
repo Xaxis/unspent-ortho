@@ -70,7 +70,7 @@ func test_a_hearth_flickers_in_brightness_only() -> void:
 	var seen := {}
 	for i in 60:
 		var f := Lights.flicker(house, i * 0.05)
-		gt(f, 0.89, "never dims far")
+		gt(f, 0.79, "never dims far")
 		lt(f, 1.001, "never brighter than its level")
 		seen[snappedf(f, 0.001)] = true
 	gt(seen.size(), 4.0, "it does flicker")
@@ -138,3 +138,36 @@ func test_a_bolt_is_whole_pixels_with_a_pale_core_inked_either_side() -> void:
 		if ink.has(c + Vector2i(-1, 0)) or ink.has(c + Vector2i(1, 0)):
 			inked_sides += 1
 	gt(float(inked_sides), core.size() * 0.8, "inked either side")
+
+
+func test_the_lamp_action_lights_and_puts_out_the_lantern() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	o.hour = 23.0
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	await frames(2)
+	check(not g.body.lamp_lit, "starts dark")
+	Input.action_press("lamp")
+	await frames(5)
+	check(g.body.lamp_lit, "a press of the lamp action lights it")
+	await frames(5)
+	check(g.body.lamp_lit, "holding it does not flicker it off")
+	Input.action_release("lamp")
+	await frames(3)
+	Input.action_press("lamp")
+	await frames(3)
+	Input.action_release("lamp")
+	await frames(3)
+	check(not g.body.lamp_lit, "a second press puts it out")
+	g.queue_free()
+	await frames(1)
+
+
+func test_a_burning_dusk_keeps_its_warm_darks() -> void:
+	var cold := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.SNOWFIELD))
+	var burning := SkyLight.dusk_lift(19.5, SkyLight.country_tint(Country.BURNING))
+	gt(cold, 0.8, "a snowfield dusk lifts its darks to blue")
+	lt(burning, cold * 0.5, "a burning dusk keeps them warm")
+	near(SkyLight.dusk_lift(12.0, Vector3.ONE), 0.0, 0.02, "nothing to lift at noon")

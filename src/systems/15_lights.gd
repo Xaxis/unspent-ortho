@@ -58,6 +58,7 @@ var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
+var _lamp_down := false
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 static var _models_have_glow_points := -1
 
@@ -98,20 +99,18 @@ func _new_light(n: String) -> OmniLight3D:
 	return l
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if game == null or game.input_blocked():
-		return
-	if event.is_action_pressed("lamp") and not event.is_echo():
-		toggle_lantern()
-		get_viewport().set_input_as_handled()
-
-
 func toggle_lantern() -> void:
 	game.body.lamp_lit = not game.body.lamp_lit
 	Events.sfx.emit(&"lamp_on" if game.body.lamp_lit else &"lamp_off", game.player.position)
 
 
 func _process(delta: float) -> void:
+	# Polled and edge-detected here, not taken as an input event: a key, a pad
+	# and a tour's `tap lamp` all arrive this way, however short the press.
+	var down := Input.is_action_pressed("lamp")
+	if down and not _lamp_down and game != null and not game.input_blocked():
+		toggle_lantern()
+	_lamp_down = down
 	_update(delta, false)
 
 
@@ -293,16 +292,20 @@ func _update(delta: float, snap: bool) -> void:
 		# The lantern's floor: in any gloom it lifts the ground a little. (source 0.45)
 		var night := maxf(dark, 0.45)
 		var at := p.position + Basis(Vector3.UP, -p.facing) * LANTERN_LIGHT
-		# Where a lamp already lights the ground the lantern hardly adds: two
-		# pools stacked read as two ruled discs.
+		# Where a lamp already lights the ground the lantern hardly adds, and its
+		# pool draws in under the lamp's: two pools stacked read as two ruled
+		# discs. Both ease with distance, so walking out of a lamp's light the
+		# lantern's pool opens up around you rather than popping on.
 		var covered := 0.0
 		for pool in pools:
 			covered = maxf(covered, omni_attenuation(p.position.distance_to(Vector3(pool.x, pool.y, pool.z)), pool.w))
-		night *= 1.0 - 0.85 * smoothstep(0.35, 0.75, covered)
+		var under := smoothstep(0.05, 0.45, covered)
+		night *= 1.0 - 0.9 * under
+		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
-		if _set_light(lantern_light, at, LANTERN_RANGE, rgb):
+		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
-			pools.push_front(Vector4(at.x, at.y, at.z, LANTERN_RANGE))
+			pools.push_front(Vector4(at.x, at.y, at.z, reach))
 	else:
 		lantern_light.visible = false
 	pools.resize(mini(pools.size(), SkyLight.MAX_LAMPS))
@@ -336,14 +339,15 @@ static func flicker(s: Dictionary, time: float) -> float:
 	var h: float = s.h
 	if kind == PropKind.FIRE:
 		var step := floori(time * 11.0 + h * 50.0)
-		return 0.86 + 0.14 * Rng.hash01(step, int(h * 1000.0))
+		# Linear light: a quarter of it shows as a few percent on screen.
+		return 0.7 + 0.3 * Rng.hash01(step, int(h * 1000.0))
 	if kind == PropKind.VENT:
 		# A vent breathes.
 		return 0.75 + 0.25 * sin(time * 1.3 + h * TAU)
 	if kind == PropKind.HOUSE:
 		# The hearth inside, seen through the door: a fire's flicker, gentled.
 		var step := floori(time * 9.0 + h * 40.0)
-		return 0.9 + 0.1 * Rng.hash01(step, int(h * 1000.0) + 3)
+		return 0.8 + 0.2 * Rng.hash01(step, int(h * 1000.0) + 3)
 	if kind == PropKind.LAMP:
 		var step := floori(time * 6.0 + h * 30.0)
 		return 0.96 + 0.04 * Rng.hash01(step, 7)

@@ -168,7 +168,7 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, 0.0))
 	var glow := sun_glow(total, s)
 	var cool := shade_cool(total) / glow
-	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, low_light(hour)))
+	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, dusk_lift(hour, region_tint)))
 	var packed := lamp_columns(lamps)
 	RenderingServer.global_shader_parameter_set("sky_lamps", packed[0])
 	RenderingServer.global_shader_parameter_set("sky_lamps2", packed[1])
@@ -220,6 +220,14 @@ static func layers_for(g: GeometryInstance3D, current: int) -> int:
 			return current | LAYER_FIGURES
 		p = p.get_parent()
 	return current
+
+
+## How far a low sun lifts the darks onto blue (sky_shade.w): all of low light,
+## except in a warm country, whose evening keeps its own dark warmth (the
+## burning glows from below; its clinker must not turn violet at dusk).
+static func dusk_lift(hour: float, region: Vector3) -> float:
+	var warm := clampf((region.x - region.z) * 4.0, 0.0, 0.8)
+	return low_light(hour) * (1.0 - warm)
 
 
 ## A low sun lays its warmth on what it lights: lit faces take up to GLOW more
