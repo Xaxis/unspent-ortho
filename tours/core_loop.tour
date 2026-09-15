@@ -8,18 +8,19 @@
 shot 01-wake-by-the-square
 # The scripted stretch is not a random fight: nothing new comes until the machine is met.
 coast calm
-# Driftwood on the strand below the village: step to it, press use.
-at 198.90,435.58
-walk -0.92,0.38 0.08
+# Driftwood on the strand below the village: walk to it, press use. The tour
+# names what it takes, so where the strand lays it does not matter.
+at 200,436
+at prop:driftwood
 press use 0.1
 await took 3
 wait 0.2
 shot 02-driftwood-taken
-at 209.63,435.70
-walk 0.71,0.71 0.08
+at prop:driftwood
 press use 0.1
 await took 3
-# Dead wood fallen under the broadleaf by the strand.
+# Dead wood fallen under the broadleaf by the strand (worldgen's own trees and
+# rocks stand where they always did: only the strand moves with what is around it).
 at 202.97,434.41
 walk 0,1 0.08
 press use 0.1

@@ -4,6 +4,9 @@ extends GameSystem
 ##
 ## A tour is a text file, one command per line, `#` comments:
 ##   at X,Y                 teleport the player (tile space)
+##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
+##                          a space written as _), facing it, in reach of `use`: a tour
+##                          takes from the world without knowing where the world put it
 ##   village N              teleport beside village N
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   hour H                 set the world clock hour (same day)
@@ -121,6 +124,11 @@ func _run() -> void:
 	# Let the first view settle.
 	for i in 6:
 		await get_tree().process_frame
+	# The loading page draws the first frames of any start: a tour begins on the
+	# world it is going to walk, not on the page over it.
+	var lift := Time.get_ticks_msec() + 30000
+	while Time.get_ticks_msec() < lift and not get_tree().get_nodes_in_group(&"boot_page").is_empty():
+		await get_tree().process_frame
 	# Open try blocks: [line index of `try`, attempts left].
 	var tries: Array[Array] = []
 	var li := -1
@@ -149,8 +157,11 @@ func _run() -> void:
 		var ok := true
 		match cmd:
 			"at":
-				var p := parts[1].split(",")
-				_teleport(Vector2(p[0].to_float(), p[1].to_float()))
+				if parts[1].begins_with("prop:"):
+					ok = _stand_by(parts[1].substr(5))
+				else:
+					var p := parts[1].split(",")
+					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
 			"place":
 				var pp := GenPlaces.find(game.world, parts[1])
 				if pp.x < 0.0:
@@ -302,6 +313,39 @@ func _now_true(what: String) -> bool:
 	for sys in game.systems:
 		if sys.has_method("tour_seen") and bool(sys.call("tour_seen", what)):
 			return true
+	return false
+
+
+## Stand beside the nearest standing prop of kind `name`, facing it, so `use`
+## takes from it. Props move with the world (worldgen, the strand the spawn lays,
+## what is built), so a tour names what it wants instead of the tile it lay on
+## last month. It tries each way round until the prop is the thing under the hand:
+## what the ruin left beside it can be nearer, and `use` takes what is in front.
+func _stand_by(name: String) -> bool:
+	var kind := PropKind.NAMES.find(name.replace("_", " "))
+	if kind < 0:
+		return false
+	var best: WorldProp = null
+	for q in game.query.props_near(game.player.pos, 60.0):
+		if q.kind != kind or game.world.depleted.has(q.id):
+			continue
+		if best == null or q.pos.distance_to(game.player.pos) < best.pos.distance_to(game.player.pos):
+			best = q
+	if best == null:
+		printerr("tour %s: no %s within 60 tiles of %s" % [_name, name, game.player.pos])
+		return false
+	var reach := best.solid + Tuning.PLAYER_RADIUS + 0.45
+	for turn in 12:
+		var a := TAU * turn / 12.0
+		var spot := best.pos + Vector2.from_angle(a) * reach
+		if not game.query.standable(floori(spot.x), floori(spot.y)):
+			continue
+		_teleport(spot)
+		Survival.face(game, (best.pos - spot).angle())
+		var t := Survival.use_target(game)
+		if t != null and t.kind == kind:
+			return true
+	printerr("tour %s: nothing stands beside the %s at %s" % [_name, name, best.pos])
 	return false
 
 

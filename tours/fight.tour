@@ -19,7 +19,7 @@ end
 wait 0.05
 shot 03-blow-rings-off-plate
 # Away from it (far past its tether), to a watcher out in a field.
-at 130,370
+at 135,375
 wait 1.5
 spawn watcher
 wait 0.6
