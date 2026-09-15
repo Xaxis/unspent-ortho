@@ -137,7 +137,7 @@ func _update(delta: float, snap: bool) -> void:
 	for c: int in shares:
 		var wx := Weather.at_place(seed_value, minutes, c)
 		entries.append({"kind": wx.kind, "strength": wx.strength, "weight": shares[c]})
-		target_region += SkyLight.country_tint(c) * float(shares[c])
+		target_region += SkyLight.country_tint(c) * SkyLight.country_light(c) * float(shares[c])
 		target_wind += float(wx.wind) * float(shares[c])
 	var target := WeatherLook.compose(entries)
 	# The light and the clouds blend across a border, but what falls through the

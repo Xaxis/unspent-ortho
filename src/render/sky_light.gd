@@ -341,6 +341,14 @@ static func cast_tint(warmth: float, wetness: float) -> Vector3:
 	return c / maxf(c.x, maxf(c.y, c.z))
 
 
+## What a country does to the light's level, on top of its cast: the Burning
+## lies under warm, low light even at noon (docs/ART.md section 3).
+static func country_light(country: int) -> Vector3:
+	if country == Country.BURNING:
+		return Vector3(0.94, 0.8, 0.68)
+	return Vector3.ONE
+
+
 ## A country's cast, pushed REGION_GAIN times further from white than the
 ## source's formula so that crossing a border is felt in the light itself.
 static func country_tint(country: int) -> Vector3:

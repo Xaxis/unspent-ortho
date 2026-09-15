@@ -461,6 +461,16 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 	_run(mi, t, Vector3(d.x, 0.0, d.y) * size * 0.9 + Vector3(0, size * 0.3, 0))
 
 
+## A slow breath of pale steam and ash off a vent: a puff that rises and thins
+## over `seconds`, drifting with the wind.
+static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+	if not _ok(parent):
+		return
+	size = at_least(size, PUFF_PX)
+	var mi := _mark(parent, at, size, PUFF, &"over", seed_value, col, col.darkened(0.2))
+	_run(mi, seconds, Vector3(drift.x, size * 1.6, drift.y))
+
+
 ## Several puffs about a point, for a body landing or a charge setting off.
 static func puffs(parent: Node, at: Vector3, dir: Vector2, dust: Color, count: int, size: float, seed_value: int) -> void:
 	for i in count:

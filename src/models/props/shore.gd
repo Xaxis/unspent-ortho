@@ -224,11 +224,12 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 
 static func vent(k: Kit, v: int, _c: int) -> void:
 	if v % 2 == 0:
-		# A vent in the ground: a clinker cone, a glowing mouth, a sulphur crust.
-		k.stone(0, -0.06, 0, 0.65, 0.45, 11001, P.STONE[0], 8, 0.0, P.INK[2])
-		k.stone(0.14, -0.06, 0.22, 0.4, 0.26, 11002, P.STONE[1], 7, 0.2)
-		k.made.prism(0, 0.32, 0, 0.2, 0.44, 0.14, 8, P.INK[1], GroundColors.glow(P.EMBER[3], 1.3))
-		k.made.prism(0, 0.44, 0, 0.1, 0.446, 0.1, 8, P.EMBER[4], GroundColors.glow(P.EMBER[5], 1.6))
+		# A vent in the ground: a rusted clinker cone (never a black hole seen from
+		# above), a wide glowing mouth, a sulphur crust round its lip.
+		k.stone(0, -0.06, 0, 0.65, 0.42, 11001, P.STONE[1], 8, 0.0, P.RUST[1])
+		k.stone(0.14, -0.06, 0.22, 0.4, 0.26, 11002, P.ASH[2], 7, 0.2)
+		k.made.prism(0, 0.3, 0, 0.26, 0.4, 0.2, 8, P.RUST[2], GroundColors.glow(P.EMBER[3], 1.3))
+		k.made.prism(0, 0.4, 0, 0.17, 0.41, 0.17, 8, GroundColors.glow(P.EMBER[4], 1.4), GroundColors.glow(P.EMBER[5], 1.6))
 		for i in 7:
 			var a := float(i) * 0.9
 			var p := Vector3(cos(a) * 0.27, 0.37, sin(a) * 0.27)

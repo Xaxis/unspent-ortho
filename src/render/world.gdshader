@@ -373,11 +373,22 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float r = 0.08 + v.z * 0.3;
 		float dd = v.x + (ink_vnoise(wp * 3.1) - 0.5) * 0.16 + rag(wp);
 		if (v.z < 0.3 && dd < r) {
-			c = dd < r * 0.55 ? mix(INK1, SPRUCE1, 0.55) : INK3;
-			float g = ink_hash(px + 2.0);
-			if (dd < r * 0.7 && g > 0.94) {
-				c = g > 0.975 ? SPRUCE4 : SPRUCE2;
+			// Vitrified glass, not a hole: bottle green over black, a sheen of
+			// the sky across it toward the key light, and bright glints.
+			c = dd < r * 0.55 ? mix(INK2, SPRUCE2, 0.7) : mix(INK3, SPRUCE1, 0.5);
+			float sheen = fract(dot(wp, vec2(0.62, -0.78)) * 1.7 + v.z * 11.0);
+			if (dd < r * 0.8 && sheen < 0.16) {
+				c = sheen < 0.06 ? RIME3 : mix(SPRUCE2, RIME3, 0.45);
+				unh = 1.0;
 			}
+			float g = ink_hash(px + 2.0);
+			if (dd < r * 0.7 && g > 0.93) {
+				c = g > 0.97 ? RIME4 : SPRUCE4;
+				unh = 1.0;
+			}
+		} else if (v.z < 0.3 && dd < r + 0.06 && dd >= r + 0.03) {
+			// A pale crust where the glass ran out over the ash.
+			c = mix(c, ASH3, 0.55);
 		} else if (v.z < 0.3 && dd < r + 0.03) {
 			c = mix(RUST1, RUST2, step(0.5, ink_hash(floor(px / 2.0))));
 			if (v.z < 0.07 && ink_hash(px + 4.0) < 0.5) {
