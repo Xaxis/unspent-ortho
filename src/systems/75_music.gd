@@ -5,9 +5,11 @@ extends GameSystem
 ##
 ## What it hears, four times a second: the landscapes around the player (their
 ## weights, so an ecotone is two scores at once), the hour, the weather, hostile
-## machines closing in (danger) or within earshot (near: their tense stems are
-## baked before they are needed), a blow landing on the player, a machine
-## installation's proximity (the grid) and a sentinel's reach.
+## machines that have noticed the player closing in (danger), any within earshot
+## (near: their tense stems are baked before they are needed, and nothing is
+## heard, so the score never tells a sneaking player where an unseen machine
+## stands), a blow landing on the player, a machine installation's proximity
+## (the grid) and a sentinel's reach.
 ##
 ## Loops play on their own players, started at the music clock's place in them
 ## so every stem keeps to the shared bar lines; a stem is heard only once it is
@@ -28,8 +30,11 @@ const DANGER_NEAR := 8.0
 const DANGER_FAR := 26.0
 ## Tiles within which a hostile machine is "near": its tense stems are baked.
 const EAR_REACH := 44.0
-## A hostile animal is this much of a machine's danger.
-const BEAST_SHARE := 0.5
+## A hostile animal is this much of a machine's danger: a dog on your heels
+## quickens the pulse a little, never the dissonance or its resolution.
+const BEAST_SHARE := 0.3
+## A mob's moods (MobState) that mean it has noticed the player.
+const AWARE_MOODS: Array[StringName] = [&"alerted", &"chasing", &"attacking"]
 ## Seconds a blow on the player holds danger at full.
 const HIT_HOLD := 6.0
 ## A sentinel's reach when it does not say (tiles).
@@ -57,6 +62,7 @@ var _works_t := 0.0
 var _bake_t := 0.0
 var _grid := 0.0
 var _hit_until := -INF
+var _hit_share := 1.0
 var _heard_at: Dictionary = {}
 ## Seconds the audio thread runs ahead of the music clock, learnt from a playing loop.
 var _sync := 0.0
@@ -129,9 +135,32 @@ func advance(delta: float) -> void:
 
 # ------------------------------------------------------------------ listening
 
-func _on_hit(_attacker: Object, target: Object, damage: int, _plate: bool, _at: Vector3) -> void:
+func _on_hit(attacker: Object, target: Object, damage: int, _plate: bool, _at: Vector3) -> void:
 	if target == game.player and damage > 0:
 		_hit_until = seconds + HIT_HOLD
+		_hit_share = share_of(attacker)
+
+
+## How much of a machine's danger a body is: a machine all of it, anything else BEAST_SHARE.
+static func share_of(body: Object) -> float:
+	if body == null or not is_instance_valid(body):
+		return 1.0
+	return 1.0 if SoundMachines.kind_of(StringName(str(body.get("kind")))) != &"" else BEAST_SHARE
+
+
+## Whether a mob has noticed the player: its own `aware` when it exposes one
+## (asked of the mob contract), else its state's mood; a mob that says neither
+## is presence only.
+static func aware_of(m: Object) -> bool:
+	var own: Variant = m.get("aware")
+	if own is bool:
+		return own
+	var state: Variant = m.get("state")
+	if state is Object and is_instance_valid(state):
+		var mood: Variant = (state as Object).get("mood")
+		if mood is StringName or mood is String:
+			return StringName(mood) in AWARE_MOODS
+	return false
 
 
 func _on_skip(_minutes: float, _reason: StringName) -> void:
@@ -169,13 +198,13 @@ func _read_inputs() -> void:
 			var pos: Variant = m.get("pos")
 			if (alive is bool and not alive) or (hostile is bool and not hostile) or not pos is Vector2:
 				continue
-			var share := 1.0 if SoundMachines.kind_of(StringName(str(m.get("kind")))) != &"" else BEAST_SHARE
 			var d := (pos as Vector2).distance_to(p)
-			danger = maxf(danger, smoothstep(DANGER_FAR, DANGER_NEAR, d) * share)
 			if d < EAR_REACH:
 				near = 1.0
+			if aware_of(m):
+				danger = maxf(danger, smoothstep(DANGER_FAR, DANGER_NEAR, d) * share_of(m))
 	if seconds < _hit_until:
-		danger = 1.0
+		danger = maxf(danger, _hit_share)
 	inputs = {
 		"weights": weights,
 		"hour": game.clock.hour(),

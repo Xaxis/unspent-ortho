@@ -15,6 +15,17 @@ class FakeMob:
 	var pos: Vector2
 	var alive := true
 	var hostile := true
+	var aware := true
+
+
+## A mob that says nothing of noticing, only through its state's mood.
+class QuietMob:
+	extends Node
+	var kind: StringName = &"runner"
+	var pos: Vector2
+	var alive := true
+	var hostile := true
+	var state := MobState.new()
 
 
 class FakeSentinel:
@@ -130,6 +141,69 @@ func test_machines_closing_in_quicken_the_score_and_a_blow_holds_it() -> void:
 	_advance(sys, 1.0)
 	eq(float(sys.inputs["danger"]), 1.0, "a blow on the player is")
 	mob.free()
+	_done(parts)
+
+
+static func _resolves(sys: MusicSystem) -> int:
+	return sys.conductor.played.filter(func(p: Array) -> bool: return String(p[1]).contains("_resolve")).size()
+
+
+## A machine that has not noticed you is presence, not danger: the score bakes
+## ahead and says nothing, so it never cries wolf or gives an unseen machine away.
+func test_only_a_machine_that_has_noticed_you_is_danger() -> void:
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	_advance(sys, 60.0)
+	var here := sys._land_id(int(SoundMix.dominant_country(g.world, g.player.pos)["country"]))
+	var tense := ScoreStems.key_for(here, &"pulse", 1)
+	var uneasy := ScoreStems.key_for(here, &"dissonance", 0)
+	var mob := FakeMob.new()
+	mob.aware = false
+	mob.pos = g.player.pos + Vector2(6, 0)
+	tree.root.add_child(mob)
+	mob.add_to_group(&"mobs")
+	var resolves := _resolves(sys)
+	_advance(sys, 20.0)
+	eq(float(sys.inputs["danger"]), 0.0, "an idle machine six tiles off is no danger")
+	eq(float(sys.inputs["near"]), 1.0, "but it is near: its tense stems are baked")
+	check(sys.conductor.wanted().has(tense), "the quick pulse is baked ahead")
+	lt(float(sys.conductor.levels.get(tense, 0.0)), 0.01, "and not heard")
+	lt(float(sys.conductor.levels.get(uneasy, 0.0)), 0.01, "no dissonance")
+	mob.pos = g.player.pos + Vector2(60, 0)
+	_advance(sys, 40.0)
+	eq(_resolves(sys), resolves, "nothing to resolve when you walk off")
+	mob.free()
+	# Without `aware`, a mob's mood says it.
+	var quiet := QuietMob.new()
+	quiet.pos = g.player.pos + Vector2(6, 0)
+	tree.root.add_child(quiet)
+	quiet.add_to_group(&"mobs")
+	quiet.state.mood = MobState.WORKING
+	_advance(sys, 1.0)
+	eq(float(sys.inputs["danger"]), 0.0, "a working machine is no danger")
+	quiet.state.mood = MobState.CHASING
+	_advance(sys, 1.0)
+	gt(float(sys.inputs["danger"]), 0.9, "a chasing one is")
+	quiet.free()
+	_advance(sys, 40.0)
+	# A hostile animal that has seen you: a little quicker, never uneasy.
+	resolves = _resolves(sys)
+	var dog := FakeMob.new()
+	dog.kind = &"dog"
+	dog.pos = g.player.pos + Vector2(4, 0)
+	tree.root.add_child(dog)
+	dog.add_to_group(&"mobs")
+	_advance(sys, 20.0)
+	near(float(sys.inputs["danger"]), MusicSystem.BEAST_SHARE, 0.01, "a dog is a share of the danger")
+	lt(float(sys.conductor.levels.get(tense, 0.0)), 0.4, "the pulse only a little quicker")
+	lt(float(sys.conductor.levels.get(uneasy, 0.0)), 0.02, "no dissonance for a dog")
+	Events.hit.emit(dog, g.player, 1, false, Vector3.ZERO)
+	_advance(sys, 1.0)
+	near(float(sys.inputs["danger"]), MusicSystem.BEAST_SHARE, 0.01, "nor for its bite")
+	dog.free()
+	_advance(sys, 40.0)
+	eq(_resolves(sys), resolves, "and nothing to resolve after a dog")
 	_done(parts)
 
 
