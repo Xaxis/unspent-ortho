@@ -34,8 +34,9 @@ var play_seconds := 0.0
 var loaded_from := -1
 ## When this game was last saved, or loaded (it stands as saved), in unix seconds; -1 never.
 var last_saved_at := -1.0
-## The world with no page over it, taken as the first page opened.
-var _world_thumb := PackedByteArray()
+## The world with no page over it, read back as the first page opened (small;
+## encoded only if a save is made from the page).
+var _world_frame: Image
 ## Frames in a row with no page open.
 var _clear_frames := 0
 var _forced_weather := false
@@ -107,7 +108,7 @@ func _on_time_skipped(_minutes: float, reason: StringName) -> void:
 func _on_screen_changed(_screen: StringName, open: bool) -> void:
 	# The game notes open pages before this runs (it connects first).
 	if open and game != null and game.open_screens.size() == 1:
-		_world_thumb = thumbnail()
+		_world_frame = frame()
 
 
 func _process(delta: float) -> void:
@@ -153,7 +154,7 @@ func save_to(slot: int) -> String:
 		return "There is no such slot."
 	if not calm():
 		return "Not with that so close."
-	var thumb := _world_thumb if not game.open_screens.is_empty() else thumbnail()
+	var thumb := png(_world_frame) if not game.open_screens.is_empty() else thumbnail()
 	return _write(slot, &"manual", thumb)
 
 
@@ -167,7 +168,7 @@ func save_on_leaving() -> String:
 		return ""
 	if not calm():
 		return "Not with that so close."
-	var thumb := _world_thumb if not game.open_screens.is_empty() else thumbnail()
+	var thumb := png(_world_frame) if not game.open_screens.is_empty() else thumbnail()
 	return _write(SaveSlots.AUTO, &"quit", thumb)
 
 
@@ -228,13 +229,22 @@ func _land() -> StringName:
 
 ## The last drawn frame, small, as PNG bytes; empty where nothing is drawn (headless).
 func thumbnail() -> PackedByteArray:
+	return png(frame())
+
+
+## The last drawn frame, THUMB-sized; null where nothing is drawn (headless).
+func frame() -> Image:
 	if DisplayServer.get_name() == "headless" or not is_inside_tree():
-		return PackedByteArray()
+		return null
 	var tex := get_viewport().get_texture()
 	if tex == null:
-		return PackedByteArray()
+		return null
 	var img := tex.get_image()
 	if img == null or img.is_empty():
-		return PackedByteArray()
+		return null
 	img.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
-	return img.save_png_to_buffer()
+	return img
+
+
+static func png(img: Image) -> PackedByteArray:
+	return img.save_png_to_buffer() if img != null and not img.is_empty() else PackedByteArray()
