@@ -17,6 +17,7 @@ var _screen_touched := false
 
 func setup(g: Game) -> void:
 	super.setup(g)
+	Crafting.bind(g)
 	var state := SurvivalState.of(g)
 	# The body woke an hour before the game opened.
 	state.woke_at = g.clock.minutes - 60.0
@@ -59,8 +60,7 @@ func _face_nearest_workable() -> void:
 			best_d = d
 			best = q
 	if best != null:
-		game.player.facing = (best.pos - p).angle()
-		game.player.drive(Vector2.ZERO, false, 0.0)
+		Survival.face(game, (best.pos - p).angle())
 
 
 func _on_screen_changed(_screen: StringName, _open: bool) -> void:

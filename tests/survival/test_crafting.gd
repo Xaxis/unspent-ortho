@@ -69,6 +69,23 @@ func test_build_a_campfire_from_driftwood_and_stone() -> void:
 	Fx.done(g)
 
 
+func test_a_screen_that_only_holds_the_inventory_can_still_build() -> void:
+	var g := Fx.flat()
+	g.inventory.add(&"driftwood", 3)
+	g.inventory.add(&"stone", 2)
+	var r := Crafting.recipe(&"campfire")
+	check(not Crafting.make(g.inventory, r), "no game bound: no world to build in")
+	eq(g.inventory.count(&"driftwood"), 3, "nothing spent")
+	Crafting.bind(g)
+	var t0 := g.clock.minutes
+	check(Crafting.make(g.inventory, r), "built through make")
+	eq(Survival.station_near(g), &"fire")
+	near(g.clock.minutes, t0, 0.001, "make leaves the minutes to its caller")
+	check(not Crafting.make(Inventory.new(), r), "another inventory is not the bound game's")
+	Crafting.bind(null)
+	Fx.done(g)
+
+
 func test_no_fire_on_water_or_a_slope() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"driftwood", 3)

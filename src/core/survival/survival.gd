@@ -231,8 +231,7 @@ static func work(game: Game, prop: WorldProp) -> bool:
 	game.body.busy_until = now_real() + WORK_SECONDS
 	var to := prop.pos - game.player.pos
 	if to.length() > 0.01:
-		game.player.facing = to.angle()
-		game.player.drive(Vector2.ZERO, false, 0.0)
+		face(game, to.angle())
 	_act(game, &"work", WORK_SECONDS)
 	Events.sfx.emit(StringName("work_%s" % o.verb), at)
 	return true
@@ -332,8 +331,9 @@ static func build_fire(game: Game) -> WorldProp:
 
 
 ## Put a station in front of the player. It costs the first recipe that builds
-## it and can be made from what is carried; `free` skips the cost (shots, tests).
-static func build(game: Game, station: StringName, free: bool = false) -> WorldProp:
+## it and can be made from what is carried; `free` skips the cost (shots, tests);
+## `charge` false leaves the minutes to the caller (Crafting.make's contract).
+static func build(game: Game, station: StringName, free: bool = false, charge: bool = true) -> WorldProp:
 	if not BUILD_KINDS.has(station) or busy(game):
 		return null
 	var kind: int = BUILD_KINDS[station]
@@ -353,9 +353,10 @@ static func build(game: Game, station: StringName, free: bool = false) -> WorldP
 		minutes = r.minutes
 	var prop := add_prop(game, kind, spot)
 	SurvivalState.of(game).built.append(prop)
-	if minutes > 0.0:
+	if not free:
 		_act(game, &"work", WORK_SECONDS)
-		_skip(game, minutes, &"build")
+		if charge:
+			_skip(game, minutes, &"build")
 	Events.sfx.emit(StringName("build_%s" % station), game.world.to_3d(spot))
 	return prop
 
@@ -504,6 +505,17 @@ static func collapse(game: Game) -> void:
 
 
 # --- Plumbing ----------------------------------------------------------------
+
+## Turn the player to `angle` (radians, 0 = east). If a fight body stands in for
+## the player (the fight package's `hero`), it is turned too, or it would turn
+## the player straight back.
+static func face(game: Game, angle: float) -> void:
+	game.player.facing = angle
+	var hero: Variant = game.player.get("hero")
+	if hero is Object and is_instance_valid(hero) and "facing" in hero:
+		(hero as Object).set("facing", angle)
+	game.player.drive(Vector2.ZERO, false, 0.0)
+
 
 static func _skip(game: Game, minutes: float, reason: StringName) -> void:
 	if minutes <= 0.0:

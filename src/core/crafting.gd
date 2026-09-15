@@ -10,11 +10,14 @@ class_name Crafting
 ##   recipe(id) -> Dictionary                   {} if unknown
 ##   can_make(inv, recipe) -> bool              carried inputs, tool, kept items, action target
 ##   missing(inv, recipe) -> {item: n short}
-##   make(inv, recipe) -> bool                  inventory only: no clock, no station, no builds
+##   make(inv, recipe) -> bool                  moves the goods and mends; the CALLER charges
+##                                              r.minutes. A build recipe puts its station in the
+##                                              running game (see bind) and charges nothing either.
 ##   why_not(game, recipe) -> String            "" if make_in would succeed, else a line
-##   make_in(game, recipe) -> bool              the real thing: station in reach, inputs,
-##                                              charges the minutes, builds, emits made
+##   make_in(game, recipe) -> bool              all of it in one call: station in reach, inputs,
+##                                              builds, minutes charged, events
 ##   suggest(game) -> Dictionary                a sensible next thing to make here, or {}
+##   bind(game)                                 the running game builds go into (50_survival calls it)
 
 ## Honing lifts the edge this much, up to HONE_CAP. (source)
 const HONE_STEP := 2500
@@ -22,6 +25,20 @@ const HONE_CAP := 6000
 
 static var _by_station: Dictionary = {}
 static var _by_id: Dictionary = {}
+static var _bound: WeakRef = null
+
+
+## The running game whose inventory make() builds for: a crafting screen that
+## only holds the inventory can still put a campfire in the world.
+static func bind(game: Game) -> void:
+	_bound = weakref(game) if game != null else null
+
+
+static func _bound_game(inv: Inventory) -> Game:
+	if _bound == null:
+		return null
+	var g := _bound.get_ref() as Game
+	return g if g != null and g.inventory == inv else null
 
 
 static func _index() -> void:
@@ -76,10 +93,15 @@ static func can_make(inv: Inventory, r: Dictionary) -> bool:
 	return true
 
 
-## Inventory-only making: consumes, adds, mends. Builds need a world (make_in).
+## Consumes, adds, mends. Time is the caller's to charge. A build needs the
+## game bound to this inventory; without one it refuses.
 static func make(inv: Inventory, r: Dictionary) -> bool:
-	if not can_make(inv, r) or r.get("builds", &"") != &"":
+	if not can_make(inv, r):
 		return false
+	var station: StringName = r.get("builds", &"")
+	if station != &"":
+		var g := _bound_game(inv)
+		return g != null and Survival.build(g, station, false, false) != null
 	for id: StringName in r.needs:
 		inv.remove(id, r.needs[id])
 	match r.get("action", &""):
