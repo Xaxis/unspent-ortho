@@ -38,6 +38,32 @@ func test_title_shows_a_coast_then_the_next() -> void:
 	holder.free()
 
 
+func test_pause_can_leave_for_the_title() -> void:
+	var holder := Node.new()
+	tree.root.add_child(holder)
+	var g := Game.new()
+	g.name = "game"
+	holder.add_child(g)
+	g.setup(BootOptions.parse(["--size=48", "--seed=2"]))
+	var ui: Node = null
+	for s in g.systems:
+		if s.name == "90_ui":
+			ui = s
+	check(ui.call("open_screen", &"pause"))
+	check(tree.paused)
+	var pause: UiPauseScreen = ui.call("top")
+	pause.handle(&"down")
+	pause.handle(&"down")
+	pause.handle(&"confirm")
+	await tree.process_frame
+	await tree.process_frame
+	check(not tree.paused, "the world is unpaused for the title")
+	var title := holder.get_node_or_null("title") as UiTitle
+	check(title != null, "the title replaced the game")
+	check(not is_instance_valid(g) or g.is_queued_for_deletion(), "the game is gone")
+	holder.free()
+
+
 func test_new_game_starts_on_the_coast_shown() -> void:
 	var t := _title()
 	var holder := t.get_parent()

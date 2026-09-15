@@ -123,6 +123,14 @@ func handle(action: StringName) -> bool:
 	return true
 
 
+## --screen=map:3 opens at that scale (the map has no rows to choose).
+func select(id: StringName) -> void:
+	var s := String(id).to_int()
+	if SCALES.has(s) and game != null:
+		map_scale = s
+		centre_on(game.player.pos)
+
+
 func _pan(d: Vector2i) -> void:
 	origin_px += d
 	_apply()
@@ -205,7 +213,8 @@ func _draw_overlay() -> void:
 				continue
 			if not inner.has_point(a0) and not inner.has_point(a1):
 				continue
-			var col := Color(UiTheme.ACCENT, 0.35 + 0.55 * float(i) / n)
+			# Lighter when zoomed out, where a long walk would bury the land in dots.
+			var col := Color(UiTheme.ACCENT, (0.35 + 0.55 * float(i) / n) * (0.55 if map_scale == 1 else 1.0))
 			var d := a1 - a0
 			var len := maxi(absi(d.x), absi(d.y))
 			for k in len:
