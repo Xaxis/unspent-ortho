@@ -30,6 +30,7 @@ func setup(g: Game) -> void:
 		return
 	_mend_from = g.clock.minutes
 	_last_health = g.body.health
+	MobFx.warm(g, g.player.position)
 	g.player.model.set_held(g.inventory.held)
 	if g.options.act != "":
 		_play_act(g.options.act)
@@ -229,6 +230,14 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
 					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
+			&"windup":
+				var m: MobState = e.mob
+				if m.blow != null and m.node is Mob:
+					var top := (m.node as Mob).global_position + Vector3(0, float(m.row.get("height", 1.0)) + 0.35, 0)
+					MobFx.tell(fx, top, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
+			&"charge":
+				var m: MobState = e.mob
+				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
 			&"called":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"watcher_call", _at3(m.pos))
@@ -375,21 +384,26 @@ func _play_act(spec: String) -> void:
 		"grip":
 			if target != null and target.bite != null:
 				_bring_to_bite(target)
-				target.start_blow(target.bite, sim.now)
+				Brains.bite(target, sim)
 				_run_for(target.bite.windup + target.bite.active)
 				# Just taken: the jaw has closed and the first pull is thrown, before it has hauled you in.
 				_run_for(24.0)
 				sim.press_swing()
 				_run_for(ms if ms >= 0.0 else 60.0)
+		"windup":
+			if target != null and target.bite != null:
+				_bring_to_bite(target)
+				Brains.bite(target, sim)
+				_run_for(ms if ms >= 0.0 else target.bite.windup * 0.6)
 		"hurt":
 			if target != null and target.bite != null:
 				_bring_to_bite(target)
-				target.start_blow(target.bite, sim.now)
+				Brains.bite(target, sim)
 				_run_for((target.bite.windup + target.bite.active * 0.5) + (ms if ms >= 0.0 else 40.0))
 		"dodge":
 			if target != null and target.bite != null:
 				_bring_to_bite(target)
-				target.start_blow(target.bite, sim.now)
+				Brains.bite(target, sim)
 				_run_for(maxf(0.0, target.bite.windup - 60.0))
 				hero.move = Vector2.from_angle(hero.facing + PI * 0.5)
 				sim.press_dodge()

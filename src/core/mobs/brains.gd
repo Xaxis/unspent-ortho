@@ -65,6 +65,12 @@ static func _target(m: MobState, sim: FightSim) -> Vector2:
 	return sim.hero.pos if m.lost_beats == 0 else m.last_seen
 
 
+## Start the bite's tell. The sim says so, so the view can draw what a player learns to read.
+static func bite(m: MobState, sim: FightSim) -> void:
+	m.start_blow(m.bite, sim.now)
+	sim.emit(&"windup", {"mob": m})
+
+
 static func can_bite(m: MobState, now: float) -> bool:
 	return m.bite != null and not m.locked_out(now) and not m.stunned(now)
 
@@ -170,11 +176,12 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 		m.run_until = now + RUN_MS
 		m.run_from = m.pos
 		m.last_think_pos = m.pos
+		sim.emit(&"charge", {"mob": m})
 	m.want = m.bearing * speed
 	m.aim = m.bearing.angle()
 	var ahead := to.normalized().dot(m.bearing) > 0.3
 	if ahead and to.length() <= strike_range(m, sim) + speed * 0.25 and can_bite(m, now):
-		m.start_blow(m.bite, now)
+		bite(m, sim)
 
 
 static func _run_blocked(m: MobState, speed: float, now: float) -> bool:
@@ -202,7 +209,7 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 	if cyc < LUNGE_PRESS_MS:
 		m.want = dir * m.quick if d > skin * 0.95 else Vector2.ZERO
 		if d <= strike and can_bite(m, now):
-			m.start_blow(m.bite, now)
+			bite(m, sim)
 	else:
 		var side := 1.0 if m.id % 2 == 0 else -1.0
 		var inout := sin((cyc - LUNGE_PRESS_MS) / 380.0 * PI) * 0.35

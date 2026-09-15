@@ -16,7 +16,7 @@ extends RefCounted
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
 ## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
-## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert
+## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
 ##                     (MS = simulation time after the press; each has a default);
 ##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
 

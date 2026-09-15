@@ -162,6 +162,31 @@ vec4 glint(vec2 p, float pw, float pr) {
 	return vec4(0.0);
 }
 
+// A tell: three short strokes flicked up off a body about to strike, the way a
+// pen draws "about to". They grow out quickly and hold, then break away.
+vec4 tell(vec2 p, float pw, float pr) {
+	float grow = clamp(pr / 0.25, 0.0, 1.0);
+	for (int i = 0; i < 3; i++) {
+		float ang = (float(i) - 1.0) * 0.62;
+		// Up the screen is -y in UV.
+		vec2 d = vec2(sin(ang), -cos(ang));
+		float r0 = 0.3;
+		float r1 = r0 + (i == 1 ? 0.62 : 0.46) * grow;
+		float along = dot(p, d);
+		if (along < r0 || along > r1) {
+			continue;
+		}
+		if (pr > 0.75 && ink_hash(vec2(float(i), floor(along / pw / 2.0) + seed)) < (pr - 0.75) * 4.0) {
+			continue;
+		}
+		float k = (along - r0) / max(r1 - r0, 1e-4);
+		if (abs(dot(p, vec2(-d.y, d.x))) < mix(1.4, 0.6, k) * pw) {
+			return vec4(sky_apply(ink_col, wp, TIME), 1.0);
+		}
+	}
+	return vec4(0.0);
+}
+
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
@@ -173,6 +198,7 @@ void fragment() {
 	else if (mode == 2) { o = ring(p, pr); }
 	else if (mode == 3) { o = clang(p, pw, pr); }
 	else if (mode == 4) { o = glint(p, pw, pr); }
+	else if (mode == 5) { o = tell(p, pw, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -242,6 +268,7 @@ const PUFF := 1
 const RING := 2
 const CLANG := 3
 const GLINT := 4
+const TELL := 5
 
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
@@ -373,6 +400,47 @@ static func glint(parent: Node, at: Vector3, col: Color, seed_value: int = 0, si
 	_run(_mark(parent, at, size, GLINT, &"over", seed_value, col, col.lightened(0.5)), 0.16)
 
 
+## Flicked strokes over a body whose blow is coming: held for `seconds` (its windup).
+static func tell(parent: Node, at: Vector3, seconds: float, seed_value: int = 0, size: float = 0.9) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0]), maxf(0.12, seconds))
+
+
+## Compile every mark's shader before the first blow needs it, so the first hit
+## of a game is not also its first hitch. Each draws nothing and frees itself.
+static func warm(parent: Node, at: Vector3) -> void:
+	if not _ok(parent):
+		return
+	for key: StringName in [&"over", &"billboard", &"flat"]:
+		var mi := _mark(parent, at, 0.5, BURST, key, 0, Palette.INK[0], Palette.INK[0])
+		(mi.material_override as ShaderMaterial).set_shader_parameter(&"progress", 1.0)
+		_free_after(mi, 0.25)
+	var arc := MeshInstance3D.new()
+	arc.mesh = swing_mesh(1.0, 1.0)
+	var sm := swing_material()
+	sm.set_shader_parameter(&"head", 0.0)
+	sm.set_shader_parameter(&"tail", 0.0)
+	arc.material_override = sm
+	parent.add_child(arc)
+	arc.global_position = at
+	_free_after(arc, 0.25)
+	var card := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.01, 0.01)
+	card.mesh = q
+	card.material_override = _flash_material()
+	parent.add_child(card)
+	card.global_position = at - Vector3(0, 0.5, 0)
+	_free_after(card, 0.25)
+
+
+static func _free_after(n: Node, seconds: float) -> void:
+	var tw := n.create_tween()
+	tw.tween_interval(seconds)
+	tw.tween_callback(n.queue_free)
+
+
 ## The swing's arc: `reach` out from the body's centre, spread to cover `width`
 ## across. u runs from where the swing starts to where it ends; v from the
 ## inside of the stroke to its outer edge.
@@ -415,11 +483,16 @@ static func swing_material() -> ShaderMaterial:
 static func set_flash(root: Node, on: bool) -> void:
 	if root == null:
 		return
+	_flash_material()
+	_flash_under(root, on)
+
+
+static func _flash_material() -> ShaderMaterial:
 	if _flash_mat == null:
 		_flash_mat = ShaderMaterial.new()
 		_flash_mat.shader = _shader(&"flash")
 		_flash_mat.set_shader_parameter(&"col", _v3(Palette.LINEN[5]))
-	_flash_under(root, on)
+	return _flash_mat
 
 
 static func _flash_under(n: Node, on: bool) -> void:
