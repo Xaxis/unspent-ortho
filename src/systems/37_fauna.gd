@@ -108,7 +108,10 @@ func _populate(index: int, centre: Vector2) -> void:
 			var p := pasture + Vector2(Rng.hash01(s, index, n, 3) - 0.5, Rng.hash01(s, index, n, 4) - 0.5) * 3.0
 			if _ok(p):
 				_enqueue(&"sheep", p, index, s * 13 + index * 5 + n)
-	var beach := _find(centre, 16.0, SHORE, 37 + index)
+	# Gulls work the refuse before the tideline: a tip or a wreck near the village.
+	var beach := _refuse(centre, 18.0)
+	if beach.x < 0.0:
+		beach = _find(centre, 16.0, SHORE, 37 + index)
 	if beach.x > -1.0:
 		var n_gulls := 2 + int(Rng.hash01(s, index, 5) * 3.0)
 		for n in n_gulls:
@@ -128,6 +131,28 @@ func _ring(spec: String) -> void:
 			var p := at + Vector2(cos(a), sin(a)) * (2.2 + 0.6 * (i % 3))
 			i += 1
 			_add(StringName(kv[0]), p, -2, i * 101)
+
+
+const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK]
+
+
+## A standable spot beside the nearest tip or wreck within r of `at`, or (-1, -1).
+func _refuse(at: Vector2, r: float) -> Vector2:
+	var best := Vector2(-1, -1)
+	var bd := r * r
+	for p in game.query.props_near(at, r):
+		if not REFUSE.has(p.kind) or game.world.depleted.has(p.id):
+			continue
+		var d := p.pos.distance_squared_to(at)
+		if d >= bd:
+			continue
+		for i in 8:
+			var spot := p.pos + Vector2.from_angle(TAU * i / 8.0) * (p.solid + 0.9)
+			if _ok(spot):
+				best = spot
+				bd = d
+				break
+	return best
 
 
 ## A standable tile near `at` (within r) whose ground is one of `grounds` (any if empty).

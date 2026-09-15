@@ -125,20 +125,21 @@ func test_twenty_four_villagers_cost_about_a_millisecond_each() -> void:
 		for i in crowd.size():
 			crowd[i].animate(1.2 if i % 2 else 0.0, FRAME)
 	var frames_n := 120
+	var poses0 := 0
+	for p in crowd:
+		poses0 += p.poses_applied
 	var t0 := Time.get_ticks_usec()
 	for f in frames_n:
 		for i in crowd.size():
 			crowd[i].animate(1.2 if i % 2 else 0.0, FRAME)
 	var stepped := float(Time.get_ticks_usec() - t0) / frames_n / crowd.size()
+	var poses := 0
 	for p in crowd:
-		p.pose_hz = 0.0
-	t0 = Time.get_ticks_usec()
-	for f in frames_n:
-		for i in crowd.size():
-			crowd[i].animate(1.2 if i % 2 else 0.0, FRAME)
-	var every := float(Time.get_ticks_usec() - t0) / frames_n / crowd.size()
-	print("  crowd of 24 (script): %.3f ms a person a frame stepped, %.3f ms posed every frame" % [stepped / 1000.0, every / 1000.0])
-	lt(stepped, every * 0.7, "stepping saves most of the pose work (%.0f us against %.0f us)" % [stepped, every])
+		poses += p.poses_applied
+	# Counted, not timed: a loaded machine can make any one timing lie.
+	lt(float(poses - poses0), frames_n * crowd.size() * 0.25, "a stepped crowd poses a fifth as often as the frames (%d of %d)" % [poses - poses0, frames_n * crowd.size()])
+	print("  crowd of 24 (script): %.3f ms a person a frame stepped" % (stepped / 1000.0))
+	lt(stepped, 1000.0, "a stepped villager's animate is under a millisecond (%.0f us)" % stepped)
 
 	# Whole frames with the crowd standing in the tree, so the engine's skeleton
 	# and skin updates count too, against the same frames with nobody there.

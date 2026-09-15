@@ -347,10 +347,10 @@ static func _wear(r: RandomNumberGenerator, table: Array) -> String:
 ## Oilskin gone dark with years of grease and weather, never new yellow.
 const OILSKIN_WEAR := [["sand", 2, 3], ["earth", 2, 3], ["moss", 1, 2], ["spruce", 1, 2], ["brine", 1, 2], ["ash", 2, 2]]
 ## Hides, not fleece: the shag at the edges is the light part (PersonBody's trim).
-const FUR_WEAR := [["earth", 2, 3], ["sand", 2, 3], ["ash", 2, 2], ["stone", 2, 3], ["linen", 2, 2]]
+const FUR_WEAR := [["earth", 2, 3], ["sand", 2, 3], ["rust", 1, 2], ["linen", 2, 2], ["earth", 3, 4]]
 const WRAP_WEAR := [["linen", 2, 3], ["sand", 3, 3], ["ash", 2, 3], ["stone", 2, 3], ["rust", 2, 2]]
-## Hoods are the dirtiest cloth anyone owns.
-const HOOD_WEAR := [["earth", 1, 2], ["ash", 1, 2], ["rust", 1, 2], ["stone", 1, 2], ["sand", 2, 2], ["moss", 1, 1]]
+## Hoods are the dirtiest cloth anyone owns, and never the colour of hair.
+const HOOD_WEAR := [["ash", 1, 2], ["stone", 1, 2], ["sand", 2, 3], ["moss", 1, 2], ["slate", 1, 2], ["linen", 1, 2]]
 
 
 ## The trade a villager's day gives them: from what folk has them do (role) and

@@ -1,22 +1,61 @@
-# Village people and animals through an evening: a village streams in a figure
-# a frame, villagers work and watch you pass, gulls leave at dusk, villagers walk
-# home and go in, and everyone is back out at dawn.
-# Run with: tools/tour.sh tours/characters.tour --seed=1
-village 1
-wait 1.5
-shot 01-village-streamed-in
-walk -1,-0.4 1.6
+# The last people, from a normal start. Seed 1 wakes beside Oyster Row: walk
+# up toward the square with the real keys, wait to see a villager dressed for
+# the coast and their trade, and walk up to one. Watch the village into the
+# evening (rims at dusk, the lantern lit with its key and the slate on the
+# wrist marking the player), everyone indoors at night and out at dawn. Then
+# the villages of the other lands, each dressed for its own weather.
+#   tools/tour.sh tours/characters.tour --seed=1
+coast calm
+wait 1.0
+shot 01-wake
+walk 1,-1 0.9
+await folk 6
+wait 0.4
+shot 02-oyster-row
+walkto folk 12
+zoom 5
+wait 0.4
+shot 03-a-villager-close
 zoom 9
-wait 0.5
-shot 02-among-them
-hour 20.4
-wait 7
-shot 03-gulls-leave
-hour 20.99
-wait 1.8
-shot 04-walking-home
+walk -1,-0.3 1.3
+wait 0.6
+shot 04-villagers-and-the-dog
+hour 19.6
+wait 2.5
+shot 05-dusk
+hour 20.7
+wait 2.0
+tap lamp
+wait 1.0
+zoom 5
+shot 06-lantern-slate-and-rims
+zoom 9
+hour 21.02
 wait 12
-shot 05-indoors
-hour 5.5
+shot 07-indoors
+hour 5.6
 wait 3
-shot 06-dawn
+shot 08-dawn
+# The other lands: teleports, then the same wait and walk to someone.
+hour 11
+zoom 12
+village 10
+await folk 8
+walkto folk 12
+zoom 6
+wait 0.5
+shot 09-snowfield-hush-fold
+zoom 12
+village 6
+await folk 8
+walkto folk 12
+zoom 6
+wait 0.5
+shot 10-burning-cinderstead
+zoom 12
+village 1
+await folk 8
+walkto folk 12
+zoom 6
+wait 0.5
+shot 11-moss-fennick

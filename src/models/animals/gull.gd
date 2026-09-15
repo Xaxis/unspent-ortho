@@ -52,8 +52,9 @@ func _build_rig() -> void:
 		var junk: Color = [Palette.INK[3], Palette.RUST[3], Palette.COLD[2], Palette.LINEN[3]][rng.randi_range(0, 3)]
 		var tip := Vector3(0.14 * s, -0.012 * s, 0.0)
 		var hang := Vector3(0.1 * s, -0.12 * s, 0.02 * s)
-		Sculpt.card(hk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk, Vector3(1, 0, 0))
-		Sculpt.card(hk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk.darkened(0.2), Vector3(-1, 0, 0))
+		var rk := rig.kit(head, &"refuse")
+		Sculpt.card(rk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk, Vector3(1, 0, 0))
+		Sculpt.card(rk, tip + Vector3(0, 0, -0.008), tip + Vector3(0, 0, 0.008), hang + Vector3(0.01, 0, 0.014), hang + Vector3(-0.01, 0, -0.004), junk.darkened(0.2), Vector3(-1, 0, 0))
 	for side: int in [-1, 1]:
 		Sculpt.card(hk, Vector3(0.03 * s, 0.022 * s, side * 0.043 * s), Vector3(0.045 * s, 0.022 * s, side * 0.04 * s), Vector3(0.045 * s, 0.034 * s, side * 0.04 * s), Vector3(0.03 * s, 0.034 * s, side * 0.043 * s), Palette.INK[0], Vector3(0.3, 0.2, side).normalized())
 	for side: int in [-1, 1]:
