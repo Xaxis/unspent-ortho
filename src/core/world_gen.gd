@@ -23,7 +23,8 @@ static var last_timings: Dictionary = {}
 
 
 ## `until` = &"tiles" stops once every tile has its country (the layout is
-## final by then): for tests that only need shares and borders.
+## final by then; country2 and blend are not filled): for tests that only
+## need shares.
 static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = &"") -> WorldData:
 	var w := WorldData.new(seed_value, size)
 	var c := GenContext.new(w)
@@ -36,11 +37,15 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	t = _mark(c, marks, &"layout", t)
 	GenRelief.run(c)
 	t = _mark(c, marks, &"relief", t)
-	GenCountries.fine(c)
+	GenCountries.fine(c, until != &"tiles")
 	t = _mark(c, marks, &"tiles", t)
 	if until == &"tiles":
-		for i in c.n:
-			w.level[i] = 1 if c.land[i] != 0 else -1
+		var level := w.level
+		var land := c.land
+		GenFields.rows(size, func(y0: int, y1: int) -> void:
+			for i in range(y0 * size, y1 * size):
+				level[i] = 1 if land[i] != 0 else -1
+		)
 		last_timings = marks
 		return w
 	GenWater.rivers(c)

@@ -241,7 +241,7 @@ static func upsample_params(c: GenContext, names: Array) -> Dictionary:
 ## the warps have stretched the field. Finger and bend noise then shift the
 ## border itself by a known number of tiles, so every border wanders. _blend
 ## then measures the ecotones from the borders that resulted.
-static func fine(c: GenContext) -> void:
+static func fine(c: GenContext, with_blend: bool = true) -> void:
 	var w := c.w
 	var size := c.size
 	var n := c.n
@@ -360,7 +360,8 @@ static func fine(c: GenContext) -> void:
 					country2[i] = hi
 	)
 	c.mark(&"tiles.assign")
-	_blend(c, widen)
+	if with_blend:
+		_blend(c, widen)
 	c.mark(&"tiles.blend")
 
 
