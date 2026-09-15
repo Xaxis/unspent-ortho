@@ -179,6 +179,9 @@ func test_play_action_contract() -> void:
 	for i in 20:
 		p.animate(0.0, 1.0 / 60.0)
 	check(not p.busy(), "the swing ended on time")
+	p.play_action(&"eat", 0.0)
+	p.play_action(&"juggle", 1.0)
+	eq(p.action, &"eat", "an unknown action leaves the current one alone")
 	p.free()
 
 

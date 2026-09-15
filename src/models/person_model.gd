@@ -4,8 +4,14 @@ extends Node3D
 ## one thing, animated procedurally. Faces +X at rotation 0 (the same convention
 ## as Player.facing: set rotation.y = -facing).
 ##
+## Drawn per docs/ART.md: MADE in the hand (person.gdshader, Ink.HAND hatching,
+## never on skin), no ink outline but a one-pixel rim in the person's own colours
+## (person_rim.gdshader), FOUND salvage and glims on found.gdshader.
+##
 ## Contract used by fight, survival and later NPCs:
-##   build(material)               make the figure (call once, before or after set_look)
+##   build(material)               make the figure (call once, before or after set_look). People
+##                                 always draw with PersonModel.material(); a material given here
+##                                 is used only if it is already on the person shader.
 ##   animate(speed, delta)         every frame: speed in tiles/s actually moved
 ##   play_action(action, seconds)  &"swing" &"dodge" &"work" &"hurt" &"eat" &"carried" &"downed"
 ##                                 also &"work_break" &"work_dig" &"work_fell" &"work_cut" &"gather";
@@ -24,6 +30,7 @@ var action_left := 0.0
 var rig: SkinRig
 
 const PERSON_SHADER := preload("res://src/models/people/person.gdshader")
+
 var _dims: Dictionary = PersonBody.dims(&"man")
 var _phase := 0.0
 var _clock := 0.0
