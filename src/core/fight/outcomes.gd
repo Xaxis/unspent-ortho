@@ -12,10 +12,8 @@ const SHIFT_WEAR := 16
 ## Rock faces tried, nearest first, before giving up on a place to stand.
 const BESIDE_TRIES := 12
 
-const DOWNED_LINE := "You come to on the ground where it left you. The light has moved."
-const CARRIED_LINE := "You wake against cold rock with sore hands, a long way from where you were. The lamp is dry."
-const WON_LINE := ""
-const AWAY_LINE := ""
+const DOWNED_LINE := "You come to where you fell. Hours have gone."
+const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The lamp is out."
 
 
 ## Returns {minutes, line}. `by_kind` is the roster id of what put you down (may be empty).

@@ -59,9 +59,9 @@ const MEND_MINUTES := 60.0
 const HURT_MINUTES := 600.0
 
 # --- tools ---
-## The edge at which a worn tool is noticed (source: "It is not biting the way it did.").
+## The edge at which a worn tool is noticed, once (source: edge <= 3500).
 const DULL_EDGE := 3500
-const DULL_LINE := "It is not biting the way it did."
+const DULL_LINE := "The edge is going."
 ## A found weapon's charge, the item its `wick` counts.
 const CHARGE := &"wick"
 

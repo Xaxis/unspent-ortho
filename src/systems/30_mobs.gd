@@ -10,7 +10,7 @@ const JUMP_CLEARS := 30.0
 var sim: FightSim
 var moment: Moment
 var spawner: Spawner
-var _rolls_done := -1
+var coast: Coast
 var _told_ms := -Racket.QUIET_MS
 var _layer: Node3D
 
@@ -34,7 +34,8 @@ func setup(g: Game) -> void:
 	_layer = Node3D.new()
 	_layer.name = "mobs"
 	g.add_child(_layer)
-	_rolls_done = floori(sim.now / Spawner.ROLL_MS)
+	coast = Coast.new(sim, spawner)
+	coast.spawning = g.options.spawn.is_empty()
 	Events.time_skipped.connect(_on_time_skipped)
 	for k: String in g.options.spawn:
 		place_near_player(Roster.resolve(k.strip_edges()))
@@ -45,23 +46,8 @@ func _physics_process(_delta: float) -> void:
 	if sim == null:
 		return
 	_read_moment()
-	var rolls := floori(sim.now / Spawner.ROLL_MS)
-	# Never more than a few rolls in one frame, however long the frame was.
-	_rolls_done = maxi(_rolls_done, rolls - 4)
-	while _rolls_done < rolls:
-		_rolls_done += 1
-		if not game.options.spawn.is_empty():
-			continue
-		var s := spawner.roll(_rolls_done, game.world, game.query, moment, sim.hero.pos, sim.living())
-		if not s.is_empty():
-			sim.add_mob(s.kind, s.pos)
+	coast.tick()
 	_listen()
-	for m in sim.mobs:
-		if Spawner.should_cull(m.pos, sim.hero.pos):
-			if m.snatched and not m.reported and m.row.get("hits", {}).get("files", false):
-				m.reported = true
-				sim.emit(&"filed", {"mob": m})
-			sim.remove_mob(m)
 	_ensure_nodes()
 
 
