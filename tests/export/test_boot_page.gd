@@ -44,7 +44,9 @@ func _check_game_page(threads: bool) -> void:
 		eq(game.systems.size(), BootPage.system_scripts().size(), "every system loaded")
 	check(not BootWorld.offered(), "the world was taken, not left on offer")
 	var t := page.stages.timings()
-	for id: StringName in [&"code", &"world", &"view", &"near", &"start", &"draw"]:
+	var ids: Array[StringName] = [&"code", &"world", &"view", &"near", &"start", &"draw"]
+	ids.append(&"compiled" if threads else &"code2")
+	for id: StringName in ids:
 		check(t.has(id), "stage %s ran (%s)" % [id, "threads" if threads else "no threads"])
 	eq(page.progress(), 1.0, "the line is full at the hand-over")
 	for i in range(1, seen.size()):
@@ -111,14 +113,25 @@ func test_headless_opens_the_scene_at_once() -> void:
 
 
 func test_start_of_matches_where_the_game_puts_the_player() -> void:
-	for args: Array in [["--seed=3"], ["--seed=3", "--village=0"], ["--seed=3", "--at=20,30"]]:
-		var o := BootOptions.parse(PackedStringArray(args + ["--size=%d" % SIZE]))
+	var w := WorldGen.generate(3, SIZE)
+	var river := GenPlaces.find(w, "river")
+	var cases: Array = [
+		[["--seed=3"], w.spawn],
+		[["--seed=3", "--village=0"], (w.villages[0].pos as Vector2) + Vector2(3, 3) if not w.villages.is_empty() else w.spawn],
+		[["--seed=3", "--at=20,30"], Vector2(20, 30)],
+		[["--seed=3", "--place=river"], river if river.x >= 0 else w.spawn],
+		[["--seed=3", "--place=nowhere"], w.spawn],
+	]
+	for c: Array in cases:
+		var o := BootOptions.parse(PackedStringArray(c[0] + ["--size=%d" % SIZE]))
+		eq(BootWorld.start_of(w, o), c[1], "the rule for %s" % str(c[0]))
+		# The page draws round start_of; the game must stand the player on the same tile.
 		var holder := _holder()
 		var game := Game.new()
 		game.name = "game"
 		holder.add_child(game)
 		game.setup(o)
-		eq(BootWorld.start_of(game.world, o), game.player.pos, "start for %s" % str(args))
+		eq(game.player.pos, c[1], "the game starts %s there" % str(c[0]))
 		holder.free()
 
 
@@ -172,3 +185,24 @@ func test_the_sketch_draws_the_coast_the_grid_and_the_villages() -> void:
 	var s := Vector2i((w.spawn * 112.0 / w.size).floor())
 	eq(w.level_at(int(w.spawn.x), int(w.spawn.y)) > 0, true, "the start is on land, where the page marks it")
 	check(s.x >= 0 and s.x < 112 and s.y >= 0 and s.y < 112, "the start's mark is on the sketch")
+
+
+func test_without_threads_the_title_keeps_its_coast() -> void:
+	BootWorld.clear()
+	var holder := _holder()
+	var title := BootPage.make_title(holder, BootOptions.parse(["--seed=8", "--size=%d" % SIZE])) as UiTitle
+	for i in 300:
+		if title.world != null and not title._drawing():
+			break
+		title._process(0.05)
+		await tree.process_frame
+	check(title.world != null, "the title shows a coast")
+	title.cycle_coasts = false
+	title._shown_for = UiTitle.SEED_SECONDS + 1.0
+	title._process(0.05)
+	check(not title._drawing(), "no new coast is started on a build that would make it on the main thread")
+	title.cycle_coasts = true
+	title._process(0.05)
+	check(title._drawing(), "with threads the next coast is on its way")
+	holder.free()
+

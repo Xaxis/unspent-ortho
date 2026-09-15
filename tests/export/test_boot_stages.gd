@@ -91,3 +91,31 @@ func test_wait_finishes_a_chain_in_flight() -> void:
 	s.wait()
 	check(ran[0], "wait() blocks until the worker job is done")
 	check(s.done())
+
+
+func test_a_line_continued_from_the_shell_starts_where_it_left_off() -> void:
+	var s := _stages([])
+	s.start_at = 0.12
+	near(s.progress(), 0.12, 0.0001, "before any stage, where the shell's download ended")
+	var last := s.progress()
+	while not s.step(false):
+		check(s.progress() >= last, "never back")
+		last = s.progress()
+	eq(s.progress(), 1.0, "and full at the end")
+
+
+func test_held_reports_the_longest_main_thread_piece() -> void:
+	var s := BootStages.new()
+	var n := [0]
+	s.add(&"slow", "slow", 10.0, func() -> bool:
+		n[0] += 1
+		OS.delay_msec(40 if n[0] == 2 else 5)
+		return n[0] == 3, false)
+	s.add(&"pool", "pool", 10.0, func() -> void: OS.delay_msec(30))
+	while not s.step(true):
+		OS.delay_msec(1)
+	var held := s.held()
+	check(held.has(&"slow"), "a main-thread stage reports how long it held the page")
+	gt(float(held.get(&"slow", 0.0)), 35.0, "its longest piece, not the sum or the first")
+	lt(float(held.get(&"slow", 0.0)), 90.0)
+	check(not held.has(&"pool"), "a stage on the pool never held the page")

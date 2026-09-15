@@ -34,12 +34,12 @@ func _ready() -> void:
 			root = BootPage.preview(self, options)
 		"title":
 			if options.shot != "":
-				root = BootPage._make_title(self, options)
+				root = BootPage.make_title(self, options)
 			else:
 				root = BootPage.open_title(self, options)
 		_:
 			if options.shot != "":
-				root = BootPage._make_game(self, options)
+				root = BootPage.make_game(self, options)
 			else:
 				root = BootPage.open_game(self, options)
 	if root.get_parent() == null:

@@ -28,6 +28,7 @@
 //   --resize=WxH     then resize the page and require the scale to stay an exact integer
 //   --swiftshader    render on the CPU (hosts with no GPU; a game frame can take seconds)
 //   --headed         show the browser
+//   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
 import { chromium } from 'playwright';
 import http from 'node:http';
@@ -52,7 +53,13 @@ const TYPES = {
   '.pck': 'application/octet-stream', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml',
 };
 const served = new Map();
-const server = http.createServer((req, res) => {
+// The first load's wasm is held back until the shell has been shot, so the page
+// the shell draws while the engine downloads can be seen and compared.
+let releaseWasm = () => {};
+let wasmHeldAt = 0;
+let wasmHeldMs = 0;
+const wasmGate = new Promise((r) => { releaseWasm = () => { if (wasmHeldAt) wasmHeldMs = Date.now() - wasmHeldAt; r(); }; });
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
   const file = path.join(root, path.normalize(rel));
@@ -67,6 +74,10 @@ const server = http.createServer((req, res) => {
     'Cache-Control': 'no-store',
     'Vary': 'Accept-Encoding',
   };
+  if (file.endsWith('.wasm')) {
+    if (!wasmHeldAt) wasmHeldAt = Date.now();
+    await wasmGate;
+  }
   const accept = String(req.headers['accept-encoding'] || '');
   let body = file;
   if (/\bbr\b/.test(accept) && fs.existsSync(file + '.br')) { body = file + '.br'; headers['Content-Encoding'] = 'br'; }
@@ -83,20 +94,44 @@ const port = server.address().port;
 // Headless Chromium on the machine's GPU (Metal through ANGLE on macOS, the
 // platform default elsewhere). SwiftShader draws a game frame in seconds.
 const gpuArgs = process.platform === 'darwin' ? ['--use-angle=metal'] : [];
-const launchArgs = opt.swiftshader
+// Audio waits for a gesture, as in a browser a player opens (headless otherwise
+// lets a page start sound on its own, and the first-key rule would go untested).
+const launchArgs = [...(opt.swiftshader
   ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
-  : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu'];
+  : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu']), '--autoplay-policy=user-gesture-required'];
 const browser = await chromium.launch({ headless: !opt.headed, args: launchArgs });
-const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+// Not a whole multiple of 640x360: the game (and the shell before it) sit in black bars.
+const context = await browser.newContext({ viewport: { width: 1440, height: 789 }, deviceScaleFactor: Number(opt.dpr || 1) });
 // Record every AudioContext the engine makes, so the check can see it start, and
 // tap whatever the engine connects to the speakers, so it can hear the result.
+// Playwright's Chromium lets any page play sound and reports a gesture from the
+// start, so the browser's rule is put back here: until a real (trusted) key or
+// click, a context is suspended, resume() does nothing, and
+// navigator.userActivation says no gesture yet. The engine must start its sound
+// after the first key by itself.
 await context.addInitScript(() => {
   window.__audio = [];
   window.__taps = [];
+  window.__gestured = false;
+  const mark = (e) => { if (e.isTrusted) window.__gestured = true; };
+  for (const type of ['keydown', 'mousedown', 'pointerdown', 'touchstart']) window.addEventListener(type, mark, true);
+  try {
+    Object.defineProperty(Navigator.prototype, 'userActivation', {
+      configurable: true,
+      get: () => ({ hasBeenActive: window.__gestured, isActive: window.__gestured }),
+    });
+  } catch (e) { /* the real one stays */ }
   const Real = window.AudioContext;
   if (Real) {
     window.AudioContext = class extends Real {
-      constructor(...a) { super(...a); window.__audio.push(this); }
+      constructor(...a) {
+        super(...a);
+        window.__audio.push(this);
+        if (!window.__gestured) Real.prototype.suspend.call(this);
+      }
+      resume() {
+        return window.__gestured ? Real.prototype.resume.call(this) : new Promise(() => {});
+      }
     };
   }
   const connect = AudioNode.prototype.connect;
@@ -110,28 +145,49 @@ await context.addInitScript(() => {
     }
     return out;
   };
-  // Loudest sample (0..1) reaching the speakers right now.
+  // What reaches the speakers right now: the loudest sample (0..1), and the
+  // strongest frequency with the share of all power within 3 bins of it (a pure
+  // test tone puts nearly all of it there; a game's mix spreads it).
   window.__loudness = () => {
     let peak = 0;
+    let best = null;
     for (const t of window.__taps) {
       const buf = new Float32Array(t.fftSize);
       t.getFloatTimeDomainData(buf);
-      for (const v of buf) peak = Math.max(peak, Math.abs(v));
+      let p = 0;
+      for (const v of buf) p = Math.max(p, Math.abs(v));
+      peak = Math.max(peak, p);
+      if (p < 0.001) continue;
+      const spec = new Float32Array(t.frequencyBinCount);
+      t.getFloatFrequencyData(spec);
+      let top = 0, total = 0;
+      const pow = spec.map((db) => Math.pow(10, db / 10));
+      for (let i = 0; i < pow.length; i += 1) { total += pow[i]; if (pow[i] > pow[top]) top = i; }
+      let near = 0;
+      for (let i = Math.max(0, top - 3); i <= Math.min(pow.length - 1, top + 3); i += 1) near += pow[i];
+      const hz = top * t.context.sampleRate / t.fftSize;
+      if (!best || p > best.peak) best = { peak: p, hz, share: total > 0 ? near / total : 0 };
     }
-    return peak;
+    return { peak, hz: best ? best.hz : 0, share: best ? best.share : 0 };
   };
 });
 
-// Listen at the speakers for up to `secs`: the loudest sample heard (0..1).
-async function listen(secs) {
-  let peak = 0;
+// Listen at the speakers for up to `secs` (or `until` the first sound, when
+// asked): the loudest sample heard (0..1), and the strongest frequency and its
+// share of the power at that loudest moment.
+async function listen(secs, { until = true } = {}) {
+  let heard = { peak: 0, hz: 0, share: 0 };
   const end = Date.now() + secs * 1000;
-  while (Date.now() < end && peak < 0.001) {
-    peak = Math.max(peak, await page.evaluate(() => window.__loudness()));
-    await page.waitForTimeout(100);
+  while (Date.now() < end && !(until && heard.peak >= 0.001)) {
+    const now = await page.evaluate(() => window.__loudness());
+    if (now.peak > heard.peak) heard = now;
+    await page.waitForTimeout(50);
   }
-  return peak;
+  return heard;
 }
+// The probe's test tone: 440 Hz, alone.
+const isTone = (h) => h.peak >= 0.001 && Math.abs(h.hz - 440) < 30 && h.share > 0.8;
+const dbfs = (h) => (h.peak > 0 ? (20 * Math.log10(h.peak)).toFixed(1) : '-inf');
 const page = await context.newPage();
 const failures = [];
 const lines = [];
@@ -204,6 +260,36 @@ async function inspect(pngPath) {
   }, b64);
 }
 
+// The loading page in a frame (the shell's or the engine's): the glass rectangle,
+// how far the line is lit (in game pixels from its start) and the ink of the words.
+async function inspectPage(pngPath) {
+  const b64 = fs.readFileSync(pngPath).toString('base64');
+  return page.evaluate(async (data) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + data;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, c.width, c.height).data;
+    const rgb = (x, y) => { const i = (y * c.width + x) * 4; return [px[i], px[i + 1], px[i + 2]]; };
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y += 1) for (let x = 0; x < c.width; x += 1) {
+      const [r, gg, b] = rgb(x, y);
+      if (r + gg + b > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const s = Math.max(1, Math.round(w / 640));
+    const at = (gx, gy) => rgb(x0 + gx * s, y0 + gy * s);
+    let lit = -1;
+    for (let gx = 216; gx <= 424; gx += 1) if (at(gx, 214)[0] > 0x60) lit = gx - 216;
+    let ink = 0;
+    for (let gy = 199; gy < 208; gy += 1) for (let gx = 216; gx < 320; gx += 1) { const [r] = at(gx, gy); if (r > 0x50) ink += 1; }
+    return { rect: [x0, y0, w, h], scale: s, lit, ink };
+  }, b64);
+}
+
 async function shoot(name, { expectScale = null, still = false } = {}) {
   const file = `${opt.out}_${name}.png`;
   try {
@@ -227,7 +313,9 @@ async function shoot(name, { expectScale = null, still = false } = {}) {
 
 // A player's start is the title; the probe makes the query non-empty, so say so.
 const extra = opt.args ? opt.args.split(',') : [];
-const args = ['--probe', ...(extra.some((a) => a.startsWith('--scene')) ? [] : ['--scene=title']), ...extra];
+// Tool options in the address must never reach the build (the shell drops them):
+// a --shot here would quit the game after one frame, a --give would cheat.
+const args = ['--probe', ...(extra.some((a) => a.startsWith('--scene')) ? [] : ['--scene=title']), '--shot=web-must-not-quit.png', '--give=scrap:99', ...extra];
 const query = '?' + args.map((a) => {
   const [k, ...v] = a.split('=');
   return v.length ? `${encodeURIComponent(k)}=${encodeURIComponent(v.join('='))}` : encodeURIComponent(k);
@@ -236,8 +324,7 @@ const url = `http://127.0.0.1:${port}/index.html${query}`;
 console.log(`web ${path.relative(process.cwd(), root)} on ${url} (${opt.swiftshader ? 'swiftshader' : 'gpu'})`);
 const result = {};
 
-async function boot(label) {
-  const from = lines.length;
+async function boot(label, from = lines.length) {
   // The loading page, once it has sketched the island and before the world shows.
   const sketch = await waitLine(/^boot sketch/, Number(opt.timeout), from);
   if (sketch) {
@@ -254,10 +341,37 @@ async function boot(label) {
 
 t0 = Date.now();
 await page.goto(url);
-const first = await boot('');
+// The shell, while the engine's wasm is held back, then the engine's first page
+// frame once the shell has gone: the same rectangle, the same line, never shorter.
+if (await page.waitForFunction(() => window.unspentShell && window.unspentShell().shown, null, { timeout: 20000 }).catch(() => null)) {
+  await page.waitForTimeout(400);
+  const shellFile = `${opt.out}_shell.png`;
+  await page.screenshot({ path: shellFile });
+  const shell = await inspectPage(shellFile);
+  const state = await page.evaluate(() => window.unspentShell());
+  releaseWasm();
+  const gone = await page.waitForFunction(() => !window.unspentShell().shown, null, { timeout: Number(opt.timeout) * 1000 }).catch(() => null);
+  const handFile = `${opt.out}_handover.png`;
+  await page.screenshot({ path: handFile });
+  const hand = await inspectPage(handFile);
+  console.log(`web shell ${shellFile}: glass ${shell.rect.join(',')} x${shell.scale}, line lit ${shell.lit} px, words ${shell.ink} px ('${state.words}', ${(state.progress * 100).toFixed(0)}%)`);
+  console.log(`web handover ${handFile}: glass ${hand.rect.join(',')} x${hand.scale}, line lit ${hand.lit} px, words ${hand.ink} px`);
+  const dpr = await page.evaluate(() => window.devicePixelRatio || 1);
+  const want = [state.rect.x, state.rect.y, state.rect.w, state.rect.h].map((v) => Math.round(v * dpr));
+  if (!gone) failures.push('the engine\'s loading page never took over from the shell');
+  if (shell.rect.join() !== want.join()) failures.push(`the shell's glass ${shell.rect.join(',')} is not where the game will be drawn (${want.join(',')})`);
+  if (hand.rect.join() !== shell.rect.join()) failures.push(`the glass moved at the hand-over: shell ${shell.rect.join(',')}, engine ${hand.rect.join(',')}`);
+  if (shell.ink === 0 || hand.ink === 0) failures.push(`the words are missing (shell ${shell.ink} px, engine ${hand.ink} px)`);
+  if (hand.lit < shell.lit) failures.push(`the line went back at the hand-over: shell lit ${shell.lit} px, engine ${hand.lit} px`);
+} else {
+  releaseWasm();
+  failures.push('the shell never drew its page');
+}
+const first = await boot('', 0);
 if (first) {
-  console.log(`web first frame ${first.t.toFixed(2)} s after navigation (${first.text})`);
-  result.first_frame_s = first.t;
+  // The wasm was held while the shell was shot: that wait is not the build's.
+  result.first_frame_s = first.t - wasmHeldMs / 1000;
+  console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation, not counting ${(wasmHeldMs / 1000).toFixed(2)} s the harness held the wasm (${first.text})`);
   await shoot('ready');
   const focused = await page.evaluate(() => document.activeElement && document.activeElement.id);
   if (focused !== 'canvas') failures.push(`keyboard focus is on '${focused || 'nothing'}', not the canvas`);
@@ -271,12 +385,18 @@ if (first) {
   await page.waitForTimeout(500);
   const after = await page.evaluate(() => window.__audio.map((a) => a.state));
   console.log(`web audio contexts [${before}] before the first key, [${after}] after`);
+  if (before.includes('running')) failures.push('audio was running before any key: the browser held nothing back, so the first-key start is untested');
   if (!after.includes('running')) failures.push(`audio did not start after the first key (contexts: ${after.join(',') || 'none'})`);
   // The probe answers the key with a short tone: it must come out of the page.
   const tone = await listen(4);
-  console.log(`web speakers: loudest sample ${tone > 0 ? (20 * Math.log10(tone)).toFixed(1) : '-inf'} dBFS after the first key`);
-  if (tone < 0.001) failures.push('nothing reached the speakers after the first key (the probe plays a tone)');
+  console.log(`web speakers: loudest sample ${dbfs(tone)} dBFS after the first key (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}% of the power there)`);
+  if (tone.peak < 0.001) failures.push('nothing reached the speakers after the first key (the probe plays a tone)');
+  // The same ears must know the tone, or telling the game from it below means nothing.
+  else if (!isTone(tone)) failures.push(`the probe's tone was heard but not recognised as 440 Hz (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}%)`);
   if (!(await waitLine(/^web probe done/, 30, 0))) failures.push('the probe on the first scene never finished');
+  const started = lines.find((l) => /^web probe start/.test(l.text));
+  if (!started) failures.push('the probe never started');
+  else if (/--(shot|give)/.test(started.text)) failures.push(`tool options in the address reached the build: ${started.text}`);
 
   if (opt.play) {
     const from = lines.length;
@@ -299,11 +419,15 @@ if (first) {
       await page.keyboard.up('KeyS');
       await page.waitForTimeout(Number(opt.after) * 1000);
       await shoot(`game+${opt.after}s`);
-      const heard = await listen(30);
-      const db = heard > 0 ? 20 * Math.log10(heard) : -Infinity;
+      // The game's probe plays no tone (the title proved the path): once it has
+      // heard the game on the bus, what the speakers carry is the game.
+      if (!(await waitLine(/^web (ok|FAIL) audio game/, 40, from))) failures.push('the probe on the game never reported its sound');
+      const heard = await listen(6, { until: false });
       const graph = await page.evaluate(() => ({ taps: window.__taps.length, contexts: window.__audio.map((a) => `${a.state}@${a.currentTime.toFixed(1)}s/${a.sampleRate}`) }));
-      console.log(`web speakers: loudest sample ${db.toFixed(1)} dBFS in the game (${graph.taps} outputs tapped, contexts ${graph.contexts.join(' ')})`);
-      if (heard < 0.001) failures.push('nothing reached the speakers in 30 s of the game');
+      console.log(`web speakers: loudest sample ${dbfs(heard)} dBFS in the game over 6 s (${heard.hz.toFixed(0)} Hz strongest, ${(heard.share * 100).toFixed(0)}% of the power there; ${graph.taps} outputs tapped, contexts ${graph.contexts.join(' ')})`);
+      if (heard.peak < 0.001) failures.push('nothing reached the speakers in 6 s of the game');
+      if (isTone(heard)) failures.push(`what reached the speakers in the game is the probe's 440 Hz test tone, not the game (${dbfs(heard)} dBFS)`);
+      if (lines.slice(from).some((l) => /^web ok audio path/.test(l.text))) failures.push('the game\'s probe played its test tone again after the title proved the path');
       if (!(await waitLine(/^web probe done/, 40, from))) failures.push('the probe on the game never finished');
     }
   }
@@ -312,14 +436,15 @@ if (first) {
     const [w, h] = opt.resize.split('x').map(Number);
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(1500);
-    await shoot(`resize-${w}x${h}`, { expectScale: Math.max(1, Math.min(Math.floor(w / 640), Math.floor(h / 360))) });
+    const dpr = Number(opt.dpr || 1);
+    await shoot(`resize-${w}x${h}`, { expectScale: Math.max(1, Math.min(Math.floor(w * dpr / 640), Math.floor(h * dpr / 360))) });
   }
 
   if (opt.reload) {
     const from = lines.length;
     t0 = Date.now();
     await page.reload();
-    const again = await boot('reload-');
+    const again = await boot('reload-', from);
     if (again) {
       console.log(`web reload first frame ${again.t.toFixed(2)} s`);
       result.reload_s = again.t;

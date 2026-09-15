@@ -136,12 +136,4 @@ static func sketch(w: WorldData, px: int, inks: Dictionary) -> Image:
 ## thread (it adds nodes to `v`, which need not be in the tree). Returns how many
 ## are still missing, so a page can build one per frame and draw between them.
 static func build_near(v: WorldView, p: Vector2) -> int:
-	v.focus = p
-	var missing := v.pending()
-	if missing == 0:
-		return 0
-	for key: Vector2i in v._wanted(0.0):
-		if v.chunk_at(Vector2(key * WorldView.CHUNK) + Vector2.ONE) == null:
-			v._build(key)
-			return missing - 1
-	return 0
+	return v.build_one_near(p)

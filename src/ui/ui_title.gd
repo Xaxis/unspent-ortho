@@ -25,6 +25,10 @@ var sky: SkyLight
 var camera: CameraRig
 var menu: UiTitleMenu
 
+## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
+## there a coast is made on the main thread and would hold the title still for seconds.
+var cycle_coasts := BootPage.has_threads()
+
 var _layer: CanvasLayer
 var _focus := Vector2.ZERO
 var _heading := Vector2.ONE
@@ -203,7 +207,7 @@ func _process(delta: float) -> void:
 	camera.target = world.to_3d(_focus)
 	view.focus = _focus
 	sky.set_hour(_hour + _shown_for / 60.0)
-	if _shown_for > SEED_SECONDS and not _drawing():
+	if _shown_for > SEED_SECONDS and not _drawing() and cycle_coasts:
 		_begin(seed_value + 1)
 
 

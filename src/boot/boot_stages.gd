@@ -27,9 +27,14 @@ class Stage:
 	var run: Callable
 	var worker: bool
 	var ms := -1.0
+	## The longest single piece of this stage run on the main thread (a frame the page could not draw).
+	var held_ms := 0.0
 
 
 var stages: Array[Stage] = []
+## Where the line starts (0..1): a page that continues a line drawn before it
+## (the web shell's download) never draws it going back.
+var start_at := 0.0
 ## Index of the first stage not yet finished.
 var next := 0
 var _task := -1
@@ -78,7 +83,10 @@ func step(threaded: bool) -> bool:
 		return false
 	if _started_usec == 0:
 		_started_usec = Time.get_ticks_usec()
-	if _run_one(s):
+	var t0 := Time.get_ticks_usec()
+	var finished := _run_one(s)
+	s.held_ms = maxf(s.held_ms, (Time.get_ticks_usec() - t0) / 1000.0)
+	if finished:
 		# On the main thread a stage's time is the wall time it was current,
 		# frames between its pieces included.
 		s.ms = (Time.get_ticks_usec() - _started_usec) / 1000.0
@@ -157,7 +165,16 @@ func progress() -> float:
 		var s := stages[i]
 		var elapsed := (Time.get_ticks_usec() - started) / 1000.0
 		got += s.weight * minf(0.9, elapsed / s.weight)
-	return clampf(got / total, 0.0, 1.0)
+	return clampf(start_at + (1.0 - start_at) * got / total, 0.0, 1.0)
+
+
+## Milliseconds of the longest main-thread piece of each stage that ran one, by id.
+func held() -> Dictionary:
+	var out := {}
+	for s in stages:
+		if s.held_ms > 0.0:
+			out[s.id] = s.held_ms
+	return out
 
 
 ## Milliseconds each finished stage took, by id, and the total.

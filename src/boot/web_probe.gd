@@ -7,15 +7,20 @@ extends Node
 ##   focus    the canvas holds keyboard focus (web)
 ##   audio    after the first key (a browser starts audio only then): a test tone
 ##            reaches the master bus meter (the engine's path), then in a game the
-##            game's own sound does
+##            game's own sound does. The tone plays once per page: a game started
+##            from a title that proved the path plays none, so what tools/web.sh
+##            hears at the speakers in the game is the game.
 ##   save     user:// survives a reload (IndexedDB on the web): the first boot writes
 ##            SaveGame.collect() of the running game, the next reports it kept
 
 const FILE := "user://web_probe.json"
 const AUDIO_WAIT := 30.0
-## Seconds of test tones after the first gesture.
+## At most this many seconds of test tones after the first gesture.
 const TONE_SECONDS := 8.0
+const TONE_MIN_SECONDS := 2.5
 const SILENT_DB := -70.0
+## Engine meta set once a tone has reached the meter in this page.
+const PATH_PROVEN := &"web_probe_audio_path"
 
 ## The scene checked (main.gd sets it): the game or the title.
 var scene: Node
@@ -25,20 +30,24 @@ var _loudest := -200.0
 var _audio_done := false
 var _tone: AudioStreamPlayer
 var _tone_at := 0.0
-var _path_ok := false
 var _game_from := 0.0
+var _tone_done := false
+var _proven_before := false
 
 
 func _ready() -> void:
 	name = "web_probe"
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	print("web probe start (web %s, threads %s, scene %s)" % [OS.has_feature("web"), BootPage.has_threads(), scene.name if scene != null else "none"])
+	print("web probe start (web %s, threads %s, scene %s, args %s)" % [OS.has_feature("web"), BootPage.has_threads(), scene.name if scene != null else "none", " ".join(OS.get_cmdline_user_args())])
 	_check_systems()
 	_check_focus()
 	_check_save()
 	if not OS.has_feature("web"):
 		# Only a browser holds audio back until the first key.
 		_pressed_at = 0.0
+	_proven_before = Engine.has_meta(PATH_PROVEN)
+	if _proven_before:
+		print("web skip audio path (a tone reached the meter earlier in this page; no tone now)")
 
 
 func _check_systems() -> void:
@@ -107,24 +116,29 @@ func _process(delta: float) -> void:
 		return
 	var db := maxf(AudioServer.get_bus_peak_volume_left_db(0, 0), AudioServer.get_bus_peak_volume_right_db(0, 0))
 	var since := _t - _pressed_at
-	if since < TONE_SECONDS:
-		# The engine's own path: a short tone each second on Master must reach the
-		# meter (and, for tools/web.sh listening at the page, the speakers).
-		if _tone == null or _t - _tone_at >= 1.0:
-			_play_tone()
-			_tone_at = _t
-		if not _path_ok and db > SILENT_DB:
-			_path_ok = true
-			print("web ok audio path: a test tone reached %.1f dB on the master bus %.1f s after the first gesture" % [db, since])
-		return
-	if _tone != null:
-		_tone.queue_free()
-		_tone = null
-		_game_from = _t + 1.0
-		if not _path_ok:
+	if not _tone_done:
+		# Tones until the meter sees one, and for TONE_MIN_SECONDS at least, so the page's speakers can be heard too.
+		var proven := Engine.has_meta(PATH_PROVEN)
+		if not _proven_before and since < TONE_SECONDS and (not proven or since < TONE_MIN_SECONDS):
+			# The engine's own path: a short tone each second on Master must reach the
+			# meter (and, for tools/web.sh listening at the page, the speakers).
+			if _tone == null or _t - _tone_at >= 1.0:
+				_play_tone()
+				_tone_at = _t
+			if not proven and db > SILENT_DB:
+				Engine.set_meta(PATH_PROVEN, true)
+				print("web ok audio path: a test tone reached %.1f dB on the master bus %.1f s after the first gesture" % [db, since])
+			return
+		_tone_done = true
+		# A second after the last tone, the bus holds only the scene's own sound.
+		_game_from = _t + (1.0 if _tone != null else 0.0)
+		if _tone != null:
+			_tone.queue_free()
+			_tone = null
+		if not Engine.has_meta(PATH_PROVEN):
 			print("web FAIL audio path: a test tone on the master bus never reached the meter (%s)" % _players())
 			_audio_done = true
-		elif scene is UiTitle or not (scene is Game):
+		elif not (scene is Game):
 			print("web skip audio game (the title makes no sound)")
 			_audio_done = true
 		_finish_if_done()

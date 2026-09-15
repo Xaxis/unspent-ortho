@@ -52,13 +52,8 @@ func setup(o: BootOptions) -> void:
 	view.name = "world"
 	add_child(view)
 
-	var start := world.spawn
-	if o.village >= 0 and o.village < world.villages.size():
-		start = (world.villages[o.village].pos as Vector2) + Vector2(3, 3)
-	elif o.at.x >= 0:
-		start = o.at
-	elif o.place != "" and GenPlaces.find(world, o.place).x >= 0:
-		start = GenPlaces.find(world, o.place)
+	# One rule for where a game starts, shared with the loading page's first view.
+	var start := BootWorld.start_of(world, o)
 	player = Player.new()
 	player.name = "player"
 	add_child(player)

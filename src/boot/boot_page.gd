@@ -18,9 +18,13 @@ extends CanvasLayer
 
 signal handed_over(scene: Node)
 
-const GAME_SCRIPT := "res://src/game.gd"
-const TITLE_SCRIPT := "res://src/ui/ui_title.gd"
+## The one script that names the scenes (Game, UiTitle). Everything the page
+## makes goes through it: see its header for why that matters at exit.
+const SCENES_SCRIPT := "res://src/boot/boot_scenes.gd"
 const WORLD_SCRIPT := "res://src/boot/boot_world.gd"
+## The share of the line the web shell fills while the engine downloads
+## (src/boot/shell.html SHELL_SHARE): the first page on the web starts there.
+const SHELL_SHARE := 0.12
 
 ## The page is the ink the title fades up from, so there is no flash at the hand-over.
 const GLASS := Color("#08070f")
@@ -46,6 +50,9 @@ const LINE_X0 := 216
 const LINE_X1 := 424
 ## Seconds the page takes to lift off the scene once it is up.
 const LIFT_SECONDS := 0.35
+
+## False until the first page has planned: only that one follows the web shell.
+static var _after_shell := false
 
 var stages := BootStages.new()
 var threaded := true
@@ -91,7 +98,7 @@ static func headless() -> bool:
 ## or the game itself when headless.
 static func open_game(parent: Node, o: BootOptions) -> Node:
 	if headless():
-		return BootPage._make_game(parent, o)
+		return BootPage.make_game(parent, o)
 	var page := BootPage.new()
 	page._plan(parent, o, "game")
 	parent.add_child(page)
@@ -101,7 +108,7 @@ static func open_game(parent: Node, o: BootOptions) -> Node:
 ## Show the title under `parent`, its first coast made on the loading page.
 static func open_title(parent: Node, o: BootOptions) -> Node:
 	if headless():
-		return BootPage._make_title(parent, o)
+		return BootPage.make_title(parent, o)
 	var page := BootPage.new()
 	page._plan(parent, o, "title")
 	parent.add_child(page)
@@ -120,7 +127,7 @@ static func preview(parent: Node, o: BootOptions) -> Node:
 	page._sketch_image = BootPage._sketch_of(bw, w)
 	page._mark = Vector2i(((w.spawn as Vector2) * SKETCH / float(w.size)).floor())
 	page._sketch_t = SKETCH_DRAW_SECONDS
-	for s: Array in [[&"code", "waking"], [&"world", "raising the land"], [&"view", "laying out the ground"], [&"near", "drawing what is near"], [&"start", "setting out"], [&"draw", "looking up"]]:
+	for s: Array in [[&"code", "waking"], [&"world", "raising the land"], [&"view", "laying out the ground"], [&"near", "drawing what is near"], [&"compiled", "setting out"], [&"start", "setting out"], [&"draw", "looking up"]]:
 		page.stages.add(s[0], s[1], 500.0, func() -> void: pass)
 	parent.add_child(page)
 	return page
@@ -130,20 +137,15 @@ static func _sketch_of(bw: GDScript, w: Variant) -> Image:
 	return bw.call("sketch", w, SKETCH, {"coast": COAST, "contour": CONTOUR, "river": RIVER, "grid": GRID, "village": VILLAGE})
 
 
-static func _make_game(parent: Node, o: BootOptions) -> Node:
-	var game: Node = (load(GAME_SCRIPT) as GDScript).new()
-	game.name = "game"
-	parent.add_child(game)
-	game.call("setup", o)
-	return game
+## Make the game under `parent` now, in this frame (shots, headless runs, and the
+## page's own hand-over). Compiles the game's scripts if nothing has yet.
+static func make_game(parent: Node, o: BootOptions) -> Node:
+	return (load(SCENES_SCRIPT) as GDScript).call("make_game", parent, o)
 
 
-static func _make_title(parent: Node, o: BootOptions) -> Node:
-	var title: Node = (load(TITLE_SCRIPT) as GDScript).new()
-	title.name = "title"
-	parent.add_child(title)
-	title.call("setup", o)
-	return title
+## Make the title under `parent` now, in this frame.
+static func make_title(parent: Node, o: BootOptions) -> Node:
+	return (load(SCENES_SCRIPT) as GDScript).call("make_title", parent, o)
 
 
 ## Lay out the stages that make `what` ("game" or "title") for `o` under `parent`.
@@ -153,21 +155,27 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 	options = o
 	kind = what
 	threaded = threads
-	var scene_script := GAME_SCRIPT if what == "game" else TITLE_SCRIPT
-	var scripts := PackedStringArray([scene_script])
+	# The first page on the web continues the shell's line instead of starting it again.
+	if OS.has_feature("web") and not BootPage._after_shell:
+		stages.start_at = SHELL_SHARE
+	BootPage._after_shell = true
+	# What must be compiled before the scene is made. The game's systems compile
+	# for the title too (threads only, after its coast is made), so New game finds
+	# them ready instead of waiting on them.
+	var needed := PackedStringArray([SCENES_SCRIPT])
 	if what == "game":
-		scripts.append_array(BootPage.system_scripts())
+		needed.append_array(BootPage.system_scripts())
 	if threaded:
 		# The scene's scripts compile on loader threads beside the world.
 		stages.add(&"code", "waking", 500.0, func() -> void:
-			for path in scripts:
+			for path in needed:
 				ResourceLoader.load_threaded_request(path, "GDScript")
 			_bw = load(WORLD_SCRIPT) as GDScript)
 	else:
 		stages.add(&"code", "waking", 500.0, func() -> void:
 			_bw = load(WORLD_SCRIPT) as GDScript, false)
 		# One script a frame (each pulls in what it uses).
-		var left := Array(scripts)
+		var left := Array(needed)
 		stages.add(&"code2", "waking", 700.0, func() -> bool:
 			if not left.is_empty():
 				load(str(left.pop_front()))
@@ -180,20 +188,32 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		if what == "game":
 			_focus = _bw.call("start_of", _world, o)
 		else:
-			_focus = (load(TITLE_SCRIPT) as GDScript).call("opening", _world)[0]
+			_focus = (load(SCENES_SCRIPT) as GDScript).call("opening", _world)
 		_sketch_image = BootPage._sketch_of(_bw, _world)
 		_mark = Vector2i((_focus * SKETCH / float(_world.size)).floor()))
 	# Main thread, one chunk a step: the chunks become nodes of the view.
 	stages.add(&"near", "drawing what is near", 900.0, func() -> bool:
 		return int(_bw.call("build_near", _view, _focus)) == 0, false)
+	if threaded:
+		# Wait, a frame at a time, for the loader threads to finish the scripts:
+		# taking them before they are done (load_threaded_get) held the page still
+		# for over a second on the web.
+		stages.add(&"compiled", "setting out", 400.0, func() -> bool:
+			for path in needed:
+				if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+					return false
+			return true, false)
 	stages.add(&"start", "setting out", 300.0, func() -> void:
 		if threaded:
-			for path in scripts:
+			for path in needed:
 				ResourceLoader.load_threaded_get(path)
+			if what == "title":
+				for path in BootPage.system_scripts():
+					ResourceLoader.load_threaded_request(path, "GDScript")
 		_bw.call("offer", _world, _view)
 		_world = null
 		_view = null
-		scene = BootPage._make_game(_parent, o) if what == "game" else BootPage._make_title(_parent, o), false)
+		scene = BootPage.make_game(_parent, o) if what == "game" else BootPage.make_title(_parent, o), false)
 	# A world's first frame compiles its shaders and stalls (seconds on the web):
 	# the line ends when that frame is drawn, not before.
 	stages.add(&"draw", "looking up", 1200.0, func() -> bool:
@@ -230,6 +250,14 @@ func _ready() -> void:
 	_ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ink.draw.connect(_draw_page)
 	add_child(_ink)
+	if OS.has_feature("web") and stages.start_at > 0.0:
+		RenderingServer.frame_post_draw.connect(_hand_from_shell, CONNECT_ONE_SHOT)
+
+
+## The web shell drew this page while the engine downloaded; now that the page is
+## on the canvas, it goes (after the browser has shown that frame).
+func _hand_from_shell() -> void:
+	JavaScriptBridge.eval("requestAnimationFrame(() => requestAnimationFrame(() => window.unspentShellDone && window.unspentShellDone()))")
 
 
 func _process(delta: float) -> void:
@@ -267,6 +295,12 @@ func _process(delta: float) -> void:
 	for k: StringName in t:
 		parts.append("%s %d" % [k, t[k]])
 	print("boot stages %s (%s): %s ms" % [kind, "threads" if threaded else "no threads", ", ".join(parts)])
+	# The longest the page stood still in each stage: a frame it could not draw.
+	parts.clear()
+	var held := stages.held()
+	for k: StringName in held:
+		parts.append("%s %d" % [k, held[k]])
+	print("boot held %s: %s ms" % [kind, ", ".join(parts)])
 	handed_over.emit(scene)
 
 
@@ -277,6 +311,8 @@ func _on_drawn() -> void:
 func _exit_tree() -> void:
 	if RenderingServer.frame_post_draw.is_connected(_on_drawn):
 		RenderingServer.frame_post_draw.disconnect(_on_drawn)
+	if RenderingServer.frame_post_draw.is_connected(_hand_from_shell):
+		RenderingServer.frame_post_draw.disconnect(_hand_from_shell)
 	# A page closed mid-way (the game quit) waits out its worker, and must not
 	# leave a view nobody frees.
 	stages.wait()
@@ -308,18 +344,10 @@ func _draw_page() -> void:
 	var x1 := LINE_X1
 	var span := x1 - x0
 	UiDraw.hline(ci, x0, x1, LINE_Y, RAIL)
-	# A tick where each stage ends, lit once it has.
-	var total := 0.0
-	for s in stages.stages:
-		total += s.weight
-	var acc := 0.0
-	for i in stages.stages.size():
-		acc += stages.stages[i].weight
-		if i == stages.stages.size() - 1:
-			break
-		var tx := x0 + int(round(acc / total * span))
-		var lit := p * total >= acc - 0.5
-		UiDraw.vline(ci, tx, LINE_Y - 3, LINE_Y - 1, LIT if lit else TICK)
+	# A tick where each stage ends (and where the shell's download did), lit once it has.
+	for at in _tick_fractions():
+		var tx := x0 + int(round(at * span))
+		UiDraw.vline(ci, tx, LINE_Y - 3, LINE_Y - 1, LIT if p >= at - 0.0005 else TICK)
 	var head := x0 + int(round(p * span))
 	if head > x0:
 		UiDraw.hline(ci, x0, head, LINE_Y, LIT)
@@ -348,13 +376,29 @@ func _draw_sketch(ci: CanvasItem) -> void:
 		UiDraw.px(ci, m.x, m.y, HEAD)
 
 
+## Where on the line (0..1) each stage but the last ends, after the shell's share.
+func _tick_fractions() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	if stages.start_at > 0.0:
+		out.append(stages.start_at)
+	var total := 0.0
+	for s in stages.stages:
+		total += s.weight
+	var acc := 0.0
+	for i in stages.stages.size() - 1:
+		acc += stages.stages[i].weight
+		out.append(stages.start_at + (1.0 - stages.start_at) * acc / total)
+	return out
+
+
 func _label_at(p: float) -> String:
 	var total := 0.0
 	for s in stages.stages:
 		total += s.weight
 	var acc := 0.0
+	var q := (p - stages.start_at) / maxf(0.0001, 1.0 - stages.start_at)
 	for s in stages.stages:
 		acc += s.weight
-		if p * total < acc:
+		if q * total < acc:
 			return s.label
 	return stages.stages[-1].label if not stages.stages.is_empty() else ""

@@ -46,8 +46,43 @@ func test_three_presets_with_their_variants() -> void:
 
 func test_the_shell_passes_the_query_as_boot_arguments() -> void:
 	var html := FileAccess.get_file_as_string("res://src/boot/shell.html")
-	for token: String in ["$GODOT_URL", "$GODOT_CONFIG", "$GODOT_THREADS_ENABLED", "URLSearchParams", "GODOT_CONFIG.args", "#08070f"]:
+	for token: String in ["$GODOT_URL", "$GODOT_CONFIG", "$GODOT_THREADS_ENABLED", "URLSearchParams", "GODOT_CONFIG.args"]:
 		check(html.contains(token), "the shell has %s" % token)
+
+
+func test_the_shell_forwards_only_what_a_player_may_set() -> void:
+	var html := FileAccess.get_file_as_string("res://src/boot/shell.html")
+	var m := RegEx.create_from_string("const ALLOWED = \\{(.*)\\};").search(html)
+	check(m != null, "the shell lists what the address may set")
+	if m == null:
+		return
+	var keys := PackedStringArray()
+	for k in RegEx.create_from_string("'(--[a-z-]+)'").search_all(m.get_string(1)):
+		keys.append(k.get_string(1))
+	keys.sort()
+	eq(keys, PackedStringArray(["--probe", "--scene", "--seed"]), "only a seed, a scene and the probe")
+	check(m.get_string(1).contains("(title|game)"), "and the scene only a title or a game")
+
+
+## The shell draws the engine's loading page itself while the engine downloads, so
+## both must use the same numbers, colours and glyphs.
+func test_the_shell_draws_the_page_the_engine_draws() -> void:
+	var html := FileAccess.get_file_as_string("res://src/boot/shell.html")
+	check(html.contains("const SHELL_SHARE = %s;" % str(BootPage.SHELL_SHARE)), "the shell fills the line to BootPage.SHELL_SHARE")
+	check(html.contains("LINE_Y = %d, LINE_X0 = %d, LINE_X1 = %d" % [BootPage.LINE_Y, BootPage.LINE_X0, BootPage.LINE_X1]), "the line sits where the page draws it")
+	for pair: Array in [["glass", BootPage.GLASS], ["rail", BootPage.RAIL], ["tick", BootPage.TICK], ["lit", BootPage.LIT], ["litSoft", BootPage.LIT_SOFT], ["head", BootPage.HEAD], ["words", BootPage.WORDS]]:
+		check(html.contains("%s: '#%s'" % [pair[0], (pair[1] as Color).to_html(false)]), "the shell's %s ink is the page's" % pair[0])
+	var m := RegEx.create_from_string("const GLYPHS = (\\{.*?\\});").search(html)
+	check(m != null, "the shell carries the pixel font's glyphs")
+	if m == null:
+		return
+	var glyphs: Dictionary = JSON.parse_string(m.get_string(1))
+	for word: String in ["fetching", "waking", "stopped"]:
+		for ch in word:
+			check(glyphs.has(ch), "the shell can write '%s'" % ch)
+	for ch: String in glyphs:
+		eq(glyphs[ch], UiFont.GLYPHS[ch], "glyph '%s' is the game's" % ch)
+	check(html.contains("background: #000"), "outside the game's rectangle the page is black, like the engine's bars")
 
 
 func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
