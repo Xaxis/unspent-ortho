@@ -27,8 +27,12 @@ const KEEP_VILLAGE := Vector2(3.0, 3.0)
 
 var size := 0
 var bytes := PackedByteArray()
-## One byte per tile: 255 where a stretch of the survey runs (GenWorks.survey_sections).
-var lines := PackedByteArray()
+## Three bytes per tile, the shader's works_lines:
+##   R  255 where a stretch of the survey runs (GenWorks.survey_sections)
+##   G  255 where a stump stands, so a harvester's rut stops short of it
+##   B  255 where the survey may run as a wet ditch: deep in a wide fen, clear
+##      of water and houses (a small patch of moss keeps it dry)
+var survey := PackedByteArray()
 ## GenWorks.survey_phase: where the survey's two families of lines sit.
 var phase := Vector2.ZERO
 ## The survey bearing as a unit vector (GenWorks.bearing).
@@ -51,30 +55,80 @@ static func bake(w: WorldData) -> WorksMap:
 		if ch < 0:
 			continue
 		m._paint(w, houses, lm.pos, lm.get("dir", Vector2.RIGHT), lm.get("half", Vector2(4, 4)), ch)
-	m.lines.resize(w.size * w.size)
+	m.survey.resize(w.size * w.size * 3)
+	for p in w.props:
+		if p.kind == PropKind.STUMP:
+			m.survey[(floori(p.pos.y) * w.size + floori(p.pos.x)) * 3 + 1] = 255
 	m.phase = GenWorks.survey_phase(w.seed_value)
 	for sec: Array in GenWorks.survey_sections(w.seed_value, w.size):
-		m._line(w, sec[0], sec[1])
+		m._line(w, houses, sec[0], sec[1])
 	return m
 
 
+## Grounds a drainage ditch can be cut in.
+static func fen(g: int) -> bool:
+	return g == Ground.MOSS or g == Ground.PEAT or g == Ground.MUD or g == Ground.BLACKWATER
+
+
+## 1 where the ground round p (radius 5) is nearly all fen and no open water
+## or house stands within 3: a ditch may hold water there.
+static func wet_at(w: WorldData, houses: PackedVector2Array, p: Vector2) -> bool:
+	var n := 0
+	var f := 0
+	for ring: float in [0.0, 2.5, 5.0]:
+		var count := 1 if ring == 0.0 else (8 if ring < 3.0 else 12)
+		for k in count:
+			var q := p + Vector2.from_angle(float(k) / count * TAU) * ring
+			var x := floori(q.x)
+			var y := floori(q.y)
+			if not w.in_bounds(x, y):
+				return false
+			var g := int(w.ground[y * w.size + x])
+			if ring < 4.0 and (g == Ground.RIVER or g == Ground.WATER or g == Ground.DEEP_WATER or g == Ground.ROAD or w.level[y * w.size + x] <= 0):
+				return false
+			n += 1
+			if fen(g):
+				f += 1
+	if f < n * 0.8:
+		return false
+	for h in houses:
+		if h.distance_squared_to(p) < 9.0:
+			return false
+	return true
+
+
 ## Where a stretch of the survey survives: a band the shader rules its exact
-## line inside. Villages keep it out of their squares.
-func _line(w: WorldData, a: Vector2, b: Vector2) -> void:
+## line inside. Villages keep it out of their squares, roads break it. Along it,
+## every few tiles, whether it may run wet (wet_at), so a ditch narrows and dries
+## out before a river, a house or the edge of a small patch of moss.
+func _line(w: WorldData, houses: PackedVector2Array, a: Vector2, b: Vector2) -> void:
 	var d := (b - a).normalized()
 	var nrm := Vector2(-d.y, d.x)
 	var length := a.distance_to(b)
+	var near := PackedVector2Array()
+	var box := Rect2(a, Vector2.ZERO).expand(b).grow(8.0)
+	for h in houses:
+		if box.has_point(h):
+			near.append(h)
 	var t := 0.0
+	var wet_here := false
 	while t <= length:
+		var centre := a + d * t
+		if fmod(t, 3.0) < 0.25:
+			var cx := floori(centre.x)
+			var cy := floori(centre.y)
+			wet_here = w.in_bounds(cx, cy) and fen(int(w.ground[cy * size + cx])) and wet_at(w, near, centre)
 		for s: float in [-1.5, -0.75, 0.0, 0.75, 1.5]:
-			var q := a + d * t + nrm * s
+			var q := centre + nrm * s
 			var x := floori(q.x)
 			var y := floori(q.y)
 			if x < 0 or y < 0 or x >= size or y >= size:
 				continue
 			if w.ground[y * size + x] == Ground.ROAD:
 				continue
-			lines[y * size + x] = 255
+			survey[(y * size + x) * 3] = 255
+			if wet_here:
+				survey[(y * size + x) * 3 + 2] = 255
 		t += 0.5
 	for v in w.villages:
 		var vp: Vector2 = v.pos
@@ -82,7 +136,8 @@ func _line(w: WorldData, a: Vector2, b: Vector2) -> void:
 			var r := 14
 			for y in range(maxi(0, floori(vp.y) - r), mini(size, floori(vp.y) + r + 1)):
 				for x in range(maxi(0, floori(vp.x) - r), mini(size, floori(vp.x) + r + 1)):
-					lines[y * size + x] = 0
+					survey[(y * size + x) * 3] = 0
+					survey[(y * size + x) * 3 + 2] = 0
 
 
 ## A rotated rectangle into one channel: full inside, fading over FEATHER, and
@@ -242,5 +297,5 @@ func bind(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("works_map", texture())
 	mat.set_shader_parameter("works_inv_size", 1.0 / maxf(1.0, float(size)))
 	mat.set_shader_parameter("works_dir", dir)
-	mat.set_shader_parameter("works_lines", ImageTexture.create_from_image(Image.create_from_data(size, size, false, Image.FORMAT_R8, lines)))
+	mat.set_shader_parameter("works_lines", ImageTexture.create_from_image(Image.create_from_data(size, size, false, Image.FORMAT_RGB8, survey)))
 	mat.set_shader_parameter("works_survey", Vector4(phase.x, phase.y, GenWorks.SURVEY_ALONG, GenWorks.SURVEY_ACROSS))

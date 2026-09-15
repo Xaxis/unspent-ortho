@@ -36,6 +36,8 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.FIRE_TOWER: fire_tower(k, v, c)
 		PropKind.WATER_TANK: water_tank(k, v, c)
 		PropKind.SLAG_HEAP: slag_heap(k, v, c)
+		PropKind.WRECKAGE: wreckage(k, v, c)
+		PropKind.MEMORIAL: memorial(k, v, c)
 
 
 # --- shared pieces -------------------------------------------------------------
@@ -70,11 +72,74 @@ static func banks(k: Kit, lumps: Array, col: Color, seed_value: int) -> void:
 	for i in lumps.size():
 		var l: Array = lumps[i]
 		var r: float = l[2]
-		var h := minf(float(l[3]), r * 0.45)
 		var ang := Rng.hash01(seed_value, i, 5) * PI
-		k.made.push(Transform3D(Basis(Vector3.UP, ang) * Basis.from_scale(Vector3(1.3, 1.0, 0.78)), Vector3(float(l[0]), 0.0, float(l[1]))))
-		k.clump(0.0, -0.18, 0.0, r, h + 0.18, seed_value + i, col if i % 2 == 0 else GroundColors.down(col, 0.08), 9)
-		k.made.pop()
+		drift(k, Vector3(float(l[0]), 0.0, float(l[1])), r * 1.35, r * 0.72, minf(float(l[3]), r * 0.42), ang, col if i % 2 == 0 else GroundColors.down(col, 0.06), seed_value + i)
+
+
+## One long, low, soft drift: an elliptical mound `length` by `width` (half
+## extents, length along x before the turn `ang` about y), `height` at its
+## crest. The crest leans toward -z, so its lee face is short and steep and
+## takes a step of shade; the rim is ragged and sunk. The normals are the
+## mound's own, not the facets', so light slides over it in one soft band
+## instead of breaking it into shards.
+static func drift(k: Kit, at: Vector3, length: float, width: float, height: float, ang: float, col: Color, s: int) -> void:
+	const SEG := 10
+	const RINGS: Array[float] = [0.0, 0.4, 0.72, 0.92, 1.0]
+	var rot := Basis(Vector3.UP, ang)
+	var pts: Array = []
+	for ri in RINGS.size():
+		var t := RINGS[ri]
+		var ring: Array[Vector3] = []
+		for si in SEG:
+			var a := float(si) / SEG * TAU
+			# The rim's rag is the same for the last rings, so they never fold.
+			var rag := 1.0 + Kit.j(s, si * 7, 0.1) * smoothstep(0.6, 1.0, t)
+			var u := cos(a) * t * rag
+			var v := sin(a) * t * rag
+			ring.append(Vector3(u, _drift_y(u, v), v))
+		pts.append(ring)
+	# The lee face a clear step down and cooler, the drift's blue shadow (ART 3).
+	var lee := GroundColors.down(col, 0.24).lerp(P.SLATE[3], 0.18)
+	var world := func(q: Vector3) -> Vector3:
+		return at + rot * Vector3(q.x * length, q.y * height - (0.05 if q.y <= 0.0 else 0.0), q.z * width)
+	var start := k.made.vertex_count()
+	var apex: Vector3 = world.call(Vector3(0.0, 1.0, -DRIFT_LEAN))
+	var first: Array[Vector3] = pts[1]
+	for si in SEG:
+		var q0 := first[si]
+		var q1 := first[(si + 1) % SEG]
+		k.made.tri(apex, world.call(q1), world.call(q0), lee if q0.z + q1.z < -DRIFT_LEAN * 1.2 else col)
+	for ri in range(1, RINGS.size() - 1):
+		var a0: Array[Vector3] = pts[ri]
+		var a1: Array[Vector3] = pts[ri + 1]
+		for si in SEG:
+			var n := (si + 1) % SEG
+			# The lee face: behind the crest, its edge ragged by the rim's own rag.
+			var shade := lee if a0[si].z + a0[n].z < -DRIFT_LEAN * 2.0 + Kit.j(s, si + 40, 0.25) else col
+			k.made.quad(world.call(a0[n]), world.call(a0[si]), world.call(a1[si]), world.call(a1[n]), shade)
+	# The mound's own normals, from its height field. (A drift is never drawn
+	# inside a push, so its vertices are where it put them.)
+	var inv := rot.inverse()
+	for vi in range(start, k.made.vertex_count()):
+		var q := inv * (k.made.verts[vi] - at)
+		var u := q.x / length
+		var v := q.z / width
+		var e := 0.01
+		var dyu := (_drift_y(u + e, v) - _drift_y(u - e, v)) / (2.0 * e) * height / length
+		var dyv := (_drift_y(u, v + e) - _drift_y(u, v - e)) / (2.0 * e) * height / width
+		k.made.normals[vi] = (rot * Vector3(-dyu, 1.0, -dyv)).normalized()
+
+
+## How far a drift's crest leans toward its lee (-z), in its unit ellipse.
+const DRIFT_LEAN := 0.3
+
+
+## A drift's height (0..1) at (u, v) in its unit ellipse: a soft crest leaned
+## toward -v, falling away to 0 at the rim.
+static func _drift_y(u: float, v: float) -> float:
+	var vv := (v + DRIFT_LEAN) / (1.0 + DRIFT_LEAN * signf(v + DRIFT_LEAN))
+	var t2 := minf(u * u + vv * vv, 1.0)
+	return pow(1.0 - t2, 1.5)
 
 
 ## A quad seen from both sides.
@@ -601,192 +666,272 @@ static func _dugout(k: Kit, s: int, lit: bool) -> void:
 # --- vehicles ------------------------------------------------------------------
 
 ## A car (0) or a van (1) from before, and what each landscape did to it:
-## drowned at the tide line, sunk in the bog, grown over in the pines, buried
-## in snow, scoured to primer in the bonelands, burnt out in the burning.
+## drowned at the tide line, nose down in the bog, grown over in the pines,
+## buried in snow, scoured to primer in the bonelands, burnt out in the
+## burning. Never a box: wheel arches cut out of the body, the roof caved in,
+## the glass gone to black holes with shards in the frames, a door missing on
+## the car and the bonnet torn off to the engine, the van's back doors hanging,
+## and the whole of it tipped into the ground.
 static func vehicle(k: Kit, v: int, c: int) -> void:
 	var s := 21500 + v * 19 + c * 5
 	# Body paint as it was, and how it lies now.
 	var paint: Color = [P.SPRUCE[2].lerp(P.SLATE[3], 0.5), P.RUST[3].lerp(P.LINEN[3], 0.4), P.LINEN[3], P.SLATE[3]][(v + c) % 4]
-	var sink := 0.0
-	var tilt := Basis.IDENTITY
+	var sink := 0.06
+	var tilt := Basis(Vector3.BACK, -0.06) * Basis(Vector3.RIGHT, 0.08)
 	var wheels := true
-	var glass := P.SLATE[1].lerp(P.INK[2], 0.4)
+	var cave := 0.1
 	match c:
 		Country.COAST:
 			paint = paint.lerp(P.RUST[2], 0.45)
-			sink = 0.14
-			tilt = Basis(Vector3.BACK, -0.07) * Basis(Vector3.RIGHT, 0.06)
+			sink = 0.16
+			tilt = Basis(Vector3.BACK, -0.1) * Basis(Vector3.RIGHT, 0.12)
 		Country.MOSS:
 			paint = paint.lerp(P.EARTH[1], 0.55)
-			sink = 0.38
-			tilt = Basis(Vector3.BACK, 0.12) * Basis(Vector3.RIGHT, -0.1)
+			sink = 0.34
+			tilt = Basis(Vector3.BACK, -0.26) * Basis(Vector3.RIGHT, -0.12)
 		Country.PINEWOOD:
 			paint = paint.lerp(P.MOSS[1], 0.3)
 			sink = 0.08
-			tilt = Basis(Vector3.RIGHT, 0.05)
+			tilt = Basis(Vector3.BACK, 0.05) * Basis(Vector3.RIGHT, 0.09)
+			cave = 0.18
 		Country.SNOWFIELD:
-			sink = 0.1
+			sink = 0.14
+			tilt = Basis(Vector3.BACK, -0.05) * Basis(Vector3.RIGHT, 0.1)
 		Country.BONELANDS:
 			paint = P.LINEN[3].lerp(paint, 0.25)
+			sink = 0.14
+			wheels = false
+			tilt = Basis(Vector3.BACK, 0.08) * Basis(Vector3.RIGHT, -0.07)
+		Country.BURNING:
+			paint = P.STONE[1].lerp(P.RUST[1], 0.35)
 			sink = 0.12
 			wheels = false
-			tilt = Basis(Vector3.RIGHT, -0.04)
-		Country.BURNING:
-			paint = P.STONE[1].lerp(P.RUST[1], 0.3)
-			sink = 0.1
-			wheels = false
-			glass = P.INK[0]
+			cave = 0.24
+			tilt = Basis(Vector3.BACK, 0.06) * Basis(Vector3.RIGHT, 0.1)
 	var van := v % 2 == 1
-	var hw := 0.58 if van else 0.52
-	# The lower body in side view (x along, y up), extruded straight: bumpers,
-	# bonnet and boot are its top faces.
-	var lower: Array[Vector2] = [Vector2(-1.25, 0.2), Vector2(-1.27, 0.55), Vector2(-1.12, 0.64), Vector2(0.62, 0.64), Vector2(1.18, 0.57), Vector2(1.28, 0.44), Vector2(1.26, 0.2)]
+	var hw := 0.56 if van else 0.5
+	var hole := P.INK[0]
+	var inside := P.INK[1]
+	# The body's side profile (x along, y up) run clockwise from the rear foot,
+	# the wheel arches cut out of it.
+	var arch := func(cx: float) -> Array[Vector2]:
+		var out: Array[Vector2] = []
+		for e in 5:
+			var a := PI * float(e) / 4.0
+			out.append(Vector2(cx + cos(a) * 0.26, 0.24 + sin(a) * 0.22))
+		return out
+	var lower: Array[Vector2] = []
+	var rear := -1.35 if van else -1.26
+	var front := 1.38 if van else 1.28
+	var belt := 0.76 if van else 0.63
+	lower.append(Vector2(rear + 0.02, 0.26))
+	lower.append(Vector2(rear, belt - 0.1))
+	lower.append(Vector2(rear + 0.1, belt))
 	if van:
-		lower = [Vector2(-1.35, 0.22), Vector2(-1.36, 0.72), Vector2(-1.3, 0.76), Vector2(0.95, 0.76), Vector2(1.34, 0.66), Vector2(1.38, 0.28)]
-	var belt := lower[2].y
+		lower.append(Vector2(0.95, belt))
+		lower.append(Vector2(1.3, belt - 0.1))
+	else:
+		lower.append(Vector2(0.58, belt + 0.01))
+		lower.append(Vector2(1.16, belt - 0.07))
+	lower.append(Vector2(front, belt - 0.2))
+	lower.append(Vector2(front - 0.02, 0.26))
+	for q: Vector2 in arch.call(0.82):
+		lower.append(q)
+	for q: Vector2 in arch.call(-0.82):
+		lower.append(q)
+	var poly := PackedVector2Array(lower)
+	var tris := Geometry2D.triangulate_polygon(poly)
 	k.made.push(Transform3D(tilt, Vector3(0, -sink, 0)))
 	var n := lower.size()
 	for i in n:
 		var j := (i + 1) % n
 		var a := lower[i]
 		var b := lower[j]
-		var col := paint if i != n - 1 else P.INK[2]
-		if i == 0 or i == n - 2:
-			col = GroundColors.down(paint, 0.25)
+		var col := paint
+		if b.y < 0.3 and a.y < 0.3:
+			col = P.INK[2]
+		elif i == 0 or (a.x > 0.9 and b.x > 0.9):
+			col = GroundColors.down(paint, 0.2)
+		elif a.y < 0.47 and b.y < 0.47:
+			# The arches' inner lips: dark, the tyre shows in them.
+			col = inside
 		k.made.quad(Vector3(a.x, a.y, hw), Vector3(b.x, b.y, hw), Vector3(b.x, b.y, -hw), Vector3(a.x, a.y, -hw), col)
-	var cen := Vector3(0.0, 0.42, 0.0)
-	for i in n:
-		var j := (i + 1) % n
-		k.made.tri(Vector3(cen.x, cen.y, hw), Vector3(lower[j].x, lower[j].y, hw), Vector3(lower[i].x, lower[i].y, hw), paint)
-		k.made.tri(Vector3(cen.x, cen.y, -hw), Vector3(lower[i].x, lower[i].y, -hw), Vector3(lower[j].x, lower[j].y, -hw), GroundColors.down(paint, 0.2))
-	# The cabin: a tapered box on the belt, glass all round in a car, a panelled
-	# load box with glass only at the front in a van.
-	var cin := 0.08 if van else 0.15
-	var base0 := lower[2].x + 0.04
-	var base1 := 0.9 if van else 0.58
-	var top0 := -1.3 if van else -0.74
-	var top1 := 0.62 if van else 0.06
-	var roof_y := 1.26 if van else 1.0
+	for t in range(0, tris.size(), 3):
+		var a := poly[tris[t]]
+		var b := poly[tris[t + 1]]
+		var cc := poly[tris[t + 2]]
+		if (b - a).cross(cc - a) < 0.0:
+			var tmp := b
+			b = cc
+			cc = tmp
+		k.made.tri(Vector3(a.x, a.y, hw), Vector3(b.x, b.y, hw), Vector3(cc.x, cc.y, hw), paint)
+		k.made.tri(Vector3(a.x, a.y, -hw), Vector3(cc.x, cc.y, -hw), Vector3(b.x, b.y, -hw), GroundColors.down(paint, 0.18))
+	# The cabin on the belt: the roof caved in at its middle, the glass gone.
+	var cin := 0.08 if van else 0.14
+	var base0 := rear + 0.14
+	var base1 := 0.9 if van else 0.56
+	var top0 := rear + 0.05 if van else -0.74
+	var top1 := 0.6 if van else 0.04
+	var roof_y := 1.28 if van else 1.0
 	var bz := hw - 0.03
 	var tz := hw - cin
 	var c0 := Vector3(base0, belt, bz)
 	var c1 := Vector3(base1, belt, bz)
 	var c2 := Vector3(top1, roof_y, tz)
 	var c3 := Vector3(top0, roof_y, tz)
+	var mid_x := lerpf(top0, top1, 0.45)
+	var cm := Vector3(mid_x, roof_y - cave, tz * 0.92)
 	var m := Vector3(1, 1, -1)
-	var roof := GroundColors.up(paint, 0.22)
-	k.made.quad(c3, c2, c2 * m, c3 * m, roof)
-	# Screen and back glass.
-	k.made.quad(c2, c1, c1 * m, c2 * m, glass)
-	k.made.quad(c0, c3, c3 * m, c0 * m, glass if not van else GroundColors.down(paint, 0.2))
-	k.made.quad(c0, c1, c2, c3, paint)
-	k.made.quad(c1 * m, c0 * m, c3 * m, c2 * m, GroundColors.down(paint, 0.2))
-	# A crack of pale light across the screen, and the roof's gutter line.
-	k.made.quad(c1.lerp(c2, 0.3) + Vector3(0.012, 0.01, -0.3), c1.lerp(c2, 0.36) + Vector3(0.012, 0.01, -0.28), c1.lerp(c2, 0.72) + Vector3(0.012, 0.01, 0.1), c1.lerp(c2, 0.7) + Vector3(0.012, 0.01, 0.07), P.LINEN[2] if c != Country.BURNING else P.INK[2])
+	var roof := GroundColors.up(paint, 0.2)
+	k.made.quad(c3, cm, cm * m, c3 * m, roof)
+	k.made.quad(cm, c2, c2 * m, cm * m, GroundColors.down(roof, 0.12))
+	# A dent's crease across the cave.
+	k.made.quad(cm + Vector3(-0.03, 0.012, 0.0), cm + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(0.03, 0.012, 0.0), cm * m + Vector3(-0.03, 0.012, 0.0), P.INK[2])
+	# The screen: a black hole in its frame, shards left in the corners.
+	var narrow := Vector3(1, 1, 0.84)
+	var scr := [c1.lerp(c2, 0.9) * narrow, c1.lerp(c2, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.9) * narrow]
+	k.made.quad(c2, c1, c1 * m, c2 * m, paint)
+	_glass_gone(k, scr, Vector3(1, 0.6, 0).normalized(), s, c != Country.BURNING)
+	# Back: the car's rear glass, the van's panelled back with its doors.
+	k.made.quad(c0, c3, c3 * m, c0 * m, paint if van else GroundColors.down(paint, 0.1))
+	if not van:
+		var back := [c0.lerp(c3, 0.12) * narrow, c0.lerp(c3, 0.88) * narrow, (c0 * m).lerp(c3 * m, 0.88) * narrow, (c0 * m).lerp(c3 * m, 0.12) * narrow]
+		_glass_gone(k, back, Vector3(-1, 0.6, 0).normalized(), s + 3, c != Country.BURNING)
+	# The flanks of the cabin, each with its lights gone to holes.
+	k.made.quad(c0, c1, c2, cm, paint)
+	k.made.tri(c0, cm, c3, paint)
+	k.made.quad(c1 * m, c0 * m, cm * m, c2 * m, GroundColors.down(paint, 0.18))
+	k.made.tri(c0 * m, c3 * m, cm * m, GroundColors.down(paint, 0.18))
 	for sz: float in [1.0, -1.0]:
 		var q0 := c0 * Vector3(1, 1, sz)
 		var q1 := c1 * Vector3(1, 1, sz)
 		var q2 := c2 * Vector3(1, 1, sz)
 		var q3 := c3 * Vector3(1, 1, sz)
-		var nrm := (q1 - q0).cross(q3 - q0).normalized() * (0.012 * sz)
-		var u0 := 0.62 if van else 0.08
-		var u1 := 0.94 if van else 0.92
-		var lo := 0.14
-		var hi := 0.86
-		var wa := q0.lerp(q1, u0).lerp(q3.lerp(q2, u0), lo) + nrm
-		var wb := q0.lerp(q1, u1).lerp(q3.lerp(q2, u1), lo) + nrm
-		var wc := q0.lerp(q1, u1).lerp(q3.lerp(q2, u1), hi) + nrm
-		var wd := q0.lerp(q1, u0).lerp(q3.lerp(q2, u0), hi) + nrm
-		if sz > 0.0:
-			k.made.quad(wa, wb, wc, wd, glass)
-		else:
-			k.made.quad(wb, wa, wd, wc, glass)
-		if not van:
-			# The door pillar between the two lights.
-			var pa := q0.lerp(q1, 0.5).lerp(q3.lerp(q2, 0.5), lo) + nrm * 1.6
-			var pb := q0.lerp(q1, 0.56).lerp(q3.lerp(q2, 0.56), lo) + nrm * 1.6
-			var pc := q0.lerp(q1, 0.56).lerp(q3.lerp(q2, 0.56), hi) + nrm * 1.6
-			var pd := q0.lerp(q1, 0.5).lerp(q3.lerp(q2, 0.5), hi) + nrm * 1.6
-			if sz > 0.0:
-				k.made.quad(pa, pb, pc, pd, paint)
-			else:
-				k.made.quad(pb, pa, pd, pc, paint)
+		var nrm := (q1 - q0).cross(q3 - q0).normalized() * (0.014 * sz)
+		var u0 := 0.62 if van else 0.1
+		var u1 := 0.94 if van else 0.9
+		var cell := func(ua: float, ub: float, lo: float, hi: float) -> Array:
+			return [q0.lerp(q1, ua).lerp(q3.lerp(q2, ua), lo) + nrm, q0.lerp(q1, ub).lerp(q3.lerp(q2, ub), lo) + nrm, q0.lerp(q1, ub).lerp(q3.lerp(q2, ub), hi) + nrm, q0.lerp(q1, ua).lerp(q3.lerp(q2, ua), hi) + nrm]
+		var lights: Array = [cell.call(u0, u1, 0.16, 0.8)] if van else [cell.call(u0, 0.47, 0.16, 0.8), cell.call(0.55, u1, 0.16, 0.8)]
+		for li in lights.size():
+			var w4: Array = lights[li]
+			if sz < 0.0:
+				w4 = [w4[1], w4[0], w4[3], w4[2]]
+			_glass_gone(k, w4, Vector3(0, 0, sz), s + 10 + li + int(sz), c != Country.BURNING)
 		var fz := (hw + 0.012) * sz
-		# Wheel arches, a door seam, rust blooming along the sill.
-		for wx: float in [-0.8, 0.8]:
-			for e in 5:
-				var a0 := PI * float(e) / 5.0
-				var a1 := PI * float(e + 1) / 5.0
-				var p0 := Vector3(wx + cos(a0) * 0.27, 0.2 + sin(a0) * 0.25, fz)
-				var p1 := Vector3(wx + cos(a1) * 0.27, 0.2 + sin(a1) * 0.25, fz)
-				if sz > 0.0:
-					k.made.tri(Vector3(wx, 0.2, fz), p0, p1, P.INK[1])
-				else:
-					k.made.tri(Vector3(wx, 0.2, fz), p1, p0, P.INK[1])
-		var sa := Vector3(-0.5, 0.21, fz * 1.01)
-		var sb := Vector3(0.45, 0.21, fz * 1.01)
+		# A seam, rust along the sill.
+		var sa := Vector3(-0.5, 0.27, fz * 1.01)
+		var sb := Vector3(0.45, 0.27, fz * 1.01)
 		if sz > 0.0:
-			k.made.quad(sa, sb, sb + Vector3(-0.1, 0.12, 0), sa + Vector3(0.12, 0.1, 0), P.RUST[2])
-			k.made.quad(Vector3(0.2, 0.26, fz * 1.02), Vector3(0.225, 0.26, fz * 1.02), Vector3(0.225, belt - 0.02, fz * 1.02), Vector3(0.2, belt - 0.02, fz * 1.02), P.INK[2])
+			k.made.quad(sa, sb, sb + Vector3(-0.1, 0.1, 0), sa + Vector3(0.12, 0.09, 0), P.RUST[2])
 		else:
-			k.made.quad(sb, sa, sa + Vector3(0.12, 0.1, 0), sb + Vector3(-0.1, 0.12, 0), P.RUST[2])
-	# Lamps: dead headlights, the red of a tail light.
-	var nose := lower[n - 2].x + 0.012
-	var tail := lower[1].x - 0.012
-	for sz: float in [0.32, -0.32]:
-		k.made.quad(Vector3(nose, 0.4, sz - 0.1), Vector3(nose, 0.4, sz + 0.1), Vector3(nose, 0.5, sz + 0.1), Vector3(nose, 0.5, sz - 0.1), P.LINEN[2])
-		k.made.quad(Vector3(tail, 0.46, sz + 0.1), Vector3(tail, 0.46, sz - 0.1), Vector3(tail, 0.54, sz - 0.1), Vector3(tail, 0.54, sz + 0.1), P.RUST[1])
-	if wheels:
-		for wx: float in [-0.8, 0.8]:
-			for wz: float in [hw - 0.04, -hw + 0.04]:
-				wheel(k, Vector3(wx, 0.21, wz), 0.21, 0.15, P.INK[2], P.STONE[2])
+			k.made.quad(sb, sa, sa + Vector3(0.12, 0.09, 0), sb + Vector3(-0.1, 0.1, 0), P.RUST[2])
+	if not van:
+		# The near front door is gone: the hole into the cab, the seat's back in it.
+		var dz := hw + 0.016
+		k.made.quad(Vector3(0.02, 0.3, dz), Vector3(0.56, 0.3, dz), Vector3(0.56, belt - 0.01, dz), Vector3(0.02, belt - 0.01, dz), hole)
+		k.made.quad(Vector3(0.12, 0.36, dz + 0.004), Vector3(0.3, 0.36, dz + 0.004), Vector3(0.26, belt - 0.03, dz + 0.004), Vector3(0.1, belt - 0.05, dz + 0.004), P.EARTH[1])
+		# The bonnet torn off: the engine bay open, the block and its pipes in it.
+		var bx0 := 0.66
+		var bx1 := 1.1
+		var by0 := belt + 0.01 - (bx0 - 0.58) / 0.58 * 0.08 + 0.012
+		var by1 := belt + 0.01 - (bx1 - 0.58) / 0.58 * 0.08 + 0.012
+		var bz0 := hw - 0.08
+		k.made.quad(Vector3(bx0, by0, bz0), Vector3(bx1, by1, bz0), Vector3(bx1, by1, -bz0), Vector3(bx0, by0, -bz0), hole)
+		k.slab(0.92, belt - 0.2, 0.0, 0.34, 0.24, 0.5, s + 41, P.RUST[1], P.STONE[1], 0.02)
+		k.made.prism(0.8, belt - 0.02, 0.28, 0.035, belt + 0.1, 0.035, 5, P.RUST[2])
 	else:
-		for wx: float in [-0.8, 0.8]:
-			for wz: float in [hw - 0.06, -hw + 0.06]:
-				k.made.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(wx, 0.15, wz - 0.04)))
-				k.made.prism(0, 0, 0, 0.13, 0.08, 0.13, 7, P.RUST[1], P.STONE[1])
+		# The van's back doors: one hanging open on a hinge, the load space black.
+		var dz := rear - 0.012
+		k.made.quad(Vector3(dz, 0.3, -hw + 0.06), Vector3(dz, 0.3, hw - 0.06), Vector3(dz, roof_y - 0.08, tz - 0.04), Vector3(dz, roof_y - 0.08, -tz + 0.04), hole)
+		k.made.quad(Vector3(rear - 0.5, 0.3, hw + 0.36), Vector3(rear, 0.3, hw), Vector3(rear, roof_y - 0.1, tz), Vector3(rear - 0.46, roof_y - 0.12, hw + 0.3), paint)
+		k.made.quad(Vector3(rear, 0.3, hw), Vector3(rear - 0.5, 0.3, hw + 0.36), Vector3(rear - 0.46, roof_y - 0.12, hw + 0.3), Vector3(rear, roof_y - 0.1, tz), GroundColors.down(paint, 0.3))
+		# A faded panel on the load side, where a name was painted.
+		k.made.quad(Vector3(-0.9, 0.55, hw + 0.014), Vector3(0.3, 0.55, hw + 0.014), Vector3(0.3, belt - 0.06, hw + 0.014), Vector3(-0.9, belt - 0.06, hw + 0.014), paint.lerp(P.LINEN[4], 0.25))
+	# Lamps: dead headlights, the red of a tail light.
+	for sz: float in [0.3, -0.3]:
+		k.made.quad(Vector3(front + 0.012, 0.42, sz - 0.09), Vector3(front + 0.012, 0.42, sz + 0.09), Vector3(front + 0.006, 0.5, sz + 0.09), Vector3(front + 0.006, 0.5, sz - 0.09), P.LINEN[2] if c != Country.BURNING else hole)
+		k.made.quad(Vector3(rear - 0.014, 0.46, sz + 0.09), Vector3(rear - 0.014, 0.46, sz - 0.09), Vector3(rear - 0.014, 0.54, sz - 0.09), Vector3(rear - 0.014, 0.54, sz + 0.09), P.RUST[1])
+	if wheels:
+		for wx: float in [-0.82, 0.82]:
+			for wz: float in [hw - 0.1, -hw + 0.1]:
+				# Tyres gone flat: squashed on the ground, a rim showing.
+				wheel(k, Vector3(wx, 0.19, wz), 0.2, 0.16, P.INK[2], P.STONE[2])
+	else:
+		for wx: float in [-0.82, 0.82]:
+			for wz: float in [hw - 0.12, -hw + 0.12]:
+				k.made.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(wx, 0.16, wz - 0.04)))
+				k.made.prism(0, 0, 0, 0.12, 0.08, 0.12, 7, P.RUST[1], P.STONE[1])
 				k.made.pop()
 	if c == Country.BURNING:
-		# Burnt through: the roof buckled, the paint blistered to rust.
+		# Burnt through: the roof blistered to rust in patches, scorch up the flanks.
 		for i in 3:
-			var x := top0 + 0.1 + i * (top1 - top0 - 0.2) / 3.0
-			k.made.quad(Vector3(x, roof_y + 0.012, -0.2), Vector3(x + 0.2, roof_y + 0.012, -0.22), Vector3(x + 0.18, roof_y + 0.012, 0.18), Vector3(x - 0.04, roof_y + 0.012, 0.24), P.RUST[1] if i % 2 else P.INK[1])
+			var x := top0 + 0.12 + i * (top1 - top0 - 0.24) / 3.0
+			k.made.quad(Vector3(x, roof_y - cave * 0.5 + 0.02, -0.2), Vector3(x + 0.2, roof_y - cave * 0.5 + 0.02, -0.22), Vector3(x + 0.18, roof_y - cave * 0.5 + 0.02, 0.18), Vector3(x - 0.04, roof_y - cave * 0.5 + 0.02, 0.24), P.RUST[1] if i % 2 else P.INK[1])
+		for i in 4:
+			var x := -1.0 + i * 0.55
+			k.made.quad(Vector3(x, 0.3, hw + 0.02), Vector3(x + 0.3, 0.3, hw + 0.02), Vector3(x + 0.18, 0.62, hw + 0.02), Vector3(x + 0.06, 0.58, hw + 0.02), P.INK[1])
 	k.made.pop()
 	# What the land did.
 	var d := drift_of(c)
 	match c:
 		Country.COAST:
-			banks(k, [[-1.2, 0.5, 0.5, 0.3], [0.9, 0.55, 0.45, 0.26], [-0.2, -0.65, 0.6, 0.22], [1.3, -0.3, 0.35, 0.2]], d[0], s + 60)
+			drift(k, Vector3(-0.2, 0.0, 0.85), 1.7, 0.42, 0.24, 0.05, d[0], s + 60)
+			drift(k, Vector3(1.4, 0.0, -0.2), 0.7, 0.4, 0.2, 1.4, d[0], s + 61)
 			for i in 6:
 				var x := -0.9 + i * 0.35
-				var y := roof_y - sink + 0.02 if absf(x) < 0.4 else 0.6 - sink
+				var y := roof_y - sink - cave * 0.6 if absf(x) < 0.4 else belt - sink
 				k.made.quad(Vector3(x, y, -0.4), Vector3(x + 0.08, y, -0.4), Vector3(x + 0.14, y - 0.35, -0.62), Vector3(x + 0.02, y - 0.3, -0.62), P.EARTH[1] if i % 2 else P.SPRUCE[1])
-			streak(k, Vector3(0.6, 0.5 - sink, hw + 0.02), 0.2, 0.3, Vector3(0, 0, 1))
+			streak(k, Vector3(0.6, 0.5 - sink, hw + 0.03), 0.2, 0.3, Vector3(0, 0, 1))
 		Country.MOSS:
-			_pool(k, Vector3(0.0, 0.0, 0.0), 1.55, s + 70)
+			_pool(k, Vector3(0.3, 0.0, 0.0), 1.6, s + 70)
 			var rs := k.made.vertex_count()
-			for i in 10:
+			for i in 12:
 				var a := float(i) * 0.9
-				var base := Vector3(cos(a) * (1.3 + Kit.j(s, i, 0.2)), 0.0, sin(a) * 0.95)
+				var base := Vector3(cos(a) * (1.35 + Kit.j(s, i, 0.2)), 0.0, sin(a) * 0.95)
 				k.blade(base, base + Vector3(0.05, 0.75 + Kit.j(s, i + 20, 0.2), 0.0), 0.06, a, P.SPRUCE[3] if i % 2 else P.MOSS[3])
 			k.sway_by_height(rs, 0.0, 0.8, 0.6)
-			k.made.quad(Vector3(-1.2, 0.2, hw + 0.03), Vector3(1.2, 0.08, hw + 0.03), Vector3(1.2, 0.14, hw + 0.03), Vector3(-1.2, 0.26, hw + 0.03), P.MOSS[3])
 		Country.PINEWOOD:
-			k.clump(-0.3, roof_y - sink - 0.1, 0.0, 0.45, 0.2, s + 80, P.MOSS[2], 7)
-			k.clump(0.9, 0.5 - sink, 0.1, 0.25, 0.12, s + 81, P.MOSS[3], 6)
-			k.limb(Vector3(-1.6, 0.05, 0.9), Vector3(0.6, roof_y + 0.1, -0.2), 0.05, 0.02, 5, P.EARTH[1])
-			banks(k, [[1.2, 0.5, 0.35, 0.15], [-1.1, -0.6, 0.4, 0.14]], d[0], s + 82)
+			drift(k, Vector3(-0.2, roof_y - sink - cave, 0.0), 0.5, 0.36, 0.08, 0.3, P.MOSS[2], s + 80)
+			k.limb(Vector3(-1.6, 0.05, 0.9), Vector3(0.6, roof_y + 0.05, -0.2), 0.05, 0.02, 5, P.EARTH[1])
+			drift(k, Vector3(0.0, 0.0, -0.8), 1.4, 0.35, 0.14, 0.1, d[0], s + 82)
 		Country.SNOWFIELD:
-			banks(k, [[-0.7, 0.75, 0.8, 0.75], [0.4, 0.8, 0.8, 0.7], [1.3, 0.4, 0.6, 0.55], [-1.4, 0.2, 0.6, 0.6], [0.1, -0.7, 0.6, 0.35], [1.0, -0.5, 0.45, 0.3]], P.RIME[5], s + 90)
-			k.clump(-0.3, roof_y - sink - 0.08, 0.0, 0.6, 0.22, s + 95, P.RIME[5], 8)
-			k.clump(0.9, 0.52 - sink, 0.0, 0.35, 0.12, s + 96, P.RIME[5], 7)
+			# Buried to the belt on the windward side, a long tail of drift in its lee.
+			drift(k, Vector3(-0.1, 0.0, hw + 0.2), 1.9, 0.55, belt + 0.02, 0.0, P.RIME[5], s + 90)
+			drift(k, Vector3(0.4, 0.0, -hw - 0.45), 2.2, 0.75, 0.42, PI - 0.12, P.RIME[5], s + 91)
+			drift(k, Vector3(1.55, 0.0, 0.1), 0.7, 0.55, 0.36, 1.57, GroundColors.down(P.RIME[5], 0.05), s + 92)
+			drift(k, Vector3(-0.35, roof_y - sink - cave * 0.6, 0.0), 0.62, 0.42, 0.1, 0.0, P.RIME[5], s + 95)
+			drift(k, Vector3(0.95, belt - sink - 0.05, 0.0), 0.3, 0.4, 0.06, 0.0, P.RIME[5], s + 96)
 		Country.BONELANDS:
-			banks(k, [[-0.6, 0.75, 0.7, 0.35], [0.6, 0.7, 0.6, 0.3], [1.4, 0.2, 0.4, 0.2]], d[0], s + 100)
+			drift(k, Vector3(-0.3, 0.0, 0.72), 1.6, 0.4, 0.34, 0.0, d[0], s + 100)
+			drift(k, Vector3(1.4, 0.0, 0.2), 0.6, 0.4, 0.2, 1.3, d[0], s + 101)
 			for i in 9:
-				var p := Vector3(-1.0 + i * 0.25, 0.35 + Kit.j(s, i, 0.15), hw + 0.014)
+				var p := Vector3(-1.0 + i * 0.25, 0.35 + Kit.j(s, i, 0.1), hw + 0.018)
 				k.made.quad(p, p + Vector3(0.04, 0, 0), p + Vector3(0.04, 0.03, 0), p + Vector3(0, 0.03, 0), P.RUST[2])
 		Country.BURNING:
-			banks(k, [[-0.9, 0.65, 0.55, 0.26], [0.7, -0.7, 0.6, 0.24], [1.4, 0.3, 0.35, 0.16]], P.ASH[2], s + 110)
+			drift(k, Vector3(-0.6, 0.0, 0.75), 1.2, 0.36, 0.2, 0.1, P.ASH[2], s + 110)
+			drift(k, Vector3(0.8, 0.0, -0.8), 1.1, 0.4, 0.18, -0.2, P.ASH[1], s + 111)
+
+
+## Where a pane of glass was: a black hole in the frame `quad` (four corners in
+## order), a few shards still caught in its corners catching the light.
+static func _glass_gone(k: Kit, quad4: Array, out: Vector3, s: int, shards: bool) -> void:
+	var a: Vector3 = quad4[0]
+	var b: Vector3 = quad4[1]
+	var c: Vector3 = quad4[2]
+	var d: Vector3 = quad4[3]
+	var lift := out.normalized() * 0.006
+	k.made.quad(a + lift, b + lift, c + lift, d + lift, P.INK[0])
+	if not shards:
+		return
+	var corners: Array[Vector3] = [a, b, c, d]
+	for i in 4:
+		if Rng.hash01(s, i, 11) < 0.45:
+			continue
+		var p := corners[i] + lift * 2.0
+		var toward := (a + b + c + d) * 0.25 - corners[i]
+		var e1 := corners[(i + 1) % 4] - corners[i]
+		k.made.tri(p, p + e1 * (0.25 + Rng.hash01(s, i, 12) * 0.2), p + toward * (0.35 + Rng.hash01(s, i, 13) * 0.3), GroundColors.glint(P.SLATE[4]))
 
 
 # --- the coast's dead fleet and its wall ---------------------------------------
@@ -1194,3 +1339,193 @@ static func slag_heap(k: Kit, v: int, c: int) -> void:
 		cone.call(0.75, 0.45, 0.85, 0.8, s + 7)
 		k.made.prism(-0.45, 1.0, -0.2, 0.2, 1.04, 0.14, 7, P.INK[1], GroundColors.glow(P.EMBER[3], 1.0))
 	banks(k, [[-1.5, 1.0, 0.5, 0.12], [1.5, -0.9, 0.45, 0.1]], P.ASH[1] if c == Country.BURNING else drift_of(c)[1], s + 20)
+
+
+# --- what was lost ---------------------------------------------------------------
+
+## Wreckage at walking scale, the pieces of things that ended. 0: a car's door
+## torn off and lying glass-up, its bonnet propped against a wheel; 1: an engine
+## block dropped out of something, its axle and one wheel, oil gone into the
+## ground; 2: a household's last load: a pram on its side, a burst case with its
+## clothes blown out of it, a mattress half under the land.
+static func wreckage(k: Kit, v: int, c: int) -> void:
+	var s := 24800 + v * 13 + c * 3
+	var d := drift_of(c)
+	var rot := c == Country.BURNING
+	var paint: Color = [P.SLATE[3], P.RUST[3].lerp(P.LINEN[3], 0.4), P.SPRUCE[2].lerp(P.SLATE[3], 0.5)][(v + c) % 3]
+	if rot:
+		paint = P.STONE[1].lerp(P.RUST[1], 0.4)
+	elif c == Country.BONELANDS:
+		paint = P.LINEN[3].lerp(paint, 0.3)
+	match v % 3:
+		0:
+			# The door, lying flat: its skin, the window frame empty, a handle.
+			k.made.push(Transform3D(Basis(Vector3.UP, 0.35) * Basis(Vector3.RIGHT, 0.06), Vector3(-0.3, 0.02, 0.1)))
+			k.made.quad(Vector3(-0.5, 0.0, 0.34), Vector3(0.5, 0.0, 0.34), Vector3(0.52, 0.05, -0.02), Vector3(-0.5, 0.05, -0.02), paint)
+			k.made.quad(Vector3(-0.5, 0.05, -0.02), Vector3(0.52, 0.05, -0.02), Vector3(0.36, 0.06, -0.36), Vector3(-0.42, 0.06, -0.36), GroundColors.down(paint, 0.15))
+			k.made.quad(Vector3(-0.36, 0.064, -0.05), Vector3(0.4, 0.064, -0.05), Vector3(0.28, 0.068, -0.3), Vector3(-0.3, 0.068, -0.3), P.INK[0])
+			k.made.tri(Vector3(-0.3, 0.07, -0.3), Vector3(-0.1, 0.07, -0.3), Vector3(-0.32, 0.07, -0.18), GroundColors.glint(P.SLATE[4]))
+			k.made.quad(Vector3(0.22, 0.02, 0.2), Vector3(0.38, 0.02, 0.2), Vector3(0.38, 0.02, 0.24), Vector3(0.22, 0.02, 0.24), P.STONE[3])
+			k.made.quad(Vector3(-0.5, 0.012, 0.3), Vector3(0.1, 0.012, 0.32), Vector3(0.0, 0.012, 0.1), Vector3(-0.45, 0.012, 0.12), P.RUST[2])
+			# Its lining and wires spilled out of the torn hinge side.
+			k.sag(Vector3(-0.52, 0.04, 0.1), Vector3(-0.85, 0.02, 0.3), -0.02, 3, 0.008, P.INK[2])
+			k.sag(Vector3(-0.52, 0.04, 0.0), Vector3(-0.8, 0.02, -0.25), -0.02, 3, 0.008, P.COPPER[2] if not rot else P.INK[2])
+			k.made.pop()
+			# A wheel on its side, the bonnet leaning up against it, bent.
+			k.made.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.55, 0.06, -0.4)))
+			k.made.prism(0, 0, 0, 0.22, 0.12, 0.22, 9, P.INK[2] if not rot else P.RUST[1], P.INK[1])
+			k.made.prism(0, 0.121, 0, 0.1, 0.125, 0.1, 7, P.STONE[2])
+			k.made.pop()
+			k.made.push(Transform3D(Basis(Vector3.UP, -0.5) * Basis(Vector3.BACK, 0.9), Vector3(0.62, 0.0, 0.25)))
+			k.made.quad(Vector3(0.0, 0.0, -0.36), Vector3(0.0, 0.0, 0.36), Vector3(0.6, 0.05, 0.3), Vector3(0.6, 0.05, -0.3), paint)
+			k.made.quad(Vector3(0.6, 0.05, -0.3), Vector3(0.6, 0.05, 0.3), Vector3(0.0, 0.0, 0.36), Vector3(0.0, 0.0, -0.36), GroundColors.down(paint, 0.35))
+			k.made.quad(Vector3(0.2, 0.021, -0.36), Vector3(0.24, 0.026, 0.36), Vector3(0.3, 0.03, 0.36), Vector3(0.26, 0.025, -0.36), P.INK[2])
+			k.made.pop()
+		1:
+			# The block: finned and heavy, its manifold rusted, a belt pulley.
+			k.made.push(Transform3D(Basis(Vector3.UP, 0.4) * Basis(Vector3.BACK, 0.12), Vector3(-0.2, -0.04, 0.0)))
+			k.slab(0.0, 0.0, 0.0, 0.62, 0.42, 0.44, s, P.STONE[1] if not rot else P.INK[2], P.STONE[2], 0.02)
+			for i in 4:
+				k.made.prism(-0.22 + i * 0.15, 0.42, 0.0, 0.05, 0.5, 0.05, 6, P.RUST[2], P.INK[1])
+			k.limb(Vector3(-0.3, 0.3, 0.25), Vector3(0.32, 0.26, 0.26), 0.035, 0.035, 5, P.RUST[1])
+			k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.34, 0.24, 0.0)))
+			k.made.prism(0, 0, 0, 0.14, 0.06, 0.14, 9, P.INK[2], P.STONE[3])
+			k.made.pop()
+			k.made.pop()
+			# The axle, and the wheel still on it, the other end in the ground.
+			k.limb(Vector3(0.15, 0.1, -0.55), Vector3(1.0, 0.02, 0.2), 0.04, 0.035, 5, P.RUST[1])
+			k.made.push(Transform3D(Basis(Vector3.UP, 0.7) * Basis(Vector3.RIGHT, PI * 0.5 - 0.25), Vector3(0.12, 0.2, -0.6)))
+			k.made.prism(0, -0.06, 0, 0.22, 0.08, 0.22, 9, P.INK[2] if not rot else P.RUST[1], P.INK[1])
+			k.made.prism(0, 0.081, 0, 0.1, 0.085, 0.1, 7, P.STONE[2])
+			k.made.pop()
+			# The oil gone into the ground: a black stain with the sky caught in it.
+			var ring: Array[Vector3] = []
+			for i in 9:
+				var a := float(i) / 9.0 * TAU
+				var rr := 0.55 * (0.7 + Rng.hash01(s, i) * 0.5)
+				ring.append(Vector3(-0.1 + cos(a) * rr * 1.2, 0.008, 0.2 + sin(a) * rr))
+			for i in 9:
+				k.made.tri(Vector3(-0.1, 0.008, 0.2), ring[(i + 1) % 9], ring[i], P.INK[3].lerp(P.SPRUCE[1], 0.4))
+			k.made.quad(Vector3(-0.5, 0.012, 0.15), Vector3(0.2, 0.012, 0.2), Vector3(0.2, 0.012, 0.23), Vector3(-0.5, 0.012, 0.18), GroundColors.glint(P.BLOOM[2]))
+		_:
+			# The pram on its side, its hood torn, one wheel in the air.
+			k.made.push(Transform3D(Basis(Vector3.UP, -0.3) * Basis(Vector3.RIGHT, PI * 0.5 - 0.15), Vector3(0.45, 0.25, -0.25)))
+			k.made.prism(0.0, -0.18, 0.0, 0.24, 0.18, 0.2, 8, paint, GroundColors.down(paint, 0.2))
+			k.made.quad(Vector3(-0.24, 0.18, -0.2), Vector3(0.06, 0.18, -0.2), Vector3(0.0, 0.18, 0.2), Vector3(-0.24, 0.18, 0.2), P.INK[1])
+			for i in 4:
+				var a := float(i) / 4.0 * PI
+				k.made.strut(Vector3(-0.22 + cos(a) * 0.02, 0.18, -0.2), Vector3(-0.1 + cos(a) * 0.2, 0.18 + sin(a) * 0.05, 0.2 - sin(a) * 0.02), 0.012, 3, P.INK[2])
+			k.made.pop()
+			for wx: float in [0.2, 0.7]:
+				k.made.push(Transform3D(Basis(Vector3.RIGHT, 0.25), Vector3(wx, 0.08 + (0.28 if wx > 0.5 else 0.0), 0.05)))
+				for e in 7:
+					var a0 := float(e) / 7.0 * TAU
+					var a1 := float(e + 1) / 7.0 * TAU
+					k.made.strut(Vector3(cos(a0), 0.0, sin(a0)) * 0.11, Vector3(cos(a1), 0.0, sin(a1)) * 0.11, 0.012, 3, P.INK[2])
+				k.made.pop()
+			k.limb(Vector3(0.3, 0.14, -0.05), Vector3(0.75, 0.38, 0.0), 0.012, 0.012, 3, P.STONE[3])
+			# The case burst open, its clothes blown out across the ground.
+			k.made.push(Transform3D(Basis(Vector3.UP, 0.6), Vector3(-0.45, 0.0, 0.3)))
+			k.slab(0.0, -0.02, 0.0, 0.5, 0.12, 0.34, s + 1, P.EARTH[2] if not rot else P.INK[2], P.EARTH[3], 0.015)
+			k.made.quad(Vector3(-0.25, 0.1, -0.17), Vector3(0.25, 0.1, -0.17), Vector3(0.24, 0.42, -0.26), Vector3(-0.26, 0.4, -0.25), P.EARTH[1])
+			k.made.quad(Vector3(0.24, 0.42, -0.26), Vector3(0.25, 0.1, -0.17), Vector3(-0.25, 0.1, -0.17), Vector3(-0.26, 0.4, -0.25), P.INK[2])
+			k.made.pop()
+			var cloth: Array[Color] = [P.BLOOM[1], P.LINEN[4], P.SLATE[3], P.BRINE[2], P.RUST[3]]
+			for i in 6:
+				var p := Vector3(-0.95 + i * 0.2 + Kit.j(s, i, 0.08), 0.015, 0.55 + Kit.j(s, i + 10, 0.25))
+				var col := cloth[i % cloth.size()] if not rot else (P.INK[2] if i % 2 else P.ASH[2])
+				k.made.quad(p + Vector3(-0.1, 0.0, -0.06), p + Vector3(0.09, 0.004, -0.09), p + Vector3(0.12, 0.008, 0.05), p + Vector3(-0.07, 0.004, 0.08), col)
+			# A mattress sunk half under the land.
+			k.made.push(Transform3D(Basis(Vector3.UP, -0.2) * Basis(Vector3.BACK, 0.08), Vector3(-0.2, -0.05, -0.55)))
+			k.slab(0.0, 0.0, 0.0, 1.0, 0.12, 0.5, s + 2, P.LINEN[3] if not rot else P.ASH[1], P.LINEN[4] if not rot else P.ASH[2], 0.03)
+			for i in 3:
+				k.made.quad(Vector3(-0.4 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, 0.22), Vector3(-0.4 + i * 0.3, 0.125, 0.22), P.EARTH[2] if not rot else P.INK[2])
+			k.made.pop()
+	if c == Country.SNOWFIELD:
+		drift(k, Vector3(0.1, 0.0, -0.3), 0.9, 0.45, 0.2, 0.3, P.RIME[5], s + 30)
+	elif c == Country.MOSS:
+		var rs := k.made.vertex_count()
+		for i in 6:
+			var a := float(i) * 1.1
+			var base := Vector3(cos(a) * 0.7, 0.0, sin(a) * 0.6)
+			k.blade(base, base + Vector3(0.04, 0.55 + Kit.j(s, i, 0.15), 0.0), 0.05, a, P.SPRUCE[3] if i % 2 else P.MOSS[3])
+		k.sway_by_height(rs, 0.0, 0.6, 0.6)
+	elif c != Country.PINEWOOD:
+		drift(k, Vector3(-0.5, 0.0, -0.35), 0.6, 0.3, 0.1, 0.4, d[0], s + 31)
+
+
+## Where the dead of one day are remembered. 0: a board of names on two posts,
+## the names scratched in ruled rows, photographs gone pale, ribbons, jars with
+## candles someone still lights, flowers at its foot; 1: a cairn of stones with
+## the things they carried set on it (a helmet, boots, a toy), a machine's plate
+## propped against it with its glyph struck out, candles.
+static func memorial(k: Kit, v: int, c: int) -> void:
+	var s := 25200 + v * 7 + c
+	var wood := wood_of(c)
+	var d := drift_of(c)
+	if v % 2 == 0:
+		for sz: float in [-0.5, 0.5]:
+			k.limb(Vector3(0.0, -0.1, sz), Vector3(Kit.j(s, int(sz * 4.0) + 2, 0.04), 1.3, sz + Kit.j(s, int(sz * 4.0) + 5, 0.03)), 0.045, 0.035, 5, wood[0])
+		k.slab(0.02, 0.5, 0.0, 0.05, 0.62, 1.05, s, wood[1], wood[0], 0.025)
+		k.slab(0.02, 1.12, 0.0, 0.05, 0.1, 1.2, s + 1, wood[0], wood[1], 0.02, 0.0)
+		# The names: rows of short strokes, a few longer; pale squares of photographs.
+		var ink := P.INK[1] if c != Country.BURNING else P.LINEN[4]
+		for r in 5:
+			var y := 0.58 + r * 0.1
+			var z := -0.44
+			var i := 0
+			while z < 0.42:
+				var wlen := 0.05 + Rng.hash01(s, r, i) * 0.12
+				k.made.quad(Vector3(0.049, y, z), Vector3(0.049, y, z + wlen), Vector3(0.049, y + 0.025, z + wlen), Vector3(0.049, y + 0.025, z), ink)
+				z += wlen + 0.04
+				i += 1
+		for i in 4:
+			var z := -0.38 + i * 0.24 + Kit.j(s, i + 30, 0.04)
+			var y := 0.92 + Kit.j(s, i + 40, 0.06)
+			k.made.quad(Vector3(0.052, y, z - 0.06), Vector3(0.052, y, z + 0.06), Vector3(0.055, y + 0.14, z + 0.07), Vector3(0.055, y + 0.14, z - 0.05), P.LINEN[5] if i % 2 else P.LINEN[4])
+			k.made.quad(Vector3(0.057, y + 0.03, z - 0.035), Vector3(0.057, y + 0.03, z + 0.035), Vector3(0.058, y + 0.1, z + 0.035), Vector3(0.058, y + 0.1, z - 0.035), P.SLATE[2])
+		# Ribbons tied on the posts, long faded.
+		for sz: float in [-0.5, 0.5]:
+			k.fleck(Vector3(0.03, 1.2, sz), Vector3(0.08, 0.85, sz + 0.06), Vector3(0.05, 0.9, sz - 0.02), P.BLOOM[1] if sz < 0.0 else P.BRINE[3])
+		# At its foot: jars with candle stubs, flowers, a toy left propped.
+		for i in 3:
+			var z := -0.35 + i * 0.35
+			k.made.prism(0.3, -0.02, z, 0.055, 0.13, 0.05, 7, P.SPRUCE[3], P.SPRUCE[4])
+			k.made.prism(0.3, 0.05, z, 0.02, 0.11 + (i % 2) * 0.03, 0.017, 5, GroundColors.lamp(P.EMBER[4], 1.4))
+		for i in 5:
+			var p := Vector3(0.45 + Kit.j(s, i + 50, 0.12), 0.03, -0.3 + i * 0.15)
+			k.limb(p, p + Vector3(0.12, 0.02, 0.03), 0.01, 0.008, 3, P.SPRUCE[2])
+			k.fleck(p + Vector3(0.12, 0.02, 0.0), p + Vector3(0.18, 0.05, 0.03), p + Vector3(0.14, 0.07, -0.03), P.BLOOM[4] if i % 2 else P.LINEN[5])
+		k.slab(0.24, 0.0, 0.52, 0.14, 0.18, 0.12, s + 3, P.EARTH[3], P.EARTH[3], 0.02)
+		k.made.prism(0.24, 0.18, 0.52, 0.06, 0.28, 0.05, 6, P.EARTH[3])
+	else:
+		# The cairn, stones placed by many hands.
+		for i in 9:
+			var a := float(i) * 2.2
+			var course := floori(i / 3.0)
+			var r := 0.46 - course * 0.14
+			k.stone(cos(a) * r, course * 0.22 - 0.06, sin(a) * r, 0.2 - course * 0.03, 0.26, s + i, [P.STONE[3], P.LINEN[3], P.STONE[2]][i % 3], 6)
+		k.stone(0.0, 0.58, 0.0, 0.12, 0.2, s + 20, P.LINEN[4], 5)
+		# A helmet on the top, boots at the foot, a toy.
+		k.made.prism(0.02, 0.76, 0.0, 0.13, 0.86, 0.06, 8, P.SLATE[2], P.SLATE[3])
+		for sz: float in [0.52, 0.66]:
+			k.slab(0.5, -0.02, sz, 0.22, 0.12, 0.1, s + int(sz * 100.0), P.INK[2], P.EARTH[1], 0.015)
+			k.slab(0.44, 0.1, sz, 0.09, 0.14, 0.1, s + int(sz * 100.0) + 1, P.INK[2], P.EARTH[1], 0.01)
+		k.slab(-0.45, 0.0, 0.5, 0.12, 0.16, 0.1, s + 30, P.BLOOM[2], P.RUST[3], 0.02)
+		k.made.prism(-0.45, 0.16, 0.5, 0.055, 0.25, 0.05, 6, P.BLOOM[2])
+		# The machines' plate, its glyph struck through by hand.
+		k.found.push(Transform3D(Basis(Vector3.BACK, -0.35), Vector3(0.52, -0.05, -0.2)))
+		k.plate(Vector3(0.0, 0.0, 0.26), Vector3(0.0, 0.0, -0.26), Vector3(0.0, 0.52, -0.26), Vector3(0.0, 0.52, 0.26), P.PLATE[3], P.PLATE[1], P.PLATE[5])
+		k.found.tri(Vector3(0.014, 0.12, 0.12), Vector3(0.014, 0.12, -0.12), Vector3(0.014, 0.38, 0.0), P.PLATE[5])
+		k.found.pop()
+		k.made.push(Transform3D(Basis(Vector3.BACK, -0.35), Vector3(0.52, -0.05, -0.2)))
+		k.made.quad(Vector3(0.022, 0.1, 0.2), Vector3(0.022, 0.14, 0.22), Vector3(0.022, 0.42, -0.2), Vector3(0.022, 0.38, -0.22), P.INK[0])
+		k.made.pop()
+		for i in 2:
+			var z := -0.55 + i * 0.25
+			k.made.prism(0.2, -0.02, z, 0.05, 0.12, 0.045, 7, P.SPRUCE[3], P.SPRUCE[4])
+			k.made.prism(0.2, 0.05, z, 0.018, 0.12, 0.015, 5, GroundColors.lamp(P.EMBER[4], 1.3))
+	if c == Country.SNOWFIELD:
+		drift(k, Vector3(-0.35, 0.0, 0.0), 0.8, 0.6, 0.22, 1.57, P.RIME[5], s + 60)
+	elif c != Country.MOSS and c != Country.PINEWOOD:
+		drift(k, Vector3(-0.4, 0.0, -0.4), 0.6, 0.3, 0.1, 0.5, d[0], s + 61)

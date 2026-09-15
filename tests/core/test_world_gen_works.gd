@@ -20,6 +20,10 @@ const HOME := {
 }
 
 
+## Walking-scale evidence every landscape holds, per 1000 dry tiles.
+const EVIDENCE_PER_1000 := 25.0
+
+
 func test_every_landscape_holds_its_own_works_on_every_seed() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
@@ -46,7 +50,82 @@ func test_every_landscape_holds_its_own_works_on_every_seed() -> void:
 			if p.kind >= FIRST:
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 		for cc: int in Country.LAND:
-			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), 9.0,"seed %d evidence per 1000 tiles of %s" % [s, Country.NAMES[cc]])
+			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, Country.NAMES[cc]])
+
+
+func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var found := 0
+		for p in w.props:
+			if p.kind != PropKind.CHECKPOINT:
+				continue
+			found += 1
+			# Distance from the booth to the nearest road tile's square.
+			var best := 99.0
+			for dy in range(-4, 5):
+				for dx in range(-4, 5):
+					var x := floori(p.pos.x) + dx
+					var y := floori(p.pos.y) + dy
+					if w.in_bounds(x, y) and w.ground[y * w.size + x] == Ground.ROAD:
+						var q := Vector2(clampf(p.pos.x, x, x + 1.0), clampf(p.pos.y, y, y + 1.0))
+						best = minf(best, q.distance_to(p.pos))
+			lt(best, 2.01, "seed %d: the checkpoint at %s stands within 2 tiles of a road" % [s, p.pos])
+			# The gate's boom (+Z of the model) reaches over the road.
+			var over := p.pos + Vector2.from_angle(p.rot + PI * 0.5) * 2.4
+			var on_road := false
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if w.ground_at(floori(over.x) + dx, floori(over.y) + dy) == Ground.ROAD:
+						on_road = true
+			check(on_road, "seed %d: the checkpoint's boom lies across the road" % s)
+		gt(found, 0, "seed %d has a checkpoint" % s)
+
+
+func test_trawlers_lie_on_the_beach() -> void:
+	var hulls := 0
+	var beached := 0
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for p in w.props:
+			if p.kind != PropKind.HULL:
+				continue
+			hulls += 1
+			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
+			if g == Ground.SAND or g == Ground.SHINGLE:
+				beached += 1
+	gt(hulls, 0, "hulls placed")
+	gt(float(beached) / maxf(hulls, 1), 0.75, "hulls on sand or shingle (%d of %d)" % [beached, hulls])
+
+
+func test_evidence_is_keyed_by_landscape_type() -> void:
+	# Every landscape type the registry knows either has its own row or falls to
+	# the generic set, and every row names works that exist.
+	for def in BiomeRegistry.all():
+		var row := GenWorks.evidence(def.id)
+		check(row.has("works") and row.has("vignettes") and row.has("survey"), "%s has a whole row" % def.id)
+		var fn: StringName = row.works
+		if fn != &"":
+			check(GenWorks.new().has_method(fn) or (GenWorks as Script).has_method(fn), "%s works %s exist" % [def.id, fn])
+	for id: StringName in GenWorks.EVIDENCE:
+		check(BiomeRegistry.get_def(id) != null, "the row %s is a landscape type" % id)
+	# A type nobody registered gets the generic set, and a registered row is used.
+	eq(GenWorks.evidence(&"salt_flats").vignettes, GenWorks.GENERIC.vignettes, "an unknown type gets the generic remains")
+	GenWorks.register(&"test_type", {"vignettes": [[1, &"grave_cluster"]]})
+	eq(GenWorks.evidence(&"test_type").vignettes, [[1, &"grave_cluster"]], "a registered row is read")
+	eq(GenWorks.evidence(&"test_type").works, &"", "and keeps the generic keys it left out")
+	GenWorks._registered.erase(&"test_type")
+
+
+func test_places_worth_walking_to_are_recorded() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var lit := GenPlaces.find(w, "stolen_light")
+		check(lit.x >= 0.0, "seed %d: a shack with stolen light is recorded" % s)
+		for p in w.props:
+			if p.kind == PropKind.SHACK and p.pos.distance_to(lit) < 3.0:
+				eq(PropModels.pick_variant(PropKind.SHACK, Rng.hash_ints(w.seed_value, p.id, 90)), 1, "seed %d: the recorded shack is the lit one" % s)
+				break
 
 
 func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
@@ -188,7 +267,7 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 		var t := PropModels.template(kind, 0, Country.COAST)
 		gt(t.found_v.size(), t.made_v.size(), "%s is mostly ruled" % PropKind.NAMES[kind])
 	# What people built is drawn by hand, however much steel was in it.
-	for kind: int in [PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.FIRE_TOWER, PropKind.STUMP, PropKind.GRAVE, PropKind.DEBRIS]:
+	for kind: int in [PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.FIRE_TOWER, PropKind.STUMP, PropKind.GRAVE, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.MEMORIAL]:
 		for c: int in Country.LAND:
 			var t := PropModels.template(kind, 0, c)
 			gt(t.made_v.size(), t.found_v.size(), "%s in %s is mostly drawn by hand" % [PropKind.NAMES[kind], Country.NAMES[c]])

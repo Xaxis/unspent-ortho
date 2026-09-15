@@ -73,9 +73,13 @@ static func footing(k: Kit, c: int, r: float, s: int) -> void:
 
 ## A warning nobody reads. 0: the machines' plate on an exact post, glyphs in
 ## rows and a triangle; 1: a curfew board of ruled hours, a lens still set in
-## it; 2: people's own board nailed over a machine plate, a skull of strokes.
+## it; 2: people's own board nailed over a machine plate, a skull of strokes;
+## 3: one knocked down (tipped_sign).
 ## Scoured pale in the bonelands, rimed in the snow, scorched in the burning.
 static func road_sign(k: Kit, v: int, c: int) -> void:
+	if v == 3:
+		tipped_sign(k, c)
+		return
 	var s := 30100 + v * 3 + c
 	var face := P.RIME[5].lerp(P.PLATE[4], 0.35)
 	var ink := P.INK[1]
@@ -139,6 +143,49 @@ static func road_sign(k: Kit, v: int, c: int) -> void:
 		Remains.banks(k, [[0.2, 0.2, 0.3, 0.2], [-0.2, -0.1, 0.25, 0.14]], P.RIME[5], s + 8)
 	elif c == Country.BONELANDS:
 		Remains.banks(k, [[-0.25, 0.1, 0.3, 0.1]], Remains.drift_of(c)[0], s + 8)
+
+
+## A warning knocked flat: its post snapped at the foot and bent, the plate
+## face up in the grass where it fell, still ruled, still warning; a second
+## plate torn off it lying apart; the stub standing.
+static func tipped_sign(k: Kit, c: int) -> void:
+	var s := 30190 + c
+	var face := P.RIME[5].lerp(P.PLATE[4], 0.35)
+	if c == Country.BONELANDS:
+		face = P.LINEN[5].lerp(P.PLATE[4], 0.2)
+	elif c == Country.BURNING:
+		face = P.PLATE[2]
+	k.found.prism(0, -0.05, 0, 0.05, 0.28, 0.05, 4, P.PLATE[2], P.PLATE[1], PI * 0.25)
+	k.found.push(Transform3D(Basis(Vector3.BACK, -1.35) * Basis(Vector3.UP, 0.2), Vector3(0.02, 0.26, 0.0)))
+	k.found.prism(0, 0.0, 0, 0.045, 1.2, 0.045, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
+	k.found.pop()
+	# The plate, lying a hair off the ground on its bent post, tilted up at one edge.
+	k.found.push(Transform3D(Basis(Vector3.UP, 0.2) * Basis(Vector3.BACK, 0.12), Vector3(1.05, 0.09, 0.05)))
+	k.found.quad(Vector3(-0.32, 0.0, 0.26), Vector3(0.32, 0.0, 0.26), Vector3(0.32, 0.0, -0.26), Vector3(-0.32, 0.0, -0.26), P.PLATE[1])
+	k.found.quad(Vector3(-0.29, 0.006, 0.23), Vector3(0.29, 0.006, 0.23), Vector3(0.29, 0.006, -0.23), Vector3(-0.29, 0.006, -0.23), face)
+	k.found.tri(Vector3(-0.2, 0.01, 0.16), Vector3(0.02, 0.01, 0.16), Vector3(-0.09, 0.01, -0.12), P.INK[1])
+	k.found.tri(Vector3(-0.16, 0.012, 0.11), Vector3(-0.02, 0.012, 0.11), Vector3(-0.09, 0.012, -0.05), P.RUST[3])
+	for r in 4:
+		var x := 0.06 + r * 0.055
+		k.found.quad(Vector3(x, 0.01, 0.2), Vector3(x + 0.03, 0.01, 0.2), Vector3(x + 0.03, 0.01, -0.2 + (r % 2) * 0.08), Vector3(x, 0.01, -0.2 + (r % 2) * 0.08), P.INK[1])
+	k.found.pop()
+	# The second plate, torn away, face down, its back ruled with its bracing.
+	k.found.push(Transform3D(Basis(Vector3.UP, -0.7) * Basis(Vector3.RIGHT, 0.2), Vector3(0.35, 0.05, -0.65)))
+	k.found.quad(Vector3(-0.22, 0.0, 0.16), Vector3(0.22, 0.0, 0.16), Vector3(0.22, 0.0, -0.16), Vector3(-0.22, 0.0, -0.16), P.PLATE[2])
+	k.found.quad(Vector3(-0.2, 0.006, 0.012), Vector3(0.2, 0.006, 0.012), Vector3(0.2, 0.006, -0.012), Vector3(-0.2, 0.006, -0.012), P.PLATE[4])
+	k.found.pop()
+	# What grew or blew over it.
+	var d := Remains.drift_of(c)
+	if c == Country.SNOWFIELD:
+		Remains.drift(k, Vector3(0.9, 0.0, -0.3), 0.6, 0.3, 0.12, 0.3, P.RIME[5], s)
+	elif c == Country.MOSS or c == Country.COAST or c == Country.PINEWOOD:
+		var rs := k.made.vertex_count()
+		for i in 7:
+			var base := Vector3(0.7 + i * 0.12, 0.0, 0.32 + Kit.j(s, i, 0.08))
+			k.blade(base, base + Vector3(0.03, 0.3 + Kit.j(s, i + 9, 0.08), 0.02), 0.04, i * 0.7, P.MOSS[3] if i % 2 else P.SPRUCE[2])
+		k.sway_by_height(rs, 0.0, 0.35, 0.5)
+	else:
+		Remains.drift(k, Vector3(1.3, 0.0, -0.1), 0.4, 0.25, 0.06, 0.5, d[0], s)
 
 
 # --- the coast -----------------------------------------------------------------
@@ -360,45 +407,98 @@ static func relay(k: Kit, v: int, c: int) -> void:
 
 # --- the snowfield -------------------------------------------------------------
 
-## A checkpoint on a road: an exact booth with its slit and amber lens, a
-## striped boom across the way, a beacon. Iced in the snow. 1: the boom broken
-## and hanging, the lens dark.
+## A checkpoint gate on a road. The booth stands beside the way (GenWorks puts
+## it 2.2 to 2.7 tiles off the road's line) and everything else reaches over the
+## road on its +Z side: the pivot post and counterweight, the striped boom
+## across to a rest post on the far verge, cast blocks set on both verges to
+## narrow the way. The booth has a visor slit on three faces with an amber lens
+## watching the road, a floodlight on a mast leaning out over the boom, a
+## beacon. Snow drifts against the booth's back and the posts in the snowfield.
+## 1: dead: the boom snapped, its end on the road, the lens and the flood dark.
 static func checkpoint(k: Kit, v: int, c: int) -> void:
 	var s := 31300 + v + c
 	var alive := v % 2 == 0
-	k.chamfer(0.0, -0.1, 0.0, 1.0, 1.55, 0.9, 0.16, P.PLATE[2], P.PLATE[3])
-	k.chamfer(0.0, 1.45, 0.0, 1.14, 0.12, 1.04, 0.14, P.PLATE[1], P.PLATE[2])
-	for sx: float in [0.501, -0.501]:
-		k.found.quad(Vector3(sx, 1.0, 0.3 * signf(sx)), Vector3(sx, 1.0, -0.3 * signf(sx)), Vector3(sx, 1.14, -0.3 * signf(sx)), Vector3(sx, 1.14, 0.3 * signf(sx)), P.COLD[1])
-	k.found.quad(Vector3(0.3, 1.0, 0.451), Vector3(-0.3, 1.0, 0.451), Vector3(-0.3, 1.14, 0.451), Vector3(0.3, 1.14, 0.451), P.COLD[1])
-	k.found.prism(0.2, 1.06, 0.452, 0.03, 1.07, 0.03, 8, lit(P.LENS[2], 0.86) if alive else P.PLATE[4])
-	rivets(k, Vector3(-0.4, 0.2, 0.451), Vector3(0.4, 0.2, 0.451), 6, Vector3(0, 0, 1))
-	run(k, Vector3(0.2, 0.98, 0.455), 0.04, 0.55, Vector3(0, 0, 1))
-	k.found.prism(0, 1.57, 0, 0.06, 1.62, 0.06, 8, P.PLATE[1])
-	k.found.prism(0, 1.62, 0, 0.045, 1.74, 0.035, 8, BEACON if alive else P.PLATE[4])
-	# The boom on its pivot post at +Z, striped, across the road.
-	k.chamfer(0.0, -0.1, 0.75, 0.2, 1.0, 0.2, 0.05, P.PLATE[2], P.PLATE[3])
-	var boom_basis := Basis.IDENTITY if alive else Basis(Vector3.RIGHT, 0.9)
-	k.found.push(Transform3D(boom_basis, Vector3(0.0, 0.85, 0.75)))
-	var length := 2.6 if alive else 1.3
-	for i in 8:
-		var z0 := 0.1 + i * (length / 8.0)
-		k.chamfer(0.0, -0.04, z0 + length / 16.0, 0.08, 0.08, length / 8.0, 0.02, P.RIME[5] if i % 2 == 0 else P.RUST[3])
+	var cold := c == Country.SNOWFIELD
+	# The pad and the booth.
+	k.chamfer(0.0, -0.12, 0.0, 1.5, 0.16, 1.35, 0.18, P.STONE[2], P.STONE[3])
+	k.chamfer(0.0, 0.02, 0.0, 1.1, 1.72, 1.0, 0.16, P.PLATE[2], P.PLATE[3])
+	k.chamfer(0.0, 1.74, 0.0, 1.32, 0.14, 1.22, 0.16, P.PLATE[1], P.PLATE[2])
+	k.chamfer(0.0, 1.88, 0.0, 0.8, 0.1, 0.7, 0.1, P.PLATE[2], P.PLATE[3])
+	# The visor slit on the road face and both ends, the lens in the road face.
+	var slit := P.COLD[1]
+	k.found.quad(Vector3(0.36, 1.18, 0.501), Vector3(-0.36, 1.18, 0.501), Vector3(-0.36, 1.34, 0.501), Vector3(0.36, 1.34, 0.501), P.PLATE[0])
+	k.found.quad(Vector3(0.33, 1.21, 0.503), Vector3(-0.33, 1.21, 0.503), Vector3(-0.33, 1.31, 0.503), Vector3(0.33, 1.31, 0.503), slit)
+	for sx: float in [0.551, -0.551]:
+		var sg := signf(sx)
+		k.found.quad(Vector3(sx, 1.18, -0.3 * sg), Vector3(sx, 1.18, 0.3 * sg), Vector3(sx, 1.34, 0.3 * sg), Vector3(sx, 1.34, -0.3 * sg), P.PLATE[0])
+		k.found.quad(Vector3(sx + 0.002 * sg, 1.21, -0.27 * sg), Vector3(sx + 0.002 * sg, 1.21, 0.27 * sg), Vector3(sx + 0.002 * sg, 1.31, 0.27 * sg), Vector3(sx + 0.002 * sg, 1.31, -0.27 * sg), slit)
+	k.found.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.16, 1.26, 0.505)))
+	k.found.prism(0, 0, 0, 0.045, 0.02, 0.045, 8, lit(P.LENS[2], 0.86) if alive else P.PLATE[4])
 	k.found.pop()
-	if not alive:
-		k.found.push(Transform3D(Basis(Vector3.UP, 0.5), Vector3(0.3, -0.02, 2.6)))
-		for i in 4:
-			k.chamfer(0.0, 0.0, -0.3 + i * 0.2, 0.08, 0.08, 0.2, 0.02, P.RIME[5] if i % 2 == 0 else P.RUST[3])
-		k.found.pop()
-	if c == Country.SNOWFIELD:
-		k.clump(0.0, 1.55, 0.0, 0.62, 0.14, s + 1, P.RIME[5], 8)
-		if alive:
-			for i in 7:
-				var z := 1.0 + i * 0.33
-				k.rod(Vector3(0.0, 0.8, z), Vector3(0.0, 0.62 - (i % 3) * 0.06, z), 0.01, 3, P.RIME[4])
-		Remains.banks(k, [[-0.7, -0.5, 0.6, 0.45], [0.6, -0.6, 0.5, 0.35], [-0.6, 0.6, 0.35, 0.25]], P.RIME[5], s + 2)
+	# A hatch on the far end, a vent grille, rivets, rust in straight runs.
+	k.found.quad(Vector3(-0.552, 0.1, -0.22), Vector3(-0.552, 0.1, 0.22), Vector3(-0.552, 0.98, 0.22), Vector3(-0.552, 0.98, -0.22), P.PLATE[1])
+	for i in 4:
+		var y := 0.2 + i * 0.1
+		k.found.quad(Vector3(0.36, y, 0.502), Vector3(-0.1, y, 0.502), Vector3(-0.1, y + 0.04, 0.502), Vector3(0.36, y + 0.04, 0.502), P.PLATE[0])
+	rivets(k, Vector3(-0.42, 1.05, 0.502), Vector3(0.42, 1.05, 0.502), 7, Vector3(0, 0, 1))
+	run(k, Vector3(0.2, 1.16, 0.503), 0.05, 0.6, Vector3(0, 0, 1))
+	run(k, Vector3(-0.3, 1.7, 0.503), 0.035, 0.4, Vector3(0, 0, 1))
+	k.found.prism(0, 1.98, 0, 0.07, 2.04, 0.07, 8, P.PLATE[1])
+	k.found.prism(0, 2.04, 0, 0.05, 2.16, 0.04, 8, BEACON if alive else P.PLATE[4])
+	# The floodlight: a mast off the booth's back corner, its head leaning out
+	# over the boom and looking down at the road.
+	k.rod(Vector3(-0.45, 1.88, -0.4), Vector3(-0.45, 3.1, -0.4), 0.035, 6, P.PLATE[3])
+	k.rod(Vector3(-0.45, 3.0, -0.4), Vector3(-0.2, 3.12, 0.55), 0.025, 4, P.PLATE[3])
+	var head := Basis(Vector3.RIGHT, -0.75) if alive else Basis(Vector3.RIGHT, 0.9) * Basis(Vector3.BACK, 0.4)
+	k.found.push(Transform3D(head, Vector3(-0.2, 3.02, 0.62)))
+	k.chamfer(0.0, -0.08, 0.0, 0.46, 0.16, 0.24, 0.04, P.PLATE[1], P.PLATE[2])
+	k.found.quad(Vector3(0.2, -0.085, -0.1), Vector3(-0.2, -0.085, -0.1), Vector3(-0.2, -0.085, 0.1), Vector3(0.2, -0.085, 0.1), lit(STRIP, 0.92) if alive else P.PLATE[0])
+	k.found.pop()
+	# The pivot post and its counterweight, the striped boom over the road.
+	k.chamfer(0.0, -0.1, 0.85, 0.26, 1.12, 0.26, 0.06, P.PLATE[2], P.PLATE[3])
+	k.chamfer(0.0, 0.84, 0.62, 0.3, 0.3, 0.34, 0.05, P.PLATE[1], P.PLATE[2])
+	var reach := 4.5
+	var stripes := 10
+	if alive:
+		for i in stripes:
+			var z0 := 0.95 + i * (reach - 0.95) / stripes
+			k.chamfer(0.0, 0.94, z0 + (reach - 0.95) / stripes * 0.5, 0.11, 0.11, (reach - 0.95) / stripes, 0.025, P.RIME[5] if i % 2 == 0 else P.RUST[3])
 	else:
-		footing(k, c, 0.7, s + 2)
+		k.found.push(Transform3D(Basis(Vector3.RIGHT, -0.55), Vector3(0.0, 1.0, 0.9)))
+		for i in 4:
+			var seg := (reach - 0.95) / stripes
+			k.chamfer(0.0, -0.055, 0.05 + i * seg + seg * 0.5, 0.11, 0.11, seg, 0.025, P.RIME[5] if i % 2 == 0 else P.RUST[3])
+		k.found.pop()
+		k.found.push(Transform3D(Basis(Vector3.UP, 0.35), Vector3(0.25, 0.0, 2.6)))
+		for i in 5:
+			var seg := (reach - 0.95) / stripes
+			k.chamfer(0.0, 0.0, i * seg, 0.11, 0.11, seg, 0.025, P.RIME[5] if (i + 4) % 2 == 0 else P.RUST[3])
+		k.found.pop()
+	# The rest post on the far verge, its fork waiting.
+	k.chamfer(0.0, -0.1, reach + 0.12, 0.14, 1.0, 0.14, 0.04, P.PLATE[2], P.PLATE[3])
+	for sx: float in [-0.08, 0.08]:
+		k.rod(Vector3(sx, 0.88, reach + 0.12), Vector3(sx, 1.02, reach + 0.12), 0.015, 4, P.PLATE[3])
+	# Cast blocks on both verges, narrowing the way.
+	for b: Vector3 in [Vector3(1.55, 0.0, 1.0), Vector3(-1.5, 0.0, 1.05), Vector3(1.4, 0.0, reach - 0.3)]:
+		k.chamfer(b.x, -0.08, b.z, 0.95, 0.24, 0.5, 0.08, P.STONE[3], P.STONE[3])
+		k.chamfer(b.x, 0.16, b.z, 0.95, 0.3, 0.22, 0.06, P.STONE[3], P.STONE[4])
+		for ch in 3:
+			var x := b.x - 0.3 + ch * 0.3
+			k.found.quad(Vector3(x - 0.05, 0.08, b.z + 0.252), Vector3(x + 0.05, 0.08, b.z + 0.252), Vector3(x + 0.1, 0.3, b.z + 0.112), Vector3(x, 0.3, b.z + 0.112), P.RUST[3])
+	if cold:
+		# Rime on the roof, icicles on the boom, snow drifted against the back
+		# of the booth and the foot of every post.
+		Remains.drift(k, Vector3(0.0, 1.98, 0.0), 0.42, 0.36, 0.1, 0.0, P.RIME[5], s + 1)
+		if alive:
+			for i in 10:
+				var z := 1.1 + i * 0.33
+				k.made.prism(0.0, 0.9 - 0.12 - (i % 3) * 0.05, z, 0.018, 0.9, 0.012, 4, P.RIME[4])
+		Remains.drift(k, Vector3(-0.1, 0.0, -0.95), 1.3, 0.6, 0.55, PI, P.RIME[5], s + 2)
+		Remains.drift(k, Vector3(-0.95, 0.0, 0.0), 0.8, 0.5, 0.42, PI * 0.5, P.RIME[5], s + 3)
+		Remains.drift(k, Vector3(0.3, 0.0, reach + 0.6), 0.9, 0.45, 0.32, 0.2, P.RIME[5], s + 4)
+		Remains.drift(k, Vector3(2.1, 0.0, 0.6), 0.7, 0.4, 0.26, 0.9, P.RIME[5], s + 5)
+	else:
+		footing(k, c, 0.8, s + 2)
 
 
 ## The tall stack: an exhaust of the works standing over the snowfield, seen

@@ -63,6 +63,9 @@ var main_ms_max := 0.0
 
 func setup(w: WorldData) -> void:
 	world = w
+	# The landscape types are read from chunk workers (ice on the lines): build
+	# the registry here first.
+	BiomeRegistry.all()
 	mesher = TerrainMesher.new(w)
 	decor = Decor.new(w)
 	_bg_mesher = TerrainMesher.new(w)
@@ -378,11 +381,18 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			fc.append_array(tpl.found_c)
 	if not spans.is_empty():
 		var ck := MeshKit.new()
+		var ice := MeshKit.new()
 		for span: Array in spans:
-			_string_cables(ck, span[0], span[1], ch, m)
+			_string_cables(ck, span[0], span[1], ch, m, ice)
 		fv.append_array(ck.verts)
 		fn.append_array(ck.normals)
 		fc.append_array(ck.colors)
+		# Ice hung on the lines is the weather's, drawn by hand (MADE).
+		mv.append_array(ice.verts)
+		mn.append_array(ice.normals)
+		mc.append_array(ice.colors)
+		muv.append_array(ice.uvs)
+		muv2.append_array(ice.uv2s)
 	var made := []
 	if not mv.is_empty():
 		made.resize(Mesh.ARRAY_MAX)
@@ -446,8 +456,10 @@ static func cable_points(kind: int) -> PackedVector3Array:
 
 
 ## Sagging cables from mast a to mast b, each insulator to its nearer partner,
-## so a span never crosses itself however the masts are turned.
-func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Chunk, m: TerrainMesher) -> void:
+## so a span never crosses itself however the masts are turned. Where the
+## landscape under the span's middle is cold (BiomeRegistry hazards), ice hangs
+## from the cables into `ice` (MADE): beads along the sag and icicles under it.
+func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Chunk, m: TerrainMesher, ice: MeshKit = null) -> void:
 	var pa := cable_points(a.kind)
 	var pb := cable_points(b.kind)
 	if pa.is_empty() or pb.is_empty():
@@ -462,11 +474,32 @@ func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Ch
 		var to := _ranked(wb, side, i)
 		var prev := from
 		var n := 10
+		var icy := ice != null and float(BiomeRegistry.at(world, (a.pos + b.pos) * 0.5).hazards.get(&"cold", 0.0)) >= ICE_COLD
+		var h0 := Rng.hash_ints(world.seed_value, a.id, b.id, i)
 		for s in range(1, n + 1):
 			var t := float(s) / n
 			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
 			k.strut(prev, p, 0.014, 3, Palette.INK[1])
+			if icy:
+				_ice_on(ice, prev, p, h0 + s)
 			prev = p
+
+
+## Cold at or above which lines carry ice.
+const ICE_COLD := 0.5
+
+
+## Ice along one piece of cable: a sleeve of rime on it and icicles of uneven
+## length hanging under it, never in a row.
+static func _ice_on(ice: MeshKit, a: Vector3, b: Vector3, h: int) -> void:
+	var sleeve := Palette.RIME[4]
+	ice.strut(a + Vector3(0, -0.012, 0), b + Vector3(0, -0.012, 0), 0.026, 3, sleeve)
+	var count := 1 + absi(h) % 3
+	for j in count:
+		var t := (float(j) + 0.3 + Rng.hash01(h, j, 3) * 0.4) / count
+		var top := a.lerp(b, t) + Vector3(0, -0.02, 0)
+		var length := 0.08 + Rng.hash01(h, j, 5) * 0.22
+		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.024, 4, Palette.RIME[5] if j % 2 == 0 else sleeve)
 
 
 func _mast_points(p: WorldProp, local: PackedVector3Array, ch: TerrainMesher.Chunk, m: TerrainMesher) -> PackedVector3Array:

@@ -86,3 +86,43 @@ static func _rust(arrays: Array) -> int:
 		if c.is_equal_approx(Palette.RUST[2]) or c.is_equal_approx(GroundColors.down(Palette.RUST[2], 0.4)):
 			n += 1
 	return n
+
+
+func test_cold_lines_hang_with_ice_drawn_by_hand() -> void:
+	var w := _dressed()
+	var view := WorldView.new()
+	view.setup(w)
+	var ch := view.mesher.build_arrays(0, 1)
+	var spans := [[w.props[3], w.props[4]]]
+	var mild := view.bake_props(ch, view.mesher, [], spans)
+	eq((mild[0] as Array).size(), 0, "a span in a mild landscape carries no ice")
+	for i in w.country.size():
+		if w.level[i] > 0:
+			w.country[i] = Country.SNOWFIELD
+	var cold := view.bake_props(ch, view.mesher, [], spans)
+	check((cold[0] as Array).size() > 0 and (cold[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size() > 60, "a span in the snow hangs with MADE ice")
+	eq((cold[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), (mild[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "and its FOUND cable is the same line")
+	# The pylons in the snow carry ice on their crossarms; elsewhere they stay FOUND only.
+	gt(PropModels.template(PropKind.PYLON, 0, Country.SNOWFIELD).made_v.size(), 60, "a snowfield pylon has ice on its arms")
+	eq(PropModels.template(PropKind.PYLON, 0, Country.COAST).made_v.size(), 0, "a coast pylon has none")
+	view.free()
+
+
+func test_drifts_are_soft_mounds_not_shards() -> void:
+	var k := PropModels.Remains.Kit.new()
+	PropModels.Remains.drift(k, Vector3.ZERO, 1.2, 0.6, 0.4, 0.3, Palette.RIME[5], 7)
+	var top := 0.0
+	var steep := 0
+	for i in k.made.verts.size():
+		top = maxf(top, k.made.verts[i].y)
+		if k.made.normals[i].y < 0.5:
+			steep += 1
+	near(top, 0.4, 0.02, "a drift rises to its height")
+	lt(float(steep) / k.made.verts.size(), 0.2, "its faces lie low, not up-ended like shards")
+	# Long and low: its footprint is far wider than it is tall.
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for v in k.made.verts:
+		lo = lo.min(Vector2(v.x, v.z))
+		hi = hi.max(Vector2(v.x, v.z))
+	gt((hi - lo).length(), top * 5.0, "long and low")

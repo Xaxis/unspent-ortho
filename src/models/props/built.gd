@@ -18,7 +18,7 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.FIRE: fire(k, c)
 		PropKind.BENCH: bench(k)
 		PropKind.KILN: kiln(k, v)
-		PropKind.PYLON: pylon(k)
+		PropKind.PYLON: pylon(k, c)
 		PropKind.POLE: pole(k)
 
 
@@ -162,7 +162,7 @@ static func kiln(k: Kit, v: int) -> void:
 
 
 ## FOUND: a lattice mast, exact and symmetric, still carrying.
-static func pylon(k: Kit) -> void:
+static func pylon(k: Kit, c: int = Country.COAST) -> void:
 	var m := P.PLATE[3]
 	var br := P.PLATE[2]
 	var top := 4.0
@@ -200,6 +200,19 @@ static func pylon(k: Kit) -> void:
 	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Color(1.0, 0.18, 0.42, 0.2))
 	for arm2: Array in [[3.4, 1.15], [2.7, 0.85]]:
 		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Color(0.3, 0.95, 1.0, 0.9))
+	if c == Country.SNOWFIELD:
+		# Ice on the grid in the snow (MADE: the weather's, not the machine's):
+		# rime along each crossarm and icicles of uneven length under it.
+		for arm3: Array in [[3.4, 1.15], [2.7, 0.85]]:
+			var y: float = arm3[0]
+			var hw: float = arm3[1]
+			k.made.strut(Vector3(0.0, y + 0.045, -hw), Vector3(0.0, y + 0.045, hw), 0.03, 3, P.RIME[5])
+			var n := 9 if hw > 1.0 else 7
+			for i in n:
+				var z := -hw + 0.08 + (hw * 2.0 - 0.16) * (i + Kit.j(1650, i, 0.3) + 0.5) / n
+				var length := 0.12 + Rng.hash01(1651, i, int(hw * 10.0)) * 0.3
+				k.made.prism(0.0, y - 0.03 - length, z, 0.0, y - 0.02, 0.028, 4, P.RIME[4] if i % 2 else P.RIME[5])
+		k.made.strut(Vector3(0.0, 4.02, 0.0), Vector3(0.0, 4.12, 0.0), 0.09, 4, P.RIME[5])
 
 
 static func _leg(l: Vector2, y: float, top: float) -> Vector3:

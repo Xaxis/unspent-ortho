@@ -65,9 +65,11 @@ enum {
 	SLAG_HEAP,
 	VENT_CAP,
 	ARCHIVE,
+	WRECKAGE,
+	MEMORIAL,
 }
 
-const COUNT := 57
+const COUNT := 59
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -77,6 +79,7 @@ const NAMES: PackedStringArray = [
 	"fence", "barricade", "sign", "grave", "debris", "shack", "vehicle", "hull", "sea wall", "tide gauge",
 	"intake", "pump house", "pipe", "stump", "fire tower", "relay", "checkpoint", "stack", "drill rig",
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",
+	"wreckage", "memorial",
 ]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
@@ -88,4 +91,5 @@ const SOLID: PackedFloat32Array = [
 	0.0, 0.5, 0.1, 0.0, 0.0, 0.95, 0.8, 1.3, 0.6, 0.15,
 	1.2, 0.95, 0.0, 0.0, 0.7, 0.2, 0.5, 0.9, 0.35,
 	0.0, 0.0, 0.7, 1.0, 0.4, 0.6,
+	0.0, 0.25,
 ]

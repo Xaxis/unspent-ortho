@@ -59,11 +59,14 @@ static func variants(kind: int) -> int:
 		PropKind.VENT, PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
 		PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
 			return 2
-		PropKind.FENCE, PropKind.SIGN, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP:
+		PropKind.SIGN:
+			return 4
+		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
-		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE:
+		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
+		PropKind.MEMORIAL:
 			return 2
 	return 1
 
@@ -104,7 +107,8 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 		PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.PYLON, PropKind.POLE:
 			Built.build(k, kind, variant, country)
 		PropKind.FENCE, PropKind.BARRICADE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.SHACK, PropKind.VEHICLE, \
-		PropKind.HULL, PropKind.SEA_WALL, PropKind.STUMP, PropKind.FIRE_TOWER, PropKind.WATER_TANK, PropKind.SLAG_HEAP:
+		PropKind.HULL, PropKind.SEA_WALL, PropKind.STUMP, PropKind.FIRE_TOWER, PropKind.WATER_TANK, PropKind.SLAG_HEAP, \
+		PropKind.WRECKAGE, PropKind.MEMORIAL:
 			Remains.build(k, kind, variant, country)
 		PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY, \
 		PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.ARCHIVE:
@@ -245,4 +249,4 @@ static func gallery() -> Array:
 
 
 ## Kinds of evidence whose model changes with the landscape it stands in.
-const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE]
+const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.WRECKAGE, PropKind.MEMORIAL]
