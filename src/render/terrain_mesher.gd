@@ -14,7 +14,7 @@ extends RefCounted
 ## What a lattice point is drawn as is its KEY: ground, the country it is drawn
 ## in, and whether it is wet. Across an ecotone a world-space noise lets the
 ## neighbour country show through in ragged patches whose share grows toward the
-## border (WorldData.blend, or BlendFallback's approximation). A cell's two most
+## border (WorldData.blend, drawn through Transitions). A cell's two most
 ## common keys become its wash and second wash; world.gdshader meets them on a
 ## ragged pixel edge, each with its own ink mark and hatch hand.
 ##
@@ -81,7 +81,7 @@ var prof := PackedInt64Array([0, 0, 0, 0, 0, 0, 0, 0])
 const RING := 2
 
 var world: WorldData
-var eco: BlendFallback
+var eco: Transitions
 var _warp: FastNoiseLite
 var _eco: FastNoiseLite
 ## The ecotone field: two octaves, lobes and the tongues on them, read through
@@ -174,7 +174,7 @@ class Chunk:
 	## Terrace edges as drawn: the top of every wall, as point pairs.
 	var edges := PackedVector3Array()
 	## Per tile of the chunk: the neighbour country across an ecotone (0 none)
-	## and how far toward it the tile has turned (0..0.5, BlendFallback.fill).
+	## and how far toward it the tile has turned (0..0.5, Transitions.fill).
 	var c2 := PackedByteArray()
 	var blend := PackedFloat32Array()
 	## Make the meshes from the arrays (main thread).
@@ -259,7 +259,7 @@ static func _static_init() -> void:
 
 func _init(w: WorldData) -> void:
 	world = w
-	eco = BlendFallback.new(w)
+	eco = Transitions.new(w)
 	_warp = FastNoiseLite.new()
 	_warp.seed = Rng.hash_ints(w.seed_value, 32) & 0x7FFFFFFF
 	_warp.frequency = 1.0 / 3.5
@@ -738,9 +738,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			ch.blend[y * ch.w + x] = rb[ro]
 	var level := w.level
 	var ground := w.ground
-	var legacy := eco.active
-	# Per tile of the ring: the tile's ground as drawn in its own country (legacy
-	# worlds get their sub-grounds here) and whether it holds inland water.
+	# Per tile of the ring: the tile's ground and whether it holds inland water.
 	var tg := PackedByteArray()
 	tg.resize(rw * rh)
 	var inland := false
@@ -756,9 +754,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			var tx := clampi(rx0 + xx, 0, size - 1)
 			var o := yy * rw + xx
 			var g: int = ground[ty * size + tx]
-			if legacy and _WET[g] == 0:
-				g = eco.legacy_ground(g, rc[o], tx + 0.5, ty + 0.5, shore[o])
-			elif _WET[g] == 1 and level[ty * size + tx] > 0:
+			if _WET[g] == 1 and level[ty * size + tx] > 0:
 				inland = true
 				wl[o] = level[ty * size + tx]
 			tg[o] = g
@@ -1002,10 +998,6 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 						var ep := _eco_p(eco_grid, wx - rx0, wy - ry0, rw) - eco_share(t)
 						dc = hi if ep < 0.0 else lo
 						em = minf(em, absf(ep) * 9.0)
-					if dc != c and legacy and _WET[g] == 0:
-						var tx := clampi(rx0 + (o % rw), 0, size - 1)
-						var ty := clampi(ry0 + (o / rw), 0, size - 1)
-						g = eco.legacy_ground(GroundColors.morph(ground[ty * size + tx], dc), dc, sx, sy, shore[o])
 				var extra := 0
 				var wf := 0.0
 				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:

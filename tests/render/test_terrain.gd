@@ -5,7 +5,7 @@ extends TestCase
 
 ## A 64-tile world: sea on the west, a coast plateau at level 2 with a step to
 ## level 4, a river at level 2 running north-south, and pinewood to the east of
-## x = 40 (no transitions written, so the fallback must supply them).
+## x = 40, with the transitions world generation would write.
 static func fixture() -> WorldData:
 	var w := WorldData.new(5, 64)
 	for y in 64:
@@ -25,6 +25,12 @@ static func fixture() -> WorldData:
 			elif x >= 14 and x < 17:
 				g = Ground.RIVER
 			w.ground[i] = g
+			# Transitions as world generation writes them: 0.5 on the border at
+			# x = 40, falling to 0 over 18 tiles each side.
+			if l > 0:
+				var d := absf(x + 0.5 - 40.0)
+				w.country2[i] = Country.PINEWOOD if x < 40 else Country.COAST
+				w.blend[i] = maxf(0.0, 0.5 - 0.5 * d / 18.0)
 	return w
 
 
@@ -167,27 +173,20 @@ func test_sea_sheet_sits_at_water_level_and_inland_water_hides_shins() -> void:
 	lt(ch.surface(15.5, 16.0), 2 * WorldData.STEP + TerrainMesher.WADE - 0.1, "bed under the sheet")
 
 
-func test_fallback_blend_only_when_generation_wrote_none() -> void:
+func test_transitions_draw_the_generated_band_and_give_the_sea_its_shore() -> void:
 	var w := fixture()
-	check(BlendFallback.new(w).active, "a world without transitions uses the fallback")
-	w.blend[w.size * 10 + 20] = 0.2
-	check(not BlendFallback.new(w).active, "a world with transitions keeps its own")
-
-
-func test_fallback_turns_toward_the_neighbour_near_a_border() -> void:
-	var w := fixture()
-	var f := BlendFallback.new(w)
+	var t := Transitions.new(w)
 	var c := PackedByteArray()
 	var c2 := PackedByteArray()
 	var b := PackedFloat32Array()
-	f.fill(0, 0, 64, 64, c, c2, b)
-	var at_border := b[32 * 64 + 40]
-	var deep := b[32 * 64 + 12]
-	gt(at_border, 0.2, "blend at the coast/pinewood border")
-	lt(deep, at_border, "blend deep in the coast")
+	t.fill(0, 0, 64, 64, c, c2, b)
+	near(b[32 * 64 + 39], Transitions.reach(w.blend[32 * 64 + 39], Transitions.GEN_FLOOR), 1e-5, "the band is the generated blend, pulled in")
+	gt(b[32 * 64 + 39], 0.4, "blend at the coast/pinewood border")
+	eq(b[32 * 64 + 12], 0.0, "a heartland is its country alone")
 	for i in b.size():
 		check(b[i] <= 0.5, "blend never passes the border")
-	eq(int(c2[32 * 64 + 40]) if c[32 * 64 + 40] == Country.COAST else int(c[32 * 64 + 40]), Country.PINEWOOD, "the neighbour is pinewood")
+	eq(int(c2[32 * 64 + 39]), Country.PINEWOOD, "the neighbour is pinewood")
+	eq(int(c[32 * 64 + 2]), Country.COAST, "the sea takes the nearest land's country")
 
 
 func test_an_ecotone_interleaves_both_countries() -> void:
@@ -210,6 +209,9 @@ static func two_countries() -> WorldData:
 			w.level[i] = 2
 			w.country[i] = Country.COAST if x < 64 else Country.SNOWFIELD
 			w.ground[i] = Ground.GRASS if x < 64 else Ground.SNOW
+			# As world generation writes a border: 0.5 on it, 0 by 18 tiles out.
+			w.country2[i] = Country.SNOWFIELD if x < 64 else Country.COAST
+			w.blend[i] = maxf(0.0, 0.5 - 0.5 * absf(x + 0.5 - 64.0) / 18.0)
 	return w
 
 
