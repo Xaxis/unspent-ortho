@@ -36,9 +36,13 @@ static func plan(game: Game) -> Array[Dictionary]:
 	var home := w.spawn
 	var laid: Array[Dictionary] = []
 	var have := {}
+	# WorldQuery.props_near can hand back a prop twice when its square runs off the
+	# map's side (tile keys wrap into the next row), so count each prop once.
+	var seen := {}
 	for q in game.query.props_near(home, TIP_RADIUS):
 		var r := TIP_RADIUS if q.kind == PropKind.TIP else RADIUS
-		if q.pos.distance_to(home) <= r:
+		if not seen.has(q.id) and q.pos.distance_to(home) <= r and not game.world.depleted.has(q.id):
+			seen[q.id] = true
 			have[q.kind] = int(have.get(q.kind, 0)) + 1
 	var shore := _shore_tiles(w, home)
 	for kind: int in WANT:

@@ -10,8 +10,11 @@ class_name SurvivalMarks
 ##   var p := SurvivalMarks.Pool.new(SurvivalMarks.dot(), 64, SurvivalMarks.material(), parent)
 ##   p.put(i, pos, size, colour);  p.put_xf(i, xf, colour);  p.hide(i)
 ##
-## Colour alpha on the mark material is "tinted by the sky": 1 for dust and ink,
-## 0 for sparks and embers, which carry their own light.
+## Colour alpha on the mark materials: 1 its own colour tinted by the sky, 0.5
+## (CONTRAST) ink or paper by what is drawn behind, 0 its own light (sparks, embers).
+
+## A mark colour meaning "ink or paper, whichever reads on what is behind it" (mark.gdshaderinc).
+const CONTRAST := Color(0.0, 0.0, 0.0, 0.5)
 
 const GLYPHS: Array[StringName] = [&"log", &"stone", &"lime", &"ore_iron", &"ore_copper", &"ore_tin", &"coal",
 	&"brim", &"plate", &"shell", &"green", &"weed", &"resin", &"turf", &"tool", &"lump"]
@@ -30,11 +33,14 @@ class Pool:
 	var node: MultiMeshInstance3D
 	var size: int
 
-	func _init(mesh: Mesh, n: int, mat: Material, parent: Node) -> void:
+	## `anchored`: each mark can name the world point whose backdrop picks its
+	## CONTRAST colour (put_xf's `anchor`), so a moving stroke keeps one colour.
+	func _init(mesh: Mesh, n: int, mat: Material, parent: Node, anchored: bool = false) -> void:
 		size = n
 		mm = MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
+		mm.use_custom_data = anchored
 		mm.mesh = mesh
 		mm.instance_count = n
 		node = MultiMeshInstance3D.new()
@@ -50,9 +56,12 @@ class Pool:
 		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ONE * s), pos))
 		mm.set_instance_color(i, col)
 
-	func put_xf(i: int, xf: Transform3D, col: Color) -> void:
+	func put_xf(i: int, xf: Transform3D, col: Color, anchor: Vector3 = Vector3.INF) -> void:
 		mm.set_instance_transform(i, xf)
 		mm.set_instance_color(i, col)
+		if mm.use_custom_data:
+			var on := anchor.is_finite()
+			mm.set_instance_custom_data(i, Color(anchor.x, anchor.y, anchor.z, 1.0) if on else Color(0, 0, 0, 0))
 
 	func hide(i: int) -> void:
 		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ZERO), Vector3(0, -1000, 0)))
@@ -215,8 +224,8 @@ static func glyph(name: StringName) -> ArrayMesh:
 				k.style = Ink.NONE
 				k.style2 = Ink.NONE
 				var pts: Array[Vector3] = [Vector3(-0.12, 0.02, -0.08), Vector3(0.1, 0.05, -0.1), Vector3(0.13, 0.09, 0.08), Vector3(-0.08, 0.05, 0.1)]
-				k.quad(pts[0], pts[1], pts[2], pts[3], Palette.PLATE[4])
-				k.quad(pts[3], pts[2], pts[1], pts[0], Palette.PLATE[2])
+				k.quad(pts[3], pts[2], pts[1], pts[0], Palette.PLATE[4])
+				k.quad(pts[0], pts[1], pts[2], pts[3], Palette.PLATE[2])
 				k.strut(pts[1], pts[2], 0.012, 3, Palette.RUST[3])
 			&"shell":
 				k.prism(-0.02, 0, 0, 0.06, 0.05, 0.035, 4, Palette.BRINE[1], Palette.INK[3], 0.3)
@@ -231,7 +240,13 @@ static func glyph(name: StringName) -> ArrayMesh:
 			&"resin":
 				k.prism(0, 0, 0, 0.06, 0.13, 0.0, 5, Palette.COPPER[4], Color(0, 0, 0, 0), 0.2)
 			&"turf":
-				k.prism(0, 0, 0, 0.1, 0.07, 0.085, 4, Palette.EARTH[1], Palette.EARTH[2], 0.35)
+				# A cut sod: a lopsided dark lump, torn on one side, with its grass still on it.
+				k.rock(0, 0, 0, 0.1, 0.08, 22, Palette.EARTH[1], 6)
+				k.rock(0.05, 0.0, 0.03, 0.06, 0.06, 23, Palette.EARTH[2], 5)
+				for i in 4:
+					var a := float(i) / 4.0 * TAU + 0.7
+					var root := Vector3(cos(a) * 0.04, 0.07, sin(a) * 0.035)
+					k.strut(root, root + Vector3(cos(a) * 0.04, 0.07 + i * 0.01, sin(a) * 0.03), 0.014, 3, Palette.MOSS[3] if i % 2 else Palette.MOSS[4])
 			&"tool":
 				k.strut(Vector3(-0.13, 0.02, 0.0), Vector3(0.08, 0.06, 0.0), 0.022, 4, Palette.EARTH[3])
 				k.strut(Vector3(0.06, 0.02, -0.07), Vector3(0.1, 0.1, 0.07), 0.03, 3, Palette.STONE[4])

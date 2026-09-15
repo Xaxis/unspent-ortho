@@ -72,18 +72,44 @@ func setup(g: Game) -> void:
 
 
 ## --put: props the generator may not place yet, set out in front for a shot:
-## the first straight ahead in reach, the rest fanned round the player.
+## the first straight ahead in reach, the rest fanned round the player. With
+## --taken they stand in a row across the screen instead, already taken, so a
+## shot shows what each leaves behind.
 func _put_props(kinds: PackedStringArray) -> void:
 	var i := 0
+	var across := Vector2(1, -1).normalized()
+	if game.camera != null:
+		var bx := game.camera.global_transform.basis.x
+		across = Vector2(bx.x, bx.z).normalized()
 	for name in kinds:
 		var kind := PropKind.NAMES.find(name.replace("_", " "))
 		if kind < 0:
 			push_warning("--put: unknown prop kind %s" % name)
 			continue
-		var turn := [0.0, 1.1, -1.1, 2.2, -2.2, PI][i % 6] as float
-		var reach := 0.75 + PropKind.SOLID[kind]
-		Survival.add_prop(game, kind, game.player.pos + Vector2.from_angle(game.player.facing + turn) * reach)
+		var at: Vector2
+		if game.options.taken:
+			at = game.player.pos + across * (i - (kinds.size() - 1) * 0.5) * 1.5 + across.orthogonal() * 1.4
+		else:
+			var turn := [0.0, 1.1, -1.1, 2.2, -2.2, PI][i % 6] as float
+			at = game.player.pos + Vector2.from_angle(game.player.facing + turn) * (0.75 + PropKind.SOLID[kind])
+		var prop := Survival.add_prop(game, kind, at)
+		if game.options.taken:
+			_take_for_shot(prop)
 		i += 1
+
+
+func _take_for_shot(prop: WorldProp) -> void:
+	var opts := Takes.options(prop.kind)
+	var gone := false
+	for o: Dictionary in opts:
+		gone = gone or not o.keep
+	if gone:
+		game.world.depleted[prop.id] = INF
+		game.view.refresh_props(prop)
+		return
+	var state := SurvivalState.of(game)
+	for j in opts.size():
+		state.spent[SurvivalState.key(prop.id, j)] = INF
 
 
 func _face_nearest_workable() -> void:

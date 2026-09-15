@@ -13,6 +13,10 @@ extends GameSystem
 ##   announced by a few green specks;
 ## - what taking leaves stays marked while it is gone (RemnantModels);
 ## - every fire nearby burns (FireModel).
+## Every mark is sized in screen pixels through the camera (_px), so a stroke is a
+## stroke at the 640x360 the game is played at: ticks at least a pixel and a half
+## across and five or more long, dots two pixels. Ink marks take ink or paper from
+## what is drawn behind them (SurvivalMarks.CONTRAST), never from a list of kinds.
 ## Reads SurvivalState, WorldData and Events; writes nothing but its own nodes.
 
 const FPS := 15.0
@@ -26,6 +30,17 @@ const REMNANT_RADIUS := 48.0
 const BLOWS: Array[float] = [0.28, 0.62, 0.94]
 const TOKEN_SECONDS := 0.42
 const MAX_TOKENS := 3
+## Screen pixels: a pen tick's half-width (its three-sided bar is about three of
+## these across, so 0.9 draws a line one to two pixels wide), where a burst's
+## ticks start from the blow, a dot's radius and a fleck's size.
+const TICK_PX := 0.9
+const BURST_INNER_PX := 3.0
+const DOT_PX := 1.1
+const FLECK_PX := 2.6
+## A felled tree: it shivers, goes over, lies where it fell a while, then is gone in its dust.
+const FALL_SHIVER := 0.22
+const FALL_DROP := 0.62
+const FALL_LIE := 0.9
 
 const TREES: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE]
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE,
@@ -68,6 +83,8 @@ var _remnant_sig := ""
 var _remnant_at := Vector2(-1e9, -1e9)
 var _fires: Dictionary = {} # prop id -> FireModel
 var _scan_in := 0.0
+## The dots of the ring drawn round an asked-for fire.
+var _ring: Array[Dictionary] = []
 var _time := 0.0
 var _acc := 0.0
 
@@ -77,7 +94,7 @@ func setup(g: Game) -> void:
 	_mat = g.view.world_material() if g.view != null else ShaderMaterial.new()
 	var marks := SurvivalMarks.material()
 	_dots = SurvivalMarks.Pool.new(SurvivalMarks.dot(), DOTS, marks, self)
-	_ticks = SurvivalMarks.Pool.new(SurvivalMarks.tick(), TICKS, SurvivalMarks.overlay(), self)
+	_ticks = SurvivalMarks.Pool.new(SurvivalMarks.tick(), TICKS, SurvivalMarks.overlay(), self, true)
 	_sparks_pool = SurvivalMarks.Pool.new(SurvivalMarks.dot(), SPARKS, SurvivalMarks.overlay(), self)
 	for i in range(SPARKS - 1, -1, -1):
 		_free_sparks.append(i)
@@ -100,6 +117,9 @@ func setup(g: Game) -> void:
 	# Stations built before this system was listening (a --build shot) still go up in dust.
 	for prop in SurvivalState.of(g).built:
 		_on_sfx(&"build_fire", g.world.to_3d(prop.pos))
+	var asked := Survival.build_asked(g)
+	if asked.is_finite():
+		_on_sfx(&"ask_fire", g.world.to_3d(asked))
 
 
 func _exit_tree() -> void:
@@ -121,6 +141,8 @@ func _process(delta: float) -> void:
 	_time += delta
 	_follow_job(delta)
 	_resolve_pending()
+	if not _ring.is_empty() and not Survival.build_asked(game).is_finite():
+		_clear_ring()
 	_scan_in -= delta
 	if _scan_in <= 0.0:
 		_scan_in = 0.5
@@ -181,10 +203,13 @@ func _emit_fleck(from: Vector3, to: Vector3, life: float, size: float, col: Colo
 
 ## An ink tick flicked out from `at` along `dir`: its head runs out to r1, then its
 ## tail catches up, so over two or three drawn frames it reads as a stroke of the pen.
-func _emit_tick(at: Vector3, dir: Vector3, r0: float, r1: float, life: float, col: Color, thick: float = 0.036) -> void:
+## `still`: drawn whole for its life, not flicked (a dashed ring).
+func _emit_tick(at: Vector3, dir: Vector3, r0: float, r1: float, life: float, col: Color, thick: float = -1.0, still: bool = false) -> void:
+	if thick < 0.0:
+		thick = _px(TICK_PX)
 	if _free_ticks.is_empty():
 		return
-	var d := {"i": _free_ticks.pop_back(), "t": 0.0, "life": life, "at": at, "dir": dir, "r0": r0, "r1": r1, "thick": thick, "col": col}
+	var d := {"i": _free_ticks.pop_back(), "t": 0.0, "life": life, "at": at, "dir": dir, "r0": r0, "r1": r1, "thick": thick, "col": col, "still": still}
 	_tick.append(d)
 	_draw_tick(d)
 
@@ -207,14 +232,16 @@ func _draw_tick(d: Dictionary) -> void:
 	var k := clampf(float(d.t) / float(d.life), 0.0, 1.0)
 	var r0: float = d.r0
 	var r1: float = d.r1
-	var head := r0 + (r1 - r0) * minf(1.0, 0.45 + k * 1.6)
-	var tail := r0 + (r1 - r0) * clampf((k - 0.3) / 0.7, 0.0, 1.0)
+	var head := r1 if d.still else r0 + (r1 - r0) * minf(1.0, 0.45 + k * 1.6)
+	var tail := r0 if d.still else r0 + (r1 - r0) * clampf((k - 0.3) / 0.7, 0.0, 1.0)
 	if head - tail < 0.02:
 		_ticks.hide(d.i)
 		return
 	var at: Vector3 = d.at
 	var dir: Vector3 = d.dir
-	_ticks.put_xf(d.i, SurvivalMarks.stroke_xf(at + dir * tail, at + dir * head, d.thick), d.col)
+	# Each tick takes ink or paper from what lies under the middle of its own stroke, so a
+	# burst over a dark rock's edge is scratched pale on the rock and inked on the snow.
+	_ticks.put_xf(d.i, SurvivalMarks.stroke_xf(at + dir * tail, at + dir * head, d.thick), d.col, at + dir * (r0 + r1) * 0.5)
 
 
 func _step_marks(dt: float) -> void:
@@ -249,24 +276,26 @@ func _toward_eye() -> Vector3:
 	return game.camera.global_transform.basis.z if game.camera != null else Vector3(0.39, 0.84, 0.39)
 
 
-## Ink is dark on a pale thing; on a dark wash (a crown, ore, plate) the burst is
-## drawn in paper instead, the way a notebook scratches a highlight out of the dark.
-const INK_ON_PALE: Array[int] = [PropKind.DRIFTWOOD, PropKind.REEDS, PropKind.CLINTS, PropKind.BONES]
+## World units across `n` screen pixels at the camera's zoom.
+func _px(n: float) -> float:
+	var h := game.camera.view_height if game.camera != null else 14.0
+	return n * h / 360.0
 
 
-func _burst_color(kind: int) -> Color:
-	return Palette.INK[1] if INK_ON_PALE.has(kind) or kind < 0 else Palette.LINEN[5]
+func _page_basis() -> Basis:
+	return game.camera.global_transform.basis if game.camera != null else Basis.from_euler(Vector3(deg_to_rad(-57.0), deg_to_rad(45.0), 0.0))
 
 
-## A starburst of `n` ink ticks round `at`, in the plane of the page.
-func _ink_burst(at: Vector3, n: int, r1: float, salt: int, kind: int = -1) -> void:
-	var b := game.camera.global_transform.basis if game.camera != null else Basis.from_euler(Vector3(deg_to_rad(-57.0), deg_to_rad(45.0), 0.0))
+## A starburst of `n` pen ticks round `at`, in the plane of the page, reaching
+## `reach_px` screen pixels out. Ink on a pale ground or thing, paper on a dark one.
+func _ink_burst(at: Vector3, n: int, reach_px: float, salt: int) -> void:
+	var b := _page_basis()
 	var base := Rng.hash01(salt, 1) * TAU
 	for i in n:
 		var a := base + float(i) / n * TAU + (Rng.hash01(salt, i, 2) - 0.5) * 0.7
 		var dir := (b.x * cos(a) + b.y * sin(a)).normalized()
-		var r := r1 * (0.7 + Rng.hash01(salt, i, 3) * 0.5)
-		_emit_tick(at, dir, r1 * 0.3, r, 0.2, _burst_color(kind))
+		var r := _px(reach_px * (0.8 + Rng.hash01(salt, i, 3) * 0.45))
+		_emit_tick(at, dir, _px(BURST_INNER_PX), r, 0.2, SurvivalMarks.CONTRAST)
 
 
 ## Stipple dust: dots flung low from `at` over a ring of `radius`, dropping out
@@ -277,7 +306,7 @@ func _dust(at: Vector3, n: int, radius: float, colors: Array[Color], salt: int, 
 		var r := radius * (0.45 + Rng.hash01(salt, i, 12) * 0.75)
 		var to := at + Vector3(cos(a) * r, rise * Rng.hash01(salt, i, 13), sin(a) * r)
 		var from := at + Vector3(cos(a), 0.0, sin(a)) * radius * 0.15
-		_emit_dot(from, to, life * (0.7 + Rng.hash01(salt, i, 14) * 0.5), 0.028 + Rng.hash01(salt, i, 15) * 0.02,
+		_emit_dot(from, to, life * (0.7 + Rng.hash01(salt, i, 14) * 0.5), _px(DOT_PX * (0.9 + Rng.hash01(salt, i, 15) * 0.5)),
 			colors[i % colors.size()], 0.06, 0.45 + Rng.hash01(salt, i, 16) * 0.55)
 
 
@@ -287,7 +316,7 @@ func _knock_flecks(at: Vector3, back: Vector3, n: int, colors: Array[Color], sal
 		var side := Vector3(Rng.hash01(salt, i, 21) - 0.5, 0.0, Rng.hash01(salt, i, 22) - 0.5) * spread * 2.0
 		var to := at + back * (0.18 + Rng.hash01(salt, i, 23) * 0.3) + side
 		to.y = game.world.height_at(Vector2(to.x, to.z)) + 0.03
-		_emit_fleck(at, to, 0.32 + Rng.hash01(salt, i, 24) * 0.2, 0.055 + Rng.hash01(salt, i, 25) * 0.035,
+		_emit_fleck(at, to, 0.32 + Rng.hash01(salt, i, 24) * 0.2, _px(FLECK_PX * (0.85 + Rng.hash01(salt, i, 25) * 0.4)),
 			colors[i % colors.size()], 0.18 + Rng.hash01(salt, i, 26) * 0.2, found)
 
 
@@ -297,7 +326,7 @@ func _sparks(at: Vector3, n: int, salt: int) -> void:
 		var col := Palette.EMBER[5] if i % 2 == 0 else Palette.LENS[3]
 		if _free_sparks.is_empty():
 			return
-		var d := {"i": _free_sparks.pop_back(), "t": 0.0, "life": 0.16, "from": at, "to": to, "arc": 0.0, "size": 0.04,
+		var d := {"i": _free_sparks.pop_back(), "t": 0.0, "life": 0.16, "from": at, "to": to, "arc": 0.0, "size": _px(DOT_PX),
 			"col": Color(col.r, col.g, col.b, 0.0), "drop": 1.0}
 		_spark.append(d)
 		_draw_travel(_sparks_pool, d)
@@ -343,16 +372,17 @@ func _colors(kind: int, verb: StringName) -> Array[Color]:
 	return [Palette.MOSS[4], Palette.MOSS[3], Palette.SAND[4]]
 
 
-## Stipple is ink: dust is drawn as dots of the pen, with a fleck of the stuff's own
-## colour among them, so a puff reads on pale sand and dark peat alike.
+## Stipple is the pen: dust is dots of ink or paper (whichever reads on the ground
+## under them), with a fleck of the stuff's own colour among them.
 func _dust_colors(kind: int) -> Array[Color]:
+	var c := SurvivalMarks.CONTRAST
 	if kind == PropKind.PEAT_BANK:
-		return [Palette.INK[3], Palette.EARTH[2], Palette.INK[4]]
+		return [c, Palette.EARTH[3], c]
 	if SCRAP.has(kind):
-		return [Palette.INK[3], Palette.RUST[3], Palette.INK[4]]
+		return [c, Palette.RUST[4], c]
 	if TREES.has(kind):
-		return [Palette.INK[3], Palette.EARTH[3], Palette.INK[4]]
-	return [Palette.INK[3], Palette.STONE[3], Palette.INK[4]]
+		return [c, Palette.SAND[4], c]
+	return [c, Palette.STONE[4], c]
 
 
 ## Where a blow meets the thing: its near side, at a height that suits it.
@@ -377,15 +407,15 @@ func _strike(prop: WorldProp, verb: StringName, tooled: bool) -> void:
 	back = back.normalized() if back.length() > 0.01 else Vector3.LEFT
 	match verb:
 		&"fell", &"break", &"dig", &"cut":
-			_ink_burst(at, 5 if verb != &"cut" else 4, 0.4 if verb != &"cut" else 0.3, salt, prop.kind)
+			_ink_burst(at, 5 if verb != &"cut" else 4, 10.0 if verb != &"cut" else 8.0, salt)
 			_knock_flecks(at, back, 3 if verb != &"cut" else 2, colors, salt, 0.35, SCRAP.has(prop.kind))
 		&"gather", &"scrape", &"turn":
-			_ink_burst(at, 3, 0.24, salt, prop.kind)
+			_ink_burst(at, 3, 7.0, salt)
 			_knock_flecks(at, back, 2 if verb != &"gather" else 1, colors, salt, 0.2, SCRAP.has(prop.kind))
 		&"tap":
 			# A tap only weeps: one drop runs down the bark.
 			var foot := game.world.to_3d(prop.pos + Vector2(back.x, back.z) * prop.solid) + Vector3(0, 0.05, 0)
-			_emit_dot(at, foot + back * 0.25, 0.5, 0.035, Palette.COPPER[4], 0.0)
+			_emit_dot(at, foot + back * 0.25, 0.5, _px(DOT_PX * 1.3), Palette.COPPER[4], 0.0)
 	if verb == &"dig" or verb == &"break" or verb == &"turn":
 		var foot := game.world.to_3d(prop.pos + Vector2(back.x, back.z) * prop.solid) + Vector3(0, 0.04, 0)
 		_dust(foot, 5, 0.35, _dust_colors(prop.kind), salt + 5, 0.08, 0.5)
@@ -399,7 +429,7 @@ func _strike(prop: WorldProp, verb: StringName, tooled: bool) -> void:
 		for i in 4:
 			var off := Vector3(Rng.hash01(salt, i, 41) - 0.5, 0.0, Rng.hash01(salt, i, 42) - 0.5) * 1.2 * prop.scale
 			var from := top + off * 0.5 + Vector3(0, Rng.hash01(salt, i, 43) * 0.6 * prop.scale, 0)
-			_emit_dot(from, from + off * 0.4 + Vector3(0, -0.7, 0), 0.9, 0.034, crown if i % 2 else Palette.SPRUCE[3], 0.0, 0.8)
+			_emit_dot(from, from + off * 0.4 + Vector3(0, -0.7, 0), 0.9, _px(DOT_PX), crown if i % 2 else Palette.SPRUCE[3], 0.0, 0.8)
 
 
 # --- Giving out: the thing goes the way that thing goes ---------------------------
@@ -417,6 +447,13 @@ func _give_out(prop: WorldProp) -> void:
 	var away := prop.pos - game.player.pos
 	away = away.normalized() if away.length() > 0.01 else Vector2.RIGHT
 	var kind := &"lift"
+	if TREES.has(prop.kind):
+		# Over across the page, not into it: a tree falling toward or away from the eye
+		# is foreshortened to a blob. It goes to whichever side is further from the worker.
+		var b := _page_basis()
+		var side := Vector2(b.x.x, b.x.z).normalized()
+		side = side if side.dot(away) >= 0.0 else -side
+		away = (side + away * 0.3).normalized()
 	if TREES.has(prop.kind):
 		kind = &"fall"
 	elif ROCKS.has(prop.kind) or SCRAP.has(prop.kind) or prop.kind == PropKind.PEAT_BANK:
@@ -442,55 +479,71 @@ func _step_anim(a: Dictionary, _dt: float) -> bool:
 	var base := game.world.to_3d(prop.pos)
 	match a.kind:
 		&"fall":
-			# Tip slowly, then fast, as a tree does; lie a beat; go in its own dust.
+			# It shivers, goes over slowly and then fast, bounces once, lies where it
+			# fell long enough to be seen, and is gone in its own dust.
 			var away: Vector2 = a.away
 			var axis := Vector3.UP.cross(Vector3(away.x, 0.0, away.y)).normalized()
-			var f := clampf(t / 0.6, 0.0, 1.0)
-			pivot.basis = Basis(axis, f * f * (PI * 0.5 - 0.1))
+			var lie := PI * 0.5 - 0.06
+			var angle := 0.0
+			if t < FALL_SHIVER:
+				angle = (0.07 if int(t * FPS) % 2 == 0 else -0.04)
+			else:
+				var f := clampf((t - FALL_SHIVER) / FALL_DROP, 0.0, 1.0)
+				angle = f * f * lie
+				var since := t - FALL_SHIVER - FALL_DROP
+				if since > 0.0 and since < 0.14:
+					angle = lie - 0.12 * sin(since / 0.14 * PI)
+			pivot.basis = Basis(axis, angle)
 			# It comes to rest on its crown, not through the ground.
-			pivot.position.y = base.y + f * f * 0.4 * prop.scale
-			if f >= 1.0 and int(a.stage) == 0:
+			pivot.position.y = base.y + (angle / lie) * (angle / lie) * 0.35 * prop.scale
+			if t >= FALL_SHIVER + FALL_DROP and int(a.stage) == 0:
 				a.stage = 1
-				_along_trunk(prop, away, 16, _dust_colors(prop.kind), 0.14, 0.6)
+				_along_trunk(prop, away, 18, _dust_colors(prop.kind), 0.16, 0.7)
 				var needles: Array[Color] = [Palette.SPRUCE[3], Palette.SPRUCE[4]]
 				if prop.kind == PropKind.SNOW_PINE:
 					needles = [Palette.RIME[5], Palette.RIME[4]]
 				elif prop.kind == PropKind.DEAD_TREE:
 					needles = [Palette.ASH[3], Palette.ASH[4]]
-				_along_trunk(prop, away, 10, needles, 0.3, 0.7, 1.2)
-			if t >= 1.05 and int(a.stage) == 1:
+				elif prop.kind == PropKind.BROADLEAF:
+					needles = [Palette.MOSS[3], Palette.MOSS[4]]
+				_along_trunk(prop, away, 10, needles, 0.3, 0.8, 1.2)
+				var mid := prop.pos + away * 1.0 * prop.scale
+				_ink_burst(Vector3(mid.x, game.world.height_at(mid) + 0.25, mid.y) + _toward_eye() * 0.3, 6, 12.0, prop.id * 13 + 5)
+			var gone := FALL_SHIVER + FALL_DROP + FALL_LIE
+			if t >= gone and int(a.stage) == 1:
 				a.stage = 2
 				pivot.visible = false
-				_along_trunk(prop, away, 18, _dust_colors(prop.kind), 0.2, 0.7)
-			return t >= 1.1
+				_along_trunk(prop, away, 22, _dust_colors(prop.kind), 0.22, 0.8)
+			return t >= gone + 0.05
 		&"split":
-			var k := clampf(t / 0.12, 0.0, 1.0)
-			pivot.scale = Vector3(1.0 + k * 0.12, 1.0 - k * 0.45, 1.0 + k * 0.12)
+			# Drawn frames: it cracks wider, slumps, and is gone in a burst of its own pieces.
+			var k := clampf(floorf(t * FPS) / FPS / 0.2, 0.0, 1.0)
+			pivot.scale = Vector3(1.0 + k * 0.16, 1.0 - k * 0.5, 1.0 + k * 0.16)
 			if k >= 1.0 and int(a.stage) == 0:
 				a.stage = 1
 				pivot.visible = false
 				var salt := prop.id * 31 + 7
 				var at := base + Vector3(0, 0.22 * prop.scale, 0) + _toward_eye() * 0.25
-				_ink_burst(at, 6, 0.5 * prop.scale, salt, prop.kind)
+				_ink_burst(at, 7, 13.0 * prop.scale, salt)
 				_dust(base + Vector3(0, 0.05, 0), 16, 0.75 * prop.scale, _dust_colors(prop.kind), salt, 0.3, 0.75)
 				var colors := _colors(prop.kind, &"break")
 				var toward := game.world.to_3d(game.player.pos) - base
 				toward.y = 0.0
 				_knock_flecks(at, toward.normalized() if toward.length() > 0.01 else Vector3.LEFT, 6, colors, salt, 0.6, SCRAP.has(prop.kind))
-			return t >= 0.14
+			return t >= 0.22
 		_:
 			var k := clampf(t / 0.35, 0.0, 1.0)
 			var hands := _hands()
 			pivot.position = base.lerp(hands, k * k) + Vector3(0, sin(k * PI) * 0.35, 0)
 			pivot.scale = Vector3.ONE * (1.0 - k * 0.9)
 			if k >= 1.0:
-				_dust(hands, 3, 0.18, [Palette.INK[3]], prop.id, 0.1, 0.3)
+				_dust(hands, 3, 0.18, [SurvivalMarks.CONTRAST], prop.id, 0.1, 0.3)
 			return k >= 1.0
 
 
 ## Dots (and a few flecks when `fleck_share` > 0) laid along a fallen trunk.
 func _along_trunk(prop: WorldProp, away: Vector2, n: int, colors: Array[Color], rise: float, life: float, drift: float = 0.35) -> void:
-	var length := 1.9 * prop.scale
+	var length := 2.1 * prop.scale
 	for i in n:
 		var u := 0.1 + Rng.hash01(prop.id, i, 51) * 0.9
 		var along := Vector2(away.x, away.y) * u * length
@@ -498,8 +551,14 @@ func _along_trunk(prop: WorldProp, away: Vector2, n: int, colors: Array[Color], 
 		var p := prop.pos + along + side
 		var from := Vector3(p.x, game.world.height_at(p) + 0.05, p.y)
 		var to := from + Vector3((Rng.hash01(prop.id, i, 53) - 0.5) * drift, rise * Rng.hash01(prop.id, i, 54), (Rng.hash01(prop.id, i, 55) - 0.5) * drift)
-		_emit_dot(from, to, life * (0.6 + Rng.hash01(prop.id, i, 56) * 0.6), 0.03 + Rng.hash01(prop.id, i, 57) * 0.02,
+		_emit_dot(from, to, life * (0.6 + Rng.hash01(prop.id, i, 56) * 0.6), _px(DOT_PX * (0.9 + Rng.hash01(prop.id, i, 57) * 0.5)),
 			colors[i % colors.size()], 0.08, 0.4 + Rng.hash01(prop.id, i, 58) * 0.6)
+
+
+func _clear_ring() -> void:
+	for d in _ring:
+		d.t = maxf(float(d.t), float(d.life) - 0.001)
+	_ring.clear()
 
 
 # --- Tokens: what you took, into your hands ----------------------------------------
@@ -529,13 +588,24 @@ func _on_sfx(name: StringName, at: Vector3) -> void:
 	var s := String(name)
 	if s.begins_with("build_"):
 		# A station goes up in a ring of dust, and its fire is lit at once.
-		_ink_burst(at + Vector3(0, 0.3, 0) + _toward_eye() * 0.3, 5, 0.4, int(_time * 100.0))
+		_ink_burst(at + Vector3(0, 0.3, 0) + _toward_eye() * 0.3, 6, 12.0, int(_time * 100.0))
 		_dust(at + Vector3(0, 0.04, 0), 18, 0.8, _dust_colors(PropKind.BOULDER), int(_time * 100.0), 0.25, 0.8)
 		_scan_in = 0.0
+		_clear_ring()
+	elif name == &"ask_fire":
+		# A dashed pencil ring where the fire would go, until the second press or the ask lapses.
+		_clear_ring()
+		var dashes := 12
+		for i in dashes:
+			var a := (float(i) + 0.5) / dashes * TAU
+			var p := at + Vector3(cos(a) * 0.5, 0.06, sin(a) * 0.5)
+			var tangent := Vector3(-sin(a), 0.0, cos(a))
+			_emit_tick(p, tangent, -_px(2.5), _px(2.5), Survival.BUILD_ASK_SECONDS + 1.0, SurvivalMarks.CONTRAST, -1.0, true)
+			_ring.append(_tick[-1])
 	elif name == &"regrow":
 		_dust(at + Vector3(0, 0.1, 0), 6, 0.5, [Palette.MOSS[5], Palette.MOSS[4]], int(at.x * 13.0 + at.z * 7.0), 0.4, 0.9)
 	elif name == &"work_broken":
-		_ink_burst(at + Vector3(0, 0.35, 0) + _toward_eye() * 0.3, 3, 0.25, int(_time * 100.0), PropKind.PINE)
+		_ink_burst(at + Vector3(0, 0.35, 0) + _toward_eye() * 0.3, 3, 8.0, int(_time * 100.0))
 	elif name == &"collapse":
 		_dust(at + Vector3(0, 0.04, 0), 12, 0.6, _dust_colors(PropKind.BOULDER), int(_time * 100.0), 0.15, 0.8)
 
@@ -567,7 +637,7 @@ func _resolve_pending() -> void:
 					var away: Vector2 = last.away
 					var mid := prop.pos + away * 1.1 * prop.scale
 					from = Vector3(mid.x, game.world.height_at(mid) + 0.2, mid.y)
-					delay = 0.62
+					delay = FALL_SHIVER + FALL_DROP + 0.1
 				_:
 					from = game.world.to_3d(prop.pos) + Vector3(0, 0.3, 0)
 					delay = 0.12
@@ -610,7 +680,7 @@ func _step_tokens(dt: float) -> void:
 		node.rotation.y = float(tk.spin) + k * 2.4
 		node.scale = Vector3.ONE * (1.15 - 0.45 * k)
 		if k >= 1.0:
-			_dust(hands, 3, 0.16, [Palette.INK[3], Palette.INK[4]], int(float(tk.spin) * 1000.0), 0.12, 0.3)
+			_dust(hands, 3, 0.16, [SurvivalMarks.CONTRAST], int(float(tk.spin) * 1000.0), 0.12, 0.3)
 			node.queue_free()
 			_tokens.remove_at(i)
 
@@ -627,7 +697,7 @@ func _build_remnant_layers() -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "remnant_%s" % name
 		mmi.multimesh = mm
-		mmi.material_override = _mat
+		mmi.material_override = SurvivalMarks.found_material() if RemnantModels.is_found(name) else _mat
 		add_child(mmi)
 		_remnant_mm[name] = mm
 
@@ -652,16 +722,22 @@ func _refresh_remnants() -> void:
 		if r == &"" or p.pos.distance_to(here) > REMNANT_RADIUS:
 			continue
 		lists[r].append(p)
-	# Standing but picked over: one mark per prop however many of its options are spent.
+	# Standing but picked over: one mark of each sort per prop, however many of its options are spent.
 	var marked := {}
 	for key: String in spent:
 		var id := key.get_slice(":", 0).to_int()
-		if marked.has(id) or id < 0 or id >= w.props.size() or w.depleted.has(id):
+		if id < 0 or id >= w.props.size() or w.depleted.has(id):
 			continue
-		marked[id] = true
 		var p := w.props[id]
-		if p.pos.distance_to(here) <= REMNANT_RADIUS:
-			lists[RemnantModels.worked_for(p.kind)].append(p)
+		var opts := Takes.options(p.kind)
+		var index := key.get_slice(":", 1).to_int()
+		var verb: StringName = (opts[index] as Dictionary).verb if index >= 0 and index < opts.size() else &""
+		var mark := RemnantModels.worked_for(p.kind, verb)
+		var mk := "%d:%s" % [id, mark]
+		if marked.has(mk) or p.pos.distance_to(here) > REMNANT_RADIUS:
+			continue
+		marked[mk] = true
+		lists[mark].append(p)
 	for name: StringName in lists:
 		var mm: MultiMesh = _remnant_mm[name]
 		var list: Array = lists[name]
@@ -674,8 +750,6 @@ func _refresh_remnants() -> void:
 			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * s), w.to_3d(p.pos)))
 			var tint := Color.WHITE
 			match p.kind:
-				PropKind.IRON_ORE:
-					tint = Color(1.0, 0.84, 0.78)
 				PropKind.COPPER_ORE:
 					tint = Color(0.86, 1.0, 0.92)
 				PropKind.COAL_ORE:

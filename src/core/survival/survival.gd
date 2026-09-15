@@ -39,7 +39,7 @@ class_name Survival
 ##
 ## Events emitted: took(item, n), made(item, n), time_skipped(minutes, reason:
 ## work eat sleep make build collapse), message(line), sfx(name, at) with names
-## work_<verb> took refuse eat sleep build_ask build_<station> make hone collapse
+## work_<verb> took refuse eat sleep ask_fire build_<station> make hone collapse
 ## regrow work_broken lamp_out.
 
 ## Real seconds a take plays for (the clock is charged its minutes after).
@@ -221,7 +221,7 @@ static func _ask_or_build(game: Game) -> bool:
 		return build_fire(game) != null
 	state.build_ask = {"at": spot, "until": now_real() + BUILD_ASK_SECONDS}
 	Events.message.emit("Again, and a fire is laid here.")
-	Events.sfx.emit(&"build_ask", game.world.to_3d(spot))
+	Events.sfx.emit(&"ask_fire", game.world.to_3d(spot))
 	return true
 
 

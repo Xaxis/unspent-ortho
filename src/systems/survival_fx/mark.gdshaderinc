@@ -8,7 +8,8 @@
 // Colour alpha says where a mark's colour comes from:
 //   1.0   its own colour, tinted by the sky like the page under it (flecks of stuff)
 //   0.5   ink or paper, whichever reads on what is already drawn behind the mark,
-//         judged once per mark at its origin so a stroke never changes colour midway
+//         judged once per mark at its origin (or at the anchor a pool passes in
+//         INSTANCE_CUSTOM, w = 1) so a stroke, or a whole burst, never changes colour midway
 //   0.0   its own colour at any hour: it carries its own light (sparks, embers)
 #include "res://src/render/sky.gdshaderinc"
 
@@ -23,7 +24,8 @@ varying flat vec2 mark_anchor;
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(MODEL_MATRIX[3].xyz, 1.0);
+	vec3 anchor = INSTANCE_CUSTOM.a > 0.5 ? INSTANCE_CUSTOM.rgb : MODEL_MATRIX[3].xyz;
+	vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(anchor, 1.0);
 	mark_anchor = clip.xy / clip.w * 0.5 + 0.5;
 }
 
