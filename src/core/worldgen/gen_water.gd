@@ -48,8 +48,16 @@ static func rivers(c: GenContext) -> void:
 	seen.resize(cn)
 	var filled := PackedFloat32Array()
 	filled.resize(cn)
-	var heap_p := PackedFloat32Array()
-	var heap_i := PackedInt32Array()
+	# A bucket queue (a hundredth of a level per bucket): every push lands at
+	# least one bucket above the cell being spread, so buckets are visited
+	# once, in order, with no heap to keep.
+	const PER_LEVEL := 100.0
+	var buckets := int((GenRelief.MAX_LEVEL + 3) * PER_LEVEL)
+	var bucket_top := PackedInt32Array()
+	bucket_top.resize(buckets)
+	bucket_top.fill(-1)
+	var queued := PackedInt32Array()
+	queued.resize(cn)
 	var order := PackedInt32Array()
 	for k in cn:
 		if landc[k] != 0:
@@ -65,12 +73,19 @@ static func rivers(c: GenContext) -> void:
 				if nx >= 0 and ny >= 0 and nx < cw and ny < cw and landc[ny * cw + nx] != 0:
 					coastal = true
 		if coastal:
-			_push(heap_p, heap_i, 0.0, k)
-	while not heap_i.is_empty():
-		var k := _pop(heap_p, heap_i)
+			queued[k] = bucket_top[0]
+			bucket_top[0] = k
+	var cur := 0
+	while cur < buckets:
+		var k := bucket_top[cur]
+		if k < 0:
+			cur += 1
+			continue
+		bucket_top[cur] = queued[k]
 		order.append(k)
 		var gx := k % cw
 		var gy := k / cw
+		var fk := filled[k] + 0.01
 		for dy in range(-1, 2):
 			var ny := gy + dy
 			if ny < 0 or ny >= cw:
@@ -83,9 +98,12 @@ static func rivers(c: GenContext) -> void:
 				if seen[nb] != 0:
 					continue
 				seen[nb] = 1
-				filled[nb] = maxf(ec[nb], filled[k] + 0.01)
+				var f := maxf(ec[nb], fk)
+				filled[nb] = f
 				parent[nb] = k
-				_push(heap_p, heap_i, filled[nb], nb)
+				var bk := clampi(int(f * PER_LEVEL), cur + 1, buckets - 1)
+				queued[nb] = bucket_top[bk]
+				bucket_top[bk] = nb
 	c.mark(&"rivers.flood")
 	var acc := PackedFloat32Array()
 	acc.resize(cn)
@@ -163,49 +181,6 @@ static func rivers(c: GenContext) -> void:
 	c.mark(&"rivers.lay")
 	_carve_valleys(c)
 	c.mark(&"rivers.valleys")
-
-
-static func _push(hp: PackedFloat32Array, hi: PackedInt32Array, p: float, id: int) -> void:
-	hp.append(p)
-	hi.append(id)
-	var j := hp.size() - 1
-	while j > 0:
-		var parent := (j - 1) >> 1
-		if hp[parent] <= p:
-			break
-		hp[j] = hp[parent]
-		hi[j] = hi[parent]
-		j = parent
-	hp[j] = p
-	hi[j] = id
-
-
-static func _pop(hp: PackedFloat32Array, hi: PackedInt32Array) -> int:
-	var top := hi[0]
-	var last := hp.size() - 1
-	var p := hp[last]
-	var id := hi[last]
-	hp.resize(last)
-	hi.resize(last)
-	if last == 0:
-		return top
-	var j := 0
-	while true:
-		var l := j * 2 + 1
-		if l >= last:
-			break
-		var r := l + 1
-		var m := l
-		if r < last and hp[r] < hp[l]:
-			m = r
-		if hp[m] >= p:
-			break
-		hp[j] = hp[m]
-		hi[j] = hi[m]
-		j = m
-	hp[j] = p
-	hi[j] = id
-	return top
 
 
 ## Rasterise one river. Returns false if it laid nothing useful.

@@ -317,6 +317,12 @@ static func fine(c: GenContext) -> void:
 				var bl := (lo - 1) * n
 				var bh := (hi - 1) * n
 				var m := sa - sb if a == lo else sb - sa
+				if m > 200.0 or m < -200.0:
+					# Far past anything the noise can move a border (the margin
+					# rarely changes by 5 a tile; the shifts reach ~40 tiles).
+					country[i] = lo if m > 0.0 else hi
+					country2[i] = hi if m > 0.0 else lo
+					continue
 				# The margin's gradient, over four tiles each way.
 				var xa := maxi(x - 2, 0)
 				var xb := mini(x + 2, size - 1)
@@ -418,24 +424,34 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 	other_h.resize(hn)
 	var own_h := PackedByteArray()
 	own_h.resize(hn)
-	for k in hn:
-		var own := country[mini((k / hw) * 2, size - 1) * size + mini((k % hw) * 2, size - 1)]
-		own_h[k] = own
-		var pk := pair[k]
-		if own == pk >> 3:
-			other_h[k] = pk & 7
-		elif own == pk & 7:
-			other_h[k] = pk >> 3
-	for gy in range(1, hw - 1):
-		for gx in range(1, hw - 1):
-			var k := gy * hw + gx
-			var o := other_h[k]
-			if o == 0:
-				continue
-			for j: int in [k + 1, k + hw]:
-				if own_h[j] == own_h[k] and other_h[j] != 0 and other_h[j] != o:
+	GenFields.rows(hw, func(g0: int, g1: int) -> void:
+		for gy in range(g0, g1):
+			var trow := mini(gy * 2, size - 1) * size
+			for gx in hw:
+				var k := gy * hw + gx
+				var own := country[trow + mini(gx * 2, size - 1)]
+				own_h[k] = own
+				var pk := pair[k]
+				if own == pk >> 3:
+					other_h[k] = pk & 7
+				elif own == pk & 7:
+					other_h[k] = pk >> 3
+	)
+	GenFields.rows(hw - 1, func(g0: int, g1: int) -> void:
+		for gy in range(maxi(g0, 1), g1):
+			for gx in range(1, hw - 1):
+				var k := gy * hw + gx
+				var o := other_h[k]
+				if o == 0:
+					continue
+				var own := own_h[k]
+				var r := other_h[k + 1]
+				var dn := other_h[k + hw]
+				var l := other_h[k - 1]
+				var u := other_h[k - hw]
+				if (own_h[k + 1] == own and r != 0 and r != o) or (own_h[k + hw] == own and dn != 0 and dn != o) or (own_h[k - 1] == own and l != 0 and l != o) or (own_h[k - hw] == own and u != 0 and u != o):
 					seam[k] = 1
-					seam[j] = 1
+	)
 	var seam_d := GenFields.upsample(GenFields.distance8(seam, hw, 64.0), hw, 2, size)
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for y in range(y0, y1):
