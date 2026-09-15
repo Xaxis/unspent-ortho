@@ -10,6 +10,11 @@ extends RefCounted
 ## decor, so nothing hangs over a lip or floats at an edge. Deterministic per
 ## chunk: one RNG seeded by the chunk, tiles visited in order.
 ##
+## Across an ecotone the neighbour's small life arrives before its wash: a
+## share of the items on a tile (growing toward the border) are the other
+## country's, so the first snow tufts and ash flakes are seen well before the
+## ground itself turns.
+##
 ## Plants sway by height (UV2.x) in world.gdshader; flowers follow a bloom field
 ## so a hillside flowers together and the next is still in bud.
 
@@ -26,7 +31,6 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 
 var world: WorldData
-var _rng := RandomNumberGenerator.new()
 var _bloom: FastNoiseLite
 ## ground -> [kinds: PackedInt32Array, cumulative: PackedFloat32Array, items per tile]
 var _tables: Dictionary = {}
@@ -88,6 +92,12 @@ func _table(g: int, density: float, pairs: Array) -> void:
 	_tables[g] = [kinds, cum, density]
 
 
+## Share of a tile's decor that is the neighbour's at blend b (0..0.5): ahead
+## of TerrainMesher.eco_cover, so the small things cross first.
+static func lead_share(b: float) -> float:
+	return clampf(b * 2.0, 0.0, 1.0) * 0.55
+
+
 ## Items per tile of a ground (0 for grounds that carry none).
 func density(g: int) -> float:
 	if not _tables.has(g):
@@ -96,7 +106,7 @@ func density(g: int) -> float:
 
 
 func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
-	_rng.seed = Rng.hash_ints(world.seed_value, ch.cx, ch.cy, 0xDEC0)
+	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
 	var c := PackedColorArray()
@@ -122,21 +132,33 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 			var table: Array = _tables.get(g * 8 + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
 			if table.is_empty():
 				continue
-			var count := int(float(table[2]) + _rng.randf())
+			var count := int(float(table[2]) + rng.randf())
 			if count <= 0:
 				continue
 			var country := (k >> 8) & 0xFF
+			# The other side of the ecotone, and how much of its decor is here.
+			var ti := ty * ch.w + tx
+			var home := world.country_at(ch.x0 + tx, ch.y0 + ty)
+			var other := int(ch.c2[ti]) if country == home else home
+			var lead := lead_share(ch.blend[ti]) if other > 0 and other != country else 0.0
+			var other_table: Array = _tables.get(g * 8 + other + 1000, _tables.get(GroundColors.home_turf(other), [])) if lead > 0.0 else []
 			var h := TerrainMesher.level_height(t) - 0.004
 			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
 			var shore := ch.shore[ty * ch.w + tx]
 			var wx := ch.x0 + tx
 			var wy := ch.y0 + ty
 			for i in count:
-				var kind := _pick(table, _rng.randf())
+				var dress := country
+				var kind: int
+				if not other_table.is_empty() and rng.randf() < lead:
+					kind = _pick(other_table, rng.randf())
+					dress = other
+				else:
+					kind = _pick(table, rng.randf())
 				if (kind == WRACK_BIT or kind == SHELL or kind == SEA_GLASS) and shore < -3.0:
 					kind = PEBBLES if g == Ground.SHINGLE else (MARRAM if g == Ground.SAND else TUFT)
-				var fx := 0.08 + _rng.randf() * 0.84
-				var fy := 0.08 + _rng.randf() * 0.84
+				var fx := 0.08 + rng.randf() * 0.84
+				var fy := 0.08 + rng.randf() * 0.84
 				var stage := 0
 				if kind == FLOWER:
 					var bl := _bloom.get_noise_2d(wx + fx, wy + fy) * 0.5 + 0.5
@@ -144,10 +166,10 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 						kind = TUFT
 					stage = clampi(int((bl - 0.4) / 0.6 * STAGES), 0, STAGES - 1)
 				else:
-					stage = _rng.randi() % STAGES
-				var tpl := template(kind, country, stage)
-				var s := 0.8 + _rng.randf() * 0.45
-				var basis := Basis(Vector3.UP, _rng.randf() * TAU)
+					stage = rng.randi() % STAGES
+				var tpl := template(kind, dress, stage)
+				var s := 0.8 + rng.randf() * 0.45
+				var basis := Basis(Vector3.UP, rng.randf() * TAU)
 				var hy := ch.surface(wx + fx, wy + fy) - 0.004 if soft else h
 				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, hy, wy + fy))
 				v.append_array(xf * tpl.v)
@@ -161,16 +183,16 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 		var out := ch.feet_out[fi]
 		var country := int(ch.feet_country[fi])
 		var chance := 0.55 if country == Country.BONELANDS or country == Country.BURNING or country == Country.SNOWFIELD else 0.35
-		if _rng.randf() > chance:
+		if rng.randf() > chance:
 			continue
-		var p := foot + out * (0.05 + _rng.randf() * 0.25)
+		var p := foot + out * (0.05 + rng.randf() * 0.25)
 		if not _flat_at(ch, p.x, p.z):
 			continue
 		var along := Vector3(-out.z, 0, out.x)
-		var tpl := template(RUBBLE, country, _rng.randi() % STAGES)
-		var s := 0.7 + _rng.randf() * 0.6
-		var basis := Basis(Vector3.UP, _rng.randf() * TAU)
-		v.append_array(Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (_rng.randf() - 0.5) * 0.4) * tpl.v)
+		var tpl := template(RUBBLE, country, rng.randi() % STAGES)
+		var s := 0.7 + rng.randf() * 0.6
+		var basis := Basis(Vector3.UP, rng.randf() * TAU)
+		v.append_array(Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4) * tpl.v)
 		n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
 		c.append_array(tpl.c)
 		uv.append_array(tpl.uv)

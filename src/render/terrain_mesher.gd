@@ -41,8 +41,16 @@ const WADE := 0.3
 const WET_SINK := 0.42
 ## Tiles of context around a chunk for distances to the waterline.
 const MARGIN := 10
-## How readily a neighbour country shows through across an ecotone.
-const ECO_SPREAD := 0.95
+## Share of an ecotone drawn as the neighbour at blend b (0..0.5): nothing far
+## out, then small tongues, then lobes that merge into an even mix on the border.
+static func eco_cover(b: float) -> float:
+	return 0.5 * pow(clampf(b * 2.0, 0.0, 1.0), 1.7)
+
+
+## Share drawn as the higher-numbered country of a pair, at t = 0 (all the
+## lower) .. 0.5 (the border) .. 1 (all the higher).
+static func eco_share(t: float) -> float:
+	return eco_cover(t) if t <= 0.5 else 1.0 - eco_cover(1.0 - t)
 
 const _KEY_WET := 1 << 16
 ## How far a bank at the level of the water beside it lips up: just above the
@@ -66,6 +74,10 @@ var world: WorldData
 var eco: BlendFallback
 var _warp: FastNoiseLite
 var _eco: FastNoiseLite
+## The ecotone field: two octaves, lobes and the tongues on them, read through
+## its own percentile table so a share of cover is a threshold.
+var _eco2: FastNoiseLite
+var _eco_cdf := PackedFloat32Array()
 var _lip: FastNoiseLite
 var _tab_col := PackedColorArray()
 var _tab_style := PackedInt32Array()
@@ -81,6 +93,9 @@ var _cz := PackedFloat32Array([0, 0, 0, 0])
 var _poly := PackedVector3Array()
 var _k1 := 0
 var _k2 := -1
+var _mar := PackedFloat32Array()
+var _np := 0
+var _i00 := 0
 var _bump_key := -1
 var _bump_t := -99
 const _UV_CONTOUR := Vector2(Ink.CONTOUR * 17, 0.0)
@@ -128,6 +143,10 @@ class Chunk:
 	var f := PackedFloat32Array()
 	var t := PackedInt32Array()
 	var key := PackedInt32Array()
+	## How far each lattice point is from the nearest change of key, 0 (on it)
+	## to 1 (well clear), so a ground edge is interpolated as a curve and not
+	## as the lattice's triangles.
+	var margin := PackedFloat32Array()
 	## Per tile of the chunk: signed tiles to the waterline, + in water, - on land.
 	var shore := PackedFloat32Array()
 	## Cliff feet: point on the lower terrace, outward direction, country.
@@ -136,6 +155,10 @@ class Chunk:
 	var feet_country := PackedByteArray()
 	## Terrace edges as drawn: the top of every wall, as point pairs.
 	var edges := PackedVector3Array()
+	## Per tile of the chunk: the neighbour country across an ecotone (0 none)
+	## and how far toward it the tile has turned (0..0.5, BlendFallback.fill).
+	var c2 := PackedByteArray()
+	var blend := PackedFloat32Array()
 	## Per lattice point: hummock height added to the terrace (soft ground only).
 	var bump := PackedFloat32Array()
 
@@ -214,6 +237,22 @@ func _init(w: WorldData) -> void:
 	_eco.seed = Rng.hash_ints(w.seed_value, 33) & 0x7FFFFFFF
 	_eco.frequency = 1.0 / 7.0
 	_eco.fractal_octaves = 3
+	_eco2 = FastNoiseLite.new()
+	_eco2.seed = Rng.hash_ints(w.seed_value, 35) & 0x7FFFFFFF
+	_eco2.frequency = 1.0 / 11.0
+	_eco2.fractal_octaves = 2
+	_eco2.fractal_lacunarity = 2.6
+	_eco2.fractal_gain = 0.45
+	var hist := PackedInt32Array()
+	hist.resize(256)
+	for i in 4096:
+		var v := _eco2.get_noise_2d(float(i % 64) * 5.37 + 0.31, float(i / 64) * 5.61 + 0.77)
+		hist[clampi(int((v + 1.0) * 128.0), 0, 255)] += 1
+	_eco_cdf.resize(256)
+	var acc := 0
+	for i in 256:
+		acc += hist[i]
+		_eco_cdf[i] = float(acc) / 4096.0
 	_lip = FastNoiseLite.new()
 	_lip.seed = Rng.hash_ints(w.seed_value, 34) & 0x7FFFFFFF
 	_lip.frequency = 1.3
@@ -246,6 +285,50 @@ func _init(w: WorldData) -> void:
 				var fr := Palette.RIME[4] if snow else GroundColors.down(col, 1.0)
 				fr.a = 1.0
 				_tab_front[i] = fr
+
+
+## The ecotone field's percentile at ring point (gx, gy), bilinear.
+func _eco_p(grid: PackedFloat32Array, gx: float, gy: float, rw: int) -> float:
+	var ix := clampi(floori(gx), 0, rw - 1)
+	var iy := clampi(floori(gy), 0, grid.size() / (rw + 1) - 2)
+	var fx := clampf(gx - ix, 0.0, 1.0)
+	var fy := clampf(gy - iy, 0.0, 1.0)
+	var a := iy * (rw + 1) + ix
+	var top := grid[a] + (grid[a + 1] - grid[a]) * fx
+	return top + ((grid[a + rw + 1] + (grid[a + rw + 2] - grid[a + rw + 1]) * fx) - top) * fy
+
+
+## The weight by which the last _major() choice beat the runner-up.
+static var _major_margin := 1.0
+
+
+## The value among four tiles' `vals` with the most bilinear weight.
+static func _major(vals: PackedByteArray, o00: int, o10: int, o01: int, o11: int, w00: float, w10: float, w01: float, w11: float) -> int:
+	var v0 := vals[o00]
+	var v1 := vals[o10]
+	var v2 := vals[o01]
+	var v3 := vals[o11]
+	var s0 := w00 + (w10 if v1 == v0 else 0.0) + (w01 if v2 == v0 else 0.0) + (w11 if v3 == v0 else 0.0)
+	var s1 := w10 + (w01 if v2 == v1 else 0.0) + (w11 if v3 == v1 else 0.0)
+	var s2 := w01 + (w11 if v3 == v2 else 0.0)
+	if v1 == v0:
+		s1 = 0.0
+	if v2 == v0 or v2 == v1:
+		s2 = 0.0
+	var s3 := w11 if v3 != v0 and v3 != v1 and v3 != v2 else 0.0
+	var best := v0
+	var bw := s0
+	var second := 0.0
+	for pair: Array in [[v1, s1], [v2, s2], [v3, s3]]:
+		var sw: float = pair[1]
+		if sw > bw:
+			second = bw
+			bw = sw
+			best = pair[0]
+		elif sw > second:
+			second = sw
+	_major_margin = (bw - second) * 1.6
+	return best
 
 
 ## Vertical offset of a land vertex with key k: the shore profile of inland
@@ -576,10 +659,26 @@ func build(cx: int, cy: int) -> Chunk:
 			has_water = true
 			break
 	var _t2 := Time.get_ticks_usec()
+	# The ecotone field at tile corners of the ring, as percentiles (only when
+	# any of the ring lies in a band).
+	var eco_grid := PackedFloat32Array()
+	for v in rb:
+		if v > 0.0:
+			eco_grid.resize((rw + 1) * (rh + 1))
+			for yy in rh + 1:
+				for xx in rw + 1:
+					var ev := _eco2.get_noise_2d(rx0 + xx, ry0 + yy)
+					eco_grid[yy * (rw + 1) + xx] = _eco_cdf[clampi(int((ev + 1.0) * 128.0), 0, 255)]
+			break
 	ch.shore.resize(ch.w * ch.h)
+	ch.c2.resize(ch.w * ch.h)
+	ch.blend.resize(ch.w * ch.h)
 	for y in ch.h:
 		for x in ch.w:
-			ch.shore[y * ch.w + x] = shore[(y + RING) * rw + x + RING]
+			var ro := (y + RING) * rw + x + RING
+			ch.shore[y * ch.w + x] = shore[ro]
+			ch.c2[y * ch.w + x] = rc2[ro] if rc[ro] != rc2[ro] else 0
+			ch.blend[y * ch.w + x] = rb[ro]
 	var level := w.level
 	var ground := w.ground
 	var legacy := eco.active
@@ -644,6 +743,8 @@ func build(cx: int, cy: int) -> Chunk:
 	ch.f.resize(cnt)
 	ch.t.resize(cnt)
 	ch.key.resize(cnt)
+	ch.margin.resize(cnt)
+	ch.margin.fill(1.0)
 	var depth := PackedFloat32Array()
 	depth.resize(cnt)
 	var _t3 := Time.get_ticks_usec()
@@ -681,17 +782,76 @@ func build(cx: int, cy: int) -> Chunk:
 				# water) wander with the contours instead of following tiles.
 				var wx := sx + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE + 70.0, sy * WARP_SCALE) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
 				var wy := sy + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE, sy * WARP_SCALE + 70.0) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
-				var otx := clampi(floori(wx), rx0, rx0 + rw - 1)
-				var oty := clampi(floori(wy), ry0, ry0 + rh - 1)
-				var o := (oty - ry0) * rw + (otx - rx0)
+				# Ground and country from the four tiles round the point, the one
+				# with most weight: a boundary is a curve through the corners of
+				# the tiles, never their staircase.
+				var gxw := clampf(wx - 0.5 - rx0, 0.0, rw - 1.001)
+				var gyw := clampf(wy - 0.5 - ry0, 0.0, rh - 1.001)
+				var ixw := floori(gxw)
+				var iyw := floori(gyw)
+				var fxw := gxw - ixw
+				var fyw := gyw - iyw
+				var o00 := iyw * rw + ixw
+				var o10 := o00 + 1
+				var o01 := o00 + rw
+				var o11 := o01 + 1
+				var w00 := (1.0 - fxw) * (1.0 - fyw)
+				var w10 := fxw * (1.0 - fyw)
+				var w01 := (1.0 - fxw) * fyw
+				var w11 := fxw * fyw
+				var o := o00
+				var wo := w00
+				if w10 > wo:
+					o = o10
+					wo = w10
+				if w01 > wo:
+					o = o01
+					wo = w01
+				if w11 > wo:
+					o = o11
 				var g: int = tg[o]
+				var em := 1.0
+				if tg[o00] != g or tg[o10] != g or tg[o01] != g or tg[o11] != g:
+					g = _major(tg, o00, o10, o01, o11, w00, w10, w01, w11)
+					em = minf(em, _major_margin)
 				var c: int = rc[o]
+				if rc[o00] != c or rc[o10] != c or rc[o01] != c or rc[o11] != c:
+					c = _major(rc, o00, o10, o01, o11, w00, w10, w01, w11)
+					em = minf(em, _major_margin)
+					if rc[o] != c:
+						for q: int in [o00, o10, o01, o11]:
+							if rc[q] == c:
+								o = q
+								break
 				var dc := c
-				var b: float = rb[o]
-				if b > 0.0 and rc2[o] != c and _eco.get_noise_2d(sx, sy) < (b - 0.5) * ECO_SPREAD:
-					dc = rc2[o]
-					if legacy and _WET[g] == 0:
-						g = eco.legacy_ground(GroundColors.morph(ground[clampi(oty, 0, size - 1) * size + clampi(otx, 0, size - 1)], dc), dc, sx, sy, shore[o])
+				var c2: int = rc2[o]
+				if c2 != c and eco_grid.size() > 0:
+					# Which of the pair is drawn: the share of the higher country
+					# across the four tiles, smooth through the border itself.
+					var lo := mini(c, c2)
+					var hi := maxi(c, c2)
+					var tsum := 0.0
+					var wsum := 0.0
+					for qi in 4:
+						var q: int = [o00, o10, o01, o11][qi]
+						var qw: float = [w00, w10, w01, w11][qi]
+						var qc: int = rc[q]
+						var qb: float = rb[q] if rc2[q] == (hi if qc == lo else lo) else 0.0
+						if qc == lo:
+							tsum += qb * qw
+							wsum += qw
+						elif qc == hi:
+							tsum += (1.0 - qb) * qw
+							wsum += qw
+					var t := tsum / maxf(wsum, 1e-4)
+					if t > 0.0 and t < 1.0:
+						var ep := _eco_p(eco_grid, wx - rx0, wy - ry0, rw) - eco_share(t)
+						dc = hi if ep < 0.0 else lo
+						em = minf(em, absf(ep) * 9.0)
+					if dc != c and legacy and _WET[g] == 0:
+						var tx := clampi(rx0 + (o % rw), 0, size - 1)
+						var ty := clampi(ry0 + (o / rw), 0, size - 1)
+						g = eco.legacy_ground(GroundColors.morph(ground[ty * size + tx], dc), dc, sx, sy, shore[o])
 				var extra := 0
 				var wf := 0.0
 				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:
@@ -702,6 +862,7 @@ func build(cx: int, cy: int) -> Chunk:
 					var qx := sx + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
 					var qy := sy + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
 					wf = _wet_field(qx, qy, terrace, wl, rx0, ry0, rw, rh)
+					em = minf(em, absf(wf - WET_EDGE) * 5.0)
 					extra = _shore_lift(wf) << 17
 					if wf >= WET_EDGE:
 						extra |= _KEY_WET
@@ -710,6 +871,7 @@ func build(cx: int, cy: int) -> Chunk:
 				if _WET[g] == 1 and (extra & _KEY_WET) == 0:
 					g = GroundColors.bank(dc)
 				ch.key[li] = g | (dc << 8) | extra
+				ch.margin[li] = clampf(em, 0.0, 1.0)
 				if (extra & _KEY_WET) != 0:
 					# Inland depth from the same field, so bands follow the shore.
 					depth[li] = (wf - WET_EDGE) * 6.0
@@ -745,6 +907,8 @@ func build(cx: int, cy: int) -> Chunk:
 			ch.bump[li] = _eco.get_noise_2d(sx * 2.6 + 300.0, sy * 2.6) * amp
 	var _t4 := Time.get_ticks_usec()
 	_begin()
+	_mar = ch.margin
+	_np = np
 	var bump := ch.bump
 	for j in m:
 		var py := y0 + j * 0.5
@@ -780,6 +944,7 @@ func build(cx: int, cy: int) -> Chunk:
 				run_start = -1
 			if same_t:
 				if t00 > 0:
+					_i00 = i00
 					_mixed_flat(x0 + i * 0.5, py, t00, k00, k10, k11, k01, bump[i00], bump[i00 + 1], bump[i00 + np + 1], bump[i00 + np])
 				continue
 			_cell(ch, i, j)
@@ -831,7 +996,7 @@ func _bump_cell(px: float, py: float, terrace: int, k: int, b00: float, b10: flo
 
 
 func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: int, k01: int, b00: float, b10: float, b11: float, b01: float) -> void:
-	_pick_keys(k00, k10, k11, k01)
+	_pick_keys(k00, k10, k11, k01, _i00)
 	_ox = px
 	_oy = py
 	_paint(_k1, _k2, terrace)
@@ -997,7 +1162,7 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 	_cz[1] = py
 	_cz[2] = py + s
 	_cz[3] = py + s
-	_pick_keys(_ck[0], _ck[1], _ck[2], _ck[3])
+	_pick_keys(_ck[0], _ck[1], _ck[2], _ck[3], i00)
 	_ox = px
 	_oy = py
 	if lo > 0:
@@ -1115,9 +1280,11 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 			_vtop(b.x, b.y, b.z)
 
 
-## Primary key: the most common corner key; secondary: the next different one,
-## with its corner flags for the second wash.
-func _pick_keys(k00: int, k10: int, k11: int, k01: int) -> void:
+## Primary key: the most common corner key; secondary: the next different one.
+## A corner's weight toward the second wash is 0.5 plus or minus half its
+## margin, so the edge falls where the margins cross, a smooth line through
+## the cell, and neighbouring cells agree on it.
+func _pick_keys(k00: int, k10: int, k11: int, k01: int, i00: int) -> void:
 	var n00 := 1 + int(k10 == k00) + int(k11 == k00) + int(k01 == k00)
 	var n10 := 1 + int(k00 == k10) + int(k11 == k10) + int(k01 == k10)
 	var n11 := 1 + int(k00 == k11) + int(k10 == k11) + int(k01 == k11)
@@ -1135,10 +1302,18 @@ func _pick_keys(k00: int, k10: int, k11: int, k01: int) -> void:
 	var k2 := k00 if k00 != k1 else (k10 if k10 != k1 else (k11 if k11 != k1 else (k01 if k01 != k1 else -1)))
 	_k1 = k1
 	_k2 = k2
-	_w00 = 1.0 if k00 == k2 else 0.0
-	_w10 = 1.0 if k10 == k2 else 0.0
-	_w11 = 1.0 if k11 == k2 else 0.0
-	_w01 = 1.0 if k01 == k2 else 0.0
+	_w00 = _corner_w(k00, k1, k2, _mar[i00])
+	_w10 = _corner_w(k10, k1, k2, _mar[i00 + 1])
+	_w11 = _corner_w(k11, k1, k2, _mar[i00 + _np + 1])
+	_w01 = _corner_w(k01, k1, k2, _mar[i00 + _np])
+
+
+static func _corner_w(k: int, k1: int, k2: int, m: float) -> float:
+	if k == k2:
+		return 0.5 + 0.5 * m
+	if k == k1:
+		return 0.5 - 0.5 * m
+	return 0.0
 
 
 ## A wall along a terrace edge from p to q, from hb up to h, facing away from

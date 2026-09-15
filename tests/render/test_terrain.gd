@@ -201,6 +201,57 @@ func test_an_ecotone_interleaves_both_countries() -> void:
 	check(seen.has(Country.COAST) and seen.has(Country.PINEWOOD), "both countries drawn in the ecotone chunk: %s" % str(seen.keys()))
 
 
+## Two countries meeting on a straight north-south border at x = 64.
+static func two_countries() -> WorldData:
+	var w := WorldData.new(21, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 2
+			w.country[i] = Country.COAST if x < 64 else Country.SNOWFIELD
+			w.ground[i] = Ground.GRASS if x < 64 else Ground.SNOW
+	return w
+
+
+func test_an_ecotone_turns_gradually_and_heartlands_stay_clean() -> void:
+	var w := two_countries()
+	var m := TerrainMesher.new(w)
+	# Foreign share by distance band from the border (in tiles, own side).
+	var bands := PackedFloat32Array([0, 0, 0, 0, 0])
+	var counts := PackedFloat32Array([0, 0, 0, 0, 0])
+	var edges: Array[float] = [0.0, 4.0, 9.0, 16.0, 28.0, 64.0]
+	for cy in range(1, 3):
+		for cx in 4:
+			var ch := m.build(cx, cy)
+			var np := ch.n + 1
+			for j in ch.h * TerrainMesher.RES + 1:
+				for i in np:
+					var x := ch.x0 + i * 0.5
+					var own := Country.COAST if x < 64.0 else Country.SNOWFIELD
+					var d := absf(x - 64.0)
+					var country := (ch.key[j * np + i] >> 8) & 0xFF
+					for band in 5:
+						if d >= edges[band] and d < edges[band + 1]:
+							counts[band] += 1.0
+							if country != own:
+								bands[band] += 1.0
+	for band in 5:
+		bands[band] /= maxf(1.0, counts[band])
+	gt(bands[0], 0.2, "the border is a mix")
+	lt(bands[1], bands[0], "less mixed 4-9 tiles out")
+	lt(bands[2], bands[1] + 0.02, "less again 9-16 tiles out")
+	lt(bands[2], 0.12, "only tongues 9-16 tiles out")
+	eq(bands[4], 0.0, "a heartland is its own country")
+
+
+func test_decor_of_the_neighbour_arrives_before_its_wash() -> void:
+	for b: float in [0.05, 0.15, 0.25, 0.35]:
+		gt(Decor.lead_share(b), TerrainMesher.eco_cover(b), "decor leads the wash at blend %s" % b)
+	eq(Decor.lead_share(0.0), 0.0, "no neighbour decor in a heartland")
+	near(TerrainMesher.eco_share(0.5), 0.5, 1e-4, "an even mix on the border")
+	near(TerrainMesher.eco_share(0.3) + TerrainMesher.eco_share(0.7), 1.0, 1e-4, "both sides read one field")
+
+
 func test_marks_ride_in_alpha_and_plain_colours_carry_none() -> void:
 	eq(roundi(Color(0.2, 0.3, 0.4, 1.0).a * 255.0), 255, "a palette colour is plain")
 	var g := GroundColors.glow(Palette.EMBER[3], 1.0)

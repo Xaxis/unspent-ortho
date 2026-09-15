@@ -606,7 +606,7 @@ void fragment() {
 	bool second = false;
 	bool edge_ink = false;
 	if (wash_blend > 0.0) {
-		float e = wash_blend - 0.5 + bend * ((ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.7 + (ink_vnoise(world_pos.xz * 7.1 + 3.0) - 0.5) * 0.2);
+		float e = wash_blend - 0.5 + bend * ((ink_vnoise(world_pos.xz * 2.3) - 0.5) * 0.36 + (ink_vnoise(world_pos.xz * 7.1 + 3.0) - 0.5) * 0.14);
 		second = e > 0.0;
 		float fw = fwidth(e) * 0.9;
 		bool second_lighter = dot(wash2, vec3(0.3, 0.59, 0.11)) > dot(COLOR.rgb, vec3(0.3, 0.59, 0.11));
