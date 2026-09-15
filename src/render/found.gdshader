@@ -5,6 +5,7 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
 
+#define SKY_FOUND
 #include "res://src/render/sky.gdshaderinc"
 
 uniform vec3 shade_tint = vec3(0.58, 0.56, 0.74);

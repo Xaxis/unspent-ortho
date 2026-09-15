@@ -244,8 +244,8 @@ vec3 sky_line(vec3 ink) {
 // Snow, ash and wet left on the land. Flat faces take it first, and it lies in
 // patches that join up as it deepens, with a stippled rim. Faces are found from
 // screen derivatives of the world position (every face here is flat). Water and
-// the sea floor sit below 0.36 and are left alone. Nothing lies on a machine's
-// found violet: they run warm, and they must always read as machines.
+// the sea floor sit below 0.36 and are left alone. FOUND shaders define
+// SKY_FOUND before the include, and nothing lies on them.
 vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 	if (sky_settle.x + sky_settle.y + sky_settle.z < 0.002 || world_pos.y < 0.36) {
 		return c;
@@ -254,9 +254,6 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 	// out across an ecotone.
 	vec4 ground = sky_ground_at(world_pos);
 	vec3 settle = sky_settle.xyz * ground.rgb;
-	if (albedo.b - albedo.g > 0.3 && albedo.b > albedo.r) {
-		return c;
-	}
 	vec3 n = normalize(cross(dFdx(world_pos), dFdy(world_pos)));
 	float up = abs(n.y);
 	if (up < 0.45) {
@@ -298,7 +295,12 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
+#ifdef SKY_FOUND
+	// Nothing lies on the FOUND: it runs warm, and must always read as a machine.
+	vec3 c = albedo * sky_tint;
+#else
 	vec3 c = sky_settled(albedo * sky_tint, albedo, world_pos, px);
+#endif
 	// Night is blue ink on dim washes, never black. The renderer's linear light
 	// crushes dark washes to nothing under the moon, so the darks are lifted
 	// onto a deep blue floor (a soft knee: light washes are left alone).

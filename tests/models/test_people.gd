@@ -118,8 +118,9 @@ func test_found_weapons_draw_with_the_ruler_and_made_tools_with_the_hand() -> vo
 				continue
 			surfaces[entry[1]] = true
 			for c in k.colors:
-				# FOUND sits at hue ~262 degrees and is saturated; ink shares the hue but not the chroma.
-				if c.h > 0.66 and c.h < 0.86 and c.s > 0.45:
+				# FOUND sits at hue ~260 degrees with a cold, held-down chroma; ink shares
+				# the hue but has almost none.
+				if c.h > 0.66 and c.h < 0.86 and maxf(c.r, maxf(c.g, c.b)) - minf(c.r, minf(c.g, c.b)) > 0.1:
 					violet += 1
 		if HeldTools.is_found(id):
 			check(not surfaces.has(SkinRig.MADE), "%s has nothing hand-drawn" % id)
