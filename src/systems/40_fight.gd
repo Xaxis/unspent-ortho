@@ -322,6 +322,10 @@ func _on_killed(e: Dictionary) -> void:
 func _on_snatch(m: MobState) -> void:
 	var r := Snatch.apply(m.kind, game.body, game.inventory, game.clock.minutes)
 	Events.sfx.emit(&"snatch", _at3(sim.hero.pos))
+	# It came in close and went: dust where it turned, and a flicker over the player.
+	var fx := _fx_parent()
+	MobFx.puffs(fx, _at3(m.pos.lerp(sim.hero.pos, 0.5)), m.pos - sim.hero.pos, _dust_colour(sim.hero.pos), 2, 0.5, m.id)
+	MobFx.tell(game.player, game.player.global_position + Vector3(0, 1.7, 0), 0.25, m.id, 0.7)
 	if String(r.line) != "":
 		Events.message.emit(String(r.line))
 	if float(r.minutes) > 0.0:

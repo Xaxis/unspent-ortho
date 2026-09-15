@@ -150,3 +150,12 @@ func test_dredger_keeps_to_the_water() -> void:
 	F.ms(sim, 3000)
 	lt(d.pos.x, 20.0, "it never leaves the water: the bank is the answer")
 	gt(d.pos.x, 18.0, "though it comes to the edge")
+
+
+func test_a_standing_machine_eases_the_player_out_of_itself() -> void:
+	var sim := F.make_sim()
+	var h := F.still(sim, &"harvester", Vector2(22.5, 20.5), PI)
+	h.bite = null
+	sim.hero.pos = h.pos + Vector2(0.2, 0.1)
+	F.ms(sim, 600)
+	gt(sim.hero.pos.distance_to(h.pos), h.radius, "no longer inside it")

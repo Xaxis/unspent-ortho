@@ -21,7 +21,8 @@ var blow: Blow = null
 var blow_at := -100000.0
 ## Bodies already struck by the current blow (one hit per target per blow).
 var struck: Dictionary = {}
-## Who hit this body last and when; for effects and outcome tolls.
+## Who hit this body last and when; for effects and outcome tolls. Only the
+## hero keeps it: a mob pointing back at the hero would make a reference cycle.
 var last_hit_by: Fighter = null
 var last_hit_at := -100000.0
 ## Anything the view layer wants to hang on the body (its node). Untyped on purpose.

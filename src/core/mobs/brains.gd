@@ -180,7 +180,11 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	m.want = m.bearing * speed
 	m.aim = m.bearing.angle()
 	var ahead := to.normalized().dot(m.bearing) > 0.3
-	if ahead and to.length() <= strike_range(m, sim) + speed * 0.25 and can_bite(m, now):
+	# Timed to arrive: the tell starts while the player is still a windup's run
+	# away, so the blow is live as the front of it gets there, not after it has
+	# gone over them.
+	var lead := speed * m.bite.windup / 1000.0 * 0.9 if m.bite != null else 0.0
+	if ahead and to.length() <= strike_range(m, sim) + lead and can_bite(m, now):
 		bite(m, sim)
 
 

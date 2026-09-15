@@ -16,6 +16,8 @@ extends RefCounted
 ##   alerted called snatch filed removed fight_started outcome
 
 const NAV_EVERY_MS := 240.0
+## Tiles/s at most that a standing body eases the player out of itself.
+const SHOULDER_SPEED := 4.0
 
 var world: WorldData
 var query: WorldQuery
@@ -298,6 +300,7 @@ func _move_hero(dt: float) -> void:
 		if not hero.committed(now) and hero.move.length() > 0.1:
 			hero.facing = hero.move.angle()
 	v += hero.throw_velocity(now)
+	v += _shouldered(dt)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
 		hero.pos = query.move_body(hero.pos, v * dt, hero.radius) if query != null else hero.pos + v * dt
@@ -307,6 +310,35 @@ func _move_hero(dt: float) -> void:
 		hero.wind = maxf(0.0, hero.wind - FightRules.RUN_WIND_COST * dt)
 	elif since_dodge >= FightRules.DODGE_MS:
 		hero.wind = minf(hero.max_wind, hero.wind + FightRules.WIND_REGEN * dt)
+
+
+## Bodies are solid to the player, so no one stands hidden in a machine's
+## middle on no side of it. A standing body eases the player out of itself; a
+## moving one (a charge coming on, a sweeper along its track) never changes
+## course for the player: it shoulders them aside, off its line. A dodge goes
+## through; a holder keeps what it holds; darts only brush past.
+func _shouldered(dt: float) -> Vector2:
+	if now - hero.dodge_at < FightRules.DODGE_MS:
+		return Vector2.ZERO
+	var push := Vector2.ZERO
+	for m in mobs:
+		if not m.alive or m.removed or m.approach == &"dart" or hero.holder == m:
+			continue
+		var away := hero.pos - m.pos
+		var d := away.length()
+		var inside := m.radius + hero.radius * 0.5 - d
+		if inside <= 0.0:
+			continue
+		var dir := away / d if d > 1e-4 else Vector2.from_angle(m.facing + PI * 0.5)
+		if m.speed > 1.0:
+			var along := Vector2.from_angle(m.facing)
+			var side := along.orthogonal()
+			if side.dot(away) < 0.0:
+				side = -side
+			push += side * SHOULDER_SPEED * 1.5
+		else:
+			push += dir * minf(inside / dt, SHOULDER_SPEED)
+	return push
 
 
 func _move_mob(m: MobState, dt: float) -> void:
@@ -433,7 +465,6 @@ func _land(t0: float, t1: float) -> void:
 func _hurt_mob(m: MobState, b: Blow) -> void:
 	m.health -= b.dmg
 	m.invuln_until = now + m.mob_iframes()
-	m.last_hit_by = hero
 	m.last_hit_at = now
 	m.dark_until = now + 240.0
 	m.flare_until = now + 180.0
