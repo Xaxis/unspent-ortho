@@ -36,6 +36,9 @@ var _frozen := -1.0
 ## Where the head looks, radians from facing (positive = left); NAN = its own glances.
 var gaze := NAN
 var _gaze_now := 0.0
+## The pose last put on the skeleton. Positions are read from it by FK, because a
+## Skeleton3D only refreshes its global poses inside a running tree.
+var _applied: PersonAnim.Pose
 
 
 func build(material: Material) -> void:
@@ -165,6 +168,7 @@ static func _smooth(w: float) -> float:
 
 
 func _apply(p: PersonAnim.Pose) -> void:
+	_applied = p
 	for i in rig.names.size():
 		var n := rig.names[i]
 		rig.pose(i, p.r(n), p.o(n))
@@ -209,7 +213,14 @@ func tool_triangles() -> int:
 
 ## Model-space position of the right hand's grip (hit sparks, carried items).
 func hand_position() -> Vector3:
-	return rig.bone_global(rig.find(&"tool")).origin
+	return bone_transform(&"tool").origin
+
+
+## Model-space transform of any bone under the current pose.
+func bone_transform(bone: StringName) -> Transform3D:
+	if _applied == null or rig.find(bone) < 0:
+		return Transform3D.IDENTITY
+	return PersonAnim.fk(rig, _applied, rig.find(bone))
 
 
 ## Model-space position of the held tool's far end.
@@ -219,7 +230,7 @@ func tool_tip() -> Vector3:
 		&"heavy", &"pick": reach = 0.5
 		&"sweep", &"thrust": reach = 0.8
 		&"fist": reach = 0.0
-	return rig.bone_global(rig.find(&"tool")) * Vector3(0, reach, 0)
+	return bone_transform(&"tool") * Vector3(0, reach, 0)
 
 
 static func make(spec: Dictionary, item: StringName = &"", material: Material = null) -> PersonModel:

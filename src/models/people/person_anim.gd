@@ -135,23 +135,37 @@ static func resolve(rig: SkinRig, p: Pose, tool_id: StringName) -> Pose:
 	var root_b := fk(rig, q, rig.find(&"root")).basis
 	if q.ik_r != Vector3.INF:
 		_ik(rig, q, &"r", root_b * q.ik_r + fk(rig, q, rig.find(&"root")).origin, root_b * q.pole_r)
-	if q.aim != Vector3.ZERO:
-		var hand := fk(rig, q, rig.find(&"hand_r"))
-		var y := (root_b * q.aim).normalized()
-		var hint := root_b * q.edge
-		var x := hint - y * hint.dot(y)
-		if x.length() < 0.05:
-			x = root_b * Vector3(1, 0, 0)
-			x = x - y * x.dot(y)
-			if x.length() < 0.05:
-				x = root_b * Vector3(0, 0, 1)
-		x = x.normalized()
-		var z := x.cross(y)
-		var want := Basis(x, y, z)
-		q.rot[&"tool"] = (hand.basis.inverse() * want).get_euler()
-	if q.off_grip and HeldTools.two_handed(tool_id):
-		var tool := fk(rig, q, rig.find(&"tool"))
-		_ik(rig, q, &"l", tool * Vector3(0, HeldTools.off_grip(tool_id), 0), root_b * q.pole_l)
+	var two := q.off_grip and HeldTools.two_handed(tool_id)
+	var reach := rig.rest[rig.find(&"fore_l")].length() + rig.rest[rig.find(&"hand_l")].length() + 0.045
+	var ai := rig.find(&"arm_l")
+	_aim(rig, q, root_b)
+	if two:
+		# When the off hand cannot reach the haft, bring the tool hand across and in,
+		# as a person does: a few greedy nudges of the right arm, re-aiming each time.
+		var nudges: Array[Vector3] = [Vector3(0.1, 0, 0), Vector3(-0.1, 0, 0), Vector3(0, 0.1, 0), Vector3(0, -0.1, 0), Vector3(0, 0, 0.1)]
+		for i in 12:
+			var gap := _off_gap(rig, q, tool_id, ai, reach)
+			if gap <= 0.0:
+				break
+			var best := Vector3.ZERO
+			var best_gap := gap
+			var ar := q.r(&"arm_r")
+			var fr := q.r(&"fore_r")
+			for n: Vector3 in nudges:
+				q.rot[&"arm_r"] = ar + Vector3(n.x, n.y, 0)
+				q.rot[&"fore_r"] = fr + Vector3(0, 0, n.z)
+				_aim(rig, q, root_b)
+				var g := _off_gap(rig, q, tool_id, ai, reach)
+				if g < best_gap:
+					best_gap = g
+					best = n
+			q.rot[&"arm_r"] = ar + Vector3(best.x, best.y, 0)
+			q.rot[&"fore_r"] = fr + Vector3(0, 0, best.z)
+			_aim(rig, q, root_b)
+			if best == Vector3.ZERO:
+				break
+	if two:
+		_ik(rig, q, &"l", off_hand_target(rig, q, tool_id), root_b * q.pole_l)
 	elif q.ik_l != Vector3.INF:
 		_ik(rig, q, &"l", root_b * q.ik_l + fk(rig, q, rig.find(&"root")).origin, root_b * q.pole_l)
 	q.aim = Vector3.ZERO
@@ -159,6 +173,52 @@ static func resolve(rig: SkinRig, p: Pose, tool_id: StringName) -> Pose:
 	q.ik_r = Vector3.INF
 	q.off_grip = false
 	return q
+
+
+## How far past the off arm's reach its grip on the haft is (<= 0: reachable).
+static func _off_gap(rig: SkinRig, q: Pose, tool_id: StringName, ai: int, reach: float) -> float:
+	var shoulder := fk(rig, q, rig.parents[ai]) * rig.rest[ai]
+	return off_hand_target(rig, q, tool_id).distance_to(shoulder) - reach * 0.985
+
+
+## Point the tool along q.aim (root space) with its edge toward q.edge.
+static func _aim(rig: SkinRig, q: Pose, root_b: Basis) -> void:
+	if q.aim == Vector3.ZERO:
+		return
+	var hand := fk(rig, q, rig.find(&"hand_r"))
+	var y := (root_b * q.aim).normalized()
+	var hint := root_b * q.edge
+	var x := hint - y * hint.dot(y)
+	if x.length() < 0.05:
+		x = root_b * Vector3(1, 0, 0)
+		x = x - y * x.dot(y)
+		if x.length() < 0.05:
+			x = root_b * Vector3(0, 0, 1)
+	x = x.normalized()
+	q.rot[&"tool"] = (hand.basis.inverse() * Basis(x, y, x.cross(y))).get_euler()
+
+
+## Where the off hand goes on a two-handed haft (model space): the preferred grip
+## when the arm reaches it, else the nearest reachable point along the grip range.
+static func off_hand_target(rig: SkinRig, q: Pose, tool_id: StringName) -> Vector3:
+	var tool := fk(rig, q, rig.find(&"tool"))
+	var ai := rig.find(&"arm_l")
+	var shoulder := fk(rig, q, rig.parents[ai]) * rig.rest[ai]
+	var reach := rig.rest[rig.find(&"fore_l")].length() + rig.rest[rig.find(&"hand_l")].length() + 0.045
+	var pref := tool * Vector3(0, HeldTools.off_grip(tool_id), 0)
+	if pref.distance_to(shoulder) <= reach * 0.96:
+		return pref
+	var span := HeldTools.off_range(tool_id)
+	var a := tool * Vector3(0, span.x, 0)
+	var ab := tool * Vector3(0, span.y, 0) - a
+	var t := clampf((shoulder - a).dot(ab) / maxf(1e-6, ab.length_squared()), 0.0, 1.0)
+	var near_pt := a + ab * t
+	# Of the reachable stretch, keep as close to the preferred grip as the arm allows.
+	for i in 8:
+		var mid := near_pt.lerp(pref, 1.0 - (i + 1) / 8.0)
+		if mid.distance_to(shoulder) <= reach * 0.96:
+			return mid
+	return near_pt
 
 
 ## Two-bone IK: put the hand's grip point on `target` (model space), elbow toward `pole`.

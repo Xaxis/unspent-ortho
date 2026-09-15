@@ -43,11 +43,13 @@ const SWING_MS := {
 	&"flash_burst": [50, 90, 100, 130], &"sonic_wave": [110, 120, 140, 170], &"plasma_torch": [150, 110, 180, 220],
 }
 
-## Where the off hand holds the handle, in tool units along +Y. Absent = one hand.
+## Where the off hand holds the handle, in tool units along +Y: [preferred, lowest,
+## highest]. A hand slides along a haft, so when the preferred grip is out of
+## reach the off hand takes the nearest point of the range. Absent = one hand.
 const OFF_GRIP := {
-	&"axe_felling": -0.34, &"pick": -0.3, &"mattock": -0.3, &"mattock_steel": -0.3, &"pulse_hammer": -0.26,
-	&"stave": 0.42, &"las_long": -0.24, &"las_broad": -0.2, &"sonic_wave": -0.18,
-	&"boathook": 0.45, &"beam_lance": 0.4,
+	&"axe_felling": [-0.34, -0.4, 0.2], &"pick": [-0.3, -0.38, 0.3], &"mattock": [-0.3, -0.38, 0.3], &"mattock_steel": [-0.3, -0.38, 0.3],
+	&"pulse_hammer": [-0.26, -0.32, 0.28], &"stave": [0.42, -0.6, 0.65], &"las_long": [-0.24, -0.28, 0.1],
+	&"las_broad": [-0.2, -0.22, 0.1], &"sonic_wave": [-0.18, -0.2, 0.08], &"boathook": [0.45, -0.55, 0.8], &"beam_lance": [0.4, -0.48, 0.66],
 }
 
 
@@ -71,7 +73,12 @@ static func two_handed(id: StringName) -> bool:
 
 
 static func off_grip(id: StringName) -> float:
-	return OFF_GRIP.get(id, 0.0)
+	return float(OFF_GRIP[id][0]) if OFF_GRIP.has(id) else 0.0
+
+
+## [lowest, highest] the off hand may slide to along the handle.
+static func off_range(id: StringName) -> Vector2:
+	return Vector2(float(OFF_GRIP[id][1]), float(OFF_GRIP[id][2])) if OFF_GRIP.has(id) else Vector2.ZERO
 
 
 ## [windup, active, recovery, cooldown] in ms: the item table wins when it has one.
@@ -214,7 +221,7 @@ static func _found(k: MeshKit, g: MeshKit, id: StringName) -> void:
 			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
 			k.block(0, 0.06, 0, 0.09, 0.16, 0.07, v0, v2)
 			for i in 3:
-				g.block(0, 0.22, -0.024 + i * 0.024, 0.018, 0.02, 0.014, core)
+				g.block(0, 0.22, -0.024 + i * 0.024, 0.018, 0.022, 0.016, light, core)
 		&"flash_burst":
 			k.block(0, -0.08, 0, 0.05, 0.14, 0.05, v1)
 			k.prism(0, 0.06, 0, 0.03, 0.2, 0.11, 8, v1, v0)
