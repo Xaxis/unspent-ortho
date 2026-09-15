@@ -25,6 +25,8 @@ static func run(c: GenContext) -> void:
 	var cliffn := GenFields.field(GenFields.noise(s, 304, 1.0 / 44.0, 2), size, 4)
 	var shoren := GenFields.field(GenFields.noise(s, 306, 1.0 / 60.0, 2), size, 8)
 	var shelf := GenFields.field(GenFields.noise(s, 305, 1.0 / 30.0, 2), size, 4)
+	var dunes := GenFields.sample(GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1)
+	var coastal := GenFields.upsample(c.soft[Country.COAST], c.cw, GenContext.STEP, size)
 	var heart := c.hearts[Country.BURNING]
 	var crater := crater_radius(c)
 	# The rim is a broken ring, never a drawn circle.
@@ -74,6 +76,10 @@ static func run(c: GenContext) -> void:
 					var flat := 1.0 + maxf(0.0, sh) * 7.0
 					var slope := 0.3 + maxf(0.0, -sh) * 1.6
 					var beach := minf(e, 0.95 + maxf(0.0, d_in - flat) * slope)
+					if d_in > 1.5 and d_in < 12.0 and coastal[i] > 0.3:
+						# Dunes: ridged hummocks behind the sandy bays.
+						var ridge_v := 1.0 - absf(dunes[i])
+						beach += smoothstep(0.45, 0.95, ridge_v) * 1.15 * smoothstep(1.5, 4.0, d_in) * (1.0 - smoothstep(8.0, 12.0, d_in)) * minf(1.0, (coastal[i] - 0.3) * 2.5)
 					var top := maxf(e, 3.2 + cl * 3.0 + e * 0.1)
 					var headland := lerpf(top, e, smoothstep(5.0, 18.0, d_in))
 					if d_in < 1.3:

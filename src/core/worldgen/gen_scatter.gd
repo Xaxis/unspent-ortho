@@ -396,6 +396,9 @@ static func _string_line(c: GenContext, occ: PackedByteArray, kind: int, a: Vect
 			var i := floori(q.y) * c.size + floori(q.x)
 			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or occ[i] != 0:
 				continue
+			var to_spawn := q - w.spawn
+			if to_spawn.length_squared() < 16.0 or (to_spawn.length_squared() < 81.0 and to_spawn.normalized().dot(Vector2.from_angle(w.spawn_facing)) > 0.5):
+				continue
 			var prop := _add(c, kind, q)
 			prop.rot = dir.angle()
 			_occupy(c, occ, q, 0.0)
