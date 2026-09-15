@@ -91,6 +91,12 @@ func test_afterglow_and_stutter_are_a_beat_then_steady() -> void:
 	gt(float(levels.size()), 4.0, "it rolls: several steps, not one")
 
 
+func test_every_machine_light_shader_runs_on_machine_power() -> void:
+	for path: String in ["res://src/render/found.gdshader", "res://src/models/machines/part_glow.gdshader"]:
+		var code := FileAccess.get_file_as_string(path)
+		check(code.contains("sky_power()"), "%s stutters with the machines after a strike" % path.get_file())
+
+
 func test_drips_run_with_rain_and_after_it_while_the_ground_is_wet() -> void:
 	near(Drips.amount(0.0, 0.0), 0.0, 1e-6, "dry and still: nothing drips")
 	gt(Drips.amount(0.8, 0.2), 0.7, "rain drips")

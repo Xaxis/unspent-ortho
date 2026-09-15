@@ -52,7 +52,8 @@ void fragment() {
 	} else if (r >= 0.62 && r < 1.0) {
 		d = 0.2;
 	}
-	d *= clamp(strength, 0.0, 1.8) * night;
+	// The ring runs on machine power: it stutters with FOUND strips after a strike.
+	d *= clamp(strength, 0.0, 1.8) * night * sky_power();
 	if (bayer4(px) >= d) {
 		discard;
 	}
