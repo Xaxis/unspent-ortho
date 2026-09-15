@@ -229,6 +229,31 @@ func test_an_installation_and_a_sentinel_are_heard() -> void:
 	_done(parts)
 
 
+## A stem baked ahead for a machine that never came leaves memory once it has
+## been neither wanted nor heard for FORGET_AFTER; what is playing stays.
+func test_stems_neither_heard_nor_wanted_are_let_go() -> void:
+	var parts := _make()
+	var sys: MusicSystem = parts[0]
+	var g: Game = parts[1]
+	var mob := FakeMob.new()
+	mob.aware = false
+	mob.pos = g.player.pos + Vector2(30, 0)
+	tree.root.add_child(mob)
+	mob.add_to_group(&"mobs")
+	_advance(sys, 10.0)
+	var here := sys._land_id(int(SoundMix.dominant_country(g.world, g.player.pos)["country"]))
+	var tense := ScoreStems.key_for(here, &"pulse", 1)
+	var drone := ScoreStems.key_for(here, &"drone", 0)
+	check(sys.bank.is_ready(tense), "the quick pulse is baked ahead for the machine near")
+	mob.free()
+	_advance(sys, MusicSystem.FORGET_AFTER - 20.0, 1.0)
+	check(sys.bank.is_ready(tense), "kept a while after it stops being wanted")
+	_advance(sys, 40.0, 1.0)
+	check(not sys.bank.is_ready(tense), "then let go")
+	check(sys.bank.is_ready(drone), "the drone that plays is kept")
+	_done(parts)
+
+
 func test_night_closes_the_scores_low_pass() -> void:
 	SoundBuses.ensure()
 	var parts := _make()

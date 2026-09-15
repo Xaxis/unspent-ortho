@@ -16,8 +16,8 @@ extends GameSystem
 ## baked (on a worker, or a slice a frame without threads), and fades in from
 ## silence by the conductor's own easing. Phrases, the resolution and the motif
 ## wait for their bar line. The Music bus's low-pass closes at night and in fog.
-## A landscape's stems unheard for FORGET_AFTER seconds leave memory (the disk
-## cache keeps them).
+## A stem neither heard nor wanted for FORGET_AFTER seconds leaves memory (the
+## disk cache keeps it), so one baked ahead for a fight that never came goes too.
 ##
 ## Nothing here runs in --shot runs (the bank bakes nothing), and setup does no
 ## sound work, so the game still starts in its budget.
@@ -66,6 +66,7 @@ var _bake_t := 0.0
 var _grid := 0.0
 var _hit_until := -INF
 var _hit_share := 1.0
+## Stem key -> when it was last heard or wanted.
 var _heard_at: Dictionary = {}
 ## Seconds the audio thread runs ahead of the music clock, learnt from a playing loop.
 var _sync := 0.0
@@ -332,8 +333,9 @@ func _play_cue(key: StringName, gain: float) -> void:
 func _request_wanted() -> void:
 	var wanted := conductor.wanted()
 	for i in wanted.size():
-		# The loudest few jump the queue: they are what the next seconds sound like.
+		# The loudest few jump the other score stems: they are what the next seconds sound like.
 		bank.request(wanted[i], i < 2)
+		_heard_at[wanted[i]] = seconds
 
 
 func _forget_unheard() -> void:
