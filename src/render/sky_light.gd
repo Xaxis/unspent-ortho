@@ -371,8 +371,8 @@ static func country_tint(country: int) -> Vector3:
 ## the landscapes in view. Returns [grade Vector4(dark, desat, cool, contrast),
 ## wet Vector4(base wet, sheen, reflection, 0)]. Day is overcast gloom, dusk is
 ## long, night is the stage; each landscape leans its own way.
-const NEON_DAY := Vector4(0.30, 0.38, 0.30, 0.35)
-const NEON_NIGHT := Vector4(0.0, 0.35, 0.2, 0.0)
+const NEON_DAY := Vector4(0.16, 0.34, 0.28, 0.45)
+const NEON_NIGHT := Vector4(0.0, 0.3, 0.2, 0.2)
 ## Per country: [grade offset Vector4, base wet].
 const NEON_COUNTRY := {
 	Country.SEA: [Vector4(0.0, 0.0, 0.1, 0.0), 0.0],

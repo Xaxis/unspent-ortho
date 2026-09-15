@@ -333,7 +333,11 @@ vec3 neon_graded(vec3 c, float found) {
 	float l = dot(c, vec3(0.299, 0.587, 0.114));
 	vec3 g = mix(c, vec3(l), neon_grade.y * (1.0 - 0.5 * found));
 	g = mix(g, g * NEON_COOL, neon_grade.z);
-	g = pow(max(g, vec3(0.0)), vec3(1.0 + neon_grade.w));
+	// Contrast as an S around the mids: lights lift a little, mids deepen, and
+	// the darks are left where they are, so a dark wash never crushes to black.
+	vec3 sc = clamp(g, 0.0, 1.0);
+	vec3 s_curve = sc * sc * (3.0 - 2.0 * sc);
+	g = mix(g, max(s_curve, sc * 0.8), neon_grade.w);
 	return g * (1.0 - neon_grade.x);
 }
 
@@ -395,8 +399,11 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 // never goes to black. Emitted, because a wash multiplied by no light is black.
 // Call from fragment() with the graded albedo and ADD to EMISSION.
 vec3 neon_skyglow(vec3 graded) {
-	float gloom = max(sky_view.y, max(sky_shade.w, 1.0 - clamp(sky_sun.z, 0.0, 1.0)));
-	return (graded * vec3(0.16, 0.2, 0.26) + vec3(0.018, 0.03, 0.05)) * gloom;
+	// Gloom is how little light there is, whatever the cause: night, dusk, or a
+	// storm's dark sky at eight in the morning.
+	float sky_lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
+	float gloom = max(sky_view.y, max(sky_shade.w, 1.0 - clamp(sky_lum * 1.25, 0.0, 1.0)));
+	return (graded * vec3(0.2, 0.24, 0.3) + vec3(0.02, 0.034, 0.055)) * gloom;
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
