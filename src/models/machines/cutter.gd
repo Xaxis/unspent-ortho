@@ -9,7 +9,7 @@ extends MachineModel
 
 const BODY_Y := 0.3
 const DISC_R := 0.47
-const ARM_TIP := Vector3(0.42, 0.42, 0.0)
+const ARM_TIP := Vector3(0.36, 0.62, 0.0)
 const KNEE := Vector3(0.2, 0.2, 0.0)
 const LEG_X := [0.16, -0.06, -0.28]
 
@@ -18,8 +18,9 @@ var _spin := 0.0
 
 func build() -> void:
 	part_side = &"back"
-	height = 1.65
-	gallery_turn = -60.0
+	height = 1.85
+	# Show the disc nearly face-on: the circle is the read; the drive shows as a sliver.
+	gallery_turn = -78.0
 	stride = 0.9
 	begin_rig()
 	var R := ramp
@@ -68,9 +69,13 @@ func build() -> void:
 	var arm := joint(&"arm", body, Vector3(-0.12, 0.44, 0))
 	var ak := FoundKit.kit()
 	for sz: float in [-1.0, 1.0]:
-		var side: Array[Vector2] = [Vector2(0.042, -0.042), Vector2(0.455, 0.385), Vector2(0.385, 0.455), Vector2(-0.042, 0.042)]
+		# A plate from the pivot to the hub, 0.12 wide at the root and 0.1 at the tip.
+		var along := Vector2(ARM_TIP.x, ARM_TIP.y).normalized()
+		var across := Vector2(-along.y, along.x)
+		var tip := Vector2(ARM_TIP.x, ARM_TIP.y)
+		var side: Array[Vector2] = [-across * 0.06, tip - across * 0.05, tip + across * 0.05, across * 0.06]
 		FoundKit.slab(ak, Vector3(0, 0, sz * 0.075), Vector3.RIGHT, Vector3.UP, side, 0.03, R)
-		FoundKit.rivets(ak, Vector3(0.06, 0.06, sz * 0.091), Vector3(0.36, 0.36, sz * 0.091), Vector3.BACK * sz, 4, R[5], 0.03)
+		FoundKit.rivets(ak, ARM_TIP * 0.15 + Vector3(0, 0, sz * 0.091), ARM_TIP * 0.8 + Vector3(0, 0, sz * 0.091), Vector3.BACK * sz, 5, R[5], 0.03)
 	FoundKit.disc(ak, Vector3.ZERO, Vector3.BACK, 0.065, 0.2, 8, 0.015, R, R[4], PI / 8.0)
 	FoundKit.disc(ak, ARM_TIP, Vector3.BACK, 0.08, 0.22, 8, 0.02, R, R[4], PI / 8.0)
 	body_mesh(ak, arm)
