@@ -105,6 +105,7 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
 	var s := 8000 + v * 43 + c
 	var cap_y := 0.0
+	var concrete := P.STONE[3].lerp(g[0], 0.2)
 	match v % 3:
 		0:
 			# Quarried long ago: a tall leaning slab, lichen on the weather side.
@@ -113,33 +114,99 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 			k.made.quad(Vector3(0.02, 0.44, 0.155), Vector3(0.2, 0.46, 0.155), Vector3(0.2, 0.62, 0.15), Vector3(0.02, 0.6, 0.15), P.MOSS[4])
 			cap_y = 1.7
 		1:
-			# Cast, not quarried: a leg with bent bars and a rust run. Exact.
-			var concrete := P.STONE[3].lerp(g[0], 0.2)
-			k.found.push(Transform3D(Basis(Vector3.BACK, 0.07), Vector3.ZERO))
-			k.chamfer(0.0, -0.1, 0.0, 0.44, 1.65, 0.36, 0.06, concrete, GroundColors.up(concrete, 0.2))
-			k.chamfer(0.0, 1.18, 0.0, 0.47, 0.07, 0.39, 0.06, GroundColors.down(concrete, 0.4))
+			# Cast, not quarried: a machine's leg snapped off, tilted in the
+			# ground. The break is a slanting fracture with bars bent out of it.
+			k.found.push(Transform3D(Basis(Vector3.BACK, 0.08) * Basis(Vector3.RIGHT, -0.05), Vector3.ZERO))
+			var tops: Array[float] = [1.8, 1.58, 1.36, 1.3, 1.2, 1.42, 1.54, 1.84]
+			cast_leg(k, 0.44, 0.36, 0.07, -0.12, tops, 1.46, concrete, GroundColors.down(concrete, 0.1))
+			# A cast collar, and a spall off the front corner showing a bar.
+			k.chamfer(0.0, 0.62, 0.0, 0.5, 0.08, 0.42, 0.08, GroundColors.down(concrete, 0.35), concrete)
+			k.found.quad(Vector3(0.2, 0.9, 0.181), Vector3(0.2, 0.9, 0.06), Vector3(0.2, 1.14, 0.09), Vector3(0.2, 1.1, 0.181), P.STONE[4])
+			k.rod(Vector3(0.212, 0.86, 0.13), Vector3(0.212, 1.2, 0.13), 0.014, 4, P.RUST[2])
+			_rebar(k, [Vector3(-0.12, 1.5, 0.09), Vector3(0.1, 1.42, 0.1), Vector3(-0.1, 1.5, -0.1), Vector3(0.12, 1.4, -0.09)],
+				[Vector3(-0.34, 1.9, 0.2), Vector3(0.42, 1.62, 0.26), Vector3(-0.2, 2.02, -0.3), Vector3(0.36, 1.2, -0.2)])
+			# Rust runs down the faces from the bars.
+			_run(k, Vector3(0.1, 1.38, 0.182), 0.09, 0.95, Vector3(0, 0, 1))
+			_run(k, Vector3(0.222, 1.36, -0.02), 0.07, 0.7, Vector3(1, 0, 0))
+			# A number cast into the side, three ticks under a bar.
+			k.found.quad(Vector3(-0.14, 0.3, 0.183), Vector3(0.02, 0.3, 0.183), Vector3(0.02, 0.33, 0.183), Vector3(-0.14, 0.33, 0.183), P.STONE[2])
 			for i in 3:
-				var x := -0.12 + i * 0.12
-				k.rod(Vector3(x, 1.5, 0.05), Vector3(x, 1.72, 0.05), 0.018, 4, P.RUST[2])
-				k.rod(Vector3(x, 1.72, 0.05), Vector3(x + 0.12 + i * 0.06, 1.95, -0.08 * (i - 1)), 0.018, 4, P.RUST[2])
-			k.found.quad(Vector3(0.03, 0.2, 0.182), Vector3(0.09, 0.2, 0.182), Vector3(0.07, 1.45, 0.182), Vector3(0.04, 1.45, 0.182), P.RUST[3])
+				var x := -0.12 + i * 0.05
+				k.found.quad(Vector3(x, 0.38, 0.183), Vector3(x + 0.02, 0.38, 0.183), Vector3(x + 0.02, 0.5, 0.183), Vector3(x, 0.5, 0.183), P.STONE[2])
 			k.found.pop()
 			cap_y = 1.5
 		_:
-			# A cast foot with cut bolts.
-			var concrete := P.STONE[3].lerp(g[0], 0.2)
-			k.chamfer(0.0, -0.08, 0.0, 0.84, 0.56, 0.72, 0.1, concrete, GroundColors.up(concrete, 0.2))
-			k.chamfer(0.0, 0.48, 0.0, 0.6, 0.12, 0.5, 0.07, GroundColors.down(concrete, 0.3), concrete)
-			for bx: float in [-0.2, 0.2]:
-				for bz: float in [-0.16, 0.16]:
-					k.found.prism(bx, 0.6, bz, 0.035, 0.7, 0.035, 6, P.STONE[1], P.STONE[4])
-			k.found.quad(Vector3(-0.1, 0.1, 0.362), Vector3(0.0, 0.1, 0.362), Vector3(-0.02, 0.44, 0.362), Vector3(-0.08, 0.44, 0.362), P.RUST[3])
+			# A cast foot sheared off at the knee: the stump of a leg standing
+			# out of its pad, bars bent back where it broke, one bolt cut and one
+			# pulled.
+			var pad_tops: Array[float] = [0.5, 0.52, 0.5, 0.47, 0.44, 0.46, 0.49, 0.5]
+			cast_leg(k, 0.86, 0.72, 0.12, -0.08, pad_tops, 0.51, concrete, GroundColors.up(concrete, 0.2))
+			var stump: Array[float] = [0.94, 0.72, 0.62, 0.6, 0.64, 0.84, 0.98, 1.04]
+			k.found.push(Transform3D(Basis.IDENTITY, Vector3(-0.04, 0.0, 0.02)))
+			cast_leg(k, 0.44, 0.38, 0.07, 0.46, stump, 0.74, GroundColors.down(concrete, 0.15), GroundColors.down(concrete, 0.25))
+			k.found.pop()
+			_rebar(k, [Vector3(-0.16, 0.9, 0.1), Vector3(0.08, 0.8, 0.12), Vector3(-0.14, 0.95, -0.1), Vector3(0.1, 0.78, -0.08)],
+				[Vector3(-0.5, 1.08, 0.2), Vector3(0.36, 0.64, 0.42), Vector3(-0.26, 1.3, -0.2), Vector3(0.44, 0.9, -0.3)])
+			k.found.prism(0.3, 0.5, 0.26, 0.035, 0.62, 0.035, 6, P.STONE[1], P.STONE[4])
+			k.found.prism(-0.3, 0.5, -0.26, 0.04, 0.54, 0.04, 6, P.INK[1])
+			_run(k, Vector3(0.18, 0.76, 0.2), 0.07, 0.3, Vector3(0, 0, 1))
+			_run(k, Vector3(0.4, 0.47, 0.1), 0.1, 0.5, Vector3(1, 0, 0))
+			# A chunk lies where it fell, a bar still in it.
+			k.found.push(Transform3D(Basis(Vector3.UP, 0.7) * Basis(Vector3.BACK, 0.4), Vector3(0.66, -0.04, -0.46)))
+			var chunk: Array[float] = [0.22, 0.18, 0.12, 0.1, 0.14, 0.2, 0.24, 0.25]
+			cast_leg(k, 0.3, 0.24, 0.05, 0.0, chunk, 0.2, GroundColors.down(concrete, 0.1), GroundColors.down(concrete, 0.3))
+			k.found.pop()
+			k.rod(Vector3(0.6, 0.12, -0.44), Vector3(0.9, 0.34, -0.62), 0.013, 4, P.RUST[2])
 			cap_y = 0.55
 	# Turf round the foot.
 	k.clump(0.3, -0.05, 0.12, 0.16, 0.16, s + 30, P.MOSS[2], 5)
 	k.clump(-0.28, -0.05, -0.1, 0.13, 0.14, s + 31, P.MOSS[3], 5)
 	if c == Country.SNOWFIELD:
 		k.clump(0.0, cap_y, 0.0, 0.2, 0.12, s + 5, P.RIME[5], 6)
+
+
+## A cast member, exact in plan (eight-sided, corners cut), standing from y0 to
+## a broken top: `tops` are the heights of its eight top corners and `peak` the
+## height the fracture rises to in the middle. The break is the fresh, paler face.
+static func cast_leg(k: Kit, w: float, d: float, cut: float, y0: float, tops: Array[float], peak: float, col: Color, broken: Color) -> void:
+	var hw := w * 0.5
+	var hd := d * 0.5
+	var pts: Array[Vector2] = [Vector2(hw - cut, -hd), Vector2(hw, -hd + cut), Vector2(hw, hd - cut), Vector2(hw - cut, hd),
+		Vector2(-hw + cut, hd), Vector2(-hw, hd - cut), Vector2(-hw, -hd + cut), Vector2(-hw + cut, -hd)]
+	for i in 8:
+		var a := pts[i]
+		var b := pts[(i + 1) % 8]
+		var shade := col if i < 4 else GroundColors.down(col, 0.12)
+		k.found.quad(Vector3(b.x, y0, b.y), Vector3(a.x, y0, a.y), Vector3(a.x, tops[i], a.y), Vector3(b.x, tops[(i + 1) % 8], b.y), shade)
+	# The fracture: facets from a point well off centre, in the rough grey of
+	# the broken aggregate, alternating in tone so the break reads as torn.
+	var centre := Vector3(-hw * 0.3, peak, hd * 0.25)
+	for i in 8:
+		var a := pts[i]
+		var b := pts[(i + 1) % 8]
+		k.found.tri(centre, Vector3(b.x, tops[(i + 1) % 8], b.y), Vector3(a.x, tops[i], a.y), broken if i % 3 != 1 else GroundColors.down(broken, 0.4))
+
+
+## Reinforcing bars out of a break: each from its root to where it was bent,
+## with a knee part way so it reads as bent, not stuck on.
+static func _rebar(k: Kit, roots: Array, ends: Array) -> void:
+	for i in roots.size():
+		var a: Vector3 = roots[i]
+		var b: Vector3 = ends[i]
+		var knee := a + Vector3(0, 0.14, 0) + (b - a) * 0.15
+		k.rod(a - Vector3(0, 0.05, 0), knee, 0.018, 4, P.RUST[2])
+		k.rod(knee, b, 0.016, 4, P.RUST[3] if i % 2 == 0 else P.RUST[2])
+
+
+## A rust run down a face from `top`: a streak `width` wide at the top, drying
+## to a thread `length` below. `out` is the face's outward normal.
+static func _run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
+	var along := Vector3(out.z, 0, -out.x) * width * 0.5
+	var lift := out * 0.004
+	var mid := top + Vector3(0, -length * 0.45, 0)
+	var foot := top + Vector3(0, -length, 0)
+	k.found.quad(top - along + lift, top + along + lift, mid + along * 0.5 + lift, mid - along * 0.6 + lift, P.RUST[3])
+	k.found.quad(mid - along * 0.6 + lift, mid + along * 0.5 + lift, foot + along * 0.12 + lift, foot - along * 0.1 + lift, P.RUST[2])
 
 
 static func clints(k: Kit, v: int, c: int) -> void:

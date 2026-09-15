@@ -389,51 +389,190 @@ static func _snow_on(k: Kit, r: Array[Vector3]) -> void:
 	k.made.tri(r[5] + lift, r[3].lerp(r[6], f) + lift, r[6] + lift, P.RIME[4])
 
 
+## A ruin: drystone walls fallen to uneven heights, never a stack of blocks.
+## Each wall is one battered mass with a broken top, faced in courses of
+## uneven stones, coping lumps along what is left of the top, and the stones
+## that fell lying in a spill at its foot, grassed over.
 static func ruin(k: Kit, v: int, c: int) -> void:
-	var stone: Array[Color] = [P.STONE[2], P.SLATE[2], P.STONE[1], P.STONE[3]]
+	var stone: Array[Color] = [P.STONE[2], P.SLATE[2], P.STONE[3], P.SLATE[3]]
 	if c == Country.BONELANDS:
-		stone = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.STONE[3]]
+		stone = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.SAND[3]]
 	elif c == Country.BURNING:
-		stone = [P.STONE[1], P.STONE[0], P.ASH[1], P.STONE[0]]
+		stone = [P.STONE[1], P.ASH[1], P.STONE[2], P.STONE[0]]
+	elif c == Country.SNOWFIELD:
+		stone = [P.SLATE[2], P.SLATE[3], P.STONE[3], P.RIME[2]]
 	var s := 1700 + v * 31
-	var runs: Array = []
 	match v % 3:
 		0:
-			runs = [[Vector2(-1.0, -0.6), Vector2(1.0, -0.6), 4], [Vector2(-1.0, -0.6), Vector2(-1.0, 0.9), 3]]
+			# The corner of a house: two walls highest where they meet.
+			rubble_wall(k, Vector2(-1.0, -0.6), Vector2(1.1, -0.7), _broken([1.35, 1.2, 0.8, 0.9, 0.35, 0.2], s, 0.1), 0.34, s, stone)
+			rubble_wall(k, Vector2(-1.0, -0.43), Vector2(-0.9, 0.95), _broken([1.3, 1.0, 0.55, 0.25, 0.3], s + 1, 0.08), 0.34, s + 1, stone)
+			_spill(k, Vector2(0.2, -0.2), Vector2(0.9, 0.35), 9, s + 2, stone)
+			_spill(k, Vector2(-0.55, 0.4), Vector2(0.3, 0.3), 5, s + 3, stone)
 		1:
-			runs = [[Vector2(-0.9, 0.0), Vector2(0.9, 0.0), 5]]
+			# A gable end standing alone, its window open to the sky.
+			var tops := _broken([0.55, 0.9, 1.5, 1.95, 1.5, 1.0, 0.8], s, 0.06)
+			tops[1] = 0.5
+			rubble_wall(k, Vector2(-1.0, 0.0), Vector2(1.0, 0.05), tops, 0.36, s, stone)
+			var hole := [Vector2(-0.12, 0.72), Vector2(0.18, 0.72), Vector2(0.2, 1.08), Vector2(0.04, 1.2), Vector2(-0.12, 1.08)]
+			for side: float in [1.0, -1.0]:
+				var ring := PackedVector3Array()
+				for q: Vector2 in hole:
+					ring.append(Vector3(q.x, q.y, 0.025 + side * 0.19 - q.y * 0.04 * side))
+				for i in range(1, ring.size() - 1):
+					if side > 0.0:
+						k.made.tri(ring[0], ring[i], ring[i + 1], P.INK[1])
+					else:
+						k.made.tri(ring[0], ring[i + 1], ring[i], P.INK[1])
+			# The lintel fell and lies across the spill.
+			k.slab(0.35, 0.02, 0.62, 0.62, 0.12, 0.16, s + 7, stone[2], GroundColors.up(stone[2], 0.2), 0.02, 0.1, 0.0)
+			_spill(k, Vector2(-0.3, 0.5), Vector2(1.0, 0.4), 10, s + 2, stone)
+			_spill(k, Vector2(0.2, -0.55), Vector2(0.8, 0.3), 5, s + 3, stone)
 		_:
-			runs = [[Vector2(-1.0, -0.8), Vector2(1.0, -0.8), 2], [Vector2(1.0, -0.8), Vector2(1.0, 0.8), 1], [Vector2(-1.0, 0.8), Vector2(0.2, 0.8), 2], [Vector2(-1.0, -0.8), Vector2(-1.0, 0.8), 3]]
-	var idx := 0
-	for run: Array in runs:
-		var a: Vector2 = run[0]
-		var b: Vector2 = run[1]
-		var courses: int = run[2]
-		var n := maxi(2, int(a.distance_to(b) / 0.32))
-		var dir := (b - a).normalized()
-		for ci in courses:
-			for i in n:
-				# Courses crumble toward one end.
-				if ci > 0 and float(i) / n > 1.0 - float(courses - ci) / courses * 0.9 + Kit.j(s, idx, 0.15):
-					idx += 1
-					continue
-				var tt := (i + 0.5 + (ci % 2) * 0.5) / n
-				if tt > 1.0:
-					continue
-				var p := a.lerp(b, tt)
-				var col := stone[idx % 4]
-				k.made.push(Transform3D(Basis(Vector3.UP, -atan2(dir.y, dir.x) + Kit.j(s, idx + 500, 0.12)), Vector3(p.x, ci * 0.2, p.y)))
-				k.slab(0, 0, 0, 0.3 + Kit.j(s, idx, 0.05), 0.19, 0.28, s + idx, col, GroundColors.up(col, 0.15), 0.025)
-				k.made.pop()
-				idx += 1
-		if v % 3 == 1:
-			# The gable end with its window hole.
-			k.made.tri(Vector3(-0.9, 1.0, -0.14), Vector3(0.9, 1.0, -0.14), Vector3(0.1, 1.7, -0.14), stone[0])
-			k.made.tri(Vector3(0.9, 1.0, 0.14), Vector3(-0.9, 1.0, 0.14), Vector3(0.1, 1.7, 0.14), stone[1])
-			k.made.quad(Vector3(-0.2, 0.45, 0.15), Vector3(0.2, 0.45, 0.15), Vector3(0.2, 0.8, 0.15), Vector3(-0.2, 0.8, 0.15), P.INK[1])
+			# Footings of a long house, knee high, a doorway gap, the chimney
+			# stack still standing at the gable.
+			rubble_wall(k, Vector2(-1.2, -0.75), Vector2(1.1, -0.8), _broken([0.55, 0.4, 0.5, 0.3, 0.45], s, 0.08), 0.3, s, stone)
+			rubble_wall(k, Vector2(1.1, -0.8), Vector2(1.15, 0.85), _broken([0.45, 0.3, 0.15, 0.35], s + 1, 0.06), 0.3, s + 1, stone)
+			rubble_wall(k, Vector2(1.15, 0.85), Vector2(0.15, 0.8), _broken([0.4, 0.5, 0.25], s + 2, 0.06), 0.3, s + 2, stone)
+			rubble_wall(k, Vector2(-0.45, 0.8), Vector2(-1.2, 0.78), _broken([0.3, 0.55], s + 3, 0.05), 0.3, s + 3, stone)
+			rubble_wall(k, Vector2(-1.2, 0.95), Vector2(-1.2, -0.9), _broken([1.6, 1.7, 1.05, 0.5, 0.45], s + 4, 0.05), 0.36, s + 4, stone)
+			_spill(k, Vector2(-0.6, 0.0), Vector2(0.5, 0.5), 7, s + 5, stone)
+			_spill(k, Vector2(0.4, 1.1), Vector2(0.6, 0.2), 4, s + 6, stone)
+	# Grass took the floor and the foot of every wall.
 	var gs := k.made.vertex_count()
-	for i in 5:
-		k.clump(-0.8 + i * 0.4, -0.03, 0.3 + Kit.j(s, 900 + i, 0.3), 0.18, 0.2, s + 900 + i, P.MOSS[2] if i % 2 else P.MOSS[3], 6)
-	k.sway_by_height(gs, 0.0, 0.2, 0.2)
-	for i in 5:
-		k.stone(-0.6 + i * 0.35, -0.04, -0.3 + Kit.j(s, 950 + i, 0.25), 0.13, 0.12, s + 950 + i, stone[i % 4], 5)
+	for i in 7:
+		var p := Vector2(-0.9 + i * 0.3 + Kit.j(s, 900 + i, 0.1), Kit.j(s, 920 + i, 0.6))
+		k.clump(p.x, -0.04, p.y, 0.14 + Kit.j(s, 940 + i, 0.04), 0.16, s + 900 + i, P.MOSS[2] if i % 2 else P.MOSS[3], 6)
+	k.sway_by_height(gs, 0.0, 0.18, 0.2)
+
+
+## Heights at even steps along a wall from a few control heights: jagged by
+## `jag`, with a gap bitten out of the top here and there.
+static func _broken(ctrl: Array, seed_value: int, jag: float) -> PackedFloat32Array:
+	var n := (ctrl.size() - 1) * 3
+	var out := PackedFloat32Array()
+	for i in n + 1:
+		var f := float(i) / 3.0
+		var a := mini(floori(f), ctrl.size() - 2)
+		var h := lerpf(float(ctrl[a]), float(ctrl[a + 1]), f - a)
+		h += Kit.j(seed_value, i + 300, jag)
+		if Rng.hash01(seed_value, i, 301) < 0.18:
+			h *= 0.7
+		out.append(maxf(0.12, h))
+	return out
+
+
+## A drystone wall from a to b (plan x, z), its top at `tops` (even steps
+## along it). Battered: its faces lean in as they rise. Faced in courses of
+## uneven stones, each drawn a hair proud of a darker mass, and lumpy coping
+## stones along the broken top.
+static func rubble_wall(k: Kit, a: Vector2, b: Vector2, tops: PackedFloat32Array, thick: float, seed_value: int, stones: Array[Color]) -> void:
+	var n := tops.size() - 1
+	var run := b - a
+	var length := run.length()
+	var dir := run / length
+	var nrm := Vector2(-dir.y, dir.x)
+	var d3 := Vector3(dir.x, 0, dir.y)
+	var n3 := Vector3(nrm.x, 0, nrm.y)
+	var mass := GroundColors.down(stones[0], 0.4)
+	const BATTER := 0.07
+	var pen := k.made
+	for i in n:
+		var t0 := float(i) / n
+		var t1 := float(i + 1) / n
+		var p0 := a.lerp(b, t0)
+		var p1 := a.lerp(b, t1)
+		var h0 := tops[i]
+		var h1 := tops[i + 1]
+		var base := Vector3(0, -0.04, 0)
+		var q0 := Vector3(p0.x, 0, p0.y)
+		var q1 := Vector3(p1.x, 0, p1.y)
+		var o0 := thick * 0.5 - BATTER * h0
+		var o1 := thick * 0.5 - BATTER * h1
+		var ab0 := q0 + n3 * thick * 0.5 + base
+		var ab1 := q1 + n3 * thick * 0.5 + base
+		var bb0 := q0 - n3 * thick * 0.5 + base
+		var bb1 := q1 - n3 * thick * 0.5 + base
+		var at0 := q0 + n3 * o0 + Vector3(0, h0, 0)
+		var at1 := q1 + n3 * o1 + Vector3(0, h1, 0)
+		var bt0 := q0 - n3 * o0 + Vector3(0, h0, 0)
+		var bt1 := q1 - n3 * o1 + Vector3(0, h1, 0)
+		pen.quad(ab0, ab1, at1, at0, mass)
+		pen.quad(bb1, bb0, bt0, bt1, GroundColors.down(mass, 0.1))
+		pen.quad(at0, at1, bt1, bt0, GroundColors.down(stones[1], 0.3))
+		if i == 0:
+			pen.quad(bb0, ab0, at0, bt0, GroundColors.down(mass, 0.05))
+		if i == n - 1:
+			pen.quad(ab1, bb1, bt1, at1, mass)
+	# Courses of stone on both faces.
+	var idx := 0
+	for side: float in [1.0, -1.0]:
+		var y := 0.0
+		var course := 0
+		while y < 2.2:
+			var ch := 0.1 + Rng.hash01(seed_value, course, 11) * 0.12
+			var u := -Rng.hash01(seed_value, course, 12) * 0.2
+			while u < length:
+				var sl := 0.12 + Rng.hash01(seed_value, idx, 13) * 0.3
+				var u0 := maxf(u, 0.0) + 0.012
+				var u1 := minf(u + sl, length) - 0.012
+				u += sl
+				idx += 1
+				if u1 - u0 < 0.06:
+					continue
+				var top_here := minf(_top_at(tops, u0 / length), _top_at(tops, u1 / length)) - 0.025
+				var y0 := y + 0.012
+				var y1 := minf(y + ch - 0.012, top_here)
+				if y1 - y0 < 0.05:
+					continue
+				var col := stones[int(Rng.hash01(seed_value, idx, 14) * 4.0) % 4].lerp(stones[0], 0.35)
+				col = Kit.tone(col, 0.86 + Rng.hash01(seed_value, idx, 15) * 0.18)
+				# A stone is a rough hexagon: corners knocked off, sides not true.
+				var jx := Kit.j(seed_value, idx + 40, 0.02)
+				var jy := Kit.j(seed_value, idx + 60, 0.015)
+				var ym := (y0 + y1) * 0.5 + jy
+				var ring: Array[Vector2] = [Vector2(u0 + 0.03, y0), Vector2(u1 - 0.02 + jx, y0 + 0.01), Vector2(u1, ym),
+					Vector2(u1 - 0.03, y1), Vector2(u0 + 0.02 - jx, y1 - 0.01), Vector2(u0, ym - jy * 2.0)]
+				var pts := PackedVector3Array()
+				for r: Vector2 in ring:
+					var off := thick * 0.5 - BATTER * r.y + 0.012
+					var plan := a + dir * r.x + nrm * off * side
+					pts.append(Vector3(plan.x, r.y - 0.04, plan.y))
+				for e in range(1, 5):
+					if side > 0.0:
+						pen.tri(pts[0], pts[e], pts[e + 1], col)
+					else:
+						pen.tri(pts[0], pts[e + 1], pts[e], GroundColors.down(col, 0.08))
+			y += ch
+			course += 1
+	# Coping: loose lumps along what is left of the top.
+	var steps := int(length / 0.24)
+	for i in steps:
+		var t := (i + 0.5) / steps
+		var h := _top_at(tops, t)
+		if h < 0.22 or Rng.hash01(seed_value, i, 16) < 0.25:
+			continue
+		var p := a.lerp(b, t) + nrm * Kit.j(seed_value, i + 80, 0.05)
+		k.stone(p.x, h - 0.05, p.y, thick * 0.42, 0.1 + Rng.hash01(seed_value, i, 17) * 0.06, seed_value + 200 + i, stones[(i + 2) % 4].lerp(stones[0], 0.4), 5, Kit.j(seed_value, i + 90, 0.3))
+
+
+static func _top_at(tops: PackedFloat32Array, t: float) -> float:
+	var f := clampf(t, 0.0, 1.0) * (tops.size() - 1)
+	var i := mini(floori(f), tops.size() - 2)
+	return lerpf(tops[i], tops[i + 1], f - i)
+
+
+## Stones that fell, lying where they landed in a spill round `centre`
+## (spread `size`), tipped and half sunk, a few big ones and many small.
+static func _spill(k: Kit, centre: Vector2, size: Vector2, count: int, seed_value: int, stones: Array[Color]) -> void:
+	for i in count:
+		var p := centre + Vector2(Kit.j(seed_value, i, size.x * 0.5), Kit.j(seed_value, i + 20, size.y * 0.5))
+		var big := Rng.hash01(seed_value, i, 3) < 0.35
+		var r := (0.13 if big else 0.07) + Rng.hash01(seed_value, i, 4) * 0.05
+		var col := stones[i % 4]
+		if big and i % 3 == 0:
+			k.made.push(Transform3D(Basis(Vector3.UP, Rng.hash01(seed_value, i, 5) * TAU) * Basis(Vector3.BACK, Kit.j(seed_value, i + 40, 0.35)), Vector3(p.x, -0.03, p.y)))
+			k.slab(0, 0, 0, r * 2.6, r * 0.9, r * 1.5, seed_value + i, col, GroundColors.up(col, 0.15), 0.02, 0.15, 0.0)
+			k.made.pop()
+		else:
+			k.stone(p.x, -0.05, p.y, r, r * (0.9 + Rng.hash01(seed_value, i, 6) * 0.6), seed_value + i * 3, col, 5, Kit.j(seed_value, i + 60, 0.4))
