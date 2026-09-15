@@ -29,6 +29,7 @@ var decor: Decor
 var _chunks: Dictionary = {} # Vector2i -> Node3D
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
+var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
 var _water_mat: ShaderMaterial
 
@@ -51,6 +52,21 @@ func setup(w: WorldData) -> void:
 		if not _props_by_chunk.has(key):
 			_props_by_chunk[key] = []
 		_props_by_chunk[key].append(p)
+	# The machines' grid (WorldData.lines, when world generation strings one):
+	# each span is drawn with the chunk of the mast it leaves from.
+	var lines: Variant = w.get("lines")
+	if lines is Array:
+		for line: Variant in lines:
+			if not (line is Dictionary and (line as Dictionary).has("props")):
+				continue
+			var ids: PackedInt32Array = PackedInt32Array((line as Dictionary)["props"])
+			for j in ids.size() - 1:
+				if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
+					continue
+				var key := _key_of(w.props[ids[j]].pos)
+				if not _cables_by_chunk.has(key):
+					_cables_by_chunk[key] = []
+				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
 	_add_open_sea()
 
 
@@ -242,11 +258,12 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 		var country := prop_country(p, ch)
 		var tpl := PropModels.template(p.kind, variant, country)
 		var h := ch.surface(p.pos.x, p.pos.y) if ch != null else mesher.surface_height(p.pos.x, p.pos.y)
-		var angle := p.rot
+		var facing := p.rot
 		if PropModels.Trees.wind_bent(p.kind, country):
 			# Bent by the one wind off the sea, not each its own way.
-			angle = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
-		var rot := Basis(Vector3.UP, angle)
+			facing = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
+		# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
+		var rot := Basis(Vector3.UP, -facing)
 		var xf := Transform3D(rot.scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
 		var nx := Transform3D(rot, Vector3.ZERO)
 		if not tpl.made_v.is_empty():
@@ -274,6 +291,14 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 		mi.mesh = mesh
 		mi.material_override = _world_mat
 		node.add_child(mi)
+	if _cables_by_chunk.has(key):
+		var ck := MeshKit.new()
+		for pair: Vector2i in _cables_by_chunk[key]:
+			_string_cables(ck, world.props[pair.x], world.props[pair.y])
+		if ck.vertex_count() > 0:
+			fv.append_array(ck.verts)
+			fn.append_array(ck.normals)
+			fc.append_array(ck.colors)
 	if not fv.is_empty():
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
@@ -287,6 +312,55 @@ func _build_props(node: Node3D, key: Vector2i) -> void:
 		mi.mesh = mesh
 		mi.material_override = PropModels.found_material()
 		node.add_child(mi)
+
+
+## Insulator points a mast carries cables from, in model space.
+static func cable_points(kind: int) -> PackedVector3Array:
+	match kind:
+		PropKind.PYLON:
+			return PackedVector3Array([Vector3(0, 3.1, 1.1), Vector3(0, 3.1, -1.1), Vector3(0, 2.4, 0.8), Vector3(0, 2.4, -0.8)])
+		PropKind.POLE:
+			return PackedVector3Array([Vector3(0, 2.7, 0.42), Vector3(0, 2.7, -0.42)])
+	return PackedVector3Array()
+
+
+## Sagging cables from mast a to mast b, each insulator to its nearer partner,
+## so a span never crosses itself however the masts are turned.
+func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp) -> void:
+	if world.depleted.has(a.id) or world.depleted.has(b.id):
+		return
+	var pa := cable_points(a.kind)
+	var pb := cable_points(b.kind)
+	if pa.is_empty() or pb.is_empty():
+		return
+	var wa := _mast_points(a, pa)
+	var wb := _mast_points(b, pb)
+	var span := Vector2(b.pos - a.pos).length()
+	for i in mini(wa.size(), wb.size()):
+		# Pair by rank across the span's own sideways axis.
+		var side := Vector3(-(b.pos.y - a.pos.y), 0.0, b.pos.x - a.pos.x).normalized()
+		var from := _ranked(wa, side, i)
+		var to := _ranked(wb, side, i)
+		var prev := from
+		var n := 10
+		for s in range(1, n + 1):
+			var t := float(s) / n
+			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
+			k.strut(prev, p, 0.014, 3, Palette.INK[1])
+			prev = p
+
+
+func _mast_points(p: WorldProp, local: PackedVector3Array) -> PackedVector3Array:
+	var ch := chunk_at(p.pos)
+	var h := ch.surface(p.pos.x, p.pos.y) if ch != null else mesher.surface_height(p.pos.x, p.pos.y)
+	var xf := Transform3D(Basis(Vector3.UP, -p.rot).scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
+	return xf * local
+
+
+static func _ranked(points: PackedVector3Array, axis: Vector3, rank: int) -> Vector3:
+	var order := Array(points)
+	order.sort_custom(func(u: Vector3, v: Vector3) -> bool: return u.y > v.y + 0.1 or (absf(u.y - v.y) <= 0.1 and u.dot(axis) < v.dot(axis)))
+	return order[rank]
 
 
 ## A flat deep-sea sheet around the whole map, so the edge of the world is the

@@ -103,12 +103,12 @@ void fragment() {
 		if (kind == 1 && fl > 0.2) {
 			// Dashes carried downstream, in whole pixels.
 			vec2 dir = flow / fl;
-			float along = dot(wp, dir) * 3.0 - TIME * 1.6;
-			float across = dot(wp, vec2(-dir.y, dir.x)) * 5.0;
+			float along = dot(wp, dir) * 1.4 - TIME * 0.8;
+			float across = dot(wp, vec2(-dir.y, dir.x)) * 6.0;
 			vec2 cell = vec2(floor(along), floor(across));
 			float h = ink_hash(cell + 3.0);
-			if (h < 0.22 && fract(along) < 0.45 && fract(across) < 0.3) {
-				c = h < 0.08 ? FOAM : BRINE4;
+			if (h < 0.14 && fract(along) < 0.55 && fract(across) < 0.2 && d > 0.15) {
+				c = h < 0.025 ? FOAM : BRINE4;
 			}
 		}
 		if (kind == 4) {

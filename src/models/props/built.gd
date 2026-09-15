@@ -193,8 +193,7 @@ static func pylon(k: Kit) -> void:
 			for d in 3:
 				var yy := p.y - 0.14 - d * 0.06
 				k.found.prism(p.x, yy, p.z, 0.045, yy + 0.035, 0.045, 8, P.COLD[2], P.COLD[3])
-			k.cable(p + Vector3(0, -0.3, 0), p + Vector3(1.7, -0.95, 0), 0.25, 5, 0.012, P.INK[1])
-			k.cable(p + Vector3(0, -0.3, 0), p + Vector3(-1.7, -0.95, 0), 0.25, 5, 0.012, P.INK[1])
+			# WorldView strings the cables from here to the next mast.
 	k.found.prism(0, top, 0, 0.14, top + 0.22, 0.0, 4, P.PLATE[4], Color(0, 0, 0, 0), PI * 0.25)
 
 
@@ -213,6 +212,6 @@ static func pole(k: Kit) -> void:
 	for side: float in [-0.42, 0.42]:
 		k.found.prism(0, 2.55, side, 0.035, 2.7, 0.03, 8, P.COLD[2], P.COLD[3])
 		k.found.prism(0, 2.6, side, 0.05, 2.62, 0.05, 8, P.COLD[1], P.COLD[2])
-		k.cable(Vector3(0, 2.7, side), Vector3(1.9, 2.35, side), 0.3, 5, 0.01, P.INK[1])
+		k.rod(Vector3(0, 2.68, side), Vector3(0, 2.72, side), 0.012, 4, P.INK[1])
 	k.found.quad(Vector3(0.062, 1.1, 0.07), Vector3(0.062, 1.1, -0.07), Vector3(0.062, 1.3, -0.07), Vector3(0.062, 1.3, 0.07), P.RIME[5])
 	k.found.quad(Vector3(0.064, 1.18, 0.05), Vector3(0.064, 1.18, -0.05), Vector3(0.064, 1.2, -0.05), Vector3(0.064, 1.2, 0.05), P.INK[1])

@@ -144,25 +144,42 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 
 static func clints(k: Kit, v: int, c: int) -> void:
 	var stone := P.LINEN[4] if c != Country.BURNING else P.ASH[3]
-	var side := P.LINEN[3] if c != Country.BURNING else P.ASH[2]
+	var side := P.LINEN[2] if c != Country.BURNING else P.ASH[1]
 	var s := 8500 + v * 7
-	var blocks := [[-0.36, -0.2, 0.62, 0.48], [0.32, -0.26, 0.52, 0.4], [-0.08, 0.34, 0.8, 0.36], [0.46, 0.3, 0.3, 0.38]]
-	for i in blocks.size():
+	# Flat worn slabs of limestone, barely proud of the turf, split by grikes:
+	# irregular polygons, never bricks.
+	var slabs := [[-0.34, -0.18, 0.38], [0.3, -0.24, 0.32], [-0.06, 0.32, 0.4], [0.44, 0.3, 0.22]]
+	for i in slabs.size():
 		if v == 2 and i == 3:
 			continue
-		var b: Array = blocks[i]
-		var h := 0.22 + Kit.j(s, i, 0.05)
-		k.slab(b[0], -0.06, b[1], b[2], h, b[3], s + i * 9, side, stone if i % 2 == 0 else P.LINEN[5], 0.03, 0.08)
-		# A row of drill holes along one edge.
+		var b: Array = slabs[i]
+		var h := 0.1 + Kit.j(s, i, 0.03)
+		var r: float = b[2]
+		var sides := 6 + (i + v) % 2
+		var ring: Array[Vector3] = []
+		for e in sides:
+			var ang := float(e) / sides * TAU + Kit.j(s, i * 10 + e, 0.3)
+			var rr := r * (0.75 + Rng.hash01(s, i * 10 + e, 2) * 0.35)
+			ring.append(Vector3(b[0] + cos(ang) * rr, 0.0, b[1] + sin(ang) * rr * 0.8))
+		var top_y := h + Kit.j(s, 40 + i, 0.02)
+		var centre := Vector3(b[0], top_y, b[1])
+		for e in sides:
+			var p0 := ring[e]
+			var p1 := ring[(e + 1) % sides]
+			var t0 := Vector3(p0.x, top_y + Kit.j(s, i * 20 + e, 0.015), p0.z).lerp(centre, 0.06)
+			var t1 := Vector3(p1.x, top_y + Kit.j(s, i * 20 + (e + 1) % sides, 0.015), p1.z).lerp(centre, 0.06)
+			k.made.quad(Vector3(p1.x, -0.04, p1.z), Vector3(p0.x, -0.04, p0.z), t0, t1, side)
+			k.made.tri(centre, t1, t0, stone if i % 2 == 0 else P.LINEN[5])
+		# A row of drill holes across the slab: the machine age in the stone.
 		if (i + v) % 2 == 0:
 			for d in 4:
-				var x: float = b[0] - b[2] * 0.3 + d * b[2] * 0.2
-				k.made.quad(Vector3(x - 0.015, h - 0.07, b[1] + b[3] * 0.5 + 0.004), Vector3(x + 0.015, h - 0.07, b[1] + b[3] * 0.5 + 0.004), Vector3(x + 0.015, h - 0.035, b[1] + b[3] * 0.5 + 0.004), Vector3(x - 0.015, h - 0.035, b[1] + b[3] * 0.5 + 0.004), P.LINEN[1])
+				var q := Vector3(b[0] - r * 0.4 + d * r * 0.26, top_y + 0.004, b[1] + Kit.j(s, 60 + i, 0.05))
+				k.made.tri(q + Vector3(-0.02, 0, -0.015), q + Vector3(0.02, 0, -0.015), q + Vector3(0.0, 0, 0.02), P.LINEN[1])
 	if v == 1:
-		# A block split by a wedge, the halves apart.
-		k.slab(-0.02, 0.16, -0.05, 0.2, 0.14, 0.3, s + 50, side, P.LINEN[5], 0.02)
-		k.slab(0.2, 0.16, -0.05, 0.2, 0.12, 0.3, s + 51, side, P.LINEN[5], 0.02)
-		k.found.prism(0.09, 0.2, -0.05, 0.03, 0.34, 0.01, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
+		# A slab split by a wedge, the halves apart.
+		k.stone(-0.02, 0.0, 0.0, 0.13, 0.16, s + 50, side, 5, 0.2, P.LINEN[5])
+		k.stone(0.22, 0.0, -0.02, 0.12, 0.14, s + 51, side, 5, -0.2, P.LINEN[5])
+		k.found.prism(0.1, 0.1, -0.01, 0.03, 0.26, 0.008, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
 	# Ferns in the grikes.
 	k.hand(Ink.COUNTRY_STYLE[c], 0.0)
 	var fs := k.made.vertex_count()
