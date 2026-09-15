@@ -14,10 +14,12 @@ const SOURCES := {
 	PropKind.PYLON: [3.6, 0.7, 4],
 	PropKind.POLE: [2.1, 0.25, 2],
 	PropKind.LAMP: [1.55, 0.4, 2],
-	PropKind.PINE: [1.1, 0.6, 5],
-	PropKind.SNOW_PINE: [1.1, 0.6, 3],
-	PropKind.BROADLEAF: [1.3, 0.8, 5],
-	PropKind.DEAD_TREE: [1.2, 0.5, 2],
+	# Trees drip from a few points only: a crown full of drip lines reads as a
+	# glitch in a still frame.
+	PropKind.PINE: [1.1, 0.6, 2],
+	PropKind.SNOW_PINE: [1.1, 0.6, 1],
+	PropKind.BROADLEAF: [1.3, 0.8, 3],
+	PropKind.DEAD_TREE: [1.2, 0.5, 1],
 	PropKind.WRECK: [0.7, 0.8, 3],
 	PropKind.RUIN: [1.0, 1.0, 3],
 }

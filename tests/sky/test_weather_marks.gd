@@ -146,3 +146,19 @@ func test_the_sky_knows_where_the_player_is_for_a_whiteout() -> void:
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()
+
+
+func test_drips_are_drops_under_a_crown_not_lines() -> void:
+	lt(float(Drips.SOURCES[PropKind.PINE][2]), 3.0, "a pine drips from a couple of points")
+	lt(float(Drips.SOURCES[PropKind.BROADLEAF][2]), 4.0, "a crown from a few")
+	var v := WeatherView.new()
+	tree.root.add_child(v)
+	v.setup(null)
+	var m: ShaderMaterial = v.drips.material_override
+	eq(m.get_shader_parameter("color_a"), Palette.RIME[3], "drips are water-blue")
+	lt(float(m.get_shader_parameter("mix_b")), 0.2, "only now and then a pale bead")
+	# About one drop at a time per drip point over a short fall.
+	lt(float(v.drips.amount) / float(Drips.MAX_POINTS), 1.5, "never a queue of drops making a line")
+	lt(v.drips.lifetime, 0.35, "a short fall")
+	v.queue_free()
+	await frames(1)

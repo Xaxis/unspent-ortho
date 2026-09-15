@@ -78,13 +78,14 @@ func setup(cam: CameraRig) -> void:
 	rings = _emitter("rings", 220, 0.7, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
 	_age_ramp(rings)
 	_mat(rings, Mode.RING, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.4, "length_px": Vector2(3, 5), "columns": 0.6, "ground_mask": 3})
-	drips = _emitter("drips", 720, 0.5, Vector3.ZERO, Vector3.ZERO, false)
+	# About one drop falling from each drip point at a time, over a short fall,
+	# so a drip is a drop and never a line hanging under a crown.
+	drips = _emitter("drips", 110, 0.26, Vector3.ZERO, Vector3.ZERO, false)
 	drips.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINTS
 	drips.top_level = true
 	drips.gravity = Vector3(0, -9.0, 0)
-	# Drips are the palest water in the frame, a bead and its short fall, so they
-	# read against the dark under an eave.
-	_mat(drips, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.RIME[3], "mix_b": 0.3, "length_px": Vector2(2, 4), "slant": 0.0})
+	# Drips are water-blue, with only now and then a pale bead catching the light.
+	_mat(drips, Mode.STROKE, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.12, "length_px": Vector2(1, 3), "slant": 0.0})
 	for i in DustDevils.MAX:
 		devils.append(_devil(i))
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
@@ -229,7 +230,7 @@ func set_drip_points(points: PackedVector3Array) -> void:
 ## amount 0..1 (Drips.amount); frozen: nothing drips in the snow.
 func set_drips(amount: float, frozen: bool) -> void:
 	var a := 0.0 if frozen or drips.emission_points.is_empty() else amount
-	_drive(drips, a, Vector3(0, -1, 0), 1.2, {})
+	_drive(drips, a, Vector3(0, -1, 0), 0.8, {})
 
 
 ## devils: [{at: Vector3 ground point, life: 0..1, seed: int}] (DustDevils.at).
