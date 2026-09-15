@@ -116,24 +116,23 @@ static func villages(c: GenContext) -> void:
 	var chosen: Array[Vector3] = []
 	# The spawn village: as far south as flat coast allows, and close enough to
 	# the sea that the first frame holds the square and the water together (a
-	# village deep inland wakes the player in a field). Wider only if none fits.
+	# village deep inland wakes the player in a field). Ground that needs a
+	# little levelling counts too (its score is lower); wider only if none fits.
 	var r := c.land_rect
 	var best := Vector3(-1, -1, -1e9)
-	for far: float in [18.0, 24.0, 40.0]:
+	for far: float in [14.0, 20.0, 40.0]:
 		for pool: Array[Vector3] in [cands, relaxed]:
 			for p in pool:
 				var i := int(p.y) * size + int(p.x)
 				if w.country[i] != Country.COAST:
 					continue
 				var d_in := c.inland[i]
-				if d_in < 9.0 or d_in > far:
+				if d_in < 8.0 or d_in > far:
 					continue
 				var south := (p.y - r.position.y) / r.size.y
-				var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 12.0) * 0.08
+				var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 10.0) * 0.08 + _sea_below(c, p.x, p.y) * 4.0
 				if sc > best.z:
 					best = Vector3(p.x, p.y, sc)
-			if best.x >= 0.0:
-				break
 		if best.x >= 0.0:
 			break
 	if best.x < 0.0:
@@ -533,6 +532,23 @@ static func _lay_road(c: GenContext, path: Array[Vector2i], a: Vector2, b: Vecto
 		c.road[other] = 1
 
 
+## Share of sea in the half of a 14-tile disc that lies down the screen from a
+## tile (world +x+y): where the first frame's sea would lie, below the square.
+static func _sea_below(c: GenContext, tx: float, ty: float) -> float:
+	var sea := 0
+	var n := 0
+	for dy in range(-14, 15, 2):
+		for dx in range(-14, 15, 2):
+			if dx + dy <= 0 or dx * dx + dy * dy > 196:
+				continue
+			var x := int(tx) + dx
+			var y := int(ty) + dy
+			n += 1
+			if x < 0 or y < 0 or x >= c.size or y >= c.size or c.land[y * c.size + x] == 0:
+				sea += 1
+	return float(sea) / maxf(1.0, n)
+
+
 ## Wake beside the spawn village, on dry coast, facing the most open land.
 static func spawn(c: GenContext) -> void:
 	var w := c.w
@@ -647,16 +663,19 @@ static func _frame_view(c: GenContext, p: Vector2, square: Array[Vector2]) -> fl
 				sea += 1
 	var score := 0.0
 	var share := float(sea) / maxf(1.0, total)
-	if share >= 0.04 and share <= 0.4:
-		score += 6.0
-	elif share > 0.0 and share < 0.55:
-		score += 2.0
+	# Best with about a quarter of the page sea; any sea at all is worth a little.
+	if share > 0.0 and share < 0.55:
+		score += 2.0 + 7.0 * clampf(1.0 - absf(share - 0.25) / 0.25, 0.0, 1.0)
+	var framed := 0
 	for q in square:
 		var d := q - p
 		var sx := (d.x - d.y) * 0.7071
 		var sy := (d.x + d.y) * 0.7071
-		if absf(sx) < 9.5 and sy > -6.5 and sy < 5.0 and d.length() > 3.5:
-			score += 3.0
+		# In the upper part of the page and well inside it: the sea lies below.
+		if absf(sx) < 9.5 and sy > -7.5 and sy < 2.0 and d.length() > 3.5:
+			framed += 1
+	if not square.is_empty():
+		score += 8.0 * framed / square.size()
 	return score
 
 

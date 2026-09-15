@@ -8,38 +8,38 @@
 shot 01-wake-by-the-square
 # The scripted stretch is not a random fight: nothing new comes until the machine is met.
 coast calm
-# Driftwood on the strand south-east of the spawn: step to it, press use.
-at 163.69,404.79
-walk 0,1 0.08
+# Driftwood on the strand below the village: step to it, press use.
+at 198.90,435.58
+walk -0.92,0.38 0.08
 press use 0.1
 await took 3
 wait 0.2
 shot 02-driftwood-taken
-at 166.7,401.6
-walk 1,1 0.08
+at 209.63,435.70
+walk 0.71,0.71 0.08
 press use 0.1
 await took 3
 # Dead wood fallen under the broadleaf by the strand.
-at 162.45,403.25
+at 202.97,434.41
 walk 0,1 0.08
 press use 0.1
 await took 8
 wait 0.2
 shot 03-dead-wood
 # A loose stone off each of two boulders.
-at 156.95,408.87
-walk -1,1 0.08
+at 189.54,440.34
+walk -1,0 0.08
 press use 0.1
 await took 14
-at 164.05,389.53
-walk 1,-1 0.08
+at 190.90,417.27
+walk 0.38,-0.92 0.08
 press use 0.1
 await took 14
 wait 0.2
 shot 04-stone
-# Open ground north of the strand: the first press asks, the second lays the fire.
-at 166.5,393.5
-walk 1,0 0.08
+# Open ground west of the village: the first press asks, the second lays the fire.
+at 188.5,428.5
+walk -1,0 0.08
 press use 0.1
 wait 0.3
 shot 05-asked-where
@@ -101,7 +101,7 @@ shot 13-after-the-fight
 coast calm
 # Back to the fire as the light goes: the lamp against the dark.
 zoom 15
-at 165.5,393.5
+at 189.5,428.5
 hour 21.5
 wait 0.6
 shot 14-night-at-the-fire

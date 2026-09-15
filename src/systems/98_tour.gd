@@ -22,6 +22,7 @@ extends GameSystem
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
+##                          (nothing happens when no body is left)
 ##   choose ID              on an open page, tap move_down (the real key) until the
 ##                          row ID is chosen; fails if it never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
@@ -197,7 +198,8 @@ func _walk_to(what: String, secs: float) -> bool:
 			if m.alive and not m.removed and (best == null or m.pos.distance_to(hero.pos) < best.pos.distance_to(hero.pos)):
 				best = m
 		if best == null:
-			return false
+			# Nothing (left) to steer to: a body put down on the way is not a failure.
+			break
 		var target := best.pos
 		var close := best.radius + hero.radius + 0.5
 		if what != "mob":
