@@ -61,7 +61,7 @@ func test_build_a_campfire_from_driftwood_and_stone() -> void:
 	eq(g.world.props[fire.id], fire, "id is its index")
 	eq(g.inventory.count(&"driftwood"), 0)
 	eq(g.inventory.count(&"stone"), 0)
-	near(g.clock.minutes - t0, 20.0, 0.001, "building takes time")
+	near(g.clock.minutes - t0, float(Crafting.recipe(&"campfire").minutes), 0.001, "building takes time")
 	eq(Survival.station_near(g), &"fire")
 	check(g.query.nearest_prop(fire.pos, 0.5) == fire, "in the query: it blocks and it is found")
 	var level := g.world.level_at(floori(g.player.pos.x), floori(g.player.pos.y))
@@ -113,11 +113,25 @@ func test_charcoal_at_a_fire_charges_its_minutes() -> void:
 	Survival.build(g, &"fire", true)
 	eq(Crafting.why_not(g, r), "")
 	var t0 := g.clock.minutes
-	check(Crafting.make_in(g, r), "made")
-	eq(g.inventory.count(&"charcoal"), 2)
-	eq(g.inventory.count(&"driftwood"), 0)
-	near(g.clock.minutes - t0, 180.0, 0.001)
-	eq(Crafting.missing(g.inventory, r), {&"driftwood": 4})
+	check(Crafting.sets_going(r), "charcoal is longer than a jump of the clock: it cooks while you walk")
+	check(Crafting.make_in(g, r), "set going")
+	eq(g.inventory.count(&"driftwood"), 0, "the wood went on the fire")
+	eq(g.inventory.count(&"charcoal"), 0, "nothing out yet")
+	near(g.clock.minutes - t0, Survival.SET_GOING_MINUTES, 0.001, "setting it going is a few minutes, not the whole burn")
+	eq(Survival.cooking(g).size(), 1, "the fire holds the work")
+	g.inventory.add(&"driftwood", 4)
+	check(Crafting.why_not(g, r).begins_with("The fire is working"), "one thing on a fire at a time: %s" % Crafting.why_not(g, r))
+	# Walk off and come back after it is done.
+	var home := g.player.pos
+	g.player.pos += Vector2(8, 0)
+	g.clock.skip(float(r.minutes))
+	Survival.tick(g, 0.0)
+	eq(g.inventory.count(&"charcoal"), 0, "away from the fire nothing comes")
+	g.player.pos = home
+	Survival.tick(g, 0.0)
+	eq(g.inventory.count(&"charcoal"), 2, "back at it, the charcoal is taken")
+	eq(Survival.cooking(g).size(), 0, "and the fire is free")
+	eq(Crafting.why_not(g, r), "")
 	Fx.done(g)
 
 
@@ -187,10 +201,48 @@ func test_cementation_eats_the_knife_and_gives_steel_in_hand() -> void:
 	Survival.build(g, &"kiln", true)
 	eq(Survival.station_near(g), &"kiln")
 	var t0 := g.clock.minutes
-	check(Crafting.make_in(g, Crafting.recipe(&"knife_cemented")))
+	var r := Crafting.recipe(&"knife_cemented")
+	check(Crafting.make_in(g, r))
 	check(not g.inventory.has(&"knife"))
-	eq(g.inventory.held, &"knife_shear", "the steel knife is in hand")
-	near(g.clock.minutes - t0, 900.0, 0.001, "fifteen hours")
+	near(g.clock.minutes - t0, Survival.SET_GOING_MINUTES, 0.001, "set going in the kiln")
+	g.clock.skip(float(r.minutes))
+	Survival.tick(g, 0.0)
+	eq(g.inventory.held, &"knife_shear", "the steel knife comes out into the hand")
+	Fx.done(g)
+
+
+func test_no_making_jumps_the_clock_more_than_half_an_hour() -> void:
+	for r: Dictionary in Recipes.LIST:
+		if Crafting.sets_going(r):
+			continue
+		lt(float(r.minutes), Survival.MAX_JUMP_MINUTES + 0.01, "%s jumps the clock %s minutes" % [r.id, r.minutes])
+	for kind: int in Takes.table():
+		for o: Dictionary in Takes.options(kind):
+			lt(float(o.min), Survival.MAX_JUMP_MINUTES + 0.01, "%s %s takes %s minutes" % [PropKind.NAMES[kind], o.verb, o.min])
+
+
+func test_nothing_is_made_with_a_hunter_close() -> void:
+	var g := Fx.flat()
+	var sim := FightSim.new(g.world, g.query)
+	sim.hero.pos = g.player.pos
+	g.player.sim = sim
+	g.inventory.add(&"driftwood", 2)
+	var r := Crafting.recipe(&"haft")
+	eq(Crafting.why_not(g, r), "")
+	var runner := sim.add_mob(&"runner", g.player.pos + Vector2(5, 0))
+	eq(Crafting.why_not(g, r), Survival.THREAT_LINE, "refused with a runner five tiles off")
+	var t0 := g.clock.minutes
+	check(not Crafting.make_in(g, r), "and make_in makes nothing")
+	eq(g.inventory.count(&"driftwood"), 2, "nothing spent")
+	near(g.clock.minutes, t0, 0.001, "no time passes")
+	runner.pos = g.player.pos + Vector2(12, 0)
+	eq(Crafting.why_not(g, r), "", "far off, it may be made")
+	var worker := sim.add_mob(&"harvester", g.player.pos + Vector2(4, 0))
+	eq(Crafting.why_not(g, r), "", "a worker on its round is no threat")
+	worker.disturbed = true
+	worker.set_mood(MobState.ATTACKING, 0.0)
+	eq(Crafting.why_not(g, r), Survival.THREAT_LINE, "a roused one is")
+	g.player.sim = null
 	Fx.done(g)
 
 

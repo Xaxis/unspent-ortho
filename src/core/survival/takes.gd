@@ -58,17 +58,19 @@ static func _build() -> Dictionary:
 	var t := {}
 	var fell_tree := _o(&"fell", &"timber", 2, 18.0, NEVER, {"stuff": &"iron"})
 	# Fallen wood under a crown, picked up by hand: a live tree drops a little, slowly.
-	var deadfall := _o(&"gather", &"deadwood", 1, 5.0, 36.0, {"keep": true})
+	# Picking up by hand is a few minutes of the clock: a morning's gathering at
+	# the source's minutes spent two hours before the first fire was laid.
+	var deadfall := _o(&"gather", &"deadwood", 1, 3.0, 36.0, {"keep": true})
 	var resin := _o(&"tap", &"resin", 1, 8.0, 96.0, {"keep": true})
 	t[PropKind.PINE] = [fell_tree, deadfall, resin]
 	t[PropKind.SNOW_PINE] = [fell_tree, deadfall, resin]
 	t[PropKind.BROADLEAF] = [fell_tree, deadfall]
 	# A dead tree sheds its own limbs: more of them, and they come back sooner.
 	t[PropKind.DEAD_TREE] = [_o(&"fell", &"timber", 1, 11.0, NEVER, {"stuff": &"iron"}),
-		_o(&"gather", &"deadwood", 2, 6.0, 24.0, {"keep": true, "uses": 2})]
+		_o(&"gather", &"deadwood", 2, 3.0, 24.0, {"keep": true, "uses": 2})]
 	t[PropKind.BUSH] = [
-		_o(&"gather", &"samphire", 1, 5.0, 18.0, {"keep": true, "ground": [Ground.SAND, Ground.SHINGLE, Ground.MUD]}),
-		_o(&"gather", &"berries", 1, 5.0, 36.0, {"keep": true, "ground": [Ground.GRASS, Ground.HEATH, Ground.MOSS,
+		_o(&"gather", &"samphire", 1, 3.0, 18.0, {"keep": true, "ground": [Ground.SAND, Ground.SHINGLE, Ground.MUD]}),
+		_o(&"gather", &"berries", 1, 3.0, 36.0, {"keep": true, "ground": [Ground.GRASS, Ground.HEATH, Ground.MOSS,
 			Ground.NEEDLES, Ground.SNOW, Ground.BONE, Ground.ASH, Ground.ROCK, Ground.GRAVEL, Ground.SCREE,
 			Ground.LIMESTONE, Ground.PEAT, Ground.FLOOR, Ground.ROAD, Ground.CLINKER]}),
 	]
@@ -80,34 +82,37 @@ static func _build() -> Dictionary:
 	var crottle := _o(&"scrape", &"crottle", 1, 12.0, 240.0, {"keep": true, "ground": [Ground.SNOW, Ground.ICE]})
 	t[PropKind.BOULDER] = [
 		_o(&"break", &"stone", 2, 20.0, NEVER, {"stuff": &"iron", "uses": 2}),
-		_o(&"gather", &"stone", 1, 10.0, 24.0, {"keep": true}),
+		_o(&"gather", &"stone", 1, 5.0, 24.0, {"keep": true}),
 		crottle,
 	]
 	t[PropKind.STONE_ORE] = [
 		_o(&"break", &"stone", 2, 14.0, NEVER, {"stuff": &"iron", "uses": 3}),
-		_o(&"gather", &"stone", 1, 10.0, 24.0, {"keep": true}),
+		_o(&"gather", &"stone", 1, 5.0, 24.0, {"keep": true}),
 		crottle,
 	]
 	# A fallen roof was patched in plate: turned over by hand, a piece or two comes out of the rubble.
 	t[PropKind.RUIN] = [_o(&"break", &"stone", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 2}),
-		_o(&"turn", &"scrap", 1, 60.0, 96.0, {"keep": true})]
+		_o(&"turn", &"scrap", 1, 30.0, 96.0, {"keep": true})]
 	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER, {"stuff": &"iron", "uses": 2})]
 	for pair: Array in [[PropKind.COAL_ORE, &"coal", 22.0, &"iron"], [PropKind.TIN_ORE, &"tin_ore", 22.0, &"iron"],
-			[PropKind.IRON_ORE, &"iron_ore", 30.0, &"iron"], [PropKind.COPPER_ORE, &"copper_ore", 34.0, &"steel"]]:
+			[PropKind.IRON_ORE, &"iron_ore", 30.0, &"iron"], [PropKind.COPPER_ORE, &"copper_ore", 30.0, &"steel"]]:
 		t[pair[0]] = [
 			_o(&"break", pair[1], 1, pair[2], NEVER, {"stuff": pair[3], "uses": 3}),
 			_o(&"dig", pair[1], 1, pair[2], NEVER, {"stuff": pair[3], "uses": 3}),
 		]
-	t[PropKind.MUSSEL_ROCK] = [_o(&"gather", &"mussels", 1, 6.0, 12.0, {"keep": true, "uses": 2, "tide": &"low", "bonus": [&"whelks", 0.35]})]
-	t[PropKind.DRIFTWOOD] = [_o(&"gather", &"driftwood", 2, 3.0, 12.0)]
-	t[PropKind.WRACK] = [_o(&"gather", &"wrack", 2, 4.0, 6.0)]
+	t[PropKind.MUSSEL_ROCK] = [_o(&"gather", &"mussels", 1, 3.0, 12.0, {"keep": true, "uses": 2, "tide": &"low", "bonus": [&"whelks", 0.35]})]
+	t[PropKind.DRIFTWOOD] = [_o(&"gather", &"driftwood", 2, 2.0, 12.0)]
+	t[PropKind.WRACK] = [_o(&"gather", &"wrack", 2, 2.0, 6.0)]
+	# Scrap takes jumped the clock one to two and a half hours from one press; at
+	# most half an hour now (Survival.MAX_JUMP_MINUTES), so a machine charging
+	# you is never skipped past and the first plate comes in the morning.
 	t[PropKind.TIP] = [
-		_o(&"dig", &"scrap", 1, 45.0, 48.0, {"stuff": &"iron", "keep": true, "uses": 3}),
-		_o(&"turn", &"scrap", 1, 90.0, 48.0, {"keep": true, "uses": 2}),
+		_o(&"dig", &"scrap", 1, 15.0, 48.0, {"stuff": &"iron", "keep": true, "uses": 3}),
+		_o(&"turn", &"scrap", 1, 20.0, 48.0, {"keep": true, "uses": 2}),
 	]
-	t[PropKind.WRECK] = [_o(&"break", &"scrap", 2, 120.0, NEVER, {"stuff": &"iron", "uses": 2})]
-	t[PropKind.POLE] = [_o(&"break", &"scrap", 1, 90.0, NEVER, {"stuff": &"iron"})]
-	t[PropKind.PYLON] = [_o(&"break", &"scrap", 2, 150.0, NEVER, {"stuff": &"steel", "uses": 3})]
+	t[PropKind.WRECK] = [_o(&"break", &"scrap", 2, 30.0, NEVER, {"stuff": &"iron", "uses": 2})]
+	t[PropKind.POLE] = [_o(&"break", &"scrap", 1, 30.0, NEVER, {"stuff": &"iron"})]
+	t[PropKind.PYLON] = [_o(&"break", &"scrap", 2, 30.0, NEVER, {"stuff": &"steel", "uses": 3})]
 	t[PropKind.VENT] = [_o(&"dig", &"brimstone", 1, 16.0, 72.0, {"stuff": &"iron", "keep": true, "uses": 2})]
 	return t
 

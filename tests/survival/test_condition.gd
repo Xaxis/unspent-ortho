@@ -24,9 +24,9 @@ func test_load_slows_at_the_creel_and_again_at_twice_it() -> void:
 	eq(Condition.step_extra(40.0, 40.0, 0, false, false, false), 1)
 	eq(Condition.step_extra(80.0, 40.0, 0, false, false, false), 2)
 	var g := Fx.flat()
-	g.inventory.add(&"stone", 8)
+	g.inventory.add(&"stone", 13)
 	Survival.update_body(g)
-	near(g.body.load, 41.0, 0.001, "eight stones and a knife")
+	near(g.body.load, 40.0, 0.001, "thirteen stones and a knife")
 	lt(g.body.move_factor, 1.0, "laden is slower")
 	g.inventory.add(&"basket")
 	Survival.update_body(g)
@@ -58,7 +58,9 @@ func test_eat_from_the_creel() -> void:
 	eq(g.body.hunger_level(g.clock.minutes), 1, "peckish")
 	check(not Survival.eat(g, &"mussels"), "nothing to eat")
 	g.inventory.add(&"mussels", 2)
-	eq(Survival.describe_target(g), "mussels - eat")
+	eq(Survival.describe_target(g), "", "out on the land, use on nothing never eats")
+	Survival.build(g, &"fire", true)
+	eq(Survival.describe_target(g), "mussels - eat", "by a fire it does")
 	var t0 := g.clock.minutes
 	check(Survival.eat(g, &"mussels"))
 	eq(g.inventory.count(&"mussels"), 1)
@@ -69,15 +71,46 @@ func test_eat_from_the_creel() -> void:
 
 func test_starving_on_your_feet_you_sit_down_for_a_shift() -> void:
 	var g := Fx.flat()
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
 	g.clock.skip(30.0 * 60.0)
 	eq(g.body.hunger_level(g.clock.minutes), 3)
 	var t0 := g.clock.minutes
-	Survival.tick(g, 0.0)
-	near(g.clock.minutes, t0, 0.001, "standing still, nothing happens")
 	g.player.speed = 3.0
 	Survival.tick(g, 0.0)
-	near(g.clock.minutes - t0, 480.0, 0.001, "a shift gone")
+	near(g.clock.minutes, t0, 0.001, "starving begins with a warning, not a fall")
+	check(said.has(Survival.STARVING_LINE), "and it is said: %s" % [said])
+	g.clock.skip(Survival.STARVING_GRACE_MINUTES)
+	var t1 := g.clock.minutes
+	g.player.speed = 0.0
+	Survival.tick(g, 0.0)
+	near(g.clock.minutes, t1, 0.001, "standing still, nothing happens")
+	g.player.speed = 3.0
+	Survival.tick(g, 0.0)
+	near(g.clock.minutes - t1, 480.0, 0.001, "walking on past the warning, a shift gone")
 	eq(g.body.hunger_level(g.clock.minutes), 0, "as if you ate seven hours ago")
+	Events.message.disconnect(listen)
+	Fx.done(g)
+
+
+func test_hungry_and_starving_read_differently() -> void:
+	var g := Fx.flat()
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	g.clock.skip(12.5 * 60.0)
+	eq(g.body.hunger_level(g.clock.minutes), 2, "hungry")
+	Survival.tick(g, 0.0)
+	Survival.tick(g, 0.0)
+	eq(said.count(Survival.HUNGRY_LINE), 1, "hungry is said once")
+	var hungry_pace := g.body.move_factor
+	g.clock.skip(10.0 * 60.0)
+	eq(g.body.hunger_level(g.clock.minutes), 3, "starving")
+	Survival.tick(g, 0.0)
+	eq(said.count(Survival.STARVING_LINE), 1, "starving has its own line")
+	lt(g.body.move_factor, hungry_pace - 0.05, "and a slower body")
+	Events.message.disconnect(listen)
 	Fx.done(g)
 
 

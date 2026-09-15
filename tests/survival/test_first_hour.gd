@@ -1,0 +1,136 @@
+extends TestCase
+## The first hour's survival rules: a drop verb for the slate, shore goods that
+## leave room in the creel, `use` that never eats or sleeps away from a fire,
+## night that asks for the lamp, the lamp saying when it is low, long takes and
+## eating refused with a hunter close, and a busy station collected on return.
+
+const Fx := preload("res://tests/survival/fixture.gd")
+
+
+func _listen(said: Array[String]) -> Callable:
+	var f := func(t: String) -> void: said.append(t)
+	Events.message.connect(f)
+	return f
+
+
+func test_drop_puts_things_down_and_empties_the_hand() -> void:
+	var g := Fx.flat()
+	var said: Array[String] = []
+	var f := _listen(said)
+	g.inventory.add(&"driftwood", 5)
+	eq(Survival.drop(g, &"driftwood", 2), 2, "two put down")
+	eq(g.inventory.count(&"driftwood"), 3)
+	eq(Survival.drop(g, &"driftwood", 9), 3, "no more than there is")
+	check(not g.inventory.has(&"driftwood"))
+	eq(Survival.drop(g, &"driftwood", 1), 0, "nothing left to drop")
+	eq(Survival.drop(g, &"knife", 1), 1, "the knife in hand")
+	eq(g.inventory.held, &"", "bare hands after")
+	check(said.has("Left two driftwood."), "said: %s" % [said])
+	near(g.body.load, g.inventory.bulk(), 0.001, "the body's load follows at once")
+	Events.message.disconnect(f)
+	Fx.done(g)
+
+
+func test_the_first_fire_charcoal_and_haft_leave_room_in_the_creel() -> void:
+	# Nine driftwood and two stone make a fire, charcoal and a haft (the playtest
+	# was laden before the first fire with eight driftwood and a stone).
+	var inv := Inventory.new()
+	inv.add(&"knife")
+	inv.add(&"lamp")
+	inv.add(&"driftwood", 9)
+	inv.add(&"stone", 2)
+	inv.add(&"mussels", 4)
+	lt(inv.bulk(), inv.creel() * 0.75, "a morning's gathering is under three quarters of a creel: %.1f" % inv.bulk())
+
+
+func test_use_on_nothing_out_on_the_land_never_eats_or_sleeps() -> void:
+	var g := Fx.flat(40, 22.0)
+	g.inventory.add(&"lamp")
+	g.body.lamp_lit = true
+	g.inventory.add(&"mussels", 3)
+	g.body.fed_until = g.clock.minutes - 7.0 * 60.0
+	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
+	check(not Survival.use(g), "hungry at night, nothing in front: nothing happens")
+	eq(g.inventory.count(&"mussels"), 3, "the food is still in the creel")
+	near(g.clock.hour(), 22.0, 0.01, "and the night is not slept away")
+	check(Survival.eat(g, &"mussels"), "chosen from the carrying page, it eats")
+
+
+func test_night_without_a_light_hides_what_a_hand_does_not_touch() -> void:
+	var g := Fx.flat(40, 23.0)
+	var said: Array[String] = []
+	var f := _listen(said)
+	var pine := Fx.put(g, PropKind.PINE, Vector2(1.5, 0))
+	check(Survival.in_the_dark(g), "dark")
+	check(Survival.use_target(g) == null, "a pine a step off is not found in the dark")
+	check(not Survival.use(g), "use finds nothing")
+	check(said.has(Survival.DARK_LINE), "and asks for the lamp: %s" % [said])
+	g.inventory.add(&"lamp")
+	g.body.lamp_lit = true
+	check(not Survival.in_the_dark(g), "the lamp lights it")
+	eq(Survival.use_target(g), pine, "lit, the pine is there")
+	g.body.lamp_lit = false
+	Survival.build(g, &"fire", true)
+	check(not Survival.in_the_dark(g), "so does a fire")
+	g.clock.skip(10.0 * 60.0)
+	check(not Survival.in_the_dark(g), "and the morning")
+	Events.message.disconnect(f)
+	Fx.done(g)
+
+
+func test_the_lamp_says_when_its_oil_is_low_once() -> void:
+	var g := Fx.flat(40, 21.0)
+	var said: Array[String] = []
+	var f := _listen(said)
+	g.inventory.add(&"lamp")
+	g.body.lamp_lit = true
+	var state := SurvivalState.of(g)
+	state.lamp_at = g.clock.minutes
+	state.lamp_oil = Survival.LAMP_LOW_MINUTES + 5.0
+	Survival.tick(g, 0.0)
+	eq(said.count(Survival.LAMP_LOW_LINE), 0, "plenty left")
+	g.clock.skip(10.0)
+	Survival.sweep(g, 1.0)
+	Survival.tick(g, 0.0)
+	Survival.tick(g, 0.0)
+	eq(said.count(Survival.LAMP_LOW_LINE), 1, "low, said once")
+	Events.message.disconnect(f)
+	Fx.done(g)
+
+
+func test_long_takes_and_meals_wait_until_the_hunter_is_gone() -> void:
+	var g := Fx.flat()
+	var sim := FightSim.new(g.world, g.query)
+	sim.hero.pos = g.player.pos
+	g.player.sim = sim
+	var tip := Fx.put(g, PropKind.TIP, Vector2(1.3, 0))
+	Fx.face(g, tip)
+	sim.hero.pos = g.player.pos
+	var runner := sim.add_mob(&"runner", g.player.pos + Vector2(-6, 0))
+	check(Survival.threat_near(g), "a runner six tiles off")
+	var t0 := g.clock.minutes
+	check(not Survival.use(g), "turning over a tip is refused")
+	check(SurvivalState.of(g).job.is_empty(), "nothing started")
+	near(g.clock.minutes, t0, 0.001, "no time")
+	g.inventory.add(&"mussels")
+	check(not Survival.eat(g, &"mussels"), "nor a meal")
+	var drift := Fx.put(g, PropKind.DRIFTWOOD, Vector2(0, -0.9))
+	Fx.face(g, drift, Vector2(0, 1))
+	check(Survival.use(g), "a quick grab off the strand is still a grab")
+	Survival.finish_work(g)
+	runner.pos = g.player.pos + Vector2(-20, 0)
+	Fx.face(g, tip)
+	check(Survival.use(g), "gone off, the tip may be worked")
+	g.player.sim = null
+	Fx.done(g)
+
+
+func test_a_press_of_use_on_nothing_is_answered() -> void:
+	var g := Fx.flat()
+	var heard: Array[StringName] = []
+	var f := func(n: StringName, _at: Vector3) -> void: heard.append(n)
+	Events.sfx.connect(f)
+	check(not Survival.use(g), "nothing here")
+	check(heard.has(&"refuse"), "but it is heard: %s" % [heard])
+	Events.sfx.disconnect(f)
+	Fx.done(g)

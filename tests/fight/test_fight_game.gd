@@ -6,6 +6,33 @@ extends TestCase
 const ErrorLog := preload("res://tests/fight/error_log.gd")
 
 
+## The playtest: C with a harvester charging made a haft anyway (a 30 minute
+## jump), and any skip over 30 minutes cleared the coast, deleting the machine.
+func test_a_hunter_close_stops_making_and_long_jumps_never_delete_it() -> void:
+	var o := BootOptions.parse(PackedStringArray(["--seed=4", "--size=128", "--spawn=runner", "--give=driftwood:4"]))
+	var game := Game.new()
+	tree.root.add_child(game)
+	game.setup(o)
+	await frames(3)
+	var sim := game.player.sim
+	eq(sim.living(), 1, "a runner beside the player")
+	check(Survival.threat_near(game), "it counts as a threat")
+	var before := game.clock.minutes
+	Input.action_press(&"craft")
+	await frames(4)
+	Input.action_release(&"craft")
+	await frames(4)
+	eq(game.inventory.count(&"driftwood"), 4, "C made nothing with it that close")
+	lt(game.clock.minutes - before, 1.0, "and no time jumped")
+	for reason: StringName in [&"work", &"make", &"eat", &"build"]:
+		Events.time_skipped.emit(45.0, reason)
+		eq(sim.living(), 1, "a %s jump leaves the coast as it is" % reason)
+	Events.time_skipped.emit(600.0, &"sleep")
+	eq(sim.living(), 0, "a night's sleep clears it")
+	game.queue_free()
+	await frames(1)
+
+
 func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
 	var errors := ErrorLog.new()
 	OS.add_logger(errors)

@@ -155,6 +155,7 @@ func _process(delta: float) -> void:
 		_scan_in = 0.5
 		_scan_fires()
 		_refresh_remnants()
+		_mark_station_work()
 	_acc += delta
 	if _acc < 1.0 / FPS:
 		return
@@ -163,6 +164,23 @@ func _process(delta: float) -> void:
 	_step_marks(dt)
 	_step_anims(dt)
 	_step_tokens(dt)
+
+
+## Work left at a station is seen from off across the ground: while it cooks a
+## thin smoke of pale dots rises off it; done, a couple of sparks jump from it
+## every half second until it is collected.
+func _mark_station_work() -> void:
+	var now := game.clock.minutes
+	var tick := floori(_time * 2.0)
+	for job in Survival.cooking(game):
+		var p: Vector2 = job.pos
+		if p.distance_to(game.player.pos) > FIRE_RADIUS:
+			continue
+		var at := game.world.to_3d(p) + Vector3(0, 0.45, 0)
+		if float(job.done) > now:
+			_dust(at, 3, 0.18, [Palette.STONE[5], Palette.LINEN[5]], tick * 7 + floori(p.x), 0.9, 1.4)
+		else:
+			_sparks(at, 2, tick * 11 + floori(p.y))
 
 
 func _follow_job(delta: float) -> void:

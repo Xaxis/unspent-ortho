@@ -31,6 +31,16 @@ var sweep_in := 0.0
 var lamp_oil := Condition.LAMP_FLASK_MINUTES
 ## World minute the lamp's burn was last settled (-INF: not yet).
 var lamp_at := -INF
+## Work left at stations to finish in world time: station prop id -> {prop,
+## station, recipe, makes, done (world minute), pos}. Survival.set_going / collect.
+var cooking: Dictionary = {}
+## Real seconds a nudge line was last said (line -> seconds).
+var nudged: Dictionary = {}
+## The hunger level last announced (2 hungry, 3 starving), and since when starving.
+var hunger_said := 0
+var starving_since := INF
+## The low-oil line has been said for this flask.
+var lamp_low_said := false
 
 
 static func of(game: Node) -> SurvivalState:

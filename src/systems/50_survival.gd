@@ -28,6 +28,9 @@ var _screen_touched := false
 var _screen_frame := -10
 var _use_down := false
 var _craft_down := false
+## A press of `use` made while busy is tried once the hands are free, until this real second.
+var _use_buffered_until := -1.0
+const USE_BUFFER_SECONDS := 1.5
 
 
 func setup(g: Game) -> void:
@@ -174,7 +177,11 @@ func _read_keys() -> void:
 	if game.input_blocked() or Engine.get_process_frames() - _screen_frame <= 1:
 		return
 	if use_pressed:
-		Survival.use(game)
+		if Survival.busy(game) and game.body.grip <= 0:
+			# Pressed while a take plays out: kept for the moment the hands are free.
+			_use_buffered_until = Survival.now_real() + USE_BUFFER_SECONDS
+		else:
+			Survival.use(game)
 	elif craft_pressed:
 		_craft_wait = 2
 		_screen_touched = false
@@ -184,10 +191,16 @@ func _process(delta: float) -> void:
 	if game == null:
 		return
 	_read_keys()
+	if _use_buffered_until > 0.0 and not Survival.busy(game) and not game.input_blocked():
+		if Survival.now_real() <= _use_buffered_until:
+			Survival.use(game)
+		_use_buffered_until = -1.0
 	if _craft_wait >= 0:
 		_craft_wait -= 1
-		# Only if no screen opened or closed on the same press: a crafting screen owns the key.
-		if _craft_wait < 0 and not _screen_touched and not game.input_blocked() and not Survival.busy(game):
+		# Only if no screen opened or closed on the same press: a crafting screen owns the
+		# key; and never with a hostile close (the page refused already and said why).
+		if _craft_wait < 0 and not _screen_touched and not game.input_blocked() and not Survival.busy(game) \
+				and not Survival.threat_near(game):
 			var r := Crafting.suggest(game)
 			if not r.is_empty():
 				Crafting.make_in(game, r)

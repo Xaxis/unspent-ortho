@@ -35,7 +35,19 @@ class_name Survival
 ##   hold(game, id) -> bool                  put a carried item in hand (&"" = bare hands)
 ##   hone(game) -> bool / reedge(game) -> bool   mend the held tool (see Crafting recipes sharpen/reedge)
 ##   lamp_oil(game) -> float                 world minutes of light left in the lamp and carried flasks
-##   tick(game, delta)                       per frame: finish work, body condition, regrowth, lamp oil
+##   tick(game, delta)                       per frame: finish work, body condition, regrowth, lamp oil,
+##                                           collect what a station finished, hunger's warnings
+##   threat_near(game) -> bool               a hostile body close enough that nothing long may be
+##                                           started (making, a long take, eating, sleeping, building)
+##   drop(game, id, n) -> int                put down n of a carried thing (what the slate's drop
+##                                           verb calls); returns how many went. Never drops the lamp lit.
+##   set_going(game, recipe) -> WorldProp    a long station recipe put on the station to cook in
+##                                           world time (Crafting.make_in calls it); the station prop
+##   cooking(game) -> Array[Dictionary]      what stations are working on: {station, recipe, makes,
+##                                           done (world minute), pos, prop}, soonest first
+##   collect(game) -> int                    take what finished at stations in reach (tick does it)
+##   at_rest(game) -> bool                   by a fire or in a village: where `use` on nothing eats or sleeps
+##   in_the_dark(game) -> bool               night, no lamp lit, no fire or village light: reach shrinks
 ##
 ## Events emitted: took(item, n), made(item, n), time_skipped(minutes, reason:
 ## work eat sleep make build collapse), message(line), sfx(name, at) with names
@@ -57,6 +69,32 @@ const VILLAGE_RADIUS := 11.0
 const BUILD_DISTANCE := 1.25
 ## Real seconds a first press on open ground waits for the second that builds.
 const BUILD_ASK_SECONDS := 2.0
+## No instant jump of the clock from taking or making is longer than this: the
+## day is lived in the world, not on a page. Longer station work is set going.
+const MAX_JUMP_MINUTES := 30.0
+## Setting a long recipe going at a station costs this much of the clock.
+const SET_GOING_MINUTES := 5.0
+## A take this long or longer is refused with a hostile close.
+const LONG_TAKE_MINUTES := 10.0
+## A hostile this close (Chebyshev tiles) stops anything long being started.
+const THREAT_RADIUS := 8.0
+const THREAT_LINE := "Not with that so close."
+## In the dark without a light a prop must be this close (edge, tiles) to be found.
+const DARK_REACH := 0.6
+## Nightfall past which the dark hides what is not in reach of a hand.
+const DARK_NIGHTFALL := 0.6
+## A fire lights the ground this far round it.
+const FIRE_LIGHT := 5.0
+const DARK_LINE := "Too dark to find anything. The lamp (f)."
+## Real seconds between two of the same nudge on an empty press.
+const NUDGE_SECONDS := 12.0
+## Lamp oil, lamp and carried flasks, at or under which the player is told once.
+const LAMP_LOW_MINUTES := 60.0
+const LAMP_LOW_LINE := "The lamp is low on oil."
+## Starving on your feet: this long after the warning, a body sits down.
+const STARVING_GRACE_MINUTES := 60.0
+const HUNGRY_LINE := "You are hungry. Eat something (i)."
+const STARVING_LINE := "You are weak with hunger. Eat, or you will fall."
 
 const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], PropKind.KILN: [&"kiln"],
 	PropKind.HOUSE: [&"bench", &"wheel", &"loom"]}
@@ -112,6 +150,41 @@ static func in_village(game: Game) -> bool:
 	return false
 
 
+## Where a press of `use` on nothing may eat or sleep: by a fire or in a village.
+## Anywhere else the body eats only when the player chooses it (the carrying page).
+static func at_rest(game: Game) -> bool:
+	return fire_near(game) != null or in_village(game)
+
+
+## Night, no lamp lit, and no fire or village light about: a hand finds only
+## what it touches (DARK_REACH).
+static func in_the_dark(game: Game) -> bool:
+	if game.body.lamp_lit or FightRules.nightfall(game.clock.hour()) < DARK_NIGHTFALL:
+		return false
+	return fire_near(game, FIRE_LIGHT) == null and not in_village(game)
+
+
+## A hostile body close enough that nothing long may be started: a fight on, or
+## anything roused, or any hunter, within THREAT_RADIUS. A worker going about its
+## round is not a threat until it is disturbed.
+static func threat_near(game: Game) -> bool:
+	var sim := game.player.sim if game.player != null else null
+	if sim == null:
+		return false
+	if sim.fight_on:
+		return true
+	for m in sim.mobs:
+		if not m.alive or m.removed or not bool(m.row.get("hostile", true)):
+			continue
+		if m.indifferent() and not m.roused():
+			continue
+		if m.approach == &"dart" and not m.roused():
+			continue
+		if Senses.chebyshev(m.pos, sim.hero.pos) <= THREAT_RADIUS:
+			return true
+	return false
+
+
 # --- Targets --------------------------------------------------------------
 
 static func use_target(game: Game) -> WorldProp:
@@ -120,12 +193,13 @@ static func use_target(game: Game) -> WorldProp:
 	var best: WorldProp = null
 	var best_score := INF
 	var state := SurvivalState.of(game)
+	var reach := DARK_REACH if in_the_dark(game) else REACH
 	for q in game.query.props_near(p, REACH + 2.0):
 		if not Takes.workable(q.kind) or game.world.depleted.has(q.id):
 			continue
 		var to := q.pos - p
 		var edge := to.length() - q.solid
-		if edge > REACH:
+		if edge > reach:
 			continue
 		var dot := ahead.dot(to.normalized()) if to.length() > 0.01 else 1.0
 		# Something you are pressed against counts even a little to the side.
@@ -208,7 +282,21 @@ static func use(game: Game) -> bool:
 			return sleep(game)
 		&"build":
 			return _ask_or_build(game)
+	# Nothing to do here: say so, so a press is never swallowed without a word.
+	Events.sfx.emit(&"refuse", game.player.position)
+	if in_the_dark(game):
+		_nudge(game, DARK_LINE)
 	return false
+
+
+## A line said on an empty press, at most once in NUDGE_SECONDS.
+static func _nudge(game: Game, line: String) -> void:
+	var state := SurvivalState.of(game)
+	var last: float = state.nudged.get(line, -INF)
+	if now_real() - last < NUDGE_SECONDS:
+		return
+	state.nudged[line] = now_real()
+	Events.message.emit(line)
 
 
 ## The first press asks and marks the spot; a second press in time on the same spot builds.
@@ -232,11 +320,14 @@ static func build_asked(game: Game) -> Vector2:
 	return ask.at
 
 
-## Eating comes before sleep: a body that lies down hungry wakes starving.
+## Eating comes before sleep: a body that lies down hungry wakes starving. Both
+## only by a fire or in a village (at_rest): out on the land a press of `use`
+## beside nothing never eats the food or loses the night by accident.
 static func _fallback(game: Game) -> StringName:
-	if game.body.hunger_level(game.clock.minutes) >= 1 and best_food(game) != &"":
+	var resting := at_rest(game)
+	if resting and game.body.hunger_level(game.clock.minutes) >= 1 and best_food(game) != &"":
 		return &"eat"
-	if sleep_refusal(game) == "":
+	if resting and sleep_refusal(game) == "":
 		return &"sleep"
 	if fire_near(game, 5.0) == null and _makeable_build(game, &"fire").size() > 0 and _build_spot(game, PropKind.FIRE).x > -1e8:
 		return &"build"
@@ -275,6 +366,12 @@ static func work(game: Game, prop: WorldProp) -> bool:
 	if Takes.TOOL_VERBS.has(o.verb):
 		tool = game.inventory.held
 		minutes = Items.work_minutes(o.min, tool, game.inventory.edge(tool))
+	minutes = minf(minutes, MAX_JUMP_MINUTES)
+	if minutes >= LONG_TAKE_MINUTES and threat_near(game):
+		# A long take is hours of the clock with your back turned: refused, not just remarked on.
+		Events.message.emit(THREAT_LINE)
+		Events.sfx.emit(&"refuse", at)
+		return false
 	state.job = {"prop": prop, "index": c.index, "option": o, "tool": tool, "minutes": minutes,
 		"done_at": now_real() + WORK_SECONDS}
 	game.body.busy_until = now_real() + WORK_SECONDS
@@ -351,6 +448,9 @@ static func eat(game: Game, id: StringName) -> bool:
 		if id != &"" and not game.inventory.has(id):
 			Events.message.emit("There is nothing like that to eat.")
 		return false
+	if threat_near(game):
+		Events.message.emit(THREAT_LINE)
+		return false
 	game.inventory.remove(id, 1)
 	var now := game.clock.minutes
 	game.body.fed_until = Condition.fed_after_eating(game.body.fed_until, now, Items.feeds(id))
@@ -362,6 +462,8 @@ static func eat(game: Game, id: StringName) -> bool:
 
 
 static func sleep_refusal(game: Game) -> String:
+	if threat_near(game):
+		return THREAT_LINE
 	var sheltered := fire_near(game) != null or in_village(game)
 	return Condition.sleep_line(Condition.sleep_refusal(game.clock.minutes, SurvivalState.of(game).woke_at, sheltered))
 
@@ -401,6 +503,9 @@ static func build_fire(game: Game) -> WorldProp:
 ## `charge` false leaves the minutes to the caller (Crafting.make's contract).
 static func build(game: Game, station: StringName, free: bool = false, charge: bool = true) -> WorldProp:
 	if not BUILD_KINDS.has(station) or busy(game):
+		return null
+	if not free and threat_near(game):
+		Events.message.emit(THREAT_LINE)
 		return null
 	var kind: int = BUILD_KINDS[station]
 	var recipes := _makeable_build(game, station)
@@ -515,8 +620,163 @@ static func tick(game: Game, delta: float) -> void:
 		state.sweep_in = 1.0
 		sweep(game, delta)
 	update_body(game)
-	if game.body.hunger_level(game.clock.minutes) == 3 and game.player.speed > 0.1 and state.job.is_empty():
+	if not state.cooking.is_empty():
+		collect(game)
+	_hunger(game)
+	_lamp_low(game)
+
+
+## Hungry and starving read differently: each is said once as it begins, the
+## body is slower at each (Condition.step_extra), and a starving body only sits
+## down STARVING_GRACE_MINUTES after it was warned, never on the step it begins.
+static func _hunger(game: Game) -> void:
+	var state := SurvivalState.of(game)
+	var now := game.clock.minutes
+	var level := game.body.hunger_level(now)
+	if level < 2:
+		state.hunger_said = level
+		state.starving_since = INF
+		return
+	if level > state.hunger_said:
+		state.hunger_said = level
+		Events.message.emit(STARVING_LINE if level == 3 else HUNGRY_LINE)
+	if level < 3:
+		state.starving_since = INF
+		return
+	state.starving_since = minf(state.starving_since, now)
+	if now - state.starving_since >= STARVING_GRACE_MINUTES and game.player.speed > 0.1 and state.job.is_empty():
+		state.starving_since = INF
+		state.hunger_said = 0
 		collapse(game)
+
+
+## A lit lamp with little oil left says so once, and again once more oil was poured.
+static func _lamp_low(game: Game) -> void:
+	var state := SurvivalState.of(game)
+	var oil := lamp_oil(game)
+	if not game.body.lamp_lit or oil > LAMP_LOW_MINUTES:
+		if oil > LAMP_LOW_MINUTES:
+			state.lamp_low_said = false
+		return
+	if not state.lamp_low_said:
+		state.lamp_low_said = true
+		Events.message.emit(LAMP_LOW_LINE)
+
+
+# --- Putting down -------------------------------------------------------------
+
+## Put down `n` of a carried thing (the slate's drop verb). The held tool goes
+## to bare hands, worn kit comes off. Returns how many were put down.
+static func drop(game: Game, id: StringName, n: int = 1) -> int:
+	var inv := game.inventory
+	var have := inv.count(id)
+	var k := mini(n, have)
+	if k <= 0:
+		return 0
+	if id == &"lamp" and game.body.lamp_lit and k >= have:
+		game.body.lamp_lit = false
+	inv.remove(id, k)
+	if inv.held == &"" and game.player != null and game.player.model != null:
+		game.player.model.set_held(&"")
+	update_body(game)
+	Events.sfx.emit(&"took", game.player.position)
+	Events.message.emit("Left %s." % _count_words(id, k))
+	return k
+
+
+static func _count_words(id: StringName, n: int) -> String:
+	const WORDS := ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+	var name := Items.display_name(id)
+	return "%s %s" % [WORDS[n] if n < WORDS.size() else str(n), name]
+
+
+# --- Work left at a station -------------------------------------------------
+
+## The station prop in reach that makes recipes `at` (nearest), or null.
+static func station_prop(game: Game, at: StringName) -> WorldProp:
+	var p := game.player.pos
+	var best: WorldProp = null
+	var best_d := INF
+	for q in game.query.props_near(p, STATION_REACH + 2.0):
+		if not STATION_KINDS.has(q.kind) or game.world.depleted.has(q.id) or not (STATION_KINDS[q.kind] as Array).has(at):
+			continue
+		var d := q.pos.distance_to(p) - q.solid
+		if d <= STATION_REACH and d < best_d:
+			best_d = d
+			best = q
+	return best
+
+
+## The job a station prop is working, or {}.
+static func job_at(game: Game, prop: WorldProp) -> Dictionary:
+	if prop == null:
+		return {}
+	return SurvivalState.of(game).cooking.get(prop.id, {})
+
+
+## A long recipe put on the station in reach to work in world time: the goods
+## go in now, the makings come out at `done`, collected by walking back to it.
+## The clock is charged SET_GOING_MINUTES. Returns the station, or null.
+static func set_going(game: Game, r: Dictionary) -> WorldProp:
+	var prop := station_prop(game, r.at)
+	if prop == null or not job_at(game, prop).is_empty():
+		return null
+	var inv := game.inventory
+	for id: StringName in r.needs:
+		inv.remove(id, r.needs[id])
+	var done := game.clock.minutes + SET_GOING_MINUTES + float(r.minutes)
+	SurvivalState.of(game).cooking[prop.id] = {"prop": prop, "station": r.at, "recipe": r.id,
+		"makes": (r.makes as Dictionary).duplicate(), "done": done, "pos": prop.pos}
+	_act(game, &"work", WORK_SECONDS)
+	_skip(game, SET_GOING_MINUTES, &"make")
+	Events.sfx.emit(&"make", game.world.to_3d(prop.pos))
+	var what := _makes_words(r.makes)
+	Events.message.emit("%s%s on the %s, ready at %s." % [what.substr(0, 1).to_upper(), what.substr(1), r.at, _clock(done)])
+	return prop
+
+
+## Every station's work, soonest done first.
+static func cooking(game: Game) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for id: int in SurvivalState.of(game).cooking:
+		out.append(SurvivalState.of(game).cooking[id])
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.done) < float(b.done))
+	return out
+
+
+## Take what finished at every station in reach. Returns how many jobs came out.
+static func collect(game: Game) -> int:
+	var state := SurvivalState.of(game)
+	var now := game.clock.minutes
+	var got := 0
+	for id: int in state.cooking.keys():
+		var job: Dictionary = state.cooking[id]
+		var prop: WorldProp = job.prop
+		if game.world.depleted.has(prop.id):
+			# The station is gone, and what was on it with it.
+			state.cooking.erase(id)
+			continue
+		if float(job.done) > now or prop.pos.distance_to(game.player.pos) - prop.solid > STATION_REACH:
+			continue
+		state.cooking.erase(id)
+		Crafting.receive(game.inventory, job.makes)
+		if game.player.model != null:
+			game.player.model.set_held(game.inventory.held)
+		Events.sfx.emit(&"took", game.world.to_3d(prop.pos))
+		Events.message.emit("Took %s from the %s." % [_makes_words(job.makes), job.station])
+		got += 1
+	return got
+
+
+static func _makes_words(makes: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for id: StringName in makes:
+		parts.append(_count_words(id, int(makes[id])))
+	return ", ".join(parts)
+
+
+static func _clock(minutes: float) -> String:
+	return "%02d:%02d" % [floori(fposmod(minutes, 1440.0) / 60.0), floori(fposmod(minutes, 60.0))]
 
 
 ## Once a second: things grow back, weather and water wet you, fires dry you.
