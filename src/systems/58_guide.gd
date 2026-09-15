@@ -17,6 +17,9 @@ const FIRST_AT := 1.5
 const WALKED := 3.0
 ## The plate hint waits for the fight to be over (no text in a fight).
 const SIDE_LINE := "Plate rings, and does nothing. Strike the side that is lit, while the machine is spent."
+## Said on the first kill of a game, so a player who struck it down knows it is over.
+const KILL_LINE := "Its light is out. It is finished."
+const KILL_LINE_BEAST := "It lies still. It is finished."
 
 var retired: Dictionary = {}
 var said: Array[String] = []
@@ -27,6 +30,7 @@ var _goal_at := -INF
 var _from := Vector2.ZERO
 var _rang := false
 var _off := false
+var _killed_one := false
 
 
 func setup(g: Game) -> void:
@@ -38,11 +42,12 @@ func setup(g: Game) -> void:
 	Events.hit.connect(_on_hit)
 	Events.screen_changed.connect(_on_screen)
 	Events.fight_ended.connect(_on_fight_ended)
+	Events.killed.connect(_on_killed)
 
 
 func _exit_tree() -> void:
 	for pair: Array in [[Events.took, _on_took], [Events.made, _on_made], [Events.hit, _on_hit],
-			[Events.screen_changed, _on_screen], [Events.fight_ended, _on_fight_ended]]:
+			[Events.screen_changed, _on_screen], [Events.fight_ended, _on_fight_ended], [Events.killed, _on_killed]]:
 		var s: Signal = pair[0]
 		if s.is_connected(pair[1]):
 			s.disconnect(pair[1])
@@ -105,6 +110,14 @@ func _on_hit(_attacker: Object, target: Object, damage: int, plate: bool, _at: V
 		_rang = true
 	elif damage > 0 and target is Mob and (target as Mob).state.machine:
 		retired[&"side"] = true
+
+
+func _on_killed(kind: StringName, _at: Vector3) -> void:
+	if _killed_one or _off or not bool(Roster.row(kind).get("hostile", true)):
+		return
+	_killed_one = true
+	# Said at once, over whatever else: this is the line that says the fight is won.
+	Events.message.emit(KILL_LINE if Roster.row(kind).get("machine", false) else KILL_LINE_BEAST)
 
 
 func _on_fight_ended(_outcome: StringName) -> void:

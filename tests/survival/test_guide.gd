@@ -75,3 +75,21 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	Events.message.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+
+
+func test_the_first_kill_of_a_game_is_said_once() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	Events.killed.emit(&"gulls", Vector3.ZERO)
+	eq(said.size(), 0, "a gull is not a fight won")
+	Events.killed.emit(&"runner", Vector3.ZERO)
+	eq(said, [load("res://src/systems/58_guide.gd").KILL_LINE] as Array[String], "the first kill is said")
+	Events.killed.emit(&"runner", Vector3.ZERO)
+	eq(said.size(), 1, "and only the first")
+	Events.message.disconnect(listen)
+	g.queue_free()
+	await frames(1)

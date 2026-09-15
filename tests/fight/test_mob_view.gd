@@ -180,3 +180,35 @@ func test_a_body_reports_the_top_of_its_whole_silhouette() -> void:
 	gt(top.dot(up), base + 0.5, "the top is above the feet on screen")
 	mob.queue_free()
 	await frames(1)
+
+
+## A kill reads from the camera above: within FOLD_MS the body is over on its
+## side and flat, its light is out, and it is in the dead pose; it never stands
+## as it did alive.
+func test_a_killed_machine_folds_flat_and_its_light_goes_out() -> void:
+	var sim := F.make_sim()
+	var m := F.still(sim, &"runner", Vector2(24.5, 20.5), PI)
+	var fig := Recorder.new()
+	var mob := Mob.new()
+	mob.setup(m, sim.world, null, fig)
+	mob.sync_view(0.016, sim.now)
+	near(mob.pivot.scale.y, 1.0, 0.001, "alive, it stands full height")
+	m.health = 1
+	sim._hurt_mob(m, Blow.for_item(&"knife", 5000))
+	check(not m.alive, "killed")
+	fig.now = sim.now
+	mob.sync_view(0.016, sim.now)
+	eq(fig.pose, &"dead", "the dead pose at once")
+	check(not fig.lit, "its light is out at once")
+	F.ms(sim, Mob.FOLD_MS * 0.5)
+	mob.sync_view(0.016, sim.now)
+	var half := mob.pivot.scale.y
+	check(half < 1.0 and half > Mob.FOLD_FLAT, "half way down at half the fold (%.2f)" % half)
+	F.ms(sim, Mob.FOLD_MS * 0.5 + 16)
+	mob.sync_view(0.016, sim.now)
+	near(mob.pivot.scale.y, Mob.FOLD_FLAT, 0.001, "flat within %d ms" % Mob.FOLD_MS)
+	gt(absf(mob.pivot.quaternion.get_angle()), Mob.FOLD_ROLL * 0.9, "and over on its side")
+	lt(mob.pivot.position.y, -Mob.FOLD_SINK * 0.9, "and down in the grass")
+	fig.get_parent().remove_child(fig)
+	fig.free()
+	mob.free()

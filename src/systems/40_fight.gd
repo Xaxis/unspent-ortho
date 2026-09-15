@@ -384,6 +384,10 @@ func _on_killed(e: Dictionary) -> void:
 	Events.killed.emit(m.kind, at)
 	if m.machine:
 		Events.sfx.emit(&"machine_down", at)
+		# Its light goes out with a click and a puff of its own smoke off the part:
+		# heard and seen apart from the blow that did it.
+		Events.sfx.emit(&"lamp_off", _part_at(m))
+		MobFx.puff(fx, _part_at(m), Vector2.ZERO, Palette.STONE[3], 0.7, m.id + 11)
 	_stop(HITSTOP_KILL)
 	game.camera.shake(0.1, 0.22)
 	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)

@@ -13,6 +13,12 @@ extends Node3D
 
 ## An opening older than this when first drawn is not flared (a view catching up).
 const OPEN_FLARE_MS := 200.0
+## A body that is killed folds down flat and over onto its side in this long, so
+## from the camera above a dead machine never stands as it did alive.
+const FOLD_MS := 300.0
+const FOLD_ROLL := 0.55
+const FOLD_FLAT := 0.4
+const FOLD_SINK := 0.12
 
 var kind: StringName = &""
 var pos := Vector2.ZERO
@@ -166,15 +172,35 @@ func _lean(now_ms: float, delta: float) -> void:
 			target_push = 0.08
 	elif s.alive and s.mood == MobState.ALERTED:
 		target_rise = 0.04
-	if not s.alive:
-		target_rise = -0.08
-	var rate := 1.0 if delta == 0.0 else 1.0 - exp(-30.0 * delta)
 	var fwd := Vector3(cos(s.facing), 0.0, sin(s.facing))
+	if not s.alive:
+		_fold(now_ms, fwd)
+		return
+	var rate := 1.0 if delta == 0.0 else 1.0 - exp(-30.0 * delta)
 	pivot.position = pivot.position.lerp(fwd * target_push + Vector3(0, target_rise, 0), rate)
 	# Tilt about the body's own right axis: positive leans the front down.
 	var right := Vector3(-sin(s.facing), 0.0, cos(s.facing))
 	_tilt = _tilt.slerp(Quaternion(right, -target_tilt), rate).normalized()
 	pivot.quaternion = _tilt
+
+
+## Dead: over onto its side and flat to the ground, eased out over FOLD_MS from
+## the moment it died. Set outright (not eased frame to frame), so a held shot
+## and a slow frame both show where the fold is.
+func _fold(now_ms: float, fwd: Vector3) -> void:
+	var k := folded(now_ms)
+	pivot.position = Vector3(0, -FOLD_SINK * k, 0)
+	_tilt = Quaternion(fwd, FOLD_ROLL * k)
+	pivot.quaternion = _tilt
+	pivot.scale = Vector3(1.0 + 0.1 * k, lerpf(1.0, FOLD_FLAT, k), 1.0 + 0.1 * k)
+
+
+## How far a dead body has folded, 0..1 (0 while alive).
+func folded(now_ms: float) -> float:
+	if state == null or state.alive:
+		return 0.0
+	var t := clampf((now_ms - state.dead_at) / FOLD_MS, 0.0, 1.0)
+	return 1.0 - (1.0 - t) * (1.0 - t)
 
 
 func flash(seconds: float = 0.06) -> void:
