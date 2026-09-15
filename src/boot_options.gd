@@ -15,6 +15,10 @@ extends RefCounted
 ## --frames=N          frames to wait after loading before the shot (default 8)
 ## --scale=N           upscale the shot N times, nearest (default 2)
 ## --scene=NAME        which scene to boot: game (default) | gallery
+## --give=ID:N,ID:N    put items in the creel at start (survival)
+## --held=ID           hold this item at start, given if not carried (survival)
+## --use               at start, face the nearest workable prop and work it (survival)
+## --build=STATION     at start, put a fire/bench/kiln in front of the player, free (survival)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -29,6 +33,10 @@ var shot := ""
 var frames := 8
 var scale := 2
 var scene := "game"
+var give: Dictionary = {} # StringName -> int
+var held := ""
+var use := false
+var build := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -55,5 +63,12 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"frames": o.frames = v.to_int()
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
+			"give":
+				for part in v.split(",", false):
+					var iv := part.split(":")
+					o.give[StringName(iv[0])] = iv[1].to_int() if iv.size() > 1 else 1
+			"held": o.held = v
+			"use": o.use = true
+			"build": o.build = v
 			_: push_warning("unknown option --%s" % k)
 	return o

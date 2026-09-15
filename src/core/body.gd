@@ -35,12 +35,13 @@ var busy_until := 0.0
 
 
 ## 0 fed, 1 peckish, 2 hungry, 3 starving. `now` is world minutes.
+## (source: fed 14 h after eating, peckish until 20 h, hungry until 30 h)
 func hunger_level(now: float) -> int:
 	var over := now - fed_until
 	if over <= 0.0:
 		return 0
-	if over < 180.0:
+	if over < 360.0:
 		return 1
-	if over < 720.0:
+	if over < 960.0:
 		return 2
 	return 3
