@@ -139,7 +139,7 @@ func eat(id: StringName) -> bool:
 func _on_hit(_attacker: Object, target: Object, damage: int, _plate: bool, _at: Vector3) -> void:
 	if game == null or target == null or damage <= 0:
 		return
-	if target == game.player or target == game.player.get("hero"):
+	if target == game.player or target == game.player.hero:
 		Survival.interrupt(game)
 
 

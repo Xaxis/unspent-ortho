@@ -41,37 +41,9 @@ func weather_sight() -> float:
 	return 1.0 - c * clampf(weather_strength, 0.0, 1.0)
 
 
-## Reads the weather contract if the sky package's module is present:
-## Weather.at(seed, minutes) -> {kind, strength, wind}.
+## Reads the weather: Weather.at(seed, minutes) -> {kind, strength, wind}.
 func read_weather() -> void:
-	var script := _weather_script()
-	if script == null:
-		return
-	var w: Variant = script.call("at", seed_value, minutes)
-	if w is Dictionary:
-		var d: Dictionary = w
-		var k: Variant = d.get("kind", "fair")
-		if k is String or k is StringName:
-			weather = StringName(String(k).to_lower())
-		weather_strength = float(d.get("strength", 0.0))
-		wind = float(d.get("wind", 0.0))
-
-
-static var _weather_checked := false
-static var _weather: GDScript = null
-
-
-static func _weather_script() -> GDScript:
-	if _weather_checked:
-		return _weather
-	_weather_checked = true
-	const PATH := "res://src/core/weather.gd"
-	if not ResourceLoader.exists(PATH):
-		return null
-	var s: GDScript = load(PATH)
-	if s == null:
-		return null
-	for m: Dictionary in s.get_script_method_list():
-		if m.name == "at":
-			_weather = s
-	return _weather
+	var d := Weather.at(seed_value, minutes)
+	weather = StringName(String(d.get("kind", "fair")).to_lower())
+	weather_strength = float(d.get("strength", 0.0))
+	wind = float(d.get("wind", 0.0))

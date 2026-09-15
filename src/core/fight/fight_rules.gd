@@ -59,8 +59,8 @@ const MEND_MINUTES := 60.0
 const HURT_MINUTES := 600.0
 
 # --- tools ---
-## The edge at which a worn tool is noticed, once (source: edge <= 3500).
-const DULL_EDGE := 3500
+## The edge at which a worn tool is noticed, once: Inventory.DULL_EDGE.
+const DULL_EDGE := Inventory.DULL_EDGE
 const DULL_LINE := "The edge is going."
 ## A found weapon's charge, the item its `wick` counts.
 const CHARGE := &"wick"
@@ -166,8 +166,7 @@ static func laden_tier(carried: float) -> int:
 ## (`worn`, the survival package's) is asked for that; a bag without one counts
 ## any carried piece, so kit works before and after the two are merged.
 static func wears(inv: Inventory, slot: StringName) -> bool:
-	if inv == null:
-		return false
+	return inv != null and inv.wears(slot)
 	if &"worn" in inv:
 		var worn: StringName = inv.get(&"worn")
 		return worn != &"" and Items.def(worn).get("kit", &"") == slot
@@ -177,20 +176,12 @@ static func wears(inv: Inventory, slot: StringName) -> bool:
 	return false
 
 
-## Wear a tool by `uses` (edge = 10000 - spent x 10000 / bite). Never breaks.
-## Returns true the one time the edge falls far enough to be noticed. A bag
-## that wears its own tools (and remembers that notice) is left to do it.
+## Wear a tool by `uses` through Inventory.wear (survival's edge rules, which
+## also remember the one notice). True the time the edge goes dull.
 static func wear(inv: Inventory, id: StringName, uses: int) -> bool:
 	if inv == null or id == &"" or not inv.has(id):
 		return false
-	if inv.has_method(&"wear"):
-		return bool(inv.call(&"wear", id, uses))
-	var bite: int = Items.def(id).get("bite", 0)
-	if bite <= 0 or not inv.edges.has(id):
-		return false
-	var before: int = inv.edges[id]
-	inv.edges[id] = maxi(0, before - roundi(uses * 10000.0 / bite))
-	return before > DULL_EDGE and int(inv.edges[id]) <= DULL_EDGE
+	return inv.wear(id, uses)
 
 
 ## Spend a found weapon's charges from the bag. False (and nothing spent) when there are too few.

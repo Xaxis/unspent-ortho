@@ -619,14 +619,12 @@ static func collapse(game: Game) -> void:
 
 # --- Plumbing ----------------------------------------------------------------
 
-## Turn the player to `angle` (radians, 0 = east). If a fight body stands in for
-## the player (the fight package's `hero`), it is turned too, or it would turn
-## the player straight back.
+## Turn the player to `angle` (radians, 0 = east). The fight body that stands
+## in for the player is turned too, or it would turn the player straight back.
 static func face(game: Game, angle: float) -> void:
 	game.player.facing = angle
-	var hero: Variant = game.player.get("hero")
-	if hero is Object and is_instance_valid(hero) and "facing" in hero:
-		(hero as Object).set("facing", angle)
+	if game.player.hero != null:
+		game.player.hero.facing = angle
 	game.player.drive(Vector2.ZERO, false, 0.0)
 
 
@@ -642,31 +640,9 @@ static func _act(game: Game, action: StringName, seconds: float) -> void:
 		game.player.model.play_action(action, seconds)
 
 
-static var _weather: GDScript = null
-static var _weather_checked := false
-static var _weather_by_place := false
-
-
-## Is the sky wetting a body at `minutes`, where it stands? False until
-## src/core/weather.gd exists (it is the sky package's; reached by name so this
-## file loads before it lands).
+## Is the sky wetting a body at `minutes`, where it stands (the weather of
+## the country underfoot, so a front that rains on the coast snows up north)?
 static func _weather_wets(game: Game, minutes: float) -> bool:
-	if not _weather_checked:
-		_weather_checked = true
-		if ResourceLoader.exists("res://src/core/weather.gd"):
-			_weather = load("res://src/core/weather.gd")
-			for m: Dictionary in _weather.get_script_method_list():
-				if m.name == "at_place":
-					_weather_by_place = true
-	if _weather == null:
-		return false
-	var wx: Variant
-	if _weather_by_place:
-		var p := game.player.pos
-		wx = _weather.call("at_place", game.world.seed_value, minutes, game.world.country_at(floori(p.x), floori(p.y)))
-	else:
-		wx = _weather.call("at", game.world.seed_value, minutes)
-	if not wx is Dictionary:
-		return false
-	var d: Dictionary = wx
+	var p := game.player.pos
+	var d := Weather.at_place(game.world.seed_value, minutes, game.world.country_at(floori(p.x), floori(p.y)))
 	return Condition.wets(String(d.get("kind", "")), float(d.get("strength", 0.0)))

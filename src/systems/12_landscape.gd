@@ -3,28 +3,20 @@ extends GameSystem
 ## once the sky package lands it), and --stats, which prints what a frame cost
 ## just before a shot is taken.
 
-const WEATHER := "res://src/core/weather.gd"
 
 var _frames := 0
-var _weather: GDScript
 var _wind := 0.35
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
-	if ResourceLoader.exists(WEATHER):
-		_weather = load(WEATHER) as GDScript
 
 
 func _process(delta: float) -> void:
 	if game == null or game.view == null:
 		return
 	_frames += 1
-	var target := 0.35
-	if _weather != null:
-		var wx: Variant = _weather.call("at", game.world.seed_value, game.clock.minutes)
-		if wx is Dictionary and (wx as Dictionary).has("wind"):
-			target = clampf(float((wx as Dictionary)["wind"]), 0.0, 1.0)
+	var target := clampf(float(Weather.at(game.world.seed_value, game.clock.minutes).get("wind", 0.35)), 0.0, 1.0)
 	_wind = lerpf(_wind, target, 1.0 - exp(-0.5 * delta))
 	RenderingServer.global_shader_parameter_set("wind_strength", _wind)
 	if game.options.stats and _frames == maxi(3, game.options.frames - 1):
