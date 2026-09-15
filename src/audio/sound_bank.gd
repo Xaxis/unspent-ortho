@@ -553,6 +553,11 @@ func adopt(b: Baked) -> void:
 	_finish(job)
 
 
+## Forget what is queued; what is already baking finishes and is kept.
+func drop_queue() -> void:
+	_queue.clear()
+
+
 ## Drop everything queued and wait out what is already running (quitting).
 func cancel() -> void:
 	_queue.clear()

@@ -232,3 +232,28 @@ func test_a_page_muffles_the_world_and_pause_muffles_more() -> void:
 	near(AudioServer.get_bus_volume_db(world), 0.0, 0.05, "open air again")
 	check(not AudioServer.is_bus_effect_enabled(world, SoundBuses.WORLD_LOWPASS), "filter off when not needed")
 	_done(parts)
+
+
+func test_a_machine_sounds_the_same_every_time_and_a_blow_does_not() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	_adopt(sys, &"alert_harvester")
+	_adopt(sys, &"hit_flesh")
+	var at := Vector3(g.player.pos.x + 1.0, 0.0, g.player.pos.y)
+	var pitches := {}
+	for i in 6:
+		sys.play(&"alert_harvester", at)
+		for v in sys._voices:
+			if v.playing and v.stream == sys.bank.get_baked(&"alert_harvester").stream:
+				pitches[v.pitch_scale] = true
+	eq(pitches.size(), 1, "an alert is identical every time")
+	check(pitches.has(1.0), "at its own pitch")
+	var flesh := {}
+	for i in 6:
+		sys.play(&"hit_flesh", at)
+	for v in sys._voices:
+		if v.playing and sys._voice_name[sys._voices.find(v)] == &"hit_flesh":
+			flesh[v.pitch_scale] = true
+	gt(float(flesh.size()), 1.0, "blows land a little differently")
+	_done(parts)

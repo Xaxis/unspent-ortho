@@ -22,6 +22,8 @@ const MUFFLE_FADE := 0.12
 const VOICES := 14
 const UI_VOICES := 3
 const DISK_CACHE := "user://sound_cache"
+## One-shots made by machines outside SoundSignals: played at their own pitch.
+const EXACT: Array[StringName] = [&"grip", &"machine_down", &"alert"]
 ## Per sound name, how many may sound at once before the oldest is cut.
 const POLYPHONY := 3
 ## Screen offset (pixels from centre) where the sea is heard at full lean.
@@ -76,6 +78,7 @@ var _last_variant: Dictionary = {}
 var _last_killed: StringName = &""
 var _open_pages: Dictionary = {}
 var _played := 0
+var _bake_ahead := false
 
 
 func setup(g: Game) -> void:
@@ -121,6 +124,7 @@ func setup(g: Game) -> void:
 	for n: StringName in WARM:
 		for v in range(1, SoundBank.variants(n)):
 			bank.request(SoundBank.key_for(n, v))
+	_bake_ahead = true
 	print("audio setup %.1f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
 
 
@@ -130,7 +134,15 @@ func _exit_tree() -> void:
 		if sig.is_connected(pair[1]):
 			sig.disconnect(pair[1])
 	SoundBuses.set_muffle(0.0)
+	# A game replaced by another (the title, a new seed) keeps the shared bank:
+	# what is baking finishes for the next one; only the queue for this place goes.
 	if bank != null:
+		bank.drop_queue()
+
+
+func _notification(what: int) -> void:
+	# Quitting: let running bakes finish before the engine takes the scripts away.
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and bank != null:
 		bank.cancel()
 
 
@@ -166,8 +178,9 @@ func advance(delta: float) -> void:
 		_machine_t = MACHINE_EVERY
 		_pick_machine()
 	_mix_machine(delta)
-	muffle += (muffle_target - muffle) * (1.0 - exp(-delta / MUFFLE_FADE))
-	SoundBuses.set_muffle(muffle)
+	if absf(muffle_target - muffle) > 1e-4:
+		muffle += (muffle_target - muffle) * (1.0 - exp(-delta / MUFFLE_FADE))
+		SoundBuses.set_muffle(muffle if absf(muffle_target - muffle) > 1e-4 else muffle_target)
 
 
 # ------------------------------------------------------------------ one-shots
@@ -211,7 +224,8 @@ func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0
 	p.stream = baked.stream
 	p.bus = &"SfxFar" if (not here and d > SoundMix.SFX_FAR and baked.bus == &"SFX" and cat != &"thunder") else baked.bus
 	p.volume_db = db
-	var natural := cat != &"thunder"
+	# Living and made things vary a little each time; a machine never does.
+	var natural := cat != &"thunder" and not SoundSignals.handles(name) and not name in EXACT
 	p.pitch_scale = 1.0 + (Rng.hash01(_played, 0x77) - 0.5) * 0.06 if natural else 1.0
 	p.position = _screen_centre() if here else _screen_at(Vector2(at.x, at.z))
 	p.play()
@@ -338,9 +352,11 @@ func _scan() -> void:
 	sea = SoundMix.sea_near(game.world, game.player.pos)
 	river = SoundMix.river_near(game.world, game.player.pos)
 	remote = SoundMix.remoteness(game.world, game.player.pos)
-	# The next country is baked while it is still a walk away.
-	for bed in SoundMix.beds_ahead(game.world, game.player.pos):
-		bank.request(bed)
+	# The next country is baked while it is still a walk away (after setup has
+	# queued what is heard here, loudest first).
+	if _bake_ahead:
+		for bed in SoundMix.beds_ahead(game.world, game.player.pos):
+			bank.request(bed)
 
 
 func _read_weather() -> void:
