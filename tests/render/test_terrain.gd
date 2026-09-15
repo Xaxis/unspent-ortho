@@ -310,3 +310,25 @@ func test_masts_carry_cables_from_their_arms() -> void:
 	eq(WorldView.cable_points(PropKind.PYLON).size(), 4, "pylon insulators")
 	eq(WorldView.cable_points(PropKind.POLE).size(), 2, "pole insulators")
 	eq(WorldView.cable_points(PropKind.PINE).size(), 0, "a tree carries none")
+
+
+func test_streamed_chunks_are_built_off_the_main_thread_and_match_a_direct_build() -> void:
+	var w := fixture()
+	var view := WorldView.new()
+	view.setup(w)
+	tree.root.add_child(view)
+	view.focus = Vector2(40, 40)
+	var deadline := Time.get_ticks_msec() + 10000
+	while view.pending() > 0 and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+	eq(view.pending(), 0, "every wanted chunk streamed in")
+	gt(view.chunk_count(), 1, "chunks built")
+	lt(view.main_ms / maxf(1.0, view.build_count), view.build_ms / maxf(1.0, view.build_count), "the main thread did only part of each build")
+	var streamed := view.chunk_at(Vector2(40, 40))
+	var direct := TerrainMesher.new(w).build(1, 1)
+	check(streamed != null, "the focus chunk exists")
+	if streamed != null:
+		eq(streamed.key, direct.key, "a streamed chunk is the same land")
+		eq(streamed.terrain.surface_get_array_len(0), direct.terrain.surface_get_array_len(0), "and the same mesh")
+	view.queue_free()
+	await tree.process_frame

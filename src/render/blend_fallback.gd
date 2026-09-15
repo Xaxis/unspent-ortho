@@ -29,6 +29,9 @@ const REACH := 12.0
 ## it is further out than REACH and drawn as heartland.
 const GEN_FLOOR := 0.2
 
+const _SCAN_DX: PackedInt32Array = [-1, -1, 0, 1]
+const _SCAN_DY: PackedInt32Array = [0, -1, -1, -1]
+
 var world: WorldData
 ## True when the world carries no transitions of its own.
 var active := false
@@ -86,46 +89,63 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 	land_d.fill(1e6)
 	var land := PackedByteArray()
 	land.resize(n)
+	var any_sea := false
+	var any_border := false
 	for gy in gh:
 		for gx in gw:
 			var i := gy * gw + gx
 			var c := own[i]
 			if c == Country.SEA:
+				any_sea = true
 				continue
 			land_d[i] = 0.0
 			land[i] = c
-			for q: int in [i - 1 if gx > 0 else -1, i + 1 if gx < gw - 1 else -1, i - gw if gy > 0 else -1, i + gw if gy < gh - 1 else -1]:
-				if q >= 0 and own[q] != Country.SEA and own[q] != c:
-					dist[i] = 0.5
-					other[i] = own[q]
-	for pass_i in 2:
-		var fwd := pass_i == 0
-		for yy in gh:
-			var gy := yy if fwd else gh - 1 - yy
-			for xx in gw:
-				var gx := xx if fwd else gw - 1 - xx
-				var i := gy * gw + gx
-				var c := own[i]
-				for k in 4:
-					# Behind this point in scan order: west, north-west, north, north-east.
-					var dx: int = [-1, -1, 0, 1][k] * (1 if fwd else -1)
-					var dy: int = [0, -1, -1, -1][k] * (1 if fwd else -1)
-					var nx := gx + dx
-					var ny := gy + dy
-					if nx < 0 or ny < 0 or nx >= gw or ny >= gh:
-						continue
-					var q := ny * gw + nx
-					var cost := 1.0 if dx == 0 or dy == 0 else 1.4142
-					if land_d[q] + cost < land_d[i]:
-						land_d[i] = land_d[q] + cost
-						land[i] = land[q]
-					if c == Country.SEA or dist[q] + cost >= dist[i]:
-						continue
-					var across := other[q] if own[q] == c else own[q]
-					if across == c or across == Country.SEA:
-						continue
-					dist[i] = dist[q] + cost
-					other[i] = across
+			if gx > 0 and own[i - 1] != Country.SEA and own[i - 1] != c:
+				dist[i] = 0.5
+				other[i] = own[i - 1]
+			elif gx < gw - 1 and own[i + 1] != Country.SEA and own[i + 1] != c:
+				dist[i] = 0.5
+				other[i] = own[i + 1]
+			elif gy > 0 and own[i - gw] != Country.SEA and own[i - gw] != c:
+				dist[i] = 0.5
+				other[i] = own[i - gw]
+			elif gy < gh - 1 and own[i + gw] != Country.SEA and own[i + gw] != c:
+				dist[i] = 0.5
+				other[i] = own[i + gw]
+			if dist[i] < 1.0:
+				any_border = true
+	# Borders matter only when this fallback draws them; the nearest land only
+	# when there is sea.
+	var do_border := active and any_border
+	if do_border or any_sea:
+		for pass_i in 2:
+			var sgn := 1 if pass_i == 0 else -1
+			for yy in gh:
+				var gy := yy if pass_i == 0 else gh - 1 - yy
+				for xx in gw:
+					var gx := xx if pass_i == 0 else gw - 1 - xx
+					var i := gy * gw + gx
+					var c := own[i]
+					for k in 4:
+						# Behind this point in scan order: west, north-west, north, north-east.
+						var dx: int = _SCAN_DX[k] * sgn
+						var dy: int = _SCAN_DY[k] * sgn
+						var nx := gx + dx
+						var ny := gy + dy
+						if nx < 0 or ny < 0 or nx >= gw or ny >= gh:
+							continue
+						var q := ny * gw + nx
+						var cost := 1.0 if k != 1 and k != 3 else 1.4142
+						if land_d[q] + cost < land_d[i]:
+							land_d[i] = land_d[q] + cost
+							land[i] = land[q]
+						if not do_border or c == Country.SEA or dist[q] + cost >= dist[i]:
+							continue
+						var across := other[q] if own[q] == c else own[q]
+						if across == c or across == Country.SEA:
+							continue
+						dist[i] = dist[q] + cost
+						other[i] = across
 	for y in range(y0, y1):
 		var v := clampf((y + 0.5) / SAMPLE - gy0 - 0.5, 0.0, gh - 1.001)
 		var iv := floori(v)
@@ -156,7 +176,8 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 			var d := top + ((dist[a + gw] + (dist[a + gw + 1] - dist[a + gw]) * fu) - top) * fv
 			var across := other[near]
 			if across == Country.SEA or across == c:
-				for q: int in [a, a + 1, a + gw, a + gw + 1]:
+				for qi in 4:
+					var q := a + (qi & 1) + (gw if qi >= 2 else 0)
 					if other[q] != Country.SEA and other[q] != c:
 						across = other[q]
 						break
@@ -164,8 +185,9 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 				out_country2[o] = c
 				out_blend[o] = 0.0
 				continue
-			out_country2[o] = across
-			out_blend[o] = 0.5 * clampf(1.0 - maxf(0.0, d * SAMPLE - 1.0) / REACH, 0.0, 1.0)
+			var bl := 0.5 * clampf(1.0 - maxf(0.0, d * SAMPLE - 1.0) / REACH, 0.0, 1.0)
+			out_country2[o] = across if bl > 0.0 else c
+			out_blend[o] = bl
 
 
 ## A blend pulled in to the band: `floor` and below is heartland (0), the

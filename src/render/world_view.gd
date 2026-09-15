@@ -4,8 +4,10 @@ extends Node3D
 ## at most five draws, however much is in it: terrain, water, decor, MADE props
 ## and FOUND props. Props and decor are baked into one mesh each per chunk
 ## (native array transforms), so draw calls do not grow with the trees.
-## Chunks are built a few per frame while playing, or all at once with
-## ensure_near() (startup, screenshots, tests).
+## While playing, chunks are built one at a time on a worker thread (land,
+## water and decor arrays) and turned into meshes on the main thread, so
+## streaming never stalls a frame; ensure_near() builds synchronously
+## (startup, screenshots, tests).
 ##
 ## The view radius follows the camera: a chunk is wanted while it touches the
 ## square that holds the camera's ground footprint plus a margin for tall things.
@@ -20,12 +22,21 @@ const WIND_BEARING := 0.42
 @export var margin := 6.0
 ## Chunks are dropped once they are this many tiles outside the wanted square.
 @export var keep := 20.0
-@export var builds_per_frame := 1
+## Build streamed chunks on a worker thread (off: build in _process).
+@export var threaded := true
 
 var world: WorldData
 var focus := Vector2.ZERO
 var mesher: TerrainMesher
 var decor: Decor
+# The worker's own mesher and decor: neither is safe to share between threads.
+var _bg_mesher: TerrainMesher
+var _bg_decor: Decor
+var _task := -1
+var _task_key := Vector2i.ZERO
+var _task_chunk: TerrainMesher.Chunk
+var _task_decor: Array = []
+var _task_usec := 0
 var _chunks: Dictionary = {} # Vector2i -> Node3D
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
@@ -33,16 +44,21 @@ var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id p
 var _world_mat: ShaderMaterial
 var _water_mat: ShaderMaterial
 
-## Build timing, for --stats.
+## Build timing, for --stats: whole builds (arrays, meshes, props) and the
+## part of each that ran on the main thread.
 var build_count := 0
 var build_ms := 0.0
 var build_ms_max := 0.0
+var main_ms := 0.0
+var main_ms_max := 0.0
 
 
 func setup(w: WorldData) -> void:
 	world = w
 	mesher = TerrainMesher.new(w)
 	decor = Decor.new(w)
+	_bg_mesher = TerrainMesher.new(w)
+	_bg_decor = Decor.new(w)
 	_world_mat = ShaderMaterial.new()
 	_world_mat.shader = preload("res://src/render/world.gdshader")
 	_water_mat = ShaderMaterial.new()
@@ -118,13 +134,24 @@ func pending() -> int:
 func _process(_delta: float) -> void:
 	if world == null:
 		return
-	var built := 0
-	for key in _wanted(0.0):
-		if built >= builds_per_frame:
-			break
-		if not _chunks.has(key):
+	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		if not _chunks.has(_task_key):
+			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec)
+		_task_chunk = null
+		_task_decor = []
+	var wanted := _wanted(0.0)
+	for key in wanted:
+		if _chunks.has(key) or (_task >= 0 and key == _task_key):
+			continue
+		if threaded:
+			if _task < 0:
+				_task_key = key
+				_task = WorkerThreadPool.add_task(_build_worker.bind(key), false, "chunk")
+		else:
 			_build(key)
-			built += 1
+		break
 	var keep_set := {}
 	for key in _wanted(keep):
 		keep_set[key] = true
@@ -133,6 +160,19 @@ func _process(_delta: float) -> void:
 			_chunks[key].queue_free()
 			_chunks.erase(key)
 			_data.erase(key)
+
+
+func _exit_tree() -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+
+
+func _build_worker(key: Vector2i) -> void:
+	var t0 := Time.get_ticks_usec()
+	_task_chunk = _bg_mesher.build_arrays(key.x, key.y)
+	_task_decor = _bg_decor.build_arrays(_task_chunk)
+	_task_usec = Time.get_ticks_usec() - t0
 
 
 ## Half the side, in tiles, of the square around the focus that the camera sees.
@@ -176,9 +216,18 @@ func _wanted(extra: float) -> Array[Vector2i]:
 
 func _build(key: Vector2i) -> void:
 	var t0 := Time.get_ticks_usec()
+	var ch := mesher.build_arrays(key.x, key.y)
+	var dec := decor.build_arrays(ch)
+	_add_chunk(key, ch, dec, Time.get_ticks_usec() - t0)
+
+
+## Put a chunk built as arrays into the scene: meshes, decor, props.
+## `worker_usec`: what building its arrays cost.
+func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, worker_usec: int) -> void:
+	var t0 := Time.get_ticks_usec()
 	var node := Node3D.new()
 	node.name = "chunk_%d_%d" % [key.x, key.y]
-	var ch := mesher.build(key.x, key.y)
+	ch.commit()
 	_data[key] = ch
 	var terrain := MeshInstance3D.new()
 	terrain.name = "terrain"
@@ -192,7 +241,7 @@ func _build(key: Vector2i) -> void:
 		sea.material_override = _water_mat
 		sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(sea)
-	var dm := decor.build(ch)
+	var dm := Decor.make_mesh(decor_arrays)
 	if dm != null:
 		var mi := MeshInstance3D.new()
 		mi.name = "decor"
@@ -203,11 +252,22 @@ func _build(key: Vector2i) -> void:
 	_build_props(node, key)
 	add_child(node)
 	_chunks[key] = node
-	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	var main := (Time.get_ticks_usec() - t0) / 1000.0
+	var ms := worker_usec / 1000.0 + main
 	build_count += 1
 	build_ms += ms
 	build_ms_max = maxf(build_ms_max, ms)
+	main_ms += main
+	main_ms_max = maxf(main_ms_max, main)
 	chunk_built.emit(key.x, key.y)
+
+
+## Cumulative mesher stage times (usec) of both meshers, for --stats.
+func stage_usec() -> PackedInt64Array:
+	var out := mesher.prof.duplicate()
+	for i in out.size():
+		out[i] += _bg_mesher.prof[i]
+	return out
 
 
 ## Rebuild the props of the chunk holding `prop` (after it was taken, grew back,

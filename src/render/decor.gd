@@ -39,6 +39,8 @@ static var _SPECK := PackedByteArray()
 ## ground -> [kinds: PackedInt32Array, cumulative: PackedFloat32Array, items per tile]
 var _tables: Dictionary = {}
 static var _templates: Dictionary = {}
+## Decor is built on a worker thread while the main thread may build too.
+static var _lock := Mutex.new()
 
 
 ## Raw arrays of one decor model.
@@ -118,6 +120,20 @@ func density(g: int) -> float:
 
 
 func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
+	return make_mesh(build_arrays(ch))
+
+
+## The mesh of arrays from build_arrays() (main thread), or null.
+static func make_mesh(arrays: Array) -> ArrayMesh:
+	if arrays.is_empty():
+		return null
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+## Surface arrays of a chunk's decor ([] for none). Safe on a worker thread.
+func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
@@ -216,7 +232,7 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 		uv.append_array(tpl.uv)
 		uv2.append_array(tpl.uv2)
 	if v.is_empty():
-		return null
+		return []
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = v
@@ -224,9 +240,7 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 	arrays[Mesh.ARRAY_COLOR] = c
 	arrays[Mesh.ARRAY_TEX_UV] = uv
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
+	return arrays
 
 
 ## True when the lattice cell under (x, y) is one dry terrace.
@@ -247,16 +261,19 @@ func _pick(table: Array, r: float) -> int:
 
 static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 	var key := (kind * 8 + country) * 4 + stage
-	if not _templates.has(key):
+	_lock.lock()
+	var t: Tpl = _templates.get(key)
+	if t == null:
 		var k := kit(kind, country, stage)
-		var t := Tpl.new()
+		t = Tpl.new()
 		t.v = k.made.verts
 		t.n = k.made.normals
 		t.c = k.made.colors
 		t.uv = k.made.uvs
 		t.uv2 = k.made.uv2s
 		_templates[key] = t
-	return _templates[key]
+	_lock.unlock()
+	return t
 
 
 ## Grass colours of a country: [blade, tip].

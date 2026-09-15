@@ -35,6 +35,9 @@ const RES := 2
 ## folds the field and kinks every edge into right-angled zigzags.
 const DOMAIN_WARP := 1.0
 const WARP_SCALE := 0.45
+## The finer warp that frays ground and water edges: tiles, and per tile.
+const FRAY := 0.3
+const FRAY_SCALE := 0.9
 ## Inland water: the sheet stands this far above its tile's level (a walker's shins)...
 const WADE := 0.3
 ## ...and the bed sinks this far below it.
@@ -70,8 +73,10 @@ const WATER_BIAS := 0.7
 const SPUR_PASSES := 2
 static var _LIFTS := PackedFloat32Array()
 var _blur: Dictionary = {}
-## Cumulative build time by stage (usec) and vertices, for tools/gd/bench_chunks.gd.
-static var PROF := PackedInt64Array([0, 0, 0, 0, 0, 0, 0, 0])
+## Cumulative build time of this mesher by stage (usec): fill, shore, tiles,
+## cells, water, arrays, vertices, lattice. Per instance, so a mesher building
+## on a worker thread never shares it (WorldView reads it for --stats).
+var prof := PackedInt64Array([0, 0, 0, 0, 0, 0, 0, 0])
 ## Tiles of country and shore data kept around a chunk for warped lookups.
 const RING := 2
 
@@ -145,6 +150,10 @@ class Chunk:
 	var n: int
 	var terrain: ArrayMesh
 	var water: ArrayMesh
+	## Surface arrays, until commit() turns them into the meshes above (a
+	## worker thread builds arrays; meshes are made on the main thread).
+	var terrain_arrays: Array = []
+	var water_arrays: Array = []
 	## Per lattice point ((n + 1) * (h * RES + 1), row-major): field, terrace, key.
 	var f := PackedFloat32Array()
 	var t := PackedInt32Array()
@@ -168,6 +177,19 @@ class Chunk:
 	## and how far toward it the tile has turned (0..0.5, BlendFallback.fill).
 	var c2 := PackedByteArray()
 	var blend := PackedFloat32Array()
+	## Make the meshes from the arrays (main thread).
+	func commit() -> void:
+		terrain = ArrayMesh.new()
+		if not terrain_arrays.is_empty():
+			var flags := Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+			terrain.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, terrain_arrays, [], {}, flags)
+		water = null
+		if not water_arrays.is_empty():
+			water = ArrayMesh.new()
+			water.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, water_arrays)
+		terrain_arrays = []
+		water_arrays = []
+
 	## Per lattice point: hummock height added to the terrace (soft ground only).
 	var bump := PackedFloat32Array()
 
@@ -307,35 +329,38 @@ func _eco_p(grid: PackedFloat32Array, gx: float, gy: float, rw: int) -> float:
 	return top + ((grid[a + rw + 1] + (grid[a + rw + 2] - grid[a + rw + 1]) * fx) - top) * fy
 
 
-## The weight by which the last _major() choice beat the runner-up.
-static var _major_margin := 1.0
+## The weight by which the last _major4() choice beat the runner-up.
+var _major_margin := 1.0
 
 
-## The value among four tiles' `vals` with the most bilinear weight.
-static func _major(vals: PackedByteArray, o00: int, o10: int, o01: int, o11: int, w00: float, w10: float, w01: float, w11: float) -> int:
-	var v0 := vals[o00]
-	var v1 := vals[o10]
-	var v2 := vals[o01]
-	var v3 := vals[o11]
+## The value among four with the most bilinear weight; _major_margin says by
+## how much it beat the runner-up.
+func _major4(v0: int, v1: int, v2: int, v3: int, w00: float, w10: float, w01: float, w11: float) -> int:
 	var s0 := w00 + (w10 if v1 == v0 else 0.0) + (w01 if v2 == v0 else 0.0) + (w11 if v3 == v0 else 0.0)
-	var s1 := w10 + (w01 if v2 == v1 else 0.0) + (w11 if v3 == v1 else 0.0)
-	var s2 := w01 + (w11 if v3 == v2 else 0.0)
-	if v1 == v0:
-		s1 = 0.0
-	if v2 == v0 or v2 == v1:
-		s2 = 0.0
+	var s1 := 0.0 if v1 == v0 else w10 + (w01 if v2 == v1 else 0.0) + (w11 if v3 == v1 else 0.0)
+	var s2 := 0.0 if v2 == v0 or v2 == v1 else w01 + (w11 if v3 == v2 else 0.0)
 	var s3 := w11 if v3 != v0 and v3 != v1 and v3 != v2 else 0.0
 	var best := v0
 	var bw := s0
 	var second := 0.0
-	for pair: Array in [[v1, s1], [v2, s2], [v3, s3]]:
-		var sw: float = pair[1]
-		if sw > bw:
-			second = bw
-			bw = sw
-			best = pair[0]
-		elif sw > second:
-			second = sw
+	if s1 > bw:
+		second = bw
+		bw = s1
+		best = v1
+	elif s1 > second:
+		second = s1
+	if s2 > bw:
+		second = bw
+		bw = s2
+		best = v2
+	elif s2 > second:
+		second = s2
+	if s3 > bw:
+		second = bw
+		bw = s3
+		best = v3
+	elif s3 > second:
+		second = s3
 	_major_margin = (bw - second) * 1.6
 	return best
 
@@ -575,11 +600,9 @@ func smooth_level(x: int, y: int) -> float:
 
 ## Near an edge the field is read through a gentle domain warp, so the contour
 ## wanders like a drawn coast instead of running along tile rows. `smooth` is a window of smooth_level() starting at (ox-1, oy-1).
-func _edge_field(x: float, y: float, smooth: PackedFloat32Array, sw: int, ox: int, oy: int) -> float:
-	var px := x + _warp.get_noise_2d(x * WARP_SCALE + 70.0, y * WARP_SCALE) * DOMAIN_WARP
-	var py := y + _warp.get_noise_2d(x * WARP_SCALE, y * WARP_SCALE + 70.0) * DOMAIN_WARP
-	var gx := px - 0.5
-	var gy := py - 0.5
+func _edge_field(x: float, y: float, smooth: PackedFloat32Array, sw: int, ox: int, oy: int, dwx: float, dwy: float) -> float:
+	var gx := x + dwx - 0.5
+	var gy := y + dwy - 0.5
 	var ix := floori(gx)
 	var iy := floori(gy)
 	var fx := gx - ix
@@ -594,6 +617,27 @@ func _edge_field(x: float, y: float, smooth: PackedFloat32Array, sw: int, ox: in
 	var lc := smooth[by + ax]
 	var ld := smooth[by + bx]
 	return (la + (lb - la) * fx) + ((lc + (ld - lc) * fx) - (la + (lb - la) * fx)) * fy
+
+
+## The warps at a tile corner: the slow domain warp that bends contours
+## (x, y) and the finer one that frays ground edges (z, w). Sampled at tile
+## corners and read bilinearly, so neighbouring chunks agree and a chunk costs
+## a few hundred noise reads instead of thousands.
+func _warp_corner(x: int, y: int) -> Vector4:
+	return Vector4(
+		_warp.get_noise_2d(x * WARP_SCALE + 70.0, y * WARP_SCALE) * DOMAIN_WARP,
+		_warp.get_noise_2d(x * WARP_SCALE, y * WARP_SCALE + 70.0) * DOMAIN_WARP,
+		_warp.get_noise_2d(x * FRAY_SCALE + 50.0, y * FRAY_SCALE) * FRAY,
+		_warp.get_noise_2d(x * FRAY_SCALE, y * FRAY_SCALE + 50.0) * FRAY)
+
+
+## The warps at any point (bilinear between tile corners).
+func warp_at(x: float, y: float) -> Vector4:
+	var ix := floori(x)
+	var iy := floori(y)
+	var fx := x - ix
+	var fy := y - iy
+	return _warp_corner(ix, iy).lerp(_warp_corner(ix + 1, iy), fx).lerp(_warp_corner(ix, iy + 1).lerp(_warp_corner(ix + 1, iy + 1), fx), fy)
 
 
 ## The continuous elevation field, in levels, at tile-space point (x, y).
@@ -611,7 +655,8 @@ func field(x: float, y: float) -> float:
 		for yy in 6:
 			for xx in 6:
 				win[yy * 6 + xx] = smooth_level(ix - 2 + xx, iy - 2 + yy)
-		return _edge_field(x, y, win, 6, ix - 1, iy - 1)
+		var wp := warp_at(x, y)
+		return _edge_field(x, y, win, 6, ix - 1, iy - 1, wp.x, wp.y)
 	return lerpf(lerpf(smooth_level(ix, iy), smooth_level(ix + 1, iy), fx), lerpf(smooth_level(ix, iy + 1), smooth_level(ix + 1, iy + 1), fx), fy)
 
 
@@ -625,13 +670,16 @@ func top_color(x: int, y: int) -> Color:
 	return GroundColors.wash(world.ground_at(x, y), maxi(Country.COAST, world.country_at(x, y)))
 
 
-## Returns [terrain: ArrayMesh, water: ArrayMesh or null].
-func build_chunk(cx: int, cy: int) -> Array:
-	var ch := build(cx, cy)
-	return [ch.terrain, ch.water]
-
-
+## Build a chunk with its meshes (main thread).
 func build(cx: int, cy: int) -> Chunk:
+	var ch := build_arrays(cx, cy)
+	ch.commit()
+	return ch
+
+
+## Build a chunk's data and surface arrays but no meshes: safe on a worker
+## thread, as long as this mesher is used by one thread at a time.
+func build_arrays(cx: int, cy: int) -> Chunk:
 	var w := world
 	var size := w.size
 	var ch := Chunk.new()
@@ -758,7 +806,56 @@ func build(cx: int, cy: int) -> Chunk:
 	ch.wet.fill(NO_WET)
 	var depth := PackedFloat32Array()
 	depth.resize(cnt)
+	# Warps at the tile corners round the chunk, from x0 - 1, y0 - 1.
+	var ww := ch.w + 3
+	var wh := ch.h + 3
+	var warps := PackedFloat32Array()
+	warps.resize(ww * wh * 4)
+	for yy in wh:
+		for xx in ww:
+			var wv := _warp_corner(x0 - 1 + xx, y0 - 1 + yy)
+			var wo := (yy * ww + xx) * 4
+			warps[wo] = wv.x
+			warps[wo + 1] = wv.y
+			warps[wo + 2] = wv.z
+			warps[wo + 3] = wv.w
+	# CALM ring tiles: the same ground and country, no ecotone and no inland
+	# water for three tiles round, so any warp lands on the same key and a
+	# lattice point there needs no warps, no majority and no margins.
+	var rough := PackedInt32Array()
+	rough.resize((rw + 1) * (rh + 1))
+	for yy in rh:
+		for xx in rw:
+			var o := yy * rw + xx
+			var r := 1 if (rb[o] > 0.0 and rc2[o] != rc[o]) or wl[o] != 0 or near[o] != 0 else 0
+			if xx < rw - 1 and (tg[o + 1] != tg[o] or rc[o + 1] != rc[o]):
+				r = 1
+			if yy < rh - 1 and (tg[o + rw] != tg[o] or rc[o + rw] != rc[o]):
+				r = 1
+			# Summed-area table, one row and column of padding.
+			rough[(yy + 1) * (rw + 1) + xx + 1] = r + rough[yy * (rw + 1) + xx + 1] + rough[(yy + 1) * (rw + 1) + xx] - rough[yy * (rw + 1) + xx]
+	var calm := PackedByteArray()
+	calm.resize(rw * rh)
+	for yy in rh:
+		var ya := maxi(0, yy - 3)
+		var yb := mini(rh, yy + 3)
+		for xx in rw:
+			var xa := maxi(0, xx - 3)
+			var xb := mini(rw, xx + 3)
+			var sum := rough[yb * (rw + 1) + xb] - rough[ya * (rw + 1) + xb] - rough[yb * (rw + 1) + xa] + rough[ya * (rw + 1) + xa]
+			calm[yy * rw + xx] = 1 if sum == 0 and xx >= 3 and yy >= 3 and xx < rw - 3 and yy < rh - 3 else 0
 	var _t3 := Time.get_ticks_usec()
+	# Locals, not members, in the hot loop: a member write costs several reads.
+	var lf := ch.f
+	var lt := ch.t
+	var lk := ch.key
+	var lm := ch.margin
+	var lw := ch.wet
+	ch.f = PackedFloat32Array()
+	ch.t = PackedInt32Array()
+	ch.key = PackedInt32Array()
+	ch.margin = PackedFloat32Array()
+	ch.wet = PackedFloat32Array()
 	for j in m + 1:
 		var sy := y0 + j * 0.5
 		var gy := sy - 0.5
@@ -774,32 +871,73 @@ func build(cx: int, cy: int) -> Chunk:
 			var ss := (iy - y0 + 2) * sw + (ix - x0 + 2)
 			var v: float
 			var r0 := raw[ri]
-			if r0 != raw[ri + 1] or r0 != raw[ri + aw] or r0 != raw[ri + aw + 1]:
-				v = _edge_field(sx, sy, smooth, sw, x0 - 1, y0 - 1)
+			var level_flat := r0 == raw[ri + 1] and r0 == raw[ri + aw] and r0 == raw[ri + aw + 1]
+			if level_flat and r0 > 0:
+				var ct := (floori(sy) - ry0) * rw + (floori(sx) - rx0)
+				if calm[ct] == 1:
+					var la := smooth[ss]
+					var lb := smooth[ss + 1]
+					var top := la + (lb - la) * fx
+					var lc := smooth[ss + sw]
+					v = top + ((lc + (smooth[ss + sw + 1] - lc) * fx) - top) * fy
+					lf[li] = v
+					var terrace := floori(v + 0.5)
+					lt[li] = terrace
+					var g: int = tg[ct]
+					if _WET[g] == 1:
+						g = GroundColors.bank(rc[ct])
+					lk[li] = g | (int(rc[ct]) << 8)
+					if has_water:
+						var so := clampi(iy - ry0, 0, rh - 2) * rw + clampi(ix - rx0, 0, rw - 2)
+						var sa := shore[so]
+						var top_s := sa + (shore[so + 1] - sa) * fx
+						var sc := shore[so + rw]
+						depth[li] = top_s + ((sc + (shore[so + rw + 1] - sc) * fx) - top_s) * fy
+					else:
+						depth[li] = -float(MARGIN)
+					continue
+			# The warps here, bilinear in the corner grid (lattice points fall on
+			# tile corners and half tiles).
+			var wxi := clampi(floori(sx) - x0 + 1, 0, ww - 2)
+			var wyi := clampi(floori(sy) - y0 + 1, 0, wh - 2)
+			var wfx := sx - floori(sx)
+			var wfy := sy - floori(sy)
+			var q00 := (wyi * ww + wxi) * 4
+			var q10 := q00 + 4
+			var q01 := q00 + ww * 4
+			var q11 := q01 + 4
+			var dwx := lerpf(lerpf(warps[q00], warps[q10], wfx), lerpf(warps[q01], warps[q11], wfx), wfy)
+			var dwy := lerpf(lerpf(warps[q00 + 1], warps[q10 + 1], wfx), lerpf(warps[q01 + 1], warps[q11 + 1], wfx), wfy)
+			var frx := lerpf(lerpf(warps[q00 + 2], warps[q10 + 2], wfx), lerpf(warps[q01 + 2], warps[q11 + 2], wfx), wfy)
+			var fry := lerpf(lerpf(warps[q00 + 3], warps[q10 + 3], wfx), lerpf(warps[q01 + 3], warps[q11 + 3], wfx), wfy)
+			if not level_flat:
+				v = _edge_field(sx, sy, smooth, sw, x0 - 1, y0 - 1, dwx, dwy)
 			else:
 				var la := smooth[ss]
 				var lb := smooth[ss + 1]
 				var top := la + (lb - la) * fx
 				var lc := smooth[ss + sw]
 				v = top + ((lc + (smooth[ss + sw + 1] - lc) * fx) - top) * fy
-			ch.f[li] = v
+			lf[li] = v
 			var terrace := floori(v + 0.5)
-			ch.t[li] = terrace
+			lt[li] = terrace
 			if terrace <= 0:
 				# The sea bed is never seen: one key, so it merges into runs.
-				ch.key[li] = Ground.WATER | _KEY_WET
+				lk[li] = Ground.WATER | _KEY_WET
 			else:
 				# Ground under a warp, so type boundaries (and the edges of inland
 				# water) wander with the contours instead of following tiles.
-				var wx := sx + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE + 70.0, sy * WARP_SCALE) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
-				var wy := sy + 0.01 + _warp.get_noise_2d(sx * WARP_SCALE, sy * WARP_SCALE + 70.0) * DOMAIN_WARP + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
+				var wx := sx + 0.01 + dwx + frx
+				var wy := sy + 0.01 + dwy + fry
 				# Ground and country from the four tiles round the point, the one
 				# with most weight: a boundary is a curve through the corners of
 				# the tiles, never their staircase.
-				var gxw := clampf(wx - 0.5 - rx0, 0.0, rw - 1.001)
-				var gyw := clampf(wy - 0.5 - ry0, 0.0, rh - 1.001)
-				var ixw := floori(gxw)
-				var iyw := floori(gyw)
+				var gxw := wx - 0.5 - rx0
+				var gyw := wy - 0.5 - ry0
+				gxw = 0.0 if gxw < 0.0 else (rw - 1.001 if gxw > rw - 1.001 else gxw)
+				gyw = 0.0 if gyw < 0.0 else (rh - 1.001 if gyw > rh - 1.001 else gyw)
+				var ixw := int(gxw)
+				var iyw := int(gyw)
 				var fxw := gxw - ixw
 				var fyw := gyw - iyw
 				var o00 := iyw * rw + ixw
@@ -820,23 +958,28 @@ func build(cx: int, cy: int) -> Chunk:
 					wo = w01
 				if w11 > wo:
 					o = o11
-				var g: int = tg[o]
 				var em := 1.0
-				if tg[o00] != g or tg[o10] != g or tg[o01] != g or tg[o11] != g:
-					g = _major(tg, o00, o10, o01, o11, w00, w10, w01, w11)
-					em = minf(em, _major_margin)
+				var g: int = tg[o]
+				var g0: int = tg[o00]
+				var g1: int = tg[o10]
+				var g2: int = tg[o01]
+				var g3: int = tg[o11]
+				if g0 != g or g1 != g or g2 != g or g3 != g:
+					g = _major4(g0, g1, g2, g3, w00, w10, w01, w11)
+					em = _major_margin
 				var c: int = rc[o]
-				if rc[o00] != c or rc[o10] != c or rc[o01] != c or rc[o11] != c:
-					c = _major(rc, o00, o10, o01, o11, w00, w10, w01, w11)
+				var c0: int = rc[o00]
+				var c1: int = rc[o10]
+				var c2b: int = rc[o01]
+				var c3: int = rc[o11]
+				if c0 != c or c1 != c or c2b != c or c3 != c:
+					c = _major4(c0, c1, c2b, c3, w00, w10, w01, w11)
 					em = minf(em, _major_margin)
 					if rc[o] != c:
-						for q: int in [o00, o10, o01, o11]:
-							if rc[q] == c:
-								o = q
-								break
+						o = o00 if c0 == c else (o10 if c1 == c else (o01 if c2b == c else o11))
 				var dc := c
 				var c2: int = rc2[o]
-				if c2 != c and eco_grid.size() > 0:
+				if c2 != c and eco_grid.size() > 0 and rb[o00] + rb[o10] + rb[o01] + rb[o11] > 0.0:
 					# Which of the pair is drawn: the share of the higher country
 					# across the four tiles, smooth through the border itself.
 					var lo := mini(c, c2)
@@ -844,8 +987,8 @@ func build(cx: int, cy: int) -> Chunk:
 					var tsum := 0.0
 					var wsum := 0.0
 					for qi in 4:
-						var q: int = [o00, o10, o01, o11][qi]
-						var qw: float = [w00, w10, w01, w11][qi]
+						var q := o00 if qi == 0 else (o10 if qi == 1 else (o01 if qi == 2 else o11))
+						var qw := w00 if qi == 0 else (w10 if qi == 1 else (w01 if qi == 2 else w11))
 						var qc: int = rc[q]
 						var qb: float = rb[q] if rc2[q] == (hi if qc == lo else lo) else 0.0
 						if qc == lo:
@@ -870,10 +1013,10 @@ func build(cx: int, cy: int) -> Chunk:
 					# shore slopes up to a narrow lip and down to a bed, so the sheet
 					# meets the land on a curve, while every water tile's centre stays
 					# wet and every dry tile's centre stays dry and unlifted.
-					var qx := sx + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
-					var qy := sy + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
+					var qx := sx + frx
+					var qy := sy + fry
 					wf = _wet_field(qx, qy, terrace, wl, rx0, ry0, rw, rh)
-					ch.wet[li] = wf - WET_EDGE
+					lw[li] = wf - WET_EDGE
 					em = minf(em, absf(wf - WET_EDGE) * 5.0)
 					extra = _shore_lift(wf) << 17
 					if wf >= WET_EDGE:
@@ -882,9 +1025,9 @@ func build(cx: int, cy: int) -> Chunk:
 							g = _water_ground(wx, wy, terrace, wl, tg, rx0, ry0, rw, rh)
 				if _WET[g] == 1 and (extra & _KEY_WET) == 0:
 					g = GroundColors.bank(dc)
-				ch.key[li] = g | (dc << 8) | extra
-				ch.margin[li] = clampf(em, 0.0, 1.0)
-				if ch.wet[li] != NO_WET:
+				lk[li] = g | (dc << 8) | extra
+				lm[li] = clampf(em, 0.0, 1.0)
+				if lw[li] != NO_WET:
 					# Inland depth from the same field, so bands follow the shore;
 					# negative on the bank, so a band edge between a wet and a dry
 					# point falls where the field crosses, not half way.
@@ -900,6 +1043,11 @@ func build(cx: int, cy: int) -> Chunk:
 				depth[li] = top + ((sc + (shore[so + rw + 1] - sc) * fx) - top) * fy
 			else:
 				depth[li] = -float(MARGIN)
+	ch.f = lf
+	ch.t = lt
+	ch.key = lk
+	ch.margin = lm
+	ch.wet = lw
 	# Hummocks: soft ground (fen, peat, snow) rises and dips a little, only well
 	# inside one terrace and one ground, so edges and walking read the same.
 	ch.bump.resize(cnt)
@@ -921,6 +1069,8 @@ func build(cx: int, cy: int) -> Chunk:
 			ch.bump[li] = _eco.get_noise_2d(sx * 2.6 + 300.0, sy * 2.6) * amp
 	var _t4 := Time.get_ticks_usec()
 	_begin()
+	var keys := ch.key
+	var terr := ch.t
 	_mar = ch.margin
 	_wetv = ch.wet
 	_np = np
@@ -932,12 +1082,12 @@ func build(cx: int, cy: int) -> Chunk:
 		var run_t := 0
 		for i in n:
 			var i00 := j * np + i
-			var k00 := ch.key[i00]
-			var k10 := ch.key[i00 + 1]
-			var k01 := ch.key[i00 + np]
-			var k11 := ch.key[i00 + np + 1]
-			var t00 := ch.t[i00]
-			var same_t := ch.t[i00 + 1] == t00 and ch.t[i00 + np] == t00 and ch.t[i00 + np + 1] == t00
+			var k00 := keys[i00]
+			var k10 := keys[i00 + 1]
+			var k01 := keys[i00 + np]
+			var k11 := keys[i00 + np + 1]
+			var t00 := terr[i00]
+			var same_t := terr[i00 + 1] == t00 and terr[i00 + np] == t00 and terr[i00 + np + 1] == t00
 			var flat := same_t and k10 == k00 and k01 == k00 and k11 == k00
 			if flat and (bump[i00] != 0.0 or bump[i00 + 1] != 0.0 or bump[i00 + np] != 0.0 or bump[i00 + np + 1] != 0.0):
 				if run_start >= 0:
@@ -969,16 +1119,16 @@ func build(cx: int, cy: int) -> Chunk:
 	if has_water:
 		_build_water(ch, depth)
 	var _t6 := Time.get_ticks_usec()
-	ch.terrain = _finish_terrain()
-	ch.water = _finish_water()
-	PROF[0] += _t1 - _t0
-	PROF[1] += _t2 - _t1
-	PROF[2] += _t3 - _t2
-	PROF[7] += _t4 - _t3
-	PROF[3] += _t5 - _t4
-	PROF[4] += _t6 - _t5
-	PROF[5] += Time.get_ticks_usec() - _t6
-	PROF[6] += _tv.size()
+	ch.terrain_arrays = _terrain_arrays()
+	ch.water_arrays = _water_arrays()
+	prof[0] += _t1 - _t0
+	prof[1] += _t2 - _t1
+	prof[2] += _t3 - _t2
+	prof[7] += _t4 - _t3
+	prof[3] += _t5 - _t4
+	prof[4] += _t6 - _t5
+	prof[5] += Time.get_ticks_usec() - _t6
+	prof[6] += _tv.size()
 	return ch
 
 
@@ -1124,10 +1274,9 @@ func _begin() -> void:
 	_wc = PackedColorArray()
 
 
-func _finish_terrain() -> ArrayMesh:
-	var mesh := ArrayMesh.new()
+func _terrain_arrays() -> Array:
 	if _tv.is_empty():
-		return mesh
+		return []
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = _tv
@@ -1136,14 +1285,12 @@ func _finish_terrain() -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV] = _tuv
 	arrays[Mesh.ARRAY_TEX_UV2] = _tuv2
 	arrays[Mesh.ARRAY_CUSTOM0] = _tc0.to_byte_array().to_float32_array()
-	var flags := Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
-	return mesh
+	return arrays
 
 
-func _finish_water() -> ArrayMesh:
+func _water_arrays() -> Array:
 	if _wv.is_empty():
-		return null
+		return []
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = _wv
@@ -1152,9 +1299,7 @@ func _finish_water() -> ArrayMesh:
 	nrm.fill(Vector3.UP)
 	arrays[Mesh.ARRAY_NORMAL] = nrm
 	arrays[Mesh.ARRAY_COLOR] = _wc
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
+	return arrays
 
 
 ## Set the paint state for tops of key k1 (and a second key k2 by corner flags).

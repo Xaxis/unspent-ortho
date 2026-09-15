@@ -99,3 +99,15 @@ static func _has_code(cols: PackedColorArray, lo: int, hi: int) -> bool:
 		if code >= lo and code <= hi:
 			return true
 	return false
+
+
+func test_mesh_surfaces_match_the_contract() -> void:
+	for kind in PropKind.COUNT:
+		var m := PropModels.mesh(kind)
+		var fs := PropModels.found_surface(kind)
+		var t := PropModels.template(kind, 0, Country.COAST)
+		eq(m.get_surface_count(), int(not t.made_v.is_empty()) + int(not t.found_v.is_empty()), "%s surfaces" % PropKind.NAMES[kind])
+		if fs >= 0:
+			check(m.surface_get_material(fs) == PropModels.found_material(), "%s FOUND surface carries found.gdshader" % PropKind.NAMES[kind])
+	eq(PropModels.found_surface(PropKind.PYLON), 0, "a pylon is FOUND only")
+	eq(PropModels.found_surface(PropKind.PINE), -1, "a pine has no FOUND part")

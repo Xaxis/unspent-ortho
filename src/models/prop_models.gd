@@ -7,9 +7,12 @@ class_name PropModels
 ## bakes the instances of a chunk into one MADE and one FOUND mesh.
 ##
 ## Contract (others may rely on these):
-##   PropModels.mesh(kind) -> ArrayMesh     variant 0, coast dressing; surface 0
-##                                          MADE, surface 1 (if any) FOUND with
-##                                          its own material set on the surface
+##   PropModels.mesh(kind) -> ArrayMesh     variant 0, coast dressing: the MADE
+##                                          surface first when the kind has one,
+##                                          then the FOUND surface (if any) with
+##                                          found.gdshader set on it
+##   PropModels.found_surface(kind) -> int  that FOUND surface's index, or -1
+##                                          (0 for FOUND-only kinds: pylon, pole)
 ##   PropModels.node(kind, v, country)      a Node3D with both parts and materials
 ##   PropModels.template(kind, v, country)  raw arrays for baking
 ##   PropModels.variants(kind) -> int, pick_variant(kind, hash) -> int
@@ -151,6 +154,14 @@ static func mesh(kind: int) -> ArrayMesh:
 			m.surface_set_material(m.get_surface_count() - 1, found_material())
 		_meshes[key] = m
 	return _meshes[key]
+
+
+## Index of the FOUND surface in mesh(kind), or -1 when the kind has none.
+static func found_surface(kind: int) -> int:
+	var t := template(kind, 0, Country.COAST)
+	if t.found_v.is_empty():
+		return -1
+	return 0 if t.made_v.is_empty() else 1
 
 
 ## Both parts of a model as nodes: the MADE part takes whatever material its
