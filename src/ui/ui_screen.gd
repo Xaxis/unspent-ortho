@@ -33,7 +33,13 @@ var wake := 1.0
 var wake_seconds := UiSlate.WAKE_SECONDS
 var wakes := true
 ## The glass's brightness 0..1 (the ui system sets it from the slate's power).
-var brightness := 1.0
+## The dimming is drawn on the glass layer over the app, so that layer redraws.
+var brightness := 1.0:
+	set(v):
+		if not is_equal_approx(v, brightness):
+			brightness = v
+			if _fx != null:
+				_fx.queue_redraw()
 ## The slate's power 0..1, for the cell in the status bar.
 var power := 1.0
 ## Where this app's device sits (the title's slate is smaller).
@@ -42,6 +48,8 @@ var device_rect := UiSlate.DEVICE
 var scroll := 0
 
 var _fx: Control
+## The last frame drew a plain device because its bake was not in yet.
+var _plain := false
 
 
 func _init() -> void:
@@ -167,8 +175,9 @@ func say(text: String) -> void:
 
 
 func _exit_tree() -> void:
-	# Sketches this app asked for may still be drawing on a worker.
+	# Sketches and bezels this app asked for may still be drawing on a worker.
 	UiSketch.wait()
+	UiSlate.wait()
 
 
 ## Jump the wake to its end (screenshots).
@@ -183,6 +192,10 @@ func clock_text() -> String:
 
 
 func _process(delta: float) -> void:
+	if is_open and _plain and UiSlate.ready(device_rect.size):
+		_plain = false
+		queue_redraw()
+		_fx.queue_redraw()
 	if is_open and wake < 1.0:
 		wake = minf(1.0, wake + delta / wake_seconds)
 		_fx.queue_redraw()
@@ -196,8 +209,14 @@ func _process(delta: float) -> void:
 ## The veil, the device, the status bar with this app lit.
 func draw_frame(app: StringName = screen_name) -> void:
 	UiSlate.veil(self)
-	UiSlate.device(self, device_rect)
+	draw_device()
 	UiSlate.status(self, app, clock_text(), power, device_rect)
+
+
+## The bezel and glass, noting whether they were still a plain frame.
+func draw_device() -> void:
+	_plain = not UiSlate.ready(device_rect.size)
+	UiSlate.device(self, device_rect)
 
 
 ## The key strip, with the note on its right.

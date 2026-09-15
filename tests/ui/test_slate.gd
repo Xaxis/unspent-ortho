@@ -104,9 +104,40 @@ func test_power_dims_the_glass_not_the_bezel() -> void:
 	tree.root.add_child(s)
 	s.open()
 	s.settle()
+	await tree.process_frame
+	check(_dim_washes(await _glass_drawn(s)).is_empty(), "full power: no wash")
+	# Power runs low while the app stays open: only the brightness changes.
+	UiDraw.tape.clear()
+	UiDraw.taping = true
 	s.brightness = UiRules.brightness(0.0)
+	await tree.process_frame
+	UiDraw.taping = false
 	check(s.brightness >= UiSlate.DIM_FLOOR, "dim, never unreadable")
+	var washes := _dim_washes(UiDraw.tape.filter(func(d: Dictionary) -> bool: return d.ci != s))
+	eq(washes.size(), 1, "the glass redraws dimmed while the app is open")
+	if washes.size() == 1:
+		eq(Rect2i(washes[0].rect), UiSlate.glass_of(s.device_rect), "over the glass only, never the bezel")
+		near((washes[0].col as Color).a, 1.0 - s.brightness, 0.01, "as dark as the power is low")
+	UiDraw.tape.clear()
 	s.free()
+
+
+## What the glass layer over `s` draws on its next frame.
+func _glass_drawn(s: UiScreen) -> Array:
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	(s.get_node("glass") as CanvasItem).queue_redraw()
+	await tree.process_frame
+	UiDraw.taping = false
+	var out := UiDraw.tape.filter(func(d: Dictionary) -> bool: return d.ci != s)
+	UiDraw.tape.clear()
+	return out
+
+
+static func _dim_washes(drawn: Array) -> Array:
+	return drawn.filter(func(d: Dictionary) -> bool:
+		var c: Color = d.col
+		return d.kind == &"rect" and c.a > 0.0 and c.a < 1.0 and Color(c, 1.0) == UiTheme.GLASS_OFF)
 
 
 func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
@@ -115,6 +146,33 @@ func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
 	var tex := UiSlate.device_texture(UiSlate.DEVICE.size)
 	eq(Vector2i(tex.get_size()), UiSlate.DEVICE.size + Vector2i(UiSlate.PAD, UiSlate.PAD) * 2)
 	check(UiSlate.device_texture(UiSlate.DEVICE.size) == tex, "baked once")
+	# A size nobody warmed: asking for it never bakes on the main thread. It is
+	# null at once, a plain frame is drawn, and the bake arrives from a worker.
+	var odd := Vector2i(301, 187)
+	var t0 := Time.get_ticks_usec()
+	check(UiSlate.device_texture(odd) == null, "not baked in the caller")
+	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0, "and asking does not wait for it")
+	var s := UiPauseScreen.new()
+	s.device_rect = Rect2i(10, 10, odd.x, odd.y)
+	tree.root.add_child(s)
+	s.open()
+	await tree.process_frame
+	check(s.get("_plain"), "the app drew a plain frame meanwhile")
+	UiSlate.wait()
+	check(UiSlate.ready(odd), "the bake came in from the worker")
+	s._process(0.0)
+	await tree.process_frame
+	check(not s.get("_plain"), "and the app redrew with it")
+	s.free()
+
+
+func test_the_title_and_the_game_start_their_bakes_in_setup() -> void:
+	var src := (load("res://src/ui/ui_title.gd") as GDScript).source_code
+	var setup := src.substr(src.find("func setup("), 900)
+	check(setup.contains("UiSlate.warm(UiTitleMenu.DEVICE.size)"), "the title warms its slate as it sets up")
+	var ui := (load("res://src/systems/90_ui.gd") as GDScript).source_code
+	var ui_setup := ui.substr(ui.find("func setup("), 600)
+	check(ui_setup.contains("UiSlate.warm()"), "the ui system warms the page slate as it sets up")
 
 
 ## Every word each app draws, in every state worth drawing, reads on the glass:

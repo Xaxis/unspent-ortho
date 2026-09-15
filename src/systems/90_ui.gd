@@ -42,6 +42,8 @@ func setup(g: Game) -> void:
 	map_data = UiMapData.new(g.world)
 	if g.options.explore > 0:
 		explored.wander(g.world, g.player.pos, g.options.explore, g.options.seed_value)
+	# The slate's bezel bakes on a worker now, so the first app opens without a hitch.
+	UiSlate.warm()
 	layer = CanvasLayer.new()
 	layer.name = "screens"
 	layer.layer = 20
@@ -242,13 +244,15 @@ func _process(delta: float) -> void:
 		_map_build_in -= delta
 		if _map_build_in <= 0.0:
 			map_data.build_async()
-			UiSlate.warm()
 			var carried: Array[StringName] = []
 			carried.assign(game.inventory.items.keys())
 			UiSketch.warm(carried, UiInventoryScreen.SKETCH, [&"fire", &"bench", &"kiln", &"hand"])
 	_step_power()
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
-		# --screen=NAME or NAME:ROW (a row id to choose, for shots).
+		# --screen=NAME or NAME:ROW (a row id to choose, for shots). Staging, not
+		# play: it may wait for the bezel's bake so a shot shows it.
+		UiSlate.warm()
+		UiSlate.wait()
 		var parts := _pending_screen.split(":")
 		if parts[0] == "lowpower":
 			# Shot staging: the lamp nearly dry and no charge carried, then NAME after it.
@@ -296,11 +300,13 @@ func _step_power() -> void:
 	elif power >= UiSlate.LOW_POWER + 0.05:
 		_low = false
 	game.hud.set_power(power)
-	var s := top()
-	if s != null and (not is_equal_approx(s.power, power)):
-		s.power = power
-		s.brightness = UiRules.brightness(power)
-		s.queue_redraw()
+	# Every open app, not just the top: home under gear shows as soon as gear closes.
+	for s in stack:
+		if not is_equal_approx(s.power, power):
+			s.power = power
+			# Its setter redraws the glass layer, where the dimming is drawn.
+			s.brightness = UiRules.brightness(power)
+			s.queue_redraw()
 
 
 func _repeat(s: UiScreen, r: UiMenu, dir: int, delta: float, neg: StringName, pos: StringName) -> void:

@@ -118,7 +118,7 @@ func _draw_interference(r: Rect2i) -> void:
 		for x in range(box.position.x + 4, box.end.x - 4, 2):
 			if Rng.hash01(x / 6, 0, 0, 0x1f7) < 0.7:
 				UiDraw.px(self, x, mid, UiTheme.MACHINE[1])
-		UiDraw.text_right(self, box.end.x - 4, box.position.y + 2, "NO NETWORK READ", UiTheme.MACHINE[2])
+		UiDraw.text_right(self, box.end.x - 8, box.position.y + 3, "NO NETWORK READ", UiTheme.MACHINE[2])
 		return
 	var amp := 1.0 + level * (box.size.y * 0.5 - 3.0)
 	var frame := floori(_time * 12.0)

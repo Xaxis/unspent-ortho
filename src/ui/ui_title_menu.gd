@@ -157,7 +157,7 @@ func _draw() -> void:
 		UiDraw.rect(self, Rect2i(0, 354 - i * 6, 640, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
 	if fade > 0.0:
 		UiDraw.rect(self, Rect2i(0, 0, 640, 360), Color(UiTheme.GLASS_OFF, fade))
-	UiSlate.device(self, DEVICE)
+	draw_device()
 	var g := UiSlate.glass_of(DEVICE)
 	if not is_lit() and wake_stage()[1] <= 0.0:
 		return
@@ -190,7 +190,11 @@ func _draw() -> void:
 				UiDraw.text(self, Vector2i(g.end.x - 76, top), "<", UiTheme.TEXT_DIM)
 				UiDraw.text(self, Vector2i(g.end.x - 66, top), ">", UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(x0, top), text, UiTheme.BRIGHT if chosen else UiTheme.TEXT)
-	draw_keys([["e", "choose"], ["a d", "another coast"]])
+	var keys := [["e", "choose"]]
+	if menu.selected().get("id") == &"seed":
+		# Left and right only do something on the coast row.
+		keys.append(["a d", "another coast"])
+	draw_keys(keys)
 
 
 func _draw_glass() -> void:

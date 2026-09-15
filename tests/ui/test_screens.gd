@@ -313,6 +313,48 @@ func test_a_package_fills_an_app_through_its_feed() -> void:
 	SlateFeeds.clear()
 
 
+func test_gear_shows_every_resistance_however_many_the_land_names() -> void:
+	SlateFeeds.clear()
+	var names: Array[StringName] = [&"cold", &"heat", &"fumes", &"toxins", &"radiation", &"wet", &"dark", &"vacuum", &"pressure", &"em", &"resonance", &"time_shear", &"spores", &"glare"]
+	var resist := {}
+	for i in names.size():
+		resist[names[i]] = 0.1 * (i % 4)
+	var slots: Array = []
+	for id: StringName in SlateFeeds.SLOTS:
+		slots.append({"id": id, "label": String(id), "item": &"", "modules": []})
+	SlateFeeds.provide(&"loadout", func(_g: Game) -> Dictionary: return {"slots": slots, "resist": resist, "abilities": [{"id": &"a", "name": "dash", "ready": true, "note": ""}]})
+	var g := UiLoadoutScreen.new()
+	tree.root.add_child(g)
+	g.open()
+	g.settle()
+	var hz := g.hazards()
+	gt(hz.size(), 13, "the feed's fourteen and the land's own")
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	g.queue_redraw()
+	await tree.process_frame
+	UiDraw.taping = false
+	var said: Array[String] = []
+	for d: Dictionary in UiDraw.tape:
+		if d.kind == &"text" and d.ci == g:
+			said.append(String(d.text))
+			check(UiSlate.GLASS_RECT.encloses(Rect2i(d.rect)), "'%s' is on the glass" % d.text)
+	UiDraw.tape.clear()
+	for h: StringName in hz:
+		check(said.has(String(h).replace("_", " ")), "%s is drawn" % h)
+	check(said.has("dash"), "the abilities are still listed")
+	# However many: every one gets a cell on the panel, and none overlap.
+	for n: int in [hz.size(), 30, 42]:
+		var cells := UiLoadoutScreen.resist_cells(n)
+		eq(cells.size(), n, "%d resistances, %d cells" % [n, n])
+		for i in cells.size():
+			check(UiSlate.SPARE.encloses(cells[i]), "cell %d of %d is on the panel" % [i, n])
+			for j in range(i + 1, cells.size()):
+				check(not cells[i].intersects(cells[j]), "cells %d and %d of %d apart" % [i, j, n])
+	g.free()
+	SlateFeeds.clear()
+
+
 func test_every_app_is_drawn_on_the_one_slate() -> void:
 	# The layouts every app shares keep clear of the glass's flaws.
 	var crack := UiSlate.crack_zone(UiSlate.DEVICE)

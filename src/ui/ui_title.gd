@@ -57,6 +57,10 @@ func setup(o: BootOptions) -> void:
 	_layer = CanvasLayer.new()
 	_layer.layer = 20
 	add_child(_layer)
+	# The title's slate bakes on a worker; until it is in, a plain frame shows.
+	UiSlate.warm(UiTitleMenu.DEVICE.size)
+	if o.shot != "":
+		UiSlate.wait()
 	menu = UiTitleMenu.new()
 	menu.title = self
 	_layer.add_child(menu)
@@ -239,6 +243,7 @@ func new_game() -> void:
 
 
 func _exit_tree() -> void:
+	UiSlate.wait()
 	# A coast being drawn on a worker writes into this node; wait it out.
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)

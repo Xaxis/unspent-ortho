@@ -4,11 +4,30 @@ extends UiScreen
 ## resistances they give against every pressure the land can put on a body, and
 ## the abilities fitted. The hazards package fills it through SlateFeeds
 ## (&"loadout"); until then it reads the worn kit, the thing in hand and
-## Body.resist. The replacement sub-panel draws the body as the slate sees it,
-## a wire figure with its slots lit.
+## Body.resist. The abilities are listed under the slots; the replacement
+## sub-panel draws the body as the slate sees it, a wire figure with its slots
+## lit, and beside it every resistance.
 
 const LIST_TOP := 50
 const ROW_PITCH := 22
+## The resistances' column: right of the figure, to the panel's right margin.
+const RESIST_X := 430
+const RESIST_TOP := 56
+const RESIST_PITCH := 12
+
+
+## Where each of `n` resistances is drawn: one column down the panel, two when
+## one will not hold them (VISION §6 names ten, and the land adds more).
+static func resist_cells(n: int) -> Array[Rect2i]:
+	var right := UiSlate.SPARE.end.x - 12
+	var rows := (UiSlate.SPARE.end.y - 6 - RESIST_TOP) / RESIST_PITCH
+	var cols := 1 if n <= rows else 2
+	var w := (right - RESIST_X - (cols - 1) * 8) / cols
+	var out: Array[Rect2i] = []
+	for i in mini(n, rows * cols):
+		var col := i / rows
+		out.append(Rect2i(RESIST_X + col * (w + 8), RESIST_TOP + (i % rows) * RESIST_PITCH, w, 10))
+	return out
 
 var _feed: Dictionary = {}
 
@@ -89,33 +108,42 @@ func _draw() -> void:
 				break
 			var m: Dictionary = mods[k]
 			UiDraw.text(self, Vector2i(x0 + 71, top + 10), "%s  %s" % [m.get("name", ""), m.get("grants", "")], UiTheme.MACHINE[2])
-	var px := R.position.x + UiSlate.MARGIN_L
-	_draw_figure(Vector2i(px + 40, R.position.y + 14))
-	# Resistances: every pressure, how much of it the gear keeps off.
-	var rx := px + 110
-	var rright := R.end.x - 12
-	UiSlate.heading(self, Vector2i(rx, R.position.y + 8), "resists", rright)
-	var resist: Dictionary = _feed.get("resist", {})
-	var hz := hazards()
-	for i in hz.size():
-		var y := R.position.y + 22 + i * 12
-		if y > R.position.y + 150:
-			break
-		var v := float(resist.get(hz[i], 0.0))
-		UiIcons.draw_need(self, hz[i], Vector2i(rx, y - 1), UiTheme.TEXT if v > 0.0 else UiTheme.FAINT)
-		UiDraw.text(self, Vector2i(rx + 13, y), String(hz[i]).replace("_", " "), UiTheme.TEXT if v > 0.0 else UiTheme.TEXT_DIM)
-		UiSlate.meter(self, Rect2i(rright - 60, y + 1, 60, 7), v)
-	# Abilities fitted.
-	var ay := R.position.y + 178
-	UiSlate.heading(self, Vector2i(px, ay), "abilities", rright)
+	# Abilities fitted, under the slots that give them.
+	var ay := LIST_TOP + menu.rows.size() * ROW_PITCH + 6
+	UiSlate.heading(self, Vector2i(x0, ay), "abilities", right)
 	var abilities: Array = _feed.get("abilities", [])
 	if abilities.is_empty():
-		UiDraw.text(self, Vector2i(px + 4, ay + 14), "none fitted: modules give them", UiTheme.TEXT_DIM)
-	for i in mini(abilities.size(), 6):
+		UiDraw.text(self, Vector2i(x0 + 4, ay + 14), "none fitted: modules give them", UiTheme.TEXT_DIM)
+	var fit := maxi(1, UiSlate.line_count(ay + 14, L.end.y - 2))
+	for i in mini(abilities.size(), fit):
 		var a: Dictionary = abilities[i]
-		var y := ay + 14 + i * 11
-		UiDraw.text(self, Vector2i(px + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
-		UiDraw.text_right(self, rright, y, String(a.get("note", "")), UiTheme.TEXT_DIM)
+		var y := UiSlate.line_top(ay + 14, i)
+		if i == fit - 1 and abilities.size() > fit:
+			UiDraw.text(self, Vector2i(x0 + 4, y), "and %d more" % (abilities.size() - i), UiTheme.TEXT_DIM)
+			break
+		UiDraw.text(self, Vector2i(x0 + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
+		UiDraw.text_right(self, right, y, String(a.get("note", "")), UiTheme.TEXT_DIM)
+	var px := R.position.x + UiSlate.MARGIN_L
+	_draw_figure(Vector2i(px + 40, R.position.y + 14))
+	# Resistances: every pressure, how much of it the gear keeps off, down the
+	# whole panel beside the figure, in two columns once one will not hold them.
+	var rright := R.end.x - 12
+	UiSlate.heading(self, Vector2i(RESIST_X, R.position.y + 8), "resists", rright)
+	var resist: Dictionary = _feed.get("resist", {})
+	var hz := hazards()
+	var cells := resist_cells(hz.size())
+	for i in cells.size():
+		var c := cells[i]
+		var v := float(resist.get(hz[i], 0.0))
+		var meter_w := 60 if c.size.x > 120 else 22
+		var word := String(hz[i]).replace("_", " ")
+		while UiFont.width(word) > c.size.x - 13 - meter_w - 4 and word.length() > 3:
+			word = word.left(word.length() - 1)
+		UiIcons.draw_need(self, hz[i], Vector2i(c.position.x, c.position.y - 1), UiTheme.TEXT if v > 0.0 else UiTheme.FAINT)
+		UiDraw.text(self, Vector2i(c.position.x + 13, c.position.y), word, UiTheme.TEXT if v > 0.0 else UiTheme.TEXT_DIM)
+		UiSlate.meter(self, Rect2i(c.end.x - meter_w, c.position.y + 1, meter_w, 7), v)
+	if cells.size() < hz.size():
+		UiDraw.text_right(self, rright, UiSlate.SPARE.end.y - 12, "+%d" % (hz.size() - cells.size()), UiTheme.TEXT_DIM)
 	var keys := [["e", "fit"], ["esc", "back"]]
 	draw_keys(keys)
 

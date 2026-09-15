@@ -7,6 +7,8 @@ shot 01-title-asleep
 await title 40
 shot 02-title-awake
 tap move_down
+wait 0.2
+shot 02b-title-coast-row
 tap move_down
 tap use
 wait 0.3
@@ -50,6 +52,12 @@ await app:none 3
 tap pause
 await app:pause 3
 shot 12-home
+# Home's tabs name their keys: carrying's opens over home, and Esc comes back.
+tap inventory
+await app:inventory 3
+shot 12b-carrying-over-home
+tap pause
+await app:pause 3
 tap move_down
 tap use
 await app:loadout 3

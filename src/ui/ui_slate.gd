@@ -14,8 +14,8 @@ class_name UiSlate
 ## rest, a scan shimmer when it wakes, and brightness that dips with low power.
 ##
 ## Everything is drawn at whole pixels at the 640x360 base. The bezel and glass
-## are baked once per size into a texture (warm() bakes the page slate on a
-## worker); layouts below are shared so every app lines up.
+## are baked once per size into a texture, always on a worker (warm()); layouts
+## below are shared so every app lines up.
 ##
 ##   the page slate   DEVICE, GLASS_RECT; STATUS bar on top, KEYS strip below,
 ##                    BODY between, split into LIST and SPARE for two-pane apps
@@ -46,13 +46,17 @@ const SWITCH_SECONDS := 0.1
 const LOW_POWER := 0.25
 const DIM_FLOOR := 0.8
 
-## Apps in the order the status bar lists them: [screen name, tab label].
-const TABS := [[&"inventory", "CARRY"], [&"crafting", "MAKE"], [&"map", "MAP"], [&"loadout", "GEAR"], [&"reads", "READS"], [&"saves", "SAVES"]]
+## Apps in the order the status bar lists them: [screen name, tab label, key].
+## The first three have keys of their own; the rest live under Esc (home).
+const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map", "MAP", "m"], [&"loadout", "GEAR", ""], [&"reads", "READS", ""], [&"saves", "SAVES", ""]]
 
+## Main thread only: textures made from finished bakes.
 static var _textures := {}
+## Under _lock: finished bakes not yet made textures, and bakes in flight.
 static var _images := {}
+static var _baking := {}
 static var _lock := Mutex.new()
-static var _task := -1
+static var _tasks: Array[int] = []
 
 
 # --- geometry -----------------------------------------------------------------
@@ -79,20 +83,37 @@ static func veil(ci: CanvasItem) -> void:
 	UiDraw.rect(ci, Rect2i(0, 0, 640, 360), UiTheme.VEIL)
 
 
-## The device: bezel and glass, baked.
+## The device: bezel and glass, baked; a plain frame while the bake is out.
 static func device(ci: CanvasItem, d: Rect2i = DEVICE) -> void:
-	ci.draw_texture(device_texture(d.size), Vector2(d.position - Vector2i(PAD, PAD)))
+	var tex := device_texture(d.size)
+	if tex != null:
+		ci.draw_texture(tex, Vector2(d.position - Vector2i(PAD, PAD)))
+		return
+	var F := Palette.FOUND
+	UiDraw.rect(ci, d, F[1].lerp(Palette.PLATE[1], 0.35))
+	UiDraw.frame(ci, d, F[0])
+	UiDraw.hline(ci, d.position.x + 1, d.end.x - 2, d.position.y + 1, F[3])
+	var g := glass_of(d)
+	UiDraw.frame(ci, g.grow(1), UiTheme.GLASS_OFF)
+	UiDraw.rect(ci, g, UiTheme.GLASS)
 
 
-## What lies over the content: the crack, the dead column and a stuck pixel.
+## What lies over the content: the crack, the dead column and a stuck pixel
+## (nothing until they are baked).
 static func marks(ci: CanvasItem, d: Rect2i = DEVICE) -> void:
-	ci.draw_texture(marks_texture(d.size), Vector2(d.position - Vector2i(PAD, PAD)))
+	var tex := marks_texture(d.size)
+	if tex != null:
+		ci.draw_texture(tex, Vector2(d.position - Vector2i(PAD, PAD)))
 
 
 ## The replacement sub-panel: its own glass, a step bluer, set in a dark seam.
 static func spare(ci: CanvasItem, r: Rect2i = SPARE) -> void:
 	UiDraw.frame(ci, r.grow(1), UiTheme.GLASS_OFF)
-	ci.draw_texture(spare_texture(r.size), Vector2(r.position))
+	var tex := spare_texture(r.size)
+	if tex != null:
+		ci.draw_texture(tex, Vector2(r.position))
+	else:
+		UiDraw.rect(ci, r, UiTheme.GLASS_SPARE)
 	# The clips that hold it in, top and bottom: two bright pixels and a dark one.
 	for x: int in [r.position.x + 6, r.end.x - 8]:
 		UiDraw.hline(ci, x, x + 2, r.position.y - 1, UiTheme.GHOST)
@@ -133,11 +154,21 @@ static func status(ci: CanvasItem, app: StringName, clock: String, power: float,
 	var home := app == &"" or app == &"pause"
 	UiDraw.text(ci, Vector2i(x, y), "slate", UiTheme.BRIGHT if home else UiTheme.TEXT_DIM)
 	x += UiFont.width("slate") + 6
-	UiDraw.vline(ci, x, y + 2, y + 8, UiTheme.FAINT)
-	x += 6
+	if tabs:
+		UiDraw.vline(ci, x, y + 2, y + 8, UiTheme.FAINT)
+		x += 6
+	var under_home := false
 	for tab: Array in (TABS if tabs else []):
 		var label: String = tab[1]
 		var lit: bool = tab[0] == app
+		# Each tab says how it is reached: its key, or Esc once for all that live under home.
+		var k: String = tab[2]
+		if k == "" and not under_home:
+			under_home = true
+			x += 4
+			x += mini_cap(ci, Vector2i(x, y), "esc") + 4
+		elif k != "":
+			x += mini_cap(ci, Vector2i(x, y), k, lit) + 3
 		if lit:
 			UiDraw.rect(ci, Rect2i(x - 3, y - 1, UiFont.width(label) + 6, 11), UiTheme.GLASS_LIT)
 			UiDraw.hline(ci, x - 3, x + UiFont.width(label) + 2, y + 10, UiTheme.TEXT)
@@ -175,6 +206,19 @@ static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: floa
 	if note != "" and note_age < 4.0:
 		var a := clampf(4.0 - note_age, 0.0, 1.0)
 		UiDraw.text_right(ci, g.end.x - MARGIN_R, y, note, Color(UiTheme.WARN if warn else UiTheme.TEXT, UiDraw.stepped(a)))
+
+
+## A key cap small enough for the status bar: a ruled box, its name in the dim
+## phosphor (bright on the open app). Returns its width.
+static func mini_cap(ci: CanvasItem, at: Vector2i, k: String, lit: bool = false) -> int:
+	var w := maxi(7, UiFont.width(k) + 4)
+	UiDraw.rect(ci, Rect2i(at.x, at.y, w, 9), UiTheme.RIM)
+	UiDraw.hline(ci, at.x + 1, at.x + w - 2, at.y - 1, UiTheme.GHOST)
+	UiDraw.hline(ci, at.x + 1, at.x + w - 2, at.y + 9, UiTheme.GHOST)
+	UiDraw.vline(ci, at.x, at.y, at.y + 8, UiTheme.GHOST)
+	UiDraw.vline(ci, at.x + w - 1, at.y, at.y + 8, UiTheme.GHOST)
+	UiDraw.text(ci, Vector2i(at.x + (w - UiFont.width(k) + 1) / 2, at.y - 1), k, UiTheme.TEXT if lit else UiTheme.TEXT_DIM)
+	return w
 
 
 ## A key cap: a dark key with a lit rim and its name in phosphor. Returns its width.
@@ -294,54 +338,90 @@ static func wrapped(ci: CanvasItem, at: Vector2i, width: int, text: String, col:
 
 # --- baked textures ---------------------------------------------------------------
 
-## Bake the page slate ahead on a worker, so the first page opens at once.
-static func warm() -> void:
-	if _task >= 0 or _textures.has(_key("d", DEVICE.size)):
-		return
-	_task = WorkerThreadPool.add_task(func() -> void:
-		var d := device_image(DEVICE.size)
-		var m := marks_image(DEVICE.size)
-		var s := spare_image(SPARE.size)
-		_lock.lock()
-		_images[_key("d", DEVICE.size)] = d
-		_images[_key("m", DEVICE.size)] = m
-		_images[_key("s", SPARE.size)] = s
-		_lock.unlock())
+## Bake a device `size` big (its bezel and glass, its flaws) and the page's
+## sub-panel on a worker. Never blocks: until a bake is in, the device is drawn
+## as a plain frame (baking the page slate takes ~300 ms under load, a hitch
+## nobody should feel on opening an app). Called from the ui system's and the
+## title's setup, long before anyone opens anything.
+static func warm(size: Vector2i = DEVICE.size) -> void:
+	_start([["d", size], ["m", size], ["s", SPARE.size]])
 
 
+## Wait for every bake in flight (shutdown, and shots that must show the bezel).
 static func wait() -> void:
-	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)
-		_task = -1
+	for t: int in _tasks:
+		WorkerThreadPool.wait_for_task_completion(t)
+	_tasks.clear()
 
 
+## True once the device `size` and its flaws can be drawn as baked.
+static func ready(size: Vector2i) -> bool:
+	return device_texture(size) != null and marks_texture(size) != null
+
+
+## The baked textures, or null while their bake is still on a worker (one is
+## started if none is).
 static func device_texture(size: Vector2i) -> ImageTexture:
-	return _texture(_key("d", size), func() -> Image: return device_image(size))
+	return _texture("d", size)
 
 
 static func marks_texture(size: Vector2i) -> ImageTexture:
-	return _texture(_key("m", size), func() -> Image: return marks_image(size))
+	return _texture("m", size)
 
 
 static func spare_texture(size: Vector2i) -> ImageTexture:
-	return _texture(_key("s", size), func() -> Image: return spare_image(size))
+	return _texture("s", size)
 
 
 static func _key(kind: String, size: Vector2i) -> String:
 	return "%s|%d|%d" % [kind, size.x, size.y]
 
 
-static func _texture(key: String, make: Callable) -> ImageTexture:
+static func _bake(kind: String, size: Vector2i) -> Image:
+	match kind:
+		"d": return device_image(size)
+		"m": return marks_image(size)
+	return spare_image(size)
+
+
+## Start a worker on each [kind, size] not baked, waiting or in flight.
+static func _start(jobs: Array) -> void:
+	var todo: Array = []
+	_lock.lock()
+	for job: Array in jobs:
+		var key := _key(job[0], job[1])
+		if _textures.has(key) or _images.has(key) or _baking.has(key):
+			continue
+		_baking[key] = true
+		todo.append(job)
+	_lock.unlock()
+	if todo.is_empty():
+		return
+	_tasks.append(WorkerThreadPool.add_task(func() -> void:
+		for job: Array in todo:
+			var img := UiSlate._bake(job[0], job[1])
+			var key := UiSlate._key(job[0], job[1])
+			_lock.lock()
+			_images[key] = img
+			_baking.erase(key)
+			_lock.unlock()))
+
+
+static func _texture(kind: String, size: Vector2i) -> ImageTexture:
+	var key := _key(kind, size)
 	if _textures.has(key):
 		return _textures[key]
-	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
-		wait()
+	for i in range(_tasks.size() - 1, -1, -1):
+		if WorkerThreadPool.is_task_completed(_tasks[i]):
+			WorkerThreadPool.wait_for_task_completion(_tasks[i])
+			_tasks.remove_at(i)
 	_lock.lock()
 	var img: Image = _images.get(key)
 	_images.erase(key)
 	_lock.unlock()
 	if img == null:
-		img = make.call()
+		_start([[kind, size]])
+		return null
 	var tex := ImageTexture.create_from_image(img)
 	_textures[key] = tex
 	return tex
