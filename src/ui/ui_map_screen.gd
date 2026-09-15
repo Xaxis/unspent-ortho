@@ -7,7 +7,7 @@ extends UiScreen
 ## The map's window on the spread, in screen pixels.
 const MAP_RECT := Rect2i(32, 50, 576, 272)
 const PAN_STEP := 12
-const SCALES: Array[int] = [1, 2, 3]
+const SCALES: Array[int] = [1, 2, 3, 4, 6]
 
 var explored: UiExplored
 var data: UiMapData
@@ -80,15 +80,17 @@ func _on_open() -> void:
 	_material.set_shader_parameter("world_size", float(game.world.size))
 	_regions = UiMapScreen.region_labels(game.world, explored)
 	_seen_share = explored.fraction()
-	var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, SCALES)
+	var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, SCALES, fold_x())
 	map_scale = f.scale
 	centre_on(f.centre)
 
 
 ## The scale and centre that show the land seen so far: the largest scale at
 ## which all of it fits the window, centred on it, but never with the player
-## off the page. {scale: int, centre: Vector2 (tiles)}
-static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[int]) -> Dictionary:
+## off the page. `fold` is the book's gutter as a window x (-1: none); the
+## player and, when it fits on one page, the whole seen land are kept off it.
+## {scale: int, centre: Vector2 (tiles)}
+static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[int], fold: int = -1) -> Dictionary:
 	const MARGIN := 24
 	# A little land running off the page is better than all of it drawn too small.
 	const OVERFLOW := 1.3
@@ -97,9 +99,40 @@ static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[i
 		if seen.size.x * k <= (window.x - MARGIN * 2) * OVERFLOW and seen.size.y * k <= (window.y - MARGIN * 2) * OVERFLOW:
 			s = maxi(s, k)
 	var centre := Vector2(seen.get_center()) if seen.size != Vector2i.ZERO else player
+	# Drawn a pixel a tile, land that fills less than half the window is a stamp in
+	# an empty frame: a step closer reads as a chart. The player stays on the page
+	# and as much seen land as fits comes with them; the rest is a pan away.
+	if s == 1 and scales.has(2) and seen.size.x * seen.size.y * 2 < window.x * window.y:
+		s = 2
 	var reach := (Vector2(window) * 0.5 - Vector2(MARGIN, MARGIN)) / s
 	centre = centre.clamp(player - reach, player + reach)
+	if fold >= 0:
+		centre.x = off_the_fold(centre.x, seen, player, window, s, fold)
 	return {"scale": s, "centre": centre}
+
+
+## The map's centre x (tiles), moved so nothing that matters sits in the gutter:
+## land narrow enough for one page goes to the middle of the page the player
+## was on; wider land keeps its place, but the player is kept clear of the fold.
+static func off_the_fold(cx: float, seen: Rect2i, player: Vector2, window: Vector2i, s: int, fold: int) -> float:
+	const CLEAR := 10 # px either side of the gutter
+	const GUTTER := 4
+	const PAGE_MARGIN := 14
+	var half := window.x / 2.0
+	var left_w := fold
+	var right_w := window.x - fold - GUTTER
+	var land_w := seen.size.x * s
+	if seen.size != Vector2i.ZERO and land_w <= mini(left_w, right_w) - PAGE_MARGIN * 2:
+		var land_cx := seen.position.x + seen.size.x / 2.0
+		# Which page: the one the player already stands on, as the window was.
+		var px := (player.x - cx) * s + half
+		var page_cx := fold / 2.0 if px < fold + GUTTER / 2.0 else fold + GUTTER + right_w / 2.0
+		return land_cx - (page_cx - half) / s
+	var at := (player.x - cx) * s + half
+	if at > fold - CLEAR and at < fold + GUTTER + CLEAR:
+		var want := fold - CLEAR if at < fold + GUTTER / 2.0 else fold + GUTTER + CLEAR
+		return cx + (at - want) / s
+	return cx
 
 
 ## Where to letter each country the player has seen enough of: the seen tile
@@ -150,6 +183,11 @@ static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 	return out
 
 
+## The book's gutter, as an x in the map's window.
+static func fold_x() -> int:
+	return UiNotebook.LEFT.end.x - MAP_RECT.position.x
+
+
 ## Put tile-space point `p` in the middle of the map's window.
 func centre_on(p: Vector2) -> void:
 	origin_px = Vector2i(roundi(p.x * map_scale), roundi(p.y * map_scale)) - _anchor()
@@ -171,6 +209,11 @@ func handle(action: StringName) -> bool:
 		&"confirm":
 			var centre := Vector2(origin_px + _anchor()) / map_scale
 			map_scale = SCALES[(SCALES.find(map_scale) + 1) % SCALES.size()]
+			if game != null:
+				# Zoom about the middle, but never leave the player in the gutter.
+				var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(24, 24)) / map_scale
+				centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
+				centre.x = UiMapScreen.off_the_fold(centre.x, Rect2i(), game.player.pos, MAP_RECT.size, map_scale, fold_x())
 			centre_on(centre)
 			Events.sfx.emit(&"menu_move", Vector3.ZERO)
 		_:
@@ -182,8 +225,9 @@ func handle(action: StringName) -> bool:
 func select(id: StringName) -> void:
 	var s := String(id).to_int()
 	if SCALES.has(s) and game != null:
+		var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, [s], fold_x())
 		map_scale = s
-		centre_on(game.player.pos)
+		centre_on(f.centre)
 
 
 func _pan(d: Vector2i) -> void:

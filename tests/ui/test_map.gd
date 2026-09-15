@@ -113,10 +113,37 @@ func test_the_map_opens_on_everything_seen() -> void:
 	near((f.centre as Vector2).y, 85.5, 1.0, "centred on the land seen")
 	var small := UiExplored.new(256)
 	small.visit(Vector2(10.5, 10.5))
-	eq(UiMapScreen.fit(small.bounds, Vector2(10.5, 10.5), window, UiMapScreen.SCALES).scale, 3, "a little seen is drawn large")
+	eq(UiMapScreen.fit(small.bounds, Vector2(10.5, 10.5), window, UiMapScreen.SCALES).scale, 6, "a little seen is drawn large")
 	var huge := Rect2i(0, 0, 256, 256)
 	var hf := UiMapScreen.fit(huge, Vector2(250.0, 250.0), window, UiMapScreen.SCALES)
-	eq(hf.scale, 1)
+	eq(hf.scale, 2, "a whole world at 1 px a tile is a stamp in an empty frame: a step closer")
 	var reach: Vector2 = Vector2(window) * 0.5 / float(hf.scale)
 	var off: Vector2 = ((hf.centre as Vector2) - Vector2(250, 250)).abs()
 	check(off.x < reach.x and off.y < reach.y, "the player stays on the page")
+	eq(UiMapScreen.fit(Rect2i(0, 0, 600, 600), Vector2(300, 300), window, UiMapScreen.SCALES).scale, 1, "land that fills the window at 1 px stays at 1")
+
+
+## Window x of tile x for a fit.
+func _wx(f: Dictionary, x: float, window: Vector2i) -> float:
+	return (x - (f.centre as Vector2).x) * int(f.scale) + window.x / 2.0
+
+
+func test_the_map_keeps_the_player_and_small_land_out_of_the_fold() -> void:
+	var window := UiMapScreen.MAP_RECT.size
+	var fold := UiMapScreen.fold_x()
+	check(fold > window.x / 2 - 12 and fold < window.x / 2 + 12, "the gutter runs down the middle of the window: %d" % fold)
+	# The start: a disc seen round the player, who stands in its middle.
+	var e := UiExplored.new(256)
+	e.visit(Vector2(120.5, 90.5))
+	var f := UiMapScreen.fit(e.bounds, Vector2(120.5, 90.5), window, UiMapScreen.SCALES, fold)
+	var l := _wx(f, e.bounds.position.x, window)
+	var r := _wx(f, e.bounds.end.x, window)
+	check(r < fold - 8 or l > fold + 4 + 8, "all the seen land is on one page: %d..%d, fold %d" % [l, r, fold])
+	check(l >= 0 and r <= window.x, "and on the window")
+	# Wide land crosses the fold, but the player is never in it.
+	var wide := Rect2i(20, 40, 200, 90)
+	for px: float in [118.0, 120.0, 122.0]:
+		var p := Vector2(px, 80.0)
+		var wf := UiMapScreen.fit(wide, p, window, UiMapScreen.SCALES, fold)
+		var at := _wx(wf, p.x, window)
+		check(at < fold - 8 or at > fold + 4 + 8, "player at %s drawn at %s, clear of the fold at %d" % [p, at, fold])
