@@ -32,6 +32,10 @@ const P := preload("res://src/render/palette.gd")
 
 var world: WorldData
 var _bloom: FastNoiseLite
+## Where small life gathers: specks come in drifts and the ground between is
+## left bare (docs/ART.md: masses stay flat, interest lives in rare places).
+var _clump: FastNoiseLite
+static var _SPECK := PackedByteArray()
 ## ground -> [kinds: PackedInt32Array, cumulative: PackedFloat32Array, items per tile]
 var _tables: Dictionary = {}
 static var _templates: Dictionary = {}
@@ -52,6 +56,14 @@ func _init(w: WorldData) -> void:
 	_bloom.seed = Rng.hash_ints(w.seed_value, 0xB100) & 0x7FFFFFFF
 	_bloom.frequency = 1.0 / 38.0
 	_bloom.fractal_octaves = 2
+	_clump = FastNoiseLite.new()
+	_clump.seed = Rng.hash_ints(w.seed_value, 0xC1A) & 0x7FFFFFFF
+	_clump.frequency = 1.0 / 9.0
+	_clump.fractal_octaves = 2
+	if _SPECK.is_empty():
+		_SPECK.resize(KINDS)
+		for kd: int in [EMBER, ASH_FLAKE, CINDER, GLASS, SHELL, BOG_COTTON, PEBBLES, SEA_GLASS, CROTTLE, LICHEN, FLOWER, THISTLE, MUSHROOM, BONE, TWIG, ICE_SHARD, WRACK_BIT, SPHAGNUM]:
+			_SPECK[kd] = 1
 	_table(Ground.GRASS, 1.1, [TUFT, 46, TUFT_TALL, 12, FLOWER, 12, STONE, 2, THISTLE, 3, MOLEHILL, 2])
 	_table(Ground.HEATH, 1.2, [HEATHER, 50, TUFT, 14, STONE, 2, FLOWER, 4, BRACKEN, 7])
 	_table(Ground.SAND, 0.3, [MARRAM, 26, SHELL, 16, PEBBLES, 10, TWIG, 5, WRACK_BIT, 6])
@@ -132,7 +144,8 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 			var table: Array = _tables.get(g * 8 + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
 			if table.is_empty():
 				continue
-			var count := int(float(table[2]) + rng.randf())
+			var gather := _clump.get_noise_2d(ch.x0 + tx, ch.y0 + ty) * 0.5 + 0.5
+			var count := int(float(table[2]) * (0.45 + gather) + rng.randf())
 			if count <= 0:
 				continue
 			var country := (k >> 8) & 0xFF
@@ -155,6 +168,11 @@ func build(ch: TerrainMesher.Chunk) -> ArrayMesh:
 					dress = other
 				else:
 					kind = _pick(table, rng.randf())
+				if _SPECK[kind] == 1 and gather < 0.56:
+					# Out of a drift: the ground's own blades and stones only.
+					kind = _pick(table, 0.0)
+					if _SPECK[kind] == 1:
+						continue
 				if (kind == WRACK_BIT or kind == SHELL or kind == SEA_GLASS) and shore < -3.0:
 					kind = PEBBLES if g == Ground.SHINGLE else (MARRAM if g == Ground.SAND else TUFT)
 				var fx := 0.08 + rng.randf() * 0.84
@@ -280,10 +298,12 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 		HEATHER:
 			var cols: Array[Color] = [P.EARTH[2].lerp(P.MOSS[1], 0.5), P.MOSS[1], P.EARTH[1]]
 			k.clump(0, -0.01, 0, 0.13, 0.14, s, cols[stage % 3], 6)
-			for i in 4:
-				var a := float(i) * 1.7
-				var p := Vector3(cos(a) * 0.08, 0.1 + i * 0.012, sin(a) * 0.08)
-				k.fleck(p, p + Vector3(0.035, 0.0, 0.01), p + Vector3(0.01, 0.035, 0.0), P.BLOOM[1] if i % 2 else P.BLOOM[2])
+			# One clump in three is in bloom; the rest are the brown of the hill.
+			if stage == 0:
+				for i in 4:
+					var a := float(i) * 1.7
+					var p := Vector3(cos(a) * 0.08, 0.1 + i * 0.012, sin(a) * 0.08)
+					k.fleck(p, p + Vector3(0.035, 0.0, 0.01), p + Vector3(0.01, 0.035, 0.0), P.BLOOM[1] if i % 2 else P.BLOOM[2])
 			k.sway_by_height(0, 0.0, 0.14, 0.25)
 		FLOWER:
 			var head: Color

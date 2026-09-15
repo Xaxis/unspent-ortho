@@ -49,7 +49,9 @@ void fragment() {
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	vec2 wp = world_pos.xz;
 	int kind = int(COLOR.r * 8.0 + 0.5);
-	float d = COLOR.a;
+	// Sea: 0 at the waterline .. 1 deep. Inland (TerrainMesher.inland_alpha):
+	// negative on the bank, 1 about 2.5 field units in.
+	float d = kind == 0 ? COLOR.a : (COLOR.a * 3.5 - 1.0) / 2.5;
 	float w = max(fwidth(d), 1e-4) * 1.2;
 	vec3 c;
 	if (kind == 0) {
@@ -101,20 +103,28 @@ void fragment() {
 			c = BRINE4;
 		}
 		if (kind == 1 && fl > 0.2) {
-			// Dashes carried downstream, in whole pixels.
+			// Flow: a few long threads carried downstream, gathered where the
+			// current runs, never an even scatter of specks.
 			vec2 dir = flow / fl;
-			float along = dot(wp, dir) * 1.4 - TIME * 0.8;
-			float across = dot(wp, vec2(-dir.y, dir.x)) * 6.0;
+			float along = dot(wp, dir) * 0.9 - TIME * 0.7;
+			float across = dot(wp, vec2(-dir.y, dir.x)) * 5.0;
 			vec2 cell = vec2(floor(along), floor(across));
 			float h = ink_hash(cell + 3.0);
-			if (h < 0.14 && fract(along) < 0.55 && fract(across) < 0.2 && d > 0.15) {
-				c = h < 0.025 ? FOAM : BRINE4;
+			float run = ink_vnoise(wp * 0.4 + vec2(TIME * 0.05, 0.0));
+			if (h < 0.09 * step(0.45, run) && fract(along) < 0.7 && fract(across) < 0.14 && d > 0.3) {
+				c = h < 0.02 ? BRINE5 : BRINE4;
 			}
 		}
 		if (kind == 4) {
-			// A fall: white water in running streaks, broken by dark gaps.
-			float streak = ink_hash(vec2(floor(px.x / 2.0), floor((px.y + TIME * 20.0) / 4.0)));
-			c = streak < 0.45 ? FOAM : (streak < 0.8 ? BRINE4 : BRINE3);
+			// A fall: thin white threads pouring down, broken by the water
+			// between them. One pixel wide, never blocks.
+			float col = floor(px.x / 2.0);
+			float ph = ink_hash(vec2(col, 5.0));
+			float fall = fract((px.y - TIME * (18.0 + ph * 10.0)) / (6.0 + ph * 8.0) + ph);
+			c = BRINE3;
+			if (mod(px.x, 2.0) < 1.0 && fall < 0.55) {
+				c = ph < 0.6 ? FOAM : BRINE5;
+			}
 		}
 	}
 	ALBEDO = sky_apply(c, world_pos, TIME);

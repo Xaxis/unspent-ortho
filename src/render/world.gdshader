@@ -158,10 +158,10 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 	} else if (m == 41) {
 		// HEATH: dark clumps with heather in bloom on their rims.
-		float n = ink_vnoise(wp * 1.7) * 0.7 + ink_vnoise(wp * 4.1) * 0.3;
+		float n = ink_vnoise(wp * 1.7) * 0.7 + ink_vnoise(wp * 4.1) * 0.3 + rag(wp);
 		if (n > 0.56) {
 			c = dn(c, 0.55);
-			if (n < 0.61 && ink_hash(px) < 0.35 && ink_vnoise(wp * 0.09 + 3.0) > 0.4) {
+			if (n < 0.6 && ink_hash(px) < 0.35 && ink_vnoise(wp * 0.07 + 3.0) > 0.58) {
 				c = ink_hash(px + 1.3) < 0.5 ? BLOOM2 : BLOOM3;
 			}
 		} else if (n < 0.3) {
@@ -180,11 +180,14 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		} else if (fr > 0.07 && fr < 0.13 && gate > 0.45) {
 			c = dn(c, 0.2);
 		}
-		float h = ink_hash(px);
-		if (h > 0.995) {
-			c = LINEN5;
-		} else if (h < 0.006) {
-			c = dn(c, 0.9);
+		// Shell grit and dark wrack crumbs, gathered along the tide's drifts.
+		if (ink_vnoise(wp * 0.16 + 12.0) > 0.66) {
+			float h = ink_hash(px);
+			if (h > 0.985) {
+				c = LINEN5;
+			} else if (h < 0.015) {
+				c = dn(c, 0.9);
+			}
 		}
 	} else if (m == 43) {
 		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with
@@ -357,10 +360,11 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 	} else if (m == 48) {
 		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
-		float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3;
+		float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
 		if (n > 0.64) {
 			c = up(c, 0.4);
-			if (ink_hash(px) > 0.985) {
+			// Bog cotton in drifts on a few hummocks, none on the rest.
+			if (ink_vnoise(wp * 0.12 + 40.0) > 0.68 && ink_hash(px) > 0.97) {
 				c = LINEN5;
 			}
 		} else if (n < 0.2) {
@@ -381,7 +385,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		} else if (stroke(px, vec2(5.0, 4.0), 19.0, 0.2, 2.0, -0.5) > 0.5) {
 			c = up(c, 0.3);
 		}
-		if (ink_vnoise(wp * 0.8) > 0.74) {
+		if (ink_vnoise(wp * 0.8) + rag(wp) > 0.74) {
 			c = mix(c, BRINE0, 0.6);
 		}
 		if (stroke(px, vec2(6.0, 6.0), 23.0, 0.12, 1.0, 0.0) > 0.5) {

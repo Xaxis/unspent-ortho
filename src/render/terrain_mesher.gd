@@ -53,6 +53,11 @@ static func eco_share(t: float) -> float:
 	return eco_cover(t) if t <= 0.5 else 1.0 - eco_cover(1.0 - t)
 
 const _KEY_WET := 1 << 16
+const NO_WET := -9.0
+## The bits of a key that say how it is painted (ground, country, wet).
+const _PAINT_BITS := 0x1FFFF
+const INLAND_BANK := 1.0
+const INLAND_SPAN := 3.5
 ## How far a bank at the level of the water beside it lips up: just above the
 ## inland sheet (WADE). Keys carry the shore profile index in bits 17-21.
 const BANK_LIFT := 0.36
@@ -94,6 +99,7 @@ var _poly := PackedVector3Array()
 var _k1 := 0
 var _k2 := -1
 var _mar := PackedFloat32Array()
+var _wetv := PackedFloat32Array()
 var _np := 0
 var _i00 := 0
 var _bump_key := -1
@@ -147,6 +153,9 @@ class Chunk:
 	## to 1 (well clear), so a ground edge is interpolated as a curve and not
 	## as the lattice's triangles.
 	var margin := PackedFloat32Array()
+	## Per lattice point: inland wetness less WET_EDGE (>= 0 under the sheet),
+	## or NO_WET where no inland water is near.
+	var wet := PackedFloat32Array()
 	## Per tile of the chunk: signed tiles to the waterline, + in water, - on land.
 	var shore := PackedFloat32Array()
 	## Cliff feet: point on the lower terrace, outward direction, country.
@@ -745,6 +754,8 @@ func build(cx: int, cy: int) -> Chunk:
 	ch.key.resize(cnt)
 	ch.margin.resize(cnt)
 	ch.margin.fill(1.0)
+	ch.wet.resize(cnt)
+	ch.wet.fill(NO_WET)
 	var depth := PackedFloat32Array()
 	depth.resize(cnt)
 	var _t3 := Time.get_ticks_usec()
@@ -862,6 +873,7 @@ func build(cx: int, cy: int) -> Chunk:
 					var qx := sx + _warp.get_noise_2d(sx * 3.0 + 50.0, sy * 3.0) * 0.3
 					var qy := sy + _warp.get_noise_2d(sx * 3.0, sy * 3.0 + 50.0) * 0.3
 					wf = _wet_field(qx, qy, terrace, wl, rx0, ry0, rw, rh)
+					ch.wet[li] = wf - WET_EDGE
 					em = minf(em, absf(wf - WET_EDGE) * 5.0)
 					extra = _shore_lift(wf) << 17
 					if wf >= WET_EDGE:
@@ -872,8 +884,10 @@ func build(cx: int, cy: int) -> Chunk:
 					g = GroundColors.bank(dc)
 				ch.key[li] = g | (dc << 8) | extra
 				ch.margin[li] = clampf(em, 0.0, 1.0)
-				if (extra & _KEY_WET) != 0:
-					# Inland depth from the same field, so bands follow the shore.
+				if ch.wet[li] != NO_WET:
+					# Inland depth from the same field, so bands follow the shore;
+					# negative on the bank, so a band edge between a wet and a dry
+					# point falls where the field crosses, not half way.
 					depth[li] = (wf - WET_EDGE) * 6.0
 					continue
 			if has_water:
@@ -908,6 +922,7 @@ func build(cx: int, cy: int) -> Chunk:
 	var _t4 := Time.get_ticks_usec()
 	_begin()
 	_mar = ch.margin
+	_wetv = ch.wet
 	_np = np
 	var bump := ch.bump
 	for j in m:
@@ -996,6 +1011,8 @@ func _bump_cell(px: float, py: float, terrace: int, k: int, b00: float, b10: flo
 
 
 func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: int, k01: int, b00: float, b10: float, b11: float, b01: float) -> void:
+	if ((k00 ^ k10) | (k00 ^ k11) | (k00 ^ k01)) & _KEY_WET != 0 and _shore_split(px, py, terrace, k00, k10, k11, k01, b00, b10, b11, b01):
+		return
 	_pick_keys(k00, k10, k11, k01, _i00)
 	_ox = px
 	_oy = py
@@ -1023,6 +1040,75 @@ func _mixed_flat(px: float, py: float, terrace: int, k00: int, k10: int, k11: in
 				n = -n
 			for v in 3:
 				_tn[start + tri * 3 + v] = n
+
+
+## A cell the waterline crosses: cut along the wet field's own contour, the
+## bank on one side and the bed on the other, both meeting the sheet exactly
+## at the crossing. Never fanned to the lattice corners, so the shore is a
+## curve and not a row of teeth. False for a saddle (left to _mixed_flat).
+func _shore_split(px: float, py: float, terrace: int, k00: int, k10: int, k11: int, k01: int, b00: float, b10: float, b11: float, b01: float) -> bool:
+	var i00 := _i00
+	var vs := PackedFloat32Array([_wetv[i00], _wetv[i00 + 1], _wetv[i00 + _np + 1], _wetv[i00 + _np]])
+	if vs[0] == NO_WET or vs[1] == NO_WET or vs[2] == NO_WET or vs[3] == NO_WET:
+		return false
+	var crossings := 0
+	for e in 4:
+		if (vs[e] >= 0.0) != (vs[(e + 1) & 3] >= 0.0):
+			crossings += 1
+	if crossings != 2:
+		return false
+	var ks := PackedInt32Array([k00, k10, k11, k01])
+	var bs := PackedFloat32Array([b00, b10, b11, b01])
+	var s := 0.5
+	var cx := PackedFloat32Array([px, px + s, px + s, px])
+	var cz := PackedFloat32Array([py, py, py + s, py + s])
+	var h := level_height(terrace)
+	var dry := PackedVector3Array()
+	var wet := PackedVector3Array()
+	var dry_k := -1
+	var wet_k := -1
+	for e in 4:
+		var e2 := (e + 1) & 3
+		var is_wet := vs[e] >= 0.0
+		var p := Vector3(cx[e], h + _lift(ks[e]) + bs[e], cz[e])
+		if is_wet:
+			wet.append(p)
+			wet_k = ks[e] if wet_k < 0 else wet_k
+		else:
+			dry.append(p)
+			dry_k = ks[e] if dry_k < 0 else dry_k
+		if is_wet != (vs[e2] >= 0.0):
+			var t := vs[e] / (vs[e] - vs[e2])
+			var q := Vector3(lerpf(cx[e], cx[e2], t), h + WADE, lerpf(cz[e], cz[e2], t))
+			dry.append(q)
+			wet.append(q)
+	_ox = px
+	_oy = py
+	for side in 2:
+		var poly := dry if side == 0 else wet
+		if side == 0:
+			# The bank may itself be two grounds: each wet corner takes the key
+			# of a dry neighbour, so the ground edge runs on to the water.
+			var dk := PackedInt32Array()
+			for e in 4:
+				var k := ks[e]
+				if vs[e] >= 0.0:
+					k = ks[(e + 1) & 3] if vs[(e + 1) & 3] < 0.0 else (ks[(e + 3) & 3] if vs[(e + 3) & 3] < 0.0 else dry_k)
+				dk.append(k)
+			_pick_keys(dk[0], dk[1], dk[2], dk[3], i00)
+			_paint(_k1, _k2, terrace)
+		else:
+			_w00 = 0.0
+			_w10 = 0.0
+			_w11 = 0.0
+			_w01 = 0.0
+			_paint(wet_k, -1, terrace)
+		var p0 := poly[0]
+		for e in range(1, poly.size() - 1):
+			_vtop(p0.x, p0.y, p0.z)
+			_vtop(poly[e].x, poly[e].y, poly[e].z)
+			_vtop(poly[e + 1].x, poly[e + 1].y, poly[e + 1].z)
+	return true
 
 
 func _begin() -> void:
@@ -1285,6 +1371,11 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 ## margin, so the edge falls where the margins cross, a smooth line through
 ## the cell, and neighbouring cells agree on it.
 func _pick_keys(k00: int, k10: int, k11: int, k01: int, i00: int) -> void:
+	# The shore lift rides in the key's high bits; it shapes height, not paint.
+	k00 &= _PAINT_BITS
+	k10 &= _PAINT_BITS
+	k11 &= _PAINT_BITS
+	k01 &= _PAINT_BITS
 	var n00 := 1 + int(k10 == k00) + int(k11 == k00) + int(k01 == k00)
 	var n10 := 1 + int(k00 == k10) + int(k11 == k10) + int(k01 == k10)
 	var n11 := 1 + int(k00 == k11) + int(k10 == k11) + int(k01 == k11)
@@ -1539,7 +1630,7 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				if not flows.has(ti):
 					flows[ti] = _flow(ti % size, ti / size)
 				flow = flows[ti]
-			col[li] = Color(kind / 8.0, flow.x * 0.5 + 0.5, flow.y * 0.5 + 0.5, clampf(depth[li] / 2.5, 0.0, 1.0))
+			col[li] = Color(kind / 8.0, flow.x * 0.5 + 0.5, flow.y * 0.5 + 0.5, inland_alpha(depth[li]))
 	if not any:
 		return
 	# Dry points beside water take the sheet and kind of a wet neighbour, at the
@@ -1565,7 +1656,7 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				var t := ch.t[li]
 				fill[li] = sheet[from] if t <= 0 else minf(sheet[from], level_height(t) + _lift(ch.key[li]) - 0.03)
 				var c := col[from]
-				col[li] = Color(c.r, c.g, c.b, 0.0)
+				col[li] = Color(c.r, c.g, c.b, inland_alpha(depth[li]) if c.r > 0.01 else 0.0)
 	for j in m:
 		var py := ch.y0 + j * 0.5
 		var run := -1
@@ -1597,6 +1688,8 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 			if run >= 0:
 				_water_quad(ch.x0 + run * 0.5, ch.x0 + i * 0.5, py, run_h, run_h, run_h, run_h, run_c, run_c, run_c, run_c)
 				run = -1
+			if _clip_sheet(ch, a, b, c, d, sheet, col, ch.x0 + i * 0.5, py):
+				continue
 			var lo := minf(minf(fill[a], fill[b]), minf(fill[c], fill[d]))
 			var wet_c := col[a] if fill[a] != INF else (col[b] if fill[b] != INF else (col[c] if fill[c] != INF else col[d]))
 			var hb := fill[b] if fill[b] != INF else lo
@@ -1624,6 +1717,66 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 			_water_quad(px, px + 0.5, py, h0, hb, hc, hd, ca2, cb2, cc2, cd2)
 		if run >= 0:
 			_water_quad(ch.x0 + run * 0.5, ch.x0 + ch.n * 0.5, py, run_h, run_h, run_h, run_h, run_c, run_c, run_c, run_c)
+
+
+## An inland water cell the shoreline crosses, one level of water, not a
+## saddle: the sheet is cut along the wet field's contour, exactly where
+## _shore_split meets it with the bank, so the sheet never shows past the
+## shore as a wedge and its shallow band follows the curve. Corners a, b, c, d
+## run round the cell from its north-west corner.
+func _clip_sheet(ch: Chunk, a: int, b: int, c: int, d: int, sheet: PackedFloat32Array, col: PackedColorArray, px: float, py: float) -> bool:
+	var idx := PackedInt32Array([a, b, c, d])
+	var level := INF
+	var crossings := 0
+	for e in 4:
+		var q := idx[e]
+		if ch.wet[q] == NO_WET or ch.t[q] <= 0:
+			return false
+		if sheet[q] != INF:
+			if level != INF and absf(sheet[q] - level) > 1e-4:
+				return false
+			level = sheet[q]
+		if (ch.wet[q] >= 0.0) != (ch.wet[idx[(e + 1) & 3]] >= 0.0):
+			crossings += 1
+	if crossings != 2 or level == INF:
+		return false
+	var wet_c := Color()
+	for q in idx:
+		if sheet[q] != INF:
+			wet_c = col[q]
+			break
+	var s := 0.5
+	var cx := PackedFloat32Array([px, px + s, px + s, px])
+	var cz := PackedFloat32Array([py, py, py + s, py + s])
+	var pts := PackedVector3Array()
+	var cols := PackedColorArray()
+	for e in 4:
+		var q := idx[e]
+		var q2 := idx[(e + 1) & 3]
+		var v := ch.wet[q]
+		if v >= 0.0 and sheet[q] != INF:
+			pts.append(Vector3(cx[e], level, cz[e]))
+			cols.append(col[q])
+		if (v >= 0.0) != (ch.wet[q2] >= 0.0):
+			var t := v / (v - ch.wet[q2])
+			pts.append(Vector3(lerpf(cx[e], cx[(e + 1) & 3], t), level, lerpf(cz[e], cz[(e + 1) & 3], t)))
+			cols.append(Color(wet_c.r, wet_c.g, wet_c.b, inland_alpha(0.0)))
+	if pts.size() < 3:
+		return false
+	for e in range(1, pts.size() - 1):
+		_wv.append(pts[0])
+		_wv.append(pts[e])
+		_wv.append(pts[e + 1])
+		_wc.append(cols[0])
+		_wc.append(cols[e])
+		_wc.append(cols[e + 1])
+	return true
+
+
+## Inland depth (field units * 6, negative on the bank) as vertex alpha;
+## water.gdshader reads it back as a * INLAND_SPAN - INLAND_BANK.
+static func inland_alpha(d: float) -> float:
+	return clampf((d + INLAND_BANK) / INLAND_SPAN, 0.0, 1.0)
 
 
 func _water_quad(xa: float, xb: float, py: float, h00: float, h10: float, h11: float, h01: float, c00: Color, c10: Color, c11: Color, c01: Color) -> void:
