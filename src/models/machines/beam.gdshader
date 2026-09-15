@@ -7,6 +7,12 @@
 // whose corners the vertex stage folds into the wedge: local +X along the beam,
 // +Z across it. Transparent pass, high render priority, after the ink outline
 // repaints the frame: a light has no ink round it.
+//
+// A flat wedge knows nothing of terraces, so each pixel asks the depth buffer
+// what surface it lies over, and the light keeps to the machine's own terrace:
+// none over ground half a step below its feet (it would hang over a ledge),
+// none over a raised step close behind (it would cut into the step's wall or
+// show inside it), and none where the wedge itself dips a step below the feet.
 shader_type spatial;
 render_mode unshaded, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 
@@ -24,15 +30,22 @@ uniform float strength = 1.0;
 uniform float day_floor = 0.2;
 // Width at the root as a fraction of the far end: 0 a scan's point, more for a lamp bar.
 uniform float root_width = 0.0;
+// World height of the ground the machine stands on (set every frame), and one
+// terrace step (WorldData.STEP).
+uniform float foot_y = 0.0;
+uniform float step_h = 0.5;
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 
 varying float night;
 varying vec2 wedge;
+varying vec3 world;
 
 void vertex() {
 	float along = UV.x;
 	float across = (UV.y - 0.5) * 2.0;
 	VERTEX = vec3(along * beam_length, 0.0, across * mix(root_width, 1.0, along) * beam_spread * 0.5 * narrow);
 	wedge = vec2(along, across);
+	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec3 tint = sky_tint;
 	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
 }
@@ -45,9 +58,33 @@ float bayer4(vec2 p) {
 	return (float(m[i]) + 0.5) / 16.0;
 }
 
+// True where this pixel's light could not be on the surface behind it.
+bool off_the_ground(vec2 uv, mat4 inv_proj, mat4 inv_view) {
+	if (world.y < foot_y - step_h) {
+		return true;
+	}
+	float d = texture(depth_tex, uv).r;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	vec3 ndc = vec3(uv * 2.0 - 1.0, d * 2.0 - 1.0);
+#else
+	vec3 ndc = vec3(uv * 2.0 - 1.0, d);
+#endif
+	vec4 v = inv_proj * vec4(ndc, 1.0);
+	vec3 surface = (inv_view * vec4(v.xyz / v.w, 1.0)).xyz;
+	if (surface.y < foot_y - step_h * 0.5) {
+		return true;
+	}
+	// A raised step close behind the wedge: the light would be inside it or
+	// cutting across its wall. A tall thing far behind is only seen through it.
+	return surface.y > foot_y + step_h * 0.5 && distance(surface, world) < 1.5;
+}
+
 void fragment() {
 	float along = wedge.x;
 	float across = abs(wedge.y);
+	if (off_the_ground(SCREEN_UV, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX)) {
+		discard;
+	}
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	// Thins along its length, sheds its edges, and lands in a lip at the end.
 	float d = 0.24 * (1.0 - along * 0.75);

@@ -347,6 +347,25 @@ func test_scanners_throw_a_beam_that_sweeps_with_the_head() -> void:
 		m.free()
 
 
+## A beam keeps to the machine's own terrace: the shader is told where the feet
+## are every frame (a mob walks up and down steps) and how tall a step is.
+func test_beams_know_the_ground_the_machine_stands_on() -> void:
+	var holder := Node3D.new()
+	tree.root.add_child(holder)
+	for kid: StringName in [&"watcher", &"harvester"]:
+		var m := FigureModel.create(kid) as MachineModel
+		holder.add_child(m)
+		for level: int in [0, 3, -1]:
+			m.position = Vector3(4.0, level * WorldData.STEP, 2.0)
+			m.animate(STEP, 0.0)
+			for b: Array in m._beams:
+				var mat: ShaderMaterial = b[1]
+				near(float(mat.get_shader_parameter("foot_y")), level * WorldData.STEP, 1e-5, "%s beam knows its feet on level %d" % [kid, level])
+				near(float(mat.get_shader_parameter("step_h")), WorldData.STEP, 1e-5, "%s beam knows a step" % kid)
+		m.free()
+	holder.free()
+
+
 func test_work_washes_light_the_ground_only_after_dark() -> void:
 	for kid in WASHES:
 		var m := FigureModel.create(kid) as MachineModel

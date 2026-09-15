@@ -351,6 +351,7 @@ func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread
 	mat.set_shader_parameter("col", Vector3(Palette.COLD[3].r, Palette.COLD[3].g, Palette.COLD[3].b))
 	mat.set_shader_parameter("day_floor", 0.2 if role == &"scan" else 0.0)
 	mat.set_shader_parameter("root_width", 0.0 if role == &"scan" else 0.45)
+	mat.set_shader_parameter("step_h", WorldData.STEP)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = length + spread
@@ -934,10 +935,13 @@ func _run_lights() -> void:
 			sv = flick and _dark_t < STUTTER
 		(s[0] as Node3D).visible = sv
 	var lock := locked()
+	# The ground under the machine, for beams to know a ledge from a step.
+	var foot := global_position.y if is_inside_tree() else position.y
 	for b: Array in _beams:
 		var mi: MeshInstance3D = b[0]
 		var mat: ShaderMaterial = b[1]
 		var work: bool = b[2] == &"work"
+		mat.set_shader_parameter("foot_y", foot)
 		var bv := run and (not work or dark > 0.12)
 		if pose == &"dead":
 			bv = pose_time < float(DIE_AT[&"work" if work else &"beam"]) and (not work or dark > 0.12)
