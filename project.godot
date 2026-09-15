@@ -76,3 +76,11 @@ sky_view={
 "type": "vec4",
 "value": Vector4(0.039, 0, 0, 0)
 }
+sky_settle={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+sky_wind={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

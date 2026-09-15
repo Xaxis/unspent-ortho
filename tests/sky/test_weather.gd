@@ -157,3 +157,34 @@ func test_season_drains_then_holds() -> void:
 	near(Weather.season_turn(0.0), 0.0, 1e-6)
 	near(Weather.season_turn(17.0 * 1440.0), 0.5, 1e-6)
 	near(Weather.season_turn(90.0 * 1440.0), 1.0, 1e-6)
+
+
+func test_nothing_settles_without_weather_and_forced_snow_builds() -> void:
+	Weather.force(&"clear", 0.0)
+	var s := Weather.settled(1, 5000.0, Country.COAST)
+	near(s.snow + s.ash + s.wet, 0.0, 1e-6, "clear skies leave nothing")
+	Weather.force(&"snow", 1.0)
+	var early := Weather.settled(1, 5000.0, Country.SNOWFIELD)
+	gt(early.snow, 0.9, "a long snowfall covers the ground")
+	near(early.wet, 0.0, 1e-6, "snow is not rain")
+	Weather.force(&"rain", 1.0)
+	gt(Weather.settled(1, 5000.0, Country.COAST).wet, 0.9, "a long rain soaks it")
+	Weather.unforce()
+
+
+func test_settled_cover_is_continuous_and_lags_the_weather() -> void:
+	Weather.unforce()
+	var bad := 0
+	var fell_after := 0
+	for i in 800:
+		var m := 2000.0 + i * 11.3
+		var a := Weather.settled(6, m, Country.SNOWFIELD)
+		var b := Weather.settled(6, m + 1.0, Country.SNOWFIELD)
+		for k: String in ["snow", "ash", "wet"]:
+			if absf(float(a[k]) - float(b[k])) > 0.02:
+				bad += 1
+		# Cover outlives the fall: snow still lies where none is falling.
+		if Weather.at_place(6, m, Country.SNOWFIELD).strength < 0.01 and a.snow > 0.2:
+			fell_after += 1
+	eq(bad, 0, "cover never jumps in a minute")
+	gt(fell_after, 0, "snow lies after it stops")

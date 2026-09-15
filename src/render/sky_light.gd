@@ -6,8 +6,8 @@ extends Node3D
 ## night; weather and region are colour multiplies, never a veil.
 ##
 ## One writer: only this node sets the sky_* shader globals. The 10_sky system
-## fills `weather_tint`, `region_tint`, `season_turn`, `clouds`, `fog`, `flash`
-## and `cast_allowed`, then calls set_hour(); everything is composed there, so
+## fills `weather_tint`, `region_tint`, `season_turn`, `clouds`, `fog`, `flash`,
+## `settle`, `wind` and `cast_allowed`, then calls set_hour(); everything is composed there, so
 ## the order in which game.gd and the systems run never matters.
 
 ## Day fraction keys: [t, tint, level]. (source, exact)
@@ -66,6 +66,10 @@ var clouds := Vector4.ZERO
 var fog := Vector4.ZERO
 ## Lightning: 0..1, decays in a few frames.
 var flash := 0.0
+## Lying snow, ash and wet (Weather.settled), 0..1 each; w spare.
+var settle := Vector4.ZERO
+## Wind for anything that sways: xy along world x/z, z gust, w phase (see sky.gdshaderinc).
+var wind := Vector4.ZERO
 ## Heavy overcast takes the cast shadows away even by day.
 var cast_allowed := true
 ## What set_hour last composed, for systems that tint unlit things (particles,
@@ -113,6 +117,8 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set("sky_sun", Vector4(proj.x, proj.y, s.energy, flash))
 	RenderingServer.global_shader_parameter_set("sky_clouds", Vector4(clouds.x, clouds.y, clouds.z, clouds.w * daylight))
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
+	RenderingServer.global_shader_parameter_set("sky_settle", settle)
+	RenderingServer.global_shader_parameter_set("sky_wind", wind)
 	if is_inside_tree():
 		var cam := get_viewport().get_camera_3d()
 		var rows := get_viewport().get_visible_rect().size.y

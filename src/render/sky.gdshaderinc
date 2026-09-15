@@ -16,6 +16,13 @@ global uniform vec4 sky_clouds;
 global uniform vec4 sky_fog;
 // x: world units per screen pixel (the camera is snapped to it); yzw spare.
 global uniform vec4 sky_view;
+// What the weather has left lying (Weather.settled): x snow, y ash, z wet; w spare.
+global uniform vec4 sky_settle;
+// For anything that sways (decor, reeds, cloth): xy = wind along world x/z times
+// strength 0..1; z = gustiness 0..1; w = sway phase in radians, advanced by the
+// wind so a sway never jumps when the wind changes. Written by the sky; read by
+// any shader that wants it.
+global uniform vec4 sky_wind;
 
 // 0/1 checker on whole SCREEN pixels, from a world position. The camera never
 // rotates (yaw 45, pitch 57) and is snapped to texels, so this grid never crawls.
@@ -79,8 +86,52 @@ float sky_cloud_shadow(vec3 world_pos) {
 	return max(step(t, n), step(t - rim, n) * sky_checker(world_pos));
 }
 
+// Snow, ash and wet left on the land. Flat faces take it first, and it lies in
+// patches that join up as it deepens, with a dithered rim. Faces are found from
+// screen derivatives of the world position (every face here is flat). Water and
+// the sea floor sit below 0.36 and are left alone. Nothing lies on a machine's
+// found violet (they run warm, and they must always read as machines).
+vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos) {
+	if (sky_settle.x + sky_settle.y + sky_settle.z < 0.002 || world_pos.y < 0.36) {
+		return c;
+	}
+	if (albedo.b - albedo.g > 0.4 && albedo.b > albedo.r) {
+		return c;
+	}
+	vec3 n = normalize(cross(dFdx(world_pos), dFdy(world_pos)));
+	float up = abs(n.y);
+	if (up < 0.45) {
+		return c;
+	}
+	// Flat ground holds broad drifts; a slope (a roof, a pine's tier) only holds
+	// a dapple in small flecks, so what is under it still shows.
+	float flat_face = step(0.93, up);
+	float broad = sky_fbm(world_pos.xz * 0.85 + vec2(13.0, 29.0)) + 0.2;
+	float fine = sky_noise(world_pos.xz * 4.5 + vec2(3.0, 7.0)) * 0.9 - 0.12 + (up - 0.45) * 0.3;
+	float lay = mix(fine, broad, flat_face);
+	float rim = max(fwidth(lay) * 1.2, 0.0005);
+	float chk = sky_checker(world_pos);
+	if (sky_settle.z > 0.001) {
+		// Damp everywhere it rained, darker puddles lingering in patches as it dries.
+		float puddle = step(1.05 - sky_settle.z * 0.75, sky_fbm(world_pos.xz * 0.6 + vec2(71.0, 5.0)));
+		float dark = max(sky_settle.z * 0.55, puddle * sky_settle.z);
+		c *= mix(vec3(1.0), vec3(0.70, 0.74, 0.86), dark);
+	}
+	if (sky_settle.y > 0.001) {
+		float t = 1.0 - sky_settle.y * 0.6;
+		float m = max(step(t, lay), step(t - rim, lay) * chk);
+		c = mix(c, vec3(0.36, 0.38, 0.43) * sky_tint, m * 0.85);
+	}
+	if (sky_settle.x > 0.001) {
+		float t = 1.0 - sky_settle.x * 0.6;
+		float m = max(step(t, lay + 0.02), step(t - rim, lay + 0.02) * chk);
+		c = mix(c, vec3(0.87, 0.94, 0.97) * sky_tint, m);
+	}
+	return c;
+}
+
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
-	vec3 c = albedo * sky_tint;
+	vec3 c = sky_settled(albedo * sky_tint, albedo, world_pos);
 	if (sky_clouds.w > 0.001) {
 		// A cloud's shade is a colour, like every shadow here: a little of the
 		// blue-violet of the cast shadow, never grey.

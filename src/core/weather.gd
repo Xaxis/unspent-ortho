@@ -174,6 +174,48 @@ static func strike_distance(seed_value: int, minute: int, strength: float) -> fl
 	return maxf(40.0, (7000.0 - 6700.0 * strength) * lerpf(0.6, 1.4, Rng.hash01(seed_value, minute, 0x7B03)))
 
 
+## What the weather has left on the ground at a place: {snow, ash, wet}, each
+## 0..1. A leaky integral of the last SETTLE_HOURS: snow and ash build while
+## they fall and melt or blow off slowly after; rain wets fast and dries in a
+## couple of hours. Pure, so a shot at 15:00 after a snowy morning shows the
+## morning's snow.
+const SETTLE_HOURS := 12
+const SETTLE_STEP := 30.0
+## Per settled thing: what feeds it (kind -> share of strength), minutes to
+## build at full strength, minutes to fade once it stops.
+const SETTLE := {
+	"snow": {"feed": {&"snow": 1.0, &"blizzard": 1.0, &"hail": 0.35}, "build": 150.0, "fade": 540.0},
+	"ash": {"feed": {&"ash": 1.0}, "build": 200.0, "fade": 600.0},
+	"wet": {"feed": {&"rain": 1.0, &"storm": 1.0, &"hail": 0.6, &"fog": 0.12, &"blizzard": 0.2}, "build": 45.0, "fade": 110.0},
+}
+
+
+static func settled(seed_value: int, minutes: float, country: int) -> Dictionary:
+	var out := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
+	# Whole steps on a fixed grid, so the answer changes smoothly with time.
+	var end := floorf(minutes / SETTLE_STEP) * SETTLE_STEP
+	var steps := int(SETTLE_HOURS * 60.0 / SETTLE_STEP)
+	var t := end - steps * SETTLE_STEP
+	for i in steps + 1:
+		var w := at_place(seed_value, t, country)
+		_settle_step(out, w.kind, float(w.strength), SETTLE_STEP)
+		t += SETTLE_STEP
+	# The part of the current step already walked.
+	var w := at_place(seed_value, minutes, country)
+	_settle_step(out, w.kind, float(w.strength), minutes - end)
+	return out
+
+
+static func _settle_step(out: Dictionary, kind: StringName, strength: float, dt: float) -> void:
+	for key: String in SETTLE:
+		var spec: Dictionary = SETTLE[key]
+		var feed := float((spec.feed as Dictionary).get(kind, 0.0)) * strength
+		var c := float(out[key])
+		c += feed * (1.0 - c) * dt / float(spec.build)
+		c -= (1.0 - feed) * c * dt / float(spec.fade)
+		out[key] = clampf(c, 0.0, 1.0)
+
+
 ## Night fall 0..1: up over 20:00-21:00, down over 04:30-06:00. (source)
 static func night_fall(hour: float) -> float:
 	var h := fposmod(hour, 24.0)

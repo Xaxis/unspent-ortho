@@ -23,6 +23,11 @@ var _flash := 0.0
 var _pending_strikes: Array = [] # [world minute, strength, minute index]
 var _pending_thunder: Array = [] # [real seconds left, Vector3]
 var _forced_bolt := false
+## Lying snow, ash and wet around the focus (Weather.settled), eased.
+var settled := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
+var _settle_target := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
+var _settle_minute := -INF
+var _sway_phase := 0.0
 
 
 func setup(g: Game) -> void:
@@ -111,6 +116,15 @@ func _update(delta: float, snap: bool) -> void:
 		target_region += SkyLight.country_tint(c) * float(shares[c])
 		target_wind += float(wx.wind) * float(shares[c])
 	var target := WeatherLook.compose(entries)
+	# What lies on the ground changes over hours: recompute once a world minute.
+	if snap or absf(minutes - _settle_minute) >= 1.0:
+		_settle_minute = minutes
+		for k: String in _settle_target:
+			_settle_target[k] = 0.0
+		for c: int in shares:
+			var st := Weather.settled(seed_value, minutes, c)
+			for k: String in _settle_target:
+				_settle_target[k] = float(_settle_target[k]) + float(st[k]) * float(shares[c])
 
 	var kr := 1.0 if snap else 1.0 - exp(-delta / REGION_EASE)
 	var kw := 1.0 if snap else 1.0 - exp(-delta / WEATHER_EASE)
@@ -141,6 +155,14 @@ func _update(delta: float, snap: bool) -> void:
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
 	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, float(look.fog), float(look.heat) * (1.0 - Weather.night_fall(game.clock.hour())))
 	sky.flash = _flash
+	for k: String in settled:
+		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
+	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
+	# Sway advances faster in a strong wind, so reeds never snap to a new speed.
+	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)), TAU * 1000.0)
+	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
+	var along := _cloud_bearing * wind
+	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.set_hour(game.clock.hour())
 	view.update(look, wind, f3, delta)
