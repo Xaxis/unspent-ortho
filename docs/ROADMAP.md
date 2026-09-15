@@ -90,6 +90,8 @@ content never needs a rewrite.
   one interface; five abilities; the MENDED idiom.
 - **disposition**: machine roles, indifference, interference per region, and stealth
   read on the machine itself.
+- **slate**: every UI screen and the HUD rebuilt as one hacked tablet made from spare
+  parts (ART.md §9), replacing the notebook pages one for one.
 - **export**: web (threads and no-threads) and macOS; loading page; `tools/web.sh`
   boot check.
 
