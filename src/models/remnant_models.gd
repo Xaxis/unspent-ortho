@@ -39,6 +39,10 @@ static func for_kind(kind: int) -> StringName:
 static func mesh(name: StringName) -> ArrayMesh:
 	if not _cache.has(name):
 		var k := MeshKit.new()
+		# Broken rock is drawn in the rock's own strata strokes; the rest in the hand.
+		if name == &"rubble":
+			k.style = Ink.CONTOUR
+			k.style2 = Ink.CONTOUR
 		match name:
 			&"stump":
 				_stump(k)
@@ -59,9 +63,13 @@ static func mesh(name: StringName) -> ArrayMesh:
 ## Bark sides leaning off true, a pale axe-cut face stepped where the last fibres
 ## tore, two root knuckles, and chips of the cut lying round it.
 static func _stump(k: MeshKit) -> void:
-	# Wider than the trunk it was: from above, the pale cut face is what reads.
-	k.prism(0, -0.05, 0, 0.21, 0.2, 0.17, 7, Palette.EARTH[2], Palette.SAND[5], 0.3)
-	k.prism(0.05, 0.201, 0.02, 0.09, 0.27, 0.05, 5, Palette.EARTH[3], Palette.SAND[4], 0.5)
+	# Wider than the trunk it was: from above, the cut face is what reads, so it sits
+	# in a dark lip of bark (the outline pass never reaches anything this low) with
+	# its rings drawn in, and the last torn fibres stand up off one side.
+	k.prism(0, -0.05, 0, 0.25, 0.19, 0.22, 8, Palette.EARTH[1], Palette.EARTH[1], 0.3)
+	k.prism(0.0, 0.19, 0.0, 0.19, 0.205, 0.18, 8, Palette.SAND[4], Palette.SAND[4], 0.3)
+	k.prism(0.02, 0.205, 0.01, 0.09, 0.212, 0.085, 7, Palette.SAND[3], Palette.EARTH[3], 0.6)
+	k.prism(0.1, 0.19, 0.06, 0.07, 0.3, 0.035, 5, Palette.EARTH[2], Palette.SAND[5], 0.5)
 	k.strut(Vector3(0.08, 0.0, 0.05), Vector3(0.25, -0.03, 0.12), 0.042, 4, Palette.EARTH[1])
 	k.strut(Vector3(-0.07, 0.0, -0.06), Vector3(-0.21, -0.03, -0.16), 0.036, 4, Palette.EARTH[1])
 	for i in 6:

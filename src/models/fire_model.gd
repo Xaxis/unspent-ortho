@@ -50,7 +50,10 @@ func build(world_mat: Material, seed_value: int) -> void:
 	_seed = seed_value
 	_t = Rng.hash01(seed_value, 3) * 10.0
 	var glow := glow_material()
+	# Fire is light: flames and embers are never hatched (docs/ART.md §5-6).
 	var bed := MeshKit.new()
+	bed.style = Ink.NONE
+	bed.style2 = Ink.NONE
 	bed.rock(0, -0.03, 0, 0.3, 0.1, seed_value, Palette.EMBER[2], 7)
 	bed.rock(0.06, 0.0, -0.04, 0.12, 0.08, seed_value + 1, Palette.EMBER[3], 5)
 	_add(self, bed, glow)
@@ -67,6 +70,8 @@ func build(world_mat: Material, seed_value: int) -> void:
 		t.position = Vector3(cos(a) * 0.09, 0.05, sin(a) * 0.09) if i < 3 else Vector3(0, 0.06, 0)
 		t.rotation.y = a
 		var k := MeshKit.new()
+		k.style = Ink.NONE
+		k.style2 = Ink.NONE
 		var r := 0.14 if i < 3 else 0.1
 		var h := 0.5 if i < 3 else 0.62
 		_tongue(k, r, h, Palette.EMBER[3] if i != 1 else Palette.EMBER[4], Palette.EMBER[5] if i == 3 else Palette.EMBER[4], seed_value + i)

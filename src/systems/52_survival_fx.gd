@@ -37,6 +37,9 @@ var _dots: SurvivalMarks.Pool
 var _ticks: SurvivalMarks.Pool
 var _sparks_pool: SurvivalMarks.Pool
 var _flecks: SurvivalMarks.Pool
+## Flecks of plate are FOUND: drawn by the ruler's material, never hatched.
+var _found_flecks: SurvivalMarks.Pool
+var _found_mat: ShaderMaterial
 ## Live marks: {i, t, life, from, to, arc, size, col, drop} (dots, flecks), {i, t, life, at, dir, r0, r1, thick, col} (ticks)
 var _dot: Array[Dictionary] = []
 var _spark: Array[Dictionary] = []
@@ -46,6 +49,8 @@ var _free_dots: Array[int] = []
 var _free_sparks: Array[int] = []
 var _free_ticks: Array[int] = []
 var _free_flecks: Array[int] = []
+var _ffleck: Array[Dictionary] = []
+var _free_found: Array[int] = []
 var _job_prop: WorldProp = null
 ## The work that ended most recently, and on which frame: what a took event came from.
 var _ended_prop: WorldProp = null
@@ -77,6 +82,10 @@ func setup(g: Game) -> void:
 	for i in range(SPARKS - 1, -1, -1):
 		_free_sparks.append(i)
 	_flecks = SurvivalMarks.Pool.new(SurvivalMarks.shard(), FLECKS, _mat, self)
+	_found_mat = SurvivalMarks.found_material()
+	_found_flecks = SurvivalMarks.Pool.new(SurvivalMarks.shard(), FLECKS / 2, _found_mat, self)
+	for i in range(FLECKS / 2 - 1, -1, -1):
+		_free_found.append(i)
 	for i in range(DOTS - 1, -1, -1):
 		_free_dots.append(i)
 	for i in range(TICKS - 1, -1, -1):
@@ -160,13 +169,14 @@ func _emit_dot(from: Vector3, to: Vector3, life: float, size: float, col: Color,
 	_draw_travel(_dots, d)
 
 
-func _emit_fleck(from: Vector3, to: Vector3, life: float, size: float, col: Color, arc: float) -> void:
-	if _free_flecks.is_empty():
+func _emit_fleck(from: Vector3, to: Vector3, life: float, size: float, col: Color, arc: float, found: bool = false) -> void:
+	var free := _free_found if found else _free_flecks
+	if free.is_empty():
 		return
-	var d := {"i": _free_flecks.pop_back(), "t": 0.0, "life": life, "from": from, "to": to, "arc": arc, "size": size, "col": col, "drop": 1.0,
-		"spin": Rng.hash01(int(_time * 1000.0), _fleck.size()) * TAU}
-	_fleck.append(d)
-	_draw_travel(_flecks, d)
+	var d := {"i": free.pop_back(), "t": 0.0, "life": life, "from": from, "to": to, "arc": arc, "size": size, "col": col, "drop": 1.0,
+		"spin": Rng.hash01(int(_time * 1000.0), _fleck.size() + _ffleck.size()) * TAU}
+	(_ffleck if found else _fleck).append(d)
+	_draw_travel(_found_flecks if found else _flecks, d)
 
 
 ## An ink tick flicked out from `at` along `dir`: its head runs out to r1, then its
@@ -208,7 +218,7 @@ func _draw_tick(d: Dictionary) -> void:
 
 
 func _step_marks(dt: float) -> void:
-	for pair: Array in [[_dot, _dots, _free_dots], [_spark, _sparks_pool, _free_sparks], [_fleck, _flecks, _free_flecks]]:
+	for pair: Array in [[_dot, _dots, _free_dots], [_spark, _sparks_pool, _free_sparks], [_fleck, _flecks, _free_flecks], [_ffleck, _found_flecks, _free_found]]:
 		var list: Array[Dictionary] = pair[0]
 		var pool: SurvivalMarks.Pool = pair[1]
 		var free: Array[int] = pair[2]
@@ -272,13 +282,13 @@ func _dust(at: Vector3, n: int, radius: float, colors: Array[Color], salt: int, 
 
 
 ## Flecks of stuff knocked out of `at`, back toward the worker and up a little.
-func _knock_flecks(at: Vector3, back: Vector3, n: int, colors: Array[Color], salt: int, spread: float = 0.35) -> void:
+func _knock_flecks(at: Vector3, back: Vector3, n: int, colors: Array[Color], salt: int, spread: float = 0.35, found: bool = false) -> void:
 	for i in n:
 		var side := Vector3(Rng.hash01(salt, i, 21) - 0.5, 0.0, Rng.hash01(salt, i, 22) - 0.5) * spread * 2.0
 		var to := at + back * (0.18 + Rng.hash01(salt, i, 23) * 0.3) + side
 		to.y = game.world.height_at(Vector2(to.x, to.z)) + 0.03
 		_emit_fleck(at, to, 0.32 + Rng.hash01(salt, i, 24) * 0.2, 0.055 + Rng.hash01(salt, i, 25) * 0.035,
-			colors[i % colors.size()], 0.18 + Rng.hash01(salt, i, 26) * 0.2)
+			colors[i % colors.size()], 0.18 + Rng.hash01(salt, i, 26) * 0.2, found)
 
 
 func _sparks(at: Vector3, n: int, salt: int) -> void:
@@ -368,10 +378,10 @@ func _strike(prop: WorldProp, verb: StringName, tooled: bool) -> void:
 	match verb:
 		&"fell", &"break", &"dig", &"cut":
 			_ink_burst(at, 5 if verb != &"cut" else 4, 0.4 if verb != &"cut" else 0.3, salt, prop.kind)
-			_knock_flecks(at, back, 3 if verb != &"cut" else 2, colors, salt)
+			_knock_flecks(at, back, 3 if verb != &"cut" else 2, colors, salt, 0.35, SCRAP.has(prop.kind))
 		&"gather", &"scrape", &"turn":
 			_ink_burst(at, 3, 0.24, salt, prop.kind)
-			_knock_flecks(at, back, 2 if verb != &"gather" else 1, colors, salt, 0.2)
+			_knock_flecks(at, back, 2 if verb != &"gather" else 1, colors, salt, 0.2, SCRAP.has(prop.kind))
 		&"tap":
 			# A tap only weeps: one drop runs down the bark.
 			var foot := game.world.to_3d(prop.pos + Vector2(back.x, back.z) * prop.solid) + Vector3(0, 0.05, 0)
@@ -397,7 +407,7 @@ func _strike(prop: WorldProp, verb: StringName, tooled: bool) -> void:
 func _give_out(prop: WorldProp) -> void:
 	var node := MeshInstance3D.new()
 	node.mesh = PropModels.mesh(prop.kind)
-	node.material_override = _mat
+	node.material_override = _found_mat if SCRAP.has(prop.kind) else _mat
 	var pivot := Node3D.new()
 	pivot.position = game.world.to_3d(prop.pos)
 	pivot.add_child(node)
@@ -466,7 +476,7 @@ func _step_anim(a: Dictionary, _dt: float) -> bool:
 				var colors := _colors(prop.kind, &"break")
 				var toward := game.world.to_3d(game.player.pos) - base
 				toward.y = 0.0
-				_knock_flecks(at, toward.normalized() if toward.length() > 0.01 else Vector3.LEFT, 6, colors, salt, 0.6)
+				_knock_flecks(at, toward.normalized() if toward.length() > 0.01 else Vector3.LEFT, 6, colors, salt, 0.6, SCRAP.has(prop.kind))
 			return t >= 0.14
 		_:
 			var k := clampf(t / 0.35, 0.0, 1.0)
@@ -575,7 +585,7 @@ func _resolve_pending() -> void:
 func _spawn_token(item: StringName, from: Vector3, delay: float) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = SurvivalMarks.glyph(SurvivalMarks.glyph_for(item))
-	mi.material_override = _mat
+	mi.material_override = _found_mat if SurvivalMarks.is_found_glyph(mi.mesh) else _mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.visible = false
 	mi.position = from

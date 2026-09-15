@@ -18,6 +18,7 @@ const GLYPHS: Array[StringName] = [&"log", &"stone", &"lime", &"ore_iron", &"ore
 
 static var _mat: ShaderMaterial
 static var _over: ShaderMaterial
+static var _found: ShaderMaterial
 static var _dot: ArrayMesh
 static var _tick: ArrayMesh
 static var _shard: ArrayMesh
@@ -64,6 +65,19 @@ static func material() -> ShaderMaterial:
 		# After the full-screen outline pass, which would otherwise paint over them.
 		_mat.render_priority = 10
 	return _mat
+
+
+## The ruler's material for FOUND pieces (plate tokens and flecks off machines' leavings).
+static func found_material() -> ShaderMaterial:
+	if _found == null:
+		_found = ShaderMaterial.new()
+		_found.shader = preload("res://src/render/found.gdshader")
+	return _found
+
+
+## FOUND glyphs are drawn by the ruler, not the hand.
+static func is_found_glyph(mesh: Mesh) -> bool:
+	return _glyphs.get(&"plate", null) == mesh
 
 
 static func overlay() -> ShaderMaterial:
@@ -198,6 +212,8 @@ static func glyph(name: StringName) -> ArrayMesh:
 				k.rock(0, 0, 0, 0.08, 0.1, 20, Palette.COPPER[4], 5)
 			&"plate":
 				# FOUND: a bent, exact piece of plate, both faces drawn.
+				k.style = Ink.NONE
+				k.style2 = Ink.NONE
 				var pts: Array[Vector3] = [Vector3(-0.12, 0.02, -0.08), Vector3(0.1, 0.05, -0.1), Vector3(0.13, 0.09, 0.08), Vector3(-0.08, 0.05, 0.1)]
 				k.quad(pts[0], pts[1], pts[2], pts[3], Palette.PLATE[4])
 				k.quad(pts[3], pts[2], pts[1], pts[0], Palette.PLATE[2])
@@ -231,5 +247,7 @@ static func gallery() -> Array:
 		var mi := MeshInstance3D.new()
 		mi.mesh = glyph(name)
 		mi.scale = Vector3.ONE * 4.0
+		if name == &"plate":
+			mi.material_override = found_material()
 		out.append({"name": "took %s" % name, "node": mi})
 	return out
