@@ -227,6 +227,19 @@ func _index_sources() -> void:
 		var p: WorldProp = props[_indexed]
 		_indexed += 1
 		if not SOURCES.has(p.kind) and p.kind != PropKind.PYLON:
+			# Any other kind whose model says where its lights are (a relay's
+			# beacon, an array's strip) glints on the machines' power.
+			var pts := _glow_points_cached(p.kind)
+			if not pts.is_empty():
+				var world_pts: Array[Vector3] = []
+				var rgb: Array[Vector3] = []
+				var base := game.world.to_3d(p.pos)
+				for g: Dictionary in pts:
+					world_pts.append(base + Basis(Vector3.UP, -p.rot) * ((g.at as Vector3) * p.scale))
+					var c: Color = g.color
+					rgb.append(Vector3(c.r, c.g, c.b))
+				sources.append({"prop": p, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
+					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb})
 			continue
 		var s := {
 			"prop": p, "kind": p.kind,
@@ -364,6 +377,12 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 			cands.append({"at": m.call("part_position"), "rgb": LENS_GLINT, "level": 0.55 * power})
 			continue
 		var kind := int(s.kind)
+		if s.has("machine_points"):
+			var mp: Array[Vector3] = s.machine_points
+			var mc: Array[Vector3] = s.machine_rgb
+			for j in mp.size():
+				cands.append({"at": mp[j], "rgb": mc[j], "level": 0.7 * power})
+			continue
 		match kind:
 			PropKind.PYLON:
 				var blink := fposmod(_time + float(s.h) * 3.0, 3.0) < 1.1
@@ -382,6 +401,16 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 	var packed := Glints.pack(glint_list)
 	game.sky.glints = packed[0]
 	game.sky.glint_colors = packed[1]
+
+
+var _glow_cache: Dictionary = {}
+
+
+## PropModels.glow_points(kind), asked once per kind.
+func _glow_points_cached(kind: int) -> Array:
+	if not _glow_cache.has(kind):
+		_glow_cache[kind] = glow_points(kind)
+	return _glow_cache[kind]
 
 
 ## The sources and machines that could glint near the focus, nearest first.
