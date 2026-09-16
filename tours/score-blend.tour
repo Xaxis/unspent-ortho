@@ -1,0 +1,45 @@
+# The score blending with the land, from a normal game start on the south coast.
+# It wakes with the coast and reaches its whole voice within half a minute; then
+# the player is put in the moss in one step, far faster than any bake, and the
+# coast keeps playing until the moss can take over (playtest 14: it used to fall
+# silent). Then two borders walked with real input, each one two landscapes
+# sounding at once. The last await fails the tour if the score was ever silent
+# for longer than GAP_BUDGET since it first sounded.
+# The log shows the blend it holds: "[coast 0.79 | moss 0.61] drone, pad ...".
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/score-blend.tour --seed=1 --hour=11 --weather=clear:0
+coast calm
+await score 150
+await score_full 120
+shot 01-the-whole-score-in-half-a-minute
+# Two hundred tiles north in one step: nothing of the moss is baked.
+place moss
+wait 3
+shot 02-arrived-faster-than-the-bake
+await score_here 240
+shot 03-the-moss-took-over-without-a-gap
+# The first border, walked: the coast and the moss share a tonal centre, so the
+# two keys lean into each other over the whole ecotone.
+place coast-moss
+await score_blend 180
+shot 04-on-the-coast-moss-border
+walk 0,1 7 run
+walk 0,1 7 run
+shot 05-walked-down-into-the-coast
+walk 0,-1 8 run
+walk 0,-1 8 run
+await score_blend 180
+shot 06-walked-back-up-into-the-moss
+# The second border, walked: the pines are the coast's seven notes a fifth
+# down, so this one leans too. East from the ecotone into the wood.
+place moss-pinewood
+await score_blend 180
+shot 07-on-the-moss-pinewood-border
+walk 0.71,0.71 7 run
+walk 0.71,0.71 7 run
+await score_in:pinewood 240
+shot 08-walked-east-into-the-pines
+await score_pad 240
+shot 09-and-the-pines-fill-out
+# Nothing above was heard over a hole in the score.
+await score_unbroken 120
+echo the score never fell silent

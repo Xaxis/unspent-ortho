@@ -142,10 +142,11 @@ const LAYER_COLOURS := {
 
 
 ## --score: three minutes of each landscape's score through the conductor
-## (ScoreScene.excerpt), or --cross=A,B walking from one into the other, as
-## shots/score/<name>.wav and a picture: layer lanes, cues, the danger and form
-## strips, and the spectrogram of the middle.
-##   --land=ID (one landscape) --seed=N --secs=S --cross=A,B
+## (ScoreScene.excerpt), --cross=A,B walking from one into the other, or
+## --walk=A,B,C a walk across two borders, as shots/score/<name>.wav and a
+## picture: layer lanes, cues, the danger and form strips, and the spectrogram
+## of the middle.
+##   --land=ID (one landscape) --seed=N --secs=S --cross=A,B --walk=A,B,C
 func _run_score(args: PackedStringArray) -> void:
 	var t0 := Time.get_ticks_msec()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SCORE_OUT))
@@ -153,6 +154,7 @@ func _run_score(args: PackedStringArray) -> void:
 	var seed_value := 1
 	var secs := -1.0
 	var cross: PackedStringArray = []
+	var walk: PackedStringArray = []
 	for a in args:
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		var v := kv[1] if kv.size() > 1 else ""
@@ -163,8 +165,11 @@ func _run_score(args: PackedStringArray) -> void:
 			"seed": seed_value = v.to_int()
 			"secs": secs = v.to_float()
 			"cross": cross = v.split(",")
+			"walk": walk = v.split(",")
 	var scenes := {}
-	if cross.size() == 2:
+	if walk.size() >= 2:
+		scenes["walk_" + "_".join(walk)] = ScoreScene.walking(Array(walk), seed_value)
+	elif cross.size() == 2:
 		scenes["cross_%s_%s" % [cross[0], cross[1]]] = ScoreScene.crossing(StringName(cross[0]), StringName(cross[1]), seed_value)
 	else:
 		for land in lands:
@@ -253,7 +258,7 @@ static func score_picture(out: Dictionary, name: String) -> Image:
 		mono.samples[i] = (samples[i * 2] + samples[i * 2 + 1]) * 0.5
 	var w := PAD + SPEC_W + PAD * 3 + LIN_W + PAD
 	var strip_h := 10
-	var h := HEAD + LANE_H + 4 + strip_h * 3 + PAD + ENV_H + PAD + SPEC_H + 14
+	var h := HEAD + LANE_H + 4 + strip_h * 3 + 4 + BLEND_H + PAD + ENV_H + PAD + SPEC_H + 14
 	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
 	img.fill(Color8(12, 11, 20))
 	var x0 := PAD + 18
@@ -327,13 +332,66 @@ static func score_picture(out: Dictionary, name: String) -> Image:
 		if label != last:
 			text(img, x0 + x + 1, top + LANE_H + 4 + strip_h * 3 - 8, label, Color8(170, 170, 170))
 			last = label
+	sy += 4
+	_blend_lane(img, tl, Rect2i(x0, sy, spec_w, BLEND_H), x0 + spec_w + PAD * 3)
+	sy += BLEND_H
 	var env_top := sy + PAD
 	_envelope(img, mono, Rect2i(x0, env_top, spec_w, ENV_H))
 	_spectrogram(img, mono, Rect2i(x0, env_top + ENV_H + PAD, spec_w, SPEC_H))
 	return img
 
 
+## What the score is blending: each landscape's own bed power (drone, pad and
+## air together) and, in white, all of them at once. The white line staying flat
+## across a border is the crossfade being equal power — the score turns from one
+## landscape into the next without dipping or swelling.
+static func _blend_lane(img: Image, tl: Dictionary, r: Rect2i, label_x: int) -> void:
+	var lanes: Dictionary = tl["lanes"]
+	var by_land := {}
+	var blocks := int(tl["blocks"])
+	for key: StringName in lanes:
+		var k := ScoreStems.parse(key)
+		if not (k.get("layer") in [&"drone", &"pad", &"texture"]):
+			continue
+		var land: StringName = k["land"]
+		var acc: PackedFloat32Array = by_land.get(land, PackedFloat32Array())
+		if acc.size() < blocks:
+			acc.resize(blocks)
+		var lane: PackedFloat32Array = lanes[key]
+		for i in mini(blocks, lane.size()):
+			acc[i] += lane[i] * lane[i]
+		by_land[land] = acc
+	var lands: Array = by_land.keys()
+	lands.sort()
+	var total := PackedFloat32Array()
+	total.resize(blocks)
+	for land: StringName in lands:
+		var acc: PackedFloat32Array = by_land[land]
+		for i in blocks:
+			total[i] += acc[i]
+	var draw := func(vals: PackedFloat32Array, col: Color, scale: float) -> void:
+		var prev := -1
+		for x in r.size.x:
+			var v := sqrt(maxf(0.0, vals[mini(vals.size() - 1, floori(float(x) * vals.size() / r.size.x))])) / scale
+			var y := r.position.y + r.size.y - 1 - roundi(clampf(v, 0.0, 1.0) * (r.size.y - 1))
+			for yy in range(mini(prev, y) if prev >= 0 else y, (maxi(prev, y) if prev >= 0 else y) + 1):
+				img.set_pixel(r.position.x + x, yy, col)
+			prev = y
+	var i := 0
+	var ly := r.position.y
+	for land: StringName in lands:
+		var col: Color = LANE_COLOURS[i % LANE_COLOURS.size()]
+		draw.call(by_land[land], col, 1.6)
+		text(img, label_x, ly, String(land).to_upper(), col)
+		ly += 8
+		i += 1
+	draw.call(total, Color8(255, 255, 255), 1.6)
+	text(img, label_x, ly, "ALL: BLEND POWER", Color8(255, 255, 255))
+
+
 const LANE_H := 110
+## The blend lane under the strips: what each landscape holds of the ear.
+const BLEND_H := 46
 const LANE_COLOURS := [
 	Color8(232, 194, 58), Color8(120, 190, 220), Color8(150, 210, 120), Color8(230, 120, 90),
 	Color8(200, 150, 230), Color8(240, 240, 240), Color8(110, 140, 230), Color8(220, 170, 120),

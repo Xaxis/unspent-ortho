@@ -492,6 +492,8 @@ func _forget_unheard() -> void:
 ## quickened pulse), score_grid, score_dissonance, score_texture; score_phrase,
 ## score_resolve, score_motif (that cue has been played). And of the blend:
 ##   score_blend      two landscapes are sounding at once (an ecotone)
+##   score_here       the landscape the player is standing in is the one sounding
+##   score_in:LAND    that landscape in particular is sounding
 ##   score_full       drone, air, pad and pulse all heard: the whole score
 ##   score_unbroken   it has played UNBROKEN_AFTER seconds and has never been
 ##                    silent for longer than GAP_BUDGET since it began
@@ -500,6 +502,11 @@ func tour_seen(what: String) -> bool:
 		return false
 	if what == "score_blend":
 		return heard_lands().size() >= 2
+	if what.begins_with("score_in:"):
+		return heard_lands().has(StringName(what.substr("score_in:".length())))
+	if what == "score_here":
+		var here := SoundMix.dominant_country(game.world, game.player.pos)
+		return heard_lands().has(_land_id(int(here["country"])))
 	if what == "score_full":
 		for layer: String in ["drone", "texture", "pad", "pulse"]:
 			if not tour_seen("score_" + layer):
@@ -543,7 +550,11 @@ func _log_layers() -> void:
 	var lands: Array = conductor.blend.keys()
 	lands.sort_custom(func(a: StringName, b: StringName) -> bool: return float(conductor.blend[a]) > float(conductor.blend[b]))
 	for land: StringName in lands:
-		blend.append("%s %.2f" % [land, float(conductor.blend[land])])
+		# To a tenth: a crossfade should leave a readable handful of lines in the
+		# log, not one a frame.
+		var g := roundf(float(conductor.blend[land]) * 10.0) / 10.0
+		if g > 0.0:
+			blend.append("%s %.1f" % [land, g])
 	var line := "[%s] %s" % [" | ".join(blend), ", ".join(heard)]
 	if line != _logged:
 		_logged = line
