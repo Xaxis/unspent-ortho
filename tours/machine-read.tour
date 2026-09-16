@@ -137,3 +137,21 @@ hour 23
 weather clear:0
 wait 0.6
 shot 09-its-light-on-the-ground
+
+# --- the land's own fire lands on the land ---------------------------------------
+# The other half of the same finding: at noon the Burning was white-hot cores
+# sitting on flat ground with nothing under them. A lamp lit at noon still lays
+# nothing — but a vent is a hole into fire, and it reaches the ground it is in at
+# every hour. Both hours, so the night it already had is visibly the night it keeps.
+coast calm
+place burning
+near vent
+zoom 8
+hour 12
+weather clear:0
+wait 1.2
+shot 10-a-vent-at-noon
+hour 23
+weather clear:0
+wait 1.2
+shot 11-the-same-vent-at-night

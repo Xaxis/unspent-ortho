@@ -140,6 +140,10 @@ const SHAFT_MACHINE := 0.8
 ## ground it lights — but the ground under it can no longer be as dark as the
 ## ground ten tiles off.
 const MACHINE_POOL := Vector2(2.6, 1.0)
+## How much of its pool a VENT keeps in full daylight. A lamp keeps none — that
+## rule is right and stays — but the Burning's vents are open fire in the ground
+## and must reach the ground they are in at every hour (docs/ART.md §3).
+const VENT_DAY := 1.5
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -220,6 +224,35 @@ static func lamps_wanted(hour: float) -> float:
 ## full from an hour after it.
 static func pool_dark(hour: float) -> float:
 	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+
+
+## How hard a thing that BURNS lights the ground, at darkness `dark` (0 noon, 1
+## the dead of night). A fire and a kiln keep the general rule — they burn by day
+## too, but their light only tells after dusk.
+##
+## A VENT does not. It is not a lamp and not a campfire: it is a hole into fire,
+## and the ground round it is lit from underneath at every hour (docs/ART.md §3,
+## "glow from below"). At noon the Burning was white-hot cores sitting on flat
+## ground with nothing under them — the landscape's own fire touching none of its
+## own land (art review, wave A finding 6).
+##
+## Its daylight floor has to be this high because it is competing with the SUN: a
+## pool ADDS its energy to ground the sun already lights, so the 0.07 a vent had
+## at noon moved the ground by two values out of 255. The floor fades out as the
+## dark comes on, so the night — where the vents already read — keeps exactly the
+## light it had.
+static func burning_level(kind: int, power: float, dark: float) -> float:
+	var level := power * (0.12 + 0.88 * dark)
+	if kind == PropKind.VENT:
+		return maxf(level, power * VENT_DAY * (1.0 - dark))
+	return level
+
+
+## Does this source lay a wash on the ground at this darkness? A pool of light
+## only tells once the dark has come: at dusk a lamp is a flame, not a spotlight.
+## A vent is the exception, for the reason in burning_level().
+static func lays_pool(kind: int, dark: float) -> bool:
+	return kind == PropKind.VENT or dark > 0.25
 
 
 ## How little light there is, whatever the cause: the hour, and a sky too dark
@@ -395,7 +428,12 @@ func _update(delta: float, snap: bool) -> void:
 	# Lamps are lit before dark, but a pool of light only tells once the dark
 	# has come: at dusk a lamp is a flame, not a spotlight.
 	# A lightning flash drowns the lamps: the page shows, not the pools.
-	var dark := pool_dark(hour) * (1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0))
+	var flash := 1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0)
+	# How dark the HOUR is, before the flash is taken off it. A vent's daylight
+	# floor is read off this: a flash is not daylight, and reading it as daylight
+	# would make the one light with a daylight floor burn HARDER under lightning.
+	var hour_dark := pool_dark(hour)
+	var dark := hour_dark * flash
 	var pools: Array[Vector4] = []
 	var pool_rgb: Array[Vector4] = []
 	for i in lights.size():
@@ -417,9 +455,12 @@ func _update(delta: float, snap: bool) -> void:
 			continue
 		var kind := int(s.kind)
 		var level: float = s.power
-		if kind == PropKind.FIRE or kind == PropKind.VENT or kind == PropKind.KILN:
-			# Fires burn by day too, but their light only tells after dusk.
-			level *= 0.12 + 0.88 * dark
+		# Whether this source lays a wash on the ground at all right now.
+		var lays := lays_pool(kind, dark)
+		if kind == PropKind.VENT:
+			level = burning_level(kind, float(s.power), hour_dark) * flash
+		elif kind == PropKind.FIRE or kind == PropKind.KILN:
+			level = burning_level(kind, float(s.power), dark)
 		else:
 			level *= want * dark
 			if POWERED_SOURCES.has(kind):
@@ -427,7 +468,7 @@ func _update(delta: float, snap: bool) -> void:
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and dark > 0.25:
+		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and lays:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, s.range))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))

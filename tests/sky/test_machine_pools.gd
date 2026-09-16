@@ -86,3 +86,49 @@ func test_the_pool_goes_out_with_the_machine() -> void:
 	await frames(60)
 	eq(machine_pool(g).w, 0.0, "and dark once it is down")
 	g.free()
+
+
+## A vent is the one light in the game that reaches the ground at noon.
+##
+## A lamp lit at noon lays nothing — that rule is right and it stays. But the
+## Burning's vents are open fire in the ground, and the art review measured them
+## at noon as white-hot cores on flat ground with nothing under them: the
+## landscape's own fire touching none of its own land (docs/ART.md section 3,
+## "glow from below"). The hard part is that a pool ADDS to ground the sun
+## already lights, so a vent's old daylight level moved the ground by two values
+## out of 255, which is why the floor is what it is.
+func test_a_vent_lights_its_own_ground_at_noon_and_a_lamp_does_not() -> void:
+	check(Lights.lays_pool(PropKind.VENT, 0.0), "a vent lays its wash in full daylight")
+	check(not Lights.lays_pool(PropKind.LAMP, 0.0), "a lamp lays nothing at noon")
+	check(not Lights.lays_pool(PropKind.FIRE, 0.0), "nor does a campfire")
+	check(Lights.lays_pool(PropKind.LAMP, 1.0), "and every light lays one at night")
+	var vent_day := Lights.burning_level(PropKind.VENT, 1.0, 0.0)
+	var fire_day := Lights.burning_level(PropKind.FIRE, 1.0, 0.0)
+	gt(vent_day, fire_day * 8.0, "at noon a vent burns far harder than a campfire: %.2f vs %.2f" % [vent_day, fire_day])
+	# And the night it already had is the night it keeps: the fix is daylight only.
+	near(Lights.burning_level(PropKind.VENT, 1.0, 1.0), Lights.burning_level(PropKind.FIRE, 1.0, 1.0), 1e-5,
+		"night is untouched")
+	# No step on the way down: the floor eases out as the dark comes on.
+	var last := Lights.burning_level(PropKind.VENT, 1.0, 0.0)
+	for i in range(1, 21):
+		var d := Lights.burning_level(PropKind.VENT, 1.0, i / 20.0)
+		lt(absf(d - last), 0.12, "the vent's level walks, never jumps, at dark %.2f" % (i / 20.0))
+		last = d
+
+
+## A lightning flash drowns the pools; it is NOT daylight.
+##
+## The bug this guards: the flash is taken off the darkness before anything
+## reads it, so a strong flash at night looks to a level curve exactly like
+## noon. Every other light only gets dimmer for that. A vent is the one light
+## with a daylight FLOOR, so reading a flash as noon burned it brighter than the
+## night it was standing in. The flash must come off the level, not off the hour.
+func test_a_flash_never_makes_a_vent_burn_harder() -> void:
+	var calm := Lights.burning_level(PropKind.VENT, 1.0, 1.0)
+	for f: float in [0.9, 0.7, 0.5]:
+		var as_flash := calm * (1.0 - f)
+		var as_daylight := Lights.burning_level(PropKind.VENT, 1.0, 1.0 - f)
+		lt(as_flash, calm, "a flash of %.1f only ever dims a vent" % f)
+		lt(as_flash, as_daylight, "and dims it instead of reading it as noon (%.2f vs %.2f)" % [as_flash, as_daylight])
+	gt(Lights.burning_level(PropKind.VENT, 1.0, 0.1), calm,
+		"the bug had teeth: a flash read as daylight burns brighter than the night")
