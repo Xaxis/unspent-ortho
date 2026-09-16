@@ -381,7 +381,18 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			facing = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
 		# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
 		var rot := Basis(Vector3.UP, -facing)
-		var xf := Transform3D(rot.scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		# A field of one model read as a tiled asset field: a dozen identical
+		# drill tripods, thirty identical stumps, an arc of identical debris
+		# (playtest, wave N). So every instance is cast a little differently as
+		# well as turned, in the MODEL's own frame, so a fence still runs along
+		# its line and a sign still faces its way. Masts keep the uniform scale:
+		# their cables hang from points computed at it.
+		var grow := Vector3.ONE
+		if cable_points(p.kind).is_empty():
+			grow = Vector3(1.0 + (Rng.hash01(world.seed_value, p.id, 93) - 0.5) * 0.22,
+				1.0 + (Rng.hash01(world.seed_value, p.id, 94) - 0.5) * 0.30,
+				1.0 + (Rng.hash01(world.seed_value, p.id, 95) - 0.5) * 0.22)
+		var xf := Transform3D(rot.scaled(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
 		var nx := Transform3D(rot, Vector3.ZERO)
 		if not tpl.made_v.is_empty():
 			mv.append_array(xf * tpl.made_v)

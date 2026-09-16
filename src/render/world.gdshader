@@ -1131,7 +1131,11 @@ void fragment() {
 	int m = second ? m2 : m1;
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
-	style_sel = second ? s2 : s1;
+	// The two hands dither into each other across the WHOLE band, not only where
+	// the wash turns: ART.md law 6 asks that hatch styles interleave over the
+	// 12-24 tiles of an ecotone, and following `second` snapped the hatch to the
+	// wash's own edge, which is why a border read as a seam (art review 13).
+	style_sel = float(ink_style(style_packed, style_blend, px));
 	float unh = 0.0;
 	vec3 emit = vec3(0.0);
 	if (patchy > 0.0) {
