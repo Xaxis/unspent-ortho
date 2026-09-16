@@ -69,7 +69,7 @@ static func make() -> BiomeDef:
 	d.tip_ground = Ground.CLINKER
 	d.beached_wrecks = false
 	d.villages = 1
-	d.village_order = 5
+	d.village_order = 7
 	d.village_names = ["Cinderstead", "Emberlow"]
 	# Heat, ash fall and a furnace haze that lies in the low ground.
 	d.weather = [

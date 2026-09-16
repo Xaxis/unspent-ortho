@@ -13,8 +13,16 @@ class_name GenSettle
 ## ribbons on the diagonals. A village a tree edge fails to reach is joined to
 ## its nearest reachable neighbour.
 
-const MAX_VILLAGES := 12
+## How many villages a world holds. Twelve was right for six landscapes; every
+## landscape the registry adds brings its own people, or the new land takes a
+## village off an old one and leaves it with no road and nobody to trade with.
+const BASE_VILLAGES := 12
+const BASE_LANDS := 6
 const MIN_VILLAGES := 10
+
+
+static func max_villages() -> int:
+	return BASE_VILLAGES + maxi(0, BiomeRegistry.land().size() - BASE_LANDS)
 const CORE := 9.5
 ## Only the square and the first ring of houses is levelled; the rest of the
 ## core keeps the lie of the land, so terraces run on through a village.
@@ -154,7 +162,7 @@ static func villages(c: GenContext) -> void:
 				chosen.append(p)
 	var rng := Rng.make(c.s, 62)
 	var used := {}
-	for p: Vector3 in chosen.slice(0, MAX_VILLAGES):
+	for p: Vector3 in chosen.slice(0, max_villages()):
 		var tx := int(p.x)
 		var ty := int(p.y)
 		var cc := w.country[ty * size + tx]

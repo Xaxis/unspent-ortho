@@ -179,6 +179,13 @@ static func _n(c: GenContext, base: float) -> int:
 	return maxi(1, roundi(base * maxf(c.k, 0.3)))
 
 
+## How hard a landscape's works have to look for room. 1 at the six landscapes
+## the world was tuned for; every landscape the registry adds leaves each of
+## them less ground, so each has to search further to find its own.
+static func effort(c: GenContext) -> float:
+	return maxf(1.0, float(c.land_types.size()) / 6.0)
+
+
 ## A site in the type being laid: flat within r (levels differ by at most
 ## `rise`), dry, roadless, clear of villages and other places by `apart`, its
 ## middle tile on one of `grounds` (any, if empty) and heart-side of any
@@ -187,6 +194,7 @@ static func _n(c: GenContext, base: float) -> int:
 static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attempts: int = 500, blend_max: float = 0.35) -> Vector2i:
 	var c := L.c
 	var w := L.w
+	attempts = roundi(attempts * effort(c))
 	var strict := int(attempts * 0.55)
 	for attempt in attempts * 2:
 		var p := GenScatter._random_tile(c, L.rng)

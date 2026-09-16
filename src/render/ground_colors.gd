@@ -40,6 +40,7 @@ const MUD := 53
 const ROAD := 54
 const SALT := 55
 const SWARF := 56
+const PAN := 57
 ## Cliff strata: STRATA + one of the STRATA_* ids.
 const STRATA := 60
 const STRATA_COAST := 1
@@ -116,8 +117,9 @@ static func _base(g: int) -> Color:
 		Ground.CLINKER: return _m(P.STONE[2], P.RUST[1], 0.3)
 		# Evaporite crust: linen bleached almost to the page, faintly warm.
 		Ground.SALT: return _m(P.LINEN[5], P.SAND[5], 0.2)
-		# A pan the brine has drawn back from: mineral stain over grey silt.
-		Ground.PAN: return _m(P.LINEN[2], P.RUST[2], 0.22)
+		# A pan the brine drew back from: grey mineral silt with a warm cast,
+		# pale enough that it reads as a dry floor and never as mud.
+		Ground.PAN: return _m(_m(P.LINEN[3], P.STONE[3], 0.3), P.RUST[2], 0.12)
 		# Rust grit and metal filings trodden into the leaf litter.
 		Ground.SWARF: return _m(P.EARTH[2], P.RUST[2], 0.35)
 	return P.BLOOM[3]
@@ -140,7 +142,8 @@ static func _base_mark(g: int) -> int:
 		Ground.ICE: return ICE
 		Ground.ROCK, Ground.SCREE: return ROCK
 		Ground.ROAD: return ROAD
-		Ground.SALT, Ground.PAN: return SALT
+		Ground.SALT: return SALT
+		Ground.PAN: return PAN
 		Ground.SWARF: return SWARF
 	return PLAIN
 

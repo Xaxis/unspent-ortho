@@ -61,7 +61,7 @@ static func make() -> BiomeDef:
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 30, "chance": 0.5, "r_min": 2.6, "r_max": 4.8, "ground": Ground.ICE}
 	d.villages = 1
-	d.village_order = 4
+	d.village_order = 5
 	d.village_names = ["Whitecrag", "Hush Fold"]
 	# Bright flat days, snow in squalls, whiteouts that take the horizon.
 	d.weather = [

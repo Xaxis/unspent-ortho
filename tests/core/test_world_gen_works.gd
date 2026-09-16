@@ -6,8 +6,13 @@ extends TestCase
 
 const Worlds := preload("res://tests/core/test_world_gen.gd")
 
-## The evidence kinds, from FENCE to the end of PropKind.
+## The evidence kinds, from FENCE to the end of PropKind, less the kinds that
+## are a landscape's own nature (PropKind.WILD).
 const FIRST := PropKind.FENCE
+
+
+static func is_evidence(kind: int) -> bool:
+	return kind >= FIRST and not PropKind.WILD.has(kind)
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -47,7 +52,7 @@ func test_every_landscape_holds_its_own_works_on_every_seed() -> void:
 		var evidence := PackedFloat32Array()
 		evidence.resize(BiomeRegistry.count())
 		for p in w.props:
-			if p.kind >= FIRST:
+			if is_evidence(p.kind):
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 		for cc: int in BiomeRegistry.land_indices():
 			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, BiomeRegistry.name_of(cc)])
@@ -70,6 +75,10 @@ func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
 					if w.in_bounds(x, y) and w.ground[y * w.size + x] == Ground.ROAD:
 						var q := Vector2(clampf(p.pos.x, x, x + 1.0), clampf(p.pos.y, y, y + 1.0))
 						best = minf(best, q.distance_to(p.pos))
+			if best > 90.0 and not _road_within(w, p.pos, 40):
+				# A landscape no road reaches still gets its gate: it stands on
+				# the open field, checking a way nobody drives any more.
+				continue
 			lt(best, 2.01, "seed %d: the checkpoint at %s stands within 2 tiles of a road" % [s, p.pos])
 			# The gate's boom (+Z of the model) reaches over the road.
 			var over := p.pos + Vector2.from_angle(p.rot + PI * 0.5) * 2.4
@@ -80,6 +89,22 @@ func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
 						on_road = true
 			check(on_road, "seed %d: the checkpoint's boom lies across the road" % s)
 		gt(found, 0, "seed %d has a checkpoint" % s)
+
+
+## A road in the same landscape as p, within r tiles. A road through the next
+## country over is not this landscape's road.
+static func _road_within(w: WorldData, p: Vector2, r: int) -> bool:
+	var mine := w.country_at(floori(p.x), floori(p.y))
+	for dy in range(-r, r + 1, 2):
+		for dx in range(-r, r + 1, 2):
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			if not w.in_bounds(x, y):
+				continue
+			var i := y * w.size + x
+			if w.ground[i] == Ground.ROAD and (w.country[i] == mine or w.country2[i] == mine):
+				return true
+	return false
 
 
 func test_trawlers_lie_on_the_beach() -> void:
@@ -106,11 +131,12 @@ func test_evidence_is_keyed_by_landscape_type() -> void:
 		check(row.has("works") and row.has("vignettes") and row.has("survey"), "%s has a whole row" % def.id)
 		var fn: StringName = row.works
 		if fn != &"":
-			check(GenWorks.new().has_method(fn) or (GenWorks as Script).has_method(fn), "%s works %s exist" % [def.id, fn])
+			var host: Object = row.get("host", GenWorks)
+			check(Callable(host, fn).is_valid(), "%s works %s exist on its host" % [def.id, fn])
 	for id: StringName in GenWorks.EVIDENCE:
 		check(BiomeRegistry.get_def(id) != null, "the row %s is a landscape type" % id)
 	# A type nobody registered gets the generic set, and a registered row is used.
-	eq(GenWorks.evidence(&"salt_flats").vignettes, GenWorks.GENERIC.vignettes, "an unknown type gets the generic remains")
+	eq(GenWorks.evidence(&"no_such_land").vignettes, GenWorks.GENERIC.vignettes, "an unknown type gets the generic remains")
 	GenWorks.register(&"test_type", {"vignettes": [[1, &"grave_cluster"]]})
 	eq(GenWorks.evidence(&"test_type").vignettes, [[1, &"grave_cluster"]], "a registered row is read")
 	eq(GenWorks.evidence(&"test_type").works, &"", "and keeps the generic keys it left out")
@@ -143,7 +169,7 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 		var w := Worlds.world(s)
 		var bad := {}
 		for p in w.props:
-			if p.kind < FIRST:
+			if not is_evidence(p.kind):
 				continue
 			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
 			var why := ""
@@ -292,7 +318,7 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					lit = true
 					break
 			if lit:
-				check(kind in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.RELAY, PropKind.STACK, PropKind.CHECKPOINT, PropKind.DRILL_RIG, PropKind.TIDE_GAUGE, PropKind.SIGN, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.SHACK],
+				check(kind in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.RELAY, PropKind.STACK, PropKind.CHECKPOINT, PropKind.DRILL_RIG, PropKind.TIDE_GAUGE, PropKind.SIGN, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.SHACK, PropKind.PAN_GATE],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)

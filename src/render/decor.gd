@@ -25,8 +25,11 @@ enum {
 	SEA_GLASS, MOLEHILL, FERN, WRACK_BIT, CROTTLE,
 	# What the world before left in the grass, and what the works shed.
 	SCRAP, WIRE, CAN, SHELL_CASE, BOLT, SPOIL,
+	# What the M2 landscapes shed: a lifted plate of salt crust, and iron
+	# filings drawn into a comb by a field nothing turned off.
+	SALT_PLATE, FILINGS,
 }
-const KINDS := 36
+const KINDS := 38
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -490,4 +493,27 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)
 			k.fleck(Vector3(-0.04, 0.075, -0.03), Vector3(-0.03, 0.08, 0.04), Vector3(0.04, 0.075, 0.03), P.LINEN[3])
+		SALT_PLATE:
+			# A shard of crust that dried, curled and tipped on its edge, with
+			# the stained pan showing where it came away.
+			var tilt := 0.5 + stage * 0.25
+			var a := Vector3(-0.07, 0.0, -0.05)
+			var b := Vector3(0.07, 0.0, -0.04)
+			var lift := Vector3(0.01, 0.055 * tilt, 0.08)
+			k.made.quad(a, b, b + lift, a + lift, P.LINEN[5])
+			k.made.quad(a + lift, b + lift, b + lift + Vector3(0, -0.012, 0.02), a + lift + Vector3(0, -0.012, 0.02), P.LINEN[3])
+			k.made.quad(a, a + lift, a + lift + Vector3(-0.02, -0.01, 0.0), a + Vector3(-0.02, 0, 0), P.LINEN[2])
+			if stage == 2:
+				k.fleck(Vector3(0.06, 0.005, 0.03), Vector3(0.1, 0.02, 0.05), Vector3(0.08, 0.025, 0.01), P.RUST[2])
+		FILINGS:
+			# A comb of filings standing on edge along a field line: dark, fine,
+			# and never scattered.
+			var n := 7 + stage
+			for i in n:
+				var t := (float(i) / n - 0.5) * 0.22
+				var bend := t * t * 1.6
+				var base := Vector3(t, 0.0, bend)
+				k.blade(base, base + Vector3(0.006, 0.05 + Rng.hash01(s, i) * 0.03, 0.01), 0.012, 1.2,
+					P.STONE[1] if i % 3 else P.RUST[2])
+			k.still()
 	return k

@@ -45,9 +45,10 @@ static func make() -> BiomeDef:
 	d.reed_chance = 0.14
 	d.shore_bush = PropKind.GORSE
 	d.sites = {"tips": 4, "ruins": true, "summit": 4, "kiln_ground": Ground.SAND}
-	d.pools = {"order": 4, "cell": 44, "chance": 0.3, "r_min": 2.2, "r_max": 3.6, "ground": Ground.WATER}
+	# The odd tarn behind the dunes: fresh water, not a piece of the sea.
+	d.pools = {"order": 4, "cell": 44, "chance": 0.3, "r_min": 2.2, "r_max": 3.6, "ground": Ground.RIVER}
 	d.villages = 3
-	d.village_order = 6
+	d.village_order = 8
 	d.spawn_home = true
 	d.village_names = ["Sandling", "Low Scar", "Pennock", "Tidesend", "Marrow Bay", "Oyster Row"]
 	# Bleak grey days and rain in squalls off the sea; sea fret at dawn.

@@ -46,7 +46,7 @@ static func make() -> BiomeDef:
 	d.sites = {"tips": 2, "ruins": true, "summit": 3}
 	d.pools = {"order": 3, "cell": 40, "chance": 0.35, "r_min": 2.4, "r_max": 4.2, "ground": Ground.RIVER}
 	d.villages = 2
-	d.village_order = 2
+	d.village_order = 3
 	d.village_names = ["Resin Hill", "Tallowmere", "Coombe Wood"]
 	# Steady rain that drips through the canopy long after it stops.
 	d.weather = [

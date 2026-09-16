@@ -28,6 +28,8 @@ const Built := preload("res://src/models/props/built.gd")
 const Houses := preload("res://src/models/props/houses.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 const Works := preload("res://src/models/props/works.gd")
+const Salt := preload("res://src/models/props/salt.gd")
+const Scrap := preload("res://src/models/props/scrap.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -61,6 +63,10 @@ static func variants(kind: int) -> int:
 			return 2
 		PropKind.SIGN:
 			return 4
+		PropKind.SALT_RIDGE, PropKind.SCRAP_TREE:
+			return 3
+		PropKind.SALT_STACK, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
+			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
@@ -113,6 +119,10 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 		PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY, \
 		PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.ARCHIVE:
 			Works.build(k, kind, variant, country)
+		PropKind.SALT_RIDGE, PropKind.SALT_STACK, PropKind.PAN_GATE:
+			Salt.build(k, kind, variant, country)
+		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
+			Scrap.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -192,6 +202,11 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 	var cold := Color(0.3, 0.95, 1.0)
 	var beacon := Color(1.0, 0.2, 0.36)
 	match kind:
+		PropKind.PAN_GATE:
+			# The one strip on a sluice gate that still reads (props/salt.gd).
+			if variant != 0:
+				return []
+			return [{"at": Vector3(-0.375, 0.62, 0.056), "size": Vector2.ZERO, "color": cold}]
 		PropKind.SHACK:
 			# Only the shacks that wired stolen tech in (props/remains.gd _wired):
 			# the middle of the neon tube, in that landscape's colour.

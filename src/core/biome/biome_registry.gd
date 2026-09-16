@@ -146,7 +146,7 @@ static func problems() -> PackedStringArray:
 		for g: int in d.decor:
 			if g < 0 or g >= Ground.COUNT:
 				out.append(w + "decor for ground %d, which is not a ground" % g)
-		for g: int in [d.plain_ground, d.home_ground, d.bank_ground, d.village_ground]:
+		for g: int in [d.plain_ground, d.bank_ground, d.village_ground, d.pool_rim_ground, d.rock_ground, d.tip_ground]:
 			if g < 0 or g >= Ground.COUNT:
 				out.append(w + "ground %d is not a ground" % g)
 		for k: int in d.props:

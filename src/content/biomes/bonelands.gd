@@ -54,7 +54,7 @@ static func make() -> BiomeDef:
 	d.reed_chance = 0.14
 	d.sites = {"tips": 3, "stone_circles": 3, "summit": 2, "kiln_ground": Ground.LIMESTONE}
 	d.villages = 2
-	d.village_order = 3
+	d.village_order = 4
 	d.village_names = ["Chalkstone", "Grike End", "Pale Knoll"]
 	# Hard white glare, dust on the wind, dry lightning with no rain in it.
 	d.weather = [
