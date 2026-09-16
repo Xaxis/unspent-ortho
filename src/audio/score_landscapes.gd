@@ -9,6 +9,16 @@ class_name ScoreLandscapes
 ## choice of timbres, so a new landscape is never silent and never borrows
 ## another's music. An explicit entry always wins.
 ##
+## The tonal web. Every landscape shares one bar (BAR), so two rhythms can
+## overlap without fighting; what differs is the key. affinity(a, b) says how
+## near two keys stand — shared pitch classes, the interval between their
+## tonics, and whether their drones hold a tone in common — and the conductor
+## widens or narrows an ecotone's overlap by it: near keys modulate slowly into
+## each other, far keys cross over in a short, marked, unbroken turn. A
+## composed landscape does not pick a key at random: it picks the one that
+## stands nearest the landscapes already written (KEY_FLOOR), so the world
+## keeps one tonal centre however many types are added to it.
+##
 ## Notes are MIDI numbers. Pads keep their weight above 120 Hz (voicings from
 ## G3 up); drones sit on a pitch whose fundamental a laptop can play and imply
 ## the octave below with harmonics.
@@ -25,6 +35,13 @@ const MODES := {
 	&"aeolian": [0, 2, 3, 5, 7, 8, 10],
 	&"locrian": [0, 1, 3, 5, 6, 8, 10],
 }
+
+## How near two tonics stand, by the interval between them in semitones: the
+## same centre, a fifth or fourth away, a third, a whole tone, a semitone, a
+## tritone. Symmetric (11 reads as 1).
+const TONIC_NEAR: Array[float] = [1.0, 0.25, 0.5, 0.6, 0.6, 0.85, 0.0, 0.85, 0.6, 0.6, 0.5, 0.25]
+## A composed landscape's key must stand at least this near the written ones.
+const KEY_FLOOR := 0.5
 
 const SPECS := {
 	# Bleak grey days by the sea: D dorian, a warm detuned pad that never quite
@@ -49,27 +66,29 @@ const SPECS := {
 		"dissonance": [62, 63, 68],
 		"motif": [[0.0, 50, 2.0], [2.0, 57, 1.5], [3.5, 58, 0.5], [4.0, 55, 3.0], [8.0, 53, 2.0], [10.0, 50, 5.0]],
 	},
-	# Drowned green gloom: C phrygian on hollow pulse-width pads, tape that has
-	# been under water, drips pitched into the key.
+	# Drowned green gloom: D phrygian on hollow pulse-width pads, tape that has
+	# been under water, drips pitched into the key. It shares the coast's centre
+	# on purpose — the two lie against each other over most of a world, and a
+	# walk from the shore into the moss should be one modulation, not two songs.
 	&"moss": {
-		"tonic": 48, "mode": &"phrygian", "steps": 6,
-		"drone": {"wave": 1, "notes": [48, 55], "unison": 2, "detune": 10.0, "cut": 430.0, "q": 1.2, "sweep": 0.7, "pw": 0.42, "pwm": 0.15, "ghost": [84, 91]},
-		"night": {"wave": 1, "pw": 0.3, "notes": [36, 48], "unison": 2, "detune": 9.0, "cut": 300.0, "q": 1.1, "sweep": 0.5},
+		"tonic": 50, "mode": &"phrygian", "steps": 6,
+		"drone": {"wave": 1, "notes": [50, 57], "unison": 2, "detune": 10.0, "cut": 430.0, "q": 1.2, "sweep": 0.7, "pw": 0.42, "pwm": 0.15, "ghost": [86, 93]},
+		"night": {"wave": 1, "pw": 0.3, "notes": [38, 50], "unison": 2, "detune": 9.0, "cut": 300.0, "q": 1.1, "sweep": 0.5},
 		"pad": {"wave": 1, "pw": 0.5, "pwm": 0.2, "pwm_hz": 0.6, "unison": 2, "detune": 12.0, "cut": 750.0, "q": 1.6, "a": 3.0, "d": 3.0, "s": 0.8, "r": 4.0},
 		"chords": [
-			[[55, 58, 60, 63], [56, 60, 61, 65], [56, 60, 63, 67], [58, 61, 63, 65]],
-			[[53, 56, 60, 63], [55, 58, 60, 63], [56, 60, 61, 65], [55, 60, 61, 67]],
+			[[57, 60, 62, 65], [58, 62, 63, 67], [58, 62, 65, 69], [60, 63, 65, 67]],
+			[[55, 58, 62, 65], [57, 60, 62, 65], [58, 62, 63, 67], [57, 62, 63, 69]],
 		],
 		"pulse": {"kind": &"ping", "modes": [[1.0, 1.0, 0.5], [2.76, 0.25, 0.15]]},
-		"pulse_notes": [72, 75, 79, 72, 84],
-		"tense_notes": [72, 73, 72, 79, 73],
+		"pulse_notes": [74, 77, 81, 74, 86],
+		"tense_notes": [74, 75, 74, 81, 75],
 		"echo_steps": 2, "echo_fb": 0.6,
 		"melody": {"kind": &"fm", "ratio": 2.0, "index": 1.2, "idecay": 1.4, "floor": 0.1, "ratio2": 5.4, "index2": 0.25, "i2decay": 0.4, "vib": 14.0, "vib_hz": 0.35, "a": 0.02, "d": 2.0, "s": 0.2, "hold": 2.8, "r": 2.5, "detune": 6.0},
-		"pool": [67, 70, 72, 75, 77, 79],
+		"pool": [69, 72, 74, 77, 79, 81],
 		"texture": {"cut": 420.0, "q": 2.0, "sweep": 1.3, "bubbles": 2.0},
 		"space": {"t60": 8.0, "wet": 0.5, "damp": 2200.0, "wobble": 3.5},
-		"dissonance": [60, 61, 66],
-		"motif": [[0.0, 48, 2.0], [2.0, 51, 2.0], [4.0, 49, 3.0], [8.0, 55, 2.0], [10.0, 48, 5.0]],
+		"dissonance": [62, 63, 68],
+		"motif": [[0.0, 50, 2.0], [2.0, 53, 2.0], [4.0, 51, 3.0], [8.0, 57, 2.0], [10.0, 50, 5.0]],
 	},
 	# Under the canopy toward curfew: A aeolian strings, a plucked arpeggio in
 	# fives, a breathing sine flute.
@@ -192,6 +211,57 @@ static func ids() -> Array[StringName]:
 	return out
 
 
+## The twelve pitch classes a landscape's mode holds, as a bitmask.
+static func pitch_classes(s: Dictionary) -> int:
+	var bits := 0
+	for step: int in MODES[s["mode"]]:
+		bits |= 1 << posmod(int(s["tonic"]) + step, 12)
+	return bits
+
+
+static func _bits_set(bits: int) -> int:
+	var n := 0
+	for i in 12:
+		n += (bits >> i) & 1
+	return n
+
+
+## The pitch classes a landscape's drone holds (day and night), as a bitmask:
+## two bare fifths sharing a tone cross over without a clash whatever their modes.
+static func drone_classes(s: Dictionary) -> int:
+	var bits := 0
+	for which: StringName in [&"drone", &"night"]:
+		for n: int in (s[which] as Dictionary)["notes"]:
+			bits |= 1 << posmod(n, 12)
+	return bits
+
+
+## How near two landscapes' keys stand, 0 (a tritone apart, sharing little) to 1
+## (the same centre and the same notes). Pure and symmetric; the conductor turns
+## it into how wide their ecotone's overlap is.
+static func affinity(a: StringName, b: StringName) -> float:
+	if a == b:
+		return 1.0
+	return affinity_of(spec(a), spec(b))
+
+
+static func affinity_of(sa: Dictionary, sb: Dictionary) -> float:
+	var shared := float(_bits_set(pitch_classes(sa) & pitch_classes(sb))) / 7.0
+	var tonic := TONIC_NEAR[posmod(int(sa["tonic"]) - int(sb["tonic"]), 12)]
+	var da := drone_classes(sa)
+	var db := drone_classes(sb)
+	var drone := float(_bits_set(da & db)) / maxf(1.0, float(maxi(_bits_set(da), _bits_set(db))))
+	return clampf(0.5 * shared + 0.3 * tonic + 0.2 * drone, 0.0, 1.0)
+
+
+## The nearest a key stands to any landscape the score has an entry for.
+static func nearest_written(s: Dictionary) -> float:
+	var best := 0.0
+	for land: StringName in SPECS:
+		best = maxf(best, affinity_of(s, SPECS[land]))
+	return best
+
+
 ## The pitch classes of a landscape's mode over its tonic, as MIDI notes in [lo, hi].
 static func scale_notes(s: Dictionary, lo: int, hi: int) -> Array[int]:
 	var mode: Array = MODES[s["mode"]]
@@ -202,15 +272,47 @@ static func scale_notes(s: Dictionary, lo: int, hi: int) -> Array[int]:
 	return out
 
 
+## How well a key would sit in the tonal web: the nearest written landscape's
+## shared notes and the interval between the two tonics, 0..1.
+static func _key_fit(tonic: int, mode: StringName) -> float:
+	var probe := {"tonic": tonic, "mode": mode}
+	var best := 0.0
+	for land: StringName in SPECS:
+		var s: Dictionary = SPECS[land]
+		var shared := float(_bits_set(pitch_classes(probe) & pitch_classes(s))) / 7.0
+		var near := TONIC_NEAR[posmod(tonic - int(s["tonic"]), 12)]
+		best = maxf(best, 0.625 * shared + 0.375 * near)
+	return best
+
+
+## The keys a composed landscape may take: near enough to the written ones to
+## modulate into them (KEY_FLOOR), and never one of theirs note for note.
+static func _keys_in_the_web() -> Array:
+	var taken := {}
+	for land: StringName in SPECS:
+		taken["%d %s" % [posmod(int(SPECS[land]["tonic"]), 12), SPECS[land]["mode"]]] = true
+	var out: Array = []
+	for tonic in range(43, 56):
+		for mode: StringName in MODES:
+			if taken.has("%d %s" % [posmod(tonic, 12), mode]) or _key_fit(tonic, mode) < KEY_FLOOR:
+				continue
+			out.append([tonic, mode])
+	out.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else String(a[1]) < String(b[1]))
+	return out
+
+
 ## A score for a landscape type nobody wrote one for, composed from its id: a
-## tonic and mode of its own, a rhythm, chords built on the mode over a pedal,
-## and timbres taken from one family each (drone, pad, pulse, melody, texture).
+## key chosen from the tonal web (so it modulates into its neighbours rather
+## than landing a tritone off them), a rhythm, chords built on the mode over a
+## pedal, and timbres taken from one family each (drone, pad, pulse, melody,
+## texture).
 static func procedural(id: StringName) -> Dictionary:
 	var h := Rng.hash_ints(String(id).hash(), 0x5c0)
 	var r := Rng.make(h, 0x5c1)
-	var tonic := 43 + r.randi_range(0, 12)
-	var mode_names: Array = MODES.keys()
-	var mode: StringName = mode_names[r.randi_range(0, mode_names.size() - 1)]
+	var web := _keys_in_the_web()
+	var chosen: Array = web[Rng.hash_ints(h, 0x5c2) % web.size()]
+	var tonic: int = chosen[0]
+	var mode: StringName = chosen[1]
 	var steps: int = [4, 5, 6, 7, 8, 9, 10, 12][r.randi_range(0, 7)]
 	var pick := func(salt: int) -> Dictionary:
 		return SPECS[FAMILIES[Rng.hash_ints(h, salt) % FAMILIES.size()]]

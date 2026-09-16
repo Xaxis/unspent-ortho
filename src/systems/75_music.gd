@@ -13,11 +13,25 @@ extends GameSystem
 ##
 ## Loops play on their own players, started at the music clock's place in them
 ## so every stem keeps to the shared bar lines; a stem is heard only once it is
-## baked (on a worker, or a slice a frame without threads), and fades in from
-## silence by the conductor's own easing. Phrases, the resolution and the motif
-## wait for their bar line. The Music bus's low-pass closes at night and in fog.
-## A stem neither heard nor wanted for FORGET_AFTER seconds leaves memory (the
-## disk cache keeps it), so one baked ahead for a fight that never came goes too.
+## baked (on a worker, or a slice a frame without threads), and slides in over
+## STEM_FADE under whatever is already playing. Phrases, the resolution and the
+## motif wait for their bar line. The Music bus's low-pass closes at night and
+## in fog. A stem neither heard nor wanted for FORGET_AFTER seconds leaves
+## memory (the disk cache keeps it), so one baked ahead for a fight that never
+## came goes too — but never the core of a landscape the player could walk into.
+##
+## Never collapsing (playtest 14: the score fell silent when the player moved
+## faster than the bake). Three things together:
+##   * the conductor is told how ready each landscape is, and crossfades into it
+##     only that far, so the one that is playing holds until the next can take
+##     over — a teleport across the world is a turn, not a silence;
+##   * the cores of the landscapes the player is walking toward (LOOK_AHEAD
+##     tiles, leaning the way they are going) are baked before the border, and
+##     asked for ahead of everything else;
+##   * a landscape's core is two stems, and is never forgotten while it is
+##     within reach.
+## `gap` in the tour log is the longest the score has been silent since it first
+## sounded; a tour can await `score_unbroken` and fail if it ever collapsed.
 ##
 ## Nothing here runs in --shot runs (the bank bakes nothing), and setup does no
 ## sound work, so the game still starts in its budget.
@@ -25,6 +39,22 @@ extends GameSystem
 const INPUT_EVERY := 0.25
 const WORKS_EVERY := 1.0
 const BAKE_EVERY := 0.5
+## Tiles ahead the score looks for the landscapes it will need next. A player
+## running flat out covers this in about six seconds, which is a drone's bake.
+const LOOK_AHEAD := 30.0
+const AHEAD_EVERY := 1.0
+## Seconds a stem takes to reach its level once it is baked, so one that arrives
+## late slides in under what is already playing instead of appearing at it.
+const STEM_FADE := 1.2
+## What a landscape's core is worth to the crossfade: the drone carries the key,
+## its air fills the rest. A landscape with neither cannot be crossfaded into.
+const CORE_SHARE: Array[float] = [0.75, 0.25]
+## Longer than this with nothing audible, after the score has once sounded, and
+## the score has collapsed (playtest 14). Tours await `score_unbroken`.
+const GAP_BUDGET := 2.5
+## Seconds of play before `score_unbroken` will answer at all: a claim that the
+## score never broke means nothing a second into a game.
+const UNBROKEN_AFTER := 30.0
 ## Tiles: a hostile machine this close is full danger; danger begins at FAR.
 const DANGER_NEAR := 8.0
 const DANGER_FAR := 26.0
@@ -59,10 +89,22 @@ var players: Dictionary = {}
 ## Keys of cues started, newest last (tests and tours).
 var cues_played: Array[StringName] = []
 
+## Landscapes the player is walking toward (id -> 0..1): baked, never heard.
+var soon: Dictionary = {}
+## When the score first sounded, and the longest it has been silent since (s).
+var first_voice := -1.0
+var worst_gap := 0.0
+
 var _cue_players: Array[AudioStreamPlayer] = []
 var _input_t := 0.0
 var _works_t := 0.0
+var _ahead_t := 0.0
 var _bake_t := 0.0
+## Key -> how far a stem has slid in since it was baked (0..1).
+var _fade: Dictionary = {}
+var _ahead_from := Vector2.ZERO
+var _heading := Vector2.ZERO
+var _silent_since := -1.0
 var _grid := 0.0
 var _hit_until := -INF
 var _hit_share := 1.0
@@ -91,8 +133,10 @@ func setup(g: Game) -> void:
 	Events.hit.connect(_on_hit)
 	Events.time_skipped.connect(_on_skip)
 	SaveGame.register(&"score", _save, _load)
+	_ahead_from = game.player.pos
 	_read_inputs()
 	_read_works()
+	_read_ahead()
 	conductor.tick(0.0, inputs)
 
 
@@ -121,8 +165,12 @@ func advance(delta: float) -> void:
 	if _works_t <= 0.0:
 		_works_t = WORKS_EVERY
 		_read_works()
+	_ahead_t -= delta
+	if _ahead_t <= 0.0:
+		_ahead_t = AHEAD_EVERY
+		_read_ahead()
 	conductor.tick(delta, inputs)
-	_mix()
+	_mix(delta)
 	for c: Array in conductor.cues:
 		_play_cue(c[0], float(c[1]))
 	if _tour_log:
@@ -211,6 +259,8 @@ func _read_inputs() -> void:
 		danger = maxf(danger, _hit_share)
 	inputs = {
 		"weights": weights,
+		"ready": readiness(weights.keys()),
+		"soon": soon,
 		"hour": game.clock.hour(),
 		"weather": SoundMix.weather_at(game.world.seed_value, game.clock.minutes, int(here["country"])),
 		"danger": danger,
@@ -230,6 +280,38 @@ func _country_weights(p: Vector2) -> Dictionary:
 		_weights_cache_p = p
 		_weights_cache = SoundMix.country_share(game.world, p)
 	return _weights_cache
+
+
+## How much of each landscape's score can sound at all: its core stems, by what
+## each is worth. The conductor crossfades into a landscape no faster than this.
+func readiness(lands: Array) -> Dictionary:
+	var hour := game.clock.hour()
+	var out := {}
+	for land: StringName in lands:
+		var r := 0.0
+		var core := ScoreConductor.core_keys(land, hour)
+		for i in core.size():
+			if bank.is_ready(core[i]):
+				r += CORE_SHARE[i] if i < CORE_SHARE.size() else 0.0
+		out[land] = r
+	return out
+
+
+## The landscapes the player is walking toward, for baking: sampled well past
+## the ear's reach and leaning the way they are going, so the core of what is
+## over the next border is in hand before they cross it.
+func _read_ahead() -> void:
+	var p := game.player.pos
+	var moved := p - _ahead_from
+	_ahead_from = p
+	if moved.length_squared() > 0.04:
+		_heading = _heading.lerp(moved.normalized(), 0.5).normalized()
+	var out := {}
+	var shares := SoundMix.country_soon(game.world, p, _heading, LOOK_AHEAD)
+	for c: int in shares:
+		var id := _land_id(c)
+		out[id] = float(out.get(id, 0.0)) + float(shares[c])
+	soon = out
 
 
 func _read_works() -> void:
@@ -263,7 +345,8 @@ func _sentinel(p: Vector2) -> Dictionary:
 
 # ------------------------------------------------------------------ playing
 
-func _mix() -> void:
+func _mix(delta: float) -> void:
+	var loudest := 0.0
 	for key: StringName in conductor.levels:
 		var level := float(conductor.levels[key])
 		var baked := bank.get_baked(key) if seconds >= START_DELAY else null
@@ -276,9 +359,14 @@ func _mix() -> void:
 			p.stream = baked.stream
 			add_child(p)
 			players[key] = p
+		# A loop is started once, at the music clock's place in it, and is never
+		# restarted while it sounds: crossing a border moves levels, not players.
 		if not p.playing:
 			p.play(_loop_position(baked.stream.get_length()))
-		p.volume_db = baked.gain_db + linear_to_db(maxf(level, 1e-5))
+		var fade := minf(1.0, float(_fade.get(key, 0.0)) + delta / STEM_FADE)
+		_fade[key] = fade
+		p.volume_db = baked.gain_db + linear_to_db(maxf(level * fade, 1e-5))
+		loudest = maxf(loudest, level * fade)
 		_heard_at[key] = seconds
 	for key: StringName in players.keys():
 		if not conductor.levels.has(key):
@@ -286,7 +374,24 @@ func _mix() -> void:
 			p.stop()
 			p.queue_free()
 			players.erase(key)
+			_fade.erase(key)
+	_watch_silence(loudest)
 	_learn_sync()
+
+
+## The score's own account of whether it ever collapsed: once it has sounded, a
+## stretch with nothing audible is a gap, and the longest one is kept.
+func _watch_silence(loudest: float) -> void:
+	if loudest >= HEARD * 0.5:
+		if first_voice < 0.0:
+			first_voice = seconds
+		_silent_since = -1.0
+		return
+	if first_voice < 0.0:
+		return
+	if _silent_since < 0.0:
+		_silent_since = seconds
+	worst_gap = maxf(worst_gap, seconds - _silent_since)
 
 
 ## Where in a loop of `length` seconds the music clock is now.
@@ -332,14 +437,49 @@ func _play_cue(key: StringName, gain: float) -> void:
 
 func _request_wanted() -> void:
 	var wanted := conductor.wanted()
-	for i in wanted.size():
-		# The loudest few jump the other score stems: they are what the next seconds sound like.
-		bank.request(wanted[i], i < 2)
-		_heard_at[wanted[i]] = seconds
+	# The cores at the head of the list jump the other score stems: without them
+	# a landscape cannot sound at all. Pushed back to front, so the queue keeps
+	# the order the conductor asked in.
+	var urgent := mini(_core_count(), wanted.size())
+	for i in range(urgent - 1, -1, -1):
+		bank.request(wanted[i], true)
+	for i in range(urgent, wanted.size()):
+		bank.request(wanted[i], false)
+	for key in wanted:
+		_heard_at[key] = seconds
+
+
+## How many of wanted()'s first keys are cores (the landscapes in the ear and
+## the ones ahead), and so may not wait behind a pad.
+func _core_count() -> int:
+	var lands := {}
+	for land: StringName in (inputs.get("weights", {}) as Dictionary):
+		lands[land] = true
+	for land: StringName in soon:
+		lands[land] = true
+	return lands.size() * 2
+
+
+## The cores of every landscape within reach: these stay in memory whatever
+## else is let go, so turning back at a border is never met with silence.
+func _keep_keys() -> Dictionary:
+	var hour := game.clock.hour()
+	var out := {}
+	for land: StringName in (inputs.get("weights", {}) as Dictionary):
+		for key in ScoreConductor.core_keys(land, hour):
+			out[key] = true
+	for land: StringName in soon:
+		for key in ScoreConductor.core_keys(land, hour):
+			out[key] = true
+	return out
 
 
 func _forget_unheard() -> void:
+	var keep := _keep_keys()
 	for key: StringName in _heard_at.keys():
+		if keep.has(key):
+			_heard_at[key] = seconds
+			continue
 		if seconds - float(_heard_at[key]) > FORGET_AFTER and not players.has(key):
 			bank.forget(key)
 			_heard_at.erase(key)
@@ -350,10 +490,23 @@ func _forget_unheard() -> void:
 ## For tours: whether the player could hear WHAT now, a layer playing at HEARD
 ## or more: score (any layer), score_pad, score_pulse (calm), score_tense (the
 ## quickened pulse), score_grid, score_dissonance, score_texture; score_phrase,
-## score_resolve, score_motif (that cue has been played).
+## score_resolve, score_motif (that cue has been played). And of the blend:
+##   score_blend      two landscapes are sounding at once (an ecotone)
+##   score_full       drone, air, pad and pulse all heard: the whole score
+##   score_unbroken   it has played UNBROKEN_AFTER seconds and has never been
+##                    silent for longer than GAP_BUDGET since it began
 func tour_seen(what: String) -> bool:
 	if not what.begins_with("score"):
 		return false
+	if what == "score_blend":
+		return heard_lands().size() >= 2
+	if what == "score_full":
+		for layer: String in ["drone", "texture", "pad", "pulse"]:
+			if not tour_seen("score_" + layer):
+				return false
+		return true
+	if what == "score_unbroken":
+		return first_voice >= 0.0 and seconds - first_voice >= UNBROKEN_AFTER and worst_gap <= GAP_BUDGET
 	for cue: String in ["phrase", "resolve", "motif"]:
 		if what == "score_" + cue:
 			var suffix := "_melody" if cue == "phrase" else "_" + cue
@@ -366,17 +519,35 @@ func tour_seen(what: String) -> bool:
 	return false
 
 
-## One line whenever the set of layers heard (at HEARD) changes.
+## The landscapes actually sounding now: a stem of theirs playing at HEARD.
+func heard_lands() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for key: StringName in players:
+		if not (players[key] as AudioStreamPlayer).playing or float(conductor.levels.get(key, 0.0)) * float(_fade.get(key, 0.0)) < HEARD:
+			continue
+		var land := StringName(ScoreStems.parse(key).get("land", &""))
+		if land != &"" and not out.has(land):
+			out.append(land)
+	return out
+
+
+## One line whenever the set of layers heard (at HEARD) changes, with the blend
+## the score is holding: "coast 0.79 | moss 0.61" is a border being crossed.
 func _log_layers() -> void:
 	var heard: PackedStringArray = []
 	for key: StringName in players:
 		if (players[key] as AudioStreamPlayer).playing and float(conductor.levels.get(key, 0.0)) >= HEARD:
 			heard.append(String(key).trim_prefix("score_"))
 	heard.sort()
-	var line := ", ".join(heard)
+	var blend: PackedStringArray = []
+	var lands: Array = conductor.blend.keys()
+	lands.sort_custom(func(a: StringName, b: StringName) -> bool: return float(conductor.blend[a]) > float(conductor.blend[b]))
+	for land: StringName in lands:
+		blend.append("%s %.2f" % [land, float(conductor.blend[land])])
+	var line := "[%s] %s" % [" | ".join(blend), ", ".join(heard)]
 	if line != _logged:
 		_logged = line
-		print("tour score %.0fs (form %.1f, danger %.2f): %s" % [seconds, conductor.effective, conductor.danger, line if line != "" else "silent"])
+		print("tour score %.0fs (form %.1f, danger %.2f, gap %.1fs): %s" % [seconds, conductor.effective, conductor.danger, worst_gap, line if not heard.is_empty() else "[%s] silent" % " | ".join(blend)])
 
 
 func _save() -> Variant:

@@ -49,9 +49,9 @@ func test_layers_enter_over_minutes_and_leave_again() -> void:
 		pulses.append(pulse.call(c))
 		drones.append(drone.call(c))
 	var at := func(secs: float) -> int: return roundi(secs / STEP) - 1
-	gt(drones[at.call(30.0)], 0.5, "the drone is the first thing heard")
-	lt(pads[at.call(15.0)], 0.05, "no pad in the first seconds")
-	lt(pulses[at.call(40.0)], 0.05, "no pulse in the first forty seconds")
+	gt(drones[at.call(10.0)], 0.4, "the drone is the first thing heard")
+	lt(pads[at.call(6.0)], 0.05, "and it is alone with the air at first")
+	lt(pulses[at.call(12.0)], 0.05, "the pulse is not the score's opening move")
 	var pad_in := -1.0
 	var pulse_in := -1.0
 	for i in pads.size():
@@ -59,8 +59,8 @@ func test_layers_enter_over_minutes_and_leave_again() -> void:
 			pad_in = (i + 1) * STEP
 		if pulse_in < 0.0 and pulses[i] > 0.4:
 			pulse_in = (i + 1) * STEP
-	check(pad_in > 20.0 and pad_in < 180.0, "the pad comes within three minutes (at %.0f s)" % pad_in)
-	check(pulse_in > 40.0 and pulse_in < 300.0, "the pulse comes within five minutes (at %.0f s)" % pulse_in)
+	check(pad_in > 8.0 and pad_in < 40.0, "the pad comes in the first half minute (at %.0f s)" % pad_in)
+	check(pulse_in > 12.0 and pulse_in < 45.0, "and the pulse after it (at %.0f s)" % pulse_in)
 	var gone := false
 	for i in range(roundi(pulse_in / STEP), pulses.size()):
 		if pulses[i] < 0.1:
