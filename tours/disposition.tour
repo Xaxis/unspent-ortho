@@ -49,7 +49,12 @@ await crouched 3
 await hidden 3
 wait 0.6
 spawn watcher
-wait 1.8
+wait 1.0
+# Close on it, still down: `spawn` puts a body wherever the ground will take
+# one in view, which on some seeds is most of a watcher's reach away, and a
+# watcher that cannot see the player either way proves nothing about crouching.
+walkto mob 6
+wait 0.8
 shot 06-a-watcher-reading-the-heath-at-dusk
 zoom 6
 wait 0.5
@@ -58,11 +63,11 @@ zoom 9
 wait 0.4
 # Every frame of this act has to be one where the player really is hidden, or
 # the proof is the watcher's cone pointing elsewhere and not the heather at all.
-walk -1,-1 1.4
+walk -1,-1 0.7
 await hidden 3
 wait 0.6
 shot 08-past-its-sweep-unread
-walk -1,0 1.0
+walk -1,0 0.5
 await hidden 3
 wait 1.0
 shot 09-and-away-with-nothing-filed

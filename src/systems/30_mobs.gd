@@ -174,4 +174,9 @@ func place_near_player(kind: StringName) -> MobState:
 	var m := sim.add_mob(kind, best)
 	m.facing = (hp - best).angle()
 	m.aim = m.facing
+	# And its sweep is about the way it was put to face, not about the bearing
+	# its tile happened to hash to: a watcher stood in front of the player to be
+	# walked past has to be reading the ground in front of it, or the proof is
+	# its optics pointing somewhere else and not the heather the player is in.
+	m.bearing = Vector2.from_angle(m.facing)
 	return m
