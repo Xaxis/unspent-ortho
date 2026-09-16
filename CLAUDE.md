@@ -75,41 +75,11 @@ that game gives way (to the title, or to a loaded game) it follows the next one,
 a tour can leave, `await title`, press a real key on the title (`key ACTION`),
 `await game`, and hold two frames to each other (`same A B TOL [X,Y,W,H]`, a crop for
 anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour saves under
-`user://tool-saves/<tour name>`, clear of the player's saves and of other tours. The M1 proofs:
+`user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
 
-```sh
-tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fire, make, fight, night, border
-tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
-tools/tour.sh tours/fight.tour --seed=1 --hour=11
-tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4   # save, leave, continue, load: frames and fire match
-tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0   # a game through the loading page
-```
-
-The M2.0 proofs (each tour's header carries its own options):
-
-```sh
-tools/tour.sh tours/landscape.tour --seed=7 --weather=clear:0   # what every landscape holds of what happened
-tools/tour.sh tours/sky.tour --seed=1                           # each landscape's own weather and hour
-tools/tour.sh tours/machines.tour --seed=1 --hour=22.5 --weather=clear:0   # state told by light, wear, a kill
-tools/tour.sh tours/characters.tour --seed=1                    # the last people, dressed by land and trade
-TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour                 # the score's layers, heard
-tools/tour.sh tours/slate.tour --scene=title                    # the slate wakes, and every app from its key
-```
-
-The M2 wave A proofs:
-
-```sh
-tools/tour.sh tours/biomes.tour --seed=7 --hour=11 --weather=clear:0   # every landscape by name, the two new ones, three ecotones
-tools/tour.sh tours/hazards.tour --seed=1 --hour=19 --weather=clear:0 \
-  --give=wrap_warm:1,mod_wadding:1,wick:2 \
-  --fit=glide_wing,scanner_lens,boots_magnet,mod_signet,mod_spring   # a place presses, gear answers, five abilities
-tools/tour.sh tours/disposition.tour --seed=1 --hour=11 --weather=clear:0   # workers ignored you, then you robbed one; a watcher's sweep dodged
-tools/tour.sh tours/landscape-polish.tour --seed=7 --weather=clear:0        # the ground at play zoom, an ecotone, a village, a crown cleared
-tools/tour.sh tours/sky-polish.tour --seed=1                               # a lamp that lays nothing at noon and its own colour at night
-tools/tour.sh tours/machines-day.tour --seed=1 --hour=12 --weather=clear:0 # the machines told with nothing on them lit
-tools/tour.sh tours/slate-polish.tour --seed=7 --hour=10 --weather=clear:0 --give=driftwood:8,stone:4   # every app from the key its tab names
-TOUR_TIMEOUT=900 tools/tour.sh tours/score-blend.tour --seed=1 --hour=11 --weather=clear:0   # two borders walked, never a gap
-```
+**Every tour carries its own options in its header**, so `ls tours/` is the list
+and the file itself says how to run it. Each wave adds its own. Run them all before
+integrating a wave, and never delete or weaken a tour to make one pass.
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
@@ -179,6 +149,36 @@ tools print their own summaries.
   shots were looked at, and the feature is **reachable from a normal game start**
   (or from `--scene=gallery` for models). Unreachable code is not a feature.
 - Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
+
+## Another session may be running right now
+
+Assume you are not alone: waves run for hours, and the owner opens other sessions.
+**Look before you touch anything shared:**
+
+```sh
+git worktree list                       # a worktree is someone's live desk
+git branch --list 'a2/*' 'm2/*'         # branches a wave is writing to
+pgrep -x godot | wc -l                  # runs in flight (a tour can take minutes)
+sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturated
+```
+
+- **Never write in another session's worktree**, commit on its branch, or delete it.
+  What is under `.claude/worktrees/` belongs to a builder that is probably mid-edit.
+- **Never rebase, reset or force-push `main`**, and never rewrite pushed history.
+  Merge, and only the branches of the wave you are integrating.
+- **Do not kill stray `godot` processes.** One of them is likely another session's
+  tour, and killing it fails a proof someone is waiting on.
+- **Keep total builders across all sessions to about six.** Past saturation nobody
+  goes faster and the clock-watching tests start lying. If the load is already high,
+  wait rather than launch.
+- **Wall-clock results lie under load.** Test budgets scale by
+  `TestCase.machine_slack()` and tool timeouts by `tools/_slack.sh`; a timing failure
+  while a wave runs must be re-run alone before it is believed.
+- **A change under `tools/` does not reach a running wave**: every worktree holds
+  its own copy, frozen when it branched. Patch the live worktrees too, or the fix
+  only applies to the next wave.
+- Untracked scratch a session drops into another worktree (an `override.cfg`, say)
+  belongs in `.git/info/exclude` so it cannot end up in someone's commit.
 
 ## Commits
 
