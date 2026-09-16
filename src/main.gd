@@ -9,6 +9,10 @@ extends Node
 ## When the first frame of a world is drawn it prints `boot ready <scene> <ms>`
 ## (tools/web.sh waits for that line).
 
+## While a play session is up, this file names its process id, so the focus
+## guard (tools/_focus_guard.sh) can tell a person playing from a tool run.
+const PLAY_MARK := "/tmp/unspent-playing"
+
 var options: BootOptions
 var _t0 := 0
 
@@ -97,6 +101,13 @@ func _take_focus_if_a_person_is_playing() -> void:
 	w.position = screen.position + (screen.size - w.size) / 2
 	DisplayServer.window_move_to_foreground()
 	w.grab_focus()
+	# While this is up, the keyboard is the player's: tools/_focus_guard.sh reads
+	# this mark and leaves a play session alone, where it would take the keyboard
+	# straight back off a shot or a tour.
+	var mark := FileAccess.open(PLAY_MARK, FileAccess.WRITE)
+	if mark != null:
+		mark.store_string(str(OS.get_process_id()))
+		mark.close()
 
 
 func _a_person_is_playing() -> bool:
@@ -155,3 +166,13 @@ func _shoot() -> void:
 	var err := img.save_png(path)
 	print("shot %s %s" % [path, "ok" if err == OK else "FAILED %d" % err])
 	get_tree().quit(0 if err == OK else 1)
+
+
+func _exit_tree() -> void:
+	if FileAccess.file_exists(PLAY_MARK):
+		var f := FileAccess.open(PLAY_MARK, FileAccess.READ)
+		var whose := f.get_as_text().strip_edges() if f != null else ""
+		if f != null:
+			f.close()
+		if whose == str(OS.get_process_id()):
+			DirAccess.remove_absolute(PLAY_MARK)
