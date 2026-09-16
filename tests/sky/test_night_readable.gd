@@ -212,9 +212,7 @@ func test_a_burning_dusk_keeps_its_warm_darks() -> void:
 ## the sun's energy times its low-sun glow. It is what the art review's mean
 ## luminance sweep measures, on the CPU and without a frame.
 static func _level(h: float) -> float:
-	var t := SkyLight.tint_at(h)
-	var s := SkyLight.sun_at(h)
-	return (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(s.energy) * SkyLight.sun_glow(t, s)
+	return SkyLight.light_level(h)
 
 
 ## And its warmth, the R-B of that same sweep.
@@ -269,6 +267,91 @@ func test_the_darks_follow_how_dark_it_is_not_how_warm_the_tint_has_gone() -> vo
 		gt(g, prev - 1e-4, "the dark turns back at %.2f h" % h)
 		prev = g
 		h += 0.1
+
+
+## What the dark half of a dusk frame reads at, on the CPU: the light of the
+## hour on a wash, plus the night's blue floor under it worth `share` of that
+## wash. The floor is a lift of the WASH and the sun multiplies it afterwards,
+## which is why it is inside the same bracket — and which is why an undivided
+## floor cannot be spent slowly enough: see SkyLight.night_dark.
+static func _darks(h: float, share: float) -> float:
+	return SkyLight.light_level(h) * (1.0 + share * SkyLight.night_dark(h))
+
+
+## The finding, in the one place it can be pinned without a frame. Measured on
+## the coast at seed 7 the dark half of the picture read 54.0 at 19:30 and 58.4
+## at 20:00: the floor put back more light than the dusk took. It must fall for
+## any floor worth anything from a third to three fifths of a dark wash (the
+## coast measures about two fifths), and the test walks the same ten minutes the
+## sweep walks.
+func test_the_floor_under_the_darks_is_never_spent_faster_than_the_light_goes() -> void:
+	for share: float in [0.3, 0.4, 0.5, 0.6]:
+		var prev := _darks(17.0, share)
+		var h := 17.1
+		while h <= 22.0001:
+			var d := _darks(h, share)
+			lt(d, prev + 1e-4, "the darks turn back up at %.2f h with a floor of %.2f" % [h, share])
+			prev = d
+			h += 0.1
+	# And the margin is real rather than lucky: the same walk fails once the
+	# floor is worth more than about two thirds of a dark wash, which is the
+	# number to check against if SKY_NIGHT_FLOOR is ever raised.
+	var broke := false
+	var p := _darks(17.0, 0.9)
+	var g := 17.1
+	while g <= 22.0001:
+		var d := _darks(g, 0.9)
+		if d > p + 1e-4:
+			broke = true
+		p = d
+		g += 0.1
+	check(broke, "a floor worth nine tenths of a wash cannot be spent slowly enough, and this says so")
+
+
+## sky_night itself: the one term everything that lifts the dark hangs off.
+func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_back() -> void:
+	near(SkyLight.night_dark(12.0), 0.0, 1e-6, "noon")
+	near(SkyLight.night_dark(8.0), 0.0, 1e-6, "eight in the morning is full day")
+	lt(SkyLight.night_dark(18.0), 0.02, "and six in the evening still is")
+	gt(SkyLight.night_dark(19.5), 0.2, "half past seven has begun")
+	lt(SkyLight.night_dark(19.5), 0.55, "but is nowhere near the night")
+	near(SkyLight.night_dark(20.5), 1.0, 0.02, "full where the light stops falling")
+	near(SkyLight.night_dark(23.0), 1.0, 1e-6, "and all night")
+	near(SkyLight.night_dark(3.0), 1.0, 1e-6, "including the small hours")
+	var prev := SkyLight.night_dark(17.0)
+	var h := 17.1
+	while h <= 21.0001:
+		var n := SkyLight.night_dark(h)
+		gt(n, prev - 1e-4, "it turns back at %.2f h" % h)
+		prev = n
+		h += 0.1
+	# The dawn is the same rule read backwards: the light comes back, it goes.
+	gt(SkyLight.night_dark(5.0), 0.9, "still dark at five")
+	lt(SkyLight.night_dark(7.5), 0.02, "gone by half past seven in the morning")
+	# A sky darker than its hour is the other half of it, so a storm at ten in
+	# the morning still keeps its shapes readable (docs/ART.md section 6).
+	near(SkyLight.weather_dark(Vector3.ONE), 0.0, 1e-6, "clear weather is no dark at all")
+	gt(SkyLight.weather_dark(Vector3(0.5, 0.52, 0.6)), 0.3, "a heavy storm is")
+
+
+## The two terms sky_night carries. The glow is held back behind the floor
+## through the evening, but a storm gets BOTH in full: the cube is the night's
+## own pacing and must never take the glow off a dark sky at ten in the morning.
+func test_a_storm_at_ten_keeps_its_glow_while_the_evening_holds_its_own_back() -> void:
+	var clear := Vector3.ONE
+	var storm := Vector3(0.5, 0.52, 0.6)
+	var noon := SkyLight.night_terms(10.0, storm)
+	gt(noon.x, 0.3, "a storm at ten has the floor under its washes")
+	near(noon.y, noon.x, 1e-6, "and all of its skyglow, cube or no cube")
+	var eve := SkyLight.night_terms(20.0, clear)
+	gt(eve.x, 0.4, "the evening's floor is well up by eight")
+	lt(eve.y, eve.x * 0.6, "and its glow is well behind it")
+	var night := SkyLight.night_terms(23.0, clear)
+	near(night.x, 1.0, 1e-6, "night is all floor")
+	near(night.y, 1.0, 1e-6, "and all glow")
+	var midday := SkyLight.night_terms(12.0, clear)
+	near(midday.x, 0.0, 1e-6, "noon has no floor")
+	near(midday.y, 0.0, 1e-6, "and no glow")
 
 
 ## Dusk is long low shadows. They used to stop at 20:30 because they were keyed

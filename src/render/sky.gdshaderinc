@@ -38,6 +38,13 @@ global uniform vec4 sky_fog;
 // x: world units per screen pixel; y: night fall 0..1; z: 1 / world size (for
 // sky_ground); w: tiles the afterglow of the last strike has rolled out.
 global uniform vec4 sky_view;
+// How far the night's own dark has come: 0 in daylight, 1 in the dead of night,
+// and up in a sky darker than its hour whatever the clock says. x is the blue
+// floor under the washes, y the skyglow, which is held back behind it. Both are
+// spent against the light the evening is losing, NOT against how far night has
+// fallen: see the header of SkyLight.night_dark for what the eased curve
+// sky_view.y walks measured.
+global uniform vec2 sky_night;
 // The airs over the focus: x rain falling now (rain, drizzle, hail) 0..1,
 // y glare 0..1 (hard white light bleaching the washes), z how warm the fog is
 // drawn (0 page-pale mist, 1 furnace haze), w whiteout 0..1.
@@ -589,26 +596,14 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 const float SKY_GLOW_LEVEL = 0.24;
 const float SKY_GLOW_FLOOR = 0.033;
 
-// How much of the skyglow is up. It is NOT sky_gloom(): the glow adds about a
-// tenth of full scale to every wash, and the light only falls by about a quarter
-// across the whole evening, so a glow that came up with the dusk on a straight
-// line made the frame BRIGHTER as it got darker. The night's own share is
-// back-loaded (cubed) so it arrives behind the light it replaces, and a sky too
-// dark for its hour — a storm at ten in the morning — keeps its lift in full,
-// because that darkness is not the night coming.
-float sky_glow_share() {
-	float lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
-	float dark_sky = clamp(1.0 - clamp(lum * 1.25, 0.0, 1.0), 0.0, 1.0);
-	// Up a little before night fall lands, so the last half hour of the evening
-	// has only its light to lose and the glow is not still arriving under it.
-	float night = clamp(sky_view.y / 0.9, 0.0, 1.0);
-	return clamp(max(dark_sky, night * night * night), 0.0, 1.0);
-}
-
+// How much of it is up is sky_night.y, which is held back behind the floor
+// (SkyLight.night_terms). It must NOT be read off the composed light's own
+// level, which counts a setting sun as a dark sky and so came up at exactly the
+// rate the dusk was going down.
 vec3 neon_skyglow(vec3 graded) {
 	float tl = max(dot(sky_tint, vec3(0.3, 0.59, 0.11)), 0.001);
 	vec3 hue = sky_tint / tl;
-	return (graded * hue * SKY_GLOW_LEVEL + hue * SKY_GLOW_FLOOR) * sky_glow_share();
+	return (graded * hue * SKY_GLOW_LEVEL + hue * SKY_GLOW_FLOOR) * sky_night.y;
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
@@ -623,9 +618,14 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// Night is blue ink on dim washes, never black. The renderer's linear light
 	// crushes dark washes to nothing under the moon, so the darks are lifted
 	// onto a deep blue floor (a soft knee: light washes are left alone).
-	// The lift comes on through low light, not only once night has fallen, so a
-	// dusk is blue in its darks instead of brown.
-	vec3 floor_ink = SKY_NIGHT_FLOOR * max(sky_view.y, sky_shade.w * 0.7);
+	// This is the biggest thing that puts light back into a dark frame — on the
+	// coast it holds the dark half of the picture fifteen values above what the
+	// sun alone leaves — so it is spent against the light the evening is losing
+	// (sky_night.x), and not against how far night has fallen: keeping pace with
+	// the eased middle of that curve it handed back more than the dusk was
+	// taking, and the land measured brighter at eight in the evening than at half
+	// past seven (art review finding 2).
+	vec3 floor_ink = SKY_NIGHT_FLOOR * sky_night.x;
 	c = mix(mix(floor_ink, vec3(SKY_NIGHT_KNEE), c / SKY_NIGHT_KNEE), c, step(vec3(SKY_NIGHT_KNEE), c));
 	// Where lamplight falls the page shows through the dark a little: the light
 	// is a lifted wash, not only a warmer one. Faces are found from screen

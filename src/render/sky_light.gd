@@ -242,6 +242,7 @@ func compose() -> void:
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
 	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, glow_reach))
+	RenderingServer.global_shader_parameter_set("sky_night", night_terms(hour, weather_tint))
 	var glow := sun_glow(total, s)
 	var cool := shade_cool(total) / glow
 	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, dusk_lift(hour, region_tint)))
@@ -316,9 +317,13 @@ static func layers_for(g: GeometryInstance3D, current: int) -> int:
 	return current
 
 
-## How far a low sun lifts the darks onto blue (sky_shade.w): all of low light,
+## How much of the dark belongs to this land (sky_shade.w): all of low light,
 ## except in a warm country, whose evening keeps its own dark warmth (the
 ## burning glows from below; its clinker must not turn violet at dusk).
+## It is what sky_gloom() and the wet ground's day sheen read. The blue floor
+## under the washes is NOT this any more: it hung off low light and so came up
+## with the eased curve of night fall, which is the whole of art review finding
+## 2 — it is `sky_night` now, spent against the light the evening loses.
 static func dusk_lift(hour: float, region: Vector3) -> float:
 	var warm := clampf((region.x - region.z) * 4.0, 0.0, 0.8)
 	return low_light(hour) * (1.0 - warm)
@@ -333,10 +338,11 @@ const GLOW := 0.12
 
 
 static func sun_glow(tint: Vector3, sun: Dictionary) -> float:
-	if not bool(sun.casts):
+	var cast := float(sun.get("cast", 1.0 if bool(sun.get("casts", true)) else 0.0))
+	if cast <= 0.0:
 		return 1.0
 	var lum := (tint.x + tint.y + tint.z) / 3.0
-	return 1.0 + GLOW * clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.8, 0.0, 1.0)
+	return 1.0 + GLOW * cast * clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.8, 0.0, 1.0)
 
 
 ## The multiply for faces in shade under a tint: the tint's warmth taken back
@@ -414,7 +420,12 @@ static func sun_at(hour: float) -> Dictionary:
 		var edge := _elevation_for_shadow(az, SHADOW_LOW)
 		el = lerpf(edge, MOON_ELEVATION, sin(n * PI))
 	var nf := Weather.night_fall(h)
-	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL), "casts": casts_at(h)}
+	# `cast` is how much of a shadow is left (shadow_strength); `casts` is only
+	# whether there is any. The low-sun glow rides the first of those, because a
+	# glow keyed to the second stepped 7% of the frame's light off in one frame
+	# at half past eight, in the middle of the smoothest part of the fall.
+	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL),
+		"casts": casts_at(h), "cast": shadow_strength(h)}
 
 
 ## The hours the sun casts a shadow: from properly up in the morning to the last
@@ -456,6 +467,84 @@ static func low_light(hour: float) -> float:
 	var t := tint_at(hour)
 	var lum := (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(sun_at(hour).energy)
 	return clampf(maxf(Weather.night_fall(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
+
+
+## The level of light a lit face takes at this hour: the tint's own luminance,
+## the sun's energy and the low-sun glow, in one number. It is what a frame's
+## mean brightness follows, and what night_dark() below is measured against.
+static func light_level(hour: float) -> float:
+	var t := tint_at(hour)
+	var s := sun_at(hour)
+	return (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(s.energy) * sun_glow(t, s)
+
+
+## How far the night's own dark has come (the `sky_night` global): how much of
+## the night's blue floor is under the washes, and how much skyglow is up.
+##
+## THE FLOOR FILLS IN EXACTLY AS FAST AS THE LIGHT GOES. Every term that keeps a
+## dark frame readable ADDS light to it, and on the coast the floor alone holds
+## the dark half of the picture fifteen values above what the sun leaves it —
+## more than half of everything the whole evening has to spend. Hung off how far
+## night has fallen, two thirds of that lift landed in the forty minutes either
+## side of a quarter to eight, where the light's own fall is at its smallest
+## (three values in that half hour, against the floor's seven), so the land
+## measured BRIGHTER at eight in the evening than at half past seven: 53.8 then
+## 57.9 (art review finding 2, reproduced). Measured against the light instead,
+## every half hour of the lift is smaller than the fall it is filling, and the
+## darks go down all the way to the night.
+##
+## The anchors are the last of the day and the hour the light stops falling: at
+## 20:30 the sun is at 0.73 against the night's 0.70 and the shadows have gone,
+## so a floor still arriving after that could only turn the fall back up.
+## It also answers the dawn without a second rule: the light comes back, the
+## term goes down. A sky darker than its hour is the other half (weather_dark).
+##
+## And it is then divided by the light that is still up, because the floor is a
+## lift of the WASH and the sun multiplies it afterwards: the same floor put back
+## nearly twice as much of the frame at eight in the evening, under a sun still
+## four fifths up, as it does at midnight (measured: 16 values against 15, at two
+## thirds the strength). Undivided, no arrangement of it can be spent slower than
+## the light falls. Below DARK_FULL there is no more light to divide out and the
+## term is the dark itself.
+const DARK_FROM := 18.5
+const DARK_FULL := 20.5
+
+
+static func night_dark(hour: float) -> float:
+	var day := light_level(DARK_FROM)
+	var gone := light_level(DARK_FULL)
+	var here := light_level(hour)
+	var dark := clampf((day - here) / maxf(1e-4, day - gone), 0.0, 1.0)
+	return clampf(dark * gone / maxf(here, gone), 0.0, 1.0)
+
+
+## And the other half of what `sky_night` carries: a sky darker than its hour.
+## docs/ART.md section 6 asks the skyglow to keep shapes readable "in dusk, storms
+## and night", and a storm at ten in the morning is not the night coming, so it
+## cannot be read off the hour. It is read off the WEATHER'S OWN multiply, which
+## is the only thing that can darken a sky out of its turn — never off how dark
+## the composed light has ended up, which counts a setting sun twice and was half
+## of why the evening lifted.
+static func weather_dark(tint: Vector3) -> float:
+	var lum := tint.x * 0.3 + tint.y * 0.59 + tint.z * 0.11
+	return clampf(1.0 - lum * 1.25, 0.0, 1.0)
+
+
+## The `sky_night` global: x how far the dark has come (the blue floor under the
+## washes), y how much skyglow is up.
+##
+## They are two numbers because the two behave differently. The floor is a lift
+## of a wash the sun then multiplies, and it is spent against the light going
+## (night_dark). The skyglow is emission over the whole frame, and it tells most
+## at the very end, when there is nothing else left in the darks — up on the same
+## line as the floor it put the evening's last half hour back up by eleven values
+## on the coast. So the night's share of it is held back (cubed).
+## A sky darker than its hour is in both at full strength: a storm at ten in the
+## morning has a floor AND a glow, and the cube must not take the glow off it.
+static func night_terms(hour: float, weather: Vector3) -> Vector2:
+	var dark := night_dark(hour)
+	var storm := weather_dark(weather)
+	return Vector2(maxf(dark, storm), maxf(dark * dark * dark, storm))
 
 
 ## Elevation at which a caster's shadow is `ratio` times its own height ON
