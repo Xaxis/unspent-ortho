@@ -86,6 +86,16 @@ func test_the_speed_lines_are_ink_over_the_world_and_never_a_field_of_paper() ->
 		"but it keeps one pixel of page on its lit flank, or it vanishes on dark rock")
 	check(body.contains("R * (1.0 - OPEN)"),
 		"and its heads start clear of the open heart, where the body is")
+	# And that flank is a step DOWN the page's own ramp. Every other mark takes
+	# the full linen, which the midday sky grades out at 242 -- near white, which
+	# docs/ART.md §5 keeps for fire and lamps.
+	var src2 := FileAccess.get_file_as_string("res://src/actors/mob_fx.gd")
+	var at2 := src2.find("static func streak(")
+	gt(at2, 0, "the streak lays its own mark")
+	var lay := src2.substr(at2, src2.find("\n\n\n", at2) - at2)
+	check(lay.contains("&\"paper_col\", _v3(Palette.LINEN[4])"),
+		"a speed line's page is a step under the page every other mark is edged in")
+	lt(Palette.LINEN[4].get_luminance(), Palette.LINEN[5].get_luminance(), "and that step is down")
 
 
 func test_a_speed_line_is_no_wider_than_a_hit_mark() -> void:

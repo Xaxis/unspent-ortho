@@ -3,7 +3,7 @@
 # zoom, because that is the only size that counts: a mark that only behaves in a
 # close shot is not fixed.
 #   tools/tour.sh tours/marks.tour --seed=1 --hour=11 --weather=clear:0 \
-#     --fit=scanner_lens,boots_magnet,mod_spring
+#     --fit=scanner_lens,boots_magnet,mod_spring,glide_wing
 # Each pair is a control frame and then the mark, from the same place, so what
 # the mark added to the picture can be counted and not argued about.
 coast calm
@@ -113,6 +113,52 @@ shot 15-and-up-again-close
 zoom 15
 wait 0.4
 
+# --- A read holds through a throw and through a flight ------------------------
+# A scan lays a bracket on every working part for six seconds. It used to drop
+# the WHOLE read -- brackets and the tell over a machine that has noticed you --
+# the moment anything moved the body, so a glide went blind for all six of its
+# seconds, which is exactly when a player wants to know who is looking. Now only
+# a throw holds back the next brackets, so two ability marks never land on the
+# same thirty pixels, and nothing at all holds back the tell. What a player sees
+# is one unbroken read.
+coast calm
+wait 0.5
+place coast
+hour 11
+weather clear:0
+wait 1.2
+spawn watcher
+wait 1.4
+tap ability_scan
+await ability:scan 5
+wait 0.5
+shot 16-the-read-is-laid
+tap ability_dash
+await ability:dash 4
+wait 0.04
+shot 17-and-holds-through-the-throw
+wait 0.7
+shot 18-and-is-still-there-after
+# And through the six seconds of a glide, which is a flight and not a throw:
+# off a height with a machine still in reach, the read is on it the whole way.
+place summit
+zoom 11
+wait 1.4
+walk 1,1 1.6
+spawn lineman
+# The lens is on a nine-second cooldown and `await ability:scan` only says it
+# has ever fired, so the wait is the real gate here: without it the second tap
+# is refused and the frames below prove nothing at all.
+wait 9.0
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 19-a-machine-read-on-a-height
+tap ability_glide
+await gliding 5
+wait 0.8
+shot 20-and-through-a-whole-glide
+
 # --- Breath steps off the snow -----------------------------------------------
 # The cue fires on its own beat and hangs a second and a half, so the frame is
 # taken right after the cold is first felt (the first cue is due at once) and
@@ -125,8 +171,19 @@ await cold 12
 await pressure_bites 15
 await breath 10
 wait 0.15
-shot 16-breath-on-white-ground
+shot 21-breath-on-white-ground
 wait 2.0
 await breath 10
 wait 0.6
-shot 17-and-the-next-breath
+shot 22-and-the-next-breath
+# And at night, on the same white ground. A mark's paint is as pale as snow is,
+# so under one light the two land on the same value and the cloud vanishes into
+# the field it was breathed over: a breath has to step off its page at every
+# hour, not only while the sun is up.
+hour 23
+weather clear:0
+wait 1.6
+await cold 12
+await breath 12
+wait 0.15
+shot 23-breath-on-white-ground-at-night

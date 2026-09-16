@@ -793,7 +793,14 @@ static func streak(parent: Node, at: Vector3, dir: Vector2, yaw_deg: float, pitc
 	# ahead in it, clear of the open heart -- land on `at`.
 	var back := (1.0 - BURST_OPEN) * 0.5 * size / maxf(0.2, screen.length())
 	var mi := _mark(parent, at - Vector3(d.x, 0.0, d.y) * back, size, STREAK, &"over", seed_value, Palette.INK[0], Palette.INK[0])
-	(mi.material_override as ShaderMaterial).set_shader_parameter(&"dir", screen.normalized())
+	var mat := mi.material_override as ShaderMaterial
+	mat.set_shader_parameter(&"dir", screen.normalized())
+	# A step down the page's own ramp. Every other mark is edged in the full linen,
+	# which the midday sky grades all the way to 255 -- pure white, and docs/ART.md
+	# §5 keeps the brightest thing in a frame for fire and lamps. A speed line's
+	# edge is only there to keep three hairlines readable on dark rock, and one
+	# step down does that at 236 (measured on the coast at eleven).
+	mat.set_shader_parameter(&"paper_col", _v3(Palette.LINEN[4]))
 	_run(mi, 0.2)
 
 
