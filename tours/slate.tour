@@ -28,13 +28,13 @@ shot 06-hud-walked
 # Carrying, then the map by its own key: the glass switches app.
 tap inventory
 await app:inventory 3
-shot 07-carrying
+shot 07-carrying with app:inventory
 tap move_down
 wait 0.2
 shot 08-carrying-down
 tap map
 await app:map 3
-shot 09-map
+shot 09-map with app:map
 tap use
 wait 0.3
 shot 10-map-scaled
@@ -45,13 +45,13 @@ try 3
 tap craft
 await app:crafting 3
 end
-shot 11-making
+shot 11-making with app:crafting
 tap pause
 await app:none 3
 # Home, and the apps that live under it.
 tap pause
 await app:pause 3
-shot 12-home
+shot 12-home with app:pause
 # Home's tabs name their keys: carrying's opens over home, and Esc comes back.
 tap inventory
 await app:inventory 3
@@ -61,19 +61,19 @@ await app:pause 3
 tap move_down
 tap use
 await app:loadout 3
-shot 13-gear
+shot 13-gear with app:loadout
 tap pause
 await app:pause 3
 tap move_down
 tap use
 await app:reads 3
-shot 14-machine-reads
+shot 14-machine-reads with app:reads
 tap pause
 await app:pause 3
 tap move_down
 tap use
 await app:saves 3
-shot 15-saves
+shot 15-saves with app:saves
 tap pause
 await app:pause 3
 tap move_down
@@ -85,4 +85,4 @@ wait 0.2
 tap pause
 await app:none 3
 wait 0.5
-shot 17-back-in-the-world
+shot 17-back-in-the-world with app:none

@@ -9,16 +9,16 @@ coast calm
 place snowfield
 wait 1.6
 await cold 12
-shot 01-snowfield-bare
+shot 01-snowfield-bare with land:snowfield,cold
 await pressure_bites 15
-shot 02-cold-bites
+shot 02-cold-bites with pressure_bites
 
 # --- Put the warm wrap on, on the slate's gear page, with the real keys -------
 tap pause
 choose loadout
 tap use
 await app:loadout 8
-shot 03-gear-page
+shot 03-gear-page with app:loadout
 choose body
 tap use
 wait 0.3
@@ -29,7 +29,7 @@ tap pause
 tap pause
 wait 2.0
 await answered 15
-shot 05-snowfield-wrapped
+shot 05-snowfield-wrapped with answered
 
 # --- Off a height on a wing of mended plate -----------------------------------
 place summit
@@ -40,7 +40,7 @@ shot 07-at-the-lip
 tap ability_glide
 await ability:glide 4
 wait 0.35
-shot 08-gliding
+shot 08-gliding with gliding
 wait 6.5
 shot 09-landed
 
@@ -64,7 +64,7 @@ wait 1.2
 tap ability_scan
 await ability:scan 5
 wait 0.4
-shot 13-scanning-a-harvester
+shot 13-scanning-a-harvester with mob:harvester
 
 # --- Wearing their signature past a watcher -----------------------------------
 # Put their name on BEFORE anything is looking: a machine that has already filed
@@ -75,14 +75,14 @@ wait 1.0
 tap ability_spoof
 await spoofed 5
 wait 0.15
-shot 14-wearing-their-name
+shot 14-wearing-their-name with spoofed
 spawn watcher
 wait 2.0
 await unnoticed 8
-shot 15-a-watcher-that-cannot-read-you
+shot 15-a-watcher-that-cannot-read-you with mob:watcher,unnoticed
 walk 1,-1 1.6
 await unnoticed 5
-shot 16-walked-past
+shot 16-walked-past with unnoticed
 
 # --- A burst of speed, and the trail of stipple it leaves ---------------------
 wait 0.6

@@ -14,7 +14,7 @@ walk 0,1 0.8
 shot walked-in
 tap map
 wait 0.4
-shot map-of-the-page-island
+shot map-of-the-page-island with app:map
 tap map
 wait 0.3
-shot back
+shot back with app:none

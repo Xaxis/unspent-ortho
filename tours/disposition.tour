@@ -13,12 +13,12 @@ wait 0.8
 spawn harvester
 spawn harvester
 wait 1.2
-shot 01-workers-on-their-rounds
+shot 01-workers-on-their-rounds with mob:harvester
 walk 0,-1 1.1
 wait 0.4
 walk 1,0 1.0
 wait 1.4
-shot 02-walked-among-them-and-never-touched
+shot 02-walked-among-them-and-never-touched with mob:harvester
 
 # --- 2. Hands on the plan's own parts ----------------------------------------
 coast calm
@@ -26,14 +26,14 @@ near survey
 wait 0.6
 spawn harvester
 wait 1.2
-shot 03-a-survey-post-and-a-worker-at-its-round
+shot 03-a-survey-post-and-a-worker-at-its-round with mob:harvester
 press use 0.3
 await theft 8
 wait 0.4
-shot 04-the-worker-turns-on-the-thief
+shot 04-the-worker-turns-on-the-thief with mob:harvester
 await turned 4
 wait 1.2
-shot 05-it-comes-for-you-now
+shot 05-it-comes-for-you-now with mob:harvester
 
 # --- 3. Down in the heather at dusk, past a watcher --------------------------
 # Down first, then the watcher: a player already in the heather is never read,
@@ -55,10 +55,10 @@ wait 1.0
 # watcher that cannot see the player either way proves nothing about crouching.
 walkto mob 6
 wait 0.8
-shot 06-a-watcher-reading-the-heath-at-dusk
+shot 06-a-watcher-reading-the-heath-at-dusk with mob:watcher
 zoom 6
 wait 0.5
-shot 07-down-in-the-heather
+shot 07-down-in-the-heather with crouched
 zoom 9
 wait 0.4
 # Every frame of this act has to be one where the player really is hidden, or
@@ -66,14 +66,14 @@ wait 0.4
 walk -1,-1 0.7
 await hidden 3
 wait 0.6
-shot 08-past-its-sweep-unread
+shot 08-past-its-sweep-unread with hidden
 walk -1,0 0.5
 await hidden 3
 wait 1.0
-shot 09-and-away-with-nothing-filed
+shot 09-and-away-with-nothing-filed with hidden
 # Stand up inside the same round and the same optics find you at once: the
 # difference between being read and not is the stance, and it is drawn on both.
 release crouch
 await read 14
 wait 0.5
-shot 10-stand-up-and-it-has-you
+shot 10-stand-up-and-it-has-you with read

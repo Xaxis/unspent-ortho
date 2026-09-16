@@ -65,5 +65,5 @@ wait 1.0
 shot 12-village-wet-night
 tap lamp
 wait 0.5
-shot 13-village-wet-lantern
+shot 13-village-wet-lantern with lamp
 weather rules

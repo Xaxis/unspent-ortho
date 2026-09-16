@@ -28,8 +28,8 @@ walk -1,-1 2.5 run
 shot 10-bonelands-burning-walked
 # a fumarole field out on the Burning's slopes
 at 207,145
-shot 11-fumarole
+shot 11-fumarole with land:burning
 # the caldera
 at 134,142
 zoom 44
-shot 12-caldera
+shot 12-caldera with land:burning

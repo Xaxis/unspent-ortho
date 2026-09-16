@@ -13,31 +13,31 @@ shot 01-wake
 walk 1,-1 0.9
 await folk 6
 wait 0.4
-shot 02-oyster-row
+shot 02-oyster-row with folk
 walkto folk 12
 zoom 5
 wait 0.4
-shot 03-a-villager-close
+shot 03-a-villager-close with folk
 zoom 9
 walkto dog 20
 zoom 8
 await dog 10
 wait 0.8
-shot 04-the-village-dog
+shot 04-the-village-dog with dog
 # Gulls over the refuse: the nearest tip or wreck, whatever village is near.
 zoom 15
 walkto refuse 60
 zoom 9
 await gulls 40
 wait 0.5
-shot 05-gulls-on-the-refuse
+shot 05-gulls-on-the-refuse with gulls
 # Oyster Row in the afternoon, several out at once.
 village 0
 hour 15.5
 zoom 15
 await crowd 20
 wait 0.5
-shot 06-oyster-row-afternoon
+shot 06-oyster-row-afternoon with crowd
 hour 19.6
 wait 2.5
 shot 07-dusk
@@ -46,7 +46,7 @@ wait 2.0
 tap lamp
 wait 1.0
 zoom 5
-shot 08-lantern-slate-and-rims
+shot 08-lantern-slate-and-rims with lamp
 zoom 9
 hour 21.02
 wait 12
@@ -62,21 +62,21 @@ await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 11-snowfield-hush-fold
+shot 11-snowfield-hush-fold with folk
 zoom 12
 village 6
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 12-burning-cinderstead
+shot 12-burning-cinderstead with folk
 zoom 12
 village 1
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 13-moss-fennick
+shot 13-moss-fennick with folk
 # What 24 villagers cost drawn on screen, against the same frames without them:
 # a budget of 7 draw calls and 1 ms of frame a person.
 zoom 15

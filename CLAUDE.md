@@ -89,6 +89,17 @@ a tour can leave, `await title`, press a real key on the title (`key ACTION`),
 anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour saves under
 `user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
 
+**A frame that claims a subject has to hold it.** `shot NAME with SUBJECT[,SUBJECT]`
+says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `land:ID`,
+`station:fire`, `app:map`, `lamp`, `folk`, a hazard, or `pixels:RRGGBB[:N]` when
+only the picture can answer — and the runner asks again at the instant the
+shutter falls, throwing the frame away and failing the tour if it is not there.
+`spawn` fails when the roster has no such kind, when nothing was placed, or when
+what was placed landed outside the frame. `tests/tours/test_tour_claims.gd` holds
+every tour to it in the gate: the first frame after a `spawn` must say it holds
+that body. Nothing is worse evidence than a frame that proves the opposite of its
+own name, because the next person believes it.
+
 **Every tour carries its own options in its header**, so `ls tours/` is the list
 and the file itself says how to run it. Each wave adds its own. Run them all before
 integrating a wave, and never delete or weaken a tour to make one pass.

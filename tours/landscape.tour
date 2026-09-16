@@ -12,7 +12,7 @@ shot 01-spawn-what-was-lost
 # The coast: the intake humming at the shore, a trawler on the sand.
 place intake
 walk 0,1 0.8
-shot 02-coast-intake-day
+shot 02-coast-intake-day with land:coast
 hour 21.2
 wait 0.5
 shot 03-coast-intake-dusk
@@ -26,7 +26,7 @@ shot 05-coast-turf-rows-day
 # The moss: the drained fen, its pump house and pipeline.
 place drained
 walk 0,-1 0.8
-shot 06-moss-drained-day
+shot 06-moss-drained-day with land:moss
 hour 21.3
 wait 0.5
 shot 07-moss-drained-dusk
@@ -37,7 +37,7 @@ shot 08-moss-bog-graves-day
 # The pines: a clearcut in its square, the relay corridor, the fire tower.
 place clearcut
 walk 1,-1 1.0
-shot 09-pinewood-clearcut-day
+shot 09-pinewood-clearcut-day with land:pinewood
 place corridor
 walk 1,0 1.0
 shot 10-pinewood-corridor-day
@@ -51,7 +51,7 @@ shot 12-pinewood-fire-tower-day
 # The snowfield: the checkpoint gate on its road, the grid hung with ice, the stack.
 place checkpoint
 walk -1,0 0.8
-shot 13-snowfield-checkpoint-day
+shot 13-snowfield-checkpoint-day with land:snowfield
 hour 21.2
 wait 0.5
 shot 14-snowfield-checkpoint-dusk
@@ -65,7 +65,7 @@ shot 16-snowfield-stack-day
 # The bonelands: the quarry benches, the drill field on its grid.
 place quarry
 walk 1,0 0.8
-shot 17-bonelands-quarry-day
+shot 17-bonelands-quarry-day with land:bonelands
 place drill_field
 walk 0,-1 0.8
 shot 18-bonelands-drill-field-day
@@ -76,7 +76,7 @@ hour 10.5
 # The burning: slag heaps tipped on the bearing, the clerks' archive.
 place slag
 walk -1,1 0.8
-shot 20-burning-slag-day
+shot 20-burning-slag-day with land:burning
 place archive
 walk 1,0 0.8
 shot 21-burning-archive-day

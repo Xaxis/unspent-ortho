@@ -27,7 +27,7 @@ shot 04-under-the-pylon
 spawn runner
 await score_tense 90
 await score_dissonance 60
-shot 05-a-machine-closing-in
+shot 05-a-machine-closing-in with mob:runner
 coast calm
 await score_resolve 120
 shot 06-resolved

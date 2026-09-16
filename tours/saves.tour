@@ -28,7 +28,7 @@ choose saves
 tap use
 await app:saves 2
 wait 0.3
-shot 03-save-page
+shot 03-save-page with app:saves
 # An empty slot is written at once; one that holds a game (an earlier run's) asks
 # first, and the second press writes over it.
 try 2
@@ -82,7 +82,7 @@ tap move_right
 wait 0.3
 choose slot_1
 wait 0.3
-shot 07-load-page
+shot 07-load-page with app:saves
 tap use
 await game 30
 coast calm

@@ -36,7 +36,7 @@ wait 0.8
 shot 04-snow-night-lamp-out
 tap lamp
 wait 0.6
-shot 05-snow-night-lamp-lit
+shot 05-snow-night-lamp-lit with lamp
 tap lamp
 wait 0.4
 
@@ -91,9 +91,9 @@ wait 1.6
 shot 13-village-wet-night
 tap lamp
 wait 0.6
-shot 14-village-wet-lantern
+shot 14-village-wet-lantern with lamp
 walk 1,0 1.2
-shot 15-walked-with-the-lantern
+shot 15-walked-with-the-lantern with lamp
 tap lamp
 hour 12
 wait 1.2
@@ -109,6 +109,6 @@ wait 1.2
 shot 17-village-night-pool-out
 tap lamp
 wait 0.8
-shot 18-village-night-pool-lit
+shot 18-village-night-pool-lit with lamp
 tap lamp
 weather rules

@@ -47,11 +47,11 @@ shot 05-asked-where
 press use 0.1
 await made 4
 wait 0.5
-shot 06-fire-laid
+shot 06-fire-laid with station:fire
 # Making at the fire: the page lists what this fire can make.
 tap craft
 wait 0.6
-shot 07-making-page
+shot 07-making-page with app:crafting
 # Charcoal is set going on the fire and cooks in world time; a haft is whittled meanwhile.
 choose charcoal
 tap use
@@ -84,7 +84,7 @@ tap pause
 wait 0.4
 tap inventory
 wait 0.6
-shot 10-carrying-the-pick
+shot 10-carrying-the-pick with app:inventory
 tap inventory
 wait 0.4
 # Making took the afternoon; the fight is shown in the day it would have been
@@ -106,7 +106,7 @@ tap swing
 await ring 1.5
 end
 wait 0.04
-shot 11-plate-rings
+shot 11-plate-rings with mob:runner
 # A watcher stands its ground further on. Its working part is its lens, in
 # front: there the blow goes home.
 coast calm
@@ -120,23 +120,23 @@ tap swing
 await hit 1.5
 end
 wait 0.04
-shot 12-the-working-side
+shot 12-the-working-side with mob:watcher
 tap swing
 wait 0.6
 tap swing
 wait 0.6
-shot 13-after-the-fight
+shot 13-after-the-fight with body:watcher
 coast calm
 # Back to the fire as the light goes: the lamp against the dark.
 zoom 15
 at 189.5,428.5
 hour 21.5
 wait 0.6
-shot 14-night-at-the-fire
+shot 14-night-at-the-fire with station:fire
 press lamp 0.1
 wait 0.5
 walk -1,-1 1.2
-shot 15-lamp-lit
+shot 15-lamp-lit with lamp
 walk 1,1 1.2
 press use 0.1
 wait 1.2
@@ -147,4 +147,4 @@ wait 0.5
 shot 17-coast-before-the-border
 walk 1,-1 4.5 run
 wait 1.2
-shot 18-into-the-bonelands
+shot 18-into-the-bonelands with land:bonelands
