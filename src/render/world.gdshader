@@ -92,6 +92,13 @@ const vec3 LINEN2 = vec3(0.4353, 0.3961, 0.3490);
 const vec3 LINEN3 = vec3(0.5882, 0.5412, 0.4627);
 const vec3 LINEN4 = vec3(0.7529, 0.7020, 0.5804);
 const vec3 LINEN5 = vec3(0.9098, 0.8627, 0.7529);
+// The ceiling on every pixel of salt crust (marks 55 and 57), and the colour of
+// the one lit edge on it. The salt flats has no headroom: a frame holding two
+// landscapes lifts every wash in it by the average of their grades, so a crust
+// drawn near the page comes back CLIPPED across a border — no second wash, no
+// shade band, no plate rim, no hatch (art review 1). Kept in step with
+// src/content/biomes/salt_flats.gd (Ground.SALT) and src/models/props/salt.gd.
+const vec3 SALT_TOP = vec3(0.6080, 0.5770, 0.5040);
 const vec3 ASH1 = vec3(0.2314, 0.2510, 0.2902);
 const vec3 ASH3 = vec3(0.5255, 0.5529, 0.6000);
 const vec3 ASH4 = vec3(0.7216, 0.7490, 0.7882);
@@ -699,17 +706,23 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 		float join = d2 - d1;
 		float ch = ink_hash(own + 11.0);
-		c = ch < 0.3 ? dn(c, 0.26) : (ch > 0.72 ? up(c, 0.12) : c);
+		// Plate against plate is a VALUE step, not a tint: the crust carries a
+		// second wash under its first, so the flat still draws structure when a
+		// neighbour's grade lifts the whole frame (art review 1 — clipped white
+		// holds no wash, no shade, no plate and no hatch).
+		c = ch < 0.3 ? dn(c, 0.30) : (ch > 0.72 ? up(c, 0.10) : c);
 		// Grain across the plate, at its own angle: a dried floor, not a panel.
 		float gr = ink_vnoise(wp * 4.1 + own * 3.3) * 0.7 + ink_vnoise(wp * 11.0) * 0.3;
-		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.09) : c);
+		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.12) : c);
 		// A slow field of damp: where the pan never dried the crust takes a
 		// mineral stain. ONE connected wash with its own shore, never a tint per
-		// plate, and pale: the flat has to stay white or it is not a flat.
+		// plate. It is the flat's shade band: wide enough to compose the frame,
+		// pale enough that the crust around it still reads as the brightest
+		// ground in the game.
 		float damp = ink_vnoise(wp * 0.05 + 21.0) * 0.8 + ink_vnoise(wp * 0.19) * 0.2;
-		float stain = smoothstep(0.70, 0.80, damp + rag(wp) * 1.5);
+		float stain = smoothstep(0.68, 0.80, damp + rag(wp) * 1.5);
 		if (stain > 0.0) {
-			c = mix(c, mix(LINEN2, EARTH3, 0.45), stain * 0.2);
+			c = mix(c, mix(LINEN2, EARTH3, 0.45), stain * 0.26);
 			// Brine still lying in the deepest of it: a SKIN, a finger deep, that
 			// holds the sky rather than hiding the crust under it. One sheet
 			// with its own shore — the damp field's contour decides where its
@@ -731,19 +744,19 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// the lit edge of the lift, the other is under its overhang.
 			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;
 			if (join < weight * 0.3) {
-				c = dn(c, 0.8);
+				c = dn(c, 0.95);
 			} else {
-				c = over ? mix(LINEN5, vec3(1.0), lifted) : dn(c, 0.4);
+				c = over ? mix(dn(SALT_TOP, 0.35), SALT_TOP, lifted) : dn(c, 0.55);
 			}
 		} else if (join < 0.028) {
 			// An unlifted join is only a hairline.
-			c = dn(c, 0.22);
+			c = dn(c, 0.3);
 		}
 		float sh = ink_hash(px + 9.0);
 		if (sh > 0.991) {
-			c = vec3(1.0);
+			c = up(c, 0.22);
 		} else if (sh < 0.006) {
-			c = dn(c, 0.35);
+			c = dn(c, 0.45);
 		}
 	} else if (m == 57) {
 		// PAN: the floor of an evaporation pan the brine drew back from. Damp
@@ -768,7 +781,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 		float h = ink_hash(px);
 		if (h > 0.985) {
-			c = LINEN5;
+			c = SALT_TOP;
 		} else if (h < 0.015) {
 			c = dn(c, 0.5);
 		}
@@ -1250,6 +1263,10 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (dt > 0.6) {
 			c = mix(LINEN2, STONE2, 0.5);
 		}
+		// This wall is salt too, and the salt flats has no headroom: every
+		// contour in the landscape was drawn as a ruled WHITE line because the
+		// evaporite beds were laid at the page (art review 1, and SALT_TOP).
+		c = min(c, SALT_TOP);
 	} else if (id == 10) {
 		// SCRAPWOOD: a bank of made ground. Crushed plate and cable in courses
 		// between bands of soil, roots reaching down through it, and the odd
@@ -1375,6 +1392,13 @@ void fragment() {
 			if (wl.r > 0.5) {
 				c = survey_mark(m, c, world_pos.xz, px, wl.b, int((second ? s2 : s1) + 0.5));
 			}
+		}
+		// The salt flats' one hard rule (see SALT_TOP), laid LAST so it catches
+		// the mark, the wear and the works alike: no crust pixel is drawn at the
+		// page. Scaled, not clipped, so the plates and the rims keep their
+		// structure; and only on the warm side, because brine is not crust.
+		if ((m == 55 || m == 57) && c.r >= c.b) {
+			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
 	} else if (m > 60 && m < 70) {
 		c = strata(m - 60, c, world_pos, px, emit, unh);

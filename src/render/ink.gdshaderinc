@@ -13,6 +13,7 @@
 //   6 SCRIBBLE  burning: broken, restless diagonals
 //   7 HAND      made things: short back-diagonals, a little uneven
 //   8 CONTOUR   rock and cliff faces: horizontal strata strokes
+//   9 CRACK     salt flats: long dry strokes that run and stop, never a net
 
 global uniform vec2 world_px;
 
@@ -63,6 +64,17 @@ float hatch(int style, vec2 px, float depth) {
 		float a = mod(y, 3.0) < 1.0 ? 1.0 : 0.0;
 		float gap = step(0.3, ink_hash(vec2(floor(x / 5.0), floor(y / 3.0))));
 		return a * gap;
+	}
+	if (style == 9) {
+		// A crust splits in long dry runs, not on a pitch: one family of strokes
+		// far apart, each broken where the crack healed, and a second bearing
+		// that only shows once the shade is deep. A regular net would be the
+		// bonelands' hand, and the flat would read as paving.
+		float a = mod(x + 4.0 * y, 13.0) < 1.0 ? 1.0 : 0.0;
+		float run = step(0.30, ink_hash(vec2(floor((x + 4.0 * y) / 13.0), floor(y / 9.0))));
+		float b = mod(x - 5.0 * y, 17.0) < 1.0 ? 1.0 : 0.0;
+		float run2 = step(0.45, ink_hash(vec2(floor((x - 5.0 * y) / 17.0), floor(y / 7.0) + 31.0)));
+		return max(a * run, b * run2 * step(0.45, depth));
 	}
 	return 0.0;
 }

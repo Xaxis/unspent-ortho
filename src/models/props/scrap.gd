@@ -71,7 +71,11 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var bar_y := mast * 0.8
 	var bd := Vector3(cos(ma + 1.57), 0.0, sin(ma + 1.57))
 	var bc := Vector3(lean.x * bar_y * 0.7, bar_y, lean.y * bar_y * 0.7)
-	k.rod(bc - bd * 0.78, bc + bd * 0.62, 0.032, 4, P.PLATE[3])
+	# Rubbed bright, because this is the one straight line the player sees from
+	# above: dark slate over a dark crown read as a dead branch, and the wood read
+	# as a wood with snags in it rather than a wood grown through machines
+	# (playtest 6).
+	k.rod(bc - bd * 0.78, bc + bd * 0.62, 0.036, 4, P.PLATE[5])
 	# A stay from the mast head out to the cage foot, clear of the crown.
 	k.rod(top0, Vector3(cos(ma + 2.4) * 0.5, h * 0.12, sin(ma + 2.4) * 0.5), 0.022, 4, P.PLATE[2])
 	# The plate caught in the fork, lying ON the crown where the light finds it.
@@ -79,11 +83,11 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var fx := lean.x * h * 0.85
 	var fz := lean.y * h * 0.85
 	var fy := h * 1.06
-	k.plate(Vector3(fx + cos(fa) * 0.44, fy, fz + sin(fa) * 0.44),
-		Vector3(fx + cos(fa + 1.5) * 0.48, fy + 0.09, fz + sin(fa + 1.5) * 0.48),
-		Vector3(fx + cos(fa + 2.7) * 0.4, fy + 0.17, fz + sin(fa + 2.7) * 0.4),
-		Vector3(fx + cos(fa + 4.3) * 0.36, fy + 0.07, fz + sin(fa + 4.3) * 0.36),
-		P.PLATE[3], P.PLATE[1], P.PLATE[5])
+	k.plate(Vector3(fx + cos(fa) * 0.58, fy, fz + sin(fa) * 0.58),
+		Vector3(fx + cos(fa + 1.5) * 0.62, fy + 0.09, fz + sin(fa + 1.5) * 0.62),
+		Vector3(fx + cos(fa + 2.7) * 0.54, fy + 0.17, fz + sin(fa + 2.7) * 0.54),
+		Vector3(fx + cos(fa + 4.3) * 0.48, fy + 0.07, fz + sin(fa + 4.3) * 0.48),
+		P.PLATE[4], P.PLATE[2], P.PLATE[5])
 	# The trunk, swelling where it grew round the frame.
 	var mid := Vector3(lean.x * h * 0.5, h * 0.5, lean.y * h * 0.5)
 	k.limb(Vector3.ZERO, mid, 0.19, 0.13, 7, bark)

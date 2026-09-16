@@ -240,6 +240,7 @@ func compose() -> void:
 	var ng := neon_grade_at(hour, neon_shares)
 	RenderingServer.global_shader_parameter_set("neon_grade", ng[0])
 	RenderingServer.global_shader_parameter_set("neon_wet", ng[1])
+	RenderingServer.global_shader_parameter_set("water_wash", water_wash_at(neon_shares))
 	RenderingServer.global_shader_parameter_set("sky_air", air)
 	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
 	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, 0.0))
@@ -518,6 +519,30 @@ static func neon_row(key: Variant) -> Array:
 	if d == null:
 		d = BiomeRegistry.by_index(Country.COAST)
 	return [d.grade, d.wet]
+
+
+## What the inland water in view is drawn in (`BiomeDef.water_wash`), blended
+## over the same shares as the grade, so a river crossing a border changes
+## colour the way the light does. The sea never reads this.
+static func water_wash_at(shares: Dictionary) -> Vector4:
+	var sum := Vector4.ZERO
+	var total := 0.0
+	for k: Variant in shares:
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		# Squared, so the land the camera is actually over carries the water and
+		# a sliver of a neighbour at the edge of the frame only softens it. The
+		# water is under your feet, not in the air: it belongs to the land it
+		# lies in far more than the light does.
+		var w := float(shares[k])
+		w *= w
+		total += w
+		if d == null:
+			continue
+		var c := d.water_wash
+		sum += Vector4(c.r, c.g, c.b, 1.0) * (w * c.a)
+	if total <= 0.0 or sum.w <= 0.0001:
+		return Vector4.ZERO
+	return Vector4(sum.x / sum.w, sum.y / sum.w, sum.z / sum.w, clampf(sum.w / total, 0.0, 1.0))
 
 
 ## shares: landscape type id (or Country id) -> weight.

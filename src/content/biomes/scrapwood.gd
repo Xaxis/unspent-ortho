@@ -63,6 +63,12 @@ static func make() -> BiomeDef:
 	# darkness term goes as negative as the moss's so noon still reads as noon.
 	d.grade = Vector4(-0.52, 0.12, 0.0, 0.08)
 	d.wet = 0.25
+	# The water here is dead. Everything the yard leached is in it, and it lies
+	# under a closed canopy: an oily green-black that gives nothing back. It was
+	# the shared chart blue — a pale slate pond measuring (111, 141, 175) against
+	# the moss's (23, 38, 53), 3.7x brighter, and the loudest object in a
+	# landscape whose whole mood is green-brown gloom (playtest 6).
+	d.water_wash = Color(0.095, 0.104, 0.080, 1.0)
 	d.props = [PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP, PropKind.BROADLEAF, PropKind.PINE,
 		PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.DRIFTWOOD]
@@ -121,7 +127,9 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	if f & BiomeSurface.BANK != 0:
 		return Ground.MUD
 	if rs < -0.8 and gb < -0.2:
-		# Standing water in the bottoms, gone black with what leached into it.
+		# The bottoms never drain: a black mat of bog moss over what leached out
+		# of the yard. The standing water itself is `pools` (BLACKWATER), and
+		# what colour it takes is `water_wash`.
 		return Ground.MOSS
 	# The canopy is closed almost everywhere: swarf is the floor of this wood,
 	# and a clearing has to be a real one before the grass gets in.

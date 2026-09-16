@@ -165,6 +165,20 @@ const DEFS := {
 		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.35, &"toxins": 0.2, &"thirst": 0.15}},
 	&"hat_brim": {"name": "brimmed hat", "bulk": 1.0, "group": &"kit", "tier": &"made",
 		"slot": &"head", "sockets": 1, "resist": {&"heat": 0.3, &"wet": 0.15, &"glare": 0.45}},
+	# A frame of driftwood with a sheet of rag stretched over it, carried on the
+	# back: you walk under your own roof. Glare was the ONE pressure in the game
+	# the best legal loadout could not bring below a bite, because both answers
+	# to it — the brim and the scanner lens — are worn on the head, and the salt
+	# flats is one of the two landscapes nearest a spawn (playtest 3). This is the
+	# second answer, and it costs the back: the glide wing, the drip coil that
+	# answers the same landscape's thirst, or a plate off a checkpoint.
+	&"back_awning": {"name": "back awning", "bulk": 3.0, "group": &"kit", "tier": &"made",
+		"slot": &"back", "sockets": 1, "resist": {&"glare": 0.40, &"heat": 0.25}},
+	# Leather and cord with no iron anywhere in them, so nothing on your hands is
+	# being pulled. Magnetism was the only pressure with nothing wearable against
+	# it at all, and the scrapwood declares it at every hour (playtest 7).
+	&"mitts_corded": {"name": "corded mitts", "bulk": 1.0, "group": &"kit", "tier": &"made",
+		"slot": &"hands", "sockets": 1, "resist": {&"magnetism": 0.35, &"cold": 0.15}},
 	# MENDED: machine parts bound to a made frame with cord. Most of the high tech
 	# a person uses, and where the abilities come from.
 	&"vest_heatsink": {"name": "heat-sink vest", "bulk": 3.0, "group": &"kit", "tier": &"mended",

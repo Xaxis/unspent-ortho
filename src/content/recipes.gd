@@ -88,6 +88,11 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_wadding", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"wrack": 2}, "makes": {&"mod_wadding": 1}, "tool": &"cut"},
 	{"id": &"mod_filter", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 1, &"charcoal": 2}, "makes": {&"mod_filter": 1}, "tool": &"cut"},
 	{"id": &"mod_grip", "at": &"hand", "minutes": 15.0, "needs": {&"rag": 1, &"pitch": 1}, "makes": {&"mod_grip": 1}, "tool": &"cut"},
+	# Both by hand, from what a dry flat and a dead wood actually give you: the
+	# landscapes that press hardest are reached on day two, with a knife and no
+	# bench (playtest 3 and 7).
+	{"id": &"back_awning", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 2, &"driftwood": 2}, "makes": {&"back_awning": 1}, "tool": &"cut"},
+	{"id": &"mitts_corded", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"pitch": 1}, "makes": {&"mitts_corded": 1}, "tool": &"cut"},
 	{"id": &"wrap_warm", "at": &"bench", "minutes": 45.0, "needs": {&"rag": 3, &"wrack": 2, &"pitch": 1}, "makes": {&"wrap_warm": 1}},
 	{"id": &"oilskin", "at": &"bench", "minutes": 40.0, "needs": {&"rag": 3, &"pitch": 2}, "makes": {&"oilskin": 1}},
 	{"id": &"hat_brim", "at": &"bench", "minutes": 35.0, "needs": {&"rag": 2, &"reeds": 3, &"pitch": 1}, "makes": {&"hat_brim": 1}},

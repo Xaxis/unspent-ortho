@@ -1,0 +1,122 @@
+# The wave's two new landscapes, and the two things wrong with them: the salt
+# flats clipped to paper wherever it met an older land, and glare was the one
+# pressure the best legal kit could not answer; the scrapwood read as an
+# ordinary wood with a pale pond in it, and its magnetism never let up.
+#
+# Each landscape at three zooms and three hours, both borders stood in and
+# walked across, and a body standing in each with the best kit the game can
+# make — put on through the slate's gear page with the real keys.
+#   tools/tour.sh tours/salt-and-scrap.tour --seed=7 --hour=11 --weather=clear:0 \
+#     --give=hat_brim:1,back_awning:1,mitts_corded:1,mod_foil:1
+coast calm
+
+# --- The flat: wide, at play, and close ---------------------------------------
+place salt_flats
+wait 2.0
+zoom 20
+wait 0.8
+shot 01-flat-wide
+zoom 12
+wait 0.8
+shot 02-flat-play
+zoom 6
+wait 0.8
+shot 03-flat-close
+zoom 12
+hour 19.5
+wait 1.6
+shot 04-flat-dusk
+hour 23
+wait 1.6
+shot 05-flat-night
+hour 11
+wait 1.2
+
+# --- Glare with nothing on: the wall -----------------------------------------
+await glare 20
+await pressure_bites 20
+shot 06-the-flat-bites
+
+# --- And the kit that answers it, fitted on the slate -------------------------
+# The brimmed hat goes on the head and the awning on the BACK: two slots, so
+# glare is answerable at last without giving up the scanner lens for it.
+tap pause
+choose loadout
+tap use
+await app:loadout 8
+shot 07-the-gear-page-bare
+choose head
+tap use
+wait 0.4
+choose back
+tap use
+wait 0.4
+shot 08-a-brim-and-an-awning
+tap pause
+tap pause
+await app:none 4
+wait 2.5
+await answered 45
+shot 09-the-flat-answered
+
+# --- The wood: wide, at play, and close ---------------------------------------
+place scrapwood
+wait 2.0
+zoom 20
+wait 0.8
+shot 10-wood-wide
+zoom 12
+wait 0.8
+shot 11-wood-play
+zoom 6
+wait 0.8
+shot 12-wood-close
+zoom 12
+hour 19.5
+wait 1.6
+shot 13-wood-dusk
+hour 23
+wait 1.6
+shot 14-wood-night
+hour 11
+wait 1.6
+
+# --- Magnetism, and the mitts with no iron in them ----------------------------
+await magnetism 20
+tap pause
+choose loadout
+tap use
+await app:loadout 8
+choose hands
+tap use
+wait 0.4
+shot 15-nothing-on-the-hands-to-pull
+tap pause
+tap pause
+await app:none 4
+wait 1.5
+shot 16-the-wood-answered
+
+# --- What the wood is made of, at the scale a player meets it at --------------
+near scrap_tree
+wait 1.2
+shot 17-a-tree-grown-through-a-machine
+near magnet_heap
+wait 1.2
+shot 18-filings-standing-on-end
+
+# --- Both borders: stood in, then walked across -------------------------------
+# The band has to carry two washes, two marks and two hatch hands. Neither side
+# may clip to paper: a clipped wash holds no shade, no plate and no ink.
+place coast-salt_flats
+wait 2.2
+shot 19-coast-meets-salt
+walk 1,-1 2.5 run
+wait 0.6
+shot 20-coast-salt-crossed
+place moss-scrapwood
+wait 2.2
+shot 21-moss-meets-scrapwood
+walk 1,-1 2.5 run
+wait 0.6
+shot 22-moss-scrapwood-crossed

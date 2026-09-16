@@ -12,9 +12,25 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 
 ## The machines' cold strip and the salt's own light.
+##
+## The crust stops short of the page, and so does everything cut from it. A
+## frame that holds two landscapes lifts every wash in it by the average of
+## their grades (src/content/biomes/salt_flats.gd, Ground.SALT), so a salt heap
+## drawn at LINEN[5] stood on coast turf as a flat white blob with no facets,
+## no rake lines and no shadow in it (art review 1). CRUST is the crust wash
+## itself, CRUST_UP the one lit edge, and nothing here goes above it.
 const STRIP := Color(0.3, 0.95, 1.0, 0.8)
-const CRUST := Color(0.9098, 0.8627, 0.7529)
-const CRUST_DOWN := Color(0.7529, 0.7020, 0.5804)
+## The crust as a THING, which sits lower than the crust as GROUND: a prop's
+## lit top face gets the full sun band with no shade step and no ground mark
+## under it, so the same value that draws as crust at 215 draws on a salt heap
+## at the page. Measured, not guessed (art review 1).
+const CRUST := Color(0.4870, 0.4620, 0.4030)
+const CRUST_DOWN := Color(0.3900, 0.3640, 0.3010)
+## The one lit edge, and the ceiling on everything cut from the crust.
+## It stops below the page on purpose — a glare landscape adds its own lift on
+## top of the grade (sky.gdshaderinc, sky_air.y), and a lit rim at the page is a
+## white line with nothing drawn in it.
+const CRUST_UP := Color(0.5250, 0.4980, 0.4350)
 const STAIN := Color(0.4314, 0.2000, 0.1255)
 
 
@@ -48,11 +64,11 @@ static func ridge(k: Kit, v: int) -> void:
 		var a := base - along * half
 		var b := base + along * half
 		var up := Vector3(0, rise, 0) + across * lean * 0.22
-		var pale := CRUST if i % 3 != 1 else P.LINEN[4]
+		var pale := CRUST if i % 3 != 1 else CRUST_DOWN
 		# The lit face, the shaded back, and the dark cut at its foot.
 		k.made.quad(a, b, b + up, a + up, pale)
 		k.made.quad(b - across * 0.07, a - across * 0.07, a + up - across * 0.05, b + up - across * 0.05, CRUST_DOWN)
-		k.made.quad(a + up, b + up, b + up + across * 0.06 - Vector3(0, 0.02, 0), a + up + across * 0.06 - Vector3(0, 0.02, 0), P.LINEN[5])
+		k.made.quad(a + up, b + up, b + up + across * 0.06 - Vector3(0, 0.02, 0), a + up + across * 0.06 - Vector3(0, 0.02, 0), CRUST_UP)
 		k.made.quad(a - across * 0.07, b - across * 0.07, b - across * 0.2, a - across * 0.2,
 			STAIN.lerp(P.LINEN[2], 0.4) if i % 2 == 0 else P.LINEN[2])
 	# Slabs that broke off and fell against the wall, on the sunny side.
@@ -60,7 +76,7 @@ static func ridge(k: Kit, v: int) -> void:
 		var t := (float(i) / 3.0 - 0.35) * run
 		var at := along * t + across * 0.22
 		k.made.push(Transform3D(Basis(Vector3.UP, along.angle_to(Vector3.RIGHT) + Kit.j(s, 40 + i, 0.6)) * Basis(Vector3.RIGHT, 1.1), at))
-		k.made.prism(0, 0, 0, 0.13 + Kit.j(s, 50 + i, 0.03), 0.02, 0.1, 5, P.LINEN[4], CRUST)
+		k.made.prism(0, 0, 0, 0.13 + Kit.j(s, 50 + i, 0.03), 0.02, 0.1, 5, CRUST_UP, CRUST)
 		k.made.pop()
 
 
@@ -73,7 +89,7 @@ static func heap(k: Kit, v: int) -> void:
 	var r := 0.5 + v * 0.1
 	var h := 0.95 + v * 0.2
 	# Faceted and leaning, so a heap is a heap and not a tent.
-	k.stone(0, 0, 0, r, h, s, CRUST, 7, 0.14, P.LINEN[5])
+	k.stone(0, 0, 0, r, h, s, CRUST, 7, 0.14, CRUST_UP)
 	# Rake lines down its flank: the cone was worked, not tipped.
 	for i in 8:
 		var a := float(i) / 8.0 * TAU + Kit.j(s, i, 0.2)
@@ -119,7 +135,7 @@ static func gate(k: Kit, v: int) -> void:
 	var drop := 0.42 + v * 0.1
 	k.chamfer(0, drop, 0.0, w - 0.08, 0.5, 0.05, 0.012, P.PLATE[2], P.PLATE[3])
 	k.made.push(Transform3D(Basis.IDENTITY, Vector3(0, drop - 0.24, 0)))
-	k.made.prism(0, 0, 0, (w - 0.08) * 0.5, 0.05, 0.035, 4, CRUST, P.LINEN[4])
+	k.made.prism(0, 0, 0, (w - 0.08) * 0.5, 0.05, 0.035, 4, CRUST, CRUST_UP)
 	k.made.pop()
 	# The screw stem and its handwheel, the one thing anybody still turns.
 	k.chamfer(0, 1.3, 0.0, 0.05, 0.42, 0.05, 0.012, P.PLATE[4])
