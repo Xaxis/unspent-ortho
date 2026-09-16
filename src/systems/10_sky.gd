@@ -440,3 +440,37 @@ func _tick_thunder(delta: float) -> void:
 			_pending_thunder.remove_at(i)
 		else:
 			i += 1
+
+
+## The last composed frame level a tour was shown, and the hour it was shown at
+## (tour_seen). A clock set BACKWARDS starts the walk again, so one tour can walk
+## the evening in two places without carrying the first one's floor into the second.
+var _tour_dimmest := INF
+var _tour_hour := -1.0
+
+
+## What a tour can be shown of the sky: `darker`, true once THE COMPOSED PICTURE
+## HAS FALLEN since the last time it was asked (and re-marked, so a walk through
+## the hours can await it at every step).
+##
+## A tour's `same` holds two frames to each other by their mean ABSOLUTE
+## difference, so a half hour that brightens by five per cent passes it exactly
+## as one that darkens by five: nothing in a tour could fail on the DIRECTION of
+## the evening, which is the whole of art review finding 2. This can only answer
+## on a fall. SkyLight.frame_level composes what sky_apply() composes, over the
+## landscape's own light and the weather's, so it moves with the picture and not
+## with the clock.
+func tour_seen(what: StringName) -> bool:
+	if what != &"darker":
+		return false
+	var sky: SkyLight = game.sky
+	if sky == null:
+		return false
+	if sky.clock_hour < _tour_hour - 1e-3:
+		_tour_dimmest = INF
+	_tour_hour = sky.clock_hour
+	var now := SkyLight.frame_level(sky.clock_hour, region, sky.weather_tint)
+	if now < _tour_dimmest - 1e-5:
+		_tour_dimmest = now
+		return true
+	return false

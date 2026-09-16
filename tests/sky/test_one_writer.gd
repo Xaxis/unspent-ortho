@@ -24,6 +24,26 @@ func test_only_sky_light_writes_the_sky_globals() -> void:
 	eq(offenders.size(), 0, "second writers: %s" % [offenders])
 
 
+## A global the include declares but project.godot never registers reads as zero
+## in every shader, silently: no error, no pink, just a term that is always off.
+## The two lists have to agree, both ways.
+func test_every_global_the_include_declares_is_registered_and_the_other_way_round() -> void:
+	var text := FileAccess.get_file_as_string("res://src/render/sky.gdshaderinc")
+	var declared: Array[String] = []
+	for line in text.split("\n"):
+		var l := String(line).strip_edges()
+		if l.begins_with("global uniform "):
+			declared.append(l.trim_suffix(";").get_slice(" ", 3))
+	gt(declared.size(), 10.0, "the include declares its globals")
+	var registered := RenderingServer.global_shader_parameter_get_list()
+	for name in declared:
+		check(registered.has(StringName(name)), "%s is registered in project.godot" % name)
+	for name: StringName in registered:
+		var n := String(name)
+		if n.begins_with("sky_") or n.begins_with("neon_") or n.begins_with("glint_"):
+			check(declared.has(n), "%s is registered but nothing declares it" % n)
+
+
 func test_a_running_game_composes_the_sky_once_a_frame_with_the_storm_sway() -> void:
 	var o := BootOptions.new()
 	o.size = 64

@@ -152,6 +152,16 @@ The mood core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo, `sky_light.gd`
   hour (`SkyLight.NEON_COUNTRY`). Day stays day and every landscape stays readable
   and distinct. Emission never passes through it.
 - **Skyglow** keeps shapes readable in dusk, storms and night; nothing is pure black.
+- **The evening falls and never turns back.** From half six to nine the light goes
+  and the dark fills in, and the dark is spent AGAINST the light: every term that
+  keeps a dark frame readable (the blue floor under the washes, the skyglow, a
+  landscape's own mood) arrives no faster than the light it is filling in for, so
+  no half hour of a dusk is ever brighter than the one before it. From nine a
+  landscape's own light does not move again until the morning. It is measured on
+  the composed picture, not on any one term (`SkyLight.frame_level`,
+  `tests/sky/test_night_readable.gd`, `tours/evening.tour`), because each term
+  works on a different part of the frame. A LANDSCAPE'S DUSK IS WHEN IT FALLS AND
+  WHAT COLOUR IT GOES, never how far below its own night it dips.
 - **Wet** where the land is wet (the moss, rain, a storm): wet flat ground is a step
   darker and mirrors lights as broken streaks. Dry landscapes stay dry.
 - **Artificial light is situational and means something.** People's lamps, windows

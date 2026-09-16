@@ -1,0 +1,157 @@
+# The evening, stood through. Two places — the coast, where a lit settlement at
+# dusk is what docs/ART.md section 10 rests on, and the moss, where the night's
+# own floor is most of a dark frame — the hour walked from 17:00 to 21:30 in half
+# hours, one frame each. Every pair is held to the one before, AND every half
+# hour has to answer `darker`, which is the only thing in a tour that can fail on
+# the DIRECTION of the light: `same` is a mean absolute difference and passes a
+# half hour that brightens exactly as one that darkens (art review, wave A2).
+#
+# The game used to get BRIGHTER and bluer from 18:00 to 20:00 and then lose a
+# third of its light between 20:00 and 20:30; then it kept a smaller rise at
+# 20:00-20:30 on five landscapes of six (moss +11.9%). Either would fail below.
+#   tools/tour.sh tours/evening.tour --seed=7 --hour=17 --weather=clear:0
+coast calm
+weather clear:0
+
+# Stand where a settlement reads: docs/ART.md section 10 rests on a lit town at
+# dusk being worth defending, so the frames have to hold one. Walk the last of
+# it on the real keys.
+village 0
+hour 17
+zoom 13
+wait 0.8
+walk 0,1 0.6
+wait 1.4
+shot 01-the-afternoon-1700
+hour 17.5
+wait 3.0
+await darker 4
+shot 02-1730
+hour 18
+wait 3.0
+await darker 4
+shot 03-the-turn-begins-1800
+hour 18.5
+wait 3.0
+await darker 4
+shot 04-1830
+hour 19
+wait 3.0
+await darker 4
+shot 05-low-and-warm-1900
+hour 19.5
+wait 3.0
+await darker 4
+shot 06-1930
+hour 20
+wait 3.0
+await darker 4
+shot 07-the-lights-come-on-2000
+hour 20.5
+wait 3.0
+await darker 4
+shot 08-2030
+hour 21
+wait 3.0
+await darker 4
+shot 09-night-lands-2100
+hour 21.5
+wait 3.0
+await darker 4
+shot 10-2130
+
+# No half hour of the evening is a step. The crop is the world under the HUD's
+# top band and above its bottom one, so a clock reading 20:30 instead of 20:00
+# is not what the numbers are measuring.
+same 01-the-afternoon-1700 02-1730 0.075 0,84,1280,592
+same 02-1730 03-the-turn-begins-1800 0.075 0,84,1280,592
+same 03-the-turn-begins-1800 04-1830 0.075 0,84,1280,592
+same 04-1830 05-low-and-warm-1900 0.075 0,84,1280,592
+same 05-low-and-warm-1900 06-1930 0.075 0,84,1280,592
+same 06-1930 07-the-lights-come-on-2000 0.075 0,84,1280,592
+same 07-the-lights-come-on-2000 08-2030 0.075 0,84,1280,592
+same 08-2030 09-night-lands-2100 0.075 0,84,1280,592
+same 09-night-lands-2100 10-2130 0.075 0,84,1280,592
+
+# The hour to stand still in.
+hour 19.25
+wait 1.0
+shot 11-the-hour-to-stand-still-in
+
+# The lamp in the dusk, on the real key: a flame at seven, a pool at half past
+# eight (docs/ART.md section 6, section 10).
+hour 19
+wait 0.8
+tap lamp
+wait 0.8
+shot 12-a-flame-at-seven
+hour 20.5
+wait 1.0
+shot 13-a-pool-at-half-past-eight
+tap lamp
+wait 0.5
+
+# AND THE SAME WALK WHERE THE FLOOR IS MOST OF THE FRAME. The coast's own light
+# falls steeply enough to hide a badly paced floor; the moss's does not, and the
+# moss is where the measured rise was worst. Same half hours, same rule.
+place moss
+hour 17
+wait 2.0
+shot 20-the-moss-at-1700
+hour 17.5
+wait 3.0
+await darker 4
+hour 18
+wait 3.0
+await darker 4
+shot 21-the-moss-at-1800
+hour 18.5
+wait 3.0
+await darker 4
+hour 19
+wait 3.0
+await darker 4
+shot 22-the-moss-at-1900
+hour 19.5
+wait 3.0
+await darker 4
+hour 20
+wait 3.0
+await darker 4
+shot 23-the-moss-at-2000
+hour 20.5
+wait 3.0
+await darker 4
+shot 24-the-moss-at-2030
+hour 21
+wait 3.0
+await darker 4
+shot 25-the-moss-at-2100
+hour 21.5
+wait 3.0
+await darker 4
+shot 26-the-moss-at-2130
+same 21-the-moss-at-1800 22-the-moss-at-1900 0.09 0,84,1280,592
+same 22-the-moss-at-1900 23-the-moss-at-2000 0.09 0,84,1280,592
+same 23-the-moss-at-2000 24-the-moss-at-2030 0.075 0,84,1280,592
+same 24-the-moss-at-2030 25-the-moss-at-2100 0.075 0,84,1280,592
+same 25-the-moss-at-2100 26-the-moss-at-2130 0.075 0,84,1280,592
+
+# Each landscape's own evening, by the promise docs/ART.md section 3 makes it.
+place snowfield
+hour 19.5
+wait 1.6
+shot 14-the-snowfields-long-blue-evening
+place burning
+hour 19.6
+wait 1.6
+shot 15-the-burnings-furnace-dusk
+place pinewood
+hour 18.5
+wait 1.6
+shot 16-an-early-dusk-under-the-pines
+place bonelands
+hour 19.4
+wait 1.6
+shot 17-the-bonelands-fall-hard-off-the-day
+weather rules

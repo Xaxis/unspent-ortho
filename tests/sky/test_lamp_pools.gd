@@ -75,7 +75,13 @@ func test_a_lamp_lit_in_daylight_lays_nothing_and_at_night_lays_its_own_colour()
 	var day := Vector3(1.0, 1.0, 0.99)
 	near(Lights.gloom(12.0, day, 1.0), 0.0, 0.02, "noon is not gloom")
 	near(Lights.gloom(13.0, day, 1.0), 0.0, 0.02, "nor the afternoon")
-	gt(Lights.gloom(19.0, Vector3(0.98, 0.8, 0.66), 0.9), 0.3, "dusk is")
+	# Seven in the evening is the START of the dusk, not the dark: the tint has
+	# gone warm but the sun is still lighting the land, so a lamp is a flame in
+	# the hand and lays almost nothing. The gloom belongs to how little light
+	# there is, never to how warm the tint has gone (art review finding 2).
+	gt(Lights.gloom(19.0, Vector3(0.98, 0.8, 0.66), 0.9), 0.1, "the evening has begun")
+	lt(Lights.gloom(19.0, Vector3(0.98, 0.8, 0.66), 0.9), 0.4, "but seven is not the dark")
+	gt(Lights.gloom(20.5, Vector3(0.88, 0.71, 0.65), 0.78), 0.8, "half past eight is")
 	near(Lights.gloom(23.0, Vector3(0.56, 0.64, 0.9), 0.7), 1.0, 0.02, "and the dead of night is all of it")
 	gt(Lights.gloom(12.0, Vector3(0.5, 0.55, 0.66), 1.0), 0.2, "a storm dark enough at noon is gloom too")
 	# Every pool colour is the light's own, and the ones people carry are warm.

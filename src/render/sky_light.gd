@@ -18,7 +18,21 @@ extends Node3D
 ## is written twice. Undriven (the title, the gallery, a test) set_hour()
 ## composes at once.
 
-## Day fraction keys: [t, tint, level]. (source, exact)
+## Day fraction keys: [t, tint, level]. The source's rows are kept exactly; the
+## two between 0.80 and 0.90 are ours. The source ran straight from the dusk key
+## (19:12) to full night blue at 21:36, so between 19:12 and 21:00 the level sat
+## flat at about 0.81 and only the hue moved: the last two hours of the day were
+## as bright as the afternoon and steadily bluer. Now the warmth is HELD to about
+## 20:15 (the sun is low and warm on what it lights, and Weather.night_fall takes
+## the level down under it), and the blue of the sky takes the land over the last
+## three quarters of an hour, landing on night where night_fall lands.
+## The 21:00 key is short of the night's own blue on purpose: blue is the
+## BRIGHTEST channel at night (0.90 against 0.56 red), so a key that went the
+## whole way there in the last half hour of the evening measurably LIFTED a
+## blue-leaning land like the snowfield just as it should have been settling.
+## The last of that blue deepens over 21:00-21:36, under a level that is flat.
+## 21:36 (t = 0.90) is where the light stops moving at all, and it is the anchor
+## every other term in the evening is paced against (night_dark).
 const KEYS := [
 	[0.00, Vector3(0.56, 0.64, 0.90), 0.82],
 	[0.22, Vector3(0.56, 0.64, 0.90), 0.82],
@@ -26,6 +40,8 @@ const KEYS := [
 	[0.40, Vector3(1.00, 1.00, 0.99), 1.00],
 	[0.70, Vector3(1.00, 1.00, 0.99), 1.00],
 	[0.80, Vector3(0.98, 0.74, 0.58), 0.80],
+	[0.8438, Vector3(0.95, 0.72, 0.56), 0.80],
+	[0.8750, Vector3(0.72, 0.68, 0.78), 0.82],
 	[0.90, Vector3(0.56, 0.64, 0.90), 0.82],
 	[1.00, Vector3(0.56, 0.64, 0.90), 0.82],
 ]
@@ -228,7 +244,13 @@ func compose() -> void:
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
 	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, glow_reach))
-	var glow := sun_glow(total, s)
+	RenderingServer.global_shader_parameter_set("sky_night", night_terms(hour, weather_tint))
+	# The low-sun glow belongs to the SUN, so it is fed the hour's own tint and
+	# not the composed one. Fed `total` it read a landscape's MOOD as a low sun:
+	# the burning's own warm, low light (LEVEL, MOOD) answered "the sun is on the
+	# horizon" at midday, and the burning's noon moved 7% when GLOW was retuned
+	# for the evening. A warm land must not be counted as a warm hour.
+	var glow := sun_glow(tint_at(hour), s)
 	var cool := shade_cool(total) / glow
 	RenderingServer.global_shader_parameter_set("sky_shade", Vector4(cool.x, cool.y, cool.z, dusk_lift(hour, region_tint)))
 	var packed := lamp_columns(lamps)
@@ -259,6 +281,7 @@ func compose() -> void:
 	# source's levels are display multiplies. Energy is linear, so decode.
 	sun.light_energy = pow(float(s.energy) * glow, 2.2)
 	sun.shadow_enabled = bool(s.casts) and cast_allowed
+	sun.shadow_opacity = shadow_strength(hour)
 	if figure_light != null:
 		figure_light.light_energy = FIGURE_FILL * low_light(hour)
 		figure_light.visible = figure_light.light_energy > 0.01
@@ -301,9 +324,13 @@ static func layers_for(g: GeometryInstance3D, current: int) -> int:
 	return current
 
 
-## How far a low sun lifts the darks onto blue (sky_shade.w): all of low light,
+## How much of the dark belongs to this land (sky_shade.w): all of low light,
 ## except in a warm country, whose evening keeps its own dark warmth (the
 ## burning glows from below; its clinker must not turn violet at dusk).
+## It is what sky_gloom() and the wet ground's day sheen read. The blue floor
+## under the washes is NOT this any more: it hung off low light and so came up
+## with the eased curve of night fall, which is the whole of art review finding
+## 2 — it is `sky_night` now, spent against the light the evening loses.
 static func dusk_lift(hour: float, region: Vector3) -> float:
 	var warm := clampf((region.x - region.z) * 4.0, 0.0, 0.8)
 	return low_light(hour) * (1.0 - warm)
@@ -311,15 +338,18 @@ static func dusk_lift(hour: float, region: Vector3) -> float:
 
 ## A low sun lays its warmth on what it lights: lit faces take up to GLOW more
 ## light at a warm tint while the sun still casts (shade_cool divides it back
-## out of shade), so dawn and dusk read warm and clear rather than dim.
-const GLOW := 0.2
+## out of shade), so dawn and dusk read warm and clear rather than dim. Held well
+## under the level the evening keys give up (1.00 -> 0.80 over 16:48-19:12), or
+## the glow simply cancels the fall and dusk is as bright as the afternoon.
+const GLOW := 0.12
 
 
 static func sun_glow(tint: Vector3, sun: Dictionary) -> float:
-	if not bool(sun.casts):
+	var cast := float(sun.get("cast", 1.0 if bool(sun.get("casts", true)) else 0.0))
+	if cast <= 0.0:
 		return 1.0
 	var lum := (tint.x + tint.y + tint.z) / 3.0
-	return 1.0 + GLOW * clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.8, 0.0, 1.0)
+	return 1.0 + GLOW * cast * clampf((tint.x - tint.z) / maxf(0.05, lum) * 1.8, 0.0, 1.0)
 
 
 ## The multiply for faces in shade under a tint: the tint's warmth taken back
@@ -397,16 +427,229 @@ static func sun_at(hour: float) -> Dictionary:
 		var edge := _elevation_for_shadow(az, SHADOW_LOW)
 		el = lerpf(edge, MOON_ELEVATION, sin(n * PI))
 	var nf := Weather.night_fall(h)
-	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL), "casts": nf < 0.5}
+	# `cast` is how much of a shadow is left (shadow_strength); `casts` is only
+	# whether there is any. The low-sun glow rides the first of those, because a
+	# glow keyed to the second stepped 7% of the frame's light off in one frame
+	# at half past eight, in the middle of the smoothest part of the fall.
+	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL),
+		"casts": casts_at(h), "cast": shadow_strength(h)}
 
 
-## 0 at midday, 1 from dusk to dawn: how much of the light is the cool sky
-## rather than the sun.
+## The hours the sun casts a shadow: from properly up in the morning to the last
+## of the dusk. It is stated in hours and not in how far night has fallen,
+## because the evening's fall is long now (Weather.DUSK_START) and dusk's LONG
+## LOW SHADOWS are the whole picture at 19:30. The moon never casts.
+const SHADOW_FROM := 5.0
+const SHADOW_TO := 20.5
+## How long shadow_strength takes to walk from 1 to 0 at either end of the day.
+##
+## IT IS NOT A FADE, whatever it reads like. All three lit shaders take the cast
+## shadow through `step(0.5, ATTENUATION)` (world.gdshader, found.gdshader,
+## water.gdshader), so a face is lit or it is shaded and there is nothing in
+## between: every cast shadow in the world goes out in one instant, at the hour
+## this constant puts shadow_opacity through a half — 20:07 as it stands. Moving
+## that instant is worth about TWENTY VALUES of frame on the coast, a third of
+## everything the evening has to spend: widening this to two hours (to spread a
+## fade that does not exist) moved the switch to 20:00 and turned the coast's
+## half past eight back up by sixteen values, measured.
+##
+## So 0.75 is not a taste. It lands the switch inside 20:00-20:30, the half hour
+## where the light's own fall is steepest and can swallow it. A shadow that
+## really faded wants `smoothstep` in place of that `step` in the three lit
+## shaders, which is the render package's to give, not the sky's.
+const SHADOW_FADE := 0.75
+
+
+static func casts_at(hour: float) -> bool:
+	var h := fposmod(hour, 24.0)
+	return h >= SHADOW_FROM and h <= SHADOW_TO
+
+
+## 0..1 how solid the sun's cast shadow is drawn at this hour.
+static func shadow_strength(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	return clampf(minf((h - SHADOW_FROM) / SHADOW_FADE, (SHADOW_TO - h) / SHADOW_FADE), 0.0, 1.0)
+
+
+## 0 in full daylight, 1 in the dead of night: HOW LITTLE LIGHT THERE IS, which
+## is the term everything that only belongs to the dark hangs off (the shader's
+## sky_gloom(), Lights.gloom, the figure fill, the blue floor under the washes,
+## the lift of the darks at sky_shade.w).
+##
+## It used to read "how far the tint is from noon", counting a WARM tint as a
+## dark one: at 19:00 the tint is warm and the level is 0.82, so it answered 0.89
+## while the sun was still at full energy and the land was still bright. Every
+## night term came on at once in the middle of a bright evening — the skyglow
+## added a blue wash to every surface and the darks were lifted onto night blue —
+## which is why dusk measured BRIGHTER and steadily BLUER than the afternoon.
+## It is the light's own level now: the tint's luminance times the sun's, and
+## never less than how far night has fallen.
 static func low_light(hour: float) -> float:
 	var t := tint_at(hour)
-	var noon := tint_at(12.0)
-	var warm_or_dim := clampf((noon.x + noon.y + noon.z - (t.x + t.y + t.z)) / 1.2, 0.0, 1.0)
-	return maxf(warm_or_dim, Weather.night_fall(hour))
+	var lum := (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(sun_at(hour).energy)
+	return clampf(maxf(Weather.night_fall(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
+
+
+## The level of light a lit face takes at this hour: the tint's own luminance,
+## the sun's energy and the low-sun glow, in one number. It is what a frame's
+## mean brightness follows, and what night_dark() below is measured against.
+static func light_level(hour: float) -> float:
+	var t := tint_at(hour)
+	var s := sun_at(hour)
+	return (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(s.energy) * sun_glow(t, s)
+
+
+## How far the night's own dark has come (the `sky_night` global): how much of
+## the night's blue floor is under the washes, and how much skyglow is up.
+##
+## THE DARK FILLS IN EXACTLY AS FAST AS THE LIGHT GOES — literally: it IS the
+## share of the evening's light that has gone. Every term that keeps a dark frame
+## readable ADDS light to it, and together the floor and the skyglow are worth
+## about a third of a night frame. Hung off how far night has fallen, two thirds
+## of that lift landed in the forty minutes either side of a quarter to eight,
+## where the light's own fall is at its smallest, so the land measured BRIGHTER
+## at eight in the evening than at half past seven (art review finding 2).
+##
+## The anchors are the last of the day and THE HOUR THE LIGHT ACTUALLY SETTLES.
+## That is 21:36, where the last tint key lands (light_level: 0.539 at 20:00,
+## 0.442 at 20:30, 0.404 at 21:00, 0.370 from 21:36 on) — not 20:30, where the
+## shadows go. Anchored at 20:30 the term hit 1.0 by construction while the light
+## still had a sixth of its fall left, and the skyglow — cubed, so most of it was
+## still to come — went 0.21 to 1.00 in that one half hour: 80% of a full-frame
+## emission spent in thirty minutes. Five landscapes of six measurably turned
+## back up there (moss +11.9%, pinewood +10.3%, burning +10.3%, snowfield +5.7%).
+##
+## It also answers the dawn without a second rule: the light comes back, the term
+## goes down. A sky darker than its hour is the other half (weather_dark).
+##
+## There is no second shaping on top. The earlier `gone / max(here, gone)`
+## division was argued from a reading of the shader in which the floor is laid
+## on AFTER the light; the floor is written into ALBEDO and the sun multiplies it
+## like everything else (see frame_level, which composes what the shader
+## composes), so the division only back-loaded the term into the hours where the
+## light has nothing left to pay for it.
+const DARK_FROM := 18.5
+const DARK_FULL := 21.2
+
+
+## And it is spent a WHISKER behind that, not on the same line, because the sky's
+## own dark is not the only thing filling a dusk frame in. Two more arrive early
+## and neither is the sky's: the village lamps, which `15_lights.compensate` pins
+## to a target brightness, so a pool-lit surface stops getting darker at all once
+## it is lit (measured: on the coast the lamps alone almost exactly cancel the
+## light's fall between 19:30 and 20:00); and the cast shadows, which all switch
+## off in one instant around 20:07 (SHADOW_FADE). Spent on the same line as the
+## light, the sky's dark left no room for either and the coast turned back up by
+## 1.5 values at eight. The ease is small — the term is still inside a fortieth
+## of the light's own fall at every hour — and it is measured, not chosen.
+const DARK_EASE := 1.25
+
+
+static func night_dark(hour: float) -> float:
+	var day := light_level(DARK_FROM)
+	var gone := light_level(DARK_FULL)
+	var here := light_level(hour)
+	var gone_share := clampf((day - here) / maxf(1e-4, day - gone), 0.0, 1.0)
+	return pow(gone_share, DARK_EASE)
+
+
+## And the other half of what `sky_night` carries: a sky darker than its hour.
+## docs/ART.md section 6 asks the skyglow to keep shapes readable "in dusk, storms
+## and night", and a storm at ten in the morning is not the night coming, so it
+## cannot be read off the hour. It is read off the WEATHER'S OWN multiply, which
+## is the only thing that can darken a sky out of its turn — never off how dark
+## the composed light has ended up, which counts a setting sun twice and was half
+## of why the evening lifted.
+static func weather_dark(tint: Vector3) -> float:
+	var lum := tint.x * 0.3 + tint.y * 0.59 + tint.z * 0.11
+	return clampf(1.0 - lum * 1.25, 0.0, 1.0)
+
+
+## How far the skyglow lags the floor. The floor is a lift of a wash the sun then
+## multiplies, so it costs less the more light is still up; the skyglow is
+## emission over the whole frame at the same strength whatever the hour, so it
+## tells most at the very end, when there is nothing left in the darks. Up on the
+## same line as the floor it put the evening's last half hour back up by eleven
+## values on the coast. Cubed against the OLD anchor it was worse the other way:
+## 0.21 to 1.00 in the half hour from eight, which is the rise this package was
+## sent back to fix. Against the anchor where the light really settles, it is
+## measured: at 2.0 the coast turned up three values at eight in the evening, and
+## this is the exponent that holds every half hour of every landscape down.
+const GLOW_LAG := 2.5
+
+
+## The `sky_night` global: x how far the dark has come (the blue floor under the
+## washes), y how much skyglow is up.
+## A sky darker than its hour is in both at full strength: a storm at ten in the
+## morning has a floor AND a glow, and the lag must not take the glow off it.
+static func night_terms(hour: float, weather: Vector3) -> Vector2:
+	var dark := night_dark(hour)
+	var storm := weather_dark(weather)
+	return Vector2(maxf(dark, storm), maxf(pow(dark, GLOW_LAG), storm))
+
+
+## The constants sky.gdshaderinc composes a dark frame with, mirrored here so the
+## evening can be measured without a frame (frame_level). tests/sky read them
+## back out of the shader source: if one moves there and not here, a test fails.
+const NIGHT_FLOOR := Vector3(0.08, 0.10, 0.21)
+const NIGHT_KNEE := 0.32
+const GLOW_LEVEL := 0.24
+const GLOW_FLOOR := 0.033
+
+## HOW MUCH OF A PICTURE EACH NIGHT TERM ACTUALLY REACHES. The shader constants
+## above say how strong a term is WHERE IT LANDS; a frame is not all of that.
+## The skyglow is emission on lit MADE and FOUND geometry: the sea has its own
+## shader, the page behind the land takes none of it, and the ink pass draws over
+## a good deal of what does. The floor only lifts the part of a wash the outline
+## and the hatching have not already taken.
+##
+## So these two are MEASURED, not derived: least squares against 78 rendered
+## frames (six landscapes x thirteen hours, seed 7, clear, native 640x360, the
+## world under the slate's bands), which lands the model within 3.3 values on
+## 0-255 across the whole set, and reproduces the 20:30 rise this package was
+## sent to kill in the four landscapes the frames show it in. Re-fit them if the
+## shader's own composition changes; do not guess them.
+const GLOW_REACH := 0.25
+const FLOOR_REACH := 0.70
+
+
+## WHAT A FRAME OF THIS LAND READS AT, on the CPU: sky_apply()'s own arithmetic
+## over a bank of washes, for one hour and one landscape's light.
+##
+## This exists because the rule the evening has to keep — the light falls and
+## never turns back — is a rule about the COMPOSED picture, and every term that
+## keeps a dark frame readable works on a different part of it. The floor lifts a
+## wash under the knee and is then multiplied by the sun; the skyglow is emission
+## added on top of everything, unmultiplied; the landscape's mood multiplies the
+## tint. A test that watches only the light's own level, or only the floor, can
+## be green while the frame turns back up — which is exactly what happened
+## (tests/sky/test_night_readable modelled the floor as a multiply ON the light
+## and could not see an eleven per cent rise the frames showed).
+##
+## It is a model, not a render: it says nothing about where the land is dark, only
+## what the whole page averages. `region` is the landscape's light (type_light).
+static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE) -> float:
+	var hue_tint := tint_at(hour)
+	var total := hue_tint * region * weather
+	var s := sun_at(hour)
+	var e := float(s.energy) * sun_glow(hue_tint, s)
+	var nt := night_terms(hour, weather)
+	var tl := maxf(total.x * 0.3 + total.y * 0.59 + total.z * 0.11, 0.001)
+	var hue := total / tl
+	var sum := 0.0
+	var n := 0
+	for a: float in [0.10, 0.16, 0.22, 0.30, 0.40, 0.52, 0.66, 0.82]:
+		for shade: float in [1.0, 0.8, 0.6]:
+			var c := Vector3.ZERO
+			for i in 3:
+				var v := a * total[i]
+				var fl := NIGHT_FLOOR[i] * nt.x * FLOOR_REACH
+				if v < NIGHT_KNEE:
+					v = fl + (NIGHT_KNEE - fl) * (v / NIGHT_KNEE)
+				c[i] = v * e * shade + (a * hue[i] * GLOW_LEVEL + hue[i] * GLOW_FLOOR) * nt.y * GLOW_REACH
+			sum += c.x * 0.3 + c.y * 0.59 + c.z * 0.11
+			n += 1
+	return sum / float(n)
 
 
 ## Elevation at which a caster's shadow is `ratio` times its own height ON
@@ -455,13 +698,42 @@ static func type_light(def: BiomeDef, hour: float) -> Vector3:
 ## green gloom in the moss, an early dusk under the pines, the snowfield's long
 ## blue evening, hard white noon on the bonelands, furnace dusk in the burning.
 ## A landscape type not listed keeps the plain hour. New types add a row.
+##
+## The EVENING is where these rows earn their keep, and where docs/ART.md section 3
+## makes its promises by name: the pines and the moss go dark early, the snowfield
+## holds its light late and turns blue, the bonelands drop hard off the end of the
+## day, the burning's dusk is a furnace and keeps its warmth through the night.
+##
+## TWO RULES HOLD EVERY ROW, and both are measured findings, not taste.
+##
+## 1. A ROW'S DUSK IS WHEN IT FALLS, NOT HOW FAR BELOW ITS OWN NIGHT IT DIPS.
+## Every row used to dip at dusk and then climb back to a bright midnight key —
+## by 5% on the coast, 18% in the moss, 21% on the bonelands. From 21:36 the
+## light itself is flat (the last tint key has landed), so every bit of that
+## climb after it is a land getting BRIGHTER through the small hours, and the
+## part just before it is spent against a fall with almost nothing left. So each
+## row carries a SETTLE KEY AT 21:00, worth what its midnight key is worth: the
+## dip is recovered while the sun is still going, and from nine o'clock a
+## landscape's light does not move again until the morning.
+##
+## 2. THE MIDNIGHT KEY IS THE NIGHT'S ANCHOR AND IS NOT TOUCHED FOR THE EVENING'S
+## SAKE. It lerps the whole way to the noon key, so moving it moves the morning
+## too: the snowfield's was pulled down for its blue evening and greyed its
+## night by 6% and every 08:00 frame with it.
 const MOOD := {
-	&"coast": [[0.0, Vector3(0.98, 0.99, 1.0)], [12.0, Vector3(0.97, 0.98, 1.0)], [18.5, Vector3(0.95, 0.96, 1.0)]],
-	&"moss": [[0.0, Vector3(0.93, 0.97, 0.94)], [6.0, Vector3(0.88, 0.95, 0.9)], [12.0, Vector3(0.95, 0.98, 0.94)], [18.0, Vector3(0.9, 0.96, 0.91)]],
-	&"pinewood": [[0.0, Vector3(0.95, 0.97, 1.0)], [11.0, Vector3(0.97, 0.98, 0.97)], [15.5, Vector3(0.96, 0.96, 0.96)], [18.0, Vector3(0.8, 0.82, 0.88)], [20.5, Vector3(0.88, 0.9, 0.98)]],
-	&"snowfield": [[0.0, Vector3(0.94, 0.97, 1.0)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.5, Vector3(0.94, 0.97, 1.0)], [19.5, Vector3(0.8, 0.9, 1.0)], [21.5, Vector3(0.88, 0.94, 1.0)]],
-	&"bonelands": [[0.0, Vector3(1.0, 0.98, 0.96)], [9.0, Vector3(1.0, 0.99, 0.97)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.0, Vector3(1.0, 0.98, 0.94)], [19.5, Vector3(0.98, 0.9, 0.82)]],
-	&"burning": [[0.0, Vector3(1.0, 0.94, 0.9)], [12.0, Vector3(1.0, 0.97, 0.94)], [17.0, Vector3(1.0, 0.92, 0.84)], [19.8, Vector3(1.0, 0.8, 0.66)], [22.0, Vector3(1.0, 0.9, 0.84)]],
+	# The coast's evening is the longest and the shallowest, and goes grey-blue.
+	&"coast": [[0.0, Vector3(0.98, 0.99, 1.0)], [12.0, Vector3(0.97, 0.98, 1.0)], [17.0, Vector3(0.96, 0.97, 1.0)], [19.9, Vector3(0.92, 0.95, 1.0)], [20.5, Vector3(0.97, 0.99, 1.0)]],
+	# The moss lies under the trees and the water: its dusk is among the first.
+	&"moss": [[0.0, Vector3(0.93, 0.97, 0.94)], [6.0, Vector3(0.88, 0.95, 0.9)], [12.0, Vector3(0.95, 0.98, 0.94)], [16.5, Vector3(0.88, 0.94, 0.9)], [18.4, Vector3(0.84, 0.91, 0.88)], [19.5, Vector3(0.84, 0.91, 0.88)], [20.2, Vector3(0.93, 0.97, 0.94)]],
+	# Under the pines the light starts going at half five and is gone by seven:
+	# by seven the pinewood has lost more of its afternoon than any other land.
+	&"pinewood": [[0.0, Vector3(0.95, 0.97, 1.0)], [11.0, Vector3(0.97, 0.98, 0.97)], [15.5, Vector3(0.96, 0.96, 0.96)], [17.4, Vector3(0.88, 0.89, 0.94)], [18.9, Vector3(0.84, 0.86, 0.93)], [19.5, Vector3(0.84, 0.86, 0.93)], [20.5, Vector3(0.95, 0.97, 1.0)]],
+	# Snow holds the last of the sun and takes its warmth, then turns hard blue.
+	&"snowfield": [[0.0, Vector3(0.94, 0.97, 1.0)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.5, Vector3(0.94, 0.97, 1.0)], [19.4, Vector3(0.79, 1.0, 1.0)], [19.9, Vector3(0.79, 1.0, 1.0)], [20.5, Vector3(0.92, 0.98, 1.0)]],
+	# Nothing on the bonelands holds any light: the day ends like a switch.
+	&"bonelands": [[0.0, Vector3(1.0, 0.98, 0.96)], [9.0, Vector3(1.0, 0.99, 0.97)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.0, Vector3(1.0, 0.98, 0.94)], [19.4, Vector3(0.93, 0.88, 0.84)], [19.9, Vector3(0.93, 0.88, 0.84)], [20.7, Vector3(1.0, 0.98, 0.96)]],
+	# The burning glows from below: its dusk is a furnace and its night stays warm.
+	&"burning": [[0.0, Vector3(1.0, 0.92, 0.86)], [12.0, Vector3(1.0, 0.97, 0.94)], [17.0, Vector3(1.0, 0.92, 0.84)], [19.6, Vector3(1.0, 0.86, 0.68)], [19.9, Vector3(1.0, 0.86, 0.68)], [20.7, Vector3(1.0, 0.92, 0.86)]],
 }
 
 

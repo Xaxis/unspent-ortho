@@ -85,7 +85,13 @@ func test_boot_option_forces_weather() -> void:
 
 func test_a_pool_of_lamplight_only_shows_once_it_is_dark() -> void:
 	near(Lights.pool_dark(12.0), 0.0, 1e-6, "noon")
-	near(Lights.pool_dark(19.5), 0.0, 1e-6, "lamps lit at dusk, no pool yet")
+	near(Lights.pool_dark(18.0), 0.0, 1e-6, "a lamp lit in the afternoon lays nothing")
+	# The pool follows the dusk now that there is one (Weather.DUSK_START): half
+	# way through the evening a hearth has begun to lay light on the ground, which
+	# is the whole of docs/ART.md section 10 — a settlement is most beautiful, and
+	# most worth defending, at dusk.
+	gt(Lights.pool_dark(19.5), 0.2, "the light begins to tell as the evening comes on")
+	lt(Lights.pool_dark(19.5), 0.7, "but it is nowhere near a night pool")
 	gt(Lights.pool_dark(20.5), 0.5, "pool as the dark comes")
 	near(Lights.pool_dark(23.0), 1.0, 1e-6, "full at night")
 	near(Lights.pool_dark(6.5), 0.0, 1e-6, "gone after dawn")
