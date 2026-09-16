@@ -6,6 +6,9 @@
 # mechanisms that set it — a role for the three a machine is born with, and a
 # real theft off the plan's own works for the fourth.
 #   tools/tour.sh tours/machine-read.tour --seed=1 --weather=clear:0
+# The hour and the weather are pinned again immediately before every shot: the
+# world clock runs while a tour walks and waits, and a loaded machine turned the
+# night act into the next morning once already.
 coast calm
 zoom 15
 weather clear:0
@@ -19,6 +22,9 @@ wait 1.2
 spawn harvester
 walkto mob 3
 wait 1.4
+hour 12
+weather clear:0
+wait 0.6
 shot 01-noon-indifferent
 
 # wary: a keeper, which starts one rung up the ladder and keeps its round.
@@ -28,6 +34,9 @@ at 200.5,431.5
 spawn warden
 walkto mob 3
 wait 1.4
+hour 12
+weather clear:0
+wait 0.6
 shot 02-noon-wary
 
 # observant: a watcher, which never fights and only ever files.
@@ -37,6 +46,9 @@ at 200.5,431.5
 spawn watcher
 walkto mob 3
 wait 1.4
+hour 12
+weather clear:0
+wait 0.6
 shot 03-noon-observant
 
 # hostile: the same kind as frame 01, after the player put their hands on the
@@ -50,7 +62,10 @@ wait 1.4
 press use 0.3
 await theft 8
 await turned 4
-wait 0.8
+wait 0.15
+hour 12
+weather clear:0
+wait 0.6
 shot 04-noon-hostile
 
 # --- night --------------------------------------------------------------------
@@ -64,6 +79,9 @@ wait 1.4
 spawn harvester
 walkto mob 3
 wait 1.4
+hour 23
+weather clear:0
+wait 0.6
 shot 05-night-indifferent
 
 coast calm
@@ -72,6 +90,9 @@ at 200.5,431.5
 spawn warden
 walkto mob 3
 wait 1.4
+hour 23
+weather clear:0
+wait 0.6
 shot 06-night-wary
 
 coast calm
@@ -80,6 +101,9 @@ at 200.5,431.5
 spawn watcher
 walkto mob 3
 wait 1.4
+hour 23
+weather clear:0
+wait 0.6
 shot 07-night-observant
 
 coast calm
@@ -90,7 +114,10 @@ wait 1.4
 press use 0.3
 await theft 8
 await turned 4
-wait 0.8
+wait 0.15
+hour 23
+weather clear:0
+wait 0.6
 shot 08-night-hostile
 
 # --- machine light lands on the ground -----------------------------------------
@@ -106,4 +133,7 @@ wait 1.4
 spawn watcher
 walkto mob 3
 wait 1.0
+hour 23
+weather clear:0
+wait 0.6
 shot 09-its-light-on-the-ground
