@@ -60,8 +60,8 @@ func build() -> void:
 	for sz: float in [-1.0, 1.0]:
 		var tk := FoundKit.kit()
 		FoundKit.slab(tk, Vector3(0, 0, sz * TRACK_Z), Vector3.RIGHT, Vector3.UP, track, 0.42, DD, 0.02)
-		for j in 8:
-			FoundKit.mark(tk, Vector3(-0.78 + j * 0.218, 0.462, sz * TRACK_Z), Vector3.UP, Vector3.BACK, 0.4, 0.05, R[0], 0.002)
+		for j in 7:
+			FoundKit.mark(tk, Vector3(-0.76 + j * 0.25, 0.462, sz * TRACK_Z), Vector3.UP, Vector3.BACK, 0.4, 0.056, R[0], 0.002)
 		FoundKit.mark(tk, Vector3(-0.02, 0.23, sz * (TRACK_Z + 0.211)), Vector3.BACK * sz, Vector3.UP, 1.64, 0.26, R[0], 0.002)
 		body_mesh(tk, self)
 		for x: float in [-0.66, -0.02, 0.62]:
@@ -83,15 +83,15 @@ func build() -> void:
 		var skirt: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.9, 0.06), Vector2(-0.9, 0.06), Vector2(-1.04, 0.0), Vector2(-0.98, -0.04), Vector2(0.94, -0.04)]
 		FoundKit.slab(k, Vector3(0, 0.0, sz * TRACK_Z), Vector3.RIGHT, Vector3.BACK * sz, skirt, 0.05, R)
 		FoundKit.rivets(k, Vector3(-0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3(0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3.UP, 6, R[5])
-		FoundKit.streaks(k, Vector3(0.1, 0.12, sz * 0.861), Vector3.BACK * sz, 1.3, 0.2, 5, 31 + int(sz), R[1])
+		FoundKit.streaks(k, Vector3(0.1, 0.12, sz * 0.861), Vector3.BACK * sz, 1.3, 0.22, 4, 31 + int(sz), R[1])
 	# The rear housing: low, so the whole stays a slab; a cold slit across its
 	# face like a cab window with nobody behind it, louvres on top.
 	var cab := FoundKit.plan_oct(0.66, 1.26, 0.2)
 	FoundKit.loft(k, [FoundKit.ring(cab, 0.28, 0.0, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.42, 0.02, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.47, 0.07, Vector2.ONE, Vector2(-0.5, 0))], R)
 	FoundKit.visor(k, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.UP, 0.7, 0.04)
-	FoundKit.streaks(k, Vector3(-0.169, 0.33, 0), Vector3.RIGHT, 0.64, 0.05, 5, 33, R[1])
-	for j in 7:
-		FoundKit.mark(k, Vector3(-0.5, 0.472, -0.39 + j * 0.13), Vector3.UP, Vector3.RIGHT, 0.36, 0.03, R[1], 0.002)
+	FoundKit.streaks(k, Vector3(-0.169, 0.33, 0), Vector3.RIGHT, 0.64, 0.06, 4, 33, R[1])
+	for j in 6:
+		FoundKit.mark(k, Vector3(-0.5, 0.472, -0.37 + j * 0.15), Vector3.UP, Vector3.RIGHT, 0.36, 0.034, R[1], 0.002)
 	FoundKit.seam(k, Vector3(-0.12, 0.301, 0), Vector3(0.66, 0.301, 0), Vector3.UP, R, 3)
 	FoundKit.panel(k, Vector3(0.3, 0.301, 0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	body_mesh(k, hull)
