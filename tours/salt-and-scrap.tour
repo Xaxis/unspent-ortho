@@ -98,12 +98,16 @@ wait 1.5
 shot 16-the-wood-answered
 
 # --- What the wood is made of, at the scale a player meets it at --------------
+# Close in: at play zoom a scrap tree is a crown with a line through it and a
+# heap is a dark lump, and a frame that names a thing has to show it.
 near scrap_tree
+zoom 5
 wait 1.2
 shot 17-a-tree-grown-through-a-machine
 near magnet_heap
 wait 1.2
 shot 18-filings-standing-on-end
+zoom 12
 
 # --- Both borders: stood in, then walked across -------------------------------
 # The band has to carry two washes, two marks and two hatch hands. Neither side

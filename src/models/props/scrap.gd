@@ -128,8 +128,8 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 ## held up rather than something tipped.
 static func heap(k: Kit, v: int) -> void:
 	var s := 660 + v * 19
-	var r := 0.38 + v * 0.12
-	var h := 0.45 + v * 0.14
+	var r := 0.52 + v * 0.16
+	var h := 0.60 + v * 0.18
 	k.stone(0, 0, 0, r, h, s, FILING, 7, 0.18, Kit.tone(FILING, 1.25))
 	# The cone is combed: the filings lie along the field, not at random.
 	for i in 9:
@@ -138,14 +138,29 @@ static func heap(k: Kit, v: int) -> void:
 		k.fleck(foot, foot * 0.2 + Vector3(0, h * 1.0, 0), foot * 0.3 + Vector3(0.03, h * 0.86, 0.02),
 			P.RUST[2] if i % 3 == 0 else Kit.tone(FILING, 1.4))
 	# Shards standing on end, drawn up by the same pull: exact, because a
-	# machine cut them and the field only stood them up.
-	for i in 4 + v:
+	# machine cut them and the field only stood them up. They lean OUT along the
+	# lines of the field, so the camera — which is over this, not beside it —
+	# reads a splayed burst and not the grey lump a cone of dark filings makes
+	# from above (playtest 6: no heap was legible in any frame).
+	for i in 7 + v * 2:
 		var a := float(i) * 2.2 + Kit.j(s, i, 0.5)
 		var d := r * (0.55 + Kit.j(s, 10 + i, 0.3))
 		var base := Vector3(cos(a) * d, h * 0.45, sin(a) * d)
 		var up := 0.34 + absf(Kit.j(s, 30 + i, 0.22))
-		var tilt := Vector3(Kit.j(s, 20 + i, 0.14), up, Kit.j(s, 40 + i, 0.14))
-		k.rod(base, base + tilt, 0.016, 4, P.PLATE[3] if i % 2 == 0 else P.PLATE[4])
+		var out := 0.26 + absf(Kit.j(s, 50 + i, 0.16))
+		var tilt := Vector3(cos(a) * out + Kit.j(s, 20 + i, 0.1), up, sin(a) * out + Kit.j(s, 40 + i, 0.1))
+		k.rod(base, base + tilt, 0.018, 4, P.PLATE[3] if i % 2 == 0 else P.PLATE[4])
+	# And the ground it stands on is combed too: swarf dragged in toward the heap
+	# in fine lines, which from above is the one mark nothing else in the wood
+	# makes. It reaches past the cone, so the shape on the page is wider than the
+	# heap and reads as a pull rather than a pile.
+	for i in 12:
+		var a := float(i) / 12.0 * TAU + Kit.j(s, 60 + i, 0.22)
+		var near := Vector3(cos(a) * r * 1.15, 0.012, sin(a) * r * 1.15)
+		var far := near * (1.7 + absf(Kit.j(s, 70 + i, 0.5)))
+		far.y = 0.012
+		k.fleck(near, far, far + Vector3(0.035, 0.0, 0.035),
+			P.RUST[2] if i % 4 == 0 else Kit.tone(FILING, 1.15))
 	# Where the pull came from: the corner of the frame itself, standing out of
 	# the filings beside the heap with a stub of its own reaching up.
 	var corner := Vector3(r * 1.25, 0.0, -r * 0.9)

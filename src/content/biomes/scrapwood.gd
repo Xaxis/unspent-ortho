@@ -68,7 +68,13 @@ static func make() -> BiomeDef:
 	# the shared chart blue — a pale slate pond measuring (111, 141, 175) against
 	# the moss's (23, 38, 53), 3.7x brighter, and the loudest object in a
 	# landscape whose whole mood is green-brown gloom (playtest 6).
-	d.water_wash = Color(0.095, 0.104, 0.080, 1.0)
+	#
+	# It is a WASH, though, not a hole: taken all the way to the wash at full
+	# strength the chart's whole value range collapsed into 15..63 and a river
+	# read as a black ribbon cut out of the land, which breaks Law 2 the other
+	# way round. Kept a step up and a shade short of the whole, the soundings,
+	# the marbling and the broken white of a fall all still draw, over 20..138.
+	d.water_wash = Color(0.125, 0.140, 0.110, 0.86)
 	d.props = [PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP, PropKind.BROADLEAF, PropKind.PINE,
 		PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.DRIFTWOOD]
