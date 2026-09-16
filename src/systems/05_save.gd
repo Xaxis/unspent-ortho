@@ -4,7 +4,9 @@ extends GameSystem
 ##     SaveGame.register lands after it and is applied after it
 ##   - a game booted with a slot (--load=N, Continue, Load) is applied in started(),
 ##     after every setup and before the first frame; the world was generated from
-##     the save's seed with the first chunks drawn where the save stood
+##     the save's seed with the first chunks drawn where the save stood, and is
+##     held to what the save says stood there (SaveCore.disagrees) before a byte
+##     of it is applied — a save is never laid onto ground that has moved
 ##   - autosaves to slot 0 on sleep, on coming into another landscape and every
 ##     three world hours, never while a fight is on (AutosaveRules); and on leaving
 ##     (to the title, quit, the window closed) when calm
@@ -61,14 +63,19 @@ func started() -> void:
 	var slot := game.options.load_slot
 	if slot >= 0:
 		var r := SaveFile.read(SaveSlots.path(slot))
-		if r.ok:
+		# The world is made before this runs, so it can be held to what the save
+		# says stood there. A save that disagrees is not applied at all: nothing
+		# is worse than the player laid down on ground that moved without a word.
+		var moved := SaveCore.disagrees(game, r.header) if r.ok else ""
+		if r.ok and moved == "":
 			SaveGame.apply(r.data)
 			loaded_from = slot
 			last_saved_at = Time.get_unix_time_from_system()
 			_forced_weather = Weather.forced_kind != &""
 		else:
-			push_warning("save: slot %d: %s" % [slot, r.why])
-			Events.message.emit(r.why)
+			var why: String = moved if moved != "" else str(r.why)
+			push_warning("save: slot %d: %s" % [slot, why])
+			Events.message.emit(why)
 	rules = AutosaveRules.new(game.clock.minutes, _land())
 	rules.enter_all(_lands)
 

@@ -99,7 +99,8 @@ func test_damaged_and_missing_files_never_throw_and_say_so() -> void:
 	bare.close()
 	eq(SaveFile.read(SaveSlots.path(1)).code, &"damaged", "frames with no trailer")
 	# A good header over a data line that is not what the header promised.
-	var whole := {"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "data_md5": "0", "thumb_md5": "".md5_text()}
+	var whole := {"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "stamp": WorldStamp.current(),
+		"data_md5": "0", "thumb_md5": "".md5_text()}
 	whole["head_md5"] = SaveFile.header_md5(whole)
 	eq(SaveFile.store(SaveSlots.path(2), PackedStringArray([JSON.stringify(whole), "{\"clock\": "])), OK)
 	var half := SaveFile.read(SaveSlots.path(2))
@@ -131,7 +132,7 @@ func test_a_header_is_checked_whole_and_a_damaged_picture_is_only_dropped() -> v
 	var header := HEADER.duplicate()
 	header["thumb"] = Marshalls.raw_to_base64(png)
 	var data := DATA.duplicate(true)
-	data["world"] = {"seed": 3, "size": 64}
+	data["world"] = {"seed": 3, "size": 64, "stamp": WorldStamp.current()}
 	data["player"] = {"pos": [10.5, 20.25], "facing": 0.0}
 	var p := SaveSlots.path(1)
 	eq(SaveFile.write(p, header, data), OK)

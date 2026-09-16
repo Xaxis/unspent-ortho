@@ -1,8 +1,8 @@
 class_name SaveFile
 ## One save on disk. JSON inside FileAccess.open_compressed (zstd), two lines:
 ##   1. the header: {format, version, saved_at, day, hour, clock, minutes, landscape,
-##      place, play_seconds, seed, size, pos, data_md5, thumb (base64 PNG), thumb_md5,
-##      head_md5}
+##      place, play_seconds, seed, size, stamp, pos, data_md5, thumb (base64 PNG),
+##      thumb_md5, head_md5}
 ##   2. the data: SaveGame.collect(), keyed by registered key
 ## Behind the compressed frames sits a trailer: "USUM" and the md5 of every byte
 ## before it. Nothing is decompressed until that md5 holds, because a damaged zstd
@@ -11,10 +11,18 @@ class_name SaveFile
 ## checksum. Past it, the header is checked against its own md5 (every field but
 ## the picture), the data line against the header's, and both lines must parse as
 ## JSON objects. The header is read alone for slot lists and the title. A picture
-## that fails its md5 is dropped and the save still reads. Nothing here throws or
-## asserts: a read returns
-##   {ok: bool, code: StringName (&"" missing damaged newer older), why: String (a plain
-##    sentence for the player), header, data, version}
+## that fails its md5 is dropped and the save still reads.
+##
+## Past all that, `stamp` (WorldStamp) is checked against this build's: a save
+## only keeps the seed and generates the world again, so a build whose landscape
+## registry has moved makes ANOTHER ISLAND from the same seed, and laying the
+## save's tile, prop ids and explored map back onto it would misplace the player
+## in silence. A stamp that does not match is refused by name (&"elsewhere");
+## its header still reads, so the slate can show the game it will not open.
+##
+## Nothing here throws or asserts: a read returns
+##   {ok: bool, code: StringName (&"" missing damaged newer older elsewhere),
+##    why: String (a plain sentence for the player), header, data, version}
 ##
 ## Writes go to `<path>.tmp` and are renamed over the slot, so a save cut off
 ## halfway never replaces a good one. Only FileAccess and DirAccess on user://:
@@ -22,9 +30,12 @@ class_name SaveFile
 ## threads, no OS calls, no blocking waits (tests/save/test_web_safe.gd).
 
 const FORMAT := "unspent-save"
-## Bump when the data's shape changes, and add a step to migrate().
-const VERSION := 1
-## The oldest version migrate() can still bring forward.
+## Bump when the shape changes, and add a step to migrate() or migrate_header().
+##   1  M1
+##   2  the header carries a WorldStamp, so a save cannot quietly reopen a
+##      different island (src/core/save/world_stamp.gd)
+const VERSION := 2
+## The oldest version the migrations can still bring forward.
 const OLDEST := 1
 const MODE := FileAccess.COMPRESSION_ZSTD
 ## FileAccessCompressed's framing: "GCPF", mode, block size, total, a u32 per block, data, "GCPF".
@@ -37,6 +48,10 @@ const WHY_MISSING := "Nothing is saved there."
 const WHY_DAMAGED := "That save is damaged and cannot be read."
 const WHY_NEWER := "That save was made by a newer version of the game."
 const WHY_OLDER := "That save is too old for this version of the game."
+## Said whole, because the player is owed the reason and not just the refusal:
+## the world is grown from the seed every time it is opened, and this build
+## grows a different one.
+const WHY_ELSEWHERE := "That game was made on another island. This build grows a different world from the same seed, so opening it would put you somewhere you have never been."
 
 
 static func write(path: String, header: Dictionary, data: Dictionary) -> Error:
@@ -44,6 +59,9 @@ static func write(path: String, header: Dictionary, data: Dictionary) -> Error:
 	var head := header.duplicate()
 	head["format"] = FORMAT
 	head["version"] = VERSION
+	# Stamped here rather than by the caller, for the same reason the version is:
+	# it says which build wrote the file, and no caller may get it wrong.
+	head["stamp"] = WorldStamp.current()
 	head["data_md5"] = body.md5_text()
 	head["thumb_md5"] = str(head.get("thumb", "")).md5_text()
 	head["head_md5"] = header_md5(head)
@@ -125,6 +143,17 @@ static func _read(path: String, with_data: bool) -> Dictionary:
 		return out
 	if str(header.get("thumb", "")).md5_text() != str(header.get("thumb_md5", "")):
 		header["thumb"] = ""
+	# Checked whole first, then brought forward: an older header is only read
+	# after its own md5 holds.
+	header = migrate_header(header, version)
+	out.header = header
+	# The world this build would grow from that seed is not the world it was
+	# saved on. The header still stands (the slate shows the game and says why
+	# it will not open it); nothing of the save is applied to another island.
+	if str(header.get("stamp", WorldStamp.UNKNOWN)) != WorldStamp.current():
+		out.code = &"elsewhere"
+		out.why = WHY_ELSEWHERE
+		return out
 	if not with_data:
 		out.ok = true
 		out.code = &""
@@ -189,7 +218,7 @@ static func framed(path: String) -> bool:
 
 ## Bring data saved by an older version up to VERSION, one step at a time. Each
 ## step takes the data as that version wrote it and returns it as the next
-## version reads it. (Version 1 is the first; there is nothing to step yet.)
+## version reads it. (1 -> 2 changed the header, not the data.)
 static func migrate(data: Dictionary, from_version: int) -> Dictionary:
 	var v := from_version
 	while v < VERSION:
@@ -198,3 +227,20 @@ static func migrate(data: Dictionary, from_version: int) -> Dictionary:
 				pass
 		v += 1
 	return data
+
+
+## The same ladder for the header, run before the stamp is checked, so a save
+## from an older version is RECOGNISED rather than read as if it were this
+## build's.
+static func migrate_header(header: Dictionary, from_version: int) -> Dictionary:
+	var v := from_version
+	while v < VERSION:
+		match v:
+			1:
+				# Version 1 carried no stamp. Which landscapes were registered
+				# when it was written is not recoverable from the file, and the
+				# registry has moved since (salt_flats and scrapwood joined it),
+				# so its world is marked unknown instead of taken for this one's.
+				header["stamp"] = WorldStamp.UNKNOWN
+		v += 1
+	return header

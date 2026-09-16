@@ -6,7 +6,10 @@ extends UiScreen
 ## of the world as it was, and how long ago and how much play it holds.
 ## E saves into the chosen slot (a slot that holds a game asks once more before
 ## it is written over) or loads it; a slot that is empty or cannot be read is
-## dim and says so plainly. The work is the save system's (05_save):
+## dim and says so plainly, and one made on another island (SaveFile's
+## &"elsewhere") still shows the game it holds with the reason under it, because
+## the player has not lost it — this build just cannot grow that world again.
+## The work is the save system's (05_save):
 ##   save_to(slot) -> String, load_from(slot) -> String ("" = done, else why)
 
 ## Real seconds a first press on a filled slot waits for the second that writes.
@@ -59,7 +62,10 @@ func refresh() -> void:
 			row["enabled"] = false
 			row["why"] = SaveSlots.problem(slot, e.code)
 		rows.append(row)
-		if e.ok:
+		# A save this build will not open still has a whole header (one made on
+		# another island does): show the game it holds and say why beside it,
+		# rather than blanking a game the player has not lost.
+		if not (e.header as Dictionary).is_empty():
 			_thumbs[slot] = SaveSlots.thumbnail(e.header)
 	var was := menu.index
 	menu.set_rows(rows)
@@ -151,7 +157,7 @@ func _draw() -> void:
 			UiDraw.text_right(self, right, top, played(e.header), UiTheme.TEXT_DIM)
 			UiDraw.text(self, Vector2i(x0 + 10, top + 11), SaveSlots.describe(e.header), UiTheme.TEXT_DIM)
 		elif e.exists:
-			UiDraw.text(self, Vector2i(x0 + 10, top + 11), "cannot be read", UiTheme.WARN)
+			UiDraw.text(self, Vector2i(x0 + 10, top + 11), SaveSlots.short_problem(e.code), UiTheme.WARN)
 		else:
 			UiDraw.text(self, Vector2i(x0 + 10, top + 11), "empty", UiTheme.TEXT_DIM)
 	_draw_detail(R)
@@ -177,18 +183,22 @@ func _draw_detail(R: Rect2i) -> void:
 			for x in range(pic.position.x, pic.end.x, 2):
 				if Rng.hash01(x, y, 0, 0x5a0) < 0.14:
 					UiDraw.px(self, x, y, UiTheme.GHOST if Rng.hash01(x, y, 1, 0x5a0) < 0.7 else UiTheme.FAINT)
-		var word := "CANNOT BE READ" if e.exists and not e.ok else "EMPTY"
+		var word := SaveSlots.short_problem(e.code).to_upper() if e.exists else "EMPTY"
 		UiDraw.text_centred(self, pic.position.x + pic.size.x / 2, pic.position.y + pic.size.y / 2 - 5, word, UiTheme.TEXT_DIM)
 	var ty := pic.end.y + 12
-	if e.ok:
-		var h: Dictionary = e.header
-		UiDraw.text(self, Vector2i(px + 4, ty), str(h.get("clock", "")), UiTheme.BRIGHT)
-		UiDraw.text(self, Vector2i(px + 4, ty + 11), str(h.get("place", "")), UiTheme.TEXT)
+	var h: Dictionary = e.header
+	# A save made on another island keeps its whole header: the game it holds is
+	# shown, dimmed, and the reason it will not open is said under it.
+	if not h.is_empty():
+		UiDraw.text(self, Vector2i(px + 4, ty), str(h.get("clock", "")), UiTheme.BRIGHT if e.ok else UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(px + 4, ty + 11), str(h.get("place", "")), UiTheme.TEXT if e.ok else UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(px + 4, ty + 22), played(h), UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(px + 4, ty + 33), ago(SaveCodec.to_num(h.get("saved_at")), Time.get_unix_time_from_system()), UiTheme.TEXT_DIM)
-	elif e.exists:
-		UiSlate.wrapped(self, Vector2i(px + 4, ty), R.end.x - 12 - px, SaveSlots.problem(slot, e.code), UiTheme.WARN)
-	elif mode == &"save":
+		ty += 48
+	if e.exists and not e.ok:
+		# The whole reason, in the one place with room to say it.
+		UiSlate.wrapped(self, Vector2i(px + 4, ty), R.end.x - 12 - px, str(e.why), UiTheme.WARN)
+	elif not e.exists and mode == &"save":
 		UiDraw.text(self, Vector2i(px + 4, ty), "e writes the game here", UiTheme.TEXT_DIM)
 
 

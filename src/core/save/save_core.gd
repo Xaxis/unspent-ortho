@@ -44,6 +44,32 @@ static func register(game: Game) -> void:
 		func(v: Variant) -> void: load_weather(v))
 
 
+## The cheap second line, run once the world exists and before anything of the
+## save is applied: the header says which landscape the player stood in, and the
+## world just grown from the save's seed must put that same landscape under that
+## same tile. The stamp catches a registry that moved; this catches a WORLDGEN
+## STAGE that moved, which no stamp can see into. Returns "" or the sentence to
+## say. A header with no landscape (or a tile off the world) is not held to it.
+static func disagrees(game: Game, header: Dictionary) -> String:
+	var want := StringName(str(header.get("landscape", "")))
+	if want == &"" or game == null or game.world == null:
+		return ""
+	var p := SaveCodec.to_vec2(header.get("pos"), Vector2(-1, -1))
+	if p.x < 0.0 or p.y < 0.0 or p.x >= float(game.world.size) or p.y >= float(game.world.size):
+		return ""
+	var here := BiomeRegistry.at(game.world, p)
+	if here.id == want:
+		return ""
+	return "That game was saved in the %s. This world has %s there instead, so it is not the same ground." % [
+		spoken(want), spoken(here.id)]
+
+
+## A type id as it is said out loud, the display name where there is one.
+static func spoken(id: StringName) -> String:
+	var d := BiomeRegistry.get_def(id)
+	return d.display_name if d != null and d.display_name != "" else String(id).replace("_", " ")
+
+
 ## Note how many props the world holds once every system is set up.
 static func mark_base(game: Game) -> void:
 	game.set_meta(META_BASE, game.world.props.size())
@@ -53,7 +79,8 @@ static func props_base(game: Game) -> int:
 	return int(game.get_meta(META_BASE, game.world.props.size()))
 
 
-## The header a slot list shows without reading the data.
+## The header a slot list shows without reading the data. `landscape` is the type
+## the player stood in, kept so a loaded world can be held to it (disagrees()).
 static func header(game: Game, play_seconds: float, thumb_png: PackedByteArray) -> Dictionary:
 	var p := game.player.pos
 	var land := BiomeRegistry.at(game.world, p)
@@ -92,8 +119,8 @@ static func save_world(game: Game) -> Dictionary:
 	var built: Array = []
 	for q: WorldProp in state.built:
 		built.append(q.id)
-	return {"seed": w.seed_value, "size": w.size, "props_base": base, "props": added, "depleted": depleted,
-		"taken": state.taken.duplicate(), "spent": spent, "built": built}
+	return {"seed": w.seed_value, "size": w.size, "stamp": WorldStamp.current(), "props_base": base,
+		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built}
 
 
 static func load_world(game: Game, v: Variant) -> void:
@@ -102,6 +129,11 @@ static func load_world(game: Game, v: Variant) -> void:
 	# A save's edits only mean anything on the world they were made on. (A slot
 	# always boots its own seed and size; this guards a hand-built BootOptions.)
 	if SaveCodec.to_int(d.get("seed"), -1) != w.seed_value or SaveCodec.to_int(d.get("size"), -1) != w.size:
+		return
+	# Nor on another island grown from the same seed: prop ids and depleted marks
+	# only mean anything against the props this build's registry laid.
+	if str(d.get("stamp", WorldStamp.UNKNOWN)) != WorldStamp.current():
+		push_warning("save: the world's edits were made on another island; none applied")
 		return
 	var saved_base := SaveCodec.to_int(d.get("props_base"), props_base(game))
 	var base := props_base(game)

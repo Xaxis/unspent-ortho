@@ -94,7 +94,27 @@ static func problem(slot: int, code: StringName) -> String:
 			return "%s was saved by a newer version of the game." % who
 		&"older":
 			return "%s is too old for this version of the game." % who
+		&"elsewhere":
+			# Not "damaged": the file is whole and the game in it is readable.
+			# What moved is the island the seed grows into (WorldStamp). Short,
+			# because this line is said on the key strip; the whole of it
+			# (SaveFile.WHY_ELSEWHERE) is read on the saves app's own page.
+			return "%s was made on another island." % who
 	return "%s is damaged and cannot be read." % who
+
+
+## Two or three words for a slot's row, where the whole sentence does not fit.
+static func short_problem(code: StringName) -> String:
+	match code:
+		&"missing":
+			return "empty"
+		&"newer":
+			return "newer game"
+		&"older":
+			return "too old"
+		&"elsewhere":
+			return "another island"
+	return "cannot be read"
 
 
 static func slot_name(slot: int) -> String:
@@ -115,6 +135,10 @@ static func options_for(slot: int, o: BootOptions) -> String:
 	var world_seed := SaveCodec.to_int(world.get("seed"), -1)
 	var size := SaveCodec.to_int(world.get("size"), 0)
 	if size <= 0 or world_seed != SaveCodec.to_int(h.get("seed"), -2) or size != SaveCodec.to_int(h.get("size"), -2):
+		return SaveFile.WHY_DAMAGED
+	# The seed is only half of which island this is; the data carries the stamp
+	# too, and the header, which the slot list reads, must agree with it.
+	if str(world.get("stamp", WorldStamp.UNKNOWN)) != str(h.get("stamp", WorldStamp.UNKNOWN)):
 		return SaveFile.WHY_DAMAGED
 	var player: Dictionary = r.data.get("player") if r.data.get("player") is Dictionary else {}
 	var clock: Dictionary = r.data.get("clock") if r.data.get("clock") is Dictionary else {}
