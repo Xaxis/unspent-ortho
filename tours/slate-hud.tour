@@ -1,0 +1,60 @@
+# The quiet layer: the slate's edge over the world, and the two apps that read
+# the land. Every frame here is reachable from a normal game start.
+#   tools/tour.sh tours/slate-hud.tour --seed=1 --hour=19 --weather=clear:0 --explore=6000
+coast calm
+
+# --- The location ping sits on its own scrap of glass --------------------------
+# Walking into a landscape names it. Over the snowfield at noon the name used to
+# be phosphor green on near-white paper at 3.5:1, with the ping's own ring
+# running through the letters; it is read off a plate now, at 16:1, and the ring
+# goes out around it.
+place snowfield
+await ping 8
+shot 01-the-ping-rings-out
+wait 0.9
+shot 02-the-name-on-its-own-glass
+wait 4.0
+shot 03-and-the-glass-is-taken-off-again
+
+# --- A badge answers for the line the glass does not say -----------------------
+# The burning presses with fumes and heat at once. Each one used to write a
+# centred line of body text across the middle of the world, on top of the badge
+# that was already saying it. Now the badge takes the line and brackets close on
+# the tile, and the world keeps the space.
+place burning
+hour 19.5
+await pressure_bites 20
+await badge_answered 8
+shot 04-the-badge-takes-the-line
+await quiet_glass 8
+shot 05-and-the-world-keeps-the-middle
+
+# --- The survey, with every name knocked out of the coast ----------------------
+# M opens it. A discovery's diamond used to be drawn after the lettering and
+# landed on it: COAST read C-diamond-AST. Names are lettered last now, over
+# nothing, on glass cleared outright.
+place coast
+tap map
+await app:map 5
+wait 0.6
+shot 06-the-survey
+tap e
+wait 0.5
+shot 07-a-step-closer
+tap map
+await app:none 5
+
+# --- What the machines left, named, and their survey through here --------------
+# Home, then READS. The list said "cut in rows" four times with four different
+# arrows; it names the work now, one row per kind, and the lower half of the
+# pane carries their bearing with the works strung along it.
+tap pause
+choose reads
+tap use
+await app:reads 8
+wait 0.7
+shot 08-machine-reads
+tap pause
+tap pause
+await app:none 5
+shot 09-back-on-the-world

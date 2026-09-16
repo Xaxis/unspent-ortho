@@ -539,7 +539,7 @@ func _draw_status(ci: CanvasItem) -> void:
 	# The foot strip: what it is doing, in the place an app names its keys.
 	var fy := g.end.y - KEYS_H + 1
 	UiDraw.hline(ci, x - 2, g.end.x - 14, fy - 2, Color(RAIL, a))
-	UiDraw.text(ci, Vector2i(x, fy), "opening a world" if kind != "title" else "opening", Color(TICK, a))
+	UiDraw.text(ci, Vector2i(x, fy), "opening a world" if kind != "title" else "opening", Color(WORDS, a))
 	UiDraw.text_right(ci, g.end.x - 14, fy, "%d%%" % roundi(progress() * 100.0), Color(WORDS, a))
 	_draw_stages(ci, a)
 
@@ -566,8 +566,10 @@ func _draw_stages(ci: CanvasItem, a: float) -> void:
 		var now := rows[i] == doing
 		if now:
 			past = false
-		var col := WORDS if past else (HEAD if now else RAIL)
-		UiDraw.rect(ci, Rect2i(SCREEN.position.x + 10, y + 3, 3, 3), Color(LIT if past else (HEAD if now else RAIL), a))
+		# No word on the glass is ever dimmer than WORDS (UiTheme.TEXT_DIM): what a
+		# stage is up to is said by its tick, not by dimming the words out of reach.
+		var col := HEAD if now else WORDS
+		UiDraw.rect(ci, Rect2i(SCREEN.position.x + 10, y + 3, 3, 3), Color(LIT if past else (HEAD if now else TICK), a))
 		if now:
 			UiDraw.rect(ci, Rect2i(SCREEN.position.x + 9, y + 2, 5, 5), Color(HEAD, a * (0.3 + 0.35 * sin(_t * 5.0) + 0.35)))
 		UiDraw.text(ci, Vector2i(SCREEN.position.x + 18, y), rows[i], Color(col, a))

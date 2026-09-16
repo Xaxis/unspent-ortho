@@ -189,3 +189,23 @@ func test_names_look_for_the_least_ink() -> void:
 	gt(shore, flat, "and a shore harder than open ground")
 	marks[15 * 32 + 17] = UiMapData.MARK_HOUSE
 	gt(UiMapData.ink_in(UiMapData.ink_table(w, marks), 32, Rect2i(16, 14, 4, 4)), 0, "a symbol is ink too")
+
+
+## A name over the survey is cleared outright, not laid on a wash of glass: at
+## 0.88 the coastline and the contours came through the letters, and BONELANDS
+## read as though the coast were struck through it.
+func test_a_name_over_the_survey_clears_the_glass_under_it() -> void:
+	var ci := Control.new()
+	tree.root.add_child(ci)
+	UiDraw.taping = true
+	UiDraw.tape.clear()
+	UiMapScreen.clearing(ci, Rect2i(40, 40, 60, 12))
+	var alphas: Array[float] = []
+	for m in UiDraw.tape:
+		alphas.append((m.col as Color).a)
+	UiDraw.taping = false
+	UiDraw.tape.clear()
+	check(not alphas.is_empty(), "the clearing is drawn")
+	for a in alphas:
+		eq(a, 1.0, "and every part of it is opaque")
+	ci.free()

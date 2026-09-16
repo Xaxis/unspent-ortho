@@ -590,3 +590,20 @@ func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
 	check(not s.asking(&"knife"), "and the asking is over")
 	s.free()
 	Fx.done(g)
+
+
+## The machine reads app names the WORK, not the mark it left. Four rows of
+## "cut in rows" with four different arrows is what a placeholder looks like,
+## and on the coast the four nearest works really are all turf rows.
+func test_the_reads_app_names_the_work_and_not_only_its_mark() -> void:
+	eq(UiReadsScreen.work_words(&"turf_rows", &"cut"), "turf cut in rows")
+	eq(UiReadsScreen.work_words(&"clearcut", &"cut"), "the wood felled flat", "two works with one mark read differently")
+	eq(UiReadsScreen.work_words(&"drill_field", &"bores"), "a field drilled through")
+	eq(UiReadsScreen.work_words(&"", &"scorch"), "burnt over", "a landmark with no kind still says what it left")
+	eq(UiReadsScreen.work_words(&"breaking_yard", &"cut"), "breaking yard", "and a kind nobody has words for yet says its own name")
+	var seen := {}
+	for k: Variant in UiReadsScreen.WORK_WORDS:
+		var w: String = UiReadsScreen.WORK_WORDS[k]
+		check(not seen.has(w), "no two works are called '%s'" % w)
+		seen[w] = true
+		check(w.length() < 30, "'%s' fits the pane" % w)

@@ -9,11 +9,35 @@ extends UiScreen
 ## until then it reads the mobs' own `hostile`.
 
 const LIST_TOP := 50
-const RADAR_R := 44
+const RADAR_R := 52
 ## What each ground mark the machines leave is, said plainly.
 const MARK_WORDS := {&"cut": "cut in rows", &"scorch": "burnt over", &"quarry": "benches cut", &"bores": "drilled through"}
-## Works listed when nothing living reads back.
-const WORKS_ROWS := 4
+## What each WORK is, said plainly. The page used to name only the mark, and on
+## a coast where the four nearest works are all turf rows it read "cut in rows"
+## four times over with four different arrows beside it — which is what a
+## placeholder looks like. The work has a name of its own; this is it.
+const WORK_WORDS := {
+	&"turf_rows": "turf cut in rows", &"drained": "a fen drained", &"corridor": "a corridor cut through",
+	&"clearcut": "the wood felled flat", &"burned_grove": "a grove burnt over", &"quarry": "benches cut in the rock",
+	&"drill_field": "a field drilled through", &"slag": "slag run out", &"refinery": "a refinery burnt out",
+	&"archive": "an archive burnt", &"intake": "a sea intake", &"hulk": "a hulk run aground",
+	&"sea_wall": "a sea wall raised", &"bog_graves": "graves cut in the bog", &"fire_tower": "a fire tower",
+	&"checkpoint": "a checkpoint", &"stack": "a stack", &"convoy": "a convoy left standing",
+	&"iced_line": "a line iced up", &"shelter": "a shelter", &"cistern": "a cistern",
+	&"dugout": "a dugout", &"graves": "graves in rows", &"stolen_light": "light stolen off a machine",
+}
+## Works listed when nothing living reads back: kinds, not repeats of one kind.
+const WORKS_ROWS := 6
+## How tall the ground read is: its heading, its rows, and the survey plot.
+const WORKS_H := 14 + WORKS_ROWS * UiTheme.LINE + 12 + 14 + 46 + 12
+## Works strung along the machines' bearing: how many are plotted, and the
+## shortest reach the plot is ever drawn to (tiles), so one work near the player
+## does not put every tick on top of the middle.
+const LINE_WORKS := 40
+const LINE_REACH := 60.0
+## How far off their bearing a work still counts as on it, in tiles: a tick's
+## height is how near the line it was cut.
+const LINE_BAND := 56.0
 
 var _feed: Dictionary = {}
 var _time := 0.0
@@ -69,26 +93,75 @@ func _player() -> Vector2:
 ##   {bearing: degrees or -1, under: mark or &"", level: 0..1,
 ##    works: [{mark, dist, dir}] nearest first}
 func ground() -> Dictionary:
-	var out := {"bearing": -1.0, "under": &"", "level": 0.0, "works": []}
+	var out := {"bearing": -1.0, "under": &"", "level": 0.0, "works": [], "kinds": 0, "underfoot": {}}
 	if game == null or game.world == null:
 		return out
 	out.bearing = rad_to_deg(GenWorks.bearing(game.world.seed_value))
 	var p := _player()
 	var works: WorksMap = game.view.works if game.view != null else null
 	if works != null:
+		var each := {}
 		for mark: StringName in WorksMap.CHANNEL:
 			var v := works.at(floori(p.x), floori(p.y), int(WorksMap.CHANNEL[mark]))
+			each[mark] = v
 			if v > float(out.level):
 				out.level = v
 				out.under = mark
-	var found: Array[Dictionary] = []
+		out.underfoot = each
+	# One row per KIND of work, the nearest of that kind, with how many of them
+	# there are. Four rows of the same three words with four arrows told the
+	# player nothing they could not read off one row.
+	var by_kind := {}
 	for lm in game.world.landmarks:
 		if not lm.has("mark"):
 			continue
 		var at: Vector2 = lm.pos
-		found.append({"mark": StringName(lm.mark), "dist": at.distance_to(p), "dir": at - p})
+		var kind := StringName(lm.get("kind", &""))
+		var d := at.distance_to(p)
+		var row: Dictionary = by_kind.get(kind, {})
+		if row.is_empty() or d < float(row.dist):
+			by_kind[kind] = {"kind": kind, "mark": StringName(lm.mark), "dist": d, "dir": at - p, "count": int(row.get("count", 0)) + 1}
+		else:
+			row.count = int(row.count) + 1
+	var found: Array[Dictionary] = []
+	for k: StringName in by_kind:
+		found.append(by_kind[k])
 	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.dist) < float(b.dist))
+	out.kinds = found.size()
 	out.works = found.slice(0, WORKS_ROWS)
+	out.line = along_bearing(p)
+	return out
+
+
+## Everything they did to this land, strung along the one bearing they did it
+## on: each work's distance up or down that line from where the player stands,
+## and how far off it that work lies. {reach: tiles, marks: [{at -1..1, off 0..1, mark}]}
+##
+## Read off the landmarks rather than sampled off the ground, because the ground
+## at any one place is usually unmarked — a sampled trace read 0% at the spawn
+## and the panel it filled was emptier than the glass it replaced.
+func along_bearing(p: Vector2) -> Dictionary:
+	var out := {"reach": LINE_REACH, "marks": []}
+	if game == null or game.world == null:
+		return out
+	var u := Vector2.RIGHT.rotated(GenWorks.bearing(game.world.seed_value))
+	var n := Vector2(-u.y, u.x)
+	var raw: Array[Dictionary] = []
+	var reach := LINE_REACH
+	for lm in game.world.landmarks:
+		if not lm.has("mark"):
+			continue
+		var d: Vector2 = (lm.pos as Vector2) - p
+		raw.append({"t": d.dot(u), "off": absf(d.dot(n)), "mark": StringName(lm.mark)})
+	raw.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return absf(float(a.t)) < absf(float(b.t)))
+	raw = raw.slice(0, LINE_WORKS)
+	for m in raw:
+		reach = maxf(reach, absf(float(m.t)))
+	var marks: Array[Dictionary] = []
+	for m in raw:
+		marks.append({"at": float(m.t) / reach, "off": clampf(float(m.off) / LINE_BAND, 0.0, 1.0), "mark": m.mark})
+	out.reach = reach
+	out.marks = marks
 	return out
 
 
@@ -104,6 +177,16 @@ static func mark_words(mark: StringName) -> String:
 	return String(MARK_WORDS.get(mark, String(mark)))
 
 
+## What a work is called on the page: its own name, or what it left on the
+## ground for a kind nobody has words for yet.
+static func work_words(kind: StringName, mark: StringName) -> String:
+	if WORK_WORDS.has(kind):
+		return String(WORK_WORDS[kind])
+	if kind != &"":
+		return String(kind).replace("_", " ")
+	return mark_words(mark)
+
+
 func _draw() -> void:
 	draw_frame()
 	var L := UiSlate.LIST
@@ -117,8 +200,13 @@ func _draw() -> void:
 	if menu.rows.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP), "nothing living reads back", UiTheme.MACHINE[2])
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP + 11), "within %d tiles" % int(SlateFeeds.READ_RADIUS), UiTheme.MACHINE[2])
-		_draw_works(read, x0, right, LIST_TOP + 30)
-	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
+	# What they did to this land stands under whatever lives on it, whenever the
+	# pane has the room. One machine in reach used to blank the whole ground
+	# read and leave nine tenths of the list pane empty glass.
+	var after_list := LIST_TOP + maxi(menu.rows.size(), 2) * UiTheme.LINE + 20
+	if after_list + WORKS_H <= L.end.y - 4:
+		_draw_works(read, x0, right, after_list)
+	var lines := UiSlate.line_count(LIST_TOP, mini(after_list - 20, L.end.y - 4))
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
@@ -136,9 +224,11 @@ func _draw() -> void:
 	var px := R.position.x + UiSlate.MARGIN_L
 	var rright := R.end.x - 12
 	_draw_interference(Rect2i(px, R.position.y + 8, rright - px, 46))
-	_draw_radar(Vector2i(px + RADAR_R + 4, R.position.y + 82 + RADAR_R), read)
+	# The sweep sits low and wide: the facts beside it are four short lines, and
+	# the pane used to end in a third of a page of empty glass under them.
+	_draw_radar(Vector2i(px + RADAR_R + 6, R.position.y + 112 + RADAR_R), read)
 	var chosen_scan: Dictionary = menu.selected().get("scan", {})
-	var dx := px + RADAR_R * 2 + 20
+	var dx := px + RADAR_R * 2 + 24
 	var dy := R.position.y + 78
 	UiSlate.heading(self, Vector2i(dx, dy), "read" if not chosen_scan.is_empty() else "the ground", rright, UiTheme.MACHINE[2])
 	if chosen_scan.is_empty():
@@ -149,11 +239,13 @@ func _draw() -> void:
 		var works: Array = read.works
 		if not works.is_empty():
 			var w0: Dictionary = works[0]
-			facts.append(["nearest", "%s, %d %s" % [mark_words(StringName(w0.mark)), roundi(float(w0.dist)), _bearing(w0.dir)]])
+			facts.append(["nearest", work_words(StringName(w0.get("kind", &"")), StringName(w0.mark))])
+			facts.append(["", "%d tiles %s" % [roundi(float(w0.dist)), _bearing(w0.dir)]])
+		facts.append(["kinds", "%d within reach" % int(read.get("kinds", 0))])
 		facts.append(["signature", "none in reach"])
 		for k in facts.size():
 			UiDraw.text(self, Vector2i(dx, dy + 14 + k * 11), facts[k][0], UiTheme.MACHINE[2])
-			UiDraw.text(self, Vector2i(dx + 52, dy + 14 + k * 11), facts[k][1], UiTheme.MACHINE[3])
+			UiDraw.text(self, Vector2i(dx + 62, dy + 14 + k * 11), facts[k][1], UiTheme.MACHINE[3])
 	else:
 		var d: Vector2 = (chosen_scan.get("pos", Vector2.ZERO) as Vector2) - _player()
 		var facts := [
@@ -164,15 +256,16 @@ func _draw() -> void:
 		]
 		for k in facts.size():
 			UiDraw.text(self, Vector2i(dx, dy + 14 + k * 11), facts[k][0], UiTheme.MACHINE[2])
-			UiDraw.text(self, Vector2i(dx + 52, dy + 14 + k * 11), facts[k][1], UiTheme.WARN if facts[k][1] == "hostile" else UiTheme.MACHINE[3])
+			UiDraw.text(self, Vector2i(dx + 62, dy + 14 + k * 11), facts[k][1], UiTheme.WARN if facts[k][1] == "hostile" else UiTheme.MACHINE[3])
 		var note := String(chosen_scan.get("note", ""))
 		if note != "":
 			UiSlate.wrapped(self, Vector2i(dx, dy + 62), rright - dx, note, UiTheme.MACHINE[2])
 	draw_keys([["wasd", "choose"], ["esc", "back"]])
 
 
-## What they did to this land, listed where the living signatures would be: the
-## works nearest the player, each with how far and which way.
+## What they did to this land, listed where the living signatures would be: one
+## row per kind of work, the nearest of that kind, how many there are, how far
+## and which way. Under it, their bearing drawn as the ground reads it.
 func _draw_works(soil: Dictionary, x0: int, right: int, top: int) -> void:
 	var works: Array = soil.works
 	UiSlate.heading(self, Vector2i(x0, top), "what they did here", right, UiTheme.MACHINE[2])
@@ -183,10 +276,64 @@ func _draw_works(soil: Dictionary, x0: int, right: int, top: int) -> void:
 		var w: Dictionary = works[i]
 		var y := top + 14 + i * UiTheme.LINE
 		_arrow(Vector2i(x0 + 6, y + 4), w.dir)
-		UiDraw.text(self, Vector2i(x0 + 16, y), mark_words(StringName(w.mark)), UiTheme.MACHINE[3])
+		UiDraw.text(self, Vector2i(x0 + 16, y), work_words(StringName(w.get("kind", &"")), StringName(w.mark)), UiTheme.MACHINE[3])
+		var n := int(w.get("count", 1))
+		if n > 1:
+			UiDraw.text_right(self, right - 26, y, "x%d" % n, UiTheme.MACHINE[2])
 		UiDraw.text_right(self, right, y, "%d" % roundi(float(w.dist)), UiTheme.MACHINE[2])
-	var by := top + 14 + works.size() * UiTheme.LINE + 4
-	UiDraw.text(self, Vector2i(x0 + 2, by), "all of it on one bearing: %d degrees" % roundi(float(soil.bearing)), UiTheme.MACHINE[2])
+	var by := top + 14 + works.size() * UiTheme.LINE + 2
+	var kinds := int(soil.get("kinds", works.size()))
+	if kinds > works.size():
+		UiDraw.text(self, Vector2i(x0 + 16, by), "and %d more kinds of it" % (kinds - works.size()), UiTheme.MACHINE[2])
+		by += UiTheme.LINE
+	_draw_line_of_works(soil, x0, right, by + 6)
+
+
+## Their survey bearing with everything they did to this land strung along it:
+## each work a tick up or down the line from where the player stands, its height
+## how far off the line it lies. A page whose lower half is empty glass has not
+## said what it knows, and the one bearing is the plainest thing the module has
+## to say about who did this.
+func _draw_line_of_works(soil: Dictionary, x0: int, right: int, top: int) -> void:
+	var line: Dictionary = soil.get("line", {})
+	var marks: Array = line.get("marks", [])
+	UiSlate.heading(self, Vector2i(x0, top), "their survey through here", right, UiTheme.MACHINE[2])
+	var box := Rect2i(x0, top + 14, right - x0, 46)
+	UiSlate.brackets(self, box, UiTheme.MACHINE[1], 4)
+	if marks.is_empty():
+		UiDraw.text(self, Vector2i(x0 + 6, box.position.y + 18), "nothing on it within reach", UiTheme.MACHINE[2])
+		return
+	var span := box.size.x - 12
+	var mid_x := box.position.x + 6 + span / 2
+	var base := box.position.y + box.size.y / 2
+	# The line itself, ruled straight: it is theirs and it is exact. The two
+	# faint rules either side of it are LINE_BAND: a tick reaching one was cut
+	# right along their bearing, a short one lies well off it.
+	var band := box.size.y / 2 - 4
+	for x in range(box.position.x + 6, box.end.x - 5, 4):
+		UiDraw.px(self, x, base - band, UiTheme.MACHINE[1])
+		UiDraw.px(self, x, base + band, UiTheme.MACHINE[1])
+	for x in range(box.position.x + 6, box.end.x - 5):
+		UiDraw.px(self, x, base, UiTheme.MACHINE[1] if (x % 2) == 0 else UiTheme.MACHINE[2])
+	for m: Dictionary in marks:
+		var x := mid_x + roundi(float(m.at) * span * 0.5)
+		# Off the line is drawn as height: a work they cut right along it stands
+		# tall, one they left to the side of it hangs near the rule.
+		var h := 3 + roundi((1.0 - float(m.off)) * (box.size.y / 2 - 7))
+		var up := float(m.at) >= 0.0
+		var col := UiTheme.MACHINE[3] if float(m.off) < 0.25 else UiTheme.MACHINE[2]
+		if up:
+			UiDraw.vline(self, x, base - h, base - 1, col)
+			UiDraw.px(self, x, base - h - 1, UiTheme.MACHINE[4])
+		else:
+			UiDraw.vline(self, x, base + 1, base + h, col)
+			UiDraw.px(self, x, base + h + 1, UiTheme.MACHINE[4])
+	# Where the player stands on it.
+	UiDraw.vline(self, mid_x, base - 5, base + 5, Color(UiTheme.MACHINE[4], 0.4))
+	UiDraw.rect(self, Rect2i(mid_x - 1, base - 1, 3, 3), UiTheme.MACHINE[4])
+	var reach := roundi(float(line.get("reach", LINE_REACH)))
+	UiDraw.text(self, Vector2i(box.position.x + 2, box.end.y + 1), "%d tiles behind" % reach, UiTheme.MACHINE[2])
+	UiDraw.text_right(self, box.end.x - 2, box.end.y + 1, "%d on, surveyed along %d degrees" % [reach, roundi(float(soil.bearing))], UiTheme.MACHINE[2])
 
 
 ## The network's interference as a trace across the panel: flat and quiet when
