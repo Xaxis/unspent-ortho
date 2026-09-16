@@ -102,9 +102,12 @@ func setup(cam: CameraRig) -> void:
 	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.7, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
 	# Blown snow: long low streaks racing along the ground in a blizzard and a
 	# whiteout — paper on a cold shade rim, like the flecks, so the wind is drawn
-	# pale over pale ground and a whiteout is streaks and not specks.
+	# pale over pale ground and a whiteout is streaks and not specks. A streak is
+	# ten times the length of a fleck, so its rim is the palest shade in the ramp
+	# and lies under only some of them: a rim as dark as a fleck's, drawn that
+	# long and under every one, is a field of dark dashes (docs/ART.md section 3).
 	spindrift = _emitter("spindrift", 2400, 2.5, Vector3(19.0, 1.0, 15.0), Vector3(0, 0.9, 0), true)
-	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 1.0, "underline": 1.0, "length_px": Vector2(6, 14), "ground_mask": 1})
+	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 1.0, "underline": 0.6, "length_px": Vector2(6, 14), "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
 	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "columns": 0.45, "ground_mask": 2})

@@ -145,8 +145,9 @@ void fragment() {
 	float gl = max(glow.r, max(glow.g, glow.b));
 	// The hour decides whether the air can carry the spill at all: at noon a
 	// beacon is a bright object, not a light in the air. Only thick rain or fog
-	// lets a little through by day.
-	float carry = max(sky_gloom(), 0.3 * clamp(sky_fog.z + sky_settle.z, 0.0, 1.0));
+	// lets a little through by day — rain in the AIR (sky_air.x), not wet lying
+	// on the ground, or a land that never dries would spill neon at noon.
+	float carry = max(sky_gloom(), 0.3 * clamp(sky_fog.z + sky_air.x, 0.0, 1.0));
 	// Stipple: the glow is laid as dots whose density is its strength.
 	float dots = step(ink_hash(wpx + vec2(13.0, 77.0)), clamp(gl * 3.0 * halo_strength * carry, 0.0, 0.7));
 	outc = mix(outc, max(outc, glow / max(gl, 0.001) * 0.85), dots);

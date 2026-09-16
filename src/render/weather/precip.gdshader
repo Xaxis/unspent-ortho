@@ -42,8 +42,9 @@ uniform float wander = 0.0;
 uniform float glow = 0.0;
 // Flickers per second of a glowing mark: embers change their minds, wisps pulse.
 uniform float flicker_rate = 12.0;
-// Pale marks read on dark ground and dark marks on pale: marks get a shade
-// pixel under them in color_a when this is 1 (flecks, and blown streaks).
+// Pale marks read on dark ground and dark marks on pale: this SHARE of marks
+// gets a shade pixel under them in color_a (flecks, and blown streaks). A share,
+// not a switch, because a long mark rimmed every time reads as a dark dash.
 uniform float underline = 0.0;
 // Flecks drawn as a paper body in color_b held by one pixel of shade in color_a
 // under it (docs/ART.md section 3: the snowfield's "snow as paper flecks"). Pale
@@ -105,7 +106,7 @@ void vertex() {
 		lo = vec2(min(0.0, slant * len) - 1.0, -len - 1.0);
 		hi = vec2(max(0.0, slant * len) + 2.0, 1.0);
 	} else if (mode == 1) {
-		lo = vec2(0.0, -max(underline, highlight));
+		lo = vec2(0.0, -max(step(0.001, underline), highlight));
 		hi = vec2(len, len);
 	} else if (mode == 2) {
 		lo = vec2(-5.0, -2.0);
@@ -175,7 +176,7 @@ void fragment() {
 		on = on || shade;
 	} else if (mode == 1) {
 		on = q.x >= 0.0 && q.y >= 0.0 && q.x < v_len && q.y < v_len;
-		shade = underline > 0.5 && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
+		shade = fract(v_rnd * 71.3) < underline && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
 		on = on || shade;
 	} else if (mode == 2) {
 		// A wavering line: ~~ drawn in nine pixels, its phase walking with time.
@@ -185,13 +186,14 @@ void fragment() {
 		on = abs(q.x) <= 4.0 && q.y == wave;
 	} else if (mode == 3) {
 		// A flick: a flat stroke that lifts at its head. Blown snow takes the
-		// same shade rim as a fleck, so a pale streak reads over pale ground.
+		// same shade rim as a fleck, so a pale streak reads over pale ground —
+		// under a share of the streaks only, or the wind is drawn in dashes.
 		float x = q.x * sign(facing);
 		float t = -x / max(v_len, 1.0);
 		float row = floor((1.0 - t) * (1.0 - t) * 1.6);
 		bool along = x <= 0.0 && x > -v_len;
 		on = along && q.y == row;
-		shade = underline > 0.5 && along && q.y == row - 1.0;
+		shade = fract(v_rnd * 71.3) < underline && along && q.y == row - 1.0;
 		on = on || shade;
 	} else if (mode == 5) {
 		// A spark: a centre and its four neighbours; big ones reach two pixels.

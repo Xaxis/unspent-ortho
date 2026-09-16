@@ -322,8 +322,12 @@ vec4 sky_lamp_colour(vec3 world_pos, float up) {
 // Where the attenuation crosses into the bright core and into the dim ring.
 const float SKY_POOL_CORE = 0.66;
 const float SKY_POOL_RING = 0.32;
-// How far the core of a pool carries the light's own colour into the wash.
-const float SKY_POOL_WASH = 0.7;
+// How far the core of a pool carries the light's own colour into the wash, how
+// far that wash is tilted to the light's own hue, and how much brighter the lit
+// ground is. Kept low: a pool is a tint and a step, never a disc of paint.
+const float SKY_POOL_WASH = 0.3;
+const float SKY_POOL_TILT = 0.8;
+const float SKY_POOL_LIFT = 1.6;
 
 // A pool of lamplight in two steps: a bright core (1.0) where the page shows,
 // then a dimmer ring (0.5), each edge broken into a few pixels of stipple and
@@ -350,13 +354,19 @@ float sky_pool(float a, vec3 world_pos) {
 	return 0.0;
 }
 
-// The wash inside a pool: the LIGHT's colour laid on the ground, not the
-// ground's own hue turned up (docs/ART.md section 6, "people's lamps, windows
-// and fires are warm"). The ground keeps its wash and takes the lamp's hue; it
-// lifts only as far as the light is brighter than what it falls on, so a lamp
-// on snow adds nothing and a lamp on dark turf is the page showing through.
+// The wash inside a pool: the LIGHT's own colour laid over the ground, warm for
+// a lamp or a fire and cold for a machine's strip (docs/ART.md section 6).
+//
+// It is a GAIN and nothing else: `c` is multiplied, never lifted toward a level
+// the light chooses. That is the whole rule. Light falling on things multiplies
+// them, so every surface in the pool keeps its ratio to its neighbours — a
+// charred log stays six times darker than the turf beside it, and the player's
+// coat, trousers and boots stay three colours inside their own lantern's light.
+// Anything that averages toward a common value flattens the page under the pool
+// into one bright disc, which is what a lamp must never be.
+//
 // `pool` is sky_pool's two flat steps, so the wash has two values and no
-// gradient; in daylight there is no pool at all.
+// gradient; sky_gloom() takes it to nothing before the sun is up.
 vec3 sky_lamp_wash(vec3 c, vec3 lamp_rgb, float pool) {
 	if (pool <= 0.0) {
 		return c;
@@ -365,14 +375,11 @@ vec3 sky_lamp_wash(vec3 c, vec3 lamp_rgb, float pool) {
 	if (ll < 0.001) {
 		return c;
 	}
-	float cl = dot(c, vec3(0.3, 0.59, 0.11));
+	// The light's hue at unit brightness, so a dim lamp and a bright one tilt
+	// the ground the same way and only the pool's own steps say how far.
 	vec3 hue = lamp_rgb / ll;
-	float head = clamp(ll - cl, 0.0, 1.0);
-	// Value and hue apart: the ground keeps its own value, lifted by as much as
-	// the light has over it, and takes mostly the light's hue. A multiply would
-	// leave cold ground cold, and a lamp on snow would be a grey disc.
-	vec3 lit = (cl + head * 0.5) * mix(c / max(cl, 0.001), hue, 0.7);
-	return mix(c, lit, pool * SKY_POOL_WASH * sky_gloom());
+	vec3 gain = mix(vec3(1.0), hue, SKY_POOL_TILT) * SKY_POOL_LIFT;
+	return mix(c, c * gain, pool * SKY_POOL_WASH * sky_gloom());
 }
 
 // How the sky changes the hatching of a MADE surface, for world.gdshader
@@ -415,8 +422,10 @@ vec3 sky_line(vec3 ink) {
 const float SKY_WET_FEATHER = 0.13;
 
 // How far the wet has spread at a place, 0..1 (callers cut it into stipple with
-// a per-pixel threshold). One shape, shared by the darkening, the slick and the
-// ink, so a wet afternoon has one set of patches and not three.
+// a per-pixel threshold). One LAY of patches for every caller, so the darkening
+// and the slick pick out the same hollows; how far each spreads over that lay
+// is its own `w`, since rain that has settled and a land that never dries are
+// not the same wetness (sky_settled takes the first, the slick takes both).
 float sky_wet_cover(vec3 world_pos, float w) {
 	if (w <= 0.001) {
 		return 0.0;
@@ -601,8 +610,10 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 #ifndef SKY_FOUND
 	// Rain-slicked: wet ground is a step darker and holds the sky in a sheen. By
 	// day the sheen is the pale sky, so a wet afternoon is bleak, not night; in
-	// low light the step goes deep and the lights' streaks carry. The slick lies
-	// in the same patches the wet wash darkens, stippled at their edges.
+	// low light the step goes deep and the lights' streaks carry. The slick picks
+	// out the same lay of hollows the wet wash darkens, stippled at their edges,
+	// and spreads over as much of it as this ground is wet — rain that has
+	// settled, or a land like the moss that never dries.
 	float wet = neon_wetness(world_pos) * step(0.9, face_up);
 	float day_sheen = 1.0 - clamp(max(sky_view.y, sky_shade.w), 0.0, 1.0);
 	vec3 slick = mix(c * vec3(0.72, 0.76, 0.83), c * vec3(0.84, 0.87, 0.92) + SKY_PUDDLE * sky_tint * 0.04, day_sheen);
