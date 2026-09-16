@@ -15,7 +15,15 @@ func _run() -> void:
 	var page := BootPage.new()
 	page._plan(holder, BootOptions.parse(["--seed=4", "--size=64"]), "game", OS.get_cmdline_user_args().has("threads"))
 	holder.add_child(page)
-	for i in 900:
+	# Wait on real time, not on a frame count. A headless loop runs frames as
+	# fast as the machine allows, so with THREADS on — where the work is off the
+	# main thread — 900 frames go by in a couple of seconds while the worker is
+	# still making the world, and a hand-over that is simply late reads as one
+	# that never came. The nothreads case did the work between the frames and so
+	# always passed, which is why only "threads" failed. Scaled like every other
+	# wall-clock budget in the tests, and kept inside the parent's own bound.
+	var until := Time.get_ticks_msec() + int(20000.0 * minf(TestCase.machine_slack(), 4.0))
+	while Time.get_ticks_msec() < until:
 		if page.scene != null and page.stages.done():
 			break
 		await process_frame
