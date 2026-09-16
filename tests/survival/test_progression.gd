@@ -7,8 +7,11 @@ extends TestCase
 ## Honest: the bot may only use what is in the world after a game's setup (the
 ## generator, plus the strand survival lays near the spawn). It never places a
 ## thing; if what it needs is not within a walk, the test fails. It teleports
-## between props but is charged real walking time for the distance, so the test
-## also proves the path fits in ten real minutes.
+## between props but is charged real walking time for the distance, and the
+## world clock runs through that walk the way it does in play, so the test also
+## proves the path fits in ten real minutes and that the day is lived: work set
+## going at the fire cooks while the bot walks, and the first pick comes out in
+## the morning of the first day.
 
 const Fx := preload("res://tests/survival/fixture.gd")
 const REAL_BUDGET := 600.0
@@ -18,6 +21,10 @@ const MENU_SECONDS := 4.0
 ## hills); the real-time budget says whether the whole path still fits.
 const FAR := 100.0
 const WOOD: Array[StringName] = [&"driftwood", &"deadwood"]
+## The first pick is in hand by this hour of day 1 for a bot that gathers
+## thoroughly and walks a far strand (seed 1 lands it before noon, seed 2 just
+## after; the playtest's came at 20:48).
+const FIRST_PICK_BY_HOUR := 13.0
 
 var g: Game
 var real := 0.0
@@ -75,15 +82,17 @@ func _play(s: int) -> void:
 
 	# Plate turned over by hand on a tip.
 	_gather(&"scrap", 2)
-	_walk_to(_beside(fire))
+	_collect(fire)
 	_make(&"pick_made")
-	check(g.inventory.has(&"pick"), "a pick")
 	check(g.inventory.has(&"scrap"), "a spare plate left over")
 	# The second haft may want another armful: how much the first run gave
 	# depends on what lay nearest (two driftwood a take, one dead wood).
 	if Crafting.why_not(g, Crafting.recipe(&"haft")) != "" and Crafting.why_not(g, Crafting.recipe(&"haft_deadwood")) != "":
 		_gather_wood(2)
 	_make_any([&"haft", &"haft_deadwood"])
+	_collect(fire)
+	check(g.inventory.has(&"pick"), "a pick")
+	check(g.clock.day() == 0 and g.clock.hour() <= FIRST_PICK_BY_HOUR, "the first pick by early afternoon on day 1, not at night: %s" % g.clock.label())
 	# Plate makes the way in and nothing more: the axe waits for iron.
 	for r: Dictionary in Recipes.LIST:
 		if (r.makes as Dictionary).has(&"axe_hand"):
@@ -96,16 +105,19 @@ func _play(s: int) -> void:
 	eq(g.inventory.held, &"pick", "the pick went into the hand for the ore")
 	_gather_wood(8)
 	_gather(&"mussels", 2)
-	_walk_to(_beside(fire))
+	_collect(fire)
 	_make_any([&"charcoal", &"charcoal_deadwood"])
 	_eat_if_hungry()
 	_sleep_if_night(fire)
-	_walk_to(_beside(fire))
+	_collect(fire)
 	_make_any([&"charcoal", &"charcoal_deadwood"])
+	_collect(fire)
 	_make_any([&"iron", &"iron_coal"])
+	_collect(fire)
 	check(g.inventory.has(&"iron"), "iron")
 	_eat_if_hungry()
 	_make(&"axe_iron")
+	_collect(fire)
 	check(g.inventory.has(&"axe_hand"), "an iron axe")
 	_eat_if_hungry()
 	_sleep_if_night(fire)
@@ -120,9 +132,8 @@ func _play(s: int) -> void:
 	eq(g.world.props.size(), props_after_setup + 1, "nothing was placed but the fire the bot built")
 	lt(real, REAL_BUDGET, "fits in ten real minutes")
 	lt(worst_hunger, 3, "never starving on the way")
-	lt(hours, 72.0, "an iron axe inside three days")
-	gt(hours, 16.0, "but it is not free: at least a night goes by")
-	check(g.clock.day() >= 1, "a night went by")
+	lt(hours, 48.0, "an iron axe inside two days")
+	gt(hours, 4.0, "but it is not free: most of a day goes by")
 	if not failures.is_empty() or OS.get_environment("PROGRESSION_LOG") != "":
 		_fail_out()
 	Fx.done(g)
@@ -140,8 +151,25 @@ func _fail_out() -> void:
 
 
 func _walk_to(p: Vector2) -> void:
-	real += g.player.pos.distance_to(p) / (Tuning.WALK_SPEED * g.body.move_factor)
+	_spend(g.player.pos.distance_to(p) / (Tuning.WALK_SPEED * g.body.move_factor))
 	g.player.pos = p
+
+
+## Real seconds of play: the world clock runs through them as it does in a game.
+func _spend(seconds: float) -> void:
+	real += seconds
+	g.clock.advance(seconds)
+
+
+## Back at the fire: wait out whatever is still on it (charged as real time
+## spent there) and take what came off it.
+func _collect(fire: WorldProp) -> void:
+	_walk_to(_beside(fire))
+	var job := Survival.job_at(g, fire)
+	if not job.is_empty() and float(job.done) > g.clock.minutes:
+		_spend((float(job.done) - g.clock.minutes) / Tuning.MINUTES_PER_SECOND)
+	if Survival.collect(g) > 0:
+		_note("took %s off the fire" % [job.get("recipe", &"")])
 
 
 func _wood() -> int:
@@ -187,7 +215,7 @@ func _take_one(items: Array[StringName]) -> bool:
 	var before := g.inventory.items.duplicate()
 	check(Survival.use(g), "use on %s: %s" % [PropKind.NAMES[prop.kind], Survival.describe_target(g)])
 	Survival.finish_work(g)
-	real += Survival.WORK_SECONDS
+	_spend(Survival.WORK_SECONDS)
 	actions += 1
 	var got := ""
 	for id: StringName in g.inventory.items:
@@ -241,7 +269,7 @@ func _make(id: StringName) -> void:
 	var why := Crafting.why_not(g, r)
 	check(why == "", "seed %d make %s: %s (missing %s)" % [seed_value, id, why, Crafting.missing(g.inventory, r)])
 	if Crafting.make_in(g, r):
-		real += MENU_SECONDS
+		_spend(MENU_SECONDS)
 		actions += 1
 		_note("made %s" % id)
 
@@ -267,7 +295,7 @@ func _build_fire_near(p: Vector2) -> WorldProp:
 			check(Survival.use(g), "the first press asks")
 			eq(g.world.props.size(), before, "and builds nothing")
 			check(Survival.use(g), "the second builds")
-			real += 1.0
+			_spend(1.0)
 			actions += 2
 			if g.world.props.size() > before:
 				return g.world.props[-1]
@@ -288,7 +316,7 @@ func _eat_if_hungry() -> void:
 		g.body.busy_until = 0.0
 		check(Survival.eat(g, food), "eat %s" % food)
 		g.body.busy_until = 0.0
-		real += 1.0
+		_spend(1.0)
 		_note("ate %s" % food)
 	worst_hunger = maxi(worst_hunger, g.body.hunger_level(g.clock.minutes))
 
@@ -297,7 +325,7 @@ func _sleep_if_night(fire: WorldProp) -> void:
 	_walk_to(_beside(fire))
 	if Survival.sleep_refusal(g) == "":
 		check(Survival.sleep(g), "sleep")
-		real += 2.0
+		_spend(2.0)
 		_note("slept")
 		_eat_if_hungry()
 

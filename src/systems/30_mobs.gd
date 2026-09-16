@@ -6,6 +6,10 @@ extends GameSystem
 
 ## A jump in the clock longer than this clears the coast (design-extract §7.4).
 const JUMP_CLEARS := 30.0
+## The jumps that are hours away from this place: sleeping, a bad end, a spell
+## held by a machine. Taking and making never clear the coast (they are
+## MAX_JUMP_MINUTES at most, and refused with a hostile close).
+const CLEARING: Array[StringName] = [&"sleep", &"downed", &"carried", &"collapse", &"arrested", &"snatched"]
 
 var sim: FightSim
 var moment: Moment
@@ -79,7 +83,7 @@ func _listen() -> void:
 		if Racket.should_tell(m, sim.hero.pos, visible, aerial, now_ms, _told_ms):
 			m.heard_told = true
 			_told_ms = now_ms
-			Events.message.emit(Racket.line_for(m))
+			Events.message.emit(Racket.line_for(m, sim.hero.pos))
 		elif visible:
 			# Seen first: nothing to tell about this one later.
 			m.heard_told = true
@@ -101,9 +105,14 @@ func _read_moment() -> void:
 	moment.read_weather()
 
 
-func _on_time_skipped(minutes: float, _reason: StringName) -> void:
-	if minutes > JUMP_CLEARS and sim != null:
-		sim.clear_mobs()
+func _on_time_skipped(minutes: float, reason: StringName) -> void:
+	if sim == null or minutes <= JUMP_CLEARS or not CLEARING.has(reason):
+		return
+	if sim.fight_on and reason != &"downed" and reason != &"carried":
+		# Nothing long starts with a fight on (Survival.threat_near); if a jump comes
+		# anyway, it does not delete what is charging the player.
+		return
+	sim.clear_mobs()
 
 
 ## Put a body where the camera shows it, in front of the player, on ground it

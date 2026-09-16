@@ -4,6 +4,8 @@
 # would see (await) and fails if it never comes.
 #   tools/tour.sh tours/fight.tour --seed=1 --hour=11
 zoom 11
+# The scripted meetings only: no worker on its round or first runner wandering in.
+coast calm
 # A runner: its working part is at its back, so met face on it is all plate.
 spawn runner
 await tell 4
@@ -42,7 +44,13 @@ shot 06-watcher-after
 at 160,352
 wait 1.5
 spawn lineman
-await tell 5
+# A lineman is a worker: it is left be until struck, then it turns on you. On
+# its round it walks on (and goes round a player in its way), so catch it up.
+try 4
+walkto mob 2
+tap swing
+await tell 6
+end
 shot 07-lineman-tell
 try 4
 walkto mob 0.5
@@ -64,7 +72,12 @@ shot 09-pulled-free
 at 200.5,431.5
 wait 1.5
 spawn harvester
-await tell 6
+# Indifferent on its round: struck in its blades it turns, and tells.
+try 4
+walkto mob 2
+tap swing
+await tell 8
+end
 shot 10-harvester-tell
 tap dodge
 wait 0.1

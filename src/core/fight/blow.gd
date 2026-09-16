@@ -110,6 +110,14 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 	return b
 
 
+func copy() -> Blow:
+	var b := Blow.new()
+	for p: String in ["windup", "active", "recovery", "cooldown", "reach", "width", "dmg", "knock", "knock_ms",
+			"creep", "grip", "cuts", "verb", "wind_cost", "wick"]:
+		b.set(p, get(p))
+	return b
+
+
 ## The same blow thrown with too few charges: it still swings, and does what a fist does.
 func dry() -> void:
 	dmg = 1

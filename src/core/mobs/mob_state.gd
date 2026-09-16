@@ -79,6 +79,35 @@ var dark_until := 0.0
 var flare_until := 0.0
 ## A real hit may stall this machine again from this time.
 var stall_ready_at := 0.0
+## When the last bite ended and the machine went spent (sim ms): the view flares
+## the working part once for it, so the opening is seen and not only timed.
+var opened_at := -INF
+## blow_at of the bite that last met the player (a landed bite is not spent).
+var landed_at := -INF
+## How it takes the player (VISION §2): &"hostile" hunts, &"indifferent" works
+## on unless disturbed, &"observant" watches and reports, &"wary" keeps a site.
+var disposition: StringName = &"hostile"
+## An indifferent body the player has disturbed (struck it, stood in its way):
+## it is hostile until it loses them.
+var disturbed := false
+## Sim ms until which a body that noticed the player only looks up.
+var glance_until := -INF
+## Sim ms since which the player has held up an indifferent body on its round (-1 = not).
+var crowded_since := -1.0
+## It has warned the player standing in its way (half way to taking it as interference).
+var crowd_warned := false
+## A point beside someone standing on its round that it walks to first, going
+## round them (Vector2.INF: none).
+var via := Vector2.INF
+## Sim ms before which it will not try going round again (the last way round was blocked).
+var via_retry_at := 0.0
+## Put out by the coast to be seen on its round (a patrol), or as the first meeting.
+var patrol := false
+var first_meeting := false
+## Times a patrol has carried its round on past the end of its line (Coast).
+var legs := 0
+## Sim ms it was put out on the coast (patrols come off the land after a while).
+var put_out_at := 0.0
 ## Last time this body moved meaningfully (for the view's walk cycle).
 var speed := 0.0
 
@@ -110,14 +139,16 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	phase_ms = int(Rng.hash01(seed_value, hx, hy, 0x10) * 1000.0)
 	facing = Rng.hash01(seed_value, hx, hy, 0x11) * TAU
 	mood = WORKING if approach == &"errand" else IDLE
+	disposition = Roster.disposition(kind_id)
 	aim = facing
 	last_think_pos = at
 	# Charges turn badly (that is the whole answer to them); errands sweep slowly.
-	# Machines turn at one exact rate, slower than a dog: getting round one is possible.
+	# Every machine turns slower than a player walks round it at close quarters
+	# (about 2.8 rad/s at a tile and a bit), so its working side can be reached.
 	match approach:
-		&"charge": turn_rate = 2.4
+		&"charge": turn_rate = 1.5
 		&"errand": turn_rate = 1.6
-		_: turn_rate = 4.0 if machine else 9.0
+		_: turn_rate = 2.4 if machine else 9.0
 	var stretch: float = row.get("stretch", 0)
 	if stretch <= 0.0 and approach != &"errand" and machine and kind != &"cutter":
 		# Idle machines keep to a beat of their own: up the row and back.
@@ -157,6 +188,50 @@ func part_flaring(now: float) -> bool:
 
 func part_dark(now: float) -> bool:
 	return now >= flare_until and now < dark_until
+
+
+## Spent after a bite: its recovery and cooldown. A machine carries on past
+## where it bit, then stands turning slowly; its working part is open.
+func spent(now: float) -> bool:
+	if blow == null or landed_at == blow_at:
+		return false
+	var p := blow_phase(now)
+	return p == &"recovery" or p == &"cooldown"
+
+
+## Radians per second it may turn now: slowly while spent or standing between
+## runs (machines only; a creature has no side to find).
+func turn_rate_at(now: float) -> float:
+	if not machine:
+		return turn_rate
+	if indifferent() and crowded_since >= 0.0:
+		# A worker held up, looking round at what is in its way: unhurried, not a turret.
+		return minf(turn_rate, FightRules.PAUSE_TURN)
+	if blow_phase(now) == &"cooldown":
+		return minf(turn_rate, float(row.get("recover_turn", FightRules.RECOVER_TURN)))
+	if now < pause_until:
+		return minf(turn_rate, FightRules.PAUSE_TURN)
+	return turn_rate
+
+
+## Which way it is going along its round (a unit vector), or ZERO for a body
+## that stands. At the end of a leg it is the next leg: a worker about to turn
+## back is about to come the other way.
+func path_dir() -> Vector2:
+	if via.is_finite() and via.distance_to(pos) >= 0.3:
+		return (via - pos).normalized()
+	if line_a.distance_squared_to(line_b) < 0.01:
+		return Vector2.ZERO
+	var target := line_b if line_to_b else line_a
+	var to := target - pos
+	if to.length() < 0.3:
+		to = (line_a if line_to_b else line_b) - pos
+	return to.normalized() if to.length() > 0.01 else Vector2.ZERO
+
+
+## Works on whatever the player does, until disturbed.
+func indifferent() -> bool:
+	return disposition == &"indifferent" and not disturbed
 
 
 func mob_iframes() -> int:

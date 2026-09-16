@@ -54,7 +54,8 @@ func act() -> void:
 		var local := (hero.pos - m.pos).rotated(-m.facing)
 		var in_reach := local.x <= m.radius + hero.radius + mine.reach * 0.9 and absf(local.y) < m.radius
 		var tell := m.blow == null or m.blow_phase(now) == &"windup" and now - m.blow_at < m.blow.windup - mine.windup - 40
-		if m.part == &"front" and in_reach and tell and now >= m.stall_ready_at and hero.swing_refusal(now) == &"":
+		if m.part == &"front" and in_reach and tell and now >= m.stall_ready_at and hero.swing_refusal(now) == &"" \
+				and sim.reaches_part(m, hero.pos):
 			hero.move = Vector2.ZERO
 			hero.facing = (m.pos - hero.pos).angle()
 			sim.press_swing()
@@ -96,6 +97,8 @@ func act() -> void:
 			# It may bite any moment: swing only if its tell is slower than the swing
 			# and there is wind left to get out after.
 			opening = slow_tell and hero.wind >= FightRules.DODGE_COST + mine.wind_cost
+	# A guarded part is only worth a swing while the machine is open.
+	opening = opening and sim.reaches_part(m, hero.pos)
 	if opening and now >= _next_swing and hero.swing_refusal(now) == &"":
 		_next_swing = now + 60.0
 		sim.press_swing()

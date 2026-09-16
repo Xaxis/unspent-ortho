@@ -56,7 +56,7 @@ func test_work_is_busy_until_finished_and_charges_time_at_the_end() -> void:
 	check(Survival.finish_work(g), "finished")
 	check(not Survival.busy(g), "free again")
 	eq(g.inventory.count(&"driftwood"), 2, "driftwood")
-	near(g.clock.minutes - t0, 3.0, 0.001, "gather is bare-handed minutes")
+	near(g.clock.minutes - t0, float(Takes.options(PropKind.DRIFTWOOD)[0].min), 0.001, "gather is bare-handed minutes")
 	Fx.done(g)
 
 
@@ -203,6 +203,9 @@ func test_regrowth_brings_driftwood_back_and_resets_its_takes() -> void:
 	g.clock.skip(2.0 * 60.0)
 	Survival.sweep(g, 1.0)
 	check(not g.world.depleted.has(d.id), "washed up again")
+	# It is past nine at night by now: in the dark it wants the lamp to be found.
+	g.inventory.add(&"lamp")
+	g.body.lamp_lit = true
 	eq(Survival.use_target(g), d, "workable again")
 	check(Fx.take(g))
 	eq(g.inventory.count(&"driftwood"), 4)

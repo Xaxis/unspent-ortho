@@ -85,10 +85,12 @@ const DEFS := {
 	&"wick": {"name": "charge", "bulk": 0.5, "group": &"found"},
 
 	# --- Materials (§9.4) ---
-	&"driftwood": {"name": "driftwood", "bulk": 3.0, "group": &"material"},
+	# Shore goods are lighter than the source's (3, 2, 2, 5; food 1): the creel
+	# was full inside the first hour, before one fire, charcoal and a haft.
+	&"driftwood": {"name": "driftwood", "bulk": 1.5, "group": &"material"},
 	# Not in the source: fallen wood picked up under any tree, so a fire needs no shore.
-	&"deadwood": {"name": "dead wood", "bulk": 2.0, "group": &"material"},
-	&"wrack": {"name": "wrack", "bulk": 2.0, "group": &"material"},
+	&"deadwood": {"name": "dead wood", "bulk": 1.5, "group": &"material"},
+	&"wrack": {"name": "wrack", "bulk": 1.0, "group": &"material"},
 	&"wool": {"name": "raw wool", "bulk": 1.0, "group": &"material"},
 	&"reeds": {"name": "reeds", "bulk": 2.0, "group": &"material"},
 	&"gorse_cut": {"name": "cut gorse", "bulk": 2.0, "group": &"material"},
@@ -104,7 +106,7 @@ const DEFS := {
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
 	&"kelp_ash": {"name": "kelp ash", "bulk": 1.0, "group": &"material"},
-	&"stone": {"name": "stone", "bulk": 5.0, "group": &"material"},
+	&"stone": {"name": "stone", "bulk": 3.0, "group": &"material"},
 	&"coal": {"name": "coal", "bulk": 3.0, "group": &"material"},
 	&"charcoal": {"name": "charcoal", "bulk": 2.0, "group": &"material"},
 	&"tin_ore": {"name": "tin ore", "bulk": 4.0, "group": &"material"},
@@ -116,9 +118,9 @@ const DEFS := {
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
 
 	# --- Food ---
-	&"mussels": {"name": "mussels", "bulk": 1.0, "group": &"food", "feeds": 4.0},
-	&"whelks": {"name": "whelks", "bulk": 1.0, "group": &"food", "feeds": 3.0},
-	&"samphire": {"name": "samphire", "bulk": 1.0, "group": &"food", "feeds": 2.0},
+	&"mussels": {"name": "mussels", "bulk": 0.5, "group": &"food", "feeds": 4.0},
+	&"whelks": {"name": "whelks", "bulk": 0.5, "group": &"food", "feeds": 3.0},
+	&"samphire": {"name": "samphire", "bulk": 0.5, "group": &"food", "feeds": 2.0},
 	&"berries": {"name": "berries", "bulk": 1.0, "group": &"food", "feeds": 1.5},
 	&"bread": {"name": "bread", "bulk": 1.0, "group": &"food", "feeds": 10.0},
 	&"soup": {"name": "soup", "bulk": 1.0, "group": &"food", "feeds": 8.0},

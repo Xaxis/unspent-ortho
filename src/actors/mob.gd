@@ -12,6 +12,15 @@ extends Node3D
 ## while it is still lit, and only then does it go dark and the body take the
 ## hurt pose: a figure draws no flare on a part that is out.
 
+## An opening older than this when first drawn is not flared (a view catching up).
+const OPEN_FLARE_MS := 200.0
+## A body that is killed folds down flat and over onto its side in this long, so
+## from the camera above a dead machine never stands as it did alive.
+const FOLD_MS := 300.0
+const FOLD_ROLL := 0.55
+const FOLD_FLAT := 0.4
+const FOLD_SINK := 0.12
+
 var kind: StringName = &""
 var pos := Vector2.ZERO
 var alive := true
@@ -36,6 +45,8 @@ var _tilt := Quaternion.IDENTITY
 var _flared_for := 0.0
 ## What the figure was last told about running something down: -1 nothing yet.
 var _hunting := -1
+## The opening (MobState.opened_at) this view has already flared the part for.
+var _opened_for := -INF
 
 
 ## `figure`: a body to draw with instead of FigureModel.create (tests).
@@ -77,6 +88,8 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	if int(hunting) != _hunting:
 		_hunting = int(hunting)
 		model.set_hunting(hunting)
+	# A worker going about its round is not a threat to hush the notebook for.
+	hostile = bool(s.row.get("hostile", true)) and not (s.indifferent() and not s.roused())
 	var ground := _world.height_at(s.pos)
 	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
@@ -93,6 +106,13 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	if flare:
 		_flared_for = s.flare_until
 		model.flare_part()
+	# Its bite spent and missed: the working part flares once, while it is still
+	# lit and the body is in its strike, so the opening is seen and not only timed.
+	var opened := s.alive and s.opened_at != _opened_for and now_ms - s.opened_at < OPEN_FLARE_MS and lit
+	if opened:
+		_opened_for = s.opened_at
+		model.flare_part()
+		flare = true
 	if delta > 0.0:
 		model.animate(delta, s.speed)
 	elif flare:
@@ -117,6 +137,12 @@ func _pose(now_ms: float) -> StringName:
 		return &"strike"
 	if s.part_dark(now_ms):
 		return &"hurt"
+	if s.machine and s.spent(now_ms):
+		# Winding back after a bite it missed: powered down, not on guard.
+		return &"stand"
+	if s.crowded_since >= 0.0 or (now_ms < s.glance_until and s.speed <= 0.2):
+		# A worker held up by someone in its way, or one standing that looked up.
+		return &"alert"
 	match s.mood:
 		MobState.ALERTED:
 			return &"alert"
@@ -157,15 +183,35 @@ func _lean(now_ms: float, delta: float) -> void:
 			target_push = 0.08
 	elif s.alive and s.mood == MobState.ALERTED:
 		target_rise = 0.04
-	if not s.alive:
-		target_rise = -0.08
-	var rate := 1.0 if delta == 0.0 else 1.0 - exp(-30.0 * delta)
 	var fwd := Vector3(cos(s.facing), 0.0, sin(s.facing))
+	if not s.alive:
+		_fold(now_ms, fwd)
+		return
+	var rate := 1.0 if delta == 0.0 else 1.0 - exp(-30.0 * delta)
 	pivot.position = pivot.position.lerp(fwd * target_push + Vector3(0, target_rise, 0), rate)
 	# Tilt about the body's own right axis: positive leans the front down.
 	var right := Vector3(-sin(s.facing), 0.0, cos(s.facing))
 	_tilt = _tilt.slerp(Quaternion(right, -target_tilt), rate).normalized()
 	pivot.quaternion = _tilt
+
+
+## Dead: over onto its side and flat to the ground, eased out over FOLD_MS from
+## the moment it died. Set outright (not eased frame to frame), so a held shot
+## and a slow frame both show where the fold is.
+func _fold(now_ms: float, fwd: Vector3) -> void:
+	var k := folded(now_ms)
+	pivot.position = Vector3(0, -FOLD_SINK * k, 0)
+	_tilt = Quaternion(fwd, FOLD_ROLL * k)
+	pivot.quaternion = _tilt
+	pivot.scale = Vector3(1.0 + 0.1 * k, lerpf(1.0, FOLD_FLAT, k), 1.0 + 0.1 * k)
+
+
+## How far a dead body has folded, 0..1 (0 while alive).
+func folded(now_ms: float) -> float:
+	if state == null or state.alive:
+		return 0.0
+	var t := clampf((now_ms - state.dead_at) / FOLD_MS, 0.0, 1.0)
+	return 1.0 - (1.0 - t) * (1.0 - t)
 
 
 func flash(seconds: float = 0.06) -> void:

@@ -109,14 +109,26 @@ static func make(inv: Inventory, r: Dictionary) -> bool:
 			inv.set_edge(inv.held, mini(inv.edge(inv.held) + HONE_STEP, HONE_CAP))
 		&"reedge":
 			inv.set_edge(inv.held, 10000)
-	var makes: Dictionary = r.get("makes", {})
+	receive(inv, r.get("makes", {}))
+	return true
+
+
+## Makings into the bag, said as made, and a better edge put in hand.
+static func receive(inv: Inventory, makes: Dictionary) -> void:
 	for id: StringName in makes:
 		inv.add(id, makes[id])
 		Events.made.emit(id, makes[id])
 		# You are holding what you just made, if your hands were empty or it does the same work better.
 		if Items.has_edge(id) and _better_in_hand(inv, id):
 			inv.set_held(id)
-	return true
+
+
+## A recipe longer than an instant jump of the clock may be (Survival.MAX_JUMP_MINUTES)
+## made at a station is set going there and finishes in world time while the
+## player walks; make_in then returns true with the goods on the station.
+static func sets_going(r: Dictionary) -> bool:
+	return not r.is_empty() and r.at != &"hand" and float(r.minutes) > Survival.MAX_JUMP_MINUTES \
+			and r.get("builds", &"") == &"" and r.get("action", &"") == &""
 
 
 static func why_not(game: Game, r: Dictionary) -> String:
@@ -124,6 +136,13 @@ static func why_not(game: Game, r: Dictionary) -> String:
 		return "There is no such thing."
 	if r.at != &"hand" and not Survival.stations_near(game).has(r.at):
 		return "Not without a %s." % r.at
+	if Survival.threat_near(game):
+		# Refused, not remarked on: nothing is made with a hunter this close.
+		return Survival.THREAT_LINE
+	if sets_going(r):
+		var job := Survival.job_at(game, Survival.station_prop(game, r.at))
+		if not job.is_empty():
+			return "The %s is working until %s." % [r.at, Survival._clock(float(job.done))]
 	var tool: StringName = r.get("tool", &"")
 	if tool != &"" and not _carries_verb(game.inventory, tool):
 		return "Not without a blade."
@@ -148,14 +167,17 @@ static func make_in(game: Game, r: Dictionary) -> bool:
 	var station: StringName = r.get("builds", &"")
 	if station != &"":
 		return Survival.build(game, station) != null
+	if sets_going(r):
+		return Survival.set_going(game, r) != null
 	var action: StringName = r.get("action", &"")
 	if not make(game.inventory, r):
 		return false
 	if game.player != null and game.player.model != null:
 		game.player.model.set_held(game.inventory.held)
 		game.player.model.play_action(&"work", Survival.WORK_SECONDS)
-	game.clock.skip(r.minutes)
-	Events.time_skipped.emit(r.minutes, &"make")
+	var minutes := minf(float(r.minutes), Survival.MAX_JUMP_MINUTES)
+	game.clock.skip(minutes)
+	Events.time_skipped.emit(minutes, &"make")
 	Events.sfx.emit(action if action != &"" else &"make", game.player.position)
 	return true
 

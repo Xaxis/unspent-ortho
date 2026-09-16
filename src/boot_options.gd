@@ -55,6 +55,8 @@ extends RefCounted
 ##                     they never touch the player's nor each other's) (saves)
 ## --progress=F        --scene=loading: hold the loading page's line at F (0..1) (export)
 ## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)
+## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
+##                     must be survived through real play fails if it is not (fight)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -101,6 +103,7 @@ var load_slot := -1
 var saves := ""
 var progress := 0.4
 var probe := false
+var fail_downed := false
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -161,5 +164,6 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"saves": o.saves = v
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
+			"fail-downed": o.fail_downed = true
 			_: push_warning("unknown option --%s" % k)
 	return o

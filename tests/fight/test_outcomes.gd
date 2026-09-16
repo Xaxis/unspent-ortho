@@ -1,5 +1,5 @@
 extends TestCase
-## How a fight ends: won, away, downed (+180 and the threat's toll, wake at 3,
+## How a fight ends: won, away, downed (+180 and the threat's toll, wake at 6,
 ## coast cleared, no death), carried (+480, woken at the nearest rock face
 ## facing it, lamp burnt out).
 
@@ -17,7 +17,7 @@ func test_downed_when_health_runs_out() -> void:
 	var e := F.first(sim.drain(), &"outcome")
 	eq(e.get("outcome", &""), &"downed")
 	eq((e.get("by") as MobState).kind, &"dog.yard", "knows what put you down")
-	eq(hero.health, FightRules.DOWNED_WAKE_HEALTH, "wakes at 3")
+	eq(hero.health, FightRules.DOWNED_WAKE_HEALTH, "wakes at half health")
 	eq(sim.living(), 0, "mobs cleared")
 	eq(sim.fight_on, false)
 
@@ -30,7 +30,7 @@ func test_downed_costs_180_minutes_and_the_toll() -> void:
 	var r := Outcomes.downed(body, clock, &"dog.yard")
 	near(clock.minutes - before, 180.0 + 25.0, 0.001, "180 and a yard dog's 25")
 	near(float(r.minutes), 205.0, 0.001)
-	eq(body.health, 3)
+	eq(body.health, FightRules.DOWNED_WAKE_HEALTH)
 	gt(body.hurt_until, clock.minutes, "wakes hurt")
 	var bare := WorldClock.new(10.0)
 	Outcomes.downed(Body.new(), bare, &"")
@@ -150,3 +150,11 @@ func test_an_arrest_leaves_you_beside_the_track() -> void:
 	var already := Outcomes.off_the_track(w, q, Vector2(30.5, 10.5))
 	eq(already.moved, false, "already off it: stay")
 	eq(already.pos, Vector2(30.5, 10.5))
+
+
+## Coming round at 3 of 12 left a new player one bite from the next downing for
+## most of a morning; half health, and a fire to mend by, is a way back.
+func test_a_downed_player_wakes_at_half_and_mends_faster_by_a_fire() -> void:
+	eq(FightRules.DOWNED_WAKE_HEALTH, FightRules.HEALTH / 2, "half health")
+	near(FightRules.mend_minutes(false), 60.0, 0.001, "a point an hour out on the land")
+	near(FightRules.mend_minutes(true), 15.0, 0.001, "four an hour by a fire")

@@ -52,19 +52,34 @@ shot 06-fire-laid
 tap craft
 wait 0.6
 shot 07-making-page
+# Charcoal is set going on the fire and cooks in world time; a haft is whittled meanwhile.
 choose charcoal
 tap use
-await made 3
 wait 0.3
-shot 08-charcoal-made
+shot 08-charcoal-on-the-fire
 choose haft
 tap use
 await made 3
+tap pause
+wait 0.4
+# The clock on to when it is done (a jump, like the teleports); standing at the fire it comes off.
+hour 10
+await made 4
+wait 0.3
+shot 08b-charcoal-taken
+tap craft
+wait 0.6
 choose pick_made
 tap use
-await made 3
+wait 0.3
+tap pause
+wait 0.4
+hour 11
+await made 4
 wait 0.3
 shot 09-a-pick-from-plate
+tap craft
+wait 0.6
 tap pause
 wait 0.4
 tap inventory

@@ -21,7 +21,7 @@ func test_a_found_blow_is_full_damage_whatever_its_edge() -> void:
 	eq(b.cuts, false)
 	var made := Blow.for_item(&"knife", 5000)
 	eq(made.wick, 0, "a made tool spends nothing")
-	eq(made.dmg, 1, "half an edge on a knife is a fist")
+	eq(made.dmg, 2, "half an edge on a knife still bites")
 
 
 func test_charges_are_spent_and_run_out() -> void:
@@ -34,17 +34,33 @@ func test_charges_are_spent_and_run_out() -> void:
 	check(FightRules.spend_charges(inv, 0), "a made tool needs none")
 
 
-func test_a_swing_wears_the_knife() -> void:
+func test_a_swing_at_air_keeps_the_edge() -> void:
 	var sim := F.make_sim()
 	var inv := sim.hero.inventory
 	inv.add(&"knife")
 	inv.set_held(&"knife")
 	var before := inv.edge(&"knife")
 	sim.press_swing()
-	F.ms(sim, 16)
-	lt(inv.edge(&"knife"), before, "one use of its edge")
+	F.ms(sim, 500)
+	eq(inv.edge(&"knife"), before, "nothing met, nothing worn")
 	var e := F.first(sim.drain(), &"swing")
 	eq(e.get("dry", true), false)
+
+
+func test_a_swing_that_meets_a_body_wears_the_edge_once() -> void:
+	for side: Vector2 in [Vector2(-1, 0), Vector2(1, 0)]:
+		var sim := F.make_sim()
+		var inv := sim.hero.inventory
+		inv.add(&"knife")
+		inv.set_held(&"knife")
+		# A harvester facing west: from the west the blow reaches, from the east it rings.
+		var m := F.still(sim, &"harvester", Vector2(30.5, 20.5), PI)
+		sim.hero.pos = m.pos + side * (m.radius + sim.hero.radius + 0.3)
+		sim.hero.facing = (m.pos - sim.hero.pos).angle()
+		var before := inv.edge(&"knife")
+		sim.press_swing()
+		F.ms(sim, 300)
+		eq(before - inv.edge(&"knife"), roundi(10000.0 / 90.0), "one use, hit or ring, from %s" % side)
 
 
 func test_a_dull_edge_is_noticed_once() -> void:

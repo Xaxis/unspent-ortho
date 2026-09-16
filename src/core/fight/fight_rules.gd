@@ -47,7 +47,10 @@ const AIM_ASSIST_EXTRA := 1.0
 
 # --- outcomes (design-extract §6.5) ---
 const DOWNED_MINUTES := 180.0
-const DOWNED_WAKE_HEALTH := 3
+## A body that comes round wakes at half health: at 3 (the source) any bite put
+## a new player straight back down, and a point an hour kept them one bite from
+## it for most of a morning.
+const DOWNED_WAKE_HEALTH := 6
 const CARRIED_MINUTES := 480.0
 const CARRIED_RANGE := 300.0
 const AWAY_DISTANCE := 8.0
@@ -55,13 +58,21 @@ const AWAY_MS := 2000
 const NO_PROGRESS_MS := 10000
 ## A mended point of health per this many world minutes.
 const MEND_MINUTES := 60.0
+## By a fire a body mends four times as fast: where to go to get well.
+const MEND_AT_FIRE_MINUTES := 15.0
 ## Wounded condition after a bad end, in world minutes.
 const HURT_MINUTES := 600.0
 
 # --- tools ---
 ## The edge at which a worn tool is noticed, once: Inventory.DULL_EDGE.
 const DULL_EDGE := Inventory.DULL_EDGE
-const DULL_LINE := "The edge is going."
+## One line for one state: the survival package says the same when work dulls it.
+const DULL_LINE := Inventory.DULL_LINE
+## A made edge at least this keen keeps a bite of 2 (when the tool has one):
+## the start knife is half worn, and a knife that hits like a fist taught
+## players that tools do not matter in a fight. Below it the edge is truly
+## going and the blow blends toward bare hands.
+const KEEN_EDGE := 2500
 ## A found weapon's charge, the item its `wick` counts.
 const CHARGE := &"wick"
 
@@ -75,14 +86,34 @@ const MACHINE_LIFE_SCALE := 1.0 / 6.0
 const MOB_IFRAMES_CAP_MS := 360
 ## A blow that reaches a machine's working part stalls it this long (a tell in
 ## progress is lost), at most once in STALL_EVERY_MS: hit, hit, then get out.
-const STALL_MS := 280
+## 600 ms leaves room for the second blow of a knife (420 ms lockout) to land
+## before it is working again; at 280 the second swing met the next bite.
+const STALL_MS := 600
 const STALL_EVERY_MS := 1500
+## Radians per second a machine turns while it is spent after a bite (the
+## bite's cooldown) and while it stands between runs. Slower than a player
+## walking round it at close quarters (3.4 tiles/s at ~1.2 tiles is ~2.8 rad/s),
+## so the working side is reachable in the window and nowhere else.
+const RECOVER_TURN := 1.1
+## A machine's bite that met the player is over this soon: no overcommit to punish.
+const LANDED_RECOVERY_MS := 160
+## Its cooldown after a bite that landed is this, so its next tell
+## starts after the player has control back (knockback stun, then the hurt
+## i-frames): at 400 one landed bite chained into the next before the player
+## could move.
+const LANDED_COOLDOWN_MS := 950
+const PAUSE_TURN := 1.0
 ## A real hit on a machine: the part flares this long, still lit, then goes dark
 ## for PART_DARK_MS. In that order, or the flare is drawn on a part already out.
 const PART_FLARE_MS := 150.0
 const PART_DARK_MS := 240.0
 ## World-layer speeds (pace, dash) were tiles/s for a player walking 5; ours walks 3.4.
 const SPEED_SCALE := 0.68
+
+
+## World minutes to mend one point of health: an hour, or a quarter of one by a fire.
+static func mend_minutes(by_fire: bool) -> float:
+	return MEND_AT_FIRE_MINUTES if by_fire else MEND_MINUTES
 
 
 static func max_health(plated: bool) -> int:
@@ -95,9 +126,13 @@ static func max_wind(braced: bool, move_factor: float) -> float:
 	return (WIND + (BRACE_WIND if braced else 0.0)) * clampf(move_factor, 0.35, 1.0)
 
 
-## max(1, 1 + (dmg - 1) x edge / 10000), whole points.
+## max(1, 1 + (dmg - 1) x edge / 10000), whole points; a tool of 2 or more
+## keeps at least 2 while its edge is KEEN_EDGE or better.
 static func damage_at_edge(tool_dmg: int, edge: int) -> int:
-	return maxi(1, int(floor(1.0 + (tool_dmg - 1) * clampf(edge / 10000.0, 0.0, 1.0))))
+	var d := maxi(1, int(floor(1.0 + (tool_dmg - 1) * clampf(edge / 10000.0, 0.0, 1.0))))
+	if edge >= KEEN_EDGE:
+		d = maxi(d, mini(tool_dmg, 2))
+	return d
 
 
 ## Dodge burst speed `ms` after the press (0 once the burst is over).

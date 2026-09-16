@@ -14,6 +14,8 @@ const HITSTOP_KILL := 0.08
 const WAKE_SECONDS := 1.6
 ## Seconds between the struggle's marks while held.
 const STRUGGLE_BEAT := 0.4
+## Said the first time in a game a worker warns someone holding it up.
+const CROWD_LINE := "It will not go round you. Step out of its path."
 
 var sim: FightSim
 var dodge_input := DodgeInput.new()
@@ -28,6 +30,7 @@ var _land_at := -1.0
 var _held := false
 ## Where a held moment keeps the camera (the game points it at the player every frame).
 var _focus := Vector3.ZERO
+var _crowd_told := false
 
 
 func setup(g: Game) -> void:
@@ -139,7 +142,8 @@ func _landing() -> void:
 	MobFx.puff(_fx_parent(), _at3(hero.pos + hero.dodge_dir * 0.15), hero.dodge_dir, _dust_colour(hero.pos), 0.5, int(sim.now) + 2)
 
 
-## One point of health back per hour of the world's clock, counted from the last hurt.
+## One point of health back per hour of the world's clock, counted from the last
+## hurt; four an hour by a fire.
 func _mend() -> void:
 	var b := game.body
 	if b.health < _last_health:
@@ -148,8 +152,9 @@ func _mend() -> void:
 	if b.health >= b.max_health:
 		_mend_from = game.clock.minutes
 		return
-	while game.clock.minutes - _mend_from >= FightRules.MEND_MINUTES and b.health < b.max_health:
-		_mend_from += FightRules.MEND_MINUTES
+	var per := FightRules.mend_minutes(Survival.fire_near(game) != null)
+	while game.clock.minutes - _mend_from >= per and b.health < b.max_health:
+		_mend_from += per
 		b.health += 1
 	_last_health = b.health
 
@@ -213,8 +218,34 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"swing", player.position)
 				if b != null:
 					player.model.play_action(&"swing", b.committed() / 1000.0)
-				if e.get("dulled", false):
-					Events.message.emit(FightRules.DULL_LINE)
+			&"dulled":
+				Events.message.emit(FightRules.DULL_LINE)
+			&"opened":
+				# Its bite went past: the drive lets go audibly and the part catches the
+				# light, so the window to strike is heard and seen, not only timed.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"loose", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.55)
+			&"crowded":
+				# A worker stopped by someone standing in its way: it says so before it acts.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"alert", _at3(m.pos))
+				if not _crowd_told:
+					# The first time in a game, said as it stops, with the time to act on it.
+					_crowd_told = true
+					Events.message.emit(CROWD_LINE)
+			&"crowd_warning":
+				# Half way to taking it as interference: its part flares and a ring goes out from it.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"alert", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.7)
+				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 0.9, 0.4)
+				if m.node is Mob:
+					(m.node as Mob).flash(0.08)
+			&"disturbed":
+				var m: MobState = e.mob
+				Events.sfx.emit(&"second_act", _at3(m.pos))
+				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.7)
 			&"whiff":
 				Events.sfx.emit(&"whiff", player.position)
 			&"dodge":
@@ -353,6 +384,10 @@ func _on_killed(e: Dictionary) -> void:
 	Events.killed.emit(m.kind, at)
 	if m.machine:
 		Events.sfx.emit(&"machine_down", at)
+		# Its light goes out with a click and a puff of its own smoke off the part:
+		# heard and seen apart from the blow that did it.
+		Events.sfx.emit(&"lamp_off", _part_at(m))
+		MobFx.puff(fx, _part_at(m), Vector2.ZERO, Palette.STONE[3], 0.7, m.id + 11)
 	_stop(HITSTOP_KILL)
 	game.camera.shake(0.1, 0.22)
 	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)
@@ -390,6 +425,9 @@ func _on_outcome(e: Dictionary) -> void:
 	var player := game.player
 	var hero := sim.hero
 	Events.fight_ended.emit(outcome)
+	if game.options.fail_downed and (outcome == &"downed" or outcome == &"carried"):
+		printerr("ERROR fight: the player was %s (--fail-downed)" % outcome)
+		get_tree().quit(1)
 	match outcome:
 		&"downed":
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")

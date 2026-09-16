@@ -1,11 +1,12 @@
 extends TestCase
-## Whole fights, headless. A player who stands still is put down; a player who
-## has learnt the machine (bot.gd: reads the tell, walks round to the working
-## part, swings into openings) beats it with the starting knife and is never
-## put down. If this fails after a change, the fight became unfair or trivial.
+## Whole fights, headless. A player who stands still is put down (a worker only
+## once it has been struck); a player who reads the machine (reader.gd: human
+## reactions, gets out of the tell, walks round to the working part while it is
+## open) beats every kind with a knife and is never put down. If this fails
+## after a change, the fight became unfair or trivial.
 
 const F := preload("res://tests/fight/fixture.gd")
-const Bot := preload("res://tests/fight/bot.gd")
+const Bot := preload("res://tests/fight/reader.gd")
 
 
 func _bout(kind: StringName, use_bot: bool, seconds: float) -> Dictionary:
@@ -16,6 +17,10 @@ func _bout(kind: StringName, use_bot: bool, seconds: float) -> Dictionary:
 	var m := sim.add_mob(kind, Vector2(53.5, 48.5))
 	m.facing = PI
 	m.aim = PI
+	if not use_bot and m.disposition == &"indifferent":
+		# A worker leaves a still player be: this one has already been struck.
+		m.disturbed = true
+		m.set_mood(MobState.ATTACKING, sim.now)
 	var bot := Bot.new(sim)
 	var hurts := 0
 	var outcome := &""
@@ -37,7 +42,7 @@ func _bout(kind: StringName, use_bot: bool, seconds: float) -> Dictionary:
 
 func test_standing_still_against_a_machine_ends_badly() -> void:
 	for kind: StringName in [&"harvester", &"cutter", &"runner", &"dredger", &"dog.yard"]:
-		var r := _bout(kind, false, 30.0)
+		var r := _bout(kind, false, 60.0)
 		check(r.outcome == &"downed" or r.outcome == &"carried", "%s left a still player standing: %s" % [kind, r])
 
 

@@ -1,0 +1,148 @@
+extends TestCase
+## The first hour guide: a goal that follows what the player has and lacks, key
+## hints that fit the moment and retire once used, and a running game that says
+## the goal at wake and the keys after it, a few seconds apart.
+
+const Fx := preload("res://tests/survival/fixture.gd")
+
+
+func test_the_goal_walks_the_way_in() -> void:
+	var g := Fx.flat()
+	g.inventory.remove(&"knife")
+	g.inventory.add(&"knife")
+	check(Guide.goal(g).contains("three driftwood and two stones"), "first a fire, and what it takes: %s" % Guide.goal(g))
+	g.inventory.add(&"driftwood", 3)
+	g.inventory.add(&"stone", 2)
+	check(Guide.goal(g).contains("lay it"), "with the makings, lay it: %s" % Guide.goal(g))
+	Survival.build(g, &"fire", true)
+	check(Guide.goal(g).contains("Charcoal"), "a fire: charcoal next: %s" % Guide.goal(g))
+	g.inventory.add(&"charcoal", 1)
+	check(Guide.goal(g).contains("haft"), "then a haft: %s" % Guide.goal(g))
+	g.inventory.add(&"haft", 1)
+	check(Guide.goal(g).contains("tip"), "then plate: %s" % Guide.goal(g))
+	g.inventory.add(&"scrap", 1)
+	check(Guide.goal(g).contains("pick"), "then the pick: %s" % Guide.goal(g))
+	g.inventory.add(&"pick", 1)
+	check(Guide.goal(g).contains("ore"), "then the ore: %s" % Guide.goal(g))
+	g.body.fed_until = g.clock.minutes - 8.0 * 60.0
+	check(Guide.goal(g).contains("Eat"), "hunger comes first: %s" % Guide.goal(g))
+	Fx.done(g)
+
+
+func test_hints_fit_the_moment_and_stay_retired() -> void:
+	var g := Fx.flat()
+	var retired := {}
+	eq(Guide.hint_for(g, retired).get("id", &""), &"walk", "at wake: the walking keys")
+	var drift := Fx.put(g, PropKind.DRIFTWOOD, Vector2(0.9, 0))
+	Fx.face(g, drift)
+	eq(Guide.hint_for(g, retired).get("id", &""), &"take", "facing something: E")
+	retired[&"take"] = true
+	eq(Guide.hint_for(g, retired).get("id", &""), &"walk", "used once, it is not said again")
+	g.clock.skip(13.0 * 60.0)
+	g.inventory.add(&"lamp")
+	eq(Guide.hint_for(g, retired).get("id", &""), &"lamp", "night asks for the lamp")
+	g.body.lamp_lit = true
+	check(Guide.hint_for(g, retired).get("id", &"") != &"lamp", "lit, it does not")
+	Fx.done(g)
+
+
+func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	check(guide != null, "the guide system loads")
+	if guide == null:
+		g.free()
+		return
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	guide.call("_process", 1.0)
+	eq(said.size(), 0, "not in the first second")
+	guide.call("_process", 1.0)
+	eq(said.size(), 1, "then the goal")
+	if said.size() >= 1:
+		eq(said[0], Guide.goal(g), "the goal line")
+	guide.call("_process", 1.0)
+	eq(said.size(), 1, "and the next waits its turn")
+	guide.call("_process", 5.0)
+	eq(said.size(), 2, "a hint after")
+	var retired: Dictionary = guide.get("retired")
+	check(retired.size() >= 1, "said hints retire")
+	Events.took.emit(&"driftwood", 2)
+	check(retired.has(&"take"), "a take retires the take hint")
+	Events.message.disconnect(listen)
+	g.queue_free()
+	await frames(1)
+
+
+func test_the_first_kill_of_a_game_is_said_once() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	Events.killed.emit(&"gulls", Vector3.ZERO)
+	eq(said.size(), 0, "a gull is not a fight won")
+	Events.killed.emit(&"runner", Vector3.ZERO)
+	eq(said, [load("res://src/systems/58_guide.gd").KILL_LINE] as Array[String], "the first kill is said")
+	Events.killed.emit(&"runner", Vector3.ZERO)
+	eq(said.size(), 1, "and only the first")
+	Events.message.disconnect(listen)
+	g.queue_free()
+	await frames(1)
+
+
+## The goal says where: a fire in a village is the village fire, the one the
+## player laid is theirs.
+func test_the_goal_names_the_fire_it_sends_the_player_to() -> void:
+	var g := Fx.flat()
+	g.world.villages.append({"pos": g.player.pos + Vector2(4, 0), "country": Country.COAST, "name": "v"})
+	var village_fire := Fx.put(g, PropKind.FIRE, Vector2(5, 0))
+	check(Guide.goal(g).contains("at the village fire"), "the village's own: %s" % Guide.goal(g))
+	eq(Guide.fire_name(g, village_fire), "the village fire")
+	g.world.villages.clear()
+	g.world.depleted[village_fire.id] = INF
+	check(Guide.goal(g).contains("A fire before dark"), "no fire near: lay one: %s" % Guide.goal(g))
+	var mine := Survival.build(g, &"fire", true)
+	check(Guide.goal(g).contains("at your fire"), "one laid: %s" % Guide.goal(g))
+	eq(Guide.fire_name(g, mine), "your fire")
+	check(Guide.HINTS[&"worker"][0].contains("out of its path"), "the worker hint says what disturbs one")
+	Fx.done(g)
+
+
+## After a fight the goal comes back; after coming round from a downing, the
+## goal once up, and no key hint until the hours have sunk in.
+func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	var said: Array[String] = []
+	var listen := func(t: String) -> void: said.append(t)
+	Events.message.connect(listen)
+	guide.call("_process", 2.0)
+	eq(said.size(), 1, "the goal at wake")
+	said.clear()
+	Events.fight_ended.emit(&"downed")
+	guide.call("_process", 1.0)
+	eq(said.size(), 0, "nothing while the body lies there")
+	guide.call("_process", 1.5)
+	eq(said, [Guide.goal(g)] as Array[String], "up: the goal again")
+	said.clear()
+	for i in 8:
+		guide.call("_process", 1.0)
+	eq(said.size(), 0, "no key hint in the first seconds after coming round: %s" % [said])
+	for i in 8:
+		guide.call("_process", 1.0)
+	gt(float(said.size()), 0.0, "then the hints resume")
+	said.clear()
+	Events.fight_ended.emit(&"won")
+	for i in 3:
+		guide.call("_process", 1.0)
+	check(said.has(Guide.goal(g)), "a fight won: the goal again: %s" % [said])
+	Events.message.disconnect(listen)
+	g.queue_free()
+	await frames(1)

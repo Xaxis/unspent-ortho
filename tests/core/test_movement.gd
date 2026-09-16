@@ -46,6 +46,56 @@ func test_never_enters_deep_water_or_crosses_a_cliff() -> void:
 	p.free()
 
 
+static func _field(props: Array[Vector2], kind: int = PropKind.BROADLEAF) -> WorldQuery:
+	var w := WorldData.new(3, 48)
+	for i in 48 * 48:
+		w.level[i] = 2
+		w.ground[i] = Ground.GRASS
+		w.country[i] = Country.COAST
+	var q := WorldQuery.new(w)
+	for p in props:
+		var prop := WorldProp.new(w.props.size(), kind, p, 0.0, 1.0)
+		w.props.append(prop)
+		q.add_prop(prop)
+	return q
+
+
+## The playtest's pin: a run held north-east into a broadleaf at 211.29,400.21
+## from 210.74,400.55 moved nothing for 36 seconds.
+func test_a_body_pushed_diagonally_into_a_trunk_slides_round_it() -> void:
+	var q := _field([Vector2(24.55, 23.66)])
+	var p := Vector2(24.0, 24.0)
+	var dir := Vector2(1, -1).normalized()
+	var start := p
+	for i in 120:
+		p = q.move_body(p, dir * 5.4 / 60.0, Tuning.PLAYER_RADIUS)
+	gt(p.distance_to(start), 4.0, "two seconds of running got past the trunk")
+	gt((p - start).dot(dir), 3.0, "and on the way it was going")
+	var trunk: WorldProp = q.world.props[0]
+	gt(p.distance_to(trunk.pos), trunk.solid + Tuning.PLAYER_RADIUS - 0.01, "never inside it")
+
+
+func test_head_on_into_a_boulder_still_stops() -> void:
+	var q := _field([Vector2(26.0, 24.0)], PropKind.BOULDER)
+	var p := Vector2(24.0, 24.0)
+	for i in 120:
+		p = q.move_body(p, Vector2(3.4 / 60.0, 0), Tuning.PLAYER_RADIUS)
+	lt(absf(p.y - 24.0), 0.05, "square on, a body is not thrown sideways")
+	var rock: WorldProp = q.world.props[0]
+	gt(p.distance_to(rock.pos), rock.solid + Tuning.PLAYER_RADIUS - 0.01, "and stays outside it")
+
+
+func test_a_body_slides_along_a_cliff_it_walks_into_at_an_angle() -> void:
+	var q := _field([])
+	for y in 48:
+		q.world.level[y * 48 + 30] = 6
+	var p := Vector2(28.5, 20.0)
+	for i in 60:
+		p = q.move_body(p, Vector2(1, 1).normalized() * 3.4 / 60.0, Tuning.PLAYER_RADIUS)
+	gt(p.y - 20.0, 1.5, "slid along the wall")
+	lt(p.x, 30.0, "without climbing it")
+
+
 func test_screen_up_is_away_from_the_camera() -> void:
 	var up := Player.screen_to_world(Vector2(0, -1), 45.0)
 	check(up.x < 0.0 and up.y < 0.0, "screen up should be north-west, got %s" % up)

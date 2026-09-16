@@ -86,7 +86,25 @@ func test_one_hit_per_target_per_blow() -> void:
 	eq(F.count(r.events, &"hit"), 1, "one blow, one hit")
 
 
-func test_a_half_worn_knife_does_what_fists_do() -> void:
-	eq(FightRules.damage_at_edge(2, 5000), 1, "half edge rounds to 1")
+func test_a_half_worn_knife_keeps_its_bite_until_it_is_truly_dull() -> void:
+	eq(FightRules.damage_at_edge(2, 5000), 2, "half an edge still bites")
 	eq(FightRules.damage_at_edge(2, 10000), 2)
+	eq(FightRules.damage_at_edge(2, 2400), 1, "past keen, a knife is a fist")
+	eq(FightRules.damage_at_edge(4, 5000), 2, "the blend still runs for bigger tools")
 	eq(FightRules.damage_at_edge(4, 0), 1, "a dull edge still does 1")
+
+
+func test_a_guarded_part_reaches_only_while_the_machine_is_open() -> void:
+	var sim := F.make_sim()
+	var h := F.still(sim, &"harvester", Vector2(30.5, 20.5), PI)
+	var front := h.pos + Vector2(-(h.radius + sim.hero.radius + 0.3), 0)
+	check(sim.reaches_part(h, front), "a worker on its round: its blades take a blow")
+	h.disturbed = true
+	h.set_mood(MobState.ATTACKING, sim.now)
+	check(not sim.reaches_part(h, front), "roused, turning blades throw a blow off")
+	h.start_blow(h.bite, sim.now)
+	check(not sim.reaches_part(h, front), "nor in its tell")
+	F.ms(sim, h.bite.windup + h.bite.active + 16)
+	check(h.spent(sim.now), "spent after the bite")
+	check(sim.reaches_part(h, front), "spent, the jammed blades are open")
+	check(not sim.reaches_part(h, h.pos + Vector2(2.0, 0)), "and its back is still plate")

@@ -1,0 +1,147 @@
+# The first hour, felt through the real keys on a new seed-1 game (M1.5):
+# wake and read the goal, a worker on its round seen across the fields,
+# gather, lay a fire, set charcoal going and walk off while it cooks, a pick
+# before noon, the first meeting won by reading the runner's tell and
+# striking its working side, a slide round a tree, and something put down and
+# taken back. tours/wild.tour is the same first minutes with nothing scripted.
+#   TOUR_TIMEOUT=420 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1
+# (--give brings the tip's plate and tops the wood up, as core_loop does.)
+#
+# Wake: the guide says what to want first.
+wait 2.4
+shot 01-wake-the-goal
+# Up in the coast fields in the first minute: a worker crosses on its round,
+# well off, and goes by. (No hunter comes out this early: the first meeting
+# waits a minute or so into the game.)
+at 130,370
+wait 1.0
+wait 6
+shot 01b-a-worker-on-its-round
+wait 5
+shot 01c-still-on-its-round
+# The scripted gathering is not a random fight: nothing comes until the fields again.
+coast calm
+# Driftwood on the strand below the village.
+at 198.90,435.58
+walk -0.92,0.38 0.08
+press use 0.1
+await took 3
+wait 0.3
+shot 02-gathered
+at 209.63,435.70
+walk 0.71,0.71 0.08
+press use 0.1
+await took 3
+# A loose stone off each of two boulders.
+at 189.54,440.34
+walk -1,0 0.08
+press use 0.1
+await took 6
+at 190.90,417.27
+walk 0.38,-0.92 0.08
+press use 0.1
+await took 6
+# Open ground west of the village: the first press asks, the second lays the fire.
+at 188.5,428.5
+walk -1,0 0.08
+press use 0.1
+wait 0.3
+press use 0.1
+await made 4
+wait 0.5
+shot 03-fire-laid
+# Charcoal is set going on the fire, and a haft whittled while it starts.
+tap craft
+wait 0.6
+choose charcoal
+tap use
+wait 0.4
+choose haft
+tap use
+await made 3
+tap pause
+wait 0.4
+shot 04-charcoal-on-the-fire
+# Walk off along the strand while it cooks: the clock runs, the fire works.
+walk 1,1 2.5
+wait 1.0
+shot 05-walking-while-it-cooks
+# Back at the fire when it is done: it comes off into the creel.
+at 188.5,428.5
+walk -1,0 0.05
+await made 60
+wait 0.4
+shot 06-charcoal-taken
+# The pick, set going the same way; waited out by the fire.
+tap craft
+wait 0.6
+choose pick_made
+tap use
+wait 0.3
+tap pause
+await made 70
+wait 0.4
+shot 07-a-pick-before-noon
+tap inventory
+wait 0.6
+shot 08-carrying-the-pick
+tap inventory
+wait 0.4
+# Out to the coast fields, with the knife back in hand for the meeting.
+at 130,370
+zoom 15
+wait 1.0
+coast wild
+# The game is past its first minute: the first meeting comes out, a lone
+# runner a fair walk off, and makes for the player once it has seen them.
+zoom 11
+await tell 30
+shot 11-runner-tell
+# Read the tell: out of its bite by going round its flank while it is committed,
+# to its back, where the drive is, and strike as it stands spent.
+walkto part 1.3
+shot 12-round-to-its-back
+tap swing
+try 8
+await hit 1.0
+end
+wait 0.05
+shot 13-struck-its-working-side
+# Stalled by the blow, it takes a second.
+tap swing
+wait 0.6
+# Each bite after the same way: the tell, round it, strike, strike.
+try 10
+await tell 8
+walkto part 1.3
+tap swing
+await hit 1.0
+end
+tap swing
+wait 0.6
+try 10
+await tell 8
+walkto part 1.3
+tap swing
+await killed 1.0
+end
+wait 0.6
+shot 14-the-runner-down
+# Sliding: a run held north-east into a broadleaf goes round its trunk.
+coast calm
+zoom 9
+at 119.64,358.00
+wait 0.6
+shot 15-before-the-tree
+walk 1,0 1.4 run
+wait 0.2
+shot 16-slid-round-the-tree
+# Something put down: hold X, and the knife in hand is left on a heap (the
+# pick is carried, so it is not the only blade). E takes it back.
+press drop 0.8
+wait 0.3
+shot 17-put-down
+press use 0.1
+await took 2
+wait 0.3
+shot 18-taken-back

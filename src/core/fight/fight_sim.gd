@@ -14,10 +14,23 @@ extends RefCounted
 ## sounds, effects and world consequences. Types:
 ##   swing whiff dodge evaded pull loose grip hit(ring) hurt killed second_act
 ##   alerted called snatch filed removed fight_started outcome
+##   opened (a machine's bite is spent: its working part is open), dulled (a
+##   blow that met a body wore the edge past dull), noticed (an indifferent
+##   body looked up), crowded (the player holds a worker up on its round),
+##   crowd_warning (half way to it taking that as interference), disturbed
 
 const NAV_EVERY_MS := 240.0
 ## Tiles/s at most that a standing body eases the player out of itself.
 const SHOULDER_SPEED := 4.0
+## An indifferent worker the player holds up on its round stops and faces them;
+## this long held up and it takes it as interference. It warns at half. Looking
+## at a worker, walking beside its round or past it is never interference.
+const CROWD_MS := 3000.0
+## Tiles ahead of its hull, along its round, that count as its way.
+const CROWD_AHEAD := 1.1
+## How long a body that noticed the player only looks up, and how long before it looks again.
+const GLANCE_MS := 900.0
+const GLANCE_AGAIN_MS := 5000.0
 
 var world: WorldData
 var query: WorldQuery
@@ -41,6 +54,10 @@ var fight_kills := 0
 var last_outcome: StringName = &""
 ## World minutes when a dart last reached the player (Coast keeps darts away after).
 var last_meeting_minutes := -INF
+## Sim ms the last fight ended (any outcome), and the last time the player was
+## downed or carried off: the coast keeps new hunters away from a hurt player.
+var last_fight_end_at := -INF
+var last_downed_at := -INF
 var _far_since := -1.0
 var _nav_at := -100000.0
 var _far_best := INF
@@ -50,6 +67,8 @@ var _carry := 0.0
 var _swing_until := -1.0
 var _dodge_until := -1.0
 var _whiff_checked := true
+## The current swing has already worn the edge (once, on the first body it meets).
+var _blow_wore := true
 
 
 func _init(w: WorldData, q: WorldQuery, h: Hero = null, m: Moment = null) -> void:
@@ -167,8 +186,9 @@ func _swing() -> void:
 		b.dry()
 	hero.start_swing(b, now)
 	_whiff_checked = false
-	var dulled := FightRules.wear(inv, held, 1)
-	emit(&"swing", {"item": held, "dry": dry, "dulled": dulled})
+	# The edge wears where it meets something: a swing at air costs wind, not edge.
+	_blow_wore = false
+	emit(&"swing", {"item": held, "dry": dry})
 
 
 func _dodge() -> void:
@@ -209,11 +229,18 @@ func _beat() -> void:
 		var beats := int((now - m.mood_at) / FightRules.BEAT_MS)
 		match m.mood:
 			MobState.IDLE, MobState.WORKING:
-				if noticed:
+				if m.indifferent():
+					_crowding(m)
+					if noticed and now >= m.glance_until + GLANCE_AGAIN_MS:
+						# It sees you and goes on with its work: looked at, not hunted.
+						m.glance_until = now + GLANCE_MS
+						emit(&"noticed", {"mob": m})
+				elif noticed:
 					m.set_mood(MobState.ALERTED, now)
 					emit(&"alerted", {"mob": m})
 			MobState.ALERTED:
 				if m.lost_beats >= int(m.stat("forget", 20)):
+					m.disturbed = false
 					m.set_mood(MobState.WORKING if m.approach == &"errand" else MobState.IDLE, now)
 				elif beats >= int(m.stat("ready", 2)):
 					if m.approach == &"errand":
@@ -222,6 +249,7 @@ func _beat() -> void:
 						m.set_mood(MobState.CHASING, now)
 			MobState.CHASING:
 				if m.lost_beats >= int(m.stat("forget", 20)):
+					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
 					m.flee_home = true
@@ -230,6 +258,7 @@ func _beat() -> void:
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
 				if m.lost_beats >= int(m.stat("forget", 20)):
+					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif d > reach + 4.0 and not m.committed(now):
 					m.charging = false
@@ -254,6 +283,44 @@ func _beat() -> void:
 						m.set_mood(MobState.IDLE, now)
 
 
+## An indifferent worker on its round with the player planted on its path: it
+## stops (the brain) and, held up past CROWD_MS, takes it as interference and
+## turns on them. The way is measured along the round it walks, never along
+## where it happens to face, so a worker that looks at someone does not put
+## them in its way by looking. Errands have their own way of coming over you.
+func _crowding(m: MobState) -> void:
+	if m.approach == &"errand" or m.approach == &"dart":
+		return
+	var in_way := in_way_of(m, hero.pos, hero.radius)
+	if not in_way or m.speed > 0.2:
+		if not in_way and m.crowded_since >= 0.0:
+			# Out of its path: it goes on, and the next time starts from nothing.
+			m.crowded_since = -1.0
+			m.crowd_warned = false
+		return
+	if m.crowded_since < 0.0:
+		m.crowded_since = now
+		emit(&"crowded", {"mob": m})
+	elif now - m.crowded_since >= CROWD_MS:
+		_wake(m)
+	elif not m.crowd_warned and now - m.crowded_since >= CROWD_MS * 0.5:
+		m.crowd_warned = true
+		emit(&"crowd_warning", {"mob": m})
+
+
+## Is a body of radius `r` at `p` on this worker's path: ahead of its hull along
+## the round it walks, within CROWD_AHEAD, and close enough across the path that
+## the hull would meet it.
+static func in_way_of(m: MobState, p: Vector2, r: float) -> bool:
+	var dir := m.path_dir()
+	if dir == Vector2.ZERO:
+		return false
+	var off := p - m.pos
+	var along := off.dot(dir)
+	var across := absf(off.dot(dir.orthogonal()))
+	return along > 0.0 and along < m.radius + r + CROWD_AHEAD and across < m.radius + r * 0.5
+
+
 ## An errand that works by eye has registered the player: every machine within
 ## its racket that is not already roused is told where the player stood.
 func _call(watcher: MobState) -> void:
@@ -264,6 +331,9 @@ func _call(watcher: MobState) -> void:
 	var told := 0
 	for m in mobs:
 		if m == watcher or not m.alive or m.removed or m.approach == &"errand" or not m.machine:
+			continue
+		# Workers go on working: a report sends the hunters, not the harvest.
+		if m.indifferent():
 			continue
 		if m.mood != MobState.IDLE:
 			continue
@@ -340,6 +410,13 @@ func _shouldered(dt: float) -> Vector2:
 			push += side * SHOULDER_SPEED * 1.5
 		else:
 			push += dir * minf(inside / dt, SHOULDER_SPEED)
+			if hero.move.length() > 0.1 and hero.move.dot(-dir) > 0.2:
+				# Walking into a standing body slides round it, as round a trunk: the
+				# way to a machine's back goes past its flank, not dead into its front.
+				var round := dir.orthogonal()
+				if round.dot(hero.move) < 0.0:
+					round = -round
+				push += round * SHOULDER_SPEED * 0.9
 	return push
 
 
@@ -349,20 +426,33 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if not m.alive:
 		m.speed = 0.0
 		return
-	if not m.committed(now):
-		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate * dt)
+	if not m.committed(now) and not m.stunned(now):
+		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want
 	if m.stunned(now):
 		v = Vector2.ZERO
 	else:
 		# Close bites read as a tell and a lunge; charges come on through them.
 		var phase := m.blow_phase(now)
+		if m.approach == &"charge" and phase == &"windup":
+			# A run that tells from close in eases so the front arrives as the blow
+			# goes live; at full speed it ran clean past a body beside its row.
+			var fwd := Vector2.from_angle(m.facing)
+			var ahead := (hero.pos - m.pos).dot(fwd)
+			if ahead > 0.0:
+				var stop := m.radius + hero.radius + m.blow.reach * 0.6
+				var left_s := maxf(0.016, (m.blow_at + m.blow.windup - now) / 1000.0)
+				v = v.limit_length(maxf(0.0, ahead - stop) / left_s)
 		if m.approach != &"charge" and phase != &"":
 			match phase:
 				&"windup": v *= 0.2
 				# A small follow-through: enough to see, never enough to outreach its box.
 				&"active": v = Vector2.from_angle(m.facing) * m.quick * 0.5
-				&"recovery": v *= 0.3
+				&"recovery":
+					# The overcommit: a machine's lunge carries it on past where it bit,
+					# its box dead, so the body it missed ends up at its flank or back.
+					var over: float = m.row.get("overrun", 0.0) if m.landed_at != m.blow_at else 0.0
+					v = Vector2.from_angle(m.facing) * m.quick * over if over > 0.0 else v * 0.3
 	v += m.throw_velocity(now)
 	# Hostiles keep a tile apart from each other; never from the player.
 	for o in mobs:
@@ -430,7 +520,8 @@ func _land(t0: float, t1: float) -> void:
 			if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, m.pos, m.radius):
 				continue
 			hero.struck[m.id] = true
-			if not FightRules.reaches(m.part, m.pos, m.facing, hero.pos, b.cuts):
+			_wear_on_contact()
+			if not reaches_part(m, hero.pos, b.cuts):
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
 				emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": true, "at": m.pos})
 				_wake(m)
@@ -443,6 +534,11 @@ func _land(t0: float, t1: float) -> void:
 		if hero.struck.is_empty():
 			emit(&"whiff", {})
 	for m in mobs:
+		if m.alive and not m.removed and m.blow != null and m.machine and m.landed_at != m.blow_at:
+			var spent_at := m.blow_at + m.blow.windup + m.blow.active
+			if t0 < spent_at and spent_at <= t1:
+				m.opened_at = spent_at
+				emit(&"opened", {"mob": m})
 		if not m.alive or m.removed or m.blow == null or m.struck.has(&"hero"):
 			continue
 		if not m.blow.live_in(m.blow_at, t0, t1):
@@ -450,6 +546,8 @@ func _land(t0: float, t1: float) -> void:
 		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
 		m.struck[&"hero"] = true
+		if not hero.invulnerable(now):
+			_landed(m)
 		if hero.invulnerable(now):
 			# Slipped: a blow met first inside the window is spent. The source let the
 			# rest of the live window land, which made a dodge read right into a hit
@@ -462,6 +560,45 @@ func _land(t0: float, t1: float) -> void:
 				emit(&"grip", {"by": m, "grip": hero.grip})
 			continue
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
+
+
+## Does a blow from `from` reach this body's working part now? The plate rule,
+## and for a `guarded` part (a harvester's blade row, its bite side) only while
+## the machine is open: spent after a bite, stopped by a blow, or not yet
+## roused. A turning blade row throws a blow off like plate, so walking in
+## swinging at the front rings, and the opening is the skill.
+func reaches_part(m: MobState, from: Vector2, cuts: bool = false) -> bool:
+	if not FightRules.reaches(m.part, m.pos, m.facing, from, cuts):
+		return false
+	if cuts or not m.row.get("guarded", false):
+		return true
+	return m.spent(now) or m.stunned(now) or m.indifferent() or not m.roused()
+
+
+## A machine's bite met the player: it has what it came for, so it neither
+## overcommits nor stands spent. The opening belongs to whoever got out of the
+## way, not to whoever took the bite; but its next tell waits until the one it
+## bit is on their feet again (LANDED_COOLDOWN_MS), so one bite is one bite.
+func _landed(m: MobState) -> void:
+	if not m.machine or m.blow == null:
+		return
+	var b := m.blow.copy()
+	b.recovery = mini(b.recovery, FightRules.LANDED_RECOVERY_MS)
+	b.cooldown = FightRules.LANDED_COOLDOWN_MS
+	m.blow = b
+	m.landed_at = m.blow_at
+
+
+## The swing met a body (a hit or a ring): one use of the edge, once per swing.
+func _wear_on_contact() -> void:
+	if _blow_wore:
+		return
+	_blow_wore = true
+	var inv := hero.inventory
+	if inv == null or inv.held == &"":
+		return
+	if FightRules.wear(inv, inv.held, 1):
+		emit(&"dulled", {"item": inv.held})
 
 
 func _hurt_mob(m: MobState, b: Blow) -> void:
@@ -510,6 +647,12 @@ func _wake(m: MobState) -> void:
 	m.last_seen = hero.pos
 	m.lost_beats = 0
 	m.calm_until = 0.0
+	m.crowded_since = -1.0
+	m.crowd_warned = false
+	m.via = Vector2.INF
+	if m.disposition == &"indifferent" and not m.disturbed:
+		m.disturbed = true
+		emit(&"disturbed", {"mob": m})
 	if m.mood == MobState.IDLE or m.mood == MobState.WORKING or m.mood == MobState.ALERTED:
 		if m.approach == &"errand":
 			m.set_mood(MobState.ALERTED, now)
@@ -699,6 +842,10 @@ func _begin() -> void:
 	for m in mobs:
 		if _pressing(m):
 			fight_mobs[m.id] = m
+			# The first blow in a working part of a new fight always stops the work
+			# (unless that blow is the one that started the fight).
+			if now - m.last_hit_at > FightRules.STALL_EVERY_MS:
+				m.stall_ready_at = 0.0
 	_far_since = -1.0
 	_far_best = INF
 	_best_d = INF
@@ -709,6 +856,9 @@ func _begin() -> void:
 func _end(outcome: StringName) -> void:
 	fight_on = false
 	last_outcome = outcome
+	last_fight_end_at = now
+	if outcome == &"downed" or outcome == &"carried":
+		last_downed_at = now
 	var by := hero.last_hit_by as MobState
 	if outcome == &"carried":
 		by = hero.holder as MobState
@@ -731,6 +881,7 @@ func _end(outcome: StringName) -> void:
 				m.charging = false
 				m.closing_since = -1.0
 				m.calm_until = now + 6000.0
+				m.disturbed = false
 				var nerve: int = m.stat("nerve", 100)
 				if nerve < 100 and m.health < m.max_health:
 					m.set_mood(MobState.FLEEING, now)

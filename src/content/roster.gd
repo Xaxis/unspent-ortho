@@ -32,6 +32,14 @@ class_name Roster
 ##                           day_min, hours [from, to), weather[], calm, rise,
 ##                           near_props[] (PropKind names within 4 tiles), wet
 ##   keeps_to: Array         ground names it may move on (a dredger keeps to water)
+##   disposition: StringName hostile (default) | indifferent | observant | wary (VISION §2):
+##                           an indifferent worker goes about its round until struck
+##                           or stood in the way of; a hostile one hunts
+##   overrun: float          a machine's bite carries it on through its recovery at
+##                           quick x this (the overcommit that shows its back)
+##   recover_turn: float     rad/s it turns while spent after a bite (FightRules.RECOVER_TURN)
+##   guarded: bool           its (front) part throws a blow off like plate unless the
+##                           machine is open: spent, stalled or not roused (FightSim.reaches_part)
 ##   through: bool           moves through the player's body (charges, sweepers)
 ##   sight_only: bool        notices by eye alone
 
@@ -45,7 +53,7 @@ const DEFS := {
 		"model": &"watcher", "machine": true, "approach": &"errand", "stretch": 0, "part": &"front",
 		"pace": 0.1, "dash": 0.1, "radius": 0.35, "height": 1.8, "life": 60,
 		"sees": 14, "hears": 0, "racket": 18, "reach": 10, "ready": 4, "forget": 30, "tether": 12, "safe": 12,
-		"nerve": 100, "invuln": 500, "touch": 2, "sight_only": true, "calls": 18,
+		"nerve": 100, "invuln": 500, "touch": 2, "sight_only": true, "calls": 18, "disposition": &"observant",
 		"takes": 70.0, "drops": 1, "linger": 30.0, "chance": 3,
 		"where": {"green_min": 20, "day_min": 2, "rise": true},
 	},
@@ -58,14 +66,20 @@ const DEFS := {
 		"takes": 110.0, "drops": 3, "linger": 40.0, "chance": 4,
 		"where": {"green_min": 55, "day_min": 3},
 	},
+	# A first-hour machine on the coast fields: its blades are its working part,
+	# so its opening is the long stand after a bite, the blades jammed, while it
+	# grinds round. Life, bite and second act softened from the source (90, 4, 5
+	# at a 300 ms tell) so a player who reads it wins with the start knife.
 	&"harvester": {
 		"model": &"harvester", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
-		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 90,
+		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 72,
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
-		"nerve": 100, "invuln": 500, "through": true,
-		"bite": {"swing": [560, 150, 340, 620], "reach": 1.4, "width": 2.2, "dmg": 4, "knock": 8.0, "knock_ms": 300},
-		"then_at": 0.6,
-		"then": {"swing": [300, 170, 260, 380], "reach": 1.5, "width": 2.6, "dmg": 5, "knock": 9.0, "knock_ms": 320},
+		"nerve": 100, "invuln": 500, "through": true, "disposition": &"indifferent", "guarded": true,
+		"bite": {"swing": [560, 150, 700, 900], "reach": 1.4, "width": 2.2, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		# Its second act is faster and wider, but no harder: a first-hour worker at the
+		# end of its strength does not take a player from half health to down in a second.
+		"then_at": 0.35,
+		"then": {"swing": [480, 170, 600, 700], "reach": 1.5, "width": 2.6, "dmg": 3, "knock": 9.0, "knock_ms": 320},
 		"takes": 60.0, "drops": 2, "linger": 50.0, "chance": 5,
 		"where": {"countries": ["coast"], "grounds": ["grass", "heath", "furrow"], "green_min": 22},
 	},
@@ -79,12 +93,14 @@ const DEFS := {
 		"where": {"countries": ["coast"], "grounds": ["mud", "grass", "furrow", "heath", "road"], "green_min": 20,
 			"hours": [6, 19], "weather": ["fair", "grey", "fog", "clear", "overcast"], "calm": true},
 	},
+	# The first hunter most players meet: its drive is at its back, and its lunge
+	# overruns, so the dodge that takes you out of the bite leaves its back to you.
 	&"runner": {
 		"model": &"runner", "machine": true, "approach": &"rush", "part": &"back",
 		"pace": 6.5, "dash": 6.5, "quick": 300, "radius": 0.3, "height": 1.3, "life": 45,
 		"sees": 11, "hears": 10, "racket": 10, "reach": 1, "ready": 2, "forget": 20, "tether": 28, "safe": 12,
-		"nerve": 100, "invuln": 400,
-		"bite": {"swing": [340, 110, 240, 460], "reach": 1.0, "width": 0.9, "dmg": 2, "knock": 4.5, "knock_ms": 200},
+		"nerve": 100, "invuln": 400, "overrun": 0.9,
+		"bite": {"swing": [420, 110, 380, 620], "reach": 1.0, "width": 0.9, "dmg": 2, "knock": 4.5, "knock_ms": 200},
 		"takes": 35.0, "drops": 1, "linger": 25.0, "chance": 4,
 		"where": {"grounds": ["road", "floor", "grass", "sand", "mud"], "green_min": 14, "hours": [6, 13]},
 	},
@@ -92,17 +108,17 @@ const DEFS := {
 		"model": &"cutter", "machine": true, "approach": &"rush", "part": &"back",
 		"pace": 5.5, "dash": 12.0, "quick": 300, "radius": 0.5, "height": 1.4, "life": 70,
 		"sees": 11, "hears": 2, "racket": 16, "reach": 2, "ready": 2, "forget": 14, "tether": 26, "safe": 14,
-		"nerve": 100, "invuln": 420,
-		"bite": {"swing": [420, 120, 300, 520], "reach": 1.1, "width": 1.4, "dmg": 3, "knock": 6.0, "knock_ms": 240},
+		"nerve": 100, "invuln": 420, "overrun": 0.9, "disposition": &"indifferent",
+		"bite": {"swing": [420, 120, 380, 620], "reach": 1.1, "width": 1.4, "dmg": 3, "knock": 6.0, "knock_ms": 240},
 		"takes": 70.0, "drops": 2, "linger": 40.0, "chance": 5,
 		"where": {"countries": ["bonelands"], "grounds": ["limestone", "rock", "gravel", "scree", "bone"], "green_min": 18},
 	},
 	&"hauler": {
 		"model": &"hauler", "machine": true, "approach": &"charge", "turns": 5, "part": &"left",
-		"pace": 4.5, "dash": 10.5, "quick": 300, "radius": 0.6, "height": 0.9, "life": 75,
+		"pace": 4.5, "dash": 10.5, "quick": 300, "radius": 0.6, "height": 0.9, "life": 66,
 		"sees": 8, "hears": 7, "racket": 19, "reach": 2, "ready": 3, "forget": 16, "tether": 36, "safe": 18,
-		"nerve": 100, "invuln": 540, "through": true,
-		"bite": {"swing": [600, 160, 360, 660], "reach": 1.5, "width": 2.0, "dmg": 5, "knock": 9.5, "knock_ms": 320},
+		"nerve": 100, "invuln": 540, "through": true, "disposition": &"indifferent",
+		"bite": {"swing": [600, 160, 600, 800], "reach": 1.5, "width": 2.0, "dmg": 4, "knock": 9.5, "knock_ms": 320},
 		"then_at": 0.35,
 		"then": {"swing": [320, 130, 240, 400], "reach": 1.2, "width": 1.4, "dmg": 3, "knock": 6.0, "knock_ms": 240},
 		"takes": 50.0, "drops": 3, "linger": 35.0, "chance": 5,
@@ -112,7 +128,7 @@ const DEFS := {
 		"model": &"warden", "machine": true, "approach": &"dart", "part": &"front",
 		"pace": 6.0, "dash": 9.5, "radius": 0.45, "height": 1.6, "life": 55,
 		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 4, "forget": 25, "tether": 30, "safe": 10,
-		"nerve": 100, "invuln": 400,
+		"nerve": 100, "invuln": 400, "disposition": &"wary",
 		"hits": {"minutes": 60.0, "again": 60.0, "cap": 240.0, "arrest": true,
 			"line": "A warden stands you at the side of the track until it is done with you."},
 		"takes": 240.0, "drops": 2, "linger": 30.0, "chance": 5,
@@ -122,7 +138,7 @@ const DEFS := {
 		"model": &"sweeper", "machine": true, "approach": &"errand", "stretch": 7, "part": &"back",
 		"pace": 5.0, "dash": 5.0, "radius": 0.5, "height": 1.0, "life": 50,
 		"sees": 0, "hears": 0, "racket": 13, "reach": 3, "ready": 2, "forget": 10, "tether": 12, "safe": 10,
-		"nerve": 100, "invuln": 400, "touch": 2, "through": true,
+		"nerve": 100, "invuln": 400, "touch": 2, "through": true, "disposition": &"indifferent",
 		"takes": 40.0, "drops": 1, "linger": 30.0, "chance": 5,
 		"where": {"countries": ["pinewood"], "grounds": ["needles", "road", "mud", "floor", "grass"], "green_min": 12, "hours": [5, 11]},
 	},
@@ -133,7 +149,7 @@ const DEFS := {
 		"nerve": 100, "invuln": 460, "keeps_to": WET,
 		"bite": {"swing": [380, 140, 280, 560], "reach": 1.3, "width": 1.6, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4},
 		"then_at": 0.45,
-		"then": {"swing": [220, 160, 220, 300], "reach": 1.5, "width": 1.8, "dmg": 4, "knock": 8.0, "knock_ms": 300},
+		"then": {"swing": [340, 160, 300, 420], "reach": 1.5, "width": 1.8, "dmg": 4, "knock": 8.0, "knock_ms": 300},
 		"takes": 80.0, "drops": 2, "linger": 45.0, "chance": 5,
 		"where": {"countries": ["moss", "coast"], "grounds": WET, "green_min": 16},
 	},
@@ -141,7 +157,7 @@ const DEFS := {
 		"model": &"lineman", "machine": true, "approach": &"rush", "part": &"front",
 		"pace": 4.0, "dash": 9.0, "quick": 320, "radius": 0.35, "height": 1.4, "life": 60,
 		"sees": 12, "hears": 9, "racket": 11, "reach": 3, "ready": 3, "forget": 14, "tether": 24, "safe": 12,
-		"nerve": 100, "invuln": 440,
+		"nerve": 100, "invuln": 440, "disposition": &"indifferent",
 		"bite": {"swing": [400, 120, 280, 520], "reach": 1.9, "width": 1.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 3},
 		"takes": 45.0, "drops": 2, "linger": 25.0, "chance": 3,
 		"where": {"countries": ["snowfield"], "grounds": ["snow", "ice", "rock", "gravel", "grass"], "green_min": 34, "near_props": ["pylon", "pole"]},
@@ -150,7 +166,7 @@ const DEFS := {
 		"model": &"clerk", "machine": true, "approach": &"dart", "part": &"none",
 		"pace": 7.5, "dash": 14.0, "radius": 0.3, "height": 1.2, "life": 6,
 		"sees": 15, "hears": 8, "racket": 0, "reach": 2, "ready": 5, "forget": 10, "tether": 20, "safe": 18,
-		"nerve": 100, "invuln": 300,
+		"nerve": 100, "invuln": 300, "disposition": &"observant",
 		"hits": {"minutes": 15.0, "files": true, "line": "It looks you over from very close, and goes."},
 		"takes": 60.0, "drops": 0, "linger": 20.0, "chance": 3,
 		"where": {"countries": ["burning"], "grounds": ["ash", "clinker", "rock", "gravel", "mud", "road"]},
@@ -228,6 +244,11 @@ static func health_of(kind: StringName) -> int:
 	if r.get("machine", false):
 		return maxi(1, roundi(life * FightRules.MACHINE_LIFE_SCALE))
 	return life
+
+
+## hostile indifferent observant wary; hostile when the row does not say.
+static func disposition(kind: StringName) -> StringName:
+	return row(kind).get("disposition", &"hostile")
 
 
 static func bite(kind: StringName) -> Blow:
