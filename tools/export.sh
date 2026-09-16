@@ -23,7 +23,7 @@ need() {
 }
 
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
-bytes() { stat -f %z "$1" 2>/dev/null || stat -c %s "$1"; }
+bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
 
 export_one() {
   local preset="$1" out="$2"
