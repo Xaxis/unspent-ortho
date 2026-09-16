@@ -90,15 +90,25 @@ anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour sav
 `user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
 
 **A frame that claims a subject has to hold it.** `shot NAME with SUBJECT[,SUBJECT]`
-says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `land:ID`,
-`station:fire`, `app:map`, `lamp`, `folk`, a hazard, or `pixels:RRGGBB[:N]` when
-only the picture can answer — and the runner asks again at the instant the
-shutter falls, throwing the frame away and failing the tour if it is not there.
-`spawn` fails when the roster has no such kind, when nothing was placed, or when
-what was placed landed outside the frame. `tests/tours/test_tour_claims.gd` holds
-every tour to it in the gate: the first frame after a `spawn` must say it holds
-that body. Nothing is worse evidence than a frame that proves the opposite of its
-own name, because the next person believes it.
+says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `prop:KIND`,
+`land:ID` (or `land:a|b`), `border:A-B`, `station:fire`, `app:map`, `lamp`,
+`unlit`, `folk`, a hazard, or `pixels:RRGGBB[:N]` when only the picture can
+answer — and the runner asks again at the instant the shutter falls, throwing the
+frame away and failing the tour if it is not there. A refused claim says what the
+world holds instead, so the diagnosis costs no second run. `spawn` fails when the
+roster has no such kind, when nothing was placed, or when what was placed landed
+outside the frame. `tests/tours/test_tour_claims.gd` holds every tour to it in the
+gate: the first frame after a `spawn` must say it holds that body, and **a frame
+whose NAME says a landscape, a machine, a fire, a lamp, a crowd, a pylon, the
+neon or an event must declare it**. Nothing is worse evidence than a frame that
+proves the opposite of its own name, because the next person believes it.
+
+**Stage by name, never by a coordinate.** `near KIND`, `at prop:KIND`,
+`ground KIND` and `place NAME` ask the world where the thing is; `at X,Y` is a
+number copied off a map run that the next worldgen change quietly invalidates.
+Five frames in this repo were pictures of the wrong place for months because of
+one — a player in a pond called "driftwood taken", a coast village called
+"snowfield", a coordinate called "the coast-moss border" that is coast heartland.
 
 **Every tour carries its own options in its header**, so `ls tours/` is the list
 and the file itself says how to run it. Each wave adds its own. Run them all before
