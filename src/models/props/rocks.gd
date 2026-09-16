@@ -173,7 +173,10 @@ static func coal_ore(k: Kit, v: int, c: int) -> void:
 	var s := 7800 + v * 41 + c
 	var bed := P.STONE[3].lerp(g[0], 0.25)
 	k.made.push(Transform3D(Basis(Vector3.BACK, 0.08), Vector3.ZERO))
-	banded(k, [0.78, 0.74, 0.7, 0.62, 0.52], [-0.06, 0.12, 0.26, 0.4, 0.5], [bed, GroundColors.glint(P.INK[0]), bed, P.INK[0], GroundColors.up(bed, 0.2)], Vector3(0.0, 0.56, 0.0), 8, s, 0.62)
+	# The seam is the darkest thing in the land, and it is still ink: `banded`
+	# tones its bands down, so drawing it at INK[0] put coal under the pen
+	# (docs/ART.md section 6, nothing is pure black).
+	banded(k, [0.78, 0.74, 0.7, 0.62, 0.52], [-0.06, 0.12, 0.26, 0.4, 0.5], [bed, GroundColors.glint(P.INK[1]), bed, P.INK[1], GroundColors.up(bed, 0.2)], Vector3(0.0, 0.56, 0.0), 8, s, 0.62)
 	k.made.pop()
 	for i in 6:
 		var a := float(i) * 1.1 + 0.3

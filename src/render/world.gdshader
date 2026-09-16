@@ -94,6 +94,18 @@ const vec3 RIME5 = vec3(0.8667, 0.9412, 0.9686);
 const vec3 BLOOM2 = vec3(0.6275, 0.2392, 0.4235);
 const vec3 BLOOM3 = vec3(0.8157, 0.4353, 0.5725);
 
+// The ink floor (docs/ART.md section 2: "deep shade is denser hatching, never
+// black"; section 6: "nothing is pure black"). Anything drawn darker than the
+// pen — a cavity under a slab, the inside of a hull, a bore, a wash the grade
+// has crushed — is carried up onto the pen's own colour, keeping its hue where
+// it has one. INK2 is that floor: at the darkest light the land still takes, it
+// stays clear of black by a couple of steps.
+const float INK_FLOOR = 0.1203;  // the luma of INK2
+vec3 ink_floor(vec3 c) {
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	return mix(INK2, c, clamp(l / INK_FLOOR, 0.0, 1.0));
+}
+
 vec3 dn(vec3 c, float n) {
 	return c * pow(STEP, vec3(n));
 }
@@ -1058,7 +1070,7 @@ void fragment() {
 	}
 	unhatched = unh;
 	c *= paper(px);
-	ALBEDO = sky_apply(c, world_pos, TIME);
+	ALBEDO = ink_floor(sky_apply(c, world_pos, TIME));
 	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
 }
 

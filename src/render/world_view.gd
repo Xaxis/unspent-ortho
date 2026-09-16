@@ -493,7 +493,10 @@ func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Ch
 		for s in range(1, n + 1):
 			var t := float(s) / n
 			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
-			k.strut(prev, p, 0.014, 3, Palette.INK[1])
+			# A cable is dark, not black: it sits on the ink floor, so a span over a
+			# pale pavement or a bright sky reads as a drawn line and never as a hole
+			# in the page (docs/ART.md section 6).
+			k.strut(prev, p, 0.014, 3, Palette.INK[2])
 			if icy:
 				_ice_on(ice, prev, p, h0 + s)
 			prev = p
