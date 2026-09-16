@@ -605,9 +605,20 @@ func _draw_bottom(ci: Control) -> void:
 func _draw_goal(ci: Control) -> void:
 	if not goal_shown():
 		return
+	var r := Hud.goal_clip(goal)
+	# In a window, like every other readout on this glass. Dim phosphor with a
+	# rim stood at 1.00:1 against the ground beside its own letters over a
+	# snowfield at noon: the one line that says what to do next, unreadable in
+	# the landscape a player is most likely to be lost in.
+	Hud.clip(ci, r, false)
 	var x := MARGIN + 6
 	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 3), UiTheme.PHOSPHOR[2])
-	UiDraw.text_rimmed(ci, Vector2i(x + 6, GOAL_Y), goal, UiTheme.TEXT_DIM, UiTheme.RIM)
+	UiDraw.text(ci, Vector2i(x + 6, GOAL_Y), goal, UiTheme.TEXT)
+
+
+## The window the goal line is read off, for a goal of this length.
+static func goal_clip(text: String) -> Rect2i:
+	return Rect2i(MARGIN + 2, GOAL_Y - 2, 14 + UiFont.width(text), 14)
 
 
 ## How far from the middle each bracket of the place name stands, `grow` 0..1

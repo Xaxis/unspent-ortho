@@ -173,6 +173,45 @@ func test_a_pressure_the_badge_says_is_not_also_said_in_words() -> void:
 	hud.free()
 
 
+## The one line that says what to do next is read off a window like every other
+## readout on this glass. As rimmed dim phosphor it stood at 1.52:1 against the
+## snow it was laid over — the ping's own name had already been fixed for the
+## same reason, and the goal was left standing in the world.
+func test_the_goal_line_is_read_off_a_window_like_every_other_readout() -> void:
+	var hud := _hud()
+	hud.set_goal("A fire before dark: three driftwood and two stones.")
+	hud.settle()
+	check(hud.goal_shown(), "the goal is on the glass")
+	var r := Hud.goal_clip(hud.goal)
+	check(r.size.x > UiFont.width(hud.goal), "the window holds the whole line")
+	check(r.size.y >= 12, "and a line box")
+	check(Rect2i(0, 0, 640, 360).encloses(r), "and stands on the screen")
+	# Clipped to a corner, not banded across the middle (docs/ART.md §9).
+	lt(r.end.x, 440, "it keeps to the left")
+	lt(r.end.y, 60, "and the top")
+	await tree.process_frame
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	hud._canvas.queue_redraw()
+	await tree.process_frame
+	UiDraw.taping = false
+	var glass := 0
+	var dim := 0
+	for d: Dictionary in UiDraw.tape:
+		if d.kind == &"rect" and Color(d.col).is_equal_approx(UiTheme.GLASS) and Rect2i(d.rect) == r:
+			glass += 1
+		if d.kind == &"text" and String(d.text) == hud.goal:
+			eq(Color(d.col), UiTheme.TEXT, "and its ink is the slate's, not the dim step")
+			dim += 1
+	UiDraw.tape.clear()
+	gt(float(glass), 0.0, "the glass is drawn under the goal, at exactly the window")
+	gt(float(dim), 0.0, "and the line on it")
+	# A goal twice as long still gets a window that holds it.
+	var long := hud.goal + " " + hud.goal
+	gt(float(Hud.goal_clip(long).size.x), float(r.size.x), "a longer goal, a longer window")
+	hud.free()
+
+
 ## A pressure line waits up to PEND_WAIT for its readouts to be fed, and an app
 ## can open in that quarter second. What `show_message` and `teach` refuse
 ## outright a frame earlier is refused when it settles too: a line held for a
