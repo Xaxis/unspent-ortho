@@ -37,7 +37,7 @@ shot 03-and-at-the-zoom-it-is-fought-at
 # Stand in it. The windup rears the hood OPEN and the tell hangs over the comb,
 # flicked down at it: the eye goes to the side that opens and the side you have
 # to hit.
-try 12
+try 20
 walkto mob 3
 await tell 3
 end

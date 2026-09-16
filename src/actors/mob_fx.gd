@@ -87,12 +87,12 @@ vec4 burst(vec2 p, float pw, float pr) {
 		float h = ink_hash(vec2(seed * 13.1 + fi, 3.7));
 		float ang = fi / 7.0 * TAU + seed + (h - 0.5) * 0.7;
 		vec2 d = vec2(cos(ang), sin(ang));
-		float len = 0.72 + 0.28 * ink_hash(vec2(fi, seed * 7.3));
+		float len = 0.78 + 0.22 * ink_hash(vec2(fi, seed * 7.3));
 		float r0 = mix(OPEN, 0.84, pr) * len * (R - 2.0);
 		float r1 = mix(OPEN + 0.34, 1.0, sqrt(pr)) * len * (R - 2.0);
 		float along = dot(q, d);
 		float k = clamp((along - r0) / max(r1 - r0, 1e-4), 0.0, 1.0);
-		float hw = mix(1.2, 0.5, k) * (1.0 - pr * 0.3);
+		float hw = mix(1.5, 0.55, k) * (1.0 - pr * 0.3);
 		e = min(e, stroke(q, d * r0, d * r1, hw));
 	}
 	return inked(e, 1.0);
@@ -310,14 +310,17 @@ void fragment() {
 	// Two whole pixels of ink on every edge, whatever the camera's distance.
 	bool edge = v > 1.0 - pv * 2.0 || v < inner + pv * 2.0 || head - u < pu * 2.0;
 	bool paper = !edge;
-	// Only the leading hand's width fills with paper. Behind it the stroke breaks
-	// into the hand's own lines, so a swing landing on a machine is a drawn arc
-	// over it and not a solid wedge across it (docs/ART.md §7).
-	if (!edge && k < 0.86) {
-		if (mod(floor(v / pv), k < 0.45 ? 3.0 : 2.0) > 0.5) {
+	// Only the leading hand's width fills solid. Behind it the stroke breaks into
+	// the hand's own lines along the sweep — in the page's light for most of it,
+	// falling to ink as it trails away. A swing landing on a machine has to be a
+	// drawn arc over it, never a solid wedge across it (docs/ART.md §7).
+	if (!edge && k < 0.88) {
+		if (mod(floor(v / pv), k < 0.4 ? 3.0 : 2.0) > 0.5) {
 			discard;
 		}
-		paper = false;
+		if (k < 0.4) {
+			paper = false;
+		}
 	}
 	vec3 c = paper ? paper_col : ink_col;
 	vec3 lit = sky_apply(c, wp, TIME);
@@ -364,7 +367,7 @@ const STREAK_PX := 40.0
 ## what was struck shows through the middle of its own mark. Compiled into the
 ## shader as OPEN and measured against the machines' parts in
 ## tests/actors/test_hit_marks.gd.
-const BURST_OPEN := 0.52
+const BURST_OPEN := 0.48
 ## Which way a tell's fan flicks, in quad space: up the screen over a body, down
 ## the screen when it is aimed at a working part below it.
 const FLICK_UP := Vector2(0.0, -1.0)
