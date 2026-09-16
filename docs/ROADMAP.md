@@ -173,7 +173,16 @@ content never needs a rewrite.
 - **sentinels**: the boss spine, plus the Coast and Salt Flats sentinels, each beatable
   three ways.
 - **crafts**: the vehicle spine; raft, hover sled, walker rig.
-- **tech**: the mended tech tree, with 20+ implements and 15+ modules.
+- **gear**: the MENDED tech tree (20+ implements, 15+ modules) **plus the economy that
+  places it** (VISION §6.1): five rarity grades, elite materials that exist in one or
+  two landscapes or drop from one enemy or sentinel, craft difficulty by station tier,
+  and modifiers that change decisions, combine, conflict, and can be re-socketed.
+- **settlement**: building at world scale (VISION §9) — shelter, power, food and water,
+  work stations, defence, and people who staff them; production, upkeep and repair that
+  run while the player is away.
+- **raids**: why and when machines come for a settlement — signature, notice as a
+  playable encounter, attention, the readable escalation from survey to siege, roles in
+  the raid itself, destruction, aftermath and reclaiming.
 - **works**: machine depots that feed patrols, can be broken and let a region recover.
 - **landmarks**: 3-5 kinds per type, worth the walk.
 

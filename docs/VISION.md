@@ -184,6 +184,54 @@ and interference, signature spoofing, shielding, magnet boots, jump jets, drill 
 cutter tiers). Players **configure** loadouts for where they are going; the world
 asks, the gear answers, the combinations make builds.
 
+### 6.1 Every weapon, armour and power is obtainable (owner, 2026-09-15)
+
+Advanced weaponry, armour and powers are all obtainable, but **varied by region**, and
+each comes **either by rarity (dropped) or by difficulty (crafted)**. Nothing is a
+reward for playing long; everything is a reward for going somewhere or beating something.
+
+**Rarity** — five grades, which decide how many modifiers a piece carries and how
+strange they are, never a flat damage ladder:
+
+| Grade | Where it comes from | Modifiers |
+|---|---|---|
+| Common | anywhere, salvage and simple making | 0 |
+| Uncommon | regional scrap, ordinary machines | 1 |
+| Rare | landscape-specific caches, works, landmarks, veteran machines | 2 |
+| Prime | named enemies, deep realms, orbital foundries, hard recipes | 3, one regional |
+| Relic | sentinels, the Before, the plan's own stock | 3 + one unique |
+
+**Elite materials are the gate**, and each is found in **one or two landscapes only**,
+or drops from **one kind of enemy or one sentinel** (fulgurite cores from the glass
+desert's strike fields, deep-ice lenses from the frost sea, slag steel from the magma
+vault, mycelium weave from the undercroft, foundry alloy from the orbital works,
+sentinel cores one per sentinel, era-glass from a time portal). A player who wants the
+best of a kind must travel, dive, climb or fight for it. This is the spine of the
+long game and the reason to take every landscape from its keeper.
+
+**Craft difficulty** matches the ladder: recipes name a station tier (hand, forge,
+bench, machine shop, foundry taken from the machines), a number of steps, and a failure
+mode on the hardest ones (a ruined material, a piece that comes out flawed but usable).
+
+**Modifiers are the elegance.** "Ultra high-tech refuse of all types": the parts are
+salvaged, mismatched, half-understood, and they change how you play rather than how big
+the numbers are. A modifier reads as a part with a name and a look — cooling loop,
+capacitor bank, gyro brace, phase coil, harmonic edge, leech coil, magnet clamp, signal
+spoofer, shock lattice, drone tether, ablative plate, era shim. Rules that keep the
+system elegant instead of merely large:
+
+- Every modifier changes a **decision**, not just a number: new reach, a new opening, a
+  resource to spend, a risk to take, a hazard survived.
+- Modifiers **combine and conflict**: a cooling loop pays for a shock lattice's heat; a
+  capacitor bank and a leech coil make a charge build; a spoofer and a lattice fight
+  each other, because one hides you and the other shouts.
+- They carry the **idiom** with them (MADE binding, MENDED patchwork, FOUND exactness),
+  so a build is visible on the body.
+- Gear can be **broken down** for its materials and its modifiers **re-socketed** at a
+  bench, at the risk of losing the part. Nothing is dead loot.
+- Modifiers are **regional**: a landscape's materials bias the modifiers found and
+  crafted there, so builds carry the map's memory.
+
 ## 7. Architecture this demands (build early, before content)
 
 1. **Realms**: a world is a set of realms (surface, underground levels, orbital
@@ -265,3 +313,67 @@ The notebook changes medium with where you are, so each realm is unmistakable:
 - **The slate** (every UI screen): a tablet the player hacked together from spare
   parts: a stolen machine display in a patched bezel. The world is full of
   technology, scavenged and stolen, and the slate is its most personal piece (ART.md §9).
+
+## 9. Settlements: building, sustaining, defending, losing (owner, 2026-09-15)
+
+Crafting does not stop at what a person carries. **Building is crafting at world
+scale**: shelters, then a holding, then a town, with **defence systems** and
+**sustainability systems** — solar farms, food generation, water, heat, power. And
+**certain machines and enemies can destroy the player's work**. Everything built is
+something that can be taken away, which is what makes building matter.
+
+**What gets built.** Every piece is placed in the world, made of the same three idioms,
+and shows its making: MADE frames and thatch, MENDED walls of machine plate on timber,
+FOUND cores that hum and draw attention.
+
+| Kind | Pieces | Gives |
+|---|---|---|
+| Shelter | lean-to, hut, cellar, bunk, hearth, store | sleep, safety, stash, a place to come back to |
+| Power | solar array, wind spinner, pedal dynamo, battery stack, stolen cell | charges for FOUND gear, lights, turrets, benches |
+| Food & water | plots, greenhouse, mushroom cellar, fish trap, snare line, catchment, filter, still | feeding people, long trips, trade |
+| Work | forge, bench, machine shop, foundry, kiln, loom, radio mast | the craft-difficulty ladder of §6.1 |
+| Defence | palisade, plate wall, gate, ditch, tower, snare, mine, EMP stake, salvaged turret, decoy mast, spoofer, netting, shutters | surviving a raid |
+| Living | beds, rescued people, a healer, a smith, a scout, a child | production, stories, subarcs, something to lose |
+
+**Sustainability is a loop, not a counter**: power is generated, stored and spent;
+food is grown, stored and eaten; water is caught, filtered and drunk; parts wear and
+need repair. People staff the pieces and produce while the player is away. Weather and
+season press on it (a still week kills the wind spinners; a hard frost kills the plot),
+so the player builds redundancy and the place develops a character.
+
+**Machines come, and they decide when.** No raid timer. A settlement is engaged
+because of what it did, and the player can read every step coming:
+
+1. **Signature.** Every settlement continuously emits what machines can sense: power
+   draw, light at night, smoke, noise, radio, traffic in and out, and the FOUND tech it
+   runs. Big, bright, loud, stolen: seen sooner.
+2. **Notice.** A passing worker files it, a watcher logs it, a scout drone photographs
+   it, a clerk in a relay hut writes it down. **This is an encounter, and it is
+   playable**: intercept the scout, jam the relay, take the record, follow the drone
+   home, or let it go and accept what follows.
+3. **Attention.** Per settlement, attention rises from notices, from the player's
+   **interference** with that network (§2), from stolen FOUND tech running inside the
+   walls, and from machines that never came home. It falls with quiet weeks, dark
+   nights, spoofing, decoys that pull attention elsewhere, and destroying the record
+   before it travels.
+4. **Escalation, each step readable and answerable**: a survey (one machine, looks and
+   leaves) → a probe (takes something, tests the wall) → a **raid** (a party with a
+   purpose: salvage, harvest, dismantle) → a **siege** by a sentinel's own force once
+   the region's keeper knows. Each step is announced by the world first: horizon
+   lights, a drone at dusk, the radio going wrong, birds up, the people uneasy.
+5. **The raid itself is a fight the player prepared for**: machines take roles
+   (breachers at the gate, harvesters after the power and the food, snatchers after
+   people) and attack what makes the signature: the solar farm, the mast, the FOUND
+   core. Traps, turrets, walls, the ditch, the shutters and where the player stands all
+   matter. Evacuating and hiding is a legitimate answer; so is not being there.
+6. **Aftermath**: broken pieces, burnt plots, people taken or killed, wrecks in the
+   yard worth salvaging, and repair that costs materials and days. A razed settlement
+   leaves ruins the player can reclaim, and the region remembers.
+7. **Ending it**: killing the region's sentinel (§3) quiets its network for good — the
+   surest way to make a place safe is to take the landscape from its keeper.
+
+Architecture this adds to §7: **building placement and structure state** (per realm,
+saved, damageable, repairable); **a settlement as an entity** with signature, stores,
+production, people and attention; **encounter-driven escalation** (notice → attention →
+raid plan) that reads disposition and interference; and **raid actors** with roles and
+targets that machines' existing senses and brains drive.
