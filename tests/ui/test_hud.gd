@@ -78,6 +78,40 @@ func test_the_hint_fades_and_the_ping_hushes_in_a_fight() -> void:
 	hud.free()
 
 
+## The ping's brackets close in from outside the word. At no point in the rise
+## does a bracket stand over a letter, whatever the name is called.
+func test_the_place_name_is_never_struck_through_by_its_own_brackets() -> void:
+	for word: int in [20, 46, 86, 140]:
+		var last := 9999
+		for step in 21:
+			var grow := step / 20.0
+			var half := Hud.place_half(word, grow)
+			gt(float(half), word / 2.0 + 6.0, "at %.2f in, the bracket is clear of a %d px name" % [grow, word])
+			check(half <= last, "and it only ever closes in")
+			last = half
+		eq(Hud.place_half(word, 1.0), roundi(word / 2.0 + 12.0), "and comes to rest just off the word")
+
+
+func test_the_lamp_and_the_last_rung_of_hunger_are_gauges() -> void:
+	var hud := _hud()
+	var b := Body.new()
+	b.fed_until = 0.0
+	# Starving (level 3) and a lamp down to its last minutes, both felt at once.
+	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0, UiRules.CREEL, 6.0, true))
+	hud.settle()
+	var ids := {}
+	for p in hud.pressures:
+		ids[p.id] = p
+	check(ids.has(&"hunger") and int(ids[&"hunger"].level) == 3, "starving is its own rung")
+	check(ids.has(&"lamp") and int(ids[&"lamp"].level) == 3, "and so is a lamp about to gutter")
+	lt(float(ids[&"lamp"].value), 0.2, "its gauge reads how little is left")
+	eq(hud.shown().get(&"lamp", 0.0), 1.0, "the lamp gauge is up")
+	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0, UiRules.CREEL, 6.0, false))
+	_run(hud, 1.0)
+	check(not hud.shown().has(&"lamp"), "an unlit lamp spends no oil and asks nothing")
+	hud.free()
+
+
 func test_every_hazard_the_land_names_has_a_gauge_glyph() -> void:
 	for d in BiomeRegistry.all():
 		for h: Variant in d.hazards:

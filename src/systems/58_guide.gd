@@ -1,7 +1,8 @@
 extends GameSystem
 ## The first hour's guide: at wake, the one-line goal and the keys, then each
-## hint as its moment comes, said once as a short Events.message line and
-## retired for good when the player has used it (Guide has the rules). The
+## hint as its moment comes, said once on the teaching channel (Events.hint,
+## which is dropped rather than queued in a fight, so no lesson arrives out of
+## its moment) and retired for good when the player has used it. The
 ## goal is said again when it changes. Lines keep a few seconds apart so each
 ## is read. Off in single-frame shots, so canon frames stay as they were.
 ##
@@ -83,12 +84,12 @@ func _process(delta: float) -> void:
 	if h.is_empty():
 		return
 	retired[h.id] = true
-	_say(String(h.line))
+	_say(String(h.line), String(h.key))
 
 
-func _say(line: String) -> void:
+func _say(line: String, key: String = "") -> void:
 	said.append(line)
-	Events.message.emit(line)
+	Events.hint.emit(line, key)
 	_next = _t + SPACING
 
 
@@ -147,7 +148,7 @@ func _on_fight_ended(outcome: StringName) -> void:
 	# Rang off plate and never found the part: the lesson, now the fight is over.
 	if _rang and not retired.has(&"side"):
 		retired[&"side"] = true
-		_say(SIDE_LINE)
+		_say(SIDE_LINE, "space")
 	_rang = false
 	# The fight's own last line (a kill, an escape) is read before the goal comes back.
 	_next = maxf(_next, _t + WAKE_DELAY)

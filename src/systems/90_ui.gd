@@ -20,6 +20,14 @@ var power := 1.0
 var _places := UiPlaceWatch.new()
 var _pending_screen := ""
 var _vertical := UiMenu.new()
+## Where the player was last frame, so a jump (a teleport, a load, a portal)
+## is told from a walk, and the landscape under them read every frame.
+var _last_pos := Vector2.INF
+## A landscape entered while nobody could read the ping (an app up, a fight on):
+## it waits here rather than being lost.
+var _pending_place: StringName = &""
+## The first hour's guide (58_guide), for the goal line and the key hint.
+var _guide: Node
 ## Which app and opening actions were down last frame, and which went down
 ## during physics steps since.
 var _held := {}
@@ -39,6 +47,7 @@ func setup(g: Game) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	explored = UiExplored.new(g.world.size)
 	explored.visit(g.player.pos)
+	_last_pos = g.player.pos
 	map_data = UiMapData.new(g.world)
 	if g.options.explore > 0:
 		explored.wander(g.world, g.player.pos, g.options.explore, g.options.seed_value)
@@ -180,7 +189,7 @@ func _on_closed(s: UiScreen) -> void:
 
 
 ## Keys on an app: action -> what the app is told.
-const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"]]
+const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"], [&"drop", &"drop"]]
 ## Keys that open an app from play.
 const OPEN_KEYS := {&"inventory": &"inventory", &"craft": &"crafting", &"map": &"map", &"pause": &"pause"}
 
@@ -271,6 +280,9 @@ func _process(delta: float) -> void:
 			if parts.size() > 1:
 				top().select(StringName(parts[1]))
 		_pending_screen = ""
+	# The landscape under the player is read every frame, app or no app: a page
+	# closed after a teleport must not find the watcher still standing at the coast.
+	_watch_place(delta)
 	if _read_keys():
 		var s := top()
 		if s == null:
@@ -281,10 +293,24 @@ func _process(delta: float) -> void:
 	explored.visit(game.player.pos)
 	game.hud.set_quiet(_hostile_near())
 	_feed_hud()
-	var entered := _places.step(BiomeRegistry.at(game.world, game.player.pos).id, delta)
-	if entered != &"" and not _hostile_near():
-		game.hud.show_place(BiomeRegistry.get_def(entered).display_name)
-		Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+
+
+## Read the landscape under the player and ping its name when someone can read
+## it. A walked border settles (UiPlaceWatch.SETTLE); a jump is said at once.
+## A name entered under an open app or in a fight waits until there is a HUD
+## to say it on, rather than being swallowed.
+func _watch_place(delta: float) -> void:
+	var p := game.player.pos
+	var jumped := _last_pos.is_finite() and UiPlaceWatch.jumped(_last_pos, p)
+	_last_pos = p
+	var entered := _places.step(BiomeRegistry.at(game.world, p).id, delta, jumped)
+	if entered != &"":
+		_pending_place = entered
+	if _pending_place == &"" or not stack.is_empty() or _hostile_near():
+		return
+	game.hud.show_place(BiomeRegistry.get_def(_pending_place).display_name)
+	Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+	_pending_place = &""
 
 
 ## The slate's power from the lamp's reserve and the charges carried: the glass
@@ -325,7 +351,8 @@ func _feed_hud() -> void:
 	hud.set_body(b.health, b.max_health, b.wind, b.max_wind)
 	hud.set_held(inv.held)
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
-	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b)))
+	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b), Survival.lamp_oil(game), b.lamp_lit))
+	hud.set_goal(Guide.goal(game) if _guided() else "")
 	var busy := Time.get_ticks_msec() / 1000.0 < b.busy_until
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
@@ -337,8 +364,34 @@ func _feed_hud() -> void:
 	var here := UiLink.stations_here(game)
 	if not here.is_empty() and here[0] != &"hand":
 		hud.set_hint("%s - make" % here[0], "c")
-	else:
+		return
+	# Nothing to work here: the row teaches the key the guide has not retired yet.
+	var teach := _guide_hint()
+	if teach.is_empty():
 		hud.set_hint("")
+	else:
+		hud.set_hint(String(teach.line), String(teach.key))
+
+
+## The guide system, while the game has one that is speaking (it is off in
+## single-frame shots, so a canon frame stays as it was).
+func _guided() -> bool:
+	if _guide == null or not is_instance_valid(_guide):
+		_guide = null
+		for sys in game.systems:
+			if sys.name == "58_guide":
+				_guide = sys
+	return _guide != null and not bool(_guide.get("_off"))
+
+
+## The first hint the guide would teach that names a key, or {}.
+func _guide_hint() -> Dictionary:
+	if not _guided():
+		return {}
+	var retired: Dictionary = _guide.get("retired")
+	var h := Guide.hint_for(game, retired)
+	# A line with no key of its own is said, not shown on a key row.
+	return h if not h.is_empty() and String(h.get("key", "")) != "" else {}
 
 
 func _hostile_near() -> bool:

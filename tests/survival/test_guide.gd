@@ -56,8 +56,9 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 		g.free()
 		return
 	var said: Array[String] = []
-	var listen := func(t: String) -> void: said.append(t)
-	Events.message.connect(listen)
+	# Guide lines go out on the teaching channel, never on the queued message line.
+	var listen := func(t: String, _key: String) -> void: said.append(t)
+	Events.hint.connect(listen)
 	guide.call("_process", 1.0)
 	eq(said.size(), 0, "not in the first second")
 	guide.call("_process", 1.0)
@@ -72,7 +73,7 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	check(retired.size() >= 1, "said hints retire")
 	Events.took.emit(&"driftwood", 2)
 	check(retired.has(&"take"), "a take retires the take hint")
-	Events.message.disconnect(listen)
+	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
 
@@ -121,8 +122,8 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
 	var guide: Node = g.get_node("58_guide")
 	var said: Array[String] = []
-	var listen := func(t: String) -> void: said.append(t)
-	Events.message.connect(listen)
+	var listen := func(t: String, _key: String) -> void: said.append(t)
+	Events.hint.connect(listen)
 	guide.call("_process", 2.0)
 	eq(said.size(), 1, "the goal at wake")
 	said.clear()
@@ -143,6 +144,6 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	for i in 3:
 		guide.call("_process", 1.0)
 	check(said.has(Guide.goal(g)), "a fight won: the goal again: %s" % [said])
-	Events.message.disconnect(listen)
+	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
