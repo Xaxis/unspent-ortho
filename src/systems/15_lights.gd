@@ -154,7 +154,10 @@ const MACHINE_POOL := Vector2(2.6, 1.0)
 const VENT_DAY := 1.5
 ## How far inside the frame a machine must stand for `await machine` to say the
 ## shot holds it: a fifth of the screen in from every edge.
-const TOUR_MARGIN := 0.2
+const TOUR_MARGIN := 0.12
+## The game's frame, which is fixed however big the window on it is.
+static var FRAME_ASPECT := float(ProjectSettings.get_setting("display/window/size/viewport_width", 640)) \
+	/ maxf(1.0, float(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -696,21 +699,23 @@ func tour_seen(what: StringName) -> bool:
 
 ## Is this body inside the middle of the frame, by enough that the few physics
 ## frames between an await and the shutter cannot carry it out?
+##
+## Worked out from the CAMERA alone — its own orthographic extent and the game's
+## fixed 640x360 — and never from the viewport. A tool run's window is one pixel
+## across (tools/_focus.sh: macOS has no off-screen to hide in), so a check that
+## divided by the viewport's rect said yes to anything anywhere and shipped two
+## frames with no machine in them, which is the very failure it was written for.
 func _framed(mob: Node3D) -> bool:
 	var cam := game.camera
 	if cam == null or not cam.is_inside_tree():
 		return false
-	var vp := cam.get_viewport().get_visible_rect().size
-	if vp.x <= 0.0 or vp.y <= 0.0:
-		return false
 	# The body's own middle, not its feet: a tall machine standing at the bottom
 	# edge is a machine the frame holds.
-	var at := mob.global_position + Vector3(0, 0.6, 0)
-	if cam.is_position_behind(at):
+	var local := cam.global_transform.affine_inverse() * (mob.global_position + Vector3(0, 0.6, 0))
+	if local.z > -0.5:
 		return false
-	var p := cam.unproject_position(at) / vp
-	return p.x > TOUR_MARGIN and p.x < 1.0 - TOUR_MARGIN \
-		and p.y > TOUR_MARGIN and p.y < 1.0 - TOUR_MARGIN
+	var half_h := cam.size * 0.5 * (1.0 - TOUR_MARGIN * 2.0)
+	return absf(local.y) < half_h and absf(local.x) < half_h * FRAME_ASPECT
 
 
 static func neon_colour(s: Dictionary) -> Vector3:
