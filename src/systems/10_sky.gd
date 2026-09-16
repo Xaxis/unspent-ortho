@@ -124,7 +124,7 @@ func apply_weather(spec: String) -> bool:
 		return true
 	if spec == "rules":
 		Weather.unforce()
-		_forced_bolt = false
+		_hold_bolt(false)
 		return true
 	var parts := spec.split(":")
 	var kind := StringName(parts[0])
@@ -133,17 +133,26 @@ func apply_weather(spec: String) -> bool:
 		return false
 	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0)
 	_forced_any = true
-	var hold := parts.size() > 2 and parts[2] == "bolt"
-	# A held bolt asked for while the game runs has to be STRUCK, not only
-	# flagged: setup strikes one so a shot has lightning in it, and a tour asking
-	# for one mid-play must get the same picture instead of an empty sky held at
-	# the bright moment. A drawn bolt lives four frames, so waiting for a real
-	# one to be caught by a shot is chance.
-	var fire := hold and not _forced_bolt and view != null
-	_forced_bolt = hold
-	if fire:
-		_strike(1.0, 0, true)
+	_hold_bolt(parts.size() > 2 and parts[2] == "bolt")
 	return true
+
+
+## Hold one strike for a still, or let the held one go. A held bolt asked for
+## while the game runs has to be STRUCK, not only flagged: setup strikes one so
+## a shot has lightning in it, and a tour asking for one mid-play must get the
+## same picture instead of an empty sky held at the bright moment (a drawn bolt
+## lives four frames, so waiting to catch a real one with a shot is chance).
+## Letting go has to take the drawn bolt with it, or the lightning hangs in
+## every frame after — a noon glare, another landscape, for ever.
+func _hold_bolt(hold: bool) -> void:
+	var was := _forced_bolt
+	_forced_bolt = hold
+	if view == null or was == hold:
+		return
+	if hold:
+		_strike(1.0, 0, true)
+	else:
+		view.release_bolt()
 
 
 func _process(delta: float) -> void:

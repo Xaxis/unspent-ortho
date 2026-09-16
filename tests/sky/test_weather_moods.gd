@@ -158,6 +158,14 @@ func test_a_held_bolt_asked_for_mid_play_is_struck_and_not_only_flagged() -> voi
 	check(bool(sky_sys.call("apply_weather", "dry_storm:1:bolt")), "asked again")
 	await frames(3)
 	eq(sky_sys.strikes, 1, "one held bolt, however often it is asked for")
+	# And the moment the hold goes, the lightning goes with it: a bolt left drawn
+	# would hang over the next weather, the next hour and the next landscape.
+	check(bool(sky_sys.call("apply_weather", "glare:1")), "the storm gives way to a hard noon")
+	await frames(3)
+	check(not (sky_sys.view as WeatherView).bolt.visible, "no lightning left standing in the glare")
+	check(bool(sky_sys.call("apply_weather", "rules")), "and the sky is handed back")
+	await frames(3)
+	check(not (sky_sys.view as WeatherView).bolt.visible, "still none")
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()

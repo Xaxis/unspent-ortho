@@ -362,3 +362,12 @@ func strike(at: Vector3, seed_value: int, hold: bool = false) -> void:
 	bolt.visible = true
 	_bolt_frame = 0
 	_bolt_hold = hold
+
+
+## Let go of a held bolt. A hold is asked for to stage one still; when the
+## staging ends the lightning has to leave the page with it, or it hangs in
+## every frame after — in a noon glare, in another landscape, for ever.
+func release_bolt() -> void:
+	_bolt_hold = false
+	_bolt_frame = BOLT_FRAMES.size()
+	bolt.visible = false
