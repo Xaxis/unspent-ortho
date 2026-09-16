@@ -76,6 +76,15 @@ static func hold(game: Game, inv: Inventory, id: StringName) -> void:
 		inv.set_held(id)
 
 
+## Put down `n` of a carried thing through survival, which owns the heap it
+## goes on, the refusals (a hostile close, nowhere to lay it) and the line
+## said. Returns how many were put down; 0 without a running game to lay it in.
+static func drop(game: Game, inv: Inventory, id: StringName, n: int = 1) -> int:
+	if game == null or game.inventory != inv:
+		return 0
+	return Survival.drop(game, id, n)
+
+
 ## True when eating can be done from the slate: survival owns hunger, so
 ## only its `eat` feeds the body. The slate never writes Body itself.
 static func can_eat(game: Game, inv: Inventory) -> bool:

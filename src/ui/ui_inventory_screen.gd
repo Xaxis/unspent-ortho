@@ -4,15 +4,24 @@ extends UiScreen
 ## bulk. The replacement sub-panel: the chosen thing scanned, what it is, what
 ## it works on or goes into, and the load against the creel. E does the row's
 ## verb: hold a tool (or put it away), eat food, wear kit; goods are refused
-## with the reason, since they are for making.
+## with the reason, since they are for making. X puts the row down on a heap
+## the world keeps (Survival owns it) — the way an over-full creel is emptied.
 
 const SKETCH := 78
 ## The hardness ladder: a seam needs a tool of at least its rung.
 const LADDER: Array[StringName] = [&"wood", &"iron", &"steel", &"crucible"]
 const LIST_TOP := 50
+## Groups whose rows ask before they are put down: a tool, the lamp and worn
+## kit are what a slip would cost you, and X sits beside C.
+const DROP_ASKS: Array[StringName] = [&"tools", &"found", &"to wear"]
+## How long an ask stands before X means "put it down" again rather than "yes".
+const ASK_SECONDS := 4.0
 
 var inventory: Inventory
 var body: Body
+## The row X has asked about, and when (real seconds).
+var _asked: StringName = &""
+var _asked_at := -1000.0
 
 
 func _init() -> void:
@@ -81,6 +90,53 @@ func refresh() -> void:
 			row["why"] = why_refused(id)
 	menu.set_rows(rows)
 	queue_redraw()
+
+
+## X on the chosen row puts it down. Everything else is the menu standard.
+func handle(action: StringName) -> bool:
+	if is_open and action == &"drop":
+		put_down()
+		return true
+	return super(action)
+
+
+func _on_choice_changed() -> void:
+	_asked = &""
+
+
+## True while `id` is the row X has just asked about.
+func asking(id: StringName) -> bool:
+	return _asked == id and Time.get_ticks_msec() / 1000.0 - _asked_at <= ASK_SECONDS
+
+
+static func drop_asks(id: StringName) -> bool:
+	return DROP_ASKS.has(UiRules.item_group(id)) or id == &"lamp"
+
+
+## Put the chosen row down (all of it) through survival, which lays the heap,
+## refuses with a hostile close and says what was left. A tool, the lamp or
+## worn kit is asked about first.
+func put_down() -> void:
+	var row := menu.selected()
+	if row.is_empty() or not row.has("id") or inventory == null:
+		return
+	var id: StringName = row.id
+	if drop_asks(id) and not asking(id):
+		_asked = id
+		_asked_at = Time.get_ticks_msec() / 1000.0
+		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+		say("Put down the %s? X again." % UiRules.bare_name(id))
+		note_warn = true
+		queue_redraw()
+		return
+	_asked = &""
+	if UiLink.drop(game, inventory, id, int(row.get("count", 1))) <= 0:
+		# Survival said why on the message line, which the key strip is showing.
+		Events.sfx.emit(&"ui_slate_deny", Vector3.ZERO)
+		note_warn = true
+	else:
+		Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
+	refresh()
 
 
 func _on_confirm(row: Dictionary) -> void:
@@ -153,10 +209,14 @@ func _draw() -> void:
 	if scroll + lines < menu.rows.size():
 		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
 	_draw_detail(UiSlate.SPARE)
-	var verb: StringName = menu.selected().get("verb", &"")
+	var chosen_row := menu.selected()
+	var verb: StringName = chosen_row.get("verb", &"")
 	var keys: Array = []
 	if verb != &"":
-		keys.append(["e", "put away" if verb == &"hold" and inventory.held == menu.selected().get("id") else String(verb)])
+		keys.append(["e", "put away" if verb == &"hold" and inventory.held == chosen_row.get("id") else String(verb)])
+	if chosen_row.has("id"):
+		var id: StringName = chosen_row.id
+		keys.append(["x", "leave it here" if asking(id) else ("put down" if int(chosen_row.get("count", 1)) < 2 else "put down all")])
 	keys.append_array([["tab", "close"], ["esc", "back"]])
 	draw_keys(keys)
 

@@ -2,13 +2,17 @@ class_name UiCraftingScreen
 extends UiScreen
 ## The making app (C). The list: what can be made where the player stands,
 ## under a heading per station in reach ("at the fire") and "by hand"; rows
-## that cannot be made now are dim but choosable, and say why. The replacement
-## sub-panel: the chosen recipe scanned, a table of what it wants against what
-## is carried, and the station it is made at. E makes it through UiLink
-## (Crafting's own make_in when survival provides it, which charges the clock
-## and builds).
+## that cannot be made now are dim but choosable, and say why; under it, what
+## is already cooking at the stations round you and when it comes off. The
+## replacement sub-panel: the chosen recipe scanned, a table of what it wants
+## against what is carried, and the station it is made at — and for long work,
+## that it is set going and walked away from, not stood over. E makes it
+## through UiLink (Crafting's own make_in when survival provides it, which
+## charges the clock and builds).
 
 const LIST_TOP := 50
+## Jobs listed under the recipes before the rest are counted.
+const COOK_ROWS := 3
 
 ## Stations in reach, nearest first, &"hand" last; set by whoever opens the app.
 var stations: Array[StringName] = [&"fire"]
@@ -102,8 +106,10 @@ func _on_confirm(row: Dictionary) -> void:
 		say("Built a %s." % builds)
 	elif r.get("action", &"") != &"":
 		say("It bites again.")
-	else:
+	elif not Crafting.sets_going(r):
 		say("Made %s." % UiRules.recipe_title(r))
+	# Long work is not made, it is left going: survival's own line says where and
+	# until when, and it is already on the strip.
 	refresh()
 
 
@@ -120,7 +126,9 @@ func _draw() -> void:
 	UiDraw.text_right(self, right, L.position.y + 4, "TAKES", UiTheme.TEXT_DIM)
 	if menu.rows.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 6, LIST_TOP), "nothing to make here yet", UiTheme.TEXT_DIM)
-	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
+	var cooking := jobs()
+	var bottom := L.end.y - 4 - cook_height(cooking.size())
+	var lines := UiSlate.line_count(LIST_TOP, bottom)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
@@ -142,8 +150,63 @@ func _draw() -> void:
 		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
 		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
+	_draw_cooking(cooking, x0, right, L.end.y - 2 - cook_height(cooking.size()))
 	_draw_recipe(UiSlate.SPARE)
 	draw_keys([["e", "make"], ["c", "close"], ["esc", "back"]])
+
+
+## Work already set going at the stations round the player, soonest first.
+func jobs() -> Array[Dictionary]:
+	return Survival.cooking(game) if game != null else ([] as Array[Dictionary])
+
+
+## Pixels the "on now" block takes under the list for `n` jobs (0 = none).
+static func cook_height(n: int) -> int:
+	return 0 if n <= 0 else 13 + mini(n, COOK_ROWS) * UiTheme.LINE
+
+
+## When a recipe hands its work back: "done 14:20" for work done on the spot,
+## and for long work at a station (Crafting.sets_going) that it goes on the
+## station and is ready at a time the player can walk away from.
+static func ready_line(g: Game, r: Dictionary) -> String:
+	var minutes := float(r.get("minutes", 0.0))
+	var now := g.clock.minutes
+	if not Crafting.sets_going(r):
+		return "done %s" % UiRules.clock_at(now + minf(minutes, Survival.MAX_JUMP_MINUTES), now)
+	var done := now + Survival.SET_GOING_MINUTES + minutes
+	return "on the %s, ready at %s" % [r.get("at", &""), UiRules.clock_at(done, now)]
+
+
+## What is cooking, under the recipes: a line each, what it makes and when it
+## comes off, so long work is watched from wherever the player has walked to.
+func _draw_cooking(list: Array[Dictionary], x0: int, right: int, top: int) -> void:
+	if list.is_empty():
+		return
+	var over := list.size() - COOK_ROWS
+	UiSlate.heading(self, Vector2i(x0, top), "on now", right)
+	for i in mini(list.size(), COOK_ROWS):
+		var job: Dictionary = list[i]
+		var y := top + 13 + i * UiTheme.LINE
+		var makes: Dictionary = job.get("makes", {})
+		if i == COOK_ROWS - 1 and over > 0:
+			UiDraw.text(self, Vector2i(x0 + 4, y), "and %d more on the go" % over, UiTheme.TEXT_DIM)
+			return
+		var out := UiRules.recipe_output({"makes": makes})
+		if out != &"":
+			UiIcons.draw_item(self, out, Vector2i(x0 + 4, y - 1))
+		UiDraw.text(self, Vector2i(x0 + 17, y), makes_words(makes), UiTheme.TEXT)
+		var done := float(job.get("done", 0.0))
+		var now := game.clock.minutes if game != null else 0.0
+		UiDraw.text_right(self, right, y, "%s %s" % [job.get("station", &""), UiRules.clock_at(done, now)], UiTheme.TEXT_DIM)
+
+
+## "charcoal ×2, tar" for what a job will hand back.
+static func makes_words(makes: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for id: StringName in makes:
+		var n := int(makes[id])
+		parts.append(UiRules.list_name(id, n) + (" ×%d" % n if n > 1 else ""))
+	return ", ".join(parts)
 
 
 func _draw_row_icon(r: Dictionary, at: Vector2i) -> void:
@@ -182,7 +245,9 @@ func _draw_recipe(R: Rect2i) -> void:
 	var takes := "takes %s" % UiRules.duration(minutes)
 	UiDraw.text(self, Vector2i(tx, R.position.y + 34), takes, UiTheme.TEXT_DIM)
 	if game != null:
-		UiDraw.text(self, Vector2i(tx, R.position.y + 45), "done %s" % UiRules.clock_at(game.clock.minutes + minutes, game.clock.minutes), UiTheme.TEXT_DIM)
+		# Long work at a station is set going and left: say so, and when to come back.
+		var ready := ready_line(game, r)
+		UiDraw.text(self, Vector2i(tx, R.position.y + 45), ready, UiTheme.TEXT if Crafting.sets_going(r) else UiTheme.TEXT_DIM)
 	var table_bottom := _draw_table(Rect2i(x0, R.position.y + 110, R.size.x - UiSlate.MARGIN_L - 12, 0), r, row)
 	# Where it is made, scanned at the foot of the panel, if there is room.
 	var sk := UiSketch.station_size(72)

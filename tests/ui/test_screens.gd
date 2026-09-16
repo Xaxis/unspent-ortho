@@ -200,6 +200,10 @@ func test_a_key_held_as_the_title_opens_is_not_a_press_on_it() -> void:
 	s.select(&"controls")
 	s.close()
 	Input.action_press(&"use")
+	# A press is "just pressed" for the rest of the frame it was made in. Let that
+	# frame end, so what the title opens onto is a key HELD from before it — which
+	# is what this is about — and not a press made this instant.
+	await tree.process_frame
 	s.open()
 	eq(s.menu.selected().id, &"controls")
 	s._read_keys()
@@ -399,3 +403,153 @@ func test_two_keys_in_one_frame_both_reach_the_title() -> void:
 	s.free()
 	for i in 2:
 		await tree.process_frame
+
+
+## The apps other packages will fill must still be worth opening on day one,
+## and the making page must say when long work comes off the fire.
+const Fx := preload("res://tests/survival/fixture.gd")
+
+
+## Every word `s` draws on its next frame.
+func _said(s: UiScreen) -> Array[String]:
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	s.queue_redraw()
+	await tree.process_frame
+	UiDraw.taping = false
+	var out: Array[String] = []
+	for d: Dictionary in UiDraw.tape:
+		if d.kind == &"text" and d.ci == s:
+			out.append(String(d.text))
+	UiDraw.tape.clear()
+	return out
+
+
+## A word drawn somewhere on the page (headings are set in capitals).
+static func _has_word(said: Array[String], part: String) -> bool:
+	for w in said:
+		if w.to_lower().contains(part.to_lower()):
+			return true
+	return false
+
+
+func test_an_empty_gear_slot_says_what_can_go_in_it() -> void:
+	SlateFeeds.clear()
+	for slot: StringName in SlateFeeds.SLOTS:
+		check(SlateFeeds.fits(slot) != "", "%s says what it takes" % slot)
+	check(SlateFeeds.fits(&"head").contains("lens"), "the head takes a lens: %s" % SlateFeeds.fits(&"head"))
+	var g := Fx.flat()
+	var s := UiLoadoutScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	var said := await _said(s)
+	check(_has_word(said, "empty"), "a slot with nothing in it says so")
+	check(_has_word(said, "takes"), "and what would fit: %s" % str(said))
+	s.free()
+	Fx.done(g)
+
+
+func test_gear_says_what_this_land_presses_with() -> void:
+	SlateFeeds.clear()
+	var g := Fx.flat()
+	g.body.pressure = {&"cold": 0.8}
+	var s := UiLoadoutScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	check(s.here().has(&"cold"), "what is felt now is what this land presses with")
+	eq(s.hazards()[0], &"cold", "and it is the first resistance listed, however many there are")
+	var said := await _said(s)
+	check(_has_word(said, BiomeRegistry.at(g.world, g.player.pos).display_name), "the land is named: %s" % str(said))
+	check(_has_word(said, "presses"), "and what it does to you: %s" % str(said))
+	s.free()
+	Fx.done(g)
+
+
+func test_machine_reads_read_the_ground_when_nothing_living_does() -> void:
+	SlateFeeds.clear()
+	var g := Fx.flat()
+	var s := UiReadsScreen.new()
+	s.game = g
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	s.refresh()
+	check(s.menu.rows.is_empty(), "no machine in reach")
+	var bare := await _said(s)
+	check(_has_word(bare, "unworked ground"), "unworked land says so: %s" % str(bare))
+	check(_has_word(bare, "survey"), "and the survey bearing still reads back")
+	g.world.landmarks.append({"kind": &"quarry", "pos": g.player.pos + Vector2(20, 0), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"quarry"})
+	g.world.landmarks.append({"kind": &"burn", "pos": g.player.pos + Vector2(0, -60), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"scorch"})
+	var soil := s.ground()
+	eq((soil.works as Array).size(), 2, "both works read")
+	eq(StringName((soil.works as Array)[0].mark), &"quarry", "the nearest first")
+	gt(float(soil.bearing), 0.0, "the machines surveyed this land along one bearing")
+	var said := await _said(s)
+	check(_has_word(said, UiReadsScreen.mark_words(&"quarry")), "what they did here, in words: %s" % str(said))
+	check(_has_word(said, "20"), "and how far")
+	s.free()
+	Fx.done(g)
+
+
+func test_the_making_page_says_when_long_work_comes_off_the_fire() -> void:
+	var g := Fx.flat(40, 9.0)
+	var quick := {"id": &"q", "at": &"hand", "minutes": 10.0, "needs": {}, "makes": {&"haft": 1}}
+	var slow := {"id": &"s", "at": &"fire", "minutes": 180.0, "needs": {&"driftwood": 4}, "makes": {&"charcoal": 2}}
+	check(not Crafting.sets_going(quick))
+	check(Crafting.sets_going(slow), "long work at a station is set going")
+	check(UiCraftingScreen.ready_line(g, quick).begins_with("done "), "work done on the spot: %s" % UiCraftingScreen.ready_line(g, quick))
+	var line := UiCraftingScreen.ready_line(g, slow)
+	check(line.begins_with("on the fire, ready at "), "long work is left on the fire: %s" % line)
+	var want := UiRules.clock_at(g.clock.minutes + Survival.SET_GOING_MINUTES + 180.0, g.clock.minutes)
+	check(line.ends_with(want), "at the hour survival will hand it back: %s" % line)
+	# And what is already going is listed under the recipes.
+	var fire := Fx.put(g, PropKind.FIRE, Vector2(1.0, 0))
+	SurvivalState.of(g).cooking[fire.id] = {"prop": fire, "station": &"fire", "recipe": &"s",
+		"makes": {&"charcoal": 2}, "done": g.clock.minutes + 120.0, "pos": fire.pos}
+	var s := UiCraftingScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.recipes_override = [slow]
+	tree.root.add_child(s)
+	s.open()
+	s.settle()
+	eq(s.jobs().size(), 1, "the fire is working")
+	gt(float(UiCraftingScreen.cook_height(1)), 0.0, "and the list makes room for it")
+	eq(UiCraftingScreen.cook_height(0), 0, "with nothing on, it takes no room")
+	var said := await _said(s)
+	check(_has_word(said, "on now"), "what is on the fire is listed: %s" % str(said))
+	check(_has_word(said, "charcoal"), "by what it makes")
+	check(_has_word(said, UiRules.clock_at(g.clock.minutes + 120.0, g.clock.minutes)), "and when to come back")
+	s.free()
+	Fx.done(g)
+
+
+func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
+	var g := Fx.flat()
+	g.inventory.add(&"driftwood", 3)
+	var s := UiInventoryScreen.new()
+	s.game = g
+	s.inventory = g.inventory
+	s.body = g.body
+	tree.root.add_child(s)
+	s.open()
+	check(UiInventoryScreen.drop_asks(&"knife"), "a tool is asked about")
+	check(not UiInventoryScreen.drop_asks(&"driftwood"), "a good is not")
+	s.select(&"driftwood")
+	check(s.handle(&"drop"), "x is the page's own key")
+	eq(g.inventory.count(&"driftwood"), 0, "the whole heap of it goes down")
+	check(Survival.heap_near(g) != null, "onto a heap the world keeps")
+	s.select(&"knife")
+	s.handle(&"drop")
+	eq(g.inventory.count(&"knife"), 1, "a tool is not let go on one press")
+	check(s.note.contains("knife") and s.note_warn, "it asks: %s" % s.note)
+	check(s.asking(&"knife"), "and waits on the same row")
+	s.handle(&"drop")
+	eq(g.inventory.count(&"knife"), 0, "asked again, it goes down")
+	check(not s.asking(&"knife"), "and the asking is over")
+	s.free()
+	Fx.done(g)
