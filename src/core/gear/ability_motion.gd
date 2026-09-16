@@ -16,13 +16,16 @@ const ARC := 0.35
 ## height at the launch, so the run-up to the lip is not read as a landing.
 const LAUNCH_LIFT := 0.5
 ## A glide over water or over something it cannot be set down on carries on past
-## its own span for at most this long, looking for ground.
-const OVERRUN := 5.0
+## its own span for at most this long, looking for ground. It is enough to cross
+## any river or inlet the world makes, and no more: whatever it cannot cross, the
+## body is put back on the shore it left, and a short way back reads as a wing
+## that did not make it where a long one would read as a teleport.
+const OVERRUN := 2.5
 ## ...skimming this far above whatever is under it while it looks.
 const SKIM := 0.5
 ## How far out a flight that has run out of everything will look for a tile to
 ## land on before falling back to the last good ground it passed over.
-const LANDING_SEARCH := 6
+const LANDING_SEARCH := 8
 
 var kind: StringName = &""
 var dir := Vector2.ZERO
