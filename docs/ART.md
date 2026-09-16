@@ -214,3 +214,56 @@ piece of it.
   module's violet.
 - **640x360 pixel-perfect**, integer sizes only, and the same menu standard
   (up/down, enter, esc).
+
+## 10. What the player builds (docs/VISION.md §9)
+
+A settlement is the one place in the world made by hands rather than by the
+machines or by what is left of the old world, and it has to look it. Against a
+landscape of ruler-straight FOUND wreckage and slumped ruin, the player's town is
+**crooked, patched, growing and cared for**.
+
+- **Built things carry their idiom, and it shows what a place has been through.**
+  A first shelter is all MADE: rough timber, lashings, thatch, hand-cut edges that
+  do not meet. A holding that has salvaged well is MENDED: machine plate lashed to
+  timber, a door cut from a hull, hoses and cable run along the outside of the
+  walls, the seams visible and proud. A settlement running stolen technology has
+  FOUND pieces in it, exact and humming and out of place, and they are the parts a
+  machine will come for.
+- **Nothing is prefabricated.** The same kind built twice is not the same drawing:
+  pieces lean, patch differently, weather differently and grow additions. A wall is
+  a run of what was to hand, not a repeated tile.
+- **A place shows its state before any readout does.** Smoke says the hearth is
+  lit; a spinning wind spinner and lit windows say there is power; plots show the
+  season and whether anyone is tending them; open shutters mean the place is not
+  afraid tonight. A player should be able to read their own signature (VISION §9.4)
+  from a hillside, before opening the slate.
+- **Dusk is when a settlement is most beautiful**, and the lit town must be worth
+  defending: lamps and hearth light pooled on wet ground and on faces, warm against
+  the cold machine violet, the one honest light in the landscape. That beauty is
+  the whole point of the raid system: it is what the player stands to lose.
+- **Damage is drawn, not tinted.** A struck wall loses pieces, leans and shows
+  what it is made of; a burnt plot is black stalks; a ruined piece stays where it
+  fell. After a raid the yard tells the story: wrecked machines, scorched ground,
+  scattered stores, the gap where a piece used to stand. Mending is visible too,
+  so a place that has survived three raids looks like it.
+- **Defences are obviously hand-made and obviously desperate**: sharpened stakes,
+  a ditch, netting strung on poles, a turret bodged from a machine's own arm and
+  fed by cable from the battery stack. Nothing looks issued.
+
+## 11. Gear the player made, worn where it can be seen (docs/VISION.md §6.1)
+
+- **A build is visible on the body.** Every piece of gear and every modifier that
+  matters is drawn on the player: a cooling loop is coiled tube across the back, a
+  capacitor bank is three stolen cells strapped at the hip, a phase coil glows
+  faintly through a coat. Someone watching should be able to guess what the player
+  is built for.
+- **Rarity reads as strangeness, not as sparkle.** There are no glowing rarity
+  colours and no outlines. A prime piece looks like something that came out of a
+  place other people do not go; a relic looks wrong, exact and older or newer than
+  everything around it. The clue is the idiom and the finish, never a tint.
+- **Elite materials keep their landscape's colour and hand**, so a piece carries
+  where it came from: bone glass is pale and translucent, tide iron is pitted and
+  rust-bled, fulgurite is black glass with a lightning grain, foundry alloy is cold
+  and perfect. A player should recognise the land in the tool.
+- **Mended is the default, and it must never look tidy.** FOUND parts bound with
+  MADE cord, mismatched fixings, a hand-scratched mark where the maker checked it.
