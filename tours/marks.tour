@@ -1,0 +1,112 @@
+# A mark must never be the thing standing in front of what it proves, and the
+# body must read in every pose (docs/ART.md §5, §7). Every frame here is at PLAY
+# zoom, because that is the only size that counts: a mark that only behaves in a
+# close shot is not fixed.
+#   tools/tour.sh tours/marks.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --fit=scanner_lens,boots_magnet,mod_spring
+# Each pair is a control frame and then the mark, from the same place, so what
+# the mark added to the picture can be counted and not argued about.
+coast calm
+
+# --- A blow leaves the machine standing there --------------------------------
+# Shot on the first frame after the blow, inside the flash: the struck plate is
+# paper, the rest of the body is still its own violet, and its lens is still
+# amber. (The flash is 60 ms; a `wait` here would shoot after it.)
+place pinewood
+wait 1.0
+spawn watcher
+wait 1.2
+shot 01-before-the-blow
+try 16
+walkto part 1.6
+tap swing
+await hit 1.8
+end
+shot 02-the-blow-leaves-it-standing
+
+# --- The machine's own light is smaller than the machine ----------------------
+# Its working part at night, at the distance it is read from: a ring of loose
+# amber pixels round the part, never a disc wider than the body wearing it.
+coast calm
+wait 0.4
+place coast
+hour 22
+weather clear:0
+wait 1.2
+spawn watcher
+wait 1.6
+shot 03-its-light-is-smaller-than-it-is
+
+# --- A read through a stolen lens, over the thing it reads --------------------
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 04-read-over-the-thing-it-reads
+
+# --- The dash leaves the body showing ----------------------------------------
+# Speed lines are ink over the world, laid where the body WAS: the player must
+# still be a person at the head of them.
+coast calm
+wait 0.5
+hour 11
+weather clear:0
+place coast
+wait 1.4
+shot 05-before-the-dash
+tap ability_dash
+await ability:dash 5
+wait 0.03
+shot 06-the-dash-leaves-the-body-showing
+
+# --- The magnet line is a line -----------------------------------------------
+place tip
+wait 0.8
+walk -1,-1 1.8
+walk 1,1 0.25
+shot 07-across-from-a-tip
+tap ability_grapple
+await ability:grapple 5
+shot 08-the-line-takes-hold
+wait 0.45
+shot 09-and-it-shortens
+
+# --- Crouched, still a person ------------------------------------------------
+coast calm
+wait 0.4
+ground heath
+wait 1.0
+shot 10-standing-in-the-heather
+hold crouch
+await crouched 3
+wait 0.6
+shot 11-down-in-the-heather
+walk 1,0 0.5
+shot 12-and-moving-down-there
+# And closer than anyone plays, which is where the art review found it: the
+# pose has to hold up under a magnifying glass as well as at 640x360.
+zoom 6
+wait 0.5
+shot 13-down-in-the-heather-close
+release crouch
+wait 0.5
+shot 14-and-up-again-close
+zoom 15
+wait 0.4
+
+# --- Breath steps off the snow -----------------------------------------------
+# The cue fires on its own beat and hangs a second and a half, so the frame is
+# taken right after the cold is first felt (the first cue is due at once) and
+# again a beat later: breath has to be visible on white ground in both.
+place snowfield
+hour 19
+weather clear:0
+wait 1.6
+await cold 12
+await pressure_bites 15
+await breath 10
+wait 0.15
+shot 15-breath-on-white-ground
+wait 2.0
+await breath 10
+wait 0.6
+shot 16-and-the-next-breath

@@ -13,6 +13,17 @@ uniform float emission_strength = 0.0;
 // Machines keep their light at night: their wash is dimmed less than the land.
 uniform float night_keep = 0.35;
 
+// A blow's paper-white, as a sphere in world space (docs/ART.md §7). Only the
+// part that was struck goes to paper: a machine that whites out whole proves
+// nothing about where the blow landed, hides its own amber working part at the
+// exact moment the player is aiming at it, and is the biggest thing in the
+// frame — all three of the things a hit mark must never be. `flash_r` 0 is
+// every draw but the sixty milliseconds after a hit. MobFx.set_flash writes
+// these into a copy of the struck body's material, never into a shared one.
+uniform vec3 flash_at = vec3(0.0);
+uniform float flash_r = 0.0;
+uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
+
 varying vec3 world_pos;
 
 // The ink floor (docs/ART.md section 6: "nothing is pure black"). The law is
@@ -49,6 +60,13 @@ void fragment() {
 	}
 	// The machines' own light runs on their power: a lightning strike stutters it.
 	EMISSION = (c * emission_strength + c * glow) * sky_power() + neon_skyglow(c);
+	// The blow's paper, hard-edged because FOUND is drawn with a ruler. Laid as
+	// EMISSION over a black albedo so it lands on exactly the page's white
+	// whatever the light is doing, the way the flat flash material used to.
+	if (flash_r > 0.0 && distance(world_pos, flash_at) < flash_r) {
+		ALBEDO = vec3(0.0);
+		EMISSION = flash_col;
+	}
 }
 
 void light() {

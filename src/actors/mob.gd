@@ -41,6 +41,8 @@ var pivot: Node3D
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
+## Where in the world the blow landed, for a flash that is only the struck part.
+var _flash_at := Vector3.ZERO
 var _world: WorldData
 var _was_lit := true
 var _holding := false
@@ -134,7 +136,8 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	var flashing := Time.get_ticks_msec() < _flash_until
 	if flashing != _flashing:
 		_flashing = flashing
-		MobFx.set_flash(model, flashing)
+		var r := MobFx.flash_radius(float(s.row.get("height", 1.0))) if s.machine else 0.0
+		MobFx.set_flash(model, flashing, _flash_at, r)
 
 
 ## Is the working part due to catch again? A body that is sure of the player
@@ -243,8 +246,17 @@ func folded(now_ms: float) -> float:
 	return 1.0 - (1.0 - t) * (1.0 - t)
 
 
-func flash(seconds: float = 0.06) -> void:
+## A blow landed on this body: paper-white where it landed, for `seconds`.
+##
+## `at` is where it landed, in the world. A MACHINE flashes only there (the
+## sphere in found.gdshader): it is the one body big enough that flashing it
+## whole hides what the player needs to see — its violet, its wear and the amber
+## working part they are aiming at. Given nothing, the flash goes to the working
+## part, which is what every other blow on a machine is about. A dog or a person
+## is a few pixels and flashes whole, as it always has.
+func flash(seconds: float = 0.06, at: Vector3 = Vector3.INF) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+	_flash_at = at if at.is_finite() else part_position()
 
 
 ## The point of the drawn body highest on screen (`up`: the camera's up), so a

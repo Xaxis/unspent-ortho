@@ -366,7 +366,9 @@ func _on_hit(e: Dictionary) -> void:
 		MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
 		# The part's flare follows from the state (Mob.sync_view), in its order.
-		(target.node as Mob).flash(0.06)
+		# Where the blow met the body is where the paper goes, so a machine keeps
+		# its violet and its amber part while the mark proves the hit (Mob.flash).
+		(target.node as Mob).flash(0.06, impact)
 
 
 func _on_hurt(e: Dictionary) -> void:
@@ -550,6 +552,7 @@ func _play_act(spec: String) -> void:
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
 			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_deg, game.camera.pitch_deg, 10)
 			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
+			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[2], 0.4, 1.6, Vector2.ZERO, 12)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0

@@ -229,9 +229,16 @@ vec4 tell(vec2 p, float pw, float pr) {
 	return inked(e, mark_halo);
 }
 
-// Speed lines: three parallel ink dashes left behind a body that has just shot
-// away along `dir` (screen, UV space), the middle one longest, with clear gaps
-// between. They slide back and thin.
+// Speed lines: three ink dashes left behind a body that has just shot away along
+// `dir` (screen, UV space), the middle one longest, with CLEAR PAGE between them.
+// They slide back and thin.
+//
+// They came in at 40 px with each stroke 2.6 px wide and a pixel of paper round
+// it, laid 5 px apart: the three paper edges met and the mark became one opaque
+// cream slab about 40x35 px with some ink in it, over the player and the ground
+// both. So: the burst's OPEN heart (nothing is drawn within OPEN of the centre,
+// where the body is), strokes half as thick, and the page showing between them.
+// A speed line is ink over the world, not ink on a field of paper (ART §7).
 vec4 streak(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw - 2.0;
@@ -240,18 +247,53 @@ vec4 streak(vec2 p, float pw, float pr) {
 	float e = 1e5;
 	for (int i = 0; i < 3; i++) {
 		float fi = float(i) - 1.0;
-		float len = (i == 1 ? 1.2 : 0.8) * R * (1.0 - pr * 0.5);
-		// Laid out ahead of the quad's centre along dir and slid back as they go.
-		float head = R * 0.9 - abs(fi) * R * 0.2 - pr * R * 0.4;
-		vec2 a = d * head + n * fi * 5.0;
-		vec2 b = d * (head - len) + n * fi * 5.0;
-		// Full at the head, where the body was, drawn off to a point behind.
+		float len = (i == 1 ? 1.5 : 1.05) * R * (1.0 - pr * 0.5);
+		// Laid out behind the quad's centre along dir and slid further back as they
+		// go: the heart stays open, so the body is never inside its own dash.
+		float head = R * (1.0 - OPEN) - abs(fi) * R * 0.12 - pr * R * 0.4;
+		vec2 a = d * head + n * fi * 7.0;
+		vec2 b = d * (head - len) + n * fi * 7.0;
+		// Drawn off to a point at BOTH ends: a pen leaves the page, it does not stop.
 		vec2 ab = b - a;
 		float t = clamp(dot(q - a, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
-		float hw = mix(1.3, 0.35, t) * (pr < 0.55 ? 1.0 : 0.6);
+		float taper = min(1.0, t * 9.0);
+		float hw = mix(1.1, 0.25, t) * taper * (pr < 0.55 ? 1.0 : 0.6);
 		e = min(e, length(q - (a + ab * t)) - hw);
 	}
-	return inked(e, 1.0);
+	// NO paper at all. A speed line is ink over the world (ART §7). Edged in page
+	// the way a tell is, three narrow strokes stop being strokes: each reads as a
+	// white lozenge with a slit down it, and the three lozenges together are the
+	// brightest thing on the screen, over the body that made them.
+	return inked(e, 0.0);
+}
+
+// Breath in the cold, steam off hot ground: the one mark that is neither ink nor
+// paper. It has to read on snow AND on wet rock, so it is held by its own rim
+// the way a person is (docs/ART.md §5): a pale core of loose pixels inside a
+// one-pixel contour in the cue's own mid tone. Drawn in ink on the shaded side,
+// as dust is, three specks of breath on a white snowfield read as soot.
+vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
+	float r = length(p);
+	float a = atan(p.y, p.x);
+	float R = mix(0.55, 0.80, 1.0 - (1.0 - pr) * (1.0 - pr));
+	float lobe = abs(sin(a * 2.5 + seed * 3.0));
+	float edge = R * (0.74 + 0.26 * sqrt(lobe));
+	if (r > edge) {
+		return vec4(0.0);
+	}
+	float fade = 1.0 - pr;
+	if (edge - r < pw * 1.3) {
+		// The contour breaks into dashes as the breath thins away.
+		float seg = floor((a / TAU + 0.5) * 16.0);
+		if (ink_hash(vec2(seg, seed)) < pr * 0.85) {
+			return vec4(0.0);
+		}
+		return vec4(sky_apply(col_b, wp, TIME), 1.0);
+	}
+	if (ink_hash(px + vec2(seed * 31.0, seed * 17.0)) > 0.35 + 0.5 * fade) {
+		return vec4(0.0);
+	}
+	return vec4(sky_apply(col_a, wp, TIME), 1.0);
 }
 
 // A reading held on something: four ruled corner ticks framing it, drawn in
@@ -290,6 +332,7 @@ void fragment() {
 	else if (mode == 5) { o = tell(p, pw, pr); }
 	else if (mode == 6) { o = streak(p, pw, pr); }
 	else if (mode == 7) { o = bracket(p, pw, pr); }
+	else if (mode == 8) { o = vapour(p, px, pw, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -365,6 +408,39 @@ void fragment() {
 }
 """
 
+## A ruled line of borrowed light between two points, on a ribbon that faces the
+## camera. FOUND, so it is exact (docs/ART.md §3): a one-pixel core of the
+## machines' cold with a one-pixel dark edge each side, which is what lets it
+## read over pale gravel and over night both. It carries its own two values for
+## the same reason a person carries a rim.
+const _LINE := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
+#include "res://src/render/sky.gdshaderinc"
+
+uniform vec3 core = vec3(0.70, 0.77, 0.80);
+uniform vec3 edge = vec3(0.17, 0.20, 0.25);
+uniform float progress = 0.0;
+varying vec3 wp;
+
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
+void fragment() {
+	// The ribbon is exactly LINE_PX wide, so UV.y maps whole screen pixels.
+	float v = abs(UV.y - 0.5) * 2.0;
+	// A line given a life of its own retracts toward the hand as it goes. A
+	// grapple's does not: it is re-pointed every frame and freed when the pull
+	// is over, so its progress stays at 0 and the whole line stands.
+	if (UV.x > 1.0 - progress) {
+		discard;
+	}
+	ALBEDO = sky_apply(v < 0.34 ? core : edge, wp, TIME);
+	ALPHA = 1.0;
+}
+"""
+
 const BURST := 0
 const PUFF := 1
 const RING := 2
@@ -373,6 +449,7 @@ const GLINT := 4
 const TELL := 5
 const STREAK := 6
 const BRACKET := 7
+const VAPOUR := 8
 
 ## World units per screen pixel of the 640x360 image (the fight system keeps it
 ## to the camera's). Marks are never smaller on screen than their *_PX sizes.
@@ -394,8 +471,16 @@ const GLINT_PX := 9.0
 ## keeps the full 30 px it has always had — shrunk to 26 it read as one thin bar
 ## beside the machine instead of a fan pointing anywhere.
 const TELL_PX := 30.0
-const STREAK_PX := 40.0
+## Speed lines came in at 40 px, which at 640x360 is a mark wider than the body
+## that made it; back down beside the burst's 22, where a dash is a flick of the
+## pen behind a body that is still plainly a person (wave A2, art finding 3).
+const STREAK_PX := 34.0
 const BRACKET_PX := 26.0
+## Breath and steam: small, because they are a cue and not an event.
+const VAPOUR_PX := 18.0
+## A magnet line's width in whole screen pixels: one of the machines' cold with
+## one of their dark each side. Three is the least that reads over pale gravel.
+const LINE_PX := 3.0
 ## The fraction of a burst's (and a plate ring's) radius that never takes ink, so
 ## what was struck shows through the middle of its own mark. Compiled into the
 ## shader as OPEN and measured against the machines' parts in
@@ -435,6 +520,8 @@ static func _shader(key: StringName) -> Shader:
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
 		&"swing":
 			s.code = _SWING
+		&"line":
+			s.code = _LINE
 		_:
 			s.code = _FLASH
 	_shaders[key] = s
@@ -504,6 +591,18 @@ static func px(n: float) -> float:
 	return n * texel
 
 
+## How much of a struck body goes to paper, as a share of its height. Enough to
+## read as "here", never enough to be the body: at a quarter of the height the
+## machine keeps its violet, its wear and its amber part while the blow lands.
+const FLASH_SHARE := 0.24
+
+
+## The flash sphere for a body `height` world units tall, never smaller than a
+## few screen pixels (a low body would otherwise flash nothing at all).
+static func flash_radius(height: float) -> float:
+	return maxf(height * FLASH_SHARE, px(4.0))
+
+
 ## Screen pixels at the heart of a burst that never take ink, at the moment of
 ## the blow. What was struck has to show through: the burst proves the hit, the
 ## part proves where to hit.
@@ -533,14 +632,19 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 	_run(mi, t, Vector3(d.x, 0.0, d.y) * size * 0.9 + Vector3(0, size * 0.3, 0))
 
 
-## A slow breath of pale steam and ash off a vent: a puff that rises and thins
-## over `seconds`, drifting with the wind.
+## A slow breath of pale steam and ash off a vent, or off a body in the cold: a
+## puff that rises and thins over `seconds`, drifting with the wind.
+##
+## It is drawn in TWO values of `col`'s own hue and in no ink at all: a pale core
+## held by a rim in the cue's own mid tone (docs/ART.md §5). Breath drawn the way
+## dust is -- an ink contour on the shaded side -- is three near-black specks,
+## and on a snowfield near-black is soot, not breath (wave A2, art finding 9).
 static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
 	if not _ok(parent):
 		return
-	size = at_least(size, PUFF_PX)
-	var mi := _mark(parent, at, size, PUFF, &"over", seed_value, col, col.darkened(0.2))
-	_run(mi, seconds, Vector3(drift.x, size * 1.6, drift.y))
+	size = at_least(size, VAPOUR_PX)
+	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col)
+	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
 
 
 ## Several puffs about a point, for a body landing or a charge setting off.
@@ -622,11 +726,77 @@ static func streak(parent: Node, at: Vector3, dir: Vector2, yaw_deg: float, pitc
 	var d := dir.normalized()
 	# UV y runs down the screen; the ground's up is foreshortened by the pitch.
 	var screen := Vector2(d.dot(right), -d.dot(up) * sin(deg_to_rad(pitch_deg)))
-	# The quad sits back along dir so the heads (drawn 0.9 of the way ahead in it) land on `at`.
-	var back := 0.45 * size / maxf(0.2, screen.length())
+	# The quad sits back along dir so the heads -- drawn (1 - OPEN) of the way
+	# ahead in it, clear of the open heart -- land on `at`.
+	var back := (1.0 - BURST_OPEN) * 0.5 * size / maxf(0.2, screen.length())
 	var mi := _mark(parent, at - Vector3(d.x, 0.0, d.y) * back, size, STREAK, &"over", seed_value, Palette.INK[0], Palette.INK[0])
 	(mi.material_override as ShaderMaterial).set_shader_parameter(&"dir", screen.normalized())
 	_run(mi, 0.2)
+
+
+## A line of borrowed light from `from` to `to`: a magnet line off the boots, a
+## tether, anything the machines' own hardware puts between two points. It is a
+## LINE, drawn its whole length, not a few marks of light spaced along one --
+## spaced marks at a real distance are two sparkles and a player who is moved
+## without being shown why (wave A2, art finding 4).
+##
+## Returns the node so whoever drew it can re-point it with `aim_line` as it
+## shortens, and free it when the pull is over. `seconds` > 0 frees it itself.
+static func line(parent: Node, from: Vector3, to: Vector3, col: Color, seconds: float = 0.0) -> MeshInstance3D:
+	if not _ok(parent):
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = _shader(&"line")
+	mat.set_shader_parameter(&"core", _v3(col))
+	mat.set_shader_parameter(&"edge", _v3(Palette.PLATE[1]))
+	mat.set_shader_parameter(&"progress", 0.0)
+	mat.render_priority = MARK_PRIORITY
+	var mi := MeshInstance3D.new()
+	mi.mesh = ArrayMesh.new()
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	aim_line(mi, from, to)
+	if seconds > 0.0:
+		_run(mi, seconds)
+	return mi
+
+
+## Re-point a line drawn by `line`. The ribbon is rebuilt across the camera, so
+## it keeps its exact width in screen pixels from any angle and at any distance.
+static func aim_line(mi: MeshInstance3D, from: Vector3, to: Vector3) -> void:
+	if mi == null or not mi.is_inside_tree():
+		return
+	var span := to - from
+	if span.length() < 0.01:
+		mi.visible = false
+		return
+	mi.visible = true
+	var fwd := Vector3.FORWARD
+	var cam := mi.get_viewport().get_camera_3d()
+	if cam != null:
+		fwd = cam.global_transform.basis.z
+	var n := span.cross(fwd)
+	if n.length() < 1e-3:
+		n = span.cross(Vector3.UP)
+	n = n.normalized() * px(LINE_PX) * 0.5
+	# Drawn in world space about the line's own midpoint, so the node itself never
+	# has to be turned: a line redrawn every frame must cost nothing but a mesh.
+	var mid := (from + to) * 0.5
+	mi.global_position = mid
+	mi.global_transform.basis = Basis.IDENTITY
+	var a := from - mid
+	var b := to - mid
+	var verts := PackedVector3Array([a - n, a + n, b + n, a - n, b + n, b - n])
+	var uvs := PackedVector2Array([Vector2(0, 0), Vector2(0, 1), Vector2(1, 1), Vector2(0, 0), Vector2(1, 1), Vector2(1, 0)])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	var mesh := mi.mesh as ArrayMesh
+	mesh.clear_surfaces()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mi.extra_cull_margin = span.length()
 
 
 ## Compile every mark's shader before the first blow needs it, so the first hit
@@ -702,21 +872,35 @@ static func swing_material() -> ShaderMaterial:
 	return mat
 
 
-## Paper-white over every drawn part of a body while `on` (skips glow cards,
-## which are not ArrayMeshes, so a halo never flashes as a square, and
-## shadow-only twins). MultiMesh parts (a flock's shards) flash too.
+## Paper-white on a struck body while `on` (skips glow cards, which are not
+## ArrayMeshes, so a halo never flashes as a square, and shadow-only twins).
+## MultiMesh parts (a flock's shards) flash too.
 ##
-## A figure that can flash itself (`set_flash(on)`, a uniform in its own shader)
-## is asked to. Otherwise each material_override is set aside and put back after;
-## a figure that assigned its own material in between keeps what it assigned.
-static func set_flash(root: Node, on: bool) -> void:
+## `radius` > 0 flashes ONLY a sphere of that size in world units about `at`:
+## the part that was struck goes to paper and the rest of the body keeps its own
+## colour. A machine is the one body big enough for this to matter, and it
+## matters a lot — flashed whole it is a bone-white silhouette that says nothing
+## about where the blow landed, hides the amber working part the player is
+## aiming at, and is the biggest thing in the frame (wave A2, playtest finding
+## 4). With radius 0 the whole body flashes, which is right for a dog or a
+## person: a few pixels across, they have no parts to tell apart.
+##
+## The sphere is `flash_at`/`flash_r` in found.gdshader and world.gdshader,
+## written into a COPY of each drawn part's material. Never into the material
+## itself: people share one, and animals draw on the world's, so writing there
+## would flash the village or the ground.
+##
+## A figure that can flash itself (`set_flash(on, at, radius)`, a uniform in its
+## own shader) is asked to. Otherwise each material_override is set aside and put
+## back after; a figure that assigned its own material in between keeps it.
+static func set_flash(root: Node, on: bool, at: Vector3 = Vector3.ZERO, radius: float = 0.0) -> void:
 	if root == null:
 		return
 	if root.has_method(&"set_flash"):
-		root.call(&"set_flash", on)
+		root.call(&"set_flash", on, at, radius)
 		return
 	_flash_material()
-	_flash_under(root, on)
+	_flash_under(root, on, at, radius)
 
 
 static func _flash_material() -> ShaderMaterial:
@@ -727,7 +911,7 @@ static func _flash_material() -> ShaderMaterial:
 	return _flash_mat
 
 
-static func _flash_under(n: Node, on: bool) -> void:
+static func _flash_under(n: Node, on: bool, at: Vector3, radius: float) -> void:
 	var gi := n as GeometryInstance3D
 	if gi != null:
 		var mi := n as MeshInstance3D
@@ -736,11 +920,43 @@ static func _flash_under(n: Node, on: bool) -> void:
 			# (An overlay pass would be kinder, but the Compatibility renderer draws none.)
 			if on and not gi.has_meta(&"unflashed"):
 				gi.set_meta(&"unflashed", gi.material_override)
-				gi.material_override = _flash_mat
+				gi.material_override = _part_flash(gi, at, radius) if radius > 0.0 else _flash_mat
 			elif not on and gi.has_meta(&"unflashed"):
 				# Put back only over our own flash: a material the figure chose since is its own.
-				if gi.material_override == _flash_mat:
+				var ours: Material = gi.get_meta(&"flash_copy") as Material if gi.has_meta(&"flash_copy") else null
+				if gi.material_override == _flash_mat or (ours != null and gi.material_override == ours):
 					gi.material_override = gi.get_meta(&"unflashed") as Material
 				gi.remove_meta(&"unflashed")
 	for c in n.get_children():
-		_flash_under(c, on)
+		_flash_under(c, on, at, radius)
+
+
+## This part's own material with the flash sphere written into it. Kept on the
+## node and remade only when the part swapped material underneath us (a working
+## part does, when its light goes out), so a fight costs no allocation per blow.
+static func _part_flash(gi: GeometryInstance3D, at: Vector3, radius: float) -> Material:
+	var src := _drawn_material(gi) as ShaderMaterial
+	if src == null:
+		return _flash_mat
+	var copy: ShaderMaterial = gi.get_meta(&"flash_copy") as ShaderMaterial if gi.has_meta(&"flash_copy") else null
+	var was: ShaderMaterial = gi.get_meta(&"flash_src") as ShaderMaterial if gi.has_meta(&"flash_src") else null
+	if copy == null or was != src:
+		copy = src.duplicate() as ShaderMaterial
+		gi.set_meta(&"flash_copy", copy)
+		gi.set_meta(&"flash_src", src)
+	copy.set_shader_parameter(&"flash_at", at)
+	copy.set_shader_parameter(&"flash_r", radius)
+	return copy
+
+
+## What this part actually draws with. A mesh whose surfaces carry their own
+## materials cannot be copied part-wise through material_override, so it takes
+## the whole-body flash rather than the wrong colours.
+static func _drawn_material(gi: GeometryInstance3D) -> Material:
+	if gi.material_override != null:
+		return gi.material_override
+	var mi := gi as MeshInstance3D
+	if mi == null or mi.mesh == null or mi.mesh.get_surface_count() != 1:
+		return null
+	var m := mi.get_surface_override_material(0)
+	return m if m != null else mi.mesh.surface_get_material(0)

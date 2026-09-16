@@ -214,26 +214,43 @@ func animate(speed: float, delta: float) -> void:
 
 
 ## Fold the stance down over whatever the body is already doing: thighs forward,
-## shins back under them, the hips down and a little back, the spine over the
-## knees and the head brought up to look out of it. It is an offset, not a pose
-## of its own, so a crouching body still walks, swings and works.
+## shins back under them, the hips down and back, the spine over the knees and
+## the head brought up to look out of it. It is an offset, not a pose of its
+## own, so a crouching body still walks, swings and works.
+##
+## It has to READ at 640x360 from a camera 45 degrees up (docs/ART.md §5), and
+## that is the whole difficulty: dropping a body and pitching its back forward
+## lays the coat flat across the screen and the figure becomes one pale
+## horizontal lump with a line through it (wave A2, art finding 8). What reads
+## instead is ASYMMETRY and a gap -- one knee further forward than the other,
+## the knees apart, the hips carried back behind them, the head clear of the
+## back and turned a little off the line of travel, and the arms folded in so
+## the torso is not one unbroken field. A person down in the heather, not a
+## person who has been squashed.
 func _crouch_pose(p: PersonAnim.Pose) -> void:
 	var k := _crouch
 	var leg: float = _dims.thigh + _dims.shin
 	var bend := func(b: StringName, d: Vector3) -> void:
 		p.rot[b] = p.r(b) + d * k
-	bend.call(&"thigh_l", Vector3(0, 0, 0.85))
-	bend.call(&"thigh_r", Vector3(0, 0, 0.85))
-	bend.call(&"shin_l", Vector3(0, 0, -1.6))
-	bend.call(&"shin_r", Vector3(0, 0, -1.6))
-	bend.call(&"foot_l", Vector3(0, 0, 0.62))
-	bend.call(&"foot_r", Vector3(0, 0, 0.62))
-	bend.call(&"spine", Vector3(0, 0, -0.44))
-	bend.call(&"head", Vector3(0, 0, 0.5))
-	bend.call(&"arm_l", Vector3(0, 0, 0.3))
-	bend.call(&"arm_r", Vector3(0, 0, 0.3))
-	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.08, -leg * CROUCH_DROP, 0.0) * k
-	p.off[&"hem"] = p.o(&"hem") + Vector3(0, -leg * CROUCH_DROP * 0.4, 0) * k
+	# The lead knee (left) comes further up and further forward than the other.
+	bend.call(&"thigh_l", Vector3(0.22, 0, 1.05))
+	bend.call(&"thigh_r", Vector3(-0.30, 0, 0.72))
+	bend.call(&"shin_l", Vector3(0, 0, -1.78))
+	bend.call(&"shin_r", Vector3(0, 0, -1.42))
+	bend.call(&"foot_l", Vector3(0, 0, 0.70))
+	bend.call(&"foot_r", Vector3(0, 0, 0.55))
+	# Less pitch than the drop wants: pitched right over, the back is the whole
+	# silhouette and the head disappears into it.
+	bend.call(&"spine", Vector3(0, 0.16, -0.30))
+	bend.call(&"head", Vector3(0, -0.24, 0.42))
+	# Elbows in and forearms up: a dark band between the head and the back.
+	bend.call(&"arm_l", Vector3(0.16, 0, 0.62))
+	bend.call(&"arm_r", Vector3(-0.16, 0, 0.44))
+	# Only the free hand folds: the tool hand keeps whatever grip the action or
+	# the held thing put it in, so a crouched swing is still the same swing.
+	bend.call(&"fore_l", Vector3(0, 0, 0.75))
+	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.17, -leg * CROUCH_DROP, 0.0) * k
+	p.off[&"hem"] = p.o(&"hem") + Vector3(-0.05, -leg * CROUCH_DROP * 0.4, 0) * k
 
 
 ## Whether this call should pose the skeleton (see the header). Always on a

@@ -32,6 +32,14 @@ const BREATH_SECONDS := 1.6
 
 ## Hazard id -> the real second its next cue is due.
 var _cue_at: Dictionary = {}
+## The cue mark last drawn on the body and the real second it stops counting as
+## JUST drawn, so a tour can `await breath` (or shimmer, cough, tick, drip,
+## ring) instead of guessing at the beat and shooting into the gap between two
+## of them. The window is short on purpose: an await that latched onto a mark
+## already half over would hand the tour a frame with nothing in it.
+const MARK_FRESH := 0.35
+var _mark_shown: StringName = &""
+var _mark_until := 0.0
 ## Hazard id -> a line has been said for it and not yet cleared.
 var _said: Dictionary = {}
 var _since := 0.0
@@ -199,12 +207,20 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 	var seed_value := int(Time.get_ticks_msec()) + int(v * 1000.0)
 	var ahead := Vector2(cos(game.player.facing), sin(game.player.facing))
 	var drift := ahead * 0.4
-	match StringName(cue.get("mark", &"")):
+	var mark := StringName(cue.get("mark", &""))
+	if mark != &"":
+		_mark_shown = mark
+		_mark_until = Time.get_ticks_msec() / 1000.0 + MARK_FRESH
+	match mark:
 		&"breath":
-			# Two puffs off the mouth, the second a little further out: a plume,
+			# Two puffs off the MOUTH, the second a little further out: a plume,
 			# not a dot, and it hangs long enough to be seen at walking pace.
-			MobFx.breath(_fx_parent(), head, col, 0.30 + 0.14 * v, BREATH_SECONDS, drift, seed_value)
-			MobFx.breath(_fx_parent(), head + Vector3(ahead.x, 0.12, ahead.y) * 0.34, col,
+			# Both are put out in front of the face, never at the head's own
+			# point: drawn there and then risen, breath ends up above and behind
+			# the head and stops reading as breath (wave A2, art finding 9).
+			var mouth := head + Vector3(ahead.x, -0.06, ahead.y) * 0.26
+			MobFx.breath(_fx_parent(), mouth, col, 0.30 + 0.14 * v, BREATH_SECONDS, drift, seed_value)
+			MobFx.breath(_fx_parent(), mouth + Vector3(ahead.x, 0.10, ahead.y) * 0.30, col,
 				0.20 + 0.10 * v, BREATH_SECONDS * 0.8, drift, seed_value + 5)
 			if bool(cue.get("shiver", false)) and v >= Hazards.BITE:
 				game.player.shudder(0.22)
@@ -243,6 +259,10 @@ func tour_seen(what: StringName) -> bool:
 		&"answered":
 			# Something bit earlier and nothing bites now: the gear was felt.
 			return _bit_ever and Hazards.worst(game.body.pressure) < Hazards.BITE
+	if what == _mark_shown:
+		# The cue's own mark has just been drawn on the body: a tour shoots the
+		# breath itself rather than the gap between two of them.
+		return Time.get_ticks_msec() / 1000.0 < _mark_until
 	if Hazards.IDS.has(what):
 		return float(game.body.pressure.get(what, 0.0)) >= Hazards.FELT
 	return false

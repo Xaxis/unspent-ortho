@@ -34,29 +34,33 @@ void vertex() {
 	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
 }
 
-float bayer4(vec2 p) {
-	int x = int(mod(p.x, 4.0));
-	int y = int(mod(p.y, 4.0));
-	int i = x + y * 4;
-	int m[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(m[i]) + 0.5) / 16.0;
-}
+// The hole at the middle: the lens itself is the brightest pixel and the light
+// must never stand in front of it. How far the halo reaches, as a share of the
+// quad's half size, and how dense it is where it starts.
+const float OPEN = 0.20;
+const float REACH = 0.58;
+const float CORE = 0.62;
 
 void fragment() {
 	float r = length(UV - 0.5) * 2.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	// The core of the ring is left open: the lens itself is the brightest pixel.
-	float d = 0.0;
-	if (r > 0.3 && r < 0.62) {
-		d = 0.55;
-	} else if (r >= 0.62 && r < 1.0) {
-		d = 0.2;
-	}
-	// The ring runs on machine power: it stutters with FOUND strips after a strike.
-	d *= clamp(strength, 0.0, 1.8) * night * sky_power();
-	if (bayer4(px) >= d) {
+	// A HALO round the working part, not a disc over it. It came in as a filled
+	// donut of saturated LENS as wide as the whole machine, ordered-dithered, so
+	// its edge was a visible square lattice: a UI sprite dropped into the world,
+	// and the brightest thing in the frame, which docs/ART.md §5 keeps for fire
+	// and lamps. §1 forbids the lattice and §6 asks for exactly this -- a
+	// stippled halo, thinning outward, never a smooth bloom. Hashed on the
+	// world's own pixel grid (world_px), so nothing swims and nothing repeats.
+	if (r < OPEN || r > REACH) {
 		discard;
 	}
-	ALBEDO = r < 0.62 ? core : rim;
+	float t = (r - OPEN) / (REACH - OPEN);
+	float d = CORE * (1.0 - t) * (1.0 - t);
+	// The halo runs on machine power: it stutters with FOUND strips after a strike.
+	d *= clamp(strength, 0.0, 1.8) * night * sky_power();
+	if (ink_hash(px) >= d) {
+		discard;
+	}
+	ALBEDO = t < 0.34 ? core : rim;
 	ALPHA = 1.0;
 }
