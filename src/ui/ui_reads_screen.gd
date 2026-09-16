@@ -9,6 +9,10 @@ extends UiScreen
 
 const LIST_TOP := 50
 const RADAR_R := 44
+## What each ground mark the machines leave is, said plainly.
+const MARK_WORDS := {&"cut": "cut in rows", &"scorch": "burnt over", &"quarry": "benches cut", &"bores": "drilled through"}
+## Works listed when nothing living reads back.
+const WORKS_ROWS := 4
 
 var _feed: Dictionary = {}
 var _time := 0.0
@@ -52,6 +56,41 @@ func _player() -> Vector2:
 	return game.player.pos if game != null else Vector2.ZERO
 
 
+## The read that comes back everywhere, on the first day, with no machine in
+## sight: the one bearing the machines surveyed this land along, the mark they
+## left under the player's feet, and the works they left near. A slate that
+## can only ever say "nothing reads back" is a dead screen; the ground is
+## machine-written evidence, and the stolen module can read it.
+##   {bearing: degrees or -1, under: mark or &"", level: 0..1,
+##    works: [{mark, dist, dir}] nearest first}
+func ground() -> Dictionary:
+	var out := {"bearing": -1.0, "under": &"", "level": 0.0, "works": []}
+	if game == null or game.world == null:
+		return out
+	out.bearing = rad_to_deg(GenWorks.bearing(game.world.seed_value))
+	var p := _player()
+	var works: WorksMap = game.view.works if game.view != null else null
+	if works != null:
+		for mark: StringName in WorksMap.CHANNEL:
+			var v := works.at(floori(p.x), floori(p.y), int(WorksMap.CHANNEL[mark]))
+			if v > float(out.level):
+				out.level = v
+				out.under = mark
+	var found: Array[Dictionary] = []
+	for lm in game.world.landmarks:
+		if not lm.has("mark"):
+			continue
+		var at: Vector2 = lm.pos
+		found.append({"mark": StringName(lm.mark), "dist": at.distance_to(p), "dir": at - p})
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.dist) < float(b.dist))
+	out.works = found.slice(0, WORKS_ROWS)
+	return out
+
+
+static func mark_words(mark: StringName) -> String:
+	return String(MARK_WORDS.get(mark, String(mark)))
+
+
 func _draw() -> void:
 	draw_frame()
 	var L := UiSlate.LIST
@@ -60,10 +99,12 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "DIST  DISPOSED", UiTheme.MACHINE[2])
+	var soil := ground()
+	UiDraw.text_right(self, right, L.position.y + 4, "DIST  DISPOSED" if not menu.rows.is_empty() else "TILES OFF", UiTheme.MACHINE[2])
 	if menu.rows.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP), "nothing reads back", UiTheme.MACHINE[2])
+		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP), "nothing living reads back", UiTheme.MACHINE[2])
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP + 11), "within %d tiles" % int(SlateFeeds.READ_RADIUS), UiTheme.MACHINE[2])
+		_draw_works(soil, x0, right, LIST_TOP + 30)
 	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
@@ -86,9 +127,20 @@ func _draw() -> void:
 	var chosen_scan: Dictionary = menu.selected().get("scan", {})
 	var dx := px + RADAR_R * 2 + 20
 	var dy := R.position.y + 78
-	UiSlate.heading(self, Vector2i(dx, dy), "read", rright, UiTheme.MACHINE[2])
+	UiSlate.heading(self, Vector2i(dx, dy), "read" if not chosen_scan.is_empty() else "the ground", rright, UiTheme.MACHINE[2])
 	if chosen_scan.is_empty():
-		UiDraw.text(self, Vector2i(dx, dy + 14), "no signature chosen", UiTheme.MACHINE[2])
+		# No signature: the ground still is one. It was surveyed and cut.
+		var facts: Array = [["survey", "%d degrees" % roundi(float(soil.bearing))]]
+		if StringName(soil.under) != &"":
+			facts.append(["underfoot", mark_words(StringName(soil.under))])
+		var works: Array = soil.works
+		if not works.is_empty():
+			var w0: Dictionary = works[0]
+			facts.append(["nearest", "%s, %d %s" % [mark_words(StringName(w0.mark)), roundi(float(w0.dist)), _bearing(w0.dir)]])
+		facts.append(["signature", "none in reach"])
+		for k in facts.size():
+			UiDraw.text(self, Vector2i(dx, dy + 14 + k * 11), facts[k][0], UiTheme.MACHINE[2])
+			UiDraw.text(self, Vector2i(dx + 52, dy + 14 + k * 11), facts[k][1], UiTheme.MACHINE[3])
 	else:
 		var d: Vector2 = (chosen_scan.get("pos", Vector2.ZERO) as Vector2) - _player()
 		var facts := [
@@ -104,6 +156,24 @@ func _draw() -> void:
 		if note != "":
 			UiSlate.wrapped(self, Vector2i(dx, dy + 62), rright - dx, note, UiTheme.MACHINE[2])
 	draw_keys([["wasd", "choose"], ["esc", "back"]])
+
+
+## What they did to this land, listed where the living signatures would be: the
+## works nearest the player, each with how far and which way.
+func _draw_works(soil: Dictionary, x0: int, right: int, top: int) -> void:
+	var works: Array = soil.works
+	UiSlate.heading(self, Vector2i(x0, top), "what they did here", right, UiTheme.MACHINE[2])
+	if works.is_empty():
+		UiDraw.text(self, Vector2i(x0 + 2, top + 14), "unworked ground", UiTheme.MACHINE[2])
+		return
+	for i in works.size():
+		var w: Dictionary = works[i]
+		var y := top + 14 + i * UiTheme.LINE
+		_arrow(Vector2i(x0 + 6, y + 4), w.dir)
+		UiDraw.text(self, Vector2i(x0 + 16, y), mark_words(StringName(w.mark)), UiTheme.MACHINE[3])
+		UiDraw.text_right(self, right, y, "%d" % roundi(float(w.dist)), UiTheme.MACHINE[2])
+	var by := top + 14 + works.size() * UiTheme.LINE + 4
+	UiDraw.text(self, Vector2i(x0 + 2, by), "all of it on one bearing: %d degrees" % roundi(float(soil.bearing)), UiTheme.MACHINE[2])
 
 
 ## The network's interference as a trace across the panel: flat and quiet when
