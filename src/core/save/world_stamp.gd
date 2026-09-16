@@ -62,23 +62,18 @@ const LOOK: Array[String] = [
 ]
 
 
-## Held between calls: spelling out every field of every landscape takes about a
-## millisecond, and SaveFile reads the stamp on every slot it reads — four times
-## over whenever the saves app refreshes. The registry's ids in index order are
-## what the stamp is of, so they are what it is kept under; a registry narrowed
-## by BiomeRegistry.mute_to has different ids and stamps again.
-static var _held := ""
-static var _held_for := ""
-
-
 ## This build's registry, whatever it holds (a muted registry stamps as itself,
 ## which is the point: a test that mutes is on another island too).
+##
+## Nothing is held between calls. It was, keyed on the registry's ids, and that
+## cache handed back the old stamp for a registry whose ids were unchanged but
+## whose values had been retuned in place — measured stale, in the one function
+## whose whole job is to notice change. Spelling every field of every landscape
+## out costs 1.3 ms (nine types), so instead of caching the answer the callers
+## ask once and pass it on: SaveSlots.list reads four slots against ONE stamp
+## (SaveFile.read takes it), which is the only place it was ever read repeatedly.
 static func current() -> String:
-	var who := ",".join(BiomeRegistry.names())
-	if who != _held_for:
-		_held = of(BiomeRegistry.all())
-		_held_for = who
-	return _held
+	return of(BiomeRegistry.all())
 
 
 ## The stamp of a list of types, in the order they are handed indices.

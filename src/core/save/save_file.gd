@@ -103,15 +103,17 @@ static func _md5(b: PackedByteArray) -> PackedByteArray:
 
 
 ## The header alone (for lists). `data` is left empty.
-static func read_header(path: String) -> Dictionary:
-	return _read(path, false)
+## `build_stamp` is this build's WorldStamp, spelled out once by a caller reading
+## several slots (SaveSlots.list); "" works it out here.
+static func read_header(path: String, build_stamp: String = "") -> Dictionary:
+	return _read(path, false, build_stamp)
 
 
-static func read(path: String) -> Dictionary:
-	return _read(path, true)
+static func read(path: String, build_stamp: String = "") -> Dictionary:
+	return _read(path, true, build_stamp)
 
 
-static func _read(path: String, with_data: bool) -> Dictionary:
+static func _read(path: String, with_data: bool, build_stamp: String = "") -> Dictionary:
 	var out := {"ok": false, "code": &"damaged", "why": WHY_DAMAGED, "header": {}, "data": {}, "version": 0}
 	if not FileAccess.file_exists(path):
 		out.code = &"missing"
@@ -150,7 +152,7 @@ static func _read(path: String, with_data: bool) -> Dictionary:
 	# The world this build would grow from that seed is not the world it was
 	# saved on. The header still stands (the slate shows the game and says why
 	# it will not open it); nothing of the save is applied to another island.
-	if str(header.get("stamp", WorldStamp.UNKNOWN)) != WorldStamp.current():
+	if str(header.get("stamp", WorldStamp.UNKNOWN)) != (build_stamp if build_stamp != "" else WorldStamp.current()):
 		out.code = &"elsewhere"
 		out.why = WHY_ELSEWHERE
 		return out

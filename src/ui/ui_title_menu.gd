@@ -8,12 +8,20 @@ extends UiScreen
 ## scan of that save's picture sits on the glass beside it, where and when under
 ## it; a save that cannot be read is said plainly in the key strip. New game over
 ## a readable autosave asks once more: the new game's first autosave writes over it.
+## The strip has room for one short line only, so the WHOLE reason a save will not
+## open (SaveFile.WHY_*, or the ground that moved under it) is drawn over the list
+## when the player asks for it — confirming the faded continue row — and at once
+## when a game has just handed back here because this build would not open it.
 
 const DEVICE := Rect2i(166, 158, 308, 188)
 const LETTER_H := 34
 ## When the wake begins, the line opens, the scan runs, all is lit (seconds).
 const WAKE_AT := [0.35, 0.62, 0.95]
 const ROW_H := 13
+## The reason page's margin each side of the glass, and the lines there is room
+## for between the list's top and the key strip.
+const REASON_INSET := 30
+const REASON_LINES := 6
 ## The continued save's picture on the glass, right of the list.
 const PHOTO_SIZE := Vector2i(96, 54)
 ## Real seconds a first press of new game waits for the second.
@@ -28,6 +36,8 @@ var fade := 1.0:
 			fade = v
 			queue_redraw()
 var page := "list"
+## The whole reason a save will not open, drawn over the list on the "why" page.
+var why_text := ""
 ## Seconds since the slate was switched on.
 var awake_for := 0.0
 ## The slate goes dark as a new game starts.
@@ -44,6 +54,13 @@ var _ask_until := 0
 var _opening := false
 
 const KEYS := [[&"move_up", &"up"], [&"move_down", &"down"], [&"move_left", &"left"], [&"move_right", &"right"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"pause", &"back"]]
+
+## The key strip under the list, and the one under a page. The note is said at
+## the other end of the same strip, so what is left over is all the room a
+## sentence has (tests/save/test_problem_fits.gd reads these, never a copy).
+const KEY_HINTS := [["e", "choose"]]
+const KEY_HINTS_ISLAND := [["a d", "another island"]]
+const KEY_HINTS_PAGE := [["esc", "back"]]
 
 
 func _init() -> void:
@@ -70,11 +87,15 @@ func refresh() -> void:
 	_autosave = bool(auto.ok) or (bool(auto.exists) and auto.code == &"elsewhere")
 	_ask_until = 0
 	_photo = SaveSlots.thumbnail(saved.header) if not saved.is_empty() else null
-	var problems := SaveSlots.problems(entries)
+	# A game just handed back here says its own slot's reason first, whichever
+	# other slot is also in trouble.
+	var handed := SaveSlots.take_handed_back()
+	var trouble := SaveSlots.first_problem(entries, handed)
 	if not saved.is_empty():
 		rows.insert(0, {"id": &"continue", "text": "continue"})
-	elif not problems.is_empty():
-		rows.insert(1, {"id": &"continue", "text": "continue", "enabled": false, "why": problems[0]})
+	elif not trouble.is_empty():
+		rows.insert(1, {"id": &"continue", "text": "continue", "enabled": false,
+			"why": str(trouble.line), "full": str(trouble.why)})
 	if UiTitle.island_fixed():
 		# The configuration fixed the island: there is no other to choose.
 		rows = rows.filter(func(r: Dictionary) -> bool: return r.id != &"seed")
@@ -82,8 +103,34 @@ func refresh() -> void:
 	if _opening and not saved.is_empty():
 		menu.index = 0
 	_opening = false
-	if not problems.is_empty():
-		say(problems[0])
+	if not trouble.is_empty():
+		say(str(trouble.line))
+		# Amber, as the saves app says the same thing: one sentence, one weight,
+		# whichever screen the player meets it on.
+		note_warn = true
+		if handed >= 0:
+			# They pressed continue and were sent straight back: the strip's one
+			# line is not enough, so the whole reason is on the glass already.
+			show_reason(str(trouble.why))
+	queue_redraw()
+
+
+## A save that will not open, said both ways: the slot's one line in the strip,
+## which is all the room there is there, and the whole reason on the page.
+func refuse_save(slot: int, why: String) -> void:
+	var code: StringName = &"damaged"
+	if slot >= 0 and slot < SaveSlots.COUNT:
+		code = SaveSlots.list()[slot].code
+	refuse(SaveSlots.problem(slot, code))
+	show_reason(why)
+
+
+## Draw the whole reason over the list until the player backs out of it.
+func show_reason(text: String) -> void:
+	if text == "":
+		return
+	why_text = text
+	page = "why"
 	queue_redraw()
 
 
@@ -96,10 +143,12 @@ func photo_rect() -> Rect2i:
 	if saved.is_empty():
 		return Rect2i()
 	var g := UiSlate.glass_of(DEVICE)
-	return Rect2i(g.end.x - UiSlate.MARGIN_R - 6 - PHOTO_SIZE.x, _list_top(), PHOTO_SIZE.x, PHOTO_SIZE.y)
+	return Rect2i(g.end.x - UiSlate.MARGIN_R - 6 - PHOTO_SIZE.x, list_top(), PHOTO_SIZE.x, PHOTO_SIZE.y)
 
 
-func _list_top() -> int:
+## Where the list (and the reason page in its place) begins on the glass. Static,
+## so what fits there can be worked out without a title on screen.
+static func list_top() -> int:
 	return UiSlate.glass_of(DEVICE).position.y + UiSlate.STATUS_H + 12 + LETTER_H + 12
 
 
@@ -147,7 +196,7 @@ func sleep() -> void:
 
 
 func handle(action: StringName) -> bool:
-	if page == "keys":
+	if page == "keys" or page == "why":
 		if action == &"back" or action == &"confirm":
 			page = "list"
 			Events.sfx.emit(&"ui_slate_back", Vector3.ZERO)
@@ -155,6 +204,15 @@ func handle(action: StringName) -> bool:
 		return true
 	if action == &"back":
 		return true
+	if action == &"confirm":
+		var row := menu.selected()
+		# UiScreen refuses a faded row with its one short line. Here the whole
+		# reason has somewhere to go, so the player can read it and not be left
+		# with a row they cannot press and no account of why.
+		if not row.is_empty() and not UiMenu.enabled(row) and str(row.get("full", "")) != "":
+			refuse(str(row.get("why", "")))
+			show_reason(str(row.full))
+			return true
 	return super(action)
 
 
@@ -191,6 +249,12 @@ func _on_confirm(row: Dictionary) -> void:
 
 func _on_choice_changed() -> void:
 	_ask_until = 0
+	# The note is said at the far end of the key strip, and the island row is the
+	# one row that draws a second hint into that strip: a sentence still standing
+	# there would be drawn straight through it. So that row, and only that row,
+	# takes the note with it (tests/save/test_problem_fits.gd).
+	if menu.selected().get("id") == &"seed":
+		note = ""
 
 
 func _process(delta: float) -> void:
@@ -244,7 +308,7 @@ func _draw() -> void:
 	UiSlate.status(self, &"", "island %d" % (title.seed_value if title != null else 0), 1.0, DEVICE, false)
 	if page == "keys":
 		UiPauseScreen.draw_keys_list(self, Vector2i(g.position.x + UiSlate.MARGIN_L + 4, g.position.y + UiSlate.STATUS_H + 8), 52)
-		draw_keys([["esc", "back"]])
+		draw_keys(KEY_HINTS_PAGE)
 		return
 	var word := "UNSPENT"
 	var w := UiLettering.width(word, LETTER_H)
@@ -255,11 +319,15 @@ func _draw() -> void:
 	UiLettering.draw(self, word, at, LETTER_H, UiTheme.TEXT, 7)
 	for y in range(at.y + 1, at.y + LETTER_H, 2):
 		UiDraw.hline(self, at.x, at.x + w, y, Color(UiTheme.GLASS, 0.35))
+	if page == "why":
+		_draw_reason(g)
+		draw_keys(KEY_HINTS_PAGE)
+		return
 	# With a save to continue its picture takes the right of the glass and the list moves left.
 	var photo := photo_rect()
 	var x0 := g.position.x + (30 if photo.has_area() else 58)
 	var x1 := photo.position.x - 12 if photo.has_area() else g.end.x - 58
-	var top0 := _list_top()
+	var top0 := list_top()
 	for i in menu.rows.size():
 		var row := menu.rows[i]
 		var top := top0 + i * ROW_H
@@ -279,11 +347,18 @@ func _draw() -> void:
 		UiDraw.text(self, Vector2i(x0, top), text, ink)
 	if photo.has_area():
 		_draw_saved(photo)
-	var keys := [["e", "choose"]]
+	var keys := KEY_HINTS.duplicate()
 	if menu.selected().get("id") == &"seed":
 		# Left and right only do something on the island row.
-		keys.append(["a d", "another island"])
+		keys.append_array(KEY_HINTS_ISLAND)
 	draw_keys(keys)
+
+
+## The whole reason, wrapped where the list stands. The saves app says it in the
+## same amber; this is the only other place it is said in full.
+func _draw_reason(g: Rect2i) -> void:
+	var at := Vector2i(g.position.x + REASON_INSET, list_top())
+	UiSlate.wrapped(self, at, g.size.x - REASON_INSET * 2, why_text, UiTheme.WARN)
 
 
 ## The save Continue would load: its picture in brackets, where and when under it.

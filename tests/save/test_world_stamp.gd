@@ -42,6 +42,32 @@ func test_the_stamp_is_the_same_run_to_run_and_moves_when_the_registry_does() ->
 	eq(WorldStamp.current(), whole, "and the whole registry stamps as it did")
 
 
+func test_the_stamp_is_worked_out_afresh_and_never_handed_back_stale() -> void:
+	# It was held between calls, keyed on the registry's ids — so a landscape
+	# retuned IN PLACE, ids unchanged, kept the old stamp: the one function whose
+	# whole job is to notice change, not noticing it. Spelling it out costs 1.3 ms,
+	# which is why SaveSlots.list asks once for all four slots instead.
+	var was := WorldStamp.current()
+	var d := BiomeRegistry.all()[0]
+	var keep := d.share
+	d.share = Vector2(0.123, 0.456)
+	var moved := WorldStamp.current()
+	d.share = keep
+	check(moved != was, "a landscape retuned in place moves the stamp at once")
+	eq(WorldStamp.current(), was, "and putting it back puts the stamp back")
+
+
+func test_a_read_holds_a_save_to_the_stamp_it_is_handed() -> void:
+	Sx.use_root("stamp-handed")
+	var p := SaveSlots.path(1)
+	eq(SaveFile.write(p, HEADER, _data(WorldStamp.current())), OK)
+	check(SaveFile.read_header(p, WorldStamp.current()).ok, "this build's stamp opens it")
+	var other := SaveFile.read_header(p, "deadbeef")
+	check(not other.ok, "another build's does not")
+	eq(other.code, &"elsewhere")
+	Sx.finish()
+
+
 func test_a_type_added_or_reordered_moves_the_stamp_and_a_repaint_does_not() -> void:
 	var defs := BiomeRegistry.all()
 	var base := WorldStamp.of(defs)
@@ -244,7 +270,7 @@ func test_the_world_is_held_to_the_landscape_the_save_says_it_stood_in() -> void
 
 	# What a worldgen change no stamp can see into would look like on load.
 	var wrong := h.duplicate()
-	wrong["landscape"] = String(_other_than(StringName(str(h.get("landscape")))))
+	wrong["landscape"] = SaveStaging.other_land(str(h.get("landscape")))
 	var said := SaveCore.disagrees(g, wrong)
 	check(said != "", "a landscape that moved under the player is caught")
 	check(said.contains(SaveCore.spoken(StringName(str(wrong.landscape)))), "it names what was saved: %s" % said)
@@ -261,20 +287,19 @@ func test_the_world_is_held_to_the_landscape_the_save_says_it_stood_in() -> void
 	Sx.finish()
 
 
-func test_a_save_whose_landscape_moved_is_not_applied_and_the_player_is_told() -> void:
+func test_a_save_whose_landscape_moved_is_refused_and_nothing_is_written_over_it() -> void:
 	Sx.use_root("stamp-refuse")
 	var a := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--give=driftwood:7"])
 	var saver := Sx.system(a, "05_save")
 	eq(str(saver.call("save_to", 1)), "", "saved")
-	var stood := StringName(str(_head_of(SaveSlots.path(1)).get("landscape")))
 	Sx.end(a)
 
-	# The same file, with the one thing a moved worldgen stage would change.
-	var head := _head_of(SaveSlots.path(1))
-	head["landscape"] = String(_other_than(stood))
-	head["head_md5"] = SaveFile.header_md5(head)
-	eq(SaveFile.store(SaveSlots.path(1), PackedStringArray([JSON.stringify(head, "", false, true),
-		_data_line_of(SaveSlots.path(1))])), OK)
+	# The one thing a worldgen stage that moved would change and no stamp can see:
+	# the ground under the tile the save was made on. Staged the way the tour
+	# stages it, so both prove the same path.
+	var p := SaveSlots.path(1)
+	eq(SaveStaging.age(p, &"landscape"), "", "the save now says it stood somewhere else")
+	var whole := FileAccess.get_md5(p)
 
 	var said := PackedStringArray()
 	var listen := func(text: String) -> void: said.append(text)
@@ -288,27 +313,114 @@ func test_a_save_whose_landscape_moved_is_not_applied_and_the_player_is_told() -
 	eq(b.inventory.count(&"driftwood"), 0, "not the carrying either")
 	check(not said.is_empty(), "and the player was told")
 	check(str(said[0]).contains("not the same ground"), "in the game's own words: %s" % str(said))
+
+	# And this game, which is nobody's game, writes nothing: the autosave that
+	# would otherwise be due within minutes would write over the very slot just
+	# refused (the door in is Continue on slot 0).
+	check(str(back.get("refused")) != "", "the refusal is on the record")
+	check(str(back.call("save_to", 1)) != "", "it will not save over the slot it refused")
+	check(str(back.call("save_on_leaving")) != "", "nor take an autosave on the way out")
+	eq(FileAccess.get_md5(p), whole, "the save is on disk exactly as it was")
+	check(SaveSlots.turned_away.has(p), "the slot is remembered as turned away")
+	eq(int(SaveSlots.handed_back), 1, "and the title is told which slot to account for")
 	Sx.end(b)
 	Sx.finish()
 
 
-## Any registered land type that is not this one.
-static func _other_than(id: StringName) -> StringName:
-	for d in BiomeRegistry.land():
-		if d.id != id:
-			return d.id
-	return id
+func test_a_save_this_build_turned_away_is_never_offered_again() -> void:
+	Sx.use_root("stamp-again")
+	var a := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10"])
+	eq(str(Sx.system(a, "05_save").call("save_to", 1)), "", "saved")
+	Sx.end(a)
+	var p := SaveSlots.path(1)
+	eq(SaveStaging.age(p, &"landscape"), "")
+	check(SaveFile.read(p).ok, "the file itself still reads: only the ground moved")
+
+	# Without this the title would offer it, boot it, refuse it and hand back here
+	# again, for ever.
+	SaveSlots.turn_away(1, &"elsewhere", "That game was saved somewhere else.")
+	var entries := SaveSlots.list()
+	check(not entries[1].ok, "the slot list has it as unreadable")
+	eq(entries[1].code, &"elsewhere")
+	check(SaveSlots.newest(entries).is_empty(), "Continue has nothing to continue")
+	eq(SaveSlots.options_for(1, BootOptions.new()), "That game was saved somewhere else.", "and it boots nothing")
+	eq(SaveSlots.first_problem(entries).slot, 1, "the title has something to say about it")
+
+	# Saved over, it is this build's game again.
+	var b := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10"])
+	eq(str(Sx.system(b, "05_save").call("save_to", 1)), "", "saved again")
+	check(not SaveSlots.turned_away.has(p), "and the slot is no longer turned away")
+	check(SaveSlots.list()[1].ok, "it opens")
+	Sx.end(b)
+	Sx.finish()
+
+
+func test_the_title_says_the_whole_reason_and_not_only_a_line_of_it() -> void:
+	Sx.use_root("stamp-reason")
+	# One save, from another island, and a game that has just been handed back
+	# here because this build would not open it.
+	var head := HEADER.duplicate()
+	head["stamp"] = "deadbeef"
+	eq(_store(SaveSlots.path(1), head, _data("deadbeef")), OK)
+	SaveSlots.handed_back = 1
+
+	var title := UiTitle.new()
+	title.options = BootOptions.new()
+	var menu := UiTitleMenu.new()
+	menu.title = title
+	tree.root.add_child(menu)
+	menu.open()
+	eq(menu.page, "why", "the reason is on the glass, not waiting to be asked for")
+	eq(menu.why_text, SaveFile.WHY_ELSEWHERE, "and it is the whole of it")
+	eq(menu.note, SaveSlots.problem(1, &"elsewhere"), "with the short line in the strip")
+	check(menu.note_warn, "said in the same amber the saves app says it in")
+
+	# Backing out and asking again: the faded continue row is how a player who
+	# was not handed back still gets the reason.
+	menu.handle(&"back")
+	eq(menu.page, "list")
+	menu.select(&"continue")
+	check(not UiMenu.enabled(menu.menu.selected()), "continue is faded")
+	menu.handle(&"confirm")
+	eq(menu.page, "why", "confirming it says why, in full")
+	eq(menu.why_text, SaveFile.WHY_ELSEWHERE)
+	eq(menu.note, SaveSlots.problem(1, &"elsewhere"))
+	check(menu.note_warn)
+	menu.close()
+	menu.free()
+	title.free()
+	Sx.finish()
+
+
+func test_a_save_is_aged_into_one_from_another_build_without_damaging_it() -> void:
+	Sx.use_root("stamp-aged")
+	# What the tour's `stale` command does, and the only way a proof can have a
+	# save an older build wrote.
+	var a := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10"])
+	var saver := Sx.system(a, "05_save")
+	eq(str(saver.call("save_to", 1)), "", "saved")
+	eq(str(saver.call("save_to", 2)), "", "saved")
+	var stood := str(_head_of(SaveSlots.path(2)).get("landscape"))
+	Sx.end(a)
+
+	eq(SaveStaging.age(SaveSlots.path(1), &"version"), "")
+	var r := SaveFile.read(SaveSlots.path(1))
+	eq(r.version, 1, "back to a version-1 file")
+	eq(r.code, &"elsewhere", "which is refused, not called damaged")
+	check(not (r.header as Dictionary).is_empty(), "and still reads: the file is whole")
+
+	eq(SaveStaging.age(SaveSlots.path(2), &"landscape"), "")
+	var r2 := SaveFile.read(SaveSlots.path(2))
+	check(r2.ok, "the ground moved, which the file cannot know: it still opens")
+	check(str(r2.header.get("landscape")) != stood, "but it says it stood elsewhere")
+	eq(SaveStaging.age(SaveSlots.path(3), &"version"), "no save at %s" % SaveSlots.path(3))
+	check(SaveStaging.age(SaveSlots.path(1), &"sideways").begins_with("no way"), "and only the ways it has")
+	Sx.finish()
 
 
 static func _head_of(path: String) -> Dictionary:
 	var f := FileAccess.open_compressed(path, FileAccess.READ, SaveFile.MODE)
 	return JSON.parse_string(f.get_line())
-
-
-static func _data_line_of(path: String) -> String:
-	var f := FileAccess.open_compressed(path, FileAccess.READ, SaveFile.MODE)
-	f.get_line()
-	return f.get_line()
 
 
 # --- helpers -----------------------------------------------------------------

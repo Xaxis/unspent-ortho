@@ -7,6 +7,8 @@ extends GameSystem
 ##     the save's seed with the first chunks drawn where the save stood, and is
 ##     held to what the save says stood there (SaveCore.disagrees) before a byte
 ##     of it is applied — a save is never laid onto ground that has moved
+##   - and when it will not open, this game is not played at all: it takes no save
+##     of any kind and hands back to the title with the reason (_refuse)
 ##   - autosaves to slot 0 on sleep, on coming into another landscape and every
 ##     three world hours, never while a fight is on (AutosaveRules); and on leaving
 ##     (to the title, quit, the window closed) when calm
@@ -34,6 +36,9 @@ var rules: AutosaveRules
 var play_seconds := 0.0
 ## The slot this game was loaded from, or -1.
 var loaded_from := -1
+## Why the save this game was booted with was not opened, or "". Set once, in
+## started(); this game then writes nothing and hands back to the title.
+var refused := ""
 ## When this game was last saved, or loaded (it stands as saved), in unix seconds; -1 never.
 var last_saved_at := -1.0
 ## The world with no page over it, read back as the first page opened (small;
@@ -73,11 +78,35 @@ func started() -> void:
 			last_saved_at = Time.get_unix_time_from_system()
 			_forced_weather = Weather.forced_kind != &""
 		else:
-			var why: String = moved if moved != "" else str(r.why)
-			push_warning("save: slot %d: %s" % [slot, why])
-			Events.message.emit(why)
+			# A file this build cannot read says so itself; a file it can read whose
+			# ground has moved is an island case the stamp could not see.
+			var code: StringName = r.code if not r.ok else &"elsewhere"
+			_refuse(slot, code, moved if moved != "" else str(r.why))
 	rules = AutosaveRules.new(game.clock.minutes, _land())
 	rules.enter_all(_lands)
+
+
+## A save this build will not open leaves nothing half done. Applying none of it
+## would have left the player standing at the saved tile, at the saved hour, with
+## an empty pack and no idea it was not their game — and the autosave, due within
+## minutes, would then have written over the very slot just refused (the door in
+## is Continue on slot 0). So: no save and no load for the rest of this session,
+## the slot remembered as turned away so nothing offers it again, and the game
+## hands straight back to the title, which says the whole reason on its glass.
+func _refuse(slot: int, code: StringName, why: String) -> void:
+	refused = why
+	_loading = true
+	SaveSlots.turn_away(slot, code, why)
+	SaveSlots.handed_back = slot
+	Events.message.emit(why)
+	_hand_back.call_deferred()
+
+
+## Deferred, never awaited: a game freed before the flush (a test that ends it)
+## drops the call with the node, rather than resuming inside a freed object.
+func _hand_back() -> void:
+	if is_instance_valid(game) and game.is_inside_tree():
+		UiTitle.replace_game(game)
 
 
 ## Play time, and the landscapes come into (each asks for an autosave once a
@@ -209,6 +238,9 @@ func _write(slot: int, reason: StringName, thumb: PackedByteArray) -> String:
 	if err != OK:
 		push_warning("save: slot %d not written (%s)" % [slot, error_string(err)])
 		return "It would not save."
+	# Whatever that slot was once turned away for, it now holds a game this build
+	# wrote on this island.
+	SaveSlots.forget_turned_away(slot)
 	rules.saved(game.clock.minutes)
 	last_saved_at = Time.get_unix_time_from_system()
 	wrote.emit(slot, reason)

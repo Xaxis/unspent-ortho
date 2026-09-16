@@ -356,22 +356,30 @@ static func meter(ci: CanvasItem, r: Rect2i, frac: float, warn_from: float = 2.0
 
 ## Words wrapped at `width` from `at`, a line each. Returns the lines used.
 static func wrapped(ci: CanvasItem, at: Vector2i, width: int, text: String, col: Color) -> int:
+	var lines := wrap_text(width, text)
+	for i: int in lines.size():
+		UiDraw.text(ci, Vector2i(at.x, at.y + i * UiTheme.LINE), lines[i], col)
+	return lines.size()
+
+
+## The same break, without drawing: what wrapped() will put on each line. Pure,
+## so anything that has to know whether a sentence FITS where it is said can ask
+## instead of keeping its own copy of the rule (tests/save/test_problem_fits.gd).
+## (Not `wrap`: that is a built-in function, and a static of the same name here
+## resolves to it — the native-name trap in CLAUDE.md.)
+static func wrap_text(width: int, text: String) -> PackedStringArray:
+	var out := PackedStringArray()
 	var line := ""
-	var y := at.y
-	var used := 0
 	for word in text.split(" "):
 		var next := word if line == "" else line + " " + word
 		if UiFont.width(next) > width and line != "":
-			UiDraw.text(ci, Vector2i(at.x, y), line, col)
-			y += UiTheme.LINE
-			used += 1
+			out.append(line)
 			line = word
 		else:
 			line = next
 	if line != "":
-		UiDraw.text(ci, Vector2i(at.x, y), line, col)
-		used += 1
-	return used
+		out.append(line)
+	return out
 
 
 # --- baked textures ---------------------------------------------------------------

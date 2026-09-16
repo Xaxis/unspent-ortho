@@ -10,6 +10,7 @@ extends RefCounted
 
 static func use_root(name: String) -> String:
 	SaveSlots.root = "user://test-saves".path_join(name)
+	forget()
 	wipe()
 	return SaveSlots.root
 
@@ -18,7 +19,15 @@ static func use_root(name: String) -> String:
 ## outside tests/save read an empty set of slots.
 static func finish() -> void:
 	wipe()
+	forget()
 	SaveSlots.root = SaveSlots.TEST_ROOT
+
+
+## What one game's refusal left standing for the next (SaveSlots.turn_away lives
+## as long as the process): no test inherits another's.
+static func forget() -> void:
+	SaveSlots.turned_away.clear()
+	SaveSlots.handed_back = -1
 
 
 static func wipe() -> void:
