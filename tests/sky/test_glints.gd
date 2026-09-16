@@ -119,8 +119,12 @@ func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() ->
 	var base := g.player.pos
 	var add := func(kind: int, at: Vector2, lit_variant: bool) -> WorldProp:
 		var id := g.world.props.size()
-		# An id whose variant is (or is not) the one with a light.
-		while (PropModels.pick_variant(kind, Rng.hash_ints(g.world.seed_value, id, 90)) % 2 == 1) != lit_variant:
+		# An id whose variant is (or is not) the one with a light. Asked through
+		# `variant_of`, never by hashing the id here: world gen may DEAL a prop
+		# its model (WorldProp.variant), and a copy of the hash would go on
+		# answering for the model the id happens to point at rather than for the
+		# one the prop was given.
+		while (PropModels.variant_of(WorldProp.new(id, kind, Vector2.ZERO, 0.0, 1.0), g.world.seed_value) % 2 == 1) != lit_variant:
 			id += 1
 		while g.world.props.size() < id:
 			g.world.props.append(WorldProp.new(g.world.props.size(), PropKind.BOULDER, Vector2(-50, -50), 0.0, 1.0))

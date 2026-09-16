@@ -231,6 +231,37 @@ static func cell(ci: CanvasItem, at: Vector2i, power: float) -> void:
 
 ## The key strip along the foot: `keys` as [[key, words], ...] in phosphor, and
 ## on the right a note (what was done, or why not, in the warning).
+## Clear space kept between the last key hint and the note beside it.
+const NOTE_GAP := 8
+## A note shorter than this has nothing left to say once it is cut, so it is
+## dropped rather than shown as a stub of one word and an ellipsis.
+const NOTE_MIN := 28
+
+
+## `text` cut to `room` pixels, ending in an ellipsis when anything was taken
+## off; "" when there is not enough room to say anything worth reading. Whole
+## words are kept where they fit, because a name cut mid-word reads as a fault
+## in the device rather than as a message too long for its strip.
+static func elided(text: String, room: int) -> String:
+	if room < NOTE_MIN:
+		return ""
+	if UiFont.width(text) <= room:
+		return text
+	var out := ""
+	for word: String in text.split(" ", false):
+		var next := word if out == "" else "%s %s" % [out, word]
+		if UiFont.width(next + "...") > room:
+			break
+		out = next
+	if out == "":
+		# One word longer than the whole strip: take it back a letter at a time.
+		for i in range(text.length(), 0, -1):
+			if UiFont.width(text.left(i) + "...") <= room:
+				out = text.left(i)
+				break
+	return "%s..." % out if out != "" else ""
+
+
 static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: float = 0.0, warn: bool = false, d: Rect2i = DEVICE) -> void:
 	var g := glass_of(d)
 	var y := g.end.y - KEYS_H + 1
@@ -243,7 +274,18 @@ static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: floa
 		x += UiFont.width(p[1]) + 12
 	if note != "" and note_age < 4.0:
 		var a := clampf(4.0 - note_age, 0.0, 1.0)
-		UiDraw.text_right(ci, g.end.x - MARGIN_R, y, note, Color(UiTheme.WARN if warn else UiTheme.TEXT, UiDraw.stepped(a)))
+		# The key hints are how the device is worked, so the NOTE gives way, never
+		# them. Nothing checked that before: the hints run left to right and the
+		# note was right-aligned from the far edge, and on the title's narrow
+		# slate — 200 px of room once the hints are down — six of the ten
+		# sentences SaveSlots.problem() can write were drawn straight through
+		# "e choose", the worst of them over by 84 px. Clipped here so it holds
+		# for every caller instead of for the sentences one package could reach.
+		var room := g.end.x - MARGIN_R - x - NOTE_GAP
+		var shown := elided(note, room)
+		if shown != "":
+			UiDraw.text_right(ci, g.end.x - MARGIN_R, y, shown,
+				Color(UiTheme.WARN if warn else UiTheme.TEXT, UiDraw.stepped(a)))
 
 
 ## A key cap small enough for the status bar: a ruled box, its name in the dim

@@ -150,7 +150,7 @@ func test_places_worth_walking_to_are_recorded() -> void:
 		check(lit.x >= 0.0, "seed %d: a shack with stolen light is recorded" % s)
 		for p in w.props:
 			if p.kind == PropKind.SHACK and p.pos.distance_to(lit) < 3.0:
-				eq(PropModels.pick_variant(PropKind.SHACK, Rng.hash_ints(w.seed_value, p.id, 90)), 1, "seed %d: the recorded shack is the lit one" % s)
+				eq(PropModels.variant_of(p, w.seed_value), 1, "seed %d: the recorded shack is the lit one" % s)
 				break
 
 

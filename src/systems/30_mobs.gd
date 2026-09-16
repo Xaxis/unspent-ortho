@@ -125,6 +125,15 @@ func _on_time_skipped(minutes: float, reason: StringName) -> void:
 func place_near_player(kind: StringName) -> MobState:
 	if kind == &"":
 		return null
+	# The camera's frame as it is NOW, not as it was when this system was set up.
+	# `in_view` below decides where a body is allowed to land, and the spawner
+	# was told the view height once, in setup(); anything that zooms afterwards —
+	# a tour's `zoom`, dev mode's view page — left it scoring against a frame the
+	# camera no longer has, so a body asked for could be placed off screen and the
+	# picture taken of it held nothing. The tour was writing this line itself
+	# before every spawn; it belongs here, where every caller gets it.
+	if game.camera != null:
+		spawner.view_height = game.camera.view_height
 	var row := Roster.row(kind)
 	var w := game.world
 	var hp := sim.hero.pos
