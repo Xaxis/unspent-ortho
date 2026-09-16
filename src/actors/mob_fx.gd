@@ -245,6 +245,7 @@ vec4 streak(vec2 p, float pw, float pr) {
 	vec2 d = normalize(dir);
 	vec2 n = vec2(-d.y, d.x);
 	float e = 1e5;
+	float lit = 0.0;
 	for (int i = 0; i < 3; i++) {
 		float fi = float(i) - 1.0;
 		float len = (i == 1 ? 1.5 : 1.05) * R * (1.0 - pr * 0.5);
@@ -258,13 +259,58 @@ vec4 streak(vec2 p, float pw, float pr) {
 		float t = clamp(dot(q - a, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
 		float taper = min(1.0, t * 9.0);
 		float hw = mix(1.1, 0.25, t) * taper * (pr < 0.55 ? 1.0 : 0.6);
-		e = min(e, length(q - (a + ab * t)) - hw);
+		vec2 off = q - (a + ab * t);
+		float de = length(off) - hw;
+		if (de < e) {
+			e = de;
+			// Which flank of THIS stroke the pixel is on, in the same light the
+			// dust is drawn by: negative toward the light, positive away from it.
+			lit = dot(off, vec2(0.7071, 0.7071));
+		}
 	}
-	// NO paper at all. A speed line is ink over the world (ART §7). Edged in page
-	// the way a tell is, three narrow strokes stop being strokes: each reads as a
-	// white lozenge with a slit down it, and the three lozenges together are the
-	// brightest thing on the screen, over the body that made them.
-	return inked(e, 0.0);
+	if (e < 0.0) {
+		return ink_out();
+	}
+	// One pixel of page, on the LIT flank of each stroke and nowhere else. Edged
+	// all round the way a tell is, three narrow strokes stop being strokes: each
+	// reads as a white lozenge with a slit down it, and the three lozenges
+	// together are the brightest thing on screen, over the body that made them.
+	// With no edge at all they are three near-black hairlines, which vanish on
+	// dark rock and at night — and this is the DODGE's mark as well as the dash
+	// (40_fight), so it has to survive a cave. One flank is a pen catching the
+	// light: it cannot close into a lozenge, and it cannot meet its neighbour.
+	if (e < 1.0 && lit < 0.0) {
+		return paper_out();
+	}
+	return vec4(0.0);
+}
+
+// Breath is the one mark that has to be PALER than its page, not darker, and an
+// `unshaded` mark never takes the sun the ground takes. Through sky_apply alone
+// a near-white core lands eighty levels BELOW lit snow (measured: core 103, snow
+// 187), which is the whole of why breath read as soot on a snowfield: the
+// wash it was tinted by is the ambient, and the snow beside it also has a sun on
+// it. So while the sun is up the mark is given that light back, capped at its
+// own paint so it can never burn past the colour it was drawn in — steam is a
+// pale swatch, never a source. As night falls the multiply goes back to 1 and
+// NOTHING changes: night was already right, because there the ground is dark and
+// the sky's own wash is a step above it.
+//
+// The gate is sky_view.y, the hour's own night fall, and not either of the two
+// obvious neighbours: sky_sun.z counts the moon and put a 227-luminance cloud
+// over 100-luminance snow at eleven at night (a lamp, and ART §5 says only a
+// lamp may be that), while sky_gloom() reads a low winter sun as dark and left
+// the core at 143 under snow that renders at 188 — the soot again.
+//
+// And the lift never goes to nothing, even at midnight. The mark's own paint is
+// as pale as snow is, so under one light they render as the same value: at
+// eleven at night the core sat at 101 on a snowfield rendering 98 and the whole
+// cloud disappeared, leaving its rim behind as three dark specks. A cloud of
+// breath is lit from inside by nothing, but it is DRAWN, and a drawn pale thing
+// on a pale page is given its step. (wave A2, art finding 9.)
+vec3 vapour_lit(vec3 c) {
+	float day = 1.0 - clamp(sky_view.y, 0.0, 1.0);
+	return min(c, sky_apply(c, wp, TIME) * (1.0 + mix(VAPOUR_DARK, VAPOUR_SUN, day)));
 }
 
 // Breath in the cold, steam off hot ground: the one mark that is neither ink nor
@@ -288,12 +334,12 @@ vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
 		if (ink_hash(vec2(seg, seed)) < pr * 0.85) {
 			return vec4(0.0);
 		}
-		return vec4(sky_apply(col_b, wp, TIME), 1.0);
+		return vec4(vapour_lit(col_b), 1.0);
 	}
 	if (ink_hash(px + vec2(seed * 31.0, seed * 17.0)) > 0.35 + 0.5 * fade) {
 		return vec4(0.0);
 	}
-	return vec4(sky_apply(col_a, wp, TIME), 1.0);
+	return vec4(vapour_lit(col_a), 1.0);
 }
 
 // A reading held on something: four ruled corner ticks framing it, drawn in
@@ -493,6 +539,17 @@ const BURST_OPEN := 0.48
 ## and no more than this, or the strokes stop being strokes and the tell reads as
 ## three white lozenges with a slit down each (ART §7: these are pen marks).
 const TELL_HALO := 1.7
+## How much of the sun a breath is given back. A mark is `unshaded`, so it takes
+## the sky's ambient wash and none of the key light the ground beside it takes:
+## on a lit snowfield that put a near-white core eighty levels BELOW the snow.
+## Big enough that in any real daylight the multiply saturates at the mark's own
+## colour, so the core is always the paler thing.
+const VAPOUR_SUN := 2.2
+## And what is left of that lift once night has fallen. Not nothing: a mark's
+## paint is as pale as snow, so under one light they land on the same value and
+## the cloud vanishes into the field it is breathed over. Small enough that a
+## breath at midnight is a pale cloud and not a lamp (docs/ART.md §5).
+const VAPOUR_DARK := 0.6
 ## Which way a tell's fan flicks, in quad space: up the screen over a body, down
 ## the screen when it is aimed at a working part below it.
 const FLICK_UP := Vector2(0.0, -1.0)
@@ -512,7 +569,7 @@ static func _shader(key: StringName) -> Shader:
 		return _shaders[key]
 	var s := Shader.new()
 	# One number for the open heart of a mark, in the shader and in the test.
-	var open := "#define OPEN %0.4f\n" % BURST_OPEN
+	var open := "#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n" % [BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK]
 	match key:
 		&"over":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
@@ -639,11 +696,17 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 ## held by a rim in the cue's own mid tone (docs/ART.md §5). Breath drawn the way
 ## dust is -- an ink contour on the shaded side -- is three near-black specks,
 ## and on a snowfield near-black is soot, not breath (wave A2, art finding 9).
+##
+## The rim is lifted off the cue's own step too. Left at the raw colour it is a
+## near-black ring round a pale heart, and on snow half the mark's pixels are
+## that ring: the mark reads as a dark blot with a light middle, which is the
+## soot again with a hole in it. A step up puts the contour BETWEEN the core and
+## the snow, so the cloud has an edge without having a shadow.
 static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
 	if not _ok(parent):
 		return
 	size = at_least(size, VAPOUR_PX)
-	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col)
+	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col.lightened(0.34))
 	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
 
 

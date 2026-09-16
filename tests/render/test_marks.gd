@@ -77,8 +77,13 @@ func test_the_speed_lines_are_ink_over_the_world_and_never_a_field_of_paper() ->
 	var at := src.find("vec4 streak(")
 	gt(at, 0, "the streak is in the mark shader")
 	var body := src.substr(at, src.find("\n}", at) - at)
-	check(body.contains("inked(e, 0.0)"),
-		"a speed line takes no paper: edged in page, three narrow strokes read as white lozenges")
+	check(not body.contains("inked("),
+		"a speed line is not edged all round: three narrow strokes so edged read as white lozenges")
+	# It is the DODGE's mark as well as the dash (40_fight), so it has to survive a
+	# cave: one flank of page, never both, so it can read on dark ground without
+	# the three strokes' edges meeting into a slab again.
+	check(body.contains("lit < 0.0") and body.contains("paper_out()"),
+		"but it keeps one pixel of page on its lit flank, or it vanishes on dark rock")
 	check(body.contains("R * (1.0 - OPEN)"),
 		"and its heads start clear of the open heart, where the body is")
 
@@ -116,11 +121,41 @@ func test_breath_is_drawn_in_its_own_two_values_and_in_no_ink_at_all() -> void:
 
 func test_a_breath_carries_a_pale_core_and_a_darker_rim() -> void:
 	# MobFx.breath derives both from the cue's own colour: the core is a long step
-	# up from it, and the rim is the cue's colour itself.
+	# up from it, the rim a shorter one, so the contour lands BETWEEN the core and
+	# the snow instead of being a near-black ring round a pale heart.
 	var cue := HazardCues.colour(&"cold")
 	var core := cue.lightened(0.86)
-	gt(core.get_luminance() - cue.get_luminance(), 0.35, "the two values are a long way apart")
-	gt(core.get_luminance(), 0.80, "the core is paler than any ground it will sit on")
+	var rim := cue.lightened(0.34)
+	gt(core.get_luminance() - rim.get_luminance(), 0.25, "the two values are a long way apart")
+	gt(rim.get_luminance() - cue.get_luminance(), 0.1, "and the rim is lifted off the cue's own dark step")
+
+
+func test_breath_takes_the_sun_the_ground_takes_or_it_is_soot_on_snow() -> void:
+	# The palette values above prove nothing about the DRAWN mark: a mark is
+	# `unshaded`, so through sky_apply alone it takes the sky's ambient and none
+	# of the key light the snow beside it takes, and a core of 0.91 luminance
+	# landed at 103/255 over snow at 187/255. What has to hold is the shader.
+	var src := _marks_source()
+	var at := src.find("vec4 vapour(")
+	gt(at, 0, "breath has a mark of its own")
+	var body := src.substr(at, src.find("\n}", at) - at)
+	check(not body.contains("sky_apply("),
+		"breath must not go out through the ambient wash alone: that is what made it soot")
+	check(body.contains("vapour_lit(col_a)") and body.contains("vapour_lit(col_b)"),
+		"both its values are lifted, or the rim is a dark ring round a pale heart")
+	var lift_at := src.find("vec3 vapour_lit(")
+	gt(lift_at, 0, "and the lift is one function, not two copies")
+	var lift := src.substr(lift_at, src.find("\n}", lift_at) - lift_at)
+	check(lift.contains("sky_view.y"), "it gives the mark the day's own light back")
+	check(lift.contains("min(c,"), "capped at its own paint, so it can never burn past its colour")
+	# Full daylight has to saturate that cap: at the hour the review shot, the
+	# ambient wash alone was 0.45 of the paint, so the multiply must clear 1/0.45.
+	gt(1.0 + MobFx.VAPOUR_SUN, 2.2, "and in daylight the core lands on its own colour, above any snow")
+	# And the lift never goes out. Breath's paint is as pale as snow, so with no
+	# lift at all the two render as one value and the cloud is gone (measured: a
+	# core of 101 on a snowfield rendering 98 at eleven at night).
+	gt(MobFx.VAPOUR_DARK, 0.3, "at midnight the core still steps off the page it hangs over")
+	lt(MobFx.VAPOUR_DARK, MobFx.VAPOUR_SUN * 0.5, "but a breath in the dark is a cloud, not a lamp")
 
 
 # --- A line of borrowed light is a line ----------------------------------------
@@ -134,3 +169,25 @@ func test_a_magnet_line_is_drawn_whole_and_not_as_spaced_sparkles() -> void:
 	check(line.contains("core") and line.contains("edge"),
 		"it carries its own dark edge, so it reads over pale gravel and over night both")
 	gt(MobFx.LINE_PX, 2.0, "and it is wide enough to be seen")
+
+
+func test_a_scan_only_stands_down_for_a_throw_and_never_drops_the_aware_tell() -> void:
+	# Standing the whole read down for ANY motion took the brackets AND the tell
+	# over a machine that has noticed you away for the six seconds of a glide --
+	# exactly the moment a player in the air needs to know who is looking.
+	var src := FileAccess.get_file_as_string("res://src/systems/54_gear.gd")
+	var throws := src.get_slice("const THROWN: Array[StringName] = [", 1).get_slice("]", 0)
+	check(throws.contains("dash") and throws.contains("grapple"), "a throw is a dash or a pull")
+	check(not throws.contains("glide"), "a glide is ordinary flight, not a throw")
+	# And a throw really is over in the blink the gate assumes.
+	lt(AbilityDash.SECONDS, 1.0, "a dash is over in a fifth of a second")
+	lt(AbilityGrapple.RANGE / AbilityGrapple.SPEED, 1.0, "and the longest pull in well under one")
+	gt(AbilityGlide.SECONDS, 3.0, "while a glide is long enough that going blind through it is a bug")
+	var at := src.find("func _scan_marks(")
+	gt(at, 0, "the scan lays its own marks")
+	var body := src.substr(at, src.find("\n\n\n", at) - at)
+	check(not body.contains("if _motion != null:\n\t\treturn"),
+		"the whole read must not stand down for any motion at all")
+	var gate := body.find("if not thrown:")
+	gt(gate, 0, "the brackets stand down for a throw")
+	gt(body.find("mob.aware and tell_due"), gate, "and the aware tell is drawn outside that gate")

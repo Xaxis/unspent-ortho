@@ -47,6 +47,11 @@ const SPOOF_PROOF_REACH := 12.0
 ## A body that moves further than this between two frames of a motion was put
 ## there by something else: the motion gives way to it.
 const JUMPED := 3.0
+## The motions that THROW a body: over in a fifth of a second, and drawing their
+## own mark across the player while they run. A scan's brackets stand down for
+## these and for nothing else -- a glide is six seconds of ordinary flight, and
+## a scan that goes blind for six seconds has stopped being a scan.
+const THROWN: Array[StringName] = [&"dash", &"grapple"]
 
 var loadout := Loadout.new()
 var book := AbilityBook.new()
@@ -364,12 +369,14 @@ func _hold_for(args: Dictionary) -> float:
 
 
 func _scan_marks(reach: float, opening: bool) -> void:
-	# One ability's mark at a time. A scan that keeps laying brackets while a dash
-	# or a pull throws the body stacks two marks on the same thirty pixels of
-	# screen, and neither is readable (wave A2, art finding 3). The read comes
-	# back on its own beat the moment the body is its own again.
-	if _motion != null:
-		return
+	# One ability's mark at a time -- but only while the body is being THROWN. A
+	# scan laying brackets through a dash or a pull stacks two marks on the same
+	# thirty pixels of screen and neither is readable (wave A2, art finding 3);
+	# a glide is six seconds long, and six seconds with no brackets is a scan
+	# that has quietly stopped working. So the brackets stand down for the fifth
+	# of a second a throw lasts, and the tell over a machine that has NOTICED YOU
+	# never stands down at all: that is the one read a player in the air needs.
+	var thrown := _motion != null and THROWN.has(_motion.kind)
 	var p := game.player.pos
 	var up := game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
 	var found: Array[Mob] = []
@@ -386,9 +393,10 @@ func _scan_marks(reach: float, opening: bool) -> void:
 		_aware_at = now + AWARE_BEAT
 	for i in mini(found.size(), SCAN_MOST):
 		var mob := found[i]
-		MobFx.bracket(game, mob.part_position(), Palette.LENS[3], 0.9, _read_for, mob.get_instance_id())
-		if opening:
-			MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
+		if not thrown:
+			MobFx.bracket(game, mob.part_position(), Palette.LENS[3], 0.9, _read_for, mob.get_instance_id())
+			if opening:
+				MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
 		if mob.aware and tell_due:
 			MobFx.tell(game, mob.screen_top(up), up, AWARE_BEAT, mob.get_instance_id() + 3, 0.7)
 
