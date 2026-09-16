@@ -119,11 +119,15 @@ static func _build() -> Dictionary:
 	# over by hand; a beached hull gives planks and its fittings; a fence gives a
 	# post to an axe and a rail to a hand; a stump is the last of a tree.
 	t[PropKind.DEBRIS] = [_o(&"turn", &"scrap", 1, 30.0, NEVER)]
-	t[PropKind.VEHICLE] = [_o(&"break", &"scrap", 2, 100.0, NEVER, {"stuff": &"iron", "uses": 2}),
-		_o(&"turn", &"scrap", 1, 60.0, 96.0, {"keep": true})]
-	t[PropKind.BARRICADE] = [_o(&"break", &"scrap", 2, 80.0, NEVER, {"stuff": &"iron"}),
-		_o(&"turn", &"scrap", 1, 50.0, 120.0, {"keep": true})]
-	t[PropKind.HULL] = [_o(&"break", &"scrap", 1, 120.0, NEVER, {"stuff": &"iron", "uses": 3}),
+	# Stripping a car, a barricade or a hull is hours of work, and it is taken in
+	# goes: each press is at most half an hour of the clock (Survival.MAX_JUMP_MINUTES)
+	# and `uses` says how many goes the thing has in it, so nothing is ever skipped
+	# past in one press and a machine can arrive while you are at it.
+	t[PropKind.VEHICLE] = [_o(&"break", &"scrap", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 4}),
+		_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 3})]
+	t[PropKind.BARRICADE] = [_o(&"break", &"scrap", 2, 20.0, NEVER, {"stuff": &"iron", "uses": 4}),
+		_o(&"turn", &"scrap", 1, 25.0, 120.0, {"keep": true, "uses": 2})]
+	t[PropKind.HULL] = [_o(&"break", &"scrap", 1, 30.0, NEVER, {"stuff": &"iron", "uses": 4}),
 		_o(&"gather", &"driftwood", 1, 8.0, 48.0, {"keep": true})]
 	t[PropKind.FENCE] = [_o(&"fell", &"timber", 1, 12.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 72.0, {"keep": true})]

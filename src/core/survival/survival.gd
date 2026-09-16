@@ -233,6 +233,21 @@ static func _choose(game: Game, state: SurvivalState, prop: WorldProp, held: Str
 	return Takes.choose(prop.kind, g, h, exhausted, game.clock.minutes)
 
 
+## Has this prop any work left in it for the player as they stand (tools and all)?
+## Tours and tools use it to find something that is not already picked over.
+## `in_hand` true asks only what the player could do with what they hold now.
+static func work_left(game: Game, prop: WorldProp, in_hand: bool = true) -> bool:
+	if game.world.depleted.has(prop.id):
+		return false
+	var state := SurvivalState.of(game)
+	if not _choose(game, state, prop).is_empty():
+		return true
+	if in_hand:
+		return false
+	var tool := _tool_for(game, state, prop)
+	return tool != &"" and not _choose(game, state, prop, tool).is_empty()
+
+
 ## The best carried tool that could work `prop` now, or &"".
 static func _tool_for(game: Game, state: SurvivalState, prop: WorldProp) -> StringName:
 	var best := &""

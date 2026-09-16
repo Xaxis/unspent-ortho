@@ -236,7 +236,10 @@ landscape**, not in a filter.
 - **Mystery.** Silhouettes on the horizon, lights that move where nothing should,
   districts that hum, landmarks glimpsed through weather.
 
-**Sound: haunting, synthesizer-heavy, evolving ambient** (owner, 2026-09-15).
+**Sound: haunting, synthesizer-heavy, evolving ambient, and seamless across the
+world** (owner, 2026-09-15: the soundtracks must blend and transition seamlessly
+with the landscape the player is in: equal-power crossfades over an ecotone, keys and
+tempos that match across a border, layers that arrive and leave rather than restart) (owner, 2026-09-15).
 Generative synth drones, pads, pulses and slow arpeggios that evolve with the hour,
 the rain, the landscape, the plan's presence and danger; each landscape has its own
 key, timbre and rhythm; machine districts pulse. This supersedes the old research's

@@ -163,6 +163,8 @@ content never needs a rewrite.
   one interface; five abilities; the MENDED idiom.
 - **disposition**: machine roles, indifference, interference per region, and stealth
   read on the machine itself.
+- **score blending**: the music crossfades seamlessly between landscapes on the
+  registry's blend weights, matched in key and tempo, with no restarts at a border.
 
 **Wave B** (parallel, on top of A):
 - **realms**: realms and portals; the first underground type (Limestone Caves,

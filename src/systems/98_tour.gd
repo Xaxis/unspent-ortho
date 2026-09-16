@@ -8,6 +8,7 @@ extends GameSystem
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
 ##   village N              teleport beside village N
+##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   hour H                 set the world clock hour (same day)
 ##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
@@ -73,6 +74,8 @@ var _lines: PackedStringArray = []
 var _name := ""
 var _out := ""
 var _held: Array[String] = []
+## Prop ids this tour has already stood at, so `near` moves on to the next one.
+var _near_used: Dictionary = {}
 ## The node running the tour, while one runs; later games hand themselves to it.
 static var _runner: Node = null
 ## Set when the tour began on the title.
@@ -162,6 +165,42 @@ func _run() -> void:
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
+			"near":
+				# Stand beside the nearest prop of a kind and face it, so a tour
+				# proves work on real props instead of coordinates a new world moves.
+				var want: Array[int] = []
+				for name: String in parts[1].split(",", false):
+					var ki := PropKind.NAMES.find(name.replace("_", " "))
+					if ki >= 0:
+						want.append(ki)
+				var from: Vector2 = game.player.pos
+				var found: WorldProp = null
+				# The nearest one that still has work in it: a boulder already
+				# picked over is no proof of anything.
+				var best := INF
+				for p2: WorldProp in game.query.props_near(from, 90.0):
+					if not want.has(p2.kind):
+						continue
+					var d := from.distance_squared_to(p2.pos)
+					if d >= best:
+						continue
+					if not _near_used.has(p2.id) and Survival.work_left(game, p2):
+						best = d
+						found = p2
+				if found == null or want.is_empty():
+					printerr("tour: no %s within reach of %s" % [parts[1], from])
+					ok = false
+				else:
+					var off := (from - found.pos).normalized()
+					if off.length() < 0.5:
+						off = Vector2(1, 0)
+					_near_used[found.id] = true
+					_teleport(found.pos + off * (found.solid + 0.42))
+					game.player.facing = (found.pos - game.player.pos).angle()
+					if game.player.hero != null:
+						game.player.hero.facing = game.player.facing
+					await get_tree().physics_frame
+					print("tour near %s: %s" % [parts[1], Survival.describe_target(game)])
 			"place":
 				var pp := GenPlaces.find(game.world, parts[1])
 				if pp.x < 0.0:

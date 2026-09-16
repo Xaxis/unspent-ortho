@@ -22,23 +22,23 @@ shot 01c-still-on-its-round
 # The scripted gathering is not a random fight: nothing comes until the fields again.
 coast calm
 # Driftwood on the strand below the village.
-at 198.90,435.58
-walk -0.92,0.38 0.08
+near driftwood
+walk 0,0 0.05
 press use 0.1
 await took 3
 wait 0.3
 shot 02-gathered
-at 209.63,435.70
-walk 0.71,0.71 0.08
+near driftwood,wrack
+walk 0,0 0.05
 press use 0.1
 await took 3
 # A loose stone off each of two boulders.
-at 189.54,440.34
-walk -1,0 0.08
+near boulder,stone ore
+walk 0,0 0.05
 press use 0.1
 await took 6
-at 190.90,417.27
-walk 0.38,-0.92 0.08
+near boulder,stone ore
+walk 0,0 0.05
 press use 0.1
 await took 6
 # Open ground west of the village: the first press asks, the second lays the fire.
