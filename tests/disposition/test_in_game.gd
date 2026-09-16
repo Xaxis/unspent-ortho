@@ -111,6 +111,30 @@ func test_killing_a_worker_raises_the_network_and_a_hunter_raises_it_less() -> v
 	await frames(1)
 
 
+func test_being_filed_and_being_out_in_a_keepers_hours_both_reach_the_network() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=22", "--weather=clear:0", "--spawn=warden"]))
+	await frames(3)
+	var sys := _system(g)
+	var f: Interference = sys.get(&"interference")
+	var net := Interference.network(g.world, g.player.pos)
+	# A clerk that got its reading away: the body carries the filing, and so does
+	# the network the player was read in.
+	g.body.filed += 1
+	await frames(30)
+	near(f.value(net), Interference.CAUSES[&"filed"], 2e-3, "a filing is on the record")
+	# And a warden that has you at its own hours is a broken curfew.
+	var w: MobState = g.player.sim.mobs[0]
+	eq(w.role, Roles.KEEPER, "a warden keeps its site and its hours")
+	# Well off across the land, so it is coming for the player and not yet on them.
+	w.pos = g.player.pos + Vector2(22.0, 0.0)
+	w.home = w.pos
+	w.set_mood(MobState.CHASING, g.player.sim.now)
+	await frames(30)
+	near(f.value(net), Interference.CAUSES[&"filed"] + Interference.CAUSES[&"curfew"], 2e-3, "and so is the curfew")
+	g.queue_free()
+	await frames(1)
+
+
 func test_a_rise_is_felt_in_the_world_and_never_written_on_the_screen() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0", "--spawn=watcher"]))
 	await frames(3)

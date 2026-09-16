@@ -55,6 +55,8 @@ var _last_minutes := 0.0
 var _stealing: int = -1
 var _dispatch_at := -INF
 var _felt_level := 0
+## Body.filed as this system last saw it (a clerk that got away raises it).
+var _filed_seen := 0
 ## What the tour has been shown (tour_seen).
 var _seen: Dictionary = {}
 
@@ -63,6 +65,7 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	sim = g.player.sim
 	_last_minutes = g.clock.minutes
+	_filed_seen = g.body.filed
 	Events.killed.connect(_on_killed)
 	Events.took.connect(_on_took)
 	Events.made.connect(_on_made)
@@ -92,6 +95,8 @@ func _physics_process(delta: float) -> void:
 	_apply_left -= delta
 	if _apply_left <= 0.0:
 		_apply_left = APPLY_EVERY
+		_filed()
+		_curfew()
 		_apply_dispositions()
 		_felt(sim.now)
 		_dispatch()
@@ -154,6 +159,32 @@ func _cool(delta: float) -> void:
 	var m := sim.moment
 	var hidden := m.crouched and m.cover > 0.4 and not _anything_aware()
 	interference.decay(passed / 60.0, hidden, m.spoofed, Interference.network(game.world, sim.hero.pos), sim.hero.pos)
+
+
+## A clerk that got its reading away files the player (Body.filed, which is also
+## what makes every machine see further). The network hears about it too.
+func _filed() -> void:
+	var n := game.body.filed
+	if n <= _filed_seen:
+		_filed_seen = n
+		return
+	_filed_seen = n
+	raise(&"filed", sim.hero.pos)
+
+
+## Out in the hours a keeper holds, and it has you: the network files the
+## curfew, not the keeper's own opinion of you.
+func _curfew() -> void:
+	var hour := sim.moment.hour()
+	for m in sim.mobs:
+		if not m.alive or m.removed or m.role != Roles.KEEPER:
+			continue
+		if not (m.roused() or m.mood == MobState.ALERTED):
+			continue
+		var hours: Array = m.row.get("where", {}).get("hours", [])
+		if hours.size() == 2 and Spawner.hour_in(hour, float(hours[0]), float(hours[1])):
+			raise(&"curfew", sim.hero.pos)
+			return
 
 
 func _anything_aware() -> bool:
