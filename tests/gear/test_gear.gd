@@ -144,6 +144,39 @@ func test_every_piece_of_gear_is_made_drawn_and_worth_wearing() -> void:
 		check(answered, "nothing worn answers %s, which a landscape here puts on you" % h)
 
 
+## A recipe that exists is not a recipe that can be made: every ingredient of
+## every piece of gear has to be something the world gives or something else
+## makes, all the way down. Unreachable gear is a dead page on the slate.
+func test_every_piece_of_gear_can_be_reached_from_a_normal_start() -> void:
+	var have := {&"knife": true, &"lamp": true}
+	for kind: int in Takes.table():
+		for o: Dictionary in Takes.options(kind):
+			have[StringName(o.item)] = true
+			for b: Variant in (o.get("bonus", []) as Array):
+				if b is StringName or b is String:
+					have[StringName(b)] = true
+	# Make everything that can be made, over and over, until nothing new appears.
+	var grew := true
+	while grew:
+		grew = false
+		for r: Dictionary in Recipes.LIST:
+			var can := true
+			for id: Variant in (r.get("needs", {}) as Dictionary):
+				can = can and have.has(StringName(id))
+			for id: Variant in (r.get("keeps", {}) as Dictionary):
+				can = can and have.has(StringName(id))
+			if not can:
+				continue
+			for id: Variant in (r.get("makes", {}) as Dictionary):
+				if not have.has(StringName(id)):
+					have[StringName(id)] = true
+					grew = true
+	for id: StringName in Items.DEFS:
+		if Gear.is_wearable(id) or Gear.is_module(id):
+			check(have.has(id), "%s cannot be reached from a normal start" % id)
+	check(have.has(&"wick"), "a found charge can be had, or found tech is dead weight")
+
+
 func test_every_slot_has_something_to_put_in_it() -> void:
 	for slot in Gear.SLOTS:
 		if slot == Gear.HAND_SLOT or slot == &"craft":
