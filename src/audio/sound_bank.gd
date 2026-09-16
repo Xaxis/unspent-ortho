@@ -51,7 +51,7 @@ const RELEASE := {&"event": 0.008, &"step": 0.006, &"ui": 0.006, &"scatter": 0.0
 ## few); the score is sliced today, the beds are not.
 const MAIN_THREAD_CATEGORIES: Array[StringName] = [&"event", &"step", &"ui", &"scatter"]
 ## Categories rendered by a resumable ScoreRender: without threads they bake a
-## slice at a time on the main thread (SCORE_BUDGET_USEC a frame).
+## slice at a time on the main thread (score_budget_usec a frame).
 const SCORE_CATEGORIES: Array[StringName] = [&"score_drone", &"score_pad", &"score_pulse", &"score_texture", &"score_grid", &"score_dissonance", &"score_cue"]
 ## What one frame gives the main-thread baking, one-shot and score slice
 ## together, and the most it ever gives.
@@ -59,9 +59,9 @@ const SCORE_BUDGET_USEC := 3000
 const SCORE_BUDGET_MAX_USEC := 8000
 ## Without threads the score takes at most this share of the frame it is in
 ## (budget_for, set by 75_music from the frame's own delta). A browser labouring
-## at twenty frames a second then builds the score three times as fast as one at
-## sixty, and neither ever loses a frame to it: the slice is always a fifth of a
-## frame, never a fixed cost that a slow frame pays over and over.
+## at twenty frames a second then builds the score nearly three times as fast as
+## one at sixty, and neither ever loses a frame to it: the slice is always a
+## fifth of a frame, never a fixed cost that a slow frame pays over and over.
 const SCORE_BUDGET_SHARE := 0.2
 
 ## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB),

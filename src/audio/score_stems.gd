@@ -43,7 +43,10 @@ const LAYERS := {
 ## chords of its progression rather than wrapping four onto each other; the drone
 ## and the air are held and swept over whatever loop they are given.
 ## Not used when there are threads: a desktop or a cross-origin-isolated browser
-## hears every bar.
+## hears every bar. Measured, for the coast's drone, air, pad and pulse at
+## thirty frames a second: 36, 52, 82 and 92 seconds whole (playtest 14 heard 85)
+## against 3, 6, 15 and 17 with the short form and the frame's own share of the
+## budget.
 const SHORT_BARS := {&"drone": 5, &"pad": 4, &"pulse": 3, &"texture": 4, &"dissonance": 3}
 
 const AIR := 0

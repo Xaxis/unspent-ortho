@@ -41,10 +41,10 @@ extends RefCounted
 ## short, marked stretch. Nothing is ever cut: every gain moves continuously.
 ##
 ## Never collapsing. A landscape is only crossfaded INTO as far as it can
-## actually sound: `ready` scales its share, and what is left is given back to
-## the landscapes that can. Walk or teleport faster than the bake and the score
-## keeps playing what it has and completes the turn when the stems arrive,
-## instead of falling silent halfway.
+## actually sound: `ready` caps its share of the ear, and the rest stays with
+## whatever is still sounding behind it. Walk or teleport faster than the bake
+## and the score keeps playing what it has and completes the turn when the stems
+## arrive, instead of falling silent halfway.
 
 const BAR := ScoreLandscapes.BAR
 

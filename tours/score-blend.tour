@@ -11,7 +11,8 @@ coast calm
 await score 150
 await score_full 120
 shot 01-the-whole-score-in-half-a-minute
-# Two hundred tiles north in one step: nothing of the moss is baked.
+# Two hundred tiles north in one step: the moss takes the ear only as fast as
+# it is baked, and the coast holds the rest of it meanwhile.
 place moss
 wait 3
 shot 02-arrived-faster-than-the-bake
