@@ -519,12 +519,14 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 	} else if (m == 55) {
 		// SALT: the crust dries in plates a stride across and lifts at every
-		// join, so the flat is a pale mosaic of raised white rims over a duller
-		// floor. Only some joins have lifted: a rim runs a few plates and stops,
-		// so the pattern never reads as a net thrown over the ground. Here and
-		// there a plate is still damp and takes a mineral stain; a few hold a
-		// skin of brine that catches the sky.
-		vec2 q = wp * 1.7;
+		// join, so the flat is a pale mosaic of raised rims over a duller floor.
+		// Only some joins have lifted: a rim runs a few plates and stops, so the
+		// pattern never reads as a net thrown over the ground. A lifted plate
+		// stands OVER its neighbour — its edge takes the light and throws a line
+		// of shadow on the plate it overhangs — so the crust has thickness and
+		// never reads as paving. The floor of a plate is grained, not flat: salt
+		// dries in grains and a few of them catch the sun.
+		vec2 q = wp * 2.1;
 		vec2 gi = floor(q);
 		float d1 = 9.0;
 		float d2 = 9.0;
@@ -548,28 +550,51 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 		float join = d2 - d1;
 		float ch = ink_hash(own + 11.0);
-		c = ch < 0.3 ? dn(c, 0.3) : (ch > 0.72 ? up(c, 0.13) : c);
-		// A slow field of damp: where the pan never dried the crust takes its
-		// stain in rings, warm then rust. Rare, so the flat stays white.
+		c = ch < 0.3 ? dn(c, 0.26) : (ch > 0.72 ? up(c, 0.12) : c);
+		// Grain across the plate, at its own angle: a dried floor, not a panel.
+		float gr = ink_vnoise(wp * 4.1 + own * 3.3) * 0.7 + ink_vnoise(wp * 11.0) * 0.3;
+		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.09) : c);
+		// A slow field of damp: where the pan never dried the crust takes a
+		// mineral stain. ONE connected wash with its own shore, never a tint per
+		// plate, and pale: the flat has to stay white or it is not a flat.
 		float damp = ink_vnoise(wp * 0.05 + 21.0) * 0.8 + ink_vnoise(wp * 0.19) * 0.2;
-		if (damp > 0.74) {
-			float ring = fract((damp - 0.74) * 26.0);
-			c = mix(c, ring < 0.4 ? EARTH3 : (ring < 0.72 ? LINEN2 : RUST2), 0.34);
-			if (ch > 0.94 && join > 0.16) {
-				// Brine still lying in the deepest plates, holding the sky.
-				c = ink_hash(px + 3.0) > 0.93 ? BRINE4 : BRINE2;
+		float stain = smoothstep(0.70, 0.80, damp + rag(wp) * 1.5);
+		if (stain > 0.0) {
+			c = mix(c, mix(LINEN2, EARTH3, 0.45), stain * 0.2);
+			// Brine still lying in the deepest of it: a SKIN, a finger deep, that
+			// holds the sky rather than hiding the crust under it. One sheet
+			// with its own shore — the damp field's contour decides where its
+			// edge falls — never a sprinkle of blue over the flat.
+			float pool = smoothstep(0.900, 0.918, damp + rag(wp) * 2.0);
+			if (pool > 0.0) {
+				vec3 skin = mix(mix(c, BRINE5, 0.45), BRINE4, step(0.88, ink_hash(px + 3.0)) * 0.5);
+				c = mix(c, skin, pool);
 			}
 		}
-		// Which joins have lifted: decided per pair, in runs, so a rim has ends.
-		float lifted = ink_hash(min(own, next) * 3.1 + max(own, next) * 7.3);
-		if (join < 0.09 && lifted < 0.62) {
-			c = join < 0.03 ? dn(c, 0.6) : LINEN5;
-		} else if (join < 0.05) {
+		// Which joins have lifted: decided per pair, in runs, so a rim has ends,
+		// and no two rims weigh the same.
+		vec2 lo_c = min(own, next);
+		vec2 hi_c = max(own, next);
+		float lifted = ink_hash(lo_c * 3.1 + hi_c * 7.3);
+		float weight = 0.03 + lifted * 0.075;
+		if (lifted < 0.62 && join < weight) {
+			// The plate that sorts above rode up over the other: this side is
+			// the lit edge of the lift, the other is under its overhang.
+			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;
+			if (join < weight * 0.3) {
+				c = dn(c, 0.8);
+			} else {
+				c = over ? mix(LINEN5, vec3(1.0), lifted) : dn(c, 0.4);
+			}
+		} else if (join < 0.028) {
 			// An unlifted join is only a hairline.
-			c = dn(c, 0.25);
+			c = dn(c, 0.22);
 		}
-		if (ink_hash(px + 9.0) > 0.995) {
+		float sh = ink_hash(px + 9.0);
+		if (sh > 0.991) {
 			c = vec3(1.0);
+		} else if (sh < 0.006) {
+			c = dn(c, 0.35);
 		}
 	} else if (m == 57) {
 		// PAN: the floor of an evaporation pan the brine drew back from. Damp
@@ -605,13 +630,22 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		// that meet nothing. Between the arcs, wet leaf litter and bright
 		// flecks of cut metal.
 		float f = ink_vnoise(wp * 0.11) * 0.75 + ink_vnoise(wp * 0.4) * 0.25;
-		float arc = fract(f * 14.0);
+		float arc = fract(f * 11.0);
 		float gate = ink_vnoise(wp * 0.5 + 7.0);
-		if (arc < 0.1 && gate > 0.28) {
-			// A drawn line of filings: dark, with rust caught along one side.
-			c = arc < 0.05 ? dn(c, 0.7) : mix(c, RUST1, 0.55);
-		} else if (arc > 0.5 && arc < 0.56 && gate > 0.55) {
-			c = mix(c, RUST3, 0.4);
+		if (arc < 0.17 && gate > 0.24) {
+			// A drawn line of filings, standing on edge: the far side of the comb
+			// is in its own shadow and the near side catches the light, so the
+			// arc reads as iron combed up and not as a stain in the dirt.
+			if (arc < 0.06) {
+				c = dn(c, 0.95);
+			} else if (arc < 0.115) {
+				c = mix(c, STONE2, 0.62);
+			} else {
+				c = mix(c, RUST2, 0.5);
+			}
+		} else if (arc > 0.46 && arc < 0.56 && gate > 0.5) {
+			// The next line over, fainter: the field drew more than one.
+			c = arc < 0.5 ? mix(c, RUST3, 0.42) : dn(c, 0.3);
 		}
 		if (ink_vnoise(wp * 1.3 + 4.0) + rag(wp) > 0.78) {
 			// Leaf litter gone to mulch in the hollows.

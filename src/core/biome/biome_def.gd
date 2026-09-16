@@ -11,6 +11,11 @@ extends RefCounted
 ## before it is a hundred. BiomeRegistry discovers the file, gives the type its
 ## `index` (the byte stored per tile in WorldData.country) and validates it.
 ##
+## NOT yet here: what a landscape's OBJECTS are made of. `src/models/props/`
+## still matches on `Country` for houses, wrecks, boulders, signs and shore
+## dressing, so a landscape registered after the M1 six is dressed as the coast
+## until those files read this instead (CLAUDE.md, Landscape types).
+##
 ## Units: relief is in WorldData levels, distances in tiles, colours are sRGB
 ## palette values (docs/ART.md: straight into ALBEDO, never converted).
 

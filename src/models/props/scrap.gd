@@ -19,14 +19,19 @@ const FILING := Color(0.1843, 0.2118, 0.2745)
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	k.hand(Ink.hand_of(c))
 	match kind:
-		PropKind.SCRAP_TREE: tree(k, v)
+		PropKind.SCRAP_TREE: tree(k, v, c)
 		PropKind.MAGNET_HEAP: heap(k, v)
 
 
 ## A broadleaf that took a dead hauler for a trellis: the ribs of its frame
 ## still stand inside the trunk, a plate or two caught in the fork, and the bark
 ## has closed over the rest. The crown is the hand's; the ribs never bend.
-static func tree(k: Kit, v: int) -> void:
+##
+## The camera looks DOWN on this wood, so the frame has to clear the crown or
+## the player never learns what these trees are: two ribs carry on past the
+## leaves with a level bar between them, and the plate hangs in the fork on top,
+## where a crown cannot hide it.
+static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var s := 610 + v * 31
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.1))
 	var h := 2.1 + v * 0.45
@@ -49,6 +54,36 @@ static func tree(k: Kit, v: int) -> void:
 	k.plate(Vector3(cos(pa) * 0.4, h * 0.2, sin(pa) * 0.4), Vector3(cos(pa + 2.1) * 0.4, h * 0.2, sin(pa + 2.1) * 0.4),
 		Vector3(cos(pa + 2.1) * 0.34, h * 0.46, sin(pa + 2.1) * 0.34), Vector3(cos(pa) * 0.34, h * 0.46, sin(pa) * 0.34),
 		P.PLATE[2], P.PLATE[1], P.PLATE[4])
+	# Two of the ribs never stopped: they carry on out of the leaves with a bar
+	# across them, so from above this wood is green blobs with a ruler through
+	# every one of them and reads as nothing else.
+	var ma := 0.8 + Kit.j(s, 3, 0.6)
+	var mast := h * (1.42 + v % 2 * 0.12)
+	var m0 := Vector3(cos(ma) * 0.24, 0.0, sin(ma) * 0.24)
+	var m1 := Vector3(cos(ma + PI) * 0.26, 0.0, sin(ma + PI) * 0.26)
+	var top0 := Vector3(m0.x * 0.5 + lean.x * mast * 0.7, mast, m0.z * 0.5 + lean.y * mast * 0.7)
+	var top1 := Vector3(m1.x * 0.5 + lean.x * mast * 0.6, mast * 0.86, m1.z * 0.5 + lean.y * mast * 0.6)
+	k.rod(m0 + Vector3(0, h * 0.28, 0), top0, 0.05, 5, P.PLATE[2])
+	k.rod(m1 + Vector3(0, h * 0.28, 0), top1, 0.04, 5, P.PLATE[3])
+	# A bar across them, level, reaching out past the leaves on both sides: from
+	# above it is a straight line laid over a hand-drawn blob, and nothing else
+	# in the wood makes that shape.
+	var bar_y := mast * 0.8
+	var bd := Vector3(cos(ma + 1.57), 0.0, sin(ma + 1.57))
+	var bc := Vector3(lean.x * bar_y * 0.7, bar_y, lean.y * bar_y * 0.7)
+	k.rod(bc - bd * 0.78, bc + bd * 0.62, 0.032, 4, P.PLATE[3])
+	# A stay from the mast head out to the cage foot, clear of the crown.
+	k.rod(top0, Vector3(cos(ma + 2.4) * 0.5, h * 0.12, sin(ma + 2.4) * 0.5), 0.022, 4, P.PLATE[2])
+	# The plate caught in the fork, lying ON the crown where the light finds it.
+	var fa := ma + 1.3
+	var fx := lean.x * h * 0.85
+	var fz := lean.y * h * 0.85
+	var fy := h * 1.06
+	k.plate(Vector3(fx + cos(fa) * 0.44, fy, fz + sin(fa) * 0.44),
+		Vector3(fx + cos(fa + 1.5) * 0.48, fy + 0.09, fz + sin(fa + 1.5) * 0.48),
+		Vector3(fx + cos(fa + 2.7) * 0.4, fy + 0.17, fz + sin(fa + 2.7) * 0.4),
+		Vector3(fx + cos(fa + 4.3) * 0.36, fy + 0.07, fz + sin(fa + 4.3) * 0.36),
+		P.PLATE[3], P.PLATE[1], P.PLATE[5])
 	# The trunk, swelling where it grew round the frame.
 	var mid := Vector3(lean.x * h * 0.5, h * 0.5, lean.y * h * 0.5)
 	k.limb(Vector3.ZERO, mid, 0.19, 0.13, 7, bark)
@@ -58,9 +93,13 @@ static func tree(k: Kit, v: int) -> void:
 	k.made.push(Transform3D(Basis(Vector3.UP, 0.4), Vector3(0, h * 0.26, 0)))
 	k.made.prism(0, 0, 0, 0.3, 0.17, 0.26, 7, Kit.tone(bark, 0.88), bark)
 	k.made.pop()
-	# Boughs and a lumpy crown, the hand's shapes, hatched underneath.
-	var leaf := P.MOSS[3].lerp(P.SPRUCE[3], 0.3)
-	var under := P.SPRUCE[2]
+	# Boughs and a lumpy crown, the hand's shapes, hatched underneath. A
+	# landscape that colours its own trees says so (BiomeDef.tree_tints): the
+	# leaves that grew in a metal taste are not the coast's greens.
+	var tints: Dictionary = BiomeRegistry.by_index(c).tree_tints
+	var own_leaf: Array = tints.get(&"leaf", [])
+	var leaf: Color = own_leaf[v % own_leaf.size()] if not own_leaf.is_empty() else P.MOSS[3].lerp(P.SPRUCE[3], 0.3)
+	var under := Kit.tone(leaf, 0.72)
 	var boughs := 3 + v % 2
 	var start := k.made.vertex_count()
 	for i in boughs:

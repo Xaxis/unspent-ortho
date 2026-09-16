@@ -120,8 +120,10 @@ static func _base(g: int) -> Color:
 		# A pan the brine drew back from: grey mineral silt with a warm cast,
 		# pale enough that it reads as a dry floor and never as mud.
 		Ground.PAN: return _m(_m(P.LINEN[3], P.STONE[3], 0.3), P.RUST[2], 0.12)
-		# Rust grit and metal filings trodden into the leaf litter.
-		Ground.SWARF: return _m(P.EARTH[2], P.RUST[2], 0.35)
+		# Rust grit and metal filings trodden into the leaf litter: more grit
+		# than soil, so a wood floored in it never reads as the bare earth that
+		# borders every other wood.
+		Ground.SWARF: return _m(_m(P.EARTH[1], P.SLATE[2], 0.45), P.RUST[2], 0.28)
 	return P.BLOOM[3]
 
 

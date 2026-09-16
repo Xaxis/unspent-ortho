@@ -506,14 +506,19 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			if stage == 2:
 				k.fleck(Vector3(0.06, 0.005, 0.03), Vector3(0.1, 0.02, 0.05), Vector3(0.08, 0.025, 0.01), P.RUST[2])
 		FILINGS:
-			# A comb of filings standing on edge along a field line: dark, fine,
-			# and never scattered.
-			var n := 7 + stage
+			# A comb of filings standing on edge along a field line: never
+			# scattered, and never a smudge in the dirt either. They are as tall
+			# as grass and half of them are bright, because the whole point of
+			# this wood is that the ground is being held up by something.
+			var n := 9 + stage * 2
 			for i in n:
-				var t := (float(i) / n - 0.5) * 0.22
-				var bend := t * t * 1.6
+				var t := (float(i) / n - 0.5) * 0.44
+				var bend := t * t * 2.2
 				var base := Vector3(t, 0.0, bend)
-				k.blade(base, base + Vector3(0.006, 0.05 + Rng.hash01(s, i) * 0.03, 0.01), 0.012, 1.2,
-					P.STONE[1] if i % 3 else P.RUST[2])
+				var up := 0.11 + Rng.hash01(s, i) * 0.09
+				k.blade(base, base + Vector3(0.012, up, 0.02), 0.02, 1.2,
+					P.STONE[3] if i % 3 else P.RUST[2])
+			# One shard on end, taller than the comb, so the arc has a stop.
+			k.blade(Vector3(0.16, 0.0, 0.07), Vector3(0.175, 0.26 + Rng.hash01(s, 91) * 0.08, 0.09), 0.026, 1.2, P.PLATE[3])
 			k.still()
 	return k
