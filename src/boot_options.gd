@@ -59,6 +59,11 @@ extends RefCounted
 ## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
+## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
+##                     island, a new game's start, the live rules; named options still win (dev)
+## --dev[=PAGE]        dev mode reachable in a tool run; PAGE opens the dev app at a page
+##                     (home here go time body give spawn view config builds proofs notes),
+##                     PAGE:ROW chooses a row; readout puts the readout on the glass's edge (dev)
 
 var seed_value := 1
 var size := Tuning.WORLD_SIZE
@@ -107,6 +112,9 @@ var saves := ""
 var progress := 0.4
 var probe := false
 var fail_downed := false
+var config := ""
+var dev := false
+var dev_page := ""
 
 
 static func parse(args: PackedStringArray) -> BootOptions:
@@ -169,5 +177,9 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
 			"fail-downed": o.fail_downed = true
+			"config": o.config = v
+			"dev":
+				o.dev = true
+				o.dev_page = v
 			_: push_warning("unknown option --%s" % k)
 	return o

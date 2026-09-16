@@ -20,7 +20,7 @@ godot --path .
 ```
 
 WASD move, Shift run and dodge, Space swing, E use, C make, I carry, M map,
-F lamp, Esc pause.
+F lamp, Esc pause, ` dev mode (docs/DEV.md).
 
 ## Build it
 
@@ -32,6 +32,7 @@ tools/tour.sh x.tour    # play a scripted sequence through REAL input, a frame p
 tools/canon.sh          # every canon frame beside its accepted twin, on one sheet
 tools/export.sh web     # a web build
 tools/deploy.sh         # put it on Vercel and prove it runs there in a browser
+tools/export.sh web --config=playtest   # a build of a master configuration, stamped
 ```
 
 A feature is not done because a test passes. It is done when a tour walks to it,
@@ -44,6 +45,7 @@ presses the real key, and the frame it saves is worth looking at.
 | `docs/VISION.md` | where this is going: the machines' plan, 20+ landscape types, sentinels, portals, crafts |
 | `docs/ART.md` | the style bible, and it is binding |
 | `docs/DESIGN.md` | what the game is now |
+| `docs/DEV.md` | dev mode: feedback and testing in any build, master configurations, and making, keeping and shipping builds |
 | `docs/ROADMAP.md` | what is next |
 | `CLAUDE.md` | the loop, the layout, the conventions, and the contracts parallel work is built against |
 
