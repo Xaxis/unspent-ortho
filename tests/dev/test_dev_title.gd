@@ -95,3 +95,22 @@ func test_the_key_that_shuts_dev_mode_is_not_a_press_on_the_title() -> void:
 	check(not t._starting, "the held e did not start a new game")
 	t.get_parent().free()
 	DevMode.asked = was_asked
+
+
+func test_a_fixed_island_is_the_only_one_the_title_offers() -> void:
+	GameConfig.clear()
+	GameConfig.set_value("world.seed", 9)
+	GameConfig.set_value("world.seed_locked", true)
+	var t := _title()
+	eq(t.seed_value, 9, "the configuration's island, whatever the title was handed")
+	check(not t.cycle_coasts, "no next coast is drawn")
+	t.menu.refresh()
+	eq(t.menu.menu.rows.filter(func(r: Dictionary) -> bool: return r.get("id") == &"seed").size(), 0, "and no island row to turn")
+	t.change_seed(1)
+	check(not t._drawing() or t._next_seed == 9, "left and right draw no other")
+	t.get_parent().free()
+	GameConfig.clear()
+	var free_title := _title()
+	eq(free_title.seed_value, 5, "without it the title shows what it was handed")
+	check(free_title.menu.menu.rows.filter(func(r: Dictionary) -> bool: return r.get("id") == &"seed").size() == 1, "and offers other islands")
+	free_title.get_parent().free()
