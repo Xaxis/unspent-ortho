@@ -348,6 +348,33 @@ func test_a_running_game_throws_dry_lightning_with_afterglow_and_stutter() -> vo
 	Weather.unforce()
 
 
+static func _mood_lum(v: Vector3) -> float:
+	return v.x * 0.3 + v.y * 0.59 + v.z * 0.11
+
+
+## docs/ART.md section 3 promises each landscape its own evening by name, and a
+## SkyLight.MOOD row is where that promise is kept. Now that there is a dusk to
+## keep it in (Weather.DUSK_START), each row has to say what its dusk is.
+func test_every_landscape_keeps_its_own_promise_about_the_evening() -> void:
+	var coast := _mood_lum(SkyLight.mood_light(&"coast", 19.0))
+	lt(_mood_lum(SkyLight.mood_light(&"pinewood", 19.0)), coast - 0.1, "an early dusk under the pines")
+	lt(_mood_lum(SkyLight.mood_light(&"moss", 19.0)), coast - 0.07, "and in the moss")
+	var snow := SkyLight.mood_light(&"snowfield", 19.5)
+	gt(_mood_lum(snow), _mood_lum(SkyLight.mood_light(&"pinewood", 19.5)) + 0.08, "the snowfield's evening is long")
+	gt(snow.z - snow.x, 0.15, "and blue")
+	var bone_day := _mood_lum(SkyLight.mood_light(&"bonelands", 16.0))
+	gt(bone_day, 0.96, "the bonelands keep a hard white afternoon")
+	lt(_mood_lum(SkyLight.mood_light(&"bonelands", 20.0)), bone_day - 0.15, "and fall hard off the end of it")
+	var burn_eve := SkyLight.mood_light(&"burning", 19.8)
+	var burn_night := SkyLight.mood_light(&"burning", 23.0)
+	gt(burn_eve.x - burn_eve.z, 0.35, "the burning's dusk is a furnace")
+	gt(burn_night.x - burn_night.z, 0.2, "and its night is still warm where every other land has gone blue")
+	# And no land's small hours are brighter than its own afternoon.
+	for id: StringName in SkyLight.MOOD:
+		lt(_mood_lum(SkyLight.mood_light(id, 1.0)), _mood_lum(SkyLight.mood_light(id, 15.0)) + 0.02,
+			"%s is brighter at one in the morning than at three in the afternoon" % id)
+
+
 func test_each_landscape_leans_its_own_way_by_hour_and_noon_stays_day() -> void:
 	for id: StringName in SkyLight.MOOD:
 		var noon := SkyLight.mood_light(id, 12.5)

@@ -26,6 +26,11 @@ extends Node3D
 ## 20:15 (the sun is low and warm on what it lights, and Weather.night_fall takes
 ## the level down under it), and the blue of the sky takes the land over the last
 ## three quarters of an hour, landing on night exactly where night_fall lands.
+## The 21:00 key is short of the night's own blue on purpose: blue is the
+## BRIGHTEST channel at night (0.90 against 0.56 red), so a key that went the
+## whole way there in the last half hour of the evening measurably LIFTED a
+## blue-leaning land like the snowfield just as it should have been settling.
+## The last of that blue deepens over 21:00-21:36, under a level that is flat.
 const KEYS := [
 	[0.00, Vector3(0.56, 0.64, 0.90), 0.82],
 	[0.22, Vector3(0.56, 0.64, 0.90), 0.82],
@@ -34,7 +39,7 @@ const KEYS := [
 	[0.70, Vector3(1.00, 1.00, 0.99), 1.00],
 	[0.80, Vector3(0.98, 0.74, 0.58), 0.80],
 	[0.8438, Vector3(0.95, 0.72, 0.56), 0.80],
-	[0.8750, Vector3(0.74, 0.68, 0.82), 0.82],
+	[0.8750, Vector3(0.72, 0.68, 0.78), 0.82],
 	[0.90, Vector3(0.56, 0.64, 0.90), 0.82],
 	[1.00, Vector3(0.56, 0.64, 0.90), 0.82],
 ]
@@ -499,13 +504,21 @@ static func type_light(def: BiomeDef, hour: float) -> Vector3:
 ## green gloom in the moss, an early dusk under the pines, the snowfield's long
 ## blue evening, hard white noon on the bonelands, furnace dusk in the burning.
 ## A landscape type not listed keeps the plain hour. New types add a row.
+##
+## The EVENING is where these rows earn their keep, and where docs/ART.md section 3
+## makes its promises by name. Each row now says what its landscape's dusk is:
+## the pines and the moss go dark early and stay dark; the snowfield holds its
+## light late and turns blue; the bonelands drop hard off the end of the day; the
+## burning's dusk is a furnace and keeps its warmth right through the night. None
+## of them turns back up into the small hours, because a land that brightens
+## after dark is the bug this package was sent to fix.
 const MOOD := {
-	&"coast": [[0.0, Vector3(0.98, 0.99, 1.0)], [12.0, Vector3(0.97, 0.98, 1.0)], [18.5, Vector3(0.95, 0.96, 1.0)]],
-	&"moss": [[0.0, Vector3(0.93, 0.97, 0.94)], [6.0, Vector3(0.88, 0.95, 0.9)], [12.0, Vector3(0.95, 0.98, 0.94)], [18.0, Vector3(0.9, 0.96, 0.91)]],
-	&"pinewood": [[0.0, Vector3(0.95, 0.97, 1.0)], [11.0, Vector3(0.97, 0.98, 0.97)], [15.5, Vector3(0.96, 0.96, 0.96)], [18.0, Vector3(0.8, 0.82, 0.88)], [20.5, Vector3(0.88, 0.9, 0.98)]],
-	&"snowfield": [[0.0, Vector3(0.94, 0.97, 1.0)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.5, Vector3(0.94, 0.97, 1.0)], [19.5, Vector3(0.8, 0.9, 1.0)], [21.5, Vector3(0.88, 0.94, 1.0)]],
-	&"bonelands": [[0.0, Vector3(1.0, 0.98, 0.96)], [9.0, Vector3(1.0, 0.99, 0.97)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.0, Vector3(1.0, 0.98, 0.94)], [19.5, Vector3(0.98, 0.9, 0.82)]],
-	&"burning": [[0.0, Vector3(1.0, 0.94, 0.9)], [12.0, Vector3(1.0, 0.97, 0.94)], [17.0, Vector3(1.0, 0.92, 0.84)], [19.8, Vector3(1.0, 0.8, 0.66)], [22.0, Vector3(1.0, 0.9, 0.84)]],
+	&"coast": [[0.0, Vector3(0.98, 0.99, 1.0)], [12.0, Vector3(0.97, 0.98, 1.0)], [18.5, Vector3(0.95, 0.96, 1.0)], [20.5, Vector3(0.92, 0.95, 1.0)]],
+	&"moss": [[0.0, Vector3(0.93, 0.97, 0.94)], [6.0, Vector3(0.88, 0.95, 0.9)], [12.0, Vector3(0.95, 0.98, 0.94)], [17.5, Vector3(0.88, 0.94, 0.9)], [19.3, Vector3(0.74, 0.84, 0.8)]],
+	&"pinewood": [[0.0, Vector3(0.95, 0.97, 1.0)], [11.0, Vector3(0.97, 0.98, 0.97)], [15.5, Vector3(0.96, 0.96, 0.96)], [17.5, Vector3(0.88, 0.89, 0.93)], [18.5, Vector3(0.76, 0.78, 0.86)], [21.0, Vector3(0.82, 0.86, 0.98)]],
+	&"snowfield": [[0.0, Vector3(0.82, 0.93, 1.0)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.5, Vector3(0.93, 0.98, 1.0)], [19.5, Vector3(0.78, 0.96, 1.0)], [21.5, Vector3(0.8, 0.94, 1.0)]],
+	&"bonelands": [[0.0, Vector3(1.0, 0.98, 0.96)], [9.0, Vector3(1.0, 0.99, 0.97)], [12.5, Vector3(1.0, 1.0, 1.0)], [16.0, Vector3(1.0, 0.98, 0.94)], [18.5, Vector3(0.98, 0.93, 0.86)], [19.9, Vector3(0.86, 0.8, 0.74)]],
+	&"burning": [[0.0, Vector3(1.0, 0.91, 0.84)], [12.0, Vector3(1.0, 0.97, 0.94)], [17.0, Vector3(1.0, 0.92, 0.82)], [19.8, Vector3(1.0, 0.78, 0.58)], [22.0, Vector3(1.0, 0.84, 0.7)]],
 }
 
 
