@@ -144,7 +144,7 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 	if is_front:
 		for sz: float in [-1.0, 1.0]:
 			add_lamp(box, Vector3(0.614, 0.09, -SEG_W * 0.5 + sz * 0.16), Vector3(0.99, 0.16, 0), Vector3(-0.16, 0.99, 0), 0.06, 0.05, &"work")
-		add_beam(box, Vector3(0.66, 0.06, -SEG_W * 0.5), Vector3(1.4, -0.4, 0), 1.6, 1.3, &"work")
+		add_beam(box, Vector3(0.66, 0.06, -SEG_W * 0.5), Vector3(1.4, -0.4, 0), 2.3, 1.7, &"work")
 	var sw := FoundKit.kit()
 	var flank := Vector3(0, -0.16, -1.0).normalized()
 	FoundKit.patch(sw, Vector3(-0.2 if is_front else 0.16, 0.2, -SEG_W * 0.5 - 0.265), flank, Vector3(0, 1, -0.16), 0.24, 0.14, Palette.MACHINE["harvester"] if is_front else Palette.MACHINE["sweeper"], 54 + int(is_front))

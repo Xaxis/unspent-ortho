@@ -102,7 +102,7 @@ const DAY_SCAN := {&"indifferent": 0.20, &"wary": 0.32, &"observant": 0.48, &"ho
 ## nothing at all, then a floodlight. A worker's lamps are ON — they are how it
 ## sees the row it is cutting — so by day they lay a dusting of pixels on that
 ## row, and what the plan changes is how hard.
-const DAY_WORK := {&"indifferent": 0.09, &"wary": 0.16, &"observant": 0.27, &"hostile": 0.55}
+const DAY_WORK := {&"indifferent": 0.09, &"wary": 0.15, &"observant": 0.30, &"hostile": 0.58}
 ## How much of a lamp's built-in glow the day leaves (found.gdshader glow_scale),
 ## by disposition. Full glow under the sun blows a lens out to paper white and
 ## throws its colour away; turned down, the lens keeps the COLD it is made of and
