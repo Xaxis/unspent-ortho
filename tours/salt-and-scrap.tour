@@ -7,7 +7,7 @@
 # walked across, and a body standing in each with the best kit the game can
 # make — put on through the slate's gear page with the real keys.
 #   tools/tour.sh tours/salt-and-scrap.tour --seed=7 --hour=11 --weather=clear:0 \
-#     --give=hat_brim:1,back_awning:1,mitts_corded:1,mod_foil:1
+#     --give=hat_brim:1,mod_shade:1,vest_heatsink:1,condenser:1,mitts_corded:1,mod_foil:1
 coast calm
 
 # --- The flat: wide, at play, and close ---------------------------------------
@@ -38,8 +38,12 @@ await pressure_bites 20
 shot 06-the-flat-bites
 
 # --- And the kit that answers it, fitted on the slate -------------------------
-# The brimmed hat goes on the head and the awning on the BACK: two slots, so
-# glare is answerable at last without giving up the scanner lens for it.
+# The flat presses THREE ways and only three slots have answers in them, so the
+# third answer comes out of a SOCKET: brim on the head, rag shade into the
+# brim's socket, heat-sink vest on the body, drip coil on the back. The first
+# fix put the shade on the back instead and that was worse than nothing — the
+# back is where the water goes, and a body that answered the glare went thirsty.
+# So all three badges have to come back green here, not two of them.
 tap pause
 choose loadout
 tap use
@@ -48,15 +52,22 @@ shot 07-the-gear-page-bare
 choose head
 tap use
 wait 0.4
+tap use
+wait 0.4
+choose body
+tap use
+wait 0.4
 choose back
 tap use
 wait 0.4
-shot 08-a-brim-and-an-awning
+shot 08-the-whole-kit-on
 tap pause
 tap pause
 await app:none 4
 wait 2.5
 await answered:glare 45
+await answered:thirst 30
+await answered:heat 30
 shot 09-the-flat-answered
 
 # --- The wood: wide, at play, and close ---------------------------------------

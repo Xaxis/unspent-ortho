@@ -165,15 +165,6 @@ const DEFS := {
 		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.35, &"toxins": 0.2, &"thirst": 0.15}},
 	&"hat_brim": {"name": "brimmed hat", "bulk": 1.0, "group": &"kit", "tier": &"made",
 		"slot": &"head", "sockets": 1, "resist": {&"heat": 0.3, &"wet": 0.15, &"glare": 0.45}},
-	# A frame of driftwood with a sheet of rag stretched over it, carried on the
-	# back: you walk under your own roof. Glare was the ONE pressure in the game
-	# the best legal loadout could not bring below a bite, because both answers
-	# to it — the brim and the scanner lens — are worn on the head, and the salt
-	# flats is one of the two landscapes nearest a spawn (playtest 3). This is the
-	# second answer, and it costs the back: the glide wing, the drip coil that
-	# answers the same landscape's thirst, or a plate off a checkpoint.
-	&"back_awning": {"name": "back awning", "bulk": 3.0, "group": &"kit", "tier": &"made",
-		"slot": &"back", "sockets": 1, "resist": {&"glare": 0.40, &"heat": 0.25}},
 	# Leather and cord with no iron anywhere in them, so nothing on your hands is
 	# being pulled. Magnetism was the only pressure with nothing wearable against
 	# it at all, and the scrapwood declares it at every hour (playtest 7).
@@ -206,6 +197,24 @@ const DEFS := {
 		"fits": [&"head", &"body", &"hands"], "resist": {&"cold": 0.2}},
 	&"mod_filter": {"name": "char filter", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
 		"fits": [&"head"], "resist": {&"fumes": 0.3, &"toxins": 0.2}},
+	# A rag stretched on a bent driftwood rib and lashed over a brim, a vest or a
+	# pack frame: the second half of the answer to glare, and it is a MODULE for a
+	# structural reason rather than a taste one.
+	#
+	# Glare was the one pressure the best legal loadout could not bring below a
+	# bite, because both answers to it — the brim and the scanner lens — are worn
+	# on the HEAD (playtest 3). The first fix put the second answer on the back,
+	# and that was worse: the back is the only slot that answers the same
+	# landscape's thirst, so the flat's best whole kit did not move (0.550, still
+	# exactly a bite) and any body that actually wore the new piece went from no
+	# harm at all to thirst harming it a third of the time.
+	#
+	# The salt flats declares three pressures and there are only three slots with
+	# answers in them, so the capacity has to come from SOCKETS, which is what
+	# they are for. One of these under a brim takes glare from 0.550 to 0.385;
+	# one on its own leaves 0.70, still biting, so a rag is not a hat.
+	&"mod_shade": {"name": "rag shade", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"head", &"body", &"back"], "resist": {&"glare": 0.3, &"heat": 0.15}},
 	# Cord and pitch wound round a haft: it damps the ring that comes back up a
 	# tool struck against machine plate, and it is what the hand's slot is for.
 	&"mod_grip": {"name": "bound grip", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,

@@ -43,25 +43,40 @@ static func best_resist(id: StringName) -> float:
 	return total
 
 
-func test_glare_has_an_answer_that_is_not_worn_on_the_head() -> void:
+func test_glare_has_a_second_answer_that_costs_no_slot() -> void:
+	# The first version of this test asked only for a glare answer worn somewhere
+	# other than the head, and a back piece satisfied it — which is how the trap
+	# got in, because the back is the flat's only thirst answer. What glare
+	# actually needed was capacity, not another contested slot: the flat presses
+	# three ways and only three slots have answers in them. So the second answer
+	# is a MODULE, and the rule is that it fits a socket somewhere off the head.
 	var heads := 0
-	var elsewhere := 0
+	var sockets := 0
 	for item: Variant in Items.DEFS:
 		var d: Dictionary = Items.DEFS[item]
-		if d.get("module", false):
-			continue
 		if float((d.get("resist", {}) as Dictionary).get(&"glare", 0.0)) <= 0.0:
 			continue
-		if d.get("slot", &"") == &"head":
+		if d.get("module", false):
+			var fits: Array = d.get("fits", [])
+			for s: Variant in fits:
+				if s != &"head":
+					sockets += 1
+		elif d.get("slot", &"") == &"head":
 			heads += 1
-		else:
-			elsewhere += 1
 	gt(float(heads), 0.0, "the brim still answers glare")
-	gt(float(elsewhere), 0.0, "and something that is not worn on the head does too")
+	gt(float(sockets), 0.0, "and a module carries the rest into a socket that is not on the head")
+	# And no back piece answers glare, because the back carries the flat's water.
+	for item: Variant in Items.DEFS:
+		var d: Dictionary = Items.DEFS[item]
+		if d.get("module", false) or d.get("slot", &"") != &"back":
+			continue
+		near(float((d.get("resist", {}) as Dictionary).get(&"glare", 0.0)), 0.0, 1e-6,
+			"%s answers glare on the back, which is where the drip coil goes" % item)
 
 
 func test_the_salt_flats_at_its_worst_comes_below_a_bite_with_the_best_kit() -> void:
-	# The flat at noon under its own glare, which is when it is hardest.
+	# The flat at noon under its own glare, which is when it is hardest. The whole
+	# kit is proved in tests/hazards/test_whole_kit.gd; this is glare alone.
 	var salt := BiomeRegistry.get_def(&"salt_flats")
 	var p := place(salt.hazards, 12.0)
 	p.weather = &"glare"
@@ -70,18 +85,9 @@ func test_the_salt_flats_at_its_worst_comes_below_a_bite_with_the_best_kit() -> 
 	gt(float(raw.get(&"glare", 0.0)), Hazards.BITE, "bare on the flat at noon, glare bites")
 	var kept := Hazards.after_resist(raw, {&"glare": best_resist(&"glare")})
 	lt(float(kept.get(&"glare", 0.0)), Hazards.BITE, "and the best kit brings it under the bite")
-	# Not free: the back is the only other slot that answers it, and the back is
-	# also where the one answer to this landscape's thirst is worn.
-	var back_glare := false
-	var back_thirst := false
-	for item: Variant in Items.DEFS:
-		var d: Dictionary = Items.DEFS[item]
-		if d.get("module", false) or d.get("slot", &"") != &"back":
-			continue
-		var r: Dictionary = d.get("resist", {})
-		back_glare = back_glare or float(r.get(&"glare", 0.0)) > 0.0
-		back_thirst = back_thirst or float(r.get(&"thirst", 0.0)) > 0.0
-	check(back_glare and back_thirst, "answering glare off the head costs the back slot, and the flat's thirst wants it")
+	# The brim is not optional: the shade alone leaves the flat harming a body.
+	var shade_only := Hazards.after_resist(raw, {&"glare": float(Gear.resist_of(&"mod_shade").get(&"glare", 0.0))})
+	gt(float(shade_only.get(&"glare", 0.0)), Hazards.BITE, "a rag on its own is not a hat")
 
 
 func test_magnetism_has_a_quiet_half_of_the_day() -> void:
@@ -123,7 +129,7 @@ func test_both_new_answers_are_reachable_with_a_knife_and_no_bench() -> void:
 	for r: Dictionary in Recipes.LIST:
 		var makes: Dictionary = r.get("makes", {})
 		for id: Variant in makes:
-			if id == &"back_awning" or id == &"mitts_corded":
+			if id == &"mod_shade" or id == &"mitts_corded":
 				found[id] = r
 	eq(found.size(), 2, "both new pieces have a recipe")
 	for id: Variant in found:
