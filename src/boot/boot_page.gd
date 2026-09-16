@@ -70,15 +70,19 @@ const SCREEN := Rect2i(24, 19, 592, 316)
 ## The bar along the top of the glass and the strip along its foot.
 const STATUS_H := 12
 const KEYS_H := 12
-## Seconds the chrome takes to come up. The web shell draws this page in the
-## browser while the engine downloads (src/boot/shell.html) and cannot draw a
-## bezel, so the engine's page starts as the shell left it — bare glass — and
-## the chrome rises as the power does. Nothing pops.
+## Seconds the chrome takes to come up, from a cold start. Following the web
+## shell there is nothing to come up: the shell draws the same device while the
+## engine downloads (src/boot/shell.html), and `lit()` hands it over already on.
 const BEZEL_IN := 0.5
 ## The bezel's ink, all from the machines' own ramps.
 const CHROME := Palette.FOUND
 const CASING := Palette.ASH
 const SENSOR := Palette.COLD
+## Where light catches broken glass, and the runs the crack makes out from under
+## the tape as [sideways step, length] — UiSlate.marks_image bakes the same three
+## into every other screen, so the glass is broken the same way on all of them.
+const CHIP := Color(0.75, 0.84, 0.86)
+const CRACK := [[-1, 40], [-2, 16], [0, 26]]
 ## Seconds the page takes to lift off the scene once it is up.
 const LIFT_SECONDS := 0.35
 
@@ -107,6 +111,9 @@ var _sketch_t := 0.0
 var _mark := Vector2i(-1, -1)
 ## The glass, and the ink on it (sketch, line, words): the ink lifts first.
 var _sheet: Control
+## What the static layer was last drawn at (`_chrome_key`); off the scale until
+## the first frame, so it always draws once.
+var _sheet_key := Vector2(-1.0, -1.0)
 var _ink: Control
 var _t := 0.0
 var _shown := 0
@@ -298,7 +305,14 @@ func _hand_from_shell() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if not _lifted:
-		_sheet.queue_redraw()
+		# The chrome is a thousand primitives — the duct tape alone is 546 pixel
+		# calls and the stuck-pixel column another 316 — and none of it changes
+		# once the slate is up. Redrawing it sixty times a second is the main
+		# thread the no-threads web build needs for making a world.
+		var key := _chrome_key()
+		if key.distance_squared_to(_sheet_key) > 0.000004:
+			_sheet_key = key
+			_sheet.queue_redraw()
 		_ink.queue_redraw()
 	if _lift >= 0.0:
 		_ink.modulate.a = 1.0 - clampf(_lift / (LIFT_SECONDS * 0.5), 0.0, 1.0)
@@ -382,18 +396,34 @@ func progress() -> float:
 	return held_progress if held_progress >= 0.0 else stages.progress()
 
 
-## How far the slate has powered up, 0..1. A still page for shots is already on.
+## How far the slate has powered up, 0..1. A still page for shots is already on,
+## and so is a page that follows the web shell: the shell has drawn the same
+## device for the seconds the wasm took (src/boot/shell.html), so this page picks
+## it up lit rather than powering it up a second time in front of the player.
 func lit() -> float:
-	return 1.0 if kind == "preview" else clampf(_t / BEZEL_IN, 0.0, 1.0)
+	if kind == "preview" or stages.start_at > 0.0:
+		return 1.0
+	return clampf(_t / BEZEL_IN, 0.0, 1.0)
 
 
-## The glass goes once the ink on it has faded.
-func _draw_glass() -> void:
+## The two numbers everything on the static layer is drawn from: how far the
+## glass has left to fade, and how far the slate has powered up. While neither
+## moves, that layer does not redraw.
+func _chrome_key() -> Vector2:
 	var a := 1.0
 	if _lift >= 0.0:
 		a = 1.0 - clampf((_lift - LIFT_SECONDS * 0.4) / (LIFT_SECONDS * 0.6), 0.0, 1.0)
-	UiDraw.rect(_sheet, Rect2i(0, 0, 640, 360), Color(GLASS, a))
-	_draw_device(_sheet, a * lit())
+	return Vector2(a, lit())
+
+
+## The glass goes once the ink on it has faded. The device and the glass's own
+## flaws are here rather than on the page: they never change while a stage runs,
+## and they are the expensive half of the drawing.
+func _draw_glass() -> void:
+	var key := _chrome_key()
+	UiDraw.rect(_sheet, Rect2i(0, 0, 640, 360), Color(GLASS, key.x))
+	_draw_device(_sheet, key.x * key.y)
+	_draw_marks(_sheet, key.x * key.y)
 
 
 ## The device the page is a screen of: violet chrome stolen off a machine, a
@@ -475,13 +505,21 @@ func _draw_device(ci: CanvasItem, a: float) -> void:
 	_draw_tape(ci, a)
 
 
-## Silver duct tape laid across the corner on the diagonal, its ends torn.
+## Silver duct tape laid across the corner on the diagonal, its ends torn, its
+## weave showing, lifting a little at one edge — UiSlate._duct in rects rather
+## than baked pixels. Without the shade under the lifted edge it read as a
+## speckled blob rather than as tape stuck over a broken corner.
 func _draw_tape(ci: CanvasItem, a: float) -> void:
 	var corner := Vector2(DEVICE.end.x - 1, DEVICE.position.y)
-	for t in range(-19, 23):
-		var mid := corner + Vector2(1, 1).normalized() * t + Vector2(1, -1).normalized() * -16.0
-		var across := Vector2(1, -1).normalized()
+	var axis := Vector2(1, 1).normalized()
+	var across := Vector2(1, -1).normalized()
+	for t in range(-23, 27):
+		var mid := corner + axis * t + across * -16.0
 		for off in range(-6, 7):
+			# Torn, not cut: how far the tape runs varies across its width.
+			var tear := (Rng.hash01(off, 0, 0, 0xd0c) - 0.5) * 3.0
+			if t < -19.0 + tear or t > 22.0 + tear:
+				continue
 			var q := mid + across * off
 			var col := CASING[4] if absi(off) < 5 else CASING[3]
 			if off > 4:
@@ -489,6 +527,11 @@ func _draw_tape(ci: CanvasItem, a: float) -> void:
 			elif (roundi(q.x) * 2 + roundi(q.y)) % 4 == 0:
 				col = CASING[3]
 			UiDraw.px(ci, roundi(q.x), roundi(q.y), Color(col, a))
+	for t in range(-14, 18):
+		var q := corner + axis * t + across * -22.5
+		UiDraw.px(ci, roundi(q.x), roundi(q.y), Color(0, 0, 0, a * 0.35))
+		var r := corner + axis * t + across * -9.5
+		UiDraw.px(ci, roundi(r.x), roundi(r.y), Color(0, 0, 0, a * 0.2))
 
 
 func _draw_page() -> void:
@@ -498,7 +541,6 @@ func _draw_page() -> void:
 	var band_y := g.position.y + int(fmod(_t * 22.0, float(g.size.y + 40))) - 20
 	UiDraw.rect(ci, Rect2i(g.position.x, maxi(band_y, g.position.y), g.size.x, clampi(14, 0, g.end.y - maxi(band_y, g.position.y))), SCAN)
 	_draw_status(ci)
-	_draw_marks(ci)
 	_draw_sketch(ci)
 	var p := progress()
 	var x0 := LINE_X0
@@ -578,8 +620,7 @@ func _draw_stages(ci: CanvasItem, a: float) -> void:
 ## The glass is salvaged and says so: a column of stuck pixels down the left
 ## margin, and the crack in the top right corner under the tape (docs/ART.md §9).
 ## Both live in the margins, clear of everything the page writes.
-func _draw_marks(ci: CanvasItem) -> void:
-	var a := lit()
+func _draw_marks(ci: CanvasItem, a: float) -> void:
 	if a <= 0.0:
 		return
 	var g := SCREEN
@@ -589,13 +630,31 @@ func _draw_marks(ci: CanvasItem) -> void:
 			continue
 		UiDraw.px(ci, dx, y, Color(RAIL, a * (0.9 if y % 2 == 0 else 0.6)))
 	UiDraw.px(ci, g.position.x + 5, g.position.y + g.size.y / 2 + 7, Color(GRID, a))
-	var p := Vector2i(g.end.x - 2, g.position.y + 1)
-	for i in 40:
-		p.y += 1
-		if i % 3 == 0:
-			p.x = maxi(p.x - 1, g.end.x - 12)
-		UiDraw.px(ci, p.x, p.y, Color(0.75, 0.84, 0.86, a * (0.5 - 0.3 * i / 40.0)))
-		UiDraw.px(ci, p.x + 1, p.y, Color(0, 0, 0, a * 0.5))
+	# The crack: three jagged runs out from under the tape and a star of chips at
+	# their origin, the shape UiSlate bakes into every other screen. One
+	# near-straight hairline read as a scratch at 640x360; broken glass branches.
+	var zone := Rect2i(g.end.x - 12, g.position.y, 12, 44)
+	var origin := Vector2i(g.end.x - 2, g.position.y + 1)
+	for bi in CRACK.size():
+		var run: Array = CRACK[bi]
+		var dx2: int = run[0]
+		var n: int = run[1]
+		var p := origin
+		for i in n:
+			p += Vector2i(dx2 if Rng.hash01(bi, i, 0, 0xc7a) < 0.55 else 0, 1)
+			if Rng.hash01(bi, i, 1, 0xc7a) < 0.2:
+				p.x += 1 if Rng.hash01(bi, i, 2, 0xc7a) < 0.5 else -1
+			p.x = clampi(p.x, zone.position.x, zone.end.x - 1)
+			if not zone.has_point(p):
+				break
+			UiDraw.px(ci, p.x, p.y, Color(CHIP, a * (0.55 - 0.3 * float(i) / n)))
+			if zone.has_point(p + Vector2i(1, 0)):
+				UiDraw.px(ci, p.x + 1, p.y, Color(0, 0, 0, a * 0.5))
+	for k in 7:
+		var an := k * TAU / 7.0 + 0.4
+		var q := origin + Vector2i(roundi(cos(an) * 3.0), roundi(sin(an) * 3.0))
+		if zone.has_point(q):
+			UiDraw.px(ci, q.x, q.y, Color(CHIP, a * 0.35))
 
 
 ## The island drawn in from the west, the start blinking on it like a cursor.

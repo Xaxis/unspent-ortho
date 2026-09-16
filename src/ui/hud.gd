@@ -34,9 +34,21 @@ const PLACE_HUSH := 0.3
 const PLACE_SWEEP := 30.0
 ## Top of the place name's line box; its label sits a line above it.
 const PLACE_Y := 30
-## Samples in the ping's ring, and how far past the plate it rings out.
+## Samples in the ping's ring, how far past the plate it rings out, how long it
+## takes to get there, and the gap it starts at so the plate's own rim cannot
+## eat it. It used to start 2 px off the plate and fade over 1.2 s multiplied by
+## the ping's rise, which put its brightest moment at a fifth of full ink: over
+## the world it was never once seen.
 const RING_STEPS := 40
+const RING_STEPS_MAX := 640
 const RING_REACH := 26.0
+const RING_LIFE := 0.7
+const RING_GAP := 4.0
+## Seconds the ping's scrap of glass takes to come up. The lettering starts only
+## once it is opaque: for the whole 0.8 s rise the name used to be mid-grey type
+## on a half-transparent plate over a snowfield, which is the half second the eye
+## lands on it.
+const PLATE_IN := 0.18
 ## A pressure gauge's tile, and the gap between tiles.
 const GAUGE := Vector2i(13, 16)
 ## The body's own needs, in the order they cost you the run. The gauges are
@@ -201,7 +213,7 @@ func show_message(text: String) -> void:
 	if not _pages.is_empty():
 		return
 	if UiMessages.gauge_for(text) != &"":
-		_pending.append({"text": text, "feed": _feeds, "age": 0.0})
+		_pending.append({"text": text, "feed": _feeds, "age": 0.0, "teach": false})
 		return
 	messages.push(text)
 
@@ -221,6 +233,13 @@ func gauge_level(id: StringName) -> int:
 
 ## Say, or hand to a gauge, every line held by `show_message` whose readouts
 ## have since been fed.
+##
+## A line waits at most PEND_WAIT, and in that time an app can open over the
+## glass. Whatever `show_message` and `teach` would have refused outright a
+## frame earlier is refused here too, rather than landing on the glass behind
+## the app and playing when it closes: a `message` while a page is up is not
+## said (hud's own `_pages` rule), and a `hint` outside its moment is dropped
+## for good (the Events.hint contract), never queued.
 func settle_pending(delta: float = 0.0) -> void:
 	if _pending.is_empty():
 		return
@@ -229,6 +248,11 @@ func settle_pending(delta: float = 0.0) -> void:
 		e.age = float(e.age) + delta
 		if int(e.feed) >= _feeds and float(e.age) < PEND_WAIT:
 			keep.append(e)
+			continue
+		if bool(e.get("teach", false)):
+			if not can_teach():
+				continue
+		elif not _pages.is_empty():
 			continue
 		if not answer_with_gauge(String(e.text)):
 			messages.push(String(e.text))
@@ -274,7 +298,7 @@ func teach(text: String, _key: String = "") -> void:
 	if not can_teach():
 		return
 	if UiMessages.gauge_for(text) != &"":
-		_pending.append({"text": text, "feed": _feeds, "age": 0.0})
+		_pending.append({"text": text, "feed": _feeds, "age": 0.0, "teach": true})
 		return
 	messages.push(text)
 
@@ -615,21 +639,46 @@ static func place_plate(w: int) -> Rect2i:
 ## the brackets, and the ring is the thing that was crossing.
 static func ring_points(age: float, plate: Rect2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	var life := PLACE_IN * 1.5
-	if age < 0.0 or age >= life:
+	if age < 0.0 or age >= RING_LIFE:
 		return out
-	var t := age / life
+	var t := age / RING_LIFE
 	var c := plate.get_center()
-	var rx := plate.size.x * 0.5 + 2.0 + t * RING_REACH
-	var ry := plate.size.y * 0.5 + 2.0 + t * RING_REACH * 0.5
-	var clear := plate.grow(1)
-	for s in RING_STEPS:
-		var an := s * TAU / float(RING_STEPS)
+	var rx := plate.size.x * 0.5 + RING_GAP + t * RING_REACH
+	var ry := plate.size.y * 0.5 + RING_GAP + t * RING_REACH * 0.5
+	# Sampled by how far round the ellipse is, not by a fixed count: forty
+	# samples on an ellipse as wide as a place name stood eight pixels apart and
+	# read as dust blown over the snow, not as a ring.
+	var steps := clampi(roundi((rx + ry) * 5.0), RING_STEPS, RING_STEPS_MAX)
+	var clear := plate.grow(2)
+	var last := Vector2i(-9999, -9999)
+	for s in steps:
+		var an := s * TAU / float(steps)
 		var p := Vector2i(c.x + roundi(cos(an) * rx), c.y + roundi(sin(an) * ry))
+		if p == last:
+			continue
+		last = p
 		if clear.has_point(p):
 			continue
 		out.append(p)
 	return out
+
+
+## How brightly the ring stands at `age`, 0..1. It is the ping itself, so it is
+## brightest as it leaves and spends what it has on the way out — it does not
+## wait on the plate's rise the way the lettering does.
+static func ring_alpha(age: float) -> float:
+	if age < 0.0 or age >= RING_LIFE:
+		return 0.0
+	return pow(1.0 - age / RING_LIFE, 1.3)
+
+
+## The ping's two inks at `age`, given the ping's own alpha `a`: [glass, type].
+## The plate is opaque before there is anything to read on it, and the lettering
+## and the label come up over the rest of the rise.
+static func place_rise(age: float, a: float) -> Array[float]:
+	var glass := minf(a, clampf(age / PLATE_IN, 0.0, 1.0))
+	var ink := minf(a, clampf((age - PLATE_IN) / maxf(PLACE_IN - PLATE_IN, 0.001), 0.0, 1.0))
+	return [glass, ink]
 
 
 ## The location ping: the landscape's name on a scrap of the slate's glass,
@@ -643,18 +692,25 @@ func _draw_place(ci: Control) -> void:
 		spaced += (" " if i > 0 else "") + place[i].to_upper()
 	var w := UiFont.width(spaced)
 	var y := PLACE_Y
-	var k := UiDraw.stepped(a)
+	var rise := Hud.place_rise(_place_age, a)
+	var k := UiDraw.stepped(rise[0])
+	var ink := UiDraw.stepped(rise[1])
 	var grow := clampf(_place_age / PLACE_IN, 0.0, 1.0)
 	var plate := place_plate(w)
-	# The ring rings out over the world, so it carries its own shade: bright
-	# phosphor alone is invisible over a snowfield.
-	for p in Hud.ring_points(_place_age, plate):
-		var ring_a := UiDraw.stepped(1.0 - _place_age / (PLACE_IN * 1.5)) * 0.8 * a
-		UiDraw.px(ci, p.x, p.y + 1, Color(UiTheme.RIM, ring_a * 0.8))
-		UiDraw.px(ci, p.x, p.y, Color(UiTheme.BRIGHT, ring_a))
 	place_glass(ci, plate, k)
-	UiDraw.text(ci, Vector2i(320 - w / 2, y), spaced, Color(UiTheme.BRIGHT, k))
-	UiDraw.text(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, k * UiDraw.stepped(grow)))
+	# The ring rings out over the world, so it carries its own shade: bright
+	# phosphor alone is invisible over a snowfield. Drawn after the plate, and
+	# starting clear of it, so the plate's own rim cannot swallow it.
+	# Not multiplied by the ping's own rise: the ring is the arrival, and the
+	# rise is near nothing exactly when the ring is furthest out. A ping hushed
+	# by a fight throws `_place_age` past RING_LIFE, so the ring goes with it.
+	var ring_a := UiDraw.stepped(Hud.ring_alpha(_place_age)) * 0.9
+	if ring_a > 0.0:
+		for p in Hud.ring_points(_place_age, plate):
+			UiDraw.px(ci, p.x, p.y + 1, Color(UiTheme.RIM, ring_a * 0.8))
+			UiDraw.px(ci, p.x, p.y, Color(UiTheme.BRIGHT, ring_a))
+	UiDraw.text(ci, Vector2i(320 - w / 2, y), spaced, Color(UiTheme.BRIGHT, ink))
+	UiDraw.text(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, ink))
 	var half := place_half(w, grow)
 	for side: int in [-1, 1]:
 		var bx := 320 + side * half

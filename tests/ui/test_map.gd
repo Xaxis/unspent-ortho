@@ -195,15 +195,19 @@ func test_names_look_for_the_least_ink() -> void:
 ## 0.88 the coastline and the contours came through the letters, and BONELANDS
 ## read as though the coast were struck through it.
 func test_a_name_over_the_survey_clears_the_glass_under_it() -> void:
+	# In a real draw pass: `draw_rect` outside one is an engine error, and a test
+	# that prints six frames of stack into the gate is not a passing test.
 	var ci := Control.new()
+	ci.draw.connect(func() -> void: UiMapScreen.clearing(ci, Rect2i(40, 40, 60, 12)))
 	tree.root.add_child(ci)
-	UiDraw.taping = true
 	UiDraw.tape.clear()
-	UiMapScreen.clearing(ci, Rect2i(40, 40, 60, 12))
+	UiDraw.taping = true
+	ci.queue_redraw()
+	await tree.process_frame
+	UiDraw.taping = false
 	var alphas: Array[float] = []
 	for m in UiDraw.tape:
 		alphas.append((m.col as Color).a)
-	UiDraw.taping = false
 	UiDraw.tape.clear()
 	check(not alphas.is_empty(), "the clearing is drawn")
 	for a in alphas:

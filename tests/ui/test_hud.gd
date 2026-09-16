@@ -103,13 +103,54 @@ func test_the_ping_ring_never_crosses_the_name() -> void:
 		var name_box := Rect2i(320 - word / 2, Hud.PLACE_Y, word, 10)
 		check(plate.encloses(name_box), "a %d px name sits on the plate" % word)
 		var seen := 0
+		var ink := 0.0
 		for step in 60:
-			var age := step / 60.0 * Hud.PLACE_IN * 1.5
+			var age := step / 60.0 * Hud.RING_LIFE
+			var a := Hud.ring_alpha(age)
 			for p in Hud.ring_points(age, plate):
 				seen += 1
+				ink += a
 				check(not plate.grow(1).has_point(p), "no ring pixel inside the plate at %.2f s" % age)
 		gt(float(seen), 200.0, "and there is still a ring to see for a %d px name" % word)
-	eq(Hud.ring_points(Hud.PLACE_IN * 1.5 + 0.01, Hud.place_plate(46)).size(), 0, "the ring is spent by the end of the rise")
+		# It used to be multiplied by the ping's own rise as well as its own
+		# fade, which put its brightest pixel at a fifth of full ink over a
+		# snowfield: nothing of it was ever seen.
+		gt(ink / maxf(seen, 1), 0.3, "and the ring is drawn brightly enough to be seen")
+	eq(Hud.ring_points(Hud.RING_LIFE + 0.01, Hud.place_plate(46)).size(), 0, "the ring is spent before the name settles")
+	near(Hud.ring_alpha(0.0), 1.0, 0.001, "it is brightest as it leaves")
+	eq(Hud.ring_alpha(Hud.RING_LIFE), 0.0, "and spent when it arrives")
+	lt(Hud.RING_LIFE, Hud.PLACE_IN + Hud.PLACE_HOLD, "the ring is over well before the name is")
+	# A fight hushes the ping by throwing its age forward, and the ring goes with
+	# it. That is the only thing that takes the ring off the glass early — it is
+	# never dimmed by the name's own rise, which is nothing when the ring is
+	# furthest out, and was why nothing of it was ever seen.
+	eq(Hud.ring_points(Hud.PLACE_IN + Hud.PLACE_HOLD, Hud.place_plate(46)).size(), 0, "a hushed ping has no ring left")
+
+
+## The plate is glass, and the name is read off it. It used to come up at the
+## same rate as the lettering, so for the whole 0.8 s rise the name stood
+## half-transparent over the world — which is exactly the half second the eye
+## lands on it. The glass is opaque before there is anything to read on it.
+func test_the_pings_glass_is_up_before_its_lettering() -> void:
+	eq(Hud.place_rise(0.0, 0.0)[0], 0.0, "nothing before the ping")
+	eq(Hud.place_rise(0.0, 0.0)[1], 0.0)
+	var mid := Hud.place_rise(Hud.PLATE_IN, 1.0)
+	eq(mid[0], 1.0, "the glass is full as soon as the plate is in")
+	eq(mid[1], 0.0, "and there is not a letter on it yet")
+	var last := 0.0
+	for step in 80:
+		var age := step / 80.0 * Hud.PLACE_IN
+		var r := Hud.place_rise(age, clampf(age / Hud.PLACE_IN, 0.0, 1.0))
+		check(r[1] <= r[0] + 0.0001, "the type is never ahead of the glass at %.2f s" % age)
+		check(r[0] >= last - 0.0001, "and the glass only ever comes up")
+		last = r[0]
+	var done := Hud.place_rise(Hud.PLACE_IN, 1.0)
+	eq(done[0], 1.0, "both are full by the end of the rise")
+	eq(done[1], 1.0)
+	# Fading out again, the glass goes with the type: `a` caps both.
+	var out := Hud.place_rise(Hud.PLACE_IN + Hud.PLACE_HOLD + 0.7, 0.5)
+	eq(out[0], 0.5, "and the glass fades with the name, never after it")
+	eq(out[1], 0.5)
 
 
 ## The badges in the top right already say which pressures are on the body. A
@@ -129,6 +170,38 @@ func test_a_pressure_the_badge_says_is_not_also_said_in_words() -> void:
 	check(hud._gauge_flare.has(&"cold"), "and says so: brackets close on the tile")
 	hud.show_message("A wall of them came out of the trees.")
 	eq(hud.messages.visible().size(), 1, "a line no readout says is still said, at once")
+	hud.free()
+
+
+## A pressure line waits up to PEND_WAIT for its readouts to be fed, and an app
+## can open in that quarter second. What `show_message` and `teach` refuse
+## outright a frame earlier is refused when it settles too: a line held for a
+## gauge must not land on the glass behind an app and play when it closes.
+func test_a_held_line_is_dropped_by_whatever_would_have_refused_it() -> void:
+	var hud := _hud()
+	var b := Body.new()
+	b.fed_until = 1000.0
+	b.pressure = {&"cold": 0.8}
+	hud.set_pressures(UiRules.pressures(b, 900.0, 5.0))
+	hud.settle()
+	hud.show_message(Hazards.LINES[&"cold"])
+	hud._on_screen_changed(&"carry", true)
+	_run(hud, 0.5)
+	check(hud.messages.visible().is_empty(), "nothing was said behind the app")
+	check(not hud.answering(), "and no badge flared under it either")
+	hud._on_screen_changed(&"carry", false)
+	_run(hud, 1.0)
+	check(hud.messages.visible().is_empty(), "and it does not play when the app closes")
+	# The same for a lesson, whose whole contract is that it is said in its
+	# moment or dropped: a hostile arriving while it waits drops it.
+	hud.teach(Hazards.LINES[&"cold"])
+	hud.messages.quiet = true
+	_run(hud, 0.5)
+	check(not hud.can_teach(), "the moment has gone")
+	check(hud.messages.visible().is_empty() and not hud.answering(), "so the lesson is gone with it")
+	hud.messages.quiet = false
+	_run(hud, 1.0)
+	check(hud.messages.visible().is_empty(), "and never comes back")
 	hud.free()
 
 

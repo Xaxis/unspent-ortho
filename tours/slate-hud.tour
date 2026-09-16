@@ -10,6 +10,10 @@ coast calm
 # goes out around it.
 place snowfield
 await ping 8
+# A third of the way out, which is where the ring is worth a picture: the plate
+# is already opaque, the lettering has barely started, and the ring is clear of
+# the plate's rim with most of its ink still to spend.
+wait 0.25
 shot 01-the-ping-rings-out
 wait 0.9
 shot 02-the-name-on-its-own-glass
@@ -26,8 +30,10 @@ hour 19.5
 await pressure_bites 20
 await badge_answered 8
 shot 04-the-badge-takes-the-line
+# That the middle stays clear is not a second picture of the same thing: it is
+# this await, which fails the tour if a line is ever written across the world
+# while the burning presses.
 await quiet_glass 8
-shot 05-and-the-world-keeps-the-middle
 
 # --- The survey, with every name knocked out of the coast ----------------------
 # M opens it. A discovery's diamond used to be drawn after the lettering and
@@ -38,7 +44,9 @@ tap map
 await app:map 5
 wait 0.6
 shot 06-the-survey
-tap e
+# The survey's own scale key (E is `confirm` on any page, 90_ui PAGE_KEYS): one
+# step in, so the names are lettered again at a scale the coast is denser at.
+tap use
 wait 0.5
 shot 07-a-step-closer
 tap map

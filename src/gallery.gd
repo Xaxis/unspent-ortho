@@ -11,6 +11,10 @@ extends Node3D
 
 ## Screen pixels a grid cell must be wide before the names are worth drawing.
 const TAG_PITCH := 58.0
+## Frames the gallery sweeps for captions a model hung deferred. Three is two
+## more than any of them takes, and after that the walk stops: two hundred
+## models' subtrees, every frame, is the whole reason this was a per-frame job.
+const CAPTION_SWEEPS := 3
 
 var options: BootOptions
 var _mat: ShaderMaterial
@@ -18,6 +22,7 @@ var _cam: CameraRig
 ## [{name, at: Vector3}] — where each item's label is hung in the world.
 var _labels: Array[Dictionary] = []
 var _tags: Control
+var _sweeps := CAPTION_SWEEPS
 
 
 func setup(o: BootOptions) -> void:
@@ -99,7 +104,13 @@ func _add_tags() -> void:
 
 
 func _process(_delta: float) -> void:
-	_take_over_labels(self)
+	# The sweep for captions is not a per-frame job: a model's own script hangs
+	# them deferred, so they are all there within a few frames of the first, and
+	# walking two hundred models' whole subtree every frame is the gallery's own
+	# budget spent on nothing.
+	if _sweeps > 0:
+		_sweeps -= 1
+		_take_over_labels(self)
 	if _tags != null:
 		_tags.queue_redraw()
 
@@ -108,6 +119,10 @@ func _process(_delta: float) -> void:
 ## poses do, deferred, so they land after the first frame). They are the same
 ## dark smear over the plinth, so the gallery takes them over: the node is
 ## hidden and its text is drawn as a tag at the place it hung.
+##
+## On the contact sheet (`pitch < TAG_PITCH`, no `_tags` canvas) there is nothing
+## to draw them on, so this hides them and they are gone: two hundred names at
+## forty pixels a cell is a smear, and `--filter` is how a review gets them.
 func _take_over_labels(n: Node) -> void:
 	if n is Label3D and n.visible:
 		var l := n as Label3D
@@ -128,6 +143,10 @@ func _draw_tags() -> void:
 	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return _tag_at(a).z > _tag_at(b).z)
 	var placed: Array[Dictionary] = []
 	for l: Dictionary in rows:
+		# A caption whose node has been freed has no place left: it is dropped,
+		# never hung at the world's origin.
+		if l.has("node") and not is_instance_valid(l.get("node")):
+			continue
 		var at := _tag_at(l)
 		if _cam.is_position_behind(at):
 			continue
@@ -159,7 +178,9 @@ func _draw_tags() -> void:
 
 func _tag_at(l: Dictionary) -> Vector3:
 	var n: Node3D = l.get("node")
-	return n.global_position if n != null and is_instance_valid(n) else (l.at as Vector3)
+	# A taken-over caption carries a node and no `at`: once it is freed there is
+	# no place left to hang it, and asking for `at` was an error, not a fallback.
+	return n.global_position if n != null and is_instance_valid(n) else (l.get("at", Vector3.ZERO) as Vector3)
 
 
 func _apply_material(n: Node) -> void:
