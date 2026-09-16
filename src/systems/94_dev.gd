@@ -31,6 +31,8 @@ var _world_frame: Image
 var _picture_in := -1
 var _hud_hidden := false
 var _revision := -1
+## Clean pictures kept this game.
+var _pictures := 0
 
 
 func setup(g: Game) -> void:
@@ -72,7 +74,7 @@ func _exit_tree() -> void:
 	if Events.screen_changed.is_connected(_on_screen_changed):
 		Events.screen_changed.disconnect(_on_screen_changed)
 	if game != null and game.hud != null and _hud_hidden:
-		game.hud.modulate.a = 1.0
+		game.hud.visible = game.open_screens.is_empty()
 
 
 func _notification(what: int) -> void:
@@ -137,9 +139,12 @@ func _hold_session() -> void:
 		game.body.spoof_until = maxf(game.body.spoof_until, now + 5.0)
 	if DevSession.sheltered:
 		DevCheats.shelter(game)
-	if DevSession.hud_hidden != _hud_hidden:
-		_hud_hidden = DevSession.hud_hidden
-		game.hud.modulate.a = 0.0 if _hud_hidden else 1.0
+	# The ui system shows the edge whenever the last app closes; hidden is held over that.
+	if DevSession.hud_hidden and game.hud.visible:
+		game.hud.visible = false
+	elif not DevSession.hud_hidden and _hud_hidden and game.open_screens.is_empty():
+		game.hud.visible = true
+	_hud_hidden = DevSession.hud_hidden
 
 
 func _went_down(action: StringName) -> bool:
@@ -236,7 +241,7 @@ func _frame() -> Image:
 func picture_soon() -> void:
 	if screen.is_open:
 		screen.close()
-	game.hud.modulate.a = 0.0
+	game.hud.visible = false
 	_overlay.visible = false
 	_picture_in = 2
 
@@ -244,7 +249,7 @@ func picture_soon() -> void:
 func _take_picture() -> void:
 	await RenderingServer.frame_post_draw
 	var img := _frame()
-	game.hud.modulate.a = 0.0 if DevSession.hud_hidden else 1.0
+	game.hud.visible = not DevSession.hud_hidden and game.open_screens.is_empty()
 	_overlay.visible = true
 	if img == null:
 		return
@@ -257,13 +262,15 @@ func _take_picture() -> void:
 	var dir := DevMode.project_path("shots/dev") if DevMode.local() else ProjectSettings.globalize_path("user://dev/pictures")
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(name))
+	_pictures += 1
 	game.hud.say_now("Picture kept: %s." % name)
 	print("dev picture %s" % dir.path_join(name))
 
 
 ## What a tour may await of dev mode: dev_armed (the chord took), dev_readout (on
 ## the glass's edge), dev_noted (a note kept in the last minute), dev_touched,
-## dev_clock:N (the running clock's rate is N).
+## dev_clock:N (the running clock's rate is N), dev_picture (a clean picture kept),
+## dev_job:done and dev_job:ok (the slate's background job has ended, and well).
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"dev_armed":
@@ -275,6 +282,11 @@ func tour_seen(what: StringName) -> bool:
 			return not notes.is_empty() and Time.get_unix_time_from_system() - float(notes[0].get("at", 0)) < 60.0
 		&"dev_touched":
 			return DevMode.touched
+		&"dev_picture":
+			return _pictures > 0
+	if what == &"dev_job:ok" or what == &"dev_job:done":
+		DevJobs.poll()
+		return not DevJobs.job.is_empty() and not DevJobs.running() and (what == &"dev_job:done" or int(DevJobs.job.code) == 0)
 	if String(what).begins_with("dev_clock:"):
 		return is_equal_approx(game.clock.rate, String(what).trim_prefix("dev_clock:").to_float())
 	return false

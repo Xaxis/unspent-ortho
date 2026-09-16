@@ -151,8 +151,25 @@ static func _plain(l: String) -> String:
 
 # --- the machine -------------------------------------------------------------------
 
+static var _machine: Dictionary = {}
+static var _machine_at := -INF
+## Seconds a reading of the machine stands for a panel (reading it starts two processes).
+const MACHINE_EVERY := 2.0
+
+
 ## The machine's load and the runs of Godot already going (this one not counted).
-static func machine() -> Dictionary:
+## A panel may take a reading up to MACHINE_EVERY old; anything about to start a
+## job asks `fresh`.
+static func machine(fresh: bool = false) -> Dictionary:
+	var now := Time.get_ticks_msec() / 1000.0
+	if not fresh and not _machine.is_empty() and now - _machine_at < MACHINE_EVERY:
+		return _machine
+	_machine = _read_machine()
+	_machine_at = now
+	return _machine
+
+
+static func _read_machine() -> Dictionary:
 	var cores := maxi(1, OS.get_processor_count())
 	var load := 0.0
 	var runs := 0

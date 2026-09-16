@@ -271,3 +271,72 @@ func test_local_pages_say_why_not_where_the_tools_are_not() -> void:
 			eq(UiMenu.enabled(r), DevMode.local(), "%s is open only on the machine the game is built on" % r.id)
 	g.free()
 	_restore()
+
+
+func test_play_and_restage_replace_the_game_and_keep_their_saves_apart() -> void:
+	_keep()
+	var root_was := SaveSlots.root
+	var holder := Node.new()
+	tree.root.add_child(holder)
+	DevMode.asked = true
+	var g := Game.new()
+	g.name = "game"
+	holder.add_child(g)
+	g.setup(BootOptions.parse(["--size=48", "--seed=7"]))
+	GameConfig.clear()
+	GameConfig.set_value("world.seed", 9)
+	GameConfig.set_value("world.size", 256)
+	GameConfig.set_value("world.hour", 5.0)
+	DevPlay.config(g)
+	check(SaveSlots.root.begins_with("user://dev-saves/"), "a game dev mode starts saves apart: %s" % SaveSlots.root)
+	await tree.process_frame
+	await tree.process_frame
+	var next: Game = null
+	for c in holder.get_children():
+		if c is Game and c != g:
+			next = c
+	check(next != null, "a new game took its place")
+	if next != null:
+		eq(next.world.seed_value, 9, "on the configuration's island")
+		eq(next.world.size, 256)
+		near(next.clock.hour(), 5.0, 0.05, "at its hour")
+		check(DevMode.touched, "and it is a dev game from the start")
+		var note := DevNotes.make(next, "bug", "")
+		DevPlay.note(next, note)
+		await tree.process_frame
+		await tree.process_frame
+		var staged: Game = null
+		for c in holder.get_children():
+			if c is Game and c != next and is_instance_valid(c) and not c.is_queued_for_deletion():
+				staged = c
+		check(staged != null, "a note restaged")
+		if staged != null:
+			var at := Vector2(float(note.state.pos[0]), float(note.state.pos[1]))
+			check(staged.player.pos.distance_to(at) < 1.5, "where the note was taken")
+			eq(staged.world.seed_value, 9, "on the note's island")
+	holder.free()
+	SaveSlots.root = root_was
+	_restore()
+
+
+func test_the_slate_edge_hides_and_a_picture_is_asked_for_without_error() -> void:
+	_keep()
+	var g := _make(true)
+	var s := _open(g)
+	var dev := _sys(g, "94_dev")
+	s.open_at(&"view", &"hud")
+	s.handle(&"right")
+	s.handle(&"dev_toggle")
+	dev.call("_process", 0.0)
+	check(not g.hud.visible, "the slate's edge is hidden")
+	_sys(g, "90_ui").call("open_screen", &"inventory")
+	(_sys(g, "90_ui").call("top") as UiScreen).handle(&"back")
+	dev.call("_process", 0.0)
+	check(not g.hud.visible, "and stays hidden after an app closes")
+	DevSession.hud_hidden = false
+	dev.call("_process", 0.0)
+	check(g.hud.visible, "and comes back")
+	dev.call("picture_soon")
+	check(not g.hud.visible, "nothing of the slate while the picture is taken")
+	g.free()
+	_restore()

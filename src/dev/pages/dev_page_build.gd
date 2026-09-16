@@ -87,7 +87,7 @@ func _run(label: String, command: String, kind: StringName) -> void:
 	if command == "":
 		refuse("Nothing to run for this build.")
 		return
-	var m := DevJobs.machine()
+	var m := DevJobs.machine(true)
 	if kind != &"keep" and bool(m.busy) and not screen.ask("busy:" + label, "Again, though the machine is busy: %s." % DevJobs.machine_line(m)):
 		return
 	var why := DevJobs.start(label, command, kind)

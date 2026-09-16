@@ -52,6 +52,10 @@ await app:none 5
 wait 1.5
 shot 05-warped-to-the-snowfield
 
+# --- F4: a picture with nothing of the slate on it (shots/dev/ from source) -------------------
+tap dev_picture
+await dev_picture 5
+
 # --- the readout on the glass's edge ----------------------------------------------------------
 tap dev_readout
 await dev_readout 5

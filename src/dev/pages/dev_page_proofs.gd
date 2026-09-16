@@ -28,7 +28,8 @@ func rows() -> Array[Dictionary]:
 		out.append(item(&"job", str(DevJobs.job.label), "%ds" % roundi(DevJobs.seconds()) if DevJobs.running() else ("ok" if int(DevJobs.job.code) == 0 else "failed"),
 			{"tone": "warn" if not DevJobs.running() and int(DevJobs.job.code) != 0 else ""}))
 		out.append(item(&"frames", "its frames", "", {"enabled": not _frames_dir().is_empty(), "why": "This job shoots no frames."}))
-		out.append(item(&"stop", "stop it", "", {"enabled": DevJobs.running(), "why": "It is not running.", "tone": "warn"}))
+		if DevJobs.running():
+			out.append(item(&"stop", "stop it", "", {"tone": "warn"}))
 	out.append(header("tours"))
 	for t: Dictionary in _tours:
 		out.append(_proof(item(StringName("tour:" + str(t.name)), str(t.name), "")))
@@ -102,7 +103,7 @@ func confirm(row: Dictionary) -> void:
 
 
 func _run(label: String, command: String, kind: StringName, tour: String = "") -> void:
-	var m := DevJobs.machine()
+	var m := DevJobs.machine(true)
 	if bool(m.busy) and not screen.ask("busy:" + label, "Again, though the machine is busy: %s." % DevJobs.machine_line(m)):
 		return
 	var why := DevJobs.start(label, command, kind)

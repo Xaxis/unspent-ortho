@@ -170,7 +170,11 @@ func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void
 	# It faces the camera's way up: a flat panel wound face-down would vanish.
 	var aabb := plate.mesh.get_aabb()
 	gt(aabb.size.x * aabb.size.z, 0.05, "the panels have a spread to be seen")
-	for i in 400:
+	# The flight is stepped on physics frames: wait for the landing, not for a
+	# count of process frames, which a cold process runs through far faster.
+	var until := Time.get_ticks_msec() + int(20000 * TestCase.machine_slack())
+	while Time.get_ticks_msec() < until:
+		await tree.physics_frame
 		await tree.process_frame
 		if game.player.lift <= 0.0 and wing.open <= 0.0:
 			break

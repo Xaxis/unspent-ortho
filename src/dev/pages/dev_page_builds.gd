@@ -34,7 +34,8 @@ func rows() -> Array[Dictionary]:
 	if not DevJobs.job.is_empty():
 		out.append(header("the job"))
 		out.append(item(&"job", str(DevJobs.job.label), _job_value()))
-		out.append(item(&"stop", "stop it", "", {"enabled": DevJobs.running(), "why": "It is not running.", "tone": "warn"}))
+		if DevJobs.running():
+			out.append(item(&"stop", "stop it", "", {"tone": "warn"}))
 	out.append(header("the shelf"))
 	if _shelf.is_empty():
 		out.append(item(&"empty", "nothing built yet", "", {"enabled": false, "why": DevMode.why_not_local() if not DevMode.local() else "Make one above."}))
@@ -110,7 +111,7 @@ func _make() -> void:
 		if not problems.is_empty():
 			refuse(problems[0])
 			return
-	var m := DevJobs.machine()
+	var m := DevJobs.machine(true)
 	if bool(m.busy) and not screen.ask("make", "Again, though the machine is busy: %s." % DevJobs.machine_line(m)):
 		return
 	var s := _settings()
