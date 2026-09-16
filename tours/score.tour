@@ -23,11 +23,11 @@ walk 0.71,0.71 4.7 run
 walk 0.88,0.47 1.26 run
 walk 0.71,0.71 3.5 run
 await score_grid 60
-shot 04-under-the-pylon
+shot 04-under-the-pylon with prop:pylon
 spawn runner
 await score_tense 90
 await score_dissonance 60
-shot 05-a-machine-closing-in
+shot 05-a-machine-closing-in with mob:runner
 coast calm
 await score_resolve 120
 shot 06-resolved

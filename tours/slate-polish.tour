@@ -13,12 +13,12 @@ shot 02-goal-on-the-hud
 # Making: a fire laid by hand, then charcoal set going on it and left.
 tap craft
 await app:crafting 3
-shot 03-making-and-its-keys
+shot 03-making-and-its-keys with app:crafting
 choose campfire
 tap use
 await made 4
 wait 0.6
-shot 04-fire-laid
+shot 04-fire-laid with station:fire
 choose charcoal
 shot 05-ready-at
 tap use
@@ -29,7 +29,7 @@ await app:none 3
 # Carrying: X puts down what is not needed, onto a heap the world keeps.
 tap inventory
 await app:inventory 3
-shot 07-carrying-and-its-keys
+shot 07-carrying-and-its-keys with app:inventory
 choose stone
 shot 08-stone-chosen
 tap drop
@@ -42,23 +42,23 @@ shot 10-the-heap-it-went-on
 # Home, and the three apps that hang off it on the strip.
 tap pause
 await app:pause 3
-shot 11-home
+shot 11-home with app:pause
 choose loadout
 tap use
 await app:loadout 3
-shot 12-gear
+shot 12-gear with app:loadout
 tap pause
 await app:pause 3
 choose reads
 tap use
 await app:reads 3
-shot 13-machine-reads
+shot 13-machine-reads with app:reads
 tap pause
 await app:pause 3
 choose saves
 tap use
 await app:saves 3
-shot 14-saves
+shot 14-saves with app:saves
 tap pause
 await app:pause 3
 choose controls
@@ -72,7 +72,7 @@ await app:none 3
 # The map on its own key, and back to the world.
 tap map
 await app:map 3
-shot 16-map
+shot 16-map with app:map
 tap map
 await app:none 3
 # The caption is right the instant the player is somewhere else, and its
@@ -81,14 +81,14 @@ place snowfield
 wait 0.35
 shot 17-caption-closing-in
 wait 0.8
-shot 18-caption-snowfield
+shot 18-caption-snowfield with land:snowfield
 place burning
 wait 1.0
-shot 19-caption-burning
+shot 19-caption-burning with land:burning
 place moss
 wait 1.0
-shot 20-caption-moss
+shot 20-caption-moss with land:moss
 # The goal stands on over the brightest ground there is, once the ping is done.
 place snowfield
 wait 5
-shot 21-the-goal-over-bright-ground
+shot 21-the-goal-over-bright-ground with land:snowfield

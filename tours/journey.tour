@@ -6,30 +6,30 @@ zoom 30
 shot 01-spawn
 walk 0,-1 2.5 run
 shot 02-inland
-# coast into moss
-at 307,355
-shot 03-coast-moss
+# coast into moss (asked for by name: the old 307,355 is coast heartland now)
+place coast-moss
+shot 03-coast-moss with border:coast-moss
 walk 0,-1 2.5 run
-shot 04-coast-moss-walked
+shot 04-coast-moss-walked with land:coast|moss
 # moss into pinewood
-at 310,322
-shot 05-moss-pinewood
+place moss-pinewood
+shot 05-moss-pinewood with border:moss-pinewood
 walk 1,-1 2.5 run
-shot 06-moss-pinewood-walked
+shot 06-moss-pinewood-walked with land:moss|pinewood
 # pinewood up onto the snow
-at 340,187
-shot 07-pinewood-snowfield
+place pinewood-snowfield
+shot 07-pinewood-snowfield with border:pinewood-snowfield
 walk 0,-1 2.5 run
-shot 08-pinewood-snowfield-walked
+shot 08-pinewood-snowfield-walked with land:pinewood|snowfield
 # bonelands to the rim of the burning
-at 190,175
-shot 09-bonelands-burning
+place bonelands-burning
+shot 09-bonelands-burning with border:bonelands-burning
 walk -1,-1 2.5 run
-shot 10-bonelands-burning-walked
+shot 10-bonelands-burning-walked with land:bonelands|burning
 # a fumarole field out on the Burning's slopes
 at 207,145
-shot 11-fumarole
+shot 11-fumarole with land:burning
 # the caldera
 at 134,142
 zoom 44
-shot 12-caldera
+shot 12-caldera with land:burning

@@ -1,38 +1,48 @@
 # The canon: fixed frames that say what the game looks like. tools/canon.sh shoots
 # them (seed 7) and lays them beside the accepted set on one contact sheet.
+#
+# Every frame here is pinned. The canon is a REFERENCE: two runs at the same
+# commit must differ only where the game changed, so nothing in it may be left
+# to what the weather rules roll at the minute the frame happens to be taken.
+# `weather clear:0` holds for the rest of the run (Weather.force), and the two
+# frames that are about rain ask for rain and then give the clear sky back.
+# (Playtest wave A finding 9: the snowfield frames moved 4.14 between two runs
+# at one commit, against a tolerance of 3, because its climate rolls whiteouts
+# and a whiteout over white ground moves a great many pixels.)
+weather clear:0
 place spawn
 wait 0.8
 shot 01-spawn-morning
 place coast
 wait 0.8
-shot 02-coast
+shot 02-coast with land:coast
 place moss
 wait 0.8
-shot 03-moss
+shot 03-moss with land:moss
 place pinewood
 wait 0.8
-shot 04-pinewood
+shot 04-pinewood with land:pinewood
 place snowfield
 wait 0.8
-shot 05-snowfield
+shot 05-snowfield with land:snowfield
 place bonelands
 wait 0.8
-shot 06-bonelands
+shot 06-bonelands with land:bonelands
 place burning
 wait 0.8
-shot 07-burning
+shot 07-burning with land:burning
 place coast-pinewood
 wait 0.8
-shot 08-eco-coast-pinewood
+shot 08-eco-coast-pinewood with border:coast-pinewood
 place pinewood-snowfield
 wait 0.8
-shot 09-eco-pinewood-snowfield
+shot 09-eco-pinewood-snowfield with border:pinewood-snowfield
 place bonelands-burning
 wait 0.8
-shot 10-eco-bonelands-burning
+shot 10-eco-bonelands-burning with border:bonelands-burning
 place coast-moss
 wait 0.8
-shot 11-eco-coast-moss
+shot 11-eco-coast-moss with border:coast-moss
 place spawn
 wait 0.8
 hour 19.5
@@ -43,28 +53,43 @@ wait 0.4
 shot 13-spawn-night
 tap lamp
 wait 0.4
-shot 14-night-lamp
+shot 14-night-lamp with lamp
 hour 12
 place snowfield
 wait 0.8
 wait 0.3
-shot 15-snowfield-noon
+shot 15-snowfield-noon with land:snowfield
 place burning
 wait 0.8
 hour 20
 wait 0.3
-shot 16-burning-dusk
+shot 16-burning-dusk with land:burning
 
 # The two things the canon never showed: wet ground mirroring light, and the
-# stolen neon somebody wired into a house.
+# stolen neon somebody wired into a house. The neon frame goes to the landmark
+# where a shack wired the machines' light into its wall (GenWorks records it, and
+# `place` fails if the world has none), and then asks the picture itself whether
+# a tube is in it: the frame used to be shot at the spawn village, where the
+# canon seed has no neon shack at all, so the reference for "stolen neon" held
+# none of the three tube colours and could not have caught a regression in them.
 place spawn
 wait 0.8
 hour 22
-weather rain:1
+# Thin rain here too, for the reason frame 18 gives: at rain:1 the streaks
+# alone walked two runs 1.9-2.25 apart against the sheet's tolerance of 3.
+weather rain:0.45
 wait 1.2
 shot 17-village-wet-night
+# Thin rain, not a downpour: the ground still mirrors the tube, and the frame
+# stops moving. At rain:1 and this zoom the streaks alone walked two runs 2.9
+# apart, against the sheet's tolerance of 3 -- a reference frame one bad roll
+# from crying regression.
+place stolen_light
+weather rain:0.45
 zoom 9
+wait 1.2
+walk 0,1 1.2
 wait 0.6
-shot 18-stolen-neon-close
+shot 18-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:60
 zoom 14
 weather clear:0

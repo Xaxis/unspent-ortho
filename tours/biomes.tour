@@ -7,61 +7,61 @@
 coast calm
 place coast
 wait 2.0
-shot 01-coast
+shot 01-coast with land:coast
 place moss
 wait 2.0
-shot 02-moss
+shot 02-moss with land:moss
 place pinewood
 wait 2.0
-shot 03-pinewood
+shot 03-pinewood with land:pinewood
 place snowfield
 wait 2.0
-shot 04-snowfield
+shot 04-snowfield with land:snowfield
 place bonelands
 wait 2.0
-shot 05-bonelands
+shot 05-bonelands with land:bonelands
 place burning
 wait 2.0
-shot 06-burning
+shot 06-burning with land:burning
 # The two M2 landscapes, at three hours each: the salt flats are the brightest
 # ground in the game and the scrapwood the dimmest, and both have to read.
 place salt_flats
 wait 2.0
-shot 07-salt-flats-noon
+shot 07-salt-flats-noon with land:salt_flats
 walk 1,0 2.0 run
-shot 08-salt-flats-walked
+shot 08-salt-flats-walked with land:salt_flats
 hour 19.5
 wait 1.5
-shot 09-salt-flats-dusk
+shot 09-salt-flats-dusk with land:salt_flats
 hour 23
 wait 1.5
-shot 10-salt-flats-night
+shot 10-salt-flats-night with land:salt_flats
 hour 11
 place scrapwood
 wait 2.0
-shot 11-scrapwood-noon
+shot 11-scrapwood-noon with land:scrapwood
 walk 1,0 2.0 run
-shot 12-scrapwood-walked
+shot 12-scrapwood-walked with land:scrapwood
 hour 19.5
 wait 1.5
-shot 13-scrapwood-dusk
+shot 13-scrapwood-dusk with land:scrapwood
 hour 23
 wait 1.5
-shot 14-scrapwood-night
+shot 14-scrapwood-night with land:scrapwood
 hour 11
 # Three ecotones: stand in the band, then walk across it and watch the land turn.
 place coast-salt_flats
 wait 2.0
-shot 15-coast-salt-flats
+shot 15-coast-salt-flats with border:coast-salt_flats
 walk 1,-1 2.5 run
-shot 16-coast-salt-flats-crossed
+shot 16-coast-salt-flats-crossed with land:coast|salt_flats
 place pinewood-scrapwood
 wait 2.0
-shot 17-pinewood-scrapwood
+shot 17-pinewood-scrapwood with border:pinewood-scrapwood
 walk 1,-1 2.5 run
-shot 18-pinewood-scrapwood-crossed
+shot 18-pinewood-scrapwood-crossed with land:pinewood|scrapwood
 place moss-scrapwood
 wait 2.0
-shot 19-moss-scrapwood
+shot 19-moss-scrapwood with border:moss-scrapwood
 walk 1,-1 2.5 run
-shot 20-moss-scrapwood-crossed
+shot 20-moss-scrapwood-crossed with land:moss|scrapwood

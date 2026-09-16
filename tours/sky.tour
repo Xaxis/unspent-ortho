@@ -9,53 +9,53 @@ place coast
 hour 15
 weather rain:1
 wait 1.0
-shot 01-coast-squall
+shot 01-coast-squall with land:coast
 walk 1,-1 1.5
-shot 02-coast-squall-walked
+shot 02-coast-squall-walked with land:coast
 # The moss at dawn: the mist the rules lay in its hollows, then drizzle into it.
 place moss
 hour 6.4
 weather clear:0
 wait 1.0
-shot 03-moss-dawn-mist
+shot 03-moss-dawn-mist with land:moss
 weather drizzle:0.8
 wait 1.0
-shot 04-moss-drizzle-in-mist
+shot 04-moss-drizzle-in-mist with land:moss
 # The snowfield: snow in squalls, then the horizon goes.
 place snowfield
 hour 13
 weather snow:1
 wait 1.0
-shot 05-snowfield-snow-squall
+shot 05-snowfield-snow-squall with land:snowfield
 weather whiteout:1
 wait 1.0
-shot 06-snowfield-whiteout
+shot 06-snowfield-whiteout with land:snowfield
 # The bonelands: hard glare at noon, then a dry storm at dusk: blown dust,
 # a devil and sheet flickers before the first strike, then its afterglow.
 place bonelands
 hour 12.5
 weather glare:1
 wait 1.0
-shot 07-bonelands-glare
+shot 07-bonelands-glare with land:bonelands
 hour 20.2
 weather dry_storm:1
 wait 0.5
-shot 08-bonelands-dry-storm
+shot 08-bonelands-dry-storm with land:bonelands
 await strike 60
 wait 0.12
-shot 09-bonelands-afterglow
+shot 09-bonelands-afterglow with land:bonelands
 # A few frames on: the light has rolled on through the cloud and let go.
 wait 0.25
-shot 09b-bonelands-afterglow-rolls
+shot 09b-bonelands-afterglow-rolls with land:bonelands
 # The burning at dusk: ash fall, then the furnace haze.
 place burning
 hour 19.4
 weather ash:1
 wait 1.0
-shot 10-burning-ash-dusk
+shot 10-burning-ash-dusk with land:burning
 weather haze:1
 wait 1.0
-shot 11-burning-furnace-haze
+shot 11-burning-furnace-haze with land:burning
 # A wet night in the first village: lamps, fires and neon in the puddles, and
 # their shafts in the rain.
 village 0
@@ -65,5 +65,5 @@ wait 1.0
 shot 12-village-wet-night
 tap lamp
 wait 0.5
-shot 13-village-wet-lantern
+shot 13-village-wet-lantern with lamp
 weather rules

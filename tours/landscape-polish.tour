@@ -10,30 +10,30 @@
 hour 12
 place bonelands
 wait 2
-shot 01-bonelands-pavement
+shot 01-bonelands-pavement with land:bonelands
 zoom 6
 wait 1
-shot 02-bonelands-pavement-close
+shot 02-bonelands-pavement-close with land:bonelands
 zoom 5
 wait 1
-shot 03-bonelands-at-fight-zoom
+shot 03-bonelands-at-fight-zoom with land:bonelands
 zoom 15
 walk 1,0 3 run
 wait 1
-shot 04-bonelands-walked
+shot 04-bonelands-walked with land:bonelands
 place bonelands-burning
 wait 2
-shot 05-bonelands-burning-ecotone
+shot 05-bonelands-burning-ecotone with border:bonelands-burning
 zoom 34
 wait 1.5
-shot 06-bonelands-burning-band
+shot 06-bonelands-burning-band with border:bonelands-burning
 zoom 15
 place moss
 wait 2
-shot 07-moss-black-water
+shot 07-moss-black-water with land:moss
 zoom 7
 wait 1
-shot 08-moss-water-close
+shot 08-moss-water-close with land:moss
 zoom 15
 village 0
 wait 2
@@ -46,7 +46,7 @@ shot 10-village-close
 zoom 15
 place pinewood
 wait 2
-shot 11-pinewood
+shot 11-pinewood with land:pinewood
 near pine
 wait 1.2
 shot 12-under-the-crown
@@ -57,14 +57,14 @@ shot 13-crown-cleared-close
 # a fight is fought at. Its own clearing opens, whatever else is about.
 spawn runner
 wait 1.5
-shot 14-crown-cleared-for-the-machine
+shot 14-crown-cleared-for-the-machine with mob:runner
 zoom 15
 place snowfield
 wait 2
-shot 15-snowfield-keeps-the-page
+shot 15-snowfield-keeps-the-page with land:snowfield
 place burning
 wait 2
-shot 16-burning
+shot 16-burning with land:burning
 hour 23
 wait 1.5
-shot 17-burning-night
+shot 17-burning-night with land:burning

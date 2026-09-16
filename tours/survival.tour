@@ -3,29 +3,30 @@
 # Driftwood off the strand survival lays by the spawn, dead wood under a dead tree,
 # a loose stone, then a fire laid with two presses of use, seen at night.
 shot 01-spawn
-# Driftwood on the strand a few steps east of the spawn: turn to it, press use once.
-at 136.0,213.5
-walk 1,1 0.08
+# Driftwood on the strand survival lays by the spawn. Named, not pinned to a
+# coordinate: `at 136.0,213.5` stood in a pond, and the tour pressed use on open
+# water and shot "driftwood taken" of a player who had taken nothing — green,
+# for months (wave A2, the same hole as the keeper at noon).
+near driftwood
 press use 0.1
 wait 0.45
 shot 02-gathering-driftwood
-wait 1.3
+await took 4
 shot 03-driftwood-taken
-# Dead wood under the dead tree to the north-east: hold use and it gives twice.
-at 139.1,210.35
-walk 1,1 0.08
+# Dead wood under a dead tree: hold use and it gives twice.
+near dead_tree
 press use 3.2
+await took 4
 wait 0.3
 shot 04-dead-wood-picked-over
-# A loose stone off each of two boulders.
-at 146.1,207.55
-walk 1,1 0.08
+# A loose stone off each of two boulders (`near` moves on to the next one).
+near boulder
 press use 0.1
-wait 1.6
-at 140.4,197.6
-walk 1,1 0.08
+await took 14
+near boulder
 press use 0.1
-wait 1.6
+await took 14
+wait 0.4
 shot 05-stone
 # Open ground: the first press asks and rings the spot, the second lays the fire.
 at 143.5,205.5
@@ -35,10 +36,10 @@ wait 0.3
 shot 06-asked
 press use 0.1
 wait 1.5
-shot 07-fire-laid
+shot 07-fire-laid with station:fire
 hour 21.5
 wait 1.0
-shot 08-fire-at-night
+shot 08-fire-at-night with station:fire
 # Lie down by it: the night passes and the fire has burnt through to morning.
 press use 0.1
 wait 1.0

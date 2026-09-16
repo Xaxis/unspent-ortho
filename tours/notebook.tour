@@ -4,7 +4,7 @@ walk 1,0 2
 shot 01-walked
 tap inventory
 wait 0.5
-shot 02-carrying
+shot 02-carrying with app:inventory
 tap move_down
 wait 0.2
 shot 03-carrying-down
@@ -12,10 +12,10 @@ tap inventory
 wait 0.3
 tap craft
 wait 0.4
-shot 04-nothing-to-make-at
+shot 04-nothing-to-make-at with app:crafting
 tap map
 wait 0.5
-shot 05-map
+shot 05-map with app:map
 tap use
 wait 0.3
 shot 06-map-scale
@@ -23,7 +23,7 @@ tap map
 wait 0.3
 tap pause
 wait 0.5
-shot 07-pause
+shot 07-pause with app:pause
 tap pause
 wait 0.4
-shot 08-back
+shot 08-back with app:none

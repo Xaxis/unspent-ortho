@@ -16,7 +16,7 @@ wait 0.25
 shot 02-snow-noon-drift-b
 tap lamp
 wait 0.25
-shot 03-snow-noon-lamp-lit
+shot 03-snow-noon-lamp-lit with lamp
 # Two frames of a running world are never identical: cloud shade walks, tufts
 # sway, stipple crawls. So the first pair measures that drift over a quarter of
 # a second with nothing done at all, and the second pair must come in under the
@@ -33,10 +33,10 @@ wait 0.4
 # its own warm, in flat steps, over cold snow.
 hour 23
 wait 0.8
-shot 04-snow-night-lamp-out
+shot 04-snow-night-lamp-out with unlit
 tap lamp
 wait 0.6
-shot 05-snow-night-lamp-lit
+shot 05-snow-night-lamp-lit with lamp
 tap lamp
 wait 0.4
 
@@ -44,11 +44,11 @@ wait 0.4
 hour 13
 weather snow:1
 wait 1.4
-shot 06-snowfield-snow-pale-flecks
+shot 06-snowfield-snow-pale-flecks with land:snowfield
 # A whiteout: the far field goes in blowing white, the near field still reads.
 weather whiteout:1
 wait 1.4
-shot 07-snowfield-whiteout
+shot 07-snowfield-whiteout with land:snowfield
 
 # The bonelands at dusk: dry lightning with no rain in it. Wait for a real
 # strike, then catch the light rolling on through the cloud.
@@ -56,10 +56,10 @@ place bonelands
 hour 20.2
 weather dry_storm:1
 wait 1.0
-shot 08-bonelands-dry-storm
+shot 08-bonelands-dry-storm with land:bonelands
 await strike 60
 wait 0.35
-shot 09-bonelands-afterglow-rolls
+shot 09-bonelands-afterglow-rolls with land:bonelands
 # The drawn bolt lives four frames: too quick to be sure of catching by waiting
 # for one, and a tour that only sometimes has a bolt in its picture proves
 # nothing. So the still that must show one asks the sky to hold it — the same
@@ -67,19 +67,19 @@ shot 09-bonelands-afterglow-rolls
 # the machines' power back up between two of its dips.
 weather dry_storm:1:bolt
 wait 0.5
-shot 10-bonelands-bolt-held
+shot 10-bonelands-bolt-held with land:bonelands
 # Hard white glare on the same stone at noon.
 hour 12.5
 weather glare:1
 wait 1.2
-shot 11-bonelands-glare
+shot 11-bonelands-glare with land:bonelands
 
 # The burning's furnace haze, lying low and warm at dusk.
 place burning
 hour 19.4
 weather haze:1
 wait 1.4
-shot 12-burning-furnace-haze
+shot 12-burning-furnace-haze with land:burning
 
 # A wet night in the first village: every pool the colour of the light that
 # made it, the stolen neon spilling into the rain, and the lantern walked
@@ -91,9 +91,9 @@ wait 1.6
 shot 13-village-wet-night
 tap lamp
 wait 0.6
-shot 14-village-wet-lantern
+shot 14-village-wet-lantern with lamp
 walk 1,0 1.2
-shot 15-walked-with-the-lantern
+shot 15-walked-with-the-lantern with lamp
 tap lamp
 hour 12
 wait 1.2
@@ -106,9 +106,9 @@ hour 23
 weather clear:0
 zoom 9
 wait 1.2
-shot 17-village-night-pool-out
+shot 17-village-night-pool-out with unlit
 tap lamp
 wait 0.8
-shot 18-village-night-pool-lit
+shot 18-village-night-pool-lit with lamp
 tap lamp
 weather rules

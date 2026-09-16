@@ -12,4 +12,4 @@ wait 0.3
 shot 05-night
 tap lamp
 wait 0.3
-shot 06-lamp
+shot 06-lamp with lamp

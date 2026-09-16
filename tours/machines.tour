@@ -14,9 +14,15 @@ wait 1.0
 spawn runner
 wait 0.8
 walk 0,1 0.5 run
-shot 00-runner-hunts-lights-locked
-walk 0,1 0.4 run
-shot 00b-still-locked-as-it-comes
+shot 00-runner-hunts-lights-locked with mob:runner
+# A short backward step, not a sprint: at this zoom a longer one leaves the
+# hunter hanging on the edge of the frustum, in the picture when the claim is
+# checked and out of it a few frames later when the shutter falls. Wait for it
+# to be in the picture, then let it close well inside before shooting.
+walk 0,1 0.2 run
+await mob:runner 8
+wait 0.8
+shot 00b-still-locked-as-it-comes with mob:runner
 coast calm
 zoom 9
 # A harvester's field on the first coast.
@@ -25,7 +31,7 @@ at 200.5,431.5
 wait 1.5
 spawn harvester
 wait 1.2
-shot 01-harvester-working-at-night
+shot 01-harvester-working-at-night with mob:harvester
 # A harvester is a worker and takes no notice of a person walking past: to see
 # its windup you have to stand in its way, which is a cause its role takes
 # amiss (Roles.TURNS). It works its row until you do.
@@ -34,7 +40,7 @@ walkto mob 3
 await tell 3
 end
 wait 0.3
-shot 02-windup-brightens-the-working-side
+shot 02-windup-brightens-the-working-side with mob:harvester
 tap dodge
 wait 0.1
 tap dodge
@@ -46,23 +52,23 @@ wait 1.5
 coast calm
 spawn watcher
 wait 2.5
-shot 03-watcher-beam-sweeps
+shot 03-watcher-beam-sweeps with mob:watcher
 walkto mob 2
 wait 0.3
-shot 04-watcher-locks-on
+shot 04-watcher-locks-on with mob:watcher
 try 6
 walkto part 1
 tap swing
 await hit 1.5
 end
 wait 0.1
-shot 05-hurt-lights-stutter
+shot 05-hurt-lights-stutter with mob:watcher
 try 30
 walkto part 1
 tap swing
 await killed 1.2
 end
 wait 0.12
-shot 06-dying-lights-go-in-order
+shot 06-dying-lights-go-in-order with down:watcher
 wait 0.6
-shot 07-dead-and-dark
+shot 07-dead-and-dark with down:watcher

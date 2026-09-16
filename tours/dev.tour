@@ -50,7 +50,7 @@ choose land_snowfield
 tap use
 await app:none 5
 wait 1.5
-shot 05-warped-to-the-snowfield
+shot 05-warped-to-the-snowfield with land:snowfield
 
 # --- F4: a picture with nothing of the slate on it (shots/dev/ from source) -------------------
 tap dev_picture
