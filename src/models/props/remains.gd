@@ -433,7 +433,7 @@ static func debris(k: Kit, v: int, c: int) -> void:
 		_:
 			corrugated(k.made, Vector3(-0.7, 0.03, -0.45), Vector3(-0.15, 0.02, 0.75), Vector3(1.2, 0.04, 0.2), 9, P.SLATE[3] if c != Country.BURNING else P.RUST[1])
 			k.cable(Vector3(0.5, 0.03, 0.3), Vector3(0.85, 0.05, -0.4), -0.05, 5, 0.012, P.INK[2])
-			k.hoop(Vector3(0.6, 0.03, -0.1), 0.15, 8, 0.01, P.INK[2])
+			k.hoop(Vector3(0.6, 0.03, -0.1), 0.15, 8, 0.01, P.INK[3])
 			for i in 5:
 				var p := Vector3(-0.5 + i * 0.18, 0.02, 0.55 + Kit.j(s, i, 0.08))
 				k.fleck(p, p + Vector3(0.05, 0.005, 0.03), p + Vector3(0.01, 0.01, -0.04), GroundColors.glint(P.SPRUCE[4] if i % 2 else P.RIME[4]))
