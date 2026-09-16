@@ -1438,6 +1438,11 @@ void fragment() {
 	unhatched = unh;
 	c *= paper(px);
 	ALBEDO = ink_floor(sky_apply(c, world_pos, TIME));
+	// neon_skyglow is given the WASH, not the graded result, and it takes its
+	// headroom from it: a wash already near the page gets almost no glow, which
+	// is exactly the case that was clipping. Handing it the graded value instead
+	// was tried and is worse — at dusk the grade is low, so the headroom opens
+	// up again and the snow went from 0.06% of the frame on the page to 1.67%.
 	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
 }
 
