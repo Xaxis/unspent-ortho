@@ -5,3 +5,7 @@ shots/
 .DS_Store
 *.log
 .idea/
+.env
+*.iml
+.vercel/
+node_modules/
