@@ -190,7 +190,7 @@ func _process(delta: float) -> void:
 	super(delta)
 	if not is_open:
 		return
-	if not sleeping:
+	if not sleeping and not (title != null and title.dev != null and title.dev.is_open()):
 		_read_keys()
 	var before := awake_for
 	if not _held_wake:

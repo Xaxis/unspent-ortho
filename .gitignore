@@ -9,3 +9,6 @@ shots/
 *.iml
 .vercel/
 node_modules/
+
+# A build stamp, packed by tools/export.sh and removed after it.
+stamp/

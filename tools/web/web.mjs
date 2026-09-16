@@ -30,7 +30,8 @@
 //   --headed         show the browser
 //   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
-import { chromium } from 'playwright';
+//   --serve[=PORT]   only serve --dir (default port 8060) with those headers until killed, for a
+//                    person to play in their own browser: dev mode's "play it" (src/dev/dev_jobs.gd)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -93,9 +94,18 @@ const server = http.createServer(async (req, res) => {
 });
 let port = 0;
 if (!live) {
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const want = opt.serve ? Number(opt.serve === true ? 8060 : opt.serve) : 0;
+  await new Promise((r) => server.listen(want, '127.0.0.1', r));
   port = server.address().port;
 }
+if (opt.serve) {
+  // Nothing to shoot: the wasm goes out at once, and the server stays up until killed.
+  releaseWasm();
+  console.log(`web serving http://127.0.0.1:${port}/ (${path.relative(process.cwd(), root)})`);
+  await new Promise(() => {});
+}
+// Loaded here, not at the top, so serving needs no browser installed.
+const { chromium } = await import('playwright');
 
 // ---- browser --------------------------------------------------------------
 // Headless Chromium on the machine's GPU (Metal through ANGLE on macOS, the

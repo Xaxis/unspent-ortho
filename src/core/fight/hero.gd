@@ -31,6 +31,9 @@ var run_speed := 5.4
 var crouched := false
 ## What is left of a walk while crouched.
 const CROUCH_SPEED := 0.45
+## What a blow takes off, as a share of its damage (a configuration's
+## `rules.harm`): 0 and nothing can down the player.
+var harm := 1.0
 
 
 func _init() -> void:

@@ -1,0 +1,89 @@
+# Dev mode through the real keys, in a build made from the playtest configuration
+# (dev mode behind the chord): ` three times arms it and the app wakes; a live rule
+# is edited and the clock runs by it; the hour is set; a warp to the snowfield; the
+# readout on the edge; F2 makes a note with the picture from before the slate woke;
+# and home's violet dev row reaches the same app.
+#   tools/tour.sh tours/dev.tour --seed=1 --hour=10 --weather=clear:0 --config=playtest
+coast calm
+wait 1.0
+shot 01-play-before-the-chord
+
+# --- the chord ------------------------------------------------------------------------
+tap dev_toggle
+wait 0.15
+tap dev_toggle
+wait 0.15
+tap dev_toggle
+await dev_armed 5
+await app:dev 5
+shot 02-armed-home
+
+# --- a live rule: the clock runs ten times as fast (1, 2, 5, 10) --------------------------
+choose config
+tap use
+choose rules.clock
+tap move_right
+wait 0.1
+tap move_right
+wait 0.1
+tap move_right
+wait 0.3
+shot 03-config-clock-edited
+await dev_clock:10 2
+tap pause
+wait 0.2
+
+# --- the hour ------------------------------------------------------------------------------
+choose time
+tap use
+choose dusk
+tap use
+wait 0.3
+shot 04-time-dusk
+tap pause
+wait 0.2
+
+# --- a warp: the app shuts and the place is what is seen ---------------------------------------
+choose go
+tap use
+choose land_snowfield
+tap use
+await app:none 5
+wait 1.5
+shot 05-warped-to-the-snowfield
+
+# --- the readout on the glass's edge ----------------------------------------------------------
+tap dev_readout
+await dev_readout 5
+wait 0.4
+shot 06-readout
+
+# --- F2: a note of this moment -------------------------------------------------------------------
+tap dev_note
+await app:dev 5
+wait 0.3
+shot 07-note-typing
+tap pause
+wait 0.2
+choose keep
+tap use
+await dev_noted 5
+wait 0.3
+shot 08-note-kept
+tap dev_toggle
+await app:none 5
+
+# --- home's dev row ------------------------------------------------------------------------------
+tap pause
+await app:pause 5
+choose dev
+wait 0.2
+shot 09-home-dev-row
+tap use
+await app:dev 5
+shot 10-dev-over-home
+tap dev_toggle
+await app:pause 5
+tap pause
+await app:none 5
+await dev_touched 2

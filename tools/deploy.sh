@@ -4,7 +4,12 @@
 #   tools/deploy.sh --prod          the one the domain points at
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
+#   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
+#                                   implies --no-export
 #
+# The deploy is recorded in the build's build.json (tools/export.sh writes it), so
+# dev mode's shelf says where a build went and whether it was production. The
+# build.json itself is not deployed: it names the configuration it was made from.
 # Needs VERCEL_TOKEN, from .env here or from the environment (CI). Never commit it.
 #
 # The build goes under /b/<sha>/ and / redirects to it, so every file can be
@@ -16,12 +21,13 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-prod=0; do_export=1; do_check=1
+prod=0; do_export=1; do_check=1; dir=build/web
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
+    --dir=*) dir="${a#--dir=}"; do_export=0 ;;
     *) echo "deploy: unknown option $a"; exit 2 ;;
   esac
 done
@@ -34,16 +40,21 @@ ORG_ID="${VERCEL_ORG_ID:-team_pUDLCiJEYW3wgGiFmRXc4ET3}"
 if [ "$do_export" = 1 ]; then
   tools/export.sh web || exit 1
 fi
-[ -f build/web/index.html ] || { echo "deploy FAILED: no build/web (tools/export.sh web)"; exit 1; }
+[ -f "$dir/index.html" ] || { echo "deploy FAILED: no build in $dir (tools/export.sh web)"; exit 1; }
 
 sha="$(git rev-parse --short HEAD)"
 [ -n "$(git status --porcelain --untracked-files=no)" ] && sha="$sha-dirty"
+# A stamped build is served under the commit it was made from, not the one checked out now.
+if [ -f "$dir/build.json" ]; then
+  stamped="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("commit","") + ("-dirty" if d.get("dirty") else ""))' "$dir/build.json" 2>/dev/null)"
+  [ -n "$stamped" ] && sha="$stamped"
+fi
 
 rm -rf .vercel/output
 mkdir -p ".vercel/output/static/b/$sha"
 # The .br and .gz siblings are for a server that negotiates; Vercel does its own.
-for f in build/web/*; do
-  case "$f" in *.br|*.gz) continue ;; esac
+for f in "$dir"/*; do
+  case "$f" in *.br|*.gz|*/build.json) continue ;; esac
   cp "$f" ".vercel/output/static/b/$sha/"
 done
 
@@ -88,6 +99,15 @@ if [ $code -ne 0 ] || [ -z "$url" ]; then
 fi
 rm -f "$log"
 echo "deploy ok $url"
+if [ -f "$dir/build.json" ]; then
+  python3 - "$dir/build.json" "$url" "$prod" <<'PY' || true
+import json, sys, time
+path, url, prod = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
+d = json.load(open(path))
+d.setdefault("deploys", []).append({"url": url, "production": prod, "at": int(time.time())})
+json.dump(d, open(path, "w"), indent="\t", sort_keys=True)
+PY
+fi
 
 if [ "$do_check" = 1 ]; then
   # The same proof a local build gets, against what the host actually serves:
