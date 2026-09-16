@@ -5,10 +5,11 @@
 #
 # Three things are done, because macOS needs all three:
 #
-#   1. The window opens OFF THE SCREEN (--position, far outside any display), so
-#      nothing is ever drawn over the person's work. It still renders exactly the
-#      same: a shot taken from an offscreen window is pixel-for-pixel the frame a
-#      visible one gives.
+#   1. The window opens ONE PIXEL ACROSS in a far corner (project.godot's .editor
+#      settings; --position here agrees with them). There is no off-screen on this
+#      platform: macOS clamps a window back onto some display, and a position
+#      chosen to be far away opened centre-screen on a fourth monitor. The frame is
+#      unaffected: the viewport renders 640x360 into its own texture regardless.
 #   2. project.godot sets display/window/size/no_focus, so the window can never
 #      become key and can never swallow what is being typed somewhere else.
 #   3. Godot still asks macOS to bring its app forward when it opens a window,
@@ -25,10 +26,12 @@
 #   is not asked to draw: the run sat there with its world generated and never
 #   took its shot.
 #
-#   Making an accessory app (LSUIElement) out of a copy of Godot.app stops the
-#   activation by policy, but changing Info.plist breaks the signature, and a
-#   re-signed copy is killed on launch and puts a malware warning in front of the
-#   person this was all meant to protect.
+#   Giving the run an accessory (LSUIElement) bundle of its own does NOT stop the
+#   activation: measured, a run in one still took the keyboard in 12 of 114
+#   samples. Godot asks macOS to come forward and macOS obliges whatever the
+#   policy. (Re-signing Godot.app itself is worse still: it breaks the signature,
+#   the copy is killed on launch, and a malware warning lands in front of the
+#   person this was all meant to protect.)
 #
 #   . tools/_focus.sh
 #   godot --path . --position "$(focus_position)" ... & pid=$!
@@ -69,7 +72,11 @@ focus_position() {
 	if [ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ]; then
 		echo "40,40"
 	else
-		echo "${UNSPENT_WINDOW_POS:-12000,12000}"
+		# The same far corner project.godot names. macOS clamps a window back onto
+		# some screen whatever is asked, and a number picked to be "far away" landed
+		# centre-screen on a fourth monitor; the window is one pixel across instead
+		# (project.godot, .editor), which needs no luck about anyone's displays.
+		echo "${UNSPENT_WINDOW_POS:-15599,8639}"
 	fi
 }
 
@@ -86,7 +93,13 @@ focus_holder() {
 	[ "$(uname)" = "Darwin" ] || return 0
 	[ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ] && return 0
 	command -v osascript >/dev/null 2>&1 || return 0
-	_focus_front
+	local who
+	who="$(_focus_front)"
+	# Written down for the guard as well: a script that is about to start a run
+	# KNOWS which app the person is in, where the guard can only watch and guess,
+	# and guessing is how somebody typing in one editor ends up in another.
+	[ -n "$who" ] && printf '%s' "$who" > "${TMPDIR:-/tmp}/unspent-focus-holder" 2>/dev/null
+	printf '%s' "$who"
 }
 
 
