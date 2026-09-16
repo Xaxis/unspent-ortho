@@ -165,6 +165,62 @@ float flicker(vec3 p, float rate) {
 	return step(0.35, ink_hash(vec2(floor(TIME * rate), floor(p.x * 5.0) + floor(p.z * 7.0) * 13.0)));
 }
 
+// What a landscape holds at the zoom it is PLAYED at. The marks below are drawn
+// at the scale of a blade, a pebble or a drift, and at the play camera they fall
+// under a pixel and leave a flat colour field (playtest, wave N). So every
+// ground also carries three reads between about 2 and 15 units, which is 50 to
+// 350 screen pixels at the play camera: where it has been walked and worked,
+// what was spilt or burnt or left standing on it, and the litter the ruin sheds.
+// Sparse and low-contrast: a wash must still read as a wash.
+vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
+	bool pale = m == 42 || m == 43 || m == 45;
+	bool page = m == 44 || m == 51;    // snow and ice: the page itself, barely marked
+	bool burnt = m == 46 || m == 47;
+	float wear = page ? 0.18 : (pale ? 0.34 : 0.55);
+	vec3 tramp = burnt ? INK2 : (pale ? LINEN1 : (page ? RIME2 : EARTH1));
+	vec3 bare = burnt ? ASH1 : (pale ? SAND2 : (page ? RIME3 : EARTH2));
+	// 1. Trodden and worked: the whole ground is laid in four flat bands of wear
+	//    on torn edges (never a gradient, docs/ART.md law 2), from the lift where
+	//    nothing goes to the bare ground showing through where everything does.
+	//    Three octaves, so a screen holds features of about 3, 9 and 3 units.
+	float worn = ink_vnoise(wp * 0.11 + 61.0) * 0.55 + ink_vnoise(wp * 0.31 + 13.0) * 0.3
+		+ ink_vnoise(wp * 0.9 + 5.0) * 0.15 + rag(wp);
+	float lay = floor(clamp((worn - 0.34) * 9.0, 0.0, 3.0));
+	c = dn(c, (lay - 1.4) * wear * 0.75);
+	if (lay > 2.5 && ink_hash(px + 29.0) > 0.93) {
+		c = mix(c, bare, 0.5);
+	}
+	// 2. A line walked through to the ground under it: it wanders, it stops, its
+	//    edge is torn, and stones are trodden into it.
+	float gate = ink_vnoise(wp * 0.03 + 44.0);
+	float pw = (0.010 + ink_vnoise(wp * 0.35) * 0.012) * clamp((gate - 0.52) * 6.0, 0.0, 1.0);
+	if (pw > 0.0) {
+		float pd = abs(ink_vnoise(wp * vec2(0.055, 0.045) + 7.0) - 0.5) + rag(wp) * 0.12;
+		if (pd < pw) {
+			c = mix(c, tramp, (page ? 0.3 : 0.62) * (1.0 - 0.45 * smoothstep(pw * 0.5, pw, pd)));
+			if (ink_hash(px + 3.0) > 0.95) {
+				c = up(c, 0.35);
+			}
+		}
+	}
+	// 3. What was spilt, burnt or left standing: lobes with a torn rim.
+	float st = ink_vnoise(wp * 0.22 + 91.0) * 0.7 + ink_vnoise(wp * 0.8 + 5.0) * 0.3 + rag(wp);
+	if (st > 0.71 && !page) {
+		c = mix(c, burnt ? INK1 : mix(tramp, RUST1, 0.4), clamp((st - 0.71) * 3.5, 0.0, 0.5));
+	}
+	// 4. Litter in drifts: two or three pixels of rust and plate, never an even
+	//    scatter over the whole land.
+	if (ink_vnoise(wp * 0.16 + 33.0) > 0.63) {
+		float h = ink_hash(px + 17.0);
+		if (h > 0.9955) {
+			c = RUST3;
+		} else if (h < 0.0035) {
+			c = pale || page ? SLATE2 : LINEN3;
+		}
+	}
+	return c;
+}
+
 // The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
 // and interest lives at edges and in rare features (docs/ART.md). Nothing
 // tessellates. Returns the colour; may add emission and lift the hatching.
@@ -1033,6 +1089,9 @@ void fragment() {
 	}
 	if (m >= 40 && m < 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		if (unh < 0.5) {
+			c = ground_wear(m, c, world_pos.xz, px);
+		}
 		if (works_inv_size > 0.0) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
