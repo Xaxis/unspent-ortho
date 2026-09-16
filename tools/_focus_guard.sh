@@ -1,60 +1,85 @@
 #!/usr/bin/env bash
-# Hand the keyboard back the instant a TOOL run takes it, for as long as runs
-# keep happening.
+# Put the keyboard back where it was, the instant a tool run takes it.
 #
-# macOS brings an app forward when it opens a window and no window flag prevents
-# it (see tools/_focus.sh). A run can also be started by a worktree whose copy of
-# the tools is older than this one, or written ad hoc by an agent, so guarding
-# from inside the launching script misses the runs hardest to reach.
+# Godot asks macOS to bring its app forward when it opens a window. Nothing
+# prevents that: not the window's no-focus flag, not launching with `open -g`,
+# not giving the run an accessory (LSUIElement) bundle of its own — each was
+# measured, and each still took the keyboard. So the only thing left that
+# matters is giving it back, immediately and TO THE RIGHT PLACE.
 #
-# The waiting is one long-lived osascript that returns the moment a godot run is
-# frontmost, rather than a shell loop spawning osascript to ask: spawning a
-# process per check cost more than the check and held the gap at a quarter of a
-# second, which is long enough to lose a word.
+# Two things make that work, and both were wrong before:
 #
-# It leaves a SESSION SOMEBODY IS PLAYING alone. A run given --shot or --tour is
-# a tool and gets no keyboard; anything else is a person at the game, and taking
-# the focus from them would be the same rudeness pointed the other way.
+#   The memory has to survive. An earlier version restarted its watcher after
+#   every restore, so it forgot where the person had been and re-learned from
+#   whatever macOS had auto-focused when the last run exited — which is how
+#   somebody typing in one editor kept being dropped into another one. The
+#   remembered app now lives inside the loop and is only ever replaced by an app
+#   that genuinely held the keyboard.
+#
+#   A person playing must be left alone. A run with a job to do (--shot, --tour)
+#   is tooling; anything else is somebody at the game, and snatching that away
+#   would be the same rudeness pointed the other way. src/main.gd leaves a mark
+#   while a play session is up, which costs nothing to check because it is only
+#   read in the rare moment a run is frontmost.
 
 QUIET_BEFORE_STOP=${UNSPENT_GUARD_QUIET:-180}
-
-# Waits (up to `timeout` seconds) for a godot run to hold the keyboard. Prints
-# "<godot pid> <pid to give it back to>", or nothing if the wait ran out.
-wait_for_theft() {
-	osascript <<'APPLESCRIPT' 2>/dev/null
-set mine to missing value
-repeat 600 times
-	try
-		tell application "System Events"
-			set p to first application process whose frontmost is true
-			set n to name of p
-			if n is "godot" or n is "Godot" then
-				if mine is not missing value then
-					return ((unix id of p) as string) & " " & (mine as string)
-				end if
-			else
-				set mine to unix id of p
-			end if
-		end tell
-	end try
-	delay 0.05
-end repeat
-return ""
-APPLESCRIPT
-}
+PLAYING_MARK=${UNSPENT_PLAY_MARK:-/tmp/unspent-playing}
+# Where a launching script writes the app it took the run from (tools/_focus.sh).
+NOTED_HOLDER=${TMPDIR:-/tmp}/unspent-focus-holder
 
 while true; do
-	got="$(wait_for_theft)"
-	if [ -n "$got" ]; then
-		thief="${got%% *}"
-		holder="${got##* }"
-		# A run with a job to do gives the keyboard back; a person playing keeps it.
-		if ps -p "$thief" -o args= 2>/dev/null | grep -qE '\-\-shot=|\-\-tour='; then
-			osascript -e "tell application \"System Events\" to set frontmost of (first application process whose unix id is $holder) to true" >/dev/null 2>&1
-		fi
-		continue
-	fi
-	# The wait ran its course with nothing taken: stop once the runs have stopped.
+	osascript - "$PLAYING_MARK" "$NOTED_HOLDER" <<'APPLESCRIPT' >/dev/null 2>&1
+on run argv
+	set mark to item 1 of argv
+	set noted to item 2 of argv
+	set mine to missing value
+	repeat 2400 times
+		try
+			tell application "System Events"
+				set p to first application process whose frontmost is true
+				set n to name of p
+				if n is "godot" or n is "Godot" then
+					-- What a launching script wrote down beats what this loop guessed:
+					-- it knew which app the person was in when it started the run.
+					set target to my noted_holder(noted)
+					if target is missing value then set target to mine
+					if target is not missing value then
+						-- Only a run with a job to do; a person playing keeps the keys.
+						if not (my playing(mark)) then
+							try
+								set frontmost of (first application process whose unix id is target) to true
+							end try
+						end if
+					end if
+				else
+					set mine to unix id of p
+				end if
+			end tell
+		end try
+		delay 0.05
+	end repeat
+end run
+
+on noted_holder(noted)
+	try
+		-- Only if it was written in the last ten seconds: an old note is a guess again.
+		do shell script "test -f " & quoted form of noted & " && test $(( $(date +%s) - $(stat -f %m " & quoted form of noted & ") )) -lt 10 && cat " & quoted form of noted
+		return (result as string) as integer
+	on error
+		return missing value
+	end try
+end noted_holder
+
+on playing(mark)
+	try
+		do shell script "test -f " & quoted form of mark
+		return true
+	on error
+		return false
+	end try
+end playing
+APPLESCRIPT
+	# Two minutes of watching done. Keep going while runs are still happening.
 	if ! pgrep -x godot >/dev/null 2>&1; then
 		quiet=0
 		while [ "$quiet" -lt "$QUIET_BEFORE_STOP" ]; do
