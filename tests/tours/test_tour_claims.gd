@@ -90,6 +90,42 @@ func test_every_claimed_subject_is_one_the_runner_can_answer() -> void:
 							"%s line %d: %s wants a count above zero" % [f, n, subject])
 
 
+## The other way a tour asks for something and silently does not get it: a name
+## the runner looks up and does not find. `near boulder,stone ore` split on the
+## space and asked for boulders and nothing else for a year; an action nobody
+## bound is pressed into the void with an engine error the tour runner does not
+## read as a failure.
+func test_every_name_a_tour_asks_for_exists() -> void:
+	for f: String in tours():
+		var n := 0
+		for raw: String in lines_of(f):
+			n += 1
+			var parts := raw.strip_edges().split(" ", false)
+			if parts.is_empty() or parts[0].begins_with("#"):
+				continue
+			match parts[0]:
+				"near":
+					check(parts.size() == 2, "%s line %d: `near` takes one comma-joined list; write a space as _" % [f, n])
+					for k: String in parts[1].split(",", false):
+						check(PropKind.NAMES.has(k.replace("_", " ")), "%s line %d: no prop kind %s" % [f, n, k])
+				"ground":
+					check(parts.size() == 2, "%s line %d: `ground` takes one comma-joined list; write a space as _" % [f, n])
+					for k: String in parts[1].split(",", false):
+						check(Ground.NAMES.has(k.replace("_", " ")), "%s line %d: no ground %s" % [f, n, k])
+				"at":
+					if parts[1].begins_with("prop:"):
+						var k := parts[1].substr(5).replace("_", " ")
+						check(PropKind.NAMES.has(k), "%s line %d: no prop kind %s" % [f, n, k])
+				"press", "tap", "hold", "release", "key":
+					# Dev mode's own keys are added to the map while it can be
+					# reached, so they are not in project.godot's list.
+					check(InputMap.has_action(parts[1]) or DevMode.ACTIONS.has(StringName(parts[1])),
+						"%s line %d: nothing is bound to '%s'" % [f, n, parts[1]])
+				"walkto":
+					check(parts[1] in ["folk", "dog", "refuse", "mob", "part", "plate"],
+						"%s line %d: cannot walk to '%s'" % [f, n, parts[1]])
+
+
 ## The wave A hole itself: a body put out and then photographed, with nothing in
 ## between asking whether it was ever there. The first frame after a `spawn` has
 ## to be a frame that says it is of that body.

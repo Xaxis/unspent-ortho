@@ -78,7 +78,12 @@ hour 22
 weather rain:1
 wait 1.2
 shot 17-village-wet-night
+# Thin rain, not a downpour: the ground still mirrors the tube, and the frame
+# stops moving. At rain:1 and this zoom the streaks alone walked two runs 2.9
+# apart, against the sheet's tolerance of 3 -- a reference frame one bad roll
+# from crying regression.
 place stolen_light
+weather rain:0.45
 zoom 9
 wait 1.2
 walk 0,1 1.2

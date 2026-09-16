@@ -33,11 +33,11 @@ walk 0,0 0.05
 press use 0.1
 await took 3
 # A loose stone off each of two boulders.
-near boulder,stone ore
+near boulder,stone_ore
 walk 0,0 0.05
 press use 0.1
 await took 6
-near boulder,stone ore
+near boulder,stone_ore
 walk 0,0 0.05
 press use 0.1
 await took 6
