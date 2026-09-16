@@ -159,7 +159,7 @@ func build() -> void:
 	# middle, pinned at both ends, and a flight seam up the tube.
 	FoundKit.tbar(pk, Vector3(-0.14, 0.08, -0.16), arm_a.lerp(arm_b, 0.5) + Vector3(-0.1, -0.1, 0), 0.042, 0.03, 4, D)
 	FoundKit.seam(pk, arm_a + Vector3(0.0, 0.14, 0), arm_b + Vector3(0.0, 0.13, 0), Vector3.UP, R, 2)
-	# The chute: a cone turned down at the end of the arm, with a lip ring.
+	# The chute: a cone turned down at the end of the arm, flaring at the mouth.
 	FoundKit.lathe(pk, arm_b + Vector3(0.04, 0.0, -0.1), Vector3.DOWN, [Vector2(0.13, -0.1), Vector2(0.21, 0.08), Vector2(0.185, 0.38)], 6, R, PI / 6.0)
 	body_mesh(pk, spout)
 	var pw := FoundKit.kit()
