@@ -74,7 +74,7 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE
 	if f & BiomeSurface.APRON != 0:
@@ -91,7 +91,7 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return Ground.LIMESTONE
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.GRASS:
 		if r < 0.01:
 			return PropKind.BONES
@@ -99,7 +99,7 @@ static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 			return PropKind.BOULDER
 		return PropKind.GORSE if r < 0.03 else BiomeScatter.NONE
 	if g == Ground.HEATH:
-		var k := maxf(0.0, t.clump[t.i])
+		var k := maxf(0.0, t.clump[i])
 		if r < 0.02 + k * 0.26:
 			return PropKind.GORSE
 		return PropKind.BOULDER if r > 0.37 and r < 0.385 else BiomeScatter.NONE

@@ -694,34 +694,84 @@ static func regions(c: GenContext) -> void:
 			"id": w.regions.size(), "type": &"", "index": 0, "tiles": sizes[la],
 			"centre": Vector2.ZERO, "bounds": Rect2(),
 		})
+	var count := w.regions.size()
+	# Label -> id + 1, as an array: the tile pass asks this once a tile, and a
+	# Dictionary lookup a tile costs more than the whole rest of the pass.
+	var rid_of := PackedInt32Array()
+	rid_of.resize(c.n)
+	for la: int in id_of:
+		rid_of[la] = int(id_of[la]) + 1
+	var region := w.region
+	var band := 16
+	var bands := ceili(float(size) / band)
+	# Each band totals its own rows; the bands are merged in row order, so the
+	# centres come out the same however the pool scheduled them.
+	var b_sum: Array[PackedFloat64Array] = []
+	var b_box: Array[PackedInt32Array] = []
+	b_sum.resize(bands)
+	b_box.resize(bands)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		var s2 := PackedFloat64Array()
+		s2.resize(count * 2)
+		var box := PackedInt32Array()
+		box.resize(count * 5)
+		for r in count:
+			box[r * 5] = 1 << 30
+			box[r * 5 + 1] = 1 << 30
+			box[r * 5 + 2] = -(1 << 30)
+			box[r * 5 + 3] = -(1 << 30)
+			box[r * 5 + 4] = -1
+		for y in range(y0, y1):
+			var row := y * size
+			for x in size:
+				var i := row + x
+				var la := label[i]
+				if la < 0:
+					continue
+				var rid := rid_of[la] - 1
+				if rid < 0:
+					continue
+				region[i] = rid + 1
+				var b := rid * 5
+				s2[rid * 2] += x + 0.5
+				s2[rid * 2 + 1] += y + 0.5
+				if x < box[b]:
+					box[b] = x
+				if y < box[b + 1]:
+					box[b + 1] = y
+				if x > box[b + 2]:
+					box[b + 2] = x
+				if y > box[b + 3]:
+					box[b + 3] = y
+				if box[b + 4] < 0:
+					box[b + 4] = i
+		b_sum[y0 / band] = s2
+		b_box[y0 / band] = box
+	, band)
 	var sum := PackedFloat64Array()
-	sum.resize(w.regions.size() * 2)
+	sum.resize(count * 2)
 	# One tile each region was seen to own, so its type never has to be hunted for.
 	var sample := PackedInt32Array()
-	sample.resize(w.regions.size())
+	sample.resize(count)
 	sample.fill(0)
 	var lo := PackedInt32Array()
 	var hi := PackedInt32Array()
-	lo.resize(w.regions.size() * 2)
-	hi.resize(w.regions.size() * 2)
+	lo.resize(count * 2)
+	hi.resize(count * 2)
 	lo.fill(1 << 30)
 	hi.fill(-(1 << 30))
-	for y in size:
-		var row := y * size
-		for x in size:
-			var la := label[row + x]
-			if la < 0 or not id_of.has(la):
-				continue
-			var rid: int = id_of[la]
-			w.region[row + x] = rid + 1
-			if sample[rid] == 0:
-				sample[rid] = row + x
-			sum[rid * 2] += x + 0.5
-			sum[rid * 2 + 1] += y + 0.5
-			lo[rid * 2] = mini(lo[rid * 2], x)
-			lo[rid * 2 + 1] = mini(lo[rid * 2 + 1], y)
-			hi[rid * 2] = maxi(hi[rid * 2], x)
-			hi[rid * 2 + 1] = maxi(hi[rid * 2 + 1], y)
+	for b in bands:
+		var s2 := b_sum[b]
+		var box := b_box[b]
+		for rid in count:
+			sum[rid * 2] += s2[rid * 2]
+			sum[rid * 2 + 1] += s2[rid * 2 + 1]
+			lo[rid * 2] = mini(lo[rid * 2], box[rid * 5])
+			lo[rid * 2 + 1] = mini(lo[rid * 2 + 1], box[rid * 5 + 1])
+			hi[rid * 2] = maxi(hi[rid * 2], box[rid * 5 + 2])
+			hi[rid * 2 + 1] = maxi(hi[rid * 2 + 1], box[rid * 5 + 3])
+			if sample[rid] == 0 and box[rid * 5 + 4] >= 0:
+				sample[rid] = box[rid * 5 + 4]
 	for r: Dictionary in w.regions:
 		var rid: int = r.id
 		var tiles := maxi(1, int(r.tiles))

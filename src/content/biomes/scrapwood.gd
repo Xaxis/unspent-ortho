@@ -113,8 +113,7 @@ static func make() -> BiomeDef:
 
 ## Swarf under the canopy, mulch in the hollows, and the clearings the machines
 ## cut and never came back to.
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
-	var i := t.i
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE if gb > 0.0 else Ground.SAND
 	if f & BiomeSurface.APRON != 0:
@@ -134,9 +133,9 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return Ground.GRASS
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SWARF:
-		var k := maxf(0.0, t.forest[t.i] + 0.15)
+		var k := maxf(0.0, t.forest[i] + 0.15)
 		if r < 0.11 + k * 0.26:
 			return PropKind.SCRAP_TREE
 		if r < 0.15 + k * 0.28:
@@ -148,7 +147,7 @@ static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 			return PropKind.MAGNET_HEAP
 		return PropKind.BUSH if r < 0.2 + k * 0.28 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		var k := maxf(0.0, t.forest[t.i])
+		var k := maxf(0.0, t.forest[i])
 		if r < 0.02 + k * 0.08:
 			return PropKind.SCRAP_TREE
 		if r < 0.05:

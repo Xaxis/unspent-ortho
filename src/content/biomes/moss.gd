@@ -75,7 +75,7 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.MUD if gb > -0.25 else Ground.SAND
 	if f & BiomeSurface.APRON != 0:
@@ -90,9 +90,9 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return Ground.MOSS
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.MUD:
-		if r < 0.1 + maxf(0.0, t.clump[t.i]) * 0.35:
+		if r < 0.1 + maxf(0.0, t.clump[i]) * 0.35:
 			return PropKind.REEDS
 		# Drowned trunks stand where the fen took the ground back.
 		return PropKind.DEAD_TREE if r > 0.49 else BiomeScatter.NONE

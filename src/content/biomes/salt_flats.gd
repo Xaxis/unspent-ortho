@@ -121,7 +121,7 @@ static func make() -> BiomeDef:
 
 ## Crust almost everywhere; the pans are where the ground lies low and damp, and
 ## the rim of the basin comes up through it as gravel and bleached grass.
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE if gb > 0.1 else Ground.SAND
 	if f & BiomeSurface.APRON != 0:
@@ -140,9 +140,9 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return Ground.SALT
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SALT:
-		var k := maxf(0.0, t.clump[t.i])
+		var k := maxf(0.0, t.clump[i])
 		if r < 0.012 + k * 0.05:
 			# Pressure ridges run in lines where two plates met.
 			return PropKind.SALT_RIDGE

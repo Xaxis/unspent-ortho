@@ -84,7 +84,7 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	var g := Ground.ASH
 	if f & BiomeSurface.SHORE != 0:
 		g = Ground.CLINKER if gb > 0.0 else Ground.SHINGLE
@@ -102,10 +102,10 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return g
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.ASH:
-		var k := maxf(0.0, t.clump[t.i] - 0.1)
-		if absf(t.fissure[t.i]) < 0.035 and r < 0.2:
+		var k := maxf(0.0, t.clump[i] - 0.1)
+		if absf(t.fissure[i]) < 0.035 and r < 0.2:
 			# Vents breathe in rows along the fissures.
 			return PropKind.VENT
 		if r < 0.01 + k * 0.9:

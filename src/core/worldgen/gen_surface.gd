@@ -193,6 +193,8 @@ static func run(c: GenContext) -> void:
 		t.forest = forest
 		t.sea_steps = sea_steps
 		t.marsh = marsh
+		t.levels = level
+		t.blends = blend
 		for y in range(y0, y1):
 			for x in size:
 				var i := y * size + x
@@ -280,9 +282,7 @@ static func run(c: GenContext) -> void:
 					# Pools lie in a rim of their own shore, whatever the recipe.
 					g = rim_g[cc]
 				else:
-					t.i = i
-					t.level = l
-					t.blend = bl
+					# Nothing per-tile is written to the sample: see its header.
 					if own != last_own:
 						last_own = own
 						t.own_def = defs[own]
@@ -298,7 +298,7 @@ static func run(c: GenContext) -> void:
 					if cc != last_recipe:
 						last_recipe = cc
 						recipe_fn = surf[cc]
-					g = recipe_fn.call(t, e, rs, gb, (BiomeSurface.SHORE if shore else 0) | (BiomeSurface.APRON if apron else 0) | (BiomeSurface.BANK if bank else 0))
+					g = recipe_fn.call(t, i, e, rs, gb, (BiomeSurface.SHORE if shore else 0) | (BiomeSurface.APRON if apron else 0) | (BiomeSurface.BANK if bank else 0))
 				if cc != own and bl < 0.32 and not shore and not rim:
 					# Out in the far half of an ecotone the neighbour arrives as its
 					# plain wash first; its dark and broken grounds (peat hags, mud,

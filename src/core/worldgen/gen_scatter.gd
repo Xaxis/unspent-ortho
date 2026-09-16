@@ -691,6 +691,8 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 		t.rise = rise
 		t.grounds = ground
 		t.sea_steps = sea_steps
+		t.levels = level
+		t.blends = blend
 		for y in range(maxi(y0, 2), y1):
 			var row := y * size
 			for x in range(2, size - 2):
@@ -707,16 +709,9 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				# The same island its ground came from.
 				var cc := recipe[i]
 				var l := level[i]
-				var wa := water[i - 1]
-				var wb := water[i + 1]
-				var wc := water[i - size]
-				var wd := water[i + size]
-				t.i = i
-				t.level = l
-				t.up = maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
-				t.bank = wa == 1 or wb == 1 or wc == 1 or wd == 1
-				t.pool = wa == 2 or wb == 2 or wc == 2 or wd == 2
-				t.blend = blend[i]
+				# Nothing per-tile is written to the sample: see its header.
+				var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
+				var wet := water[i - 1] != 0 or water[i + 1] != 0 or water[i - size] != 0 or water[i + size] != 0
 				if cc != last_recipe:
 					last_recipe = cc
 					t.def = defs[cc]
@@ -730,11 +725,13 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 					t.other_def = defs[c2]
 				# What the land decides, then the landscape's own recipe, then
 				# the grounds every landscape reads the same way.
-				var kind := BiomeScatter.first(t, g, r)
+				var kind := BiomeScatter.PASS
+				if up >= 2 or wet:
+					kind = BiomeScatter.first(t, g, r, up, wet)
 				if kind == BiomeScatter.PASS:
-					kind = recipe_fn.call(t, g, r)
+					kind = recipe_fn.call(t, i, g, r)
 				if kind == BiomeScatter.PASS:
-					kind = BiomeScatter.shared(t, g, r)
+					kind = BiomeScatter.shared(t, i, g, r)
 				if kind < 0 or (allow_mask[own] >> kind) & 1 == 0:
 					continue
 				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:

@@ -81,7 +81,7 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.ICE if gb > 0.15 else Ground.SHINGLE
 	if f & BiomeSurface.APRON != 0:
@@ -96,7 +96,7 @@ static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) ->
 	return Ground.SNOW
 
 
-static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.GRASS:
 		return PropKind.SNOW_PINE if r < 0.02 else BiomeScatter.NONE
 	return BiomeScatter.PASS
