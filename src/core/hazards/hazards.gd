@@ -127,6 +127,12 @@ static func _hour_shift(out: Dictionary, place: Place) -> void:
 	# the sun is, more completely than heat, which the ground holds on to.
 	if out.has(&"glare"):
 		out[&"glare"] = float(out[&"glare"]) * (0.05 + 0.95 * (1.0 - night))
+	# The field in the dead iron runs off the grid the wood is still wired into,
+	# and the grid works the machines' day: it hums up through the morning and
+	# sags in the small hours. Without this term it sat at one number at every
+	# hour in every weather, alone among the signature pressures (playtest 7).
+	if out.has(&"magnetism"):
+		out[&"magnetism"] = float(out[&"magnetism"]) * (0.45 + 0.55 * (1.0 - night))
 	# A dry land takes water out of a body all day and eases off at night.
 	if out.has(&"thirst"):
 		out[&"thirst"] = float(out[&"thirst"]) * (0.55 + 0.45 * (1.0 - night))

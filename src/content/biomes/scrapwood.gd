@@ -28,7 +28,20 @@ static func make() -> BiomeDef:
 		&"rain": 1.15, &"temp": 0.5, &"moist": 0.72, &"cliff": 0.0,
 	}
 	d.hatch = Ink.UPRIGHT
+	# A landscape only gets its own colour for the grounds it NAMES here;
+	# everything else falls through to the shared table, which is written for a
+	# coast and knows nothing about this place. Sixty per cent of the scrapwood
+	# is SWARF — its own plain_ground, the floor the file is named after — and it
+	# was falling through, coming out a warm brown-mauve and then multiplied by
+	# this landscape's 1.52x lift. That, not the trees, is why the wood read as
+	# an ordinary wood on bare earth (playtest 6). So every ground the wood can
+	# show is named, down to the ones that only bleed in over a border.
 	d.grounds = {
+		# Leaf mulch over rust grit: dark olive, with the earth in it and none of
+		# the rust, because the rust belongs to the FILINGS and the flecks lying
+		# on it and a wash carrying it too went grey. Green-dominant by eleven
+		# steps and darker than the floor it replaced, which is the gloom.
+		Ground.SWARF: P.MOSS[2].lerp(P.MOSS[1], 0.4).lerp(P.EARTH[1], 0.26),
 		Ground.GRASS: P.MOSS[3].lerp(P.RUST[2], 0.2),
 		Ground.HEATH: P.EARTH[2].lerp(P.RUST[1], 0.35),
 		Ground.NEEDLES: P.EARTH[2].lerp(P.RUST[2], 0.3),
@@ -37,6 +50,24 @@ static func make() -> BiomeDef:
 		Ground.ROCK: P.SLATE[2].lerp(P.RUST[1], 0.25),
 		Ground.SCREE: P.SLATE[2].lerp(P.STONE[2], 0.4),
 		Ground.GRAVEL: P.STONE[2].lerp(P.RUST[2], 0.3),
+		# Peat under the bottoms: what the yard leached, gone to black.
+		Ground.PEAT: P.MOSS[1].lerp(P.EARTH[1], 0.4).lerp(P.RUST[0], 0.2),
+		# Stone the wood has had time to stain. The shared shingle is a bright
+		# sea-sorted grey (lum 119) and it shouted off the floor of a dark wood.
+		Ground.SHINGLE: P.SLATE[2].lerp(P.STONE[2], 0.45).lerp(P.RUST[1], 0.18),
+		Ground.SAND: P.EARTH[2].lerp(P.SLATE[2], 0.3).lerp(P.RUST[2], 0.2),
+		# The lanes the machines cut: grit pressed flat, already going green
+		# at the edges. The shared road is a warm tan and read as desert.
+		Ground.ROAD: P.SLATE[1].lerp(P.EARTH[2], 0.45).lerp(P.RUST[1], 0.2),
+		# Bleed from the dry country over a border: a crust that has lain under
+		# this canopy is not the crust out on the flat.
+		Ground.SALT: P.LINEN[2].lerp(P.SLATE[2], 0.4).lerp(P.MOSS[2], 0.2),
+		Ground.PAN: P.LINEN[1].lerp(P.SLATE[2], 0.35).lerp(P.RUST[1], 0.15),
+		Ground.BONE: P.LINEN[2].lerp(P.SLATE[2], 0.35),
+		Ground.LIMESTONE: P.LINEN[2].lerp(P.SLATE[2], 0.35),
+		# Snow does not lie clean under a wood full of rust.
+		Ground.SNOW: P.RIME[3].lerp(P.SLATE[2], 0.35).lerp(P.RUST[1], 0.12),
+		Ground.ICE: P.RIME[2].lerp(P.SLATE[2], 0.3),
 	}
 	d.cliff_wash = P.EARTH[1].lerp(P.RUST[1], 0.35)
 	d.strata = GroundColors.STRATA_SCRAP
@@ -63,6 +94,25 @@ static func make() -> BiomeDef:
 	# darkness term goes as negative as the moss's so noon still reads as noon.
 	d.grade = Vector4(-0.52, 0.12, 0.0, 0.08)
 	d.wet = 0.25
+	# The water here is dead. Everything the yard leached is in it, and it lies
+	# under a closed canopy: an oily green-black that gives nothing back. It was
+	# the shared chart blue, a slate pond.
+	#
+	# The number first written here, 3.7x the moss's water, was wrong, and the
+	# review that caught it was right: it compared the wood's water against the
+	# moss's water by way of a pale mass in the wood's heart frame that is not
+	# water at all but the SNOWFIELD across the border (380 of the 2829 tiles a
+	# zoom-12 frame holds at `place scrapwood`, seed 7). Measured at one named
+	# coordinate the water itself went from a slate blue to a dead olive-black;
+	# the numbers are in the commit. The snowfield is another landscape, drawn
+	# correctly in its own colours, and nothing here reaches it.
+	#
+	# It is a WASH, though, not a hole: taken all the way to the wash at full
+	# strength the chart's whole value range collapsed into 15..63 and a river
+	# read as a black ribbon cut out of the land, which breaks Law 2 the other
+	# way round. Kept a step up and a shade short of the whole, the soundings,
+	# the marbling and the broken white of a fall all still draw, over 20..138.
+	d.water_wash = Color(0.125, 0.140, 0.110, 0.86)
 	d.props = [PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP, PropKind.BROADLEAF, PropKind.PINE,
 		PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.DRIFTWOOD]
@@ -121,7 +171,9 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	if f & BiomeSurface.BANK != 0:
 		return Ground.MUD
 	if rs < -0.8 and gb < -0.2:
-		# Standing water in the bottoms, gone black with what leached into it.
+		# The bottoms never drain: a black mat of bog moss over what leached out
+		# of the yard. The standing water itself is `pools` (BLACKWATER), and
+		# what colour it takes is `water_wash`.
 		return Ground.MOSS
 	# The canopy is closed almost everywhere: swarf is the floor of this wood,
 	# and a clearing has to be a real one before the grass gets in.
@@ -209,7 +261,10 @@ static func _works(L: Object) -> void:
 			continue
 		GenWorks._record(c, &"closing_corridor", at, d, Vector2(18.0, 3.0), GenWorks.CUT)
 		for i in masts.size():
-			GenWorks._about(L, PropKind.MAGNET_HEAP, c.w.props[masts[i]].pos, 1, 1.6, 3.0)
+			# Clear of the mast's own feet. At 1.6-3.0 tiles the heap stood inside
+			# the pylon's legs, so the one prop that says what this wood IS could
+			# never be the subject of a frame and was never the thing in reach.
+			GenWorks._about(L, PropKind.MAGNET_HEAP, c.w.props[masts[i]].pos, 2, 4.0, 7.0)
 		# Where the fallen ones lie, on the same line.
 		GenWorks._run(L, PropKind.WRECKAGE, at + d * 4.5, d, 4, 9.0, -99, 0.15)
 		GenWorks._about(L, PropKind.SCRAP_TREE, at, 3, 3.0, 7.0)

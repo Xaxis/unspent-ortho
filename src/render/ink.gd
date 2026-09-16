@@ -12,6 +12,10 @@ const CROSS := 5
 const SCRIBBLE := 6
 const HAND := 7
 const CONTOUR := 8
+const CRACK := 9
+## The last hand. BiomeRegistry validates a landscape's `hatch` against it, so a
+## new hand is one const here and one branch in ink.gdshaderinc.
+const LAST := CRACK
 
 
 ## The ground hatch of the landscape type at index c.

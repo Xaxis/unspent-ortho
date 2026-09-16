@@ -63,8 +63,12 @@ static func variants(kind: int) -> int:
 			return 2
 		PropKind.SIGN:
 			return 4
-		PropKind.SALT_RIDGE, PropKind.SCRAP_TREE:
+		PropKind.SALT_RIDGE:
 			return 3
+		# Four, so a stand of them is four heights and four crowns: fifteen
+		# near-identical silhouettes at one scale is a texture, not a wood.
+		PropKind.SCRAP_TREE:
+			return 4
 		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:

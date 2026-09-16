@@ -15,6 +15,11 @@ render_mode cull_back, specular_disabled;
 
 uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 
+// What the INLAND water in view is made of (BiomeDef.water_wash, blended over
+// the landscapes in frame by SkyLight.water_wash_at): rgb the colour a middling
+// depth takes, w how far the chart is pulled to it. The sea never reads it.
+global uniform vec4 water_wash;
+
 const vec3 BRINE0 = vec3(0.0392, 0.0824, 0.1412);
 const vec3 BRINE1 = vec3(0.0627, 0.1490, 0.2471);
 const vec3 BRINE2 = vec3(0.1059, 0.2471, 0.3765);
@@ -139,6 +144,15 @@ void fragment() {
 				c = ph < 0.6 ? FOAM : BRINE5;
 			}
 		}
+	}
+	if (kind != 0 && water_wash.w > 0.001) {
+		// A landscape that has said what its water is: the drawing is kept and
+		// only the colour is moved, so a pool gone black keeps its edge, its
+		// marbling and its soundings and a brine pan keeps its swash. The value
+		// curve flattens toward the top on purpose — foam on dead water is a
+		// pale film, not the page.
+		float l = dot(c, vec3(0.299, 0.587, 0.114));
+		c = mix(c, water_wash.rgb * (0.30 + 1.55 * l), water_wash.w);
 	}
 	ALBEDO = sky_apply(c, world_pos, TIME);
 	EMISSION += neon_skyglow(c);

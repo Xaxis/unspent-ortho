@@ -116,6 +116,20 @@ const float SKY_WHITEOUT_FAR = 13.0;
 const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under the moon
 const vec3 SKY_NIGHT_FLOOR = vec3(0.08, 0.10, 0.21);  // the darkest a wash goes at night
 const float SKY_NIGHT_KNEE = 0.32;
+// The grade's darkness term is negative in most landscapes, so it is a GAIN,
+// and it is one number for the WHOLE frame: a pale land seen from a dark one is
+// multiplied by the dark one's lift and lands flat on the page. The salt crust
+// drew at 255 across the coast border (18.7% of that frame pure white) and the
+// snowfield still does against the pinewood, the moss and the wood. Clipped
+// white holds no second wash, no shade band, no hatch and no ink, so ART Law 2
+// and Law 6 fail exactly at the ecotone — the one place they matter most.
+// So the last step before the page is a shoulder, per channel: everything under
+// SKY_TOP_KNEE is left exactly where it was, and what was heading past it rolls
+// into the gap below SKY_TOP instead of stacking on it. The page itself
+// (LINEN[5], 232) sits above the knee, so nothing the game draws can ever be
+// brighter than the paper it is drawn on.
+const float SKY_TOP_KNEE = 0.86;
+const float SKY_TOP = 0.972;
 const float SKY_GROUND_HEIGHT = 8.0;                  // SkyGround.HEIGHT_RANGE
 
 // The screen pixel a world point falls on. The camera never rotates (yaw 45,
@@ -516,7 +530,19 @@ vec3 neon_graded(vec3 c, float found) {
 	vec3 sc = clamp(g, 0.0, 1.0);
 	vec3 s_curve = sc * sc * (3.0 - 2.0 * sc);
 	g = mix(g, max(s_curve, sc * 0.8), neon_grade.w);
-	return g * (1.0 - neon_grade.x);
+	vec3 lit = g * (1.0 - neon_grade.x);
+	// Held under the page: a lift is a gain, and a gain with no ceiling puts
+	// another landscape's washes on the paper at an ecotone. Per channel, so a
+	// wash only loses what was over the line: scaling the whole colour by its
+	// brightest channel instead keeps the hue but takes 23 points of value off
+	// the snowfield's own noon (median 190 -> 167), and the snowfield is the
+	// landscape the rest of the game is measured against. The cost accepted here
+	// is the other one: a wash lifted far past the page loses its tint as its
+	// channels crowd the ceiling. It was flat white before, so nothing is lost
+	// that was being drawn — and everything under the knee is left exactly where
+	// the landscape's own file put it.
+	vec3 over = max(lit - SKY_TOP_KNEE, 0.0);
+	return min(lit, SKY_TOP_KNEE + (SKY_TOP - SKY_TOP_KNEE) * over / (over + (SKY_TOP - SKY_TOP_KNEE)));
 }
 
 // How wet the ground lies here, 0..1: the rain-slicked default plus rain, only
@@ -603,7 +629,19 @@ const float SKY_GLOW_FLOOR = 0.033;
 vec3 neon_skyglow(vec3 graded) {
 	float tl = max(dot(sky_tint, vec3(0.3, 0.59, 0.11)), 0.001);
 	vec3 hue = sky_tint / tl;
-	return (graded * hue * SKY_GLOW_LEVEL + hue * SKY_GLOW_FLOOR) * sky_night.y;
+	vec3 glow = (graded * hue * SKY_GLOW_LEVEL + hue * SKY_GLOW_FLOOR) * sky_night.y;
+	// This is laid over a wash the grade has already held under the page, so it
+	// answers to the same ceiling: the glow runs highest at dusk and under cloud,
+	// exactly when a pale land is lit flattest, and without this the snow in
+	// shots/tour/biomes/13-scrapwood-dusk.png went back to 255 with the ink
+	// gone off it after the grade had just kept it. A machine's own light is
+	// not this glow and is not held: neon is meant to burn.
+	//
+	// The ceiling holds the glow's AMOUNT; it does not choose its colour or when
+	// it is up. Those are the two lines above — the sky's own hue at this level,
+	// spent on sky_night.y — so a salt flat at dusk keeps its drawing without the
+	// evening's fall being paid for out of the page.
+	return min(glow, max(vec3(SKY_TOP) - graded, vec3(0.0)));
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {

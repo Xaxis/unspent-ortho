@@ -135,7 +135,7 @@ static func problems() -> PackedStringArray:
 			out.append(w + "target share must be positive")
 		if d.share.x > d.share.y:
 			out.append(w + "share range is back to front")
-		if d.hatch < Ink.NONE or d.hatch > Ink.CONTOUR:
+		if d.hatch < Ink.NONE or d.hatch > Ink.LAST:
 			out.append(w + "hatch %d is not an Ink hand" % d.hatch)
 		if d.surface.is_null():
 			out.append(w + "no surface recipe")

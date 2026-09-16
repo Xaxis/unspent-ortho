@@ -11,6 +11,18 @@
 
 const P := preload("res://src/render/palette.gd")
 
+## Everything this landscape is drawn in is taken down by this one number, and
+## `grade` puts it back (see the note beside d.grade). Keeping the two in step is
+## what stops the crust clipping the moment another landscape is in the frame:
+## TONE * (1 - grade.x) is what the eye gets, and TONE alone is what a
+## neighbour's lift is multiplied against. Mirrored by SALT_TOP in
+## world.gdshader and the CRUST constants in src/models/props/salt.gd.
+const TONE := 0.655
+
+
+static func _w(c: Color) -> Color:
+	return Color(c.r * TONE, c.g * TONE, c.b * TONE, c.a)
+
 
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
@@ -35,19 +47,45 @@ static func make() -> BiomeDef:
 	# outside gets in: a flat that wears the next country's ground is not a flat.
 	d.reach_out_thin = 0.35
 	d.reach_in_thin = 0.4
-	d.hatch = Ink.CROSS
+	d.hatch = Ink.CRACK
+	# Everything the flat can show, named here. A ground left out of this table
+	# falls through to the shared one, which is not scaled by TONE and so comes
+	# in 1.5x brighter than everything around it — and PAN, which is 8% of the
+	# landscape and the thing the machines built the whole place for, was falling
+	# through. Its own bank, pool rim and village ground drew in another
+	# landscape's colour.
 	d.grounds = {
-		Ground.ROAD: P.LINEN[3].lerp(P.SAND[3], 0.4),
-		Ground.SAND: P.LINEN[4].lerp(P.SAND[4], 0.5),
-		Ground.SHINGLE: P.LINEN[3].lerp(P.STONE[3], 0.4),
-		Ground.GRAVEL: P.LINEN[3].lerp(P.STONE[3], 0.35),
+		Ground.SALT: _w(P.LINEN[5].lerp(P.SAND[5], 0.2)),
+		# A pan the brine drew back from: mineral silt, damp and stained, a clear
+		# step under the crust so the bunded rectangles read AS rectangles from
+		# above — but still pale, because it is a dry floor and not mud, and
+		# because it is 8% of this landscape and the flat has to stay the
+		# brightest ground in the game.
+		Ground.PAN: _w(P.LINEN[4].lerp(P.STONE[4], 0.3).lerp(P.RUST[2], 0.1)),
+		Ground.ROAD: _w(P.LINEN[3].lerp(P.SAND[3], 0.4)),
+		Ground.SAND: _w(P.LINEN[4].lerp(P.SAND[4], 0.5)),
+		Ground.SHINGLE: _w(P.LINEN[3].lerp(P.STONE[3], 0.4)),
+		Ground.GRAVEL: _w(P.LINEN[3].lerp(P.STONE[3], 0.35)),
 		# What little grass survives on the rim is bleached to straw.
-		Ground.GRASS: P.SAND[4].lerp(P.LINEN[4], 0.45),
-		Ground.HEATH: P.SAND[3].lerp(P.EARTH[3], 0.4),
-		Ground.ROCK: P.LINEN[3].lerp(P.STONE[2], 0.3),
-		Ground.SCREE: P.LINEN[2].lerp(P.STONE[3], 0.4),
+		Ground.GRASS: _w(P.SAND[4].lerp(P.LINEN[4], 0.45)),
+		Ground.HEATH: _w(P.SAND[3].lerp(P.EARTH[3], 0.4)),
+		Ground.ROCK: _w(P.LINEN[3].lerp(P.STONE[2], 0.3)),
+		Ground.SCREE: _w(P.LINEN[2].lerp(P.STONE[3], 0.4)),
+		# Bleed over a border: nothing green keeps its colour out here.
+		Ground.MOSS: _w(P.MOSS[2].lerp(P.LINEN[3], 0.45)),
+		Ground.NEEDLES: _w(P.EARTH[2].lerp(P.LINEN[3], 0.4)),
+		Ground.MUD: _w(P.EARTH[2].lerp(P.LINEN[2], 0.35)),
+		Ground.PEAT: _w(P.EARTH[1].lerp(P.LINEN[2], 0.3)),
+		Ground.SWARF: _w(P.LINEN[2].lerp(P.SLATE[2], 0.3).lerp(P.RUST[1], 0.18)),
+		Ground.BONE: _w(P.LINEN[4].lerp(P.STONE[4], 0.2)),
+		Ground.LIMESTONE: _w(P.LINEN[4].lerp(P.STONE[4], 0.2)),
+		# Frost on the crust before dawn. The shared snow is the page itself and
+		# on the one landscape with no headroom left it would be the brightest
+		# thing in the frame by seventy-five steps.
+		Ground.SNOW: _w(P.RIME[4].lerp(P.LINEN[4], 0.5)),
+		Ground.ICE: _w(P.RIME[3].lerp(P.SLATE[3], 0.3)),
 	}
-	d.cliff_wash = P.LINEN[4].lerp(P.SAND[4], 0.3)
+	d.cliff_wash = _w(P.LINEN[4].lerp(P.SAND[4], 0.3))
 	d.strata = GroundColors.STRATA_SALT
 	d.plain_ground = Ground.SALT
 	d.bank_ground = Ground.PAN
@@ -60,22 +98,51 @@ static func make() -> BiomeDef:
 		Ground.PAN: [0.35, Decor.SALT_PLATE, 18, Decor.PEBBLES, 20, Decor.STONE, 10, Decor.CAN, 4, Decor.WIRE, 4],
 		Ground.GRASS: [0.6, Decor.TUFT, 30, Decor.THISTLE, 12, Decor.STONE, 12, Decor.BONE, 4],
 	}
-	d.grass_colors = [P.SAND[4], P.LINEN[4]]
-	d.rock_color = P.LINEN[3]
+	d.grass_colors = [_w(P.SAND[4]), _w(P.LINEN[4])]
+	d.rock_color = _w(P.LINEN[3])
 	d.hard_rock = true
-	d.decor_tints = {&"bloom": [P.LINEN[4], P.SAND[5], P.LINEN[5]], &"spoil": [P.LINEN[4]]}
+	# A speck of small life is a lit face with nothing shading it, so it stays a
+	# step under the ground it stands on (src/models/props/salt.gd, CRUST_UP).
+	d.decor_tints = {&"bloom": [_w(P.LINEN[3]), _w(P.SAND[4]), _w(P.LINEN[4])], &"spoil": [_w(P.LINEN[3])]}
 	# Whatever holds on at the rim is bleached and half dead.
 	d.tree_tints = {
-		&"leaf": [P.MOSS[4].lerp(P.LINEN[4], 0.5), P.MOSS[4].lerp(P.SAND[4], 0.4), P.LINEN[4], P.SAND[4]],
-		&"trunk": [P.LINEN[2]],
-		&"scrub": [P.MOSS[4].lerp(P.SAND[4], 0.5), P.SAND[4], P.LINEN[3]],
+		&"leaf": [_w(P.MOSS[4].lerp(P.LINEN[4], 0.5)), _w(P.MOSS[4].lerp(P.SAND[4], 0.4)), _w(P.LINEN[4]), _w(P.SAND[4])],
+		&"trunk": [_w(P.LINEN[2])],
+		&"scrub": [_w(P.MOSS[4].lerp(P.SAND[4], 0.5)), _w(P.SAND[4]), _w(P.LINEN[3])],
 	}
-	# The one landscape whose noon is BRIGHTER than the page. The darkness term
-	# goes further negative than any other land (sky.gdshaderinc scales by
-	# 1 - grade.x, so NEGATIVE lifts), and the contrast is pushed so the glare
-	# has an edge instead of washing flat.
-	d.grade = Vector4(-0.12, 0.2, -0.06, 0.2)
-	d.light_tint = Color(1.03, 1.01, 0.97)
+	# Where the flat's brightness lives, and the whole of art review 1. The grade
+	# is ONE value for a frame: SkyLight averages every landscape in view and
+	# sky.gdshaderinc scales the graded colour by (1 - grade.x), a GAIN. So a
+	# landscape that keeps its brightness in its WASHES has that brightness
+	# multiplied by whatever a dark neighbour lifts by — the coast lifts 1.55x
+	# against the flat's old 1.12x — and the crust came back across the border
+	# thirty luminance steps brighter than on the flat, clipped to paper: no
+	# wash, no second wash, no shade band, no plate, no hatch, no ink (18.6% of
+	# shots/tour/biomes/15-coast-salt-flats.png was pure white).
+	#
+	# So the brightness moved into the LIFT, which is the safe place for it: this
+	# is now the largest lift in the registry, and an average with any neighbour
+	# can only bring it DOWN. The washes are the same drawing as before, taken
+	# down by TONE to pay for it.
+	#
+	# The review asked whether this could go up another step, because the flat had
+	# stopped being the brightest ground in the game and that is the one thing its
+	# own file claims. It cannot, and the tests say so before a shot does: -0.66
+	# fails BOTH `tests/biome/test_registry.gd` (the sky's own clamp stops at
+	# -0.6) and `tests/biome/test_salt_headroom.gd` (SALT_TOP under the worst
+	# pairing reaches 1.015, and a rim at the page is a white line with nothing in
+	# it). The lift is already at its ceiling. The only lever left is TONE and its
+	# mirror SALT_TOP, which lives in another package's shader — and the crust
+	# already measures 194.7 against the snowfield's 191.6, so it may not be
+	# needed at all. Left for whoever owns that seam.
+	d.grade = Vector4(-0.58, 0.08, -0.06, 0.2)
+	# A warm cast taken out of the blue rather than added to the red: a light
+	# tint over 1 is one more gain on a landscape with no headroom left.
+	d.light_tint = Color(1.0, 0.985, 0.95)
+	# Brine, not water: what is left after the sun took the rest is dense, green
+	# and heavy, and it does not break white. A chart-blue pool with a paper-white
+	# swash on a landscape with no headroom is two clipped things at once.
+	d.water_wash = Color(0.112, 0.250, 0.264, 0.92)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]
@@ -112,8 +179,11 @@ static func make() -> BiomeDef:
 	GenWorks.register(&"salt_flats", {
 		"host": load("res://src/content/biomes/salt_flats.gd"),
 		"works": &"_works",
-		"vignettes": [[5, &"survey_posts"], [4, &"debris_field"], [4, &"tipped_signs"], [3, &"grave_cluster"],
-			[3, &"wreck"], [2, &"wreck_parts"], [2, &"barricade"], [1, &"shelter"]],
+		# Shade is the whole answer to glare on the flat (Hazards._answer_shift
+		# takes 0.85 of it under a roof), and there was one weight of shelter in
+		# twenty-four across a whole region: nothing to cross to (playtest 3).
+		"vignettes": [[5, &"shelter"], [4, &"survey_posts"], [4, &"debris_field"], [3, &"tipped_signs"],
+			[3, &"wreck"], [2, &"grave_cluster"], [2, &"wreck_parts"], [1, &"barricade"]],
 		# Nothing to drill in a dry pan: where the survey crosses the flat it
 		# leaves its posts and a sign, and goes on.
 		"survey": [[0.45, &"sign_beside"]],

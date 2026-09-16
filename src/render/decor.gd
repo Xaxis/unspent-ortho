@@ -520,12 +520,15 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.fleck(Vector3(-0.04, 0.075, -0.03), Vector3(-0.03, 0.08, 0.04), Vector3(0.04, 0.075, 0.03), P.LINEN[3])
 		SALT_PLATE:
 			# A shard of crust that dried, curled and tipped on its edge, with
-			# the stained pan showing where it came away.
+			# the stained pan showing where it came away. Its face is the salt
+			# flats' ceiling, never the page: at LINEN[5] the shards lit a
+			# coast-salt border as flat white speckle (art review 1, and see
+			# SALT_TOP in world.gdshader).
 			var tilt := 0.5 + stage * 0.25
 			var a := Vector3(-0.07, 0.0, -0.05)
 			var b := Vector3(0.07, 0.0, -0.04)
 			var lift := Vector3(0.01, 0.055 * tilt, 0.08)
-			k.made.quad(a, b, b + lift, a + lift, P.LINEN[5])
+			k.made.quad(a, b, b + lift, a + lift, P.LINEN[2].lerp(P.LINEN[3], 0.6))
 			k.made.quad(a + lift, b + lift, b + lift + Vector3(0, -0.012, 0.02), a + lift + Vector3(0, -0.012, 0.02), P.LINEN[3])
 			k.made.quad(a, a + lift, a + lift + Vector3(-0.02, -0.01, 0.0), a + Vector3(-0.02, 0, 0), P.LINEN[2])
 			if stage == 2:

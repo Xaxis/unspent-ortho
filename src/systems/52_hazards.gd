@@ -42,6 +42,11 @@ var _raw: Dictionary = {}
 var _felt_ever: Dictionary = {}
 ## Something has bitten at some point in this game (for a tour's `answered`).
 var _bit_ever := false
+## Which pressures have bitten this game, for a tour's `answered:ID`. A place
+## that presses three ways at once can never be wholly answered — the salt
+## flats' thirst is worn on the same slot as its glare — so proving that gear
+## answered one of them has to be askable one id at a time.
+var _bit_ids: Dictionary = {}
 ## This game came out of a file, so its first reading came with it.
 var _loaded := false
 
@@ -125,6 +130,9 @@ func _sweep(span: float) -> void:
 		if float(pressure[id]) >= Hazards.FELT:
 			_felt_ever[StringName(id)] = true
 	_bit_ever = _bit_ever or Hazards.worst(pressure) >= Hazards.BITE
+	for id: Variant in pressure:
+		if float(pressure[id]) >= Hazards.BITE:
+			_bit_ids[StringName(id)] = true
 	_tell(pressure)
 	_drain(pressure, span)
 	_cues(pressure)
@@ -243,6 +251,10 @@ func tour_seen(what: StringName) -> bool:
 		&"answered":
 			# Something bit earlier and nothing bites now: the gear was felt.
 			return _bit_ever and Hazards.worst(game.body.pressure) < Hazards.BITE
+	var s := String(what)
+	if s.begins_with("answered:"):
+		var id := StringName(s.substr(9))
+		return _bit_ids.has(id) and float(game.body.pressure.get(id, 0.0)) < Hazards.BITE
 	if Hazards.IDS.has(what):
 		return float(game.body.pressure.get(what, 0.0)) >= Hazards.FELT
 	return false

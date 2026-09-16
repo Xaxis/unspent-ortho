@@ -151,6 +151,16 @@ var light_tint := Color(1, 1, 1)
 var grade := Vector4(-0.4, 0.15, 0.04, 0.05)
 ## How wet this land lies with no rain on it: 0 dry, 1 drowned.
 var wet := 0.0
+## What this landscape's INLAND water is drawn in (rivers, pools, falls; never
+## the sea). rgb is the colour a middling depth takes, and ALPHA is how far the
+## chart is pulled to it — 0, the default, is the shared chart blues. The
+## drawing is kept whatever this is: the soundings, the dashes carried
+## downstream, the marbling and the foam all stay and only their colour moves,
+## so a pool gone black still has its edge and a brine pan still has its swash.
+## Without it a landscape could not say what its water looks like, and the
+## scrapwood — a wood of green-brown gloom — had a pale slate-blue pond as the
+## brightest object in its frame (playtest 6).
+var water_wash := Color(0, 0, 0, 0)
 ## A ragged overhang of snow hangs on this landscape's terrace lips, whatever
 ## the ground on top (docs/ART.md §4).
 var lip_snow := false
