@@ -122,7 +122,10 @@ static func _spell(v: Variant) -> String:
 			var owner: Object = c.get_object()
 			var script := owner as Script
 			var where := script.resource_path if script != null else ""
-			return "%s@%s" % [c.get_method(), where.get_file()]
+			# The file's bare name: an exported build may serve the same script
+			# as .gdc or through a .remap, and a save written by the mac build
+			# must still open in the web one.
+			return "%s@%s" % [c.get_method(), where.get_file().get_basename()]
 		TYPE_DICTIONARY:
 			var d := v as Dictionary
 			var keys: Array = d.keys()

@@ -17,13 +17,18 @@
 # picture of the world. Step 2 takes slot 1 back to a version-1 file — which is
 # exactly what every save already on a player's disk is. Step 3 is this tour.
 coast calm
-wait 0.6
+# Patient at the start. The runner gives the loading page 30 s to lift and then
+# goes on regardless, so on a machine running several builders at once a shot
+# taken too early is a picture of the page and not of the slate; and `choose`
+# walks the rows until it finds one, so a page that has not opened yet hangs the
+# tour rather than failing it. Four seconds covers both. Read the frames.
+wait 4
 tap pause
-wait 0.5
+wait 1
 choose saves
 tap use
-await app:saves 2
-wait 0.3
+await app:saves 4
+wait 0.4
 # Right turns the app from saving to loading.
 tap move_right
 wait 0.4
