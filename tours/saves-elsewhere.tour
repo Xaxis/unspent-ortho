@@ -17,12 +17,18 @@
 # picture of the world. Step 2 takes slot 1 back to a version-1 file — which is
 # exactly what every save already on a player's disk is. Step 3 is this tour.
 coast calm
-# Patient at the start. The runner gives the loading page 30 s to lift and then
-# goes on regardless, so on a machine running several builders at once a shot
-# taken too early is a picture of the page and not of the slate; and `choose`
-# walks the rows until it finds one, so a page that has not opened yet hangs the
-# tour rather than failing it. Four seconds covers both. Read the frames.
-wait 4
+# Walk first, and shoot the world, before anything is pressed. The runner gives
+# the loading page 30 s to lift and then goes on regardless; pausing while it is
+# still up stops the game the page is waiting on, and the page never lifts, so
+# every frame after it is a picture of the page. Walking is real input that
+# costs real seconds and cannot do that, and 00 is the frame that says the world
+# is up: if it is the loading page, the machine is too loaded to prove anything
+# and the run is not evidence.
+wait 2
+walk 1,0 1.5
+walk -1,0 1.5
+shot 00-standing-in-the-world
+wait 1
 tap pause
 wait 1
 choose saves
@@ -49,5 +55,9 @@ shot 03-the-one-that-still-opens
 tap use
 await game 30
 coast calm
+# A load starts its own loading page, so the same rule holds here: walk in the
+# world that came back before shooting it.
+walk 1,0 1.5
+walk -1,0 1.5
 wait 4
 shot 04-loaded

@@ -148,7 +148,15 @@ func calm() -> bool:
 ## Calm, and no page open or only just closed: when an autosave may be taken.
 ## (A save made from the pause page needs only calm.)
 func quiet() -> bool:
-	return _clear_frames >= CLEAR_FRAMES and calm()
+	return _clear_frames >= CLEAR_FRAMES and not under_boot_page() and calm()
+
+
+## The loading page is still drawn over this game. It is a page like any other
+## for the purpose above — an autosave taken under it saves a picture of the
+## page, not of the world — and the first autosave of a game is due early enough
+## to land there on a machine slow to lift it.
+func under_boot_page() -> bool:
+	return is_inside_tree() and not get_tree().get_nodes_in_group(&"boot_page").is_empty()
 
 
 const WHY_LOADING := "Another game is on its way."
