@@ -53,6 +53,13 @@ extends GameSystem
 ##                          front of the player, as --spawn does at boot
 ##   try N ... end          run the lines between up to N times until they all
 ##                          succeed (a player who misses a blow tries again)
+##   stale SLOT [WAY]       age a save this tour has already written into one from
+##                          another build (SaveStaging): `version` (the default)
+##                          takes it back to a file with no WorldStamp, what every
+##                          save on a player's disk today is; `landscape` leaves
+##                          the stamp and moves the ground under it. The one
+##                          staging command that touches a file, because no boot
+##                          flag can fake a save an older build wrote
 ##   echo TEXT              print a line to the log
 ##   key ACTION             a real key event for ACTION's first key, down then up: what
 ##                          pages that read input events need (the title)
@@ -160,7 +167,7 @@ func _run() -> void:
 			continue
 		if not cmd in ["wait", "shot", "echo", "await", "same"]:
 			_seen.clear()
-		if not cmd in ["wait", "shot", "echo", "await", "tap", "press", "key", "same"] and not is_instance_valid(game):
+		if not cmd in ["wait", "shot", "echo", "await", "tap", "press", "key", "same", "stale"] and not is_instance_valid(game):
 			# On the title there is no game to walk or teleport yet.
 			cmd = "no game"
 		print("tour t=%.2fs fps=%d: %s" % [Time.get_ticks_msec() / 1000.0, Engine.get_frames_per_second(), line])
@@ -292,6 +299,12 @@ func _run() -> void:
 					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 			"perf":
 				ok = await TourPeople.perf(self, game, parts)
+			"stale":
+				var why := SaveStaging.age(SaveSlots.path(parts[1].to_int()),
+					StringName(parts[2]) if parts.size() > 2 else &"version")
+				if why != "":
+					printerr("tour: stale %s: %s" % [parts[1], why])
+				ok = why == ""
 			"echo":
 				print("tour: ", line.substr(5))
 			"key":

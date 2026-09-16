@@ -59,7 +59,7 @@ func test_save_asks_before_writing_over_and_load_says_what_cannot_be_read() -> v
 	s.select(&"slot_2")
 	check(not UiMenu.enabled(s.menu.selected()), "a damaged slot is faded")
 	s.handle(&"confirm")
-	eq(s.note, "Slot 2 is damaged and cannot be read.", "and says so plainly")
+	eq(s.note, "Slot 2 cannot be read.", "and says so plainly")
 	eq(fake.loads, [], "nothing loads from them")
 	s.select(&"slot_1")
 	s.handle(&"confirm")

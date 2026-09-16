@@ -122,6 +122,35 @@ func test_the_running_game_autosaves_on_sleep_but_not_with_a_machine_on_it() -> 
 	Sx.finish()
 
 
+func test_no_autosave_under_the_loading_page_either() -> void:
+	Sx.use_root("autosave-boot-page")
+	var g := Sx.game(tree, ["--seed=1", "--size=48"])
+	var saver := Sx.system(g, "05_save")
+	var written: Array = []
+	saver.connect("wrote", func(slot: int, reason: StringName) -> void: written.append([slot, reason]))
+	var mobs := Sx.system(g, "30_mobs")
+	mobs.get("coast").set("spawning", false)
+	g.player.sim.clear_mobs()
+	# The loading page draws over the first frames of every start, and the first
+	# autosave of a game falls due early enough to land under it on a machine
+	# slow to lift it. Its picture would be the page, not the world.
+	var page := Node.new()
+	page.add_to_group(&"boot_page")
+	tree.root.add_child(page)
+	g.clock.minutes += AutosaveRules.EVERY_MINUTES + 1.0
+	await _frames(10)
+	check(bool(saver.call("calm")), "it is calm")
+	check(bool(saver.call("under_boot_page")), "but the loading page is still up")
+	check(not bool(saver.call("quiet")), "so it is not quiet")
+	eq(written, [], "and no autosave is taken under it")
+	tree.root.remove_child(page)
+	page.free()
+	await _until(func() -> bool: return not written.is_empty(), 60)
+	eq(written, [[SaveSlots.AUTO, &"hours"]], "once the page has lifted")
+	Sx.end(g)
+	Sx.finish()
+
+
 func test_no_autosave_under_an_open_page_nor_on_the_frame_it_closes() -> void:
 	Sx.use_root("autosave-page")
 	var g := Sx.game(tree, ["--seed=1", "--size=48"])

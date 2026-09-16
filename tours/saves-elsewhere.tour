@@ -1,0 +1,113 @@
+# A save this build will not open: what the player is told, through the real keys.
+#
+#   tools/tour.sh tours/saves-elsewhere.tour --seed=1 --hour=10 --weather=clear:0
+#
+# A save keeps only its seed and grows the world again when it is opened, so a
+# build whose landscape registry has moved makes a DIFFERENT island from that
+# seed (adding salt_flats and scrapwood moved 9% of every world's tiles). The
+# save is not opened onto ground that moved; it is named, and the reason is on
+# the glass. This tour writes its own saves through the app's own keys and then
+# ages them with `stale`, because no boot flag can fake a save an older build
+# wrote and a save written by hand would not be the same file.
+#
+# Both lines of the guard are walked:
+#   slot 1, `stale version`   -> a file with no stamp at all, what every save on
+#                                a player's disk today is: refused before it boots
+#   slot 2, `stale landscape` -> the stamp still this build's, the ground under it
+#                                moved: caught only once the world is grown, so
+#                                the game hands back to the title with the reason
+coast calm
+# Walk first, and shoot the world, before anything is pressed. The runner gives
+# the loading page 30 s to lift and then goes on regardless; pausing while it is
+# still up stops the game the page is waiting on, and the page never lifts, so
+# every frame after it is a picture of the page. Walking is real input that
+# costs real seconds and cannot do that, and 00 is the frame that says the world
+# is up: if it is the loading page, the machine is too loaded to prove anything
+# and the run is not evidence.
+wait 2
+walk 1,0 1.5
+walk -1,0 1.5
+shot 00-standing-in-the-world
+wait 1
+tap pause
+wait 1
+choose saves
+tap use
+await app:saves 4
+wait 0.4
+# Two saves of this game, both this build's, both of this island. An empty slot
+# is written at once; one an earlier run of this tour left asks first, and the
+# second press writes over it.
+choose slot_1
+try 2
+tap use
+await saved 2
+end
+wait 0.5
+choose slot_2
+try 2
+tap use
+await saved 2
+end
+wait 0.5
+# Slot 1 goes back to a file from before the stamp existed.
+stale 1 version
+# Right turns the app from saving to loading, and reads the slots again.
+tap move_right
+wait 0.5
+choose slot_1
+wait 0.5
+# The game is still there — its picture, its day, where it stood — and under it
+# the whole reason this build will not open it.
+shot 01-another-island
+tap use
+wait 0.8
+# Pressing load anyway: refused, and said again on the key strip.
+shot 02-refused
+# Slot 2 was written by THIS build, on THIS island, and still opens: nothing was
+# broken for the saves that are still this world's.
+choose slot_2
+wait 0.4
+shot 03-the-one-that-still-opens
+tap use
+await game 30
+coast calm
+# A load starts its own loading page, so the same rule holds here: walk in the
+# world that came back before shooting it.
+walk 1,0 1.5
+walk -1,0 1.5
+wait 4
+shot 04-loaded
+# --- the second line: ground that moved under a save the stamp cannot see -----
+# No stamp can see into the worldgen stages, so this is caught only after the
+# world has been grown and the game is already booting. It does not play on: it
+# takes no save of its own, and hands back to the title.
+stale 2 landscape
+tap pause
+wait 1
+choose saves
+tap use
+await app:saves 4
+wait 0.4
+tap move_right
+wait 0.5
+choose slot_2
+wait 0.4
+tap use
+await title 40
+wait 2
+# The title, with the whole reason on its glass in the same amber the saves app
+# says it in — not a line in the key strip the player cannot read the rest of.
+shot 05-handed-back
+key pause
+wait 1
+# Back on the list. Continue is faded: slot 1 has no stamp, slot 2 is the one
+# this build has just tried and turned away, and nothing else holds a game.
+shot 06-continue-faded
+key move_down
+key use
+wait 1
+# And the whole reason comes back whenever it is asked for, so a player whose
+# only save is one of these is never left with a row they cannot press and no
+# account of why.
+shot 07-the-reason-again

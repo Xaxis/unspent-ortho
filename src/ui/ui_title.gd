@@ -286,14 +286,17 @@ func _start_game() -> void:
 	o.seed_value = seed_value
 	o.size = options.size
 	if _continue_slot >= 0:
-		var why := SaveSlots.options_for(_continue_slot, o)
+		var slot := _continue_slot
+		var why := SaveSlots.options_for(slot, o)
 		_continue_slot = -1
 		if why != "":
-			# It could be read a moment ago; say so and stay on the title.
+			# It could be read a moment ago; say so and stay on the title. The whole
+			# reason goes on the page: these sentences are three times the width of
+			# the key strip (tests/save/test_problem_fits.gd).
 			_starting = false
 			_fade_to = 0.0
 			menu.refresh()
-			menu.refuse(why)
+			menu.refuse_save(slot, why)
 			return
 	else:
 		# A new game starts as the master configuration says (docs/DEV.md).

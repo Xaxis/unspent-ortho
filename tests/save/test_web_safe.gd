@@ -11,6 +11,9 @@ const FILES: Array[String] = [
 	"res://src/core/save/save_file.gd",
 	"res://src/core/save/save_slots.gd",
 	"res://src/core/save/save_core.gd",
+	# On the save path since the stamp: SaveFile.write and every read spell it out.
+	"res://src/core/save/world_stamp.gd",
+	"res://src/core/save/save_staging.gd",
 	"res://src/core/save/autosave_rules.gd",
 	"res://src/systems/05_save.gd",
 	"res://src/ui/ui_saves_screen.gd",
