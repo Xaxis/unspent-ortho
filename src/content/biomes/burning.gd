@@ -84,11 +84,11 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
 	var g := Ground.ASH
-	if t.shore:
+	if f & BiomeSurface.SHORE != 0:
 		g = Ground.CLINKER if gb > 0.0 else Ground.SHINGLE
-	elif t.apron:
+	elif f & BiomeSurface.APRON != 0:
 		g = Ground.SCREE
 	elif t.flow > 0.65 - (0.1 if t.rim_dist < t.crater * 0.8 else 0.0) + maxf(0.0, t.heart_dist - t.crater * 3.0) * 0.004:
 		g = Ground.CLINKER

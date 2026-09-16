@@ -74,12 +74,12 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
-	if t.shore:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
-	if t.bank and gb > 0.0:
+	if f & BiomeSurface.BANK != 0 and gb > 0.0:
 		return Ground.GRAVEL
 	if rs < -0.4 - gb * 0.3:
 		# Green dales between the pavements, heath where they widen.

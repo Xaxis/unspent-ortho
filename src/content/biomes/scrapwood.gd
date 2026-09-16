@@ -113,13 +113,13 @@ static func make() -> BiomeDef:
 
 ## Swarf under the canopy, mulch in the hollows, and the clearings the machines
 ## cut and never came back to.
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
 	var i := t.i
-	if t.shore:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE if gb > 0.0 else Ground.SAND
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
-	if t.bank:
+	if f & BiomeSurface.BANK != 0:
 		return Ground.MUD
 	if rs < -0.8 and gb < -0.2:
 		# Standing water in the bottoms, gone black with what leached into it.

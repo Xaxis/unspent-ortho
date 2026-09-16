@@ -73,16 +73,16 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
 	var i := t.i
 	var cx := t.convex[i]
-	if t.shore:
+	if f & BiomeSurface.SHORE != 0:
 		if cx > 0.64:
 			return Ground.MUD
 		if cx < 0.47 or gb > 0.45:
 			return Ground.SHINGLE
 		return Ground.SAND
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SHINGLE if t.level <= 2 else Ground.SCREE
 	if t.marsh[i] <= 3 + int(maxf(0.0, gb + 0.3) * 6.0) and t.level <= 2:
 		return Ground.MUD

@@ -121,12 +121,12 @@ static func make() -> BiomeDef:
 
 ## Crust almost everywhere; the pans are where the ground lies low and damp, and
 ## the rim of the basin comes up through it as gravel and bleached grass.
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
-	if t.shore:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE if gb > 0.1 else Ground.SAND
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
-	if t.bank:
+	if f & BiomeSurface.BANK != 0:
 		# A stream that reaches the flat sinks into it and stains the pan.
 		return Ground.PAN
 	if rs > 0.9 + gb * 0.5 or e >= 5.5:

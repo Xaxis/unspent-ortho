@@ -215,6 +215,13 @@ static func _ensure() -> void:
 		_defs[d.id] = d
 
 
+## Every landscape's file. A world cannot be made without compiling all of
+## them, so whoever starts a world can ask for them early and compile them
+## beside everything else instead of stopping to do it (BootPage).
+static func scripts() -> PackedStringArray:
+	return _files()
+
+
 ## Every biome file, sorted so discovery does not depend on the filesystem.
 static func _files() -> PackedStringArray:
 	var out := PackedStringArray()

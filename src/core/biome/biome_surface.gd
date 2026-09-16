@@ -9,16 +9,24 @@ extends RefCounted
 ## it, `gb` the broad mass field. Everything rarer is on the sample, indexed by
 ## `i`:
 ##
-##     static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
-##         if t.shore:
+##     static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+##         if f & BiomeSurface.SHORE != 0:
 ##             return Ground.SHINGLE
 ##         return Ground.HEATH if rs > 0.4 else Ground.GRASS
 ##
+## `f` carries the three places a tile can be that every recipe asks about,
+## as bits, for the same reason.
 ## Everything here is smooth at the scale of a walk (docs/ART.md: grounds are
 ## washes, not salad). There is deliberately no per-tile noise and no integer
 ## level on this sample: a recipe that wants variety asks `big`, `rise`,
 ## `forest` or a distance, so its grounds mass into shapes the mesher can draw
 ## as long curves.
+
+## Bits of the `f` argument: within two tiles of a beach, at the foot of a tall
+## face, beside a river.
+const SHORE := 1
+const APRON := 2
+const BANK := 4
 
 ## The tile, as an index into every field below.
 var i := 0
@@ -43,10 +51,6 @@ var marsh: PackedByteArray
 
 ## Integer level of the tile.
 var level := 0
-## Within two tiles of a beach, at the foot of a tall face, beside a river.
-var shore := false
-var apron := false
-var bank := false
 ## How far this tile has turned toward the type across the nearest border
 ## (0.5 on the border), and the two types themselves.
 var blend := 0.0

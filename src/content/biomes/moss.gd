@@ -75,10 +75,10 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
-	if t.shore:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.MUD if gb > -0.25 else Ground.SAND
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.PEAT
 	if e >= 5.0 and rs > 0.3 and gb > -0.1:
 		return Ground.HEATH

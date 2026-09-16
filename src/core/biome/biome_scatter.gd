@@ -43,10 +43,7 @@ var sea_steps: PackedByteArray
 
 # --- this tile ------------------------------------------------------------
 
-var ground := 0
 var level := 0
-## The tile's hash in [0, 1).
-var roll := 0.0
 ## Levels the tallest neighbour stands above this tile.
 var up := 0
 ## Beside running water, beside still water.

@@ -81,12 +81,12 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
-	if t.shore:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.ICE if gb > 0.15 else Ground.SHINGLE
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
-	if t.bank:
+	if f & BiomeSurface.BANK != 0:
 		return Ground.GRAVEL
 	if (e >= 11.5 and gb > 0.35) or rs > 1.8 + gb * 0.8:
 		# Wind strips the crests to rock.

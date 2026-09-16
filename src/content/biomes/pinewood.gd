@@ -68,13 +68,13 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float, f: int) -> int:
 	var i := t.i
-	if t.shore:
+	if f & BiomeSurface.SHORE != 0:
 		return Ground.SHINGLE if gb > 0.0 else Ground.SAND
-	if t.apron:
+	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
-	if t.bank and gb > 0.25:
+	if f & BiomeSurface.BANK != 0 and gb > 0.25:
 		return Ground.GRAVEL
 	if rs < -0.75 and gb < -0.15:
 		# Bog in the bottom of the wood.

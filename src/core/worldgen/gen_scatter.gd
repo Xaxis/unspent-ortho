@@ -712,9 +712,7 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				var wc := water[i - size]
 				var wd := water[i + size]
 				t.i = i
-				t.ground = g
 				t.level = l
-				t.roll = r
 				t.up = maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
 				t.bank = wa == 1 or wb == 1 or wc == 1 or wd == 1
 				t.pool = wa == 2 or wb == 2 or wc == 2 or wd == 2

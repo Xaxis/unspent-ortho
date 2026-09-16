@@ -282,9 +282,6 @@ static func run(c: GenContext) -> void:
 				else:
 					t.i = i
 					t.level = l
-					t.shore = shore
-					t.apron = apron
-					t.bank = bank
 					t.blend = bl
 					if own != last_own:
 						last_own = own
@@ -301,7 +298,7 @@ static func run(c: GenContext) -> void:
 					if cc != last_recipe:
 						last_recipe = cc
 						recipe_fn = surf[cc]
-					g = recipe_fn.call(t, e, rs, gb)
+					g = recipe_fn.call(t, e, rs, gb, (BiomeSurface.SHORE if shore else 0) | (BiomeSurface.APRON if apron else 0) | (BiomeSurface.BANK if bank else 0))
 				if cc != own and bl < 0.32 and not shore and not rim:
 					# Out in the far half of an ecotone the neighbour arrives as its
 					# plain wash first; its dark and broken grounds (peat hags, mud,
