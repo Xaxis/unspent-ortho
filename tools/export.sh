@@ -6,11 +6,23 @@
 #   tools/export.sh all
 # Add --debug for a debug template. Web builds get .br and .gz siblings of the
 # big files so a server can send them precompressed (tools/web.sh does).
+#
+# --config=NAME makes the build from a master configuration (configs/NAME.json,
+# docs/DEV.md). Every build is stamped, with a configuration or without one: the
+# stamp (src/dev/stamp_build.gd) is written to stamp/build.json for the export to
+# pack, taken away again after, and kept beside the build as build.json with the
+# sizes, so the shelf, a note and the running build all say what it is.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 target="${1:-web}"; shift || true
 mode=release
-for a in "$@"; do [ "$a" = "--debug" ] && mode=debug; done
+config=""
+for a in "$@"; do
+  case "$a" in
+    --debug) mode=debug ;;
+    --config=*) config="${a#--config=}" ;;
+  esac
+done
 
 # Fail up front, in one line, on anything this script runs that is missing: a
 # missing brotli used to fail silently in a background job and leave wrong sizes.
@@ -23,13 +35,69 @@ need() {
 }
 
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
-bytes() { stat -f %z "$1" 2>/dev/null || stat -c %s "$1"; }
+bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
+
+# The stamp is packed from inside the project, so it is taken away however the
+# script ends: a run from source must never find one lying about. Two exports in
+# one copy of the game would pack each other's stamp, so they take turns: the
+# lock is a directory (made atomically), and one older than an hour was left by a
+# run that died without its trap.
+STAMP=stamp/build.json
+LOCK=build/.export-lock
+mkdir -p build
+waited=0
+until mkdir "$LOCK" 2>/dev/null; do
+  if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then rm -rf "$LOCK"; continue; fi
+  [ $waited -eq 0 ] && echo "export waiting: another export is running in this copy ($LOCK)"
+  waited=$((waited + 1))
+  [ $waited -gt 1200 ] && { echo "export FAILED: $LOCK held for 20 minutes"; exit 1; }
+  sleep 1
+done
+trap 'rm -rf stamp "$LOCK"' EXIT
+
+stamp_one() {
+  local stamp_target="$1"
+  local commit dirty=()
+  commit="$(git rev-parse --short HEAD 2>/dev/null || echo "")"
+  [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && dirty=(--dirty)
+  local out
+  out="$(godot --headless --path . -s src/dev/stamp_build.gd -- "--config=$config" "--target=$stamp_target" \
+    "--template=$mode" "--commit=$commit" ${dirty[@]+"${dirty[@]}"} "--out=$STAMP" 2>&1)"
+  if ! grep -q '^stamp ok' <<<"$out"; then
+    grep -E 'stamp FAILED|SCRIPT ERROR' <<<"$out" | head -5
+    echo "export FAILED: no stamp for $stamp_target${config:+ (config $config)}"
+    return 1
+  fi
+  grep '^stamp ok' <<<"$out"
+}
+
+# build.json beside a build: the stamp, how long the export took, and the sizes.
+manifest() {
+  local dir="$1" seconds="$2"
+  python3 - "$STAMP" "$dir" "$seconds" <<'PY'
+import json, os, sys
+stamp, d, secs = sys.argv[1], sys.argv[2], float(sys.argv[3])
+data = json.load(open(stamp))
+data["seconds"] = round(secs, 1)
+sizes = {}
+for root, _, files in os.walk(d):
+    for f in files:
+        if f == "build.json" or f.endswith((".br", ".gz")):
+            continue
+        p = os.path.join(root, f)
+        sizes[os.path.relpath(p, d)] = os.path.getsize(p)
+data["bytes"] = sum(sizes.values())
+data["sizes"] = {k: v for k, v in sizes.items() if v >= 1 << 20 or k.endswith((".html", ".pck"))}
+json.dump(data, open(os.path.join(d, "build.json"), "w"), indent="\t", sort_keys=True)
+PY
+}
 
 export_one() {
-  local preset="$1" out="$2"
+  local preset="$1" out="$2" stamp_target="$3"
   local dir; dir="$(dirname "$out")"
+  stamp_one "$stamp_target" || return 1
   rm -rf "$dir"; mkdir -p "$dir"
-  local log; log="$(mktemp -t unspent-export)"
+  local log; log="$(mktemp "${TMPDIR:-/tmp}/unspent-export.XXXXXX")"
   local t0; t0=$(python3 -c 'import time; print(time.time())')
   godot --headless --path . "--export-$mode" "$preset" "$out" >"$log" 2>&1
   local code=$?
@@ -39,6 +107,8 @@ export_one() {
     echo "export FAILED: $preset -> $out"; rm -f "$log"; return 1
   fi
   rm -f "$log"
+  manifest "$dir" "$(echo "$t1 - $t0" | bc)" || { echo "export FAILED: no build.json in $dir"; return 1; }
+  rm -f "$STAMP"
   printf "export %s -> %s in %.1f s\n" "$preset" "$dir" "$(echo "$t1 - $t0" | bc)"
 }
 
@@ -73,13 +143,13 @@ report_web() {
 
 build_web() {
   local preset="$1" dir="$2"
-  export_one "$preset" "$dir/index.html" || return 1
+  export_one "$preset" "$dir/index.html" "$3" || return 1
   compress_web "$dir" || return 1
   report_web "$dir"
 }
 
 build_mac() {
-  export_one "macOS" "build/mac/UNSPENT.app" || return 1
+  export_one "macOS" "build/mac/UNSPENT.app" mac || return 1
   local app=build/mac/UNSPENT.app
   printf "  app %s (pck %s)\n" "$(du -sh "$app" | cut -f1)" "$(human "$(bytes "$app/Contents/Resources/UNSPENT.pck")")"
 }
@@ -91,9 +161,9 @@ esac
 mkdir -p build && touch build/.gdignore
 tools/_import.sh
 case "$target" in
-  web) build_web "Web" build/web ;;
-  web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;
+  web) build_web "Web" build/web web ;;
+  web-nothreads) build_web "Web (no threads)" build/web-nothreads web-nothreads ;;
   mac) build_mac ;;
-  all) build_web "Web" build/web && build_web "Web (no threads)" build/web-nothreads && build_mac ;;
-  *) echo "usage: tools/export.sh web|web-nothreads|mac|all [--debug]"; exit 2 ;;
+  all) build_web "Web" build/web web && build_web "Web (no threads)" build/web-nothreads web-nothreads && build_mac ;;
+  *) echo "usage: tools/export.sh web|web-nothreads|mac|all [--debug] [--config=NAME]"; exit 2 ;;
 esac

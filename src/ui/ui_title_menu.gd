@@ -1,7 +1,7 @@
 class_name UiTitleMenu
 extends UiScreen
 ## The title's slate: it wakes over the drifting coast, UNSPENT on its glass
-## and under it new game, the coast's seed (left/right draws another), the
+## and under it new game, which island to play (left/right draws another), the
 ## keys, quit. Waking is a sequence of its own: the glass dark, a line of light
 ## across its middle opening out, the scan running down, then the words.
 ## With a game saved, continue heads the list (the newest readable save) and a
@@ -57,7 +57,7 @@ func _init() -> void:
 func refresh() -> void:
 	var rows: Array[Dictionary] = [
 		{"id": &"new", "text": "new game"},
-		{"id": &"seed", "text": "coast"},
+		{"id": &"seed", "text": "island"},
 		{"id": &"controls", "text": "controls"},
 		{"id": &"quit", "text": "quit"},
 	]
@@ -190,7 +190,12 @@ func _process(delta: float) -> void:
 	super(delta)
 	if not is_open:
 		return
-	if not sleeping:
+	if not sleeping and title != null and title.dev != null and title.dev.is_open():
+		# Dev mode's app has the keys; what is held is still noted, or the key that
+		# shuts it would read as a fresh press on this list the frame after.
+		for pair: Array in KEYS:
+			_was[pair[0]] = Input.is_action_pressed(pair[0])
+	elif not sleeping:
 		_read_keys()
 	var before := awake_for
 	if not _held_wake:
@@ -229,7 +234,7 @@ func _draw() -> void:
 	var g := UiSlate.glass_of(DEVICE)
 	if not is_lit() and wake_stage()[1] <= 0.0:
 		return
-	UiSlate.status(self, &"", "coast %d" % (title.seed_value if title != null else 0), 1.0, DEVICE, false)
+	UiSlate.status(self, &"", "island %d" % (title.seed_value if title != null else 0), 1.0, DEVICE, false)
 	if page == "keys":
 		UiPauseScreen.draw_keys_list(self, Vector2i(g.position.x + UiSlate.MARGIN_L + 4, g.position.y + UiSlate.STATUS_H + 8), 52)
 		draw_keys([["esc", "back"]])
@@ -256,18 +261,21 @@ func _draw() -> void:
 			UiSlate.row_bar(self, x0 - 8, x1, top)
 		var text: String = row.text
 		if row.id == &"seed" and title != null:
-			text = "coast %d" % title.seed_value
-			if chosen:
-				UiDraw.text(self, Vector2i(x1 - 18, top), "<", UiTheme.TEXT_DIM)
-				UiDraw.text(self, Vector2i(x1 - 8, top), ">", UiTheme.TEXT_DIM)
+			# Which island a new game is played on. The arrows are drawn whether or
+			# not this row is the one chosen: hidden until then, the row read as a
+			# menu entry nobody could explain rather than as something to turn.
+			text = "island %d" % title.seed_value
+			var arrows := UiTheme.TEXT if chosen else UiTheme.TEXT_DIM
+			UiDraw.text(self, Vector2i(x1 - 18, top), "<", arrows)
+			UiDraw.text(self, Vector2i(x1 - 8, top), ">", arrows)
 		var ink := (UiTheme.BRIGHT if chosen else UiTheme.TEXT) if UiMenu.enabled(row) else UiTheme.TEXT_DIM
 		UiDraw.text(self, Vector2i(x0, top), text, ink)
 	if photo.has_area():
 		_draw_saved(photo)
 	var keys := [["e", "choose"]]
 	if menu.selected().get("id") == &"seed":
-		# Left and right only do something on the coast row.
-		keys.append(["a d", "another coast"])
+		# Left and right only do something on the island row.
+		keys.append(["a d", "another island"])
 	draw_keys(keys)
 
 

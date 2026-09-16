@@ -19,7 +19,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 tools/_import.sh
-log="$(mktemp -t unspent-audio)"
+log="$(mktemp "${TMPDIR:-/tmp}/unspent-audio.XXXXXX")"
 godot --headless --path . -s tools/gd/audio_dump.gd -- "$@" >"$log" 2>&1
 code=$?
 if grep -qE 'SCRIPT ERROR|Parse Error|Compile Error' "$log"; then

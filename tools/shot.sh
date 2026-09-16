@@ -9,12 +9,14 @@ out="$1"; shift
 rm -f "$out"
 tools/_import.sh
 . tools/_focus.sh
-log="$(mktemp -t unspent-shot)"
+. tools/_slack.sh
+log="$(mktemp "${TMPDIR:-/tmp}/unspent-shot.XXXXXX")"
+focus_guard_start
 holder="$(focus_holder)"
-godot --path . --position 40,40 -- --shot="$out" "$@" >"$log" 2>&1 &
+godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" -- --shot="$out" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
-deadline=$(( $(date +%s) + ${SHOT_TIMEOUT:-60} ))
+deadline=$(( $(date +%s) + $(slack_secs "${SHOT_TIMEOUT:-60}") ))
 status=0
 while kill -0 "$pid" 2>/dev/null; do
   if grep -qE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error' "$log"; then
