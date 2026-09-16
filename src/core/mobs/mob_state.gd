@@ -87,6 +87,20 @@ var landed_at := -INF
 ## How it takes the player (VISION §2): &"hostile" hunts, &"indifferent" works
 ## on unless disturbed, &"observant" watches and reports, &"wary" keeps a site.
 var disposition: StringName = &"hostile"
+## Its place in the machines' plan (Roles): worker keeper watcher hunter recycler.
+## The role never changes; the disposition above is what the role, the region's
+## interference and what the player has done to this body add up to.
+var role: StringName = &"hunter"
+## How sure it is that something is there, 0..1. Sight fills it in one beat;
+## a noise fills it slowly, and it drains when nothing comes of it. At 1 the
+## body is sure and the alert pose snaps (drawn on the machine, never as text).
+var suspicion := 0.0
+## Where the last noise it heard came from, and the sim ms until which its
+## optics are turned that way.
+var heard_at := Vector2.ZERO
+var look_until := -INF
+## Why it turned on the player, for the interference the network files.
+var disturbed_by: StringName = &""
 ## An indifferent body the player has disturbed (struck it, stood in its way):
 ## it is hostile until it loses them.
 var disturbed := false
@@ -138,7 +152,11 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	var hy := floori(at.y * 8.0)
 	phase_ms = int(Rng.hash01(seed_value, hx, hy, 0x10) * 1000.0)
 	facing = Rng.hash01(seed_value, hx, hy, 0x11) * TAU
+	# The bearing it keeps while nothing is happening: a charge overwrites this
+	# when it commits, and a body that sweeps its optics sweeps about it.
+	bearing = Vector2.from_angle(facing)
 	mood = WORKING if approach == &"errand" else IDLE
+	role = Roles.of_row(row)
 	disposition = Roster.disposition(kind_id)
 	aim = facing
 	last_think_pos = at

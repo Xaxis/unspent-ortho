@@ -39,6 +39,10 @@ const ALIAS := {
 	&"ask_fire": &"ui_move",
 	# fight: a taking with no mob found to say whose.
 	&"snatch": &"grip",
+	# disposition: a works sounding off over the land when its network files
+	# something. A watcher's signal tone, heard from a long way away; it wants a
+	# horn of its own on the sheet.
+	&"works_horn": &"watcher_call",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
@@ -71,6 +75,8 @@ const EMITTED: Array[StringName] = [
 	&"build_bench", &"build_kiln", &"regrow", &"lamp_out", &"collapse", &"make", &"hone", &"reedge",
 	# sky (10_sky.gd, 15_lights.gd)
 	&"lamp_on", &"lamp_off",
+	# disposition (32_disposition.gd)
+	&"works_horn",
 	# ui
 	&"menu_move", &"menu_select", &"open_book", &"close_book", &"refused",
 	# slate (src/ui, src/systems/90_ui.gd)

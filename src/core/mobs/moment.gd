@@ -10,6 +10,20 @@ var minutes := 8.0 * 60.0
 var lamp_lit := false
 var filed := 0
 var laden_tier := 0
+## --- what the player is doing about being noticed (StealthQuery reads) ---
+## Down in the heather: seen and heard less far, and slower.
+var crouched := false
+## 0..1 where the player stands, from the ground, what grows there and the
+## night (Cover.at). A lit lamp is no cover: it is already 0 then.
+var cover := 0.0
+## Machines misread the player as one of their own (Body.spoof_until).
+var spoofed := false
+## How loud the player is, against a walk on plain ground (StealthNoise.loudness):
+## 1 walking, about 0.3 standing still, less crouched or on moss, more running
+## on shingle. It is the whole of what shortens hearing.
+var loudness := 1.0
+## 0..1 in the plan network the player stands in (Interference).
+var interference := 0.0
 ## Weather kind (lowercase: fair grey rain storm fog snow hail sand heat ...), strength 0..1, wind -1..1.
 var weather: StringName = &"fair"
 var weather_strength := 0.0

@@ -133,7 +133,24 @@ static func _build() -> Dictionary:
 		_o(&"gather", &"deadwood", 1, 5.0, 72.0, {"keep": true})]
 	t[PropKind.STUMP] = [_o(&"fell", &"timber", 1, 14.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 48.0, {"keep": true})]
+	# The machines' own works are made of the best parts on the coast, and they
+	# are not abandoned: taking from one is theft, and the plan's network files
+	# it (Interference). The thing is left standing, opened and short a part.
+	for k: int in [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR, PropKind.PIPE,
+			PropKind.INTAKE, PropKind.CHECKPOINT]:
+		t[k] = [_o(&"turn", &"scrap", 1, 12.0, 96.0, {"keep": true, "uses": 2})]
 	return t
+
+
+## The works of the plan: what a machine would take it amiss to be robbed of
+## (VISION §2, "take its parts"). Used by the disposition package.
+const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
+	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.PUMP_HOUSE,
+	PropKind.DRILL_RIG, PropKind.STACK, PropKind.PYLON, PropKind.VENT_CAP]
+
+
+static func is_plan_work(kind: int) -> bool:
+	return PLAN_WORKS.has(kind)
 
 
 static func workable(kind: int) -> bool:

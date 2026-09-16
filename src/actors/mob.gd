@@ -14,6 +14,13 @@ extends Node3D
 
 ## An opening older than this when first drawn is not flared (a view catching up).
 const OPEN_FLARE_MS := 200.0
+## A machine making up its mind (MobState.suspicion) says so on its own body:
+## the working part catches, slowly at the first stir and fast when it is
+## nearly sure, and the body stands and looks where the noise came from. Never
+## a word on screen (docs/VISION.md §2).
+const SUSPECT_SLOW_MS := 560.0
+const SUSPECT_FAST_MS := 130.0
+const SUSPECT_FLOOR := 0.05
 ## A body that is killed folds down flat and over onto its side in this long, so
 ## from the camera above a dead machine never stands as it did alive.
 const FOLD_MS := 300.0
@@ -47,6 +54,8 @@ var _flared_for := 0.0
 var _hunting := -1
 ## The opening (MobState.opened_at) this view has already flared the part for.
 var _opened_for := -INF
+## Sim ms at which the suspicion flicker next catches.
+var _suspect_at := -INF
 
 
 ## `figure`: a body to draw with instead of FigureModel.create (tests).
@@ -113,6 +122,9 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 		_opened_for = s.opened_at
 		model.flare_part()
 		flare = true
+	if _suspecting(now_ms, lit):
+		model.flare_part()
+		flare = true
 	if delta > 0.0:
 		model.animate(delta, s.speed)
 	elif flare:
@@ -122,6 +134,19 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	if flashing != _flashing:
 		_flashing = flashing
 		MobFx.set_flash(model, flashing)
+
+
+## Is the working part due to catch again? A body that is sure of the player
+## is past this: from then on it is the alert pose and the eyes that say so.
+func _suspecting(now_ms: float, lit: bool) -> bool:
+	var s := state
+	if not (s.alive and s.machine and lit) or s.roused() or s.suspicion <= SUSPECT_FLOOR:
+		_suspect_at = -INF
+		return false
+	if now_ms < _suspect_at:
+		return false
+	_suspect_at = now_ms + lerpf(SUSPECT_SLOW_MS, SUSPECT_FAST_MS, clampf(s.suspicion, 0.0, 1.0))
+	return true
 
 
 func _pose(now_ms: float) -> StringName:
@@ -142,6 +167,9 @@ func _pose(now_ms: float) -> StringName:
 		return &"stand"
 	if s.crowded_since >= 0.0 or (now_ms < s.glance_until and s.speed <= 0.2):
 		# A worker held up by someone in its way, or one standing that looked up.
+		return &"alert"
+	if now_ms < s.look_until and s.speed <= 0.2:
+		# It heard something: stopped, stood up and put its optics on it.
 		return &"alert"
 	match s.mood:
 		MobState.ALERTED:

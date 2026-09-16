@@ -31,6 +31,18 @@ const CROWD_AHEAD := 1.1
 ## How long a body that noticed the player only looks up, and how long before it looks again.
 const GLANCE_MS := 900.0
 const GLANCE_AGAIN_MS := 5000.0
+## Suspicion per beat (MobState.suspicion, 0..1; 1 = sure, and the alert snaps).
+## Seen in the open it is sure at once, as it always was; something low in the
+## heather takes three beats to be sure of, and a noise on its own four.
+const SEEN_RISE := 1.0
+const HIDDEN_RISE := 0.4
+const NOISE_RISE := 0.28
+## What drains per beat when nothing comes of it: about two seconds to settle.
+const SUSPICION_FADE := 0.05
+## The player is hidden enough for it to have to look twice at this much cover.
+const HIDDEN_COVER := 0.15
+## How long a body keeps its optics on the last noise (sim ms).
+const LOOK_MS := 3500.0
 
 var world: WorldData
 var query: WorldQuery
@@ -46,6 +58,12 @@ var real_s := 0.0
 var out: Array[Dictionary] = []
 ## The view is holding still (hitstop, or a held moment for a shot); nothing steps.
 var hold := false
+## The last noise the player made: where it happened, how far it carries
+## (StealthNoise, tiles) and the sim ms it was made. Bodies near enough turn their
+## optics to it and grow suspicious; it fades after StealthNoise.FRESH_MS.
+var noise_at := Vector2.ZERO
+var noise_radius := 0.0
+var noise_ms := -INF
 
 var fight_on := false
 var fight_started := 0.0
@@ -218,7 +236,12 @@ func _beat() -> void:
 	for m in mobs:
 		if not m.alive or m.removed:
 			continue
-		var noticed := now >= m.calm_until and Senses.notices(m.row, m.pos, hero.pos, moment, world, query)
+		# A body at its work reads only what its own optics cover (StealthQuery's
+		# cone); one that already has the player keeps track of them all round.
+		var at_work := m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING)
+		var look := m.facing if at_work else NAN
+		var noticed := now >= m.calm_until and StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look)
+		_suspicion(m, noticed)
 		if noticed:
 			m.lost_beats = 0
 			m.last_seen = hero.pos
@@ -235,7 +258,8 @@ func _beat() -> void:
 						# It sees you and goes on with its work: looked at, not hunted.
 						m.glance_until = now + GLANCE_MS
 						emit(&"noticed", {"mob": m})
-				elif noticed:
+				elif m.suspicion >= 1.0:
+					# Sure. The alert pose snaps on the body itself (Mob); nothing is said.
 					m.set_mood(MobState.ALERTED, now)
 					emit(&"alerted", {"mob": m})
 			MobState.ALERTED:
@@ -283,6 +307,51 @@ func _beat() -> void:
 						m.set_mood(MobState.IDLE, now)
 
 
+## How sure a body is, beat by beat, and where it is looking while it makes up
+## its mind. Seen in the open it is sure at once (nothing about a fight
+## changes); low in the heather it has to look twice; a noise out of sight
+## turns its optics that way and, kept up, brings it over. Drawn on the machine
+## (Mob): the working part flickers with it, and the alert snaps at 1.
+func _suspicion(m: MobState, noticed: bool) -> void:
+	if not m.machine and not noticed:
+		# A creature is sure or it is not: suspicion is a machine's reading.
+		m.suspicion = 0.0
+		return
+	if noticed:
+		var hidden := moment.crouched or moment.cover > HIDDEN_COVER
+		m.suspicion = minf(1.0, m.suspicion + (HIDDEN_RISE if hidden else SEEN_RISE))
+		m.heard_at = hero.pos
+		return
+	if now - noise_ms < StealthNoise.FRESH_MS and StealthQuery.hears_noise(m.row, m.pos, noise_at, noise_radius, moment):
+		if m.look_until <= now or m.heard_at.distance_squared_to(noise_at) > 1.0:
+			emit(&"heard", {"mob": m, "at": noise_at})
+		m.heard_at = noise_at
+		m.look_until = now + LOOK_MS
+		m.suspicion = minf(1.0, m.suspicion + NOISE_RISE)
+		return
+	m.suspicion = maxf(0.0, m.suspicion - SUSPICION_FADE)
+
+
+## The player made a noise at `at` that carries `radius` tiles (StealthNoise). Every
+## body near enough turns to it on the next beat.
+func make_noise(at: Vector2, radius: float) -> void:
+	if radius <= noise_radius and now - noise_ms < FightRules.BEAT_MS:
+		# Two noises in one beat: the louder one is the one that is heard.
+		return
+	noise_at = at
+	noise_radius = radius
+	noise_ms = now
+
+
+## The player has done something to this body that its role takes amiss
+## (Roles.TURNS: blocked, damaged, theft, trespass, curfew). A body that does
+## not care goes on working; a worker robbed of its parts turns.
+func disturb(m: MobState, cause: StringName) -> void:
+	if not m.alive or m.removed:
+		return
+	_wake(m, cause)
+
+
 ## An indifferent worker on its round with the player planted on its path: it
 ## stops (the brain) and, held up past CROWD_MS, takes it as interference and
 ## turns on them. The way is measured along the round it walks, never along
@@ -302,7 +371,7 @@ func _crowding(m: MobState) -> void:
 		m.crowded_since = now
 		emit(&"crowded", {"mob": m})
 	elif now - m.crowded_since >= CROWD_MS:
-		_wake(m)
+		_wake(m, &"blocked")
 	elif not m.crowd_warned and now - m.crowded_since >= CROWD_MS * 0.5:
 		m.crowd_warned = true
 		emit(&"crowd_warning", {"mob": m})
@@ -363,9 +432,11 @@ func _move_hero(dt: float) -> void:
 	elif since_dodge < FightRules.DODGE_MS:
 		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge)
 	else:
-		var can_run := not fight_on or hero.wind > FightRules.RUN_WIND_FLOOR
+		var can_run := (not fight_on or hero.wind > FightRules.RUN_WIND_FLOOR) and not hero.crouched
 		running = hero.run and can_run and hero.move.length() > 0.1
 		var s := hero.run_speed if running else hero.walk_speed
+		if hero.crouched:
+			s *= Hero.CROUCH_SPEED
 		if hero.committed(now):
 			s *= hero.blow.creep
 		v = hero.move.limit_length(1.0) * s
@@ -643,16 +714,22 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 
 
 ## Struck, a body that was not pressing turns on whoever struck it (errands only look).
-func _wake(m: MobState) -> void:
+## `cause` is what the player did (Roles.TURNS): a role that does not take that
+## amiss goes on with its work, and a watcher never fights at all.
+func _wake(m: MobState, cause: StringName = &"damaged") -> void:
 	m.last_seen = hero.pos
 	m.lost_beats = 0
 	m.calm_until = 0.0
+	m.suspicion = 1.0
 	m.crowded_since = -1.0
 	m.crowd_warned = false
 	m.via = Vector2.INF
 	if m.disposition == &"indifferent" and not m.disturbed:
+		if not Disposition.turned_by(m.role, cause):
+			return
 		m.disturbed = true
-		emit(&"disturbed", {"mob": m})
+		m.disturbed_by = cause
+		emit(&"disturbed", {"mob": m, "cause": cause})
 	if m.mood == MobState.IDLE or m.mood == MobState.WORKING or m.mood == MobState.ALERTED:
 		if m.approach == &"errand":
 			m.set_mood(MobState.ALERTED, now)

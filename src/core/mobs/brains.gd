@@ -37,6 +37,8 @@ static func think(m: MobState, sim: FightSim) -> void:
 	if m.stunned(now):
 		m.want = Vector2.ZERO
 		return
+	if m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING) and _listening(m, sim):
+		return
 	match m.mood:
 		MobState.IDLE:
 			_idle(m, sim)
@@ -88,6 +90,29 @@ static func strike_range(m: MobState, sim: FightSim) -> float:
 	return m.radius + sim.hero.radius + reach * 0.8
 
 
+## A machine at its work that heard something: it stands and puts its optics on
+## where the noise came from until it is satisfied. Told on the body alone (the
+## whole machine turns; its part flickers with the suspicion), never in words.
+## Nothing else in the plan stops for it: it goes back to its round after.
+static func _listening(m: MobState, sim: FightSim) -> bool:
+	if sim.now >= m.look_until:
+		return false
+	m.want = Vector2.ZERO
+	m.aim = (m.heard_at - m.pos).angle() if m.heard_at.distance_squared_to(m.pos) > 1e-4 else m.facing
+	return true
+
+
+## A body whose whole trade is reading the land sweeps its cone across and back
+## on an exact period (StealthQuery.sweep). The rhythm is the point: a patrol
+## that never varies leaves a gap a player can learn and walk through.
+static func _sweeping(m: MobState, sim: FightSim) -> bool:
+	if not StealthQuery.sweeps(m.row):
+		return false
+	m.want = Vector2.ZERO
+	m.aim = StealthQuery.sweep(m.bearing.angle(), sim.now / 1000.0, m.phase_ms / 1000.0)
+	return true
+
+
 static func _idle(m: MobState, sim: FightSim) -> void:
 	if m.machine and m.indifferent():
 		if FightSim.in_way_of(m, sim.hero.pos, sim.hero.radius):
@@ -99,7 +124,8 @@ static func _idle(m: MobState, sim: FightSim) -> void:
 		_go_round(m, sim)
 	if m.machine:
 		if m.line_a.distance_squared_to(m.line_b) < 0.01:
-			m.want = Vector2.ZERO
+			if not _sweeping(m, sim):
+				m.want = Vector2.ZERO
 			return
 		_walk_line(m, m.pace * 0.6, sim.now)
 		return
@@ -201,7 +227,8 @@ static func _errand(m: MobState, sim: FightSim) -> void:
 		m.aim = to.angle()
 		return
 	if m.line_a.distance_squared_to(m.line_b) < 0.01:
-		m.want = Vector2.ZERO
+		if not _sweeping(m, sim):
+			m.want = Vector2.ZERO
 		return
 	_walk_line(m, m.pace)
 

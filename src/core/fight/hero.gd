@@ -26,6 +26,11 @@ var speed := 0.0
 ## The tiles/s the ground and body allow walking, set by the owner of movement.
 var walk_speed := 3.4
 var run_speed := 5.4
+## Down in the heather (Body.crouched, read every step): slower, and no running.
+## What crouching does to being seen and heard is StealthQuery's and Noise's.
+var crouched := false
+## What is left of a walk while crouched.
+const CROUCH_SPEED := 0.45
 
 
 func _init() -> void:
@@ -48,6 +53,7 @@ func read_body() -> void:
 	if body == null:
 		return
 	health = body.health
+	crouched = body.crouched
 	var plated := FightRules.wears(inventory, &"plate")
 	max_health = FightRules.max_health(plated)
 	max_wind = FightRules.max_wind(FightRules.wears(inventory, &"brace"), body.move_factor)
