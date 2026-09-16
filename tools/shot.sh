@@ -9,12 +9,13 @@ out="$1"; shift
 rm -f "$out"
 tools/_import.sh
 . tools/_focus.sh
+. tools/_slack.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-shot.XXXXXX")"
 holder="$(focus_holder)"
 godot --path . --position 40,40 -- --shot="$out" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
-deadline=$(( $(date +%s) + ${SHOT_TIMEOUT:-60} ))
+deadline=$(( $(date +%s) + $(slack_secs "${SHOT_TIMEOUT:-60}") ))
 status=0
 while kill -0 "$pid" 2>/dev/null; do
   if grep -qE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error' "$log"; then

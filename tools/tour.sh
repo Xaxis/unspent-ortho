@@ -8,12 +8,13 @@ cd "$(dirname "$0")/.."
 tour="$1"; shift
 tools/_import.sh
 . tools/_focus.sh
+. tools/_slack.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-tour.XXXXXX")"
 holder="$(focus_holder)"
 godot --path . --position 40,40 -- --tour="$tour" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
-deadline=$(( $(date +%s) + ${TOUR_TIMEOUT:-180} ))
+deadline=$(( $(date +%s) + $(slack_secs "${TOUR_TIMEOUT:-180}") ))
 status=0
 while kill -0 "$pid" 2>/dev/null; do
   if grep -qE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Compile Error' "$log"; then sleep 0.3; kill "$pid" 2>/dev/null; status=1; break; fi
