@@ -1,28 +1,40 @@
 # The canon: fixed frames that say what the game looks like. tools/canon.sh shoots
 # them (seed 7) and lays them beside the accepted set on one contact sheet.
 place spawn
+wait 0.8
 shot 01-spawn-morning
 place coast
+wait 0.8
 shot 02-coast
 place moss
+wait 0.8
 shot 03-moss
 place pinewood
+wait 0.8
 shot 04-pinewood
 place snowfield
+wait 0.8
 shot 05-snowfield
 place bonelands
+wait 0.8
 shot 06-bonelands
 place burning
+wait 0.8
 shot 07-burning
 place coast-pinewood
+wait 0.8
 shot 08-eco-coast-pinewood
 place pinewood-snowfield
+wait 0.8
 shot 09-eco-pinewood-snowfield
 place bonelands-burning
+wait 0.8
 shot 10-eco-bonelands-burning
 place coast-moss
+wait 0.8
 shot 11-eco-coast-moss
 place spawn
+wait 0.8
 hour 19.5
 wait 0.4
 shot 12-spawn-dusk
@@ -34,9 +46,25 @@ wait 0.4
 shot 14-night-lamp
 hour 12
 place snowfield
+wait 0.8
 wait 0.3
 shot 15-snowfield-noon
 place burning
+wait 0.8
 hour 20
 wait 0.3
 shot 16-burning-dusk
+
+# The two things the canon never showed: wet ground mirroring light, and the
+# stolen neon somebody wired into a house.
+place spawn
+wait 0.8
+hour 22
+weather rain:1
+wait 1.2
+shot 17-village-wet-night
+zoom 9
+wait 0.6
+shot 18-stolen-neon-close
+zoom 14
+weather clear:0

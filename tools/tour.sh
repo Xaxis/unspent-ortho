@@ -20,5 +20,10 @@ done
 wait "$pid"; code=$?
 grep -E '^tour|SCRIPT ERROR|ERROR|at: ' "$log" | grep -v '^tour t=' | head -60
 grep -E 'done ->' "$log" | tail -1
+# A tour that stopped early can still leave a zero exit (a quit racing a frame):
+# the run only counts when the tour says it reached its end.
+if ! grep -qE '^tour .* done ->' "$log"; then
+  tail -12 "$log"; rm -f "$log"; echo "tour FAILED: never reached its end ($tour)"; exit 1
+fi
 rm -f "$log"
 if [ $status -ne 0 ] || [ $code -ne 0 ]; then echo "tour FAILED (status $status, exit $code)"; exit 1; fi
