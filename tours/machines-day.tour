@@ -84,7 +84,9 @@ at 135,375
 zoom 8
 wait 1.4
 spawn watcher
-wait 1.0
+wait 1.6
+walkto mob 2
+wait 0.3
 shot 08-lit-and-working-at-night
 try 30
 walkto part 1.6
