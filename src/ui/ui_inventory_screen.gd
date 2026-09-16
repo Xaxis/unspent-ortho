@@ -216,7 +216,9 @@ func _draw() -> void:
 		keys.append(["e", "put away" if verb == &"hold" and inventory.held == chosen_row.get("id") else String(verb)])
 	if chosen_row.has("id"):
 		var id: StringName = chosen_row.id
-		keys.append(["x", "leave it here" if asking(id) else ("put down" if int(chosen_row.get("count", 1)) < 2 else "put down all")])
+		# Every key label on the slate names the verb that key does. While the ask
+		# is standing, X still puts the thing down: the note carries the question.
+		keys.append(["x", "yes, put it down" if asking(id) else ("put down" if int(chosen_row.get("count", 1)) < 2 else "put down all")])
 	keys.append_array([["tab", "close"], ["esc", "back"]])
 	draw_keys(keys)
 

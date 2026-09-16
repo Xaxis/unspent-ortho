@@ -112,6 +112,18 @@ func test_the_lamp_and_the_last_rung_of_hunger_are_gauges() -> void:
 	hud.free()
 
 
+## The gauges are drawn right to left from the clock, so the order they come in
+## is the order they stand out from it: the body's own needs first, hunger — the
+## rung that ends the run — nearest the clock, then what the land presses with.
+func test_the_gauge_nearest_the_clock_is_the_one_that_ends_the_run() -> void:
+	eq(Hud.gauge_order([&"tired", &"wet", &"hunger"]), [&"hunger", &"wet", &"tired"] as Array[StringName], "needs in the order they cost you")
+	eq(Hud.gauge_order([&"radiation", &"cold", &"lamp", &"hunger"]), [&"hunger", &"lamp", &"cold", &"radiation"] as Array[StringName], "then the land's pressures, by name")
+	eq(Hud.gauge_order([&"cold"]), [&"cold"] as Array[StringName], "a pressure with no need beside it")
+	eq(Hud.gauge_order([]), [] as Array[StringName], "nothing felt, nothing drawn")
+	for k: StringName in Hud.GAUGE_ORDER:
+		check(UiIcons.NEEDS.has(k), "%s has a glyph of its own" % k)
+
+
 func test_every_hazard_the_land_names_has_a_gauge_glyph() -> void:
 	for d in BiomeRegistry.all():
 		for h: Variant in d.hazards:

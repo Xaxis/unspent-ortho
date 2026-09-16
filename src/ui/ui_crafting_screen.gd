@@ -2,8 +2,8 @@ class_name UiCraftingScreen
 extends UiScreen
 ## The making app (C). The list: what can be made where the player stands,
 ## under a heading per station in reach ("at the fire") and "by hand"; rows
-## that cannot be made now are dim but choosable, and say why; under it, what
-## is already cooking at the stations round you and when it comes off. The
+## that cannot be made now are dim but choosable, and say why; under it, every
+## job the player has set going anywhere and when it comes off. The
 ## replacement sub-panel: the chosen recipe scanned, a table of what it wants
 ## against what is carried, and the station it is made at — and for long work,
 ## that it is set going and walked away from, not stood over. E makes it
@@ -155,7 +155,10 @@ func _draw() -> void:
 	draw_keys([["e", "make"], ["c", "close"], ["esc", "back"]])
 
 
-## Work already set going at the stations round the player, soonest first.
+## Every job the player has set going anywhere in the world, soonest first —
+## not only the ones at the stations in reach. Long work is walked away from,
+## so the page that set it going is where it is watched from, wherever the
+## player has walked to since; a station named here may be a day's walk off.
 func jobs() -> Array[Dictionary]:
 	return Survival.cooking(game) if game != null else ([] as Array[Dictionary])
 
@@ -163,6 +166,13 @@ func jobs() -> Array[Dictionary]:
 ## Pixels the "on now" block takes under the list for `n` jobs (0 = none).
 static func cook_height(n: int) -> int:
 	return 0 if n <= 0 else 13 + mini(n, COOK_ROWS) * UiTheme.LINE
+
+
+## How many jobs the "and N more on the go" row stands for. That row takes the
+## last of the COOK_ROWS, so it counts the job it displaced as well: with four
+## jobs and three rows it says two, not one. 0 when every job has its own row.
+static func cooking_over(n: int) -> int:
+	return 0 if n <= COOK_ROWS else n - (COOK_ROWS - 1)
 
 
 ## When a recipe hands its work back: "done 14:20" for work done on the spot,
@@ -182,7 +192,7 @@ static func ready_line(g: Game, r: Dictionary) -> String:
 func _draw_cooking(list: Array[Dictionary], x0: int, right: int, top: int) -> void:
 	if list.is_empty():
 		return
-	var over := list.size() - COOK_ROWS
+	var over := cooking_over(list.size())
 	UiSlate.heading(self, Vector2i(x0, top), "on now", right)
 	for i in mini(list.size(), COOK_ROWS):
 		var job: Dictionary = list[i]

@@ -306,15 +306,26 @@ func _process(delta: float) -> void:
 ## Read the landscape under the player and ping its name when someone can read
 ## it. A walked border settles (UiPlaceWatch.SETTLE); a jump is said at once.
 ## A name entered under an open app or in a fight waits until there is a HUD
-## to say it on, rather than being swallowed.
+## to say it on, rather than being swallowed — and is dropped if the ground has
+## changed under it while it waited: the caption says where the player stands,
+## or it says nothing.
 func _watch_place(delta: float, hostile: bool) -> void:
 	var p := game.player.pos
 	var jumped := _last_pos.is_finite() and UiPlaceWatch.jumped(_last_pos, p)
 	_last_pos = p
-	var entered := _places.step(BiomeRegistry.at(game.world, p).id, delta, jumped)
+	var under := BiomeRegistry.at(game.world, p).id
+	var entered := _places.step(under, delta, jumped)
 	if entered != &"":
 		_pending_place = entered
 	if _pending_place == &"" or not stack.is_empty() or hostile:
+		return
+	if _pending_place != under:
+		# It waited for a glass nobody could read, and the ground has changed
+		# under it since (a border crossed in a fight, then crossed back): the
+		# name is no longer true, so it is dropped and the land they are actually
+		# standing in is read again from nothing and said next frame.
+		_pending_place = &""
+		_places.announced = &""
 		return
 	game.hud.show_place(BiomeRegistry.get_def(_pending_place).display_name)
 	Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)

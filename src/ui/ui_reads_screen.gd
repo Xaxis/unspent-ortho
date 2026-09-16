@@ -4,8 +4,9 @@ extends UiScreen
 ## machines about, all of it in the module's violet. The list: every machine in
 ## reach, how far, which way, and how it is disposed to the player. The
 ## replacement sub-panel: the network's interference as a trace, a sweep of
-## where they stand, and the chosen read. The disposition package fills it
-## through SlateFeeds (&"reads"); until then it reads the mobs' own `hostile`.
+## where they stand with the works the list names ticked on its rim, and the
+## chosen read. The disposition package fills it through SlateFeeds (&"reads");
+## until then it reads the mobs' own `hostile`.
 
 const LIST_TOP := 50
 const RADAR_R := 44
@@ -16,6 +17,9 @@ const WORKS_ROWS := 4
 
 var _feed: Dictionary = {}
 var _time := 0.0
+## The ground read, taken with the list (twice a second) and not per frame: it
+## walks every landmark in the world and sorts them.
+var _soil: Dictionary = {}
 
 
 func _init() -> void:
@@ -26,6 +30,7 @@ func _init() -> void:
 
 func refresh() -> void:
 	_feed = SlateFeeds.feed(&"reads", game)
+	_soil = ground()
 	var rows: Array[Dictionary] = []
 	for s: Dictionary in _feed.get("scans", []):
 		rows.append({"id": StringName(s.get("id", &"")), "scan": s})
@@ -87,6 +92,14 @@ func ground() -> Dictionary:
 	return out
 
 
+## The ground read as the page last took it (see `ground`), taken now if the
+## page is drawn before it has ever been refreshed.
+func soil() -> Dictionary:
+	if _soil.is_empty():
+		_soil = ground()
+	return _soil
+
+
 static func mark_words(mark: StringName) -> String:
 	return String(MARK_WORDS.get(mark, String(mark)))
 
@@ -99,12 +112,12 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	var soil := ground()
+	var read := soil()
 	UiDraw.text_right(self, right, L.position.y + 4, "DIST  DISPOSED" if not menu.rows.is_empty() else "TILES OFF", UiTheme.MACHINE[2])
 	if menu.rows.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP), "nothing living reads back", UiTheme.MACHINE[2])
 		UiDraw.text(self, Vector2i(x0 + 2, LIST_TOP + 11), "within %d tiles" % int(SlateFeeds.READ_RADIUS), UiTheme.MACHINE[2])
-		_draw_works(soil, x0, right, LIST_TOP + 30)
+		_draw_works(read, x0, right, LIST_TOP + 30)
 	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
@@ -123,17 +136,17 @@ func _draw() -> void:
 	var px := R.position.x + UiSlate.MARGIN_L
 	var rright := R.end.x - 12
 	_draw_interference(Rect2i(px, R.position.y + 8, rright - px, 46))
-	_draw_radar(Vector2i(px + RADAR_R + 4, R.position.y + 82 + RADAR_R))
+	_draw_radar(Vector2i(px + RADAR_R + 4, R.position.y + 82 + RADAR_R), read)
 	var chosen_scan: Dictionary = menu.selected().get("scan", {})
 	var dx := px + RADAR_R * 2 + 20
 	var dy := R.position.y + 78
 	UiSlate.heading(self, Vector2i(dx, dy), "read" if not chosen_scan.is_empty() else "the ground", rright, UiTheme.MACHINE[2])
 	if chosen_scan.is_empty():
 		# No signature: the ground still is one. It was surveyed and cut.
-		var facts: Array = [["survey", "%d degrees" % roundi(float(soil.bearing))]]
-		if StringName(soil.under) != &"":
-			facts.append(["underfoot", mark_words(StringName(soil.under))])
-		var works: Array = soil.works
+		var facts: Array = [["survey", "%d degrees" % roundi(float(read.bearing))]]
+		if StringName(read.under) != &"":
+			facts.append(["underfoot", mark_words(StringName(read.under))])
+		var works: Array = read.works
 		if not works.is_empty():
 			var w0: Dictionary = works[0]
 			facts.append(["nearest", "%s, %d %s" % [mark_words(StringName(w0.mark)), roundi(float(w0.dist)), _bearing(w0.dir)]])
@@ -201,8 +214,11 @@ func _draw_interference(r: Rect2i) -> void:
 	UiDraw.text_right(self, box.end.x - 4, box.position.y + 2, "%d%%  %s" % [roundi(level * 100.0), String(_feed.get("network", ""))], UiTheme.MACHINE[3])
 
 
-## Where the machines stand, north up, the player in the middle, a sweep going round.
-func _draw_radar(c: Vector2i) -> void:
+## Where the machines stand, north up, the player in the middle, a sweep going
+## round — and, on the rim, which way the works the page lists lie, since they
+## are tens of tiles off and an instrument that plots nothing under a list of
+## four reads as a broken one.
+func _draw_radar(c: Vector2i, read: Dictionary) -> void:
 	for ring: int in [RADAR_R, RADAR_R / 2]:
 		var steps := ring * 3
 		for k in steps:
@@ -226,7 +242,36 @@ func _draw_radar(c: Vector2i) -> void:
 		UiDraw.rect(self, Rect2i(p.x - 1, p.y - 1, 3, 3), UiTheme.WARN if hostile else UiTheme.MACHINE[3])
 		if row.id == chosen:
 			UiSlate.brackets(self, Rect2i(p.x - 4, p.y - 4, 9, 9), UiTheme.MACHINE[4], 2)
+	_draw_works_beyond(c, read)
 	UiDraw.text(self, Vector2i(c.x - 2, c.y - RADAR_R - 10), "N", UiTheme.MACHINE[2])
+
+
+## The works the page lists, as a tick on the rim at the bearing they lie on: a
+## ground mark is not a live signature and cannot be plotted inside the sweep,
+## but which way the machines went at this land is worth the instrument saying.
+## One close enough to stand in the sweep is drawn where it is, hollow.
+func _draw_works_beyond(c: Vector2i, read: Dictionary) -> void:
+	var works: Array = read.get("works", [])
+	if works.is_empty():
+		return
+	var beyond := 0
+	for w: Dictionary in works:
+		var d: Vector2 = w.dir
+		if d.length() < 0.01:
+			continue
+		var u := d.normalized()
+		var dist := float(w.dist)
+		if dist <= SlateFeeds.READ_RADIUS:
+			var q := c + Vector2i(roundi(u.x * dist / SlateFeeds.READ_RADIUS * RADAR_R), roundi(u.y * dist / SlateFeeds.READ_RADIUS * RADAR_R))
+			UiSlate.brackets(self, Rect2i(q.x - 2, q.y - 2, 5, 5), UiTheme.MACHINE[2], 2)
+			continue
+		beyond += 1
+		# A tick pointing out of the sweep, brightest at its far end: that way,
+		# and further than the module can read.
+		for k in range(RADAR_R + 3, RADAR_R + 9):
+			UiDraw.px(self, c.x + roundi(u.x * k), c.y + roundi(u.y * k), UiTheme.MACHINE[2] if k < RADAR_R + 7 else UiTheme.MACHINE[3])
+	if beyond > 0:
+		UiDraw.text(self, Vector2i(c.x - RADAR_R, c.y + RADAR_R + 12), "%d work%s beyond reach" % [beyond, "" if beyond == 1 else "s"], UiTheme.MACHINE[2])
 
 
 ## A 7x7 arrow pointing along `d` (north up).

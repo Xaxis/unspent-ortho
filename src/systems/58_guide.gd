@@ -1,8 +1,9 @@
 extends GameSystem
 ## The first hour's guide: at wake, the one-line goal and the keys, then each
 ## hint as its moment comes, said once on the teaching channel (Events.hint,
-## which is dropped rather than queued in a fight, so no lesson arrives out of
-## its moment) and retired for good when the player has used it. The
+## which is dropped rather than queued, so no lesson arrives out of its moment)
+## and retired for good when the player has used it. Nothing is emitted while
+## the glass is hushed, or a hint would retire without ever being read. The
 ## goal is said again when it changes. Lines keep a few seconds apart so each
 ## is read. Off in single-frame shots, so canon frames stay as they were.
 ##
@@ -14,6 +15,12 @@ extends GameSystem
 ## Nothing is said in a fight (lines there stack under the fight's own). When a
 ## fight ends the goal is said again; a player who comes round after a bad end
 ## hears the goal once they are up, and no key hint for AFTER_DOWNED seconds.
+##
+## A lesson whose moment is "the fight is over" (the plate line) is held here
+## until the glass will take it (Hud.can_teach): the commonest ending is a
+## machine breaking off while it is still roused and still within the radius
+## that hushes the slate, and a teaching line emitted into that is dropped, not
+## queued. It is never retired before it has been said.
 
 ## Real seconds between two guide lines, and before the first.
 const SPACING := 4.5
@@ -40,6 +47,8 @@ var _rang := false
 var _off := false
 var _killed_one := false
 var _hints_after := 0.0
+## A lesson waiting for a glass that will take it (see the header).
+var _lesson := ""
 
 
 func setup(g: Game) -> void:
@@ -72,6 +81,13 @@ func _process(delta: float) -> void:
 	var sim := game.player.sim
 	if sim != null and sim.fight_on:
 		return
+	# Nothing is said into a hushed glass. A teaching line there is dropped, not
+	# queued, so a hint retired in front of a machine is a lesson lost for good:
+	# the guide waits for the glass rather than spending them into it.
+	if game.hud != null and not game.hud.can_teach():
+		return
+	if _lesson != "" and _hold_lesson():
+		return
 	var goal := Guide.goal(game)
 	if goal != _goal and (_goal == "" or _t - _goal_at >= SPACING):
 		_goal = goal
@@ -85,6 +101,19 @@ func _process(delta: float) -> void:
 		return
 	retired[h.id] = true
 	_say(String(h.line), String(h.key))
+
+
+## The held lesson: dropped if the player has since learned it for themselves,
+## said as soon as the glass will take it, and retired only then. True when it
+## was said, so nothing else is said over it this turn.
+func _hold_lesson() -> bool:
+	if retired.has(&"side"):
+		_lesson = ""
+		return false
+	retired[&"side"] = true
+	_say(_lesson, "space")
+	_lesson = ""
+	return true
 
 
 func _say(line: String, key: String = "") -> void:
@@ -139,16 +168,16 @@ func _on_fight_ended(outcome: StringName) -> void:
 		return
 	# What to want is said again once it is over: a fight is not the goal.
 	_goal = ""
+	# Rang off plate and never found the part: the lesson is owed, whatever way
+	# the fight went. It is held until the glass will take it (see the header):
+	# a machine that broke off is still near, and still hushing the slate.
+	if _rang and not retired.has(&"side"):
+		_lesson = SIDE_LINE
+	_rang = false
 	if outcome == &"downed" or outcome == &"carried":
 		# Coming round: the goal when up, and no keys while the hours sink in.
-		_rang = false
 		_next = _t + WAKE_DELAY
 		_hints_after = _t + AFTER_DOWNED
 		return
-	# Rang off plate and never found the part: the lesson, now the fight is over.
-	if _rang and not retired.has(&"side"):
-		retired[&"side"] = true
-		_say(SIDE_LINE, "space")
-	_rang = false
 	# The fight's own last line (a kill, an escape) is read before the goal comes back.
 	_next = maxf(_next, _t + WAKE_DELAY)

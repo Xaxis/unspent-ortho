@@ -374,6 +374,47 @@ func test_the_watcher_reads_the_land_under_the_player_after_a_jump() -> void:
 	g.free()
 
 
+## A name that waited for a glass nobody could read is only said if it is still
+## true. Cross a border in a fight, be pushed back over it, and have the fight
+## end inside the settle: the caption must say the ground under the player, not
+## the landscape they were in when the machine came.
+func test_a_caption_that_waited_is_dropped_when_the_ground_changed_under_it() -> void:
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	var watch: UiPlaceWatch = ui.get("_places")
+	var home_land := watch.announced
+	check(home_land != &"", "where the player woke was said")
+	var other := Country.SNOWFIELD if home_land != &"snowfield" else Country.MOSS
+	var other_name := BiomeRegistry.get_def(StringName(Country.NAMES[other])).display_name
+	var home_pos := g.player.pos
+	var was := g.hud.place
+	# Over the border, with a machine on them: the name waits for a quiet glass.
+	_stand(g, _patch(g, other, home_pos + Vector2(5, 0)))
+	ui.call("_watch_place", 0.2, true)
+	ui.call("_watch_place", UiPlaceWatch.SETTLE, true)
+	eq(StringName(ui.get("_pending_place")), StringName(Country.NAMES[other]), "the name waits")
+	eq(g.hud.place, was, "and nothing is pinged where nobody can read it")
+	# Pushed back over the border, and the fight ends there.
+	_stand(g, home_pos)
+	ui.call("_watch_place", 0.2, true)
+	ui.call("_watch_place", 0.2, false)
+	check(g.hud.place != other_name, "the caption never says the land they were pushed out of")
+	ui.call("_watch_place", 0.2, false)
+	eq(watch.announced, home_land, "the watcher reads the ground under the player again")
+	eq(g.hud.place, BiomeRegistry.get_def(home_land).display_name, "and the caption says that")
+	g.free()
+
+
+## Move the player as a walk does: the fight body owns where they are (CLAUDE.md).
+func _stand(g: Game, at: Vector2) -> void:
+	g.player.pos = at
+	if g.player.sim != null:
+		g.player.sim.hero.pos = at
+
+
 ## The first hour's guide speaks through the slate as well as the message line:
 ## what to want stands on the HUD, and the key it is teaching sits on the hint row.
 func test_the_goal_and_the_key_the_guide_teaches_reach_the_hud() -> void:

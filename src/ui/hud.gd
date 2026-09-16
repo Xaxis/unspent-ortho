@@ -8,11 +8,13 @@ extends CanvasLayer
 ##
 ##   top left     the wrist unit: health as cells of three segments (no numbers);
 ##                wind under it only while some is spent; charges beside it only
-##                while the thing in hand spends them
+##                while the thing in hand spends them; under all of it the goal,
+##                one dim line, standing until it changes
 ##   top right    the clock and the slate's cell; under it the felt pressures,
-##                a small gauge each, only while they matter
-##   top middle   the goal, one line, standing until it changes; the location
-##                ping takes the space when the player crosses into a landscape
+##                a small gauge each, only while they matter, hunger nearest the
+##                clock
+##   top middle   nothing but the location ping, when the player crosses into
+##                a landscape
 ##   bottom left  the thing in hand
 ##   bottom mid   a message line that fades; under it what E (or the key the
 ##                guide is teaching) would do here
@@ -32,6 +34,12 @@ const PLACE_HUSH := 0.3
 const PLACE_SWEEP := 30.0
 ## A pressure gauge's tile, and the gap between tiles.
 const GAUGE := Vector2i(13, 16)
+## The body's own needs, in the order they cost you the run. The gauges are
+## drawn right to left from the clock, so the first here sits under the clock:
+## hunger, the rung that ends the run, is nearest it and never moves.
+const GAUGE_ORDER: Array[StringName] = [&"hunger", &"lamp", &"wet", &"load", &"tired"]
+## Where the standing goal line sits: under the wrist unit and its wind line.
+const GOAL_Y := 26
 
 var clock_text := ""
 var health := 12
@@ -187,9 +195,17 @@ func say_now(text: String) -> void:
 ## back by the fight's quiet mode and never queued, so a lesson about walking
 ## or the lamp cannot arrive minutes later, out of the moment that earned it.
 func teach(text: String, _key: String = "") -> void:
-	if messages.quiet or not _pages.is_empty():
+	if not can_teach():
 		return
 	messages.push(text)
+
+
+## True while a teaching line said now would be read: nothing hostile close,
+## nothing over the glass. A lesson whose moment is "the fight is over" (the
+## guide's plate line, said after a machine has broken off) waits on this rather
+## than being emitted into the quiet, where `teach` would drop it for good.
+func can_teach() -> bool:
+	return not messages.quiet and _pages.is_empty()
 
 
 ## True while the goal line is on the glass: nothing louder is using the space.
@@ -351,19 +367,29 @@ func _draw_clock(ci: Control) -> void:
 	for p in pressures:
 		level[p.id] = p.level
 		value[p.id] = p.value
-	var order: Array = _gauge_alpha.keys()
-	order.sort()
-	for k: StringName in [&"hunger", &"lamp", &"wet", &"load", &"tired"]:
-		if order.has(k):
-			order.erase(k)
-			order.push_front(k)
-	for k: StringName in order:
+	for k: StringName in gauge_order(_gauge_alpha.keys()):
 		var a: float = _gauge_alpha.get(k, 0.0)
 		if a <= 0.0:
 			continue
 		var lv := int(level.get(k, 1))
 		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), UiTheme.WARN if lv >= 2 else UiTheme.TEXT, float(value.get(k, 0.5)), a, lv)
 		x -= GAUGE.x + 5
+
+
+## The gauges under the clock, in the order they stand out from it (GAUGE_ORDER
+## first, then whatever the land presses with, by name).
+static func gauge_order(ids: Array) -> Array[StringName]:
+	var rest: Array = ids.duplicate()
+	# By name: StringName's own ordering is by pointer, which is no order at all.
+	rest.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
+	var out: Array[StringName] = []
+	for k in GAUGE_ORDER:
+		if rest.has(k):
+			rest.erase(k)
+			out.append(k)
+	for k: Variant in rest:
+		out.append(StringName(k))
+	return out
 
 
 ## A felt pressure: its glyph on a scrap of glass, a meter under it filling
@@ -417,16 +443,17 @@ func _draw_bottom(ci: Control) -> void:
 		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 5, y + 1), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
 
 
-## What to want next: one quiet line along the top, a phosphor chevron before
-## it. It stands (it is not a message that fades) so a player who looks up an
-## hour later still knows what they were doing.
+## What to want next: one quiet line hung off the wrist unit, a phosphor
+## chevron before it. It stands (it is not a message that fades) so a player who
+## looks up an hour later still knows what they were doing — and it hangs off a
+## corner readout rather than banding the top middle, where the fight is and
+## where nothing but the location ping belongs (docs/ART.md §9).
 func _draw_goal(ci: Control) -> void:
 	if not goal_shown():
 		return
-	var w := UiFont.width(goal)
-	var x := 320 - (w + 6) / 2
-	UiSlate.chevron(ci, Vector2i(x, 11), UiTheme.PHOSPHOR[2])
-	UiDraw.text_rimmed(ci, Vector2i(x + 6, 8), goal, UiTheme.TEXT_DIM, UiTheme.RIM)
+	var x := MARGIN + 6
+	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 3), UiTheme.PHOSPHOR[2])
+	UiDraw.text_rimmed(ci, Vector2i(x + 6, GOAL_Y), goal, UiTheme.TEXT_DIM, UiTheme.RIM)
 
 
 ## How far from the middle each bracket of the place name stands, `grow` 0..1

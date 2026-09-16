@@ -488,13 +488,23 @@ func test_machine_reads_read_the_ground_when_nothing_living_does() -> void:
 	check(_has_word(bare, "survey"), "and the survey bearing still reads back")
 	g.world.landmarks.append({"kind": &"quarry", "pos": g.player.pos + Vector2(20, 0), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"quarry"})
 	g.world.landmarks.append({"kind": &"burn", "pos": g.player.pos + Vector2(0, -60), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"scorch"})
+	# The page re-reads the ground twice a second, not per frame: it is the whole
+	# landmark list, sorted (see UiReadsScreen.soil).
+	s.refresh()
 	var soil := s.ground()
+	eq(s.soil(), soil, "the read the page draws is the read it last took")
 	eq((soil.works as Array).size(), 2, "both works read")
 	eq(StringName((soil.works as Array)[0].mark), &"quarry", "the nearest first")
 	gt(float(soil.bearing), 0.0, "the machines surveyed this land along one bearing")
 	var said := await _said(s)
 	check(_has_word(said, UiReadsScreen.mark_words(&"quarry")), "what they did here, in words: %s" % str(said))
 	check(_has_word(said, "20"), "and how far")
+	# The sweep reaches READ_RADIUS; the works are further off than that. The
+	# instrument says which way they lie rather than plotting nothing at all.
+	check(_has_word(said, "1 work beyond reach"), "the radar owns the one it cannot plot: %s" % str(said))
+	g.world.landmarks.append({"kind": &"cut", "pos": g.player.pos + Vector2(0, 80), "dir": Vector2.RIGHT, "half": Vector2(4, 4), "mark": &"cut"})
+	s.refresh()
+	check(_has_word(await _said(s), "2 works beyond reach"), "and counts them as they come")
 	s.free()
 	Fx.done(g)
 
@@ -528,6 +538,17 @@ func test_the_making_page_says_when_long_work_comes_off_the_fire() -> void:
 	check(_has_word(said, "on now"), "what is on the fire is listed: %s" % str(said))
 	check(_has_word(said, "charcoal"), "by what it makes")
 	check(_has_word(said, UiRules.clock_at(g.clock.minutes + 120.0, g.clock.minutes)), "and when to come back")
+	# More jobs than rows: the row that counts the rest takes one of the rows, so
+	# it counts the job it displaced in with them.
+	eq(UiCraftingScreen.cooking_over(UiCraftingScreen.COOK_ROWS), 0, "every job that fits gets its own row")
+	eq(UiCraftingScreen.cooking_over(UiCraftingScreen.COOK_ROWS + 1), 2, "one over: the last row stands for two")
+	for k in 3:
+		var more := Fx.put(g, PropKind.FIRE, Vector2(3.0 + k, 0))
+		SurvivalState.of(g).cooking[more.id] = {"prop": more, "station": &"fire", "recipe": &"s",
+			"makes": {&"charcoal": 2}, "done": g.clock.minutes + 130.0 + k * 10.0, "pos": more.pos}
+	eq(s.jobs().size(), 4, "four fires going, three rows for them")
+	var many := await _said(s)
+	check(_has_word(many, "and 2 more on the go"), "and the count owns up to the one it displaced: %s" % str(many))
 	s.free()
 	Fx.done(g)
 
@@ -561,6 +582,9 @@ func test_x_puts_a_row_down_and_asks_first_for_a_tool() -> void:
 	eq(g.inventory.count(&"knife"), 1, "a tool is not let go on one press")
 	check(s.note.contains("knife") and s.note_warn, "it asks: %s" % s.note)
 	check(s.asking(&"knife"), "and waits on the same row")
+	# Every key label names the verb that key does: X still puts it down.
+	var asked := await _said(s)
+	check(_has_word(asked, "yes, put it down"), "the key says what X does, not what it does not: %s" % str(asked))
 	s.handle(&"drop")
 	eq(g.inventory.count(&"knife"), 0, "asked again, it goes down")
 	check(not s.asking(&"knife"), "and the asking is over")

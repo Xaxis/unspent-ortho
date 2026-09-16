@@ -138,3 +138,68 @@ func test_the_guide_speaks_on_the_teaching_channel() -> void:
 	var src := (load("res://src/systems/58_guide.gd") as GDScript).source_code
 	check(src.contains("Events.hint.emit(line, key)"), "the guide's lines are teaching lines")
 	check(not src.contains("Events.message.emit(line)"), "and none of them goes on the queued line")
+
+
+## The lesson a fight owes the player — rang off plate, never found the lit
+## side — is the one lesson whose moment is "the fight is over", and the
+## commonest ending is a machine breaking off while it is still roused and
+## still inside the radius that hushes the slate. A teaching line said into
+## that is dropped, not queued, so the guide must hold it until the glass will
+## take it, and must not retire it before it has been said.
+func test_the_plate_lesson_waits_for_the_glass_and_is_never_lost() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	_calm(g)
+	var guide: Node = g.get_node("58_guide")
+	var line: String = (load("res://src/systems/58_guide.gd") as GDScript).get_script_constant_map()["SIDE_LINE"]
+	# A machine five tiles off, roused: the glass is hushed while it is there.
+	var mob := _hostile(g.player.pos + Vector2(5, 0))
+	for i in 3:
+		await tree.process_frame
+	check(g.hud.messages.quiet, "a machine that close hushes the glass")
+	# A blow rang off its plate, and then it broke off without dying.
+	Events.hit.emit(null, mob, 0, true, Vector3.ZERO)
+	Events.fight_ended.emit(&"away")
+	for i in 4:
+		guide.call("_process", 5.0)
+	check(not (guide.get("retired") as Dictionary).has(&"side"), "the lesson is not spent into a hushed glass")
+	check(not _said_line(g.hud, line), "and nothing is said there")
+	# It gives up and goes: now the lesson can be read.
+	mob.free()
+	for i in 3:
+		await tree.process_frame
+	guide.call("_process", 5.0)
+	check(_said_line(g.hud, line), "the lesson is said once the machine is off: %s" % str(g.hud.messages.lines))
+	check((guide.get("retired") as Dictionary).has(&"side"), "and retires then, not before")
+	eq(String(guide.get("_lesson")), "", "nothing is owed after it is said")
+	g.queue_free()
+	await frames(1)
+
+
+func _said_line(hud: Hud, line: String) -> bool:
+	for l in hud.messages.lines:
+		if String(l.text) == line:
+			return true
+	return hud.messages.waiting.has(line)
+
+
+## Nothing the world spawns wanders into these tests: what is near is put there.
+func _calm(g: Game) -> void:
+	for s in g.systems:
+		if s.name == "30_mobs":
+			(s.get("coast") as Object).set("spawning", false)
+	if g.player.sim != null:
+		g.player.sim.clear_mobs()
+
+
+func _hostile(at: Vector2) -> Node:
+	var mob := Node.new()
+	var s := GDScript.new()
+	s.source_code = "extends Node\nvar pos := Vector2.ZERO\nvar alive := true\nvar kind := &\"runner\"\n"
+	s.reload()
+	mob.set_script(s)
+	mob.set("pos", at)
+	mob.add_to_group(&"mobs")
+	tree.root.add_child(mob)
+	return mob
