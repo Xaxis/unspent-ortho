@@ -45,7 +45,10 @@ func build() -> void:
 		FoundKit.mark(hk, n * 0.131, n, Vector3.UP, 0.03, 0.03, R[5], 0.004)
 	FoundKit.streaks(hk, Vector3(0.047, 0.56, 0.0), Vector3.RIGHT, 0.05, 0.3, 2, 11, R[2])
 	body_mesh(hk, hub)
-	add_lamp(hub, Vector3(0.131, 0.0, 0), Vector3.RIGHT, Vector3.UP, 0.04, 0.04, &"status")
+	# The plan strip lies on the drum's deck, the one flat thing on a watcher and
+	# the thing the high camera looks straight down at: a tally across it, clear
+	# of the mast, is what says from a hill away what the instrument makes of you.
+	add_lamp(hub, Vector3(-0.02, 0.1015, 0.078), Vector3.UP, Vector3.BACK, 0.034, 0.03, &"status")
 	var hw := FoundKit.kit()
 	var back_face := Vector3(cos(TAU / 3.0), 0, sin(TAU / 3.0))
 	FoundKit.patch(hw, back_face * 0.132, back_face, Vector3.UP, 0.1, 0.07, Palette.MACHINE["lineman"], 17)
@@ -144,7 +147,9 @@ func build() -> void:
 	FoundKit.mark(ik, vial, Vector3.UP, Vector3.RIGHT, 0.05, 0.09, Palette.LENS[2], 0.006)
 	FoundKit.mark(ik, vial + Vector3(0.015, 0, 0), Vector3.UP, Vector3.RIGHT, 0.024, 0.03, Palette.LENS[3], 0.009)
 	part_mesh(ik, iris)
-	set_part_anchor(head, Vector3(0.18, 0, 0), 0.55)
+	# The spill round the optic, kept to about the barrel's own size: at 0.55 the
+	# halo was wider than the whole instrument and read as a sprite laid over it.
+	set_part_anchor(head, Vector3(0.18, 0, 0), 0.38)
 
 	# Fins: blades folded flat along the bar at rest, stood out on alert.
 	for i in 4:

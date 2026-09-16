@@ -49,9 +49,9 @@ func build() -> void:
 	FoundKit.disc(k, Vector3(-0.3, 0.17, 0), Vector3.RIGHT, 0.13, 0.08, 8, 0.02, R, R[2], PI / 8.0)
 	FoundKit.cbox(k, Vector3(-0.12, 0.44, 0), Vector3(0.24, 0.05, 0.08), 0.015, D)
 	body_mesh(k, body)
-	add_lamp(body, Vector3(0.02, 0.422, 0.1), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	add_lamp(body, Vector3(0.02, 0.422, 0.0), Vector3.UP, Vector3.RIGHT, 0.055, 0.055, &"status")
 	add_lamp(body, Vector3(0.332, -0.01, 0), Vector3.RIGHT, Vector3.UP, 0.08, 0.035, &"work")
-	add_beam(body, Vector3(0.4, -0.02, 0), Vector3(1.0, -0.3, 0), 1.1, 0.8, &"work")
+	add_beam(body, Vector3(0.4, -0.02, 0), Vector3(1.0, -0.3, 0), 1.5, 1.3, &"work")
 	add_lamp(body, Vector3(-0.282, 0.34, 0), Vector3.LEFT, Vector3.UP, 0.05, 0.04, &"work", true)
 	var dust: Array = [Palette.LINEN[2], Palette.LINEN[3], Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[4], Palette.LINEN[4]]
 	var bw := FoundKit.kit()

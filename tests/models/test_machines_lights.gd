@@ -13,6 +13,11 @@ const SCANNERS: Array[StringName] = [&"watcher", &"warden", &"clerk"]
 const WASHES: Array[StringName] = [&"harvester", &"hauler", &"sweeper", &"cutter"]
 const STEP := 1.0 / 60.0
 const FLOCK := preload("res://src/models/machines/flock.gd")
+## How much more daylight read each rung of the ladder must be worth than the one
+## below it. A fifth, because a step smaller than that is inside the noise of a
+## machine's own grime at play zoom, and the whole point is that a player reads
+## it off a still frame across a field.
+const DAY_RUNG := 1.2
 
 
 static func joint_state(m: MachineModel) -> Array:
@@ -107,28 +112,69 @@ func test_lamps_are_cold_and_the_amber_part_stays_the_one_warm_read() -> void:
 		m.free()
 
 
-func test_status_lamps_blink_the_disposition() -> void:
+## The plan strip counts the disposition in SPACE, and it counts it in every
+## frame. It used to count in TIME — 1, 2 or 3 blinks a couple of seconds apart
+## on a lens a pixel across, with hostile the ONE state that never went hot at
+## all — so a player could not read it at 640x360 and could not read it at noon
+## at any size (playtest wave A, finding 2). Two rules hold it here: every frame
+## carries the whole count, and the count and the heat both climb with the
+## ladder, so the state the plan turns on is never the dimmest.
+func test_the_plan_strip_counts_the_disposition_in_every_frame() -> void:
 	for kid in LIT:
 		var m := FigureModel.create(kid) as MachineModel
 		m.set_pose(&"stand")
 		m.settle()
-		var code: int = MachineModel.DISPOSITION_CODE[m.disposition]
-		var cycle := 0.3 * code + 1.6
-		if code == 0:
-			# Hostile: no code, a low steady burn.
-			for i in 120:
+		for d in Disposition.ORDER:
+			m.disposition = d
+			var want: int = MachineModel.DISPOSITION_CODE[d]
+			for i in 150:
 				m.animate(STEP, 0.0)
-				eq(int(m.lamp_levels()[&"status"][0]), 1, "%s burns steady" % kid)
-		else:
-			# Start just past a cycle boundary, then count one whole cycle.
-			eq(count_blinks(m, 0.2, cycle), code, "%s (%s) blinks per cycle" % [kid, m.disposition])
+				eq(m.plan_lit(), want, "%s (%s) shows %d segments in every frame" % [kid, d, want])
+				if m.plan_lit() != want:
+					break
 		m.free()
-	# The disposition system sets it on a live machine, and the lamp follows.
-	var h := FigureModel.create(&"harvester") as MachineModel
-	h.disposition = &"wary"
-	h.settle()
-	eq(count_blinks(h, 0.2, 0.3 * 2 + 1.6), 2, "a wary harvester blinks twice")
-	h.free()
+
+
+func test_the_further_up_the_ladder_the_hotter_the_strip_burns() -> void:
+	var last := -1
+	var last_lit := -1
+	for d in Disposition.ORDER:
+		var m := FigureModel.create(&"harvester") as MachineModel
+		m.disposition = d
+		m.set_pose(&"stand")
+		m.settle()
+		m.animate(STEP, 0.0)
+		var lvl := int(m.lamp_levels()[&"status"][0])
+		gt(float(lvl), 0.0, "%s is lit at all" % d)
+		check(lvl >= last, "%s burns at least as hot as the rung below (%d >= %d)" % [d, lvl, last])
+		check(m.plan_lit() > last_lit, "%s shows more than the rung below" % d)
+		last = lvl
+		last_lit = m.plan_lit()
+		m.free()
+	eq(last, 2, "hostile is the hottest of the four")
+	eq(last_lit, MachineModel.PLAN_SEGS, "and the whole strip burns")
+
+
+## A turned machine carries itself as a turned thing before it has seen anybody:
+## this is the read a player makes across a field in daylight, where no lamp is.
+func test_a_turned_machine_stands_differently() -> void:
+	for kid in LIT:
+		var calm := FigureModel.create(kid) as MachineModel
+		calm.disposition = &"indifferent"
+		calm.set_pose(&"stand")
+		calm.settle()
+		var hot := FigureModel.create(kid) as MachineModel
+		hot.disposition = &"hostile"
+		hot.set_pose(&"stand")
+		hot.settle()
+		var moved := false
+		for jn: StringName in calm.joints:
+			var a: Node3D = calm.joints[jn]
+			var b: Node3D = hot.joints[jn]
+			moved = moved or a.position.distance_to(b.position) > 1e-4 or (a.rotation - b.rotation).length() > 1e-4
+		check(moved, "%s stands differently once the plan has turned it" % kid)
+		calm.free()
+		hot.free()
 
 
 func test_alert_snaps_and_locks_the_eyes() -> void:
@@ -238,9 +284,9 @@ func test_a_chase_keeps_the_lights_locked() -> void:
 		for i in 30:
 			m.animate(STEP, 2.0)
 		check(not m.hunting, "%s: a walk from a stand is an errand" % kid)
-		var code: int = MachineModel.DISPOSITION_CODE[m.disposition]
-		if code > 0:
-			eq(count_blinks(m, 0.2, 0.3 * code + 1.6), code, "%s: an errand blinks its disposition again" % kid)
+		m.animate(STEP, 2.0)
+		eq(m.plan_lit(), int(MachineModel.DISPOSITION_CODE[m.disposition]),
+			"%s: an errand shows its disposition again" % kid)
 		for b: MeshInstance3D in beams(m, &"scan"):
 			near(float((b.material_override as ShaderMaterial).get_shader_parameter("narrow")), 1.0, 1e-4, "%s: an errand's beam sweeps wide" % kid)
 		m.free()
@@ -448,15 +494,27 @@ func test_beams_know_the_ground_the_machine_stands_on() -> void:
 	holder.free()
 
 
-func test_work_washes_light_the_ground_only_after_dark() -> void:
+## A worker's lamps are ON — they are how it sees the row it is cutting — so by
+## day they lay a dusting of pixels on that row, and what the plan changes is how
+## hard. They used to lay NOTHING at all on three of the four rungs, which is why
+## the four kinds whose only beam is a work lamp said nothing about themselves at
+## noon until the moment they turned (wave A review: the daylight ladder read on
+## three kinds of twelve). The night is untouched: the shader mixes to full in
+## the dark whatever the day floor says.
+func test_work_washes_dust_the_ground_by_day_and_wash_it_after_dark() -> void:
 	for kid in WASHES:
 		var m := FigureModel.create(kid) as MachineModel
 		var bs := beams(m, &"work")
 		gt(float(bs.size()), 0.0, "%s has a work wash" % kid)
 		var sun := with_sun(1.0)
-		m.settle()
-		for b: MeshInstance3D in bs:
-			check(not b.visible, "%s wash dark by day" % kid)
+		for d: StringName in Disposition.ORDER:
+			m.disposition = d
+			MachineModel._dark_frame = -1
+			m.settle()
+			for b: MeshInstance3D in bs:
+				check(b.visible, "%s %s wash shows by day" % [kid, d])
+				var floor_now := float((b.material_override as ShaderMaterial).get_shader_parameter("day_floor"))
+				lt(floor_now, 0.7, "%s %s dusts the ground, never floods it: %.2f" % [kid, d, floor_now])
 		sun.light_energy = 0.55
 		MachineModel._dark_frame = -1
 		m.settle()
@@ -465,6 +523,57 @@ func test_work_washes_light_the_ground_only_after_dark() -> void:
 		for lvl: int in m.lamp_levels().get(&"work", []):
 			eq(lvl, 2, "%s work lamps hot at night" % kid)
 		drop_sun(sun)
+		m.free()
+
+
+## THE DAYLIGHT LADDER. Every kind must say more about what it makes of the
+## player at every rung, under a noon sun, or the pillar the whole plan rests on
+## — rob a relay and everything wired to it comes for you — is unreadable until
+## the first blow lands.
+##
+## Wave A shipped this as a blink count on a lamp a pixel across. The wave A2 fix
+## moved it into space, and the review found it still only read on three kinds of
+## twelve: a harvester's strip was countable and a runner's four rungs were the
+## same picture. Nothing failed, because nothing measured it. This does, in the
+## machines' own units (daylight_read: square tiles of lit ground and lit plate),
+## and it fails the moment a kind stops carrying the read.
+func test_every_kind_says_more_at_every_rung_in_daylight() -> void:
+	for kid in KINDS:
+		var m := FigureModel.create(kid) as MachineModel
+		var was := 0.0
+		var reads: Array[float] = []
+		for d: StringName in Disposition.ORDER:
+			m.disposition = d
+			var now := m.daylight_read()
+			reads.append(now)
+			gt(now, was * DAY_RUNG, "%s: %s reads %.3f against %s's %.3f" % [kid, d, now, was, was])
+			was = now
+		gt(reads[3], reads[0] * 2.0, "%s: hostile %.3f is worth twice indifferent %.3f" % [kid, reads[3], reads[0]])
+		m.free()
+
+
+## A beam that crosses the ground is not a longer beam: everything past the
+## crossing is eaten by the depth buffer. A dredger's wedge ended 0.47 of a tile
+## UNDER its own feet and a lineman's 0.81, and those were the kinds whose
+## daylight read came out as four or five pixels — the channel was there and
+## buried. MachineModel.add_beam works the fall out now, so a kind gives it a
+## bearing and cannot get this wrong; this holds the rule for the whole set.
+func test_every_beam_lands_on_the_ground_the_machine_stands_on() -> void:
+	for kid in KINDS:
+		var m := FigureModel.create(kid) as MachineModel
+		m.set_pose(&"stand")
+		m.settle()
+		for b: Array in m._beams:
+			var mi: MeshInstance3D = b[0]
+			var length := float((b[1] as ShaderMaterial).get_shader_parameter("beam_length"))
+			var xf := Transform3D.IDENTITY
+			var n: Node3D = mi
+			while n != null and n != m:
+				xf = n.transform * xf
+				n = n.get_parent() as Node3D
+			var far := (xf * Vector3(length, 0, 0)).y
+			gt(far, -0.12, "%s %s beam lands %.2f under its own feet" % [kid, b[2], far])
+			lt(far, 0.4, "%s %s beam never comes down: far lip %.2f up" % [kid, b[2], far])
 		m.free()
 
 

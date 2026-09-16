@@ -79,9 +79,11 @@ func build() -> void:
 	# The carapace it shows the sky all day: the plate the camera sees most of.
 	day_wear(hull, Vector3(-0.08, 0.253, 0.3), Vector3.UP, Vector3.RIGHT, 0.34, 0.7, 128, 2)
 	add_scan(hull, Vector3(0.601, 0.1, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.025, 1.8)
-	add_lamp(hull, Vector3(0.15, 0.332, 0), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	add_lamp(hull, Vector3(0.15, 0.332, 0), Vector3.UP, Vector3.RIGHT, 0.06, 0.06, &"status")
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(hull, Vector3(0.602, 0.1, sz * 0.172), Vector3.RIGHT, Vector3.UP, 0.03, 0.03, &"optic")
+	# Its optics on the mud ahead: a dust of pixels by day, plain once it is turned.
+	add_beam(self, Vector3(0.62, HULL_Y + 0.05, 0), Vector3(2.0, -0.9, 0), 2.0, 1.0)
 	var hw := FoundKit.kit()
 	FoundKit.patch(hw, Vector3(-0.1, 0.253, 0.3), Vector3(0, 0.95, 0.3).normalized(), Vector3.RIGHT, 0.24, 0.12, Palette.MACHINE["runner"], 81)
 	FoundKit.patch(hw, Vector3(0.2, 0.253, -0.28), Vector3(0, 0.95, -0.3).normalized(), Vector3.RIGHT, 0.14, 0.1, Palette.MACHINE["hauler"], 82)

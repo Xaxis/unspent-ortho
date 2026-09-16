@@ -46,7 +46,7 @@ func build() -> void:
 		FoundKit.streaks(k, Vector3(0.0, 0.42, sz * 0.305), Vector3.BACK * sz, 0.24, 0.2, 4, 133 + int(sz), R[1])
 	body_mesh(k, body)
 	add_scan(body, Vector3(-0.199, 0.46, 0), Vector3.LEFT, Vector3.BACK, 0.3, 0.035, 2.8)
-	add_lamp(body, Vector3(0.1, 0.641, 0.2), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	add_lamp(body, Vector3(0.06, 0.641, 0.0), Vector3.UP, Vector3.RIGHT, 0.05, 0.05, &"status")
 	var bw := FoundKit.kit()
 	FoundKit.patch(bw, Vector3(-0.08, 0.641, -0.16), Vector3.UP, Vector3.RIGHT, 0.14, 0.16, Palette.MACHINE["warden"], 101)
 	FoundKit.grime(bw, Vector3(0.21, 0.2, 0.08), Vector3.RIGHT, 0.1, 0.16, 3, 102, D)
@@ -60,6 +60,9 @@ func build() -> void:
 	FoundKit.mark(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, Vector3.UP, 0.2, 0.02, Palette.LENS[1], 0.013)
 	part_mesh(pk, body)
 	set_part_anchor(body, Vector3(0.24, 0.3, 0), 0.55)
+	# The run of ground it is working along, lit from the optic: faint by day
+	# until the plan turns it, and then a plain wedge in front of the legs.
+	add_beam(self, Vector3(0.26, 0.56, 0), Vector3(2.0, -1.6, 0), 2.2, 1.1)
 
 	for sz: float in [-1.0, 1.0]:
 		var leg := joint(&"leg_r" if sz > 0 else &"leg_l", body, Vector3(0, 0.04, sz * 0.12))

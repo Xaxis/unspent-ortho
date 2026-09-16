@@ -68,7 +68,7 @@ func build() -> void:
 	body_mesh(k, deck)
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(deck, Vector3(0.212, 0.0, sz * 0.46), Vector3.RIGHT, Vector3.UP, 0.07, 0.035, &"work")
-	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.3, 2.0, &"work")
+	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.9, 2.0, &"work")
 	var dw := FoundKit.kit()
 	FoundKit.dirt_line(dw, Vector3(0.212, -0.03, -0.66), Vector3(0.212, -0.03, 0.66), Vector3.RIGHT, 0.02, R[0])
 	FoundKit.scorch(dw, Vector3(-0.1, 0.061, -0.5), Vector3.UP, 0.07, 71)
@@ -130,7 +130,7 @@ func build() -> void:
 	# The hopper lid: the one big flat thing on it, and the one the sun finds.
 	day_wear(hopper, Vector3(0.03, 1.106, 0), Vector3.UP, Vector3.RIGHT, 0.34, 0.34, 130, 1)
 	add_scan(hopper, Vector3(face, HOP_H - 0.2, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.03, 2.2)
-	add_lamp(hopper, Vector3(0.03, HOP_H + 0.081, 0.1), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
+	add_lamp(hopper, Vector3(0.03, HOP_H + 0.081, 0.0), Vector3.UP, Vector3.RIGHT, 0.065, 0.065, &"status")
 	add_lamp(hopper, Vector3(-face - 0.002, VENT_Y + VENT_H * 0.5 + 0.1, 0), Vector3.LEFT, Vector3.UP, 0.12, 0.035, &"work", true)
 	var hw := FoundKit.kit()
 	FoundKit.patch(hw, Vector3(0.02, 0.44, face + 0.001), Vector3.BACK, Vector3.UP, 0.18, 0.22, Palette.MACHINE["dredger"], 74)

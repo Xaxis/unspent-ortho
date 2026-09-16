@@ -1,0 +1,197 @@
+# What a machine thinks of you, read at play zoom, in daylight and at night.
+# The wave A build said disposition in one channel only: a blink count on a lamp
+# a pixel across, and hostile was the DIMMEST of the four. At noon a hostile
+# harvester carried one lit pixel in the whole frame. So: every disposition, at
+# the zoom the game is actually played at, at noon and at 23:00, through the real
+# mechanisms that set it — a role for the three a machine is born with, and a
+# real theft off the plan's own works for the fourth.
+#   tools/tour.sh tours/machine-read.tour --seed=1 --weather=clear:0
+# The hour and the weather are pinned in the LAST command before every shot, and
+# nothing waits after them: the world clock runs while a tour walks, a loaded
+# machine turned the night act into the next morning once already, and a keeper
+# that keeps its round walked out of frame 02 in the third of a second the frame
+# used to wait.
+#
+# Every machine is staged by a `try` block that clears the ground, spawns and
+# then waits on an await only that machine can answer: `machine:KIND` is true
+# when a live body of that kind stands far enough inside the frame that the
+# shutter will hold it (15_lights.tour_seen). Nothing walks. `spawn` already puts
+# a body in view in front of the player, and `walkto mob N` — which steers for at
+# most N seconds and then returns true whether or not it arrived — is what made
+# the first version of frame 02 come out EMPTY on about half its runs and ship as
+# proof of a read nothing in the picture supported.
+#
+# The WARDEN is why the block retries. It is the roster's only keeper, so it is
+# the only body that is wary by role, and a warden put down beside somebody
+# arrests them and walks off: measured, it is gone from the frame inside ninety
+# frames, every time. No approach could ever have held one. The block spawns a
+# fresh one and shoots the moment the await says it is there, and if eight tries
+# cannot manage it the tour stops instead of saving the village without it.
+#
+# It ends on the other half of the same finding: light that does not touch the
+# world. A machine's lens was in the glint list alone, which only mirrors in WET
+# ground, and the Burning's vents laid nothing on the ground at noon at all.
+coast calm
+zoom 15
+weather clear:0
+
+# --- noon ---------------------------------------------------------------------
+hour 12
+at 200.5,431.5
+wait 1.2
+
+# indifferent: a worker on its round, nothing of yours.
+try 8
+	coast calm
+	wait 0.35
+	spawn harvester
+	await machine:harvester 1.2
+end
+hour 12
+weather clear:0
+shot 01-noon-indifferent
+
+# wary: a keeper, which starts one rung up the ladder and keeps its round.
+coast calm
+wait 0.5
+at 200.5,431.5
+try 8
+	coast calm
+	wait 0.35
+	spawn warden
+	await machine:warden 1.2
+end
+hour 12
+weather clear:0
+shot 02-noon-wary
+
+# observant: a watcher, which never fights and only ever files.
+coast calm
+wait 0.5
+at 200.5,431.5
+try 8
+	coast calm
+	wait 0.35
+	spawn watcher
+	await machine:watcher 1.2
+end
+hour 12
+weather clear:0
+shot 03-noon-observant
+
+# hostile: the same kind as frame 01, after the player put their hands on the
+# plan's own parts. This is the pillar — rob it and it comes — and it is the
+# frame that used to be indistinguishable from 01.
+coast calm
+near survey
+wait 0.6
+spawn harvester
+wait 1.4
+press use 0.3
+await theft 8
+await turned 4
+await machine:harvester 3
+hour 12
+weather clear:0
+shot 04-noon-hostile
+
+# --- night --------------------------------------------------------------------
+# The same four. Whatever the daylight channel gains, the night must not shout.
+coast calm
+hour 23
+weather clear:0
+at 200.5,431.5
+wait 1.4
+
+try 8
+	coast calm
+	wait 0.35
+	spawn harvester
+	await machine:harvester 1.2
+end
+hour 23
+weather clear:0
+shot 05-night-indifferent
+
+coast calm
+wait 0.5
+at 200.5,431.5
+try 8
+	coast calm
+	wait 0.35
+	spawn warden
+	await machine:warden 1.2
+end
+hour 23
+weather clear:0
+shot 06-night-wary
+
+coast calm
+wait 0.5
+at 200.5,431.5
+try 8
+	coast calm
+	wait 0.35
+	spawn watcher
+	await machine:watcher 1.2
+end
+hour 23
+weather clear:0
+shot 07-night-observant
+
+coast calm
+near survey
+wait 0.6
+spawn harvester
+wait 1.4
+press use 0.3
+await theft 8
+await turned 4
+await machine:harvester 3
+hour 23
+weather clear:0
+shot 08-night-hostile
+
+# --- machine light lands on the ground -----------------------------------------
+# A watcher at night threw nothing on the ground it stood on: its lens was in the
+# glint list, which only mirrors in WET ground. Close, so the pool round its feet
+# is a thing a player can see, and on the machines' power so it stutters.
+coast calm
+hour 23
+weather clear:0
+at 135,375
+zoom 15
+wait 1.4
+try 8
+	coast calm
+	wait 0.35
+	spawn watcher
+	await machine:watcher 1.2
+end
+# Close, and only then in: a body is put down in view at the zoom it was put
+# down at, and eight units of view is narrower than the arm's length it lands at.
+# A watcher does not move (pace 0.1), so walking up to one is not a chase.
+walkto mob 1.6
+zoom 8
+await machine:watcher 3
+hour 23
+weather clear:0
+shot 09-its-light-on-the-ground
+
+# --- the land's own fire lands on the land ---------------------------------------
+# The other half of the same finding: at noon the Burning was white-hot cores
+# sitting on flat ground with nothing under them. A lamp lit at noon still lays
+# nothing — but a vent is a hole into fire, and it reaches the ground it is in at
+# every hour. Both hours, so the night it already had is visibly the night it keeps.
+coast calm
+place burning
+near vent
+zoom 8
+hour 12
+weather clear:0
+wait 1.2
+shot 10-a-vent-at-noon
+hour 23
+weather clear:0
+wait 1.2
+shot 11-the-same-vent-at-night

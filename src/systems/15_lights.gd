@@ -19,6 +19,14 @@ extends GameSystem
 ## fires, hearths, stolen neon, pylon beacons, machine lenses, the lantern.
 ## Machine light (beacons, neon on the machines' power, lenses) stutters with the
 ## sky's power after lightning (SkyLight.bolt.w).
+##
+## A LIVE MACHINE gets a pool too, and takes it from the same budget as a lamp:
+## it was in the glint list alone, which only mirrors in WET ground, so a watcher
+## at 23:00 with its optic burning left the ground under it exactly as dark as
+## ten tiles away while a villager's lamp laid sixty pixels of light (art review,
+## wave A finding 6). Its pool is COLD — the machines' own strip colour, the same
+## one an intake or a checkpoint throws — and small, and it stutters on the
+## machines' power: nothing about a machine's light means safety.
 
 const RAYS := preload("res://src/render/weather/rays.gdshader")
 ## The machines' own light, written once (props/works.gd): a mast's cap, the pool
@@ -35,6 +43,14 @@ const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
 ## A house's door and window: hearth light, between a lamp and an open fire.
 const HEARTH_WARM := Vector3(0.95, 0.66, 0.42)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
+## What the ground round a vent looks like in FULL DAYLIGHT: over 1, because the
+## crust round a hole into fire is brighter than the daylight beside it and a
+## target under the sun asks for no light at all (burning_warm).
+const VENT_DAY_WARM := Vector3(1.16, 1.05, 0.86)
+## And how much of its reach it keeps in full daylight. By day the glow only
+## beats the sun on the crust round the mouth; opened to its night radius it is
+## a pale disc a dozen tiles across lying over the land, which is fog, not fire.
+const VENT_DAY_REACH := 0.45
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
@@ -106,6 +122,9 @@ var _time := 0.0
 var _lamp_down := false
 ## Sources and machines near the camera that may glint, refreshed with the pool.
 var _glint_near: Array[Dictionary] = []
+## Live machines in pool reach, as sources: mob instance id -> source Dictionary.
+var _machine_srcs: Dictionary = {}
+var _machine_near: Array[Dictionary] = []
 ## What went to the sky last frame (Glints.pick output), for tests.
 var glint_list: Array[Dictionary] = []
 ## Stolen neon on the machines' power: magenta tube colour (props/houses.gd).
@@ -124,6 +143,21 @@ static var LENS_GLINT := Works.light(Works.WORKING)
 const SHAFT_RAYED := 0.3
 const SHAFT_LENS := 0.5
 const SHAFT_MACHINE := 0.8
+## A live machine's own pool: the range in tiles and how hard it lays it. Small
+## and weak beside a lamp (3.8, 1.0) — a machine is read by its lens, not by the
+## ground it lights — but the ground under it can no longer be as dark as the
+## ground ten tiles off.
+const MACHINE_POOL := Vector2(2.6, 1.0)
+## How much of its pool a VENT keeps in full daylight. A lamp keeps none — that
+## rule is right and stays — but the Burning's vents are open fire in the ground
+## and must reach the ground they are in at every hour (docs/ART.md §3).
+const VENT_DAY := 1.5
+## How far inside the frame a machine must stand for `await machine` to say the
+## shot holds it: a fifth of the screen in from every edge.
+const TOUR_MARGIN := 0.12
+## The game's frame, which is fixed however big the window on it is.
+static var FRAME_ASPECT := float(ProjectSettings.get_setting("display/window/size/viewport_width", 640)) \
+	/ maxf(1.0, float(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -204,6 +238,57 @@ static func lamps_wanted(hour: float) -> float:
 ## full from an hour after it.
 static func pool_dark(hour: float) -> float:
 	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+
+
+## How hard a thing that BURNS lights the ground, at darkness `dark` (0 noon, 1
+## the dead of night). A fire and a kiln keep the general rule — they burn by day
+## too, but their light only tells after dusk.
+##
+## A VENT does not. It is not a lamp and not a campfire: it is a hole into fire,
+## and the ground round it is lit from underneath at every hour (docs/ART.md §3,
+## "glow from below"). At noon the Burning was white-hot cores sitting on flat
+## ground with nothing under them — the landscape's own fire touching none of its
+## own land (art review, wave A finding 6).
+##
+## Its daylight floor has to be this high because it is competing with the SUN: a
+## pool ADDS its energy to ground the sun already lights, so the 0.07 a vent had
+## at noon moved the ground by two values out of 255. The floor fades out as the
+## dark comes on, so the night — where the vents already read — keeps exactly the
+## light it had.
+static func burning_level(kind: int, power: float, dark: float) -> float:
+	var level := power * (0.12 + 0.88 * dark)
+	if kind == PropKind.VENT:
+		return maxf(level, power * VENT_DAY * (1.0 - dark))
+	return level
+
+
+## What the ground under a burning thing looks like, as a display multiply on its
+## albedo, at darkness `dark`.
+##
+## Every other light in the game aims BELOW daylight: a lamp's ochre wash is 0.96
+## of the albedo, which is what a lamp does to a wall in the dark. compensate()
+## works out the light needed to reach that target and finds, under a noon sun,
+## that the answer is none — correctly, because a target under the sun is already
+## met. So a vent's daylight floor was raising a level that was then multiplied by
+## a colour of exactly zero, and the wash reached the ground only where the sky
+## itself was dim: in the Burning's own smoke, which is the one place anyone had
+## photographed it. On a clear noon it was still nothing.
+##
+## A hole into fire is not a lamp. The ground round it is brighter than the
+## daylight beside it, so by day its target sits ABOVE 1 and compensate has
+## something to solve for whatever the sun is doing. It eases back to the ochre
+## wash as the dark comes on, where the fix was never needed.
+static func burning_warm(kind: int, dark: float) -> Vector3:
+	if kind != PropKind.VENT:
+		return FIRE_WARM
+	return VENT_DAY_WARM.lerp(VENT_WARM, clampf(dark, 0.0, 1.0))
+
+
+## Does this source lay a wash on the ground at this darkness? A pool of light
+## only tells once the dark has come: at dusk a lamp is a flame, not a spotlight.
+## A vent is the exception, for the reason in burning_level().
+static func lays_pool(kind: int, dark: float) -> bool:
+	return kind == PropKind.VENT or dark > 0.25
 
 
 ## How little light there is, whatever the cause: the hour, and a sky too dark
@@ -379,7 +464,12 @@ func _update(delta: float, snap: bool) -> void:
 	# Lamps are lit before dark, but a pool of light only tells once the dark
 	# has come: at dusk a lamp is a flame, not a spotlight.
 	# A lightning flash drowns the lamps: the page shows, not the pools.
-	var dark := pool_dark(hour) * (1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0))
+	var flash := 1.0 - clampf(game.sky.flash * 1.6, 0.0, 1.0)
+	# How dark the HOUR is, before the flash is taken off it. A vent's daylight
+	# floor is read off this: a flash is not daylight, and reading it as daylight
+	# would make the one light with a daylight floor burn HARDER under lightning.
+	var hour_dark := pool_dark(hour)
+	var dark := hour_dark * flash
 	var pools: Array[Vector4] = []
 	var pool_rgb: Array[Vector4] = []
 	for i in lights.size():
@@ -389,11 +479,28 @@ func _update(delta: float, snap: bool) -> void:
 			l.visible = false
 			continue
 		var s: Dictionary = src
+		if s.has("mob"):
+			if not _machine_at(s):
+				l.visible = false
+				_assigned[i] = null
+				continue
+			var mlevel: float = float(s.power) * dark * clampf(game.sky.bolt.w, 0.0, 1.0)
+			if _set_light(l, s.at, float(s.range), compensate(MACHINE_COLD, tint, sun) * mlevel) and dark > 0.25:
+				pools.append(Vector4(s.at.x, s.at.y, s.at.z, float(s.range)))
+				pool_rgb.append(Vector4(MACHINE_COLD.x, MACHINE_COLD.y, MACHINE_COLD.z, 0.0) * clampf(mlevel, 0.0, 1.2))
+			continue
 		var kind := int(s.kind)
 		var level: float = s.power
-		if kind == PropKind.FIRE or kind == PropKind.VENT or kind == PropKind.KILN:
-			# Fires burn by day too, but their light only tells after dusk.
-			level *= 0.12 + 0.88 * dark
+		# Whether this source lays a wash on the ground at all right now.
+		var lays := lays_pool(kind, dark)
+		var warm: Vector3 = s.warm
+		var reach: float = s.range
+		if kind == PropKind.VENT:
+			level = burning_level(kind, float(s.power), hour_dark) * flash
+			warm = burning_warm(kind, hour_dark)
+			reach = s.range * lerpf(VENT_DAY_REACH, 1.0, hour_dark)
+		elif kind == PropKind.FIRE or kind == PropKind.KILN:
+			level = burning_level(kind, float(s.power), dark)
 		else:
 			level *= want * dark
 			if POWERED_SOURCES.has(kind):
@@ -401,8 +508,8 @@ func _update(delta: float, snap: bool) -> void:
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and dark > 0.25:
-			pools.append(Vector4(s.at.x, s.at.y, s.at.z, s.range))
+		if _set_light(l, s.at, reach, compensate(warm, tint, sun) * level) and lays:
+			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
 	var lit := game.body.lamp_lit
@@ -517,7 +624,10 @@ func _gather_glints(focus: Vector2) -> void:
 	near.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	for i in mini(near.size(), 40):
 		_glint_near.append(near[i][1])
+	_machine_near.clear()
+	var seen := {}
 	if not is_inside_tree():
+		_machine_srcs.clear()
 		return
 	for m in get_tree().get_nodes_in_group(&"mobs"):
 		var mob := m as Mob
@@ -525,6 +635,87 @@ func _gather_glints(focus: Vector2) -> void:
 			continue
 		if mob.pos.distance_squared_to(focus) <= Glints.REACH * Glints.REACH:
 			_glint_near.append({"mob": mob})
+		if mob.pos.distance_squared_to(focus) <= REACH * REACH:
+			# One dictionary per mob for as long as it is near, so the pool light
+			# it is handed stays with it instead of jumping every quarter second.
+			var key := mob.get_instance_id()
+			if not _machine_srcs.has(key):
+				_machine_srcs[key] = {"mob": mob, "kind": PropKind.CHECKPOINT, "h": 0.0, "h2": 0.0,
+					"at": Vector3.ZERO, "range": MACHINE_POOL.x, "power": MACHINE_POOL.y, "warm": MACHINE_COLD}
+			_machine_near.append(_machine_srcs[key])
+			seen[key] = true
+	for key: int in _machine_srcs.keys():
+		if not seen.has(key):
+			_machine_srcs.erase(key)
+
+
+## Where a live machine's pool sits now: at its working part, dropped toward the
+## ground it stands on, so the light lands under the body and not inside it.
+## False once the body is gone or its lights are out.
+func _machine_at(s: Dictionary) -> bool:
+	# A body freed since the last gather (killed and cleared) must be checked
+	# before it is held in a typed variable, or the assignment itself errors.
+	if not is_instance_valid(s.mob):
+		return false
+	var mob: Node = s.mob
+	if not bool(mob.get("alive")):
+		return false
+	var model := mob.get("model") as MachineModel
+	if model == null or model.light_level() <= 0.0:
+		return false
+	var at: Vector3 = mob.call("part_position")
+	s.at = Vector3(at.x, maxf((mob as Node3D).global_position.y + 0.35, at.y - 0.3), at.z)
+	return true
+
+
+## Tour awaits. `machine` is a live machine close enough and far enough inside
+## the frame that a shot taken now would hold it; `machine:KIND` is that machine
+## being of that kind.
+##
+## It lives here because this is the system that already keeps every live machine
+## near the camera, for the pool each one lays. It exists because `walkto mob N`
+## steers for at most N seconds and then returns true either way, so a proof
+## frame staged with it is a timed nudge and not a guarantee: the machine-read
+## tour's own wary-at-noon frame came out EMPTY on about half its runs, and was
+## saved as proof of a read that nothing in the picture supported (wave A2
+## review). A tour can now hold the shot until the body is there, and fail if it
+## never comes.
+func tour_seen(what: StringName) -> bool:
+	var want := StringName(String(what).trim_prefix("machine:"))
+	if want == what and what != &"machine":
+		return false
+	for m in get_tree().get_nodes_in_group(&"mobs"):
+		var mob := m as Node
+		if not bool(mob.get("alive")):
+			continue
+		if what != &"machine" and StringName(mob.get("kind")) != want:
+			continue
+		if (mob.get("model") as MachineModel) == null:
+			continue
+		if _framed(mob as Node3D):
+			return true
+	return false
+
+
+## Is this body inside the middle of the frame, by enough that the few physics
+## frames between an await and the shutter cannot carry it out?
+##
+## Worked out from the CAMERA alone — its own orthographic extent and the game's
+## fixed 640x360 — and never from the viewport. A tool run's window is one pixel
+## across (tools/_focus.sh: macOS has no off-screen to hide in), so a check that
+## divided by the viewport's rect said yes to anything anywhere and shipped two
+## frames with no machine in them, which is the very failure it was written for.
+func _framed(mob: Node3D) -> bool:
+	var cam := game.camera
+	if cam == null or not cam.is_inside_tree():
+		return false
+	# The body's own middle, not its feet: a tall machine standing at the bottom
+	# edge is a machine the frame holds.
+	var local := cam.global_transform.affine_inverse() * (mob.global_position + Vector3(0, 0.6, 0))
+	if local.z > -0.5:
+		return false
+	var half_h := cam.size * 0.5 * (1.0 - TOUR_MARGIN * 2.0)
+	return absf(local.y) < half_h and absf(local.x) < half_h * FRAME_ASPECT
 
 
 static func neon_colour(s: Dictionary) -> Vector3:
@@ -599,6 +790,16 @@ func _assign(focus: Vector2, hour: float) -> void:
 		if d > REACH * REACH or not source_lit(s, hour):
 			continue
 		wanted.append([d, s])
+	# A live machine competes for the same pool on distance alone: the thing two
+	# tiles away lighting the ground beats a window twelve tiles off, which is
+	# what a player standing next to it would expect and what keeps the budget.
+	for s in _machine_near:
+		if not is_instance_valid(s.mob):
+			continue
+		var mob: Node = s.mob
+		if not bool(mob.get("alive")):
+			continue
+		wanted.append([(mob.get("pos") as Vector2).distance_squared_to(focus), s])
 	wanted.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var chosen: Array = []
 	for i in mini(wanted.size(), lights.size()):

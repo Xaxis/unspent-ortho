@@ -13,6 +13,14 @@ extends RefCounted
 ##   ... --filter=gait_watcher               six phases of one stride
 ##   ... --filter=terrace --zoom=10 --hour=23  watchers and harvesters throwing their
 ##                                          light into a raised step and over a ledge
+##   ... --filter=disposed_harvester --zoom=15 --hour=12  ONE kind standing at each of
+##                                          the four dispositions, same light, same
+##                                          ground: what a player has to tell apart
+##                                          across a field. Shoot it at noon and at
+##                                          23 and hold the two side by side.
+##   ... --filter=disposed_harvester_hostile              one of them alone and
+##                                          unlabelled, which is the frame to count
+##                                          lit pixels in.
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
 const SHOWN: Array[StringName] = [&"stand", &"alert", &"windup", &"dead"]
@@ -37,6 +45,12 @@ static func gallery() -> Array:
 		return out
 	if filter == "terrace":
 		out.append({"name": filter, "node": terrace()})
+		return out
+	if filter.begins_with("disposed"):
+		var rest := filter.trim_prefix("disposed_").split("_", false)
+		var did: StringName = StringName(rest[0]) if rest.size() > 0 else &"harvester"
+		var only: StringName = StringName(rest[1]) if rest.size() > 1 else &""
+		out.append({"name": filter, "node": disposed(did if KINDS.has(did) else &"harvester", silhouette, only)})
 		return out
 	if filter.begins_with("sheet_") or filter.begins_with("gait_"):
 		var kid := StringName(filter.trim_prefix("sheet_").trim_prefix("gait_").trim_suffix("_snow"))
@@ -121,6 +135,48 @@ static func lineup(silhouette: bool, snow: bool = false, back_pose: StringName =
 	if silhouette:
 		for c in root.get_children():
 			if c != ground:
+				_blacken(c)
+	return holder
+
+
+## One kind, standing, at each of the four dispositions in the order of the
+## ladder, on one strip of ground under one sky: the review surface for the read
+## a player has to make of a machine across a field. Every cell is the same
+## body, so anything that differs between them IS the disposition.
+##
+## Name one disposition (`disposed_runner_hostile`) and it stands alone, centred,
+## with no label beside it. That is the frame to COUNT: four bodies in a row
+## cannot be told apart by a script without guessing where one cell ends, and a
+## measurement that has to guess is how a ladder that only reads on three kinds
+## came to be reported as a ladder.
+static func disposed(kid: StringName, silhouette: bool, only: StringName = &"") -> Node3D:
+	var holder := Node3D.new()
+	var root := Node3D.new()
+	var across := Vector3(1, 0, -1).normalized()
+	root.position = Vector3(1.6, 0, 0)
+	holder.add_child(root)
+	root.add_child(review_ground(Vector2(26, 10), silhouette, false))
+	var shown: Array[StringName] = []
+	if Disposition.ORDER.has(only):
+		shown.append(only)
+	else:
+		shown.append_array(Disposition.ORDER)
+	var gap := maxf(float(WIDTHS[kid]) * 1.25, 1.8)
+	var x := -gap * (shown.size() - 1) * 0.5
+	for d: StringName in shown:
+		var m := FigureModel.create(kid) as MachineModel
+		m.rotation.y = gallery_yaw(m.part_side, m.gallery_turn)
+		m.disposition = d
+		m.set_pose(&"stand")
+		m.settle()
+		m.position = across * x
+		root.add_child(m)
+		if shown.size() > 1:
+			_label_later(root, String(d), across * x + Vector3(0.6, 0.0, 0.6))
+		x += gap
+	if silhouette:
+		for c in root.get_children():
+			if c.name != &"ground" and not c is Label3D:
 				_blacken(c)
 	return holder
 

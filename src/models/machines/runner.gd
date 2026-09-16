@@ -61,9 +61,12 @@ func build() -> void:
 		FoundKit.rivets(k, Vector3(-0.06, 0.47, sz * 0.2), Vector3(0.06, 0.47, sz * 0.2), Vector3.BACK * sz, 3, R[5])
 	body_mesh(k, torso)
 	add_scan(torso, Vector3(0.088, 0.38, 0), Vector3.RIGHT, Vector3.BACK, 0.18, 0.026, 1.2)
-	add_lamp(torso, Vector3(0.0, 0.503, 0.13), Vector3.UP, Vector3.RIGHT, 0.035, 0.035, &"status")
+	add_lamp(torso, Vector3(0.0, 0.503, 0.0), Vector3.UP, Vector3.RIGHT, 0.032, 0.036, &"status")
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(torso, Vector3(0.095, 0.43, sz * 0.1), Vector3(0.998, 0.06, 0), Vector3.UP, 0.022, 0.026, &"optic")
+	# The ground it is closing across, lit from the pair of eyes: a dust of
+	# pixels by day on anything still about its round, plain on anything sent.
+	add_beam(self, Vector3(0.1, HIP_Y + 0.46, 0), Vector3(2.0, -2.2, 0), 1.8, 0.9)
 	var tw := FoundKit.kit()
 	FoundKit.patch(tw, Vector3(0.089, 0.2, 0.06), Vector3.RIGHT, Vector3.UP, 0.1, 0.12, Palette.MACHINE["longlegs"], 151)
 	FoundKit.grime(tw, Vector3(0.0, 0.46, 0.201), Vector3.BACK, 0.16, 0.2, 3, 152, D)

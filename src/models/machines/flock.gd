@@ -21,6 +21,8 @@ const ORBIT := 0.07
 const OMEGA := 5.5
 ## Points counted dark per second at rest.
 const DOT_RATE := 12.0
+## How wide a point is drawn, in tiles.
+const DOT_R := 0.022
 ## A windup's pulse: this long a beat, bright then low.
 const PULSE := 0.1
 ## The points' light, and their size, locked and through a windup's pulse. The
@@ -32,6 +34,20 @@ const PULSE_LOW := 0.6
 const LOCK_SIZE := 1.35
 const PULSE_BIG := 1.55
 const PULSE_SMALL := 0.9
+## What the plan's ladder does to a flock. It is the one machine with no lamp to
+## count on and no wedge to throw — a scatter of shards cannot light the ground
+## it is over — so the two things it has are the two it uses: the cloud draws in,
+## and its points burn bigger.
+##
+## The size is the daylight read. A point is about one screen pixel across at
+## play zoom, so under the sun a flock carried NO lit pixel at all, at any rung,
+## and was the one kind where disposition said literally nothing. It fades out as
+## the dark comes on: at night the points already read, and a flock that doubled
+## its points after dusk would be shouting.
+const DAY_DOT := {&"indifferent": 1.3, &"wary": 2.0, &"observant": 2.8, &"hostile": 3.8}
+## How tightly it holds itself, by disposition: a scatter on its round, a dart
+## once the plan has told it about you. Read off the outline at any distance.
+const DRAWN_IN := {&"indifferent": 1.0, &"wary": 0.93, &"observant": 0.84, &"hostile": 0.72}
 
 var _home: PackedVector3Array = PackedVector3Array()
 var _axis: PackedVector3Array = PackedVector3Array()
@@ -83,7 +99,7 @@ func build() -> void:
 	add_child(smi)
 
 	var dk := FoundKit.kit()
-	FoundKit.spot(dk, Vector3(0.01, 0.016, 0), Vector3.UP, 0.022, 4, Palette.LENS[2], 0.002)
+	FoundKit.spot(dk, Vector3(0.01, 0.016, 0), Vector3.UP, DOT_R, 4, Palette.LENS[2], 0.002)
 	_dots = _multimesh(dk.build())
 	var dmi := MultiMeshInstance3D.new()
 	dmi.name = "dots"
@@ -121,6 +137,10 @@ func _apply_pose() -> void:
 			stretch = 1.9
 			offset = Vector3(0.55, -0.1, 0)
 	var k := 1.0 if pose_time > 100.0 else 1.0 - exp(-8.0 * _dt)
+	if pose == &"stand" or pose == &"walk":
+		# What it says while it is still about its round. Alert and a blow are
+		# exact shapes and stay exact, whatever the plan has told it.
+		spread *= float(DRAWN_IN.get(disposition, 1.0))
 	_spread = lerpf(_spread, spread, k)
 	_stretch = lerpf(_stretch, stretch, k)
 	_offset = _offset.lerp(offset, k)
@@ -175,13 +195,24 @@ func _pulse_high() -> bool:
 	return fposmod(pose_time, PULSE * 2.0) < PULSE
 
 
+## A flock throws no wash and carries no strip, so its daylight read is the face
+## its thirty-six points show the sun: DOT_R across, squared by the ladder.
+func daylight_read() -> float:
+	var s := float(DAY_DOT.get(disposition, 1.0))
+	return COUNT * PI * DOT_R * DOT_R * s * s
+
+
 func _dot_scale() -> float:
 	match pose:
 		&"windup":
 			return PULSE_BIG if _pulse_high() else PULSE_SMALL
 		&"strike":
 			return PULSE_BIG
-	return LOCK_SIZE if locked() else 1.0
+	if locked():
+		return LOCK_SIZE
+	# Disposition is what a body says while it is still about its round; once it
+	# has locked on, the locked read is the read, and it is an exact size.
+	return lerpf(float(DAY_DOT.get(disposition, 1.0)), 1.0, clampf(darkness() / 0.35, 0.0, 1.0))
 
 
 func _dot_on(i: int) -> bool:

@@ -94,7 +94,7 @@ func build() -> void:
 	# The eye under the cap's front.
 	FoundKit.cbox(k, Vector3(0.3, -0.01, 0), Vector3(0.07, 0.05, 0.1), 0.012, D)
 	body_mesh(k, head)
-	add_lamp(head, Vector3(0.432, 0.11, 0), Vector3.RIGHT, Vector3.UP, 0.04, 0.03, &"status")
+	add_lamp(head, Vector3(0.432, 0.11, 0), Vector3.RIGHT, Vector3.UP, 0.034, 0.04, &"status")
 	add_lamp(head, Vector3(0.336, -0.01, 0), Vector3.RIGHT, Vector3.UP, 0.05, 0.028, &"optic")
 	add_beam(head, Vector3(0.34, -0.02, 0), Vector3(2.0, -1.36, 0), 2.4, 1.1)
 	var capw := FoundKit.kit()
