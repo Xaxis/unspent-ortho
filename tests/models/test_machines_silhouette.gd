@@ -189,22 +189,37 @@ static func fill(mask: PackedByteArray) -> float:
 ## that never moves, filled 0.73/0.72 of its box at one yaw and 0.73/0.77 at the
 ## other, so four poses of it were four identical black lozenges and nothing in
 ## the outline named the kind. An unloading spout swung out over one flank and
-## two stacks clear of the deck took it to 0.54/0.55 and 0.65/0.69.
+## two stacks clear of the deck took it to 0.54/0.55 and 0.65/0.69. The hauler
+## then went the same way: a signal mast between the hoppers, and an alert that
+## breaks at the hinge and squares up instead of jacking straight up, 0.73 to 0.67.
 ##
-## The bar sits under the harvester as it was and over every kind as it is: the
-## ceiling now is the hauler's 0.73 alert. It is deliberately close, because
-## anything looser would have passed the machine this test was written for.
-const MOST_FILLED := 0.75
+## THE BAR IS A RATCHET, and it is written per kind because one number for the
+## whole set is a rubber stamp: the first version of this test sat 0.02 above the
+## worst machine that existed, so nothing that existed could fail it. Every kind
+## is pinned two hundredths above where it stands today. A kind may only get
+## better, and bringing one down means bringing its own number down with it. The
+## two worst — the harvester and the hauler seen end-on — are slabs that genuinely
+## fill their boxes from that bearing, and getting them under 0.6 is a bigger
+## change to both than a fix wave should make; they are the next two to do.
+const FILLED := {
+	&"harvester": 0.71, &"hauler": 0.70, &"runner": 0.57, &"warden": 0.56,
+	&"sweeper": 0.55, &"dredger": 0.48, &"clerk": 0.47, &"lineman": 0.44,
+	&"cutter": 0.44, &"flock": 0.32, &"longlegs": 0.32, &"watcher": 0.25,
+}
+## What a kind nobody has pinned yet may fill: the bar for the thirteenth machine.
+const MOST_FILLED := 0.70
 
 
 func test_no_machine_is_a_filled_box() -> void:
 	for kid in KINDS:
+		var bar: float = float(FILLED.get(kid, MOST_FILLED))
 		for yaw: float in [0.6, 2.3]:
 			for p: StringName in [&"stand", &"alert"]:
 				var m := posed(kid, p)
 				var f := fill(silhouette(m, yaw))
 				m.free()
-				lt(f, MOST_FILLED, "%s %s at yaw %.1f fills %.2f of its box" % [kid, p, yaw, f])
+				lt(f, bar, "%s %s at yaw %.1f fills %.2f of its box (ratchet %.2f)" % [kid, p, yaw, f, bar])
+				lt(f, MOST_FILLED + 0.02, "%s %s at yaw %.1f fills %.2f: no machine is a crate" % [kid, p, yaw, f])
 
 
 func test_every_machine_reads_at_gameplay_zoom() -> void:
