@@ -87,8 +87,8 @@ func test_the_speed_lines_are_ink_over_the_world_and_never_a_field_of_paper() ->
 	check(body.contains("R * (1.0 - OPEN)"),
 		"and its heads start clear of the open heart, where the body is")
 	# And that flank is a step DOWN the page's own ramp. Every other mark takes
-	# the full linen, which the midday sky grades out at 242 -- near white, which
-	# docs/ART.md §5 keeps for fire and lamps.
+	# the full linen, which the midday sky grades all the way to 255 -- pure
+	# white, which docs/ART.md §5 keeps for fire and lamps.
 	var src2 := FileAccess.get_file_as_string("res://src/actors/mob_fx.gd")
 	var at2 := src2.find("static func streak(")
 	gt(at2, 0, "the streak lays its own mark")
