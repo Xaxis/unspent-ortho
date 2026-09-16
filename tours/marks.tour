@@ -23,6 +23,18 @@ tap swing
 await hit 1.8
 end
 shot 02-the-blow-leaves-it-standing
+# And once more at the zoom the art review shot it at, where the old flash was a
+# bone-white silhouette sixty pixels tall with the amber gone out of it.
+zoom 8
+wait 0.4
+try 16
+walkto part 1.6
+tap swing
+await hit 1.8
+end
+shot 03-and-close-enough-to-count-the-pixels
+zoom 15
+wait 0.4
 
 # --- The machine's own light is smaller than the machine ----------------------
 # Its working part at night, at the distance it is read from: a ring of loose
@@ -35,13 +47,13 @@ weather clear:0
 wait 1.2
 spawn watcher
 wait 1.6
-shot 03-its-light-is-smaller-than-it-is
+shot 04-its-light-is-smaller-than-it-is
 
 # --- A read through a stolen lens, over the thing it reads --------------------
 tap ability_scan
 await ability:scan 5
 wait 0.4
-shot 04-read-over-the-thing-it-reads
+shot 05-read-over-the-thing-it-reads
 
 # --- The dash leaves the body showing ----------------------------------------
 # Speed lines are ink over the world, laid where the body WAS: the player must
@@ -52,44 +64,52 @@ hour 11
 weather clear:0
 place coast
 wait 1.4
-shot 05-before-the-dash
+shot 06-before-the-dash
 tap ability_dash
 await ability:dash 5
 wait 0.03
-shot 06-the-dash-leaves-the-body-showing
+shot 07-the-dash-leaves-the-body-showing
 
 # --- The magnet line is a line -----------------------------------------------
+# Far enough back that the line is a LINE: a magnet throw reaches eight tiles,
+# and a rope proven at arm's length proves nothing.
+# Back off until the tip is nearly out of throw, then step in until it catches:
+# a magnet line reaches eight tiles, and a rope proven at arm's length proves
+# nothing about whether a player can see it.
 place tip
 wait 0.8
-walk -1,-1 1.8
-walk 1,1 0.25
-shot 07-across-from-a-tip
+walk -1,-1 2.6
+wait 0.3
+shot 08-across-from-a-tip
+try 8
+walk 1,1 0.3
 tap ability_grapple
-await ability:grapple 5
-shot 08-the-line-takes-hold
+await ability:grapple 1.5
+end
+shot 09-the-line-takes-hold
 wait 0.45
-shot 09-and-it-shortens
+shot 10-and-it-shortens
 
 # --- Crouched, still a person ------------------------------------------------
 coast calm
 wait 0.4
 ground heath
 wait 1.0
-shot 10-standing-in-the-heather
+shot 11-standing-in-the-heather
 hold crouch
 await crouched 3
 wait 0.6
-shot 11-down-in-the-heather
+shot 12-down-in-the-heather
 walk 1,0 0.5
-shot 12-and-moving-down-there
+shot 13-and-moving-down-there
 # And closer than anyone plays, which is where the art review found it: the
 # pose has to hold up under a magnifying glass as well as at 640x360.
 zoom 6
 wait 0.5
-shot 13-down-in-the-heather-close
+shot 14-down-in-the-heather-close
 release crouch
 wait 0.5
-shot 14-and-up-again-close
+shot 15-and-up-again-close
 zoom 15
 wait 0.4
 
@@ -105,8 +125,8 @@ await cold 12
 await pressure_bites 15
 await breath 10
 wait 0.15
-shot 15-breath-on-white-ground
+shot 16-breath-on-white-ground
 wait 2.0
 await breath 10
 wait 0.6
-shot 16-and-the-next-breath
+shot 17-and-the-next-breath

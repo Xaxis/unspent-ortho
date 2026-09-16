@@ -63,7 +63,12 @@ void fragment() {
 	// The blow's paper, hard-edged because FOUND is drawn with a ruler. Laid as
 	// EMISSION over a black albedo so it lands on exactly the page's white
 	// whatever the light is doing, the way the flat flash material used to.
-	if (flash_r > 0.0 && distance(world_pos, flash_at) < flash_r) {
+	// It whitens PLATE and never LIGHT: emissive geometry and the machine's own
+	// built-in strips keep burning through their own hit mark, which is the
+	// whole point of it — the player is aiming at the amber part, and the blow
+	// that lands must not be the thing that hides it.
+	if (flash_r > 0.0 && emission_strength <= 0.0 && COLOR.a >= 0.98
+			&& distance(world_pos, flash_at) < flash_r) {
 		ALBEDO = vec3(0.0);
 		EMISSION = flash_col;
 	}

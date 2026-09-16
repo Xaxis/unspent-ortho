@@ -246,9 +246,11 @@ func _crouch_pose(p: PersonAnim.Pose) -> void:
 	# Elbows in and forearms up: a dark band between the head and the back.
 	bend.call(&"arm_l", Vector3(0.16, 0, 0.62))
 	bend.call(&"arm_r", Vector3(-0.16, 0, 0.44))
-	# Only the free hand folds: the tool hand keeps whatever grip the action or
-	# the held thing put it in, so a crouched swing is still the same swing.
-	bend.call(&"fore_l", Vector3(0, 0, 0.75))
+	# Only the free hand folds, and only when it IS free: the tool hand keeps
+	# whatever grip the action put it in, and a haft that takes both hands keeps
+	# both, so a crouched swing is still the same swing.
+	if not HeldTools.two_handed(held):
+		bend.call(&"fore_l", Vector3(0, 0, 0.75))
 	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.17, -leg * CROUCH_DROP, 0.0) * k
 	p.off[&"hem"] = p.o(&"hem") + Vector3(-0.05, -leg * CROUCH_DROP * 0.4, 0) * k
 

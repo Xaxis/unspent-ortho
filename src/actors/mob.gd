@@ -246,17 +246,18 @@ func folded(now_ms: float) -> float:
 	return 1.0 - (1.0 - t) * (1.0 - t)
 
 
-## A blow landed on this body: paper-white where it landed, for `seconds`.
+## A blow landed on this body: paper-white, for `seconds`.
 ##
-## `at` is where it landed, in the world. A MACHINE flashes only there (the
-## sphere in found.gdshader): it is the one body big enough that flashing it
-## whole hides what the player needs to see — its violet, its wear and the amber
-## working part they are aiming at. Given nothing, the flash goes to the working
-## part, which is what every other blow on a machine is about. A dog or a person
-## is a few pixels and flashes whole, as it always has.
-func flash(seconds: float = 0.06, at: Vector3 = Vector3.INF) -> void:
+## A MACHINE whitens only round its WORKING PART (the sphere in found.gdshader,
+## which leaves the lit part itself alone): it is the one body big enough that
+## flashing it whole hides what the player needs to see — its violet, its wear
+## and the amber part they are aiming at. That is where every blow on a machine
+## is aimed and where its hit mark is drawn, so the white, the mark and the
+## thing struck are all one place. A dog or a person is a few pixels across and
+## flashes whole, as it always has.
+func flash(seconds: float = 0.06) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
-	_flash_at = at if at.is_finite() else part_position()
+	_flash_at = part_position()
 
 
 ## The point of the drawn body highest on screen (`up`: the camera's up), so a

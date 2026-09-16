@@ -366,9 +366,7 @@ func _on_hit(e: Dictionary) -> void:
 		MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
 		# The part's flare follows from the state (Mob.sync_view), in its order.
-		# Where the blow met the body is where the paper goes, so a machine keeps
-		# its violet and its amber part while the mark proves the hit (Mob.flash).
-		(target.node as Mob).flash(0.06, impact)
+		(target.node as Mob).flash(0.06)
 
 
 func _on_hurt(e: Dictionary) -> void:
