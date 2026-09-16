@@ -48,16 +48,18 @@ shot 10-2130
 
 # No half hour of the evening is a step. The crop is the world under the HUD's
 # top band and above its bottom one, so a clock reading 20:30 instead of 20:00
-# is not what the numbers are measuring.
-same 01-the-afternoon-1700 02-1730 0.100 0,84,1280,592
-same 02-1730 03-the-turn-begins-1800 0.100 0,84,1280,592
-same 03-the-turn-begins-1800 04-1830 0.100 0,84,1280,592
-same 04-1830 05-low-and-warm-1900 0.100 0,84,1280,592
-same 05-low-and-warm-1900 06-1930 0.100 0,84,1280,592
-same 06-1930 07-the-lights-come-on-2000 0.100 0,84,1280,592
-same 07-the-lights-come-on-2000 08-2030 0.100 0,84,1280,592
-same 08-2030 09-night-lands-2100 0.100 0,84,1280,592
-same 09-night-lands-2100 10-2130 0.100 0,84,1280,592
+# is not what the numbers are measuring. On main the half hour from 20:00 lost a
+# sixth of the frame and would fail this outright; the worst step here is 0.053,
+# the half hour to six, and the one from 20:00 is 0.037.
+same 01-the-afternoon-1700 02-1730 0.075 0,84,1280,592
+same 02-1730 03-the-turn-begins-1800 0.075 0,84,1280,592
+same 03-the-turn-begins-1800 04-1830 0.075 0,84,1280,592
+same 04-1830 05-low-and-warm-1900 0.075 0,84,1280,592
+same 05-low-and-warm-1900 06-1930 0.075 0,84,1280,592
+same 06-1930 07-the-lights-come-on-2000 0.075 0,84,1280,592
+same 07-the-lights-come-on-2000 08-2030 0.075 0,84,1280,592
+same 08-2030 09-night-lands-2100 0.075 0,84,1280,592
+same 09-night-lands-2100 10-2130 0.075 0,84,1280,592
 
 # And the whole evening IS a fall: an hour and a half apart the land is a
 # different picture, by more than any half hour of it was. (A `same` that must
