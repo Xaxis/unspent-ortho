@@ -20,6 +20,17 @@ func test_the_shader_floors_what_it_draws() -> void:
 	near(luma(Palette.INK[2]), FLOOR, 0.0005, "INK[2] luma")
 
 
+## The outline pen was the last thing in the frame that could reach black: on a
+## near-white landscape its lines landed at luma 4 while every surface under it
+## was floored. All three shaders now carry the same two numbers.
+func test_the_outline_pen_is_floored_too() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/outline.gdshader")
+	check(src.contains("vec3 pen = ink_floor("), "outline.gdshader floors its pen")
+	check(src.contains("const float INK_FLOOR = %.4f;" % FLOOR), "at the land's floor")
+	check(src.contains("const vec3 INK2 = vec3(%.4f, %.4f, %.4f);"
+		% [Palette.INK[2].r, Palette.INK[2].g, Palette.INK[2].b]), "on the land's ink")
+
+
 func test_a_machine_is_floored_by_the_same_pen_as_the_land() -> void:
 	# The law is "nothing is pure black", not "nothing MADE is": a FOUND surface
 	# graded down at night has the same floor as the ground beside it, and the

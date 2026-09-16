@@ -42,13 +42,15 @@ uniform float wander = 0.0;
 uniform float glow = 0.0;
 // Flickers per second of a glowing mark: embers change their minds, wisps pulse.
 uniform float flicker_rate = 12.0;
-// Pale marks read on dark ground and dark marks on pale: color_b flecks get a
-// shade pixel under them in color_a when this is 1.
+// Pale marks read on dark ground and dark marks on pale: this SHARE of marks
+// gets a shade pixel under them in color_a (flecks, and blown streaks). A share,
+// not a switch, because a long mark rimmed every time reads as a dark dash.
 uniform float underline = 0.0;
-// Flecks drawn as a body in color_a with a color_b highlight on the top-left
-// pixel (snow: a cold blue-grey flake with a pale glint, so it reads falling
-// over lying snow); a fleck three pixels across is a small cross. For a
-// one-pixel fleck, mix_b is the share that is all glint.
+// Flecks drawn as a paper body in color_b held by one pixel of shade in color_a
+// under it (docs/ART.md section 3: the snowfield's "snow as paper flecks"). Pale
+// against pale lying snow, and still legible over dark ground; the dark speck is
+// the Burning's ash and must not be snow. A fleck three pixels across is a small
+// cross with the same shade pixel under it.
 uniform float highlight = 0.0;
 // Flicks lead with their head: +1 moving screen-right, -1 moving left.
 uniform float facing = 1.0;
@@ -104,7 +106,7 @@ void vertex() {
 		lo = vec2(min(0.0, slant * len) - 1.0, -len - 1.0);
 		hi = vec2(max(0.0, slant * len) + 2.0, 1.0);
 	} else if (mode == 1) {
-		lo = vec2(0.0, -underline);
+		lo = vec2(0.0, -max(step(0.001, underline), highlight));
 		hi = vec2(len, len);
 	} else if (mode == 2) {
 		lo = vec2(-5.0, -2.0);
@@ -145,30 +147,36 @@ void vertex() {
 	if (rnd > keep) {
 		POSITION = vec4(2.0, 2.0, 2.0, 1.0);
 	}
-	v_col = fract(rnd * 31.17) < mix_b && highlight < 0.5 ? color_b : color_a;
+	// A fleck held by a shade rim is always the paper colour; everything else
+	// takes color_b for its share of the marks.
+	v_col = highlight > 0.5 || fract(rnd * 31.17) < mix_b ? color_b : color_a;
 }
 
 void fragment() {
 	vec2 q = floor(v_px);
 	bool on = false;
 	bool shade = false;
-	bool glint = false;
 	bool scuff = false;
 	if (mode == 0) {
 		// One pixel per row down the stroke, stepped sideways by the slant.
 		on = q.y < 0.0 && q.y >= -v_len && q.x == floor(-slant * (q.y + 1.0) + 0.5);
 	} else if (mode == 1 && highlight > 0.5) {
-		// y runs up the screen here: the top-left pixel is (0, len - 1).
+		// y runs up the screen here. A paper fleck, with one pixel of shade laid
+		// under it so it holds against snow already lying on the page.
+		// Only some of them carry the rim (mix_b), so a fall of snow is not a
+		// field of dark dots.
+		bool rimmed = fract(v_rnd * 71.3) < mix_b;
 		if (v_len > 2.5) {
 			on = (q.x == 1.0 && q.y >= 0.0 && q.y <= 2.0) || (q.y == 1.0 && q.x >= 0.0 && q.x <= 2.0);
-			glint = q.x == 1.0 && q.y == 2.0;
+			shade = rimmed && q.x == 1.0 && q.y == -1.0;
 		} else {
 			on = q.x >= 0.0 && q.y >= 0.0 && q.x < v_len && q.y < v_len;
-			glint = v_len > 1.5 ? (q.x == 0.0 && q.y == 1.0) : fract(v_rnd * 71.3) < mix_b;
+			shade = rimmed && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
 		}
+		on = on || shade;
 	} else if (mode == 1) {
 		on = q.x >= 0.0 && q.y >= 0.0 && q.x < v_len && q.y < v_len;
-		shade = underline > 0.5 && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
+		shade = fract(v_rnd * 71.3) < underline && q.y == -1.0 && q.x >= 0.0 && q.x < v_len;
 		on = on || shade;
 	} else if (mode == 2) {
 		// A wavering line: ~~ drawn in nine pixels, its phase walking with time.
@@ -177,10 +185,16 @@ void fragment() {
 		float wave = y < 1.0 ? 0.0 : (y < 2.0 ? 1.0 : (y < 3.0 ? 0.0 : -1.0));
 		on = abs(q.x) <= 4.0 && q.y == wave;
 	} else if (mode == 3) {
-		// A flick: a flat stroke that lifts at its head.
+		// A flick: a flat stroke that lifts at its head. Blown snow takes the
+		// same shade rim as a fleck, so a pale streak reads over pale ground —
+		// under a share of the streaks only, or the wind is drawn in dashes.
 		float x = q.x * sign(facing);
 		float t = -x / max(v_len, 1.0);
-		on = x <= 0.0 && x > -v_len && q.y == floor((1.0 - t) * (1.0 - t) * 1.6);
+		float row = floor((1.0 - t) * (1.0 - t) * 1.6);
+		bool along = x <= 0.0 && x > -v_len;
+		on = along && q.y == row;
+		shade = fract(v_rnd * 71.3) < underline && along && q.y == row - 1.0;
+		on = on || shade;
 	} else if (mode == 5) {
 		// A spark: a centre and its four neighbours; big ones reach two pixels.
 		float r = abs(q.x) + abs(q.y);
@@ -206,7 +220,7 @@ void fragment() {
 	if (!on) {
 		discard;
 	}
-	vec3 col = glint ? color_b : (shade ? color_a : v_col);
+	vec3 col = shade ? color_a : v_col;
 	if (scuff) {
 		col = scuff_color;
 	}

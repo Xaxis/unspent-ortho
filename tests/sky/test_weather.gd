@@ -140,6 +140,30 @@ func test_new_kinds_read_as_an_m1_kind_for_older_readers() -> void:
 	eq(Weather.family(Weather.RAIN), Weather.RAIN, "old kinds are themselves")
 
 
+func test_every_kind_that_hides_the_land_cuts_sight_and_sounds_like_something() -> void:
+	# The eye: a kind nobody wrote a row for would leave a machine full sight
+	# through a whiteout. Clear and grey hide nothing, and nothing blinds.
+	var sees_all: Array[StringName] = [Weather.CLEAR, Weather.GREY]
+	for k: StringName in Weather.KINDS:
+		var cut := float(Weather.SIGHT_CUT.get(k, 0.0))
+		if sees_all.has(k):
+			near(cut, 0.0, 1e-6, "%s hides nothing" % k)
+		else:
+			gt(cut, 0.0, "%s cuts sight" % k)
+		lt(cut, 0.8, "%s never blinds: you can always see your own hands" % k)
+		near(Weather.sight_factor(k, 0.0), 1.0, 1e-6, "%s at no strength is a clear day" % k)
+	gt(float(Weather.SIGHT_CUT[Weather.WHITEOUT]), float(Weather.SIGHT_CUT[Weather.BLIZZARD]), "a whiteout takes more than the blizzard it is one of")
+	# The ear: a kind the beds were never written for is heard as its family,
+	# and that family must be one the sound sheet knows (the sky's half of the
+	# contract; the beds themselves are the audio package's).
+	for k: StringName in Weather.KINDS:
+		var fam := Weather.family(k)
+		check(SoundMix.WEATHER_BED.has(fam) or fam == Weather.CLEAR or fam == Weather.GREY or fam == Weather.FOG or fam == Weather.HEAT, "%s is heard as %s, which the mix knows" % [k, fam])
+	eq(Weather.family(Weather.GLARE), Weather.HEAT, "glare is the heat's shimmer to the ear")
+	eq(Weather.family(Weather.DRY_STORM), Weather.DUST, "dry lightning is blown dust between the strikes")
+	eq(Weather.family(Weather.HAZE), Weather.FOG, "a furnace haze is fog")
+
+
 func test_clear_hardens_to_grey_after_the_turning() -> void:
 	for spell in 200:
 		var early := Weather.kind_for(4, spell, Country.COAST, 3)

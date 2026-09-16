@@ -1,6 +1,32 @@
 extends TestCase
 ## What falls through the air, and what the sky hands the shaders.
 
+const SkySource := preload("res://tests/sky/shader_source.gd")
+
+
+static func _param(m: ShaderMaterial, name: String, fallback: float) -> float:
+	var v: Variant = m.get_shader_parameter(name)
+	return fallback if v == null else float(v)
+
+
+## How pale a snow mark reads on the page with all its pixels counted: the paper
+## body, plus the shade rim under the share of marks that carry one. precip's
+## fleck is a len x len block (a cross at three pixels across) with a rim one row
+## under it; a blown streak is a row len long with the same rim under it. A rim
+## is a hold when it is a pixel under a fleck and a dash when it runs the length
+## of every streak, and only counting the pixels tells the two apart.
+static func _mark_tone(m: ShaderMaterial) -> float:
+	var mode := int(m.get_shader_parameter("mode"))
+	var lp: Vector2 = m.get_shader_parameter("length_px")
+	var run := (lp.x + lp.y) * 0.5
+	var body: Color = m.get_shader_parameter("color_b")
+	var rim: Color = m.get_shader_parameter("color_a")
+	var flick := mode == int(WeatherView.Mode.FLICK)
+	var body_px := run if flick else (5.0 if run > 2.5 else run * run)
+	var rim_px := run if flick else (1.0 if run > 2.5 else run)
+	rim_px *= clampf(_param(m, "underline", 0.0) if flick else _param(m, "mix_b", 0.0), 0.0, 1.0)
+	return (body_px * body.get_luminance() + rim_px * rim.get_luminance()) / maxf(body_px + rim_px, 1e-5)
+
 
 func test_marks_start_and_stop_with_the_weather_without_restarting() -> void:
 	var v := WeatherView.new()
@@ -113,10 +139,30 @@ func test_snow_squall_and_whiteout_are_told_apart_at_a_glance() -> void:
 	tree.root.add_child(v)
 	v.setup(null)
 	var snow_mat: ShaderMaterial = v.snow.material_override
-	# Flakes are a cold body with a pale glint, or they vanish over lying snow.
-	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes carry a highlight")
-	var body: Color = snow_mat.get_shader_parameter("color_a")
-	lt(body.get_luminance(), 0.5, "the flake's body is darker than the snow it falls over")
+	# A flake is paper first, held by one pixel of the snowfield's own blue
+	# shade: pale against pale (docs/ART.md section 3). The dark speck belongs to
+	# the Burning's ash, and a whiteout drawn in it reads as dirt on the lens.
+	#
+	# So the mark is weighed against the PAGE IT FALLS ON, not against itself: a
+	# rim eighty luma under lying snow passes "darker than its own body" and
+	# still reads as a dark dash. What counts is how much dark the whole mark
+	# carries — its rim's depth times how much of the mark the rim is.
+	var sky := SkySource.text(SkySource.SKY_INC)
+	var lying := SkySource.luma(SkySource.vec3_const(sky, "const vec3 SKY_SNOW"))
+	var blown := SkySource.luma(SkySource.vec3_const(sky, "const vec3 SKY_WHITEOUT"))
+	for m: ShaderMaterial in [snow_mat, v.flurry.material_override, v.spindrift.material_override]:
+		var body: Color = m.get_shader_parameter("color_b")
+		var rim: Color = m.get_shader_parameter("color_a")
+		gt(body.get_luminance(), lying - 0.01, "the mark's body is at least as pale as the snow it falls on")
+		lt(rim.get_luminance(), body.get_luminance() - 0.15, "and a step of shade holds it")
+		lt(lying - _mark_tone(m), 0.15, "the whole mark reads pale against lying snow")
+		lt(blown - _mark_tone(m), 0.18, "and pale against the paler page a whiteout lays")
+	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes are drawn with that rim")
+	var blow := float((v.spindrift.material_override as ShaderMaterial).get_shader_parameter("underline"))
+	gt(blow, 0.3, "the streaks the wind blows are held too")
+	lt(blow, 0.8, "but only some of them: a streak is ten flecks long, and every one rimmed is a field of dashes")
+	var ash_body: Color = (v.ash.material_override as ShaderMaterial).get_shader_parameter("color_a")
+	lt(ash_body.get_luminance(), 0.2, "ash stays the dark speck")
 	v.update(WeatherLook.compose([{"kind": &"snow", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
 	check(v.snow.emitting and v.flurry.emitting, "snow falls, with big flakes near the eye")
 	check(not v.spindrift.emitting, "a squall in a light wind does not blow along the ground")
@@ -146,6 +192,40 @@ func test_the_sky_knows_where_the_player_is_for_a_whiteout() -> void:
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()
+
+
+func test_the_page_a_whiteout_leaves_is_paler_than_the_snow_it_falls_on() -> void:
+	var code := SkySource.text(SkySource.SKY_INC)
+	var white := SkySource.number(code, "const vec3 SKY_WHITEOUT")
+	var snow := SkySource.number(code, "const vec3 SKY_SNOW")
+	gt(white, snow + 0.02, "the white a whiteout lays is paler than lying snow, or it says nothing")
+	var far := SkySource.number(code, "const float SKY_WHITEOUT_FAR")
+	gt(far, SkySource.number(code, "const float SKY_WHITEOUT_NEAR") + 4.0, "and it closes in over a distance, never in one step")
+	lt(far, 20.0, "taking the far field inside the screen")
+	check(code.contains("sky_wind.xy * time"), "the white blows past on the wind rather than sitting still")
+
+
+func test_wet_ground_and_the_pool_are_drawn_edges_not_masks() -> void:
+	var code := SkySource.text(SkySource.SKY_INC)
+	gt(SkySource.number(code, "SKY_WET_FEATHER"), 0.08, "a wet patch's edge is a wide band of stipple, not a cut line")
+	# The darkening and the slick spread by their own wetness — rain that has
+	# settled, and a land that never dries — but over ONE lay of patches, so a
+	# wet afternoon picks out the same hollows twice and not two sets of them.
+	eq(code.count("sky_wet_cover("), 3, "one lay of wet patches, and every reader of it goes through that door")
+	check(code.contains("step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover"), "and it is stippled, never blended")
+	# The pool is the light's colour, and only the dark carries it.
+	check(code.contains("vec3 sky_lamp_wash("), "a pool has a wash of its own")
+	check(code.contains("pool * SKY_POOL_WASH * sky_gloom()"), "which shows only as far as the gloom does")
+
+
+func test_the_halo_only_spills_when_the_air_can_carry_it() -> void:
+	var code := SkySource.text(SkySource.OUTLINE)
+	check(code.contains("halo_strength * carry"), "the neon halo is multiplied by how dark the air is")
+	check(code.contains("max(sky_gloom()"), "the hour decides it, with a little left for thick rain and fog")
+	# That little is rain in the AIR. Wet lying on the ground is not weather: a
+	# land that never dries would spill neon at noon for ever.
+	check(code.contains("clamp(sky_fog.z + sky_air.x"), "and the little is fog and falling rain, not wet ground")
+	lt(code.find("float carry ="), code.find("halo_strength * carry"), "carry is decided before it is used")
 
 
 func test_drips_are_drops_under_a_crown_not_lines() -> void:

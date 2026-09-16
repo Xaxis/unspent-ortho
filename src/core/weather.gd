@@ -75,9 +75,12 @@ const WIND_PUSH := {
 }
 
 ## Sight is cut by c * strength. (source; blizzard and ash added, M2.0 kinds)
+## Every kind that puts anything in the air has a row: a kind nobody wrote one
+## for would leave a machine full sight through a whiteout. Only clear and grey
+## hide nothing, and nothing here blinds.
 const SIGHT_CUT := {
 	&"dust": 0.55, &"fog": 0.45, &"storm": 0.30, &"blizzard": 0.45, &"snow": 0.25,
-	&"hail": 0.20, &"ash": 0.25, &"rain": 0.10,
+	&"hail": 0.20, &"ash": 0.25, &"rain": 0.10, &"heat": 0.08,
 	&"drizzle": 0.15, &"whiteout": 0.75, &"glare": 0.10, &"dry_storm": 0.35, &"haze": 0.35,
 }
 
