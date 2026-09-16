@@ -19,6 +19,14 @@ extends GameSystem
 ## fires, hearths, stolen neon, pylon beacons, machine lenses, the lantern.
 ## Machine light (beacons, neon on the machines' power, lenses) stutters with the
 ## sky's power after lightning (SkyLight.bolt.w).
+##
+## A LIVE MACHINE gets a pool too, and takes it from the same budget as a lamp:
+## it was in the glint list alone, which only mirrors in WET ground, so a watcher
+## at 23:00 with its optic burning left the ground under it exactly as dark as
+## ten tiles away while a villager's lamp laid sixty pixels of light (art review,
+## wave A finding 6). Its pool is COLD — the machines' own strip colour, the same
+## one an intake or a checkpoint throws — and small, and it stutters on the
+## machines' power: nothing about a machine's light means safety.
 
 const RAYS := preload("res://src/render/weather/rays.gdshader")
 ## The machines' own light, written once (props/works.gd): a mast's cap, the pool
@@ -106,6 +114,9 @@ var _time := 0.0
 var _lamp_down := false
 ## Sources and machines near the camera that may glint, refreshed with the pool.
 var _glint_near: Array[Dictionary] = []
+## Live machines in pool reach, as sources: mob instance id -> source Dictionary.
+var _machine_srcs: Dictionary = {}
+var _machine_near: Array[Dictionary] = []
 ## What went to the sky last frame (Glints.pick output), for tests.
 var glint_list: Array[Dictionary] = []
 ## Stolen neon on the machines' power: magenta tube colour (props/houses.gd).
@@ -124,6 +135,11 @@ static var LENS_GLINT := Works.light(Works.WORKING)
 const SHAFT_RAYED := 0.3
 const SHAFT_LENS := 0.5
 const SHAFT_MACHINE := 0.8
+## A live machine's own pool: the range in tiles and how hard it lays it. Small
+## and weak beside a lamp (3.8, 1.0) — a machine is read by its lens, not by the
+## ground it lights — but the ground under it can no longer be as dark as the
+## ground ten tiles off.
+const MACHINE_POOL := Vector2(2.6, 1.0)
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -389,6 +405,16 @@ func _update(delta: float, snap: bool) -> void:
 			l.visible = false
 			continue
 		var s: Dictionary = src
+		if s.has("mob"):
+			if not _machine_at(s):
+				l.visible = false
+				_assigned[i] = null
+				continue
+			var mlevel: float = float(s.power) * dark * clampf(game.sky.bolt.w, 0.0, 1.0)
+			if _set_light(l, s.at, float(s.range), compensate(MACHINE_COLD, tint, sun) * mlevel) and dark > 0.25:
+				pools.append(Vector4(s.at.x, s.at.y, s.at.z, float(s.range)))
+				pool_rgb.append(Vector4(MACHINE_COLD.x, MACHINE_COLD.y, MACHINE_COLD.z, 0.0) * clampf(mlevel, 0.0, 1.2))
+			continue
 		var kind := int(s.kind)
 		var level: float = s.power
 		if kind == PropKind.FIRE or kind == PropKind.VENT or kind == PropKind.KILN:
@@ -517,7 +543,10 @@ func _gather_glints(focus: Vector2) -> void:
 	near.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	for i in mini(near.size(), 40):
 		_glint_near.append(near[i][1])
+	_machine_near.clear()
+	var seen := {}
 	if not is_inside_tree():
+		_machine_srcs.clear()
 		return
 	for m in get_tree().get_nodes_in_group(&"mobs"):
 		var mob := m as Mob
@@ -525,6 +554,37 @@ func _gather_glints(focus: Vector2) -> void:
 			continue
 		if mob.pos.distance_squared_to(focus) <= Glints.REACH * Glints.REACH:
 			_glint_near.append({"mob": mob})
+		if mob.pos.distance_squared_to(focus) <= REACH * REACH:
+			# One dictionary per mob for as long as it is near, so the pool light
+			# it is handed stays with it instead of jumping every quarter second.
+			var key := mob.get_instance_id()
+			if not _machine_srcs.has(key):
+				_machine_srcs[key] = {"mob": mob, "kind": PropKind.CHECKPOINT, "h": 0.0, "h2": 0.0,
+					"at": Vector3.ZERO, "range": MACHINE_POOL.x, "power": MACHINE_POOL.y, "warm": MACHINE_COLD}
+			_machine_near.append(_machine_srcs[key])
+			seen[key] = true
+	for key: int in _machine_srcs.keys():
+		if not seen.has(key):
+			_machine_srcs.erase(key)
+
+
+## Where a live machine's pool sits now: at its working part, dropped toward the
+## ground it stands on, so the light lands under the body and not inside it.
+## False once the body is gone or its lights are out.
+func _machine_at(s: Dictionary) -> bool:
+	# A body freed since the last gather (killed and cleared) must be checked
+	# before it is held in a typed variable, or the assignment itself errors.
+	if not is_instance_valid(s.mob):
+		return false
+	var mob: Node = s.mob
+	if not bool(mob.get("alive")):
+		return false
+	var model := mob.get("model") as MachineModel
+	if model == null or model.light_level() <= 0.0:
+		return false
+	var at: Vector3 = mob.call("part_position")
+	s.at = Vector3(at.x, maxf((mob as Node3D).global_position.y + 0.35, at.y - 0.3), at.z)
+	return true
 
 
 static func neon_colour(s: Dictionary) -> Vector3:
@@ -599,6 +659,16 @@ func _assign(focus: Vector2, hour: float) -> void:
 		if d > REACH * REACH or not source_lit(s, hour):
 			continue
 		wanted.append([d, s])
+	# A live machine competes for the same pool on distance alone: the thing two
+	# tiles away lighting the ground beats a window twelve tiles off, which is
+	# what a player standing next to it would expect and what keeps the budget.
+	for s in _machine_near:
+		if not is_instance_valid(s.mob):
+			continue
+		var mob: Node = s.mob
+		if not bool(mob.get("alive")):
+			continue
+		wanted.append([(mob.get("pos") as Vector2).distance_squared_to(focus), s])
 	wanted.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var chosen: Array = []
 	for i in mini(wanted.size(), lights.size()):
