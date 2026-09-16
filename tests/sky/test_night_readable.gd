@@ -6,6 +6,7 @@ extends TestCase
 
 const Lights := preload("res://src/systems/15_lights.gd")
 const SkySystem := preload("res://src/systems/10_sky.gd")
+const ShaderSource := preload("res://tests/sky/shader_source.gd")
 
 
 func test_people_are_tagged_for_their_fill_and_water_is_kept_from_lamps() -> void:
@@ -269,43 +270,110 @@ func test_the_darks_follow_how_dark_it_is_not_how_warm_the_tint_has_gone() -> vo
 		h += 0.1
 
 
-## What the dark half of a dusk frame reads at, on the CPU: the light of the
-## hour on a wash, plus the night's blue floor under it worth `share` of that
-## wash. The floor is a lift of the WASH and the sun multiplies it afterwards,
-## which is why it is inside the same bracket — and which is why an undivided
-## floor cannot be spent slowly enough: see SkyLight.night_dark.
-static func _darks(h: float, share: float) -> float:
-	return SkyLight.light_level(h) * (1.0 + share * SkyLight.night_dark(h))
-
-
-## The finding, in the one place it can be pinned without a frame. Measured on
-## the coast at seed 7 the dark half of the picture read 54.0 at 19:30 and 58.4
-## at 20:00: the floor put back more light than the dusk took. It must fall for
-## any floor worth anything from a third to three fifths of a dark wash (the
-## coast measures about two fifths), and the test walks the same ten minutes the
-## sweep walks.
-func test_the_floor_under_the_darks_is_never_spent_faster_than_the_light_goes() -> void:
-	for share: float in [0.3, 0.4, 0.5, 0.6]:
-		var prev := _darks(17.0, share)
+## THE FINDING, PINNED ON THE WHOLE COMPOSED PICTURE AND NOT ON ONE TERM OF IT.
+##
+## This test used to read `light_level(h) * (1 + share * night_dark(h))` — the
+## night's floor as a multiply ON the light. The shader does not compose a frame
+## that way. It lays the floor UNDER the wash, with a knee, so a light wash takes
+## none of it and a dark one takes nearly all; and the skyglow is EMISSION added
+## over everything afterwards, at the same strength whatever the hour. Modelled
+## as a multiply, an evening that rose by eleven per cent in the frames was
+## invisible here and this test was green through it (art review, wave A2).
+##
+## SkyLight.frame_level composes what sky_apply() composes. The rule is the
+## finding's own sentence, on every landscape there is: from six in the evening
+## to ten at night the picture falls, every ten minutes of it, and never turns
+## back up.
+func test_no_landscapes_evening_ever_turns_back_up() -> void:
+	var lands: Array = SkyLight.MOOD.keys()
+	lands.append(&"")
+	for id: StringName in lands:
+		var def := BiomeRegistry.get_def(id) if id != &"" else null
+		var name := String(id) if id != &"" else "a landscape with no mood of its own"
+		var prev := SkyLight.frame_level(17.0, SkyLight.type_light(def, 17.0))
+		var worst := 0.0
+		var worst_at := 0.0
 		var h := 17.1
 		while h <= 22.0001:
-			var d := _darks(h, share)
-			lt(d, prev + 1e-4, "the darks turn back up at %.2f h with a floor of %.2f" % [h, share])
-			prev = d
+			var f := SkyLight.frame_level(h, SkyLight.type_light(def, h))
+			if f - prev > worst:
+				worst = f - prev
+				worst_at = h
+			prev = f
 			h += 0.1
-	# And the margin is real rather than lucky: the same walk fails once the
-	# floor is worth more than about two thirds of a dark wash, which is the
-	# number to check against if SKY_NIGHT_FLOOR is ever raised.
-	var broke := false
-	var p := _darks(17.0, 0.9)
-	var g := 17.1
-	while g <= 22.0001:
-		var d := _darks(g, 0.9)
-		if d > p + 1e-4:
-			broke = true
-		p = d
-		g += 0.1
-	check(broke, "a floor worth nine tenths of a wash cannot be spent slowly enough, and this says so")
+		# A tenth of a per cent of a noon is float noise; a rise a player sees is
+		# five per cent (the frames measured 11.9% in the moss at half past eight).
+		lt(worst, 0.002, "%s turns back up by %.4f at %.2f h" % [name, worst, worst_at])
+
+
+## And it is a real fall, not a flat line: the evening spends a third of the
+## afternoon's light, most of it between seven and nine.
+func test_every_landscapes_evening_spends_a_third_of_the_afternoon() -> void:
+	for id: StringName in SkyLight.MOOD:
+		var def := BiomeRegistry.get_def(id)
+		var afternoon := SkyLight.frame_level(17.0, SkyLight.type_light(def, 17.0))
+		var night := SkyLight.frame_level(22.0, SkyLight.type_light(def, 22.0))
+		lt(night, afternoon * 0.78, "%s gives up a fifth of its afternoon and more" % id)
+		# And it lands at nine, as the brief asks: the evening proper does the
+		# work, and what is left after nine is a whisker.
+		var six := SkyLight.frame_level(18.0, SkyLight.type_light(def, 18.0))
+		var nine := SkyLight.frame_level(21.0, SkyLight.type_light(def, 21.0))
+		lt(nine, six * 0.82, "%s: the three hours from six take a fifth and more" % id)
+		gt(night, nine * 0.94, "%s has landed by nine, not gone on falling into the night" % id)
+
+
+## The landscapes do not all fall together: docs/ART.md section 3 gives each one
+## its own dusk, and the rows have to make that measurable rather than pretty.
+func test_each_landscape_keeps_the_dusk_its_own_row_promises() -> void:
+	var share := {}
+	for id: StringName in SkyLight.MOOD:
+		var def := BiomeRegistry.get_def(id)
+		var day := SkyLight.frame_level(16.0, SkyLight.type_light(def, 16.0))
+		var seven := SkyLight.frame_level(19.0, SkyLight.type_light(def, 19.0))
+		share[id] = seven / day
+	lt(share[&"pinewood"], share[&"coast"] * 0.95, "the pines are darker at seven, against their own afternoon, than the coast")
+	lt(share[&"pinewood"], share[&"burning"] * 0.95, "and than the burning, which holds its heat")
+	gt(share[&"burning"], share[&"bonelands"], "the bonelands fall off the end of the day harder than the burning")
+	# The burning's dusk is a furnace and its night keeps the warmth; the
+	# snowfield's last hour is the bluest thing in the game.
+	var burn := SkyLight.type_light(BiomeRegistry.get_def(&"burning"), 19.5) * SkyLight.tint_at(19.5)
+	gt(burn.x - burn.z, 0.3, "the burning's dusk is a furnace")
+	var burn_night := SkyLight.type_light(BiomeRegistry.get_def(&"burning"), 23.5) * SkyLight.tint_at(23.5)
+	gt(burn_night.x, burn_night.z, "and its night is still warm")
+	var snow := SkyLight.type_light(BiomeRegistry.get_def(&"snowfield"), 20.5) * SkyLight.tint_at(20.5)
+	for id: StringName in SkyLight.MOOD:
+		if id == &"snowfield":
+			continue
+		var other := SkyLight.type_light(BiomeRegistry.get_def(id), 20.5) * SkyLight.tint_at(20.5)
+		lt(snow.x - snow.z, other.x - other.z, "the snowfield's last hour is bluer than %s's" % id)
+
+
+## A landscape's mood is a multiply on the hour and never a filter: noon reads as
+## day everywhere, and the burning — the darkest, warmest row there is — is still
+## a day and not a dusk.
+func test_noon_still_reads_as_day_in_every_landscape() -> void:
+	var plain := SkyLight.frame_level(12.0, Vector3.ONE)
+	for id: StringName in SkyLight.MOOD:
+		var def := BiomeRegistry.get_def(id)
+		var noon := SkyLight.frame_level(12.0, SkyLight.type_light(def, 12.0))
+		gt(noon, plain * 0.72, "%s at noon is still a day" % id)
+		gt(noon, SkyLight.frame_level(20.0, SkyLight.type_light(def, 20.0)) * 1.35, "%s: noon is well clear of eight in the evening" % id)
+
+
+## Each row's SETTLE KEY: from nine o'clock a landscape's own light does not move
+## again until the morning. A row that climbs back to a bright midnight key after
+## the light has stopped falling is a land brightening through the small hours,
+## which is finding 2 all over again in slow motion.
+func test_no_landscapes_light_climbs_through_the_small_hours() -> void:
+	for id: StringName in SkyLight.MOOD:
+		var def := BiomeRegistry.get_def(id)
+		var h := 21.0
+		var prev := SkyLight.frame_level(h, SkyLight.type_light(def, h))
+		while h <= 27.0001:
+			var f := SkyLight.frame_level(h, SkyLight.type_light(def, h))
+			lt(f - prev, 0.002, "%s brightens through the night at %.2f h" % [id, fposmod(h, 24.0)])
+			prev = f
+			h += 0.25
 
 
 ## sky_night itself: the one term everything that lifts the dark hangs off.
@@ -315,7 +383,8 @@ func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_ba
 	lt(SkyLight.night_dark(18.0), 0.02, "and six in the evening still is")
 	gt(SkyLight.night_dark(19.5), 0.2, "half past seven has begun")
 	lt(SkyLight.night_dark(19.5), 0.55, "but is nowhere near the night")
-	near(SkyLight.night_dark(20.5), 1.0, 0.02, "full where the light stops falling")
+	lt(SkyLight.night_dark(20.5), 0.9, "half past eight is not the night either: the light still has a sixth of its fall left")
+	near(SkyLight.night_dark(SkyLight.DARK_FULL), 1.0, 1e-6, "full where the light stops falling, and not before")
 	near(SkyLight.night_dark(23.0), 1.0, 1e-6, "and all night")
 	near(SkyLight.night_dark(3.0), 1.0, 1e-6, "including the small hours")
 	var prev := SkyLight.night_dark(17.0)
@@ -335,23 +404,52 @@ func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_ba
 
 
 ## The two terms sky_night carries. The glow is held back behind the floor
-## through the evening, but a storm gets BOTH in full: the cube is the night's
+## through the evening, but a storm gets BOTH in full: the lag is the night's
 ## own pacing and must never take the glow off a dark sky at ten in the morning.
 func test_a_storm_at_ten_keeps_its_glow_while_the_evening_holds_its_own_back() -> void:
 	var clear := Vector3.ONE
 	var storm := Vector3(0.5, 0.52, 0.6)
 	var noon := SkyLight.night_terms(10.0, storm)
 	gt(noon.x, 0.3, "a storm at ten has the floor under its washes")
-	near(noon.y, noon.x, 1e-6, "and all of its skyglow, cube or no cube")
+	near(noon.y, noon.x, 1e-6, "and all of its skyglow, lag or no lag")
 	var eve := SkyLight.night_terms(20.0, clear)
 	gt(eve.x, 0.4, "the evening's floor is well up by eight")
-	lt(eve.y, eve.x * 0.6, "and its glow is well behind it")
+	lt(eve.y, eve.x * 0.7, "and its glow is behind it")
 	var night := SkyLight.night_terms(23.0, clear)
 	near(night.x, 1.0, 1e-6, "night is all floor")
 	near(night.y, 1.0, 1e-6, "and all glow")
 	var midday := SkyLight.night_terms(12.0, clear)
 	near(midday.x, 0.0, 1e-6, "noon has no floor")
 	near(midday.y, 0.0, 1e-6, "and no glow")
+	# Neither term may arrive in a lump: the frames measured an eleven per cent
+	# rise in the half hour where the glow went 0.21 to 1.00 (art review, wave A2).
+	# The biggest half hour either of them is allowed is the light's own biggest
+	# half hour, 20:00 to 20:30, where the sun gives up a quarter of the evening.
+	var h := 18.0
+	while h <= 21.9001:
+		var a := SkyLight.night_terms(h, clear)
+		var b := SkyLight.night_terms(h + 0.5, clear)
+		lt(b.x - a.x, 0.32, "the floor arrives in a lump at %.2f h" % h)
+		lt(b.y - a.y, 0.45, "the skyglow arrives in a lump at %.2f h" % h)
+		h += 0.1
+	var most := SkyLight.night_terms(20.5, clear) - SkyLight.night_terms(20.0, clear)
+	var light_most := (SkyLight.light_level(20.0) - SkyLight.light_level(20.5)) / (SkyLight.light_level(SkyLight.DARK_FROM) - SkyLight.light_level(SkyLight.DARK_FULL))
+	gt(light_most, 0.2, "and that half hour really is where the light goes")
+	lt(most.y, light_most * 2.0, "the glow's biggest half hour is no more than twice the light's")
+
+
+## The constants frame_level composes with are the shader's own. A tuned number
+## that moves in sky.gdshaderinc and not here would leave every evening test
+## measuring a picture the game no longer draws.
+func test_the_cpu_composition_uses_the_shaders_own_numbers() -> void:
+	var code := ShaderSource.text(ShaderSource.SKY_INC)
+	var floor_c := ShaderSource.vec3_const(code, "SKY_NIGHT_FLOOR")
+	near((floor_c - SkyLight.NIGHT_FLOOR).length(), 0.0, 1e-6, "the night floor: shader %s, SkyLight %s" % [floor_c, SkyLight.NIGHT_FLOOR])
+	near(ShaderSource.number(code, "SKY_NIGHT_KNEE"), SkyLight.NIGHT_KNEE, 1e-6, "the knee")
+	near(ShaderSource.number(code, "SKY_GLOW_LEVEL"), SkyLight.GLOW_LEVEL, 1e-6, "the skyglow's level")
+	near(ShaderSource.number(code, "SKY_GLOW_FLOOR"), SkyLight.GLOW_FLOOR, 1e-6, "the skyglow's floor")
+	check(code.contains("SKY_NIGHT_FLOOR * sky_night.x"), "the floor is spent against sky_night.x")
+	check(code.contains("* sky_night.y"), "and the skyglow against sky_night.y")
 
 
 ## Dusk is long low shadows. They used to stop at 20:30 because they were keyed

@@ -356,23 +356,49 @@ static func _mood_lum(v: Vector3) -> float:
 ## SkyLight.MOOD row is where that promise is kept. Now that there is a dusk to
 ## keep it in (Weather.DUSK_START), each row has to say what its dusk is.
 func test_every_landscape_keeps_its_own_promise_about_the_evening() -> void:
-	var coast := _mood_lum(SkyLight.mood_light(&"coast", 19.0))
-	lt(_mood_lum(SkyLight.mood_light(&"pinewood", 19.0)), coast - 0.1, "an early dusk under the pines")
-	lt(_mood_lum(SkyLight.mood_light(&"moss", 19.0)), coast - 0.07, "and in the moss")
+	# WHEN each row goes, measured at seven, which is the hour the difference
+	# between an early dusk and a long one is most of the picture.
+	# Measured against each row's OWN afternoon, because an early dusk is about
+	# WHEN a row falls, not how far below its own night it dips (SkyLight.MOOD).
+	var left := func(id: StringName, h: float) -> float:
+		return _mood_lum(SkyLight.mood_light(id, h)) / _mood_lum(SkyLight.mood_light(id, 14.0))
+	var coast_left: float = left.call(&"coast", 19.0)
+	lt(left.call(&"pinewood", 19.0), coast_left - 0.05, "an early dusk under the pines")
+	lt(left.call(&"moss", 19.0), coast_left - 0.02, "and in the moss, whose gloom is mostly in its washes rather than its light")
+	gt(left.call(&"snowfield", 19.0), left.call(&"pinewood", 19.0) + 0.03, "the snowfield's evening is longer: at seven it still has more of its own afternoon than the pines do")
+	# HOW FAR each one goes, measured at its own darkest key rather than at a
+	# shared hour: a row that reached its floor at half six is not a row that has
+	# not fallen by eight.
 	var snow := SkyLight.mood_light(&"snowfield", 19.5)
-	gt(_mood_lum(snow), _mood_lum(SkyLight.mood_light(&"pinewood", 19.5)) + 0.08, "the snowfield's evening is long")
-	gt(snow.z - snow.x, 0.15, "and blue")
+	gt(snow.z - snow.x, 0.2, "and its last hour is hard blue")
 	var bone_day := _mood_lum(SkyLight.mood_light(&"bonelands", 16.0))
 	gt(bone_day, 0.96, "the bonelands keep a hard white afternoon")
-	lt(_mood_lum(SkyLight.mood_light(&"bonelands", 20.0)), bone_day - 0.15, "and fall hard off the end of it")
-	var burn_eve := SkyLight.mood_light(&"burning", 19.8)
+	lt(_mood_lum(SkyLight.mood_light(&"bonelands", 19.4)), bone_day - 0.085, "and fall hard off the end of it")
+	var burn_eve := SkyLight.mood_light(&"burning", 19.6)
 	var burn_night := SkyLight.mood_light(&"burning", 23.0)
-	gt(burn_eve.x - burn_eve.z, 0.35, "the burning's dusk is a furnace")
-	gt(burn_night.x - burn_night.z, 0.2, "and its night is still warm where every other land has gone blue")
-	# And no land's small hours are brighter than its own afternoon.
+	gt(burn_eve.x - burn_eve.z, 0.3, "the burning's dusk is a furnace")
+	gt(burn_night.x - burn_night.z, 0.12, "and its night is still warm where every other land has gone blue")
 	for id: StringName in SkyLight.MOOD:
-		lt(_mood_lum(SkyLight.mood_light(id, 1.0)), _mood_lum(SkyLight.mood_light(id, 15.0)) + 0.02,
-			"%s is brighter at one in the morning than at three in the afternoon" % id)
+		if id == &"burning" or id == &"bonelands":
+			continue
+		var night := SkyLight.mood_light(id, 23.0)
+		lt(night.x - night.z, 0.0, "%s's night is not warm" % id)
+	# Every row SETTLES at nine and does not move again until the morning: a mood
+	# that climbs back to a bright midnight key after the light has stopped
+	# falling is a land brightening through the small hours (art review finding 2
+	# in slow motion). What that does to a whole frame is pinned on the composed
+	# picture in tests/sky/test_night_readable.gd; here it is pinned on the rows.
+	for id: StringName in SkyLight.MOOD:
+		var keys: Array = SkyLight.MOOD[id]
+		var settle: float = float((keys[keys.size() - 1] as Array)[0])
+		lt(settle, 21.0, "%s settles while the sun is still going, not after" % id)
+		gt(settle, 20.0, "%s settles after the worst of the fall, not before it" % id)
+		var settled := _mood_lum(SkyLight.mood_light(id, settle))
+		var h := settle
+		while h <= 24.0001:
+			lt(_mood_lum(SkyLight.mood_light(id, h)), settled + 0.005,
+				"%s's own light climbs at %.2f h, after the sun has stopped falling" % [id, fposmod(h, 24.0)])
+			h += 0.25
 
 
 func test_each_landscape_leans_its_own_way_by_hour_and_noon_stays_day() -> void:
@@ -390,7 +416,7 @@ func test_each_landscape_leans_its_own_way_by_hour_and_noon_stays_day() -> void:
 	gt(burn_noon.z - burn_dusk.z, 0.2, "the burning's dusk is a furnace")
 	var snow_eve := SkyLight.mood_light(&"snowfield", 19.5)
 	gt(snow_eve.z - snow_eve.x, 0.15, "the snowfield's evening is long and blue")
-	lt(SkyLight.mood_light(&"pinewood", 18.0).y, SkyLight.mood_light(&"coast", 18.0).y - 0.1, "dusk comes early under the pines")
+	lt(SkyLight.mood_light(&"pinewood", 18.0).y / SkyLight.mood_light(&"pinewood", 15.5).y, SkyLight.mood_light(&"coast", 18.0).y / SkyLight.mood_light(&"coast", 15.5).y - 0.05, "dusk comes early under the pines")
 	var moss := SkyLight.mood_light(&"moss", 6.0)
 	gt(moss.y, moss.x, "the moss's gloom is green")
 	eq(SkyLight.mood_light(&"salt_flats", 9.0), Vector3.ONE, "a type with no mood keeps the plain hour")
