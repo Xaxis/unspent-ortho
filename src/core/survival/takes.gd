@@ -147,7 +147,29 @@ static func _build() -> Dictionary:
 		_o(&"turn", &"scrap", 1, 25.0, 120.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
 	t[PropKind.STUMP] = [_o(&"fell", &"timber", 1, 14.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 48.0, {"keep": true})]
+	# The machines' own works are made of the best parts on the coast, and they
+	# are not abandoned: taking from one is theft, and the plan's network files
+	# it (Interference). The thing is left standing, opened and short a part.
+	# ...but a work that already says what it gives keeps its own row: the relay
+	# and the checkpoint are where the only found tech in the game comes from,
+	# and they are on this list because robbing them is theft, not because they
+	# hand out scrap like the rest.
+	for k: int in PLAN_WORKS:
+		if not t.has(k):
+			t[k] = [_o(&"turn", &"scrap", 1, 12.0, 96.0, {"keep": true, "uses": 2})]
 	return t
+
+
+## The works of the plan: what a machine takes it amiss to be robbed of
+## (VISION §2, "take its parts"). Every one of them is robbable by hand above,
+## so the disposition package can file the theft of any of them; a work with no
+## take option is not on this list, because nothing could ever steal from it.
+const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
+	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT]
+
+
+static func is_plan_work(kind: int) -> bool:
+	return PLAN_WORKS.has(kind)
 
 
 static func workable(kind: int) -> bool:

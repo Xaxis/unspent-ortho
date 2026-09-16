@@ -63,6 +63,14 @@ var _last: PersonAnim.Pose
 var _frozen := -1.0
 ## Where the head looks, radians from facing (positive = left); NAN = its own glances.
 var gaze := NAN
+## Down in the heather (Body.crouched; the disposition system writes it): knees
+## bent, hips dropped, the back low and the head up, so the silhouette at
+## 640x360 is plainly half a body shorter and still reads as a person moving.
+var crouched := false
+var _crouch := 0.0
+## How far the hips drop, as a share of the leg, and how fast it gets there.
+const CROUCH_DROP := 0.42
+const CROUCH_RATE := 9.0
 var _gaze_now := 0.0
 ## The pose last put on the skeleton. Positions are read from it by FK, because a
 ## Skeleton3D only refreshes its global poses inside a running tree.
@@ -192,6 +200,9 @@ func animate(speed: float, delta: float) -> void:
 				act.rot[b] = act.r(b).lerp(pose.r(b), move)
 				act.off[b] = act.o(b).lerp(pose.o(b), move)
 		pose = PersonAnim.mix(pose, act, _smooth(_weight))
+	_crouch = move_toward(_crouch, 1.0 if crouched else 0.0, delta * CROUCH_RATE) if delta > 0.0 else (1.0 if crouched else 0.0)
+	if _crouch > 0.001:
+		_crouch_pose(pose)
 	if absf(_gaze_now) > 0.002 and _weight <= 0.0:
 		# A watched head overrides the idle glance; the chest turns a little with it.
 		var h := pose.r(&"head")
@@ -200,6 +211,29 @@ func animate(speed: float, delta: float) -> void:
 		pose.rot[&"spine"] = Vector3(s.x, s.y + _gaze_now * 0.25, s.z)
 	_apply(pose)
 	_posed_frozen = _frozen >= 0.0
+
+
+## Fold the stance down over whatever the body is already doing: thighs forward,
+## shins back under them, the hips down and a little back, the spine over the
+## knees and the head brought up to look out of it. It is an offset, not a pose
+## of its own, so a crouching body still walks, swings and works.
+func _crouch_pose(p: PersonAnim.Pose) -> void:
+	var k := _crouch
+	var leg: float = _dims.thigh + _dims.shin
+	var bend := func(b: StringName, d: Vector3) -> void:
+		p.rot[b] = p.r(b) + d * k
+	bend.call(&"thigh_l", Vector3(0, 0, 0.85))
+	bend.call(&"thigh_r", Vector3(0, 0, 0.85))
+	bend.call(&"shin_l", Vector3(0, 0, -1.6))
+	bend.call(&"shin_r", Vector3(0, 0, -1.6))
+	bend.call(&"foot_l", Vector3(0, 0, 0.62))
+	bend.call(&"foot_r", Vector3(0, 0, 0.62))
+	bend.call(&"spine", Vector3(0, 0, -0.44))
+	bend.call(&"head", Vector3(0, 0, 0.5))
+	bend.call(&"arm_l", Vector3(0, 0, 0.3))
+	bend.call(&"arm_r", Vector3(0, 0, 0.3))
+	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.08, -leg * CROUCH_DROP, 0.0) * k
+	p.off[&"hem"] = p.o(&"hem") + Vector3(0, -leg * CROUCH_DROP * 0.4, 0) * k
 
 
 ## Whether this call should pose the skeleton (see the header). Always on a

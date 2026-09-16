@@ -56,14 +56,12 @@ const STUTTER_BITS := [1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 
 ## Status lamp codes: blinks per cycle for each disposition (VISION §2). Hostile
 ## machines do not blink: they burn low and steady.
 const DISPOSITION_CODE := {&"indifferent": 1, &"wary": 2, &"observant": 3, &"hostile": 0}
-## Default disposition by kind (the role in the plan). The disposition system
-## sets `disposition` on a live machine; the lamps follow.
-const ROLE_DISPOSITION := {
-	&"harvester": &"indifferent", &"hauler": &"indifferent", &"cutter": &"indifferent",
-	&"sweeper": &"indifferent", &"lineman": &"indifferent", &"warden": &"wary",
-	&"watcher": &"observant", &"clerk": &"observant", &"longlegs": &"hostile",
-	&"runner": &"hostile", &"dredger": &"hostile", &"flock": &"hostile",
-}
+## Default disposition by kind: its role in the plan, read from the roster
+## through `Roles`, so the gallery and a live machine can never disagree about
+## what a kind is. The disposition system sets `disposition` on a live machine;
+## the lamps follow.
+static func role_disposition(kind: StringName) -> StringName:
+	return Roles.default_disposition(Roles.of(kind))
 ## Vertex alpha the FOUND shader reads as a built-in light (found.gdshader:
 ## 0.5..0.98 steady, brighter lower). A lamp's lens and its hot core.
 const LAMP_ALPHA := 0.8
@@ -181,7 +179,7 @@ func begin_rig() -> void:
 	part_material = found_material(emission)
 	lights_material = found_material(0.0)
 	part_normal = side_normal(part_side)
-	disposition = ROLE_DISPOSITION.get(kind, &"indifferent")
+	disposition = role_disposition(kind)
 
 
 static func found_material(emission_strength: float) -> ShaderMaterial:

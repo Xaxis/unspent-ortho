@@ -32,9 +32,15 @@ class_name Roster
 ##                           day_min, hours [from, to), weather[], calm, rise,
 ##                           near_props[] (PropKind names within 4 tiles), wet
 ##   keeps_to: Array         ground names it may move on (a dredger keeps to water)
+##   role: StringName        its place in the machines' plan (Roles): worker keeper
+##                           watcher hunter recycler. The role decides the default
+##                           disposition, what turns it, its sight cone and whether
+##                           it fights at all. Omitted, it is read from `disposition`.
 ##   disposition: StringName hostile (default) | indifferent | observant | wary (VISION §2):
 ##                           an indifferent worker goes about its round until struck
-##                           or stood in the way of; a hostile one hunts
+##                           or stood in the way of; a hostile one hunts. What a live
+##                           body thinks of the player is the role plus the region's
+##                           interference (Disposition.of); this is its starting point.
 ##   overrun: float          a machine's bite carries it on through its recovery at
 ##                           quick x this (the overcommit that shows its back)
 ##   recover_turn: float     rad/s it turns while spent after a bite (FightRules.RECOVER_TURN)
@@ -50,7 +56,7 @@ const GREEN_COUNTRIES := ["coast", "moss", "pinewood", "snowfield", "bonelands"]
 
 const DEFS := {
 	&"watcher": {
-		"model": &"watcher", "machine": true, "approach": &"errand", "stretch": 0, "part": &"front",
+		"model": &"watcher", "role": &"watcher", "machine": true, "approach": &"errand", "stretch": 0, "part": &"front",
 		"pace": 0.1, "dash": 0.1, "radius": 0.35, "height": 1.8, "life": 60,
 		"sees": 14, "hears": 0, "racket": 18, "reach": 10, "ready": 4, "forget": 30, "tether": 12, "safe": 12,
 		"nerve": 100, "invuln": 500, "touch": 2, "sight_only": true, "calls": 18, "disposition": &"observant",
@@ -58,7 +64,7 @@ const DEFS := {
 		"where": {"green_min": 20, "day_min": 2, "rise": true},
 	},
 	&"longlegs": {
-		"model": &"longlegs", "machine": true, "approach": &"charge", "turns": 4, "part": &"back",
+		"model": &"longlegs", "role": &"hunter", "machine": true, "approach": &"charge", "turns": 4, "part": &"back",
 		"pace": 7.0, "dash": 11.0, "quick": 340, "radius": 0.55, "height": 2.0, "life": 80,
 		"sees": 10, "hears": 8, "racket": 20, "reach": 3, "ready": 3, "forget": 18, "tether": 34, "safe": 16,
 		"nerve": 100, "invuln": 520, "through": true,
@@ -71,7 +77,7 @@ const DEFS := {
 	# grinds round. Life, bite and second act softened from the source (90, 4, 5
 	# at a 300 ms tell) so a player who reads it wins with the start knife.
 	&"harvester": {
-		"model": &"harvester", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
+		"model": &"harvester", "role": &"worker", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
 		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 72,
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"indifferent", "guarded": true,
@@ -84,7 +90,7 @@ const DEFS := {
 		"where": {"countries": ["coast"], "grounds": ["grass", "heath", "furrow"], "green_min": 22},
 	},
 	&"flock": {
-		"model": &"flock", "machine": true, "approach": &"dart", "part": &"none",
+		"model": &"flock", "role": &"hunter", "machine": true, "approach": &"dart", "part": &"none",
 		"pace": 13.0, "dash": 18.0, "radius": 0.6, "height": 1.0, "life": 30,
 		"sees": 16, "hears": 7, "racket": 12, "reach": 2, "ready": 2, "forget": 30, "tether": 22, "safe": 16,
 		"nerve": 100, "invuln": 300,
@@ -96,7 +102,7 @@ const DEFS := {
 	# The first hunter most players meet: its drive is at its back, and its lunge
 	# overruns, so the dodge that takes you out of the bite leaves its back to you.
 	&"runner": {
-		"model": &"runner", "machine": true, "approach": &"rush", "part": &"back",
+		"model": &"runner", "role": &"hunter", "machine": true, "approach": &"rush", "part": &"back",
 		"pace": 6.5, "dash": 6.5, "quick": 300, "radius": 0.3, "height": 1.3, "life": 45,
 		"sees": 11, "hears": 10, "racket": 10, "reach": 1, "ready": 2, "forget": 20, "tether": 28, "safe": 12,
 		"nerve": 100, "invuln": 400, "overrun": 0.9,
@@ -105,7 +111,7 @@ const DEFS := {
 		"where": {"grounds": ["road", "floor", "grass", "sand", "mud"], "green_min": 14, "hours": [6, 13]},
 	},
 	&"cutter": {
-		"model": &"cutter", "machine": true, "approach": &"rush", "part": &"back",
+		"model": &"cutter", "role": &"worker", "machine": true, "approach": &"rush", "part": &"back",
 		"pace": 5.5, "dash": 12.0, "quick": 300, "radius": 0.5, "height": 1.4, "life": 70,
 		"sees": 11, "hears": 2, "racket": 16, "reach": 2, "ready": 2, "forget": 14, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 420, "overrun": 0.9, "disposition": &"indifferent",
@@ -114,7 +120,7 @@ const DEFS := {
 		"where": {"countries": ["bonelands"], "grounds": ["limestone", "rock", "gravel", "scree", "bone"], "green_min": 18},
 	},
 	&"hauler": {
-		"model": &"hauler", "machine": true, "approach": &"charge", "turns": 5, "part": &"left",
+		"model": &"hauler", "role": &"worker", "machine": true, "approach": &"charge", "turns": 5, "part": &"left",
 		"pace": 4.5, "dash": 10.5, "quick": 300, "radius": 0.6, "height": 0.9, "life": 66,
 		"sees": 8, "hears": 7, "racket": 19, "reach": 2, "ready": 3, "forget": 16, "tether": 36, "safe": 18,
 		"nerve": 100, "invuln": 540, "through": true, "disposition": &"indifferent",
@@ -125,7 +131,7 @@ const DEFS := {
 		"where": {"countries": ["bonelands", "coast"], "green_min": 20},
 	},
 	&"warden": {
-		"model": &"warden", "machine": true, "approach": &"dart", "part": &"front",
+		"model": &"warden", "role": &"keeper", "machine": true, "approach": &"dart", "part": &"front",
 		"pace": 6.0, "dash": 9.5, "radius": 0.45, "height": 1.6, "life": 55,
 		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 4, "forget": 25, "tether": 30, "safe": 10,
 		"nerve": 100, "invuln": 400, "disposition": &"wary",
@@ -135,7 +141,7 @@ const DEFS := {
 		"where": {"countries": ["pinewood"], "green_min": 12, "hours": [20, 5]},
 	},
 	&"sweeper": {
-		"model": &"sweeper", "machine": true, "approach": &"errand", "stretch": 7, "part": &"back",
+		"model": &"sweeper", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 7, "part": &"back",
 		"pace": 5.0, "dash": 5.0, "radius": 0.5, "height": 1.0, "life": 50,
 		"sees": 0, "hears": 0, "racket": 13, "reach": 3, "ready": 2, "forget": 10, "tether": 12, "safe": 10,
 		"nerve": 100, "invuln": 400, "touch": 2, "through": true, "disposition": &"indifferent",
@@ -143,7 +149,7 @@ const DEFS := {
 		"where": {"countries": ["pinewood"], "grounds": ["needles", "road", "mud", "floor", "grass"], "green_min": 12, "hours": [5, 11]},
 	},
 	&"dredger": {
-		"model": &"dredger", "machine": true, "approach": &"rush", "part": &"front",
+		"model": &"dredger", "role": &"hunter", "machine": true, "approach": &"rush", "part": &"front",
 		"pace": 8.5, "dash": 13.0, "quick": 260, "radius": 0.65, "height": 0.6, "life": 85,
 		"sees": 8, "hears": 13, "racket": 14, "reach": 2, "ready": 3, "forget": 12, "tether": 18, "safe": 12,
 		"nerve": 100, "invuln": 460, "keeps_to": WET,
@@ -154,7 +160,7 @@ const DEFS := {
 		"where": {"countries": ["moss", "coast"], "grounds": WET, "green_min": 16},
 	},
 	&"lineman": {
-		"model": &"lineman", "machine": true, "approach": &"rush", "part": &"front",
+		"model": &"lineman", "role": &"worker", "machine": true, "approach": &"rush", "part": &"front",
 		"pace": 4.0, "dash": 9.0, "quick": 320, "radius": 0.35, "height": 1.4, "life": 60,
 		"sees": 12, "hears": 9, "racket": 11, "reach": 3, "ready": 3, "forget": 14, "tether": 24, "safe": 12,
 		"nerve": 100, "invuln": 440, "disposition": &"indifferent",
@@ -163,7 +169,7 @@ const DEFS := {
 		"where": {"countries": ["snowfield"], "grounds": ["snow", "ice", "rock", "gravel", "grass"], "green_min": 34, "near_props": ["pylon", "pole"]},
 	},
 	&"clerk": {
-		"model": &"clerk", "machine": true, "approach": &"dart", "part": &"none",
+		"model": &"clerk", "role": &"watcher", "machine": true, "approach": &"dart", "part": &"none",
 		"pace": 7.5, "dash": 14.0, "radius": 0.3, "height": 1.2, "life": 6,
 		"sees": 15, "hears": 8, "racket": 0, "reach": 2, "ready": 5, "forget": 10, "tether": 20, "safe": 18,
 		"nerve": 100, "invuln": 300, "disposition": &"observant",

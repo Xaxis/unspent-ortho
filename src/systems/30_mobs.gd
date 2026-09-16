@@ -103,7 +103,11 @@ func _read_moment() -> void:
 	moment.filed = game.body.filed
 	moment.laden_tier = FightRules.laden_tier(game.body.load)
 	moment.spoofed = game.body.spoof_until > game.clock.minutes
-	moment.read_weather()
+	# The weather where the bodies that matter are standing, which is where the
+	# player is: a machine in a whiteout is blinded by the whiteout. This is
+	# read once before the sim exists, on the way to building it, so the player
+	# node is what it asks.
+	moment.read_weather(BiomeRegistry.at(game.world, game.player.pos).id)
 
 
 func _on_time_skipped(minutes: float, reason: StringName) -> void:

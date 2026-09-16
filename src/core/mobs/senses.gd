@@ -39,22 +39,20 @@ static func chebyshev(a: Vector2, b: Vector2) -> float:
 	return maxf(absf(a.x - b.x), absf(a.y - b.y))
 
 
-static func sees(row: Dictionary, from: Vector2, target: Vector2, m: Moment, world: WorldData, query: WorldQuery) -> bool:
-	var r := sight_range(row, m)
-	return r > 0.0 and chebyshev(from, target) <= r and line_clear(world, query, from, target)
+## Noticing goes through StealthQuery, which adds what the player does about it
+## (crouch, cover, the lamp, a spoofed signature, and the body's own cone when
+## a `facing` is given). The ranges above are still the source's, and what the
+## player cannot change.
+static func sees(row: Dictionary, from: Vector2, target: Vector2, m: Moment, world: WorldData, query: WorldQuery, facing: float = NAN) -> bool:
+	return StealthQuery.sees(row, from, target, m, world, query, facing)
 
 
 static func hears(row: Dictionary, from: Vector2, target: Vector2, m: Moment) -> bool:
-	var r := hearing_range(row, m)
-	return r > 0.0 and chebyshev(from, target) <= r
+	return StealthQuery.hears(row, from, target, m)
 
 
-static func notices(row: Dictionary, from: Vector2, target: Vector2, m: Moment, world: WorldData, query: WorldQuery) -> bool:
-	# A spoofed signature is read as one of their own: a machine walks past and
-	# files nothing. Living things are not fooled by a stolen signet.
-	if m.spoofed and bool(row.get("machine", false)):
-		return false
-	return hears(row, from, target, m) or sees(row, from, target, m, world, query)
+static func notices(row: Dictionary, from: Vector2, target: Vector2, m: Moment, world: WorldData, query: WorldQuery, facing: float = NAN) -> bool:
+	return StealthQuery.notices(row, from, target, m, world, query, facing)
 
 
 ## A clear line between two points: walks every tile the segment touches. A
