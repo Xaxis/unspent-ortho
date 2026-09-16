@@ -263,13 +263,26 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			emit += vec3(0.25);
 		}
 	} else if (m == 45) {
-		// PAVEMENT: clints of pale limestone, long blocks laid along one
-		// dominant joint, cut by grikes: deep ink cuts with a worn pale lip and
-		// moss down in them. A grike runs a few blocks and stops; cross joints
-		// break a clint into lengths, offset row to row, so it never makes a
-		// grid. Drill-hole rows on a few clints.
-		vec2 r = vec2(dot(wp, vec2(0.94, 0.34)), dot(wp, vec2(-0.34, 0.94)));
-		float across = r.y + (ink_vnoise(vec2(r.x * 0.06, 3.0)) - 0.5) * 0.9;
+		// PAVEMENT: clints of pale limestone cut by grikes (ink cuts with a worn
+		// pale lip and moss down in them). THE ONE LAW: it must never read as a
+		// tiled floor (docs/ART.md section 8.1), so nothing about the grain is a
+		// global constant.
+		//  - the bearing turns and the rows bend, from a low-frequency domain
+		//    warp: over tens of units the pavement runs a different way, and the
+		//    warp is bounded at any world coordinate (a rotation by a field is not).
+		//  - the pitch opens and closes, from a warp of the across axis by
+		//    itself: rows are never evenly spaced.
+		//  - the cross joints are sparse and lean hard, so the second family
+		//    never closes the first into rectangles.
+		//  - a clint is never filled light or dark as a whole: the value comes
+		//    from a world field that walks straight across the joints.
+		// Drill-hole rows on a few clints: the machine age in the stone.
+		vec2 warp = wp + vec2(ink_vnoise(wp * 0.022 + 3.0) - 0.5, ink_vnoise(wp * 0.022 + 29.0) - 0.5) * 14.0
+			+ vec2(ink_vnoise(wp * 0.09 + 7.0) - 0.5, ink_vnoise(wp * 0.09 + 41.0) - 0.5) * 2.6;
+		vec2 r = vec2(dot(warp, vec2(0.94, 0.34)), dot(warp, vec2(-0.34, 0.94)));
+		float across = r.y
+			+ (ink_vnoise(vec2(r.y * 0.06, 11.0)) - 0.5) * 5.0
+			+ (ink_vnoise(vec2(r.x * 0.22, 17.0)) - 0.5) * 0.4;
 		const float ROW = 1.9;
 		float row = floor(across / ROW);
 		float fy = (across - row * ROW);
@@ -279,14 +292,20 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float seg = floor(along / seg_len);
 		float fx = along - seg * seg_len;
 		float sh = ink_hash(vec2(row, seg));
-		// A clint's own slightly leaning edges, so blocks are not rectangles.
-		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 0.5;
+		// A clint's ends are cut on their own slant, up to about 45 degrees.
+		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 2.0;
 		float end_x = fx + lean * fy;
-		float gw = 0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp);
+		// A grike is a cracked line, not a ruled one: it pinches shut along its
+		// length and opens again, and runs only a few blocks before it stops.
+		float gw = (0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp))
+			* smoothstep(0.30, 0.56, ink_vnoise(vec2(along * 0.42, row * 3.7)));
 		bool grike_on = ink_hash(vec2(row, floor(along / 3.4) + 20.0)) < 0.58;
-		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.82;
+		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.42;
 		float cw = 0.08 + rag(wp);
-		c = sh < 0.3 ? dn(c, 0.1) : (sh > 0.8 ? up(c, 0.1) : c);
+		// Weathering, not tiling: a field of pans and bleached backs that pays
+		// no attention to where the joints run.
+		float weather = ink_vnoise(wp * 0.55 + 21.0) * 0.65 + ink_vnoise(wp * 1.9 + 4.0) * 0.35 + rag(wp);
+		c = weather < 0.36 ? dn(c, 0.13) : (weather > 0.68 ? up(c, 0.1) : c);
 		bool in_grike = grike_on && fy < gw;
 		bool in_cross = cross_on && end_x > 0.0 && end_x < cw;
 		if (in_grike || in_cross) {
