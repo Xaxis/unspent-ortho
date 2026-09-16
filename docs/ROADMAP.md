@@ -221,11 +221,23 @@ machines-day, slate-polish, score-blend.
 
 ### Gaps (carried into wave B unless fixed sooner)
 
-- **Start budget.** World gen at 512 costs ~2.2 s against ~1.15 s before the
-  registry, and a real start is ~3.0 s (gen + view) against a 2.5 s target. The
-  price is a Callable and a handful of property writes per tile; the next lever
-  is generating the surface in two passes — one deciding the recipe per tile, one
-  running each recipe over its own tile list — so the dispatch is per RUN.
+- **Start budget: 2.53 s against a 2.5 s target, with no headroom.** Measured on
+  a quiet machine, one shot at a time: gen 1774 ms + view 752 ms, against
+  1.65-1.9 s before the wave. Broken down, on the same machine in the same
+  minute:
+    - `BootWorld.world(1, 512)` on its own is **884 ms**, against 808 ms before
+      the registry — only +9%. Worldgen itself is not where the time went.
+    - The other ~890 ms of what a real start reports as "gen" is the twenty-two
+      system scripts compiling on loader threads WHILE the generator runs
+      (`game.gd`), and this wave added four systems and some forty scripts to
+      that race. The loading page overlaps them on purpose; they now cost more
+      than the thing they were overlapping.
+    - `view` grew 565-704 ms -> 752 ms: more props and decor per chunk.
+  So the lever named by the biomes package — generating the surface in two
+  passes, one deciding the recipe per tile and one running each recipe over its
+  own tile list, so the dispatch happens per RUN instead of per tile — is worth
+  perhaps 80 ms of the 884. The bigger one, untouched and unmeasured, is what to
+  do about script compilation racing world generation on a cold start.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
 - `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
