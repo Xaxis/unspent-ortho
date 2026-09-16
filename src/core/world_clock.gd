@@ -5,6 +5,8 @@ extends RefCounted
 ## deliberate jumps (sleep, being carried off) call skip(). (owner ruling 9)
 
 var minutes := 0.0
+## World minutes to a real second (a configuration's `rules.clock` sets it).
+var rate := Tuning.MINUTES_PER_SECOND
 
 
 func _init(start_hour: float = Tuning.START_HOUR) -> void:
@@ -12,7 +14,7 @@ func _init(start_hour: float = Tuning.START_HOUR) -> void:
 
 
 func advance(real_seconds: float) -> void:
-	minutes += real_seconds * Tuning.MINUTES_PER_SECOND
+	minutes += real_seconds * rate
 
 
 func skip(game_minutes: float) -> void:

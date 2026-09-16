@@ -30,7 +30,8 @@
 //   --headed         show the browser
 //   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
-import { chromium } from 'playwright';
+//   --serve[=PORT]   only serve --dir (default port 8060) with those headers until killed, for a
+//                    person to play in their own browser: dev mode's "play it" (src/dev/dev_jobs.gd)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,8 +41,12 @@ for (const a of process.argv.slice(2)) {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
   if (m) opt[m[1]] = m[2] === undefined ? true : m[2];
 }
+// --url= proves a build that is already on the internet (tools/deploy.sh) with
+// the same checks a local one gets: the host sends the headers, not us, so a
+// deploy that forgets cross-origin isolation or the wasm type fails here.
+const live = typeof opt.url === 'string' && opt.url !== '';
 const root = path.resolve(opt.dir);
-if (!fs.existsSync(path.join(root, 'index.html'))) {
+if (!live && !fs.existsSync(path.join(root, 'index.html'))) {
   console.log(`web FAILED: no build at ${root} (tools/export.sh web)`);
   process.exit(1);
 }
@@ -87,8 +92,26 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, headers);
   fs.createReadStream(body).pipe(res);
 });
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const port = server.address().port;
+let port = 0;
+if (!live) {
+  const want = opt.serve ? Number(opt.serve === true ? 8060 : opt.serve) : 0;
+  const listen = (p) => new Promise((ok, no) => { server.once('error', no); server.listen(p, '127.0.0.1', ok); });
+  // A port still held (a server another run left) gives way to any free one.
+  try { await listen(want); } catch (e) { if (e.code !== 'EADDRINUSE' || !want) throw e; await listen(0); }
+  port = server.address().port;
+}
+if (opt.serve) {
+  // Nothing to shoot: the wasm goes out at once, and the server stays up until killed.
+  releaseWasm();
+  console.log(`web serving http://127.0.0.1:${port}/ (${path.relative(process.cwd(), root)})`);
+  // Started by a game (dev mode's "play it"), it goes when that game does, however
+  // it ended: an orphan is handed to another parent.
+  const parent = process.ppid;
+  setInterval(() => { if (process.ppid !== parent) process.exit(0); }, 2000);
+  await new Promise(() => {});
+}
+// Loaded here, not at the top, so serving needs no browser installed.
+const { chromium } = await import('playwright');
 
 // ---- browser --------------------------------------------------------------
 // Headless Chromium on the machine's GPU (Metal through ANGLE on macOS, the
@@ -213,6 +236,13 @@ page.on('requestfailed', (r) => aborted.set(r.url(), r.failure()?.errorText));
 page.on('response', (r) => {
   if (r.status() >= 400) failures.push(`HTTP ${r.status()}: ${r.url()}`);
   else answered.add(r.url());
+  // Serving a live build, the host is the one being judged: what it actually put
+  // on the wire, and how it encoded it, comes from the response itself.
+  if (live && r.status() < 400) {
+    const h = r.headers();
+    const size = Number(h['content-length'] || 0);
+    if (size > 0) served.set(new URL(r.url()).pathname, { bytes: size, encoding: h['content-encoding'] || 'identity' });
+  }
 });
 
 function waitLine(re, secs, from = 0) {
@@ -326,8 +356,8 @@ const query = '?' + args.map((a) => {
   const [k, ...v] = a.split('=');
   return v.length ? `${encodeURIComponent(k)}=${encodeURIComponent(v.join('='))}` : encodeURIComponent(k);
 }).join('&');
-const url = `http://127.0.0.1:${port}/index.html${query}`;
-console.log(`web ${path.relative(process.cwd(), root)} on ${url} (${opt.swiftshader ? 'swiftshader' : 'gpu'})`);
+const url = live ? `${String(opt.url).replace(/\/$/, '')}/${query}` : `http://127.0.0.1:${port}/index.html${query}`;
+console.log(`web ${live ? String(opt.url) : path.relative(process.cwd(), root)} on ${url} (${opt.swiftshader ? 'swiftshader' : 'gpu'})`);
 const result = {};
 
 async function boot(label, from = lines.length) {
@@ -463,9 +493,13 @@ for (const [u, why] of aborted) if (!answered.has(u)) failures.push(`request nev
 let wire = 0;
 for (const r of served.values()) wire += r.bytes;
 const big = [...served.entries()].filter(([p]) => /\.(wasm|pck)$/.test(p)).map(([p, r]) => `${path.basename(p)} ${(r.bytes / 1048576).toFixed(1)} MB ${r.encoding}`);
+// A host that streams a compressed body sends no length, so say nothing rather
+// than report zero megabytes as if the game arrived out of thin air.
+if (live && wire === 0) console.log('web served: the host did not say how much (compressed, no content-length)');
+else
 console.log(`web served ${(wire / 1048576).toFixed(1)} MB over the wire (${big.join(', ')})`);
 await browser.close();
-server.close();
+if (!live) server.close();
 if (failures.length) {
   for (const f of [...new Set(failures)]) console.log(`web FAILED: ${f}`);
   process.exit(1);

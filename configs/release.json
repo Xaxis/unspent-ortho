@@ -1,0 +1,8 @@
+{
+	"base": "playtest",
+	"settings": {
+		"build.channel": "release",
+		"build.label": "",
+		"dev.access": "off"
+	}
+}

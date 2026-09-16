@@ -1,0 +1,26 @@
+# A build made from the slate, on the machine the game is built on: the builds page
+# of dev mode makes the playtest configuration's web build in the background (asked
+# twice when another session keeps the machine busy), tails the export, and the
+# stamped build comes onto the shelf with what it was made from.
+#   tools/tour.sh tours/dev-builds.tour --seed=1 --hour=10 --weather=clear:0 --config=playtest --dev=builds
+await app:dev 20
+coast calm
+wait 0.5
+shot 01-builds-page
+choose make
+tap use
+wait 0.3
+# A busy machine asks again; on a quiet one this second press finds the job running.
+tap use
+await dev_job:done 600
+await dev_job:ok 1
+wait 2.5
+shot 02-made-and-on-the-shelf
+choose build:web
+tap use
+wait 0.4
+shot 03-the-build
+tap pause
+wait 0.2
+tap dev_toggle
+await app:none 5

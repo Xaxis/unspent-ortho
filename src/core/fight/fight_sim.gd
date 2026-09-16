@@ -778,6 +778,8 @@ func _wake(m: MobState, cause: StringName = &"damaged") -> void:
 
 
 func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: int) -> void:
+	if hero.harm != 1.0:
+		dmg = roundi(dmg * maxf(0.0, hero.harm))
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
 	hero.throw(dir, knock, knock_ms, now)

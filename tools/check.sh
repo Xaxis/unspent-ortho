@@ -15,7 +15,7 @@ echo "== tests (3 shards) and shots, side by side"
 logs=()
 tpids=()
 for i in 0 1 2; do
-  log="$(mktemp -t unspent-test)"; logs+=("$log")
+  log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
   godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
 done
 mkdir -p shots/check
