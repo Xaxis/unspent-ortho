@@ -134,9 +134,11 @@ static func show(id: String, v: Variant) -> String:
 			if m <= 0.0:
 				return "stopped"
 			return "x%s  a day in %s" % [_num(m), _span(1440.0 / m)]
-		"rules.harm":
+		"rules.harm", "rules.hunger":
 			var h := float(v)
 			return "none" if h <= 0.0 else "x%s" % _num(h)
+		"rules.bodies":
+			return "x%s" % _num(float(v))
 	return str(v)
 
 
