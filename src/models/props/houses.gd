@@ -95,7 +95,7 @@ static func window(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u
 ## wired a machine's light into their house. Its colour is the house's own.
 static func neon_tube(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u0: float, u1: float, v: float, col: Color) -> void:
 	wall_rect(k.made, bl, br, tr, tl, u0 - 0.01, v - 0.02, u1 + 0.01, v + 0.02, 0.03, P.INK[1])
-	wall_rect(k.made, bl, br, tr, tl, u0, v - 0.011, u1, v + 0.011, 0.04, GroundColors.lamp(col, 2.0))
+	wall_rect(k.made, bl, br, tr, tl, u0, v - 0.011, u1, v + 0.011, 0.04, GroundColors.neon(col))
 
 
 const NEON_TUBES: Array[Color] = [Color(0.3, 0.95, 1.0), Color(1.0, 0.25, 0.8), Color(0.55, 1.0, 0.35)]

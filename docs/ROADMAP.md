@@ -66,16 +66,9 @@ and `tours/fight.tour` (commands in CLAUDE.md).
   figures or people yet).
 - Warden arrests do not move the player; linemen do not climb; people threats
   (design-extract §8.2) are not built.
-- Pressures (M2 wave A) read the landscape registry's own hazard table, which is
-  thin until the biomes package fills it: no landscape declares radiation,
-  resonance, vacuum, pressure or time-shear yet, so the gear that answers those
-  is worn for landscapes still to come. A hazard cue borrows a sound the world
-  already has (`SoundNames` ALIAS) instead of having a voice of its own.
-- A mended thing is drawn in both idioms in the world (the glide wing) and in
-  both palettes on the slate, but a *sketch* at size is still drawn wholly by
-  hand or wholly by rule: `UiSketch.render` takes one `found` flag.
-- Wool, yarn, blanket, oilcloth and the rig kit cannot be made; no salt pan;
-  tide gates are off until the water visibly moves.
+- Wool, yarn, blanket, oilcloth and the rig kit cannot be made; tide gates are
+  off until the water visibly moves. (Pressures, the MENDED sketch and the salt
+  pan moved to M2 wave A; what is left of them is listed there.)
 - Villagers vanish at night instead of going in; fauna has no pathfinding.
 - Audio is judged by spectrogram only; web builds without threads get no beds
   or music.
@@ -144,46 +137,124 @@ music. It comes before new landscape content, so every type is born in it.
   boots the build in headless Chromium, walks it with real keys, reloads it and
   proves a real save file comes back from IndexedDB.
 
-### Gaps (carried into M2 wave A unless fixed sooner)
+### Gaps (what wave A did not close)
 
-- Machine working parts follow `sky_power()` now, but the stolen neon marks drawn
-  into the ground by `world.gdshader` (lamp codes) do not.
+Fixed in wave A: the lantern's noon disc, the status lamp a live machine blinks,
+the empty gear and reads apps, the location caption.
+
+- The stolen neon marks drawn into the ground by `world.gdshader` (lamp codes)
+  still do not follow `sky_power()`, so a tube burns steady while its pool and
+  its wet-ground glint stutter. It needs a mark id of its own.
 - Gulls work tips, wrecks and beached hulls; the debris the land leaves round
   every village is not refuse they will go to.
-- The disposition a machine's status lamp blinks is its role's default until the
-  disposition system (wave A) sets it on a live machine.
-- Gear, machine reads and the felt pressures show what the game already knows
-  until hazards and disposition fill their `SlateFeeds`.
-- World generation is still one blocking step on the no-threads web build (~2.3 s),
-  `Game.setup` runs its systems in one go, and the first frame of a world stalls
-  while its shaders compile.
+- World generation is still one blocking step on the no-threads web build, and
+  it costs more since the registry landed; `Game.setup` runs its systems in one
+  go, and the first frame of a world stalls while its shaders compile.
 - The score has been judged by spectrograms, levels and tests, and by one listen
   on the tour; it has not had an owner's listen. Sound beds on the no-threads web
   build still need the disk cache.
 - The browser check's audio test needs an audio device: on a machine whose
-  headless Chromium has none it reports silence (it fails the same way on the
-  package's own branch).
-- A lit lantern still lays a pale disc on snow at noon (the pool's floor in gloom).
+  headless Chromium has none it reports silence.
 
 ## M2 — Foundations of an immense world
 
 Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so
 content never needs a rewrite.
 
-**Wave A** (parallel, after M2.0; slate, saves and export were built in wave N):
-- **biomes** (done): the landscape-type registry. A landscape is one file under
-  `src/content/biomes/`, auto-discovered; the six M1 countries are data and a world
-  made of only those six is byte-for-byte the world M1 made (`tests/biome/test_parity.gd`
-  pins it). Worldgen composes regions from the registry and records them in
-  `WorldData.regions`. Salt Flats and Scrapwood are the proof that adding a landscape
-  is adding a file. Not yet: a landscape's own enemies (both borrow existing machine
-  kinds), sentinels, and realms other than the surface.
-- **hazards**: one pressure model, resistances from modular gear, abilities through
-  one interface; five abilities; the MENDED idiom.
-- **disposition**: machine roles, indifference, interference per region, and stealth
-  read on the machine itself.
-- **score blending**: the music crossfades seamlessly between landscapes on the
-  registry's blend weights, matched in key and tempo, with no restarts at a border.
+**Wave A** (integrated, 2026-09-15; slate, saves and export were built in wave N).
+Eight packages merged one at a time behind `tools/check.sh`, each proved by its
+own tour: biomes, hazards, disposition, landscape-polish, sky-polish,
+machines-day, slate-polish, score-blend.
+
+### What is true
+
+- **A landscape is one file.** `src/content/biomes/<id>.gd` declares everything
+  about a landscape — where it lies, its relief, grounds, decor, props, ore,
+  sites, villages, weather, hazards, roster, sound bed and motif — and
+  `BiomeRegistry` discovers it. Nothing in worldgen, the mesher, the decor, the
+  sky, the sound, the spawner, the music or the map knows a landscape by name.
+  Six-country parity with M1 is proved by md5, not asserted
+  (`tests/biome/test_parity.gd`). **Salt Flats and Scrapwood** are the proof:
+  two landscapes end to end — grounds, strata, ink marks, five prop kinds,
+  machine works of their own, hazards, rosters, beds — each added as a file.
+  Every connected run of a type is a REGION in `WorldData.regions`, which is
+  what a plan network, and later a sentinel or a save, keys on.
+- **A place presses on a body.** Sixteen pressures; a landscape declares its
+  worst and the hour, the weather, the height, a roof and a fire decide how much
+  is on you now. Felt first (a gauge, breath in the cold, a cough at fumes),
+  then in the legs, then a slow drain that never takes the last point of health.
+  Six gear slots with sockets and modules answer them, and five abilities hang
+  off that gear — dash, glide, scan, grapple, signature spoof — each a real key
+  with a real mark. Everything a landscape presses with has something a player
+  can wear against it, so no place is a wall.
+- **Machines have a place in the plan.** Every kind has a role (worker, keeper,
+  watcher, hunter, recycler) and most of them do not care about a person walking
+  past. What you do to them turns them: rob a relay and everything wired to it
+  stops working and comes. The plan keeps a file on you per REGION, felt rather
+  than read — watchers turn, a horn goes off at a works, and at the top of the
+  scale the network sends a hunter. Crouch, cover, noise and a stolen signet are
+  how you get past, and a machine shows it is wondering by the light on its
+  working part.
+- **The land reads at the zoom it is played at.** Wear, a walked line, what was
+  spilt and litter in drifts on every ground; the bonelands pavement bends and
+  opens instead of repeating; props are cast as well as turned; no house is a
+  box and every wall is weathered with salvage against it; crowns thin over the
+  player; the sea stopped foaming in the moss; and nothing in the world — the
+  outline pen included — is drawn pure black.
+- **Weather reads as weather.** One gloom term shared by the shader and the
+  lights, so a lamp lit at noon lights nothing and its pool at night is the
+  LIGHT'S colour on the ground. Hard-edged wet, a whiteout paler than the snow
+  it falls on, ash that is a dark speck and snow that is a pale one, a halo that
+  spills into the air at night and is only an object at noon.
+- **Machines read in daylight.** Marks budgeted in screen pixels, real plates and
+  recessed wells, twelve ramps on one violet arc by role, every body fill below
+  the turf it stands on. Poses differ in silhouette, the tell points down at the
+  working part, hit marks leave what they hit showing, and a dead machine settles
+  into a cold hulk instead of a hole.
+- **The slate names every key it has.** Home is a tab, the ping never strikes out
+  its own letters, the landscape under the player is said the instant they are
+  somewhere else, and the gear and reads apps carry this wave's own numbers.
+- **The score crosses a border.** Equal-power per-layer crossfades on the world's
+  own blend, sharpened or widened by how far apart two landscapes' keys are; it
+  never collapses where its stems are not baked, bakes what is ahead before the
+  border, and reaches full voice in 25 seconds instead of 86.
+
+### Gaps (carried into wave B unless fixed sooner)
+
+- **Start budget.** World gen at 512 costs ~2.2 s against ~1.15 s before the
+  registry, and a real start is ~3.0 s (gen + view) against a 2.5 s target. The
+  price is a Callable and a handful of property writes per tile; the next lever
+  is generating the surface in two passes — one deciding the recipe per tile, one
+  running each recipe over its own tile list — so the dispatch is per RUN.
+- Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
+  decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
+- `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
+  reads either yet.
+- `src/models/props/{houses,remains,rocks,shore,works,built}.gd` still switch on
+  `Country` for per-landscape dressing, so a landscape added after the M1 six is
+  dressed as the coast until they read the registry. `trees.gd` is the pattern
+  (`BiomeDef.tree_tints`).
+- No landscape declares radiation, resonance, EM, vacuum, pressure or time-shear
+  yet: the gear that answers those is worn for landscapes still to come.
+- Hazard and ability cues borrow sounds the world already has (`SoundNames`
+  ALIAS), and so does the works' horn. Each wants its own voice on the sheet.
+- Hazards never touch mobs: a machine standing in the burning feels nothing.
+- No roster kind is a recycler yet, so the role has a rule and no body.
+- The gear page fits a slot with one key and cannot choose WHICH module goes in a
+  socket; `UiSketch.render` takes one `found` flag, so a MENDED thing cannot be
+  sketched half by hand and half by rule.
+- Ambience beds still do not play on the no-threads web build (a bed is a
+  whole-buffer chain that cannot stop and resume); the score itself is fine, but
+  time to full voice there is minutes.
+- The bore cap and survey post still read as dark discs at 640x360 in the
+  bonelands and the snowfield: above the ink floor now, but wanting a drawn
+  interior and a lighter lip.
+- A stolen neon tube still burns steady while its pool and its wet-ground glint
+  stutter with the machines' power: the tube is a `lamp` ground mark, the same
+  group as hearths and windows, and needs a mark id of its own in
+  `world.gdshader` before it can follow `sky_power()`.
+- `WorldData.temperature` and `moisture` are written by worldgen and read by
+  nothing.
 
 **Wave B** (parallel, on top of A):
 - **realms**: realms and portals; the first underground type (Limestone Caves,

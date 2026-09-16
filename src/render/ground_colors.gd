@@ -23,6 +23,11 @@ const PLAIN := 0
 const GLOW := 0
 const LAMP := 16
 const GLINT := 33
+## Stolen neon: a machine's own light wired into somebody's wall. Lit like a
+## lamp, but on the MACHINES' power, so a strike stutters it the way it stutters
+## every strip and beacon on the coast. A hearth and a window keep burning, which
+## is why this cannot be a lamp code (world.gdshader lights 17..32 steadily).
+const NEON := 34
 const TURF := 40
 const HEATH := 41
 const SAND := 42
@@ -209,6 +214,11 @@ static func lamp(col: Color, strength: float) -> Color:
 
 static func glint(col: Color) -> Color:
 	return marked(col, GLINT)
+
+
+## A tube of stolen machine light, wired into a wall by somebody.
+static func neon(col: Color) -> Color:
+	return marked(col, NEON)
 
 
 ## Ground a turf of one landscape becomes when drawn as landscape index `to`, so

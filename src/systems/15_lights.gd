@@ -79,12 +79,11 @@ const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropK
 ## Sources whose POOL runs on the machines' power, so a strike stutters it. A
 ## hearth, a lamp and a fire are nobody's grid and never stutter.
 ##
-## The neon a shack stole off a machine belongs here too, and is held out: the
-## tube itself is drawn by world.gdshader, which has no sky_power() yet, so a
-## stuttering pool under a tube that keeps burning would have the same light
-## disagreeing with itself on one wall. It joins the day world.gdshader can
-## stutter the tube with it (contract request, world.gdshader's mark ids).
-const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
+## The neon a shack stole off a machine is on this list: the tube itself is a
+## `GroundColors.NEON` mark, which world.gdshader multiplies by `sky_power()`,
+## so the tube, its pool, its glint in wet ground and its shafts in fog all
+## stutter together. A hearth or a window in the same wall keeps burning.
+const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.SHACK]
 ## Sources placed at their model's own glow point, lit only on the variants that have one.
 const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
 ## The machines' cold strip light, for a pool and a glint. It is the SAME light

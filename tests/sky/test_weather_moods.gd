@@ -177,6 +177,28 @@ func test_every_machine_light_shader_runs_on_machine_power() -> void:
 		check(code.contains("sky_power()"), "%s stutters with the machines after a strike" % path.get_file())
 
 
+## A tube of neon somebody cut off a machine and wired into their wall is the
+## machines' light, wherever it ends up: a strike has to stutter the TUBE, not
+## only the pool it throws. It gets a ground mark of its own so that a hearth or
+## a window in the same wall — drawn by the lamp codes — goes on burning.
+func test_stolen_neon_stutters_with_the_machines_and_a_hearth_does_not() -> void:
+	var code := FileAccess.get_file_as_string("res://src/render/world.gdshader")
+	var neon := code.find("m == %d" % GroundColors.NEON)
+	gt(float(neon), 0.0, "world.gdshader draws the neon mark")
+	var branch := code.substr(neon, 900)
+	check(branch.contains("sky_power()"), "and runs it on the machines' power")
+	var lamps := code.find("m >= 17 && m <= 32")
+	gt(float(lamps), 0.0, "the lamp codes are still drawn")
+	check(not code.substr(lamps, 300).contains("sky_power()"), "and a hearth keeps burning")
+	check(GroundColors.NEON != GroundColors.GLINT and GroundColors.NEON > GroundColors.LAMP + 16,
+		"the neon mark is its own code, clear of the lamps and the glint")
+	# And the pool it lays on the ground stutters with it, or the same light
+	# would disagree with itself on one wall.
+	var lights := load("res://src/systems/15_lights.gd") as GDScript
+	var powered: Array = lights.get_script_constant_map()["POWERED_SOURCES"]
+	check(powered.has(PropKind.SHACK), "a shack's stolen neon is on the machines' power")
+
+
 func test_drips_run_with_rain_and_after_it_while_the_ground_is_wet() -> void:
 	near(Drips.amount(0.0, 0.0), 0.0, 1e-6, "dry and still: nothing drips")
 	gt(Drips.amount(0.8, 0.2), 0.7, "rain drips")

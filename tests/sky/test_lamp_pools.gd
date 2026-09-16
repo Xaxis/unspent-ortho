@@ -98,10 +98,12 @@ func test_the_machines_lights_stutter_after_a_strike_and_a_hearth_does_not() -> 
 		check(Lights.POWERED_SOURCES.has(kind), "%s runs on the machines' power" % PropKind.NAMES[kind])
 	for kind: int in [PropKind.FIRE, PropKind.HOUSE, PropKind.LAMP, PropKind.KILN, PropKind.VENT]:
 		check(not Lights.POWERED_SOURCES.has(kind), "%s is nobody's grid" % PropKind.NAMES[kind])
-	# The shack's stolen neon is on that grid too, but its TUBE is drawn by
-	# world.gdshader, which cannot stutter yet: a pool blinking under a tube that
-	# keeps burning is one light disagreeing with itself. It waits.
-	check(not Lights.POWERED_SOURCES.has(PropKind.SHACK), "a shack's pool does not blink while its own tube burns on")
+	# The neon a shack stole off a machine is on that grid too, and now its TUBE
+	# is as well: `GroundColors.NEON` is a mark of its own and world.gdshader
+	# multiplies it by `sky_power()`, so the tube, its pool, its glint in wet
+	# ground and its shafts in fog all dip together. A hearth in the same wall
+	# keeps burning (the lamp codes, which that branch leaves alone).
+	check(Lights.POWERED_SOURCES.has(PropKind.SHACK), "a shack's stolen neon blinks with the machines it was cut from")
 	Weather.unforce()
 
 

@@ -87,8 +87,11 @@ wait 0.6
 shot 08-carrying-the-pick
 tap inventory
 wait 0.4
-# Out to the coast fields, with the knife back in hand for the meeting.
-at 130,370
+# Out to the coast fields, with the knife back in hand for the meeting. The
+# coast is asked for by NAME (GenPlaces), not by a coordinate: worldgen has
+# moved this island twice now, and a pinned tile quietly stops being the open
+# fields a machine walks its round across.
+place coast
 zoom 15
 wait 1.0
 coast wild

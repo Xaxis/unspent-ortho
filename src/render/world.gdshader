@@ -1390,6 +1390,16 @@ void fragment() {
 		emit += c * (float(m - 16) / 8.0) * on;
 		c = mix(BRINE2, c, on);
 		unh = on;
+	} else if (m == 34) {
+		// Stolen neon: lit like a lamp when the light goes, but on the MACHINES'
+		// power, so lightning stutters the tube exactly as it stutters the strip
+		// it was cut from — and its pool, glint and shafts (15_lights) stutter
+		// with it. A hearth or a window in the same wall keeps burning.
+		float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+		float non = clamp((0.9 - ndim) * 6.0, 0.0, 1.0) * sky_power();
+		emit += c * 2.0 * non;
+		c = mix(BRINE2, c, non);
+		unh = non;
 	} else if (m == 33) {
 		// A glint: glass or ice catching the light for a moment.
 		float gh = ink_hash(floor(world_pos.xz * 7.0) + floor(world_pos.y * 7.0));
