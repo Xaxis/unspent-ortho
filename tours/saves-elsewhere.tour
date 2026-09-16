@@ -1,0 +1,48 @@
+# A save made on another island: what the player is told, through the real keys.
+#
+# A save keeps only its seed and grows the world again when it is opened, so a
+# build whose landscape registry has moved makes a DIFFERENT island from that
+# seed (adding salt_flats and scrapwood moved 9% of every world's tiles). The
+# save is not opened onto ground that moved; it is named, and the reason is on
+# the glass. Three commands, because the fixture is a save written by an older
+# build and no boot flag may fake one:
+#
+#   tools/tour.sh tours/saves.tour --saves=saves-elsewhere --seed=1 --hour=10 \
+#     --weather=clear:0 --give=driftwood:6,stone:4
+#   godot --headless --path . -s tests/save/stale_save.gd -- saves-elsewhere 1
+#   tools/tour.sh tours/saves-elsewhere.tour --saves=saves-elsewhere --seed=1 \
+#     --hour=10 --weather=clear:0
+#
+# Step 1 plays a little and writes slot 1 and the autosave, both with their own
+# picture of the world. Step 2 takes slot 1 back to a version-1 file — which is
+# exactly what every save already on a player's disk is. Step 3 is this tour.
+coast calm
+wait 0.6
+tap pause
+wait 0.5
+choose saves
+tap use
+await app:saves 2
+wait 0.3
+# Right turns the app from saving to loading.
+tap move_right
+wait 0.4
+choose slot_1
+wait 0.5
+# The game is still there — its picture, its day, where it stood — and under it
+# the whole reason this build will not open it.
+shot 01-another-island
+tap use
+wait 0.8
+# Pressing load anyway: refused, and said again on the key strip.
+shot 02-refused
+# The autosave in the same folder was written by THIS build, on THIS island, and
+# still opens: nothing was broken for the saves that are still this world's.
+choose slot_0
+wait 0.4
+shot 03-the-one-that-still-opens
+tap use
+await game 30
+coast calm
+wait 4
+shot 04-loaded

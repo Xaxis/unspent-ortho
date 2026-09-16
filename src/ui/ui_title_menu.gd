@@ -63,7 +63,11 @@ func refresh() -> void:
 	]
 	var entries := SaveSlots.list()
 	saved = SaveSlots.newest(entries)
-	_autosave = bool(entries[SaveSlots.AUTO].ok)
+	# Asked about before a new game writes over it: one this build cannot open
+	# (made on another island) is still a game the player has not lost, and a new
+	# game's first autosave would be the end of it.
+	var auto: Dictionary = entries[SaveSlots.AUTO]
+	_autosave = bool(auto.ok) or (bool(auto.exists) and auto.code == &"elsewhere")
 	_ask_until = 0
 	_photo = SaveSlots.thumbnail(saved.header) if not saved.is_empty() else null
 	var problems := SaveSlots.problems(entries)

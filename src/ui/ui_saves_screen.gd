@@ -194,7 +194,7 @@ func _draw_detail(R: Rect2i) -> void:
 		UiDraw.text(self, Vector2i(px + 4, ty + 11), str(h.get("place", "")), UiTheme.TEXT if e.ok else UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(px + 4, ty + 22), played(h), UiTheme.TEXT_DIM)
 		UiDraw.text(self, Vector2i(px + 4, ty + 33), ago(SaveCodec.to_num(h.get("saved_at")), Time.get_unix_time_from_system()), UiTheme.TEXT_DIM)
-		ty += 48
+		ty += 52
 	if e.exists and not e.ok:
 		# The whole reason, in the one place with room to say it.
 		UiSlate.wrapped(self, Vector2i(px + 4, ty), R.end.x - 12 - px, str(e.why), UiTheme.WARN)

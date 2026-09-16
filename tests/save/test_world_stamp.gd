@@ -163,6 +163,37 @@ func test_a_save_from_a_registry_with_an_extra_landscape_is_refused_too() -> voi
 	Sx.finish()
 
 
+func test_a_new_game_asks_before_it_writes_over_an_autosave_from_another_island() -> void:
+	Sx.use_root("stamp-title")
+	# The whole point of refusing rather than loading is that the game is still
+	# there. A new game's first autosave would be the end of it, so the title
+	# asks about it exactly as it asks about one it could open.
+	var defs := BiomeRegistry.all()
+	defs.append(_fake(&"undercroft", 12))
+	var head := HEADER.duplicate()
+	head["stamp"] = WorldStamp.of(defs)
+	eq(_store(SaveSlots.path(SaveSlots.AUTO), head, _data(str(head.stamp))), OK)
+	eq(SaveSlots.list()[SaveSlots.AUTO].code, &"elsewhere", "the autosave is from another island")
+
+	var title := UiTitle.new()
+	title.options = BootOptions.new()
+	var menu := UiTitleMenu.new()
+	menu.title = title
+	tree.root.add_child(menu)
+	menu.open()
+	eq(menu.note, "The autosave was made on another island.", "the title says so plainly")
+	menu.select(&"new")
+	menu.handle(&"confirm")
+	eq(menu.note, UiTitleMenu.ASK_NEW, "and asks before writing over it")
+	check(not bool(title.get("_starting")), "nothing starts on the first press")
+	menu.handle(&"confirm")
+	check(bool(title.get("_starting")), "the second press starts the new game")
+	menu.close()
+	menu.free()
+	title.free()
+	Sx.finish()
+
+
 func test_a_version_1_save_is_recognised_instead_of_misread() -> void:
 	Sx.use_root("stamp-v1")
 	# What every save on disk before this change looks like: no stamp at all.
