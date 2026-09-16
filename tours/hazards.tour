@@ -1,0 +1,86 @@
+# What a place does to a body, and what gear does about it, through the real keys.
+#   tools/tour.sh tours/hazards.tour --seed=1 --hour=19 --weather=clear:0 \
+#     --give=wrap_warm:1,mod_wadding:1,wick:2 \
+#     --fit=glide_wing,scanner_lens,boots_magnet,mod_signet,mod_spring
+coast calm
+
+# --- The snowfield at dusk with nothing on it ---------------------------------
+# The cold is on the slate and in the breath long before it is in the health.
+place snowfield
+wait 1.6
+await cold 12
+shot 01-snowfield-bare
+await pressure_bites 15
+shot 02-cold-bites
+
+# --- Put the warm wrap on, on the slate's gear page, with the real keys -------
+tap pause
+choose loadout
+tap use
+await app:loadout 8
+shot 03-gear-page
+choose body
+tap use
+wait 0.3
+tap use
+wait 0.3
+shot 04-wrap-on-and-wadded
+tap pause
+tap pause
+wait 2.0
+await answered 15
+shot 05-snowfield-wrapped
+
+# --- Off a height on a wing of mended plate -----------------------------------
+place summit
+wait 1.2
+shot 06-at-the-height
+walk 1,1 1.6
+shot 07-at-the-lip
+tap ability_glide
+await ability:glide 4
+wait 0.35
+shot 08-gliding
+wait 6.5
+shot 09-landed
+
+# --- A magnet line off the boots, to something solid --------------------------
+place tip
+wait 0.8
+walk -1,-1 1.8
+walk 1,1 0.25
+shot 10-across-from-a-tip
+tap ability_grapple
+await ability:grapple 5
+shot 11-the-line-takes-hold
+wait 1.0
+shot 12-pulled-in
+
+# --- A machine read through a stolen lens -------------------------------------
+place pinewood
+wait 1.0
+spawn harvester
+wait 1.2
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 13-scanning-a-harvester
+
+# --- Wearing their signature past a watcher -----------------------------------
+spawn watcher
+wait 1.2
+shot 14-a-watcher
+tap ability_spoof
+await spoofed 5
+wait 0.15
+shot 15-spoofed
+walk 1,-1 1.6
+shot 16-walked-past
+
+# --- A burst of speed, and the trail of stipple it leaves ---------------------
+place coast
+wait 1.0
+tap ability_dash
+await ability:dash 5
+wait 0.06
+shot 17-dash

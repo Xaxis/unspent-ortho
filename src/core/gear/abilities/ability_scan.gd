@@ -8,8 +8,10 @@ extends Ability
 const SECONDS := 6.0
 const COOLDOWN := 9.0
 const REACH := 20.0
-## Seconds between the marks being redrawn while the scan stands.
-const BEAT := 0.55
+## Seconds between the marks being redrawn while the scan stands. A mark of light
+## is short-lived, so the beat is short too: the read has to stand still on the
+## machine for the whole scan, not blink once a second.
+const BEAT := 0.14
 
 ## Real second the scan runs out (kept on the ability, so refitting keeps it).
 var until := -1.0

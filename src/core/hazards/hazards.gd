@@ -92,13 +92,25 @@ static func felt(place: Place) -> Dictionary:
 	return out
 
 
-## Night is dark and colder everywhere; heat is the sun's, so it goes with it.
+## What a landscape declares is what it presses at its hardest. The sun decides
+## how much of that is on a body now: it takes some of the cold and most of the
+## gloom off at midday and gives them back after dark, and the heat is its own,
+## so it goes when the sun does. A snowfield at noon is felt; the same snowfield
+## at dusk bites; at three in the morning it is dangerous.
 static func _hour_shift(out: Dictionary, place: Place) -> void:
 	var night := clampf(FightRules.nightfall(place.hour), 0.0, 1.0)
-	_add(out, &"dark", 0.75 * night)
-	_add(out, &"cold", 0.30 * night)
+	if out.has(&"cold"):
+		out[&"cold"] = float(out[&"cold"]) * (0.62 + 0.38 * night)
+	if out.has(&"dark"):
+		out[&"dark"] = float(out[&"dark"]) * (0.45 + 0.55 * night)
 	if out.has(&"heat"):
 		out[&"heat"] = float(out[&"heat"]) * (0.35 + 0.65 * (1.0 - night))
+	# A wet land is damp underfoot; it only soaks a body that is in the water
+	# (or, below, out in the rain).
+	if out.has(&"wet") and not place.in_water:
+		out[&"wet"] = float(out[&"wet"]) * 0.45
+	_add(out, &"dark", 0.75 * night)
+	_add(out, &"cold", 0.30 * night)
 
 
 ## What is falling out of the sky, read through the families a hazard knows.

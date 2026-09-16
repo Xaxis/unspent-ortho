@@ -12,20 +12,23 @@ class_name HazardCues
 ##          &"" nothing drawn (the dark says itself)
 ##   shiver the figure shudders with it
 ##   sound  the name emitted (SoundNames resolves it)
+##   colour, tone  the Palette ramp and the step of it the mark is drawn in. The
+##          step matters: a cue has to read against the ground it is drawn over,
+##          so breath in the snow is a mid blue and not the white it would be.
 
 const CUES := {
-	&"cold": {"mark": &"breath", "sound": &"hazard_cold", "shiver": true, "colour": &"rime"},
-	&"heat": {"mark": &"shimmer", "sound": &"hazard_heat", "shiver": false, "colour": &"ember"},
-	&"fumes": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"ash"},
-	&"toxins": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"moss"},
-	&"radiation": {"mark": &"tick", "sound": &"hazard_em", "shiver": false, "colour": &"lens"},
-	&"em": {"mark": &"tick", "sound": &"hazard_em", "shiver": false, "colour": &"found"},
-	&"wet": {"mark": &"drip", "sound": &"hazard_wet", "shiver": true, "colour": &"brine"},
-	&"resonance": {"mark": &"ring", "sound": &"hazard_ring", "shiver": true, "colour": &"slate"},
-	&"pressure": {"mark": &"cough", "sound": &"hazard_ring", "shiver": true, "colour": &"slate"},
-	&"vacuum": {"mark": &"cough", "sound": &"hazard_ring", "shiver": true, "colour": &"rime"},
-	&"time_shear": {"mark": &"tick", "sound": &"hazard_ring", "shiver": false, "colour": &"bloom"},
-	&"dark": {"mark": &"", "sound": &"", "shiver": false, "colour": &"ink"},
+	&"cold": {"mark": &"breath", "sound": &"hazard_cold", "shiver": true, "colour": &"rime", "tone": 2},
+	&"heat": {"mark": &"shimmer", "sound": &"hazard_heat", "shiver": false, "colour": &"ember", "tone": 4},
+	&"fumes": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"ash", "tone": 1},
+	&"toxins": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"moss", "tone": 4},
+	&"radiation": {"mark": &"tick", "sound": &"hazard_em", "shiver": false, "colour": &"lens", "tone": 3},
+	&"em": {"mark": &"tick", "sound": &"hazard_em", "shiver": false, "colour": &"found", "tone": 4},
+	&"wet": {"mark": &"drip", "sound": &"hazard_wet", "shiver": true, "colour": &"brine", "tone": 3},
+	&"resonance": {"mark": &"ring", "sound": &"hazard_ring", "shiver": true, "colour": &"slate", "tone": 1},
+	&"pressure": {"mark": &"cough", "sound": &"hazard_ring", "shiver": true, "colour": &"slate", "tone": 1},
+	&"vacuum": {"mark": &"cough", "sound": &"hazard_ring", "shiver": true, "colour": &"rime", "tone": 2},
+	&"time_shear": {"mark": &"tick", "sound": &"hazard_ring", "shiver": false, "colour": &"bloom", "tone": 3},
+	&"dark": {"mark": &"", "sound": &"", "shiver": false, "colour": &"ink", "tone": 2},
 }
 
 ## Seconds between cues when a pressure is only felt, and when it is at its worst.
@@ -48,3 +51,10 @@ static func beat(value: float) -> float:
 ## The colour ramp a cue's mark is drawn from (Palette, through UiIcons.ramp).
 static func ramp(id: StringName) -> Array[Color]:
 	return UiIcons.ramp(StringName(cue(id).get("colour", &"ash")))
+
+
+## The colour a cue's mark is drawn in: the step of its ramp that reads against
+## the ground this hazard belongs to.
+static func colour(id: StringName) -> Color:
+	var r := ramp(id)
+	return r[clampi(int(cue(id).get("tone", 2)), 0, r.size() - 1)]

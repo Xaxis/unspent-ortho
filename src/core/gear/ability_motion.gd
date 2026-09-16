@@ -12,6 +12,9 @@ extends RefCounted
 const DONE_LIFT := 0.06
 ## A grapple's rope lifts the body over the lip it is pulling it onto.
 const ARC := 0.35
+## A glide steps off before the ground falls away: the wing takes this much
+## height at the launch, so the run-up to the lip is not read as a landing.
+const LAUNCH_LIFT := 0.5
 
 var kind: StringName = &""
 var dir := Vector2.ZERO
@@ -34,6 +37,8 @@ var to_height := 0.0
 
 var t := 0.0
 var lift := 0.0
+## A glide has actually left the ground: the run-up to the lip is not a landing.
+var flown := false
 var finished := false
 
 
@@ -53,7 +58,7 @@ static func glide(direction: Vector2, p_speed: float, p_fall: float, p_seconds: 
 	m.speed = p_speed
 	m.fall = p_fall
 	m.seconds = p_seconds
-	m.height = start_height
+	m.height = start_height + LAUNCH_LIFT
 	m.from_height = start_height
 	return m
 
@@ -94,12 +99,16 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 		&"glide":
 			next = pos + dir * speed * delta
 			if world != null and not _inside(world, next):
+				# Out of world: the flight ends here rather than off the edge.
 				next = pos
 				finished = true
 			height -= fall * delta
 			var ground := world.height_at(next) if world != null else 0.0
 			lift = maxf(0.0, height - ground)
-			if lift <= DONE_LIFT or t >= seconds:
+			flown = flown or lift > LAUNCH_LIFT * 0.5
+			# However it ends -- landed, out of time, out of world -- the body is
+			# set back down on the ground and never left hanging over it.
+			if (flown and lift <= DONE_LIFT) or t >= seconds or finished:
 				lift = 0.0
 				finished = true
 		&"grapple":

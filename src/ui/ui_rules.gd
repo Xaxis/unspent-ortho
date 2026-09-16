@@ -85,9 +85,16 @@ static func pressures(body: Body, minutes: float, load: float, cap: float = CREE
 	var out: Array[Dictionary] = []
 	for n in needs(body, minutes, load, cap):
 		out.append({"id": n.need, "level": n.level, "value": 0.5 if n.level == 1 else 1.0})
+	var shown := {}
+	for row: Dictionary in out:
+		shown[row.id] = true
 	var ids: Array = body.pressure.keys()
 	ids.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
 	for id: Variant in ids:
+		# A need and a hazard can share a name (wet is both): the body's own need
+		# is the one that is shown, never two gauges with one glyph.
+		if shown.has(StringName(id)):
+			continue
 		var v := float(body.pressure[id])
 		if v >= PRESSURE_SHOWN:
 			out.append({"id": StringName(id), "level": 2 if v >= PRESSURE_WARN else 1, "value": clampf(v, 0.0, 1.0)})

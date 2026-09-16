@@ -27,6 +27,8 @@ const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKi
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8
+## How long a breath hangs in the air: long enough that a player walking sees it.
+const BREATH_SECONDS := 1.6
 
 ## Hazard id -> the real second its next cue is due.
 var _cue_at: Dictionary = {}
@@ -38,6 +40,8 @@ var _carried := 0.0
 ## What the last sweep found, for the tour and for tests.
 var _raw: Dictionary = {}
 var _felt_ever: Dictionary = {}
+## Something has bitten at some point in this game (for a tour's `answered`).
+var _bit_ever := false
 
 
 func setup(g: Game) -> void:
@@ -105,6 +109,7 @@ func _sweep(span: float) -> void:
 	for id: Variant in pressure:
 		if float(pressure[id]) >= Hazards.FELT:
 			_felt_ever[StringName(id)] = true
+	_bit_ever = _bit_ever or Hazards.worst(pressure) >= Hazards.BITE
 	_tell(pressure)
 	_drain(pressure, span)
 	_cues(pressure)
@@ -168,15 +173,19 @@ func _cues(pressure: Dictionary) -> void:
 
 
 func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
-	var ramp := HazardCues.ramp(id)
-	var col := ramp[3] if ramp.size() > 3 else Color(1, 1, 1)
+	var col := HazardCues.colour(id)
 	var at := game.player.position
 	var head := at + Vector3(0, 1.25, 0)
 	var seed_value := int(Time.get_ticks_msec()) + int(v * 1000.0)
-	var drift := Vector2(cos(game.player.facing), sin(game.player.facing)) * 0.4
+	var ahead := Vector2(cos(game.player.facing), sin(game.player.facing))
+	var drift := ahead * 0.4
 	match StringName(cue.get("mark", &"")):
 		&"breath":
-			MobFx.breath(_fx_parent(), head, col, 0.30 + 0.12 * v, 1.1, drift, seed_value)
+			# Two puffs off the mouth, the second a little further out: a plume,
+			# not a dot, and it hangs long enough to be seen at walking pace.
+			MobFx.breath(_fx_parent(), head, col, 0.30 + 0.14 * v, BREATH_SECONDS, drift, seed_value)
+			MobFx.breath(_fx_parent(), head + Vector3(ahead.x, 0.12, ahead.y) * 0.34, col,
+				0.20 + 0.10 * v, BREATH_SECONDS * 0.8, drift, seed_value + 5)
 			if bool(cue.get("shiver", false)) and v >= Hazards.BITE:
 				game.player.shudder(0.22)
 		&"shimmer":
@@ -211,6 +220,9 @@ func tour_seen(what: StringName) -> bool:
 			return Hazards.worst(game.body.pressure) >= Hazards.BITE
 		&"sheltered":
 			return Hazards.worst(game.body.pressure) < Hazards.FELT and not _felt_ever.is_empty()
+		&"answered":
+			# Something bit earlier and nothing bites now: the gear was felt.
+			return _bit_ever and Hazards.worst(game.body.pressure) < Hazards.BITE
 	if Hazards.IDS.has(what):
 		return float(game.body.pressure.get(what, 0.0)) >= Hazards.FELT
 	return false

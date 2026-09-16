@@ -8,8 +8,9 @@ extends Ability
 const RANGE := 8.0
 ## How wide a cone ahead the line will look in, in radians either side.
 const CONE := 0.7
-## A prop is only worth hooking if it is at least this solid.
-const SOLID := 0.3
+## A prop is only worth hooking if it has this much body to take a line: a post,
+## a sign, a mast, a wreck. Tufts and wrack have nothing to hold.
+const SOLID := 0.1
 const SPEED := 14.0
 const COOLDOWN := 2.6
 const WIND := 200.0

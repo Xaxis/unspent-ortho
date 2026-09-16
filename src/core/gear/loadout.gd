@@ -80,7 +80,8 @@ func free_sockets(slot: StringName) -> int:
 func fit(slot: StringName, id: StringName) -> bool:
 	if not slots.has(slot):
 		return false
-	if id != &"" and not Gear.fits(id, slot):
+	# A module is socketed, never worn: `fits` says yes to both, this slot does not.
+	if id != &"" and (Gear.is_module(id) or Gear.slot_of(id) != slot):
 		return false
 	var r := slot_of(slot)
 	r.item = id

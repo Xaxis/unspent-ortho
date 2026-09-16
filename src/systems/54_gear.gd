@@ -25,8 +25,16 @@ extends GameSystem
 ## Marks along a grapple line, and how long the line hangs.
 const LINE_MARKS := 7
 const LINE_SECONDS := 0.28
-## How far a scan's marks reach and how long each mark lives.
-const SCAN_MARK := 0.5
+## Machines a scan will mark at once: the nearest few, so a works district does
+## not fill the frame with light.
+const SCAN_MOST := 6
+## Seconds between the ink marks over a machine that has noticed you.
+const AWARE_BEAT := 0.5
+## Seconds between the violet glints that say you are still wearing their name.
+const SPOOF_BEAT := 1.5
+## A body that moves further than this between two frames of a motion was put
+## there by something else: the motion gives way to it.
+const JUMPED := 3.0
 
 var loadout := Loadout.new()
 var book := AbilityBook.new()
@@ -35,6 +43,13 @@ var _wing: GlideWingModel = null
 ## Ability ids that have fired in this game, for the tour's awaits.
 var _fired: Dictionary = {}
 var _gliding := false
+## Real seconds the next ink mark over an aware machine, and the next spoof
+## glint, are due (the marks keep their own beat, not the frame rate's).
+var _aware_at := 0.0
+var _spoof_at := 0.0
+## Where the last step of a motion put the body, to notice when something else
+## has moved it. Vector2.INF while no motion runs.
+var _last_pos := Vector2.INF
 
 
 func setup(g: Game) -> void:
@@ -130,11 +145,22 @@ func _start_motion(m: AbilityMotion) -> void:
 
 ## While a motion runs it owns the body: the hero (which owns position in a
 ## running game), the player node and its height above the ground.
+##
+## Anything else that puts the body somewhere -- a teleport, a load, a machine
+## carrying you off -- wins: a jump bigger than one step of the move means the
+## flight is over, wherever it had got to. Without this a glide would go on
+## flying a body that has been put down on the other side of the world.
 func _run_motion(delta: float) -> void:
 	if _motion == null:
 		return
 	var hero: Hero = game.player.hero
 	var at: Vector2 = hero.pos if hero != null else game.player.pos
+	if _last_pos != Vector2.INF and at.distance_to(_last_pos) > JUMPED:
+		game.player.lift = 0.0
+		_land(_motion)
+		_motion = null
+		_last_pos = Vector2.INF
+		return
 	var next := _motion.step(delta, at, game.world, game.query, Tuning.PLAYER_RADIUS)
 	var facing := _motion.dir.angle() if _motion.dir.length() > 0.01 else game.player.facing
 	if hero != null:
@@ -146,14 +172,22 @@ func _run_motion(delta: float) -> void:
 	game.player.lift = _motion.lift
 	if game.view != null:
 		game.view.ensure_near(next)
-	if _motion.kind == &"glide" and not _motion.finished:
-		# A thin trail off the wing tips, so the line of the flight reads.
-		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], int(Time.get_ticks_msec()), 0.22)
+	if not _motion.finished:
+		# The line of a flight and the line of a pull are both drawn as they
+		# happen: a mark of light lives a sixth of a second, so it is laid again
+		# every frame the body is still travelling.
+		var beat := int(Time.get_ticks_msec())
+		if _motion.kind == &"glide":
+			MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], beat, 0.22)
+		elif _motion.kind == &"grapple":
+			MobFx.glint(game, game.player.position + Vector3(0, 0.7, 0), Palette.COLD[3], beat, 0.3)
+	_last_pos = next
 	if not _motion.finished:
 		return
 	game.player.lift = 0.0
 	_land(_motion)
 	_motion = null
+	_last_pos = Vector2.INF
 
 
 func _land(m: AbilityMotion) -> void:
@@ -193,53 +227,83 @@ func _fx(what: StringName, args: Dictionary) -> void:
 	var seed_value := int(Time.get_ticks_msec())
 	match what:
 		&"dash":
+			# Speed lines off the heels and a trail of stipple down the way it
+			# came: the burst is drawn, never blurred (docs/ART.md §7).
 			var dir: Vector2 = args.get("dir", Vector2.RIGHT)
-			MobFx.streak(game, at + Vector3(0, 0.55, 0), dir, game.camera.yaw_deg, game.camera.pitch_deg, seed_value, 1.2)
-			MobFx.puffs(game, at, -dir, Palette.STONE[4], 3, 0.5, seed_value)
+			MobFx.streak(game, at + Vector3(0, 0.55, 0), dir, game.camera.yaw_deg, game.camera.pitch_deg, seed_value, 0.9)
+			var dust := Palette.STONE[4]
+			for i in 4:
+				var back := Vector3(dir.x, 0.0, dir.y) * (-0.35 * (i + 1))
+				MobFx.puff(game, at + back, -dir, dust, 0.34 - 0.04 * i, seed_value + i * 11)
 			Events.sfx.emit(&"ability_dash", at)
 		&"glide":
 			Events.sfx.emit(&"ability_glide", at)
 		&"scan":
 			Events.sfx.emit(&"ability_scan", at)
 			MobFx.ring(game, at, Palette.LENS[3], 1.6, 0.4)
-			_scan_marks(float(args.get("reach", 20.0)))
+			_aware_at = 0.0
+			_scan_marks(float(args.get("reach", 20.0)), true)
 		&"scan_beat":
-			_scan_marks(float(args.get("reach", 20.0)))
+			_scan_marks(float(args.get("reach", 20.0)), false)
 		&"grapple":
 			var from: Vector2 = args.get("at", game.player.pos)
 			var to: Vector2 = args.get("to", from)
+			# The line is light, not plate: drawn in the machines' own cold, so it
+			# reads over any ground the land puts under it.
 			for i in LINE_MARKS:
 				var p := from.lerp(to, float(i + 1) / float(LINE_MARKS))
-				MobFx.glint(game, game.world.to_3d(p) + Vector3(0, 0.7, 0), Palette.PLATE[3], seed_value + i * 5, 0.26)
-			MobFx.ring(game, game.world.to_3d(to), Palette.PLATE[2], 0.6, LINE_SECONDS)
+				MobFx.glint(game, game.world.to_3d(p) + Vector3(0, 0.7, 0), Palette.COLD[3], seed_value + i * 5, 0.34)
+			MobFx.ring(game, game.world.to_3d(to), Palette.LENS[3], 0.7, LINE_SECONDS)
 			Events.sfx.emit(&"ability_grapple", at)
 		&"spoof":
+			# Their own signature going out of you: a clean violet ring and a
+			# lens flare at the head, exact, nothing hatched.
 			Events.sfx.emit(&"ability_spoof", at)
-			MobFx.ring(game, at, Palette.FOUND[3], 1.3, 0.55)
-			MobFx.glint(game, at + Vector3(0, 1.3, 0), Palette.LENS[3], seed_value, 0.5)
+			MobFx.ring(game, at, Palette.FOUND[3], 1.7, 0.9)
+			MobFx.glint(game, at + Vector3(0, 1.35, 0), Palette.LENS[3], seed_value, 0.6)
+			for i in 3:
+				var a := i * TAU / 3.0
+				MobFx.glint(game, at + Vector3(cos(a) * 0.6, 0.8, sin(a) * 0.6), Palette.FOUND[4], seed_value + i * 3, 0.3)
+			_spoof_at = Time.get_ticks_msec() / 1000.0 + SPOOF_BEAT
 		&"spoof_beat":
-			if seed_value % 900 < 40:
-				MobFx.glint(game, at + Vector3(0, 1.3, 0), Palette.FOUND[3], seed_value, 0.24)
+			# While it stands, one glint on a slow beat: you are still wearing
+			# someone else's name, and you can see it.
+			var now := Time.get_ticks_msec() / 1000.0
+			if now >= _spoof_at:
+				_spoof_at = now + SPOOF_BEAT
+				MobFx.glint(game, at + Vector3(0, 1.35, 0), Palette.FOUND[4], seed_value, 0.26)
 		&"spoof_ended":
 			Events.message.emit("They can read you again.")
 			MobFx.ring(game, at, Palette.FOUND[1], 1.0, 0.35)
 
 
-## A scan's read: the working part of every machine in reach marked exactly, and
-## a flicked mark over the ones that have noticed you (the interference the
-## disposition package keeps; until it lands, being aware is the read).
-func _scan_marks(reach: float) -> void:
+## A scan's read: the working part of every machine in reach held in the lens's
+## own light, and a flicked ink mark over the ones that have noticed you (the
+## interference the disposition package keeps; until it lands, aware is the read).
+## The light is FOUND and exact; the reading of their behaviour is the player's
+## own, and that is drawn by hand.
+func _scan_marks(reach: float, opening: bool) -> void:
 	var p := game.player.pos
 	var up := game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
+	var found: Array[Mob] = []
 	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
 		var mob := m as Mob
 		if mob == null or not mob.alive or mob.state == null or not mob.state.machine:
 			continue
-		if mob.pos.distance_to(p) > reach:
-			continue
-		MobFx.glint(game, mob.part_position(), Palette.LENS[3], mob.get_instance_id(), 0.45)
-		if mob.aware:
-			MobFx.tell(game, mob.screen_top(up), up, AbilityScan.BEAT, mob.get_instance_id() + 3, 0.7)
+		if mob.pos.distance_to(p) <= reach:
+			found.append(mob)
+	found.sort_custom(func(a: Mob, b: Mob) -> bool: return a.pos.distance_to(p) < b.pos.distance_to(p))
+	var now := Time.get_ticks_msec() / 1000.0
+	var tell_due := now >= _aware_at
+	if tell_due:
+		_aware_at = now + AWARE_BEAT
+	for i in mini(found.size(), SCAN_MOST):
+		var mob := found[i]
+		MobFx.glint(game, mob.part_position(), Palette.LENS[3], mob.get_instance_id(), 0.3)
+		if opening:
+			MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
+		if mob.aware and tell_due:
+			MobFx.tell(game, mob.screen_top(up), up, AWARE_BEAT, mob.get_instance_id() + 3, 0.7)
 
 
 # --- the slate's gear page -----------------------------------------------------
@@ -250,7 +314,8 @@ func _feed(_g: Game) -> Dictionary:
 		var mods: Array[Dictionary] = []
 		for m in loadout.modules(s):
 			mods.append({"id": m, "name": UiRules.item_name(m), "grants": _grants(m)})
-		rows.append({"id": s, "label": Gear.label(s), "item": loadout.item(s), "modules": mods})
+		rows.append({"id": s, "label": Gear.label(s), "item": loadout.item(s),
+			"sockets": Gear.sockets(loadout.item(s)), "modules": mods})
 	return {"slots": rows, "resist": game.body.resist, "abilities": book.rows(Time.get_ticks_msec() / 1000.0)}
 
 
