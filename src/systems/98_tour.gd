@@ -231,7 +231,13 @@ func _run() -> void:
 					var d := from.distance_squared_to(p2.pos)
 					if d >= best:
 						continue
-					if not _near_used.has(p2.id) and Survival.work_left(game, p2):
+					# Work left in it, OR nothing can be done to it at all — a house
+					# is not in the takes table, and `near house` means stand at
+					# one. Said outright instead of leaning on work_left, which
+					# answers true for a prop use_target will never offer.
+					if _near_used.has(p2.id):
+						continue
+					if Survival.work_left(game, p2) or not Takes.workable(p2.kind):
 						best = d
 						found = p2
 				if found == null or want.is_empty():
@@ -503,23 +509,54 @@ func _stand_by(name: String) -> bool:
 ## in front — so this stops when the prop really is the target, and fails
 ## otherwise rather than leaving the tour pressing use on empty air.
 func _stand_at(found: WorldProp, said: String) -> bool:
-	var reach := found.solid + Tuning.PLAYER_RADIUS + 0.42
+	# Stand inside the reach that is ACTUALLY in force. Survival measures reach
+	# from the prop's edge and halves it in the dark (DARK_REACH 0.6), while a
+	# fixed gap of PLAYER_RADIUS + 0.42 puts the player 0.70 out — so every
+	# `near` in a tour set at night stood just outside the hand and failed,
+	# whatever it was standing at. Found by machine-read.tour, whose whole
+	# second half is at 23:00.
+	var hand := Survival.DARK_REACH if Survival.in_the_dark(game) else Survival.REACH
+	# A prop nothing can be done TO is one a tour stands beside to look at: a
+	# house is not in the takes table, so it can never be a use target, and
+	# asking for one is asking for something the game cannot give. Standing
+	# against it and facing it is the whole of what `near house` ever meant.
+	var only_looked_at := not Takes.workable(found.kind)
+	# Two ways of standing, in the order a player would: at arm's length, and
+	# then pressed right up against it. `use_target` scores by the edge a thing
+	# is from, so in a works field thick with what the ruin left, a survey at
+	# arm's length loses to a scrap of plate nearer the boot and `near survey`
+	# fails standing directly in front of one. Pressed against it, nothing but
+	# an overlapping prop can outscore it. Found by machine-read.tour line 143,
+	# among the thousand-odd evidence props a works lays down.
+	var gaps: Array[float] = [
+		minf(Tuning.PLAYER_RADIUS + 0.42, hand - 0.08),
+		Tuning.PLAYER_RADIUS + 0.02,
+	]
 	var away := (game.player.pos - found.pos).normalized()
 	if away.length() < 0.5:
 		away = Vector2(1, 0)
-	for turn in 13:
-		# The side the player is already on first, then round.
-		var spot := found.pos + (away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 12.0)) * reach
-		if turn > 0 and not game.query.standable(floori(spot.x), floori(spot.y)):
-			continue
-		_teleport(spot)
-		Survival.face(game, (found.pos - spot).angle())
-		await get_tree().physics_frame
-		var t := Survival.use_target(game)
-		if t != null and t.id == found.id:
-			print("tour near %s: %s" % [said, Survival.describe_target(game)])
-			return true
-	printerr("tour %s: stood all round the %s at %s and it never came under the hand" % [_name, said, found.pos])
+	var reach := found.solid
+	for gap: float in gaps:
+		reach = found.solid + maxf(gap, 0.05)
+		for turn in 13:
+			# The side the player is already on first, then round.
+			var spot := found.pos + (away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 12.0)) * reach
+			if turn > 0 and not game.query.standable(floori(spot.x), floori(spot.y)):
+				continue
+			_teleport(spot)
+			Survival.face(game, (found.pos - spot).angle())
+			await get_tree().physics_frame
+			if only_looked_at:
+				if game.player.pos.distance_to(found.pos) <= reach + 0.35:
+					print("tour near %s: standing at it (nothing to do to a %s)" % [said, said])
+					return true
+				continue
+			var t := Survival.use_target(game)
+			if t != null and t.id == found.id:
+				print("tour near %s: %s" % [said, Survival.describe_target(game)])
+				return true
+	printerr("tour %s: stood all round the %s at %s and it never came under the hand (reach %.2f, edge %.2f)"
+		% [_name, said, found.pos, hand, reach - found.solid])
 	return false
 
 
@@ -843,6 +880,23 @@ const SUBJECT_WAIT := 3.0
 ## sky_apply(), so an exact match would only ever hold at one minute of one day.
 const PIXEL_TOLERANCE := 40
 
+## How far a lit thing may be washed toward the page and still count as its own
+## colour. A stolen neon tube is EMISSION: its own light carries it toward white
+## as it burns, so the flat palette value never reaches the picture. Measured on
+## the tube in tours/houses at 22:30, the palette's (255, 64, 204) arrives as
+## (217, 136, 217) along the run and (255, 160, 255) at its core — so asking for
+## the palette value alone found NONE of it, and frames with the tube plainly in
+## them were being thrown away as frames that only claimed one.
+##
+## The cap is the whole of what makes this mean anything, because every colour
+## washes to the same white in the end and an uncapped rule counts the slate's
+## own phosphor and the sea's foam as whatever tube was asked for. Measured on
+## one frame WITH a tube and one WITHOUT, both carrying the HUD: at 0.4 the tube
+## reads 264 pixels of magenta and none of cyan or green, and the frame with no
+## tube reads none of any of the three. At 0.75 the tubeless frame starts
+## matching its own green text.
+const PIXEL_WASH := 0.4
+
 
 ## `shot NAME [with A,B]`. A tour's frames are the evidence every wave is read
 ## from, so a frame that claims a subject must hold it: each subject is waited
@@ -1049,8 +1103,29 @@ static func pixels_like(img: Image, subject: String) -> int:
 	var i := 0
 	while i < d.size():
 		for w: Vector3i in wants:
-			if absi(d[i] - w.x) <= PIXEL_TOLERANCE and absi(d[i + 1] - w.y) <= PIXEL_TOLERANCE and absi(d[i + 2] - w.z) <= PIXEL_TOLERANCE:
+			if is_like(d[i], d[i + 1], d[i + 2], w):
 				n += 1
 				break
 		i += 3
 	return n
+
+
+## One pixel against one wanted colour: that colour, or that colour washed up to
+## PIXEL_WASH of the way to white by its own light.
+##
+## How far it has washed is read off the channel with the most room to move,
+## which is the one that says most about how hard the thing is burning: for the
+## magenta tube that is green (64 of 255), and green is exactly the channel that
+## made asking for the flat value fail.
+static func is_like(r: int, g: int, b: int, w: Vector3i) -> bool:
+	var head := Vector3i(255 - w.x, 255 - w.y, 255 - w.z)
+	var most := maxi(head.x, maxi(head.y, head.z))
+	var k := 0.0
+	if most >= 1:
+		var got := r if most == head.x else (g if most == head.y else b)
+		var was := w.x if most == head.x else (w.y if most == head.y else w.z)
+		k = clampf(float(got - was) / float(most), 0.0, PIXEL_WASH)
+	var tol := float(PIXEL_TOLERANCE)
+	return (absf(float(r) - (float(w.x) + k * float(head.x))) <= tol
+		and absf(float(g) - (float(w.y) + k * float(head.y))) <= tol
+		and absf(float(b) - (float(w.z) + k * float(head.z))) <= tol)

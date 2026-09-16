@@ -338,3 +338,26 @@ func test_the_pixel_subject_counts_what_is_there() -> void:
 	# it of black, and would be of any other near-black asked for.
 	eq(TOUR.pixels_like(img, "pixels:ff0000:1"), 0, "nothing in it is red")
 	gt(TOUR.pixels_like(img, "pixels:000000:1"), 50.0, "a near-black wanted matches near-black ground")
+
+
+## A tube is emission, so what reaches the picture is its colour carried some way
+## toward white — and the cap on how far is what stops every pale thing on the
+## glass counting as every tube that was asked for.
+func test_a_tube_counts_washed_toward_white_but_only_so_far() -> void:
+	var img := Image.create_empty(10, 10, false, Image.FORMAT_RGB8)
+	img.fill(Color8(20, 20, 30))
+	# The magenta tube as it actually arrives: along the run, and at its core.
+	img.set_pixel(0, 0, Color8(217, 136, 217))
+	img.set_pixel(1, 0, Color8(255, 160, 255))
+	eq(TOUR.pixels_like(img, "pixels:ff40cc:1"), 2, "the tube's own colour, washed by its own light")
+	eq(TOUR.pixels_like(img, "pixels:8cff59:1"), 0, "a magenta tube is not a green one")
+	eq(TOUR.pixels_like(img, "pixels:4df2ff:1"), 0, "nor a cyan one")
+	# White is where every colour ends up, so it must belong to none of them:
+	# uncapped, the slate's own phosphor and the sea's foam answer for any tube
+	# that is asked for. The two greens here are the real thing, measured off the
+	# message line and the location label of a frame carrying no tube at all.
+	img.set_pixel(5, 5, Color8(255, 255, 255))
+	img.set_pixel(6, 5, Color8(108, 174, 145))
+	img.set_pixel(7, 5, Color8(63, 124, 103))
+	eq(TOUR.pixels_like(img, "pixels:ff40cc:1"), 2, "white is not a magenta tube")
+	eq(TOUR.pixels_like(img, "pixels:8cff59:1"), 0, "nor is the glass's own green text")
