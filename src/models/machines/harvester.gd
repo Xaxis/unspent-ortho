@@ -4,8 +4,17 @@ extends MachineModel
 ## pointed dividers with an amber comb between them: the dangerous end and the
 ## working part at once. It never stops combing.
 ##
-## walk   the hull pitches and yaws over the ground on an exact cycle
-## alert  the intake drops and two lamp masts rise out of the hull
+## Its poses are shapes, not lights: a slab has no limbs to throw, so everything
+## is said by where the header sits and how the hull rides on its tracks.
+## walk   CUTTING: the header down in the row, the hull pitching and yawing on
+##        an exact cycle
+## stand  stopped at the headland: the header up out of the row, stacks upright,
+##        the hull high on unloaded springs
+## alert  it has seen you: the hull settles, the header comes down on the ground
+##        and stops, two lamp masts run up out of the hull
+## windup the hull rears back and the hood tips OPEN, bringing the comb up into
+##        plain sight — the side about to take you is the side the eye is sent to
+## strike the whole slab is thrown forward, header down
 ## hurt   lamps out, comb stops
 ## dead   lists onto one track, intake on the ground, the comb dropped askew in
 ##        front of it, lamps and stacks folded; the row spills out
@@ -209,7 +218,7 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			# the side about to take you is the side the eye is sent to.
 			# Far enough that the hood's lip clears the hull's own top line: the
 			# machine gapes, and the comb comes up with it into plain sight.
-			d[&"intake"] = pr(Vector3(0.04, 0.14, 0), Vector3(0, 0, 0.88))
+			d[&"intake"] = pr(Vector3(0.05, 0.16, 0), Vector3(0, 0, 0.62))
 			d[&"hull"] = pr(Vector3(-0.12, 0.09, 0), Vector3(0, 0, 0.13))
 			d[&"stacks"] = r(Vector3(0, 0, -0.24))
 			d[&"lamp_l"] = pr(Vector3(0, 0.44, 0))

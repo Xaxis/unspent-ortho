@@ -65,6 +65,7 @@ The M2.0 proofs (each tour's header carries its own options):
 tools/tour.sh tours/landscape.tour --seed=7 --weather=clear:0   # what every landscape holds of what happened
 tools/tour.sh tours/sky.tour --seed=1                           # each landscape's own weather and hour
 tools/tour.sh tours/machines.tour --seed=1 --hour=22.5 --weather=clear:0   # state told by light, wear, a kill
+tools/tour.sh tours/machines-day.tour --seed=1 --hour=12 --weather=clear:0 # and told with nothing on them lit
 tools/tour.sh tours/characters.tour --seed=1                    # the last people, dressed by land and trade
 TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour                 # the score's layers, heard
 tools/tour.sh tours/slate.tour --scene=title                    # the slate wakes, and every app from its key

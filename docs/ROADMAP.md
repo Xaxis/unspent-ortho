@@ -111,7 +111,14 @@ music. It comes before new landscape content, so every type is born in it.
   eyes that lock when it has seen you, a part that runs hot before it strikes,
   lights that go out in order as it dies; scan beams and work washes; years of
   wear and a trophy of its trade on every kind. Each machine draws in 2-6 calls
-  instead of 13-25.
+  instead of 13-25. **And by day, with nothing on them lit** (wave A): the twelve
+  ramps run the violet arc by role so a worker, a keeper and a hunter are told
+  apart at a glance, the body fill sits below the ground it stands on, and every
+  mark on a plate is budgeted in screen pixels — plates at neighbouring ramp
+  values, shadowed recesses, grime in straight runs. Every pose a fight asks a
+  player to read differs in silhouette, the windup's tell hangs over the working
+  part and points down at it, and a dead machine settles into a cold hulk in the
+  moonlight instead of vanishing with its own light.
 - **The last people.** Dressed by their land's hazards and their trade (oilskins,
   fur, respirators, goggles, salvage packs, a machine plate on the chest), thinned
   by hunger, patched where worn; a village crowd costs ~0.02-0.13 ms a person.
