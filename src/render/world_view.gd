@@ -392,7 +392,10 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			grow = Vector3(1.0 + (Rng.hash01(world.seed_value, p.id, 93) - 0.5) * 0.22,
 				1.0 + (Rng.hash01(world.seed_value, p.id, 94) - 0.5) * 0.30,
 				1.0 + (Rng.hash01(world.seed_value, p.id, 95) - 0.5) * 0.22)
-		var xf := Transform3D(rot.scaled(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		# Scale first, then turn, so the cast is in the model's own frame.
+		var xf := Transform3D(rot * Basis.from_scale(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		# Normals take the turn only: a face keeps the light band the model was
+		# drawn with, however the instance was cast.
 		var nx := Transform3D(rot, Vector3.ZERO)
 		if not tpl.made_v.is_empty():
 			mv.append_array(xf * tpl.made_v)
