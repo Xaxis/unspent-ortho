@@ -11,6 +11,10 @@ var rot: float
 var scale: float
 ## Collision radius in tiles (already scaled). 0 = passable.
 var solid: float
+## Which model of this kind, or -1 to take the one its id hashes to. World gen
+## sets it where the ARRANGEMENT matters and chance is not good enough: a village
+## deals its houses one variant each so no two silhouettes in it repeat.
+var variant := -1
 
 
 func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float) -> void:

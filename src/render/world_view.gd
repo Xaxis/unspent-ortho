@@ -371,7 +371,7 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
 	for p: WorldProp in props:
-		var variant := PropModels.pick_variant(p.kind, Rng.hash_ints(world.seed_value, p.id, 90))
+		var variant := PropModels.variant_of(p, world.seed_value)
 		var country := prop_country(p, ch)
 		var tpl := PropModels.template(p.kind, variant, country)
 		var h := _height(ch, m, p.pos)

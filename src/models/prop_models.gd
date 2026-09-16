@@ -82,6 +82,16 @@ static func pick_variant(kind: int, h: int) -> int:
 	return absi(h) % variants(kind)
 
 
+## The model one placed prop is drawn as: what world gen dealt it (`WorldProp.variant`,
+## which a village uses so no two of its houses repeat a silhouette), or, where
+## nothing was dealt, the one its id hashes to. Every reader — the chunk bake,
+## the lights — asks here, so a dealt variant reaches all of them.
+static func variant_of(p: WorldProp, seed_value: int) -> int:
+	if p.variant >= 0:
+		return clampi(p.variant, 0, variants(p.kind) - 1)
+	return pick_variant(p.kind, Rng.hash_ints(seed_value, p.id, 90))
+
+
 ## Chunk workers bake props while the main thread may too.
 static var _lock := Mutex.new()
 

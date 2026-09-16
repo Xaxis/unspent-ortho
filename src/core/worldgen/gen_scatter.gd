@@ -412,6 +412,17 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		var count := rng.randi_range(5, 8)
 		var placed := 0
 		var start := rng.randf() * TAU
+		# A village deals its houses one model each, so no two silhouettes in it
+		# repeat: on seed 7 the hash alone gave the spawn village three of one
+		# house and two of another out of seven (art review 5). Dealt AFTER
+		# placing, nearest the square first — the ring is filled in a spiral, not
+		# in order of distance — so the lit house on top of the pack is always the
+		# one a player standing on the square is looking at (art review 11).
+		# Its own stream, not the village rng: drawing from that one would shift
+		# every house position after it, and `tests/render/test_parity.gd` pins
+		# those to the world M1 made. Dealing a model must not move a house.
+		var pack := _house_pack(Rng.make(c.s, 4200 + floori(vp.x) * 131 + floori(vp.y)))
+		var houses: Array[WorldProp] = []
 		for h in 120:
 			if placed >= count:
 				break
@@ -438,10 +449,41 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			if not level_ok:
 				continue
 			var house := _add(c, PropKind.HOUSE, hp)
+			houses.append(house)
 			# Facing the square, never quite square to it.
 			house.rot = wrapf((vp - hp).angle() + rng.randf_range(-0.2, 0.2), 0.0, TAU)
 			_occupy(c, occ, hp, 2.0)
 			placed += 1
+		houses.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
+			return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
+		for i in houses.size():
+			houses[i].variant = pack[i % pack.size()]
+
+
+## How many house models there are to deal (`Houses.VARIANTS`). World gen holds
+## no rendering, so the count is named here and `tests/render/test_houses.gd`
+## fails if the two ever disagree.
+const HOUSE_MODELS := 8
+## The two that wired a machine's light into a wall (15_lights.NEON_HOUSE_VARIANTS).
+const HOUSE_NEON: Array[int] = [1, 4]
+
+
+## A shuffled pack of one of each house model, with a neon one on top, so a
+## village deals every house a different silhouette and its first — the one
+## nearest the square — is always lit.
+static func _house_pack(rng: RandomNumberGenerator) -> Array[int]:
+	var rest: Array[int] = []
+	for v: int in range(HOUSE_MODELS):
+		rest.append(v)
+	for i in range(rest.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t: int = rest[i]
+		rest[i] = rest[j]
+		rest[j] = t
+	var lit: int = HOUSE_NEON[rng.randi_range(0, HOUSE_NEON.size() - 1)]
+	rest.erase(lit)
+	rest.push_front(lit)
+	return rest
 
 
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:

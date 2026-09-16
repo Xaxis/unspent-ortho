@@ -338,7 +338,7 @@ func _index_sources() -> void:
 				PropKind.SHACK: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.35)
 				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
-			if p.kind == PropKind.HOUSE and NEON_HOUSE_VARIANTS.has(PropModels.pick_variant(p.kind, Rng.hash_ints(game.world.seed_value, p.id, 90))):
+			if p.kind == PropKind.HOUSE and NEON_HOUSE_VARIANTS.has(PropModels.variant_of(p, game.world.seed_value)):
 				var front := _front_of(p.kind)
 				s.neon_at = game.world.to_3d(p.pos) + Basis(Vector3.UP, -p.rot) * (Vector3(front.x, 1.05, front.z) * p.scale)
 		else:
