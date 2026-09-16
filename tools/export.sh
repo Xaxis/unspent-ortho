@@ -29,7 +29,7 @@ export_one() {
   local preset="$1" out="$2"
   local dir; dir="$(dirname "$out")"
   rm -rf "$dir"; mkdir -p "$dir"
-  local log; log="$(mktemp -t unspent-export)"
+  local log; log="$(mktemp "${TMPDIR:-/tmp}/unspent-export.XXXXXX")"
   local t0; t0=$(python3 -c 'import time; print(time.time())')
   godot --headless --path . "--export-$mode" "$preset" "$out" >"$log" 2>&1
   local code=$?

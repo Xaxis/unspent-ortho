@@ -9,7 +9,7 @@ out="$1"; shift
 rm -f "$out"
 tools/_import.sh
 . tools/_focus.sh
-log="$(mktemp -t unspent-shot)"
+log="$(mktemp "${TMPDIR:-/tmp}/unspent-shot.XXXXXX")"
 holder="$(focus_holder)"
 godot --path . --position 40,40 -- --shot="$out" "$@" >"$log" 2>&1 &
 pid=$!

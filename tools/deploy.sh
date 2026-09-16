@@ -75,7 +75,7 @@ mkdir -p .vercel
 printf '{"projectId":"%s","orgId":"%s"}\n' "$PROJECT_ID" "$ORG_ID" > .vercel/project.json
 
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo production || echo preview))"
-log="$(mktemp -t unspent-deploy)"
+log="$(mktemp "${TMPDIR:-/tmp}/unspent-deploy.XXXXXX")"
 if [ "$prod" = 1 ]; then
   npx --yes vercel@48 deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN" >"$log" 2>&1
 else

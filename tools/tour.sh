@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 tour="$1"; shift
 tools/_import.sh
 . tools/_focus.sh
-log="$(mktemp -t unspent-tour)"
+log="$(mktemp "${TMPDIR:-/tmp}/unspent-tour.XXXXXX")"
 holder="$(focus_holder)"
 godot --path . --position 40,40 -- --tour="$tour" "$@" >"$log" 2>&1 &
 pid=$!
