@@ -37,7 +37,11 @@ static func make() -> BiomeDef:
 	d.pool_rim_ground = Ground.MUD
 	d.rock_ground = Ground.SCREE
 	d.village_ground = Ground.GRASS
-	d.decor = {Ground.GRASS: [1.0, Decor.TUFT, 40, Decor.FLOWER, 14, Decor.STONE, 10, Decor.THISTLE, 6, Decor.BONE, 2]}
+	# Twice the litter of anywhere else, and most of it is what the drilling
+	# left: cores pulled and dropped where they came out, cast stone with its
+	# rebar showing, bolts, bone. An empty land that says who emptied it.
+	d.decor = {Ground.GRASS: [1.2, Decor.TUFT, 32, Decor.FLOWER, 12, Decor.STONE, 10,
+		Decor.THISTLE, 6, Decor.BONE, 8, Decor.REBAR, 6, Decor.DRILL_CORE, 4, Decor.BOLT, 4]}
 	d.grass_colors = [P.MOSS[4].lerp(P.SAND[4], 0.4), P.SAND[4]]
 	d.rock_color = P.LINEN[3]
 	d.hard_rock = true

@@ -178,19 +178,30 @@ static func dead_tree(k: Kit, v: int, c: int) -> void:
 	var dark := P.ASH[1]
 	match c:
 		Country.BURNING:
-			wood = P.INK[2]
-			dark = P.INK[1]
+			# Charred, not black: against pale ash a near-black stick was the
+			# highest-contrast mark in the frame (art review 14).
+			wood = P.INK[3].lerp(P.ASH[1], 0.55)
+			dark = P.INK[3]
 		Country.MOSS:
 			wood = P.LINEN[2].lerp(P.SPRUCE[2], 0.25)
 	var h: float = [1.7, 1.55, 0.8, 1.9][v % 4]
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.12))
 	var top := Vector3(lean.x, h, lean.y)
-	k.limb(Vector3.ZERO, top, 0.12, 0.05, 5, wood, Vector3(Kit.j(s, 5, 0.08), 0, Kit.j(s, 6, 0.08)))
+	# A trunk, not a wire: at the play camera 0.12 was a three-pixel stick, and a
+	# stick with a knot on top and three splayed legs under it reads as a dead
+	# insect in a pale frame (art review 14), not as a tree.
+	k.limb(Vector3(0, -0.06, 0), top.lerp(Vector3.ZERO, 0.55), 0.21, 0.11, 6, wood, Vector3(Kit.j(s, 5, 0.05), 0, Kit.j(s, 6, 0.05)))
+	k.limb(top.lerp(Vector3.ZERO, 0.55), top, 0.11, 0.055, 5, wood, Vector3(Kit.j(s, 7, 0.06), 0, Kit.j(s, 8, 0.06)))
 	# A broken top: a jagged splinter.
-	k.made.prism(top.x, top.y, top.z, 0.05, top.y + 0.2, 0.0, 4, dark, Color(0, 0, 0, 0), Kit.j(s, 3, 1.0))
-	for i in 3:
-		var a := float(i) / 3.0 * TAU + 0.7
-		k.limb(Vector3(0, 0.1, 0), Vector3(cos(a) * 0.3, -0.02, sin(a) * 0.3), 0.05, 0.015, 3, wood)
+	k.made.prism(top.x, top.y, top.z, 0.055, top.y + 0.22, 0.0, 4, dark, Color(0, 0, 0, 0), Kit.j(s, 3, 1.0))
+	# The root flare: buttresses that swell out of the ground and stop, hugging
+	# the foot. Never legs standing the trunk up off the land.
+	for i in 4:
+		var a := float(i) / 4.0 * TAU + 0.7
+		var out := Vector3(cos(a) * 0.26, 0.0, sin(a) * 0.26)
+		k.made.tri(Vector3(0, 0.34, 0), Vector3(out.x * 0.35, -0.05, out.z * 0.35), out + Vector3(0, -0.05, 0), wood)
+		k.made.tri(Vector3(0, 0.34, 0), out + Vector3(0, -0.05, 0), Vector3(out.x * 0.35, -0.05, out.z * 0.35), GroundColors.down(wood, 0.3))
+		k.stone(out.x * 0.8, -0.06, out.z * 0.8, 0.1, 0.07, s + 60 + i, GroundColors.down(wood, 0.5), 5)
 	if v % 4 == 2:
 		# A split snag.
 		k.made.prism(0.05, h, 0.0, 0.06, h + 0.3, 0.0, 4, wood)

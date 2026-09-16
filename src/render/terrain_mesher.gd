@@ -88,6 +88,11 @@ var _eco: FastNoiseLite
 ## its own percentile table so a share of cover is a threshold.
 var _eco2: FastNoiseLite
 var _eco_cdf := PackedFloat32Array()
+## How many of a country's own grounds an ecotone may borrow from.
+const ECO_MENU := 3
+## The commonest dry, unmade grounds of each country, most common first, tallied
+## from the world itself so a landscape type new tomorrow needs no table here.
+var _eco_ground := PackedInt32Array()
 var _lip: FastNoiseLite
 var _tab_col := PackedColorArray()
 var _tab_style := PackedInt32Array()
@@ -284,6 +289,7 @@ func _init(w: WorldData) -> void:
 	for i in 256:
 		acc += hist[i]
 		_eco_cdf[i] = float(acc) / 4096.0
+	_tally_grounds(w)
 	_lip = FastNoiseLite.new()
 	_lip.seed = Rng.hash_ints(w.seed_value, 34) & 0x7FFFFFFF
 	_lip.frequency = 1.3
@@ -318,6 +324,60 @@ func _init(w: WorldData) -> void:
 				var fr := Palette.RIME[4] if snow else GroundColors.down(col, 1.0)
 				fr.a = 1.0
 				_tab_front[i] = fr
+
+
+## What each LANDSCAPE TYPE is laid with: the commonest dry, unmade grounds it
+## carries, most common first. Read every second tile — it is a share, not a
+## census. Keyed by the registry's type index, so a landscape added as a file
+## is tallied with the rest and needs nothing here.
+func _tally_grounds(w: WorldData) -> void:
+	var types := BiomeRegistry.count()
+	_eco_ground.resize(types * ECO_MENU)
+	_eco_ground.fill(-1)
+	var count := PackedInt32Array()
+	count.resize(types * Ground.COUNT)
+	var size := w.size
+	for y in range(0, size, 2):
+		var row := y * size
+		for x in range(0, size, 2):
+			var g: int = w.ground[row + x]
+			if _WET[g] == 1 or g == Ground.ROAD or g == Ground.FLOOR:
+				continue
+			count[w.country[row + x] * Ground.COUNT + g] += 1
+	for c: int in types:
+		var base: int = c * Ground.COUNT
+		for slot in ECO_MENU:
+			var best := -1
+			var best_n := 0
+			for g in Ground.COUNT:
+				if count[base + g] > best_n:
+					best_n = count[base + g]
+					best = g
+			if best < 0:
+				break
+			_eco_ground[c * ECO_MENU + slot] = best
+			count[base + best] = 0
+
+
+## A cell drawn as its neighbour across an ecotone carries that neighbour's
+## GROUND too, not only its tint. Flipping the country alone changes the wash by
+## whatever the country's ramp does to the ground already there, and where two
+## landscapes are laid with different grounds — pale limestone against ash —
+## that is far too little: the marks, the hatch and most of the value belong to
+## the ground, so the band stayed a seam however ragged the country field was
+## (art review 13). Water, road and floor are never borrowed over: a river or a
+## made surface crosses a border as itself.
+func _eco_borrow(c: int, g: int, sx: float, sy: float) -> int:
+	if _WET[g] == 1 or g == Ground.ROAD or g == Ground.FLOOR or _eco_ground.is_empty():
+		return g
+	var first := _eco_ground[c * ECO_MENU]
+	if first < 0:
+		return g
+	# Which of its grounds, in lobes of about fifteen units: a borrowed patch is
+	# laid the way that country is laid, never speckled ground by ground.
+	var f := _eco.get_noise_2d(sx * 0.5 + 900.0, sy * 0.5 + 900.0) * 0.5 + 0.5
+	var pick := _eco_ground[c * ECO_MENU + clampi(int(f * float(ECO_MENU)), 0, ECO_MENU - 1)]
+	return pick if pick >= 0 else first
 
 
 ## The ecotone field's percentile at ring point (gx, gy), bilinear.
@@ -1000,6 +1060,8 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 						var ep := _eco_p(eco_grid, wx - rx0, wy - ry0, rw) - eco_share(t)
 						dc = hi if ep < 0.0 else lo
 						em = minf(em, absf(ep) * 9.0)
+						if dc != c:
+							g = _eco_borrow(dc, g, sx, sy)
 				var extra := 0
 				var wf := 0.0
 				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:
@@ -1755,14 +1817,25 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				continue
 			any = true
 			var terrace := ch.t[li]
+			var lx := ch.x0 + i * 0.5
 			if terrace <= 0:
 				sheet[li] = WATER_Y
-				col[li] = Color(0.0, 0.5, 0.5, clampf(depth[li] / 9.0, 0.0, 1.0))
+				# A pool or a river mouth that happens to lie at sea level keeps
+				# its own kind, or the moss ends up with a white beach round its
+				# black water; and even the sea itself only breaks white where the
+				# bank it meets is not a bog (docs/ART.md section 3).
+				var g0 := ch.key[li] & 0xFF
+				if g0 == Ground.DEEP_WATER or g0 == Ground.WATER:
+					# Every sea point carries the weight, not only the shallow ones:
+					# the quad interpolates, so one deep corner would put surf back
+					# on the band its shallow corner was meant to keep off.
+					col[li] = Color(0.0, _surf_at(lx, ly), 0.5, clampf(depth[li] / 9.0, 0.0, 1.0))
+				else:
+					col[li] = Color(_inland_kind(k, lx, ly) / 8.0, 0.5, 0.5, inland_alpha(depth[li]))
 				continue
-			var lx := ch.x0 + i * 0.5
 			# Level water: a sheet over its terrace, under any bank (which lips up).
 			sheet[li] = terrace * WorldData.STEP + WADE
-			var kind := 2 if (k & 0xFF) == Ground.BLACKWATER else 1
+			var kind := _inland_kind(k, lx, ly)
 			var flow := Vector2.ZERO
 			if kind == 1:
 				var ti := clampi(floori(ly), 0, size - 1) * size + clampi(floori(lx), 0, size - 1)
@@ -1916,6 +1989,49 @@ func _clip_sheet(ch: Chunk, a: int, b: int, c: int, d: int, sheet: PackedFloat32
 ## water.gdshader reads it back as a * INLAND_SPAN - INLAND_BANK.
 static func inland_alpha(d: float) -> float:
 	return clampf((d + INLAND_BANK) / INLAND_SPAN, 0.0, 1.0)
+
+
+## Which water an inland sheet is: blackwater (2) where the land it lies in is
+## wet enough to be a bog, so a river or a pool in the moss is the moss's own
+## black water with green edges and never a pale blue lagoon (docs/ART.md
+## section 3); a plain sheet (1) everywhere else.
+func _inland_kind(key: int, lx: float, ly: float) -> int:
+	if (key & 0xFF) == Ground.BLACKWATER:
+		return 2
+	return 2 if _surf_at(lx, ly) < 0.5 else 1
+
+
+## Land wet at or above this takes no surf: its bank is a bog, not a shore.
+const SURF_WET := 0.5
+
+
+## How the sea breaks on the bank under a point: 1 on an open coast, 0 where the
+## land it meets is soft and wet. Read from the nearest land's `wet` hazard
+## (BiomeRegistry), never from a country: the moss's black water is scummed reed
+## at its edge, not a white beach (docs/ART.md section 3, art review wave N).
+var _surf: Dictionary = {}
+func _surf_at(lx: float, ly: float) -> float:
+	var size := world.size
+	var ti := clampi(floori(ly), 0, size - 1) * size + clampi(floori(lx), 0, size - 1)
+	if _surf.has(ti):
+		return _surf[ti]
+	var out := _surf_scan(lx, ly)
+	_surf[ti] = out
+	return out
+
+
+func _surf_scan(lx: float, ly: float) -> float:
+	var size := world.size
+	for r: int in [2, 4, 7]:
+		for i in 8:
+			var a := float(i) / 8.0 * TAU
+			var x := clampi(floori(lx + cos(a) * float(r)), 0, size - 1)
+			var y := clampi(floori(ly + sin(a) * float(r)), 0, size - 1)
+			if Ground.is_water(world.ground_at(x, y)):
+				continue
+			var wet := float(BiomeRegistry.at(world, Vector2(x, y)).hazards.get(&"wet", 0.0))
+			return 0.0 if wet >= SURF_WET else 1.0
+	return 1.0
 
 
 func _water_quad(xa: float, xb: float, py: float, h00: float, h10: float, h11: float, h01: float, c00: Color, c10: Color, c11: Color, c01: Color) -> void:

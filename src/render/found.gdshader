@@ -15,6 +15,18 @@ uniform float night_keep = 0.35;
 
 varying vec3 world_pos;
 
+// The ink floor (docs/ART.md section 6: "nothing is pure black"). The law is
+// about the page, not about who drew on it: the inside of a hull or a cavity
+// under plate, graded down at night, has to stop where the pen does, exactly as
+// the land does. Palette.INK[2] and its luma, the same two numbers world.gdshader
+// carries; tests/render/test_ink_floor.gd holds the two shaders to each other.
+const vec3 FOUND_INK = vec3(0.1176, 0.1098, 0.1804);
+const float INK_FLOOR = 0.1203;
+vec3 ink_floor(vec3 c) {
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	return mix(FOUND_INK, c, clamp(l / INK_FLOOR, 0.0, 1.0));
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -22,7 +34,7 @@ void vertex() {
 void fragment() {
 	vec3 c = COLOR.rgb;
 	vec3 tinted = sky_apply(c, world_pos, TIME);
-	ALBEDO = mix(tinted, c, night_keep * (1.0 - clamp(dot(tinted, vec3(0.333)) / max(dot(c, vec3(0.333)), 1e-3), 0.0, 1.0)));
+	ALBEDO = ink_floor(mix(tinted, c, night_keep * (1.0 - clamp(dot(tinted, vec3(0.333)) / max(dot(c, vec3(0.333)), 1e-3), 0.0, 1.0))));
 	// Neon on the FOUND: vertex alpha below 1 is a light built into the machine.
 	// 0.5..0.98 a steady strip (brighter lower); below 0.5 a beacon that blinks
 	// on a slow machine beat, each beacon at its own phase.

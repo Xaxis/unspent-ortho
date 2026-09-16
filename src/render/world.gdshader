@@ -21,6 +21,17 @@ render_mode cull_back, specular_disabled;
 #include "res://src/render/ink.gdshaderinc"
 
 global uniform float wind_strength;
+// Where a crown must not hide a fight (18_crowns writes it every frame): up to
+// six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
+// Leaves and crowns above a point thin out to stipple and then to nothing
+// within its reach, so the player and any body they can see are never covered.
+const int CROWN_CLEAR = 6;
+uniform vec4 crown_clear[CROWN_CLEAR];
+// How far above a point's own ground a leaf has to be before it is in the way.
+const float CROWN_LIFT = 0.85;
+// Below this sway weight the geometry is a trunk, a wall or the land, and never
+// opens. Both numbers are pinned by tests/render/test_crowns.gd.
+const float CROWN_SWAY = 0.25;
 // The machines' works cut into the ground (WorksMap): one texel per tile,
 // R cut, G scorch, B quarry, A bores. works_inv_size 0 = no map (the gallery,
 // hand-built worlds). works_dir: the survey bearing every ruled work lies on.
@@ -94,6 +105,18 @@ const vec3 RIME5 = vec3(0.8667, 0.9412, 0.9686);
 const vec3 BLOOM2 = vec3(0.6275, 0.2392, 0.4235);
 const vec3 BLOOM3 = vec3(0.8157, 0.4353, 0.5725);
 
+// The ink floor (docs/ART.md section 2: "deep shade is denser hatching, never
+// black"; section 6: "nothing is pure black"). Anything drawn darker than the
+// pen — a cavity under a slab, the inside of a hull, a bore, a wash the grade
+// has crushed — is carried up onto the pen's own colour, keeping its hue where
+// it has one. INK2 is that floor: at the darkest light the land still takes, it
+// stays clear of black by a couple of steps.
+const float INK_FLOOR = 0.1203;  // the luma of INK2
+vec3 ink_floor(vec3 c) {
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	return mix(INK2, c, clamp(l / INK_FLOOR, 0.0, 1.0));
+}
+
 vec3 dn(vec3 c, float n) {
 	return c * pow(STEP, vec3(n));
 }
@@ -153,6 +176,76 @@ float flicker(vec3 p, float rate) {
 	return step(0.35, ink_hash(vec2(floor(TIME * rate), floor(p.x * 5.0) + floor(p.z * 7.0) * 13.0)));
 }
 
+// What a landscape holds at the zoom it is PLAYED at. The marks below are drawn
+// at the scale of a blade, a pebble or a drift, and at the play camera they fall
+// under a pixel and leave a flat colour field (playtest, wave N). So every
+// ground also carries three reads between about 2 and 15 units, which is 50 to
+// 350 screen pixels at the play camera: where it has been walked and worked,
+// what was spilt or burnt or left standing on it, and the litter the ruin sheds.
+// Sparse and low-contrast: a wash must still read as a wash.
+// The four bands of wear are cut at the QUARTILES of `worn`, so each covers a
+// quarter of the land and the ladder has a known middle at 1.5. Cutting on an
+// even ramp instead left a third of the land in the lowest band and clamped the
+// top, so the ladder's mean sat wherever the clamp happened to put it and wear
+// pulled the whole land one way without anyone choosing it.
+// WEAR_MID is where the ladder is pinned, half a band above that middle on
+// purpose: two quarters of the land lift, one stays, one lays down. A crest
+// nobody walks bleaches and gathers dust, and the open finding on the land is
+// that it is too dark at noon, not too light.
+// tests/render/test_ground_wear.gd holds the bands to a quarter each.
+const vec3 WEAR_CUT = vec3(0.40, 0.50, 0.60);
+const float WEAR_MID = 2.0;
+vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
+	bool pale = m == 42 || m == 43 || m == 45;
+	bool page = m == 44 || m == 51;    // snow and ice: the page itself, barely marked
+	bool burnt = m == 46 || m == 47;
+	float wear = page ? 0.18 : (pale ? 0.34 : 0.55);
+	vec3 tramp = burnt ? INK2 : (pale ? LINEN1 : (page ? RIME2 : EARTH1));
+	vec3 bare = burnt ? ASH1 : (pale ? SAND2 : (page ? RIME3 : EARTH2));
+	// 1. Trodden and worked: the whole ground is laid in four flat bands of wear
+	//    on torn edges (never a gradient, docs/ART.md law 2), from the lift where
+	//    nothing goes to the bare ground showing through where everything does.
+	//    Three octaves, so a screen holds features of about 3, 9 and 3 units.
+	float worn = ink_vnoise(wp * 0.11 + 61.0) * 0.55 + ink_vnoise(wp * 0.31 + 13.0) * 0.3
+		+ ink_vnoise(wp * 0.9 + 5.0) * 0.15 + rag(wp);
+	float lay = step(WEAR_CUT.x, worn) + step(WEAR_CUT.y, worn) + step(WEAR_CUT.z, worn);
+	c = dn(c, (lay - WEAR_MID) * wear * 0.75);
+	if (lay > 2.5 && ink_hash(px + 29.0) > 0.965) {
+		c = mix(c, bare, 0.5);
+	}
+	// 2. A line walked through to the ground under it: it wanders, it stops, its
+	//    edge is torn, and stones are trodden into it.
+	float gate = ink_vnoise(wp * 0.03 + 44.0);
+	float pw = (0.010 + ink_vnoise(wp * 0.35) * 0.012) * clamp((gate - 0.52) * 6.0, 0.0, 1.0);
+	if (pw > 0.0) {
+		float pd = abs(ink_vnoise(wp * vec2(0.055, 0.045) + 7.0) - 0.5) + rag(wp) * 0.12;
+		if (pd < pw) {
+			c = mix(c, tramp, (page ? 0.3 : 0.62) * (1.0 - 0.45 * smoothstep(pw * 0.5, pw, pd)));
+			if (ink_hash(px + 3.0) > 0.95) {
+				c = up(c, 0.35);
+			}
+		}
+	}
+	// 3. What was spilt, burnt or left standing: lobes with a torn rim.
+	float st = ink_vnoise(wp * 0.22 + 91.0) * 0.7 + ink_vnoise(wp * 0.8 + 5.0) * 0.3 + rag(wp);
+	if (st > 0.71 && !page) {
+		c = mix(c, burnt ? INK1 : mix(tramp, RUST1, 0.4), clamp((st - 0.71) * 3.5, 0.0, 0.5));
+	}
+	// 4. Litter in drifts: two or three pixels of rust and plate, never an even
+	//    scatter over the whole land.
+	float drift = ink_vnoise(wp * 0.16 + 33.0) * 0.7 + ink_vnoise(wp * 0.6 + 77.0) * 0.3;
+	if (drift > 0.66) {
+		float h = ink_hash(px + 17.0);
+		float much = (drift - 0.66) * 3.0;
+		if (h > 1.0 - 0.0035 * much) {
+			c = RUST2;
+		} else if (h < 0.0025 * much) {
+			c = pale || page ? SLATE2 : LINEN3;
+		}
+	}
+	return c;
+}
+
 // The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
 // and interest lives at edges and in rare features (docs/ART.md). Nothing
 // tessellates. Returns the colour; may add emission and lift the hatching.
@@ -201,26 +294,42 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			}
 		}
 	} else if (m == 43) {
-		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with
-		// the ground showing between; now and then a piece of sea glass.
-		vec2 q = wp * 6.0;
+		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with the
+		// ground showing between; now and then a piece of sea glass. The cells
+		// they are found in are warped and each pebble is thrown well off its
+		// own centre and turned its own way, so a beach is never an offset
+		// lattice of identical lozenges (playtest, wave N; CLAUDE.md: no grid).
+		// A wash of wet and weed lies over the whole of it, and pays the cells
+		// no attention at all.
+		vec2 qw = wp + vec2(ink_vnoise(wp * 0.09 + 3.0) - 0.5, ink_vnoise(wp * 0.09 + 21.0) - 0.5) * 2.6;
+		vec2 q = qw * 6.0;
 		vec2 i = floor(q);
 		vec2 f = fract(q) - 0.5;
 		float h = ink_hash(i + 3.0);
-		vec2 o = (vec2(ink_hash(i + 7.0), ink_hash(i + 11.0)) - 0.5) * 0.3;
-		vec2 e = (f - o) * vec2(1.0, 1.35 + h * 0.5);
-		float r = 0.28 + h * 0.16;
-		float dd = length(e);
+		vec2 o = (vec2(ink_hash(i + 7.0), ink_hash(i + 11.0)) - 0.5) * 0.85;
+		float pa = ink_hash(i + 17.0) * 3.1416;
+		vec2 g = f - o;
+		vec2 e = vec2(g.x * cos(pa) - g.y * sin(pa), g.x * sin(pa) + g.y * cos(pa)) * vec2(1.0, 1.05 + h * 0.9);
+		float r = 0.24 + h * 0.22;
+		float dd = length(e) + rag(wp) * 0.5;
 		if (h > 0.18 && dd < r) {
 			c = h < 0.45 ? dn(c, 0.35) : (h > 0.8 ? up(c, 0.3) : c);
 			if (dd > r - 0.1) {
 				c = (e.x + e.y) > 0.0 ? dn(c, 0.9) : up(c, 0.3);
 			}
 			if (h > 0.992) {
-				c = h > 0.996 ? SPRUCE4 : BRINE5;
+				// Sea glass: rubbed matt by the sea, a step under the shingle's
+				// own light, never the brightest thing on the beach.
+				c = mix(h > 0.996 ? SPRUCE2 : BRINE2, c, 0.3);
 			}
 		} else if (ink_hash(px + 2.0) < 0.2) {
 			c = dn(c, 0.4);
+		}
+		float wash = ink_vnoise(wp * 0.28 + 44.0) * 0.7 + ink_vnoise(wp * 1.1 + 9.0) * 0.3 + rag(wp);
+		if (wash > 0.64) {
+			c = dn(c, 0.3);
+		} else if (wash < 0.34) {
+			c = up(c, 0.14);
 		}
 	} else if (m == 44) {
 		// SNOW: drifts laid by one wind as short crescents, horns downwind:
@@ -263,13 +372,44 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			emit += vec3(0.25);
 		}
 	} else if (m == 45) {
-		// PAVEMENT: clints of pale limestone, long blocks laid along one
-		// dominant joint, cut by grikes: deep ink cuts with a worn pale lip and
-		// moss down in them. A grike runs a few blocks and stops; cross joints
-		// break a clint into lengths, offset row to row, so it never makes a
-		// grid. Drill-hole rows on a few clints.
-		vec2 r = vec2(dot(wp, vec2(0.94, 0.34)), dot(wp, vec2(-0.34, 0.94)));
-		float across = r.y + (ink_vnoise(vec2(r.x * 0.06, 3.0)) - 0.5) * 0.9;
+		// PAVEMENT: clints of pale limestone cut by grikes (ink cuts with a worn
+		// pale lip and moss down in them). THE ONE LAW: it must never read as a
+		// tiled floor (docs/ART.md section 8.1), so nothing about the grain is a
+		// global constant.
+		//  - the bearing turns and the rows bend, from a low-frequency domain
+		//    warp: over tens of units the pavement runs a different way, and the
+		//    warp is bounded at any world coordinate (a rotation by a field is not).
+		//  - the pitch opens and closes, from a warp of the across axis by
+		//    itself: rows are never evenly spaced.
+		//  - the cross joints are sparse and lean hard, so the second family
+		//    never closes the first into rectangles.
+		//  - a clint is never filled light or dark as a whole: the value comes
+		//    from a world field that walks straight across the joints.
+		// Drill-hole rows on a few clints: the machine age in the stone.
+		// Four octaves of warp, so the grain bends at every scale the camera can
+		// be at. The two slow ones turn the bearing over tens of units, which a
+		// wide frame reads; the two fast ones bend a joint inside a single
+		// close-zoom screen, which spans about thirteen units — without them a
+		// fight was fought on ruled parallel bars.
+		vec2 warp = wp + vec2(ink_vnoise(wp * 0.022 + 3.0) - 0.5, ink_vnoise(wp * 0.022 + 29.0) - 0.5) * 14.0
+			+ vec2(ink_vnoise(wp * 0.09 + 7.0) - 0.5, ink_vnoise(wp * 0.09 + 41.0) - 0.5) * 2.6
+			+ vec2(ink_vnoise(wp * 0.13 + 19.0) - 0.5, ink_vnoise(wp * 0.13 + 61.0) - 0.5) * 1.1
+			+ vec2(ink_vnoise(wp * 0.34 + 5.0) - 0.5, ink_vnoise(wp * 0.34 + 83.0) - 0.5) * 0.45;
+		vec2 r = vec2(dot(warp, vec2(0.94, 0.34)), dot(warp, vec2(-0.34, 0.94)));
+		// The pitch opens and closes twice over: slowly across tens of units, and
+		// again from one row to the next, so no two neighbouring joints are the
+		// same distance apart.
+		// ...and the line itself wanders along its length at three scales, the
+		// fastest of them under a unit — at the zoom a fight is fought at a joint
+		// is seventy pixels of screen per unit, so without that last term a grike
+		// is a ruled bar however far the bearing has turned since the last one.
+		// The salt is the row's own, so no two joints wander together.
+		float across = r.y
+			+ (ink_vnoise(vec2(r.y * 0.06, 11.0)) - 0.5) * 5.0
+			+ (ink_vnoise(vec2(r.y * 0.33, 23.0)) - 0.5) * 0.7
+			+ (ink_vnoise(vec2(r.x * 0.22, 17.0)) - 0.5) * 0.4
+			+ (ink_vnoise(vec2(r.x * 1.3, r.y * 0.26 + 31.0)) - 0.5) * 0.13
+			+ (ink_vnoise(vec2(r.x * 3.3, r.y * 0.26 + 57.0)) - 0.5) * 0.055;
 		const float ROW = 1.9;
 		float row = floor(across / ROW);
 		float fy = (across - row * ROW);
@@ -279,14 +419,23 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float seg = floor(along / seg_len);
 		float fx = along - seg * seg_len;
 		float sh = ink_hash(vec2(row, seg));
-		// A clint's own slightly leaning edges, so blocks are not rectangles.
-		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 0.5;
+		// A clint's ends are cut on their own slant, up to about 45 degrees.
+		float lean = (ink_hash(vec2(row, seg + 3.0)) - 0.5) * 2.0;
 		float end_x = fx + lean * fy;
-		float gw = 0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp);
+		// A grike is a cracked line, not a ruled one: it pinches shut along its
+		// length and opens again, and runs only a few blocks before it stops.
+		float gw = (0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp))
+			* smoothstep(0.30, 0.56, ink_vnoise(vec2(along * 0.42, row * 3.7)))
+			// ...and it pinches to a hairline and opens again every half unit, so
+			// close up it is a crack and not a band of even width.
+			* (0.5 + 0.5 * ink_vnoise(vec2(along * 1.9, row * 13.0)));
 		bool grike_on = ink_hash(vec2(row, floor(along / 3.4) + 20.0)) < 0.58;
-		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.82;
+		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.42;
 		float cw = 0.08 + rag(wp);
-		c = sh < 0.3 ? dn(c, 0.1) : (sh > 0.8 ? up(c, 0.1) : c);
+		// Weathering, not tiling: a field of pans and bleached backs that pays
+		// no attention to where the joints run.
+		float weather = ink_vnoise(wp * 0.55 + 21.0) * 0.65 + ink_vnoise(wp * 1.9 + 4.0) * 0.35 + rag(wp);
+		c = weather < 0.36 ? dn(c, 0.13) : (weather > 0.68 ? up(c, 0.1) : c);
 		bool in_grike = grike_on && fy < gw;
 		bool in_cross = cross_on && end_x > 0.0 && end_x < cw;
 		if (in_grike || in_cross) {
@@ -1147,8 +1296,33 @@ void vertex() {
 	patch_raw = UV2.x > 0.0 ? 0.0 : UV2.y;
 }
 
+// How much of a crown is taken away at this point: 0 keep it, 1 take it all.
+// Only what sways and stands clear of the ground can go, so trunks, walls and
+// the land itself never open up.
+float crown_cut(vec3 wp, float sway) {
+	if (sway < CROWN_SWAY) {
+		return 0.0;
+	}
+	float cut = 0.0;
+	for (int i = 0; i < CROWN_CLEAR; i++) {
+		vec4 p = crown_clear[i];
+		if (p.w <= 0.0 || wp.y < p.y + CROWN_LIFT) {
+			continue;
+		}
+		float d = length(wp.xz - p.xz);
+		cut = max(cut, 1.0 - smoothstep(p.w * 0.72, p.w, d));
+	}
+	return cut * clamp((sway - CROWN_SWAY) * 2.5, 0.0, 1.0);
+}
+
 void fragment() {
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	// A fight is never hidden: leaves over the player, or over a body they can
+	// see, thin to stipple and then go. Stipple, never a fade (docs/ART.md law 5).
+	float cut = crown_cut(world_pos, sway_w);
+	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
+		discard;
+	}
 	int m1 = int(COLOR.a * 255.0 + 0.5);
 	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
 	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
@@ -1176,7 +1350,11 @@ void fragment() {
 	int m = second ? m2 : m1;
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
-	style_sel = second ? s2 : s1;
+	// The two hands dither into each other across the WHOLE band, not only where
+	// the wash turns: ART.md law 6 asks that hatch styles interleave over the
+	// 12-24 tiles of an ecotone, and following `second` snapped the hatch to the
+	// wash's own edge, which is why a border read as a seam (art review 13).
+	style_sel = float(ink_style(style_packed, style_blend, px));
 	float unh = 0.0;
 	vec3 emit = vec3(0.0);
 	if (patchy > 0.0) {
@@ -1185,6 +1363,9 @@ void fragment() {
 	}
 	if (m >= 40 && m < 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		if (unh < 0.5) {
+			c = ground_wear(m, c, world_pos.xz, px);
+		}
 		if (works_inv_size > 0.0) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
@@ -1222,7 +1403,7 @@ void fragment() {
 	}
 	unhatched = unh;
 	c *= paper(px);
-	ALBEDO = sky_apply(c, world_pos, TIME);
+	ALBEDO = ink_floor(sky_apply(c, world_pos, TIME));
 	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
 }
 

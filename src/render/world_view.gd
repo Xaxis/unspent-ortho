@@ -381,7 +381,21 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			facing = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
 		# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
 		var rot := Basis(Vector3.UP, -facing)
-		var xf := Transform3D(rot.scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		# A field of one model read as a tiled asset field: a dozen identical
+		# drill tripods, thirty identical stumps, an arc of identical debris
+		# (playtest, wave N). So every instance is cast a little differently as
+		# well as turned, in the MODEL's own frame, so a fence still runs along
+		# its line and a sign still faces its way. Masts keep the uniform scale:
+		# their cables hang from points computed at it.
+		var grow := Vector3.ONE
+		if cable_points(p.kind).is_empty():
+			grow = Vector3(1.0 + (Rng.hash01(world.seed_value, p.id, 93) - 0.5) * 0.22,
+				1.0 + (Rng.hash01(world.seed_value, p.id, 94) - 0.5) * 0.30,
+				1.0 + (Rng.hash01(world.seed_value, p.id, 95) - 0.5) * 0.22)
+		# Scale first, then turn, so the cast is in the model's own frame.
+		var xf := Transform3D(rot * Basis.from_scale(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		# Normals take the turn only: a face keeps the light band the model was
+		# drawn with, however the instance was cast.
 		var nx := Transform3D(rot, Vector3.ZERO)
 		if not tpl.made_v.is_empty():
 			mv.append_array(xf * tpl.made_v)
@@ -493,7 +507,10 @@ func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Ch
 		for s in range(1, n + 1):
 			var t := float(s) / n
 			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
-			k.strut(prev, p, 0.014, 3, Palette.INK[1])
+			# A cable is dark, not black: it sits on the ink floor, so a span over a
+			# pale pavement or a bright sky reads as a drawn line and never as a hole
+			# in the page (docs/ART.md section 6).
+			k.strut(prev, p, 0.014, 3, Palette.INK[2])
 			if icy:
 				_ice_on(ice, prev, p, h0 + s)
 			prev = p
@@ -515,6 +532,10 @@ static func _ice_on(ice: MeshKit, a: Vector3, b: Vector3, h: int) -> void:
 		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.045, 4, Palette.RIME[3] if j % 2 == 0 else Palette.RIME[2])
 
 
+## Where a mast's cables hang from, in the world. No per-instance cast here on
+## purpose: a mast is the one kind `_chunk_props` leaves at uniform scale,
+## precisely so these points land on the metal that was baked, and a uniform
+## scale commutes with the turn, so this transform is that one exactly.
 func _mast_points(p: WorldProp, local: PackedVector3Array, ch: TerrainMesher.Chunk, m: TerrainMesher) -> PackedVector3Array:
 	var h := _height(ch, m, p.pos)
 	var xf := Transform3D(Basis(Vector3.UP, -p.rot).scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
@@ -535,7 +556,9 @@ func _add_open_sea() -> void:
 	var y := TerrainMesher.WATER_Y - 0.02
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
-	var col := Color(0.0, 0.5, 0.5, 1.0)
+	# Deep, open, and far from any bank: full surf weight (water.gdshader reads
+	# COLOR.g on the sea), though at this depth nothing breaks anyway.
+	var col := Color(0.0, 1.0, 0.5, 1.0)
 	for r: Rect2 in [Rect2(-m, -m, s + 2.0 * m, m), Rect2(-m, s, s + 2.0 * m, m), Rect2(-m, 0, m, s), Rect2(s, 0, m, s)]:
 		var a := Vector3(r.position.x, y, r.position.y)
 		var b := Vector3(r.end.x, y, r.position.y)

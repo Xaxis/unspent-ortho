@@ -28,8 +28,13 @@ enum {
 	# What the M2 landscapes shed: a lifted plate of salt crust, and iron
 	# filings drawn into a comb by a field nothing turned off.
 	SALT_PLATE, FILINGS,
+	# What the drilling left behind it: a core pulled out of the rock and laid
+	# where it was pulled, and a lump of cast stone with its rebar showing.
+	DRILL_CORE, REBAR,
 }
-const KINDS := 38
+## The enum above, counted. Adding a kind and forgetting this reads off the end
+## of `_SPECK` on the first chunk built, so a test asserts the two agree.
+const KINDS := 40
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -90,15 +95,20 @@ func _init(w: WorldData) -> void:
 	_table(Ground.NEEDLES, 0.8, [CONE, 30, BRACKEN, 20, TWIG, 18, MUSHROOM, 6, FERN, 8])
 	_table(Ground.SNOW, 0.28, [SNOW_TUFT, 40, CROTTLE, 5, STONE, 3, TWIG, 4])
 	_table(Ground.ICE, 0.08, [ICE_SHARD, 10])
-	_table(Ground.BONE, 0.45, [FERN, 22, STONE, 26, TUFT, 20, FLOWER, 7, BONE, 3])
-	_table(Ground.LIMESTONE, 0.45, [FERN, 22, STONE, 26, TUFT, 20, FLOWER, 7, BONE, 3])
+	# The bonelands was the emptiest landscape on the screen (art review 14) and
+	# its spec is the densest in evidence: bones, drill-hole rows, cast stone
+	# with rebar, and what the survey shed while it worked.
+	_table(Ground.BONE, 0.9, [FERN, 14, STONE, 20, TUFT, 14, FLOWER, 5, BONE, 10, DRILL_CORE, 8, REBAR, 7, SPOIL, 8, BOLT, 6, SCRAP, 4, CROTTLE, 4])
+	_table(Ground.LIMESTONE, 0.9, [FERN, 14, STONE, 20, TUFT, 14, FLOWER, 5, BONE, 10, DRILL_CORE, 8, REBAR, 7, SPOIL, 8, BOLT, 6, SCRAP, 4, CROTTLE, 4])
 	_table(Ground.SCREE, 0.9, [STONE, 55, PEBBLES, 30, LICHEN, 8])
 	_table(Ground.ASH, 0.6, [ASH_FLAKE, 30, CINDER, 30, EMBER, 6, TWIG, 8])
 	_table(Ground.CLINKER, 0.45, [GLASS, 26, CINDER, 40])
 	_table(Ground.ROCK, 0.35, [LICHEN, 30, STONE, 34, TUFT, 6])
 	_table(Ground.ROAD, 0.08, [PEBBLES, 10, TUFT, 3])
 	# A landscape's own version of a ground, keyed ground * SLOTS + type + 1000,
-	# straight out of BiomeDef.decor: adding a landscape adds no code here.
+	# straight out of BiomeDef.decor: adding a landscape adds no code here, and
+	# what a landscape sheds on its own ground is declared beside everything
+	# else about it.
 	for d: BiomeDef in BiomeRegistry.all():
 		for g: int in d.decor:
 			var row: Array = d.decor[g]
@@ -490,6 +500,21 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 		SPOIL:
 			k.stone(0, -0.02, 0, 0.09, 0.05, s, _tint(c, &"spoil", [P.STONE[3]])[0], 5, 0.2)
 			k.stone(0.1, -0.02, 0.04, 0.05, 0.04, s + 1, P.LINEN[3], 4)
+		DRILL_CORE:
+			# A core, pulled and dropped: a stubby cylinder of pale rock lying on
+			# its side with its banding across it, half sunk where it landed.
+			k.made.push(Transform3D(Basis(Vector3.UP, float(stage) * 1.1) * Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 0.035, 0.0)))
+			k.made.prism(0, -0.11, 0, 0.035, 0.11, 0.035, 7, P.LINEN[4], P.LINEN[5])
+			k.made.prism(0, -0.02, 0, 0.037, 0.01, 0.037, 7, P.LINEN[2])
+			k.made.pop()
+		REBAR:
+			# A lump of cast stone broken off something, its bars standing out of
+			# the break, rusted to the colour of what is left of the old world.
+			k.stone(0, -0.03, 0, 0.11, 0.09, s, P.STONE[3].lerp(P.LINEN[3], 0.4), 5, 0.15)
+			for i in 3:
+				var ra := float(i) * 2.1 + 0.4
+				var rb := Vector3(cos(ra) * 0.03, 0.06, sin(ra) * 0.03)
+				k.limb(rb, rb + Vector3(cos(ra) * 0.09, 0.13 + float(i) * 0.03, sin(ra) * 0.09), 0.012, 0.009, 3, P.RUST[2] if i % 2 else P.RUST[3])
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)
 			k.fleck(Vector3(-0.04, 0.075, -0.03), Vector3(-0.03, 0.08, 0.04), Vector3(0.04, 0.075, 0.03), P.LINEN[3])

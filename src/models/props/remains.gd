@@ -433,7 +433,7 @@ static func debris(k: Kit, v: int, c: int) -> void:
 		_:
 			corrugated(k.made, Vector3(-0.7, 0.03, -0.45), Vector3(-0.15, 0.02, 0.75), Vector3(1.2, 0.04, 0.2), 9, P.SLATE[3] if c != Country.BURNING else P.RUST[1])
 			k.cable(Vector3(0.5, 0.03, 0.3), Vector3(0.85, 0.05, -0.4), -0.05, 5, 0.012, P.INK[2])
-			k.hoop(Vector3(0.6, 0.03, -0.1), 0.15, 8, 0.01, P.INK[2])
+			k.hoop(Vector3(0.6, 0.03, -0.1), 0.15, 8, 0.01, P.INK[3])
 			for i in 5:
 				var p := Vector3(-0.5 + i * 0.18, 0.02, 0.55 + Kit.j(s, i, 0.08))
 				k.fleck(p, p + Vector3(0.05, 0.005, 0.03), p + Vector3(0.01, 0.01, -0.04), GroundColors.glint(P.SPRUCE[4] if i % 2 else P.RIME[4]))
@@ -1064,9 +1064,9 @@ static func _hull_part(k: Kit, from: int, to: int, s: int, stern: bool) -> void:
 		for e in first.size() - 1:
 			k.made.quad(first[e + 1] * Vector3(1, 1, -1), first[e] * Vector3(1, 1, -1), first[e], first[e + 1], GroundColors.down(hullc, 0.3))
 	else:
-		_torn(k, first, s)
+		_torn(k, first, s, 1.0)
 	if to < _STATIONS.size():
-		_torn(k, last, s + 3)
+		_torn(k, last, s + 3, -1.0)
 	if stern and from == 0:
 		# The wheelhouse, its windows out, a gantry over the stern with the
 		# net still hanging from it.
@@ -1095,7 +1095,21 @@ static func _hull_part(k: Kit, from: int, to: int, s: int, stern: bool) -> void:
 
 
 ## A torn end: ragged plate edges and ribs standing out of it.
-static func _torn(k: Kit, ring: Array[Vector3], s: int) -> void:
+static func _torn(k: Kit, ring: Array[Vector3], s: int, inward: float = 1.0) -> void:
+	# What the tear shows: the hull's inside, closed off a little way in and
+	# drawn on the ink floor, so a torn end is a dark interior with ribs across
+	# it and never a hole in the page (docs/ART.md section 6).
+	var step := Vector3(0.34 * inward, 0.0, 0.0)
+	var hub := ring[0] + step + Vector3(0.0, 0.2, 0.0)
+	var sheer := ring[ring.size() - 1] + step
+	for e in ring.size() - 1:
+		for sgn: float in [1.0, -1.0]:
+			var a := ring[e] * Vector3(1, 1, sgn) + step
+			var b := ring[e + 1] * Vector3(1, 1, sgn) + step
+			k.made.tri(hub, a, b, P.INK[2])
+			k.made.tri(hub, b, a, P.INK[3])
+	k.made.tri(hub, sheer, sheer * Vector3(1, 1, -1), P.INK[2])
+	k.made.tri(hub, sheer * Vector3(1, 1, -1), sheer, P.INK[3])
 	for e in ring.size() - 1:
 		for sgn: float in [1.0, -1.0]:
 			var a := ring[e] * Vector3(1, 1, sgn)

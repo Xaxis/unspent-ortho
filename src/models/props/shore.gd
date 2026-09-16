@@ -42,8 +42,13 @@ static func driftwood(k: Kit, v: int, _c: int) -> void:
 		k.found.prism(0.36, 0.0, 0.3, 0.1, 0.06, 0.14, 10, P.RUST[4])
 		k.found.prism(0.36, 0.06, 0.3, 0.14, 0.2, 0.14, 10, P.RUST[4])
 		k.found.prism(0.36, 0.2, 0.3, 0.14, 0.27, 0.07, 10, P.RUST[4], P.RUST[5])
-		k.hoop(Vector3(-0.36, 0.05, 0.3), 0.16, 10, 0.02, P.INK[2])
-		k.hoop(Vector3(-0.34, 0.08, 0.31), 0.13, 10, 0.02, P.INK[3])
+		# A coil of cable, not a black puck: two loose turns in the sheath's own
+		# grey with the ground showing between them, and an end lying out of it.
+		# At the play camera the old pair filled a sixteen-pixel disc, which read
+		# as a hole in the beach (docs/ART.md section 6).
+		k.hoop(Vector3(-0.36, 0.05, 0.3), 0.19, 12, 0.014, P.PLATE[1])
+		k.hoop(Vector3(-0.33, 0.08, 0.31), 0.12, 12, 0.014, P.INK[3])
+		k.sag(Vector3(-0.2, 0.06, 0.42), Vector3(0.06, 0.04, 0.56), -0.02, 3, 0.013, P.PLATE[1])
 
 
 static func wrack(k: Kit, v: int, _c: int) -> void:

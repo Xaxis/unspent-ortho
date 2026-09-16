@@ -40,11 +40,15 @@ static func walls(k: Kit, w: float, d: float, h: float, seed_value: int, front: 
 	var sx: Array[float] = [-1.0, 1.0, 1.0, -1.0]
 	var sz: Array[float] = [-1.0, -1.0, 1.0, 1.0]
 	for i in 4:
-		c.append(Vector3(sx[i] * w * 0.5 + Kit.j(seed_value, i, 0.1), 0.0, sz[i] * d * 0.5 + Kit.j(seed_value, i + 4, 0.1)))
+		c.append(Vector3(sx[i] * w * 0.5 + Kit.j(seed_value, i, 0.14), 0.0, sz[i] * d * 0.5 + Kit.j(seed_value, i + 4, 0.14)))
 	for i in 4:
-		# Walls batter in and lean, and no two corners stand the same height.
+		# Every corner leans its OWN way and stands its own height. One shared
+		# lean vector is a shear: it tilts the prism and leaves it a rigid box,
+		# which is what the art review saw. Budgeted in screen pixels at the play
+		# camera (24 px a world unit): 3-5 px of lean, about 3 px of height.
 		var b := c[i]
-		c.append(Vector3(b.x * 0.94, h + Kit.j(seed_value, i + 8, 0.07), b.z * 0.955) + lean * h * 1.4)
+		var own := Vector3(Kit.j(seed_value, i + 12, 0.085), 0.0, Kit.j(seed_value, i + 16, 0.085))
+		c.append(Vector3(b.x * 0.94, h + Kit.j(seed_value, i + 8, 0.17), b.z * 0.955) + (lean + own) * h * 1.4)
 	# Faces: +x front (door), +z, -x, -z. Order bottom-left, bottom-right, top-right, top-left seen from outside.
 	k.made.quad(c[2], c[1], c[5], c[6], front)
 	k.made.quad(c[3], c[2], c[6], c[7], side)
@@ -97,6 +101,101 @@ static func neon_tube(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3
 const NEON_TUBES: Array[Color] = [Color(0.3, 0.95, 1.0), Color(1.0, 0.25, 0.8), Color(0.55, 1.0, 0.35)]
 
 
+## The four wall faces of a `walls()` result, each as (bl, br, tr, tl) seen from
+## outside: front (+x, the door), +z, -x, -z.
+static func faces(t: Array[Vector3]) -> Array:
+	return [[t[2], t[1], t[5], t[6]], [t[3], t[2], t[6], t[7]], [t[0], t[3], t[7], t[4]], [t[1], t[0], t[4], t[5]]]
+
+
+## What the years do to a wall nobody can paint again: the wash comes off in
+## patches and the rubble under it shows, rain draws dark runs down from the
+## eaves, and the foot goes green where it never dries. Laid on EVERY face; a
+## village where only the door wall is worn reads as a village before the end.
+static func weathered(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, s: int, rubble: Color, green: Color) -> void:
+	for i in 2:
+		var u0 := fmod(0.04 + i * 0.44 + Rng.hash01(s, i, 5) * 0.3, 0.62)
+		var v0 := fmod(0.05 + i * 0.49 + Rng.hash01(s, i, 6) * 0.3, 0.58)
+		wall_rect(k.made, bl, br, tr, tl, u0, v0, u0 + 0.22 + Rng.hash01(s, i, 8) * 0.14, v0 + 0.16 + Rng.hash01(s, i, 9) * 0.14,
+			0.007, rubble if i % 2 == 0 else GroundColors.down(rubble, 0.25))
+	# Rain off the eaves: thin runs, hanging from the top and each its own length.
+	for i in 5:
+		var u := 0.1 + i * 0.19 + Kit.j(s, i + 2, 0.04)
+		var drop := 0.2 + Rng.hash01(s, i, 7) * 0.55
+		wall_rect(k.made, bl, br, tr, tl, u - 0.008, 1.0 - drop, u + 0.008, 0.995, 0.011, GroundColors.down(rubble, 0.6))
+	wall_rect(k.made, bl, br, tr, tl, 0.0, 0.0, 1.0, 0.075 + Rng.hash01(s, 4, 3) * 0.04, 0.006, green)
+
+
+## The outward normal of a wall face (bl, br, tr, tl).
+static func wall_out(bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3) -> Vector3:
+	return (tr - br).cross(bl - br).normalized()
+
+
+## A window that lost its glass and was boarded from inside: the dark of the
+## room behind, three planks across it at slightly different angles, nails at
+## their ends. People live in this ruin; they did not move out (docs/VISION.md
+## section 8, "the patched, wired, scavenged places where people still live").
+static func boarded(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, v: float, hw: float, hh: float, s: int) -> void:
+	wall_rect(k.made, bl, br, tr, tl, u - hw, v - hh, u + hw, v + hh, 0.012, P.COPPER[1])
+	wall_rect(k.made, bl, br, tr, tl, u - hw * 0.8, v - hh * 0.82, u + hw * 0.8, v + hh * 0.82, 0.016, P.INK[2])
+	for i in 3:
+		var vv := v - hh * 0.55 + i * hh * 0.55
+		var tilt := Kit.j(s, i, 0.022)
+		var half := hw * 1.35
+		k.made.quad(on_wall(bl, br, tr, tl, u - half, vv - hh * 0.2 + tilt, 0.024),
+			on_wall(bl, br, tr, tl, u + half, vv - hh * 0.2 - tilt, 0.024),
+			on_wall(bl, br, tr, tl, u + half, vv + hh * 0.18 - tilt, 0.024),
+			on_wall(bl, br, tr, tl, u - half, vv + hh * 0.18 + tilt, 0.024),
+			P.EARTH[2] if i != 1 else P.EARTH[1])
+		for side: float in [-1.0, 1.0]:
+			wall_rect(k.made, bl, br, tr, tl, u + side * hw * 1.05 - 0.006, vv - 0.012, u + side * hw * 1.05 + 0.006, vv + 0.012, 0.03, P.RUST[2])
+
+
+## A lean-to of salvage built against a wall: two crooked poles, a sheet of
+## machine plate for a roof (FOUND: it is not theirs, and it does not match),
+## and what is kept dry under it. One silhouette break that is also a life.
+static func lean_to(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, s: int) -> void:
+	var out := wall_out(bl, br, tr, tl)
+	var wa := on_wall(bl, br, tr, tl, u - 0.17, 0.52, 0.0)
+	var wb := on_wall(bl, br, tr, tl, u + 0.17, 0.48, 0.0)
+	var fa := on_wall(bl, br, tr, tl, u - 0.17, 0.0, 0.0) + out * (0.78 + Kit.j(s, 1, 0.06))
+	var fb := on_wall(bl, br, tr, tl, u + 0.17, 0.0, 0.0) + out * (0.72 + Kit.j(s, 2, 0.06))
+	var ta := fa + Vector3(0, 0.66 + Kit.j(s, 3, 0.07), 0)
+	var tb := fb + Vector3(0, 0.6 + Kit.j(s, 4, 0.07), 0)
+	k.limb(fa, ta, 0.04, 0.032, 4, P.EARTH[2])
+	k.limb(fb, tb, 0.04, 0.032, 4, P.EARTH[1])
+	k.plate(ta, tb, wb, wa, P.PLATE[2], P.PLATE[1], P.PLATE[4])
+	# Rust weeping off the plate down the wall under it.
+	k.made.quad(on_wall(bl, br, tr, tl, u + 0.1, 0.1, 0.018), on_wall(bl, br, tr, tl, u + 0.14, 0.1, 0.018),
+		on_wall(bl, br, tr, tl, u + 0.145, 0.5, 0.018), on_wall(bl, br, tr, tl, u + 0.105, 0.5, 0.018), P.RUST[2])
+	# What is kept under it: split wood on end and a drum with no lid.
+	var mid := fa.lerp(fb, 0.42) - out * 0.22
+	for i in 4:
+		var p := mid + (fb - fa).normalized() * (i - 1.5) * 0.09
+		k.limb(p, p + Vector3(Kit.j(s, i + 9, 0.05), 0.34 + Kit.j(s, i, 0.08), Kit.j(s, i + 5, 0.05)), 0.035, 0.03, 4, P.EARTH[1] if i % 2 else P.EARTH[2])
+	var drum := fb.lerp(fa, -0.35) - out * 0.16
+	k.found.prism(drum.x, 0.0, drum.z, 0.15, 0.36, 0.15, 9, P.RUST[2], P.PLATE[1])
+
+
+## Salvage stacked against a wall: sheets of plate leaned up on edge, a bundle
+## of poles, a crate. The land leaves this everywhere; a village is where it is
+## gathered and used.
+static func salvage(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, s: int) -> void:
+	var out := wall_out(bl, br, tr, tl)
+	var along := (br - bl).normalized()
+	var foot := on_wall(bl, br, tr, tl, u, 0.0, 0.0)
+	for i in 3:
+		var base := foot + along * ((i - 1) * 0.19 + Kit.j(s, i, 0.04)) + out * (0.28 + Kit.j(s, i + 3, 0.06))
+		var top := base - out * 0.2 + Vector3(0, 0.46 + Kit.j(s, i + 6, 0.1), 0)
+		var wide := along * (0.14 + Kit.j(s, i + 9, 0.03))
+		k.plate(base - wide, base + wide, top + wide, top - wide,
+			P.PLATE[2] if i != 1 else P.SLATE[3], P.PLATE[1], P.PLATE[4])
+	var crate := foot + along * (0.34 + Kit.j(s, 12, 0.05)) + out * 0.3
+	k.slab(crate.x, 0.0, crate.z, 0.36, 0.26, 0.3, s + 20, P.EARTH[2], P.EARTH[3], 0.02, 0.08, Kit.j(s, 13, 0.06))
+	for i in 3:
+		var p := crate + along * 0.3 + out * (0.05 * i)
+		k.limb(p + Vector3(0, 0.03 + 0.05 * i, 0), p + along * 0.02 + out * -0.62 + Vector3(0, 0.02 + 0.05 * i, 0), 0.028, 0.024, 4, P.EARTH[1] if i % 2 else P.EARTH[2])
+
+
 ## A plank door, its latch.
 static func door(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, hw: float, hv: float) -> void:
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 1.2, 0.0, u + hw * 1.2, hv + 0.05, 0.012, P.EARTH[1])
@@ -125,13 +224,15 @@ static func turf_foot(k: Kit, corners: Array[Vector3], seed_value: int, c: int) 
 ## A hipped roof over the wall tops: eaves out by `over`, a ridge along z of half
 ## length `rz` that sags in the middle. `pen` draws the slopes (MADE or FOUND).
 ## Returns [e00, e10, e11, e01, r0, rm, r1].
-static func hipped(k: Kit, pen: MeshKit, t: Array[Vector3], over: float, rise: float, rz: float, sag: float, front: Color, back: Color, ends: Color) -> Array[Vector3]:
+## `drop_at` (0-3) sags that eave corner by `drop`, so the roofline has one
+## break in it and the house is not a prism with a lid.
+static func hipped(k: Kit, pen: MeshKit, t: Array[Vector3], over: float, rise: float, rz: float, sag: float, front: Color, back: Color, ends: Color, drop_at: int = -1, drop: float = 0.0) -> Array[Vector3]:
 	var centre := (t[0] + t[1] + t[2] + t[3]) * 0.25
 	var e: Array[Vector3] = []
 	for i in 4:
 		var dir := (t[i] - centre)
 		dir.y = 0.0
-		e.append(t[i] + dir.normalized() * over + Vector3(0, -0.06, 0))
+		e.append(t[i] + dir.normalized() * (over + (0.09 if i == drop_at else 0.0)) + Vector3(0, -0.06 - (drop if i == drop_at else 0.0), 0))
 	var yr := centre.y + rise
 	var r0 := Vector3(centre.x, yr, centre.z - rz)
 	var r1 := Vector3(centre.x, yr, centre.z + rz)
@@ -163,6 +264,10 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	var h: float = [1.35, 1.2, 1.45][form]
 	var wash: Color = [P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form]
 	var t := walls(k, w, d, h, s, wash, GroundColors.down(wash, 0.35))
+	var moss: Color = P.MOSS[2] if c != Country.SNOWFIELD else P.SLATE[2]
+	for fi in faces(t).size():
+		var wf: Array = faces(t)[fi]
+		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 13, P.STONE[2] if fi % 2 == 0 else P.STONE[3], moss)
 	var fb := [t[2], t[1], t[5], t[6]]
 	# Wash off in patches where the roof drips and boots scuff: rubble shows.
 	for i in 2 + form:
@@ -177,12 +282,23 @@ static func washed(k: Kit, c: int, form: int) -> void:
 		neon_tube(k, fb[0], fb[1], fb[2], fb[3], door_u - 0.14, door_u + 0.14, 0.86, NEON_TUBES[form % 3])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.8 if door_u < 0.5 else 0.22, 0.6, 0.08, 0.13)
 	if form == 2:
-		window(k, fb[0], fb[1], fb[2], fb[3], 0.18, 0.58, 0.07, 0.12)
+		# The glass went and never came back; the room behind it is boarded.
+		boarded(k, fb[0], fb[1], fb[2], fb[3], 0.18, 0.58, 0.07, 0.12, s + 31)
 	struck_plate(k, fb[0], fb[1], fb[2], fb[3], [0.58, 0.36, 0.72][form], [0.44, 0.5, 0.4][form])
 	var sb := [t[3], t[2], t[6], t[7]]
-	window(k, sb[0], sb[1], sb[2], sb[3], [0.4, 0.62, 0.3][form], 0.58, 0.08, 0.13)
+	if form == 1:
+		boarded(k, sb[0], sb[1], sb[2], sb[3], 0.62, 0.58, 0.08, 0.13, s + 33)
+	else:
+		window(k, sb[0], sb[1], sb[2], sb[3], [0.4, 0.62, 0.3][form], 0.58, 0.08, 0.13)
+	# What they live with against the walls: a lean-to of salvage on one house,
+	# plate and firewood stacked on the next.
+	if form == 0:
+		lean_to(k, sb[0], sb[1], sb[2], sb[3], 0.28, s + 40)
+	else:
+		salvage(k, sb[0], sb[1], sb[2], sb[3], 0.8 if form == 1 else 0.2, s + 41)
 	# The roof: old slate by hand, with plate off a machine laid where it failed.
-	var r := hipped(k, k.made, t, 0.24, [1.05, 0.9, 1.2][form], d * 0.2, [0.12, 0.16, 0.08][form], P.SLATE[2], P.SLATE[1], P.SLATE[2].lerp(P.SLATE[1], 0.5))
+	# One eave corner has given way, so the roofline is broken in silhouette.
+	var r := hipped(k, k.made, t, 0.24, [1.05, 0.9, 1.2][form], d * 0.2, [0.22, 0.28, 0.18][form], P.SLATE[2], P.SLATE[1], P.SLATE[2].lerp(P.SLATE[1], 0.5), [1, 3, 2][form], [0.16, 0.13, 0.18][form])
 	for i in 3:
 		var f := 0.25 + i * 0.25
 		var a := r[1].lerp(r[4], f) + Vector3(0.01, 0.012, 0)
@@ -198,8 +314,11 @@ static func washed(k: Kit, c: int, form: int) -> void:
 			_patch(k, r[1], r[2], r[6], r[4], 0.5, 0.06, 0.96, 0.3)
 		_:
 			_patch(k, r[1], r[2], r[6], r[4], 0.36, 0.34, 0.64, 0.7)
-	k.made.strut(r[4] + Vector3(0, 0.02, 0), r[5] + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
-	k.made.strut(r[5] + Vector3(0, 0.02, 0), r[6] + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
+	# One patch hangs past the eave: the plate was cut to the hole, not the roof.
+	_patch(k, r[1], r[2], r[6], r[4], [0.7, 0.58, 0.08][form], -0.12, [0.95, 0.84, 0.32][form], 0.16)
+	# The ridge is laid in three, and the middle length of it is gone.
+	k.made.strut(r[4] + Vector3(0, 0.02, 0), r[4].lerp(r[5], 0.7) + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
+	k.made.strut(r[5].lerp(r[6], 0.45) + Vector3(0, 0.02, 0), r[6] + Vector3(0, 0.02, 0), 0.035, 4, P.SLATE[3])
 	_chimney(k, [-0.45, 0.35, -0.3][form], h - 0.2, [-d * 0.3, d * 0.32, -d * 0.05][form], [1.45, 1.3, 1.6][form], s + 10)
 	turf_foot(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
@@ -216,6 +335,10 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	# Warm grey rubble, a clear step lighter than the slate over it.
 	var rubble: Color = P.STONE[3].lerp(P.SAND[3], 0.4) if form == 0 else P.STONE[3].lerp(P.LINEN[3], 0.35)
 	var t := walls(k, w, d, h, s, rubble, GroundColors.down(rubble, 0.3), Vector3(-0.04, 0, 0.02) if form == 0 else Vector3(0.03, 0, -0.03))
+	var moss: Color = P.MOSS[2] if c != Country.SNOWFIELD else P.SLATE[2]
+	for fi in faces(t).size():
+		var wf: Array = faces(t)[fi]
+		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 17, GroundColors.down(rubble, 0.4), moss)
 	var fb := [t[2], t[1], t[5], t[6]]
 	# Quoins lighter at the corners, a few dark stones in the courses.
 	for i in 5:
@@ -230,13 +353,18 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		neon_tube(k, fb[0], fb[1], fb[2], fb[3], 0.48, 0.8, 0.84, NEON_TUBES[1])
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.24 if form == 0 else 0.74, 0.6, 0.08, 0.13)
 	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.4 if form == 0 else 0.52, 0.42)
+	var gb := [t[3], t[2], t[6], t[7]]
+	boarded(k, gb[0], gb[1], gb[2], gb[3], 0.7 if form == 0 else 0.26, 0.56, 0.075, 0.12, s + 35)
+	salvage(k, gb[0], gb[1], gb[2], gb[3], 0.26 if form == 0 else 0.72, s + 42)
 	# Gable roof, ridge along z, sagging. Front slope: slate low (MADE), plate high (FOUND).
 	var over := 0.2
 	var yr := h + 1.05
 	var cx := (t[4].x + t[5].x + t[6].x + t[7].x) * 0.25
 	var ez := d * 0.5 + 0.14
 	var ex := w * 0.5 + over
-	var sag := 0.07
+	# A ridge sags in screen pixels, not in world units: 0.07 was two pixels at
+	# the play camera, under the inked ridge line that hides it.
+	var sag := 0.19
 	var courses := 6
 	for i in courses:
 		var f0 := float(i) / courses
@@ -257,22 +385,63 @@ static func slated(k: Kit, c: int, form: int) -> void:
 			var pen := k.found if plate else k.made
 			var col: Color = (P.PLATE[3] if i % 2 == 0 else P.PLATE[2]) if plate else (P.SLATE[3] if i % 2 == 0 else P.SLATE[2])
 			pen.quad(b0, a0, a1, b1, col)
-	# Back slope: plate, with one patch of old slate.
-	var bk0 := Vector3(cx - ex, h - 0.05, -ez)
-	var bk1 := Vector3(cx - ex, h - 0.05, ez)
+	# Back slope. A roof is seen from ABOVE at the play camera, so the slope is
+	# most of what a house IS on screen: laid as one flat triangle it read as a
+	# plain slab whatever the silhouette did (playtest 11, art review 5). Laid in
+	# courses like the front, so the plane itself carries value: slate that held,
+	# courses gone over in plate, slipped slates with the dark batten showing
+	# through, and the green that grows on the slope the sun never reaches.
 	var rr0 := Vector3(cx, yr, -ez)
 	var rr1 := Vector3(cx, yr, ez)
 	var rrm := Vector3(cx, yr - sag, 0.0)
-	k.made.tri(bk0, bk1, rrm, P.SLATE[2])
-	k.made.tri(bk0, rrm, rr0, P.SLATE[2])
-	k.made.tri(bk1, rr1, rrm, P.SLATE[2])
+	for i in courses:
+		var f0 := float(i) / courses
+		var f1 := float(i + 1) / courses
+		for half in 2:
+			var z0 := -ez if half == 0 else 0.0
+			var z1 := 0.0 if half == 0 else ez
+			var ya0 := lerpf(h - 0.05, yr, f0)
+			var ya1 := lerpf(h - 0.05, yr, f1)
+			var a0 := Vector3(cx - ex * (1.0 - f0), ya0 - (sag * f0 if z0 == 0.0 else 0.0), z0)
+			var b0 := Vector3(cx - ex * (1.0 - f0), ya0 - (sag * f0 if z1 == 0.0 else 0.0), z1)
+			var a1 := Vector3(cx - ex * (1.0 - f1), ya1 - (sag * f1 if z0 == 0.0 else 0.0), z0)
+			var b1 := Vector3(cx - ex * (1.0 - f1), ya1 - (sag * f1 if z1 == 0.0 else 0.0), z1)
+			var plated := (i == 2 or i == 5) if half == 0 else (i == 3)
+			var pen := k.found if plated else k.made
+			# Value per half course, not per course: even stripes across a whole
+			# roof are as ruled as the flat slab they replaced.
+			var r := (i * 3 + half * 5 + form * 2) % 4
+			var col: Color = (P.PLATE[2] if r < 2 else P.PLATE[3]) if plated else (P.SLATE[2] if r == 0 else (P.SLATE[3] if r < 3 else P.SLATE[1]))
+			if not plated and i == 0 and half == (1 if form == 0 else 0):
+				# The foot of the slope the sun never reaches, where damp sits.
+				col = moss
+			pen.quad(a0, b0, b1, a1, col)
+			# Slates slipped out of a course: the batten behind is the pen's own.
+			if not plated and (i + half * 3) % 4 == 1:
+				var gz := lerpf(z0, z1, 0.3 + fmod(float(i) * 0.31, 0.3))
+				var gy := lerpf(ya0, ya1, 0.25)
+				var gx := cx - ex * (1.0 - lerpf(f0, f1, 0.25))
+				k.made.quad(
+					Vector3(gx, gy, gz), Vector3(gx, gy, gz + ez * 0.22),
+					Vector3(gx - ex * 0.06, gy + (ya1 - ya0) * 0.45, gz + ez * 0.22),
+					Vector3(gx - ex * 0.06, gy + (ya1 - ya0) * 0.45, gz), P.INK[2])
 	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
 	# Gable ends in stone.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), Vector3(cx, yr - 0.06, t[6].z + 0.004), GroundColors.down(rubble, 0.3))
 	k.made.tri(t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), Vector3(cx, yr - 0.06, t[4].z - 0.004), GroundColors.down(rubble, 0.5))
-	# The ridge, lighter than the eaves.
-	k.made.strut(rr0 + Vector3(0, 0.03, 0), rrm + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
-	k.made.strut(rrm + Vector3(0, 0.03, 0), rr1 + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
+	# The ridge, lighter than the eaves, and gone for a length in the middle
+	# where the capping blew off: the roofline is never one straight run.
+	k.made.strut(rr0 + Vector3(0, 0.03, 0), rr0.lerp(rrm, 0.62) + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
+	k.made.strut(rrm.lerp(rr1, 0.34) + Vector3(0, 0.03, 0), rr1 + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
+	# One silhouette break: a sheet of plate laid over a hole at the eave, cut to
+	# the hole and not to the roof, so it hangs past the line (art review 5).
+	var oz := ez * (0.2 if form == 0 else -0.2)
+	var eave := Vector3(cx + ex, h - 0.05, oz)
+	var over_a := eave + Vector3(0.26, -0.07, -0.34)
+	var over_b := eave + Vector3(0.22, -0.05, 0.36)
+	var up_a := Vector3(cx + ex * 0.42, lerpf(h - 0.05, yr, 0.58), oz - 0.3)
+	var up_b := Vector3(cx + ex * 0.42, lerpf(h - 0.05, yr, 0.58), oz + 0.32)
+	k.plate(over_b, over_a, up_a, up_b, P.PLATE[3], P.PLATE[1], P.PLATE[4])
 	_chimney(k, cx + 0.05, yr - 0.55, (d * 0.5 - 0.24) * (1.0 if form == 0 else -1.0), 1.0, s + 10)
 	turf_foot(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
@@ -300,8 +469,10 @@ static func long_house(k: Kit, c: int) -> void:
 	door(k, fb[0], fb[1], fb[2], fb[3], 0.26, 0.1, 0.82)
 	window(k, fb[0], fb[1], fb[2], fb[3], 0.68, 0.55, 0.07, 0.12)
 	struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.48, 0.45)
+	var lb := [t[3], t[2], t[6], t[7]]
+	salvage(k, lb[0], lb[1], lb[2], lb[3], 0.3, s + 43)
 	# Thatch: a deep, soft hip with a ragged eave.
-	var r := hipped(k, k.made, t, 0.36, 1.25, d * 0.3, 0.16, P.EARTH[3], P.EARTH[2], P.EARTH[3].lerp(P.SAND[3], 0.4))
+	var r := hipped(k, k.made, t, 0.36, 1.25, d * 0.3, 0.26, P.EARTH[3], P.EARTH[2], P.EARTH[3].lerp(P.SAND[3], 0.4), 2, 0.15)
 	for i in 10:
 		var f := (i + 0.5) / 10.0
 		var a := r[1].lerp(r[2], f)
@@ -388,6 +559,10 @@ static func but(k: Kit, c: int) -> void:
 	k.chamfer(-0.2, 0.72, fz + 0.04, 0.16, 0.2, 0.08, 0.02, dark, plate)
 	var sb := [Vector3(fx, 0, d * 0.5), Vector3(fx, 0, -d * 0.5), Vector3(fx, 1, -d * 0.5), Vector3(fx, 1, d * 0.5)]
 	struck_plate(k, sb[0], sb[1], sb[2], sb[3], 0.25, 0.3)
+	# Even a machine's housing gets what the people who live in it drag home.
+	var xb: Array[Vector3] = [Vector3(-w * 0.5 - 0.004, 0, -d * 0.5), Vector3(-w * 0.5 - 0.004, 0, d * 0.5),
+		Vector3(-w * 0.5 - 0.004, 1, d * 0.5), Vector3(-w * 0.5 - 0.004, 1, -d * 0.5)]
+	salvage(k, xb[0], xb[1], xb[2], xb[3], 0.62, 1340)
 	# Sods laid along the lid, uneven.
 	var top := h + 0.26
 	for i in 5:
