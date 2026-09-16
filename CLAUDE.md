@@ -35,12 +35,17 @@ tools/deploy.sh [--prod]                    # export, put it on Vercel, and prov
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Esc pause)
 ```
 
-**A run never takes the keyboard.** The window opens unfocusable
-(`project.godot`, `display/window/size/no_focus`) and `tools/_focus.sh` hands the
-keyboard straight back to whoever was typing, so a hundred shots and tours an hour
-never interrupt the person at the machine. Only a session a person means to play
-takes the focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1`
-lets a tool run come to the front, to watch it play.
+**A run is never seen and never takes the keyboard.** A hundred shots and tours an
+hour must not interrupt the person at the machine, so a tool run opens its window
+**off the screen entirely** (`tools/_focus.sh` `focus_position`, far outside any
+display — it renders identically there), unfocusable (`project.godot`,
+`display/window/size/no_focus`), and `tools/_focus.sh` hands the keyboard back
+within about a twentieth of a second, because macOS brings the app forward
+whatever the window's flags say. Only a session a person means to play takes the
+focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1` puts a
+tool run on screen and in front, to watch it play. The header of `tools/_focus.sh`
+records the two tidier-looking approaches that do not work, so nobody spends the
+afternoon on them again.
 
 **Shipping it.** `github.com/Xaxis/unspent-ortho` (public) is the remote; commits
 are the owner's, as everywhere else. `tools/deploy.sh` exports the threaded web

@@ -12,7 +12,7 @@ tools/_import.sh
 . tools/_slack.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-shot.XXXXXX")"
 holder="$(focus_holder)"
-godot --path . --position 40,40 -- --shot="$out" "$@" >"$log" 2>&1 &
+godot --path . --position "$(focus_position)" -- --shot="$out" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
 deadline=$(( $(date +%s) + $(slack_secs "${SHOT_TIMEOUT:-60}") ))

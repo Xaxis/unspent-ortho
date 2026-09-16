@@ -11,7 +11,7 @@ tools/_import.sh
 . tools/_slack.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-tour.XXXXXX")"
 holder="$(focus_holder)"
-godot --path . --position 40,40 -- --tour="$tour" "$@" >"$log" 2>&1 &
+godot --path . --position "$(focus_position)" -- --tour="$tour" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
 deadline=$(( $(date +%s) + $(slack_secs "${TOUR_TIMEOUT:-180}") ))
