@@ -128,7 +128,7 @@ func test_a_save_from_a_registry_with_fewer_landscapes_is_refused_by_name() -> v
 	check(not (r.header as Dictionary).is_empty(), "its header still reads, so the slate can show the game")
 	eq(str(r.header.get("place")), "moss", "with where it stood")
 	check(SaveFile.read_header(p).code == &"elsewhere", "the slot list says so too")
-	eq(SaveSlots.problem(1, r.code), "Slot 1 was made on another island.")
+	eq(SaveSlots.problem(1, r.code), "Slot 1 is from another island.")
 	eq(SaveSlots.short_problem(r.code), "another island")
 
 	var o := BootOptions.new()
@@ -139,7 +139,7 @@ func test_a_save_from_a_registry_with_fewer_landscapes_is_refused_by_name() -> v
 	# Continue does not offer it, and the title says why.
 	var entries := SaveSlots.list()
 	check(SaveSlots.newest(entries).is_empty(), "Continue has nothing to continue")
-	check(SaveSlots.problems(entries).has("Slot 1 was made on another island."), "the title says it plainly")
+	check(SaveSlots.problems(entries).has("Slot 1 is from another island."), "the title says it plainly")
 	Sx.finish()
 
 
@@ -181,7 +181,7 @@ func test_a_new_game_asks_before_it_writes_over_an_autosave_from_another_island(
 	menu.title = title
 	tree.root.add_child(menu)
 	menu.open()
-	eq(menu.note, "The autosave was made on another island.", "the title says so plainly")
+	eq(menu.note, "The autosave is from another island.", "the title says so plainly")
 	menu.select(&"new")
 	menu.handle(&"confirm")
 	eq(menu.note, UiTitleMenu.ASK_NEW, "and asks before writing over it")

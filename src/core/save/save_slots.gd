@@ -84,23 +84,24 @@ static func problems(entries: Array[Dictionary] = []) -> PackedStringArray:
 	return out
 
 
-## "Slot 2 is damaged and cannot be read."
+## "Slot 2 cannot be read." — one short line for the KEY STRIP, which on the
+## title's small slate has about 200 px for it (tests/save/test_problem_fits.gd
+## holds every sentence here to that). The whole reason is SaveFile.WHY_*, read
+## on the saves app's own page, where there is room to say it properly.
 static func problem(slot: int, code: StringName) -> String:
 	var who := "The autosave" if slot == AUTO else "Slot %d" % slot
 	match code:
 		&"missing":
 			return "%s is empty." % who
 		&"newer":
-			return "%s was saved by a newer version of the game." % who
+			return "%s is from a newer game." % who
 		&"older":
-			return "%s is too old for this version of the game." % who
+			return "%s is too old for this game." % who
 		&"elsewhere":
 			# Not "damaged": the file is whole and the game in it is readable.
-			# What moved is the island the seed grows into (WorldStamp). Short,
-			# because this line is said on the key strip; the whole of it
-			# (SaveFile.WHY_ELSEWHERE) is read on the saves app's own page.
-			return "%s was made on another island." % who
-	return "%s is damaged and cannot be read." % who
+			# What moved is the island the seed grows into (WorldStamp).
+			return "%s is from another island." % who
+	return "%s cannot be read." % who
 
 
 ## Two or three words for a slot's row, where the whole sentence does not fit.
