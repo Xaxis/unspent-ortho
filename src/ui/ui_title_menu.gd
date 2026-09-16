@@ -71,6 +71,9 @@ func refresh() -> void:
 		rows.insert(0, {"id": &"continue", "text": "continue"})
 	elif not problems.is_empty():
 		rows.insert(1, {"id": &"continue", "text": "continue", "enabled": false, "why": problems[0]})
+	if UiTitle.island_fixed():
+		# The configuration fixed the island: there is no other to choose.
+		rows = rows.filter(func(r: Dictionary) -> bool: return r.id != &"seed")
 	menu.set_rows(rows)
 	if _opening and not saved.is_empty():
 		menu.index = 0

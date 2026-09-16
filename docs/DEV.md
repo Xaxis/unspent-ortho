@@ -58,9 +58,9 @@ it builds on (`release` is `playtest` with dev mode off and a release channel).
 |---|---|---|
 | build | label, channel (dev, playtest, release), version | stamped into builds; shown on the title of a non-release build |
 | dev | access | at boot |
-| world | first island, size, hour, where a new game starts, weather and its strength | a new game |
+| world | first island (and whether it is the only one the title offers), size, hour, where a new game starts, weather and its strength | a new game |
 | start | kit (items), gear fitted, lamp lit | a new game |
-| rules | clock rate, harm taken, machines come, the first hour's guide | the running game, live |
+| rules | clock rate, harm taken, hunger pace, how many bodies come, whether they come at all, the first hour's guide | the running game, live |
 | builds | targets (web, web without threads, mac), template (release, debug) | what "make it" makes |
 
 Readers ask `GameConfig.value(id)`. A new setting is a row in `ConfigSchema`

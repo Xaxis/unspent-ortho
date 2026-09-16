@@ -184,14 +184,19 @@ kept in IndexedDB).
   The gate, the tests, the canon sheet and every tour run from the slate with
   their frames shown.
 
+Closed since: a configuration can fix the title to its island; hunger pace and
+how many bodies come are live rules; a direction tapped and let go inside one
+frame moves every app on the slate (it was lost in a game, and a browser delivers
+quick taps that way).
+
 ### Gaps
 
-- Rules are four so far; `world.landscapes` (a registry narrowed per build),
-  autosave and difficulty beyond harm want rows once their owners settle.
-- A configuration cannot yet lock the title to its first island.
-- Arrow taps struck and released inside a single frame are missed by the slate's
-  own apps in a game (90_ui repeats from the held state); a person's key is held
-  longer, a script's may not be.
+- Autosave and hazard strength want rows, but `05_save` and `52_hazards` are open
+  on the a2 wave's branches (saves, salt-and-scrap): added after those merge, so
+  the two do not collide.
+- `world.landscapes` (a build narrowed to some landscapes) needs worldgen to prove
+  every subset still makes a whole island; `BiomeRegistry.mute_to` is only
+  trusted by tests today.
 
 ## M2 — Foundations of an immense world
 
