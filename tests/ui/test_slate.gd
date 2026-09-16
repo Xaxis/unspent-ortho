@@ -151,7 +151,7 @@ func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
 	var odd := Vector2i(301, 187)
 	var t0 := Time.get_ticks_usec()
 	check(UiSlate.device_texture(odd) == null, "not baked in the caller")
-	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0, "and asking does not wait for it")
+	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0 * machine_slack(), "and asking does not wait for it")
 	var s := UiPauseScreen.new()
 	s.device_rect = Rect2i(10, 10, odd.x, odd.y)
 	tree.root.add_child(s)

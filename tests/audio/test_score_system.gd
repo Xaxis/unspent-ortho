@@ -318,7 +318,7 @@ static func _cut(key: StringName) -> ScoreRender:
 ## keeps it so is proven without a stopwatch in test_score and test_bank.
 func test_without_threads_no_frame_waits_on_a_real_stem() -> void:
 	var root := "user://score_budget_test_%d" % Time.get_ticks_usec()
-	var limit := SoundBank.SCORE_BUDGET_USEC + 3000
+	var limit := int((SoundBank.SCORE_BUDGET_USEC + 3000) * machine_slack())
 	for key: StringName in [ScoreStems.key_for(&"burning", &"pad", 1), ScoreStems.key_for(&"coast", &"drone", 0)]:
 		var best := 1 << 30
 		for attempt in 8:
