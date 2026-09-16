@@ -79,6 +79,12 @@ func setup(g: Game) -> void:
 	_pending_screen = g.options.screen
 
 
+## An app another package brings to the slate (dev mode's, 94_dev): it is owned,
+## stacked and routed like the slate's own.
+func add_app(s: UiScreen) -> void:
+	_add(s)
+
+
 func _add(s: UiScreen) -> void:
 	s.game = game
 	s.name = String(s.screen_name)
@@ -162,6 +168,9 @@ const NEAR_LINE := "Not with that so close."
 ## once home is up; carrying and making never do, however they are reached, or
 ## home would be a way round the rule (making skips world time; eating works).
 func why_not_open(n: StringName) -> String:
+	if n == &"dev":
+		# Dev mode is for looking at a fight as much as anything else.
+		return ""
 	var reads_only := n in SlateFeeds.APPS and stack.has(screens.get(&"pause"))
 	if n != &"pause" and not reads_only and _hostile_near():
 		return NEAR_LINE

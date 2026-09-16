@@ -5,3 +5,10 @@ shots/
 .DS_Store
 *.log
 .idea/
+.env
+*.iml
+.vercel/
+node_modules/
+
+# A build stamp, packed by tools/export.sh and removed after it.
+stamp/

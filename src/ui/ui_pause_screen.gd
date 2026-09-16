@@ -54,6 +54,9 @@ func refresh() -> void:
 		{"id": &"title", "text": "to the title", "enabled": true},
 		{"id": &"quit", "text": "quit"},
 	]
+	if DevMode.reachable() and game != null:
+		# Dev mode's app (docs/DEV.md), marked as not the player's: the module's violet.
+		rows.insert(rows.size() - 2, {"id": &"dev", "text": "dev", "app": true, "dev": true})
 	menu.set_rows(rows)
 	queue_redraw()
 
@@ -138,7 +141,12 @@ func _draw() -> void:
 		var chosen := i == menu.index
 		if chosen:
 			UiSlate.row_bar(self, x0 - 4, right + 3, top)
-		UiDraw.text(self, Vector2i(x0 + 8, top), row.text, UiTheme.BRIGHT if chosen else UiTheme.TEXT)
+		var ink := UiTheme.BRIGHT if chosen else UiTheme.TEXT
+		if row.get("dev", false):
+			ink = UiTheme.MACHINE[4] if chosen else UiTheme.MACHINE[3]
+			UiDraw.frame(self, Rect2i(right - 34, top - 1, 19, 11), UiTheme.MACHINE[1])
+			UiDraw.text(self, Vector2i(right - 32, top - 1), "DEV", UiTheme.MACHINE[3])
+		UiDraw.text(self, Vector2i(x0 + 8, top), row.text, ink)
 		if row.get("app", false):
 			UiDraw.text_right(self, right, top, "→", UiTheme.TEXT_DIM if not chosen else UiTheme.TEXT)
 	var px := R.position.x + UiSlate.MARGIN_L

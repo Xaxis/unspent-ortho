@@ -24,6 +24,8 @@ var view: WorldView
 var sky: SkyLight
 var camera: CameraRig
 var menu: UiTitleMenu
+## Dev mode on the title (DevTitle): its keys, its app, its label.
+var dev: DevTitle
 
 ## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
 ## there a coast is made on the main thread and would hold the title still for seconds.
@@ -70,6 +72,7 @@ func setup(o: BootOptions) -> void:
 	menu = UiTitleMenu.new()
 	menu.title = self
 	_layer.add_child(menu)
+	dev = DevTitle.attach(self, _layer)
 	if o.shot != "":
 		# A shot has a few frames, not a second: draw the coast now and show it.
 		_show(WorldGen.generate(seed_value, o.size), seed_value, null, [], true)
@@ -282,6 +285,9 @@ func _start_game() -> void:
 			menu.refresh()
 			menu.refuse(why)
 			return
+	else:
+		# A new game starts as the master configuration says (docs/DEV.md).
+		GameConfig.fill_new_game(o)
 	var parent := get_parent()
 	menu.close(true)
 	# The coast on show is the new game's world (not a continued save's elsewhere):
