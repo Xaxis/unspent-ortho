@@ -188,8 +188,11 @@ func tick(dt: float, input: Dictionary) -> void:
 
 ## What is actually blended this tick, from what the ear is in and what can
 ## sound. Three steps, each of which keeps the mix whole:
-##   1. a landscape's share is its weight times its readiness; if nothing is
-##      ready the last blend is held, so the score never falls silent waiting;
+##   1. a landscape's share is its weight times its readiness, and the share it
+##      cannot sound yet stays with whatever IS sounding — so readiness is an
+##      absolute ceiling on the handover, not merely the ratio between two
+##      landscapes. A landscape whose air is baked and whose drone is not takes
+##      a quarter of the ear (CORE_SHARE), never all of it over nothing;
 ##   2. the shares ease (BLEND_EASE) and are renormalised to sum to 1, so a
 ##      stem arriving or a teleport is a turn, never a step;
 ##   3. near the border the shares are sharpened by how far apart the two keys
@@ -197,6 +200,7 @@ func tick(dt: float, input: Dictionary) -> void:
 func _blend(weights: Dictionary, ready: Dictionary, dt: float) -> void:
 	var want := {}
 	var total := 0.0
+	var held := 0.0
 	for land: StringName in weights:
 		var w := clampf(float(weights[land]), 0.0, 1.0)
 		if w <= 0.0005:
@@ -207,13 +211,30 @@ func _blend(weights: Dictionary, ready: Dictionary, dt: float) -> void:
 		else:
 			_ready[land] = lerpf(float(_ready[land]), r, 1.0 - exp(-dt / READY_EASE))
 		var v := w * float(_ready[land])
+		held += w - v
 		if v > 0.0:
 			want[land] = v
 			total += v
+	# What the ear is in but cannot hear yet is given back to the landscapes that
+	# are sounding and that the ear has LEFT: the one playing holds the rest of
+	# the ear until the next can take it. Never to a landscape in the ear — it is
+	# gated by its own readiness, and handing it its own shortfall would let it
+	# take everything over nothing.
+	var holders := {}
+	var sounding := 0.0
+	for land: StringName in _raw:
+		if float(weights.get(land, 0.0)) > 0.0005:
+			continue
+		holders[land] = float(_raw[land])
+		sounding += float(_raw[land])
+	if held > 1e-6 and sounding > 1e-6:
+		for land: StringName in holders:
+			want[land] = float(want.get(land, 0.0)) + held * float(holders[land]) / sounding
+		total += held
 	if total <= 1e-4:
-		# Nothing the ear is in can sound yet: hold what is sounding, or, with
-		# nothing sounding at all (a game waking up), aim at the ideal.
-		want = _raw.duplicate() if not _raw.is_empty() else weights.duplicate()
+		# Nothing can sound and nothing is sounding (a game waking up): aim at the
+		# ideal, so the first stems to arrive are the ones the ear is standing in.
+		want = weights.duplicate()
 	for land: StringName in _raw:
 		if not want.has(land):
 			want[land] = 0.0

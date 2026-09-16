@@ -286,17 +286,28 @@ static func _key_fit(tonic: int, mode: StringName) -> float:
 
 
 ## The keys a composed landscape may take: near enough to the written ones to
-## modulate into them (KEY_FLOOR), and never one of theirs note for note.
-static func _keys_in_the_web() -> Array:
+## modulate into them (KEY_FLOOR), and never one of theirs note for note. If a
+## set of written landscapes ever puts KEY_FLOOR out of reach of every candidate
+## (SPECS grows: VISION asks for twenty types), the floor drops to the best any
+## key can do rather than leaving a composed landscape with no key at all.
+static func keys_in_the_web(floor_fit: float = KEY_FLOOR) -> Array:
 	var taken := {}
 	for land: StringName in SPECS:
 		taken["%d %s" % [posmod(int(SPECS[land]["tonic"]), 12), SPECS[land]["mode"]]] = true
-	var out: Array = []
+	var free: Array = []
+	var best := 0.0
 	for tonic in range(43, 56):
 		for mode: StringName in MODES:
-			if taken.has("%d %s" % [posmod(tonic, 12), mode]) or _key_fit(tonic, mode) < KEY_FLOOR:
+			if taken.has("%d %s" % [posmod(tonic, 12), mode]):
 				continue
-			out.append([tonic, mode])
+			var fit := _key_fit(tonic, mode)
+			free.append([tonic, mode, fit])
+			best = maxf(best, fit)
+	var out: Array = []
+	var floor_used := minf(floor_fit, best)
+	for k: Array in free:
+		if float(k[2]) >= floor_used:
+			out.append([k[0], k[1]])
 	out.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] if a[0] != b[0] else String(a[1]) < String(b[1]))
 	return out
 
@@ -309,7 +320,7 @@ static func _keys_in_the_web() -> Array:
 static func procedural(id: StringName) -> Dictionary:
 	var h := Rng.hash_ints(String(id).hash(), 0x5c0)
 	var r := Rng.make(h, 0x5c1)
-	var web := _keys_in_the_web()
+	var web := keys_in_the_web()
 	var chosen: Array = web[Rng.hash_ints(h, 0x5c2) % web.size()]
 	var tonic: int = chosen[0]
 	var mode: StringName = chosen[1]

@@ -82,6 +82,41 @@ func test_a_border_is_an_equal_power_crossfade_that_never_steps() -> void:
 		near(float(c.blend.get(pair[1], 0.0)), 1.0, 1e-3, "%s -> %s: and the far side is whole again" % pair)
 
 
+## The gains are unit power by construction; what a listener hears are the eased
+## LEVELS, which rise and fall at different rates per layer (a drone takes nine
+## seconds to come and sixteen to go). Held against the same score with no
+## border in it, the bed's power stays flat across the crossing: no swell where
+## the two overlap, no dip where one lets go.
+func test_the_crossfade_is_equal_power_in_what_is_heard() -> void:
+	var layers: Array[StringName] = [&"drone", &"texture", &"pad"]
+	var power := func(c: ScoreConductor) -> float:
+		var p := 0.0
+		for key: StringName in c.levels:
+			if ScoreConductor.layer_of(key) in layers:
+				p += float(c.levels[key]) * float(c.levels[key])
+		return sqrt(p)
+	for pair: Array in [[&"coast", &"moss"], [&"coast", &"snowfield"]]:
+		# The same seed and the same clock: the form these two hear is the same,
+		# so all that differs between them is the border.
+		var alone := ScoreConductor.new(17)
+		var crossing := ScoreConductor.new(17)
+		_run(alone, 60.0, _input({pair[0]: 1.0}))
+		_run(crossing, 60.0, _input({pair[0]: 1.0}))
+		var worst := 0.0
+		var at := 0.0
+		var steps := roundi(120.0 / STEP)
+		for i in steps:
+			var u := clampf(float(i + 1) / steps * 1.4, 0.0, 1.0)
+			alone.tick(STEP, _input({pair[0]: 1.0}))
+			crossing.tick(STEP, _input({pair[0]: 1.0 - u, pair[1]: u}))
+			var flat: float = power.call(alone)
+			var heard: float = power.call(crossing)
+			if flat > 0.2 and absf(heard - flat) / flat > worst:
+				worst = absf(heard - flat) / flat
+				at = float(i) * STEP
+		lt(worst, 0.06, "%s -> %s: the bed holds its level across the border (worst %.1f%% off, %.0f s in)" % [pair[0], pair[1], worst * 100.0, at])
+
+
 ## Keys that share a tonal centre lean into each other across a whole ecotone;
 ## keys that stand far apart turn over in a shorter, marked stretch. Both are
 ## continuous: neither is a cut.
@@ -130,6 +165,14 @@ func test_every_key_stands_in_the_tonal_web() -> void:
 		var s := ScoreLandscapes.spec(id)
 		keys["%d %s" % [posmod(int(s["tonic"]), 12), s["mode"]]] = true
 	gt(float(keys.size()), 3.0, "and composed landscapes still take keys of their own (%d of 7)" % keys.size())
+	# SPECS grows (VISION asks for twenty types), and a set of written keys could
+	# put the floor out of every candidate's reach. Then the floor drops to the
+	# best a key can do: a composed landscape always has one to take.
+	gt(float(ScoreLandscapes.keys_in_the_web().size()), 0.0, "there are keys to take at the floor")
+	var forced := ScoreLandscapes.keys_in_the_web(1.1)
+	gt(float(forced.size()), 0.0, "and still keys to take with the floor over anything reachable")
+	for k: Array in forced:
+		check(ScoreLandscapes.MODES.has(k[1]), "which are real keys (%d %s)" % [k[0], k[1]])
 
 
 # ------------------------------------------------------------------ never collapsing
@@ -172,6 +215,26 @@ func test_an_unbaked_neighbour_does_not_take_the_ear() -> void:
 	_run(c, 30.0, _input({&"coast": 0.5, &"moss": 0.5}))
 	near(_power(c), 1.0, 1e-4, "and once it is baked the mix is still whole")
 	gt(float(c.blend.get(&"moss", 0.0)), 0.6, "with the moss now half the ear")
+
+
+## Readiness is an absolute ceiling on the handover, not just the ratio between
+## two landscapes: a landscape whose air is baked and whose drone is not (the
+## hour turning over to the night drone does exactly this) takes a quarter of
+## the ear — what its core is worth — and the landscape that is playing holds
+## the rest until the drone arrives.
+func test_a_landscape_is_crossfaded_into_no_further_than_it_can_sound() -> void:
+	var air: float = MusicSystem.CORE_SHARE[1]
+	var c := ScoreConductor.new(9)
+	_run(c, 90.0, _input({&"coast": 1.0}))
+	# Standing wholly in the moss, with only its air baked.
+	_run(c, 30.0, _input({&"moss": 1.0}, {"ready": {&"moss": air}}))
+	lt(float(c.heard_weights.get(&"moss", 0.0)), air + 0.05, "the moss has only what its air is worth (%.2f)" % c.heard_weights.get(&"moss", 0.0))
+	gt(float(c.heard_weights.get(&"coast", 0.0)), 1.0 - air - 0.05, "the coast holds the rest of the ear")
+	gt(_level(c, &"coast", &"drone", 0), 0.5, "so there is still a drone under everything")
+	near(_power(c), 1.0, 1e-4, "and the mix is whole")
+	# The drone arrives: the turn finishes.
+	_run(c, 60.0, _input({&"moss": 1.0}))
+	gt(float(c.heard_weights.get(&"moss", 0.0)), 0.95, "once its drone is baked the moss takes the ear")
 
 
 ## The whole score within half a minute of waking, not a minute and a half
@@ -382,31 +445,98 @@ func test_a_landscape_within_reach_never_loses_its_core() -> void:
 ## Without worker threads (a browser with no SharedArrayBuffer) the heavier bake
 ## the blend asks for — the cores of the landscapes ahead as well as the one
 ## underfoot — is still built a slice at a time, and no frame runs long.
+## Without threads the wall clock IS the work: a stem is built a few
+## milliseconds a frame, so eleven bars of drone are a quarter of a minute
+## before the score says anything. The short form is the same music in fewer
+## bars — half the samples, half the wait — and it is only ever used where there
+## are no workers.
+func test_without_threads_a_landscape_is_built_in_its_short_form() -> void:
+	var bank := SoundBank.new()
+	bank.threaded = false
+	for land: StringName in [&"coast", &"burning"]:
+		for layer: StringName in [&"drone", &"texture", &"pad", &"pulse"]:
+			var key := ScoreStems.key_for(land, layer, 0)
+			var bars := bank.score_bars(key)
+			gt(float(bars), 0.0, "%s has a short form" % key)
+			var short := ScoreStems.job(key, bars)
+			var whole := ScoreStems.job(key, 0)
+			lt(float(short.frames), float(whole.frames) * 0.6, "%s: %d frames against %d" % [key, short.frames, whole.frames])
+			gt(float(short.frames), float(whole.frames) * 0.25, "%s: and still bars of music, not a stutter" % key)
+	# The pad lays two bars a chord: cut to four bars it plays the first two
+	# chords of the progression rather than the last two over the first.
+	var pad := ScoreStems.key_for(&"coast", &"pad", 0)
+	var short_pad := ScoreStems.job(pad, bank.score_bars(pad))
+	var loop_s := float(short_pad.frames) / short_pad.rate
+	for n: Array in short_pad.notes:
+		lt(float(n[0]) / short_pad.rate, loop_s, "every note of the short pad falls inside its loop")
+	eq(short_pad.notes.size(), ScoreStems.job(pad, 0).notes.size() / 2, "half the notes: two chords of the four")
+	bank.threaded = true
+	eq(bank.score_bars(pad), 0, "and with workers nothing is cut at all")
+
+
+## And the short core really renders: the whole way through, both stems, with
+## sound in them. What that is in seconds is the work divided by what a frame
+## gives it; the bound is loose on purpose (a clock on a machine that may be
+## running three shards and four shots at once) and is here to catch a stem that
+## became far dearer to make, not to measure the browser.
+func test_without_threads_a_core_is_in_hand_in_seconds() -> void:
+	var bank := SoundBank.new()
+	bank.threaded = false
+	var t0 := Time.get_ticks_usec()
+	for key in ScoreConductor.core_keys(&"coast", 12.0):
+		var job := ScoreStems.job(key, bank.score_bars(key))
+		job.run()
+		check(job.done(), "%s renders in its short form" % key)
+		gt(job.loudest, 0.02, "%s has sound in it" % key)
+	var usec := Time.get_ticks_usec() - t0
+	var secs := float(usec) / SoundBank.SCORE_BUDGET_USEC / 60.0
+	lt(secs, 60.0, "the coast's drone and air are in hand in %.1f s of sixty-frame seconds (%.2f s of work)" % [secs, usec / 1e6])
+
+
+## The frame's own slack, not a fixed slice: a browser labouring at twenty
+## frames a second gives the score three times what one at sixty does, and a
+## hitch never hands it a whole frame.
+func test_the_no_thread_budget_is_a_share_of_the_frame() -> void:
+	var bank := SoundBank.new()
+	eq(bank.score_budget_usec, SoundBank.SCORE_BUDGET_USEC, "a bank nobody has told starts at the floor")
+	eq(bank.budget_for(1.0 / 144.0), SoundBank.SCORE_BUDGET_USEC, "a fast frame never gives less than the floor")
+	near(float(bank.budget_for(1.0 / 60.0)), 3333.0, 2.0, "sixty frames a second gives it a fifth of one")
+	gt(float(bank.budget_for(1.0 / 30.0)), float(bank.budget_for(1.0 / 60.0)) * 1.8, "thirty frames a second gives it twice that")
+	eq(bank.budget_for(1.0), SoundBank.SCORE_BUDGET_MAX_USEC, "and a second-long hitch still only gives it a slice")
+
+
 func test_without_threads_the_blends_bakes_never_hold_a_frame() -> void:
 	var root := "user://score_blend_budget_%d" % Time.get_ticks_usec()
-	var cut := func(key: StringName) -> ScoreRender:
+	var cut := func(key: StringName, _bars: int) -> ScoreRender:
 		var j := ScoreStems.job(key, 1)
 		j.frames = roundi(0.6 * j.rate)
 		return j
-	var bank := SoundBank.new()
-	bank.threaded = false
-	bank.score_job = cut
-	bank.use_disk_cache(root)
 	var keys: Array[StringName] = []
 	for land: StringName in [&"coast", &"moss", &"pinewood"]:
 		keys.append_array(ScoreConductor.core_keys(land, 12.0))
-	for key in keys:
-		bank.request(key)
-	var times := PackedInt32Array()
-	while bank.pending() > 0 and times.size() < 60000:
-		bank._pumped_frame = -1
-		bank.pump()
-		times.append(bank.last_pump_usec)
-	for key in keys:
-		check(bank.is_ready(key), "%s was built" % key)
-	Fixture.judge_frames(self, times, "three landscapes' cores")
-	for key in keys:
-		DirAccess.remove_absolute(bank._cache_path(key))
+	# A lambda copies what it captures, so what it reports comes back in an array.
+	var missing: Array[String] = [""]
+	var build := func() -> Array:
+		var bank := SoundBank.new()
+		bank.threaded = false
+		bank.score_job = cut
+		bank.use_disk_cache(root)
+		for key in keys:
+			bank.request(key)
+		var times := PackedInt32Array()
+		var units := PackedInt32Array()
+		while bank.pending() > 0 and times.size() < 60000:
+			bank._pumped_frame = -1
+			bank.pump()
+			times.append(bank.last_pump_usec)
+			units.append(bank.last_pump_units)
+		for key in keys:
+			if not bank.is_ready(key):
+				missing[0] = String(key)
+			DirAccess.remove_absolute(bank._cache_path(key, bank.score_bars(key)))
+		return [times, units]
+	Fixture.judge_frames(self, build, "three landscapes' cores")
+	eq(missing[0], "", "every core was built")
 	var dir := DirAccess.open(root)
 	if dir != null:
 		for d in dir.get_directories():

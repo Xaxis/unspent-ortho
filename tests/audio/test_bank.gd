@@ -170,7 +170,7 @@ class HeldStem:
 		super.run()
 
 
-static func _held(key: StringName, gate: Semaphore) -> ScoreRender:
+static func _held(key: StringName, _bars: int, gate: Semaphore) -> ScoreRender:
 	var j := HeldStem.new(key, 16000, true, true, 1600)
 	j.gate = gate
 	j.hold(ScoreVoices.Sine, {"freqs": [440.0], "amps": [0.2]})
@@ -213,7 +213,7 @@ func test_without_threads_a_finished_stem_is_saved_and_streamed_on_later_frames(
 	var root := _root()
 	var bank := SoundBank.new()
 	bank.threaded = false
-	bank.score_job = func(k: StringName) -> ScoreRender: return _held_free(k)
+	bank.score_job = func(k: StringName, _bars: int) -> ScoreRender: return _held_free(k)
 	bank.use_disk_cache(root)
 	var key := ScoreStems.key_for(&"coast", &"grid", 0)
 	bank.request(key)

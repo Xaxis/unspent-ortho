@@ -272,7 +272,7 @@ func test_night_closes_the_scores_low_pass() -> void:
 
 ## A small stem under a real score key, so the no-thread bank can be watched
 ## building one across frames.
-static func _small_job(key: StringName) -> ScoreRender:
+static func _small_job(key: StringName, _bars: int = 0) -> ScoreRender:
 	var j := ScoreRender.new(key, 16000, true, true, roundi(0.6 * 16000))
 	j.highpass = 110.0
 	j.hold(ScoreVoices.Analog, {"freqs": [220.0, 330.0], "unison": 2, "detune": 6.0, "cut": 900.0})
@@ -306,7 +306,7 @@ func test_without_threads_the_score_is_built_a_slice_a_frame() -> void:
 
 ## A real stem cut to under a second: its own voices and effects, so its
 ## blocks cost what the real one's do, over a loop short enough to try again.
-static func _cut(key: StringName) -> ScoreRender:
+static func _cut(key: StringName, _bars: int = 0) -> ScoreRender:
 	var j := ScoreStems.job(key, 1)
 	j.frames = roundi(0.8 * j.rate)
 	return j
@@ -314,30 +314,31 @@ static func _cut(key: StringName) -> ScoreRender:
 
 ## The thickest pad and a drone (its long high-pass priming), cut short, built by
 ## a no-thread bank that keeps a disk cache: no frame, the finishing ones
-## included, runs far past the budget.
-##
-## A stem built in slices makes frames that are all alike, so the MIDDLE frame is
-## the measure — a build that let one stage run whole would blow it, and would
-## take a handful of frames rather than dozens. The worst frame is not judged:
-## on a machine running eight of these at once the OS takes a frame away now and
-## then, and a frame stolen is not a frame the score held. A few of those are
-## allowed and counted; most of them would mean the slicing had gone.
+## included, does more than a few units of work or runs past the budget.
 func test_without_threads_no_frame_waits_on_a_real_stem() -> void:
 	var root := "user://score_budget_test_%d" % Time.get_ticks_usec()
 	for key: StringName in [ScoreStems.key_for(&"burning", &"pad", 1), ScoreStems.key_for(&"coast", &"drone", 0)]:
-		var bank := SoundBank.new()
-		bank.threaded = false
-		bank.score_job = _cut
-		bank.use_disk_cache(root)
-		bank.request(key)
-		var times := PackedInt32Array()
-		while not bank.is_ready(key) and times.size() < 20000:
-			bank._pumped_frame = -1
-			bank.pump()
-			times.append(bank.last_pump_usec)
-		check(bank.is_ready(key), "%s is built" % key)
-		Fixture.judge_frames(self, times, String(key))
-		DirAccess.remove_absolute(bank._cache_path(key))
+		# A lambda copies what it captures, so what it reports comes back in an array.
+		var built := [false]
+		var build := func() -> Array:
+			var bank := SoundBank.new()
+			bank.threaded = false
+			bank.score_job = _cut
+			bank.use_disk_cache(root)
+			bank.request(key)
+			var times := PackedInt32Array()
+			var units := PackedInt32Array()
+			while not bank.is_ready(key) and times.size() < 20000:
+				bank._pumped_frame = -1
+				bank.pump()
+				times.append(bank.last_pump_usec)
+				units.append(bank.last_pump_units)
+			built[0] = bank.is_ready(key)
+			# The next run must build it again, not read what this one wrote.
+			DirAccess.remove_absolute(bank._cache_path(key, bank.score_bars(key)))
+			return [times, units]
+		Fixture.judge_frames(self, build, String(key))
+		check(built[0], "%s is built" % key)
 	var dir := DirAccess.open(root)
 	if dir != null:
 		for d in dir.get_directories():

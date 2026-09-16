@@ -362,7 +362,10 @@ static func _blend_lane(img: Image, tl: Dictionary, r: Rect2i, label_x: int) -> 
 			acc[i] += lane[i] * lane[i]
 		by_land[land] = acc
 	var lands: Array = by_land.keys()
-	lands.sort()
+	# By name: StringName sorts by its pointer, so a plain sort() would give each
+	# landscape a different colour from run to run and make two pictures of the
+	# same walk impossible to hold against each other.
+	lands.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
 	var total := PackedFloat32Array()
 	total.resize(blocks)
 	for land: StringName in lands:

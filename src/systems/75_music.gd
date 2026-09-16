@@ -40,8 +40,13 @@ const INPUT_EVERY := 0.25
 const WORKS_EVERY := 1.0
 const BAKE_EVERY := 0.5
 ## Tiles ahead the score looks for the landscapes it will need next. A player
-## running flat out covers this in about six seconds, which is a drone's bake.
-const LOOK_AHEAD := 30.0
+## running flat out (Tuning.RUN_SPEED) covers this in about nine seconds, and a
+## landscape's core is a drone and its air baked one after the other
+## (SoundBank.SCORE_TASKS): a shorter look-ahead means the border is met with
+## the next core half built, and the readiness hold doing work the bake should
+## have done. It costs nothing to look further — still two stems per landscape,
+## still AHEAD_LANDS of them.
+const LOOK_AHEAD := 50.0
 const AHEAD_EVERY := 1.0
 ## At most this many landscapes are held ready ahead, and only ones this much of
 ## what lies around: a core is a couple of megabytes, and the pad underfoot must
@@ -121,6 +126,8 @@ var _land_ids: Dictionary = {}
 ## In a tour the score says what it is doing, so the tour's log shows it evolve.
 var _tour_log := false
 var _logged := ""
+var _turned := ""
+var _log_at := -INF
 
 
 func setup(g: Game) -> void:
@@ -155,6 +162,10 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	# Without threads the score is built in the frame's own slack, a share of it
+	# (SoundBank.SCORE_BUDGET_SHARE): a browser at twenty frames a second hears
+	# the score three times sooner than one held to a fixed three milliseconds.
+	bank.score_budget_usec = bank.budget_for(delta)
 	bank.pump()
 	advance(delta)
 
@@ -551,6 +562,12 @@ func heard_lands() -> Array[StringName]:
 
 ## One line whenever the set of layers heard (at HEARD) changes, with the blend
 ## the score is holding: "coast 0.79 | moss 0.61" is a border being crossed.
+##
+## The blend moves every frame, so it is not what decides to print: a tour's log
+## window is sixty lines and the tour's own steps must fit in it. A line comes
+## when the layers change, as it always did, and otherwise only when the
+## crossfade has really turned — the leading landscape changed, or a share
+## crossed a quarter — and at most one a second.
 func _log_layers() -> void:
 	var heard: PackedStringArray = []
 	for key: StringName in players:
@@ -558,18 +575,22 @@ func _log_layers() -> void:
 			heard.append(String(key).trim_prefix("score_"))
 	heard.sort()
 	var blend: PackedStringArray = []
+	var quarters: PackedStringArray = []
 	var lands: Array = conductor.blend.keys()
 	lands.sort_custom(func(a: StringName, b: StringName) -> bool: return float(conductor.blend[a]) > float(conductor.blend[b]))
 	for land: StringName in lands:
-		# To a tenth: a crossfade should leave a readable handful of lines in the
-		# log, not one a frame.
-		var g := roundf(float(conductor.blend[land]) * 10.0) / 10.0
+		var g := float(conductor.blend[land])
 		if g > 0.0:
-			blend.append("%s %.1f" % [land, g])
-	var line := "[%s] %s" % [" | ".join(blend), ", ".join(heard)]
-	if line != _logged:
-		_logged = line
-		print("tour score %.0fs (form %.1f, danger %.2f, gap %.1fs): %s" % [seconds, conductor.effective, conductor.danger, worst_gap, line if not heard.is_empty() else "[%s] silent" % " | ".join(blend)])
+			blend.append("%s %.1f" % [land, roundf(g * 10.0) / 10.0])
+			quarters.append("%s%d" % [land, floori(g * 4.0)])
+	var line := ", ".join(heard)
+	var turn := " ".join(quarters)
+	if line == _logged and (turn == _turned or seconds - _log_at < 1.0):
+		return
+	_logged = line
+	_turned = turn
+	_log_at = seconds
+	print("tour score %.0fs (form %.1f, danger %.2f, gap %.1fs): [%s] %s" % [seconds, conductor.effective, conductor.danger, worst_gap, " | ".join(blend), line if not heard.is_empty() else "silent"])
 
 
 func _save() -> Variant:

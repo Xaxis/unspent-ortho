@@ -64,25 +64,51 @@ static func facts(key: StringName) -> Dictionary:
 	return _facts[key]
 
 
-## Holds a no-thread build to its frame budget. A stem built in slices takes
-## dozens of frames that are all alike, so the FRAME COUNT and the MIDDLE frame
-## are the measures: a build that let a stage run whole would take a handful of
-## frames and blow both. The worst frame is not judged and the bounds are loose
-## — on a machine running eight builders at once world gen itself goes from one
-## second to ten, and a frame the OS took away is not a frame the score held.
-## What the slicing going would look like is a handful of frames, not a stall.
-static func judge_frames(t: TestCase, times: PackedInt32Array, what: String) -> void:
+## Units of score work one frame may advance. A unit is a block of voices and
+## effects (ScoreRender.BLOCK samples, about a millisecond of GDScript) or a
+## slice of a finishing stage (POST_SLICE samples, about half of one), so the
+## budget buys a couple of dozen of the cheapest; a stage that ran whole would
+## be a hundred and fifty of them, or two thousand, which is the regression this
+## guards. A step never BEGINS a unit that would carry it past its budget, so a
+## machine under load does fewer units a frame, never more: this measure holds
+## whatever else the machine is doing, and it is the one that is asserted.
+const MAX_UNITS := 64
+## Microseconds a frame may overshoot the budget by: the unit of work it was in
+## the middle of, and the cost of looking at the clock.
+const SLACK := 3000
+## A frame the OS took away is not a frame the score held, so a run whose clock
+## reads badly is made again. The work is the same every time; the clock is not.
+const ATTEMPTS := 3
+
+
+## Holds a no-thread build to its frame budget, by the work it advances a frame
+## (above) and by the clock. The clock cannot say whether one long frame was the
+## score's doing or the machine's — this gate runs three shards and four shots
+## at once, and frames go missing — so what is asserted of it is the MIDDLE
+## frame, which a handful of stolen frames cannot move but a build that stopped
+## slicing would blow by a factor of ten. `run` builds the thing and returns
+## [per-frame usec, per-frame units].
+static func judge_frames(t: TestCase, run: Callable, what: String) -> void:
 	var budget := SoundBank.SCORE_BUDGET_USEC
-	t.gt(float(times.size()), 8.0, "%s: built across many frames, not in one (%d)" % [what, times.size()])
-	if times.is_empty():
-		return
-	var sorted := times.duplicate()
-	sorted.sort()
-	var median: int = sorted[sorted.size() / 2]
-	var stolen := 0
-	for us in times:
-		if us > budget * 4:
-			stolen += 1
-	t.lt(float(median), float(budget * 4), "%s: the middle frame is %d us (budget %d us)" % [what, median, budget])
-	var allowed := maxi(1, roundi(times.size() * 0.4))
-	t.check(stolen <= allowed, "%s: %d of %d frames ran far past it, %d allowed (worst %d us)" % [what, stolen, times.size(), allowed, sorted[-1]])
+	var worst_units := 0
+	var frames := 0
+	var median := 0
+	var worst_usec := 0
+	for attempt in ATTEMPTS:
+		var got: Array = run.call()
+		var times: PackedInt32Array = got[0]
+		var units: PackedInt32Array = got[1]
+		worst_units = 0
+		worst_usec = 0
+		frames = times.size()
+		for i in frames:
+			worst_usec = maxi(worst_usec, times[i])
+			worst_units = maxi(worst_units, units[i])
+		var sorted := times.duplicate()
+		sorted.sort()
+		median = sorted[sorted.size() / 2] if not sorted.is_empty() else 0
+		if median <= budget + SLACK:
+			break
+	t.gt(float(frames), 8.0, "%s: built across many frames, not in one (%d)" % [what, frames])
+	t.check(worst_units <= MAX_UNITS, "%s: no frame advanced more than a slice of the work (worst %d units, %d allowed)" % [what, worst_units, MAX_UNITS])
+	t.lt(float(median), float(budget + SLACK), "%s: the middle frame of %d is %d us (budget %d; the worst on the clock was %d)" % [what, frames, median, budget, worst_usec])

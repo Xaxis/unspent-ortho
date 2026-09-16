@@ -34,6 +34,18 @@ const LAYERS := {
 	&"motif": {"bars": 4, "variants": 1, "category": &"score_cue", "heard": -9.0},
 }
 
+## The short form of a loop, in bars. A browser with no worker threads builds a
+## stem a few milliseconds a frame (SoundBank.SCORE_BUDGET_USEC), where a drone's
+## eleven bars are tens of seconds of wall time and the score arrives long after
+## the player does. The short form is the same music in fewer bars — the same
+## key, timbres and rhythm, come round again sooner — so a landscape's core is in
+## hand in seconds. The pad keeps two bars a chord and so plays the first two
+## chords of its progression rather than wrapping four onto each other; the drone
+## and the air are held and swept over whatever loop they are given.
+## Not used when there are threads: a desktop or a cross-origin-isolated browser
+## hears every bar.
+const SHORT_BARS := {&"drone": 5, &"pad": 4, &"pulse": 3, &"texture": 4, &"dissonance": 3}
+
 const AIR := 0
 const RAIN := 1
 const FOG := 2
@@ -92,6 +104,15 @@ static func names() -> Array[StringName]:
 		for layer: StringName in LAYERS:
 			out.append(name_for(land, layer))
 	return out
+
+
+## Bars the short form of a stem is cut to; 0 when it has no short form (a
+## one-shot, or the grid's two bars, which are already short).
+static func short_bars(key: StringName) -> int:
+	var k := parse(key)
+	if k.is_empty():
+		return 0
+	return int(SHORT_BARS.get(k["layer"], 0))
 
 
 ## Frames a loop stem is long (0 for one-shots, whose length comes from their notes).
@@ -178,6 +199,11 @@ static func _drone(j: ScoreRender, s: Dictionary, variant: int, seed_value: int)
 
 static func _pad(j: ScoreRender, s: Dictionary, variant: int, seed_value: int) -> void:
 	var chords: Array = (s["chords"] as Array)[variant]
+	# Two bars a chord, whatever the loop: a pad cut short plays the first chords
+	# of its progression instead of laying the last ones over the first.
+	var fit := maxi(1, floori(float(j.frames) / (j.rate * 2.0 * BAR) + 0.01))
+	if fit < chords.size():
+		chords = chords.slice(0, fit)
 	var sp := _space(s)
 	var base: Dictionary = s["pad"]
 	var r := Rng.make(seed_value, 1)
@@ -215,7 +241,7 @@ static func _gate(pos: int, steps: int) -> float:
 static func _pulse(j: ScoreRender, s: Dictionary, variant: int, seed_value: int) -> void:
 	var tense := variant == 1
 	var steps := int(s["steps"]) * (2 if tense else 1)
-	var bars := int(LAYERS[&"pulse"]["bars"])
+	var bars := maxi(1, roundi(float(j.frames) / (j.rate * BAR)))
 	var total := steps * bars
 	var step_s := BAR / steps
 	var notes: Array = s["tense_notes"] if tense else s["pulse_notes"]
