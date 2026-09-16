@@ -497,7 +497,7 @@ static func type_tint(type_id: StringName) -> Vector3:
 ## sets the mood without hiding the land, and how wet each landscape lies without
 ## rain. Returns [grade Vector4(dark, desat, cool, contrast), wet Vector4(base
 ## wet, sheen, reflection, 0)]. Day stays day; each landscape leans its own way.
-const NEON_DAY := Vector4(0.04, 0.22, 0.10, 0.18)
+const NEON_DAY := Vector4(0.0, 0.22, 0.10, 0.18)
 const NEON_NIGHT := Vector4(0.0, 0.25, 0.12, 0.10)
 ## Per country: [grade offset Vector4, base wet].
 ## The land now carries its own evidence (GenWorks, WorksMap), so the grade
@@ -505,14 +505,18 @@ const NEON_NIGHT := Vector4(0.0, 0.25, 0.12, 0.10)
 ## green gloom kept readable enough to see the cuts in it, the pines a shade
 ## under their canopy, the snow's cold glare, the bones' hard white, the
 ## burning's warm low furnace.
+## The darkness term goes NEGATIVE where a landscape's own washes are dark, so
+## every land reads as day at noon in its own way. Measured mean luma of a clear
+## noon frame (seed 7, --hour=12 --weather=clear:0), HUD rows excluded, is the
+## check: a dark wood is dimmer than a salt pan, but none of them is night.
 const NEON_COUNTRY := {
-	Country.SEA: [Vector4(0.0, 0.0, 0.04, 0.0), 0.0],
-	Country.COAST: [Vector4(0.0, 0.04, 0.03, 0.02), 0.15],
-	Country.MOSS: [Vector4(0.0, 0.08, 0.0, 0.06), 0.35],
-	Country.PINEWOOD: [Vector4(0.015, 0.05, 0.03, 0.06), 0.2],
+	Country.SEA: [Vector4(-0.1, 0.0, 0.04, 0.0), 0.0],
+	Country.COAST: [Vector4(-0.55, 0.16, 0.05, 0.02), 0.15],
+	Country.MOSS: [Vector4(-0.5, 0.16, 0.02, 0.06), 0.35],
+	Country.PINEWOOD: [Vector4(-0.45, 0.15, 0.05, 0.06), 0.2],
 	Country.SNOWFIELD: [Vector4(-0.04, 0.08, 0.08, -0.03), 0.0],
 	Country.BONELANDS: [Vector4(-0.03, 0.14, -0.02, 0.12), 0.0],
-	Country.BURNING: [Vector4(0.02, -0.1, -0.15, 0.1), 0.0],
+	Country.BURNING: [Vector4(-0.42, -0.04, -0.15, 0.1), 0.0],
 }
 
 
@@ -541,5 +545,6 @@ static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
 		if total > 0.0:
 			g += off / total
 			wet = w / total
-	g = g.clamp(Vector4.ZERO, Vector4.ONE)
+	# Darkness may go negative: that is a landscape lifting itself into daylight.
+	g = g.clamp(Vector4(-0.6, 0.0, 0.0, 0.0), Vector4.ONE)
 	return [g, Vector4(wet, 1.0, 1.0, 0.0)]
