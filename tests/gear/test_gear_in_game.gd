@@ -153,7 +153,11 @@ func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void
 		AbilityGlide.SECONDS, game.world.height_at(here) + 4.0))
 	var wing := game.player.model.get_node_or_null("glide_wing") as GlideWingModel
 	check(wing != null, "the wing is on the body")
-	for i in 20:
+	# The wing opens on physics steps: wait until it is open, not for a count of
+	# process frames, which a cold process runs through before it is.
+	var opening := Time.get_ticks_msec() + int(10000 * TestCase.machine_slack())
+	while wing.open <= 0.9 and Time.get_ticks_msec() < opening:
+		await tree.physics_frame
 		await tree.process_frame
 	check(wing.is_visible_in_tree(), "and on screen once it is flying")
 	gt(wing.open, 0.9, "it opened")
