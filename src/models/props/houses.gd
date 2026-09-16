@@ -31,8 +31,9 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 
 ## Variants of HOUSE (PropModels.variants): three washed, two slated, the long
 ## house, the but and the half house, so a village of up to eight can deal one
-## each and no two silhouettes in it repeat (GenScatter deals the pack).
-## Eight is the ceiling: PropModels.template packs `kind * 8 + variant`.
+## each and no two silhouettes in it repeat (GenScatter deals the pack). A ninth
+## needs a village big enough to want it: `GenScatter.HOUSE_MODELS` must match,
+## and `PropModels.MAX_VARIANTS` is the ceiling on the cache key.
 const VARIANTS := 8
 
 
@@ -249,8 +250,14 @@ static func outshot(k: Kit, t: Array[Vector3], side: int, s: int, c: int) -> voi
 	var wat := on_wall(bl, br, tr, tl, u0, hw / maxf(0.4, (tl - bl).y), 0.0)
 	var wbt := on_wall(bl, br, tr, tl, u1, hw / maxf(0.4, (tr - br).y), 0.0)
 	# Out of square on purpose: the two ends are not the same depth or height.
-	var fa := wa + out * (0.78 + Kit.j(s, 3, 0.12))
-	var fb := wb + out * (0.86 + Kit.j(s, 4, 0.12))
+	#
+	# Shallow on purpose too. A house's collision is ONE radius (PropKind.SOLID
+	# 1.6 tiles) round its middle, and a room reaching 0.86 past a wall face that
+	# already stood at 1.375 put half a tile of room inside the circle a player
+	# can walk through — in the middle of a wall, where they walk. At 0.46 the
+	# added face stands 0.235 inside it: less than the corner of the house itself.
+	var fa := wa + out * (0.36 + Kit.j(s, 3, 0.06))
+	var fb := wb + out * (0.40 + Kit.j(s, 4, 0.06))
 	var ha := 0.52 + Kit.j(s, 5, 0.07)
 	var hb := 0.46 + Kit.j(s, 6, 0.07)
 	var fat := fa + Vector3(Kit.j(s, 7, 0.06), ha, Kit.j(s, 8, 0.06))
@@ -271,12 +278,12 @@ static func outshot(k: Kit, t: Array[Vector3], side: int, s: int, c: int) -> voi
 	var high := PackedVector3Array()
 	for i in N + 1:
 		var g := float(N - i) / N
-		eave.append(fat.lerp(fbt, g) + out * (0.14 + Kit.j(s, i + 20, 0.05)) + Vector3(0, -0.02 - Kit.j(s, i + 25, 0.03), 0))
+		eave.append(fat.lerp(fbt, g) + out * (0.09 + Kit.j(s, i + 20, 0.03)) + Vector3(0, -0.02 - Kit.j(s, i + 25, 0.03), 0))
 		high.append(wat.lerp(wbt, g) + Vector3(0, Kit.j(s, i + 30, 0.035), 0))
-	patch_slope(k, eave, high, 2, s + 40, SLATE_ROOF, 0.45)
+	patch_slope(k, eave, high, 2, s + 40, SLATE_ROOF, 0.30)
 	k.made.quad(wat, wbt, fbt, fat, P.INK[2])
 	# A drum and a stack of split wood in the lee of it: the room is used.
-	var drum := fa.lerp(fb, 1.16) + out * 0.2
+	var drum := fa.lerp(fb, 1.16) + out * 0.12
 	k.found.prism(drum.x, 0.0, drum.z, 0.15, 0.34, 0.15, 9, P.RUST[2], P.PLATE[1])
 
 
@@ -344,6 +351,35 @@ static func wavered(a: Vector3, b: Vector3, n: int, s: int, out: Vector3, amount
 	return pts
 
 
+## How wide a patch is laid, in world units: about ten screen pixels at the play
+## camera, which is a piece of slate a person could carry.
+const CELL := 0.42
+
+
+## Cumulative length along a polyline, one entry per point.
+static func _arc(line: PackedVector3Array) -> PackedFloat32Array:
+	var cum := PackedFloat32Array()
+	cum.resize(line.size())
+	cum[0] = 0.0
+	for i in range(1, line.size()):
+		cum[i] = cum[i - 1] + line[i].distance_to(line[i - 1])
+	return cum
+
+
+## The point `at` units along a polyline, clamped to its ends.
+static func _along(line: PackedVector3Array, cum: PackedFloat32Array, at: float) -> Vector3:
+	var total := cum[cum.size() - 1]
+	if at <= 0.0 or total <= 0.0:
+		return line[0]
+	if at >= total:
+		return line[line.size() - 1]
+	for i in range(1, cum.size()):
+		if at <= cum[i]:
+			var span := cum[i] - cum[i - 1]
+			return line[i - 1].lerp(line[i], 0.0 if span <= 0.0 else (at - cum[i - 1]) / span)
+	return line[line.size() - 1]
+
+
 ## A roof slope as a PATCHWORK, never one ruled corrugation (art review 5). The
 ## slope is given as two matched polylines — the eave and the ridge above it —
 ## and filled cell by cell. Its stations are already irregular (the polylines
@@ -352,12 +388,20 @@ static func wavered(a: Vector3, b: Vector3, n: int, s: int, out: Vector3, amount
 ## get, and the ones that are machine plate are FOUND, ruled, and laid proud of
 ## the hand-made roof they patch. Interior corners lift a little, so the plane
 ## itself is lumpy under the ink instead of flat.
+##
+## The courses are laid PARALLEL TO THE EAVE and stationed by length from the
+## middle of each course, never by matching index. On a hipped slope — a long
+## eave under a short ridge — matching index converges every cell boundary on the
+## ridge ends, so the patches nearest the apex came out as tapering slivers
+## radiating from a point, and a plate one there was a ruled FOUND ray. Stationed
+## by length, a patch is a piece of slate about `CELL` across wherever it lies,
+## and a course that runs past the end of the one above it simply dies into the
+## hip, which is what a hip end IS.
 ## Order the `eave` polyline so that the slope's outward face comes out right:
 ## reversing it flips the slope over, which is how two opposite slopes are drawn
 ## by one routine.
 static func patch_slope(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Array, rows: int, s: int, mats: Array[Color], plate_share: float) -> void:
-	var cols := eave.size() - 1
-	if cols < 1 or ridge.size() != eave.size() or rows < 1:
+	if eave.size() < 2 or ridge.size() != eave.size() or rows < 1:
 		return
 	var grid: Array[PackedVector3Array] = []
 	for r in rows + 1:
@@ -372,27 +416,50 @@ static func patch_slope(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Ar
 			line.append(p)
 		grid.append(line)
 	for r in rows:
-		for i in cols:
-			var a := grid[r][i]
-			var b := grid[r][i + 1]
-			var c := grid[r + 1][i + 1]
-			var d := grid[r + 1][i]
-			var h := Rng.hash01(s, r * 17 + i, 61)
+		var low := grid[r]
+		var high := grid[r + 1]
+		var lc := _arc(low)
+		var hc := _arc(high)
+		var run: float = lc[lc.size() - 1]
+		var up: float = hc[hc.size() - 1]
+		if run <= 0.0:
+			continue
+		var cells := maxi(2, roundi(run / CELL))
+		for i in cells:
+			# Each cell keeps its own width along the course, and the course above
+			# is cut at the same distance from the middle: boundaries run UP the
+			# slope, and only the outermost cell of a course narrows into the hip.
+			var l0 := run * float(i) / cells
+			var l1 := run * float(i + 1) / cells
+			var a := _along(low, lc, l0)
+			var b := _along(low, lc, l1)
+			var c := _along(high, hc, clampf(up * 0.5 + l1 - run * 0.5, 0.0, up))
+			var d := _along(high, hc, clampf(up * 0.5 + l0 - run * 0.5, 0.0, up))
+			var h := Rng.hash01(s, r * 41 + i, 61)
 			if h < plate_share:
 				var lift := Vector3(0, 0.03, 0)
 				k.plate(b + lift, a + lift, d + lift, c + lift,
 					P.PLATE[2] if h < plate_share * 0.55 else P.PLATE[3], P.PLATE[1], P.PLATE[4])
 				continue
-			var pick := int(Rng.hash01(s, r * 23 + i, 62) * mats.size()) % mats.size()
+			var pick := int(Rng.hash01(s, r * 47 + i, 62) * mats.size()) % mats.size()
 			# Damp only sits at the foot of the slope, where it never dries.
 			if pick == mats.size() - 1 and r > 0:
 				pick = 1
 			k.made.quad(b, a, d, c, mats[pick])
 			# A course that slipped: the dark batten shows through the gap.
-			if Rng.hash01(s, r * 11 + i, 63) < 0.08:
+			if Rng.hash01(s, r * 53 + i, 63) < 0.08:
 				var gap := Vector3(0, 0.014, 0)
 				var bm := a.lerp(b, 0.45)
 				k.made.quad(bm + gap, a + gap, a.lerp(d, 0.34) + gap, bm.lerp(c, 0.34) + gap, P.INK[2])
+
+
+## The ridge end repeated, as the top of a hip: a "ridge" of no length, so
+## `patch_slope` lays courses that shorten into the apex.
+static func _apex(at: Vector3, n: int) -> PackedVector3Array:
+	var line := PackedVector3Array()
+	for i in n:
+		line.append(at)
+	return line
 
 
 ## A hipped roof over the wall tops: eaves out by `over`, a ridge along z of half
@@ -443,15 +510,19 @@ static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: floa
 	patch_slope(k, back, ridge_back, 3, s + 17, mats, plate_share * 0.6)
 	if neon.a > 0.0:
 		neon_run(k, front, ridge, 0.1, neon)
-	# Hip ends, fanned to the ridge end so they meet the wavering eaves.
+	# The hip ends are laid in courses too, cut at the hip. Five triangles fanned
+	# from the ridge end in ONE colour is a plain sheet with a fan drawn on it —
+	# the very thing this roof is not, and it was the biggest ruled shape left on
+	# a hipped house. `patch_slope` against a collapsed ridge gives courses
+	# parallel to the eave, and only the last one at the apex is triangular.
 	var out_e := (e[3] - centre)
 	out_e.y = 0.0
 	out_e = out_e.normalized()
-	var end_p := wavered(e[3], e[2], 5, s + 23, out_e, 0.11, 0.06)
-	var end_m := wavered(e[1], e[0], 5, s + 29, -out_e, 0.11, 0.06)
-	for i in 5:
-		k.made.tri(end_p[i], end_p[i + 1], ridge[N], ends)
-		k.made.tri(end_m[i], end_m[i + 1], ridge[0], GroundColors.down(ends, 0.3))
+	var end_p := wavered(e[2], e[3], 5, s + 23, out_e, 0.11, 0.06)
+	var end_m := wavered(e[0], e[1], 5, s + 29, -out_e, 0.11, 0.06)
+	var end_mats: Array[Color] = [ends, GroundColors.down(ends, 0.18), mats[0], GroundColors.up(ends, 0.12), mats[1], ends, mats[3], mats[mats.size() - 1]]
+	patch_slope(k, end_p, _apex(ridge[N], end_p.size()), 3, s + 23, end_mats, plate_share * 0.5)
+	patch_slope(k, end_m, _apex(ridge[0], end_m.size()), 3, s + 29, end_mats, plate_share * 0.35)
 	# The dark overhang under the eaves.
 	k.made.quad(e[0], e[1], e[2], e[3], P.INK[2])
 	return [e[0], e[1], e[2], e[3], r0, rm, r1]
@@ -516,7 +587,9 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	# A room added on, one wall of it somebody else's, so the plan is never a
 	# rectangle and no two houses keep the same footprint (art review 5).
 	if form != 1:
-		outshot(k, t, 3 if form == 0 else 1, s + 70, c)
+		# On the SHORT wall of the two, so the added room stays inside the circle
+		# the house is solid within: form 2 is 3.3 deep and only 2.7 across.
+		outshot(k, t, 3 if form == 0 else 2, s + 70, c)
 	turf_bank(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
 		_snow_on(k, r)
@@ -587,10 +660,10 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	for i in N + 1:
 		back_rev.append(back[N - i])
 		ridge_rev.append(ridge[N - i])
-	patch_slope(k, front, ridge, 4, s + 11, SLATE_ROOF, 0.3 if form == 0 else 0.22)
+	patch_slope(k, front, ridge, 4, s + 11, SLATE_ROOF, 0.13 if form == 0 else 0.15)
 	if form == 0:
 		neon_run(k, front, ridge, 0.09, NEON_TUBES[1])
-	patch_slope(k, back_rev, ridge_rev, 4, s + 17, SLATE_ROOF, 0.16)
+	patch_slope(k, back_rev, ridge_rev, 4, s + 17, SLATE_ROOF, 0.10)
 	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
 	# Gable ends in stone, up to the ridge where it actually lands.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), ridge[N] - Vector3(0, 0.06, 0.1), GroundColors.down(rubble, 0.3))
@@ -612,7 +685,9 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	k.plate(over_b, over_a, up_a, up_b, P.PLATE[3], P.PLATE[1], P.PLATE[4])
 	_chimney(k, cx + 0.05, yr - 0.55, (d * 0.5 - 0.24) * (1.0 if form == 0 else -1.0), 1.0, s + 10)
 	if form == 1:
-		outshot(k, t, 0, s + 70, c)
+		# Under the eave, never on the door wall: at 1.7 wide this house's room
+		# spanned the door it was supposed to be reached through.
+		outshot(k, t, 2, s + 70, c)
 	turf_bank(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
 		# Snow over both slopes, the eaves left dark.
@@ -730,7 +805,7 @@ static func half_house(k: Kit, c: int) -> void:
 		var z := lerpf(-d * 0.5 - 0.16, d * 0.5 + 0.16, f)
 		high.append(Vector3(-w * 0.5 - 0.22 + Kit.j(s, i + 20, 0.08), h + 0.86 - Kit.j(s, i + 30, 0.07) - 0.16 * sin(f * PI), z + Kit.j(s, i + 40, 0.07)))
 		low.append(Vector3(w * 0.5 + 0.26 + Kit.j(s, i + 50, 0.1), h - 0.02 - Kit.j(s, i + 60, 0.07) - (0.2 if i == 3 else 0.0), z + Kit.j(s, i + 70, 0.07)))
-	patch_slope(k, low, high, 4, s + 11, SLATE_ROOF, 0.38)
+	patch_slope(k, low, high, 4, s + 11, SLATE_ROOF, 0.26)
 	# The dark under the low eave: a hand's width of soffit, not a second roof
 	# plane hanging below the first.
 	k.made.quad(Vector3(w * 0.5 + 0.26, h - 0.06, -d * 0.5 - 0.16), Vector3(w * 0.5 + 0.26, h - 0.06, d * 0.5 + 0.16),

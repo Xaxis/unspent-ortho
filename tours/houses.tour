@@ -40,6 +40,9 @@ wait 0.5
 shot 05-from-the-other-side
 
 # Another village on the same seed: the deal is a rule, not one lucky village.
+# On seed 7 this one (Coombe Wood, in the pinewood) wired nothing in, so it is
+# also the proof that stolen neon is something a village did and not a filter
+# over the coast — five houses, five silhouettes, no tube.
 village 4
 wait 0.8
 shot 06-another-village

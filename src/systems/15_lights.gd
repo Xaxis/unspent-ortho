@@ -108,8 +108,6 @@ var _lamp_down := false
 var _glint_near: Array[Dictionary] = []
 ## What went to the sky last frame (Glints.pick output), for tests.
 var glint_list: Array[Dictionary] = []
-## Stolen neon on the machines' power: magenta tube colour (props/houses.gd).
-const NEON_TUBE := Vector3(1.0, 0.25, 0.8)
 ## A mast's beacon and a working part, as light. Both are read off props/works.gd
 ## so the cap, the pool it throws, the glint in wet ground and the fog shaft agree:
 ## the beacon used to be an inlined crimson-orange here while the geometry it came
@@ -124,9 +122,11 @@ static var LENS_GLINT := Works.light(Works.WORKING)
 const SHAFT_RAYED := 0.3
 const SHAFT_LENS := 0.5
 const SHAFT_MACHINE := 0.8
-## House variants that wired a machine's light over the door (props/houses.gd:
-## washed form 1 and slated form 0). Until PropModels.glow_points says so per
-## variant, the list lives here.
+## House variants that wired a machine's light in (props/houses.gd: washed form 1
+## and slated form 0). The LIGHT does not read this list — it asks the model where
+## its tube is (`PropModels.neon_point`) — but world gen deals houses by variant
+## and cannot load a model, so the list is what it is told. A test fails if the
+## models and this list ever disagree.
 const NEON_HOUSE_VARIANTS: Array[int] = [1, 4]
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 
@@ -313,7 +313,11 @@ func _index_sources() -> void:
 			var base := game.world.to_3d(p.pos)
 			var local := Vector3(0, float(spec[2]), 0)
 			if PLACED_SOURCES.has(p.kind):
-				var variant := PropModels.pick_variant(p.kind, Rng.hash_ints(game.world.seed_value, p.id, 90))
+				# `variant_of`, never the id's hash: world gen may have DEALT this
+				# prop a model (WorldProp.variant), and a light read off the other
+				# one puts the glow point, its colour and the "no light on this
+				# variant" early-out on a model that is not the one on screen.
+				var variant := PropModels.variant_of(p, game.world.seed_value)
 				var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
 				var pts := PropModels.glow_points(p.kind, variant, country)
 				if pts.is_empty():
@@ -338,9 +342,6 @@ func _index_sources() -> void:
 				PropKind.SHACK: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.35)
 				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
-			if p.kind == PropKind.HOUSE and NEON_HOUSE_VARIANTS.has(PropModels.variant_of(p, game.world.seed_value)):
-				var front := _front_of(p.kind)
-				s.neon_at = game.world.to_3d(p.pos) + Basis(Vector3.UP, -p.rot) * (Vector3(front.x, 1.05, front.z) * p.scale)
 		else:
 			s.at = game.world.to_3d(p.pos) + Vector3(0, 4.05 * p.scale, 0)
 			s.range = 0.0
@@ -349,15 +350,38 @@ func _index_sources() -> void:
 		sources.append(s)
 
 
-## Where a house's lit front is, in its own frame: the middle of its glow points.
+## Where this house's stolen tube hangs and what colour it burns, read off the
+## MODEL and then kept on the source: a tube that moved to a roof edge must not
+## leave the light it throws pinned to the door wall, in the other lit house's
+## colour (a2 review). Asked only of the houses near the camera and only once
+## each — reading a model means building it, and the index walks every prop in
+## the world, which cost 190 ms of the start when it was done up front.
+func _tube_of(s: Dictionary) -> void:
+	if s.has("neon_at") or bool(s.get("dark", false)):
+		return
+	var p: WorldProp = s.prop
+	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value),
+		maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y))))
+	if tube.is_empty():
+		s.dark = true
+		return
+	s.neon_at = game.world.to_3d(p.pos) + Basis(Vector3.UP, -p.rot) * ((tube.at as Vector3) * p.scale)
+	var tc: Color = tube.color
+	s.neon_rgb = Vector3(tc.r, tc.g, tc.b)
+
+
+## Where a house's lit front is, in its own frame: the middle of the glow points
+## that are its OWN light. A stolen tube is somebody else's and hangs where the
+## model runs it, so it must not drag the hearth's pool off the door.
 static func _front_of(kind: int) -> Vector3:
-	var pts := glow_points(kind)
-	if pts.is_empty():
-		return Vector3.ZERO
 	var sum := Vector3.ZERO
-	for g: Dictionary in pts:
+	var n := 0
+	for g: Dictionary in glow_points(kind):
+		if bool(g.get("neon", false)):
+			continue
 		sum += g.at as Vector3
-	return sum / pts.size()
+		n += 1
+	return Vector3.ZERO if n == 0 else sum / float(n)
 
 
 func _update(delta: float, snap: bool) -> void:
@@ -477,8 +501,9 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.85 if source_lit(s, hour) else 0.0) * _flicker(s), "shaft": SHAFT_RAYED})
 			PropKind.HOUSE:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.5 if source_lit(s, hour) else 0.0})
+				_tube_of(s)
 				if s.has("neon_at"):
-					cands.append({"at": s.neon_at, "rgb": NEON_TUBE, "level": 0.95 * smoothstep(0.2, 0.6, want) * power})
+					cands.append({"at": s.neon_at, "rgb": s.neon_rgb, "level": 0.95 * smoothstep(0.2, 0.6, want) * power})
 			PropKind.SHACK:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.95 * power if source_lit(s, hour) else 0.0), "shaft": SHAFT_MACHINE})
 			PropKind.FIRE_TOWER:
