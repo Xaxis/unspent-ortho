@@ -796,6 +796,10 @@ func _hold_true(what: String, secs: float) -> bool:
 ## frames and no reason. A shot that waits at all says how long.
 const DRAW_WAIT := 60.0
 const DRAW_SLOW := 1.0
+## After this long with no drawn frame, the tour stops waiting to be asked and
+## draws one itself. A healthy shot is drawn inside a frame or two, so this
+## never runs except where the platform has already stopped.
+const DRAW_NUDGE := 2.0
 
 
 func _shot(label: String) -> bool:
@@ -817,17 +821,24 @@ func _drawn() -> bool:
 	var began := Time.get_ticks_msec()
 	var until := began + int(DRAW_WAIT * 1000.0)
 	var seen := [false]
+	var nudge_at := began + int(DRAW_NUDGE * 1000.0)
+	var nudged := false
 	var mark := func() -> void: seen[0] = true
 	RenderingServer.frame_post_draw.connect(mark, CONNECT_ONE_SHOT)
 	while not seen[0] and Time.get_ticks_msec() < until:
 		await get_tree().process_frame
+		if not seen[0] and Time.get_ticks_msec() >= nudge_at:
+			# Draw one into the viewport's own texture, which is what a shot
+			# reads. Nothing is presented: there is no one at that window.
+			nudged = true
+			RenderingServer.force_draw(false)
 	var waited := (Time.get_ticks_msec() - began) / 1000.0
 	if not seen[0]:
 		RenderingServer.frame_post_draw.disconnect(mark)
-		printerr("tour %s: the window was not asked to draw for %.0f s, so there is no frame to take" % [_name, waited])
+		printerr("tour %s: the window was not asked to draw for %.0f s and would not be made to, so there is no frame to take" % [_name, waited])
 		return false
-	if waited >= DRAW_SLOW:
-		print("tour %s: waited %.1f s for a drawn frame" % [_name, waited])
+	if waited >= DRAW_SLOW or nudged:
+		print("tour %s: waited %.1f s for a drawn frame%s" % [_name, waited, " and drew one itself" if nudged else ""])
 	return true
 
 
