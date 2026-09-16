@@ -25,6 +25,8 @@ static func attach(t: UiTitle, layer: CanvasLayer) -> DevTitle:
 	d.set_anchors_preset(Control.PRESET_FULL_RECT)
 	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(d)
+	# Back on the title the saves are the player's again, whatever dev mode started before.
+	DevPlay.restore_saves()
 	if DevMode.access() != &"off":
 		DevMode.ensure_actions()
 	return d
@@ -76,7 +78,7 @@ func _draw() -> void:
 	if title == null or title.menu == null or not title.menu.is_lit():
 		return
 	var stamp := DevStamp.current()
-	if not stamp.is_empty() and str(stamp.get("channel", "")) != "release":
+	if not stamp.is_empty() and str(stamp.get("config", "")) != "" and str(stamp.get("channel", "")) != "release":
 		# Below the slate, where the dark band lies: what build this is, for anyone
 		# who sends word about it.
 		var words := DevStamp.label(stamp)

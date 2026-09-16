@@ -31,6 +31,7 @@ var _world_frame: Image
 var _picture_in := -1
 var _hud_hidden := false
 var _revision := -1
+var _sheltered := false
 ## Clean pictures kept this game.
 var _pictures := 0
 
@@ -41,7 +42,7 @@ func setup(g: Game) -> void:
 	for id in RULES:
 		_rules[id] = ConfigSchema.default_of(id)
 	# A game dev mode started keeps its saves apart, and is touched from the start.
-	DevMode.touched = SaveSlots.root.begins_with("user://" + DevPlay.SAVES)
+	DevMode.touched = DevPlay.dev_started()
 	SaveGame.register(&"dev", _save, _load)
 	if DevMode.access() == &"off":
 		return
@@ -139,6 +140,12 @@ func _hold_session() -> void:
 		game.body.spoof_until = maxf(game.body.spoof_until, now + 5.0)
 	if DevSession.sheltered:
 		DevCheats.shelter(game)
+		_sheltered = true
+	elif _sheltered:
+		_sheltered = false
+		var gear := DevCheats.system(game, "54_gear")
+		if gear != null:
+			gear.call("_refit")
 	# The ui system shows the edge whenever the last app closes; hidden is held over that.
 	if DevSession.hud_hidden and game.hud.visible:
 		game.hud.visible = false

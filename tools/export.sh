@@ -38,9 +38,22 @@ human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576
 bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
 
 # The stamp is packed from inside the project, so it is taken away however the
-# script ends: a run from source must never find one lying about.
+# script ends: a run from source must never find one lying about. Two exports in
+# one copy of the game would pack each other's stamp, so they take turns: the
+# lock is a directory (made atomically), and one older than an hour was left by a
+# run that died without its trap.
 STAMP=stamp/build.json
-trap 'rm -rf stamp' EXIT
+LOCK=build/.export-lock
+mkdir -p build
+waited=0
+until mkdir "$LOCK" 2>/dev/null; do
+  if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then rm -rf "$LOCK"; continue; fi
+  [ $waited -eq 0 ] && echo "export waiting: another export is running in this copy ($LOCK)"
+  waited=$((waited + 1))
+  [ $waited -gt 1200 ] && { echo "export FAILED: $LOCK held for 20 minutes"; exit 1; }
+  sleep 1
+done
+trap 'rm -rf stamp "$LOCK"' EXIT
 
 stamp_one() {
   local stamp_target="$1"

@@ -57,10 +57,16 @@ static var _strikes: Array[int] = []
 ## named there is never overridden by a configuration.
 static func boot(o: BootOptions, args: PackedStringArray) -> void:
 	tool_run = o.shot != "" or o.tour != "" or o.probe or OS.get_cmdline_args().has("-s")
+	var stamp := DevStamp.current()
+	if not flags_allowed(exported(), stamp):
+		# A shipped app launched with --dev or --config=dev must not open what its
+		# configuration shut.
+		o.dev = false
+		o.dev_page = ""
+		o.config = ""
 	asked = o.dev
 	asked_page = o.dev_page
 	configured = o.config != ""
-	var stamp := DevStamp.current()
 	if configured:
 		var why := GameConfig.use(o.config)
 		if why != "":
@@ -81,6 +87,15 @@ static func boot(o: BootOptions, args: PackedStringArray) -> void:
 	GameConfig.fill_boot(o, explicit(args))
 	if reachable():
 		ensure_actions()
+
+
+## Whether --dev and --config are taken: always from source; in an exported build
+## only where the build's own configuration lets dev mode in at all.
+static func flags_allowed(is_exported: bool, stamp: Dictionary) -> bool:
+	if not is_exported:
+		return true
+	var settings: Dictionary = stamp.get("settings", {})
+	return str(settings.get("dev.access", "off")) != "off"
 
 
 ## The option names given on a command line: {"seed": true, ...}.

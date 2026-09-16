@@ -190,7 +190,12 @@ func _process(delta: float) -> void:
 	super(delta)
 	if not is_open:
 		return
-	if not sleeping and not (title != null and title.dev != null and title.dev.is_open()):
+	if not sleeping and title != null and title.dev != null and title.dev.is_open():
+		# Dev mode's app has the keys; what is held is still noted, or the key that
+		# shuts it would read as a fresh press on this list the frame after.
+		for pair: Array in KEYS:
+			_was[pair[0]] = Input.is_action_pressed(pair[0])
+	elif not sleeping:
 		_read_keys()
 	var before := awake_for
 	if not _held_wake:

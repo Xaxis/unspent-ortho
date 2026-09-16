@@ -64,7 +64,7 @@ static func start(label: String, command: String, kind: StringName = &"job") -> 
 static func _launch(command: String, log_path: String) -> int:
 	if launcher.is_valid():
 		return int(launcher.call(command, log_path))
-	var line := "export PATH=\"%s:$PATH\"; cd \"%s\" && { %s ; } > \"%s\" 2>&1; echo \"== exit $?\" >> \"%s\"" % [
+	var line := "export PATH=\"%s:$PATH\"; cd \"%s\" && { %s\n} > \"%s\" 2>&1; echo \"== exit $?\" >> \"%s\"" % [
 		PATH_PREFIX, DevMode.project_path(""), command, log_path, log_path]
 	return OS.create_process("/bin/sh", PackedStringArray(["-c", line]))
 
@@ -73,6 +73,9 @@ static func _launch(command: String, log_path: String) -> int:
 static func poll() -> void:
 	if job.is_empty():
 		return
+	# Whether it was alive is taken before the log is read: a shell that writes its
+	# exit line and goes between the two is then read with its exit line in.
+	var alive := int(job.ended) != 0 or launcher.is_valid() or OS.is_process_running(int(job.pid))
 	var lines: PackedStringArray = job.lines
 	var f := FileAccess.open(str(job.log), FileAccess.READ)
 	if f != null:
@@ -95,8 +98,8 @@ static func poll() -> void:
 		if lines[i].begins_with("== exit "):
 			_end(lines[i].trim_prefix("== exit ").to_int())
 			return
-	if not launcher.is_valid() and not OS.is_process_running(int(job.pid)):
-		# The shell went without saying how (killed): read the last of it once more.
+	if not alive:
+		# The shell went without saying how: it was killed.
 		_end(int(job.code) if int(job.code) >= 0 else 143)
 
 
@@ -204,21 +207,29 @@ static func serve(dir: String) -> String:
 	var pid := OS.create_process("/bin/sh", PackedStringArray(["-c", line]))
 	if pid <= 0:
 		return "It would not serve."
-	serving = {"dir": dir, "pid": pid, "url": "http://127.0.0.1:%d/" % SERVE_PORT, "log": log_path, "opened": false}
+	serving = {"dir": dir, "pid": pid, "url": "", "log": log_path, "opened": false}
 	return ""
 
 
-## Open the browser once the server says it is up. True when it has.
+## Open the browser once the server says where it is. True when it has.
 static func open_when_served() -> bool:
 	if serving.is_empty() or bool(serving.opened):
 		return false
-	if not OS.is_process_running(int(serving.pid)):
+	var m := RegEx.create_from_string("web serving (http://\\S+)").search(FileAccess.get_file_as_string(str(serving.log)))
+	if m == null or not OS.is_process_running(int(serving.pid)):
 		return false
-	if FileAccess.get_file_as_string(str(serving.log)).contains("web serving"):
-		serving.opened = true
-		OS.shell_open(str(serving.url))
-		return true
-	return false
+	serving.url = m.get_string(1)
+	serving.opened = true
+	OS.shell_open(str(serving.url))
+	return true
+
+
+## "" while the server is up or starting; otherwise what its last line said.
+static func serve_problem() -> String:
+	if serving.is_empty() or OS.is_process_running(int(serving.pid)):
+		return ""
+	var lines := FileAccess.get_file_as_string(str(serving.log)).strip_edges().split("\n")
+	return "The server stopped: %s" % (lines[lines.size() - 1] if not lines.is_empty() else "it said nothing")
 
 
 static func stop_serving() -> void:

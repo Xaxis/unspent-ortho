@@ -44,9 +44,19 @@ fi
 
 sha="$(git rev-parse --short HEAD)"
 [ -n "$(git status --porcelain --untracked-files=no)" ] && sha="$sha-dirty"
-# A stamped build is served under the commit it was made from, not the one checked out now.
+# A stamped build is served under the commit it was made from, not the one checked
+# out now, and its configuration and a hash of its stamp: /b/ is cached for a year,
+# so two builds of one commit (playtest, then release) must never share a path.
 if [ -f "$dir/build.json" ]; then
-  stamped="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("commit","") + ("-dirty" if d.get("dirty") else ""))' "$dir/build.json" 2>/dev/null)"
+  stamped="$(python3 -c '
+import hashlib, json, sys
+raw = open(sys.argv[1], "rb").read()
+d = json.loads(raw)
+parts = [d.get("commit", "") + ("-dirty" if d.get("dirty") else "")]
+if d.get("config"): parts.append(d["config"])
+keep = {k: d.get(k) for k in ("config", "settings", "built_at", "commit", "target", "template")}
+parts.append(hashlib.sha1(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:6])
+print("-".join(p for p in parts if p))' "$dir/build.json" 2>/dev/null)"
   [ -n "$stamped" ] && sha="$stamped"
 fi
 

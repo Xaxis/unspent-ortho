@@ -26,8 +26,11 @@ build of the game are all things you can name, keep, send and get back**.
 | `chord` | nothing, until `` ` `` is struck three times inside 1.5 s; then as open, remembered on that device |
 | `off`   | nothing; the chord does nothing |
 
-- **An export with no configuration is `off`.** `tools/deploy.sh` exports without
-  one, so production never carries dev mode unless a configuration says so.
+- **An export with no configuration is `off`**, and its stamp calls itself a
+  release (nothing on its title). `tools/deploy.sh` exports without one, so
+  production never carries dev mode unless a configuration says so.
+- **A shipped build ignores `--dev` and `--config`** unless its own stamp lets dev
+  mode in at all, so a release app cannot be argued into opening it.
 - **A source run for a person** (`godot --path .`) is the owner at their own
   machine: at least `chord`, whatever configuration is active, so choosing
   `release` to try it can never lock the owner out.
@@ -72,7 +75,8 @@ the build's own stamp is never rewritten. Changes kept in a build go to
 owner's machine.
 
 A game started from dev mode (play a configuration, restage a note) keeps its
-saves in `user://dev-saves/<config>`, apart from the player's.
+saves in `user://dev-saves/<config>`, apart from the player's, until the title
+comes back (a tool run's go under `user://tool-saves/` with its other saves).
 
 ## Builds
 
@@ -91,8 +95,13 @@ cross-origin headers by `tools/web/web.mjs --serve` and opened in the browser),
 production** (asked twice), **use its configuration**, and **throw away** (kept
 builds).
 
+Each build is deployed under `/b/<commit>-<config>-<hash>/`, which is cached for
+a year: two builds of one commit (a playtest, then a release) never share a path.
+
 Jobs run one at a time in the background (`DevJobs`), their log tailed on the
-slate, and they outlive the game that started them. Before any job the slate
+slate, and they outlive the game that started them. Exports take turns through a
+lock, since they share the stamp; a web build served for play finds another port
+when one is held, and goes when the game that started it does. Before any job the slate
 reads the machine's load and the Godot runs already going (another session may
 be mid-tour): on a busy machine it asks again rather than piling on.
 

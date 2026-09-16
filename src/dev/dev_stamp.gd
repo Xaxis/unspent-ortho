@@ -20,6 +20,7 @@ const VERSION := 1
 
 static var _current: Variant = null
 static var _sha := ""
+static var _sha_read := false
 
 
 static func current() -> Dictionary:
@@ -49,7 +50,8 @@ static func make(name: String, resolved: Dictionary, target: String, template: S
 		"chain": Array(resolved.get("chain", PackedStringArray())),
 		"settings": settings,
 		"label": str(pick.call("build.label")),
-		"channel": str(pick.call("build.channel")),
+		# A build of no configuration is what the domain is sent (tools/deploy.sh).
+		"channel": str(pick.call("build.channel")) if name != "" else "release",
 		"version": str(pick.call("build.version")),
 		"commit": commit,
 		"dirty": dirty,
@@ -82,8 +84,9 @@ static func label(stamp: Dictionary) -> String:
 
 ## The commit a run from source is at ("" where there is no git to ask).
 static func source_commit() -> String:
-	if _sha != "" or OS.has_feature("template") or OS.has_feature("web"):
+	if _sha_read or OS.has_feature("template") or OS.has_feature("web"):
 		return _sha
+	_sha_read = true
 	var out := []
 	if OS.execute("git", PackedStringArray(["-C", ProjectSettings.globalize_path("res://"), "rev-parse", "--short", "HEAD"]), out) == 0 and not out.is_empty():
 		_sha = str(out[0]).strip_edges()

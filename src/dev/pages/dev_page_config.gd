@@ -156,10 +156,7 @@ func _paste() -> void:
 		name = "pasted"
 	if GameConfig.exists(name) and not screen.ask("paste", "Again: it writes over %s." % name):
 		return
-	GameConfig.forget_edits()
-	for id: String in parsed.settings:
-		GameConfig.set_value(id, parsed.settings[id])
-	report(_said(GameConfig.keep_as(name), "Pasted in as %s." % name))
+	report(_said(GameConfig.keep_pasted(parsed.settings, name), "Pasted in as %s." % name))
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:

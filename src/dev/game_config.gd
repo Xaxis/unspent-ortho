@@ -35,6 +35,9 @@ static var chain: PackedStringArray = []
 static var edits: Dictionary = {}
 ## Bumped on every change a reader might act on (the dev system applies live rules on it).
 static var revision := 0
+## Whether this device's own configurations are read. The stamp tool turns it off:
+## a build is made from the repository's files, never from a copy a test left.
+static var device_configs := true
 
 
 ## Configurations kept on this device (the test runner's own under test).
@@ -49,7 +52,7 @@ static func valid_name(name: String) -> bool:
 ## Every configuration this build can see, packed and the user's, by name.
 static func names() -> PackedStringArray:
 	var seen := {}
-	for dir: String in [DIR, user_dir()]:
+	for dir: String in ([DIR, user_dir()] if device_configs else [DIR]):
 		for f in _files(dir):
 			if f.ends_with(".json") and valid_name(f.get_basename()):
 				seen[f.get_basename()] = true
@@ -59,13 +62,13 @@ static func names() -> PackedStringArray:
 
 
 static func exists(name: String) -> bool:
-	return valid_name(name) and (FileAccess.file_exists(user_dir().path_join(name + ".json")) or FileAccess.file_exists(DIR.path_join(name + ".json")))
+	return valid_name(name) and FileAccess.file_exists(path_of(name))
 
 
 ## Where a configuration named `name` is read from: the user's copy first.
 static func path_of(name: String) -> String:
 	var user := user_dir().path_join(name + ".json")
-	return user if FileAccess.file_exists(user) else DIR.path_join(name + ".json")
+	return user if device_configs and FileAccess.file_exists(user) else DIR.path_join(name + ".json")
 
 
 ## The file as written: {ok, why, base, settings}. Settings are coerced to the
@@ -220,7 +223,7 @@ static func current() -> Dictionary:
 ## Where configurations are written here: the repository on the machine the game
 ## is built on, user:// anywhere else.
 static func write_dir() -> String:
-	if DevMode.local() and not OS.get_cmdline_args().has("-s"):
+	if DevMode.local() and not DevMode.tool_run:
 		return ProjectSettings.globalize_path(DIR)
 	return user_dir()
 
@@ -249,6 +252,18 @@ static func keep_as(name: String) -> String:
 	if why != "":
 		return why
 	return use(name)
+
+
+## Keep `settings` (a pasted configuration, checked) as configuration `name`,
+## exactly: over every default and nothing of the one in use, which a copy out
+## would otherwise inherit wherever it left a default out (dev.access: off among them).
+static func keep_pasted(settings: Dictionary, name: String) -> String:
+	clear()
+	for id: Variant in settings:
+		var why := set_value(str(id), settings[id])
+		if why != "":
+			return why
+	return keep_as(name)
 
 
 static func _write(name: String, base: String) -> String:
@@ -296,8 +311,11 @@ static func export_text() -> String:
 
 
 ## Settings a configuration puts into a start before anything else reads it: the
-## island and its size, unless the command line named them.
+## island and its size, unless the command line named them or a save being loaded
+## (--load, filled in already) says whose island it is.
 static func fill_boot(o: BootOptions, explicit: Dictionary = {}) -> void:
+	if o.load_slot >= 0:
+		return
 	if not explicit.has("seed"):
 		o.seed_value = int(value("world.seed"))
 	if not explicit.has("size"):

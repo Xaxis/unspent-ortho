@@ -101,3 +101,15 @@ func test_the_command_line_names_are_read_as_named() -> void:
 	eq(o.config, "playtest")
 	check(BootOptions.parse(["--dev"]).dev)
 	eq(BootOptions.parse(["--dev"]).dev_page, "")
+
+
+func test_a_build_of_no_configuration_is_a_release_with_nothing_on_its_title() -> void:
+	var none := DevStamp.make("", {"chain": PackedStringArray(), "settings": {}}, "web", "release", "a1b2c3d", false, 0)
+	eq(none.channel, "release", "what tools/deploy.sh sends the domain")
+
+
+func test_a_shipped_build_takes_dev_flags_only_where_its_stamp_lets_dev_mode_in() -> void:
+	check(DevMode.flags_allowed(false, {}), "from source, always")
+	check(not DevMode.flags_allowed(true, {}), "a build of no configuration: never")
+	check(not DevMode.flags_allowed(true, {"settings": {"dev.access": "off"}}), "a release: never")
+	check(DevMode.flags_allowed(true, {"settings": {"dev.access": "chord"}}), "a playtest: yes")

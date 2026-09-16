@@ -15,6 +15,7 @@ func _initialize() -> void:
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		o[kv[0]] = kv[1] if kv.size() > 1 else true
 	var name := str(o.config)
+	GameConfig.device_configs = false
 	var resolved := {"ok": true, "why": "", "chain": PackedStringArray(), "settings": {}}
 	if name != "":
 		resolved = GameConfig.resolve(name)

@@ -288,7 +288,8 @@ func test_play_and_restage_replace_the_game_and_keep_their_saves_apart() -> void
 	GameConfig.set_value("world.size", 256)
 	GameConfig.set_value("world.hour", 5.0)
 	DevPlay.config(g)
-	check(SaveSlots.root.begins_with("user://dev-saves/"), "a game dev mode starts saves apart: %s" % SaveSlots.root)
+	check(SaveSlots.root.begins_with("user://tool-saves/dev-saves/"), "a game dev mode starts saves apart (a tool run's among the tools'): %s" % SaveSlots.root)
+	check(DevPlay.dev_started())
 	await tree.process_frame
 	await tree.process_frame
 	var next: Game = null
@@ -315,7 +316,9 @@ func test_play_and_restage_replace_the_game_and_keep_their_saves_apart() -> void
 			check(staged.player.pos.distance_to(at) < 1.5, "where the note was taken")
 			eq(staged.world.seed_value, 9, "on the note's island")
 	holder.free()
-	SaveSlots.root = root_was
+	DevPlay.restore_saves()
+	eq(SaveSlots.root, root_was, "and back where they were once dev mode lets go")
+	check(not DevPlay.dev_started())
 	_restore()
 
 

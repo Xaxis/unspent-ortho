@@ -53,7 +53,7 @@ func confirm(row: Dictionary) -> void:
 				report("Opening the app.")
 			else:
 				var why := DevJobs.serve(str(build.dir))
-				report("!" + why if why != "" else "Serving on %s." % DevJobs.serving.url)
+				report("!" + why if why != "" else "Serving it; the browser opens when it is up.")
 		&"prove":
 			_run("proving %s" % build.target, DevBuilds.prove_command(build), &"prove")
 		&"keep":
@@ -74,21 +74,24 @@ func confirm(row: Dictionary) -> void:
 		&"preview":
 			_run("deploying a preview", DevBuilds.deploy_command(build, false), &"deploy")
 		&"production":
-			if not screen.ask("production", "Again: this is what the domain serves to everyone."):
+			var m := DevJobs.machine(true)
+			var busy := " The machine is busy: %s." % DevJobs.machine_line(m) if bool(m.busy) else ""
+			if not screen.ask("production", "Again: this is what the domain serves to everyone.%s" % busy):
 				return
-			_run("deploying production", DevBuilds.deploy_command(build, true), &"deploy")
+			_run("deploying production", DevBuilds.deploy_command(build, true), &"deploy", true)
 		&"throw":
 			if screen.ask("throw", "Again: the kept build is deleted."):
 				_run("throwing away %s" % build.id, DevBuilds.throw_command(build), &"keep")
 				screen.back()
 
 
-func _run(label: String, command: String, kind: StringName) -> void:
+## `asked`: the row has asked its own question already, the machine's load in it.
+func _run(label: String, command: String, kind: StringName, asked: bool = false) -> void:
 	if command == "":
 		refuse("Nothing to run for this build.")
 		return
 	var m := DevJobs.machine(true)
-	if kind != &"keep" and bool(m.busy) and not screen.ask("busy:" + label, "Again, though the machine is busy: %s." % DevJobs.machine_line(m)):
+	if kind != &"keep" and not asked and bool(m.busy) and not screen.ask("busy:" + label, "Again, though the machine is busy: %s." % DevJobs.machine_line(m)):
 		return
 	var why := DevJobs.start(label, command, kind)
 	report("!" + why if why != "" else label.capitalize() + ".")

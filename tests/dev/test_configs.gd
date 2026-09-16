@@ -149,3 +149,36 @@ func test_choices_step_round_and_say_what_they_are() -> void:
 	eq(ConfigChoices.show("builds.targets", ["web", "web-nothreads"]), "web web no threads")
 	check(ConfigChoices.options("world.start").has("spawn"))
 	check(ConfigChoices.options("world.weather").has("rules"))
+
+
+func test_a_loaded_game_keeps_its_own_island() -> void:
+	GameConfig.clear()
+	GameConfig.set_value("world.seed", 42)
+	GameConfig.set_value("world.size", 256)
+	var o := BootOptions.new()
+	o.seed_value = 7
+	o.size = 512
+	o.load_slot = 0
+	GameConfig.fill_boot(o, {"load": true})
+	eq([o.seed_value, o.size], [7, 512], "--load filled the save's seed and size; a configuration never overwrites them")
+	var fresh := BootOptions.new()
+	GameConfig.fill_boot(fresh)
+	eq([fresh.seed_value, fresh.size], [42, 256], "a new start takes them")
+	GameConfig.clear()
+
+
+func test_a_pasted_configuration_is_exactly_what_was_pasted() -> void:
+	# The one in use opens dev mode; the paste (copied out of a release build) says
+	# nothing of dev mode, because off is the default and a copy leaves defaults out.
+	check(GameConfig.use("dev") == "")
+	eq(str(GameConfig.value("dev.access")), "open")
+	var parsed := GameConfig.parse('{"name": "test-pasted", "settings": {"build.channel": "release", "world.hour": 6.5}}', "x")
+	check(parsed.ok, parsed.why)
+	var name := "test-pasted-%d" % Time.get_ticks_usec()
+	eq(GameConfig.keep_pasted(parsed.settings, name), "")
+	var back := GameConfig.resolve(name)
+	check(back.ok, back.why)
+	eq(back.settings, {"build.channel": "release", "world.hour": 6.5}, "nothing of dev rode in")
+	eq(str(GameConfig.value("dev.access")), "off", "and dev mode is off in it")
+	DirAccess.remove_absolute(GameConfig.user_dir().path_join(name + ".json"))
+	GameConfig.clear()

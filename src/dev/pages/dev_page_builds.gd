@@ -44,7 +44,9 @@ func rows() -> Array[Dictionary]:
 			{"tone": "" if not bool(b.kept) else "dev"}))
 	if not DevJobs.serving.is_empty():
 		out.append(header("served"))
-		out.append(item(&"unserve", "stop serving", str(DevJobs.serving.url)))
+		var problem := DevJobs.serve_problem()
+		out.append(item(&"unserve", "stop serving" if problem == "" else problem, str(DevJobs.serving.url) if problem == "" else "",
+			{"tone": "warn" if problem != "" else ""}))
 	return out
 
 

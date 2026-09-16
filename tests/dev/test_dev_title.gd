@@ -73,3 +73,25 @@ func test_new_game_from_the_title_starts_as_the_configuration_says() -> void:
 		check(game.options.lamp, "with the lamp lit")
 	holder.free()
 	GameConfig.clear()
+
+
+func test_the_key_that_shuts_dev_mode_is_not_a_press_on_the_title() -> void:
+	var was_asked := DevMode.asked
+	DevMode.asked = true
+	var t := _title()
+	t.menu.settle()
+	t.menu.select(&"new")
+	t.dev.open()
+	# e goes down on the app (it closes on it, here by hand) and is still held as
+	# the title's list takes the keys back, frames later.
+	Input.action_press(&"use")
+	await tree.process_frame
+	await tree.process_frame
+	t.dev.screen.close()
+	for i in 3:
+		await tree.process_frame
+	Input.action_release(&"use")
+	await tree.process_frame
+	check(not t._starting, "the held e did not start a new game")
+	t.get_parent().free()
+	DevMode.asked = was_asked
