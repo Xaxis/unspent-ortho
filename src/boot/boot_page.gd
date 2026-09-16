@@ -30,7 +30,14 @@ const SHELL_SHARE := 0.12
 ## hand-over. The slate's glass and phosphor (UiTheme: GLASS_OFF, GHOST, FAINT, TEXT,
 ## BRIGHT, TEXT_DIM), written out so this page names nothing heavy: the loading
 ## page is the slate powering up.
+##
+## Palette is the one class it does name: eighty lines of const ramps with no
+## dependencies of its own, so the bezel's violet chrome, its grey casing patch
+## and its tape are the machines' own colours rather than a copy that can drift.
 const GLASS := Color("#060a0c")
+## The glass once it is lit (UiTheme.GLASS, GLASS_ROW): the screen inside the bezel.
+const SCREEN_GLASS := Color("#0b1315")
+const SCREEN_ROW := Color("#0d1618")
 const RAIL := Color("#173029")
 const TICK := Color("#2b5c4c")
 const LIT := Color("#87d9b5")
@@ -47,12 +54,31 @@ const RIVER := Color("#2b5c4c")
 const GRID := Color("#4b4274")
 const VILLAGE := Color("#c9fbe2")
 const SKETCH := 112
-const SKETCH_AT := Vector2i(264, 70)
+const SKETCH_AT := Vector2i(264, 104)
 const SKETCH_DRAW_SECONDS := 0.45
 
-const LINE_Y := 214
+const LINE_Y := 248
 const LINE_X0 := 216
 const LINE_X1 := 424
+
+## The device, and the glass in it: UiSlate.DEVICE and UiSlate.glass_of(DEVICE),
+## written out for the same reason the colours are (tests/export/test_boot_page
+## holds them to the slate's own). This is the device an app opens on, so the
+## first screen of the game is the screen every screen after it is.
+const DEVICE := Rect2i(8, 5, 624, 350)
+const SCREEN := Rect2i(24, 19, 592, 316)
+## The bar along the top of the glass and the strip along its foot.
+const STATUS_H := 12
+const KEYS_H := 12
+## Seconds the chrome takes to come up. The web shell draws this page in the
+## browser while the engine downloads (src/boot/shell.html) and cannot draw a
+## bezel, so the engine's page starts as the shell left it — bare glass — and
+## the chrome rises as the power does. Nothing pops.
+const BEZEL_IN := 0.5
+## The bezel's ink, all from the machines' own ramps.
+const CHROME := Palette.FOUND
+const CASING := Palette.ASH
+const SENSOR := Palette.COLD
 ## Seconds the page takes to lift off the scene once it is up.
 const LIFT_SECONDS := 0.35
 
@@ -356,19 +382,123 @@ func progress() -> float:
 	return held_progress if held_progress >= 0.0 else stages.progress()
 
 
+## How far the slate has powered up, 0..1. A still page for shots is already on.
+func lit() -> float:
+	return 1.0 if kind == "preview" else clampf(_t / BEZEL_IN, 0.0, 1.0)
+
+
 ## The glass goes once the ink on it has faded.
 func _draw_glass() -> void:
 	var a := 1.0
 	if _lift >= 0.0:
 		a = 1.0 - clampf((_lift - LIFT_SECONDS * 0.4) / (LIFT_SECONDS * 0.6), 0.0, 1.0)
 	UiDraw.rect(_sheet, Rect2i(0, 0, 640, 360), Color(GLASS, a))
+	_draw_device(_sheet, a * lit())
+
+
+## The device the page is a screen of: violet chrome stolen off a machine, a
+## grey casing patched onto its lower right, duct tape over the cracked corner,
+## KEEP DRY scratched into it (docs/ART.md §9). The loading page was the one
+## screen in the game that was not the slate, and it is the first one anybody
+## sees. Drawn from rects at whole pixels, not baked: it must be on the very
+## first frame, and a bake takes a third of a second the start-up cannot spend.
+func _draw_device(ci: CanvasItem, a: float) -> void:
+	if a <= 0.0:
+		return
+	var d := DEVICE
+	var g := SCREEN
+	var face := CHROME[1].lerp(Palette.PLATE[1], 0.35)
+	# 1. The chrome: one violet face, chamfered corners, lit along the top and
+	#    left, one shade step along the bottom and right. Exact, as FOUND is.
+	UiDraw.rect(ci, d, Color(face, a))
+	for k in 4:
+		var n := 4 - k
+		for y: int in [d.position.y + k, d.end.y - 1 - k]:
+			UiDraw.rect(ci, Rect2i(d.position.x, y, n, 1), Color(GLASS, a))
+			UiDraw.rect(ci, Rect2i(d.end.x - n, y, n, 1), Color(GLASS, a))
+	UiDraw.hline(ci, d.position.x + 4, d.end.x - 5, d.position.y, Color(CHROME[0], a))
+	UiDraw.hline(ci, d.position.x + 4, d.end.x - 5, d.position.y + 1, Color(CHROME[3], a))
+	UiDraw.hline(ci, d.position.x + 4, d.end.x - 5, d.position.y + 2, Color(CHROME[2], a))
+	UiDraw.vline(ci, d.position.x + 1, d.position.y + 4, d.end.y - 5, Color(CHROME[2], a))
+	UiDraw.hline(ci, d.position.x + 4, d.end.x - 5, d.end.y - 2, Color(CHROME[0].lerp(CHROME[1], 0.5), a))
+	UiDraw.vline(ci, d.end.x - 2, d.position.y + 4, d.end.y - 5, Color(CHROME[0].lerp(CHROME[1], 0.5), a))
+	# One rubbed edge: years of a thumb along the top, worn to bright metal.
+	UiDraw.hline(ci, d.position.x + 112, d.position.x + 256, d.position.y + 1, Color(CHROME[5], a))
+	# 2. The plates its frame is built of, and the vent slots cut down the side.
+	for sx: int in [d.position.x + 193, d.position.x + 430]:
+		UiDraw.vline(ci, sx, d.position.y + 3, g.position.y - 3, Color(CHROME[0], a))
+		UiDraw.vline(ci, sx + 1, d.position.y + 3, g.position.y - 3, Color(CHROME[2], a))
+	for i in 9:
+		UiDraw.rect(ci, Rect2i(d.position.x + 6, d.position.y + 115 + i * 4, 5, 2), Color(CHROME[0], a))
+		UiDraw.hline(ci, d.position.x + 6, d.position.x + 10, d.position.y + 117 + i * 4, Color(CHROME[2], a))
+	# 3. Rivets along the top in an exact row, and the module's cold sensor slit.
+	var slit := Rect2i(320 - 22, d.position.y + 4, 44, 5)
+	var rx := d.position.x + 30
+	while rx < d.end.x - 30:
+		if rx < slit.position.x - 6 or rx > slit.end.x + 4:
+			UiDraw.rect(ci, Rect2i(rx, d.position.y + 6, 2, 1), Color(CHROME[5], a))
+			UiDraw.rect(ci, Rect2i(rx, d.position.y + 7, 2, 1), Color(CHROME[0], a))
+		rx += 16
+	UiDraw.rect(ci, slit, Color(CHROME[0], a))
+	UiDraw.hline(ci, slit.position.x + 2, slit.end.x - 3, slit.position.y + 2, Color(SENSOR[1], a))
+	for k: int in [9, 10, 30]:
+		UiDraw.px(ci, slit.position.x + k, slit.position.y + 2, Color(SENSOR[3], a))
+	UiDraw.hline(ci, slit.position.x, slit.end.x - 1, slit.end.y, Color(CHROME[3], a))
+	# 4. The grey casing cut off some other device and soldered onto the corner.
+	var seam_x := d.position.x + 399
+	var seam_y := d.position.y + 154
+	UiDraw.rect(ci, Rect2i(d.end.x - 16, seam_y, 16, d.end.y - seam_y), Color(CASING[1], a))
+	UiDraw.rect(ci, Rect2i(seam_x, d.end.y - 20, d.end.x - seam_x, 20), Color(CASING[1], a))
+	UiDraw.hline(ci, d.end.x - 16, d.end.x - 1, seam_y, Color(Palette.INK[1], a))
+	UiDraw.vline(ci, seam_x, d.end.y - 20, d.end.y - 1, Color(Palette.INK[1], a))
+	UiDraw.hline(ci, seam_x + 10, d.end.x - 10, d.end.y - 6, Color(CASING[0], a))
+	UiDraw.hline(ci, seam_x + 10, d.end.x - 10, d.end.y - 5, Color(CASING[2], a))
+	for gy in 3:
+		for gx in 7:
+			UiDraw.rect(ci, Rect2i(d.end.x - 72 + gx * 3, g.end.y + 5 + gy * 3, 1, 1), Color(CASING[0], a))
+	# 5. Two machine screws, and the brass one where the right screw was lost.
+	for s: Vector2i in [Vector2i(d.position.x + 5, d.position.y + 5), Vector2i(d.position.x + 5, d.end.y - 10)]:
+		UiDraw.rect(ci, Rect2i(s.x, s.y, 5, 5), Color(Palette.PLATE[3], a))
+		UiDraw.frame(ci, Rect2i(s.x, s.y, 5, 5), Color(Palette.PLATE[0], a))
+		UiDraw.hline(ci, s.x + 1, s.x + 3, s.y + 2, Color(Palette.PLATE[0], a))
+	UiDraw.rect(ci, Rect2i(d.end.x - 13, d.end.y - 13, 6, 6), Color(Palette.COPPER[2], a))
+	UiDraw.frame(ci, Rect2i(d.end.x - 13, d.end.y - 13, 6, 6), Color(Palette.COPPER[0], a))
+	# 6. KEEP DRY scratched into the chrome, the power light, the lip and the glass.
+	UiDraw.text(ci, Vector2i(d.position.x + 26, d.end.y - 15), "KEEP DRY", Color(CHROME[5], a * 0.85))
+	UiDraw.rect(ci, Rect2i(d.position.x + 18, d.position.y + 6, 3, 2), Color(LIT, a))
+	UiDraw.frame(ci, g.grow(2), Color(CHROME[0].lerp(CHROME[1], 0.4), a))
+	UiDraw.frame(ci, g.grow(1), Color(GLASS, a))
+	UiDraw.rect(ci, g, Color(SCREEN_GLASS, a))
+	for y in range(g.position.y + 1, g.end.y, 2):
+		UiDraw.hline(ci, g.position.x, g.end.x - 1, y, Color(SCREEN_ROW, a))
+	# 7. Duct tape across the top right corner, over the crack under it.
+	_draw_tape(ci, a)
+
+
+## Silver duct tape laid across the corner on the diagonal, its ends torn.
+func _draw_tape(ci: CanvasItem, a: float) -> void:
+	var corner := Vector2(DEVICE.end.x - 1, DEVICE.position.y)
+	for t in range(-19, 23):
+		var mid := corner + Vector2(1, 1).normalized() * t + Vector2(1, -1).normalized() * -16.0
+		var across := Vector2(1, -1).normalized()
+		for off in range(-6, 7):
+			var q := mid + across * off
+			var col := CASING[4] if absi(off) < 5 else CASING[3]
+			if off > 4:
+				col = CASING[2]
+			elif (roundi(q.x) * 2 + roundi(q.y)) % 4 == 0:
+				col = CASING[3]
+			UiDraw.px(ci, roundi(q.x), roundi(q.y), Color(col, a))
 
 
 func _draw_page() -> void:
 	var ci := _ink
 	# A faint band drifting down the glass: the page is alive while a stage runs.
-	var band_y := int(fmod(_t * 22.0, 400.0)) - 20
-	UiDraw.rect(ci, Rect2i(0, band_y, 640, 14), SCAN)
+	var g := SCREEN
+	var band_y := g.position.y + int(fmod(_t * 22.0, float(g.size.y + 40))) - 20
+	UiDraw.rect(ci, Rect2i(g.position.x, maxi(band_y, g.position.y), g.size.x, clampi(14, 0, g.end.y - maxi(band_y, g.position.y))), SCAN)
+	_draw_status(ci)
+	_draw_marks(ci)
 	_draw_sketch(ci)
 	var p := progress()
 	var x0 := LINE_X0
@@ -391,6 +521,79 @@ func _draw_page() -> void:
 	if held_progress >= 0.0:
 		words = _label_at(p)
 	UiDraw.text(ci, Vector2i(x0, LINE_Y - 16), words, WORDS)
+
+
+## The slate's status bar and its key strip, the two things every app on this
+## device has: the page is one of them, so the empty field the island used to
+## float in is furnished the way the rest of the slate is.
+func _draw_status(ci: CanvasItem) -> void:
+	var a := lit()
+	if a <= 0.0:
+		return
+	var g := SCREEN
+	var x := g.position.x + 10
+	var y := g.position.y + 2
+	UiDraw.hline(ci, x - 2, g.end.x - 14, g.position.y + STATUS_H, Color(RAIL, a))
+	UiDraw.text(ci, Vector2i(x, y), "slate", Color(HEAD, a))
+	UiDraw.text_right(ci, g.end.x - 14, y, "island %d" % (options.seed_value if options != null else 0), Color(WORDS, a))
+	# The foot strip: what it is doing, in the place an app names its keys.
+	var fy := g.end.y - KEYS_H + 1
+	UiDraw.hline(ci, x - 2, g.end.x - 14, fy - 2, Color(RAIL, a))
+	UiDraw.text(ci, Vector2i(x, fy), "opening a world" if kind != "title" else "opening", Color(TICK, a))
+	UiDraw.text_right(ci, g.end.x - 14, fy, "%d%%" % roundi(progress() * 100.0), Color(WORDS, a))
+	_draw_stages(ci, a)
+
+
+## What the slate has done and what is left, as a list down the left margin: the
+## work is real and saying it fills the glass the way an app's list pane does.
+## The right margin stays clear, because that is where the crack is.
+func _draw_stages(ci: CanvasItem, a: float) -> void:
+	var rows: Array[String] = []
+	var seen := {}
+	for s in stages.stages:
+		if seen.has(s.label):
+			continue
+		seen[s.label] = true
+		rows.append(s.label)
+	if rows.is_empty():
+		return
+	var top := SKETCH_AT.y + SKETCH / 2 - rows.size() * 11 / 2
+	var here := stages.current()
+	var doing := _label_at(progress()) if held_progress >= 0.0 else (here.label if here != null else rows[-1])
+	var past := true
+	for i in rows.size():
+		var y := top + i * 11
+		var now := rows[i] == doing
+		if now:
+			past = false
+		var col := WORDS if past else (HEAD if now else RAIL)
+		UiDraw.rect(ci, Rect2i(SCREEN.position.x + 10, y + 3, 3, 3), Color(LIT if past else (HEAD if now else RAIL), a))
+		if now:
+			UiDraw.rect(ci, Rect2i(SCREEN.position.x + 9, y + 2, 5, 5), Color(HEAD, a * (0.3 + 0.35 * sin(_t * 5.0) + 0.35)))
+		UiDraw.text(ci, Vector2i(SCREEN.position.x + 18, y), rows[i], Color(col, a))
+
+
+## The glass is salvaged and says so: a column of stuck pixels down the left
+## margin, and the crack in the top right corner under the tape (docs/ART.md §9).
+## Both live in the margins, clear of everything the page writes.
+func _draw_marks(ci: CanvasItem) -> void:
+	var a := lit()
+	if a <= 0.0:
+		return
+	var g := SCREEN
+	var dx := g.position.x + 3
+	for y in range(g.position.y, g.end.y):
+		if (y / 23) % 5 == 2:
+			continue
+		UiDraw.px(ci, dx, y, Color(RAIL, a * (0.9 if y % 2 == 0 else 0.6)))
+	UiDraw.px(ci, g.position.x + 5, g.position.y + g.size.y / 2 + 7, Color(GRID, a))
+	var p := Vector2i(g.end.x - 2, g.position.y + 1)
+	for i in 40:
+		p.y += 1
+		if i % 3 == 0:
+			p.x = maxi(p.x - 1, g.end.x - 12)
+		UiDraw.px(ci, p.x, p.y, Color(0.75, 0.84, 0.86, a * (0.5 - 0.3 * i / 40.0)))
+		UiDraw.px(ci, p.x + 1, p.y, Color(0, 0, 0, a * 0.5))
 
 
 ## The island drawn in from the west, the start blinking on it like a cursor.
