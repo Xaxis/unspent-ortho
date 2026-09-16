@@ -32,12 +32,22 @@ const PLACE_OUT := 1.4
 const PLACE_HUSH := 0.3
 ## How far outside their place the name's brackets start, in pixels.
 const PLACE_SWEEP := 30.0
+## Top of the place name's line box; its label sits a line above it.
+const PLACE_Y := 30
+## Samples in the ping's ring, and how far past the plate it rings out.
+const RING_STEPS := 40
+const RING_REACH := 26.0
 ## A pressure gauge's tile, and the gap between tiles.
 const GAUGE := Vector2i(13, 16)
 ## The body's own needs, in the order they cost you the run. The gauges are
 ## drawn right to left from the clock, so the first here sits under the clock:
 ## hunger, the rung that ends the run, is nearest it and never moves.
 const GAUGE_ORDER: Array[StringName] = [&"hunger", &"lamp", &"wet", &"load", &"tired"]
+## Seconds a gauge answers for a line that was not said in words: brackets
+## close on it, the way the location ping's brackets close on a name.
+const GAUGE_FLARE := 1.2
+## Longest a line about a pressure waits for the readouts to be fed.
+const PEND_WAIT := 0.25
 ## Where the standing goal line sits: under the wrist unit and its wind line.
 const GOAL_Y := 26
 
@@ -70,6 +80,13 @@ var _hint_target := 0.0
 var _hurt_flash := 0.0
 var _lost_from := 0
 var _gauge_alpha := {}
+## Gauges answering for a line the glass did not say, id -> seconds left.
+var _gauge_flare := {}
+## Lines about a pressure, waiting for the readouts to be fed: see
+## `show_message`. [{text, feed, age}]
+var _pending: Array[Dictionary] = []
+## How many times the readouts have been fed (UiRules.pressures).
+var _feeds := 0
 ## Apps open now. An app takes the messages said while it is up, so the HUD
 ## does not queue them to play a second time when it closes.
 var _pages := {}
@@ -124,6 +141,7 @@ func set_power(p: float) -> void:
 ## Felt pressures as UiRules.pressures gives them: [{id, level, value}].
 func set_pressures(list: Array[Dictionary]) -> void:
 	pressures = list
+	_feeds += 1
 
 
 ## Needs as UiRules.needs gives them ([{need, level}]), shown as pressures.
@@ -173,10 +191,68 @@ func place_alpha() -> float:
 	return clampf(1.0 - (_place_age - PLACE_IN - PLACE_HOLD) / PLACE_OUT, 0.0, 1.0)
 
 
+## A line about a pressure waits for the readouts to be fed before it is said.
+## The hazards system (52) tells the moment a pressure begins to bite, and the
+## ui system (90) feeds the gauges later in the same frame, so asking the
+## readouts at once asks them about the frame before — and the first line of a
+## run was said in words although its badge was already on its way. It waits
+## for the next feed, or PEND_WAIT seconds if nothing is feeding it at all.
 func show_message(text: String) -> void:
 	if not _pages.is_empty():
 		return
+	if UiMessages.gauge_for(text) != &"":
+		_pending.append({"text": text, "feed": _feeds, "age": 0.0})
+		return
 	messages.push(text)
+
+
+## True while a gauge is answering for a line the glass did not say in words.
+func answering() -> bool:
+	return not _gauge_flare.is_empty()
+
+
+## The level of the gauge for `id` now, or 0 while it is not on the glass.
+func gauge_level(id: StringName) -> int:
+	for p in pressures:
+		if StringName(p.id) == id:
+			return int(p.level)
+	return 0
+
+
+## Say, or hand to a gauge, every line held by `show_message` whose readouts
+## have since been fed.
+func settle_pending(delta: float = 0.0) -> void:
+	if _pending.is_empty():
+		return
+	var keep: Array[Dictionary] = []
+	for e in _pending:
+		e.age = float(e.age) + delta
+		if int(e.feed) >= _feeds and float(e.age) < PEND_WAIT:
+			keep.append(e)
+			continue
+		if not answer_with_gauge(String(e.text)):
+			messages.push(String(e.text))
+	_pending = keep
+
+
+## A line whose whole subject is already a gauge in the top right is not also
+## said across the bottom of the screen: the gauge answers for it, brackets
+## closing on the tile. Three hazards plus hunger used to put three lines of
+## body text over the middle of the world at once, which is the opposite of
+## "small quiet readouts clipped to the corners" (docs/ART.md §9).
+##
+## The last rung is the exception: at level 3 the words still come, because
+## starving and a dry lamp are what end the run and a badge should not be the
+## only warning. Returns true when the gauge took it.
+func answer_with_gauge(text: String) -> bool:
+	var id := UiMessages.gauge_for(text)
+	if id == &"":
+		return false
+	var level := gauge_level(id)
+	if level <= 0 or level >= 3:
+		return false
+	_gauge_flare[id] = GAUGE_FLARE
+	return true
 
 
 func _on_screen_changed(n: StringName, open: bool) -> void:
@@ -196,6 +272,9 @@ func say_now(text: String) -> void:
 ## or the lamp cannot arrive minutes later, out of the moment that earned it.
 func teach(text: String, _key: String = "") -> void:
 	if not can_teach():
+		return
+	if UiMessages.gauge_for(text) != &"":
+		_pending.append({"text": text, "feed": _feeds, "age": 0.0})
 		return
 	messages.push(text)
 
@@ -235,12 +314,20 @@ func shown() -> Dictionary:
 
 ## Jump every fade to where it is heading (screenshots, tests).
 func settle() -> void:
+	# Not PEND_WAIT: a line still waiting for its gauge is waiting for the ui
+	# system's next feed, and forcing it here would answer with the readouts of
+	# the frame before — which is the whole thing the wait exists to avoid.
+	settle_pending(0.0)
 	_wind_alpha = 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_charge_alpha = 1.0 if charge_shown else 0.0
 	_hint_alpha = _hint_target
 	_hurt_flash = 0.0
 	if _place_age < PLACE_IN:
 		_place_age = PLACE_IN
+	# A flare is an event, not a fade with a target: a settled frame catches it
+	# half closed, so a shot shows which gauge answered for the line it took.
+	for k: StringName in _gauge_flare:
+		_gauge_flare[k] = GAUGE_FLARE * 0.55
 	_gauge_alpha.clear()
 	for p in pressures:
 		_gauge_alpha[p.id] = 1.0
@@ -248,6 +335,7 @@ func settle() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	settle_pending(delta)
 	messages.step(delta)
 	step_place(delta)
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
@@ -266,8 +354,15 @@ func _process(delta: float) -> void:
 		a = move_toward(a, 1.0 if present.has(k) else 0.0, delta * 1.5)
 		if a <= 0.0 and not present.has(k):
 			_gauge_alpha.erase(k)
+			_gauge_flare.erase(k)
 		else:
 			_gauge_alpha[k] = a
+	for k: StringName in _gauge_flare.keys():
+		var f: float = float(_gauge_flare[k]) - delta
+		if f <= 0.0:
+			_gauge_flare.erase(k)
+		else:
+			_gauge_flare[k] = f
 	if _canvas != null:
 		var b := UiRules.brightness(power)
 		_canvas.modulate = Color(b, b, b, 1.0)
@@ -372,7 +467,7 @@ func _draw_clock(ci: Control) -> void:
 		if a <= 0.0:
 			continue
 		var lv := int(level.get(k, 1))
-		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), UiTheme.WARN if lv >= 2 else UiTheme.TEXT, float(value.get(k, 0.5)), a, lv)
+		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), gauge_ink(lv), float(value.get(k, 0.5)), a, lv)
 		x -= GAUGE.x + 5
 
 
@@ -392,9 +487,33 @@ static func gauge_order(ids: Array) -> Array[StringName]:
 	return out
 
 
+## The ink a gauge is drawn in at each rung. The UI is the quietest layer, so
+## the full warning — the loudest colour the slate owns — is kept for the rung
+## that ends the run. A pressure that merely bites is said by the phosphor the
+## rest of the slate uses; only its meter runs in the dimmed warning, which is
+## the part that is actually about how bad it is. Before this, six badges of
+## saturated #ff6f4f sat in the top right of a snowfield at dusk and were the
+## loudest pixels in the frame.
+static func gauge_ink(level: int) -> Color:
+	if level >= 3:
+		return UiTheme.WARN
+	return UiTheme.TEXT
+
+
+## The ink a gauge's meter is drawn in: the bar is what says how hard it presses.
+static func gauge_meter_ink(level: int) -> Color:
+	if level >= 3:
+		return UiTheme.WARN
+	if level >= 2:
+		return UiTheme.WARN_DIM
+	return UiTheme.TEXT
+
+
 ## A felt pressure: its glyph on a scrap of glass, a meter under it filling
 ## with how hard it presses. At level 3 (starving, the lamp all but dry) the
 ## tile is bracketed and beats, so the last rung is never read as the middle one.
+## `flare` 0..1 brackets the tile for a moment: this gauge has just answered for
+## a line the glass did not say in words.
 func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float, a: float, level: int = 1) -> void:
 	# Fading, the whole tile steps in and out together (its glass holds the glyph).
 	var k := UiDraw.stepped(a)
@@ -406,10 +525,21 @@ func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float
 	if level >= 3:
 		var beat := 0.55 + 0.45 * sin(_time * 3.2)
 		UiDraw.frame(ci, r.grow(1), Color(col, k * (0.35 + 0.55 * beat)))
+	var flare := clampf(float(_gauge_flare.get(id, 0.0)) / GAUGE_FLARE, 0.0, 1.0)
+	if flare > 0.0:
+		# Brackets closing in on the tile, as they close on the location ping's
+		# name: the eye is sent to the readout instead of to a line of text.
+		# They stand over the world, so they carry their own shade — phosphor
+		# alone is invisible over a snowfield.
+		var out := r.grow(1 + roundi(flare * 4.0))
+		var fa := k * (0.45 + 0.55 * flare)
+		UiSlate.brackets(ci, Rect2i(out.position + Vector2i(0, 1), out.size), Color(UiTheme.RIM, fa * 0.85), 4)
+		UiSlate.brackets(ci, out, Color(UiTheme.BRIGHT, fa), 4)
 	UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": Color(col, k)})
+	var mcol := gauge_meter_ink(level)
 	var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
 	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), Color(UiTheme.GHOST, k))
-	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), Color(col, k))
+	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), Color(mcol, k))
 
 
 func _draw_held(ci: Control) -> void:
@@ -464,8 +594,46 @@ static func place_half(w: int, grow: float) -> int:
 	return roundi(w / 2.0 + 12.0 + (1.0 - clampf(grow, 0.0, 1.0)) * PLACE_SWEEP)
 
 
-## The location ping: a ring goes out from the top middle, then the landscape's
-## name in spaced capitals between brackets drawn out from the middle.
+## The scrap of glass the landscape's name is read off. Every other readout sits
+## in one (see `clip`); the ping did not, and over the snowfield at noon its
+## phosphor green stood on near-white paper at 3.5:1 — the name of the place
+## you have just walked into, unreadable. Its ends are where the brackets come
+## to rest, so the plate IS the clip they close on.
+static func place_plate(w: int) -> Rect2i:
+	var half := place_half(w, 1.0)
+	return Rect2i(320 - half, PLACE_Y - 14, half * 2, 25)
+
+
+## Where the ping's ring stands at `age`, in screen pixels: an ellipse ringing
+## OUT from the plate's own edge, never inside it.
+##
+## It used to start at the middle and grow through the word, and the 0.5
+## vertical squash clustered its samples at the horizontal extremes — exactly
+## the height of the letters — so `C O A S T` read `C ⌷CH:S T` for half a
+## second, which is when the eye lands on it. A bright mark travelling over a
+## name reads as a name struck out; that was true of the ring as well as of
+## the brackets, and the ring is the thing that was crossing.
+static func ring_points(age: float, plate: Rect2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var life := PLACE_IN * 1.5
+	if age < 0.0 or age >= life:
+		return out
+	var t := age / life
+	var c := plate.get_center()
+	var rx := plate.size.x * 0.5 + 2.0 + t * RING_REACH
+	var ry := plate.size.y * 0.5 + 2.0 + t * RING_REACH * 0.5
+	var clear := plate.grow(1)
+	for s in RING_STEPS:
+		var an := s * TAU / float(RING_STEPS)
+		var p := Vector2i(c.x + roundi(cos(an) * rx), c.y + roundi(sin(an) * ry))
+		if clear.has_point(p):
+			continue
+		out.append(p)
+	return out
+
+
+## The location ping: the landscape's name on a scrap of the slate's glass,
+## brackets closing on its ends, a ring going out around it over the world.
 func _draw_place(ci: Control) -> void:
 	var a := place_alpha()
 	if a <= 0.0 or place == "":
@@ -474,21 +642,39 @@ func _draw_place(ci: Control) -> void:
 	for i in place.length():
 		spaced += (" " if i > 0 else "") + place[i].to_upper()
 	var w := UiFont.width(spaced)
-	var y := 30
+	var y := PLACE_Y
 	var k := UiDraw.stepped(a)
 	var grow := clampf(_place_age / PLACE_IN, 0.0, 1.0)
-	if _place_age < PLACE_IN * 1.5:
-		var pr := 3.0 + (_place_age / (PLACE_IN * 1.5)) * 22.0
-		var ring_a := UiDraw.stepped(1.0 - _place_age / (PLACE_IN * 1.5)) * 0.8
-		for s in 28:
-			var an := s * TAU / 28.0
-			UiDraw.px(ci, 320 + roundi(cos(an) * pr * 1.6), y + 4 + roundi(sin(an) * pr * 0.5), Color(UiTheme.BRIGHT, ring_a))
-	UiDraw.text_rimmed_faded(ci, Vector2i(320 - w / 2, y), spaced, UiTheme.BRIGHT, UiTheme.RIM, a)
-	UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", UiTheme.TEXT_DIM, UiTheme.RIM, a * grow)
+	var plate := place_plate(w)
+	# The ring rings out over the world, so it carries its own shade: bright
+	# phosphor alone is invisible over a snowfield.
+	for p in Hud.ring_points(_place_age, plate):
+		var ring_a := UiDraw.stepped(1.0 - _place_age / (PLACE_IN * 1.5)) * 0.8 * a
+		UiDraw.px(ci, p.x, p.y + 1, Color(UiTheme.RIM, ring_a * 0.8))
+		UiDraw.px(ci, p.x, p.y, Color(UiTheme.BRIGHT, ring_a))
+	place_glass(ci, plate, k)
+	UiDraw.text(ci, Vector2i(320 - w / 2, y), spaced, Color(UiTheme.BRIGHT, k))
+	UiDraw.text(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, k * UiDraw.stepped(grow)))
 	var half := place_half(w, grow)
 	for side: int in [-1, 1]:
 		var bx := 320 + side * half
-		UiDraw.rect(ci, Rect2i(bx - 1, y - 2, 3, 13), Color(UiTheme.RIM, k))
-		UiDraw.vline(ci, bx, y - 1, y + 10, Color(UiTheme.TEXT, k))
-		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), y - 1, Color(UiTheme.TEXT, k))
-		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), y + 10, Color(UiTheme.TEXT, k))
+		UiDraw.rect(ci, Rect2i(bx - 1, plate.position.y - 1, 3, plate.size.y + 2), Color(UiTheme.RIM, k))
+		UiDraw.vline(ci, bx, plate.position.y, plate.end.y - 1, Color(UiTheme.TEXT, k))
+		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), plate.position.y, Color(UiTheme.TEXT, k))
+		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), plate.end.y - 1, Color(UiTheme.TEXT, k))
+
+
+## The ping's glass: the same window `clip` gives every corner readout, held on
+## by nothing — it is thrown on the middle of the lens while the slate reads the
+## ground, and taken off again.
+static func place_glass(ci: CanvasItem, r: Rect2i, k: float) -> void:
+	if k <= 0.0:
+		return
+	var F := Palette.FOUND
+	UiDraw.rect(ci, Rect2i(r.position.x - 1, r.position.y, r.size.x + 2, r.size.y), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, Rect2i(r.position.x, r.position.y - 1, r.size.x, r.size.y + 2), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, r, Color(UiTheme.GLASS, k))
+	for y in range(r.position.y + 1, r.end.y, 2):
+		UiDraw.hline(ci, r.position.x, r.end.x - 1, y, Color(UiTheme.GLASS_ROW, k))
+	UiDraw.hline(ci, r.position.x + 4, r.end.x - 5, r.position.y - 1, Color(F[1], k * 0.8))
+	UiDraw.hline(ci, r.position.x + 4, r.end.x - 5, r.end.y, Color(F[1], k * 0.55))

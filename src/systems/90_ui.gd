@@ -464,6 +464,20 @@ func _hostile_near() -> bool:
 	return UiRules.hostile_near(get_tree().get_nodes_in_group(&"mobs"), game.player.pos)
 
 
+## Tours ask what is on the glass: the location ping standing on its own scrap
+## of glass, a badge that has just answered for a line the glass did not say in
+## words, and whether the bottom middle is clear of text at all.
+func tour_seen(what: StringName) -> bool:
+	match what:
+		&"ping":
+			return game.hud.place_alpha() > 0.0 and game.hud.place != ""
+		&"badge_answered":
+			return game.hud.answering()
+		&"quiet_glass":
+			return game.hud.messages.visible().is_empty()
+	return false
+
+
 ## What the slate keeps in a save: the land seen and the way walked (JSON-safe).
 func _save() -> Variant:
 	var trail := PackedFloat32Array()

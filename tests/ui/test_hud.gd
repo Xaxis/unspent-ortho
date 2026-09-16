@@ -92,6 +92,86 @@ func test_the_place_name_is_never_struck_through_by_its_own_brackets() -> void:
 		eq(Hud.place_half(word, 1.0), roundi(word / 2.0 + 12.0), "and comes to rest just off the word")
 
 
+## The ping's ring used to be an ellipse grown from the middle of the screen,
+## and its 0.5 vertical squash clustered the samples at the height of the
+## letters: `C O A S T` read `C ⌷CH:S T`. The ring now rings out from the edge
+## of the name's own plate and is never inside it, at any width, at any moment
+## of the ping.
+func test_the_ping_ring_never_crosses_the_name() -> void:
+	for word: int in [20, 46, 86, 140]:
+		var plate := Hud.place_plate(word)
+		var name_box := Rect2i(320 - word / 2, Hud.PLACE_Y, word, 10)
+		check(plate.encloses(name_box), "a %d px name sits on the plate" % word)
+		var seen := 0
+		for step in 60:
+			var age := step / 60.0 * Hud.PLACE_IN * 1.5
+			for p in Hud.ring_points(age, plate):
+				seen += 1
+				check(not plate.grow(1).has_point(p), "no ring pixel inside the plate at %.2f s" % age)
+		gt(float(seen), 200.0, "and there is still a ring to see for a %d px name" % word)
+	eq(Hud.ring_points(Hud.PLACE_IN * 1.5 + 0.01, Hud.place_plate(46)).size(), 0, "the ring is spent by the end of the rise")
+
+
+## The badges in the top right already say which pressures are on the body. A
+## line whose whole subject is one of them is not also written across the
+## middle of the world: the gauge answers for it. The last rung is the one
+## exception — starving and a dry lamp still get words.
+func test_a_pressure_the_badge_says_is_not_also_said_in_words() -> void:
+	var hud := _hud()
+	var b := Body.new()
+	b.fed_until = 1000.0
+	b.pressure = {&"cold": 0.8}
+	hud.set_pressures(UiRules.pressures(b, 900.0, 5.0))
+	hud.settle()
+	hud.show_message(Hazards.LINES[&"cold"])
+	_run(hud, 0.3)
+	check(hud.messages.visible().is_empty(), "the cold badge answers for the cold line")
+	check(hud._gauge_flare.has(&"cold"), "and says so: brackets close on the tile")
+	hud.show_message("A wall of them came out of the trees.")
+	eq(hud.messages.visible().size(), 1, "a line no readout says is still said, at once")
+	hud.free()
+
+
+func test_the_last_rung_still_gets_words() -> void:
+	var hud := _hud()
+	var b := Body.new()
+	b.fed_until = 0.0
+	hud.set_pressures(UiRules.pressures(b, 100000.0, 5.0))
+	hud.settle()
+	eq(hud.gauge_level(&"hunger"), 3, "starving is the last rung")
+	hud.show_message(Survival.STARVING_LINE)
+	_run(hud, 0.3)
+	eq(hud.messages.visible().size(), 1, "the rung that ends the run is still said aloud")
+	hud.free()
+
+
+## A line about a pressure nothing is showing a gauge for is never swallowed.
+func test_a_line_with_no_gauge_on_the_glass_is_said() -> void:
+	var hud := _hud()
+	hud.settle()
+	hud.show_message(Hazards.LINES[&"heat"])
+	_run(hud, 0.3)
+	eq(hud.messages.visible().size(), 1, "no heat gauge up, so the words come")
+	eq(UiMessages.gauge_for("Took 2 timber."), &"", "an ordinary line belongs to no readout")
+	eq(UiMessages.gauge_for(Survival.HUNGRY_LINE), &"hunger", "and the hunger line to the hunger gauge")
+	for id: Variant in Hazards.LINES:
+		eq(UiMessages.gauge_for(String(Hazards.LINES[id])), StringName(id), "%s has its gauge" % id)
+	hud.free()
+
+
+## The UI is the quietest layer: the slate's one warning colour is kept for the
+## rung that ends the run. A pressure that merely bites is phosphor, with only
+## its meter — the part that says how bad it is — in the dimmed warning.
+func test_the_badge_keeps_the_loudest_colour_for_the_last_rung() -> void:
+	eq(Hud.gauge_ink(1), UiTheme.TEXT, "a felt pressure is phosphor")
+	eq(Hud.gauge_ink(2), UiTheme.TEXT, "and so is one that bites")
+	eq(Hud.gauge_ink(3), UiTheme.WARN, "the last rung is the warning")
+	eq(Hud.gauge_meter_ink(1), UiTheme.TEXT)
+	eq(Hud.gauge_meter_ink(2), UiTheme.WARN_DIM, "a biting meter is the warning, dimmed")
+	eq(Hud.gauge_meter_ink(3), UiTheme.WARN)
+	lt(UiTheme.WARN_DIM.get_luminance(), UiTheme.WARN.get_luminance(), "which is quieter than the warning itself")
+
+
 func test_the_lamp_and_the_last_rung_of_hunger_are_gauges() -> void:
 	var hud := _hud()
 	var b := Body.new()

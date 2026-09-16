@@ -141,7 +141,7 @@ func test_messages_stack_fade_and_count_repeats() -> void:
 	eq(m.visible()[1].text, "The edge is going. ×2", "it is counted")
 	for i in 5:
 		m.push("line %d" % i)
-	eq(m.lines.size(), UiMessages.MAX, "at most three lines")
+	eq(m.lines.size(), UiMessages.MAX, "never more lines than the cap")
 	m.step(UiMessages.HOLD + UiMessages.FADE + 0.1)
 	check(m.visible().is_empty(), "all faded")
 	check(m.lines.is_empty(), "and forgotten")
@@ -157,7 +157,10 @@ func test_nothing_is_said_in_a_fight_until_it_is_over() -> void:
 	eq(m.visible().size(), 1, "a refusal is said at once")
 	m.quiet = false
 	var said: Array = m.visible().map(func(l: Dictionary) -> String: return l.text)
-	eq(said, ["Not with that so close.", "It is not biting the way it did.", "Took 1 plate."], "the rest follow, in order")
+	# The refusal was read while the fight was on; what stands after it is the
+	# queue, in order, up to the cap.
+	eq(said, ["It is not biting the way it did.", "Took 1 plate."], "the rest follow, in order")
+	check(said.size() <= UiMessages.MAX, "and never more of them than the glass holds")
 
 
 func test_text_already_on_screen_leaves_when_a_fight_comes() -> void:
