@@ -326,6 +326,7 @@ func _run() -> void:
 		if not ok:
 			printerr("tour %s line %d: cannot do '%s'" % [_name, n, line])
 			# What the page showed when it failed, to see why.
+			@warning_ignore("return_value_discarded")
 			await _shot("FAILED-line%d" % n)
 			get_tree().quit(1)
 			return
@@ -762,7 +763,8 @@ func _shot_checked(parts: PackedStringArray) -> bool:
 		if not await _hold_true(w, SUBJECT_WAIT):
 			printerr("tour %s: shot %s claims %s and the world has none" % [_name, label, w])
 			return false
-	await _shot(label)
+	if not await _shot(label):
+		return false
 	for w: String in subjects:
 		if not (_pixels_held(w) if w.begins_with("pixels:") else _now_true(w)):
 			# No frame that proves the opposite of its name is left on disk to be
@@ -786,18 +788,45 @@ func _hold_true(what: String, secs: float) -> bool:
 	return true
 
 
-func _shot(label: String) -> void:
-	if not is_instance_valid(game):
-		for i in 3:
-			await get_tree().process_frame
-		await RenderingServer.frame_post_draw
-		_save_frame(label)
-		return
-	game.view.ensure_near(game.player.pos)
+## How long a shot will wait for the platform to draw a frame before it gives up
+## and says so. frame_post_draw only fires on a frame that was really drawn, and
+## a tool run's window is one pixel across in a corner of some display
+## (project.godot, .editor): macOS sometimes stops asking it to draw at all, and
+## then a tour used to sit in silence until its whole timeout ran out with no
+## frames and no reason. A shot that waits at all says how long.
+const DRAW_WAIT := 60.0
+const DRAW_SLOW := 1.0
+
+
+func _shot(label: String) -> bool:
+	if is_instance_valid(game):
+		game.view.ensure_near(game.player.pos)
 	for i in 3:
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	if not await _drawn():
+		return false
 	_save_frame(label)
+	return true
+
+
+## Wait for one drawn frame. False (and a line saying why) when the platform
+## never drew one: the caller fails the tour rather than saving whatever stale
+## pixels the viewport still holds, which would be the very thing this file
+## exists to prevent — a frame that is not of the moment it is named for.
+func _drawn() -> bool:
+	var began := Time.get_ticks_msec()
+	var until := began + int(DRAW_WAIT * 1000.0)
+	var seen := [false]
+	RenderingServer.frame_post_draw.connect(func() -> void: seen[0] = true, CONNECT_ONE_SHOT)
+	while not seen[0] and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	var waited := (Time.get_ticks_msec() - began) / 1000.0
+	if not seen[0]:
+		printerr("tour %s: the window was not asked to draw for %.0f s, so there is no frame to take" % [_name, waited])
+		return false
+	if waited >= DRAW_SLOW:
+		print("tour %s: waited %.1f s for a drawn frame" % [_name, waited])
+	return true
 
 
 func _save_frame(label: String) -> void:
