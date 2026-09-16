@@ -6,9 +6,12 @@
 # mechanisms that set it — a role for the three a machine is born with, and a
 # real theft off the plan's own works for the fourth.
 #   tools/tour.sh tours/machine-read.tour --seed=1 --weather=clear:0
-# The hour and the weather are pinned again immediately before every shot: the
-# world clock runs while a tour walks and waits, and a loaded machine turned the
-# night act into the next morning once already.
+# The hour and the weather are pinned in the LAST command before every shot, and
+# nothing waits after them: the world clock runs while a tour walks, a loaded
+# machine turned the night act into the next morning once already, and a keeper
+# that keeps its round walked out of frame 02 in the third of a second the frame
+# used to wait. A tour whose proof frame does not hold the thing it is about
+# proves nothing, so the approach is the last thing that happens.
 #
 # It ends on the other half of the same finding: light that does not touch the
 # world. A machine's lens was in the glint list alone, which only mirrors in WET
@@ -25,10 +28,9 @@ wait 1.2
 # indifferent: a worker on its round, nothing of yours.
 spawn harvester
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 12
 weather clear:0
-wait 0.6
 shot 01-noon-indifferent
 
 # wary: a keeper, which starts one rung up the ladder and keeps its round.
@@ -37,10 +39,9 @@ wait 0.5
 at 200.5,431.5
 spawn warden
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 12
 weather clear:0
-wait 0.6
 shot 02-noon-wary
 
 # observant: a watcher, which never fights and only ever files.
@@ -49,10 +50,9 @@ wait 0.5
 at 200.5,431.5
 spawn watcher
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 12
 weather clear:0
-wait 0.6
 shot 03-noon-observant
 
 # hostile: the same kind as frame 01, after the player put their hands on the
@@ -82,10 +82,9 @@ wait 1.4
 
 spawn harvester
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 23
 weather clear:0
-wait 0.6
 shot 05-night-indifferent
 
 coast calm
@@ -93,10 +92,9 @@ wait 0.5
 at 200.5,431.5
 spawn warden
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 23
 weather clear:0
-wait 0.6
 shot 06-night-wary
 
 coast calm
@@ -104,10 +102,9 @@ wait 0.5
 at 200.5,431.5
 spawn watcher
 walkto mob 3
-wait 1.4
+walkto mob 1.2
 hour 23
 weather clear:0
-wait 0.6
 shot 07-night-observant
 
 coast calm
