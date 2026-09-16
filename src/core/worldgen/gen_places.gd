@@ -13,14 +13,14 @@ static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
 	if key == "spawn":
 		return w.spawn
-	var ci := Country.NAMES.find(key)
+	var ci := BiomeRegistry.index_of(StringName(key))
 	if ci > 0:
 		return country_sample(w, ci)
 	for sep: String in ["-", "/", ">"]:
 		if key.contains(sep):
 			var parts := key.split(sep)
-			var a := Country.NAMES.find(parts[0])
-			var b := Country.NAMES.find(parts[1])
+			var a := BiomeRegistry.index_of(StringName(parts[0]))
+			var b := BiomeRegistry.index_of(StringName(parts[1]))
 			if a > 0 and b > 0:
 				return ecotone_sample(w, a, b)
 	if key == "river":

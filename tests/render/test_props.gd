@@ -6,9 +6,9 @@ extends TestCase
 func test_every_kind_has_a_model_in_every_variant_and_country() -> void:
 	for kind in PropKind.COUNT:
 		for v in PropModels.variants(kind):
-			for c: int in Country.LAND:
+			for c: int in BiomeRegistry.land_indices():
 				var t := PropModels.template(kind, v, c)
-				gt(t.made_v.size() + t.found_v.size(), 11, "%s %d in %s" % [PropKind.NAMES[kind], v, Country.NAMES[c]])
+				gt(t.made_v.size() + t.found_v.size(), 11, "%s %d in %s" % [PropKind.NAMES[kind], v, BiomeRegistry.name_of(c)])
 				for col in t.made_c:
 					if col == Palette.BLOOM[3]:
 						fail("%s %d draws the unmodelled placeholder" % [PropKind.NAMES[kind], v])

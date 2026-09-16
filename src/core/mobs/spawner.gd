@@ -85,8 +85,11 @@ static func hour_in(h: float, from: float, to: float) -> bool:
 	return h >= from or h < to
 
 
-## Does the row fit at this tile (country, ground, distance from a village, rise, props)?
-static func place_fits(row: Dictionary, world: WorldData, query: WorldQuery, tx: int, ty: int) -> bool:
+## Does the row fit at this tile (landscape, ground, distance from a village,
+## rise, props)? `kind` is the roster id, so a landscape that names this thing in
+## its own roster (BiomeDef.roster) admits it whatever the row's own list says,
+## and keeps it to the hours that roster gives it. `hour` < 0 skips the clock.
+static func place_fits(row: Dictionary, world: WorldData, query: WorldQuery, tx: int, ty: int, kind: StringName = &"", hour: float = -1.0) -> bool:
 	if not world.in_bounds(tx, ty):
 		return false
 	var g := world.ground_at(tx, ty)
@@ -95,8 +98,12 @@ static func place_fits(row: Dictionary, world: WorldData, query: WorldQuery, tx:
 	var where: Dictionary = row.get("where", {})
 	var countries: Array = where.get("countries", [])
 	if not countries.is_empty():
-		var c := world.country_at(tx, ty)
-		if c < 0 or c >= Country.NAMES.size() or not countries.has(Country.NAMES[c]):
+		var d := BiomeRegistry.by_index(world.country_at(tx, ty))
+		if not countries.has(String(d.id)) and not d.roster.has(kind):
+			return false
+		var row_here: Dictionary = d.roster.get(kind, {})
+		var hours: Variant = row_here.get("hours")
+		if hour >= 0.0 and hours is Vector2 and not hour_in(hour, (hours as Vector2).x, (hours as Vector2).y):
 			return false
 	var grounds: Array = where.get("grounds", [])
 	if not grounds.is_empty() and not ground_matches(g, grounds):
@@ -193,7 +200,7 @@ func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centr
 		var here: Array[StringName] = []
 		var weight := 0.0
 		for k in fitting:
-			if place_fits(Roster.row(k), world, query, tx, ty):
+			if place_fits(Roster.row(k), world, query, tx, ty, k, m.hour()):
 				here.append(k)
 				weight += weight_at(Roster.row(k), m)
 		if here.is_empty() or weight <= 0.0:
@@ -265,7 +272,7 @@ func patrol(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, cen
 		var here: Array[StringName] = []
 		for k in kinds:
 			var row := _on_round(Roster.row(k))
-			if place_fits(row, world, query, floori(from.x), floori(from.y)) and place_fits(row, world, query, floori(mid.x), floori(mid.y)):
+			if place_fits(row, world, query, floori(from.x), floori(from.y), k, m.hour()) and place_fits(row, world, query, floori(mid.x), floori(mid.y), k, m.hour()):
 				here.append(k)
 		if here.is_empty():
 			continue

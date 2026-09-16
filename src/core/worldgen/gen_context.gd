@@ -29,21 +29,31 @@ var islet: PackedByteArray
 var convex: PackedFloat32Array
 var land_rect := Rect2()
 
-# --- countries ---
+# --- landscape types ---
 var cw: int
-## Per country id, coarse score (higher wins); index 0 (sea) unused.
+## Every registered type, by index (BiomeRegistry.all()), and the land ones.
+var defs: Array[BiomeDef] = []
+var land_types: PackedInt32Array = PackedInt32Array()
+## How many types this world is made of (the stride of every per-type array).
+var types: int
+## Per type index, coarse score (higher wins); index 0 (sea) unused.
 var scores: Array[PackedFloat32Array] = []
-## Per country id, coarse soft membership (sums to 1 over land countries).
+## Per type index, coarse soft membership (sums to 1 over land types).
 var soft: Array[PackedFloat32Array] = []
-## Country id -> Vector2 heart of its largest site.
+## The same soft memberships end to end: cc * cw * cw + k. Reading a parameter
+## out of an Array of packed arrays per element is many times slower.
+var soft_flat: PackedFloat32Array = PackedFloat32Array()
+## Type index -> Vector2 heart of its largest site.
 var hearts: Array[Vector2] = []
+## The type that carries a caldera, or -1. Its rim warp is rim_warp.
+var caldera_type := -1
 
 # --- relief ---
 ## Float elevation in levels (land >= 1).
 var elev: PackedFloat32Array
 
-## Warp of the Burning's caldera, in crater radii / 0.3, shared by the rim's
-## relief and its rock.
+## Warp of a caldera's rim, in crater radii / 0.3, shared by the rim's relief
+## and its rock.
 var rim_warp: PackedFloat32Array
 
 # --- water ---
@@ -71,7 +81,7 @@ var forest: PackedFloat32Array
 ## ridges positive, dales and hollows negative. From float elevation, so it
 ## drapes across terrace edges.
 var rise: PackedFloat32Array
-## The country whose recipe a tile's ground followed (its own, or the
+## The landscape type whose recipe a tile's ground followed (its own, or the
 ## neighbour's in an ecotone island). Props follow the same recipe.
 var recipe: PackedByteArray
 ## Still pools and tarns: x, y centre (tiles) and radius, in the order laid.
@@ -98,6 +108,13 @@ func _init(p_world: WorldData) -> void:
 	n = size * size
 	s = w.seed_value
 	k = size / 512.0
+	defs = BiomeRegistry.all()
+	types = defs.size()
+	for d in defs:
+		if not d.sea:
+			land_types.append(d.index)
+		if d.caldera > 0.0 and caldera_type < 0:
+			caldera_type = d.index
 	cw = GenFields.coarse_width(size, STEP)
 	water = _bytes()
 	village = _bytes()

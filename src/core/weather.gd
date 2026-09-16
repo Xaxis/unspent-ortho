@@ -55,33 +55,17 @@ const FAMILY := {
 	&"drizzle": &"rain", &"whiteout": &"blizzard", &"glare": &"heat", &"dry_storm": &"dust", &"haze": &"fog",
 }
 
-## Per landscape type id: rows [kind, weight, squall] with weights summing to
-## 100. Squall 0..1 is how much of the kind's strength comes and goes in passing
-## bands (0 = steady). Rows run in the same order of mood everywhere (fair,
-## bleak, falling, lying, severe) because the one shared roll is read through
-## every table: the coast's storm is the snowfield's whiteout and the bonelands'
-## dry lightning. Every landscape keeps a real share of clear days, so weather
-## is an event. New landscape types add a row here (docs/VISION.md section 3).
-const CLIMATES := {
-	&"sea": [[CLEAR, 22, 0.0], [GREY, 30, 0.0], [RAIN, 20, 0.7], [FOG, 14, 0.0], [STORM, 14, 0.5]],
-	# Bleak grey days and rain in squalls off the sea; sea fret at dawn.
-	&"coast": [[CLEAR, 24, 0.0], [GREY, 30, 0.0], [RAIN, 20, 0.75], [FOG, 8, 0.0], [HAIL, 6, 0.6], [STORM, 12, 0.45]],
-	# Drowned green gloom: drizzle and fog lying in the hollows, still air.
-	&"moss": [[CLEAR, 16, 0.0], [GREY, 20, 0.0], [DRIZZLE, 28, 0.0], [FOG, 24, 0.0], [RAIN, 6, 0.3], [STORM, 6, 0.3]],
-	# Steady rain that drips through the canopy long after it stops.
-	&"pinewood": [[CLEAR, 22, 0.0], [GREY, 26, 0.0], [RAIN, 28, 0.15], [FOG, 14, 0.0], [STORM, 10, 0.3]],
-	# Bright flat days, snow in squalls, whiteouts that take the horizon.
-	&"snowfield": [[CLEAR, 30, 0.0], [GREY, 18, 0.0], [SNOW, 28, 0.65], [HAIL, 6, 0.5], [BLIZZARD, 10, 0.3], [WHITEOUT, 8, 0.0]],
-	# Hard white glare, dust on the wind, dry lightning with no rain in it.
-	&"bonelands": [[CLEAR, 20, 0.0], [GLARE, 24, 0.0], [GREY, 10, 0.0], [DUST, 18, 0.6], [FOG, 6, 0.0], [DRY_STORM, 16, 0.4], [STORM, 6, 0.4]],
-	# Heat, ash fall and a furnace haze that lies in the low ground.
-	&"burning": [[CLEAR, 22, 0.0], [HEAT, 16, 0.0], [GREY, 10, 0.0], [ASH, 30, 0.35], [HAZE, 22, 0.0]],
-}
-
-## Dawn mist per landscape at its deepest (0..1 of fog density): the moss lies
-## drowned in it most mornings, the pinewood holds some under its crowns, the
-## coast gets a thin sea fret. Nothing on dry or burning ground.
-const MIST := {&"sea": 0.2, &"coast": 0.22, &"moss": 1.0, &"pinewood": 0.5, &"snowfield": 0.12}
+## A landscape's weather is its own (`BiomeDef.weather`): rows
+## [kind, weight, squall] with weights summing to 100. Squall 0..1 is how much
+## of the kind's strength comes and goes in passing bands (0 = steady). Rows run
+## in the same order of mood everywhere (fair, bleak, falling, lying, severe)
+## because the one shared roll is read through every table: the coast's storm is
+## the snowfield's whiteout and the bonelands' dry lightning. Every landscape
+## keeps a real share of clear days, so weather is an event.
+##
+## Dawn mist is `BiomeDef.mist`, 0..1 of fog density at its deepest: the moss
+## lies drowned in it most mornings, the pinewood holds some under its crowns,
+## the coast gets a thin sea fret. Nothing on dry or burning ground.
 
 ## How much a kind pushes the wind at full strength (fog and heat are still air).
 const WIND_PUSH := {
@@ -126,21 +110,20 @@ static func family(kind: StringName) -> StringName:
 	return FAMILY.get(kind, kind)
 
 
-## The M1 countries as landscape type ids, in Country order (Country.NAMES).
-const COUNTRY_TYPES: Array[StringName] = [&"sea", &"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
-
-
-## The landscape type id for a Country id (the M1 countries are the first types).
+## The landscape type id at a type index.
 static func type_of(country: int) -> StringName:
-	return COUNTRY_TYPES[clampi(country, 0, COUNTRY_TYPES.size() - 1)]
+	return BiomeRegistry.by_index(country).id
 
 
-## A landscape's climate rows; an unknown type reads the coast's.
+## A landscape's climate rows; a type that declares none reads the coast's.
 static func climate(type_id: StringName) -> Array:
-	return CLIMATES.get(type_id, CLIMATES[&"coast"])
+	var d := BiomeRegistry.get_def(type_id)
+	if d != null and not d.weather.is_empty():
+		return d.weather
+	return BiomeRegistry.by_index(Country.COAST).weather
 
 
-## The weather where no country is named: the coast's reading of the front.
+## The weather where no landscape is named: the coast's reading of the front.
 static func at(seed_value: int, minutes: float) -> Dictionary:
 	return at_place(seed_value, minutes, Country.COAST)
 
@@ -239,7 +222,8 @@ static func squall_gain(seed_value: int, minutes: float, squall: float) -> float
 ## sunrise, burnt off by mid-morning; thicker on some mornings than others,
 ## blown away by a wind, beaten down by anything falling hard.
 static func mist(seed_value: int, minutes: float, type_id: StringName, kind: StringName = CLEAR, strength: float = 0.0, wind: float = 0.0) -> float:
-	var deep := float(MIST.get(type_id, 0.0))
+	var d := BiomeRegistry.get_def(type_id)
+	var deep := d.mist if d != null else 0.0
 	if deep <= 0.0:
 		return 0.0
 	var h := fposmod(minutes, 1440.0) / 60.0

@@ -5,7 +5,7 @@ func test_same_seed_and_minute_give_the_same_weather() -> void:
 	Weather.unforce()
 	for seed_value: int in [1, 7, 20260905]:
 		for m: float in [0.0, 480.0, 1234.5, 9999.0, 40000.0]:
-			for c: int in Country.LAND:
+			for c: int in BiomeRegistry.land_indices():
 				var a := Weather.at_place(seed_value, m, c)
 				var b := Weather.at_place(seed_value, m, c)
 				eq(a.kind, b.kind, "kind")
@@ -17,7 +17,7 @@ func test_same_seed_and_minute_give_the_same_weather() -> void:
 func test_strength_is_zero_wherever_the_kind_changes() -> void:
 	Weather.unforce()
 	for seed_value: int in [1, 11]:
-		for c: int in Country.LAND:
+		for c: int in BiomeRegistry.land_indices():
 			var prev := Weather.at_place(seed_value, 0.0, c)
 			var changes := 0
 			# Ten-minute steps over twenty days; a change is only ever seen where
@@ -39,7 +39,7 @@ func test_strength_and_wind_never_jump() -> void:
 	var bad := 0
 	for i in 6000:
 		var m := i * 7.3
-		var c: int = Country.LAND[i % Country.LAND.size()]
+		var c: int = BiomeRegistry.land_indices()[i % BiomeRegistry.land_indices().size()]
 		var a := Weather.at_place(4, m, c)
 		var b := Weather.at_place(4, m + 0.05, c)
 		if a.kind != b.kind:
@@ -65,7 +65,8 @@ func test_spells_last_seventeen_hours_with_sin_squared_strength() -> void:
 
 
 func test_every_climate_sums_to_one_hundred_and_has_its_signature_weather() -> void:
-	for id: StringName in Weather.CLIMATES:
+	for d: BiomeDef in BiomeRegistry.all():
+		var id := d.id
 		var total := 0
 		for row: Array in Weather.climate(id):
 			total += int(row[1])
@@ -73,10 +74,10 @@ func test_every_climate_sums_to_one_hundred_and_has_its_signature_weather() -> v
 			eq(row.size(), 3, "%s rows are [kind, weight, squall]" % id)
 			check(float(row[2]) >= 0.0 and float(row[2]) <= 1.0, "squall share in 0..1")
 		eq(total, 100, "climate %s" % id)
-	for c in Country.COUNT:
-		check(Weather.CLIMATES.has(Weather.type_of(c)), "every M1 country is a climate: %s" % Country.NAMES[c])
+	for c in BiomeRegistry.count():
+		check(not BiomeRegistry.by_index(c).weather.is_empty(), "every landscape has its own weather: %s" % BiomeRegistry.name_of(c))
 	var seen := {}
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		seen[c] = {}
 		for spell in 400:
 			seen[c][Weather.kind_for(9, spell, c)] = true
@@ -98,18 +99,18 @@ func test_every_climate_sums_to_one_hundred_and_has_its_signature_weather() -> v
 
 
 func test_country_types_are_the_country_names() -> void:
-	for c in Country.COUNT:
-		eq(String(Weather.type_of(c)), Country.NAMES[c], "type id for country %d" % c)
+	for c in BiomeRegistry.count():
+		eq(String(Weather.type_of(c)), BiomeRegistry.name_of(c), "type id for country %d" % c)
 
 
 func test_every_landscape_keeps_clear_days_so_weather_is_an_event() -> void:
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		var clear := 0
 		for spell in 600:
 			if Weather.kind_for(3, spell, c) == Weather.CLEAR:
 				clear += 1
-		gt(clear / 600.0, 0.12, "%s has clear spells" % Country.NAMES[c])
-		lt(clear / 600.0, 0.4, "%s is not mostly fair" % Country.NAMES[c])
+		gt(clear / 600.0, 0.12, "%s has clear spells" % BiomeRegistry.name_of(c))
+		lt(clear / 600.0, 0.4, "%s is not mostly fair" % BiomeRegistry.name_of(c))
 
 
 func test_one_front_reads_through_every_landscape() -> void:

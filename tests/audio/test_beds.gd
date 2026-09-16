@@ -300,8 +300,8 @@ func test_gusts_breathe_between_a_lull_and_full() -> void:
 
 
 func test_every_bed_the_rules_can_ask_for_exists() -> void:
-	for c: int in SoundMix.COUNTRY_BED:
-		check(SoundBank.has_sound(SoundMix.COUNTRY_BED[c]), "country bed %s" % SoundMix.COUNTRY_BED[c])
+	for c in BiomeRegistry.count():
+		check(SoundBank.has_sound(SoundMix.country_bed(c)), "landscape bed %s" % SoundMix.country_bed(c))
 	for k: StringName in SoundMix.WEATHER_BED:
 		check(SoundBank.has_sound(SoundMix.WEATHER_BED[k]), "weather bed %s" % SoundMix.WEATHER_BED[k])
 	for bed: StringName in SoundBeds.SCATTER:
@@ -311,9 +311,9 @@ func test_every_bed_the_rules_can_ask_for_exists() -> void:
 			check(float(entry[1]) > 0.0 and float(entry[2]) >= float(entry[1]), "gap range for %s" % entry[0])
 	for g in Ground.COUNT:
 		check(SoundBank.has_sound(SoundEffects.step_name(g)), "footfall for ground %s" % Ground.NAMES[g])
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		for layer: StringName in ScoreStems.LAYERS:
-			check(SoundBank.has_sound(ScoreStems.name_for(StringName(Country.NAMES[c]), layer)), "score %s for %s" % [layer, Country.NAMES[c]])
+			check(SoundBank.has_sound(ScoreStems.name_for(StringName(BiomeRegistry.name_of(c)), layer)), "score %s for %s" % [layer, BiomeRegistry.name_of(c)])
 	for name: StringName in SoundBeds.LENGTH:
 		check(SoundBank.has_sound(name), "bed length for unknown %s" % name)
 

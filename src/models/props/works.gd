@@ -23,7 +23,7 @@ const WORKING := Color(0.9098, 0.7608, 0.2275, 0.88)
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
-	k.hand(Ink.COUNTRY_STYLE[c])
+	k.hand(Ink.hand_of(c))
 	match kind:
 		PropKind.SIGN: road_sign(k, v, c)
 		PropKind.TIDE_GAUGE: tide_gauge(k, v, c)

@@ -18,11 +18,11 @@ func test_grounds_are_washes_not_salad() -> void:
 		var size := w.size
 		var n := size * size
 		var land := PackedFloat32Array()
-		land.resize(Country.COUNT)
+		land.resize(BiomeRegistry.count())
 		var field := PackedFloat32Array()
-		field.resize(Country.COUNT)
+		field.resize(BiomeRegistry.count())
 		var edge := PackedFloat32Array()
-		edge.resize(Country.COUNT)
+		edge.resize(BiomeRegistry.count())
 		var ground := w.ground
 		for y in range(1, size - 1):
 			for x in range(1, size - 1):
@@ -42,7 +42,7 @@ func test_grounds_are_washes_not_salad() -> void:
 				if (a != g and not _line(a)) or (b != g and not _line(b)) or (u != g and not _line(u)) or (d != g and not _line(d)):
 					edge[c] += 1.0
 		var specks := PackedFloat32Array()
-		specks.resize(Country.COUNT)
+		specks.resize(BiomeRegistry.count())
 		var sizes := PackedInt32Array()
 		var lines := PackedByteArray()
 		lines.resize(n)
@@ -52,9 +52,9 @@ func test_grounds_are_washes_not_salad() -> void:
 		for i in n:
 			if label[i] == i and sizes[i] <= 4:
 				specks[w.country[i]] += 1.0
-		for c: int in Country.LAND:
-			lt(edge[c] / field[c], 0.25, "seed %d %s edge share" % [s, Country.NAMES[c]])
-			lt(specks[c] * 1000.0 / land[c], 10.0, "seed %d %s specks per 1000 tiles" % [s, Country.NAMES[c]])
+		for c: int in BiomeRegistry.land_indices():
+			lt(edge[c] / field[c], 0.25, "seed %d %s edge share" % [s, BiomeRegistry.name_of(c)])
+			lt(specks[c] * 1000.0 / land[c], 10.0, "seed %d %s specks per 1000 tiles" % [s, BiomeRegistry.name_of(c)])
 
 
 func test_no_stair_notches_or_chequers() -> void:
@@ -101,11 +101,11 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var land := PackedFloat32Array()
-		land.resize(Country.COUNT)
+		land.resize(BiomeRegistry.count())
 		var snow := PackedFloat32Array()
-		snow.resize(Country.COUNT)
+		snow.resize(BiomeRegistry.count())
 		var ash := PackedFloat32Array()
-		ash.resize(Country.COUNT)
+		ash.resize(BiomeRegistry.count())
 		for i in w.ground.size():
 			if w.level[i] <= 0:
 				continue
@@ -115,11 +115,11 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 				snow[c] += 1.0
 			elif w.ground[i] == Ground.ASH:
 				ash[c] += 1.0
-		for c: int in Country.LAND:
+		for c: int in BiomeRegistry.land_indices():
 			if c != Country.SNOWFIELD:
-				lt(snow[c] / land[c], 0.03, "seed %d snow in %s" % [s, Country.NAMES[c]])
+				lt(snow[c] / land[c], 0.03, "seed %d snow in %s" % [s, BiomeRegistry.name_of(c)])
 			if c != Country.BURNING:
-				lt(ash[c] / land[c], 0.03, "seed %d ash in %s" % [s, Country.NAMES[c]])
+				lt(ash[c] / land[c], 0.03, "seed %d ash in %s" % [s, BiomeRegistry.name_of(c)])
 
 
 func test_heath_drapes_across_terraces() -> void:
@@ -221,12 +221,13 @@ func test_props_keep_to_their_country() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var bad := {}
+		var allow := GenScatter.allow(GenContext.new(w))
 		for p in w.props:
 			if p.kind in GenScatter.PLACED:
 				continue
 			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
-			if (GenScatter.ALLOW[cc] >> p.kind) & 1 == 0:
-				var key := "%s in %s" % [PropKind.NAMES[p.kind], Country.NAMES[cc]]
+			if (allow[cc] >> p.kind) & 1 == 0:
+				var key := "%s in %s" % [PropKind.NAMES[p.kind], BiomeRegistry.name_of(cc)]
 				bad[key] = int(bad.get(key, 0)) + 1
 		check(bad.is_empty(), "seed %d off-theme props: %s" % [s, bad])
 		for p in w.props:
@@ -241,12 +242,12 @@ func test_the_burning_has_things_to_find() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var land := PackedFloat32Array()
-		land.resize(Country.COUNT)
+		land.resize(BiomeRegistry.count())
 		for i in w.level.size():
 			if w.level[i] > 0:
 				land[w.country[i]] += 1.0
 		var props := PackedFloat32Array()
-		props.resize(Country.COUNT)
+		props.resize(BiomeRegistry.count())
 		var vents := 0
 		var dead := 0
 		for p in w.props:

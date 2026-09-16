@@ -35,22 +35,22 @@ func test_every_landscape_holds_its_own_works_on_every_seed() -> void:
 			if HOME.has(p.kind) and w.country_at(floori(p.pos.x), floori(p.pos.y)) == int(HOME[p.kind]):
 				at_home[p.kind] = true
 		for kind: int in HOME:
-			check(at_home.has(kind), "seed %d: no %s in the %s" % [s, PropKind.NAMES[kind], Country.NAMES[HOME[kind]]])
+			check(at_home.has(kind), "seed %d: no %s in the %s" % [s, PropKind.NAMES[kind], BiomeRegistry.name_of(int(HOME[kind]))])
 		for kind in range(FIRST, PropKind.COUNT):
 			gt(counts[kind], 0, "seed %d %s placed" % [s, PropKind.NAMES[kind]])
 		# Evidence at walking scale in every landscape, not only at the works.
 		var land := PackedFloat32Array()
-		land.resize(Country.COUNT)
+		land.resize(BiomeRegistry.count())
 		for i in w.level.size():
 			if w.level[i] > 0:
 				land[w.country[i]] += 1.0
 		var evidence := PackedFloat32Array()
-		evidence.resize(Country.COUNT)
+		evidence.resize(BiomeRegistry.count())
 		for p in w.props:
 			if p.kind >= FIRST:
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
-		for cc: int in Country.LAND:
-			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, Country.NAMES[cc]])
+		for cc: int in BiomeRegistry.land_indices():
+			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, BiomeRegistry.name_of(cc)])
 
 
 func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
@@ -278,9 +278,9 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 		gt(t.found_v.size(), t.made_v.size(), "%s is mostly ruled" % PropKind.NAMES[kind])
 	# What people built is drawn by hand, however much steel was in it.
 	for kind: int in [PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.FIRE_TOWER, PropKind.STUMP, PropKind.GRAVE, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.MEMORIAL]:
-		for c: int in Country.LAND:
+		for c: int in BiomeRegistry.land_indices():
 			var t := PropModels.template(kind, 0, c)
-			gt(t.made_v.size(), t.found_v.size(), "%s in %s is mostly drawn by hand" % [PropKind.NAMES[kind], Country.NAMES[c]])
+			gt(t.made_v.size(), t.found_v.size(), "%s in %s is mostly drawn by hand" % [PropKind.NAMES[kind], BiomeRegistry.name_of(c)])
 	# Neon only where it means something: machine installations, the relay
 	# line, and the stolen tech in a shack that wired it in.
 	for kind in range(FIRST, PropKind.COUNT):

@@ -75,29 +75,29 @@ func _save(w: WorldData, layer: String, out: String) -> void:
 func _report(w: WorldData, gen_ms: int) -> void:
 	for v in w.villages:
 		var p: Vector2 = v.pos
-		print("village %-2d %-13s %-10s at %d,%d level %d" % [v.id, v.name, Country.NAMES[v.country], p.x, p.y, v.level])
-	print("spawn at %d,%d (%s) facing %d deg" % [w.spawn.x, w.spawn.y, Country.NAMES[w.country_at(int(w.spawn.x), int(w.spawn.y))], roundi(rad_to_deg(w.spawn_facing))])
+		print("village %-2d %-13s %-10s at %d,%d level %d" % [v.id, v.name, BiomeRegistry.name_of(v.country), p.x, p.y, v.level])
+	print("spawn at %d,%d (%s) facing %d deg" % [w.spawn.x, w.spawn.y, BiomeRegistry.name_of(w.country_at(int(w.spawn.x), int(w.spawn.y))), roundi(rad_to_deg(w.spawn_facing))])
 	var counts := PackedInt32Array()
-	counts.resize(Country.COUNT)
+	counts.resize(BiomeRegistry.count())
 	var land := 0
 	for i in w.country.size():
 		if w.level[i] > 0:
 			counts[w.country[i]] += 1
 			land += 1
 	var shares := ""
-	for c: int in Country.LAND:
-		shares += "%s %.1f%%  " % [Country.NAMES[c], 100.0 * counts[c] / maxf(1.0, land)]
+	for c: int in BiomeRegistry.land_indices():
+		shares += "%s %.1f%%  " % [BiomeRegistry.name_of(c), 100.0 * counts[c] / maxf(1.0, land)]
 	print("shares ", shares)
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		var s := GenPlaces.country_sample(w, c)
-		print("country %-10s sample at %d,%d" % [Country.NAMES[c], s.x, s.y])
-	for a: int in Country.LAND:
-		for b: int in Country.LAND:
+		print("country %-10s sample at %d,%d" % [BiomeRegistry.name_of(c), s.x, s.y])
+	for a: int in BiomeRegistry.land_indices():
+		for b: int in BiomeRegistry.land_indices():
 			if b <= a:
 				continue
 			var s := GenPlaces.ecotone_sample(w, a, b)
 			if s.x >= 0.0:
-				print("ecotone %-20s at %d,%d" % ["%s-%s" % [Country.NAMES[a], Country.NAMES[b]], s.x, s.y])
+				print("ecotone %-20s at %d,%d" % ["%s-%s" % [BiomeRegistry.name_of(a), BiomeRegistry.name_of(b)], s.x, s.y])
 	var by_kind := {}
 	for m in w.landmarks:
 		if not by_kind.has(m.kind):

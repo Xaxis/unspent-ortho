@@ -9,7 +9,7 @@ const P := preload("res://src/render/palette.gd")
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
-	k.hand(Ink.COUNTRY_STYLE[c])
+	k.hand(Ink.hand_of(c))
 	match kind:
 		PropKind.DRIFTWOOD: driftwood(k, v, c)
 		PropKind.WRACK: wrack(k, v, c)

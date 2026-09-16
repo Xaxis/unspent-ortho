@@ -81,7 +81,7 @@ static var _lock := Mutex.new()
 
 
 static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
-	var key := (kind * 8 + variant) * 8 + country
+	var key := (kind * 8 + variant) * BiomeRegistry.SLOTS + country
 	_lock.lock()
 	var t: Template = _templates.get(key)
 	if t == null:
@@ -270,14 +270,14 @@ static func gallery() -> Array:
 			out.append({"name": label, "node": node(kind, v, Country.COAST)})
 	for kind: int in [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS, PropKind.HOUSE, PropKind.GORSE, PropKind.RUIN, PropKind.WRECK, PropKind.CAIRN]:
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
-			out.append({"name": "%s %s" % [PropKind.NAMES[kind], Country.NAMES[c]], "node": node(kind, 0, c)})
+			out.append({"name": "%s %s" % [PropKind.NAMES[kind], BiomeRegistry.names()[c]], "node": node(kind, 0, c)})
 	# The but in snow: its sods carry the snow, not a lid of it.
 	out.append({"name": "%s 3 snowfield" % PropKind.NAMES[PropKind.HOUSE], "node": node(PropKind.HOUSE, 3, Country.SNOWFIELD)})
 	# The evidence each landscape dresses its own way.
 	for kind: int in DRESSED:
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
 			for v in variants(kind):
-				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, Country.NAMES[c]], "node": node(kind, v, c)})
+				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, BiomeRegistry.names()[c]], "node": node(kind, v, c)})
 	return out
 
 

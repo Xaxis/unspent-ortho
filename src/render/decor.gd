@@ -94,12 +94,12 @@ func _init(w: WorldData) -> void:
 	_table(Ground.CLINKER, 0.45, [GLASS, 26, CINDER, 40])
 	_table(Ground.ROCK, 0.35, [LICHEN, 30, STONE, 34, TUFT, 6])
 	_table(Ground.ROAD, 0.08, [PEBBLES, 10, TUFT, 3])
-	# Country versions of a ground, keyed ground * 8 + country + 1000.
-	_table(Ground.GRASS * 8 + Country.PINEWOOD + 1000, 1.2, [FERN, 30, BRACKEN, 26, TUFT_TALL, 14, MUSHROOM, 4, CONE, 6])
-	_table(Ground.GRASS * 8 + Country.SNOWFIELD + 1000, 0.7, [SNOW_TUFT, 30, TUFT, 20, CROTTLE, 6])
-	_table(Ground.GRASS * 8 + Country.BONELANDS + 1000, 1.0, [TUFT, 40, FLOWER, 14, STONE, 10, THISTLE, 6, BONE, 2])
-	_table(Ground.GRASS * 8 + Country.BURNING + 1000, 0.6, [TWIG, 20, ASH_FLAKE, 30, TUFT, 12, CINDER, 10])
-	_table(Ground.GRASS * 8 + Country.MOSS + 1000, 1.2, [SEDGE, 30, TUFT_TALL, 20, BOG_COTTON, 14, SPHAGNUM, 8])
+	# A landscape's own version of a ground, keyed ground * SLOTS + type + 1000,
+	# straight out of BiomeDef.decor: adding a landscape adds no code here.
+	for d: BiomeDef in BiomeRegistry.all():
+		for g: int in d.decor:
+			var row: Array = d.decor[g]
+			_table(g * BiomeRegistry.SLOTS + d.index + 1000, float(row[0]), row.slice(1))
 
 
 func _table(g: int, density: float, pairs: Array) -> void:
@@ -167,7 +167,7 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 			if not ok:
 				continue
 			var g := k & 0xFF
-			var table: Array = _tables.get(g * 8 + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
+			var table: Array = _tables.get(g * BiomeRegistry.SLOTS + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
 			if table.is_empty():
 				continue
 			var gather := _clump.get_noise_2d(ch.x0 + tx, ch.y0 + ty) * 0.5 + 0.5
@@ -180,7 +180,7 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 			var home := world.country_at(ch.x0 + tx, ch.y0 + ty)
 			var other := int(ch.c2[ti]) if country == home else home
 			var lead := lead_share(ch.blend[ti]) if other > 0 and other != country else 0.0
-			var other_table: Array = _tables.get(g * 8 + other + 1000, _tables.get(GroundColors.home_turf(other), [])) if lead > 0.0 else []
+			var other_table: Array = _tables.get(g * BiomeRegistry.SLOTS + other + 1000, _tables.get(GroundColors.home_turf(other), [])) if lead > 0.0 else []
 			var h := TerrainMesher.level_height(t) - 0.004
 			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
 			var shore := ch.shore[ty * ch.w + tx]
@@ -250,7 +250,7 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 		# Rubble gathers under the stretches of face that are falling, and the
 		# rest of the foot is clean: never a dotted line along every contour.
 		var fall := _clump.get_noise_2d(foot.x * 1.7 + 400.0, foot.z * 1.7) * 0.5 + 0.5
-		var chance := (0.5 if country == Country.BONELANDS or country == Country.BURNING else 0.3) * clampf((fall - 0.45) * 3.0, 0.0, 1.0)
+		var chance := (0.5 if BiomeRegistry.by_index(country).hard_rock else 0.3) * clampf((fall - 0.45) * 3.0, 0.0, 1.0)
 		if rng.randf() > chance:
 			continue
 		var p := foot + out * (0.05 + rng.randf() * 0.25)
@@ -294,7 +294,7 @@ func _pick(table: Array, r: float) -> int:
 
 
 static func template(kind: int, country: int, stage: int = 0) -> Tpl:
-	var key := (kind * 8 + country) * 4 + stage
+	var key := (kind * BiomeRegistry.SLOTS + country) * 4 + stage
 	_lock.lock()
 	var t: Tpl = _templates.get(key)
 	if t == null:
@@ -310,29 +310,31 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 	return t
 
 
-## Grass colours of a country: [blade, tip].
+## Grass colours of a landscape: [blade, tip].
 static func grass(c: int) -> Array[Color]:
-	match c:
-		Country.MOSS: return [P.SPRUCE[3], P.MOSS[3]]
-		Country.PINEWOOD: return [P.SPRUCE[2], P.MOSS[2]]
-		Country.SNOWFIELD: return [P.ASH[3], P.LINEN[3]]
-		Country.BONELANDS: return [P.MOSS[4].lerp(P.SAND[4], 0.4), P.SAND[4]]
-		Country.BURNING: return [P.EARTH[3], P.ASH[2]]
+	var cols := BiomeRegistry.by_index(c).grass_colors
+	if cols.size() >= 2:
+		return cols
 	return [P.MOSS[3], P.MOSS[4].lerp(P.SLATE[3], 0.2)]
 
 
 static func rock_of(c: int) -> Color:
-	match c:
-		Country.BONELANDS: return P.LINEN[3]
-		Country.BURNING: return P.STONE[1]
-		Country.SNOWFIELD: return P.SLATE[3]
-		Country.MOSS, Country.PINEWOOD: return P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
-	return P.SLATE[2]
+	return BiomeRegistry.by_index(c).rock_color
+
+
+## A landscape's own colours for one kind of small life, or the shared ones.
+static func _tint(c: int, key: StringName, fallback: Array[Color]) -> Array[Color]:
+	var own: Variant = BiomeRegistry.by_index(c).decor_tints.get(key)
+	if own is Array and not (own as Array).is_empty():
+		var out: Array[Color] = []
+		out.assign(own)
+		return out
+	return fallback
 
 
 static func kit(kind: int, c: int, stage: int) -> Kit:
 	var k := Kit.new()
-	k.hand(Ink.COUNTRY_STYLE[c])
+	k.hand(BiomeRegistry.by_index(c).hatch)
 	var gr := grass(c)
 	var rock := rock_of(c)
 	var s := kind * 131 + c * 17 + stage * 7
@@ -357,13 +359,7 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 					k.fleck(p, p + Vector3(0.035, 0.0, 0.01), p + Vector3(0.01, 0.035, 0.0), P.BLOOM[1] if i % 2 else P.BLOOM[2])
 			k.sway_by_height(0, 0.0, 0.14, 0.25)
 		FLOWER:
-			var head: Color
-			match c:
-				Country.COAST: head = [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]][stage]
-				Country.BONELANDS: head = [P.BRINE[3], P.BRINE[4], P.LINEN[4]][stage]
-				Country.MOSS: head = [P.RUST[4], P.SAND[5], P.RUST[5]][stage]
-				Country.BURNING: head = [P.BLOOM[1], P.BLOOM[2], P.ASH[3]][stage]
-				_: head = [P.RUST[4], P.SAND[5], P.LINEN[4]][stage]
+			var head: Color = _tint(c, &"bloom", [P.RUST[4], P.SAND[5], P.LINEN[4]])[stage]
 			for i in 2 + stage % 2:
 				var a := float(i) * 2.4
 				var base := Vector3(cos(a) * 0.03, 0, sin(a) * 0.03)
@@ -414,9 +410,7 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, -0.05, 0, 0.03, 0.05, 0.012, 5, P.EARTH[2], P.EARTH[3])
 			k.made.pop()
 		BRACKEN:
-			var fronds: Array[Color] = [P.RUST[3], P.EARTH[3], P.RUST[2]]
-			if c == Country.SNOWFIELD or c == Country.BURNING:
-				fronds = [P.EARTH[2], P.EARTH[1], P.ASH[2]]
+			var fronds := _tint(c, &"fronds", [P.RUST[3], P.EARTH[3], P.RUST[2]])
 			for i in 4:
 				var a := float(i) / 4.0 * TAU + 0.3
 				k.blade(Vector3(0, 0.02, 0), Vector3(cos(a) * 0.2, 0.2, sin(a) * 0.2), 0.09, a + 1.57, fronds[i % 3])
@@ -445,7 +439,7 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 				k.blade(base, base * 3.0 + Vector3(0.04, 0.34, 0), 0.03, a + 1.57, P.SAND[4] if i % 2 else P.MOSS[4].lerp(P.SAND[4], 0.5))
 			k.sway_by_height(0, 0.0, 0.34, 0.9)
 		TWIG:
-			k.limb(Vector3(-0.12, 0.02, 0), Vector3(0.12, 0.02, 0.04), 0.013, 0.008, 3, P.EARTH[1] if c != Country.BURNING else P.INK[2])
+			k.limb(Vector3(-0.12, 0.02, 0), Vector3(0.12, 0.02, 0.04), 0.013, 0.008, 3, _tint(c, &"twig", [P.EARTH[1]])[0])
 			k.limb(Vector3(0.0, 0.02, 0.01), Vector3(0.06, 0.02, 0.08), 0.008, 0.005, 3, P.EARTH[2])
 		CINDER:
 			k.stone(0, -0.01, 0, 0.04, 0.035, s, P.INK[2], 4)
@@ -491,7 +485,7 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, 0.0, 0, 0.022, 0.018, 0.022, 6, P.STONE[2], P.STONE[3])
 			k.made.prism(0.03, 0.0, 0.01, 0.009, 0.012, 0.009, 4, P.RUST[2])
 		SPOIL:
-			k.stone(0, -0.02, 0, 0.09, 0.05, s, P.LINEN[4] if c == Country.BONELANDS else P.STONE[3], 5, 0.2)
+			k.stone(0, -0.02, 0, 0.09, 0.05, s, _tint(c, &"spoil", [P.STONE[3]])[0], 5, 0.2)
 			k.stone(0.1, -0.02, 0.04, 0.05, 0.04, s + 1, P.LINEN[3], 4)
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)

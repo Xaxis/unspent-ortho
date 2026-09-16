@@ -1,7 +1,12 @@
 class_name GroundColors
 ## The washes of the land (docs/ART.md §3): what colour a ground is in each
-## country, which ink MARK world.gdshader draws into it, and what its cliffs are
-## made of. Every wash is a palette value or a named mix of two.
+## landscape type, which ink MARK world.gdshader draws into it, and what its
+## cliffs are made of.
+##
+## A ground has one wash the whole world over, and a landscape type OVERRIDES
+## the ones it argues with (`BiomeDef.grounds`, `ground_marks`): the table here
+## is what a ground is when nobody argues. Every wash is a palette value or a
+## named mix of two. Adding a landscape adds no code here.
 ##
 ## Marks are stored in a vertex colour's alpha as `code / 255` (see
 ## world.gdshader). 0 and 255 are plain, so an ordinary palette colour
@@ -33,6 +38,8 @@ const ICE := 51
 const ROCK := 52
 const MUD := 53
 const ROAD := 54
+const SALT := 55
+const SWARF := 56
 ## Cliff strata: STRATA + one of the STRATA_* ids.
 const STRATA := 60
 const STRATA_COAST := 1
@@ -43,127 +50,80 @@ const STRATA_BONE := 5
 const STRATA_BASALT := 6
 const STRATA_SAND := 7
 const STRATA_ICE := 8
+const STRATA_SALT := 9
+const STRATA_SCRAP := 10
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
 static var _cliff: PackedColorArray
+static var _strata: PackedInt32Array
+static var _stride := 0
 
 
-static func _static_init() -> void:
-	_wash.resize(Ground.COUNT * Country.COUNT)
-	_marks.resize(Ground.COUNT * Country.COUNT)
-	_cliff.resize(Ground.COUNT * Country.COUNT)
-	for g in Ground.COUNT:
-		for c in Country.COUNT:
-			var i := g * Country.COUNT + c
-			_wash[i] = _make(g, c)
-			_marks[i] = _make_mark(g, c)
-			_cliff[i] = _make_cliff(g, c)
+## Rebuilt on first use, and whenever the registry has changed under us (tests
+## that mute types to prove parity with the M1 six).
+static func _ensure() -> void:
+	var n := BiomeRegistry.count()
+	if _stride == n and not _wash.is_empty():
+		return
+	_stride = n
+	_wash.resize(Ground.COUNT * n)
+	_marks.resize(Ground.COUNT * n)
+	_cliff.resize(Ground.COUNT * n)
+	_strata.resize(Ground.COUNT * n)
+	for d: BiomeDef in BiomeRegistry.all():
+		for g in Ground.COUNT:
+			var i := g * n + d.index
+			_wash[i] = d.grounds.get(g, _base(g))
+			_marks[i] = d.ground_marks.get(g, _base_mark(g))
+			_cliff[i] = _make_cliff(g, d)
+			_strata[i] = _make_strata(g, d)
 
 
 static func _m(a: Color, b: Color, t: float) -> Color:
 	return a.lerp(b, t)
 
 
-## The wash of ground g as drawn in country c.
-static func _make(g: int, c: int) -> Color:
+## The wash of ground g where no landscape says otherwise.
+static func _base(g: int) -> Color:
 	match g:
 		Ground.DEEP_WATER: return P.BRINE[1]
 		Ground.WATER, Ground.RIVER: return _m(P.SAND[2], P.BRINE[2], 0.5)
 		Ground.BLACKWATER: return P.BRINE[0]
 		Ground.FLOOR: return P.STONE[2]
-		Ground.ROAD:
-			match c:
-				Country.SNOWFIELD: return _m(P.ASH[3], P.EARTH[3], 0.35)
-				# A track trodden through the ash, darker and browner than the drifts.
-				Country.BURNING: return _m(P.ASH[2], P.EARTH[2], 0.45)
-				Country.BONELANDS: return _m(P.LINEN[3], P.EARTH[3], 0.4)
-			return _m(P.EARTH[3], P.SAND[3], 0.4)
-		Ground.SAND:
-			match c:
-				Country.SNOWFIELD: return _m(P.SAND[4], P.RIME[4], 0.45)
-				Country.BURNING: return _m(P.SAND[3], P.ASH[2], 0.5)
-				Country.MOSS: return P.SAND[3]
-			return P.SAND[4]
-		Ground.SHINGLE:
-			match c:
-				Country.BURNING: return P.STONE[1]
-				Country.SNOWFIELD: return _m(P.STONE[3], P.RIME[3], 0.3)
-			# Warm grey, not yellow: shingle is stone that the sea sorted.
-			return _m(P.STONE[3], P.SAND[3], 0.3)
-		Ground.GRAVEL:
-			match c:
-				Country.BONELANDS: return _m(P.STONE[3], P.LINEN[3], 0.5)
-				Country.BURNING: return P.STONE[1]
-			return _m(P.STONE[3], P.SAND[3], 0.45)
-		Ground.GRASS:
-			match c:
-				Country.MOSS: return P.MOSS[2]
-				# A clearing: the light gets in.
-				Country.PINEWOOD: return _m(P.MOSS[3], P.SPRUCE[3], 0.45)
-				# Frost-bitten turf between drifts.
-				Country.SNOWFIELD: return _m(P.MOSS[3], P.ASH[3], 0.55)
-				# Bleached sheep-bitten grass on the limestone.
-				Country.BONELANDS: return _m(P.MOSS[4], P.SAND[4], 0.5)
-				# Scorched: what grass is left near the burning.
-				Country.BURNING: return _m(P.EARTH[3], P.ASH[2], 0.5)
-			# Grey-green coast turf.
-			return _m(P.MOSS[3], P.SLATE[3], 0.22)
-		Ground.HEATH:
-			match c:
-				Country.MOSS: return _m(P.EARTH[1], P.MOSS[1], 0.5)
-				Country.BONELANDS: return _m(P.EARTH[3], P.SAND[3], 0.5)
-				Country.SNOWFIELD: return _m(P.EARTH[2], P.ASH[2], 0.5)
-				Country.BURNING: return P.EARTH[1]
-			# Heather browns under a grey-green cast, never orange.
-			return _m(P.EARTH[2], P.MOSS[2], 0.5)
-		Ground.MOSS:
-			match c:
-				Country.SNOWFIELD: return _m(P.SPRUCE[2], P.ASH[3], 0.4)
-				Country.BURNING: return _m(P.MOSS[1], P.ASH[1], 0.4)
-			return _m(P.MOSS[2], P.SPRUCE[2], 0.4)
+		Ground.ROAD: return _m(P.EARTH[3], P.SAND[3], 0.4)
+		Ground.SAND: return P.SAND[4]
+		# Warm grey, not yellow: shingle is stone that the sea sorted.
+		Ground.SHINGLE: return _m(P.STONE[3], P.SAND[3], 0.3)
+		Ground.GRAVEL: return _m(P.STONE[3], P.SAND[3], 0.45)
+		# Grey-green coast turf.
+		Ground.GRASS: return _m(P.MOSS[3], P.SLATE[3], 0.22)
+		# Heather browns under a grey-green cast, never orange.
+		Ground.HEATH: return _m(P.EARTH[2], P.MOSS[2], 0.5)
+		Ground.MOSS: return _m(P.MOSS[2], P.SPRUCE[2], 0.4)
 		Ground.PEAT: return _m(P.EARTH[1], P.EARTH[2], 0.35)
-		Ground.MUD:
-			if c == Country.MOSS:
-				return _m(P.EARTH[1], P.EARTH[2], 0.35)
-			return P.EARTH[2]
-		Ground.NEEDLES:
-			match c:
-				Country.SNOWFIELD: return _m(P.EARTH[2], P.ASH[3], 0.35)
-				Country.BURNING: return P.EARTH[1]
-			return _m(P.EARTH[2], P.EARTH[3], 0.45)
-		Ground.SNOW:
-			match c:
-				Country.BURNING: return _m(P.RIME[4], P.ASH[3], 0.55)
-				Country.SNOWFIELD: return P.RIME[5]
-			return _m(P.RIME[5], P.RIME[4], 0.4)
+		Ground.MUD: return P.EARTH[2]
+		Ground.NEEDLES: return _m(P.EARTH[2], P.EARTH[3], 0.45)
+		Ground.SNOW: return _m(P.RIME[5], P.RIME[4], 0.4)
 		Ground.ICE: return P.RIME[4]
-		Ground.BONE, Ground.LIMESTONE:
-			if c == Country.BURNING:
-				return _m(P.LINEN[3], P.ASH[3], 0.5)
-			# Bone-pale, cooled a touch toward the grey of weathered stone.
-			return _m(_m(P.LINEN[4], P.LINEN[5], 0.45), P.STONE[4], 0.15)
-		Ground.SCREE:
-			match c:
-				Country.BONELANDS: return _m(P.SLATE[3], P.LINEN[3], 0.35)
-				Country.BURNING: return P.STONE[1]
-			return P.SLATE[3]
-		Ground.ROCK:
-			match c:
-				Country.BONELANDS: return _m(P.LINEN[3], P.SLATE[3], 0.4)
-				Country.BURNING: return _m(P.STONE[1], P.ASH[1], 0.5)
-				Country.SNOWFIELD: return _m(P.SLATE[3], P.RIME[3], 0.4)
-				Country.MOSS: return _m(P.SLATE[2], P.SPRUCE[2], 0.35)
-				Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.25)
-			return P.SLATE[3]
+		# Bone-pale, cooled a touch toward the grey of weathered stone.
+		Ground.BONE, Ground.LIMESTONE: return _m(_m(P.LINEN[4], P.LINEN[5], 0.45), P.STONE[4], 0.15)
+		Ground.SCREE: return P.SLATE[3]
+		Ground.ROCK: return P.SLATE[3]
 		# Ash over a fire that has not gone out: warmed off the cold grey.
 		Ground.ASH: return _m(P.ASH[2], P.EARTH[2], 0.22)
 		# Slag grit: a dark rust-grey, never near black; the glass lies in pools.
 		Ground.CLINKER: return _m(P.STONE[2], P.RUST[1], 0.3)
+		# Evaporite crust: linen bleached almost to the page, faintly warm.
+		Ground.SALT: return _m(P.LINEN[5], P.SAND[5], 0.2)
+		# A pan the brine has drawn back from: mineral stain over grey silt.
+		Ground.PAN: return _m(P.LINEN[2], P.RUST[2], 0.22)
+		# Rust grit and metal filings trodden into the leaf litter.
+		Ground.SWARF: return _m(P.EARTH[2], P.RUST[2], 0.35)
 	return P.BLOOM[3]
 
 
-static func _make_mark(g: int, c: int) -> int:
+static func _base_mark(g: int) -> int:
 	match g:
 		Ground.GRASS: return TURF
 		Ground.HEATH: return HEATH
@@ -175,60 +135,56 @@ static func _make_mark(g: int, c: int) -> int:
 		Ground.CLINKER: return CLINKER
 		Ground.MOSS: return FEN
 		Ground.PEAT: return PEAT
-		Ground.MUD: return PEAT if c == Country.MOSS else MUD
+		Ground.MUD: return MUD
 		Ground.NEEDLES: return NEEDLES
 		Ground.ICE: return ICE
 		Ground.ROCK, Ground.SCREE: return ROCK
 		Ground.ROAD: return ROAD
+		Ground.SALT, Ground.PAN: return SALT
+		Ground.SWARF: return SWARF
 	return PLAIN
 
 
-## The base wash of a terrace wall under ground g in country c; strata() says
-## how world.gdshader bands it.
-static func _make_cliff(g: int, c: int) -> Color:
+## The base wash of a terrace wall under ground g in landscape d; strata() says
+## how world.gdshader bands it. Loose ground decides its own wall; everything
+## else is the landscape's bedrock.
+static func _make_cliff(g: int, d: BiomeDef) -> Color:
 	match g:
-		Ground.SAND, Ground.SHINGLE, Ground.GRAVEL:
-			return P.SAND[3] if g == Ground.SAND else P.STONE[2]
-		Ground.ICE:
-			return P.RIME[3]
-	match c:
-		Country.MOSS: return P.EARTH[1]
-		Country.PINEWOOD: return _m(P.SLATE[2], P.SPRUCE[2], 0.4)
-		Country.SNOWFIELD: return _m(P.SLATE[2], P.RIME[2], 0.5)
-		Country.BONELANDS: return P.LINEN[3]
-		Country.BURNING: return P.STONE[0]
-	# A turf-cut earth bank over sandy beds: warm, so its shaded face reads as
-	# a bank of soil and never as a blue ditch or a run of water.
-	return _m(P.EARTH[3], P.SAND[3], 0.4)
+		Ground.SAND: return P.SAND[3]
+		Ground.SHINGLE, Ground.GRAVEL: return P.STONE[2]
+		Ground.ICE: return P.RIME[3]
+	return d.cliff_wash
 
 
-## Wash of ground g in country c.
-static func wash(g: int, c: int) -> Color:
-	return _wash[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
-
-
-## Ink mark code of ground g in country c.
-static func mark(g: int, c: int) -> int:
-	return _marks[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
-
-
-static func cliff(g: int, c: int) -> Color:
-	return _cliff[clampi(g, 0, Ground.COUNT - 1) * Country.COUNT + clampi(c, 0, Country.COUNT - 1)]
-
-
-## Strata id for a wall under ground g in country c.
-static func strata(g: int, c: int) -> int:
+static func _make_strata(g: int, d: BiomeDef) -> int:
 	match g:
 		Ground.SAND, Ground.SHINGLE, Ground.GRAVEL: return STRATA_SAND
 		Ground.ICE: return STRATA_ICE
 		Ground.SNOW: return STRATA_SNOW
-	match c:
-		Country.MOSS: return STRATA_MOSS
-		Country.PINEWOOD: return STRATA_PINE
-		Country.SNOWFIELD: return STRATA_SNOW
-		Country.BONELANDS: return STRATA_BONE
-		Country.BURNING: return STRATA_BASALT
-	return STRATA_COAST
+	return d.strata
+
+
+## Wash of ground g in landscape type index c.
+static func wash(g: int, c: int) -> Color:
+	_ensure()
+	return _wash[clampi(g, 0, Ground.COUNT - 1) * _stride + clampi(c, 0, _stride - 1)]
+
+
+## Ink mark code of ground g in landscape type index c.
+static func mark(g: int, c: int) -> int:
+	_ensure()
+	return _marks[clampi(g, 0, Ground.COUNT - 1) * _stride + clampi(c, 0, _stride - 1)]
+
+
+static func cliff(g: int, c: int) -> Color:
+	_ensure()
+	return _cliff[clampi(g, 0, Ground.COUNT - 1) * _stride + clampi(c, 0, _stride - 1)]
+
+
+## Strata id for a wall under ground g in landscape type index c.
+static func strata(g: int, c: int) -> int:
+	_ensure()
+	return _strata[clampi(g, 0, Ground.COUNT - 1) * _stride + clampi(c, 0, _stride - 1)]
 
 
 ## A colour carrying mark `code` in its alpha.
@@ -250,38 +206,26 @@ static func glint(col: Color) -> Color:
 	return marked(col, GLINT)
 
 
-## Ground a turf of country `from` becomes when drawn as country `to`, so an
-## ecotone interleaves each country's own ground (used only when world gen has
-## not dithered the grounds itself). Rock, sand, water and roads stay.
+## Ground a turf of one landscape becomes when drawn as landscape index `to`, so
+## an ecotone interleaves each landscape's own ground (used only when world gen
+## has not dithered the grounds itself). Loose ground, water and roads stay.
 static func morph(g: int, to: int) -> int:
 	match g:
-		Ground.GRASS, Ground.HEATH, Ground.MOSS, Ground.MUD, Ground.PEAT, Ground.NEEDLES, Ground.SNOW, Ground.BONE, Ground.LIMESTONE, Ground.ASH:
+		Ground.GRASS, Ground.HEATH, Ground.MOSS, Ground.MUD, Ground.PEAT, Ground.NEEDLES, Ground.SNOW, Ground.BONE, Ground.LIMESTONE, Ground.ASH, Ground.SALT, Ground.SWARF:
 			return home_turf(to)
 		Ground.ROCK, Ground.SCREE, Ground.CLINKER:
-			return Ground.CLINKER if to == Country.BURNING else (Ground.SCREE if to == Country.BONELANDS else Ground.ROCK)
+			return BiomeRegistry.by_index(to).rock_ground
 	return g
 
 
 ## What the bank of inland water is drawn as where the tile under it is wet
 ## but the terrace is not.
 static func bank(c: int) -> int:
-	match c:
-		Country.MOSS: return Ground.PEAT
-		Country.PINEWOOD: return Ground.NEEDLES
-		Country.SNOWFIELD: return Ground.SNOW
-		Country.BONELANDS: return Ground.GRAVEL
-		Country.BURNING: return Ground.ASH
-	return Ground.SAND
+	return BiomeRegistry.by_index(c).bank_ground
 
 
 static func home_turf(c: int) -> int:
-	match c:
-		Country.MOSS: return Ground.MOSS
-		Country.PINEWOOD: return Ground.NEEDLES
-		Country.SNOWFIELD: return Ground.SNOW
-		Country.BONELANDS: return Ground.LIMESTONE
-		Country.BURNING: return Ground.ASH
-	return Ground.GRASS
+	return BiomeRegistry.by_index(c).plain_ground
 
 
 ## n ramp steps darker (fractional allowed), the palette's own blue-violet step.
