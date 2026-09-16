@@ -156,6 +156,48 @@ the empty gear and reads apps, the location caption.
 - The browser check's audio test needs an audio device: on a machine whose
   headless Chromium has none it reports silence.
 
+## Dev mode (integrated, 2026-09-16)
+
+`docs/DEV.md`. The slate's service mode, reachable in any build whose master
+configuration allows it, the web included, and proved by `tours/dev.tour` and by
+a stamped web build driven in Chromium (the chord, a refusal, the readout, a note
+kept in IndexedDB).
+
+### What is true
+
+- **Feedback and testing anywhere.** Warp to any landscape, village or landmark;
+  set the hour and hold the weather; mend, feed, hide and shelter the body; give
+  anything and fit gear; put any roster body down, clear the land, step a
+  region's file; zoom, hide the slate's edge, take a clean picture. A readout on
+  the glass's edge, and notes that keep the frame from before the slate woke, the
+  state, the build, and the `tools/shot.sh` line that stages the moment again;
+  restaged in-game, copied out as JSON, or downloaded on the web.
+- **Master configurations.** `configs/dev`, `playtest` and `release`: identity and
+  channel, dev access, the island, how a new game starts, the kit and gear, and
+  live rules (clock rate, harm taken, whether bodies come, the guide), edited on
+  the slate, kept to the repository, copied between copies of the game.
+- **Builds on this machine.** `tools/export.sh --config=NAME` stamps what a build
+  is into its pack and beside it; the slate makes builds of a configuration's
+  targets in the background after reading the machine's load, keeps a shelf,
+  plays a web build in the browser (`web.mjs --serve`) or the app, proves it, and
+  deploys a preview or production (asked twice), recorded in its `build.json`.
+  The gate, the tests, the canon sheet and every tour run from the slate with
+  their frames shown.
+
+Closed since: a configuration can fix the title to its island; hunger pace and
+how many bodies come are live rules; a direction tapped and let go inside one
+frame moves every app on the slate (it was lost in a game, and a browser delivers
+quick taps that way).
+
+### Gaps
+
+- Autosave and hazard strength want rows, but `05_save` and `52_hazards` are open
+  on the a2 wave's branches (saves, salt-and-scrap): added after those merge, so
+  the two do not collide.
+- `world.landscapes` (a build narrowed to some landscapes) needs worldgen to prove
+  every subset still makes a whole island; `BiomeRegistry.mute_to` is only
+  trusted by tests today.
+
 ## M2 — Foundations of an immense world
 
 Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so

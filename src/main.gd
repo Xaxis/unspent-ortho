@@ -25,6 +25,12 @@ func _ready() -> void:
 	# A player launching the game gets the title; tools always pass options.
 	if OS.get_cmdline_user_args().is_empty():
 		options.scene = "title"
+	# The master configuration this run is made from, and whether dev mode can be
+	# reached (docs/DEV.md). A game booted straight from the command line is a new
+	# game, and takes a configuration's start as the title's New game does.
+	DevMode.boot(options, OS.get_cmdline_user_args())
+	if options.scene == "game":
+		GameConfig.fill_new_game(options, DevMode.explicit(OS.get_cmdline_user_args()))
 	_take_focus_if_a_person_is_playing()
 	var root: Node
 	match options.scene:

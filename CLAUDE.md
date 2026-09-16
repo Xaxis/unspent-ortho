@@ -31,15 +31,46 @@ tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score 
 tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
 tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
 tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
-godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Esc pause)
+tools/deploy.sh [--prod] [--dir=DIR]        # export, put it on Vercel, and prove it runs THERE in a real browser
+tools/export.sh web --config=playtest       # a build of a master configuration (configs/), stamped with it and the commit
+godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Esc pause, ` dev mode)
 ```
 
-**A run never takes the keyboard.** The window opens unfocusable
-(`project.godot`, `display/window/size/no_focus`) and `tools/_focus.sh` hands the
-keyboard straight back to whoever was typing, so a hundred shots and tours an hour
-never interrupt the person at the machine. Only a session a person means to play
-takes the focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1`
-lets a tool run come to the front, to watch it play.
+**Dev mode** (`docs/DEV.md`, `src/dev/`) is the slate's service mode, in the
+module's violet: `` ` `` (or home's dev row) opens it in any build whose
+configuration allows it, the web included — warp, time, weather, body, things,
+bodies, view, a readout (F3), clean pictures (F4) and notes (F2) that keep a frame,
+the state and the `tools/shot.sh` line that stages the moment again (from source
+they land in `shots/notes/`: Read them). On this machine it also edits the master
+configurations in `configs/`, makes stamped builds, keeps a shelf of them, plays,
+proves and deploys them, and runs the gate and any tour with the command its own
+header gives, showing the frames. A shot or tour sees none of it unless given
+`--dev[=PAGE[:ROW]]` or `--config=NAME`; `tours/dev.tour` is its proof.
+
+**A run is never seen and never takes the keyboard.** A hundred shots and tours an
+hour must not interrupt the person at the machine, so a tool run opens its window
+**off the screen entirely** (`tools/_focus.sh` `focus_position`, far outside any
+display — it renders identically there), unfocusable (`project.godot`,
+`display/window/size/no_focus`), and `tools/_focus.sh` hands the keyboard back
+within about a twentieth of a second, because macOS brings the app forward
+whatever the window's flags say. Only a session a person means to play takes the
+focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1` puts a
+tool run on screen and in front, to watch it play. The header of `tools/_focus.sh`
+records the two tidier-looking approaches that do not work, so nobody spends the
+afternoon on them again.
+
+**Shipping it.** `github.com/Xaxis/unspent-ortho` (public) is the remote; commits
+are the owner's, as everywhere else. `tools/deploy.sh` exports the threaded web
+build, puts it on Vercel (project `unspent`, team `xaxis-projects`) and then loads
+the deployed URL in a real browser to prove the host is serving it correctly —
+the threaded build only starts on a cross-origin-isolated page, so the headers in
+that script are load-bearing, not decoration. Each build is served from
+`/b/<sha>/` with `/` redirecting to it, so every file can be cached forever and a
+returning player can never run a new pack against an old engine.
+`VERCEL_TOKEN` lives in `.env` (never committed) and in the repository's secrets,
+with `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. A push to main deploys a preview;
+production — what `unspent.world` will serve — is a deliberate act: run the
+deploy workflow by hand with `production`, or `tools/deploy.sh --prod`.
 
 Shot and boot options live in `src/boot_options.gd` (its header lists every one).
 The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
@@ -56,41 +87,11 @@ that game gives way (to the title, or to a loaded game) it follows the next one,
 a tour can leave, `await title`, press a real key on the title (`key ACTION`),
 `await game`, and hold two frames to each other (`same A B TOL [X,Y,W,H]`, a crop for
 anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour saves under
-`user://tool-saves/<tour name>`, clear of the player's saves and of other tours. The M1 proofs:
+`user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
 
-```sh
-tools/tour.sh tours/core_loop.tour --give=driftwood:6,scrap:1       # gather, fire, make, fight, night, border
-tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
-tools/tour.sh tours/fight.tour --seed=1 --hour=11
-tools/tour.sh tours/saves.tour --seed=1 --hour=10 --weather=clear:0 --give=driftwood:6,stone:4   # save, leave, continue, load: frames and fire match
-tools/tour.sh tours/export.tour --seed=1 --hour=10 --weather=clear:0   # a game through the loading page
-```
-
-The M2.0 proofs (each tour's header carries its own options):
-
-```sh
-tools/tour.sh tours/landscape.tour --seed=7 --weather=clear:0   # what every landscape holds of what happened
-tools/tour.sh tours/sky.tour --seed=1                           # each landscape's own weather and hour
-tools/tour.sh tours/machines.tour --seed=1 --hour=22.5 --weather=clear:0   # state told by light, wear, a kill
-tools/tour.sh tours/characters.tour --seed=1                    # the last people, dressed by land and trade
-TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour                 # the score's layers, heard
-tools/tour.sh tours/slate.tour --scene=title                    # the slate wakes, and every app from its key
-```
-
-The M2 wave A proofs:
-
-```sh
-tools/tour.sh tours/biomes.tour --seed=7 --hour=11 --weather=clear:0   # every landscape by name, the two new ones, three ecotones
-tools/tour.sh tours/hazards.tour --seed=1 --hour=19 --weather=clear:0 \
-  --give=wrap_warm:1,mod_wadding:1,wick:2 \
-  --fit=glide_wing,scanner_lens,boots_magnet,mod_signet,mod_spring   # a place presses, gear answers, five abilities
-tools/tour.sh tours/disposition.tour --seed=1 --hour=11 --weather=clear:0   # workers ignored you, then you robbed one; a watcher's sweep dodged
-tools/tour.sh tours/landscape-polish.tour --seed=7 --weather=clear:0        # the ground at play zoom, an ecotone, a village, a crown cleared
-tools/tour.sh tours/sky-polish.tour --seed=1                               # a lamp that lays nothing at noon and its own colour at night
-tools/tour.sh tours/machines-day.tour --seed=1 --hour=12 --weather=clear:0 # the machines told with nothing on them lit
-tools/tour.sh tours/slate-polish.tour --seed=7 --hour=10 --weather=clear:0 --give=driftwood:8,stone:4   # every app from the key its tab names
-TOUR_TIMEOUT=900 tools/tour.sh tours/score-blend.tour --seed=1 --hour=11 --weather=clear:0   # two borders walked, never a gap
-```
+**Every tour carries its own options in its header**, so `ls tours/` is the list
+and the file itself says how to run it. Each wave adds its own. Run them all before
+integrating a wave, and never delete or weaken a tour to make one pass.
 
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
@@ -114,8 +115,9 @@ tools print their own summaries.
 | `src/models/` | Procedural meshes: `props/`, `machines/`, `people/`, `animals/`. Any script here with `static func gallery() -> Array` shows up in the gallery. |
 | `src/actors/` | Nodes in the world: player, mobs, hit marks (`MobFx`). |
 | `src/core/save/` | Saving: the registry (`SaveGame`), the core state (`SaveCore`), the file (`SaveFile`), slots and autosave rules. |
+| `src/dev/` | Dev mode (docs/DEV.md): who can reach it (`DevMode`), master configurations (`ConfigSchema`, `GameConfig`, `ConfigChoices`, `configs/*.json`), build stamps (`DevStamp`, `stamp_build.gd`), cheats, notes, the readout, background jobs and the shelf (`DevJobs`, `DevBuilds`), and its app on the slate (`UiDevScreen`, `pages/`). |
 | `src/boot/` | The loading page (`BootPage`, `BootStages`), the hand-over of a made world (`BootWorld`), the one script that names the scenes (`BootScenes`), the web shell and the browser probe. |
-| `src/systems/` | `NN_name.gd` game systems, loaded in order: 05 save, 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 98 tour. |
+| `src/systems/` | `NN_name.gd` game systems, loaded in order: 05 save, 10 sky, 12 landscape, 15 lights, 16 vents, 30 mobs, 35 folk, 36 parade, 37 fauna, 40 fight, 50/52 survival, 70 audio, 75 music, 90 ui, 94 dev, 98 tour. |
 | `src/ui/` | The slate (docs/ART.md §9): one hacked tablet drawn in code (`UiSlate`), its apps (carrying, making, map, home, gear, machine reads, saves, title), the HUD as its edge overlay, the pixel font, scans; `SlateFeeds` lets other packages fill gear, reads and saves. |
 | `src/audio/` | Procedural synthesis, the sound sheet, beds, machines, music, the mix. |
 | `src/game.gd` | Wires one running game together from BootOptions. |
@@ -161,6 +163,36 @@ tools print their own summaries.
   (or from `--scene=gallery` for models). Unreachable code is not a feature.
 - Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
 
+## Another session may be running right now
+
+Assume you are not alone: waves run for hours, and the owner opens other sessions.
+**Look before you touch anything shared:**
+
+```sh
+git worktree list                       # a worktree is someone's live desk
+git branch --list 'a2/*' 'm2/*'         # branches a wave is writing to
+pgrep -x godot | wc -l                  # runs in flight (a tour can take minutes)
+sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturated
+```
+
+- **Never write in another session's worktree**, commit on its branch, or delete it.
+  What is under `.claude/worktrees/` belongs to a builder that is probably mid-edit.
+- **Never rebase, reset or force-push `main`**, and never rewrite pushed history.
+  Merge, and only the branches of the wave you are integrating.
+- **Do not kill stray `godot` processes.** One of them is likely another session's
+  tour, and killing it fails a proof someone is waiting on.
+- **Keep total builders across all sessions to about six.** Past saturation nobody
+  goes faster and the clock-watching tests start lying. If the load is already high,
+  wait rather than launch.
+- **Wall-clock results lie under load.** Test budgets scale by
+  `TestCase.machine_slack()` and tool timeouts by `tools/_slack.sh`; a timing failure
+  while a wave runs must be re-run alone before it is believed.
+- **A change under `tools/` does not reach a running wave**: every worktree holds
+  its own copy, frozen when it branched. Patch the live worktrees too, or the fix
+  only applies to the next wave.
+- Untracked scratch a session drops into another worktree (an `override.cfg`, say)
+  belongs in `.git/info/exclude` so it cannot end up in someone's commit.
+
 ## Commits
 
 Author is always the owner, set on the command itself:
@@ -189,6 +221,7 @@ lead with why, in short sentences.
 | World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision; `Survival.add_prop` puts a new one in the world |
 | Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the slate hides its hints only near hostiles) and `aware: bool` (it has noticed the player: alerted, chasing or attacking; the score tenses for it) |
 | Weather | `src/core/weather.gd` | `Weather.at(seed, minutes)`, `Weather.at_place(seed, minutes, country)`, `Weather.at_type(seed, minutes, type_id)` -> `{kind, strength, wind, mist}`, `Weather.settled(...)`; pure. A landscape's climate lives in its own file, not here: `BiomeDef.weather` (rows `[kind, weight, squall]` summing to 100) and `BiomeDef.mist`, read through `Weather.climate(type_id)`. The sky reads `at_type`/`settled_type` for `BiomeRegistry.at(world, pos).id`, and `at_place` is the legacy Country door. A reader that does not know a kind reads `Weather.family(kind)` (drizzle is rain, whiteout blizzard, glare heat, dry_storm dust, haze fog). Survival (wetness), mobs, landscape sway and audio call it directly. |
+| Master configurations and dev mode | `src/dev/config_schema.gd`, `src/dev/game_config.gd`, `src/dev/dev_mode.gd` | A setting is ONE row in `ConfigSchema.ROWS` (id `group.name`, kind, default, when it applies: boot, new, live, build) and every reader asks `GameConfig.value(id)`; the defaults are the game as it is, so a run with no configuration is unchanged. A configuration file holds only what it changes over its `base`; `tests/dev/test_configs.gd` fails on a setting nobody declared or a value the content does not allow. A new game takes `GameConfig.fill_new_game(options)` (the title, main.gd, dev mode's play), never a loaded one, and never over an option named on the command line. Live rules are applied by 94_dev on `GameConfig.revision`. An exported build carries its configuration in `res://stamp/build.json` (`tools/export.sh`), trusted only in a template. `DevMode.reachable()` is the only question of whether dev mode shows: a tool run is `off` unless asked, a source run for a person never below `chord`, a build what its configuration says. Dev mode's app is added to the slate by 94_dev (`90_ui.add_app`) and opens beside a hostile; everything it keeps on a device lives under `DevMode.user_root()` (the test runner and the tools have their own). A game dev mode starts saves under `user://dev-saves/`. |
 | Boot options | `src/boot_options.gd` | packages may ADD options; never rename existing ones; keep the header list complete |
 | Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup. `save` returns JSON-safe values (`SaveCodec` for INF, vectors, bytes); `load` gets them back through JSON (numbers as floats, keys as Strings: convert with `SaveCodec.to_int/to_vec2/to_counts`). A loaded game is applied in `GameSystem.started()` (after every setup, before the first frame) in registration order; 05_save registers the core state first (`SaveCore`: world edits, clock, player, body, inventory, survival, explored, weather). Keys nobody registers are carried forward. Slots: `SaveSlots` (0 autosave: sleep, a landscape first entered, 3 world hours, leaving; never mid-fight or under a page; 1-3 manual; `--load=N`, `--saves=DIR`); file: `SaveFile` (header and data each md5-checked; bump `VERSION`, add a `migrate` step). |
 | Landscape types | `src/content/biomes/*.gd`, `src/core/biome/` | A landscape is ONE file: `static func make() -> BiomeDef` under `src/content/biomes/`, auto-discovered, sorted by `order`, given the index every tile carries. It declares where it lies (`anchors` for the journey, `temp_range`/`moist_range`/`adjacency` for a landscape placed by its climate), `share`, `relief`, border and ecotone reach, hatch, ground washes and marks, decor and tree tints, props and ore, `surface`/`scatter` recipes, sites, pools, villages, weather, hazards, roster, bed and motif. Readers ask `BiomeRegistry.at(world, pos)`, `.by_index(i)`, `.land_indices()`, `.count()`; never branch on `Country` (it is only names for the first seven slots) and never size an array by it. At most `BiomeRegistry.SLOTS` (16) types: border pairs pack two indices into a byte. `BiomeRegistry.mute_to(ids)` narrows the registry for a test. **The one place still hard-coded is what a landscape's OBJECTS are made of**: `src/models/props/{houses,remains,rocks,shore,works,trees,built}.gd` still `match` on `Country`, so a new landscape's houses, boulders, wrecks, signs and shore dressing fall back to the coast's until those files read the registry too (a landscape may already colour its trees and rock with `BiomeDef.tree_tints`/`rock_color`/`decor_tints`). Adding those fields is M2 wave B's; until then, expect a new landscape's village to be dressed as the coast's. |

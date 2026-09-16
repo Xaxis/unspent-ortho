@@ -1,0 +1,12 @@
+{
+	"settings": {
+		"build.channel": "playtest",
+		"build.label": "playtest",
+		"build.version": "0.2.0",
+		"builds.targets": [
+			"web",
+			"web-nothreads"
+		],
+		"dev.access": "chord"
+	}
+}

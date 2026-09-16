@@ -24,6 +24,8 @@ var view: WorldView
 var sky: SkyLight
 var camera: CameraRig
 var menu: UiTitleMenu
+## Dev mode on the title (DevTitle): its keys, its app, its label.
+var dev: DevTitle
 
 ## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
 ## there a coast is made on the main thread and would hold the title still for seconds.
@@ -53,6 +55,11 @@ func setup(o: BootOptions) -> void:
 	options = o
 	name = "title"
 	seed_value = o.seed_value
+	if island_fixed():
+		# A configuration that fixes the island shows it and nothing else, even after
+		# a game gave way to the title (which would draw the next island).
+		seed_value = int(GameConfig.value("world.seed"))
+		cycle_coasts = false
 	sky = SkyLight.new()
 	sky.name = "sky"
 	add_child(sky)
@@ -70,6 +77,7 @@ func setup(o: BootOptions) -> void:
 	menu = UiTitleMenu.new()
 	menu.title = self
 	_layer.add_child(menu)
+	dev = DevTitle.attach(self, _layer)
 	if o.shot != "":
 		# A shot has a few frames, not a second: draw the coast now and show it.
 		_show(WorldGen.generate(seed_value, o.size), seed_value, null, [], true)
@@ -228,9 +236,14 @@ func _process(delta: float) -> void:
 
 ## Show another coast now (left/right on the seed row).
 func change_seed(d: int) -> void:
-	if _drawing():
+	if _drawing() or island_fixed():
 		return
 	_begin(maxi(1, seed_value + d))
+
+
+## The master configuration fixes the island (docs/DEV.md): no other is offered.
+static func island_fixed() -> bool:
+	return bool(GameConfig.value("world.seed_locked"))
 
 
 ## A coast is on its way (on the worker, or waiting behind the dark) or the game is starting.
@@ -282,6 +295,9 @@ func _start_game() -> void:
 			menu.refresh()
 			menu.refuse(why)
 			return
+	else:
+		# A new game starts as the master configuration says (docs/DEV.md).
+		GameConfig.fill_new_game(o)
 	var parent := get_parent()
 	menu.close(true)
 	# The coast on show is the new game's world (not a continued save's elsewhere):

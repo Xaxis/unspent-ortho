@@ -191,11 +191,15 @@ func test_without_threads_the_title_keeps_its_coast() -> void:
 	BootWorld.clear()
 	var holder := _holder()
 	var title := BootPage.make_title(holder, BootOptions.parse(["--seed=8", "--size=%d" % SIZE])) as UiTitle
-	for i in 300:
+	# The coast is made on a worker: wait for it, not for a count of frames, which a
+	# cold process (the first world of its shard) outruns.
+	var until := Time.get_ticks_msec() + int(30000 * TestCase.machine_slack())
+	while Time.get_ticks_msec() < until:
 		if title.world != null and not title._drawing():
 			break
 		title._process(0.05)
 		await tree.process_frame
+		OS.delay_msec(2)
 	check(title.world != null, "the title shows a coast")
 	title.cycle_coasts = false
 	title._shown_for = UiTitle.SEED_SECONDS + 1.0

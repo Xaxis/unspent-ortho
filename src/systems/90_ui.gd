@@ -79,6 +79,12 @@ func setup(g: Game) -> void:
 	_pending_screen = g.options.screen
 
 
+## An app another package brings to the slate (dev mode's, 94_dev): it is owned,
+## stacked and routed like the slate's own.
+func add_app(s: UiScreen) -> void:
+	_add(s)
+
+
 func _add(s: UiScreen) -> void:
 	s.game = game
 	s.name = String(s.screen_name)
@@ -148,6 +154,12 @@ func open_screen(n: StringName, switched: bool = false) -> bool:
 	s.open(switched)
 	_vertical.absorb(_device_dir(&"move_up", &"move_down"))
 	_horizontal.absorb(_device_dir(&"move_left", &"move_right"))
+	# A direction already down as the app opens is the walk that was going on, not a
+	# press on the list: its held state is taken now, so only a fresh press moves it.
+	for pair: Array in MOVE_KEYS:
+		_held[pair[0]] = Input.is_action_pressed(pair[0])
+		_seen_down.erase(pair[0])
+	_opened_frame = Engine.get_process_frames()
 	if n == &"pause":
 		get_tree().paused = true
 	game.hud.visible = false
@@ -162,6 +174,9 @@ const NEAR_LINE := "Not with that so close."
 ## once home is up; carrying and making never do, however they are reached, or
 ## home would be a way round the rule (making skips world time; eating works).
 func why_not_open(n: StringName) -> String:
+	if n == &"dev":
+		# Dev mode is for looking at a fight as much as anything else.
+		return ""
 	var reads_only := n in SlateFeeds.APPS and stack.has(screens.get(&"pause"))
 	if n != &"pause" and not reads_only and _hostile_near():
 		return NEAR_LINE
@@ -196,6 +211,10 @@ func _on_closed(s: UiScreen) -> void:
 
 ## Keys on an app: action -> what the app is told.
 const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"], [&"drop", &"drop"]]
+## Directions on an app: action -> what the app is told.
+const MOVE_KEYS := [[&"move_up", &"up"], [&"move_down", &"down"], [&"move_left", &"left"], [&"move_right", &"right"]]
+## The frame the last app opened on: a direction that went down on it is not a press on it.
+var _opened_frame := -1
 ## Keys that open an app from play.
 const OPEN_KEYS := {&"inventory": &"inventory", &"craft": &"crafting", &"map": &"map", &"pause": &"pause"}
 
@@ -247,7 +266,7 @@ func _physics_process(_delta: float) -> void:
 	# press can go down and up between two _process calls: note it here.
 	# Only a press not yet read: a key still held from the last read is not a new one,
 	# or its note would outlive the release and swallow the next tap.
-	for pair: Array in PAGE_KEYS:
+	for pair: Array in PAGE_KEYS + MOVE_KEYS:
 		if Input.is_action_pressed(pair[0]) and not _held.get(pair[0], false):
 			_seen_down[pair[0]] = true
 
@@ -294,8 +313,8 @@ func _process(delta: float) -> void:
 		var s := top()
 		if s == null:
 			return
-		_repeat(s, _vertical, _device_dir(&"move_up", &"move_down"), delta, &"up", &"down")
-		_repeat(s, _horizontal, _device_dir(&"move_left", &"move_right"), delta, &"left", &"right")
+		_step_axis(s, _vertical, &"move_up", &"move_down", delta, &"up", &"down")
+		_step_axis(s, _horizontal, &"move_left", &"move_right", delta, &"left", &"right")
 		return
 	explored.visit(game.player.pos)
 	game.hud.set_quiet(hostile)
@@ -352,6 +371,23 @@ func _step_power() -> void:
 			# Its setter redraws the glass layer, where the dimming is drawn.
 			s.brightness = UiRules.brightness(power)
 			s.queue_redraw()
+
+
+## A direction moves the list once on the frame it goes down, then repeats while
+## held (UiMenu.hold). A tap struck and let go between two frames (a quick finger,
+## a browser's key event, a slow frame) is never seen held, so the press is what
+## moves and the hold only repeats.
+func _step_axis(s: UiScreen, r: UiMenu, neg_action: StringName, pos_action: StringName, delta: float, neg: StringName, pos: StringName) -> void:
+	var tap := int(_went_down(pos_action)) - int(_went_down(neg_action))
+	var held := _device_dir(neg_action, pos_action)
+	if tap != 0 and Engine.get_process_frames() != _opened_frame:
+		s.handle(pos if tap > 0 else neg)
+		# The press moved it: the hold takes over from here, for repeats only.
+		r.hold(tap, 0.0)
+		if held != tap:
+			r.hold(0, 0.0)
+		return
+	_repeat(s, r, held, delta, neg, pos)
 
 
 func _repeat(s: UiScreen, r: UiMenu, dir: int, delta: float, neg: StringName, pos: StringName) -> void:
