@@ -56,7 +56,7 @@ func build() -> void:
 	FoundKit.streaks(hk, Vector3(0, 0.44, 0.226), Vector3.BACK, 0.18, 0.12, 3, 51, R[1])
 	body_mesh(hk, rear)
 	add_scan(rear, Vector3(0, 0.47, 0.226), Vector3.BACK, Vector3.RIGHT, 0.16, 0.025, 2.0)
-	add_lamp(rear, Vector3(0, 0.701, 0), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
+	add_lamp(rear, Vector3(0, 0.701, 0), Vector3.UP, Vector3.RIGHT, 0.07, 0.07, &"status")
 	add_lamp(rear, Vector3(0.1, 0.52, -0.251), Vector3.FORWARD, Vector3.UP, 0.05, 0.04, &"work", true)
 	var rw := FoundKit.kit()
 	FoundKit.cable(rw, Vector3(0.04, 0.64, 0.06), Vector3(0.2, 0.18, 0.14), 0.05, 0.015, Palette.INK[2], Palette.MACHINE["watcher"], 5)

@@ -7,8 +7,10 @@ extends FigureModel
 ##
 ## Behaviour rules (art-audio-extract §3, §8; docs/VISION.md §2):
 ##   walk     perfectly regular: gait phase advances with distance, no noise
-##   stand    the idle routine: mechanisms keep their exact cycle, and the status
-##            lamps blink the machine's disposition (DISPOSITION_CODE)
+##   stand    the idle routine: mechanisms keep their exact cycle, and the plan
+##            strip counts the machine's disposition (DISPOSITION_CODE); a
+##            machine the plan has turned also carries part of its own alert
+##            shape while it walks its round (PRIME)
 ##   alert    snaps into its silhouette (a servo, not a blend), scans stop dead
 ##            centre and the optics lock bright; the status lamps double-blink
 ##   hunting  a walk that is a chase (the mob's walk after alert, windup, strike
@@ -53,9 +55,47 @@ const PART_OUT := 0.34
 const STUTTER := 0.3
 ## The stutter itself, at 24 steps a second: exact, so it reads as a fault, not noise.
 const STUTTER_BITS := [1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]
-## Status lamp codes: blinks per cycle for each disposition (VISION §2). Hostile
-## machines do not blink: they burn low and steady.
-const DISPOSITION_CODE := {&"indifferent": 1, &"wary": 2, &"observant": 3, &"hostile": 0}
+## What the plan strip says, by disposition (VISION §2): how many of its
+## PLAN_SEGS segments are lit, cold to hot up the ladder.
+##
+## This used to be a count in TIME — one, two or three blinks a couple of
+## seconds apart on a lens a pixel across — and hostile was NO blinks, a low
+## steady burn, which made the one state that matters the dimmest of the four.
+## A player cannot count blinks on a lit pixel at 640x360, and at noon there was
+## nothing to count: the sun took the lamp and left one blown white pixel. A
+## count in SPACE is read off a still frame at a glance, by day as well.
+const DISPOSITION_CODE := {&"indifferent": 1, &"wary": 2, &"observant": 3, &"hostile": 4}
+## Segments in a status lamp's plan strip: one rung of the ladder each.
+const PLAN_SEGS := 4
+## Smallest segment that still reads as a lit pixel at gameplay zoom. A kind
+## sizes its own strip through add_lamp's w/h, which is one SEGMENT, so a
+## harvester carries a bar across its housing and a runner a short tally.
+const PLAN_SEG_MIN := 0.026
+## Centres of the segments, as a multiple of one segment: the gaps are what let
+## a player count them at all at 640x360.
+const PLAN_PITCH := 1.45
+## How far a machine that has NOT yet seen anybody carries itself as a turned
+## thing, by disposition. It rides a little higher on its carriage and leans the
+## way it is facing — the difference between a body at work and a body that has
+## been told about you. Applied to the root joints only, and small, so a kind's
+## alert (limbs thrown out, jaws open, masts run up) is still by far the bigger
+## change and reads as the event it is.
+const PRIME := {&"indifferent": 0.0, &"wary": 0.3, &"observant": 0.55, &"hostile": 1.0}
+const PRIME_RISE := 0.05
+const PRIME_LEAN := -0.1
+## How much of a scan beam the noon sun leaves, by disposition (beam.gdshader
+## day_floor). A machine reading the ground it works is faint by day; one the
+## plan has turned lights the ground it means to cross. Night is untouched: the
+## shader mixes to 1 in the dark whatever this says.
+const DAY_SCAN := {&"indifferent": 0.14, &"wary": 0.22, &"observant": 0.34, &"hostile": 0.62}
+## The same for a worker's wash, which is dark by day until the plan turns it:
+## a harvester that has stopped harvesting and is lighting you up instead.
+const DAY_WORK := {&"indifferent": 0.0, &"wary": 0.0, &"observant": 0.0, &"hostile": 0.5}
+## How much of a lamp's built-in glow the day leaves (found.gdshader glow_scale).
+## Full glow under the sun blows a lens out to paper white and throws its colour
+## away; turned down, the lens keeps the COLD it is made of and reads as a light
+## rather than a hole.
+const DAY_GLOW := 0.13
 ## Vertex alpha the FOUND shader reads as a built-in light (found.gdshader:
 ## 0.5..0.98 steady, brighter lower). A lamp's lens and its hot core.
 const LAMP_ALPHA := 0.8
@@ -163,6 +203,9 @@ var _bone_was_shown: PackedByteArray = PackedByteArray()
 var _dt := 0.0
 ## Set once anything calls set_hunting(): the poses stop being read for it.
 var _hunt_told := false
+## The joints hung straight off the model — the carriage the rest of the body
+## rides on. The PRIME lean is applied here and nowhere else.
+var _root_joints: Dictionary = {}
 
 
 ## Offsets for one joint in a pose: position offset and euler rotation offset.
@@ -303,12 +346,21 @@ func cold_mesh(k: MeshKit, parent: Node3D) -> void:
 ## A lamp built into the plate at `c` (local to `parent`), facing `n`: a dark
 ## glass socket on the body, a cold lens that lights, and a hot core that shows
 ## when the lamp is driven hard. `role` says what it tells:
-##   status  blinks the disposition code; double-blinks on alert; stutters hurt
+##   status  the PLAN STRIP (_plan_strip): a row of segments, as many lit as the
+##           disposition is far up the ladder, hotter the further up; the whole
+##           strip on alert, double-blinking; stutters hurt
 ##   optic   an eye: steady, locks bright on alert
 ##   work    a work lamp: steady while it works, hot at night and on the part's
 ##           side through a windup
 ## `on_part_side` marks a lamp that brightens with the working part.
 func add_lamp(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, role: StringName, on_part_side: bool = false, col: Color = Palette.COLD[3]) -> void:
+	if role == &"status":
+		# The plan strip, not a lens: what the machine thinks of you is the one
+		# read a player has to make from across a field in daylight, so it gets
+		# a bar on a plate the camera sees and not a pip. `w`/`h` size ONE
+		# segment; a kind picks them to fit the plate it bolts the strip to.
+		_plan_strip(parent, c, n, up, w, h)
+		return
 	var nn := n.normalized()
 	w = maxf(w * 1.3, LAMP_MIN.x)
 	h = maxf(h * 1.3, LAMP_MIN.y)
@@ -327,6 +379,45 @@ func add_lamp(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: 
 	_set_alpha(hk, HOT_ALPHA)
 	_queue(&"lights", hk, hot)
 	_lamps.append({"lamp": lamp, "hot": hot, "role": role, "side": on_part_side, "order": _lamps.size(), "ri": _role_count(role)})
+
+
+## The plan strip: a ruled bed of dark glass let into the plate at `c`, with
+## PLAN_SEGS square segments in a row across it. How many are lit is what the
+## machine thinks of the player, read off a still frame; the bed stays dark
+## behind the ones that are out, so lit and unlit are a value step, not a
+## presence and an absence. Cold, always: the amber LENS stays the working
+## part's alone (docs/ART.md §5, Palette).
+func _plan_strip(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var across := uu.cross(nn)
+	var seg := maxf(w, PLAN_SEG_MIN)
+	var high := maxf(h, PLAN_SEG_MIN)
+	var pitch := seg * PLAN_PITCH
+	var span := pitch * PLAN_SEGS
+	# The bed: an inked frame and the dark glass the segments sit in.
+	var bed := FoundKit.kit()
+	FoundKit.mark(bed, c, nn, uu, span + 0.03, high + 0.03, Palette.INK[1], 0.003)
+	FoundKit.mark(bed, c, nn, uu, span, high, Palette.COLD[0], 0.005)
+	body_mesh(bed, parent)
+	var segs: Array = []
+	for i in PLAN_SEGS:
+		var at := c + across * ((i + 0.5) * pitch - span * 0.5)
+		# Lit, and lit hard: the same segment twice, so the strip can burn
+		# without changing its shape (the ink's edge must never crawl).
+		var lit := holder("plan%d" % i, parent, at)
+		var lk := FoundKit.kit()
+		FoundKit.mark(lk, Vector3.ZERO, nn, uu, seg, high * 0.72, Palette.COLD[3], 0.008)
+		_set_alpha(lk, LAMP_ALPHA)
+		_queue(&"lights", lk, lit)
+		var hot := holder("plan%d_hot" % i, parent, at)
+		var hk := FoundKit.kit()
+		FoundKit.mark(hk, Vector3.ZERO, nn, uu, seg, high * 0.72, Palette.COLD[3], 0.009)
+		_set_alpha(hk, HOT_ALPHA)
+		_queue(&"lights", hk, hot)
+		segs.append([lit, hot])
+	_lamps.append({"lamp": segs[0][0], "hot": segs[0][1], "role": &"status", "side": false,
+		"order": _lamps.size(), "ri": _role_count(&"status"), "plan": segs})
 
 
 func _role_count(role: StringName) -> int:
@@ -420,6 +511,10 @@ func finish_rig() -> void:
 		var n: Node3D = joints[jn]
 		_rest[jn] = [n.position, n.rotation]
 		_from[jn] = [n.position, n.rotation]
+		if n.get_parent() == self:
+			# A carriage high off the ground leans less: on a strider the same
+			# few degrees swing a foot a hand's width down through the ground.
+			_root_joints[jn] = clampf(0.45 / maxf(0.3, n.position.y), 0.25, 1.0)
 	_merge()
 	_apply_light(0.0)
 	_run_lights()
@@ -904,6 +999,10 @@ func _apply_pose() -> void:
 	var gd: Dictionary = {}
 	if walk_w > 0.0 and pose != &"dead":
 		gd = _gait_deltas(gait)
+	# A machine the plan has turned carries itself differently before it has seen
+	# anybody. Only while it is about its round: alert, a blow and a death are
+	# their own shapes and own the body outright.
+	var prime := float(PRIME.get(disposition, 0.0)) if pose == &"stand" or pose == &"walk" else 0.0
 	for jn: StringName in joints:
 		var n: Node3D = joints[jn]
 		var rest: Array = _rest[jn]
@@ -913,6 +1012,9 @@ func _apply_pose() -> void:
 			var d: Array = pd[jn]
 			tp += d[0] as Vector3
 			tr += d[1] as Vector3
+		if prime > 0.0 and _root_joints.has(jn):
+			tp.y += PRIME_RISE * prime
+			tr.z += PRIME_LEAN * prime * float(_root_joints[jn])
 		if gd.has(jn):
 			var g: Array = gd[jn]
 			tp += (g[0] as Vector3) * walk_w
@@ -1038,6 +1140,8 @@ func _run_lights() -> void:
 	var run := running()
 	var hurt_like := not run and pose != &"dead"
 	var flick := _stutter(_dark_t + 0.13)
+	# The lens keeps its own colour under the sun instead of blowing white.
+	lights_material.set_shader_parameter("glow_scale", lerpf(DAY_GLOW, 1.0, clampf(dark / 0.3, 0.0, 1.0)))
 	for l: Dictionary in _lamps:
 		var role: StringName = l.role
 		var lvl := 0
@@ -1048,6 +1152,9 @@ func _run_lights() -> void:
 			lvl = 1 if flick and (int(l.order) % 2 == 0 or _dark_t < STUTTER) else 0
 		else:
 			lvl = _lamp_level(role, bool(l.side), int(l.order), dark)
+		if l.has("plan"):
+			_show_plan(l.plan as Array, lvl)
+			continue
 		(l.lamp as Node3D).visible = lvl > 0
 		if l.hot != null:
 			(l.hot as Node3D).visible = lvl > 1
@@ -1071,7 +1178,12 @@ func _run_lights() -> void:
 			bv = pose_time < float(DIE_AT[&"work" if work else &"beam"]) and (not work or dark > 0.12)
 		elif hurt_like:
 			bv = flick and _dark_t < STUTTER and (not work or dark > 0.12)
+		var day: float = float((DAY_WORK if work else DAY_SCAN).get(disposition, 0.2))
+		# A worker's wash is dark by day unless the plan has turned it.
+		if work and day > 0.0:
+			bv = bv or (run and not lock)
 		mi.visible = bv
+		mat.set_shader_parameter("day_floor", day)
 		if work:
 			var hard := bool(b[3]) and (pose == &"windup" or pose == &"strike")
 			mat.set_shader_parameter("strength", 1.2 if hard else 0.6)
@@ -1081,10 +1193,42 @@ func _run_lights() -> void:
 			mat.set_shader_parameter("narrow", 0.55 if lock else 1.0)
 
 
-## A running machine's lamp: 0 out, 1 lit, 2 hot.
+## The plan strip at light level `lvl` (0 out, 1 lit, 2 hot): how many segments
+## burn is the disposition, and it burns hotter the further up the ladder it is.
+## On alert (and through a blow) the whole strip shows, because that is no
+## longer a disposition — it is about the player.
+func _show_plan(segs: Array, lvl: int) -> void:
+	var n := 0
+	if lvl > 0:
+		n = PLAN_SEGS if locked() or pose == &"windup" or pose == &"strike" \
+			else clampi(int(DISPOSITION_CODE.get(disposition, 1)), 1, PLAN_SEGS)
+	for i in segs.size():
+		var pair: Array = segs[i]
+		(pair[0] as Node3D).visible = i < n
+		(pair[1] as Node3D).visible = i < n and lvl > 1
+
+
+## How many segments of the plan strip burn now: the whole read, for tests and
+## for anything that wants what a player would count off the body.
+func plan_lit() -> int:
+	for l: Dictionary in _lamps:
+		if not l.has("plan"):
+			continue
+		var n := 0
+		for pair: Array in l.plan as Array:
+			if (pair[0] as Node3D).visible:
+				n += 1
+		return n
+	return 0
+
+
+## A running machine's lamp: 0 out, 1 lit, 2 hot. Hostile is the HOTTEST of the
+## four — it used to be the only one that did not go hot at all, which made the
+## state the whole plan turns on the dimmest thing on the body.
 func _lamp_level(role: StringName, side: bool, order: int, dark: float) -> int:
 	var lock := locked()
 	var blow := pose == &"windup" or pose == &"strike"
+	var rank := maxi(0, Disposition.ORDER.find(disposition))
 	match role:
 		&"status":
 			if lock and not blow:
@@ -1093,22 +1237,16 @@ func _lamp_level(role: StringName, side: bool, order: int, dark: float) -> int:
 				return 2 if t < 0.08 or (t >= 0.16 and t < 0.24) else 0
 			if blow:
 				return 2
-			var code: int = DISPOSITION_CODE.get(disposition, 1)
-			if code == 0:
-				return 1
-			# `code` short blinks, then a rest: the same count forever.
-			var cycle := 0.3 * code + 1.6
-			var t2 := fposmod(clock + order * 0.07, cycle)
-			var slot := int(t2 / 0.3)
-			return 2 if slot < code and fposmod(t2, 0.3) < 0.12 else 0
+			# Up the ladder the strip stops being cold glass and burns.
+			return 2 if rank >= 2 else 1
 		&"optic":
-			return 2 if lock else 1
+			return 2 if lock or rank >= 3 else 1
 		&"work":
 			if side and blow:
 				return 2
 			if lock and not blow:
 				return 2
-			return 2 if dark > 0.25 else 1
+			return 2 if dark > 0.25 or rank >= 3 else 1
 	return 1
 
 

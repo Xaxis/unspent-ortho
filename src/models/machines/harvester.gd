@@ -90,7 +90,9 @@ func build() -> void:
 	# The deck the sun falls on all day and the hood it pushes into a field: the
 	# two plates the camera sees most of, and the two that said nothing at noon.
 	day_wear(hull, Vector3(0.3, 0.303, -0.46), Vector3.UP, Vector3.RIGHT, 0.58, 0.44, 45, 2)
-	add_lamp(hull, Vector3(-0.32, 0.473, 0.46), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
+	# The plan strip runs across the housing roof, the plate the high camera can
+	# never miss: what it thinks of you, counted, from as far off as the slab itself.
+	add_lamp(hull, Vector3(-0.34, 0.473, 0.0), Vector3.UP, Vector3.RIGHT, 0.075, 0.075, &"status")
 	var hw := FoundKit.kit()
 	FoundKit.patch(hw, Vector3(0.36, 0.302, -0.02), Vector3.UP, Vector3.RIGHT, 0.34, 0.22, Palette.MACHINE["cutter"], 41)
 	FoundKit.patch(hw, Vector3(-0.62, 0.473, -0.34), Vector3.UP, Vector3.RIGHT, 0.2, 0.26, Palette.MACHINE["watcher"], 42)

@@ -50,12 +50,15 @@ void vertex() {
 	night = clamp((0.92 - dot(tint, vec3(0.3333))) / 0.36, 0.0, 1.0);
 }
 
-float bayer4(vec2 p) {
-	int x = int(mod(p.x, 4.0));
-	int y = int(mod(p.y, 4.0));
-	int i = x + y * 4;
-	int m[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(m[i]) + 0.5) / 16.0;
+// The stipple threshold. An ORDERED 4x4 matrix was a mistake the night hid: at
+// full density it fills and reads as a wash, but thinned — which is exactly
+// what a beam under the sun is — it leaves a regular lattice, a chequerboard
+// lying on the ground (docs/ART.md §1 forbids a visible square lattice, §6 asks
+// for "a stippled halo ... never a smooth bloom" and never a chequer). A hash
+// on the world-anchored pixel is irregular at every density and still perfectly
+// stable, because world_px pins it to the ground and not to the screen.
+float stipple(vec2 p) {
+	return ink_hash(p + vec2(11.0, 3.0));
 }
 
 // True where this pixel's light could not be on the surface behind it.
@@ -97,7 +100,7 @@ void fragment() {
 		d = 0.0;
 	}
 	d *= clamp(strength, 0.0, 2.0) * mix(day_floor, 1.0, night);
-	if (bayer4(px) >= d) {
+	if (stipple(px) >= d) {
 		discard;
 	}
 	ALBEDO = col;

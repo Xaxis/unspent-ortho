@@ -54,6 +54,17 @@ func build() -> void:
 	FoundKit.loft(k, [FoundKit.ring(hexa, -0.12, 0.03), FoundKit.ring(hexa, -0.08), FoundKit.ring(hexa, 0.14), FoundKit.ring(hexa, 0.2, 0.05)], R, true, true)
 	FoundKit.loft(k, [FoundKit.ring(hexa, 0.2, 0.08), FoundKit.ring(hexa, 0.235, 0.1)], R)
 	FoundKit.mark(k, Vector3(0.0, 0.237, 0), Vector3.UP, Vector3.RIGHT, 0.26, 0.018, R[2], 0.002)
+	# The card rack: five thin plates standing off the lid on a spindle, the tall
+	# ones in the middle. A clerk carries its index where it can reach it, and
+	# from any bearing the crest is what tells a clerk from any other case on
+	# legs — the outline was a plain hexagonal box slung between two rods.
+	FoundKit.tbar(k, Vector3(-0.05, 0.245, -0.19), Vector3(-0.05, 0.245, 0.19), 0.014, 0.014, 4, D)
+	for j in 5:
+		var z := -0.16 + j * 0.08
+		var tall := 0.15 - absf(j - 2) * 0.026
+		FoundKit.mark(k, Vector3(-0.05, 0.245 + tall * 0.5, z), Vector3.RIGHT, Vector3.UP, 0.1, tall, R[3], 0.0)
+		FoundKit.mark(k, Vector3(-0.05, 0.245 + tall * 0.5, z), Vector3.LEFT, Vector3.UP, 0.1, tall, R[1], 0.0)
+		FoundKit.mark(k, Vector3(-0.05, 0.245 + tall - 0.012, z), Vector3.RIGHT, Vector3.UP, 0.1, 0.014, R[5], 0.002)
 	# The filing slot across the front, paper edges showing in it.
 	FoundKit.mark(k, Vector3(0.262, 0.04, 0), Vector3.RIGHT, Vector3.UP, 0.3, 0.045, R[0], 0.003)
 	FoundKit.mark(k, Vector3(0.262, 0.05, 0), Vector3.RIGHT, Vector3.UP, 0.24, 0.012, Palette.LINEN[4], 0.005)
@@ -66,7 +77,7 @@ func build() -> void:
 	body_mesh(k, lid)
 	# The lid of the case: the plate a clerk shows the world it files.
 	day_wear(lid, Vector3(0.02, 0.238, 0), Vector3.UP, Vector3.RIGHT, 0.22, 0.24, 131, 1)
-	add_lamp(lid, Vector3(-0.1, 0.237, 0.1), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
+	add_lamp(lid, Vector3(-0.04, 0.238, 0.0), Vector3.UP, Vector3.RIGHT, 0.036, 0.04, &"status")
 	var lw := FoundKit.kit()
 	for j in 3:
 		var a := -0.9 - j * 0.35

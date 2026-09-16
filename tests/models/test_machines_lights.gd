@@ -107,28 +107,69 @@ func test_lamps_are_cold_and_the_amber_part_stays_the_one_warm_read() -> void:
 		m.free()
 
 
-func test_status_lamps_blink_the_disposition() -> void:
+## The plan strip counts the disposition in SPACE, and it counts it in every
+## frame. It used to count in TIME — 1, 2 or 3 blinks a couple of seconds apart
+## on a lens a pixel across, with hostile the ONE state that never went hot at
+## all — so a player could not read it at 640x360 and could not read it at noon
+## at any size (playtest wave A, finding 2). Two rules hold it here: every frame
+## carries the whole count, and the count and the heat both climb with the
+## ladder, so the state the plan turns on is never the dimmest.
+func test_the_plan_strip_counts_the_disposition_in_every_frame() -> void:
 	for kid in LIT:
 		var m := FigureModel.create(kid) as MachineModel
 		m.set_pose(&"stand")
 		m.settle()
-		var code: int = MachineModel.DISPOSITION_CODE[m.disposition]
-		var cycle := 0.3 * code + 1.6
-		if code == 0:
-			# Hostile: no code, a low steady burn.
-			for i in 120:
+		for d in Disposition.ORDER:
+			m.disposition = d
+			var want: int = MachineModel.DISPOSITION_CODE[d]
+			for i in 150:
 				m.animate(STEP, 0.0)
-				eq(int(m.lamp_levels()[&"status"][0]), 1, "%s burns steady" % kid)
-		else:
-			# Start just past a cycle boundary, then count one whole cycle.
-			eq(count_blinks(m, 0.2, cycle), code, "%s (%s) blinks per cycle" % [kid, m.disposition])
+				eq(m.plan_lit(), want, "%s (%s) shows %d segments in every frame" % [kid, d, want])
+				if m.plan_lit() != want:
+					break
 		m.free()
-	# The disposition system sets it on a live machine, and the lamp follows.
-	var h := FigureModel.create(&"harvester") as MachineModel
-	h.disposition = &"wary"
-	h.settle()
-	eq(count_blinks(h, 0.2, 0.3 * 2 + 1.6), 2, "a wary harvester blinks twice")
-	h.free()
+
+
+func test_the_further_up_the_ladder_the_hotter_the_strip_burns() -> void:
+	var last := -1
+	var last_lit := -1
+	for d in Disposition.ORDER:
+		var m := FigureModel.create(&"harvester") as MachineModel
+		m.disposition = d
+		m.set_pose(&"stand")
+		m.settle()
+		m.animate(STEP, 0.0)
+		var lvl := int(m.lamp_levels()[&"status"][0])
+		gt(float(lvl), 0.0, "%s is lit at all" % d)
+		check(lvl >= last, "%s burns at least as hot as the rung below (%d >= %d)" % [d, lvl, last])
+		check(m.plan_lit() > last_lit, "%s shows more than the rung below" % d)
+		last = lvl
+		last_lit = m.plan_lit()
+		m.free()
+	eq(last, 2, "hostile is the hottest of the four")
+	eq(last_lit, MachineModel.PLAN_SEGS, "and the whole strip burns")
+
+
+## A turned machine carries itself as a turned thing before it has seen anybody:
+## this is the read a player makes across a field in daylight, where no lamp is.
+func test_a_turned_machine_stands_differently() -> void:
+	for kid in LIT:
+		var calm := FigureModel.create(kid) as MachineModel
+		calm.disposition = &"indifferent"
+		calm.set_pose(&"stand")
+		calm.settle()
+		var hot := FigureModel.create(kid) as MachineModel
+		hot.disposition = &"hostile"
+		hot.set_pose(&"stand")
+		hot.settle()
+		var moved := false
+		for jn: StringName in calm.joints:
+			var a: Node3D = calm.joints[jn]
+			var b: Node3D = hot.joints[jn]
+			moved = moved or a.position.distance_to(b.position) > 1e-4 or (a.rotation - b.rotation).length() > 1e-4
+		check(moved, "%s stands differently once the plan has turned it" % kid)
+		calm.free()
+		hot.free()
 
 
 func test_alert_snaps_and_locks_the_eyes() -> void:
@@ -238,9 +279,9 @@ func test_a_chase_keeps_the_lights_locked() -> void:
 		for i in 30:
 			m.animate(STEP, 2.0)
 		check(not m.hunting, "%s: a walk from a stand is an errand" % kid)
-		var code: int = MachineModel.DISPOSITION_CODE[m.disposition]
-		if code > 0:
-			eq(count_blinks(m, 0.2, 0.3 * code + 1.6), code, "%s: an errand blinks its disposition again" % kid)
+		m.animate(STEP, 2.0)
+		eq(m.plan_lit(), int(MachineModel.DISPOSITION_CODE[m.disposition]),
+			"%s: an errand shows its disposition again" % kid)
 		for b: MeshInstance3D in beams(m, &"scan"):
 			near(float((b.material_override as ShaderMaterial).get_shader_parameter("narrow")), 1.0, 1e-4, "%s: an errand's beam sweeps wide" % kid)
 		m.free()

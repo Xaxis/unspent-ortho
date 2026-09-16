@@ -12,6 +12,13 @@ uniform vec3 shade_tint = vec3(0.58, 0.56, 0.74);
 uniform float emission_strength = 0.0;
 // Machines keep their light at night: their wash is dimmed less than the land.
 uniform float night_keep = 0.35;
+// How much of the built-in glow (vertex alpha, below) the hour leaves. 1 is a
+// lamp burning in the dark. A lamp under the noon sun is NOT a brighter lamp:
+// pushed to full it blows its own colour out to paper white, which is how a
+// hostile machine came to carry exactly one pure-white pixel at noon and no
+// colour at all. Turned down by day the lens shows the colour it is made of.
+// Props leave it at 1; MachineModel drives it from the sky's darkness.
+uniform float glow_scale = 1.0;
 
 varying vec3 world_pos;
 
@@ -48,7 +55,7 @@ void fragment() {
 		}
 	}
 	// The machines' own light runs on their power: a lightning strike stutters it.
-	EMISSION = (c * emission_strength + c * glow) * sky_power() + neon_skyglow(c);
+	EMISSION = (c * emission_strength + c * glow * glow_scale) * sky_power() + neon_skyglow(c);
 }
 
 void light() {
