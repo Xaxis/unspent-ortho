@@ -11,7 +11,7 @@ extends GameSystem
 ##   - `dev` in a save: whether dev mode touched the game, and what it was made from
 ## A tool run reaches none of it unless it asks (--dev, --dev=PAGE[:ROW], --config).
 
-const RULES: Array[String] = ["rules.clock", "rules.harm", "rules.machines", "rules.guide"]
+const RULES: Array[String] = ["rules.clock", "rules.harm", "rules.hunger", "rules.bodies", "rules.machines", "rules.guide"]
 const READOUT_EVERY := 0.25
 const FLAG := Vector2i(603, 348)
 const VIOLET := Color("#b3a8ea")
@@ -31,6 +31,10 @@ var _world_frame: Image
 var _picture_in := -1
 var _hud_hidden := false
 var _revision := -1
+## The spawner's own rate before rules.bodies scaled it (-1: not read yet).
+var _spawn_rate := -1.0
+## The clock when hunger's pace was last applied (rules.hunger).
+var _hunger_at := -INF
 var _sheltered := false
 ## Clean pictures kept this game.
 var _pictures := 0
@@ -97,6 +101,13 @@ func _apply_rules() -> void:
 			"rules.harm":
 				if game.player.hero != null:
 					game.player.hero.harm = float(v)
+			"rules.bodies":
+				var mobs := DevCheats.system(game, "30_mobs")
+				var spawner: Variant = mobs.get("spawner") if mobs != null else null
+				if spawner is Spawner:
+					if _spawn_rate < 0.0:
+						_spawn_rate = (spawner as Spawner).rate
+					(spawner as Spawner).rate = _spawn_rate * float(v)
 			"rules.machines":
 				DevCheats.set_spawning(game, bool(v))
 			"rules.guide":
@@ -115,6 +126,7 @@ func _process(delta: float) -> void:
 	if GameConfig.revision != _revision:
 		_revision = GameConfig.revision
 		_apply_rules()
+	_pace_hunger()
 	if screen == null:
 		return
 	_hold_session()
@@ -129,6 +141,18 @@ func _process(delta: float) -> void:
 		_readout_in = READOUT_EVERY
 		_pairs = DevReadout.pairs(game) if DevMode.readout and DevMode.reachable() else []
 		_overlay.queue_redraw()
+
+
+## rules.hunger: hunger is the clock running past the last meal (Body.fed_until),
+## so a pace other than one moves that meal along with the clock: at half pace,
+## half of every world minute is given back; at none, all of it. Sleep and every
+## other jump count, as they would in the body. Nothing when the pace is one.
+func _pace_hunger() -> void:
+	var now := game.clock.minutes
+	var pace := float(GameConfig.value("rules.hunger"))
+	if _hunger_at > -INF and now > _hunger_at and not is_equal_approx(pace, 1.0):
+		game.body.fed_until += (now - _hunger_at) * (1.0 - pace)
+	_hunger_at = now
 
 
 ## What the dev pages hold on, written again over whatever the game wrote this frame.

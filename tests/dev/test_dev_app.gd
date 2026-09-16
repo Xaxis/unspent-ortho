@@ -343,3 +343,36 @@ func test_the_slate_edge_hides_and_a_picture_is_asked_for_without_error() -> voi
 	check(not g.hud.visible, "nothing of the slate while the picture is taken")
 	g.free()
 	_restore()
+
+
+func test_hunger_pace_and_how_many_bodies_come_act_live() -> void:
+	_keep()
+	GameConfig.clear()
+	var g := _make(false)
+	var dev := _sys(g, "94_dev")
+	var spawner: Spawner = _sys(g, "30_mobs").get("spawner")
+	var base := spawner.rate
+	dev.call("_process", 0.0)
+	var fed := g.body.fed_until
+	g.clock.minutes += 60.0
+	dev.call("_process", 0.0)
+	eq(g.body.fed_until, fed, "at the game's own pace nothing is touched")
+	GameConfig.set_value("rules.hunger", 0.5)
+	dev.call("_process", 0.0)
+	g.clock.minutes += 60.0
+	dev.call("_process", 0.0)
+	near(g.body.fed_until, fed + 30.0, 0.01, "at half pace, half of an hour is given back")
+	GameConfig.set_value("rules.hunger", 0.0)
+	dev.call("_process", 0.0)
+	var held := g.body.fed_until
+	g.clock.minutes += 240.0
+	dev.call("_process", 0.0)
+	near(g.body.fed_until - g.clock.minutes, held - (g.clock.minutes - 240.0), 0.01, "at none, the body never grows hungrier")
+	GameConfig.set_value("rules.bodies", 2.0)
+	dev.call("_process", 0.0)
+	near(spawner.rate, base * 2.0, 1e-6, "twice as many come")
+	GameConfig.set_value("rules.bodies", 1.0)
+	dev.call("_process", 0.0)
+	near(spawner.rate, base, 1e-6, "and back to the game as tuned")
+	g.free()
+	_restore()
