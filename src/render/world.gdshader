@@ -46,6 +46,13 @@ uniform vec4 works_survey = vec4(0.0, 0.0, 41.0, 59.0);
 uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
 uniform float emission_strength = 0.0;
+// A blow's paper-white, as a sphere in world space. See the end of fragment();
+// found.gdshader carries the same three. MobFx.set_flash writes them into a
+// COPY of a struck body's material, never into the world's own, which every
+// tile and every animal draws with.
+uniform vec3 flash_at = vec3(0.0);
+uniform float flash_r = 0.0;
+uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
 
 varying vec3 world_pos;
 varying vec3 wash2;
@@ -1444,6 +1451,18 @@ void fragment() {
 	// was tried and is worse — at dusk the grade is low, so the headroom opens
 	// up again and the snow went from 0.06% of the frame on the page to 1.67%.
 	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
+	// A blow's paper-white, as a sphere in world space: only the part that was
+	// struck goes to paper, so the body it landed on is still showing while the
+	// mark proves the hit (docs/ART.md §7; and see found.gdshader, which carries
+	// the same three uniforms for the machines). MADE, so its edge is a pixel of
+	// stipple and not a rule. `flash_r` 0 is every draw but a struck body's.
+	if (flash_r > 0.0) {
+		float fd = distance(world_pos, flash_at) / flash_r;
+		if (fd < 1.0 && (fd < 0.82 || ink_hash(px) < (1.0 - fd) * 5.5)) {
+			ALBEDO = vec3(0.0);
+			EMISSION = flash_col;
+		}
+	}
 }
 
 void light() {

@@ -550,6 +550,7 @@ func _play_act(spec: String) -> void:
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
 			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_deg, game.camera.pitch_deg, 10)
 			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
+			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[2], 0.4, 1.6, Vector2.ZERO, 12)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0

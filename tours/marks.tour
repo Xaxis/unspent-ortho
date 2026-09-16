@@ -1,0 +1,189 @@
+# A mark must never be the thing standing in front of what it proves, and the
+# body must read in every pose (docs/ART.md §5, §7). Every frame here is at PLAY
+# zoom, because that is the only size that counts: a mark that only behaves in a
+# close shot is not fixed.
+#   tools/tour.sh tours/marks.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --fit=scanner_lens,boots_magnet,mod_spring,glide_wing
+# Each pair is a control frame and then the mark, from the same place, so what
+# the mark added to the picture can be counted and not argued about.
+coast calm
+
+# --- A blow leaves the machine standing there --------------------------------
+# Shot on the first frame after the blow, inside the flash: the struck plate is
+# paper, the rest of the body is still its own violet, and its lens is still
+# amber. (The flash is 60 ms; a `wait` here would shoot after it.)
+place pinewood
+wait 1.0
+spawn watcher
+wait 1.2
+shot 01-before-the-blow
+try 16
+walkto part 1.6
+tap swing
+await hit 1.8
+end
+shot 02-the-blow-leaves-it-standing
+# And once more at the zoom the art review shot it at, where the old flash was a
+# bone-white silhouette sixty pixels tall with the amber gone out of it.
+zoom 8
+wait 0.4
+try 16
+walkto part 1.6
+tap swing
+await hit 1.8
+end
+shot 03-and-close-enough-to-count-the-pixels
+zoom 15
+wait 0.4
+
+# --- The machine's own light is smaller than the machine ----------------------
+# Its working part at night, at the distance it is read from: a ring of loose
+# amber pixels round the part, never a disc wider than the body wearing it.
+coast calm
+wait 0.4
+place coast
+hour 22
+weather clear:0
+wait 1.2
+spawn watcher
+wait 1.6
+shot 04-its-light-is-smaller-than-it-is
+
+# --- A read through a stolen lens, over the thing it reads --------------------
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 05-read-over-the-thing-it-reads
+
+# --- The dash leaves the body showing ----------------------------------------
+# Speed lines are ink over the world, laid where the body WAS: the player must
+# still be a person at the head of them.
+coast calm
+wait 0.5
+hour 11
+weather clear:0
+place coast
+wait 1.4
+shot 06-before-the-dash
+tap ability_dash
+await ability:dash 5
+wait 0.03
+shot 07-the-dash-leaves-the-body-showing
+
+# --- The magnet line is a line -----------------------------------------------
+# Far enough back that the line is a LINE: a magnet throw reaches eight tiles,
+# and a rope proven at arm's length proves nothing.
+# Back off until the tip is nearly out of throw, then step in until it catches:
+# a magnet line reaches eight tiles, and a rope proven at arm's length proves
+# nothing about whether a player can see it.
+place tip
+wait 0.8
+walk -1,-1 2.6
+wait 0.3
+shot 08-across-from-a-tip
+try 8
+walk 1,1 0.3
+tap ability_grapple
+await ability:grapple 1.5
+end
+shot 09-the-line-takes-hold
+wait 0.45
+shot 10-and-it-shortens
+
+# --- Crouched, still a person ------------------------------------------------
+coast calm
+wait 0.4
+ground heath
+wait 1.0
+shot 11-standing-in-the-heather
+hold crouch
+await crouched 3
+wait 0.6
+shot 12-down-in-the-heather
+walk 1,0 0.5
+shot 13-and-moving-down-there
+# And closer than anyone plays, which is where the art review found it: the
+# pose has to hold up under a magnifying glass as well as at 640x360.
+zoom 6
+wait 0.5
+shot 14-down-in-the-heather-close
+release crouch
+wait 0.5
+shot 15-and-up-again-close
+zoom 15
+wait 0.4
+
+# --- A read holds through a throw and through a flight ------------------------
+# A scan lays a bracket on every working part for six seconds. It used to drop
+# the WHOLE read -- brackets and the tell over a machine that has noticed you --
+# the moment anything moved the body, so a glide went blind for all six of its
+# seconds, which is exactly when a player wants to know who is looking. Now only
+# a throw holds back the next brackets, so two ability marks never land on the
+# same thirty pixels, and nothing at all holds back the tell. What a player sees
+# is one unbroken read.
+coast calm
+wait 0.5
+place coast
+hour 11
+weather clear:0
+wait 1.2
+spawn watcher
+wait 1.4
+tap ability_scan
+await ability:scan 5
+wait 0.5
+shot 16-the-read-is-laid
+tap ability_dash
+await ability:dash 4
+wait 0.04
+shot 17-and-holds-through-the-throw
+wait 0.7
+shot 18-and-is-still-there-after
+# And through the six seconds of a glide, which is a flight and not a throw:
+# off a height with a machine still in reach, the read is on it the whole way.
+place summit
+zoom 11
+wait 1.4
+walk 1,1 1.6
+spawn lineman
+# The lens is on a nine-second cooldown and `await ability:scan` only says it
+# has ever fired, so the wait is the real gate here: without it the second tap
+# is refused and the frames below prove nothing at all.
+wait 9.0
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 19-a-machine-read-on-a-height
+tap ability_glide
+await gliding 5
+wait 0.8
+shot 20-and-through-a-whole-glide
+
+# --- Breath steps off the snow -----------------------------------------------
+# The cue fires on its own beat and hangs a second and a half, so the frame is
+# taken right after the cold is first felt (the first cue is due at once) and
+# again a beat later: breath has to be visible on white ground in both.
+place snowfield
+hour 19
+weather clear:0
+wait 1.6
+await cold 12
+await pressure_bites 15
+await breath 10
+wait 0.15
+shot 21-breath-on-white-ground
+wait 2.0
+await breath 10
+wait 0.6
+shot 22-and-the-next-breath
+# And at night, on the same white ground. A mark's paint is as pale as snow is,
+# so under one light the two land on the same value and the cloud vanishes into
+# the field it was breathed over: a breath has to step off its page at every
+# hour, not only while the sun is up.
+hour 23
+weather clear:0
+wait 1.6
+await cold 12
+await breath 12
+wait 0.15
+shot 23-breath-on-white-ground-at-night

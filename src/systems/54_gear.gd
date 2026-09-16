@@ -22,10 +22,11 @@ extends GameSystem
 ##   tools/shot.sh shots/hazards/wing.png --fit=glide_wing --frames=40
 ##   tools/tour.sh tours/hazards.tour --seed=1
 
-## A grapple's rope: one mark of light every this many tiles, so a short line is
-## a line and not a blob, and never more than this many marks on a long one.
-const LINE_STEP := 0.55
-const LINE_MOST := 14
+## How high off the ground the magnet line leaves the body: hand height, so it
+## comes off the player and not off their feet.
+const LINE_FROM := 0.75
+## And how high it takes hold on what it caught.
+const LINE_TO := 0.55
 ## Seconds between a travelling body's marks (a flight's trail, a rope redrawn as
 ## it shortens). A mark costs a material and a node, so these keep their own beat
 ## rather than the frame rate's: laid a little faster than one dies, so the line
@@ -46,11 +47,18 @@ const SPOOF_PROOF_REACH := 12.0
 ## A body that moves further than this between two frames of a motion was put
 ## there by something else: the motion gives way to it.
 const JUMPED := 3.0
+## The motions that THROW a body: over in a fifth of a second, and drawing their
+## own mark across the player while they run. A scan's brackets stand down for
+## these and for nothing else -- a glide is six seconds of ordinary flight, and
+## a scan that goes blind for six seconds has stopped being a scan.
+const THROWN: Array[StringName] = [&"dash", &"grapple"]
 
 var loadout := Loadout.new()
 var book := AbilityBook.new()
 var _motion: AbilityMotion = null
 var _wing: GlideWingModel = null
+## The magnet line while a pull runs, re-pointed every frame as it shortens.
+var _line: MeshInstance3D = null
 ## Ability ids that have fired in this game, for the tour's awaits.
 var _fired: Dictionary = {}
 var _gliding := false
@@ -200,32 +208,54 @@ func _run_motion(delta: float) -> void:
 
 
 ## What a flight and a pull look like while they are happening. The rope is the
-## whole point of a grapple: it is drawn again from wherever the body has got to
-## back to the anchor, so a player watches the line shorten instead of seeing one
-## sparkle at the moment of the press.
+## whole point of a grapple, so it is redrawn EVERY frame from wherever the body
+## has got to back to the anchor: a player watches the line shorten and knows
+## what is pulling them, instead of seeing a sparkle and being moved.
 func _travel_marks(delta: float) -> void:
+	if _motion.kind == &"grapple":
+		_aim_line()
 	_travel_at -= delta
 	if _travel_at > 0.0:
 		return
 	_travel_at = TRAVEL_BEAT
-	var seed_value := int(Time.get_ticks_msec())
 	if _motion.kind == &"glide":
-		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], seed_value, 0.22)
-	elif _motion.kind == &"grapple":
-		_draw_line(game.player.pos, _motion.to, seed_value)
+		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], int(Time.get_ticks_msec()), 0.22)
 
 
-## The line itself: marks of light spaced along the ground between the body and
-## what it took hold of, in the machines' own cold so it reads over any land.
-## Spacing is by distance, so a hold two tiles away is a short line and not a blob.
-func _draw_line(from: Vector2, to: Vector2, seed_value: int) -> void:
-	var span := from.distance_to(to)
-	if span < 0.2:
+## The line itself: one ruled line of the machines' own cold, hand to anchor. It
+## used to be a mark of light every half tile, which at the distance a grapple is
+## actually thrown resolves to two sparkles over a gap of bare ground and reads
+## as nothing at all (wave A2, art finding 4). It is FOUND: exact, whole, ruled.
+func _draw_line(from: Vector2, to: Vector2) -> void:
+	_drop_line()
+	if from.distance_to(to) < 0.2:
 		return
-	var n := clampi(roundi(span / LINE_STEP), 1, LINE_MOST)
-	for i in n:
-		var p := from.lerp(to, float(i) / float(n))
-		MobFx.glint(game, game.world.to_3d(p) + Vector3(0, 0.7, 0), Palette.COLD[3], seed_value + i * 5, 0.34)
+	_line = MobFx.line(game, _hand(), _line_end(to, LINE_TO), Palette.COLD[3])
+
+
+func _aim_line() -> void:
+	if _line == null or not is_instance_valid(_line):
+		return
+	MobFx.aim_line(_line, _hand(), _line_end(_motion.to, LINE_TO))
+
+
+## Where the line leaves the body: the hand that threw it, so the rope does not
+## lie across the figure's own chest on the way out.
+func _hand() -> Vector3:
+	var model := game.player.model
+	if model != null and model.rig != null:
+		return game.player.global_position + model.hand_position().rotated(Vector3.UP, -game.player.facing)
+	return _line_end(game.player.pos, LINE_FROM)
+
+
+func _line_end(p: Vector2, lift: float) -> Vector3:
+	return game.world.to_3d(p) + Vector3(0, lift, 0)
+
+
+func _drop_line() -> void:
+	if _line != null and is_instance_valid(_line):
+		_line.queue_free()
+	_line = null
 
 
 func _land(m: AbilityMotion) -> void:
@@ -236,6 +266,7 @@ func _land(m: AbilityMotion) -> void:
 		MobFx.puffs(game, game.player.position, m.dir, Palette.STONE[4], 3, 0.55, int(Time.get_ticks_msec()))
 		Events.sfx.emit(&"ability_land", game.player.position)
 	elif m.kind == &"grapple":
+		_drop_line()
 		MobFx.puff(game, game.player.position, -m.dir, Palette.STONE[4], 0.5, int(Time.get_ticks_msec()))
 
 
@@ -265,14 +296,19 @@ func _fx(what: StringName, args: Dictionary) -> void:
 	var seed_value := int(Time.get_ticks_msec())
 	match what:
 		&"dash":
-			# Speed lines off the heels and a trail of stipple down the way it
-			# came: the burst is drawn, never blurred (docs/ART.md §7).
+			# Speed lines off the heels and a little stipple down the way it came:
+			# the burst is drawn, never blurred (docs/ART.md §7).
+			#
+			# Laid a body's width BEHIND the heels, the way the dodge's lines are,
+			# and two puffs rather than four. On the body, with four of them
+			# overlapping, the dash was a cream field with the player inside it
+			# (wave A2, art finding 3).
 			var dir: Vector2 = args.get("dir", Vector2.RIGHT)
-			MobFx.streak(game, at + Vector3(0, 0.55, 0), dir, game.camera.yaw_deg, game.camera.pitch_deg, seed_value, 0.9)
+			var back := Vector3(dir.x, 0.0, dir.y) * Tuning.PLAYER_RADIUS * 2.0
+			MobFx.streak(game, at - back + Vector3(0, 0.55, 0), dir, game.camera.yaw_deg, game.camera.pitch_deg, seed_value, 0.9)
 			var dust := Palette.STONE[4]
-			for i in 4:
-				var back := Vector3(dir.x, 0.0, dir.y) * (-0.35 * (i + 1))
-				MobFx.puff(game, at + back, -dir, dust, 0.34 - 0.04 * i, seed_value + i * 11)
+			for i in 2:
+				MobFx.puff(game, at - back * (float(i) * 1.1 + 1.0), -dir, dust, 0.26 - 0.05 * i, seed_value + i * 11)
 			Events.sfx.emit(&"ability_dash", at)
 		&"glide":
 			Events.sfx.emit(&"ability_glide", at)
@@ -294,7 +330,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			var hold_for := maxf(READ_SECONDS, float(args.get("seconds", 0.0)))
 			MobFx.bracket(game, game.world.to_3d(to) + Vector3(0, 0.6, 0), Palette.LENS[3], 1.2, hold_for, seed_value)
 			MobFx.ring(game, game.world.to_3d(to), Palette.LENS[2], 0.8, hold_for)
-			_draw_line(from, to, seed_value)
+			_draw_line(from, to)
 			_travel_at = TRAVEL_BEAT
 			Events.sfx.emit(&"ability_grapple", at)
 		&"spoof":
@@ -333,6 +369,14 @@ func _hold_for(args: Dictionary) -> float:
 
 
 func _scan_marks(reach: float, opening: bool) -> void:
+	# One ability's mark at a time -- but only while the body is being THROWN. A
+	# scan laying brackets through a dash or a pull stacks two marks on the same
+	# thirty pixels of screen and neither is readable (wave A2, art finding 3);
+	# a glide is six seconds long, and six seconds with no brackets is a scan
+	# that has quietly stopped working. So the brackets stand down for the fifth
+	# of a second a throw lasts, and the tell over a machine that has NOTICED YOU
+	# never stands down at all: that is the one read a player in the air needs.
+	var thrown := _motion != null and THROWN.has(_motion.kind)
 	var p := game.player.pos
 	var up := game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
 	var found: Array[Mob] = []
@@ -349,9 +393,10 @@ func _scan_marks(reach: float, opening: bool) -> void:
 		_aware_at = now + AWARE_BEAT
 	for i in mini(found.size(), SCAN_MOST):
 		var mob := found[i]
-		MobFx.bracket(game, mob.part_position(), Palette.LENS[3], 0.9, _read_for, mob.get_instance_id())
-		if opening:
-			MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
+		if not thrown:
+			MobFx.bracket(game, mob.part_position(), Palette.LENS[3], 0.9, _read_for, mob.get_instance_id())
+			if opening:
+				MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
 		if mob.aware and tell_due:
 			MobFx.tell(game, mob.screen_top(up), up, AWARE_BEAT, mob.get_instance_id() + 3, 0.7)
 

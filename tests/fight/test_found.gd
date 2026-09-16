@@ -140,9 +140,13 @@ func test_a_material_changed_during_a_flash_is_kept() -> void:
 class SelfFlashing:
 	extends Node3D
 	var flashes: Array[bool] = []
+	var spheres: Array[float] = []
 
-	func set_flash(on: bool) -> void:
+	## The contract MobFx.set_flash delegates to: on, where the blow landed, and
+	## how much of the body goes to paper (0 = all of it).
+	func set_flash(on: bool, _at: Vector3, radius: float) -> void:
 		flashes.append(on)
+		spheres.append(radius)
 
 
 func test_a_figure_that_flashes_itself_is_asked_to() -> void:
@@ -154,8 +158,9 @@ func test_a_figure_that_flashes_itself_is_asked_to() -> void:
 	var own := ShaderMaterial.new()
 	body.material_override = own
 	fig.add_child(body)
-	MobFx.set_flash(fig, true)
+	MobFx.set_flash(fig, true, Vector3(1, 2, 3), 0.25)
 	eq(body.material_override, own, "no swap")
-	MobFx.set_flash(fig, false)
+	MobFx.set_flash(fig, false, Vector3(1, 2, 3), 0.25)
 	eq(fig.flashes, [true, false] as Array[bool])
+	eq(fig.spheres, [0.25, 0.25] as Array[float], "and it is told which part was struck")
 	fig.free()
