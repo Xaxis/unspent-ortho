@@ -12,6 +12,7 @@
 #   tools/audio.sh --score                       # three minutes of every landscape's score
 #   tools/audio.sh --score --land=moss --secs=60 # one landscape, shorter
 #   tools/audio.sh --score --cross=coast,moss    # walking from one score into the next
+#   tools/audio.sh --score --walk=coast,moss,pinewood   # a walk across two borders
 #                                  # through the conductor -> shots/score/<name>.wav/png, with
 #                                  # the layers, cues, form and danger drawn over the spectrogram
 # Fails (non-zero) on any script error.

@@ -161,9 +161,11 @@ static func country_weights(world: WorldData, p: Vector2) -> Dictionary:
 	return out
 
 
-## The same rings as country_weights, by country id rather than bed: the score
-## maps each to its landscape. Sums to 1.
-static func country_share(world: WorldData, p: Vector2) -> Dictionary:
+## The same rings as country_weights, by LANDSCAPE TYPE index rather than bed
+## (`WorldData.country` carries the registry's index, and `country2`/`blend`
+## carry the pair at a border), so the score reads what the ear is actually in.
+## Sums to 1.
+static func land_share(world: WorldData, p: Vector2) -> Dictionary:
 	var out := {}
 	var total := 0.0
 	for ring in EAR_RADII.size():
@@ -185,6 +187,41 @@ static func country_share(world: WorldData, p: Vector2) -> Dictionary:
 			total += w
 	for c: int in out:
 		out[c] = float(out[c]) / total
+	return out
+
+
+## Rings the score looks along for what it will need next, as shares of `reach`.
+const SOON_RINGS: Array[float] = [0.55, 1.0]
+const SOON_RING := 8
+## How much more the way the player is walking counts than the way behind them.
+const SOON_LEAN := 0.75
+
+
+## Landscapes the listener will be in soon: a ring at `reach` tiles and one
+## halfway out, each sample leaning toward `heading` (a zero heading looks all
+## ways equally), plus the point straight ahead. Never heard — it is what the
+## score bakes before a border, so arriving somewhere is never silence. Sums to 1.
+static func land_soon(world: WorldData, p: Vector2, heading: Vector2, reach: float) -> Dictionary:
+	var dir := heading.normalized() if heading.length_squared() > 1e-6 else Vector2.ZERO
+	var out := {}
+	var total := 0.0
+	var sample := func(q: Vector2, w: float) -> void:
+		var x := clampi(floori(q.x), 0, world.size - 1)
+		var y := clampi(floori(q.y), 0, world.size - 1)
+		var i := y * world.size + x
+		var c: int = world.country[i]
+		out[c] = float(out.get(c, 0.0)) + w
+		total += w
+	for ring in SOON_RINGS.size():
+		var r := reach * SOON_RINGS[ring]
+		for k in SOON_RING:
+			var a := TAU * (k + 0.5) / SOON_RING + ring * 0.19
+			var v := Vector2(cos(a), sin(a))
+			sample.call(p + v * r, 1.0 + SOON_LEAN * v.dot(dir))
+	if dir != Vector2.ZERO:
+		sample.call(p + dir * reach * 1.45, SOON_RING * 0.5)
+	for c: int in out:
+		out[c] = float(out[c]) / maxf(1e-6, total)
 	return out
 
 

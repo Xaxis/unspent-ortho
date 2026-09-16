@@ -265,6 +265,32 @@ static func crossing(from: StringName, to: StringName, seed_value: int = 1) -> D
 	return s
 
 
+## A walk across two borders at a walker's pace: a stretch in each landscape
+## with a whole ecotone between them, the weather clear so only the blend is
+## heard. What tools/audio.sh --walk=A,B,C renders, and what the seams of the
+## score are judged on.
+static func walking(lands: Array, seed_value: int = 1) -> Dictionary:
+	var s := excerpt(StringName(lands[0]), seed_value)
+	var hold := 45.0
+	var cross := 50.0
+	var points: Array = [[0.0, {StringName(lands[0]): 1.0}]]
+	var t := hold
+	for i in range(1, lands.size()):
+		var a := StringName(lands[i - 1])
+		var b := StringName(lands[i])
+		points.append([t, {a: 1.0}])
+		points.append([t + cross * 0.5, {a: 0.5, b: 0.5}])
+		points.append([t + cross, {b: 1.0}])
+		t += cross + hold
+	s["secs"] = t
+	s["lands"] = points
+	s["danger"] = []
+	s["grid"] = []
+	s["sentinel"] = []
+	s["weather"] = [[0.0, &"clear", 0.0]]
+	return s
+
+
 ## The scripted three minutes tools/audio.sh renders for a landscape: its air
 ## at an hour that suits it, the pad and pulse arriving, its weather coming in,
 ## machines closing and passing, and an installation at the end.

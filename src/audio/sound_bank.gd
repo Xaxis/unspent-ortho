@@ -16,8 +16,9 @@ extends RefCounted
 ## own, answered by ScoreStems, and are stereo. render() is pure and
 ## thread-safe. At run time one shared bank bakes on WorkerThreadPool or,
 ## without threads, one short sound per frame, and the score a few milliseconds
-## per frame (ScoreRender stops and resumes), so a browser without threads still
-## hears the score.
+## per frame (ScoreRender stops and resumes) in its short form
+## (ScoreStems.SHORT_BARS), so a browser without threads hears the score within
+## seconds of waking instead of a quarter of a minute.
 ##
 ## Two lanes. The world's sounds (a blow, a machine's warning, a footfall) are
 ## never kept waiting by the score: every score key queues behind every other
@@ -39,14 +40,29 @@ const CEILING_DBFS := -1.5
 ## thunder's roll.
 const RELEASE := {&"event": 0.008, &"step": 0.006, &"ui": 0.006, &"scatter": 0.02, &"thunder": 0.25}
 ## Without worker threads these bake on the main thread (short one-shots, one a
-## frame); beds, machines, weather and music would freeze a frame for seconds,
-## so they are only played when the disk cache already holds them.
+## frame); beds, machines and weather would freeze a frame for a tenth of a
+## second or more, so they are only played when the disk cache already holds
+## them. On the web there is no disk cache (use_disk_cache), so a browser with
+## no SharedArrayBuffer has the score and the one-shots and NO ambient beds at
+## all: their recipes are whole-buffer Synth chains and cannot stop and resume
+## the way ScoreRender does. Giving that build its shore and its hum means
+## either making the Synth primitives resumable or shipping a pre-baked cache
+## in the pck (about 15 MB of PCM for every bed and weather loop, so a chosen
+## few); the score is sliced today, the beds are not.
 const MAIN_THREAD_CATEGORIES: Array[StringName] = [&"event", &"step", &"ui", &"scatter"]
 ## Categories rendered by a resumable ScoreRender: without threads they bake a
-## slice at a time on the main thread (SCORE_BUDGET_USEC a frame).
+## slice at a time on the main thread (score_budget_usec a frame).
 const SCORE_CATEGORIES: Array[StringName] = [&"score_drone", &"score_pad", &"score_pulse", &"score_texture", &"score_grid", &"score_dissonance", &"score_cue"]
-## What one frame gives the main-thread baking, one-shot and score slice together.
+## What one frame gives the main-thread baking, one-shot and score slice
+## together, and the most it ever gives.
 const SCORE_BUDGET_USEC := 3000
+const SCORE_BUDGET_MAX_USEC := 8000
+## Without threads the score takes at most this share of the frame it is in
+## (budget_for, set by 75_music from the frame's own delta). A browser labouring
+## at twenty frames a second then builds the score nearly three times as fast as
+## one at sixty, and neither ever loses a frame to it: the slice is always a
+## fifth of a frame, never a fixed cost that a slow frame pays over and over.
+const SCORE_BUDGET_SHARE := 0.2
 
 ## rate, loop, bus, hp (4th-order high-pass corner, Hz), window (heard dB),
 ## stereo (interleaved; default mono).
@@ -291,6 +307,9 @@ class Job:
 	var cache_path := ""
 	## Score keys: what makes the stem's ScoreRender (the bank's score_job).
 	var score := Callable()
+	## Bars to cut a score loop to: 0 for every bar of it, the short form without
+	## threads (ScoreStems.SHORT_BARS).
+	var bars := 0
 
 	func run() -> void:
 		if cache_path != "":
@@ -298,7 +317,7 @@ class Job:
 			if result != null:
 				return
 		if score.is_valid():
-			var stem: ScoreRender = score.call(key)
+			var stem: ScoreRender = score.call(key, bars)
 			stem.run()
 			result = SoundBank.from_score(stem)
 		else:
@@ -327,7 +346,9 @@ var _queue: Array[StringName] = []
 var _score_queue: Array[StringName] = []
 var _pumped_frame := -1
 var _on_disk: Dictionary = {}
-## Makes the job for a score key (ScoreStems.job; a test hands in a small one).
+## Makes the job for a score key: (key, bars) -> ScoreRender, where bars is 0
+## for the whole loop and the short form without threads (score_bars). A test
+## hands in a small one.
 var score_job: Callable = ScoreStems.job
 ## Without threads: the score stem being built a slice a frame, its cache path,
 ## and once built, the sound it made (written to disk and turned into a stream
@@ -335,8 +356,13 @@ var score_job: Callable = ScoreStems.job
 var _slow: ScoreRender
 var _slow_path := ""
 var _slow_baked: Baked
+## What this frame's main-thread baking may spend (budget_for).
+var score_budget_usec := SCORE_BUDGET_USEC
 ## Microseconds the last pump() spent on the main thread (the no-thread budget is held to it).
 var last_pump_usec := 0
+## Units of score work (blocks, slices) the last pump() advanced. Load lowers
+## it, never raises it, so a test can hold the slicing to it without a clock.
+var last_pump_units := 0
 
 
 static func shared() -> SoundBank:
@@ -589,10 +615,14 @@ func use_disk_cache(root: String) -> void:
 	_prune_cache(root)
 
 
-func _cache_path(key: StringName) -> String:
+## Where a baked sound is kept. A stem cut to `bars` is a different sound from
+## the whole one, so it is a file of its own: a build with threads and one
+## without never read each other's.
+func _cache_path(key: StringName, bars: int = 0) -> String:
 	if _cache_version_dir == "":
 		return ""
-	return _cache_version_dir.path_join(String(key).replace(":", "_") + ".usnd")
+	var stem := String(key).replace(":", "_")
+	return _cache_version_dir.path_join(stem + (".usnd" if bars <= 0 else "_b%d.usnd" % bars))
 
 
 func _prune_cache(root: String) -> void:
@@ -706,7 +736,7 @@ func bakes_here(key: StringName) -> bool:
 	if threaded or cat in MAIN_THREAD_CATEGORIES or cat in SCORE_CATEGORIES:
 		return true
 	if not _on_disk.has(key):
-		var path := _cache_path(key)
+		var path := _cache_path(key, score_bars(key))
 		_on_disk[key] = path != "" and FileAccess.file_exists(path)
 	return _on_disk[key]
 
@@ -749,10 +779,19 @@ func bake_now(key: StringName) -> Baked:
 func _job(key: StringName) -> Job:
 	var job := Job.new()
 	job.key = key
-	job.cache_path = _cache_path(key)
 	if is_score(base_name(key)):
 		job.score = score_job
+		job.bars = score_bars(key)
+	job.cache_path = _cache_path(key, job.bars)
 	return job
+
+
+## Bars this bank cuts a score loop to: every one of them with threads, the
+## short form without (ScoreStems.SHORT_BARS), where a stem is built a few
+## milliseconds a frame and a whole drone would arrive a quarter of a minute
+## after the player did.
+func score_bars(key: StringName) -> int:
+	return 0 if threaded else ScoreStems.short_bars(key)
 
 
 ## Reap finished jobs and start new ones. Call once per frame; extra calls in
@@ -772,6 +811,7 @@ func pump() -> void:
 			_finish(job)
 	if not threaded:
 		var t0 := Time.get_ticks_usec()
+		last_pump_units = 0
 		_pump_main_thread()
 		last_pump_usec = Time.get_ticks_usec() - t0
 		return
@@ -794,7 +834,14 @@ func _start(key: StringName) -> void:
 	_jobs[job.key] = job
 
 
-## Without threads, inside SCORE_BUDGET_USEC a frame: first one thing from the
+## What the main-thread baking may spend in a frame of `delta` seconds: a share
+## of it (SCORE_BUDGET_SHARE), never under SCORE_BUDGET_USEC and never over
+## SCORE_BUDGET_MAX_USEC, so a hitch does not hand the score a whole frame.
+func budget_for(delta: float) -> int:
+	return clampi(roundi(delta * 1e6 * SCORE_BUDGET_SHARE), SCORE_BUDGET_USEC, SCORE_BUDGET_MAX_USEC)
+
+
+## Without threads, inside score_budget_usec a frame: first one thing from the
 ## world's queue (a short one-shot or a cache file), so a blow or an alert asked
 ## for while the score builds is ready on the next frame; then, with what is
 ## left, a slice of the score stem being built. A finished stem is written to
@@ -827,22 +874,25 @@ func _pump_main_thread() -> void:
 		_finish(job)
 		return
 	if _slow != null:
-		var left := SCORE_BUDGET_USEC - (Time.get_ticks_usec() - t0)
+		var left := score_budget_usec - (Time.get_ticks_usec() - t0)
 		if left <= 0:
 			return
-		if _slow.step(left):
+		var done := _slow.step(left)
+		last_pump_units = _slow.last_units
+		if done:
 			_slow_baked = from_score(_slow)
 			_slow = null
 		return
 	if served or _score_queue.is_empty():
 		return
 	var key: StringName = _score_queue.pop_front()
-	_slow = score_job.call(key)
-	_slow_path = _cache_path(key)
+	var bars := score_bars(key)
+	_slow = score_job.call(key, bars)
+	_slow_path = _cache_path(key, bars)
 
 
 func _on_disk_now(key: StringName) -> bool:
-	var path := _cache_path(key)
+	var path := _cache_path(key, score_bars(key))
 	if path == "":
 		return false
 	if not _on_disk.has(key):
