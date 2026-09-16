@@ -89,7 +89,11 @@ const ATTEMPTS := 3
 ## slicing would blow by a factor of ten. `run` builds the thing and returns
 ## [per-frame usec, per-frame units].
 static func judge_frames(t: TestCase, run: Callable, what: String) -> void:
-	var budget := SoundBank.SCORE_BUDGET_USEC
+	# The unit count below is the real guarantee and stays exact whatever else the
+	# machine is doing. The clock is not: eight builders on one laptop stretch every
+	# frame three or four times over, so the wall-clock half is scaled by what this
+	# run is actually getting of a processor (TestCase.machine_slack).
+	var budget := int(SoundBank.SCORE_BUDGET_USEC * TestCase.machine_slack())
 	var worst_units := 0
 	var frames := 0
 	var median := 0
