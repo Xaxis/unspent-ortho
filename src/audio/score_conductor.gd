@@ -491,7 +491,7 @@ static func core_keys(land: StringName, hour: float) -> Array[StringName]:
 	] as Array[StringName]
 
 
-static func _by_weight(weights: Dictionary) -> Array[StringName]:
+static func by_weight(weights: Dictionary) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for land: StringName in weights:
 		if float(weights[land]) > 0.001:
@@ -508,11 +508,11 @@ func wanted() -> Array[StringName]:
 	var out: Array[StringName] = []
 	var hour := float(_input.get("hour", 12.0))
 	var weights: Dictionary = _input.get("weights", {})
-	for land in _by_weight(weights):
+	for land in by_weight(weights):
 		for key in core_keys(land, hour):
 			if not out.has(key):
 				out.append(key)
-	for land in _by_weight(_input.get("soon", {})):
+	for land in by_weight(_input.get("soon", {})):
 		if weights.has(land):
 			continue
 		for key in core_keys(land, hour):

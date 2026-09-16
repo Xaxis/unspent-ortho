@@ -318,7 +318,7 @@ func _read_ahead() -> void:
 		out[id] = float(out.get(id, 0.0)) + float(shares[c])
 	# Only the strongest few: standing where four landscapes meet must not put
 	# eight stems in memory and the queue ahead of the pad underfoot.
-	var ranked := ScoreConductor._by_weight(out)
+	var ranked := ScoreConductor.by_weight(out)
 	soon = {}
 	for i in mini(AHEAD_LANDS, ranked.size()):
 		if float(out[ranked[i]]) >= AHEAD_FLOOR:
