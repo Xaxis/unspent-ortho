@@ -1,9 +1,12 @@
 # The land, proved by walking it. Options: --seed=7 --weather=clear:0
 #   tools/tour.sh tours/landscape-polish.tour --seed=7 --weather=clear:0
 # What it holds the land to: the bonelands is cracked stone and not a tiled
-# floor; every ground has something to read at the zoom the game is played at;
-# the moss's water is black with green edges and wears no sea foam; a village
-# reads as people living in a ruin; and a crown never hides a fight.
+# floor, at the zoom a fight is fought at as well as from above; a border
+# between two landscapes is a band both of them hold ground in, not a seam;
+# every ground has something to read at the zoom the game is played at; the
+# moss's water is black with green edges and wears no sea foam; a village reads
+# as people living in a ruin; and a crown never hides a fight, the machine's
+# least of all.
 hour 12
 place bonelands
 wait 2
@@ -11,45 +14,57 @@ shot 01-bonelands-pavement
 zoom 6
 wait 1
 shot 02-bonelands-pavement-close
+zoom 5
+wait 1
+shot 03-bonelands-at-fight-zoom
 zoom 15
 walk 1,0 3 run
 wait 1
-shot 03-bonelands-walked
+shot 04-bonelands-walked
 place bonelands-burning
 wait 2
-shot 04-bonelands-burning-ecotone
+shot 05-bonelands-burning-ecotone
+zoom 34
+wait 1.5
+shot 06-bonelands-burning-band
+zoom 15
 place moss
 wait 2
-shot 05-moss-black-water
+shot 07-moss-black-water
 zoom 7
 wait 1
-shot 06-moss-water-close
+shot 08-moss-water-close
 zoom 15
 village 0
 wait 2
-shot 07-village-noon
+shot 09-village-noon
 walk 0,1 1.2
 wait 1
 zoom 7
 wait 1
-shot 08-village-close
+shot 10-village-close
 zoom 15
 place pinewood
 wait 2
-shot 09-pinewood
+shot 11-pinewood
 near pine
 wait 1.2
-shot 10-under-the-crown
+shot 12-under-the-crown
 zoom 9
 wait 0.6
-shot 11-crown-cleared-close
+shot 13-crown-cleared-close
+# The case the clearing exists for: a hostile in among the leaves, at the range
+# a fight is fought at. Its own clearing opens, whatever else is about.
+spawn runner
+wait 1.5
+shot 14-crown-cleared-for-the-machine
 zoom 15
 place snowfield
 wait 2
-shot 12-snowfield-keeps-the-page
+shot 15-snowfield-keeps-the-page
 place burning
 wait 2
-shot 13-burning
+shot 16-burning
 hour 23
 wait 1.5
-shot 14-burning-night
+shot 17-burning-night

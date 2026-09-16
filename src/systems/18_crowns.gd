@@ -44,15 +44,22 @@ func _process(_delta: float) -> void:
 	_pos.clear()
 	_hostile.clear()
 	_aware.clear()
-	for m in get_tree().get_nodes_in_group(&"mobs"):
-		if not bool(m.get(&"alive")):
+	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
+		# Read as the rest of the game does: a body in the group answers for
+		# `alive`, `pos`, `hostile` and `aware`, and anything that does not is
+		# not one (75_music, 70_audio).
+		var alive: Variant = m.get(&"alive")
+		var pos: Variant = m.get(&"pos")
+		if (alive is bool and not alive) or not pos is Vector2:
 			continue
-		var p: Vector2 = m.get(&"pos")
+		var p := pos as Vector2
 		if p.distance_to(here) > NEAR:
 			continue
+		var hostile: Variant = m.get(&"hostile")
+		var aware: Variant = m.get(&"aware")
 		_pos.append(p)
-		_hostile.append(1 if bool(m.get(&"hostile")) else 0)
-		_aware.append(1 if bool(m.get(&"aware")) else 0)
+		_hostile.append(0 if hostile is bool and not hostile else 1)
+		_aware.append(1 if aware is bool and aware else 0)
 	fill(_slots, here, choose(_pos, _hostile, _aware, here, SLOTS - 1),
 		func(p: Vector2) -> float: return game.view.surface_height(p))
 	_mat.set_shader_parameter("crown_clear", _slots)

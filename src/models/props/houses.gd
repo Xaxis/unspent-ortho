@@ -385,15 +385,46 @@ static func slated(k: Kit, c: int, form: int) -> void:
 			var pen := k.found if plate else k.made
 			var col: Color = (P.PLATE[3] if i % 2 == 0 else P.PLATE[2]) if plate else (P.SLATE[3] if i % 2 == 0 else P.SLATE[2])
 			pen.quad(b0, a0, a1, b1, col)
-	# Back slope: plate, with one patch of old slate.
-	var bk0 := Vector3(cx - ex, h - 0.05, -ez)
-	var bk1 := Vector3(cx - ex, h - 0.05, ez)
+	# Back slope. A roof is seen from ABOVE at the play camera, so the slope is
+	# most of what a house IS on screen: laid as one flat triangle it read as a
+	# plain slab whatever the silhouette did (playtest 11, art review 5). Laid in
+	# courses like the front, so the plane itself carries value: slate that held,
+	# courses gone over in plate, slipped slates with the dark batten showing
+	# through, and the green that grows on the slope the sun never reaches.
 	var rr0 := Vector3(cx, yr, -ez)
 	var rr1 := Vector3(cx, yr, ez)
 	var rrm := Vector3(cx, yr - sag, 0.0)
-	k.made.tri(bk0, bk1, rrm, P.SLATE[2])
-	k.made.tri(bk0, rrm, rr0, P.SLATE[2])
-	k.made.tri(bk1, rr1, rrm, P.SLATE[2])
+	for i in courses:
+		var f0 := float(i) / courses
+		var f1 := float(i + 1) / courses
+		for half in 2:
+			var z0 := -ez if half == 0 else 0.0
+			var z1 := 0.0 if half == 0 else ez
+			var ya0 := lerpf(h - 0.05, yr, f0)
+			var ya1 := lerpf(h - 0.05, yr, f1)
+			var a0 := Vector3(cx - ex * (1.0 - f0), ya0 - (sag * f0 if z0 == 0.0 else 0.0), z0)
+			var b0 := Vector3(cx - ex * (1.0 - f0), ya0 - (sag * f0 if z1 == 0.0 else 0.0), z1)
+			var a1 := Vector3(cx - ex * (1.0 - f1), ya1 - (sag * f1 if z0 == 0.0 else 0.0), z0)
+			var b1 := Vector3(cx - ex * (1.0 - f1), ya1 - (sag * f1 if z1 == 0.0 else 0.0), z1)
+			var plated := (i == 2 or i == 5) if half == 0 else (i == 3)
+			var pen := k.found if plated else k.made
+			# Value per half course, not per course: even stripes across a whole
+			# roof are as ruled as the flat slab they replaced.
+			var r := (i * 3 + half * 5 + form * 2) % 4
+			var col: Color = (P.PLATE[2] if r < 2 else P.PLATE[3]) if plated else (P.SLATE[2] if r == 0 else (P.SLATE[3] if r < 3 else P.SLATE[1]))
+			if not plated and i == 0 and half == (1 if form == 0 else 0):
+				# The foot of the slope the sun never reaches, where damp sits.
+				col = moss
+			pen.quad(a0, b0, b1, a1, col)
+			# Slates slipped out of a course: the batten behind is the pen's own.
+			if not plated and (i + half * 3) % 4 == 1:
+				var gz := lerpf(z0, z1, 0.3 + fmod(float(i) * 0.31, 0.3))
+				var gy := lerpf(ya0, ya1, 0.25)
+				var gx := cx - ex * (1.0 - lerpf(f0, f1, 0.25))
+				k.made.quad(
+					Vector3(gx, gy, gz), Vector3(gx, gy, gz + ez * 0.22),
+					Vector3(gx - ex * 0.06, gy + (ya1 - ya0) * 0.45, gz + ez * 0.22),
+					Vector3(gx - ex * 0.06, gy + (ya1 - ya0) * 0.45, gz), P.INK[2])
 	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
 	# Gable ends in stone.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), Vector3(cx, yr - 0.06, t[6].z + 0.004), GroundColors.down(rubble, 0.3))

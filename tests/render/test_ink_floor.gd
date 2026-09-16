@@ -20,6 +20,18 @@ func test_the_shader_floors_what_it_draws() -> void:
 	near(luma(Palette.INK[2]), FLOOR, 0.0005, "INK[2] luma")
 
 
+func test_a_machine_is_floored_by_the_same_pen_as_the_land() -> void:
+	# The law is "nothing is pure black", not "nothing MADE is": a FOUND surface
+	# graded down at night has the same floor as the ground beside it, and the
+	# two shaders carry the same two numbers.
+	var src := FileAccess.get_file_as_string("res://src/render/found.gdshader")
+	check(src.contains("ALBEDO = ink_floor("), "found.gdshader floors its albedo")
+	check(src.contains("const float INK_FLOOR = %.4f;" % FLOOR), "at the same floor as the land")
+	var ink: Color = Palette.INK[2]
+	check(src.contains("const vec3 FOUND_INK = vec3(%.4f, %.4f, %.4f);" % [ink.r, ink.g, ink.b]),
+		"and on the same pen colour")
+
+
 func test_no_prop_is_drawn_below_the_ink_floor() -> void:
 	# Props may be ink-dark (a cavity, an open hatch, a cable), never darker.
 	for kind in PropKind.COUNT:
