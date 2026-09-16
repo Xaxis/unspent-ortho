@@ -121,7 +121,10 @@ func test_being_filed_and_being_out_in_a_keepers_hours_both_reach_the_network() 
 	# the network the player was read in.
 	g.body.filed += 1
 	await frames(30)
-	near(f.value(net), Interference.CAUSES[&"filed"], 2e-3, "a filing is on the record")
+	# Bounds, not an exact number: the file is already cooling while we look at it.
+	var filed := f.value(net)
+	gt(filed, Interference.CAUSES[&"filed"] * 0.9, "a filing is on the record")
+	lt(filed, Interference.CAUSES[&"filed"] + 1e-4, "and it is worth one filing")
 	# And a warden that has you at its own hours is a broken curfew.
 	var w: MobState = g.player.sim.mobs[0]
 	eq(w.role, Roles.KEEPER, "a warden keeps its site and its hours")
@@ -130,7 +133,9 @@ func test_being_filed_and_being_out_in_a_keepers_hours_both_reach_the_network() 
 	w.home = w.pos
 	w.set_mood(MobState.CHASING, g.player.sim.now)
 	await frames(30)
-	near(f.value(net), Interference.CAUSES[&"filed"] + Interference.CAUSES[&"curfew"], 2e-3, "and so is the curfew")
+	var rose := f.value(net) - filed
+	gt(rose, Interference.CAUSES[&"curfew"] * 0.8, "and so is the curfew")
+	lt(rose, Interference.CAUSES[&"curfew"] + 1e-4, "once, not once a beat")
 	g.queue_free()
 	await frames(1)
 
