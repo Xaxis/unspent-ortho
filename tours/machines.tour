@@ -15,7 +15,13 @@ spawn runner
 wait 0.8
 walk 0,1 0.5 run
 shot 00-runner-hunts-lights-locked with mob:runner
-walk 0,1 0.4 run
+# A short backward step, not a sprint: at this zoom a longer one leaves the
+# hunter hanging on the edge of the frustum, in the picture when the claim is
+# checked and out of it a few frames later when the shutter falls. Wait for it
+# to be in the picture, then let it close well inside before shooting.
+walk 0,1 0.2 run
+await mob:runner 8
+wait 0.8
 shot 00b-still-locked-as-it-comes with mob:runner
 coast calm
 zoom 9
