@@ -62,3 +62,27 @@ static func facts(key: StringName) -> Dictionary:
 		if not _facts.has(key):
 			_facts[key] = {"heard": SoundMix.heard_db(b), "lf120": Synth.low_energy_ratio(b.samples, b.rate, 120.0), "peak": Synth.peak(b.samples)}
 	return _facts[key]
+
+
+## Holds a no-thread build to its frame budget. A stem built in slices makes
+## frames that are all alike, so the MIDDLE frame is the measure: a build that
+## let one stage run whole would blow it, and would take a handful of frames
+## rather than dozens. The worst frame is not judged — on a machine running
+## several of these at once the OS takes a frame away now and then, and a frame
+## stolen is not a frame the score held; a few of those are counted and allowed,
+## most of them would mean the slicing had gone.
+static func judge_frames(t: TestCase, times: PackedInt32Array, what: String) -> void:
+	var budget := SoundBank.SCORE_BUDGET_USEC
+	t.gt(float(times.size()), 8.0, "%s: built across many frames, not in one (%d)" % [what, times.size()])
+	if times.is_empty():
+		return
+	var sorted := times.duplicate()
+	sorted.sort()
+	var median: int = sorted[sorted.size() / 2]
+	var stolen := 0
+	for us in times:
+		if us > budget * 4:
+			stolen += 1
+	t.lt(float(median), float(budget * 3), "%s: the middle frame is %d us (budget %d us)" % [what, median, budget])
+	var allowed := maxi(1, roundi(times.size() * 0.12))
+	t.check(stolen <= allowed, "%s: %d of %d frames ran far past it, %d allowed (worst %d us)" % [what, stolen, times.size(), allowed, sorted[-1]])

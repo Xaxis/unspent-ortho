@@ -6,6 +6,7 @@ extends TestCase
 ## score collapse.
 
 const MusicSystem := preload("res://src/systems/75_music.gd")
+const Fixture := preload("res://tests/audio/audio_fixture.gd")
 
 const STEP := 0.25
 ## Where a layer counts as heard, matching 75_music.HEARD.
@@ -396,17 +397,14 @@ func test_without_threads_the_blends_bakes_never_hold_a_frame() -> void:
 		keys.append_array(ScoreConductor.core_keys(land, 12.0))
 	for key in keys:
 		bank.request(key)
-	var worst := 0
-	var frames := 0
-	while bank.pending() > 0 and frames < 60000:
+	var times := PackedInt32Array()
+	while bank.pending() > 0 and times.size() < 60000:
 		bank._pumped_frame = -1
 		bank.pump()
-		worst = maxi(worst, bank.last_pump_usec)
-		frames += 1
+		times.append(bank.last_pump_usec)
 	for key in keys:
 		check(bank.is_ready(key), "%s was built" % key)
-	gt(float(frames), 20.0, "across many frames, not in one (%d)" % frames)
-	lt(float(worst), float(SoundBank.SCORE_BUDGET_USEC * 4), "no frame held for long (worst %d us)" % worst)
+	Fixture.judge_frames(self, times, "three landscapes' cores")
 	for key in keys:
 		DirAccess.remove_absolute(bank._cache_path(key))
 	var dir := DirAccess.open(root)

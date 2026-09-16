@@ -29,7 +29,8 @@ extends GameSystem
 ##                          and whatever a system answers for with tour_seen(what)
 ##                          (75_music: score, score_pad, score_pulse, score_tense,
 ##                          score_dissonance, score_grid, score_texture, score_phrase,
-##                          score_resolve)
+##                          score_resolve; and of the blend score_blend, score_here,
+##                          score_in:LAND, score_full, score_unbroken)
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)

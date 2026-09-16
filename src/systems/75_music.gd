@@ -43,6 +43,11 @@ const BAKE_EVERY := 0.5
 ## running flat out covers this in about six seconds, which is a drone's bake.
 const LOOK_AHEAD := 30.0
 const AHEAD_EVERY := 1.0
+## At most this many landscapes are held ready ahead, and only ones this much of
+## what lies around: a core is a couple of megabytes, and the pad underfoot must
+## not queue behind four of them.
+const AHEAD_LANDS := 2
+const AHEAD_FLOOR := 0.08
 ## Seconds a stem takes to reach its level once it is baked, so one that arrives
 ## late slides in under what is already playing instead of appearing at it.
 const STEM_FADE := 1.2
@@ -311,7 +316,13 @@ func _read_ahead() -> void:
 	for c: int in shares:
 		var id := _land_id(c)
 		out[id] = float(out.get(id, 0.0)) + float(shares[c])
-	soon = out
+	# Only the strongest few: standing where four landscapes meet must not put
+	# eight stems in memory and the queue ahead of the pad underfoot.
+	var ranked := ScoreConductor._by_weight(out)
+	soon = {}
+	for i in mini(AHEAD_LANDS, ranked.size()):
+		if float(out[ranked[i]]) >= AHEAD_FLOOR:
+			soon[ranked[i]] = out[ranked[i]]
 
 
 func _read_works() -> void:
