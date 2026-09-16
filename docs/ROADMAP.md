@@ -64,8 +64,16 @@ and `tours/fight.tour` (commands in CLAUDE.md).
   parasol edge on; the dredger shows its legs on land.
 - A hit flash swaps `material_override` for ~60 ms (no shader flash uniform on
   figures or people yet).
-- Warden arrests do not move the player; linemen do not climb; land hazards and
-  people threats (design-extract §8.2) are not built.
+- Warden arrests do not move the player; linemen do not climb; people threats
+  (design-extract §8.2) are not built.
+- Pressures (M2 wave A) read the landscape registry's own hazard table, which is
+  thin until the biomes package fills it: no landscape declares radiation,
+  resonance, vacuum, pressure or time-shear yet, so the gear that answers those
+  is worn for landscapes still to come. A hazard cue borrows a sound the world
+  already has (`SoundNames` ALIAS) instead of having a voice of its own.
+- A mended thing is drawn in both idioms in the world (the glide wing) and in
+  both palettes on the slate, but a *sketch* at size is still drawn wholly by
+  hand or wholly by rule: `UiSketch.render` takes one `found` flag.
 - Wool, yarn, blanket, oilcloth and the rig kit cannot be made; no salt pan;
   tide gates are off until the water visibly moves.
 - Villagers vanish at night instead of going in; fauna has no pathfinding.

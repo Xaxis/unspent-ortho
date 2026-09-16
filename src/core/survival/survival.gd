@@ -977,7 +977,9 @@ static func update_body(game: Game) -> void:
 	var tired := Condition.is_tired(now, state.woke_at)
 	body.tired = 1.0 if tired else 0.0
 	var extra := Condition.step_extra(body.load, inv.creel(), body.hunger_level(now), tired, body.wet > 0.0, is_hurt(game))
-	body.move_factor = Condition.move_factor(extra)
+	# What the place is pressing on the body slows it too (the hazards package
+	# writes Body.pressure; a pressure is felt in the legs before it draws blood).
+	body.move_factor = Condition.move_factor(extra) * Hazards.move_factor(body.pressure)
 
 
 ## Hurt: short of health, or still carrying a wound the fight left (Body.hurt_until,

@@ -14,6 +14,9 @@ var laden_tier := 0
 var weather: StringName = &"fair"
 var weather_strength := 0.0
 var wind := 0.0
+## The player is wearing a machine's own signature (Body.spoof_until, written by
+## the gear package's spoof ability): the machines read them as one of theirs.
+var spoofed := false
 
 
 func hour() -> float:

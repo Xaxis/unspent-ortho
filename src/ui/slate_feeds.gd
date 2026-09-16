@@ -11,6 +11,7 @@ class_name SlateFeeds
 ##
 ## loadout (hazards, gear, abilities):
 ##   {slots: [{id: StringName, label: String, item: StringName (&"" empty),
+##             sockets: int (how many modules the piece takes; 3 without a feed),
 ##             modules: [{id: StringName, name: String, grants: String}]}],
 ##    resist: {hazard id: 0..1}, abilities: [{id, name: String, ready: bool, note: String}]}
 ##   default: head body hands back tool craft, from the worn kit and the thing in
@@ -92,7 +93,7 @@ static func default_loadout(game: Game) -> Dictionary:
 			item = held
 		elif worn != &"" and KIT_SLOT.get(Items.def(worn).get("kit", &""), &"") == s:
 			item = worn
-		slots.append({"id": s, "label": String(s), "item": item, "modules": []})
+		slots.append({"id": s, "label": String(s), "item": item, "sockets": Gear.sockets(item), "modules": []})
 	return {"slots": slots, "resist": resist, "abilities": []}
 
 

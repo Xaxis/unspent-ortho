@@ -42,7 +42,8 @@ static func for_kind(kind: int) -> StringName:
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, \
 				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN:
 			return &"rubble"
-		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, PropKind.DEBRIS:
+		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, \
+				PropKind.DEBRIS, PropKind.WRECKAGE:
 			return &"plate"
 		PropKind.FENCE:
 			# The post's stub where it was cut off at the ground.

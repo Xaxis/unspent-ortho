@@ -97,7 +97,8 @@ func _draw() -> void:
 			UiIcons.draw_item(self, item, Vector2i(x0 + 58, top - 1))
 			UiDraw.text(self, Vector2i(x0 + 71, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
 		# A socket per module: lit when one is fitted.
-		for k in 3:
+		# A socket per module the piece takes; without a feed, three.
+		for k in int(s.get("sockets", 3)):
 			var sx := right - 20 + k * 7
 			if k < mods.size():
 				UiDraw.rect(self, Rect2i(sx, top + 2, 5, 5), UiTheme.MACHINE[3])

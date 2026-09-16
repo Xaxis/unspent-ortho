@@ -43,10 +43,12 @@ static func wind_shown(wind: float, max_wind: float) -> bool:
 
 # --- the slate's power and the felt pressures --------------------------------------
 
-## A felt pressure (a hazard the body is under) is only a gauge once it is this strong.
-const PRESSURE_SHOWN := 0.25
-## ... and it is the warning once it is this strong.
-const PRESSURE_WARN := 0.7
+## A felt pressure (a hazard the body is under) is only a gauge once it is this
+## strong, and it is the warning once it is costing the body something. Both are
+## the hazard model's own steps, so the glass and the rules never disagree about
+## when a place has become a problem (src/core/hazards/hazards.gd).
+const PRESSURE_SHOWN := Hazards.FELT
+const PRESSURE_WARN := Hazards.BITE
 ## The slate runs off the lamp's reserve (a flask lights it this long) or the
 ## found charges carried, whichever holds more (docs/ART.md §9: brightness dips
 ## when the lamp oil or charge is low).
@@ -85,9 +87,16 @@ static func pressures(body: Body, minutes: float, load: float, cap: float = CREE
 	var out: Array[Dictionary] = []
 	for n in needs(body, minutes, load, cap):
 		out.append({"id": n.need, "level": n.level, "value": 0.5 if n.level == 1 else 1.0})
+	var shown := {}
+	for row: Dictionary in out:
+		shown[row.id] = true
 	var ids: Array = body.pressure.keys()
 	ids.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
 	for id: Variant in ids:
+		# A need and a hazard can share a name (wet is both): the body's own need
+		# is the one that is shown, never two gauges with one glyph.
+		if shown.has(StringName(id)):
+			continue
 		var v := float(body.pressure[id])
 		if v >= PRESSURE_SHOWN:
 			out.append({"id": StringName(id), "level": 2 if v >= PRESSURE_WARN else 1, "value": clampf(v, 0.0, 1.0)})

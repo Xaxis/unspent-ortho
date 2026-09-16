@@ -23,6 +23,10 @@ var hero: Hero = null
 var sim: FightSim = null
 var intent_move := Vector2.ZERO
 var intent_run := false
+## Height above the ground held by an ability (a glide, a grapple's arc). The
+## gear package (src/systems/54_gear.gd) is the only writer; it puts it back to
+## 0 when the body lands.
+var lift := 0.0
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
@@ -115,7 +119,7 @@ func shudder(seconds: float = 0.12) -> void:
 func _sync(delta: float) -> void:
 	var target := world.height_at(pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
-	position = Vector3(pos.x, _z, pos.y)
+	position = Vector3(pos.x, _z + lift, pos.y)
 	if model:
 		model.rotation.y = -facing
 		model.position = Vector3.ZERO
