@@ -55,6 +55,11 @@ func setup(o: BootOptions) -> void:
 	options = o
 	name = "title"
 	seed_value = o.seed_value
+	if island_fixed():
+		# A configuration that fixes the island shows it and nothing else, even after
+		# a game gave way to the title (which would draw the next island).
+		seed_value = int(GameConfig.value("world.seed"))
+		cycle_coasts = false
 	sky = SkyLight.new()
 	sky.name = "sky"
 	add_child(sky)
@@ -231,9 +236,14 @@ func _process(delta: float) -> void:
 
 ## Show another coast now (left/right on the seed row).
 func change_seed(d: int) -> void:
-	if _drawing():
+	if _drawing() or island_fixed():
 		return
 	_begin(maxi(1, seed_value + d))
+
+
+## The master configuration fixes the island (docs/DEV.md): no other is offered.
+static func island_fixed() -> bool:
+	return bool(GameConfig.value("world.seed_locked"))
 
 
 ## A coast is on its way (on the worker, or waiting behind the dark) or the game is starting.
