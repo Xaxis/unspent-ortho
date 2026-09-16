@@ -31,8 +31,10 @@ static func make() -> BiomeDef:
 		&"base": 1.6, &"hills": 0.5, &"ridge": 0.0, &"terrace": 0.0, &"valley": 0.35,
 		&"rain": 0.2, &"temp": 0.72, &"moist": 0.1, &"cliff": -0.3,
 	}
-	# The crust drifts out thin on the wind and stops; nothing walks far in.
+	# The crust drifts out thin on the wind and stops, and little of what grows
+	# outside gets in: a flat that wears the next country's ground is not a flat.
 	d.reach_out_thin = 0.35
+	d.reach_in_thin = 0.4
 	d.hatch = Ink.CROSS
 	d.grounds = {
 		Ground.ROAD: P.LINEN[3].lerp(P.SAND[3], 0.4),
@@ -62,6 +64,12 @@ static func make() -> BiomeDef:
 	d.rock_color = P.LINEN[3]
 	d.hard_rock = true
 	d.decor_tints = {&"bloom": [P.LINEN[4], P.SAND[5], P.LINEN[5]], &"spoil": [P.LINEN[4]]}
+	# Whatever holds on at the rim is bleached and half dead.
+	d.tree_tints = {
+		&"leaf": [P.MOSS[4].lerp(P.LINEN[4], 0.5), P.MOSS[4].lerp(P.SAND[4], 0.4), P.LINEN[4], P.SAND[4]],
+		&"trunk": [P.LINEN[2]],
+		&"scrub": [P.MOSS[4].lerp(P.SAND[4], 0.5), P.SAND[4], P.LINEN[3]],
+	}
 	# The one landscape whose noon is BRIGHTER than the page: the grade lifts
 	# instead of dimming, and the contrast is pushed so the glare has an edge.
 	d.grade = Vector4(0.12, 0.2, -0.06, 0.2)
@@ -85,12 +93,13 @@ static func make() -> BiomeDef:
 	# Pan rakers work the bunds all day; a mirage decoy stands out on the flat
 	# where there is nothing to stand on. Until the content milestone draws
 	# them, the machines that already rake and haul answer to the same orders.
+	var crust := ["salt", "pan", "gravel", "sand", "shingle", "road", "grass"]
 	d.roster = {
-		&"cutter": {"weight": 0.8, "hours": Vector2(6, 20)},
-		&"hauler": {"weight": 1.0},
-		&"watcher": {"weight": 1.2},
-		&"runner": {"weight": 0.6, "hours": Vector2(10, 17)},
-		&"gulls": {"weight": 0.4, "hours": Vector2(6, 20)},
+		&"cutter": {"weight": 0.8, "hours": Vector2(6, 20), "grounds": crust},
+		&"hauler": {"weight": 1.0, "grounds": crust},
+		&"watcher": {"weight": 1.2, "grounds": crust},
+		&"runner": {"weight": 0.6, "hours": Vector2(10, 17), "grounds": crust},
+		&"gulls": {"weight": 0.4, "hours": Vector2(6, 20), "grounds": ["salt", "pan", "sand", "shingle", "gravel"]},
 	}
 	d.sentinel = &""
 	d.sound_bed = &"bed_bones"

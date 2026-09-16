@@ -97,16 +97,16 @@ static func sea() -> BiomeDef:
 ## nothing in a running game calls it.
 static func mute_to(ids: Array) -> void:
 	_muted.clear()
+	_defs.clear()
 	if not ids.is_empty():
 		var keep := {}
 		for id: StringName in ids:
 			keep[id] = true
-		_defs.clear()
-		_ensure()
-		for d: BiomeDef in _by_index:
+		# Read the whole registry once to learn what there is to mute.
+		for d: BiomeDef in all():
 			if not d.sea and not keep.has(d.id):
 				_muted[d.id] = true
-	_defs.clear()
+		_defs.clear()
 	_ensure()
 
 

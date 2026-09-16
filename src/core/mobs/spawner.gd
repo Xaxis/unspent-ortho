@@ -96,16 +96,17 @@ static func place_fits(row: Dictionary, world: WorldData, query: WorldQuery, tx:
 	if g == Ground.DEEP_WATER:
 		return false
 	var where: Dictionary = row.get("where", {})
+	var here := BiomeRegistry.by_index(world.country_at(tx, ty))
+	var mine: Dictionary = here.roster.get(kind, {})
 	var countries: Array = where.get("countries", [])
-	if not countries.is_empty():
-		var d := BiomeRegistry.by_index(world.country_at(tx, ty))
-		if not countries.has(String(d.id)) and not d.roster.has(kind):
-			return false
-		var row_here: Dictionary = d.roster.get(kind, {})
-		var hours: Variant = row_here.get("hours")
-		if hour >= 0.0 and hours is Vector2 and not hour_in(hour, (hours as Vector2).x, (hours as Vector2).y):
-			return false
-	var grounds: Array = where.get("grounds", [])
+	if not countries.is_empty() and not countries.has(String(here.id)) and mine.is_empty():
+		return false
+	var hours: Variant = mine.get("hours")
+	if hour >= 0.0 and hours is Vector2 and not hour_in(hour, (hours as Vector2).x, (hours as Vector2).y):
+		return false
+	# A landscape that took a thing onto its own roster says what it walks on
+	# here, because a lander's grounds are not the grounds it was written for.
+	var grounds: Array = mine.get("grounds", where.get("grounds", []))
 	if not grounds.is_empty() and not ground_matches(g, grounds):
 		return false
 	var keeps: Array = row.get("keeps_to", [])

@@ -131,6 +131,10 @@ var rock_color := Color(0.42, 0.43, 0.47)
 ## shared hand: &"bloom" (a flower's head, three stages), &"fronds" (bracken,
 ## three), &"twig" (a fallen stick), &"spoil" (the grit a drill leaves).
 var decor_tints: Dictionary = {}
+## What grows tall here is coloured the same way: &"leaf" (a broadleaf crown,
+## four tones light to dark), &"trunk", &"scrub" (a bush, three tones). Without
+## a row, a landscape's trees are drawn in the shared greens.
+var tree_tints: Dictionary = {}
 ## Its rock breaks into rubble that gathers at a cliff foot rather than crumbling.
 var hard_rock := false
 ## Multiplied into this landscape's light.

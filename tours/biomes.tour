@@ -1,0 +1,67 @@
+# Every landscape the registry holds, at its heart and where it meets its
+# neighbours, on one seed. The places are found by name, not by coordinate, so
+# this tour keeps working when the layout changes: `place NAME` asks GenPlaces,
+# which asks the registry (a landscape id, or two joined by a dash for the band
+# between them). If a landscape ever stops being generated, this tour fails.
+#   tools/tour.sh tours/biomes.tour --seed=7 --hour=11 --weather=clear:0
+coast calm
+place coast
+wait 2.0
+shot 01-coast
+place moss
+wait 2.0
+shot 02-moss
+place pinewood
+wait 2.0
+shot 03-pinewood
+place snowfield
+wait 2.0
+shot 04-snowfield
+place bonelands
+wait 2.0
+shot 05-bonelands
+place burning
+wait 2.0
+shot 06-burning
+# The two M2 landscapes, at three hours each: the salt flats are the brightest
+# ground in the game and the scrapwood the dimmest, and both have to read.
+place salt_flats
+wait 2.0
+shot 07-salt-flats-noon
+walk 1,0 2.0 run
+shot 08-salt-flats-walked
+hour 19.5
+wait 1.5
+shot 09-salt-flats-dusk
+hour 23
+wait 1.5
+shot 10-salt-flats-night
+hour 11
+place scrapwood
+wait 2.0
+shot 11-scrapwood-noon
+walk 1,0 2.0 run
+shot 12-scrapwood-walked
+hour 19.5
+wait 1.5
+shot 13-scrapwood-dusk
+hour 23
+wait 1.5
+shot 14-scrapwood-night
+hour 11
+# Three ecotones: stand in the band, then walk across it and watch the land turn.
+place coast-salt_flats
+wait 2.0
+shot 15-coast-salt-flats
+walk 1,-1 2.5 run
+shot 16-coast-salt-flats-crossed
+place pinewood-scrapwood
+wait 2.0
+shot 17-pinewood-scrapwood
+walk 1,-1 2.5 run
+shot 18-pinewood-scrapwood-crossed
+place moss-scrapwood
+wait 2.0
+shot 19-moss-scrapwood
+walk 1,-1 2.5 run
+shot 20-moss-scrapwood-crossed

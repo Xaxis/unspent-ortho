@@ -31,28 +31,32 @@ static func tree(k: Kit, v: int) -> void:
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.1))
 	var h := 2.1 + v * 0.45
 	var bark := P.EARTH[2].lerp(RUSTED, 0.25)
-	# The ruled frame first, so the tree closes over it.
+	# The ruled frame first, standing OUTSIDE the trunk so both drawings show:
+	# the tree grew up through the cage and closed on it, it did not swallow it.
 	var ribs := 3 + v % 2
 	for i in ribs:
 		var a := float(i) / ribs * TAU + 0.3
-		var foot := Vector3(cos(a) * 0.24, 0.0, sin(a) * 0.24)
-		var head := Vector3(cos(a) * 0.1, h * (0.42 + (i % 2) * 0.12), sin(a) * 0.1)
-		k.rod(foot, head, 0.026, 5, P.PLATE[2] if i % 2 == 0 else P.PLATE[3])
+		var foot := Vector3(cos(a) * 0.42, 0.0, sin(a) * 0.42)
+		var head := Vector3(cos(a) * 0.26, h * (0.5 + (i % 2) * 0.14), sin(a) * 0.26)
+		k.rod(foot, head, 0.03, 5, P.PLATE[2] if i % 2 == 0 else P.PLATE[3])
 		# A cross member, exactly level, going nowhere.
-		if i % 2 == 0:
-			var across := Vector3(-sin(a) * 0.22, h * 0.3, cos(a) * 0.22)
-			k.rod(head * Vector3(1, 0.7, 1), across, 0.018, 4, P.PLATE[3])
-	# One plate still hanging in the fork, rubbed bright on its lower edge.
-	k.plate(Vector3(0.18, h * 0.46, -0.2), Vector3(0.34, h * 0.5, 0.06),
-		Vector3(0.3, h * 0.72, 0.1), Vector3(0.14, h * 0.68, -0.16),
+		var next := float((i + 1) % ribs) / ribs * TAU + 0.3
+		k.rod(Vector3(cos(a) * 0.34, h * 0.26, sin(a) * 0.34),
+			Vector3(cos(next) * 0.34, h * 0.26, sin(next) * 0.34), 0.02, 4, P.PLATE[3])
+	# One plate still bolted across two ribs, rubbed bright on its lower edge,
+	# clear of the crown so it reads against the ground.
+	var pa := 0.3
+	k.plate(Vector3(cos(pa) * 0.4, h * 0.2, sin(pa) * 0.4), Vector3(cos(pa + 2.1) * 0.4, h * 0.2, sin(pa + 2.1) * 0.4),
+		Vector3(cos(pa + 2.1) * 0.34, h * 0.46, sin(pa + 2.1) * 0.34), Vector3(cos(pa) * 0.34, h * 0.46, sin(pa) * 0.34),
 		P.PLATE[2], P.PLATE[1], P.PLATE[4])
 	# The trunk, swelling where it grew round the frame.
 	var mid := Vector3(lean.x * h * 0.5, h * 0.5, lean.y * h * 0.5)
 	k.limb(Vector3.ZERO, mid, 0.19, 0.13, 7, bark)
 	k.limb(mid, Vector3(lean.x * h, h * 0.92, lean.y * h), 0.13, 0.075, 6, bark)
-	# A collar of swollen bark where it took the frame in.
-	k.made.push(Transform3D(Basis(Vector3.UP, 0.4), Vector3(0, h * 0.3, 0)))
-	k.made.prism(0, 0, 0, 0.215, 0.16, 0.175, 7, Kit.tone(bark, 0.88), bark)
+	# A collar of swollen bark where it took the frame in, wide enough to close
+	# over the ribs it reaches.
+	k.made.push(Transform3D(Basis(Vector3.UP, 0.4), Vector3(0, h * 0.26, 0)))
+	k.made.prism(0, 0, 0, 0.3, 0.17, 0.26, 7, Kit.tone(bark, 0.88), bark)
 	k.made.pop()
 	# Boughs and a lumpy crown, the hand's shapes, hatched underneath.
 	var leaf := P.MOSS[3].lerp(P.SPRUCE[3], 0.3)
@@ -74,26 +78,31 @@ static func tree(k: Kit, v: int) -> void:
 
 
 ## A cone of iron filings standing where the field in a dead frame still pulls,
-## with shards on end in it. Nothing grows within a pace of one.
+## with shards on end in it like grass that cuts. The shards are the point: they
+## stand clear of the cone and break its line, so the heap reads as something
+## held up rather than something tipped.
 static func heap(k: Kit, v: int) -> void:
 	var s := 660 + v * 19
-	var r := 0.4 + v * 0.14
-	var h := 0.34 + v * 0.1
-	k.clump(0, 0, 0, r, h, s, FILING)
+	var r := 0.38 + v * 0.12
+	var h := 0.45 + v * 0.14
+	k.stone(0, 0, 0, r, h, s, FILING, 7, 0.18, Kit.tone(FILING, 1.25))
 	# The cone is combed: the filings lie along the field, not at random.
 	for i in 9:
 		var a := float(i) / 9.0 * TAU
-		var foot := Vector3(cos(a) * r * 0.98, 0.015, sin(a) * r * 0.98)
-		k.fleck(foot, foot * 0.2 + Vector3(0, h * 0.95, 0), foot * 0.3 + Vector3(0.025, h * 0.85, 0.02),
-			P.RUST[2] if i % 3 == 0 else Kit.tone(FILING, 1.3))
-	# Shards standing on end, drawn up by the same pull. Exact, because they
-	# were cut by a machine and the field only stood them up.
-	for i in 3 + v:
+		var foot := Vector3(cos(a) * r * 1.02, 0.015, sin(a) * r * 1.02)
+		k.fleck(foot, foot * 0.2 + Vector3(0, h * 1.0, 0), foot * 0.3 + Vector3(0.03, h * 0.86, 0.02),
+			P.RUST[2] if i % 3 == 0 else Kit.tone(FILING, 1.4))
+	# Shards standing on end, drawn up by the same pull: exact, because a
+	# machine cut them and the field only stood them up.
+	for i in 4 + v:
 		var a := float(i) * 2.2 + Kit.j(s, i, 0.5)
-		var d := r * (0.3 + Kit.j(s, 10 + i, 0.25))
-		var base := Vector3(cos(a) * d, h * 0.25, sin(a) * d)
-		var tilt := Vector3(Kit.j(s, 20 + i, 0.09), 0.3 + absf(Kit.j(s, 30 + i, 0.16)), Kit.j(s, 40 + i, 0.09))
-		k.rod(base, base + tilt, 0.013, 4, P.PLATE[3] if i % 2 == 0 else P.PLATE[4])
-	# Where the pull came from: a corner of the frame itself, half buried.
-	k.chamfer(r * 0.45, -0.04, -r * 0.35, 0.16, 0.2, 0.1, 0.03, P.PLATE[2], P.PLATE[3])
-	k.rod(Vector3(r * 0.45, 0.14, -r * 0.35), Vector3(r * 0.2, 0.42, -r * 0.55), 0.02, 4, P.PLATE[3])
+		var d := r * (0.55 + Kit.j(s, 10 + i, 0.3))
+		var base := Vector3(cos(a) * d, h * 0.45, sin(a) * d)
+		var up := 0.34 + absf(Kit.j(s, 30 + i, 0.22))
+		var tilt := Vector3(Kit.j(s, 20 + i, 0.14), up, Kit.j(s, 40 + i, 0.14))
+		k.rod(base, base + tilt, 0.016, 4, P.PLATE[3] if i % 2 == 0 else P.PLATE[4])
+	# Where the pull came from: the corner of the frame itself, standing out of
+	# the filings beside the heap with a stub of its own reaching up.
+	var corner := Vector3(r * 1.25, 0.0, -r * 0.9)
+	k.chamfer(corner.x, -0.03, corner.z, 0.2, 0.3, 0.13, 0.035, P.PLATE[2], P.PLATE[3])
+	k.rod(corner + Vector3(0.0, 0.26, 0.0), corner + Vector3(-0.2, 0.72, -0.12), 0.024, 4, P.PLATE[3])

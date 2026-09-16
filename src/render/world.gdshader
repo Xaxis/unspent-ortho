@@ -555,9 +555,9 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (damp > 0.74) {
 			float ring = fract((damp - 0.74) * 26.0);
 			c = mix(c, ring < 0.4 ? EARTH3 : (ring < 0.72 ? LINEN2 : RUST2), 0.34);
-			if (ch > 0.9 && join > 0.16) {
+			if (ch > 0.94 && join > 0.16) {
 				// Brine still lying in the deepest plates, holding the sky.
-				c = ink_hash(px + 3.0) > 0.88 ? BRINE4 : BRINE2;
+				c = ink_hash(px + 3.0) > 0.93 ? BRINE4 : BRINE2;
 			}
 		}
 		// Which joins have lifted: decided per pair, in runs, so a rim has ends.
@@ -617,13 +617,15 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// Leaf litter gone to mulch in the hollows.
 			c = dn(c, 0.4);
 		}
+		// Cut shavings gather where something was broken up, not evenly over a
+		// wood: a drift of them, and only a few bright enough to catch the eye.
+		float drift = ink_vnoise(wp * 0.13 + 19.0);
 		float h = ink_hash(px);
-		if (h > 0.988) {
-			// A bright shaving of cut metal, unhatched so it reads as metal.
-			c = ASH4;
-			unh = max(unh, 0.7);
-		} else if (h < 0.02) {
-			c = mix(c, RUST2, 0.6);
+		if (drift > 0.66 && h > 0.985) {
+			c = h > 0.996 ? ASH3 : mix(STONE2, RUST2, 0.35);
+			unh = max(unh, 0.5);
+		} else if (h < 0.025) {
+			c = mix(c, RUST1, 0.5);
 		}
 	}
 	return c;

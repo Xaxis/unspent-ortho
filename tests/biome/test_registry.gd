@@ -45,6 +45,24 @@ func test_lookups_agree_with_each_other() -> void:
 	eq(BiomeRegistry.land_indices().size(), BiomeRegistry.land().size(), "land indices match")
 
 
+func test_a_landscape_that_takes_a_thing_onto_its_roster_says_where_it_walks() -> void:
+	# A roster row was written for the landscapes it names; a landscape that
+	# borrows it has to say what it walks on there, or it can never spawn.
+	for d: BiomeDef in BiomeRegistry.land():
+		for k: StringName in d.roster:
+			var row := Roster.row(k)
+			var where: Dictionary = row.get("where", {})
+			var named: Array = where.get("countries", [])
+			if named.has(String(d.id)):
+				continue
+			var mine: Dictionary = d.roster[k]
+			var grounds: Array = where.get("grounds", [])
+			if grounds.is_empty():
+				continue
+			check(not (mine.get("grounds", []) as Array).is_empty(),
+				"%s borrows %s and must say what it walks on there" % [d.id, k])
+
+
 func test_every_landscape_declares_what_the_readers_ask_for() -> void:
 	for d: BiomeDef in BiomeRegistry.land():
 		var w := String(d.id)

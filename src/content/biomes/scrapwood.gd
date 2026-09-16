@@ -52,6 +52,13 @@ static func make() -> BiomeDef:
 	d.grass_colors = [P.SPRUCE[2], P.MOSS[3]]
 	d.rock_color = P.SLATE[2].lerp(P.RUST[1], 0.3)
 	d.decor_tints = {&"bloom": [P.RUST[3], P.BLOOM[2], P.RUST[4]], &"twig": [P.EARTH[1]], &"spoil": [P.RUST[2]]}
+	# Leaves that grew in a metal taste: darker and greyer than any other wood,
+	# over bark stained by what runs off the frames they took.
+	d.tree_tints = {
+		&"leaf": [P.SPRUCE[2].lerp(P.MOSS[2], 0.4), P.MOSS[2], P.SPRUCE[3].lerp(P.MOSS[3], 0.5), P.MOSS[2].lerp(P.SPRUCE[2], 0.6)],
+		&"trunk": [P.EARTH[2].lerp(P.RUST[1], 0.3)],
+		&"scrub": [P.SPRUCE[2], P.MOSS[2].lerp(P.RUST[1], 0.25), P.SPRUCE[2].lerp(P.MOSS[3], 0.4)],
+	}
 	# Under a closed canopy over dark ground: dimmer than the pines, and the
 	# darkness term goes as negative as the moss's so noon still reads as noon.
 	d.grade = Vector4(-0.52, 0.12, 0.0, 0.08)
@@ -80,12 +87,13 @@ static func make() -> BiomeDef:
 	# Recyclers take the dead and the broken; magnet swarms come off the heaps.
 	# Until the content milestone draws them, the sweepers and the dredgers that
 	# already clear ground answer here.
+	var floor_g := ["swarf", "grass", "needles", "heath", "gravel", "mud", "road", "moss"]
 	d.roster = {
-		&"sweeper": {"weight": 1.2},
-		&"warden": {"weight": 0.8, "hours": Vector2(20, 5)},
-		&"watcher": {"weight": 0.8},
-		&"flock": {"weight": 0.8, "hours": Vector2(7, 18)},
-		&"dog.feral": {"weight": 1.0},
+		&"sweeper": {"weight": 1.2, "grounds": floor_g},
+		&"warden": {"weight": 0.8, "hours": Vector2(20, 5), "grounds": floor_g},
+		&"watcher": {"weight": 0.8, "grounds": floor_g},
+		&"flock": {"weight": 0.8, "hours": Vector2(7, 18), "grounds": floor_g},
+		&"dog.feral": {"weight": 1.0, "grounds": floor_g},
 	}
 	d.sentinel = &""
 	d.sound_bed = &"bed_pines"
