@@ -34,6 +34,36 @@
 #   godot --path . --position "$(focus_position)" ... & pid=$!
 #   focus_return "$(focus_holder)" "$pid"
 
+## Start the guard that hands the keyboard back (tools/_focus_guard.sh), unless one
+## is already watching. One guard covers every run on this machine, including runs
+## started by a worktree whose copy of these tools is older than this one, which is
+## the case this could not otherwise reach.
+focus_guard_start() {
+	[ "$(uname)" = "Darwin" ] || return 0
+	[ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ] && return 0
+	command -v osascript >/dev/null 2>&1 || return 0
+	local here pidfile
+	here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	pidfile="${TMPDIR:-/tmp}/unspent-focus-guard.pid"
+	if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+		return 0
+	fi
+	nohup bash "$here/_focus_guard.sh" >/dev/null 2>&1 &
+	echo $! > "$pidfile"
+}
+
+
+## Sound belongs to a person playing, not to a hundred runs a day on someone
+## else's speakers. UNSPENT_SOUND=1 (or watching a run) turns it back on.
+focus_audio_driver() {
+	if [ "${UNSPENT_SOUND:-0}" = "1" ] || [ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ]; then
+		echo "CoreAudio"
+	else
+		echo "Dummy"
+	fi
+}
+
+
 ## Where to put the window: far outside any screen, unless a person means to watch.
 focus_position() {
 	if [ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ]; then
