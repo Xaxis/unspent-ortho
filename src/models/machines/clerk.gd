@@ -64,11 +64,13 @@ func build() -> void:
 		FoundKit.panel(k, Vector3(0.13, 0.03, sz * 0.23), n, Vector3.UP, 0.18, 0.14, R)
 	FoundKit.seam(k, Vector3(-0.262, -0.06, 0.0), Vector3(-0.262, 0.14, 0.0), Vector3.LEFT, R, 2)
 	body_mesh(k, lid)
+	# The lid of the case: the plate a clerk shows the world it files.
+	day_wear(lid, Vector3(0.02, 0.238, 0), Vector3.UP, Vector3.RIGHT, 0.22, 0.24, 131, 1)
 	add_lamp(lid, Vector3(-0.1, 0.237, 0.1), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
 	var lw := FoundKit.kit()
 	for j in 3:
 		var a := -0.9 - j * 0.35
-		FoundKit.tag(lw, Vector3(cos(a) * 0.28, 0.14, sin(a) * 0.3), 0.08 + j * 0.03, 0.05, 0.06, Palette.MACHINE["watcher"] if j != 1 else Palette.FOUND, a)
+		FoundKit.tag(lw, Vector3(cos(a) * 0.28, 0.14, sin(a) * 0.3), 0.08 + j * 0.03, 0.05, 0.06, Palette.MACHINE["watcher"] if j != 1 else Palette.MACHINE["lineman"], a)
 	FoundKit.grime(lw, Vector3(0.262, 0.0, 0.08), Vector3.RIGHT, 0.14, 0.1, 3, 161, D)
 	wear_mesh(lw, lid)
 	var papers := FoundKit.matter_kit(Ink.HAND)
@@ -117,9 +119,17 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"neck"] = pr(Vector3(0, 0.36, 0))
 			d[&"head"] = r(Vector3(0, 0, 0.12))
 		&"windup":
-			d[&"lid"] = r(Vector3(0, 0, 0.22))
-			d[&"neck"] = pr(Vector3(0.04, 0.28, 0))
-			d[&"head"] = r(Vector3(0, 0, -0.45))
+			# A clerk does not strike, it files. Where a warden squares up, this
+			# one stoops INTO you with the lid gaping: the opposite shape to alert,
+			# so the two are never confused at a glance.
+			d[&"hips"] = pr(Vector3(0.16, -0.06, 0))
+			d[&"thigh_l"] = r(Vector3(0.45, 0, 0))
+			d[&"thigh_r"] = r(Vector3(-0.45, 0, 0))
+			d[&"shin_l"] = r(Vector3(-0.35, 0, 0))
+			d[&"shin_r"] = r(Vector3(0.35, 0, 0))
+			d[&"lid"] = r(Vector3(0, 0, 0.66))
+			d[&"neck"] = pr(Vector3(0.2, 0.12, 0))
+			d[&"head"] = r(Vector3(0, 0, -0.5))
 		&"strike":
 			d[&"lid"] = r(Vector3(0, 0, 0.1))
 			d[&"neck"] = pr(Vector3(0.2, 0.24, 0))

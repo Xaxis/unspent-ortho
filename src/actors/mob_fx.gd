@@ -72,34 +72,27 @@ float stroke(vec2 q, vec2 a, vec2 b, float hw) {
 	return length(q - (a + ab * t)) - hw;
 }
 
-// A short ink burst: tapered strokes thrown out from the point, a paper star at
-// its heart for the first instant, the whole cut out of the page by a paper edge.
+// A short ink burst: tapered strokes thrown OUT from the point, and nothing at
+// all at its heart. What a burst is for is to prove where the blow landed, so it
+// must not be the thing standing in front of it: the amber working part shows
+// through the middle of its own hit mark. Hence OPEN — the fraction of the
+// radius that never takes ink — and hence no filled star. (docs/ART.md §7: a
+// short ink burst, sparks off plate as two or three bright pixels.)
 vec4 burst(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw;
-	float r = length(q);
 	float e = 1e5;
-	float core = mix(0.4, 0.0, clamp(pr / 0.55, 0.0, 1.0)) * R;
-	if (core > 1.5) {
-		float a = atan(q.y, q.x) + seed;
-		// Four points, pinched between: a drawn star, not a disc.
-		float star = core * (0.45 + 0.55 * pow(abs(cos(a * 2.0)), 3.0));
-		if (r < star) {
-			return paper_out();
-		}
-		e = r - star - 1.5;
-	}
 	for (int i = 0; i < 7; i++) {
 		float fi = float(i);
 		float h = ink_hash(vec2(seed * 13.1 + fi, 3.7));
 		float ang = fi / 7.0 * TAU + seed + (h - 0.5) * 0.7;
 		vec2 d = vec2(cos(ang), sin(ang));
-		float len = 0.7 + 0.3 * ink_hash(vec2(fi, seed * 7.3));
-		float r0 = mix(0.22, 0.72, pr) * len * (R - 2.0);
-		float r1 = mix(0.55, 1.0, sqrt(pr)) * len * (R - 2.0);
+		float len = 0.72 + 0.28 * ink_hash(vec2(fi, seed * 7.3));
+		float r0 = mix(OPEN, 0.84, pr) * len * (R - 2.0);
+		float r1 = mix(OPEN + 0.34, 1.0, sqrt(pr)) * len * (R - 2.0);
 		float along = dot(q, d);
 		float k = clamp((along - r0) / max(r1 - r0, 1e-4), 0.0, 1.0);
-		float hw = mix(1.7, 0.7, k) * (1.0 - pr * 0.3);
+		float hw = mix(1.2, 0.5, k) * (1.0 - pr * 0.3);
 		e = min(e, stroke(q, d * r0, d * r1, hw));
 	}
 	return inked(e, 1.0);
@@ -151,16 +144,18 @@ vec4 ring(vec2 p, float pr) {
 	return inked(abs(r - R) / pw - 1.0, 1.0);
 }
 
-// Plate: the pen's sound marks, (( )), and two or three cold bright pixels.
+// Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
+// arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
+// blobs: this mark says "that was armour", it does not hide the armour.
 vec4 clang(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw - 2.0;
 	for (int i = 0; i < 3; i++) {
 		float fi = float(i);
 		float ang = seed * 2.0 + fi * 2.1 + ink_hash(vec2(fi, seed)) * 0.8;
-		vec2 at = vec2(cos(ang), sin(ang)) * mix(0.1, 0.85, sqrt(pr)) * R;
+		vec2 at = vec2(cos(ang), sin(ang)) * mix(OPEN, 0.9, sqrt(pr)) * R;
 		vec2 d = abs(q - at);
-		if (pr < 0.85 && max(d.x, d.y) < (i == 0 ? 1.5 : 1.0)) {
+		if (pr < 0.85 && max(d.x, d.y) < (i == 0 ? 1.0 : 0.5)) {
 			return vec4(col_b, 1.0);
 		}
 	}
@@ -177,8 +172,8 @@ vec4 clang(vec2 p, float pw, float pr) {
 			if (pr > 0.9 - float(j) * 0.2) {
 				continue;
 			}
-			float Rj = (mix(0.34, 0.58, pr) + float(j) * 0.22) * R;
-			e = min(e, abs(r - Rj) - 1.0);
+			float Rj = (mix(OPEN + 0.06, 0.78, pr) + float(j) * 0.2) * R;
+			e = min(e, abs(r - Rj) - 0.7);
 		}
 	}
 	return inked(e, 1.0);
@@ -194,20 +189,28 @@ vec4 glint(vec2 p, float pw, float pr) {
 	return vec4(0.0);
 }
 
-// A tell: three short strokes flicked out above a body about to strike, the way
-// a pen draws "about to": a fan that does not meet at its root (joined, it reads
-// as an arrow). On a scrap of page of their own so they read over any ground.
-// They spring out quickly and hold, then break away.
+// A tell: three short strokes flicked along `dir`, the way a pen draws "about
+// to": a fan that does not meet at its root (joined, it reads as an arrow). On a
+// scrap of page of their own so they read over any ground. They spring out
+// quickly and hold, then break away.
+//
+// `dir` is which way the fan flicks, in quad space (up the screen is -y). It
+// exists so the tell can be aimed: over a body it flicks up, and over a
+// MACHINE'S WORKING PART it flicks DOWN at it. A windup has to send the eye to
+// the side that opens — the side that hurts you and the side you must hit —
+// and three ticks floating above the hull sent it to the roof instead.
 vec4 tell(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw;
 	float grow = clamp(pr / 0.18, 0.0, 1.0);
-	// The fan's root is below the quad; up the screen is -y.
-	vec2 root = vec2(0.0, 1.05 * R);
+	vec2 f = normalize(dir);
+	vec2 n = vec2(-f.y, f.x);
+	// The fan's root is off the quad, behind the flick.
+	vec2 root = -f * 1.05 * R;
 	float e = 1e5;
 	for (int i = 0; i < 3; i++) {
 		float ang = (float(i) - 1.0) * 0.72;
-		vec2 d = vec2(sin(ang), -cos(ang));
+		vec2 d = f * cos(ang) + n * sin(ang);
 		float r0 = (i == 1 ? 0.95 : 0.85) * R;
 		float r1 = r0 + (i == 1 ? 0.8 : 0.6) * R * mix(0.4, 1.0, grow) - 3.0;
 		if (pr > 0.8 && ink_hash(vec2(float(i), seed)) < (pr - 0.8) * 5.0) {
@@ -307,9 +310,11 @@ void fragment() {
 	// Two whole pixels of ink on every edge, whatever the camera's distance.
 	bool edge = v > 1.0 - pv * 2.0 || v < inner + pv * 2.0 || head - u < pu * 2.0;
 	bool paper = !edge;
-	if (!edge && k < 0.4) {
-		// The trailing part breaks into the hand's strokes along the sweep.
-		if (mod(floor(v / pv), 3.0) > 0.5) {
+	// Only the leading hand's width fills with paper. Behind it the stroke breaks
+	// into the hand's own lines, so a swing landing on a machine is a drawn arc
+	// over it and not a solid wedge across it (docs/ART.md §7).
+	if (!edge && k < 0.86) {
+		if (mod(floor(v / pv), k < 0.45 ? 3.0 : 2.0) > 0.5) {
 			discard;
 		}
 		paper = false;
@@ -342,13 +347,28 @@ const STREAK := 6
 ## to the camera's). Marks are never smaller on screen than their *_PX sizes.
 static var texel := 14.0 / 360.0
 ## Smallest on-screen size, in pixels, of each mark (its quad's full width).
-const BURST_PX := 30.0
+## A hit mark has to be read at a glance and then be gone; it must never be the
+## biggest thing in the frame, and it must never be the thing standing in front
+## of what it proves (docs/ART.md §7: a SHORT ink burst, sparks as two or three
+## bright pixels). The burst and the plate ring came in at 30 px with a filled
+## paper star at the heart, which put an opaque disc over the amber working part
+## at the exact moment the player needed to see it.
+const BURST_PX := 22.0
 const PUFF_PX := 16.0
 const RING_PX := 22.0
-const CLANG_PX := 30.0
+const CLANG_PX := 20.0
 const GLINT_PX := 9.0
-const TELL_PX := 30.0
+const TELL_PX := 26.0
 const STREAK_PX := 40.0
+## The fraction of a burst's (and a plate ring's) radius that never takes ink, so
+## what was struck shows through the middle of its own mark. Compiled into the
+## shader as OPEN and measured against the machines' parts in
+## tests/actors/test_hit_marks.gd.
+const BURST_OPEN := 0.52
+## Which way a tell's fan flicks, in quad space: up the screen over a body, down
+## the screen when it is aimed at a working part below it.
+const FLICK_UP := Vector2(0.0, -1.0)
+const FLICK_DOWN := Vector2(0.0, 1.0)
 const MARK_PRIORITY := 12
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
@@ -363,11 +383,13 @@ static func _shader(key: StringName) -> Shader:
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
+	# One number for the open heart of a mark, in the shader and in the test.
+	var open := "#define OPEN %0.4f\n" % BURST_OPEN
 	match key:
 		&"over":
-			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + _BILLBOARD + _MARKS
+			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
 		&"flat":
-			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + _FLAT + _MARKS
+			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
 		&"swing":
 			s.code = _SWING
 		_:
@@ -439,6 +461,13 @@ static func px(n: float) -> float:
 	return n * texel
 
 
+## Screen pixels at the heart of a burst that never take ink, at the moment of
+## the blow. What was struck has to show through: the burst proves the hit, the
+## part proves where to hit.
+static func burst_clear_px(size: float = 0.9) -> float:
+	return at_least(size, BURST_PX) / maxf(texel, 1e-5) * 0.5 * BURST_OPEN
+
+
 ## Where a blow landed: a burst of ink strokes over whatever was struck. An
 ## `accent` other than transparent adds two or three pixels of that light.
 static func burst(parent: Node, at: Vector3, size: float = 0.9, seed_value: int = 0, accent: Color = Color(0, 0, 0, 0)) -> void:
@@ -502,16 +531,27 @@ static func glint(parent: Node, at: Vector3, col: Color, seed_value: int = 0, si
 	_run(_mark(parent, at, at_least(size, GLINT_PX), GLINT, &"over", seed_value, col, col.lightened(0.5)), 0.16)
 
 
-## Flicked strokes over a body whose blow is coming: held for `seconds` (its windup).
-## `top` is the top of the body in the world; the mark stands clear above it on
-## screen (`up`: the camera's up vector), so it is never lost in the silhouette.
-static func tell(parent: Node, top: Vector3, up: Vector3, seconds: float, seed_value: int = 0, size: float = 0.9) -> void:
+## Flicked strokes for a blow that is coming: held for `seconds` (its windup).
+## `anchor` is the thing being marked, in the world; the fan stands clear of it
+## on screen (`up`: the camera's up vector) so it is never lost in a silhouette.
+##
+## `flick` says which way the strokes are thrown. FLICK_UP puts the fan above a
+## body and throws it up and away — "about to". FLICK_DOWN puts the fan above the
+## thing and throws it DOWN at it — "here, this one" — which is what a machine's
+## windup wants: the player must look at the side that opens, not at the roof.
+static func tell(parent: Node, anchor: Vector3, up: Vector3, seconds: float, seed_value: int = 0, size: float = 0.9, flick: Vector2 = FLICK_UP) -> void:
 	if not _ok(parent):
 		return
 	size = at_least(size, TELL_PX)
-	# The fan's lowest ends are 0.45 of the half size below the quad's centre.
-	var at := top + up.normalized() * (size * 0.5 * 0.45 + px(3.0))
-	_run(_mark(parent, at, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0]), maxf(0.12, seconds))
+	# Aimed down, the whole quad stands above the thing it points at; aimed up,
+	# the fan's near ends are 0.45 of the half size below the quad's centre.
+	# The fan's furthest tips are 0.4 of the half size from the quad's centre, so
+	# aimed down it hangs a clear three pixels above the thing it points at: a
+	# tell must send the eye to the part, never stand in front of it.
+	var clear := (0.72 if flick == FLICK_DOWN else 0.45) * size * 0.5 + px(3.0)
+	var mi := _mark(parent, anchor + up.normalized() * clear, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0])
+	(mi.material_override as ShaderMaterial).set_shader_parameter(&"dir", flick)
+	_run(mi, maxf(0.12, seconds))
 
 
 ## Speed lines left behind a body that shot off along `dir` (tile space) as a

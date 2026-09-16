@@ -308,10 +308,18 @@ func _handle(events: Array[Dictionary]) -> void:
 				var m: MobState = e.mob
 				Events.sfx.emit(&"windup", _at3(m.pos))
 				if m.blow != null and m.node is Mob:
-					# On the body, so the tell goes where the body goes.
+					# Over the WORKING PART, flicked down at it. The tell has to
+					# send the eye to the side that opens — the side that hurts
+					# you and the side you have to hit; three ticks floating over
+					# the hull sent it to the roof while the comb was at the floor.
+					# Hung on the MODEL, which is the thing that turns (Mob keeps the
+					# lean and the heave; the model carries the facing). On the mob
+					# node the mark would sit still while the machine swung round to
+					# face you, and end up over its back.
 					var mob := m.node as Mob
 					var up := _screen_up()
-					MobFx.tell(mob, mob.screen_top(up), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5)
+					var on: Node = mob.model if mob.model != null else mob
+					MobFx.tell(on, _part_at(m), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5, MobFx.FLICK_DOWN)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))

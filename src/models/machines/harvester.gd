@@ -76,13 +76,15 @@ func build() -> void:
 	for j in 9:
 		FoundKit.mark(k, Vector3(-0.5, 0.472, -0.4 + j * 0.1), Vector3.UP, Vector3.RIGHT, 0.36, 0.024, R[1], 0.002)
 	FoundKit.seam(k, Vector3(-0.12, 0.301, 0), Vector3(0.66, 0.301, 0), Vector3.UP, R, 4)
-	FoundKit.panel(k, Vector3(0.3, 0.301, -0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	FoundKit.panel(k, Vector3(0.3, 0.301, 0.46), Vector3.UP, Vector3.RIGHT, 0.5, 0.36, R)
 	body_mesh(k, hull)
+	# The deck the sun falls on all day and the hood it pushes into a field: the
+	# two plates the camera sees most of, and the two that said nothing at noon.
+	day_wear(hull, Vector3(0.3, 0.303, -0.46), Vector3.UP, Vector3.RIGHT, 0.58, 0.44, 45, 2)
 	add_lamp(hull, Vector3(-0.32, 0.473, 0.46), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
 	var hw := FoundKit.kit()
 	FoundKit.patch(hw, Vector3(0.36, 0.302, -0.02), Vector3.UP, Vector3.RIGHT, 0.34, 0.22, Palette.MACHINE["cutter"], 41)
-	FoundKit.patch(hw, Vector3(-0.62, 0.473, -0.34), Vector3.UP, Vector3.RIGHT, 0.2, 0.26, Palette.FOUND, 42)
+	FoundKit.patch(hw, Vector3(-0.62, 0.473, -0.34), Vector3.UP, Vector3.RIGHT, 0.2, 0.26, Palette.MACHINE["watcher"], 42)
 	FoundKit.scorch(hw, Vector3(-0.74, 0.473, 0.22), Vector3.UP, 0.09, 43)
 	FoundKit.scorch(hw, Vector3(-0.74, 0.473, -0.22), Vector3.UP, 0.07, 44)
 	FoundKit.cable(hw, Vector3(-0.8, 0.52, 0.5), Vector3(-0.42, 0.48, 0.58), 0.05, 0.018, Palette.INK[2], Palette.MACHINE["sweeper"], 4)
@@ -131,6 +133,8 @@ func build() -> void:
 	FoundKit.grime(iw, Vector3(0.45, -0.3, 0.0), Vector3(0.66, 0.75, 0), 1.8, 0.12, 6, 45, hood_r)
 	FoundKit.patch(iw, Vector3(0.22, -0.12, -0.7), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.26, 0.2, Palette.MACHINE["lineman"], 46)
 	wear_mesh(iw, intake)
+	day_wear(intake, Vector3(0.24, -0.15, 0.62), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 1.0, 0.46, 51, 2)
+	day_wear(intake, Vector3(0.24, -0.15, -0.58), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.9, 0.42, 52, 1)
 	# The row it could not swallow, jammed in the dividers and lying over the comb
 	# at both ends where the camera sees it: straw, a rag dragged up the hood, and
 	# a long bone caught across the dividers that sticks out past the end.
@@ -180,29 +184,48 @@ func build() -> void:
 	finish_rig()
 
 
+## A slab has no limbs to throw, so every pose is told by where the header sits
+## and how the hull rides on its tracks. The rest rig is the machine CUTTING (the
+## header down in the row), which is what a walk shows; a harvester stopped, a
+## harvester that has seen you and a harvester about to take you are three
+## different shapes before any lamp is read.
 func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
+		&"stand":
+			# Stopped: the header lifts out of the row and the stacks stand up.
+			d[&"intake"] = pr(Vector3(-0.04, 0.2, 0), Vector3(0, 0, 0.42))
+			d[&"hull"] = pr(Vector3(0, 0.05, 0))
+			d[&"stacks"] = r(Vector3(0, 0, -0.08))
 		&"alert":
-			d[&"intake"] = pr(Vector3(0, -0.08, 0), Vector3(0, 0, -0.2))
-			d[&"lamp_l"] = pr(Vector3(0, 0.42, 0))
-			d[&"lamp_r"] = pr(Vector3(0, 0.42, 0))
+			# It has seen you: the header comes down on the ground and stops dead,
+			# the hull settles on its springs, two lamp masts run up out of it.
+			d[&"intake"] = pr(Vector3(0.02, -0.03, 0), Vector3(0, 0, -0.06))
+			d[&"hull"] = pr(Vector3(-0.03, -0.13, 0))
+			d[&"lamp_l"] = pr(Vector3(0, 0.52, 0))
+			d[&"lamp_r"] = pr(Vector3(0, 0.52, 0))
 		&"windup":
-			d[&"intake"] = r(Vector3(0, 0, 0.36))
-			d[&"hull"] = pr(Vector3(-0.06, 0.02, 0), Vector3(0, 0, 0.05))
-			d[&"lamp_l"] = pr(Vector3(0, 0.36, 0))
-			d[&"lamp_r"] = pr(Vector3(0, 0.36, 0))
+			# The hull rears back on its tracks and the header tips up and OPEN:
+			# the side about to take you is the side the eye is sent to.
+			# Far enough that the hood's lip clears the hull's own top line: the
+			# machine gapes, and the comb comes up with it into plain sight.
+			d[&"intake"] = pr(Vector3(0.04, 0.14, 0), Vector3(0, 0, 0.88))
+			d[&"hull"] = pr(Vector3(-0.12, 0.09, 0), Vector3(0, 0, 0.13))
+			d[&"stacks"] = r(Vector3(0, 0, -0.24))
+			d[&"lamp_l"] = pr(Vector3(0, 0.44, 0))
+			d[&"lamp_r"] = pr(Vector3(0, 0.44, 0))
 		&"strike":
-			d[&"intake"] = pr(Vector3(0, 0.05, 0), Vector3(0, 0, -0.26))
-			d[&"hull"] = pr(Vector3(0.22, -0.02, 0), Vector3(0, 0, -0.05))
-			d[&"lamp_l"] = pr(Vector3(0, 0.36, 0))
-			d[&"lamp_r"] = pr(Vector3(0, 0.36, 0))
+			# And throws the whole slab forward: the body moves, not just the hood.
+			d[&"intake"] = pr(Vector3(0.12, 0.01, 0), Vector3(0, 0, -0.08))
+			d[&"hull"] = pr(Vector3(0.3, -0.05, 0), Vector3(0, 0, -0.04))
+			d[&"lamp_l"] = pr(Vector3(0, 0.3, 0), Vector3(0, 0, -0.3))
+			d[&"lamp_r"] = pr(Vector3(0, 0.3, 0), Vector3(0, 0, -0.3))
 		&"dead":
 			# Settles listing onto one track; the intake comes down on the ground,
 			# the comb drops off it askew, lamps and stacks fold over.
-			d[&"hull"] = pr(Vector3(0, -0.05, 0), Vector3(0.13, 0.04, 0.05))
-			d[&"intake"] = pr(Vector3(0.02, -0.08, 0), Vector3(-0.1, 0, -0.26))
-			d[&"comb"] = pr(Vector3(0.22, 0.1, 0.1), Vector3(-0.03, 0.28, 0.21))
+			d[&"hull"] = pr(Vector3(-0.04, -0.1, 0), Vector3(0.17, 0.05, 0.06))
+			d[&"intake"] = pr(Vector3(0.02, 0.05, 0), Vector3(-0.1, 0, -0.14))
+			d[&"comb"] = pr(Vector3(0.22, 0.2, 0.1), Vector3(-0.03, 0.28, 0.21))
 			d[&"lamp_l"] = r(Vector3(-0.7, 0, 0.25))
 			d[&"lamp_r"] = r(Vector3(0.45, 0, -0.35))
 			d[&"stacks"] = r(Vector3(0, 0, 1.2))

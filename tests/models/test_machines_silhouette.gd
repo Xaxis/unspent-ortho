@@ -4,6 +4,7 @@ extends TestCase
 ## gameplay texel size, and silhouettes are compared cell by cell.
 ##
 ##   alert and dead change the silhouette more than any walk pose does
+##   every pose a player must read in a fight differs from every other in SHAPE
 ##   every machine is visibly bigger than nothing and fits its footprint
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
@@ -12,6 +13,10 @@ const TEXEL := 14.0 / 360.0
 const W := 160
 const H := 130
 const YAW := 0.6
+## The poses a fight asks a player to tell apart at a glance.
+const READ_POSES: Array[StringName] = [&"stand", &"alert", &"windup", &"strike", &"dead"]
+const MIN_FRACTION := 0.085
+const MIN_EDGE_PX := 3.0
 
 
 static func camera_axes() -> Array[Vector3]:
@@ -126,6 +131,34 @@ func test_alert_and_dead_change_the_silhouette_more_than_any_walk_pose() -> void
 			var dead_change := diff(base, silhouette(dead, yaw))
 			dead.free()
 			gt(float(dead_change), float(walk_change), "%s yaw %.1f: dead (%d px) vs walk (%d px)" % [kid, yaw, dead_change, walk_change])
+
+
+## The poses a player has to tell apart in a fight, told apart by SHAPE. A machine
+## that changes only what is lit says nothing at noon, which is how the harvester
+## came to have four poses that differed by a glow and by nothing else.
+##
+## Two gates, because one is not enough for a set that runs from a flock of shards
+## to a two-and-a-half-tile slab: the change must be at least a twelfth of the
+## body's own area (a small machine has to move a lot of itself) AND at least
+## three screen pixels of outline travel (a big one must not hide its poses inside
+## its own bulk — the harvester used to manage only 0.063 of itself).
+func test_the_poses_a_player_reads_differ_in_silhouette() -> void:
+	for kid in KINDS:
+		for yaw: float in [0.6, 2.3]:
+			var masks := {}
+			var area := 0.0
+			for p in READ_POSES:
+				var m := posed(kid, p)
+				masks[p] = silhouette(m, yaw)
+				area = maxf(area, float(count(masks[p])))
+				m.free()
+			gt(area, 80.0, "%s covers something at yaw %.1f" % [kid, yaw])
+			for i in READ_POSES.size():
+				for j in range(i + 1, READ_POSES.size()):
+					var n := float(diff(masks[READ_POSES[i]], masks[READ_POSES[j]]))
+					var label := "%s yaw %.1f %s/%s" % [kid, yaw, READ_POSES[i], READ_POSES[j]]
+					gt(n / area, MIN_FRACTION, "%s: %.3f of the body (%d px)" % [label, n / area, int(n)])
+					gt(n / sqrt(area), MIN_EDGE_PX, "%s: %.1f px of outline" % [label, n / sqrt(area)])
 
 
 func test_every_machine_reads_at_gameplay_zoom() -> void:
