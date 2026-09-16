@@ -34,6 +34,11 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
+; The window opens without taking the focus of whatever the person at the
+; keyboard is doing: a hundred shots and tours a day must not interrupt them.
+; A real play session takes its focus back in src/main.gd, where it can tell a
+; player from a tool run.
+window/size/no_focus=true
 
 [input]
 

@@ -25,6 +25,7 @@ func _ready() -> void:
 	# A player launching the game gets the title; tools always pass options.
 	if OS.get_cmdline_user_args().is_empty():
 		options.scene = "title"
+	_take_focus_if_a_person_is_playing()
 	var root: Node
 	match options.scene:
 		"gallery":
@@ -54,6 +55,21 @@ func _ready() -> void:
 		add_child(root)
 	if options.shot != "":
 		_shoot()
+
+
+## The window opens unfocusable (project.godot, display/window/size/no_focus) so
+## that the hundred shots and tours an hour this project runs never take the
+## keyboard away from whoever is using the machine. A session meant for a person
+## takes the focus back here: a tool run is the one that was handed a --shot or
+## a --tour to do, and it is the only kind that stays out of the way.
+func _take_focus_if_a_person_is_playing() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	if options.shot != "" or options.tour != "":
+		return
+	get_window().set_flag(Window.FLAG_NO_FOCUS, false)
+	DisplayServer.window_move_to_foreground()
+	get_window().grab_focus()
 
 
 ## Wait for `scene`'s first drawn frame of its world, then say so (and probe it).
