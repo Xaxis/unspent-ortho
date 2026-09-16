@@ -56,7 +56,7 @@ tap pause
 tap pause
 await app:none 4
 wait 2.5
-await answered 45
+await answered:glare 45
 shot 09-the-flat-answered
 
 # --- The wood: wide, at play, and close ---------------------------------------
