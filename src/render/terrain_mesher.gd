@@ -1753,14 +1753,25 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				continue
 			any = true
 			var terrace := ch.t[li]
+			var lx := ch.x0 + i * 0.5
 			if terrace <= 0:
 				sheet[li] = WATER_Y
-				col[li] = Color(0.0, 0.5, 0.5, clampf(depth[li] / 9.0, 0.0, 1.0))
+				# A pool or a river mouth that happens to lie at sea level keeps
+				# its own kind, or the moss ends up with a white beach round its
+				# black water; and even the sea itself only breaks white where the
+				# bank it meets is not a bog (docs/ART.md section 3).
+				var g0 := ch.key[li] & 0xFF
+				if g0 == Ground.DEEP_WATER or g0 == Ground.WATER:
+					# Every sea point carries the weight, not only the shallow ones:
+					# the quad interpolates, so one deep corner would put surf back
+					# on the band its shallow corner was meant to keep off.
+					col[li] = Color(0.0, _surf_at(lx, ly), 0.5, clampf(depth[li] / 9.0, 0.0, 1.0))
+				else:
+					col[li] = Color(_inland_kind(k, lx, ly) / 8.0, 0.5, 0.5, inland_alpha(depth[li]))
 				continue
-			var lx := ch.x0 + i * 0.5
 			# Level water: a sheet over its terrace, under any bank (which lips up).
 			sheet[li] = terrace * WorldData.STEP + WADE
-			var kind := 2 if (k & 0xFF) == Ground.BLACKWATER else 1
+			var kind := _inland_kind(k, lx, ly)
 			var flow := Vector2.ZERO
 			if kind == 1:
 				var ti := clampi(floori(ly), 0, size - 1) * size + clampi(floori(lx), 0, size - 1)
@@ -1914,6 +1925,49 @@ func _clip_sheet(ch: Chunk, a: int, b: int, c: int, d: int, sheet: PackedFloat32
 ## water.gdshader reads it back as a * INLAND_SPAN - INLAND_BANK.
 static func inland_alpha(d: float) -> float:
 	return clampf((d + INLAND_BANK) / INLAND_SPAN, 0.0, 1.0)
+
+
+## Which water an inland sheet is: blackwater (2) where the land it lies in is
+## wet enough to be a bog, so a river or a pool in the moss is the moss's own
+## black water with green edges and never a pale blue lagoon (docs/ART.md
+## section 3); a plain sheet (1) everywhere else.
+func _inland_kind(key: int, lx: float, ly: float) -> int:
+	if (key & 0xFF) == Ground.BLACKWATER:
+		return 2
+	return 2 if _surf_at(lx, ly) < 0.5 else 1
+
+
+## Land wet at or above this takes no surf: its bank is a bog, not a shore.
+const SURF_WET := 0.5
+
+
+## How the sea breaks on the bank under a point: 1 on an open coast, 0 where the
+## land it meets is soft and wet. Read from the nearest land's `wet` hazard
+## (BiomeRegistry), never from a country: the moss's black water is scummed reed
+## at its edge, not a white beach (docs/ART.md section 3, art review wave N).
+var _surf: Dictionary = {}
+func _surf_at(lx: float, ly: float) -> float:
+	var size := world.size
+	var ti := clampi(floori(ly), 0, size - 1) * size + clampi(floori(lx), 0, size - 1)
+	if _surf.has(ti):
+		return _surf[ti]
+	var out := _surf_scan(lx, ly)
+	_surf[ti] = out
+	return out
+
+
+func _surf_scan(lx: float, ly: float) -> float:
+	var size := world.size
+	for r: int in [2, 4, 7]:
+		for i in 8:
+			var a := float(i) / 8.0 * TAU
+			var x := clampi(floori(lx + cos(a) * float(r)), 0, size - 1)
+			var y := clampi(floori(ly + sin(a) * float(r)), 0, size - 1)
+			if Ground.is_water(world.ground_at(x, y)):
+				continue
+			var wet := float(BiomeRegistry.at(world, Vector2(x, y)).hazards.get(&"wet", 0.0))
+			return 0.0 if wet >= SURF_WET else 1.0
+	return 1.0
 
 
 func _water_quad(xa: float, xb: float, py: float, h00: float, h10: float, h11: float, h01: float, c00: Color, c10: Color, c11: Color, c01: Color) -> void:

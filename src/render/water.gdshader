@@ -55,7 +55,15 @@ void fragment() {
 	float w = max(fwidth(d), 1e-4) * 1.2;
 	vec3 c;
 	if (kind == 0) {
-		c = d < 0.12 ? BRINE3 : (d < 0.45 ? BRINE2 : BRINE1);
+		// COLOR.g on the sea: 1 where it meets an open coast, 0 where the bank is
+		// a bog (TerrainMesher._surf_at). Foam belongs to a shore that shelves;
+		// against peat the edge is scum and reed, never a beach in a fen.
+		float surf = clamp(COLOR.g, 0.0, 1.0);
+		// The chart's pale shallows belong to the coast too: where the sea lies
+		// against peat it takes the fen's own dark greens, so an inlet in the
+		// moss is not a lagoon on a bog.
+		c = mix(d < 0.12 ? SPRUCE2 : (d < 0.45 ? SPRUCE1 : BRINE0),
+			d < 0.12 ? BRINE3 : (d < 0.45 ? BRINE2 : BRINE1), surf);
 		// Soundings: a solid line at the shallows, a dotted one further out.
 		if (band_edge(d, 0.12, w) > 0.5) {
 			c = mix(c, LINE, 0.5);
@@ -65,12 +73,17 @@ void fragment() {
 		float s = swash(wp);
 		float lap = 0.006 + 0.03 * s;
 		if (d < lap && (d < lap - 0.012 || ink_hash(px) < 0.7)) {
-			c = FOAM;
+			// On a soft bank the same band is scum and weed, a step DARKER than
+			// the water, so the edge reads without a 180-luma jump.
+			c = mix(ink_vnoise(wp * 1.7) > 0.55 ? SPRUCE1 : SPRUCE3, FOAM, surf);
 		} else if (d < lap + 0.02 && ink_hash(px) < 0.5) {
-			c = BRINE4;
-		} else if (abs(d - (0.075 + 0.03 * (1.0 - s))) < 0.006 && ink_hash(floor(px / vec2(2.0, 1.0))) < 0.7) {
+			c = mix(SPRUCE2, BRINE4, surf);
+		} else if (surf > 0.5 && abs(d - (0.075 + 0.03 * (1.0 - s))) < 0.006 && ink_hash(floor(px / vec2(2.0, 1.0))) < 0.7) {
 			// The line the last wave left.
 			c = mix(c, FOAM, 0.6);
+		} else if (surf < 0.5 && d < 0.1 && ink_hash(px + 5.0) > 0.94) {
+			// Reeds standing out of the shallows instead.
+			c = ink_hash(px + 9.0) < 0.5 ? SPRUCE2 : SPRUCE3;
 		}
 		// Wave ticks: short dashes that appear and fade on a slow beat.
 		float beat = floor(TIME * 0.9);
@@ -78,7 +91,7 @@ void fragment() {
 		float h = ink_hash(cell + vec2(beat * 7.0, beat * 3.0));
 		vec2 local = px - cell * vec2(11.0, 7.0);
 		if (d > 0.18 && h < 0.08 && local.y == 3.0 && local.x >= 3.0 && local.x < 6.0 + floor(h * 20.0)) {
-			c = mix(c, FOAM, d > 0.45 ? 0.35 : 0.5);
+			c = mix(c, FOAM, (d > 0.45 ? 0.35 : 0.5) * max(surf, 0.35));
 		}
 	} else if (kind == 2) {
 		// Blackwater: green at the edges, an oily film in marbled bands.

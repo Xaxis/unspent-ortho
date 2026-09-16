@@ -538,7 +538,9 @@ func _add_open_sea() -> void:
 	var y := TerrainMesher.WATER_Y - 0.02
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
-	var col := Color(0.0, 0.5, 0.5, 1.0)
+	# Deep, open, and far from any bank: full surf weight (water.gdshader reads
+	# COLOR.g on the sea), though at this depth nothing breaks anyway.
+	var col := Color(0.0, 1.0, 0.5, 1.0)
 	for r: Rect2 in [Rect2(-m, -m, s + 2.0 * m, m), Rect2(-m, s, s + 2.0 * m, m), Rect2(-m, 0, m, s), Rect2(s, 0, m, s)]:
 		var a := Vector3(r.position.x, y, r.position.y)
 		var b := Vector3(r.end.x, y, r.position.y)
