@@ -23,7 +23,7 @@ walk 0.71,0.71 4.7 run
 walk 0.88,0.47 1.26 run
 walk 0.71,0.71 3.5 run
 await score_grid 60
-shot 04-under-the-pylon
+shot 04-under-the-pylon with prop:pylon
 spawn runner
 await score_tense 90
 await score_dissonance 60

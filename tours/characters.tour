@@ -57,28 +57,31 @@ shot 10-dawn
 # The other lands: teleports, then the same wait and walk to someone.
 hour 11
 zoom 12
-village 10
+# Villages are numbered by worldgen and the numbers move: 10 is Pennock on the
+# coast now, and this frame has been a picture of green grass and a sandy shore
+# called "snowfield" ever since. The `land:` claim is what keeps it honest.
+village 12
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 11-snowfield-hush-fold with folk
+shot 11-snowfield-hush-fold with folk,land:snowfield
 zoom 12
-village 6
+village 8
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 12-burning-cinderstead with folk
+shot 12-burning-emberlow with folk,land:burning
 zoom 12
 village 1
 await folk 8
 walkto folk 12
 zoom 7
 wait 0.5
-shot 13-moss-fennick with folk
+shot 13-moss-fennick with folk,land:moss
 # What 24 villagers cost drawn on screen, against the same frames without them:
 # a budget of 7 draw calls and 1 ms of frame a person.
 zoom 15
 perf folk 24 3 7 1.0
-shot 14-crowd-of-24
+shot 14-crowd-of-24 with crowd

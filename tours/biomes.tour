@@ -29,7 +29,7 @@ place salt_flats
 wait 2.0
 shot 07-salt-flats-noon with land:salt_flats
 walk 1,0 2.0 run
-shot 08-salt-flats-walked
+shot 08-salt-flats-walked with land:salt_flats
 hour 19.5
 wait 1.5
 shot 09-salt-flats-dusk with land:salt_flats
@@ -41,7 +41,7 @@ place scrapwood
 wait 2.0
 shot 11-scrapwood-noon with land:scrapwood
 walk 1,0 2.0 run
-shot 12-scrapwood-walked
+shot 12-scrapwood-walked with land:scrapwood
 hour 19.5
 wait 1.5
 shot 13-scrapwood-dusk with land:scrapwood
@@ -52,16 +52,16 @@ hour 11
 # Three ecotones: stand in the band, then walk across it and watch the land turn.
 place coast-salt_flats
 wait 2.0
-shot 15-coast-salt-flats
+shot 15-coast-salt-flats with border:coast-salt_flats
 walk 1,-1 2.5 run
-shot 16-coast-salt-flats-crossed
+shot 16-coast-salt-flats-crossed with land:coast|salt_flats
 place pinewood-scrapwood
 wait 2.0
-shot 17-pinewood-scrapwood
+shot 17-pinewood-scrapwood with border:pinewood-scrapwood
 walk 1,-1 2.5 run
-shot 18-pinewood-scrapwood-crossed
+shot 18-pinewood-scrapwood-crossed with land:pinewood|scrapwood
 place moss-scrapwood
 wait 2.0
-shot 19-moss-scrapwood
+shot 19-moss-scrapwood with border:moss-scrapwood
 walk 1,-1 2.5 run
-shot 20-moss-scrapwood-crossed
+shot 20-moss-scrapwood-crossed with land:moss|scrapwood

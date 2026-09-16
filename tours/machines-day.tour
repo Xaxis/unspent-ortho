@@ -22,6 +22,9 @@ wait 1.2
 # (wave A playtest, finding 5: 432 machine-violet pixels in the frame, all of
 # them the slate's own bezel).
 try 4
+# The clock too: an arrest skips an hour, so a second attempt would shoot
+# "at noon" at one o'clock and pass on the body alone.
+hour 12
 spawn warden
 shot 01-a-keeper-at-noon with mob:warden
 end

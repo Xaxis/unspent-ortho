@@ -18,7 +18,7 @@ wait 1.0
 await mob 20
 shot 01b-a-worker-on-its-round with mob
 wait 5
-shot 01c-still-on-its-round
+shot 01c-still-on-its-round with mob
 # The scripted gathering is not a random fight: nothing comes until the fields again.
 coast calm
 # Driftwood on the strand below the village.
@@ -61,7 +61,7 @@ tap use
 await made 3
 tap pause
 wait 0.4
-shot 04-charcoal-on-the-fire
+shot 04-charcoal-on-the-fire with station:fire
 # Walk off along the strand while it cooks: the clock runs, the fire works.
 walk 1,1 2.5
 wait 1.0

@@ -77,8 +77,18 @@ func test_every_claimed_subject_is_one_the_runner_can_answer() -> void:
 						check(Roster.resolve(subject.substr(p.length())) != &"",
 							"%s line %d: the roster has no %s" % [f, n, subject])
 				if subject.begins_with("land:"):
-					check(lands.has(StringName(subject.substr(5))),
-						"%s line %d: no landscape type %s" % [f, n, subject])
+					for id: String in subject.substr(5).split("|", false):
+						check(lands.has(StringName(id)),
+							"%s line %d: no landscape type %s" % [f, n, id])
+				if subject.begins_with("border:"):
+					var pair := subject.substr(7).split("-", false)
+					check(pair.size() == 2, "%s line %d: %s wants two ids joined by a dash" % [f, n, subject])
+					for id: String in pair:
+						check(lands.has(StringName(id)),
+							"%s line %d: no landscape type %s" % [f, n, id])
+				if subject.begins_with("prop:"):
+					check(PropKind.NAMES.has(subject.substr(5).replace("_", " ")),
+						"%s line %d: no prop kind %s" % [f, n, subject])
 				if subject.begins_with("pixels:"):
 					var bits := subject.split(":")
 					check(bits.size() >= 2 and not bits[1].is_empty(), "%s line %d: %s needs a colour" % [f, n, subject])
@@ -161,6 +171,120 @@ func test_a_spawn_is_always_followed_by_a_frame_that_claims_it() -> void:
 				check(claimed.has(want),
 					"%s: `spawn %s` on line %d, and the next frame (%s, line %d) never says it holds one" % [f, want, owed_line, parts[1], n])
 			owed.clear()
+
+
+## Words in a frame's NAME that the tour vocabulary can be asked about, and the
+## declaration each one owes. A `with` is otherwise voluntary, and a voluntary
+## rule is kept by whoever last read the file: the sweep that found the keeper
+## at noon found sixteen dozen more frames naming a landscape, a fire, a lamp or
+## a crowd and saying nothing about it, which is one sweep away from the same
+## lie again.
+const PEOPLE := {"crowd": "crowd", "folk": "folk", "villager": "folk",
+	"villagers": "folk", "gulls": "gulls", "dog": "dog"}
+## A name that says something HAPPENED: a frame cannot hold an event, so what it
+## owes is an `await` between it and the frame before it.
+const EVENT_WORDS := ["taken", "took", "made", "built", "killed"]
+## A machine is in the picture, said in the machines' own words. Which machine
+## the name does not say, so what this owes is a declaration of any kind.
+const MACHINE_WORDS := ["worker", "workers", "keeper", "keepers", "machine",
+	"machines", "its-round", "its-rounds", "their-round", "their-rounds"]
+
+
+## Whether `name` (hyphen-separated) carries `word` as a whole word or phrase.
+static func names_it(shot_name: String, word: String) -> bool:
+	return ("-%s-" % shot_name).contains("-%s-" % word)
+
+
+func test_a_frame_named_after_something_says_what_it_holds() -> void:
+	var lands: Array[String] = []
+	for def: BiomeDef in BiomeRegistry.all():
+		lands.append(String(def.id))
+	var kinds: Array[String] = []
+	for id: StringName in Roster.DEFS:
+		var prefix := String(id).split(".")[0]
+		if not kinds.has(prefix):
+			kinds.append(prefix)
+	for f: String in tours():
+		var n := 0
+		var awaited := 0
+		for raw: String in lines_of(f):
+			n += 1
+			var parts := raw.strip_edges().split(" ", false)
+			if parts.is_empty() or parts[0].begins_with("#"):
+				continue
+			if parts[0] == "await":
+				awaited += 1
+				continue
+			if parts[0] != "shot":
+				continue
+			var label := parts[1]
+			var subjects: Array[String] = []
+			if parts.size() > 3 and parts[2] == "with":
+				for w: String in " ".join(Array(parts).slice(3)).split(",", false):
+					subjects.append(w.strip_edges())
+			var bodies: Array[String] = []
+			for s: String in subjects:
+				for p: String in BODY_PREFIXES:
+					if s.begins_with(p):
+						bodies.append(String(Roster.resolve(s.substr(p.length()))).split(".")[0])
+			for k: String in kinds:
+				if names_it(label, k):
+					check(bodies.has(k) or subjects.has(k),
+						"%s line %d: %s names a %s and never says one is in it" % [f, n, label, k])
+			# A frame named after a landscape says which ground it is of. A name
+			# that carries two is of their border, and either answer is honest.
+			var named: Array[String] = []
+			for id: String in lands:
+				if names_it(label, id.replace("_", "-")):
+					named.append(id)
+			if not named.is_empty() and not names_it(label, "title"):
+				var said := false
+				for s: String in subjects:
+					if s.begins_with("land:"):
+						for id: String in s.substr(5).split("|", false):
+							said = said or named.has(id)
+					if s.begins_with("border:"):
+						var pair := s.substr(7).split("-", false)
+						said = said or (pair.size() == 2 and named.has(pair[0]) and named.has(pair[1]))
+				check(said, "%s line %d: %s names %s and never says which ground it is on"
+					% [f, n, label, ", ".join(named)])
+			if names_it(label, "lamp"):
+				check(subjects.has("lamp") or subjects.has("unlit"),
+					"%s line %d: %s names the lamp and never says whether it is lit" % [f, n, label])
+			for word: String in PEOPLE:
+				if names_it(label, word) and not subjects.has(String(PEOPLE[word])) and bodies.is_empty():
+					fail("%s line %d: %s names %s and never says one is in it" % [f, n, label, word])
+			# "fire tower" is a tower, not a fire.
+			if names_it(label, "fire") and not names_it(label, "fire-tower"):
+				check(subjects.has("station:fire"),
+					"%s line %d: %s names a fire and never says one is in reach" % [f, n, label])
+			if names_it(label, "pylon"):
+				check(subjects.has("prop:pylon"),
+					"%s line %d: %s names a pylon and never says one is in frame" % [f, n, label])
+			if names_it(label, "neon"):
+				var counted := false
+				for s: String in subjects:
+					counted = counted or s.begins_with("pixels:")
+				check(counted, "%s line %d: %s names the neon and never counts a tube" % [f, n, label])
+			for word: String in EVENT_WORDS:
+				if names_it(label, word):
+					check(awaited > 0,
+						"%s line %d: %s says something happened and nothing was awaited since the frame before it"
+						% [f, n, label])
+			for word: String in MACHINE_WORDS:
+				if names_it(label, word):
+					check(not subjects.is_empty(),
+						"%s line %d: %s says a machine is in it and declares nothing" % [f, n, label])
+			awaited = 0
+
+
+func test_the_name_reader_reads_whole_words() -> void:
+	check(names_it("07-salt-flats-noon", "salt-flats"), "a two-word landscape")
+	check(names_it("14-crowd-of-24", "crowd"), "a word in the middle")
+	check(names_it("06-lamp", "lamp"), "a word at the end")
+	check(names_it("12-pinewood-fire-tower-day", "fire-tower"), "a phrase, so a tower is not a fire")
+	check(not names_it("05-watching", "watcher"), "watching is not a watcher")
+	check(not names_it("16-slid-round-the-tree", "its-round"), "slid round a tree is not a machine's round")
 
 
 ## The counter behind `pixels:`: a picture whose answer is known by construction.

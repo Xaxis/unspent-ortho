@@ -30,9 +30,10 @@ extends GameSystem
 ##                          frame is taken. A frame whose name claims a keeper and
 ##                          holds no keeper fails the tour instead of passing as
 ##                          evidence. Subjects are present tense — things that are
-##                          in the world now (mob:KIND, folk, station:fire, app:map,
-##                          a hazard, a pressure) — never events that happened
-##                          (took, made, killed, hit: those are `await`, not `with`).
+##                          in the world now (mob:KIND, prop:KIND, folk,
+##                          station:fire, app:map, a hazard, a pressure) — never
+##                          events that happened (took, made, killed, hit: those
+##                          are `await`, not `with`).
 ##                          pixels:RRGGBB[:N] asks the PICTURE instead: at least N
 ##                          pixels of that colour, for a subject the world cannot
 ##                          be asked about (a stolen neon tube is a handful of
@@ -43,11 +44,19 @@ extends GameSystem
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
 ##                          took (something was taken), strike (lightning flashed);
+##                          slept (a night went by at a fire), skipped (any jump in
+##                          world time: sleeping, eating, being carried off);
 ##                          mob (a live body in frame), mob:KIND (one of that kind:
 ##                          the roster id or its prefix, so mob:dog finds dog.yard),
 ##                          down:KIND (one of that kind in frame and not alive),
-##                          body:KIND (either); lamp (the player's lamp is lit),
-##                          land:ID (the landscape type under the player);
+##                          body:KIND (either); prop:KIND (a standing prop of that
+##                          kind is in frame: a hulk, a fire tower, the pylon a
+##                          frame is named after); lamp / unlit (the player's lamp
+##                          is lit, or is not); land:ID (the landscape type under
+##                          the player; `land:a|b` when either answer is honest,
+##                          as a step out of an ecotone is);
+##                          border:A-B (the player is in the band between two
+##                          landscape types, which is what an ecotone frame is of);
 ##                          folk, crowd, dog, gulls
 ##                          (people and animals: see src/systems/tour/tour_people.gd);
 ##                          and whatever a system answers for with tour_seen(what)
@@ -351,6 +360,13 @@ func _listen() -> void:
 	Events.killed.connect(func(_k: StringName, _at: Vector3) -> void: _seen["killed"] = true)
 	Events.made.connect(func(_i: StringName, _n: int) -> void: _seen["made"] = true)
 	Events.took.connect(func(_i: StringName, _n: int) -> void: _seen["took"] = true)
+	# A frame named for a night gone by is the one thing the picture cannot show
+	# on its own: dawn looks like dusk. core_loop's "16-slept-to-morning" was a
+	# picture of 22:05 with the footer still offering `e fire - sleep`.
+	Events.time_skipped.connect(func(_m: float, reason: StringName) -> void:
+		_seen["skipped"] = true
+		if reason == &"sleep":
+			_seen["slept"] = true)
 
 
 func _await(what: String, secs: float) -> bool:
@@ -361,7 +377,7 @@ func _await(what: String, secs: float) -> bool:
 		ok = _seen.has(what) or _now_true(what)
 	_seen.erase(what)
 	if not ok:
-		printerr("tour %s: no %s within %.1f s" % [_name, what, secs])
+		printerr("tour %s: no %s within %.1f s%s" % [_name, what, secs, _instead(what)])
 	return ok
 
 
@@ -387,8 +403,21 @@ func _now_true(what: String) -> bool:
 		return _body_in_frame(what.substr(5), 0)
 	if what == "lamp":
 		return game.body.lamp_lit
+	if what == "unlit":
+		return not game.body.lamp_lit
 	if what.begins_with("land:"):
-		return BiomeRegistry.at(game.world, game.player.pos).id == StringName(what.substr(5))
+		# `land:a|b` for a frame taken where either answer is honest: a walk out
+		# of an ecotone lands in one of the two, and which one is a fact about
+		# one seed's border, not about what the frame is showing.
+		var here := BiomeRegistry.at(game.world, game.player.pos).id
+		for id: String in what.substr(5).split("|", false):
+			if here == StringName(id):
+				return true
+		return false
+	if what.begins_with("border:"):
+		return _on_border(what.substr(7))
+	if what.begins_with("prop:"):
+		return _prop_in_frame(what.substr(5))
 	var sim := game.player.sim
 	match what:
 		"grip":
@@ -430,6 +459,12 @@ func _stand_by(name: String) -> bool:
 	if best == null:
 		printerr("tour %s: no %s within 60 tiles of %s" % [_name, name, game.player.pos])
 		return false
+	# A station is not something you take from, so `use_target` never names one:
+	# what "at the fire" means for a fire, a bench or a kiln is being inside
+	# crafting reach of it, which is the same question `station:NAME` asks. A
+	# tour that stands where it laid a fire and then claims `station:fire` was
+	# failing two runs in three on a hard-coded spot 1.6 tiles out.
+	var station: Array = Survival.STATION_KINDS.get(kind, [])
 	var reach := best.solid + Tuning.PLAYER_RADIUS + 0.45
 	for turn in 12:
 		var a := TAU * turn / 12.0
@@ -438,6 +473,10 @@ func _stand_by(name: String) -> bool:
 			continue
 		_teleport(spot)
 		Survival.face(game, (best.pos - spot).angle())
+		if not station.is_empty():
+			if Survival.stations_near(game).has(StringName(station[0])):
+				return true
+			continue
 		var t := Survival.use_target(game)
 		if t != null and t.kind == kind:
 			return true
@@ -624,6 +663,58 @@ func _body_in_frame(want: String, life: int) -> bool:
 	return false
 
 
+## `border:A-B` — the player stands in the transition band between landscape
+## types A and B (the `WorldData.country2`/`blend` contract worldgen writes).
+## An ecotone frame is OF a border, and `land:` cannot say so: on the band
+## either type is the answer, so "coast-moss" declaring `land:coast` would pass
+## or fail on which side of one tile the walk happened to stop.
+func _on_border(pair: String) -> bool:
+	var ids := pair.split("-", false)
+	if ids.size() != 2:
+		printerr("tour %s: border:%s wants two landscape ids joined by a dash" % [_name, pair])
+		return false
+	var w := game.world
+	var x := floori(game.player.pos.x)
+	var y := floori(game.player.pos.y)
+	if not w.in_bounds(x, y):
+		return false
+	var i := y * w.size + x
+	if w.blend[i] <= 0.0:
+		return false
+	var want := [BiomeRegistry.index_of(StringName(ids[0])), BiomeRegistry.index_of(StringName(ids[1]))]
+	if want.has(-1):
+		printerr("tour %s: no landscape type in border:%s" % [_name, pair])
+		return false
+	var have := [int(w.country[i]), int(w.country2[i])]
+	want.sort()
+	have.sort()
+	return want == have
+
+
+## A standing prop of kind `name` (PropKind.NAMES, a space written as _) inside
+## the frame the camera is drawing. Half the landscape tour's frames are OF a
+## thing the world put somewhere — a hulk on the sand, a fire tower over the
+## pines, the pylon the score's grid layer comes from — and until this existed
+## the vocabulary could not say so, so those frames were unguarded by
+## construction: `place` puts the camera where the landmark was recorded, and
+## nothing asked whether the landmark was still there when the shutter fell.
+func _prop_in_frame(name: String) -> bool:
+	var kind := PropKind.NAMES.find(name.replace("_", " "))
+	if kind < 0:
+		printerr("tour %s: no prop kind %s" % [_name, name])
+		return false
+	for q in game.query.props_near(game.player.pos, PROP_SIGHT):
+		if q.kind != kind or game.world.depleted.has(q.id):
+			continue
+		if _in_frame(q.pos, 0.5):
+			return true
+	return false
+
+## How far out a `prop:` subject looks. The camera at the fight zoom shows about
+## 20 tiles; at the widest a tour sets, nearer 60.
+const PROP_SIGHT := 90.0
+
+
 ## The nearest standable tile INSIDE a patch of one of these grounds, searched
 ## in rings out from the player, so `ground heath` is a fact about the world and
 ## not about one seed's coordinates. The whole PATCH square round it has to be
@@ -761,7 +852,7 @@ func _shot_checked(parts: PackedStringArray) -> bool:
 		if w.begins_with("pixels:"):
 			continue
 		if not await _hold_true(w, SUBJECT_WAIT):
-			printerr("tour %s: shot %s claims %s and the world has none" % [_name, label, w])
+			printerr("tour %s: shot %s claims %s and the world has none%s" % [_name, label, w, _instead(w)])
 			return false
 	if not await _shot(label):
 		return false
@@ -775,6 +866,43 @@ func _shot_checked(parts: PackedStringArray) -> bool:
 	if not subjects.is_empty():
 		print("tour shot %s holds %s" % [label, ", ".join(subjects)])
 	return true
+
+
+## What the world holds instead, for the subjects where knowing it is the whole
+## of the diagnosis. A refused frame that only says "no bonelands here" costs
+## another run to find out where the walk really ended; one that says which
+## ground it is standing on is a fix.
+func _instead(what: String) -> String:
+	if not is_instance_valid(game):
+		return ""
+	if what.begins_with("land:") or what.begins_with("border:"):
+		var p := game.player.pos
+		var x := floori(p.x)
+		var y := floori(p.y)
+		var here := BiomeRegistry.at(game.world, p).id
+		if not game.world.in_bounds(x, y):
+			return " (the player is off the world at %s)" % p
+		var i := y * game.world.size + x
+		var other := BiomeRegistry.by_index(int(game.world.country2[i])).id
+		if game.world.blend[i] > 0.0:
+			return " (at %s the ground is %s, on its border with %s)" % [p, here, other]
+		return " (at %s the ground is %s, no border)" % [p, here]
+	if what == "mob" or what.begins_with("mob:") or what.begins_with("down:") or what.begins_with("body:"):
+		var seen := PackedStringArray()
+		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
+			seen.append("%s%s" % [n.get("kind"), "" if bool(n.get("alive")) else " (down)"])
+		return " (bodies about: %s)" % (", ".join(seen) if seen.size() > 0 else "none")
+	if what.begins_with("station:"):
+		return " (in reach: %s)" % ", ".join(Survival.stations_near(game))
+	if what.begins_with("prop:"):
+		return " (at %s)" % game.player.pos
+	if what == "slept" or what == "skipped":
+		var why := Survival.sleep_refusal(game)
+		return " (%s; hands %s; `use` here would %s)" % [
+			"the body would lie down" if why == "" else "it will not sleep: " + why,
+			"busy" if Survival.busy(game) else "free",
+			Survival.describe_target(game)]
+	return ""
 
 
 ## Wait for something to be true NOW (not for something to have happened): the
@@ -797,9 +925,14 @@ func _hold_true(what: String, secs: float) -> bool:
 const DRAW_WAIT := 60.0
 const DRAW_SLOW := 1.0
 ## After this long with no drawn frame, the tour stops waiting to be asked and
-## draws one itself. A healthy shot is drawn inside a frame or two, so this
-## never runs except where the platform has already stopped.
-const DRAW_NUDGE := 2.0
+## draws one itself. A healthy shot is drawn inside a frame or two, so this only
+## ever runs where the platform has already stopped — and it runs SOON, because
+## every millisecond spent waiting for the shutter is a millisecond the shot is
+## late for the moment it is named after.
+const DRAW_NUDGE := 0.25
+## A world minute is the coarsest thing a frame shows (the HUD clock), so a wait
+## that cost one has already made the picture a picture of a different moment.
+const DRAW_DRIFT := 1.0
 
 
 func _shot(label: String) -> bool:
@@ -817,6 +950,13 @@ func _shot(label: String) -> bool:
 ## never drew one: the caller fails the tour rather than saving whatever stale
 ## pixels the viewport still holds, which would be the very thing this file
 ## exists to prevent — a frame that is not of the moment it is named for.
+##
+## The world is held still across the whole wait. Waiting for the shutter used
+## to run the game: a stall of a couple of seconds put the clock two to four
+## world minutes past the moment the tour staged, and every frame shot after a
+## stall was of a later evening than the frames beside it — which is how the
+## canon came to differ from itself run to run. A shot is of the moment the line
+## before it made, however long the platform takes to hand it over.
 func _drawn() -> bool:
 	var began := Time.get_ticks_msec()
 	var until := began + int(DRAW_WAIT * 1000.0)
@@ -824,21 +964,33 @@ func _drawn() -> bool:
 	var nudge_at := began + int(DRAW_NUDGE * 1000.0)
 	var nudged := false
 	var mark := func() -> void: seen[0] = true
+	var tree := get_tree()
+	var was_paused := tree.paused
+	var clock_was := game.clock.minutes if is_instance_valid(game) and game.clock != null else 0.0
+	# This node is PROCESS_MODE_ALWAYS, so the tour goes on running while the
+	# game it is photographing does not.
+	tree.paused = true
 	RenderingServer.frame_post_draw.connect(mark, CONNECT_ONE_SHOT)
 	while not seen[0] and Time.get_ticks_msec() < until:
-		await get_tree().process_frame
+		await tree.process_frame
 		if not seen[0] and Time.get_ticks_msec() >= nudge_at:
 			# Draw one into the viewport's own texture, which is what a shot
 			# reads. Nothing is presented: there is no one at that window.
 			nudged = true
 			RenderingServer.force_draw(false)
+	tree.paused = was_paused
 	var waited := (Time.get_ticks_msec() - began) / 1000.0
+	var drift := absf(game.clock.minutes - clock_was) if is_instance_valid(game) and game.clock != null else 0.0
 	if not seen[0]:
 		RenderingServer.frame_post_draw.disconnect(mark)
 		printerr("tour %s: the window was not asked to draw for %.0f s and would not be made to, so there is no frame to take" % [_name, waited])
 		return false
 	if waited >= DRAW_SLOW or nudged:
-		print("tour %s: waited %.1f s for a drawn frame%s" % [_name, waited, " and drew one itself" if nudged else ""])
+		print("tour %s: waited %.1f s for a drawn frame%s, and the world stood still for it (%.2f world minutes)"
+			% [_name, waited, " and drew one itself" if nudged else "", drift])
+	if drift > DRAW_DRIFT:
+		printerr("tour %s: waiting for the shutter cost %.2f world minutes; the frame is not of the moment it was staged for" % [_name, drift])
+		return false
 	return true
 
 

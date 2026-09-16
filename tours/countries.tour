@@ -7,7 +7,7 @@ at 338,398
 wait 2.0
 shot 01-coast-heart with land:coast
 walk 0,-1 1.2
-shot 02-coast-walked
+shot 02-coast-walked with land:coast
 at 262,242
 wait 2.0
 shot 03-moss-heart with land:moss
@@ -23,19 +23,21 @@ shot 06-bonelands-heart with land:bonelands
 at 162,126
 wait 2.0
 shot 07-burning-heart with land:burning
-# Borders: stand in the band, then walk across it.
-at 307,355
+# Borders: stand in the band, then walk across it. The band is asked for by
+# name, not pinned to a coordinate: 307,355 was copied off a map run once and is
+# coast heartland now, so `08-coast-moss` was a picture of the coast alone.
+place coast-moss
 wait 2.0
-shot 08-coast-moss
+shot 08-coast-moss with border:coast-moss
 walk 1,-1 2.5 run
-shot 09-coast-moss-crossed
-at 340,187
+shot 09-coast-moss-crossed with land:coast|moss
+place pinewood-snowfield
 wait 2.0
-shot 10-pinewood-snowfield
+shot 10-pinewood-snowfield with border:pinewood-snowfield
 walk 1,-1 2.5 run
-shot 11-pinewood-snowfield-crossed
-at 190,175
+shot 11-pinewood-snowfield-crossed with land:pinewood|snowfield
+place bonelands-burning
 wait 2.0
-shot 12-bonelands-burning
+shot 12-bonelands-burning with border:bonelands-burning
 walk 1,-1 2.5 run
-shot 13-bonelands-burning-crossed
+shot 13-bonelands-burning-crossed with land:bonelands|burning

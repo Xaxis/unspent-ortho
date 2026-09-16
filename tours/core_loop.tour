@@ -56,7 +56,7 @@ shot 07-making-page with app:crafting
 choose charcoal
 tap use
 wait 0.3
-shot 08-charcoal-on-the-fire
+shot 08-charcoal-on-the-fire with station:fire
 choose haft
 tap use
 await made 3
@@ -129,7 +129,12 @@ shot 13-after-the-fight with body:watcher
 coast calm
 # Back to the fire as the light goes: the lamp against the dark.
 zoom 15
+# Back to where the fire was laid, and then AT it: `station:fire` is crafting
+# reach (STATION_REACH, edge to edge) and the hard-coded spot need not be inside
+# it, while `at prop:fire` alone would walk to whichever fire is nearest — which
+# after the fight up the coast is a village one, sixty tiles the other way.
 at 189.5,428.5
+at prop:fire
 hour 21.5
 wait 0.6
 shot 14-night-at-the-fire with station:fire
@@ -138,13 +143,26 @@ wait 0.5
 walk -1,-1 1.2
 shot 15-lamp-lit with lamp
 walk 1,1 1.2
-press use 0.1
-wait 1.2
+at prop:fire
+# Lie down: the press is held long enough to land on a slow frame, and the
+# night is AWAITED. This frame was a picture of 22:05 with the footer still
+# offering `e fire - sleep`, called "slept to morning" for a year.
+# A press made while the hands are still busy is buffered and then dropped, so
+# a player presses again: the tour does what the player does.
+try 6
+press use 0.4
+await slept 3
+end
+wait 0.6
 shot 16-slept-to-morning
 # North to the border: the land turns to limestone and the notebook names it.
 at 160.5,352.5
 wait 0.5
-shot 17-coast-before-the-border
+shot 17-coast-before-the-border with land:coast
+# Loaded with a pick, charcoal, wood and stone, the same walk covers less
+# ground than an empty-handed one: the old 4.5 s stopped short of the border
+# it is named for.
 walk 1,-1 4.5 run
+walk 1,-1 3.5 run
 wait 1.2
 shot 18-into-the-bonelands with land:bonelands

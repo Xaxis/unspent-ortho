@@ -29,7 +29,7 @@ tap pause
 tap pause
 wait 2.0
 await answered 15
-shot 05-snowfield-wrapped with answered
+shot 05-snowfield-wrapped with answered,land:snowfield
 
 # --- Off a height on a wing of mended plate -----------------------------------
 place summit

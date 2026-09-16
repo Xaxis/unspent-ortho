@@ -33,16 +33,16 @@ wait 0.8
 shot 07-burning with land:burning
 place coast-pinewood
 wait 0.8
-shot 08-eco-coast-pinewood
+shot 08-eco-coast-pinewood with border:coast-pinewood
 place pinewood-snowfield
 wait 0.8
-shot 09-eco-pinewood-snowfield
+shot 09-eco-pinewood-snowfield with border:pinewood-snowfield
 place bonelands-burning
 wait 0.8
-shot 10-eco-bonelands-burning
+shot 10-eco-bonelands-burning with border:bonelands-burning
 place coast-moss
 wait 0.8
-shot 11-eco-coast-moss
+shot 11-eco-coast-moss with border:coast-moss
 place spawn
 wait 0.8
 hour 19.5
@@ -75,7 +75,9 @@ shot 16-burning-dusk with land:burning
 place spawn
 wait 0.8
 hour 22
-weather rain:1
+# Thin rain here too, for the reason frame 18 gives: at rain:1 the streaks
+# alone walked two runs 1.9-2.25 apart against the sheet's tolerance of 3.
+weather rain:0.45
 wait 1.2
 shot 17-village-wet-night
 # Thin rain, not a downpour: the ground still mirrors the tube, and the frame

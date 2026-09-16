@@ -17,24 +17,24 @@ place moss
 wait 3
 shot 02-arrived-faster-than-the-bake
 await score_here 240
-shot 03-the-moss-took-over-without-a-gap
+shot 03-the-moss-took-over-without-a-gap with land:moss
 # The first border, walked: the coast and the moss share a tonal centre, so the
 # two keys lean into each other over the whole ecotone.
 place coast-moss
 await score_blend 180
-shot 04-on-the-coast-moss-border
+shot 04-on-the-coast-moss-border with border:coast-moss
 walk 0,1 7 run
 walk 0,1 7 run
-shot 05-walked-down-into-the-coast
+shot 05-walked-down-into-the-coast with land:coast
 walk 0,-1 8 run
 walk 0,-1 8 run
 await score_blend 180
-shot 06-walked-back-up-into-the-moss
+shot 06-walked-back-up-into-the-moss with land:moss
 # The second border, walked: the pines are the coast's seven notes a fifth
 # down, so this one leans too. East from the ecotone into the wood.
 place moss-pinewood
 await score_blend 180
-shot 07-on-the-moss-pinewood-border
+shot 07-on-the-moss-pinewood-border with border:moss-pinewood
 walk 0.71,0.71 7 run
 walk 0.71,0.71 7 run
 await score_in:pinewood 240
