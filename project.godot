@@ -39,6 +39,22 @@ window/stretch/scale_mode="integer"
 ; A real play session takes its focus back in src/main.gd, where it can tell a
 ; player from a tool run.
 window/size/no_focus=true
+; And it opens ONE PIXEL across, in a far corner. macOS always clamps a window
+; back onto some screen, so there is no off-screen to hide in — a position picked
+; to be far away landed dead centre on a fourth monitor. A 1x1 window needs no
+; luck: it is invisible on any arrangement of any number of displays, and the
+; frame is unaffected, because the viewport renders 640x360 into its own texture
+; whatever size the window is.
+;
+; The `.editor` suffix means this applies to every run made with the Godot binary
+; — our tools, and the ad-hoc runs an agent writes for itself, which is the half
+; no tool script can reach — and never to an exported build, which a player
+; launches. src/main.gd gives the window its real size for a session a person
+; means to play.
+window/size/initial_position_type.editor=0
+window/size/initial_position.editor=Vector2i(15599, 8639)
+window/size/window_width_override.editor=1
+window/size/window_height_override.editor=1
 
 [input]
 

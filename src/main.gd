@@ -9,6 +9,10 @@ extends Node
 ## When the first frame of a world is drawn it prints `boot ready <scene> <ms>`
 ## (tools/web.sh waits for that line).
 
+## While a play session is up, this file names its process id, so the focus
+## guard (tools/_focus_guard.sh) can tell a person playing from a tool run.
+const PLAY_MARK := "/tmp/unspent-playing"
+
 var options: BootOptions
 var _t0 := 0
 
@@ -63,19 +67,55 @@ func _ready() -> void:
 		_shoot()
 
 
-## The window opens unfocusable (project.godot, display/window/size/no_focus) so
-## that the hundred shots and tours an hour this project runs never take the
-## keyboard away from whoever is using the machine. A session meant for a person
-## takes the focus back here: a tool run is the one that was handed a --shot or
-## a --tour to do, and it is the only kind that stays out of the way.
+## Locally, a run of this project opens OFF the screen, unfocusable and silent
+## (project.godot: no_focus and an initial_position far outside any display,
+## both `.editor` so an exported build is untouched). That is the only way to
+## cover every run: a tool script can be taught manners, but the ad-hoc run an
+## agent writes for itself cannot, and there are a great many of those.
+##
+## A session a person means to play undoes all three here: the window comes back
+## to the middle of their screen, takes the keyboard, and keeps its sound. That
+## is a run with no tool arguments at all, or one that says so with
+## UNSPENT_KEEP_FOCUS=1.
 func _take_focus_if_a_person_is_playing() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	if options.shot != "" or options.tour != "":
+	if not _a_person_is_playing():
+		# Nobody is listening to this one, and on a machine running six builders
+		# the sound of six games at once is its own kind of rudeness.
+		if OS.get_environment("UNSPENT_SOUND") != "1":
+			AudioServer.set_bus_mute(0, true)
 		return
-	get_window().set_flag(Window.FLAG_NO_FOCUS, false)
+	var w := get_window()
+	w.set_flag(Window.FLAG_NO_FOCUS, false)
+	# Locally the window comes up one pixel across, so a person playing gets it
+	# back to the size the game is meant to be looked at, in the middle of their
+	# screen. An exported build already opens that way and is only centred here.
+	# Two whole pixels to one of the game's, from the viewport itself: the window
+	# override cannot be asked, because locally it is the 1 that hides the window.
+	var view := Vector2i(int(ProjectSettings.get_setting("display/window/size/viewport_width", 640)),
+		int(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
+	if w.size.x <= view.x:
+		w.size = view * 2
+	var screen := DisplayServer.screen_get_usable_rect(DisplayServer.SCREEN_PRIMARY)
+	w.position = screen.position + (screen.size - w.size) / 2
 	DisplayServer.window_move_to_foreground()
-	get_window().grab_focus()
+	w.grab_focus()
+	# While this is up, the keyboard is the player's: tools/_focus_guard.sh reads
+	# this mark and leaves a play session alone, where it would take the keyboard
+	# straight back off a shot or a tour.
+	var mark := FileAccess.open(PLAY_MARK, FileAccess.WRITE)
+	if mark != null:
+		mark.store_string(str(OS.get_process_id()))
+		mark.close()
+
+
+func _a_person_is_playing() -> bool:
+	if OS.get_environment("UNSPENT_KEEP_FOCUS") == "1":
+		return true
+	if options.shot != "" or options.tour != "":
+		return false
+	return OS.get_cmdline_user_args().is_empty()
 
 
 ## Wait for `scene`'s first drawn frame of its world, then say so (and probe it).
@@ -126,3 +166,13 @@ func _shoot() -> void:
 	var err := img.save_png(path)
 	print("shot %s %s" % [path, "ok" if err == OK else "FAILED %d" % err])
 	get_tree().quit(0 if err == OK else 1)
+
+
+func _exit_tree() -> void:
+	if FileAccess.file_exists(PLAY_MARK):
+		var f := FileAccess.open(PLAY_MARK, FileAccess.READ)
+		var whose := f.get_as_text().strip_edges() if f != null else ""
+		if f != null:
+			f.close()
+		if whose == str(OS.get_process_id()):
+			DirAccess.remove_absolute(PLAY_MARK)
