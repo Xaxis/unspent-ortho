@@ -79,6 +79,9 @@ const SHEET: Array[Vector2] = [
 ]
 ## How bright a sheet flicker lights the cloud, as a share of a strike's glow.
 const SHEET_GAIN := 0.45
+## Real seconds after a strike that a held bolt (a shot) stands at: the cloud
+## at its brightest, with the machines' power back between two dips.
+const HELD_STRIKE := 0.2
 ## The machines' power after a strike, in real seconds: [until, level]. Their
 ## strips and beacons drop out, catch, drop again and come back.
 const STUTTER: Array[Vector2] = [
@@ -255,8 +258,10 @@ func _update(delta: float, snap: bool) -> void:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
 	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
 	sky.air = Vector4(clampf(float(look.rain) + float(look.drizzle) * 0.6 + float(look.hail) * 0.5, 0.0, 1.0), float(look.glare), WeatherLook.haze_share(look), float(look.whiteout))
-	# A held bolt (shots) holds the afterglow and the machines' dip where they read.
-	var t := 0.4 if _forced_bolt else since_strike
+	# A held bolt (shots) holds the moment the cloud catches: the afterglow at its
+	# brightest, and the machines' power back up after their first dip, so a still
+	# of a strike shows both the light in the air and the works that run on it.
+	var t := HELD_STRIKE if _forced_bolt else since_strike
 	sky.bolt = Vector4(_strike_at.x, _strike_at.y, afterglow(t) * _glow_gain, lerpf(1.0, machine_power(t), _glow_gain))
 	sky.glow_reach = AFTERGLOW_ROLL * (0.35 + minf(t, 2.0))
 	_sheet_clock += delta
@@ -371,10 +376,14 @@ func _strike(strength: float, minute: int, hold: bool) -> void:
 	_flash_frame = 0
 	var f3 := _focus()
 	var r := Rng.make(seed_value, minute)
-	var at := Vector2(f3.x, f3.z) + Vector2(r.randf_range(-9.0, 9.0), r.randf_range(-6.0, 6.0))
-	# Strikes find the tallest thing near where they land.
+	var here := Vector2(f3.x, f3.z)
+	var at := here + Vector2(r.randf_range(-STRIKE_REACH.x, STRIKE_REACH.x), r.randf_range(-STRIKE_REACH.y, STRIKE_REACH.y))
+	# Strikes find the tallest thing near where they land, but never wander off
+	# the page to do it: a bolt drawn where nobody can see it is only thunder.
 	var best := -1.0
 	for p: WorldProp in game.query.props_near(at, 5.0):
+		if absf(p.pos.x - here.x) > STRIKE_REACH.x or absf(p.pos.y - here.y) > STRIKE_REACH.y:
+			continue
 		var tall: float = STRIKE_HEIGHT.get(p.kind, 0.0) * p.scale
 		if tall > best:
 			best = tall
@@ -390,6 +399,11 @@ func _strike(strength: float, minute: int, hold: bool) -> void:
 	_glow_gain = clampf(420.0 / dist, 0.35, 1.0)
 	# Thunder comes tiles/34 beats (0.1 s) after the light. (source)
 	_pending_thunder.append([dist / 34.0 * 0.1, ground])
+
+
+## Tiles either side of the focus a drawn strike may land in: the page is about
+## 26 tiles across and 18 deep, and a bolt has to be on it to be lightning.
+const STRIKE_REACH := Vector2(9.0, 6.0)
 
 
 const STRIKE_HEIGHT := {

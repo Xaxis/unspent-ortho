@@ -37,9 +37,11 @@ const VENT_WARM := Vector3(0.80, 0.42, 0.24)
 const TINT_FLOOR := 0.45
 const LANTERN_RANGE := 3.2
 ## The colour each kind of light throws (pools and wet reflections). People's
-## lamps, windows and fires are warm; the player's salvaged lantern is a cold LED;
-## stolen neon belongs to the houses that wired it in (a few, not all).
-const LANTERN_NEON := Vector3(0.55, 0.9, 1.0)
+## lamps, windows and fires are warm, and so is the flame in the player's
+## salvaged lantern: the pool it lays is the colour of its own light and never a
+## cold disc over a warm one (docs/ART.md section 6). Stolen neon belongs to the
+## houses that wired it in (a few, not all).
+const LANTERN_WARM := Vector3(1.0, 0.74, 0.46)
 const NEON_SODIUM := Vector3(1.0, 0.52, 0.16)
 const NEON_CYAN := Vector3(0.25, 0.95, 1.0)
 const NEON_MAGENTA := Vector3(1.0, 0.25, 0.8)
@@ -69,8 +71,12 @@ const SOURCES := {
 	PropKind.PUMP_HOUSE: [2.4, 0.45, 1.0],
 	PropKind.CHECKPOINT: [5.2, 0.8, 2.9],
 }
-## Sources whose light is the machines' (cold, stuttering after a strike).
+## Sources whose light is the machines' own (cold, and the machines' colour).
 const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
+## Sources that run on the machines' power, so a strike stutters them: the
+## machines' own lights, and the neon people stole from them and wired into a
+## shack wall. A hearth, a lamp and a fire are nobody's grid and never stutter.
+const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.SHACK]
 ## Sources placed at their model's own glow point, lit only on the variants that have one.
 const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
 ## The machines' cold strip light, for a pool and a glint.
@@ -183,6 +189,16 @@ static func lamps_wanted(hour: float) -> float:
 ## full from an hour after it.
 static func pool_dark(hour: float) -> float:
 	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+
+
+## How little light there is, whatever the cause: the hour, and a sky too dark
+## for the hour (a storm). 0 in full day, 1 in the dead of night. This is the
+## shader's sky_gloom() on the CPU side, and nothing artificial — no pool, no
+## lantern light — shows above it: a lamp lit at noon is a flame in the hand and
+## lays nothing on the ground (docs/ART.md section 6).
+static func gloom(hour: float, tint: Vector3, sun: float) -> float:
+	var lum := (tint.x * 0.3 + tint.y * 0.59 + tint.z * 0.11) * clampf(sun, 0.0, 1.0)
+	return clampf(maxf(SkyLight.low_light(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
 
 
 ## Is this source burning at this hour? Lamps and windows light one by one;
@@ -365,7 +381,7 @@ func _update(delta: float, snap: bool) -> void:
 			level *= 0.12 + 0.88 * dark
 		else:
 			level *= want * dark
-			if MACHINE_SOURCES.has(kind):
+			if POWERED_SOURCES.has(kind):
 				level *= clampf(game.sky.bolt.w, 0.0, 1.0)
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
@@ -382,8 +398,10 @@ func _update(delta: float, snap: bool) -> void:
 		lantern.position = p.position + hand
 		lantern.rotation.y = -p.facing
 		lantern.position.y += sin(_time * 5.0) * 0.03 * clampf(p.speed / 3.0, 0.0, 1.0)
-		# The lantern's floor: in any gloom it lifts the ground a little. (source 0.45)
-		var night := maxf(dark, 0.45)
+		# The lantern's floor: in any gloom it lifts the ground a little (source
+		# 0.45), and in daylight it lifts nothing at all — a lamp lit at noon must
+		# not lay a disc on a bright land.
+		var night := maxf(dark, 0.45 * gloom(hour, tint, sun))
 		var at := p.position + Basis(Vector3.UP, -p.facing) * LANTERN_LIGHT
 		# Where a lamp already lights the ground the lantern hardly adds, and its
 		# pool draws in under the lamp's: two pools stacked read as two ruled
@@ -399,7 +417,7 @@ func _update(delta: float, snap: bool) -> void:
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
 			pools.push_front(Vector4(at.x, at.y, at.z, reach))
-			pool_rgb.push_front(Vector4(LANTERN_NEON.x, LANTERN_NEON.y, LANTERN_NEON.z, 0.0) * night)
+			pool_rgb.push_front(Vector4(LANTERN_WARM.x, LANTERN_WARM.y, LANTERN_WARM.z, 0.0) * night)
 	else:
 		lantern_light.visible = false
 	pools.resize(mini(pools.size(), SkyLight.MAX_LAMPS))
@@ -453,7 +471,7 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 			PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * power, "shaft": SHAFT_MACHINE})
 	if lantern_lit:
-		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_NEON, "level": 0.7, "shaft": SHAFT_RAYED})
+		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_WARM, "level": 0.7, "shaft": SHAFT_RAYED})
 	glint_list = Glints.pick(cands, focus3)
 	var packed := Glints.pack(glint_list)
 	game.sky.glints = packed[0]

@@ -14,6 +14,9 @@
 //   sky_power()                          a multiply for the machines' own light
 //                                        (FOUND strips, beacons, stolen neon): 1
 //                                        steady, stuttering for a beat after lightning
+//   sky_gloom()                          how little light there is (0 full day, 1
+//                                        dead of night): the multiply for everything
+//                                        that only belongs to the dark
 //   neon_reflect(world_pos, px)          emission for wet ground: the glint list
 //                                        (lamps, fires, beacons, neon) mirrored
 //
@@ -95,12 +98,14 @@ const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a lit
 const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of fallen ash
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
 const vec3 SKY_HAZE = vec3(0.60, 0.40, 0.28);         // furnace haze: ash lit rust from below
-const vec3 SKY_WHITEOUT = vec3(0.86, 0.90, 0.95);     // the page gone cold white
+// The page gone cold white: paler than lying snow, or a whiteout on the
+// snowfield would be the snowfield (the one land it happens in).
+const vec3 SKY_WHITEOUT = vec3(0.96, 0.97, 1.0);
 const vec3 SKY_AFTERGLOW = vec3(0.78, 0.87, 1.0);    // lightning's light held in cloud
 // A whiteout keeps the land readable this far round the focus (tiles), and has
 // taken all of it by SKY_WHITEOUT_FAR.
-const float SKY_WHITEOUT_NEAR = 2.5;
-const float SKY_WHITEOUT_FAR = 10.0;
+const float SKY_WHITEOUT_NEAR = 3.5;
+const float SKY_WHITEOUT_FAR = 13.0;
 const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under the moon
 const vec3 SKY_NIGHT_FLOOR = vec3(0.08, 0.10, 0.21);  // the darkest a wash goes at night
 const float SKY_NIGHT_KNEE = 0.32;
@@ -149,6 +154,16 @@ float sky_fbm(vec2 p) {
 
 float sky_power() {
 	return clamp(sky_bolt.w, 0.0, 1.0);
+}
+
+// How little light there is, whatever the cause: night, dusk, or a storm's dark
+// sky at eight in the morning. 0 in full day, 1 in the dead of night. Everything
+// that only belongs to the dark is multiplied by this one term: lamp pools, the
+// neon halo, the lights mirrored in wet ground, the skyglow. Nothing artificial
+// may show on a landscape the sun is still lighting (docs/ART.md section 6).
+float sky_gloom() {
+	float lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
+	return clamp(max(sky_view.y, max(sky_shade.w, 1.0 - clamp(lum * 1.25, 0.0, 1.0))), 0.0, 1.0);
 }
 
 // 0..1 under a cloud: 1 in its shadow, a narrow band at its edge (strength is
@@ -209,7 +224,7 @@ float sky_afterglow(vec3 world_pos, float d) {
 	vec2 toward = normalize(sky_bolt.xy - world_pos.xz + vec2(0.001));
 	float facing = step(sky_cloud_noise(world_pos + vec3(toward.x, 0.0, toward.y) * 0.7), t + SKY_GLOW_RIM * 0.5);
 	float depth = smoothstep(t, t + SKY_GLOW_RIM * 3.0, n);
-	float dots = facing * 0.5 * (1.0 - depth) + 0.035;
+	float dots = facing * 0.32 * (1.0 - depth) + 0.022;
 	return step(d, dots * clamp(sky_bolt.z * 1.6, 0.0, 1.0));
 }
 
@@ -307,6 +322,8 @@ vec4 sky_lamp_colour(vec3 world_pos, float up) {
 // Where the attenuation crosses into the bright core and into the dim ring.
 const float SKY_POOL_CORE = 0.66;
 const float SKY_POOL_RING = 0.32;
+// How far the core of a pool carries the light's own colour into the wash.
+const float SKY_POOL_WASH = 0.7;
 
 // A pool of lamplight in two steps: a bright core (1.0) where the page shows,
 // then a dimmer ring (0.5), each edge broken into a few pixels of stipple and
@@ -333,6 +350,31 @@ float sky_pool(float a, vec3 world_pos) {
 	return 0.0;
 }
 
+// The wash inside a pool: the LIGHT's colour laid on the ground, not the
+// ground's own hue turned up (docs/ART.md section 6, "people's lamps, windows
+// and fires are warm"). The ground keeps its wash and takes the lamp's hue; it
+// lifts only as far as the light is brighter than what it falls on, so a lamp
+// on snow adds nothing and a lamp on dark turf is the page showing through.
+// `pool` is sky_pool's two flat steps, so the wash has two values and no
+// gradient; in daylight there is no pool at all.
+vec3 sky_lamp_wash(vec3 c, vec3 lamp_rgb, float pool) {
+	if (pool <= 0.0) {
+		return c;
+	}
+	float ll = dot(lamp_rgb, vec3(0.3, 0.59, 0.11));
+	if (ll < 0.001) {
+		return c;
+	}
+	float cl = dot(c, vec3(0.3, 0.59, 0.11));
+	vec3 hue = lamp_rgb / ll;
+	float head = clamp(ll - cl, 0.0, 1.0);
+	// Value and hue apart: the ground keeps its own value, lifted by as much as
+	// the light has over it, and takes mostly the light's hue. A multiply would
+	// leave cold ground cold, and a lamp on snow would be a grey disc.
+	vec3 lit = (cl + head * 0.5) * mix(c / max(cl, 0.001), hue, 0.7);
+	return mix(c, lit, pool * SKY_POOL_WASH * sky_gloom());
+}
+
 // How the sky changes the hatching of a MADE surface, for world.gdshader
 // light(). Returns x: 1 where hatching is laid on a sunlit face (a cloud's
 // shadow, or night), y: 1 where hatching is lifted (lamplight, fog, a flash),
@@ -351,7 +393,9 @@ vec3 sky_ink(vec3 world_pos, float up) {
 	// Night comes on a line-length at a time, so dusk never reads as grain.
 	float lay = max(step(sky_hash(floor(px / 3.0) + vec2(17.0, 2.0)), night * 0.999) * step(0.55, up), shaded);
 	float deeper = night * 0.3;
-	float pool = sky_pool(sky_lamp_level(world_pos, up), world_pos);
+	// Lamplight only erases hatching once the dark has come: by day a lit lamp
+	// is a flame, and leaves no mark on the page at all.
+	float pool = sky_pool(sky_lamp_level(world_pos, up), world_pos) * step(0.12, sky_gloom());
 	// The core of a pool is clean page; its ring keeps half its hatching.
 	float lift = max(step(0.99, pool), step(0.49, pool) * step(sky_hash(floor(px / 3.0) + vec2(23.0, 7.0)), 0.5));
 	// Fog thins the hatching a line-length at a time, not pixel by pixel.
@@ -363,6 +407,22 @@ vec3 sky_ink(vec3 world_pos, float up) {
 // Outline ink under this sky: near-black by day, deep blue ink under the moon.
 vec3 sky_line(vec3 ink) {
 	return mix(ink, SKY_NIGHT_INK * max(sky_tint.b, 0.4), sky_view.y * 0.7);
+}
+
+// How wide the edge of a wet patch is drawn, in the lay's own units: wide
+// enough that the stipple between wet and dry runs a tile or two, so wet ground
+// is drawn into the land and never a mask cut out of it.
+const float SKY_WET_FEATHER = 0.13;
+
+// How far the wet has spread at a place, 0..1 (callers cut it into stipple with
+// a per-pixel threshold). One shape, shared by the darkening, the slick and the
+// ink, so a wet afternoon has one set of patches and not three.
+float sky_wet_cover(vec3 world_pos, float w) {
+	if (w <= 0.001) {
+		return 0.0;
+	}
+	float lay = sky_fbm(world_pos.xz * 0.3 + vec2(71.0, 5.0));
+	return smoothstep(-SKY_WET_FEATHER, SKY_WET_FEATHER, 1.5 * w + 0.6 * lay - 0.55);
 }
 
 // Snow, ash and wet left on the land. Flat faces take it first, and it lies in
@@ -392,9 +452,8 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 	if (settle.z > 0.001) {
 		// Wet ground darkens a step in patches that spread as it rains and
 		// shrink as it dries; standing water shows the sky in the flat hollows.
-		float wet_lay = sky_fbm(world_pos.xz * 0.3 + vec2(71.0, 5.0));
 		float w = settle.z;
-		float dark = smoothstep(0.02, 0.06, w + wet_lay * 0.6 - 0.55 + w * 0.5 - 0.5 + 0.5);
+		float dark = sky_wet_cover(world_pos, w);
 		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), step(h, dark));
 		float puddle_lay = sky_noise(world_pos.xz * 1.3 + vec2(11.0, 47.0)) * 0.6 + broad * 0.4;
 		float pool = smoothstep(0.0, 0.02, puddle_lay - 0.86 + (w - 0.5) * 0.12) * flat_face * step(0.5, w);
@@ -503,9 +562,7 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 		e += glint_rgb2[i].rgb * neon_streak(world_pos, px, sky_glints2[i], 1.0);
 		e += glint_rgb3[i].rgb * neon_streak(world_pos, px, sky_glints3[i], 1.0);
 	}
-	float sky_lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
-	float gloom = max(sky_view.y, max(sky_shade.w, 1.0 - clamp(sky_lum * 1.25, 0.0, 1.0)));
-	return e * wet * neon_wet.z * 2.6 * (0.2 + 0.8 * gloom);
+	return e * wet * neon_wet.z * 2.6 * (0.2 + 0.8 * sky_gloom());
 }
 
 // Skyglow: low cloud holds the light of everything the machines keep running,
@@ -513,11 +570,7 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 // never goes to black. Emitted, because a wash multiplied by no light is black.
 // Call from fragment() with the graded albedo and ADD to EMISSION.
 vec3 neon_skyglow(vec3 graded) {
-	// Gloom is how little light there is, whatever the cause: night, dusk, or a
-	// storm's dark sky at eight in the morning.
-	float sky_lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
-	float gloom = max(sky_view.y, max(sky_shade.w, 1.0 - clamp(sky_lum * 1.25, 0.0, 1.0)));
-	return (graded * vec3(0.2, 0.24, 0.3) + vec3(0.02, 0.034, 0.055)) * gloom;
+	return (graded * vec3(0.2, 0.24, 0.3) + vec3(0.02, 0.034, 0.055)) * sky_gloom();
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
@@ -541,18 +594,19 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// derivatives (every face here is flat), so roofs are left out as in light().
 	float face_up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
 	vec4 lamp = sky_lamp_colour(world_pos, face_up);
-	float pool = sky_pool(lamp.a, world_pos);
 	// Water (below 0.36) takes no lamplight at all: no glow disc on the sea.
 	// The pool is the light's own colour: sodium, stolen neon, a fire.
-	c = mix(c, c * (0.55 + lamp.rgb * 1.3), (step(0.99, pool) * 0.22 + step(0.49, pool) * 0.07) * step(0.36, world_pos.y));
+	float pool = sky_pool(lamp.a, world_pos) * step(0.36, world_pos.y);
+	c = sky_lamp_wash(c, lamp.rgb, pool);
 #ifndef SKY_FOUND
 	// Rain-slicked: wet ground is a step darker and holds the sky in a sheen. By
 	// day the sheen is the pale sky, so a wet afternoon is bleak, not night; in
-	// low light the step goes deep and the lights' streaks carry.
+	// low light the step goes deep and the lights' streaks carry. The slick lies
+	// in the same patches the wet wash darkens, stippled at their edges.
 	float wet = neon_wetness(world_pos) * step(0.9, face_up);
 	float day_sheen = 1.0 - clamp(max(sky_view.y, sky_shade.w), 0.0, 1.0);
 	vec3 slick = mix(c * vec3(0.72, 0.76, 0.83), c * vec3(0.84, 0.87, 0.92) + SKY_PUDDLE * sky_tint * 0.04, day_sheen);
-	c = mix(c, slick + vec3(0.02, 0.025, 0.035) * neon_wet.y, wet * step(sky_dither(px), 0.97));
+	c = mix(c, slick + vec3(0.02, 0.025, 0.035) * neon_wet.y, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
@@ -575,8 +629,12 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	if (sky_air.w > 0.001) {
 		// A whiteout: the land round the player still reads, and the page takes
 		// the rest in whole steps with a stippled edge between them, until at
-		// the edge of the screen there is only blowing white.
-		float veil = 0.1 * sky_air.w + 0.9 * sky_whiteout_at(world_pos);
+		// the edge of the screen there is only blowing white. The white comes
+		// in gusts that blow past on the wind, so its edge wanders over the
+		// land like weather and never sits as a ruled ring round the player.
+		float gust = sky_noise((world_pos.xz - sky_wind.xy * time * 1.6) * 0.16 + vec2(5.0, 17.0));
+		float veil = clamp(sky_whiteout_at(world_pos) + (gust - 0.35) * 0.45 * sky_air.w, 0.0, 1.0);
+		veil = max(veil, 0.12 * sky_air.w);
 		c = mix(c, white, floor(veil * 4.0 + sky_dither(px + vec2(37.0, 5.0))) / 4.0);
 	}
 	if (sky_air.y > 0.001) {
@@ -589,7 +647,16 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		// The strike's afterglow rolling through the clouds: a cold blue-white,
 		// laid thinner over bright ground so it never reads as a bank of snow.
 		float lum = dot(c, vec3(0.299, 0.587, 0.114));
-		c = mix(c, SKY_AFTERGLOW, sky_afterglow(world_pos, d) * (0.45 - 0.25 * lum));
+		// The land the light has reached lifts with it, a stipple at a time and
+		// thickest behind the rolling front, so a strike is felt on the ground
+		// and not only in the cloud. Its far edge is the front itself, dithered.
+		c = mix(c, SKY_AFTERGLOW, sky_afterglow(world_pos, d) * (0.38 - 0.2 * lum));
+		// And the land under it lifts a step while the light lasts, cold and
+		// dithered at its edge, so a strike is felt on the ground as well as in
+		// the cloud. A step, never a wash: the shade and the ink keep their places.
+		float away = length(world_pos.xz - sky_bolt.xy);
+		float lifted = clamp(sky_bolt.z, 0.0, 1.0) * (1.0 - smoothstep(sky_view.w * 0.2, sky_view.w + 4.0, away));
+		c = mix(c, min(c * vec3(1.10, 1.14, 1.22), vec3(1.0)), step(sky_dither(px + vec2(19.0, 53.0)), lifted * 0.9));
 	}
 	if (sky_sun.w > 0.001) {
 		// Lightning: for a moment the whole page shows.

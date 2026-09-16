@@ -90,17 +90,21 @@ func setup(cam: CameraRig) -> void:
 		devils.append(_devil(i))
 	hail = _emitter("hail", 900, 0.5, air, mid, false)
 	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4, "ground_mask": 3})
-	# Snow: cold blue-grey flakes with a pale glint on the top-left pixel, so snow
-	# reads falling over snow lying on the page (a pale fleck vanishes into it).
+	# Snow: paper flecks, each held by one pixel of cold shade under it, so snow
+	# reads pale against the snow already lying on the page and never as the
+	# Burning's dark ash (docs/ART.md section 3).
 	snow = _emitter("snow", 8000, 8.0, air, mid, true)
-	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.3, "length_px": Vector2(1, 2.4), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
+	# The rim is the snowfield's own blue shade, not ink: a flake is pale first
+	# and held second, and only some of them (mix_b) are held at all.
+	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.5, "length_px": Vector2(1, 2.4), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
 	# Flakes near the eye: fewer, three pixels across, falling faster past.
 	flurry = _emitter("flurry", 2200, 5.0, Vector3(16.0, 2.0, 14.0), Vector3(0, TOP * 0.8, 0), true)
-	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 1.0, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
+	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.7, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
 	# Blown snow: long low streaks racing along the ground in a blizzard and a
-	# whiteout, cold blue-grey with a pale head, so the wind itself is drawn.
+	# whiteout — paper on a cold shade rim, like the flecks, so the wind is drawn
+	# pale over pale ground and a whiteout is streaks and not specks.
 	spindrift = _emitter("spindrift", 2400, 2.5, Vector3(19.0, 1.0, 15.0), Vector3(0, 0.9, 0), true)
-	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[2], "color_b": Palette.RIME[5], "mix_b": 0.35, "length_px": Vector2(6, 14), "ground_mask": 1})
+	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 1.0, "underline": 1.0, "length_px": Vector2(6, 14), "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.
 	ash = _emitter("ash", 2600, 12.0, air, mid, true)
 	_mat(ash, Mode.FLECK, {"color_a": Palette.INK[1], "color_b": Palette.ASH[3], "mix_b": 0.3, "length_px": Vector2(1, 2), "wander": 3.0, "columns": 0.45, "ground_mask": 2})

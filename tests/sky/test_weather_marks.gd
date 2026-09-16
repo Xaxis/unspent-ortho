@@ -113,10 +113,19 @@ func test_snow_squall_and_whiteout_are_told_apart_at_a_glance() -> void:
 	tree.root.add_child(v)
 	v.setup(null)
 	var snow_mat: ShaderMaterial = v.snow.material_override
-	# Flakes are a cold body with a pale glint, or they vanish over lying snow.
-	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes carry a highlight")
-	var body: Color = snow_mat.get_shader_parameter("color_a")
-	lt(body.get_luminance(), 0.5, "the flake's body is darker than the snow it falls over")
+	# A flake is paper first, held by one pixel of the snowfield's own blue
+	# shade: pale against pale (docs/ART.md section 3). The dark speck belongs to
+	# the Burning's ash, and a whiteout drawn in it reads as dirt on the lens.
+	for m: ShaderMaterial in [snow_mat, v.flurry.material_override, v.spindrift.material_override]:
+		var body: Color = m.get_shader_parameter("color_b")
+		var rim: Color = m.get_shader_parameter("color_a")
+		gt(body.get_luminance(), 0.8, "the mark's body is paper")
+		lt(rim.get_luminance(), body.get_luminance() - 0.25, "its rim is a step of shade under it")
+		gt(rim.get_luminance(), 0.3, "a shade, not ink: ink is the ash's speck")
+	gt(float(snow_mat.get_shader_parameter("highlight")), 0.5, "flakes are drawn with that rim")
+	gt(float((v.spindrift.material_override as ShaderMaterial).get_shader_parameter("underline")), 0.5, "and so are the streaks the wind blows")
+	var ash_body: Color = (v.ash.material_override as ShaderMaterial).get_shader_parameter("color_a")
+	lt(ash_body.get_luminance(), 0.2, "ash stays the dark speck")
 	v.update(WeatherLook.compose([{"kind": &"snow", "strength": 1.0, "weight": 1.0}]), 0.2, Vector3.ZERO, 0.016)
 	check(v.snow.emitting and v.flurry.emitting, "snow falls, with big flakes near the eye")
 	check(not v.spindrift.emitting, "a squall in a light wind does not blow along the ground")
@@ -146,6 +155,61 @@ func test_the_sky_knows_where_the_player_is_for_a_whiteout() -> void:
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()
+
+
+## The sky include's own constants and the rules the shaders spell out. A GLSL
+## law cannot be run here, so it is read: these are the lines a later change
+## must not quietly drop.
+const SKY_INC := "res://src/render/sky.gdshaderinc"
+const OUTLINE := "res://src/render/outline.gdshader"
+
+
+## The first number after `decl` in the shader source (a float const, or the
+## first component of a vec3).
+static func _shader_number(code: String, decl: String) -> float:
+	var at := code.find(decl)
+	if at < 0:
+		return NAN
+	var rest := code.substr(at + decl.length(), 64).strip_edges()
+	if rest.begins_with("="):
+		rest = rest.substr(1).strip_edges()
+	if rest.begins_with("vec3("):
+		rest = rest.substr(5)
+	var num := ""
+	for i in rest.length():
+		var ch := rest[i]
+		if ch.is_valid_int() or ch == "." or ch == "-":
+			num += ch
+		elif num != "":
+			break
+	return num.to_float() if num != "" else NAN
+
+
+func test_the_page_a_whiteout_leaves_is_paler_than_the_snow_it_falls_on() -> void:
+	var code := FileAccess.get_file_as_string(SKY_INC)
+	var white := _shader_number(code, "const vec3 SKY_WHITEOUT")
+	var snow := _shader_number(code, "const vec3 SKY_SNOW")
+	gt(white, snow + 0.02, "the white a whiteout lays is paler than lying snow, or it says nothing")
+	var far := _shader_number(code, "const float SKY_WHITEOUT_FAR")
+	gt(far, _shader_number(code, "const float SKY_WHITEOUT_NEAR") + 4.0, "and it closes in over a distance, never in one step")
+	lt(far, 20.0, "taking the far field inside the screen")
+	check(code.contains("sky_wind.xy * time"), "the white blows past on the wind rather than sitting still")
+
+
+func test_wet_ground_and_the_pool_are_drawn_edges_not_masks() -> void:
+	var code := FileAccess.get_file_as_string(SKY_INC)
+	gt(_shader_number(code, "SKY_WET_FEATHER"), 0.08, "a wet patch's edge is a wide band of stipple, not a cut line")
+	check(code.contains("sky_wet_cover(world_pos, wet)"), "the slick lies in the same patches as the wet wash")
+	check(code.contains("step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover"), "and it is stippled, never blended")
+	# The pool is the light's colour, and only the dark carries it.
+	check(code.contains("vec3 sky_lamp_wash("), "a pool has a wash of its own")
+	check(code.contains("pool * SKY_POOL_WASH * sky_gloom()"), "which shows only as far as the gloom does")
+
+
+func test_the_halo_only_spills_when_the_air_can_carry_it() -> void:
+	var code := FileAccess.get_file_as_string(OUTLINE)
+	check(code.contains("halo_strength * carry"), "the neon halo is multiplied by how dark the air is")
+	check(code.contains("max(sky_gloom()"), "the hour decides it, with a little left for thick rain and fog")
 
 
 func test_drips_are_drops_under_a_crown_not_lines() -> void:

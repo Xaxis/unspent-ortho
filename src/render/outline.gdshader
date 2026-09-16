@@ -30,7 +30,8 @@ uniform float crease = 0.022;
 uniform float crease_strength = 0.45;
 uniform vec3 ink : source_color = vec3(0.031, 0.027, 0.059);
 // Neon halo: light spills from bright saturated pixels into the rain and haze
-// as a stippled glow, a few pixels out. Never a smooth bloom.
+// as a stippled glow, a few pixels out. Never a smooth bloom, and never at
+// noon: the air has to be dark enough to carry the light (docs/ART.md section 6).
 uniform float halo_strength = 0.55;
 // Stippled shafts from the glint list's lights in fog and rain.
 uniform float shaft_strength = 0.9;
@@ -142,8 +143,12 @@ void fragment() {
 	}
 	glow /= 8.0;
 	float gl = max(glow.r, max(glow.g, glow.b));
+	// The hour decides whether the air can carry the spill at all: at noon a
+	// beacon is a bright object, not a light in the air. Only thick rain or fog
+	// lets a little through by day.
+	float carry = max(sky_gloom(), 0.3 * clamp(sky_fog.z + sky_settle.z, 0.0, 1.0));
 	// Stipple: the glow is laid as dots whose density is its strength.
-	float dots = step(ink_hash(wpx + vec2(13.0, 77.0)), clamp(gl * 3.0 * halo_strength, 0.0, 0.7));
+	float dots = step(ink_hash(wpx + vec2(13.0, 77.0)), clamp(gl * 3.0 * halo_strength * carry, 0.0, 0.7));
 	outc = mix(outc, max(outc, glow / max(gl, 0.001) * 0.85), dots);
 	// Shafts: the air that carries them is fog, rain and haze.
 	float air = clamp(sky_fog.z * 1.1 + sky_air.x * 0.45 + sky_air.w * 0.3, 0.0, 1.0);

@@ -91,6 +91,45 @@ func test_afterglow_and_stutter_are_a_beat_then_steady() -> void:
 	gt(float(levels.size()), 4.0, "it rolls: several steps, not one")
 
 
+func test_a_held_strike_stands_where_the_light_and_the_works_both_read() -> void:
+	# A shot of a strike (--weather=kind:s:bolt) freezes one moment. It must be
+	# one where the cloud is lit AND the machines' power is back, or every still
+	# of a storm shows a dark grid and an afterglow that has let go.
+	gt(SkySystem.afterglow(SkySystem.HELD_STRIKE), 0.5, "the held moment is the cloud at its brightest")
+	gt(SkySystem.machine_power(SkySystem.HELD_STRIKE), 0.9, "and the machines are back between two dips")
+
+
+func test_a_drawn_strike_lands_on_the_page() -> void:
+	# The bolt is drawn where it lands; a strike that walks off the screen to
+	# find a tall prop is only thunder.
+	var o := BootOptions.new()
+	o.size = 96
+	o.hour = 20.2
+	o.weather = "dry_storm:1:bolt"
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	# Long enough for the sky to have composed a frame of its own after the strike.
+	await frames(12)
+	var sky_sys: Node = null
+	for s in g.systems:
+		if s.get_script() == SkySystem:
+			sky_sys = s
+	check(sky_sys != null, "sky system loaded")
+	eq(sky_sys.strikes, 1, "a forced bolt strikes once")
+	var v: WeatherView = sky_sys.view
+	check(v.bolt.visible, "and the bolt is drawn")
+	var here := Vector2(g.camera.target.x, g.camera.target.z)
+	var at := Vector2(v.bolt.ground.x, v.bolt.ground.z)
+	lt(absf(at.x - here.x), SkySystem.STRIKE_REACH.x + 0.01, "east-west, on the page")
+	lt(absf(at.y - here.y), SkySystem.STRIKE_REACH.y + 0.01, "north-south, on the page")
+	gt(g.sky.bolt.z, 0.1, "the cloud carries its afterglow")
+	gt(g.sky.bolt.w, 0.9, "and the machines are lit in the same frame")
+	g.queue_free()
+	await frames(1)
+	Weather.unforce()
+
+
 func test_every_machine_light_shader_runs_on_machine_power() -> void:
 	for path: String in ["res://src/render/found.gdshader", "res://src/models/machines/part_glow.gdshader"]:
 		var code := FileAccess.get_file_as_string(path)
