@@ -31,6 +31,7 @@ tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score 
 tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
 tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
 tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
+tools/deploy.sh [--prod]                    # export, put it on Vercel, and prove it runs THERE in a real browser
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Esc pause)
 ```
 
@@ -40,6 +41,19 @@ keyboard straight back to whoever was typing, so a hundred shots and tours an ho
 never interrupt the person at the machine. Only a session a person means to play
 takes the focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1`
 lets a tool run come to the front, to watch it play.
+
+**Shipping it.** `github.com/Xaxis/unspent-ortho` (public) is the remote; commits
+are the owner's, as everywhere else. `tools/deploy.sh` exports the threaded web
+build, puts it on Vercel (project `unspent`, team `xaxis-projects`) and then loads
+the deployed URL in a real browser to prove the host is serving it correctly —
+the threaded build only starts on a cross-origin-isolated page, so the headers in
+that script are load-bearing, not decoration. Each build is served from
+`/b/<sha>/` with `/` redirecting to it, so every file can be cached forever and a
+returning player can never run a new pack against an old engine.
+`VERCEL_TOKEN` lives in `.env` (never committed) and in the repository's secrets,
+with `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. A push to main deploys a preview;
+production — what `unspent.world` will serve — is a deliberate act: run the
+deploy workflow by hand with `production`, or `tools/deploy.sh --prod`.
 
 Shot and boot options live in `src/boot_options.gd` (its header lists every one).
 The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
