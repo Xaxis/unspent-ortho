@@ -43,6 +43,14 @@ const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
 ## A house's door and window: hearth light, between a lamp and an open fire.
 const HEARTH_WARM := Vector3(0.95, 0.66, 0.42)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
+## What the ground round a vent looks like in FULL DAYLIGHT: over 1, because the
+## crust round a hole into fire is brighter than the daylight beside it and a
+## target under the sun asks for no light at all (burning_warm).
+const VENT_DAY_WARM := Vector3(1.16, 1.05, 0.86)
+## And how much of its reach it keeps in full daylight. By day the glow only
+## beats the sun on the crust round the mouth; opened to its night radius it is
+## a pale disc a dozen tiles across lying over the land, which is fog, not fire.
+const VENT_DAY_REACH := 0.45
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
@@ -144,6 +152,9 @@ const MACHINE_POOL := Vector2(2.6, 1.0)
 ## rule is right and stays — but the Burning's vents are open fire in the ground
 ## and must reach the ground they are in at every hour (docs/ART.md §3).
 const VENT_DAY := 1.5
+## How far inside the frame a machine must stand for `await machine` to say the
+## shot holds it: a fifth of the screen in from every edge.
+const TOUR_MARGIN := 0.2
 ## House variants that wired a machine's light over the door (props/houses.gd:
 ## washed form 1 and slated form 0). Until PropModels.glow_points says so per
 ## variant, the list lives here.
@@ -246,6 +257,28 @@ static func burning_level(kind: int, power: float, dark: float) -> float:
 	if kind == PropKind.VENT:
 		return maxf(level, power * VENT_DAY * (1.0 - dark))
 	return level
+
+
+## What the ground under a burning thing looks like, as a display multiply on its
+## albedo, at darkness `dark`.
+##
+## Every other light in the game aims BELOW daylight: a lamp's ochre wash is 0.96
+## of the albedo, which is what a lamp does to a wall in the dark. compensate()
+## works out the light needed to reach that target and finds, under a noon sun,
+## that the answer is none — correctly, because a target under the sun is already
+## met. So a vent's daylight floor was raising a level that was then multiplied by
+## a colour of exactly zero, and the wash reached the ground only where the sky
+## itself was dim: in the Burning's own smoke, which is the one place anyone had
+## photographed it. On a clear noon it was still nothing.
+##
+## A hole into fire is not a lamp. The ground round it is brighter than the
+## daylight beside it, so by day its target sits ABOVE 1 and compensate has
+## something to solve for whatever the sun is doing. It eases back to the ochre
+## wash as the dark comes on, where the fix was never needed.
+static func burning_warm(kind: int, dark: float) -> Vector3:
+	if kind != PropKind.VENT:
+		return FIRE_WARM
+	return VENT_DAY_WARM.lerp(VENT_WARM, clampf(dark, 0.0, 1.0))
 
 
 ## Does this source lay a wash on the ground at this darkness? A pool of light
@@ -457,8 +490,12 @@ func _update(delta: float, snap: bool) -> void:
 		var level: float = s.power
 		# Whether this source lays a wash on the ground at all right now.
 		var lays := lays_pool(kind, dark)
+		var warm: Vector3 = s.warm
+		var reach: float = s.range
 		if kind == PropKind.VENT:
 			level = burning_level(kind, float(s.power), hour_dark) * flash
+			warm = burning_warm(kind, hour_dark)
+			reach = s.range * lerpf(VENT_DAY_REACH, 1.0, hour_dark)
 		elif kind == PropKind.FIRE or kind == PropKind.KILN:
 			level = burning_level(kind, float(s.power), dark)
 		else:
@@ -468,8 +505,8 @@ func _update(delta: float, snap: bool) -> void:
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, s.range, compensate(s.warm, tint, sun) * level) and lays:
-			pools.append(Vector4(s.at.x, s.at.y, s.at.z, s.range))
+		if _set_light(l, s.at, reach, compensate(warm, tint, sun) * level) and lays:
+			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
 	var lit := game.body.lamp_lit
@@ -626,6 +663,54 @@ func _machine_at(s: Dictionary) -> bool:
 	var at: Vector3 = mob.call("part_position")
 	s.at = Vector3(at.x, maxf((mob as Node3D).global_position.y + 0.35, at.y - 0.3), at.z)
 	return true
+
+
+## Tour awaits. `machine` is a live machine close enough and far enough inside
+## the frame that a shot taken now would hold it; `machine:KIND` is that machine
+## being of that kind.
+##
+## It lives here because this is the system that already keeps every live machine
+## near the camera, for the pool each one lays. It exists because `walkto mob N`
+## steers for at most N seconds and then returns true either way, so a proof
+## frame staged with it is a timed nudge and not a guarantee: the machine-read
+## tour's own wary-at-noon frame came out EMPTY on about half its runs, and was
+## saved as proof of a read that nothing in the picture supported (wave A2
+## review). A tour can now hold the shot until the body is there, and fail if it
+## never comes.
+func tour_seen(what: StringName) -> bool:
+	var want := StringName(String(what).trim_prefix("machine:"))
+	if want == what and what != &"machine":
+		return false
+	for m in get_tree().get_nodes_in_group(&"mobs"):
+		var mob := m as Node
+		if not bool(mob.get("alive")):
+			continue
+		if what != &"machine" and StringName(mob.get("kind")) != want:
+			continue
+		if (mob.get("model") as MachineModel) == null:
+			continue
+		if _framed(mob as Node3D):
+			return true
+	return false
+
+
+## Is this body inside the middle of the frame, by enough that the few physics
+## frames between an await and the shutter cannot carry it out?
+func _framed(mob: Node3D) -> bool:
+	var cam := game.camera
+	if cam == null or not cam.is_inside_tree():
+		return false
+	var vp := cam.get_viewport().get_visible_rect().size
+	if vp.x <= 0.0 or vp.y <= 0.0:
+		return false
+	# The body's own middle, not its feet: a tall machine standing at the bottom
+	# edge is a machine the frame holds.
+	var at := mob.global_position + Vector3(0, 0.6, 0)
+	if cam.is_position_behind(at):
+		return false
+	var p := cam.unproject_position(at) / vp
+	return p.x > TOUR_MARGIN and p.x < 1.0 - TOUR_MARGIN \
+		and p.y > TOUR_MARGIN and p.y < 1.0 - TOUR_MARGIN
 
 
 static func neon_colour(s: Dictionary) -> Vector3:

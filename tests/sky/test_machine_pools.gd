@@ -11,16 +11,29 @@ extends TestCase
 const Lights := preload("res://src/systems/15_lights.gd")
 
 
-func _game(hour: float) -> Game:
+func _game(hour: float, put: PackedStringArray = PackedStringArray()) -> Game:
 	var o := BootOptions.new()
 	o.size = 64
 	o.hour = hour
 	o.weather = "clear:0"
-	o.spawn = PackedStringArray(["watcher"])
+	o.put = put
+	o.spawn = PackedStringArray([] if not put.is_empty() else ["watcher"])
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(o)
 	return g
+
+
+## The pool the sky is handed for the nearest prop of `kind`, or Vector4.ZERO.
+static func prop_pool(g: Game, kind: int) -> Vector4:
+	var best := Vector4.ZERO
+	for q in g.query.props_near(g.player.pos, 12.0):
+		if q.kind != kind:
+			continue
+		for p: Vector4 in g.sky.lamps:
+			if Vector2(p.x, p.z).distance_to(q.pos) < 1.2:
+				best = p
+	return best
 
 
 ## The pool the sky is handed for a machine, or Vector4.ZERO.
@@ -114,6 +127,30 @@ func test_a_vent_lights_its_own_ground_at_noon_and_a_lamp_does_not() -> void:
 		var d := Lights.burning_level(PropKind.VENT, 1.0, i / 20.0)
 		lt(absf(d - last), 0.12, "the vent's level walks, never jumps, at dark %.2f" % (i / 20.0))
 		last = d
+
+
+## And that wash actually reaches the SKY, in a running game, at noon.
+##
+## Everything above exercises the pure curve, and a pure curve would pass
+## unchanged if the pool never left the CPU — which is what the daylight half of
+## this fix dies of when it dies: a vent past REACH, or eight nearer sources
+## taking the whole budget, and the ground is flat again with every test still
+## green (wave A2 review). This one stands the player beside a vent at noon and
+## asks the sky what it was handed.
+func test_a_vents_wash_reaches_the_sky_at_noon_where_a_lamp_gets_nothing() -> void:
+	var g := _game(12.0, PackedStringArray(["vent"]))
+	var vent := Vector4.ZERO
+	for i in 24:
+		await frames(10)
+		vent = prop_pool(g, PropKind.VENT)
+		if vent.w > 0.0:
+			break
+	gt(vent.w, 0.0, "the vent's wash is in the sky's own pool list at noon: %s" % [g.sky.lamps])
+	# The village's own lamps stand within the same reach and get nothing:
+	# the daylight floor belongs to the one light that is a hole into fire.
+	eq(prop_pool(g, PropKind.LAMP), Vector4.ZERO, "a lamp in the same reach still lays nothing at noon")
+	eq(prop_pool(g, PropKind.FIRE), Vector4.ZERO, "nor does a campfire")
+	g.free()
 
 
 ## A lightning flash drowns the pools; it is NOT daylight.

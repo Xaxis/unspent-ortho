@@ -10,8 +10,16 @@
 # nothing waits after them: the world clock runs while a tour walks, a loaded
 # machine turned the night act into the next morning once already, and a keeper
 # that keeps its round walked out of frame 02 in the third of a second the frame
-# used to wait. A tour whose proof frame does not hold the thing it is about
-# proves nothing, so the approach is the last thing that happens.
+# used to wait.
+#
+# Every approach is a `try` block that ENDS IN AN AWAIT, and the await is one
+# only that machine can answer: `machine:KIND` is true when a live body of that
+# kind stands far enough inside the frame that the shutter will hold it
+# (15_lights.tour_seen). `walkto mob N` steers for at most N seconds and then
+# returns true whether or not it arrived, so a frame staged with it alone is a
+# timed nudge: the first version of frame 02 came out EMPTY on about half its
+# runs and was shipped as proof of a read nothing in the picture supported. Now
+# a frame that does not hold its machine stops the tour instead.
 #
 # It ends on the other half of the same finding: light that does not touch the
 # world. A machine's lens was in the glint list alone, which only mirrors in WET
@@ -27,8 +35,10 @@ wait 1.2
 
 # indifferent: a worker on its round, nothing of yours.
 spawn harvester
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:harvester 0.5
+end
 hour 12
 weather clear:0
 shot 01-noon-indifferent
@@ -38,8 +48,10 @@ coast calm
 wait 0.5
 at 200.5,431.5
 spawn warden
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:warden 0.5
+end
 hour 12
 weather clear:0
 shot 02-noon-wary
@@ -49,8 +61,10 @@ coast calm
 wait 0.5
 at 200.5,431.5
 spawn watcher
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:watcher 0.5
+end
 hour 12
 weather clear:0
 shot 03-noon-observant
@@ -66,10 +80,9 @@ wait 1.4
 press use 0.3
 await theft 8
 await turned 4
-wait 0.15
+await machine:harvester 3
 hour 12
 weather clear:0
-wait 0.6
 shot 04-noon-hostile
 
 # --- night --------------------------------------------------------------------
@@ -81,8 +94,10 @@ at 200.5,431.5
 wait 1.4
 
 spawn harvester
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:harvester 0.5
+end
 hour 23
 weather clear:0
 shot 05-night-indifferent
@@ -91,8 +106,10 @@ coast calm
 wait 0.5
 at 200.5,431.5
 spawn warden
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:warden 0.5
+end
 hour 23
 weather clear:0
 shot 06-night-wary
@@ -101,8 +118,10 @@ coast calm
 wait 0.5
 at 200.5,431.5
 spawn watcher
-walkto mob 3
-walkto mob 1.2
+try 6
+	walkto mob 2
+	await machine:watcher 0.5
+end
 hour 23
 weather clear:0
 shot 07-night-observant
@@ -115,10 +134,9 @@ wait 1.4
 press use 0.3
 await theft 8
 await turned 4
-wait 0.15
+await machine:harvester 3
 hour 23
 weather clear:0
-wait 0.6
 shot 08-night-hostile
 
 # --- machine light lands on the ground -----------------------------------------
@@ -132,11 +150,12 @@ at 135,375
 zoom 8
 wait 1.4
 spawn watcher
-walkto mob 3
-wait 1.0
+try 6
+	walkto mob 2
+	await machine:watcher 0.5
+end
 hour 23
 weather clear:0
-wait 0.6
 shot 09-its-light-on-the-ground
 
 # --- the land's own fire lands on the land ---------------------------------------
