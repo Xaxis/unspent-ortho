@@ -54,6 +54,30 @@ func test_needs_appear_only_when_they_matter() -> void:
 			eq(n.level, 2, "twice the creel is the accent")
 
 
+## Starving is not "hungry, worse": it is the rung where the body goes down, and
+## a lit lamp running dry takes the light and the slate's power with it.
+func test_the_last_rung_of_hunger_and_the_lamp_running_dry() -> void:
+	var b := Body.new()
+	b.fed_until = 1000.0
+	var t := 1000.0
+	while b.hunger_level(t) < 3:
+		t += 10.0
+	eq(UiRules.needs(b, t, 10.0)[0].level, 3, "starving is its own rung")
+	b.fed_until = t + 100000.0
+	check(UiRules.needs(b, t, 10.0, UiRules.CREEL, 10.0, false).is_empty(), "an unlit lamp asks nothing")
+	check(UiRules.needs(b, t, 10.0, UiRules.CREEL, Survival.LAMP_LOW_MINUTES * 2.0, true).is_empty(), "nor a full one")
+	var low := UiRules.needs(b, t, 10.0, UiRules.CREEL, Survival.LAMP_LOW_MINUTES * 0.8, true)
+	eq(low.size(), 1)
+	eq(low[0].need, &"lamp")
+	eq(low[0].level, 2, "low oil is the accent")
+	near(float(low[0].value), 0.8, 0.01, "the gauge reads what is left, not how bad it is")
+	var last := UiRules.needs(b, t, 10.0, UiRules.CREEL, Survival.LAMP_LOW_MINUTES * 0.1, true)
+	eq(last[0].level, 3, "minutes from guttering is the last rung")
+	var p := UiRules.pressures(b, t, 10.0, UiRules.CREEL, Survival.LAMP_LOW_MINUTES * 0.1, true)
+	eq(p[0].id, &"lamp", "and it reaches the gauges with its own value")
+	near(float(p[0].value), 0.1, 0.01)
+
+
 func test_hostile_near_ignores_the_dead_and_the_far() -> void:
 	var p := Vector2(50, 50)
 	check(not UiRules.hostile_near([], p), "nobody")

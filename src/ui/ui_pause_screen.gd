@@ -14,6 +14,7 @@ const KEYS := [
 	["ctrl  q", "crouch"],
 	["space  j", "swing, or pull free"],
 	["e", "use what is in reach"],
+	["x", "hold: put down what is in hand"],
 	["f", "lamp"],
 	["tab  i", "carrying"],
 	["c", "making"],
@@ -123,7 +124,8 @@ static func draw_keys_list(ci: CanvasItem, at: Vector2i, key_w: int = 56) -> voi
 
 
 func _draw() -> void:
-	draw_frame(&"")
+	# Home is a tab of its own on the strip: it lights while it is on the glass.
+	draw_frame()
 	var L := UiSlate.LIST
 	var R := UiSlate.SPARE
 	UiSlate.title(self, L, "PAUSED" if page == "list" else "CONTROLS")

@@ -78,6 +78,21 @@ static func act(app: StringName, game: Game, row_id: StringName) -> String:
 	return ""
 
 
+## What can go in a slot, said plainly, for a slot standing empty: a player who
+## has found nothing yet still learns what to look for.
+static func fits(slot: StringName) -> String:
+	var kinds := PackedStringArray()
+	for kit: StringName in KIT_SLOT:
+		if KIT_SLOT[kit] == slot:
+			kinds.append(String(kit))
+	if not kinds.is_empty():
+		return "takes %s" % " or ".join(kinds)
+	match slot:
+		&"tool": return "takes what is in hand"
+		&"craft": return "takes a mended machine module"
+	return ""
+
+
 static func default_loadout(game: Game) -> Dictionary:
 	var slots: Array[Dictionary] = []
 	var worn := &""

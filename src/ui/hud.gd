@@ -8,12 +8,16 @@ extends CanvasLayer
 ##
 ##   top left     the wrist unit: health as cells of three segments (no numbers);
 ##                wind under it only while some is spent; charges beside it only
-##                while the thing in hand spends them
+##                while the thing in hand spends them; under all of it the goal,
+##                one dim line, standing until it changes
 ##   top right    the clock and the slate's cell; under it the felt pressures,
-##                a small gauge each, only while they matter
-##   top middle   the location ping, when the player crosses into a landscape
+##                a small gauge each, only while they matter, hunger nearest the
+##                clock
+##   top middle   nothing but the location ping, when the player crosses into
+##                a landscape
 ##   bottom left  the thing in hand
-##   bottom mid   a message line that fades; under it what E would do here
+##   bottom mid   a message line that fades; under it what E (or the key the
+##                guide is teaching) would do here
 ##
 ## The HUD owns no rules. The ui system (src/systems/90_ui.gd) feeds it every
 ## frame from Body, Inventory and the world; Events.message arrives directly.
@@ -26,8 +30,16 @@ const PLACE_HOLD := 2.6
 const PLACE_OUT := 1.4
 ## A place name gives way to a fight this fast.
 const PLACE_HUSH := 0.3
+## How far outside their place the name's brackets start, in pixels.
+const PLACE_SWEEP := 30.0
 ## A pressure gauge's tile, and the gap between tiles.
 const GAUGE := Vector2i(13, 16)
+## The body's own needs, in the order they cost you the run. The gauges are
+## drawn right to left from the clock, so the first here sits under the clock:
+## hunger, the rung that ends the run, is nearest it and never moves.
+const GAUGE_ORDER: Array[StringName] = [&"hunger", &"lamp", &"wet", &"load", &"tired"]
+## Where the standing goal line sits: under the wrist unit and its wind line.
+const GOAL_Y := 26
 
 var clock_text := ""
 var health := 12
@@ -39,6 +51,10 @@ var pressures: Array[Dictionary] = []
 var hint := ""
 var hint_key := "e"
 var messages := UiMessages.new()
+## What to want next (Guide.goal), standing at the top until it changes. It
+## steps aside for the location ping, for a fight, and for its own words while
+## they are still on the message line.
+var goal := ""
 var place := ""
 var charge_shown := false
 var charges := 0
@@ -69,6 +85,7 @@ func _ready() -> void:
 	_canvas.draw.connect(_draw_hud)
 	add_child(_canvas)
 	Events.message.connect(show_message)
+	Events.hint.connect(teach)
 	Events.screen_changed.connect(_on_screen_changed)
 
 
@@ -113,8 +130,13 @@ func set_pressures(list: Array[Dictionary]) -> void:
 func set_needs(list: Array[Dictionary]) -> void:
 	var out: Array[Dictionary] = []
 	for n in list:
-		out.append({"id": n.need, "level": n.level, "value": 0.5 if n.level == 1 else 1.0})
+		out.append({"id": n.need, "level": n.level, "value": float(n.get("value", 0.5 if n.level == 1 else 1.0))})
 	pressures = out
+
+
+## The one-line goal, or "" for none.
+func set_goal(text: String) -> void:
+	goal = text
 
 
 ## text "" hides the hint (it fades out rather than blinking off).
@@ -169,6 +191,33 @@ func say_now(text: String) -> void:
 	messages.push(text, true)
 
 
+## A teaching line (Events.hint): said now, or not at all. It is never held
+## back by the fight's quiet mode and never queued, so a lesson about walking
+## or the lamp cannot arrive minutes later, out of the moment that earned it.
+func teach(text: String, _key: String = "") -> void:
+	if not can_teach():
+		return
+	messages.push(text)
+
+
+## True while a teaching line said now would be read: nothing hostile close,
+## nothing over the glass. A lesson whose moment is "the fight is over" (the
+## guide's plate line, said after a machine has broken off) waits on this rather
+## than being emitted into the quiet, where `teach` would drop it for good.
+func can_teach() -> bool:
+	return not messages.quiet and _pages.is_empty()
+
+
+## True while the goal line is on the glass: nothing louder is using the space.
+func goal_shown() -> bool:
+	if goal == "" or messages.quiet or place_alpha() > 0.0:
+		return false
+	for l in messages.visible():
+		if String(l.text).begins_with(goal):
+			return false
+	return true
+
+
 ## While true (a fight is near), messages wait until it is over.
 func set_quiet(q: bool) -> void:
 	if q != messages.quiet:
@@ -178,7 +227,7 @@ func set_quiet(q: bool) -> void:
 ## How visible each readout is now, 0..1, by name (tests, and what is drawn):
 ## health clock held always; wind, charge, hint, place and each pressure id by their fades.
 func shown() -> Dictionary:
-	var out := {&"health": 1.0, &"clock": 1.0, &"held": 1.0, &"wind": _wind_alpha, &"charge": _charge_alpha, &"hint": _hint_alpha, &"place": place_alpha()}
+	var out := {&"health": 1.0, &"clock": 1.0, &"held": 1.0, &"wind": _wind_alpha, &"charge": _charge_alpha, &"hint": _hint_alpha, &"place": place_alpha(), &"goal": 1.0 if goal_shown() else 0.0}
 	for k: StringName in _gauge_alpha:
 		out[k] = _gauge_alpha[k]
 	return out
@@ -231,6 +280,7 @@ func _draw_hud() -> void:
 	_draw_clock(ci)
 	_draw_held(ci)
 	_draw_bottom(ci)
+	_draw_goal(ci)
 	_draw_place(ci)
 
 
@@ -317,24 +367,35 @@ func _draw_clock(ci: Control) -> void:
 	for p in pressures:
 		level[p.id] = p.level
 		value[p.id] = p.value
-	var order: Array = _gauge_alpha.keys()
-	order.sort()
-	for k: StringName in [&"hunger", &"wet", &"load", &"tired"]:
-		if order.has(k):
-			order.erase(k)
-			order.push_front(k)
-	for k: StringName in order:
+	for k: StringName in gauge_order(_gauge_alpha.keys()):
 		var a: float = _gauge_alpha.get(k, 0.0)
 		if a <= 0.0:
 			continue
-		var warn := int(level.get(k, 1)) >= 2
-		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), UiTheme.WARN if warn else UiTheme.TEXT, float(value.get(k, 0.5)), a)
+		var lv := int(level.get(k, 1))
+		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), UiTheme.WARN if lv >= 2 else UiTheme.TEXT, float(value.get(k, 0.5)), a, lv)
 		x -= GAUGE.x + 5
 
 
+## The gauges under the clock, in the order they stand out from it (GAUGE_ORDER
+## first, then whatever the land presses with, by name).
+static func gauge_order(ids: Array) -> Array[StringName]:
+	var rest: Array = ids.duplicate()
+	# By name: StringName's own ordering is by pointer, which is no order at all.
+	rest.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
+	var out: Array[StringName] = []
+	for k in GAUGE_ORDER:
+		if rest.has(k):
+			rest.erase(k)
+			out.append(k)
+	for k: Variant in rest:
+		out.append(StringName(k))
+	return out
+
+
 ## A felt pressure: its glyph on a scrap of glass, a meter under it filling
-## with how hard it presses.
-func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float, a: float) -> void:
+## with how hard it presses. At level 3 (starving, the lamp all but dry) the
+## tile is bracketed and beats, so the last rung is never read as the middle one.
+func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float, a: float, level: int = 1) -> void:
 	# Fading, the whole tile steps in and out together (its glass holds the glyph).
 	var k := UiDraw.stepped(a)
 	if k <= 0.0:
@@ -342,6 +403,9 @@ func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float
 	var r := Rect2i(at, GAUGE)
 	UiDraw.rect(ci, r.grow(1), Color(UiTheme.RIM, k))
 	UiDraw.rect(ci, r, Color(UiTheme.GLASS, k))
+	if level >= 3:
+		var beat := 0.55 + 0.45 * sin(_time * 3.2)
+		UiDraw.frame(ci, r.grow(1), Color(col, k * (0.35 + 0.55 * beat)))
 	UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": Color(col, k)})
 	var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
 	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), Color(UiTheme.GHOST, k))
@@ -379,6 +443,27 @@ func _draw_bottom(ci: Control) -> void:
 		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 5, y + 1), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
 
 
+## What to want next: one quiet line hung off the wrist unit, a phosphor
+## chevron before it. It stands (it is not a message that fades) so a player who
+## looks up an hour later still knows what they were doing — and it hangs off a
+## corner readout rather than banding the top middle, where the fight is and
+## where nothing but the location ping belongs (docs/ART.md §9).
+func _draw_goal(ci: Control) -> void:
+	if not goal_shown():
+		return
+	var x := MARGIN + 6
+	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 3), UiTheme.PHOSPHOR[2])
+	UiDraw.text_rimmed(ci, Vector2i(x + 6, GOAL_Y), goal, UiTheme.TEXT_DIM, UiTheme.RIM)
+
+
+## How far from the middle each bracket of the place name stands, `grow` 0..1
+## through the ping's rise. They close IN from outside the word to their place
+## and never sweep across the letters: a bright mark travelling over a name
+## reads as a name struck out (docs/ART.md §9 — the slate's type is exact).
+static func place_half(w: int, grow: float) -> int:
+	return roundi(w / 2.0 + 12.0 + (1.0 - clampf(grow, 0.0, 1.0)) * PLACE_SWEEP)
+
+
 ## The location ping: a ring goes out from the top middle, then the landscape's
 ## name in spaced capitals between brackets drawn out from the middle.
 func _draw_place(ci: Control) -> void:
@@ -400,7 +485,7 @@ func _draw_place(ci: Control) -> void:
 			UiDraw.px(ci, 320 + roundi(cos(an) * pr * 1.6), y + 4 + roundi(sin(an) * pr * 0.5), Color(UiTheme.BRIGHT, ring_a))
 	UiDraw.text_rimmed_faded(ci, Vector2i(320 - w / 2, y), spaced, UiTheme.BRIGHT, UiTheme.RIM, a)
 	UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", UiTheme.TEXT_DIM, UiTheme.RIM, a * grow)
-	var half := roundi((w / 2 + 12) * grow)
+	var half := place_half(w, grow)
 	for side: int in [-1, 1]:
 		var bx := 320 + side * half
 		UiDraw.rect(ci, Rect2i(bx - 1, y - 2, 3, 13), Color(UiTheme.RIM, k))

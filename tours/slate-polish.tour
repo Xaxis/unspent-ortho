@@ -1,0 +1,94 @@
+# The slate's lines and its keys, from a normal start: what to want standing on
+# the HUD, every app opened by the key its own tab names, long work set going at
+# a fire the player lays and watched from the page, a thing put down from the
+# carrying page, and a location caption that is right the instant the player is
+# somewhere else.
+#   tools/tour.sh tours/slate-polish.tour --seed=7 --hour=10 --weather=clear:0 --give=driftwood:8,stone:4
+coast calm
+wait 1.6
+shot 01-woken-the-ping-has-the-top
+# The guide says what to want; once its line has faded, the goal stands on.
+wait 5
+shot 02-goal-on-the-hud
+# Making: a fire laid by hand, then charcoal set going on it and left.
+tap craft
+await app:crafting 3
+shot 03-making-and-its-keys
+choose campfire
+tap use
+await made 4
+wait 0.6
+shot 04-fire-laid
+choose charcoal
+shot 05-ready-at
+tap use
+wait 0.8
+shot 06-on-now
+tap pause
+await app:none 3
+# Carrying: X puts down what is not needed, onto a heap the world keeps.
+tap inventory
+await app:inventory 3
+shot 07-carrying-and-its-keys
+choose stone
+shot 08-stone-chosen
+tap drop
+wait 0.6
+shot 09-put-down
+tap pause
+await app:none 3
+wait 0.6
+shot 10-the-heap-it-went-on
+# Home, and the three apps that hang off it on the strip.
+tap pause
+await app:pause 3
+shot 11-home
+choose loadout
+tap use
+await app:loadout 3
+shot 12-gear
+tap pause
+await app:pause 3
+choose reads
+tap use
+await app:reads 3
+shot 13-machine-reads
+tap pause
+await app:pause 3
+choose saves
+tap use
+await app:saves 3
+shot 14-saves
+tap pause
+await app:pause 3
+choose controls
+tap use
+wait 0.4
+shot 15-controls-say-x
+tap pause
+wait 0.3
+tap pause
+await app:none 3
+# The map on its own key, and back to the world.
+tap map
+await app:map 3
+shot 16-map
+tap map
+await app:none 3
+# The caption is right the instant the player is somewhere else, and its
+# brackets close in from outside the word rather than over the letters.
+place snowfield
+wait 0.35
+shot 17-caption-closing-in
+wait 0.8
+shot 18-caption-snowfield
+place burning
+wait 1.0
+shot 19-caption-burning
+place moss
+wait 1.0
+shot 20-caption-moss
+# The goal stands on over the brightest ground there is, once the ping is done.
+place snowfield
+wait 5
+shot 21-the-goal-over-bright-ground

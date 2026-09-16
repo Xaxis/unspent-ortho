@@ -47,8 +47,12 @@ const LOW_POWER := 0.25
 const DIM_FLOOR := 0.8
 
 ## Apps in the order the status bar lists them: [screen name, tab label, key].
-## The first three have keys of their own; the rest live under Esc (home).
-const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map", "MAP", "m"], [&"loadout", "GEAR", ""], [&"reads", "READS", ""], [&"saves", "SAVES", ""]]
+## Every tab names the key that reaches it. Three have keys of their own; home
+## is Esc; the three that live under home follow it behind a chevron, so the
+## Esc cap reads as reaching them THROUGH home and never promises more.
+const TABS := [[&"inventory", "CARRY", "i"], [&"crafting", "MAKE", "c"], [&"map", "MAP", "m"], [&"pause", "HOME", "esc"], [&"loadout", "GEAR", ""], [&"reads", "READS", ""], [&"saves", "SAVES", ""]]
+## The app the keyless tabs are chosen inside.
+const UNDER: StringName = &"pause"
 
 ## Main thread only: textures made from finished bakes.
 static var _textures := {}
@@ -144,15 +148,35 @@ static func dim(ci: CanvasItem, brightness: float, d: Rect2i = DEVICE) -> void:
 	UiDraw.rect(ci, glass_of(d), Color(UiTheme.GLASS_OFF, clampf(1.0 - brightness, 0.0, 1.0)))
 
 
+## The key that reaches app `n` on the status bar: its own, or home's for the
+## apps chosen inside home. "" for anything that is not a tab.
+static func tab_key(n: StringName) -> String:
+	var home := ""
+	for tab: Array in TABS:
+		if tab[0] == UNDER:
+			home = tab[2]
+	for tab: Array in TABS:
+		if tab[0] == n:
+			return tab[2] if tab[2] != "" else home
+	return ""
+
+
+## True for an app reached by choosing it inside home rather than by a key.
+static func tab_under_home(n: StringName) -> bool:
+	for tab: Array in TABS:
+		if tab[0] == n:
+			return tab[2] == ""
+	return false
+
+
 ## The status bar: the slate's name, the apps with the open one lit, the clock
-## and the cell. `app` is a screen name (&"" on the home app).
+## and the cell. `app` is a screen name (&"" with no app on the glass).
 static func status(ci: CanvasItem, app: StringName, clock: String, power: float, d: Rect2i = DEVICE, tabs: bool = true) -> void:
 	var g := glass_of(d)
 	var y := g.position.y + 2
 	var x := g.position.x + MARGIN_L
 	UiDraw.hline(ci, g.position.x + MARGIN_L - 2, g.end.x - MARGIN_R, g.position.y + STATUS_H, UiTheme.GHOST)
-	var home := app == &"" or app == &"pause"
-	UiDraw.text(ci, Vector2i(x, y), "slate", UiTheme.BRIGHT if home else UiTheme.TEXT_DIM)
+	UiDraw.text(ci, Vector2i(x, y), "slate", UiTheme.BRIGHT if app == &"" else UiTheme.TEXT_DIM)
 	x += UiFont.width("slate") + 6
 	if tabs:
 		UiDraw.vline(ci, x, y + 2, y + 8, UiTheme.FAINT)
@@ -161,22 +185,36 @@ static func status(ci: CanvasItem, app: StringName, clock: String, power: float,
 	for tab: Array in (TABS if tabs else []):
 		var label: String = tab[1]
 		var lit: bool = tab[0] == app
-		# Each tab says how it is reached: its key, or Esc once for all that live under home.
 		var k: String = tab[2]
-		if k == "" and not under_home:
+		if k != "":
+			if tab[0] == UNDER:
+				# Home and what hangs off it stand apart from the keyed apps.
+				UiDraw.vline(ci, x - 2, y + 2, y + 8, UiTheme.FAINT)
+				x += 5
+			x += mini_cap(ci, Vector2i(x, y), k, lit or (app != &"" and tab[0] == UNDER and tab_under_home(app))) + 3
+		elif not under_home:
+			# The chevron: these are reached by going through home, not by a key.
 			under_home = true
-			x += 4
-			x += mini_cap(ci, Vector2i(x, y), "esc") + 4
-		elif k != "":
-			x += mini_cap(ci, Vector2i(x, y), k, lit) + 3
+			x += chevron(ci, Vector2i(x, y + 2), UiTheme.FAINT) + 4
+		else:
+			# One dim point between them: they are one set, all behind that Esc.
+			UiDraw.px(ci, x - 5, y + 5, UiTheme.FAINT)
 		if lit:
 			UiDraw.rect(ci, Rect2i(x - 3, y - 1, UiFont.width(label) + 6, 11), UiTheme.GLASS_LIT)
 			UiDraw.hline(ci, x - 3, x + UiFont.width(label) + 2, y + 10, UiTheme.TEXT)
 		UiDraw.text(ci, Vector2i(x, y), label, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
-		x += UiFont.width(label) + 9
+		x += UiFont.width(label) + (7 if under_home else 9)
 	var right := g.end.x - MARGIN_R - 14
 	cell(ci, Vector2i(right - 13, y + 1), power)
 	UiDraw.text_right(ci, right - 19, y, clock, UiTheme.TEXT_DIM)
+
+
+## A small right-pointing chevron 3 wide, 5 tall. Returns its width.
+static func chevron(ci: CanvasItem, at: Vector2i, col: Color) -> int:
+	for k in 3:
+		UiDraw.px(ci, at.x + k, at.y + k, col)
+		UiDraw.px(ci, at.x + k, at.y + 4 - k, col)
+	return 3
 
 
 ## A four-segment cell glyph, 13x7: its segments go out from the right as power

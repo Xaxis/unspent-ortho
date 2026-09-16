@@ -58,7 +58,23 @@ func _on_confirm(row: Dictionary) -> void:
 	refresh()
 
 
-## Every hazard a landscape can put on a body, and any the gear resists, in order.
+## What the land the player stands in puts on a body: hazard id -> strength,
+## from the landscape type, and anything already pressing on the body.
+func here() -> Dictionary:
+	var out := {}
+	if game == null:
+		return out
+	var land := BiomeRegistry.at(game.world, game.player.pos)
+	for h: Variant in land.hazards:
+		out[StringName(h)] = float(land.hazards[h])
+	for id: Variant in game.body.pressure:
+		out[StringName(id)] = maxf(float(game.body.pressure[id]), float(out.get(StringName(id), 0.0)))
+	return out
+
+
+## Every hazard a landscape can put on a body, and any the gear resists. What
+## this land presses with comes first: an empty bar means something where the
+## cold is being felt, and nothing at all under a hazard a long way off.
 func hazards() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for d in BiomeRegistry.all():
@@ -69,7 +85,19 @@ func hazards() -> Array[StringName]:
 		if not out.has(StringName(h)):
 			out.append(StringName(h))
 	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
-	return out
+	var near := here()
+	var first: Array[StringName] = []
+	var rest: Array[StringName] = []
+	for h in out:
+		if near.has(h):
+			first.append(h)
+		else:
+			rest.append(h)
+	for h: StringName in near:
+		if not first.has(h):
+			first.append(h)
+	first.append_array(rest)
+	return first
 
 
 func _draw() -> void:
@@ -93,6 +121,10 @@ func _draw() -> void:
 		var mods: Array = s.get("modules", [])
 		if item == &"":
 			UiDraw.text(self, Vector2i(x0 + 58, top), "empty", UiTheme.TEXT_DIM)
+			# An empty slot still says what to look for out there.
+			var fits := SlateFeeds.fits(StringName(s.get("id", &"")))
+			if fits != "":
+				UiDraw.text(self, Vector2i(x0 + 58, top + 10), fits, UiTheme.TEXT_DIM)
 		else:
 			UiIcons.draw_item(self, item, Vector2i(x0 + 58, top - 1))
 			UiDraw.text(self, Vector2i(x0 + 71, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
@@ -115,7 +147,7 @@ func _draw() -> void:
 	var abilities: Array = _feed.get("abilities", [])
 	if abilities.is_empty():
 		UiDraw.text(self, Vector2i(x0 + 4, ay + 14), "none fitted: modules give them", UiTheme.TEXT_DIM)
-	var fit := maxi(1, UiSlate.line_count(ay + 14, L.end.y - 2))
+	var fit := maxi(1, UiSlate.line_count(ay + 14, L.end.y - 40))
 	for i in mini(abilities.size(), fit):
 		var a: Dictionary = abilities[i]
 		var y := UiSlate.line_top(ay + 14, i)
@@ -124,29 +156,53 @@ func _draw() -> void:
 			break
 		UiDraw.text(self, Vector2i(x0 + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
 		UiDraw.text_right(self, right, y, String(a.get("note", "")), UiTheme.TEXT_DIM)
+	_draw_this_land(x0, right, L.end.y - 34)
 	var px := R.position.x + UiSlate.MARGIN_L
 	_draw_figure(Vector2i(px + 40, R.position.y + 14))
 	# Resistances: every pressure, how much of it the gear keeps off, down the
 	# whole panel beside the figure, in two columns once one will not hold them.
 	var rright := R.end.x - 12
 	UiSlate.heading(self, Vector2i(RESIST_X, R.position.y + 8), "resists", rright)
+	UiSlate.chevron(self, Vector2i(rright - UiFont.width("here") - 6, R.position.y + 10), UiTheme.PHOSPHOR[2])
+	UiDraw.text_right(self, rright, R.position.y + 8, "here", UiTheme.TEXT_DIM)
 	var resist: Dictionary = _feed.get("resist", {})
+	var near := here()
 	var hz := hazards()
 	var cells := resist_cells(hz.size())
 	for i in cells.size():
 		var c := cells[i]
 		var v := float(resist.get(hz[i], 0.0))
+		var pressing := near.has(hz[i])
 		var meter_w := 60 if c.size.x > 120 else 22
 		var word := String(hz[i]).replace("_", " ")
 		while UiFont.width(word) > c.size.x - 13 - meter_w - 4 and word.length() > 3:
 			word = word.left(word.length() - 1)
-		UiIcons.draw_need(self, hz[i], Vector2i(c.position.x, c.position.y - 1), UiTheme.TEXT if v > 0.0 else UiTheme.FAINT)
-		UiDraw.text(self, Vector2i(c.position.x + 13, c.position.y), word, UiTheme.TEXT if v > 0.0 else UiTheme.TEXT_DIM)
+		if pressing:
+			UiSlate.chevron(self, Vector2i(c.position.x - 5, c.position.y + 2), UiTheme.PHOSPHOR[2])
+		UiIcons.draw_need(self, hz[i], Vector2i(c.position.x, c.position.y - 1), UiTheme.TEXT if v > 0.0 or pressing else UiTheme.FAINT)
+		UiDraw.text(self, Vector2i(c.position.x + 13, c.position.y), word, UiTheme.TEXT if v > 0.0 or pressing else UiTheme.TEXT_DIM)
 		UiSlate.meter(self, Rect2i(c.end.x - meter_w, c.position.y + 1, meter_w, 7), v)
 	if cells.size() < hz.size():
 		UiDraw.text_right(self, rright, UiSlate.SPARE.end.y - 12, "+%d" % (hz.size() - cells.size()), UiTheme.TEXT_DIM)
 	var keys := [["e", "fit"], ["esc", "back"]]
 	draw_keys(keys)
+
+
+## What this land does to a body, at the foot of the slots: the reason an empty
+## resist bar matters here and does not somewhere else.
+func _draw_this_land(x0: int, right: int, top: int) -> void:
+	if game == null:
+		return
+	UiSlate.heading(self, Vector2i(x0, top), "this land", right)
+	var near := here()
+	var words := PackedStringArray()
+	for h: StringName in near:
+		words.append(String(h).replace("_", " "))
+	words.sort()
+	var land := BiomeRegistry.at(game.world, game.player.pos)
+	UiDraw.text(self, Vector2i(x0 + 4, top + 14), land.display_name, UiTheme.BRIGHT)
+	var said := "puts nothing on you" if words.is_empty() else "presses: %s" % ", ".join(words)
+	UiDraw.text(self, Vector2i(x0 + 4 + UiFont.width(land.display_name) + 8, top + 14), said, UiTheme.TEXT_DIM)
 
 
 ## The body as the slate draws it: a wire figure, exact, with a point at each

@@ -6,6 +6,12 @@ extends Node
 signal sfx(name: StringName, at: Vector3)
 ## One short line for the player (the HUD shows it, then lets it fade).
 signal message(text: String)
+## A teaching line and the key it is about ("" for none): said now or not at
+## all. Unlike `message` it is never queued behind a fight's quiet, so a lesson
+## cannot arrive minutes later, out of the moment that earned it. It is dropped
+## there, so a lesson whose moment is "the fight is over" waits on
+## `Hud.can_teach()` and is never emitted into the quiet.
+signal hint(text: String, key: String)
 ## A blow landed or rang. target is the struck body; plate true = it rang off.
 signal hit(attacker: Object, target: Object, damage: int, plate: bool, at: Vector3)
 ## A fight ended for the player: won | away | downed | carried.

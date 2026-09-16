@@ -1,9 +1,12 @@
 class_name Guide
 ## The first hour's guide, as pure rules over a running game: the one-line
 ## goal (what to want next) and the key hints, each with the moment it applies
-## and the use that retires it. The guide system (58_guide) says them as short
-## Events.message lines; the slate may show `goal` and `key_hint` on its own
-## rows (contract request in the M1.5 report).
+## and the use that retires it. The guide system (58_guide) says them on the
+## teaching channel (`Events.hint`), which is dropped rather than queued: a
+## lesson is said in its moment or not at all, so 58_guide says nothing while
+## the glass is hushed, and holds a lesson whose moment is "the fight is over"
+## until it lifts. The slate shows `goal` standing on the HUD and the hint on
+## its key row (90_ui).
 ##
 ##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
 ##                                            food, light; or the ore once there is a pick
