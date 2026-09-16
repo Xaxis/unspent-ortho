@@ -22,9 +22,17 @@ extends GameSystem
 ##   tools/shot.sh shots/hazards/wing.png --fit=glide_wing --frames=40
 ##   tools/tour.sh tours/hazards.tour --seed=1
 
-## Marks along a grapple line, and how long the line hangs.
-const LINE_MARKS := 7
-const LINE_SECONDS := 0.28
+## A grapple's rope: one mark of light every this many tiles, so a short line is
+## a line and not a blob, and never more than this many marks on a long one.
+const LINE_STEP := 0.55
+const LINE_MOST := 14
+## Seconds between a travelling body's marks (a flight's trail, a rope redrawn as
+## it shortens). A mark costs a material and a node, so these keep their own beat
+## rather than the frame rate's: laid a little faster than one dies, so the line
+## is continuous and the cost is eight a second, not sixty.
+const TRAVEL_BEAT := 0.1
+## How long the bracket on a scanned part and on a grapple's anchor is held.
+const READ_SECONDS := 0.55
 ## Machines a scan will mark at once: the nearest few, so a works district does
 ## not fill the frame with light.
 const SCAN_MOST := 6
@@ -32,6 +40,9 @@ const SCAN_MOST := 6
 const AWARE_BEAT := 0.5
 ## Seconds between the violet glints that say you are still wearing their name.
 const SPOOF_BEAT := 1.5
+## A machine this close has had every chance to read the body: if it still has
+## not noticed, the spoof is working (the tour's `unnoticed`).
+const SPOOF_PROOF_REACH := 12.0
 ## A body that moves further than this between two frames of a motion was put
 ## there by something else: the motion gives way to it.
 const JUMPED := 3.0
@@ -47,6 +58,10 @@ var _gliding := false
 ## glint, are due (the marks keep their own beat, not the frame rate's).
 var _aware_at := 0.0
 var _spoof_at := 0.0
+## Real seconds left before a travelling motion lays its marks again.
+var _travel_at := 0.0
+## How long each scanned part's bracket is held, from the scan's own beat.
+var _read_for := READ_SECONDS
 ## Where the last step of a motion put the body, to notice when something else
 ## has moved it. Vector2.INF while no motion runs.
 var _last_pos := Vector2.INF
@@ -136,6 +151,7 @@ func _fire(id: StringName) -> void:
 
 func _start_motion(m: AbilityMotion) -> void:
 	_motion = m
+	_travel_at = TRAVEL_BEAT
 	if m.kind == &"glide":
 		_gliding = true
 		_ensure_wing()
@@ -173,14 +189,7 @@ func _run_motion(delta: float) -> void:
 	if game.view != null:
 		game.view.ensure_near(next)
 	if not _motion.finished:
-		# The line of a flight and the line of a pull are both drawn as they
-		# happen: a mark of light lives a sixth of a second, so it is laid again
-		# every frame the body is still travelling.
-		var beat := int(Time.get_ticks_msec())
-		if _motion.kind == &"glide":
-			MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], beat, 0.22)
-		elif _motion.kind == &"grapple":
-			MobFx.glint(game, game.player.position + Vector3(0, 0.7, 0), Palette.COLD[3], beat, 0.3)
+		_travel_marks(delta)
 	_last_pos = next
 	if not _motion.finished:
 		return
@@ -188,6 +197,35 @@ func _run_motion(delta: float) -> void:
 	_land(_motion)
 	_motion = null
 	_last_pos = Vector2.INF
+
+
+## What a flight and a pull look like while they are happening. The rope is the
+## whole point of a grapple: it is drawn again from wherever the body has got to
+## back to the anchor, so a player watches the line shorten instead of seeing one
+## sparkle at the moment of the press.
+func _travel_marks(delta: float) -> void:
+	_travel_at -= delta
+	if _travel_at > 0.0:
+		return
+	_travel_at = TRAVEL_BEAT
+	var seed_value := int(Time.get_ticks_msec())
+	if _motion.kind == &"glide":
+		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], seed_value, 0.22)
+	elif _motion.kind == &"grapple":
+		_draw_line(game.player.pos, _motion.to, seed_value)
+
+
+## The line itself: marks of light spaced along the ground between the body and
+## what it took hold of, in the machines' own cold so it reads over any land.
+## Spacing is by distance, so a hold two tiles away is a short line and not a blob.
+func _draw_line(from: Vector2, to: Vector2, seed_value: int) -> void:
+	var span := from.distance_to(to)
+	if span < 0.2:
+		return
+	var n := clampi(roundi(span / LINE_STEP), 1, LINE_MOST)
+	for i in n:
+		var p := from.lerp(to, float(i) / float(n))
+		MobFx.glint(game, game.world.to_3d(p) + Vector3(0, 0.7, 0), Palette.COLD[3], seed_value + i * 5, 0.34)
 
 
 func _land(m: AbilityMotion) -> void:
@@ -242,18 +280,22 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			Events.sfx.emit(&"ability_scan", at)
 			MobFx.ring(game, at, Palette.LENS[3], 1.6, 0.4)
 			_aware_at = 0.0
+			_read_for = _hold_for(args)
 			_scan_marks(float(args.get("reach", 20.0)), true)
 		&"scan_beat":
+			_read_for = _hold_for(args)
 			_scan_marks(float(args.get("reach", 20.0)), false)
 		&"grapple":
 			var from: Vector2 = args.get("at", game.player.pos)
 			var to: Vector2 = args.get("to", from)
-			# The line is light, not plate: drawn in the machines' own cold, so it
-			# reads over any ground the land puts under it.
-			for i in LINE_MARKS:
-				var p := from.lerp(to, float(i + 1) / float(LINE_MARKS))
-				MobFx.glint(game, game.world.to_3d(p) + Vector3(0, 0.7, 0), Palette.COLD[3], seed_value + i * 5, 0.34)
-			MobFx.ring(game, game.world.to_3d(to), Palette.LENS[3], 0.7, LINE_SECONDS)
+			# Where the line took hold is held for the whole pull, so a player can
+			# see what they are being pulled to before they get there, and the rope
+			# itself is redrawn as the body travels (`_travel_marks`).
+			var hold_for := maxf(READ_SECONDS, float(args.get("seconds", 0.0)))
+			MobFx.bracket(game, game.world.to_3d(to) + Vector3(0, 0.6, 0), Palette.LENS[3], 1.2, hold_for, seed_value)
+			MobFx.ring(game, game.world.to_3d(to), Palette.LENS[2], 0.8, hold_for)
+			_draw_line(from, to, seed_value)
+			_travel_at = TRAVEL_BEAT
 			Events.sfx.emit(&"ability_grapple", at)
 		&"spoof":
 			# Their own signature going out of you: a clean violet ring and a
@@ -277,11 +319,19 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			MobFx.ring(game, at, Palette.FOUND[1], 1.0, 0.35)
 
 
-## A scan's read: the working part of every machine in reach held in the lens's
-## own light, and a flicked ink mark over the ones that have noticed you (the
-## interference the disposition package keeps; until it lands, aware is the read).
-## The light is FOUND and exact; the reading of their behaviour is the player's
-## own, and that is drawn by hand.
+## A scan's read: the working part of every machine in reach framed by a ruled
+## bracket in the lens's own light, and a flicked ink mark over the ones that have
+## noticed you (the interference the disposition package keeps; until it lands,
+## aware is the read). The bracket is FOUND: clean, ruled, exact, and HELD -- it
+## is laid again just before the last one dies so it tracks a walking machine
+## while reading as one steady frame. Stippling it would say fire (docs/ART.md §3).
+## The reading of their behaviour is the player's own, and that is drawn by hand.
+## A mark is held a quarter longer than the beat that lays it, so the next one is
+## on screen before the last one goes and the read never blinks.
+func _hold_for(args: Dictionary) -> float:
+	return maxf(READ_SECONDS, float(args.get("beat", 0.45)) * 1.25)
+
+
 func _scan_marks(reach: float, opening: bool) -> void:
 	var p := game.player.pos
 	var up := game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
@@ -299,7 +349,7 @@ func _scan_marks(reach: float, opening: bool) -> void:
 		_aware_at = now + AWARE_BEAT
 	for i in mini(found.size(), SCAN_MOST):
 		var mob := found[i]
-		MobFx.glint(game, mob.part_position(), Palette.LENS[3], mob.get_instance_id(), 0.3)
+		MobFx.bracket(game, mob.part_position(), Palette.LENS[3], 0.9, _read_for, mob.get_instance_id())
 		if opening:
 			MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
 		if mob.aware and tell_due:
@@ -341,11 +391,15 @@ func _act(_g: Game, row_id: StringName) -> String:
 		return "!Nothing fits there."
 	var slot: StringName = row_id
 	var here := loadout.item(slot)
-	if slot == Gear.HAND_SLOT and here == &"":
-		return "!Your hand is empty; choose a tool from carrying."
-	if here == &"" or (slot == Gear.HAND_SLOT and loadout.free_sockets(slot) <= 0):
+	# The hand is the inventory's: what is held is chosen in carrying, and the only
+	# thing this page does to it is bind something to the haft and take it off again.
+	if slot == Gear.HAND_SLOT:
+		return _act_hand(here)
+	if here == &"":
 		var first := _spare_pieces(slot)
 		if first.is_empty():
+			if Gear.wearables_for(slot).is_empty():
+				return "!Nothing in the world fits there yet."
 			return "!You carry nothing for that."
 		loadout.fit(slot, first[0])
 		return "%s on." % UiRules.item_name(first[0]).capitalize()
@@ -359,6 +413,25 @@ func _act(_g: Game, row_id: StringName) -> String:
 		return "Off."
 	loadout.fit(slot, next)
 	return "%s on." % UiRules.item_name(next).capitalize()
+
+
+## The hand's own row: bind what is carried to the haft, then unbind it. Swapping
+## the tool itself is carrying's job, so this never offers to, and never answers
+## about pieces that could not go there anyway.
+func _act_hand(here: StringName) -> String:
+	if here == &"":
+		return "!Your hand is empty; choose a tool in carrying."
+	var held_name := UiRules.item_name(here)
+	if loadout.free_sockets(Gear.HAND_SLOT) > 0:
+		var mod := _spare_module(Gear.HAND_SLOT)
+		if mod != &"":
+			loadout.socket(Gear.HAND_SLOT, mod)
+			return "%s bound to the %s." % [UiRules.item_name(mod).capitalize(), held_name]
+		return "!Nothing you carry binds to a %s." % held_name
+	if not loadout.modules(Gear.HAND_SLOT).is_empty():
+		loadout.clear_slot(Gear.HAND_SLOT)
+		return "Unbound."
+	return "!A %s takes no binding." % held_name
 
 
 ## Pieces for this slot that are carried and not already fitted somewhere.
@@ -423,8 +496,28 @@ func tour_seen(what: StringName) -> bool:
 		&"gliding": return _gliding
 		&"ability": return not _fired.is_empty()
 		&"spoofed": return AbilitySpoof.spoofed(game.body, game.clock.minutes)
+		&"unnoticed": return _unnoticed()
 		&"resisting": return not game.body.resist.is_empty()
 	return false
+
+
+## The sentence a spoof is for, proved rather than asserted: a machine standing
+## close enough to have read the body has not. The flag alone (`spoofed`) says
+## only that the signet fired.
+func _unnoticed() -> bool:
+	if not AbilitySpoof.spoofed(game.body, game.clock.minutes):
+		return false
+	var near := false
+	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
+		var mob := m as Mob
+		if mob == null or not mob.alive or mob.state == null or not mob.state.machine:
+			continue
+		if mob.pos.distance_to(game.player.pos) > SPOOF_PROOF_REACH:
+			continue
+		if mob.aware:
+			return false
+		near = true
+	return near
 
 
 func _save() -> Variant:

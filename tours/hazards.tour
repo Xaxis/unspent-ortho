@@ -67,19 +67,25 @@ wait 0.4
 shot 13-scanning-a-harvester
 
 # --- Wearing their signature past a watcher -----------------------------------
-spawn watcher
-wait 1.2
-shot 14-a-watcher
+# Put their name on BEFORE anything is looking: a machine that has already filed
+# you keeps hunting for a while, so a spoof pressed under a watcher's eye proves
+# nothing. The proof is `unnoticed`: a machine within reach that has not read you.
+place coast
+wait 1.0
 tap ability_spoof
 await spoofed 5
 wait 0.15
-shot 15-spoofed
+shot 14-wearing-their-name
+spawn watcher
+wait 2.0
+await unnoticed 8
+shot 15-a-watcher-that-cannot-read-you
 walk 1,-1 1.6
+await unnoticed 5
 shot 16-walked-past
 
 # --- A burst of speed, and the trail of stipple it leaves ---------------------
-place coast
-wait 1.0
+wait 0.6
 tap ability_dash
 await ability:dash 5
 wait 0.06

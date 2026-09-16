@@ -1,7 +1,7 @@
 class_name AbilityGlide
 extends Ability
 ## A wing of mended plate: FOUND panels bound to a MADE frame with cord
-## (docs/ART.md §10). It opens only where there is something to step off, and it
+## (docs/ART.md §12). It opens only where there is something to step off, and it
 ## carries the body out over ground a walk could never get down, which is what
 ## makes a mesa or a sea cliff a door instead of a wall.
 
@@ -62,6 +62,6 @@ func on_press(ctx: AbilityCtx) -> bool:
 	if dir == Vector2.ZERO:
 		return false
 	var start := ctx.game.world.height_at(ctx.pos())
-	ctx.motion = AbilityMotion.glide(dir, SPEED, FALL, SECONDS, start)
+	ctx.motion = AbilityMotion.glide(ctx.pos(), dir, SPEED, FALL, SECONDS, start)
 	ctx.draw(&"glide", {"dir": dir, "at": ctx.pos()})
 	return true

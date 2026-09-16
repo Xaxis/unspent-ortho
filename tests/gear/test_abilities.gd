@@ -141,6 +141,38 @@ func test_a_glide_needs_a_height_and_carries_you_off_it() -> void:
 	Fx.done(g)
 
 
+## A wing over the sea is the obvious way to drown a player, so it may not end a
+## flight anywhere a body cannot stand: it skims until there is ground, and when
+## everything has run out it is set down ashore.
+func test_a_glide_never_sets_a_body_down_in_the_water() -> void:
+	# Land to the west at level 6, then open water from x = 20 out.
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			var land := x < 20 and x > 0 and y > 0 and y < 59
+			w.level[i] = 6 if land else -1
+			w.ground[i] = Ground.GRASS if land else Ground.DEEP_WATER
+			w.country[i] = Country.COAST if land else Country.SEA
+	w.spawn = Vector2(18.5, 30.5)
+	var g := Fx.from_world(w)
+	var m := AbilityMotion.glide(g.player.pos, Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
+		AbilityGlide.SECONDS, w.height_at(g.player.pos))
+	var p := g.player.pos
+	var out_over_water := false
+	for i in 4000:
+		p = m.step(1.0 / 60.0, p, w, g.query, Tuning.PLAYER_RADIUS)
+		out_over_water = out_over_water or not g.query.standable(floori(p.x), floori(p.y))
+		if m.finished:
+			break
+	check(m.finished, "the flight ends: it never runs on for ever")
+	check(out_over_water, "it did carry the body out over the water")
+	check(g.query.standable(floori(p.x), floori(p.y)), "and set it down on ground it can stand on")
+	near(m.lift, 0.0, 1e-6, "on the ground, not hanging over it")
+	lt(m.t, AbilityGlide.SECONDS + AbilityMotion.OVERRUN + 1.0, "and the overrun is bounded")
+	Fx.done(g)
+
+
 func test_a_grapple_takes_hold_of_what_is_there_and_pulls() -> void:
 	var g := Fx.flat(48)
 	var seen := Seen.new()

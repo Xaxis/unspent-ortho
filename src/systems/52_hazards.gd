@@ -42,11 +42,26 @@ var _raw: Dictionary = {}
 var _felt_ever: Dictionary = {}
 ## Something has bitten at some point in this game (for a tour's `answered`).
 var _bit_ever := false
+## This game came out of a file, so its first reading came with it.
+var _loaded := false
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 	SaveGame.register(&"hazards", _save, _load)
+
+
+## The first reading waits for every setup to have run, because 54_gear writes
+## Body.resist after this system is loaded. Taken in setup it would read a naked
+## body and say the cold bites through gear that is actually answering it.
+##
+## A loaded game already carries a reading taken with its own gear on, so it
+## keeps it: the next ordinary sweep is half a second away, and overwriting the
+## file's copy before the first frame only makes a load differ from the save it
+## came from.
+func started() -> void:
+	if _loaded:
+		return
 	_sweep(0.0)
 
 
@@ -146,8 +161,13 @@ func _drain(pressure: Dictionary, span: float) -> void:
 	if after >= before:
 		return
 	game.body.health = after
+	# Not a hit: the weather is not an attacker. `Events.hit` would have survival
+	# break off whatever was being made and the score tense as though something
+	# had struck the player. The cold takes its point quietly, and the body,
+	# the gauge and the sound are what say so.
 	game.player.flash(0.12)
-	Events.hit.emit(null, game.player, before - after, false, game.player.position)
+	game.player.shudder(0.3)
+	Events.sfx.emit(&"hazard_drain", game.player.position)
 
 
 ## The body answers a pressure in the notebook's hand: breath in the cold,
@@ -241,6 +261,7 @@ func _save() -> Variant:
 
 
 func _load(v: Variant) -> void:
+	_loaded = true
 	if not (v is Dictionary):
 		return
 	_said.clear()

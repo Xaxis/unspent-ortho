@@ -48,8 +48,10 @@ const ALIAS := {
 	&"hazard_em": &"relay_click",
 	&"hazard_wet": &"gutter_drip",
 	&"hazard_ring": &"wire_sing",
-	# The slate is what warns you a pressure has begun to bite.
+	# The slate is what warns you a pressure has begun to bite, and a dull knock
+	# is what a place taking a point off you sounds like. Neither is a blow.
 	&"hazard_warn": &"ui_slate_whine",
+	&"hazard_drain": &"hit_flesh",
 	# gear: a spring coil, a wing of plate, a lens reading, a magnet line, a
 	# stolen signet answering their challenge in their own voice.
 	&"ability_dash": &"dodge",
@@ -98,7 +100,7 @@ const EMITTED: Array[StringName] = [
 	&"ui_slate_sleep", &"ui_slate_switch", &"ui_slate_whine", &"ui_slate_ping",
 	# hazards and gear (52_hazards.gd, 54_gear.gd)
 	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
-	&"hazard_ring", &"hazard_warn", &"ability_dash", &"ability_glide", &"ability_land",
+	&"hazard_ring", &"hazard_warn", &"hazard_drain", &"ability_dash", &"ability_glide", &"ability_land",
 	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
 ]
 

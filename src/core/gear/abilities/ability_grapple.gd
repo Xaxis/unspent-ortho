@@ -87,5 +87,7 @@ func on_press(ctx: AbilityCtx) -> bool:
 	var target: Vector2 = a.pos
 	var short := 0.9 if a.what == &"prop" else 0.0
 	ctx.motion = AbilityMotion.grapple(at, target, SPEED, short, ctx.game.world.height_at(at), float(a.height))
-	ctx.draw(&"grapple", {"at": at, "to": target, "what": a.what})
+	# The mark on the anchor is held for as long as the pull runs, so the hold is
+	# on screen from the press to the arrival.
+	ctx.draw(&"grapple", {"at": at, "to": target, "what": a.what, "seconds": ctx.motion.seconds})
 	return true

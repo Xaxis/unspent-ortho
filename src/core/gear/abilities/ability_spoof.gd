@@ -8,7 +8,9 @@ extends Ability
 ## It writes `Body.spoof_until`, the contract the disposition package reads; the
 ## senses stop filing the body while it stands.
 
-const MINUTES := 8.0
+## Long enough to be a plan: to cross a works district, or to walk a thing past a
+## checkpoint, rather than to dodge one machine.
+const MINUTES := 20.0
 const COOLDOWN := 30.0
 const CHARGES := 1
 

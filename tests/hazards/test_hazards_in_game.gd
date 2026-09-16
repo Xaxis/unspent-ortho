@@ -71,6 +71,35 @@ func test_the_drain_takes_health_slowly_and_leaves_the_body_standing() -> void:
 	game.free()
 
 
+## The weather is not an attacker. Emitting a drain as Events.hit had survival
+## break off whatever was being made and the score tense as though something had
+## struck the player.
+func test_the_drain_is_not_a_blow_and_nothing_downstream_hears_a_fight() -> void:
+	var sys := _boot()
+	game.body.health = game.body.max_health
+	var hits := 0
+	var listener := func(_by: Variant, _to: Variant, _n: int, _plate: bool, _at: Vector3) -> void: hits += 1
+	Events.hit.connect(listener)
+	for i in 120:
+		sys.call("_drain", {&"cold": 1.0}, 5.0 / Tuning.MINUTES_PER_SECOND)
+	Events.hit.disconnect(listener)
+	lt(float(game.body.health), float(game.body.max_health), "the cold took its points")
+	eq(hits, 0, "and not one of them came through as a blow")
+	game.free()
+
+
+## 52 loads before 54, so a reading taken in setup would be taken off a body with
+## no gear on it: a hard landscape would say the cold bites through a wrap that is
+## actually answering it, and say it once, for ever.
+func test_the_first_reading_is_taken_with_the_gear_already_on() -> void:
+	var sys := _boot(["--fit=wrap_warm,mod_wadding"])
+	gt(float(game.body.resist.get(&"cold", 0.0)), 0.4, "the wrap is on by the time anything is read")
+	var pressure: Dictionary = game.body.pressure
+	eq(pressure, Hazards.after_resist(sys.call("raw"), game.body.resist),
+		"and the first sweep already took its share off")
+	game.free()
+
+
 func test_a_fire_and_a_roof_reach_the_system_not_just_the_rules() -> void:
 	var sys := _boot()
 	near(float(sys.call("_fire")), 0.0, 1e-5, "no fire out here")

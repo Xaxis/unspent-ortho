@@ -8,10 +8,11 @@ extends Ability
 const SECONDS := 6.0
 const COOLDOWN := 9.0
 const REACH := 20.0
-## Seconds between the marks being redrawn while the scan stands. A mark of light
-## is short-lived, so the beat is short too: the read has to stand still on the
-## machine for the whole scan, not blink once a second.
-const BEAT := 0.14
+## Seconds between the read being laid again while the scan stands. The system
+## holds each mark a little longer than this, so the read never blinks out and
+## never piles up: what a player sees is ONE bracket on the part, following the
+## machine, for the whole six seconds.
+const BEAT := 0.45
 
 ## Real second the scan runs out (kept on the ability, so refitting keeps it).
 var until := -1.0
@@ -41,7 +42,7 @@ func refusal(ctx: AbilityCtx) -> StringName:
 func on_press(ctx: AbilityCtx) -> bool:
 	until = ctx.now + SECONDS
 	_next_beat = ctx.now
-	ctx.draw(&"scan", {"reach": REACH, "seconds": SECONDS})
+	ctx.draw(&"scan", {"reach": REACH, "seconds": SECONDS, "beat": BEAT})
 	return true
 
 
@@ -51,4 +52,4 @@ func passive(ctx: AbilityCtx, _delta: float) -> void:
 	if not active(ctx.now) or ctx.now < _next_beat:
 		return
 	_next_beat = ctx.now + BEAT
-	ctx.draw(&"scan_beat", {"reach": REACH, "left": until - ctx.now})
+	ctx.draw(&"scan_beat", {"reach": REACH, "beat": BEAT, "left": until - ctx.now})

@@ -1,13 +1,16 @@
 class_name GlideWingModel
 extends Node3D
 ## The glide wing on the player's back, and the one place in the game where
-## MENDED is drawn as a thing rather than an icon (docs/ART.md §10): the panels
+## MENDED is drawn as a thing rather than an icon (docs/ART.md §12): the panels
 ## are FOUND plate on found.gdshader, exact and unhatched, and the frame and the
 ## cord that bind them to a person are MADE on world.gdshader, hatched and
 ## crooked. Both idioms are in one silhouette at once.
 ##
 ## It is folded against the back until a glide starts, then opens over two
 ## tenths of a second and holds until the body lands.
+##
+## Look at it open, beside every other model:
+##   tools/shot.sh shots/gallery.png --scene=gallery --filter=wing
 
 const SPAN := 0.92
 const CHORD := 0.56
@@ -116,3 +119,21 @@ func _set_angle(t: float) -> void:
 		_left.rotation = Vector3(0.0, 0.0, -a)
 	if _right != null:
 		_right.rotation = Vector3(0.0, 0.0, a)
+
+
+## The gallery shows it both ways, because the whole point of a mended thing is
+## the join, and folded is how it is carried. The frame takes the gallery's own
+## made material (build(null) leaves it to be filled in); the plate keeps its own.
+static func gallery() -> Array:
+	var out: Array = []
+	for row: Array in [["glide wing open", true], ["glide wing folded", false]]:
+		var w := GlideWingModel.new()
+		w.build(null)
+		w.set_open(bool(row[1]))
+		w.step(1.0)
+		w.visible = true
+		var holder := Node3D.new()
+		holder.add_child(w)
+		w.position = Vector3(0.0, 0.9, 0.0)
+		out.append({"name": String(row[0]), "node": holder})
+	return out

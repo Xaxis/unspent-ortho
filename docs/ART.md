@@ -293,7 +293,9 @@ once**, and a frame must be able to tell you which half is which.
   MADE items stay wholly phosphor, FOUND wholly violet.
 - The tier lives in the data: `Items` field `tier` = `made | mended | found`, read
   through `Gear.is_mended`. The first mended things are the glide wing (drawn in
-  the world by `GlideWingModel`), the heat-sink vest, rebreather, magnet boots,
+  the world by `src/models/gear/glide_wing_model.gd`, open and folded in the
+  gallery: `tools/shot.sh shots/g.png --scene=gallery --filter=wing`), the
+  heat-sink vest, rebreather, magnet boots,
   scanner lens, the spring coil and the foil lining.
 
 The slate is the same idiom at interface scale (§9, "two idioms in one object"):

@@ -15,6 +15,14 @@ const ARC := 0.35
 ## A glide steps off before the ground falls away: the wing takes this much
 ## height at the launch, so the run-up to the lip is not read as a landing.
 const LAUNCH_LIFT := 0.5
+## A glide over water or over something it cannot be set down on carries on past
+## its own span for at most this long, looking for ground.
+const OVERRUN := 5.0
+## ...skimming this far above whatever is under it while it looks.
+const SKIM := 0.5
+## How far out a flight that has run out of everything will look for a tile to
+## land on before falling back to the last good ground it passed over.
+const LANDING_SEARCH := 6
 
 var kind: StringName = &""
 var dir := Vector2.ZERO
@@ -40,6 +48,10 @@ var lift := 0.0
 ## A glide has actually left the ground: the run-up to the lip is not a landing.
 var flown := false
 var finished := false
+## The last tile the flight passed over that a body can stand on. A wing never
+## sets anybody down in the sea, so when everything has run out this is where it
+## puts them.
+var landing := Vector2.ZERO
 
 
 static func dash(direction: Vector2, p_speed: float, p_seconds: float) -> AbilityMotion:
@@ -51,15 +63,19 @@ static func dash(direction: Vector2, p_speed: float, p_seconds: float) -> Abilit
 	return m
 
 
-static func glide(direction: Vector2, p_speed: float, p_fall: float, p_seconds: float, start_height: float) -> AbilityMotion:
+static func glide(at: Vector2, direction: Vector2, p_speed: float, p_fall: float, p_seconds: float, start_height: float) -> AbilityMotion:
 	var m := AbilityMotion.new()
 	m.kind = &"glide"
+	m.from = at
 	m.dir = direction.normalized()
 	m.speed = p_speed
 	m.fall = p_fall
 	m.seconds = p_seconds
 	m.height = start_height + LAUNCH_LIFT
 	m.from_height = start_height
+	# Whoever launches was standing somewhere: that is the landing of last resort
+	# until the flight passes over better ground.
+	m.landing = m.from
 	return m
 
 
@@ -98,19 +114,32 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 				finished = true
 		&"glide":
 			next = pos + dir * speed * delta
-			if world != null and not _inside(world, next):
+			var edge := world != null and not _inside(world, next)
+			if edge:
 				# Out of world: the flight ends here rather than off the edge.
 				next = pos
-				finished = true
 			height -= fall * delta
 			var ground := world.height_at(next) if world != null else 0.0
 			lift = maxf(0.0, height - ground)
 			flown = flown or lift > LAUNCH_LIFT * 0.5
-			# However it ends -- landed, out of time, out of world -- the body is
-			# set back down on the ground and never left hanging over it.
-			if (flown and lift <= DONE_LIFT) or t >= seconds or finished:
-				lift = 0.0
-				finished = true
+			var ok := _standable(query, next)
+			if ok:
+				landing = next
+			# A wing sets a body down on ground it can stand on, and nowhere else:
+			# over open water it keeps flying, skimming, until there is something
+			# under it. When even the overrun is spent it puts the body on the
+			# nearest ground, or on the last it passed over. Never in the sea.
+			if (flown and lift <= DONE_LIFT) or t >= seconds or edge:
+				if ok:
+					lift = 0.0
+					finished = true
+				elif t >= seconds + OVERRUN or edge:
+					next = _ashore(world, query, next, landing)
+					lift = 0.0
+					finished = true
+				else:
+					height = maxf(height, ground + SKIM)
+					lift = height - ground
 		&"grapple":
 			var left := to.distance_to(pos)
 			var stepped := speed * delta
@@ -134,3 +163,35 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 
 static func _inside(world: WorldData, p: Vector2) -> bool:
 	return p.x >= 1.0 and p.y >= 1.0 and p.x <= world.size - 2.0 and p.y <= world.size - 2.0
+
+
+## Without a query nothing is known about the ground, so a headless test's flight
+## is allowed to end where it likes; in a game the water is what this is for.
+static func _standable(query: WorldQuery, p: Vector2) -> bool:
+	return query == null or query.standable(floori(p.x), floori(p.y))
+
+
+## Ground to be set down on, nearest first, falling back to the last tile the
+## flight passed over that a body could stand on.
+static func _ashore(world: WorldData, query: WorldQuery, p: Vector2, last: Vector2) -> Vector2:
+	if world == null or query == null:
+		return p
+	var cx := floori(p.x)
+	var cy := floori(p.y)
+	for r in range(1, LANDING_SEARCH + 1):
+		var best := Vector2.INF
+		var best_d := INF
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var q := Vector2(cx + dx + 0.5, cy + dy + 0.5)
+				if not _inside(world, q) or not query.standable(cx + dx, cy + dy):
+					continue
+				var d := q.distance_squared_to(p)
+				if d < best_d:
+					best_d = d
+					best = q
+		if best != Vector2.INF:
+			return best
+	return last

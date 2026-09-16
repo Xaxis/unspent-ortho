@@ -11,7 +11,7 @@ class_name Gear
 ##   module: true         it is a module; `fits` lists the slots it may sit in
 ##   resist: {hazard: 0..1}
 ##   ability: StringName  the ability it grants while it is fitted
-##   tier: StringName     made | mended | found (docs/ART.md §10)
+##   tier: StringName     made | mended | found (docs/ART.md §12)
 ##
 ## Slots, and what each means:
 ##   head   what is over your face and eyes: masks, hats, lenses
@@ -49,13 +49,19 @@ static func tier(id: StringName) -> StringName:
 
 
 ## Mended things are FOUND parts bound with MADE cord and must be drawn as both
-## (docs/ART.md §10). The slate's icons and the world models ask this.
+## (docs/ART.md §12). The slate's icons and the world models ask this.
 static func is_mended(id: StringName) -> bool:
 	return tier(id) == &"mended"
 
 
 static func sockets(id: StringName) -> int:
-	return int(Items.def(id).get("sockets", 0))
+	var d := Items.def(id)
+	if d.has("sockets"):
+		return int(d["sockets"])
+	# Anything with a haft takes one binding, so the hand's slot is never a slot
+	# that answers nothing: the tool itself is chosen in carrying, but what is
+	# bound to it is chosen here.
+	return 1 if bool(d.get("tool", false)) else 0
 
 
 ## A wearable piece goes in its own slot; a module goes in any slot it `fits`.

@@ -247,6 +247,28 @@ vec4 streak(vec2 p, float pw, float pr) {
 	return inked(e, 1.0);
 }
 
+// A reading held on something: four ruled corner ticks framing it, drawn in
+// light, no ink and no paper. This is a machine's own mark seen through a stolen
+// lens (docs/ART.md §3: FOUND is clean and exact), so nothing here is hatched,
+// stippled or crooked. It snaps in at the start, holds its whole life, and the
+// corners close the last of the way as the read settles.
+vec4 bracket(vec2 p, float pw, float pr) {
+	vec2 q = p / pw;
+	float R = 1.0 / pw - 2.0;
+	float open = clamp(pr / 0.12, 0.0, 1.0);
+	float arm = R * 0.44;
+	float e = 1e5;
+	for (int i = 0; i < 4; i++) {
+		vec2 c = vec2(i == 0 || i == 3 ? -1.0 : 1.0, i < 2 ? -1.0 : 1.0) * R * mix(1.35, 1.0, open);
+		e = min(e, stroke(q, c, c - vec2(sign(c.x) * arm, 0.0), 0.9));
+		e = min(e, stroke(q, c, c - vec2(0.0, sign(c.y) * arm), 0.9));
+	}
+	if (e < 0.0) {
+		return vec4(col_a, 1.0);
+	}
+	return vec4(0.0);
+}
+
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
@@ -260,6 +282,7 @@ void fragment() {
 	else if (mode == 4) { o = glint(p, pw, pr); }
 	else if (mode == 5) { o = tell(p, pw, pr); }
 	else if (mode == 6) { o = streak(p, pw, pr); }
+	else if (mode == 7) { o = bracket(p, pw, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -337,6 +360,7 @@ const CLANG := 3
 const GLINT := 4
 const TELL := 5
 const STREAK := 6
+const BRACKET := 7
 
 ## World units per screen pixel of the 640x360 image (the fight system keeps it
 ## to the camera's). Marks are never smaller on screen than their *_PX sizes.
@@ -349,6 +373,7 @@ const CLANG_PX := 30.0
 const GLINT_PX := 9.0
 const TELL_PX := 30.0
 const STREAK_PX := 40.0
+const BRACKET_PX := 26.0
 const MARK_PRIORITY := 12
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
@@ -500,6 +525,14 @@ static func glint(parent: Node, at: Vector3, col: Color, seed_value: int = 0, si
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at, at_least(size, GLINT_PX), GLINT, &"over", seed_value, col, col.lightened(0.5)), 0.16)
+
+
+## A reading held on something for `seconds`: four ruled corner ticks in `col`,
+## clean light with no ink and no stipple. What a stolen lens puts on a machine.
+static func bracket(parent: Node, at: Vector3, col: Color, size: float = 1.2, seconds: float = 0.5, seed_value: int = 0) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at, at_least(size, BRACKET_PX), BRACKET, &"over", seed_value, col, col), seconds)
 
 
 ## Flicked strokes over a body whose blow is coming: held for `seconds` (its windup).

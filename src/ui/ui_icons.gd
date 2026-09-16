@@ -58,7 +58,11 @@ const SHAPES := {
 	&"vest": [".kk...kk.", "k33kkk33k", "k3355533k", "k3355533k", "k3345433k", "k3355533k", "k2245422k", ".kkkkkkk.", "........."],
 	&"boot": ["..kkkk...", "..k33wk..", "..k332k..", "..k332k..", "..k3321kk", "..k32221k", ".kk5555kk", ".k44444k.", ".kkkkkk.."],
 	&"wing": ["kk.......", "k4kk.....", "k34wkk...", "k3344wkk.", "k333444wk", ".kkk333k.", "...kkkk..", ".........", "........."],
-	&"coil": [".........", "..kkkkk..", ".k33333k.", ".k2kkk2k.", ".k23332k.", ".k2kkk2k.", ".k23332k.", "..kkkkk..", "........."],
+	# Mended shapes carry their cord in 4/5, which the mended ramp draws in
+	# phosphor: both idioms in one 9x9 (docs/ART.md §12).
+	&"coil": [".........", "..kkkkk..", ".k44444k.", ".k2kkk2k.", ".k23332k.", ".k2kkk2k.", ".k23332k.", ".k55555k.", "..kkkkk.."],
+	&"scan_lens": [".........", "..kkkkk..", ".k32223k.", "k42klk24k", "k4klllk4k", "k42klk24k", ".k32223k.", "..k555k..", "........."],
+	&"foil": [".........", ".kkkkkkk.", "k33w3332k", "k3222223k", "k2222221k", "k2222211k", "k5555555k", ".kkkkkkk.", "........."],
 	&"signet": [".........", ".kkkkkkk.", ".k33333k.", ".k3lll3k.", ".k33333k.", ".k2kkk2k.", ".k2k.k2k.", ".kkk.kkk.", "........."],
 	&"shield": [".kkkkkkk.", "k3333333k", "k33lll33k", "k3322233k", ".k22222k.", ".k22221k.", "..k111k..", "...kkk...", "........."],
 }
@@ -149,11 +153,12 @@ const ITEMS := {
 	&"rebreather": [&"mask", &"plate", &"linen"],
 	&"boots_magnet": [&"boot", &"plate", &"earth"],
 	&"glide_wing": [&"wing", &"plate", &"sand"],
-	&"scanner_lens": [&"lens", &"plate", &"lens"],
+	&"scanner_lens": [&"scan_lens", &"plate", &"lens"],
 	&"shield_plate": [&"shield", &"found", &"lens"],
 	&"mod_wadding": [&"sack", &"linen", &"linen"],
 	&"mod_filter": [&"flask", &"ink", &"ash"],
-	&"mod_foil": [&"cloth", &"plate", &"plate"],
+	&"mod_grip": [&"bundle", &"linen", &"earth"],
+	&"mod_foil": [&"foil", &"plate", &"plate"],
 	&"mod_spring": [&"coil", &"plate", &"earth"],
 	&"mod_signet": [&"signet", &"found", &"lens"],
 }
@@ -257,7 +262,7 @@ static func tones_for(id: StringName) -> Array[Color]:
 ## part (a haft, a filling) a step under it, and a working part the hottest.
 static func colours_for(id: StringName) -> Dictionary:
 	# A mended thing is FOUND parts bound with MADE cord, and the slate draws both
-	# idioms at once (docs/ART.md §10): the body in the stolen module's violet,
+	# idioms at once (docs/ART.md §12): the body in the stolen module's violet,
 	# the binding, haft and cord in phosphor.
 	if Gear.is_mended(id):
 		var m := UiTheme.MACHINE

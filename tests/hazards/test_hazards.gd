@@ -29,12 +29,30 @@ func test_a_landscape_type_is_where_a_pressure_comes_from() -> void:
 
 
 func test_night_is_dark_and_colder_and_the_heat_goes_with_the_sun() -> void:
-	var noon := Hazards.felt(place({&"cold": 0.5, &"heat": 0.5}, 12.0))
-	var night := Hazards.felt(place({&"cold": 0.5, &"heat": 0.5}, 1.0))
+	var noon := Hazards.felt(place({&"cold": 0.5, &"heat": 0.5, &"dark": 0.5}, 12.0))
+	var night := Hazards.felt(place({&"cold": 0.5, &"heat": 0.5, &"dark": 0.5}, 1.0))
 	gt(float(night[&"cold"]), float(noon[&"cold"]), "a night is colder than the same place at noon")
 	lt(float(night[&"heat"]), float(noon[&"heat"]), "and the heat went with the sun")
-	gt(float(night.get(&"dark", 0.0)), Hazards.FELT, "the dark is a pressure of its own after nightfall")
-	check(not noon.has(&"dark") or float(noon[&"dark"]) < Hazards.FELT, "and not one at noon")
+	gt(float(night[&"dark"]), Hazards.FELT, "a dark place after nightfall is dark enough to read")
+	check(float(noon[&"dark"]) < float(night[&"dark"]), "and less so at noon")
+
+
+## The clock is a multiplier on what the landscape declares, never a term of its
+## own: this is what stops every coast in the world growing two gauges at 23:00.
+func test_the_hour_never_makes_a_pressure_the_landscape_did_not_declare() -> void:
+	var mild := Hazards.felt(place({&"wet": 0.3}, 23.0))
+	check(not mild.has(&"dark"), "a landscape that declares no dark is not dark at midnight")
+	check(not mild.has(&"cold"), "nor cold because the sun went down")
+	lt(Hazards.worst(mild), Hazards.FELT, "nothing on the slate at all, as before there were gauges")
+	# ...and the most the hour can add anywhere is under the biting step, by
+	# construction: what bites after dark is the landscape, deepened, never the
+	# clock on its own.
+	lt(Hazards.NIGHT_MOST, Hazards.BITE, "the hour's own share cannot reach the biting step")
+	# A pinewood that calls itself half-dark wants a lamp at three in the morning,
+	# and is still not a place that kills you for walking through it.
+	var wood := Hazards.felt(place({&"dark": 0.4}, 3.0))
+	gt(float(wood[&"dark"]), Hazards.BITE, "a place that declares dark is worth a lamp at night")
+	lt(float(wood[&"dark"]), Hazards.HARM, "and walking it unlit still only slows you")
 
 
 func test_weather_moves_the_pressures_of_the_place_it_falls_on() -> void:
@@ -72,8 +90,8 @@ func test_high_ground_is_colder_and_a_fire_and_a_roof_answer_it() -> void:
 	under_a_roof.weather_strength = 1.0
 	under_a_roof.shelter = 1.0
 	lt(float(Hazards.felt(under_a_roof).get(&"wet", 0.0)), float(Hazards.felt(rained_on)[&"wet"]), "a roof keeps the rain off")
-	var dark := place({}, 1.0)
-	var lit := place({}, 1.0)
+	var dark := place({&"dark": 0.7}, 1.0)
+	var lit := place({&"dark": 0.7}, 1.0)
 	lit.lamp = true
 	lt(float(Hazards.felt(lit).get(&"dark", 0.0)), float(Hazards.felt(dark)[&"dark"]), "a lit lamp undoes the dark")
 	var wading := place({})

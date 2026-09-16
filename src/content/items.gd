@@ -27,7 +27,7 @@ class_name Items
 ##   module: true          it is a module; `fits` lists the slots it may sit in
 ##   resist: {hazard: 0..1}  pressures it keeps off (src/core/hazards/hazards.gd)
 ##   ability: StringName   the ability it grants while fitted (src/core/gear/abilities.gd)
-##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §10)
+##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §12)
 
 ## Hardness ladder: a seam needs a tool of at least its stuff.
 const STUFF_RANK := {&"wood": 0, &"iron": 1, &"steel": 2, &"crucible": 3, &"found": 4}
@@ -186,6 +186,10 @@ const DEFS := {
 		"fits": [&"head", &"body", &"hands"], "resist": {&"cold": 0.2}},
 	&"mod_filter": {"name": "char filter", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
 		"fits": [&"head"], "resist": {&"fumes": 0.3, &"toxins": 0.2}},
+	# Cord and pitch wound round a haft: it damps the ring that comes back up a
+	# tool struck against machine plate, and it is what the hand's slot is for.
+	&"mod_grip": {"name": "bound grip", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"tool", &"hands"], "resist": {&"resonance": 0.35, &"em": 0.1}},
 	&"mod_foil": {"name": "foil lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"fits": [&"body", &"back"], "resist": {&"radiation": 0.3, &"em": 0.2}},
 	&"mod_spring": {"name": "spring coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,

@@ -32,6 +32,15 @@ const DRAIN_PER_MINUTE := 1.0 / 45.0
 const HARM_FLOOR := 1
 ## Levels above this and the air thins and the cold sharpens.
 const HIGH_LEVEL := 6
+## What the hour alone may add to a dark or a cold place at deepest night, as a
+## share of what that landscape declares. A landscape that declares neither gets
+## nothing: `BiomeDef.hazards` is the authority on which places are dark and
+## which are cold, and the clock never overrules it.
+const NIGHT_DARK := 0.6
+const NIGHT_COLD := 0.35
+## ...and whatever the hour manufactures stays under BITE on its own, so night
+## alone never slows a body's legs anywhere.
+const NIGHT_MOST := BITE - 0.05
 
 ## The first line said when a pressure begins to bite, one per hazard.
 const LINES := {
@@ -109,8 +118,13 @@ static func _hour_shift(out: Dictionary, place: Place) -> void:
 	# (or, below, out in the rain).
 	if out.has(&"wet") and not place.in_water:
 		out[&"wet"] = float(out[&"wet"]) * 0.45
-	_add(out, &"dark", 0.75 * night)
-	_add(out, &"cold", 0.30 * night)
+	# Night deepens a place's own dark and cold; it does not manufacture either.
+	# A coast that declares no dark shows no gauge at midnight, exactly as it did
+	# before there were gauges, and a pinewood that declares 0.4 is a place you
+	# want a lamp for. The clock is a multiplier on the landscape, never a term
+	# of its own (see NIGHT_MOST).
+	_add(out, &"dark", minf(NIGHT_DARK * float(place.hazards.get(&"dark", 0.0)), NIGHT_MOST) * night)
+	_add(out, &"cold", minf(NIGHT_COLD * float(place.hazards.get(&"cold", 0.0)), NIGHT_MOST) * night)
 
 
 ## What is falling out of the sky, read through the families a hazard knows.

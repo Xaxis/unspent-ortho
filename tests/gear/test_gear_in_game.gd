@@ -89,6 +89,25 @@ func test_the_gear_page_fits_sockets_swaps_and_clears_with_one_key() -> void:
 	game.free()
 
 
+## The hand's row answers about the hand: what is held is carrying's business,
+## and this page binds a module to the haft and takes it off again. It used to
+## answer "You carry nothing for that." about a slot that was already full.
+func test_the_hands_row_binds_to_the_haft_and_never_answers_about_pieces() -> void:
+	var sys := _boot(["--held=knife", "--give=mod_grip:1"])
+	var l: Loadout = sys.get("loadout")
+	eq(l.item(Gear.HAND_SLOT), &"knife", "the loadout follows what is held")
+	gt(float(Gear.sockets(&"knife")), 0.0, "a haft takes a binding")
+	var said := SlateFeeds.act(&"loadout", game, Gear.HAND_SLOT)
+	check(not said.begins_with("!"), "it did something: %s" % said)
+	eq(l.modules(Gear.HAND_SLOT), [&"mod_grip"] as Array[StringName], "the grip is on the knife")
+	gt(float(game.body.resist.get(&"resonance", 0.0)), 0.3, "and the body is answering with it")
+	var again := SlateFeeds.act(&"loadout", game, Gear.HAND_SLOT)
+	check(not again.begins_with("!"), "the next press takes it off: %s" % again)
+	eq(l.modules(Gear.HAND_SLOT).size(), 0, "unbound")
+	eq(l.item(Gear.HAND_SLOT), &"knife", "and the tool is still in hand: this page never swaps it")
+	game.free()
+
+
 func test_gear_dropped_comes_off_and_the_abilities_go_with_it() -> void:
 	var sys := _boot(["--fit=glide_wing"])
 	var book: AbilityBook = sys.get("book")
@@ -130,7 +149,7 @@ func test_a_scan_marks_the_machines_and_nothing_else() -> void:
 func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void:
 	var sys := _boot(["--fit=glide_wing"])
 	var here := game.player.pos
-	sys.call("_start_motion", AbilityMotion.glide(Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
+	sys.call("_start_motion", AbilityMotion.glide(here, Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
 		AbilityGlide.SECONDS, game.world.height_at(here) + 4.0))
 	var wing := game.player.model.get_node_or_null("glide_wing") as GlideWingModel
 	check(wing != null, "the wing is on the body")
@@ -146,7 +165,7 @@ func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void
 	gt(float(frame.mesh.get_surface_count()), 0.0, "and so does the made frame")
 	var plate_shader := (plate.material_override as ShaderMaterial).shader
 	var frame_shader := (frame.material_override as ShaderMaterial).shader
-	check(plate_shader != frame_shader, "and they are not the same material (docs/ART.md §10)")
+	check(plate_shader != frame_shader, "and they are not the same material (docs/ART.md §12)")
 	check(String(plate_shader.resource_path).contains("found"), "the plate is FOUND")
 	# It faces the camera's way up: a flat panel wound face-down would vanish.
 	var aabb := plate.mesh.get_aabb()
@@ -164,7 +183,7 @@ func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void
 func test_something_else_moving_the_body_ends_the_flight() -> void:
 	var sys := _boot(["--fit=glide_wing"])
 	var here := game.player.pos
-	sys.call("_start_motion", AbilityMotion.glide(Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
+	sys.call("_start_motion", AbilityMotion.glide(here, Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
 		AbilityGlide.SECONDS, game.world.height_at(here) + 6.0))
 	await tree.physics_frame
 	await tree.physics_frame

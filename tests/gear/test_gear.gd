@@ -199,10 +199,21 @@ func test_the_three_idioms_are_told_apart_by_the_data_and_by_the_slate() -> void
 	eq(Gear.tier(&"shield_plate"), &"found")
 	eq(Gear.tier(&"knife"), &"made", "anything with no tier of its own is made")
 	eq(Gear.tier(&"las_hand"), &"found", "unless it is machine tech")
-	# A mended thing is drawn in both palettes at once (docs/ART.md §10).
-	var cols := UiIcons.colours_for(&"glide_wing")
-	check(UiTheme.MACHINE.has(cols["3"]), "its plate is the stolen module's violet")
-	check(UiTheme.PHOSPHOR.has(cols["5"]), "its cord is phosphor")
+	# EVERY mended thing is drawn in both palettes at once (docs/ART.md §12), and
+	# a shape with no cord pixel in it would read as FOUND however the ramp is
+	# written -- so the icon itself is checked, not just the colour table.
+	for id: StringName in Items.DEFS:
+		if not Gear.is_mended(id):
+			continue
+		var cols := UiIcons.colours_for(id)
+		check(UiTheme.MACHINE.has(cols["3"]), "%s's plate is the stolen module's violet" % id)
+		check(UiTheme.PHOSPHOR.has(cols["5"]), "%s's cord is phosphor" % id)
+		var rows: Array = UiIcons.SHAPES[UiIcons.style_of(id)[0]]
+		var cord := 0
+		for row: String in rows:
+			for c: String in row:
+				cord += 1 if (c == "4" or c == "5" or c == "6") else 0
+		gt(float(cord), 1.0, "%s has binding drawn on it, not only plate" % id)
 	var made := UiIcons.colours_for(&"wrap_warm")
 	for v: Color in made.values():
 		check(UiTheme.PHOSPHOR.has(v), "a made thing is all phosphor")
