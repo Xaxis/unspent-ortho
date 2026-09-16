@@ -70,9 +70,11 @@ static func make() -> BiomeDef:
 		&"trunk": [P.LINEN[2]],
 		&"scrub": [P.MOSS[4].lerp(P.SAND[4], 0.5), P.SAND[4], P.LINEN[3]],
 	}
-	# The one landscape whose noon is BRIGHTER than the page: the grade lifts
-	# instead of dimming, and the contrast is pushed so the glare has an edge.
-	d.grade = Vector4(0.12, 0.2, -0.06, 0.2)
+	# The one landscape whose noon is BRIGHTER than the page. The darkness term
+	# goes further negative than any other land (sky.gdshaderinc scales by
+	# 1 - grade.x, so NEGATIVE lifts), and the contrast is pushed so the glare
+	# has an edge instead of washing flat.
+	d.grade = Vector4(-0.12, 0.2, -0.06, 0.2)
 	d.light_tint = Color(1.03, 1.01, 0.97)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,

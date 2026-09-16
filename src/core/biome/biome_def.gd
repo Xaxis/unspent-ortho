@@ -139,9 +139,10 @@ var tree_tints: Dictionary = {}
 var hard_rock := false
 ## Multiplied into this landscape's light.
 var light_tint := Color(1, 1, 1)
-## The dystopian grade offset (SkyLight.NEON_COUNTRY): (dark, desat, cool,
-## contrast). Dark goes NEGATIVE where the washes are dark, so every landscape
-## reads as day at noon.
+## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
+## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
+## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark
+## term goes negative, far enough that its own washes still read as day at noon.
 var grade := Vector4(-0.4, 0.15, 0.04, 0.05)
 ## How wet this land lies with no rain on it: 0 dry, 1 drowned.
 var wet := 0.0

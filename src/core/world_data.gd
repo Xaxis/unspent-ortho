@@ -21,7 +21,10 @@ var country: PackedByteArray
 var country2: PackedByteArray
 var blend: PackedFloat32Array
 ## Region id + 1 per tile (0 = the sea, or a run too small to be a place).
-var region: PackedByteArray
+## Int, not byte: a world of many landscapes can hold hundreds of places, and a
+## byte would silently alias the tail of them onto each other's ids — which
+## sentinels, works and saves all key on.
+var region: PackedInt32Array
 ## The places this world is made of, biggest first. One landscape type may hold
 ## several: {id: int, type: StringName, index: int (type index), tiles: int,
 ## centre: Vector2, bounds: Rect2}. Sentinels, works, subarcs and saves key on

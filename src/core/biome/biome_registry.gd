@@ -24,6 +24,10 @@ static var _defs: Dictionary = {}
 static var _by_index: Array[BiomeDef] = []
 static var _land: Array[BiomeDef] = []
 static var _names: PackedStringArray = PackedStringArray()
+## The registry is first read from whichever thread gets there first: world gen
+## on the boot worker, or a chunk being built on the pool (Ink.hand_of,
+## Decor.kit). Only one of them may build it, and none may see it half built.
+static var _lock := Mutex.new()
 ## Type ids to leave out of world generation (tests that prove parity with the
 ## M1 six set this; empty in a real game).
 static var _muted: Dictionary = {}
@@ -188,6 +192,11 @@ static func problems() -> PackedStringArray:
 static func _ensure() -> void:
 	if not _defs.is_empty():
 		return
+	_lock.lock()
+	# Another thread may have built it while this one waited for the lock.
+	if not _defs.is_empty():
+		_lock.unlock()
+		return
 	var made: Array[BiomeDef] = []
 	for path: String in _files():
 		var script: GDScript = load(path)
@@ -201,18 +210,26 @@ static func _ensure() -> void:
 		if a.order != b.order:
 			return a.order < b.order
 		return a.id < b.id)
-	_by_index.clear()
-	_land.clear()
-	_names = PackedStringArray()
+	var by_index: Array[BiomeDef] = []
+	var land: Array[BiomeDef] = []
+	var names := PackedStringArray()
+	var defs := {}
 	for d in made:
-		if d.sea and not _by_index.is_empty():
+		if d.sea and not by_index.is_empty():
 			push_error("BiomeRegistry: the sea must sort first (order %d)" % d.order)
-		d.index = _by_index.size()
-		_by_index.append(d)
-		_names.append(String(d.id))
+		d.index = by_index.size()
+		by_index.append(d)
+		names.append(String(d.id))
 		if not d.sea:
-			_land.append(d)
-		_defs[d.id] = d
+			land.append(d)
+		defs[d.id] = d
+	_by_index = by_index
+	_land = land
+	_names = names
+	# Published LAST: a non-empty _defs is what every reader tests without the
+	# lock, so it may not be set while the index arrays are still being filled.
+	_defs = defs
+	_lock.unlock()
 
 
 ## Every landscape's file. A world cannot be made without compiling all of

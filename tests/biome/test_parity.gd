@@ -21,14 +21,34 @@ const M1 := {
 }
 
 
+## Muting the registry is a change to GLOBAL state that every later test in the
+## shard would silently inherit. Tie the restore to the scope instead of to the
+## last line of a happy path: however this test leaves — a failed assertion, an
+## error, an early return — the guard goes out of scope and the whole registry
+## comes back.
+class Muted extends RefCounted:
+	func _init(ids: Array[StringName]) -> void:
+		BiomeRegistry.mute_to(ids)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_PREDELETE:
+			BiomeRegistry.mute_to([])
+
+
 func test_a_world_of_the_six_is_the_world_m1_made() -> void:
-	BiomeRegistry.mute_to(SIX)
+	var guard := Muted.new(SIX)
 	eq(BiomeRegistry.count(), 7, "the sea and the six")
 	for s: int in M1:
 		var w := WorldGen.generate(s, SIZE)
 		eq(digest(w), M1[s], "seed %d" % s)
-	BiomeRegistry.mute_to([])
+	guard = null
 	gt(float(BiomeRegistry.count()), 7.0, "the whole registry is back")
+
+
+func test_the_registry_is_whole_for_every_other_test() -> void:
+	# If a parity test ever leaves the registry muted, this is the line that
+	# says so instead of nine other tests quietly meaning something else.
+	check(BiomeRegistry.get_def(&"salt_flats") != null, "the registry is not muted")
 
 
 static func digest(w: WorldData) -> String:

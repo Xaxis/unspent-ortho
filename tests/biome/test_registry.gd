@@ -73,7 +73,13 @@ func test_every_landscape_declares_what_the_readers_ask_for() -> void:
 		check(not d.hazards.is_empty(), "%s: the land presses on you somehow" % w)
 		check(not d.roster.is_empty(), "%s: something lives or works there" % w)
 		check(not d.village_names.is_empty() or d.villages == 0, "%s: names for its villages" % w)
-		check(d.grade.x <= 0.2, "%s: the grade never brightens the day" % w)
+		# sky.gdshaderinc scales the graded colour by (1 - grade.x): POSITIVE
+		# darkens, negative lifts. A landscape open to the sky may lift its noon
+		# as far as SkyLight's clamp, and may not darken it at all — that is what
+		# turns a noon frame into dusk and what nobody notices until a shot.
+		if d.realms.has(&"surface"):
+			check(d.grade.x <= 0.0, "%s: grade.x %.2f darkens the day (positive darkens)" % [w, d.grade.x])
+		check(d.grade.x >= -0.6, "%s: grade.x %.2f lifts past the sky's clamp" % [w, d.grade.x])
 		gt(d.share_target(), 0.0, "%s: wants some of the land" % w)
 
 
