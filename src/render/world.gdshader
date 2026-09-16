@@ -517,6 +517,150 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (ink_vnoise(wp * 0.7) > 0.7) {
 			c = dn(c, 0.2);
 		}
+	} else if (m == 55) {
+		// SALT: the crust dries in plates a stride across and lifts at every
+		// join, so the flat is a pale mosaic of raised rims over a duller floor.
+		// Only some joins have lifted: a rim runs a few plates and stops, so the
+		// pattern never reads as a net thrown over the ground. A lifted plate
+		// stands OVER its neighbour — its edge takes the light and throws a line
+		// of shadow on the plate it overhangs — so the crust has thickness and
+		// never reads as paving. The floor of a plate is grained, not flat: salt
+		// dries in grains and a few of them catch the sun.
+		vec2 q = wp * 2.1;
+		vec2 gi = floor(q);
+		float d1 = 9.0;
+		float d2 = 9.0;
+		vec2 own = vec2(0.0);
+		vec2 next = vec2(0.0);
+		for (int yy = -1; yy <= 1; yy++) {
+			for (int xx = -1; xx <= 1; xx++) {
+				vec2 g = gi + vec2(float(xx), float(yy));
+				vec2 ctr = g + vec2(ink_hash(g + 1.7), ink_hash(g + 5.3)) * 0.8 + 0.1;
+				float d = length(q - ctr) + rag(wp) * 0.7;
+				if (d < d1) {
+					d2 = d1;
+					d1 = d;
+					next = own;
+					own = g;
+				} else if (d < d2) {
+					d2 = d;
+					next = g;
+				}
+			}
+		}
+		float join = d2 - d1;
+		float ch = ink_hash(own + 11.0);
+		c = ch < 0.3 ? dn(c, 0.26) : (ch > 0.72 ? up(c, 0.12) : c);
+		// Grain across the plate, at its own angle: a dried floor, not a panel.
+		float gr = ink_vnoise(wp * 4.1 + own * 3.3) * 0.7 + ink_vnoise(wp * 11.0) * 0.3;
+		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.09) : c);
+		// A slow field of damp: where the pan never dried the crust takes a
+		// mineral stain. ONE connected wash with its own shore, never a tint per
+		// plate, and pale: the flat has to stay white or it is not a flat.
+		float damp = ink_vnoise(wp * 0.05 + 21.0) * 0.8 + ink_vnoise(wp * 0.19) * 0.2;
+		float stain = smoothstep(0.70, 0.80, damp + rag(wp) * 1.5);
+		if (stain > 0.0) {
+			c = mix(c, mix(LINEN2, EARTH3, 0.45), stain * 0.2);
+			// Brine still lying in the deepest of it: a SKIN, a finger deep, that
+			// holds the sky rather than hiding the crust under it. One sheet
+			// with its own shore — the damp field's contour decides where its
+			// edge falls — never a sprinkle of blue over the flat.
+			float pool = smoothstep(0.900, 0.918, damp + rag(wp) * 2.0);
+			if (pool > 0.0) {
+				vec3 skin = mix(mix(c, BRINE5, 0.45), BRINE4, step(0.88, ink_hash(px + 3.0)) * 0.5);
+				c = mix(c, skin, pool);
+			}
+		}
+		// Which joins have lifted: decided per pair, in runs, so a rim has ends,
+		// and no two rims weigh the same.
+		vec2 lo_c = min(own, next);
+		vec2 hi_c = max(own, next);
+		float lifted = ink_hash(lo_c * 3.1 + hi_c * 7.3);
+		float weight = 0.03 + lifted * 0.075;
+		if (lifted < 0.62 && join < weight) {
+			// The plate that sorts above rode up over the other: this side is
+			// the lit edge of the lift, the other is under its overhang.
+			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;
+			if (join < weight * 0.3) {
+				c = dn(c, 0.8);
+			} else {
+				c = over ? mix(LINEN5, vec3(1.0), lifted) : dn(c, 0.4);
+			}
+		} else if (join < 0.028) {
+			// An unlifted join is only a hairline.
+			c = dn(c, 0.22);
+		}
+		float sh = ink_hash(px + 9.0);
+		if (sh > 0.991) {
+			c = vec3(1.0);
+		} else if (sh < 0.006) {
+			c = dn(c, 0.35);
+		}
+	} else if (m == 57) {
+		// PAN: the floor of an evaporation pan the brine drew back from. Damp
+		// silt gone grey-brown, drying in a coarse net of cracks that are wide
+		// and dark, with the tide lines of the water it lost drawn across it in
+		// mineral stain, and a little salt left along the cracks.
+		float net = ink_vnoise(wp * 0.45) * 0.7 + ink_vnoise(wp * 1.3) * 0.3;
+		float cell = abs(fract(net * 7.0) - 0.5);
+		// Tide lines: the pan lost its water in stages and marked each one.
+		float stage = ink_vnoise(vec2(wp.x * 0.04 + wp.y * 0.02, 13.0));
+		float line = abs(fract(stage * 22.0) - 0.5);
+		if (line < 0.06) {
+			c = mix(c, RUST2, 0.4);
+		} else if (line < 0.12) {
+			c = mix(c, EARTH3, 0.22);
+		}
+		if (cell < 0.035 + rag(wp)) {
+			// A drying crack: dark, and salt gathered along its lip.
+			c = cell < 0.016 ? dn(c, 0.8) : mix(c, LINEN4, 0.55);
+		} else if (ink_vnoise(wp * 0.9 + 3.0) > 0.72) {
+			c = up(c, 0.16);
+		}
+		float h = ink_hash(px);
+		if (h > 0.985) {
+			c = LINEN5;
+		} else if (h < 0.015) {
+			c = dn(c, 0.5);
+		}
+	} else if (m == 56) {
+		// SWARF: rust grit and filings over the litter of a wood grown through
+		// dead machines. The filings are not scattered: they lie in the arcs of
+		// the fields still in the iron, so the ground is combed in long curves
+		// that meet nothing. Between the arcs, wet leaf litter and bright
+		// flecks of cut metal.
+		float f = ink_vnoise(wp * 0.11) * 0.75 + ink_vnoise(wp * 0.4) * 0.25;
+		float arc = fract(f * 11.0);
+		float gate = ink_vnoise(wp * 0.5 + 7.0);
+		if (arc < 0.17 && gate > 0.24) {
+			// A drawn line of filings, standing on edge: the far side of the comb
+			// is in its own shadow and the near side catches the light, so the
+			// arc reads as iron combed up and not as a stain in the dirt.
+			if (arc < 0.06) {
+				c = dn(c, 0.95);
+			} else if (arc < 0.115) {
+				c = mix(c, STONE2, 0.62);
+			} else {
+				c = mix(c, RUST2, 0.5);
+			}
+		} else if (arc > 0.46 && arc < 0.56 && gate > 0.5) {
+			// The next line over, fainter: the field drew more than one.
+			c = arc < 0.5 ? mix(c, RUST3, 0.42) : dn(c, 0.3);
+		}
+		if (ink_vnoise(wp * 1.3 + 4.0) + rag(wp) > 0.78) {
+			// Leaf litter gone to mulch in the hollows.
+			c = dn(c, 0.4);
+		}
+		// Cut shavings gather where something was broken up, not evenly over a
+		// wood: a drift of them, and only a few bright enough to catch the eye.
+		float drift = ink_vnoise(wp * 0.13 + 19.0);
+		float h = ink_hash(px);
+		if (drift > 0.66 && h > 0.985) {
+			c = h > 0.996 ? ASH3 : mix(STONE2, RUST2, 0.35);
+			unh = max(unh, 0.5);
+		} else if (h < 0.025) {
+			c = mix(c, RUST1, 0.5);
+		}
 	}
 	return c;
 }
@@ -937,6 +1081,45 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		}
 		if (dt > 0.42) {
 			c = RIME3;
+		}
+	} else if (id == 9) {
+		// SALT FLATS: the pan cut through. Thin evaporite beds, each a slightly
+		// different mineral, laid down in a season and stained where the brine
+		// soaked back in; a crust lip at the top that overhangs, and grey silt
+		// at the foot where nothing crystallised.
+		float b = (y + (vn - 0.5) * 0.03) / 0.09;
+		float bh = ink_hash(vec2(floor(b), 2.0));
+		c = bh < 0.4 ? LINEN4 : (bh < 0.75 ? LINEN5 : mix(LINEN3, RUST2, 0.25));
+		if (fract(b) < 0.1) {
+			c = LINEN2;
+		}
+		if (dt < 0.05 + vn * 0.03) {
+			c = LINEN5;
+		} else if (dt < 0.075 + vn * 0.03) {
+			c = LINEN1;
+		}
+		if (dt > 0.6) {
+			c = mix(LINEN2, STONE2, 0.5);
+		}
+	} else if (id == 10) {
+		// SCRAPWOOD: a bank of made ground. Crushed plate and cable in courses
+		// between bands of soil, roots reaching down through it, and the odd
+		// whole piece still sticking out of the face.
+		float b = (y + (vn - 0.5) * 0.06) / 0.13;
+		float bh = ink_hash(vec2(floor(b), 3.0));
+		c = bh < 0.45 ? mix(EARTH1, RUST1, 0.35) : (bh < 0.8 ? EARTH2 : mix(STONE1, RUST2, 0.4));
+		if (fract(b) < 0.12) {
+			c = INK2;
+		}
+		float px_col = floor(px.x / 5.0);
+		if (ink_hash(vec2(px_col, floor(b) + 7.0)) > 0.88) {
+			// A plate end proud of the bank: ruled, and rubbed bright on its lip.
+			c = mod(px.x, 5.0) < 1.0 ? ASH4 : mix(STONE2, RUST2, 0.3);
+		}
+		if (dt < 0.09 + vn * 0.05) {
+			c = mix(EARTH1, MOSS2, 0.4);
+		} else if (ink_hash(vec2(px.x, 11.0)) > 0.84 && dt < 0.14 + ink_hash(vec2(px.x, 12.0)) * 0.3) {
+			c = EARTH1;
 		}
 	}
 	return c;

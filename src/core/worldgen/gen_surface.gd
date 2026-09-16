@@ -1,26 +1,27 @@
 class_name GenSurface
 ## Stage 11: what every tile's surface is made of.
 ##
-## Grounds are washes, not salad. Each country's recipe reads only fields that
-## are smooth at the scale of a walk: `big` (1/48) for where a ground masses,
-## float elevation and `rise` (how far the land stands above the land around
-## it, from float elevation so it drapes across terrace edges), the woodland
-## field, and distances (to the sea, to a cliff foot, to a river, to a pool).
-## No per-tile noise and no integer level decides a field ground. Geometric
-## grounds (beaches, scree aprons, pool rims, marsh) are bands at least two
-## tiles deep.
+## Grounds are washes, not salad. Each landscape type's recipe (`BiomeDef.surface`,
+## in its own file under src/content/biomes/) reads only fields that are smooth
+## at the scale of a walk: `big` (1/48) for where a ground masses, float
+## elevation and `rise` (how far the land stands above the land around it, from
+## float elevation so it drapes across terrace edges), the woodland field, and
+## distances (to the sea, to a cliff foot, to a river, to a pool). No per-tile
+## noise and no integer level decides a field ground. Geometric grounds
+## (beaches, scree aprons, pool rims, marsh) are bands at least two tiles deep.
 ##
-## In an ecotone a tile follows its second country's recipe where the warped
-## patch field falls under the blend, so the neighbour arrives in islands and
-## tongues that thin away from the border. Snow creeps down only on high
-## ground and only inside the ecotone; ash drifts out of the Burning thinner
-## than anything else. Villages have their own recipe: a cleared ground with a
-## ragged edge and a square in the middle.
+## In an ecotone a tile follows its second type's recipe where the warped patch
+## field falls under the blend, so the neighbour arrives in islands and tongues
+## that thin away from the border. How far each type's ground travels is its own
+## (`reach_out_thin`, `reach_out_high`, `reach_in_thin`, `reach_in_low`): snow
+## creeps down only on high ground, ash drifts out thinner than anything else.
+## Villages have their own recipe: a cleared ground with a ragged edge and a
+## square in the middle.
 ##
 ## GenTidy then merges specks, mode-filters and takes the stair notches out,
 ## so ground edges are long curves the terrain mesher can draw.
 
-## Polar grid of the Burning's lava flows: angle bins by radius bins.
+## Polar grid of a caldera's lava flows: angle bins by radius bins.
 const FLOW_ANGLES := 360
 const FLOW_RADII := 96
 ## Tiles per radius bin: the flows are long tongues running out of the caldera.
@@ -115,7 +116,6 @@ static func run(c: GenContext) -> void:
 	var big := fl[2]
 	var patch := fl[3]
 	c.forest = fl[4]
-	var forest := c.forest
 	c.mark(&"surface.noise")
 	# Lava flows run out from the caldera: noise on a polar grid, stretched
 	# along the radius, wrapping round the angle.
@@ -123,7 +123,8 @@ static func run(c: GenContext) -> void:
 	var flow_img := flow_noise.get_seamless_image(FLOW_ANGLES, FLOW_RADII, false, false, 0.1, false)
 	flow_img.convert(Image.FORMAT_RF)
 	var flows := flow_img.get_data().to_float32_array()
-	var heart := c.hearts[Country.BURNING]
+	var caldera_type := c.caldera_type
+	var heart := c.hearts[caldera_type] if caldera_type >= 0 else Vector2(-1, -1)
 	var crater := GenRelief.crater_radius(c)
 	var spawn := w.spawn
 	var rim_warp := c.rim_warp
@@ -138,14 +139,62 @@ static func run(c: GenContext) -> void:
 	var fixed := PackedByteArray()
 	fixed.resize(n)
 	c.mark(&"surface.fields")
-	const COAST := Country.COAST
-	const MOSS := Country.MOSS
-	const PINEWOOD := Country.PINEWOOD
-	const SNOWFIELD := Country.SNOWFIELD
-	const BONELANDS := Country.BONELANDS
-	const BURNING := Country.BURNING
-	const G_GRASS := Ground.GRASS
+	var defs := c.defs
+	# The ecotone rules, flattened so the tile loop never touches a BiomeDef.
+	var types := c.types
+	var out_thin := PackedFloat32Array()
+	var in_thin := PackedFloat32Array()
+	var out_high := PackedVector4Array()
+	var in_low := PackedVector3Array()
+	# The caps on their own, so the tile loop can ask whether a type creeps at
+	# all without copying a vector to find out.
+	var out_high_cap := PackedFloat32Array()
+	var in_low_cap := PackedFloat32Array()
+	var plain := PackedInt32Array()
+	var rim_g := PackedInt32Array()
+	var frozen := PackedByteArray()
+	out_thin.resize(types)
+	in_thin.resize(types)
+	out_high.resize(types)
+	in_low.resize(types)
+	out_high_cap.resize(types)
+	in_low_cap.resize(types)
+	plain.resize(types)
+	rim_g.resize(types)
+	frozen.resize(types)
+	var surf: Array[Callable] = []
+	for cc in types:
+		var d := defs[cc]
+		out_thin[cc] = d.reach_out_thin
+		in_thin[cc] = d.reach_in_thin
+		out_high[cc] = d.reach_out_high
+		in_low[cc] = d.reach_in_low
+		out_high_cap[cc] = d.reach_out_high.w
+		in_low_cap[cc] = d.reach_in_low.z
+		plain[cc] = d.plain_ground
+		rim_g[cc] = d.pool_rim_ground
+		frozen[cc] = 1 if d.rivers_freeze else 0
+		surf.append(d.surface)
+	var forest := c.forest
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		var t := BiomeSurface.new()
+		# The two types in play and the recipe change only where the land does,
+		# so they are handed over when they change and not once a tile: an
+		# assignment costs more than comparing two bytes.
+		var last_own := -1
+		var last_other := -1
+		var last_recipe := -1
+		var recipe_fn := surf[0]
+		t.crater = crater
+		t.elev = elev_s
+		t.rise = rise
+		t.big = big
+		t.convex = convex
+		t.forest = forest
+		t.sea_steps = sea_steps
+		t.marsh = marsh
+		t.levels = level
+		t.blends = blend
 		for y in range(y0, y1):
 			for x in size:
 				var i := y * size + x
@@ -163,7 +212,7 @@ static func run(c: GenContext) -> void:
 					continue
 				var wat := water[i]
 				if wat == 1:
-					ground[i] = Ground.ICE if own == SNOWFIELD and l >= 6 else Ground.RIVER
+					ground[i] = Ground.ICE if frozen[own] != 0 and l >= 6 else Ground.RIVER
 					fixed[i] = 1
 					continue
 				if wat == 2:
@@ -183,20 +232,22 @@ static func run(c: GenContext) -> void:
 				if bl > 0.0:
 					var pb := bl
 					var near := bl * 2.0
-					if c2 == BURNING:
+					if out_thin[c2] > 0.0:
 						# Ash drifts out thin, and thinner with every tile from the rim.
-						pb = bl * near * 0.28
-					elif own == BURNING:
+						pb = bl * near * out_thin[c2]
+					elif in_thin[own] > 0.0:
 						# Little that is not burnt survives inside the rim: the
 						# neighbour's ground reaches in only near the border.
-						pb = bl * near * 0.7
-					elif c2 == SNOWFIELD:
+						pb = bl * near * in_thin[own]
+					elif out_high_cap[c2] > 0.0:
 						# Snow creeps down only the high ground, and only as far as
 						# the ecotone reaches: tongues down the ridges.
-						pb = near * clampf((e - 6.5) * 0.1 + rs * 0.12, 0.0, 0.45)
-					elif own == SNOWFIELD:
+						var hi_out: Vector4 = out_high[c2]
+						pb = near * clampf((e - hi_out.x) * hi_out.y + rs * hi_out.z, 0.0, hi_out.w)
+					elif in_low_cap[own] > 0.0:
 						# The neighbour climbs the Snowfield's low valleys.
-						pb = bl * 0.7 + near * clampf((6.0 - e) * 0.08, 0.0, 0.3)
+						var lo_in: Vector3 = in_low[own]
+						pb = bl * 0.7 + near * clampf((lo_in.x - e) * lo_in.y, 0.0, lo_in.z)
 					# The patch field's tails pass 0: never let them cross where
 					# the neighbour has no pull.
 					if maxf(0.03, 0.5 + patch[i] * 1.2) < pb:
@@ -208,7 +259,7 @@ static func run(c: GenContext) -> void:
 					# A village clears its ground; the square is trodden bare.
 					var vc := int(cv) >> 4
 					var part := cv - (vc << 4)
-					ground[i] = _village_ground(vc, part)
+					ground[i] = defs[vc].village_square_ground if part >= 1.0 else defs[vc].village_ground
 					recipe[i] = vc
 					# The square keeps its drawn edge: roads can leave it in pieces
 					# the tidy pass would otherwise sweep away. The cleared ground
@@ -226,122 +277,40 @@ static func run(c: GenContext) -> void:
 				var bank := river_steps[i] <= 1
 				var rim := pool_steps[i] <= 2
 				var shore := ss <= (2 if gb > -0.2 else 1) and l <= 2
-				var g := G_GRASS
+				var g := Ground.GRASS
 				if rim:
 					# Pools lie in a rim of their own shore, whatever the recipe.
-					g = Ground.PEAT if cc == MOSS else (Ground.GRAVEL if cc == SNOWFIELD else Ground.MUD)
-				elif cc == COAST:
-					var cx := convex[i]
-					if shore:
-						if cx > 0.64:
-							g = Ground.MUD
-						elif cx < 0.47 or gb > 0.45:
-							g = Ground.SHINGLE
-						else:
-							g = Ground.SAND
-					elif apron:
-						g = Ground.SHINGLE if l <= 2 else Ground.SCREE
-					elif marsh[i] <= 3 + int(maxf(0.0, gb + 0.3) * 6.0) and l <= 2:
-						g = Ground.MUD
-					elif l <= 3 and cx > 0.5 and ss <= mini(7, 3 + int(maxf(0.0, gb) * 10.0)):
-						# Dunes back the sandy bays.
-						g = Ground.SAND
-					elif e + gb * 3.0 + rs * 0.8 >= 4.4:
-						g = Ground.HEATH
-					elif rs < -0.55 and gb < -0.2 and e < 3.5:
-						g = Ground.MUD
-				elif cc == PINEWOOD:
-					if shore:
-						g = Ground.SHINGLE if gb > 0.0 else Ground.SAND
-					elif apron:
-						g = Ground.SCREE
-					elif bank and gb > 0.25:
-						g = Ground.GRAVEL
-					elif rs < -0.75 and gb < -0.15:
-						# Bog in the bottom of the wood.
-						g = Ground.MOSS
-					elif forest[i] > -0.15 - rs * 0.05:
-						g = Ground.NEEDLES
-					elif e >= 9.0 or rs > 1.3 or (c2 == SNOWFIELD and bl > 0.12):
-						# Open tops, and the heath the wood thins into below the snow.
-						g = Ground.HEATH
-				elif cc == MOSS:
-					if shore:
-						g = Ground.MUD if gb > -0.25 else Ground.SAND
-					elif apron:
-						g = Ground.PEAT
-					elif e >= 5.0 and rs > 0.3 and gb > -0.1:
-						g = Ground.HEATH
-					elif rs > 0.35 + gb * 0.6 or gb > 0.45:
-						# Peat hags stand proud of the fen; peat moor where it masses.
-						g = Ground.PEAT
-					elif rs < -0.6 and gb < -0.1:
-						g = Ground.MUD
-					else:
-						g = Ground.MOSS
-				elif cc == SNOWFIELD:
-					if shore:
-						g = Ground.ICE if gb > 0.15 else Ground.SHINGLE
-					elif apron:
-						g = Ground.SCREE
-					elif bank:
-						g = Ground.GRAVEL
-					elif (e >= 11.5 and gb > 0.35) or rs > 1.8 + gb * 0.8:
-						# Wind strips the crests to rock.
-						g = Ground.ROCK
-					elif rs < -0.85 and e < 5.5 and gb < 0.1:
-						g = Ground.GRAVEL
-					else:
-						g = Ground.SNOW
-				elif cc == BONELANDS:
-					if shore:
-						g = Ground.SHINGLE
-					elif apron:
-						g = Ground.SCREE
-					elif bank and gb > 0.0:
-						g = Ground.GRAVEL
-					elif rs < -0.4 - gb * 0.3:
-						# Green dales between the pavements, heath where they widen.
-						g = Ground.HEATH if gb > 0.35 else G_GRASS
-					elif gb < -0.5:
-						g = Ground.GRAVEL
-					elif gb > 0.5:
-						g = Ground.BONE
-					else:
-						g = Ground.LIMESTONE
-				elif cc == BURNING:
-					var fdx := x + 0.5 - heart.x
-					var fdy := y + 0.5 - heart.y
-					var dist := sqrt(fdx * fdx + fdy * fdy)
-					var rim_d := dist + rim_warp[i] * crater * 0.3
-					var fv := _flow_at(flows, fdx, fdy, dist)
-					if shore:
-						g = Ground.CLINKER if gb > 0.0 else Ground.SHINGLE
-					elif apron:
-						g = Ground.SCREE
-					elif fv > 0.65 - (0.1 if rim_d < crater * 0.8 else 0.0) + maxf(0.0, dist - crater * 3.0) * 0.004:
-						g = Ground.CLINKER
-					elif absf(rim_d - crater) < 2.5 + gb * 3.0:
-						g = Ground.ROCK
-					elif e >= 9.0 and gb > 0.3:
-						g = Ground.ROCK
-					else:
-						g = Ground.ASH
-					if own != BURNING and g != Ground.SCREE:
-						# Only the ash travels.
-						g = Ground.ASH
+					g = rim_g[cc]
+				else:
+					# Nothing per-tile is written to the sample: see its header.
+					if own != last_own:
+						last_own = own
+						t.own_def = defs[own]
+					if c2 != last_other:
+						last_other = c2
+						t.other_def = defs[c2]
+					if cc == caldera_type:
+						var fdx := x + 0.5 - heart.x
+						var fdy := y + 0.5 - heart.y
+						t.heart_dist = sqrt(fdx * fdx + fdy * fdy)
+						t.rim_dist = t.heart_dist + rim_warp[i] * crater * 0.3
+						t.flow = _flow_at(flows, fdx, fdy, t.heart_dist)
+					if cc != last_recipe:
+						last_recipe = cc
+						recipe_fn = surf[cc]
+					g = recipe_fn.call(t, i, e, rs, gb, (BiomeSurface.SHORE if shore else 0) | (BiomeSurface.APRON if apron else 0) | (BiomeSurface.BANK if bank else 0))
 				if cc != own and bl < 0.32 and not shore and not rim:
 					# Out in the far half of an ecotone the neighbour arrives as its
 					# plain wash first; its dark and broken grounds (peat hags, mud,
 					# heath, scree) only come in toward the border, so the land turns
-					# by degrees instead of wearing blotches of the next country.
-					if g == Ground.PEAT or g == Ground.MUD or g == Ground.HEATH or g == Ground.SCREE or g == Ground.ROCK or g == Ground.GRAVEL:
-						g = _plain_ground(cc)
+					# by degrees instead of wearing blotches of the next landscape.
+					if g == Ground.PEAT or g == Ground.MUD or g == Ground.HEATH or g == Ground.SCREE or g == Ground.ROCK or g == Ground.GRAVEL or g == Ground.PAN or g == Ground.SWARF:
+						g = plain[cc]
 				var td := tended[i]
 				if td > 0.0 and not shore and td > 0.45 + patch[i] * 0.6:
 					# Round a village the wild grounds give way to grazing, raggedly.
 					if g == Ground.HEATH or g == Ground.SCREE or g == Ground.ROCK or g == Ground.CLINKER or g == Ground.PEAT or g == Ground.MUD or g == Ground.GRAVEL:
-						g = _village_ground(cc, 0.5)
+						g = defs[cc].village_ground
 				if rim:
 					fixed[i] = 1
 				ground[i] = g
@@ -349,17 +318,6 @@ static func run(c: GenContext) -> void:
 	c.mark(&"surface.tiles")
 	GenTidy.run(c, fixed)
 	c.mark(&"surface.tidy")
-
-
-## A country's plainest ground: what its wash is where nothing breaks it.
-static func _plain_ground(cc: int) -> int:
-	match cc:
-		Country.MOSS: return Ground.MOSS
-		Country.PINEWOOD: return Ground.NEEDLES
-		Country.SNOWFIELD: return Ground.SNOW
-		Country.BONELANDS: return Ground.LIMESTONE
-		Country.BURNING: return Ground.ASH
-	return Ground.GRASS
 
 
 ## Bilinear sample of the polar flow grid at an offset from the caldera's heart.
@@ -378,9 +336,9 @@ static func _flow_at(flows: PackedFloat32Array, dx: float, dy: float, dist: floa
 	return lerpf(top, bot, tr)
 
 
-## Village clearings: 0 outside; otherwise country * 16 plus 0.5 on the
-## cleared ground (its edge ragged with the patch field) or 1 on the square.
-## Written per village over a box, so it costs nothing where there are none.
+## Village clearings: 0 outside; otherwise type * 16 plus 0.5 on the cleared
+## ground (its edge ragged with the patch field) or 1 on the square. Written per
+## village over a box, so it costs nothing where there are none.
 static func _clearings(c: GenContext, patch: PackedFloat32Array, tended: PackedFloat32Array) -> PackedFloat32Array:
 	var w := c.w
 	var size := c.size
@@ -413,16 +371,3 @@ static func _clearings(c: GenContext, patch: PackedFloat32Array, tended: PackedF
 				if d < edge and out[i] == 0.0:
 					out[i] = vc * 16 + 0.5
 	return out
-
-
-## Ground of a village clearing (cv in (0, 1)) or square (cv >= 1).
-static func _village_ground(cc: int, cv: float) -> int:
-	if cv >= 1.0:
-		# The square is trodden to gravel.
-		return Ground.GRAVEL
-	# Round it a green is kept, except where nothing green will grow.
-	if cc == Country.SNOWFIELD:
-		return Ground.SNOW
-	if cc == Country.BURNING:
-		return Ground.ASH
-	return Ground.GRASS

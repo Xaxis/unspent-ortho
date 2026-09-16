@@ -54,11 +54,11 @@ func test_prop_templates_are_safe_to_build_from_two_threads() -> void:
 	var kinds: Array[int] = [PropKind.KILN, PropKind.WRECK, PropKind.CAIRN]
 	var task := WorkerThreadPool.add_task(func() -> void:
 		for kd: int in kinds:
-			for c: int in Country.LAND:
+			for c: int in BiomeRegistry.land_indices():
 				PropModels.template(kd, 1, c)
 	)
 	for kd: int in kinds:
-		for c: int in Country.LAND:
+		for c: int in BiomeRegistry.land_indices():
 			PropModels.template(kd, 1, c)
 	WorkerThreadPool.wait_for_task_completion(task)
 	for kd: int in kinds:

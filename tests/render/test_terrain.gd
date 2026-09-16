@@ -268,12 +268,12 @@ func test_marks_ride_in_alpha_and_plain_colours_carry_none() -> void:
 
 func test_every_country_draws_its_turf_in_its_own_wash() -> void:
 	var seen: Array[Color] = []
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		var col := GroundColors.wash(GroundColors.home_turf(c), c)
-		check(col != Palette.BLOOM[3], "%s has a wash" % Country.NAMES[c])
+		check(col != Palette.BLOOM[3], "%s has a wash" % BiomeRegistry.name_of(c))
 		for other in seen:
 			var diff := absf(col.r - other.r) + absf(col.g - other.g) + absf(col.b - other.b)
-			gt(diff, 0.08, "%s turf distinct" % Country.NAMES[c])
+			gt(diff, 0.08, "%s turf distinct" % BiomeRegistry.name_of(c))
 		seen.append(col)
 
 

@@ -348,7 +348,7 @@ const COUNTRY_COLOURS := [
 static func _country_names(countries: Array) -> PackedStringArray:
 	var out: PackedStringArray = []
 	for c: int in countries:
-		var n := Country.NAMES[c]
+		var n := BiomeRegistry.name_of(c)
 		if out.is_empty() or out[-1] != n:
 			out.append(n)
 	return out

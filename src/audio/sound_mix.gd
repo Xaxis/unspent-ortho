@@ -52,16 +52,11 @@ const STEP_MIN_GAP := 0.2
 const SFX_RANGE := 40.0
 const SFX_FAR := 9.0
 
-## Country -> the bed named after what makes its sound.
-const COUNTRY_BED := {
-	Country.SEA: &"bed_wind",
-	Country.COAST: &"bed_wind",
-	Country.MOSS: &"bed_moss",
-	Country.PINEWOOD: &"bed_pines",
-	Country.SNOWFIELD: &"bed_snowfield",
-	Country.BONELANDS: &"bed_bones",
-	Country.BURNING: &"bed_burning",
-}
+## The bed a landscape lies under, named after what makes its sound.
+static func country_bed(c: int) -> StringName:
+	var bed := BiomeRegistry.by_index(c).sound_bed
+	return bed if bed != &"" else &"bed_wind"
+
 
 ## Weather kind (Weather.KINDS) -> its bed. Kinds with no bed (clear, grey,
 ## fog, heat) only damp the others or scatter something of their own.
@@ -343,7 +338,7 @@ static func beds_ahead(world: WorldData, p: Vector2, radius: float = 30.0) -> Ar
 		var a := TAU * k / 12.0
 		var q := p + Vector2(cos(a), sin(a)) * radius
 		var c := world.country_at(clampi(floori(q.x), 0, world.size - 1), clampi(floori(q.y), 0, world.size - 1))
-		var bed: StringName = COUNTRY_BED.get(c, &"bed_wind")
+		var bed := country_bed(c)
 		if not out.has(bed):
 			out.append(bed)
 	return out
@@ -356,10 +351,10 @@ static func _weigh_tile(world: WorldData, p: Vector2, weight: float, out: Dictio
 	var c: int = world.country[i]
 	var c2: int = world.country2[i] if world.country2.size() > i else c
 	var bl: float = clampf(world.blend[i], 0.0, 1.0) if world.blend.size() > i else 0.0
-	var a: StringName = COUNTRY_BED.get(c, &"bed_wind")
+	var a := country_bed(c)
 	out[a] = float(out.get(a, 0.0)) + weight * (1.0 - bl)
 	if bl > 0.0:
-		var b: StringName = COUNTRY_BED.get(c2, &"bed_wind")
+		var b := country_bed(c2)
 		out[b] = float(out.get(b, 0.0)) + weight * bl
 
 

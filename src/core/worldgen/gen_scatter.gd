@@ -2,37 +2,28 @@ class_name GenScatter
 ## Stages 10 and 12: places worth walking to, then every prop.
 ##
 ## Sites (before grounds, since a tip or a fumarole lays its own ground): tips
-## of machine leavings in every country, stone circles in the Bonelands,
-## ruins, fumaroles in the Burning, cairns on summits, falls where rivers step
-## down, the caldera. Wrecks are sited after the grounds, on bay sand only.
+## of machine leavings, stone circles, ruins, fumaroles, cairns on summits,
+## falls where rivers step down, a caldera — each landscape says which of them
+## it holds in `BiomeDef.sites`. Wrecks are sited after the grounds, on bay
+## sand only.
 ##
 ## Props (after grounds): villages first (the fire in the square, the bench
 ## drawn up to it, the lamp at the square's edge, houses facing in), then
 ## landmarks, kilns by the villages, then the machines' grid (pylon and pole
-## lines striding dead straight across countries, spurs to villages), then the
+## lines striding dead straight across landscapes, spurs to villages), then the
 ## hashed per-tile scatter. A tile's scatter follows the same recipe its ground
 ## did (GenContext.recipe), so props lie in the same islands as the ground
-## under them, and every prop must be on its owner country's list (ALLOW), so
-## no reeds grow on the Snowfield and no pines in the Burning. Ore sits in rock
-## by country, richest in the Bonelands, thickest at cliff feet.
-
-## Prop kinds each country's scatter may place, as bit masks by kind.
-static var ALLOW: PackedInt64Array = _allow()
+## under them, and every prop must be on its landscape's list (`BiomeDef.props`),
+## so no reeds grow on the Snowfield and no pines in the Burning. Ore sits in
+## rock by landscape, richest in the Bonelands, thickest at cliff feet.
 
 
-static func _allow() -> PackedInt64Array:
-	var lists := {
-		Country.COAST: [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.GORSE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK],
-		Country.MOSS: [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.PEAT_BANK, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK],
-		Country.PINEWOOD: [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, PropKind.SNOW_PINE, PropKind.GORSE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK],
-		Country.SNOWFIELD: [PropKind.SNOW_PINE, PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK],
-		Country.BONELANDS: [PropKind.PINE, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.TIN_ORE, PropKind.COAL_ORE, PropKind.BONES, PropKind.GORSE, PropKind.CLINTS, PropKind.STANDING_STONE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK],
-		Country.BURNING: [PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.COPPER_ORE, PropKind.IRON_ORE, PropKind.BONES, PropKind.VENT, PropKind.DRIFTWOOD, PropKind.MUSSEL_ROCK],
-	}
+## Prop kinds each landscape's scatter may place, as bit masks by type index.
+static func allow(c: GenContext) -> PackedInt64Array:
 	var out := PackedInt64Array()
-	out.resize(Country.COUNT)
-	for cc: int in lists:
-		for kind: int in lists[cc]:
+	out.resize(c.types)
+	for cc: int in c.land_types:
+		for kind: int in c.defs[cc].props:
 			out[cc] |= 1 << kind
 	return out
 
@@ -42,17 +33,17 @@ const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKi
 	PropKind.FENCE, PropKind.BARRICADE, PropKind.SIGN, PropKind.GRAVE, PropKind.DEBRIS, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL,
 	PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.STUMP, PropKind.FIRE_TOWER,
 	PropKind.RELAY, PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK,
-	PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, PropKind.WRECKAGE, PropKind.MEMORIAL]
+	PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, PropKind.WRECKAGE, PropKind.MEMORIAL,
+	PropKind.PAN_GATE, PropKind.SALT_HEAP, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP]
 
 
 ## Sites that shape grounds. Records landmarks.
 static func sites(c: GenContext) -> void:
 	var w := c.w
 	var rng := Rng.make(c.s, 81)
-	# Tips: scrap heaps in every country.
-	var tips_per: PackedInt32Array = [0, 4, 2, 2, 2, 3, 2]
-	for cc: int in Country.LAND:
-		var want := maxi(1, roundi(tips_per[cc] * maxf(c.k, 0.4)))
+	# Tips: scrap heaps where a landscape says the machines dumped them.
+	for cc: int in c.land_types:
+		var want := maxi(1, roundi(int(c.defs[cc].sites.get("tips", 0)) * maxf(c.k, 0.4)))
 		var placed := 0
 		for attempt in 2500:
 			if placed >= want:
@@ -66,12 +57,13 @@ static func sites(c: GenContext) -> void:
 			_lay_tip(c, p, rng.randf_range(4.0, 7.5))
 			w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
 			placed += 1
-	# Stone circles on open flat ground in the Bonelands.
-	var circles: PackedInt32Array = [0, 0, 0, 0, 0, maxi(2, roundi(3 * c.k)), 0]
-	for cc: int in Country.LAND:
+	# Stone circles on open flat ground where a landscape keeps them.
+	for cc: int in c.land_types:
+		var declared := int(c.defs[cc].sites.get("stone_circles", 0))
+		var circles := maxi(2, roundi(declared * c.k)) if declared > 0 else 0
 		var placed := 0
 		for attempt in 2500:
-			if placed >= circles[cc]:
+			if placed >= circles:
 				break
 			var p := _random_tile(c, rng)
 			var i := p.y * c.size + p.x
@@ -81,7 +73,7 @@ static func sites(c: GenContext) -> void:
 				continue
 			w.landmarks.append({"kind": &"stone_circle", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
 			placed += 1
-	# Ruins in the green countries, and burnt steadings in the Burning.
+	# Ruins where people had steadings to lose.
 	var ruins := 0
 	for attempt in 1200:
 		if ruins >= maxi(2, roundi(7 * maxf(c.k, 0.3))):
@@ -89,22 +81,29 @@ static func sites(c: GenContext) -> void:
 		var p := _random_tile(c, rng)
 		var i := p.y * c.size + p.x
 		var cc := w.country[i]
-		if cc != Country.COAST and cc != Country.PINEWOOD and cc != Country.MOSS and cc != Country.BURNING:
+		if cc == Country.SEA or not bool(c.defs[cc].sites.get("ruins", false)):
 			continue
 		if not _clear_site(c, p, 3, 1) or _near_landmark(w, Vector2(p), 36.0) or _near_village(w, Vector2(p), 24.0):
 			continue
 		w.landmarks.append({"kind": &"ruin", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
 		ruins += 1
-	# Fumaroles: fields of vents on their own clinker, out on the Burning's
-	# slopes, so a walk through the ash has somewhere to go.
+	# Fumaroles: fields of vents on their own clinker, out on the slopes of a
+	# landscape that breathes, so a walk through the ash has somewhere to go.
+	var vented := -1
+	var vent_count := 0
+	for cc: int in c.land_types:
+		if int(c.defs[cc].sites.get("fumaroles", 0)) > 0:
+			vented = cc
+			vent_count = int(c.defs[cc].sites.get("fumaroles", 0))
+			break
 	var fumaroles := 0
-	var heart := c.hearts[Country.BURNING]
-	for attempt in 6000:
-		if fumaroles >= maxi(2, roundi(4 * c.k)):
+	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
+	for attempt in (6000 if vented >= 0 else 0):
+		if fumaroles >= maxi(2, roundi(vent_count * c.k)):
 			break
 		var p := _random_tile(c, rng)
 		var i := p.y * c.size + p.x
-		if w.country[i] != Country.BURNING or w.blend[i] > 0.3:
+		if w.country[i] != vented or w.blend[i] > 0.3:
 			continue
 		if heart.x >= 0.0 and Vector2(p).distance_to(heart) < GenRelief.crater_radius(c) * 1.1:
 			continue
@@ -113,12 +112,13 @@ static func sites(c: GenContext) -> void:
 		if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 			continue
 		_lay_patch(c, p, rng.randf_range(4.0, 6.0), Ground.CLINKER)
-		w.landmarks.append({"kind": &"fumarole", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": Country.BURNING})
+		w.landmarks.append({"kind": &"fumarole", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": vented})
 		fumaroles += 1
-	# Summits: the highest walkable ground in each upland country gets a cairn.
+	# Summits: the highest walkable ground in each upland landscape gets a cairn,
+	# raised in the order its type declares (BiomeDef.sites.summit).
 	var best_at: Array[Vector2i] = []
 	var best_l := PackedInt32Array()
-	for cc in Country.COUNT:
+	for cc in c.types:
 		best_at.append(Vector2i(-1, -1))
 		best_l.append(-1)
 	var level := w.level
@@ -132,7 +132,13 @@ static func sites(c: GenContext) -> void:
 			if level[i + 1] == l and level[i - 1] == l and level[i + c.size] == l and level[i - c.size] == l:
 				best_l[cc] = l
 				best_at[cc] = Vector2i(x, y)
-	for cc: int in [Country.SNOWFIELD, Country.BONELANDS, Country.PINEWOOD, Country.COAST, Country.BURNING]:
+	var summits: Array[int] = []
+	for cc: int in c.land_types:
+		if int(c.defs[cc].sites.get("summit", 0)) > 0:
+			summits.append(cc)
+	summits.sort_custom(func(a: int, b: int) -> bool:
+		return int(c.defs[a].sites.summit) < int(c.defs[b].sites.summit))
+	for cc: int in summits:
 		if best_at[cc].x >= 0:
 			w.landmarks.append({"kind": &"summit", "pos": Vector2(best_at[cc]) + Vector2(0.5, 0.5), "country": cc})
 	# Falls: wherever a river's bed steps down a level.
@@ -190,7 +196,7 @@ static func _near_village(w: WorldData, p: Vector2, d: float) -> bool:
 
 static func _lay_tip(c: GenContext, p: Vector2i, r: float) -> void:
 	var cc := c.w.country[p.y * c.size + p.x]
-	_lay_patch(c, p, r, Ground.CLINKER if cc == Country.BURNING else Ground.GRAVEL)
+	_lay_patch(c, p, r, c.defs[cc].tip_ground)
 
 
 ## A lobed patch of a site's own ground.
@@ -313,8 +319,10 @@ static func _wrecks(c: GenContext) -> void:
 	var ground := w.ground
 	var country := w.country
 	const SAND := Ground.SAND
-	const BURNING := Country.BURNING
-	const SNOWFIELD := Country.SNOWFIELD
+	var strands := PackedByteArray()
+	strands.resize(c.types)
+	for cc: int in c.land_types:
+		strands[cc] = 1 if c.defs[cc].beached_wrecks else 0
 	# Every bay-beach tile with sand all round, found in one pass.
 	var band := 12
 	var parts: Array[PackedInt32Array] = []
@@ -326,8 +334,7 @@ static func _wrecks(c: GenContext) -> void:
 				var i := y * size + x
 				if ground[i] != SAND or level[i] != 1 or convex[i] < 0.5 or inland[i] > 3.5 or water[i] != 0 or road[i] != 0:
 					continue
-				var cc := country[i]
-				if cc == BURNING or cc == SNOWFIELD:
+				if strands[country[i]] == 0:
 					continue
 				# Hauled up on the sand, not lying in the wash.
 				if ground[i - 1] != SAND or ground[i + 1] != SAND or ground[i - size] != SAND or ground[i + size] != SAND:
@@ -484,7 +491,7 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 					if _free(c, occ, q, 0.6):
 						_add(c, PropKind.RUIN, q.floor() + Vector2(0.5, 0.5), roundf(rng.randf() * 4.0) * PI * 0.5)
 						_occupy(c, occ, q, 0.8)
-				if m.country == Country.BURNING:
+				if c.defs[int(m.country)].scorched:
 					# The steading's orchard stands burnt round it.
 					for k in rng.randi_range(4, 7):
 						var q := p + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(3.5, 6.5)
@@ -508,13 +515,13 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 				if _free(c, occ, p, 0.0):
 					_add(c, PropKind.CAIRN, p)
 					_occupy(c, occ, p, 1.0)
-	# Kilns, only by villages: on dune sand behind the coast villages' bays, on
-	# pavement by the Bonelands'. Never on a beach.
+	# Kilns, only by villages, on the ground the landscape names for them (dune
+	# sand behind the coast's bays, pavement on the Bonelands). Never on a beach.
 	for v in w.villages:
 		var cc: int = v.country
-		if cc != Country.COAST and cc != Country.BONELANDS:
+		var want := int(c.defs[cc].sites.get("kiln_ground", -1))
+		if want < 0:
 			continue
-		var want := Ground.SAND if cc == Country.COAST else Ground.LIMESTONE
 		var vp: Vector2 = v.pos
 		var done := false
 		for rad in range(11, 36, 2):
@@ -646,41 +653,23 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	var country2 := w.country2
 	var blend := w.blend
 	var sea_steps := c.sea_steps
-	var allow := ALLOW
+	var allow_mask := allow(c)
+	var defs := c.defs
+	var recipes: Array[Callable] = []
+	for d: BiomeDef in defs:
+		recipes.append(d.scatter)
 	# The highest roll any branch below can use on each ground: most rolls
 	# are thrown away before any other work.
 	var reach := PackedFloat32Array()
 	reach.resize(Ground.COUNT)
 	reach.fill(0.3)
-	for g: int in [Ground.NEEDLES, Ground.LIMESTONE, Ground.MUD, Ground.ASH, Ground.CLINKER]:
+	for g: int in [Ground.NEEDLES, Ground.LIMESTONE, Ground.MUD, Ground.ASH, Ground.CLINKER, Ground.SWARF]:
 		reach[g] = 0.5
 	for g: int in [Ground.SNOW, Ground.GRASS, Ground.HEATH]:
 		reach[g] = 0.4
-	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.SAND, Ground.SHINGLE]:
+	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.SAND, Ground.SHINGLE, Ground.SALT, Ground.PAN]:
 		reach[g] = 0.25
 	var solid := PropKind.SOLID
-	const COAST := Country.COAST
-	const MOSS := Country.MOSS
-	const PINEWOOD := Country.PINEWOOD
-	const SNOWFIELD := Country.SNOWFIELD
-	const BONELANDS := Country.BONELANDS
-	const BURNING := Country.BURNING
-	const G_SAND := Ground.SAND
-	const G_GRASS := Ground.GRASS
-	const G_MOSS := Ground.MOSS
-	const G_MUD := Ground.MUD
-	const G_NEEDLES := Ground.NEEDLES
-	const G_SNOW := Ground.SNOW
-	const G_BONE := Ground.BONE
-	const G_ASH := Ground.ASH
-	const G_ROCK := Ground.ROCK
-	const G_HEATH := Ground.HEATH
-	const G_SHINGLE := Ground.SHINGLE
-	const G_GRAVEL := Ground.GRAVEL
-	const G_SCREE := Ground.SCREE
-	const G_LIMESTONE := Ground.LIMESTONE
-	const G_CLINKER := Ground.CLINKER
-	const G_PEAT := Ground.PEAT
 	var band := 12
 	var parts: Array[PackedFloat32Array] = []
 	parts.resize(ceili(float(size) / band))
@@ -688,6 +677,22 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	# order: prop ids come out the same however the bands were scheduled.
 	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
 		var found := PackedFloat32Array()
+		var t := BiomeScatter.new()
+		# The types in play and the recipe change only where the land does:
+		# hand them over when they change, not once a tile.
+		var last_recipe := -1
+		var last_own := -1
+		var last_other := -1
+		var recipe_fn := recipes[0]
+		t.size = size
+		t.clump = clump
+		t.fissure = fissure
+		t.forest = forest
+		t.rise = rise
+		t.grounds = ground
+		t.sea_steps = sea_steps
+		t.levels = level
+		t.blends = blend
 		for y in range(maxi(y0, 2), y1):
 			var row := y * size
 			for x in range(2, size - 2):
@@ -700,179 +705,36 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				var g := ground[i]
 				if r > reach[g] or land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0 or occ[i] != 0:
 					continue
-				var l := level[i]
 				var own := country[i]
 				# The same island its ground came from.
 				var cc := recipe[i]
+				var l := level[i]
+				# Nothing per-tile is written to the sample: see its header.
 				var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
-				var wa := water[i - 1]
-				var wb := water[i + 1]
-				var wc := water[i - size]
-				var wd := water[i + size]
-				var bank := wa == 1 or wb == 1 or wc == 1 or wd == 1
-				var pool := wa == 2 or wb == 2 or wc == 2 or wd == 2
-				var road_side := road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0
-				var ss := sea_steps[i]
-				var kind := -1
-				var k := 0.0
-				if up >= 2 and (g == G_SCREE or g == G_ROCK or g == G_LIMESTONE or g == G_GRAVEL or g == G_SNOW or g == G_ASH):
-					# An exposed face: ore shows at its foot.
-					kind = _ore(own, r * 2.2)
-				elif bank or pool:
-					if cc != BURNING and cc != SNOWFIELD and r < (0.3 if cc == MOSS else 0.14):
-						kind = PropKind.REEDS
-				elif g == G_SAND:
-					if ss <= 2:
-						# The strandline: wrack in drifts, driftwood along it.
-						k = maxf(0.0, clump[i])
-						kind = PropKind.WRACK if r < 0.02 + k * 0.08 else (PropKind.DRIFTWOOD if r < 0.035 + k * 0.08 else -1)
-					elif r < 0.012:
-						kind = PropKind.GORSE if cc == COAST else PropKind.BUSH
-				elif g == G_SHINGLE:
-					if ss <= 1 and r < 0.07:
-						kind = PropKind.MUSSEL_ROCK
-					elif r < 0.1:
-						kind = PropKind.WRACK
-					elif r < 0.12:
-						kind = PropKind.DRIFTWOOD
-					elif r < 0.14:
-						kind = PropKind.BOULDER
-				elif g == G_GRASS:
-					k = maxf(0.0, forest[i])
-					if cc == COAST:
-						# Copses in the sheltered folds, not on the tops.
-						k *= clampf(1.0 - rise[i] * 0.6, 0.0, 1.3)
-						if r < k * k * 1.1:
-							kind = PropKind.BROADLEAF
-						elif r < 0.02:
-							kind = PropKind.BUSH
-						elif r < 0.026:
-							kind = PropKind.BOULDER
-					elif cc == PINEWOOD:
-						if r < (0.03 + k * 0.1) * _thin_to_burning(own, country2[i], blend[i]):
-							kind = PropKind.PINE
-						elif r < 0.07:
-							kind = PropKind.BUSH
-					elif cc == BONELANDS:
-						if r < 0.01:
-							kind = PropKind.BONES
-						elif r < 0.022:
-							kind = PropKind.BOULDER
-						elif r < 0.03:
-							kind = PropKind.GORSE
-					elif cc == SNOWFIELD:
-						if r < 0.02:
-							kind = PropKind.SNOW_PINE
-					elif r < 0.02:
-						kind = PropKind.BUSH
-				elif g == G_HEATH:
-					k = maxf(0.0, clump[i])
-					if cc == COAST or cc == BONELANDS:
-						if r < 0.02 + k * 0.26:
-							kind = PropKind.GORSE
-						elif r > 0.37 and r < 0.385:
-							kind = PropKind.BOULDER
-					elif cc == PINEWOOD:
-						if own == SNOWFIELD or country2[i] == SNOWFIELD:
-							# The wood thins into the snow: snow pines last.
-							kind = PropKind.SNOW_PINE if r < 0.05 else (PropKind.BOULDER if r < 0.06 else -1)
-						else:
-							kind = PropKind.PINE if r < 0.03 else (PropKind.BUSH if r < 0.06 else -1)
-					elif r < 0.04:
-						kind = PropKind.BUSH
-				elif g == G_NEEDLES:
-					k = maxf(0.0, forest[i] + 0.12)
-					if cc == SNOWFIELD or own == SNOWFIELD:
-						kind = PropKind.SNOW_PINE if r < 0.1 + k * 0.3 else -1
-					elif r < (0.16 + k * 0.34) * _thin_to_burning(own, country2[i], blend[i]):
-						kind = PropKind.PINE
-					elif r < 0.17 + k * 0.34:
-						kind = PropKind.DEAD_TREE
-					elif r < 0.2 + k * 0.34:
-						kind = PropKind.BUSH
-				elif g == G_MOSS:
-					k = maxf(0.0, clump[i])
-					if r < 0.03 + k * 0.08:
-						kind = PropKind.REEDS
-					elif r < 0.045 + k * 0.08:
-						kind = PropKind.DEAD_TREE
-					elif r < 0.055 + k * 0.08:
-						kind = PropKind.BUSH
-				elif g == G_MUD:
-					if r < 0.1 + maxf(0.0, clump[i]) * 0.35:
-						kind = PropKind.REEDS
-					elif r > 0.49 and cc == MOSS:
-						kind = PropKind.DEAD_TREE
-				elif g == G_PEAT:
-					# Banks are cut along the edge of a hag.
-					var edge := ground[i - 1] != G_PEAT or ground[i + 1] != G_PEAT or ground[i - size] != G_PEAT or ground[i + size] != G_PEAT
-					if edge and r < 0.16:
-						kind = PropKind.PEAT_BANK
-					elif r < 0.02:
-						kind = PropKind.REEDS
-				elif g == G_SNOW:
-					k = maxf(0.0, forest[i] + 0.05)
-					if l <= 9 and r < k * 0.5:
-						kind = PropKind.SNOW_PINE
-					elif r < 0.008 + k * 0.5:
-						kind = PropKind.DEAD_TREE
-					elif r < 0.016 + k * 0.5:
-						kind = PropKind.BOULDER
-				elif g == G_ROCK or g == G_SCREE:
-					if r < 0.06:
-						kind = PropKind.BOULDER
-					else:
-						kind = _ore(own, r - 0.06)
-				elif g == G_GRAVEL:
-					if r < 0.018:
-						kind = PropKind.BOULDER
-					elif own == BONELANDS:
-						kind = _ore(own, (r - 0.018) * 3.0)
-				elif g == G_LIMESTONE:
-					k = maxf(0.0, clump[i])
-					if r < 0.04 + k * 0.22:
-						kind = PropKind.CLINTS
-					elif r > 0.3 and r < 0.302:
-						kind = PropKind.STANDING_STONE
-					elif r > 0.44:
-						# Seams show in the pavement's joints.
-						kind = _ore(own, (r - 0.44) * 1.6)
-				elif g == G_BONE:
-					if r < 0.02:
-						kind = PropKind.BONES
-					elif r < 0.03:
-						kind = PropKind.BOULDER
-				elif g == G_ASH:
-					k = maxf(0.0, clump[i] - 0.1)
-					var f := absf(fissure[i])
-					if cc == BURNING:
-						if f < 0.035 and r < 0.2:
-							# Vents breathe in rows along the fissures.
-							kind = PropKind.VENT
-						elif r < 0.01 + k * 0.9:
-							# Burnt groves stand together; between them, open ash.
-							kind = PropKind.DEAD_TREE
-						elif r < 0.024 + k * 0.9:
-							kind = PropKind.BOULDER
-						elif r > 0.49 and r < 0.492:
-							kind = PropKind.BONES
-					elif r < 0.015:
-						kind = PropKind.DEAD_TREE
-				elif g == G_CLINKER:
-					var f := absf(fissure[i])
-					# The flow's margin: a levee of blocks and the odd vent.
-					var margin := ground[i - 1] != G_CLINKER or ground[i + 1] != G_CLINKER or ground[i - size] != G_CLINKER or ground[i + size] != G_CLINKER
-					if f < 0.05 and r < 0.2:
-						kind = PropKind.VENT
-					elif margin and r < 0.16:
-						kind = PropKind.BOULDER if r < 0.12 else PropKind.VENT
-					elif r < 0.006:
-						kind = PropKind.VENT
-					elif r < 0.02:
-						kind = PropKind.BOULDER
-				if kind < 0 or (allow[own] >> kind) & 1 == 0:
+				var wet := water[i - 1] != 0 or water[i + 1] != 0 or water[i - size] != 0 or water[i + size] != 0
+				if cc != last_recipe:
+					last_recipe = cc
+					t.def = defs[cc]
+					recipe_fn = recipes[cc]
+				if own != last_own:
+					last_own = own
+					t.own_def = defs[own]
+				var c2 := country2[i]
+				if c2 != last_other:
+					last_other = c2
+					t.other_def = defs[c2]
+				# What the land decides, then the landscape's own recipe, then
+				# the grounds every landscape reads the same way.
+				var kind := BiomeScatter.PASS
+				if up >= 2 or wet:
+					kind = BiomeScatter.first(t, g, r, up, wet)
+				if kind == BiomeScatter.PASS:
+					kind = recipe_fn.call(t, i, g, r)
+				if kind == BiomeScatter.PASS:
+					kind = BiomeScatter.shared(t, i, g, r)
+				if kind < 0 or (allow_mask[own] >> kind) & 1 == 0:
 					continue
-				if road_side and solid[kind] > 0.0:
+				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:
 					continue
 				var p := Vector2(x + 0.2 + ((h >> 24) & 0xFF) / 425.0, y + 0.2 + ((h >> 8) & 0xFF) / 425.0)
 				if solid[kind] > 0.0:
@@ -887,43 +749,3 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	for part in parts:
 		for j in range(0, part.size(), 3):
 			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]))
-
-
-## Pines give out before the Burning's rim: 1 away from it, 0 on the border.
-static func _thin_to_burning(own: int, c2: int, bl: float) -> float:
-	if own == Country.BURNING:
-		return 0.0
-	if c2 != Country.BURNING:
-		return 1.0
-	return clampf(1.0 - bl * 2.6, 0.0, 1.0)
-
-
-## Ore by country, flattened: ORE_KIND[cc * 5 + j] shows when r < ORE_CUM[cc * 5 + j].
-const ORE_KIND: PackedInt32Array = [
-	-1, -1, -1, -1, -1,
-	PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.IRON_ORE, -1, -1,
-	PropKind.STONE_ORE, PropKind.COAL_ORE, -1, -1, -1,
-	PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, -1, -1,
-	PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.TIN_ORE, -1, -1,
-	PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.TIN_ORE, PropKind.COAL_ORE,
-	PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.COPPER_ORE, PropKind.IRON_ORE, -1,
-]
-const ORE_CUM: PackedFloat32Array = [
-	0.0, 0.0, 0.0, 0.0, 0.0,
-	0.035, 0.05, 0.055, 0.0, 0.0,
-	0.02, 0.03, 0.0, 0.0, 0.0,
-	0.035, 0.06, 0.07, 0.0, 0.0,
-	0.014, 0.026, 0.034, 0.0, 0.0,
-	0.05, 0.075, 0.1, 0.12, 0.135,
-	0.02, 0.05, 0.068, 0.085, 0.0,
-]
-
-
-## Ore by country and rock, richest in the Bonelands. `r` in [0, 1): low
-## values are the common kinds. -1 = bare rock.
-static func _ore(cc: int, r: float) -> int:
-	var base := cc * 5
-	for j in 5:
-		if r < ORE_CUM[base + j]:
-			return ORE_KIND[base + j]
-	return -1

@@ -176,11 +176,9 @@ func _on_skip(_minutes: float, _reason: StringName) -> void:
 ## type names for its music (BiomeDef.music_motif) when it names one.
 func _land_id(country: int) -> StringName:
 	if not _land_ids.has(country):
-		var id := StringName(Country.NAMES[clampi(country, 0, Country.NAMES.size() - 1)])
-		if id == &"sea":
-			id = &"coast"
-		var def := BiomeRegistry.get_def(id)
-		if def != null and def.music_motif != &"":
+		var def := BiomeRegistry.by_index(country)
+		var id := def.id
+		if def.music_motif != &"":
 			id = def.music_motif
 		_land_ids[country] = id
 	return _land_ids[country]

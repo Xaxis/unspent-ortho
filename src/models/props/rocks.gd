@@ -11,7 +11,7 @@ const P := preload("res://src/render/palette.gd")
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
-	k.hand(Ink.COUNTRY_STYLE[c] if kind != PropKind.PEAT_BANK else Ink.STIPPLE)
+	k.hand(Ink.hand_of(c) if kind != PropKind.PEAT_BANK else Ink.STIPPLE)
 	match kind:
 		PropKind.BOULDER: boulder(k, v, c)
 		PropKind.STONE_ORE: stone_ore(k, v, c)
@@ -349,7 +349,7 @@ static func clints(k: Kit, v: int, c: int) -> void:
 		k.stone(0.22, 0.0, -0.02, 0.12, 0.14, s + 51, side, 5, -0.2, P.LINEN[5])
 		k.found.prism(0.1, 0.1, -0.01, 0.03, 0.26, 0.008, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
 	# Ferns in the grikes.
-	k.hand(Ink.COUNTRY_STYLE[c], 0.0)
+	k.hand(Ink.hand_of(c), 0.0)
 	var fs := k.made.vertex_count()
 	for i in 3:
 		var p := Vector3(-0.05 + i * 0.3, -0.02, 0.05 - i * 0.15)

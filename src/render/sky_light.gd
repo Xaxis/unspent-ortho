@@ -499,33 +499,25 @@ static func type_tint(type_id: StringName) -> Vector3:
 ## wet, sheen, reflection, 0)]. Day stays day; each landscape leans its own way.
 const NEON_DAY := Vector4(0.0, 0.22, 0.10, 0.18)
 const NEON_NIGHT := Vector4(0.0, 0.25, 0.12, 0.10)
-## Per country: [grade offset Vector4, base wet].
-## The land now carries its own evidence (GenWorks, WorksMap), so the grade
-## leans each landscape only as far as its light: a bleak grey coast, the moss's
-## green gloom kept readable enough to see the cuts in it, the pines a shade
-## under their canopy, the snow's cold glare, the bones' hard white, the
-## burning's warm low furnace.
+## Each landscape's own grade offset and how wet it lies are its own
+## (`BiomeDef.grade`, `BiomeDef.wet`): the land carries its own evidence
+## (GenWorks, WorksMap), so the grade leans a landscape only as far as its
+## light — a bleak grey coast, the moss's green gloom kept readable enough to
+## see the cuts in it, the pines a shade under their canopy, the snow's cold
+## glare, the bones' hard white, the burning's warm low furnace.
 ## The darkness term goes NEGATIVE where a landscape's own washes are dark, so
 ## every land reads as day at noon in its own way. Measured mean luma of a clear
 ## noon frame (seed 7, --hour=12 --weather=clear:0), HUD rows excluded, is the
 ## check: a dark wood is dimmer than a salt pan, but none of them is night.
-const NEON_COUNTRY := {
-	Country.SEA: [Vector4(-0.1, 0.0, 0.04, 0.0), 0.0],
-	Country.COAST: [Vector4(-0.55, 0.16, 0.05, 0.02), 0.15],
-	Country.MOSS: [Vector4(-0.5, 0.16, 0.02, 0.06), 0.35],
-	Country.PINEWOOD: [Vector4(-0.45, 0.15, 0.05, 0.06), 0.2],
-	Country.SNOWFIELD: [Vector4(-0.04, 0.08, 0.08, -0.03), 0.0],
-	Country.BONELANDS: [Vector4(-0.03, 0.14, -0.02, 0.12), 0.0],
-	Country.BURNING: [Vector4(-0.42, -0.04, -0.15, 0.1), 0.0],
-}
 
 
-## The NEON_COUNTRY row for a share's key: a landscape type id (what the sky
-## samples), or a Country id (how the table is keyed until it moves to type
-## ids). An unknown landscape reads the coast's.
+## The grade row for a share's key: a landscape type id (what the sky samples)
+## or a type index. An unknown landscape reads the coast's.
 static func neon_row(key: Variant) -> Array:
-	var c := Weather.COUNTRY_TYPES.find(key) if key is StringName else int(key)
-	return NEON_COUNTRY.get(c, NEON_COUNTRY[Country.COAST])
+	var d := BiomeRegistry.get_def(key) if key is StringName else BiomeRegistry.by_index(int(key))
+	if d == null:
+		d = BiomeRegistry.by_index(Country.COAST)
+	return [d.grade, d.wet]
 
 
 ## shares: landscape type id (or Country id) -> weight.

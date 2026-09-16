@@ -25,14 +25,19 @@ enum {
 	BLACKWATER,
 	PEAT,
 	RIVER,
+	# M2: new landscapes bring their own ground. Append only (ids are saved).
+	SALT,
+	PAN,
+	SWARF,
 }
 
-const COUNT := 23
+const COUNT := 26
 
 const NAMES: PackedStringArray = [
 	"deep water", "water", "sand", "grass", "moss", "mud", "needles",
 	"snow", "bone", "ash", "rock", "road", "floor",
 	"heath", "shingle", "gravel", "scree", "limestone", "clinker", "ice", "blackwater", "peat", "river",
+	"salt", "pan", "swarf",
 ]
 
 

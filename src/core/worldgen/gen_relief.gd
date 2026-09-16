@@ -1,9 +1,9 @@
 class_name GenRelief
-## Stages 3 and 6: float elevation, in levels. Each country has its own relief (low
-## fen, rolling coast, pine hills, a limestone plateau of stepped scarps, a
-## ridged range, a caldera), blended by soft membership so land rises and
-## falls over many tiles. The shore is a beach in bays and a cliff on
-## headlands, with a shingle ledge at the cliff foot.
+## Stages 3 and 6: float elevation, in levels. Each landscape type has its own
+## relief (low fen, rolling coast, pine hills, a limestone plateau of stepped
+## scarps, a ridged range, a caldera), declared in `BiomeDef.relief` and blended
+## by soft membership so land rises and falls over many tiles. The shore is a
+## beach in bays and a cliff on headlands, with a shingle ledge at the foot.
 
 const MAX_LEVEL := 15
 
@@ -22,7 +22,7 @@ static func run(c: GenContext) -> void:
 	var fl := GenFields.batch(size, [
 		[U, p[&"base"], cw, step], [U, p[&"hills"], cw, step], [U, p[&"ridge"], cw, step],
 		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
-		[U, c.soft[Country.BURNING], cw, step], [U, c.soft[Country.COAST], cw, step],
+		[U, _caldera_soft(c), cw, step], [U, _dunes_soft(c), cw, step],
 		[F, GenFields.noise(s, 301, 1.0 / 58.0, 4), 2],
 		[F, GenFields.noise(s, 302, 1.0 / 92.0, 3), 2],
 		[N, GenFields.noise(s, 303, 1.0 / 13.0, 2), size, 1],
@@ -48,7 +48,7 @@ static func run(c: GenContext) -> void:
 	var shoren := fl[11]
 	var shelf := fl[12]
 	var dunes := fl[13]
-	var heart := c.hearts[Country.BURNING]
+	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	var crater := crater_radius(c)
 	var rim_warp := fl[14]
 	c.rim_warp = rim_warp
@@ -113,9 +113,33 @@ static func run(c: GenContext) -> void:
 	c.elev = elev
 
 
-## Radius in tiles of the Burning's caldera rim.
+## Radius in tiles of the caldera rim of the type that has one.
 static func crater_radius(c: GenContext) -> float:
-	return 30.0 * maxf(0.6, c.k)
+	if c.caldera_type < 0:
+		return 1.0
+	return c.defs[c.caldera_type].caldera * maxf(0.6, c.k)
+
+
+## The soft membership of the type that sinks a caldera, if any.
+static func _caldera_soft(c: GenContext) -> PackedFloat32Array:
+	if c.caldera_type >= 0:
+		return c.soft[c.caldera_type]
+	var empty := PackedFloat32Array()
+	empty.resize(c.cw * c.cw)
+	return empty
+
+
+## Where dunes may ridge up behind the bays: every type that makes them.
+static func _dunes_soft(c: GenContext) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(c.cw * c.cw)
+	for cc: int in c.land_types:
+		if not c.defs[cc].dunes:
+			continue
+		var s := c.soft[cc]
+		for k in out.size():
+			out[k] += s[k]
+	return out
 
 
 ## Float elevation to integer levels; lonely one-tile spikes and pits removed.

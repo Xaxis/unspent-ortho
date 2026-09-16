@@ -14,11 +14,22 @@ var seed_value: int
 var size: int
 var level: PackedInt32Array
 var ground: PackedByteArray
+## The landscape TYPE of every tile: an index into BiomeRegistry, 0 for the sea.
 var country: PackedByteArray
-## Landscape transitions: the nearest OTHER country and how far toward it this
+## Landscape transitions: the nearest OTHER type and how far toward it this
 ## tile has turned (0 = pure `country`, 0.5 = on the border). Renderers blend by it.
 var country2: PackedByteArray
 var blend: PackedFloat32Array
+## Region id + 1 per tile (0 = the sea, or a run too small to be a place).
+## Int, not byte: a world of many landscapes can hold hundreds of places, and a
+## byte would silently alias the tail of them onto each other's ids — which
+## sentinels, works and saves all key on.
+var region: PackedInt32Array
+## The places this world is made of, biggest first. One landscape type may hold
+## several: {id: int, type: StringName, index: int (type index), tiles: int,
+## centre: Vector2, bounds: Rect2}. Sentinels, works, subarcs and saves key on
+## `id` (docs/VISION.md §3).
+var regions: Array[Dictionary] = []
 var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
 var props: Array[WorldProp] = []
@@ -54,6 +65,7 @@ func _init(p_seed: int, p_size: int) -> void:
 	ground.resize(n)
 	country.resize(n)
 	country2.resize(n)
+	region.resize(n)
 	blend.resize(n)
 	moisture.resize(n)
 	temperature.resize(n)
@@ -80,6 +92,18 @@ func country_at(x: int, y: int) -> int:
 	if not in_bounds(x, y):
 		return Country.SEA
 	return country[y * size + x]
+
+
+## The region holding a tile, or -1 out at sea and on ground too small to be a
+## place.
+func region_at(x: int, y: int) -> int:
+	if not in_bounds(x, y):
+		return -1
+	return region[y * size + x] - 1
+
+
+func region_of(id: int) -> Dictionary:
+	return regions[id] if id >= 0 and id < regions.size() else {}
 
 
 ## Height in world units of the ground surface under a point (sea floor clamps to 0).

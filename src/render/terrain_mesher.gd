@@ -288,29 +288,31 @@ func _init(w: WorldData) -> void:
 	_lip.seed = Rng.hash_ints(w.seed_value, 34) & 0x7FFFFFFF
 	_lip.frequency = 1.3
 	_lip.fractal_octaves = 1
-	# Paint per (ground, country, terrace parity): wash with its mark in alpha.
-	_tab_col.resize(Ground.COUNT * Country.COUNT * 2)
-	_tab_style.resize(Ground.COUNT * Country.COUNT * 2)
-	_tab_cliff.resize(Ground.COUNT * Country.COUNT * 2)
-	_tab_front.resize(Ground.COUNT * Country.COUNT * 2)
-	_tab_lip.resize(Ground.COUNT * Country.COUNT * 2)
+	# Paint per (ground, landscape type, terrace parity): wash with its mark in alpha.
+	var types := BiomeRegistry.SLOTS
+	_tab_col.resize(Ground.COUNT * types * 2)
+	_tab_style.resize(Ground.COUNT * types * 2)
+	_tab_cliff.resize(Ground.COUNT * types * 2)
+	_tab_front.resize(Ground.COUNT * types * 2)
+	_tab_lip.resize(Ground.COUNT * types * 2)
 	for g in Ground.COUNT:
-		for c in Country.COUNT:
+		for c in BiomeRegistry.count():
+			var def := BiomeRegistry.by_index(c)
 			for parity in 2:
 				var col := GroundColors.wash(g, c)
 				# Terraces one level apart alternate a hair in value: the contour is felt, not seen.
 				if parity == 1:
 					col = col.darkened(0.03)
 				col.a = GroundColors.mark(g, c) / 255.0
-				var i := (g * Country.COUNT + c) * 2 + parity
+				var i := (g * types + c) * 2 + parity
 				_tab_col[i] = col
-				_tab_style[i] = Ink.COUNTRY_STYLE[c]
+				_tab_style[i] = def.hatch
 				var cl := GroundColors.cliff(g, c)
 				if parity == 1:
 					cl = cl.darkened(0.06)
 				cl.a = (GroundColors.STRATA + GroundColors.strata(g, c)) / 255.0
 				_tab_cliff[i] = cl
-				var snow := g == Ground.SNOW or (c == Country.SNOWFIELD and g != Ground.ICE and g != Ground.SAND and g != Ground.SHINGLE and g != Ground.ROCK and g != Ground.SCREE and not Ground.is_water(g))
+				var snow := g == Ground.SNOW or (def.lip_snow and g != Ground.ICE and g != Ground.SAND and g != Ground.SHINGLE and g != Ground.ROCK and g != Ground.SCREE and not Ground.is_water(g))
 				var turf := g == Ground.GRASS or g == Ground.HEATH or g == Ground.MOSS or g == Ground.PEAT or g == Ground.NEEDLES
 				_tab_lip[i] = 2 if snow else (1 if turf else 0)
 				var fr := Palette.RIME[4] if snow else GroundColors.down(col, 1.0)
@@ -1297,11 +1299,11 @@ func _water_arrays() -> Array:
 ## Set the paint state for tops of key k1 (and a second key k2 by corner flags).
 func _paint(k1: int, k2: int, terrace: int) -> void:
 	_bump_key = -1
-	var i1 := ((k1 & 0xFF) * Country.COUNT + ((k1 >> 8) & 0xFF)) * 2 + (terrace & 1)
+	var i1 := ((k1 & 0xFF) * BiomeRegistry.SLOTS + ((k1 >> 8) & 0xFF)) * 2 + (terrace & 1)
 	_pc = _tab_col[i1]
 	var s1 := _tab_style[i1] if terrace > 0 else Ink.NONE
 	if k2 >= 0:
-		var i2 := ((k2 & 0xFF) * Country.COUNT + ((k2 >> 8) & 0xFF)) * 2 + (terrace & 1)
+		var i2 := ((k2 & 0xFF) * BiomeRegistry.SLOTS + ((k2 >> 8) & 0xFF)) * 2 + (terrace & 1)
 		_sc = _tab_col[i2]
 		_style = s1 + (_tab_style[i2] if terrace > 0 else Ink.NONE) * 16
 		# +256 when the keys are in the other order, so the shader bends a shared
@@ -1569,7 +1571,7 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 	var nrm := Vector3(dz * inv, 0.0, -dx * inv)
 	ch.edges.append(Vector3(px, h, pz))
 	ch.edges.append(Vector3(qx, h, qz))
-	var gi := ((k & 0xFF) * Country.COUNT + ((k >> 8) & 0xFF)) * 2 + (L & 1)
+	var gi := ((k & 0xFF) * BiomeRegistry.SLOTS + ((k >> 8) & 0xFF)) * 2 + (L & 1)
 	var col := _tab_cliff[gi]
 	var c0 := Color(col.r, col.g, col.b, 0.0)
 	var a0 := Vector3(qx, hb, qz)

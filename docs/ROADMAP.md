@@ -156,9 +156,13 @@ Build the spines that twenty landscapes, realms, sentinels and crafts hang on, s
 content never needs a rewrite.
 
 **Wave A** (parallel, after M2.0; slate, saves and export were built in wave N):
-- **biomes**: the landscape-type registry; the six countries become data with no
-  regression; worldgen composes regions from types; two new types, Salt Flats and
-  Scrapwood, as proof.
+- **biomes** (done): the landscape-type registry. A landscape is one file under
+  `src/content/biomes/`, auto-discovered; the six M1 countries are data and a world
+  made of only those six is byte-for-byte the world M1 made (`tests/biome/test_parity.gd`
+  pins it). Worldgen composes regions from the registry and records them in
+  `WorldData.regions`. Salt Flats and Scrapwood are the proof that adding a landscape
+  is adding a file. Not yet: a landscape's own enemies (both borrow existing machine
+  kinds), sentinels, and realms other than the surface.
 - **hazards**: one pressure model, resistances from modular gear, abilities through
   one interface; five abilities; the MENDED idiom.
 - **disposition**: machine roles, indifference, interference per region, and stealth

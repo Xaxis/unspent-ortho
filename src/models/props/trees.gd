@@ -10,7 +10,7 @@ const P := preload("res://src/render/palette.gd")
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
-	k.hand(Ink.COUNTRY_STYLE[c])
+	k.hand(Ink.hand_of(c))
 	match kind:
 		PropKind.PINE: pine(k, v, c, false)
 		PropKind.SNOW_PINE: pine(k, v, Country.SNOWFIELD, true)
@@ -124,6 +124,13 @@ static func broadleaf(k: Kit, v: int, c: int) -> void:
 		Country.SNOWFIELD, Country.BURNING:
 			crown = false
 			trunk = P.INK[2] if c == Country.BURNING else P.EARTH[1]
+	# A landscape that colours its own trees says so (BiomeDef.tree_tints), so a
+	# new one is not drawn in the coast's greens by default.
+	var own: Dictionary = BiomeRegistry.by_index(c).tree_tints
+	if own.has(&"leaf"):
+		leaves.assign(own[&"leaf"])
+	if own.has(&"trunk"):
+		trunk = (own[&"trunk"] as Array)[0]
 	var top := Vector3(lean.x * 0.8, 0.9 * h, lean.y * 0.8)
 	k.limb(Vector3.ZERO, top, 0.13, 0.07, 6, trunk, Vector3(-lean.x * 0.25, 0, Kit.j(s, 3, 0.05)))
 	k.limb(Vector3(0, 0.08, 0), Vector3(0.2, -0.02, -0.12), 0.06, 0.02, 4, trunk)
@@ -238,6 +245,9 @@ static func bush(k: Kit, v: int, c: int) -> void:
 			cols = [P.EARTH[1], P.ASH[1], P.EARTH[1].lerp(P.RUST[1], 0.5)]
 		Country.COAST:
 			berries = P.BLOOM[2] if v % 2 == 1 else Color(0, 0, 0, 0)
+	var own: Dictionary = BiomeRegistry.by_index(c).tree_tints
+	if own.has(&"scrub"):
+		cols.assign(own[&"scrub"])
 	var start := k.made.vertex_count()
 	var n := 2 + v % 3
 	for i in n:

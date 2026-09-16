@@ -168,7 +168,13 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 	BootPage._after_shell = true
 	# What must be compiled before the scene is made. With threads, a title's page
 	# also starts the game's systems compiling once the title is up (_after_lift).
-	var needed := PackedStringArray([SCENES_SCRIPT])
+	# The landscape files come FIRST: world gen cannot lay a tile without every
+	# one of them compiled, so asking for them ahead of everything else lets the
+	# loader threads have them ready by the time the world stage wants them,
+	# instead of the world stage stopping to load them one at a time behind the
+	# systems (a second of the start budget, measured).
+	var needed := BiomeRegistry.scripts()
+	needed.append(SCENES_SCRIPT)
 	if what == "game":
 		needed.append_array(BootPage.system_scripts())
 	if threaded:

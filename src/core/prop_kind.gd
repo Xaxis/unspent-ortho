@@ -67,9 +67,15 @@ enum {
 	ARCHIVE,
 	WRECKAGE,
 	MEMORIAL,
+	# M2 landscapes bring their own things (salt flats, scrapwood).
+	SALT_RIDGE,
+	SALT_HEAP,
+	PAN_GATE,
+	SCRAP_TREE,
+	MAGNET_HEAP,
 }
 
-const COUNT := 59
+const COUNT := 64
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -80,7 +86,13 @@ const NAMES: PackedStringArray = [
 	"intake", "pump house", "pipe", "stump", "fire tower", "relay", "checkpoint", "stack", "drill rig",
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",
 	"wreckage", "memorial",
+	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 ]
+
+## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
+## left: they are scattered like a boulder, by the per-tile scatter, and a
+## reader counting what happened to a landscape should pass over them.
+const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -92,4 +104,5 @@ const SOLID: PackedFloat32Array = [
 	1.2, 0.95, 0.0, 0.0, 0.7, 0.2, 0.5, 0.9, 0.35,
 	0.0, 0.0, 0.7, 1.0, 0.4, 0.6,
 	0.0, 0.25,
+	0.0, 0.55, 0.45, 0.4, 0.3,
 ]

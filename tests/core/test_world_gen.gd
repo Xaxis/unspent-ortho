@@ -130,32 +130,45 @@ func _check_shares(size: int) -> void:
 	for s in SHARE_SEEDS:
 		var w := WorldGen.generate(s, size, &"tiles")
 		var shares := _shares(w)
-		for c: int in Country.LAND:
-			gt(shares[c], 0.06, "seed %d %s share" % [s, Country.NAMES[c]])
-		check(shares[Country.COAST] >= 0.3 and shares[Country.COAST] <= 0.4, "seed %d coast share %.3f" % [s, shares[Country.COAST]])
-		# Balanced to 13% each, on the coarse layout and again after the borders
-		# wander (the brief's "roughly 10-15%").
-		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
-			check(shares[c] >= 0.10 and shares[c] <= 0.15, "seed %d %s share %.3f at size %d" % [s, Country.NAMES[c], shares[c], size])
+		# Every landscape holds the share it asked for (BiomeDef.share,
+		# normalised over the registry), within a third: the layout is balanced
+		# on the coarse grid and again after the borders wander, and then the
+		# borders are allowed to wander. A landscape placed by its climate
+		# rather than by an anchor swings furthest, because where the island
+		# lets it lie decides how much of it there is. No number here is written
+		# down twice: adding a landscape changes what every other one gets.
+		var target := _targets(w)
+		for c: int in BiomeRegistry.land_indices():
+			var want := target[c]
+			check(shares[c] >= want * 0.7 and shares[c] <= want * 1.4,
+				"seed %d %s share %.3f, wanted %.3f at size %d" % [s, BiomeRegistry.name_of(c), shares[c], want, size])
 	print("       layouts for %d seeds at %d: %d ms" % [SHARE_SEEDS.size(), size, Time.get_ticks_msec() - t])
 
 
 func test_full_worlds_keep_their_shares() -> void:
 	for s in WORLD_SEEDS:
-		var shares := _shares(world(s))
-		for c: int in Country.LAND:
-			gt(shares[c], 0.06, "seed %d %s" % [s, Country.NAMES[c]])
+		var w := world(s)
+		var shares := _shares(w)
+		var target := _targets(w)
+		for c: int in BiomeRegistry.land_indices():
+			check(shares[c] >= target[c] * 0.7 and shares[c] <= target[c] * 1.4,
+				"seed %d %s share %.3f, wanted %.3f" % [s, BiomeRegistry.name_of(c), shares[c], target[c]])
+
+
+## Each land type's share of the land as the registry asks for it.
+static func _targets(w: WorldData) -> PackedFloat32Array:
+	return GenCountries.targets(GenContext.new(w))
 
 
 static func _shares(w: WorldData) -> PackedFloat32Array:
 	var counts := PackedFloat32Array()
-	counts.resize(Country.COUNT)
+	counts.resize(BiomeRegistry.count())
 	var land := 0.0
 	for i in w.country.size():
 		if w.country[i] != Country.SEA:
 			counts[w.country[i]] += 1.0
 			land += 1.0
-	for c in Country.COUNT:
+	for c in BiomeRegistry.count():
 		counts[c] /= maxf(1.0, land)
 	return counts
 
@@ -164,20 +177,20 @@ func test_journey_runs_north_from_a_southern_coast() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var mean_y := PackedFloat32Array()
-		mean_y.resize(Country.COUNT)
+		mean_y.resize(BiomeRegistry.count())
 		var counts := PackedFloat32Array()
-		counts.resize(Country.COUNT)
+		counts.resize(BiomeRegistry.count())
 		for y in w.size:
 			for x in w.size:
 				var c := w.country[y * w.size + x]
 				mean_y[c] += y
 				counts[c] += 1.0
-		for c in Country.COUNT:
+		for c in BiomeRegistry.count():
 			mean_y[c] /= maxf(1.0, counts[c])
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.BONELANDS]:
-			lt(mean_y[c], mean_y[Country.COAST], "seed %d %s lies north of the coast" % [s, Country.NAMES[c]])
+			lt(mean_y[c], mean_y[Country.COAST], "seed %d %s lies north of the coast" % [s, BiomeRegistry.name_of(c)])
 		for c: int in [Country.SNOWFIELD, Country.BURNING]:
-			lt(mean_y[c], mean_y[Country.MOSS], "seed %d %s lies beyond the middle belt" % [s, Country.NAMES[c]])
+			lt(mean_y[c], mean_y[Country.MOSS], "seed %d %s lies beyond the middle belt" % [s, BiomeRegistry.name_of(c)])
 
 
 func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
@@ -291,16 +304,16 @@ func test_every_country_reachable_on_foot_from_spawn() -> void:
 		var q := WorldQuery.new(w)
 		var reached := _flood(w, q, w.spawn)
 		var total := PackedFloat32Array()
-		total.resize(Country.COUNT)
+		total.resize(BiomeRegistry.count())
 		var got := PackedFloat32Array()
-		got.resize(Country.COUNT)
+		got.resize(BiomeRegistry.count())
 		for i in w.country.size():
 			if w.level[i] > 0:
 				total[w.country[i]] += 1.0
 				if reached[i] != 0:
 					got[w.country[i]] += 1.0
-		for c: int in Country.LAND:
-			gt(got[c] / maxf(1.0, total[c]), 0.85, "seed %d %s reachable share" % [s, Country.NAMES[c]])
+		for c: int in BiomeRegistry.land_indices():
+			gt(got[c] / maxf(1.0, total[c]), 0.85, "seed %d %s reachable share" % [s, BiomeRegistry.name_of(c)])
 		for v in w.villages:
 			var p: Vector2 = v.pos
 			check(reached[floori(p.y) * w.size + floori(p.x)] != 0, "seed %d village %s unreachable" % [s, v.name])
@@ -452,7 +465,8 @@ static func _in_square(w: WorldData, i: int) -> bool:
 func test_villages_spread_across_countries_with_a_square() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
-		check(w.villages.size() >= 8 and w.villages.size() <= 12, "seed %d has %d villages" % [s, w.villages.size()])
+		var most := GenSettle.max_villages()
+		check(w.villages.size() >= most - 4 and w.villages.size() <= most, "seed %d has %d villages of at most %d" % [s, w.villages.size(), most])
 		var countries := {}
 		var q := WorldQuery.new(w)
 		for v in w.villages:
@@ -523,14 +537,14 @@ func test_places_worth_walking_to() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var tips := PackedInt32Array()
-		tips.resize(Country.COUNT)
+		tips.resize(BiomeRegistry.count())
 		var kinds := {}
 		for m in w.landmarks:
 			kinds[m.kind] = int(kinds.get(m.kind, 0)) + 1
 			if m.kind == &"tip":
 				tips[m.country] += 1
-		for c: int in Country.LAND:
-			gt(tips[c], 0, "seed %d tips in %s" % [s, Country.NAMES[c]])
+		for c: int in BiomeRegistry.land_indices():
+			gt(tips[c], 0, "seed %d tips in %s" % [s, BiomeRegistry.name_of(c)])
 		for kind: StringName in [&"stone_circle", &"wreck", &"ruin", &"summit", &"caldera", &"bridge", &"falls"]:
 			gt(int(kinds.get(kind, 0)), 0, "seed %d %s landmarks" % [s, kind])
 		for m in w.landmarks:
@@ -542,18 +556,18 @@ func test_places_worth_walking_to() -> void:
 func test_ore_is_richest_in_the_bonelands() -> void:
 	var w := world(WORLD_SEEDS[0])
 	var ore := PackedFloat32Array()
-	ore.resize(Country.COUNT)
+	ore.resize(BiomeRegistry.count())
 	var area := PackedFloat32Array()
-	area.resize(Country.COUNT)
+	area.resize(BiomeRegistry.count())
 	for c in w.country:
 		area[c] += 1.0
 	for p in w.props:
 		if p.kind in [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]:
 			ore[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 	var bone := ore[Country.BONELANDS] / area[Country.BONELANDS]
-	for c: int in Country.LAND:
+	for c: int in BiomeRegistry.land_indices():
 		if c != Country.BONELANDS:
-			check(bone >= ore[c] / area[c], "bonelands ore density %.4f below %s %.4f" % [bone, Country.NAMES[c], ore[c] / area[c]])
+			check(bone >= ore[c] / area[c], "bonelands ore density %.4f below %s %.4f" % [bone, BiomeRegistry.name_of(c), ore[c] / area[c]])
 
 
 func test_the_grid_strides_straight_across_countries() -> void:

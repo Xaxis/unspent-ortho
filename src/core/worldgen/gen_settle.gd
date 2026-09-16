@@ -13,10 +13,16 @@ class_name GenSettle
 ## ribbons on the diagonals. A village a tree edge fails to reach is joined to
 ## its nearest reachable neighbour.
 
-## Villages wanted per country id (sea, coast, moss, pinewood, snowfield, bonelands, burning).
-const QUOTA: PackedInt32Array = [0, 3, 2, 2, 1, 2, 1]
-const MAX_VILLAGES := 12
+## How many villages a world holds. Twelve was right for six landscapes; every
+## landscape the registry adds brings its own people, or the new land takes a
+## village off an old one and leaves it with no road and nobody to trade with.
+const BASE_VILLAGES := 12
+const BASE_LANDS := 6
 const MIN_VILLAGES := 10
+
+
+static func max_villages() -> int:
+	return BASE_VILLAGES + maxi(0, BiomeRegistry.land().size() - BASE_LANDS)
 const CORE := 9.5
 ## Only the square and the first ring of houses is levelled; the rest of the
 ## core keeps the lie of the land, so terraces run on through a village.
@@ -28,15 +34,6 @@ const APRON_RUN := 2.0
 ## Farthest a house's footprint reaches from its square (see GenScatter).
 const HOUSE_REACH := 14.5
 
-## Placeholder names until the story milestone names the land.
-const NAMES := {
-	Country.COAST: ["Sandling", "Low Scar", "Pennock", "Tidesend", "Marrow Bay", "Oyster Row"],
-	Country.MOSS: ["Fennick", "Sedgeley", "Peatholm"],
-	Country.PINEWOOD: ["Resin Hill", "Tallowmere", "Coombe Wood"],
-	Country.SNOWFIELD: ["Whitecrag", "Hush Fold"],
-	Country.BONELANDS: ["Chalkstone", "Grike End", "Pale Knoll"],
-	Country.BURNING: ["Cinderstead", "Emberlow"],
-}
 
 
 static func villages(c: GenContext) -> void:
@@ -124,7 +121,7 @@ static func villages(c: GenContext) -> void:
 		for pool: Array[Vector3] in [cands, relaxed]:
 			for p in pool:
 				var i := int(p.y) * size + int(p.x)
-				if w.country[i] != Country.COAST:
+				if not c.defs[w.country[i]].spawn_home:
 					continue
 				var d_in := c.inland[i]
 				if d_in < 8.0 or d_in > far:
@@ -139,12 +136,18 @@ static func villages(c: GenContext) -> void:
 		best = Vector3(roundi(r.position.x + r.size.x * 0.5), roundi(r.end.y - 12.0), 0)
 	chosen.append(best)
 	var counts := PackedInt32Array()
-	counts.resize(Country.COUNT)
-	counts[Country.COAST] = 1
+	counts.resize(c.types)
+	counts[w.country[int(best.y) * size + int(best.x)]] = 1
+	# Every landscape is settled in the order it declares, so the land that
+	# fills up what is left waits for the rest to have theirs.
+	var settle_order: Array[int] = []
+	settle_order.assign(c.land_types)
+	settle_order.sort_custom(func(a: int, b: int) -> bool:
+		return c.defs[a].village_order < c.defs[b].village_order)
 	for pool: Array[Vector3] in [cands, relaxed, rough]:
-		for cc: int in [Country.MOSS, Country.PINEWOOD, Country.BONELANDS, Country.SNOWFIELD, Country.BURNING, Country.COAST]:
+		for cc: int in settle_order:
 			for p in pool:
-				if counts[cc] >= QUOTA[cc]:
+				if counts[cc] >= c.defs[cc].villages:
 					break
 				var i := int(p.y) * size + int(p.x)
 				if w.country[i] != cc or _crowded(chosen, p, gap):
@@ -159,7 +162,7 @@ static func villages(c: GenContext) -> void:
 				chosen.append(p)
 	var rng := Rng.make(c.s, 62)
 	var used := {}
-	for p: Vector3 in chosen.slice(0, MAX_VILLAGES):
+	for p: Vector3 in chosen.slice(0, max_villages()):
 		var tx := int(p.x)
 		var ty := int(p.y)
 		var cc := w.country[ty * size + tx]
@@ -185,7 +188,9 @@ static func _crowded(chosen: Array[Vector3], p: Vector3, gap: float) -> bool:
 
 
 static func _name(rng: RandomNumberGenerator, cc: int, used: Dictionary) -> String:
-	var list: Array = NAMES.get(cc, NAMES[Country.COAST])
+	var list: Array = BiomeRegistry.by_index(cc).village_names
+	if list.is_empty():
+		list = ["%s Row" % BiomeRegistry.by_index(cc).display_name.capitalize()]
 	for attempt in 8:
 		var nm: String = list[rng.randi_range(0, list.size() - 1)]
 		if not used.has(nm):
@@ -616,7 +621,7 @@ static func frame_spawn(c: GenContext) -> void:
 			var p := vp + Vector2.from_angle(ang) * rad
 			var tx := floori(p.x)
 			var ty := floori(p.y)
-			if not _dry_flat(c, tx, ty, lv) or w.country_at(tx, ty) != Country.COAST:
+			if not _dry_flat(c, tx, ty, lv) or w.country_at(tx, ty) != w.villages[0].country:
 				continue
 			var q := Vector2(tx + 0.5, ty + 0.5)
 			var crowded := false

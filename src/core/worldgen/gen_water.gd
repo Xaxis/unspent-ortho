@@ -372,8 +372,6 @@ static func _carve_valleys(c: GenContext) -> void:
 ## pock the Moss (more of them deeper in), tarns freeze on the Snowfield's
 ## flats, the odd tarn lies in the Pinewood and behind the Coast. Each is a
 ## distance field about its centre, lobed so no two are the same shape.
-const POOL_GROUND: PackedByteArray = [Ground.WATER, Ground.RIVER, Ground.BLACKWATER, Ground.RIVER, Ground.ICE, Ground.RIVER, Ground.RIVER]
-
 
 static func still(c: GenContext) -> void:
 	var w := c.w
@@ -383,14 +381,19 @@ static func still(c: GenContext) -> void:
 	var level := w.level
 	var country := w.country
 	var blend := w.blend
-	# Cell size in tiles, chance a cell holds a pool, radius range, by country.
-	const CELL: PackedInt32Array = [0, 44, 18, 40, 30, 0, 0]
-	const CHANCE: PackedFloat32Array = [0.0, 0.3, 0.85, 0.35, 0.5, 0.0, 0.0]
-	const R_MIN: PackedFloat32Array = [0.0, 2.2, 2.6, 2.4, 2.6, 0.0, 0.0]
-	const R_MAX: PackedFloat32Array = [0.0, 3.6, 4.8, 4.2, 4.8, 0.0, 0.0]
+	# Cell size in tiles, chance a cell holds a pool, radius range and the water
+	# itself all come from the landscape (BiomeDef.pools), laid in the order
+	# each declares so the wettest land gets its pools first.
 	var laid := PackedVector3Array()
-	for cc: int in [Country.MOSS, Country.SNOWFIELD, Country.PINEWOOD, Country.COAST]:
-		var cell := CELL[cc]
+	var pooled: Array[int] = []
+	for cc: int in c.land_types:
+		if not c.defs[cc].pools.is_empty():
+			pooled.append(cc)
+	pooled.sort_custom(func(x: int, y: int) -> bool:
+		return int(c.defs[x].pools.get("order", 50)) < int(c.defs[y].pools.get("order", 50)))
+	for cc: int in pooled:
+		var spec: Dictionary = c.defs[cc].pools
+		var cell := int(spec.cell)
 		var cells := size / cell
 		for gy in cells:
 			for gx in cells:
@@ -400,9 +403,9 @@ static func still(c: GenContext) -> void:
 				var ci := clampi(floori(cy0), 0, size - 1) * size + clampi(floori(cx0), 0, size - 1)
 				if country[ci] != cc:
 					continue
-				if GenFields.h01(c.s, gx, gy, 442 + salt) > CHANCE[cc] * (1.0 - blend[ci]):
+				if GenFields.h01(c.s, gx, gy, 442 + salt) > float(spec.chance) * (1.0 - blend[ci]):
 					continue
-				var r := lerpf(R_MIN[cc], R_MAX[cc], GenFields.h01(c.s, gx, gy, 443 + salt))
+				var r := lerpf(float(spec.r_min), float(spec.r_max), GenFields.h01(c.s, gx, gy, 443 + salt))
 				# A few spots in the cell: pools need a flat to lie on.
 				for attempt in 5:
 					var px := (gx + 0.2 + GenFields.h01(c.s, gx * 8 + attempt, gy, 440 + salt) * 0.6) * cell
@@ -420,7 +423,7 @@ static func still(c: GenContext) -> void:
 						if Vector2(q.x, q.y).distance_to(Vector2(px, py)) < q.z + r + 5.0:
 							crowded = true
 							break
-					if not crowded and _lay_pool(c, centre, gx * 31 + gy * 17 + cc, POOL_GROUND[cc]):
+					if not crowded and _lay_pool(c, centre, gx * 31 + gy * 17 + cc, int(spec.ground)):
 						laid.append(centre)
 						break
 	c.pools = laid

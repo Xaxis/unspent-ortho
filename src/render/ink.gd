@@ -1,6 +1,7 @@
 class_name Ink
 ## Hatch style ids, mirrored from src/render/ink.gdshaderinc. docs/ART.md says
-## which thing is drawn in which hand.
+## which thing is drawn in which hand; a landscape names its own in
+## `BiomeDef.hatch`.
 
 const NONE := 0
 const WIND := 1
@@ -12,5 +13,7 @@ const SCRIBBLE := 6
 const HAND := 7
 const CONTOUR := 8
 
-## The ground hatch of each country (index by Country id).
-const COUNTRY_STYLE: PackedInt32Array = [NONE, WIND, STIPPLE, UPRIGHT, SPARSE, CROSS, SCRIBBLE]
+
+## The ground hatch of the landscape type at index c.
+static func hand_of(c: int) -> int:
+	return BiomeRegistry.by_index(c).hatch

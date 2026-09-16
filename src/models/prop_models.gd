@@ -28,6 +28,8 @@ const Built := preload("res://src/models/props/built.gd")
 const Houses := preload("res://src/models/props/houses.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 const Works := preload("res://src/models/props/works.gd")
+const Salt := preload("res://src/models/props/salt.gd")
+const Scrap := preload("res://src/models/props/scrap.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -61,6 +63,10 @@ static func variants(kind: int) -> int:
 			return 2
 		PropKind.SIGN:
 			return 4
+		PropKind.SALT_RIDGE, PropKind.SCRAP_TREE:
+			return 3
+		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
+			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
@@ -81,7 +87,7 @@ static var _lock := Mutex.new()
 
 
 static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
-	var key := (kind * 8 + variant) * 8 + country
+	var key := (kind * 8 + variant) * BiomeRegistry.SLOTS + country
 	_lock.lock()
 	var t: Template = _templates.get(key)
 	if t == null:
@@ -113,6 +119,10 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 		PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY, \
 		PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.ARCHIVE:
 			Works.build(k, kind, variant, country)
+		PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE:
+			Salt.build(k, kind, variant, country)
+		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
+			Scrap.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -192,6 +202,11 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 	var cold := Color(0.3, 0.95, 1.0)
 	var beacon := Color(1.0, 0.2, 0.36)
 	match kind:
+		PropKind.PAN_GATE:
+			# The one strip on a sluice gate that still reads (props/salt.gd).
+			if variant != 0:
+				return []
+			return [{"at": Vector3(-0.375, 0.62, 0.056), "size": Vector2.ZERO, "color": cold}]
 		PropKind.SHACK:
 			# Only the shacks that wired stolen tech in (props/remains.gd _wired):
 			# the middle of the neon tube, in that landscape's colour.
@@ -270,14 +285,14 @@ static func gallery() -> Array:
 			out.append({"name": label, "node": node(kind, v, Country.COAST)})
 	for kind: int in [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS, PropKind.HOUSE, PropKind.GORSE, PropKind.RUIN, PropKind.WRECK, PropKind.CAIRN]:
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
-			out.append({"name": "%s %s" % [PropKind.NAMES[kind], Country.NAMES[c]], "node": node(kind, 0, c)})
+			out.append({"name": "%s %s" % [PropKind.NAMES[kind], BiomeRegistry.names()[c]], "node": node(kind, 0, c)})
 	# The but in snow: its sods carry the snow, not a lid of it.
 	out.append({"name": "%s 3 snowfield" % PropKind.NAMES[PropKind.HOUSE], "node": node(PropKind.HOUSE, 3, Country.SNOWFIELD)})
 	# The evidence each landscape dresses its own way.
 	for kind: int in DRESSED:
 		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
 			for v in variants(kind):
-				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, Country.NAMES[c]], "node": node(kind, v, c)})
+				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, BiomeRegistry.names()[c]], "node": node(kind, v, c)})
 	return out
 
 
