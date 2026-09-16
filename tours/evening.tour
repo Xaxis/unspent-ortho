@@ -97,40 +97,40 @@ wait 0.5
 place moss
 hour 17
 wait 2.0
-shot 20-the-moss-at-1700
+shot 20-the-moss-at-1700 with land:moss
 hour 17.5
 wait 3.0
 await darker 4
 hour 18
 wait 3.0
 await darker 4
-shot 21-the-moss-at-1800
+shot 21-the-moss-at-1800 with land:moss
 hour 18.5
 wait 3.0
 await darker 4
 hour 19
 wait 3.0
 await darker 4
-shot 22-the-moss-at-1900
+shot 22-the-moss-at-1900 with land:moss
 hour 19.5
 wait 3.0
 await darker 4
 hour 20
 wait 3.0
 await darker 4
-shot 23-the-moss-at-2000
+shot 23-the-moss-at-2000 with land:moss
 hour 20.5
 wait 3.0
 await darker 4
-shot 24-the-moss-at-2030
+shot 24-the-moss-at-2030 with land:moss
 hour 21
 wait 3.0
 await darker 4
-shot 25-the-moss-at-2100
+shot 25-the-moss-at-2100 with land:moss
 hour 21.5
 wait 3.0
 await darker 4
-shot 26-the-moss-at-2130
+shot 26-the-moss-at-2130 with land:moss
 same 21-the-moss-at-1800 22-the-moss-at-1900 0.09 0,84,1280,592
 same 22-the-moss-at-1900 23-the-moss-at-2000 0.09 0,84,1280,592
 same 23-the-moss-at-2000 24-the-moss-at-2030 0.075 0,84,1280,592
@@ -153,5 +153,5 @@ shot 16-an-early-dusk-under-the-pines
 place bonelands
 hour 19.4
 wait 1.6
-shot 17-the-bonelands-fall-hard-off-the-day
+shot 17-the-bonelands-fall-hard-off-the-day with land:bonelands
 weather rules

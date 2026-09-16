@@ -49,7 +49,7 @@ try 8
 end
 hour 12
 weather clear:0
-shot 01-noon-indifferent
+shot 01-noon-indifferent with mob:harvester
 
 # wary: a keeper, which starts one rung up the ladder and keeps its round.
 coast calm
@@ -63,7 +63,7 @@ try 8
 end
 hour 12
 weather clear:0
-shot 02-noon-wary
+shot 02-noon-wary with mob:warden
 
 # observant: a watcher, which never fights and only ever files.
 coast calm
@@ -77,7 +77,7 @@ try 8
 end
 hour 12
 weather clear:0
-shot 03-noon-observant
+shot 03-noon-observant with mob:watcher
 
 # hostile: the same kind as frame 01, after the player put their hands on the
 # plan's own parts. This is the pillar — rob it and it comes — and it is the
@@ -93,7 +93,7 @@ await turned 4
 await machine:harvester 3
 hour 12
 weather clear:0
-shot 04-noon-hostile
+shot 04-noon-hostile with mob:harvester
 
 # --- night --------------------------------------------------------------------
 # The same four. Whatever the daylight channel gains, the night must not shout.
@@ -111,7 +111,7 @@ try 8
 end
 hour 23
 weather clear:0
-shot 05-night-indifferent
+shot 05-night-indifferent with mob:harvester
 
 coast calm
 wait 0.5
@@ -124,7 +124,7 @@ try 8
 end
 hour 23
 weather clear:0
-shot 06-night-wary
+shot 06-night-wary with mob:warden
 
 coast calm
 wait 0.5
@@ -137,7 +137,7 @@ try 8
 end
 hour 23
 weather clear:0
-shot 07-night-observant
+shot 07-night-observant with mob:watcher
 
 coast calm
 near survey
@@ -150,7 +150,7 @@ await turned 4
 await machine:harvester 3
 hour 23
 weather clear:0
-shot 08-night-hostile
+shot 08-night-hostile with mob:harvester
 
 # --- machine light lands on the ground -----------------------------------------
 # A watcher at night threw nothing on the ground it stood on: its lens was in the
@@ -176,7 +176,7 @@ zoom 8
 await machine:watcher 3
 hour 23
 weather clear:0
-shot 09-its-light-on-the-ground
+shot 09-its-light-on-the-ground with mob:watcher
 
 # --- the land's own fire lands on the land ---------------------------------------
 # The other half of the same finding: at noon the Burning was white-hot cores

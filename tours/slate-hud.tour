@@ -17,8 +17,8 @@ wait 0.25
 shot 01-the-ping-rings-out
 wait 0.9
 shot 02-the-name-on-its-own-glass
-wait 4.0
-shot 03-and-the-glass-is-taken-off-again
+await quiet_glass 8
+shot 03-and-the-glass-is-taken-off-again with quiet_glass
 
 # --- A badge answers for the line the glass does not say -----------------------
 # The burning presses with fumes and heat at once. Each one used to write a
@@ -61,7 +61,7 @@ choose reads
 tap use
 await app:reads 8
 wait 0.7
-shot 08-machine-reads
+shot 08-machine-reads with app:reads
 tap pause
 tap pause
 await app:none 5

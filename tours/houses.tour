@@ -58,7 +58,7 @@ wait 0.8
 shot 08-village-night
 zoom 9
 wait 0.5
-shot 09-stolen-neon-close
+shot 09-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:60
 zoom 15
 
 # Wet: the tube mirrored in the ground is the frame the canon meant to protect.

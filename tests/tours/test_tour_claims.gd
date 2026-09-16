@@ -8,10 +8,15 @@ extends TestCase
 const TOUR_DIR := "res://tours"
 const TOUR := preload("res://src/systems/98_tour.gd")
 
-## Every word the runner's match statement answers to.
+## Every word the runner's match statement answers to. A package that teaches the
+## runner a new command adds it here in the same commit: `stale` reached main in
+## the saves package while this list was being written in another worktree, and
+## the first thing the merged gate said was that saves-elsewhere.tour was
+## speaking a word no tour could use. That is the rule working, but it only
+## works if the list is kept beside the runner.
 const COMMANDS := ["at", "near", "ground", "place", "village", "hour", "zoom", "weather",
 	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "spawn", "choose",
-	"coast", "walkto", "perf", "echo", "key", "same", "try", "end"]
+	"coast", "walkto", "perf", "echo", "key", "same", "try", "end", "stale"]
 ## Subject prefixes with something to check behind them.
 const BODY_PREFIXES := ["mob:", "down:", "body:"]
 
@@ -190,9 +195,29 @@ const MACHINE_WORDS := ["worker", "workers", "keeper", "keepers", "machine",
 	"machines", "its-round", "its-rounds", "their-round", "their-rounds"]
 
 
+## Compound adjectives that carry an EVENT_WORD without claiming an event.
+## "hand-built" says how a house was made, not that anything happened while the
+## tour was watching, and a frame cannot await a thing that was true before it
+## arrived. This is the misfire this package's own brief warned about — a
+## matcher over prose written for a human will sometimes fire on the prose —
+## so it is answered by naming the exceptions rather than by making builders
+## rename honest frames to please the checker.
+const NOT_EVENTS := ["hand-built", "hand-made", "machine-made", "machine-built", "well-made"]
+
+
 ## Whether `name` (hyphen-separated) carries `word` as a whole word or phrase.
 static func names_it(shot_name: String, word: String) -> bool:
 	return ("-%s-" % shot_name).contains("-%s-" % word)
+
+
+## The same, for a word that only counts when it is not half of a compound.
+static func claims_event(shot_name: String, word: String) -> bool:
+	if not names_it(shot_name, word):
+		return false
+	for phrase: String in NOT_EVENTS:
+		if ("-%s-" % shot_name).contains("-%s-" % phrase):
+			return false
+	return true
 
 
 func test_a_frame_named_after_something_says_what_it_holds() -> void:
@@ -244,8 +269,16 @@ func test_a_frame_named_after_something_says_what_it_holds() -> void:
 						for id: String in s.substr(5).split("|", false):
 							said = said or named.has(id)
 					if s.begins_with("border:"):
+						# Every landscape the NAME carries has to be one of the two, but
+						# the name need not carry both: "coast meets salt" is a frame of
+						# the coast/salt_flats border and says so. Requiring both spelled
+						# out made this a rule about how a frame is NAMED rather than about
+						# what it DECLARES, which is the opposite of the point.
 						var pair := s.substr(7).split("-", false)
-						said = said or (pair.size() == 2 and named.has(pair[0]) and named.has(pair[1]))
+						var within := pair.size() == 2
+						for id: String in named:
+							within = within and pair.has(id)
+						said = said or within
 				check(said, "%s line %d: %s names %s and never says which ground it is on"
 					% [f, n, label, ", ".join(named)])
 			if names_it(label, "lamp"):
@@ -267,7 +300,7 @@ func test_a_frame_named_after_something_says_what_it_holds() -> void:
 					counted = counted or s.begins_with("pixels:")
 				check(counted, "%s line %d: %s names the neon and never counts a tube" % [f, n, label])
 			for word: String in EVENT_WORDS:
-				if names_it(label, word):
+				if claims_event(label, word):
 					check(awaited > 0,
 						"%s line %d: %s says something happened and nothing was awaited since the frame before it"
 						% [f, n, label])

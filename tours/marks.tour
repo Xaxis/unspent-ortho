@@ -16,7 +16,7 @@ place pinewood
 wait 1.0
 spawn watcher
 wait 1.2
-shot 01-before-the-blow
+shot 01-before-the-blow with mob:watcher
 try 16
 walkto part 1.6
 tap swing
@@ -47,7 +47,7 @@ weather clear:0
 wait 1.2
 spawn watcher
 wait 1.6
-shot 04-its-light-is-smaller-than-it-is
+shot 04-its-light-is-smaller-than-it-is with mob:watcher
 
 # --- A read through a stolen lens, over the thing it reads --------------------
 tap ability_scan
@@ -132,7 +132,7 @@ wait 1.4
 tap ability_scan
 await ability:scan 5
 wait 0.5
-shot 16-the-read-is-laid
+shot 16-the-read-is-laid with mob:watcher
 tap ability_dash
 await ability:dash 4
 wait 0.04
@@ -153,7 +153,7 @@ wait 9.0
 tap ability_scan
 await ability:scan 5
 wait 0.4
-shot 19-a-machine-read-on-a-height
+shot 19-a-machine-read-on-a-height with mob:lineman
 tap ability_glide
 await gliding 5
 wait 0.8

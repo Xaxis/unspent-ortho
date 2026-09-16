@@ -117,7 +117,7 @@ shot 16-the-wood-answered
 near scrap_tree
 zoom 5
 wait 1.2
-shot 17-a-tree-grown-through-a-machine
+shot 17-a-tree-grown-through-a-machine with prop:scrap_tree
 near magnet_heap
 zoom 3.2
 wait 1.2
@@ -129,13 +129,13 @@ zoom 12
 # may clip to paper: a clipped wash holds no shade, no plate and no ink.
 place coast-salt_flats
 wait 2.2
-shot 19-coast-meets-salt
+shot 19-coast-meets-salt with border:coast-salt_flats
 walk 1,-1 2.5 run
 wait 0.6
-shot 20-coast-salt-crossed
+shot 20-coast-salt-crossed with border:coast-salt_flats
 place moss-scrapwood
 wait 2.2
-shot 21-moss-meets-scrapwood
+shot 21-moss-meets-scrapwood with border:moss-scrapwood
 walk 1,-1 2.5 run
 wait 0.6
-shot 22-moss-scrapwood-crossed
+shot 22-moss-scrapwood-crossed with border:moss-scrapwood
