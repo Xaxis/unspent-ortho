@@ -14,9 +14,17 @@ wait 1.2
 
 # A keeper at noon: deep indigo, its own value on the violet arc, its own years
 # on it. Nothing about it is lit, and it is not a lilac box.
+#
+# The portrait is taken the instant it is put out, and taken again if it is not
+# in the frame. A warden is a keeper: put in front of a person it arrests them,
+# which skips an hour of the world, and an hour later it has gone about its
+# business. The old `wait 1.2` here always photographed the field it had left
+# (wave A playtest, finding 5: 432 machine-violet pixels in the frame, all of
+# them the slate's own bezel).
+try 4
 spawn warden
-wait 1.2
 shot 01-a-keeper-at-noon with mob:warden
+end
 
 # A worker in the same light: another place on the arc and another value, so the
 # two are told apart before either is read. Close, its deck and hood carry plates
