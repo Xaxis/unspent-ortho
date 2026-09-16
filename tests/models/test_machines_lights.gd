@@ -492,3 +492,36 @@ func test_every_kind_wears_its_years_and_its_trade() -> void:
 						break
 			check(found, "%s: the trophy on its %s is matter" % trophy)
 		m.free()
+
+
+## A dead machine must read as a body gone down and left there. Its own light is
+## how a FOUND body is seen at night, so when the lights go it has nothing left:
+## the shipped proof frames for "the lights go out in order and the working part
+## goes last" contained no machine a viewer could find (playtest wave N, finding
+## 5). As the light dies the metal stops taking the night's tint instead, and
+## settles into a cold hulk in the moonlight.
+func test_a_dead_machine_cools_into_a_hulk_that_stays_visible() -> void:
+	for kid in LIT:
+		var m := FigureModel.create(kid) as MachineModel
+		m.settle()
+		near(m.night_keep(), MachineModel.NIGHT_KEEP, 1e-3, "%s alive holds its working value" % kid)
+		m.set_pose(&"dead")
+		m.animate(MachineModel.LIGHT_FIRST * 0.5, 0.0)
+		lt(m.night_keep(), MachineModel.NIGHT_KEEP + 1e-3, "%s does not brighten before its lights go" % kid)
+		var t := MachineModel.LIGHT_FIRST * 0.5
+		while t < MachineModel.LIGHT_FIRST + MachineModel.DEAD_COOL + 0.2:
+			m.animate(1.0 / 60.0, 0.0)
+			t += 1.0 / 60.0
+		near(m.night_keep(), MachineModel.DEAD_KEEP, 1e-3, "%s settles into a hulk" % kid)
+		eq(float(m.material.get_shader_parameter("night_keep")), m.night_keep(), "%s body material follows" % kid)
+		# And it stays: a wreck the player walks round tomorrow is still there.
+		for i in 120:
+			m.animate(1.0 / 60.0, 0.0)
+		near(m.night_keep(), MachineModel.DEAD_KEEP, 1e-3, "%s stays a hulk" % kid)
+		eq(m.light_level(), 0.0, "%s stays dark" % kid)
+		# Stood back up (a loaded game, a tour), the metal takes the night again.
+		m.set_pose(&"stand")
+		for i in 60:
+			m.animate(1.0 / 60.0, 0.0)
+		near(m.night_keep(), MachineModel.NIGHT_KEEP, 0.01, "%s alive again" % kid)
+		m.free()

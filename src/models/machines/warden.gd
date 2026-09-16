@@ -99,9 +99,14 @@ func build() -> void:
 	add_beam(head, Vector3(0.34, -0.02, 0), Vector3(2.0, -1.36, 0), 2.4, 1.1)
 	var capw := FoundKit.kit()
 	FoundKit.patch(capw, Vector3(-0.08, 0.241, 0.08), Vector3.UP, Vector3.RIGHT, 0.16, 0.12, Palette.MACHINE["hauler"], 63)
-	FoundKit.patch(capw, Vector3(0.05, 0.17, -0.2), Vector3(0.0, 0.8, -0.6).normalized(), Vector3.RIGHT, 0.2, 0.08, Palette.FOUND, 64)
+	FoundKit.patch(capw, Vector3(0.05, 0.17, -0.2), Vector3(0.0, 0.8, -0.6).normalized(), Vector3.RIGHT, 0.2, 0.08, Palette.MACHINE["clerk"], 64)
 	FoundKit.grime(capw, Vector3(-0.04, 0.08, 0.262), Vector3.BACK, 0.2, 0.06, 3, 65, D)
 	wear_mesh(capw, head)
+	# The cap's front shoulder is the one wide nearly-flat face a camera pitched
+	# 57 degrees down cannot miss, and at noon nothing on it is lit. It gets the
+	# years the hull kinds get: the plate stepped, a well of shadow in it, the far
+	# edge rubbed and a run of grime off the low lip.
+	day_marks(head, Vector3(0.25, 0.222, 0.0), Vector3(0.216, 0.976, 0.0), Vector3(-0.976, 0.216, 0.0), 0.14, 0.16, 66, 2.0)
 	for sz: float in [-1.0, 1.0]:
 		var brim := joint(&"brim_r" if sz > 0 else &"brim_l", head, Vector3(0, 0.09, sz * 0.33))
 		var mk := FoundKit.kit()

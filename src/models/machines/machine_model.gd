@@ -56,12 +56,6 @@ const STUTTER_BITS := [1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 
 ## Status lamp codes: blinks per cycle for each disposition (VISION §2). Hostile
 ## machines do not blink: they burn low and steady.
 const DISPOSITION_CODE := {&"indifferent": 1, &"wary": 2, &"observant": 3, &"hostile": 0}
-## Default disposition by kind: its role in the plan, read from the roster
-## through `Roles`, so the gallery and a live machine can never disagree about
-## what a kind is. The disposition system sets `disposition` on a live machine;
-## the lamps follow.
-static func role_disposition(kind: StringName) -> StringName:
-	return Roles.default_disposition(Roles.of(kind))
 ## Vertex alpha the FOUND shader reads as a built-in light (found.gdshader:
 ## 0.5..0.98 steady, brighter lower). A lamp's lens and its hot core.
 const LAMP_ALPHA := 0.8
@@ -72,8 +66,29 @@ const LAMP_MIN := Vector2(0.05, 0.045)
 ## camera never rotates). Used when no live camera is available (tests, gallery).
 const TO_CAMERA := Vector3(0.3848, 0.8387, 0.3848)
 const FOUND_SHADER := preload("res://src/render/found.gdshader")
-const NIGHT_KEEP := 0.6
+## How much of its own colour a machine's plate keeps when the sky has gone dark
+## (found.gdshader night_keep): a live machine is read by its lamps, so it can
+## afford to sit back in the night.
+const NIGHT_KEEP := 0.7
+## A dead one cannot. Once its lights are out it has nothing of its own left to
+## be seen by, and a FOUND body with no emission against dark ground is a hole,
+## not a wreck: the shipped proof frames for "the lights go out in order" held no
+## machine a viewer could find. So as the light goes, the metal stops taking the
+## night's tint and settles into a cold hulk in the moonlight — a thing the
+## player can walk round, find again tomorrow, and read as finished.
+const DEAD_KEEP := 0.94
+## Seconds after the last light for the hulk to settle into that.
+const DEAD_COOL := 0.9
 const SURFACES: Array[StringName] = [&"body", &"part", &"lights", &"matter"]
+
+
+## Default disposition by kind: its role in the plan, read from the roster
+## through `Roles`, so the gallery and a live machine can never disagree about
+## what a kind is. The disposition system sets `disposition` on a live machine;
+## the lamps follow.
+static func role_disposition(kind: StringName) -> StringName:
+	return Roles.default_disposition(Roles.of(kind))
+
 
 var ramp: Array = []
 var part_material: ShaderMaterial
@@ -114,6 +129,7 @@ var _dim := 1.0
 var _dark_t := 0.0
 var _was_running := true
 var _stutter_on := true
+var _keep := NIGHT_KEEP
 ## [target Object, property, lit Mesh, dark Mesh] for everything the part's light swaps.
 var _part_swaps: Array = []
 var _glow: MeshInstance3D
@@ -236,6 +252,27 @@ func wear_mesh(k: MeshKit, parent: Node3D) -> void:
 ## rag on a knee): matter drawn by the hand, on the same `wear` holder.
 func wear_matter(k: MeshKit, parent: Node3D) -> void:
 	_queue(&"matter", k, _wear_on(parent))
+
+
+## The years on one plate, for the hour when nothing on the machine is lit: a
+## dirtier plate, a rubbed strip, `wells` shadowed recesses and a run of grime
+## over a w x h patch of the face at `c` (local to `parent`, normal `n`, `up`
+## along the face). Every kind calls this on the plates the camera actually sees,
+## because a FOUND face is one flat wash and by day the lamps say nothing.
+func day_wear(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, seed_value: int, wells: int = 1) -> void:
+	var k := FoundKit.kit()
+	FoundKit.day_wear(k, c, n, up, w, h, ramp, seed_value, wells)
+	wear_mesh(k, parent)
+
+
+## The same years on a face too small for a hull's composition: a drum top, a
+## cap, a chest, a lid. Every kind has one face the camera at 57 degrees cannot
+## miss, and every kind marks it — the thin ones were flat at noon because the
+## only daylight idiom was sized for a deck (FoundKit.day_marks).
+func day_marks(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, seed_value: int, floor_px: float = 2.2) -> void:
+	var k := FoundKit.kit()
+	FoundKit.day_marks(k, c, n, up, w, h, ramp, seed_value, floor_px)
+	wear_mesh(k, parent)
 
 
 func _wear_on(parent: Node3D) -> Node3D:
@@ -973,6 +1010,26 @@ func _apply_light(delta: float) -> void:
 		_glow_mat.set_shader_parameter("strength", on * (0.55 + _flare * 1.6 + 0.35 * (_light_scale() - 1.0)) * lerpf(0.8, 1.0, _dim))
 		var s := 1.0 + _flare * 0.6
 		_glow.scale = Vector3(s, s, s)
+	_keep_the_body(delta)
+
+
+## The hulk cooling into something still visible once its light has gone.
+func _keep_the_body(delta: float) -> void:
+	var want := NIGHT_KEEP
+	if pose == &"dead":
+		want = lerpf(NIGHT_KEEP, DEAD_KEEP, clampf((pose_time - LIGHT_FIRST) / DEAD_COOL, 0.0, 1.0))
+	elif delta > 0.0:
+		# Stood back up (a loaded game, a tour): the metal takes the night again.
+		want = lerpf(_keep, NIGHT_KEEP, 1.0 - exp(-6.0 * delta))
+	if is_equal_approx(want, _keep):
+		return
+	_keep = want
+	material.set_shader_parameter("night_keep", want)
+
+
+## How much of its own colour the body is holding against the night, 0..1.
+func night_keep() -> float:
+	return _keep
 
 
 ## Every lamp, scan and beam from the pose and the clock: exact patterns only.

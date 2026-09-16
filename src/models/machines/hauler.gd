@@ -127,11 +127,19 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 		add_beam(box, Vector3(0.66, 0.06, -SEG_W * 0.5), Vector3(1.4, -0.4, 0), 1.6, 1.3, &"work")
 	var sw := FoundKit.kit()
 	var flank := Vector3(0, -0.16, -1.0).normalized()
-	FoundKit.patch(sw, Vector3(-0.2 if is_front else 0.16, 0.2, -SEG_W * 0.5 - 0.265), flank, Vector3(0, 1, -0.16), 0.24, 0.14, Palette.MACHINE["harvester"] if is_front else Palette.FOUND, 54 + int(is_front))
+	FoundKit.patch(sw, Vector3(-0.2 if is_front else 0.16, 0.2, -SEG_W * 0.5 - 0.265), flank, Vector3(0, 1, -0.16), 0.24, 0.14, Palette.MACHINE["harvester"] if is_front else Palette.MACHINE["sweeper"], 54 + int(is_front))
 	FoundKit.scorch(sw, Vector3(0.28, 0.12, -SEG_W * 0.5 - 0.25), flank, 0.06, 56 + int(is_front))
 	var far := Vector3(0, -0.16, 1.0).normalized()
 	FoundKit.dirt_line(sw, Vector3(-0.42, 0.06, -SEG_W * 0.5 + 0.25), Vector3(0.42, 0.06, -SEG_W * 0.5 + 0.25), far, 0.05, R[1])
 	wear_mesh(sw, box)
+	if is_front:
+		# The lead hopper's camera-side flank: a metre of flared plate carrying
+		# nothing but a dirt line at its foot, and the first thing a player meets
+		# of a hauler. It takes the years in plate steps and a well of shadow.
+		# Only this one: the hauler is the heaviest kind in the roster and the
+		# second hopper's worth of marks puts it over the triangle budget, while
+		# the rear already carries a patch, a burn and its own dirt line.
+		day_marks(box, Vector3(0.12, 0.2, -SEG_W * 0.5 + 0.265), far, Vector3(0, 1, 0.16).normalized(), 0.34, 0.15, 57)
 	if is_front:
 		add_scan(box, Vector3(SEG_L * 0.5 + 0.1, 0.18, -SEG_W * 0.5), Vector3(0.99, 0.16, 0), Vector3.BACK, 0.24, 0.03, 2.6)
 
@@ -186,10 +194,13 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"load_f"] = r(Vector3(0.1, 0, 0.08))
 			d[&"load_r"] = r(Vector3(-0.08, 0, -0.1))
 		&"windup":
-			d[&"front"] = pr(Vector3(-0.08, 0.05, 0), Vector3(0, 0, 0.12))
-			d[&"box_f"] = pr(Vector3(0, 0.14, 0))
-			d[&"box_r"] = pr(Vector3(0, 0.08, 0))
-			d[&"rear"] = r(Vector3(0, 0, -0.12))
+			# It jack-knifes. The hinge is the side that opens and the side that
+			# takes you, so the hinge is what moves, wide enough to be the shape
+			# of the machine and not a detail on it.
+			d[&"front"] = pr(Vector3(-0.1, 0.12, 0), Vector3(0, 0, 0.16))
+			d[&"box_f"] = pr(Vector3(0, 0.28, 0), Vector3(-0.12, 0, 0.16))
+			d[&"box_r"] = pr(Vector3(0, 0.12, 0), Vector3(0.1, 0, -0.1))
+			d[&"rear"] = r(Vector3(0, -0.38, -0.22))
 		&"strike":
 			d[&"front"] = pr(Vector3(0.22, -0.02, 0), Vector3(0, 0, -0.06))
 			d[&"box_f"] = pr(Vector3(0, 0.1, 0))

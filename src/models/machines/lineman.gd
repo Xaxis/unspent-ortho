@@ -52,6 +52,9 @@ func build() -> void:
 	FoundKit.grime(bw, Vector3(0.21, 0.2, 0.08), Vector3.RIGHT, 0.1, 0.16, 3, 102, D)
 	FoundKit.scorch(bw, Vector3(0.206, 0.46, -0.1), Vector3.RIGHT, 0.05, 103)
 	wear_mesh(bw, body)
+	# The lid: a long flat plane two and a half metres up that the camera sees
+	# nothing but, and the quietest ramp in the roster on it. It gets the years.
+	day_marks(body, Vector3(0.0, 0.642, 0.08), Vector3.UP, Vector3.RIGHT, 0.17, 0.2, 104)
 	var pk := FoundKit.kit()
 	FoundKit.optic(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, 0.075)
 	FoundKit.mark(pk, Vector3(0.231, 0.3, 0), Vector3.RIGHT, Vector3.UP, 0.2, 0.02, Palette.LENS[1], 0.013)

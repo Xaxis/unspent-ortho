@@ -199,8 +199,10 @@ static func mesh(kind: int) -> ArrayMesh:
 ## washes), so these carry no panes: only where the light stands and the
 ## flame strokes.
 static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST) -> Array:
-	var cold := Color(0.3, 0.95, 1.0)
-	var beacon := Color(1.0, 0.2, 0.36)
+	# One source for the machines' own light: the geometry and the pool it casts
+	# must not disagree about what colour a strip or a beacon is.
+	var cold := Color(Works.STRIP, 1.0)
+	var beacon := Color(Works.BEACON, 1.0)
 	match kind:
 		PropKind.PAN_GATE:
 			# The one strip on a sluice gate that still reads (props/salt.gd).
@@ -245,7 +247,9 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			# The lantern hangs off its arm at x 0.4 (props/built.gd lamp_post).
 			return [{"at": Vector3(0.4, 1.41, 0.02), "size": Vector2.ZERO, "color": Palette.COPPER[4], "rays": [3.0, 6.0, 0.0, 8.0]}]
 		PropKind.PYLON:
-			return [{"at": Vector3(0, 4.05, 0), "size": Vector2(0.12, 0.12), "color": Palette.RUST[4], "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
+			# The cap on the mast is the same beacon a relay carries: it was rust
+			# here, dull violet in the geometry and crimson in the light it cast.
+			return [{"at": Vector3(0, 4.05, 0), "size": Vector2(0.12, 0.12), "color": beacon, "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
 		PropKind.FIRE:
 			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 	return []

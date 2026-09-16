@@ -16,10 +16,30 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 
-## The machines' own light: cold strip, warning beacon, the working amber.
-const STRIP := Color(0.3, 0.95, 1.0, 0.84)
-const BEACON := Color(1.0, 0.2, 0.36, 0.28)
+## The machines' own light, and the ONE place its colour is written: the geometry
+## that draws a strip or a beacon, the pool it casts, its wet-ground glint and its
+## shaft in fog all read these, so they cannot disagree about what colour a mast is.
+##
+## It sits on the machines' own arc (docs/ART.md §4 and the Palette contract): a
+## cold violet-white strip along a live installation, and a beacon at the burnt
+## end of the violet arc (hue 331, blue above green) with only an amber cast to
+## it. ART §4 gives the machines ONE warm read, the amber working part, so the
+## beacon may not be a second: it is held below LENS in value as well as in
+## chroma, and a relay mast standing in a clear noon must not be the brightest
+## object in the frame.
+##
+## The alpha is the FOUND light code (found.gdshader): the strip is steady, the
+## beacon blinks on the machine beat and is held down so its flash is a warning,
+## not a sun.
+const STRIP := Color(0.7451, 0.7294, 0.8745, 0.88)
+const BEACON := Color(0.7098, 0.5176, 0.6118, 0.36)
 const WORKING := Color(0.9098, 0.7608, 0.2275, 0.88)
+
+
+## The machines' light as a light: the rgb a pool, a glint or a fog shaft takes
+## from one of the colours above (15_lights, which works in Vector3).
+static func light(col: Color) -> Vector3:
+	return Vector3(col.r, col.g, col.b)
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:

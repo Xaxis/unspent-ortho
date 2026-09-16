@@ -76,13 +76,15 @@ func build() -> void:
 	# The notch's dark throat.
 	FoundKit.cbox(k, Vector3(0.6, -0.0, 0), Vector3(0.12, 0.14, 0.2), 0.0, FoundKit.flat(R[0]))
 	body_mesh(k, hull)
+	# The carapace it shows the sky all day: the plate the camera sees most of.
+	day_wear(hull, Vector3(-0.08, 0.253, 0.3), Vector3.UP, Vector3.RIGHT, 0.34, 0.7, 128, 2)
 	add_scan(hull, Vector3(0.601, 0.1, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.025, 1.8)
 	add_lamp(hull, Vector3(0.15, 0.332, 0), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(hull, Vector3(0.602, 0.1, sz * 0.172), Vector3.RIGHT, Vector3.UP, 0.03, 0.03, &"optic")
 	var hw := FoundKit.kit()
 	FoundKit.patch(hw, Vector3(-0.1, 0.253, 0.3), Vector3(0, 0.95, 0.3).normalized(), Vector3.RIGHT, 0.24, 0.12, Palette.MACHINE["runner"], 81)
-	FoundKit.patch(hw, Vector3(0.2, 0.253, -0.28), Vector3(0, 0.95, -0.3).normalized(), Vector3.RIGHT, 0.14, 0.1, Palette.FOUND, 82)
+	FoundKit.patch(hw, Vector3(0.2, 0.253, -0.28), Vector3(0, 0.95, -0.3).normalized(), Vector3.RIGHT, 0.14, 0.1, Palette.MACHINE["hauler"], 82)
 	FoundKit.cable(hw, Vector3(-0.47, 0.42, 0.03), Vector3(-0.3, 0.3, 0.16), 0.03, 0.012, Palette.INK[2], Palette.MACHINE["sweeper"], 4)
 	FoundKit.scorch(hw, Vector3(-0.44, 0.335, -0.08), Vector3.UP, 0.05, 83)
 	wear_mesh(hw, hull)

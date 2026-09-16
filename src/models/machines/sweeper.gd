@@ -127,6 +127,8 @@ func build() -> void:
 		FoundKit.seam(hk, Vector3(0.0, 0.2, sz * face), Vector3(0.0, HOP_H - 0.1, sz * face), Vector3.BACK * sz, R, 5)
 	FoundKit.rivets(hk, Vector3(-face, 0.2, -0.1), Vector3(-face, 0.2, 0.1), Vector3.LEFT, 3, R[5])
 	body_mesh(hk, hopper)
+	# The hopper lid: the one big flat thing on it, and the one the sun finds.
+	day_wear(hopper, Vector3(0.03, 1.106, 0), Vector3.UP, Vector3.RIGHT, 0.34, 0.34, 130, 1)
 	add_scan(hopper, Vector3(face, HOP_H - 0.2, 0), Vector3.RIGHT, Vector3.BACK, 0.16, 0.03, 2.2)
 	add_lamp(hopper, Vector3(0.03, HOP_H + 0.081, 0.1), Vector3.UP, Vector3.RIGHT, 0.045, 0.045, &"status")
 	add_lamp(hopper, Vector3(-face - 0.002, VENT_Y + VENT_H * 0.5 + 0.1, 0), Vector3.LEFT, Vector3.UP, 0.12, 0.035, &"work", true)

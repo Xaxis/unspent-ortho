@@ -68,6 +68,11 @@ func build() -> void:
 	FoundKit.patch(tw, Vector3(0.089, 0.2, 0.06), Vector3.RIGHT, Vector3.UP, 0.1, 0.12, Palette.MACHINE["longlegs"], 151)
 	FoundKit.grime(tw, Vector3(0.0, 0.46, 0.201), Vector3.BACK, 0.16, 0.2, 3, 152, D)
 	wear_mesh(tw, torso)
+	# A hunter runs dark, and at noon that made it a flat slab: the chest below
+	# the slit is the biggest face it turns to the camera, and it carries the
+	# years like a hull does — plate stepped over plate, a well, a rubbed edge,
+	# grime off the bottom lip.
+	day_marks(torso, Vector3(0.086, 0.18, -0.045), Vector3.RIGHT, Vector3.UP, 0.13, 0.2, 153, 2.0)
 
 	for sz: float in [-1.0, 1.0]:
 		var s := "r" if sz > 0 else "l"

@@ -62,6 +62,9 @@ func build() -> void:
 	FoundKit.cable(bw, Vector3(-0.2, 0.36, 0.172), Vector3(0.0, 0.1, 0.24), 0.03, 0.013, Palette.INK[2], Palette.MACHINE["harvester"], 4)
 	FoundKit.grime(bw, Vector3(-0.1, 0.4, -0.171), Vector3.FORWARD, 0.2, 0.2, 3, 52, D)
 	wear_mesh(bw, body)
+	# The deck ahead of the housing: the widest flat thing on it and the one the
+	# camera looks down on. Unmarked it was a single wash of one value at noon.
+	day_marks(body, Vector3(0.2, 0.032, -0.12), Vector3.UP, Vector3.RIGHT, 0.2, 0.18, 53)
 	# Blocks of what it cuts, carried on the chassis either side of the housing,
 	# under the disc where the camera sees them, lashed down with line.
 	var blocks := FoundKit.matter_kit(Ink.CONTOUR)

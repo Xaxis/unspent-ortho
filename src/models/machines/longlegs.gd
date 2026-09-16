@@ -59,12 +59,14 @@ func build() -> void:
 	# The hub: a drum on the back face.
 	FoundKit.disc(k, Vector3(-0.66, 0.0, 0), Vector3.RIGHT, 0.17, 0.1, 8, 0.03, R, R[2], PI / 8.0)
 	body_mesh(k, body)
+	# The back it turns to the sun: patched, pitted and running with grime.
+	day_wear(body, Vector3(0.05, 0.102, 0.27), Vector3.UP, Vector3.RIGHT, 0.3, 0.68, 129, 2)
 	add_lamp(body, Vector3(0.3, 0.162, 0), Vector3.UP, Vector3.RIGHT, 0.04, 0.04, &"status")
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(body, Vector3(0.622, 0.0, sz * 0.22), Vector3.RIGHT, Vector3.UP, 0.04, 0.032, &"optic")
 	var ww := FoundKit.kit()
 	FoundKit.patch(ww, Vector3(-0.32, 0.101, 0.28), Vector3.UP, Vector3.RIGHT, 0.26, 0.2, Palette.MACHINE["hauler"], 31)
-	FoundKit.patch(ww, Vector3(0.34, 0.101, -0.3), Vector3.UP, Vector3.RIGHT, 0.14, 0.12, Palette.FOUND, 32)
+	FoundKit.patch(ww, Vector3(0.34, 0.101, -0.3), Vector3.UP, Vector3.RIGHT, 0.14, 0.12, Palette.MACHINE["cutter"], 32)
 	FoundKit.scorch(ww, Vector3(-0.5, 0.101, -0.2), Vector3.UP, 0.08, 33)
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.grime(ww, Vector3(0.1, -0.03, sz * 0.452), Vector3.BACK * sz, 0.8, 0.09, 4, 34 + int(sz), D)

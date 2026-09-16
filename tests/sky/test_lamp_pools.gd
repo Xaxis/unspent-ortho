@@ -83,8 +83,13 @@ func test_a_lamp_lit_in_daylight_lays_nothing_and_at_night_lays_its_own_colour()
 		var c := Lights.neon_colour({"kind": kind})
 		gt(c.x, c.z + 0.2, "a %s burns warm" % PropKind.NAMES[kind])
 	gt(Lights.LANTERN_WARM.x, Lights.LANTERN_WARM.z + 0.2, "and so does the lantern people carry")
+	# Cold, but low chroma with it: the machines' own light is a violet-white
+	# work lamp (Works.STRIP), the same colour as the strip casting it, and the
+	# amber lens is the only saturated thing they own.
 	var cold := Lights.neon_colour({"kind": PropKind.CHECKPOINT})
-	gt(cold.z, cold.x + 0.2, "the machines' own light is cold")
+	gt(cold.z, cold.x, "the machines' own light is cold")
+	gt(cold.z - cold.x, Lights.LANTERN_WARM.z - Lights.LANTERN_WARM.x + 0.3,
+		"and the other way from what a person carries")
 
 
 func test_the_machines_lights_stutter_after_a_strike_and_a_hearth_does_not() -> void:
@@ -188,8 +193,15 @@ func test_the_pool_is_the_lights_own_colour_and_not_the_grounds() -> void:
 		if shift < 0.0:
 			shift = turn
 		near(turn, shift, 0.01, "and turns every ground the same way, because it is one light")
+		# The machines' strip is a cold violet-WHITE, not a cyan (the machines'
+		# palette runs low chroma: only the amber lens is saturated). So the
+		# proof is not a big blue shift; it is that it turns a ground the other
+		# way from a lamp, far enough that a player can tell the two pools apart
+		# across a village at night.
 		var chill := _wash(was, cold, 1.0, 1.0, k)
-		lt((chill.x / maxf(chill.z, 1e-5)) / (was.x / maxf(was.z, 1e-5)), 0.9, "the machines' strip lays its own cold")
+		var chill_turn := (chill.x / maxf(chill.z, 1e-5)) / (was.x / maxf(was.z, 1e-5))
+		lt(chill_turn, 1.0, "the machines' strip lays its own cold over %s" % c)
+		lt(chill_turn, turn * 0.85, "and nothing like the lamp does")
 	# The ring is the same colour as the core, half as far: two flat steps.
 	var stone := Vector3(Palette.STONE[2].r, Palette.STONE[2].g, Palette.STONE[2].b)
 	var core := _wash(stone, warm, 1.0, 1.0, k)

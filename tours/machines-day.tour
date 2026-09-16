@@ -1,0 +1,102 @@
+# The machines read in daylight and in a fight, proven through the real keys on a
+# normal seed-1 coast. Noon first, because noon was the hour they had nothing to
+# say: flat lilac boxes with no wear, four poses that differed by a glow, a
+# windup whose tell pointed away from the working part, a hit mark that covered
+# the thing it was proving, and a death that went invisible rather than dark.
+#   tools/tour.sh tours/machines-day.tour --seed=1 --hour=12 --weather=clear:0
+# (Under a loaded machine give it room: TOUR_TIMEOUT=900.)
+coast calm
+weather clear:0
+hour 12
+at 200.5,431.5
+zoom 8
+wait 1.2
+
+# A keeper at noon: deep indigo, its own value on the violet arc, its own years
+# on it. Nothing about it is lit, and it is not a lilac box.
+spawn warden
+wait 1.2
+shot 01-a-keeper-at-noon
+
+# A worker in the same light: another place on the arc and another value, so the
+# two are told apart before either is read. Close, its deck and hood carry plates
+# at their own ramp values, shadowed recesses, grime in straight runs and plate
+# cut off other machines.
+coast calm
+wait 0.5
+at 200.5,431.5
+zoom 6
+spawn harvester
+wait 1.3
+shot 02-a-worker-at-noon-close
+zoom 9
+wait 1.0
+shot 03-and-at-the-zoom-it-is-fought-at
+
+# A harvester is indifferent: it works its row until somebody is standing in it.
+# Stand in it. The windup rears the hood OPEN and the tell hangs over the comb,
+# flicked down at it: the eye goes to the side that opens and the side you have
+# to hit.
+try 20
+walkto mob 3
+await tell 3
+end
+wait 0.22
+shot 04-the-tell-points-at-the-comb
+tap dodge
+wait 0.12
+tap dodge
+wait 0.5
+shot 05-and-it-throws-the-whole-slab-forward
+
+# A real blow into a working part, and then a kill, in daylight. Both on a
+# watcher: it holds its ground, and a start knife against a harvester's plate is
+# a long afternoon (M1 finding 1, still open). Its optic is the small part the
+# old filled burst used to swallow whole.
+coast calm
+wait 0.5
+at 135,375
+zoom 8
+wait 1.2
+spawn watcher
+wait 1.0
+try 16
+walkto part 1.6
+tap swing
+await hit 1.8
+end
+wait 0.05
+shot 06-the-hit-leaves-the-amber-showing
+try 30
+walkto part 1.6
+tap swing
+await killed 1.8
+end
+wait 1.4
+shot 07-down-in-daylight
+
+# Night, at fight zoom, which is where the old proof frames failed: a machine
+# whose lights have gone still has to be a body on the ground, not a hole in it.
+coast calm
+hour 23
+weather clear:0
+at 135,375
+zoom 8
+wait 1.4
+spawn watcher
+wait 1.6
+walkto mob 2
+wait 0.3
+shot 08-lit-and-working-at-night
+try 30
+walkto part 1.6
+tap swing
+await killed 1.8
+end
+wait 0.2
+shot 09-the-lights-go-in-order
+wait 1.8
+shot 10-a-hulk-you-can-still-find
+wait 5.0
+shot 11-and-it-is-still-there
+same 10-a-hulk-you-can-still-find 11-and-it-is-still-there 0.05

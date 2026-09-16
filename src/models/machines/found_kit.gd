@@ -16,6 +16,11 @@ class_name FoundKit
 ## All helpers draw through the MeshKit transform stack (k.push / k.at).
 
 const UP := Vector3.UP
+## One screen pixel at the camera players have (camera_rig: 14 world units over
+## 360 px). Every mark in the daylight vocabulary below is budgeted in these, not
+## in world units: a 0.02-wide scribed line is exact, and it is also half a pixel,
+## which is why a machine drawn entirely in them says nothing at noon.
+const PX := 14.0 / 360.0
 
 
 ## A MeshKit set up for FOUND geometry: no hatch hand, rigid.
@@ -403,21 +408,26 @@ static func plan_oct(w: float, d: float, ch: float) -> Array[Vector2]:
 # -- the idiom: fittings and marks ------------------------------------------------
 
 ## An inset panel on a face: a dark frame line with a fastener in each corner.
+## The frame is two screen pixels and the fasteners one and a half, so the panel
+## is still there at the camera players have and not only in a review close-up.
 static func panel(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array) -> void:
 	var uu := up.normalized()
 	var rr := uu.cross(n.normalized())
-	var line := 0.018
-	mark(k, c + uu * (h * 0.5), n, uu, w, line, r[2], 0.003)
-	mark(k, c - uu * (h * 0.5), n, uu, w, line, r[2], 0.003)
-	mark(k, c + rr * (w * 0.5), n, uu, line, h, r[2], 0.003)
-	mark(k, c - rr * (w * 0.5), n, uu, line, h, r[2], 0.003)
+	var line := PX * 2.0
+	mark(k, c + uu * (h * 0.5), n, uu, w, line, r[1], 0.003)
+	mark(k, c - uu * (h * 0.5), n, uu, w, line, r[1], 0.003)
+	mark(k, c + rr * (w * 0.5), n, uu, line, h, r[1], 0.003)
+	mark(k, c - rr * (w * 0.5), n, uu, line, h, r[1], 0.003)
 	for sx: float in [-1.0, 1.0]:
 		for sy: float in [-1.0, 1.0]:
-			mark(k, c + rr * (w * 0.5 - 0.035) * sx + uu * (h * 0.5 - 0.035) * sy, n, uu, 0.03, 0.03, r[5], 0.006)
+			mark(k, c + rr * (w * 0.5 - PX * 1.4) * sx + uu * (h * 0.5 - PX * 1.4) * sy, n, uu, PX * 1.6, PX * 1.6, r[5], 0.006)
 
 
-## A row of `count` rivets from a to b on a face with normal n.
-static func rivets(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, count: int, col: Color, size: float = 0.035) -> void:
+## A row of `count` rivets from a to b on a face with normal n. A rivet is never
+## thinner than a screen pixel and a half: a row of them should read as a ruled
+## line of fasteners, not as a faint dither along an edge.
+static func rivets(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, count: int, col: Color, size: float = PX * 1.6) -> void:
+	size = maxf(size, PX * 1.5)
 	var up := (b - a).normalized() if (b - a).length() > 1e-5 else UP
 	if absf(up.dot(n.normalized())) > 0.9:
 		up = UP if absf(n.normalized().y) < 0.9 else Vector3.RIGHT
@@ -430,13 +440,13 @@ static func rivets(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, count: int, c
 static func seam(k: MeshKit, a: Vector3, b: Vector3, n: Vector3, r: Array, count: int = 4) -> void:
 	var along := b - a
 	var up := along.normalized()
-	mark(k, (a + b) * 0.5, n, up, 0.018, along.length(), r[1], 0.003)
-	var side := up.cross(n.normalized()) * 0.035
+	mark(k, (a + b) * 0.5, n, up, PX * 2.0, along.length(), r[1], 0.003)
+	var side := up.cross(n.normalized()) * (PX * 2.2)
 	for j in count:
 		var t := (float(j) + 0.5) / count
 		var p := a.lerp(b, t)
-		mark(k, p + side, n, up, 0.03, 0.03, r[5], 0.006)
-		mark(k, p - side, n, up, 0.03, 0.03, r[5], 0.006)
+		mark(k, p + side, n, up, PX * 1.6, PX * 1.6, r[5], 0.006)
+		mark(k, p - side, n, up, PX * 1.6, PX * 1.6, r[5], 0.006)
 
 
 ## Downward wear streaks under a feature: `count` dark columns from `top` spread
@@ -447,8 +457,8 @@ static func streaks(k: MeshKit, top: Vector3, n: Vector3, w: float, max_len: flo
 	var across := UP.cross(nn).normalized()
 	for j in count:
 		var t := 0.5 if count == 1 else float(j) / (count - 1) - 0.5
-		var length := max_len * (0.35 + 0.65 * Rng.hash01(seed_value, j, 77))
-		mark(k, top + across * (t * w) - UP * length * 0.5, nn, UP, 0.024, length, col, 0.003)
+		var length := maxf(PX * 2.0, max_len * (0.35 + 0.65 * Rng.hash01(seed_value, j, 77)))
+		mark(k, top + across * (t * w) - UP * length * 0.5, nn, UP, PX * 1.8, length, col, 0.003)
 
 
 ## Graduations along a member, as on a rule: short ticks with every fifth long.
@@ -536,6 +546,8 @@ static func _down_on(n: Vector3) -> Vector3:
 
 ## Grime run down a face from `top`: `count` drips across `w`, lengths hashed
 ## from `seed_value`, each a dark column narrowing to a darker bead at its foot.
+## Widths are held to at least two screen pixels: a one-pixel drip is a dither
+## speck, and what a player should read here is that the machine is filthy.
 static func grime(k: MeshKit, top: Vector3, n: Vector3, w: float, max_len: float, count: int, seed_value: int, r: Array) -> void:
 	var nn := n.normalized()
 	var down := _down_on(nn)
@@ -543,12 +555,12 @@ static func grime(k: MeshKit, top: Vector3, n: Vector3, w: float, max_len: float
 	for j in count:
 		var t := 0.0 if count == 1 else float(j) / (count - 1) - 0.5
 		t += (Rng.hash01(seed_value, j, 5) - 0.5) * 0.3 / maxf(1.0, count)
-		var length := max_len * (0.3 + 0.7 * Rng.hash01(seed_value, j, 6))
-		var width := 0.018 + 0.02 * Rng.hash01(seed_value, j, 7)
+		var length := maxf(PX * 2.0, max_len * (0.3 + 0.7 * Rng.hash01(seed_value, j, 6)))
+		var width := PX * (2.0 + 1.6 * Rng.hash01(seed_value, j, 7))
 		var p := top + across * (t * w)
 		mark(k, p + down * length * 0.3, nn, -down, width, length * 0.6, r[1], 0.003)
-		mark(k, p + down * length * 0.8, nn, -down, width * 0.6, length * 0.4, r[0], 0.0035)
-		mark(k, p + down * length, nn, -down, width * 1.1, 0.022, r[0], 0.004)
+		mark(k, p + down * length * 0.8, nn, -down, width * 0.7, length * 0.4, r[0], 0.0035)
+		mark(k, p + down * length, nn, -down, width * 1.2, PX * 1.4, r[0], 0.004)
 
 
 ## A band of dirt along the lower edge of a face, from a to b, `h` deep.
@@ -634,6 +646,103 @@ static func coil(k: MeshKit, a: Vector3, b: Vector3, rad: float, turns: float, w
 			var out := (p - (a + axn * span * t)).normalized()
 			tbar(k, p, p + out * 0.04 + axn * 0.012, wire_r * 0.9, 0.0, 3, line)
 		prev = p
+
+
+# -- daylight: what a plate says when none of it is lit -------------------------
+# found.gdshader gives a FOUND face one flat wash and ONE hard shade step, so at
+# noon a big plate is a single value and the machine is a box. Night is not the
+# problem; the lamps do that work. These are the marks that make a plate speak by
+# day, and they are ruled like everything else FOUND: plates at neighbouring ramp
+# values divided by straight channels, wells of shadow with a lip on the light's
+# side, and grime in dead-straight runs.
+
+## A shadowed recess in a plate: a dark well, a ruled lip along the light's side.
+## Value is ink (ART law 2) — the well is a flat dark wash, never a gradient.
+##
+## `floor_px` is the smallest the well may be, in screen pixels. Three is right on
+## a hull, where a well any smaller is lost in the middle of a wide flat wash. The
+## thin kinds — a watcher's drum, a warden's cap, a runner's chest — have no face
+## three pixels wide to spare, and on them a well is framed by the machine's own
+## edges instead: they pass a smaller floor rather than go without.
+static func recess(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, lift: float = 0.005, floor_px: float = 3.0) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	w = maxf(w, PX * floor_px)
+	h = maxf(h, PX * floor_px)
+	mark(k, c, nn, uu, w + PX * 1.6, h + PX * 1.6, r[1], lift)
+	mark(k, c, nn, uu, w, h, r[0], lift + 0.002)
+	# The key light is up the screen and to the left, so that edge is the one the
+	# machined lip catches: one bright line is what says "this is a hole".
+	mark(k, c + uu * (h * 0.5 + PX * 0.8), nn, uu, w + PX * 1.6, PX * 1.3, r[4], lift + 0.004)
+
+
+## A plate laid on a plate: its own face value stepped by `step`, inside a ruled
+## channel, so one big face reads as two or three plates instead of one slab.
+## Step 5 is reserved for rivets and the one rubbed edge: a plate that took it
+## would be a bright field, and the compressed top exists to stop exactly that.
+static func plate(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, step: int, lift: float = 0.004) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var idx := _col_index(k, nn)
+	var want := clampi(idx + step, 0, 4)
+	if want == idx:
+		return
+	mark(k, c, nn, uu, w + PX * 2.2, h + PX * 2.2, r[1], lift)
+	mark(k, c, nn, uu, w, h, r[want], lift + 0.002)
+
+
+## Everything above over one w x h patch of a face, composed from `seed_value`:
+## a dirtier plate across most of it, a rubbed-bright strip along one edge,
+## `wells` shadowed recesses, and grime running off the lower lip. Every copy of
+## a kind carries the same years, and no two kinds wear the same way.
+static func day_wear(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, seed_value: int, wells: int = 1) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var rr := uu.cross(nn)
+	var side := 1.0 if Rng.hash01(seed_value, 1) > 0.5 else -1.0
+	# The big dirty plate: most of the patch, set square, its channel ruled round it.
+	var pw := w * (0.62 + 0.16 * Rng.hash01(seed_value, 2))
+	var ph := h * (0.58 + 0.2 * Rng.hash01(seed_value, 3))
+	var pc := c + rr * ((w - pw) * 0.5 - PX) * side + uu * ((h - ph) * 0.5 - PX) * -side
+	plate(k, pc, nn, uu, pw, ph, r, -2)
+	# A strip along the far edge, rubbed a step brighter where the weather runs off.
+	var sh := maxf(h * 0.14, PX * 2.5)
+	plate(k, c - uu * (h * 0.5 - sh * 0.5) * side, nn, uu, w * 0.86, sh, r, 1, 0.008)
+	for i in wells:
+		var t := (float(i) + 0.5) / maxf(1.0, float(wells)) - 0.5
+		var jitter := (Rng.hash01(seed_value, i, 4) - 0.5) * 0.2
+		recess(k, pc + rr * (pw * (t + jitter)) + uu * ph * (0.12 - 0.3 * Rng.hash01(seed_value, i, 5)),
+			nn, uu, minf(pw * 0.3, maxf(PX * 5.0, h * 0.3)), maxf(PX * 4.0, h * 0.24), r, 0.012)
+	grime(k, pc - uu * (ph * 0.5) + rr * (pw * 0.12 * side), nn, pw * 0.7, h * 0.55, 3 + (seed_value % 3), seed_value + 7, r)
+
+
+## The same three things on a face too small for day_wear: one plate step, one
+## shadowed well, one run of grime, every one of them a fraction of the face
+## instead of a hull's fixed size.
+##
+## day_wear composes for a harvester's deck — half a tile across — and its wells
+## are floored at a hull's five screen pixels. A watcher's drum, a warden's cap, a
+## runner's chest and a lineman's lid are a fifth of that, and the same call would
+## put one well where the whole plate belongs, or nothing at all. Without this the
+## thin kinds got no daylight at all: at noon they were a body with chamfer lines
+## and no other thing on them to read.
+static func day_marks(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, seed_value: int, floor_px: float = 2.2) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var rr := uu.cross(nn)
+	var side := 1.0 if Rng.hash01(seed_value, 1) > 0.5 else -1.0
+	# Two plates where the ruler drew one, the bigger of them a step dirtier.
+	var pw := maxf(PX * 2.0, w * 0.6)
+	var ph := maxf(PX * 2.0, h * 0.7)
+	var pc := c + rr * ((w - pw) * 0.5) * side
+	plate(k, pc, nn, uu, pw, ph, r, -2)
+	# The one rubbed edge, down the far side, where the weather runs off it.
+	var sw := maxf(w * 0.18, PX * 1.2)
+	plate(k, c - rr * (w - sw) * 0.5 * side, nn, uu, sw, h * 0.7, r, 1, 0.008)
+	# One well, as big as the face can hold and never smaller than the floor.
+	var well := clampf(minf(pw, ph) * 0.42, PX * floor_px, maxf(PX * floor_px, minf(pw, ph) - PX * 1.6))
+	recess(k, pc + uu * ph * 0.14 - rr * pw * 0.14 * side, nn, uu, well, well, r, 0.012, floor_px)
+	grime(k, pc - uu * (ph * 0.5) + rr * (pw * 0.2 * side), nn, pw * 0.6, h * 0.5, 2, seed_value + 5, r)
 
 
 ## A tag of FOUND stock hung on a wire from `at`: seals, records, plates cut
