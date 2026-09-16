@@ -227,8 +227,10 @@ func to_tiles(r: Rect2i) -> Rect2i:
 
 
 ## A patch of glass cleared under a name over the survey, its corners left open.
+## Opaque: at 0.88 the coastline and the contours came through the letters, and
+## a name over a drawn coast has to be read at 640x360 in one look.
 static func clearing(ci: CanvasItem, box: Rect2i) -> void:
-	var col := Color(UiTheme.GLASS, 0.88)
+	var col := UiTheme.GLASS
 	UiDraw.rect(ci, Rect2i(box.position.x + 1, box.position.y, box.size.x - 2, box.size.y), col)
 	UiDraw.rect(ci, Rect2i(box.position.x, box.position.y + 1, box.size.x, box.size.y - 2), col)
 
@@ -351,8 +353,16 @@ func _draw_overlay() -> void:
 			var s := to_screen(b)
 			if inner.has_point(s):
 				UiDraw.rect(ci, Rect2i(s.x - 1, s.y - 1, 3, 3), UiTheme.MACHINE[3])
-	# Villages first, so a region's name gives way to a village's, not over it.
-	var placed: Array[Rect2i] = [me_rect.grow(2)]
+	# Everything with a fixed place on the survey is claimed before a word is
+	# laid anywhere: you-are-here with its ping ring, the compass and the scale
+	# bar. A name is lettered last and over none of them.
+	#
+	# `placed` is what a name must never sit on. `words` is only the lettering:
+	# when a name can find nowhere clear of the marks as well, it takes the best
+	# place clear of the other words and its clearing covers the mark under it.
+	# A name that gives way to a diamond is a name nobody reads.
+	var placed: Array[Rect2i] = [Rect2i(me.x - 16, me.y - 16, 33, 33), Rect2i(r.end.x - 19, r.position.y + 2, 18, 30), Rect2i(r.position.x + 1, r.end.y - 21, 10 * map_scale + 54, 20)]
+	var words: Array[Rect2i] = placed.duplicate()
 	var villages: Array[Dictionary] = []
 	for v in game.world.villages:
 		var vp: Vector2 = v.pos
@@ -369,19 +379,20 @@ func _draw_overlay() -> void:
 			ty = s.y - 16
 		var box := Rect2i(tx - 2, ty - 1, w + 4, 11)
 		placed.append(box.grow(2))
+		words.append(box.grow(2))
 		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
 		villages.append({"at": s, "name": name, "box": box})
-	# Regions, lettered across the land they cover, spaced out. Of the nearby
-	# places free of other names, the one over the least drawn detail is chosen.
-	for label: Dictionary in _regions:
-		var text: String = label.text
-		var at := place_region(label, _free_of(placed))
-		if at.x < -1000:
+	# Every discovery's diamond is spoken for before a region is lettered. The
+	# diamonds used to be drawn after the names and landed on top of them: COAST
+	# read C◇AST and SCRAPWOOD SCR◇PWOOD on the canon survey.
+	var found_all := UiMapScreen.discoveries(game.world, explored)
+	var finds: Array[Dictionary] = []
+	for found: Dictionary in found_all:
+		var s := to_screen(found.pos)
+		if not r.grow(-4).has_point(s):
 			continue
-		var box := Rect2i(at, Vector2i(UiFont.width(text), 10)).grow(3)
-		placed.append(box)
-		UiMapScreen.clearing(ci, box)
-		UiDraw.text(ci, at, text, UiTheme.TEXT)
+		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
+		finds.append({"at": s, "kind": found.kind, "machine": found.machine})
 	# The way the player came, dotted, fading toward the start.
 	if explored != null:
 		var n := explored.trail.size()
@@ -405,10 +416,8 @@ func _draw_overlay() -> void:
 				if inner.has_point(q):
 					UiDraw.px(ci, q.x, q.y, col)
 	# The places found on the way: a diamond, violet for what the machines left.
-	for found: Dictionary in UiMapScreen.discoveries(game.world, explored):
-		var s := to_screen(found.pos)
-		if not r.grow(-4).has_point(s):
-			continue
+	for found: Dictionary in finds:
+		var s: Vector2i = found.at
 		var col := UiTheme.MACHINE[3] if found.machine else UiTheme.BRIGHT
 		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), Color(UiTheme.GLASS, 0.8))
 		for k in 4:
@@ -431,9 +440,26 @@ func _draw_overlay() -> void:
 		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), UiTheme.GLASS)
 		UiDraw.frame(ci, Rect2i(s.x - 2, s.y - 2, 5, 5), UiTheme.BRIGHT)
 		UiDraw.px(ci, s.x, s.y, UiTheme.BRIGHT)
-	# The scanner's line crossing the survey, slowly, top to bottom.
+	# The scanner's line crossing the survey, slowly, top to bottom. It goes under
+	# the lettering with everything else: a line travelling across a name reads
+	# as a name struck out, even at six per cent.
 	var sweep := r.position.y + roundi(fposmod(_time / SWEEP_SECONDS, 1.0) * r.size.y)
 	UiDraw.hline(ci, r.position.x, r.end.x - 1, sweep, Color(UiTheme.PHOSPHOR[3], 0.06))
+	# Regions, lettered across the land they cover, last of all and over nothing:
+	# of the nearby places free of every mark already claimed, the one over the
+	# least drawn detail is chosen, and the glass under it is cleared outright.
+	for label: Dictionary in _regions:
+		var text: String = label.text
+		var at := place_region(label, _free_of(placed))
+		if at.x < -1000:
+			at = place_region(label, _free_of(words))
+		if at.x < -1000:
+			continue
+		var box := Rect2i(at, Vector2i(UiFont.width(text), 10)).grow(3)
+		placed.append(box)
+		words.append(box)
+		UiMapScreen.clearing(ci, box)
+		UiDraw.text(ci, at, text, UiTheme.TEXT)
 	# You are here: a bright cross, and a ping ring going out from it.
 	if r.has_point(me):
 		UiDraw.rect(ci, Rect2i(me.x - 4, me.y - 4, 9, 9), Color(UiTheme.GLASS, 0.75))

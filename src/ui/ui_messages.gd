@@ -4,12 +4,39 @@ extends RefCounted
 ## older ones stand above it, each fading on its own clock, so two things
 ## said close together are both read. The same line said again does not
 ## stack: it is refreshed and counted ("Took 2 timber. ×3").
+##
+## MAX is two, not three. In a landscape that presses with two or three
+## hazards at once, plus hunger, plus the guide, three centred lines of body
+## text sat across the bottom middle of the world nearly continuously, against
+## docs/ART.md §9 ("small, quiet readouts clipped to the corners"). What took
+## the pressure lines off the glass is `gauge_for` below; two is the cap on
+## what is left.
 
-const MAX := 3
+const MAX := 2
 const HOLD := 2.2
 const FADE := 0.6
 ## How fast a line already on screen gives way when a fight comes close.
 const HUSH := 0.3
+
+## line -> the readout that already says it (built once, on first ask).
+static var _gauges := {}
+
+
+## The gauge in the top right that is already saying `text`, or &"" for a line
+## no readout says. The HUD drops such a line and flares the gauge instead
+## (Hud.answer_with_gauge): the badges were saying it anyway, and a line of
+## body text across the middle of the world is the loudest thing the UI owns.
+##
+## Built from the tables that own the words, so a new hazard or need line is
+## covered the day it is written, never a copy that can drift.
+static func gauge_for(text: String) -> StringName:
+	if _gauges.is_empty():
+		for id: Variant in Hazards.LINES:
+			_gauges[String(Hazards.LINES[id])] = StringName(id)
+		_gauges[Survival.HUNGRY_LINE] = &"hunger"
+		_gauges[Survival.STARVING_LINE] = &"hunger"
+		_gauges[Survival.LAMP_LOW_LINE] = &"lamp"
+	return _gauges.get(text, &"")
 
 ## Oldest first: {text, count, age, now, hush}
 var lines: Array[Dictionary] = []

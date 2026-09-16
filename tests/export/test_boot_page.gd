@@ -210,3 +210,25 @@ func test_without_threads_the_title_keeps_its_coast() -> void:
 	check(title._drawing(), "with threads the next coast is on its way")
 	holder.free()
 
+
+
+## The loading page is a screen of the same device every app opens on, and it
+## draws that device itself rather than naming UiSlate (which would pull the
+## whole slate in before the first frame, and whose bezel is baked on a worker
+## a third of a second after anyone asks for it). So the numbers are written out
+## twice, and this holds the two copies together.
+func test_the_page_is_a_screen_of_the_slate() -> void:
+	eq(BootPage.DEVICE, UiSlate.DEVICE, "the page's device is the slate's")
+	eq(BootPage.SCREEN, UiSlate.glass_of(UiSlate.DEVICE), "and its glass is the slate's glass")
+	eq(BootPage.STATUS_H, UiSlate.STATUS_H, "the status bar is the same height")
+	eq(BootPage.KEYS_H, UiSlate.KEYS_H, "and so is the strip along the foot")
+	eq(BootPage.SCREEN_GLASS, UiTheme.GLASS, "the lit glass is the slate's")
+	eq(BootPage.SCREEN_ROW, UiTheme.GLASS_ROW, "and so is its scan row")
+	eq(BootPage.GLASS, UiTheme.GLASS_OFF, "and the page behind it is glass with no power in it")
+	# Everything the page writes stands inside the glass, clear of both margins.
+	var g := BootPage.SCREEN
+	check(g.position.x + UiSlate.MARGIN_L <= BootPage.LINE_X0, "the line starts clear of the dead column")
+	check(BootPage.LINE_X1 <= g.end.x - UiSlate.MARGIN_R, "and ends clear of the crack")
+	check(BootPage.LINE_Y < g.end.y - BootPage.KEYS_H - 2, "and stands above the foot strip")
+	check(BootPage.SKETCH_AT.y > g.position.y + BootPage.STATUS_H, "the island hangs below the status bar")
+	check(BootPage.SKETCH_AT.y + BootPage.SKETCH < BootPage.LINE_Y - 16, "and above the words over the line")

@@ -77,12 +77,23 @@ func test_the_shell_draws_the_page_the_engine_draws() -> void:
 	if m == null:
 		return
 	var glyphs: Dictionary = JSON.parse_string(m.get_string(1))
-	for word: String in ["fetching", "waking", "stopped"]:
+	for word: String in ["fetching", "waking", "stopped", "slate", "opening"]:
 		for ch in word:
 			check(glyphs.has(ch), "the shell can write '%s'" % ch)
 	for ch: String in glyphs:
 		eq(glyphs[ch], UiFont.GLYPHS[ch], "glyph '%s' is the game's" % ch)
 	check(html.contains("background: #000"), "outside the game's rectangle the page is black, like the engine's bars")
+	# On the web the shell is the first screen of the game for as long as the wasm
+	# takes, so it draws the whole device and not only the line on it.
+	check(html.contains("const DEV = { x: %d, y: %d, w: %d, h: %d };" % [BootPage.DEVICE.position.x, BootPage.DEVICE.position.y, BootPage.DEVICE.size.x, BootPage.DEVICE.size.y]), "the shell's device is the page's")
+	check(html.contains("const SCR = { x: %d, y: %d, w: %d, h: %d };" % [BootPage.SCREEN.position.x, BootPage.SCREEN.position.y, BootPage.SCREEN.size.x, BootPage.SCREEN.size.y]), "and so is its glass")
+	check(html.contains("const STATUS_H = %d, KEYS_H = %d;" % [BootPage.STATUS_H, BootPage.KEYS_H]), "and the bar and strip are the same height")
+	for ramp: Array in [["CHROME", BootPage.CHROME], ["CASING", BootPage.CASING], ["SENSOR", BootPage.SENSOR], ["PLATE", Palette.PLATE]]:
+		var want := PackedStringArray()
+		for c: Color in (ramp[1] as Array):
+			want.append("'#%s'" % c.to_html(false))
+		check(html.contains("const %s = [%s];" % [ramp[0], ", ".join(want)]), "the shell's %s ramp is the palette's" % ramp[0])
+	check(html.contains("SCREEN_GLASS = '#%s', SCREEN_ROW = '#%s'" % [BootPage.SCREEN_GLASS.to_html(false), BootPage.SCREEN_ROW.to_html(false)]), "and its lit glass is the page's")
 
 
 func test_a_headless_export_packs_the_game_and_nothing_else() -> void:

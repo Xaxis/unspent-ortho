@@ -294,11 +294,26 @@ async function inspect(pngPath) {
   }, b64);
 }
 
+// Where BootPage draws its progress line, read from the page's own source rather
+// than copied here: when the line moved to make room for the bezel this probe was
+// the one copy that did not follow, and `tools/web.sh` failed on a page that was
+// correct. src/boot/shell.html is held to the same constants by
+// tests/export/test_export.gd, so all three can only ever say one thing.
+const PAGE_LINE = (() => {
+  const src = fs.readFileSync(new URL('../../src/boot/boot_page.gd', import.meta.url), 'utf8');
+  const num = (name) => {
+    const m = src.match(new RegExp(`^const ${name} := (-?\\d+)$`, 'm'));
+    if (!m) throw new Error(`tools/web/web.mjs cannot find BootPage.${name}: the loading page moved`);
+    return Number(m[1]);
+  };
+  return { y: num('LINE_Y'), x0: num('LINE_X0'), x1: num('LINE_X1') };
+})();
+
 // The loading page in a frame (the shell's or the engine's): the glass rectangle,
 // how far the line is lit (in game pixels from its start) and the ink of the words.
 async function inspectPage(pngPath) {
   const b64 = fs.readFileSync(pngPath).toString('base64');
-  return page.evaluate(async (data) => {
+  return page.evaluate(async ([data, line]) => {
     const img = new Image();
     img.src = 'data:image/png;base64,' + data;
     await img.decode();
@@ -319,11 +334,13 @@ async function inspectPage(pngPath) {
     // By brightness, not by one channel: the page is drawn in the slate's phosphor.
     const lum = ([r, gg, b]) => 0.2126 * r + 0.7152 * gg + 0.0722 * b;
     let lit = -1;
-    for (let gx = 216; gx <= 424; gx += 1) if (lum(at(gx, 214)) > 96) lit = gx - 216;
+    for (let gx = line.x0; gx <= line.x1; gx += 1) if (lum(at(gx, line.y)) > 96) lit = gx - line.x0;
+    // The words stand one line above the rail (BootPage: LINE_Y - 16), so they
+    // occupy rows LINE_Y-15 .. LINE_Y-7 of the first hundred pixels of the span.
     let ink = 0;
-    for (let gy = 199; gy < 208; gy += 1) for (let gx = 216; gx < 320; gx += 1) if (lum(at(gx, gy)) > 64) ink += 1;
+    for (let gy = line.y - 15; gy < line.y - 6; gy += 1) for (let gx = line.x0; gx < line.x0 + 104; gx += 1) if (lum(at(gx, gy)) > 64) ink += 1;
     return { rect: [x0, y0, w, h], scale: s, lit, ink };
-  }, b64);
+  }, [b64, PAGE_LINE]);
 }
 
 async function shoot(name, { expectScale = null, still = false } = {}) {

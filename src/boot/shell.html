@@ -40,8 +40,24 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
   // Kept equal to src/boot/boot_page.gd and src/ui/ui_font.gd (tests/export/test_export.gd checks).
   const SHELL_SHARE = 0.12;
   const INK = { glass: '#060a0c', rail: '#173029', tick: '#2b5c4c', lit: '#87d9b5', litSoft: '#1f443a', head: '#c9fbe2', words: '#4f9b81' };
-  const LINE_Y = 214, LINE_X0 = 216, LINE_X1 = 424;
-  const GLYPHS = {"a":[".....",".....",".###.","....#",".####","#...#",".####"],"c":["....","....",".###","#...","#...","#...",".###"],"d":["....#","....#",".####","#...#","#...#","#...#",".####"],"e":[".....",".....",".###.","#...#","#####","#....",".###."],"f":["..##",".#..","####",".#..",".#..",".#..",".#.."],"g":[".....",".....",".####","#...#","#...#","#...#",".####","....#",".###."],"h":["#....","#....","####.","#...#","#...#","#...#","#...#"],"i":["#",".","#","#","#","#","#"],"k":["#...","#...","#..#","#.#.","##..","#.#.","#..#"],"n":[".....",".....","####.","#...#","#...#","#...#","#...#"],"o":[".....",".....",".###.","#...#","#...#","#...#",".###."],"p":[".....",".....","####.","#...#","#...#","#...#","####.","#....","#...."],"s":["....","....",".###","#...",".##.","...#","###."],"t":[".#.",".#.","###",".#.",".#.",".#.","..#"],"w":[".....",".....","#...#","#...#","#.#.#","#.#.#",".#.#."]};
+  const LINE_Y = 248, LINE_X0 = 216, LINE_X1 = 424;
+  // The device this page is a screen of, drawn here exactly as BootPage._draw_device
+  // draws it. On the web this shell IS the first screen of the game, for the five
+  // seconds the wasm takes; without the bezel that screen was bare near-black with
+  // one word on it, and the slate did not appear until the engine did.
+  // BootPage.lit() returns 1 when a page follows this shell, so nothing pops.
+  const DEV = { x: 8, y: 5, w: 624, h: 350 };
+  const SCR = { x: 24, y: 19, w: 592, h: 316 };
+  const STATUS_H = 12, KEYS_H = 12;
+  // Palette.FOUND, Palette.ASH, Palette.COLD, Palette.PLATE, Palette.INK[1] and
+  // Palette.COPPER, written out (tests/export/test_export.gd holds them to the ramps).
+  const CHROME = ['#1b1724', '#3a3350', '#514571', '#776a99', '#897da8', '#9d99a8'];
+  const CASING = ['#23262e', '#3b404a', '#5c626e', '#868d99', '#b8bfc9'];
+  const SENSOR = ['#1d262e', '#364d5b', '#698895', '#b2c5cd'];
+  const PLATE = ['#171b24', '#2b3240', '#414a5d', '#5a647b', '#788295', '#9ba5b2'];
+  const SEAM = '#12111d', BRASS = '#93601a', BRASS_DARK = '#33200a';
+  const SCREEN_GLASS = '#0b1315', SCREEN_ROW = '#0d1618', CHIP = [191, 214, 219];
+  const GLYPHS = {"a":[".....",".....",".###.","....#",".####","#...#",".####"],"c":["....","....",".###","#...","#...","#...",".###"],"d":["....#","....#",".####","#...#","#...#","#...#",".####"],"e":[".....",".....",".###.","#...#","#####","#....",".###."],"f":["..##",".#..","####",".#..",".#..",".#..",".#.."],"g":[".....",".....",".####","#...#","#...#","#...#",".####","....#",".###."],"h":["#....","#....","####.","#...#","#...#","#...#","#...#"],"i":["#",".","#","#","#","#","#"],"k":["#...","#...","#..#","#.#.","##..","#.#.","#..#"],"l":["#.","#.","#.","#.","#.","#.",".#"],"n":[".....",".....","####.","#...#","#...#","#...#","#...#"],"o":[".....",".....",".###.","#...#","#...#","#...#",".###."],"p":[".....",".....","####.","#...#","#...#","#...#","####.","#....","#...."],"s":["....","....",".###","#...",".##.","...#","###."],"t":[".#.",".#.","###",".#.",".#.",".#.","..#"],"w":[".....",".....","#...#","#...#","#.#.#","#.#.#",".#.#."]};
   // What a visitor's query may set. Everything else is a tool's option.
   const ALLOWED = { '--seed': /^\d{1,9}$/, '--probe': /^$/, '--scene': /^(title|game)$/ };
 
@@ -82,6 +98,157 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     shell.height = Math.floor(window.innerHeight * dpr);
   }
 
+  function rect(x, y, w, h, colour) { g.fillStyle = colour; g.fillRect(x, y, w, h); }
+  function hline(x0, x1, y, colour) { rect(x0, y, x1 - x0 + 1, 1, colour); }
+  function vline(x, y0, y1, colour) { rect(x, y0, 1, y1 - y0 + 1, colour); }
+  function frame(x, y, w, h, colour) {
+    hline(x, x + w - 1, y, colour); hline(x, x + w - 1, y + h - 1, colour);
+    vline(x, y, y + h - 1, colour); vline(x + w - 1, y, y + h - 1, colour);
+  }
+  // Two ramp steps mixed, for the one shade BootPage makes rather than names.
+  function mix(a, b, t) {
+    const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const [ar, ag, ab] = p(a), [br, bg, bb] = p(b);
+    return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
+  }
+
+  // Rng.hash_ints in JavaScript, so the tape tears and the crack branches the
+  // same way here as they do in the engine's page: the corner must not change
+  // at the hand-over.
+  function hash01(a, b, c, d) {
+    let h = 0x811c9dc5 >>> 0;
+    for (const n of [a, b, c, d, 0, 0]) {
+      h = Math.imul(h ^ (n >>> 0), 0x01000193) >>> 0;
+      h = (h ^ (h >>> 15)) >>> 0;
+      h = Math.imul(h, 0x2c1b3c6d) >>> 0;
+      h = (h ^ (h >>> 12)) >>> 0;
+    }
+    h = Math.imul(h ^ (h >>> 16), 0x297a2d39) >>> 0;
+    return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+  }
+
+  // BootPage._draw_device, rect for rect: violet chrome stolen off a machine, a
+  // grey casing patch soldered onto the corner, duct tape over the crack.
+  function device() {
+    const d = DEV, s = SCR;
+    const dx1 = d.x + d.w, dy1 = d.y + d.h, sx1 = s.x + s.w, sy1 = s.y + s.h;
+    const lip = mix(CHROME[0], CHROME[1], 0.5);
+    rect(d.x, d.y, d.w, d.h, mix(CHROME[1], PLATE[1], 0.35));
+    for (let k = 0; k < 4; k += 1) {
+      const n = 4 - k;
+      for (const y of [d.y + k, dy1 - 1 - k]) {
+        rect(d.x, y, n, 1, INK.glass);
+        rect(dx1 - n, y, n, 1, INK.glass);
+      }
+    }
+    hline(d.x + 4, dx1 - 5, d.y, CHROME[0]);
+    hline(d.x + 4, dx1 - 5, d.y + 1, CHROME[3]);
+    hline(d.x + 4, dx1 - 5, d.y + 2, CHROME[2]);
+    vline(d.x + 1, d.y + 4, dy1 - 5, CHROME[2]);
+    hline(d.x + 4, dx1 - 5, dy1 - 2, lip);
+    vline(dx1 - 2, d.y + 4, dy1 - 5, lip);
+    hline(d.x + 112, d.x + 256, d.y + 1, CHROME[5]);
+    for (const sx of [d.x + 193, d.x + 430]) {
+      vline(sx, d.y + 3, s.y - 3, CHROME[0]);
+      vline(sx + 1, d.y + 3, s.y - 3, CHROME[2]);
+    }
+    for (let i = 0; i < 9; i += 1) {
+      rect(d.x + 6, d.y + 115 + i * 4, 5, 2, CHROME[0]);
+      hline(d.x + 6, d.x + 10, d.y + 117 + i * 4, CHROME[2]);
+    }
+    const slit = { x: 320 - 22, y: d.y + 4, w: 44, h: 5 };
+    for (let rx = d.x + 30; rx < dx1 - 30; rx += 16) {
+      if (rx < slit.x - 6 || rx > slit.x + slit.w + 4) {
+        rect(rx, d.y + 6, 2, 1, CHROME[5]);
+        rect(rx, d.y + 7, 2, 1, CHROME[0]);
+      }
+    }
+    rect(slit.x, slit.y, slit.w, slit.h, CHROME[0]);
+    hline(slit.x + 2, slit.x + slit.w - 3, slit.y + 2, SENSOR[1]);
+    for (const k of [9, 10, 30]) rect(slit.x + k, slit.y + 2, 1, 1, SENSOR[3]);
+    hline(slit.x, slit.x + slit.w - 1, slit.y + slit.h, CHROME[3]);
+    const seamX = d.x + 399, seamY = d.y + 154;
+    rect(dx1 - 16, seamY, 16, dy1 - seamY, CASING[1]);
+    rect(seamX, dy1 - 20, dx1 - seamX, 20, CASING[1]);
+    hline(dx1 - 16, dx1 - 1, seamY, SEAM);
+    vline(seamX, dy1 - 20, dy1 - 1, SEAM);
+    hline(seamX + 10, dx1 - 10, dy1 - 6, CASING[0]);
+    hline(seamX + 10, dx1 - 10, dy1 - 5, CASING[2]);
+    for (let gy = 0; gy < 3; gy += 1) for (let gx = 0; gx < 7; gx += 1) rect(dx1 - 72 + gx * 3, sy1 + 5 + gy * 3, 1, 1, CASING[0]);
+    for (const p of [[d.x + 5, d.y + 5], [d.x + 5, dy1 - 10]]) {
+      rect(p[0], p[1], 5, 5, PLATE[3]);
+      frame(p[0], p[1], 5, 5, PLATE[0]);
+      hline(p[0] + 1, p[0] + 3, p[1] + 2, PLATE[0]);
+    }
+    rect(dx1 - 13, dy1 - 13, 6, 6, BRASS);
+    frame(dx1 - 13, dy1 - 13, 6, 6, BRASS_DARK);
+    rect(d.x + 18, d.y + 6, 3, 2, INK.lit);
+    frame(s.x - 2, s.y - 2, s.w + 4, s.h + 4, mix(CHROME[0], CHROME[1], 0.4));
+    frame(s.x - 1, s.y - 1, s.w + 2, s.h + 2, INK.glass);
+    rect(s.x, s.y, s.w, s.h, SCREEN_GLASS);
+    for (let y = s.y + 1; y < sy1; y += 2) hline(s.x, sx1 - 1, y, SCREEN_ROW);
+    tape();
+    marks();
+  }
+
+  // Silver duct tape across the corner on the diagonal, its ends torn, its weave
+  // showing, a line of shade under the edge it lifts at.
+  function tape() {
+    const cx = DEV.x + DEV.w - 1, cy = DEV.y;
+    const r2 = Math.SQRT1_2;
+    for (let t = -23; t < 27; t += 1) {
+      for (let off = -6; off < 7; off += 1) {
+        const tear = (hash01(off, 0, 0, 0xd0c) - 0.5) * 3;
+        if (t < -19 + tear || t > 22 + tear) continue;
+        const qx = cx + r2 * t + r2 * (off - 16), qy = cy + r2 * t - r2 * (off - 16);
+        let col = Math.abs(off) < 5 ? CASING[4] : CASING[3];
+        if (off > 4) col = CASING[2];
+        else if ((Math.round(qx) * 2 + Math.round(qy)) % 4 === 0) col = CASING[3];
+        rect(Math.round(qx), Math.round(qy), 1, 1, col);
+      }
+    }
+    for (let t = -14; t < 18; t += 1) {
+      for (const [off, alpha] of [[-22.5, 0.35], [-9.5, 0.2]]) {
+        const qx = cx + r2 * t + r2 * off, qy = cy + r2 * t - r2 * off;
+        rect(Math.round(qx), Math.round(qy), 1, 1, `rgba(0,0,0,${alpha})`);
+      }
+    }
+  }
+
+  // The glass says it is salvaged: a dead column of stuck pixels down the left
+  // margin, and the crack branching out from under the tape in the right one.
+  function marks() {
+    const s = SCR, sx1 = s.x + s.w, sy1 = s.y + s.h;
+    for (let y = s.y; y < sy1; y += 1) {
+      if (Math.floor(y / 23) % 5 === 2) continue;
+      g.globalAlpha = y % 2 === 0 ? 0.9 : 0.6;
+      rect(s.x + 3, y, 1, 1, INK.rail);
+    }
+    g.globalAlpha = 1;
+    rect(s.x + 5, s.y + Math.floor(s.h / 2) + 7, 1, 1, '#4b4274');
+    const zx = sx1 - 12, ox = sx1 - 2, oy = s.y + 1;
+    const chip = (x, y, a) => { g.globalAlpha = a; rect(x, y, 1, 1, `rgb(${CHIP[0]},${CHIP[1]},${CHIP[2]})`); g.globalAlpha = 1; };
+    const runs = [[-1, 40], [-2, 16], [0, 26]];
+    for (let bi = 0; bi < runs.length; bi += 1) {
+      const [step, n] = runs[bi];
+      let px = ox, py = oy;
+      for (let i = 0; i < n; i += 1) {
+        px += hash01(bi, i, 0, 0xc7a) < 0.55 ? step : 0;
+        py += 1;
+        if (hash01(bi, i, 1, 0xc7a) < 0.2) px += hash01(bi, i, 2, 0xc7a) < 0.5 ? 1 : -1;
+        px = Math.min(Math.max(px, zx), sx1 - 1);
+        if (py < s.y || py >= s.y + 44) break;
+        chip(px, py, 0.55 - 0.3 * i / n);
+        if (px + 1 < sx1) { g.globalAlpha = 0.5; rect(px + 1, py, 1, 1, '#000'); g.globalAlpha = 1; }
+      }
+    }
+    for (let k = 0; k < 7; k += 1) {
+      const a = k * Math.PI * 2 / 7 + 0.4;
+      const qx = ox + Math.round(Math.cos(a) * 3), qy = oy + Math.round(Math.sin(a) * 3);
+      if (qx >= zx && qx < sx1 && qy >= s.y && qy < s.y + 44) chip(qx, qy, 0.35);
+    }
+  }
+
   function text(x, y, s, colour) {
     g.fillStyle = colour;
     for (const ch of s) {
@@ -104,13 +271,28 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     g.fillStyle = '#000';
     g.fillRect(0, 0, shell.width, shell.height);
     g.setTransform(r.scale, 0, 0, r.scale, r.x, r.y);
+    // Cut to the game's own rectangle, the way the engine's viewport cuts it:
+    // the tape over the corner runs off the top of the slate, and without this
+    // it would be drawn into the black bars where the engine cannot draw.
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, 640, 360);
+    g.clip();
     g.fillStyle = INK.glass;
     g.fillRect(0, 0, 640, 360);
-    // The drifting scan band, cut to the glass as the engine's viewport cuts it.
-    const band = Math.floor((t * 22) % 400) - 20;
-    const b0 = Math.max(0, band), b1 = Math.min(360, band + 14);
+    device();
+    // The drifting scan band, cut to the glass as the engine's page cuts it.
+    const band = SCR.y + Math.floor((t * 22) % (SCR.h + 40)) - 20;
+    const b0 = Math.max(SCR.y, band), b1 = Math.min(SCR.y + SCR.h, band + 14);
     g.fillStyle = 'rgba(140, 128, 191, 0.05)';
-    if (b1 > b0) g.fillRect(0, b0, 640, b1 - b0);
+    if (b1 > b0) g.fillRect(SCR.x, b0, SCR.w, b1 - b0);
+    // The status bar and the key strip: the two things every app on this device
+    // has, so the page is one of its screens rather than an empty field.
+    hline(SCR.x + 8, SCR.x + SCR.w - 14, SCR.y + STATUS_H, INK.rail);
+    text(SCR.x + 10, SCR.y + 2, 'slate', INK.head);
+    const fy = SCR.y + SCR.h - KEYS_H + 1;
+    hline(SCR.x + 8, SCR.x + SCR.w - 14, fy - 2, INK.rail);
+    text(SCR.x + 10, fy, 'opening', INK.words);
     const span = LINE_X1 - LINE_X0;
     g.fillStyle = INK.rail;
     g.fillRect(LINE_X0, LINE_Y, span + 1, 1);
@@ -129,6 +311,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
     g.fillRect(head - 1, LINE_Y, 2, 1);
     g.globalAlpha = 1;
     text(LINE_X0, LINE_Y - 16, words, INK.words);
+    g.restore();
   }
 
   let running = true;
