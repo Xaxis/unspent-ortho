@@ -288,7 +288,8 @@ func _process(delta: float) -> void:
 		_pending_screen = ""
 	# The landscape under the player is read every frame, app or no app: a page
 	# closed after a teleport must not find the watcher still standing at the coast.
-	_watch_place(delta)
+	var hostile := _hostile_near()
+	_watch_place(delta, hostile)
 	if _read_keys():
 		var s := top()
 		if s == null:
@@ -297,7 +298,7 @@ func _process(delta: float) -> void:
 		_repeat(s, _horizontal, _device_dir(&"move_left", &"move_right"), delta, &"left", &"right")
 		return
 	explored.visit(game.player.pos)
-	game.hud.set_quiet(_hostile_near())
+	game.hud.set_quiet(hostile)
 	_step_guide(delta)
 	_feed_hud()
 
@@ -306,14 +307,14 @@ func _process(delta: float) -> void:
 ## it. A walked border settles (UiPlaceWatch.SETTLE); a jump is said at once.
 ## A name entered under an open app or in a fight waits until there is a HUD
 ## to say it on, rather than being swallowed.
-func _watch_place(delta: float) -> void:
+func _watch_place(delta: float, hostile: bool) -> void:
 	var p := game.player.pos
 	var jumped := _last_pos.is_finite() and UiPlaceWatch.jumped(_last_pos, p)
 	_last_pos = p
 	var entered := _places.step(BiomeRegistry.at(game.world, p).id, delta, jumped)
 	if entered != &"":
 		_pending_place = entered
-	if _pending_place == &"" or not stack.is_empty() or _hostile_near():
+	if _pending_place == &"" or not stack.is_empty() or hostile:
 		return
 	game.hud.show_place(BiomeRegistry.get_def(_pending_place).display_name)
 	Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
