@@ -217,7 +217,7 @@ func test_lightning_only_in_storms_and_more_at_their_height() -> void:
 
 func test_night_fall_and_light_level_follow_the_source_clock() -> void:
 	near(Weather.night_fall(12.0), 0.0, 1e-6, "noon")
-	near(Weather.night_fall(20.5), 0.5, 1e-6, "half dark at 20:30")
+	near(Weather.night_fall(19.75), 0.5, 1e-6, "half dark half way through the dusk")
 	near(Weather.night_fall(23.0), 1.0, 1e-6, "night")
 	near(Weather.night_fall(2.0), 1.0, 1e-6, "small hours")
 	near(Weather.night_fall(5.25), 0.5, 1e-6, "half light at 05:15")
@@ -225,6 +225,32 @@ func test_night_fall_and_light_level_follow_the_source_clock() -> void:
 	near(Weather.night_fall(24.0), Weather.night_fall(0.0), 1e-6, "wraps")
 	near(Weather.light_level(0.0), 1.0 - 0.62 * 0.68, 1e-6, "darkest light")
 	gt(Weather.light_level(0.0), 0.5, "night is not black")
+
+
+## The finding this whole package answers: the source crushed dusk into 20:00-21:00,
+## so every hour before 20:00 was full day and the half hour after it took a third
+## of the frame's light at once (docs/ART.md section 6, art review finding 2).
+func test_the_dusk_is_two_and_a_half_hours_and_no_half_hour_of_it_is_a_cliff() -> void:
+	near(Weather.night_fall(Weather.DUSK_START), 0.0, 1e-6, "full day where the turn begins")
+	near(Weather.night_fall(Weather.DUSK_END), 1.0, 1e-6, "night where it lands")
+	gt(Weather.DUSK_END - Weather.DUSK_START, 2.0, "the evening is hours, not one hour")
+	gt(Weather.night_fall(19.0), 0.02, "it has begun by seven")
+	lt(Weather.night_fall(19.0), 0.2, "and is barely under way")
+	gt(Weather.night_fall(20.0), 0.5, "well on by eight")
+	# Nowhere does half an hour of it take more than a fifth of the way to night,
+	# and nowhere does it go backwards.
+	var prev := 0.0
+	for i in 24 * 60 + 1:
+		var h := i / 60.0
+		var nf := Weather.night_fall(h)
+		check(nf >= -1e-6 and nf <= 1.0 + 1e-6, "in range at %.2f" % h)
+		if h >= Weather.DUSK_START and h <= Weather.DUSK_END:
+			check(nf >= prev - 1e-6, "never turns back at %.2f" % h)
+			lt(Weather.night_fall(h + 0.5) - nf, 0.35, "half an hour is never a cliff at %.2f" % h)
+		prev = nf
+	# And it is smooth at both ends: no corner where the turn begins or lands.
+	lt(Weather.night_fall(Weather.DUSK_START + 0.1), 0.01, "eased in")
+	gt(Weather.night_fall(Weather.DUSK_END - 0.1), 0.99, "eased out")
 
 
 func test_tide_has_two_highs_a_day_and_starts_low() -> void:

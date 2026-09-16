@@ -18,7 +18,14 @@ extends Node3D
 ## is written twice. Undriven (the title, the gallery, a test) set_hour()
 ## composes at once.
 
-## Day fraction keys: [t, tint, level]. (source, exact)
+## Day fraction keys: [t, tint, level]. The source's rows are kept exactly; the
+## two between 0.80 and 0.90 are ours. The source ran straight from the dusk key
+## (19:12) to full night blue at 21:36, so between 19:12 and 21:00 the level sat
+## flat at about 0.81 and only the hue moved: the last two hours of the day were
+## as bright as the afternoon and steadily bluer. Now the warmth is HELD to about
+## 20:15 (the sun is low and warm on what it lights, and Weather.night_fall takes
+## the level down under it), and the blue of the sky takes the land over the last
+## three quarters of an hour, landing on night exactly where night_fall lands.
 const KEYS := [
 	[0.00, Vector3(0.56, 0.64, 0.90), 0.82],
 	[0.22, Vector3(0.56, 0.64, 0.90), 0.82],
@@ -26,6 +33,8 @@ const KEYS := [
 	[0.40, Vector3(1.00, 1.00, 0.99), 1.00],
 	[0.70, Vector3(1.00, 1.00, 0.99), 1.00],
 	[0.80, Vector3(0.98, 0.74, 0.58), 0.80],
+	[0.8438, Vector3(0.95, 0.72, 0.56), 0.80],
+	[0.8750, Vector3(0.74, 0.68, 0.82), 0.82],
 	[0.90, Vector3(0.56, 0.64, 0.90), 0.82],
 	[1.00, Vector3(0.56, 0.64, 0.90), 0.82],
 ]
@@ -259,6 +268,7 @@ func compose() -> void:
 	# source's levels are display multiplies. Energy is linear, so decode.
 	sun.light_energy = pow(float(s.energy) * glow, 2.2)
 	sun.shadow_enabled = bool(s.casts) and cast_allowed
+	sun.shadow_opacity = shadow_strength(hour)
 	if figure_light != null:
 		figure_light.light_energy = FIGURE_FILL * low_light(hour)
 		figure_light.visible = figure_light.light_energy > 0.01
@@ -311,8 +321,10 @@ static func dusk_lift(hour: float, region: Vector3) -> float:
 
 ## A low sun lays its warmth on what it lights: lit faces take up to GLOW more
 ## light at a warm tint while the sun still casts (shade_cool divides it back
-## out of shade), so dawn and dusk read warm and clear rather than dim.
-const GLOW := 0.2
+## out of shade), so dawn and dusk read warm and clear rather than dim. Held well
+## under the level the evening keys give up (1.00 -> 0.80 over 16:48-19:12), or
+## the glow simply cancels the fall and dusk is as bright as the afternoon.
+const GLOW := 0.12
 
 
 static func sun_glow(tint: Vector3, sun: Dictionary) -> float:
@@ -397,16 +409,48 @@ static func sun_at(hour: float) -> Dictionary:
 		var edge := _elevation_for_shadow(az, SHADOW_LOW)
 		el = lerpf(edge, MOON_ELEVATION, sin(n * PI))
 	var nf := Weather.night_fall(h)
-	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL), "casts": nf < 0.5}
+	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL), "casts": casts_at(h)}
 
 
-## 0 at midday, 1 from dusk to dawn: how much of the light is the cool sky
-## rather than the sun.
+## The hours the sun casts a shadow: from properly up in the morning to the last
+## of the dusk. It is stated in hours and not in how far night has fallen,
+## because the evening's fall is long now (Weather.DUSK_START) and dusk's LONG
+## LOW SHADOWS are the whole picture at 19:30. The moon never casts.
+const SHADOW_FROM := 5.0
+const SHADOW_TO := 20.5
+## The shadows do not switch off at either end: they fade over this much of an
+## hour, so the last of them goes with the last of the light.
+const SHADOW_FADE := 0.75
+
+
+static func casts_at(hour: float) -> bool:
+	var h := fposmod(hour, 24.0)
+	return h >= SHADOW_FROM and h <= SHADOW_TO
+
+
+## 0..1 how solid the sun's cast shadow is drawn at this hour.
+static func shadow_strength(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	return clampf(minf((h - SHADOW_FROM) / SHADOW_FADE, (SHADOW_TO - h) / SHADOW_FADE), 0.0, 1.0)
+
+
+## 0 in full daylight, 1 in the dead of night: HOW LITTLE LIGHT THERE IS, which
+## is the term everything that only belongs to the dark hangs off (the shader's
+## sky_gloom(), Lights.gloom, the figure fill, the blue floor under the washes,
+## the lift of the darks at sky_shade.w).
+##
+## It used to read "how far the tint is from noon", counting a WARM tint as a
+## dark one: at 19:00 the tint is warm and the level is 0.82, so it answered 0.89
+## while the sun was still at full energy and the land was still bright. Every
+## night term came on at once in the middle of a bright evening — the skyglow
+## added a blue wash to every surface and the darks were lifted onto night blue —
+## which is why dusk measured BRIGHTER and steadily BLUER than the afternoon.
+## It is the light's own level now: the tint's luminance times the sun's, and
+## never less than how far night has fallen.
 static func low_light(hour: float) -> float:
 	var t := tint_at(hour)
-	var noon := tint_at(12.0)
-	var warm_or_dim := clampf((noon.x + noon.y + noon.z - (t.x + t.y + t.z)) / 1.2, 0.0, 1.0)
-	return maxf(warm_or_dim, Weather.night_fall(hour))
+	var lum := (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(sun_at(hour).energy)
+	return clampf(maxf(Weather.night_fall(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
 
 
 ## Elevation at which a caster's shadow is `ratio` times its own height ON

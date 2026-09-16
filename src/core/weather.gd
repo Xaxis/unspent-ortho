@@ -329,15 +329,29 @@ static func _settle_step(out: Dictionary, kind: StringName, strength: float, dt:
 		out[key] = clampf(c, 0.0, 1.0)
 
 
-## Night fall 0..1: up over 20:00-21:00, down over 04:30-06:00. (source)
+## Where the evening turn begins and where it lands. The source crushed the whole
+## of it into 20:00-21:00, which gave the game a switch and no dusk: every hour
+## before 20:00 was full day and the half hour after it dropped a third of the
+## frame's light at once. Dusk is two and a half hours of falling light instead,
+## so the hatching, the ink's blue, the lamps and the gloom all walk down one
+## slow curve and no half hour of it is a step.
+const DUSK_START := 18.5
+const DUSK_END := 21.0
+## The morning's own shoulder, kept where the source put it.
+const DAWN_START := 4.5
+const DAWN_END := 6.0
+
+
+## Night fall 0..1: up over DUSK_START-DUSK_END, down over 04:30-06:00. Eased at
+## both ends (smoothstep), so the turn begins and lands without a corner.
 static func night_fall(hour: float) -> float:
 	var h := fposmod(hour, 24.0)
-	if h >= 21.0 or h < 4.5:
+	if h >= DUSK_END or h < DAWN_START:
 		return 1.0
-	if h >= 20.0:
-		return h - 20.0
-	if h < 6.0:
-		return 1.0 - (h - 4.5) / 1.5
+	if h >= DUSK_START:
+		return smoothstep(DUSK_START, DUSK_END, h)
+	if h < DAWN_END:
+		return 1.0 - smoothstep(DAWN_START, DAWN_END, h)
 	return 0.0
 
 

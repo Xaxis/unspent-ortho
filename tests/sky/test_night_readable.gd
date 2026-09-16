@@ -193,11 +193,96 @@ func test_lighting_the_lamp_after_the_clock_jumps_keeps_its_oil() -> void:
 
 
 func test_a_burning_dusk_keeps_its_warm_darks() -> void:
+	# At 19:30 the evening is only a third of the way to night, so the darks are
+	# only a third lifted: the lift follows HOW DARK IT IS, not how warm the tint
+	# has gone. It was the other way round, and every night term came on at once
+	# in the middle of a bright evening (art review finding 2).
 	var cold := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"snowfield"))
+	var late := SkyLight.dusk_lift(20.75, SkyLight.type_tint(&"snowfield"))
 	var burning := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"burning"))
-	gt(cold, 0.8, "a snowfield dusk lifts its darks to blue")
+	gt(cold, 0.25, "a snowfield dusk has begun to lift its darks to blue")
+	lt(cold, 0.5, "but only as far as the evening has come")
+	gt(late, 0.9, "and all the way once the night is on it")
 	lt(burning, cold * 0.5, "a burning dusk keeps them warm")
 	near(SkyLight.dusk_lift(12.0, Vector3.ONE), 0.0, 0.02, "nothing to lift at noon")
+	lt(SkyLight.dusk_lift(18.0, Vector3.ONE), 0.05, "nor at six, which is still the day")
+
+
+## The level of light a lit face takes at an hour: the tint's own luminance times
+## the sun's energy times its low-sun glow. It is what the art review's mean
+## luminance sweep measures, on the CPU and without a frame.
+static func _level(h: float) -> float:
+	var t := SkyLight.tint_at(h)
+	var s := SkyLight.sun_at(h)
+	return (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(s.energy) * SkyLight.sun_glow(t, s)
+
+
+## And its warmth, the R-B of that same sweep.
+static func _warmth(h: float) -> float:
+	var t := SkyLight.tint_at(h)
+	var s := SkyLight.sun_at(h)
+	return (t.x - t.z) * float(s.energy) * SkyLight.sun_glow(t, s)
+
+
+## The finding this package answers: measured over 18:00-20:00 the game got
+## BRIGHTER and steadily BLUER, then dropped a third in half an hour. The light's
+## own level must fall from the afternoon to the night and never turn back, and
+## no ten minutes of it may take more than a fifteenth of a noon.
+func test_the_evening_falls_instead_of_brightening() -> void:
+	var noon := _level(12.0)
+	gt(noon, 0.9, "noon is full light")
+	var prev := _level(16.8)
+	var h := 16.9
+	while h <= 21.0001:
+		var l := _level(h)
+		lt(l, prev + 1e-4, "the light turns back up at %.2f h" % h)
+		lt(prev - l, noon * 0.075, "the light drops off a cliff at %.2f h" % h)
+		prev = l
+		h += 0.1
+	gt(_level(18.0), noon * 0.75, "six o'clock is still the day")
+	lt(_level(20.0), _level(18.0) * 0.75, "eight has lost a quarter of it and more")
+	lt(_level(21.0), noon * 0.45, "and by nine it has gone")
+	gt(_level(21.0), _level(23.0) * 0.95, "landing on the night rather than under it")
+
+
+func test_the_evening_warms_into_the_last_of_the_sun_and_only_then_turns_blue() -> void:
+	gt(_warmth(19.2), _warmth(16.8) + 0.25, "the sun goes down warm")
+	gt(_warmth(19.2), _warmth(18.0), "warmer at seven than at six")
+	gt(_warmth(20.0), _warmth(18.0), "and still warm at eight, when the level has gone")
+	lt(_warmth(21.0), 0.0, "only then does the blue of the sky take the land")
+	lt(_warmth(12.0), 0.05, "noon is white")
+
+
+## The other half of it: every term that belongs to the dark hangs off low_light,
+## and low_light must mean how little light there is. It used to read a WARM tint
+## as a dark one, so the skyglow's blue wash came up at seven in the evening.
+func test_the_darks_follow_how_dark_it_is_not_how_warm_the_tint_has_gone() -> void:
+	near(SkyLight.low_light(12.0), 0.0, 0.01, "noon")
+	lt(SkyLight.low_light(18.0), 0.05, "six o'clock is still daylight")
+	lt(SkyLight.low_light(19.2), 0.35, "the dusk key is warm, not dark")
+	gt(SkyLight.low_light(20.5), 0.8, "by half past eight it really is going")
+	near(SkyLight.low_light(23.0), 1.0, 0.01, "night")
+	var prev := SkyLight.low_light(17.0)
+	var h := 17.1
+	while h <= 21.0001:
+		var g := SkyLight.low_light(h)
+		gt(g, prev - 1e-4, "the dark turns back at %.2f h" % h)
+		prev = g
+		h += 0.1
+
+
+## Dusk is long low shadows. They used to stop at 20:30 because they were keyed
+## off how far night had fallen, and that curve is two and a half hours wide now.
+func test_the_sun_casts_through_the_whole_dusk_and_its_shadows_fade_out() -> void:
+	check(SkyLight.casts_at(19.5), "half past seven still casts")
+	check(SkyLight.casts_at(20.25), "and so does the last of it")
+	check(not SkyLight.casts_at(21.0), "gone by nine")
+	check(not SkyLight.casts_at(4.9), "and not before the sun is properly up")
+	near(SkyLight.shadow_strength(12.0), 1.0, 1e-6, "full at noon")
+	gt(SkyLight.shadow_strength(19.5), 0.9, "still solid at half seven")
+	lt(SkyLight.shadow_strength(20.25), 0.5, "going with the light")
+	near(SkyLight.shadow_strength(20.5), 0.0, 1e-6, "and gone where the sun stops casting")
+	near(SkyLight.shadow_strength(2.0), 0.0, 1e-6, "the moon casts nothing")
 
 
 ## n drawn (process) frames: what a system that polls input in _process sees.

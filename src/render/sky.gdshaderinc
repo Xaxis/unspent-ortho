@@ -575,11 +575,38 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 }
 
 // Skyglow: low cloud holds the light of everything the machines keep running,
-// so in gloom, dusk and night a wash still reads as a faint teal-indigo shape and
-// never goes to black. Emitted, because a wash multiplied by no light is black.
-// Call from fragment() with the graded albedo and ADD to EMISSION.
+// so in gloom, dusk and night a wash still reads as a shape and never goes to
+// black. Emitted, because a wash multiplied by no light is black.
+//
+// It is the SKY'S OWN COLOUR, not one colour for every dark hour: teal-indigo
+// once the night is all that lights the cloud, and the hour's own light while
+// there is any sun left in it. A fixed cold glow laid a blue wash over every
+// surface exactly as the sun went warm, which made the evening measure bluer the
+// dimmer it got. Call from fragment() with the graded albedo and ADD to EMISSION.
+const vec3 SKY_GLOW_NIGHT = vec3(0.2, 0.24, 0.3);
+const vec3 SKY_GLOW_NIGHT_FLOOR = vec3(0.02, 0.034, 0.055);
+
+// How much of the skyglow is up. It is NOT sky_gloom(): the glow adds about a
+// tenth of full scale to every wash, and the light only falls by about a quarter
+// across the whole evening, so a glow that came up with the dusk on a straight
+// line made the frame BRIGHTER as it got darker. The night's own share is
+// back-loaded (cubed) so it arrives behind the light it replaces, and a sky too
+// dark for its hour — a storm at ten in the morning — keeps its lift in full,
+// because that darkness is not the night coming.
+float sky_glow_share() {
+	float lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
+	float dark_sky = clamp(1.0 - clamp(lum * 1.25, 0.0, 1.0), 0.0, 1.0);
+	float night = clamp(sky_view.y, 0.0, 1.0);
+	return clamp(max(dark_sky, night * night * night), 0.0, 1.0);
+}
+
 vec3 neon_skyglow(vec3 graded) {
-	return (graded * vec3(0.2, 0.24, 0.3) + vec3(0.02, 0.034, 0.055)) * sky_gloom();
+	float tl = max(dot(sky_tint, vec3(0.3, 0.59, 0.11)), 0.001);
+	vec3 hue = sky_tint / tl;
+	float night = clamp(sky_view.y, 0.0, 1.0);
+	vec3 lift = mix(hue * 0.245, SKY_GLOW_NIGHT, night);
+	vec3 base = mix(hue * 0.036, SKY_GLOW_NIGHT_FLOOR, night);
+	return (graded * lift + base) * sky_glow_share();
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
