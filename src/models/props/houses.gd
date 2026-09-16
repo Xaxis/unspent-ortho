@@ -731,8 +731,10 @@ static func half_house(k: Kit, c: int) -> void:
 		high.append(Vector3(-w * 0.5 - 0.22 + Kit.j(s, i + 20, 0.08), h + 0.86 - Kit.j(s, i + 30, 0.07) - 0.16 * sin(f * PI), z + Kit.j(s, i + 40, 0.07)))
 		low.append(Vector3(w * 0.5 + 0.26 + Kit.j(s, i + 50, 0.1), h - 0.02 - Kit.j(s, i + 60, 0.07) - (0.2 if i == 3 else 0.0), z + Kit.j(s, i + 70, 0.07)))
 	patch_slope(k, low, high, 4, s + 11, SLATE_ROOF, 0.38)
-	k.made.quad(Vector3(-w * 0.5 - 0.22, h + 0.7, -d * 0.5 - 0.16), Vector3(w * 0.5 + 0.26, h - 0.05, -d * 0.5 - 0.16),
-		Vector3(w * 0.5 + 0.26, h - 0.05, d * 0.5 + 0.16), Vector3(-w * 0.5 - 0.22, h + 0.7, d * 0.5 + 0.16), P.INK[2])
+	# The dark under the low eave: a hand's width of soffit, not a second roof
+	# plane hanging below the first.
+	k.made.quad(Vector3(w * 0.5 + 0.26, h - 0.06, -d * 0.5 - 0.16), Vector3(w * 0.5 + 0.26, h - 0.06, d * 0.5 + 0.16),
+		Vector3(w * 0.5 - 0.06, h + 0.04, d * 0.5 + 0.16), Vector3(w * 0.5 - 0.06, h + 0.04, -d * 0.5 - 0.16), P.INK[2])
 	# The gable the fall stands on, and the wall under the high side.
 	for zz: float in [-d * 0.5, d * 0.5]:
 		var sgn := signf(zz)
@@ -802,11 +804,17 @@ static func but(k: Kit, c: int) -> void:
 	var xb: Array[Vector3] = [Vector3(-w * 0.5 - 0.004, 0, -d * 0.5), Vector3(-w * 0.5 - 0.004, 0, d * 0.5),
 		Vector3(-w * 0.5 - 0.004, 1, d * 0.5), Vector3(-w * 0.5 - 0.004, 1, -d * 0.5)]
 	salvage(k, xb[0], xb[1], xb[2], xb[3], 0.62, 1340)
-	# Sods laid along the lid, uneven.
+	# Sods laid along the lid, uneven, and cut from the ground they stand on:
+	# coast moss on the Bonelands read as a stripe of paint on a grey landscape.
+	var sods: Array[Color] = [P.MOSS[2], P.MOSS[3]]
+	match c:
+		Country.SNOWFIELD: sods = [P.RIME[4], P.SLATE[3]]
+		Country.BURNING: sods = [P.ASH[1], P.ASH[2]]
+		Country.BONELANDS: sods = [P.MOSS[3].lerp(P.SAND[4], 0.5), P.SAND[3]]
 	var top := h + 0.26
 	for i in 5:
 		var z := -d * 0.5 + 0.42 + i * 0.44
-		k.slab(Kit.j(1301, i, 0.08), top, z, w - 0.7, 0.1, 0.42, 1300 + i, P.EARTH[2], P.MOSS[2] if i % 2 else P.MOSS[3], 0.03)
+		k.slab(Kit.j(1301, i, 0.08), top, z, w - 0.7, 0.1, 0.42, 1300 + i, P.EARTH[2], sods[i % 2], 0.03)
 	# A stone chimney built by hand through the lid.
 	_chimney(k, -0.55, top - 0.2, -0.8, 0.95, 1310)
 	var foot: Array[Vector3] = [Vector3(-w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, d * 0.5), Vector3(-w * 0.5, 0, d * 0.5)]
