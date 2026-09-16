@@ -95,9 +95,13 @@ place coast
 zoom 15
 wait 1.0
 coast wild
-# The game is past its first minute: the first meeting comes out, a lone
-# runner a fair walk off, and makes for the player once it has seen them.
+# The game is past its first minute: the first meeting. A runner — a HUNTER in
+# the plan, so it comes for a person on sight, unlike the workers that make up
+# most of what walks the coast — is put out a fair walk off and makes for the
+# player once it has seen them. (tours/wild.tour is the same minutes with
+# nothing put out at all: what the coast sends on its own.)
 zoom 11
+spawn runner
 await tell 30
 shot 11-runner-tell
 # Read the tell: out of its bite by going round its flank while it is committed,

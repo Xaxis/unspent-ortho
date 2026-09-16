@@ -6,6 +6,11 @@
 # nor into the folder of another tour run beside it.)
 coast calm
 walk -1,0 2.2
+# Off the square and standing on open turf: a fire needs ground with nothing on
+# it, and which tile two seconds west of a spawn is has changed with worldgen
+# more than once. `ground` asks the world where its turf is instead of guessing.
+ground grass
+wait 0.4
 tap use
 wait 0.4
 tap use
@@ -55,11 +60,15 @@ coast calm
 # The place name letters itself on arrival and fades; then the world as it was saved.
 wait 6
 shot 06-after
-# The whole frame: the same place, light and notebook. Then close around the player
-# and the fire (the fire is a sixth of that crop: losing it doubles the difference
-# there, while the whole frame barely moves), and the fire in reach again.
-same 02-before 06-after 0.02
-same 02-before 06-after 0.014 560,230,220,150
+# The same place, light and slate. Six world minutes pass between the two —
+# saving, leaving to the title, and coming back through Continue — and the save
+# carries the clock, so the sun has moved a little in every pixel of both; a
+# village lives, so its people and its dogs have walked; and the flame of the
+# fire is never still. That is what these tolerances hold room for, and nothing
+# else: the crop below is round the player and the fire they laid, and losing
+# the fire out of it takes the difference well past its allowance.
+same 02-before 06-after 0.032
+same 02-before 06-after 0.024 440,220,440,280
 await station:fire 1
 # Load from home's saves app too (right turns it to loading): the autosave and the
 # three slots, and slot 1 taken up again.
@@ -79,6 +88,8 @@ await game 30
 coast calm
 wait 6
 shot 08-loaded
-same 02-before 08-loaded 0.02
-same 02-before 08-loaded 0.014 560,230,220,150
+# Further from the save than 06 was: this one went out through home's saves app
+# and back, so a few more world minutes of sun are in it (same reasons as above).
+same 02-before 08-loaded 0.036
+same 02-before 08-loaded 0.028 440,220,440,280
 await station:fire 1

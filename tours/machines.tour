@@ -26,7 +26,13 @@ wait 1.5
 spawn harvester
 wait 1.2
 shot 01-harvester-working-at-night
-await tell 6
+# A harvester is a worker and takes no notice of a person walking past: to see
+# its windup you have to stand in its way, which is a cause its role takes
+# amiss (Roles.TURNS). It works its row until you do.
+try 20
+walkto mob 3
+await tell 3
+end
 wait 0.3
 shot 02-windup-brightens-the-working-side
 tap dodge
