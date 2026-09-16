@@ -161,6 +161,52 @@ func test_the_poses_a_player_reads_differ_in_silhouette() -> void:
 					gt(n / sqrt(area), MIN_EDGE_PX, "%s: %.1f px of outline" % [label, n / sqrt(area)])
 
 
+## What share of its own bounding box a silhouette actually fills. A box on a box
+## fills nearly all of it; a shape a player can name leaves daylight inside its
+## own box — a leg, a mast, an arm out, a notch under a cap.
+static func fill(mask: PackedByteArray) -> float:
+	var x0 := W
+	var x1 := -1
+	var y0 := H
+	var y1 := -1
+	var n := 0
+	for y in H:
+		for x in W:
+			if mask[y * W + x] == 0:
+				continue
+			n += 1
+			x0 = mini(x0, x)
+			x1 = maxi(x1, x)
+			y0 = mini(y0, y)
+			y1 = maxi(y1, y)
+	if x1 < 0:
+		return 1.0
+	return float(n) / float((x1 - x0 + 1) * (y1 - y0 + 1))
+
+
+## No machine is a filled rectangle. This is the rule the art review caught the
+## harvester breaking: a slab on tracks under a low housing, seen from a camera
+## that never moves, filled 0.73/0.72 of its box at one yaw and 0.73/0.77 at the
+## other, so four poses of it were four identical black lozenges and nothing in
+## the outline named the kind. An unloading spout swung out over one flank and
+## two stacks clear of the deck took it to 0.54/0.55 and 0.65/0.69.
+##
+## The bar sits under the harvester as it was and over every kind as it is: the
+## ceiling now is the hauler's 0.73 alert. It is deliberately close, because
+## anything looser would have passed the machine this test was written for.
+const MOST_FILLED := 0.75
+
+
+func test_no_machine_is_a_filled_box() -> void:
+	for kid in KINDS:
+		for yaw: float in [0.6, 2.3]:
+			for p: StringName in [&"stand", &"alert"]:
+				var m := posed(kid, p)
+				var f := fill(silhouette(m, yaw))
+				m.free()
+				lt(f, MOST_FILLED, "%s %s at yaw %.1f fills %.2f of its box" % [kid, p, yaw, f])
+
+
 func test_every_machine_reads_at_gameplay_zoom() -> void:
 	for kid in KINDS:
 		var m := posed(kid, &"stand")

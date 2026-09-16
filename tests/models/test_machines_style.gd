@@ -11,6 +11,11 @@ const MADE := "res://src/render/world.gdshader"
 ## open on one flank; the lineman's grips work hand over hand; the clerk reads
 ## with its head turned.
 const ASYMMETRIC: Array[StringName] = [&"hauler", &"lineman", &"clerk", &"flock"]
+## One FITTING carried over one flank on purpose, on a body that is otherwise
+## mirrored: the harvester's unloading spout, which is the whole of what tells
+## that machine from a box at play zoom. The fitting is taken off for the mirror
+## rather than the kind being excused it, so the hull it is bolted to is still held.
+const ONE_FLANK := {&"harvester": &"spout"}
 
 
 static func geometry(n: Node, out: Array) -> void:
@@ -211,6 +216,9 @@ func test_rest_silhouettes_are_mirror_exact() -> void:
 		# The machine as it was built: the years' wear is not mirrored.
 		for wear: Node in m.find_children("wear", "Node3D", true, false):
 			(wear as Node3D).visible = false
+		if ONE_FLANK.has(kid):
+			(m.joints[ONE_FLANK[kid]] as Node3D).visible = false
+			m.settle()
 		_front_mask(m, m, Transform3D.IDENTITY, mask, w, h, texel)
 		var diff := 0
 		var total := 0
