@@ -121,7 +121,7 @@ func test_a_scan_marks_the_machines_and_nothing_else() -> void:
 	var sys := _boot(["--fit=scanner_lens", "--spawn=harvester"])
 	var before := game.get_child_count()
 	eq(sys.call("fire", &"scan"), &"", "the lens reads")
-	sys.call("_scan_marks", 40.0)
+	sys.call("_scan_marks", 40.0, true)
 	gt(float(game.get_child_count() - before), 0.0, "marks were laid on the page")
 	check(sys.call("tour_seen", &"ability:scan"))
 	game.free()
