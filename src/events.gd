@@ -21,3 +21,19 @@ signal time_skipped(minutes: float, reason: StringName)
 signal screen_changed(name: StringName, open: bool)
 ## A save was written to `slot` (0 autosave, 1-3 the player's); reason: manual sleep land hours.
 signal saved(slot: int, reason: StringName)
+
+## Settlements (docs/VISION.md §9). The settlement package emits the first four;
+## the raids package emits the rest, so neither has to import the other.
+signal settlement_founded(id: int)
+signal structure_built(settlement_id: int, structure_id: int)
+signal structure_damaged(settlement_id: int, structure_id: int, amount: float)
+signal structure_destroyed(settlement_id: int, structure_id: int)
+## A machine sensed the place: kind is how (&"worker" &"watcher" &"drone" &"clerk").
+signal settlement_noticed(settlement_id: int, mob_id: int, kind: StringName)
+signal attention_changed(settlement_id: int, from: float, to: float)
+## The world's warning before a step lands, then the step: stage is
+## &"survey" &"probe" &"raid" &"siege".
+signal raid_warned(settlement_id: int, stage: StringName)
+signal raid_began(settlement_id: int, stage: StringName)
+## outcome: &"held" &"broken" &"razed" &"left" (nobody was home).
+signal raid_ended(settlement_id: int, outcome: StringName)

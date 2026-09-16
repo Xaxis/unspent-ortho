@@ -34,6 +34,13 @@ tools/check.sh --web                        # the gate plus both web builds in t
 godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
 ```
 
+**A run never takes the keyboard.** The window opens unfocusable
+(`project.godot`, `display/window/size/no_focus`) and `tools/_focus.sh` hands the
+keyboard straight back to whoever was typing, so a hundred shots and tours an hour
+never interrupt the person at the machine. Only a session a person means to play
+takes the focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1`
+lets a tool run come to the front, to watch it play.
+
 Shot and boot options live in `src/boot_options.gd` (its header lists every one).
 The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
 --zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery|title
@@ -174,6 +181,7 @@ lead with why, in short sentences.
 | Works and evidence | `src/core/worldgen/gen_works.gd`, `src/render/works_map.gd` | GenWorks records landmarks `{kind, pos, country, dir: Vector2, half: Vector2, mark: &cut\|&scorch\|&quarry\|&bores}`; `GenWorks.bearing(seed)` is the machines' survey bearing and `GenWorks.survey_sections(seed, size)` is pure. `WorksMap.bake(world)` hangs on `WorldView.works`, and any renderer or system (the map, audio, a spawner) may read it. What the ruin left is salvage: `Takes` gives plate from debris, cars and barricades and wood from fences and stumps. |
 | The slate's apps | `src/ui/slate_feeds.gd` | `SlateFeeds.provide(&"loadout"\|&"reads", func(game) -> Dictionary)` fills gear and machine reads; `SlateFeeds.on_act(app, func(game, row_id) -> String)` says what confirming a row does (a leading `!` is a refusal). Shapes are in the file's header. Without a feed each app shows what the game already knows. The saves app is not a feed: it drives `05_save` (`save_to`, `load_from`) itself. |
 | Starting a world | `src/boot/boot_page.gd`, `src/boot/boot_world.gd` | Anything that starts a world calls `BootWorld.world(seed, size)` and `BootWorld.view(world)`, never `WorldGen.generate` or a bare `WorldView`. A game or title for play opens through `BootPage.open_game(parent, options)` / `BootPage.open_title(parent, options)` so the loading page draws while it is made; shots and headless runs get `make_game` / `make_title`. `BootWorld.offer(world, view)` hands a world already on screen to the next scene. |
+| Settlements | `src/core/settlement/`, `src/systems/46_settlements.gd` | The seam between building and being raided (docs/VISION.md §9), so neither package imports the other. `Settlement` holds `pieces` (`Structure`: kind, pos, health, powered, staffed_by, ruined), `people`, `stores` and `attention`; `signature()` is what a machine can sense (light, noise, smoke, radio, power, found_tech, traffic), each channel taking the loudest piece, less whatever hides it (`StructureKind.SIGNS`, `"mask"`). The settlement package builds, staffs, produces and repairs and OWNS the signs table; the raids package reads `signature()`, writes `attention`, and calls `damage_structure`. Events: `settlement_founded`, `structure_built/damaged/destroyed` (settlement), `settlement_noticed`, `attention_changed`, `raid_warned/began/ended` (raids). |
 | Palette | `src/render/palette.gd` | MACHINE and FOUND ramps are cold, low-chroma violets with a compressed top: the amber `LENS` is the only saturated thing on a machine. `PLATE` sits near slate so a patched roof never reads as a live machine. |
 
 Native-name trap: a static func on a `class_name` script must not share a name
