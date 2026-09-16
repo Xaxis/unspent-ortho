@@ -31,7 +31,7 @@ tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score 
 tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
 tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
 tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
-godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Esc pause)
+godot --path .                              # play it (WASD, Shift run/dodge, Space swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Esc pause)
 ```
 
 Shot and boot options live in `src/boot_options.gd` (its header lists every one).
@@ -70,6 +70,12 @@ TOUR_TIMEOUT=900 tools/tour.sh tours/score.tour                 # the score's la
 tools/tour.sh tours/slate.tour --scene=title                    # the slate wakes, and every app from its key
 ```
 
+The M2 wave A proofs:
+
+```sh
+tools/tour.sh tours/disposition.tour --seed=1 --hour=11 --weather=clear:0   # workers ignored you, then you robbed one; a watcher's sweep dodged
+```
+
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
 change, shoot the gallery. Judge beauty, not just correctness.
@@ -84,6 +90,7 @@ tools print their own summaries.
 | `src/core/` | Pure rules and data: world data, queries, clock, RNG, body, inventory, crafting, weather. No nodes, no rendering. Headless-testable. |
 | `src/core/worldgen/` | World generation stages (`WorldGen.generate` runs them): shape, countries, relief, water, settlements, access, surface, scatter, places. |
 | `src/core/fight/`, `src/core/mobs/` | The fight simulation (`FightSim`, fixed 8 ms slices), blows, plate, grip, outcomes; mob state, senses, brains, spawner. |
+| `src/core/disposition/`, `src/core/stealth/` | Roles in the machines' plan, what each body makes of the player, interference per plan network; noise, cover and `StealthQuery`, the one door every sense goes through. |
 | `src/core/survival/` | Taking from the world (`Takes`), stations, eating, sleeping, lamp oil, the strand laid by the spawn. |
 | `src/content/` | Tunables and data tables as GDScript consts: `tuning`, `items`, `recipes`, `roster`. |
 | `src/render/` | Terrain mesher, transitions, decor, world view (chunk streaming on a worker), camera, sky light, weather visuals, shaders, palette. |
@@ -169,6 +176,9 @@ lead with why, in short sentences.
 | Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup. `save` returns JSON-safe values (`SaveCodec` for INF, vectors, bytes); `load` gets them back through JSON (numbers as floats, keys as Strings: convert with `SaveCodec.to_int/to_vec2/to_counts`). A loaded game is applied in `GameSystem.started()` (after every setup, before the first frame) in registration order; 05_save registers the core state first (`SaveCore`: world edits, clock, player, body, inventory, survival, explored, weather). Keys nobody registers are carried forward. Slots: `SaveSlots` (0 autosave: sleep, a landscape first entered, 3 world hours, leaving; never mid-fight or under a page; 1-3 manual; `--load=N`, `--saves=DIR`); file: `SaveFile` (header and data each md5-checked; bump `VERSION`, add a `migrate` step). |
 | Landscape types | `src/core/biome/` | `BiomeRegistry.at(world, pos) -> BiomeDef` (hazards, roster, sentinel, hatch, sound); never branch on Country in new code |
 | Stealth and gear on the body | `src/core/body.gd` | `crouched`, `spoof_until`, `resist`, `pressure` |
+| Noticing the player | `src/core/stealth/stealth_query.gd` | `StealthQuery` is the ONLY door: `Senses.notices/sees/hears` delegate to it, and it adds crouch, cover (`Cover.at`), the lamp, a spoofed signature and the body's own cone (`facing`, omitted = no cone). How loud the player is rides on `Moment.loudness` (`StealthNoise.loudness`), which is the whole of what shortens hearing; the stealth fields on a Moment (`crouched`, `cover`, `spoofed`, `loudness`, `interference`) are written once a frame by 32_disposition. A noise event is `FightSim.make_noise(at, radius)`. |
+| Roles and disposition | `src/core/disposition/` | A roster row's `role` (`Roles`: worker keeper watcher hunter recycler) decides its default disposition, its sight cone and what turns it (`Roles.TURNS`). A live body's `disposition` is `Disposition.of(role, interference level, disturbed)`, written onto `MobState` and its `MachineModel` by 32_disposition. `FightSim.disturb(mob, cause)` is how another package turns one (causes: blocked damaged theft trespass curfew downed); a role that does not take that cause amiss works on. `MobState.suspicion` 0..1 is how sure it is, drawn on the body (Mob: the working part catches, the alert snaps at 1), never as text. |
+| Interference | `src/core/disposition/interference.gd` | One 0..1 per plan network (`Interference.network(world, pos)`: a country until regions land), raised by `32_disposition.raise(cause, at)` (theft sabotage killed_worker killed_machine filed curfew trespass blocked) and lowered by time, distance, hiding and `Body.spoof_until`. Levels calm/wary/hostile/hunted change every machine in the region. Saved under key `disposition`. |
 | Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
 | Score and soundscape | `src/audio/score_*.gd`, `src/systems/75_music.gd`, `src/audio/sound_mix.gd` | A landscape type's music is `ScoreLandscapes.SPECS[id]` (key, mode, rhythm, chords, timbres); a type without one gets a score composed from its id, and `BiomeDef.music_motif` may name another's. Installations (hum, grid pulse), wreckage (wind in metal), roofs (gutters) and canopy (rain on leaves) are prop kinds whose NAME has a whole word in `SoundMix.INSTALLATION_WORDS` (heard only within its `INSTALLATION_REACH`) / `WRECK_WORDS` / `SHELTER_WORDS` / `LEAF_WORDS`; strung wire (`WIRE_WORDS`: poles) only sings faintly in the wind. A sentinel joins group `&"sentinels"` exposing `pos`, `reach`, `alive`, `land`. Any system can answer a tour's `await WHAT` with `tour_seen(what) -> bool`. |
 | Works and evidence | `src/core/worldgen/gen_works.gd`, `src/render/works_map.gd` | GenWorks records landmarks `{kind, pos, country, dir: Vector2, half: Vector2, mark: &cut\|&scorch\|&quarry\|&bores}`; `GenWorks.bearing(seed)` is the machines' survey bearing and `GenWorks.survey_sections(seed, size)` is pure. `WorksMap.bake(world)` hangs on `WorldView.works`, and any renderer or system (the map, audio, a spawner) may read it. What the ruin left is salvage: `Takes` gives plate from debris, cars and barricades and wood from fences and stumps. |
