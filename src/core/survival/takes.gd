@@ -131,6 +131,20 @@ static func _build() -> Dictionary:
 		_o(&"gather", &"driftwood", 1, 8.0, 48.0, {"keep": true})]
 	t[PropKind.FENCE] = [_o(&"fell", &"timber", 1, 12.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 72.0, {"keep": true})]
+	# Cloth: a shelter nobody came back to, and what a machine tore apart, still
+	# hold the soft stuff a made garment needs (the hazards package's gear).
+	t[PropKind.SHACK] = [_o(&"turn", &"scrap", 1, 25.0, 96.0, {"keep": true, "uses": 2}),
+		_o(&"gather", &"rag", 2, 6.0, 72.0, {"keep": true, "uses": 2})]
+	t[PropKind.WRECKAGE] = [_o(&"break", &"scrap", 2, 28.0, NEVER, {"stuff": &"iron", "uses": 3}),
+		_o(&"gather", &"rag", 1, 6.0, 96.0, {"keep": true, "uses": 2})]
+	# Found tech comes off the plan's own works, and only to a steel edge: a signet
+	# prised out of a relay, a shield plate cut off a checkpoint. Neither grows back,
+	# and a charge sometimes comes up with the plate.
+	# A mast or a barrier robbed of its one good part still stands there, dead.
+	t[PropKind.RELAY] = [_o(&"break", &"mod_signet", 1, 30.0, NEVER, {"stuff": &"steel", "keep": true}),
+		_o(&"turn", &"scrap", 1, 25.0, 96.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
+	t[PropKind.CHECKPOINT] = [_o(&"break", &"shield_plate", 1, 30.0, NEVER, {"stuff": &"steel", "keep": true}),
+		_o(&"turn", &"scrap", 1, 25.0, 120.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
 	t[PropKind.STUMP] = [_o(&"fell", &"timber", 1, 14.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 48.0, {"keep": true})]
 	return t

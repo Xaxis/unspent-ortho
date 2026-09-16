@@ -82,6 +82,23 @@ const LIST: Array[Dictionary] = [
 	{"id": &"kit_lens", "at": &"bench", "minutes": 70.0, "needs": {&"scrap": 1, &"tin": 1, &"resin": 1}, "makes": {&"kit_lens": 1}},
 	{"id": &"kit_aerial", "at": &"bench", "minutes": 55.0, "needs": {&"scrap": 2, &"tin": 2}, "makes": {&"kit_aerial": 1}},
 
+	# --- Gear against a place's pressures (docs/VISION.md §6) ---
+	# Made: rags off what people left, packed with dried wrack and sealed with pitch.
+	{"id": &"scarf_mask", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"charcoal": 1}, "makes": {&"scarf_mask": 1}, "tool": &"cut"},
+	{"id": &"mod_wadding", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"wrack": 2}, "makes": {&"mod_wadding": 1}, "tool": &"cut"},
+	{"id": &"mod_filter", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 1, &"charcoal": 2}, "makes": {&"mod_filter": 1}, "tool": &"cut"},
+	{"id": &"wrap_warm", "at": &"bench", "minutes": 45.0, "needs": {&"rag": 3, &"wrack": 2, &"pitch": 1}, "makes": {&"wrap_warm": 1}},
+	{"id": &"oilskin", "at": &"bench", "minutes": 40.0, "needs": {&"rag": 3, &"pitch": 2}, "makes": {&"oilskin": 1}},
+	{"id": &"hat_brim", "at": &"bench", "minutes": 35.0, "needs": {&"rag": 2, &"reeds": 3, &"pitch": 1}, "makes": {&"hat_brim": 1}},
+	# Mended: plate and wire off the machines, bound to a made frame. Both idioms show.
+	{"id": &"mod_foil", "at": &"bench", "minutes": 50.0, "needs": {&"scrap": 2, &"tin": 2}, "makes": {&"mod_foil": 1}},
+	{"id": &"mod_spring", "at": &"bench", "minutes": 60.0, "needs": {&"scrap": 2, &"iron": 1}, "makes": {&"mod_spring": 1}},
+	{"id": &"rebreather", "at": &"bench", "minutes": 80.0, "needs": {&"scrap": 2, &"tin": 1, &"charcoal": 2, &"rag": 2}, "makes": {&"rebreather": 1}},
+	{"id": &"boots_magnet", "at": &"bench", "minutes": 85.0, "needs": {&"scrap": 2, &"iron": 2, &"copper": 1}, "makes": {&"boots_magnet": 1}},
+	{"id": &"vest_heatsink", "at": &"bench", "minutes": 90.0, "needs": {&"scrap": 3, &"copper": 2, &"rag": 2}, "makes": {&"vest_heatsink": 1}},
+	{"id": &"scanner_lens", "at": &"bench", "minutes": 95.0, "needs": {&"scrap": 1, &"tin": 1, &"copper": 1, &"resin": 2}, "makes": {&"scanner_lens": 1}},
+	{"id": &"glide_wing", "at": &"bench", "minutes": 110.0, "needs": {&"scrap": 4, &"timber": 2, &"rag": 3, &"pitch": 1}, "makes": {&"glide_wing": 1}},
+
 	# --- Wheel and loom (inside houses, once there are interiors) ---
 	{"id": &"yarn", "at": &"wheel", "minutes": 50.0, "needs": {&"wool": 3}, "makes": {&"yarn": 1}},
 	{"id": &"blanket", "at": &"loom", "minutes": 140.0, "needs": {&"yarn": 4}, "makes": {&"blanket": 1}},

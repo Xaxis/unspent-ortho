@@ -37,6 +37,8 @@ extends RefCounted
 ## --taken             the --put props start already taken, laid in a row across the screen (their leavings show)
 ## --hold=SECONDS      survival and its drawing run on fixed 1/60 s frames and stop SECONDS
 ##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
+## --fit=ID[,ID...]    wear this gear at start, given if not carried: a piece goes in
+##                     its own slot, a module into the first slot it fits (hazards)
 ## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
 ##                     (MS = simulation time after the press; each has a default);
@@ -92,6 +94,7 @@ var build := ""
 var hold := -1.0
 var put: PackedStringArray = []
 var taken := false
+var fit: PackedStringArray = []
 var spawn: PackedStringArray = []
 var act := ""
 var screen := ""
@@ -155,6 +158,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"hold": o.hold = v.to_float()
 			"put": o.put = v.split(",", false)
 			"taken": o.taken = true
+			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
 			"act": o.act = v
 			"explore": o.explore = v.to_int()

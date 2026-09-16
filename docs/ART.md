@@ -267,3 +267,34 @@ landscape of ruler-straight FOUND wreckage and slumped ruin, the player's town i
   and perfect. A player should recognise the land in the tool.
 - **Mended is the default, and it must never look tidy.** FOUND parts bound with
   MADE cord, mismatched fixings, a hand-scratched mark where the maker checked it.
+
+## 12. MENDED: the third idiom
+
+Law 3 sets the hand against the ruler. **Mended** things are where they meet, and
+they are most of the high tech a person actually uses (VISION §6): FOUND parts a
+human cut down, drilled and bound to a MADE frame with cord, strap and pitch. A
+mended thing is never one material: **both idioms are in the silhouette at
+once**, and a frame must be able to tell you which half is which.
+
+- **The found half keeps its rules.** Panels and housings are `found.gdshader`:
+  exact, symmetric, chamfered, unhatched, straight-edged, in the violet PLATE
+  ramps, any working part amber. Cut edges are ruled, and a plate cut off a
+  bigger machine still carries the rivet rows it was cut through.
+- **The made half keeps its rules.** Spars, hafts, straps, lashings and patches
+  are `world.gdshader` with `Ink.HAND`: hatched, slightly crooked, in earth, sand
+  and linen washes. Where a cord crosses a panel it sits a little off true.
+- **The join is the drawing.** The reason to look at a mended thing is the seam:
+  lashing over a straight edge, a strap through a drilled hole, pitch at the foot
+  of a spar. Never hide the join; compose on it.
+- **Nothing hatched on the plate, nothing ruled on the cord.** If the two halves
+  share one material override, it is wrong.
+- **On the slate** a mended item's icon uses both palettes in one 9x9: the body
+  in machine violet, the binding and haft in phosphor (`UiIcons.colours_for`).
+  MADE items stay wholly phosphor, FOUND wholly violet.
+- The tier lives in the data: `Items` field `tier` = `made | mended | found`, read
+  through `Gear.is_mended`. The first mended things are the glide wing (drawn in
+  the world by `GlideWingModel`), the heat-sink vest, rebreather, magnet boots,
+  scanner lens, the spring coil and the foil lining.
+
+The slate is the same idiom at interface scale (§9, "two idioms in one object"):
+a stolen display in a patched bezel.

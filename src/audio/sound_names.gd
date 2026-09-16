@@ -39,6 +39,26 @@ const ALIAS := {
 	&"ask_fire": &"ui_move",
 	# fight: a taking with no mob found to say whose.
 	&"snatch": &"grip",
+	# hazards: the body answering a pressure, in sounds the world already has.
+	# A voice of its own for each (breath, a cough, a counter) is the audio
+	# package's to make; until then these read right and nothing is silent.
+	&"hazard_cold": &"snow_creak",
+	&"hazard_heat": &"heat_tick",
+	&"hazard_fumes": &"whiff",
+	&"hazard_em": &"relay_click",
+	&"hazard_wet": &"gutter_drip",
+	&"hazard_ring": &"wire_sing",
+	# The slate is what warns you a pressure has begun to bite.
+	&"hazard_warn": &"ui_slate_whine",
+	# gear: a spring coil, a wing of plate, a lens reading, a magnet line, a
+	# stolen signet answering their challenge in their own voice.
+	&"ability_dash": &"dodge",
+	&"ability_glide": &"scrape",
+	&"ability_land": &"dodge",
+	&"ability_scan": &"ui_slate_ping",
+	&"ability_grapple": &"grip",
+	&"ability_spoof": &"watcher_call",
+	&"ability_refused": &"ui_slate_deny",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
@@ -76,6 +96,10 @@ const EMITTED: Array[StringName] = [
 	# slate (src/ui, src/systems/90_ui.gd)
 	&"ui_slate_click", &"ui_slate_confirm", &"ui_slate_back", &"ui_slate_deny", &"ui_slate_wake",
 	&"ui_slate_sleep", &"ui_slate_switch", &"ui_slate_whine", &"ui_slate_ping",
+	# hazards and gear (52_hazards.gd, 54_gear.gd)
+	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
+	&"hazard_ring", &"hazard_warn", &"ability_dash", &"ability_glide", &"ability_land",
+	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
 ]
 
 ## Names that resolve to nothing on purpose (tests tell these from typos).

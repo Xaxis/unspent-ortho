@@ -50,6 +50,10 @@ static func hears(row: Dictionary, from: Vector2, target: Vector2, m: Moment) ->
 
 
 static func notices(row: Dictionary, from: Vector2, target: Vector2, m: Moment, world: WorldData, query: WorldQuery) -> bool:
+	# A spoofed signature is read as one of their own: a machine walks past and
+	# files nothing. Living things are not fooled by a stolen signet.
+	if m.spoofed and bool(row.get("machine", false)):
+		return false
 	return hears(row, from, target, m) or sees(row, from, target, m, world, query)
 
 

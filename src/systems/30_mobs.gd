@@ -102,6 +102,7 @@ func _read_moment() -> void:
 	moment.lamp_lit = game.body.lamp_lit
 	moment.filed = game.body.filed
 	moment.laden_tier = FightRules.laden_tier(game.body.load)
+	moment.spoofed = game.body.spoof_until > game.clock.minutes
 	moment.read_weather()
 
 

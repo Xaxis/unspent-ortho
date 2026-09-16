@@ -52,6 +52,15 @@ const SHAPES := {
 	&"lens": [".........", "..kkkkk..", ".k32223k.", "k32klk23k", "k2klllk2k", "k32klk23k", ".k32223k.", "..kkkkk..", "........."],
 	&"aerial": ["....k....", "...klk...", "....k....", "....k....", "...k3k...", "..k3w3k..", ".k32223k.", "kkkkkkkkk", "........."],
 	&"bundle": [".........", "...kkk...", "..k332k..", ".k3kkk2k.", ".k32221k.", ".k22211k.", "..kkkkk..", ".........", "........."],
+	# Gear against a place's pressures (the hazards package).
+	&"mask": [".kkkkkkk.", "k3333333k", "k32kkk23k", "k3k454k3k", "k3k555k3k", "k32k4k23k", ".k22221k.", "..kkkkk..", "........."],
+	&"hat": [".........", "...kkk...", "..k333k..", "..k332k..", ".kkkkkkk.", "k3333332k", "k2222221k", ".kkkkkkk.", "........."],
+	&"vest": [".kk...kk.", "k33kkk33k", "k3355533k", "k3355533k", "k3345433k", "k3355533k", "k2245422k", ".kkkkkkk.", "........."],
+	&"boot": ["..kkkk...", "..k33wk..", "..k332k..", "..k332k..", "..k3321kk", "..k32221k", ".kk5555kk", ".k44444k.", ".kkkkkk.."],
+	&"wing": ["kk.......", "k4kk.....", "k34wkk...", "k3344wkk.", "k333444wk", ".kkk333k.", "...kkkk..", ".........", "........."],
+	&"coil": [".........", "..kkkkk..", ".k33333k.", ".k2kkk2k.", ".k23332k.", ".k2kkk2k.", ".k23332k.", "..kkkkk..", "........."],
+	&"signet": [".........", ".kkkkkkk.", ".k33333k.", ".k3lll3k.", ".k33333k.", ".k2kkk2k.", ".k2k.k2k.", ".kkk.kkk.", "........."],
+	&"shield": [".kkkkkkk.", "k3333333k", "k33lll33k", "k3322233k", ".k22222k.", ".k22221k.", "..k111k..", "...kkk...", "........."],
 }
 
 ## id -> [shape, body ramp, second ramp]
@@ -131,6 +140,22 @@ const ITEMS := {
 	&"wick": [&"dram", &"found", &"lens"],
 	&"photograph": [&"paper", &"linen", &"linen"],
 	&"letter": [&"paper", &"linen", &"linen"],
+	&"rag": [&"cloth", &"linen", &"linen"],
+	&"wrap_warm": [&"cloth", &"rust", &"rust"],
+	&"oilskin": [&"cloth", &"spruce", &"spruce"],
+	&"scarf_mask": [&"mask", &"linen", &"ash"],
+	&"hat_brim": [&"hat", &"sand", &"earth"],
+	&"vest_heatsink": [&"vest", &"plate", &"copper"],
+	&"rebreather": [&"mask", &"plate", &"linen"],
+	&"boots_magnet": [&"boot", &"plate", &"earth"],
+	&"glide_wing": [&"wing", &"plate", &"sand"],
+	&"scanner_lens": [&"lens", &"plate", &"lens"],
+	&"shield_plate": [&"shield", &"found", &"lens"],
+	&"mod_wadding": [&"sack", &"linen", &"linen"],
+	&"mod_filter": [&"flask", &"ink", &"ash"],
+	&"mod_foil": [&"cloth", &"plate", &"plate"],
+	&"mod_spring": [&"coil", &"plate", &"earth"],
+	&"mod_signet": [&"signet", &"found", &"lens"],
 }
 
 ## Stations at list size, same rules as SHAPES.
@@ -231,6 +256,13 @@ static func tones_for(id: StringName) -> Array[Color]:
 ## dimmest tone that still reads, the body stepping up to bright, the second
 ## part (a haft, a filling) a step under it, and a working part the hottest.
 static func colours_for(id: StringName) -> Dictionary:
+	# A mended thing is FOUND parts bound with MADE cord, and the slate draws both
+	# idioms at once (docs/ART.md §10): the body in the stolen module's violet,
+	# the binding, haft and cord in phosphor.
+	if Gear.is_mended(id):
+		var m := UiTheme.MACHINE
+		var p := UiTheme.PHOSPHOR
+		return {"k": m[1], "1": m[2], "2": m[3], "3": m[3], "w": m[4], "4": p[2], "5": p[2], "6": p[3], "l": m[4]}
 	var t := tones_for(id)
 	return {"k": t[1], "1": t[2], "2": t[3], "3": t[3], "w": t[4], "4": t[2], "5": t[2], "6": t[3], "l": t[4]}
 

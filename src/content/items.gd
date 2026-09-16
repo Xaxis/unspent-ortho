@@ -20,6 +20,14 @@ class_name Items
 ##   kit: StringName       wearable salvage slot (one worn at a time)
 ##   creel: float          extra load carried without slowing (worn kit, or carried basket)
 ##   health: int, wind: float, sight: float, hearing: float   what a worn kit adds
+##
+## Gear and modules (the hazards package; src/core/gear/gear.gd reads these):
+##   slot: StringName      head body hands back tool craft: a piece worn there
+##   sockets: int          modules the piece takes
+##   module: true          it is a module; `fits` lists the slots it may sit in
+##   resist: {hazard: 0..1}  pressures it keeps off (src/core/hazards/hazards.gd)
+##   ability: StringName   the ability it grants while fitted (src/core/gear/abilities.gd)
+##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §10)
 
 ## Hardness ladder: a seam needs a tool of at least its stuff.
 const STUFF_RANK := {&"wood": 0, &"iron": 1, &"steel": 2, &"crucible": 3, &"found": 4}
@@ -116,6 +124,8 @@ const DEFS := {
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
+	# Cloth out of what people left: the one soft material a made garment needs.
+	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
 
 	# --- Food ---
 	&"mussels": {"name": "mussels", "bulk": 0.5, "group": &"food", "feeds": 4.0},
@@ -143,6 +153,45 @@ const DEFS := {
 	&"kit_rig": {"name": "rig", "bulk": 2.0, "group": &"kit", "kit": &"rig", "creel": 20.0},
 	&"kit_lens": {"name": "lens", "bulk": 1.0, "group": &"kit", "kit": &"lens", "sight": 3.0},
 	&"kit_aerial": {"name": "aerial", "bulk": 1.0, "group": &"kit", "kit": &"aerial", "hearing": 4.0},
+
+	# --- Gear against the pressures of a place (docs/VISION.md §6) -----------------
+	# MADE: cloth, reed and pitch, mended by the hand that made it. Cheap, and it
+	# takes the edge off one thing each.
+	&"wrap_warm": {"name": "warm wrap", "bulk": 2.0, "group": &"kit", "tier": &"made",
+		"slot": &"body", "sockets": 1, "resist": {&"cold": 0.35}},
+	&"oilskin": {"name": "oilskin", "bulk": 2.0, "group": &"kit", "tier": &"made",
+		"slot": &"body", "sockets": 1, "resist": {&"wet": 0.55, &"cold": 0.1}},
+	&"scarf_mask": {"name": "scarf-mask", "bulk": 1.0, "group": &"kit", "tier": &"made",
+		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.35, &"toxins": 0.2}},
+	&"hat_brim": {"name": "brimmed hat", "bulk": 1.0, "group": &"kit", "tier": &"made",
+		"slot": &"head", "sockets": 1, "resist": {&"heat": 0.3, &"wet": 0.15}},
+	# MENDED: machine parts bound to a made frame with cord. Most of the high tech
+	# a person uses, and where the abilities come from.
+	&"vest_heatsink": {"name": "heat-sink vest", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"body", "sockets": 2, "resist": {&"heat": 0.6, &"fumes": 0.2}},
+	&"rebreather": {"name": "rebreather", "bulk": 2.0, "group": &"kit", "tier": &"mended",
+		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.7, &"toxins": 0.55}},
+	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"hands", "sockets": 1, "resist": {&"em": 0.4, &"resonance": 0.25}, "ability": &"grapple"},
+	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
+		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide"},
+	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
+		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5}, "ability": &"scan"},
+	# FOUND: taken whole off the machines' works, never mended.
+	&"shield_plate": {"name": "shield plate", "bulk": 3.0, "group": &"found", "tier": &"found", "stuff": &"found",
+		"slot": &"back", "sockets": 0, "resist": {&"radiation": 0.6, &"heat": 0.35, &"em": 0.3}},
+
+	# --- Modules, which socket into gear -------------------------------------------
+	&"mod_wadding": {"name": "wadding", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"head", &"body", &"hands"], "resist": {&"cold": 0.2}},
+	&"mod_filter": {"name": "char filter", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"head"], "resist": {&"fumes": 0.3, &"toxins": 0.2}},
+	&"mod_foil": {"name": "foil lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"fits": [&"body", &"back"], "resist": {&"radiation": 0.3, &"em": 0.2}},
+	&"mod_spring": {"name": "spring coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"fits": [&"body", &"hands", &"back"], "resist": {}, "ability": &"dash"},
+	&"mod_signet": {"name": "signet", "bulk": 0.5, "group": &"found", "tier": &"found", "stuff": &"found", "module": true,
+		"fits": [&"head", &"body", &"back"], "resist": {&"em": 0.15}, "ability": &"spoof"},
 }
 
 
