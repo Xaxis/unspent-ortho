@@ -58,10 +58,16 @@ weather dry_storm:1
 wait 1.0
 shot 08-bonelands-dry-storm
 await strike 60
-wait 0.12
-shot 09-bonelands-strike
-wait 0.3
-shot 10-bonelands-afterglow-rolls
+wait 0.35
+shot 09-bonelands-afterglow-rolls
+# The drawn bolt lives four frames: too quick to be sure of catching by waiting
+# for one, and a tour that only sometimes has a bolt in its picture proves
+# nothing. So the still that must show one asks the sky to hold it — the same
+# held moment a shot gets (10_sky HELD_STRIKE), the cloud at its brightest with
+# the machines' power back up between two of its dips.
+weather dry_storm:1:bolt
+wait 0.5
+shot 10-bonelands-bolt-held
 # Hard white glare on the same stone at noon.
 hour 12.5
 weather glare:1

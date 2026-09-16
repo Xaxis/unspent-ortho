@@ -130,6 +130,39 @@ func test_a_drawn_strike_lands_on_the_page() -> void:
 	Weather.unforce()
 
 
+func test_a_held_bolt_asked_for_mid_play_is_struck_and_not_only_flagged() -> void:
+	# A tour asks for a held bolt with `weather dry_storm:1:bolt` in the middle of
+	# a game. Setting the flag alone holds the sky at the brightest moment of a
+	# strike with no lightning drawn anywhere in it, which is a still of nothing.
+	var o := BootOptions.new()
+	o.size = 96
+	o.hour = 20.2
+	o.weather = "clear:0"
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	await frames(6)
+	var sky_sys: Node = null
+	for s in g.systems:
+		if s.get_script() == SkySystem:
+			sky_sys = s
+	check(sky_sys != null, "sky system loaded")
+	eq(sky_sys.strikes, 0, "a clear sky throws none")
+	check(bool(sky_sys.call("apply_weather", "dry_storm:1:bolt")), "the storm is forced")
+	await frames(6)
+	eq(sky_sys.strikes, 1, "and a bolt is struck for the still")
+	check((sky_sys.view as WeatherView).bolt.visible, "drawn, and held while the hold lasts")
+	gt(g.sky.bolt.z, 0.1, "the cloud carries its afterglow")
+	gt(g.sky.bolt.w, 0.9, "and the machines are lit in the same frame")
+	# Asking again for the same held sky does not throw a second bolt.
+	check(bool(sky_sys.call("apply_weather", "dry_storm:1:bolt")), "asked again")
+	await frames(3)
+	eq(sky_sys.strikes, 1, "one held bolt, however often it is asked for")
+	g.queue_free()
+	await frames(1)
+	Weather.unforce()
+
+
 func test_every_machine_light_shader_runs_on_machine_power() -> void:
 	for path: String in ["res://src/render/found.gdshader", "res://src/models/machines/part_glow.gdshader"]:
 		var code := FileAccess.get_file_as_string(path)

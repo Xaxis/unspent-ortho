@@ -133,7 +133,16 @@ func apply_weather(spec: String) -> bool:
 		return false
 	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0)
 	_forced_any = true
-	_forced_bolt = parts.size() > 2 and parts[2] == "bolt"
+	var hold := parts.size() > 2 and parts[2] == "bolt"
+	# A held bolt asked for while the game runs has to be STRUCK, not only
+	# flagged: setup strikes one so a shot has lightning in it, and a tour asking
+	# for one mid-play must get the same picture instead of an empty sky held at
+	# the bright moment. A drawn bolt lives four frames, so waiting for a real
+	# one to be caught by a shot is chance.
+	var fire := hold and not _forced_bolt and view != null
+	_forced_bolt = hold
+	if fire:
+		_strike(1.0, 0, true)
 	return true
 
 
