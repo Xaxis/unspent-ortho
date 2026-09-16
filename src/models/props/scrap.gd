@@ -13,7 +13,12 @@ const P := preload("res://src/render/palette.gd")
 const Trees := preload("res://src/models/props/trees.gd")
 
 const RUSTED := Color(0.4314, 0.2000, 0.1255)
-const FILING := Color(0.1843, 0.2118, 0.2745)
+## Iron dust, near black with a blue sheen. It was a step lighter and sat within
+## three luminance steps of the wood's own floor once that floor was given the
+## colour it should always have had, so a cone of filings read as a smudge. A
+## heap is the darkest mass in this wood; the shards and the combing on it are
+## the only bright things, which is what makes it read as HELD UP.
+const FILING := Color(0.1176, 0.1333, 0.1804)
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
@@ -81,15 +86,22 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# A stay from the mast head out to the cage foot, clear of the crown.
 	k.rod(top0, Vector3(cos(ma + 2.4) * 0.5, h * 0.12, sin(ma + 2.4) * 0.5), 0.022, 4, P.PLATE[2])
 	# The plate caught in the fork, lying ON the crown where the light finds it.
+	# This is the ONE thing that says "a tree closed over a frame" at the zoom a
+	# player actually walks at: at zoom 12 a crown is about twenty pixels across,
+	# so a plate at 0.58 of a tile covered four of them in the crown's own dark
+	# and the wood read as ordinary broadleaf (playtest 6, and the review after
+	# it). Half again as wide, lifted clear of the leaves, and a step up the
+	# ramp, so it is a hard bright quadrilateral over a soft dark blob — which is
+	# Law 3 twice over and the only shape in the game that makes it.
 	var fa := ma + 1.3
 	var fx := lean.x * h * 0.85
 	var fz := lean.y * h * 0.85
-	var fy := h * 1.06
-	k.plate(Vector3(fx + cos(fa) * 0.58, fy, fz + sin(fa) * 0.58),
-		Vector3(fx + cos(fa + 1.5) * 0.62, fy + 0.09, fz + sin(fa + 1.5) * 0.62),
-		Vector3(fx + cos(fa + 2.7) * 0.54, fy + 0.17, fz + sin(fa + 2.7) * 0.54),
-		Vector3(fx + cos(fa + 4.3) * 0.48, fy + 0.07, fz + sin(fa + 4.3) * 0.48),
-		P.PLATE[3], P.PLATE[2], P.PLATE[4])
+	var fy := h * 1.12
+	k.plate(Vector3(fx + cos(fa) * 0.88, fy, fz + sin(fa) * 0.88),
+		Vector3(fx + cos(fa + 1.5) * 0.94, fy + 0.13, fz + sin(fa + 1.5) * 0.94),
+		Vector3(fx + cos(fa + 2.7) * 0.82, fy + 0.24, fz + sin(fa + 2.7) * 0.82),
+		Vector3(fx + cos(fa + 4.3) * 0.72, fy + 0.1, fz + sin(fa + 4.3) * 0.72),
+		P.PLATE[4], P.PLATE[3], P.PLATE[5])
 	# The trunk, swelling where it grew round the frame.
 	var mid := Vector3(lean.x * h * 0.5, h * 0.5, lean.y * h * 0.5)
 	k.limb(Vector3.ZERO, mid, 0.19, 0.13, 7, bark)
@@ -129,14 +141,18 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 static func heap(k: Kit, v: int) -> void:
 	var s := 660 + v * 19
 	var r := 0.52 + v * 0.16
-	var h := 0.60 + v * 0.18
-	k.stone(0, 0, 0, r, h, s, FILING, 7, 0.18, Kit.tone(FILING, 1.25))
-	# The cone is combed: the filings lie along the field, not at random.
+	# Taller than it is wide, because a cone of dust that stands up on its own is
+	# the whole point and a low one reads as something tipped out of a barrow.
+	var h := 0.76 + v * 0.22
+	# A lit top on a near-black body, so the cone reads AS a cone from above and
+	# not as a hole cut in the floor.
+	k.stone(0, 0, 0, r, h, s, FILING, 7, 0.18, Kit.tone(FILING, 1.9))
+	# The cone is combed too: the filings lie along the field, not at random.
 	for i in 9:
 		var a := float(i) / 9.0 * TAU
 		var foot := Vector3(cos(a) * r * 1.02, 0.015, sin(a) * r * 1.02)
 		k.fleck(foot, foot * 0.2 + Vector3(0, h * 1.0, 0), foot * 0.3 + Vector3(0.03, h * 0.86, 0.02),
-			P.RUST[2] if i % 3 == 0 else Kit.tone(FILING, 1.4))
+			P.RUST[2] if i % 3 == 0 else Kit.tone(FILING, 1.5))
 	# Shards standing on end, drawn up by the same pull: exact, because a
 	# machine cut them and the field only stood them up. They lean OUT along the
 	# lines of the field, so the camera — which is over this, not beside it —
@@ -154,13 +170,23 @@ static func heap(k: Kit, v: int) -> void:
 	# in fine lines, which from above is the one mark nothing else in the wood
 	# makes. It reaches past the cone, so the shape on the page is wider than the
 	# heap and reads as a pull rather than a pile.
-	for i in 12:
-		var a := float(i) / 12.0 * TAU + Kit.j(s, 60 + i, 0.22)
-		var near := Vector3(cos(a) * r * 1.15, 0.012, sin(a) * r * 1.15)
-		var far := near * (1.7 + absf(Kit.j(s, 70 + i, 0.5)))
+	#
+	# They lie along the FIELD, not out from the heap: a ring of them at even
+	# spacing is a starburst, which is a firework and not a magnet. So the lines
+	# fan about one axis, two lobes of them, the way filings lie on a page over a
+	# bar. Twice as many as before and a step off the floor rather than a step
+	# off the heap, because at 1.15 of the filing colour they were a few flecks
+	# lost in the ground and the comb is the whole tell.
+	var fd := Kit.j(s, 90, 3.14)
+	for i in 22:
+		var lobe := 1.0 if i % 2 == 0 else -1.0
+		var spread := (float(i / 2) / 10.0 - 0.5) * 1.7 + Kit.j(s, 60 + i, 0.16)
+		var a := fd + spread * lobe + (0.0 if lobe > 0.0 else PI)
+		var near := Vector3(cos(a) * r * 1.05, 0.012, sin(a) * r * 1.05)
+		var far := near * (1.9 + absf(Kit.j(s, 70 + i, 0.8)))
 		far.y = 0.012
-		k.fleck(near, far, far + Vector3(0.035, 0.0, 0.035),
-			P.RUST[2] if i % 4 == 0 else Kit.tone(FILING, 1.15))
+		k.fleck(near, far, far + Vector3(0.045, 0.0, 0.045),
+			P.RUST[2] if i % 5 == 0 else Kit.tone(FILING, 1.85))
 	# Where the pull came from: the corner of the frame itself, standing out of
 	# the filings beside the heap with a stub of its own reaching up.
 	var corner := Vector3(r * 1.25, 0.0, -r * 0.9)

@@ -48,8 +48,20 @@ static func make() -> BiomeDef:
 	d.reach_out_thin = 0.35
 	d.reach_in_thin = 0.4
 	d.hatch = Ink.CRACK
+	# Everything the flat can show, named here. A ground left out of this table
+	# falls through to the shared one, which is not scaled by TONE and so comes
+	# in 1.5x brighter than everything around it — and PAN, which is 8% of the
+	# landscape and the thing the machines built the whole place for, was falling
+	# through. Its own bank, pool rim and village ground drew in another
+	# landscape's colour.
 	d.grounds = {
 		Ground.SALT: _w(P.LINEN[5].lerp(P.SAND[5], 0.2)),
+		# A pan the brine drew back from: mineral silt, damp and stained, a clear
+		# step under the crust so the bunded rectangles read AS rectangles from
+		# above — but still pale, because it is a dry floor and not mud, and
+		# because it is 8% of this landscape and the flat has to stay the
+		# brightest ground in the game.
+		Ground.PAN: _w(P.LINEN[4].lerp(P.STONE[4], 0.3).lerp(P.RUST[2], 0.1)),
 		Ground.ROAD: _w(P.LINEN[3].lerp(P.SAND[3], 0.4)),
 		Ground.SAND: _w(P.LINEN[4].lerp(P.SAND[4], 0.5)),
 		Ground.SHINGLE: _w(P.LINEN[3].lerp(P.STONE[3], 0.4)),
@@ -59,6 +71,19 @@ static func make() -> BiomeDef:
 		Ground.HEATH: _w(P.SAND[3].lerp(P.EARTH[3], 0.4)),
 		Ground.ROCK: _w(P.LINEN[3].lerp(P.STONE[2], 0.3)),
 		Ground.SCREE: _w(P.LINEN[2].lerp(P.STONE[3], 0.4)),
+		# Bleed over a border: nothing green keeps its colour out here.
+		Ground.MOSS: _w(P.MOSS[2].lerp(P.LINEN[3], 0.45)),
+		Ground.NEEDLES: _w(P.EARTH[2].lerp(P.LINEN[3], 0.4)),
+		Ground.MUD: _w(P.EARTH[2].lerp(P.LINEN[2], 0.35)),
+		Ground.PEAT: _w(P.EARTH[1].lerp(P.LINEN[2], 0.3)),
+		Ground.SWARF: _w(P.LINEN[2].lerp(P.SLATE[2], 0.3).lerp(P.RUST[1], 0.18)),
+		Ground.BONE: _w(P.LINEN[4].lerp(P.STONE[4], 0.2)),
+		Ground.LIMESTONE: _w(P.LINEN[4].lerp(P.STONE[4], 0.2)),
+		# Frost on the crust before dawn. The shared snow is the page itself and
+		# on the one landscape with no headroom left it would be the brightest
+		# thing in the frame by seventy-five steps.
+		Ground.SNOW: _w(P.RIME[4].lerp(P.LINEN[4], 0.5)),
+		Ground.ICE: _w(P.RIME[3].lerp(P.SLATE[3], 0.3)),
 	}
 	d.cliff_wash = _w(P.LINEN[4].lerp(P.SAND[4], 0.3))
 	d.strata = GroundColors.STRATA_SALT
@@ -99,6 +124,17 @@ static func make() -> BiomeDef:
 	# is now the largest lift in the registry, and an average with any neighbour
 	# can only bring it DOWN. The washes are the same drawing as before, taken
 	# down by TONE to pay for it.
+	#
+	# The review asked whether this could go up another step, because the flat had
+	# stopped being the brightest ground in the game and that is the one thing its
+	# own file claims. It cannot, and the tests say so before a shot does: -0.66
+	# fails BOTH `tests/biome/test_registry.gd` (the sky's own clamp stops at
+	# -0.6) and `tests/biome/test_salt_headroom.gd` (SALT_TOP under the worst
+	# pairing reaches 1.015, and a rim at the page is a white line with nothing in
+	# it). The lift is already at its ceiling. The only lever left is TONE and its
+	# mirror SALT_TOP, which lives in another package's shader — and the crust
+	# already measures 194.7 against the snowfield's 191.6, so it may not be
+	# needed at all. Left for whoever owns that seam.
 	d.grade = Vector4(-0.58, 0.08, -0.06, 0.2)
 	# A warm cast taken out of the blue rather than added to the red: a light
 	# tint over 1 is one more gain on a landscape with no headroom left.
