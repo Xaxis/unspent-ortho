@@ -31,10 +31,14 @@ const LEVELS: Array[StringName] = [&"calm", &"wary", &"hostile", &"hunted"]
 const THRESHOLDS: Array[float] = [0.0, 0.26, 0.56, 0.84]
 
 ## It falls this much per world hour with the player somewhere in the region
-## and nothing happening.
-const DECAY_PER_HOUR := 0.05
-## Out of sight (crouched in cover, or unseen for a while) it forgets faster;
-## with a spoofed signature the whole file is read as one of their own.
+## and nothing happening. The machines are barely functioning and their memory
+## is short: a file the player walks away from goes cold in minutes, because a
+## region that can never be left is a wall, not a gap to live in.
+const DECAY_PER_HOUR := 0.09
+## Nothing has the player any more: the file has nothing to feed on and cools
+## faster. Down in cover with it, faster still; and with a spoofed signature
+## the whole file is read as one of their own.
+const UNSEEN_DECAY := 1.5
 const HIDDEN_DECAY := 1.9
 const SPOOF_DECAY := 3.2
 ## Far from where it last rose (or out of the region), it cools at full rate;
@@ -103,13 +107,17 @@ func raise(net: int, cause: StringName, at: Vector2, minutes: float) -> float:
 ## Time passing. `hours` world hours; `hidden` the player is in cover and
 ## unseen; `spoofed` their signature reads as one of the machines' own;
 ## `player_net` and `at` where they are (a network cools at full rate once they
-## are far from the scene, or out of the region).
-func decay(hours: float, hidden: bool, spoofed: bool, player_net: int, at: Vector2) -> void:
+## are far from the scene, or out of the region); `unseen` nothing on the coast
+## has them, which is the relief a player who has fought off what was sent
+## after them can reach by breaking contact.
+func decay(hours: float, hidden: bool, spoofed: bool, player_net: int, at: Vector2, unseen: bool = false) -> void:
 	if hours <= 0.0:
 		return
 	var scale := 1.0
 	if hidden:
 		scale *= HIDDEN_DECAY
+	elif unseen:
+		scale *= UNSEEN_DECAY
 	if spoofed:
 		scale *= SPOOF_DECAY
 	for net: int in levels.keys():

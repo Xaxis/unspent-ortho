@@ -114,7 +114,7 @@ static func _sweeping(m: MobState, sim: FightSim) -> bool:
 
 
 static func _idle(m: MobState, sim: FightSim) -> void:
-	if m.machine and m.indifferent():
+	if m.machine and m.at_work():
 		if FightSim.in_way_of(m, sim.hero.pos, sim.hero.radius):
 			# Held up by someone right in front of it: it stands and faces them. A
 			# glance does not stop or turn it; only being in its way does.

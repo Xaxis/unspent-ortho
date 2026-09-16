@@ -52,21 +52,32 @@ func test_taking_a_workers_parts_turns_it_and_nothing_else_does() -> void:
 
 
 func test_a_keeper_holds_its_site_and_its_hours() -> void:
+	# A warden is born wary and never occupies any other state in play: the test
+	# must turn the one the game makes, not a hand-set indifferent one.
 	for cause: StringName in [&"trespass", &"curfew"]:
 		var sim := F.make_sim()
 		var k := F.still(sim, &"warden", Vector2(24.5, 20.5), PI)
-		k.disposition = &"indifferent"
+		eq(k.disposition, &"wary", "as it comes out of the roster")
 		sim.disturb(k, cause)
 		check(k.disturbed, "a keeper turns on %s" % cause)
+		eq(k.disturbed_by, cause)
+	var sim2 := F.make_sim()
+	var k2 := F.still(sim2, &"warden", Vector2(24.5, 20.5), PI)
+	sim2.disturb(k2, &"downed")
+	check(not k2.disturbed, "and a body lying hurt is a recycler's business, not a keeper's")
 
 
 func test_a_watcher_never_fights_whatever_is_done_to_it() -> void:
 	var sim := F.make_sim()
 	var w := F.still(sim, &"watcher", Vector2(24.5, 20.5), PI)
-	w.disposition = &"indifferent"
+	eq(w.disposition, &"observant", "as it comes out of the roster")
 	for cause: StringName in [&"theft", &"damaged", &"blocked", &"trespass"]:
 		sim.disturb(w, cause)
 	check(not w.disturbed, "it files; it does not turn")
+	# Struck, it still stops and deals with it: it is the turning that it has no
+	# part in, not noticing that it was hit.
+	sim.disturb(w, &"damaged")
+	near(w.suspicion, 1.0, 1e-5, "a blow is not something it can be unsure about")
 
 
 func test_a_noise_out_of_sight_turns_a_machines_optics_and_fills_its_suspicion() -> void:
@@ -157,7 +168,7 @@ func test_a_worker_reads_its_own_cone_and_a_player_behind_it_is_not_seen() -> vo
 	gt(h.suspicion, 0.0, "turned round, it sees them")
 
 
-func test_a_worker_a_region_has_turned_wary_stops_working_and_comes() -> void:
+func test_a_worker_a_region_has_turned_hostile_stops_working_and_comes() -> void:
 	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
 	var h := F.still(sim, &"harvester", Vector2(26.5, 20.5), PI)
 	h.calm_until = 0.0
@@ -166,6 +177,58 @@ func test_a_worker_a_region_has_turned_wary_stops_working_and_comes() -> void:
 	# The region heats: the disposition system writes what the network thinks.
 	h.disposition = Disposition.of(h.role, 2)
 	eq(h.disposition, &"hostile", "a region at hostile: the harvest comes for you too")
-	check(not h.indifferent(), "it is not at its work any more")
+	check(not h.at_work(), "it is not at its work any more")
 	F.ms(sim, 400)
 	check(h.roused() or h.mood == MobState.ALERTED, "and it comes for the player it was walking past")
+
+
+## The middle rung of the ladder has to be a different thing to meet, or the
+## coast is binary: ignored below 0.26, hunted above it. At wary a worker keeps
+## its round and its distance, and looks up again and again while it does.
+func test_a_wary_worker_looks_up_far_more_often_than_a_calm_one() -> void:
+	var counts: Array[int] = []
+	for lvl: int in [0, 1]:
+		var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+		var h := F.still(sim, &"harvester", Vector2(26.5, 20.5), PI)
+		h.calm_until = 0.0
+		h.disposition = Disposition.of(h.role, lvl)
+		F.ms(sim, 4000)
+		counts.append(F.count(sim.drain(), &"noticed"))
+		check(not h.roused() and h.mood != MobState.ALERTED,
+			"neither leaves its work for someone keeping their distance (level %d)" % lvl)
+	eq(counts[0], 1, "a calm worker glances once and gets on with it")
+	gt(counts[1], counts[0], "a wary one keeps looking up")
+
+
+func test_a_wary_worker_lets_nobody_inside_its_guard_and_soon_forgets_them() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+	var h := F.still(sim, &"harvester", Vector2(26.5, 20.5), PI)
+	h.calm_until = 0.0
+	h.disposition = &"wary"
+	check(h.watchful() and h.at_work(), "wary, and still on its round")
+	F.ms(sim, 600)
+	check(not h.roused() and h.mood != MobState.ALERTED, "six tiles off it holds its work")
+	sim.hero.pos = h.pos + Vector2(-3.0, 0.0)
+	F.ms(sim, 400)
+	check(h.roused() or h.mood == MobState.ALERTED, "three tiles off it does not")
+	# And a body that never went hunting in the first place settles back sooner
+	# than a hunter would: the middle rung is a step, not a one-way door.
+	sim.hero.pos = h.pos - Vector2(18.0, 0.0)
+	sim.moment.loudness = 0.0
+	F.ms(sim, 1600)
+	check(not h.roused() and h.mood != MobState.ALERTED, "lost, it goes back to its round")
+	gt(float(h.stat("forget", 20)) * FightRules.BEAT_MS, 1600.0, "sooner than a hunter's patience would have run out")
+
+
+func test_a_wary_bodys_working_part_never_settles() -> void:
+	# Far off over the land: nothing to see, nothing to hear, nothing happening.
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 20.5))
+	var h := F.still(sim, &"harvester", Vector2(50.5, 20.5), PI)
+	h.calm_until = 0.0
+	sim.moment.loudness = 0.0
+	F.ms(sim, 4000)
+	eq(h.suspicion, 0.0, "a calm worker with nothing about it is drawn still")
+	h.disposition = &"wary"
+	F.ms(sim, 400)
+	near(h.suspicion, FightSim.WARY_FLOOR, 1e-5, "a wary one goes on catching, with nothing to catch")
+	lt(h.suspicion, 1.0, "but it is never sure of nothing")

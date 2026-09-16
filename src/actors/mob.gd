@@ -97,8 +97,9 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	if int(hunting) != _hunting:
 		_hunting = int(hunting)
 		model.set_hunting(hunting)
-	# A worker going about its round is not a threat to hush the notebook for.
-	hostile = bool(s.row.get("hostile", true)) and not (s.indifferent() and not s.roused())
+	# A body still at its round is not a threat to hush the notebook for, whether
+	# it is working calmly or watching the player hard (MobState.at_work).
+	hostile = bool(s.row.get("hostile", true)) and not (s.at_work() and not s.roused())
 	var ground := _world.height_at(s.pos)
 	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)

@@ -136,17 +136,17 @@ static func _build() -> Dictionary:
 	# The machines' own works are made of the best parts on the coast, and they
 	# are not abandoned: taking from one is theft, and the plan's network files
 	# it (Interference). The thing is left standing, opened and short a part.
-	for k: int in [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR, PropKind.PIPE,
-			PropKind.INTAKE, PropKind.CHECKPOINT]:
+	for k: int in PLAN_WORKS:
 		t[k] = [_o(&"turn", &"scrap", 1, 12.0, 96.0, {"keep": true, "uses": 2})]
 	return t
 
 
-## The works of the plan: what a machine would take it amiss to be robbed of
-## (VISION §2, "take its parts"). Used by the disposition package.
+## The works of the plan: what a machine takes it amiss to be robbed of
+## (VISION §2, "take its parts"). Every one of them is robbable by hand above,
+## so the disposition package can file the theft of any of them; a work with no
+## take option is not on this list, because nothing could ever steal from it.
 const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
-	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.PUMP_HOUSE,
-	PropKind.DRILL_RIG, PropKind.STACK, PropKind.PYLON, PropKind.VENT_CAP]
+	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT]
 
 
 static func is_plan_work(kind: int) -> bool:

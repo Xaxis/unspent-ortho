@@ -11,6 +11,7 @@ const KEYS := [
 	["wasd", "walk"],
 	["shift", "run, tap to dodge"],
 	["k", "dodge"],
+	["ctrl  q", "crouch"],
 	["space  j", "swing, or pull free"],
 	["e", "use what is in reach"],
 	["f", "lamp"],

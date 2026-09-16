@@ -101,6 +101,12 @@ var heard_at := Vector2.ZERO
 var look_until := -INF
 ## Why it turned on the player, for the interference the network files.
 var disturbed_by: StringName = &""
+## The network has already been told what this body took amiss (once only).
+var turn_filed := false
+## The network sent this body after the player. It is not news to the network
+## that sent it when it does not come back: a player who fights off what was
+## dispatched must be able to cool the region by breaking contact.
+var sent := false
 ## An indifferent body the player has disturbed (struck it, stood in its way):
 ## it is hostile until it loses them.
 var disturbed := false
@@ -222,7 +228,7 @@ func spent(now: float) -> bool:
 func turn_rate_at(now: float) -> float:
 	if not machine:
 		return turn_rate
-	if indifferent() and crowded_since >= 0.0:
+	if at_work() and crowded_since >= 0.0:
 		# A worker held up, looking round at what is in its way: unhurried, not a turret.
 		return minf(turn_rate, FightRules.PAUSE_TURN)
 	if blow_phase(now) == &"cooldown":
@@ -250,6 +256,19 @@ func path_dir() -> Vector2:
 ## Works on whatever the player does, until disturbed.
 func indifferent() -> bool:
 	return disposition == &"indifferent" and not disturbed
+
+
+## The middle rung (VISION §2): it keeps to its work and will not leave it for
+## someone keeping their distance, but it looks up constantly, its working part
+## never settles, and it lets nobody inside its guard. A keeper is born here;
+## a worker is raised to it by the interference of its region.
+func watchful() -> bool:
+	return Disposition.watchful(disposition) and not disturbed
+
+
+## At its work, whatever it makes of the player: it has not left its round.
+func at_work() -> bool:
+	return indifferent() or watchful()
 
 
 func mob_iframes() -> int:

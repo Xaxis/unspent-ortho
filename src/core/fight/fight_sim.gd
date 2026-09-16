@@ -43,6 +43,16 @@ const SUSPICION_FADE := 0.05
 const HIDDEN_COVER := 0.15
 ## How long a body keeps its optics on the last noise (sim ms).
 const LOOK_MS := 3500.0
+## The middle rung (Disposition.BY_LEVEL): a wary body keeps to its work, but
+## it looks up this share as long after the last look (four times as often), its
+## suspicion never settles below WARY_FLOOR so its working part never stops
+## catching, it leaves its work only for someone who comes inside this share of
+## what it can see, and it gives up on a player it has lost in this share of
+## the beats a hunter would wait.
+const WARY_GLANCE := 0.22
+const WARY_FLOOR := 0.3
+const WARY_INSIDE := 0.45
+const WARY_FORGET := 0.5
 
 var world: WorldData
 var query: WorldQuery
@@ -238,8 +248,8 @@ func _beat() -> void:
 			continue
 		# A body at its work reads only what its own optics cover (StealthQuery's
 		# cone); one that already has the player keeps track of them all round.
-		var at_work := m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING)
-		var look := m.facing if at_work else NAN
+		var on_round := m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING)
+		var look := m.facing if on_round else NAN
 		var noticed := now >= m.calm_until and StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look)
 		_suspicion(m, noticed)
 		if noticed:
@@ -252,18 +262,27 @@ func _beat() -> void:
 		var beats := int((now - m.mood_at) / FightRules.BEAT_MS)
 		match m.mood:
 			MobState.IDLE, MobState.WORKING:
-				if m.indifferent():
+				if m.at_work():
 					_crowding(m)
-					if noticed and now >= m.glance_until + GLANCE_AGAIN_MS:
+					var wary := m.watchful()
+					var again := GLANCE_AGAIN_MS * (WARY_GLANCE if wary else 1.0)
+					if noticed and now >= m.glance_until + again:
 						# It sees you and goes on with its work: looked at, not hunted.
+						# A wary one looks up again and again; that is what the
+						# player reads as a region that has been stirred up.
 						m.glance_until = now + GLANCE_MS
 						emit(&"noticed", {"mob": m})
+					if wary and m.suspicion >= 1.0 and d <= float(m.stat("sees", 10)) * WARY_INSIDE:
+						# It will not chase someone keeping their distance, but it
+						# lets nobody inside its guard.
+						m.set_mood(MobState.ALERTED, now)
+						emit(&"alerted", {"mob": m})
 				elif m.suspicion >= 1.0:
 					# Sure. The alert pose snaps on the body itself (Mob); nothing is said.
 					m.set_mood(MobState.ALERTED, now)
 					emit(&"alerted", {"mob": m})
 			MobState.ALERTED:
-				if m.lost_beats >= int(m.stat("forget", 20)):
+				if m.lost_beats >= _forget(m):
 					m.disturbed = false
 					m.set_mood(MobState.WORKING if m.approach == &"errand" else MobState.IDLE, now)
 				elif beats >= int(m.stat("ready", 2)):
@@ -272,7 +291,7 @@ func _beat() -> void:
 					else:
 						m.set_mood(MobState.CHASING, now)
 			MobState.CHASING:
-				if m.lost_beats >= int(m.stat("forget", 20)):
+				if m.lost_beats >= _forget(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
@@ -281,7 +300,7 @@ func _beat() -> void:
 				elif m.approach != &"dart" and d <= reach:
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
-				if m.lost_beats >= int(m.stat("forget", 20)):
+				if m.lost_beats >= _forget(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif d > reach + 4.0 and not m.committed(now):
@@ -313,9 +332,10 @@ func _beat() -> void:
 ## turns its optics that way and, kept up, brings it over. Drawn on the machine
 ## (Mob): the working part flickers with it, and the alert snaps at 1.
 func _suspicion(m: MobState, noticed: bool) -> void:
-	if not m.machine and not noticed:
-		# A creature is sure or it is not: suspicion is a machine's reading.
-		m.suspicion = 0.0
+	if not m.machine:
+		# A creature is sure or it is not: making up its mind is a machine's
+		# reading, and nothing about a fight with an animal changes here.
+		m.suspicion = 1.0 if noticed else 0.0
 		return
 	if noticed:
 		var hidden := moment.crouched or moment.cover > HIDDEN_COVER
@@ -329,7 +349,19 @@ func _suspicion(m: MobState, noticed: bool) -> void:
 		m.look_until = now + LOOK_MS
 		m.suspicion = minf(1.0, m.suspicion + NOISE_RISE)
 		return
-	m.suspicion = maxf(0.0, m.suspicion - SUSPICION_FADE)
+	# A wary body never settles all the way: its part goes on catching, which is
+	# how a region that has been stirred up is read without a word.
+	m.suspicion = maxf(WARY_FLOOR if m.watchful() else 0.0, m.suspicion - SUSPICION_FADE)
+
+
+## Beats of losing the player before a body gives up. One that never left its
+## work for the player in the first place (a wary keeper that let them inside
+## its guard) settles back twice as fast as one that came hunting.
+func _forget(m: MobState) -> int:
+	var f := int(m.stat("forget", 20))
+	if m.watchful():
+		return maxi(4, int(f * WARY_FORGET))
+	return f
 
 
 ## The player made a noise at `at` that carries `radius` tiles (StealthNoise). Every
@@ -402,7 +434,7 @@ func _call(watcher: MobState) -> void:
 		if m == watcher or not m.alive or m.removed or m.approach == &"errand" or not m.machine:
 			continue
 		# Workers go on working: a report sends the hunters, not the harvest.
-		if m.indifferent():
+		if m.at_work():
 			continue
 		if m.mood != MobState.IDLE:
 			continue
@@ -714,9 +746,14 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 
 
 ## Struck, a body that was not pressing turns on whoever struck it (errands only look).
-## `cause` is what the player did (Roles.TURNS): a role that does not take that
-## amiss goes on with its work, and a watcher never fights at all.
+## `cause` is what the player did (Roles.TURNS). Struck, anything stops and
+## deals with it, even a body whose whole trade is to report; anything else
+## reaches only a role that takes that cause amiss, and only a role that fights
+## is actually turned by it.
 func _wake(m: MobState, cause: StringName = &"damaged") -> void:
+	var turns := Disposition.turned_by(m.role, cause)
+	if not turns and cause != &"damaged":
+		return
 	m.last_seen = hero.pos
 	m.lost_beats = 0
 	m.calm_until = 0.0
@@ -724,9 +761,12 @@ func _wake(m: MobState, cause: StringName = &"damaged") -> void:
 	m.crowded_since = -1.0
 	m.crowd_warned = false
 	m.via = Vector2.INF
-	if m.disposition == &"indifferent" and not m.disturbed:
-		if not Disposition.turned_by(m.role, cause):
-			return
+	if turns and not m.disturbed and not Disposition.hostile(m.disposition):
+		# A worker or a keeper that was about the plan's work now has its own
+		# reason, whatever its region thinks. Each turning is reported once
+		# (32_disposition._turned), so a body that settled and is stirred again
+		# is news again.
+		m.turn_filed = false
 		m.disturbed = true
 		m.disturbed_by = cause
 		emit(&"disturbed", {"mob": m, "cause": cause})

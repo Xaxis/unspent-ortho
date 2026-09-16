@@ -9,6 +9,10 @@ extends GameSystem
 ##                          takes from the world without knowing where the world put it
 ##   village N              teleport beside village N
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it
+##   ground KIND[,KIND]     stand on the nearest tile of a ground (Ground.NAMES, a
+##                          space written as _), so a tour that needs heather or
+##                          moss under it says so instead of pinning a coordinate
+##                          that the next change to worldgen quietly invalidates
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   hour H                 set the world clock hour (same day)
 ##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
@@ -203,6 +207,18 @@ func _run() -> void:
 						game.player.hero.facing = game.player.facing
 					await get_tree().physics_frame
 					print("tour near %s: %s" % [parts[1], Survival.describe_target(game)])
+			"ground":
+				var want: Array[int] = []
+				for gname: String in parts[1].split(",", false):
+					var gi := Ground.NAMES.find(gname.replace("_", " "))
+					if gi >= 0:
+						want.append(gi)
+				var gp := _ground_near(want)
+				if gp == Vector2.INF:
+					printerr("tour: no %s ground within reach of %s" % [parts[1], game.player.pos])
+					ok = false
+				else:
+					_teleport(gp)
 			"place":
 				var pp := GenPlaces.find(game.world, parts[1])
 				if pp.x < 0.0:
@@ -491,6 +507,37 @@ func _spawn(kind: StringName) -> bool:
 		if sys.name == "30_mobs" and sys.has_method("place_near_player"):
 			return sys.call("place_near_player", Roster.resolve(String(kind))) != null
 	return false
+
+
+## The nearest standable tile INSIDE a patch of one of these grounds, searched
+## in rings out from the player, so `ground heath` is a fact about the world and
+## not about one seed's coordinates. The whole PATCH square round it has to be
+## that ground too: a tour that says it is down in the heather must be able to
+## take a few steps in any direction and still be in it, or the frame it shoots
+## proves the ground it happened to land on and nothing else.
+const PATCH := 3
+
+func _ground_near(want: Array[int]) -> Vector2:
+	if want.is_empty():
+		return Vector2.INF
+	var from := game.player.pos
+	var cx := floori(from.x)
+	var cy := floori(from.y)
+	for r in 90:
+		for i in range(-r, r + 1):
+			for p: Vector2i in [Vector2i(cx + i, cy - r), Vector2i(cx + i, cy + r),
+					Vector2i(cx - r, cy + i), Vector2i(cx + r, cy + i)]:
+				if game.query.standable(p.x, p.y) and _all_ground(want, p):
+					return Vector2(p.x + 0.5, p.y + 0.5)
+	return Vector2.INF
+
+
+func _all_ground(want: Array[int], p: Vector2i) -> bool:
+	for dy in range(-PATCH, PATCH + 1):
+		for dx in range(-PATCH, PATCH + 1):
+			if not want.has(game.world.ground_at(p.x + dx, p.y + dy)):
+				return false
+	return true
 
 
 func _teleport(p: Vector2) -> void:

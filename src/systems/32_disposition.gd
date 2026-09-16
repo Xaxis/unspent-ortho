@@ -33,12 +33,20 @@ const WORK_NOISE_EVERY := 0.7
 ## How far a rise in interference is felt: watchers within this turn toward the
 ## player, and the horn is heard from a works this far off.
 const FELT_RADIUS := 44.0
-## World minutes between hunters the network sends while it is hunted.
+## World minutes between hunters the network sends while it is hunted, and how
+## many of them may be out at once. The budget is what makes being hunted a
+## thing a player can come out the other side of: kill what was sent, break
+## contact, and the file cools (Interference.UNSEEN_DECAY) faster than the next
+## one can be raised.
 const DISPATCH_EVERY := 90.0
+const DISPATCH_AT_ONCE := 2
 ## Where a dispatched hunter comes out (tiles from the player).
 const DISPATCH_RING := 19.0
 ## Machines this near a theft take it personally.
 const THEFT_RADIUS := 22.0
+## Tiles round the post a keeper holds that the plan counts as its site: stand
+## inside one where the keeper can see you and you are trespassing.
+const SITE_RADIUS := 7.0
 ## The horn a works sounds when its network files something (SoundNames).
 const HORN := &"works_horn"
 
@@ -64,16 +72,33 @@ var _seen: Dictionary = {}
 func setup(g: Game) -> void:
 	super.setup(g)
 	sim = g.player.sim
-	_last_minutes = g.clock.minutes
-	_filed_seen = g.body.filed
 	Events.killed.connect(_on_killed)
 	Events.took.connect(_on_took)
 	Events.made.connect(_on_made)
 	Events.hit.connect(_on_hit)
 	SaveGame.register(&"disposition", _save, _load)
 	SlateFeeds.provide(&"reads", _reads)
+	_resync()
 	_read_player()
 	_apply_dispositions()
+
+
+## The clock, the body and the player's place are only restored in started()
+## (05_save applies a loaded game after every setup). Everything this system
+## holds ABOUT them has to be taken again here, or the first frame of a loaded
+## game decays a whole saved file away, files the player for a clerk that read
+## them before the save, and blows the horn over it.
+func started() -> void:
+	_resync()
+
+
+func _resync() -> void:
+	_last_minutes = game.clock.minutes
+	_filed_seen = game.body.filed
+	_felt_level = interference.level(Interference.network(game.world, sim.hero.pos))
+	# A game loaded into a hot region gets the same grace as one that just
+	# heated up: nothing is sent on the frame it opens.
+	_dispatch_at = game.clock.minutes if _felt_level >= 3 else -INF
 
 
 func _save() -> Variant:
@@ -83,6 +108,7 @@ func _save() -> Variant:
 func _load(v: Variant) -> void:
 	if v is Dictionary:
 		interference.load(v)
+	_resync()
 	_apply_dispositions()
 
 
@@ -97,6 +123,8 @@ func _physics_process(delta: float) -> void:
 		_apply_left = APPLY_EVERY
 		_filed()
 		_curfew()
+		_trespass()
+		_turned()
 		_apply_dispositions()
 		_felt(sim.now)
 		_dispatch()
@@ -157,8 +185,10 @@ func _cool(delta: float) -> void:
 	if passed <= 0.0:
 		return
 	var m := sim.moment
-	var hidden := m.crouched and m.cover > 0.4 and not _anything_aware()
-	interference.decay(passed / 60.0, hidden, m.spoofed, Interference.network(game.world, sim.hero.pos), sim.hero.pos)
+	var unseen := not _anything_aware()
+	var hidden := m.crouched and m.cover > 0.4 and unseen
+	interference.decay(passed / 60.0, hidden, m.spoofed,
+		Interference.network(game.world, sim.hero.pos), sim.hero.pos, unseen)
 
 
 ## A clerk that got its reading away files the player (Body.filed, which is also
@@ -172,19 +202,47 @@ func _filed() -> void:
 	raise(&"filed", sim.hero.pos)
 
 
-## Out in the hours a keeper holds, and it has you: the network files the
-## curfew, not the keeper's own opinion of you.
+## Out in the hours a keeper holds, and it has you: the keeper takes it amiss
+## itself (Roles.TURNS), and the network files the curfew whether or not the
+## keeper is the sort that turns.
 func _curfew() -> void:
 	var hour := sim.moment.hour()
 	for m in sim.mobs:
 		if not m.alive or m.removed or m.role != Roles.KEEPER:
 			continue
-		if not (m.roused() or m.mood == MobState.ALERTED):
+		if not (m.roused() or m.mood == MobState.ALERTED or m.suspicion >= 1.0):
 			continue
 		var hours: Array = m.row.get("where", {}).get("hours", [])
 		if hours.size() == 2 and Spawner.hour_in(hour, float(hours[0]), float(hours[1])):
+			sim.disturb(m, &"curfew")
 			raise(&"curfew", sim.hero.pos)
 			return
+
+
+## Standing on the site a keeper holds, where it can see you. The keeper turns
+## on you; `_turned` is what files it against the network.
+func _trespass() -> void:
+	for m in sim.mobs:
+		if not m.alive or m.removed or m.disturbed or m.role != Roles.KEEPER:
+			continue
+		if m.suspicion < 1.0 or sim.hero.pos.distance_to(m.home) > SITE_RADIUS:
+			continue
+		sim.disturb(m, &"trespass")
+		if m.disturbed:
+			_seen[&"trespass"] = true
+			return
+
+
+## A body that has just turned on the player reports what it took amiss, which
+## is the one door every cause of the plan's own making goes through: blocked,
+## trespass, curfew, theft, a blow. One report per body.
+func _turned() -> void:
+	for m in sim.mobs:
+		if not m.alive or m.removed or not m.disturbed or m.turn_filed:
+			continue
+		m.turn_filed = true
+		if m.disturbed_by != &"":
+			raise(m.disturbed_by, m.pos)
 
 
 func _anything_aware() -> bool:
@@ -194,13 +252,25 @@ func _anything_aware() -> bool:
 	return false
 
 
+## A body the network sent after the player is no news to the network that sent
+## it: it already spent that. Anything else it loses is filed.
 func _on_killed(kind: StringName, at: Vector3) -> void:
 	if not Roster.row(kind).get("machine", false):
 		return
 	var p := Vector2(at.x, at.z)
-	var cause := &"killed_worker" if Roles.of(kind) == Roles.WORKER else &"killed_machine"
-	raise(cause, p)
 	sim.make_noise(p, StealthNoise.radius(&"kill", game.world.ground_at(floori(p.x), floori(p.y)), false, 0))
+	var s := _body_at(kind, p)
+	if s != null and s.sent:
+		return
+	raise(&"killed_worker" if Roles.of(kind) == Roles.WORKER else &"killed_machine", p)
+
+
+## The body that just went down at `p`, while the simulation still holds it.
+func _body_at(kind: StringName, p: Vector2) -> MobState:
+	for m in sim.mobs:
+		if not m.alive and m.kind == kind and m.pos.distance_squared_to(p) < 0.01:
+			return m
+	return null
 
 
 ## Taking is heard. Taking from the machines' own works is theft, and every
@@ -213,10 +283,22 @@ func _on_made(_item: StringName, _count: int) -> void:
 	_noise(&"make")
 
 
-func _on_hit(_attacker: Object, target: Object, _damage: int, _plate: bool, at: Vector3) -> void:
+## A blow the player struck. `Events.hit` carries NODES, not fighters: the
+## target of a blow on a machine is its Mob. Damage to a machine that was going
+## about the plan's work is sabotage; a blow thrown in a fight the machines
+## started is not, or defending yourself from what was sent after you would
+## file you for it and the hunt could never end.
+func _on_hit(attacker: Object, target: Object, _damage: int, _plate: bool, at: Vector3) -> void:
 	_noise(&"hit")
-	if target is MobState and (target as MobState).machine:
-		raise(&"sabotage", Vector2(at.x, at.z))
+	if attacker != game.player:
+		return
+	var mob := target as Mob
+	if mob == null or mob.state == null or not mob.state.machine:
+		return
+	var s := mob.state
+	if s.sent or s.disturbed or s.roused() or Disposition.hostile(s.disposition):
+		return
+	raise(&"sabotage", Vector2(at.x, at.z))
 
 
 func _noise(act: StringName) -> void:
@@ -321,6 +403,8 @@ func _dispatch() -> void:
 		return
 	if game.clock.minutes - _dispatch_at < DISPATCH_EVERY:
 		return
+	if _sent_out() >= DISPATCH_AT_ONCE:
+		return
 	var kind := _hunter_for_here()
 	if kind == &"":
 		return
@@ -331,7 +415,19 @@ func _dispatch() -> void:
 	var m := sim.add_mob(kind, spot)
 	m.last_seen = sim.hero.pos
 	m.suspicion = 1.0
+	m.sent = true
 	_seen[&"hunter"] = true
+
+
+## How many of the network's own are still out after the player. A network that
+## is barely functioning cannot pour bodies at one person for ever, and a player
+## who kills what was sent has to be able to break contact and cool the file.
+func _sent_out() -> int:
+	var n := 0
+	for m in sim.mobs:
+		if m.sent and m.alive and not m.removed:
+			n += 1
+	return n
 
 
 func _hunter_for_here() -> StringName:
@@ -400,9 +496,10 @@ func _note(m: MobState) -> String:
 
 
 ## Tour awaits: interference (a network rose), theft (hands on the plan's own
-## parts), turned (a machine took it amiss), felt (a rise was felt in the
-## world), hunter (one was sent), crouched, hidden (crouched in cover),
-## suspicious (a machine is wondering), read (a machine is sure of the player).
+## parts), trespass (a keeper caught the player on its site), turned (a machine
+## took it amiss), felt (a rise was felt in the world), hunter (one was sent),
+## crouched, hidden (crouched in cover), suspicious (a machine is wondering),
+## read (a machine is sure of the player).
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"crouched":

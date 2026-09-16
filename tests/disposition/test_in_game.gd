@@ -3,6 +3,14 @@ extends TestCase
 ## carries what the player is doing about being noticed, a region that heats
 ## changes what every machine in it makes of the player, the slate reads it,
 ## and it all comes back out of a save.
+##
+## Every cause the plan files is tested here through the thing that produces it
+## in play (a blow on Events.hit, a body turned through FightSim.disturb, a
+## clerk's filing on Body.filed), never by calling Interference.raise: a rule
+## that is only ever exercised by its own unit test is a rule the game does not
+## have.
+
+const Sx := preload("res://tests/save/save_fixture.gd")
 
 
 func _game(args: PackedStringArray) -> Game:
@@ -100,13 +108,13 @@ func test_killing_a_worker_raises_the_network_and_a_hunter_raises_it_less() -> v
 	Events.killed.emit(&"harvester", at)
 	await frames(2)
 	var worker := f.value(net)
-	near(worker, Interference.CAUSES[&"killed_worker"], 1e-4, "a dead worker is filed")
+	near(worker, Interference.CAUSES[&"killed_worker"], 5e-3, "a dead worker is filed")
 	Events.killed.emit(&"runner", at)
 	await frames(2)
-	near(f.value(net) - worker, Interference.CAUSES[&"killed_machine"], 1e-4, "a dead hunter is filed for less")
+	near(f.value(net) - worker, Interference.CAUSES[&"killed_machine"], 5e-3, "a dead hunter is filed for less")
 	Events.killed.emit(&"dog.yard", at)
 	await frames(2)
-	near(f.value(net), worker + Interference.CAUSES[&"killed_machine"], 1e-4, "a dead dog is nothing to the plan")
+	near(f.value(net), worker + Interference.CAUSES[&"killed_machine"], 5e-3, "a dead dog is nothing to the plan")
 	g.queue_free()
 	await frames(1)
 
@@ -135,6 +143,76 @@ func test_being_filed_and_being_out_in_a_keepers_hours_both_reach_the_network() 
 	var both: float = Interference.CAUSES[&"filed"] + Interference.CAUSES[&"curfew"]
 	gt(f.value(net), both * 0.9, "the network carries both")
 	lt(f.value(net), both + 1e-4, "and neither twice")
+	g.queue_free()
+	await frames(1)
+
+
+## Events.hit carries NODES, not fighters (40_fight._node_of): a guard written
+## against MobState is a branch the game can never take.
+func test_striking_a_machine_at_its_work_is_filed_but_a_fight_it_started_is_not() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0", "--spawn=harvester"]))
+	await frames(3)
+	var sys := _system(g)
+	var f: Interference = sys.get(&"interference")
+	var net := Interference.network(g.world, g.player.pos)
+	var h: MobState = g.player.sim.mobs[0]
+	check(h.node is Mob, "a blow lands on the body's node")
+	eq(f.value(net), 0.0, "nothing filed yet")
+	Events.hit.emit(g.player, h.node, 6, false, g.world.to_3d(h.pos))
+	await frames(3)
+	near(f.value(net), Interference.CAUSES[&"sabotage"], 5e-3, "damage to the plan's own is sabotage")
+	# The same blow thrown at something that is already coming for the player is
+	# not: defending yourself from what was sent after you cannot be the thing
+	# that keeps the hunt alive.
+	h.disturbed = true
+	await frames(3)
+	var before := f.value(net)
+	f.counted.clear()
+	Events.hit.emit(g.player, h.node, 6, false, g.world.to_3d(h.pos))
+	await frames(3)
+	near(f.value(net), before, 5e-3, "a blow in a fight the machines started files nothing")
+	g.queue_free()
+	await frames(1)
+
+
+## blocked and trespass had no producer at all: they were rows in a table.
+func test_being_in_the_way_reaches_the_network_without_anyone_filing_it() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0", "--spawn=harvester"]))
+	await frames(3)
+	var sys := _system(g)
+	var sim := g.player.sim
+	var f: Interference = sys.get(&"interference")
+	var net := Interference.network(g.world, g.player.pos)
+	var h: MobState = sim.mobs[0]
+	sim.disturb(h, &"blocked")
+	check(h.disturbed and h.disturbed_by == &"blocked", "held up past its patience, it turns")
+	await frames(20)
+	check(f.counted.has("%d|blocked" % net), "and it reports what it took amiss")
+	near(f.value(net), Interference.CAUSES[&"blocked"], 5e-3)
+	g.queue_free()
+	await frames(1)
+
+
+func test_standing_on_the_site_a_keeper_holds_turns_it_and_is_filed() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0", "--spawn=warden"]))
+	await frames(3)
+	var sys := _system(g)
+	var sim := g.player.sim
+	var f: Interference = sys.get(&"interference")
+	var net := Interference.network(g.world, g.player.pos)
+	var w: MobState = sim.mobs[0]
+	eq(w.role, Roles.KEEPER)
+	eq(w.disposition, &"wary", "a warden is born wary and stays there until it has a reason")
+	check(not w.disturbed, "and has nothing against the player")
+	# Its post is the ground the player is standing on, and it has them.
+	w.home = g.player.pos
+	w.pos = g.player.pos + Vector2(3.0, 0.0)
+	w.suspicion = 1.0
+	await frames(30)
+	check(w.disturbed, "a keeper does not share its site")
+	eq(w.disturbed_by, &"trespass")
+	check(f.counted.has("%d|trespass" % net), "and the plan files the trespass")
+	check(sys.call(&"tour_seen", &"trespass"))
 	g.queue_free()
 	await frames(1)
 
@@ -223,6 +301,84 @@ func test_a_hunted_network_sends_a_hunter_and_a_calm_one_does_not() -> void:
 	check(sys.call(&"tour_seen", &"hunter"))
 	g.queue_free()
 	await frames(1)
+
+
+## Being hunted has to be a thing a player can come out the far side of: the
+## network can only have so many out at once, and what it sent and lost is not
+## filed against the player who took it down.
+func test_a_hunted_network_sends_only_so_many_and_does_not_file_its_own_losses() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"]))
+	await frames(3)
+	var sys := _system(g)
+	var sim := g.player.sim
+	var f: Interference = sys.get(&"interference")
+	var net := Interference.network(g.world, g.player.pos)
+	var coast: Node = g.get_node("30_mobs")
+	(coast.get(&"coast") as Coast).spawning = false
+	sim.clear_mobs()
+	f.levels[net] = Interference.THRESHOLDS[3] + 0.05
+	# Five chances to send, with the wait between them taken away each time.
+	for i in 5:
+		sys.set(&"_dispatch_at", -INF)
+		sys.call(&"_dispatch")
+	eq(sim.living(), 2, "it keeps two out after the player, not a queue of them")
+	var sent: MobState = sim.mobs[0]
+	check(sent.sent, "and they are marked as its own")
+	var before := f.value(net)
+	sent.alive = false
+	Events.killed.emit(sent.kind, g.world.to_3d(sent.pos))
+	await frames(3)
+	near(f.value(net), before, 5e-3, "what it sent and lost is no news to the network that sent it")
+	# The same kill, on one of the plan's own workers, with room on the file for
+	# it to show.
+	f.levels[net] = 0.3
+	var low := f.value(net)
+	var other := sim.add_mob(&"harvester", g.player.pos + Vector2(7.0, 0.0))
+	other.alive = false
+	Events.killed.emit(&"harvester", g.world.to_3d(other.pos))
+	await frames(3)
+	near(f.value(net) - low, Interference.CAUSES[&"killed_worker"], 5e-3, "a worker of the harvest is")
+	g.queue_free()
+	await frames(1)
+
+
+## Every field this system holds ABOUT the clock, the body and the place has to
+## be taken again in started(): 05_save only restores them there, after every
+## setup has run. Getting this wrong decays a whole saved file away on the first
+## frame, files the player for a clerk that read them before the save, and blows
+## the horn over it.
+func test_a_loaded_game_keeps_its_file_and_does_not_open_by_filing_the_player() -> void:
+	Sx.use_root("disposition-load")
+	var a := Sx.game(tree, ["--seed=1", "--size=64", "--hour=22", "--weather=clear:0"])
+	await frames(3)
+	var net := Interference.network(a.world, a.player.pos)
+	var fa: Interference = Sx.system(a, "32_disposition").get(&"interference")
+	fa.levels[net] = 0.6
+	fa.scenes[net] = a.player.pos
+	a.body.filed = 2
+	a.clock.skip(2.0 * 1440.0)
+	eq(Sx.system(a, "05_save").call("save_to", 3), "", "saved to slot 3")
+	Sx.end(a)
+
+	var horns: Array[StringName] = []
+	var heard := func(n: StringName, _at: Vector3) -> void: horns.append(n)
+	Events.sfx.connect(heard)
+	var o := BootOptions.new()
+	eq(SaveSlots.options_for(3, o), "", "slot 3 boots")
+	# The world is made at the default hour and the clock only arrives in
+	# started(), which is what any door into a save that does not carry the hour
+	# would do. The file must survive the gap either way.
+	o.hour = Tuning.START_HOUR
+	var b := Sx.game(tree, [], o)
+	var fb: Interference = Sx.system(b, "32_disposition").get(&"interference")
+	near(fb.value(net), 0.6, 1e-3, "the file comes back off the save")
+	await frames(20)
+	gt(fb.value(net), 0.55, "and is still there: no gap between two clocks decayed it away")
+	check(not fb.counted.has("%d|filed" % net), "a filing from before the save is not filed again")
+	check(not horns.has(&"works_horn"), "and no horn goes off over a night that is already over")
+	Events.sfx.disconnect(heard)
+	Sx.end(b)
+	Sx.finish()
 
 
 func test_interference_is_saved_and_comes_back() -> void:

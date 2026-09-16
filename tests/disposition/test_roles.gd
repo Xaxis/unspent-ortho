@@ -70,12 +70,17 @@ func test_a_disturbed_body_is_hostile_whatever_its_region_thinks() -> void:
 	check(not Disposition.turned_by(Roles.WATCHER, &"damaged"), "a watcher struck still does not fight")
 
 
-func test_dispositions_are_a_ladder() -> void:
-	eq(Disposition.raise_by(&"indifferent", 1), &"wary")
-	eq(Disposition.raise_by(&"indifferent", 9), &"hostile", "it stops at the top")
-	eq(Disposition.raise_by(&"hostile", 0), &"hostile")
-	check(Disposition.rank(&"hostile") > Disposition.rank(&"indifferent"))
+func test_dispositions_are_a_ladder_with_a_real_middle() -> void:
+	check(Disposition.rank(&"hostile") > Disposition.rank(&"wary"))
+	check(Disposition.rank(&"wary") > Disposition.rank(&"indifferent"))
+	# Every rung is somewhere a worker actually stands as its region heats, and
+	# each one is a different thing to meet (FightSim reads watchful()).
+	eq(Disposition.of(Roles.WORKER, 0), &"indifferent")
+	eq(Disposition.of(Roles.WORKER, 1), &"wary", "the middle is a rung, not a label")
+	eq(Disposition.of(Roles.WORKER, 2), &"hostile")
 	check(Disposition.works_on(&"indifferent") and not Disposition.works_on(&"wary"))
+	check(Disposition.watchful(&"wary"), "and the middle has a name the simulation reads")
+	check(not Disposition.watchful(&"indifferent") and not Disposition.watchful(&"hostile"))
 
 
 func test_a_live_body_carries_its_role_from_the_roster() -> void:

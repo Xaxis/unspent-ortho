@@ -56,11 +56,11 @@ func test_time_lets_it_fall_and_standing_at_the_scene_keeps_it_up() -> void:
 	var start := f.value(COAST)
 	var far := Interference.new()
 	far.raise(COAST, &"killed_worker", _at(), 0.0)
-	f.decay(4.0, false, false, COAST, _at())
-	far.decay(4.0, false, false, COAST, _at() + Vector2(Interference.COOL_DISTANCE * 1.2, 0))
-	lt(f.value(COAST), start, "four hours takes some of it off")
+	f.decay(2.0, false, false, COAST, _at())
+	far.decay(2.0, false, false, COAST, _at() + Vector2(Interference.COOL_DISTANCE * 1.2, 0))
+	lt(f.value(COAST), start, "two hours takes some of it off")
 	lt(far.value(COAST), f.value(COAST), "and being a long way off takes more")
-	near(start - far.value(COAST), Interference.DECAY_PER_HOUR * 4.0, 1e-4, "at the full rate, far away")
+	near(start - far.value(COAST), Interference.DECAY_PER_HOUR * 2.0, 1e-4, "at the full rate, far away")
 
 
 func test_hiding_and_a_misread_signature_let_it_fall_faster() -> void:
@@ -75,6 +75,23 @@ func test_hiding_and_a_misread_signature_let_it_fall_faster() -> void:
 	spoofed.decay(1.0, false, true, COAST, away)
 	lt(hidden.value(COAST), plain.value(COAST), "hidden, the file goes cold sooner")
 	lt(spoofed.value(COAST), hidden.value(COAST), "and a signature read as one of theirs sooner still")
+
+
+## The numbers have to let a hunted player win their way out. One dispatch
+## cycle (32_disposition.DISPATCH_EVERY, 90 world minutes) costs at most the one
+## machine the player kills in it; breaking contact for that long has to take
+## off more, or fighting back is a net rise for ever and the only move is to run.
+func test_breaking_contact_takes_off_more_than_fighting_back_costs() -> void:
+	var cycle := 90.0 / 60.0
+	var fighting := Interference.CAUSES[&"killed_machine"]
+	var f := Interference.new()
+	f.levels[COAST] = 1.0
+	f.decay(cycle, false, false, MOSS, _at(MOSS), true)
+	lt(f.value(COAST), 1.0 - fighting, "nothing aware of them: the file falls faster than the hunt feeds it")
+	var seen := Interference.new()
+	seen.levels[COAST] = 1.0
+	seen.decay(cycle, false, false, MOSS, _at(MOSS))
+	gt(seen.value(COAST), f.value(COAST), "and being watched the whole time does not")
 
 
 func test_it_never_goes_below_nothing_and_forgets_the_network_when_it_does() -> void:

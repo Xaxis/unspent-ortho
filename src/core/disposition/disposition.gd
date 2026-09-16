@@ -19,6 +19,12 @@ const ORDER: Array[StringName] = [&"indifferent", &"wary", &"observant", &"hosti
 ## What the interference of a region does to a body that would otherwise be
 ## about its work, by the body's own default (VISION §2: "indifferent machines
 ## grow wary, then hostile, and hunters are sent"). Indexed by level 0..3.
+##
+## The middle rung is a real one, not a label: a wary body keeps to its work
+## and never comes for someone keeping their distance, but it looks up four
+## times as often, its working part never settles, it lets nobody inside its
+## guard, and it gives up on a player it has lost twice as fast (FightSim:
+## WARY_GLANCE, WARY_FLOOR, WARY_INSIDE, WARY_FORGET).
 const BY_LEVEL := {
 	&"indifferent": [&"indifferent", &"wary", &"hostile", &"hostile"],
 	&"wary": [&"wary", &"wary", &"hostile", &"hostile"],
@@ -29,10 +35,6 @@ const BY_LEVEL := {
 
 static func rank(d: StringName) -> int:
 	return maxi(0, ORDER.find(d))
-
-
-static func raise_by(d: StringName, steps: int) -> StringName:
-	return ORDER[clampi(rank(d) + maxi(0, steps), 0, ORDER.size() - 1)]
 
 
 ## The disposition of a body of `role` in a network at interference `level`
@@ -57,6 +59,11 @@ static func hostile(d: StringName) -> bool:
 ## Will a body of this disposition go about its work with the player in sight?
 static func works_on(d: StringName) -> bool:
 	return d == &"indifferent"
+
+
+## Keeps to its work, but watches hard and lets nobody inside its guard.
+static func watchful(d: StringName) -> bool:
+	return d == &"wary"
 
 
 ## A machine has taken something amiss (Roles.TURNS): does it turn on the player?
