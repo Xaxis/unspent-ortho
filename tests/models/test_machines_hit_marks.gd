@@ -77,14 +77,44 @@ func test_a_burst_leaves_the_working_part_showing() -> void:
 		lt(share, 0.34, "%s: the mark could cover %.0f%% of its part (%d of %d px)" % [kid, share * 100.0, int(got[1]), int(got[0])])
 
 
-func test_no_mark_is_bigger_than_a_machine_is_wide() -> void:
-	# A mark is read and gone. It may never be the biggest thing in the frame:
-	# the smallest machine in the roster is about 26 px across at gameplay zoom.
-	for got: Array in [["burst", MobFx.BURST_PX], ["clang", MobFx.CLANG_PX], ["tell", MobFx.TELL_PX], ["ring", MobFx.RING_PX], ["puff", MobFx.PUFF_PX]]:
+func test_no_mark_that_lands_on_a_body_is_bigger_than_the_body() -> void:
+	# A record of a blow is read and gone, and it is drawn ON the thing it proves:
+	# it may never be the biggest thing in the frame, and the smallest machine in
+	# the roster is about 26 px across at gameplay zoom. The tell is not in this
+	# list: it is a warning, and it hangs clear of the machine (below).
+	for got: Array in [["burst", MobFx.BURST_PX], ["clang", MobFx.CLANG_PX], ["ring", MobFx.RING_PX], ["puff", MobFx.PUFF_PX]]:
 		lt(float(got[1]), 27.0, "%s is %.0f px at its smallest" % got)
 	# And the two that land on a struck body are the ones held tightest.
 	lt(MobFx.BURST_PX, 24.0, "burst")
 	lt(MobFx.CLANG_PX, 22.0, "clang")
+
+
+## The tell is the one mark drawn before anything has happened, read at the edge
+## of vision while the player is deciding to dodge. Shrunk into the hit marks'
+## budget it became a single thin bar beside the machine; and drawn in INK[0] on
+## a FOUND body — which is now deliberately darker than the ground it stands on —
+## it had almost no contrast at all. It is a fan, it is big enough to be a fan,
+## and every stroke is backed by page.
+func test_a_tell_is_a_fan_that_reads_on_a_dark_body() -> void:
+	gt(MobFx.TELL_PX, 29.0, "a tell is %.0f px at its smallest" % MobFx.TELL_PX)
+	# Not so big that it becomes the frame: it is still smaller than the swing.
+	lt(MobFx.TELL_PX, MobFx.STREAK_PX, "and smaller than a swing's speed lines")
+	# More than the one pixel every other mark gets, so it reads on a hull; and
+	# not so much that the page swallows the pen (at 2.6 the fan read as three
+	# white lozenges with a slit down each).
+	gt(MobFx.TELL_HALO, 1.4, "%.1f px of paper round each stroke" % MobFx.TELL_HALO)
+	lt(MobFx.TELL_HALO, 2.2, "and the ink still leads")
+	var code: String = MobFx._shader(&"over").code
+	check(code.contains("uniform float mark_halo"), "the halo is the shader's, not a constant")
+	check(code.contains("return inked(e, mark_halo);"), "the tell's strokes take it")
+	MobFx.texel = TEXEL
+	var root := Node3D.new()
+	tree.root.add_child(root)
+	MobFx.tell(root, Vector3(3, 1, 3), Vector3.UP, 0.3, 1, 0.8, MobFx.FLICK_DOWN)
+	var mi := root.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+	var mat := mi.material_override as ShaderMaterial
+	eq(float(mat.get_shader_parameter(&"mark_halo")), MobFx.TELL_HALO, "set on the mark")
+	root.queue_free()
 
 
 func test_the_shader_and_the_gate_share_one_open_heart() -> void:

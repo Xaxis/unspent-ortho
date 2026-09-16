@@ -7,10 +7,15 @@ extends TestCase
 ##
 ## Measured, not eyeballed:
 ##   no two kinds meet at the step that fills their faces
+##   no kind meets PLATE either, so a roof patched in salvage never reads as a
+##   live machine (the Palette contract's own warning; the clerk used to sit at
+##   hue 220, one value off PLATE[2], which is the colour of a mended roof)
 ##   the day-lit fill is darker than the coast turf a machine walks on
 ##   the top of each ramp is compressed and desaturated, so the amber LENS stays
 ##   the one saturated thing on a machine
-##   the arc is cold: nothing on a body is a warm hue
+##   every step is inside the violet arc by HUE, not merely "blue is not below
+##   green" — that older assertion passed a rose (r the largest channel) while
+##   its name and message said the arc was cold
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
 ## The step FoundKit paints every up-facing body panel with: what a player sees
@@ -20,6 +25,15 @@ const FILL := 3
 ## luma is weighted double; 0.06 is a gap a player can see in a lineup, and the
 ## wave-N ramps managed 0.02.
 const MIN_APART := 0.06
+## The violet arc, in degrees of hue: cold indigo at 240 (the filers and the
+## observers) to burnt magenta at 336 (the hunters). Below 240 a body drifts into
+## PLATE's slate; above 336 it drifts into RUST and becomes a second warm read
+## beside the amber working part, which ART §4 does not allow.
+const ARC_FROM := 238.0
+const ARC_TO := 340.0
+## A step this close to grey has no hue worth bounding (the quiet kinds — the
+## lineman, the sweeper — are nearly slate at their darkest).
+const GREY := 0.06
 
 
 static func luma(c: Color) -> float:
@@ -80,12 +94,37 @@ func test_the_arc_is_cold_and_low_chroma() -> void:
 		var r: Array = Palette.MACHINE[String(kid)]
 		for i in r.size():
 			var c: Color = r[i]
-			# Violet: blue leads, green never does. A warm body would put the amber
-			# working part in competition with the machine it is set into.
+			# Violet: blue leads, green never does.
 			gt(c.b, c.g - 0.004, "%s step %d is not warm" % [kid, i])
 			lt(c.s, 0.42, "%s step %d chroma %.2f" % [kid, i, c.s])
+			# And the hue itself is inside the arc. "Blue is not below green" was
+			# the old gate, and a rose whose RED channel leads passes it: the
+			# runner's fill was 0.447/0.286/0.337, hue 341, and the test that was
+			# supposed to keep the machines cold stayed green while it happened.
+			if c.s > GREY:
+				var deg := c.h * 360.0
+				check(deg >= ARC_FROM and deg <= ARC_TO,
+					"%s step %d is hue %.0f, outside the violet arc %.0f-%.0f" % [kid, i, deg, ARC_FROM, ARC_TO])
 		# Every ramp is duller than the amber it carries.
 		lt(float(r[FILL].s), Palette.LENS[2].s * 0.62, "%s fill is duller than the lens" % kid)
+
+
+## The Palette contract: "PLATE sits near slate so a patched roof never reads as
+## a live machine." That is a promise about BOTH ramps, and only one of them was
+## ever measured. A machine's body fill is what covers it; a plate patch is what
+## covers a roof; they are both FOUND, lit by the same shader, and a player sees
+## them in the same village in the same light.
+func test_no_kind_meets_the_plate_a_roof_is_patched_with() -> void:
+	var worst := INF
+	var pair := ""
+	for kid in KINDS:
+		var fill: Color = Palette.MACHINE[String(kid)][FILL]
+		for i in Palette.PLATE.size():
+			var d := apart(fill, Palette.PLATE[i])
+			if d < worst:
+				worst = d
+				pair = "%s vs PLATE[%d]" % [kid, i]
+	gt(worst, MIN_APART, "closest is %s, %.4f apart" % [pair, worst])
 
 
 func test_a_machine_is_built_in_its_own_ramp_and_kinds_do_not_share_one() -> void:

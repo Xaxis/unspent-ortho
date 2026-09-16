@@ -50,6 +50,15 @@ func build() -> void:
 	var back_face := Vector3(cos(TAU / 3.0), 0, sin(TAU / 3.0))
 	FoundKit.patch(hw, back_face * 0.132, back_face, Vector3.UP, 0.1, 0.07, Palette.MACHINE["lineman"], 17)
 	FoundKit.grime(hw, Vector3(-0.131, -0.02, 0), Vector3.LEFT, 0.08, 0.1, 3, 18, D)
+	# The drum's deck is the one flat thing on a watcher, and the camera looks
+	# straight down at it. The instrument is too thin anywhere else for a hull's
+	# marks — its members are two screen pixels wide — so the daylight it has is
+	# here: the deck stepped a value down round the mast, a well worn into it
+	# where something was unbolted, and a second run of grime down a facet.
+	FoundKit.plate(hw, Vector3(0, 0.1005, 0), Vector3.UP, Vector3.RIGHT, 0.16, 0.13, R, -2)
+	FoundKit.recess(hw, Vector3(0.055, 0.1015, 0.0), Vector3.UP, Vector3.RIGHT, 0.05, 0.05, R, 0.012, 1.4)
+	var wet := Vector3(cos(TAU / 6.0), 0, sin(TAU / 6.0))
+	FoundKit.grime(hw, wet * 0.131 + Vector3(0, -0.02, 0), wet, 0.07, 0.1, 2, 21, D)
 	wear_mesh(hw, hub)
 
 	for i in 3:

@@ -22,6 +22,10 @@ uniform vec3 col_b = vec3(0.71, 0.86, 0.93);
 uniform vec3 ink_col = vec3(0.031, 0.027, 0.059);
 uniform vec3 paper_col = vec3(0.91, 0.86, 0.75);
 uniform vec2 dir = vec2(1.0, 0.0);
+// Pixels of paper laid round a mark's strokes. One is enough on the land; a mark
+// that hangs on a machine needs more, because a FOUND body is darker than the
+// ground and an ink stroke on it is invisible.
+uniform float mark_halo = 1.0;
 varying vec3 wp;
 """
 
@@ -222,7 +226,7 @@ vec4 tell(vec2 p, float pw, float pr) {
 		float t = clamp(dot(q - a, b - a) / max(dot(b - a, b - a), 1e-4), 0.0, 1.0);
 		e = min(e, length(q - mix(a, b, t)) - mix(1.7, 0.6, t * t));
 	}
-	return inked(e, 1.0);
+	return inked(e, mark_halo);
 }
 
 // Speed lines: three parallel ink dashes left behind a body that has just shot
@@ -361,13 +365,24 @@ const PUFF_PX := 16.0
 const RING_PX := 22.0
 const CLANG_PX := 20.0
 const GLINT_PX := 9.0
-const TELL_PX := 26.0
+## A tell is the one mark that is NOT a record of a blow: it is a warning, and it
+## is read at the far edge of vision while the player is deciding to dodge. It
+## keeps the full 30 px it has always had — shrunk to 26 it read as one thin bar
+## beside the machine instead of a fan pointing anywhere.
+const TELL_PX := 30.0
 const STREAK_PX := 40.0
 ## The fraction of a burst's (and a plate ring's) radius that never takes ink, so
 ## what was struck shows through the middle of its own mark. Compiled into the
 ## shader as OPEN and measured against the machines' parts in
-## tests/actors/test_hit_marks.gd.
+## tests/models/test_machines_hit_marks.gd.
 const BURST_OPEN := 0.48
+## How many pixels of paper are laid round a tell's strokes. Every other mark
+## sits on the land, which is pale; a tell hangs on a MACHINE, whose body is now
+## deliberately darker than the ground it stands on, and ink on ink is nothing.
+## Backed by this much page the fan reads over a hull, over turf and over night —
+## and no more than this, or the strokes stop being strokes and the tell reads as
+## three white lozenges with a slit down each (ART §7: these are pen marks).
+const TELL_HALO := 1.7
 ## Which way a tell's fan flicks, in quad space: up the screen over a body, down
 ## the screen when it is aimed at a working part below it.
 const FLICK_UP := Vector2(0.0, -1.0)
@@ -553,7 +568,11 @@ static func tell(parent: Node, anchor: Vector3, up: Vector3, seconds: float, see
 	# tell must send the eye to the part, never stand in front of it.
 	var clear := (0.72 if flick == FLICK_DOWN else 0.45) * size * 0.5 + px(3.0)
 	var mi := _mark(parent, anchor + up.normalized() * clear, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0])
-	(mi.material_override as ShaderMaterial).set_shader_parameter(&"dir", flick)
+	var mat := mi.material_override as ShaderMaterial
+	mat.set_shader_parameter(&"dir", flick)
+	# A tell hangs on the machine it warns about, and a machine is the darkest
+	# thing in a daylight frame: the strokes are backed by page so they read on it.
+	mat.set_shader_parameter(&"mark_halo", TELL_HALO)
 	_run(mi, maxf(0.12, seconds))
 
 

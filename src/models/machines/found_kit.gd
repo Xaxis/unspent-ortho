@@ -658,11 +658,17 @@ static func coil(k: MeshKit, a: Vector3, b: Vector3, rad: float, turns: float, w
 
 ## A shadowed recess in a plate: a dark well, a ruled lip along the light's side.
 ## Value is ink (ART law 2) — the well is a flat dark wash, never a gradient.
-static func recess(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, lift: float = 0.005) -> void:
+##
+## `floor_px` is the smallest the well may be, in screen pixels. Three is right on
+## a hull, where a well any smaller is lost in the middle of a wide flat wash. The
+## thin kinds — a watcher's drum, a warden's cap, a runner's chest — have no face
+## three pixels wide to spare, and on them a well is framed by the machine's own
+## edges instead: they pass a smaller floor rather than go without.
+static func recess(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, lift: float = 0.005, floor_px: float = 3.0) -> void:
 	var nn := n.normalized()
 	var uu := up.normalized()
-	w = maxf(w, PX * 3.0)
-	h = maxf(h, PX * 3.0)
+	w = maxf(w, PX * floor_px)
+	h = maxf(h, PX * floor_px)
 	mark(k, c, nn, uu, w + PX * 1.6, h + PX * 1.6, r[1], lift)
 	mark(k, c, nn, uu, w, h, r[0], lift + 0.002)
 	# The key light is up the screen and to the left, so that edge is the one the
@@ -708,6 +714,35 @@ static func day_wear(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, 
 		recess(k, pc + rr * (pw * (t + jitter)) + uu * ph * (0.12 - 0.3 * Rng.hash01(seed_value, i, 5)),
 			nn, uu, minf(pw * 0.3, maxf(PX * 5.0, h * 0.3)), maxf(PX * 4.0, h * 0.24), r, 0.012)
 	grime(k, pc - uu * (ph * 0.5) + rr * (pw * 0.12 * side), nn, pw * 0.7, h * 0.55, 3 + (seed_value % 3), seed_value + 7, r)
+
+
+## The same three things on a face too small for day_wear: one plate step, one
+## shadowed well, one run of grime, every one of them a fraction of the face
+## instead of a hull's fixed size.
+##
+## day_wear composes for a harvester's deck — half a tile across — and its wells
+## are floored at a hull's five screen pixels. A watcher's drum, a warden's cap, a
+## runner's chest and a lineman's lid are a fifth of that, and the same call would
+## put one well where the whole plate belongs, or nothing at all. Without this the
+## thin kinds got no daylight at all: at noon they were a body with chamfer lines
+## and no other thing on them to read.
+static func day_marks(k: MeshKit, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, r: Array, seed_value: int, floor_px: float = 2.2) -> void:
+	var nn := n.normalized()
+	var uu := up.normalized()
+	var rr := uu.cross(nn)
+	var side := 1.0 if Rng.hash01(seed_value, 1) > 0.5 else -1.0
+	# Two plates where the ruler drew one, the bigger of them a step dirtier.
+	var pw := maxf(PX * 2.0, w * 0.6)
+	var ph := maxf(PX * 2.0, h * 0.7)
+	var pc := c + rr * ((w - pw) * 0.5) * side
+	plate(k, pc, nn, uu, pw, ph, r, -2)
+	# The one rubbed edge, down the far side, where the weather runs off it.
+	var sw := maxf(w * 0.18, PX * 1.2)
+	plate(k, c - rr * (w - sw) * 0.5 * side, nn, uu, sw, h * 0.7, r, 1, 0.008)
+	# One well, as big as the face can hold and never smaller than the floor.
+	var well := clampf(minf(pw, ph) * 0.42, PX * floor_px, maxf(PX * floor_px, minf(pw, ph) - PX * 1.6))
+	recess(k, pc + uu * ph * 0.14 - rr * pw * 0.14 * side, nn, uu, well, well, r, 0.012, floor_px)
+	grime(k, pc - uu * (ph * 0.5) + rr * (pw * 0.2 * side), nn, pw * 0.6, h * 0.5, 2, seed_value + 5, r)
 
 
 ## A tag of FOUND stock hung on a wire from `at`: seals, records, plates cut

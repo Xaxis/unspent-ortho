@@ -133,6 +133,14 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 	FoundKit.dirt_line(sw, Vector3(-0.42, 0.06, -SEG_W * 0.5 + 0.25), Vector3(0.42, 0.06, -SEG_W * 0.5 + 0.25), far, 0.05, R[1])
 	wear_mesh(sw, box)
 	if is_front:
+		# The lead hopper's camera-side flank: a metre of flared plate carrying
+		# nothing but a dirt line at its foot, and the first thing a player meets
+		# of a hauler. It takes the years in plate steps and a well of shadow.
+		# Only this one: the hauler is the heaviest kind in the roster and the
+		# second hopper's worth of marks puts it over the triangle budget, while
+		# the rear already carries a patch, a burn and its own dirt line.
+		day_marks(box, Vector3(0.12, 0.2, -SEG_W * 0.5 + 0.265), far, Vector3(0, 1, 0.16).normalized(), 0.34, 0.15, 57)
+	if is_front:
 		add_scan(box, Vector3(SEG_L * 0.5 + 0.1, 0.18, -SEG_W * 0.5), Vector3(0.99, 0.16, 0), Vector3.BACK, 0.24, 0.03, 2.6)
 
 	# The load, never level: the front carries scrap off dead machines and bones

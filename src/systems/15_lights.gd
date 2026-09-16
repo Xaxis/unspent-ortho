@@ -21,6 +21,9 @@ extends GameSystem
 ## sky's power after lightning (SkyLight.bolt.w).
 
 const RAYS := preload("res://src/render/weather/rays.gdshader")
+## The machines' own light, written once (props/works.gd): a mast's cap, the pool
+## it throws, its glint in wet ground and its shaft in fog are the same colour.
+const Works := preload("res://src/models/props/works.gd")
 ## Tiles from the focus within which a source may take a light or show a glow.
 const REACH := 17.0
 const GLOW_REACH := 24.0
@@ -94,8 +97,13 @@ var _glint_near: Array[Dictionary] = []
 var glint_list: Array[Dictionary] = []
 ## Stolen neon on the machines' power: magenta tube colour (props/houses.gd).
 const NEON_TUBE := Vector3(1.0, 0.25, 0.8)
-const BEACON := Vector3(1.0, 0.36, 0.2)
-const LENS_GLINT := Vector3(0.95, 0.76, 0.25)
+## A mast's beacon and a working part, as light. Both are read off props/works.gd
+## so the cap, the pool it throws, the glint in wet ground and the fog shaft agree:
+## the beacon used to be an inlined crimson-orange here while the geometry it came
+## out of was already the dull violet of the machines' arc, and the light is what a
+## player actually sees at two hundred tiles.
+static var BEACON := Works.light(Works.BEACON)
+static var LENS_GLINT := Works.light(Works.WORKING)
 ## How strongly each light throws shafts into fog (Glints `shaft`). A fire, whose
 ## strokes already flicker out of it, throws none; a lamp, a beacon or the
 ## lantern, which draw their own strokes, only a weak few; a window, a neon

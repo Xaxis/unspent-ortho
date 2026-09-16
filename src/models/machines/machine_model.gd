@@ -264,6 +264,16 @@ func day_wear(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: 
 	wear_mesh(k, parent)
 
 
+## The same years on a face too small for a hull's composition: a drum top, a
+## cap, a chest, a lid. Every kind has one face the camera at 57 degrees cannot
+## miss, and every kind marks it — the thin ones were flat at noon because the
+## only daylight idiom was sized for a deck (FoundKit.day_marks).
+func day_marks(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float, seed_value: int, floor_px: float = 2.2) -> void:
+	var k := FoundKit.kit()
+	FoundKit.day_marks(k, c, n, up, w, h, ramp, seed_value, floor_px)
+	wear_mesh(k, parent)
+
+
 func _wear_on(parent: Node3D) -> Node3D:
 	var w := parent.get_node_or_null(^"wear") as Node3D
 	return w if w != null else holder("wear", parent)
