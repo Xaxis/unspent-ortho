@@ -43,10 +43,12 @@ static func wind_shown(wind: float, max_wind: float) -> bool:
 
 # --- the slate's power and the felt pressures --------------------------------------
 
-## A felt pressure (a hazard the body is under) is only a gauge once it is this strong.
-const PRESSURE_SHOWN := 0.25
-## ... and it is the warning once it is this strong.
-const PRESSURE_WARN := 0.7
+## A felt pressure (a hazard the body is under) is only a gauge once it is this
+## strong, and it is the warning once it is costing the body something. Both are
+## the hazard model's own steps, so the glass and the rules never disagree about
+## when a place has become a problem (src/core/hazards/hazards.gd).
+const PRESSURE_SHOWN := Hazards.FELT
+const PRESSURE_WARN := Hazards.BITE
 ## The slate runs off the lamp's reserve (a flask lights it this long) or the
 ## found charges carried, whichever holds more (docs/ART.md §9: brightness dips
 ## when the lamp oil or charge is low).
