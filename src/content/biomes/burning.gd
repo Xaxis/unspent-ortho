@@ -84,9 +84,7 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface) -> int:
-	var i := t.i
-	var gb := t.big[i]
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	var g := Ground.ASH
 	if t.shore:
 		g = Ground.CLINKER if gb > 0.0 else Ground.SHINGLE
@@ -96,7 +94,7 @@ static func _surface(t: BiomeSurface) -> int:
 		g = Ground.CLINKER
 	elif absf(t.rim_dist - t.crater) < 2.5 + gb * 3.0:
 		g = Ground.ROCK
-	elif t.elev[i] >= 9.0 and gb > 0.3:
+	elif e >= 9.0 and gb > 0.3:
 		g = Ground.ROCK
 	if t.own_def.id != &"burning" and g != Ground.SCREE:
 		# Only the ash travels.
@@ -104,17 +102,16 @@ static func _surface(t: BiomeSurface) -> int:
 	return g
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	var g := t.ground
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 	if g == Ground.ASH:
 		var k := maxf(0.0, t.clump[t.i] - 0.1)
-		if absf(t.fissure[t.i]) < 0.035 and t.roll < 0.2:
+		if absf(t.fissure[t.i]) < 0.035 and r < 0.2:
 			# Vents breathe in rows along the fissures.
 			return PropKind.VENT
-		if t.roll < 0.01 + k * 0.9:
+		if r < 0.01 + k * 0.9:
 			# Burnt groves stand together; between them, open ash.
 			return PropKind.DEAD_TREE
-		if t.roll < 0.024 + k * 0.9:
+		if r < 0.024 + k * 0.9:
 			return PropKind.BOULDER
-		return PropKind.BONES if t.roll > 0.49 and t.roll < 0.492 else BiomeScatter.NONE
+		return PropKind.BONES if r > 0.49 and r < 0.492 else BiomeScatter.NONE
 	return BiomeScatter.PASS

@@ -1,14 +1,18 @@
 class_name BiomeSurface
 extends RefCounted
 ## One tile, as a landscape type's ground recipe sees it. GenSurface keeps one
-## of these per band and moves it from tile to tile, so a recipe reads a band's
-## fields at `i` and pays only for what it names:
+## of these per band and moves it from tile to tile.
 ##
-##     static func _surface(t: BiomeSurface) -> int:
-##         var i := t.i
+## The three fields EVERY recipe reads come as arguments, because the tile loop
+## has them in hand already and an argument costs a fraction of a property:
+## `e` the smoothed elevation, `rs` how far the tile stands above the land about
+## it, `gb` the broad mass field. Everything rarer is on the sample, indexed by
+## `i`:
+##
+##     static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 ##         if t.shore:
 ##             return Ground.SHINGLE
-##         return Ground.HEATH if t.rise[i] > 0.4 else Ground.GRASS
+##         return Ground.HEATH if rs > 0.4 else Ground.GRASS
 ##
 ## Everything here is smooth at the scale of a walk (docs/ART.md: grounds are
 ## washes, not salad). There is deliberately no per-tile noise and no integer

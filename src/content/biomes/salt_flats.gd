@@ -121,9 +121,7 @@ static func make() -> BiomeDef:
 
 ## Crust almost everywhere; the pans are where the ground lies low and damp, and
 ## the rim of the basin comes up through it as gravel and bleached grass.
-static func _surface(t: BiomeSurface) -> int:
-	var i := t.i
-	var gb := t.big[i]
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	if t.shore:
 		return Ground.SHINGLE if gb > 0.1 else Ground.SAND
 	if t.apron:
@@ -131,8 +129,6 @@ static func _surface(t: BiomeSurface) -> int:
 	if t.bank:
 		# A stream that reaches the flat sinks into it and stains the pan.
 		return Ground.PAN
-	var e := t.elev[i]
-	var rs := t.rise[i]
 	if rs > 0.9 + gb * 0.5 or e >= 5.5:
 		# The rim of the basin: what the flat never drowned, in one wash or the
 		# other over a whole slope rather than tile by tile.
@@ -144,28 +140,27 @@ static func _surface(t: BiomeSurface) -> int:
 	return Ground.SALT
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	var g := t.ground
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 	if g == Ground.SALT:
 		var k := maxf(0.0, t.clump[t.i])
-		if t.roll < 0.012 + k * 0.05:
+		if r < 0.012 + k * 0.05:
 			# Pressure ridges run in lines where two plates met.
 			return PropKind.SALT_RIDGE
-		if t.roll > 0.2 and t.roll < 0.203:
+		if r > 0.2 and r < 0.203:
 			return PropKind.SALT_HEAP
-		return PropKind.BONES if t.roll > 0.249 and t.roll < 0.2497 else BiomeScatter.NONE
+		return PropKind.BONES if r > 0.249 and r < 0.2497 else BiomeScatter.NONE
 	if g == Ground.PAN:
-		if t.roll < 0.01:
+		if r < 0.01:
 			return PropKind.SALT_RIDGE
 		# A gate stands in a bund, and a bund is a work: the scatter leaves it
 		# to whoever built the pans.
-		return PropKind.DEAD_TREE if t.roll > 0.22 and t.roll < 0.2215 else BiomeScatter.NONE
+		return PropKind.DEAD_TREE if r > 0.22 and r < 0.2215 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		if t.roll < 0.012:
+		if r < 0.012:
 			return PropKind.GORSE
-		return PropKind.BONES if t.roll < 0.018 else BiomeScatter.NONE
+		return PropKind.BONES if r < 0.018 else BiomeScatter.NONE
 	if g == Ground.HEATH:
-		return PropKind.GORSE if t.roll < 0.03 else BiomeScatter.NONE
+		return PropKind.GORSE if r < 0.03 else BiomeScatter.NONE
 	return BiomeScatter.PASS
 
 

@@ -678,6 +678,12 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
 		var found := PackedFloat32Array()
 		var t := BiomeScatter.new()
+		# The types in play and the recipe change only where the land does:
+		# hand them over when they change, not once a tile.
+		var last_recipe := -1
+		var last_own := -1
+		var last_other := -1
+		var recipe_fn := recipes[0]
 		t.size = size
 		t.clump = clump
 		t.fissure = fissure
@@ -713,16 +719,24 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				t.bank = wa == 1 or wb == 1 or wc == 1 or wd == 1
 				t.pool = wa == 2 or wb == 2 or wc == 2 or wd == 2
 				t.blend = blend[i]
-				t.def = defs[cc]
-				t.own_def = defs[own]
-				t.other_def = defs[country2[i]]
+				if cc != last_recipe:
+					last_recipe = cc
+					t.def = defs[cc]
+					recipe_fn = recipes[cc]
+				if own != last_own:
+					last_own = own
+					t.own_def = defs[own]
+				var c2 := country2[i]
+				if c2 != last_other:
+					last_other = c2
+					t.other_def = defs[c2]
 				# What the land decides, then the landscape's own recipe, then
 				# the grounds every landscape reads the same way.
-				var kind := BiomeScatter.first(t)
+				var kind := BiomeScatter.first(t, g, r)
 				if kind == BiomeScatter.PASS:
-					kind = recipes[cc].call(t)
+					kind = recipe_fn.call(t, g, r)
 				if kind == BiomeScatter.PASS:
-					kind = BiomeScatter.shared(t)
+					kind = BiomeScatter.shared(t, g, r)
 				if kind < 0 or (allow_mask[own] >> kind) & 1 == 0:
 					continue
 				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:

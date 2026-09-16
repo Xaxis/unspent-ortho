@@ -68,36 +68,34 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	var i := t.i
-	var gb := t.big[i]
 	if t.shore:
 		return Ground.SHINGLE if gb > 0.0 else Ground.SAND
 	if t.apron:
 		return Ground.SCREE
 	if t.bank and gb > 0.25:
 		return Ground.GRAVEL
-	var rs := t.rise[i]
 	if rs < -0.75 and gb < -0.15:
 		# Bog in the bottom of the wood.
 		return Ground.MOSS
 	if t.forest[i] > -0.15 - rs * 0.05:
 		return Ground.NEEDLES
-	if t.elev[i] >= 9.0 or rs > 1.3 or (t.other_def.id == &"snowfield" and t.blend > 0.12):
+	if e >= 9.0 or rs > 1.3 or (t.other_def.id == &"snowfield" and t.blend > 0.12):
 		# Open tops, and the heath the wood thins into below the snow.
 		return Ground.HEATH
 	return Ground.GRASS
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	if t.ground == Ground.GRASS:
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+	if g == Ground.GRASS:
 		# A clearing seeds itself back: young pines, then scrub.
 		var k := maxf(0.0, t.forest[t.i])
-		if t.roll < (0.03 + k * 0.1) * BiomeScatter.green_reach(t):
+		if r < (0.03 + k * 0.1) * BiomeScatter.green_reach(t):
 			return PropKind.PINE
-		return PropKind.BUSH if t.roll < 0.07 else BiomeScatter.NONE
-	if t.ground == Ground.HEATH:
+		return PropKind.BUSH if r < 0.07 else BiomeScatter.NONE
+	if g == Ground.HEATH:
 		if t.own_def.id == &"snowfield" or t.other_def.id == &"snowfield":
-			return PropKind.SNOW_PINE if t.roll < 0.05 else (PropKind.BOULDER if t.roll < 0.06 else BiomeScatter.NONE)
-		return PropKind.PINE if t.roll < 0.03 else (PropKind.BUSH if t.roll < 0.06 else BiomeScatter.NONE)
+			return PropKind.SNOW_PINE if r < 0.05 else (PropKind.BOULDER if r < 0.06 else BiomeScatter.NONE)
+		return PropKind.PINE if r < 0.03 else (PropKind.BUSH if r < 0.06 else BiomeScatter.NONE)
 	return BiomeScatter.PASS

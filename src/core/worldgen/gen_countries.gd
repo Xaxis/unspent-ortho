@@ -696,6 +696,10 @@ static func regions(c: GenContext) -> void:
 		})
 	var sum := PackedFloat64Array()
 	sum.resize(w.regions.size() * 2)
+	# One tile each region was seen to own, so its type never has to be hunted for.
+	var sample := PackedInt32Array()
+	sample.resize(w.regions.size())
+	sample.fill(0)
 	var lo := PackedInt32Array()
 	var hi := PackedInt32Array()
 	lo.resize(w.regions.size() * 2)
@@ -710,6 +714,8 @@ static func regions(c: GenContext) -> void:
 				continue
 			var rid: int = id_of[la]
 			w.region[row + x] = rid + 1
+			if sample[rid] == 0:
+				sample[rid] = row + x
 			sum[rid * 2] += x + 0.5
 			sum[rid * 2 + 1] += y + 0.5
 			lo[rid * 2] = mini(lo[rid * 2], x)
@@ -721,19 +727,11 @@ static func regions(c: GenContext) -> void:
 		var tiles := maxi(1, int(r.tiles))
 		r.centre = Vector2(sum[rid * 2] / tiles, sum[rid * 2 + 1] / tiles)
 		r.bounds = Rect2(lo[rid * 2], lo[rid * 2 + 1], hi[rid * 2] - lo[rid * 2] + 1, hi[rid * 2 + 1] - lo[rid * 2 + 1] + 1)
-		var i := clampi(int(r.centre.y), 0, size - 1) * size + clampi(int(r.centre.x), 0, size - 1)
-		# The centre of a bent region can fall outside it: read the type off a
-		# tile the region owns.
-		var cc := country[i] if w.region[i] == rid + 1 else _any_tile_type(w, rid)
+		# The centre of a bent region can fall outside it, so the type is read
+		# off a tile the region was seen to own.
+		var cc := country[sample[rid]]
 		r.index = cc
 		r.type = BiomeRegistry.by_index(cc).id
-
-
-static func _any_tile_type(w: WorldData, rid: int) -> int:
-	for i in w.region.size():
-		if w.region[i] == rid + 1:
-			return w.country[i]
-	return Country.SEA
 
 
 ## blend from the true distance to the nearest border, so 0.5 on the border

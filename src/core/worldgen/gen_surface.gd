@@ -146,6 +146,10 @@ static func run(c: GenContext) -> void:
 	var in_thin := PackedFloat32Array()
 	var out_high := PackedVector4Array()
 	var in_low := PackedVector3Array()
+	# The caps on their own, so the tile loop can ask whether a type creeps at
+	# all without copying a vector to find out.
+	var out_high_cap := PackedFloat32Array()
+	var in_low_cap := PackedFloat32Array()
 	var plain := PackedInt32Array()
 	var rim_g := PackedInt32Array()
 	var frozen := PackedByteArray()
@@ -153,6 +157,8 @@ static func run(c: GenContext) -> void:
 	in_thin.resize(types)
 	out_high.resize(types)
 	in_low.resize(types)
+	out_high_cap.resize(types)
+	in_low_cap.resize(types)
 	plain.resize(types)
 	rim_g.resize(types)
 	frozen.resize(types)
@@ -163,6 +169,8 @@ static func run(c: GenContext) -> void:
 		in_thin[cc] = d.reach_in_thin
 		out_high[cc] = d.reach_out_high
 		in_low[cc] = d.reach_in_low
+		out_high_cap[cc] = d.reach_out_high.w
+		in_low_cap[cc] = d.reach_in_low.z
 		plain[cc] = d.plain_ground
 		rim_g[cc] = d.pool_rim_ground
 		frozen[cc] = 1 if d.rivers_freeze else 0
@@ -170,6 +178,13 @@ static func run(c: GenContext) -> void:
 	var forest := c.forest
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		var t := BiomeSurface.new()
+		# The two types in play and the recipe change only where the land does,
+		# so they are handed over when they change and not once a tile: an
+		# assignment costs more than comparing two bytes.
+		var last_own := -1
+		var last_other := -1
+		var last_recipe := -1
+		var recipe_fn := surf[0]
 		t.crater = crater
 		t.elev = elev_s
 		t.rise = rise
@@ -215,8 +230,6 @@ static func run(c: GenContext) -> void:
 				if bl > 0.0:
 					var pb := bl
 					var near := bl * 2.0
-					var hi_out: Vector4 = out_high[c2]
-					var lo_in: Vector3 = in_low[own]
 					if out_thin[c2] > 0.0:
 						# Ash drifts out thin, and thinner with every tile from the rim.
 						pb = bl * near * out_thin[c2]
@@ -224,12 +237,14 @@ static func run(c: GenContext) -> void:
 						# Little that is not burnt survives inside the rim: the
 						# neighbour's ground reaches in only near the border.
 						pb = bl * near * in_thin[own]
-					elif hi_out.w > 0.0:
+					elif out_high_cap[c2] > 0.0:
 						# Snow creeps down only the high ground, and only as far as
 						# the ecotone reaches: tongues down the ridges.
+						var hi_out: Vector4 = out_high[c2]
 						pb = near * clampf((e - hi_out.x) * hi_out.y + rs * hi_out.z, 0.0, hi_out.w)
-					elif lo_in.z > 0.0:
+					elif in_low_cap[own] > 0.0:
 						# The neighbour climbs the Snowfield's low valleys.
+						var lo_in: Vector3 = in_low[own]
 						pb = bl * 0.7 + near * clampf((lo_in.x - e) * lo_in.y, 0.0, lo_in.z)
 					# The patch field's tails pass 0: never let them cross where
 					# the neighbour has no pull.
@@ -271,15 +286,22 @@ static func run(c: GenContext) -> void:
 					t.apron = apron
 					t.bank = bank
 					t.blend = bl
-					t.own_def = defs[own]
-					t.other_def = defs[c2]
+					if own != last_own:
+						last_own = own
+						t.own_def = defs[own]
+					if c2 != last_other:
+						last_other = c2
+						t.other_def = defs[c2]
 					if cc == caldera_type:
 						var fdx := x + 0.5 - heart.x
 						var fdy := y + 0.5 - heart.y
 						t.heart_dist = sqrt(fdx * fdx + fdy * fdy)
 						t.rim_dist = t.heart_dist + rim_warp[i] * crater * 0.3
 						t.flow = _flow_at(flows, fdx, fdy, t.heart_dist)
-					g = surf[cc].call(t)
+					if cc != last_recipe:
+						last_recipe = cc
+						recipe_fn = surf[cc]
+					g = recipe_fn.call(t, e, rs, gb)
 				if cc != own and bl < 0.32 and not shore and not rim:
 					# Out in the far half of an ecotone the neighbour arrives as its
 					# plain wash first; its dark and broken grounds (peat hags, mud,

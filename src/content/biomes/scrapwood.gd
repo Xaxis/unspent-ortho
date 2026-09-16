@@ -113,16 +113,14 @@ static func make() -> BiomeDef:
 
 ## Swarf under the canopy, mulch in the hollows, and the clearings the machines
 ## cut and never came back to.
-static func _surface(t: BiomeSurface) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	var i := t.i
-	var gb := t.big[i]
 	if t.shore:
 		return Ground.SHINGLE if gb > 0.0 else Ground.SAND
 	if t.apron:
 		return Ground.SCREE
 	if t.bank:
 		return Ground.MUD
-	var rs := t.rise[i]
 	if rs < -0.8 and gb < -0.2:
 		# Standing water in the bottoms, gone black with what leached into it.
 		return Ground.MOSS
@@ -130,37 +128,36 @@ static func _surface(t: BiomeSurface) -> int:
 	# and a clearing has to be a real one before the grass gets in.
 	if t.forest[i] > -0.5 - rs * 0.05:
 		return Ground.SWARF
-	if t.elev[i] >= 8.5 or rs > 1.4:
+	if e >= 8.5 or rs > 1.4:
 		# Open tops where the wood never took: bare grit over the old heaps.
 		return Ground.HEATH
 	return Ground.GRASS
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	var g := t.ground
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 	if g == Ground.SWARF:
 		var k := maxf(0.0, t.forest[t.i] + 0.15)
-		if t.roll < 0.11 + k * 0.26:
+		if r < 0.11 + k * 0.26:
 			return PropKind.SCRAP_TREE
-		if t.roll < 0.15 + k * 0.28:
+		if r < 0.15 + k * 0.28:
 			return PropKind.BROADLEAF
-		if t.roll < 0.17 + k * 0.28:
+		if r < 0.17 + k * 0.28:
 			return PropKind.DEAD_TREE
-		if t.roll > 0.4 and t.roll < 0.418:
+		if r > 0.4 and r < 0.418:
 			# Where the field is strongest the filings stand up on their own.
 			return PropKind.MAGNET_HEAP
-		return PropKind.BUSH if t.roll < 0.2 + k * 0.28 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.2 + k * 0.28 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		var k := maxf(0.0, t.forest[t.i])
-		if t.roll < 0.02 + k * 0.08:
+		if r < 0.02 + k * 0.08:
 			return PropKind.SCRAP_TREE
-		if t.roll < 0.05:
+		if r < 0.05:
 			return PropKind.BUSH
-		return PropKind.MAGNET_HEAP if t.roll > 0.3 and t.roll < 0.306 else BiomeScatter.NONE
+		return PropKind.MAGNET_HEAP if r > 0.3 and r < 0.306 else BiomeScatter.NONE
 	if g == Ground.HEATH:
-		if t.roll < 0.025:
+		if r < 0.025:
 			return PropKind.BUSH
-		return PropKind.MAGNET_HEAP if t.roll > 0.2 and t.roll < 0.209 else BiomeScatter.NONE
+		return PropKind.MAGNET_HEAP if r > 0.2 and r < 0.209 else BiomeScatter.NONE
 	return BiomeScatter.PASS
 
 

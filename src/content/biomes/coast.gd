@@ -73,10 +73,9 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface) -> int:
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	var i := t.i
 	var cx := t.convex[i]
-	var gb := t.big[i]
 	if t.shore:
 		if cx > 0.64:
 			return Ground.MUD
@@ -90,8 +89,6 @@ static func _surface(t: BiomeSurface) -> int:
 	if t.level <= 3 and cx > 0.5 and t.sea_steps[i] <= mini(7, 3 + int(maxf(0.0, gb) * 10.0)):
 		# Dunes back the sandy bays.
 		return Ground.SAND
-	var e := t.elev[i]
-	var rs := t.rise[i]
 	if e + gb * 3.0 + rs * 0.8 >= 4.4:
 		return Ground.HEATH
 	if rs < -0.55 and gb < -0.2 and e < 3.5:
@@ -99,18 +96,18 @@ static func _surface(t: BiomeSurface) -> int:
 	return Ground.GRASS
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	if t.ground == Ground.GRASS:
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+	if g == Ground.GRASS:
 		# Copses in the sheltered folds, not on the tops.
 		var f := maxf(0.0, t.forest[t.i]) * clampf(1.0 - t.rise[t.i] * 0.6, 0.0, 1.3)
-		if t.roll < f * f * 1.1:
+		if r < f * f * 1.1:
 			return PropKind.BROADLEAF
-		if t.roll < 0.02:
+		if r < 0.02:
 			return PropKind.BUSH
-		return PropKind.BOULDER if t.roll < 0.026 else BiomeScatter.NONE
-	if t.ground == Ground.HEATH:
+		return PropKind.BOULDER if r < 0.026 else BiomeScatter.NONE
+	if g == Ground.HEATH:
 		var c := maxf(0.0, t.clump[t.i])
-		if t.roll < 0.02 + c * 0.26:
+		if r < 0.02 + c * 0.26:
 			return PropKind.GORSE
-		return PropKind.BOULDER if t.roll > 0.37 and t.roll < 0.385 else BiomeScatter.NONE
+		return PropKind.BOULDER if r > 0.37 and r < 0.385 else BiomeScatter.NONE
 	return BiomeScatter.PASS

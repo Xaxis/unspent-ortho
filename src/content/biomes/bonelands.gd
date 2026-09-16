@@ -74,16 +74,14 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface) -> int:
-	var i := t.i
-	var gb := t.big[i]
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	if t.shore:
 		return Ground.SHINGLE
 	if t.apron:
 		return Ground.SCREE
 	if t.bank and gb > 0.0:
 		return Ground.GRAVEL
-	if t.rise[i] < -0.4 - gb * 0.3:
+	if rs < -0.4 - gb * 0.3:
 		# Green dales between the pavements, heath where they widen.
 		return Ground.HEATH if gb > 0.35 else Ground.GRASS
 	if gb < -0.5:
@@ -93,17 +91,16 @@ static func _surface(t: BiomeSurface) -> int:
 	return Ground.LIMESTONE
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	var g := t.ground
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
 	if g == Ground.GRASS:
-		if t.roll < 0.01:
+		if r < 0.01:
 			return PropKind.BONES
-		if t.roll < 0.022:
+		if r < 0.022:
 			return PropKind.BOULDER
-		return PropKind.GORSE if t.roll < 0.03 else BiomeScatter.NONE
+		return PropKind.GORSE if r < 0.03 else BiomeScatter.NONE
 	if g == Ground.HEATH:
 		var k := maxf(0.0, t.clump[t.i])
-		if t.roll < 0.02 + k * 0.26:
+		if r < 0.02 + k * 0.26:
 			return PropKind.GORSE
-		return PropKind.BOULDER if t.roll > 0.37 and t.roll < 0.385 else BiomeScatter.NONE
+		return PropKind.BOULDER if r > 0.37 and r < 0.385 else BiomeScatter.NONE
 	return BiomeScatter.PASS

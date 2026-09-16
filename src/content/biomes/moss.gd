@@ -75,15 +75,12 @@ static func make() -> BiomeDef:
 	return d
 
 
-static func _surface(t: BiomeSurface) -> int:
-	var i := t.i
-	var gb := t.big[i]
+static func _surface(t: BiomeSurface, e: float, rs: float, gb: float) -> int:
 	if t.shore:
 		return Ground.MUD if gb > -0.25 else Ground.SAND
 	if t.apron:
 		return Ground.PEAT
-	var rs := t.rise[i]
-	if t.elev[i] >= 5.0 and rs > 0.3 and gb > -0.1:
+	if e >= 5.0 and rs > 0.3 and gb > -0.1:
 		return Ground.HEATH
 	if rs > 0.35 + gb * 0.6 or gb > 0.45:
 		# Peat hags stand proud of the fen; peat moor where it masses.
@@ -93,10 +90,10 @@ static func _surface(t: BiomeSurface) -> int:
 	return Ground.MOSS
 
 
-static func _scatter(t: BiomeScatter) -> int:
-	if t.ground == Ground.MUD:
-		if t.roll < 0.1 + maxf(0.0, t.clump[t.i]) * 0.35:
+static func _scatter(t: BiomeScatter, g: int, r: float) -> int:
+	if g == Ground.MUD:
+		if r < 0.1 + maxf(0.0, t.clump[t.i]) * 0.35:
 			return PropKind.REEDS
 		# Drowned trunks stand where the fen took the ground back.
-		return PropKind.DEAD_TREE if t.roll > 0.49 else BiomeScatter.NONE
+		return PropKind.DEAD_TREE if r > 0.49 else BiomeScatter.NONE
 	return BiomeScatter.PASS

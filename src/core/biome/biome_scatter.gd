@@ -4,9 +4,11 @@ extends RefCounted
 ## every type shares. GenScatter fills one of these per band and hands it to
 ## `BiomeDef.scatter`, which answers with a PropKind, NONE, or PASS.
 ##
-## `roll` is the tile's own hash in [0, 1): a recipe compares it against
-## cumulative chances, so the same tile always grows the same thing and no
-## sequence RNG is drawn in a threaded loop. Low rolls are the common things.
+## The two fields every recipe reads come as arguments: `g`, what the tile is
+## made of, and `r`, the tile's own hash in [0, 1). A recipe compares `r`
+## against cumulative chances, so the same tile always grows the same thing and
+## no sequence RNG is drawn in a threaded loop; low rolls are the common things.
+## Everything rarer is on the sample, indexed by `i`.
 ##
 ## A type's recipe calls `shared()` first, for the grounds every landscape meets
 ## the same way (the strandline, shingle, an exposed rock face, water's edge),
@@ -66,104 +68,102 @@ func edge_of(g: int) -> bool:
 
 ## What the land decides before any landscape gets a say: ore at the foot of an
 ## exposed face, and what stands at water's edge. PASS when neither applies.
-static func first(t: BiomeScatter) -> int:
-	var g := t.ground
+static func first(t: BiomeScatter, g: int, r: float) -> int:
 	if t.up >= 2 and (g == Ground.SCREE or g == Ground.ROCK or g == Ground.LIMESTONE or g == Ground.GRAVEL or g == Ground.SNOW or g == Ground.ASH):
 		# What is buried follows the land, not the recipe on top of it.
-		return ore(t.own_def, t.roll * 2.2)
+		return ore(t.own_def, r * 2.2)
 	if t.bank or t.pool:
-		return PropKind.REEDS if t.roll < t.def.reed_chance else NONE
+		return PropKind.REEDS if r < t.def.reed_chance else NONE
 	return PASS
 
 
 ## The grounds every landscape reads the same way: the strandline and its wrack,
 ## shingle, fen, mud, peat, snow, loose rock and gravel. Run after the type's own
 ## recipe, so a type that wants its own answer on one of these takes it first.
-static func shared(t: BiomeScatter) -> int:
-	var g := t.ground
+static func shared(t: BiomeScatter, g: int, r: float) -> int:
 	if g == Ground.SAND:
 		if t.sea_steps[t.i] <= 2:
 			# The strandline: wrack in drifts, driftwood along it.
 			var k := maxf(0.0, t.clump[t.i])
-			if t.roll < 0.02 + k * 0.08:
+			if r < 0.02 + k * 0.08:
 				return PropKind.WRACK
-			return PropKind.DRIFTWOOD if t.roll < 0.035 + k * 0.08 else NONE
-		return t.def.shore_bush if t.roll < 0.012 else NONE
+			return PropKind.DRIFTWOOD if r < 0.035 + k * 0.08 else NONE
+		return t.def.shore_bush if r < 0.012 else NONE
 	if g == Ground.SHINGLE:
-		if t.sea_steps[t.i] <= 1 and t.roll < 0.07:
+		if t.sea_steps[t.i] <= 1 and r < 0.07:
 			return PropKind.MUSSEL_ROCK
-		if t.roll < 0.1:
+		if r < 0.1:
 			return PropKind.WRACK
-		if t.roll < 0.12:
+		if r < 0.12:
 			return PropKind.DRIFTWOOD
-		return PropKind.BOULDER if t.roll < 0.14 else NONE
+		return PropKind.BOULDER if r < 0.14 else NONE
 	if g == Ground.MOSS:
 		var k := maxf(0.0, t.clump[t.i])
-		if t.roll < 0.03 + k * 0.08:
+		if r < 0.03 + k * 0.08:
 			return PropKind.REEDS
-		if t.roll < 0.045 + k * 0.08:
+		if r < 0.045 + k * 0.08:
 			return PropKind.DEAD_TREE
-		return PropKind.BUSH if t.roll < 0.055 + k * 0.08 else NONE
+		return PropKind.BUSH if r < 0.055 + k * 0.08 else NONE
 	if g == Ground.MUD:
-		return PropKind.REEDS if t.roll < 0.1 + maxf(0.0, t.clump[t.i]) * 0.35 else NONE
+		return PropKind.REEDS if r < 0.1 + maxf(0.0, t.clump[t.i]) * 0.35 else NONE
 	if g == Ground.PEAT:
 		# Banks are cut along the edge of a hag.
-		if t.edge_of(Ground.PEAT) and t.roll < 0.16:
+		if t.edge_of(Ground.PEAT) and r < 0.16:
 			return PropKind.PEAT_BANK
-		return PropKind.REEDS if t.roll < 0.02 else NONE
+		return PropKind.REEDS if r < 0.02 else NONE
 	if g == Ground.SNOW:
 		var k := maxf(0.0, t.forest[t.i] + 0.05)
-		if t.level <= 9 and t.roll < k * 0.5:
+		if t.level <= 9 and r < k * 0.5:
 			return PropKind.SNOW_PINE
-		if t.roll < 0.008 + k * 0.5:
+		if r < 0.008 + k * 0.5:
 			return PropKind.DEAD_TREE
-		return PropKind.BOULDER if t.roll < 0.016 + k * 0.5 else NONE
+		return PropKind.BOULDER if r < 0.016 + k * 0.5 else NONE
 	if g == Ground.NEEDLES:
 		var k := maxf(0.0, t.forest[t.i] + 0.12)
 		if t.own_def.id == &"snowfield":
 			# A wood thinning into the snow: snow pines last.
-			return PropKind.SNOW_PINE if t.roll < 0.1 + k * 0.3 else NONE
-		if t.roll < (0.16 + k * 0.34) * green_reach(t):
+			return PropKind.SNOW_PINE if r < 0.1 + k * 0.3 else NONE
+		if r < (0.16 + k * 0.34) * green_reach(t):
 			return PropKind.PINE
-		if t.roll < 0.17 + k * 0.34:
+		if r < 0.17 + k * 0.34:
 			return PropKind.DEAD_TREE
-		return PropKind.BUSH if t.roll < 0.2 + k * 0.34 else NONE
+		return PropKind.BUSH if r < 0.2 + k * 0.34 else NONE
 	if g == Ground.LIMESTONE:
 		var k := maxf(0.0, t.clump[t.i])
-		if t.roll < 0.04 + k * 0.22:
+		if r < 0.04 + k * 0.22:
 			return PropKind.CLINTS
-		if t.roll > 0.3 and t.roll < 0.302:
+		if r > 0.3 and r < 0.302:
 			return PropKind.STANDING_STONE
 		# Seams show in the pavement's joints.
-		return ore(t.own_def, (t.roll - 0.44) * 1.6) if t.roll > 0.44 else NONE
+		return ore(t.own_def, (r - 0.44) * 1.6) if r > 0.44 else NONE
 	if g == Ground.BONE:
-		if t.roll < 0.02:
+		if r < 0.02:
 			return PropKind.BONES
-		return PropKind.BOULDER if t.roll < 0.03 else NONE
+		return PropKind.BOULDER if r < 0.03 else NONE
 	if g == Ground.ASH:
 		# Burnt stumps in ash that is not a furnace's own.
-		return PropKind.DEAD_TREE if t.roll < 0.015 else NONE
+		return PropKind.DEAD_TREE if r < 0.015 else NONE
 	if g == Ground.CLINKER:
-		if absf(t.fissure[t.i]) < 0.05 and t.roll < 0.2:
+		if absf(t.fissure[t.i]) < 0.05 and r < 0.2:
 			return PropKind.VENT
-		if t.edge_of(Ground.CLINKER) and t.roll < 0.16:
+		if t.edge_of(Ground.CLINKER) and r < 0.16:
 			# The flow's margin: a levee of blocks and the odd vent.
-			return PropKind.BOULDER if t.roll < 0.12 else PropKind.VENT
-		if t.roll < 0.006:
+			return PropKind.BOULDER if r < 0.12 else PropKind.VENT
+		if r < 0.006:
 			return PropKind.VENT
-		return PropKind.BOULDER if t.roll < 0.02 else NONE
+		return PropKind.BOULDER if r < 0.02 else NONE
 	if g == Ground.ROCK or g == Ground.SCREE:
-		if t.roll < 0.06:
+		if r < 0.06:
 			return PropKind.BOULDER
-		return ore(t.own_def, t.roll - 0.06)
+		return ore(t.own_def, r - 0.06)
 	if g == Ground.GRAVEL:
-		if t.roll < 0.018:
+		if r < 0.018:
 			return PropKind.BOULDER
-		return ore(t.own_def, (t.roll - 0.018) * 3.0) if t.own_def.gravel_ore else NONE
+		return ore(t.own_def, (r - 0.018) * 3.0) if t.own_def.gravel_ore else NONE
 	if g == Ground.GRASS:
-		return PropKind.BUSH if t.roll < 0.02 else NONE
+		return PropKind.BUSH if r < 0.02 else NONE
 	if g == Ground.HEATH:
-		return PropKind.BUSH if t.roll < 0.04 else NONE
+		return PropKind.BUSH if r < 0.04 else NONE
 	return PASS
 
 
