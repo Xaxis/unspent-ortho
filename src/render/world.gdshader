@@ -218,11 +218,13 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	}
 	// 4. Litter in drifts: two or three pixels of rust and plate, never an even
 	//    scatter over the whole land.
-	if (ink_vnoise(wp * 0.16 + 33.0) > 0.63) {
+	float drift = ink_vnoise(wp * 0.16 + 33.0) * 0.7 + ink_vnoise(wp * 0.6 + 77.0) * 0.3;
+	if (drift > 0.66) {
 		float h = ink_hash(px + 17.0);
-		if (h > 0.9955) {
-			c = RUST3;
-		} else if (h < 0.0035) {
+		float much = (drift - 0.66) * 3.0;
+		if (h > 1.0 - 0.0035 * much) {
+			c = RUST2;
+		} else if (h < 0.0025 * much) {
 			c = pale || page ? SLATE2 : LINEN3;
 		}
 	}
@@ -277,26 +279,42 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			}
 		}
 	} else if (m == 43) {
-		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with
-		// the ground showing between; now and then a piece of sea glass.
-		vec2 q = wp * 6.0;
+		// SHINGLE: drawn pebbles, lit on the upper left and dark below, with the
+		// ground showing between; now and then a piece of sea glass. The cells
+		// they are found in are warped and each pebble is thrown well off its
+		// own centre and turned its own way, so a beach is never an offset
+		// lattice of identical lozenges (playtest, wave N; CLAUDE.md: no grid).
+		// A wash of wet and weed lies over the whole of it, and pays the cells
+		// no attention at all.
+		vec2 qw = wp + vec2(ink_vnoise(wp * 0.09 + 3.0) - 0.5, ink_vnoise(wp * 0.09 + 21.0) - 0.5) * 2.6;
+		vec2 q = qw * 6.0;
 		vec2 i = floor(q);
 		vec2 f = fract(q) - 0.5;
 		float h = ink_hash(i + 3.0);
-		vec2 o = (vec2(ink_hash(i + 7.0), ink_hash(i + 11.0)) - 0.5) * 0.3;
-		vec2 e = (f - o) * vec2(1.0, 1.35 + h * 0.5);
-		float r = 0.28 + h * 0.16;
-		float dd = length(e);
+		vec2 o = (vec2(ink_hash(i + 7.0), ink_hash(i + 11.0)) - 0.5) * 0.85;
+		float pa = ink_hash(i + 17.0) * 3.1416;
+		vec2 g = f - o;
+		vec2 e = vec2(g.x * cos(pa) - g.y * sin(pa), g.x * sin(pa) + g.y * cos(pa)) * vec2(1.0, 1.05 + h * 0.9);
+		float r = 0.24 + h * 0.22;
+		float dd = length(e) + rag(wp) * 0.5;
 		if (h > 0.18 && dd < r) {
 			c = h < 0.45 ? dn(c, 0.35) : (h > 0.8 ? up(c, 0.3) : c);
 			if (dd > r - 0.1) {
 				c = (e.x + e.y) > 0.0 ? dn(c, 0.9) : up(c, 0.3);
 			}
 			if (h > 0.992) {
-				c = h > 0.996 ? SPRUCE4 : BRINE5;
+				// Sea glass: rubbed matt by the sea, a step under the shingle's
+				// own light, never the brightest thing on the beach.
+				c = mix(h > 0.996 ? SPRUCE2 : BRINE2, c, 0.3);
 			}
 		} else if (ink_hash(px + 2.0) < 0.2) {
 			c = dn(c, 0.4);
+		}
+		float wash = ink_vnoise(wp * 0.28 + 44.0) * 0.7 + ink_vnoise(wp * 1.1 + 9.0) * 0.3 + rag(wp);
+		if (wash > 0.64) {
+			c = dn(c, 0.3);
+		} else if (wash < 0.34) {
+			c = up(c, 0.14);
 		}
 	} else if (m == 44) {
 		// SNOW: drifts laid by one wind as short crescents, horns downwind:
