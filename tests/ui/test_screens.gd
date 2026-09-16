@@ -200,10 +200,14 @@ func test_a_key_held_as_the_title_opens_is_not_a_press_on_it() -> void:
 	s.select(&"controls")
 	s.close()
 	Input.action_press(&"use")
-	# A press is "just pressed" for the rest of the frame it was made in. Let that
-	# frame end, so what the title opens onto is a key HELD from before it — which
-	# is what this is about — and not a press made this instant.
-	await tree.process_frame
+	# A press counts as "just pressed" until the frame it was made in is behind
+	# Input's own reckoning. Let two frames pass, so what the title opens onto is
+	# a key HELD from before it — which is what this is about — and not a press
+	# made this instant. One frame is not enough: whether it is depends on where
+	# in the frame the test itself is running, which is how this test came to
+	# pass alone and fail in a full run.
+	for i in 2:
+		await tree.process_frame
 	s.open()
 	eq(s.menu.selected().id, &"controls")
 	s._read_keys()
