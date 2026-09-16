@@ -44,7 +44,7 @@ wait 6
 shot 10-watching
 # The first meeting comes out about now (75 s in), a runner on its round in
 # view, not yet noticing the player: frames while it comes along.
-await mob 45
+await mob 60
 shot 11-meeting with mob
 wait 2
 shot 12-meeting

@@ -817,11 +817,13 @@ func _drawn() -> bool:
 	var began := Time.get_ticks_msec()
 	var until := began + int(DRAW_WAIT * 1000.0)
 	var seen := [false]
-	RenderingServer.frame_post_draw.connect(func() -> void: seen[0] = true, CONNECT_ONE_SHOT)
+	var mark := func() -> void: seen[0] = true
+	RenderingServer.frame_post_draw.connect(mark, CONNECT_ONE_SHOT)
 	while not seen[0] and Time.get_ticks_msec() < until:
 		await get_tree().process_frame
 	var waited := (Time.get_ticks_msec() - began) / 1000.0
 	if not seen[0]:
+		RenderingServer.frame_post_draw.disconnect(mark)
 		printerr("tour %s: the window was not asked to draw for %.0f s, so there is no frame to take" % [_name, waited])
 		return false
 	if waited >= DRAW_SLOW:
