@@ -17,8 +17,16 @@ extends TestCase
 ## machine drawn entirely in them is a machine drawn in nothing. Marks are
 ## budgeted in screen pixels (FoundKit.PX) for exactly that reason.
 
-## The flock is a MultiMesh of shards with no merged body surface: the wear rules
-## do not apply to it and neither does this.
+## Every kind marks the one face the camera at 57 degrees cannot miss: a deck, a
+## hull flank, a cap's shoulder, a chest, a lid, a drum's top. The big kinds use
+## FoundKit.day_wear, which is composed for half a tile of plate; the thin ones
+## (watcher, warden, runner, cutter, hauler, lineman) use FoundKit.day_marks,
+## which is the same three things scaled to a face a fifth that size — they had
+## nothing at all before, because the only idiom was sized for a harvester.
+##
+## The flock is the one exception, and it is in the model's own header: thirty-six
+## shards in a MultiMesh, "too small to plate". It has no body surface to mark and
+## no weak side; it reads by the shape of its cloud and its amber points.
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"runner", &"clerk"]
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 ## One screen pixel at the game's default view height (14 units over 360 px).
@@ -28,9 +36,13 @@ const H := 170
 ## A colour covering fewer pixels than this is a speck, not something read.
 const MIN_PATCH := 4
 const MIN_COLOURS := 8
-const MAX_SHARE := 0.52
-## How much of the visible body the years have to change to count as wear.
-const MIN_WEAR_SHARE := 0.07
+const MAX_SHARE := 0.48
+## How much of the visible body the years have to change to count as wear. Seven
+## per cent was the floor when five of the twelve carried day marks and the rest
+## carried nothing that reached the screen; with every kind marked the worst is
+## the clerk at 12.5 per cent, so the floor is where a kind cannot quietly fall
+## back to a body with chamfer lines on it and still pass.
+const MIN_WEAR_SHARE := 0.11
 
 
 ## Per-pixel colour index and the palette behind it, from the fixed game camera.
