@@ -13,6 +13,11 @@ const SCANNERS: Array[StringName] = [&"watcher", &"warden", &"clerk"]
 const WASHES: Array[StringName] = [&"harvester", &"hauler", &"sweeper", &"cutter"]
 const STEP := 1.0 / 60.0
 const FLOCK := preload("res://src/models/machines/flock.gd")
+## How much more daylight read each rung of the ladder must be worth than the one
+## below it. A fifth, because a step smaller than that is inside the noise of a
+## machine's own grime at play zoom, and the whole point is that a player reads
+## it off a still frame across a field.
+const DAY_RUNG := 1.2
 
 
 static func joint_state(m: MachineModel) -> Array:
@@ -489,15 +494,27 @@ func test_beams_know_the_ground_the_machine_stands_on() -> void:
 	holder.free()
 
 
-func test_work_washes_light_the_ground_only_after_dark() -> void:
+## A worker's lamps are ON — they are how it sees the row it is cutting — so by
+## day they lay a dusting of pixels on that row, and what the plan changes is how
+## hard. They used to lay NOTHING at all on three of the four rungs, which is why
+## the four kinds whose only beam is a work lamp said nothing about themselves at
+## noon until the moment they turned (wave A review: the daylight ladder read on
+## three kinds of twelve). The night is untouched: the shader mixes to full in
+## the dark whatever the day floor says.
+func test_work_washes_dust_the_ground_by_day_and_wash_it_after_dark() -> void:
 	for kid in WASHES:
 		var m := FigureModel.create(kid) as MachineModel
 		var bs := beams(m, &"work")
 		gt(float(bs.size()), 0.0, "%s has a work wash" % kid)
 		var sun := with_sun(1.0)
-		m.settle()
-		for b: MeshInstance3D in bs:
-			check(not b.visible, "%s wash dark by day" % kid)
+		for d: StringName in Disposition.ORDER:
+			m.disposition = d
+			MachineModel._dark_frame = -1
+			m.settle()
+			for b: MeshInstance3D in bs:
+				check(b.visible, "%s %s wash shows by day" % [kid, d])
+				var floor_now := float((b.material_override as ShaderMaterial).get_shader_parameter("day_floor"))
+				lt(floor_now, 0.7, "%s %s dusts the ground, never floods it: %.2f" % [kid, d, floor_now])
 		sun.light_energy = 0.55
 		MachineModel._dark_frame = -1
 		m.settle()
@@ -506,6 +523,57 @@ func test_work_washes_light_the_ground_only_after_dark() -> void:
 		for lvl: int in m.lamp_levels().get(&"work", []):
 			eq(lvl, 2, "%s work lamps hot at night" % kid)
 		drop_sun(sun)
+		m.free()
+
+
+## THE DAYLIGHT LADDER. Every kind must say more about what it makes of the
+## player at every rung, under a noon sun, or the pillar the whole plan rests on
+## — rob a relay and everything wired to it comes for you — is unreadable until
+## the first blow lands.
+##
+## Wave A shipped this as a blink count on a lamp a pixel across. The wave A2 fix
+## moved it into space, and the review found it still only read on three kinds of
+## twelve: a harvester's strip was countable and a runner's four rungs were the
+## same picture. Nothing failed, because nothing measured it. This does, in the
+## machines' own units (daylight_read: square tiles of lit ground and lit plate),
+## and it fails the moment a kind stops carrying the read.
+func test_every_kind_says_more_at_every_rung_in_daylight() -> void:
+	for kid in KINDS:
+		var m := FigureModel.create(kid) as MachineModel
+		var was := 0.0
+		var reads: Array[float] = []
+		for d: StringName in Disposition.ORDER:
+			m.disposition = d
+			var now := m.daylight_read()
+			reads.append(now)
+			gt(now, was * DAY_RUNG, "%s: %s reads %.3f against %s's %.3f" % [kid, d, now, was, was])
+			was = now
+		gt(reads[3], reads[0] * 2.0, "%s: hostile %.3f is worth twice indifferent %.3f" % [kid, reads[3], reads[0]])
+		m.free()
+
+
+## A beam that crosses the ground is not a longer beam: everything past the
+## crossing is eaten by the depth buffer. A dredger's wedge ended 0.47 of a tile
+## UNDER its own feet and a lineman's 0.81, and those were the kinds whose
+## daylight read came out as four or five pixels — the channel was there and
+## buried. MachineModel.add_beam works the fall out now, so a kind gives it a
+## bearing and cannot get this wrong; this holds the rule for the whole set.
+func test_every_beam_lands_on_the_ground_the_machine_stands_on() -> void:
+	for kid in KINDS:
+		var m := FigureModel.create(kid) as MachineModel
+		m.set_pose(&"stand")
+		m.settle()
+		for b: Array in m._beams:
+			var mi: MeshInstance3D = b[0]
+			var length := float((b[1] as ShaderMaterial).get_shader_parameter("beam_length"))
+			var xf := Transform3D.IDENTITY
+			var n: Node3D = mi
+			while n != null and n != m:
+				xf = n.transform * xf
+				n = n.get_parent() as Node3D
+			var far := (xf * Vector3(length, 0, 0)).y
+			gt(far, -0.12, "%s %s beam lands %.2f under its own feet" % [kid, b[2], far])
+			lt(far, 0.4, "%s %s beam never comes down: far lip %.2f up" % [kid, b[2], far])
 		m.free()
 
 

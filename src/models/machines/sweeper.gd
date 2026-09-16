@@ -68,7 +68,7 @@ func build() -> void:
 	body_mesh(k, deck)
 	for sz: float in [-1.0, 1.0]:
 		add_lamp(deck, Vector3(0.212, 0.0, sz * 0.46), Vector3.RIGHT, Vector3.UP, 0.07, 0.035, &"work")
-	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.3, 2.0, &"work")
+	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.9, 2.0, &"work")
 	var dw := FoundKit.kit()
 	FoundKit.dirt_line(dw, Vector3(0.212, -0.03, -0.66), Vector3(0.212, -0.03, 0.66), Vector3.RIGHT, 0.02, R[0])
 	FoundKit.scorch(dw, Vector3(-0.1, 0.061, -0.5), Vector3.UP, 0.07, 71)

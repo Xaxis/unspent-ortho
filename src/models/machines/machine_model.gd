@@ -87,15 +87,36 @@ const PRIME_LEAN := -0.1
 ## day_floor). A machine reading the ground it works is faint by day; one the
 ## plan has turned lights the ground it means to cross. Night is untouched: the
 ## shader mixes to 1 in the dark whatever this says.
-const DAY_SCAN := {&"indifferent": 0.14, &"wary": 0.22, &"observant": 0.34, &"hostile": 0.62}
-## The same for a worker's wash, which is dark by day until the plan turns it:
-## a harvester that has stopped harvesting and is lighting you up instead.
-const DAY_WORK := {&"indifferent": 0.0, &"wary": 0.0, &"observant": 0.0, &"hostile": 0.5}
-## How much of a lamp's built-in glow the day leaves (found.gdshader glow_scale).
-## Full glow under the sun blows a lens out to paper white and throws its colour
-## away; turned down, the lens keeps the COLD it is made of and reads as a light
-## rather than a hole.
-const DAY_GLOW := 0.13
+##
+## THE WASH IS THE LADDER. A machine at play zoom is between twelve and seventy
+## screen pixels wide, and no detail on a body that size — a strip, a pip, a
+## lean — can carry four rungs at a hundred tiles. The ground it throws its light
+## on can: the wedge is its own screen area, it grows with nothing but density,
+## and it is the one channel that reads the same on a runner and on a harvester.
+## Every rung is worth real pixels, and indifferent never falls below the 0.2 a
+## scan beam carried before disposition existed.
+const DAY_SCAN := {&"indifferent": 0.20, &"wary": 0.32, &"observant": 0.48, &"hostile": 0.80}
+## The same for a worker's wash. It used to be three zeros and a number, which is
+## why the four kinds whose only beam is a work lamp (harvester, cutter, hauler,
+## sweeper) had a flat bottom three rungs: nothing at all, nothing at all,
+## nothing at all, then a floodlight. A worker's lamps are ON — they are how it
+## sees the row it is cutting — so by day they lay a dusting of pixels on that
+## row, and what the plan changes is how hard.
+const DAY_WORK := {&"indifferent": 0.09, &"wary": 0.16, &"observant": 0.27, &"hostile": 0.55}
+## How much of a lamp's built-in glow the day leaves (found.gdshader glow_scale),
+## by disposition. Full glow under the sun blows a lens out to paper white and
+## throws its colour away; turned down, the lens keeps the COLD it is made of and
+## reads as a light rather than a hole. Up the ladder it is driven harder — the
+## second channel, the one that works on a kind whose wash the camera cannot see
+## — but never near the blow-out the whole fix was about.
+const DAY_GLOW := {&"indifferent": 0.13, &"wary": 0.17, &"observant": 0.22, &"hostile": 0.28}
+## Where a beam's far lip lands, over the machine's own feet. Not zero: a wedge
+## exactly on the ground plane fights the ground for the depth buffer.
+const BEAM_LAND := 0.06
+## What a square tile of lit plan strip is worth against a square tile of wash,
+## in daylight_read(): the strip is solid light on the body the eye is already
+## on, the wash a quarter-density stipple thrown on the ground beside it.
+const PLAN_WORTH := 8.0
 ## Vertex alpha the FOUND shader reads as a built-in light (found.gdshader:
 ## 0.5..0.98 steady, brighter lower). A lamp's lens and its hot core.
 const LAMP_ALPHA := 0.8
@@ -185,6 +206,8 @@ var _matter_swap: Array = []
 var _bone_boxes: Array[AABB] = []
 ## Lamps: {lamp: Node3D, hot: Node3D, role: StringName, side: bool, order: int}.
 var _lamps: Array = []
+## The lit face of ONE plan strip segment, in square tiles (daylight_read).
+var _plan_seg_area := 0.0
 ## Surface kind -> Array of [MeshKit, Node3D] waiting for finish_rig().
 var _queued: Dictionary = {}
 ## Every node between the model and a bone, parents first.
@@ -393,6 +416,7 @@ func _plan_strip(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, 
 	var across := uu.cross(nn)
 	var seg := maxf(w, PLAN_SEG_MIN)
 	var high := maxf(h, PLAN_SEG_MIN)
+	_plan_seg_area = seg * high * 0.72
 	var pitch := seg * PLAN_PITCH
 	var span := pitch * PLAN_SEGS
 	# The bed: an inked frame and the dark glass the segments sit in.
@@ -468,6 +492,13 @@ func add_scan(parent: Node3D, c: Vector3, n: Vector3, along: Vector3, span: floa
 ##         its joint, locks and narrows on alert, stutters hurt and dies early
 ##   work  the wash of a worker's lamps on the ground it works: dark by day, on
 ##         through dusk and night, harder through a windup when `on_part_side`
+##
+## `dir` gives the BEARING only: how steeply it falls is worked out here, so the
+## far lip of the wedge lands on the ground the machine is standing on. A beam
+## aimed by hand went through the ground instead — a dredger's wedge ended 0.47
+## under its own feet, a lineman's 0.81 — and everything past the crossing was
+## eaten by the depth buffer. Those kinds were the ones whose daylight read came
+## out as four or five pixels: the channel was there and buried.
 func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread: float, role: StringName = &"scan", on_part_side: bool = false) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "beam"
@@ -488,7 +519,7 @@ func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread
 	mi.extra_cull_margin = length + spread
 	mi.position = apex
 	# The quad's local +X runs along the beam, +Z across it.
-	var d := dir.normalized()
+	var d := _aimed(parent, apex, dir, length)
 	var side := d.cross(Vector3.UP)
 	if side.length() < 0.1:
 		side = Vector3.BACK
@@ -496,6 +527,35 @@ func add_beam(parent: Node3D, apex: Vector3, dir: Vector3, length: float, spread
 	mi.basis = Basis(d, side.cross(d), side)
 	parent.add_child(mi)
 	_beams.append([mi, mat, role, on_part_side])
+
+
+## The unit direction a beam thrown from `apex` (local to `parent`) must take to
+## land its far lip BEAM_LAND above the machine's own feet, keeping the bearing
+## `dir` asks for. A wedge that crosses the ground is not a longer wedge: the
+## depth buffer eats everything past the crossing, so the aim IS the read.
+func _aimed(parent: Node3D, apex: Vector3, dir: Vector3, length: float) -> Vector3:
+	# The aim is worked out in the MODEL's frame and handed back in the parent's:
+	# a beam hangs off a head or a cap that is already tilted, and a fall measured
+	# down the parent's own Y is not a fall toward the ground.
+	var xf := _rest_of(parent)
+	var world := (xf.basis * dir).normalized()
+	var flat := Vector2(world.x, world.z)
+	if flat.length() < 1e-4 or length < 1e-3:
+		return dir.normalized()
+	var drop := clampf((xf * apex).y - BEAM_LAND, 0.0, length * 0.96)
+	var down := -drop / length
+	flat = flat.normalized() * sqrt(maxf(0.0, 1.0 - down * down))
+	return (xf.basis.inverse() * Vector3(flat.x, down, flat.y)).normalized()
+
+
+## Where a joint sits in the rest rig, relative to the machine's own feet.
+func _rest_of(n: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	var at: Node3D = n
+	while at != null and at != self:
+		xf = at.transform * xf
+		at = at.get_parent() as Node3D
+	return xf
 
 
 ## A node that only exists once the machine is dead (a spill, a split load),
@@ -1140,8 +1200,10 @@ func _run_lights() -> void:
 	var run := running()
 	var hurt_like := not run and pose != &"dead"
 	var flick := _stutter(_dark_t + 0.13)
-	# The lens keeps its own colour under the sun instead of blowing white.
-	lights_material.set_shader_parameter("glow_scale", lerpf(DAY_GLOW, 1.0, clampf(dark / 0.3, 0.0, 1.0)))
+	# The lens keeps its own colour under the sun instead of blowing white, and
+	# burns harder in it the further up the ladder the machine is.
+	var day_glow: float = float(DAY_GLOW.get(disposition, 0.13))
+	lights_material.set_shader_parameter("glow_scale", lerpf(day_glow, 1.0, clampf(dark / 0.3, 0.0, 1.0)))
 	for l: Dictionary in _lamps:
 		var role: StringName = l.role
 		var lvl := 0
@@ -1206,6 +1268,31 @@ func _show_plan(segs: Array, lvl: int) -> void:
 		var pair: Array = segs[i]
 		(pair[0] as Node3D).visible = i < n
 		(pair[1] as Node3D).visible = i < n and lvl > 1
+
+
+## How much light this machine throws under a NOON sun, in square tiles: the
+## wash its beams lay on the ground plus the lit face of its plan strip, each at
+## the density the day leaves it at this disposition.
+##
+## This is the daylight read in one number, and tests/models/test_machines_day.gd
+## holds it to rising at EVERY rung of EVERY kind. The wave A build shipped a
+## ladder that only moved on three kinds of twelve, and nothing failed, because
+## nothing measured it: the read was asserted from one photograph of a harvester.
+## A kind whose number does not move is a kind that tells a player nothing about
+## what it makes of them until it hits them.
+func daylight_read() -> float:
+	var total := 0.0
+	for b: Array in _beams:
+		var mat: ShaderMaterial = b[1]
+		var length := float(mat.get_shader_parameter("beam_length"))
+		var spread := float(mat.get_shader_parameter("beam_spread"))
+		var day: float = float((DAY_WORK if b[2] == &"work" else DAY_SCAN).get(disposition, 0.2))
+		total += 0.5 * length * spread * day
+	# A strip segment is solid light on the body itself, not stipple thrown on
+	# the ground: worth many times its area to an eye looking at the machine.
+	total += float(DISPOSITION_CODE.get(disposition, 1)) * _plan_seg_area \
+		* float(DAY_GLOW.get(disposition, 0.13)) * PLAN_WORTH
+	return total
 
 
 ## How many segments of the plan strip burn now: the whole read, for tests and

@@ -199,7 +199,7 @@ func build() -> void:
 		add_lamp(intake, Vector3(0.501, -0.4, sz * 0.54), Vector3.RIGHT, Vector3.UP, 0.07, 0.05, &"work", true)
 	# The lamps' wash on the row ahead, starting past the comb's teeth; hung on
 	# the hull so it stays on the ground when the intake pitches.
-	add_beam(hull, Vector3(1.72, -0.22, 0), Vector3(1.3, -0.18, 0), 1.5, 2.8, &"work", true)
+	add_beam(hull, Vector3(1.72, -0.22, 0), Vector3(1.3, -0.18, 0), 2.1, 2.8, &"work", true)
 	var iw := FoundKit.kit()
 	FoundKit.grime(iw, Vector3(0.45, -0.3, 0.0), Vector3(0.66, 0.75, 0), 1.8, 0.12, 6, 45, hood_r)
 	FoundKit.patch(iw, Vector3(0.22, -0.12, -0.7), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.26, 0.2, Palette.MACHINE["lineman"], 46)
