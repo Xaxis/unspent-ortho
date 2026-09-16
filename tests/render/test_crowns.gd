@@ -43,9 +43,58 @@ func test_the_clearing_reaches_about_a_tile_and_a_half() -> void:
 
 
 func test_the_shader_only_opens_what_sways_and_stands_clear() -> void:
+	# The numbers, not the lines that use them: the shader declares each as a
+	# const so reformatting or renaming a local cannot quietly drop the rule.
 	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
 	check(src.contains("uniform vec4 crown_clear[CROWN_CLEAR];"), "the shader takes the clearings")
-	check(src.contains("if (sway < 0.25) {"), "only what sways can go: a trunk or a wall never opens")
-	check(src.contains("wp.y < p.y + CROWN_LIFT"), "only what stands clear of the point's own ground")
+	check(src.contains("const float CROWN_SWAY = %.2f;" % Crowns.SWAY_MIN), "only what sways can go: a trunk or a wall never opens")
+	check(src.contains("const float CROWN_LIFT = %.2f;" % Crowns.LIFT), "only what stands clear of the point's own ground")
+	check(src.contains("sway < CROWN_SWAY"), "the sway gate reads the const")
+	check(src.contains("wp.y < p.y + CROWN_LIFT"), "the lift gate reads the const")
 	check(src.contains("ink_hash(px + vec2(53.0, 11.0)) < cut"), "cut as world-pinned stipple, never a fade")
 	check(src.contains("const int CROWN_CLEAR = %d;" % Crowns.SLOTS), "the shader and the system agree on the slots")
+
+
+func _flock(n: int, at: Vector2) -> Array:
+	# A flock of gulls: alive, near, not hostile, not aware of anyone.
+	var pos: Array[Vector2] = []
+	var hostile := PackedByteArray()
+	var aware := PackedByteArray()
+	for i in n:
+		pos.append(at + Vector2(i * 0.3, 0.0))
+		hostile.append(0)
+		aware.append(0)
+	return [pos, hostile, aware]
+
+
+func test_a_flock_of_gulls_never_crowds_out_the_machine_swinging_at_you() -> void:
+	# The bug this feature was built to prevent: pests further off filling every
+	# slot while the thing actually attacking stays hidden.
+	var f := _flock(12, Vector2(12, 0))
+	var pos: Array[Vector2] = f[0]
+	var hostile: PackedByteArray = f[1]
+	var aware: PackedByteArray = f[2]
+	# The machine is added LAST, as a mob that spawned later would be.
+	pos.append(Vector2(2, 0))
+	hostile.append(1)
+	aware.append(1)
+	var got := Crowns.choose(pos, hostile, aware, Vector2.ZERO, Crowns.SLOTS - 1)
+	eq(got.size(), Crowns.SLOTS - 1, "every slot is filled")
+	near(got[0].distance_to(Vector2(2, 0)), 0.0, 0.001, "the hostile that has noticed you comes first")
+
+
+func test_a_body_that_has_noticed_you_outranks_a_nearer_one_that_has_not() -> void:
+	var pos: Array[Vector2] = [Vector2(1, 0), Vector2(9, 0)]
+	var hostile := PackedByteArray([1, 1])
+	var aware := PackedByteArray([0, 1])
+	var got := Crowns.choose(pos, hostile, aware, Vector2.ZERO, 1)
+	near(got[0].x, 9.0, 0.001, "the one hunting you, not the one standing about")
+
+
+func test_among_equals_the_nearest_wins() -> void:
+	var pos: Array[Vector2] = [Vector2(6, 0), Vector2(2, 0), Vector2(11, 0)]
+	var hostile := PackedByteArray([1, 1, 1])
+	var aware := PackedByteArray([1, 1, 1])
+	var got := Crowns.choose(pos, hostile, aware, Vector2.ZERO, 2)
+	near(got[0].x, 2.0, 0.001, "nearest first")
+	near(got[1].x, 6.0, 0.001, "then the next")

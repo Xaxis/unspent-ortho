@@ -29,6 +29,9 @@ const int CROWN_CLEAR = 6;
 uniform vec4 crown_clear[CROWN_CLEAR];
 // How far above a point's own ground a leaf has to be before it is in the way.
 const float CROWN_LIFT = 0.85;
+// Below this sway weight the geometry is a trunk, a wall or the land, and never
+// opens. Both numbers are pinned by tests/render/test_crowns.gd.
+const float CROWN_SWAY = 0.25;
 // The machines' works cut into the ground (WorksMap): one texel per tile,
 // R cut, G scorch, B quarry, A bores. works_inv_size 0 = no map (the gallery,
 // hand-built worlds). works_dir: the survey bearing every ruled work lies on.
@@ -180,6 +183,18 @@ float flicker(vec3 p, float rate) {
 // 350 screen pixels at the play camera: where it has been walked and worked,
 // what was spilt or burnt or left standing on it, and the litter the ruin sheds.
 // Sparse and low-contrast: a wash must still read as a wash.
+// The four bands of wear are cut at the QUARTILES of `worn`, so each covers a
+// quarter of the land and the ladder has a known middle at 1.5. Cutting on an
+// even ramp instead left a third of the land in the lowest band and clamped the
+// top, so the ladder's mean sat wherever the clamp happened to put it and wear
+// pulled the whole land one way without anyone choosing it.
+// WEAR_MID is where the ladder is pinned, half a band above that middle on
+// purpose: two quarters of the land lift, one stays, one lays down. A crest
+// nobody walks bleaches and gathers dust, and the open finding on the land is
+// that it is too dark at noon, not too light.
+// tests/render/test_ground_wear.gd holds the bands to a quarter each.
+const vec3 WEAR_CUT = vec3(0.40, 0.50, 0.60);
+const float WEAR_MID = 2.0;
 vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	bool pale = m == 42 || m == 43 || m == 45;
 	bool page = m == 44 || m == 51;    // snow and ice: the page itself, barely marked
@@ -193,9 +208,9 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	//    Three octaves, so a screen holds features of about 3, 9 and 3 units.
 	float worn = ink_vnoise(wp * 0.11 + 61.0) * 0.55 + ink_vnoise(wp * 0.31 + 13.0) * 0.3
 		+ ink_vnoise(wp * 0.9 + 5.0) * 0.15 + rag(wp);
-	float lay = floor(clamp((worn - 0.34) * 9.0, 0.0, 3.0));
-	c = dn(c, (lay - 1.4) * wear * 0.75);
-	if (lay > 2.5 && ink_hash(px + 29.0) > 0.93) {
+	float lay = step(WEAR_CUT.x, worn) + step(WEAR_CUT.y, worn) + step(WEAR_CUT.z, worn);
+	c = dn(c, (lay - WEAR_MID) * wear * 0.75);
+	if (lay > 2.5 && ink_hash(px + 29.0) > 0.965) {
 		c = mix(c, bare, 0.5);
 	}
 	// 2. A line walked through to the ground under it: it wanders, it stops, its
@@ -1081,7 +1096,7 @@ void vertex() {
 // Only what sways and stands clear of the ground can go, so trunks, walls and
 // the land itself never open up.
 float crown_cut(vec3 wp, float sway) {
-	if (sway < 0.25) {
+	if (sway < CROWN_SWAY) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1093,7 +1108,7 @@ float crown_cut(vec3 wp, float sway) {
 		float d = length(wp.xz - p.xz);
 		cut = max(cut, 1.0 - smoothstep(p.w * 0.72, p.w, d));
 	}
-	return cut * clamp((sway - 0.25) * 2.5, 0.0, 1.0);
+	return cut * clamp((sway - CROWN_SWAY) * 2.5, 0.0, 1.0);
 }
 
 void fragment() {

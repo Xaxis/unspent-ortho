@@ -532,6 +532,10 @@ static func _ice_on(ice: MeshKit, a: Vector3, b: Vector3, h: int) -> void:
 		ice.prism(top.x, top.y - length, top.z, 0.0, top.y, 0.045, 4, Palette.RIME[3] if j % 2 == 0 else Palette.RIME[2])
 
 
+## Where a mast's cables hang from, in the world. No per-instance cast here on
+## purpose: a mast is the one kind `_chunk_props` leaves at uniform scale,
+## precisely so these points land on the metal that was baked, and a uniform
+## scale commutes with the turn, so this transform is that one exactly.
 func _mast_points(p: WorldProp, local: PackedVector3Array, ch: TerrainMesher.Chunk, m: TerrainMesher) -> PackedVector3Array:
 	var h := _height(ch, m, p.pos)
 	var xf := Transform3D(Basis(Vector3.UP, -p.rot).scaled(Vector3.ONE * p.scale), Vector3(p.pos.x, h, p.pos.y))
