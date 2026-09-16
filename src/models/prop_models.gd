@@ -65,7 +65,7 @@ static func variants(kind: int) -> int:
 			return 4
 		PropKind.SALT_RIDGE, PropKind.SCRAP_TREE:
 			return 3
-		PropKind.SALT_STACK, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
+		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
@@ -119,7 +119,7 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 		PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY, \
 		PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.ARCHIVE:
 			Works.build(k, kind, variant, country)
-		PropKind.SALT_RIDGE, PropKind.SALT_STACK, PropKind.PAN_GATE:
+		PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE:
 			Salt.build(k, kind, variant, country)
 		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
 			Scrap.build(k, kind, variant, country)

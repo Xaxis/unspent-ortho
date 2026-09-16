@@ -8,7 +8,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"moss"
-	d.display_name = "the moss"
+	d.display_name = "moss"
 	d.order = 1
 	d.style_note = "Soft broken edges, stippled dots, mist lying in the hollows."
 	d.share = Vector2(0.11, 0.15)

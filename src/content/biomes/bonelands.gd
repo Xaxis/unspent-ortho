@@ -8,7 +8,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"bonelands"
-	d.display_name = "the bonelands"
+	d.display_name = "bonelands"
 	d.order = 4
 	d.style_note = "Cracked broken lines, hard white light, grikes as ink cuts."
 	d.share = Vector2(0.11, 0.15)

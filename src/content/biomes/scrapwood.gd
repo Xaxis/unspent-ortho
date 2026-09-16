@@ -14,7 +14,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"scrapwood"
-	d.display_name = "the scrapwood"
+	d.display_name = "scrapwood"
 	d.order = 7
 	d.style_note = "Upright strokes over rust: the hand's crowns closed over the ruler's frames."
 	d.share = Vector2(0.055, 0.085)
@@ -115,14 +115,16 @@ static func _surface(t: BiomeSurface) -> int:
 	if t.bank:
 		return Ground.MUD
 	var rs := t.rise[i]
-	if rs < -0.7 and gb < -0.1:
+	if rs < -0.8 and gb < -0.2:
 		# Standing water in the bottoms, gone black with what leached into it.
 		return Ground.MOSS
-	if t.forest[i] > -0.2 - rs * 0.05:
+	# The canopy is closed almost everywhere: swarf is the floor of this wood,
+	# and a clearing has to be a real one before the grass gets in.
+	if t.forest[i] > -0.5 - rs * 0.05:
 		return Ground.SWARF
-	if t.elev[i] >= 8.0 or rs > 1.2:
+	if t.elev[i] >= 8.5 or rs > 1.4:
 		# Open tops where the wood never took: bare grit over the old heaps.
-		return Ground.GRAVEL if gb > 0.25 else Ground.HEATH
+		return Ground.HEATH
 	return Ground.GRASS
 
 
@@ -183,7 +185,9 @@ static func _works(L: Object) -> void:
 					continue
 				var q := at + d * gx * 3.2 + nrm * gy * 3.4
 				GenWorks._put(L, PropKind.WRECKAGE, q, rng.randf() * TAU, -99, 0.4)
-		GenWorks._run(L, PropKind.CONVEYOR, at + d * (half.x + 0.5), d, rng.randi_range(4, 7), 2.5, -99, 0.2)
+		# The belt was lifted for the metal the week after it stopped: what runs
+		# out of the yard is the line of it lying in the leaves.
+		GenWorks._run(L, PropKind.WRECKAGE, at + d * (half.x + 0.5), d, rng.randi_range(4, 6), 2.5, -99, 0.3)
 		GenWorks._about(L, PropKind.DEBRIS, at, 3, 1.0, half.x)
 		GenWorks._about(L, PropKind.MAGNET_HEAP, at, 2, half.y, half.x + 3.0)
 		GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 2.0), (-d).angle(), -99, 0.2)
@@ -194,11 +198,14 @@ static func _works(L: Object) -> void:
 		if p.x < 0:
 			continue
 		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var masts := GenWorks._run(L, PropKind.RELAY, at, d, rng.randi_range(4, 6), 7.0, -99, 0.1)
+		# Two masts still stand on the line; the rest came down years ago and
+		# the wood grew through where they fell.
+		var masts := GenWorks._run(L, PropKind.RELAY, at, d, 2, 9.0, -99, 0.0)
 		if masts.is_empty():
 			continue
 		GenWorks._record(c, &"closing_corridor", at, d, Vector2(18.0, 3.0), GenWorks.CUT)
 		for i in masts.size():
-			if i % 2 == 0:
-				GenWorks._about(L, PropKind.MAGNET_HEAP, c.w.props[masts[i]].pos, 1, 1.6, 3.0)
+			GenWorks._about(L, PropKind.MAGNET_HEAP, c.w.props[masts[i]].pos, 1, 1.6, 3.0)
+		# Where the fallen ones lie, on the same line.
+		GenWorks._run(L, PropKind.WRECKAGE, at + d * 4.5, d, 4, 9.0, -99, 0.15)
 		GenWorks._about(L, PropKind.SCRAP_TREE, at, 3, 3.0, 7.0)

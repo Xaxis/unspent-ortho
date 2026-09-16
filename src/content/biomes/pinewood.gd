@@ -7,7 +7,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"pinewood"
-	d.display_name = "the pinewood"
+	d.display_name = "pinewood"
 	d.order = 2
 	d.style_note = "Tall tight contours, upright strokes, shafts of light in the clearings."
 	d.share = Vector2(0.11, 0.15)

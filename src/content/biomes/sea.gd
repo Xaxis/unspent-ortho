@@ -5,7 +5,7 @@
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"sea"
-	d.display_name = "the sea"
+	d.display_name = "sea"
 	d.order = -1
 	d.sea = true
 	d.style_note = "Chart depth bands with inked edges; the land's washes end in it."

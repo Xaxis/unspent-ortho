@@ -3,9 +3,9 @@ extends RefCounted
 ## lifting at every join, drawn with the same pen as turf. What the machines put
 ## on it is the ruler's: the bunds of the evaporation pans, their sluice gates,
 ## and the rakes still going round. Between them, what people took and could not
-## carry: a stack of salt under a weighted sheet, going nowhere.
+## carry: a heap of salt under a weighted sheet, going nowhere.
 ##
-## Nothing here is a cube. Crust is a plate that broke and tipped; a stack is a
+## Nothing here is a cube. Crust is a plate that broke and tipped; a heap is a
 ## cone with a sheet sagging over it; a gate is a ruled frame with a screw.
 
 const Kit := preload("res://src/models/props/kit.gd")
@@ -22,7 +22,7 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	k.hand(Ink.hand_of(c))
 	match kind:
 		PropKind.SALT_RIDGE: ridge(k, v)
-		PropKind.SALT_STACK: stack(k, v)
+		PropKind.SALT_HEAP: heap(k, v)
 		PropKind.PAN_GATE: gate(k, v)
 
 
@@ -57,9 +57,9 @@ static func ridge(k: Kit, v: int) -> void:
 			along * t + Vector3(0.02, 0.06, 0.04), P.LINEN[5])
 
 
-## A stack the pan rakers built and never came back for: a raked cone of salt,
+## A heap the pan rakers built and never came back for: a raked cone of salt,
 ## a sheet weighted down over half of it, and the rake standing in it.
-static func stack(k: Kit, v: int) -> void:
+static func heap(k: Kit, v: int) -> void:
 	var s := 430 + v * 23
 	var r := 0.55 + v * 0.12
 	var h := 0.5 + v * 0.1

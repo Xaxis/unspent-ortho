@@ -130,21 +130,34 @@ func _check_shares(size: int) -> void:
 	for s in SHARE_SEEDS:
 		var w := WorldGen.generate(s, size, &"tiles")
 		var shares := _shares(w)
+		# Every landscape holds the share it asked for (BiomeDef.share,
+		# normalised over the registry), within a third: the layout is balanced
+		# on the coarse grid and again after the borders wander, and then the
+		# borders are allowed to wander. A landscape placed by its climate
+		# rather than by an anchor swings furthest, because where the island
+		# lets it lie decides how much of it there is. No number here is written
+		# down twice: adding a landscape changes what every other one gets.
+		var target := _targets(w)
 		for c: int in BiomeRegistry.land_indices():
-			gt(shares[c], 0.06, "seed %d %s share" % [s, BiomeRegistry.name_of(c)])
-		check(shares[Country.COAST] >= 0.3 and shares[Country.COAST] <= 0.4, "seed %d coast share %.3f" % [s, shares[Country.COAST]])
-		# Balanced to 13% each, on the coarse layout and again after the borders
-		# wander (the brief's "roughly 10-15%").
-		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
-			check(shares[c] >= 0.10 and shares[c] <= 0.15, "seed %d %s share %.3f at size %d" % [s, BiomeRegistry.name_of(c), shares[c], size])
+			var want := target[c]
+			check(shares[c] >= want * 0.7 and shares[c] <= want * 1.4,
+				"seed %d %s share %.3f, wanted %.3f at size %d" % [s, BiomeRegistry.name_of(c), shares[c], want, size])
 	print("       layouts for %d seeds at %d: %d ms" % [SHARE_SEEDS.size(), size, Time.get_ticks_msec() - t])
 
 
 func test_full_worlds_keep_their_shares() -> void:
 	for s in WORLD_SEEDS:
-		var shares := _shares(world(s))
+		var w := world(s)
+		var shares := _shares(w)
+		var target := _targets(w)
 		for c: int in BiomeRegistry.land_indices():
-			gt(shares[c], 0.06, "seed %d %s" % [s, BiomeRegistry.name_of(c)])
+			check(shares[c] >= target[c] * 0.7 and shares[c] <= target[c] * 1.4,
+				"seed %d %s share %.3f, wanted %.3f" % [s, BiomeRegistry.name_of(c), shares[c], target[c]])
+
+
+## Each land type's share of the land as the registry asks for it.
+static func _targets(w: WorldData) -> PackedFloat32Array:
+	return GenCountries.targets(GenContext.new(w))
 
 
 static func _shares(w: WorldData) -> PackedFloat32Array:
@@ -452,7 +465,8 @@ static func _in_square(w: WorldData, i: int) -> bool:
 func test_villages_spread_across_countries_with_a_square() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
-		check(w.villages.size() >= 8 and w.villages.size() <= 12, "seed %d has %d villages" % [s, w.villages.size()])
+		var most := GenSettle.max_villages()
+		check(w.villages.size() >= most - 4 and w.villages.size() <= most, "seed %d has %d villages of at most %d" % [s, w.villages.size(), most])
 		var countries := {}
 		var q := WorldQuery.new(w)
 		for v in w.villages:

@@ -8,7 +8,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"burning"
-	d.display_name = "the burning"
+	d.display_name = "burning"
 	d.order = 5
 	d.style_note = "Jagged burnt edges, restless broken strokes, ember glints unhatched."
 	d.share = Vector2(0.11, 0.15)

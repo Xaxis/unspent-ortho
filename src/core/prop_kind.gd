@@ -69,7 +69,7 @@ enum {
 	MEMORIAL,
 	# M2 landscapes bring their own things (salt flats, scrapwood).
 	SALT_RIDGE,
-	SALT_STACK,
+	SALT_HEAP,
 	PAN_GATE,
 	SCRAP_TREE,
 	MAGNET_HEAP,
@@ -86,7 +86,7 @@ const NAMES: PackedStringArray = [
 	"intake", "pump house", "pipe", "stump", "fire tower", "relay", "checkpoint", "stack", "drill rig",
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",
 	"wreckage", "memorial",
-	"salt ridge", "salt stack", "pan gate", "scrap tree", "magnet heap",
+	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody

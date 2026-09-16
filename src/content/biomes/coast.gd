@@ -8,7 +8,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"coast"
-	d.display_name = "the coast"
+	d.display_name = "coast"
 	d.order = 0
 	d.style_note = "Calm long contours, fast cloud shadows, everything leaning off the sea."
 	d.share = Vector2(0.32, 0.38)

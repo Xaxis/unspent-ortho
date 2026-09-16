@@ -15,7 +15,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"salt_flats"
-	d.display_name = "the salt flats"
+	d.display_name = "salt flats"
 	d.order = 6
 	d.style_note = "Hard white glare on a cracked mosaic; the pans ruled straight across it."
 	d.share = Vector2(0.055, 0.085)
@@ -66,7 +66,7 @@ static func make() -> BiomeDef:
 	# instead of dimming, and the contrast is pushed so the glare has an edge.
 	d.grade = Vector4(0.12, 0.2, -0.06, 0.2)
 	d.light_tint = Color(1.03, 1.01, 0.97)
-	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_STACK, PropKind.PAN_GATE, PropKind.BOULDER,
+	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]
 	# Evaporites: what the brine left is worth taking, and the stone under it.
@@ -103,7 +103,9 @@ static func make() -> BiomeDef:
 		"works": &"_works",
 		"vignettes": [[5, &"survey_posts"], [4, &"debris_field"], [4, &"tipped_signs"], [3, &"grave_cluster"],
 			[3, &"wreck"], [2, &"wreck_parts"], [2, &"barricade"], [1, &"shelter"]],
-		"survey": [[0.5, &"drill_beside"]],
+		# Nothing to drill in a dry pan: where the survey crosses the flat it
+		# leaves its posts and a sign, and goes on.
+		"survey": [[0.45, &"sign_beside"]],
 	})
 	return d
 
@@ -122,13 +124,13 @@ static func _surface(t: BiomeSurface) -> int:
 		return Ground.PAN
 	var e := t.elev[i]
 	var rs := t.rise[i]
-	if rs > 1.0 + gb * 0.6 or e >= 5.5:
-		# The rim of the basin: stone, and what the flat never drowned.
-		return Ground.GRASS if gb > 0.3 else Ground.GRAVEL
-	if rs > 0.35:
-		return Ground.HEATH if gb > 0.4 else Ground.GRAVEL
-	if rs < -0.3 - gb * 0.4 or gb < -0.35:
-		# The lowest ground is the last to dry: pan, stained and damp.
+	if rs > 0.9 + gb * 0.5 or e >= 5.5:
+		# The rim of the basin: what the flat never drowned, in one wash or the
+		# other over a whole slope rather than tile by tile.
+		return Ground.GRASS if gb > 0.15 else Ground.GRAVEL
+	if rs < -0.55 - gb * 0.5:
+		# The lowest ground is the last to dry: pan, stained and damp, and it
+		# masses in the hollows instead of freckling the flat.
 		return Ground.PAN
 	return Ground.SALT
 
@@ -141,16 +143,13 @@ static func _scatter(t: BiomeScatter) -> int:
 			# Pressure ridges run in lines where two plates met.
 			return PropKind.SALT_RIDGE
 		if t.roll > 0.2 and t.roll < 0.203:
-			return PropKind.SALT_STACK
-		if t.roll > 0.244 and t.roll < 0.2455:
-			# A gate left standing where a bund used to run.
-			return PropKind.PAN_GATE
+			return PropKind.SALT_HEAP
 		return PropKind.BONES if t.roll > 0.249 and t.roll < 0.2497 else BiomeScatter.NONE
 	if g == Ground.PAN:
 		if t.roll < 0.01:
 			return PropKind.SALT_RIDGE
-		if t.roll > 0.2 and t.roll < 0.2035:
-			return PropKind.PAN_GATE
+		# A gate stands in a bund, and a bund is a work: the scatter leaves it
+		# to whoever built the pans.
 		return PropKind.DEAD_TREE if t.roll > 0.22 and t.roll < 0.2215 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		if t.roll < 0.012:
@@ -185,12 +184,12 @@ static func _works(L: Object) -> void:
 			GenWorks._put(L, PropKind.PAN_GATE, at + nrm * half.y * sx, nrm.angle(), -99, 0.4, true)
 			for sy: float in [-1.0, 1.0]:
 				GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sy + nrm * half.y * sx, d.angle(), -99, 0.0, true)
-		GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(4, 7), 2.0, -99, 0.15)
+		GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(3, 5), 2.0, -99, 0.25)
 		# What the rakes left standing in the pan, in rows along the bearing.
 		for gx in range(-2, 3):
 			if rng.randf() < 0.3:
 				continue
-			GenWorks._put(L, PropKind.SALT_STACK, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
+			GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
 		GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
 		GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
 	# The intake that drained the sea into all this, standing on the rim with
@@ -203,6 +202,6 @@ static func _works(L: Object) -> void:
 		if GenWorks._put(L, PropKind.PUMP_HOUSE, at, d.angle(), -99, 1.0) == null:
 			continue
 		GenWorks._record(c, &"brine_house", at, d, Vector2(4.0, 3.0))
-		GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, rng.randi_range(5, 9), 2.0, -99, 0.1)
+		GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, rng.randi_range(4, 6), 2.0, -99, 0.2)
 		GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
 		GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)

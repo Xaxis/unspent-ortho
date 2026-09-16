@@ -7,7 +7,7 @@ const P := preload("res://src/render/palette.gd")
 static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"snowfield"
-	d.display_name = "the snowfield"
+	d.display_name = "snowfield"
 	d.order = 3
 	d.style_note = "Line-dominant, minimal fill; the white is paper, the shade is blue."
 	d.share = Vector2(0.11, 0.15)

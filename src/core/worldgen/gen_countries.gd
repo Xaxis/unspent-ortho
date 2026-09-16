@@ -46,7 +46,26 @@ static func targets(c: GenContext) -> PackedFloat32Array:
 	return out
 
 
+## A landscape that lies where the island lets it (no anchor) is only placed if
+## the island has room for it to be a place: its share of the land must come to
+## a region's worth of tiles at walking scale, not a share of a tiny island. A
+## small test island is the six of the journey and nothing else.
+static func fit_types(c: GenContext) -> void:
+	var land := 0
+	for v in c.land:
+		land += v
+	var room := float(REGION_TILES)
+	var kept := PackedInt32Array()
+	for cc: int in c.land_types:
+		var d := c.defs[cc]
+		if d.anchors.is_empty() and float(land) * d.share_target() < room:
+			continue
+		kept.append(cc)
+	c.land_types = kept
+
+
 static func coarse(c: GenContext) -> void:
+	fit_types(c)
 	var rng := Rng.make(c.s, 201)
 	var sites := _sites(c, rng)
 	var cw := c.cw
