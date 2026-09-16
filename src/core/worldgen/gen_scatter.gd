@@ -412,6 +412,19 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		var count := rng.randi_range(5, 8)
 		var placed := 0
 		var start := rng.randf() * TAU
+		# A village deals its houses one model each, so no two silhouettes in it
+		# repeat: on seed 7 the hash alone gave the spawn village three of one
+		# house and two of another out of seven (art review 5). Dealt AFTER
+		# placing, nearest the square first — the ring is filled in a spiral, not
+		# in order of distance — so in a village that wired a machine's light in,
+		# the lit house is the one a player standing on the square is looking at
+		# (art review 11). Only a share of villages did (LIT_SHARE).
+		# Its own stream, not the village rng: drawing from that one would shift
+		# every house position after it, and `tests/render/test_parity.gd` pins
+		# those to the world M1 made. Dealing a model must not move a house.
+		var pack := _house_pack(Rng.make(c.s, 4200 + floori(vp.x) * 131 + floori(vp.y)),
+			Rng.hash01(c.s, floori(vp.x), floori(vp.y), 4202) < LIT_SHARE)
+		var houses: Array[WorldProp] = []
 		for h in 120:
 			if placed >= count:
 				break
@@ -438,10 +451,64 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			if not level_ok:
 				continue
 			var house := _add(c, PropKind.HOUSE, hp)
+			houses.append(house)
 			# Facing the square, never quite square to it.
 			house.rot = wrapf((vp - hp).angle() + rng.randf_range(-0.2, 0.2), 0.0, TAU)
 			_occupy(c, occ, hp, 2.0)
 			placed += 1
+		houses.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
+			return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
+		# A village that outgrew the pack would repeat a silhouette, which is the
+		# whole thing this deal exists to stop. The modulo keeps it deterministic
+		# if it ever happens; the assert is so nobody finds out from a screenshot.
+		assert(houses.size() <= pack.size(), "a village placed more houses than there are models")
+		for i in houses.size():
+			houses[i].variant = pack[i % pack.size()]
+
+
+## How many house models there are to deal (`Houses.VARIANTS`). World gen holds
+## no rendering, so the count is named here and `tests/render/test_houses.gd`
+## fails if the two ever disagree.
+const HOUSE_MODELS := 8
+## The two that wired a machine's light into a wall (15_lights.NEON_HOUSE_VARIANTS).
+const HOUSE_NEON: Array[int] = [1, 4]
+
+
+## How many villages have somebody's stolen light on the square. NOT all of them:
+## dealing a lit house to the front of every pack put a neon tube on the nearest
+## house of every village on every seed, which is the neon filter this game is
+## not (the owner's own correction: neon is a situational accent). A share of
+## villages wired one in; the rest are hearths and a lamp post.
+const LIT_SHARE := 0.4
+
+
+## A shuffled pack of one of each house model, so a village deals every house a
+## different silhouette. In a village that wired a machine's light in, the lit
+## house is on TOP of the pack — dealt nearest the square, where a player
+## standing in it is looking. Whichever lit models the village does not want go
+## to the BACK, so a village of five or six has no stolen light at all and only
+## one big enough to need every model there is shows a second tube, out on its rim.
+static func _house_pack(rng: RandomNumberGenerator, lit_village: bool) -> Array[int]:
+	var rest: Array[int] = []
+	for v: int in range(HOUSE_MODELS):
+		rest.append(v)
+	for i in range(rest.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t: int = rest[i]
+		rest[i] = rest[j]
+		rest[j] = t
+	var lit: int = HOUSE_NEON[rng.randi_range(0, HOUSE_NEON.size() - 1)]
+	var tail: Array[int] = []
+	for v: int in rest:
+		if HOUSE_NEON.has(v) and (v != lit or not lit_village):
+			tail.append(v)
+	for v: int in tail:
+		rest.erase(v)
+		rest.push_back(v)
+	if lit_village:
+		rest.erase(lit)
+		rest.push_front(lit)
+	return rest
 
 
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:

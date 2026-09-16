@@ -1,0 +1,68 @@
+# A village reads as hand-built, walked through on real input.
+#
+# The art review of wave A measured the spawn village on the canon seed: every
+# house a rectangular prism, its outline long straight runs of near-black, its
+# whole roof ONE ruled corrugation — the machines' idiom on a house people
+# built. And seven houses drawn from four models, three of them the same.
+#
+# So this walks the square and looks at the houses from both sides, stands under
+# one, crosses to a second village to prove the deal is not one seed's luck, and
+# stays out to dark for the stolen neon the canon could not catch (art review 11:
+# zero tube pixels in three frames, because the tube was on the door wall, which
+# faces the square, and under the eave, which at this pitch hides it).
+#   tools/tour.sh tours/houses.tour --seed=7 --weather=clear:0
+
+coast calm
+place spawn
+hour 10.0
+wait 0.6
+shot 01-village-morning
+
+# Walk in among them: at play zoom, each house has to differ from its neighbour.
+walk -1,-1 1.8
+wait 0.4
+shot 02-walked-in
+
+# Stand at a house and look at it from the ground: leaning walls, turf banked at
+# the foot, salvage against it, a roof patched in several things.
+near house
+wait 0.6
+shot 03-under-a-roof
+zoom 8
+wait 0.4
+shot 04-close-hand-built
+zoom 15
+
+# The other side of the square: houses seen turned the other way, where the
+# outline has to break just as much.
+walk 1,0 2.2
+wait 0.5
+shot 05-from-the-other-side
+
+# Another village on the same seed: the deal is a rule, not one lucky village.
+# On seed 7 this one (Coombe Wood, in the pinewood) wired nothing in, so it is
+# also the proof that stolen neon is something a village did and not a filter
+# over the coast — five houses, five silhouettes, no tube.
+village 4
+wait 0.8
+shot 06-another-village
+
+# Dusk, then dark: the stolen tube runs the roof edge, so the camera has it
+# whichever way the house was turned.
+village 0
+hour 20.2
+wait 0.6
+shot 07-village-dusk
+hour 22.5
+wait 0.8
+shot 08-village-night
+zoom 9
+wait 0.5
+shot 09-stolen-neon-close
+zoom 15
+
+# Wet: the tube mirrored in the ground is the frame the canon meant to protect.
+weather rain:1
+wait 1.4
+shot 10-village-wet-night
+weather clear:0

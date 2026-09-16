@@ -86,12 +86,28 @@ static func pick_variant(kind: int, h: int) -> int:
 	return absi(h) % variants(kind)
 
 
+## The model one placed prop is drawn as: what world gen dealt it (`WorldProp.variant`,
+## which a village uses so no two of its houses repeat a silhouette), or, where
+## nothing was dealt, the one its id hashes to. Every reader — the chunk bake,
+## the lights — asks here, so a dealt variant reaches all of them.
+static func variant_of(p: WorldProp, seed_value: int) -> int:
+	if p.variant >= 0:
+		return clampi(p.variant, 0, variants(p.kind) - 1)
+	return pick_variant(p.kind, Rng.hash_ints(seed_value, p.id, 90))
+
+
 ## Chunk workers bake props while the main thread may too.
 static var _lock := Mutex.new()
 
 
+## Variants one kind may have. It is the cache key's packing, nothing else: at 8
+## a ninth model of a kind collided with the next kind's variant 0 and silently
+## drew the wrong prop. `tests/models` fails if a kind ever declares more.
+const MAX_VARIANTS := 16
+
+
 static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
-	var key := (kind * 8 + variant) * BiomeRegistry.SLOTS + country
+	var key := (kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
 	_lock.lock()
 	var t: Template = _templates.get(key)
 	if t == null:
@@ -246,7 +262,11 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			return [{"at": Vector3(0.0, 3.76, 0.0), "size": Vector2.ZERO, "color": beacon, "blink": true}]
 		PropKind.HOUSE:
 			# The door side is +X on every house variant (props/houses.gd).
-			return [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
+			var house: Array = [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
+			var tube := neon_point(kind, variant, country)
+			if not tube.is_empty():
+				house.append(tube)
+			return house
 		PropKind.LAMP:
 			# The lantern hangs off its arm at x 0.4 (props/built.gd lamp_post).
 			return [{"at": Vector3(0.4, 1.41, 0.02), "size": Vector2.ZERO, "color": Palette.COPPER[4], "rays": [3.0, 6.0, 0.0, 8.0]}]
@@ -257,6 +277,45 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 		PropKind.FIRE:
 			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 	return []
+
+
+## Where a model runs stolen neon, in its own frame, READ OFF THE GEOMETRY it
+## drew: the middle of its NEON-marked vertices, in their own colour, or {} when
+## this model wired nothing in.
+##
+## Written down twice, it goes wrong: the tube moved from a house's door wall to
+## its roof edge and the light it threw stayed on the wall, in the colour the
+## other lit house used (art review 11). A light and the thing casting it come
+## from one place or they disagree.
+static var _neon: Dictionary = {}
+
+
+static func neon_point(kind: int, variant: int, country: int) -> Dictionary:
+	# Cached: the lights ask this for every house in the world, and reading a
+	# model's marks means walking a few thousand vertices.
+	var key := (kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+	_lock.lock()
+	var hit: Variant = _neon.get(key)
+	_lock.unlock()
+	if hit != null:
+		return hit
+	var t := template(kind, variant, country)
+	var at := Vector3.ZERO
+	var rgb := Vector3.ZERO
+	var n := 0
+	for i in t.made_v.size():
+		if roundi(t.made_c[i].a * 255.0) != GroundColors.NEON:
+			continue
+		at += t.made_v[i]
+		rgb += Vector3(t.made_c[i].r, t.made_c[i].g, t.made_c[i].b)
+		n += 1
+	var out: Dictionary = {}
+	if n > 0:
+		out = {"at": at / float(n), "size": Vector2.ZERO, "color": Color(rgb.x / n, rgb.y / n, rgb.z / n), "neon": true}
+	_lock.lock()
+	_neon[key] = out
+	_lock.unlock()
+	return out
 
 
 ## Index of the FOUND surface in mesh(kind), or -1 when the kind has none.
