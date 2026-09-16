@@ -386,12 +386,30 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		//  - a clint is never filled light or dark as a whole: the value comes
 		//    from a world field that walks straight across the joints.
 		// Drill-hole rows on a few clints: the machine age in the stone.
+		// Four octaves of warp, so the grain bends at every scale the camera can
+		// be at. The two slow ones turn the bearing over tens of units, which a
+		// wide frame reads; the two fast ones bend a joint inside a single
+		// close-zoom screen, which spans about thirteen units — without them a
+		// fight was fought on ruled parallel bars.
 		vec2 warp = wp + vec2(ink_vnoise(wp * 0.022 + 3.0) - 0.5, ink_vnoise(wp * 0.022 + 29.0) - 0.5) * 14.0
-			+ vec2(ink_vnoise(wp * 0.09 + 7.0) - 0.5, ink_vnoise(wp * 0.09 + 41.0) - 0.5) * 2.6;
+			+ vec2(ink_vnoise(wp * 0.09 + 7.0) - 0.5, ink_vnoise(wp * 0.09 + 41.0) - 0.5) * 2.6
+			+ vec2(ink_vnoise(wp * 0.13 + 19.0) - 0.5, ink_vnoise(wp * 0.13 + 61.0) - 0.5) * 1.1
+			+ vec2(ink_vnoise(wp * 0.34 + 5.0) - 0.5, ink_vnoise(wp * 0.34 + 83.0) - 0.5) * 0.45;
 		vec2 r = vec2(dot(warp, vec2(0.94, 0.34)), dot(warp, vec2(-0.34, 0.94)));
+		// The pitch opens and closes twice over: slowly across tens of units, and
+		// again from one row to the next, so no two neighbouring joints are the
+		// same distance apart.
+		// ...and the line itself wanders along its length at three scales, the
+		// fastest of them under a unit — at the zoom a fight is fought at a joint
+		// is seventy pixels of screen per unit, so without that last term a grike
+		// is a ruled bar however far the bearing has turned since the last one.
+		// The salt is the row's own, so no two joints wander together.
 		float across = r.y
 			+ (ink_vnoise(vec2(r.y * 0.06, 11.0)) - 0.5) * 5.0
-			+ (ink_vnoise(vec2(r.x * 0.22, 17.0)) - 0.5) * 0.4;
+			+ (ink_vnoise(vec2(r.y * 0.33, 23.0)) - 0.5) * 0.7
+			+ (ink_vnoise(vec2(r.x * 0.22, 17.0)) - 0.5) * 0.4
+			+ (ink_vnoise(vec2(r.x * 1.3, r.y * 0.26 + 31.0)) - 0.5) * 0.13
+			+ (ink_vnoise(vec2(r.x * 3.3, r.y * 0.26 + 57.0)) - 0.5) * 0.055;
 		const float ROW = 1.9;
 		float row = floor(across / ROW);
 		float fy = (across - row * ROW);
@@ -407,7 +425,10 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		// A grike is a cracked line, not a ruled one: it pinches shut along its
 		// length and opens again, and runs only a few blocks before it stops.
 		float gw = (0.1 + ink_vnoise(vec2(r.x * 0.5, row * 7.0)) * 0.09 + rag(wp))
-			* smoothstep(0.30, 0.56, ink_vnoise(vec2(along * 0.42, row * 3.7)));
+			* smoothstep(0.30, 0.56, ink_vnoise(vec2(along * 0.42, row * 3.7)))
+			// ...and it pinches to a hairline and opens again every half unit, so
+			// close up it is a crack and not a band of even width.
+			* (0.5 + 0.5 * ink_vnoise(vec2(along * 1.9, row * 13.0)));
 		bool grike_on = ink_hash(vec2(row, floor(along / 3.4) + 20.0)) < 0.58;
 		bool cross_on = ink_hash(vec2(row, seg + 40.0)) < 0.42;
 		float cw = 0.08 + rag(wp);

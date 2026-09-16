@@ -88,6 +88,11 @@ var _eco: FastNoiseLite
 ## its own percentile table so a share of cover is a threshold.
 var _eco2: FastNoiseLite
 var _eco_cdf := PackedFloat32Array()
+## How many of a country's own grounds an ecotone may borrow from.
+const ECO_MENU := 3
+## The commonest dry, unmade grounds of each country, most common first, tallied
+## from the world itself so a landscape type new tomorrow needs no table here.
+var _eco_ground := PackedInt32Array()
 var _lip: FastNoiseLite
 var _tab_col := PackedColorArray()
 var _tab_style := PackedInt32Array()
@@ -284,6 +289,7 @@ func _init(w: WorldData) -> void:
 	for i in 256:
 		acc += hist[i]
 		_eco_cdf[i] = float(acc) / 4096.0
+	_tally_grounds(w)
 	_lip = FastNoiseLite.new()
 	_lip.seed = Rng.hash_ints(w.seed_value, 34) & 0x7FFFFFFF
 	_lip.frequency = 1.3
@@ -316,6 +322,57 @@ func _init(w: WorldData) -> void:
 				var fr := Palette.RIME[4] if snow else GroundColors.down(col, 1.0)
 				fr.a = 1.0
 				_tab_front[i] = fr
+
+
+## What each country is LAID WITH: the commonest dry, unmade grounds it carries,
+## most common first. Read every second tile — it is a share, not a census.
+func _tally_grounds(w: WorldData) -> void:
+	_eco_ground.resize(Country.COUNT * ECO_MENU)
+	_eco_ground.fill(-1)
+	var count := PackedInt32Array()
+	count.resize(Country.COUNT * Ground.COUNT)
+	var size := w.size
+	for y in range(0, size, 2):
+		var row := y * size
+		for x in range(0, size, 2):
+			var g: int = w.ground[row + x]
+			if _WET[g] == 1 or g == Ground.ROAD or g == Ground.FLOOR:
+				continue
+			count[w.country[row + x] * Ground.COUNT + g] += 1
+	for c in Country.COUNT:
+		var base := c * Ground.COUNT
+		for slot in ECO_MENU:
+			var best := -1
+			var best_n := 0
+			for g in Ground.COUNT:
+				if count[base + g] > best_n:
+					best_n = count[base + g]
+					best = g
+			if best < 0:
+				break
+			_eco_ground[c * ECO_MENU + slot] = best
+			count[base + best] = 0
+
+
+## A cell drawn as its neighbour across an ecotone carries that neighbour's
+## GROUND too, not only its tint. Flipping the country alone changes the wash by
+## whatever the country's ramp does to the ground already there, and where two
+## landscapes are laid with different grounds — pale limestone against ash —
+## that is far too little: the marks, the hatch and most of the value belong to
+## the ground, so the band stayed a seam however ragged the country field was
+## (art review 13). Water, road and floor are never borrowed over: a river or a
+## made surface crosses a border as itself.
+func _eco_borrow(c: int, g: int, sx: float, sy: float) -> int:
+	if _WET[g] == 1 or g == Ground.ROAD or g == Ground.FLOOR or _eco_ground.is_empty():
+		return g
+	var first := _eco_ground[c * ECO_MENU]
+	if first < 0:
+		return g
+	# Which of its grounds, in lobes of about fifteen units: a borrowed patch is
+	# laid the way that country is laid, never speckled ground by ground.
+	var f := _eco.get_noise_2d(sx * 0.5 + 900.0, sy * 0.5 + 900.0) * 0.5 + 0.5
+	var pick := _eco_ground[c * ECO_MENU + clampi(int(f * float(ECO_MENU)), 0, ECO_MENU - 1)]
+	return pick if pick >= 0 else first
 
 
 ## The ecotone field's percentile at ring point (gx, gy), bilinear.
@@ -998,6 +1055,8 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 						var ep := _eco_p(eco_grid, wx - rx0, wy - ry0, rw) - eco_share(t)
 						dc = hi if ep < 0.0 else lo
 						em = minf(em, absf(ep) * 9.0)
+						if dc != c:
+							g = _eco_borrow(dc, g, sx, sy)
 				var extra := 0
 				var wf := 0.0
 				if inland and near[(floori(sy) - ry0) * rw + (floori(sx) - rx0)] == 1:
