@@ -21,6 +21,14 @@ render_mode cull_back, specular_disabled;
 #include "res://src/render/ink.gdshaderinc"
 
 global uniform float wind_strength;
+// Where a crown must not hide a fight (18_crowns writes it every frame): up to
+// six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
+// Leaves and crowns above a point thin out to stipple and then to nothing
+// within its reach, so the player and any body they can see are never covered.
+const int CROWN_CLEAR = 6;
+uniform vec4 crown_clear[CROWN_CLEAR];
+// How far above a point's own ground a leaf has to be before it is in the way.
+const float CROWN_LIFT = 0.85;
 // The machines' works cut into the ground (WorksMap): one texel per tile,
 // R cut, G scorch, B quarry, A bores. works_inv_size 0 = no map (the gallery,
 // hand-built worlds). works_dir: the survey bearing every ruled work lies on.
@@ -1051,8 +1059,33 @@ void vertex() {
 	patch_raw = UV2.x > 0.0 ? 0.0 : UV2.y;
 }
 
+// How much of a crown is taken away at this point: 0 keep it, 1 take it all.
+// Only what sways and stands clear of the ground can go, so trunks, walls and
+// the land itself never open up.
+float crown_cut(vec3 wp, float sway) {
+	if (sway < 0.25) {
+		return 0.0;
+	}
+	float cut = 0.0;
+	for (int i = 0; i < CROWN_CLEAR; i++) {
+		vec4 p = crown_clear[i];
+		if (p.w <= 0.0 || wp.y < p.y + CROWN_LIFT) {
+			continue;
+		}
+		float d = length(wp.xz - p.xz);
+		cut = max(cut, 1.0 - smoothstep(p.w * 0.72, p.w, d));
+	}
+	return cut * clamp((sway - 0.25) * 2.5, 0.0, 1.0);
+}
+
 void fragment() {
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	// A fight is never hidden: leaves over the player, or over a body they can
+	// see, thin to stipple and then go. Stipple, never a fade (docs/ART.md law 5).
+	float cut = crown_cut(world_pos, sway_w);
+	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
+		discard;
+	}
 	int m1 = int(COLOR.a * 255.0 + 0.5);
 	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
 	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
