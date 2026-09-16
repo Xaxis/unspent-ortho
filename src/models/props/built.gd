@@ -9,6 +9,8 @@ extends RefCounted
 
 const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
+## The grid is the machines' order: it lights itself in their colours, never its own.
+const Works := preload("res://src/models/props/works.gd")
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
@@ -197,9 +199,9 @@ static func pylon(k: Kit, c: int = Country.COAST) -> void:
 	k.found.prism(0, top, 0, 0.14, top + 0.22, 0.0, 4, P.PLATE[4], Color(0, 0, 0, 0), PI * 0.25)
 	# Ink & Neon: the grid keeps its lights. A beacon blinks on the top on a slow
 	# machine beat; the crossarms carry a line of cold strip light.
-	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Color(1.0, 0.18, 0.42, 0.2))
+	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Works.BEACON)
 	for arm2: Array in [[3.4, 1.15], [2.7, 0.85]]:
-		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Color(0.3, 0.95, 1.0, 0.9))
+		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Works.lit(Works.STRIP, 0.9))
 	if c == Country.SNOWFIELD:
 		# Ice on the grid in the snow (MADE: the weather's, not the machine's):
 		# rime along each crossarm and icicles of uneven length under it.

@@ -189,8 +189,10 @@ static func mesh(kind: int) -> ArrayMesh:
 ## washes), so these carry no panes: only where the light stands and the
 ## flame strokes.
 static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST) -> Array:
-	var cold := Color(0.3, 0.95, 1.0)
-	var beacon := Color(1.0, 0.2, 0.36)
+	# One source for the machines' own light: the geometry and the pool it casts
+	# must not disagree about what colour a strip or a beacon is.
+	var cold := Color(Works.STRIP, 1.0)
+	var beacon := Color(Works.BEACON, 1.0)
 	match kind:
 		PropKind.SHACK:
 			# Only the shacks that wired stolen tech in (props/remains.gd _wired):

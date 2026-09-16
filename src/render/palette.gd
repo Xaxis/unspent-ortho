@@ -27,23 +27,31 @@ const LENS: Array[Color] = [Color(0.2275, 0.1647, 0.0314), Color(0.5608, 0.4157,
 const COLD: Array[Color] = [Color(0.1145, 0.1474, 0.1804), Color(0.2126, 0.3022, 0.3564), Color(0.4133, 0.5337, 0.5850), Color(0.6961, 0.7720, 0.8044)]
 const PLATE: Array[Color] = [Color(0.0892, 0.1064, 0.1412), Color(0.1687, 0.1962, 0.2518), Color(0.2536, 0.2892, 0.3655), Color(0.3511, 0.3906, 0.4811), Color(0.4691, 0.5105, 0.5862), Color(0.6077, 0.6477, 0.6985)]
 
-## Per-machine body ramps, along a violet arc from wet (indigo) to burnt (magenta),
-## held to a cold, dirty chroma with the top value compressed: machines look
-## routine and precise, never cute, and their amber LENS is the only saturated
-## thing on them.
+## Per-machine body ramps. Four things at once (docs/ART.md §4, the Palette
+## contract): the arc runs cold indigo (the filers) through violet (the workers)
+## to burnt magenta (the hunters), so a machine's ROLE reads before its kind; each
+## kind then sits at its own value inside that family, so no two of the twelve
+## meet; the chroma stays low and dirty, leaving the amber LENS the only saturated
+## thing on a machine; and the body fill (step 3, every up face) is DARKER than
+## the turf it stands on, so a machine is a cold heavy mass ruled with bright
+## chamfer lines by day and not a pale plastic slab.
+##
+## Steps: 0/1 undersides and down bevels, 2 walls, 3 the body fill, 4 the lit rim
+## on shoulders and chamfers, 5 rivets and the one rubbed edge. The top is
+## compressed and desaturated: 3 -> 5 is a third of the climb 0 -> 3.
 const MACHINE := {
-	"dredger": [Color(0.1058, 0.0980, 0.1529), Color(0.2311, 0.2134, 0.3406), Color(0.3107, 0.2833, 0.4661), Color(0.4692, 0.4411, 0.6410), Color(0.5191, 0.4902, 0.6600), Color(0.6085, 0.5989, 0.6600)],
-	"hauler": [Color(0.1027, 0.0941, 0.1451), Color(0.2233, 0.2020, 0.3176), Color(0.3075, 0.2743, 0.4452), Color(0.4558, 0.4218, 0.6068), Color(0.5298, 0.4943, 0.6600), Color(0.6117, 0.5999, 0.6600)],
-	"cutter": [Color(0.1086, 0.0941, 0.1529), Color(0.2377, 0.2055, 0.3406), Color(0.3194, 0.2711, 0.4661), Color(0.4788, 0.4285, 0.6410), Color(0.5276, 0.4798, 0.6600), Color(0.6114, 0.5948, 0.6600)],
-	"lineman": [Color(0.1031, 0.0902, 0.1412), Color(0.2277, 0.2000, 0.3137), Color(0.3154, 0.2727, 0.4413), Color(0.4626, 0.4186, 0.6010), Color(0.5395, 0.4943, 0.6600), Color(0.6157, 0.5999, 0.6600)],
-	"watcher": [Color(0.1100, 0.0922, 0.1529), Color(0.2407, 0.2020, 0.3373), Color(0.3233, 0.2655, 0.4603), Color(0.4803, 0.4189, 0.6315), Color(0.5350, 0.4768, 0.6600), Color(0.6139, 0.5937, 0.6600)],
-	"longlegs": [Color(0.1092, 0.0941, 0.1451), Color(0.2383, 0.2040, 0.3216), Color(0.3272, 0.2751, 0.4471), Color(0.4806, 0.4261, 0.6125), Color(0.5481, 0.4943, 0.6600), Color(0.6185, 0.5999, 0.6600)],
-	"runner": [Color(0.1113, 0.0941, 0.1451), Color(0.2426, 0.2020, 0.3176), Color(0.3351, 0.2743, 0.4452), Color(0.4864, 0.4218, 0.6068), Color(0.5572, 0.4943, 0.6600), Color(0.6219, 0.5999, 0.6600)],
-	"warden": [Color(0.1104, 0.0883, 0.1490), Color(0.2438, 0.1941, 0.3333), Color(0.3297, 0.2560, 0.4566), Color(0.4858, 0.4082, 0.6258), Color(0.5436, 0.4695, 0.6600), Color(0.6170, 0.5917, 0.6600)],
-	"clerk": [Color(0.0997, 0.0804, 0.1294), Color(0.2211, 0.1784, 0.2902), Color(0.3166, 0.2493, 0.4204), Color(0.4550, 0.3841, 0.5688), Color(0.5246, 0.4547, 0.6220), Color(0.5858, 0.5616, 0.6220)],
-	"sweeper": [Color(0.1147, 0.0883, 0.1490), Color(0.2504, 0.1921, 0.3294), Color(0.3417, 0.2552, 0.4547), Color(0.4972, 0.4049, 0.6220), Color(0.5567, 0.4695, 0.6600), Color(0.6216, 0.5917, 0.6600)],
-	"harvester": [Color(0.1167, 0.0941, 0.1451), Color(0.2584, 0.2079, 0.3255), Color(0.3541, 0.2783, 0.4508), Color(0.5094, 0.4293, 0.6163), Color(0.5708, 0.4943, 0.6600), Color(0.6271, 0.5999, 0.6600)],
-	"flock": [Color(0.1191, 0.0844, 0.1569), Color(0.2593, 0.1829, 0.3425), Color(0.3509, 0.2379, 0.4698), Color(0.5137, 0.3921, 0.6448), Color(0.5554, 0.4457, 0.6600), Color(0.6208, 0.5824, 0.6600)],
+	"dredger": [Color(0.1333, 0.0863, 0.1216), Color(0.2314, 0.1529, 0.2118), Color(0.2980, 0.2039, 0.2745), Color(0.3765, 0.2627, 0.3490), Color(0.4235, 0.3176, 0.4000), Color(0.4588, 0.4000, 0.4471)],
+	"hauler": [Color(0.0824, 0.0745, 0.0941), Color(0.1451, 0.1333, 0.1647), Color(0.1882, 0.1765, 0.2118), Color(0.2392, 0.2235, 0.2706), Color(0.2784, 0.2667, 0.3098), Color(0.3255, 0.3176, 0.3451)],
+	"cutter": [Color(0.1176, 0.0706, 0.1216), Color(0.2078, 0.1294, 0.2118), Color(0.2627, 0.1686, 0.2706), Color(0.3333, 0.2196, 0.3451), Color(0.3765, 0.2706, 0.3843), Color(0.4039, 0.3451, 0.4078)],
+	"lineman": [Color(0.1059, 0.1020, 0.1176), Color(0.1843, 0.1765, 0.2039), Color(0.2392, 0.2314, 0.2627), Color(0.3059, 0.2980, 0.3373), Color(0.3608, 0.3490, 0.3882), Color(0.4235, 0.4157, 0.4392)],
+	"watcher": [Color(0.0863, 0.0824, 0.1333), Color(0.1529, 0.1490, 0.2314), Color(0.1961, 0.1961, 0.2941), Color(0.2549, 0.2510, 0.3686), Color(0.3020, 0.2980, 0.4039), Color(0.3608, 0.3608, 0.4157)],
+	"longlegs": [Color(0.1137, 0.0667, 0.0902), Color(0.1961, 0.1176, 0.1569), Color(0.2471, 0.1569, 0.2039), Color(0.3137, 0.2000, 0.2627), Color(0.3490, 0.2471, 0.3020), Color(0.3686, 0.3137, 0.3451)],
+	"runner": [Color(0.1608, 0.0941, 0.1137), Color(0.2784, 0.1686, 0.2039), Color(0.3529, 0.2196, 0.2627), Color(0.4471, 0.2863, 0.3373), Color(0.4941, 0.3490, 0.3961), Color(0.5216, 0.4431, 0.4706)],
+	"warden": [Color(0.1020, 0.0902, 0.1490), Color(0.1765, 0.1608, 0.2588), Color(0.2314, 0.2118, 0.3294), Color(0.2980, 0.2706, 0.4157), Color(0.3451, 0.3255, 0.4549), Color(0.4078, 0.3961, 0.4667)],
+	"clerk": [Color(0.1020, 0.1137, 0.1373), Color(0.1804, 0.2000, 0.2431), Color(0.2353, 0.2588, 0.3098), Color(0.3020, 0.3333, 0.3961), Color(0.3608, 0.3922, 0.4471), Color(0.4431, 0.4588, 0.4902)],
+	"sweeper": [Color(0.0941, 0.0863, 0.1020), Color(0.1686, 0.1529, 0.1765), Color(0.2196, 0.2000, 0.2275), Color(0.2824, 0.2588, 0.2941), Color(0.3255, 0.3059, 0.3373), Color(0.3765, 0.3647, 0.3843)],
+	"harvester": [Color(0.1294, 0.1059, 0.1373), Color(0.2275, 0.1843, 0.2392), Color(0.2941, 0.2431, 0.3098), Color(0.3765, 0.3137, 0.3922), Color(0.4314, 0.3725, 0.4471), Color(0.4863, 0.4549, 0.4980)],
+	"flock": [Color(0.1529, 0.0902, 0.1529), Color(0.2667, 0.1608, 0.2667), Color(0.3412, 0.2118, 0.3373), Color(0.4314, 0.2745, 0.4314), Color(0.4824, 0.3412, 0.4784), Color(0.5137, 0.4353, 0.5137)],
 }
 
 
