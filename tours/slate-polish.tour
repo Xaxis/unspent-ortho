@@ -88,3 +88,7 @@ shot 19-caption-burning
 place moss
 wait 1.0
 shot 20-caption-moss
+# The goal stands on over the brightest ground there is, once the ping is done.
+place snowfield
+wait 5
+shot 21-the-goal-over-bright-ground

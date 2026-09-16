@@ -26,8 +26,14 @@ var _last_pos := Vector2.INF
 ## A landscape entered while nobody could read the ping (an app up, a fight on):
 ## it waits here rather than being lost.
 var _pending_place: StringName = &""
-## The first hour's guide (58_guide), for the goal line and the key hint.
+## The first hour's guide (58_guide), for the goal line and the key hint, and
+## what it last said to want and to teach.
 var _guide: Node
+var _goal := ""
+var _teach: Dictionary = {}
+var _guide_in := 0.0
+## Real seconds between two readings of the guide.
+const GUIDE_EVERY := 0.25
 ## Which app and opening actions were down last frame, and which went down
 ## during physics steps since.
 var _held := {}
@@ -292,6 +298,7 @@ func _process(delta: float) -> void:
 		return
 	explored.visit(game.player.pos)
 	game.hud.set_quiet(_hostile_near())
+	_step_guide(delta)
 	_feed_hud()
 
 
@@ -352,7 +359,7 @@ func _feed_hud() -> void:
 	hud.set_held(inv.held)
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
 	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b), Survival.lamp_oil(game), b.lamp_lit))
-	hud.set_goal(Guide.goal(game) if _guided() else "")
+	hud.set_goal(_goal)
 	var busy := Time.get_ticks_msec() / 1000.0 < b.busy_until
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
@@ -366,11 +373,22 @@ func _feed_hud() -> void:
 		hud.set_hint("%s - make" % here[0], "c")
 		return
 	# Nothing to work here: the row teaches the key the guide has not retired yet.
-	var teach := _guide_hint()
-	if teach.is_empty():
+	if _teach.is_empty():
 		hud.set_hint("")
 	else:
-		hud.set_hint(String(teach.line), String(teach.key))
+		hud.set_hint(String(_teach.line), String(_teach.key))
+
+
+## What to want and what to teach: both walk the fires, the recipes and the
+## bodies about, and neither changes inside a frame. They are asked for a few
+## times a second, not sixty (a standing line does not need more).
+func _step_guide(delta: float) -> void:
+	_guide_in -= delta
+	if _guide_in > 0.0:
+		return
+	_guide_in = GUIDE_EVERY
+	_goal = Guide.goal(game) if _guided() else ""
+	_teach = _guide_hint()
 
 
 ## The guide system, while the game has one that is speaking (it is off in
