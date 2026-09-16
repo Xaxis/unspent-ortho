@@ -47,6 +47,8 @@ var sim: FightSim
 var _cover := 0.0
 var _cover_at := Vector2(INF, INF)
 var _cover_left := 0.0
+var _cover_lamp := false
+var _cover_crouched := false
 var _apply_left := 0.0
 var _work_left := 0.0
 var _last_minutes := 0.0
@@ -117,10 +119,15 @@ func _read_player() -> void:
 
 func _cover_now(p: Vector2, m: Moment) -> float:
 	_cover_left -= get_physics_process_delta_time()
-	if _cover_left > 0.0 and p.distance_to(_cover_at) < COVER_STEP:
+	# The lamp and the crouch are the player's own doing: they take effect on the
+	# frame they happen, never on the next look round.
+	var same := m.lamp_lit == _cover_lamp and m.crouched == _cover_crouched
+	if same and _cover_left > 0.0 and p.distance_to(_cover_at) < COVER_STEP:
 		return _cover
 	_cover_left = COVER_EVERY
 	_cover_at = p
+	_cover_lamp = m.lamp_lit
+	_cover_crouched = m.crouched
 	_cover = Cover.at(game.world, game.query, p, m.crouched, m.nightfall() * Senses.DARKEST, m.lamp_lit)
 	return _cover
 
@@ -206,23 +213,27 @@ func _work_noise(delta: float) -> void:
 	_theft(prop)
 
 
-## Hands on the plan's own parts: the network files it, and every machine near
-## enough that its role takes it amiss stops working and turns.
+## Hands on the plan's own parts. A work of the plan is wired to whatever serves
+## it: opening one tells them, whether or not anything was looking. So the
+## network files it and every machine near enough whose role takes it amiss
+## stops working and turns, hill or no hill between.
 func _theft(prop: WorldProp) -> void:
 	raise(&"theft", prop.pos)
+	_seen[&"theft"] = true
 	var turned := 0
 	for m in sim.mobs:
 		if not m.alive or m.removed or not m.machine:
 			continue
 		if Senses.chebyshev(m.pos, prop.pos) > THEFT_RADIUS:
 			continue
-		if not Senses.line_clear(game.world, game.query, m.pos, sim.hero.pos):
-			continue
 		sim.disturb(m, &"theft")
 		if m.disturbed:
 			turned += 1
+			m.last_seen = sim.hero.pos
+			m.heard_at = sim.hero.pos
 	if turned > 0:
-		_seen[&"theft"] = true
+		# Their lamps change on the frame they turn, not on the next round of reads.
+		_apply_dispositions()
 		Events.sfx.emit(&"alert", game.world.to_3d(prop.pos))
 
 
@@ -307,20 +318,25 @@ func _hunter_for_here() -> StringName:
 	return best
 
 
+## Where a sent hunter comes out. Its own country and ground first; failing
+## that, anywhere it can stand: this one was sent, not rolled for, and the
+## network sends it wherever the player is.
 func _spot_for(kind: StringName) -> Vector2:
 	var row := Roster.row(kind)
 	var rng := Rng.make(game.world.seed_value, int(game.clock.minutes))
-	for i in 24:
+	var fallback := Vector2.INF
+	for i in 32:
 		var a := rng.randf() * TAU
 		var p := sim.hero.pos + Vector2.from_angle(a) * DISPATCH_RING
 		var tx := floori(p.x)
 		var ty := floori(p.y)
-		if not game.query.standable(tx, ty):
+		if not game.query.standable(tx, ty) or Ground.is_water(game.world.ground_at(tx, ty)):
 			continue
-		if not Spawner.place_fits(row, game.world, game.query, tx, ty):
-			continue
-		return p
-	return Vector2.INF
+		if Spawner.place_fits(row, game.world, game.query, tx, ty):
+			return p
+		if fallback == Vector2.INF:
+			fallback = p
+	return fallback
 
 
 # --- the slate's machine reads -------------------------------------------------
@@ -352,9 +368,10 @@ func _note(m: MobState) -> String:
 	return String(m.role)
 
 
-## Tour awaits: interference (a network rose), theft (workers turned on a
-## thief), felt (a rise was felt in the world), hunter (one was sent),
-## crouched, hidden (crouched in cover, unseen).
+## Tour awaits: interference (a network rose), theft (hands on the plan's own
+## parts), turned (a machine took it amiss), felt (a rise was felt in the
+## world), hunter (one was sent), crouched, hidden (crouched in cover),
+## suspicious (a machine is wondering), read (a machine is sure of the player).
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"crouched":
@@ -369,6 +386,11 @@ func tour_seen(what: StringName) -> bool:
 		&"turned":
 			for m in sim.mobs:
 				if m.alive and not m.removed and m.disturbed:
+					return true
+			return false
+		&"read":
+			for m in sim.mobs:
+				if m.alive and not m.removed and m.machine and (m.roused() or m.suspicion >= 1.0):
 					return true
 			return false
 	return bool(_seen.get(what, false))

@@ -15,6 +15,8 @@ extends GameSystem
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
+##   hold ACTION            hold it down across the lines that follow (a stance: crouch)
+##   release ACTION         let it go again
 ##   tap ACTION             press and release one frame later
 ##   wait SECS              let the world run
 ##   shot NAME              save shots/tour/<tour>/<NAME>.png (2x nearest)
@@ -235,6 +237,17 @@ func _run() -> void:
 				Input.action_press(parts[1])
 				await get_tree().create_timer(secs).timeout
 				Input.action_release(parts[1])
+			"hold":
+				# Held across the lines that follow, so a stance (crouch) or a
+				# modifier can be on while the player walks, looks and shoots.
+				Input.action_press(parts[1])
+				if not _held.has(parts[1]):
+					_held.append(parts[1])
+				await get_tree().physics_frame
+			"release":
+				Input.action_release(parts[1])
+				_held.erase(parts[1])
+				await get_tree().physics_frame
 			"tap":
 				# Hold across whole process AND physics frames, or a press made right
 				# after a shot can be released before any system polls it.

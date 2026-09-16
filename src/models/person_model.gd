@@ -69,7 +69,7 @@ var gaze := NAN
 var crouched := false
 var _crouch := 0.0
 ## How far the hips drop, as a share of the leg, and how fast it gets there.
-const CROUCH_DROP := 0.3
+const CROUCH_DROP := 0.42
 const CROUCH_RATE := 9.0
 var _gaze_now := 0.0
 ## The pose last put on the skeleton. Positions are read from it by FK, because a
@@ -222,17 +222,17 @@ func _crouch_pose(p: PersonAnim.Pose) -> void:
 	var leg: float = _dims.thigh + _dims.shin
 	var bend := func(b: StringName, d: Vector3) -> void:
 		p.rot[b] = p.r(b) + d * k
-	bend.call(&"thigh_l", Vector3(0, 0, 0.62))
-	bend.call(&"thigh_r", Vector3(0, 0, 0.62))
-	bend.call(&"shin_l", Vector3(0, 0, -1.2))
-	bend.call(&"shin_r", Vector3(0, 0, -1.2))
-	bend.call(&"foot_l", Vector3(0, 0, 0.5))
-	bend.call(&"foot_r", Vector3(0, 0, 0.5))
-	bend.call(&"spine", Vector3(0, 0, -0.34))
-	bend.call(&"head", Vector3(0, 0, 0.4))
-	bend.call(&"arm_l", Vector3(0, 0, 0.22))
-	bend.call(&"arm_r", Vector3(0, 0, 0.22))
-	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.06, -leg * CROUCH_DROP, 0.0) * k
+	bend.call(&"thigh_l", Vector3(0, 0, 0.85))
+	bend.call(&"thigh_r", Vector3(0, 0, 0.85))
+	bend.call(&"shin_l", Vector3(0, 0, -1.6))
+	bend.call(&"shin_r", Vector3(0, 0, -1.6))
+	bend.call(&"foot_l", Vector3(0, 0, 0.62))
+	bend.call(&"foot_r", Vector3(0, 0, 0.62))
+	bend.call(&"spine", Vector3(0, 0, -0.44))
+	bend.call(&"head", Vector3(0, 0, 0.5))
+	bend.call(&"arm_l", Vector3(0, 0, 0.3))
+	bend.call(&"arm_r", Vector3(0, 0, 0.3))
+	p.off[&"hips"] = p.o(&"hips") + Vector3(-0.08, -leg * CROUCH_DROP, 0.0) * k
 	p.off[&"hem"] = p.o(&"hem") + Vector3(0, -leg * CROUCH_DROP * 0.4, 0) * k
 
 

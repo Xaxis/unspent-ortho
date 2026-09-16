@@ -1,0 +1,70 @@
+# Machines with jobs, and the gaps between them (VISION §2), proven through the
+# real keys on a normal seed-1 coast: a player walks among working harvesters
+# and is never touched; the same player puts their hands on the plan's own
+# parts and every worker that can see it turns; and then, down in the heather
+# at dusk, walks past a watcher's sweep without being read.
+#   tools/tour.sh tours/disposition.tour --seed=1 --hour=11 --weather=clear:0
+coast calm
+zoom 11
+
+# --- 1. Among the harvest, untouched -----------------------------------------
+place spawn
+wait 0.8
+spawn harvester
+spawn harvester
+wait 1.2
+shot 01-workers-on-their-rounds
+walk 0,-1 1.1
+wait 0.4
+walk 1,0 1.0
+wait 1.4
+shot 02-walked-among-them-and-never-touched
+
+# --- 2. Hands on the plan's own parts ----------------------------------------
+coast calm
+near survey
+wait 0.6
+spawn harvester
+wait 1.2
+shot 03-a-survey-post-and-a-worker-at-its-round
+press use 0.3
+await theft 8
+wait 0.4
+shot 04-the-worker-turns-on-the-thief
+await turned 4
+wait 1.2
+shot 05-it-comes-for-you-now
+
+# --- 3. Down in the heather at dusk, past a watcher --------------------------
+# Down first, then the watcher: a player already in the heather is never read,
+# and standing up in front of it is what gives them away.
+coast calm
+at 236.5,398.5
+hour 20.3
+weather clear:0
+zoom 9
+wait 1.0
+hold crouch
+await crouched 3
+await hidden 3
+wait 0.6
+spawn watcher
+wait 1.8
+shot 06-a-watcher-reading-the-heath-at-dusk
+zoom 6
+wait 0.5
+shot 07-down-in-the-heather
+zoom 9
+wait 0.4
+walk 1,1 1.8
+wait 0.6
+shot 08-past-its-sweep-unread
+walk 1,0 1.2
+wait 1.0
+shot 09-and-away-with-nothing-filed
+# Stand up inside the same round and the same optics find you at once: the
+# difference between being read and not is the stance, and it is drawn on both.
+release crouch
+await read 14
+wait 0.5
+shot 10-stand-up-and-it-has-you

@@ -13,11 +13,18 @@ class_name Disposition
 ## A machine that only reports (a watcher, a clerk) never becomes hostile: it
 ## files, and the filing is what brings the hunters.
 
-## Cold to hot. A step is one level of interference.
+## Cold to hot, for comparing two dispositions. `observant` is a watcher's whole
+## trade and never a step on a worker's way up: see BY_LEVEL.
 const ORDER: Array[StringName] = [&"indifferent", &"wary", &"observant", &"hostile"]
-## Where each interference level puts a body that would otherwise go about its
-## work: calm nothing, wary one step, hostile two, hunted straight to hostile.
-const BY_LEVEL := [0, 1, 2, 3]
+## What the interference of a region does to a body that would otherwise be
+## about its work, by the body's own default (VISION §2: "indifferent machines
+## grow wary, then hostile, and hunters are sent"). Indexed by level 0..3.
+const BY_LEVEL := {
+	&"indifferent": [&"indifferent", &"wary", &"hostile", &"hostile"],
+	&"wary": [&"wary", &"wary", &"hostile", &"hostile"],
+	&"observant": [&"observant", &"observant", &"observant", &"observant"],
+	&"hostile": [&"hostile", &"hostile", &"hostile", &"hostile"],
+}
 
 
 static func rank(d: StringName) -> int:
@@ -39,7 +46,8 @@ static func of(role: StringName, level: int, disturbed: bool = false) -> StringN
 	if disturbed:
 		return &"hostile"
 	var base := Roles.default_disposition(role)
-	return raise_by(base, BY_LEVEL[clampi(level, 0, BY_LEVEL.size() - 1)])
+	var ladder: Array = BY_LEVEL.get(base, BY_LEVEL[&"hostile"])
+	return ladder[clampi(level, 0, ladder.size() - 1)]
 
 
 static func hostile(d: StringName) -> bool:
