@@ -395,9 +395,14 @@ func tend(piece_id: int) -> String:
 	# an hour of going up, and a plot that demanded to be tidied before anybody
 	# could be put on it would never be worked at all.
 	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
+		var full := s.people.size() >= s.beds()
 		var who := _staff(s, p)
 		if who < 0:
-			return "!Nobody here to work it."
+			# Which of the two walls it is, or the lesson is unlearnable: one is
+			# answered by building a bed and the other by founding somewhere else.
+			if full:
+				return "!Nowhere for anybody else to sleep here."
+			return "!Nobody near enough to come and work it."
 		return "Somebody is on the %s now." % StructureKind.display_name(p.kind)
 	if p.condition() < MEND_BELOW:
 		return _mend(s, p)
@@ -488,9 +493,13 @@ func _clear_wreck(s: Settlement, p: Structure) -> String:
 	return "Cleared it, and took back %s." % SettlementBuild.join_words(back)
 
 
-## Somebody from the nearest village comes over and takes the work on. Returns the
-## resident's id, or -1 when there is nobody to ask.
-func _staff(s: Settlement, p: Structure) -> int:
+## Somebody already living here takes the work on, or somebody from the nearest
+## village moves in to do it. Returns the resident's id, or -1 when nobody can.
+##
+## `free` is for staging only (`--holding`, which is documented as free and
+## staffed): it skips the bed, because a shot or a tour asking for one plot must
+## get a working plot and not a lesson about roofs.
+func _staff(s: Settlement, p: Structure, free: bool = false) -> int:
 	for id: int in s.people:
 		var busy := false
 		for q in s.pieces:
@@ -501,6 +510,9 @@ func _staff(s: Settlement, p: Structure) -> int:
 			p.staffed_by = id
 			_put_to_work(s, id, p)
 			return id
+	# Nobody spare, so somebody has to move in — and moving in wants a bed.
+	if not free and s.people.size() >= s.beds():
+		return -1
 	var who := _recruit(s)
 	if who < 0:
 		return -1
@@ -845,7 +857,7 @@ func _sync_nodes() -> void:
 			if node == null:
 				continue
 			node.set_ruined(p.ruined)
-			node.set_lit(_lit(s, p))
+			node.set_lit(_lit(s, p, weather, hour))
 			if p.kind == StructureKind.WIND_SPINNER:
 				var share := 0.0 if p.ruined else SettlementRules.source(p.kind, weather, hour) * p.condition()
 				node.set_spin(share)
@@ -861,12 +873,18 @@ func _sync_nodes() -> void:
 ## Whether a machine's own light is still burning on this piece. It is the
 ## holding saying out loud that it has power, which is the thing a player should
 ## be able to read from a hillside (docs/ART.md §10).
-func _lit(s: Settlement, p: Structure) -> bool:
+func _lit(s: Settlement, p: Structure, weather: Dictionary, hour: float) -> bool:
 	if p.ruined:
 		return false
 	match p.kind:
 		StructureKind.BATTERY_STACK:
 			return s.charge > 0.05
+		StructureKind.SOLAR_ARRAY:
+			# An array's lamp says it is MAKING power, not that the holding has
+			# some — which is the one thing about it a player has to learn, and
+			# the reason the mast is up at noon and down at midnight. Same rule
+			# the power itself runs on, so the lamp cannot disagree with the wire.
+			return SettlementRules.source(p.kind, weather, hour) > 0.05 and p.condition() >= Structure.WORKS_ABOVE
 		StructureKind.RADIO_MAST, StructureKind.SPOOFER, StructureKind.TURRET:
 			return p.powered and not p.off
 	return false
@@ -973,7 +991,7 @@ func _from_options() -> void:
 		placed += 1
 		if StructureKind.needs_staff(kind):
 			@warning_ignore("return_value_discarded")
-			_staff(s, p)
+			_staff(s, p, true)
 	if placed == 0:
 		return
 	_recentre(s)

@@ -1,0 +1,53 @@
+# The two pieces the holding app was missing (m2/economy-gaps): the LIVING
+# family's bunk, which was an empty heading on the slate, and a SECOND generator,
+# so the wind is no longer the only power in the game.
+#
+#   tools/tour.sh tours/holding-living.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --give=timber:6,reeds:6,rag:6,wick:4,scrap:10,copper:4
+#
+# (Everything is built here on the real keys out of the creel — nothing is staged
+# with --holding, because the whole claim is that a player can now put these two
+# up. The hour is daylight on purpose: an array makes nothing after dark, which is
+# the point of it, so a tour that proved it at midnight would prove the opposite.)
+coast calm
+wait 0.6
+shot 01-empty-ground-and-a-full-creel with land:coast
+# The LIVING family used to be a heading with nothing under it.
+tap holding
+await app:holding 4
+wait 0.4
+shot 02-the-living-family-has-a-piece-in-it with app:holding
+choose build_bunk
+tap use
+await made 8
+tap pause
+await piece:bunk 6
+wait 0.6
+shot 03-a-bunk-stands-and-its-berths-can-be-seen with piece:bunk, holding
+# Room for the next piece, so it is not put up inside the last one.
+walk 1,0 1.2
+wait 0.4
+# The other generator. A spinner is free and unreliable; an array is dear and
+# dependable, right up until the sun goes down.
+tap holding
+await app:holding 4
+choose build_solar_array
+tap use
+await made 8
+tap pause
+await piece:solar_array 6
+wait 0.6
+shot 04-panels-raked-at-the-sun with piece:solar_array, holding
+# And something for it to run, to prove the power is real and not a number in a
+# table: a mast has no hands on it and no wind behind it, only daylight.
+walk 1,0 1.2
+wait 0.4
+tap holding
+await app:holding 4
+choose build_radio_mast
+tap use
+await made 8
+tap pause
+await powered 10
+wait 0.6
+shot 05-a-mast-running-on-daylight-alone with piece:solar_array, piece:radio_mast, powered

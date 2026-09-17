@@ -306,3 +306,112 @@ static func store(k: MeshKit, v: int, ruined: bool) -> void:
 	# A basket stood beside it, because a store is never quite big enough.
 	k.prism(-w - 0.26, 0.0, d * 0.2, 0.17, 0.3, 0.14, 7, P.SAND[2], P.SAND[1])
 	Parts.lash(k, Vector3(-w - 0.26, 0.22, d * 0.2 - 0.17), Vector3(-w - 0.26, 0.2, d * 0.2 + 0.17), v, 110, 0.022)
+
+
+# --- bunk -------------------------------------------------------------------
+
+## Beds for people who are not the player (docs/VISION.md §9). A lean-to is one
+## night's roof and a hut is a household; a bunk is what a holding puts up when
+## what it needs is HANDS, and it has to read as that from a hillside — not as
+## another hut, and not as a store up on legs.
+##
+## THE BERTHS STICK OUT PAST THE ROOF. Drawn as an ordinary shed — four posts and
+## a roof over everything — the play camera looks down at 57 degrees onto a plank
+## roof and the piece is a market stall, with the one thing that tells a bunk from
+## a shed hidden underneath it. So the roof is a CANOPY over the head end only and
+## the sleeping shelves cantilever out from the back wall into open sky, propped at
+## their outer corners, blankets face up. It reads from any bearing rather than
+## from one, and it is honest carpentry: roof the end where the heads are and let
+## the feet take the weather.
+##
+## A WARNING, because it cost three renders: a shelf is a horizontal quad, and a
+## horizontal quad wound the wrong way round is not dim or dark, it is GONE.
+## `MeshKit.tri` authors CCW and takes its normal from `(c - b).cross(a - b)`, so
+## a face meant to be seen from above must run round the other way than feels
+## natural writing it. Both berth quads and the blanket on them were face down at
+## first, which looks exactly like the roof hiding them — the props under the
+## shelves drew, the shelves did not, and the piece read as an empty carport.
+static func bunk(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var half := 0.88 + Parts.wob(v, 1) * 0.1   # along z, the long axis
+	var deep := 0.46 + Parts.wob(v, 2) * 0.04  # along x, back wall to berth ends
+	var back := -deep
+	var front := deep
+	var wall_h := 0.94 + Parts.wob(v, 3) * 0.08
+	# Where the canopy stops. Everything in front of this line is open to the sky.
+	var eave := -0.04
+	var eave_h := wall_h + 0.2
+	# The back posts, and the pair that carry the canopy's outer edge.
+	for sz: int in [-1, 1]:
+		var z := sz * half
+		Parts.post(k, Vector3(back, 0.0, z), Vector3(back + Parts.lean(v, 10 + sz, 0.04), wall_h, z), 0.052,
+			Parts.pick(Parts.TIMBER, v, 20 + sz))
+		Parts.stone(k, Vector3(back, 0.0, z), 0.1, v, 30 + sz)
+		var head := eave_h if not (ruined and sz < 0) else 0.34
+		Parts.post(k, Vector3(eave, 0.0, z), Vector3(eave + Parts.lean(v, 12 + sz, 0.05), head, z), 0.05,
+			Parts.pick(Parts.TIMBER, v, 24 + sz))
+		Parts.stone(k, Vector3(eave, 0.0, z), 0.1, v, 34 + sz)
+	# The plates the canopy sits on, running the long way.
+	k.strut(Vector3(back, wall_h, -half), Vector3(back, wall_h - 0.02, half), 0.04, 4, Parts.pick(Parts.TIMBER, v, 40))
+	var drop := eave_h - 0.34 if ruined else 0.0
+	k.strut(Vector3(eave, eave_h - drop, -half), Vector3(eave, eave_h, half), 0.042, 4,
+		Parts.pick(Parts.TIMBER, v, 41))
+	# The berths: two tiers, cantilevered out from the back wall past the eave, so
+	# their outer halves and the blankets on them are under open sky.
+	if not ruined:
+		for tier in 2:
+			var y := 0.30 + 0.36 * float(tier)
+			for berth in 2:
+				var z0 := lerpf(-half + 0.08, 0.03, float(berth))
+				var z1 := z0 + (half - 0.15)
+				var out_x := front - 0.04
+				# The shelf, wound so its face is turned to the sky and not the earth.
+				k.quad(Vector3(back + 0.05, y, z1), Vector3(out_x, y - 0.02, z1),
+					Vector3(out_x, y - 0.02, z0), Vector3(back + 0.05, y, z0),
+					Parts.pick(Parts.TIMBER, v, 50 + tier * 2 + berth))
+				# The blanket, lying on the OUTER half where it can be seen from above.
+				var cloth := Parts.pick(Parts.CLOTH, v, 60 + tier * 2 + berth)
+				var b0 := lerpf(eave, out_x, 0.12)
+				k.quad(Vector3(b0, y + 0.02, z1 - 0.04), Vector3(out_x - 0.05, y + 0.005, z1 - 0.04),
+					Vector3(out_x - 0.05, y + 0.005, z0 + 0.04), Vector3(b0, y + 0.02, z0 + 0.04), cloth)
+				# The bedroll at the head of it, in under the canopy.
+				k.prism(back + 0.16, y + 0.02, (z0 + z1) * 0.5 - 0.22, 0.09, y + 0.16, 0.08, 6, cloth, cloth)
+				# The prop under the outer corner: nobody trusted the shelf that far out.
+				k.strut(Vector3(out_x - 0.03, y - 0.02, z0 + 0.04), Vector3(out_x - 0.03, 0.03, z0 + 0.04),
+					0.026, 4, Parts.CORD_DARK)
+				k.strut(Vector3(out_x - 0.03, y - 0.02, z1 - 0.04), Vector3(out_x - 0.03, 0.03, z1 - 0.04),
+					0.026, 4, Parts.CORD_DARK)
+	# The canopy over the head end, shedding back over the wall.
+	var rb_l := Vector3(back - 0.14, wall_h + 0.03 - drop, -half - 0.1)
+	var rb_r := Vector3(back - 0.14, wall_h + 0.03, half + 0.1)
+	var rf_l := Vector3(eave + 0.06, eave_h + 0.03 - drop, -half - 0.1)
+	var rf_r := Vector3(eave + 0.06, eave_h + 0.03, half + 0.1)
+	k.quad(rf_l, rb_l, rb_r, rf_r, Parts.pick(Parts.THATCH, v, 4))
+	# Battens across it, so it is read by its lines and not only by its edge.
+	for i in 2:
+		var t := 0.34 + 0.32 * float(i)
+		k.strut(rb_l.lerp(rf_l, t), rb_r.lerp(rf_r, t), 0.026, 4, Parts.CORD_DARK)
+	if ruined:
+		# Gone through: the shelves down and the bedding out in the mud.
+		for i in 3:
+			var a := TAU * float(i) / 3.0 + Parts.wob(v, 70 + i)
+			k.prism(cos(a) * 0.7, 0.0, sin(a) * 0.8, 0.11, 0.14, 0.1, 6,
+				Parts.pick(Parts.CLOTH, v, 74 + i), Parts.ASH)
+		k.strut(Vector3(0.2, 0.06, -half + 0.2), Vector3(0.9, 0.05, -half - 0.1), 0.045, 4,
+			Parts.pick(Parts.TIMBER, v, 80))
+		return
+	# The back wall boarded in, and the two ends as far as the eave, so the wind is
+	# off the heads. In front of the eave nothing is walled: that is the point.
+	Parts.wall(k, Vector3(back, 0.0, half), Vector3(back, 0.0, -half),
+		Vector3(back, wall_h, half), Vector3(back, wall_h, -half), Parts.pick(Parts.TIMBER, v, 89))
+	for sz: int in [-1, 1]:
+		var z := sz * half
+		var b := Vector3(back, 0.0, z)
+		var f := Vector3(eave, 0.0, z)
+		var bt := Vector3(back, wall_h, z)
+		var ft := Vector3(eave, eave_h, z)
+		var end := Parts.pick(Parts.TIMBER, v, 90 + sz)
+		if sz > 0:
+			Parts.wall(k, b, f, bt, ft, end)
+		else:
+			Parts.wall(k, f, b, ft, bt, end)
