@@ -43,3 +43,13 @@ const NAMES: PackedStringArray = [
 
 static func is_water(g: int) -> bool:
 	return g == DEEP_WATER or g == WATER or g == BLACKWATER or g == RIVER
+
+
+## Out of a body's depth: swum, not waded (src/core/swim.gd).
+static func is_deep(g: int) -> bool:
+	return g == DEEP_WATER
+
+
+## Water a body walks through rather than over its head.
+static func is_shallow(g: int) -> bool:
+	return g == WATER or g == BLACKWATER or g == RIVER

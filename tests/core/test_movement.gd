@@ -24,7 +24,7 @@ func test_player_walks_and_faces_where_it_goes() -> void:
 	p.free()
 
 
-func test_never_enters_deep_water_or_crosses_a_cliff() -> void:
+func test_never_crosses_a_cliff_however_far_it_walks() -> void:
 	var w := _w()
 	var q := WorldQuery.new(w)
 	var p := Player.new()
@@ -37,13 +37,65 @@ func test_never_enters_deep_water_or_crosses_a_cliff() -> void:
 		p.drive(dirs[(i / 90) % dirs.size()], true, 1.0 / 60.0)
 		var tx := floori(p.pos.x)
 		var ty := floori(p.pos.y)
-		check(w.ground_at(tx, ty) != Ground.DEEP_WATER, "in deep water at %s" % p.pos)
 		var l := w.level_at(tx, ty)
 		if absi(l - prev) > 1:
 			fail("crossed a cliff %d -> %d at %s" % [prev, l, p.pos])
 			break
 		prev = l
 	p.free()
+
+
+## Deep water was a wall to everything; it is a crossing now for a body that can
+## swim, and the wall it always was for one that cannot (owner, 2026-09-17).
+func test_deep_water_stops_what_cannot_swim_and_lets_a_swimmer_through() -> void:
+	var w := WorldData.new(4, 32)
+	for i in 32 * 32:
+		w.level[i] = 1
+		w.ground[i] = Ground.GRASS
+		w.country[i] = Country.COAST
+	# A channel of deep water four tiles wide, straight across the middle.
+	for y in 32:
+		for x in range(14, 18):
+			w.ground[y * 32 + x] = Ground.DEEP_WATER
+			w.level[y * 32 + x] = 0
+	var q := WorldQuery.new(w)
+	check(not q.standable(15, 10), "a body on its feet has no business out there")
+	check(q.standable(15, 10, null, true), "a swimmer has")
+	check(q.passable(13, 10, 14, 10, null, true), "and may step in from the bank")
+	# Walked at the channel, a body that cannot swim is held on the near side.
+	var from := Vector2(12.5, 10.5)
+	var at := from
+	for i in 300:
+		at = q.move_body(at, Vector2(0.06, 0.0), Tuning.PLAYER_RADIUS)
+	lt(at.x, 14.0, "held at the waterline, not in it: %s" % at)
+	# The same walk, swimming, crosses and comes out the far side.
+	at = from
+	for i in 300:
+		at = q.move_body(at, Vector2(0.06, 0.0), Tuning.PLAYER_RADIUS, null, true)
+	gt(at.x, 18.0, "a swimmer is across and out: %s" % at)
+
+
+## What it costs is time, and only time (owner's ruling): a stroke against a walk.
+func test_a_stroke_is_slower_than_a_walk_and_a_wade_is_every_shallow() -> void:
+	var w := WorldData.new(5, 8)
+	for i in 8 * 8:
+		w.level[i] = 1
+		w.ground[i] = Ground.GRASS
+	w.ground[1 * 8 + 1] = Ground.DEEP_WATER
+	w.ground[1 * 8 + 2] = Ground.WATER
+	w.ground[1 * 8 + 3] = Ground.RIVER
+	w.ground[1 * 8 + 4] = Ground.BLACKWATER
+	var dry := Hero.ground_speed(w, Vector2(0.5, 0.5), false)
+	var deep := Hero.ground_speed(w, Vector2(1.5, 1.5), false)
+	var wade := Hero.ground_speed(w, Vector2(2.5, 1.5), false)
+	near(deep, Tuning.WALK_SPEED * Tuning.SWIM_FACTOR, 0.001, "a stroke is a stroke")
+	near(wade, dry * Tuning.WADE_FACTOR, 0.001)
+	lt(deep, wade, "and slower than a wade")
+	for at: Vector2 in [Vector2(2.5, 1.5), Vector2(3.5, 1.5), Vector2(4.5, 1.5)]:
+		near(Hero.ground_speed(w, at, false), dry * Tuning.WADE_FACTOR, 0.001,
+			"every shallow water wades the same: %s" % Ground.NAMES[w.ground_at(floori(at.x), floori(at.y))])
+	# Running is nothing in deep water: there is nothing to push against.
+	near(Hero.ground_speed(w, Vector2(1.5, 1.5), true), deep, 0.001, "no running a swim")
 
 
 static func _field(props: Array[Vector2], kind: int = PropKind.BROADLEAF) -> WorldQuery:

@@ -15,3 +15,6 @@ const PLAYER_RADIUS := 0.28
 const WALK_SPEED := 3.4
 const RUN_SPEED := 5.4
 const WADE_FACTOR := 0.55
+## A stroke against a walk (owner, 2026-09-17: about two fifths). Running is not
+## faster in deep water: there is nothing to push against, so a swim is one pace.
+const SWIM_FACTOR := 0.4

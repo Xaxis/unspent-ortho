@@ -32,6 +32,9 @@ class_name Roster
 ##                           day_min, hours [from, to), weather[], calm, rise,
 ##                           near_props[] (PropKind names within 4 tiles), wet
 ##   keeps_to: Array         ground names it may move on (a dredger keeps to water)
+##   crosses: StringName     what DEEP water is to it: &"swim" (it goes in after
+##                           you) or &"fly" (it goes over); absent, the waterline
+##                           stops it, which is most of the roster (src/core/swim.gd)
 ##   role: StringName        its place in the machines' plan (Roles): worker keeper
 ##                           watcher hunter recycler. The role decides the default
 ##                           disposition, what turns it, its sight cone and whether
@@ -53,6 +56,10 @@ class_name Roster
 
 ## Standing water and the mud at its edge: where a dredger may go (a bank of turf is the answer to one).
 const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
+## What a dredger keeps to once it is hunting: the same wet ground, and the deep
+## it can swim. It is never PUT OUT in the deep (`where.grounds` is WET), so the
+## sea is where it follows you to and not where it comes from.
+const WET_AND_DEEP := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn", "deep water"]
 ## The five countries that are not burning.
 const GREEN_COUNTRIES := ["coast", "moss", "pinewood", "snowfield", "bonelands"]
 
@@ -93,6 +100,8 @@ const DEFS := {
 	},
 	&"flock": {
 		"model": &"flock", "role": &"hunter", "machine": true, "approach": &"dart", "part": &"none",
+		# It passes over you low: water is nothing to it (Swim).
+		"crosses": &"fly",
 		"pace": 13.0, "dash": 18.0, "radius": 0.6, "height": 1.0, "life": 30,
 		"sees": 16, "hears": 7, "racket": 12, "reach": 2, "ready": 2, "forget": 30, "tether": 22, "safe": 16,
 		"nerve": 100, "invuln": 300,
@@ -152,13 +161,17 @@ const DEFS := {
 	},
 	&"dredger": {
 		"model": &"dredger", "role": &"hunter", "machine": true, "approach": &"rush", "part": &"front",
+		# The one machine the water does not stop: it was built to work in it, and
+		# it is why swimming away is a good idea and never a safe one (Swim).
+		"crosses": &"swim",
 		"pace": 8.5, "dash": 13.0, "quick": 260, "radius": 0.65, "height": 0.6, "life": 85,
 		"sees": 8, "hears": 13, "racket": 14, "reach": 2, "ready": 3, "forget": 12, "tether": 18, "safe": 12,
-		"nerve": 100, "invuln": 460, "keeps_to": WET,
+		"nerve": 100, "invuln": 460,
 		"bite": {"swing": [380, 140, 280, 560], "reach": 1.3, "width": 1.6, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4},
 		"then_at": 0.45,
 		"then": {"swing": [340, 160, 300, 420], "reach": 1.5, "width": 1.8, "dmg": 4, "knock": 8.0, "knock_ms": 300},
 		"takes": 80.0, "drops": 2, "linger": 45.0, "chance": 5,
+		"keeps_to": WET_AND_DEEP,
 		"where": {"countries": ["moss", "coast"], "grounds": WET, "green_min": 16},
 	},
 	&"lineman": {
@@ -180,6 +193,8 @@ const DEFS := {
 		"where": {"countries": ["burning"], "grounds": ["ash", "clinker", "rock", "gravel", "mud", "road"]},
 	},
 	&"dog.yard": {
+		# A dog goes in after you: the beasts were never the ones the water stopped.
+		"crosses": &"swim",
 		"model": &"dog", "machine": false, "approach": &"rush", "part": &"none",
 		"pace": 3.0, "dash": 7.5, "quick": 330, "radius": 0.3, "height": 0.5, "life": 4,
 		"sees": 8, "hears": 14, "racket": 0, "reach": 1, "ready": 2, "forget": 24, "tether": 20, "safe": 12,
@@ -189,6 +204,8 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "green_max": 40},
 	},
 	&"dog.feral": {
+		# A dog goes in after you: the beasts were never the ones the water stopped.
+		"crosses": &"swim",
 		"model": &"dog", "machine": false, "approach": &"rush", "part": &"none",
 		"pace": 3.4, "dash": 7.5, "quick": 355, "radius": 0.3, "height": 0.5, "life": 6,
 		"sees": 9, "hears": 14, "racket": 0, "reach": 1, "ready": 1, "forget": 24, "tether": 20, "safe": 14,
@@ -208,6 +225,8 @@ const DEFS := {
 	},
 	&"gulls": {
 		"model": &"gull", "machine": false, "hostile": false, "approach": &"dart", "part": &"none",
+		# They sit on it (Swim).
+		"crosses": &"fly",
 		"pace": 7.0, "dash": 10.0, "radius": 0.22, "height": 0.4, "life": 1,
 		"sees": 12, "hears": 8, "racket": 0, "reach": 1, "ready": 1, "forget": 6, "tether": 30, "safe": 10,
 		"nerve": 100, "invuln": 300, "stagger": true,

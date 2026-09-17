@@ -18,6 +18,10 @@ var grip_since := 0.0
 var holder: Fighter = null
 var last_pull := -100000.0
 
+## A person can swim, so deep water is a slow crossing and not a wall (Swim).
+## A field rather than a constant because a test may put a body that cannot.
+var swims := true
+
 ## Intent for the next slices (world space, length <= 1) and whether Shift is held.
 var move := Vector2.ZERO
 var run := false
@@ -55,8 +59,15 @@ static func ground_speed(world: WorldData, p: Vector2, running: bool, move_facto
 	if on != null:
 		return on.speed(running) * clampf(move_factor, 0.2, 1.5)
 	var s := Tuning.RUN_SPEED if running else Tuning.WALK_SPEED
-	if world != null and world.ground_at(floori(p.x), floori(p.y)) == Ground.WATER:
-		s *= Tuning.WADE_FACTOR
+	if world != null:
+		# A stroke is slower than a wade, and a wade is every shallow water there
+		# is: a river and black water held a body up to the knees and took nothing
+		# off its pace, which was a rule nobody had written and nobody wanted.
+		var g := world.ground_at(floori(p.x), floori(p.y))
+		if Ground.is_deep(g):
+			s = Tuning.WALK_SPEED * Tuning.SWIM_FACTOR
+		elif Ground.is_shallow(g):
+			s *= Tuning.WADE_FACTOR
 	return s * clampf(move_factor, 0.2, 1.5)
 
 
