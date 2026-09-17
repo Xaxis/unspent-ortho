@@ -98,7 +98,8 @@ func _screen_at(pos: Vector2, height: float) -> Array:
 	var cam := game.camera
 	var base := game.world.to_3d(pos)
 	var top := base + Vector3(0.0, height, 0.0)
-	return [cam.unproject_position(base).round(), cam.unproject_position(top).round()]
+	return [UiBase.to_design(cam.unproject_position(base)).round(),
+		UiBase.to_design(cam.unproject_position(top)).round()]
 
 
 func _screen_of(m: MobState) -> Array:
@@ -267,7 +268,7 @@ func _draw_ring(s: TargetSubject, col: Color) -> void:
 	var was := Vector2.ZERO
 	for i in range(0, 25):
 		var a := i * TAU / 24.0
-		var p := cam.unproject_position(base + Vector3(cos(a) * r, 0.02, sin(a) * r)).round()
+		var p := UiBase.to_design(cam.unproject_position(base + Vector3(cos(a) * r, 0.02, sin(a) * r))).round()
 		if i > 0 and p.distance_to(was) < 40.0:
 			_dotted(was, p, col)
 		was = p

@@ -76,7 +76,11 @@ func setup(o: BootOptions) -> void:
 	# A name is only worth drawing where it does not cover the model beside it.
 	# The whole gallery is a contact sheet of two hundred silhouettes at forty
 	# pixels a cell; a review that needs the names uses --filter and gets them.
-	var pitch := cam.unproject_position(Vector3.ZERO).distance_to(cam.unproject_position(Vector3(spacing, 0.0, 0.0)))
+	# In the slate's units, because that is what the names are drawn in and what
+	# TAG_PITCH counts. Off the raw viewport it would be three times larger and
+	# every contact sheet would come back covered in names.
+	var pitch := UiBase.to_design(cam.unproject_position(Vector3.ZERO)).distance_to(
+		UiBase.to_design(cam.unproject_position(Vector3(spacing, 0.0, 0.0))))
 	if pitch >= TAG_PITCH:
 		_add_tags()
 	print("gallery %d items, %s (cell %d px)" % [items.size(), "named" if pitch >= TAG_PITCH else "a contact sheet: --filter for names", roundi(pitch)])
@@ -151,7 +155,7 @@ func _draw_tags() -> void:
 		var at := _tag_at(l)
 		if _cam.is_position_behind(at):
 			continue
-		var p := _cam.unproject_position(at)
+		var p := UiBase.to_design(_cam.unproject_position(at))
 		var text: String = l.name
 		var w := UiFont.width(text)
 		var box := Rect2i(roundi(p.x) - w / 2 - 3, roundi(p.y) - 5, w + 6, 11)

@@ -39,7 +39,7 @@ func _draw() -> void:
 		return
 	if camera.is_position_behind(ground):
 		return
-	var o := camera.unproject_position(ground).floor()
+	var o := UiBase.to_design(camera.unproject_position(ground)).floor()
 	for c: Vector2i in _ink:
 		draw_rect(Rect2(o.x + c.x, o.y + c.y, 1, 1), INK)
 	for c: Vector2i in _core:

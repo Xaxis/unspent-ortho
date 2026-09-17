@@ -360,7 +360,11 @@ func _drive(p: CPUParticles3D, amount: float, dir: Vector3, speed: float, params
 func strike(at: Vector3, seed_value: int, hold: bool = false) -> void:
 	var rise := 400.0
 	if camera != null and camera.is_inside_tree():
-		rise = maxf(240.0, camera.unproject_position(at).y - camera.unproject_position(at + Vector3(0, 26.0, 0)).y)
+		# In the slate's units, like everything drawn on the bolt's layer: the
+		# camera answers in the viewport's own 1920x1080 pixels, and a rise three
+		# times too long starts the stroke far above the top of the frame.
+		var top := UiBase.to_design(camera.unproject_position(at + Vector3(0, 26.0, 0)))
+		rise = maxf(240.0, UiBase.to_design(camera.unproject_position(at)).y - top.y)
 	bolt.set_strike(at, seed_value, rise)
 	bolt.visible = true
 	_bolt_frame = 0

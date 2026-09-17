@@ -57,3 +57,20 @@ static func screen() -> Rect2i:
 ## from a 320 nobody could search for.
 static func mid_x() -> int:
 	return DESIGN.x / 2
+
+
+## A point in VIEWPORT pixels brought into DESIGN units.
+##
+## This is the trap the base change laid, and it is worth stating plainly because
+## it is silent: `Camera3D.unproject_position` answers in the viewport's own
+## pixels, which are now 1920x1080, while anything drawn on a `fit()` layer is in
+## the slate's 640x360 units. Mixing them put every machine's tag three times too
+## far down and to the right — off the glass entirely, so the tags simply stopped
+## being drawn and two targeting tests went red with "0 marks".
+##
+## So: anything that turns a WORLD position into a place to DRAW on a fitted layer
+## goes through here. Anything that compares one unprojected point with another
+## (the audio pan, which measures against the viewport's own centre) must NOT —
+## both sides are already in the same space.
+static func to_design(p: Vector2) -> Vector2:
+	return p / float(SCALE)
