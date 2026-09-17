@@ -19,9 +19,10 @@ wait 0.25
 shot 03-snow-noon-lamp-lit with lamp
 # Two frames of a running world are never identical: cloud shade walks, tufts
 # sway, stipple crawls. So the first pair measures that drift over a quarter of
-# a second with nothing done at all, and the second pair must come in under the
-# same number with the lamp lit between them — the lamp adds no more to the page
-# than standing still does. The crop is centred on the player, over the whole
+# a second with nothing done at all, and the second pair — the same quarter
+# second with the lamp lit in the middle of it — must come in under WHAT THE
+# FIRST PAIR MEASURED: the lamp adds no more to the page than standing still
+# does. The crop is centred on the player, over the whole
 # oval the disc used to cover (the playtest measured it about 470x330 frame
 # pixels across, around the hand).
 #
@@ -31,25 +32,57 @@ shot 03-snow-noon-lamp-lit with lamp
 # 640x360 floor and never rescaled when LANTERN moved the floor. On a 3840x2160
 # frame that box is the TOP-LEFT CORNER — x 10..23%, y 9..24% of the picture.
 # Looked at on this very staging it is BLANK SNOW: no player, no hand, no lamp,
-# nothing that moves. So the two lines below, the strictest pair of numbers in
-# any tour (0.010), were measuring a patch of flat white a hundred feet from the
-# lantern and passing for free — a lamp that laid a saturated pink disc over the
+# nothing that moves. So the two lines below, then the strictest pair of numbers
+# in any tour (0.010 each), were measuring a patch of flat white a hundred feet
+# from the lantern and passing for free — a lamp that laid a saturated pink disc over the
 # whole snowfield would still have come in under the tolerance, because the disc
 # would not have reached the corner being measured. x3 puts the box back on the
 # fractions of the frame the old numbers meant: the same world oval, 6.9 units
 # of ground round the player, at three times the pixels.
 #
-# Measured on one run of this tour, over the very same two pairs of frames:
-#   drift, nothing done   old box 0.0005   new box 0.0093
-#   with the lamp lit     old box 0.0006   new box 0.0074
-# The old box was spending 6% of its allowance on flat snow. The tolerance did
-# NOT have to move: 0.010 is the number that was always meant, and the lamp pair
-# now comes in UNDER the do-nothing pair, which is the sentence this test exists
-# to say. It runs close to the line (0.0093 of 0.0100) because the world really
-# does drift that much in a quarter second — do not raise it to buy room; a red
-# here under load is re-run alone before it is believed.
+# Measured over the very same two pairs of frames, four runs, three machines:
+#   drift, nothing done   old box 0.0005 / 0.0003   new box 0.0093 0.0094 0.0095 0.0097
+#   with the lamp lit     old box 0.0006            new box 0.0074 0.0076 0.0078
+# The old box was spending 6% of its allowance on flat snow, and the lamp moved
+# it by three parts in ten thousand: thirty times LESS sensitive than no crop at
+# all, on the one tour whose whole subject is a lamp that must lay nothing.
+#
+# AND THE SECOND LINE IS RELATIONAL NOW, which is what the paragraph above has
+# always said in words. With both lines held to one absolute 0.010, the tight
+# margin fell on the CONTROL pair — 0.0095 of 0.0100, 5% — and the control is a
+# quarter second of a world with nothing done to it: snow, tufts and trees that
+# sway on their own. So the tour was one noisy run from a red that would have
+# said nothing whatever about the lamp, while the lamp itself sat at 0.0078 with
+# 22% to spare. A number that measures how much the world animates is the wrong
+# instrument for "the lamp changed nothing". `no_more_than` asks it directly, and
+# the bar it sets now FOLLOWS the world: on a still minute the lamp is held to a
+# far tighter number than 0.010 ever was, and on a windy one it is not failed for
+# the wind.
+#
+# The 0.001 of slack is not a tolerance, it is the noise floor, and it is
+# measured: across four runs on three machines the control pair came out 0.0093
+# to 0.0097 and the lamp pair 0.0074 to 0.0078, so the run-to-run spread of
+# either is about 0.0004. Slack matters because with the lamp laying nothing
+# the two pairs are two samples of the SAME quarter-second of animation, and
+# either may land above the other by chance; 0.001 is about two and a half times
+# the spread, which keeps the effective bar at roughly the 0.010 it always was on
+# a typical run while being much tighter on a quiet one. It is also two orders
+# below what this test is hunting: the saturated disc it was written for covered
+# most of this crop.
+#
+# THE FIRST LINE KEEPS ITS 0.010 AND IS DELIBERATELY NOT WIDENED, and it is now
+# the tightest thing in this file: 0.0097 of 0.0100 on a quiet machine, 3%. That
+# is on purpose and it is the owner's call, not an oversight. Its job has
+# changed — it is no longer the lamp's bar, the line below is — and what it says
+# now is how much this world animates on its own in a quarter of a second, which
+# is the one place in the repository that number is written down. Raising it
+# would hide exactly the thing it has left to tell you.
+# So: IF IT GOES RED, IT IS NOT THE LANTERN. Look at what is moving in the crop —
+# snow falling, tufts swaying, stipple crawling, a shader that made one of them
+# livelier — and either explain the rise or fix it. Do not buy room here; the
+# lamp does not need any, and nothing else is watching the world's own motion.
 same 01-snow-noon-drift-a 02-snow-noon-drift-b 0.010 1200,585,1440,990
-same 02-snow-noon-drift-b 03-snow-noon-lamp-lit 0.010 1200,585,1440,990
+same 02-snow-noon-drift-b 03-snow-noon-lamp-lit no_more_than 01-snow-noon-drift-a 02-snow-noon-drift-b 0.001 1200,585,1440,990
 tap lamp
 wait 0.4
 
