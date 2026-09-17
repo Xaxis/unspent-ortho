@@ -14,14 +14,38 @@ var realm := 0
 var name := ""
 var centre := Vector2.ZERO
 var pieces: Array[Structure] = []
-## Person ids living here. They staff pieces; a raid can carry them off.
+## Person ids living here. They staff pieces; a raid can carry them off. The ids
+## are the holding's own and outlive any body loaded in the world, because a
+## settlement keeps producing while the player is a day's walk away and nothing
+## of it is drawn.
 var people: Array[int] = []
+## Person id -> the seed their look was drawn from, so a loaded holding puts the
+## same faces back at the same work.
+var looks := {}
 ## Item id (String) -> count. What the place has laid by.
 var stores := {}
+## The holding's own bookkeeping: the FRACTIONS of a thing that a half hour's
+## growing, eating and mending come to, carried until they are a whole basket.
+## It is kept out of `stores` on purpose, so what the slate lists and what the
+## store has room for are only ever whole things a person could pick up.
+var tally := {}
 ## 0..1. The raids package owns this; the settlement only reads it, so a
 ## settlement can show the player their own weather without deciding it.
 var attention := 0.0
+## 0..1 how dark it is over the place, written by the settlement system once a
+## second. It lives here rather than being asked for, because `signature()` is
+## the one door the raids package knocks on and a lamp at noon is not a lamp at
+## midnight: the hour has to be inside the answer, not beside it.
+var night := 0.0
+## Charge banked in its batteries, and the world minute its production was last
+## settled to (-INF: never run). Catching up from a timestamp is the whole of how
+## a holding works while the player is elsewhere.
+var charge := 0.0
+var worked_at := -INF
+## 0..1 how hungry its people are. Nobody works on an empty holding for long.
+var hunger := 0.0
 var _next_piece := 1
+var _next_person := 1
 
 
 func _init(settlement_id: int = 0, in_realm: int = 0, at: Vector2 = Vector2.ZERO, called: String = "") -> void:
@@ -31,8 +55,12 @@ func _init(settlement_id: int = 0, in_realm: int = 0, at: Vector2 = Vector2.ZERO
 	name = called
 
 
-func add(kind: int, at: Vector2, strength: float = 1.0) -> Structure:
+func add(kind: int, at: Vector2, strength: float = -1.0) -> Structure:
 	var s := Structure.new(_next_piece, kind, at, strength)
+	# Dealt once, here, so the drawing of this piece is the same every time the
+	# holding is loaded (docs/ART.md §10: the same kind built twice is not the
+	# same drawing, and it is not a different one tomorrow either).
+	s.variant = int(Rng.hash01(id * 7919 + _next_piece, kind, 41) * 1024.0)
 	_next_piece += 1
 	pieces.append(s)
 	return s
@@ -73,9 +101,68 @@ func standing() -> Array[Structure]:
 	return out
 
 
+## A new resident's id. Ids are never reused, so a person carried off in a raid
+## cannot come back as somebody else's bookkeeping.
+func take_person_id() -> int:
+	var next := _next_person
+	_next_person += 1
+	return next
+
+
+## What a raiding party has to get through, standing and in repair.
+func defence_total() -> float:
+	var total := 0.0
+	for s in pieces:
+		if s.standing():
+			total += StructureKind.defence(s.kind) * s.condition()
+	return total
+
+
+## How much the holding can lay by. Without a store the surplus is what a person
+## can carry away and no more, which is the reason to build one.
+func store_room() -> float:
+	var room := BARE_STORE
+	for s in pieces:
+		if s.standing():
+			room += StructureKind.store_room(s.kind) * s.condition()
+	return room
+
+
+## Stores with nowhere to go: what a holding with no store loses every time.
+const BARE_STORE := 6.0
+
+
+func stored() -> float:
+	var total := 0.0
+	for k: Variant in stores:
+		total += float(stores[k])
+	return total
+
+
+## Room for residents: a lean-to sleeps one, a hut two, and nobody moves in to
+## sleep in the rain.
+func beds() -> int:
+	var n := 0
+	for s in pieces:
+		if s.standing():
+			n += StructureKind.sleeps(s.kind)
+	return n
+
+
+func charge_room() -> float:
+	var room := 0.0
+	for s in pieces:
+		if s.standing():
+			room += StructureKind.banks(s.kind) * s.condition()
+	return room
+
+
 ## Everything the place gives off, after what hides it has had its say. Each
 ## channel takes the loudest piece rather than the sum: ten hearths are one
 ## column of smoke, but a radio mast is a radio mast.
+##
+## The hour is inside the answer (see `night`): a window is nothing at noon and
+## everything at two in the morning, and smoke is the other way round.
 func signature() -> Signature:
 	var sig := Signature.new()
 	var hidden := 0.0
@@ -86,12 +173,25 @@ func signature() -> Signature:
 			if k == "mask":
 				hidden = maxf(hidden, v)
 			else:
-				sig.set_channel(StringName(k), maxf(sig.get_channel(StringName(k)), v))
+				sig.set_channel(StringName(k), maxf(sig.get_channel(StringName(k)), v * _by_hour(k)))
 	if not people.is_empty():
-		sig.add(&"traffic", minf(0.6, 0.15 * float(people.size())))
+		sig.add(&"traffic", minf(0.6, 0.15 * float(people.size())) * _by_hour("traffic"))
 	if hidden > 0.0:
 		sig.mask(hidden)
 	return sig
+
+
+## What the hour does to a channel before it reaches a machine's senses. Light
+## and traffic are night and day things; smoke is only a column while there is
+## sky to see it against; radio, power and stolen tech never sleep, which is why
+## they are the dangerous ones.
+func _by_hour(channel: String) -> float:
+	match channel:
+		"light": return lerpf(0.3, 1.0, night)
+		"smoke": return lerpf(1.0, 0.45, night)
+		"traffic": return lerpf(1.0, 0.35, night)
+		"noise": return lerpf(1.0, 0.8, night)
+	return 1.0
 
 
 func damage_structure(piece_id: int, amount: float) -> bool:
@@ -113,9 +213,20 @@ func as_dict() -> Dictionary:
 		out_pieces.append(s.as_dict())
 	return {
 		"id": id, "realm": realm, "name": name, "centre": SaveCodec.vec2(centre),
-		"pieces": out_pieces, "people": people, "stores": stores,
-		"attention": attention, "next_piece": _next_piece,
+		"pieces": out_pieces, "people": people, "looks": _looks_out(),
+		"stores": SaveCodec.counts(stores), "tally": tally,
+		"attention": attention, "night": night, "charge": charge,
+		"worked_at": SaveCodec.num(worked_at), "hunger": hunger,
+		"next_piece": _next_piece, "next_person": _next_person,
 	}
+
+
+## JSON has no integer keys, so who looks like what goes out as pairs.
+func _looks_out() -> Array:
+	var out := []
+	for person_id: Variant in looks:
+		out.append([SaveCodec.to_int(person_id), SaveCodec.to_int(looks[person_id])])
+	return out
 
 
 static func from_dict(d: Dictionary) -> Settlement:
@@ -124,7 +235,19 @@ static func from_dict(d: Dictionary) -> Settlement:
 		s.pieces.append(Structure.from_dict(p as Dictionary))
 	for person: Variant in d.get("people", []):
 		s.people.append(SaveCodec.to_int(person))
+	for pair: Variant in d.get("looks", []):
+		if pair is Array and (pair as Array).size() >= 2:
+			s.looks[SaveCodec.to_int((pair as Array)[0])] = SaveCodec.to_int((pair as Array)[1])
 	s.stores = SaveCodec.to_counts(d.get("stores", {}))
+	var carried: Variant = d.get("tally", {})
+	if carried is Dictionary:
+		for k: Variant in carried:
+			s.tally[String(k)] = SaveCodec.to_num((carried as Dictionary)[k])
 	s.attention = float(d.get("attention", 0.0))
+	s.night = float(d.get("night", 0.0))
+	s.charge = float(d.get("charge", 0.0))
+	s.worked_at = SaveCodec.to_num(d.get("worked_at", -INF), -INF)
+	s.hunger = float(d.get("hunger", 0.0))
 	s._next_piece = SaveCodec.to_int(d.get("next_piece", s.pieces.size() + 1), s.pieces.size() + 1)
+	s._next_person = SaveCodec.to_int(d.get("next_person", s.people.size() + 1), s.people.size() + 1)
 	return s

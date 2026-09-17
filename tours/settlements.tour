@@ -1,0 +1,85 @@
+# Building at world scale, from a normal game start (docs/VISION.md §9): a
+# holding put up on the real keys out of what is carried, somebody from the
+# village put on the plot, eight world hours gone by, and the place found with a
+# crop laid by and its thatch that much the worse for the weather.
+#   tools/tour.sh tours/settlements.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --give=stone:6,deadwood:6,timber:4,reeds:6,scrap:6,pitch:2,rag:4,driftwood:4
+# (--give is an armful of what the first four pieces cost: stone and dead wood
+# for the hearth and the plot, timber and reeds for the store, plate and pitch
+# for the catchment. Everything in it can be taken off the coast by hand; the
+# taking is survival's proof, not this one's.)
+coast calm
+place spawn
+wait 0.4
+# Out of the village square to open ground, on the real keys. Near enough that
+# somebody will walk over for the work; far enough to build.
+walk -1,1 1.5
+wait 0.5
+shot 01-somewhere-to-put-it
+# h opens the holding app: what can go up here, what it wants, and — in the
+# stolen module's violet — what a machine would hear of the place.
+tap holding
+await app:holding 4
+wait 0.6
+shot 02-the-slate-asks-what-to-put-up with app:holding
+# A hearth first, because that is the order a person builds in. It is the game's
+# own fire: it lights the yard, and it can be slept beside and worked at.
+choose build_hearth
+tap use
+await made 6
+wait 0.5
+shot 03-a-hearth-laid with app:holding
+# A plot, a catchment to water it, and a store to put the crop in.
+choose build_plot
+tap use
+await made 6
+wait 0.4
+choose build_catchment
+tap use
+await made 6
+wait 0.4
+choose build_store
+tap use
+await made 6
+wait 0.5
+shot 04-four-pieces-up with app:holding, holding
+# Off the glass, and look at it.
+tap pause
+wait 0.8
+shot 05-the-holding-at-noon with holding, piece:hearth, land:coast
+# Somebody from the village takes the plot on: the row says "work it" before it
+# is pressed, and the same body walks over and starts digging.
+tap holding
+await app:holding 4
+choose piece_2
+tap use
+await staffed 4
+tap pause
+wait 1.4
+shot 06-somebody-on-the-plot with staffed, holding_people
+# Eight world hours. The holding is settled up from its own timestamp, not
+# ticked: the plot is worked, the crop goes into the store, and everything
+# standing is that much the worse for eight hours of weather.
+hour 18
+wait 1.6
+await produced 6
+shot 07-eight-hours-on with produced, stores, holding
+await worn 4
+shot 08-and-that-much-the-worse with worn, holding
+# What it laid by, carried off the page and into the creel.
+tap holding
+await app:holding 4
+wait 0.6
+shot 09-what-a-machine-hears with app:holding
+choose stores
+tap use
+await took 4
+wait 0.5
+shot 10-the-crop-in-the-creel with app:holding
+tap pause
+wait 0.6
+# Dusk, which is when a holding is worth defending: the hearth is the one honest
+# light in the landscape (docs/ART.md §10).
+hour 20.5
+wait 1.6
+shot 11-the-holding-at-dusk with holding, piece:hearth

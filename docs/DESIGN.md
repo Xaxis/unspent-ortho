@@ -100,6 +100,56 @@ and it can be worn out, broken under you, and lost.
   boards and cord, both idioms in one silhouette, and the lashing crossing the
   rivet row is the drawing.
 
+## Settlements (docs/VISION.md §9)
+
+Making does not stop at what a person carries. A **holding** is crafting at world
+scale: a roof, a fire, a plot, a wall, and the people who keep them. Everything in
+it is something that can be taken away, which is the whole of why building it
+matters.
+
+- **`h` is the whole verb.** It opens the holding app on the slate: what can go up
+  where the player stands, what each piece wants out of the creel, what the
+  holding has already built, and — in the stolen module's violet, because it is
+  the machines' reading and not the player's — what the place gives off. A piece
+  goes up in front of the player, out of what they are carrying and against the
+  world clock. Nothing about a holding is reached any other way.
+- **The first piece founds the place.** After that a piece within a walk of the
+  centre joins it, and further off starts another. A holding is named plainly and
+  its centre creeps as it grows.
+- **Twelve pieces, in the six families**: lean-to, hearth, hut, store (shelter);
+  plot, catchment (food and water); palisade, plate wall, netting (defence);
+  wind spinner, battery stack (power); radio mast (work). What each costs, wears,
+  makes and gives away is one row in `StructureKind.ROWS`.
+- **A hearth is the game's own campfire.** Laid, it puts a `PropKind.FIRE` in the
+  world, so it lights the yard, warms a body, can be slept beside and worked at.
+  The holding only records that it has one, what it costs to keep, and that its
+  smoke is what gives the place away.
+- **A sustainability loop, not a counter.** Power is made by the wind, banked and
+  spent; a plot is worked by hands and watered by a catchment or it makes half; a
+  store is what stops a surplus going to waste; people eat out of the stores, and
+  with nothing to eat they work badly and in the end walk away. Everything
+  standing comes apart in the weather, faster where it is the hand's work than
+  where it is the machines' plate, and the holding's own people mend the worst of
+  it out of the stores. Nothing in it is free to keep.
+- **A holding works while the player is away.** It is settled by **catching up**
+  from its own timestamp in whole half-hour slices, never by ticking: six hours
+  away is twelve steps, a month away is settled forward without being owed. The
+  slices are aligned to the clock, so a place looked at every minute and a place
+  left alone for a day come out exactly the same.
+- **The machines will come for it** (VISION §9.4-7). What a place gives off is
+  `Settlement.signature()`: light, noise, smoke, radio, power draw, the FOUND tech
+  running inside the walls, and traffic in and out. Each channel takes the loudest
+  piece rather than the sum, the hour is inside the answer (a window is nothing at
+  noon), and netting takes a little off every channel. A settlement is engaged
+  because of what it made, never because of a clock — and the raids package is
+  what comes. The two meet on `Settlement` and neither imports the other.
+- **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
+  thatch with a fringe the wind takes, and machine plate lashed over the gaps with
+  the cord crossing the rivet row. A piece leans, patches and weathers by its own
+  number, so the same kind built twice is not the same drawing. A spinner turns
+  when there is wind in it and a battery burns amber while there is charge, so a
+  player reads their own holding from a hillside before opening the slate.
+
 ## Owner rulings carried over (mechanics only)
 
 - Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.
