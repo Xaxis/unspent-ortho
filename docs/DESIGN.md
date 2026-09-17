@@ -213,6 +213,27 @@ and the rope keep their reasons to exist.
   over the ground actually under it, because a lit world places the shadow from
   that number.
 
+## Tracks (owner, 2026-09-17)
+
+**What walks leaves a trail the ground keeps as long as that ground would.** Boots
+press prints into sand, mud, peat, snow, ash, salt and moss; they scuff shingle,
+bone dust and swarf; they only bend grass, heath and needles down for a while; and
+rock, road, gravel, scree, limestone, clinker, ice and water keep nothing. A print
+comes down every step of the path actually walked, left and right, and none while
+swimming or in the air — landing leaves both feet, a dodge drags a scuff. The
+walker rig leaves its own machine feet a long stride apart; the hover sled brushes
+a band across the ground; a raft leaves nothing.
+
+- **Time and weather take them.** Each ground holds a mark its own number of world
+  hours (grass springs back in half an hour, peat holds a print eight), and the
+  weather that fills that ground fills it several times faster: a blizzard takes a
+  line of prints in snow in minutes, rain softens sand and mud, dust drifts over
+  ash and salt. A night slept is a night's wear. Nothing is saved.
+- **A print is a hollow, not a sticker**: drawn with its own relief so the light
+  catches its rim, never with a colour of its own — it darkens the ground it is in.
+  That drawing is interim: prints belong in the ground's own material in the lit
+  world, and the rule and the placement are what stay.
+
 ## Who wakes, and what they wear (owner, 2026-09-17)
 
 **A new game begins by making the one who wakes**, and that body is the one the
