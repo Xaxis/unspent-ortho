@@ -1,0 +1,38 @@
+# A thing worked down is BROKEN, not shrunk (owner, 2026-09-17; Broken): the same
+# boulder with a piece off it, standing as wide as it ever did, cut flat where the
+# pick went and pale there, because nothing has settled on a face opened a minute
+# ago. That last part is the whole point of the change, so it is shown in the two
+# lands whose ground weathers a rock least alike: the bog and the salt.
+#
+#   tools/tour.sh tours/broken.tour --seed=4 --hour=11 --weather=clear:0 --give=pick:1 --held=pick
+#
+# Seed 4 because it is a seed whose bog AND salt each hold a boulder; seed 1's bog
+# has none, and `near` would walk out of the land the frame is named after. The
+# camera is low, because what is being shown is one face of one rock.
+zoom 5
+# A boulder in the bog, whole: the wear of a wet land all over it.
+place moss
+near boulder
+wait 0.8
+shot 01-a-boulder-in-the-bog-whole with prop:boulder,land:moss
+# One go with the pick takes half of it. What is left stands where it stood, as
+# wide as it was, with a flat pale face on top.
+press use 0.1
+await took 20
+wait 0.8
+shot 02-half-of-it-off-and-the-cut-unweathered with worked_down,prop:boulder,land:moss
+# The same cut on the salt, where the ground bleaches everything standing in it
+# and the fresh face is still the palest thing on the rock.
+place salt_flats
+near boulder
+wait 0.8
+shot 03-a-boulder-on-the-salt-whole with prop:boulder,land:salt_flats
+press use 0.1
+await took 20
+wait 0.8
+shot 04-cut-open-on-the-salt with worked_down,prop:boulder,land:salt_flats
+# The last go takes it away: a worked thing is never left as a pebble.
+press use 0.1
+await took 20
+wait 1.2
+shot 05-the-last-go-takes-it-away

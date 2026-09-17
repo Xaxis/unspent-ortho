@@ -95,7 +95,7 @@ func test_your_heap_is_yours() -> void:
 	Fx.done(g)
 
 
-func test_a_seam_stands_smaller_with_every_go_and_goes_on_the_last() -> void:
+func test_a_seam_is_worked_down_with_every_go_and_goes_on_the_last() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"pick")
 	Survival.hold(g, &"pick")
@@ -110,8 +110,10 @@ func test_a_seam_stands_smaller_with_every_go_and_goes_on_the_last() -> void:
 		check(Fx.take(g), "go %d" % (i + 1))
 		var left := 1.0 - float(i + 1) / float(uses)
 		near(Harvest.shown(g, seam), left, 1e-6, "what is left after go %d" % (i + 1))
-		near(seam.scale, scale0 * Harvest.size_for(left), 1e-5, "drawn that much smaller")
-		near(seam.solid, solid0 * Harvest.size_for(left), 1e-5, "and stops a body that much smaller")
+		near(seam.shown, left, 1e-6, "the seam says how much of it is left")
+		near(seam.scale, scale0, 1e-6, "and is never scaled: it is worked down, not shrunk")
+		near(seam.solid, solid0 * lerpf(Harvest.size_for(left), 1.0, 0.5), 1e-5, "what stands still stops a body")
+		lt(Broken.bucket(seam.shown), PropModels.WHOLE, "and it is drawn at a worked step")
 		check(not g.world.depleted.has(seam.id), "still there")
 	Fx.face(g, seam)
 	check(Fx.take(g), "the last go")
@@ -130,7 +132,7 @@ func test_what_is_left_is_drawn_by_its_footprint() -> void:
 		last = k
 
 
-func test_a_take_that_keeps_the_thing_never_shrinks_it() -> void:
+func test_a_take_that_keeps_the_thing_never_works_it_down() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"mattock")
 	Survival.hold(g, &"mattock")
@@ -140,6 +142,7 @@ func test_a_take_that_keeps_the_thing_never_shrinks_it() -> void:
 	check(Fx.take(g), "dug")
 	near(Harvest.shown(g, tip), 1.0, 1e-6, "a tip dug over is still a tip")
 	near(tip.scale, scale0, 1e-6)
+	near(tip.shown, 1.0, 1e-6, "and stands whole")
 	check(SurvivalState.of(g).base_size.is_empty(), "nothing remembered for a thing that never shrank")
 	Fx.done(g)
 
@@ -151,11 +154,13 @@ func test_it_grows_back_to_the_size_it_was() -> void:
 	var solid0 := seam.solid
 	var state := SurvivalState.of(g)
 	state.taken[SurvivalState.key(seam.id, 0)] = 2
-	check(Harvest.apply_shown(g, seam), "shrunk")
-	lt(seam.scale, scale0, "smaller")
+	check(Harvest.apply_shown(g, seam), "worked down")
+	lt(seam.shown, 1.0, "less of it left")
+	lt(seam.solid, solid0, "a smaller footprint")
 	state.taken.clear()
 	check(Harvest.apply_shown(g, seam), "restored")
-	near(seam.scale, scale0, 1e-6, "its own scale again")
+	near(seam.shown, 1.0, 1e-6, "whole again")
+	near(seam.scale, scale0, 1e-6, "its own scale throughout")
 	near(seam.solid, solid0, 1e-6, "its own footprint again")
 	check(not Harvest.apply_shown(g, seam), "nothing more to do")
 	check(state.base_size.is_empty(), "forgotten once whole")
@@ -178,5 +183,6 @@ func test_a_half_taken_rock_comes_back_half_taken_from_a_save() -> void:
 	near(b.scale, scale0, 1e-6, "whole before the load")
 	SaveCore.load_world(h, saved)
 	near(Harvest.shown(h, b), 0.5, 1e-6, "one go of two")
-	near(b.scale, scale0 * Harvest.size_for(0.5), 1e-5, "stands as it was left")
+	near(b.shown, 0.5, 1e-6, "worked to where it was left")
+	near(b.scale, scale0, 1e-6, "and never scaled by the taking")
 	Fx.done(h)

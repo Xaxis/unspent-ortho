@@ -78,9 +78,17 @@ walk -1,0 0.5
 await hidden 3
 wait 1.0
 shot 09-and-away-with-nothing-filed with hidden
-# Stand up inside the same round and the same optics find you at once: the
-# difference between being read and not is the stance, and it is drawn on both.
+# Back into its round first. The stance is only the difference if nothing else
+# is, and the two steps away above are: at dusk the DARK is most of the cover
+# (Cover.DARK_COVER, 0.55 of the way to hidden on its own), so out there a
+# standing player is never read however long the tour waits — measured at 60 s.
+# In the round it was hidden in, standing up is read in seconds.
+walkto mob 5
+await hidden 3
+wait 0.4
+shot 10-back-in-its-round-still-down with hidden
+# Only the stance changes now.
 release crouch
-await read 14
+await read 20
 wait 0.5
-shot 10-stand-up-and-it-has-you with read
+shot 11-stand-up-and-it-has-you with read

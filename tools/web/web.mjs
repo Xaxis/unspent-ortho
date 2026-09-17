@@ -264,6 +264,25 @@ async function listen(secs, { until = true } = {}) {
   }
   return heard;
 }
+// What a silence at the speakers IS, since each kind has its own fix: the engine
+// never made an AudioContext, the browser still holds one suspended (its clock
+// stands still), or it runs and the engine hands it nothing but zeros. The last
+// is what a muted master bus looks like from outside, and it was misread once as
+// the first. The device itself is never what is heard: headless Chromium runs
+// with --mute-audio (Playwright's default), so a run makes no noise on the
+// machine and the taps above, which sit inside the page, still hear every sample.
+async function silence() {
+  const clocks = () => page.evaluate(() => window.__audio.map((a) => ({ state: a.state, t: a.currentTime })));
+  const a = await clocks();
+  await page.waitForTimeout(300);
+  const b = await clocks();
+  if (b.length === 0) return 'the engine never made an AudioContext';
+  const said = b.map((c) => `${c.state} at ${c.t.toFixed(2)} s`).join(', ');
+  if (!b.some((c, i) => c.state === 'running' && a[i] && c.t > a[i].t)) return `no AudioContext is running (${said})`;
+  const taps = await page.evaluate(() => window.__taps.length);
+  if (taps === 0) return `the AudioContext runs (${said}) but nothing in the page is connected to its output`;
+  return `the AudioContext runs (${said}) and the engine sends only silence into ${taps} output(s)`;
+}
 // The probe's test tone: 440 Hz, alone.
 const isTone = (h) => h.peak >= 0.001 && Math.abs(h.hz - 440) < 30 && h.share > 0.8;
 const dbfs = (h) => (h.peak > 0 ? (20 * Math.log10(h.peak)).toFixed(1) : '-inf');
@@ -529,7 +548,7 @@ if (first && touring) {
   // The probe answers the key with a short tone: it must come out of the page.
   const tone = await listen(4);
   console.log(`web speakers: loudest sample ${dbfs(tone)} dBFS after the first key (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}% of the power there)`);
-  if (tone.peak < 0.001) failures.push('nothing reached the speakers after the first key (the probe plays a tone)');
+  if (tone.peak < 0.001) failures.push(`nothing reached the speakers after the first key (the probe plays a tone): ${await silence()}`);
   // The same ears must know the tone, or telling the game from it below means nothing.
   else if (!isTone(tone)) failures.push(`the probe's tone was heard but not recognised as 440 Hz (${tone.hz.toFixed(0)} Hz, ${(tone.share * 100).toFixed(0)}%)`);
   if (!(await waitLine(/^web probe done/, 30, 0))) failures.push('the probe on the first scene never finished');
@@ -570,7 +589,7 @@ if (first && touring) {
       const heard = await listen(6, { until: false });
       const graph = await page.evaluate(() => ({ taps: window.__taps.length, contexts: window.__audio.map((a) => `${a.state}@${a.currentTime.toFixed(1)}s/${a.sampleRate}`) }));
       console.log(`web speakers: loudest sample ${dbfs(heard)} dBFS in the game over 6 s (${heard.hz.toFixed(0)} Hz strongest, ${(heard.share * 100).toFixed(0)}% of the power there; ${graph.taps} outputs tapped, contexts ${graph.contexts.join(' ')})`);
-      if (heard.peak < 0.001) failures.push('nothing reached the speakers in 6 s of the game');
+      if (heard.peak < 0.001) failures.push(`nothing reached the speakers in 6 s of the game: ${await silence()}`);
       if (isTone(heard)) failures.push(`what reached the speakers in the game is the probe's 440 Hz test tone, not the game (${dbfs(heard)} dBFS)`);
       if (lines.slice(from).some((l) => /^web ok audio path/.test(l.text))) failures.push('the game\'s probe played its test tone again after the title proved the path');
       if (!(await waitLine(/^web probe done/, 40, from))) failures.push('the probe on the game never finished');

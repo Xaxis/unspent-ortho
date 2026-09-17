@@ -187,7 +187,7 @@ static func load_world(game: Game, v: Variant) -> void:
 	for k: String in taken:
 		state.taken[_rekey(k, remap)] = SaveCodec.to_int(taken[k])
 	# A thing half taken comes back half taken: the world grows it whole, the takes
-	# that were saved shrink it (Harvest.apply_shown).
+	# that were saved work it down again (Harvest.apply_shown).
 	state.base_size.clear()
 	for k: String in state.taken:
 		var id := k.get_slice(":", 0).to_int()

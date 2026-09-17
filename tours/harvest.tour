@@ -13,16 +13,16 @@ zoom 9
 near stone_ore
 wait 0.6
 shot 01-a-seam-the-pick-would-work with harvest_target:workable,prop:stone_ore
-# One go: stone in the creel, said with its mark, and the seam a third smaller.
+# One go: stone in the creel, said with its mark, and a third of the seam off it.
 press use 0.1
 await picked_up:stone 20
 wait 0.4
-shot 02-one-go-a-third-gone with shrunk,prop:stone_ore
+shot 02-one-go-a-third-off-it with worked_down,prop:stone_ore
 # A second go on the same seam: two stone more, merged into the same row.
 press use 0.1
 await took 20
 wait 0.4
-shot 03-two-goes-a-third-left with shrunk,prop:stone_ore
+shot 03-two-goes-a-stump-of-a-seam with worked_down,prop:stone_ore
 # The last go takes it away.
 press use 0.1
 await took 20

@@ -276,22 +276,29 @@ what came into the creel is **said on the HUD with a picture of that material**.
   tool out), too hard or no tool at all (the warning's dull red), or picked over
   (no brackets, a ring on the ground round it, so a key that does nothing is not a
   mystery). No words: the line under the HUD already names the verb.
-- **Taken in goes, a thing stands smaller.** A take that CONSUMES the thing (a seam
-  broken, a wreck stripped, a peat bank cut) shrinks it by what is left of it
-  (`Harvest.shown`), its drawing and what stops a body alike; the area follows the
+- **Taken in goes, a thing is worked DOWN.** A take that CONSUMES the thing (a seam
+  broken, a wreck stripped, a peat bank cut) leaves the SAME thing with a piece off
+  it, never a smaller copy of itself: `Broken` cuts the built mesh at the height
+  what is left reaches (`Harvest.shown`), and what the work opened is capped with a
+  face of the thing's own stone that **the land has not weathered** — a mark code
+  (`GroundColors.FRESH`) the lit shader reads to keep its wear off that face alone,
+  so a rock broken open in a bog is not rusted in the same minute it is broken. The
+  face is a shallow hollow with a lip of the old crust round it and its middle off
+  centre, because a flat one reads as a machined table top and a centred one as a
+  pinwheel. Five steps, not a continuum: every step is a model the chunk bakes and
+  caches (`PropModels.template(..., worked)`). What stops a body still follows the
   share, since the camera reads a footprint, and the last go takes it away as
-  before. A take that leaves it (berries, dead wood under a tree, a tip picked
-  over) does not shrink it. A save brings it back as it was left; grown back, it is
-  its own size again.
+  before. A take that leaves the thing (berries, dead wood under a tree, a tip
+  picked over) does not touch it. A save brings it back worked exactly as far as it
+  was left; grown back, it is whole again. Shown in `tours/broken.tour`.
 - **What was taken** stands a moment over the held-item window: the thing as the
   slate scans it (the carrying page's own sketch), `+N`, its name. The same thing
   again while the row stands adds to it.
 
-**Interim, and said so.** The brackets and the shrink are the drawings that exist
-now. Under the lit world (docs/LOOK.md) "this can be taken" is meant to be light on
-the thing, and a half-broken rock keeps its silhouette short a piece with fresh
-faces where the hammer went. When that lands both are replaced; the rule
-(`Harvest.target`) and the share (`Harvest.shown`) are what stay.
+**Interim, and said so.** The BRACKETS are the drawing that exists now. Under the
+lit world (docs/LOOK.md) "this can be taken" is meant to be light on the thing, and
+when that lands they are replaced; the rule (`Harvest.target`) is what stays. The
+other half of that note is done: a worked thing no longer shrinks.
 
 **Every material the land gives has a picture of its own**, not a tint of another's:
 the slate's scan keeps brightness and throws hue away, so copper ore drawn as iron
