@@ -83,10 +83,28 @@ func _open_what_is_in_front() -> void:
 		var take_d := _edge_to(take)
 		if take_d < person_d and take_d < prop_d:
 			return
+		# ONE THING THAT IS BOTH. A relay and a survey post have words on them AND
+		# are the plan's works, so the same prop answers both readers at exactly
+		# the same distance and the read was winning every time — which made two
+		# of the six plan works impossible to rob for the rest of the game, and
+		# the wick that feeds the lamp comes off a relay. So: the words the FIRST
+		# time, because a thing is only read once, and the parts every time after.
+		if take == prop and _already_read(prop):
+			return
 	if person_d <= prop_d and not person.is_empty():
 		_start_talk(person)
 	elif prop != null:
 		_start_reading(prop)
+
+
+## Whether the words on this thing have already been read. A fragment is picked
+## deterministically from the prop, so asking twice asks about the same words.
+func _already_read(prop: WorldProp) -> bool:
+	if prop == null:
+		return true
+	var id := StoryFragments.pick(StoryProps.kind_of(prop.kind),
+		BiomeRegistry.at(game.world, prop.pos).id, game.world.seed_value, prop.id)
+	return id == &"" or Story.knows(id)
 
 
 func _edge_to(q: WorldProp) -> float:

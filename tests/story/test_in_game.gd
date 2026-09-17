@@ -51,3 +51,36 @@ func test_the_ground_under_your_hands_beats_a_notice_across_the_square() -> void
 	check(story.view.showing(), "with nothing under the hands, the notice is what the key meant")
 	g.queue_free()
 	await frames(1)
+
+
+## A RELAY HAS WORDS ON IT AND IS ALSO THE PLAN'S WORKS. The same prop answers
+## both readers at exactly the same distance, so the read won every time and two
+## of the six plan works could never be robbed for the rest of the game — and the
+## wick that feeds the lamp comes off a relay (`Sources.said(&"wick")`).
+## `tours/disposition.tour` could not file a theft at a survey post because of it.
+func test_a_thing_that_is_both_words_and_works_is_read_once_then_robbed() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"]))
+	await frames(4)
+	var story := _story(g)
+	Story.forget()
+	var at := g.player.pos
+	g.player.facing = 0.0
+	g.player.hero.facing = 0.0
+	var relay := Survival.add_prop(g, PropKind.RELAY, at + Vector2(0.9, 0.0), 0.0, 1.0)
+	await frames(2)
+	check(Takes.is_plan_work(relay.kind), "a relay is one of the plan's works")
+	eq(Survival.use_target(g), relay, "and it is what the hands are on")
+	# FIRST press: the words, because a thing is only read once.
+	story._open_what_is_in_front()
+	check(story.view.showing(), "the first press reads what is written on it")
+	var was: StringName = story.reading
+	check(was != &"", "and there were words")
+	story._close()
+	await frames(2)
+	# EVERY press after: the parts. Story stands down and survival has the key.
+	story._open_what_is_in_front()
+	check(not story.view.showing(),
+		"a relay already read still opened a page, so it can never be robbed")
+	check(Story.knows(was), "and what was read is remembered")
+	g.queue_free()
+	await frames(1)
