@@ -104,6 +104,10 @@ const ALIAS := {
 	&"raid_record": &"pickup",
 	&"raid_break": &"break",
 	&"raid_snatch": &"grip",
+	# defences: a stolen repeater on a crib of logs, and a hand on a switch.
+	&"turret_fire": &"arc_snap",
+	&"turret_aim": &"relay_click",
+	&"piece_switch": &"relay_click",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
@@ -151,6 +155,8 @@ const EMITTED: Array[StringName] = [
 	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
 	&"hazard_ring", &"hazard_warn", &"hazard_drain", &"ability_dash", &"ability_glide", &"ability_land",
 	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
+	# defences (46_settlements.gd, 47_defences.gd)
+	&"turret_fire", &"turret_aim", &"piece_switch",
 ]
 
 ## Names that resolve to nothing on purpose (tests tell these from typos).

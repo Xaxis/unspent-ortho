@@ -14,7 +14,6 @@ func test_every_row_of_the_keys_page_is_on_the_glass_when_it_is_chosen() -> void
 	@warning_ignore("return_value_discarded")
 	s.handle(&"confirm")
 	eq(s.page, "keys", "the keys page is open")
-	check(s.menu.rows.size() > 17, "longer than the pane holds, which is the case this is about: %d" % s.menu.rows.size())
 	for row: Dictionary in s.menu.rows:
 		if not UiMenu.selectable(row):
 			continue

@@ -147,6 +147,8 @@ func _verb() -> String:
 	var p := _piece_of(row)
 	if p == null:
 		return "-"
+	if holdings != null:
+		return String(holdings.call("verb_for", p))
 	if p.ruined:
 		return "clear"
 	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
@@ -174,6 +176,12 @@ func _right_of(row: Dictionary) -> String:
 		return "worked"
 	if StructureKind.needs_staff(p.kind):
 		return "idle"
+	if StructureKind.switched(p.kind):
+		if p.off:
+			return "off"
+		if not p.powered:
+			return "no power"
+		return "armed" if p.kind == StructureKind.TURRET else "on"
 	return ""
 
 
@@ -247,8 +255,14 @@ func _gives_words(kind: int, wants: bool) -> String:
 		parts.append("makes power")
 	if StructureKind.banks(kind) > 0.0:
 		parts.append("banks charge")
-	if StructureKind.defence(kind) > 0.0:
+	if kind == StructureKind.TURRET:
+		parts.append("shoots what comes for the place")
+	elif StructureKind.defence(kind) > 0.0:
 		parts.append("holds a line")
+	if StructureKind.masks(kind):
+		parts.append("hides what the place gives off")
+	if StructureKind.lure(kind) > 0.0:
+		parts.append("read in the place's stead")
 	if StructureKind.gives_water(kind):
 		parts.append("waters the plots")
 	for id: StringName in StructureKind.makes(kind):
@@ -275,7 +289,10 @@ func _draw_piece(R: Rect2i, x0: int, y: int, p: Structure) -> int:
 		UiDraw.text(self, Vector2i(x0, y), "worked" if p.staffed_by >= 0 else "nobody on it",
 			UiTheme.TEXT if p.staffed_by >= 0 else UiTheme.TEXT_DIM)
 		y += 11
-	if StructureKind.draw_power(p.kind) > 0.0:
+	if p.off:
+		UiDraw.text(self, Vector2i(x0, y), "switched off", UiTheme.TEXT_DIM)
+		y += 11
+	elif StructureKind.draw_power(p.kind) > 0.0:
 		UiDraw.text(self, Vector2i(x0, y), "powered" if p.powered else "no power", UiTheme.TEXT if p.powered else UiTheme.WARN)
 		y += 11
 	UiDraw.text(self, Vector2i(x0, y), "working" if p.working() else "idle", UiTheme.TEXT_DIM)

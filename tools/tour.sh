@@ -6,6 +6,19 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
+# One run of a tour at a time per checkout. shots/tour/<name>/ is a single
+# directory: two runs overwrite each other's frames and both come out worthless
+# with a green exit, which is the worst failure this project has, because the
+# frames are the evidence. Fail loud rather than queue — a second run means two
+# agents believe they own the same proof, and that is worth stopping to look at.
+# cksum, not md5: md5 is BSD-only and md5sum is GNU-only, and CI is Linux.
+lock="${TMPDIR:-/tmp}/unspent-tour-$(basename "$tour" .tour)-$(printf '%s' "$PWD" | cksum | cut -d' ' -f1).lock"
+if [ -e "$lock" ] && kill -0 "$(cat "$lock" 2>/dev/null)" 2>/dev/null; then
+  echo "tour FAILED: $(basename "$tour") is already running here (pid $(cat "$lock")); its frames would be overwritten"
+  exit 3
+fi
+printf '%s' $$ > "$lock"
+trap 'rm -f "$lock"' EXIT
 tools/_import.sh
 . tools/_focus.sh
 . tools/_slack.sh

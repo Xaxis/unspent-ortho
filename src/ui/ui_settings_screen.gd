@@ -286,7 +286,7 @@ func _draw() -> void:
 		elif row.has("row"):
 			_draw_value(row.row, right, top, chosen)
 	if scroll > 0:
-		UiDraw.text_right(self, right, first - 12, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, first - UiTheme.LINE - 1, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
 		UiDraw.text_right(self, right, first + lines * ROW_PITCH - 4, "↓", UiTheme.TEXT_DIM)
 	_draw_help()

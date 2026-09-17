@@ -16,9 +16,19 @@ extends UiScreen
 ## this page lands a beat, reads a fragment or records a choice, and a test
 ## holds it to that.
 
-const LIST_TOP := 50
+## Every position on this page is measured from the slate's own panes
+## (UiSlate.LIST, UiSlate.SPARE), never from the screen, so it goes wherever the
+## slate goes and at whatever size it is drawn.
+##
+## The first row, below the top of the list pane: clear of the app's title.
+const ROWS_DOWN := 18
 ## Clear pixels between a row's title and the words right-aligned beside it.
 const COLUMN_GAP := 10
+## The spare pane's heading, below the top of the pane, and the words under it.
+const PANE_DOWN := 8
+const UNDER_HEADING := 16
+## Kept clear at the foot of the spare pane.
+const PANE_FOOT := 6
 
 ## The row the story last added to while the page was shut: the journal opens on
 ## what the player has just found, the way a notebook falls open at its last page.
@@ -205,12 +215,13 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
+	var first := L.position.y + ROWS_DOWN
+	var lines := UiSlate.line_count(first, L.end.y - 4)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
 		var row := menu.rows[i]
-		var top := UiSlate.line_top(LIST_TOP, n)
+		var top := UiSlate.line_top(first, n)
 		if row.has("header"):
 			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
@@ -232,9 +243,9 @@ func _draw() -> void:
 			title = _fit(title, room)
 		UiDraw.text(self, Vector2i(x0 + 4, top), title, col)
 	if scroll > 0:
-		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, first - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, UiSlate.line_top(first, lines) - 2, "↓", UiTheme.TEXT_DIM)
 	_draw_spare(UiSlate.SPARE)
 	if is_inside_tree() and get_tree().paused:
 		# Over home the world is stopped and so is the system that reads this
@@ -272,13 +283,13 @@ func _draw_spare(R: Rect2i) -> void:
 	var row := menu.selected()
 	var x0 := R.position.x + UiSlate.MARGIN_L
 	var width := R.end.x - UiSlate.MARGIN_R - x0
-	var bottom := R.end.y - 6
-	var y := R.position.y + 8
+	var bottom := R.end.y - PANE_FOOT
+	var y := R.position.y + PANE_DOWN
 	var rule := R.end.x - UiSlate.MARGIN_R
 	if row.has("beat"):
 		var arc: StringName = row.arc
 		_heading(x0, y, String(StoryContent.ARCS.get(arc, {}).get("title", arc)), rule)
-		y += 16
+		y += UNDER_HEADING
 		y = _page(x0, y, width, bottom, PackedStringArray([StoryContent.beat_says(row.beat)]), UiTheme.BRIGHT)
 		y += 8
 		var note := String(StoryContent.ARCS.get(arc, {}).get("note", ""))
@@ -286,14 +297,14 @@ func _draw_spare(R: Rect2i) -> void:
 			_page(x0, y, width, bottom, PackedStringArray([note]), UiTheme.TEXT_DIM)
 	elif row.has("fragment"):
 		_heading(x0, y, String(row.title), rule)
-		y += 16
+		y += UNDER_HEADING
 		var lines := StoryFragments.lines(row.fragment)
 		if lines.is_empty():
 			lines = PackedStringArray(["Nothing on it can be read now."])
 		_page(x0, y, width, bottom, lines, UiTheme.TEXT)
 	elif row.has("where"):
 		_heading(x0, y, String(row.title), rule)
-		y += 16
+		y += UNDER_HEADING
 		var says: PackedStringArray = row.get("says", PackedStringArray())
 		y = _page(x0, y, width, bottom, says, UiTheme.TEXT_DIM)
 		y += 6

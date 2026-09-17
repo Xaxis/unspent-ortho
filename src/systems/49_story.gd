@@ -27,6 +27,20 @@ var talk: StoryTalk
 ## The fragment being read, or &"".
 var reading: StringName = &""
 
+## Seconds between looks at the player's own state (channel 4). What is watched
+## changes on the scale of a fight or a crossing, never a frame.
+const WITNESS_EVERY := 0.5
+
+## What the last look saw, so a beat lands on the change and not on the state:
+## being filed once is news; having been filed is not, every half second.
+var _filed_seen := -1
+var _witness_in := 0.0
+## The machine the slate has been held on, and for how long (TESTIFY_SECONDS).
+var _read_id := -1
+var _read_for := 0.0
+var _testified := false
+var _target: Node
+
 var _use_down := false
 var _up_down := false
 var _down_down := false
@@ -47,6 +61,8 @@ func setup(g: Game) -> void:
 	view.name = "talk"
 	view.game = g
 	add_child(view)
+	Events.took.connect(_on_took)
+	Events.works_broken.connect(_on_works_broken)
 
 
 func started() -> void:
@@ -58,6 +74,44 @@ func started() -> void:
 	if _ui != null:
 		journal = UiJournalScreen.new()
 		_ui.call("add_app", journal)
+	_stage()
+
+
+## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
+## at, without walking to the one sign in the world that happens to carry them.
+## Staging only — a normal start names neither.
+func _stage() -> void:
+	var o := game.options
+	if o == null:
+		return
+	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
+		var id := StringName(o.read)
+		reading = id
+		view.reading = StoryFragments.lines(id)
+		view.reading_title = StoryFragments.title_of(id)
+		game.talking = true
+		_hush(true)
+		view.refresh()
+	elif o.talk != "":
+		var parts := o.talk.split(":")
+		talk = StoryTalk.start(StringName(parts[0]))
+		if talk.over:
+			talk = null
+			return
+		if parts.size() > 1 and StoryContent.TALKS[talk.id].nodes.has(StringName(parts[1])):
+			talk.node = StringName(parts[1])
+		view.talk = talk
+		view.choice = 0
+		game.talking = true
+		_hush(true)
+		view.refresh()
+
+
+func _exit_tree() -> void:
+	if Events.took.is_connected(_on_took):
+		Events.took.disconnect(_on_took)
+	if Events.works_broken.is_connected(_on_works_broken):
+		Events.works_broken.disconnect(_on_works_broken)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -77,10 +131,15 @@ func _read_journal_key() -> void:
 		_ui.call("open_screen", &"journal")
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if game == null or game.player == null:
 		return
 	_read_journal_key()
+	_witness_in -= delta
+	if _witness_in <= 0.0:
+		_witness_in = WITNESS_EVERY
+		_witness()
+	_hear_testimony(delta)
 	var use_down := InputMap.has_action(&"use") and Input.is_action_pressed(&"use")
 	var use_pressed := use_down and not _use_down
 	_use_down = use_down
@@ -269,6 +328,99 @@ func _close() -> void:
 	view.refresh()
 
 
+# --- what was done to the player (docs/STORY.md §7, channels 3 and 4) -------------
+
+## The player's own state as evidence. Each of these is a thing that happened to
+## them or that they did — never where they walked — and each lands its beat on
+## the CHANGE, once (StoryContent.WITNESSED lists them in words).
+func _witness() -> void:
+	var body := game.body
+	if body != null:
+		if _filed_seen < 0:
+			_filed_seen = body.filed
+		elif body.filed > _filed_seen:
+			_filed_seen = body.filed
+			_witnessed(&"clerk_written")
+		# The signet is a forged key; it only means that once the player knows a
+		# key was ever forged.
+		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(&"key_accepted"):
+			_witnessed(&"key_carried")
+	if game.world != null and game.world.realm != Realm.SURFACE:
+		_witnessed(&"branches")
+	if _hunted_here():
+		_witnessed(&"unattested")
+
+
+func _hunted_here() -> bool:
+	var d: Node = null
+	for s in game.systems:
+		if s.name == "32_disposition":
+			d = s
+	if d == null or game.world == null:
+		return false
+	var interference: Interference = d.get("interference")
+	if interference == null:
+		return false
+	var net := Interference.network(game.world, game.player.pos)
+	return interference.level_name(net) == &"hunted"
+
+
+func _on_took(item: StringName, _count: int) -> void:
+	if item == &"record":
+		_witnessed(&"clerk_record")
+
+
+func _on_works_broken(_region: int, _land: StringName) -> void:
+	_witnessed(&"went_in_dark")
+
+
+## A beat the world handed the player rather than a page they read: nothing else
+## would tell them it landed, so its line is said, once, on the glass.
+func _witnessed(id: StringName) -> void:
+	if Story.beat(id):
+		Events.message.emit(StoryContent.beat_says(id))
+
+
+## Machines, by being watched: the slate held on one for TESTIFY_SECONDS lands
+## what reading it tells (StoryContent.TESTIMONY). The words are on the read panel
+## the whole time; the beat is the player having stopped to look.
+func _hear_testimony(delta: float) -> void:
+	var m := _locked_body()
+	if m == null:
+		_read_id = -1
+		_read_for = 0.0
+		return
+	if m.id != _read_id:
+		_read_id = m.id
+		_read_for = 0.0
+		_testified = false
+	_read_for += delta
+	if _testified or _read_for < StoryContent.TESTIFY_SECONDS:
+		return
+	var said := StoryContent.testimony(m.role, m.row)
+	if said.is_empty():
+		return
+	if bool(said.get("roused", false)) and not m.roused():
+		return
+	_testified = true
+	for b: StringName in said.get("beats", []):
+		Story.beat(b)
+
+
+func _locked_body() -> MobState:
+	if _target == null or not is_instance_valid(_target):
+		_target = null
+		for s in game.systems:
+			if s.name == "42_target":
+				_target = s
+	if _target == null:
+		return null
+	var locked := _target.get("locked") as TargetSubject
+	if locked == null or locked.body == null or not locked.body.alive:
+		return null
+	return locked.body
+
+
 # --- the rest -------------------------------------------------------------------
 
 func _folk_rows() -> Array:
@@ -302,6 +454,9 @@ func tour_seen(what: StringName) -> bool:
 		return Story.landed(StringName(what.substr(5)))
 	if what.begins_with("journal:"):
 		return journal != null and journal.is_open and journal.section() == StringName(what.substr(8))
+	if what == &"testimony":
+		var m := _locked_body()
+		return m != null and not StoryContent.testimony(m.role, m.row).is_empty()
 	return false
 
 

@@ -172,7 +172,7 @@ func test_a_thing_read_is_kept_with_its_words_exactly_as_written() -> void:
 	var body: Array[String] = []
 	for d: Dictionary in await _drawn(s):
 		var r: Rect2i = d.rect
-		if UiSlate.SPARE.encloses(r) and r.position.y >= UiSlate.SPARE.position.y + 20:
+		if UiSlate.SPARE.encloses(r) and r.position.y >= UiSlate.SPARE.position.y + UiJournalScreen.PANE_DOWN + UiJournalScreen.UNDER_HEADING:
 			body.append(String(d.text))
 	eq(" ".join(body).split(" ", false), " ".join(lines).split(" ", false), "the words, in the order they were written")
 	s.free()
