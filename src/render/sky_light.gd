@@ -129,6 +129,22 @@ var ground_scale := 0.0
 var sway := 0.4
 ## Heavy overcast takes the cast shadows away even by day.
 var cast_allowed := true
+## How far this place is from the sky: 0 under the open one, 1 with a roof over
+## it (src/core/realm — a cave, a buried city, the inside of a works). The realms
+## system is its only writer.
+##
+## A roofed realm's darkness cannot be said by a landscape file, and that is why
+## this is here rather than in one. A landscape can dim its own light and its own
+## washes, and the caves do both — but what MAKES a dark frame in this game is the
+## night: the blue floor under the washes, the hatch laid a line-length at a time,
+## the ink turning to night blue, and a lamp's pool being worth carrying. All four
+## hang off how far night has fallen, which is read off the HOUR, and the hour is
+## exactly what stops mattering when there is rock overhead. Dimmed by a landscape
+## alone, a cave at noon came out flat and muddy instead of dark (a measured 0.04
+## page value with no floor under it and no hatch on it). So: underground reads as
+## night to everything the sky writes, whatever the clock says, and the one thing
+## it does NOT get is the skyglow — there is no sky up there to glow.
+var closed := 0.0
 ## What set_hour last composed, for systems that tint unlit things (particles,
 ## lamps) to match the lit world.
 var last_tint := Vector3.ONE
@@ -220,6 +236,8 @@ func compose() -> void:
 	last_compose_frame = Engine.get_process_frames()
 	var hour := clock_hour
 	var s := sun_at(hour)
+	# How far night has fallen HERE: the hour, or all the way under a roof.
+	var night := maxf(Weather.night_fall(hour), closed)
 	var total := tint_at(hour) * season_drain(season_turn) * region_tint * weather_tint
 	last_tint = total
 	last_energy = s.energy
@@ -230,7 +248,7 @@ func compose() -> void:
 	# lines up with its shadow on the ground.
 	var tan_el := tan(deg_to_rad(el))
 	var proj := Vector2(sin(deg_to_rad(az)), cos(deg_to_rad(az))) / maxf(0.2, tan_el)
-	var daylight := 1.0 - Weather.night_fall(hour)
+	var daylight := 1.0 - night
 	RenderingServer.global_shader_parameter_set("sky_sun", Vector4(proj.x, proj.y, s.energy, flash))
 	RenderingServer.global_shader_parameter_set("sky_clouds", Vector4(clouds.x, clouds.y, clouds.z, clouds.w * daylight))
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
@@ -243,8 +261,11 @@ func compose() -> void:
 		var rows := get_viewport().get_visible_rect().size.y
 		if cam != null and rows > 0.0:
 			texel = cam.size / rows
-	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, Weather.night_fall(hour), ground_scale, glow_reach))
-	RenderingServer.global_shader_parameter_set("sky_night", night_terms(hour, weather_tint))
+	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, night, ground_scale, glow_reach))
+	# The blue floor under the washes comes on under a roof; the skyglow does not,
+	# because there is no sky up there to be glowing.
+	var nt := night_terms(hour, weather_tint)
+	RenderingServer.global_shader_parameter_set("sky_night", Vector2(maxf(nt.x, closed), nt.y))
 	# The low-sun glow belongs to the SUN, so it is fed the hour's own tint and
 	# not the composed one. Fed `total` it read a landscape's MOOD as a low sun:
 	# the burning's own warm, low light (LEVEL, MOOD) answered "the sun is on the
@@ -281,14 +302,14 @@ func compose() -> void:
 	# (measured: out = srgb(lin(albedo) * lin(colour) * energy)), while the
 	# source's levels are display multiplies. Energy is linear, so decode.
 	sun.light_energy = pow(float(s.energy) * glow, 2.2)
-	sun.shadow_enabled = bool(s.casts) and cast_allowed
+	sun.shadow_enabled = bool(s.casts) and cast_allowed and closed < 0.5
 	sun.shadow_opacity = shadow_strength(hour)
 	if figure_light != null:
-		figure_light.light_energy = FIGURE_FILL * low_light(hour)
+		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), closed)
 		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
 		env.environment.ambient_light_color = SKY_AMBIENT
-		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * low_light(hour)
+		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * maxf(low_light(hour), closed)
 
 
 ## What the land can hold (SkyGround), for snow, ash, wet and fog.

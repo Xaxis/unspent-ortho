@@ -49,6 +49,28 @@ static func count() -> int:
 	return _by_index.size()
 
 
+## Every land type that can be laid in `realm`, in index order: what a world of
+## that realm is MADE of. GenContext narrows the same way, so a world only ever
+## holds these — which means a reader with a world in hand asks with `w.realm`,
+## and anything that holds a world to "every landscape" must, or it holds a
+## surface island to a landscape that exists only under the world.
+static func land_in(realm: StringName) -> Array[BiomeDef]:
+	_ensure()
+	var out: Array[BiomeDef] = []
+	for d in _land:
+		if d.realms.has(realm):
+			out.append(d)
+	return out
+
+
+## The same, as the indices a world's tiles carry.
+static func land_indices_in(realm: StringName) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for d in land_in(realm):
+		out.append(d.index)
+	return out
+
+
 ## Every land type's index, in index order.
 static func land_indices() -> PackedInt32Array:
 	_ensure()

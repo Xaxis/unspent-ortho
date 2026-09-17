@@ -12,6 +12,11 @@ const STEP := 0.5
 
 var seed_value: int
 var size: int
+## Which realm this world IS (Realm.SURFACE, UNDERGROUND, ...). A world is grown
+## for one realm and holds only the landscape types registered in it (GenContext),
+## so every tile of it is in that realm. Written by WorldGen, read by anything
+## that asks Realm.at.
+var realm: StringName = &"surface"
 var level: PackedInt32Array
 var ground: PackedByteArray
 ## The landscape TYPE of every tile: an index into BiomeRegistry, 0 for the sea.

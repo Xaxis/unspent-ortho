@@ -14,17 +14,19 @@ static var _world: WorldData
 static var _view: WorldView
 
 
-## The offered world for (seed, size), taken, or a new one generated now.
-static func world(seed_value: int, size: int) -> WorldData:
+## The offered world for (seed, size, realm), taken, or a new one generated now.
+## `realm` is which realm's world to grow (Realm.SURFACE by default): the realms
+## package asks for another one mid-game and nothing offered is ever it.
+static func world(seed_value: int, size: int, realm: StringName = &"surface") -> WorldData:
 	_mutex.lock()
 	var w := _world
-	if w != null and w.seed_value == seed_value and w.size == size:
+	if w != null and w.seed_value == seed_value and w.size == size and w.realm == realm:
 		_world = null
 	else:
 		w = null
 	_mutex.unlock()
 	if w == null:
-		w = WorldGen.generate(seed_value, size)
+		w = WorldGen.generate(seed_value, size, &"", realm)
 	return w
 
 

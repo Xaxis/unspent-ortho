@@ -52,7 +52,7 @@ func test_grounds_are_washes_not_salad() -> void:
 		for i in n:
 			if label[i] == i and sizes[i] <= 4:
 				specks[w.country[i]] += 1.0
-		for c: int in BiomeRegistry.land_indices():
+		for c: int in BiomeRegistry.land_indices_in(w.realm):
 			lt(edge[c] / field[c], 0.25, "seed %d %s edge share" % [s, BiomeRegistry.name_of(c)])
 			lt(specks[c] * 1000.0 / land[c], 10.0, "seed %d %s specks per 1000 tiles" % [s, BiomeRegistry.name_of(c)])
 
@@ -115,7 +115,7 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 				snow[c] += 1.0
 			elif w.ground[i] == Ground.ASH:
 				ash[c] += 1.0
-		for c: int in BiomeRegistry.land_indices():
+		for c: int in BiomeRegistry.land_indices_in(w.realm):
 			if c != Country.SNOWFIELD:
 				lt(snow[c] / land[c], 0.03, "seed %d snow in %s" % [s, BiomeRegistry.name_of(c)])
 			if c != Country.BURNING:

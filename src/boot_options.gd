@@ -61,6 +61,8 @@ extends RefCounted
 ##                     field swept (targeting)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
+## --realm=KIND        start in that realm (surface | underground), beside its first
+##                     shaft, or at --at read as a tile of THAT realm's world (realms)
 ## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
 ##                     island, a new game's start, the live rules; named options still win (dev)
 ## --dev[=PAGE]        dev mode reachable in a tool run; PAGE opens the dev app at a page
@@ -116,6 +118,9 @@ var probe := false
 var fail_downed := false
 var target := false
 var target_sweep := false
+## Which realm to start in (Realm.KINDS). The world a game opens with is always
+## the surface's; the realms system crosses before the first frame.
+var realm: StringName = &"surface"
 var config := ""
 var dev := false
 var dev_page := ""
@@ -146,6 +151,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"place": o.place = v
+			"realm": o.realm = StringName(v)
 			"stats": o.stats = true
 			"weather": o.weather = v
 			"lamp": o.lamp = true
