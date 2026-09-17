@@ -1,0 +1,39 @@
+# What a turret costs, on the real keys (owner 2026-09-17, docs/DESIGN.md
+# §Settlements): the thing it shoots comes for IT. A yard with a gun in it, a
+# party sent for the mast, a bolt into one of them, and that one walking back out
+# of the yard to cut the gun down instead of finishing its errand.
+#
+#   tools/tour.sh tours/turret-raid.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --holding=hut,radio_mast,wind_spinner,battery_stack,battery_stack,turret \
+#     --attention=0.72
+#
+# --holding stands the yard already built with its cells full, and --attention
+# stages it at the raid line. Neither is a shortcut past the rule: nothing is
+# ever sent for a place nothing has read, and it is the clerk in frame 02 that
+# reads this one.
+zoom 11
+coast calm
+wait 0.8
+shot 01-a-yard-with-a-gun-in-it with holding, piece:turret, turret_armed
+# Something reads the place, and what it walks off with is what brings the party.
+spawn clerk
+await noticed 14
+wait 0.3
+shot 02-a-clerk-reads-the-yard with mob:clerk, holding
+await warned 25
+# The window runs out and they come out of the land for the mast. The gun takes
+# the nearest of them as it closes.
+hour 12.6
+wait 1.6
+await raid 40
+await party 40
+await turret_hit 90
+wait 0.4
+shot 03-the-gun-takes-one-of-them with mob, holding
+# And it turns. A raider hurt by the yard has something to deal with that is not
+# the mast and is not the player: it walks at what shot it. The player's own
+# swing would take it straight back, and nothing in the raids package says so —
+# the fight writes where the last blow came from, and the last blow decides.
+await raider_turned 60
+wait 2.2
+shot 04-it-turns-on-what-shot-it with mob, piece:turret

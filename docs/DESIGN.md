@@ -169,6 +169,14 @@ matters.
   yard and it is stolen technology humming in the walls the whole time it is
   armed, so the `E` key on its row stands it down and arms it again: armed for
   the raid you were warned of, dark for the week after.
+- **And what it shoots turns on IT.** A raider hurt by the yard walks back out to
+  the turret and starts cutting it down, rather than carrying on with what it was
+  sent for or coming for whoever is standing there. So the piece buys the rest of
+  the yard exactly the time a raider spends answering it, and it pays for that
+  time itself. **The player's own swing takes the body back**, and there is no
+  rule anywhere that says so: the fight writes where the last blow came from
+  (`MobState.struck_from`, INF for a player's swing), the last blow overwrites
+  the one before it, and a body belongs to whoever hit it most recently.
 - **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
   thatch with a fringe the wind takes, and machine plate lashed over the gaps with
   the cord crossing the rivet row. A piece leans, patches and weathers by its own

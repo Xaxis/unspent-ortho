@@ -28,7 +28,9 @@ extends GameSystem
 ##   the escalation survey -> probe -> raid -> siege, each WARNED by the world
 ##                  first and each answerable: fight, hide, spoof, evacuate, pay
 ##   the raid       a party with trades (breacher, harvester, snatcher) whose
-##                  targets are chosen off the holding's own signature
+##                  targets are chosen off the holding's own signature — and a
+##                  body the yard's own turret shot turns on the turret, because
+##                  the last blow on it was not the player's (`_shot_by`)
 ##   the aftermath  wrecks in the yard, what the party could not carry, people
 ##                  gone, a razed holding left standing as ruins to reclaim, and
 ##                  a region that remembers
@@ -123,6 +125,10 @@ const BLOW_SCALE := 1.2
 ## three more machines — the player chooses whether this is a fight, and the
 ## price of choosing it is that nothing is stopping the other two.
 const JOB_MS := 600.0
+## Tiles from a piece a blow has to have come from for that piece to be what
+## threw it (`MobState.struck_from` is a point: 47_defences shoots from the
+## turret's own ground). It is small because it is an identity and not a search.
+const SHOT_FROM := 1.5
 
 ## `--attention=F`, kept so a load can tell a staged game from a played one.
 var attention_out := 0.0
@@ -1078,6 +1084,15 @@ func _drive(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> void:
 	var r: Dictionary = _raiders.get(m.id, {})
 	if r.is_empty() or not _on_the_job(m, sim):
 		return
+	# Shot by the yard itself: it turns on the thing that shot it and takes that
+	# apart instead of what it was sent for. There is no rule here about the
+	# player taking it back, and there must not be one: `FightSim.strike` writes
+	# INF for the player's own swing, so the LAST blow decides and a player who
+	# swings after the turret has it coming for them again for free.
+	var shot := _shot_by(s, m)
+	if shot != null:
+		_answer(p, s, m, r, shot, sim)
+		return
 	var role: StringName = r.get("role", &"")
 	if role == RaidRoles.SNATCHER:
 		_drive_snatcher(p, s, m, r, sim)
@@ -1146,14 +1161,20 @@ func _tribute(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> bool:
 	return true
 
 
-## Is this one still about its errand? A raider that has been struck, or that
-## belongs to the fight from then on and this system leaves it alone. One that
-## has not is kept on the job: it does not even look up (`calm_until`), which is
-## the same door a keeper that has stood down uses, and it is what lets a player
-## stand in their own yard and watch their mast being taken apart, and have to
-## decide whether to make it their fight.
+## Is this one still about its errand? A raider the PLAYER has struck belongs to
+## the fight from then on and this system leaves it alone. One that has not is
+## kept on the job: it does not even look up (`calm_until`), which is the same
+## door a keeper that has stood down uses, and it is what lets a player stand in
+## their own yard and watch their mast being taken apart, and have to decide
+## whether to make it their fight.
+##
+## A blow from the yard's own turret is not that. `MobState.struck_from` is INF
+## for the player's swing and the turret's ground for the turret's bolt
+## (`FightSim.strike`), and the last blow overwrites it — so a body the yard shot
+## stays this system's and goes for the turret (`_drive`), a body the player then
+## swings at goes back to the fight, and neither needs a rule of its own.
 func _on_the_job(m: MobState, sim: FightSim) -> bool:
-	if m.health < m.max_health:
+	if m.health < m.max_health and not is_finite(m.struck_from.x):
 		return false
 	m.calm_until = maxf(m.calm_until, sim.now + JOB_MS)
 	# And it does not stop for a noise either. A body at its work puts its optics
@@ -1168,6 +1189,42 @@ func _on_the_job(m: MobState, sim: FightSim) -> bool:
 		m.charging = false
 		m.lost_beats = 999
 	return true
+
+
+## The piece of this holding that shot it, or null. `MobState.struck_from` is a
+## POINT — the fight knows nothing about pieces — so it is matched back to
+## whatever of the holding is standing there. Asked of the geometry rather than
+## of a kind on purpose: the day another piece of a yard shoots back, a raider
+## turns on that one too with no edit here.
+func _shot_by(s: Settlement, m: MobState) -> Structure:
+	if not is_finite(m.struck_from.x):
+		return null
+	var best: Structure = null
+	var top := SHOT_FROM
+	for piece in s.pieces:
+		if not piece.standing():
+			continue
+		var d := piece.pos.distance_to(m.struck_from)
+		if d <= top:
+			top = d
+			best = piece
+	return best
+
+
+## It turns on what shot it. The same march and the same blows it would have put
+## into what it came for, which is the point: a turret buys the rest of the yard
+## the time a raider spends walking back out to it and cutting it down, and it is
+## the piece that pays for that.
+func _answer(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, piece: Structure, sim: FightSim) -> void:
+	_seen["raider_turned"] = true
+	var d := m.pos.distance_to(piece.pos)
+	if d > STRIKE_REACH + m.radius + StructureKind.solid(piece.kind):
+		_march(m, r, piece.pos, d, sim)
+		return
+	m.line_a = m.pos
+	m.line_b = m.pos
+	m.aim = (piece.pos - m.pos).angle()
+	_strike(p, s, m, r, piece, sim)
 
 
 ## One step of the march, and the way round whatever is in it. A machine walking
@@ -1681,6 +1738,7 @@ func _stage() -> void:
 ##   razed           a holding was left with nothing standing
 ##   looted          the party took what was lying in the store
 ##   raid_ended      a step is over; raid_ended:OUTCOME for how
+##   raider_turned   one the yard shot has turned on what shot it
 ##   raider_down     one of the party did not come home
 ##   quieted         a region's keeper fell and its network went quiet
 ##   attention       a holding is on the plan's books at all

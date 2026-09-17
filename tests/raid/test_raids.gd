@@ -592,6 +592,116 @@ func test_a_full_store_buys_them_off_with_the_player_standing_there() -> void:
 	Sx.end(g)
 
 
+# --- what the yard shoots back ----------------------------------------------------
+
+## Stand the player where their swing reaches this body's working part, facing
+## it. Where a player has to stand to hurt a machine is the fight's own rule
+## (`FightRules.side_of`), and a test about who a body blames afterwards has to
+## obey it like anybody else.
+func stand_to_strike(g: Game, m: MobState) -> void:
+	var turn := 0.0
+	match m.part:
+		&"back": turn = PI
+		&"left": turn = -PI * 0.5
+		&"right": turn = PI * 0.5
+	var at := m.pos + Vector2.from_angle(m.facing + turn) * (m.radius + g.player.hero.radius * 0.5)
+	g.player.pos = at
+	g.player.hero.pos = at
+	g.player.hero.facing = (m.pos - at).angle()
+
+
+func live_plan(g: Game) -> RaidPlan:
+	for p: RaidPlan in (raids(g).get("plans") as Array):
+		if not p.over():
+			return p
+	return null
+
+
+func test_a_raider_the_yard_shot_turns_on_what_shot_it() -> void:
+	# A turret is the only thing in the game that hurts a machine without the
+	# player swinging. A raider that answered it by walking on into the yard would
+	# make the piece a tax the plan pays and never notices; one that came for the
+	# PLAYER instead would make arming it a way of getting yourself attacked.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--held=axe_felling",
+		"--holding=hut,plot,store,radio_mast", "--attention=0.72"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var h := holdings(g)
+	var s := here(g)
+	var gun: Structure = h.call("place_piece", s, StructureKind.TURRET, s.centre + Vector2(3, 0), 0.0)
+	gun.powered = true
+	check(TurretRules.armed(gun), "the turret is armed and fed")
+	var party := party_out(g, s)
+	check(not party.is_empty(), "a party is in the yard")
+	var m: MobState = party[0]
+	var sim: FightSim = g.player.sim
+	# Well away from the turret, so turning on it is a walk and not a coincidence.
+	m.pos = s.centre + Vector2(-9, 0)
+	var errand := int((sys.get("_raiders") as Dictionary).get(m.id, {}).get("target", -1))
+	# The turret's own shot, through the fight's one door for a blow that is not
+	# the player's — the same call 47_defences makes.
+	eq(sim.strike(m, TurretRules.blow(), gun.pos), &"hit", "the bolt went through")
+	eq(m.struck_from, gun.pos, "and the body knows where it came from")
+	check(bool(sys.call("_on_the_job", m, sim)),
+		"a body the yard shot is still the plan's to steer: nothing else would walk it to a piece")
+	sys.call("_drive", live_plan(g), s, m, sim)
+	check(bool(sys.call("tour_seen", "raider_turned")), "it has turned on what shot it")
+	near(m.line_b.distance_to(gun.pos), 0.0, 0.01,
+		"and it is walking at the turret, not at what it was sent for")
+	eq(int((sys.get("_raiders") as Dictionary).get(m.id, {}).get("target", -1)), errand,
+		"the errand is still on its books, and the tag still hangs on that piece")
+	Sx.end(g)
+
+
+func test_the_player_swinging_after_the_turret_takes_the_raider_back() -> void:
+	# There is no rule in the raids package about precedence and there must not
+	# be: `FightSim.strike` writes INF for the player's own swing, the last blow
+	# overwrites the one before it, and so the body belongs to whoever hit it
+	# most recently. This is that sentence, run.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--held=axe_felling",
+		"--holding=hut,plot,store,radio_mast", "--attention=0.72"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var h := holdings(g)
+	var s := here(g)
+	var gun: Structure = h.call("place_piece", s, StructureKind.TURRET, s.centre + Vector2(3, 0), 0.0)
+	gun.powered = true
+	var party := party_out(g, s)
+	check(not party.is_empty(), "a party is in the yard")
+	var m: MobState = party[0]
+	var sim: FightSim = g.player.sim
+	eq(sim.strike(m, TurretRules.blow(), gun.pos), &"hit", "the yard shot it first")
+	check(bool(sys.call("_on_the_job", m, sim)), "and it is the plan's")
+	# Now the player, on the working part, with a real swing through the real sim.
+	# A player walking round to the working part and swinging until one lands,
+	# which is `try 25 / walkto part / tap swing` in every tour that fights
+	# anything. The first swing is eaten by the bolt's own hit window, and that is
+	# the fight's rule, not this one's.
+	var before := m.health
+	var next_swing := -INF
+	for i in 300:
+		# A running game drives every raider every physics step, and that is what
+		# keeps one off the player while it is about its errand. Driving it here
+		# is the honest version of the moment: the plan is still holding it, and
+		# the swing has to land anyway.
+		@warning_ignore("return_value_discarded")
+		sys.call("_on_the_job", m, sim)
+		if sim.now >= next_swing and sim.hero.swing_refusal(sim.now) == &"":
+			next_swing = sim.now + 60.0
+			stand_to_strike(g, m)
+			sim.press_swing()
+		sim.step(0.016)
+		if m.health < before:
+			break
+	lt(m.health, before, "the player's blow landed")
+	check(not is_finite(m.struck_from.x), "and there is no turret on the body to blame any more")
+	check(not bool(sys.call("_on_the_job", m, sim)),
+		"so it is the fight's, and the fight's quarrel is with whoever swung")
+	Sx.end(g)
+
+
 # --- per realm ------------------------------------------------------------------
 
 func test_a_machine_in_one_realm_never_senses_a_holding_in_another() -> void:
