@@ -8,9 +8,60 @@ extends Node3D
 ##   static func gallery() -> Array   # of {"name": String, "node": Node3D}
 ## contributes its items. Nodes that need the world material get it via
 ## `material` meta; see _material_for().
+##
+## THE GALLERY'S OWN OPTIONS, read straight off the command line because they are
+## the review surface's and not the game's (boot_options.gd lists them beside
+## --silhouette):
+##
+##   --filter=NAME     only items whose name contains NAME
+##   --bearing=DEG     turn the camera DEG round the models. 0 is the play
+##                     camera's own 45 degrees; 180 is the half of every model
+##                     that this one fixed projection has never shown anybody.
+##                     The sun does not turn with it, so a face brought round
+##                     may be in shade: pass --hour as well.
+##   --piece=N|list    one model: `list` prints its FOUND pieces numbered, each
+##                     with its size, where it is, the bearing that shows it and
+##                     the colour the palette gave it; N then aims the camera at
+##                     piece N, filling the frame with it from that bearing, with
+##                     --bearing or --zoom overriding either half. `all` or
+##                     `all:N` takes the model's own timber and thatch in as well
+##                     (a strike scored across a plate is MADE, not FOUND).
+##                     Numbers are largest-first and hold for a model until its
+##                     geometry changes, so say the number WITH the model.
+##
+## WHY --piece EXISTS. tests/render/test_found_drawn.gd rasterises every model at
+## eight bearings and fails when a FOUND piece is drawn from none of them. It
+## found 87 such pieces -- including every rust run in the game -- and once they
+## were mended nothing in this repository could photograph one: they are 0.03 to
+## 0.10 units wide on models up to eight units tall, so at any framing that held
+## the whole model they were three screen pixels, and three of them were on faces
+## this bearing turns away. A guarantee that a piece is drawn from SOME bearing,
+## with no instrument that can show a person that bearing, is half a guarantee.
+## So the aim is measured the same way the test measures: triangles joined at
+## their corners are one piece, and a piece's bearing is the one that turns the
+## most of its front faces to the camera. The test says a piece is not hidden;
+## this says what it looks like.
 
 ## Screen pixels a grid cell must be wide before the names are worth drawing.
 const TAG_PITCH := 58.0
+## Bearings the aim tries, 15 degrees apart: fine enough to bring a flat face
+## square to the camera, coarse enough to be a number worth saying out loud.
+const AIM_STEPS := 24
+## How much wider than the piece itself an aimed frame is. A rust run filling the
+## frame edge to edge is a coloured rectangle; the question being asked is
+## whether it reads as rust ON something, so the thing it is on has to be in the
+## picture with it. --zoom overrides this when a tighter look is wanted.
+const PIECE_AIR := 2.5
+## Air round a frame fitted to whole models.
+const FIT_AIR := 1.08
+## Pieces printed by `--piece=list` before the list is cut off. A coast house is
+## 58, which is the longest anybody has had to read down so far.
+const PIECES_LISTED := 64
+## Pieces smaller than this share of the largest are left out of the list: a
+## model is mostly rivets and bolt heads, and none of them is what a review is
+## looking for.
+const PIECE_FLOOR := 0.004
+const FOUND_SHADER := preload("res://src/render/found.gdshader")
 ## Frames the gallery sweeps for captions a model hung deferred. Three is two
 ## more than any of them takes, and after that the walk stops: two hundred
 ## models' subtrees, every frame, is the whole reason this was a per-frame job.
@@ -46,9 +97,17 @@ func setup(o: BootOptions) -> void:
 				items.append_array(s.call("gallery"))
 				break
 	var filter := ""
+	var bearing := 0.0
+	var turned := false
+	var piece := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--filter="):
 			filter = a.trim_prefix("--filter=")
+		elif a.begins_with("--bearing="):
+			bearing = float(a.trim_prefix("--bearing="))
+			turned = true
+		elif a.begins_with("--piece="):
+			piece = a.trim_prefix("--piece=")
 	if filter != "":
 		items = items.filter(func(it: Dictionary) -> bool: return String(it.name).contains(filter))
 
@@ -61,18 +120,34 @@ func setup(o: BootOptions) -> void:
 	ground.mesh = plinth.build()
 	ground.material_override = _mat
 	add_child(ground)
+	var shown: Array[Node3D] = []
 	for i in items.size():
 		var it: Dictionary = items[i]
 		var node: Node3D = it.node
 		node.position = Vector3((i % cols) * spacing, 0.0, (i / cols) * spacing)
 		_apply_material(node)
 		add_child(node)
+		shown.append(node)
 		_labels.append({"name": String(it.name), "at": node.position + Vector3(0, -0.2, 1.1)})
 	var cam := CameraRig.new()
-	cam.view_height = maxf(8.0, rows * spacing * 1.1 + 2.0) if o.zoom <= 0.0 else o.zoom
+	# The play camera's own bearing, so --bearing and the log both read as an
+	# offset from the one view every other picture in this repository was taken at.
+	var square := cam.yaw_deg
+	cam.yaw_deg += bearing
 	add_child(cam)
-	cam.snap_to(Vector3((cols - 1) * spacing * 0.5, 0.0, (rows - 1) * spacing * 0.5))
 	_cam = cam
+	# THE FRAME IS THE MODELS' OWN, not a box worked out from the grid. The old
+	# one measured the plinth, so the top two units of an eight-unit tower were
+	# outside every picture ever taken of it -- and the shot came back green,
+	# because a frame that cuts a model off is a perfectly good PNG.
+	var aimed := ""
+	if piece != "" and not shown.is_empty():
+		aimed = _aim(shown[0], String(items[0].name), piece, cam, bearing if turned else INF, o.zoom)
+		if items.size() > 1:
+			print("gallery --piece took \"%s\"; %d more matched --filter" % [items[0].name, items.size() - 1])
+	if aimed == "":
+		var box := _extent(shown)
+		_frame(cam, box, FIT_AIR, o.zoom, Vector3(box.get_center().x, 0.0, box.get_center().z))
 	# A name is only worth drawing where it does not cover the model beside it.
 	# The whole gallery is a contact sheet of two hundred silhouettes at forty
 	# pixels a cell; a review that needs the names uses --filter and gets them.
@@ -81,9 +156,15 @@ func setup(o: BootOptions) -> void:
 	# every contact sheet would come back covered in names.
 	var pitch := UiBase.to_design(cam.unproject_position(Vector3.ZERO)).distance_to(
 		UiBase.to_design(cam.unproject_position(Vector3(spacing, 0.0, 0.0))))
-	if pitch >= TAG_PITCH:
+	# An aimed frame is a close look at one piece, and a name drawn over it at
+	# that magnification is a hoarding across the thing being judged. The log
+	# says what the picture is of instead.
+	var named := pitch >= TAG_PITCH and aimed == ""
+	if named:
 		_add_tags()
-	print("gallery %d items, %s (cell %d px)" % [items.size(), "named" if pitch >= TAG_PITCH else "a contact sheet: --filter for names", roundi(pitch)])
+	print("gallery %d items, %s (cell %d px, %.1f units tall, bearing %d)%s" % [items.size(),
+		"named" if named else "a contact sheet: --filter for names", roundi(pitch),
+		cam.view_height, roundi(cam.yaw_deg - square), aimed])
 
 
 ## The names, drawn in the game's own pixel font on a scrap of the slate's
@@ -186,6 +267,263 @@ func _tag_at(l: Dictionary) -> Vector3:
 	# A taken-over caption carries a node and no `at`: once it is freed there is
 	# no place left to hang it, and asking for `at` was an error, not a fallback.
 	return n.global_position if n != null and is_instance_valid(n) else (l.get("at", Vector3.ZERO) as Vector3)
+
+
+# --- Framing ------------------------------------------------------------------
+
+## Put the frame round `box`, at whatever bearing the camera is already at, with
+## the camera standing its own `distance` back from `stand`.
+##
+## Orthographic, so the framing is exact: the eight corners projected onto the
+## screen's own two axes give the rectangle the picture has to hold, and the
+## camera's focus is the middle of it -- not the middle of the plinth, and not
+## the ground.
+##
+## DEPTH IS A SEPARATE QUESTION, and getting it wrong is not a framing error but
+## a LIGHTING one: the air is depth fog with a begin and an end, so a camera that
+## simply backs off to see a tall model hazes everything it came to look at
+## (measured: 2.7 units further back than the old gallery stood, and the plinth's
+## far half went grey). So the frame moves in the screen plane only, and `stand`
+## says what the camera keeps its distance from -- the GROUND the models stand on
+## for a whole gallery, which is the depth the play camera keeps and so the only
+## one at which a review frame is fogged the way the game fogs it, and the PIECE
+## itself for an aim, where a ground six units below would put the subject inside
+## the near blur (`CameraRig.near_plane`) and soften the one thing in the picture.
+func _frame(cam: CameraRig, box: AABB, air: float, zoom: float, stand: Vector3) -> void:
+	var b := Basis.from_euler(Vector3(deg_to_rad(-cam.pitch_deg), deg_to_rad(cam.yaw_deg), 0.0))
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in 8:
+		var p := box.get_endpoint(i)
+		var s := Vector2(p.dot(b.x), p.dot(b.y))
+		lo = lo.min(s)
+		hi = hi.max(s)
+	# The base's aspect, never a spelled screen size: the frame a shot captures
+	# is UiBase.SIZE whatever window a tool run opens off the side of the desk.
+	var aspect := float(UiBase.SIZE.x) / float(UiBase.SIZE.y)
+	cam.view_height = zoom if zoom > 0.0 else maxf(hi.y - lo.y, (hi.x - lo.x) / aspect) * air
+	var mid := (lo + hi) * 0.5
+	cam.snap_to(b * Vector3(mid.x, mid.y, stand.dot(b.z)))
+
+
+## The extent of what is actually on the plinth. Every VisualInstance3D in every
+## item, which is how the leaves get counted: a crown is as much of a tree's
+## silhouette as its trunk, and anything measuring a model that reads only the
+## MADE mesh frames half of it.
+func _extent(nodes: Array[Node3D]) -> AABB:
+	var pts := PackedVector3Array()
+	for n in nodes:
+		_corners(n, Transform3D.IDENTITY, pts)
+	if pts.is_empty():
+		return AABB(Vector3.ZERO, Vector3.ONE)
+	var lo := pts[0]
+	var hi := pts[0]
+	for p in pts:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	return AABB(lo, hi - lo)
+
+
+func _corners(n: Node, at: Transform3D, out: PackedVector3Array) -> void:
+	var here := at * (n as Node3D).transform if n is Node3D else at
+	if n is VisualInstance3D:
+		var box := (n as VisualInstance3D).get_aabb()
+		if box.size.length_squared() > 0.0:
+			for i in 8:
+				out.append(here * box.get_endpoint(i))
+	for c in n.get_children():
+		_corners(c, here, out)
+
+
+# --- Aiming at one piece ------------------------------------------------------
+
+## Fill the frame with one FOUND piece of `node`, from the bearing that turns the
+## most of it toward the camera. Returns what it aimed at, for the log, or ""
+## when it could not (which leaves the whole-model fit to do its job).
+func _aim(node: Node3D, who: String, want: String, cam: CameraRig, bearing: float, zoom: float) -> String:
+	# FOUND alone is the default because that is the half a missing piece hides
+	# in and the half the visibility test holds: a model's own timber is one
+	# vast connected piece that would head every list. `all` is for the rest of
+	# it -- a strike scored across a plate is MADE, and so is a thatch.
+	var whole := want.begins_with("all")
+	want = want.trim_prefix("all").trim_prefix(":")
+	var tris := PackedVector3Array()
+	var tint := PackedColorArray()
+	_tris(node, Transform3D.IDENTITY, true, tris, tint)
+	var of := "FOUND"
+	if whole or tris.is_empty():
+		# Nothing of the machines in it: a thatched roof, a boulder, a person.
+		# Its own geometry is then what there is to look at.
+		_tris(node, Transform3D.IDENTITY, false, tris, tint)
+		of = "whole" if whole else "MADE"
+	if tris.is_empty():
+		print("gallery --piece: \"%s\" has no geometry to aim at" % who)
+		return ""
+	var pieces := _pieces(tris, tint, cam.yaw_deg, cam.pitch_deg)
+	if pieces.is_empty():
+		return ""
+	print("gallery %d %s pieces of \"%s\", largest first:" % [pieces.size(), of, who])
+	for i in mini(pieces.size(), PIECES_LISTED):
+		var p: Dictionary = pieces[i]
+		var s: Vector3 = (p.box as AABB).size
+		print("gallery   piece %-3d %5.2f x %5.2f x %5.2f  at %-22s bearing %4d  face %.3f  #%s"
+			% [i, s.x, s.y, s.z, str((p.box as AABB).get_center().snappedf(0.01)), int(p.bearing), p.face,
+			(p.tint as Color).to_html(false)])
+	if pieces.size() > PIECES_LISTED:
+		print("gallery   ... and %d smaller" % (pieces.size() - PIECES_LISTED))
+	if not want.is_valid_int():
+		return ""
+	var n := want.to_int()
+	if n < 0 or n >= pieces.size():
+		print("gallery --piece=%d: \"%s\" has %d" % [n, who, pieces.size()])
+		return ""
+	var chosen: Dictionary = pieces[n]
+	if is_inf(bearing):
+		cam.yaw_deg = cam.yaw_deg + float(chosen.bearing)
+	var at: AABB = (chosen.box as AABB)
+	_frame(cam, at, PIECE_AIR, zoom, at.get_center())
+	return ", aimed at piece %d of \"%s\" (%.2f x %.2f x %.2f)" % [n, who, at.size.x, at.size.y, at.size.z]
+
+
+## Triangles joined at a shared corner are one piece, as the visibility test
+## joins them (tests/render/test_found_drawn.gd), so a number printed here names
+## the same thing that test holds to being drawn. Each piece carries the bearing
+## that turns the most of its FRONT faces to the camera -- front as the shaders
+## cull, since a face wound away is not there to be judged.
+##
+## Occlusion is deliberately NOT modelled: the test's job is to say whether a
+## piece is buried, and this one's is to point the camera. If a piece turns out
+## to be behind its own housing, the picture says so, which is the whole point.
+func _pieces(tris: PackedVector3Array, tint: PackedColorArray, yaw: float, pitch: float) -> Array[Dictionary]:
+	var of := _join(tris)
+	var count := 0
+	for pid in of:
+		count = maxi(count, pid + 1)
+	if count == 0:
+		return []
+	var lo: Array[Vector3] = []
+	var hi: Array[Vector3] = []
+	# A piece's own colour, as the palette wrote it. This is what turns a thing a
+	# reviewer can SEE into a number they can type: a coast house has 58 pieces
+	# and no names, and "the blue plaque with the orange score" is findable in
+	# that list by its #2b3a6b and by nothing else.
+	var wash: Array[Color] = []
+	var many := PackedInt32Array()
+	many.resize(count)
+	for i in count:
+		lo.append(Vector3.INF)
+		hi.append(-Vector3.INF)
+		wash.append(Color(0, 0, 0, 0))
+	var face := PackedFloat32Array()
+	face.resize(count * AIM_STEPS)
+	# The camera's own view axis at each bearing, at the play camera's pitch: a
+	# piece is judged by what it turns toward the eye from where the eye can be,
+	# never from straight on, because this projection has no straight on.
+	var axes: Array[Vector3] = []
+	for s in AIM_STEPS:
+		axes.append(Basis.from_euler(Vector3(deg_to_rad(-pitch), deg_to_rad(yaw + s * (360.0 / AIM_STEPS)), 0.0)).z)
+	for t in range(0, tris.size() - 2, 3):
+		var pid := of[t / 3]
+		for j in 3:
+			lo[pid] = lo[pid].min(tris[t + j])
+			hi[pid] = hi[pid].max(tris[t + j])
+			if t + j < tint.size():
+				wash[pid] += tint[t + j]
+				many[pid] += 1
+		# Twice the signed area facing each bearing. MeshKit emits a, c, b for an
+		# authored a, b, c, so this is the same winding test the raster uses.
+		var n := (tris[t + 2] - tris[t]).cross(tris[t + 1] - tris[t])
+		for s in AIM_STEPS:
+			face[pid * AIM_STEPS + s] += maxf(0.0, n.dot(axes[s])) * 0.5
+	var out: Array[Dictionary] = []
+	for pid in count:
+		var best := 0
+		for s in AIM_STEPS:
+			if face[pid * AIM_STEPS + s] > face[pid * AIM_STEPS + best]:
+				best = s
+		var n := maxf(many[pid], 1.0)
+		out.append({"box": AABB(lo[pid], hi[pid] - lo[pid]), "bearing": best * (360.0 / AIM_STEPS),
+			"face": face[pid * AIM_STEPS + best],
+			"tint": Color(wash[pid].r / n, wash[pid].g / n, wash[pid].b / n)})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.face) > float(b.face))
+	var most: float = float(out[0].face)
+	return out.filter(func(p: Dictionary) -> bool: return float(p.face) >= most * PIECE_FLOOR)
+
+
+static func _join(verts: PackedVector3Array) -> PackedInt32Array:
+	var n := verts.size() / 3
+	var parent := PackedInt32Array()
+	parent.resize(n)
+	for i in n:
+		parent[i] = i
+	var first := {}
+	for i in n:
+		for j in 3:
+			var q := verts[i * 3 + j].snappedf(0.0005)
+			if first.has(q):
+				_union(parent, i, first[q])
+			else:
+				first[q] = i
+	var ids := {}
+	var out := PackedInt32Array()
+	out.resize(n)
+	for i in n:
+		var r := _root(parent, i)
+		if not ids.has(r):
+			ids[r] = ids.size()
+		out[i] = ids[r]
+	return out
+
+
+static func _root(parent: PackedInt32Array, i: int) -> int:
+	while parent[i] != i:
+		parent[i] = parent[parent[i]]
+		i = parent[i]
+	return i
+
+
+static func _union(parent: PackedInt32Array, a: int, b: int) -> void:
+	var ra := _root(parent, a)
+	var rb := _root(parent, b)
+	if ra != rb:
+		parent[maxi(ra, rb)] = mini(ra, rb)
+
+
+## Every triangle of an item in the gallery's own space. `found` picks the halves
+## drawn with found.gdshader -- which is what the machines' pieces are made of,
+## and what the visibility test measures -- and leaves the timber and thatch out.
+func _tris(n: Node, at: Transform3D, found: bool, out: PackedVector3Array, tint: PackedColorArray) -> void:
+	var here := at * (n as Node3D).transform if n is Node3D else at
+	var mi := n as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		for s in mi.mesh.get_surface_count():
+			if _is_found(mi, s) != found:
+				continue
+			var arrays := mi.mesh.surface_get_arrays(s)
+			if arrays.is_empty():
+				continue
+			var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var col: PackedColorArray = arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
+			var index: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			if index.is_empty():
+				for i in v.size():
+					out.append(here * v[i])
+					tint.append(col[i] if i < col.size() else Color.WHITE)
+			else:
+				for i in index:
+					out.append(here * v[i])
+					tint.append(col[i] if i < col.size() else Color.WHITE)
+	for c in n.get_children():
+		_tris(c, here, found, out, tint)
+
+
+func _is_found(mi: MeshInstance3D, surface: int) -> bool:
+	var mat := mi.material_override
+	if mat == null:
+		mat = mi.get_surface_override_material(surface)
+	if mat == null:
+		mat = mi.mesh.surface_get_material(surface)
+	return mat is ShaderMaterial and (mat as ShaderMaterial).shader == FOUND_SHADER
 
 
 func _apply_material(n: Node) -> void:

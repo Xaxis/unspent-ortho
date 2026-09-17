@@ -21,6 +21,15 @@ extends RefCounted
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package
 ## --lamp              start with the player's lantern lit, sky package
 ## --silhouette        gallery: machines (and the lineup's people) drawn flat black
+## --filter=NAME       gallery: only the items whose name holds NAME
+## --bearing=DEG       gallery: turn the camera DEG round the models. 0 is the play
+##                     camera's own 45 degrees, 180 the half of a model this one
+##                     fixed projection has never shown anybody
+## --piece=N|list|all  gallery: one model's FOUND pieces numbered (size, place, the
+##                     bearing that shows each, its colour), and N fills the frame
+##                     with piece N from that bearing; `all` takes its timber in too.
+##                     These three are read by src/gallery.gd itself and not parsed
+##                     here: they are the review surface's, not the game's
 ## --parade=K,K[:POSE] stand machines round the player (K a kind or `all`; POSE a
 ##                     FigureModel pose or `walk`): review only, never mobs
 ## --hand=ID           the player holds ID (given if not carried), characters
