@@ -322,6 +322,27 @@ machines-day, slate-polish, score-blend.
   own tile list, so the dispatch happens per RUN instead of per tile — is worth
   perhaps 80 ms of the 884. The bigger one, untouched and unmeasured, is what to
   do about script compilation racing world generation on a cold start.
+
+  **Read again 2026-09-16, and what is already spent.** The start now compiles 25
+  systems (22 when the budget was written), 288 scripts, 3.3 MB of GDScript, and
+  wave B adds to all three. **A start number is only taken on a quiet machine**:
+  `pgrep -x godot` empty and `sysctl -n vm.loadavg` under ~3. Taken under four
+  builders (load 29) the same three shots read gen 2075/2163/2283 ms + view
+  885/809/917 ms, and the gate's own worldgen line read 1356 ms for world 1 at
+  512 against 884 ms quiet — the generator and the race stretch together, so
+  numbers taken under load say only that nothing has fallen off a cliff.
+
+  Three levers are already spent, and nobody should propose them again:
+  landscape scripts are requested before everything else (`BootPage`), a title's
+  page has the loader threads compile the game's systems once the title is up
+  (`_after_lift`), so New game waits on none of them, and scripts export as
+  compressed binary tokens (`script_export_mode=2`), so a build parses no text.
+  What is left, biggest first: the shader compile on the first drawn frame of a
+  cold web start (the page's `draw` stage carries a 1200 ms weight and nothing
+  has ever been done about it); `view`'s props and decor per chunk; and the
+  surface two-pass, which is the smallest of the three and the only one that can
+  invalidate every save on disk — it must keep `tests/biome/test_parity.gd`'s
+  md5s or it has changed what a seed makes, and that bumps `WorldStamp.GEN`.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
 - `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
