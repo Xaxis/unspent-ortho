@@ -3,7 +3,8 @@ extends GameSystem
 ##
 ##   hold Z        lock the nearest threat: the camera leans in behind the
 ##                 player, the body is bracketed, and the slate reads it
-##   a / d         cycle the lock along the list (what is on you first, then near)
+##   a / d         cycle the lock along the list (what is on you first, then near,
+##                 the last people after everything in the fight); pages a sweep
 ##   r while held  sweep: the camera eases back and every body in the field is
 ##                 read at once, none of them locked
 ##   release       the camera comes back square and the reads go
@@ -33,12 +34,15 @@ const SWEEP_MOST := 5.0
 ## The read is taken this often (s): a fight moves faster than a panel needs to.
 const READ_EVERY := 0.1
 
-## The body locked, or null; the field a sweep reads; and what they read as.
-var locked: MobState = null
+## What is locked — a fight body or a person — or null; the field a sweep reads.
+var locked: TargetSubject = null
 var sweeping := false
-var field: Array[MobState] = []
+var field: Array[TargetSubject] = []
 var read: Dictionary = {}
 var rows: Array[Dictionary] = []
+## Which page of a field the sweep is showing, and how many there are.
+var page := 1
+var pages := 1
 var view: UiTargetView
 
 ## A shot's held key (--target): the same as a finger on it, for a still.
@@ -46,7 +50,12 @@ var _forced := false
 var _held := false
 var _was := {}
 var _read_in := 0.0
-var _list: Array[MobState] = []
+var _list: Array[TargetSubject] = []
+## When the locked subject left the list, -INF while it is still in it: a lock
+## waits LOST_GRACE for it to come back. Not 0 or -1, because the fight's clock
+## starts at 0 and a sentinel a real time can equal is a bug waiting for a frame.
+var _lost_at := -INF
+var _page := 0
 
 
 func setup(g: Game) -> void:
@@ -95,24 +104,91 @@ func _process(delta: float) -> void:
 	if not down:
 		_let_go(delta)
 		return
-	_list = Targeting.candidates(_bodies(), game.player.pos, _reach())
+	_list = Targeting.candidates(_bodies(), game.player.pos, _reach(), _people())
 	if sweep_pressed:
 		sweeping = not sweeping
+		_page = 0
 		Events.sfx.emit(&"ui_slate_switch" if sweeping else &"ui_slate_click", Vector3.ZERO)
+	pages = Targeting.pages_of(_list)
 	if sweeping:
 		locked = null
-		field = Targeting.sweep(_list)
+		_lost_at = -INF
+		if cycle != 0 and pages > 1:
+			_page = posmod(_page + cycle, pages)
+			Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+		field = Targeting.sweep(_list, _page)
+		page = posmod(_page, pages) + 1
 	else:
 		field = []
-		var was := locked
-		locked = Targeting.cycle(_list, locked, cycle) if cycle != 0 and locked != null else Targeting.pick(_list, locked)
-		if locked != was and locked != null:
-			Events.sfx.emit(&"ui_slate_ping" if was == null else &"ui_slate_click", Vector3.ZERO)
+		_lock(cycle)
 	_lean()
 	_read_in -= delta
 	if _read_in <= 0.0:
 		_read_in = READ_EVERY
 		_take_read()
+
+
+## The lock: cycled by hand, else the one already held, else the nearest threat.
+## A subject that has stepped out of the list — behind a house, a stride past the
+## reach — is held for LOST_GRACE first. A machine that was there half a second
+## ago is the same machine, and a lock that flicks to its neighbour is a lock
+## nobody trusts.
+func _lock(cycle: int) -> void:
+	var was := locked
+	if cycle != 0 and locked != null:
+		locked = Targeting.cycle(_list, locked, cycle)
+		_lost_at = -INF
+	else:
+		var again := Targeting.same_in(_list, locked)
+		if again != null:
+			locked = again
+			_lost_at = -INF
+		elif locked != null and locked.alive() and _waited() < Targeting.LOST_GRACE:
+			if is_inf(_lost_at):
+				_lost_at = _now()
+		else:
+			locked = Targeting.pick(_list, null)
+			_lost_at = -INF
+	if locked == null or was == null:
+		if locked != null:
+			Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+	elif locked.id != was.id:
+		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+
+
+## How long the lock has been waiting for a subject that left the list.
+func _waited() -> float:
+	return 0.0 if is_inf(_lost_at) else _now() - _lost_at
+
+
+## The fight's own clock, so the grace is the one the simulation keeps.
+func _now() -> float:
+	var sim := game.player.sim
+	return sim.now if sim != null else Time.get_ticks_msec() / 1000.0
+
+
+## The villagers about: 35_folk keeps them as rows, not bodies, so a person can be
+## read like anything else the player can look at. One indoors is out of sight.
+func _people() -> Array:
+	var folk := _folk()
+	if folk == null:
+		return []
+	var out: Array = []
+	for row: Dictionary in folk.get("folk"):
+		if StringName(str(row.get("state", &"out"))) == &"in":
+			continue
+		out.append(row)
+	return out
+
+
+## 35_folk renames its own node "folk" in setup, so it is asked for by its script
+## and not by a name that is not the file's.
+func _folk() -> Node:
+	for s in game.systems:
+		var script := s.get_script() as Script
+		if script != null and script.resource_path.ends_with("35_folk.gd"):
+			return s
+	return null
 
 
 ## Everything in the fight's own list of bodies, which is what a machine or a
@@ -144,18 +220,21 @@ func _take_read() -> void:
 	var from := game.player.pos
 	var now := game.player.sim.now if game.player.sim != null else 0.0
 	if locked != null:
-		read = TargetRead.of(locked, from, moment, game.world, game.query, now)
+		read = TargetRead.of_subject(locked, from, moment, game.world, game.query, now)
 	else:
 		read = {}
 	rows = []
-	for m in field:
+	for s in field:
 		rows.append({
-			"id": m.id,
-			"name": TargetRead.words(m.kind),
-			"machine": m.machine,
-			"tag": TargetRead.tag(m, now),
-			"thinking": TargetRead.thinking(m, now),
-			"distance": m.pos.distance_to(from),
+			"id": s.id,
+			"name": s.name,
+			"machine": s.machine,
+			"person": s.person,
+			# A person has no health and no working part: an empty tag, because the
+			# slate will not draw pips for a life it cannot read.
+			"tag": TargetRead.tag(s.body, now) if s.body != null else {},
+			"thinking": TargetRead.thinking(s.body, now) if s.body != null else TargetRead.doing(s.folk),
+			"distance": s.here().distance_to(from),
 		})
 
 
@@ -174,11 +253,11 @@ func _lean() -> void:
 	if locked == null:
 		_square()
 		return
-	var to := locked.pos - here
+	var to := locked.here() - here
 	cam.lean_yaw = LOCK_YAW * _yaw_share(to)
 	cam.lean_pitch = LOCK_PITCH
 	cam.lean_zoom = LOCK_ZOOM
-	var at := Targeting.focus_between(here, locked.pos, LOCK_SHARE, LOCK_MOST)
+	var at := Targeting.focus_between(here, locked.here(), LOCK_SHARE, LOCK_MOST)
 	cam.lean_bias = game.world.to_3d(at) - game.world.to_3d(here)
 
 
@@ -209,6 +288,10 @@ func _let_go(_delta: float) -> void:
 		read = {}
 		rows = []
 		_list = []
+		_page = 0
+		page = 1
+		pages = 1
+		_lost_at = -INF
 	_square()
 
 
@@ -226,6 +309,10 @@ func tour_seen(what: StringName) -> bool:
 			return sweeping and not field.is_empty()
 		&"target_lean":
 			return game.camera.leaning()
+		&"target_person":
+			return locked != null and locked.person
+		&"target_paged":
+			return sweeping and pages > 1
 		&"target_none":
 			return locked == null and not sweeping and not game.camera.leaning()
 	return false

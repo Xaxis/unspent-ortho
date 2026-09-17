@@ -19,6 +19,11 @@ extends RefCounted
 ##   r.entered                          the landscapes come into so far (saved with the game)
 
 const EVERY_MINUTES := 180.0
+## What a configuration may change (rules.autosave, docs/DEV.md): the hours between
+## saves, and whether the rules ask for one at all. A playtest that wants its own
+## slots and nothing else turns this off; nothing else in the game writes them.
+var every_minutes := EVERY_MINUTES
+var enabled := true
 const SETTLE := 2.0
 const LAND_GAP := 60.0
 
@@ -66,7 +71,9 @@ func step_land(id: StringName, delta: float) -> void:
 
 
 func waiting(now_minutes: float) -> bool:
-	if pending == &"" and now_minutes - last_minutes >= EVERY_MINUTES:
+	if not enabled:
+		return false
+	if pending == &"" and now_minutes - last_minutes >= every_minutes:
 		pending = &"hours"
 	return pending != &""
 

@@ -51,6 +51,13 @@ var sun: DirectionalLight3D
 
 var _dims: Dictionary = PersonBody.dims(&"man")
 var _step_left := -1.0
+## How many figures have taken their first stepped pose (the stagger's counter),
+## and the step between one and the next: the golden ratio, so each new person
+## lands in the widest gap left in the period and a crowd of any size is spread.
+## Counting in equal steps instead put twenty of them on one frame, because a
+## period of a twelfth of a second holds sixty-odd counts inside a single frame.
+static var _staggered := 0
+const STAGGER_STEP := 0.6180339887498949
 var _posed_frozen := false
 var _sun_check := 0.0
 var _phase := 0.0
@@ -262,7 +269,13 @@ func _pose_due(delta: float) -> bool:
 		return true
 	if _step_left < 0.0:
 		# The stagger: each person's first step lands at its own point in the period.
-		_step_left = float(get_instance_id() % 97) / 97.0 / pose_hz
+		# Counted here rather than taken from the instance id, because an id carries
+		# everything the process allocated before this body: one package's tests
+		# running first moved the whole crowd onto the same beat, and the test that
+		# watches for exactly that went red for a reason that had nothing to do with
+		# people. A counter spreads them the same way in every run.
+		_step_left = fposmod(float(_staggered) * STAGGER_STEP, 1.0) / pose_hz
+		_staggered += 1
 	_step_left -= delta
 	if _step_left > 0.0:
 		return false

@@ -6,9 +6,13 @@ extends CanvasLayer
 ## Two tiers, so a fight is not covered in words:
 ##   always   every body on screen carries a wordless tag — health pips and one
 ##            glyph for how much it has noticed the player
-##   held     the locked body is bracketed and ringed, and the slate says in
+##   held     what is locked is bracketed and ringed, and the slate says in
 ##            words what it is, what it can do, what it has noticed and what it
-##            is thinking; a sweep says the short of it for the whole field
+##            is thinking; a sweep says the short of it for a page of the field
+##
+## A person is read too, and reads as a person: no pips, no signature, no notice
+## glyph. Nothing in the fight knows a villager, so a tag over one would be a
+## number nobody took — they carry none, and words only while the key is held.
 ##
 ## Machine-sourced data is the stolen module's violet (docs/ART.md §9); what the
 ## player reads off a living creature with their own eyes is the slate's
@@ -26,8 +30,14 @@ const SWEEP_PANEL := Rect2i(438, 46, 194, 122)
 ## Rows of the read, at most, so the panel never pushes a line off its own glass.
 const STATS_MOST := 5
 const POWERS_MOST := 2
+## The read's own furniture: the title, the pips line, and the two anchored lines
+## at the foot (what it has noticed, what it is doing) with the keys under them.
+const READ_HEAD := 25
+const READ_FOOT := 37
 ## A body further than this from the player is tagged but never named.
 const NAME_REACH := 14.0
+## A person's ring, since a villager carries no roster radius.
+const PERSON_RADIUS := 0.5
 ## The scan line that runs down a locked body's brackets (seconds).
 const SCAN_SECONDS := 1.3
 
@@ -56,12 +66,16 @@ func _system() -> Node:
 	return get_parent()
 
 
-## Where a body stands on the glass: the ground under it, and the top of it.
-func _screen_of(m: MobState) -> Array:
+## Where a thing stands on the glass: the ground under it, and the top of it.
+func _screen_at(pos: Vector2, height: float) -> Array:
 	var cam := game.camera
-	var base := game.world.to_3d(m.pos)
-	var top := base + Vector3(0.0, float(m.row.get("height", 1.0)), 0.0)
+	var base := game.world.to_3d(pos)
+	var top := base + Vector3(0.0, height, 0.0)
 	return [cam.unproject_position(base).round(), cam.unproject_position(top).round()]
+
+
+func _screen_of(m: MobState) -> Array:
+	return _screen_at(m.pos, float(m.row.get("height", 1.0)))
 
 
 func _on_glass(p: Vector2) -> bool:
@@ -86,21 +100,23 @@ func _draw_marks() -> void:
 	if sim == null:
 		return
 	var sys := _system()
-	var locked: MobState = sys.get("locked")
+	var locked: TargetSubject = sys.get("locked")
 	var field: Array = sys.get("field")
 	var now := sim.now
+	# Only what is in the fight carries a tag. A villager has no health and nothing
+	# has noticed them, so pips over a person would be a number nobody read.
 	for m in sim.mobs:
 		if not m.alive or m.removed:
 			continue
 		var at := _screen_of(m)
 		if not _on_glass(at[1]):
 			continue
-		_draw_tag(m, at[1], TargetRead.tag(m, now), m == locked)
+		_draw_tag(m, at[1], TargetRead.tag(m, now), locked != null and locked.body == m)
 	if locked != null:
 		_draw_lock(locked)
 		_draw_read(sys.get("read"))
 	elif bool(sys.get("sweeping")):
-		_draw_sweep(sys.get("rows"), field)
+		_draw_sweep(sys.get("rows"), field, int(sys.get("page")), int(sys.get("pages")))
 
 
 ## The wordless tag above a body: its health in pips, and one glyph for how far
@@ -148,15 +164,15 @@ func _draw_notice(at: Vector2i, notice: int, machine: bool, lit: bool) -> void:
 			UiDraw.px(_canvas, at.x + 6 + k, at.y + 4 - k, col)
 
 
-## The locked body: corner brackets round it, a ring on the ground it stands on,
+## What is locked: corner brackets round it, a ring on the ground it stands on,
 ## and a scan line running down the brackets while the slate reads it.
-func _draw_lock(m: MobState) -> void:
-	var at := _screen_of(m)
+func _draw_lock(s: TargetSubject) -> void:
+	var at := _screen_at(s.here(), s.height)
 	var base: Vector2 = at[0]
 	var top: Vector2 = at[1]
 	var half := maxf(9.0, absf(base.y - top.y) * 0.45)
 	var box := Rect2i(int(base.x - half), int(top.y) - 3, int(half * 2.0), int(base.y - top.y) + 6)
-	var col := _ink(m.machine)
+	var col := _ink(s.machine)
 	# A dark bracket under the bright one: the corners have to hold against grass
 	# at noon as well as against snow (docs/ART.md §5).
 	UiSlate.brackets(_canvas, box.grow(1), UiTheme.RIM, maxi(5, box.size.y / 4))
@@ -164,16 +180,16 @@ func _draw_lock(m: MobState) -> void:
 	var t := fmod(_t, SCAN_SECONDS) / SCAN_SECONDS
 	var line := box.position.y + roundi(t * box.size.y)
 	UiDraw.hline(_canvas, box.position.x + 1, box.end.x - 2, line, Color(col, 0.45))
-	_draw_ring(m, col)
+	_draw_ring(s, col)
 
 
 ## A ring on the ground, drawn through the camera so it lies on the world: the
 ## body's own radius, a ring of points rather than a disc, so it never covers
 ## what it is round.
-func _draw_ring(m: MobState, col: Color) -> void:
+func _draw_ring(s: TargetSubject, col: Color) -> void:
 	var cam := game.camera
-	var r := maxf(0.45, float(m.row.get("radius", 0.5)) + 0.25)
-	var base := game.world.to_3d(m.pos)
+	var r := PERSON_RADIUS if s.body == null else maxf(0.45, float(s.body.row.get("radius", 0.5)) + 0.25)
+	var base := game.world.to_3d(s.here())
 	var was := Vector2.ZERO
 	for i in range(0, 25):
 		var a := i * TAU / 24.0
@@ -197,7 +213,13 @@ func _draw_read(read: Dictionary) -> void:
 	if read.is_empty():
 		return
 	var machine := bool(read.machine)
-	var r := PANEL
+	var stats: Array = read.stats
+	var powers: PackedStringArray = read.powers
+	# The panel is as tall as what it has to say. A machine fills it; a person has
+	# no health, no powers and little else, and a half-empty frame round two lines
+	# reads as a slate with something missing rather than a person plainly read.
+	var told := mini(stats.size(), STATS_MOST) + mini(powers.size(), POWERS_MOST)
+	var r := Rect2i(PANEL.position, Vector2i(PANEL.size.x, mini(PANEL.size.y, READ_HEAD + told * 10 + READ_FOOT)))
 	Hud.clip(_canvas, r, false)
 	var x := r.position.x + 5
 	var y := r.position.y + 3
@@ -207,20 +229,18 @@ func _draw_read(read: Dictionary) -> void:
 	y = _draw_pips_line(x, y, read, machine)
 	# Laid out in order and cut to what fits, so the last two lines — what it has
 	# noticed and what it is doing about it — always have their room.
-	var stats: Array = read.stats
 	for i in mini(stats.size(), STATS_MOST):
 		var s: Array = stats[i]
 		UiDraw.text(_canvas, Vector2i(x, y), str(s[0]), UiTheme.TEXT_DIM)
 		UiDraw.text_right(_canvas, r.end.x - 5, y, _fit(str(s[1]), r.size.x - 48), UiTheme.TEXT)
 		y += 10
-	var powers: PackedStringArray = read.powers
 	for i in mini(powers.size(), POWERS_MOST):
 		UiDraw.text(_canvas, Vector2i(x, y), _fit(powers[i], r.size.x - 10), UiTheme.MACHINE[3] if machine else UiTheme.TEXT_DIM)
 		y += 10
 	# The last two lines are anchored: what it has noticed and what it is doing
 	# about it are the whole point of the panel, and they never move about.
 	var aware: Dictionary = read.awareness
-	y = maxi(y, r.end.y - 37)
+	y = maxi(y, r.end.y - READ_FOOT)
 	UiDraw.hline(_canvas, x, r.end.x - 5, y - 3, UiTheme.GHOST)
 	UiDraw.text(_canvas, Vector2i(x, y), _fit(str(aware.word), r.size.x - 10), UiTheme.WARN if bool(aware.sure) else UiTheme.TEXT_DIM)
 	UiDraw.text(_canvas, Vector2i(x, y + 11), _fit(str(read.thinking), r.size.x - 10), UiTheme.BRIGHT)
@@ -229,6 +249,11 @@ func _draw_read(read: Dictionary) -> void:
 
 func _draw_pips_line(x: int, y: int, read: Dictionary, machine: bool) -> int:
 	var pips: Array = read.pips
+	if pips.is_empty():
+		# A person: the slate has no health to show and does not invent one, so the
+		# line carries only how far off they are.
+		UiDraw.text_right(_canvas, PANEL.end.x - 5, y, TargetRead.tiles(float(roundi(float(read.distance)))), UiTheme.TEXT_DIM)
+		return y + 11
 	var full := int(pips[0])
 	for i in TargetRead.PIPS:
 		var col := UiTheme.GHOST
@@ -244,49 +269,58 @@ func _draw_pips_line(x: int, y: int, read: Dictionary, machine: bool) -> int:
 
 ## What the other keys do while the target key is held, on the panel's own glass:
 ## over the world these words had nothing behind them and read as litter.
-func _draw_keys(r: Rect2i, sweeping: bool) -> void:
+func _draw_keys(r: Rect2i, sweeping: bool, pages: int = 1) -> void:
 	var y := r.end.y - 11
 	var x := r.position.x + 4
 	UiDraw.hline(_canvas, x, r.end.x - 5, y - 2, UiTheme.GHOST)
-	if not sweeping:
+	if not sweeping or pages > 1:
+		var word := "more" if sweeping else "another"
 		x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 1), "a d") + 3
-		UiDraw.text(_canvas, Vector2i(x, y), "another", UiTheme.TEXT_DIM)
-		x += UiFont.width("another") + 7
+		UiDraw.text(_canvas, Vector2i(x, y), word, UiTheme.TEXT_DIM)
+		x += UiFont.width(word) + 7
 	x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 1), "r") + 3
 	UiDraw.text(_canvas, Vector2i(x, y), "one at a time" if sweeping else "the field", UiTheme.TEXT_DIM)
 
 
-## A sweep: the short of every body in the field, and a tag on each of them.
-func _draw_sweep(rows: Array, field: Array) -> void:
+## A sweep: the short of everything in this page of the field, and a mark on each
+## of them. A field bigger than one page says which page this is, because a number
+## the player cannot page through is a number that lies about the field.
+func _draw_sweep(rows: Array, field: Array, page: int = 1, pages: int = 1) -> void:
 	var r := Rect2i(SWEEP_PANEL.position, Vector2i(SWEEP_PANEL.size.x, 28 + maxi(1, rows.size()) * 11))
 	Hud.clip(_canvas, r, false)
 	var x := r.position.x + 5
 	var y := r.position.y + 3
 	UiDraw.text(_canvas, Vector2i(x, y), "THE FIELD", UiTheme.MACHINE[4])
-	UiDraw.text_right(_canvas, r.end.x - 5, y, "%d" % rows.size(), UiTheme.TEXT_DIM)
+	var count := "%d" % rows.size() if pages <= 1 else "%d  %d/%d" % [rows.size(), page, pages]
+	UiDraw.text_right(_canvas, r.end.x - 5, y, count, UiTheme.TEXT_DIM)
 	y += 12
 	for row: Dictionary in rows:
 		if y > r.end.y - 13:
 			break
 		var machine := bool(row.machine)
 		var tag: Dictionary = row.tag
-		var full := int((tag.pips as Array)[0])
-		for i in TargetRead.PIPS:
-			UiDraw.rect(_canvas, Rect2i(x + i * 3, y + 2, 2, 5), _ink(machine) if i < full else UiTheme.GHOST)
-		_draw_notice(Vector2i(x + TargetRead.PIPS * 3 + 3, y + 1), int(tag.notice), machine, true)
+		if tag.is_empty():
+			# A person: a dash where a body's health would be, and nothing pretending
+			# to be a reading of how much they have noticed.
+			UiDraw.hline(_canvas, x, x + TargetRead.PIPS * 3 - 2, y + 4, UiTheme.TEXT_DIM)
+		else:
+			var full := int((tag.pips as Array)[0])
+			for i in TargetRead.PIPS:
+				UiDraw.rect(_canvas, Rect2i(x + i * 3, y + 2, 2, 5), _ink(machine) if i < full else UiTheme.GHOST)
+			_draw_notice(Vector2i(x + TargetRead.PIPS * 3 + 3, y + 1), int(tag.notice), machine, true)
 		UiDraw.text(_canvas, Vector2i(x + TargetRead.PIPS * 3 + 15, y), _fit(str(row.name), 74), _ink(machine, false))
 		UiDraw.text_right(_canvas, r.end.x - 5, y, "%dt" % roundi(float(row.distance)), UiTheme.TEXT_DIM)
 		y += 11
 	if rows.is_empty():
 		UiDraw.text(_canvas, Vector2i(x, y), "nothing within reach", UiTheme.TEXT_DIM)
-	for m: Variant in field:
-		var body := m as MobState
-		if body == null:
+	for s: Variant in field:
+		var subject := s as TargetSubject
+		if subject == null:
 			continue
-		var at := _screen_of(body)
+		var at := _screen_at(subject.here(), subject.height)
 		if _on_glass(at[1]):
-			UiDraw.hline(_canvas, int(at[1].x) - 4, int(at[1].x) + 4, int(at[1].y) - TAG_LIFT - 8, UiTheme.MACHINE[3] if body.machine else UiTheme.TEXT)
-	_draw_keys(r, true)
+			UiDraw.hline(_canvas, int(at[1].x) - 4, int(at[1].x) + 4, int(at[1].y) - TAG_LIFT - 8, UiTheme.MACHINE[3] if subject.machine else UiTheme.TEXT)
+	_draw_keys(r, true, pages)
 
 
 ## Text cut to `width` pixels with an ellipsis: a panel this narrow must never

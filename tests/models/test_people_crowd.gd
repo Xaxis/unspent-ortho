@@ -41,8 +41,10 @@ func test_a_crowd_poses_on_a_stepped_staggered_clock() -> void:
 	for i in crowd.size():
 		var n := crowd[i].poses_applied - start[i]
 		check(n >= 10 and n <= 13, "about 12 poses a second, got %d" % n)
-	# 24 people at 12 Hz over 60 frames is ~4.8 a frame; staggered, no frame takes them all.
-	lt(busiest, 11, "a staggered crowd never poses all at once (busiest frame %d)" % busiest)
+	# 24 people at 12 Hz over 60 frames is ~4.8 a frame, and the stagger is a
+	# low-discrepancy step (PersonModel.STAGGER_STEP), so the busiest frame is the
+	# ideal rounded up rather than whatever the allocator happened to do.
+	lt(busiest, 7, "a staggered crowd never poses all at once (busiest frame %d)" % busiest)
 	_free(crowd)
 
 

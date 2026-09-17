@@ -61,6 +61,15 @@ const ALIAS := {
 	&"ability_grapple": &"grip",
 	&"ability_spoof": &"watcher_call",
 	&"ability_refused": &"ui_slate_deny",
+	# crafts: stepping onto a deck of plate and spars, stepping off it into the
+	# shallows, a hull coming apart under a body, and a wreck taken back for its
+	# parts. Each wants a voice of its own on the sheet (a pole in water, a lift
+	# duct dying); until then these read right and nothing is silent.
+	&"craft_board": &"scrape",
+	&"craft_off": &"splash",
+	&"craft_wreck": &"tool_snap",
+	&"craft_salvage": &"break",
+	&"craft_refused": &"ui_slate_deny",
 	# disposition: a works sounding off over the land when its network files
 	# something. A watcher's signal tone, heard from a long way away; it wants a
 	# horn of its own on the sheet.
@@ -104,6 +113,8 @@ const EMITTED: Array[StringName] = [
 	# slate (src/ui, src/systems/90_ui.gd)
 	&"ui_slate_click", &"ui_slate_confirm", &"ui_slate_back", &"ui_slate_deny", &"ui_slate_wake",
 	&"ui_slate_sleep", &"ui_slate_switch", &"ui_slate_whine", &"ui_slate_ping",
+	# crafts (44_crafts.gd)
+	&"craft_board", &"craft_off", &"craft_wreck", &"craft_salvage", &"craft_refused",
 	# hazards and gear (52_hazards.gd, 54_gear.gd)
 	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
 	&"hazard_ring", &"hazard_warn", &"hazard_drain", &"ability_dash", &"ability_glide", &"ability_land",

@@ -11,7 +11,10 @@ extends GameSystem
 ##   - `dev` in a save: whether dev mode touched the game, and what it was made from
 ## A tool run reaches none of it unless it asks (--dev, --dev=PAGE[:ROW], --config).
 
-const RULES: Array[String] = ["rules.clock", "rules.harm", "rules.hunger", "rules.bodies", "rules.machines", "rules.guide"]
+const RULES: Array[String] = ["rules.clock", "rules.harm", "rules.hunger", "rules.bodies", "rules.machines",
+	"rules.guide", "rules.hazards", "rules.autosave"]
+## What each autosave setting means in hours between saves (rules.autosave).
+const AUTOSAVE_HOURS := {"off": 0.0, "rare": 6.0, "normal": 3.0, "often": 1.5}
 const READOUT_EVERY := 0.25
 const FLAG := Vector2i(603, 348)
 const VIOLET := Color("#b3a8ea")
@@ -110,6 +113,16 @@ func _apply_rules() -> void:
 					(spawner as Spawner).rate = _spawn_rate * float(v)
 			"rules.machines":
 				DevCheats.set_spawning(game, bool(v))
+			"rules.hazards":
+				var hazards := DevCheats.system(game, "52_hazards")
+				if hazards != null:
+					hazards.set("pressure_scale", float(v))
+			"rules.autosave":
+				var save := DevCheats.system(game, "05_save")
+				var rules: AutosaveRules = save.get("rules") if save != null else null
+				if rules != null:
+					rules.enabled = str(v) != "off"
+					rules.every_minutes = maxf(1.0, float(AUTOSAVE_HOURS.get(str(v), 3.0)) * 60.0)
 			"rules.guide":
 				var guide := DevCheats.system(game, "58_guide")
 				if guide != null:

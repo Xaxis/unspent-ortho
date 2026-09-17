@@ -129,10 +129,18 @@ func _shelter() -> float:
 	return best
 
 
+## What a configuration scales every pressure by (rules.hazards); 1.0 is the land as it is.
+var pressure_scale := 1.0
+
+
 func _sweep(span: float) -> void:
 	var p := place()
 	_raw = Hazards.felt(p)
 	var pressure := Hazards.after_resist(_raw, game.body.resist)
+	if not is_equal_approx(pressure_scale, 1.0):
+		# A configuration may say how hard this land presses (rules.hazards, 94_dev).
+		for id: Variant in pressure:
+			pressure[id] = clampf(float(pressure[id]) * pressure_scale, 0.0, 1.0)
 	game.body.pressure = pressure
 	for id: Variant in pressure:
 		if float(pressure[id]) >= Hazards.FELT:

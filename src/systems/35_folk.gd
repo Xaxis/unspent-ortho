@@ -27,14 +27,18 @@ const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const GREEN: Array[int] = [PropKind.REEDS, PropKind.BUSH, PropKind.GORSE]
 
-## One villager: {model, pos, home, door, role, target, facing, t, wait, work, tool,
-## job_pos, job_facing, village, state}. state: &"out" | &"home" (walking in) | &"in".
+## One villager: {id, model, pos, home, door, role, trade, target, facing, t, wait,
+## work, tool, job_pos, job_facing, village, state}. state: &"out" | &"home"
+## (walking in) | &"in". `id` is theirs while they stand, so anything that holds
+## one villager (the slate's read) keeps hold of that one; `trade` is what they
+## are dressed as and what they are called.
 var folk: Array[Dictionary] = []
 ## Villagers waiting to be built: {look, home, door, role, village, h}.
 var queue: Array[Dictionary] = []
 var _spawned: Dictionary = {} # village index -> true
 ## Village index -> the silhouettes its villagers already wear (PersonLook.set_apart).
 var _worn: Dictionary = {}
+var _ids := 0
 var _act := &""
 var _act_at := -1.0
 var _check := 0.0
@@ -217,8 +221,9 @@ func _ring(n: int) -> void:
 
 
 func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: float, door: Vector2) -> void:
+	_ids += 1
 	var f := {
-		"pos": home, "home": home, "door": door, "role": role, "village": village, "t": h * 5.0,
+		"id": _ids, "trade": &"", "pos": home, "home": home, "door": door, "role": role, "village": village, "t": h * 5.0,
 		"facing": h * TAU, "target": home, "wait": h * 3.0, "tool": &"", "work": &"",
 		"job_pos": home, "job_facing": h * TAU, "state": &"out",
 	}
@@ -236,7 +241,8 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 	# Dressed for the land they live on and the work they were given (characters).
 	var hazards := BiomeRegistry.at(game.world, home).hazards
 	var seed_v := int(h * 1000003.0) + village * 7919
-	look = PersonLook.dress(look, hazards, PersonLook.trade_for(f.role, f.tool), seed_v)
+	f.trade = PersonLook.trade_for(f.role, f.tool)
+	look = PersonLook.dress(look, hazards, f.trade, seed_v)
 	# Dressing for one weather makes neighbours alike: nobody in a village shares a silhouette.
 	if not _worn.has(village):
 		_worn[village] = {}

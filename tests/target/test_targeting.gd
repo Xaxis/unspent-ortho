@@ -19,7 +19,7 @@ func test_what_can_be_locked_is_what_is_alive_and_within_reach() -> void:
 	gone.removed = true
 	var list := Targeting.candidates([near, far, dead, gone], Vector2.ZERO)
 	eq(list.size(), 1, "only the living body within reach")
-	eq(list[0], near)
+	eq(list[0].body, near)
 	eq(Targeting.candidates([far], Vector2.ZERO).size(), 0, "past the slate's reach it is not read")
 	eq(Targeting.candidates([far], Vector2.ZERO, Targeting.LENS_REACH).size(), 1, "a scanner lens reads further")
 	eq(Targeting.reach_with(true), Targeting.LENS_REACH)
@@ -35,10 +35,10 @@ func test_the_order_is_what_a_person_would_look_at_first() -> void:
 	var working := _mob(&"cutter", Vector2(1, 0))
 	working.mood = MobState.WORKING
 	var list := Targeting.candidates([working, stirred, coming, striking], Vector2.ZERO)
-	eq(list[0], striking, "what is striking comes first, though it is not nearest")
-	eq(list[1], coming)
-	eq(list[2], stirred, "then what has half noticed you")
-	eq(list[3], working, "a worker at its round is last")
+	eq(list[0].body, striking, "what is striking comes first, though it is not nearest")
+	eq(list[1].body, coming)
+	eq(list[2].body, stirred, "then what has half noticed you")
+	eq(list[3].body, working, "a worker at its round is last")
 
 
 func test_a_lock_holds_and_cycles_round() -> void:
@@ -51,10 +51,12 @@ func test_a_lock_holds_and_cycles_round() -> void:
 	eq(Targeting.cycle(list, list[0], 1), list[1])
 	eq(Targeting.cycle(list, list[2], 1), list[0], "and wraps")
 	eq(Targeting.cycle(list, list[0], -1), list[2])
-	var gone := _mob(&"runner", Vector2(3, 3))
+	var gone := TargetSubject.from_body(_mob(&"runner", Vector2(3, 3)))
 	eq(Targeting.pick(list, gone), list[0], "a body that left the list is not held")
-	eq(Targeting.cycle([], null, 1), null)
-	eq(Targeting.pick([]), null)
+	eq(Targeting.same_in(list, gone), null, "and is not in it")
+	var empty: Array[TargetSubject] = []
+	eq(Targeting.cycle(empty, null, 1), null)
+	eq(Targeting.pick(empty), null)
 
 
 func test_a_sweep_reads_a_field_not_a_census() -> void:
@@ -65,6 +67,13 @@ func test_a_sweep_reads_a_field_not_a_census() -> void:
 	eq(list.size(), 12)
 	eq(Targeting.sweep(list).size(), Targeting.SWEEP_MOST)
 	eq(Targeting.sweep(list)[0], list[0], "the front of the list")
+	# Nothing within reach may be unreachable: a field of twelve is two pages, and
+	# the second page holds the four the first one could not.
+	eq(Targeting.pages_of(list), 2)
+	eq(Targeting.sweep(list, 1).size(), 12 - Targeting.SWEEP_MOST)
+	eq(Targeting.sweep(list, 1)[0], list[Targeting.SWEEP_MOST])
+	eq(Targeting.sweep(list, 2)[0], list[0], "and it wraps")
+	eq(Targeting.pages_of([]), 1, "an empty field is still one page")
 
 
 func test_the_frame_leans_between_the_player_and_what_they_read() -> void:
@@ -73,8 +82,8 @@ func test_the_frame_leans_between_the_player_and_what_they_read() -> void:
 	at = Targeting.focus_between(Vector2.ZERO, Vector2(4, 0), 0.5, 9.0)
 	near(at.x, 2.0, 0.01, "half way to a body close by")
 	eq(Targeting.centre_of([], Vector2(5, 5)), Vector2(5, 5), "an empty field is the player")
-	var a := _mob(&"runner", Vector2(0, 0))
-	var b := _mob(&"runner", Vector2(4, 2))
+	var a := TargetSubject.from_body(_mob(&"runner", Vector2(0, 0)))
+	var b := TargetSubject.from_body(_mob(&"runner", Vector2(4, 2)))
 	eq(Targeting.centre_of([a, b], Vector2.ZERO), Vector2(2, 1))
 
 
@@ -150,6 +159,42 @@ func test_the_wordless_tag_says_health_and_how_much_it_has_noticed() -> void:
 	lt(float(hurt.pips[0]), float(TargetRead.PIPS), "and fewer pips")
 	eq(TargetRead.pips(0.0), [0, 0.0], "nothing left is no pips")
 	eq(TargetRead.pips(1.0), [TargetRead.PIPS, 0.0])
+
+
+## A villager can be read, and reads as a person. The gap this closes: the slate
+## could be put on a machine and not on one of the last people, who are the reason
+## the machines are a problem.
+func test_a_person_is_read_as_a_person_and_never_sorts_like_a_threat() -> void:
+	var row := {"id": 7, "trade": &"cutter", "pos": Vector2(2, 0), "state": &"out",
+		"village": 1, "tool": &"axe_hand", "work": &"work_fell"}
+	var machine := _mob(&"runner", Vector2(9, 0))
+	var list := Targeting.candidates([machine], Vector2.ZERO, Targeting.REACH, [row])
+	eq(list.size(), 2, "both can be looked at")
+	eq(list[0].body, machine, "anything in the fight comes before a person, however far off")
+	check(list[1].person and list[1].body == null)
+	eq(list[1].name, "cutter", "a person is called by their trade, not by a walk state")
+	eq(list[1].id, TargetSubject.FOLK_ID + 7, "and holds the row's own id, not its place in a streamed list")
+	eq(list[1].here(), Vector2(2, 0))
+	var r := TargetRead.of_subject(list[1], Vector2.ZERO, null)
+	eq(r.role, "one of the last people")
+	check(not bool(r.machine))
+	check((r.pips as Array).is_empty(), "no health the slate can read, so none invented")
+	eq(int(r.max_health), 0)
+	check((r.powers as PackedStringArray).is_empty(), "and nothing it can do to you")
+	eq(str(r.awareness.word), "a person, not a machine")
+	eq(str(r.thinking), "at their work")
+	near(float(r.distance), 2.0, 0.01)
+	eq(TargetRead.doing({"state": &"home"}), "walking home")
+	eq(TargetRead.doing({"state": &"in"}), "indoors")
+	eq(TargetRead.doing({}), "about the village")
+
+
+## A person out of reach is not read, the same as a machine out of reach.
+func test_a_person_beyond_the_reach_is_not_read() -> void:
+	var row := {"id": 1, "trade": &"keeper", "pos": Vector2(40, 0), "state": &"out"}
+	eq(Targeting.candidates([], Vector2.ZERO, Targeting.REACH, [row]).size(), 0)
+	row.pos = Vector2(4, 0)
+	eq(Targeting.candidates([], Vector2.ZERO, Targeting.REACH, [row]).size(), 1)
 
 
 func test_awareness_comes_through_the_one_door() -> void:

@@ -216,18 +216,29 @@ locks, cycles, sweeps, fights with the key held and lets go, and by
   the two), the body is bracketed with a ring on the ground, and the slate reads
   it — health, blow, tell, speed, working part, senses, what it can do to you,
   what it has noticed and what it is thinking, all of it off the simulation.
-- **`a` / `d` cycle** the lock (what is on you first, then what is near); **`r`
-  sweeps** the field, the camera standing back with every body read in short;
-  letting go puts the camera square and the reads away.
+- **`a` / `d` cycle** the lock (what is on you first, then what is near, then the
+  last people); **`r` sweeps** the field, the camera standing back with the field
+  read in short, eight at a time and paged by the same keys, the panel saying
+  which page of how many; letting go puts the camera square and the reads away.
+- **A person is a subject too.** `TargetSubject` is one thing the slate can be put
+  on — a fight body or a villager — and a person reads as a person: their trade,
+  their village, what they carry and what they are doing, and no health, no
+  signature, no working part. They carry no tag, because nothing measured a
+  villager's life and nothing has noticed them. Anything else the player can look
+  at (a works, a station, a sentinel) becomes readable by getting a `from_*` there.
+- **A lock waits** `Targeting.LOST_GRACE` for a subject that steps out of the list,
+  so a machine behind a house for a moment is still the machine being read.
 - **It changes no fight.** Nothing in the package writes to the simulation, and a
   test fails if a body or the player so much as turns while the key is held.
 
 ### Gaps
 
-- A sweep reads at most eight bodies; a field bigger than that is read nearest first.
-- People (villagers) carry no tag: they are not in the fight's list of bodies.
-- The lock does not survive a body going out of reach for a moment — it takes the
-  next one instead of waiting for it to come back.
+- Only bodies and villagers are subjects today. A works, a station, a sentinel or
+  a prop cannot be read, though the door is one `from_*` on `TargetSubject`.
+- The paged sweep is proved in a tour with people (`--folk=8`), not machines: a
+  field of that many hunters put down beside the player ends the run before the
+  shutter falls. The mixed field (machines first, then people) is proved in tests
+  and in `shots/target/`.
 
 ## M2 — Foundations of an immense world
 
@@ -294,6 +305,13 @@ machines-day, slate-polish, score-blend.
 
 ### Gaps (carried into wave B unless fixed sooner)
 
+Wave A2 below closed the ones a playtest and an art review of this wave found:
+saves opening a different island in silence, machines saying nothing by day, no
+evening at all, the salt flats clipping to paper, marks louder than their
+subjects, houses as prisms, the slate talking over its own badges, and tour
+frames that did not hold what they were named for. What is listed here is what
+wave A left that A2 did not take on.
+
 - **Start budget: 2.53 s against a 2.5 s target, with no headroom.** Measured on
   a quiet machine, one shot at a time: gen 1774 ms + view 752 ms, against
   1.65-1.9 s before the wave. Broken down, on the same machine in the same
@@ -311,6 +329,27 @@ machines-day, slate-polish, score-blend.
   own tile list, so the dispatch happens per RUN instead of per tile — is worth
   perhaps 80 ms of the 884. The bigger one, untouched and unmeasured, is what to
   do about script compilation racing world generation on a cold start.
+
+  **Read again 2026-09-16, and what is already spent.** The start now compiles 25
+  systems (22 when the budget was written), 288 scripts, 3.3 MB of GDScript, and
+  wave B adds to all three. **A start number is only taken on a quiet machine**:
+  `pgrep -x godot` empty and `sysctl -n vm.loadavg` under ~3. Taken under four
+  builders (load 29) the same three shots read gen 2075/2163/2283 ms + view
+  885/809/917 ms, and the gate's own worldgen line read 1356 ms for world 1 at
+  512 against 884 ms quiet — the generator and the race stretch together, so
+  numbers taken under load say only that nothing has fallen off a cliff.
+
+  Three levers are already spent, and nobody should propose them again:
+  landscape scripts are requested before everything else (`BootPage`), a title's
+  page has the loader threads compile the game's systems once the title is up
+  (`_after_lift`), so New game waits on none of them, and scripts export as
+  compressed binary tokens (`script_export_mode=2`), so a build parses no text.
+  What is left, biggest first: the shader compile on the first drawn frame of a
+  cold web start (the page's `draw` stage carries a 1200 ms weight and nothing
+  has ever been done about it); `view`'s props and decor per chunk; and the
+  surface two-pass, which is the smallest of the three and the only one that can
+  invalidate every save on disk — it must keep `tests/biome/test_parity.gd`'s
+  md5s or it has changed what a seed makes, and that bumps `WorldStamp.GEN`.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
 - `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
@@ -337,9 +376,206 @@ machines-day, slate-polish, score-blend.
 - A stolen neon tube still burns steady while its pool and its wet-ground glint
   stutter with the machines' power: the tube is a `lamp` ground mark, the same
   group as hearths and windows, and needs a mark id of its own in
-  `world.gdshader` before it can follow `sky_power()`.
+  `world.gdshader` before it can follow `sky_power()`. (A2 moved the tube to the
+  roof edge where the camera can see it, and put one near every village square;
+  it did not give it a mark of its own, so it is now visibly steady rather than
+  invisibly steady.)
 - `WorldData.temperature` and `moisture` are written by worldgen and read by
   nothing.
+
+**Wave A2** (the fix wave, integrated, 2026-09-16). One playtest and one art
+review of wave A, answered by eight packages merged one at a time behind the
+gate: saves, machine-read, evening, salt-and-scrap, marks-and-body, houses,
+slate-hud, proofs. Every fix was measured on the reviewer's own frame where
+there was one, and every package brought its own tour.
+
+Every one of the eight reported the same red gate, and each proved independently
+that it was not theirs: `test_exit` gave the loading page a 900-FRAME budget for
+a world generated on a worker THREAD, so headless frames ran out seconds before
+the thread finished and `quit()` then blocked on it. It is a clock scaled by
+`TestCase.machine_slack()` now, and the gate is green for the whole wave — the
+lesson being that a wall-clock or frame budget for threaded work is a gate that
+fails on a busy laptop and teaches everybody to ignore it.
+
+### What A2 made true
+
+- **A save is refused, never misplaced.** A save keeps only its seed and grows
+  the world again, so adding Salt Flats and Scrapwood moved a mean 9% of every
+  world's tiles into another landscape and 17.7% to another height — and the
+  game opened those saves in silence and stood the player in the sea. Every save
+  now carries a `WorldStamp` of the registry's ordered ids and the 38 `BiomeDef`
+  fields worldgen reads; a build that cannot make that island says so in the
+  game's own voice, on the saves app and on the title, with the file untouched
+  and its header still showing the day, the picture and the place it holds.
+  `SaveCore.disagrees` is the second line for what no stamp can see into.
+- **A machine can be read in daylight, before it is close enough to matter.**
+  The four dispositions were not a ladder at noon — hostile was the DIMMEST of
+  them. Now a wash whose strength is the disposition, a strip of lit pips on the
+  deck, a lens that keeps its cold colour under the sun, and only a machine the
+  plan has turned lights the ground it means to cross. The harvester also stops
+  being a filled box: its unloading spout is carried out over the far flank, and
+  where the arm sits is the state it is in.
+- **There is an evening.** Seven in the evening was brighter than eight in the
+  morning, and bluer, and the whole day ended in one cliff at half past eight.
+  The night floor and the skyglow are now spent against the LIGHT the evening is
+  losing rather than against the clock: the coast falls 102 → 69 without once
+  turning back, its worst half hour costs 9 values instead of 39, and the dusk
+  warms as it goes down. Night and noon do not move by one per cent.
+- **Nothing lit reaches the page.** `neon_grade.x` is a gain and it is one number
+  for the whole frame, so any pale land seen from a dark one was multiplied onto
+  it: the salt flats went 18.7% flat pure white with nothing drawn in it. A
+  shoulder at the top of the grade fixes it at the cause — below the knee the
+  other landscapes measure identically — and the two new lands stop being dressed
+  as the coast, with a second wash, a shade band, their own cracked hatch and a
+  landscape's own colour for its inland water. The two packages that meet at a
+  salt flat at dusk turned out to help each other: the 0.29% of the scrapwood's
+  dusk that the shoulder alone could not hold was the light's own energy over an
+  albedo already at the ceiling, and the evening's fall takes it to 0.00%.
+  Measured on integrated main: salt flats at noon, the coast-salt border and the
+  scrapwood at dusk all read 0.00% pure white, the snowfield 0.06%.
+- **A mark stops shouting over the thing it is about.** A hit whited out the
+  whole machine, hiding the amber part the blow was aimed at; the dash painted an
+  opaque slab over the player; the grapple's line was not on screen at all; the
+  scan's halo was a lattice as wide as the machine; and breath was drawn in ink,
+  which on snow is soot. Each is now smaller and quieter than its subject, and
+  the crouch has a silhouette a player can read from 45 degrees up.
+- **A village is hand-built.** Every roof slope is a patchwork laid cell by cell
+  with wavering eaves, a room added on and turf banked where the camera can
+  see it; no two houses in a village share a silhouette on any seed. Two causes
+  were underneath: hipped roofs were pitched from the footing corners, so three
+  variants of eight had no wall-to-roof junction at all, and the turf was banked
+  inside the wall line where the eave hides it. The stolen neon runs along the
+  roof edge now, and every village deals a lit house nearest its square.
+- **The slate says less and shows more.** A line whose subject is already a gauge
+  on the glass flares that gauge instead of being written across the world; the
+  one warning colour goes back to meaning level 3; the place name sits on its own
+  scrap so it reads over snow at noon; the loading page is a screen of the same
+  device; the survey letters its names over ground cleared outright; and the
+  reads app names the work rather than the mark it left.
+- **A tour frame says what it is of.** `shot NAME with SUBJECT` is asked again at
+  the instant the shutter falls, and a frame that fails is deleted rather than
+  left on disk looking like evidence. Twenty-one frames across nine tours were
+  named for a body that was not in them — including the machines tour's opening
+  portrait, where the keeper had arrested the player and walked off before the
+  picture was taken. `tests/tours/test_tour_claims.gd` reads the whole of
+  `tours/` and holds every tour in it to five rules, so a tour written next wave
+  meets them too.
+- **Running all thirty-five together found what running one at a time could
+  not.** Continuing a saved game could crash: `main.gd`'s ready line checked its
+  scene was alive, awaited a drawn frame, then read the scene's name — and the
+  title frees itself the instant it hands over to a loaded game. `await game`
+  meant "the systems are wired", which is true while the loading page still
+  covers the screen, so a tour continuing a save photographed the page at 98% and
+  called it the world that came back; on a quieter machine it would have passed
+  and the frame would have been a picture of a progress bar. `ground KIND` meant
+  "a tile of this kind", and in a spawn village the houses work made busier the
+  nearest grass had a bench 1.6 tiles off, so `use` answered "bench - make" and
+  the fire the tour came to lay was never laid. And `pixels:` asked for the flat
+  palette value of a neon tube, which emission never delivers — three frames with
+  the tube plainly in them were being thrown away as frames that only claimed
+  one.
+
+### The canon, re-accepted deliberately (2026-09-16)
+
+All eighteen frames moved, and each was looked at beside the one it replaced
+before the set was taken. What the numbers say, accepted-to-now:
+
+- **The day stops being blue.** Warmth (mean R−B) goes from strongly negative to
+  about neutral on every daylight frame — spawn-morning −17.6 → +2.6, coast −10.0
+  → +8.3, moss −22.5 → −6.3, pinewood −14.6 → +2.3, coast-moss −19.7 → −2.9. That
+  is the old low-light term, which read a warm tint as a dark one and laid the
+  night's blue floor over a morning.
+- **12-spawn-dusk is the wave in one frame**: 118.0 → 83.2 luminance and −26.3 →
+  +8.5 warmth, so half past seven no longer reads brighter and bluer than eight in
+  the morning. It is also the clearest picture of the houses: patchwork slate, an
+  added-on room, a wavering ridge and a stolen tube where there were seven ruled
+  prisms.
+- **09-eco-pinewood-snowfield loses 2.50% → 0.01% pure white** — the single
+  biggest thing the grade's shoulder bought back. That snow now carries contours,
+  blue shadow and stipple where it was flat paper.
+- **The night is untouched, as promised**: spawn-night 65.8 → 66.3, night-lamp
+  66.8 → 67.1, village-wet-night 56.8 → 57.4, all under 1%, and only ~20% of their
+  pixels differ at all — the houses and their stolen neon, nothing else.
+- **16-burning-dusk** loses three pressure lines written across the world and its
+  alarm-orange badges, and gains a lit ground under every vent.
+- **18-stolen-neon-close finally holds stolen neon**: 1128 tube pixels against 0
+  at any tolerance in the frame it replaces, which was a coast at night with no
+  tube anywhere in it. The frame had been lying about its own subject.
+
+### Gaps A2 leaves
+
+- The Burning's vent core is still a solid pure-white disc about 10 px across
+  (art finding 16). It wants a two-step amber/white read and a broken circle, and
+  it reads WORSE than before now that the ground under it is lit. It is in
+  `src/models/props/`, which no A2 package owned.
+- The hauler is the next machine at the silhouette bar (0.73 alert against 0.75),
+  and the harvester and hauler seen END-ON fill 0.69 and 0.68 of their boxes.
+  Both are slabs; getting either under 0.6 means rebuilding the body rather than
+  adding to it. Three cheap routes were tried on the harvester and every one made
+  the end-on fill worse; the numbers are in the test so nobody repeats them.
+- **`tours/wild.tour` fails about one run in three, and it is not this wave's
+  doing.** It is the one tour of unscripted emergent play — three minutes of a new
+  seed-1 game, nothing spawned or teleported — and it runs with `--fail-downed`.
+  After `await mob` it stands still for 13.6 s taking eight frames of a runner
+  "on its round, not yet noticing", and sometimes the runner notices and downs a
+  player who is doing nothing. Measured over six runs: four through, two downed,
+  the downing always during the passive watch and never in the fight block after
+  it. NOT an A2 regression — `src/core/fight`, `src/core/mobs` and
+  `tuning.gd` are untouched by the whole wave, `Senses` reads
+  `FightRules.nightfall`, which is also untouched, and the tour runs in daylight
+  where that term is zero. It was left alone rather than quietly trimmed, because
+  a tour is not weakened to make it pass: either the passive watch should end when
+  the machine notices instead of running a fixed 13.6 s, or being downed while
+  standing still in front of a hunter is correct and the tour should not claim
+  otherwise.
+- **The sky's evening and the body's night are two different curves.** A2 widened
+  the look of dusk to 18:30-21:00, but `FightRules.nightfall` — which
+  `Hazards._hour_shift` rides, and with it cold, dark, heat, glare, magnetism and
+  thirst, and which `Survival.in_the_dark` also reads — is still flat zero until
+  20:00. So at seven in the evening a player now stands in a visibly deep dusk on
+  a snowfield whose cold is behaving exactly as it does at noon: measured on seed
+  1, the snowfield place is at level 3, so its declared 0.7 cold is worth 0.434
+  against a BITE of 0.55 and cannot bite until about 20:20. The hazards file's
+  own docstring promises "a snowfield at noon is felt; the same snowfield at dusk
+  bites", and that promise is now false for the hour a player reads as dusk.
+  Whoever owns the night's feel should put the two on one curve; it was left
+  alone here because `FightRules.nightfall` also drives fights, stealth and the
+  dark hand's reach, and that is a feel change with its own wave.
+- A residual 5-10% rise at 20:30 survives in the burning, the moss and the
+  snowfield. The floor and the skyglow together are worth about three quarters of
+  a dark wash, and the arithmetic limit for a monotone evening is 0.78 — the test
+  walks the same ten minutes and says so. Closing it properly means bringing
+  `SKY_NIGHT_FLOOR` down, which retunes the night.
+- Daylight BEFORE noon is 8-15% darker and much warmer across the canon landscape
+  frames. That is the night's blue floor and the skyglow no longer being laid
+  over a morning by a low-light term that read a warm tint as a dark one. It
+  reads as morning and it is warmer, which is what ART asks of a low sun, but it
+  is a real change to every daylight frame.
+- The crouched player is still one of the brightest things on screen (body-box
+  mean 124 against a frame mean of 84). A2 fixed the silhouette, which is what
+  the art finding asked; the dressing and the lighting belong to `PersonLook`.
+- Home (`ui_pause_screen.gd`) is the other half of the empty-glass finding and is
+  untouched, and the reads app's replacement sub-panel is still ~75% glass by the
+  8px-cell metric — its instrument is a circular sweep, so most of that pane is
+  glass by construction.
+- `WorldStamp.GEN` is a hand lever: nothing can see into `GenShape` or
+  `GenRelief`, so a worldgen stage that changes what a seed makes must bump it by
+  hand, and `SaveCore.disagrees` only checks the one tile the player stood on.
+  The stamp also cannot digest the BODIES of a landscape's surface and scatter
+  recipes, only the method and file they came from.
+- **Every save on every player's disk today is invalidated by this wave.** The
+  island genuinely differs, so the data has nowhere valid to land. That is the
+  design and not a shortfall, but it is said out loud.
+- `SkyLight.MAX_LAMPS` is still 8, and that budget is now shared by lamps,
+  windows, fires, kilns, vents AND live machines: in the Burning at night the
+  nearest eight win and the rest lay nothing.
+- The scrapwood's ground still reads brown-mauve rather than the green-brown
+  gloom its own file promises, and its scrap trees are dense enough at play zoom
+  that the ruled bar across every crown is a repeated motif.
+- `tests/render/test_ground_washes.gd` is scoped to the two new landscapes. The
+  unscoped rule fails on all six M1 types; most are benign, but pinewood's gravel
+  (118 against its own brightest 87) and the bonelands' limestone (192 against
+  141) look like real minor faults.
 
 **Wave B** (parallel, on top of A):
 - **realms**: realms and portals; the first underground type (Limestone Caves,

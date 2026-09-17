@@ -34,13 +34,28 @@ hold. What it gives is perspective and knowledge.
   biased between the two), the body is bracketed with a ring on the ground it
   stands on, and the slate reads it.
 - **`a` / `d` cycle** the lock along the list — what is on you first, then what
-  is near (`Targeting.threat`).
+  is near (`Targeting.threat`), and the last people after everything in the fight.
 - **`r` sweeps the field**: the camera stands back instead, nothing is locked,
-  and every body within reach is read in short.
+  and the field is read in short, eight at a time; `a` / `d` page a field bigger
+  than that, and the panel says which page of how many it is showing.
 - **Let go** and the camera comes back square and the reads go with it.
 
-**Every body carries a wordless tag at all times** — health in pips and one
-glyph for how far it has got with the player (nothing, stirring, sure, coming).
+**Anything the player can look at can be read**, not only what is in the fight.
+A villager is a subject like a machine (`TargetSubject`), and reads as a person:
+no health, no signature, no working part — their trade, their village, and what
+they are doing. Nothing invents a life bar for somebody the simulation never
+gave one. A works, a station, a sentinel become readable by getting a `from_*`
+on that subject, and the order, the camera and the drawing follow unchanged.
+
+**A lock waits.** A body that steps behind a house or a stride past the reach is
+held for `Targeting.LOST_GRACE` before the lock takes anything else: a machine
+that was there half a second ago is the same machine, and a lock that flicks to
+its neighbour is a lock nobody trusts.
+
+**Every body in the fight carries a wordless tag at all times** — health in pips
+and one glyph for how far it has got with the player (nothing, stirring, sure,
+coming). People carry none: nothing has noticed them and no number measures their
+life, so pips over a villager would be a reading nobody took.
 That is the part that is always true of every enemy on screen; the words are
 the part the player asks for. This is what turned the old ruling round: a fight
 may now be read in words, but only while the key is held.
@@ -49,6 +64,41 @@ What the read says is the simulation's own: health and the roster's numbers, its
 powers (only what its row declares), what it has noticed (`StealthQuery`, the one
 door) and what it is thinking (its mood, its blow's phase, its place in the plan).
 Nothing is invented for the panel.
+
+## Crafts (docs/VISION.md §5)
+
+A craft is a thing a person builds out of machine parts and then stands on. It
+opens ground a body cannot cross, it is a thing in the world when it is parked,
+and it can be worn out, broken under you, and lost.
+
+- **`b` is the whole verb.** Standing at a craft it boards it; carrying one it
+  puts it down and steps on; standing on one it steps off; at a wreck it strips
+  it for its parts. Nothing about a craft is a menu.
+- **The three.** A **raft** (made by hand at the shore: driftwood, a rag and one
+  drum off a wreck) crosses open water nobody can wade. A **hover sled** (mended,
+  at a bench) runs bog, salt, ice, black water and everything else at half again
+  a walking pace. A **walker rig** (mended, at a bench) strides a two-level step
+  — a cliff to a body — and takes scree and deep snow under a load.
+- **It is not a second movement system.** The fight simulation still moves the
+  player: a craft only changes what the ground under the body means (`Hero.ride`
+  -> `WorldQuery.move_body`) and what pace it allows (`Hero.ground_speed`). So a
+  dodge, a grip, a blow and a machine shouldering you aside all land on a deck
+  exactly as they land on turf, and being hauled off your raft leaves it adrift.
+- **Getting on and off is never a teleport.** A craft is set down, and stepped
+  off onto, only within a shove of the body and only along a line the craft
+  itself could travel — so a raft is pushed out past the shallows and nosed back
+  in, and a body only ever steps off onto ground it could have waded to. Getting
+  off is never how a channel is crossed; the craft is.
+- **Wear and wreck.** The shallows grind a raft's drums, scree tears at a
+  skirt, every cliff costs the rig something, and a blow that lands on the rider
+  takes it out of the hull as well. At nothing the craft breaks: whoever was on
+  it is put ashore, and what is left of it lies where it broke and can be
+  stripped for its materials — except a float wrecked in open water, which sinks,
+  because some things are simply lost.
+- **Drawn MENDED** (docs/ART.md §12): FOUND drums, pans, pods and legs in violet
+  plate with the machines' own amber still lit on them, bound to MADE spars,
+  boards and cord, both idioms in one silhouette, and the lashing crossing the
+  rivet row is the drawing.
 
 ## Owner rulings carried over (mechanics only)
 
