@@ -125,6 +125,10 @@ static func make() -> BiomeDef:
 	# Its air, out of the realm's own table (no rain, no snow, nothing that falls
 	# out of a sky): still and clear for days, then saturated and hanging.
 	d.weather = Realm.airs(Realm.UNDERGROUND)
+	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# what a player crosses this landscape FOR. Its own file is the authority;
+	# `Landmarks.problems` fails if a kind here does not name this landscape back.
+	d.landmarks = [&"clerks_office", &"poured_pillar", &"sump_pump"]
 	d.sound_bed = Realm.bed(Realm.UNDERGROUND)
 	# Saturated air: it lies wet whether or not anything is falling.
 	d.wet = 0.55

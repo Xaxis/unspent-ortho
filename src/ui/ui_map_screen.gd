@@ -165,6 +165,34 @@ static func region_labels(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 	return out
 
 
+## THE MARK A PLACE IS DRAWN WITH, seven by seven, keyed by `LandmarkDef.mark`
+## (src/core/landmarks). A survey with nine identical diamonds on it says only
+## that there are nine of them; the whole reason a landmark is worth remembering
+## is that it is a PARTICULAR place, and the mark is where the survey says which.
+## Everything the world already knew about — a tip, a wreck, a shaft — keeps the
+## diamond, so the marks that mean "somewhere worth the walk" stand apart.
+const MARKS := {
+	&"light": ["   #   ", "  # #  ", "  # #  ", " #   # ", " #   # ", "#     #", "#######"],
+	&"tower": [" ##### ", " #   # ", " ##### ", "  # #  ", "  # #  ", " #   # ", "#     #"],
+	&"mast": ["     ##", "    ## ", "   ##  ", "  ##   ", " ##    ", "##     ", "###    "],
+	&"stack": [" ##### ", "  ###  ", "  # #  ", "  ###  ", "  # #  ", "  ###  ", " ##### "],
+	&"stones": ["       ", "#  #  #", "#  #  #", "#  #  #", "#  #  #", "#  #  #", "#######"],
+	&"evaporator": ["       ", "     ##", "#######", "#######", "#     #", "#     #", "       "],
+	&"hulk": ["       ", "###    ", "###  ##", "### ###", "  # #  ", "  # #  ", "  # #  "],
+	&"files": ["       ", "#######", "#     #", "# ### #", "#     #", "#######", "       "],
+	&"pillar": [" ##### ", "  ###  ", "  ###  ", "  ###  ", "  ###  ", "  ###  ", " ##### "],
+	&"sump": ["  ###  ", " #   # ", " #   # ", "  ###  ", "       ", "## ## #", " ## ## "],
+}
+
+
+## The mark for a place found on the way, or an empty list for the diamond.
+static func mark_for(kind: StringName) -> Array:
+	var d := Landmarks.by_id(kind)
+	if d == null or not MARKS.has(d.mark):
+		return []
+	return MARKS[d.mark]
+
+
 ## Landmarks the player has seen: the discoveries. [{kind, pos, machine: bool}]
 static func discoveries(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 	const MACHINE_MADE: Array[StringName] = [&"tip", &"wreck"]
@@ -420,11 +448,19 @@ func _draw_overlay() -> void:
 		var s: Vector2i = found.at
 		var col := UiTheme.MACHINE[3] if found.machine else UiTheme.BRIGHT
 		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), Color(UiTheme.GLASS, 0.8))
-		for k in 4:
-			UiDraw.px(ci, s.x - 3 + k, s.y - k, col)
-			UiDraw.px(ci, s.x + k, s.y - 3 + k, col)
-			UiDraw.px(ci, s.x + 3 - k, s.y + k, col)
-			UiDraw.px(ci, s.x - k, s.y + 3 - k, col)
+		var mark := UiMapScreen.mark_for(found.kind)
+		if mark.is_empty():
+			for k in 4:
+				UiDraw.px(ci, s.x - 3 + k, s.y - k, col)
+				UiDraw.px(ci, s.x + k, s.y - 3 + k, col)
+				UiDraw.px(ci, s.x + 3 - k, s.y + k, col)
+				UiDraw.px(ci, s.x - k, s.y + 3 - k, col)
+		else:
+			for row in mark.size():
+				var line: String = mark[row]
+				for cx in line.length():
+					if line[cx] == "#":
+						UiDraw.px(ci, s.x - 3 + cx, s.y - 3 + row, col)
 		if map_scale >= 3:
 			var word := String(found.kind).replace("_", " ")
 			var box := Rect2i(s.x + 6, s.y - 5, UiFont.width(word) + 4, 10)

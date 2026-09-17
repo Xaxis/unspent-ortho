@@ -146,6 +146,10 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 1.0, "grounds": floor_g},
 	}
 	d.sentinel = &""
+	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# what a player crosses this landscape FOR. Its own file is the authority;
+	# `Landmarks.problems` fails if a kind here does not name this landscape back.
+	d.landmarks = [&"firewatch", &"grown_hulk", &"clerks_office", &"blinking_stack"]
 	d.sound_bed = &"bed_pines"
 	d.music_motif = &"pinewood"
 	d.surface = _surface
