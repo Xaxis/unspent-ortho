@@ -1073,8 +1073,8 @@ deliberately, with a warning grammar of its own.**
 `m2b/works-landmarks`, then `m2b/polish`, then `m2b/raids`, each merged `--no-ff`
 behind `tools/check.sh`, with realms, the gear economy, settlement and the story
 already on main. **1368 tests before the wave, 1432 after polish, 1489 after
-raids, green.** What the
-integration itself had to find and fix, which is what a seam is for:
+raids, green.** What the integration itself had to find and fix, which is what a
+seam is for:
 
 - **A place is a way to a thing.** `Sources` walked every drop table back to the
   roster body it came off, so a landmark could hold nothing a machine carries:
@@ -1129,6 +1129,30 @@ integration itself had to find and fix, which is what a seam is for:
 
 What the wave still leaves, in the order it should be taken:
 
+- **Six tours fail on main, and none of them is the wave's fault.** Every tour in
+  `tours/` was run after the raids merge: 42 green, six red —
+  `disposition` (line 31, `await theft`), `machine-read` (91, `await theft`),
+  `realms` (37, `await lamp`), `slate-hud` (31, `await badge_answered`),
+  `slate-polish` (64, `choose controls`) and `survival` (39, no fire laid). Each
+  was re-run at `d4e4e1c`, main BEFORE m2b/raids, in a detached worktree and each
+  **fails at the identical line there**, so they are older than this wave. Two
+  more (`saves`, `saves-elsewhere`) went red only while three test shards were
+  running beside them and pass on a quiet machine: tours step in WALL-CLOCK time,
+  so CPU load changes what happens in `walk 1,0 1.5`. Anything that reads a tour
+  result has to know that — a red tour on a busy machine is not yet a bug.
+- **The canon's accepted set is stale, and the sheet's own metric is too coarse
+  to say so.** `04-pinewood` now has a works depot standing in the corner and a
+  "Corridor works, pinewood" read under it — a whole building, 41,764 pixels away
+  from the accepted frame — and `tools/canon.sh` scored it 3.0 and reported "0
+  changed". It is NOT the raids merge: shot at `d4e4e1c` and on main, that frame
+  differs by 124-272 pixels, so the depot came in with works-and-landmarks and
+  the baseline simply predates it. Measured while checking: two runs of the canon
+  at the SAME commit differ by up to 20,976 strong pixels on
+  `17-village-wet-night` and the sheet called one frame changed between them, so
+  the night, lamp and wet-ground frames carry more run-to-run variance than most
+  real changes would. Re-accepting is a deliberate, frame-by-frame job for
+  whoever owns the works and polish frames; raids moved nothing and accepted
+  nothing.
 - **`tests/sky/test_lamp_pools.gd` fails about one run in three and nobody owns
   it.** The same 5.84 every time, so it is a race, not noise: the lantern's pool
   is push_front'ed only when `_set_light` turns the light on, and whether a world
