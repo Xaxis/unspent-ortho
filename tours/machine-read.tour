@@ -87,6 +87,13 @@ near survey
 wait 0.6
 spawn harvester
 wait 1.4
+# A survey post has WORDS on it and is also the plan's WORKS (49_story reads it,
+# Takes robs it), and one key answers both: the first press reads the readout,
+# the second puts it down, and the third gets the hands on the post itself.
+press use 0.3
+wait 0.3
+press use 0.2
+wait 0.3
 press use 0.3
 await theft 8
 await turned 4
