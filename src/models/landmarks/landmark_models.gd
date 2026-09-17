@@ -412,30 +412,61 @@ static func _slab(k: MeshKit, h: float, wide: float, thick: float, col: Color, t
 ## everything the brine touched has grown a crust over it since — the one hulk in
 ## the game that is WHITE, which is why it reads at a distance on a white flat.
 static func _evaporator(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
-	# The body: a long tank on four short legs, square, ruled.
-	k.box(Vector3(-2.6, 0.55, -1.0), Vector3(1.4, 2.3, 1.0), ENAMEL, ENAMEL_TOP)
+	# THE TANK IS NOT ONE BOX. Four bays with a rib between each pair, a lid
+	# tapered off the sides, and a walkway down the near flank: a plain prism four
+	# tiles long is the slab docs/ART.md §2 forbids, and at this camera the tank
+	# is most of what a player sees of the whole machine.
 	for i in 4:
-		var x := -2.2 + (i % 2) * 3.2
-		var z := -0.7 + (i / 2) * 1.4
-		k.box(Vector3(x - 0.18, 0.0, z - 0.18), Vector3(x + 0.18, 0.6, z + 0.18), PLATE_DARK, PLATE)
+		var x0 := -2.7 + i * 1.02
+		k.box(Vector3(x0, 0.6, -1.0), Vector3(x0 + 0.9, 2.1, 1.0), ENAMEL, ENAMEL_TOP)
+		k.box(Vector3(x0 + 0.9, 0.55, -1.08), Vector3(x0 + 1.02, 2.2, 1.08), PLATE_DARK, PLATE)
+		# The gauge slot down each bay's face: a recess, so the flank has depth.
+		k.box(Vector3(x0 + 0.24, 0.9, 0.96), Vector3(x0 + 0.66, 1.8, 1.02), SHADOW, SHADOW)
+	k.prism(-1.2, 2.1, 0.0, 1.5, 2.5, 1.1, 4, PLATE, PLATE_TOP, PI * 0.25)
+	# The legs, standing clear of the tank so it reads as carried and not sunk.
+	for i in 4:
+		var x := -2.3 + (i % 2) * 3.4
+		var z := -0.75 + (i / 2) * 1.5
+		k.box(Vector3(x - 0.2, 0.0, z - 0.2), Vector3(x + 0.2, 0.62, z + 0.2), PLATE_DARK, PLATE)
+		k.strut(Vector3(x, 0.55, z), Vector3(x + 0.7, 0.05, z * 1.4), 0.07, 4, SHADOW)
+	# The walkway and its rail along the near flank, and the ladder up to it.
+	k.box(Vector3(-2.8, 1.35, 1.0), Vector3(1.5, 1.45, 1.55), PLATE_DARK, PLATE)
+	k.box(Vector3(-2.8, 1.45, 1.5), Vector3(1.5, 1.52, 1.56), PLATE, PLATE_TOP)
+	k.box(Vector3(-2.8, 1.9, 1.5), Vector3(1.5, 1.97, 1.56), PLATE, PLATE_TOP)
+	for i in 6:
+		k.block(-2.6 + i * 0.8, 1.45, 1.53, 0.06, 0.46, 0.06, PLATE_DARK)
+	for i in 5:
+		k.block(1.2, 0.2 + i * 0.26, 1.3, 0.05, 0.05, 0.5, PLATE_DARK)
+	# Pipe stubs down the far flank, capped and going nowhere.
+	for i in 4:
+		k.push(Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(-2.3 + i * 1.02, 1.1, -1.12)))
+		k.prism(0.0, 0.0, 0.0, 0.16, 0.34, 0.16, 6, PLATE_DARK, PLATE)
+		k.pop()
 	# The hopper head and the boom: the shape, carried out over the pan.
-	k.prism(1.4, 1.3, 0.0, 0.9, 2.9, 0.62, 6, PLATE, PLATE_TOP)
-	k.strut(Vector3(1.5, 2.6, 0.0), Vector3(4.3, 0.42, 0.0), 0.16, 4, PLATE)
-	k.strut(Vector3(1.5, 2.6, 0.0), Vector3(3.1, 1.5, 0.0), 0.08, 4, PLATE_DARK)
+	k.prism(1.6, 1.2, 0.0, 0.95, 3.2, 0.6, 6, PLATE, PLATE_TOP)
+	k.prism(1.6, 3.2, 0.0, 0.6, 3.45, 0.55, 6, PLATE_DARK, PLATE)
+	k.strut(Vector3(1.7, 2.9, 0.0), Vector3(4.8, 0.45, 0.0), 0.18, 4, PLATE)
+	k.strut(Vector3(1.7, 2.9, 0.0), Vector3(3.4, 1.6, 0.0), 0.09, 4, PLATE_DARK)
+	k.strut(Vector3(2.5, 2.2, -0.5), Vector3(2.5, 2.2, 0.5), 0.06, 4, PLATE_DARK)
 	# The rake itself, down in the crust where it stopped.
-	k.box(Vector3(3.9, 0.12, -1.3), Vector3(4.5, 0.34, 1.3), PLATE_DARK, PLATE)
-	for i in 7:
-		k.block(4.2, 0.0, -1.15 + i * 0.38, 0.06, 0.2, 0.06, PLATE_DARK)
-	# The crust: MADE, uneven, hatched, up the legs and over the boom's shadow.
-	for i in 9:
-		var t := i / 8.0
-		var x := lerpf(-2.6, 4.4, t)
-		var z := (Rng.hash01(seed_value, i, 0x71) - 0.5) * 2.0
-		made.rock(x, 0.0, z, 0.5 + Rng.hash01(seed_value, i, 0x72) * 0.5, 0.2 + Rng.hash01(seed_value, i, 0x73) * 0.3, seed_value + i, SALT, 6)
-	made.box(Vector3(-2.7, 0.5, -1.06), Vector3(1.5, 0.78, 1.06), SALT, P.LINEN[5])
-	made.rock(1.5, 2.9, 0.0, 0.7, 0.5, seed_value + 44, SALT, 7)
+	k.box(Vector3(4.4, 0.14, -1.5), Vector3(5.1, 0.4, 1.5), PLATE_DARK, PLATE)
+	for i in 8:
+		k.block(4.75, 0.0, -1.3 + i * 0.37, 0.07, 0.24, 0.07, PLATE_DARK)
+	# The crust: MADE, uneven, hatched, up the legs, over the walkway and along
+	# the whole length of the boom's shadow. The one hulk in the game that is
+	# WHITE, which is why it reads at a distance on a white flat.
+	for i in 11:
+		var t := i / 10.0
+		var x := lerpf(-3.0, 5.0, t)
+		var z := (Rng.hash01(seed_value, i, 0x71) - 0.5) * 2.4
+		made.rock(x, 0.0, z, 0.55 + Rng.hash01(seed_value, i, 0x72) * 0.55, 0.22 + Rng.hash01(seed_value, i, 0x73) * 0.34, seed_value + i, SALT, 6)
+	for i in 4:
+		made.rock(-2.3 + i * 1.02, 0.5, 1.02, 0.4, 0.42, seed_value + 20 + i, SALT, 6)
+	made.rock(1.6, 3.35, 0.0, 0.75, 0.55, seed_value + 44, SALT, 7)
+	made.rock(4.7, 0.3, 0.4, 0.6, 0.4, seed_value + 45, SALT, 6)
 	# One lens still on the head, lit: the plan has not written this one off.
-	lamps.box(Vector3(1.9, 2.1, -0.18), Vector3(1.96, 2.4, 0.18), W.WORKING)
+	lamps.box(Vector3(2.2, 2.3, -0.2), Vector3(2.28, 2.65, 0.2), W.WORKING)
+	lamps.box(Vector3(-2.82, 1.62, 1.5), Vector3(-2.76, 1.86, 1.56), W.STRIP)
 
 
 ## THE GROWN HULK. A hauler-sized machine that died standing and has been in one
@@ -506,23 +537,31 @@ static func _clerks_office(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value
 		k.box(Vector3(-0.85, 0.42 + i * 0.5, -0.7), Vector3(0.8, 0.5 + i * 0.5, 0.7), PLATE_DARK, PLATE_DARK)
 		made.box(Vector3(-0.8, 0.5 + i * 0.5, -0.64), Vector3(0.7, 0.86 + i * 0.5, 0.64), PAPER_DARK, PAPER)
 	# The mast on its cap, snapped off short, and the one lens still reading.
-	k.prism(-0.5, 2.72, 0.0, 0.14, 4.0, 0.09, 4, PLATE, PLATE_TOP)
-	k.prism(-0.5, 4.0, 0.0, 0.22, 4.2, 0.2, 6, PLATE_DARK, PLATE)
+	k.prism(-0.5, 2.72, 0.0, 0.16, 5.1, 0.09, 4, PLATE, PLATE_TOP)
+	k.prism(-0.5, 5.1, 0.0, 0.26, 5.34, 0.24, 6, PLATE_DARK, PLATE)
+	# Snapped: the top third of it lying where it came down, still wired on.
+	k.push(Transform3D(Basis(Vector3.BACK, 1.35), Vector3(-2.4, 0.1, 0.5)))
+	k.prism(0.0, 0.0, 0.0, 0.13, 1.7, 0.08, 4, PLATE_DARK, PLATE)
+	k.pop()
 	lamps.box(Vector3(1.02, 1.0, -0.1), Vector3(1.06, 1.3, 0.1), W.STRIP)
 	k.pop()
 	# The paper. Drifts of it, banked the way the wind left it, pale against
 	# whatever ground this is: the thing that reads from twenty tiles out.
-	for i in 22:
+	# FLAT, and wider than they are tall. Drifts drawn at a stone's proportions
+	# read as stones, which on a bonelands pavement is exactly what they are not:
+	# paper lies down, and what says so is that none of it stands up except the
+	# few sheets the wind has caught.
+	for i in 26:
 		var a := Rng.hash01(seed_value, i, 0x91) * TAU
-		var r := 1.6 + Rng.hash01(seed_value, i, 0x92) * 3.6
+		var r := 1.5 + Rng.hash01(seed_value, i, 0x92) * 3.8
 		var at := Vector3(cos(a) * r, 0.0, sin(a) * r * 0.8)
-		made.rock(at.x, at.y, at.z, 0.34 + Rng.hash01(seed_value, i, 0x93) * 0.4, 0.07 + Rng.hash01(seed_value, i, 0x94) * 0.1, seed_value + i, PAPER if i % 3 else PAPER_DARK, 5)
-	# And a few sheets caught upright on things, which is what says WIND.
-	for i in 5:
+		made.rock(at.x, at.y, at.z, 0.55 + Rng.hash01(seed_value, i, 0x93) * 0.55, 0.035 + Rng.hash01(seed_value, i, 0x94) * 0.05, seed_value + i, PAPER if i % 3 else PAPER_DARK, 5)
+	# And the sheets caught upright on things, which is the whole of what says WIND.
+	for i in 9:
 		var a := Rng.hash01(seed_value, i, 0x95) * TAU
-		var r := 2.2 + Rng.hash01(seed_value, i, 0x96) * 2.0
-		made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, 0.4), Vector3(cos(a) * r, 0.0, sin(a) * r)))
-		made.box(Vector3(-0.01, 0.0, -0.16), Vector3(0.01, 0.42, 0.16), PAPER, PAPER)
+		var r := 1.9 + Rng.hash01(seed_value, i, 0x96) * 2.4
+		made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, 0.35 + Rng.hash01(seed_value, i, 0x97) * 0.4), Vector3(cos(a) * r, 0.0, sin(a) * r)))
+		made.box(Vector3(-0.012, 0.0, -0.2), Vector3(0.012, 0.58, 0.2), PAPER, PAPER)
 		made.pop()
 
 
