@@ -146,6 +146,20 @@ a tour can leave, `await title`, press a real key on the title (`key ACTION`),
 anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour saves under
 `user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
 
+**An `await` means SINCE I LAST ASKED.** A question that is answered is spent, in
+the runner and in every system that keeps a latch of its own: `_await` erases its
+`_seen` and calls `GameSystem.tour_forget(what)` on every system, and the five
+that latch (22, 32, 34, 44_sentinels, 48) erase there. **A latch IS the
+declaration that a key is an EVENT** — so compute from the live world wherever
+you can, latch only what the world cannot be asked about afterwards, and never
+put a latch in front of a live computation of the same word, because the live
+half is consulted second and never gets to say no.
+`tests/tours/test_tour_claims.gd` fails on both mistakes, which is the only
+warning you get: the bug they make is a GREEN step that proved nothing.
+machine-read.tour's night theft pressed `use` once where a survey post needs
+three, robbed nothing and turned no machine, and `await theft` passed for two
+waves off a theft earlier in the run.
+
 **A frame that claims a subject has to hold it.** `shot NAME with SUBJECT[,SUBJECT]`
 says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `prop:KIND`,
 `land:ID` (or `land:a|b`), `border:A-B`, `station:fire`, `app:map`, `lamp`,

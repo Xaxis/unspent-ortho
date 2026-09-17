@@ -364,3 +364,106 @@ func test_a_tube_counts_washed_toward_white_but_only_so_far() -> void:
 	img.set_pixel(7, 5, Color8(63, 124, 103))
 	eq(TOUR.pixels_like(img, "pixels:ff40cc:1"), 2, "white is not a magenta tube")
 	eq(TOUR.pixels_like(img, "pixels:8cff59:1"), 0, "nor is the glass's own green text")
+
+
+# --- an await means SINCE I LAST ASKED ----------------------------------------
+
+const SYSTEM_DIR := "res://src/systems"
+
+
+## Every `src/systems/NN_*.gd`, in name order.
+func system_files() -> PackedStringArray:
+	var out := PackedStringArray()
+	var d := DirAccess.open(SYSTEM_DIR)
+	if d == null:
+		fail("no %s" % SYSTEM_DIR)
+		return out
+	for f in d.get_files():
+		if f.ends_with(".gd") and f.length() > 2 and f[0].is_valid_int() and f[1].is_valid_int():
+			out.append(f)
+	out.sort()
+	return out
+
+
+func source_of(f: String) -> PackedStringArray:
+	var file := FileAccess.open(SYSTEM_DIR.path_join(f), FileAccess.READ)
+	if file == null:
+		fail("cannot read %s" % f)
+		return PackedStringArray()
+	return file.get_as_text().split("\n")
+
+
+## The literal words a file's `tour_seen` answers from the LIVE world: the arms
+## of its own match statement. Multiple keys may share one arm.
+func live_keys(lines: PackedStringArray) -> Array[String]:
+	var out: Array[String] = []
+	var inside := false
+	var quoted := RegEx.create_from_string('&?"([^"]*)"')
+	for raw: String in lines:
+		if raw.begins_with("func tour_seen"):
+			inside = true
+			continue
+		if inside and raw.begins_with("func "):
+			break
+		if not inside:
+			continue
+		var line := raw.split("#")[0].strip_edges()
+		# A match arm and nothing else: quoted words, then a colon.
+		if not line.ends_with(":") or not (line.begins_with('"') or line.begins_with('&"')):
+			continue
+		for m in quoted.search_all(line):
+			out.append(m.get_string(1))
+	return out
+
+
+## Every word a file latches with a literal key. An interpolated one
+## (`_seen["raid:%s" % stage]`) is deliberately not counted: it is not a word.
+func latched_keys(lines: PackedStringArray) -> Array[String]:
+	var out: Array[String] = []
+	var write := RegEx.create_from_string('_seen\\[&?"([^"]*)"\\]\\s*=')
+	for raw: String in lines:
+		var m := write.search(raw.split("#")[0])
+		if m != null:
+			out.append(m.get_string(1))
+	return out
+
+
+## A LATCH IS THE DECLARATION THAT A KEY IS AN EVENT. So a latch standing in
+## front of a live computation of the same word is not belt and braces: it is the
+## only thing that can make the answer WRONG, because the live half is consulted
+## second and never gets to say no.
+##
+## Three were found this way and all three were pure hazard: `works_broken` and
+## `sentinel_fallen` each sat in front of a scan that answers the same question
+## durably, and `_seen["party"]` in 48_raids could never be read at all, because
+## that file's match runs first. A fourth of the same shape is one line away in
+## any package, and nothing else in the gate would notice it.
+func test_no_system_latches_a_word_it_already_answers_live() -> void:
+	for f: String in system_files():
+		var lines := source_of(f)
+		var live := live_keys(lines)
+		if live.is_empty():
+			continue
+		for key: String in latched_keys(lines):
+			check(not live.has(key),
+				"%s latches '%s' in front of its own match arm for it: delete the latch, or the world's answer can never say no" % [f, key])
+
+
+## A latch that is never spent answers every await after the first for free —
+## which is exactly the bug this rule exists for: machine-read.tour pressed `use`
+## once where a survey post needs three, robbed nothing, and `await theft` passed
+## anyway off a theft earlier in the run. Only the runner knows when a tour asked,
+## so a system that latches must take `tour_forget` and erase there.
+func test_every_latching_system_spends_its_latches() -> void:
+	for f: String in system_files():
+		if f.begins_with("98_"):
+			continue  # the runner's own dictionary, erased in `_forget` itself
+		var lines := source_of(f)
+		if latched_keys(lines).is_empty():
+			continue
+		var has := false
+		for raw: String in lines:
+			if raw.begins_with("func tour_forget"):
+				has = true
+				break
+		check(has, "%s latches a tour word but never spends it: add `func tour_forget(what: StringName) -> void: _seen.erase(what)`" % f)

@@ -298,7 +298,6 @@ func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) ->
 		elif not way.kills():
 			_stand_down(s.body)
 	_take_its_table(s, def)
-	_seen["sentinel_fallen"] = true
 	Events.sentinel_fell.emit(s.region, s.land, s.how)
 	if way.says != "":
 		Events.message.emit(way.says)
@@ -415,7 +414,8 @@ func _load(v: Variant) -> void:
 ##   sentinel_phase:ID   the keeper out now is in that phase
 ##   sentinel_open       its working part is open (spent after a bite, or stalled)
 ##   sentinel_hurt       it has lost health
-##   sentinel_fallen     a region has been taken
+##   sentinel_fallen     a region has been taken (asked of the world, not latched:
+##                       a keeper that has fallen stays fallen, and `_states` says so)
 ##   sentinel_dead       a keeper's hulk is lying in the world
 func tour_seen(what: String) -> bool:
 	if _seen.has(what):
@@ -469,6 +469,11 @@ func tour_seen(what: String) -> bool:
 				return true
 		return false
 	return false
+
+
+## An await is spent by the tour that asked it (98_tour `_forget`).
+func tour_forget(what: StringName) -> void:
+	_seen.erase(what)
 
 
 func _live() -> MobState:

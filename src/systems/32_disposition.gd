@@ -566,3 +566,11 @@ func tour_seen(what: StringName) -> bool:
 					return true
 			return false
 	return bool(_seen.get(what, false))
+
+
+## An await is spent by the tour that asked it (98_tour `_forget`). The four
+## above are computed from the live world and so are untouched by it; the five
+## latched here (interference, theft, trespass, felt, hunter) are moments the
+## world keeps no record of, and each is now answered once.
+func tour_forget(what: StringName) -> void:
+	_seen.erase(what)

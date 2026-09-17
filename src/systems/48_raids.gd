@@ -835,7 +835,6 @@ func _survey(s: Settlement) -> void:
 	var spot := Sentinels.stand_near(game.world, s.centre + out, 0.4)
 	var prop := Survival.add_prop(game, PropKind.SURVEY, spot)
 	b["stake"] = prop.id
-	_seen["stake"] = true
 	if _near(s):
 		Events.message.emit("They have driven a stake in at the edge of %s." % s.name)
 
@@ -884,7 +883,6 @@ func _put_out(p: RaidPlan, s: Settlement) -> void:
 			"closest": INF, "stalled_at": sim.now, "side": 1.0}
 	if RaidStage.led_by_keeper(p.stage):
 		_call_the_keeper(s, bearing)
-	_seen["party"] = true
 
 
 ## A siege is led by the region's own keeper (docs/VISION.md §9.4). Its body is
@@ -905,7 +903,6 @@ func _call_the_keeper(s: Settlement, bearing: float) -> void:
 	keeper.facing = (s.centre - at).angle()
 	keeper.aim = keeper.facing
 	keeper.bearing = Vector2.from_angle(keeper.facing)
-	_seen["siege_keeper"] = true
 
 
 ## Where one of them comes out of the land: on the plan's own bearing if there is
@@ -1742,9 +1739,9 @@ func _stage() -> void:
 ##                   which is what "at the gate" means: a frame that says so is
 ##                   held to it rather than to the moment they were put out
 ##   paid            a full store bought them off and the party turned round
-##   siege_keeper    the region's keeper came with one
+##   siege_keeper    the region's keeper is out with one
 ##   marked          a piece is wearing the plan's tag
-##   stake           the plan's survey stake is standing in a yard
+##   stake           the plan's survey stake is standing in a yard now
 ##   stake_pulled    it has been taken up again
 ##   raid_damage     a machine has put a blow into a piece
 ##   snatched        somebody was carried off
@@ -1787,6 +1784,34 @@ func tour_seen(what: String) -> bool:
 			return false
 		"carrier":
 			return not _carriers.is_empty()
+		"stake":
+			# A stake STANDS in a yard: `stake_pulled` is its opposite, and as a
+			# latch this went on answering after the stake was out of the ground,
+			# so a tour could pull one and still be told it was there. The book is
+			# the record, and holds it across a save. Read straight, never through
+			# `book()`, which would write a row for a holding nobody has filed on.
+			for s in places():
+				if s.realm != realm_here():
+					continue
+				var id := int((_books.get(s.id, {}) as Dictionary).get("stake", -1))
+				if id >= 0 and not game.world.depleted.has(id):
+					return true
+			return false
+		"siege_keeper":
+			# The keeper standing with a party that is out. As a latch this was
+			# already unreliable in the other direction: `_call_the_keeper` returns
+			# without setting anything when a keeper is ALREADY in the world — the
+			# siege is led by that one, and the latch said no keeper had come.
+			var sim: FightSim = game.player.sim if game.player != null else null
+			if sim == null:
+				return false
+			for p in plans:
+				if not p.on() or not RaidStage.led_by_keeper(p.stage):
+					continue
+				for m in sim.mobs:
+					if m.alive and not m.removed and Roster.sentinel_of(m.kind) != &"":
+						return true
+			return false
 		"raid_on":
 			for p in plans:
 				if p.on():
@@ -1815,6 +1840,15 @@ func tour_seen(what: String) -> bool:
 					return false
 			return true
 	return bool(_seen.get(what, false))
+
+
+## An await is spent by the tour that asked it (98_tour `_forget`). What is
+## still latched below this line is what the world keeps no record of once it is
+## over — a blow landed, somebody carried off, a step warned. The standing
+## situations beside them are computed above: `raid_on` for `raid`,
+## `raid_coming` for `warned`, `carrier` for `noticed`.
+func tour_forget(what: StringName) -> void:
+	_seen.erase(what)
 
 
 # --- saving -------------------------------------------------------------------
