@@ -518,7 +518,14 @@ static func shadow_pass(tour: Node, game: Node) -> bool:
 	for base: String in bases:
 		_env_restore(e, keep)
 		vp.scaling_3d_scale = scale_was
-		RenderingServer.global_shader_parameter_set("sky_emission", 1.0)
+		# A surface's own light is turned down through the row SkyLight composes
+		# with, not by writing the global here: SkyLight is its only writer
+		# (tests/sky/test_one_writer.gd).
+		var row: Dictionary = CompatTrim.IDENTITY.duplicate()
+		if base == "game, no ambient or emission":
+			row.emission = 0.0
+		_hold_trim(game, row)
+		_env_restore(e, keep)
 		if base == "no fog" or base == "bare":
 			e.fog_enabled = false
 		if base == "no glow" or base == "bare":
@@ -534,8 +541,6 @@ static func shadow_pass(tour: Node, game: Node) -> bool:
 			e.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 		if base.begins_with("game, no ambient"):
 			e.ambient_light_energy = 0.0
-		if base == "game, no ambient or emission":
-			RenderingServer.global_shader_parameter_set("sky_emission", 0.0)
 		sky.sun.shadow_enabled = false
 		var off: Image = await _grab(tour)
 		sky.sun.shadow_enabled = true
@@ -637,6 +642,12 @@ static func match_frame(tour: Node, game: Node, parts: PackedStringArray) -> boo
 		printerr("tour perf match: give the desktop's frame, e.g. perf match shots/degrade/before/desktop/01-spawn-morning.png")
 		return false
 	var path := parts[2] if parts[2].is_absolute_path() else ProjectSettings.globalize_path("res://").path_join(parts[2])
+	# The desktop's frames are made by tools/canon.sh --web, not by this tour, so a
+	# run without them is a run with nothing to fit against -- not a failure. The
+	# tour says so and goes on, which is what lets `ls tours/` still be runnable.
+	if not FileAccess.file_exists(path):
+		print("tour perf match: no desktop frame at %s yet (tools/canon.sh --web makes them); skipped" % parts[2])
+		return true
 	var ref := Image.load_from_file(path)
 	if ref == null or ref.is_empty():
 		printerr("tour perf match: cannot read %s" % path)

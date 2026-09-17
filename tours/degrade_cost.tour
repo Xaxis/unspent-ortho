@@ -4,7 +4,9 @@
 #   tools/web.sh --no-export --quick --uncapped --tour=tours/degrade_cost.tour --args=--seed=7
 #   tools/tour.sh tours/degrade_cost.tour --seed=7 --quality=web     (the same tier on the desktop)
 # --uncapped lets the page draw as fast as it can, so a frame's interval is its
-# cost and not the display's rate. Prints its numbers; shoots nothing.
+# cost and not the display's rate. A desktop run has no such switch and sits at
+# the display's rate (8.33 ms a frame, every scale), so the scale curve is only
+# honest in the browser; the slate's numbers are honest in both. Shoots nothing.
 weather clear:0
 place spawn
 hour 12
