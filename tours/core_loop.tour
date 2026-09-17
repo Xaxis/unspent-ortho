@@ -10,6 +10,18 @@ shot 01-wake-by-the-square
 coast calm
 # Driftwood on the strand below the village: walk to it, press use. The tour
 # names what it takes, so where the strand lays it does not matter.
+#
+# THE COORDINATES IN THIS FILE STAY, for now, and each is a different reason.
+# `at 200,436` is open SEA — it is not a place to stand, it is a seed for the
+# `at prop:driftwood` on the next line, which is what actually chooses. The
+# takes below have a name-form already proved in tours/feel.tour (`near
+# driftwood`, `near boulder,stone_ore`), but swapping them changes which prop
+# is taken and so what the next four frames are pictures of, and the two fires
+# at 188.5,428.5 have to go on agreeing with the `at prop:fire` that comes back
+# to them at line 136 — a fire laid somewhere else is a fire the night frame
+# walks sixty tiles to the wrong one of. That is a frame-by-frame job, not a
+# sweep, and doing it blind is how this repo got pictures of the wrong place
+# for months.
 at 200,436
 at prop:driftwood
 press use 0.1

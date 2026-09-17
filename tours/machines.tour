@@ -27,7 +27,7 @@ coast calm
 zoom 9
 # A harvester's field on the first coast.
 coast calm
-at 200.5,431.5
+place spawn
 wait 1.5
 spawn harvester
 wait 1.2
@@ -46,6 +46,7 @@ wait 0.1
 tap dodge
 wait 0.6
 # Away from it, to a watcher out in a field clear of the wrecks, drawn back so its mast shows.
+# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
 at 135,375
 zoom 13
 wait 1.5

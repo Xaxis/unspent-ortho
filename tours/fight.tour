@@ -21,6 +21,7 @@ end
 wait 0.05
 shot 03-blow-rings-off-plate with mob:runner
 # Away from it (far past its tether), to a watcher out in a field.
+# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
 at 135,375
 wait 1.5
 spawn watcher
@@ -69,7 +70,7 @@ await free 4
 wait 0.1
 shot 09-pulled-free with free
 # The harvester's long tell, read from outside its reach, on the first coast.
-at 200.5,431.5
+place spawn
 wait 1.5
 spawn harvester
 # Indifferent on its round: struck in its blades it turns, and tells.

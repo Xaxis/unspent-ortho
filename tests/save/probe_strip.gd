@@ -27,9 +27,12 @@ func _run() -> void:
 	var g := UiSlate.glass_of(menu.DEVICE)
 	var x := g.position.x + UiSlate.MARGIN_L
 	for p: Array in menu.KEY_HINTS:
-		x += maxi(9, UiFont.width(p[0] as String) + 6) + 4
-		x += UiFont.width(p[1] as String) + 12
-	var room := (g.end.x - UiSlate.MARGIN_R) - x
+		# UiSlate.key_cap and UiSlate.keys' two advances; all four doubled with the
+		# slate and this copy did not, so the figure a person read off this probe
+		# when deciding whether a sentence fits was about 36 px too generous.
+		x += maxi(18, UiFont.width(p[0] as String) + 8) + 8
+		x += UiFont.width(p[1] as String) + 24
+	var room := (g.end.x - UiSlate.MARGIN_R) - x - UiSlate.NOTE_GAP
 	print("== the key strip: one line, %d px of it (glass %s)" % [room, g])
 	for code: StringName in [&"missing", &"newer", &"older", &"elsewhere", &"damaged"]:
 		for slot: int in [0, 1]:
