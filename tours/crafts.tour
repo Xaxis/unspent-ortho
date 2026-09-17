@@ -1,0 +1,83 @@
+# Crafts, from a normal game start (docs/VISION.md §5): a raft lashed by hand at
+# the shore, put in the water and stood on through the real key, driven over water
+# nobody could wade, stepped off again, and left standing there; then the two
+# mended crafts a bench turns out, boarded on dry land.
+#   tools/tour.sh tours/crafts.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --give=driftwood:6,scrap:1,rag:2,hover_sled:1,walker_rig:1
+# (--give brings the armful of driftwood, the one plate off a tip and the two rags
+# the raft is lashed with, and the two bench-made crafts, which want a bench, iron
+# and a machine's own legs: the bench is the gear package's proof, not this one's.)
+coast calm
+# Down to the water from where the game starts, on the real keys. Which way the
+# sea lies is this seed's business; the walk is repeated until a raft could go
+# in, so a shore that moves fails the tour loudly instead of quietly lying.
+place spawn
+wait 0.3
+try 5
+walk -1,1 1.6
+await ride_ready 0.5
+end
+wait 0.4
+shot 01-at-the-tideline
+# A raft, made by hand out of what the tide brings and one drum off a wreck.
+tap craft
+await app:crafting 3
+choose raft
+tap use
+await made 5
+wait 0.4
+tap pause
+wait 0.4
+# What a made craft is until it is put down: a bundle of spars, cord and one
+# drum, in the creel, heavy enough to be most of what a person can carry.
+tap inventory
+wait 0.6
+shot 02-the-raft-in-the-creel with app:inventory
+tap inventory
+wait 0.4
+# `b` puts it in and steps on: the raft goes past the shallows, because a float
+# wants water under it.
+tap ride
+await riding:raft 3
+wait 0.5
+shot 03-aboard-the-raft with riding:raft
+# Out over water no body could wade. The open sea lies down and to the left of
+# this shore (seed 1, the options in the header); the crossing itself is awaited,
+# so a coast that moves fails the tour instead of quietly shooting the shallows.
+walk -1,1 8
+await ride_crossed 4
+wait 0.3
+shot 04-carried-over-deep-water with riding:raft, afloat
+# Nosed back in the way it came out, and stepped off: the raft stays floating
+# where it was left.
+walk 1,-1 7
+try 8
+walk 1,-1 0.8
+await step_off_ready 1
+end
+tap ride
+await parked:raft 3
+wait 0.5
+shot 05-raft-left-floating with parked:raft
+# The mended two, boarded on the ground they are for: a hover sled that runs the
+# bog and the shallows at speed, and a rig of machine legs to stride a cliff on.
+ground grass
+wait 0.3
+tap ride
+await riding:hover_sled 3
+wait 0.5
+shot 06-aboard-the-sled with riding:hover_sled
+tap ride
+await parked:hover_sled 3
+wait 0.4
+shot 07-sled-parked with parked:hover_sled
+walk 1,0 1.0
+wait 0.3
+tap ride
+await riding:walker_rig 3
+wait 0.5
+shot 08-in-the-walker-rig with riding:walker_rig
+tap ride
+await parked:walker_rig 3
+wait 0.5
+shot 09-walker-rig-left-standing with parked:walker_rig

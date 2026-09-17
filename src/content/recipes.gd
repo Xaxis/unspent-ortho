@@ -106,6 +106,14 @@ const LIST: Array[Dictionary] = [
 	{"id": &"condenser", "at": &"bench", "minutes": 75.0, "needs": {&"scrap": 2, &"copper": 2, &"rag": 1}, "makes": {&"condenser": 1}},
 	{"id": &"glide_wing", "at": &"bench", "minutes": 110.0, "needs": {&"scrap": 4, &"timber": 2, &"rag": 3, &"pitch": 1}, "makes": {&"glide_wing": 1}},
 
+	# --- Crafts (docs/VISION.md §5) ---
+	# A raft is lashed at the shore out of what the tide brings and one drum off a
+	# wreck: the first craft, reachable on day one. The mended two need a bench,
+	# iron and a machine's own ducts and legs.
+	{"id": &"raft", "at": &"hand", "minutes": 30.0, "needs": {&"driftwood": 6, &"scrap": 1, &"rag": 2}, "makes": {&"raft": 1}, "tool": &"cut"},
+	{"id": &"hover_sled", "at": &"bench", "minutes": 120.0, "needs": {&"scrap": 4, &"iron": 2, &"timber": 2, &"copper": 1, &"rag": 2}, "makes": {&"hover_sled": 1}},
+	{"id": &"walker_rig", "at": &"bench", "minutes": 140.0, "needs": {&"scrap": 5, &"iron": 3, &"timber": 3, &"rag": 2}, "makes": {&"walker_rig": 1}},
+
 	# --- Wheel and loom (inside houses, once there are interiors) ---
 	{"id": &"yarn", "at": &"wheel", "minutes": 50.0, "needs": {&"wool": 3}, "makes": {&"yarn": 1}},
 	{"id": &"blanket", "at": &"loom", "minutes": 140.0, "needs": {&"yarn": 4}, "makes": {&"blanket": 1}},
