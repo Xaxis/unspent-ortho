@@ -158,25 +158,29 @@ float sprig_broad(vec2 uv, float seed, out float which) {
 	return best;
 }
 
-// A cluster of small leaves standing out from a short twig: scrub, bramble.
+// A cluster of rounded leaves standing out from a short twig: scrub, bramble.
+// Five, not seven: a bush is seen smaller than a crown, and seven leaves to a
+// card were three pixels each at the play camera -- a speckle, not a shrub.
 float sprig_small(vec2 uv, float seed, out float which) {
 	which = 0.0;
 	float best = -1.0;
-	for (int k = 0; k < 7; k++) {
+	for (int k = 0; k < 5; k++) {
 		float fk = float(k);
 		float h1 = ink_hash(vec2(seed + fk * 3.1, 11.0));
 		float h2 = ink_hash(vec2(fk * 5.7, seed + 17.0));
 		float ang = fk * 2.39996 + seed * 0.13;
-		vec2 at = vec2(0.5, 0.5) + vec2(sin(ang), cos(ang)) * (0.06 + 0.26 * sqrt(h1));
+		vec2 at = vec2(0.5, 0.5) + vec2(sin(ang), cos(ang)) * (0.05 + 0.2 * sqrt(h1));
 		float a = atan(at.x - 0.5, at.y - 0.5) + (h2 - 0.5) * 0.9;
-		float v = blade(uv, at - vec2(sin(a), cos(a)) * 0.08, a, 0.26 + h2 * 0.1, 0.12);
+		float v = blade(uv, at - vec2(sin(a), cos(a)) * 0.1, a, 0.36 + h2 * 0.1, 0.17);
 		if (v > best) { best = v; which = fk + 1.0; }
 	}
 	return best;
 }
 
 // A spray of needles off a twig. `stiff` 0 is a soft pine spray, 1 gorse spines:
-// shorter, straighter, further off the twig.
+// fewer, thicker, further off the twig. Gorse is seen small -- a whole bush is
+// fifty pixels at the play camera -- and spines drawn at a pine's pitch and width
+// were under a pixel wide, so the coast's scrub came back as glitter.
 float sprig_needle(vec2 uv, float seed, float stiff, out float which) {
 	which = 0.0;
 	float bend = (ink_hash(vec2(seed, 5.0)) - 0.5) * 0.35;
@@ -190,15 +194,15 @@ float sprig_needle(vec2 uv, float seed, float stiff, out float which) {
 	// a point belongs to is where its line meets the twig.
 	float ang = mix(0.6, 1.0, stiff);
 	float row = y - abs(x) * cos(ang) / sin(ang);
-	float pitch = mix(0.085, 0.11, stiff);
+	float pitch = mix(0.085, 0.17, stiff);
 	float k = floor(row / pitch + 0.5);
 	float y0 = k * pitch;
 	if (y0 < 0.04 || y0 > 0.86) {
 		return best;
 	}
 	float along = abs(x) / sin(ang);
-	float len = mix(0.4, 0.26, stiff) * (1.0 - y0 * 0.4) * (0.8 + 0.4 * ink_hash(vec2(seed, k + sign(x) * 0.5)));
-	float w = mix(0.05, 0.04, stiff) * (1.0 - 0.6 * along / len);
+	float len = mix(0.4, 0.34, stiff) * (1.0 - y0 * 0.4) * (0.8 + 0.4 * ink_hash(vec2(seed, k + sign(x) * 0.5)));
+	float w = mix(0.05, 0.1, stiff) * (1.0 - 0.6 * along / len);
 	float dist = abs(row - y0) * sin(ang);
 	if (along < len && dist < w) {
 		float v = 1.0 - dist / w;
@@ -238,9 +242,14 @@ void fragment() {
 	}
 	vec3 c = COLOR.rgb;
 	// Every leaf on a sprig its own value, so one card reads as several leaves,
-	// and a paler midrib down each, which is where a leaf folds.
-	c *= 0.88 + 0.24 * ink_hash(vec2(which * 7.3 + seed, 3.1));
-	c *= mix(1.0, 1.1, smoothstep(0.82, 0.96, inside));
+	// and on a broad leaf a paler midrib, which is where a leaf folds. Only a
+	// broad leaf is big enough on screen to carry either at full strength: on a
+	// bush's or a needle's a midrib is one pixel and comes back as glitter.
+	bool broad = shape == LEAF_BROAD;
+	c *= 1.0 + (broad ? 0.24 : 0.1) * (ink_hash(vec2(which * 7.3 + seed, 3.1)) - 0.5);
+	if (broad) {
+		c *= mix(1.0, 1.1, smoothstep(0.82, 0.96, inside));
+	}
 	c = sky_apply(c, world_pos, TIME);
 
 	// THE LIGHT. Godot turns NORMAL round for a back face before this code runs;

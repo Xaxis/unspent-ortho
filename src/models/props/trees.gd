@@ -118,11 +118,13 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 ## A broadleaf's card, edge in tiles: about nineteen pixels at the play camera,
 ## which is a sprig of five leaves each still a few pixels across.
 const BROAD_CARD := 0.26
-## A bush's and a bramble's: smaller leaves, closer.
-const SMALL_CARD := 0.2
+## A bush's: a sprig of seven small leaves. As big a card as a broadleaf's, because
+## at 0.2 each leaf was three pixels at the play camera and a bush came back as
+## a speckle of blue-green noise rather than a shrub.
+const SMALL_CARD := 0.26
 ## Gorse: a spray of spines, and deeper, because gorse is a thicket you cannot
 ## see into, not a crown with daylight in it.
-const SPINE_CARD := 0.2
+const SPINE_CARD := 0.26
 const SPINE_LAYERS := 3.6
 ## The needles of a pine are a step under the tier's old wash: the pinewood is
 ## dark under its canopy, and a spray lit on both faces came back a shade of
@@ -369,8 +371,10 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 		var flowers: int = [22, 9, 15][v % 3]
 		for i in flowers:
 			var a := float(i) * 2.39996 + 0.3
-			var r := 0.2 + fmod(float(i) * 0.113, 0.18)
-			var y := 0.26 + fmod(float(i) * 0.071, 0.26)
+			# On the skin of the thicket, where the light is: under a mass of spine
+			# cards a flower at the old depth was a flower nobody saw.
+			var r := 0.36 + fmod(float(i) * 0.113, 0.14)
+			var y := 0.32 + fmod(float(i) * 0.071, 0.26)
 			var p := Vector3(cos(a) * r, y, sin(a) * r)
 			k.fleck(p, p + Vector3(0.05, 0.0, 0.02), p + Vector3(0.02, 0.05, -0.01), P.RUST[5] if i % 3 else P.SAND[5])
 	k.sway_by_height(start, 0.0, 0.6, 0.3)
