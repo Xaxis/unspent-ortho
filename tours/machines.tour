@@ -27,7 +27,7 @@ coast calm
 zoom 9
 # A harvester's field on the first coast.
 coast calm
-at 200.5,431.5
+place spawn
 wait 1.5
 spawn harvester
 wait 1.2

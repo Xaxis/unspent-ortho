@@ -8,7 +8,10 @@
 coast calm
 weather clear:0
 hour 12
-at 200.5,431.5
+# The square the player wakes in, asked for by name: this was `at 200.5,431.5`,
+# which is the seed-1 spawn tile to the half-tile and no longer would be after
+# the next change to worldgen.
+place spawn
 zoom 8
 wait 1.2
 
@@ -35,7 +38,7 @@ end
 # cut off other machines.
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 zoom 6
 spawn harvester
 wait 1.3

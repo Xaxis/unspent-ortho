@@ -36,8 +36,12 @@ zoom 15
 weather clear:0
 
 # --- noon ---------------------------------------------------------------------
+# The village square the player wakes in, asked for by name. It used to read
+# `at 200.5,431.5`, which is the seed-1 spawn tile to the half-tile and would
+# have stopped being it the next time worldgen moved the island. Ten frames
+# across four tours were staged on that one number.
 hour 12
-at 200.5,431.5
+place spawn
 wait 1.2
 
 # indifferent: a worker on its round, nothing of yours.
@@ -54,7 +58,7 @@ shot 01-noon-indifferent with mob:harvester
 # wary: a keeper, which starts one rung up the ladder and keeps its round.
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 try 8
 	coast calm
 	wait 0.35
@@ -68,7 +72,7 @@ shot 02-noon-wary with mob:warden
 # observant: a watcher, which never fights and only ever files.
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 try 8
 	coast calm
 	wait 0.35
@@ -107,7 +111,7 @@ shot 04-noon-hostile with mob:harvester
 coast calm
 hour 23
 weather clear:0
-at 200.5,431.5
+place spawn
 wait 1.4
 
 try 8
@@ -122,7 +126,7 @@ shot 05-night-indifferent with mob:harvester
 
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 try 8
 	coast calm
 	wait 0.35
@@ -135,7 +139,7 @@ shot 06-night-wary with mob:warden
 
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 try 8
 	coast calm
 	wait 0.35
