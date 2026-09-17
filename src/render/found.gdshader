@@ -76,9 +76,17 @@ const float FOUND_RUBBED = 0.20;
 // merely roughened.
 //
 // So a machine's albedo is taken down to what it must be for the ordering to
-// survive the light. It is one number, it is measured, and the measurement is
-// tests/render/test_machine_mass.gd -- which shoots the frame rather than
-// reading the table, because the table was never what was wrong.
+// survive the light. It is one number and it is MEASURED ON A FRAME, because
+// the table was never what was wrong: shoot
+//   tools/shot.sh x.png --seed=7 --place=coast --spawn=harvester,watcher --zoom=8 --hour=12
+// and take the median luma of the violet-hued pixels against the green ones.
+// main: +10.4. Roughening the metal alone: +10.3. This: -13.0.
+//
+// tests/models/test_machines_ramps.gd still holds the PALETTE half of the law
+// (no kind meets another at step 3, the fill is under the coast turf, nothing
+// leaves the violet arc). A headless test cannot render the frame, so the
+// number above is reported rather than pinned, and this constant is the one
+// place anybody has to look when it drifts.
 const float FOUND_MASS = 0.55;
 
 // The panels a machine is built out of, in world space and on the machines'
