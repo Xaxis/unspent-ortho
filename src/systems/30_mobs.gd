@@ -42,7 +42,8 @@ func setup(g: Game) -> void:
 	coast.spawning = g.options.spawn.is_empty()
 	Events.time_skipped.connect(_on_time_skipped)
 	for k: String in g.options.spawn:
-		place_near_player(Roster.resolve(k.strip_edges()))
+		var staged := Spawner.staged(k)
+		place_near_player(staged.id, staged.facing)
 	_ensure_nodes()
 
 
@@ -121,8 +122,15 @@ func _on_time_skipped(minutes: float, reason: StringName) -> void:
 
 
 ## Put a body where the camera shows it, in front of the player, on ground it
-## may stand on; facing the player. Used by --spawn for shots and by tests.
-func place_near_player(kind: StringName) -> MobState:
+## may stand on. Used by --spawn for shots and by tests.
+##
+## It faces the PLAYER unless `facing` says otherwise (radians; `Spawner.staged`
+## turns `--spawn=runner@-112` into one). A bearing is asked for when the frame is
+## about the MODEL rather than about the fight: a hull is opened up and proved on
+## a mask at one yaw, and the only way to ask whether that reads in the lit world
+## is to stand the thing at that yaw and look. Where it LANDS is unchanged either
+## way, so a spawn still fails when nothing could be placed in frame.
+func place_near_player(kind: StringName, facing: float = NAN) -> MobState:
 	if kind == &"":
 		return null
 	# The camera's frame as it is NOW, not as it was when this system was set up.
@@ -181,7 +189,7 @@ func place_near_player(kind: StringName) -> MobState:
 				best_score = score
 				best = p
 	var m := sim.add_mob(kind, best)
-	m.facing = (hp - best).angle()
+	m.facing = facing if not is_nan(facing) else (hp - best).angle()
 	m.aim = m.facing
 	# And its sweep is about the way it was put to face, not about the bearing
 	# its tile happened to hash to: a watcher stood in front of the player to be
