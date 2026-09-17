@@ -1,6 +1,8 @@
 class_name PropModels
-## Models for every PropKind, in 1-4 variants, dressed per country (snow on the
-## pines of the Snowfield, basalt boulders in the Burning). Each model is two
+## Models for every PropKind, in 1-4 variants, dressed for the landscape they
+## stand in (snow on a pine where snow lies, basalt boulders where the rock is
+## basalt). What a landscape's things are made of is `BiomeDressing`, read off
+## the registry: nothing here knows a landscape by name. Each model is two
 ## parts: MADE geometry for world.gdshader (land, plants, anything a person
 ## built) and FOUND geometry for found.gdshader (pylons, poles, plate taken off
 ## machines, cast stone). Built once per (kind, variant, country); WorldView
@@ -307,16 +309,18 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			return [{"at": Vector3(-0.375, 0.62, 0.056), "size": Vector2.ZERO, "color": cold}]
 		PropKind.SHACK:
 			# Only the shacks that wired stolen tech in (props/remains.gd _wired):
-			# the middle of the neon tube, in that landscape's colour.
+			# the middle of the neon tube, in that shelter's colour. Keyed on the
+			# FORM and not on a landscape: a stilt hut's wall is where it is over
+			# whichever fen the hut stands.
 			if variant % 2 == 0:
 				return []
 			var n := Remains.NEON
-			match country:
-				Country.MOSS: return [{"at": Vector3(0.62, 1.27, -0.285), "size": Vector2.ZERO, "color": n[2], "neon": true}]
-				Country.PINEWOOD: return [{"at": Vector3(0.64, 1.75, 0.4), "size": Vector2.ZERO, "color": n[0], "neon": true}]
-				Country.SNOWFIELD: return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
-				Country.BONELANDS: return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
-				Country.BURNING: return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+			match BiomeDressing.of(country).shelter:
+				&"stilt": return [{"at": Vector3(0.62, 1.27, -0.285), "size": Vector2.ZERO, "color": n[2], "neon": true}]
+				&"blind": return [{"at": Vector3(0.64, 1.75, 0.4), "size": Vector2.ZERO, "color": n[0], "neon": true}]
+				&"pod": return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+				&"lean_to": return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
+				&"dugout": return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).
@@ -421,24 +425,36 @@ static func node(kind: int, variant: int = 0, country: int = Country.COAST) -> N
 	return root
 
 
-## Every kind in every variant, then the country dressings of the kinds that
-## change; `--filter=` in the gallery narrows it.
+## Every kind in every variant in the coast's dressing, then the dressings of
+## every OTHER landscape in the registry for the kinds that change;
+## `--filter=` in the gallery narrows it.
 static func gallery() -> Array:
 	var out: Array = []
 	for kind in PropKind.COUNT:
 		for v in variants(kind):
 			var label := PropKind.NAMES[kind] + ("" if variants(kind) == 1 else " %d" % v)
 			out.append({"name": label, "node": node(kind, v, Country.COAST)})
+	var lands := dressings()
 	for kind: int in [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER, PropKind.REEDS, PropKind.HOUSE, PropKind.GORSE, PropKind.RUIN, PropKind.WRECK, PropKind.CAIRN]:
-		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
+		for c: int in lands:
 			out.append({"name": "%s %s" % [PropKind.NAMES[kind], BiomeRegistry.names()[c]], "node": node(kind, 0, c)})
 	# The but in snow: its sods carry the snow, not a lid of it.
 	out.append({"name": "%s 3 snowfield" % PropKind.NAMES[PropKind.HOUSE], "node": node(PropKind.HOUSE, 3, Country.SNOWFIELD)})
 	# The evidence each landscape dresses its own way.
 	for kind: int in DRESSED:
-		for c: int in [Country.MOSS, Country.PINEWOOD, Country.SNOWFIELD, Country.BONELANDS, Country.BURNING]:
+		for c: int in lands:
 			for v in variants(kind):
 				out.append({"name": "%s %d %s" % [PropKind.NAMES[kind], v, BiomeRegistry.names()[c]], "node": node(kind, v, c)})
+	return out
+
+
+## Every land type but the coast, whose dressing the plain rows above already
+## show. A landscape added tomorrow shows up here without a line being added.
+static func dressings() -> Array[int]:
+	var out: Array[int] = []
+	for d: BiomeDef in BiomeRegistry.land():
+		if d.index != Country.COAST:
+			out.append(d.index)
 	return out
 
 

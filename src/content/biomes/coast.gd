@@ -36,6 +36,27 @@ static func make() -> BiomeDef:
 	d.rock_color = P.SLATE[2]
 	# Thrift in bloom on the cliff turf.
 	d.decor_tints = {&"bloom": [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]]}
+	# What a thing built or left here is made of. Slate under turf, sand banked
+	# against everything, and a wind off the sea that crops what grows in it.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.SLATE[3], P.SLATE[2], P.LINEN[3]]
+	dress.drift = [P.SAND[4], P.SAND[3]]
+	dress.turf = [P.MOSS[2], P.MOSS[3], P.MOSS[2].lerp(P.EARTH[2], 0.35), P.MOSS[3]]
+	dress.walling = [P.STONE[2], P.SLATE[2], P.STONE[3], P.SLATE[3]]
+	# A tide line of weed hung on whatever stands in it, and rust where the salt
+	# gets in: the coast takes a thing apart differently from a dry place.
+	dress.covers = &"wrack"
+	dress.wind = 0.09
+	dress.sink = 0.16
+	dress.lie = Vector2(-0.1, 0.12)
+	dress.berry = P.BLOOM[2]
+	dress.spread = 1.1
+	d.dressing = dress
+	# Marram and sea club-rush in the brackish water behind the dunes.
+	d.tree_tints = {
+		&"reed": [P.SAND[4], P.MOSS[4].lerp(P.SAND[4], 0.5), P.SAND[3]],
+		&"reed_head": [P.SAND[2]],
+	}
 	d.grade = Vector4(-0.55, 0.16, 0.05, 0.02)
 	# 1.0 is the coast, and the coast is where the night was measured. Every other
 	# landscape's night is stated against this one, so this line is a fixed point

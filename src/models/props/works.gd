@@ -110,16 +110,12 @@ static func road_sign(k: Kit, v: int, c: int) -> void:
 	if v == 3:
 		tipped_sign(k, c)
 		return
+	var dress := BiomeDressing.of(c)
 	var s := 30100 + v * 3 + c
-	var face := P.RIME[5].lerp(P.PLATE[4], 0.35)
-	var ink := P.INK[1]
-	match c:
-		Country.BONELANDS: face = P.LINEN[5].lerp(P.PLATE[4], 0.2)
-		Country.BURNING:
-			face = P.PLATE[2]
-			ink = P.INK[0]
-		Country.MOSS: face = P.RIME[4].lerp(P.MOSS[3], 0.25)
-	var lean := Basis(Vector3.BACK, 0.06 if c == Country.MOSS else 0.0) * Basis(Vector3.RIGHT, 0.05 if c == Country.BONELANDS else 0.0)
+	var face := dress.sign[0]
+	var ink := dress.sign[1]
+	# Soft ground lets a post go over; scoured ground undercuts one.
+	var lean := Basis(Vector3.BACK, 0.06 if BiomeDressing.reedy(c) else 0.0) * Basis(Vector3.RIGHT, 0.05 if dress.perishes() else 0.0)
 	k.found.push(Transform3D(lean, Vector3.ZERO))
 	match v % 3:
 		0:
@@ -175,11 +171,12 @@ static func road_sign(k: Kit, v: int, c: int) -> void:
 		k.made.quad(Vector3(0.025, 0.68, -0.04), Vector3(0.025, 0.68, 0.0), Vector3(0.025, 0.72, 0.0), Vector3(0.025, 0.72, -0.04), P.INK[0])
 		k.made.quad(Vector3(0.025, 0.49, 0.28), Vector3(0.025, 0.49, -0.28), Vector3(0.025, 0.55, -0.26), Vector3(0.025, 0.55, 0.3), P.RUST[3])
 		k.made.pop()
-	if c == Country.SNOWFIELD:
-		k.clump(0.0, 1.28 if v % 3 == 0 else (1.7 if v % 3 == 1 else 1.16), 0.0, 0.2 if v % 3 == 0 else 0.26, 0.06, s + 7, P.RIME[5], 6)
-		Remains.banks(k, [[0.2, 0.2, 0.3, 0.2], [-0.2, -0.1, 0.25, 0.14]], P.RIME[5], s + 8)
-	elif c == Country.BONELANDS:
-		Remains.banks(k, [[-0.25, 0.1, 0.3, 0.1]], Remains.drift_of(c)[0], s + 8)
+	if dress.cold():
+		k.clump(0.0, 1.28 if v % 3 == 0 else (1.7 if v % 3 == 1 else 1.16), 0.0, 0.2 if v % 3 == 0 else 0.26, 0.06, s + 7, dress.snow[0], 6)
+		Remains.banks(k, [[0.2, 0.2, 0.3, 0.2], [-0.2, -0.1, 0.25, 0.14]], dress.snow[0], s + 8)
+	elif dress.perishes():
+		# Scoured: the dust undercuts a post rather than banking over it.
+		Remains.banks(k, [[-0.25, 0.1, 0.3, 0.1]], dress.drift[0], s + 8)
 
 
 ## A warning knocked flat: its post snapped at the foot and bent, the plate
@@ -187,11 +184,7 @@ static func road_sign(k: Kit, v: int, c: int) -> void:
 ## plate torn off it lying apart; the stub standing.
 static func tipped_sign(k: Kit, c: int) -> void:
 	var s := 30190 + c
-	var face := P.RIME[5].lerp(P.PLATE[4], 0.35)
-	if c == Country.BONELANDS:
-		face = P.LINEN[5].lerp(P.PLATE[4], 0.2)
-	elif c == Country.BURNING:
-		face = P.PLATE[2]
+	var face := BiomeDressing.of(c).sign[0]
 	k.found.prism(0, -0.05, 0, 0.05, 0.28, 0.05, 4, P.PLATE[2], P.PLATE[1], PI * 0.25)
 	k.found.push(Transform3D(Basis(Vector3.BACK, -1.35) * Basis(Vector3.UP, 0.2), Vector3(0.02, 0.26, 0.0)))
 	k.found.prism(0, 0.0, 0, 0.045, 1.2, 0.045, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
@@ -213,9 +206,10 @@ static func tipped_sign(k: Kit, c: int) -> void:
 	k.found.pop()
 	# What grew or blew over it.
 	var d := Remains.drift_of(c)
-	if c == Country.SNOWFIELD:
-		Remains.drift(k, Vector3(0.9, 0.0, -0.3), 0.6, 0.3, 0.12, 0.3, P.RIME[5], s)
-	elif c == Country.MOSS or c == Country.COAST or c == Country.PINEWOOD:
+	var dress := BiomeDressing.of(c)
+	if dress.cold():
+		Remains.drift(k, Vector3(0.9, 0.0, -0.3), 0.6, 0.3, 0.12, 0.3, dress.snow[0], s)
+	elif BiomeDressing.grassy(c):
 		var rs := k.made.vertex_count()
 		for i in 7:
 			var base := Vector3(0.7 + i * 0.12, 0.0, 0.32 + Kit.j(s, i, 0.08))
@@ -376,11 +370,11 @@ static func _oil(k: Kit, at: Vector3, r: float, s: int) -> void:
 ## valve wheel; 1: fallen off one stilt and split, leaking. Taller over the
 ## moss; blackened and collapsed in the burning's refinery runs.
 static func pipe(k: Kit, v: int, c: int) -> void:
+	var d := BiomeDressing.of(c)
 	var s := 30900 + v + c
-	var h := 1.1 if c == Country.MOSS else 0.8
-	var col := P.PLATE[3]
-	if c == Country.BURNING:
-		col = P.STONE[1].lerp(P.PLATE[2], 0.4)
+	# Carried clear of standing water where there is any.
+	var h := 1.1 if BiomeDressing.reedy(c) else 0.8
+	var col: Color = P.STONE[1].lerp(P.PLATE[2], 0.4) if BiomeDressing.burnt(c) else P.PLATE[3]
 	var r := 0.14
 	for sx: float in [-0.55, 0.45]:
 		if v % 2 == 1 and sx > 0.0:
@@ -404,14 +398,14 @@ static func pipe(k: Kit, v: int, c: int) -> void:
 		k.found.prism(0, 0, 0, r, 1.0, r, 8, P.RUST[2].lerp(col, 0.4), P.INK[1])
 		k.found.pop()
 		_oil(k, Vector3(0.3, 0.0, 0.25), 0.28, s + 3)
-	if c == Country.MOSS:
+	if BiomeDressing.reedy(c):
 		var rs := k.made.vertex_count()
 		for i in 6:
 			var x := -0.9 + i * 0.35
 			k.blade(Vector3(x, -0.02, 0.25), Vector3(x + 0.05, 0.7, 0.3), 0.05, 0.3 * i, P.SPRUCE[3] if i % 2 else P.MOSS[3])
 		k.sway_by_height(rs, 0.0, 0.7, 0.6)
-	elif c == Country.BURNING:
-		Remains.banks(k, [[0.6, 0.3, 0.3, 0.1], [-0.6, -0.3, 0.3, 0.08]], P.ASH[2], s + 5)
+	else:
+		Remains.banks(k, [[0.6, 0.3, 0.3, 0.1], [-0.6, -0.3, 0.3, 0.08]], d.drift[0], s + 5)
 
 
 # --- the pinewood's corridor -----------------------------------------------------
@@ -445,9 +439,10 @@ static func relay(k: Kit, v: int, c: int) -> void:
 	k.found.pop()
 	k.found.prism(0, top, 0, 0.06, top + 0.1, 0.05, 6, P.PLATE[2])
 	k.found.prism(0, top + 0.1, 0, 0.045, top + 0.22, 0.035, 6, BEACON)
-	if c == Country.SNOWFIELD:
+	var d := BiomeDressing.of(c)
+	if d.cold():
 		for i in 5:
-			k.rod(Vector3(-0.1, top - 0.32, -0.5 + i * 0.25), Vector3(-0.1, top - 0.5 - (i % 2) * 0.1, -0.5 + i * 0.25), 0.008, 3, P.RIME[4])
+			k.rod(Vector3(-0.1, top - 0.32, -0.5 + i * 0.25), Vector3(-0.1, top - 0.5 - (i % 2) * 0.1, -0.5 + i * 0.25), 0.008, 3, d.snow[1])
 	footing(k, c, 0.6, s)
 
 
@@ -465,7 +460,8 @@ static func relay(k: Kit, v: int, c: int) -> void:
 static func checkpoint(k: Kit, v: int, c: int) -> void:
 	var s := 31300 + v + c
 	var alive := v % 2 == 0
-	var cold := c == Country.SNOWFIELD
+	var d := BiomeDressing.of(c)
+	var cold := d.cold()
 	# The pad and the booth.
 	k.chamfer(0.0, -0.12, 0.0, 1.5, 0.16, 1.35, 0.18, P.STONE[2], P.STONE[3])
 	k.chamfer(0.0, 0.02, 0.0, 1.1, 1.72, 1.0, 0.16, P.PLATE[2], P.PLATE[3])
@@ -556,6 +552,7 @@ static func checkpoint(k: Kit, v: int, c: int) -> void:
 ## from everywhere. Octagonal, banded, with ladder and platforms, warning
 ## beacons at two heights, a ducted housing at its foot. Rime banded up it.
 static func stack(k: Kit, v: int, c: int) -> void:
+	var d := BiomeDressing.of(c)
 	var s := 31500 + v + c
 	var h := 8.0
 	k.chamfer(0.0, -0.1, 0.0, 2.2, 0.9, 2.2, 0.4, P.PLATE[1], P.PLATE[2])
@@ -569,8 +566,8 @@ static func stack(k: Kit, v: int, c: int) -> void:
 		var ra := lerpf(r0, r1, float(i) / bands)
 		var rb := lerpf(r0, r1, float(i + 1) / bands)
 		var col := P.PLATE[3] if i % 2 == 0 else P.PLATE[2]
-		if c == Country.SNOWFIELD and i % 3 == 1:
-			col = P.RIME[4]
+		if d.cold() and i % 3 == 1:
+			col = d.snow[1]
 		k.found.prism(0, y0, 0, ra, y1, rb, 8, col, col, PI / 8.0)
 		k.found.prism(0, y1 - 0.06, 0, rb + 0.03, y1, rb + 0.03, 8, P.PLATE[1], P.PLATE[1], PI / 8.0)
 	# The mouth, black, a lip of soot.
@@ -590,9 +587,9 @@ static func stack(k: Kit, v: int, c: int) -> void:
 	run(k, Vector3(0.0, h - 0.2, r1 + 0.01), 0.1, 2.4, Vector3(0, 0, 1))
 	run(k, Vector3(-0.3, h - 0.5, r1 + 0.02), 0.06, 1.6, Vector3(-0.3, 0, 1))
 	k.found.quad(Vector3(1.651, 0.1, 0.2), Vector3(1.651, 0.1, -0.2), Vector3(1.651, 0.35, -0.2), Vector3(1.651, 0.35, 0.2), STRIP)
-	if c == Country.SNOWFIELD:
-		Remains.banks(k, [[-1.2, -1.0, 0.9, 0.5], [1.0, -1.1, 0.8, 0.45], [-1.3, 0.9, 0.7, 0.4], [2.0, 0.7, 0.5, 0.3]], P.RIME[5], s + 3)
-		k.clump(0.0, 0.8, 0.0, 1.1, 0.14, s + 4, P.RIME[5], 9)
+	if d.cold():
+		Remains.banks(k, [[-1.2, -1.0, 0.9, 0.5], [1.0, -1.1, 0.8, 0.45], [-1.3, 0.9, 0.7, 0.4], [2.0, 0.7, 0.5, 0.3]], d.snow[0], s + 3)
+		k.clump(0.0, 0.8, 0.0, 1.1, 0.14, s + 4, d.snow[0], 9)
 	else:
 		footing(k, c, 1.6, s + 3)
 
@@ -695,8 +692,9 @@ static func survey(k: Kit, v: int, c: int) -> void:
 			k.rod(Vector3(cos(a) * 0.3, -0.05, sin(a) * 0.3), Vector3(0, 1.0, 0), 0.016, 4, P.PLATE[3])
 		k.found.prism(0, 1.0, 0, 0.08, 1.12, 0.08, 8, P.PLATE[2], P.PLATE[3])
 		k.found.prism(0, 1.12, 0, 0.05, 1.2, 0.04, 8, lit(P.COLD[3], 0.9))
-	if c == Country.SNOWFIELD:
-		Remains.banks(k, [[0.05, 0.05, 0.18, 0.12]], P.RIME[5], s)
+	var d := BiomeDressing.of(c)
+	if d.cold():
+		Remains.banks(k, [[0.05, 0.05, 0.18, 0.12]], d.snow[0], s)
 
 
 # --- the burning ---------------------------------------------------------------
@@ -726,7 +724,7 @@ static func vent_cap(k: Kit, v: int, c: int) -> void:
 			var a := float(i) * 1.1
 			var p := Vector3(cos(a) * 0.56, 0.1, sin(a) * 0.56)
 			k.fleck(p, p + Vector3(0.07, 0.0, 0.02), p + Vector3(0.02, 0.03, 0.06), P.SAND[5])
-	Remains.banks(k, [[-0.7, 0.3, 0.3, 0.1]], P.ASH[2] if c == Country.BURNING else Remains.drift_of(c)[0], s + 3)
+	Remains.banks(k, [[-0.7, 0.3, 0.3, 0.1]], Remains.drift_of(c)[0], s + 3)
 
 
 ## The clerks' archive in the ash: exact cabinets in a row, drawers ruled,
@@ -762,7 +760,7 @@ static func archive(k: Kit, v: int, c: int) -> void:
 			var a := -0.7 + Kit.j(s, i, 0.7)
 			var r := 0.5 + fmod(i * 0.23, 1.2)
 			_leaf(k, Vector3(0.3 + cos(a) * r, 0.02, sin(a) * r), 0.13, Kit.j(s, i + 20, 1.6), burnt if i % 3 == 0 else paper, s + 30 + i)
-	Remains.banks(k, [[-0.3, 0.9, 0.5, 0.2], [0.4, -1.0, 0.45, 0.16]], P.ASH[2] if c == Country.BURNING else Remains.drift_of(c)[0], s + 50)
+	Remains.banks(k, [[-0.3, 0.9, 0.5, 0.2], [0.4, -1.0, 0.45, 0.16]], Remains.drift_of(c)[0], s + 50)
 
 
 ## A leaf of ruled paper lying on the ground: pale, lines ruled across it,

@@ -42,28 +42,17 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 
 # --- shared pieces -------------------------------------------------------------
 
-## The land's own wash in a country, and a step darker: what drifts and banks
-## against a thing (sand, peat, needles, snow, dust, ash).
+## What drifts and banks against a thing left out here (sand, peat, needles,
+## snow, dust, ash), and a step darker. Declared as `BiomeDressing.drift`, and
+## worked out from the landscape's own plain ground where it does not argue.
 static func drift_of(c: int) -> Array[Color]:
-	match c:
-		Country.MOSS: return [P.EARTH[1].lerp(P.MOSS[1], 0.4), P.EARTH[1]]
-		Country.PINEWOOD: return [P.EARTH[2].lerp(P.EARTH[3], 0.4), P.EARTH[2]]
-		Country.SNOWFIELD: return [P.RIME[5], P.RIME[4]]
-		Country.BONELANDS: return [P.LINEN[4].lerp(P.SAND[4], 0.4), P.LINEN[3]]
-		Country.BURNING: return [P.ASH[2], P.ASH[1]]
-	return [P.SAND[4], P.SAND[3]]
+	return BiomeDressing.of(c).drift
 
 
-## Timber as each country weathers it: silvered by salt, black with bog, grey
-## with needles, bleached, or charred.
+## Timber as this landscape weathers it: silvered by salt, black with bog, grey
+## with needles, bleached, or charred (`BiomeDressing.timber`).
 static func wood_of(c: int) -> Array[Color]:
-	match c:
-		Country.MOSS: return [P.EARTH[1], P.INK[3]]
-		Country.PINEWOOD: return [P.EARTH[2], P.EARTH[1]]
-		Country.SNOWFIELD: return [P.SLATE[2], P.EARTH[1]]
-		Country.BONELANDS: return [P.LINEN[3], P.LINEN[2]]
-		Country.BURNING: return [P.INK[2], P.STONE[0]]
-	return [P.LINEN[3].lerp(P.ASH[3], 0.4), P.LINEN[2]]
+	return BiomeDressing.of(c).timber
 
 
 ## Soft lumps [x, z, r, h] banked against a thing, feet sunk in the ground.
@@ -220,10 +209,12 @@ static func wheel(k: Kit, at: Vector3, r: float, width: float, tyre: Color, hub:
 ## mesh panel between hand posts, 2: a section gone over. Snow fences are slats
 ## in the Snowfield; reeds grow through them in the Moss.
 static func fence(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var burnt := BiomeDressing.burnt(c)
 	var s := 20100 + v * 13 + c
 	var wood := wood_of(c)
 	var posts: Array[float] = [-0.98, 0.02]
-	if c == Country.SNOWFIELD and v != 1:
+	if dress.cold() and v != 1:
 		# A snow fence: split slats wired in a ribbon, a drift built up behind.
 		for pi in 2:
 			k.limb(Vector3(posts[pi], -0.1, 0.0), Vector3(posts[pi] + Kit.j(s, pi, 0.05), 1.05, Kit.j(s, pi + 3, 0.04)), 0.04, 0.03, 5, wood[1])
@@ -232,11 +223,11 @@ static func fence(k: Kit, v: int, c: int) -> void:
 			var x := -1.0 + i * 0.155
 			var h := 0.85 + Kit.j(s, 10 + i, 0.08) - (absf(x) * 0.3 if v == 2 else 0.0)
 			k.made.push(Transform3D(Basis(Vector3.RIGHT, lean + Kit.j(s, 30 + i, 0.05)), Vector3(x, -0.05, 0.0)))
-			k.slab(0.0, 0.0, 0.0, 0.07, h, 0.025, s + 40 + i, wood[0] if i % 3 else wood[1], P.RIME[5], 0.008)
+			k.slab(0.0, 0.0, 0.0, 0.07, h, 0.025, s + 40 + i, wood[0] if i % 3 else wood[1], dress.snow[0], 0.008)
 			k.made.pop()
 		k.sag(Vector3(-1.0, 0.25, 0.02), Vector3(1.0, 0.25, 0.02), 0.03, 4, 0.007, P.INK[2])
 		k.sag(Vector3(-1.0, 0.7, 0.02), Vector3(1.0, 0.7, 0.02), 0.03, 4, 0.007, P.INK[2])
-		banks(k, [[-0.6, -0.3, 0.45, 0.45], [0.2, -0.35, 0.55, 0.55], [0.8, -0.28, 0.4, 0.4], [-0.1, 0.25, 0.3, 0.14]], P.RIME[5], s + 60)
+		banks(k, [[-0.6, -0.3, 0.45, 0.45], [0.2, -0.35, 0.55, 0.55], [0.8, -0.28, 0.4, 0.4], [-0.1, 0.25, 0.3, 0.14]], dress.snow[0], s + 60)
 		return
 	match v:
 		0:
@@ -252,7 +243,7 @@ static func fence(k: Kit, v: int, c: int) -> void:
 					var p := Vector3(-1.0 + t * 2.0, h - 0.015 - dip * 4.0 * t * (1.0 - t), 0.0)
 					k.fleck(p + Vector3(-0.02, -0.02, 0.0), p + Vector3(0.02, 0.02, 0.01), p + Vector3(0.0, 0.0, -0.02), P.INK[3])
 			# A rag caught on the top strand, long faded.
-			k.fleck(Vector3(0.35, 0.78, 0.0), Vector3(0.45, 0.62, 0.02), Vector3(0.31, 0.6, -0.01), P.BLOOM[1] if c != Country.BURNING else P.ASH[1])
+			k.fleck(Vector3(0.35, 0.78, 0.0), Vector3(0.45, 0.62, 0.02), Vector3(0.31, 0.6, -0.01), P.ASH[1] if burnt else P.BLOOM[1])
 		1:
 			# A machine's mesh panel, ruled and exact, lashed between hand posts;
 			# it sags where one post leans. Razor coil along its top.
@@ -286,7 +277,7 @@ static func fence(k: Kit, v: int, c: int) -> void:
 			k.sag(Vector3(-0.95, 0.75, 0.05), Vector3(0.8, 0.05, 0.35), 0.1, 6, 0.006, P.INK[2])
 			k.sag(Vector3(-0.95, 0.5, 0.05), Vector3(1.0, 0.03, -0.2), 0.05, 6, 0.006, P.INK[2])
 			k.sag(Vector3(-0.2, 0.03, -0.3), Vector3(0.6, 0.03, 0.1), -0.05, 5, 0.006, P.INK[3])
-	if c == Country.MOSS:
+	if BiomeDressing.reedy(c):
 		# Reeds through the wire, taller than the posts.
 		var rs := k.made.vertex_count()
 		for i in 9:
@@ -294,14 +285,15 @@ static func fence(k: Kit, v: int, c: int) -> void:
 			var z := Kit.j(s, 80 + i, 0.18)
 			k.blade(Vector3(x, -0.02, z), Vector3(x + 0.05, 0.9 + Kit.j(s, 90 + i, 0.25), z), 0.05, Kit.j(s, 95 + i, 1.5), P.SPRUCE[3] if i % 2 else P.MOSS[3])
 		k.sway_by_height(rs, 0.0, 1.0, 0.7)
-	elif c == Country.BURNING:
-		banks(k, [[-0.6, 0.2, 0.3, 0.12], [0.5, -0.2, 0.35, 0.1]], P.ASH[2], s + 90)
+	elif burnt:
+		banks(k, [[-0.6, 0.2, 0.3, 0.12], [0.5, -0.2, 0.35, 0.1]], dress.drift[0], s + 90)
 
 
 ## A barricade across a way in: 0 tyres, sandbags and a leaning sheet of plate
 ## behind crossed stakes; 1 cast blocks with faded chevrons and a machine plate
 ## bolted on, struck through.
 static func barricade(k: Kit, v: int, c: int) -> void:
+	var burnt := BiomeDressing.burnt(c)
 	var s := 20300 + v * 11 + c
 	var wood := wood_of(c)
 	var drift := drift_of(c)
@@ -327,9 +319,7 @@ static func barricade(k: Kit, v: int, c: int) -> void:
 			k.limb(Vector3(x + 0.35, -0.05, 0.55), Vector3(x - 0.3, 0.75, 0.9), 0.035, 0.012, 4, wood[1])
 		k.sag(Vector3(-1.2, 0.35, 0.72), Vector3(1.2, 0.35, 0.72), 0.06, 7, 0.006, P.INK[2])
 	else:
-		var concrete := P.STONE[3].lerp(P.LINEN[3], 0.35)
-		if c == Country.BURNING:
-			concrete = P.STONE[1]
+		var concrete := BiomeDressing.of(c).concrete
 		for i in 3:
 			var x := -0.85 + i * 0.85
 			var rot := Kit.j(s, i, 0.2)
@@ -338,7 +328,7 @@ static func barricade(k: Kit, v: int, c: int) -> void:
 			# Chevrons, faded, painted on by a hand that wanted to be seen.
 			for ch in 3:
 				var cx := -0.26 + ch * 0.24
-				k.made.quad(Vector3(cx, 0.06, 0.216), Vector3(cx + 0.1, 0.06, 0.216), Vector3(cx + 0.16, 0.42, 0.13), Vector3(cx + 0.06, 0.42, 0.13), P.RUST[3] if c != Country.BURNING else P.RUST[1])
+				k.made.quad(Vector3(cx, 0.06, 0.216), Vector3(cx + 0.1, 0.06, 0.216), Vector3(cx + 0.16, 0.42, 0.13), Vector3(cx + 0.06, 0.42, 0.13), P.RUST[1] if burnt else P.RUST[3])
 			k.made.pop()
 		k.limb(Vector3(-0.4, 0.5, 0.1), Vector3(-0.2, 0.95, 0.35), 0.018, 0.014, 4, P.RUST[2])
 		k.limb(Vector3(0.45, 0.5, -0.05), Vector3(0.9, 0.82, -0.1), 0.018, 0.014, 4, P.RUST[2])
@@ -355,18 +345,20 @@ static func barricade(k: Kit, v: int, c: int) -> void:
 ## lamp that someone still lights; 2: three stakes in a row (in the Moss, the
 ## bog's grave markers, tall so they can be found again).
 static func grave(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 20500 + v * 7 + c
 	var wood := wood_of(c)
 	var mound := drift_of(c)
-	if c == Country.COAST:
-		mound = [P.EARTH[2].lerp(P.MOSS[2], 0.4), P.EARTH[2]]
+	if dress.covers == &"wrack":
+		# Sand will not hold a grave: they dig into the turf behind the dunes.
+		mound = [P.EARTH[2].lerp(dress.growth, 0.4), P.EARTH[2]]
 	match v % 3:
 		0:
 			_mound(k, Vector3(0.1, 0.0, 0.0), 0.62, 0.26, s, mound)
 			k.limb(Vector3(-0.55, -0.05, 0.0), Vector3(-0.53, 0.95, 0.02), 0.035, 0.028, 5, wood[0])
 			k.limb(Vector3(-0.54, 0.7, -0.26), Vector3(-0.52, 0.72, 0.28), 0.028, 0.024, 5, wood[0])
 			k.made.prism(-0.535, 0.66, 0.0, 0.045, 0.76, 0.045, 5, P.LINEN[2])
-			k.fleck(Vector3(-0.52, 0.72, 0.22), Vector3(-0.47, 0.42, 0.26), Vector3(-0.5, 0.45, 0.16), P.BLOOM[1] if c != Country.SNOWFIELD else P.RUST[2])
+			k.fleck(Vector3(-0.52, 0.72, 0.22), Vector3(-0.47, 0.42, 0.26), Vector3(-0.5, 0.45, 0.16), P.RUST[2] if dress.cold() else P.BLOOM[1])
 			for i in 8:
 				var a := float(i) / 8.0 * TAU
 				k.stone(0.1 + cos(a) * 0.72, -0.04, sin(a) * 0.36, 0.07, 0.08, s + 10 + i, P.STONE[3] if i % 2 else P.LINEN[3], 5)
@@ -389,14 +381,15 @@ static func grave(k: Kit, v: int, c: int) -> void:
 			k.fleck(Vector3(0.2, 0.12, -0.2), Vector3(0.3, 0.12, -0.12), Vector3(0.24, 0.2, -0.16), P.BLOOM[4])
 			k.fleck(Vector3(0.28, 0.1, -0.28), Vector3(0.36, 0.1, -0.2), Vector3(0.3, 0.17, -0.24), P.LINEN[5])
 		_:
-			var tall := 1.35 if c == Country.MOSS else 0.8
+			# Tall where the ground drowns things, so a grave can be found again.
+			var tall := 1.35 if BiomeDressing.reedy(c) else 0.8
 			for i in 3:
 				var z := -0.5 + i * 0.5
 				_mound(k, Vector3(0.15, 0.0, z), 0.34, 0.14, s + i, mound)
 				k.limb(Vector3(-0.2, -0.05, z), Vector3(-0.19 + Kit.j(s, i, 0.05), tall - i * 0.08, z + Kit.j(s, i + 3, 0.04)), 0.03, 0.02, 4, wood[i % 2])
 				k.made.prism(-0.19, tall * 0.78 - i * 0.08, z, 0.04, tall * 0.84 - i * 0.08, 0.04, 5, [P.LINEN[4], P.RUST[3], P.BLOOM[2]][i])
-			if c == Country.SNOWFIELD:
-				k.clump(0.1, 0.02, 0.0, 0.5, 0.18, s + 9, P.RIME[5], 8)
+			if dress.cold():
+				k.clump(0.1, 0.02, 0.0, 0.5, 0.18, s + 9, dress.snow[0], 8)
 
 
 ## A grave's mound: long and low along x, the fresh side darker.
@@ -415,8 +408,10 @@ static func _mound(k: Kit, at: Vector3, length: float, h: float, s: int, cols: A
 ## out of it; 1: a length of pipe, a tyre, cans; 2: a roof sheet blown flat,
 ## cable in loops and broken glass that catches the light.
 static func debris(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var burnt := BiomeDressing.burnt(c)
 	var s := 20700 + v * 5 + c
-	var concrete := P.STONE[3].lerp(P.LINEN[3], 0.3) if c != Country.BURNING else P.STONE[1]
+	var concrete := dress.concrete
 	match v % 3:
 		0:
 			k.made.push(Transform3D(Basis(Vector3.UP, 0.4) * Basis(Vector3.RIGHT, 0.12), Vector3(0.0, -0.05, 0.0)))
@@ -439,35 +434,39 @@ static func debris(k: Kit, v: int, c: int) -> void:
 				var p := Vector3(-0.4 + i * 0.22, 0.0, 0.45 + Kit.j(s, i, 0.1))
 				k.made.prism(p.x, 0.0, p.z, 0.04, 0.09, 0.04, 6, P.RUST[3] if i % 2 else P.SLATE[3], P.INK[2])
 		_:
-			corrugated(k.made, Vector3(-0.7, 0.03, -0.45), Vector3(-0.15, 0.02, 0.75), Vector3(1.2, 0.04, 0.2), 9, P.SLATE[3] if c != Country.BURNING else P.RUST[1])
+			corrugated(k.made, Vector3(-0.7, 0.03, -0.45), Vector3(-0.15, 0.02, 0.75), Vector3(1.2, 0.04, 0.2), 9, P.RUST[1] if burnt else P.SLATE[3])
 			k.cable(Vector3(0.5, 0.03, 0.3), Vector3(0.85, 0.05, -0.4), -0.05, 5, 0.012, P.INK[2])
 			k.hoop(Vector3(0.6, 0.03, -0.1), 0.15, 8, 0.01, P.INK[3])
 			for i in 5:
 				var p := Vector3(-0.5 + i * 0.18, 0.02, 0.55 + Kit.j(s, i, 0.08))
 				k.fleck(p, p + Vector3(0.05, 0.005, 0.03), p + Vector3(0.01, 0.01, -0.04), GroundColors.glint(P.SPRUCE[4] if i % 2 else P.RIME[4]))
-	if c == Country.SNOWFIELD:
-		k.clump(0.1, -0.1, 0.1, 0.5, 0.18, s + 30, P.RIME[5], 8)
-	elif c == Country.MOSS or c == Country.PINEWOOD:
-		k.clump(-0.3, -0.06, 0.3, 0.2, 0.1, s + 31, P.MOSS[2], 6)
+	if dress.cold():
+		k.clump(0.1, -0.1, 0.1, 0.5, 0.18, s + 30, dress.snow[0], 8)
+	elif BiomeDressing.mossy(c):
+		k.clump(-0.3, -0.06, 0.3, 0.2, 0.1, s + 31, dress.growth, 6)
 
 
 # --- where people still live ---------------------------------------------------
 
-## A patched shelter, one kind per landscape: the fishing shack on the coast,
-## the stilt hut over the moss, the hunting blind in the pines, the emergency
-## pod half under the snow, the stone lean-to on the bones, the dugout in the
-## ash. Variant 1 has stolen tech in it: a machine's light panel wired to a
-## neon tube and an aerial, lit after dusk.
+## A patched shelter. Which one people put up is the landscape's own
+## (`BiomeDressing.shelter`), not this file's: a boarded fishing shack, a hut
+## on stilts over standing water, a platform up among the trunks, an emergency
+## shell half under the snow, a dry-stone lean-to under tin, a dugout in the
+## ash. Each form is the same wherever it is put up — a pod is an orange shell
+## whatever land it is buried in — and only what the LAND walls it with and
+## banks against it comes off the dressing. Variant 1 has stolen tech in it: a
+## machine's light panel wired to a neon tube and an aerial, lit after dusk.
 static func shack(k: Kit, v: int, c: int) -> void:
+	var d := BiomeDressing.of(c)
 	var s := 21000 + v * 17 + c * 3
 	var lit := v % 2 == 1
-	match c:
-		Country.MOSS: _stilt_hut(k, s, lit)
-		Country.PINEWOOD: _blind(k, s, lit)
-		Country.SNOWFIELD: _pod(k, s, lit)
-		Country.BONELANDS: _lean_to(k, s, lit)
-		Country.BURNING: _dugout(k, s, lit)
-		_: _fish_shack(k, s, lit)
+	match d.shelter:
+		&"stilt": _stilt_hut(k, s, lit, d)
+		&"blind": _blind(k, s, lit, d)
+		&"pod": _pod(k, s, lit, d)
+		&"lean_to": _lean_to(k, s, lit, d)
+		&"dugout": _dugout(k, s, lit, d)
+		_: _fish_shack(k, s, lit, d)
 
 
 ## Stolen tech on a wall: a FOUND light panel, the neon tube it feeds, a cable
@@ -489,7 +488,7 @@ static func _wired(k: Kit, wall_a: Vector3, wall_b: Vector3, out: Vector3, roof:
 	k.made.prism(roof.x + 0.02, roof.y + 0.12, roof.z, 0.1, roof.y + 0.5, 0.1, 6, GroundColors.lamp(col, 1.0))
 
 
-static func _fish_shack(k: Kit, s: int, lit: bool) -> void:
+static func _fish_shack(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	var tar := P.INK[3].lerp(P.EARTH[1], 0.4)
 	var t := PropModels.Houses.walls(k, 1.5, 2.1, 1.05, s, tar, GroundColors.down(tar, 0.2), Vector3(0.04, 0.0, -0.02))
 	# Weatherboards: dark lines along the walls.
@@ -526,10 +525,10 @@ static func _fish_shack(k: Kit, s: int, lit: bool) -> void:
 		# so the one thing that says somebody wired a machine into this shack
 		# was drawn by no bearing the play camera can take.
 		_wired(k, Vector3(0.79, 0.45, 0.76), Vector3(0.79, 0.45, 1.0), Vector3(1, 0, 0), Vector3(0.6, ry + 0.02, 1.1), NEON[0])
-	banks(k, [[-0.6, 1.05, 0.4, 0.14], [0.7, 1.1, 0.35, 0.12]], P.SAND[4], s + 70)
+	banks(k, [[-0.6, 1.05, 0.4, 0.14], [0.7, 1.1, 0.35, 0.12]], d.drift[0], s + 70)
 
 
-static func _stilt_hut(k: Kit, s: int, lit: bool) -> void:
+static func _stilt_hut(k: Kit, s: int, lit: bool, _d: BiomeDressing) -> void:
 	var floor_y := 0.75
 	# Stilts sunk in the black water, a ladder, a walkway plank out to firm ground.
 	for sx: float in [-0.6, 0.6]:
@@ -619,7 +618,7 @@ static func _pool(k: Kit, at: Vector3, r: float, s: int) -> void:
 		k.made.quad(ring[i], ring[n], rim[n], rim[i], P.SPRUCE[2])
 
 
-static func _blind(k: Kit, s: int, lit: bool) -> void:
+static func _blind(k: Kit, s: int, lit: bool, _d: BiomeDressing) -> void:
 	# A platform up among the trunks on four poles, a screen of cut boughs
 	# round it, a ladder, a tarp roof tied down.
 	var fy := 1.3
@@ -651,7 +650,9 @@ static func _blind(k: Kit, s: int, lit: bool) -> void:
 		_wired(k, Vector3(0.62, fy + 0.05, 0.25), Vector3(0.62, fy + 0.05, 0.55), Vector3(1, 0, 0), Vector3(0.0, ty, 0.0), NEON[0])
 
 
-static func _pod(k: Kit, s: int, lit: bool) -> void:
+static func _pod(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
+	# Half under whatever this land buries a thing in.
+	var over: Color = d.snow[0] if d.cold() else d.drift[0]
 	# An emergency shelter from before: a ribbed shell, once orange, half
 	# under the snow, a hatch dug clear, a flue and a flag on a pole.
 	var shell := P.RUST[3].lerp(P.LINEN[3], 0.45)
@@ -679,16 +680,16 @@ static func _pod(k: Kit, s: int, lit: bool) -> void:
 	patch(k, Vector3(-0.8, 0.55, -0.52), Vector3(-0.3, 0.65, -0.52), Vector3(-0.3, 0.3, -0.8), Vector3(-0.8, 0.2, -0.8), 3)
 	k.limb(Vector3(1.4, -0.1, -0.7), Vector3(1.42, 1.6, -0.7), 0.025, 0.02, 4, P.SLATE[2])
 	k.fleck(Vector3(1.42, 1.55, -0.7), Vector3(1.75, 1.45, -0.62), Vector3(1.42, 1.35, -0.7), P.RUST[3])
-	banks(k, [[-0.9, 0.6, 0.8, 0.55], [0.0, 0.8, 0.9, 0.5], [-0.9, -0.6, 0.7, 0.45], [0.2, -0.85, 0.8, 0.4], [-1.3, 0.0, 0.6, 0.6], [1.3, 0.75, 0.4, 0.2]], P.RIME[5], s + 40)
-	k.clump(-0.3, 0.45, 0.0, 0.7, 0.3, s + 50, P.RIME[5], 8)
+	banks(k, [[-0.9, 0.6, 0.8, 0.55], [0.0, 0.8, 0.9, 0.5], [-0.9, -0.6, 0.7, 0.45], [0.2, -0.85, 0.8, 0.4], [-1.3, 0.0, 0.6, 0.6], [1.3, 0.75, 0.4, 0.2]], over, s + 40)
+	k.clump(-0.3, 0.45, 0.0, 0.7, 0.3, s + 50, over, 8)
 	if lit:
 		_wired(k, Vector3(1.12, 0.05, 0.42), Vector3(1.12, 0.05, 0.75), Vector3(1, 0, 0), Vector3(0.3, 0.68, 0.0), NEON[1])
 
 
-static func _lean_to(k: Kit, s: int, lit: bool) -> void:
+static func _lean_to(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	# A dry-stone wall against a cast slab, tin laid across weighted with
 	# stones, a barrel for water, a goat-hide door.
-	var stone: Array[Color] = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.SAND[3]]
+	var stone := d.walling
 	PropModels.Houses.rubble_wall(k, Vector2(-0.9, -0.8), Vector2(0.9, -0.85), PackedFloat32Array([1.0, 1.05, 1.0, 0.95, 0.9, 0.85, 0.8]), 0.3, s, stone)
 	PropModels.Houses.rubble_wall(k, Vector2(-0.95, -0.7), Vector2(-0.9, 0.8), PackedFloat32Array([1.0, 0.95, 0.9, 0.9, 0.85, 0.8, 0.75]), 0.3, s + 1, stone)
 	PropModels.Houses.rubble_wall(k, Vector2(-0.8, 0.85), Vector2(0.2, 0.9), PackedFloat32Array([0.75, 0.7, 0.72, 0.6]), 0.28, s + 2, stone)
@@ -702,13 +703,13 @@ static func _lean_to(k: Kit, s: int, lit: bool) -> void:
 		k.made.prism(1.25, 0.15 + i * 0.3, 0.6, 0.245, 0.18 + i * 0.3, 0.245, 9, P.INK[2])
 	if lit:
 		_wired(k, Vector3(0.9, 0.3, 0.2), Vector3(0.9, 0.3, 0.55), Vector3(1, 0, 0), Vector3(-0.2, 0.95, 0.0), NEON[2])
-	banks(k, [[-0.4, -1.1, 0.5, 0.18], [0.8, -1.0, 0.4, 0.14]], P.LINEN[4].lerp(P.SAND[4], 0.4), s + 30)
+	banks(k, [[-0.4, -1.1, 0.5, 0.18], [0.8, -1.0, 0.4, 0.14]], d.drift[0], s + 30)
 
 
-static func _dugout(k: Kit, s: int, lit: bool) -> void:
+static func _dugout(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	# Dug into the ash for the heat: a roof of machine plate on ribs, banked
 	# over with ash, a heat shield of plate at the door, a pipe breathing.
-	banks(k, [[-0.7, -0.7, 0.8, 0.5], [0.3, -0.8, 0.8, 0.45], [-0.8, 0.6, 0.8, 0.5], [0.4, 0.75, 0.7, 0.42], [-1.1, 0.0, 0.7, 0.6]], P.ASH[2], s + 1)
+	banks(k, [[-0.7, -0.7, 0.8, 0.5], [0.3, -0.8, 0.8, 0.45], [-0.8, 0.6, 0.8, 0.5], [0.4, 0.75, 0.7, 0.42], [-1.1, 0.0, 0.7, 0.6]], d.drift[0], s + 1)
 	for i in 4:
 		var x := -0.8 + i * 0.5
 		k.limb(Vector3(x, 0.1, -0.75), Vector3(x, 0.85, 0.0), 0.04, 0.035, 4, P.INK[2])
@@ -717,7 +718,7 @@ static func _dugout(k: Kit, s: int, lit: bool) -> void:
 	# the bank closed over both sides, so its undersides were never reachable.
 	patch(k, Vector3(-0.95, 0.9, 0.05), Vector3(0.75, 0.9, 0.05), Vector3(0.75, 0.35, -0.55), Vector3(-0.95, 0.35, -0.55), 2)
 	patch(k, Vector3(0.75, 0.9, -0.03), Vector3(-0.95, 0.9, -0.03), Vector3(-0.95, 0.35, 0.55), Vector3(0.75, 0.35, 0.55), 3)
-	k.clump(-0.4, 0.6, 0.0, 0.6, 0.35, s + 5, P.ASH[2], 8)
+	k.clump(-0.4, 0.6, 0.0, 0.6, 0.35, s + 5, d.drift[0], 8)
 	k.made.quad(Vector3(0.78, 0.0, 0.3), Vector3(0.78, 0.0, -0.3), Vector3(0.78, 0.6, -0.2), Vector3(0.78, 0.6, 0.2), P.INK[1])
 	k.plate(Vector3(1.05, 0.0, -0.55), Vector3(1.05, 0.0, -0.2), Vector3(1.0, 0.75, -0.2), Vector3(1.0, 0.75, -0.55), P.PLATE[3], P.PLATE[1], P.PLATE[5])
 	k.limb(Vector3(0.1, 0.8, 0.3), Vector3(0.15, 1.4, 0.32), 0.05, 0.05, 6, P.RUST[1])
@@ -736,42 +737,28 @@ static func _dugout(k: Kit, s: int, lit: bool) -> void:
 ## the car and the bonnet torn off to the engine, the van's back doors hanging,
 ## and the whole of it tipped into the ground.
 static func vehicle(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var burnt := BiomeDressing.burnt(c)
 	var s := 21500 + v * 19 + c * 5
-	# Body paint as it was, and how it lies now.
+	# Body paint as it was, and what the years here did to it.
 	var paint: Color = [P.SPRUCE[2].lerp(P.SLATE[3], 0.5), P.RUST[3].lerp(P.LINEN[3], 0.4), P.LINEN[3], P.SLATE[3]][(v + c) % 4]
-	var sink := 0.06
-	var tilt := Basis(Vector3.BACK, -0.06) * Basis(Vector3.RIGHT, 0.08)
-	var wheels := true
-	var cave := 0.1
-	match c:
-		Country.COAST:
-			paint = paint.lerp(P.RUST[2], 0.45)
-			sink = 0.16
-			tilt = Basis(Vector3.BACK, -0.1) * Basis(Vector3.RIGHT, 0.12)
-		Country.MOSS:
-			paint = paint.lerp(P.EARTH[1], 0.55)
-			sink = 0.34
-			tilt = Basis(Vector3.BACK, -0.26) * Basis(Vector3.RIGHT, -0.12)
-		Country.PINEWOOD:
-			paint = paint.lerp(P.MOSS[1], 0.3)
-			sink = 0.08
-			tilt = Basis(Vector3.BACK, 0.05) * Basis(Vector3.RIGHT, 0.09)
-			cave = 0.18
-		Country.SNOWFIELD:
-			sink = 0.14
-			tilt = Basis(Vector3.BACK, -0.05) * Basis(Vector3.RIGHT, 0.1)
-		Country.BONELANDS:
-			paint = P.LINEN[3].lerp(paint, 0.25)
-			sink = 0.14
-			wheels = false
-			tilt = Basis(Vector3.BACK, 0.08) * Basis(Vector3.RIGHT, -0.07)
-		Country.BURNING:
-			# Burnt to bare metal gone to rust and ash, lighter than the ash it sits in.
-			paint = P.RUST[2].lerp(P.ASH[2], 0.45)
-			sink = 0.14
-			wheels = false
-			cave = 0.24
-			tilt = Basis(Vector3.BACK, -0.09) * Basis(Vector3.RIGHT, 0.17)
+	# How deep a heavy thing settles here, and how it lies once it has.
+	var sink := dress.sink
+	var tilt := Basis(Vector3.BACK, dress.lie.x) * Basis(Vector3.RIGHT, dress.lie.y)
+	# Rubber does not last where the sun takes the colour out of things, and
+	# nothing rubber survives a fire at all: those stand on their rims.
+	var wheels := not burnt and not dress.perishes()
+	var cave := 0.24 if burnt else (0.18 if dress.covers == &"needles" else 0.1)
+	if burnt:
+		# Burnt to bare metal gone to rust and ash, lighter than the ash it sits in.
+		paint = P.RUST[2].lerp(P.ASH[2], 0.45)
+	elif dress.perishes():
+		paint = dress.bleach.lerp(paint, 0.25)
+	else:
+		match dress.covers:
+			&"wrack": paint = paint.lerp(P.RUST[2], 0.45)
+			&"weed": paint = paint.lerp(drift_of(c)[1], 0.55)
+			&"needles": paint = paint.lerp(dress.growth, 0.3)
 	var van := v % 2 == 1
 	var hw := 0.56 if van else 0.5
 	var hole := P.INK[0]
@@ -807,7 +794,7 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 	var tris := Geometry2D.triangulate_polygon(poly)
 	# Some were rolled onto their side, which shows the car's whole profile
 	# (arches, glass, pillars) to anyone looking down on it.
-	var rolled := c == Country.BURNING or (c == Country.BONELANDS and van)
+	var rolled := burnt or (dress.perishes() and van)
 	if rolled:
 		k.made.push(Transform3D(Basis(Vector3.UP, 0.08) * Basis(Vector3.RIGHT, PI * 0.5 - 0.12), Vector3(0.0, hw - 0.06, -0.55)))
 	else:
@@ -853,7 +840,7 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 	var cm := Vector3(mid_x, roof_y - cave, tz * 0.92)
 	var m := Vector3(1, 1, -1)
 	var roof := GroundColors.up(paint, 0.2)
-	if c == Country.BURNING:
+	if burnt:
 		# The roof burnt away to its rails: the black cab open to the sky, the
 		# seats' bare springs in it.
 		k.made.quad(Vector3(top0, belt + 0.03, tz), Vector3(top1 + 0.2, belt + 0.03, tz), Vector3(top1 + 0.2, belt + 0.03, -tz), Vector3(top0, belt + 0.03, -tz), hole)
@@ -877,12 +864,12 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 	var narrow := Vector3(1, 1, 0.84)
 	var scr := [c1.lerp(c2, 0.9) * narrow, c1.lerp(c2, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.1) * narrow, (c1 * m).lerp(c2 * m, 0.9) * narrow]
 	k.made.quad(c2, c1, c1 * m, c2 * m, paint)
-	_glass_gone(k, scr, Vector3(1, 0.6, 0).normalized(), s, c != Country.BURNING)
+	_glass_gone(k, scr, Vector3(1, 0.6, 0).normalized(), s, not burnt)
 	# Back: the car's rear glass, the van's panelled back with its doors.
 	k.made.quad(c0, c3, c3 * m, c0 * m, paint if van else GroundColors.down(paint, 0.1))
 	if not van:
 		var back := [c0.lerp(c3, 0.12) * narrow, c0.lerp(c3, 0.88) * narrow, (c0 * m).lerp(c3 * m, 0.88) * narrow, (c0 * m).lerp(c3 * m, 0.12) * narrow]
-		_glass_gone(k, back, Vector3(-1, 0.6, 0).normalized(), s + 3, c != Country.BURNING)
+		_glass_gone(k, back, Vector3(-1, 0.6, 0).normalized(), s + 3, not burnt)
 	# The flanks of the cabin, each with its lights gone to holes.
 	k.made.quad(c0, c1, c2, cm, paint)
 	k.made.tri(c0, cm, c3, paint)
@@ -903,7 +890,7 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 			var w4: Array = lights[li]
 			if sz < 0.0:
 				w4 = [w4[1], w4[0], w4[3], w4[2]]
-			_glass_gone(k, w4, Vector3(0, 0, sz), s + 10 + li + int(sz), c != Country.BURNING)
+			_glass_gone(k, w4, Vector3(0, 0, sz), s + 10 + li + int(sz), not burnt)
 		var fz := (hw + 0.012) * sz
 		# A seam, rust along the sill.
 		var sa := Vector3(-0.5, 0.27, fz * 1.01)
@@ -936,7 +923,7 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 		k.made.quad(Vector3(-0.9, 0.55, hw + 0.014), Vector3(0.3, 0.55, hw + 0.014), Vector3(0.3, belt - 0.06, hw + 0.014), Vector3(-0.9, belt - 0.06, hw + 0.014), paint.lerp(P.LINEN[4], 0.25))
 	# Lamps: dead headlights, the red of a tail light.
 	for sz: float in [0.3, -0.3]:
-		k.made.quad(Vector3(front + 0.012, 0.42, sz - 0.09), Vector3(front + 0.012, 0.42, sz + 0.09), Vector3(front + 0.006, 0.5, sz + 0.09), Vector3(front + 0.006, 0.5, sz - 0.09), P.LINEN[2] if c != Country.BURNING else hole)
+		k.made.quad(Vector3(front + 0.012, 0.42, sz - 0.09), Vector3(front + 0.012, 0.42, sz + 0.09), Vector3(front + 0.006, 0.5, sz + 0.09), Vector3(front + 0.006, 0.5, sz - 0.09), hole if burnt else P.LINEN[2])
 		k.made.quad(Vector3(rear - 0.014, 0.46, sz + 0.09), Vector3(rear - 0.014, 0.46, sz - 0.09), Vector3(rear - 0.014, 0.54, sz - 0.09), Vector3(rear - 0.014, 0.54, sz + 0.09), P.RUST[1])
 	if wheels:
 		for wx: float in [-0.82, 0.82]:
@@ -949,7 +936,7 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 				k.made.push(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(wx, 0.16, wz - 0.04)))
 				k.made.prism(0, 0, 0, 0.12, 0.08, 0.12, 7, P.RUST[1], P.STONE[1])
 				k.made.pop()
-	if c == Country.BURNING:
+	if burnt:
 		# Scorch run up the flanks from where it burnt.
 		for i in 4:
 			var x := -1.0 + i * 0.55
@@ -962,18 +949,20 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 		k.made.quad(Vector3(-0.3, 0.05, 0.2), Vector3(0.32, 0.06, 0.22), Vector3(0.3, 0.0, -0.22), Vector3(-0.3, 0.0, -0.2), GroundColors.down(paint, 0.1))
 		k.made.quad(Vector3(-0.22, 0.064, 0.02), Vector3(0.24, 0.068, 0.02), Vector3(0.22, 0.066, -0.15), Vector3(-0.22, 0.062, -0.14), P.INK[0])
 		k.made.pop()
-	# What the land did.
+	# What the land did: not which landscape this is, but what it throws over a
+	# thing left standing in it (BiomeDressing.covers).
 	var d := drift_of(c)
-	match c:
-		Country.COAST:
+	match dress.covers:
+		&"wrack":
 			drift(k, Vector3(-0.2, 0.0, 0.85), 1.7, 0.42, 0.24, 0.05, d[0], s + 60)
 			drift(k, Vector3(1.4, 0.0, -0.2), 0.7, 0.4, 0.2, 1.4, d[0], s + 61)
+			# Weed hung along it at the tide line, and rust where the salt got in.
 			for i in 6:
 				var x := -0.9 + i * 0.35
 				var y := roof_y - sink - cave * 0.6 if absf(x) < 0.4 else belt - sink
 				k.made.quad(Vector3(x, y, -0.4), Vector3(x + 0.08, y, -0.4), Vector3(x + 0.14, y - 0.35, -0.62), Vector3(x + 0.02, y - 0.3, -0.62), P.EARTH[1] if i % 2 else P.SPRUCE[1])
 			streak(k, Vector3(0.6, 0.5 - sink, hw + 0.03), 0.2, 0.3, Vector3(0, 0, 1))
-		Country.MOSS:
+		&"weed":
 			_pool(k, Vector3(0.3, 0.0, 0.0), 1.6, s + 70)
 			var rs := k.made.vertex_count()
 			for i in 12:
@@ -981,26 +970,29 @@ static func vehicle(k: Kit, v: int, c: int) -> void:
 				var base := Vector3(cos(a) * (1.35 + Kit.j(s, i, 0.2)), 0.0, sin(a) * 0.95)
 				k.blade(base, base + Vector3(0.05, 0.75 + Kit.j(s, i + 20, 0.2), 0.0), 0.06, a, P.SPRUCE[3] if i % 2 else P.MOSS[3])
 			k.sway_by_height(rs, 0.0, 0.8, 0.6)
-		Country.PINEWOOD:
-			drift(k, Vector3(-0.2, roof_y - sink - cave, 0.0), 0.5, 0.36, 0.08, 0.3, P.MOSS[2], s + 80)
+		&"needles":
+			drift(k, Vector3(-0.2, roof_y - sink - cave, 0.0), 0.5, 0.36, 0.08, 0.3, dress.growth, s + 80)
+			# A bough came down across it.
 			k.limb(Vector3(-1.6, 0.05, 0.9), Vector3(0.6, roof_y + 0.05, -0.2), 0.05, 0.02, 5, P.EARTH[1])
 			drift(k, Vector3(0.0, 0.0, -0.8), 1.4, 0.35, 0.14, 0.1, d[0], s + 82)
-		Country.SNOWFIELD:
+		&"snow":
 			# Buried to the belt on the windward side, a long tail of drift in its lee.
-			drift(k, Vector3(-0.1, 0.0, hw + 0.2), 1.9, 0.55, belt + 0.02, 0.0, P.RIME[5], s + 90)
-			drift(k, Vector3(0.4, 0.0, -hw - 0.45), 2.2, 0.75, 0.42, PI - 0.12, P.RIME[5], s + 91)
-			drift(k, Vector3(1.55, 0.0, 0.1), 0.7, 0.55, 0.36, 1.57, GroundColors.down(P.RIME[5], 0.05), s + 92)
-			drift(k, Vector3(-0.35, roof_y - sink - cave * 0.6, 0.0), 0.62, 0.42, 0.1, 0.0, P.RIME[5], s + 95)
-			drift(k, Vector3(0.95, belt - sink - 0.05, 0.0), 0.3, 0.4, 0.06, 0.0, P.RIME[5], s + 96)
-		Country.BONELANDS:
+			drift(k, Vector3(-0.1, 0.0, hw + 0.2), 1.9, 0.55, belt + 0.02, 0.0, dress.snow[0], s + 90)
+			drift(k, Vector3(0.4, 0.0, -hw - 0.45), 2.2, 0.75, 0.42, PI - 0.12, dress.snow[0], s + 91)
+			drift(k, Vector3(1.55, 0.0, 0.1), 0.7, 0.55, 0.36, 1.57, GroundColors.down(dress.snow[0], 0.05), s + 92)
+			drift(k, Vector3(-0.35, roof_y - sink - cave * 0.6, 0.0), 0.62, 0.42, 0.1, 0.0, dress.snow[0], s + 95)
+			drift(k, Vector3(0.95, belt - sink - 0.05, 0.0), 0.3, 0.4, 0.06, 0.0, dress.snow[0], s + 96)
+		&"ash":
+			drift(k, Vector3(-0.6, 0.0, 0.75), 1.2, 0.36, 0.2, 0.1, d[0], s + 110)
+			drift(k, Vector3(0.8, 0.0, -0.8), 1.1, 0.4, 0.18, -0.2, d[1], s + 111)
+		_:
 			drift(k, Vector3(-0.3, 0.0, 0.72), 1.6, 0.4, 0.34, 0.0, d[0], s + 100)
 			drift(k, Vector3(1.4, 0.0, 0.2), 0.6, 0.4, 0.2, 1.3, d[0], s + 101)
-			for i in 9:
-				var p := Vector3(-1.0 + i * 0.25, 0.35 + Kit.j(s, i, 0.1), hw + 0.018)
-				k.made.quad(p, p + Vector3(0.04, 0, 0), p + Vector3(0.04, 0.03, 0), p + Vector3(0, 0.03, 0), P.RUST[2])
-		Country.BURNING:
-			drift(k, Vector3(-0.6, 0.0, 0.75), 1.2, 0.36, 0.2, 0.1, P.ASH[2], s + 110)
-			drift(k, Vector3(0.8, 0.0, -0.8), 1.1, 0.4, 0.18, -0.2, P.ASH[1], s + 111)
+			if dress.perishes():
+				# Scoured back to primer: the rust comes through in ruled marks.
+				for i in 9:
+					var p := Vector3(-1.0 + i * 0.25, 0.35 + Kit.j(s, i, 0.1), hw + 0.018)
+					k.made.quad(p, p + Vector3(0.04, 0, 0), p + Vector3(0.04, 0.03, 0), p + Vector3(0, 0.03, 0), P.RUST[2])
 
 
 ## Where a pane of glass was: a black hole in the frame `quad` (four corners in
@@ -1176,9 +1168,7 @@ static func _torn(k: Kit, ring: Array[Vector3], s: int, inward: float = 1.0) -> 
 ## gone, blocks tumbled and the breakwater's cast tetrapods thrown up the beach.
 static func sea_wall(k: Kit, v: int, c: int) -> void:
 	var s := 22500 + v * 29 + c
-	var concrete := P.STONE[3].lerp(P.LINEN[3], 0.4)
-	if c == Country.SNOWFIELD:
-		concrete = P.SLATE[3]
+	var concrete := BiomeDressing.of(c).concrete
 	if v % 2 == 0:
 		# Profile across the wall (z seaward +), extruded along x in lengths
 		# whose tops break down at both ends.
@@ -1248,9 +1238,11 @@ static func _tetrapod(k: Kit, at: Vector3, size: float, s: int, col: Color) -> v
 ## A stump sawn flat by a harvester's head, standing in its exact row. 0: bare,
 ## 1: with its log bucked and left, 2: with brash thrown over it.
 static func stump(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var burnt := BiomeDressing.burnt(c)
 	var s := 23000 + v * 7 + c
-	var bark := P.EARTH[1] if c != Country.BURNING else P.INK[2]
-	var face := P.LINEN[4].lerp(P.SAND[4], 0.3) if c != Country.BURNING else P.STONE[1]
+	var bark: Color = P.INK[2] if burnt else P.EARTH[1]
+	var face: Color = P.STONE[1] if burnt else P.LINEN[4].lerp(P.SAND[4], 0.3)
 	var r := 0.2 + v * 0.02
 	k.made.prism(0, -0.05, 0, r * 1.2, 0.08, r, 8, bark)
 	k.made.prism(0, 0.08, 0, r, 0.26, r * 0.95, 8, bark, face)
@@ -1263,7 +1255,7 @@ static func stump(k: Kit, v: int, c: int) -> void:
 	match v % 3:
 		1:
 			k.made.push(Transform3D(Basis(Vector3.UP, 0.3), Vector3(0.2, 0.0, 0.55)))
-			k.limb(Vector3(-0.55, 0.13, 0), Vector3(0.55, 0.12, 0), 0.14, 0.12, 7, P.EARTH[2] if c != Country.BURNING else P.INK[2])
+			k.limb(Vector3(-0.55, 0.13, 0), Vector3(0.55, 0.12, 0), 0.14, 0.12, 7, P.INK[2] if burnt else P.EARTH[2])
 			k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.71, 0.135, 0.0)))
 			k.made.prism(0, 0, 0, 0.13, 0.01, 0.13, 7, face, face)
 			k.made.pop()
@@ -1274,17 +1266,18 @@ static func stump(k: Kit, v: int, c: int) -> void:
 				var a := Kit.j(s, i, 1.8) + i * 0.9
 				var from := Vector3(cos(a) * 0.3, 0.05 + i * 0.02, sin(a) * 0.3)
 				k.limb(from, from + Vector3(cos(a + 0.4) * 0.42, 0.04, sin(a + 0.4) * 0.42), 0.03, 0.014, 3, P.EARTH[2])
-				if c != Country.BURNING:
+				if not burnt:
 					k.clump(from.x + cos(a + 0.4) * 0.36, 0.0, from.z + sin(a + 0.4) * 0.36, 0.13, 0.08, s + 40 + i, P.EARTH[3] if i % 2 else P.RUST[2], 5)
 			k.sway_by_height(bs, 0.0, 0.3, 0.05)
-	if c == Country.SNOWFIELD:
-		k.clump(0.0, 0.2, 0.0, r * 0.9, 0.1, s + 5, P.RIME[5], 6)
+	if dress.cold():
+		k.clump(0.0, 0.2, 0.0, r * 0.9, 0.1, s + 5, dress.snow[0], 6)
 
 
 ## A fire tower of timber: four legs raking in, braces, a cabin at the top
 ## with its windows on every side. 1: the cabin burnt out and a leg gone, the
 ## whole thing leaning.
 static func fire_tower(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 23500 + v * 13 + c
 	var wood := wood_of(c)
 	var top := 4.2
@@ -1329,8 +1322,8 @@ static func fire_tower(k: Kit, v: int, c: int) -> void:
 		k.made.pop()
 		# A lookout's lamp left on the sill: one of the few that still burn.
 		k.made.prism(0.35, cy + 0.44, 0.2, 0.04, cy + 0.54, 0.035, 6, GroundColors.lamp(P.COPPER[4], 1.3))
-		if c == Country.SNOWFIELD:
-			k.clump(0.0, cy + 1.05, 0.0, 0.55, 0.18, s + 3, P.RIME[5], 7)
+		if dress.cold():
+			k.clump(0.0, cy + 1.05, 0.0, 0.55, 0.18, s + 3, dress.snow[0], 7)
 	else:
 		for side in 3:
 			var a := float(side) * PI * 0.5
@@ -1350,6 +1343,7 @@ static func fire_tower(k: Kit, v: int, c: int) -> void:
 ## ladder and a pipe down to a trough; 1: a cast cistern capped with machine
 ## plate, a tap, and the buckets waiting their turn.
 static func water_tank(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 24000 + v * 11 + c
 	var wood := wood_of(c)
 	if v % 2 == 0:
@@ -1387,9 +1381,10 @@ static func water_tank(k: Kit, v: int, c: int) -> void:
 			k.made.prism(1.35 + (i % 2) * 0.2, -0.02, z, 0.13, 0.22, 0.15, 7, [P.RUST[3], P.SLATE[3], P.LINEN[3], P.BRINE[2]][i], P.BRINE[1])
 		k.limb(Vector3(-0.9, -0.05, 0.7), Vector3(-0.85, 1.4, 0.72), 0.03, 0.025, 4, wood[0])
 		k.fleck(Vector3(-0.85, 1.35, 0.72), Vector3(-0.5, 1.2, 0.72), Vector3(-0.85, 1.1, 0.72), P.BRINE[3])
-	if c == Country.SNOWFIELD:
-		k.clump(0.0, 2.2 if v % 2 == 0 else 0.86, 0.0, 0.55, 0.14, s + 9, P.RIME[5], 8)
-	elif c == Country.BONELANDS or c == Country.BURNING:
+	if dress.cold():
+		k.clump(0.0, 2.2 if v % 2 == 0 else 0.86, 0.0, 0.55, 0.14, s + 9, dress.snow[0], 8)
+	elif not BiomeDressing.grassy(c):
+		# Dry ground: what blows about here banks against the stand.
 		banks(k, [[-0.8, -0.8, 0.5, 0.16], [0.8, -0.7, 0.4, 0.12]], drift_of(c)[0], s + 10)
 
 
@@ -1442,7 +1437,7 @@ static func slag_heap(k: Kit, v: int, c: int) -> void:
 		cone.call(-0.5, -0.2, 1.1, 1.05, s)
 		cone.call(0.75, 0.45, 0.85, 0.8, s + 7)
 		k.made.prism(-0.45, 1.0, -0.2, 0.2, 1.04, 0.14, 7, P.INK[1], GroundColors.glow(P.EMBER[3], 1.0))
-	banks(k, [[-1.5, 1.0, 0.5, 0.12], [1.5, -0.9, 0.45, 0.1]], P.ASH[1] if c == Country.BURNING else drift_of(c)[1], s + 20)
+	banks(k, [[-1.5, 1.0, 0.5, 0.12], [1.5, -0.9, 0.45, 0.1]], drift_of(c)[1], s + 20)
 
 
 # --- what was lost ---------------------------------------------------------------
@@ -1453,14 +1448,15 @@ static func slag_heap(k: Kit, v: int, c: int) -> void:
 ## ground; 2: a household's last load: a pram on its side, a burst case with its
 ## clothes blown out of it, a mattress half under the land.
 static func wreckage(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 24800 + v * 13 + c * 3
 	var d := drift_of(c)
-	var rot := c == Country.BURNING
+	var rot := BiomeDressing.burnt(c)
 	var paint: Color = [P.SLATE[3], P.RUST[3].lerp(P.LINEN[3], 0.4), P.SPRUCE[2].lerp(P.SLATE[3], 0.5)][(v + c) % 3]
 	if rot:
 		paint = P.STONE[1].lerp(P.RUST[1], 0.4)
-	elif c == Country.BONELANDS:
-		paint = P.LINEN[3].lerp(paint, 0.3)
+	elif dress.perishes():
+		paint = dress.bleach.lerp(paint, 0.3)
 	match v % 3:
 		0:
 			# The door, lying flat: its skin, the window frame empty, a handle.
@@ -1545,16 +1541,16 @@ static func wreckage(k: Kit, v: int, c: int) -> void:
 			for i in 3:
 				k.made.quad(Vector3(-0.4 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, 0.22), Vector3(-0.4 + i * 0.3, 0.125, 0.22), P.EARTH[2] if not rot else P.INK[2])
 			k.made.pop()
-	if c == Country.SNOWFIELD:
-		drift(k, Vector3(0.1, 0.0, -0.3), 0.9, 0.45, 0.2, 0.3, P.RIME[5], s + 30)
-	elif c == Country.MOSS:
+	if dress.cold():
+		drift(k, Vector3(0.1, 0.0, -0.3), 0.9, 0.45, 0.2, 0.3, dress.snow[0], s + 30)
+	elif BiomeDressing.reedy(c):
 		var rs := k.made.vertex_count()
 		for i in 6:
 			var a := float(i) * 1.1
 			var base := Vector3(cos(a) * 0.7, 0.0, sin(a) * 0.6)
 			k.blade(base, base + Vector3(0.04, 0.55 + Kit.j(s, i, 0.15), 0.0), 0.05, a, P.SPRUCE[3] if i % 2 else P.MOSS[3])
 		k.sway_by_height(rs, 0.0, 0.6, 0.6)
-	elif c != Country.PINEWOOD:
+	elif dress.covers != &"needles":
 		drift(k, Vector3(-0.5, 0.0, -0.35), 0.6, 0.3, 0.1, 0.4, d[0], s + 31)
 
 
@@ -1564,6 +1560,7 @@ static func wreckage(k: Kit, v: int, c: int) -> void:
 ## the things they carried set on it (a helmet, boots, a toy), a machine's plate
 ## propped against it with its glyph struck out, candles.
 static func memorial(k: Kit, v: int, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 25200 + v * 7 + c
 	var wood := wood_of(c)
 	var d := drift_of(c)
@@ -1573,7 +1570,7 @@ static func memorial(k: Kit, v: int, c: int) -> void:
 		k.slab(0.02, 0.5, 0.0, 0.05, 0.62, 1.05, s, wood[1], wood[0], 0.025)
 		k.slab(0.02, 1.12, 0.0, 0.05, 0.1, 1.2, s + 1, wood[0], wood[1], 0.02, 0.0)
 		# The names: rows of short strokes, a few longer; pale squares of photographs.
-		var ink := P.INK[1] if c != Country.BURNING else P.LINEN[4]
+		var ink: Color = P.LINEN[4] if BiomeDressing.burnt(c) else P.INK[1]
 		for r in 5:
 			var y := 0.58 + r * 0.1
 			var z := -0.44
@@ -1629,7 +1626,7 @@ static func memorial(k: Kit, v: int, c: int) -> void:
 			var z := -0.55 + i * 0.25
 			k.made.prism(0.2, -0.02, z, 0.05, 0.12, 0.045, 7, P.SPRUCE[3], P.SPRUCE[4])
 			k.made.prism(0.2, 0.05, z, 0.018, 0.12, 0.015, 5, GroundColors.lamp(P.EMBER[4], 1.3))
-	if c == Country.SNOWFIELD:
-		drift(k, Vector3(-0.35, 0.0, 0.0), 0.8, 0.6, 0.22, 1.57, P.RIME[5], s + 60)
-	elif c != Country.MOSS and c != Country.PINEWOOD:
+	if dress.cold():
+		drift(k, Vector3(-0.35, 0.0, 0.0), 0.8, 0.6, 0.22, 1.57, dress.snow[0], s + 60)
+	elif not BiomeDressing.mossy(c):
 		drift(k, Vector3(-0.4, 0.0, -0.4), 0.6, 0.3, 0.1, 0.5, d[0], s + 61)
