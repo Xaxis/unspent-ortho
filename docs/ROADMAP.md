@@ -350,6 +350,35 @@ wave A left that A2 did not take on.
   surface two-pass, which is the smallest of the three and the only one that can
   invalidate every save on disk — it must keep `tests/biome/test_parity.gd`'s
   md5s or it has changed what a seed makes, and that bumps `WorldStamp.GEN`.
+
+  **And on the web, which is the path that ships.** `tools/web.sh` on main with
+  all four wave B packages in, on a machine carrying another session's wave, in
+  the threaded build:
+    - **cold title**: code 511, world 2325, view 165, near 551, **draw 1443**,
+      total 5061 ms; first frame 6.57 s after navigation.
+    - **New game from that title**: code 0, world 0 (the title's page had already
+      compiled the systems and made the world: `_after_lift` and `BootWorld.offer`
+      are doing exactly what they were written for), view 8, near 566, start 479,
+      **draw 1277**, total 2334 ms; drawn 4.04 s after the key.
+    - **reload, warm browser cache**: the same title stages but **draw 97**, total
+      2994 ms, first frame 4.58 s.
+  So the guess above is confirmed by measurement, and sharpened: the first drawn
+  frame is the biggest single stage of a cold start on the web, it is shader
+  compilation, and the browser already caches it — a reload pays 97 ms where the
+  first visit pays 1443. The lever is therefore to warm or ship those shaders, not
+  to make worldgen faster; 9.9 MB goes over the wire (index.pck 2.3 MB br,
+  index.wasm 7.5 MB br) and the player waits on the compile, not the download.
+- **Nobody has proved the web build makes a sound.** `tools/web.sh` ends red on
+  audio every time — "a test tone on the master bus never reached the meter",
+  with 6 of 28 players reported playing, 8 buses, two outputs tapped and the
+  context running. The same failure reads identically against a deployed build,
+  so it is not a regression; but that is only evidence that it is CONSISTENT, not
+  that it is the harness. Either headless Chromium cannot meter what it has no
+  device for, or the web build is silent for players, and the two look the same
+  from here. It wants one listen in a real browser with a real output, and then
+  either a fix or a line in `tools/web.sh` saying why that check cannot run
+  headless. Everything else on the web path is green: canvas, focus, saves kept
+  across a reload (19 keys read back whole), and the frames drawn.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
 - `BiomeDef.realms` is declared and validated; nothing reads it yet.
