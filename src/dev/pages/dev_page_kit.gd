@@ -85,10 +85,10 @@ func keys(_row: Dictionary) -> Array:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	y = panel_heading(ci, r, y, str(ConfigSchema.row(setting).label), true)
 	y = panel_wrapped(ci, r, y, str(ConfigSchema.row(setting).note), UiTheme.TEXT)
 	y = panel_pair(ci, r, y, "now", ConfigChoices.show(setting, GameConfig.value(setting)))
 	var id: StringName = screen.menu.selected().get("id", &"")
 	if _kind() != "targets" and not Items.def(id).is_empty():
-		UiSlate.scan_box(ci, Rect2i(panel_x(r) + 4, y + 10, 64, 64), id)
+		UiSlate.scan_box(ci, Rect2i(panel_x(r) + 8, y + 20, DevPageGive.SCAN, DevPageGive.SCAN), id)

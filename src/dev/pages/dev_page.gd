@@ -93,7 +93,7 @@ func report(line: String) -> void:
 
 # --- the spare panel ----------------------------------------------------------------------
 
-const PANEL_PAD := 10
+const PANEL_PAD := 20
 
 
 static func panel_x(r: Rect2i) -> int:
@@ -101,30 +101,30 @@ static func panel_x(r: Rect2i) -> int:
 
 
 static func panel_right(r: Rect2i) -> int:
-	return r.end.x - 12
+	return r.end.x - 24
 
 
 ## A heading on the panel; returns the y the next line goes at.
 static func panel_heading(ci: CanvasItem, r: Rect2i, y: int, text: String, dev: bool = false) -> int:
 	UiSlate.heading(ci, Vector2i(panel_x(r), y), text, panel_right(r), UiTheme.MACHINE[3] if dev else UiTheme.TEXT_DIM)
-	return y + 15
+	return y + UiTheme.LINE + 8
 
 
 static func panel_line(ci: CanvasItem, r: Rect2i, y: int, text: String, col: Color = UiTheme.TEXT) -> int:
-	UiDraw.text(ci, Vector2i(panel_x(r) + 4, y), _fit(text, panel_right(r) - panel_x(r) - 4), col)
+	UiDraw.text(ci, Vector2i(panel_x(r) + 8, y), _fit(text, panel_right(r) - panel_x(r) - 8), col)
 	return y + UiTheme.LINE
 
 
 ## "name   value" on one line: the name dim, the value on the right.
 static func panel_pair(ci: CanvasItem, r: Rect2i, y: int, name: String, value: String, col: Color = UiTheme.TEXT) -> int:
-	UiDraw.text(ci, Vector2i(panel_x(r) + 4, y), name, UiTheme.TEXT_DIM)
-	UiDraw.text_right(ci, panel_right(r), y, _fit(value, panel_right(r) - panel_x(r) - 70), col)
+	UiDraw.text(ci, Vector2i(panel_x(r) + 8, y), name, UiTheme.TEXT_DIM)
+	UiDraw.text_right(ci, panel_right(r), y, _fit(value, panel_right(r) - panel_x(r) - 140), col)
 	return y + UiTheme.LINE
 
 
 static func panel_wrapped(ci: CanvasItem, r: Rect2i, y: int, text: String, col: Color = UiTheme.TEXT_DIM) -> int:
-	var used := UiSlate.wrapped(ci, Vector2i(panel_x(r) + 4, y), panel_right(r) - panel_x(r) - 4, text, col)
-	return y + maxi(used, 1) * UiTheme.LINE + 2
+	var used := UiSlate.wrapped(ci, Vector2i(panel_x(r) + 8, y), panel_right(r) - panel_x(r) - 8, text, col)
+	return y + maxi(used, 1) * UiTheme.LINE + 4
 
 
 ## The last lines of a log, as many as fit above `bottom`.
@@ -145,9 +145,9 @@ static func panel_log(ci: CanvasItem, r: Rect2i, y: int, lines: PackedStringArra
 ## A picture fitted into `box`, in brackets. Hand it one already made that size
 ## (fitted_texture): shrunk here it would be sampled nearest and shimmer.
 static func panel_picture(ci: CanvasItem, box: Rect2i, tex: Texture2D) -> void:
-	UiSlate.brackets(ci, box.grow(2), UiTheme.TEXT_DIM, 5)
+	UiSlate.brackets(ci, box.grow(4), UiTheme.TEXT_DIM, 10)
 	if tex == null:
-		UiDraw.text_centred(ci, box.position.x + box.size.x / 2, box.position.y + box.size.y / 2 - 5, "NO PICTURE", UiTheme.TEXT_DIM)
+		UiDraw.text_centred(ci, box.position.x + box.size.x / 2, box.position.y + box.size.y / 2 - UiFont.SIZE / 2, "NO PICTURE", UiTheme.TEXT_DIM)
 		return
 	var s := tex.get_size()
 	var k := maxf(s.x / box.size.x, s.y / box.size.y)

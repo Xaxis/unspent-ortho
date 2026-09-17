@@ -76,9 +76,11 @@ func test_a_note_never_stands_in_the_strip_the_island_row_draws_into() -> void:
 func test_the_short_form_fits_a_slot_row_beside_its_name() -> void:
 	# The row shows "slot 2" and under it the short form; it may not run into the
 	# played-time on the right of the same row.
+	# 90 pixels of the old slate: the row is the same share of the glass it was,
+	# and the type on it is two-thirds the size, so the label has more room now.
 	for code: StringName in CODES:
 		var s := SaveSlots.short_problem(code)
-		lt(float(UiFont.width(s)), 90.0, "short form \"%s\" (%s)" % [s, code])
+		lt(float(UiFont.width(s)), 90.0 * UiSlate.UNIT, "short form \"%s\" (%s)" % [s, code])
 		check(not s.ends_with("."), "the short form is a label, not a sentence: \"%s\"" % s)
 
 

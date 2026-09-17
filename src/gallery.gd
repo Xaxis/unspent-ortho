@@ -157,7 +157,7 @@ func _draw_tags() -> void:
 			continue
 		var p := UiBase.to_design(_cam.unproject_position(at))
 		var text: String = l.name
-		var w := UiFont.width(text)
+		var w := UiFont.legacy_width(text)
 		var box := Rect2i(roundi(p.x) - w / 2 - 3, roundi(p.y) - 5, w + 6, 11)
 		var said := false
 		for k in 5:
@@ -178,7 +178,7 @@ func _draw_tags() -> void:
 		placed.append({"box": box, "text": text})
 		UiDraw.rect(_tags, box, Color(UiTheme.GLASS, 0.82))
 		UiDraw.frame(_tags, box, UiTheme.GHOST)
-		UiDraw.text(_tags, Vector2i(box.position.x + 3, box.position.y), text, UiTheme.TEXT)
+		UiDraw.text_legacy(_tags, Vector2i(box.position.x + 3, box.position.y), text, UiTheme.TEXT)
 
 
 func _tag_at(l: Dictionary) -> Vector3:

@@ -14,14 +14,18 @@ extends UiScreen
 ## figure turns to show that part (the back slot turns it round), left and right
 ## turn it by hand, and fitting a piece runs the scan down it again.
 
-const LIST_TOP := 50
-const ROW_PITCH := 22
+## The first row of the list, one text line's clearance under the pane's title.
+const LIST_TOP := UiSlate.LIST.position.y + 36
+## A slot's row holds two lines: what it is, and what is in it.
+const ROW_PITCH := UiTheme.LINE * 2
+## Where the figure stands on the spare panel. The viewport is a PICTURE, so it
+## covers the share of the panel it always did and is simply drawn at three times
+## the detail; the gap between it and the panel's edge is type-sized.
+const FIGURE := Rect2i(UiSlate.SPARE.position.x + 8, UiSlate.SPARE.position.y + 30, 444, 798)
 ## The resistances' column: right of the figure, to the panel's right margin.
-const RESIST_X := 466
-const RESIST_TOP := 56
-const RESIST_PITCH := 12
-## Where the figure stands on the spare panel.
-const FIGURE := Rect2i(314, 50, 148, 266)
+const RESIST_X := FIGURE.end.x + 8
+const RESIST_TOP := UiSlate.SPARE.position.y + 42
+const RESIST_PITCH := 24
 ## Where each slot sits on the body: a bone and a point in its frame, and the way
 ## the figure turns to show it (radians; 0 faces the glass).
 const PARTS := {
@@ -37,14 +41,14 @@ const PARTS := {
 ## Where each of `n` resistances is drawn: one column down the panel, two when
 ## one will not hold them (VISION §6 names ten, and the land adds more).
 static func resist_cells(n: int) -> Array[Rect2i]:
-	var right := UiSlate.SPARE.end.x - 12
-	var rows := (UiSlate.SPARE.end.y - 6 - RESIST_TOP) / RESIST_PITCH
+	var right := UiSlate.SPARE.end.x - 24
+	var rows := (UiSlate.SPARE.end.y - 12 - RESIST_TOP) / RESIST_PITCH
 	var cols := 1 if n <= rows else 2
-	var w := (right - RESIST_X - (cols - 1) * 8) / cols
+	var w := (right - RESIST_X - (cols - 1) * 16) / cols
 	var out: Array[Rect2i] = []
 	for i in mini(n, rows * cols):
 		var col := i / rows
-		out.append(Rect2i(RESIST_X + col * (w + 8), RESIST_TOP + (i % rows) * RESIST_PITCH, w, 10))
+		out.append(Rect2i(RESIST_X + col * (w + 16), RESIST_TOP + (i % rows) * RESIST_PITCH, w, UiFont.SIZE))
 	return out
 
 
@@ -182,63 +186,63 @@ func _draw() -> void:
 	UiSlate.title(self, L, "GEAR")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "SLOT / FITTED", UiTheme.TEXT_DIM)
+	var right := L.end.x - 16
+	UiDraw.text_right(self, right, L.position.y + 8, "SLOT / FITTED", UiTheme.TEXT_DIM)
 	for i in menu.rows.size():
 		var s: Dictionary = menu.rows[i].slot
 		var top := LIST_TOP + i * ROW_PITCH
 		var chosen := i == menu.index
 		if chosen:
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 2, right - x0 + 7, ROW_PITCH - 2), UiTheme.GLASS_LIT)
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 1, 2, ROW_PITCH - 4), UiTheme.TEXT)
-		UiDraw.text(self, Vector2i(x0 + 2, top), String(s.get("label", s.get("id", ""))).to_upper(), UiTheme.TEXT_DIM)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 4), UiTheme.GLASS_LIT)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 2, 4, ROW_PITCH - 8), UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 4, top), String(s.get("label", s.get("id", ""))).to_upper(), UiTheme.TEXT_DIM)
 		var item := StringName(s.get("item", &""))
 		var mods: Array = s.get("modules", [])
 		if item == &"":
-			UiDraw.text(self, Vector2i(x0 + 58, top), "empty", UiTheme.TEXT_DIM)
+			UiDraw.text(self, Vector2i(x0 + 116, top), "empty", UiTheme.TEXT_DIM)
 			# An empty slot still says what to look for out there.
 			var fits := SlateFeeds.fits(StringName(s.get("id", &"")))
 			if fits != "":
-				UiDraw.text(self, Vector2i(x0 + 58, top + 10), fits, UiTheme.TEXT_DIM)
+				UiDraw.text(self, Vector2i(x0 + 116, top + UiTheme.LINE), fits, UiTheme.TEXT_DIM)
 		else:
-			UiIcons.draw_item(self, item, Vector2i(x0 + 58, top - 1))
-			UiDraw.text(self, Vector2i(x0 + 71, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
+			UiIcons.draw_item(self, item, Vector2i(x0 + 116, top - 2))
+			UiDraw.text(self, Vector2i(x0 + 142, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
 		# A socket per module: lit when one is fitted.
 		# A socket per module the piece takes; without a feed, three.
 		for k in int(s.get("sockets", 3)):
-			var sx := right - 20 + k * 7
+			var sx := right - 40 + k * 14
 			if k < mods.size():
-				UiDraw.rect(self, Rect2i(sx, top + 2, 5, 5), UiTheme.MACHINE[3])
+				UiDraw.rect(self, Rect2i(sx, top + 4, 10, 10), UiTheme.MACHINE[3])
 			else:
-				UiDraw.frame(self, Rect2i(sx, top + 2, 5, 5), UiTheme.FAINT)
+				UiDraw.frame(self, Rect2i(sx, top + 4, 10, 10), UiTheme.FAINT)
 		for k in mods.size():
 			if k > 0:
 				break
 			var m: Dictionary = mods[k]
-			UiDraw.text(self, Vector2i(x0 + 71, top + 10), "%s  %s" % [m.get("name", ""), m.get("grants", "")], UiTheme.MACHINE[2])
+			UiDraw.text(self, Vector2i(x0 + 142, top + UiTheme.LINE), "%s  %s" % [m.get("name", ""), m.get("grants", "")], UiTheme.MACHINE[2])
 	# Abilities fitted, under the slots that give them.
-	var ay := LIST_TOP + menu.rows.size() * ROW_PITCH + 6
+	var ay := LIST_TOP + menu.rows.size() * ROW_PITCH + 12
 	UiSlate.heading(self, Vector2i(x0, ay), "abilities", right)
 	var abilities: Array = _feed.get("abilities", [])
 	if abilities.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 4, ay + 14), "none fitted: modules give them", UiTheme.TEXT_DIM)
-	var fit := maxi(1, UiSlate.line_count(ay + 14, L.end.y - 40))
+		UiDraw.text(self, Vector2i(x0 + 8, ay + 28), "none fitted: modules give them", UiTheme.TEXT_DIM)
+	var fit := maxi(1, UiSlate.line_count(ay + 28, L.end.y - 80))
 	for i in mini(abilities.size(), fit):
 		var a: Dictionary = abilities[i]
-		var y := UiSlate.line_top(ay + 14, i)
+		var y := UiSlate.line_top(ay + 28, i)
 		if i == fit - 1 and abilities.size() > fit:
-			UiDraw.text(self, Vector2i(x0 + 4, y), "and %d more" % (abilities.size() - i), UiTheme.TEXT_DIM)
+			UiDraw.text(self, Vector2i(x0 + 8, y), "and %d more" % (abilities.size() - i), UiTheme.TEXT_DIM)
 			break
-		UiDraw.text(self, Vector2i(x0 + 4, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
+		UiDraw.text(self, Vector2i(x0 + 8, y), String(a.get("name", a.get("id", ""))), UiTheme.MACHINE[3] if a.get("ready", true) else UiTheme.MACHINE[2])
 		UiDraw.text_right(self, right, y, String(a.get("note", "")), UiTheme.TEXT_DIM)
-	_draw_this_land(x0, right, L.end.y - 34)
+	_draw_this_land(x0, right, L.end.y - 68)
 	_draw_bay()
 	# Resistances: every pressure, how much of it the gear keeps off, down the
 	# whole panel beside the figure, in two columns once one will not hold them.
-	var rright := R.end.x - 12
-	UiSlate.heading(self, Vector2i(RESIST_X, R.position.y + 8), "resists", rright)
-	UiSlate.chevron(self, Vector2i(rright - UiFont.width("here") - 6, R.position.y + 10), UiTheme.PHOSPHOR[2])
-	UiDraw.text_right(self, rright, R.position.y + 8, "here", UiTheme.TEXT_DIM)
+	var rright := R.end.x - 24
+	UiSlate.heading(self, Vector2i(RESIST_X, R.position.y + 16), "resists", rright)
+	UiSlate.chevron(self, Vector2i(rright - UiFont.width("here") - 12, R.position.y + 20), UiTheme.PHOSPHOR[2])
+	UiDraw.text_right(self, rright, R.position.y + 16, "here", UiTheme.TEXT_DIM)
 	var resist: Dictionary = _feed.get("resist", {})
 	var near := here()
 	var hz := hazards()
@@ -247,17 +251,17 @@ func _draw() -> void:
 		var c := cells[i]
 		var v := float(resist.get(hz[i], 0.0))
 		var pressing := near.has(hz[i])
-		var meter_w := 60 if c.size.x > 120 else 22
+		var meter_w := 120 if c.size.x > 240 else 44
 		var word := String(hz[i]).replace("_", " ")
-		while UiFont.width(word) > c.size.x - 13 - meter_w - 4 and word.length() > 3:
+		while UiFont.width(word) > c.size.x - 26 - meter_w - 8 and word.length() > 3:
 			word = word.left(word.length() - 1)
 		if pressing:
-			UiSlate.chevron(self, Vector2i(c.position.x - 5, c.position.y + 2), UiTheme.PHOSPHOR[2])
-		UiIcons.draw_need(self, hz[i], Vector2i(c.position.x, c.position.y - 1), UiTheme.TEXT if v > 0.0 or pressing else UiTheme.FAINT)
-		UiDraw.text(self, Vector2i(c.position.x + 13, c.position.y), word, UiTheme.TEXT if v > 0.0 or pressing else UiTheme.TEXT_DIM)
-		UiSlate.meter(self, Rect2i(c.end.x - meter_w, c.position.y + 1, meter_w, 7), v)
+			UiSlate.chevron(self, Vector2i(c.position.x - 10, c.position.y + 4), UiTheme.PHOSPHOR[2])
+		UiIcons.draw_need(self, hz[i], Vector2i(c.position.x, c.position.y - 2), UiTheme.TEXT if v > 0.0 or pressing else UiTheme.FAINT)
+		UiDraw.text(self, Vector2i(c.position.x + 26, c.position.y), word, UiTheme.TEXT if v > 0.0 or pressing else UiTheme.TEXT_DIM)
+		UiSlate.meter(self, Rect2i(c.end.x - meter_w, c.position.y + 2, meter_w, 14), v)
 	if cells.size() < hz.size():
-		UiDraw.text_right(self, rright, UiSlate.SPARE.end.y - 12, "+%d" % (hz.size() - cells.size()), UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, rright, UiSlate.SPARE.end.y - 24, "+%d" % (hz.size() - cells.size()), UiTheme.TEXT_DIM)
 	var keys := [["e", "fit"], ["a d", "turn"], ["esc", "back"]]
 	draw_keys(keys)
 
@@ -274,9 +278,9 @@ func _draw_this_land(x0: int, right: int, top: int) -> void:
 		words.append(String(h).replace("_", " "))
 	words.sort()
 	var land := BiomeRegistry.at(game.world, game.player.pos)
-	UiDraw.text(self, Vector2i(x0 + 4, top + 14), land.display_name, UiTheme.BRIGHT)
+	UiDraw.text(self, Vector2i(x0 + 8, top + 28), land.display_name, UiTheme.BRIGHT)
 	var said := "puts nothing on you" if words.is_empty() else "presses: %s" % ", ".join(words)
-	UiDraw.text(self, Vector2i(x0 + 4 + UiFont.width(land.display_name) + 8, top + 14), said, UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(x0 + 8 + UiFont.width(land.display_name) + 16, top + 28), said, UiTheme.TEXT_DIM)
 
 
 ## The bay the body is scanned in: a heading, faint rules
@@ -285,17 +289,19 @@ func _draw_this_land(x0: int, right: int, top: int) -> void:
 func _draw_bay() -> void:
 	var R := UiSlate.SPARE
 	var x0 := R.position.x + UiSlate.MARGIN_L
-	UiSlate.heading(self, Vector2i(x0, R.position.y + 8), "body", FIGURE.end.x - 10)
-	for x in range(FIGURE.position.x + 8, FIGURE.end.x - 4, 14):
-		for y in range(FIGURE.position.y + 4, FIGURE.end.y - 12, 3):
+	UiSlate.heading(self, Vector2i(x0, R.position.y + 16), "body", FIGURE.end.x - 20)
+	# The bay's rules and its plinth are part of the picture: they keep the size
+	# they had on the glass, and are drawn in the module's finer pixels.
+	for x in range(FIGURE.position.x + 24, FIGURE.end.x - 12, 42):
+		for y in range(FIGURE.position.y + 12, FIGURE.end.y - 36, 9):
 			UiDraw.px(self, x, y, UiTheme.GHOST)
-	var foot := Vector2i(FIGURE.position.x + FIGURE.size.x / 2, FIGURE.end.y - 10)
+	var foot := Vector2i(FIGURE.position.x + FIGURE.size.x / 2, FIGURE.end.y - 30)
 	for k in 32:
 		var a := k * TAU / 32.0
-		UiDraw.px(self, foot.x + roundi(cos(a) * 44.0), foot.y + roundi(sin(a) * 7.0), UiTheme.FAINT)
+		UiDraw.px(self, foot.x + roundi(cos(a) * 132.0), foot.y + roundi(sin(a) * 21.0), UiTheme.FAINT)
 	for k in 20:
 		var a := k * TAU / 20.0
-		UiDraw.px(self, foot.x + roundi(cos(a) * 28.0), foot.y + roundi(sin(a) * 4.0), UiTheme.GHOST)
+		UiDraw.px(self, foot.x + roundi(cos(a) * 84.0), foot.y + roundi(sin(a) * 12.0), UiTheme.GHOST)
 
 
 ## Over the figure: a point on each part of the body a slot dresses, lit where
@@ -314,39 +320,42 @@ func _draw_marks() -> void:
 			continue
 		var filled := StringName(row.slot.get("item", &"")) != &""
 		var at := Vector2i(p.round())
-		UiDraw.rect(_marks, Rect2i(at.x - 2, at.y - 2, 5, 5), UiTheme.RIM)
+		UiDraw.rect(_marks, Rect2i(at.x - 4, at.y - 4, 10, 10), UiTheme.RIM)
 		if filled:
-			UiDraw.rect(_marks, Rect2i(at.x - 1, at.y - 1, 3, 3), UiTheme.TEXT)
+			UiDraw.rect(_marks, Rect2i(at.x - 2, at.y - 2, 6, 6), UiTheme.TEXT)
 		else:
-			UiDraw.frame(_marks, Rect2i(at.x - 1, at.y - 1, 3, 3), UiTheme.FAINT)
+			UiDraw.frame(_marks, Rect2i(at.x - 2, at.y - 2, 6, 6), UiTheme.FAINT)
 	if not PARTS.has(chosen):
 		return
 	var cp := figure.point_of(PARTS[chosen].bone, PARTS[chosen].at)
-	if not FIGURE.grow(4).has_point(cp):
+	if not FIGURE.grow(8).has_point(cp):
 		return
 	var c := Vector2i(cp.round())
 	var flash := _placed < 0.6 and int(_placed * 10.0) % 2 == 0
 	var ink := UiTheme.BRIGHT if not flash else UiTheme.PHOSPHOR[4]
-	var grow := 7 if not flash else 9
-	UiSlate.brackets(_marks, Rect2i(c.x - grow - 1, c.y - grow - 1, grow * 2 + 3, grow * 2 + 3), UiTheme.RIM, 4)
-	UiSlate.brackets(_marks, Rect2i(c.x - grow, c.y - grow, grow * 2 + 1, grow * 2 + 1), ink, 3)
+	var grow := 14 if not flash else 18
+	UiSlate.brackets(_marks, Rect2i(c.x - grow - 2, c.y - grow - 2, grow * 2 + 6, grow * 2 + 6), UiTheme.RIM, 8)
+	UiSlate.brackets(_marks, Rect2i(c.x - grow, c.y - grow, grow * 2 + 2, grow * 2 + 2), ink, 6)
 	var row := menu.selected()
 	var item := StringName((row.get("slot", {}) as Dictionary).get("item", &""))
 	var words := UiRules.item_name(item) if item != &"" else "empty"
-	var tag_w := UiFont.width(words) + (15 if item != &"" else 6)
+	var tag_w := UiFont.width(words) + (30 if item != &"" else 12)
 	# The name stands on whichever side of the figure the part is not.
 	var left := c.x > FIGURE.position.x + FIGURE.size.x / 2
-	var tx := FIGURE.position.x + 2 if left else FIGURE.end.x - 2 - tag_w
-	var ty := clampi(c.y - 20, FIGURE.position.y, FIGURE.end.y - 12)
-	var tag := Rect2i(tx, ty, tag_w, 11)
+	var tx := FIGURE.position.x + 4 if left else FIGURE.end.x - 4 - tag_w
+	var ty := clampi(c.y - 40, FIGURE.position.y, FIGURE.end.y - 24)
+	var tag := Rect2i(tx, ty, tag_w, UiTheme.LINE)
 	var near_x := tag.end.x if left else tag.position.x
-	UiDraw.hline(_marks, mini(near_x, c.x - grow if left else c.x + grow), maxi(near_x, c.x - grow if left else c.x + grow), ty + 5, UiTheme.RIM)
-	UiDraw.hline(_marks, mini(near_x, c.x - grow if left else c.x + grow), maxi(near_x, c.x - grow if left else c.x + grow), ty + 5, ink if not flash else UiTheme.TEXT)
-	UiDraw.rect(_marks, tag.grow(1), UiTheme.RIM)
+	var out_x := c.x - grow if left else c.x + grow
+	# The leader is a bar the eye follows to the body, never a hairline.
+	var lead := Rect2i(mini(near_x, out_x), ty + UiTheme.LINE / 2, absi(out_x - near_x), UiBase.PITCH)
+	UiDraw.rect(_marks, lead, UiTheme.RIM)
+	UiDraw.rect(_marks, lead, ink if not flash else UiTheme.TEXT)
+	UiDraw.rect(_marks, tag.grow(2), UiTheme.RIM)
 	UiDraw.rect(_marks, tag, UiTheme.GLASS)
 	UiDraw.frame(_marks, tag, UiTheme.TEXT_DIM)
-	var x := tag.position.x + 3
+	var x := tag.position.x + 6
 	if item != &"":
-		UiIcons.draw_item(_marks, item, Vector2i(x, tag.position.y + 1))
-		x += 12
+		UiIcons.draw_item(_marks, item, Vector2i(x, tag.position.y + 2))
+		x += 24
 	UiDraw.text(_marks, Vector2i(x, tag.position.y), words, UiTheme.MACHINE[3] if UiIcons.is_found(item) else UiTheme.BRIGHT)

@@ -3,7 +3,9 @@ extends DevPage
 ## The frames a proof shot, to look at on the glass one by one (up and down), or
 ## their folder opened.
 
-const PICTURE := Vector2i(280, 158)
+## The picture as it stands on the panel: the same share of the glass it always
+## covered, drawn at three times the detail.
+const PICTURE := Vector2i(840, 474)
 
 var dir := ""
 var _files: PackedStringArray = []
@@ -51,8 +53,8 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 	if not _pictures.has(f):
 		var img := Image.load_from_file(dir.path_join(f))
 		_pictures[f] = fitted_texture(img, PICTURE)
-	var box := Rect2i(panel_x(r) + 6, r.position.y + 12, PICTURE.x, PICTURE.y)
+	var box := Rect2i(panel_x(r) + 12, r.position.y + 24, PICTURE.x, PICTURE.y)
 	panel_picture(ci, box, _pictures[f])
-	var y := box.end.y + 10
+	var y := box.end.y + 20
 	y = panel_line(ci, r, y, f, UiTheme.TEXT)
 	panel_wrapped(ci, r, y, "Looked at here at a little under half its size; e opens it whole.")

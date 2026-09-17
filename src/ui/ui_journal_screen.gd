@@ -21,14 +21,14 @@ extends UiScreen
 ## slate goes and at whatever size it is drawn.
 ##
 ## The first row, below the top of the list pane: clear of the app's title.
-const ROWS_DOWN := 18
+const ROWS_DOWN := 36
 ## Clear pixels between a row's title and the words right-aligned beside it.
-const COLUMN_GAP := 10
+const COLUMN_GAP := 20
 ## The spare pane's heading, below the top of the pane, and the words under it.
-const PANE_DOWN := 8
-const UNDER_HEADING := 16
+const PANE_DOWN := 16
+const UNDER_HEADING := 32
 ## Kept clear at the foot of the spare pane.
-const PANE_FOOT := 6
+const PANE_FOOT := 12
 
 ## The row the story last added to while the page was shut: the journal opens on
 ## what the player has just found, the way a notebook falls open at its last page.
@@ -214,9 +214,9 @@ func _draw() -> void:
 	UiSlate.title(self, L, "JOURNAL")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	var first := L.position.y + ROWS_DOWN
-	var lines := UiSlate.line_count(first, L.end.y - 4)
+	var lines := UiSlate.line_count(first, L.end.y - 8)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
@@ -228,9 +228,9 @@ func _draw() -> void:
 		var col := UiTheme.TEXT_DIM if row.get("dim", false) else UiTheme.TEXT
 		var aside := _aside(row)
 		if i == menu.index and not row.get("dim", false):
-			UiSlate.row_bar(self, x0 - 4, right + 3, top)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top)
 			col = UiTheme.BRIGHT
-		var room := right - (x0 + 4)
+		var room := right - (x0 + 8)
 		var title := String(row.title)
 		if aside != "":
 			# The title keeps its words; what stands beside it gives way first.
@@ -241,11 +241,11 @@ func _draw() -> void:
 			UiDraw.text_right(self, right, top, aside, UiTheme.TEXT_DIM)
 		else:
 			title = _fit(title, room)
-		UiDraw.text(self, Vector2i(x0 + 4, top), title, col)
+		UiDraw.text(self, Vector2i(x0 + 8, top), title, col)
 	if scroll > 0:
 		UiDraw.text_right(self, right, first - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiSlate.line_top(first, lines) - 2, "↓", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, UiSlate.line_top(first, lines) - 4, "↓", UiTheme.TEXT_DIM)
 	_draw_spare(UiSlate.SPARE)
 	if is_inside_tree() and get_tree().paused:
 		# Over home the world is stopped and so is the system that reads this
@@ -270,7 +270,9 @@ static func _fit(text: String, room: int) -> String:
 	if UiFont.width(text) <= room:
 		return text
 	var cut := UiSlate.elided(text, room)
-	return cut if cut != "" else text.left(maxi(1, room / 6))
+	# Six cells of the module's grid is the widest advance the face has, so this
+	# never over-counts the letters that fit.
+	return cut if cut != "" else text.left(maxi(1, room / (6 * UiFont.PITCH)))
 
 
 ## The key the journal is on now, rebinds included, as the key strip names keys.
@@ -291,7 +293,7 @@ func _draw_spare(R: Rect2i) -> void:
 		_heading(x0, y, String(StoryContent.ARCS.get(arc, {}).get("title", arc)), rule)
 		y += UNDER_HEADING
 		y = _page(x0, y, width, bottom, PackedStringArray([StoryContent.beat_says(row.beat)]), UiTheme.BRIGHT)
-		y += 8
+		y += 16
 		var note := String(StoryContent.ARCS.get(arc, {}).get("note", ""))
 		if note != "":
 			_page(x0, y, width, bottom, PackedStringArray([note]), UiTheme.TEXT_DIM)
@@ -307,12 +309,12 @@ func _draw_spare(R: Rect2i) -> void:
 		y += UNDER_HEADING
 		var says: PackedStringArray = row.get("says", PackedStringArray())
 		y = _page(x0, y, width, bottom, says, UiTheme.TEXT_DIM)
-		y += 6
+		y += 12
 		# What the player said, marked the way the conversation marked it when it
 		# was chosen, so the two read as the same moment.
 		if y + UiTheme.LINE <= bottom:
-			UiDraw.rect(self, Rect2i(x0, y, 3, UiTheme.LINE - 2), UiTheme.TEXT)
-		_page(x0 + 8, y, width - 8, bottom, PackedStringArray([String(row.said)]), UiTheme.BRIGHT)
+			UiDraw.rect(self, Rect2i(x0, y, 6, UiTheme.LINE - 2), UiTheme.TEXT)
+		_page(x0 + 16, y, width - 16, bottom, PackedStringArray([String(row.said)]), UiTheme.BRIGHT)
 	else:
 		_page(x0, y, width, bottom, PackedStringArray(["What you read and what you are told is kept here."]), UiTheme.TEXT_DIM)
 

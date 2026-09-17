@@ -69,7 +69,7 @@ func keys(row: Dictionary) -> Array:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var id: StringName = screen.menu.selected().get("id", &"")
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	if id == &"file":
 		y = panel_heading(ci, r, y, "the file", true)
 		panel_wrapped(ci, r, y, "What this region's network makes of the player. Wary: workers look up. Hostile: they stop and come. Hunted: it sends hunters.")
@@ -94,4 +94,4 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		var lands := PackedStringArray()
 		for c: Variant in where.countries:
 			lands.append(str(c))
-		panel_wrapped(ci, r, y + 4, "lives in " + ", ".join(lands))
+		panel_wrapped(ci, r, y + 8, "lives in " + ", ".join(lands))

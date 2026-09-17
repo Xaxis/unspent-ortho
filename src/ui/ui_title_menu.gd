@@ -13,17 +13,21 @@ extends UiScreen
 ## when the player asks for it — confirming the faded continue row — and at once
 ## when a game has just handed back here because this build would not open it.
 
-const DEVICE := Rect2i(166, 158, 308, 188)
-const LETTER_H := 34
+## The title's device is a smaller one than the page slate, and it came across
+## the same way (`UiSlate.UNIT`): the same object, cut at the base's resolution,
+## covering the share of the frame it always did. The type on it did not.
+const DEVICE := Rect2i(166 * UiSlate.UNIT, 158 * UiSlate.UNIT, 308 * UiSlate.UNIT, 188 * UiSlate.UNIT)
+## The game's name is display lettering, not type: it belongs to the device.
+const LETTER_H := 34 * UiSlate.UNIT
 ## When the wake begins, the line opens, the scan runs, all is lit (seconds).
 const WAKE_AT := [0.35, 0.62, 0.95]
-const ROW_H := 13
+const ROW_H := UiTheme.LINE + 4
 ## The reason page's margin each side of the glass, and the lines there is room
 ## for between the list's top and the key strip.
-const REASON_INSET := 30
+const REASON_INSET := 60
 const REASON_LINES := 6
 ## The continued save's picture on the glass, right of the list.
-const PHOTO_SIZE := Vector2i(96, 54)
+const PHOTO_SIZE := Vector2i(96 * UiSlate.UNIT, 54 * UiSlate.UNIT)
 ## Real seconds a first press of new game waits for the second.
 const ASK_SECONDS := 3.0
 const ASK_NEW := "Again: it writes over the autosave."
@@ -143,13 +147,13 @@ func photo_rect() -> Rect2i:
 	if saved.is_empty():
 		return Rect2i()
 	var g := UiSlate.glass_of(DEVICE)
-	return Rect2i(g.end.x - UiSlate.MARGIN_R - 6 - PHOTO_SIZE.x, list_top(), PHOTO_SIZE.x, PHOTO_SIZE.y)
+	return Rect2i(g.end.x - UiSlate.MARGIN_R - 18 - PHOTO_SIZE.x, list_top(), PHOTO_SIZE.x, PHOTO_SIZE.y)
 
 
 ## Where the list (and the reason page in its place) begins on the glass. Static,
 ## so what fits there can be worked out without a title on screen.
 static func list_top() -> int:
-	return UiSlate.glass_of(DEVICE).position.y + UiSlate.STATUS_H + 12 + LETTER_H + 12
+	return UiSlate.glass_of(DEVICE).position.y + UiSlate.STATUS_H + 24 + LETTER_H + 24
 
 
 func open(switched: bool = false) -> void:
@@ -297,8 +301,8 @@ func _read_keys() -> void:
 func _draw() -> void:
 	# Dark bands top and bottom keep the slate calm over bright ground.
 	for i in 6:
-		UiDraw.rect(self, Rect2i(0, i * 6, UiBase.DESIGN.x, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
-		UiDraw.rect(self, Rect2i(0, UiBase.DESIGN.y - 6 - i * 6, UiBase.DESIGN.x, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
+		UiDraw.rect(self, Rect2i(0, i * 18, UiBase.SIZE.x, 18), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
+		UiDraw.rect(self, Rect2i(0, UiBase.SIZE.y - 18 - i * 18, UiBase.SIZE.x, 18), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
 	if fade > 0.0:
 		UiDraw.rect(self, UiBase.screen(), Color(UiTheme.GLASS_OFF, fade))
 	draw_device()
@@ -307,33 +311,35 @@ func _draw() -> void:
 		return
 	UiSlate.status(self, &"", "island %d" % (title.seed_value if title != null else 0), 1.0, DEVICE, false)
 	if page == "keys":
-		UiPauseScreen.draw_keys_list(self, Vector2i(g.position.x + UiSlate.MARGIN_L + 4, g.position.y + UiSlate.STATUS_H + 8), 52)
+		UiPauseScreen.draw_keys_list(self, Vector2i(g.position.x + UiSlate.MARGIN_L + 8, g.position.y + UiSlate.STATUS_H + 16), 104)
 		draw_keys(KEY_HINTS_PAGE)
 		return
 	var word := "UNSPENT"
 	var w := UiLettering.width(word, LETTER_H)
-	var at := Vector2i(g.position.x + (g.size.x - w) / 2, g.position.y + UiSlate.STATUS_H + 12)
+	var at := Vector2i(g.position.x + (g.size.x - w) / 2, g.position.y + UiSlate.STATUS_H + 24)
 	# A ghost of the word burnt into the glass a row below, the word in phosphor
-	# with every other row a step dimmer, the scan structure of the module.
-	UiLettering.draw(self, word, at + Vector2i(0, 2), LETTER_H, UiTheme.GHOST, 7)
+	# with every other row a step dimmer, the scan structure of the module. The
+	# rows are the MODULE's pixels, not the base's: a one-pixel stripe at this
+	# resolution is a moire pattern, not a scan line.
+	UiLettering.draw(self, word, at + Vector2i(0, 6), LETTER_H, UiTheme.GHOST, 7)
 	UiLettering.draw(self, word, at, LETTER_H, UiTheme.TEXT, 7)
-	for y in range(at.y + 1, at.y + LETTER_H, 2):
-		UiDraw.hline(self, at.x, at.x + w, y, Color(UiTheme.GLASS, 0.35))
+	for y in range(at.y + UiBase.PITCH, at.y + LETTER_H, UiBase.PITCH * 2):
+		UiDraw.rect(self, Rect2i(at.x, y, w, UiBase.PITCH), Color(UiTheme.GLASS, 0.35))
 	if page == "why":
 		_draw_reason(g)
 		draw_keys(KEY_HINTS_PAGE)
 		return
 	# With a save to continue its picture takes the right of the glass and the list moves left.
 	var photo := photo_rect()
-	var x0 := g.position.x + (30 if photo.has_area() else 58)
-	var x1 := photo.position.x - 12 if photo.has_area() else g.end.x - 58
+	var x0 := g.position.x + (60 if photo.has_area() else 116)
+	var x1 := photo.position.x - 24 if photo.has_area() else g.end.x - 116
 	var top0 := list_top()
 	for i in menu.rows.size():
 		var row := menu.rows[i]
 		var top := top0 + i * ROW_H
 		var chosen := i == menu.index
 		if chosen:
-			UiSlate.row_bar(self, x0 - 8, x1, top)
+			UiSlate.row_bar(self, x0 - 16, x1, top)
 		var text: String = row.text
 		if row.id == &"seed" and title != null:
 			# Which island a new game is played on. The arrows are drawn whether or
@@ -341,8 +347,8 @@ func _draw() -> void:
 			# menu entry nobody could explain rather than as something to turn.
 			text = "island %d" % title.seed_value
 			var arrows := UiTheme.TEXT if chosen else UiTheme.TEXT_DIM
-			UiDraw.text(self, Vector2i(x1 - 18, top), "<", arrows)
-			UiDraw.text(self, Vector2i(x1 - 8, top), ">", arrows)
+			UiDraw.text(self, Vector2i(x1 - 36, top), "<", arrows)
+			UiDraw.text(self, Vector2i(x1 - 16, top), ">", arrows)
 		var ink := (UiTheme.BRIGHT if chosen else UiTheme.TEXT) if UiMenu.enabled(row) else UiTheme.TEXT_DIM
 		UiDraw.text(self, Vector2i(x0, top), text, ink)
 	if photo.has_area():
@@ -363,13 +369,13 @@ func _draw_reason(g: Rect2i) -> void:
 
 ## The save Continue would load: its picture in brackets, where and when under it.
 func _draw_saved(photo: Rect2i) -> void:
-	UiSlate.brackets(self, photo.grow(2), UiTheme.TEXT_DIM, 5)
+	UiSlate.brackets(self, photo.grow(6), UiTheme.TEXT_DIM, 15)
 	if _photo != null:
 		draw_texture_rect(_photo, Rect2(photo), false)
 	else:
-		UiDraw.text_centred(self, photo.position.x + photo.size.x / 2, photo.position.y + photo.size.y / 2 - 5, "NO PICTURE", UiTheme.TEXT_DIM)
+		UiDraw.text_centred(self, photo.position.x + photo.size.x / 2, photo.position.y + photo.size.y / 2 - UiFont.SIZE / 2, "NO PICTURE", UiTheme.TEXT_DIM)
 	# One line, right-aligned under it: the key strip lies just below.
-	UiDraw.text_right(self, photo.end.x, photo.end.y + 4, SaveSlots.describe(saved.header), UiTheme.TEXT_DIM)
+	UiDraw.text_right(self, photo.end.x, photo.end.y + 8, SaveSlots.describe(saved.header), UiTheme.TEXT_DIM)
 
 
 func _draw_glass() -> void:
@@ -385,11 +391,12 @@ func _draw_glass() -> void:
 		UiDraw.rect(_fx, g, UiTheme.GLASS_OFF)
 		if st[0] > 0.0:
 			var half_w := roundi(g.size.x * 0.5 * minf(1.0, st[0] * 2.0))
-			var half_h := roundi(maxf(0.0, st[0] * 2.0 - 1.0) * 3.0)
+			var half_h := roundi(maxf(0.0, st[0] * 2.0 - 1.0) * 3.0) * UiSlate.UNIT
 			var cy := g.position.y + g.size.y / 2
-			UiDraw.rect(_fx, Rect2i(g.position.x + g.size.x / 2 - half_w, cy - half_h, half_w * 2, half_h * 2 + 1), Color(UiTheme.BRIGHT, 0.7))
-		# The power light is still off.
-		UiDraw.rect(_fx, Rect2i(DEVICE.position.x + UiSlate.BEZEL_L + 2, DEVICE.position.y + 6, 3, 2), Palette.FOUND[1])
+			UiDraw.rect(_fx, Rect2i(g.position.x + g.size.x / 2 - half_w, cy - half_h, half_w * 2, half_h * 2 + UiSlate.UNIT), Color(UiTheme.BRIGHT, 0.7))
+		# The power light is still off. It is a part of the device, and sits exactly
+		# where the bake puts the green one.
+		UiDraw.rect(_fx, Rect2i(DEVICE.position.x + UiSlate.BEZEL_L + 2 * UiSlate.UNIT, DEVICE.position.y + 6 * UiSlate.UNIT, 3 * UiSlate.UNIT, 2 * UiSlate.UNIT), Palette.FOUND[1])
 		return
 	UiSlate.marks(_fx, DEVICE)
 	UiSlate.wake(_fx, st[1], DEVICE)

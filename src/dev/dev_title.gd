@@ -8,9 +8,12 @@ extends Control
 ## UiTitle makes one in its setup (DevTitle.attach) and its menu stops reading
 ## keys while the app is open (is_open).
 
-const LABEL_AT := Vector2i(10, 10)
-## Pixels in from the title slate's left edge: past KEEP DRY, short of the grey casing.
-const LABEL_ON_BEZEL := 134
+## Base pixels in from the screen's corner, as the HUD keeps its own furniture.
+const LABEL_AT := Vector2i(30, 30)
+## Pixels in from the title slate's left edge: past KEEP DRY and the tally beside
+## it, short of the grey casing. On the DEVICE, so it came across at the device's
+## own factor.
+const LABEL_ON_BEZEL := 134 * UiSlate.UNIT
 const VIOLET := Color("#b3a8ea")
 
 var title: UiTitle
@@ -82,15 +85,17 @@ func _draw() -> void:
 		# Below the slate, where the dark band lies: what build this is, for anyone
 		# who sends word about it.
 		var words := DevStamp.label(stamp)
-		UiDraw.text_rimmed(self, Vector2i(UiBase.DESIGN.x - LABEL_AT.x - UiFont.width(words), UiBase.DESIGN.y - LABEL_AT.y - 2), words, UiTheme.TEXT, UiTheme.RIM)
+		UiDraw.text_rimmed(self, Vector2i(UiBase.SIZE.x - LABEL_AT.x - UiFont.width(words), UiBase.SIZE.y - LABEL_AT.y - UiFont.SIZE), words, UiTheme.TEXT, UiTheme.RIM)
 	if not DevMode.reachable() or is_open():
 		return
 	# A label stuck on the slate's lower bezel, clear of what is scratched into it
-	# and of the patched casing: the key, and the word.
+	# and of the patched casing: the key, and the word. It sits on the same line
+	# KEEP DRY is scratched on (UiSlate.device_image), so the two read as one row
+	# of markings rather than as a label dropped over them.
 	var d := UiTitleMenu.DEVICE
-	var at := Vector2i(d.position.x + LABEL_ON_BEZEL, d.end.y - 14)
-	var w := UiFont.width("dev") + 16
-	UiDraw.rect(self, Rect2i(at.x - 2, at.y - 1, w + 4, 11), UiTheme.RIM)
-	UiDraw.frame(self, Rect2i(at.x - 2, at.y - 1, w + 4, 11), UiTheme.MACHINE[1])
-	UiDraw.text(self, Vector2i(at.x + 1, at.y - 1), "`", VIOLET)
-	UiDraw.text(self, Vector2i(at.x + 10, at.y - 1), "dev", VIOLET)
+	var at := Vector2i(d.position.x + LABEL_ON_BEZEL, d.end.y - 14 * UiSlate.UNIT)
+	var w := UiFont.width("dev") + 32
+	UiDraw.rect(self, Rect2i(at.x - 4, at.y - 2, w + 8, UiTheme.LINE), UiTheme.RIM)
+	UiDraw.frame(self, Rect2i(at.x - 4, at.y - 2, w + 8, UiTheme.LINE), UiTheme.MACHINE[1])
+	UiDraw.text(self, Vector2i(at.x + 2, at.y - 2), "`", VIOLET)
+	UiDraw.text(self, Vector2i(at.x + 20, at.y - 2), "dev", VIOLET)

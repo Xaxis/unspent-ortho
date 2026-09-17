@@ -18,11 +18,14 @@ extends UiScreen
 
 signal begun(look: Dictionary)
 
-const LIST_TOP := 26
-const ROW_PITCH := 12
-const VALUE_W := 92
-## Where the body stands on the spare panel.
-const FIGURE := Rect2i(360, 44, 200, 250)
+const LIST_TOP := 52
+## A hair looser than a list's pitch: nineteen rows and two verbs have to stand in
+## one pane without a scroll.
+const ROW_PITCH := UiTheme.LINE + 2
+const VALUE_W := 184
+## Where the body stands on the spare panel. A PICTURE: it covers the same share
+## of the glass it always did, drawn at three times the detail.
+const FIGURE := Rect2i(1080, 132, 600, 750)
 
 ## The rows: `key` a PersonLook field chosen from `choices(key)`, `extra` a thing
 ## worn or not.
@@ -276,38 +279,40 @@ func _draw() -> void:
 	UiSlate.title(self, L, "WHO WAKES")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	var first := L.position.y + LIST_TOP
 	for i in menu.rows.size():
 		var row := menu.rows[i]
 		var top := first + i * ROW_PITCH
 		if row.id == &"shuffle":
-			top += 4
+			top += 8
 		elif row.id == &"begin":
-			top += 6
+			top += 12
 		var chosen := i == menu.index
 		if chosen:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top)
 		if row.has("row"):
 			var r: Dictionary = row.row
-			UiDraw.text(self, Vector2i(x0 + 4, top), String(r.label), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
+			UiDraw.text(self, Vector2i(x0 + 8, top), String(r.label), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
 			var words := value_words(look, r)
 			var col := UiTheme.BRIGHT if chosen else UiTheme.TEXT_DIM
-			UiDraw.text_right(self, right - (8 if chosen else 0), top, words, col)
+			UiDraw.text_right(self, right - (16 if chosen else 0), top, words, col)
 			if chosen:
-				UiDraw.text(self, Vector2i(right - 14 - UiFont.width(words), top), "<", UiTheme.TEXT)
-				UiDraw.text(self, Vector2i(right - 5, top), ">", UiTheme.TEXT)
+				UiDraw.text(self, Vector2i(right - 28 - UiFont.width(words), top), "<", UiTheme.TEXT)
+				UiDraw.text(self, Vector2i(right - 10, top), ">", UiTheme.TEXT)
 		else:
-			UiDraw.text(self, Vector2i(x0 + 4, top), String(row.text), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
+			UiDraw.text(self, Vector2i(x0 + 8, top), String(row.text), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
 	# The body, standing in the spare panel's bay.
 	var px := R.position.x + UiSlate.MARGIN_L
-	UiSlate.heading(self, Vector2i(px, R.position.y + 8), "the one who wakes", R.end.x - 12)
-	var foot := Vector2i(FIGURE.position.x + FIGURE.size.x / 2, FIGURE.end.y - 8)
+	UiSlate.heading(self, Vector2i(px, R.position.y + 16), "the one who wakes", R.end.x - 24)
+	# The ellipse it stands on belongs to the picture, so it is cut at the picture's
+	# scale: a module pixel every ten degrees round a ring the width of the body.
+	var foot := Vector2i(FIGURE.position.x + FIGURE.size.x / 2, FIGURE.end.y - 24)
 	for k in 36:
 		var a := k * TAU / 36.0
-		UiDraw.px(self, foot.x + roundi(cos(a) * 58.0), foot.y + roundi(sin(a) * 9.0), UiTheme.FAINT)
+		UiDraw.px(self, foot.x + roundi(cos(a) * 174.0), foot.y + roundi(sin(a) * 27.0), UiTheme.FAINT)
 	var chosen_row := menu.selected()
 	var says := "a d to change it" if chosen_row.has("row") else ("a d to turn them" if chosen_row.id != &"begin" else "wake on the coast behind the slate")
-	UiDraw.text(self, Vector2i(px, R.end.y - 14), says, UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(px, R.end.y - 28), says, UiTheme.TEXT_DIM)
 	var keys := [["a d", "change"], ["e", "begin" if chosen_row.get("id", &"") == &"begin" else "next"], ["esc", "back"]]
 	draw_keys(keys)

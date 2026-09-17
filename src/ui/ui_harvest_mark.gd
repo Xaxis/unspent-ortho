@@ -10,8 +10,8 @@ extends CanvasLayer
 ## away; the rule and the placement stay.
 
 ## Corners of the brackets, and how far out from the thing they stand (pixels).
-const CORNER := 4
-const PAD := 3
+const CORNER := 12
+const PAD := 9
 ## Points round the ground ring (two drawn in every three, each on a dark rim).
 const RING_POINTS := 36
 ## Seconds for one slow breath of the brackets, so a mark at rest is still alive.
@@ -27,7 +27,6 @@ var _t := 0.0
 func _ready() -> void:
 	# Over the world and under the HUD's own glass (10).
 	layer = 9
-	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "harvest_mark"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -65,7 +64,7 @@ func _draw_mark() -> void:
 	var radius := float(target.radius)
 	var state := StringName(str(target.get("state", &"")))
 	var col := ink_of(state)
-	if not Rect2(UiBase.screen()).grow(40.0).has_point(UiBase.to_design(cam.unproject_position(base))):
+	if not Rect2(UiBase.screen()).grow(120.0).has_point(cam.unproject_position(base)):
 		return
 	if state == Harvest.PICKED_OVER or state == Harvest.UNDER_WATER:
 		# Nothing to take: no brackets, only the ground marked round it, so the eye
@@ -74,29 +73,29 @@ func _draw_mark() -> void:
 		return
 	var box := bounds(cam, base, height, radius).grow(PAD)
 	var breath := 0.5 + 0.5 * sin(_t * TAU / BREATH)
-	box = box.grow(roundi(breath))
+	box = box.grow(roundi(breath) * UiBase.PITCH)
 	# A dark bracket under the bright one, so the corners hold against pale ground
 	# as well as dark (the target read's own rule).
-	UiSlate.brackets(_canvas, box.grow(1), UiTheme.RIM, CORNER + 1)
+	UiSlate.brackets(_canvas, box.grow(UiBase.PITCH), UiTheme.RIM, CORNER + UiBase.PITCH)
 	UiSlate.brackets(_canvas, box, col, CORNER)
 
 
 ## The screen box round a thing standing `height` tall and `radius` wide at `base`,
-## put through the camera (and brought into the slate's design units, which this
-## layer is drawn in) so the brackets fit what is drawn at any zoom, lean or turn
-## of the rig. A rock, a seam or a bush is round and comes to a crown, not a
+## put through the camera so the brackets fit what is drawn at any zoom, lean or
+## turn of the rig (this layer draws in the base's own pixels, which is what
+## `unproject_position` already answers in). A rock, a seam or a bush is round and comes to a crown, not a
 ## crate: its foot and its shoulder are circles and its top is a point, and the
 ## corners of an upright box stood a head above every cone.
 static func bounds(cam: Camera3D, base: Vector3, height: float, radius: float) -> Rect2i:
-	var lo := UiBase.to_design(cam.unproject_position(base + Vector3(0.0, height, 0.0)))
+	var lo := cam.unproject_position(base + Vector3(0.0, height, 0.0))
 	var hi := lo
 	for k in 8:
 		var a := float(k) * TAU / 8.0
 		var round := Vector3(cos(a) * radius, 0.0, sin(a) * radius)
 		# The foot at full width, and a shoulder high up at most of it: a seam's
 		# broad top stays inside, and a cone's point is still the top.
-		for p: Vector2 in [UiBase.to_design(cam.unproject_position(base + round)),
-				UiBase.to_design(cam.unproject_position(base + round * 0.8 + Vector3(0.0, height * 0.75, 0.0)))]:
+		for p: Vector2 in [cam.unproject_position(base + round),
+				cam.unproject_position(base + round * 0.8 + Vector3(0.0, height * 0.75, 0.0))]:
 			lo = lo.min(p)
 			hi = hi.max(p)
 	return Rect2i(Vector2i(lo.round()), Vector2i((hi - lo).round()))
@@ -110,6 +109,6 @@ func _ring(cam: Camera3D, base: Vector3, radius: float, col: Color) -> void:
 		if i % 3 == 2:
 			continue
 		var a := float(i) * TAU / float(RING_POINTS)
-		var p := UiBase.to_design(cam.unproject_position(base + Vector3(cos(a) * r, 0.03, sin(a) * r))).round()
-		UiDraw.rect(_canvas, Rect2i(int(p.x) - 1, int(p.y) - 1, 3, 3), UiTheme.RIM)
+		var p := cam.unproject_position(base + Vector3(cos(a) * r, 0.03, sin(a) * r)).round()
+		UiDraw.rect(_canvas, Rect2i(int(p.x) - UiBase.PITCH, int(p.y) - UiBase.PITCH, UiBase.PITCH * 3, UiBase.PITCH * 3), UiTheme.RIM)
 		UiDraw.px(_canvas, int(p.x), int(p.y), col)

@@ -22,10 +22,10 @@ func _process(_delta: float) -> void:
 		# "world " first: tools/shot.sh only forwards lines that begin `world ` or
 		# `shot `, so a line named anything else is printed and thrown away.
 		var px := Quality.render_pixels()
-		print("world render: %s, quality %s, world %dx%d of %dx%d, slate %dx%d" % [
+		print("world render: %s, quality %s, world %dx%d of %dx%d, slate pitch %d, caps %d" % [
 			"forward_plus" if Quality.forward_plus() else "gl_compatibility",
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
-			UiBase.DESIGN.x, UiBase.DESIGN.y])
+			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
 
 

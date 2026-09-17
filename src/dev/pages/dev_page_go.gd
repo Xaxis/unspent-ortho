@@ -65,7 +65,7 @@ func keys(_row: Dictionary) -> Array:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var row := screen.menu.selected()
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	var to := DevSession.came_from if row.get("id") == &"back" else Vector2.INF
 	var note := "where the last warp left from"
 	if row.get("id") != &"back":
@@ -83,7 +83,7 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var d := to - game.player.pos
 	y = panel_pair(ci, r, y, "from here", "%d tiles %s" % [roundi(d.length()), _bearing(d)])
 	if note != "":
-		y = panel_wrapped(ci, r, y + 4, note)
+		y = panel_wrapped(ci, r, y + 8, note)
 
 
 static func _bearing(d: Vector2) -> String:

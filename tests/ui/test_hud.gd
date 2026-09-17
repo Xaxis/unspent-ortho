@@ -89,7 +89,7 @@ func test_the_place_name_is_never_struck_through_by_its_own_brackets() -> void:
 			gt(float(half), word / 2.0 + 6.0, "at %.2f in, the bracket is clear of a %d px name" % [grow, word])
 			check(half <= last, "and it only ever closes in")
 			last = half
-		eq(Hud.place_half(word, 1.0), roundi(word / 2.0 + 12.0), "and comes to rest just off the word")
+		eq(Hud.place_half(word, 1.0), roundi(word / 2.0 + Hud.PLACE_CLEAR), "and comes to rest just off the word")
 
 
 ## The ping's ring used to be an ellipse grown from the middle of the screen,
@@ -100,7 +100,7 @@ func test_the_place_name_is_never_struck_through_by_its_own_brackets() -> void:
 func test_the_ping_ring_never_crosses_the_name() -> void:
 	for word: int in [20, 46, 86, 140]:
 		var plate := Hud.place_plate(word)
-		var name_box := Rect2i(320 - word / 2, Hud.PLACE_Y, word, 10)
+		var name_box := Rect2i(UiBase.mid_x() - word / 2, Hud.PLACE_Y, word, UiFont.SIZE)
 		check(plate.encloses(name_box), "a %d px name sits on the plate" % word)
 		var seen := 0
 		var ink := 0.0
@@ -184,11 +184,11 @@ func test_the_goal_line_is_read_off_a_window_like_every_other_readout() -> void:
 	check(hud.goal_shown(), "the goal is on the glass")
 	var r := Hud.goal_clip(hud.goal)
 	check(r.size.x > UiFont.width(hud.goal), "the window holds the whole line")
-	check(r.size.y >= 12, "and a line box")
+	check(r.size.y >= UiTheme.LINE, "and a line box")
 	check(UiBase.screen().encloses(r), "and stands on the screen")
 	# Clipped to a corner, not banded across the middle (docs/ART.md §9).
-	lt(r.end.x, 440, "it keeps to the left")
-	lt(r.end.y, 60, "and the top")
+	lt(r.end.x, UiBase.SIZE.x * 0.7, "it keeps to the left")
+	lt(r.end.y, UiBase.SIZE.y * 0.15, "and the top")
 	await tree.process_frame
 	UiDraw.tape.clear()
 	UiDraw.taping = true

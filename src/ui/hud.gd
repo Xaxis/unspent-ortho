@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
-## The slate's edge overlay, drawn at the 640x360 base so every pixel is a
-## screen pixel. Small readouts clipped to the corners, as if strapped to the
+## The slate's edge overlay, drawn in the base's own pixels (`UiBase.SIZE`) so
+## every pixel is a screen pixel. Small readouts clipped to the corners, as if strapped to the
 ## wrist or thrown onto a salvaged lens (docs/ART.md §9). Nothing sits over the
 ## middle of the screen, where the fight is, and nothing in a fight is text
 ## beyond the readouts:
@@ -22,35 +22,37 @@ extends CanvasLayer
 ## The HUD owns no rules. The ui system (src/systems/90_ui.gd) feeds it every
 ## frame from Body, Inventory and the world; Events.message arrives directly.
 
-const MARGIN := 8
+const MARGIN := 24
 ## One health cell: three segments and the gap after them.
-const CELL_W := 12
+const CELL_W := 24
 const PLACE_IN := 0.8
 const PLACE_HOLD := 2.6
 const PLACE_OUT := 1.4
 ## A place name gives way to a fight this fast.
 const PLACE_HUSH := 0.3
-## How far outside their place the name's brackets start, in pixels.
-const PLACE_SWEEP := 30.0
+## How far outside their place the name's brackets start, in pixels, and how far
+## off the last letter they come to rest.
+const PLACE_SWEEP := 60.0
+const PLACE_CLEAR := 24
 ## Top of the place name's line box; its label sits a line above it.
-const PLACE_Y := 30
+const PLACE_Y := 72
 ## Samples in the ping's ring, how far past the plate it rings out, how long it
 ## takes to get there, and the gap it starts at so the plate's own rim cannot
 ## eat it. It used to start 2 px off the plate and fade over 1.2 s multiplied by
 ## the ping's rise, which put its brightest moment at a fifth of full ink: over
 ## the world it was never once seen.
 const RING_STEPS := 40
-const RING_STEPS_MAX := 640
-const RING_REACH := 26.0
+const RING_STEPS_MAX := 1280
+const RING_REACH := 52.0
 const RING_LIFE := 0.7
-const RING_GAP := 4.0
+const RING_GAP := 8.0
 ## Seconds the ping's scrap of glass takes to come up. The lettering starts only
 ## once it is opaque: for the whole 0.8 s rise the name used to be mid-grey type
 ## on a half-transparent plate over a snowfield, which is the half second the eye
 ## lands on it.
 const PLATE_IN := 0.18
 ## A pressure gauge's tile, and the gap between tiles.
-const GAUGE := Vector2i(13, 16)
+const GAUGE := Vector2i(26, 32)
 ## The body's own needs, in the order they cost you the run. The gauges are
 ## drawn right to left from the clock, so the first here sits under the clock:
 ## hunger, the rung that ends the run, is nearest it and never moves.
@@ -61,7 +63,7 @@ const GAUGE_FLARE := 1.2
 ## Longest a line about a pressure waits for the readouts to be fed.
 const PEND_WAIT := 0.25
 ## Where the standing goal line sits: under the wrist unit and its wind line.
-const GOAL_Y := 26
+const GOAL_Y := 58
 
 var clock_text := ""
 var health := 12
@@ -106,7 +108,6 @@ var _pages := {}
 
 func _ready() -> void:
 	layer = 10
-	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "canvas"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -408,80 +409,80 @@ func _draw_hud() -> void:
 ## (left) or a strip of tape (right): every corner readout sits in one.
 static func clip(ci: CanvasItem, r: Rect2i, strap_left: bool) -> void:
 	var F := Palette.FOUND
-	UiDraw.rect(ci, Rect2i(r.position.x - 1, r.position.y - 2, r.size.x + 2, r.size.y + 4), UiTheme.RIM)
-	UiDraw.rect(ci, Rect2i(r.position.x - 2, r.position.y - 1, r.size.x + 4, r.size.y + 2), UiTheme.RIM)
-	UiDraw.frame(ci, r.grow(1), F[1])
-	UiDraw.hline(ci, r.position.x, r.end.x - 1, r.position.y - 1, F[3])
+	UiDraw.rect(ci, Rect2i(r.position.x - 2, r.position.y - 4, r.size.x + 4, r.size.y + 8), UiTheme.RIM)
+	UiDraw.rect(ci, Rect2i(r.position.x - 4, r.position.y - 2, r.size.x + 8, r.size.y + 4), UiTheme.RIM)
+	UiDraw.frame(ci, r.grow(2), F[1])
+	UiDraw.hline(ci, r.position.x, r.end.x - 1, r.position.y - 2, F[3])
 	UiDraw.rect(ci, r, UiTheme.GLASS)
-	for y in range(r.position.y + 1, r.end.y, 2):
-		UiDraw.hline(ci, r.position.x, r.end.x - 1, y, UiTheme.GLASS_ROW)
+	for y in range(r.position.y + UiBase.PITCH, r.end.y, UiBase.PITCH * 2):
+		UiDraw.rect(ci, Rect2i(r.position.x, y, r.size.x, UiBase.PITCH), UiTheme.GLASS_ROW)
 	if strap_left:
 		# The strap it is buckled to, running off the edge of the wrist.
 		var A := Palette.ASH
-		UiDraw.rect(ci, Rect2i(0, r.position.y + 2, r.position.x - 2, r.size.y - 4), A[1])
-		UiDraw.hline(ci, 0, r.position.x - 3, r.position.y + 2, A[2])
-		for x in range(1, r.position.x - 2, 3):
+		UiDraw.rect(ci, Rect2i(0, r.position.y + 4, r.position.x - 4, r.size.y - 8), A[1])
+		UiDraw.hline(ci, 0, r.position.x - 6, r.position.y + 4, A[2])
+		for x in range(2, r.position.x - 4, 6):
 			UiDraw.px(ci, x, r.position.y + r.size.y / 2, A[0])
 	else:
 		# A strip of tape over its top corner.
 		var A := Palette.ASH
 		for k in 5:
-			UiDraw.hline(ci, r.end.x - 7 + k, r.end.x + 1 + k, r.position.y - 3 + k, A[4] if k != 4 else A[3])
+			UiDraw.rect(ci, Rect2i(r.end.x - 14 + k * 2, r.position.y - 6 + k * 2, 16, 2), A[4] if k != 4 else A[3])
 
 
 func _draw_wrist(ci: Control) -> void:
 	var cells := UiRules.health_cells(health, max_health)
 	var lost_cells := UiRules.health_cells(_lost_from, max_health)
 	var last := health > 0 and health <= UiRules.PER_CELL
-	var w := cells.size() * CELL_W + 3
-	var win := Rect2i(MARGIN + 6, MARGIN, w, 11)
+	var w := cells.size() * CELL_W + 6
+	var win := Rect2i(MARGIN + 12, MARGIN, w, UiTheme.LINE)
 	clip(ci, win, true)
 	if last:
 		var warm := 0.5 + 0.5 * sin(_time * 3.2)
-		UiDraw.frame(ci, win.grow(1), Color(UiTheme.WARN, 0.3 + 0.55 * warm))
+		UiDraw.frame(ci, win.grow(2), Color(UiTheme.WARN, 0.3 + 0.55 * warm))
 	for i in cells.size():
-		var cx := win.position.x + 3 + i * CELL_W
+		var cx := win.position.x + 6 + i * CELL_W
 		for t in UiRules.PER_CELL:
 			var col := UiTheme.WARN if last else UiTheme.TEXT
 			if t >= cells[i]:
 				col = UiTheme.GHOST
 				if _hurt_flash > 0.0 and t < lost_cells[i]:
 					col = UiTheme.WARN
-			UiDraw.rect(ci, Rect2i(cx + t * 3, win.position.y + 2, 2, 7), col)
+			UiDraw.rect(ci, Rect2i(cx + t * 6, win.position.y + 4, 4, 14), col)
 	if _wind_alpha > 0.0:
 		# Wind: one thin line under the window, only while some is spent.
 		var k := UiDraw.stepped(_wind_alpha)
-		var fill := roundi((w - 2) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
-		var wy := win.end.y + 3
-		UiDraw.rect(ci, Rect2i(win.position.x - 1, wy - 1, w + 2, 3), Color(UiTheme.RIM, k * 0.85))
-		UiDraw.rect(ci, Rect2i(win.position.x, wy, fill, 1), Color(UiTheme.PHOSPHOR[2], k))
+		var fill := roundi((w - 4) * clampf(wind / maxf(1.0, max_wind), 0.0, 1.0))
+		var wy := win.end.y + 6
+		UiDraw.rect(ci, Rect2i(win.position.x - 2, wy - 2, w + 4, 6), Color(UiTheme.RIM, k * 0.85))
+		UiDraw.rect(ci, Rect2i(win.position.x, wy, fill, 2), Color(UiTheme.PHOSPHOR[2], k))
 	if _charge_alpha > 0.0:
 		var k := UiDraw.stepped(_charge_alpha)
 		var text := "%d" % charges
-		var cw := Rect2i(win.end.x + 6, win.position.y, 13 + UiFont.width(text) + 8, 11)
+		var cw := Rect2i(win.end.x + 12, win.position.y, 26 + UiFont.width(text) + 16, UiTheme.LINE)
 		if k >= 1.0:
 			clip(ci, cw, false)
-			_charge_glyph(ci, Vector2i(cw.position.x + 2, cw.position.y + 2), UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
-			UiDraw.text(ci, Vector2i(cw.position.x + 13, cw.position.y), text, UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
+			_charge_glyph(ci, Vector2i(cw.position.x + 4, cw.position.y + 4), UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
+			UiDraw.text(ci, Vector2i(cw.position.x + 26, cw.position.y), text, UiTheme.WARN if charges <= 0 else UiTheme.MACHINE[3])
 		else:
-			UiDraw.text_rimmed_faded(ci, Vector2i(cw.position.x + 13, cw.position.y), text, UiTheme.MACHINE[3], UiTheme.RIM, k)
+			UiDraw.text_rimmed_faded(ci, Vector2i(cw.position.x + 26, cw.position.y), text, UiTheme.MACHINE[3], UiTheme.RIM, k)
 
 
 ## A found charge: a small violet cell with its slot lit.
 static func _charge_glyph(ci: CanvasItem, at: Vector2i, col: Color) -> void:
-	UiDraw.frame(ci, Rect2i(at.x, at.y, 9, 7), col)
-	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + 2, 5, 3), col)
-	UiDraw.vline(ci, at.x + 9, at.y + 2, at.y + 4, col)
+	UiDraw.frame(ci, Rect2i(at.x, at.y, 18, 14), col)
+	UiDraw.rect(ci, Rect2i(at.x + 4, at.y + 4, 10, 6), col)
+	UiDraw.rect(ci, Rect2i(at.x + 18, at.y + 4, 2, 6), col)
 
 
 func _draw_clock(ci: Control) -> void:
-	var w := UiFont.width(clock_text) + 24
-	var win := Rect2i(UiBase.DESIGN.x - MARGIN - w, MARGIN, w, 11)
+	var w := UiFont.width(clock_text) + 48
+	var win := Rect2i(UiBase.SIZE.x - MARGIN - w, MARGIN, w, UiTheme.LINE)
 	clip(ci, win, false)
-	UiSlate.cell(ci, Vector2i(win.position.x + 3, win.position.y + 2), power)
-	UiDraw.text(ci, Vector2i(win.position.x + 19, win.position.y), clock_text, UiTheme.TEXT)
+	UiSlate.cell(ci, Vector2i(win.position.x + 6, win.position.y + 4), power)
+	UiDraw.text(ci, Vector2i(win.position.x + 38, win.position.y), clock_text, UiTheme.TEXT)
 	# Felt pressures, right to left under the clock, in a fixed order so they never swap.
-	var x := UiBase.DESIGN.x - MARGIN - GAUGE.x
+	var x := UiBase.SIZE.x - MARGIN - GAUGE.x
 	var level := {}
 	var value := {}
 	for p in pressures:
@@ -492,8 +493,8 @@ func _draw_clock(ci: Control) -> void:
 		if a <= 0.0:
 			continue
 		var lv := int(level.get(k, 1))
-		_draw_gauge(ci, k, Vector2i(x, win.end.y + 6), gauge_ink(lv), float(value.get(k, 0.5)), a, lv)
-		x -= GAUGE.x + 5
+		_draw_gauge(ci, k, Vector2i(x, win.end.y + 12), gauge_ink(lv), float(value.get(k, 0.5)), a, lv)
+		x -= GAUGE.x + 10
 
 
 ## The gauges under the clock, in the order they stand out from it (GAUGE_ORDER
@@ -545,37 +546,37 @@ func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float
 	if k <= 0.0:
 		return
 	var r := Rect2i(at, GAUGE)
-	UiDraw.rect(ci, r.grow(1), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, r.grow(2), Color(UiTheme.RIM, k))
 	UiDraw.rect(ci, r, Color(UiTheme.GLASS, k))
 	if level >= 3:
 		var beat := 0.55 + 0.45 * sin(_time * 3.2)
-		UiDraw.frame(ci, r.grow(1), Color(col, k * (0.35 + 0.55 * beat)))
+		UiDraw.frame(ci, r.grow(2), Color(col, k * (0.35 + 0.55 * beat)))
 	var flare := clampf(float(_gauge_flare.get(id, 0.0)) / GAUGE_FLARE, 0.0, 1.0)
 	if flare > 0.0:
 		# Brackets closing in on the tile, as they close on the location ping's
 		# name: the eye is sent to the readout instead of to a line of text.
 		# They stand over the world, so they carry their own shade — phosphor
 		# alone is invisible over a snowfield.
-		var out := r.grow(1 + roundi(flare * 4.0))
+		var out := r.grow(2 + roundi(flare * 8.0))
 		var fa := k * (0.45 + 0.55 * flare)
-		UiSlate.brackets(ci, Rect2i(out.position + Vector2i(0, 1), out.size), Color(UiTheme.RIM, fa * 0.85), 4)
-		UiSlate.brackets(ci, out, Color(UiTheme.BRIGHT, fa), 4)
-	UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(2, 1), {"#": Color(col, k)})
+		UiSlate.brackets(ci, Rect2i(out.position + Vector2i(0, 2), out.size), Color(UiTheme.RIM, fa * 0.85), 8)
+		UiSlate.brackets(ci, out, Color(UiTheme.BRIGHT, fa), 8)
+	UiDraw.sprite(ci, UiIcons.pressure_rows(id), at + Vector2i(4, 2), {"#": Color(col, k)})
 	var mcol := gauge_meter_ink(level)
-	var fill := roundi((GAUGE.x - 4) * clampf(v, 0.0, 1.0))
-	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, GAUGE.x - 4, 2), Color(UiTheme.GHOST, k))
-	UiDraw.rect(ci, Rect2i(at.x + 2, at.y + GAUGE.y - 4, fill, 2), Color(mcol, k))
+	var fill := roundi((GAUGE.x - 8) * clampf(v, 0.0, 1.0))
+	UiDraw.rect(ci, Rect2i(at.x + 4, at.y + GAUGE.y - 8, GAUGE.x - 8, 4), Color(UiTheme.GHOST, k))
+	UiDraw.rect(ci, Rect2i(at.x + 4, at.y + GAUGE.y - 8, fill, 4), Color(mcol, k))
 
 
 func _draw_held(ci: Control) -> void:
 	var name := UiRules.item_name(held) if held != &"" else "hands"
-	var w := UiFont.width(name) + (19 if held != &"" else 6)
-	var win := Rect2i(MARGIN + 6, UiBase.DESIGN.y - MARGIN - 11, w, 11)
+	var w := UiFont.width(name) + (38 if held != &"" else 12)
+	var win := Rect2i(MARGIN + 12, UiBase.SIZE.y - MARGIN - UiTheme.LINE, w, UiTheme.LINE)
 	clip(ci, win, true)
-	var x := win.position.x + 3
+	var x := win.position.x + 6
 	if held != &"":
-		UiIcons.draw_item(ci, held, Vector2i(x, win.position.y + 1))
-		x += 13
+		UiIcons.draw_item(ci, held, Vector2i(x, win.position.y + 2))
+		x += 26
 	UiDraw.text(ci, Vector2i(x, win.position.y), name, UiTheme.MACHINE[3] if UiIcons.is_found(held) else UiTheme.TEXT)
 
 
@@ -586,16 +587,16 @@ func _draw_bottom(ci: Control) -> void:
 		var line: Dictionary = lines[lines.size() - 1 - i]
 		var a: float = line.alpha * (1.0 if i == 0 else 0.72)
 		var text: String = line.text
-		var y := UiBase.DESIGN.y - MARGIN - 25 - i * 12
+		var y := UiBase.SIZE.y - MARGIN - 50 - i * UiTheme.LINE
 		UiDraw.text_rimmed_faded(ci, Vector2i(UiBase.mid_x() - UiFont.width(text) / 2, y), text, UiTheme.TEXT if i == 0 else UiTheme.TEXT_DIM, UiTheme.RIM, a)
 	if _hint_alpha > 0.0 and hint != "":
-		var cap := maxi(9, UiFont.width(hint_key) + 4)
-		var total := cap + 5 + UiFont.width(hint)
+		var cap := maxi(18, UiFont.width(hint_key) + 8)
+		var total := cap + 10 + UiFont.width(hint)
 		var x := UiBase.mid_x() - total / 2
-		var y := UiBase.DESIGN.y - MARGIN - 11
+		var y := UiBase.SIZE.y - MARGIN - UiTheme.LINE
 		var k := UiDraw.stepped(_hint_alpha)
 		UiSlate.key_cap(ci, Vector2i(x, y), hint_key, k)
-		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 5, y + 1), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
+		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 10, y + 2), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
 
 
 ## What to want next: one quiet line hung off the wrist unit, a phosphor
@@ -612,14 +613,14 @@ func _draw_goal(ci: Control) -> void:
 	# snowfield at noon: the one line that says what to do next, unreadable in
 	# the landscape a player is most likely to be lost in.
 	Hud.clip(ci, r, false)
-	var x := MARGIN + 6
-	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 3), UiTheme.PHOSPHOR[2])
-	UiDraw.text(ci, Vector2i(x + 6, GOAL_Y), goal, UiTheme.TEXT)
+	var x := MARGIN + 12
+	UiSlate.chevron(ci, Vector2i(x, GOAL_Y + 6), UiTheme.PHOSPHOR[2])
+	UiDraw.text(ci, Vector2i(x + 14, GOAL_Y), goal, UiTheme.TEXT)
 
 
 ## The window the goal line is read off, for a goal of this length.
 static func goal_clip(text: String) -> Rect2i:
-	return Rect2i(MARGIN + 2, GOAL_Y - 2, 14 + UiFont.width(text), 14)
+	return Rect2i(MARGIN + 4, GOAL_Y - 4, 30 + UiFont.width(text), UiTheme.LINE + 6)
 
 
 ## How far from the middle each bracket of the place name stands, `grow` 0..1
@@ -627,7 +628,7 @@ static func goal_clip(text: String) -> Rect2i:
 ## and never sweep across the letters: a bright mark travelling over a name
 ## reads as a name struck out (docs/ART.md §9 — the slate's type is exact).
 static func place_half(w: int, grow: float) -> int:
-	return roundi(w / 2.0 + 12.0 + (1.0 - clampf(grow, 0.0, 1.0)) * PLACE_SWEEP)
+	return roundi(w / 2.0 + PLACE_CLEAR + (1.0 - clampf(grow, 0.0, 1.0)) * PLACE_SWEEP)
 
 
 ## The scrap of glass the landscape's name is read off. Every other readout sits
@@ -637,7 +638,7 @@ static func place_half(w: int, grow: float) -> int:
 ## to rest, so the plate IS the clip they close on.
 static func place_plate(w: int) -> Rect2i:
 	var half := place_half(w, 1.0)
-	return Rect2i(UiBase.mid_x() - half, PLACE_Y - 14, half * 2, 25)
+	return Rect2i(UiBase.mid_x() - half, PLACE_Y - 30, half * 2, 54)
 
 
 ## Where the ping's ring stands at `age`, in screen pixels: an ellipse ringing
@@ -661,7 +662,7 @@ static func ring_points(age: float, plate: Rect2i) -> Array[Vector2i]:
 	# samples on an ellipse as wide as a place name stood eight pixels apart and
 	# read as dust blown over the snow, not as a ring.
 	var steps := clampi(roundi((rx + ry) * 5.0), RING_STEPS, RING_STEPS_MAX)
-	var clear := plate.grow(2)
+	var clear := plate.grow(4)
 	var last := Vector2i(-9999, -9999)
 	for s in steps:
 		var an := s * TAU / float(steps)
@@ -719,17 +720,17 @@ func _draw_place(ci: Control) -> void:
 	var ring_a := UiDraw.stepped(Hud.ring_alpha(_place_age)) * 0.9
 	if ring_a > 0.0:
 		for p in Hud.ring_points(_place_age, plate):
-			UiDraw.px(ci, p.x, p.y + 1, Color(UiTheme.RIM, ring_a * 0.8))
+			UiDraw.px(ci, p.x, p.y + UiBase.PITCH, Color(UiTheme.RIM, ring_a * 0.8))
 			UiDraw.px(ci, p.x, p.y, Color(UiTheme.BRIGHT, ring_a))
 	UiDraw.text(ci, Vector2i(UiBase.mid_x() - w / 2, y), spaced, Color(UiTheme.BRIGHT, ink))
-	UiDraw.text(ci, Vector2i(UiBase.mid_x() - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, ink))
+	UiDraw.text(ci, Vector2i(UiBase.mid_x() - UiFont.width("location") / 2, y - 24), "location", Color(UiTheme.TEXT_DIM, ink))
 	var half := place_half(w, grow)
 	for side: int in [-1, 1]:
 		var bx := UiBase.mid_x() + side * half
-		UiDraw.rect(ci, Rect2i(bx - 1, plate.position.y - 1, 3, plate.size.y + 2), Color(UiTheme.RIM, k))
-		UiDraw.vline(ci, bx, plate.position.y, plate.end.y - 1, Color(UiTheme.TEXT, k))
-		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), plate.position.y, Color(UiTheme.TEXT, k))
-		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), plate.end.y - 1, Color(UiTheme.TEXT, k))
+		UiDraw.rect(ci, Rect2i(bx - 2, plate.position.y - 2, 6, plate.size.y + 4), Color(UiTheme.RIM, k))
+		UiDraw.rect(ci, Rect2i(bx, plate.position.y, 2, plate.size.y), Color(UiTheme.TEXT, k))
+		UiDraw.rect(ci, Rect2i(mini(bx, bx - side * 6), plate.position.y, 6, 2), Color(UiTheme.TEXT, k))
+		UiDraw.rect(ci, Rect2i(mini(bx, bx - side * 6), plate.end.y - 2, 6, 2), Color(UiTheme.TEXT, k))
 
 
 ## The ping's glass: the same window `clip` gives every corner readout, held on
@@ -739,10 +740,10 @@ static func place_glass(ci: CanvasItem, r: Rect2i, k: float) -> void:
 	if k <= 0.0:
 		return
 	var F := Palette.FOUND
-	UiDraw.rect(ci, Rect2i(r.position.x - 1, r.position.y, r.size.x + 2, r.size.y), Color(UiTheme.RIM, k))
-	UiDraw.rect(ci, Rect2i(r.position.x, r.position.y - 1, r.size.x, r.size.y + 2), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, Rect2i(r.position.x - 2, r.position.y, r.size.x + 4, r.size.y), Color(UiTheme.RIM, k))
+	UiDraw.rect(ci, Rect2i(r.position.x, r.position.y - 2, r.size.x, r.size.y + 4), Color(UiTheme.RIM, k))
 	UiDraw.rect(ci, r, Color(UiTheme.GLASS, k))
-	for y in range(r.position.y + 1, r.end.y, 2):
-		UiDraw.hline(ci, r.position.x, r.end.x - 1, y, Color(UiTheme.GLASS_ROW, k))
-	UiDraw.hline(ci, r.position.x + 4, r.end.x - 5, r.position.y - 1, Color(F[1], k * 0.8))
-	UiDraw.hline(ci, r.position.x + 4, r.end.x - 5, r.end.y, Color(F[1], k * 0.55))
+	for y in range(r.position.y + UiBase.PITCH, r.end.y, UiBase.PITCH * 2):
+		UiDraw.rect(ci, Rect2i(r.position.x, y, r.size.x, UiBase.PITCH), Color(UiTheme.GLASS_ROW, k))
+	UiDraw.rect(ci, Rect2i(r.position.x + 8, r.position.y - 2, r.size.x - 18, 2), Color(F[1], k * 0.8))
+	UiDraw.rect(ci, Rect2i(r.position.x + 8, r.end.y, r.size.x - 18, 2), Color(F[1], k * 0.55))

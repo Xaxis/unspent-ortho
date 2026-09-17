@@ -10,7 +10,9 @@ var _read_at := -INF
 ## note id -> its picture, shrunk to the panel.
 var _pictures := {}
 var _pending: ImageTexture
-const PICTURE := Vector2i(280, 158)
+## The picture as it stands on the panel: the same share of the glass it always
+## covered, drawn at three times the detail.
+const PICTURE := Vector2i(840, 474)
 
 
 func heading() -> String:
@@ -86,9 +88,9 @@ func _note(id: StringName) -> Dictionary:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var row := screen.menu.selected()
-	var box := Rect2i(panel_x(r) + 6, r.position.y + 12, PICTURE.x, PICTURE.y)
+	var box := Rect2i(panel_x(r) + 12, r.position.y + 24, PICTURE.x, PICTURE.y)
 	var n := _note(row.get("id", &""))
-	var y := box.end.y + 10
+	var y := box.end.y + 20
 	if n.is_empty():
 		if game == null:
 			return
@@ -97,7 +99,7 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		panel_picture(ci, box, _pending)
 		y = panel_pair(ci, r, y, "where", "%s  %s" % [BiomeRegistry.at(game.world, game.player.pos).display_name.to_lower(), game.clock.label()])
 		y = panel_pair(ci, r, y, "build", DevReadout.build_line())
-		panel_wrapped(ci, r, y + 2, "Kept with the picture, the state of the game and the command that stages this moment again.")
+		panel_wrapped(ci, r, y + 4, "Kept with the picture, the state of the game and the command that stages this moment again.")
 		return
 	if not _pictures.has(n.id):
 		var img: Image = null
@@ -109,4 +111,4 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 	y = panel_pair(ci, r, y, "where", "%s  %s" % [str(n.state.get("land", "")), str(n.state.get("clock", ""))])
 	y = panel_pair(ci, r, y, "build", str(n.get("build", "")))
 	y = panel_pair(ci, r, y, "config", str(n.get("config", "")) if str(n.get("config", "")) != "" else "none")
-	panel_wrapped(ci, r, y + 2, str(n.get("words", "")), UiTheme.TEXT)
+	panel_wrapped(ci, r, y + 4, str(n.get("words", "")), UiTheme.TEXT)

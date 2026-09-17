@@ -14,7 +14,7 @@ extends Control
 ##   wear(spec, held, wing)      dress it; a change runs the scan down it again
 ##   turn_to(yaw)                ease round to show a side (the back slot turns it)
 ##   nudge(dir)                  a step round by hand
-##   point_of(bone, offset)      where a part of the body is on the page (design units)
+##   point_of(bone, offset)      where a part of the body is on the page (base pixels)
 ##
 ## Cost: nothing while the page is shut, and nothing on an open page while the
 ## figure stands still — the viewport renders once when the body is dressed, laid
@@ -36,6 +36,12 @@ const TURN_RATE := 5.0
 const NUDGE := deg_to_rad(30.0)
 ## Seconds the scan line takes down the figure when what it wears changes.
 const SCAN_SECONDS := 0.55
+## Every nth pixel of the rendered figure is read back to set the scan's levels.
+## The page's rectangle is now stated in base pixels, so the viewport holds nine
+## times the pixels it did, and reading every one of them stalls the main thread
+## for a fifth of a second each time a piece goes on. A third in each direction
+## takes the same sample it always took.
+const LEVELS_STRIDE := 3
 const SCAN := preload("res://src/ui/ui_gear_scan.gdshader")
 ## Render layers: the figure as seen, and its FOUND mask.
 const SEEN_LAYER := 1
@@ -283,8 +289,8 @@ func nudge(dir: int) -> void:
 	yaw_to += NUDGE * dir
 
 
-## Where `bone` (plus `offset` in its own frame) is on the page, in the design
-## units this control is laid out in, or Vector2.INF before the figure exists.
+## Where `bone` (plus `offset` in its own frame) is on the page, in the base
+## pixels this control is laid out in, or Vector2.INF before the figure exists.
 func point_of(bone: StringName, offset: Vector3 = Vector3.ZERO) -> Vector2:
 	if model == null or camera == null or not model.is_inside_tree():
 		return Vector2.INF
@@ -356,8 +362,8 @@ func _read_levels() -> void:
 	if img == null or img.is_empty():
 		return
 	var values: PackedFloat32Array = []
-	for y in img.get_height():
-		for x in img.get_width():
+	for y in range(0, img.get_height(), LEVELS_STRIDE):
+		for x in range(0, img.get_width(), LEVELS_STRIDE):
 			var c := img.get_pixel(x, y)
 			if c.a > 0.5:
 				values.append(c.r * 0.3 + c.g * 0.55 + c.b * 0.15)

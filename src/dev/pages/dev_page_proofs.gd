@@ -130,12 +130,12 @@ func _frames_dir() -> String:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	var id := String(screen.menu.selected().get("id", ""))
 	if not DevJobs.job.is_empty() and (DevJobs.running() or id in ["job", "stop", "frames"]):
 		y = panel_heading(ci, r, y, str(DevJobs.job.label), true)
 		y = panel_line(ci, r, y, str(DevJobs.job.command), UiTheme.TEXT_DIM)
-		panel_log(ci, r, y + 2, DevJobs.job.lines, r.end.y - 6)
+		panel_log(ci, r, y + 4, DevJobs.job.lines, r.end.y - 12)
 		return
 	if not DevMode.local():
 		panel_wrapped(ci, r, y, "Proofs run on the machine the game is built on, with its tools.")
@@ -147,22 +147,22 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		for t: Dictionary in _tours:
 			if t.name == name:
 				y = panel_wrapped(ci, r, y, str(t.command), UiTheme.TEXT)
-		y += 4
+		y += 8
 		for l in text.split("\n"):
 			if not l.begins_with("#") or l.contains("tools/tour.sh") or l.strip_edges().begins_with("#   --") or l.strip_edges().begins_with("#     --"):
 				if not l.begins_with("#"):
 					break
 				continue
 			y = panel_line(ci, r, y, l.trim_prefix("#").strip_edges(), UiTheme.TEXT_DIM)
-			if y > r.end.y - 14:
+			if y > r.end.y - UiTheme.LINE - 6:
 				break
 		return
 	var m := DevJobs.machine()
 	y = panel_heading(ci, r, y, "the machine")
 	y = panel_line(ci, r, y, DevJobs.machine_line(m), UiTheme.WARN if bool(m.busy) else UiTheme.TEXT)
-	y = panel_wrapped(ci, r, y + 2, "A timing failure while the machine is this busy is re-run alone before it is believed.")
+	y = panel_wrapped(ci, r, y + 4, "A timing failure while the machine is this busy is re-run alone before it is believed.")
 	if not DevJobs.history.is_empty():
-		y += 6
+		y += 12
 		y = panel_heading(ci, r, y, "this session")
 		for i in range(DevJobs.history.size() - 1, maxi(-1, DevJobs.history.size() - 8), -1):
 			var h: Dictionary = DevJobs.history[i]

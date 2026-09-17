@@ -161,13 +161,13 @@ func _paste() -> void:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var row := screen.menu.selected()
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	y = panel_heading(ci, r, y, GameConfig.active if GameConfig.active != "" else "no configuration", true)
 	y = panel_pair(ci, r, y, "from", _where())
 	if GameConfig.chain.size() > 1:
 		y = panel_pair(ci, r, y, "built on", " on ".join(GameConfig.chain.slice(1)))
 	y = panel_pair(ci, r, y, "edits", str(GameConfig.edits.size()) if not GameConfig.edits.is_empty() else "none", VIOLET if not GameConfig.edits.is_empty() else UiTheme.TEXT)
-	y += 8
+	y += 16
 	if row.has("setting"):
 		var s := ConfigSchema.row(str(row.setting))
 		y = panel_heading(ci, r, y, str(s.label))

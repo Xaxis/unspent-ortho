@@ -469,7 +469,7 @@ func _chrome_key() -> Vector2:
 ## and they are the expensive half of the drawing.
 func _draw_glass() -> void:
 	var key := _chrome_key()
-	UiDraw.rect(_sheet, UiBase.screen(), Color(GLASS, key.x))
+	UiDraw.rect(_sheet, UiBase.legacy_screen(), Color(GLASS, key.x))
 	_draw_device(_sheet, key.x * key.y)
 	_draw_marks(_sheet, key.x * key.y)
 
@@ -520,7 +520,7 @@ func _draw_device(ci: CanvasItem, a: float) -> void:
 	UiDraw.rect(ci, slit, Color(CHROME[0], a))
 	UiDraw.hline(ci, slit.position.x + 2, slit.end.x - 3, slit.position.y + 2, Color(SENSOR[1], a))
 	for k: int in [9, 10, 30]:
-		UiDraw.px(ci, slit.position.x + k, slit.position.y + 2, Color(SENSOR[3], a))
+		UiDraw.px_legacy(ci, slit.position.x + k, slit.position.y + 2, Color(SENSOR[3], a))
 	UiDraw.hline(ci, slit.position.x, slit.end.x - 1, slit.end.y, Color(CHROME[3], a))
 	# 4. The grey casing cut off some other device and soldered onto the corner.
 	var seam_x := d.position.x + 399
@@ -542,7 +542,7 @@ func _draw_device(ci: CanvasItem, a: float) -> void:
 	UiDraw.rect(ci, Rect2i(d.end.x - 13, d.end.y - 13, 6, 6), Color(Palette.COPPER[2], a))
 	UiDraw.frame(ci, Rect2i(d.end.x - 13, d.end.y - 13, 6, 6), Color(Palette.COPPER[0], a))
 	# 6. KEEP DRY scratched into the chrome, the power light, the lip and the glass.
-	UiDraw.text(ci, Vector2i(d.position.x + 26, d.end.y - 15), "KEEP DRY", Color(CHROME[5], a * 0.85))
+	UiDraw.text_legacy(ci, Vector2i(d.position.x + 26, d.end.y - 15), "KEEP DRY", Color(CHROME[5], a * 0.85))
 	UiDraw.rect(ci, Rect2i(d.position.x + 18, d.position.y + 6, 3, 2), Color(LIT, a))
 	UiDraw.frame(ci, g.grow(2), Color(CHROME[0].lerp(CHROME[1], 0.4), a))
 	UiDraw.frame(ci, g.grow(1), Color(GLASS, a))
@@ -574,12 +574,12 @@ func _draw_tape(ci: CanvasItem, a: float) -> void:
 				col = CASING[2]
 			elif (roundi(q.x) * 2 + roundi(q.y)) % 4 == 0:
 				col = CASING[3]
-			UiDraw.px(ci, roundi(q.x), roundi(q.y), Color(col, a))
+			UiDraw.px_legacy(ci, roundi(q.x), roundi(q.y), Color(col, a))
 	for t in range(-14, 18):
 		var q := corner + axis * t + across * -22.5
-		UiDraw.px(ci, roundi(q.x), roundi(q.y), Color(0, 0, 0, a * 0.35))
+		UiDraw.px_legacy(ci, roundi(q.x), roundi(q.y), Color(0, 0, 0, a * 0.35))
 		var r := corner + axis * t + across * -9.5
-		UiDraw.px(ci, roundi(r.x), roundi(r.y), Color(0, 0, 0, a * 0.2))
+		UiDraw.px_legacy(ci, roundi(r.x), roundi(r.y), Color(0, 0, 0, a * 0.2))
 
 
 func _draw_page() -> void:
@@ -610,7 +610,7 @@ func _draw_page() -> void:
 	var words := cur.label if cur != null else "looking up"
 	if held_progress >= 0.0:
 		words = _label_at(p)
-	UiDraw.text(ci, Vector2i(x0, LINE_Y - 16), words, WORDS)
+	UiDraw.text_legacy(ci, Vector2i(x0, LINE_Y - 16), words, WORDS)
 
 
 ## The slate's status bar and its key strip, the two things every app on this
@@ -624,13 +624,13 @@ func _draw_status(ci: CanvasItem) -> void:
 	var x := g.position.x + 10
 	var y := g.position.y + 2
 	UiDraw.hline(ci, x - 2, g.end.x - 14, g.position.y + STATUS_H, Color(RAIL, a))
-	UiDraw.text(ci, Vector2i(x, y), "slate", Color(HEAD, a))
-	UiDraw.text_right(ci, g.end.x - 14, y, "island %d" % (options.seed_value if options != null else 0), Color(WORDS, a))
+	UiDraw.text_legacy(ci, Vector2i(x, y), "slate", Color(HEAD, a))
+	UiDraw.text_right_legacy(ci, g.end.x - 14, y, "island %d" % (options.seed_value if options != null else 0), Color(WORDS, a))
 	# The foot strip: what it is doing, in the place an app names its keys.
 	var fy := g.end.y - KEYS_H + 1
 	UiDraw.hline(ci, x - 2, g.end.x - 14, fy - 2, Color(RAIL, a))
-	UiDraw.text(ci, Vector2i(x, fy), "opening a world" if kind != "title" else "opening", Color(WORDS, a))
-	UiDraw.text_right(ci, g.end.x - 14, fy, "%d%%" % roundi(progress() * 100.0), Color(WORDS, a))
+	UiDraw.text_legacy(ci, Vector2i(x, fy), "opening a world" if kind != "title" else "opening", Color(WORDS, a))
+	UiDraw.text_right_legacy(ci, g.end.x - 14, fy, "%d%%" % roundi(progress() * 100.0), Color(WORDS, a))
 	_draw_stages(ci, a)
 
 
@@ -662,7 +662,7 @@ func _draw_stages(ci: CanvasItem, a: float) -> void:
 		UiDraw.rect(ci, Rect2i(SCREEN.position.x + 10, y + 3, 3, 3), Color(LIT if past else (HEAD if now else TICK), a))
 		if now:
 			UiDraw.rect(ci, Rect2i(SCREEN.position.x + 9, y + 2, 5, 5), Color(HEAD, a * (0.3 + 0.35 * sin(_t * 5.0) + 0.35)))
-		UiDraw.text(ci, Vector2i(SCREEN.position.x + 18, y), rows[i], Color(col, a))
+		UiDraw.text_legacy(ci, Vector2i(SCREEN.position.x + 18, y), rows[i], Color(col, a))
 
 
 ## The glass is salvaged and says so: a column of stuck pixels down the left
@@ -676,8 +676,8 @@ func _draw_marks(ci: CanvasItem, a: float) -> void:
 	for y in range(g.position.y, g.end.y):
 		if (y / 23) % 5 == 2:
 			continue
-		UiDraw.px(ci, dx, y, Color(RAIL, a * (0.9 if y % 2 == 0 else 0.6)))
-	UiDraw.px(ci, g.position.x + 5, g.position.y + g.size.y / 2 + 7, Color(GRID, a))
+		UiDraw.px_legacy(ci, dx, y, Color(RAIL, a * (0.9 if y % 2 == 0 else 0.6)))
+	UiDraw.px_legacy(ci, g.position.x + 5, g.position.y + g.size.y / 2 + 7, Color(GRID, a))
 	# The crack: three jagged runs out from under the tape and a star of chips at
 	# their origin, the shape UiSlate bakes into every other screen. One
 	# near-straight hairline read as a scratch at 640x360; broken glass branches.
@@ -695,14 +695,14 @@ func _draw_marks(ci: CanvasItem, a: float) -> void:
 			p.x = clampi(p.x, zone.position.x, zone.end.x - 1)
 			if not zone.has_point(p):
 				break
-			UiDraw.px(ci, p.x, p.y, Color(CHIP, a * (0.55 - 0.3 * float(i) / n)))
+			UiDraw.px_legacy(ci, p.x, p.y, Color(CHIP, a * (0.55 - 0.3 * float(i) / n)))
 			if zone.has_point(p + Vector2i(1, 0)):
-				UiDraw.px(ci, p.x + 1, p.y, Color(0, 0, 0, a * 0.5))
+				UiDraw.px_legacy(ci, p.x + 1, p.y, Color(0, 0, 0, a * 0.5))
 	for k in 7:
 		var an := k * TAU / 7.0 + 0.4
 		var q := origin + Vector2i(roundi(cos(an) * 3.0), roundi(sin(an) * 3.0))
 		if zone.has_point(q):
-			UiDraw.px(ci, q.x, q.y, Color(CHIP, a * 0.35))
+			UiDraw.px_legacy(ci, q.x, q.y, Color(CHIP, a * 0.35))
 
 
 ## The island drawn in from the west, the start blinking on it like a cursor.
@@ -716,7 +716,7 @@ func _draw_sketch(ci: CanvasItem) -> void:
 		var m := SKETCH_AT + _mark
 		UiDraw.rect(ci, Rect2i(m.x - 2, m.y, 5, 1), LIT)
 		UiDraw.rect(ci, Rect2i(m.x, m.y - 2, 1, 5), LIT)
-		UiDraw.px(ci, m.x, m.y, HEAD)
+		UiDraw.px_legacy(ci, m.x, m.y, HEAD)
 
 
 ## Where on the line (0..1) each stage but the last ends, after the shell's share.

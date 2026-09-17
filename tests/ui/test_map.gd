@@ -109,18 +109,21 @@ func test_the_map_opens_on_everything_seen() -> void:
 	check(e.bounds.has_point(Vector2i(30, 30)) and e.bounds.has_point(Vector2i(50, 140)), "bounds hold both walks: %s" % e.bounds)
 	var window := UiMapScreen.MAP_RECT.size
 	var f := UiMapScreen.fit(e.bounds, Vector2(40.5, 130.5), window, UiMapScreen.SCALES)
-	eq(f.scale, 2, "a hundred tiles of height fit at 2 px a tile, not 3")
+	# By the STEP it picks, not by a pixel count: the survey is a picture and its
+	# steps came across with the rest of the device when the slate moved to the
+	# base's own pixels, so a number here would just be the old scale written twice.
+	eq(f.scale, UiMapScreen.SCALES[1], "a hundred tiles of height fit at the second step, not the third")
 	near((f.centre as Vector2).y, 85.5, 1.0, "centred on the land seen")
 	var small := UiExplored.new(256)
 	small.visit(Vector2(10.5, 10.5))
-	eq(UiMapScreen.fit(small.bounds, Vector2(10.5, 10.5), window, UiMapScreen.SCALES).scale, 6, "a little seen is drawn large")
+	eq(UiMapScreen.fit(small.bounds, Vector2(10.5, 10.5), window, UiMapScreen.SCALES).scale, UiMapScreen.SCALES[-1], "a little seen is drawn large")
 	var huge := Rect2i(0, 0, 256, 256)
 	var hf := UiMapScreen.fit(huge, Vector2(250.0, 250.0), window, UiMapScreen.SCALES)
-	eq(hf.scale, 2, "a whole world at 1 px a tile is a stamp in an empty frame: a step closer")
+	eq(hf.scale, UiMapScreen.SCALES[1], "a whole world at the widest step is a stamp in an empty frame: a step closer")
 	var reach: Vector2 = Vector2(window) * 0.5 / float(hf.scale)
 	var off: Vector2 = ((hf.centre as Vector2) - Vector2(250, 250)).abs()
 	check(off.x < reach.x and off.y < reach.y, "the player stays on the page")
-	eq(UiMapScreen.fit(Rect2i(0, 0, 600, 600), Vector2(300, 300), window, UiMapScreen.SCALES).scale, 1, "land that fills the window at 1 px stays at 1")
+	eq(UiMapScreen.fit(Rect2i(0, 0, 600, 600), Vector2(300, 300), window, UiMapScreen.SCALES).scale, UiMapScreen.SCALES[0], "land that fills the window at the widest step stays there")
 
 
 ## Window x of tile x for a fit.

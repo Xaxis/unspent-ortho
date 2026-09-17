@@ -14,11 +14,27 @@ extends UiScreen
 
 ## Real seconds a first press on a filled slot waits for the second that writes.
 const ASK_SECONDS := 3.0
-const THUMB := Vector2i(160, 90)
+## How big the save's picture is DRAWN.
+##
+## **It is held down by its source, not chosen.** The picture is captured at
+## `05_save.THUMB` — 160x90 — so anything drawn here is an upscale of that, and
+## an upscale is exactly the softness this wave exists to remove. Drawn at three
+## times it was a blur on the first screen of the game; at two it reads as a
+## small photograph, which is what it is.
+##
+## Capturing it at the size it is drawn is the real fix and it is the owner's
+## call, because it is a save-file change: measured on a real frame, the PNG in a
+## save's header goes from 40 KB at 160x90 to 147 KB at 320x180 and 318 KB at
+## 480x270, against about 6 KB for everything else a save holds. A JPEG thumb
+## would take a 480-wide picture back under 40 KB, but the header's `thumb` is a
+## PNG by contract (`SaveFile`, `SaveSlots.thumbnail`) and changing that is a
+## migration, not a constant.
+const THUMB := Vector2i(320, 180)
 ## Under the title, relative to the list pane; the rows start below them.
-const TABS_TOP := 18
-const LIST_TOP := 72
-const ROW_PITCH := 26
+const TABS_TOP := 36
+const LIST_TOP := UiSlate.LIST.position.y + 80
+## A row is two lines, the slot and what it holds, with a clear line round them.
+const ROW_PITCH := UiTheme.LINE * 2 + 8
 const MODES: Array[StringName] = [&"save", &"load"]
 
 ## &"save" or &"load"; left and right switch it, and it is kept between openings.
@@ -133,33 +149,33 @@ func _draw() -> void:
 	UiSlate.title(self, L, "SAVES")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	# SAVE | LOAD: the mode lit, the other dim.
-	var tx := x0 + 4
+	var tx := x0 + 8
 	for m: StringName in MODES:
 		var word := String(m).to_upper()
 		var lit := m == mode
 		if lit:
-			UiDraw.hline(self, tx - 1, tx + UiFont.width(word), L.position.y + TABS_TOP + 10, UiTheme.TEXT)
+			UiDraw.hline(self, tx - 2, tx + UiFont.width(word), L.position.y + TABS_TOP + UiFont.SIZE, UiTheme.TEXT)
 		UiDraw.text(self, Vector2i(tx, L.position.y + TABS_TOP), word, UiTheme.BRIGHT if lit else UiTheme.TEXT_DIM)
-		tx += UiFont.width(word) + 14
+		tx += UiFont.width(word) + 28
 	for i in menu.rows.size():
 		var row := menu.rows[i]
 		var e: Dictionary = row.entry
 		var top := LIST_TOP + i * ROW_PITCH
 		var chosen := i == menu.index
 		if chosen:
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 2, right - x0 + 7, ROW_PITCH - 4), UiTheme.GLASS_LIT)
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 1, 2, ROW_PITCH - 6), UiTheme.TEXT)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 8), UiTheme.GLASS_LIT)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 2, 4, ROW_PITCH - 12), UiTheme.TEXT)
 		var usable := UiMenu.enabled(row)
-		UiDraw.text(self, Vector2i(x0 + 4, top), SaveSlots.slot_name(int(row.slot)), (UiTheme.BRIGHT if chosen else UiTheme.TEXT) if usable else UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 8, top), SaveSlots.slot_name(int(row.slot)), (UiTheme.BRIGHT if chosen else UiTheme.TEXT) if usable else UiTheme.TEXT_DIM)
 		if e.ok:
 			UiDraw.text_right(self, right, top, played(e.header), UiTheme.TEXT_DIM)
-			UiDraw.text(self, Vector2i(x0 + 10, top + 11), SaveSlots.describe(e.header), UiTheme.TEXT_DIM)
+			UiDraw.text(self, Vector2i(x0 + 20, top + UiTheme.LINE), SaveSlots.describe(e.header), UiTheme.TEXT_DIM)
 		elif e.exists:
-			UiDraw.text(self, Vector2i(x0 + 10, top + 11), SaveSlots.short_problem(e.code), UiTheme.WARN)
+			UiDraw.text(self, Vector2i(x0 + 20, top + UiTheme.LINE), SaveSlots.short_problem(e.code), UiTheme.WARN)
 		else:
-			UiDraw.text(self, Vector2i(x0 + 10, top + 11), "empty", UiTheme.TEXT_DIM)
+			UiDraw.text(self, Vector2i(x0 + 20, top + UiTheme.LINE), "empty", UiTheme.TEXT_DIM)
 	_draw_detail(R)
 	var keys := [["e", String(mode)], ["a d", "save or load"], ["esc", "back"]]
 	draw_keys(keys)
@@ -172,34 +188,36 @@ func _draw_detail(R: Rect2i) -> void:
 	var slot := int(row.slot)
 	var e: Dictionary = row.entry
 	var px := R.position.x + UiSlate.MARGIN_L
-	var pic := Rect2i(px + 4, R.position.y + 12, THUMB.x, THUMB.y)
-	UiSlate.brackets(self, pic.grow(3), UiTheme.TEXT_DIM, 6)
+	var pic := Rect2i(px + 8, R.position.y + 24, THUMB.x, THUMB.y)
+	UiSlate.brackets(self, pic.grow(9), UiTheme.TEXT_DIM, 18)
 	var tex: ImageTexture = _thumbs.get(slot)
 	if tex != null:
 		draw_texture_rect(tex, Rect2(pic), false)
 	else:
-		# No picture: the glass's own snow, fixed, dim.
-		for y in range(pic.position.y, pic.end.y, 2):
-			for x in range(pic.position.x, pic.end.x, 2):
+		# No picture: the glass's own snow, fixed, dim. A grain is a pixel of the
+		# module, laid on every other one of them.
+		var step := UiBase.PITCH * 2
+		for y in range(pic.position.y, pic.end.y, step):
+			for x in range(pic.position.x, pic.end.x, step):
 				if Rng.hash01(x, y, 0, 0x5a0) < 0.14:
 					UiDraw.px(self, x, y, UiTheme.GHOST if Rng.hash01(x, y, 1, 0x5a0) < 0.7 else UiTheme.FAINT)
 		var word := SaveSlots.short_problem(e.code).to_upper() if e.exists else "EMPTY"
-		UiDraw.text_centred(self, pic.position.x + pic.size.x / 2, pic.position.y + pic.size.y / 2 - 5, word, UiTheme.TEXT_DIM)
-	var ty := pic.end.y + 12
+		UiDraw.text_centred(self, pic.position.x + pic.size.x / 2, pic.position.y + pic.size.y / 2 - UiFont.SIZE / 2, word, UiTheme.TEXT_DIM)
+	var ty := pic.end.y + 24
 	var h: Dictionary = e.header
 	# A save made on another island keeps its whole header: the game it holds is
 	# shown, dimmed, and the reason it will not open is said under it.
 	if not h.is_empty():
-		UiDraw.text(self, Vector2i(px + 4, ty), str(h.get("clock", "")), UiTheme.BRIGHT if e.ok else UiTheme.TEXT)
-		UiDraw.text(self, Vector2i(px + 4, ty + 11), str(h.get("place", "")), UiTheme.TEXT if e.ok else UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(px + 4, ty + 22), played(h), UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(px + 4, ty + 33), ago(SaveCodec.to_num(h.get("saved_at")), Time.get_unix_time_from_system()), UiTheme.TEXT_DIM)
-		ty += 52
+		UiDraw.text(self, Vector2i(px + 8, ty), str(h.get("clock", "")), UiTheme.BRIGHT if e.ok else UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(px + 8, ty + UiTheme.LINE), str(h.get("place", "")), UiTheme.TEXT if e.ok else UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(px + 8, ty + UiTheme.LINE * 2), played(h), UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(px + 8, ty + UiTheme.LINE * 3), ago(SaveCodec.to_num(h.get("saved_at")), Time.get_unix_time_from_system()), UiTheme.TEXT_DIM)
+		ty += UiTheme.LINE * 4 + 16
 	if e.exists and not e.ok:
 		# The whole reason, in the one place with room to say it.
-		UiSlate.wrapped(self, Vector2i(px + 4, ty), R.end.x - 12 - px, str(e.why), UiTheme.WARN)
+		UiSlate.wrapped(self, Vector2i(px + 8, ty), R.end.x - 24 - px, str(e.why), UiTheme.WARN)
 	elif not e.exists and mode == &"save":
-		UiDraw.text(self, Vector2i(px + 4, ty), "e writes the game here", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(px + 8, ty), "e writes the game here", UiTheme.TEXT_DIM)
 
 
 ## "played 1 h 06 m": said as play, so a slot's row never reads as how long ago

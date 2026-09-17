@@ -7,17 +7,30 @@ extends UiScreen
 ## step at a time (held keys repeat, per the menu standard); E changes the
 ## scale; M or Esc close.
 
-## The survey's window on the glass, in screen pixels (clear of the dead column
-## on the left and the crack on the right).
-const MAP_RECT := Rect2i(34, 48, 568, 270)
-const PAN_STEP := 12
-const SCALES: Array[int] = [1, 2, 3, 4, 6]
+## The survey is a PICTURE, so it kept the share of the frame it always had and
+## is simply drawn at three times the detail: its window and every scale below
+## are the old numbers times three, and the same span of land is on the glass.
+## Its lettering, its marks and its legend are TYPE, and came down with the type.
+##
+## The window sits in the body's left margin and stops at the right one, so it is
+## clear of the dead column and of the crack (tests/ui/test_map.gd holds it).
+const HEADER_Y := UiSlate.BODY.position.y + 12
+const MAP_RECT := Rect2i(UiSlate.BODY.position.x + UiSlate.MARGIN_L, UiSlate.BODY.position.y + 45,
+	UiSlate.BODY.size.x - UiSlate.MARGIN_L - UiSlate.MARGIN_R, 810)
+const PAN_STEP := 36
+## Survey pixels to a tile. The widest view, SCALES[0], is one pixel of the OLD
+## slate to a tile, which is what "a pixel a tile" means everywhere below.
+const SCALES: Array[int] = [3, 6, 9, 12, 18]
+## Clear space kept round the land seen when the survey opens, in survey pixels.
+const MARGIN := 72
+## From this scale up there is room to name a place beside its mark.
+const NAME_FROM := 9
 ## Seconds the scanner's line takes to cross the survey.
 const SWEEP_SECONDS := 3.2
 
 var explored: UiExplored
 var data: UiMapData
-var map_scale := 2
+var map_scale := 6
 ## Map pixel (tile * map_scale) under the window's top-left pixel.
 var origin_px := Vector2i.ZERO
 
@@ -64,7 +77,7 @@ func _init() -> void:
 	add_child(shown)
 	_overlay = Control.new()
 	_overlay.name = "marks"
-	_overlay.size = Vector2(UiBase.DESIGN)
+	_overlay.size = Vector2(UiBase.SIZE)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)
@@ -99,7 +112,6 @@ func _on_open() -> void:
 ## which all of it fits the window, centred on it, but never with the player
 ## off the survey. {scale: int, centre: Vector2 (tiles)}
 static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[int]) -> Dictionary:
-	const MARGIN := 24
 	# A little land running off the survey is better than all of it drawn too small.
 	const OVERFLOW := 1.3
 	var s := scales[0]
@@ -109,8 +121,8 @@ static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[i
 	var centre := Vector2(seen.get_center()) if seen.size != Vector2i.ZERO else player
 	# Drawn a pixel a tile, land that fills less than half the window is a stamp in
 	# an empty frame: a step closer reads as a survey. The player stays on it.
-	if s == 1 and scales.has(2) and seen.size.x * seen.size.y * 2 < window.x * window.y:
-		s = 2
+	if s == SCALES[0] and scales.has(SCALES[1]) and seen.size.x * SCALES[0] * seen.size.y * SCALES[0] * 2 < window.x * window.y:
+		s = SCALES[1]
 	var reach := (Vector2(window) * 0.5 - Vector2(MARGIN, MARGIN)) / s
 	centre = centre.clamp(player - reach, player + reach)
 	return {"scale": s, "centre": centre}
@@ -216,13 +228,13 @@ func place_region(label: Dictionary, free: Callable) -> Vector2i:
 	var best := Vector2i(-9999, 0)
 	var best_score := INF
 	var xs: Array[int] = [s.x - w / 2, s.x - w / 2 - w / 4, s.x - w / 2 + w / 4]
-	for dy: int in [0, -12, 12, -24, 24]:
+	for dy: int in [0, -UiTheme.LINE, UiTheme.LINE, -UiTheme.LINE * 2, UiTheme.LINE * 2]:
 		for x: int in xs:
-			var at := Vector2i(x, s.y - 5 + dy)
+			var at := Vector2i(x, s.y - UiFont.SIZE / 2 + dy)
 			var moved := absi(x - (s.x - w / 2)) + absi(dy)
-			var text_r := Rect2i(at, Vector2i(w, 10))
-			var box := text_r.grow(3)
-			if not MAP_RECT.grow(-6).encloses(text_r) or not free.call(box):
+			var text_r := Rect2i(at, Vector2i(w, UiFont.SIZE))
+			var box := text_r.grow(6)
+			if not MAP_RECT.grow(-12).encloses(text_r) or not free.call(box):
 				continue
 			if moved > w:
 				continue
@@ -234,7 +246,7 @@ func place_region(label: Dictionary, free: Callable) -> Vector2i:
 			var mean := 0.0
 			if data != null:
 				mean = UiMapData.ink_in(data.ink, game.world.size, t) / float(maxi(1, t.get_area()))
-			var score := mean + moved * 0.012
+			var score := mean + moved * 0.006
 			if score < best_score:
 				best_score = score
 				best = at
@@ -256,11 +268,11 @@ func to_tiles(r: Rect2i) -> Rect2i:
 
 ## A patch of glass cleared under a name over the survey, its corners left open.
 ## Opaque: at 0.88 the coastline and the contours came through the letters, and
-## a name over a drawn coast has to be read at 640x360 in one look.
+## a name over a drawn coast has to be read in one look.
 static func clearing(ci: CanvasItem, box: Rect2i) -> void:
 	var col := UiTheme.GLASS
-	UiDraw.rect(ci, Rect2i(box.position.x + 1, box.position.y, box.size.x - 2, box.size.y), col)
-	UiDraw.rect(ci, Rect2i(box.position.x, box.position.y + 1, box.size.x, box.size.y - 2), col)
+	UiDraw.rect(ci, Rect2i(box.position.x + 2, box.position.y, box.size.x - 4, box.size.y), col)
+	UiDraw.rect(ci, Rect2i(box.position.x, box.position.y + 2, box.size.x, box.size.y - 4), col)
 
 
 ## Put tile-space point `p` in the middle of the survey's window.
@@ -286,7 +298,7 @@ func handle(action: StringName) -> bool:
 			map_scale = SCALES[(SCALES.find(map_scale) + 1) % SCALES.size()]
 			if game != null:
 				# Zoom about the middle, but never leave the player off the survey.
-				var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(24, 24)) / map_scale
+				var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(MARGIN, MARGIN)) / map_scale
 				centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
 			centre_on(centre)
 			Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
@@ -338,34 +350,37 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	draw_frame()
 	var r := MAP_RECT
-	UiDraw.text(self, Vector2i(r.position.x, 36), "SURVEY", UiTheme.TEXT)
+	UiDraw.text(self, Vector2i(r.position.x, HEADER_Y), "SURVEY", UiTheme.TEXT)
 	# The survey's grid of points on the glass, where nothing has been seen yet.
-	var y := r.position.y + 5
+	var y := r.position.y + 10
 	while y < r.end.y:
-		var x := r.position.x + 5
+		var x := r.position.x + 10
 		while x < r.end.x:
 			UiDraw.px(self, x, y, UiTheme.GHOST)
-			x += 12
-		y += 12
+			x += 24
+		y += 24
 	if game == null:
 		draw_keys([["esc", "back"]])
 		return
 	var p := game.player.pos
 	var here := BiomeRegistry.at(game.world, p).display_name
-	UiDraw.text(self, Vector2i(r.position.x + 50, 36), here, UiTheme.BRIGHT)
-	UiDraw.text_right(self, r.end.x, 36, "%s of the land seen   1:%d" % [UiRules.share(_seen_share), map_scale], UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(r.position.x + 100, HEADER_Y), here, UiTheme.BRIGHT)
+	UiDraw.text_right(self, r.end.x, HEADER_Y, "%s of the land seen   1:%d" % [UiRules.share(_seen_share), map_scale], UiTheme.TEXT_DIM)
 	draw_keys([["wasd", "look"], ["e", "scale"], ["m", "close"], ["esc", "back"]])
 
 
 func _draw_overlay() -> void:
 	var ci := _overlay
 	var r := MAP_RECT
-	UiSlate.brackets(ci, r.grow(2), UiTheme.TEXT_DIM, 8)
+	UiSlate.brackets(ci, r.grow(6), UiTheme.TEXT_DIM, 24)
 	if game == null:
 		return
 	var me := to_screen(game.player.pos)
-	var me_rect := Rect2i(me.x - 6, me.y - 6, 13, 13)
-	var inner := r.grow(-1)
+	var me_rect := Rect2i(me.x - 12, me.y - 12, 26, 26)
+	var inner := r.grow(-2)
+	# Every mark on the survey is cut on the module's own grid, one pixel of glass
+	# to a pixel of the shape, so the shapes are drawn exactly as they were written.
+	var p := UiBase.PITCH
 	# The machines' lines, pylon to pylon, in the module's violet: their order
 	# cut straight across the land, shown where the player has seen it.
 	for line: Dictionary in game.world.lines:
@@ -377,10 +392,10 @@ func _draw_overlay() -> void:
 			var b := game.world.props[ids[i]].pos
 			if explored == null or not (explored.seen(floori(a.x), floori(a.y)) or explored.seen(floori(b.x), floori(b.y))):
 				continue
-			_dotted(ci, to_screen(a), to_screen(b), Color(UiTheme.MACHINE[2], 0.85), 2, inner)
+			_dotted(ci, to_screen(a), to_screen(b), Color(UiTheme.MACHINE[2], 0.85), 4, inner)
 			var s := to_screen(b)
 			if inner.has_point(s):
-				UiDraw.rect(ci, Rect2i(s.x - 1, s.y - 1, 3, 3), UiTheme.MACHINE[3])
+				UiDraw.rect(ci, Rect2i(s.x - 2, s.y - 2, 6, 6), UiTheme.MACHINE[3])
 	# Everything with a fixed place on the survey is claimed before a word is
 	# laid anywhere: you-are-here with its ping ring, the compass and the scale
 	# bar. A name is lettered last and over none of them.
@@ -389,7 +404,7 @@ func _draw_overlay() -> void:
 	# when a name can find nowhere clear of the marks as well, it takes the best
 	# place clear of the other words and its clearing covers the mark under it.
 	# A name that gives way to a diamond is a name nobody reads.
-	var placed: Array[Rect2i] = [Rect2i(me.x - 16, me.y - 16, 33, 33), Rect2i(r.end.x - 19, r.position.y + 2, 18, 30), Rect2i(r.position.x + 1, r.end.y - 21, 10 * map_scale + 54, 20)]
+	var placed: Array[Rect2i] = [Rect2i(me.x - 32, me.y - 32, 66, 66), Rect2i(r.end.x - 38, r.position.y + 4, 36, 60), Rect2i(r.position.x + 2, r.end.y - 42, 10 * map_scale + 108, 40)]
 	var words: Array[Rect2i] = placed.duplicate()
 	var villages: Array[Dictionary] = []
 	for v in game.world.villages:
@@ -397,18 +412,18 @@ func _draw_overlay() -> void:
 		if explored == null or not explored.seen(floori(vp.x), floori(vp.y)):
 			continue
 		var s := to_screen(vp)
-		if not r.grow(-4).has_point(s):
+		if not r.grow(-8).has_point(s):
 			continue
 		var name := String(v.name).to_lower()
 		var w := UiFont.width(name)
-		var tx := clampi(s.x - w / 2, r.position.x + 2, r.end.x - w - 2)
-		var ty := s.y + 6
-		if ty + 10 > r.end.y or Rect2i(tx - 2, ty - 1, w + 4, 11).intersects(me_rect):
-			ty = s.y - 16
-		var box := Rect2i(tx - 2, ty - 1, w + 4, 11)
-		placed.append(box.grow(2))
-		words.append(box.grow(2))
-		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
+		var tx := clampi(s.x - w / 2, r.position.x + 4, r.end.x - w - 4)
+		var ty := s.y + 12
+		if ty + UiFont.SIZE > r.end.y or Rect2i(tx - 4, ty - 2, w + 8, UiTheme.LINE).intersects(me_rect):
+			ty = s.y - 32
+		var box := Rect2i(tx - 4, ty - 2, w + 8, UiTheme.LINE)
+		placed.append(box.grow(4))
+		words.append(box.grow(4))
+		placed.append(Rect2i(s.x - 6, s.y - 6, 14, 14).grow(4))
 		villages.append({"at": s, "name": name, "box": box})
 	# Every discovery's diamond is spoken for before a region is lettered. The
 	# diamonds used to be drawn after the names and landed on top of them: COAST
@@ -417,9 +432,9 @@ func _draw_overlay() -> void:
 	var finds: Array[Dictionary] = []
 	for found: Dictionary in found_all:
 		var s := to_screen(found.pos)
-		if not r.grow(-4).has_point(s):
+		if not r.grow(-8).has_point(s):
 			continue
-		placed.append(Rect2i(s.x - 3, s.y - 3, 7, 7).grow(2))
+		placed.append(Rect2i(s.x - 6, s.y - 6, 14, 14).grow(4))
 		finds.append({"at": s, "kind": found.kind, "machine": found.machine})
 	# The way the player came, dotted, fading toward the start.
 	if explored != null:
@@ -433,10 +448,11 @@ func _draw_overlay() -> void:
 				continue
 			if not inner.has_point(a0) and not inner.has_point(a1):
 				continue
-			var col := Color(UiTheme.BRIGHT, (0.3 + 0.6 * float(i) / n) * (0.55 if map_scale == 1 else 1.0))
+			var col := Color(UiTheme.BRIGHT, (0.3 + 0.6 * float(i) / n) * (0.55 if map_scale == SCALES[0] else 1.0))
 			var d := a1 - a0
 			var len := maxi(absi(d.x), absi(d.y))
-			for k in len:
+			# One dot of the module's glass at a time, two in three laid down.
+			for k in range(0, len, UiBase.PITCH):
 				step += 1
 				if step % 3 == 0:
 					continue
@@ -447,40 +463,40 @@ func _draw_overlay() -> void:
 	for found: Dictionary in finds:
 		var s: Vector2i = found.at
 		var col := UiTheme.MACHINE[3] if found.machine else UiTheme.BRIGHT
-		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), Color(UiTheme.GLASS, 0.8))
+		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), Color(UiTheme.GLASS, 0.8))
 		var mark := UiMapScreen.mark_for(found.kind)
 		if mark.is_empty():
 			for k in 4:
-				UiDraw.px(ci, s.x - 3 + k, s.y - k, col)
-				UiDraw.px(ci, s.x + k, s.y - 3 + k, col)
-				UiDraw.px(ci, s.x + 3 - k, s.y + k, col)
-				UiDraw.px(ci, s.x - k, s.y + 3 - k, col)
+				UiDraw.px(ci, s.x + (k - 3) * p, s.y - k * p, col)
+				UiDraw.px(ci, s.x + k * p, s.y + (k - 3) * p, col)
+				UiDraw.px(ci, s.x + (3 - k) * p, s.y + k * p, col)
+				UiDraw.px(ci, s.x - k * p, s.y + (3 - k) * p, col)
 		else:
-			for row in mark.size():
-				var line: String = mark[row]
-				for cx in line.length():
-					if line[cx] == "#":
-						UiDraw.px(ci, s.x - 3 + cx, s.y - 3 + row, col)
-		if map_scale >= 3:
+			UiDraw.sprite(ci, mark, Vector2i(s.x - 3 * p, s.y - 3 * p), {"#": col}, p)
+		if map_scale >= NAME_FROM:
 			var word := String(found.kind).replace("_", " ")
-			var box := Rect2i(s.x + 6, s.y - 5, UiFont.width(word) + 4, 10)
-			if r.grow(-2).encloses(box) and _free_of(placed).call(box):
+			var box := Rect2i(s.x + 12, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
+			if r.grow(-4).encloses(box) and _free_of(placed).call(box):
 				placed.append(box)
 				UiMapScreen.clearing(ci, box)
-				UiDraw.text(ci, box.position + Vector2i(2, 0), word, col)
+				UiDraw.text(ci, box.position + Vector2i(4, 0), word, col)
 	for v: Dictionary in villages:
 		var s: Vector2i = v.at
 		var box: Rect2i = v.box
 		UiMapScreen.clearing(ci, box)
-		UiDraw.text(ci, box.position + Vector2i(2, 0), v.name, UiTheme.TEXT_DIM)
-		UiDraw.rect(ci, Rect2i(s.x - 3, s.y - 3, 7, 7), UiTheme.GLASS)
-		UiDraw.frame(ci, Rect2i(s.x - 2, s.y - 2, 5, 5), UiTheme.BRIGHT)
+		UiDraw.text(ci, box.position + Vector2i(4, 0), v.name, UiTheme.TEXT_DIM)
+		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), UiTheme.GLASS)
+		# The square round a village is a MARK, so it is a pixel of glass thick and
+		# never a hairline: bright ring, glass middle, one lit pixel in the centre.
+		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.BRIGHT)
+		UiDraw.rect(ci, Rect2i(s.x - p, s.y - p, 3 * p, 3 * p), UiTheme.GLASS)
 		UiDraw.px(ci, s.x, s.y, UiTheme.BRIGHT)
 	# The scanner's line crossing the survey, slowly, top to bottom. It goes under
 	# the lettering with everything else: a line travelling across a name reads
 	# as a name struck out, even at six per cent.
+	# One pixel of the module's glass thick: a hairline at six per cent is nothing.
 	var sweep := r.position.y + roundi(fposmod(_time / SWEEP_SECONDS, 1.0) * r.size.y)
-	UiDraw.hline(ci, r.position.x, r.end.x - 1, sweep, Color(UiTheme.PHOSPHOR[3], 0.06))
+	UiDraw.rect(ci, Rect2i(r.position.x, sweep, r.size.x, p), Color(UiTheme.PHOSPHOR[3], 0.06))
 	# Regions, lettered across the land they cover, last of all and over nothing:
 	# of the nearby places free of every mark already claimed, the one over the
 	# least drawn detail is chosen, and the glass under it is cleared outright.
@@ -491,41 +507,42 @@ func _draw_overlay() -> void:
 			at = place_region(label, _free_of(words))
 		if at.x < -1000:
 			continue
-		var box := Rect2i(at, Vector2i(UiFont.width(text), 10)).grow(3)
+		var box := Rect2i(at, Vector2i(UiFont.width(text), UiFont.SIZE)).grow(6)
 		placed.append(box)
 		words.append(box)
 		UiMapScreen.clearing(ci, box)
 		UiDraw.text(ci, at, text, UiTheme.TEXT)
 	# You are here: a bright cross, and a ping ring going out from it.
 	if r.has_point(me):
-		UiDraw.rect(ci, Rect2i(me.x - 4, me.y - 4, 9, 9), Color(UiTheme.GLASS, 0.75))
+		UiDraw.rect(ci, Rect2i(me.x - 4 * p, me.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.75))
 		for i in range(-3, 4):
-			UiDraw.px(ci, me.x + i, me.y, UiTheme.BRIGHT)
-			UiDraw.px(ci, me.x, me.y + i, UiTheme.BRIGHT)
+			UiDraw.px(ci, me.x + i * p, me.y, UiTheme.BRIGHT)
+			UiDraw.px(ci, me.x, me.y + i * p, UiTheme.BRIGHT)
 		var ping := fposmod(_time, 1.6) / 1.6
-		var pr := 4.0 + ping * 10.0
+		var pr := (4.0 + ping * 10.0) * p
 		for k in 20:
 			var a := k * TAU / 20.0
 			var q := me + Vector2i(roundi(cos(a) * pr), roundi(sin(a) * pr))
 			if inner.has_point(q):
 				UiDraw.px(ci, q.x, q.y, Color(UiTheme.BRIGHT, UiDraw.stepped(1.0 - ping) * 0.6))
-	# North, in the corner.
-	var nx := r.end.x - 12
-	var ny := r.position.y + 6
-	UiDraw.rect(ci, Rect2i(nx - 5, ny - 2, 13, 26), Color(UiTheme.GLASS, 0.85))
-	UiDraw.text(ci, Vector2i(nx - 1, ny), "N", UiTheme.TEXT)
-	UiDraw.vline(ci, nx + 1, ny + 11, ny + 21, UiTheme.TEXT)
-	UiDraw.hline(ci, nx, nx + 2, ny + 12, UiTheme.TEXT)
-	UiDraw.hline(ci, nx - 1, nx + 3, ny + 13, UiTheme.TEXT)
+	# North, in the corner: the needle is a mark, so it is two pixels of glass wide
+	# rather than a rule.
+	var nx := r.end.x - 24
+	var ny := r.position.y + 12
+	UiDraw.rect(ci, Rect2i(nx - 10, ny - 4, 26, 52), Color(UiTheme.GLASS, 0.85))
+	UiDraw.text(ci, Vector2i(nx + 2 - UiFont.width("N") / 2, ny), "N", UiTheme.TEXT)
+	UiDraw.rect(ci, Rect2i(nx + 2, ny + 22, p, 21), UiTheme.TEXT)
+	UiDraw.rect(ci, Rect2i(nx, ny + 24, 3 * p, p), UiTheme.TEXT)
+	UiDraw.rect(ci, Rect2i(nx - 2, ny + 26, 5 * p, p), UiTheme.TEXT)
 	# A scale bar: ten tiles at this scale.
-	var bx := r.position.x + 6
-	var by := r.end.y - 8
+	var bx := r.position.x + 12
+	var by := r.end.y - 16
 	var bw := 10 * map_scale
-	UiDraw.rect(ci, Rect2i(bx - 3, by - 11, bw + 50, 16), Color(UiTheme.GLASS, 0.85))
-	UiDraw.hline(ci, bx, bx + bw, by, UiTheme.TEXT)
-	UiDraw.vline(ci, bx, by - 2, by, UiTheme.TEXT)
-	UiDraw.vline(ci, bx + bw, by - 2, by, UiTheme.TEXT)
-	UiDraw.text(ci, Vector2i(bx + bw + 4, by - 8), "10 tiles", UiTheme.TEXT_DIM)
+	UiDraw.rect(ci, Rect2i(bx - 6, by - 22, bw + 100, 32), Color(UiTheme.GLASS, 0.85))
+	UiDraw.rect(ci, Rect2i(bx, by, bw + p, p), UiTheme.TEXT)
+	UiDraw.rect(ci, Rect2i(bx, by - 2 * p, p, 3 * p), UiTheme.TEXT)
+	UiDraw.rect(ci, Rect2i(bx + bw, by - 2 * p, p, 3 * p), UiTheme.TEXT)
+	UiDraw.text(ci, Vector2i(bx + bw + 8, by - 16), "10 tiles", UiTheme.TEXT_DIM)
 
 
 static func _dotted(ci: CanvasItem, a: Vector2i, b: Vector2i, col: Color, every: int, clip: Rect2i) -> void:

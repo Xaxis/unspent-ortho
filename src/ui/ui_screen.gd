@@ -180,9 +180,13 @@ func _exit_tree() -> void:
 	UiSlate.wait()
 
 
-## Jump the wake to its end (screenshots).
+## Jump the wake to its end, and wait out the sketches this page asked for
+## (screenshots: a shot has one frame to be right in, and a scan window is never
+## drawn until its raster is in from a worker).
 func settle() -> void:
 	wake = 1.0
+	UiSketch.wait()
+	queue_redraw()
 	_fx.queue_redraw()
 
 
@@ -196,6 +200,11 @@ func _process(delta: float) -> void:
 		_plain = false
 		queue_redraw()
 		_fx.queue_redraw()
+	# A sketch is never drawn on this thread (UiSketch.draw_item says why), so a
+	# scan window stands empty until its raster lands. Redraw while any is out and
+	# the page fills itself in, the way the bezel does above.
+	if is_open and UiSketch.waiting():
+		queue_redraw()
 	if is_open and wake < 1.0:
 		wake = minf(1.0, wake + delta / wake_seconds)
 		_fx.queue_redraw()

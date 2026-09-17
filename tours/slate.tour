@@ -20,6 +20,15 @@ tap move_up
 wait 0.2
 shot 04-title-new-game
 tap use
+# "New game" opens the character page now (docs/DESIGN.md §Who wakes), so the
+# title no longer goes straight to a world. Begin is its last row and the list
+# wraps, so one step up from the top reaches it. Without this the tour was red
+# here on main, six lines before the line anybody had noticed.
+await character 8
+wait 0.3
+shot 04b-who-wakes
+key move_up
+key use
 await game 40
 wait 2.5
 shot 05-hud-in-the-world
@@ -70,6 +79,10 @@ await app:reads 3
 shot 14-machine-reads with app:reads
 tap pause
 await app:pause 3
+# Twice: home keeps the row it was left on, and the journal was added between
+# machine reads and saves, so one step down now lands on the journal. This is
+# the count that made line 75 red on main.
+tap move_down
 tap move_down
 tap use
 await app:saves 3

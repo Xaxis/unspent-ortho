@@ -71,7 +71,12 @@ grammar — but what it looks at is deep.
 2. **The slate has to be rebuilt.** `src/ui/` is drawn at whole pixels on a
    640x360 base. It stays a hacked tablet made of salvage — that identity is not
    in question and the owner has ruled on it twice — but it must be drawn
-   resolution-independently.
+   resolution-independently. *(Done, `slate`: it is drawn in the base's own pixels
+   now. The device kept its size on screen and the type came down to two-thirds
+   of it, so half again as much fits on the glass; the hand-cut face was kept and
+   its cell halved with its diagonal notches filled, rather than replaced by an
+   outline face, which would have read as an application and not as a module
+   stolen from a machine.)*
 3. **The models are too coarse.** Budgets today are ~800 triangles for an animal,
    ~1300 for a person, ~2000 for a machine, all chosen for a 640x360 target. Under
    real light at real resolution they will read as faceted. Geometry budgets rise

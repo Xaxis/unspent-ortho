@@ -62,7 +62,6 @@ func setup(g: Game) -> void:
 	layer = CanvasLayer.new()
 	layer.name = "screens"
 	layer.layer = 20
-	UiBase.fit(layer)
 	add_child(layer)
 	_add(UiInventoryScreen.new())
 	_add(UiCraftingScreen.new())
@@ -287,7 +286,10 @@ func _process(delta: float) -> void:
 			map_data.build_async()
 			var carried: Array[StringName] = []
 			carried.assign(game.inventory.items.keys())
-			UiSketch.warm(carried, UiInventoryScreen.SKETCH, [&"fire", &"bench", &"kiln", &"hand"])
+			var stations: Array[StringName] = [&"fire", &"bench", &"kiln", &"hand"]
+			UiSketch.warm(carried, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.SKETCH)
+			var none: Array[StringName] = []
+			UiSketch.warm(none, UiInventoryScreen.SKETCH, stations, UiCraftingScreen.STATION)
 	_step_power()
 	if _pending_screen != "" and game.scripted_seconds <= 0.0:
 		# --screen=NAME or NAME:ROW (a row id to choose, for shots). Staging, not

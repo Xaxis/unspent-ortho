@@ -14,11 +14,12 @@ extends UiScreen
 ## game actually uses (no craft key, no dev key), and a page that lies about the
 ## controls is worse than no page.
 
-const LIST_TOP := 26
-const ROW_PITCH := 15
+const LIST_TOP := 52
+## Looser than a list's pitch: every row here carries a lit bar behind it.
+const ROW_PITCH := UiTheme.LINE + 8
 const BAR_CELLS := 10
 ## A row's value is drawn from here to the right edge of the list pane.
-const VALUE_W := 86
+const VALUE_W := 172
 
 ## "list" or "keys".
 var page := "list"
@@ -261,7 +262,7 @@ func _draw() -> void:
 	UiSlate.title(self, L, "SETTINGS" if page == "list" else "KEYS")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	# The keys page grows with every action a package adds, and it outgrew the
 	# pane once: the rows past the glass could still be chosen, blind. It scrolls
 	# with the cursor now, the way every other long list on the slate does.
@@ -274,21 +275,21 @@ func _draw() -> void:
 		var top := first + n * ROW_PITCH
 		if row.has("header"):
 			UiDraw.text(self, Vector2i(x0, top), String(row.header).to_upper(), UiTheme.TEXT_DIM)
-			UiDraw.hline(self, x0, right, top + 10, UiTheme.GHOST)
+			UiDraw.hline(self, x0, right, top + UiFont.SIZE, UiTheme.GHOST)
 			continue
 		var chosen := i == menu.index
 		if chosen:
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 2, right - x0 + 7, ROW_PITCH - 3), UiTheme.GLASS_LIT)
-			UiDraw.rect(self, Rect2i(x0 - 4, top - 2, 2, ROW_PITCH - 3), UiTheme.TEXT)
-		UiDraw.text(self, Vector2i(x0 + 4, top), String(row.text), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, right - x0 + 14, ROW_PITCH - 6), UiTheme.GLASS_LIT)
+			UiDraw.rect(self, Rect2i(x0 - 8, top - 4, 4, ROW_PITCH - 6), UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 8, top), String(row.text), UiTheme.BRIGHT if chosen else UiTheme.TEXT)
 		if row.get("key", false):
 			_draw_key_value(row, right, top, chosen)
 		elif row.has("row"):
 			_draw_value(row.row, right, top, chosen)
 	if scroll > 0:
-		UiDraw.text_right(self, right, first - UiTheme.LINE - 1, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, first - UiTheme.LINE - 2, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, first + lines * ROW_PITCH - 4, "↓", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, first + lines * ROW_PITCH - 8, "↓", UiTheme.TEXT_DIM)
 	_draw_help()
 	if page == "keys":
 		draw_keys([["e", "ask for a key"], ["esc", "back"]])
@@ -302,8 +303,8 @@ func _draw_key_value(row: Dictionary, right: int, top: int, chosen: bool) -> voi
 		return
 	var code := PlayerSettings.key_of(row.action)
 	var word := _key_name(code)
-	var x := right - UiFont.width(word) - 8
-	UiSlate.mini_cap(self, Vector2i(x, top + 1), word)
+	var x := right - UiFont.width(word) - 16
+	UiSlate.mini_cap(self, Vector2i(x, top + 2), word)
 	if code == KEY_NONE:
 		UiDraw.text_right(self, right, top, "nothing", UiTheme.WARN)
 
@@ -315,7 +316,7 @@ func _draw_value(r: Dictionary, right: int, top: int, chosen: bool) -> void:
 			var full := int(roundf(float(v) * BAR_CELLS))
 			var x := right - VALUE_W
 			for c in BAR_CELLS:
-				var cell := Rect2i(x + c * 8, top + 2, 6, 7)
+				var cell := Rect2i(x + c * 16, top + 4, 12, 14)
 				UiDraw.rect(self, cell, UiTheme.TEXT if c < full else UiTheme.GHOST)
 		PlayerSettings.SWITCH:
 			UiDraw.text_right(self, right, top, "on" if bool(v) else "off",
@@ -330,12 +331,12 @@ func _draw_value(r: Dictionary, right: int, top: int, chosen: bool) -> void:
 ## The right-hand panel: what the row under the cursor is, said plainly.
 func _draw_help() -> void:
 	var R := UiSlate.SPARE
-	var x := R.position.x + 6
-	var y := R.position.y + 8
+	var x := R.position.x + 12
+	var y := R.position.y + 16
 	var row := menu.selected()
 	if page == "keys":
 		UiDraw.text(self, Vector2i(x, y), "E asks for a key.", UiTheme.TEXT_DIM)
-		UiSlate.wrapped(self, Vector2i(x, y + 22), R.size.x - 12,
+		UiSlate.wrapped(self, Vector2i(x, y + UiTheme.LINE * 2), R.size.x - 24,
 			"A key may only do one thing: bound to something else, it is taken off that.", UiTheme.TEXT_DIM)
 		return
 	if row.has("row"):
@@ -343,13 +344,13 @@ func _draw_help() -> void:
 		UiDraw.text(self, Vector2i(x, y), String(r.label).to_upper(), UiTheme.TEXT)
 		var help := String(r.get("help", ""))
 		if help != "":
-			UiSlate.wrapped(self, Vector2i(x, y + 16), R.size.x - 12, help, UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(x, R.end.y - 26), "left  right", UiTheme.TEXT_DIM)
+			UiSlate.wrapped(self, Vector2i(x, y + 32), R.size.x - 24, help, UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x, R.end.y - 52), "left  right", UiTheme.TEXT_DIM)
 		return
 	if row.get("id", &"") == &"keys":
-		UiSlate.wrapped(self, Vector2i(x, y), R.size.x - 12,
+		UiSlate.wrapped(self, Vector2i(x, y), R.size.x - 24,
 			"Every key the game answers to, read off the map itself, and each one yours to move.", UiTheme.TEXT_DIM)
 		return
 	if row.get("id", &"") == &"reset":
-		UiSlate.wrapped(self, Vector2i(x, y), R.size.x - 12,
+		UiSlate.wrapped(self, Vector2i(x, y), R.size.x - 24,
 			"Sound, picture, keys: all of it back to how the game came.", UiTheme.TEXT_DIM)

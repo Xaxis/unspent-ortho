@@ -97,6 +97,31 @@ func test_warmed_sketches_are_ready_when_asked_for() -> void:
 	eq(UiSketch.station_size(60), Vector2i(60, 40))
 
 
+## A page warms the size its own scan window will DRAW. A sketch is cached by its
+## size, so warming 234 and drawing 222 warms a picture nobody wants and leaves
+## the window empty — which is what the carrying page had been doing, unnoticed
+## for as long as an unwarmed sketch was quietly rastered on the frame it was
+## needed. (`const` cannot hold a call across classes, so the two are arithmetic
+## on one inset rather than one expression, and this is what holds them equal.)
+func test_a_page_warms_the_size_its_scan_window_draws() -> void:
+	eq(UiInventoryScreen.SKETCH, UiSlate.scan_size(UiInventoryScreen.SCAN),
+		"the carrying page warms what its scan window draws")
+
+
+## One nobody warmed is never drawn on the calling thread. A sketch costs the
+## square of its size — at the base's resolution one item is over half a second —
+## so asking for one on a frame must hand back nothing and start a worker, or
+## opening the carrying page freezes the game every time.
+func test_a_sketch_nobody_warmed_is_never_drawn_on_the_caller() -> void:
+	var t0 := Time.get_ticks_usec()
+	check(UiSketch.item_texture(&"whelk", 231) == null, "not drawn in the caller")
+	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0 * machine_slack(), "and asking does not wait for it")
+	check(UiSketch.waiting(), "a worker took it")
+	UiSketch.wait()
+	var tex := UiSketch.item_texture(&"whelk", 231)
+	check(tex != null and tex.get_size() == Vector2(231, 231), "and it is there once the worker is done")
+
+
 func test_an_amber_part_is_lit_from_inside() -> void:
 	# A slot of charge takes no shade: all of its wash stays amber.
 	var slot := [["poly", "a3", [2.0, 2.0, 30.0, 2.0, 30.0, 30.0, 2.0, 30.0]], ["poly", "l", [10.0, 12.0, 22.0, 12.0, 22.0, 20.0, 10.0, 20.0]]]

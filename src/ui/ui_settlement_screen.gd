@@ -15,10 +15,10 @@ extends UiScreen
 ## `StructureKind`, and everything that touches the world goes through the
 ## settlement system (46_settlements), which is handed to it when it is added.
 
-const LIST_TOP := 50
+const LIST_TOP := UiSlate.LIST.position.y + 36
 ## Pixels the signature block takes at the foot of the spare pane: seven channels,
 ## what the loudest one is, and the one word for what the plan makes of the place.
-const SIGN_H := 108
+const SIGN_H := 216
 ## Under this share of its strength a piece is worth a hand: the same number the
 ## settlement system tends by, so the row never promises a verb it will not do.
 const MEND_BELOW := 0.95
@@ -111,8 +111,8 @@ func _draw() -> void:
 	UiSlate.title(self, L, "HOLDING")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
-	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
+	var right := L.end.x - 16
+	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 8)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
@@ -124,14 +124,14 @@ func _draw() -> void:
 		var ok := UiMenu.enabled(row)
 		var col := UiTheme.TEXT if ok else UiTheme.TEXT_DIM
 		if i == menu.index:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top, UiTheme.TEXT if ok else UiTheme.WARN)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top, UiTheme.TEXT if ok else UiTheme.WARN)
 			col = UiTheme.BRIGHT if ok else UiTheme.TEXT
-		UiDraw.text(self, Vector2i(x0 + 4, top), String(row.title), col)
+		UiDraw.text(self, Vector2i(x0 + 8, top), String(row.title), col)
 		UiDraw.text_right(self, right, top, _right_of(row), UiTheme.TEXT_DIM)
 	if scroll > 0:
-		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, LIST_TOP - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 4, "↓", UiTheme.TEXT_DIM)
 	_draw_spare(UiSlate.SPARE)
 	draw_keys([["e", _verb()], ["h", "close"], ["esc", "back"]])
 
@@ -195,43 +195,43 @@ func _piece_of(row: Dictionary) -> Structure:
 func _draw_spare(R: Rect2i) -> void:
 	var row := menu.selected()
 	var x0 := R.position.x + UiSlate.MARGIN_L
-	var y := R.position.y + 8
+	var y := R.position.y + 16
 	if row.get("build", false):
 		_draw_kind(R, x0, y, int(row.kind))
 	elif row.has("piece"):
 		_draw_piece(R, x0, y, _piece_of(row))
 	elif row.get("stores", false):
 		_draw_stores(R, x0, y)
-	_draw_signature(R, x0, R.end.y - 6 - SIGN_H)
+	_draw_signature(R, x0, R.end.y - 12 - SIGN_H)
 
 
 ## What a piece is, what it wants and what it gives back.
 func _draw_kind(R: Rect2i, x0: int, y: int, kind: int) -> int:
 	UiDraw.text(self, Vector2i(x0, y), StructureKind.display_name(kind).to_upper(), UiTheme.BRIGHT)
-	y += 12
+	y += 24
 	UiDraw.text(self, Vector2i(x0, y), _idiom_words(kind), UiTheme.TEXT_DIM)
-	y += 11
+	y += UiTheme.LINE
 	var gives := _gives_words(kind, true)
 	if gives != "":
 		UiDraw.text(self, Vector2i(x0, y), gives, UiTheme.TEXT)
-		y += 11
-	y += 4
+		y += UiTheme.LINE
+	y += 8
 	var inv := game.inventory if game != null else null
 	UiDraw.text(self, Vector2i(x0, y), "WANTS", UiTheme.TEXT_DIM)
 	var col_have := R.end.x - UiSlate.MARGIN_R
 	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.TEXT_DIM)
-	UiDraw.text_right(self, col_have - 36, y, "WANT", UiTheme.TEXT_DIM)
-	y += 11
+	UiDraw.text_right(self, col_have - 72, y, "WANT", UiTheme.TEXT_DIM)
+	y += UiTheme.LINE
 	UiDraw.hline(self, x0, R.end.x - UiSlate.MARGIN_R, y, UiTheme.FAINT)
-	y += 3
+	y += 6
 	for id: StringName in StructureKind.cost(kind):
 		var want := int(StructureKind.cost(kind)[id])
 		var have := inv.count(id) if inv != null else 0
 		UiIcons.draw_item(self, id, Vector2i(x0, y))
-		UiDraw.text(self, Vector2i(x0 + 13, y + 1), UiRules.bare_name(id).to_upper(), UiTheme.TEXT)
-		UiDraw.text_right(self, col_have - 36, y + 1, str(want), UiTheme.TEXT)
-		UiDraw.text_right(self, col_have, y + 1, str(have), UiTheme.WARN if have < want else UiTheme.TEXT)
-		y += 13
+		UiDraw.text(self, Vector2i(x0 + 26, y + 2), UiRules.bare_name(id).to_upper(), UiTheme.TEXT)
+		UiDraw.text_right(self, col_have - 72, y + 2, str(want), UiTheme.TEXT)
+		UiDraw.text_right(self, col_have, y + 2, str(have), UiTheme.WARN if have < want else UiTheme.TEXT)
+		y += 26
 	return y
 
 
@@ -278,29 +278,29 @@ func _draw_piece(R: Rect2i, x0: int, y: int, p: Structure) -> int:
 	if p == null:
 		return y
 	UiDraw.text(self, Vector2i(x0, y), StructureKind.display_name(p.kind).to_upper(), UiTheme.BRIGHT)
-	y += 12
+	y += 24
 	if p.ruined:
 		UiDraw.text(self, Vector2i(x0, y), "broken past mending", UiTheme.WARN)
-		return y + 12
-	_bar(Rect2i(x0, y, 120, 5), p.condition(), UiTheme.TEXT if p.condition() > 0.4 else UiTheme.WARN)
-	UiDraw.text(self, Vector2i(x0 + 128, y - 3), "%d%%" % roundi(p.condition() * 100.0), UiTheme.TEXT_DIM)
-	y += 13
+		return y + 24
+	_bar(Rect2i(x0, y, 240, 10), p.condition(), UiTheme.TEXT if p.condition() > 0.4 else UiTheme.WARN)
+	UiDraw.text(self, Vector2i(x0 + 256, y - 6), "%d%%" % roundi(p.condition() * 100.0), UiTheme.TEXT_DIM)
+	y += 26
 	if StructureKind.needs_staff(p.kind):
 		UiDraw.text(self, Vector2i(x0, y), "worked" if p.staffed_by >= 0 else "nobody on it",
 			UiTheme.TEXT if p.staffed_by >= 0 else UiTheme.TEXT_DIM)
-		y += 11
+		y += UiTheme.LINE
 	if p.off:
 		UiDraw.text(self, Vector2i(x0, y), "switched off", UiTheme.TEXT_DIM)
-		y += 11
+		y += UiTheme.LINE
 	elif StructureKind.draw_power(p.kind) > 0.0:
 		UiDraw.text(self, Vector2i(x0, y), "powered" if p.powered else "no power", UiTheme.TEXT if p.powered else UiTheme.WARN)
-		y += 11
+		y += UiTheme.LINE
 	UiDraw.text(self, Vector2i(x0, y), "working" if p.working() else "idle", UiTheme.TEXT_DIM)
-	y += 11
+	y += UiTheme.LINE
 	var gives := _gives_words(p.kind, false)
 	if gives != "":
 		UiDraw.text(self, Vector2i(x0, y), gives, UiTheme.TEXT_DIM)
-		y += 11
+		y += UiTheme.LINE
 	return y
 
 
@@ -309,21 +309,21 @@ func _draw_stores(R: Rect2i, x0: int, y: int) -> int:
 	if place == null:
 		return y
 	UiDraw.text(self, Vector2i(x0, y), "LAID BY", UiTheme.BRIGHT)
-	y += 12
+	y += 24
 	UiDraw.text(self, Vector2i(x0, y), "room for %d, %d in it" % [roundi(place.store_room()), roundi(place.stored())], UiTheme.TEXT_DIM)
-	y += 13
+	y += 26
 	for id: Variant in place.stores:
 		var n := int(place.stores[id])
 		if n <= 0:
 			continue
 		UiIcons.draw_item(self, StringName(id), Vector2i(x0, y))
-		UiDraw.text(self, Vector2i(x0 + 13, y + 1), UiRules.bare_name(StringName(id)).to_upper(), UiTheme.TEXT)
-		UiDraw.text_right(self, R.end.x - UiSlate.MARGIN_R, y + 1, str(n), UiTheme.TEXT)
-		y += 13
+		UiDraw.text(self, Vector2i(x0 + 26, y + 2), UiRules.bare_name(StringName(id)).to_upper(), UiTheme.TEXT)
+		UiDraw.text_right(self, R.end.x - UiSlate.MARGIN_R, y + 2, str(n), UiTheme.TEXT)
+		y += 26
 	if not place.people.is_empty():
-		UiDraw.text(self, Vector2i(x0, y + 4), "%d living here%s" % [place.people.size(), ", hungry" if place.hunger > 0.3 else ""],
+		UiDraw.text(self, Vector2i(x0, y + 8), "%d living here%s" % [place.people.size(), ", hungry" if place.hunger > 0.3 else ""],
 			UiTheme.WARN if place.hunger > 0.5 else UiTheme.TEXT_DIM)
-		y += 15
+		y += 30
 	return y
 
 
@@ -333,9 +333,9 @@ func _draw_stores(R: Rect2i, x0: int, y: int) -> int:
 func _draw_signature(R: Rect2i, x0: int, y: int) -> void:
 	var place := _place()
 	UiDraw.hline(self, x0, R.end.x - UiSlate.MARGIN_R, y, UiTheme.FAINT)
-	y += 5
+	y += 10
 	UiDraw.text(self, Vector2i(x0, y), "WHAT A MACHINE HEARS", UiTheme.MACHINE[3])
-	y += 12
+	y += 24
 	if place == null:
 		UiDraw.text(self, Vector2i(x0, y), "nothing yet", UiTheme.MACHINE[1])
 		return
@@ -343,21 +343,21 @@ func _draw_signature(R: Rect2i, x0: int, y: int) -> void:
 	var right := R.end.x - UiSlate.MARGIN_R
 	for c in Signature.CHANNELS:
 		var v := sig.get_channel(c)
-		UiDraw.text(self, Vector2i(x0, y - 1), String(c).replace("_", " "), UiTheme.MACHINE[2] if v > 0.01 else UiTheme.MACHINE[1])
-		_bar(Rect2i(right - 84, y + 2, 84, 4), v, UiTheme.MACHINE[3] if v < 0.6 else UiTheme.WARN)
-		y += 10
+		UiDraw.text(self, Vector2i(x0, y - 2), String(c).replace("_", " "), UiTheme.MACHINE[2] if v > 0.01 else UiTheme.MACHINE[1])
+		_bar(Rect2i(right - 168, y + 4, 168, 8), v, UiTheme.MACHINE[3] if v < 0.6 else UiTheme.WARN)
+		y += 20
 	var total := sig.total()
-	UiDraw.text(self, Vector2i(x0, y + 1), "loudest: %s" % (String(sig.loudest()).replace("_", " ") if total > 0.01 else "nothing"),
+	UiDraw.text(self, Vector2i(x0, y + 2), "loudest: %s" % (String(sig.loudest()).replace("_", " ") if total > 0.01 else "nothing"),
 		UiTheme.MACHINE[3])
-	UiDraw.text_right(self, right, y + 1, "%d%%" % roundi(total * 100.0), UiTheme.WARN if total > 0.6 else UiTheme.MACHINE[3])
+	UiDraw.text_right(self, right, y + 2, "%d%%" % roundi(total * 100.0), UiTheme.WARN if total > 0.6 else UiTheme.MACHINE[3])
 	# And one word for what the plan THINKS, which is a different question from
 	# what it hears (48_raids owns the number; `Attention.pressure` is the only
 	# reading of it). A word and never a bar: a percentage here would turn a
 	# system about reading the world into one to optimise (docs/DESIGN.md §Raids).
 	var word := String(Attention.pressure(place.attention)).replace("_", " ")
-	UiDraw.text(self, Vector2i(x0, y + 12), "they have it down as",
+	UiDraw.text(self, Vector2i(x0, y + 24), "they have it down as",
 		UiTheme.MACHINE[2] if place.attention > Attention.NOTHING else UiTheme.MACHINE[1])
-	UiDraw.text_right(self, right, y + 12, word.to_upper(),
+	UiDraw.text_right(self, right, y + 24, word.to_upper(),
 		UiTheme.WARN if place.attention >= RaidStage.AT[1] else UiTheme.MACHINE[3])
 
 

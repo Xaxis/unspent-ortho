@@ -7,10 +7,14 @@ extends UiScreen
 ## with the reason, since they are for making. X puts the row down on a heap
 ## the world keeps (Survival owns it) — the way an over-full creel is emptied.
 
-const SKETCH := 78
+## The scan window in the sub-panel, and the sketch inside it. The sketch's size
+## is what the warm is keyed on, so it is DERIVED from the window rather than
+## written twice (UiSlate.scan_size says what happens when those two drift).
+const SCAN := 234
+const SKETCH := SCAN - UiSlate.SCAN_INSET
 ## The hardness ladder: a seam needs a tool of at least its rung.
 const LADDER: Array[StringName] = [&"wood", &"iron", &"steel", &"crucible"]
-const LIST_TOP := 50
+const LIST_TOP := UiSlate.LIST.position.y + 36
 ## Groups whose rows ask before they are put down: a tool, the lamp and worn
 ## kit are what a slip would cost you, and X sits beside C.
 const DROP_ASKS: Array[StringName] = [&"tools", &"found", &"to wear"]
@@ -175,12 +179,12 @@ func _draw() -> void:
 		draw_keys([["esc", "back"]])
 		return
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "BULK", UiTheme.TEXT_DIM)
-	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 4)
+	var right := L.end.x - 16
+	UiDraw.text_right(self, right, L.position.y + 8, "BULK", UiTheme.TEXT_DIM)
+	var lines := UiSlate.line_count(LIST_TOP, L.end.y - 8)
 	keep_in_view(lines)
 	if menu.rows.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 6, LIST_TOP), "nothing but the clothes you stand in", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 12, LIST_TOP), "nothing but the clothes you stand in", UiTheme.TEXT_DIM)
 	for n in mini(lines, menu.rows.size() - scroll):
 		var i := scroll + n
 		var row := menu.rows[i]
@@ -192,22 +196,22 @@ func _draw() -> void:
 		var chosen := i == menu.index
 		var col := UiTheme.TEXT if UiMenu.enabled(row) or UiRules.item_group(id) == &"goods" else UiTheme.TEXT_DIM
 		if chosen:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top)
 			col = UiTheme.BRIGHT
-		UiIcons.draw_item(self, id, Vector2i(x0 + 4, top - 1))
+		UiIcons.draw_item(self, id, Vector2i(x0 + 8, top - 2))
 		var name := UiRules.list_name(id, int(row.count))
-		UiDraw.text(self, Vector2i(x0 + 17, top), name, col)
-		var nx := x0 + 17 + UiFont.width(name)
+		UiDraw.text(self, Vector2i(x0 + 34, top), name, col)
+		var nx := x0 + 34 + UiFont.width(name)
 		if int(row.count) > 1:
-			UiDraw.text(self, Vector2i(nx + 4, top), "×%d" % row.count, UiTheme.TEXT_DIM)
-			nx += 5 + UiFont.width("×%d" % row.count)
+			UiDraw.text(self, Vector2i(nx + 8, top), "×%d" % row.count, UiTheme.TEXT_DIM)
+			nx += 10 + UiFont.width("×%d" % row.count)
 		if inventory.held == id or UiLink.worn(inventory) == id:
-			_tag(Vector2i(nx + 6, top), "HELD" if inventory.held == id else "WORN")
+			_tag(Vector2i(nx + 12, top), "HELD" if inventory.held == id else "WORN")
 		UiDraw.text_right(self, right, top, UiRules.num(Items.bulk(id) * int(row.count)), UiTheme.TEXT_DIM)
 	if scroll > 0:
-		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, LIST_TOP - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 4, "↓", UiTheme.TEXT_DIM)
 	_draw_detail(UiSlate.SPARE)
 	var chosen_row := menu.selected()
 	var verb: StringName = chosen_row.get("verb", &"")
@@ -225,14 +229,14 @@ func _draw() -> void:
 
 ## A small lit tag after a name: what is in hand or on the body.
 func _tag(at: Vector2i, word: String) -> void:
-	var w := UiFont.width(word) + 4
-	UiDraw.rect(self, Rect2i(at.x, at.y - 1, w, 10), UiTheme.PHOSPHOR[1])
-	UiDraw.text(self, Vector2i(at.x + 2, at.y - 1), word, UiTheme.GLASS_OFF)
+	var w := UiFont.width(word) + 8
+	UiDraw.rect(self, Rect2i(at.x, at.y - 2, w, UiFont.SIZE), UiTheme.PHOSPHOR[1])
+	UiDraw.text(self, Vector2i(at.x + 4, at.y - 2), word, UiTheme.GLASS_OFF)
 
 
 func _draw_detail(R: Rect2i) -> void:
 	var x0 := R.position.x + UiSlate.MARGIN_L
-	var right := R.end.x - 12
+	var right := R.end.x - UiSlate.SPARE_INSET
 	_draw_load(R, x0, right)
 	var row := menu.selected()
 	if row.is_empty():
@@ -240,15 +244,15 @@ func _draw_detail(R: Rect2i) -> void:
 	var id: StringName = row.id
 	var d := Items.def(id)
 	var found := UiIcons.is_found(id)
-	UiSlate.scan_box(self, Rect2i(x0, R.position.y + 8, 84, 84), id)
-	var tx := x0 + 96
-	UiDraw.text(self, Vector2i(tx, R.position.y + 10), UiRules.item_name(id), UiTheme.MACHINE[3] if found else UiTheme.BRIGHT)
+	UiSlate.scan_box(self, Rect2i(x0, R.position.y + 16, SCAN, SCAN), id)
+	var tx := x0 + 258
+	UiDraw.text(self, Vector2i(tx, R.position.y + 20), UiRules.item_name(id), UiTheme.MACHINE[3] if found else UiTheme.BRIGHT)
 	var facts := _facts(id, int(row.count))
 	for i in facts.size():
-		UiDraw.text(self, Vector2i(tx, R.position.y + 23 + i * 11), facts[i], UiTheme.MACHINE[2] if found else UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(tx, R.position.y + 46 + i * UiTheme.LINE), facts[i], UiTheme.MACHINE[2] if found else UiTheme.TEXT_DIM)
 	if d.get("tool", false) and int(d.get("bite", 1)) > 0 and not d.get("stuff", &"") == &"found":
-		_draw_edge(Vector2i(tx, R.position.y + 23 + facts.size() * 11), inventory.edge(id))
-	var y := R.position.y + 114
+		_draw_edge(Vector2i(tx, R.position.y + 46 + facts.size() * UiTheme.LINE), inventory.edge(id))
+	var y := R.position.y + 286
 	# A tool: what it works on in the world, by its verb.
 	var verb := String(d.get("verb", ""))
 	if verb != "":
@@ -258,19 +262,19 @@ func _draw_detail(R: Rect2i) -> void:
 				names.append(PropKind.NAMES[k])
 		if not names.is_empty():
 			UiSlate.heading(self, Vector2i(x0, y), "works on", right)
-			y += UiTheme.LINE * (1 + UiSlate.wrapped(self, Vector2i(x0 + 6, y + UiTheme.LINE), right - x0 - 6, ", ".join(names), UiTheme.TEXT)) + 4
+			y += UiTheme.LINE * (1 + UiSlate.wrapped(self, Vector2i(x0 + 12, y + UiTheme.LINE), right - x0 - 12, ", ".join(names), UiTheme.TEXT)) + 8
 	# A made tool's rung on the hardness ladder: what it can take.
 	var stuff := StringName(d.get("stuff", &""))
 	if LADDER.has(stuff):
 		UiSlate.heading(self, Vector2i(x0, y), "hardness", right)
-		_draw_ladder(Vector2i(x0 + 6, y + UiTheme.LINE + 1), stuff)
-		y += UiTheme.LINE * 2 + 8
+		_draw_ladder(Vector2i(x0 + 12, y + UiTheme.LINE + 2), stuff)
+		y += UiTheme.LINE * 2 + 16
 	# What it goes into: the recipes that want it, so goods are never a dead end.
 	var demo: Array[Dictionary] = []
 	if game != null and game.options.ui_demo:
 		demo.assign(UiDemo.RECIPES)
 	var uses := UiRules.recipes_using(id, UiRules.all_recipes(demo))
-	var room := (R.position.y + 206 - y) / UiTheme.LINE - 1
+	var room := (R.end.y - 140 - y) / UiTheme.LINE - 1
 	if uses.is_empty() or room < 1:
 		return
 	UiSlate.heading(self, Vector2i(x0, y), "goes into", right)
@@ -281,12 +285,12 @@ func _draw_detail(R: Rect2i) -> void:
 		var r: Dictionary = uses[i]
 		var top := y + UiTheme.LINE * (i + 1)
 		var out := UiRules.recipe_output(r)
-		UiIcons.draw_item(self, out, Vector2i(x0 + 6, top - 1))
-		UiDraw.text(self, Vector2i(x0 + 19, top), UiRules.recipe_title(r), UiTheme.TEXT)
+		UiIcons.draw_item(self, out, Vector2i(x0 + 12, top - 2))
+		UiDraw.text(self, Vector2i(x0 + 38, top), UiRules.recipe_title(r), UiTheme.TEXT)
 		var want := int((r.needs as Dictionary)[id])
 		UiDraw.text_right(self, right, top, "%d, %s" % [want, UiRules.station_words(StringName(r.get("at", &"")))], UiTheme.TEXT_DIM)
 	if uses.size() > shown:
-		UiDraw.text(self, Vector2i(x0 + 19, y + UiTheme.LINE * (shown + 1)), "and %d more" % (uses.size() - shown), UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), "and %d more" % (uses.size() - shown), UiTheme.TEXT_DIM)
 
 
 ## The load, always: carried bulk against the creel as a segmented meter (its
@@ -294,22 +298,22 @@ func _draw_detail(R: Rect2i) -> void:
 func _draw_load(R: Rect2i, x0: int, right: int) -> void:
 	var load := inventory.bulk()
 	var cap := UiLink.creel(inventory, body)
-	var ly := R.end.y - 62
-	UiDraw.hline(self, x0, right, ly - 6, UiTheme.GHOST)
+	var ly := R.end.y - 124
+	UiDraw.hline(self, x0, right, ly - 12, UiTheme.GHOST)
 	UiDraw.text(self, Vector2i(x0, ly), "LOAD", UiTheme.TEXT_DIM)
 	UiDraw.text_right(self, right, ly, "%s of %s" % [UiRules.num(load), UiRules.num(cap)], UiTheme.WARN if load > cap else UiTheme.TEXT)
-	var bar := Rect2i(x0, ly + 12, right - x0 + 1, 9)
+	var bar := Rect2i(x0, ly + 24, right - x0 + 1, 18)
 	UiSlate.meter(self, bar, load / (cap * 2.0), 0.5)
 	var creel_x := bar.position.x + bar.size.x / 2
-	UiDraw.vline(self, creel_x, bar.position.y - 2, bar.end.y + 1, UiTheme.BRIGHT)
-	UiDraw.text(self, Vector2i(creel_x - UiFont.width("creel") / 2, bar.end.y + 1), "creel", UiTheme.TEXT_DIM)
+	UiDraw.rect(self, Rect2i(creel_x, bar.position.y - 4, 2, bar.size.y + 8), UiTheme.BRIGHT)
+	UiDraw.text(self, Vector2i(creel_x - UiFont.width("creel") / 2, bar.end.y + 2), "creel", UiTheme.TEXT_DIM)
 	var held_name := UiRules.item_name(inventory.held) if inventory.held != &"" else "bare hands"
-	UiDraw.text(self, Vector2i(x0, ly + 36), "in hand", UiTheme.TEXT_DIM)
-	UiDraw.text(self, Vector2i(x0 + 48, ly + 36), held_name, UiTheme.TEXT)
+	UiDraw.text(self, Vector2i(x0, ly + 72), "in hand", UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(x0 + 96, ly + 72), held_name, UiTheme.TEXT)
 	if UiLink.can_wear(inventory):
 		var w := UiLink.worn(inventory)
-		UiDraw.text(self, Vector2i(x0 + 150, ly + 36), "worn", UiTheme.TEXT_DIM)
-		UiDraw.text(self, Vector2i(x0 + 180, ly + 36), UiRules.item_name(w) if w != &"" else "nothing", UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 300, ly + 72), "worn", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 360, ly + 72), UiRules.item_name(w) if w != &"" else "nothing", UiTheme.TEXT)
 
 
 func _facts(id: StringName, count: int) -> PackedStringArray:
@@ -339,23 +343,25 @@ func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
 		var w := UiFont.width(word)
 		var mine := LADDER[i] == stuff
 		if mine:
-			UiDraw.rect(self, Rect2i(x - 3, at.y - 2, w + 6, 12), UiTheme.GLASS_LIT)
-			UiSlate.brackets(self, Rect2i(x - 3, at.y - 2, w + 6, 12), UiTheme.BRIGHT, 2)
+			UiDraw.rect(self, Rect2i(x - 6, at.y - 4, w + 12, UiTheme.LINE + 2), UiTheme.GLASS_LIT)
+			UiSlate.brackets(self, Rect2i(x - 6, at.y - 4, w + 12, UiTheme.LINE + 2), UiTheme.BRIGHT, 6)
 		UiDraw.text(self, Vector2i(x, at.y), word, UiTheme.BRIGHT if mine else UiTheme.TEXT_DIM)
 		x += w
 		if i < LADDER.size() - 1:
 			for k in 3:
-				UiDraw.px(self, x + 8 + k * 3, at.y + 5, UiTheme.FAINT)
-			x += 24
+				UiDraw.px(self, x + 16 + k * 6, at.y + 10, UiTheme.FAINT)
+			x += 48
 
 
 ## The edge as notches: ten of them, worn ones hollow, the last two in the warning.
 func _draw_edge(at: Vector2i, edge: int) -> void:
 	UiDraw.text(self, at, "edge", UiTheme.TEXT_DIM)
-	var x := at.x + UiFont.width("edge") + 5
+	var x := at.x + UiFont.width("edge") + 10
 	var full := roundi(edge / 1000.0)
 	for i in 10:
+		# A notch and the clear pixel after it: at a pitch of 8 they touched, and
+		# ten of them read as one bar rather than as an edge with ten notches left.
 		if i < full:
-			UiDraw.rect(self, Rect2i(x + i * 4, at.y + 2, 3, 5), UiTheme.WARN if full <= 2 else UiTheme.TEXT)
+			UiDraw.rect(self, Rect2i(x + i * 10, at.y + 4, 6, 12), UiTheme.WARN if full <= 2 else UiTheme.TEXT)
 		else:
-			UiDraw.frame(self, Rect2i(x + i * 4, at.y + 2, 3, 5), UiTheme.FAINT)
+			UiDraw.frame(self, Rect2i(x + i * 10, at.y + 4, 6, 12), UiTheme.FAINT)
