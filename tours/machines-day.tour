@@ -8,7 +8,7 @@
 coast calm
 weather clear:0
 hour 12
-at 200.5,431.5
+place spawn
 zoom 8
 wait 1.2
 
@@ -35,7 +35,7 @@ end
 # cut off other machines.
 coast calm
 wait 0.5
-at 200.5,431.5
+place spawn
 zoom 6
 spawn harvester
 wait 1.3
