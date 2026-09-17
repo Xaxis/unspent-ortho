@@ -463,6 +463,11 @@ func _give_out(prop: WorldProp) -> void:
 	var node := MeshInstance3D.new()
 	node.mesh = PropModels.mesh(prop.kind)
 	node.material_override = _found_mat if SCRAP.has(prop.kind) else _mat
+	# The crown goes down with the tree. Its cards keep their own material: under
+	# the override above a sprig would be drawn as the square it is cut from.
+	var leaves := PropModels.leaf_node(prop.kind)
+	if leaves != null:
+		node.add_child(leaves)
 	var pivot := Node3D.new()
 	pivot.position = game.world.to_3d(prop.pos)
 	pivot.add_child(node)

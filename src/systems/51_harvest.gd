@@ -108,6 +108,8 @@ static func _model_height(kind: int, variant: int, country: int, worked: int) ->
 		top = maxf(top, v.y)
 	for v: Vector3 in tpl.found_v:
 		top = maxf(top, v.y)
+	for v: Vector3 in tpl.leaf_v:
+		top = maxf(top, v.y)
 	_tall[key] = top
 	return top
 

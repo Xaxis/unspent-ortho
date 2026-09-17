@@ -39,7 +39,11 @@ extends RefCounted
 ##                     after start: a take or a fire caught at an exact moment (--frames > SECONDS*60)
 ## --fit=ID[,ID...]    wear this gear at start, given if not carried: a piece goes in
 ##                     its own slot, a module into the first slot it fits (hazards)
-## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
+## --spawn=K[@DEG][,...] place these roster kinds in front of the player (fight shots/tests).
+##                     `@DEG` turns one to a bearing instead of facing the player,
+##                     for a frame that is about the MODEL: 0 east, 90 south, as
+##                     --face. A yaw out of test_machines_silhouette.gd is `@-yaw`
+##                     (Spawner.staged says why).
 ## --holding=KIND,...  stand a staffed holding in front of the player, free: lean-to,
 ##                     hearth, hut, store, plot, catchment, palisade, plate wall,
 ##                     netting, wind spinner, battery stack, radio mast (settlements)

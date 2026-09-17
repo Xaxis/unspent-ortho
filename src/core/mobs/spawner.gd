@@ -133,6 +133,24 @@ static func place_fits(row: Dictionary, world: WorldData, query: WorldQuery, tx:
 			return false
 	return true
 
+## A staging token for a body put out for a shot: `runner`, or `runner@-112` to
+## say which way it faces (DEGREES, 0 east, 90 south, as `--face`). Boot's
+## `--spawn`, the tour's `spawn` and the test that holds tours to their claims
+## all read it here, so the three cannot drift apart.
+##
+## TO REPRODUCE A BEARING OFF `tests/models/test_machines_silhouette.gd`:
+## **facing = -yaw**, and nothing else. That test rasterises the model turned by
+## `Basis(UP, yaw)` through the GAME camera's own basis (euler -57, 45, the
+## CameraRig's own numbers), and a body in the world is drawn at
+## `rotation.y = -facing`, so the two meet with no correction for where the
+## camera stands. The sweeper's worst fill is yaw 0.79 and the runner's 1.96,
+## which are `@-45` and `@-112`.
+static func staged(token: String) -> Dictionary:
+	var at := token.strip_edges().split("@", false)
+	var facing := NAN
+	if at.size() > 1:
+		facing = deg_to_rad(at[1].to_float())
+	return {"id": Roster.resolve(at[0].strip_edges()) if not at.is_empty() else &"", "facing": facing}
 
 ## Ground names are the roster's; ones this world does not have are skipped.
 static func ground_matches(g: int, names: Array) -> bool:

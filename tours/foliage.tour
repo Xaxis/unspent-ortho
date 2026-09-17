@@ -1,0 +1,57 @@
+# Foliage is leaf cards, not a lobed solid (src/models/props/kit.gd `canopy`,
+# src/render/foliage/leaf.gdshader). Played through the real game, seed 7 --
+# the canon's -- so frames 01-03 stand beside canon 02, 04 and 08.
+#
+# The frames this tour exists for are 05 and 07: a machine among the leaves at
+# play zoom, where it still reads. A canopy that hides a threat is a worse game
+# however beautiful the frame, and no test can make that claim.
+#   tools/tour.sh tours/foliage.tour --seed=7
+#   tools/tour.sh tours/foliage.tour --seed=7 --quality=web   (the web tier's row;
+#   the web RENDERER is only proved by tools/check.sh --web)
+weather clear:0
+place coast
+wait 0.8
+shot 01-coast-scrub with land:coast
+place coast-pinewood
+wait 0.8
+shot 02-broadleaf-and-pine with border:coast-pinewood
+# What the leaves cost, shown and hidden in turn inside this one run: fps taken
+# across two runs of one command came back 83 and 63 on this machine.
+perf foliage 3.0
+place pinewood
+wait 0.8
+shot 03-pinewood-needles with land:pinewood
+perf foliage 3.0
+# Under a crown: it opens over the player, cut in stipple where the leaves are
+# in the way, and nowhere else.
+near broadleaf
+wait 0.6
+shot 04-under-a-crown with prop:broadleaf
+# A machine walks in among the leaves. Its crown opens too.
+spawn watcher
+await mob:watcher 6
+wait 0.6
+shot 05-machine-among-the-leaves with mob:watcher,prop:broadleaf
+# The pines: the wood the depth layer roofs with boughs, and the needles under it.
+place pinewood
+near pine
+wait 0.4
+spawn runner
+await mob:runner 6
+wait 0.6
+shot 06-runner-under-the-needles with mob:runner,prop:pine
+# Scrub is low and never opens, so a body behind a bush has to read over it.
+place coast
+near bush
+wait 0.4
+spawn harvester
+await mob:harvester 6
+wait 0.6
+shot 07-harvester-past-the-scrub with mob:harvester,prop:bush
+# The light through a canopy: a low sun behind the leaves.
+place coast-pinewood
+near broadleaf
+hour 18.4
+wait 1.0
+shot 08-low-sun-through-a-crown with prop:broadleaf
+weather rules
