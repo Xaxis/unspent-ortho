@@ -462,7 +462,7 @@ static func finish_work(game: Game) -> bool:
 			if game.view != null:
 				game.view.refresh_props(prop)
 	elif not o.keep and Harvest.apply_shown(game, prop) and game.view != null:
-		# Taken from but not taken away: it stands that much smaller.
+		# Taken from but not taken away: it stands with that much of it off it.
 		game.view.refresh_props(prop)
 	Events.sfx.emit(&"took", game.world.to_3d(prop.pos))
 	return true

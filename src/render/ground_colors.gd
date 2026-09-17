@@ -46,6 +46,11 @@ const ROAD := 54
 const SALT := 55
 const SWARF := 56
 const PAN := 57
+## A face the taking has just opened: the cut through a boulder a pick has been
+## into, a wreck cut down. Nothing has settled on it yet, so the wear the land
+## lays on everything standing in it (`matter_worn`) is kept off this face alone
+## (Broken, world.gdshader). It carries no mark of its own.
+const FRESH := 58
 ## Cliff strata: STRATA + one of the STRATA_* ids.
 const STRATA := 60
 const STRATA_COAST := 1
