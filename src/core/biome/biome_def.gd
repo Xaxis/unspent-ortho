@@ -11,10 +11,11 @@ extends RefCounted
 ## before it is a hundred. BiomeRegistry discovers the file, gives the type its
 ## `index` (the byte stored per tile in WorldData.country) and validates it.
 ##
-## NOT yet here: what a landscape's OBJECTS are made of. `src/models/props/`
-## still matches on `Country` for houses, wrecks, boulders, signs and shore
-## dressing, so a landscape registered after the M1 six is dressed as the coast
-## until those files read this instead (CLAUDE.md, Landscape types).
+## What its OBJECTS are made of is `dressing`, a BiomeDressing (which see): the
+## stone its boulders are cut from, the timber its fences weather to, what banks
+## against a wreck, which patched shelter people put up, what the weather leaves
+## on anything left out. A landscape writes down only what it argues with; the
+## rest is worked out from what it has already said about itself.
 ##
 ## Units: relief is in WorldData levels, distances in tiles, colours are sRGB
 ## palette values (docs/ART.md: straight into ALBEDO, never converted).
@@ -142,6 +143,11 @@ var decor_tints: Dictionary = {}
 var tree_tints: Dictionary = {}
 ## Its rock breaks into rubble that gathers at a cliff foot rather than crumbling.
 var hard_rock := false
+## What this landscape's BUILT and FOUND things are made of (`BiomeDressing`):
+## boulders, bones, timber, drift, sods, walling, cast concrete, signs, the
+## shelter people patch together, and what the weather leaves on a thing left
+## out. Null takes the whole of it from the fields above.
+var dressing: BiomeDressing = null
 ## Multiplied into this landscape's light.
 var light_tint := Color(1, 1, 1)
 ## How much of the NIGHT sky's own light reaches the ground here (1 = the

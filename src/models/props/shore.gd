@@ -77,10 +77,11 @@ static func wrack(k: Kit, v: int, _c: int) -> void:
 
 
 static func bones(k: Kit, v: int, c: int) -> void:
-	var bone := P.LINEN[4] if c != Country.BURNING else P.ASH[3]
-	var old := P.LINEN[3] if c != Country.BURNING else P.ASH[2]
+	var pale := BiomeDressing.of(c).pale
+	var bone := pale[0]
+	var old := pale[1]
 	var s := 10400 + v * 3
-	k.hand(Ink.CROSS if c == Country.BONELANDS else Ink.HAND)
+	k.hand(Ink.hand_of(c))
 	match v % 3:
 		0:
 			# A ribcage half sunk, the spine along the ground.
@@ -119,11 +120,8 @@ static func wreck(k: Kit, v: int, c: int) -> void:
 	var dark := P.PLATE[1]
 	var lit := P.PLATE[3]
 	var rust := P.RUST[2]
-	var drift := P.SAND[4] if c != Country.SNOWFIELD else P.RIME[5]
-	if c == Country.BURNING:
-		drift = P.ASH[2]
-	elif c == Country.MOSS or c == Country.PINEWOOD:
-		drift = P.EARTH[2]
+	# Whatever banks against a thing left on this shore: sand, snow, ash, peat.
+	var drift := BiomeDressing.of(c).drift[0]
 	if v % 2 == 0:
 		# The hull, rolled 20 degrees and nose down, its back third gone.
 		k.found.push(Transform3D(Basis(Vector3.UP, 0.25) * Basis(Vector3.RIGHT, 0.36) * Basis(Vector3.BACK, -0.1), Vector3(0.0, -0.3, 0.0)))

@@ -39,8 +39,9 @@ static func lamp_post(k: Kit, c: int) -> void:
 		var a := float(i) / 3.0 * TAU + 0.26
 		k.made.strut(Vector3(lx + cos(a) * 0.09, 1.3, 0.02 + sin(a) * 0.09), Vector3(lx + cos(a) * 0.09, 1.52, 0.02 + sin(a) * 0.09), 0.01, 3, P.COPPER[2])
 	k.stone(0.02, -0.06, 0.0, 0.17, 0.14, 1801, P.STONE[2], 5)
-	if c == Country.SNOWFIELD:
-		k.clump(lx, 1.6, 0.02, 0.1, 0.06, 1802, P.RIME[5], 5)
+	var d := BiomeDressing.of(c)
+	if d.cold():
+		k.clump(lx, 1.6, 0.02, 0.1, 0.06, 1802, d.snow[0], 5)
 
 
 ## The fire station: a ring of stones, logs, a bed of embers, flames, and a pot
@@ -164,7 +165,7 @@ static func kiln(k: Kit, v: int) -> void:
 
 
 ## FOUND: a lattice mast, exact and symmetric, still carrying.
-static func pylon(k: Kit, c: int = Country.COAST) -> void:
+static func pylon(k: Kit, c: int) -> void:
 	var m := P.PLATE[3]
 	var br := P.PLATE[2]
 	var top := 4.0
@@ -202,19 +203,20 @@ static func pylon(k: Kit, c: int = Country.COAST) -> void:
 	k.found.prism(0, top + 0.22, 0, 0.07, top + 0.34, 0.05, 6, Works.BEACON)
 	for arm2: Array in [[3.4, 1.15], [2.7, 0.85]]:
 		k.found.block(0, float(arm2[0]) + 0.05, 0, 0.03, 0.025, float(arm2[1]) * 1.7, Works.lit(Works.STRIP, 0.9))
-	if c == Country.SNOWFIELD:
-		# Ice on the grid in the snow (MADE: the weather's, not the machine's):
+	var d := BiomeDressing.of(c)
+	if d.cold():
+		# Ice on the grid where snow lies (MADE: the weather's, not the machine's):
 		# rime along each crossarm and icicles of uneven length under it.
 		for arm3: Array in [[3.4, 1.15], [2.7, 0.85]]:
 			var y: float = arm3[0]
 			var hw: float = arm3[1]
-			k.made.strut(Vector3(0.0, y + 0.045, -hw), Vector3(0.0, y + 0.045, hw), 0.03, 3, P.RIME[5])
+			k.made.strut(Vector3(0.0, y + 0.045, -hw), Vector3(0.0, y + 0.045, hw), 0.03, 3, d.snow[0])
 			var n := 9 if hw > 1.0 else 7
 			for i in n:
 				var z := -hw + 0.08 + (hw * 2.0 - 0.16) * (i + Kit.j(1650, i, 0.3) + 0.5) / n
 				var length := 0.12 + Rng.hash01(1651, i, int(hw * 10.0)) * 0.3
-				k.made.prism(0.0, y - 0.03 - length, z, 0.0, y - 0.02, 0.04, 4, P.RIME[3] if i % 2 else P.RIME[2])
-		k.made.strut(Vector3(0.0, 4.02, 0.0), Vector3(0.0, 4.12, 0.0), 0.09, 4, P.RIME[5])
+				k.made.prism(0.0, y - 0.03 - length, z, 0.0, y - 0.02, 0.04, 4, d.snow[2] if i % 2 else d.snow[3])
+		k.made.strut(Vector3(0.0, 4.02, 0.0), Vector3(0.0, 4.12, 0.0), 0.09, 4, d.snow[0])
 
 
 static func _leg(l: Vector2, y: float, top: float) -> Vector3:
@@ -223,7 +225,7 @@ static func _leg(l: Vector2, y: float, top: float) -> Vector3:
 
 
 ## FOUND: a pole with a crossarm and two insulators, exact, a plate on it.
-static func pole(k: Kit, c: int = Country.COAST) -> void:
+static func pole(k: Kit, c: int) -> void:
 	k.found.prism(0, -0.02, 0, 0.11, 0.18, 0.1, 8, P.PLATE[1], P.PLATE[2])
 	k.found.prism(0, 0.18, 0, 0.06, 2.8, 0.048, 8, P.PLATE[3], P.PLATE[4])
 	k.found.prism(0, 2.8, 0, 0.05, 2.9, 0.035, 6, Color(1.0, 0.3, 0.35, 0.3))
@@ -236,11 +238,12 @@ static func pole(k: Kit, c: int = Country.COAST) -> void:
 		k.rod(Vector3(0, 2.68, side), Vector3(0, 2.72, side), 0.012, 4, P.INK[1])
 	k.found.quad(Vector3(0.062, 1.1, 0.07), Vector3(0.062, 1.1, -0.07), Vector3(0.062, 1.3, -0.07), Vector3(0.062, 1.3, 0.07), P.RIME[5])
 	k.found.quad(Vector3(0.064, 1.18, 0.05), Vector3(0.064, 1.18, -0.05), Vector3(0.064, 1.2, -0.05), Vector3(0.064, 1.2, 0.05), P.INK[1])
-	if c == Country.SNOWFIELD:
+	var d := BiomeDressing.of(c)
+	if d.cold():
 		# Ice on the crossarm and a cap of rime (MADE: the weather's).
-		k.made.strut(Vector3(0.0, 2.56, -0.5), Vector3(0.0, 2.56, 0.5), 0.045, 3, P.RIME[4])
+		k.made.strut(Vector3(0.0, 2.56, -0.5), Vector3(0.0, 2.56, 0.5), 0.045, 3, d.snow[1])
 		for i in 6:
 			var z := -0.45 + i * 0.18 + Kit.j(1660, i, 0.04)
 			var length := 0.14 + Rng.hash01(1661, i) * 0.3
-			k.made.prism(0.0, 2.5 - length, z, 0.0, 2.51, 0.04, 4, P.RIME[3] if i % 2 else P.RIME[2])
-		k.made.prism(0.0, 2.9, 0.0, 0.08, 2.98, 0.04, 5, P.RIME[5])
+			k.made.prism(0.0, 2.5 - length, z, 0.0, 2.51, 0.04, 4, d.snow[2] if i % 2 else d.snow[3])
+		k.made.prism(0.0, 2.9, 0.0, 0.08, 2.98, 0.04, 5, d.snow[0])

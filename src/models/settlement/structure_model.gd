@@ -227,6 +227,8 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 		StructureKind.HUT:
 			Shelter.hut_made(made, v, broken)
 			Shelter.hut_found(found, v, broken)
+		StructureKind.BUNK:
+			Shelter.bunk(made, v, broken)
 		StructureKind.STORE:
 			Shelter.store(made, v, broken)
 		StructureKind.PLOT:
@@ -239,6 +241,9 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 			Power.spinner_found(found, v, broken)
 			rotor = MeshKit.new()
 			Power.spinner_rotor(rotor, v, broken)
+		StructureKind.SOLAR_ARRAY:
+			Power.solar_made(made, v, broken)
+			Power.solar_found(found, v, broken, on)
 		StructureKind.BATTERY_STACK:
 			Power.battery_made(made, v, broken)
 			Power.battery_found(found, v, broken, on)

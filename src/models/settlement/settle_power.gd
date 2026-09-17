@@ -196,3 +196,106 @@ static func mast_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
 		Parts.strip(k, Vector3(0.0, top + 0.3, 0.0), Vector3(0.0, top + 0.36, 0.0), 0.03)
 	else:
 		k.prism(0.22, 0.3, 0.1, 0.032, 0.36, 0.024, 6, P.LENS[0], P.LENS[0])
+
+
+# --- solar array ------------------------------------------------------------
+
+## The spinner's opposite number: panels cut off something that used to power the
+## machines, raked up to the sun on a frame somebody knocked together.
+##
+## It must not read as a plate wall lying down, so the frame is a visible RAKE —
+## legs short at the front and long at the back, braced, holding the panels
+## clearly ABOVE the ground and clearly at an angle. The panels are mismatched,
+## as every found thing here is: they came off three different machines and
+## nobody had a saw that would true them.
+const RAKE := 0.62
+## The front and back lip of the array's face, so the made half and the found
+## half cannot drift apart.
+const PANEL_LOW := 0.34
+const PANEL_HIGH := 0.92
+
+
+static func solar_made(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var half := 0.56 + Parts.wob(v, 1) * 0.08
+	var low := PANEL_LOW if not ruined else 0.12
+	var high := PANEL_HIGH if not ruined else 0.34
+	for side: int in [-1, 1]:
+		var z := side * half
+		var front := Vector3(RAKE * 0.5, 0.0, z)
+		var back := Vector3(-RAKE * 0.5, 0.0, z)
+		# The short front leg and the long back one: the rake, read from the side.
+		Parts.post(k, front, Vector3(front.x + Parts.lean(v, 10 + side, 0.03), low, z), 0.05,
+			Parts.pick(Parts.TIMBER, v, 20 + side))
+		Parts.post(k, back, Vector3(back.x + Parts.lean(v, 12 + side, 0.04), high, z), 0.05,
+			Parts.pick(Parts.TIMBER, v, 22 + side))
+		Parts.stone(k, front, 0.1, v, 30 + side)
+		Parts.stone(k, back, 0.1, v, 32 + side)
+		# The rail the panels are bolted to, and the brace under it.
+		k.strut(Vector3(front.x, low, z), Vector3(back.x, high, z), 0.04, 4, Parts.pick(Parts.TIMBER, v, 40 + side))
+		k.strut(Vector3(front.x, low * 0.45, z), Vector3(back.x * 0.2, high * 0.62, z), 0.03, 4,
+			Parts.pick(Parts.TIMBER, v, 42 + side))
+	if ruined:
+		return
+	# Cross-pieces between the two rails, and lashings at the head: nothing here
+	# was bolted, because nobody had bolts that fitted.
+	for i in 2:
+		var t := 0.22 + 0.5 * float(i)
+		var y := lerpf(low, high, t)
+		var x := lerpf(RAKE * 0.5, -RAKE * 0.5, t)
+		k.strut(Vector3(x, y, -half), Vector3(x, y + 0.01, half), 0.03, 4, Parts.pick(Parts.TIMBER, v, 50 + i))
+	for side: int in [-1, 1]:
+		Parts.lash(k, Vector3(-RAKE * 0.5, high, side * half), Vector3(-RAKE * 0.5 - 0.06, high - 0.12, side * half),
+			v, 60 + side, 0.022)
+
+
+## The panels themselves, and the box they run into. `lit` is the holding having
+## charge to show for it — the same tell-tale the battery stack and the mast
+## carry, so a player reads all three the same way.
+static func solar_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
+	Parts.ruled(k)
+	var half := 0.56 + Parts.wob(v, 1) * 0.08
+	if ruined:
+		# Off the frame and face down, one corner still hanging on.
+		Parts.panel(k, Vector3(0.24, 0.03, -0.2), PI * 0.47)
+		Parts.plate(k, 0.3, 0.34, v, 70)
+		k.pop()
+		Parts.panel(k, Vector3(-0.3, 0.05, 0.3), PI * 0.42, -1)
+		Parts.plate(k, 0.22, 0.26, v, 71)
+		k.pop()
+		return
+	# Three panels along the rake, each a different size and none of them square
+	# to the next, drawn as a face on the slope the frame makes.
+	for i in 3:
+		var t0 := float(i) / 3.0
+		var t1 := float(i + 1) / 3.0 - 0.02
+		var z0 := lerpf(-half + 0.04, half - 0.04, t0)
+		var z1 := lerpf(-half + 0.04, half - 0.04, t1)
+		var mid := (z0 + z1) * 0.5
+		# A shade of its own: they were cut off three different machines.
+		var face := P.PLATE[2 + i % 3]
+		var lip := 0.03 + Parts.wob(v, 80 + i) * 0.04
+		# Wound so the face looks at the SKY. `MeshKit.tri` authors CCW and takes its
+		# normal from `(c - b).cross(a - b)`; the order that reads naturally here puts
+		# it face down, and a face-down panel is not dark, it is culled and absent.
+		var a := Vector3(RAKE * 0.5 - lip, PANEL_LOW + 0.03, z1)
+		var b := Vector3(RAKE * 0.5 - lip, PANEL_LOW + 0.03, z0)
+		var c := Vector3(-RAKE * 0.5 + 0.02, PANEL_HIGH + 0.03, z0)
+		var d := Vector3(-RAKE * 0.5 + 0.02, PANEL_HIGH + 0.03, z1)
+		k.quad(a, b, c, d, face)
+		# The cell rows, ruled down the panel: what says this is machine work and
+		# not a sheet of plate laid on a frame.
+		for row in 3:
+			var t := 0.22 + 0.29 * float(row)
+			k.strut(a.lerp(d, t), b.lerp(c, t), 0.012, 4, P.PLATE[4])
+		# The bracket holding its low edge down to the rail.
+		k.strut(Vector3(RAKE * 0.5 - lip, PANEL_LOW + 0.03, mid), Vector3(RAKE * 0.5, PANEL_LOW - 0.06, mid),
+			0.018, 5, P.PLATE[1])
+	# The junction box at the high end, and the cable run back up to the panels.
+	k.prism(-RAKE * 0.5 - 0.1, 0.0, half * 0.5, 0.1, 0.28, 0.08, 7, P.PLATE[2], P.PLATE[3])
+	k.strut(Vector3(-RAKE * 0.5 - 0.1, 0.28, half * 0.5), Vector3(-RAKE * 0.5 + 0.02, PANEL_HIGH - 0.02, half * 0.3),
+		0.02, 5, P.PLATE[1])
+	if lit:
+		Parts.tell_tale(k, Vector3(-RAKE * 0.5 - 0.1, 0.28, half * 0.5 - 0.08), 0.032)
+	else:
+		k.prism(-RAKE * 0.5 - 0.1, 0.28, half * 0.5 - 0.08, 0.032, 0.34, 0.024, 6, P.LENS[0], P.LENS[0])

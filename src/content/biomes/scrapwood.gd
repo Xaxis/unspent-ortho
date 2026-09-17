@@ -89,7 +89,19 @@ static func make() -> BiomeDef:
 		&"leaf": [P.SPRUCE[2].lerp(P.MOSS[2], 0.4), P.MOSS[2], P.SPRUCE[3].lerp(P.MOSS[3], 0.5), P.MOSS[2].lerp(P.SPRUCE[2], 0.6)],
 		&"trunk": [P.EARTH[2].lerp(P.RUST[1], 0.3)],
 		&"scrub": [P.SPRUCE[2], P.MOSS[2].lerp(P.RUST[1], 0.25), P.SPRUCE[2].lerp(P.MOSS[3], 0.4)],
+		&"needle": [P.SPRUCE[2].lerp(P.RUST[1], 0.2), P.SPRUCE[3], P.SPRUCE[3].lerp(P.MOSS[3], 0.4)],
+		&"dead": [P.EARTH[2].lerp(P.RUST[1], 0.4), P.RUST[1]],
 	}
+	# A wood grown up through a scrapyard: leaf litter with filings in it, timber
+	# stained by what runs off the frames, and a mat of it over anything left.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.SLATE[2].lerp(P.RUST[1], 0.3), P.SLATE[1], P.MOSS[3].lerp(P.RUST[1], 0.25)]
+	dress.timber = [P.EARTH[2].lerp(P.RUST[1], 0.25), P.EARTH[1]]
+	dress.covers = &"needles"
+	# A platform up among the frames, out of the water that runs off them.
+	dress.shelter = &"blind"
+	dress.sink = 0.1
+	d.dressing = dress
 	# Under a closed canopy over dark ground: dimmer than the pines, and the
 	# darkness term goes as negative as the moss's so noon still reads as noon.
 	d.grade = Vector4(-0.52, 0.12, 0.0, 0.08)
