@@ -52,8 +52,18 @@ const FOOTPRINT := PropKind.MEMORIAL
 ## index and leaves anything negative alone, so a resident stays at the holding
 ## day and night instead of walking home to a village they left.
 const RESIDENT := -3
-## Tiles from a holding a villager will come over from.
+## Tiles from a holding a villager ALREADY STANDING ON THE LAND will walk over
+## from. This is 35_folk's own `NEAR` by necessity and not by choice: that system
+## only builds villager bodies while the PLAYER is within 34 tiles of a village,
+## so no body exists outside it to ask. It was never an independent design
+## number — it was the streaming radius wearing a second name.
 const RECRUIT_REACH := 34.0
+## How far word travels for a bed, when there is nobody standing about to ask.
+## Measured against worldgen rather than picked: the furthest standable tile from
+## any village is 64, 71 and 77 on seeds 1, 4 and 7, so 80 means a holding
+## ANYWHERE on the island can be staffed — and what decides whether it actually is
+## stays the bed, which is the rule worth having.
+const LODGE_REACH := 80.0
 ## Tiles from the player a holding is drawn and its people stood up within.
 const DRAW_REACH := 90.0
 ## What one press of `mend` puts back, as a share of the piece's strength, and
@@ -702,17 +712,47 @@ func _folk() -> Node:
 	return _folk_system
 
 
-## A villager near the holding takes the work on. It is the SAME body: 35_folk's
+## Somebody comes to live at the holding. A BED is what brings them (`_staff`
+## refuses before this is ever called), and there are two ways they arrive.
+##
+## Near a village it is the SAME body that was already walking about: 35_folk's
 ## own row, moved onto the holding's books by the fields that system already
-## keeps (`village`, `role`, `work`, `job_pos`), so nothing here reaches into how
-## a person walks, dresses or is drawn.
+## keeps (`village`, `role`, `work`, `job_pos`), so the village visibly loses
+## somebody and nothing here reaches into how a person walks, dresses or is drawn.
+##
+## **When there is no body to ask, the holding sends word instead**, and that is
+## the path that makes a remote holding possible at all. 35_folk only builds
+## villagers within 34 tiles of the PLAYER, so asking live bodies could only ever
+## staff a holding founded next door to a village: everywhere else the answer was
+## no, whatever the player built, and a fifth of the island could never be lived
+## on. `world.villages` is data and is there whether a village is loaded or half
+## an island away, so the nearest one within LODGE_REACH sends somebody out.
+## Nothing is lost by their having no body yet: a resident's look is a number on
+## the holding's own books and `_sync_people` stands them up from it, which is the
+## same path a holding loaded from a save takes.
 func _recruit(s: Settlement) -> int:
+	var best := _villager_near(s)
+	if best.is_empty() and _village_within(s, LODGE_REACH) < 0:
+		return -1
+	var who := s.take_person_id()
+	s.people.append(who)
+	# What they look like, kept as a number: a holding loaded from a save stands
+	# its people up again from its own seed rather than from a body that is gone.
+	s.looks[who] = s.id * 1013 + who
+	if not best.is_empty():
+		best["village"] = RESIDENT
+		_bodies["%d:%d" % [s.id, who]] = best
+	return who
+
+
+## A villager already standing on the land and free to be asked, or {}.
+func _villager_near(s: Settlement) -> Dictionary:
 	var folk := _folk()
 	if folk == null:
-		return -1
+		return {}
 	var rows: Array = folk.get("folk")
 	if rows == null:
-		return -1
+		return {}
 	var best: Dictionary = {}
 	var best_d := RECRUIT_REACH * RECRUIT_REACH
 	for row: Dictionary in rows:
@@ -722,16 +762,24 @@ func _recruit(s: Settlement) -> int:
 		if d < best_d:
 			best_d = d
 			best = row
-	if best.is_empty():
+	return best
+
+
+## The nearest village that would send somebody, or -1. Read off the WORLD and
+## never off live bodies, so it answers the same whether that village is loaded,
+## asleep, or has never been near the player at all.
+func _village_within(s: Settlement, reach: float) -> int:
+	if game == null or game.world == null:
 		return -1
-	var who := s.take_person_id()
-	s.people.append(who)
-	# What they look like, kept as a number: a holding loaded from a save stands
-	# its people up again from its own seed rather than from a body that is gone.
-	s.looks[who] = s.id * 1013 + who
-	best["village"] = RESIDENT
-	_bodies["%d:%d" % [s.id, who]] = best
-	return who
+	var best := -1
+	var best_d := reach * reach
+	for i in game.world.villages.size():
+		var v: Dictionary = game.world.villages[i]
+		var d := (v.get("pos", Vector2(-9999.0, -9999.0)) as Vector2).distance_squared_to(s.centre)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
 
 
 ## Put a resident on a piece: they walk to it and work there, through 35_folk's
@@ -1076,6 +1124,11 @@ func tour_seen(what: StringName) -> bool:
 				if p.standing() and StructureKind.masks(p.kind) and StructureKind.draw_power(p.kind) > 0.0 and p.powered:
 					return true
 			return false
+	# A frame that says "out on its own" has to prove it: further from every
+	# village than 35_folk will ever build a body, which is exactly the wall that
+	# used to make such a holding unstaffable.
+	if what == &"holding_remote":
+		return s != null and _village_within(s, RECRUIT_REACH) < 0
 	if String(what).begins_with("piece:"):
 		var kind := _kind_named(String(what).substr(6))
 		if kind < 0 or s == null:

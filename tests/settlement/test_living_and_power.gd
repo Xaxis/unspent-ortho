@@ -97,6 +97,79 @@ func test_a_staged_holding_is_staffed_whatever_it_has_for_a_roof() -> void:
 	Sx.end(g)
 
 
+## The hole the LIVING family was supposed to close, and the one a bunk alone
+## does NOT: a holding out on its own could never be staffed, whatever it built.
+##
+## `_recruit` asked 35_folk for a body, and 35_folk only builds villagers within
+## 34 tiles of the PLAYER — so the recruit reach was the streaming radius under
+## another name, and the answer everywhere else was no. Measured on seeds 1/4/7,
+## that is about a fifth of the standable island (the furthest tile from any
+## village is 64, 71 and 77). Word to the nearest village is what answers it.
+func test_a_holding_out_on_its_own_can_still_be_staffed() -> void:
+	Sx.use_root("living")
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=10"])
+	await frames(3)
+	var h := _holdings(g)
+	# Stand it where no villager will ever be built: further from every village
+	# than 35_folk's own NEAR. Found by asking the world, never by a coordinate.
+	var far := Vector2.INF
+	var best := 0.0
+	for ty: int in range(0, 256, 3):
+		for tx: int in range(0, 256, 3):
+			if Ground.is_water(g.world.ground_at(tx, ty)) or not g.query.standable(tx, ty):
+				continue
+			var p := Vector2(tx + 0.5, ty + 0.5)
+			var d := INF
+			for v: Dictionary in g.world.villages:
+				d = minf(d, p.distance_to(v.pos as Vector2))
+			if d > best:
+				best = d
+				far = p
+	gt(best, 34.0, "seed 1 has ground further from a village than 35_folk will build a body")
+	var s := Settlement.new()
+	s.realm = g.world.realm
+	s.centre = far
+	(h.get(&"places") as Array).append(s)
+	# Nothing of 35_folk is out there to ask.
+	eq(int(h.call("_villager_near", s).size()), 0, "no villager body anywhere near it")
+	# Without a bed it is still refused, so the bed stays the rule.
+	var plot := s.add(StructureKind.PLOT, far + Vector2(2, 0))
+	eq(int(h.call("_staff", s, plot)), -1, "and with no bed, still nobody")
+	# With one, word goes to the nearest village and somebody walks out.
+	@warning_ignore("return_value_discarded")
+	s.add(StructureKind.BUNK, far + Vector2(0, 2))
+	gt(float(int(h.call("_staff", s, plot))), -1.0,
+		"a holding %0.0f tiles from the nearest village is staffed once it has a bed" % best)
+	eq(s.people.size(), 1, "and somebody lives there")
+	print("  staffed a holding %.0f tiles from the nearest village" % best)
+	Sx.end(g)
+
+
+## The far path is a fallback, not a replacement: next to a village it is still
+## the body already walking about that comes over, so the village is seen to lose
+## somebody rather than quietly gaining a twin.
+func test_next_to_a_village_it_is_still_the_body_already_there() -> void:
+	Sx.use_root("living")
+	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=10", "--folk=6"])
+	await frames(6)
+	var h := _holdings(g)
+	var s := Settlement.new()
+	s.realm = g.world.realm
+	s.centre = g.player.pos
+	(h.get(&"places") as Array).append(s)
+	@warning_ignore("return_value_discarded")
+	s.add(StructureKind.BUNK, g.player.pos + Vector2(0, 2))
+	var plot := s.add(StructureKind.PLOT, g.player.pos + Vector2(2, 0))
+	var body: Dictionary = h.call("_villager_near", s)
+	if body.is_empty():
+		print("  no villager within reach on this seed; the near path is untested here")
+		Sx.end(g)
+		return
+	gt(float(int(h.call("_staff", s, plot))), -1.0, "somebody takes it on")
+	eq(int(body.get("village", 0)), -3, "and it is that body, moved onto the holding's books")
+	Sx.end(g)
+
+
 # --- the second generator ---------------------------------------------------
 
 func test_the_array_makes_power_by_day_and_none_at_night() -> void:

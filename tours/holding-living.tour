@@ -1,13 +1,14 @@
 # The two pieces the holding app was missing (m2/economy-gaps): the LIVING
 # family's bunk, which was an empty heading on the slate, and a SECOND generator,
-# so the wind is no longer the only power in the game.
+# so the wind is no longer the only power in the game. Then the hole all of that
+# was for — a holding out on its own, which could never be staffed at all.
 #
 #   tools/tour.sh tours/holding-living.tour --seed=1 --hour=11 --weather=clear:0 \
-#     --give=timber:6,reeds:6,rag:6,wick:4,scrap:10,copper:4
+#     --give=timber:8,reeds:8,rag:8,wick:4,scrap:10,copper:4,deadwood:4,stone:4
 #
 # (Everything is built here on the real keys out of the creel — nothing is staged
-# with --holding, because the whole claim is that a player can now put these two
-# up. The hour is daylight on purpose: an array makes nothing after dark, which is
+# with --holding, because the whole claim is that a player can now put these up.
+# The hour is daylight on purpose: an array makes nothing after dark, which is
 # the point of it, so a tour that proved it at midnight would prove the opposite.)
 coast calm
 wait 0.6
@@ -51,3 +52,40 @@ tap pause
 await powered 10
 wait 0.6
 shot 05-a-mast-running-on-daylight-alone with piece:solar_array, piece:radio_mast, powered
+#
+# --- the hole the LIVING family was for -------------------------------------
+#
+# `place cliff` is 43 tiles from the nearest village on this seed, past the 34
+# within which 35_folk builds any villager body at all — so there is nobody
+# walking about out here to ask, which is exactly why a holding here could never
+# be staffed however much the player built. `holding_remote` re-asks the world at
+# the shutter, so if worldgen ever moves this cliff next to a village the frame
+# fails instead of quietly proving nothing.
+place cliff
+wait 0.8
+tap holding
+await app:holding 4
+choose build_bunk
+tap use
+await made 8
+tap pause
+await piece:bunk 6
+await holding_remote 4
+wait 0.6
+shot 06-a-holding-out-on-its-own with piece:bunk, holding_remote, holding
+# A plot: work that wants hands, where there are no hands for miles.
+walk 1,0 1.2
+wait 0.4
+tap holding
+await app:holding 4
+choose build_plot
+tap use
+await made 8
+# The bunk is this holding's first piece and the plot its second, so this is the
+# plot's own row. Putting somebody on it is what used to be refused out here.
+choose piece_2
+tap use
+tap pause
+await holding_people 10
+wait 0.8
+shot 07-and-somebody-came-out-to-live-in-it with holding_people, holding_remote, piece:bunk
