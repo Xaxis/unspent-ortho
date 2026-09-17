@@ -37,15 +37,15 @@ static func rows() -> Dictionary:
 			Ground.PEAT: _row(PRINT, 0.7, 480.0, WET, false, 0.5),
 			Ground.SNOW: _row(PRINT, 0.85, 420.0, [&"snow", &"blizzard"], true, 0.65),
 			Ground.ASH: _row(PRINT, 0.65, 360.0, [&"rain", &"storm", &"ash", &"dust"], false, 0.97),
-			Ground.SALT: _row(PRINT, 0.45, 300.0, [&"rain", &"storm", &"dust"], true, 0.8),
-			Ground.PAN: _row(PRINT, 0.4, 300.0, [&"rain", &"storm", &"dust"], false, 0.85),
+			Ground.SALT: _row(PRINT, 0.7, 300.0, [&"rain", &"storm", &"dust"], true, 0.8),
+			Ground.PAN: _row(PRINT, 0.55, 300.0, [&"rain", &"storm", &"dust"], false, 0.85),
 			Ground.MOSS: _row(PRINT, 0.35, 120.0, WET, false, 0.7),
 			Ground.BONE: _row(SCUFF, 0.3, 90.0, [&"dust"], false, 0.9),
 			Ground.SWARF: _row(SCUFF, 0.35, 150.0, [], false, 0.45),
 			Ground.SHINGLE: _row(SCUFF, 0.28, 45.0, [], false, 0.8),
-			Ground.GRASS: _row(FLATTEN, 0.4, 30.0, WET, false, 0.8),
-			Ground.HEATH: _row(FLATTEN, 0.42, 40.0, [], false, 0.85),
-			Ground.NEEDLES: _row(FLATTEN, 0.45, 50.0, [], false, 0.9),
+			Ground.GRASS: _row(FLATTEN, 0.55, 30.0, WET, false, 0.8),
+			Ground.HEATH: _row(FLATTEN, 0.55, 40.0, [], false, 0.85),
+			Ground.NEEDLES: _row(FLATTEN, 0.58, 50.0, [], false, 0.9),
 		}
 	return _rows
 
