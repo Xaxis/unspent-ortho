@@ -102,10 +102,10 @@ func step(_delta: float) -> void:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	if DevJobs.running() or (not DevJobs.job.is_empty() and screen.menu.selected().get("id", &"") in [&"prove", &"keep", &"preview", &"production"]):
 		y = panel_heading(ci, r, y, str(DevJobs.job.label), true)
-		panel_log(ci, r, y, DevJobs.job.lines, r.end.y - 6)
+		panel_log(ci, r, y, DevJobs.job.lines, r.end.y - 12)
 		return
 	manifest(ci, r, y, build)
 
@@ -130,9 +130,9 @@ static func manifest(ci: CanvasItem, r: Rect2i, y: int, b: Dictionary) -> void:
 	y = panel_pair(ci, r, y, "dev mode", access, UiTheme.MACHINE[3] if access != "off" else UiTheme.TEXT)
 	var d := DevBuilds.last_deploy(b)
 	if not d.is_empty():
-		y += 6
+		y += 12
 		y = panel_heading(ci, r, y, "last deployed")
 		y = panel_line(ci, r, y, str(d.get("url", "")))
 		y = panel_line(ci, r, y, "production" if bool(d.get("production", false)) else "a preview", UiTheme.WARN if bool(d.get("production", false)) else UiTheme.TEXT_DIM)
-	y += 6
+	y += 12
 	panel_wrapped(ci, r, y, str(b.dir).replace(DevMode.project_path(""), ""), UiTheme.TEXT_DIM)

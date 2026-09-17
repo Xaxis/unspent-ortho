@@ -69,7 +69,7 @@ func side(row: Dictionary, dir: int) -> void:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	match screen.menu.selected().get("id", &""):
 		&"zoom":
 			y = panel_heading(ci, r, y, "zoom")

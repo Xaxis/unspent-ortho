@@ -10,9 +10,18 @@ extends UiScreen
 ## through UiLink (Crafting's own make_in when survival provides it, which
 ## charges the clock and builds).
 
-const LIST_TOP := 50
+## The first row of the list, one text line's clearance under the pane's title.
+const LIST_TOP := UiSlate.LIST.position.y + 36
+## The sketch inside the scan window, and the wider one of the station at the
+## foot of the panel. **Both are warmed at exactly these sizes**: a sketch is
+## cached by its size, so a page that warms one and draws another warms a picture
+## nobody wants and leaves the window empty (UiSlate.scan_size says the rest).
+const SKETCH := UiInventoryScreen.SKETCH
+const STATION := 216
 ## Jobs listed under the recipes before the rest are counted.
 const COOK_ROWS := 3
+## The "on now" block's heading and the clear row under it.
+const COOK_HEAD := UiTheme.LINE + 4
 
 ## Stations in reach, nearest first, &"hand" last; set by whoever opens the app.
 var stations: Array[StringName] = [&"fire"]
@@ -34,7 +43,21 @@ func _on_open() -> void:
 		var out := UiRules.recipe_output(r)
 		if out != &"" and not outs.has(out):
 			outs.append(out)
-	UiSketch.warm(outs, UiInventoryScreen.SKETCH, stations)
+	# What the panel can scan in a station's place is not only the stations in
+	# REACH: a recipe whose output is a station (building a fire) is scanned as
+	# the thing it builds, and a player standing on bare shingle has none of those
+	# in reach by definition. Both lists, or the window for the first row of the
+	# page is empty on every normal start.
+	var scanned: Array[StringName] = stations.duplicate()
+	for r in recipes():
+		var built := StringName(r.get("builds", &""))
+		if built != &"" and not scanned.has(built):
+			scanned.append(built)
+	# Twice, because the panel scans a station at two sizes: in the recipe's own
+	# window, and wider at the foot to say where the work is done.
+	UiSketch.warm(outs, SKETCH, scanned, SKETCH)
+	var none: Array[StringName] = []
+	UiSketch.warm(none, SKETCH, scanned, STATION)
 
 
 ## The recipes in the app, in the order drawn.
@@ -122,12 +145,12 @@ func _draw() -> void:
 		draw_keys([["esc", "back"]])
 		return
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
-	UiDraw.text_right(self, right, L.position.y + 4, "TAKES", UiTheme.TEXT_DIM)
+	var right := L.end.x - 16
+	UiDraw.text_right(self, right, L.position.y + 8, "TAKES", UiTheme.TEXT_DIM)
 	if menu.rows.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 6, LIST_TOP), "nothing to make here yet", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 12, LIST_TOP), "nothing to make here yet", UiTheme.TEXT_DIM)
 	var cooking := jobs()
-	var bottom := L.end.y - 4 - cook_height(cooking.size())
+	var bottom := L.end.y - 8 - cook_height(cooking.size())
 	var lines := UiSlate.line_count(LIST_TOP, bottom)
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
@@ -141,16 +164,16 @@ func _draw() -> void:
 		var ok := UiMenu.enabled(row)
 		var col := UiTheme.TEXT if ok else UiTheme.TEXT_DIM
 		if i == menu.index:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top, UiTheme.TEXT if ok else UiTheme.WARN)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top, UiTheme.TEXT if ok else UiTheme.WARN)
 			col = UiTheme.BRIGHT if ok else UiTheme.TEXT
-		_draw_row_icon(r, Vector2i(x0 + 4, top - 1))
-		UiDraw.text(self, Vector2i(x0 + 17, top), String(row.title), col)
+		_draw_row_icon(r, Vector2i(x0 + 8, top - 2))
+		UiDraw.text(self, Vector2i(x0 + 34, top), String(row.title), col)
 		UiDraw.text_right(self, right, top, UiRules.duration(float(r.get("minutes", 0.0))), UiTheme.TEXT_DIM)
 	if scroll > 0:
-		UiDraw.text_right(self, right, LIST_TOP - 11, "↑", UiTheme.TEXT_DIM)
+		UiDraw.text_right(self, right, LIST_TOP - UiTheme.LINE, "↑", UiTheme.TEXT_DIM)
 	if scroll + lines < menu.rows.size():
-		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 2, "↓", UiTheme.TEXT_DIM)
-	_draw_cooking(cooking, x0, right, L.end.y - 2 - cook_height(cooking.size()))
+		UiDraw.text_right(self, right, UiSlate.line_top(LIST_TOP, lines) - 4, "↓", UiTheme.TEXT_DIM)
+	_draw_cooking(cooking, x0, right, L.end.y - 4 - cook_height(cooking.size()))
 	_draw_recipe(UiSlate.SPARE)
 	draw_keys([["e", "make"], ["c", "close"], ["esc", "back"]])
 
@@ -165,7 +188,7 @@ func jobs() -> Array[Dictionary]:
 
 ## Pixels the "on now" block takes under the list for `n` jobs (0 = none).
 static func cook_height(n: int) -> int:
-	return 0 if n <= 0 else 13 + mini(n, COOK_ROWS) * UiTheme.LINE
+	return 0 if n <= 0 else COOK_HEAD + mini(n, COOK_ROWS) * UiTheme.LINE
 
 
 ## How many jobs the "and N more on the go" row stands for. That row takes the
@@ -196,15 +219,15 @@ func _draw_cooking(list: Array[Dictionary], x0: int, right: int, top: int) -> vo
 	UiSlate.heading(self, Vector2i(x0, top), "on now", right)
 	for i in mini(list.size(), COOK_ROWS):
 		var job: Dictionary = list[i]
-		var y := top + 13 + i * UiTheme.LINE
+		var y := top + COOK_HEAD + i * UiTheme.LINE
 		var makes: Dictionary = job.get("makes", {})
 		if i == COOK_ROWS - 1 and over > 0:
-			UiDraw.text(self, Vector2i(x0 + 4, y), "and %d more on the go" % over, UiTheme.TEXT_DIM)
+			UiDraw.text(self, Vector2i(x0 + 8, y), "and %d more on the go" % over, UiTheme.TEXT_DIM)
 			return
 		var out := UiRules.recipe_output({"makes": makes})
 		if out != &"":
-			UiIcons.draw_item(self, out, Vector2i(x0 + 4, y - 1))
-		UiDraw.text(self, Vector2i(x0 + 17, y), makes_words(makes), UiTheme.TEXT)
+			UiIcons.draw_item(self, out, Vector2i(x0 + 8, y - 2))
+		UiDraw.text(self, Vector2i(x0 + 34, y), makes_words(makes), UiTheme.TEXT)
 		var done := float(job.get("done", 0.0))
 		var now := game.clock.minutes if game != null else 0.0
 		UiDraw.text_right(self, right, y, "%s %s" % [job.get("station", &""), UiRules.clock_at(done, now)], UiTheme.TEXT_DIM)
@@ -236,37 +259,42 @@ func _draw_recipe(R: Rect2i) -> void:
 	var r: Dictionary = row.recipe
 	var x0 := R.position.x + UiSlate.MARGIN_L
 	var at := StringName(r.get("at", &""))
-	var box := Rect2i(x0, R.position.y + 8, 84, 84)
+	# The box is the warmed sketch plus the inset `UiSlate.scan_box` keeps round
+	# it, so the page never bakes a second size of the same picture.
+	var side := SKETCH + UiSlate.SCAN_INSET
+	var box := Rect2i(x0, R.position.y + 16, side, side)
 	var out := UiRules.recipe_output(r)
 	if out != &"":
 		UiSlate.scan_box(self, box, out)
 	else:
-		UiSlate.brackets(self, box, UiTheme.TEXT_DIM, 6)
+		UiSlate.brackets(self, box, UiTheme.TEXT_DIM, 18)
 		var built := StringName(r.get("builds", &""))
 		if built != &"":
-			UiSketch.draw_station(self, built, box.position + Vector2i(3, 22), 78)
+			UiSketch.draw_station(self, built, box.position + Vector2i(6, 66), SKETCH)
 		else:
-			UiSketch.draw_item(self, &"hone", box.position + Vector2i(3, 3), 78)
-		UiDraw.text(self, Vector2i(box.position.x + 3, box.end.y + 2), "SCAN", UiTheme.TEXT_DIM)
-	var tx := box.end.x + 12
-	UiDraw.text(self, Vector2i(tx, R.position.y + 10), String(row.title), UiTheme.BRIGHT)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 23), UiRules.station_words(at), UiTheme.TEXT_DIM)
+			UiSketch.draw_item(self, &"hone", box.position + Vector2i(6, 6), SKETCH)
+		UiDraw.text(self, Vector2i(box.position.x + 6, box.end.y + 4), "SCAN", UiTheme.TEXT_DIM)
+	var tx := box.end.x + 24
+	UiDraw.text(self, Vector2i(tx, R.position.y + 20), String(row.title), UiTheme.BRIGHT)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 46), UiRules.station_words(at), UiTheme.TEXT_DIM)
 	var minutes := float(r.get("minutes", 0.0))
 	var takes := "takes %s" % UiRules.duration(minutes)
-	UiDraw.text(self, Vector2i(tx, R.position.y + 34), takes, UiTheme.TEXT_DIM)
+	UiDraw.text(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE), takes, UiTheme.TEXT_DIM)
 	if game != null:
 		# Long work at a station is set going and left: say so, and when to come back.
 		var ready := ready_line(game, r)
-		UiDraw.text(self, Vector2i(tx, R.position.y + 45), ready, UiTheme.TEXT if Crafting.sets_going(r) else UiTheme.TEXT_DIM)
-	var table_bottom := _draw_table(Rect2i(x0, R.position.y + 110, R.size.x - UiSlate.MARGIN_L - 12, 0), r, row)
+		UiDraw.text(self, Vector2i(tx, R.position.y + 46 + UiTheme.LINE * 2), ready, UiTheme.TEXT if Crafting.sets_going(r) else UiTheme.TEXT_DIM)
+	# The table starts clear of the box and of the SCAN caption under it.
+	var table_top := box.end.y + UiFont.SIZE + 16
+	var table_bottom := _draw_table(Rect2i(x0, table_top, R.size.x - UiSlate.MARGIN_L - 24, 0), r, row)
 	# Where it is made, scanned at the foot of the panel, if there is room.
-	var sk := UiSketch.station_size(72)
-	var sk_at := Vector2i(x0 + 4, R.end.y - 8 - sk.y)
-	if sk_at.y > table_bottom + 10:
-		UiSketch.draw_station(self, at if at != &"" else &"hand", sk_at, 72)
+	var sk := UiSketch.station_size(STATION)
+	var sk_at := Vector2i(x0 + 8, R.end.y - 16 - sk.y)
+	if sk_at.y > table_bottom + 20:
+		UiSketch.draw_station(self, at if at != &"" else &"hand", sk_at, STATION)
 		var caption := "made by hand, anywhere" if at == &"hand" else "the %s" % at
-		UiDraw.text(self, Vector2i(sk_at.x + sk.x + 10, sk_at.y + sk.y - 12), caption, UiTheme.TEXT_DIM)
-		UiSlate.brackets(self, Rect2i(sk_at - Vector2i(4, 4), sk + Vector2i(8, 8)), UiTheme.FAINT, 4)
+		UiDraw.text(self, Vector2i(sk_at.x + sk.x + 20, sk_at.y + sk.y - 24), caption, UiTheme.TEXT_DIM)
+		UiSlate.brackets(self, Rect2i(sk_at - Vector2i(12, 12), sk + Vector2i(24, 24)), UiTheme.FAINT, 12)
 
 
 ## What one making wants against what is carried, as the slate tabulates it:
@@ -283,20 +311,21 @@ func _draw_table(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 	var tool := StringName(r.get("tool", &""))
 	if tool != &"":
 		lines.append({"tool": tool, "want": 1, "have": 1 if _carries_verb(tool) else 0})
-	const ROW := 13
+	# A row holds a mark (18) and a line of type, with a clear pixel either side.
+	const ROW := UiTheme.LINE + 4
 	var s := at
-	var col_have := s.end.x - 2
-	var col_want := col_have - 36
+	var col_have := s.end.x - 4
+	var col_want := col_have - 72
 	var x0 := s.position.x
 	var y := s.position.y
 	UiDraw.text(self, Vector2i(x0, y), "WANTS", UiTheme.TEXT_DIM)
 	UiDraw.text_right(self, col_want, y, "WANT", UiTheme.TEXT_DIM)
 	UiDraw.text_right(self, col_have, y, "HAVE", UiTheme.TEXT_DIM)
-	y += 11
+	y += UiTheme.LINE
 	UiDraw.hline(self, x0, s.end.x - 1, y, UiTheme.FAINT)
-	y += 3
+	y += 6
 	if lines.is_empty():
-		UiDraw.text(self, Vector2i(x0 + 13, y + 1), "NOTHING", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(x0 + 26, y + 2), "NOTHING", UiTheme.TEXT_DIM)
 		y += ROW
 	for l in lines:
 		var want: int = l.want
@@ -309,20 +338,20 @@ func _draw_table(at: Rect2i, r: Dictionary, row: Dictionary) -> int:
 		else:
 			UiIcons.draw_item(self, l.id, Vector2i(x0, y))
 			label = UiRules.bare_name(l.id).to_upper() + (", KEPT" if l.has("kept") else "")
-		UiDraw.text(self, Vector2i(x0 + 13, y + 1), label, UiTheme.TEXT)
-		UiDraw.text_right(self, col_want, y + 1, str(want) if not l.has("tool") else "-", UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(x0 + 26, y + 2), label, UiTheme.TEXT)
+		UiDraw.text_right(self, col_want, y + 2, str(want) if not l.has("tool") else "-", UiTheme.TEXT)
 		var have_text := str(have) if not l.has("tool") else ("YES" if have > 0 else "NO")
-		UiDraw.text_right(self, col_have, y + 1, have_text, UiTheme.WARN if short else UiTheme.TEXT)
+		UiDraw.text_right(self, col_have, y + 2, have_text, UiTheme.WARN if short else UiTheme.TEXT)
 		if short:
 			var w := UiFont.width(have_text)
-			UiSlate.brackets(self, Rect2i(col_have - w - 5, y - 2, w + 10, 14), UiTheme.WARN, 2)
+			UiSlate.brackets(self, Rect2i(col_have - w - 10, y - 4, w + 20, UiTheme.LINE + 6), UiTheme.WARN, 4)
 		y += ROW
-		for k in range(x0, s.end.x, 2):
-			UiDraw.px(self, k, y - 2, UiTheme.GHOST)
+		for k in range(x0, s.end.x, 4):
+			UiDraw.px(self, k, y - 4, UiTheme.GHOST)
 	var ok := UiMenu.enabled(row)
 	var verdict := "ALL IN HAND" if ok else String(row.get("why", "")).to_upper().trim_suffix(".")
-	UiDraw.text(self, Vector2i(x0, y + 3), verdict, UiTheme.BRIGHT if ok else UiTheme.WARN)
-	return y + 14
+	UiDraw.text(self, Vector2i(x0, y + 6), verdict, UiTheme.BRIGHT if ok else UiTheme.WARN)
+	return y + 28
 
 
 func _carries_verb(verb: StringName) -> bool:

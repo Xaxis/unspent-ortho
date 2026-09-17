@@ -81,14 +81,14 @@ func _apply() -> void:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	y = panel_heading(ci, r, y, "now")
 	y = panel_pair(ci, r, y, "clock", game.clock.label())
 	var w := DevCheats.weather_here(game)
 	y = panel_pair(ci, r, y, "sky", "%s %d%%" % [String(w.kind).replace("_", " "), roundi(float(w.strength) * 100.0)])
 	y = panel_pair(ci, r, y, "held", "yes, until given back" if bool(w.forced) else "no, the land's own")
 	y = panel_pair(ci, r, y, "clock runs", ConfigChoices.show("rules.clock", GameConfig.value("rules.clock")))
-	y += 8
+	y += 16
 	var row := screen.menu.selected()
 	match row.get("id", &""):
 		&"rate":

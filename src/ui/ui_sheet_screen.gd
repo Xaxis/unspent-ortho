@@ -15,37 +15,38 @@ func _draw() -> void:
 	draw_frame(&"")
 	var g := UiSlate.GLASS_RECT
 	var x0 := g.position.x + UiSlate.MARGIN_L
-	var y := g.position.y + UiSlate.STATUS_H + 6
+	var y := g.position.y + UiSlate.STATUS_H + 12
 	var line := ""
 	for code in range(32, 127):
 		line += String.chr(code)
 		if line.length() == 48:
 			UiDraw.text(self, Vector2i(x0, y), line, UiTheme.TEXT)
-			y += 11
+			y += UiTheme.LINE
 			line = ""
 	UiDraw.text(self, Vector2i(x0, y), line + " ·—…×←→↑↓", UiTheme.TEXT)
-	y += 12
+	y += 24
 	UiDraw.text(self, Vector2i(x0, y), "The quick brown fox jumps over the lazy dog. pine - fell  day 12  23:59", UiTheme.BRIGHT)
-	y += 11
+	y += UiTheme.LINE
 	UiDraw.text(self, Vector2i(x0, y), "dim: a faded row", UiTheme.TEXT_DIM)
-	UiDraw.text(self, Vector2i(x0 + 110, y), "SHORT OF TWO CHARCOAL", UiTheme.WARN)
-	UiDraw.text(self, Vector2i(x0 + 250, y), "runner  hostile  12 tiles", UiTheme.MACHINE[3])
-	# The tones.
-	var sx := g.end.x - 150
+	UiDraw.text(self, Vector2i(x0 + 220, y), "SHORT OF TWO CHARCOAL", UiTheme.WARN)
+	UiDraw.text(self, Vector2i(x0 + 500, y), "runner  hostile  12 tiles", UiTheme.MACHINE[3])
+	# The tones, and a specimen of the display lettering: a panel of the device's
+	# own parts, so it came across whole rather than down with the type.
+	var sx := g.end.x - 450
 	for i in 5:
-		UiDraw.rect(self, Rect2i(sx + i * 12, g.position.y + 18, 10, 10), UiTheme.PHOSPHOR[i])
-		UiDraw.rect(self, Rect2i(sx + i * 12, g.position.y + 30, 10, 10), UiTheme.MACHINE[i])
-	UiDraw.rect(self, Rect2i(sx + 64, g.position.y + 18, 10, 22), UiTheme.WARN)
-	UiLettering.draw(self, "UNSPENT", Vector2i(sx - 10, g.position.y + 46), 22, UiTheme.TEXT, 7)
-	y += 15
+		UiDraw.rect(self, Rect2i(sx + i * 36, g.position.y + 54, 30, 30), UiTheme.PHOSPHOR[i])
+		UiDraw.rect(self, Rect2i(sx + i * 36, g.position.y + 90, 30, 30), UiTheme.MACHINE[i])
+	UiDraw.rect(self, Rect2i(sx + 192, g.position.y + 54, 30, 66), UiTheme.WARN)
+	UiLettering.draw(self, "UNSPENT", Vector2i(sx - 30, g.position.y + 138), 66, UiTheme.TEXT, 7)
+	y += 30
 	var x := x0
 	for id: StringName in UiIcons.ITEMS:
-		if x > g.end.x - 24:
+		if x > g.end.x - 48:
 			x = x0
-			y += 12
+			y += 24
 		UiIcons.draw_item(self, id, Vector2i(x, y))
-		x += 12
-	y += 14
+		x += 24
+	y += 28
 	x = x0
 	var shapes: Array = UiSketch.SHAPES.keys()
 	for id: StringName in UiIcons.ITEMS:
@@ -53,18 +54,18 @@ func _draw() -> void:
 		if not shapes.has(st):
 			continue
 		shapes.erase(st)
-		if x > g.end.x - 60:
+		if x > g.end.x - 180:
 			x = x0
-			y += 40
-		UiSketch.draw_item(self, id, Vector2i(x, y), 38)
-		x += 40
-	y += 40
+			y += 120
+		UiSketch.draw_item(self, id, Vector2i(x, y), 114)
+		x += 120
+	y += 120
 	x = x0
 	for st: StringName in UiSketch.STATIONS:
-		UiSketch.draw_station(self, st, Vector2i(x, y), 42)
-		x += 46
+		UiSketch.draw_station(self, st, Vector2i(x, y), 126)
+		x += 138
 	for k: StringName in UiIcons.NEEDS:
-		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 4), {"#": UiTheme.TEXT})
-		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 16), {"#": UiTheme.WARN})
-		x += 12
+		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 8), {"#": UiTheme.TEXT})
+		UiDraw.sprite(self, UiIcons.pressure_rows(k), Vector2i(x, y + 32), {"#": UiTheme.WARN})
+		x += 24
 	draw_keys([["esc", "back"]])

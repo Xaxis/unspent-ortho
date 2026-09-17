@@ -13,10 +13,12 @@ extends UiScreen
 ## A picture of the world is taken by whoever opens it, before its glass is
 ## drawn (`picture`), for a note.
 
-const LIST_TOP := 48
-const ROW_PITCH := 11
-## Rows that fit the list pane under the title.
-const LINES := 24
+## The first row, under DEV and the page's name: the list pane's own top plus the
+## 15-pixel offset that heading used to take, at the type's factor.
+const LIST_TOP := UiSlate.LIST.position.y + 30
+## Rows that fit the list pane under the title. Sized off the pane and the line
+## pitch rather than counted by hand, so the finer type simply fits more.
+const LINES := (UiSlate.LIST.position.y + UiSlate.LIST.size.y - 8 - LIST_TOP) / UiTheme.LINE
 const VIOLET := Color("#b3a8ea")
 ## Real seconds between two rebuilds of the rows (the clock, a job's progress).
 const REFRESH_EVERY := 0.25
@@ -315,14 +317,14 @@ func _draw() -> void:
 	_draw_service_marks()
 	var L := UiSlate.LIST
 	var R := UiSlate.SPARE
-	var at := Vector2i(L.position.x + UiSlate.MARGIN_L, L.position.y + 4)
+	var at := Vector2i(L.position.x + UiSlate.MARGIN_L, L.position.y + 8)
 	UiDraw.text(self, at, "DEV", VIOLET)
-	var x := at.x + UiFont.width("DEV") + 4
-	UiDraw.px(self, x, at.y + 4, UiTheme.MACHINE[2])
-	x += 4
+	var x := at.x + UiFont.width("DEV") + 8
+	UiDraw.px(self, x, at.y + 8, UiTheme.MACHINE[2])
+	x += 8
 	var name := page().heading() if page() != null else ""
 	UiDraw.text(self, Vector2i(x, at.y), name, UiTheme.TEXT)
-	UiDraw.hline(self, x + UiFont.width(name) + 5, L.end.x - UiSlate.MARGIN_R, at.y + 5, UiTheme.GHOST)
+	UiDraw.hline(self, x + UiFont.width(name) + 10, L.end.x - UiSlate.MARGIN_R, at.y + UiFont.SIZE / 2, UiTheme.GHOST)
 	UiSlate.spare(self)
 	_draw_rows(L)
 	if page() != null:
@@ -339,32 +341,34 @@ func _draw() -> void:
 func _draw_service_marks() -> void:
 	var g := UiSlate.glass_of(device_rect)
 	var y := g.position.y + 2
-	var right := g.end.x - UiSlate.MARGIN_R - 14 - 19
+	# Where the status bar's clock ends (UiSlate.status: its `right`, less the gap
+	# it leaves the clock), so the cap stands left of the clock and never over it.
+	var right := g.end.x - UiSlate.MARGIN_R - 28 - 38
 	var clock := clock_text()
-	var cap_x := right - (UiFont.width(clock) + 10 if clock != "" else 0) - 22
-	UiDraw.rect(self, Rect2i(cap_x, y, 19, 9), UiTheme.RIM)
-	UiDraw.frame(self, Rect2i(cap_x, y - 1, 19, 11), UiTheme.MACHINE[1])
-	UiDraw.text(self, Vector2i(cap_x + 2, y - 1), "DEV", UiTheme.MACHINE[4])
-	var ry := g.position.y + UiSlate.STATUS_H + 1
-	var x0 := g.position.x + UiSlate.MARGIN_L - 2
+	var cap_x := right - (UiFont.width(clock) + 20 if clock != "" else 0) - 44
+	UiDraw.rect(self, Rect2i(cap_x, y, 38, 18), UiTheme.RIM)
+	UiDraw.frame(self, Rect2i(cap_x, y - 2, 38, 22), UiTheme.MACHINE[1])
+	UiDraw.text(self, Vector2i(cap_x + 4, y - 2), "DEV", UiTheme.MACHINE[4])
+	var ry := g.position.y + UiSlate.STATUS_H + 2
+	var x0 := g.position.x + UiSlate.MARGIN_L - 2 * UiSlate.UNIT
 	var x1 := g.end.x - UiSlate.MARGIN_R
-	for xx in range(x0, x1, 4):
-		UiDraw.hline(self, xx, mini(xx + 1, x1), ry, UiTheme.MACHINE[2])
+	for xx in range(x0, x1, 8):
+		UiDraw.hline(self, xx, mini(xx + 3, x1), ry, UiTheme.MACHINE[2])
 
 
 func _draw_rows(L: Rect2i) -> void:
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	var end := mini(menu.rows.size(), scroll + LINES)
 	for i in range(scroll, end):
 		var row := menu.rows[i]
-		var top := LIST_TOP + (i - scroll) * ROW_PITCH
+		var top := UiSlate.line_top(LIST_TOP, i - scroll)
 		if row.has("header"):
-			UiSlate.heading(self, Vector2i(x0 + 2, top), str(row.header), right)
+			UiSlate.heading(self, Vector2i(x0 + 4, top), str(row.header), right)
 			continue
 		var chosen := i == menu.index
 		if chosen:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top, VIOLET if str(row.get("tone", "")) == "dev" else UiTheme.TEXT)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top, VIOLET if str(row.get("tone", "")) == "dev" else UiTheme.TEXT)
 		var usable := UiMenu.enabled(row)
 		var ink := (UiTheme.BRIGHT if chosen else UiTheme.TEXT) if usable else UiTheme.TEXT_DIM
 		match str(row.get("tone", "")):
@@ -377,10 +381,10 @@ func _draw_rows(L: Rect2i) -> void:
 		if editing_here:
 			value = str(_edit.text) + ("_" if fmod(_caret, 1.0) < 0.55 else " ")
 		var steps: bool = bool(row.get("steps", false)) and chosen and usable and not editing_here
-		var vx := right - (22 if steps else 0)
+		var vx := right - (44 if steps else 0)
 		var value_w := UiFont.width(value)
-		var text_w := maxi(24, vx - value_w - 8 - (x0 + 8))
-		UiDraw.text(self, Vector2i(x0 + 8, top), DevPage._fit(str(row.text), text_w), ink)
+		var text_w := maxi(48, vx - value_w - 16 - (x0 + 16))
+		UiDraw.text(self, Vector2i(x0 + 16, top), DevPage._fit(str(row.text), text_w), ink)
 		if value != "":
 			var vcol := UiTheme.TEXT_DIM
 			if editing_here:
@@ -391,12 +395,12 @@ func _draw_rows(L: Rect2i) -> void:
 				vcol = UiTheme.TEXT
 			UiDraw.text_right(self, vx, top, value, vcol)
 			if bool(row.get("edited", false)):
-				UiDraw.rect(self, Rect2i(vx - value_w - 5, top + 3, 2, 2), VIOLET)
+				UiDraw.rect(self, Rect2i(vx - value_w - 10, top + 6, 4, 4), VIOLET)
 		if steps:
-			UiDraw.text(self, Vector2i(right - 14, top), "<", UiTheme.TEXT)
-			UiDraw.text(self, Vector2i(right - 5, top), ">", UiTheme.TEXT)
+			UiDraw.text(self, Vector2i(right - 28, top), "<", UiTheme.TEXT)
+			UiDraw.text(self, Vector2i(right - 10, top), ">", UiTheme.TEXT)
 	# More above or below: a dim point at the pane's edge.
 	if scroll > 0:
-		UiDraw.text(self, Vector2i(right - 4, LIST_TOP - 10), "↑", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(right - 8, LIST_TOP - UiTheme.LINE), "↑", UiTheme.TEXT_DIM)
 	if end < menu.rows.size():
-		UiDraw.text(self, Vector2i(right - 4, LIST_TOP + LINES * ROW_PITCH - 2), "↓", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(right - 8, UiSlate.line_top(LIST_TOP, LINES) - 4), "↓", UiTheme.TEXT_DIM)

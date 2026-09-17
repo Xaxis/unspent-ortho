@@ -144,7 +144,7 @@ func keys(row: Dictionary) -> Array:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var row := screen.menu.selected()
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	var id := String(row.get("id", ""))
 	if id.begins_with("build:"):
 		DevPageBuild.manifest(ci, r, y, _build(id.trim_prefix("build:")))
@@ -152,20 +152,20 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 	if not DevJobs.job.is_empty():
 		y = panel_heading(ci, r, y, str(DevJobs.job.label), true)
 		y = panel_line(ci, r, y, _job_value(), UiTheme.TEXT if int(DevJobs.job.code) <= 0 else UiTheme.WARN)
-		panel_log(ci, r, y + 2, DevJobs.job.lines, r.end.y - 6)
+		panel_log(ci, r, y + 4, DevJobs.job.lines, r.end.y - 12)
 		return
 	y = panel_heading(ci, r, y, "this build", true)
 	y = panel_pair(ci, r, y, "build", DevReadout.build_line())
 	y = panel_pair(ci, r, y, "runs as", DevMode.host())
-	y += 8
+	y += 16
 	if not DevMode.local():
 		panel_wrapped(ci, r, y, "Builds are made, kept and deployed on the machine the game is built on. Notes and configurations copied out of this one are how they get there.")
 		return
 	var m := DevJobs.machine()
 	y = panel_heading(ci, r, y, "the machine")
 	y = panel_line(ci, r, y, DevJobs.machine_line(m), UiTheme.WARN if bool(m.busy) else UiTheme.TEXT)
-	y = panel_wrapped(ci, r, y + 2, "Another session may be building on it too: a busy machine is asked about twice.")
+	y = panel_wrapped(ci, r, y + 4, "Another session may be building on it too: a busy machine is asked about twice.")
 	var s := _settings()
-	y += 6
+	y += 12
 	y = panel_heading(ci, r, y, "make it runs")
 	panel_wrapped(ci, r, y, DevBuilds.make_command(_config, s.targets, str(s.template)).replace(" && ", ", then "), UiTheme.TEXT)

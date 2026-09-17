@@ -78,7 +78,6 @@ func setup(o: BootOptions) -> void:
 	add_child(camera)
 	_layer = CanvasLayer.new()
 	_layer.layer = 20
-	UiBase.fit(_layer)
 	add_child(_layer)
 	# The title's slate bakes on a worker; until it is in, a plain frame shows.
 	UiSlate.warm(UiTitleMenu.DEVICE.size)

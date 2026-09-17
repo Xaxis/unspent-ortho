@@ -68,7 +68,7 @@ func side(row: Dictionary, dir: int) -> void:
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
 	var b := game.body
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	y = panel_heading(ci, r, y, "the body")
 	y = panel_pair(ci, r, y, "health", "%d of %d" % [b.health, b.max_health])
 	y = panel_pair(ci, r, y, "wind", "%d%%" % roundi(b.wind / maxf(1.0, b.max_wind) * 100.0))
@@ -80,7 +80,7 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		if float(b.pressure[id]) >= Hazards.FELT:
 			felt.append("%s %d%%" % [str(id), roundi(float(b.pressure[id]) * 100.0)])
 	y = panel_pair(ci, r, y, "pressing", " ".join(felt) if not felt.is_empty() else "nothing")
-	y += 8
+	y += 16
 	match screen.menu.selected().get("id", &""):
 		&"harm":
 			y = panel_wrapped(ci, r, y, str(ConfigSchema.row("rules.harm").note))

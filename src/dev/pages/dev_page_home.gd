@@ -119,23 +119,25 @@ func _proofs_value() -> String:
 
 
 func detail(ci: CanvasItem, r: Rect2i) -> void:
-	var y := r.position.y + 8
+	var y := r.position.y + 16
 	y = panel_heading(ci, r, y, "this build", true)
 	y = panel_pair(ci, r, y, "build", DevReadout.build_line())
 	y = panel_pair(ci, r, y, "runs as", DevMode.host())
 	y = panel_pair(ci, r, y, "config", DevReadout.config_line())
 	y = panel_pair(ci, r, y, "dev mode", "%s%s" % [String(DevMode.access()), ", armed" if DevMode.armed and DevMode.access() == &"chord" else ""])
 	if game != null:
-		y += 6
+		y += 12
 		y = panel_heading(ci, r, y, "here")
 		for pair: Array in DevReadout.pairs(game):
 			y = panel_pair(ci, r, y, pair[0], pair[1])
-	y += 6
+	y += 12
 	y = panel_heading(ci, r, y, "keys")
 	for pair: Array in [["`", "this app, from anywhere"], ["f2", "a note, now"], ["f3", "the readout on the edge"], ["f4", "a picture, nothing of the slate"]]:
-		UiSlate.key_cap(ci, Vector2i(panel_x(r) + 4, y - 1), pair[0])
-		UiDraw.text(ci, Vector2i(panel_x(r) + 26, y), pair[1], UiTheme.TEXT_DIM)
-		y += 13
+		# The cap is a line of type plus its rim, so it centres on the words beside
+		# it at any size: one pixel up, not half the line.
+		UiSlate.key_cap(ci, Vector2i(panel_x(r) + 8, y - 1), pair[0])
+		UiDraw.text(ci, Vector2i(panel_x(r) + 52, y), pair[1], UiTheme.TEXT_DIM)
+		y += UiTheme.LINE + 4
 
 
 ## How far along the story this playthrough is: the spine's own share, which is

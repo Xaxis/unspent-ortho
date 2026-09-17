@@ -18,18 +18,25 @@ const KEYS := {
 
 
 func test_the_base_is_a_whole_multiple_of_the_slate_it_still_draws() -> void:
-	# The slate is drawn in DESIGN units and scaled onto the base by UiBase.fit.
-	# A fractional SCALE would put the pixel font between pixels on every screen
-	# in the game, so the two sizes are not independently editable.
+	# The slate is drawn in the base's own pixels now, so the doors answer in those.
+	eq(UiBase.screen(), Rect2i(Vector2i.ZERO, UiBase.SIZE), "the full-screen rect is the frame")
+	eq(UiBase.mid_x(), UiBase.SIZE.x / 2, "and the middle is the frame's middle")
+	# The module's own pixel is whole, or nothing on the glass lands on a pixel.
+	eq(UiBase.SIZE.x % UiBase.PITCH, 0, "the frame is a whole number of module pixels across")
+	eq(UiBase.SIZE.y % UiBase.PITCH, 0, "and down")
+	eq(UiFont.PITCH, UiBase.PITCH, "and the face is cut to that same pixel")
+	# The LEGACY space survives for the loading page, its HTML twin and the gallery.
+	# A fractional SCALE would put their pixel font between pixels, so the two sizes
+	# are still not independently editable.
 	eq(UiBase.DESIGN * UiBase.SCALE, UiBase.SIZE, "SIZE is DESIGN times SCALE")
 	eq(UiBase.SIZE.x * UiBase.DESIGN.y, UiBase.SIZE.y * UiBase.DESIGN.x, "and the same shape")
-	eq(UiBase.screen(), Rect2i(Vector2i.ZERO, UiBase.DESIGN), "the full-screen rect is in the slate's units")
-	eq(UiBase.mid_x(), UiBase.DESIGN.x / 2, "and so is the middle")
+	eq(UiBase.legacy_screen(), Rect2i(Vector2i.ZERO, UiBase.DESIGN), "the legacy rect is in the old units")
 
 
 func test_a_world_position_is_brought_into_the_slates_units() -> void:
-	# The trap the base change laid: unproject_position answers in the base's
-	# pixels, and anything drawn on a fitted layer is in the slate's.
+	# The trap the base change laid, and why it is gone: unproject_position answers
+	# in the base's pixels, which is what every UI layer is drawn in now. Only a
+	# layer still on `fit` — the loading page, the gallery, the bolts — converts.
 	eq(UiBase.to_design(Vector2(UiBase.SIZE)), Vector2(UiBase.DESIGN), "a corner maps to the corner")
 	eq(UiBase.to_design(Vector2.ZERO), Vector2.ZERO, "and the origin stays put")
 

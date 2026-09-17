@@ -23,8 +23,10 @@ const KEYS := [
 	["z", "hold: read a machine; a d another, r the field"],
 	["esc", "pause, or back"],
 ]
-const LIST_TOP := 52
-const ROW_PITCH := 16
+## The home list starts a clear line under the pane's title, and its rows sit a
+## little further apart than a list's: they are choices, not entries.
+const LIST_TOP := UiSlate.LIST.position.y + 40
+const ROW_PITCH := UiTheme.LINE + 10
 
 ## "list" or "keys".
 var page := "list"
@@ -122,7 +124,7 @@ func saved_line() -> String:
 
 
 ## The keys, one to a line, from `at`, in two columns: the key lit, what it does dim.
-static func draw_keys_list(ci: CanvasItem, at: Vector2i, key_w: int = 56) -> void:
+static func draw_keys_list(ci: CanvasItem, at: Vector2i, key_w: int = 112) -> void:
 	for i in KEYS.size():
 		var top := at.y + i * UiTheme.LINE
 		UiDraw.text(ci, Vector2i(at.x, top), KEYS[i][0], UiTheme.BRIGHT)
@@ -137,43 +139,44 @@ func _draw() -> void:
 	UiSlate.title(self, L, "PAUSED" if page == "list" else "CONTROLS")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 8
+	var right := L.end.x - 16
 	for i in menu.rows.size():
 		var row := menu.rows[i]
 		var top := LIST_TOP + i * ROW_PITCH
 		var chosen := i == menu.index
 		if chosen:
-			UiSlate.row_bar(self, x0 - 4, right + 3, top)
+			UiSlate.row_bar(self, x0 - 8, right + 6, top)
 		var ink := UiTheme.BRIGHT if chosen else UiTheme.TEXT
 		if row.get("dev", false):
 			ink = UiTheme.MACHINE[4] if chosen else UiTheme.MACHINE[3]
-			UiDraw.frame(self, Rect2i(right - 34, top - 1, 19, 11), UiTheme.MACHINE[1])
-			UiDraw.text(self, Vector2i(right - 32, top - 1), "DEV", UiTheme.MACHINE[3])
-		UiDraw.text(self, Vector2i(x0 + 8, top), row.text, ink)
+			var badge := UiFont.width("DEV") + 8
+			UiDraw.frame(self, Rect2i(right - badge - 30, top - 2, badge, UiTheme.LINE), UiTheme.MACHINE[1])
+			UiDraw.text(self, Vector2i(right - badge - 26, top - 2), "DEV", UiTheme.MACHINE[3])
+		UiDraw.text(self, Vector2i(x0 + 16, top), row.text, ink)
 		if row.get("app", false):
 			UiDraw.text_right(self, right, top, "→", UiTheme.TEXT_DIM if not chosen else UiTheme.TEXT)
 	var px := R.position.x + UiSlate.MARGIN_L
 	if page == "keys":
-		UiSlate.heading(self, Vector2i(px, R.position.y + 8), "keys", R.end.x - 12)
-		draw_keys_list(self, Vector2i(px + 4, R.position.y + 24))
+		UiSlate.heading(self, Vector2i(px, R.position.y + 16), "keys", R.end.x - 24)
+		draw_keys_list(self, Vector2i(px + 8, R.position.y + 48))
 		draw_keys([["esc", "back"]])
 		return
-	UiSlate.heading(self, Vector2i(px, R.position.y + 8), "here", R.end.x - 12)
+	UiSlate.heading(self, Vector2i(px, R.position.y + 16), "here", R.end.x - 24)
 	if game != null:
 		var p := game.player.pos
 		var biome := BiomeRegistry.at(game.world, p)
-		UiDraw.text(self, Vector2i(px + 4, R.position.y + 24), biome.display_name, UiTheme.BRIGHT)
-		UiDraw.text(self, Vector2i(px + 4, R.position.y + 35), game.clock.label(), UiTheme.TEXT)
-		UiDraw.text(self, Vector2i(px + 4, R.position.y + 46), "%s of the land seen" % UiRules.share(seen_share), UiTheme.TEXT_DIM)
-		_draw_body(Vector2i(px, R.position.y + 68), R.end.x - 12)
-	var sy := R.position.y + 172
-	UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 12)
-	UiDraw.text(self, Vector2i(px + 4, sy + 16), "power", UiTheme.TEXT_DIM)
-	UiSlate.meter(self, Rect2i(px + 60, sy + 16, 120, 8), power, 2.0, UiTheme.WARN if power < UiSlate.LOW_POWER else UiTheme.TEXT)
-	UiDraw.text(self, Vector2i(px + 4, sy + 28), "runs off the lamp's oil, or a found charge", UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48), biome.display_name, UiTheme.BRIGHT)
+		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE), game.clock.label(), UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(px + 8, R.position.y + 48 + UiTheme.LINE * 2), "%s of the land seen" % UiRules.share(seen_share), UiTheme.TEXT_DIM)
+		_draw_body(Vector2i(px, R.position.y + 136), R.end.x - 24)
+	var sy := R.position.y + 344
+	UiSlate.heading(self, Vector2i(px, sy), "slate", R.end.x - 24)
+	UiDraw.text(self, Vector2i(px + 8, sy + 32), "power", UiTheme.TEXT_DIM)
+	UiSlate.meter(self, Rect2i(px + 120, sy + 32, 240, 16), power, 2.0, UiTheme.WARN if power < UiSlate.LOW_POWER else UiTheme.TEXT)
+	UiDraw.text(self, Vector2i(px + 8, sy + 56), "runs off the lamp's oil, or a found charge", UiTheme.TEXT_DIM)
 	var line := saved_line()
 	if line != "":
-		UiDraw.text(self, Vector2i(px + 4, sy + 44), line, UiTheme.TEXT)
+		UiDraw.text(self, Vector2i(px + 8, sy + 88), line, UiTheme.TEXT)
 	draw_keys([["e", "choose"], ["esc", "resume"]])
 
 
@@ -182,27 +185,27 @@ func _draw_body(at: Vector2i, right: int) -> void:
 	const HUNGER := ["fed", "peckish", "hungry", "starving"]
 	var b := game.body
 	UiSlate.heading(self, at, "body", right)
-	var x := at.x + 4
-	var y := at.y + 16
+	var x := at.x + 8
+	var y := at.y + 32
 	UiDraw.text(self, Vector2i(x, y), "health", UiTheme.TEXT_DIM)
 	var cells := UiRules.health_cells(b.health, b.max_health)
 	for i in cells.size():
 		for t in UiRules.PER_CELL:
 			var lit := t < cells[i]
 			var col := (UiTheme.WARN if b.health <= UiRules.PER_CELL else UiTheme.TEXT) if lit else UiTheme.GHOST
-			UiDraw.rect(self, Rect2i(x + 56 + i * 12 + t * 3, y + 1, 2, 7), col)
-	y += 12
+			UiDraw.rect(self, Rect2i(x + 112 + i * 24 + t * 6, y + 2, 4, 14), col)
+	y += 24
 	UiDraw.text(self, Vector2i(x, y), "wind", UiTheme.TEXT_DIM)
-	UiSlate.meter(self, Rect2i(x + 56, y + 1, 120, 7), b.wind / maxf(1.0, b.max_wind))
-	y += 12
+	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), b.wind / maxf(1.0, b.max_wind))
+	y += 24
 	var h := clampi(b.hunger_level(game.clock.minutes), 0, 3)
 	UiDraw.text(self, Vector2i(x, y), "hunger", UiTheme.TEXT_DIM)
-	UiDraw.text(self, Vector2i(x + 56, y), HUNGER[h], UiTheme.WARN if h >= 2 else UiTheme.TEXT)
-	y += 12
+	UiDraw.text(self, Vector2i(x + 112, y), HUNGER[h], UiTheme.WARN if h >= 2 else UiTheme.TEXT)
+	y += 24
 	UiDraw.text(self, Vector2i(x, y), "wet", UiTheme.TEXT_DIM)
-	UiSlate.meter(self, Rect2i(x + 56, y + 1, 120, 7), b.wet, 0.75)
-	y += 12
+	UiSlate.meter(self, Rect2i(x + 112, y + 2, 240, 14), b.wet, 0.75)
+	y += 24
 	var load := game.inventory.bulk()
 	var cap := UiLink.creel(game.inventory, b)
 	UiDraw.text(self, Vector2i(x, y), "load", UiTheme.TEXT_DIM)
-	UiDraw.text(self, Vector2i(x + 56, y), "%s of %s" % [UiRules.num(load), UiRules.num(cap)], UiTheme.WARN if load > cap else UiTheme.TEXT)
+	UiDraw.text(self, Vector2i(x + 112, y), "%s of %s" % [UiRules.num(load), UiRules.num(cap)], UiTheme.WARN if load > cap else UiTheme.TEXT)
