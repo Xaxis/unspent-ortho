@@ -21,6 +21,9 @@ var last_pull := -100000.0
 ## A person can swim, so deep water is a slow crossing and not a wall (Swim).
 ## A field rather than a constant because a test may put a body that cannot.
 var swims := true
+## True while this body is in water over its head. Written by FightSim once a
+## step, because the hero holds no world to ask.
+var swimming := false
 
 ## Intent for the next slices (world space, length <= 1) and whether Shift is held.
 var move := Vector2.ZERO
@@ -117,6 +120,11 @@ func held() -> bool:
 
 ## &"" when a swing may start now, else why not.
 func swing_refusal(now: float) -> StringName:
+	# Nothing swings from the water. This is not a cost the owner's ruling forbids
+	# (the crossing still costs only time and a soaking): it is that a blow needs
+	# something to push against, and a swimmer has nothing under their feet.
+	if swimming:
+		return &"swimming"
 	if held():
 		return &"held"
 	if stunned(now):

@@ -64,6 +64,13 @@ static func deep(world: WorldData, p: Vector2) -> bool:
 const WATER_Y := 0.3
 
 
+## How far under the surface a body of this kind floats: a dog is in to the neck,
+## a dredger to its deck. Read off the roster row height, so a kind that is added
+## needs no line here.
+static func sink_of(row: Dictionary) -> float:
+	return minf(maxf(float(row.get("height", 1.0)), 0.2) * SINK_SHARE, SINK_MOST)
+
+
 ## How far to drop a figure of height `h` standing at `p` so the water cuts it
 ## where it should, or 0 where it is not swimming. The bed is not modelled under
 ## deep water (`WorldData.height_at` clamps at 0) and the sheet is drawn at

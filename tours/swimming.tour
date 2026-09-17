@@ -27,11 +27,15 @@ place spawn
 wait 1.2
 shot 03-ashore-and-dripping with land:coast
 
-# --- the other half: a hunter that will not follow --------------------------------
-# The player is already out of its depth, so the machine is put out on the only
-# ground there is — the shore — and that is where it stays. Swimming away works,
-# and the one machine it does not work on is the dredger, which was built for the
-# water and carries `crosses` on its own row.
+# --- the other half: a hunter that will not follow ---------------------------------
+# The machine is put out on the only ground there is — the shore — and that is
+# where it stays. Swimming away works, and the one machine it does not work on is
+# the dredger, which was built for the water and says so on its own row.
+#
+# That the beasts come in after you (a dog swims, at a swimmer pace) and that the
+# dredger crosses are proved in tests/swim/test_swim_chase.gd, in the real
+# simulation: staging a chase across open water in a tour measures the runner and
+# the shape of one seed bay, not the rule.
 ground deep_water
 wait 1.0
 await swimming 4

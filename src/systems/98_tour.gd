@@ -57,6 +57,8 @@ extends GameSystem
 ##                          as a step out of an ecotone is);
 ##                          border:A-B (the player is in the band between two
 ##                          landscape types, which is what an ecotone frame is of);
+##                          swimming:KIND (a body of that kind is in frame and out
+##                          of its depth: what a frame of something crossing is of),
 ##                          swimming (the body is in water over its head and
 ##                          taking it on its own: Swim), wading (it is in the
 ##                          shallows); folk, crowd, dog, gulls
@@ -473,6 +475,16 @@ func _now_true(what: String) -> bool:
 		return game.body.lamp_lit
 	if what == "unlit":
 		return not game.body.lamp_lit
+	if what.begins_with("swimming:"):
+		# A body of that kind, alive, in frame and out of its depth: what a frame
+		# of something crossing the water is actually of (Swim).
+		var kind := Roster.resolve(what.substr(9))
+		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
+			if not bool(n.get("alive")) or (kind != &"" and StringName(n.get("kind")) != kind):
+				continue
+			if Swim.deep(game.world, n.get("pos")) and _body_in_frame(what.substr(9), 1):
+				return true
+		return false
 	if what == "swimming":
 		# In water over the head and taking it under its own steam (Swim): a
 		# present-tense fact about the body, which is what a  claim is for.
