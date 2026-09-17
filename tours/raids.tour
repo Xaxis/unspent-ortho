@@ -22,7 +22,9 @@ walk -1,1 1.6
 wait 0.5
 shot 01-somewhere-to-build with land:coast
 # A hearth and a mast: the two loudest things a person can put up. This is the
-# decision the whole system hangs on, and the slate draws it as seven bars.
+# decision the whole system hangs on, and the slate draws it as seven bars — with
+# one word under them for what the plan makes of the place, which is the only
+# thing on the glass that says what it THINKS rather than what it hears.
 tap holding
 await app:holding 4
 choose build_hearth
@@ -62,12 +64,17 @@ await made 10
 tap pause
 wait 0.8
 shot 06-a-wall-against-it with piece:plate_wall, holding
-# The window runs out, and they arrive.
+# The window runs out, and they arrive. They come out of the land at the ring
+# (PARTY_RING, twelve tiles) and cross it on foot, which is the last of the
+# warnings and the one that says from which side — so the frame that says "at the
+# gate" waits for one of them to BE at the gate (party_close), not for the moment
+# they were put down in the corner of the picture.
 hour 19.4
 wait 1.6
 await raid 20
 await party 20
-wait 1.0
+await party_close 60
+wait 0.4
 shot 07-the-party-at-the-gate with mob, holding
 # They go for what makes the signature, not for the player: a blow into a piece.
 await raid_damage 40

@@ -196,7 +196,14 @@ something the player did, built, or watched happen.
   on. Until it is clear of the yard that record is a thing in the world: kill it,
   spoof it into nonsense, take it off the body, follow it home, or let it go.
   Nothing is filed until one gets home, and **nothing is ever sent for a place
-  nothing has read**.
+  nothing has read**. A record getting home is the only step in the chain that
+  happens over the horizon, so it is heard and said: a player who watched a clerk
+  walk off is told the moment it cost them. Taken off a body instead — and
+  somebody has to be standing over the body to take it — the record is a thing in
+  the creel: proof, and, stripped with a blade, the copper a signet is wound from.
+  (It is a found thing, so nothing can ever make one. The use it deserves is as
+  the gate to a spoofer the player can BUILD, and that waits on
+  `StructureKind.buildable` naming one.)
 - **Attention is 0..1 per holding, and 1.0 is a siege led by the region's keeper.**
   The unit it is counted in is one filed record at full strength
   (`Attention.NOTICE_FULL`, 0.09): twelve of those unanswered bring the keeper. It
@@ -206,19 +213,25 @@ something the player did, built, or watched happen.
   plan sent there that never came home. It falls with quiet hours, dark nights,
   a spoofed signature, a decoy standing, a record destroyed before it travelled, and
   a step that has been paid. **Hours on their own only ever make a holding safer.**
-- **It is read as pressure, never as a bar.** The holding app already draws what a
-  machine HEARS — seven channels with the loudest named and its percentage — so a
-  player can read the same number the machines read before anything arrives. There
-  is no second readout of what the plan THINKS: that is said by the world, in
-  warnings, in a tag bolted to a piece, and in the machines themselves.
+- **It is read as pressure, never as a bar.** The holding app draws what a machine
+  HEARS — seven channels with the loudest named and its percentage — so a player
+  can read the same number the machines read before anything arrives. Under it is
+  ONE WORD for what the plan THINKS: read, surveyed, wanted, marked, condemned. A
+  word and never a number, because the moment that line is a percentage the system
+  stops being about reading the world and becomes a thing to optimise. Everything
+  else the plan thinks is said by the world — the warnings, the tag bolted to the
+  piece that gave you away, and the machines themselves.
 - **Four steps, each warned by the world first**: survey (one machine looks and
   drives a stake in at the edge), probe (two come and test the wall), raid (a
   party with a purpose), siege (the region's own keeper leads it). The warning
   comes 25 to 110 world minutes before the machines do, and that window is the
   answer: fortify, take the people off the pieces, kill the mast, fire the signet,
   pay them off with a full store, or walk away and come back to whatever is left.
-  A holding brought quiet enough during the window turns them back; one made worse
-  is re-warned for a bigger step.
+  **What turns them round on the road is the SIGNATURE falling**, not the books:
+  attention moves in units of 0.09 and no hour of play shifts enough of it, but a
+  mast pulled down halves what the place gives off in a minute. A holding that was
+  always quiet is not called off — it is walked to, found to be nothing, and left
+  at the gate. One made worse in the window is re-warned for a bigger step.
 - **A party goes for what MAKES the signature.** A breacher takes the strongest
   thing standing between the yard and the outside, a harvester walks past the
   walls to whatever the slate named as loudest, a snatcher comes for whoever is at
@@ -228,9 +241,16 @@ something the player did, built, or watched happen.
   somebody standing in their own yard and start cutting their mast down, and only
   a blow turns it. Fighting one is a choice, and its price is that nothing is
   stopping the other two.
-- **Not being there is a legitimate answer.** A raid the player is not present for
-  is settled on exactly the same arithmetic, so coming home to a burnt plot is the
-  same event reached the same way and never a cheaper one.
+- **Not being there is a legitimate answer. Walking out of one is not an answer at
+  all.** A raid the player is not present for is settled on exactly the same
+  arithmetic, so coming home to a burnt plot is the same event reached the same
+  way and never a cheaper one — and a raid they walk out of halfway through is
+  settled the same way too, with whatever the party had not spent yet. The party
+  is exempt from the coast's culling for exactly that reason: machines that
+  evaporate when the player is twenty-five tiles away would make walking the
+  cheapest answer in the game, and it would print "the holding held" while doing
+  it. A wall is worth the same share of a blow in both paths, so building one is
+  never only worth doing before leaving.
 - **Aftermath.** Broken pieces stay where they fell as wreckage 46_settlements
   gives half of back for clearing; machines killed in the yard leave salvage in
   it; a razed holding is left standing as ruins with what the party could not
