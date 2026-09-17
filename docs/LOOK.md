@@ -86,6 +86,49 @@ grammar — but what it looks at is deep.
 None of that is a reason not to do it. It is what "holistic re-imagining" means,
 and it is cheaper now than after twenty landscapes exist.
 
+## What it actually was, which was not what any of this predicted
+
+Five packages landed and **every one found that the visible symptom was not the
+problem.** This is the most useful thing in this document, because it is the
+pattern, not a result:
+
+- **"Papery" was not the ink.** It was the 640x360 floor under it, and removing
+  that floor made the game **faster** — a crowd went 31.0 ms to 12.0 ms at nine
+  times the pixels. The cost was never resolution; it was Compatibility's
+  CPU-side draw submission. The whole wave's budget came from that one finding.
+- **"Washed out" was not a grading choice.** Forward+ reads `ALBEDO` as linear
+  light and encodes the frame itself; Compatibility hands the value to the display
+  unchanged — measured on a flat quad, a stop and a half apart. The palette is
+  sRGB, so from the moment the floor moved the entire game was lifted and
+  flattened, and a green gate never noticed. `matter_albedo()` is the one door now.
+- **"Faceted" was not triangle budgets.** **Every normal in the game was a flat
+  face normal** — correct under a wash, where ink drew the form and a normal only
+  picked a shade band, and catastrophic under a sun. Welding and averaging under a
+  crease angle fixed it at zero triangles and zero draw calls.
+- **"Flat" was not missing layers.** The depth fog's two constants had been chosen
+  against the depth range of the *loaded chunks*, while the frame is 9.8 units
+  deep, so distance had been carrying the land about **one percent**.
+- **The coarse interface was not only the interface.** Converting it exposed that
+  the tag over every *unlocked* machine sat at **1.92:1** over white — over snow at
+  noon, the tag was not there — and that one item sketch was rastering **on the
+  calling thread** at 586 ms, freezing the game every time the carrying page opened.
+
+Each of those would have been expensive to fix at the symptom and cheap at the
+cause. **Look for the floor before repainting the room.**
+
+## Three methods that paid, and are worth reusing
+
+1. **Draw the measurement before guessing.** The harvester's hull had defeated
+   four attempts that guessed at it. Drawing its silhouette mask as ASCII showed
+   the cause in one look: the hull sat *down between* its track wells with skirts
+   closing what was left, so there was no hole at any bearing.
+2. **Measure a layer by toggling it inside one run.** `--stats` gave 83 and 63 fps
+   for one identical command. Showing and hiding a layer three times within a
+   single run and taking the median difference is the only number that survives a
+   loaded machine.
+3. **Print `UNMEASURED`, never `0.00 ms`.** When the GPU timer returns nothing, a
+   number nobody clocked is worse than no number at all.
+
 ## Web is the graceful degradation path
 
 **Forward+ is the target. `gl_compatibility` is the fallback, and it must be
