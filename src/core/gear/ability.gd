@@ -63,6 +63,10 @@ const REFUSALS := {
 	&"no_anchor": "Nothing in range to take hold of.",
 	&"nothing": "Nothing answers.",
 	&"already": "It is already running.",
+	&"swimming": "Nothing under your feet to jump from.",
+	&"airborne": "Your feet are already off the ground.",
+	&"riding": "Not from a deck. Step off first.",
+	&"swinging": "Not in the middle of a blow.",
 }
 
 

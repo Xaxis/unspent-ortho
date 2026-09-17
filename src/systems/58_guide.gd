@@ -111,7 +111,7 @@ func _hold_lesson() -> bool:
 		_lesson = ""
 		return false
 	retired[&"side"] = true
-	_say(_lesson, "space")
+	_say(_lesson, "j")
 	_lesson = ""
 	return true
 

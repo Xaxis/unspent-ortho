@@ -436,7 +436,7 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim"]
+const ACTIONS: Array[StringName] = [&"swing", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump"]
 ## Actions with no natural end: they hold their last pose until replaced. `swim`
 ## is here so a shot can stage a stroke on dry land and the gallery can show it;
 ## in a game the water chooses it, frame by frame, and nobody plays it by hand.
@@ -452,6 +452,7 @@ static func default_seconds(action: StringName, tool_id: StringName) -> float:
 			var ms := HeldTools.swing_ms(tool_id)
 			return (ms[0] + ms[1] + ms[2]) / 1000.0
 		&"dodge": return 0.42
+		&"jump": return 0.62
 		&"hurt": return 0.45
 		&"eat": return 2.4
 		&"carried", &"downed": return 0.0
@@ -483,6 +484,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 			return swing(klass, clampf(t / maxf(seconds, 1e-3), 0.0, 1.0), HeldTools.swing_ms(tool_id), d)
 		&"dodge":
 			return dodge(t, seconds, d)
+		&"jump":
+			return jump(t, seconds, d)
 		&"hurt":
 			return hurt(clampf(t / maxf(seconds, 1e-3), 0.0, 1.0), d)
 		&"eat":
@@ -703,6 +706,62 @@ static func dodge(t: float, seconds: float, d: Dictionary) -> Pose:
 		p.off[&"root"] = centre - basis * centre + Vector3(0, sin(u * PI) * 0.05, 0)
 		return p
 	return mix_keys(land, st, smoothstep(0.0, 1.0, (t - roll_end) / maxf(1e-3, dur - roll_end)))
+
+
+## Seconds at the end of a jump that are spent on the ground: the knees taking the
+## weight. 54_gear plays a jump for its arc plus this, so the absorb happens with
+## the feet down rather than in the air.
+const JUMP_ABSORB := 0.16
+
+
+## Jump: the push is already under way as the feet leave (a crouch before the arc
+## would be a delay the key did not ask for), so it opens on the legs driving
+## straight and the arms thrown up; the knees come to the chest over the top, the
+## legs reach for the ground on the way down, and the last JUMP_ABSORB seconds are
+## the knees folding under the landing and the body rising out of it.
+static func jump(t: float, seconds: float, d: Dictionary) -> Pose:
+	var dur := seconds if seconds > 0.0 else 0.62
+	var absorb := minf(JUMP_ABSORB, dur * 0.3)
+	var air := maxf(1e-3, dur - absorb)
+	var hip_y: float = d.get("hip_y", 0.6)
+	var st := _stand(d)
+	var push := st.with({
+		"@hips": Vector3(0.02, 0.02, 0), "spine": Vector3(0, 0, -0.2), "head": Vector3(0, 0, 0.15),
+		"thigh_l": Vector3(0.06, 0, -0.1), "shin_l": Vector3(0, 0, -0.15), "thigh_r": Vector3(-0.06, 0, -0.35), "shin_r": Vector3(0, 0, -0.3),
+		"foot_l": Vector3(0, 0, -0.5), "foot_r": Vector3(0, 0, -0.6),
+		"arm_l": Vector3(0.2, 0, 2.2), "fore_l": Vector3(0, 0, 0.35), "arm_r": Vector3(-0.2, 0, 2.1), "fore_r": Vector3(0, 0, 0.4),
+		"hem": Vector3(0, 0, -0.3), "aerial": Vector3(0, 0, -0.5), "tool": Vector3(0, 0, -0.3),
+	})
+	var tuck := st.with({
+		"@hips": Vector3(0, -hip_y * 0.1, 0), "spine": Vector3(0, 0, -0.45), "head": Vector3(0, 0, 0.25),
+		"thigh_l": Vector3(0.08, 0, 1.45), "shin_l": Vector3(0, 0, -1.9), "thigh_r": Vector3(-0.08, 0, 1.1), "shin_r": Vector3(0, 0, -1.7),
+		"foot_l": Vector3(0, 0, 0.3), "foot_r": Vector3(0, 0, 0.3),
+		"arm_l": Vector3(0.35, 0, 1.2), "fore_l": Vector3(0, 0, 0.9), "arm_r": Vector3(-0.35, 0, 1.0), "fore_r": Vector3(0, 0, 1.0),
+		"hem": Vector3(0, 0, 0.5), "aerial": Vector3(0, 0, 0.4), "tool": Vector3(0, 0, -0.5),
+	})
+	var reach := st.with({
+		"@hips": Vector3(0, 0, 0), "spine": Vector3(0, 0, -0.25), "head": Vector3(0, 0, 0.3),
+		"thigh_l": Vector3(0.08, 0, 0.55), "shin_l": Vector3(0, 0, -0.5), "thigh_r": Vector3(-0.08, 0, 0.2), "shin_r": Vector3(0, 0, -0.35),
+		"foot_l": Vector3(0, 0, 0.2), "foot_r": Vector3(0, 0, 0.1),
+		"arm_l": Vector3(0.7, 0, 0.9), "fore_l": Vector3(0, 0, 0.6), "arm_r": Vector3(-0.7, 0, 0.8), "fore_r": Vector3(0, 0, 0.7),
+		"hem": Vector3(0, 0, 0.7), "aerial": Vector3(0, 0, 0.8), "tool": Vector3(0, 0, -0.9),
+	})
+	var land := st.with({
+		"@hips": Vector3(0, -hip_y * 0.32, 0), "spine": Vector3(0, 0, -0.6), "head": Vector3(0, 0, 0.45),
+		"thigh_l": Vector3(0.1, 0, 1.3), "shin_l": Vector3(0, 0, -1.8), "thigh_r": Vector3(-0.1, 0, 1.2), "shin_r": Vector3(0, 0, -1.75),
+		"foot_l": Vector3(0, 0, 0.45), "foot_r": Vector3(0, 0, 0.45),
+		"arm_l": Vector3(0.55, 0, 0.8), "fore_l": Vector3(0, 0, 0.5), "arm_r": Vector3(-0.55, 0, 0.75), "fore_r": Vector3(0, 0, 0.55),
+		"hem": Vector3(0, 0, 0.2), "tool": Vector3(0, 0, -0.8),
+	})
+	if t < air:
+		var u := t / air
+		if u < 0.55:
+			return mix_keys(push, tuck, smoothstep(0.08, 0.45, u))
+		return mix_keys(tuck, reach, smoothstep(0.55, 1.0, u))
+	var w := clampf((t - air) / absorb, 0.0, 1.0)
+	if w < 0.4:
+		return mix_keys(reach, land, _ease_out(w / 0.4))
+	return mix_keys(land, st, smoothstep(0.4, 1.0, w))
 
 
 ## Hurt: the blow snaps the head and chest back, arms fly, a stagger, then a sag.

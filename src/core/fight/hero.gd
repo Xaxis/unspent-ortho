@@ -24,6 +24,9 @@ var swims := true
 ## True while this body is in water over its head. Written by FightSim once a
 ## step, because the hero holds no world to ask.
 var swimming := false
+## In the air on a jump (54_gear writes it for as long as the arc runs): nothing
+## under the feet to swing from or roll off, so neither starts.
+var airborne := false
 
 ## Intent for the next slices (world space, length <= 1) and whether Shift is held.
 var move := Vector2.ZERO
@@ -125,6 +128,8 @@ func swing_refusal(now: float) -> StringName:
 	# something to push against, and a swimmer has nothing under their feet.
 	if swimming:
 		return &"swimming"
+	if airborne:
+		return &"airborne"
 	if held():
 		return &"held"
 	if stunned(now):
@@ -138,6 +143,8 @@ func swing_refusal(now: float) -> StringName:
 
 ## &"" when a dodge may start now, else why not.
 func dodge_refusal(now: float) -> StringName:
+	if airborne:
+		return &"airborne"
 	if held():
 		return &"held"
 	if stunned(now):

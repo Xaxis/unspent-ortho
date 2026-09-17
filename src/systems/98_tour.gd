@@ -14,6 +14,11 @@ extends GameSystem
 ##                          moss under it says so instead of pinning a coordinate
 ##                          that the next change to worldgen quietly invalidates
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
+##   ledge up|across|down   stand, facing it, where a jump of that kind lands: the
+##                          nearest spot `Jump.find` names, never a coordinate
+##   leap SECS              walk the way the player FACES for SECS on the real move
+##                          path and press the real jump key at the end of it, so a
+##                          jump is taken on the move the way a player takes one
 ##   hour H                 set the world clock hour (same day)
 ##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
 ##   zoom F                 camera view height
@@ -271,6 +276,39 @@ func _run() -> void:
 					ok = false
 				else:
 					_teleport(gp)
+			"ledge":
+				var found := Jump.find(game.world, game.query, game.player.pos, StringName(parts[1]))
+				if found.is_empty():
+					printerr("tour: no %s jump within reach of %s" % [parts[1], game.player.pos])
+					ok = false
+				else:
+					_teleport(found.at)
+					var face: float = (found.dir as Vector2).angle()
+					game.player.facing = face
+					if game.player.hero != null:
+						game.player.hero.facing = face
+			"leap":
+				# The screen direction that walks the way the player faces, for the
+				# camera as it is right now: the tour holds a direction on the glass,
+				# as a player does, never a world vector.
+				var facing := Vector2.from_angle(game.player.facing)
+				var yaw := deg_to_rad(game.camera.yaw_now())
+				var up := Vector2(-sin(yaw), -cos(yaw))
+				var right := Vector2(cos(yaw), -sin(yaw))
+				game.scripted_move = Vector2(facing.dot(right), -facing.dot(up))
+				game.scripted_run = false
+				var walk_for := parts[1].to_float()
+				game.scripted_seconds = walk_for + 0.2
+				while game.scripted_seconds > 0.2:
+					await get_tree().physics_frame
+				Input.action_press("jump")
+				for i in 3:
+					await get_tree().process_frame
+				await get_tree().physics_frame
+				Input.action_release("jump")
+				# Back to the tour at once: the next line is usually a frame of the
+				# body in the air, and a jump is over in half a second.
+				game.scripted_seconds = 0.0
 			"place":
 				var pp := GenPlaces.find(game.world, parts[1])
 				if pp.x < 0.0:

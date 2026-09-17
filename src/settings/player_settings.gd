@@ -97,6 +97,7 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"run", "label": "run, tap to dodge"},
 	{"action": &"dodge", "label": "dodge"},
 	{"action": &"crouch", "label": "crouch"},
+	{"action": &"jump", "label": "jump up a ledge, over a gap"},
 	{"action": &"swing", "label": "swing, or pull free"},
 	{"action": &"use", "label": "use what is in reach"},
 	{"action": &"target", "label": "read a machine"},

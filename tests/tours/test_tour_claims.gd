@@ -14,7 +14,7 @@ const TOUR := preload("res://src/systems/98_tour.gd")
 ## the first thing the merged gate said was that saves-elsewhere.tour was
 ## speaking a word no tour could use. That is the rule working, but it only
 ## works if the list is kept beside the runner.
-const COMMANDS := ["at", "near", "ground", "place", "village", "hour", "zoom", "weather",
+const COMMANDS := ["at", "near", "ground", "place", "ledge", "leap", "village", "hour", "zoom", "weather",
 	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "until", "spawn",
 	"choose", "coast", "walkto", "perf", "echo", "key", "same", "try", "end", "stale"]
 ## Subject prefixes with something to check behind them.

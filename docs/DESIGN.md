@@ -184,6 +184,35 @@ matters.
   when there is wind in it and a battery burns amber while there is charge, so a
   player reads their own holding from a hillside before opening the slate.
 
+## Jumping (owner, 2026-09-17)
+
+A body can jump: **up two levels, across a two-tile gap, down three, and no
+further.** Walking still steps one level either way and two is still a cliff, so
+the jump is what opens a ledge, a trench or a narrow channel — and anything taller
+is still a wall and anything deeper is still the glide's to get down, so the wing
+and the rope keep their reasons to exist.
+
+- **Space jumps.** Swing keeps J, its second key since the start, and both are
+  rebindable on the settings page. The jump is everybody's: nothing sold as gear
+  grants it and nothing takes it away.
+- **It is an arc, not a lookup.** `Jump.plan` works the whole arc out at the press
+  — rising to its apex, carried at the pace the body was moving (a hop forward
+  from standing), stopped by any ground higher than the body is at that instant,
+  coming down on whatever is under it — and the gear system replays it. So a
+  two-level ledge is reachable because the apex clears it and a three-level one is
+  not because it does not; nobody wrote a table of jumpable tiles.
+- **It never goes off an edge deeper than a jump.** A planned landing more than
+  three levels down is planned again with that drop as a wall, and the body comes
+  down at the lip: a key pressed at a sea cliff is never the end of a run. Deep
+  water is the exception — a drop into it is a dive, and the water takes it.
+- **It is a decision in a fight, not a free move.** It costs a little breath,
+  nothing swings or rolls from the air, a solid thing stops a body in the air as it
+  stops one on the ground, and the landing is heard further the further the feet
+  fell.
+- **The height is honest.** While a jump runs `Player.lift` is the body's height
+  over the ground actually under it, because a lit world places the shadow from
+  that number.
+
 ## Swimming (owner, 2026-09-17)
 
 Deep water was a wall to everything without a raft under it. A body that can take

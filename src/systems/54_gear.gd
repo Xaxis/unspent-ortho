@@ -62,6 +62,14 @@ var _line: MeshInstance3D = null
 ## Ability ids that have fired in this game, for the tour's awaits.
 var _fired: Dictionary = {}
 var _gliding := false
+## The kind of the last jump that came down (Jump.HOP UP ACROSS DOWN DIVE), and
+## every kind that has, for a tour to ask after.
+var _jumped: Dictionary = {}
+## Seconds a jump's landing is held in the pose after the feet are down: the knees
+## taking the weight is half of what says the body fell.
+const JUMP_LANDING := PersonAnim.JUMP_ABSORB
+## How much louder a landing is for every level it fell.
+const LAND_PER_LEVEL := 0.35
 ## Modules prised out of a socket in this game: the count a pull's risk is indexed
 ## by, so a reload cannot reroll a part that broke (`Reforge`).
 var _pulls := 0
@@ -105,7 +113,8 @@ func _on_inventory_changed() -> void:
 
 func _refit() -> void:
 	game.body.resist = Gear.resist_total(loadout)
-	book.fit(Gear.abilities_of(loadout))
+	# Gear grants what it grants; legs are everybody's (Abilities.INNATE).
+	book.fit(Abilities.with_innate(Gear.abilities_of(loadout)))
 
 
 # --- input ---------------------------------------------------------------------
@@ -138,6 +147,10 @@ func _ctx() -> AbilityCtx:
 ## Fire one ability through the book (which is where every cost and cooldown
 ## lives) and, if it asked to move the body, start that move.
 func fire(id: StringName) -> StringName:
+	# A jump is a motion like any other and never starts over one already running:
+	# pressed again in the air it would be a second jump off nothing.
+	if id == &"jump" and _motion != null:
+		return &"airborne"
 	var ctx := _ctx()
 	var why := book.press(id, ctx)
 	if why != &"":
@@ -152,6 +165,11 @@ func _fire(id: StringName) -> void:
 	var why := fire(id)
 	if why == &"":
 		return
+	# The jump key is pressed often and in passing: pressed again in the air, or
+	# again the instant the feet are down, it says nothing at all rather than
+	# tutting at a player who is only playing.
+	if id == &"jump" and why in [&"airborne", &"cooling", &"swinging", &"busy"]:
+		return
 	# A refusal says why, quietly, and never while a fight is on the screen.
 	Events.sfx.emit(&"ability_refused", game.player.position)
 	if not Survival.threat_near(game):
@@ -163,6 +181,11 @@ func _fire(id: StringName) -> void:
 func _start_motion(m: AbilityMotion) -> void:
 	_motion = m
 	_travel_at = TRAVEL_BEAT
+	if m.kind == &"jump":
+		if game.player.hero != null:
+			game.player.hero.airborne = true
+		if game.player.model != null:
+			game.player.model.play_action(&"jump", m.seconds + JUMP_LANDING)
 	if m.kind == &"glide":
 		_gliding = true
 		_ensure_wing()
@@ -262,6 +285,9 @@ func _drop_line() -> void:
 
 
 func _land(m: AbilityMotion) -> void:
+	if m.kind == &"jump":
+		_land_jump(m)
+		return
 	if m.kind == &"glide":
 		_gliding = false
 		if _wing != null:
@@ -290,6 +316,33 @@ func _ensure_wing() -> void:
 	_wing.rotation = Vector3(0.0, PI * 0.5, 0.0)
 
 
+## The feet coming down. Heard, and heard further the further they fell, because
+## a jump off a wall in front of a watcher is a decision and not a free move; a
+## dive is the water taking the body, rings and all.
+func _land_jump(m: AbilityMotion) -> void:
+	var hero: Hero = game.player.hero
+	if hero != null:
+		hero.airborne = false
+	var p := m.plan
+	var kind := p.kind if p != null else Jump.HOP
+	_jumped[kind] = true
+	_jumped[&""] = kind
+	var at := game.player.position
+	var seed_value := int(Time.get_ticks_msec())
+	if kind == Jump.DIVE:
+		Events.sfx.emit(&"jump_dive", at)
+		MobFx.ring(game, at, Palette.BRINE[5], 1.4, 0.5)
+	else:
+		Events.sfx.emit(&"jump_land", at)
+		MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[4], 2, 0.35, seed_value)
+	var sim: FightSim = game.player.sim
+	if sim != null and p != null:
+		var fell := maxi(0, p.from_level - p.to_level)
+		var ground := game.world.ground_at(floori(p.to.x), floori(p.to.y))
+		var radius := StealthNoise.radius(&"land", ground, game.body.crouched, 0) * (1.0 + LAND_PER_LEVEL * float(fell))
+		sim.make_noise(p.to, radius)
+
+
 # --- what an ability looks like ------------------------------------------------
 
 ## Every ability effect is drawn here, in ink and stipple for what a person
@@ -313,6 +366,9 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			for i in 2:
 				MobFx.puff(game, at - back * (float(i) * 1.1 + 1.0), -dir, dust, 0.26 - 0.05 * i, seed_value + i * 11)
 			Events.sfx.emit(&"ability_dash", at)
+		&"jump":
+			Events.sfx.emit(&"jump", at)
+			MobFx.puff(game, at, -game.player.intent_move, Palette.STONE[4], 0.22, seed_value)
 		&"glide":
 			Events.sfx.emit(&"ability_glide", at)
 		&"scan":
@@ -414,7 +470,10 @@ func _feed(_g: Game) -> Dictionary:
 			mods.append({"id": m, "name": UiRules.item_name(m), "grants": _grants(m)})
 		rows.append({"id": s, "label": Gear.label(s), "item": loadout.item(s),
 			"sockets": Gear.sockets(loadout.item(s)), "modules": mods})
-	return {"slots": rows, "resist": game.body.resist, "abilities": book.rows(Time.get_ticks_msec() / 1000.0)}
+	# What the gear gives, and not what the legs do: the page is about what is worn.
+	var abilities := book.rows(Time.get_ticks_msec() / 1000.0).filter(
+		func(r: Dictionary) -> bool: return not Abilities.INNATE.has(r.id))
+	return {"slots": rows, "resist": game.body.resist, "abilities": abilities}
 
 
 ## What a module gives, in the few characters the page has room for. A modifier
@@ -567,7 +626,11 @@ func tour_seen(what: StringName) -> bool:
 	var s := String(what)
 	if s.begins_with("ability:"):
 		return _fired.has(StringName(s.substr(8)))
+	if s.begins_with("jumped:"):
+		return _jumped.has(StringName(s.substr(7)))
 	match what:
+		&"jumping": return _motion != null and _motion.kind == &"jump"
+		&"jumped": return _jumped.has(&"")
 		&"gliding": return _gliding
 		&"ability": return not _fired.is_empty()
 		&"spoofed": return AbilitySpoof.spoofed(game.body, game.clock.minutes)

@@ -20,6 +20,9 @@ const ACTS := {
 	&"build": 12.0,
 	&"kill": 20.0,
 	&"drop": 4.0,
+	## A jump's landing: two feet coming down at once, louder the further they fell
+	## (54_gear scales it by the drop).
+	&"land": 6.0,
 	&"eat": 2.0,
 }
 
