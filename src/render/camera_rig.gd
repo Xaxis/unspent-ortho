@@ -1,8 +1,8 @@
 class_name CameraRig
 extends Camera3D
 ## The fixed orthographic camera: 45 degrees of yaw, a steep pitch, following a
-## target, snapped to whole texels of the low-res viewport so the pixel grid
-## never crawls. Also owns the full-screen outline pass.
+## target, snapped to whole texels so the picture never crawls. Also owns the
+## full-screen shaft pass, on the tiers that have no volumetric air.
 
 @export var yaw_deg := 45.0
 @export var pitch_deg := 57.0
@@ -47,18 +47,24 @@ func _ready() -> void:
 	near = 1.0
 	far = 250.0
 	rotation = Vector3(deg_to_rad(-pitch_deg), deg_to_rad(yaw_deg), 0.0)
-	_outline = MeshInstance3D.new()
-	_outline.name = "outline_pass"
-	var q := QuadMesh.new()
-	q.size = Vector2(2, 2)
-	q.flip_faces = true
-	_outline.mesh = q
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://src/render/outline.gdshader")
-	_outline.material_override = mat
-	_outline.extra_cull_margin = 16384.0
-	_outline.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_outline)
+	# The screen-space light shafts, and ONLY on a tier with no volumetric air:
+	# where the renderer can do real volumetrics a lamp throws a real cone and
+	# this quad would draw a second, worse one over it. LOOK.md's degradation
+	# table is the authority and Quality.ROWS is where it is written down; this
+	# reads the row rather than deciding anything (docs/LOOK.md, Quality).
+	if not bool(Quality.current().get("volumetric", false)):
+		_outline = MeshInstance3D.new()
+		_outline.name = "shaft_pass"
+		var q := QuadMesh.new()
+		q.size = Vector2(2, 2)
+		q.flip_faces = true
+		_outline.mesh = q
+		var mat := ShaderMaterial.new()
+		mat.shader = preload("res://src/render/shafts.gdshader")
+		_outline.material_override = mat
+		_outline.extra_cull_margin = 16384.0
+		_outline.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_outline)
 
 
 ## The yaw the screen is actually at, lean and all: screen-relative input and

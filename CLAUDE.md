@@ -19,19 +19,30 @@ hatch, no paper; Forward+ on desktop with `gl_compatibility` as the web
 degradation path; the internal resolution off 640x360; real dynamic light and
 honest materials doing the work ink used to do.
 
-**`floor` has landed.** The base is **1920x1080**, `stretch/mode="viewport"` with
-`scale_mode="fractional"`, `forward_plus` on the desktop and `gl_compatibility`
-on the web through a `.web` override that is now proved in a real exported build
-(the web probe and `--stats` both print which renderer drew the frame). Still true
-on `main`: the washes, inked contours, hatched shade and ruled machines — removing
-those is `lit`'s, not the floor's. The wave runs `floor` (done), then `lit`
-(materials and light together), then `form` / `depth` / `slate` in parallel, then
-`degrade` (the web path proven almost as good).
+**`floor` and `lit` have landed.** The base is **1920x1080**,
+`stretch/mode="viewport"` with `scale_mode="fractional"`, `forward_plus` on the
+desktop and `gl_compatibility` on the web through a `.web` override proved in a
+real exported build. And the world is now LIT rather than drawn: there is no
+hatch, no paper grain, no ink line, no screen-space outline pass and no `light()`
+in any lit shader. A shader says what the surface IS and the renderer lights it,
+against a real sun with real penumbra, a sky that colours the shade, many local
+lights that can cast, volumetric air and a tonemapper. Wear accumulates by world
+position (`SkyWear`, `matter_worn`), so the same machine rusts in the bog and
+blooms on the salt. The wave runs `floor` (done), `lit` (done), then `form` /
+`depth` / `slate` in parallel, then `degrade` (the web path proven almost as
+good).
+
+**Three things `lit` left for whoever is next.** Models read faceted under real
+light — they were built for 640x360 and their budgets have not risen (`form`).
+The world is still one plane seen from above; nothing passes between the camera
+and the player (`depth`). And the slate is still drawn at 640x360 and scaled onto
+a sharp world (`slate`).
 
 **So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
 to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
 work in. If you are adding a model, plain `MeshKit` through the existing
-`Parts.hand/ruled` state is still correct; it converts with everything else.
+`Parts.hand/ruled` state is still correct; what it writes is read as material
+now rather than as a pen, and it converts with everything else.
 
 **Two screen sizes, and mixing them is the live trap** (`src/ui/ui_base.gd`):
 `UiBase.SIZE` (1920x1080) is the engine's base and what a shot captures;
@@ -199,13 +210,32 @@ tools print their own summaries.
   type `for` loop variables over untyped arrays (`for r: int in [...]`).
 - **Everything built in code.** No `.tscn` beyond `src/main.tscn`, no imported art
   or audio. Meshes via `MeshKit`, colours via `Palette`, sounds generated.
-- **Colours are sRGB palette values straight into `ALBEDO`.** The Compatibility
-  renderer does no linear→sRGB conversion; converting made everything black.
-- **Two lit materials.** MADE geometry uses `src/render/world.gdshader` (hatched
-  shade, paper, ragged ground blends, sway); FOUND geometry (machines, pylons,
-  plate, glims) uses `src/render/found.gdshader` (clean, unhatched, glowing parts).
-  Write the ink vertex channels through `MeshKit` state (`style`, `style2`,
-  `style_blend`, `wash2`, `wash_blend`, `sway`, `sway_phase`). See docs/ART.md §2.
+- **Every colour goes through `matter_albedo()` and nothing writes `ALBEDO`
+  directly.** The two renderers disagree about what a value in `ALBEDO` MEANS,
+  and the difference is a stop and a half. Measured, a flat unshaded quad,
+  in = (0.500, 0.250, 0.125): **Forward+** returns (0.737, 0.537, 0.388), which
+  is `linear_to_srgb(in)` — it reads `ALBEDO` as LINEAR light and encodes the
+  frame itself; **Compatibility** returns (0.502, 0.247, 0.114), the value
+  unchanged. The palette is sRGB display values, so on Forward+ they must be
+  decoded first or the whole game is lifted and flattened — which it was, from
+  the moment the floor moved. `matter_albedo()` (`src/render/matter.gdshaderinc`)
+  is the one door and it decides from the `sky_linear` global, which SkyLight
+  writes once at boot from `Quality.forward_plus()`. The old rule said the
+  opposite ("straight into ALBEDO; converting made everything black") and was
+  true of Compatibility only. `tests/render/test_colour_space.gd` holds it,
+  because the failure is silent and looks like a grading choice.
+- **Two lit materials, and the difference is MATERIAL now, not technique.**
+  MADE geometry (`src/render/world.gdshader`) is timber, mud, thatch, cloth and
+  turf: rough, matte, irregular, nothing about it straight. FOUND geometry
+  (`src/render/found.gdshader`: machines, pylons, plate, glims) is METAL:
+  panelled, ruled, with a real specular response and seams that catch the light.
+  **Neither has a `light()` any more** — the renderer does the lighting, and a
+  shader's whole job is to say what the surface is (ALBEDO, ROUGHNESS, SPECULAR,
+  METALLIC, and a NORMAL bent by the material's own relief, `matter_bump`).
+  `src/render/matter.gdshaderinc` holds the material rows, the colour-space door
+  and the wear. Vertex channels are still MeshKit's (`style`, `style2`,
+  `style_blend`, `wash2`, `wash_blend`, `sway`, `sway_phase`); `style` no longer
+  picks a hatch, it tells one landscape's ground from another's.
 - **No grid on screen.** Terrain is contour terraces; never add per-tile colour or
   square geometry. Boxes only as parts that are chamfered, tapered or broken up.
 - **Coordinates.** Tile space `Vector2(x, y)`, x east, y south; 3D is `Vector3(x, h, y)`.
@@ -301,7 +331,7 @@ lead with why, in short sentences.
 | Figures | `src/models/figure_model.gd` | `FigureModel.create(kind)` loads `models/machines/<kind>.gd` (always FOUND, whatever material is passed) or `models/animals/<kind>.gd`; animal mobs use `AnimalModel.spawn(kind, mat, seed)` so none look alike. Poses stand walk alert windup strike hurt dead; `part_position()`, `set_part_lit`, `flare_part`, `set_hunting(on)` (the mob says when it is running you down; the eyes lock), `top_toward(up)` (the posed body's highest point, for a tell), `draw_calls()` (budget: a machine 6). A machine's built-in lamps blink `MachineModel.disposition` (&"indifferent" \| &"wary" \| &"observant" \| &"hostile"), which starts at its role and which the disposition system sets on a live mob's model. |
 | People | `src/models/person_model.gd` | `play_action` (swing dodge hurt work downed carried), `set_held`, `set_look`; people draw after the outline pass (render priority 10) and are held by their rim, never inked. Looks dress by land and trade with `PersonLook.dress(spec, BiomeDef.hazards, trade, seed)` (gear, patches, gaunt), then `PersonLook.set_apart(look, taken, hazards, seed)` so no two in a village share a silhouette; a crowd sets `pose_hz = PersonModel.CROWD_HZ`, the player keeps 0; whoever places a figure sets `model.sun = game.sky.sun` (its shadow twin follows it) |
 | Props | `src/models/prop_models.gd` | `PropModels.node(kind, variant, country)` (surface 1 is FOUND on found.gdshader: never set material_override); `glow_points(kind, variant, country)` says where a model's lights and flames are, in its own frame and colour (15_lights reads it: a pool for the kinds in its `SOURCES`, a glint and a wet-ground reflection for every other kind that declares one; `"blink": true` puts it on the machines' beat). A variant with no light returns none. Props turn by `-rot`. **World gen may DEAL a prop its model**: `WorldProp.variant` (default -1 = take the one the id hashes to), and every reader asks `PropModels.variant_of(p, seed_value)` rather than hashing the id itself — a dealt variant that reaches the mesh but not the lights is a house lit where its tube is not. `neon_point(kind, variant, country)` says where a model runs stolen neon and in what colour, read off the model's own geometry, so the light and the thing casting it come from one place. A kind is capped at 8 variants by the template cache's key packing (`(kind * 8 + variant) * SLOTS + country`): a ninth silently collides with the next kind's variant 0. `GenScatter.HOUSE_MODELS`/`HOUSE_NEON` duplicate `Houses.VARIANTS` and `15_lights.NEON_HOUSE_VARIANTS` on purpose (worldgen holds no rendering) and `tests/render/test_houses.gd` fails if they drift. |
-| Sky | `src/render/sky.gdshaderinc` | `sky_apply()` is the only place lit colour is tinted by time/weather/region. Lit shaders also use `sky_ink` (world), `sky_pool` for lamp and fire light (world, found, water, person), `sky_line` (outline) and `sky_shade`. FOUND shaders `#define SKY_FOUND` before the include (nothing settles on a machine). `sky_power()` is the machines' power, stuttering after lightning: FOUND emission (strips, beacons, lit parts on found.gdshader), pylon beacon glows, the working part's ring (`part_glow.gdshader`) and the glint list follow it. SkyLight is the ONLY writer of `sky_*`, `neon_*`, `glint_*` and `wind_strength`, once a frame; lights to mirror in wet ground go in `SkyLight.glints` (15_lights), never extra OmniLights. **`neon_grade.x` is a GAIN and it is one number for the whole frame**, so `neon_graded()` ends on a shoulder (`SKY_TOP_KNEE`, `SKY_TOP`) and `neon_skyglow()` answers to the same ceiling: nothing lit can reach the page, because a pale landscape seen from a dark one was being multiplied onto it and clipped white holds no wash, no shade band, no hatch and no ink. Below the knee nothing is touched. A machine's own light is emission and is NOT held: neon is meant to burn. `tests/render/test_page_ceiling.gd` reads the two numbers out of the shader. |
+| Sky and the real lights | `src/render/sky.gdshaderinc`, `src/render/sky_light.gd` | **The hour's colour is the LIGHT's colour, not a multiply over every surface.** SkyLight splits its composed tint into a hue (the sun's `light_color`, and the ambient's) and a level (`light_energy`), builds the one `Environment` (`build_environment`), and drives it every frame: a `ProceduralSkyMaterial` that is what metal and water REFLECT and where the shade takes its hue, an ambient LEVEL stated as a plain number (`DAY_AMBIENT`, `NIGHT_AMBIENT`), a sun with real penumbra (`SUN_ANGLE`, widened when it is low) whose shadow is ONE orthogonal split because the camera shows fifteen world units, a moon that casts faintly (`MOON_SHADOW`), depth fog with a begin and an end (exponential fog under an orthographic camera is a flat grey wash over the whole frame, measured 18%), volumetric air, bloom, and the grade as one knob on the finished image. `sky_apply()` is now only what the AIR and the WEATHER do to a surface -- what has settled on it, the bank of fog it is seen through, a cloud's shade, glare, a strike. Four functions are kept as no-ops while their callers are converted and each says what took its job: `sky_ink` (there is no hatch), `sky_pool` (a real light makes its own pool), `neon_graded` (the grade is on the image) and `neon_skyglow` (the sky's light is AMBIENT light, not emission added to every surface -- that one was most of why night was not dark). FOUND shaders `#define SKY_FOUND` before the include (nothing settles on a machine). `sky_power()` is still the machines' power, stuttering after lightning. **SkyLight is the ONLY writer of `sky_*`, `neon_*`, `glint_*` and `wind_strength`, once a frame**, and `sky_linear` and `sky_wear` are two of them. **The ceiling is the TONEMAPPER** (`SkyLight.TONEMAP`, `tonemap_white`), not a per-fragment shoulder: one curve over the whole image, which a second landscape in view cannot defeat, and which gives a neon tube four times over white back as a bright tube instead of a hole. `tests/render/test_ceiling.gd` holds it and holds every expensive thing to its `Quality` row. |
 | World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision; `Survival.add_prop` puts a new one in the world |
 | What stops a body | `WorldQuery`: `solid` on a prop, `set_blocks(owner, circles)` for everything else | A prop stops a body with its own `solid` radius. A package that draws its own geometry — a landmark's tower, a depot's deck — declares its mass as circles `(x, y, radius)` in TILE space and hands them over under an owner name, replacing that owner's set whole (so a realm crossing does not pile two islands' walls on each other). They are kept apart from props on purpose: nothing may TAKE a wall, hear it, shelter under it or read it as cover, because it is only a wall. Stamped into the tile grid once, so a move looks at one cell. `move_body` takes `swims` and **every fallback it makes must pass it on**: a move that is refused falls back on one axis at a time, and a step asked whether a WALKER could stand there stops a swimmer dead in open water. |
 | Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the slate hides its hints only near hostiles) and `aware: bool` (it has noticed the player: alerted, chasing or attacking; the score tenses for it) |

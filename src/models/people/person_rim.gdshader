@@ -1,4 +1,4 @@
-// The readability rim for people (docs/ART.md section 5): a one-pixel line
+// The readability rim for people (docs/ART.md section 5): a hairline
 // round the silhouette in the person's own colours, one ramp step lighter on the
 // side toward the key light (screen upper left) and one step darker opposite.
 // Never ink-black. Drawn as a next pass of person.gdshader: the back faces,
@@ -13,11 +13,16 @@ shader_type spatial;
 render_mode unshaded, cull_front, depth_draw_always, skip_vertex_transform, fog_disabled, shadows_disabled;
 
 #include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 #include "res://src/models/people/person_light.gdshaderinc"
 
 uniform vec3 step_down = vec3(0.700, 0.704, 0.749);
-// Rim width in texels of the 640x360 image.
-uniform float width = 1.0;
+// Rim width in WORLD units, not in pixels. It used to be one texel of the
+// 640x360 image, which at 1920x1080 is a third as thick and at another zoom is
+// something else again; a width in world units is the same apparent line
+// whatever the tier renders at, which is what the web path needs.
+uniform float width = 0.021;
 // How far past a pool's own range a figure still takes its colour.
 uniform float reach = 1.6;
 
@@ -31,10 +36,10 @@ void vertex() {
 	vec3 n = (MODELVIEW_MATRIX * vec4(TANGENT, 0.0)).xyz;
 	vec2 dir = length(n.xy) > 1e-4 ? normalize(n.xy) : vec2(0.0);
 	// Orthographic: 2 / P[1][1] is the view height in world units.
-	float texel = 2.0 / PROJECTION_MATRIX[1][1] / VIEWPORT_SIZE.y;
-	v.xy += dir * texel * width;
-	// A hair toward the camera would let the rim cover the body; a hair away keeps it behind.
-	v.z -= texel * 0.5;
+	v.xy += dir * width;
+	// A hair toward the camera would let the rim cover the body; a hair away
+	// keeps it behind.
+	v.z -= width * 0.5;
 	VERTEX = v;
 	NORMAL = (MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	toward = dot(dir, normalize(vec2(-1.0, 1.0)));
@@ -47,7 +52,7 @@ void fragment() {
 	vec3 at;
 	vec4 lamp = person_nearest_light(world_pos, reach, at);
 	float strength = clamp(lamp.a * 1.5, 0.0, 1.0);
-	float gloom = max(sky_view.y, sky_shade.w);
+	float gloom = sky_gloom();
 	vec3 col = sky_apply(lit, world_pos, TIME);
 	// The whole line takes the light's colour in the pool: warm by a fire, cold by
 	// the lantern (the same stepped wash as the body, so line and body agree).
@@ -63,6 +68,6 @@ void fragment() {
 	float catch_light = step(0.2, facing) * step(0.3, strength) * step(0.35, gloom) * edge;
 	vec3 caught = min(min(lit / step_down, vec3(1.0)) / step_down, vec3(1.0)) * (0.45 + lamp.rgb * 0.75);
 	col = mix(col, caught, catch_light);
-	ALBEDO = col;
+	ALBEDO = matter_albedo(col);
 	ALPHA = 1.0;
 }

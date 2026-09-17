@@ -54,6 +54,36 @@ const VENT_DAY_REACH := 0.45
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
+## How steeply a pool falls off. Not the inverse square a real point source
+## obeys: at that exponent a lamp is a hot spot with nothing round it, and what
+## a lantern is FOR is the few tiles round your feet.
+const ATTENUATION := 1.45
+
+## --- A FLAME IS NOT A POINT ---------------------------------------------
+##
+## Two things were wrong with firelight and they have the same cause: a fire
+## was being lit like a bulb.
+##
+## 1. It cast. A point light at the middle of a burning stack throws a hard
+##    shadow of every stick in it, and the fire in the canon's night village
+##    sat in a STARBURST of radial spokes across the gravel. Real firelight has
+##    no crisp shadow of its own fuel, because the flame is bigger than the
+##    fuel and comes from all round it. So a flame lights and casts nothing,
+##    and the shadows in a camp are thrown by the lamps on the posts and by the
+##    lantern in your hand -- which is also where the player is looking.
+## 2. It ended. `omni_range` 3.2 put a visible boundary on the gravel where the
+##    pool stopped. A flame's reach is much longer and its falloff much
+##    steeper, so the core is the same size and the tail dies away with no edge
+##    anywhere for the eye to find.
+const FLAME_KINDS: Array[int] = [PropKind.FIRE, PropKind.KILN, PropKind.VENT, PropKind.HOUSE]
+const FLAME_REACH := 1.9
+const FLAME_ATTEN := 2.4
+
+
+static func is_flame(kind: int) -> bool:
+	return FLAME_KINDS.has(kind)
+## What a light's level is worth in linear light (see _set_light).
+const GAIN := 5.2
 const LANTERN_RANGE := 3.2
 ## The colour each kind of light throws (pools and wet reflections). People's
 ## lamps, windows and fires are warm, and so is the flame in the player's
@@ -113,6 +143,9 @@ var lights: Array[OmniLight3D] = []
 var sources: Array[Dictionary] = []
 var lantern: Node3D
 var lantern_light: OmniLight3D
+## The one light that says what the hand can reach (see _light_the_reach).
+var reach_light: OmniLight3D
+var _reach_t := 0.0
 var _indexed := 0
 var _assigned: Array = [] # per pool light: source Dictionary or null
 var _refresh := 0.0
@@ -177,6 +210,9 @@ func setup(g: Game) -> void:
 		lights.append(_new_light("lamp_%d" % i))
 		_assigned.append(null)
 	lantern_light = _new_light("lantern_light")
+	reach_light = _new_light("reach_light")
+	reach_light.omni_attenuation = 2.2
+	reach_light.shadow_enabled = false
 	lantern = _lantern_mesh()
 	var lr := rays(Palette.COPPER[4], 2.0, 4.0, 0.15, 4.0)
 	lr.position = Vector3(0, 0.08, 0)
@@ -186,19 +222,119 @@ func setup(g: Game) -> void:
 	_update(0.0, true)
 
 
+## --- What the hand can reach --------------------------------------------
+##
+## "You can take this" said as LIGHT rather than as a mark on the glass, which
+## is what the whole direction is for: in a world that is lit and not drawn, the
+## right way to say a thing is workable is that the thing LIGHTS UP.
+##
+## The RULE is not reimplemented here and must not be. `Survival.use_target`
+## says WHICH thing the `use` key would work right now, and
+## `Survival.describe_target` says what it would do or why it would not; this
+## only reads those two and decides what colour to put on the answer.
+## (The state arrives as the tail of a sentence, which is the one thing here
+## that ought to change: whoever owns `src/core/survival` should publish it as
+## a value. Until then this reads the string the rule already publishes rather
+## than working the state out again, which would be two rules.)
+##
+## Three states have to be told apart at a glance, at night, in weather:
+const REACH_WORKABLE := Vector3(0.62, 0.86, 0.72)   ## a cool catch: take it
+const REACH_NO_TOOL := Vector3(0.95, 0.52, 0.22)    ## warm and low: wrong hand
+const REACH_SPENT := Vector3(0.34, 0.36, 0.44)      ## almost nothing: picked over
+## How far it carries and how hard. Small on purpose: it is a CATCH on the thing
+## in front of you, not a pool round it, so it never reads as a second lamp.
+## The power is divided by GAIN because it goes out through _set_light like
+## every other light and must NOT be one: at a lamp's gain it was a pale green
+## aura round the player that was the brightest thing in the Burning at dusk.
+const REACH_RANGE := 1.05
+const REACH_POWER := 0.62 / GAIN
+## Picked over is a hint that something WAS here, so it is barely lit at all.
+const REACH_SPENT_POWER := 0.14 / GAIN
+## It breathes, slowly, because a steady light on the ground is a lamp and a
+## breathing one is an offer. A machine's light never does this (LOOK.md: the
+## machines' light is exact and unwavering; a person's is unsteady) -- and this
+## is the game speaking to the player, which is the one light that is neither.
+const REACH_BREATH := 1.9
+
+
+## Light whatever the `use` key would work right now, in the colour of what it
+## would do. Nothing is lit when the key would do nothing.
+func _light_the_reach(delta: float) -> void:
+	if reach_light == null:
+		return
+	_reach_t += delta
+	var t: WorldProp = Survival.use_target(game)
+	if t == null or game.input_blocked():
+		reach_light.visible = false
+		return
+	var said := Survival.describe_target(game)
+	var rgb := REACH_WORKABLE
+	var power := REACH_POWER
+	if said.ends_with(" - picked over") or said.ends_with(" - under water"):
+		rgb = REACH_SPENT
+		power = REACH_SPENT_POWER
+	elif said.ends_with(" - no tool") or said.ends_with(" - too hard"):
+		rgb = REACH_NO_TOOL
+	var breath := 0.82 + 0.18 * sin(_reach_t * REACH_BREATH)
+	var at := game.world.to_3d(t.pos) + Vector3(0.0, 0.34 * maxf(t.scale, 0.5), 0.0)
+	_set_light(reach_light, at, REACH_RANGE * maxf(t.scale, 0.7), rgb * power * breath)
+
+
 func _new_light(n: String) -> OmniLight3D:
 	var l := OmniLight3D.new()
 	l.name = n
 	l.shadow_enabled = false
-	# No distance decay, only the range window: a broad even pool with a firm
-	# edge, which sky_pool() cuts into hard steps.
-	l.omni_attenuation = 0.0
-	l.light_specular = 0.0
-	# Water is on its own layer and never takes lamplight (SkyLight.LAYER_WATER).
-	l.light_cull_mask = 0xFFFFF & ~SkyLight.LAYER_WATER
+	l.shadow_bias = 0.035
+	l.shadow_normal_bias = 1.1
+	# It falls off the way light falls off. It used to have NO distance decay at
+	# all -- a flat disc inside a hard range window, because sky_pool() cut it
+	# into two steps afterwards anyway. There is no sky_pool any more; a lamp is
+	# a lamp.
+	l.omni_attenuation = ATTENUATION
+	# A lamp has to be ABLE to glint. Specular was off, which is why wet ground
+	# mirrored nothing and a machine's flank caught nothing: it was the one
+	# thing standing between this game and a reflection.
+	l.light_specular = 1.0
+	# Water used to be cut out of every lamp's mask, because a lamp on water was
+	# a flat glow disc and a glow disc on the sea is absurd. A lamp on water is
+	# a STREAK now -- water is the smoothest thing in the world and the light is
+	# in it, not on it -- so the sea takes lamplight like everything else, and a
+	# fire on the shore is in the water in front of it.
 	l.visible = false
 	add_child(l)
 	return l
+
+
+## Which of the live lights cast a shadow, nearest the player first.
+##
+## THE TIER DECIDES HOW MANY (`Quality.ROWS.shadow_lights`), and this system is
+## its only enforcer -- 0 on the web means lamps and fires light and cast
+## nothing, 16 on ultra means every one of them does. Nearest-first, because the
+## shadow the player can see is the one at their feet, and a light whose shadow
+## is turned off does not dim: it goes on lighting exactly as it did.
+func _cast_shadows(focus: Vector3) -> void:
+	var allow := int(Quality.current().get("shadow_lights", 0))
+	var live: Array[OmniLight3D] = []
+	for i in lights.size():
+		var l: OmniLight3D = lights[i]
+		if not l.visible:
+			continue
+		# A FLAME CASTS NOTHING (see FLAME_KINDS). It is the biggest light in a
+		# camp and the one the player looks at longest, and a point light in the
+		# middle of a burning stack throws a hard shadow of every stick in it.
+		var src: Variant = _assigned[i] if i < _assigned.size() else null
+		if src != null and is_flame(int((src as Dictionary).get("kind", -1))):
+			l.shadow_enabled = false
+			continue
+		live.append(l)
+	if lantern_light != null and lantern_light.visible:
+		# The player's own lantern casts first, whatever else is near: it is the
+		# one light they carry, and its shadow is the one they are steering by.
+		live.insert(0, lantern_light)
+	live.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool:
+		return a.position.distance_squared_to(focus) < b.position.distance_squared_to(focus))
+	for i in live.size():
+		live[i].shadow_enabled = i < allow
 
 
 func toggle_lantern() -> void:
@@ -219,6 +355,7 @@ func _process(delta: float) -> void:
 		toggle_lantern()
 	_lamp_down = down
 	_update(delta, false)
+	_light_the_reach(delta)
 
 
 ## 0..1: how far people have lit up. Lamps go on before full dark and out after
@@ -535,7 +672,12 @@ func _update(delta: float, snap: bool) -> void:
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, reach, compensate(warm, tint, sun) * level) and lays:
+		# A flame reaches much further and falls off much faster, so its core is
+		# the same size and its tail has no edge on it anywhere (FLAME_KINDS).
+		var flame := is_flame(kind)
+		var lit_reach := reach * (FLAME_REACH if flame else 1.0)
+		var atten := FLAME_ATTEN if flame else ATTENUATION
+		if _set_light(l, s.at, lit_reach, compensate(warm, tint, sun) * level, atten) and lays:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
@@ -573,6 +715,7 @@ func _update(delta: float, snap: bool) -> void:
 	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
 	game.sky.lamp_colors = pool_rgb
+	_cast_shadows(focus3)
 	_update_glints(focus3, hour, lit)
 
 
@@ -762,19 +905,26 @@ static func neon_colour(s: Dictionary) -> Vector3:
 			return NEON_FIRE
 
 
-## Returns whether the light is on.
-func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3) -> bool:
+## Returns whether the light is on. `atten` is how steeply it falls off; a
+## flame's is steeper over a much longer reach, so its pool has no edge.
+func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3,
+		atten: float = ATTENUATION) -> bool:
 	var e := maxf(rgb.x, maxf(rgb.y, rgb.z))
 	if e < 0.01:
 		l.visible = false
 		return false
 	l.visible = true
 	l.position = at
+	l.omni_attenuation = atten
 	l.omni_range = reach
-	# Godot takes light_color as sRGB and linearises it before shading, but the
-	# world shader works in display values: hand it the colour pre-encoded.
+	# Godot takes light_color as sRGB and linearises it before shading; the
+	# levels here are display values, so hand it the colour pre-encoded.
 	l.light_color = Color(rgb.x / e, rgb.y / e, rgb.z / e).linear_to_srgb()
-	l.light_energy = e
+	# A lamp has to BEAT the night, or carrying one is a decoration. The gain is
+	# what puts its pool a stop and a half over SkyLight.NIGHT_AMBIENT at the
+	# foot of the post, and it is the number law 3 balances against: "night is
+	# genuinely dark, which is what makes a lantern matter".
+	l.light_energy = e * GAIN
 	return true
 
 
