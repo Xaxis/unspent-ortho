@@ -235,6 +235,15 @@ that can take what grows there.
 
 ## Story
 
+**The arc and every rule for writing it are in `docs/STORY.md`** (owner,
+2026-09-17): the machines are reconcilers, not jailers — one attested reality,
+every mind agreed — and to be free is not to escape but to fork. The words are
+uncovered by reading a thing, talking to somebody, or watching a machine work,
+never by walking onto a tile; a conversation is drawn over the world with the
+world still running; and what the player says is remembered against the question,
+not the person. What is built so far is the spine's first beats and the tide
+sub-arc; the rest is declared and empty, which STORY.md §11 says plainly.
+
 The premise shape is the owner's (2026-09-15) and lives in **`docs/VISION.md`**: the
 few dwindling humans after the machine apocalypse; machines that still mean to end
 them, many of them indifferent unless you interfere with their **ultimate plan**; the

@@ -114,8 +114,15 @@ func _load_systems(files: Array[String]) -> void:
 
 
 ## True while gameplay input should be ignored (a screen is open, or the body is busy).
+## True while a page is up OR somebody is being talked to: a conversation is not
+## a screen (it is drawn over the world, owner 2026-09-17) but it holds the keys
+## the same way, so every reader that already asked this question keeps working.
+## 49_story is its only writer.
+var talking := false
+
+
 func input_blocked() -> bool:
-	return not open_screens.is_empty()
+	return not open_screens.is_empty() or talking
 
 
 func _physics_process(delta: float) -> void:

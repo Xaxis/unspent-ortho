@@ -485,6 +485,13 @@ func _now_true(what: String) -> bool:
 			if Swim.deep(game.world, n.get("pos")) and _body_in_frame(what.substr(9), 1):
 				return true
 		return false
+	if what == "talking" or what == "reading" or what.begins_with("knows:") or what.begins_with("beat:"):
+		# The story answers for itself (49_story.tour_seen), and a frame of a
+		# conversation is a frame of one whether or not anybody is in shot.
+		for sys in game.systems:
+			if sys.has_method("tour_seen") and bool(sys.call("tour_seen", StringName(what))):
+				return true
+		return false
 	if what == "swimming":
 		# In water over the head and taking it under its own steam (Swim): a
 		# present-tense fact about the body, which is what a  claim is for.
@@ -565,6 +572,11 @@ func _stand_by(name: String) -> bool:
 			continue
 		var t := Survival.use_target(game)
 		if t != null and t.kind == kind:
+			return true
+		# A thing with something written on it is a use target too now, and
+		# survival's own use_target never names one: it only ever offered what
+		# could be WORKED (src/systems/49_story.gd, docs/STORY.md).
+		if StoryProps.readable(kind) and best.pos.distance_to(game.player.pos) - best.solid <= StoryProps.REACH:
 			return true
 	printerr("tour %s: nothing stands beside the %s at %s" % [_name, name, best.pos])
 	return false

@@ -1,0 +1,147 @@
+extends TestCase
+## The story spine (docs/STORY.md): what is written, what a conversation does,
+## what is remembered, and the rules the words themselves have to keep.
+
+
+func test_every_arc_beat_and_fragment_agrees_with_the_tables() -> void:
+	Story.forget()
+	for arc: StringName in StoryContent.arcs():
+		var beats: Array = StoryContent.arc_beats(arc)
+		check(not beats.is_empty(), "%s has beats" % arc)
+		for b: StringName in beats:
+			check(StoryContent.BEATS.has(b), "%s is a beat that exists" % b)
+			eq(StoryContent.beat_arc(b), arc, "%s belongs to the arc that lists it" % b)
+			check(StoryContent.beat_says(b) != "", "%s says what the player now knows" % b)
+	# Nothing may land a beat that is not declared, or the journal would hold a
+	# line nobody wrote.
+	for id: StringName in StoryFragments.all():
+		for b: StringName in StoryContent.beats_from(id):
+			check(StoryContent.BEATS.has(b), "%s lands %s, which is not a beat" % [id, b])
+
+
+func test_every_fragment_is_a_readable_kind_with_words_on_it() -> void:
+	for id: StringName in StoryFragments.all():
+		var kind := StoryFragments.kind_of(id)
+		check(StoryFragments.kinds().has(kind), "%s is one of the kinds a thing can be: %s" % [id, kind])
+		check(StoryFragments.title_of(id) != "", "%s is called something" % id)
+		var lines := StoryFragments.lines(id)
+		check(lines.size() > 0, "%s has something written on it" % id)
+		for l: String in lines:
+			lt(float(l.length()), 72.0, "%s keeps its lines inside the glass: %s" % [id, l])
+
+
+## The spine's own rule: the game never says the word in its own voice.
+func test_the_game_never_says_the_word() -> void:
+	for id: StringName in StoryFragments.all():
+		for l: String in StoryFragments.lines(id):
+			check(not l.to_lower().contains("simulation"),
+				"%s says the quiet part: %s" % [id, l])
+	for talk: StringName in StoryContent.TALKS:
+		for node: StringName in StoryContent.TALKS[talk].nodes:
+			for l: String in StoryContent.TALKS[talk].nodes[node].get("says", []):
+				check(not l.to_lower().contains("simulation"), "%s.%s says it: %s" % [talk, node, l])
+
+
+func test_which_thing_holds_which_words_never_changes_under_a_save() -> void:
+	var a := StoryFragments.pick(StoryFragments.SIGN, &"coast", 7, 41)
+	var b := StoryFragments.pick(StoryFragments.SIGN, &"coast", 7, 41)
+	eq(a, b, "the same thing in the same world says the same thing")
+	check(a != &"", "and the coast has signs with something on them")
+	eq(StoryFragments.kind_of(a), StoryFragments.SIGN, "a sign holds a sign's words")
+	# A kind nothing is written for yet comes back empty rather than wrong.
+	eq(StoryFragments.pick(&"nonsense", &"coast", 7, 41), &"")
+
+
+func test_reading_a_thing_is_knowing_it_and_only_once() -> void:
+	Story.forget()
+	var id := &"tide_book"
+	check(Story.read(id), "the first time is the first time")
+	check(not Story.read(id), "and there is no second first time")
+	check(Story.knows(id))
+	eq(Story.found(), [id] as Array[StringName])
+	# That notebook is the tide sub-arc's own evidence: reading it lands its beats.
+	check(Story.landed(&"repeats"), "and what it taught is known")
+	check(Story.landed(&"tide_written"))
+	gt(Story.at(&"tide"), 0.0, "which moves the arc along")
+
+
+func test_a_conversation_goes_where_the_replies_go() -> void:
+	Story.forget()
+	var t := StoryTalk.start(&"tide_keeper")
+	check(not t.over, "it started")
+	check(t.says().size() > 0, "and it said something")
+	var rs := t.replies()
+	gt(float(rs.size()), 2.0, "with more than one thing to say back")
+	# Saying nothing is always on the list (docs/STORY.md §9).
+	var quiet := false
+	for r: Dictionary in rs:
+		if String(r.text).begins_with("["):
+			quiet = true
+	check(quiet, "and saying nothing is always one of them")
+	check(t.pick(0), "the first reply goes somewhere")
+	eq(Story.chose(&"tide_keeper.open"), &"plain", "and what was said is remembered by where it was said")
+
+
+func test_a_conversation_can_be_walked_to_its_end() -> void:
+	Story.forget()
+	var t := StoryTalk.start(&"tide_keeper")
+	var guard := 0
+	while not t.over and guard < 40:
+		guard += 1
+		# Always take the last reply: every node's last way out is a leaving one.
+		t.pick(t.replies().size() - 1)
+	check(t.over, "every node has a way out of the conversation")
+	lt(float(guard), 40.0, "and it is not a loop")
+
+
+func test_a_reply_that_teaches_something_lands_its_beat() -> void:
+	Story.forget()
+	var t := StoryTalk.start(&"tide_keeper")
+	# open -> swam -> tide -> told the minute: the tide is noticed out loud.
+	t.pick(0)
+	var to_tide := -1
+	var rs := t.replies()
+	for i in rs.size():
+		if String(rs[i].text).contains("tide"):
+			to_tide = i
+	gt(float(to_tide), -1.0, "the keeper can be asked about the tide")
+	t.pick(to_tide)
+	t.pick(0)
+	check(Story.landed(&"tide_noticed"), "telling somebody is knowing it together")
+
+
+func test_what_is_found_and_said_comes_back_through_a_save() -> void:
+	Story.forget()
+	Story.read(&"gate_notice")
+	Story.choose(&"tide_keeper.open", &"nothing")
+	Story.beat(&"unattested")
+	var d := Story.save_state()
+	Story.forget()
+	check(not Story.knows(&"gate_notice"), "forgotten is forgotten")
+	Story.load_state(d)
+	check(Story.knows(&"gate_notice"), "and a save brings it back")
+	eq(Story.chose(&"tide_keeper.open"), &"nothing")
+	check(Story.landed(&"unattested"))
+	check(Story.landed(&"clerks_words"), "including what the reading itself taught")
+
+
+## The seam with whoever places things: a placer asks for a kind and gets an id,
+## and nothing about where it stands is the story's business.
+func test_the_placer_seam_is_the_whole_of_what_a_placer_needs() -> void:
+	for kind: StringName in StoryFragments.kinds():
+		var id := StoryFragments.pick(kind, &"coast", 3, 9)
+		if id == &"":
+			continue
+		eq(StoryFragments.kind_of(id), kind)
+		check(StoryFragments.lines(id).size() > 0)
+	# The props that can be read today are the machines' own notices and papers.
+	check(StoryProps.readable(PropKind.SIGN))
+	check(StoryProps.readable(PropKind.ARCHIVE))
+	check(not StoryProps.readable(PropKind.PINE), "a tree says nothing")
+	eq(StoryProps.kind_of(PropKind.SIGN), StoryFragments.SIGN)
+
+
+func test_a_person_has_something_to_say_only_if_it_was_written_for_them() -> void:
+	eq(StoryProps.talk_for({"trade": &"keeper"}, null), &"tide_keeper")
+	eq(StoryProps.talk_for({}, null), &"", "somebody with no trade has nothing written")
+	check(StoryProps.trades_with_talk().has(&"keeper"))

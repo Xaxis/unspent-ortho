@@ -14,6 +14,7 @@ static func page_for(id: StringName) -> DevPage:
 		&"spawn": return DevPageSpawn.new()
 		&"view": return DevPageView.new()
 		&"config": return DevPageConfig.new()
+		&"story": return DevPageStory.new()
 		&"notes": return DevPageNotes.new()
 		&"builds": return DevPageBuilds.new()
 		&"proofs": return DevPageProofs.new()
@@ -52,6 +53,7 @@ func rows() -> Array[Dictionary]:
 		out.append(item(&"give", "things", "%d carried" % game.inventory.items.size()))
 		out.append(item(&"spawn", "bodies", "file %s" % String(DevCheats.file_here(game).level)))
 		out.append(item(&"view", "view", "zoom %s" % str(snappedf(game.camera.view_height, 0.1))))
+		out.append(item(&"story", "story", _story_value()))
 	out.append(header("the game"))
 	out.append(item(&"config", "configuration", (GameConfig.active if GameConfig.active != "" else "none") + ("*" if not GameConfig.edits.is_empty() else ""),
 		{"edited": not GameConfig.edits.is_empty()}))
@@ -134,3 +136,9 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		UiSlate.key_cap(ci, Vector2i(panel_x(r) + 4, y - 1), pair[0])
 		UiDraw.text(ci, Vector2i(panel_x(r) + 26, y), pair[1], UiTheme.TEXT_DIM)
 		y += 13
+
+
+## How far along the story this playthrough is: the spine's own share, which is
+## the number a writer asks for first.
+func _story_value() -> String:
+	return "%d%% · %d read" % [roundi(Story.at(&"account") * 100.0), Story.found_count()]

@@ -54,3 +54,9 @@ signal raid_warned(settlement_id: int, stage: StringName)
 signal raid_began(settlement_id: int, stage: StringName)
 ## outcome: &"held" &"broken" &"razed" &"left" (nobody was home).
 signal raid_ended(settlement_id: int, outcome: StringName)
+
+## The story (docs/STORY.md): a thing read for the first time, a reply chosen,
+## a beat of an arc landed. 49_story emits all three; anything may listen.
+signal story_found(id: StringName)
+signal story_chose(id: StringName, pick: StringName)
+signal story_beat(id: StringName)
