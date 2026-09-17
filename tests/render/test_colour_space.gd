@@ -29,6 +29,7 @@ const LIT: Array[String] = [
 	"res://src/render/water.gdshader",
 	"res://src/models/people/person.gdshader",
 	"res://src/models/people/person_rim.gdshader",
+	"res://src/render/foliage/leaf.gdshader",
 ]
 
 

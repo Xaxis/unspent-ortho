@@ -144,6 +144,10 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# The side that never grew back, on the trees that lost one.
 	var bare := Kit.j(s, 4, 3.0) + 3.0
 	var start := k.made.vertex_count()
+	var leaf_start := k.leaf.vertex_count()
+	# Leaf cards, as every crown is (props/kit.gd `canopy`): the one wash this
+	# land dealt the tree, a step either side of it so the masses turn.
+	var mass: Array[Color] = [leaf, Kit.tone(leaf, 0.88), Kit.tone(leaf, 1.1)]
 	for i in boughs:
 		var a := float(i) / boughs * TAU + Kit.j(s, 10 + i, 0.5)
 		if gap and absf(angle_difference(a, bare)) < 0.9:
@@ -152,15 +156,17 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 		var arm := crown * (1.05 + Kit.j(s, 20 + i, 0.3))
 		var to := from + Vector3(cos(a) * arm, 0.3, sin(a) * arm)
 		k.limb(from, to, 0.055, 0.03, 5, bark)
-		k.clump(to.x, to.y - 0.1, to.z, crown * (0.92 + Kit.j(s, 40 + i, 0.22)), crown * 1.1, s + i * 7, leaf)
+		var cr := crown * (0.92 + Kit.j(s, 40 + i, 0.22))
+		k.canopy(to.x, to.y - 0.1, to.z, cr, crown * 1.1, s + i * 7, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(cr, crown * 1.1, Trees.BROAD_CARD))
 	# The top of the crown, pushed off the trunk away from the bare side.
 	var off := Vector3(cos(bare), 0.0, sin(bare)) * (crown * -0.35 if gap else 0.0)
-	k.clump(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, leaf)
+	k.canopy(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(crown * 1.2, crown * 1.32, Trees.BROAD_CARD))
 	# The underside, one step darker, so the crown reads as a mass and not a blob.
 	k.made.push(Transform3D(Basis.IDENTITY, Vector3(lean.x * h + off.x, h * 0.82, lean.y * h + off.z)))
 	k.made.prism(0, 0, 0, crown * 0.96, 0.09, crown * 1.1, 7, under)
 	k.made.pop()
 	k.sway_by_height(start, h * 0.5, h, 0.6)
+	k.sway_by_height(leaf_start, h * 0.5, h, 0.6, k.leaf)
 
 
 ## A cone of iron filings standing where the field in a dead frame still pulls,

@@ -8,7 +8,7 @@ func test_every_kind_has_a_model_in_every_variant_and_country() -> void:
 		for v in PropModels.variants(kind):
 			for c: int in BiomeRegistry.land_indices():
 				var t := PropModels.template(kind, v, c)
-				gt(t.made_v.size() + t.found_v.size(), 11, "%s %d in %s" % [PropKind.NAMES[kind], v, BiomeRegistry.name_of(c)])
+				gt(t.made_v.size() + t.found_v.size() + t.leaf_v.size(), 11, "%s %d in %s" % [PropKind.NAMES[kind], v, BiomeRegistry.name_of(c)])
 				for col in t.made_c:
 					if col == Palette.BLOOM[3]:
 						fail("%s %d draws the unmodelled placeholder" % [PropKind.NAMES[kind], v])
@@ -130,8 +130,11 @@ func test_no_two_scrapwood_trees_wear_the_same_crown() -> void:
 		var t := PropModels.template(PropKind.SCRAP_TREE, v, BiomeRegistry.index_of(&"scrapwood"))
 		var leaf_r := 0.0
 		var top := 0.0
-		for i in t.made_v.size():
-			var p: Vector3 = t.made_v[i]
+		# Drawn by hand, or in leaves: the crown is cards now (kit.gd `canopy`).
+		var hand := t.made_v.duplicate()
+		hand.append_array(t.leaf_v)
+		for i in hand.size():
+			var p: Vector3 = hand[i]
 			top = maxf(top, p.y)
 			# The crown is what is drawn by hand ABOVE half the tree's height.
 			if p.y > 1.2:

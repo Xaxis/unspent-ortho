@@ -6,8 +6,9 @@ extends GameSystem
 ## sways and stands clear of the ground can open up, so a wood still reads as a
 ## wood from a step away.
 ##
-## Written every frame on the one world material WorldView hands out. A slot is
-## (x, the ground's own height there, z, reach in tiles); reach 0 is unused.
+## Written every frame on the world material WorldView hands out, and on its leaf
+## material, which cuts a canopy's cards by the same rule (leaf.gdshader). A slot
+## is (x, the ground's own height there, z, reach in tiles); reach 0 is unused.
 
 ## Slots in world.gdshader's crown_clear array.
 const SLOTS := 6
@@ -23,6 +24,7 @@ const LIFT := 0.85
 const SWAY_MIN := 0.25
 
 var _mat: ShaderMaterial
+var _leaf: ShaderMaterial
 var _slots := PackedVector4Array()
 var _pos: Array[Vector2] = []
 var _hostile := PackedByteArray()
@@ -33,8 +35,11 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	_slots.resize(SLOTS)
 	_mat = g.view.world_material() if g.view != null else null
+	_leaf = g.view.leaf_material() if g.view != null else null
 	if _mat != null:
 		_mat.set_shader_parameter("crown_clear", _slots)
+	if _leaf != null:
+		_leaf.set_shader_parameter("crown_clear", _slots)
 
 
 func _process(_delta: float) -> void:
@@ -63,6 +68,8 @@ func _process(_delta: float) -> void:
 	fill(_slots, here, choose(_pos, _hostile, _aware, here, SLOTS - 1),
 		func(p: Vector2) -> float: return game.view.surface_height(p))
 	_mat.set_shader_parameter("crown_clear", _slots)
+	if _leaf != null:
+		_leaf.set_shader_parameter("crown_clear", _slots)
 
 
 ## Which bodies get a clearing when more are near than there are slots. The

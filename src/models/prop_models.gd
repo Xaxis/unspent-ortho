@@ -42,11 +42,19 @@ class Template:
 	var found_v := PackedVector3Array()
 	var found_n := PackedVector3Array()
 	var found_c := PackedColorArray()
+	## LEAVES (props/kit.gd `canopy`): cards drawn by leaf.gdshader, double-sided
+	## and cut to a sprig. UV is the card's own coordinates, not a hand.
+	var leaf_v := PackedVector3Array()
+	var leaf_n := PackedVector3Array()
+	var leaf_c := PackedColorArray()
+	var leaf_uv := PackedVector2Array()
+	var leaf_uv2 := PackedVector2Array()
 
 
 static var _templates: Dictionary = {}
 static var _meshes: Dictionary = {}
 static var _found_mat: ShaderMaterial
+static var _leaf_mat: ShaderMaterial
 
 
 static func variants(kind: int) -> int:
@@ -160,7 +168,7 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Salt.build(k, kind, variant, country)
 		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
 			Scrap.build(k, kind, variant, country)
-	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0:
+	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
 	if worked < WHOLE:
@@ -181,6 +189,11 @@ static func _extract(k: Kit) -> Template:
 	t.found_v = k.found.verts
 	t.found_n = k.found.normals
 	t.found_c = k.found.colors
+	t.leaf_v = k.leaf.verts
+	t.leaf_n = k.leaf.normals
+	t.leaf_c = k.leaf.colors
+	t.leaf_uv = k.leaf.uvs
+	t.leaf_uv2 = k.leaf.uv2s
 	return t
 
 
@@ -189,6 +202,47 @@ static func found_material() -> ShaderMaterial:
 		_found_mat = ShaderMaterial.new()
 		_found_mat.shader = preload("res://src/render/found.gdshader")
 	return _found_mat
+
+
+## The material every leaf card is drawn with, outside a running world: the
+## gallery, a node on its own, a tree falling. A running world hands its chunks
+## WorldView's own copy, because 18_crowns writes the clearings into that one.
+static func leaf_material() -> ShaderMaterial:
+	if _leaf_mat == null:
+		_leaf_mat = ShaderMaterial.new()
+		_leaf_mat.shader = preload("res://src/render/foliage/leaf.gdshader")
+	return _leaf_mat
+
+
+## A model's leaf cards as one surface's arrays, or [] when it has none.
+static func leaf_arrays(t: Template) -> Array:
+	if t.leaf_v.is_empty():
+		return []
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = t.leaf_v
+	arrays[Mesh.ARRAY_NORMAL] = t.leaf_n
+	arrays[Mesh.ARRAY_COLOR] = t.leaf_c
+	arrays[Mesh.ARRAY_TEX_UV] = t.leaf_uv
+	arrays[Mesh.ARRAY_TEX_UV2] = t.leaf_uv2
+	return arrays
+
+
+## A model's leaves as a node carrying leaf.gdshader, or null when it has none.
+## For whatever shows one prop outside the chunk bake and gives the rest of it a
+## material_override, which a card must never take: world.gdshader would draw a
+## sprig as the square it is cut from.
+static func leaf_node(kind: int, variant: int = 0, country: int = Country.COAST) -> MeshInstance3D:
+	var arrays := leaf_arrays(template(kind, variant, country))
+	if arrays.is_empty():
+		return null
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.name = "leaf"
+	mi.mesh = mesh
+	mi.material_override = leaf_material()
+	return mi
 
 
 static func made_mesh(t: Template) -> ArrayMesh:
@@ -348,9 +402,9 @@ static func found_surface(kind: int) -> int:
 	return 0 if t.made_v.is_empty() else 1
 
 
-## Both parts of a model as nodes: the MADE part takes whatever material its
+## Every part of a model as nodes: the MADE part takes whatever material its
 ## parent gives (the gallery and WorldView give world.gdshader), the FOUND part
-## carries found.gdshader.
+## carries found.gdshader, and the leaves (when it has any) leaf.gdshader.
 static func node(kind: int, variant: int = 0, country: int = Country.COAST) -> Node3D:
 	var t := template(kind, variant, country)
 	var root := MeshInstance3D.new()
@@ -361,6 +415,9 @@ static func node(kind: int, variant: int = 0, country: int = Country.COAST) -> N
 		f.mesh = found_mesh(t)
 		f.material_override = found_material()
 		root.add_child(f)
+	var leaves := leaf_node(kind, variant, country)
+	if leaves != null:
+		root.add_child(leaves)
 	return root
 
 
