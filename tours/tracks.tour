@@ -1,0 +1,55 @@
+# Tracks (owner 2026-09-17): "depending on terrain foot and track prints should be
+# left behind player". Boots walked across the grounds that keep a print, the
+# growth that only bends, and a run through snow. Every ground is found by name: a
+# landscape first, then the ground in it (sand is walked in
+# tests/tracks/test_tracks_in_game.gd: this island's shore is too narrow a strip for
+# a tour to stand on).
+#
+#   tools/tour.sh tours/tracks.tour --seed=1 --hour=10 --weather=clear:0
+coast calm
+zoom 6
+place snowfield
+ground snow
+wait 0.8
+walk 1,0 1.6
+wait 0.4
+await tracks:snow 3
+shot 01-boot-prints-in-snow with tracks:snow
+zoom 3
+wait 0.6
+shot 02-the-snow-prints-close with tracks:snow
+zoom 6
+place burning
+ground ash
+wait 0.8
+walk 0,-1 1.6
+wait 0.4
+await tracks:ash 3
+shot 03-prints-in-ash with tracks:ash
+place moss-bonelands
+ground mud,peat
+wait 0.8
+walk 0,1 1.6
+wait 0.4
+await tracks:foot 3
+shot 04-prints-in-the-peat with tracks:mud|tracks:peat
+place salt_flats
+ground salt
+wait 0.8
+walk -1,0 1.6
+wait 0.4
+await tracks:salt 3
+shot 05-prints-on-the-salt with tracks:salt
+place spawn
+ground grass
+wait 0.8
+walk -1,0 1.6
+wait 0.4
+await tracks:flatten 3
+shot 06-grass-bent-down-behind with tracks:flatten
+# Nine world hours on: every print of the day worn away or filled in, even the
+# peat's, which holds a print eight hours and not a minute more.
+hour 19
+until no_tracks 4
+wait 0.4
+shot 07-by-evening-nothing-left-of-them with no_tracks
