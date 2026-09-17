@@ -81,8 +81,8 @@ func _ready() -> void:
 ##
 ## A session a person means to play undoes all three here: the window comes back
 ## to the middle of their screen, takes the keyboard, and keeps its sound. That
-## is a run with no tool arguments at all, or one that says so with
-## UNSPENT_KEEP_FOCUS=1.
+## is a run with no tool arguments at all, one that says so with
+## UNSPENT_KEEP_FOCUS=1, or any page in a browser.
 ## What the person at this keyboard has set, before anything is drawn or heard
 ## (src/settings/). A tool run reads them too — a shot of the settings page has
 ## to show the same page a player sees — but the window rows and the master mute
@@ -129,6 +129,21 @@ func _take_focus_if_a_person_is_playing() -> void:
 
 
 func _a_person_is_playing() -> bool:
+	# A page in a browser is always somebody playing. "Has arguments" means a tool
+	# run only for the Godot binary on this machine; on the web the arguments are
+	# the address, and the shell lets through only what a visitor may pass
+	# (--seed, --scene, --probe; never --shot or --tour). Reading them as a tool
+	# run muted the master bus for anyone who opened a seed link, and for every
+	# page tools/web.sh loads. The harness's browser is kept quiet by the browser
+	# (Playwright's headless Chromium runs with --mute-audio), not by the game.
+	if OS.has_feature("web"):
+		return true
+	# An exported build is somebody's copy of the game, however it was launched: the
+	# commit that brought the mute in said this scheme must never touch one, and on
+	# the web it did. Only a shot or a tour is still a tool run here, so a build a
+	# tool proves stays quiet and a player who passes `--args -- --seed=3` hears it.
+	if OS.has_feature("template") and options.shot == "" and options.tour == "":
+		return true
 	if OS.get_environment("UNSPENT_KEEP_FOCUS") == "1":
 		return true
 	if options.shot != "" or options.tour != "":

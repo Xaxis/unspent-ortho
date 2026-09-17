@@ -15,6 +15,11 @@ var solid: float
 ## sets it where the ARRANGEMENT matters and chance is not good enough: a village
 ## deals its houses one variant each so no two silhouettes in it repeat.
 var variant := -1
+## How much of it is still there, 1 whole down to 0 (Harvest.shown). Taking from a
+## thing that the taking CONSUMES works it down: the drawing reads this, and so
+## does what stops a body. Not saved — `SaveCore` puts the takes back and the rule
+## works it out again.
+var shown := 1.0
 
 
 func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float) -> void:

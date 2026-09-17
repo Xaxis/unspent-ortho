@@ -1478,6 +1478,13 @@ void fragment() {
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
 	float takes = (m >= 40 && m <= 70) ? 0.14 : 0.85;
+	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
+	// somebody is quarrying) has had almost nothing settle on it. The wear map
+	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
+	// it is made. Almost, not nothing: dust falls on a broken face within the
+	// hour, and a face that takes literally none of its land reads as cut out of
+	// the picture rather than out of the rock.
+	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 
 	ALBEDO = matter_albedo(c);

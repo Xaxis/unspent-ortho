@@ -423,7 +423,11 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	for p: WorldProp in props:
 		var variant := PropModels.variant_of(p, world.seed_value)
 		var country := prop_country(p, ch)
-		var tpl := PropModels.template(p.kind, variant, country)
+		# What a thing the taking has worked on is DRAWN as: the same thing with a
+		# piece off it and a fresh face where the tool went (`Broken`), quantised
+		# to the five steps a template is cached in. `shown` is 1.0 on anything
+		# nobody has touched, so an untouched world bakes exactly as it always did.
+		var tpl := PropModels.template(p.kind, variant, country, Broken.bucket(p.shown))
 		var h := _height(ch, m, p.pos)
 		var facing := p.rot
 		if PropModels.Trees.wind_bent(p.kind, country):

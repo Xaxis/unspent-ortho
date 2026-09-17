@@ -120,18 +120,29 @@ static var _lock := Mutex.new()
 const MAX_VARIANTS := 16
 
 
-static func template(kind: int, variant: int = 0, country: int = Country.COAST) -> Template:
-	var key := (kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+## `worked` is how far the taking has got through it (Broken.BUCKETS steps, the
+## last whole): a thing being quarried is a template of its own at each step, so a
+## rock worked twice is built twice and cached, not cut every frame it is drawn.
+static func template(kind: int, variant: int = 0, country: int = Country.COAST, worked: int = WHOLE) -> Template:
+	var key := _key(kind, variant, country, worked)
 	_lock.lock()
 	var t: Template = _templates.get(key)
 	if t == null:
-		t = _extract(build_kit(kind, variant, country))
+		t = _extract(build_kit(kind, variant, country, worked))
 		_templates[key] = t
 	_lock.unlock()
 	return t
 
 
-static func build_kit(kind: int, variant: int, country: int) -> Kit:
+## A thing nothing has been taken from.
+const WHOLE := Broken.BUCKETS - 1
+
+
+static func _key(kind: int, variant: int, country: int, worked: int) -> int:
+	return ((kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country) * Broken.BUCKETS + clampi(worked, 0, WHOLE)
+
+
+static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE) -> Kit:
 	var k := Kit.new()
 	variant = clampi(variant, 0, variants(kind) - 1)
 	match kind:
@@ -160,6 +171,11 @@ static func build_kit(kind: int, variant: int, country: int) -> Kit:
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
+	if worked < WHOLE:
+		# Worked down, not shrunk: the same thing with a piece off it.
+		var share := Broken.share_of(worked)
+		Broken.work_down(k.made, share, kind * 131 + variant)
+		Broken.work_down(k.found, share, kind * 131 + variant + 7)
 	return k
 
 
@@ -353,7 +369,7 @@ static var _neon: Dictionary = {}
 static func neon_point(kind: int, variant: int, country: int) -> Dictionary:
 	# Cached: the lights ask this for every house in the world, and reading a
 	# model's marks means walking a few thousand vertices.
-	var key := (kind * MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+	var key := _key(kind, variant, country, WHOLE)
 	_lock.lock()
 	var hit: Variant = _neon.get(key)
 	_lock.unlock()

@@ -127,6 +127,7 @@ vec4 matter_of(int m) {
 	else if (m == 55) { r = vec4(0.70, 0.54, 0.016, 0.0); }   // SALT: crystalline
 	else if (m == 56) { r = vec4(0.50, 0.66, 0.012, 0.22); }  // SWARF: metal filings
 	else if (m == 57) { r = vec4(0.86, 0.30, 0.008, 0.0); }   // PAN: dry silt
+	else if (m == 58) { r = vec4(0.90, 0.28, 0.010, 0.0); }   // FRESH: broken open, so dusty and dead matte -- a glossy fracture reads as ice
 	else if (m >= 60 && m <= 70) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	return r;
 }

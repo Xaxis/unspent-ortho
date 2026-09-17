@@ -11,7 +11,7 @@ class_name Harvest
 ##
 ##   Harvest.target(game) -> {prop, state, verb, item, tool}    or {} with nothing in reach
 ##   Harvest.shown(game, prop) -> float                          0..1 of it still standing
-##   Harvest.apply_shown(game, prop) -> bool                     size the prop to it; true if it changed
+##   Harvest.apply_shown(game, prop) -> bool                     write it on the prop; true if it changed
 ##
 ## States, in the words a player would use:
 ##   WORKABLE     the key works it now, with what is in hand
@@ -89,18 +89,13 @@ static func shown(game: Game, prop: WorldProp) -> float:
 	return 1.0 - gone
 
 
-## INTERIM, and it says so on purpose: a thing half taken is drawn as a SMALLER
-## thing, because scale is the one lever the world view already has and it needs
-## no render change. It is not the look. Under the lit world (docs/LOOK.md) a
-## half-broken boulder keeps its silhouette minus a piece, with fresh unweathered
-## faces where the hammer went — that is the form/lit wave's to build, and when it
-## lands this shrink is to be replaced, not preserved as an art choice. What stays
-## is `shown`: how much of the thing is left, which any drawing of it reads.
-##
-## Size `prop` to what is left of it: its drawn scale and its solid footprint both,
-## so a half-broken rock stops a body where it is drawn. Its size before any
-## taking is remembered on first use and put back when it grows back. Returns true
-## when anything changed (the caller refreshes the view).
+## Size `prop` to what is left of it: the share is written on the prop, and the
+## world view bakes it as a thing WORKED DOWN (`Broken`) — the same thing with a
+## piece off it and a fresh face where the hammer went, not a smaller copy of
+## itself. The footprint follows what is left, so a half-broken rock stops a body
+## where it is drawn. Its size before any taking is remembered on first use and put
+## back when it grows back. Returns true when anything changed (the caller
+## refreshes the view).
 static func apply_shown(game: Game, prop: WorldProp) -> bool:
 	if game == null or prop == null:
 		return false
@@ -111,23 +106,24 @@ static func apply_shown(game: Game, prop: WorldProp) -> bool:
 			return false
 		var base: Vector2 = state.base_size[prop.id]
 		state.base_size.erase(prop.id)
-		var changed := not is_equal_approx(prop.scale, base.x) or not is_equal_approx(prop.solid, base.y)
+		var changed := not is_equal_approx(prop.solid, base.y) or not is_equal_approx(prop.shown, 1.0)
 		prop.scale = base.x
 		prop.solid = base.y
+		prop.shown = 1.0
 		return changed
 	if not state.base_size.has(prop.id):
 		state.base_size[prop.id] = Vector2(prop.scale, prop.solid)
 	var b: Vector2 = state.base_size[prop.id]
-	var k := size_for(share)
-	var was := prop.scale
-	prop.scale = b.x * k
-	prop.solid = b.y * k
-	return not is_equal_approx(was, prop.scale)
+	var was := prop.shown
+	prop.shown = share
+	# What is left stands where it stood: a rock worked down keeps most of its
+	# footprint until the last go takes it away.
+	prop.solid = b.y * lerpf(size_for(share), 1.0, 0.5)
+	return not is_equal_approx(was, prop.shown)
 
 
-## How big a thing is drawn with `share` of it left: its footprint, not its height,
-## is what the camera above it reads, so the AREA follows what is left (the square
-## root of the share in each direction). Straight scaling drew a seam with a third
-## still in it as a pebble.
+## How wide what is left is, as a share of what it was: the square root, because a
+## footprint is an area. The DRAWING works a thing down rather than in (`Broken`);
+## this is only what the footprint it still stops a body with is measured against.
 static func size_for(share: float) -> float:
 	return maxf(SHOWN_LEAST, sqrt(clampf(share, 0.0, 1.0)))

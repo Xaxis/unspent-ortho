@@ -13,12 +13,15 @@ extends GameSystem
 ##                  nothing else, so either can be thrown away and redrawn
 ##
 ## A tour answers with `harvest_target`, `harvest_target:STATE` (Harvest's states),
-## `picked_up`, `picked_up:ITEM` and `shrunk` (something half taken stands smaller).
+## `picked_up`, `picked_up:ITEM` and `worked_down` (something half taken stands with a
+## piece off it: `Broken`).
 
 var mark: UiHarvestMark
 var feed: UiPickupFeed
 var _picked: Dictionary = {}
-## Model height per kind|variant|country, measured once.
+## Model height per kind|variant|country|worked step, measured once: a thing worked
+## down is a shorter model, and the mark has to sit on what is drawn, not on what
+## the thing was before the first go.
 static var _tall: Dictionary = {}
 
 
@@ -90,16 +93,16 @@ static func place(game: Game, p: WorldProp) -> Dictionary:
 	var base := game.world.to_3d(p.pos)
 	var variant := PropModels.variant_of(p, game.world.seed_value)
 	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
-	var tall := _model_height(p.kind, variant, country) * p.scale
+	var tall := _model_height(p.kind, variant, country, Broken.bucket(p.shown)) * p.scale
 	var radius := maxf(p.solid, 0.35 * p.scale)
 	return {"base": base, "height": maxf(0.25, tall), "radius": radius}
 
 
-static func _model_height(kind: int, variant: int, country: int) -> float:
-	var key := "%d|%d|%d" % [kind, variant, country]
+static func _model_height(kind: int, variant: int, country: int, worked: int) -> float:
+	var key := "%d|%d|%d|%d" % [kind, variant, country, worked]
 	if _tall.has(key):
 		return float(_tall[key])
-	var tpl := PropModels.template(kind, variant, country)
+	var tpl := PropModels.template(kind, variant, country, worked)
 	var top := 0.0
 	for v: Vector3 in tpl.made_v:
 		top = maxf(top, v.y)
@@ -122,6 +125,6 @@ func tour_seen(what: StringName) -> bool:
 			return not mark.target.is_empty()
 		&"picked_up":
 			return _picked.has(&"")
-		&"shrunk":
+		&"worked_down":
 			return not SurvivalState.of(game).base_size.is_empty()
 	return false
