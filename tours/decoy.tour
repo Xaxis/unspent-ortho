@@ -21,7 +21,7 @@ shot 01-a-holding-worth-reading with holding, piece:radio_mast, land:coast
 # Out past the last roof, because in the yard a decoy is the yard. The holding
 # key closes the page whether the slate took the piece or refused it, so a try
 # that was not far enough out walks on with its hands free.
-try 5
+try 6
   walk 1,0 2.2
   tap holding
   await app:holding 4
@@ -48,10 +48,14 @@ wait 0.6
 # A clerk crosses the ground and reads the pole rather than the place. From this
 # moment the record is a thing in the world, and it is a thing AT THE POLE: this
 # is the ground it has to be caught on now, and the fence is the wrong ground.
-spawn clerk
-await lured 14
-wait 0.4
-shot 04-a-clerk-reads-the-decoy with mob:clerk, lure
+# One that reads it and leaves along the survey line is gone from the frame in a
+# second, so the shutter falls on the reading itself and another clerk is sent if
+# the first outwalked it.
+try 4
+  spawn clerk
+  await lured 14
+  shot 04-a-clerk-reads-the-decoy with mob:clerk, lure
+end
 # Let it go. What gets home is an account of a pole in a field — a quarter of
 # what an account of the place is worth (Attention.LURED) — and the world says
 # so on the glass.
