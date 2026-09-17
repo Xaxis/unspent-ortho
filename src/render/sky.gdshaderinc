@@ -95,6 +95,11 @@ global uniform sampler2D sky_wear;
 // (Compatibility). Measured, both; matter.gdshaderinc says what it is for.
 // Written once at boot by SkyLight from Quality.forward_plus().
 global uniform float sky_linear;
+// What a surface's own light (EMISSION, through matter_light) is multiplied by:
+// 1 on Forward+, and CompatTrim's `emission` on Compatibility, whose pass for a
+// casting sun lights a surface's emission a second time (measured: `perf
+// sunpath`, src/render/degrade/render_probe.gd). SkyLight writes it every frame.
+global uniform float sky_emission;
 
 // --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
 // The grade every lit wash passes through last: x darkness 0..1, y desaturation

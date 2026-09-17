@@ -108,3 +108,31 @@ func test_the_source_rate_is_rare() -> void:
 func test_cull_past_24() -> void:
 	check(not Spawner.should_cull(Vector2(24, 0), Vector2.ZERO))
 	check(Spawner.should_cull(Vector2(24.5, 3), Vector2.ZERO))
+
+
+## A staging token, which boot's `--spawn`, the tour's `spawn` and the test that
+## holds tours to their claims all read through one door so they cannot drift.
+func test_a_staged_token_may_carry_a_bearing() -> void:
+	var plain := Spawner.staged("runner")
+	eq(plain.id, Roster.resolve("runner"), "a bare token is just the kind")
+	check(is_nan(plain.facing), "and asks for no bearing, so it faces the player")
+	eq(Spawner.staged("  runner  ").id, Roster.resolve("runner"), "spaces around it are nothing")
+	var turned := Spawner.staged("runner@-112")
+	eq(turned.id, Roster.resolve("runner"), "a bearing does not hide the kind")
+	near(turned.facing, deg_to_rad(-112.0), 1e-6, "degrees in, radians out")
+	near(Spawner.staged("sweeper@-45").facing, deg_to_rad(-45.0), 1e-6)
+	near(Spawner.staged("runner@0").facing, 0.0, 1e-6, "zero is a bearing, not an absence")
+	eq(Spawner.staged("nothing_by_that_name").id, &"", "an unknown kind is empty, and every reader fails on it")
+
+
+## The one arithmetic anybody will get wrong. `tests/models/test_machines_silhouette.gd`
+## turns a model by `Basis(UP, yaw)` and rasterises it through the GAME camera's
+## own basis, and a body in the world is drawn at `rotation.y = -facing`
+## (`src/actors/mob.gd`), so reproducing a measured yaw is `facing = -yaw` and
+## nothing else — no correction for where the camera stands, because the test is
+## already looking down it. A sign error here is a frame labelled "the worst
+## bearing" that is of a different one.
+func test_a_measured_yaw_is_reproduced_by_its_negation() -> void:
+	for yaw: float in [0.6, 0.79, 1.96, 2.3]:
+		var token := "runner@%.4f" % -rad_to_deg(yaw)
+		near(-Spawner.staged(token).facing, yaw, 1e-4, "yaw %.2f is asked for as %s" % [yaw, token])

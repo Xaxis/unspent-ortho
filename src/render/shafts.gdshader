@@ -21,9 +21,18 @@ render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_
 #include "res://src/render/ink.gdshaderinc"
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
-uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 // Shafts from the glint list's lights in fog and rain.
 uniform float shaft_strength = 0.9;
+// The near focus, where the tier has no depth of field of its own (Quality
+// `near_stand_in`, CameraRig.near_plane): view depth where the blur begins
+// (negative = off), the depth over which it comes to full, and the radius of
+// full blur as a share of the frame's height.
+uniform float near_begin = -1.0;
+uniform float near_ramp = 4.5;
+uniform float near_reach = 0.015;
+// Taps of the near blur, on a golden-angle spiral so twelve read as a disc.
+const int NEAR_TAPS = 12;
 
 // A light's shafts at this pixel: a few thin rays falling from it, fanned no
 // more than SHAFT_FAN either side of straight down (light falls; it never
@@ -92,6 +101,26 @@ void fragment() {
 	vec4 vp = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	vec3 wp = (INV_VIEW_MATRIX * vec4(vp.xyz / vp.w, 1.0)).xyz;
 	vec2 wpx = sky_px(wp);
+	// Nothing this pass does touches a pixel unless it writes one. Writing the
+	// frame back where nothing changed is not free on Compatibility: measured, it
+	// lifted a clear noon on the web by 4.3 luma (`perf features`), and there is
+	// no shaft at a clear noon to pay for it.
+	bool touched = false;
+	// The near blur, before the shafts, so a shaft falls sharp through it.
+	if (near_begin > 0.0 && d < near_begin) {
+		float nb = clamp((near_begin - d) / max(near_ramp, 0.001), 0.0, 1.0);
+		if (nb > 0.001) {
+			vec2 radius = vec2(VIEWPORT_SIZE.y / VIEWPORT_SIZE.x, 1.0) * near_reach * nb;
+			vec3 acc = outc;
+			for (int i = 0; i < NEAR_TAPS; i++) {
+				float ang = float(i) * 2.39996;
+				float rr = sqrt((float(i) + 0.5) / float(NEAR_TAPS));
+				acc += texture(screen_tex, SCREEN_UV + vec2(cos(ang), sin(ang)) * rr * radius).rgb;
+			}
+			outc = acc / float(NEAR_TAPS + 1);
+			touched = true;
+		}
+	}
 	// Shafts: the air that carries them is fog, rain and haze.
 	float air = clamp(sky_fog.z * 1.1 + sky_air.x * 0.45 + sky_air.w * 0.3, 0.0, 1.0);
 	if (air > 0.05) {
@@ -132,9 +161,13 @@ void fragment() {
 				float gdepth = max(linear_depth(guv, INV_PROJECTION_MATRIX), max(linear_depth(guv + vec2(px.x, 0.0), INV_PROJECTION_MATRIX), linear_depth(guv - vec2(px.x, 0.0), INV_PROJECTION_MATRIX)));
 				if (gdepth >= ldepth - 0.5) {
 					outc = mix(outc, max(outc, rgb[i].rgb), 0.6);
+					touched = true;
 				}
 			}
 		}
+	}
+	if (!touched) {
+		discard;
 	}
 	ALBEDO = outc;
 }

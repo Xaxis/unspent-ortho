@@ -42,7 +42,24 @@ extends RefCounted
 ##                              units from the eye genuinely out of focus.
 ##                              Forward+ only, and the one thing in this package
 ##                              that costs a real screen pass
+##   near_stand_in  bool        where `near_focus` is off, the screen-space pass the
+##                              tier already runs (shafts.gdshader) blurs what is
+##                              nearer than the same focal plane. Compatibility has
+##                              no depth of field (measured: switching it on does not
+##                              move the frame), and a bough over the web frame was
+##                              the sharpest, most faceted thing in the picture
 ##   volumetric     bool        real volumetric fog (Forward+ only)
+##   air_stand_in   float       where `volumetric` is off, how much of a landscape's
+##                              volumetric bank (Air.ROWS.bank) the DEPTH fog takes
+##                              over: density x (1 + this x (bank - 1)). The bog's
+##                              and the Burning's air is thick and the salt's thin,
+##                              and on the desktop the volumetrics are what say so;
+##                              without them every landscape stood in one air.
+##                              Measured, not chosen: fitted against the desktop's
+##                              own frames the web's fog wanted 1.5 in the moss,
+##                              1.25 in the Burning and 0.5 on the bonelands, which
+##                              is its bank with this slope (docs/LOOK.md's
+##                              "depth fog for volumetrics")
 ##   ssao           bool        screen-space ambient occlusion (Forward+ only)
 ##   ssil           bool        screen-space indirect light (Forward+ only)
 ##   forward_only   bool        the tier asks for things Compatibility cannot do,
@@ -69,40 +86,40 @@ const ROWS: Array[Dictionary] = [
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
 		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16,
-		"fore": 28, "near_focus": true,
-		"volumetric": true, "ssao": true, "ssil": true, "forward_only": true,
+		"fore": 28, "near_focus": true, "near_stand_in": false,
+		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
 		"id": &"high", "label": "high",
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8,
-		"fore": 20, "near_focus": true,
-		"volumetric": true, "ssao": true, "ssil": false, "forward_only": true,
+		"fore": 20, "near_focus": true, "near_stand_in": false,
+		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": true,
 	},
 	{
 		"id": &"medium", "label": "medium",
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4,
-		"fore": 14, "near_focus": false,
-		"volumetric": true, "ssao": true, "ssil": false, "forward_only": false,
+		"fore": 14, "near_focus": false, "near_stand_in": false,
+		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": false,
 	},
 	{
 		"id": &"low", "label": "low",
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2,
-		"fore": 9, "near_focus": false,
-		"volumetric": false, "ssao": false, "ssil": false, "forward_only": false,
+		"fore": 9, "near_focus": false, "near_stand_in": false,
+		"volumetric": false, "air_stand_in": 0.0, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
 		"id": &"web", "label": "web",
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0,
-		"fore": 7, "near_focus": false,
-		"volumetric": false, "ssao": false, "ssil": false, "forward_only": false,
+		"fore": 7, "near_focus": false, "near_stand_in": true,
+		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 ]
 

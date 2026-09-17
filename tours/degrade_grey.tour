@@ -1,0 +1,24 @@
+# The canon is all clear sky, so it only ever shows the web a sun that casts. An
+# overcast takes the sun's shadow away (WeatherLook.OVERCAST over 0.6), and on
+# Compatibility that is a different pass with its own count-back (CompatTrim's
+# OPEN rows). These are the frames that fit and prove them, desktop and web alike:
+#   tools/tour.sh tours/degrade_grey.tour --seed=7
+#   tools/web.sh --no-export --quick --tour=tours/degrade_grey.tour --args=--seed=7
+weather grey:1
+place spawn
+hour 12
+wait 0.8
+shot g1-spawn-grey-noon with land:coast
+place moss
+wait 0.8
+shot g2-moss-grey with land:moss
+place snowfield
+wait 0.8
+shot g3-snowfield-grey with land:snowfield
+place spawn
+hour 23
+wait 0.8
+shot g4-spawn-grey-night
+tap lamp
+wait 0.4
+shot g5-grey-night-lamp with lamp

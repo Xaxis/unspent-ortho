@@ -155,7 +155,10 @@ func test_a_spawn_is_always_followed_by_a_frame_that_claims_it() -> void:
 			if parts.is_empty() or parts[0].begins_with("#"):
 				continue
 			if parts[0] == "spawn" and parts.size() > 1:
-				var id := Roster.resolve(parts[1])
+				# Through the same door the tour and boot read it by, so a token
+				# that carries a bearing (`runner@-112`) is still held to naming
+				# a kind the roster has.
+				var id: StringName = Spawner.staged(parts[1]).id
 				check(id != &"", "%s line %d: the roster has no %s" % [f, n, parts[1]])
 				if not owed.has(String(id)):
 					owed.append(String(id))

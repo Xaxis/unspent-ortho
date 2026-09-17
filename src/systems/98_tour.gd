@@ -89,6 +89,10 @@ extends GameSystem
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
 ##                          shown and hidden in turn (foliage_perf.gd)
+##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
+##   perf features NAME     every expensive thing the frame has, off and on, world held
+##                          still: which ones this renderer really draws (render_probe.gd)
+##   perf scale LIST SECS   frame cost at each render scale in LIST (render_probe.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -98,12 +102,16 @@ extends GameSystem
 ##                          row ID is chosen; fails if it never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
 ##                          (so a scripted stretch is not a random fight); wild: resume
-##   spawn KIND             put a roster body (e.g. runner, harvester) in view in
+##   spawn KIND[@DEG]       put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot; fails the
 ##                          tour when the roster has no such kind, when nothing was
 ##                          placed, or when what was placed landed outside the frame
 ##                          the camera is actually showing (which is the whole of
-##                          what `in view` means to the frame that follows)
+##                          what `in view` means to the frame that follows).
+##                          `@DEG` turns it to a bearing instead of facing the
+##                          player, for a frame about the MODEL rather than the
+##                          fight; a yaw out of test_machines_silhouette.gd is
+##                          `@-yaw` (Spawner.staged says why)
 ##   try N ... end          run the lines between up to N times until they all
 ##                          succeed (a player who misses a blow tries again)
 ##   stale SLOT [WAY]       age a save this tour has already written into one from
@@ -376,7 +384,7 @@ func _run() -> void:
 			"until":
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
-				ok = await _spawn(StringName(parts[1]))
+				ok = await _spawn(parts[1])
 			"choose":
 				ok = await _choose(StringName(parts[1]))
 			"coast":
@@ -391,6 +399,8 @@ func _run() -> void:
 					ok = await ForePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "foliage":
 					ok = await FoliagePerf.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:
+					ok = await RenderProbe.run(self, game, parts)
 				else:
 					ok = await TourPeople.perf(self, game, parts)
 			"stale":
@@ -469,7 +479,9 @@ static func machine_slack() -> float:
 		var f := FileAccess.open("/proc/loadavg", FileAccess.READ)
 		if f != null:
 			load = float(f.get_line().split(" ")[0])
-	if load <= 0.0:
+	# A page cannot start a process (tools/web.sh --tour): it asks nothing, and
+	# the budgets stay as written.
+	if load <= 0.0 and not OS.has_feature("web"):
 		var out: Array = []
 		if OS.execute("sysctl", ["-n", "vm.loadavg"], out) == 0 and not out.is_empty():
 			# { 50.49 60.10 63.36 }
@@ -820,14 +832,16 @@ func _coast(calm: bool) -> bool:
 ## line is almost always a frame named after this body, so a spawn that quietly
 ## put nothing anywhere — or put it behind the camera — turns the tour into
 ## evidence of the opposite of what it claims (playtest wave A, finding 5).
-func _spawn(kind: StringName) -> bool:
+func _spawn(token: String) -> bool:
 	var mobs := _system("30_mobs")
 	if mobs == null or not mobs.has_method("place_near_player"):
-		printerr("tour %s: no 30_mobs to spawn a %s" % [_name, kind])
+		printerr("tour %s: no 30_mobs to spawn a %s" % [_name, token])
 		return false
-	var id := Roster.resolve(String(kind))
+	var staged := Spawner.staged(token)
+	var id: StringName = staged.id
+	var kind := token
 	if id == &"":
-		printerr("tour %s: the roster has no %s" % [_name, kind])
+		printerr("tour %s: the roster has no %s" % [_name, token])
 		return false
 	# The spawner scores where a body lands by what the camera shows, and it read
 	# the camera once, at setup. A tour that has zoomed since would have its body
@@ -835,7 +849,7 @@ func _spawn(kind: StringName) -> bool:
 	var spawner: Object = mobs.get("spawner")
 	if spawner != null and game.camera != null:
 		spawner.set("view_height", game.camera.view_height)
-	var placed: Variant = mobs.call("place_near_player", id)
+	var placed: Variant = mobs.call("place_near_player", id, staged.facing)
 	var m := placed as MobState
 	if m == null:
 		printerr("tour %s: nothing placed a %s near %s" % [_name, kind, game.player.pos])
@@ -1275,10 +1289,17 @@ func _drawn() -> bool:
 
 func _save_frame(label: String) -> void:
 	var img := get_viewport().get_texture().get_image()
+	# In a web build (tools/web.sh --tour) a file written here lands in the page's
+	# memory and nobody can open it, so the frame is handed to the page as a
+	# download and the harness keeps it. At the base's own size: the 2x below is
+	# nearest, so it holds nothing more, and encoding it in wasm costs seconds.
+	if OS.has_feature("web"):
+		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), label + ".png", "image/png")
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	_last_frame = img
 	var path := _out.path_join(label + ".png")
-	img.save_png(path)
+	if not OS.has_feature("web"):
+		img.save_png(path)
 	print("tour shot ", path)
 
 
