@@ -382,6 +382,15 @@ func tend(piece_id: int) -> String:
 		return "!That is gone."
 	if p.ruined:
 		return _clear_wreck(s, p)
+	# A piece switched by hand: a live one is switched off first — nobody puts
+	# their hands in a running gun — and one standing down is mended before it is
+	# switched on again.
+	if StructureKind.switched(p.kind):
+		if not p.off:
+			return _switch(s, p, false)
+		if p.condition() < MEND_BELOW:
+			return _mend(s, p)
+		return _switch(s, p, true)
 	# Hands before repairs. Everything standing is a shade less than whole within
 	# an hour of going up, and a plot that demanded to be tidied before anybody
 	# could be put on it would never be worked at all.
@@ -396,6 +405,47 @@ func tend(piece_id: int) -> String:
 		p.staffed_by = -1
 		return "Taken off the %s." % StructureKind.display_name(p.kind)
 	return "!It wants nothing."
+
+
+## What E will do to a piece, in the page's own words, so the key strip and the
+## press never disagree (UiSettlementScreen reads this).
+func verb_for(p: Structure) -> String:
+	if p == null:
+		return "-"
+	if p.ruined:
+		return "clear"
+	if StructureKind.switched(p.kind):
+		if not p.off:
+			return "stand down" if p.kind == StructureKind.TURRET else "switch off"
+		if p.condition() < MEND_BELOW:
+			return "mend"
+		return "arm" if p.kind == StructureKind.TURRET else "switch on"
+	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
+		return "work it"
+	if p.condition() < MEND_BELOW:
+		return "mend"
+	return "leave" if p.staffed_by >= 0 else "-"
+
+
+func _switch(s: Settlement, p: Structure, on: bool) -> String:
+	p.off = not on
+	Events.sfx.emit(&"piece_switch", game.world.to_3d(p.pos))
+	settle_up()
+	_sync_nodes()
+	var name := StructureKind.display_name(p.kind)
+	if p.kind == StructureKind.TURRET:
+		if not on:
+			return "Stood the turret down."
+		return "The turret is armed." if p.powered else "Armed, but there is no power to run it."
+	if not on:
+		return "Switched the %s off." % name
+	return "Switched the %s on." % name if p.powered else "Switched on, but there is no power to run it."
+
+
+## The drawing of a piece, for a system that moves part of it (a turret's head).
+func model_of(s: Settlement, p: Structure) -> StructureModel:
+	var node: StructureModel = _nodes.get(_key(s, p))
+	return node if node != null and is_instance_valid(node) else null
 
 
 func _mend(s: Settlement, p: Structure) -> String:
@@ -586,7 +636,9 @@ func settle_up() -> void:
 		var land := &""
 		if s.realm == realm_here() and game.world != null:
 			land = BiomeRegistry.at(game.world, s.centre).id
-		var report := SettlementRules.catch_up(s, now, {"seed": game.world.seed_value if game.world != null else 0, "land": land})
+		var ctx := {"seed": game.world.seed_value if game.world != null else 0, "land": land}
+		var report := SettlementRules.catch_up(s, now, ctx)
+		SettlementRules.wire_now(s, now, ctx)
 		_announce(s, report)
 	_note_health()
 
@@ -815,8 +867,8 @@ func _lit(s: Settlement, p: Structure) -> bool:
 	match p.kind:
 		StructureKind.BATTERY_STACK:
 			return s.charge > 0.05
-		StructureKind.RADIO_MAST, StructureKind.SPOOFER:
-			return p.powered
+		StructureKind.RADIO_MAST, StructureKind.SPOOFER, StructureKind.TURRET:
+			return p.powered and not p.off
 	return false
 
 

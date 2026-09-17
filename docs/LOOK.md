@@ -1,72 +1,111 @@
-# UNSPENT — the look, and how we are going to find it
+# UNSPENT — the look: LANTERN
 
-(owner, 2026-09-16) *"I'm not happy with the overall look of the entire world...
-we need to rework the overall unique look and feel of this game and its holistic
-production. Implement the most advanced shaders, dynamic lighting, and effects as
-configurable options (in developer mode perhaps). We want to explore various
-rendering options for the final thematic look and feel of the game."*
+(owner, 2026-09-17, after seeing twelve directions rendered against the same
+eighteen places) *"Maybe a combination of grit + noir, but also kinda NONE of
+them. No matter what, things look papery — which is not unique. The resolution of
+everything is too low, the lights not dynamic enough, not enough embedded
+parallaxed layers. I want web to be the graceful degradation case: support the
+most advanced Godot features as long as there is a highly usable and beautiful
+degradation path that is ALMOST as good. Do another pass — but I want to see ONE
+right one, unique and amazing and compelling."*
 
-`docs/ART.md` says what the game should look like and stays binding. This says how
-we are going to go and find it, because the honest answer is that we do not yet
-know which combination gets there, and taste cannot be argued into existence — it
-has to be put side by side and looked at.
+That is a direction, and this document is it. There is no menu here.
 
-## What is actually limiting us today
+## Why twelve directions all felt papery
 
-1. **There is no screen-space pass at all.** Six shaders, every one of them
-   per-object (`world`, `found`, `outline`, `water`, `sky`, `ink`). Everything the
-   eye reads as "the look of a game" — grade, grain, bloom, halation, depth fog,
-   light shafts, vignette, dithering, chromatic aberration, a paper fibre over the
-   whole frame — lives in a full-screen pass that this project has never had. We
-   have been grading inside material shaders, which is why the frame reads flat and
-   uniform: every object grades itself and nothing grades the picture.
-2. **The renderer is `gl_compatibility`**, which is what makes the web build
-   possible. It gives us directional shadows and simple lights and denies us
-   volumetric fog, SSAO/SSIL, SDFGI, decals and light projectors.
-3. **The lighting is one sun and a list of glints.** `SkyLight` writes a global
-   tint once a frame and `15_lights` mirrors a few lights in wet ground. No light
-   in this game casts a shadow, and nothing a machine carries lights anything but
-   the ground directly under it.
+Because the paper was not a choice any of them made. Every one of them inherited a
+**640x360 buffer and a wash-and-ink pipeline**, so each was a variation *on a
+page*: change the ink, change the press, change the pigment, and it is still a
+page. The flatness the owner keeps naming is not a grading failure. It is the
+floor all twelve were standing on.
 
-## The fork, stated plainly
+So the floor goes.
 
-| | Compatibility (today) | Forward+ |
+## LANTERN, in one sentence
+
+**The world is lit, not drawn.** No ink, no wash, no hatch, no paper, no filter of
+any kind between the player and the place. Everything the eye reads is geometry,
+material and light, at a resolution that can hold detail, in a dark world where a
+light is a thing somebody is carrying.
+
+Three laws replace the six that governed the page.
+
+### 1. Matter is honest
+
+A surface is what it is made of, and what has happened to it. Wet slate, rusted
+plate, frozen mud, ash, salt crust, bog water, oiled steel, rotten timber, snow
+that has thawed once and refrozen. Wear accumulates **by world position**: a
+machine standing in a bog rusts along its underside, the same machine on a salt
+flat blooms white in its seams, the same machine in the Burning carries soot in
+its lee. The land tells you what it has been through by what it is made of, not by
+a mark drawn on top of it.
+
+### 2. Light is the author
+
+A real sun that casts, and dozens of local lights that cast: lamps, hearths,
+fires, vents, a machine's lens, a relay line, a window with someone behind it.
+Volumetric air, so light has shafts and glow and a lamp in rain is a cone. Bounce,
+so a fire warms the wall beside it. Wet ground that mirrors. **Night is genuinely
+dark**, which is what makes a lantern matter — and the lantern is the game's own
+title in miniature.
+
+The one thematic law inside this: **the machines' light is cold, exact, and
+ruled** — hard-edged, unwavering, aimed. **A person's light is warm, small, and
+unsteady** — it flickers, it gutters, it goes out. That contrast, at full
+volumetric fidelity, is the game's signature and no other game has it because no
+other game is about this.
+
+### 3. The world has thickness
+
+Not a flat plane seen from above: a place with layers. Things pass between the
+camera and the player; fog banks sit *between* planes of the world, not over all
+of it; rain and snow fall at several depths; distant land is separated by air
+rather than by a haze filter. The orthographic camera stays — it is the game's
+grammar — but what it looks at is deep.
+
+## What this costs, said before anyone is surprised
+
+1. **The resolution floor rises.** 640x360 goes. That is the change that makes the
+   other two possible, and it invalidates the hatch, the wash, the ink, the paper
+   and the whole style core — roughly every shader in `src/render/`.
+2. **The slate has to be rebuilt.** `src/ui/` is drawn at whole pixels on a
+   640x360 base. It stays a hacked tablet made of salvage — that identity is not
+   in question and the owner has ruled on it twice — but it must be drawn
+   resolution-independently.
+3. **The models are too coarse.** Budgets today are ~800 triangles for an animal,
+   ~1300 for a person, ~2000 for a machine, all chosen for a 640x360 target. Under
+   real light at real resolution they will read as faceted. Geometry budgets rise
+   and the procedural builders (`MeshKit`, `src/models/`) gain chamfers, greebles
+   and a level of detail they were never asked for.
+
+None of that is a reason not to do it. It is what "holistic re-imagining" means,
+and it is cheaper now than after twenty landscapes exist.
+
+## Web is the graceful degradation path
+
+**Forward+ is the target. `gl_compatibility` is the fallback, and it must be
+almost as good.** Not a different look — the same look, with the expensive parts
+approximated:
+
+| | desktop (Forward+) | web (Compatibility) |
 |---|---|---|
-| Web build at unspent.world | yes | **no** — web is Compatibility only |
-| Volumetric fog, light shafts | faked in a screen pass | real |
-| Real shadows from lamps, fires, machine lenses | no | yes |
-| SSAO / SSIL / SDFGI | no | yes |
-| Cost | none | a second look to tune, and the beta loses the browser |
+| sun shadow | real, soft, cascaded | real, one cascade, harder |
+| local lights | many, shadow-casting | fewer, the important ones, unshadowed |
+| volumetric air | true volumetrics | screen-space shafts and depth fog |
+| ambient occlusion | SSAO/SSIL | baked into vertex and material |
+| resolution | native | a step down, still well above 640x360 |
+| the feeling | — | **the same place, on a worse night** |
 
-A dual path is possible (Forward+ for the desktop build, Compatibility for the
-web) and the configuration system makes it expressible, but it is two looks to
-keep in agreement, and two is where drift starts.
+Degradation is expressed through the master-configuration system that already
+exists (`docs/DEV.md`), as quality tiers, so a build says which one it is and the
+web build proves itself in a browser every time.
 
-## How we choose: the look lab
+The test is not "does it run". The test is: **put the two side by side and the web
+one should look like the same game, not a diagram of it.**
 
-Not by argument. By putting them next to each other.
+## The bar
 
-1. **A screen-space stack**, every stage a switch and a number, none of them
-   hard-coded: grade and LUT, dither and palette quantisation, paper fibre, grain,
-   halation and bloom, depth fog, light shafts, vignette, aberration, edge ink.
-2. **Every stage configurable in dev mode**, as a `look` group in `ConfigSchema`
-   beside `world`, `rules` and `start` — so a look is a named file that can be
-   kept, sent, played and put in a build, exactly as a master configuration is.
-3. **Named looks**: `plate` (the ink-and-wash notebook we have), and however many
-   candidates the exploration produces, each a configuration anyone can boot into.
-4. **The canon is the comparison harness.** `tools/canon.sh` already renders the
-   same 18 frames every time. The same 18 frames under each candidate look, on one
-   contact sheet, is the artefact the decision gets made from — and the owner
-   decides, because this is taste and taste is his.
-
-## The rule that governs all of it
-
-ART.md's six laws do not bend for a new effect. Bloom that makes the machines
-glow like a phone game, ambient occlusion that turns the hand-drawn ground muddy,
-or a grade that drowns the landscapes in one colour are all failures however
-advanced the technique. The test is the one the art reviews already use: does the
-frame look like a page someone made, and does each landscape still look like
-itself?
-
-The bar to beat is the frames the last review named: the snowfield, the moss, the
-neon shack at night, and the village at dusk.
+The four frames the reviews named — the snowfield, the moss bog with its ruled
+pipeline, the stolen-neon shack, the village at dusk — plus the two the search
+produced that beat them: noir's burning at dusk, and bloom-dark's night coast with
+its phosphorescent sea. LANTERN has to make all six look like a first draft.

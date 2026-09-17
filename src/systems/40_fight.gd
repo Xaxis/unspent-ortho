@@ -286,6 +286,8 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.puffs(fx, _at3(hero.pos), Vector2.ZERO, _dust_colour(hero.pos), 3, 0.55, int(sim.now) + 7)
 			&"hit":
 				_on_hit(e)
+			&"struck":
+				_on_struck(e)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -369,6 +371,32 @@ func _on_hit(e: Dictionary) -> void:
 		(target.node as Mob).flash(0.06)
 
 
+## A blow that was not the player's (FightSim.strike: a turret). Seen and heard
+## where it landed and nowhere else: no hitstop and no shake, because the
+## player's hands did nothing, and no `Events.hit`, because every reader of that
+## signal means the player struck something.
+func _on_struck(e: Dictionary) -> void:
+	var m := e.target as MobState
+	if m == null:
+		return
+	var from: Vector2 = e.from
+	var fx := _fx_parent()
+	var h: float = m.row.get("height", 1.0)
+	var dir := (m.pos - from).normalized()
+	var impact := _at3(m.pos - dir * m.radius, clampf(h * 0.5, 0.35, 0.7))
+	if e.plate:
+		Events.sfx.emit(&"hit_plate", impact)
+		MobFx.clang(fx, impact, int(sim.now))
+		return
+	Events.sfx.emit(&"hit_flesh", impact)
+	if m.machine:
+		MobFx.burst(fx, _part_at(m), 0.9, int(sim.now), Palette.LENS[3])
+	else:
+		MobFx.burst(fx, impact, 0.7, int(sim.now))
+	if m.node is Mob:
+		(m.node as Mob).flash(0.06)
+
+
 func _on_hurt(e: Dictionary) -> void:
 	var by: MobState = e.attacker
 	var hero := sim.hero
@@ -396,12 +424,16 @@ func _on_killed(e: Dictionary) -> void:
 		# heard and seen apart from the blow that did it.
 		Events.sfx.emit(&"lamp_off", _part_at(m))
 		MobFx.puff(fx, _part_at(m), Vector2.ZERO, Palette.STONE[3], 0.7, m.id + 11)
-	_stop(HITSTOP_KILL)
-	game.camera.shake(0.1, 0.22)
+	var by_player := bool(e.get("by_player", true))
+	if by_player:
+		_stop(HITSTOP_KILL)
+		game.camera.shake(0.1, 0.22)
 	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)
 	MobFx.ring(fx, at, Palette.INK[1], m.radius + 1.0, 0.4)
 	var drops: int = m.row.get("drops", 0)
-	if m.machine and drops > 0:
+	# A kill somebody else made (a turret in the yard) puts nothing in the
+	# player's hands: what is left of it lies where it fell.
+	if m.machine and drops > 0 and by_player:
 		game.inventory.add(&"scrap", drops)
 		Events.took.emit(&"scrap", drops)
 

@@ -116,10 +116,10 @@ matters.
 - **The first piece founds the place.** After that a piece within a walk of the
   centre joins it, and further off starts another. A holding is named plainly and
   its centre creeps as it grows.
-- **Fourteen pieces, in the six families**: lean-to, hearth, hut, store
+- **Fifteen pieces, in the six families**: lean-to, hearth, hut, store
   (shelter); plot, catchment (food and water); palisade, plate wall, netting,
-  decoy mast, spoofer (defence); wind spinner, battery stack (power); radio mast
-  (work). What each costs, wears, makes and gives away is one row in
+  decoy mast, spoofer, turret (defence); wind spinner, battery stack (power);
+  radio mast (work). What each costs, wears, makes and gives away is one row in
   `StructureKind.ROWS`.
 - **A hearth is the game's own campfire.** Laid, it puts a `PropKind.FIRE` in the
   world, so it lights the yard, warms a body, can be slept beside and worked at.
@@ -158,6 +158,17 @@ matters.
   read at full strength again. A decoy that also masked and cooled the yard was
   considered and refused — three benefits on one row of timber is a discount,
   not a decision.
+- **A turret answers back, and it is a decision to switch on.** A repeater taken
+  off a machine, mounted on a crib of logs. It shoots only what comes FOR the
+  place — a raider first, then anything pressing a fight — never a worker on its
+  round, because a yard that shot everything walking past would be the loudest
+  thing on the coast and a list of filed kills. Its head comes round onto a body
+  and its lens catches before the first bolt, which is the tell. Its blow is the
+  fight's own (the plate, the hit window, the stall), and a kill it makes is
+  nobody's to be paid scrap for. It wants more power than anything else in the
+  yard and it is stolen technology humming in the walls the whole time it is
+  armed, so the `E` key on its row stands it down and arms it again: armed for
+  the raid you were warned of, dark for the week after.
 - **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
   thatch with a fringe the wind takes, and machine plate lashed over the gaps with
   the cord crossing the rivet row. A piece leans, patches and weathers by its own

@@ -210,6 +210,17 @@ const ROWS := {
 		"cost": {&"record": 1, &"copper": 2, &"scrap": 2}, "minutes": 90.0, "wear": 0.025,
 		"draw": 1.0,
 	},
+	# A repeater taken off a machine and mounted on a crib of logs, so the yard can
+	# answer back. It is the one piece that fights, and it pays for it three ways:
+	# it wants more power than anything else, it is stolen technology humming in
+	# the walls the whole time it is armed (SIGNS), and a party that is shot at
+	# goes for it. Built round a repeater a player could have carried instead.
+	# Narrow enough (solid) that a body can see past it, or it would blind itself.
+	TURRET: {
+		"name": "turret", "idiom": Idiom.FOUND, "health": 12.0, "solid": 0.4,
+		"cost": {&"rep_light": 1, &"scrap": 4, &"copper": 2, &"iron": 1}, "minutes": 120.0, "wear": 0.02,
+		"draw": 1.2, "defence": 1.2,
+	},
 }
 
 ## The order the slate offers them in: a roof and a fire first, because that is
@@ -219,7 +230,7 @@ const ROWS := {
 ## record and a holding with power in it.
 const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, STORE, PLOT, CATCHMENT,
 	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, BATTERY_STACK, RADIO_MAST,
-	DECOY_MAST, SPOOFER]
+	DECOY_MAST, SPOOFER, TURRET]
 
 
 ## What this kind gives off, standing and working. Empty for most pieces.
@@ -338,3 +349,10 @@ static func lure(kind: int) -> float:
 
 static func masks(kind: int) -> bool:
 	return float(signs(kind).get("mask", 0.0)) > 0.0
+
+
+## A piece a player switches by hand: it runs on power and nobody has to stand at
+## it. A mast is switched by taking its hands off; a turret or a spoofer is
+## switched off, which is how a holding goes dark without pulling anything down.
+static func switched(kind: int) -> bool:
+	return draw_power(kind) > 0.0 and not needs_staff(kind)

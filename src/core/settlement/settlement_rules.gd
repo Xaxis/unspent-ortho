@@ -134,6 +134,18 @@ static func _slice(s: Settlement, at: float, seed_value: int, land: StringName, 
 	_mend(s, hours, report)
 
 
+## Who has power THIS minute, settling nothing. A piece switched on, built or
+## stood up has to know now rather than at the next half hour, or a turret armed
+## in front of a raid reads "no power" for thirty minutes of a fight. Nothing is
+## spent: the charge only moves when a slice is settled, so this may be asked as
+## often as anyone likes and a holding comes out the same.
+static func wire_now(s: Settlement, now: float, ctx: Dictionary = {}) -> void:
+	var weather := _weather(int(ctx.get("seed", 0)), now, StringName(ctx.get("land", &"")))
+	var keep := s.charge
+	_wire(s, weather, fposmod(now, 1440.0) / 60.0)
+	s.charge = keep
+
+
 static func _weather(seed_value: int, at: float, land: StringName) -> Dictionary:
 	if land == &"":
 		return {"kind": Weather.CLEAR, "strength": 0.0, "wind": 0.35}
@@ -174,7 +186,7 @@ static func _wire(s: Settlement, weather: Dictionary, hour: float) -> void:
 		if want <= 0.0:
 			p.powered = false
 			continue
-		if not p.standing() or p.condition() < Structure.WORKS_ABOVE:
+		if not p.standing() or p.off or p.condition() < Structure.WORKS_ABOVE:
 			p.powered = false
 			continue
 		if spare >= want:
