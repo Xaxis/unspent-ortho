@@ -17,6 +17,62 @@ const PIPS := 5
 const CALM := 0.05
 
 
+## What any subject reads as: a fight body in full, a person as a person.
+static func of_subject(s: TargetSubject, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0) -> Dictionary:
+	if s.body != null:
+		return of(s.body, from, moment, world, query, now)
+	return of_person(s, from)
+
+
+## A villager: no health, no working part, nothing that fights. What a player
+## wants off a person is who they are and what they are doing, and the slate says
+## that much and no more — a person is not a signature the stolen module reads.
+static func of_person(s: TargetSubject, from: Vector2) -> Dictionary:
+	var row := s.folk
+	var stats: Array = []
+	var village: Variant = row.get("village")
+	if village != null and int(village) >= 0:
+		stats.append(["village", str(int(village))])
+	var tool: Variant = row.get("tool")
+	if tool != null and String(tool) != "":
+		stats.append(["carries", words(StringName(str(tool)))])
+	return {
+		"id": s.id,
+		"kind": s.kind,
+		"name": s.name,
+		"role": "one of the last people",
+		"machine": false,
+		"person": true,
+		"disposition": "",
+		"distance": s.here().distance_to(from),
+		"health": 0,
+		"max_health": 0,
+		"fraction": 1.0,
+		"pips": [],
+		"stats": stats,
+		"powers": PackedStringArray(),
+		"awareness": {"suspicion": 0.0, "sure": false, "sees": false, "hears": false, "word": "a person, not a machine"},
+		"thinking": doing(row),
+		"open": false,
+		"part": "none",
+		"part_at_you": false,
+	}
+
+
+## What a villager is doing, off their own row (35_folk): out on their round,
+## walking home, or indoors.
+static func doing(row: Dictionary) -> String:
+	match StringName(str(row.get("state", &"out"))):
+		&"home":
+			return "walking home"
+		&"in":
+			return "indoors"
+	var work: Variant = row.get("work")
+	if work != null and String(work) != "":
+		return "at their work"
+	return "about the village"
+
+
 ## The whole read. `from` is the player; `moment` what the fight knows about
 ## the hour, the weather and what the player is doing about being noticed.
 static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0) -> Dictionary:

@@ -31,9 +31,10 @@ func test_holding_the_key_locks_the_nearest_threat_and_leans_the_camera() -> voi
 	var sys := _make(PackedStringArray(["--spawn=runner", "--target"]))
 	check(sys != null, "42_target is loaded from src/systems")
 	sys.call("_process", 0.1)
-	var locked: MobState = sys.get("locked")
+	var locked: TargetSubject = sys.get("locked")
 	check(locked != null, "a body is locked")
 	eq(locked.kind, &"runner")
+	check(locked.body != null and not locked.person)
 	var cam := _game.camera
 	check(not is_equal_approx(cam.lean_zoom, 1.0), "the camera is asked to zoom")
 	check(absf(cam.lean_pitch) > 0.1, "and to lean its pitch")
@@ -67,13 +68,13 @@ func test_letting_go_puts_the_camera_back_and_the_reads_away() -> void:
 func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
 	var sys := _make(PackedStringArray(["--spawn=runner,cutter,watcher", "--target"]))
 	sys.call("_process", 0.1)
-	var first: MobState = sys.get("locked")
+	var first: TargetSubject = sys.get("locked")
 	check(first != null)
 	Input.action_press(&"move_right")
 	sys.call("_process", 0.1)
 	Input.action_release(&"move_right")
-	var second: MobState = sys.get("locked")
-	check(second != null and second != first, "right cycles to another body")
+	var second: TargetSubject = sys.get("locked")
+	check(second != null and second.id != first.id, "right cycles to another body")
 	Input.action_press(&"ability_scan")
 	sys.call("_process", 0.1)
 	Input.action_release(&"ability_scan")
@@ -84,6 +85,88 @@ func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
 	var rows: Array = sys.get("rows")
 	eq(rows.size(), field.size(), "one row a body")
 	check(_game.camera.lean_zoom > 1.0, "the camera stands back for a field")
+	_done()
+
+
+## A machine that steps behind a house for half a second is the same machine: the
+## lock waits for it rather than flicking onto its neighbour, and lets go once the
+## grace is spent. (The fight's own clock stands still here, because only the
+## target system is stepped — so the wait is set by hand for the second half.)
+func test_a_lock_waits_for_a_body_that_steps_out_of_reach() -> void:
+	var sys := _make(PackedStringArray(["--spawn=runner,cutter", "--target"]))
+	sys.call("_process", 0.1)
+	var first: TargetSubject = sys.get("locked")
+	check(first != null)
+	var body: MobState = first.body
+	var kept := body.pos
+	body.pos = kept + Vector2(Targeting.LENS_REACH * 2.0, 0.0)
+	sys.call("_process", 0.1)
+	var still: TargetSubject = sys.get("locked")
+	check(still != null and still.id == first.id, "the lock waits for what left the list")
+	sys.set("_lost_at", _game.player.sim.now - Targeting.LOST_GRACE - 0.5)
+	sys.call("_process", 0.1)
+	var after: TargetSubject = sys.get("locked")
+	check(after != null and after.id != first.id, "past the grace it takes what is there")
+	body.pos = kept
+	_done()
+
+
+## A villager can be locked and read, and the words are a person's words: no
+## health, no signature, no notice glyph — what they are and what they are doing.
+func test_a_villager_can_be_read_as_a_person() -> void:
+	var sys := _make(PackedStringArray(["--folk=6", "--target"]))
+	sys.call("_process", 0.1)
+	# A person sorts below everything in the fight, so one step left from a fresh
+	# lock lands on one whatever else the coast has sent out.
+	Input.action_press(&"move_left")
+	sys.call("_process", 0.1)
+	Input.action_release(&"move_left")
+	var locked: TargetSubject = sys.get("locked")
+	check(locked != null and locked.person, "one of the last people is locked")
+	var read: Dictionary = sys.get("read")
+	eq(str(read.role), "one of the last people")
+	check((read.pips as Array).is_empty(), "no pips for a life nothing measures")
+	check(str(read.thinking) != "")
+	var view: UiTargetView = sys.get("view")
+	await tree.process_frame
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	view._canvas.queue_redraw()
+	await tree.process_frame
+	var said := PackedStringArray()
+	for d: Dictionary in UiDraw.tape:
+		if d.ci == view._canvas and d.kind == &"text":
+			said.append(str(d.text))
+	UiDraw.taping = false
+	check(" ".join(said).contains("one of the last people"), "the slate says who they are: %s" % said)
+	_done()
+
+
+## Nothing within reach may be unreachable: a field bigger than one page says so,
+## and the cycle keys page through it.
+func test_a_sweep_pages_through_a_big_field() -> void:
+	# The sweep is held from boot (--target=sweep) rather than pressed here: inside
+	# one frame the engine still reads a released key as just pressed, so a second
+	# read of the scan key in the same frame would toggle the sweep straight off.
+	var sys := _make(PackedStringArray(["--folk=12", "--target=sweep"]))
+	sys.call("_process", 0.1)
+	check(bool(sys.get("sweeping")))
+	gt(int(sys.get("pages")), 1, "twelve within reach is more than one page")
+	eq(int(sys.get("page")), 1)
+	var first: Array = (sys.get("field") as Array).duplicate()
+	eq(first.size(), Targeting.SWEEP_MOST, "a page, not a census")
+	Input.action_press(&"move_right")
+	sys.call("_process", 0.1)
+	Input.action_release(&"move_right")
+	eq(int(sys.get("page")), 2, "the cycle keys page a sweep")
+	var second: Array = sys.get("field")
+	check(not second.is_empty())
+	var ids := PackedInt64Array()
+	for s: TargetSubject in first:
+		ids.append(s.id)
+	for s: TargetSubject in second:
+		check(not ids.has(s.id), "the second page holds who the first could not")
+	check(bool(sys.get("sweeping")), "and paging never lets the sweep go")
 	_done()
 
 

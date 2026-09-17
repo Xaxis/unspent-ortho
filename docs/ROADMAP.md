@@ -216,18 +216,29 @@ locks, cycles, sweeps, fights with the key held and lets go, and by
   the two), the body is bracketed with a ring on the ground, and the slate reads
   it — health, blow, tell, speed, working part, senses, what it can do to you,
   what it has noticed and what it is thinking, all of it off the simulation.
-- **`a` / `d` cycle** the lock (what is on you first, then what is near); **`r`
-  sweeps** the field, the camera standing back with every body read in short;
-  letting go puts the camera square and the reads away.
+- **`a` / `d` cycle** the lock (what is on you first, then what is near, then the
+  last people); **`r` sweeps** the field, the camera standing back with the field
+  read in short, eight at a time and paged by the same keys, the panel saying
+  which page of how many; letting go puts the camera square and the reads away.
+- **A person is a subject too.** `TargetSubject` is one thing the slate can be put
+  on — a fight body or a villager — and a person reads as a person: their trade,
+  their village, what they carry and what they are doing, and no health, no
+  signature, no working part. They carry no tag, because nothing measured a
+  villager's life and nothing has noticed them. Anything else the player can look
+  at (a works, a station, a sentinel) becomes readable by getting a `from_*` there.
+- **A lock waits** `Targeting.LOST_GRACE` for a subject that steps out of the list,
+  so a machine behind a house for a moment is still the machine being read.
 - **It changes no fight.** Nothing in the package writes to the simulation, and a
   test fails if a body or the player so much as turns while the key is held.
 
 ### Gaps
 
-- A sweep reads at most eight bodies; a field bigger than that is read nearest first.
-- People (villagers) carry no tag: they are not in the fight's list of bodies.
-- The lock does not survive a body going out of reach for a moment — it takes the
-  next one instead of waiting for it to come back.
+- Only bodies and villagers are subjects today. A works, a station, a sentinel or
+  a prop cannot be read, though the door is one `from_*` on `TargetSubject`.
+- The paged sweep is proved in a tour with people (`--folk=8`), not machines: a
+  field of that many hunters put down beside the player ends the run before the
+  shutter falls. The mixed field (machines first, then people) is proved in tests
+  and in `shots/target/`.
 
 ## M2 — Foundations of an immense world
 

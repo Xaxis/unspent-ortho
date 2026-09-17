@@ -34,13 +34,28 @@ hold. What it gives is perspective and knowledge.
   biased between the two), the body is bracketed with a ring on the ground it
   stands on, and the slate reads it.
 - **`a` / `d` cycle** the lock along the list — what is on you first, then what
-  is near (`Targeting.threat`).
+  is near (`Targeting.threat`), and the last people after everything in the fight.
 - **`r` sweeps the field**: the camera stands back instead, nothing is locked,
-  and every body within reach is read in short.
+  and the field is read in short, eight at a time; `a` / `d` page a field bigger
+  than that, and the panel says which page of how many it is showing.
 - **Let go** and the camera comes back square and the reads go with it.
 
-**Every body carries a wordless tag at all times** — health in pips and one
-glyph for how far it has got with the player (nothing, stirring, sure, coming).
+**Anything the player can look at can be read**, not only what is in the fight.
+A villager is a subject like a machine (`TargetSubject`), and reads as a person:
+no health, no signature, no working part — their trade, their village, and what
+they are doing. Nothing invents a life bar for somebody the simulation never
+gave one. A works, a station, a sentinel become readable by getting a `from_*`
+on that subject, and the order, the camera and the drawing follow unchanged.
+
+**A lock waits.** A body that steps behind a house or a stride past the reach is
+held for `Targeting.LOST_GRACE` before the lock takes anything else: a machine
+that was there half a second ago is the same machine, and a lock that flicks to
+its neighbour is a lock nobody trusts.
+
+**Every body in the fight carries a wordless tag at all times** — health in pips
+and one glyph for how far it has got with the player (nothing, stirring, sure,
+coming). People carry none: nothing has noticed them and no number measures their
+life, so pips over a villager would be a reading nobody took.
 That is the part that is always true of every enemy on screen; the words are
 the part the player asks for. This is what turned the old ruling round: a fight
 may now be read in words, but only while the key is held.
