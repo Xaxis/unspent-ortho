@@ -92,11 +92,15 @@ await ring 1.4
 end
 wait 0.3
 shot 09-answered-at-the-plate with mob, holding
-# It runs its course, and what it broke stays broken: 46_settlements keeps a
-# wreck where it fell, and mending it costs what it cost to build.
-await raid_ended 300
+# It runs its course. A raid stands in a yard for RaidStage.MINUTES — three world
+# hours and more, which is a long wait in real seconds and was at the mercy of the
+# runner's wall clock — so the night is let go by instead: what the party had not
+# spent it spends, and what it broke stays broken. 46_settlements keeps a wreck
+# where it fell, and mending one costs what it cost to build.
+hour 23
+wait 1.5
+await raid_ended 60
 wait 1.2
 shot 10-the-yard-after with holding
-hour 21.5
-wait 1.6
+wait 1.2
 shot 11-the-holding-at-night with holding
