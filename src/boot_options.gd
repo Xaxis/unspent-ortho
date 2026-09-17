@@ -57,6 +57,8 @@ extends RefCounted
 ##                     they never touch the player's nor each other's) (saves)
 ## --progress=F        --scene=loading: hold the loading page's line at F (0..1) (export)
 ## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)
+## --target[=sweep]    hold the target key at boot: a shot of a lock, or of the whole
+##                     field swept (targeting)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
 ## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
@@ -112,6 +114,8 @@ var saves := ""
 var progress := 0.4
 var probe := false
 var fail_downed := false
+var target := false
+var target_sweep := false
 var config := ""
 var dev := false
 var dev_page := ""
@@ -177,6 +181,9 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
 			"fail-downed": o.fail_downed = true
+			"target":
+				o.target = true
+				o.target_sweep = v == "sweep"
 			"config": o.config = v
 			"dev":
 				o.dev = true

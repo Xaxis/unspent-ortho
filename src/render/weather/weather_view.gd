@@ -268,7 +268,7 @@ func _mat(p: CPUParticles3D, mode: Mode, params: Dictionary) -> void:
 ## look: WeatherLook.compose() output; wind -1..1; focus: the camera's target.
 func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void:
 	if camera != null:
-		rotation.y = deg_to_rad(camera.yaw_deg)
+		rotation.y = deg_to_rad(camera.yaw_now())
 	position = focus
 	var storm := float(look.storm)
 	# Screen-right in this node's frame is +X, so wind leans everything along X.

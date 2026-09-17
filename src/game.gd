@@ -133,7 +133,9 @@ func _physics_process(delta: float) -> void:
 		run = Input.is_action_pressed("run")
 	if Time.get_ticks_msec() / 1000.0 < body.busy_until:
 		input = Vector2.ZERO
-	player.drive(Player.screen_to_world(input, camera.yaw_deg), run, delta)
+	# The camera's yaw as it is now, lean and all (CameraRig.yaw_now): the keys
+	# must go on matching the screen while a target lock leans the frame.
+	player.drive(Player.screen_to_world(input, camera.yaw_now()), run, delta)
 
 
 func _process(_delta: float) -> void:

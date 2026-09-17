@@ -198,6 +198,37 @@ quick taps that way).
   every subset still makes a whole island; `BiomeRegistry.mute_to` is only
   trusted by tests today.
 
+## Targeting and the enemy read (integrated, 2026-09-16)
+
+`docs/DESIGN.md` §Targeting. The owner's ruling that a fight may be read in
+words — but only while the player asks. Proved by `tours/targeting.tour`, which
+locks, cycles, sweeps, fights with the key held and lets go, and by
+`tests/target/`.
+
+### What is true
+
+- **Every body carries a wordless tag**: health in pips and one glyph for how far
+  it has got with the player (nothing, stirring, sure, coming). A machine's is
+  the stolen module's violet, a creature's the slate's phosphor, both on dead
+  glass so they hold over grass at noon and snow at dusk.
+- **Hold `z`** and the nearest threat is locked: the camera leans in behind the
+  player (yaw toward the body, a lower pitch, closer in, the frame biased between
+  the two), the body is bracketed with a ring on the ground, and the slate reads
+  it — health, blow, tell, speed, working part, senses, what it can do to you,
+  what it has noticed and what it is thinking, all of it off the simulation.
+- **`a` / `d` cycle** the lock (what is on you first, then what is near); **`r`
+  sweeps** the field, the camera standing back with every body read in short;
+  letting go puts the camera square and the reads away.
+- **It changes no fight.** Nothing in the package writes to the simulation, and a
+  test fails if a body or the player so much as turns while the key is held.
+
+### Gaps
+
+- A sweep reads at most eight bodies; a field bigger than that is read nearest first.
+- People (villagers) carry no tag: they are not in the fight's list of bodies.
+- The lock does not survive a body going out of reach for a moment — it takes the
+  next one instead of waiting for it to come back.
+
 ## M2 — Foundations of an immense world
 
 Build the spines that twenty landscapes, realms, sentinels and crafts hang on, so

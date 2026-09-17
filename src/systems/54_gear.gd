@@ -305,7 +305,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			# (wave A2, art finding 3).
 			var dir: Vector2 = args.get("dir", Vector2.RIGHT)
 			var back := Vector3(dir.x, 0.0, dir.y) * Tuning.PLAYER_RADIUS * 2.0
-			MobFx.streak(game, at - back + Vector3(0, 0.55, 0), dir, game.camera.yaw_deg, game.camera.pitch_deg, seed_value, 0.9)
+			MobFx.streak(game, at - back + Vector3(0, 0.55, 0), dir, game.camera.yaw_now(), game.camera.pitch_deg, seed_value, 0.9)
 			var dust := Palette.STONE[4]
 			for i in 2:
 				MobFx.puff(game, at - back * (float(i) * 1.1 + 1.0), -dir, dust, 0.26 - 0.05 * i, seed_value + i * 11)

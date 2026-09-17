@@ -10,8 +10,9 @@ ceiling: the job is a better game, not a port.
 1. **The world is the game.** One generated coast per seed, big enough to be a
    journey, every country different enough that crossing into it is an event.
 2. **Real-time, readable, Zelda-grade action.** Two verbs in a fight: swing, and get
-   out of the way. No menus, no text, no numbers mid-fight. You read a machine's
-   body and find the side that is still working.
+   out of the way. You read a machine's body and find the side that is still
+   working. No menus and no numbers of its own accord: the fight says nothing in
+   words unless the player asks it to, by holding the target key (§Targeting).
 3. **Survival and making are a pillar, not a layer.** You mine, fell, gather, make
    tools out of beaten machines, and reach further. Every hand tool is the best
    thing a person can still make and mend.
@@ -21,6 +22,33 @@ ceiling: the job is a better game, not a port.
 5. **Beautiful, and changing as you travel.** The landscape evolves: grass thins into
    heath, heath into limestone, pines into snow, moss into black water, ash drifts
    over the southern rim. Light, weather, sound and machines change with it.
+
+## Targeting (owner, 2026-09-16)
+
+The slate can be put on a body. It is asked for and never imposed, it is never
+required to fight, and it changes nothing in the simulation: no aim, no slow, no
+hold. What it gives is perspective and knowledge.
+
+- **Hold `z`.** The nearest threat is locked: the camera leans in behind the
+  player (a little yaw toward the body, a lower pitch, closer in, the frame
+  biased between the two), the body is bracketed with a ring on the ground it
+  stands on, and the slate reads it.
+- **`a` / `d` cycle** the lock along the list — what is on you first, then what
+  is near (`Targeting.threat`).
+- **`r` sweeps the field**: the camera stands back instead, nothing is locked,
+  and every body within reach is read in short.
+- **Let go** and the camera comes back square and the reads go with it.
+
+**Every body carries a wordless tag at all times** — health in pips and one
+glyph for how far it has got with the player (nothing, stirring, sure, coming).
+That is the part that is always true of every enemy on screen; the words are
+the part the player asks for. This is what turned the old ruling round: a fight
+may now be read in words, but only while the key is held.
+
+What the read says is the simulation's own: health and the roster's numbers, its
+powers (only what its row declares), what it has noticed (`StealthQuery`, the one
+door) and what it is thinking (its mood, its blow's phase, its place in the plan).
+Nothing is invented for the panel.
 
 ## Owner rulings carried over (mechanics only)
 

@@ -217,7 +217,15 @@ piece of it.
   low. Every one is subtle and never hurts legibility.
 - **The HUD is the slate's edge overlay.** Small, quiet readouts clipped to the
   corners, as if the slate were strapped to a wrist or projected on a salvaged
-  lens. There is no text in a fight beyond what the readouts already show.
+  lens. Nothing is written over a fight that the player did not ask for: the only
+  words in one are the target read, and only while the key is held
+  (docs/DESIGN.md §Targeting).
+- **A body's tag is wordless** (owner, 2026-09-16). Health in pips and one glyph
+  for how far it has got with the player, on dead glass so it holds over grass at
+  noon and snow at dusk. A machine's is the stolen module's violet, because that
+  is a signature the module reads; a creature's is the slate's phosphor, read off
+  the animal by eye. A body coming for the player is the one warning colour, and
+  that colour means nothing else on the world layer.
 - **Type and colour.** Keep the crisp pixel font. Text is a phosphor tone on dark
   glass (amber or cold green; pick one and keep it), with a single warning colour.
   Machine-sourced data (scans, interference, sentinel reads) shows in the stolen

@@ -253,7 +253,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				player.model.play_action(&"dodge", FightRules.DODGE_MS / 1000.0)
 				# The lines trail from one body width behind where it set off: the
 				# body shoots away from them, and nothing else is drawn there.
-				MobFx.streak(fx, _at3(hero.pos - hero.dodge_dir * hero.radius * 2.0, 0.5), hero.dodge_dir, game.camera.yaw_deg, game.camera.pitch_deg, int(sim.now))
+				MobFx.streak(fx, _at3(hero.pos - hero.dodge_dir * hero.radius * 2.0, 0.5), hero.dodge_dir, game.camera.yaw_now(), game.camera.pitch_deg, int(sim.now))
 				_land_at = sim.now + FightRules.DODGE_MS
 			&"evaded":
 				# Heard, not drawn (a mark here lands on the speed lines): its blow met air.
@@ -548,7 +548,7 @@ func _play_act(spec: String) -> void:
 			MobFx.ring(game, p3 + Vector3(-2.0, 0, 0), Palette.INK[1], 1.0, 0.3)
 			MobFx.clang(game, p3 + Vector3(0, 0.6, 2.0), 7)
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
-			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_deg, game.camera.pitch_deg, 10)
+			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_now(), game.camera.pitch_deg, 10)
 			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
 			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[2], 0.4, 1.6, Vector2.ZERO, 12)
 		"alert":

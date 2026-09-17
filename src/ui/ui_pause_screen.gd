@@ -19,6 +19,7 @@ const KEYS := [
 	["tab  i", "carrying"],
 	["c", "making"],
 	["m", "map"],
+	["z", "hold: read a machine; a d another, r the field"],
 	["esc", "pause, or back"],
 ]
 const LIST_TOP := 52
