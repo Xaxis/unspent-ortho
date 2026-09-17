@@ -62,6 +62,43 @@ var main_ms_max := 0.0
 
 
 func setup(w: WorldData) -> void:
+	_world_mat = ShaderMaterial.new()
+	_world_mat.shader = preload("res://src/render/world.gdshader")
+	_water_mat = ShaderMaterial.new()
+	_water_mat.shader = preload("res://src/render/water.gdshader")
+	_bind(w)
+
+
+## Point this view at ANOTHER world: a realm crossing (docs/VISION.md §4,
+## src/systems/20_realms.gd). Every chunk, every prop index and the works are
+## dropped and grown again from `w`; the two MATERIALS are kept, because the
+## player's figure, the crowns and the swing arc were handed them when the game
+## started and they outlive the world they first drew.
+func rebind(w: WorldData) -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		_task_chunk = null
+		_task_decor = []
+		_task_props = []
+	for key: Vector2i in _chunks.keys():
+		(_chunks[key] as Node3D).queue_free()
+	_chunks.clear()
+	_data.clear()
+	var sea := get_node_or_null("open_sea")
+	if sea != null:
+		remove_child(sea)
+		sea.queue_free()
+	build_count = 0
+	build_ms = 0.0
+	build_ms_max = 0.0
+	main_ms = 0.0
+	main_ms_max = 0.0
+	_bind(w)
+
+
+## Everything about this view that belongs to one world.
+func _bind(w: WorldData) -> void:
 	world = w
 	# The landscape types are read from chunk workers (ice on the lines): build
 	# the registry here first.
@@ -70,10 +107,8 @@ func setup(w: WorldData) -> void:
 	decor = Decor.new(w)
 	_bg_mesher = TerrainMesher.new(w)
 	_bg_decor = Decor.new(w)
-	_world_mat = ShaderMaterial.new()
-	_world_mat.shader = preload("res://src/render/world.gdshader")
-	_water_mat = ShaderMaterial.new()
-	_water_mat.shader = preload("res://src/render/water.gdshader")
+	_props_by_chunk.clear()
+	_cables_by_chunk.clear()
 	# The machines' works cut into the ground, for the shader and the decor.
 	works = WorksMap.bake(w)
 	works.bind(_world_mat)

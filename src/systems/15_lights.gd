@@ -492,7 +492,10 @@ func _update(delta: float, snap: bool) -> void:
 	# How dark the HOUR is, before the flash is taken off it. A vent's daylight
 	# floor is read off this: a flash is not daylight, and reading it as daylight
 	# would make the one light with a daylight floor burn HARDER under lightning.
-	var hour_dark := pool_dark(hour)
+	# A roof is as dark as the hour ever gets. Under one the hour says nothing at
+	# all, so a pool of lamplight tells at noon down there exactly as it does at
+	# midnight up here (SkyLight.closed, src/core/realm, src/systems/20_realms.gd).
+	var hour_dark := maxf(pool_dark(hour), game.sky.closed)
 	var dark := hour_dark * flash
 	var pools: Array[Vector4] = []
 	var pool_rgb: Array[Vector4] = []
@@ -547,7 +550,7 @@ func _update(delta: float, snap: bool) -> void:
 		# The lantern's floor: in any gloom it lifts the ground a little (source
 		# 0.45), and in daylight it lifts nothing at all — a lamp lit at noon must
 		# not lay a disc on a bright land.
-		var night := maxf(dark, 0.45 * gloom(hour, tint, sun))
+		var night := maxf(dark, 0.45 * maxf(gloom(hour, tint, sun), game.sky.closed))
 		var at := p.position + Basis(Vector3.UP, -p.facing) * LANTERN_LIGHT
 		# Where a lamp already lights the ground the lantern hardly adds, and its
 		# pool draws in under the lamp's: two pools stacked read as two ruled

@@ -668,6 +668,51 @@ it. Proved by `tours/sentinels.tour` and `tests/sentinel/`.
 - A keeper that stood down keeps blinking its role's disposition: 32_disposition
   writes every live body's lamps from role and interference, four times a second.
 
+### Wave B: what the realms package made true
+
+- **A realm is a world of its own** (`src/core/realm/`). `BiomeDef.realms` is read
+  at last: `GenContext` lays only the landscape types registered in the realm its
+  world is being grown for, so a surface island is exactly the island it was and
+  nothing under the world can appear on it. Each realm's world is grown from the
+  game's one seed with the realm's own salt (`Realm.seed_for`), raised once and
+  kept (`RealmWorlds`), and the game holds one of them at a time.
+- **`Realm` is the authority over its own light, sky, weather and sound**, and a
+  landscape declares them THROUGH it: `limestone_caves.gd` takes `Realm.light`,
+  `Realm.lift`, `Realm.airs` and `Realm.bed` and colours inside them. The one
+  thing no landscape file can say is that the HOUR has stopped mattering, so
+  `SkyLight.closed` reads a roofed realm as night at any time of day — the blue
+  floor, the hatch, the night ink, the lamp's pool and no cast shadows.
+- **A portal is a place** (`Portals`, `RealmGate`): a shaft the machines sank at a
+  cliff foot, inland, clear of the villages and of where the player wakes, laid
+  deterministically per REGION and paired with the shaft of the same number on the
+  far side. It is a hole in the ground with a headframe over it and a ladder
+  somebody hung in it, it is in `WorldData.landmarks` so the map and a tour can
+  find it by name, and it is entered by standing on it and pressing `use`.
+- **A crossing does not make a new game** (`src/systems/20_realms.gd`): the world,
+  the query, the body, its simulation and the view are pointed at the other realm,
+  which is why the score, the sound, the clock and what is carried all survive it
+  (`tours/realms.tour` awaits `score_unbroken` across both crossings).
+- **Limestone Caves**, drawn as scratchboard: a near-black page of wet limestone,
+  pale calcite flowstone massing on the rises and along the water, terrace walls
+  bedded in calcite, black sumps that are still a chart, and the machines' drills,
+  pipe runs and graves. `--realm=underground` opens a shot or a tour in it.
+
+Gaps it leaves for the rest of the wave:
+
+- The map, the explored ground and the lights' source index are not rebuilt on a
+  crossing: `20_realms` calls `realm_changed(from, to)` on every system that has
+  it, and none does yet (90_ui and 15_lights are the two that want it).
+- The core save's world state is ONE realm's. What each realm had TAKEN out of it
+  comes back (the realms key carries it); what was BUILT in another realm does not.
+- The flooded bottom of a cave system is still drawn as the sea, with surf and a
+  pale shore: `sea.gd` is one type shared by every realm.
+- `src/models/props/rocks.gd` puts turf at the foot of every boulder in every
+  landscape, which underground is the one thing that says "outside".
+- The caves have no sentinel and no blind crawlers; they borrow the bonelands'
+  cutters and haulers, and no works network of their own.
+- Orbital and era realms are declared in the table and hold no landscape: their
+  pages are not drawn, and `tests/realm` refuses a landscape registered into one.
+
 ## M3 — The landscapes
 
 Grow to at least 20 landscape types, each with its own props, decor, life, weather,

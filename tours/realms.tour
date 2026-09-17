@@ -1,0 +1,58 @@
+# Realms and portals (docs/VISION.md §4, §7.1), proved through real input:
+# a shaft found on the surface, walked to, gone down, stood in, and come back up.
+#
+#   tools/tour.sh tours/realms.tour --seed=1 --hour=10
+#
+# Nothing here teleports across a realm. `place shaft` is staging — a shaft is a
+# place in the world (WorldData.landmarks), so the tour asks the world where one
+# is instead of copying a tile off a map run — and every step after it is a real
+# walk or a real key. Which landscape a shaft comes up in is a fact about one
+# seed, so the frames above ground declare the REALM they are in and not the
+# ground they happen to stand on.
+
+hour 10
+place shaft
+# Away from the mouth first, so what follows is a walk TO it and not off it.
+walk 1,1 0.9
+wait 0.4
+shot 01-above-ground with realm:surface
+
+# Back to it on foot, until it is in reach and the slate says so.
+walk -1,-1 1.4
+await portal 15
+shot 02-a-shaft-in-the-rock with realm:surface,portal
+
+# Down. The world under the world is raised while a player walks toward a shaft,
+# so the key is all that is left to press.
+press use
+await realm:underground 40
+await crossed 5
+await land:limestone_caves 10
+wait 1.2
+shot 03-limestone-caves-hall with land:limestone_caves
+
+# Standing in it: the lamp is the only warm thing down here, and the page it is
+# lit against is the scratchboard (VISION §8).
+press lamp
+await lamp 5
+wait 0.8
+shot 04-the-hall-by-lamp with land:limestone_caves,lamp
+
+# A walk away from the mouth, so the frame is the landscape and not the gate.
+walk 1,0 1.8
+wait 0.6
+shot 05-along-the-gallery with land:limestone_caves
+
+# And back up the same shaft, by the same key.
+place shaft
+wait 0.6
+await portal 15
+shot 06-the-shaft-head-below with land:limestone_caves,portal
+press use
+await realm:surface 40
+await land:coast|moss|pinewood|snowfield|bonelands|burning|salt_flats|scrapwood 10
+wait 1.2
+shot 07-back-above-ground with realm:surface
+
+# The score crossed two realms and never fell silent (75_music GAP_BUDGET).
+await score_unbroken 60

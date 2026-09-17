@@ -27,8 +27,11 @@ static var last_timings: Dictionary = {}
 ## `until` = &"tiles" stops once every tile has its country (the layout is
 ## final by then; country2 and blend are not filled): for tests that only
 ## need shares.
-static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = &"") -> WorldData:
+## `realm` is which realm's world this is (Realm.SURFACE by default): it decides
+## which landscape types may be laid, and nothing else here knows about it.
+static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = &"", realm: StringName = &"surface") -> WorldData:
 	var w := WorldData.new(seed_value, size)
+	w.realm = realm
 	var c := GenContext.new(w)
 	var t := Time.get_ticks_usec()
 	var marks := {}

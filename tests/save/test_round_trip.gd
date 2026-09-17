@@ -183,6 +183,10 @@ func test_world_edits_follow_their_props_and_stay_off_other_worlds() -> void:
 
 	# A save of another world changes nothing here.
 	var other: Game = Fx.flat()
+	# Another GAME, which is what "another world" means now that a game holds
+	# several: each realm's world is grown from the game's seed with the realm's
+	# own salt, so a save's edits are keyed on the GAME's seed (SaveCore).
+	other.options.seed_value = 99
 	other.world.seed_value = 99
 	SaveCore.mark_base(other)
 	var count := other.world.props.size()
