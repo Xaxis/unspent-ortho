@@ -7,7 +7,8 @@
 // writes. Opens the page with --probe, shoots the loading page, waits for the
 // game's own ready line (main.gd prints `boot ready <scene> <ms>` once the first
 // frame of a world is drawn) and shoots then and --after seconds later.
-// With --play it presses what a player would (Enter on the title: New game),
+// With --play it presses what a player would (Enter on the title: New game, then
+// up to "begin" on the character page and Enter),
 // waits for `boot ready game`, walks with the real keys and shoots the game.
 //
 // FAILS (exit 1) on: a console error, a page error, a request that never
@@ -463,6 +464,12 @@ if (first) {
 
   if (opt.play) {
     const from = lines.length;
+    // New game opens the character page first (who wakes): up from its first row
+    // wraps round to "begin", and Enter there starts the game with that body.
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(800);
+    await page.keyboard.press('ArrowUp');
+    await page.waitForTimeout(300);
     const pressed = Date.now();
     await page.keyboard.press('Enter');
     const game = await waitLine(/^boot ready game/, Number(opt.timeout), from);

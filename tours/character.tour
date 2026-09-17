@@ -1,0 +1,61 @@
+# Who wakes (owner 2026-09-17): "new game" on the title opens the character page,
+# a body is made there row by row on the real keys, "begin" starts the game, and
+# the SAME body stands on the coast and on the gear page (AvatarState is the body
+# GearLook dresses). Each frame after the start is held to the walking figure
+# having what was chosen (`avatar:KEY=VALUE`).
+#
+#   tools/tour.sh tours/character.tour --seed=1 --hour=11 --weather=clear:0
+coast calm
+tap pause
+choose title
+tap use
+await saved 2
+await title 30
+wait 0.5
+# Leaving wrote the autosave, so new game asks once more before it goes on.
+key move_down
+key use
+wait 0.4
+key use
+await character 8
+wait 0.5
+shot 01-who-wakes
+# build: man, woman, heavy
+key move_right
+key move_right
+# skin: brown to tan
+key move_down
+key move_right
+# hair (past the tone): crop to long
+key move_down
+key move_down
+key move_right
+# hair colour: dark to red
+key move_down
+key move_right
+# beard: none to chin
+key move_down
+key move_right
+wait 0.8
+shot 02-a-body-on-the-page
+# Begin is the last row; up from the top wraps round to it.
+key move_up
+key move_up
+key move_up
+key move_up
+key move_up
+key move_up
+wait 0.3
+shot 03-begin-chosen
+key use
+await game 40
+coast calm
+zoom 4
+wait 1.5
+shot 04-that-body-on-its-feet with avatar:build=heavy,avatar:skin=tan,avatar:hair_style=long,avatar:hair=red,avatar:beard=chin
+tap pause
+choose loadout
+tap use
+await app:loadout 10
+wait 1.0
+shot 05-the-gear-page-draws-the-same-body with app:loadout,avatar:build=heavy,avatar:beard=chin

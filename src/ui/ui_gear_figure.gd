@@ -62,6 +62,13 @@ var levels := Vector2(0.06, 0.8)
 
 ## The world's MADE material, for the wing's frame (the gear page hands it over).
 var made: Material
+## Drawn in its own colours on the glass rather than scanned to the slate's steps:
+## the character page, where colour is half of what is being chosen. No mask is
+## rendered for it.
+var in_colour := false:
+	set(v):
+		in_colour = v
+		_mat.set_shader_parameter("in_colour", v)
 var _look: Dictionary = {}
 var _held: StringName = &""
 var _wing := false
@@ -321,7 +328,8 @@ func _process(delta: float) -> void:
 	if _dirty > 0:
 		_dirty -= 1
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-		mask.render_target_update_mode = SubViewport.UPDATE_ONCE
+		if not in_colour:
+			mask.render_target_update_mode = SubViewport.UPDATE_ONCE
 	if scan < 1.0:
 		scan = minf(1.0, scan + delta / SCAN_SECONDS)
 	if _levels_due >= 0:

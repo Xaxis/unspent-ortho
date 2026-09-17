@@ -109,6 +109,10 @@ var silhouette := false
 var parade := ""
 var hand := ""
 var look := ""
+## The body made on the character page (UiCharacterScreen), a PersonLook spec. Not a
+## command-line option: the title fills it in when "begin" is pressed, and 33_avatar
+## puts it on. Empty: `--look`, or the base body.
+var avatar: Dictionary = {}
 var pose := ""
 var face := ""
 var folk := 0

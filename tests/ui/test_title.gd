@@ -72,11 +72,35 @@ func test_new_game_starts_on_the_coast_shown() -> void:
 	check(await _run(t, 20.0, func() -> bool: return t.world != null), "a coast is drawn")
 	t.menu.select(&"new")
 	t.menu.handle(&"confirm")
+	# Who wakes comes first: the character page, and nothing started behind it.
+	check(t.character.is_open, "new game opens the character page")
+	check(not t._starting, "and the game waits for it")
+	t.character.select(&"build")
+	t.character.handle(&"right")
+	var build: StringName = t.character.look.build
+	t.character.select(&"begin")
+	t.character.handle(&"confirm")
+	check(not t.character.is_open, "begin closes the page")
 	var started := func() -> bool: return holder.get_node_or_null("game") != null
 	check(await _run(t, 10.0, started), "new game replaces the title")
 	var game := holder.get_node_or_null("game") as Game
 	if game != null:
 		eq(game.options.seed_value, 5, "same coast")
+		eq(StringName(game.options.avatar.get("build", &"")), build, "with the body made on the page")
+	holder.free()
+
+
+func test_back_on_the_character_page_is_the_title_again() -> void:
+	var t := _title()
+	var holder := t.get_parent()
+	t.menu.settle()
+	t.menu.select(&"new")
+	t.menu.handle(&"confirm")
+	check(t.character.is_open, "the page is up")
+	t.character.handle(&"back")
+	check(not t.character.is_open, "back shuts it")
+	check(not t._starting, "and nothing starts")
+	check(t.menu.is_open, "the title's list is still there")
 	holder.free()
 
 

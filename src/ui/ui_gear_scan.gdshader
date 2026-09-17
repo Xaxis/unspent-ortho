@@ -15,6 +15,9 @@ uniform float scan = 1.0;
 // layer): which pixels are machine parts is read off the model, never guessed from
 // a colour.
 uniform sampler2D found_mask : filter_nearest;
+// The character page: the body in its own colours, on the glass's rows, with the
+// scan's lit edge, because colour is half of what is being chosen there.
+uniform bool in_colour = false;
 const vec3 P0 = vec3(0.0902, 0.1882, 0.1608);
 const vec3 P1 = vec3(0.1686, 0.3608, 0.2980);
 const vec3 P2 = vec3(0.3098, 0.6078, 0.5059);
@@ -51,6 +54,13 @@ void fragment() {
 	}
 	if (c.a <= 0.5) {
 		COLOR = vec4(0.0);
+	} else if (in_colour) {
+		// Every other row of the glass a shade down, the edge lit in phosphor.
+		vec3 col = c.rgb * ((at.y % 2 == 0) ? 1.0 : 0.86);
+		if (edge > 0.5) {
+			col = mix(col, P3, 0.55);
+		}
+		COLOR = vec4(col, 1.0);
 	} else {
 		float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
 		float v = clamp((lum - lo) / max(0.001, hi - lo), 0.0, 1.0);

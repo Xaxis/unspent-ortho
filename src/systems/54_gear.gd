@@ -84,9 +84,6 @@ var _read_for := READ_SECONDS
 ## Where the last step of a motion put the body, to notice when something else
 ## has moved it. Vector2.INF while no motion runs.
 var _last_pos := Vector2.INF
-## The player's body before any gear: whatever the start gave it (the base look,
-## or `--look`), which GearLook.compose dresses. Taken once, at setup.
-var _bare: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -96,8 +93,6 @@ func setup(g: Game) -> void:
 	SlateFeeds.provide(&"loadout", _feed)
 	SlateFeeds.on_act(&"loadout", _act)
 	SaveGame.register(&"gear", _save, _load)
-	if g.player != null and g.player.model != null:
-		_bare = g.player.model.look.duplicate(true)
 	_fit_from_options()
 	loadout.hold(g.inventory.held)
 	_refit()
@@ -123,11 +118,13 @@ func _refit() -> void:
 	_dress_player()
 
 
-## What the player is seen wearing: the body before gear, dressed by the loadout.
+## What the player is seen wearing: the body they made (AvatarState), dressed by the loadout.
 ## The gear page draws this same look (the feed's `figure`), so the slate and the
 ## world cannot disagree about what is on.
 func worn_look() -> Dictionary:
-	return GearLook.compose(_bare if not _bare.is_empty() else PersonLook.BASE, loadout)
+	var body := AvatarState.of(game).look
+	return GearLook.compose(body if not body.is_empty() else PersonLook.BASE, loadout)
+
 
 
 ## Put the worn look on the figure walking the coast. Only when it changed: a

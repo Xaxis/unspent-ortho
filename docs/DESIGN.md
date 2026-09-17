@@ -213,6 +213,35 @@ and the rope keep their reasons to exist.
   over the ground actually under it, because a lit world places the shadow from
   that number.
 
+## Who wakes, and what they wear (owner, 2026-09-17)
+
+**A new game begins by making the one who wakes**, and that body is the one the
+gear goes on: the character page, the figure walking the coast and the gear page
+are three views of one body.
+
+- **The character page** comes between "new game" on the title and the world, on
+  the full slate: build, skin and its tone, hair and its colour, beard, the hat,
+  coat and shirt they start in and the colours of those and of trousers and boots,
+  what they carry on them (neckerchief, satchel, sleeves rolled, apron) and how
+  patched their clothes are. Left and right change a row; "someone else" deals a
+  whole new person; "begin" wakes them on the island behind the slate. The body is
+  drawn beside the list in its own colours, because colour is half of what is
+  being chosen. Continuing a save never shows the page: the save keeps the body.
+- **The body is appearance, never terrain.** It is saved under its own key and is
+  deliberately not part of what makes a save refused (WorldStamp), as the story
+  is: a changed face is never a reason a game will not load.
+- **Gear goes on over it.** Every wearable says what a body is seen wearing, in
+  the people model's own words, and one composed look dresses the walking figure
+  and the gear page alike, so the slate can never show something the world does
+  not. A player's chosen kit wears one piece a slot; crowds are dealt as before.
+- **The gear page draws the body, not a wire figure**: the player's own model,
+  scanned onto the glass in the slate's steps, with what was taken from the
+  machines in the module's violet — read off which parts ARE machine parts, not
+  guessed from a colour. It turns to show the chosen slot (the back slot turns it
+  round), turns by hand, and scans again as a piece goes on. The one piece the
+  walking figure does not show is the folded glide wing: the wing model hides
+  itself until it opens, and the gear page draws it folded on the back.
+
 ## Taking, as it is seen (owner, 2026-09-17)
 
 What the use key would take is **marked where it stands** the moment the player is

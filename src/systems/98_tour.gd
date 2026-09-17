@@ -122,6 +122,7 @@ extends GameSystem
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
 ##                          with --scene=title, or one whose game gave way to the title)
+##   await character SECS   the character page "new game" opens on the title is up
 ##   await game SECS        a new game has started since the last action (new game or
 ##                          Continue on the title, a load); every command after it drives it
 ##   await app:NAME SECS    the slate shows app NAME (inventory crafting map pause
@@ -518,6 +519,10 @@ func _answered(what: String) -> bool:
 
 
 func _now_true(what: String) -> bool:
+	if what == "character":
+		# The character page is up on the title and awake.
+		var tc := title if is_instance_valid(title) else get_tree().root.find_child("title", true, false) as UiTitle
+		return tc != null and tc.character != null and tc.character.is_open and tc.character.wake >= 1.0
 	if what == "title":
 		# Lit, and the coast faded up behind it.
 		var t := title if is_instance_valid(title) else get_tree().root.find_child("title", true, false) as UiTitle

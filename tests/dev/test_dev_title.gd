@@ -93,6 +93,7 @@ func test_the_key_that_shuts_dev_mode_is_not_a_press_on_the_title() -> void:
 	Input.action_release(&"use")
 	await tree.process_frame
 	check(not t._starting, "the held e did not start a new game")
+	check(not t.character.is_open, "nor open the character page")
 	t.get_parent().free()
 	DevMode.asked = was_asked
 

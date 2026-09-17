@@ -29,6 +29,9 @@ var dev: DevTitle
 ## The settings app on the title's own slate: the same page the pause menu opens,
 ## reading its keys itself because the title has no ui system to route them.
 var settings: UiSettingsScreen
+## The character page: "new game" opens it, and "begin" on it starts the game with
+## the body made there (BootOptions.avatar). Continuing a save never opens it.
+var character: UiCharacterScreen
 
 ## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
 ## there a coast is made on the main thread and would hold the title still for seconds.
@@ -51,6 +54,9 @@ var _task := -1
 var _starting := false
 ## The save slot Continue is starting, or -1 for a new game.
 var _continue_slot := -1
+## The body made on the character page, and whether "begin" has been pressed on it.
+var _avatar: Dictionary = {}
+var _avatar_chosen := false
 var _hour := 12.0
 
 
@@ -76,6 +82,8 @@ func setup(o: BootOptions) -> void:
 	add_child(_layer)
 	# The title's slate bakes on a worker; until it is in, a plain frame shows.
 	UiSlate.warm(UiTitleMenu.DEVICE.size)
+	# The character page opens on the full-size slate.
+	UiSlate.warm(UiSlate.DEVICE.size)
 	if o.shot != "":
 		UiSlate.wait()
 	menu = UiTitleMenu.new()
@@ -86,6 +94,10 @@ func setup(o: BootOptions) -> void:
 	settings.standalone = true
 	settings.device_rect = UiTitleMenu.DEVICE
 	_layer.add_child(settings)
+	character = UiCharacterScreen.new()
+	character.standalone = true
+	_layer.add_child(character)
+	character.begun.connect(_on_character_begun)
 	if o.shot != "":
 		# A shot has a few frames, not a second: draw the coast now and show it.
 		_show(WorldGen.generate(seed_value, o.size), seed_value, null, [], true)
@@ -98,6 +110,10 @@ func setup(o: BootOptions) -> void:
 	var screen := o.screen.split(":")
 	if screen[0] == "keys":
 		menu.page = "keys"
+	if screen[0] == "character":
+		open_character()
+		if o.shot != "":
+			character.settle()
 	if screen[0] == "wake" and screen.size() > 1:
 		menu.hold_wake(screen[1].to_float())
 	elif o.shot != "":
@@ -262,6 +278,10 @@ func _drawing() -> bool:
 func new_game() -> void:
 	if _starting:
 		return
+	# A new game begins with who wakes: the character page first, then the world.
+	if _continue_slot < 0 and character != null and not _avatar_chosen:
+		open_character()
+		return
 	_starting = true
 	_fade_to = 1.0
 	Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
@@ -307,8 +327,10 @@ func _start_game() -> void:
 			menu.refuse_save(slot, why)
 			return
 	else:
-		# A new game starts as the master configuration says (docs/DEV.md).
+		# A new game starts as the master configuration says (docs/DEV.md), with the
+		# body made on the character page.
 		GameConfig.fill_new_game(o)
+		o.avatar = _avatar.duplicate(true)
 	var parent := get_parent()
 	menu.close(true)
 	# The coast on show is the new game's world (not a continued save's elsewhere):
@@ -332,6 +354,22 @@ static func replace_game(game: Game) -> void:
 	parent.remove_child(game)
 	game.queue_free()
 	BootPage.open_title(parent, o)
+
+
+## Open the character page over the title, dealing from the island on show.
+func open_character() -> void:
+	if character == null or character.is_open:
+		return
+	character.seed_value = seed_value
+	Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
+	character.open()
+
+
+func _on_character_begun(look: Dictionary) -> void:
+	_avatar = look
+	_avatar_chosen = true
+	character.close(true)
+	new_game()
 
 
 ## Open the settings app over the title, if it is not already up.
