@@ -1,8 +1,9 @@
 extends TestCase
-## The sky's rules for reading a frame at any hour (docs/ART.md sections 5, 6):
-## people take a fill light of their own in low light, water never takes
-## lamplight, the lantern's light sits outside the body, dusk's warmth lands on
-## lit faces while shade stays cool, and a lightning flash is a few frames.
+## The sky's rules for reading a frame at any hour (docs/ART.md sections 5, 6,
+## as LANTERN left them): people take a fill light of their own in low light,
+## water DOES take lamplight now and gives back a reflection rather than a glow
+## disc, the lantern's light sits outside the body, dusk's warmth lands on lit
+## faces while shade stays cool, and a lightning flash is a few frames.
 
 const Lights := preload("res://src/systems/15_lights.gd")
 const SkySystem := preload("res://src/systems/10_sky.gd")
@@ -38,7 +39,17 @@ func test_people_are_tagged_for_their_fill_and_water_is_kept_from_lamps() -> voi
 	await frames(1)
 
 
-func test_lamps_never_light_water_and_the_lantern_is_out_of_the_body() -> void:
+## A lamp by the sea used to be cut out of the water's render layer altogether,
+## because what it laid on the water was a flat glow DISC and a glow disc on the
+## sea is absurd. Under LANTERN water is the smoothest surface in the world and
+## a light on it is a STREAK -- the light is in it, not on it -- so the water
+## takes lamplight like everything else and a fire on the shore is in the water
+## in front of it, which is most of what a night coast is for.
+##
+## What is still true, and is what this now holds: the lantern hangs off the
+## body rather than inside it, and the pool the sky is handed is the pool the
+## lights really made.
+func test_a_lamp_reaches_the_water_and_the_lantern_is_out_of_the_body() -> void:
 	var o := BootOptions.new()
 	o.size = 64
 	o.hour = 23.0
@@ -54,9 +65,13 @@ func test_lamps_never_light_water_and_the_lantern_is_out_of_the_body() -> void:
 	check(lights != null, "lights system loaded")
 	await frames(3)
 	for l: OmniLight3D in lights.lights:
-		eq(l.light_cull_mask & SkyLight.LAYER_WATER, 0, "no lamp lights the sea")
+		check((l.light_cull_mask & SkyLight.LAYER_WATER) != 0,
+			"a lamp reaches the water, and what it leaves there is a reflection")
+		gt(l.omni_attenuation, 0.0,
+			"and it falls off, so it is a light and not a disc with an edge")
 	var lantern: OmniLight3D = lights.lantern_light
-	eq(lantern.light_cull_mask & SkyLight.LAYER_WATER, 0, "nor the lantern")
+	check((lantern.light_cull_mask & SkyLight.LAYER_WATER) != 0,
+		"and so does the one the player is carrying, which is what wading at night is for")
 	check(lantern.visible, "lantern lit")
 	var off := Vector2(lantern.position.x - g.player.position.x, lantern.position.z - g.player.position.z)
 	gt(off.length(), 0.35, "the lantern's light is beside the body, not inside it")
@@ -438,18 +453,36 @@ func test_a_storm_at_ten_keeps_its_glow_while_the_evening_holds_its_own_back() -
 	lt(most.y, light_most * 2.0, "the glow's biggest half hour is no more than twice the light's")
 
 
-## The constants frame_level composes with are the shader's own. A tuned number
-## that moves in sky.gdshaderinc and not here would leave every evening test
-## measuring a picture the game no longer draws.
-func test_the_cpu_composition_uses_the_shaders_own_numbers() -> void:
+## There used to be TWO statements of how dark a night is -- SkyLight's
+## constants and the shader's own SKY_NIGHT_FLOOR, SKY_NIGHT_KNEE,
+## SKY_GLOW_LEVEL and SKY_GLOW_FLOOR -- and this pinned them to each other,
+## because a number tuned in one and not the other left every evening test
+## measuring a picture the game did not draw.
+##
+## Under LANTERN there is only one statement of it. The floor lifted under every
+## wash and the skyglow emitted onto every surface are both gone (they put light
+## into a frame no light was falling on, which is most of why night was not
+## dark); what makes a night dark is now SkyLight.NIGHT_AMBIENT and
+## SkyLight.MOON_NIGHT, set on real lights, and no shader holds a copy.
+##
+## So what is pinned is that there is still only one: a night level that
+## reappears as a constant in the shader is the old two-copy bug coming back.
+func test_the_night_is_stated_in_one_place_and_the_shaders_hold_no_copy() -> void:
 	var code := ShaderSource.text(ShaderSource.SKY_INC)
-	var floor_c := ShaderSource.vec3_const(code, "SKY_NIGHT_FLOOR")
-	near((floor_c - SkyLight.NIGHT_FLOOR).length(), 0.0, 1e-6, "the night floor: shader %s, SkyLight %s" % [floor_c, SkyLight.NIGHT_FLOOR])
-	near(ShaderSource.number(code, "SKY_NIGHT_KNEE"), SkyLight.NIGHT_KNEE, 1e-6, "the knee")
-	near(ShaderSource.number(code, "SKY_GLOW_LEVEL"), SkyLight.GLOW_LEVEL, 1e-6, "the skyglow's level")
-	near(ShaderSource.number(code, "SKY_GLOW_FLOOR"), SkyLight.GLOW_FLOOR, 1e-6, "the skyglow's floor")
-	check(code.contains("SKY_NIGHT_FLOOR * sky_night.x"), "the floor is spent against sky_night.x")
-	check(code.contains("* sky_night.y"), "and the skyglow against sky_night.y")
+	for gone: String in ["SKY_NIGHT_FLOOR", "SKY_NIGHT_KNEE", "SKY_GLOW_LEVEL", "SKY_GLOW_FLOOR"]:
+		check(not code.contains("const"  + " vec3 " + gone) and not code.contains("const float " + gone),
+			"%s is not stated in the shader as well" % gone)
+	gt(SkyLight.NIGHT_AMBIENT, 0.0, "the night's level is SkyLight's")
+	# Compare the TOTALS, not the ambients: by day the sky is a small part of
+	# the light and the sun is the rest, and at night the sky is nearly all of
+	# it, so NIGHT_AMBIENT is the larger of the two numbers and says nothing on
+	# its own.
+	gt(SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8,
+		(SkyLight.NIGHT_AMBIENT + SkyLight.MOON_NIGHT * 0.85) * 1.25, "the day is brighter than the night")
+	gt(SkyLight.SUN_NOON, SkyLight.MOON_NIGHT * 3.0,
+		"and the sun is worth several stops more than the moon, which is what a lamp is for")
+	gt(SkyLight.MOON_NIGHT * 0.85, SkyLight.NIGHT_AMBIENT * 0.2,
+		"while the moon is a real share of the night, or a night frame has no shape in it")
 
 
 ## Dusk is long low shadows. They used to stop at 20:30 because they were keyed

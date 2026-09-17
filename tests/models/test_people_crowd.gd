@@ -195,6 +195,12 @@ func test_the_shadow_twin_shows_only_while_the_sun_casts() -> void:
 	sky.set_hour(23.5)
 	p.animate(0.0, 0.3)
 	eq(p.rig.shadow.visible, sky.sun.shadow_enabled, "at night too")
-	check(not p.rig.shadow.visible, "no shadow drawn under the moon")
+	# The moon casts under LANTERN, faintly and softly (SkyLight.MOON_SHADOW).
+	# The old rule -- nothing casts at night -- was right while night was a blue
+	# wash over a drawing; under a real sky it is the opposite, and a moon that
+	# casts is most of what gives a night frame shape without lifting it.
+	check(p.rig.shadow.visible, "and the moon casts too, so the twin stays")
+	lt(sky.sun.shadow_opacity, 0.7, "faintly")
+	gt(sky.sun.shadow_opacity, 0.0, "but really")
 	stage.queue_free()
 	await frames(1)

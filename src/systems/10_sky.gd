@@ -90,12 +90,24 @@ const STUTTER: Array[Vector2] = [
 ]
 
 
+
+## A realm crossing replaces the world under us. 20_realms hands the sky its new
+## ground map itself; the wear map is this package's, so it is taken here.
+func realm_changed(_from: StringName, _to: StringName) -> void:
+	if game != null and game.sky != null and game.world != null:
+		game.sky.set_wear(SkyWear.texture(game.world))
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
 	g.sky.driven = true
 	apply_weather(g.options.weather)
 	var t0 := Time.get_ticks_msec()
 	g.sky.set_ground(SkyGround.texture(g.world), g.world.size)
+	# What the land DOES to a thing standing in it (LANTERN law 1): rust, salt
+	# bloom, soot, frost, by world position. Baked beside the ground map because
+	# it is the same sweep over the same world.
+	g.sky.set_wear(SkyWear.texture(g.world))
 	ground_ms = Time.get_ticks_msec() - t0
 	var a := Rng.hash01(g.world.seed_value, 0xC10D) * TAU
 	_cloud_bearing = Vector2.from_angle(a)

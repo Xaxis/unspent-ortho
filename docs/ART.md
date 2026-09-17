@@ -22,6 +22,40 @@ This document is binding. The research extract (`docs/research/art-audio-extract
 supplies palette values, silhouettes and lighting numbers; where it conflicts with
 this page, this page wins.
 
+> ## SUPERSEDED IN PART BY `docs/LOOK.md` (owner, 2026-09-17)
+>
+> The owner was shown twelve directions built on this page and rejected all
+> twelve as papery. **`docs/LOOK.md` is the direction of record and outranks this
+> page wherever the two conflict.** LANTERN's one sentence is *the world is lit,
+> not drawn*, and the `lit` wave has landed, so the following are HISTORY and
+> are no longer in the game:
+>
+> * **§1 laws 2, 3, 5 and 6, and all of §2 Rendering** — flat washes, the
+>   one-step shade band, ink contours, hatching in the country's hand, the paper
+>   grain, the ink floor, the neon halo and the screen-space outline pass. There
+>   is no `light()` in any lit shader; the renderer lights the world and a
+>   shader's job is to say what the surface is made of.
+> * **§6's mechanism** — the blue floor lifted under every wash at night, the
+>   skyglow emitted onto every surface, the lamp pool cut into two hard steps
+>   and the per-fragment grade. Night is dark because there is less light in it;
+>   the ceiling is a tonemapper.
+>
+> What SURVIVES, and is the reason this page is still here:
+>
+> * the dystopia, and that it lives in what every landscape CONTAINS (above);
+> * **nothing like Minecraft or any voxel game**, and no tile grid on screen;
+> * the MADE/FOUND split (§4) — which is stronger now, because it is carried by
+>   material rather than by two pens: MADE is timber, mud, thatch and cloth,
+>   FOUND is panelled ruled metal, and the amber `LENS` is still the only
+>   saturated thing on a machine;
+> * **the machine-against-the-turf law** (§4): a machine is a DARK mass by day.
+>   It is measured on a frame now (`tests/render/test_dark_floor.gd`, and the
+>   `FOUND_MASS` constant in `found.gdshader` is where it is enforced);
+> * §5 readability, including the people's rim, which is now the ONLY outline
+>   left in the game;
+> * §9 the slate, §10 what the player builds, §11 gear, §12 MENDED, and the
+>   review checklist in §8 — with "look at the pictures" more binding than ever.
+
 ---
 
 ## 1. The six laws

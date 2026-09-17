@@ -1,28 +1,32 @@
-// The sky over the notebook (docs/ART.md section 6). Owned by the sky package.
-// Included by every lit shader (world, found, water) and by the weather marks.
-// It is the ONLY place lit colour is tinted by time, weather or region:
+// The sky over the world (docs/LOOK.md). Owned by the sky package. Included by
+// every lit shader (world, found, water, person) and by the weather marks.
 //
-//   sky_apply(albedo, world_pos, TIME)   in fragment(): the wash under this sky
-//   sky_ink(world_pos, up)               in world.gdshader light(): how the sky
-//                                        lays or lifts hatching (cloud shadow and
-//                                        night lay it; lamplight, fog and a
-//                                        lightning flash lift it)
-//   sky_pool(attenuation, world_pos)     in light() for lamps and fire: the pool
-//                                        in two hard steps with a stippled rim
-//   sky_line(ink)                        for outlines: ink turns blue at night
-//   sky_shade.rgb                        in light(): multiply the shade colour by it
+// Under LANTERN this file is no longer a TINT. The hour's colour, the weather's
+// colour and a landscape's own light are the SUN's colour and the SKY's colour
+// now, set on the real lights by SkyLight; what is left here is what the air and
+// the weather do to a surface the light has already found:
+//
+//   sky_apply(albedo, world_pos, TIME)   in fragment(): what has SETTLED on this
+//                                        surface (snow, ash, wet), the bank of
+//                                        fog or the whiteout it is seen
+//                                        through, a cloud's shade over it, the
+//                                        glare, and the white of a strike
 //   sky_power()                          a multiply for the machines' own light
-//                                        (FOUND strips, beacons, stolen neon): 1
-//                                        steady, stuttering for a beat after lightning
-//   sky_gloom()                          how little light there is (0 full day, 1
-//                                        dead of night): the multiply for everything
-//                                        that only belongs to the dark
+//                                        (FOUND strips, beacons, stolen neon):
+//                                        1 steady, stuttering after lightning
+//   sky_gloom()                          how little light there is (0 full day,
+//                                        1 dead of night)
 //   neon_reflect(world_pos, px)          emission for wet ground: the glint list
-//                                        (lamps, fires, beacons, neon) mirrored
+//                                        mirrored as broken streaks
+//
+// Four functions are kept as no-ops on purpose, because half a dozen shaders
+// call them and each is converted in its turn: sky_ink (there is no hatch to
+// lay), sky_pool (real lights make their own pools now), neon_graded (the grade
+// is one knob on the Environment, not a per-fragment multiply) and neon_skyglow
+// (the sky's own light is AMBIENT light, not emission added to every surface).
+// Each says below what took its job.
 //
 // Every global is written by SkyLight (src/render/sky_light.gd) and nothing else.
-// Patterns here are in screen pixels pinned to the world, like the ink: nothing
-// is a gradient, nothing swims.
 #ifndef SKY_GDSHADERINC
 #define SKY_GDSHADERINC
 
@@ -82,6 +86,15 @@ global uniform vec4 sky_shade;
 // can lie, b wet can show, a the ground's height smoothed over ~8 tiles / 8.
 // Sampled at world xz * sky_view.z.
 global uniform sampler2D sky_ground;
+// What the land DOES to a thing standing on it (SkyWear), by world position:
+// r rust, g salt bloom, b soot, a frost. The same sampling as sky_ground.
+// Read by matter_worn(); LANTERN law 1.
+global uniform sampler2D sky_wear;
+// 1 where the renderer wants ALBEDO in LINEAR light and will encode the frame
+// to sRGB itself (Forward+), 0 where it hands the value straight to the display
+// (Compatibility). Measured, both; matter.gdshaderinc says what it is for.
+// Written once at boot by SkyLight from Quality.forward_plus().
+global uniform float sky_linear;
 
 // --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
 // The grade every lit wash passes through last: x darkness 0..1, y desaturation
@@ -114,29 +127,47 @@ const vec3 SKY_AFTERGLOW = vec3(0.78, 0.87, 1.0);    // lightning's light held i
 const float SKY_WHITEOUT_NEAR = 3.5;
 const float SKY_WHITEOUT_FAR = 13.0;
 const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under the moon
-const vec3 SKY_NIGHT_FLOOR = vec3(0.08, 0.10, 0.21);  // the darkest a wash goes at night
-const float SKY_NIGHT_KNEE = 0.32;
-// The grade's darkness term is negative in most landscapes, so it is a GAIN,
-// and it is one number for the WHOLE frame: a pale land seen from a dark one is
-// multiplied by the dark one's lift and lands flat on the page. The salt crust
-// drew at 255 across the coast border (18.7% of that frame pure white) and the
-// snowfield still does against the pinewood, the moss and the wood. Clipped
-// white holds no second wash, no shade band, no hatch and no ink, so ART Law 2
-// and Law 6 fail exactly at the ecotone — the one place they matter most.
-// So the last step before the page is a shoulder, per channel: everything under
-// SKY_TOP_KNEE is left exactly where it was, and what was heading past it rolls
-// into the gap below SKY_TOP instead of stacking on it. The page itself
-// (LINEN[5], 232) sits above the knee, so nothing the game draws can ever be
-// brighter than the paper it is drawn on.
-const float SKY_TOP_KNEE = 0.86;
-const float SKY_TOP = 0.972;
+// WAS: SKY_NIGHT_FLOOR and SKY_NIGHT_KNEE, a deep blue floor lifted UNDER every
+// wash at night so the renderer's light could not crush it to nothing. That was
+// the single biggest reason night was not dark: it put light into a frame no
+// light was falling on, and it put it into the albedo, where nothing could take
+// it out again. LANTERN law 3 wants a night that is genuinely dark and still
+// shaped, and the honest way to get one is AMBIENT light from a real sky
+// (SkyLight.NIGHT_SKY) plus moonlight, both of which a lamp can then beat.
+// THE CEILING. There used to be a shoulder here (SKY_TOP_KNEE, SKY_TOP): the
+// grade was a per-frame GAIN with no ceiling, so a pale landscape seen from a
+// dark one was multiplied onto the page and clipped to flat white, which holds
+// no wash, no shade band and no ink. Clipping is still a failure; it has simply
+// stopped being about paper.
+//
+// What replaces it is the TONEMAPPER. The frame is rendered in HDR and rolled
+// off by Environment.tonemap_mode (SkyLight.TONEMAP), which is the honest place
+// for a ceiling: it is one curve for the whole image, it cannot be defeated by
+// a second landscape in frame, and it takes a highlight that is four times over
+// white and gives back a highlight instead of a hole. A machine's own light is
+// meant to burn and is rolled off rather than clipped, which is what makes a
+// strip read as bright rather than as a white rectangle.
+//
+// tests/render/test_page_ceiling.gd pinned the old shoulder's arithmetic;
+// tests/render/test_ceiling.gd now measures the frames themselves.
 const float SKY_GROUND_HEIGHT = 8.0;                  // SkyGround.HEIGHT_RANGE
 
-// The screen pixel a world point falls on. The camera never rotates (yaw 45,
-// pitch 57) and is snapped to whole texels, so this is pinned to the world.
+// The GRAIN cell a world point falls in. The camera never rotates (yaw 45,
+// pitch 57), so projecting on its two axes gives a stable 2D field pinned to the
+// world. The divisor used to be the LIVE texel (sky_view.x), which made this a
+// screen pixel: every pattern built on it swam when the camera zoomed and got
+// three times finer the moment the floor rose from 360 rows to 1080, so none of
+// it belonged to the place it was drawn on. It is a constant now -- the world a
+// pixel covers at the base's own 1080 rows -- so a speck of grit is the same
+// speck of grit at any tier, at any zoom, and on the web.
+//
+// This is PIGMENT only. A material's own RELIEF, which is the thing the light
+// finds, is measured in world units and does not come through here at all
+// (matter_height); so the pebbles on a beach are pebble-sized however fine the
+// grit on them is drawn.
+const float SKY_GRAIN = 15.0 / 1080.0;
 vec2 sky_px(vec3 world_pos) {
-	float texel = max(sky_view.x, 0.001);
-	return floor(vec2(dot(world_pos, vec3(0.7071, 0.0, -0.7071)), dot(world_pos, vec3(-0.5931, 0.5446, -0.5931))) / texel);
+	return floor(vec2(dot(world_pos, vec3(0.7071, 0.0, -0.7071)), dot(world_pos, vec3(-0.5931, 0.5446, -0.5931))) / SKY_GRAIN);
 }
 
 // Hash without sine (Hoskins): stable in highp, no texture needed.
@@ -350,29 +381,12 @@ const float SKY_POOL_WASH = 0.3;
 const float SKY_POOL_TILT = 0.8;
 const float SKY_POOL_LIFT = 1.6;
 
-// A pool of lamplight in two steps: a bright core (1.0) where the page shows,
-// then a dimmer ring (0.5), each edge broken into a few pixels of stipple and
-// wandering with the ground, the way a wash of light is laid by hand. Never a
-// smooth falloff, never a ruled circle.
+// WAS: a pool of lamplight cut into two hard steps with a stippled rim, so a
+// lamp read as a wash laid by hand. Now the renderer's own attenuation is the
+// pool, and it falls off the way light does. Kept as the identity so the
+// shaders that still call it keep compiling and keep meaning the same thing.
 float sky_pool(float a, vec3 world_pos) {
-	if (a <= 0.0) {
-		return 0.0;
-	}
-	float h = sky_hash(sky_px(world_pos) + vec2(29.0, 13.0));
-	a += (sky_noise(world_pos.xz * 0.8 + vec2(3.0, 71.0)) - 0.5) * 0.2 + (sky_noise(world_pos.xz * 2.6) - 0.5) * 0.08;
-	if (a >= SKY_POOL_CORE + 0.05) {
-		return 1.0;
-	}
-	if (a >= SKY_POOL_CORE) {
-		return h < (a - SKY_POOL_CORE) / 0.05 ? 1.0 : 0.5;
-	}
-	if (a >= SKY_POOL_RING + 0.05) {
-		return 0.5;
-	}
-	if (a >= SKY_POOL_RING) {
-		return h < (a - SKY_POOL_RING) / 0.05 * 0.8 ? 0.5 : 0.0;
-	}
-	return 0.0;
+	return clamp(a, 0.0, 1.0);
 }
 
 // The wash inside a pool: the LIGHT's own colour laid over the ground, warm for
@@ -403,33 +417,11 @@ vec3 sky_lamp_wash(vec3 c, vec3 lamp_rgb, float pool) {
 	return mix(c, c * gain, pool * SKY_POOL_WASH * sky_gloom());
 }
 
-// How the sky changes the hatching of a MADE surface, for world.gdshader
-// light(). Returns x: 1 where hatching is laid on a sunlit face (a cloud's
-// shadow, or night), y: 1 where hatching is lifted (lamplight, fog, a flash),
-// z: how much deeper shade reads (night). All 0/1 per pixel, dithered.
-// up: the surface normal's world y. Night hatches the ground, roofs and crowns;
-// walls, people and faces keep their moonlit wash, so shapes read in the dark
-// and hatching never crosses a face.
+// WAS: where the sky laid hatching on a lit face (cloud shadow, night) and
+// where it lifted it (lamplight, fog, a flash). There is no hatching. A cloud's
+// shade is a shade now, and night is dark because there is less light in it.
 vec3 sky_ink(vec3 world_pos, float up) {
-	vec2 px = sky_px(world_pos);
-	float d = sky_dither(px);
-	float night = sky_view.y;
-	// A cloud's shade is lighter than cast or deep shade: its hatch is laid in
-	// broken lengths, about half of them, fewer under a thin cloud. Like night,
-	// it is laid only on what faces the sky, never across a wall or a face.
-	float shaded = step(d, sky_cloud(world_pos) * 0.999) * step(sky_hash(floor(px / vec2(4.0, 3.0)) + vec2(5.0, 9.0)), sky_clouds.w * 0.55) * step(0.55, up);
-	// Night comes on a line-length at a time, so dusk never reads as grain.
-	float lay = max(step(sky_hash(floor(px / 3.0) + vec2(17.0, 2.0)), night * 0.999) * step(0.55, up), shaded);
-	float deeper = night * 0.3;
-	// Lamplight only erases hatching once the dark has come: by day a lit lamp
-	// is a flame, and leaves no mark on the page at all.
-	float pool = sky_pool(sky_lamp_level(world_pos, up), world_pos) * step(0.12, sky_gloom());
-	// The core of a pool is clean page; its ring keeps half its hatching.
-	float lift = max(step(0.99, pool), step(0.49, pool) * step(sky_hash(floor(px / 3.0) + vec2(23.0, 7.0)), 0.5));
-	// Fog thins the hatching a line-length at a time, not pixel by pixel.
-	lift = max(lift, step(sky_hash(floor(px / 3.0) + vec2(41.0, 3.0)), max(sky_fog_at(world_pos, px, 0.01) * 0.9, sky_whiteout_at(world_pos) * 1.2)));
-	lift = max(lift, step(0.3, sky_sun.w));
-	return vec3(lay, lift, deeper);
+	return vec3(0.0);
 }
 
 // Outline ink under this sky: near-black by day, deep blue ink under the moon.
@@ -487,7 +479,7 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), step(h, dark));
 		float puddle_lay = sky_noise(world_pos.xz * 1.3 + vec2(11.0, 47.0)) * 0.6 + broad * 0.4;
 		float pool = smoothstep(0.0, 0.02, puddle_lay - 0.86 + (w - 0.5) * 0.12) * flat_face * step(0.5, w);
-		c = mix(c, SKY_PUDDLE * sky_tint, step(h, pool) * 0.45);
+		c = mix(c, SKY_PUDDLE, step(h, pool) * 0.45);
 		if (sky_air.x > 0.02 && pool > 0.5) {
 			// Rain on standing water: rings spreading and gone, one to a small
 			// cell, each on its own beat, more of them the harder it falls.
@@ -500,49 +492,35 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 			float rad = 1.0 + age * 5.0;
 			float ring = step(abs(length(vec2(dv.x, dv.y * 1.2)) - rad), 0.55) * step(age, 0.8);
 			ring *= step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
-			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)) * sky_tint, ring * 0.7);
+			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)), ring * 0.7);
 		}
 	}
 	if (settle.y > 0.001) {
 		float a = settle.y;
 		// Specks, gathering thicker where it drifts, never a flat grey bed.
 		float drift = sky_noise(world_pos.xz * 0.6 + vec2(5.0, 23.0));
-		c = mix(c, SKY_ASH * sky_tint, step(h, a * (0.03 + 0.06 * drift)));
+		c = mix(c, SKY_ASH, step(h, a * (0.03 + 0.06 * drift)));
 	}
 	if (settle.x > 0.001) {
 		float s = settle.x;
 		float lie = smoothstep(0.0, 0.025, lay - 1.0 + s * 0.75);
 		// Flecks outrun the drift, so snow arrives as paper showing through.
 		float fleck = step(h, s * 0.12) * step(0.5, sky_hash(px * 0.5 + vec2(3.0, 1.0)));
-		c = mix(c, SKY_SNOW * sky_tint, max(step(h, lie), fleck));
+		c = mix(c, SKY_SNOW, max(step(h, lie), fleck));
 	}
 	return c;
 }
 
-// The dystopian grade: darker, cooler, less colour, harder mids. FOUND keeps a
-// little more of its colour: the machines' order is the lit thing in the ruin.
+// WAS: the dystopian grade -- darker, cooler, less colour, harder mids, on a
+// per-fragment shoulder. Grading a lit world per fragment fights the light: it
+// is applied before anything knows how bright the frame turned out, so the same
+// multiply crushes a dark interior and does nothing to a noon field. The grade
+// is now one knob on the Environment (SkyLight: adjustment brightness, contrast
+// and saturation, plus the tonemapper), set once a frame from the hour and the
+// landscapes in view -- the same inputs, in the one place that can see the
+// whole image. Kept as the identity while the callers are converted.
 vec3 neon_graded(vec3 c, float found) {
-	float l = dot(c, vec3(0.299, 0.587, 0.114));
-	vec3 g = mix(c, vec3(l), neon_grade.y * (1.0 - 0.5 * found));
-	g = mix(g, g * NEON_COOL, neon_grade.z);
-	// Contrast as an S around the mids: lights lift a little, mids deepen, and
-	// the darks are left where they are, so a dark wash never crushes to black.
-	vec3 sc = clamp(g, 0.0, 1.0);
-	vec3 s_curve = sc * sc * (3.0 - 2.0 * sc);
-	g = mix(g, max(s_curve, sc * 0.8), neon_grade.w);
-	vec3 lit = g * (1.0 - neon_grade.x);
-	// Held under the page: a lift is a gain, and a gain with no ceiling puts
-	// another landscape's washes on the paper at an ecotone. Per channel, so a
-	// wash only loses what was over the line: scaling the whole colour by its
-	// brightest channel instead keeps the hue but takes 23 points of value off
-	// the snowfield's own noon (median 190 -> 167), and the snowfield is the
-	// landscape the rest of the game is measured against. The cost accepted here
-	// is the other one: a wash lifted far past the page loses its tint as its
-	// channels crowd the ceiling. It was flat white before, so nothing is lost
-	// that was being drawn — and everything under the knee is left exactly where
-	// the landscape's own file put it.
-	vec3 over = max(lit - SKY_TOP_KNEE, 0.0);
-	return min(lit, SKY_TOP_KNEE + (SKY_TOP - SKY_TOP_KNEE) * over / (over + (SKY_TOP - SKY_TOP_KNEE)));
+	return c;
 }
 
 // How wet the ground lies here, 0..1: the rain-slicked default plus rain, only
@@ -607,144 +585,88 @@ vec3 neon_reflect(vec3 world_pos, vec2 px) {
 	return e * wet * neon_wet.z * 2.6 * (0.2 + 0.8 * sky_gloom());
 }
 
-// Skyglow: low cloud holds the light of everything the machines keep running,
-// so in gloom, dusk and night a wash still reads as a shape and never goes to
-// black. Emitted, because a wash multiplied by no light is black.
-//
-// It is the SKY'S OWN COLOUR at a fixed level, not one colour for every dark
-// hour. A fixed teal-indigo laid a blue wash over every surface exactly as the
-// sun went warm, which made the evening measure bluer the dimmer it got — and
-// gave the burning, whose whole promise is a glow from below, a cold blue night.
-// Over the coast at midnight the sky's own hue at this level IS the teal-indigo
-// the constants were tuned to; over the burning it is the furnace. Its luminance
-// is the same either way, so nothing about how dark a night reads has moved.
-// Call from fragment() with the graded albedo and ADD to EMISSION.
-const float SKY_GLOW_LEVEL = 0.24;
-const float SKY_GLOW_FLOOR = 0.033;
-
-// How much of it is up is sky_night.y, which is held back behind the floor
-// (SkyLight.night_terms). It must NOT be read off the composed light's own
-// level, which counts a setting sun as a dark sky and so came up at exactly the
-// rate the dusk was going down.
+// WAS: skyglow, emitted onto every surface so a wash in the dark still read as
+// a shape. Emission on everything is the definition of a flat picture -- it is
+// light that comes from nowhere, casts nothing and can be hidden by nothing.
+// The low cloud over a ruin that keeps its lights on is now what it always was:
+// the colour and level of the AMBIENT light (SkyLight.NIGHT_SKY, and the
+// Environment's own sky), which a roof can block and a lamp can beat.
 vec3 neon_skyglow(vec3 graded) {
-	float tl = max(dot(sky_tint, vec3(0.3, 0.59, 0.11)), 0.001);
-	vec3 hue = sky_tint / tl;
-	vec3 glow = (graded * hue * SKY_GLOW_LEVEL + hue * SKY_GLOW_FLOOR) * sky_night.y;
-	// This is laid over a wash the grade has already held under the page, so it
-	// answers to the same ceiling: the glow runs highest at dusk and under cloud,
-	// exactly when a pale land is lit flattest, and without this the snow in
-	// shots/tour/biomes/13-scrapwood-dusk.png went back to 255 with the ink
-	// gone off it after the grade had just kept it. A machine's own light is
-	// not this glow and is not held: neon is meant to burn.
-	//
-	// The ceiling holds the glow's AMOUNT; it does not choose its colour or when
-	// it is up. Those are the two lines above — the sky's own hue at this level,
-	// spent on sky_night.y — so a salt flat at dusk keeps its drawing without the
-	// evening's fall being paid for out of the page.
-	return min(glow, max(vec3(SKY_TOP) - graded, vec3(0.0)));
+	return vec3(0.0);
 }
 
 vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec2 px = sky_px(world_pos);
 	float d = sky_dither(px);
 #ifdef SKY_FOUND
-	// Nothing lies on the FOUND: it runs warm, and must always read as a machine.
-	vec3 c = albedo * sky_tint;
+	// Nothing lies on the FOUND: it is powered, warm and kept, and must always
+	// read as a machine.
+	vec3 c = albedo;
 #else
-	vec3 c = sky_settled(albedo * sky_tint, albedo, world_pos, px);
+	vec3 c = sky_settled(albedo, albedo, world_pos, px);
 #endif
-	// Night is blue ink on dim washes, never black. The renderer's linear light
-	// crushes dark washes to nothing under the moon, so the darks are lifted
-	// onto a deep blue floor (a soft knee: light washes are left alone).
-	// This is the biggest thing that puts light back into a dark frame — on the
-	// coast it holds the dark half of the picture fifteen values above what the
-	// sun alone leaves — so it is spent against the light the evening is losing
-	// (sky_night.x), and not against how far night has fallen: keeping pace with
-	// the eased middle of that curve it handed back more than the dusk was
-	// taking, and the land measured brighter at eight in the evening than at half
-	// past seven (art review finding 2).
-	vec3 floor_ink = SKY_NIGHT_FLOOR * sky_night.x;
-	c = mix(mix(floor_ink, vec3(SKY_NIGHT_KNEE), c / SKY_NIGHT_KNEE), c, step(vec3(SKY_NIGHT_KNEE), c));
-	// Where lamplight falls the page shows through the dark a little: the light
-	// is a lifted wash, not only a warmer one. Faces are found from screen
-	// derivatives (every face here is flat), so roofs are left out as in light().
+	// The hour's own colour is NOT applied here any more. It is the colour of
+	// the sun and of the sky (SkyLight), so a face turned away from the light
+	// takes the sky's blue and a face turned to it takes the evening's warmth,
+	// which one multiply over the whole surface could never do. This function
+	// now only says what the AIR and the WEATHER have done.
 	float face_up = abs(normalize(cross(dFdx(world_pos), dFdy(world_pos))).y);
-	vec4 lamp = sky_lamp_colour(world_pos, face_up);
-	// Water (below 0.36) takes no lamplight at all: no glow disc on the sea.
-	// The pool is the light's own colour: sodium, stolen neon, a fire.
-	float pool = sky_pool(lamp.a, world_pos) * step(0.36, world_pos.y);
-	c = sky_lamp_wash(c, lamp.rgb, pool);
 #ifndef SKY_FOUND
-	// Rain-slicked: wet ground is a step darker and holds the sky in a sheen. By
-	// day the sheen is the pale sky, so a wet afternoon is bleak, not night; in
-	// low light the step goes deep and the lights' streaks carry. The slick picks
-	// out the same lay of hollows the wet wash darkens, stippled at their edges,
-	// and spreads over as much of it as this ground is wet — rain that has
-	// settled, or a land like the moss that never dries.
+	// Rain-slicked: wet ground goes a step DARKER, which is what wet ground
+	// really does. It used to be given a pale sheen as well, to stand in for a
+	// reflection nothing was computing; the reflection is real now (ROUGHNESS
+	// falls where it is wet, and the sky and the lamps are in it), so the sheen
+	// is gone and only the darkening is left.
+	// How much it darkens depends on how much light there is to be absorbed.
+	// Wet ground looks dark by DAY because it swallows the light falling on it;
+	// at night there is nothing to swallow and what you see in it is reflected,
+	// so a full daylight darkening laid on a wet bog at midnight took the moss
+	// frames to 86% of the picture under luma 24, which is a black screen with
+	// a green dot in it -- the exact thing LOOK.md law 3 is guarding against.
 	float wet = neon_wetness(world_pos) * step(0.9, face_up);
-	float day_sheen = 1.0 - clamp(max(sky_view.y, sky_shade.w), 0.0, 1.0);
-	vec3 slick = mix(c * vec3(0.72, 0.76, 0.83), c * vec3(0.84, 0.87, 0.92) + SKY_PUDDLE * sky_tint * 0.04, day_sheen);
-	c = mix(c, slick + vec3(0.02, 0.025, 0.035) * neon_wet.y, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
+	vec3 soak = mix(vec3(0.78, 0.81, 0.87), vec3(0.66, 0.70, 0.78), 1.0 - sky_gloom());
+	c = mix(c, c * soak, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {
-		// A cloud's shade is a colour, like every shade here: one step toward
-		// blue-violet (the hatching is laid in light()), with a stippled edge.
-		c *= mix(vec3(1.0), SKY_CLOUD_SHADE, step(d, cloud * 0.999) * sky_clouds.w);
+		// A cloud over the sun. Nothing in the engine casts these, so it is a
+		// shade on the surface: soft-edged now rather than stippled, because
+		// under a real sun a hard-edged cloud shadow reads as paint.
+		c *= mix(vec3(1.0), SKY_CLOUD_SHADE, clamp(cloud, 0.0, 1.0) * sky_clouds.w * 0.75);
 	}
-	// Each bank's edge is a band of stipple a few pixels wide wherever it lies.
-	float fog = sky_fog_at(world_pos, px, max(fwidth(world_pos.x) + fwidth(world_pos.z), 0.01) * 0.035);
-	// Furnace haze is drawn in ash lit rust from below, keeping some of the
-	// furnace's warmth at dusk; a whiteout is the page gone cold white.
-	vec3 fog_col = mix(SKY_PAGE * sky_tint, SKY_HAZE * mix(sky_tint, vec3(1.0, 0.7, 0.45), 0.55), sky_air.z);
-	vec3 white = SKY_WHITEOUT * max(sky_tint, vec3(0.55));
+	// Banks of fog and haze lying ON the land, which the Environment's own
+	// depth fog cannot do: they sit in the hollows, drift on the wind and leave
+	// ground showing between them.
+	float fog = sky_fog_at(world_pos, px, max(fwidth(world_pos.x) + fwidth(world_pos.z), 0.01) * 0.12);
+	vec3 fog_col = mix(SKY_PAGE, SKY_HAZE * vec3(1.0, 0.7, 0.45), sky_air.z);
+	vec3 white = SKY_WHITEOUT;
 	fog_col = mix(fog_col, white, sky_air.w);
 	if (fog > 0.0) {
-		// The page showing through: washes lighten toward linen in two steps.
-		// Under the moon the page is blue too.
-		c = mix(c, fog_col, fog * (0.42 + 0.12 * sky_air.z));
+		c = mix(c, fog_col, fog * (0.34 + 0.12 * sky_air.z));
 	}
 	if (sky_air.w > 0.001) {
-		// A whiteout: the land round the player still reads, and the page takes
-		// the rest in whole steps with a stippled edge between them, until at
-		// the edge of the screen there is only blowing white. The white comes
-		// in gusts that blow past on the wind, so its edge wanders over the
-		// land like weather and never sits as a ruled ring round the player.
+		// A whiteout: the land round the player still reads and the distance
+		// goes, in gusts that blow past on the wind, so its edge wanders over
+		// the land like weather and never sits as a ring round the player.
 		float gust = sky_noise((world_pos.xz - sky_wind.xy * time * 1.6) * 0.16 + vec2(5.0, 17.0));
 		float veil = clamp(sky_whiteout_at(world_pos) + (gust - 0.35) * 0.45 * sky_air.w, 0.0, 1.0);
-		veil = max(veil, 0.12 * sky_air.w);
-		c = mix(c, white, floor(veil * 4.0 + sky_dither(px + vec2(37.0, 5.0))) / 4.0);
+		c = mix(c, white, max(veil, 0.12 * sky_air.w));
 	}
 	if (sky_air.y > 0.001) {
-		// Glare: hard white light bleaches the washes toward a lifted grey and
-		// pales the mids; shade and ink keep their places, so it is harsh, not soft.
+		// Glare: hard white light bleaches a surface toward a lifted grey.
 		float gl = dot(c, vec3(0.299, 0.587, 0.114));
 		c = mix(c, vec3(gl) * vec3(1.04, 1.03, 0.99) + (1.0 - vec3(gl)) * 0.17, sky_air.y * 0.5);
 	}
 	if (sky_bolt.z > 0.001) {
-		// The strike's afterglow rolling through the clouds: a cold blue-white,
-		// laid thinner over bright ground so it never reads as a bank of snow.
+		// The strike's afterglow rolling through the cloud, and the land under
+		// it lifting while the light lasts.
 		float lum = dot(c, vec3(0.299, 0.587, 0.114));
-		// The land the light has reached lifts with it, a stipple at a time and
-		// thickest behind the rolling front, so a strike is felt on the ground
-		// and not only in the cloud. Its far edge is the front itself, dithered.
 		c = mix(c, SKY_AFTERGLOW, sky_afterglow(world_pos, d) * (0.38 - 0.2 * lum));
-		// And the land under it lifts a step while the light lasts, cold and
-		// dithered at its edge, so a strike is felt on the ground as well as in
-		// the cloud. A step, never a wash: the shade and the ink keep their places.
 		float away = length(world_pos.xz - sky_bolt.xy);
 		float lifted = clamp(sky_bolt.z, 0.0, 1.0) * (1.0 - smoothstep(sky_view.w * 0.2, sky_view.w + 4.0, away));
-		c = mix(c, min(c * vec3(1.10, 1.14, 1.22), vec3(1.0)), step(sky_dither(px + vec2(19.0, 53.0)), lifted * 0.9));
+		c = mix(c, min(c * vec3(1.10, 1.14, 1.22), vec3(1.0)), lifted * 0.7);
 	}
-	if (sky_sun.w > 0.001) {
-		// Lightning: for a moment the whole page shows.
-		c = mix(c, SKY_PAGE, sky_sun.w * 0.5);
-	}
-#ifdef SKY_FOUND
-	return neon_graded(c, 1.0);
-#else
-	return neon_graded(c, 0.0);
-#endif
+	return c;
 }
 
 #endif

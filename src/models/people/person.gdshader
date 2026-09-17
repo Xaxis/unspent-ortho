@@ -1,70 +1,58 @@
-// MADE, for people: world.gdshader's wash, paper and hatched shade in the hand
-// (Ink.HAND), plus the two things docs/ART.md section 5 asks of people only:
+// MADE, for people. Cloth, leather, patched wool and skin, lit by the renderer
+// like everything else under LANTERN, plus the one thing docs/ART.md section 5
+// asks of people only: a readability rim (person_rim.gdshader, the next pass),
+// so a figure is never lost against the ground it is standing on.
 //
-//  * no ink outline. People draw in the transparent pass AFTER the camera's
-//    outline quad (render_priority 10, ALPHA 1), so the depth copy the outline
-//    reads never contains them and nothing inks their silhouette. They still
-//    write and test depth, so the world occludes them and they occlude
-//    themselves. Their shadow comes from a shadows-only twin (SkinRig).
-//  * a readability rim instead, drawn by the next pass (person_rim.gdshader).
+// THE RIM IS NOW THE ONLY THING HOLDING A PERSON APART FROM THE WORLD. The
+// camera's full-screen ink pass is gone (LANTERN removes every drawing
+// technique), and people used to be excluded from it on purpose and given the
+// rim instead. Everything else has lost its outline and gained real light and
+// material to be told apart by; a person is small, moves, and is the one thing
+// the player must never lose, so they keep theirs.
 //
-// Hatching never covers a face: skin (UV2.y > 0.5 marks it) takes the shade
-// colour but no ink strokes.
+// People stay in the TRANSPARENT pass (ALPHA 1, render_priority 10) because the
+// rim is a grow-shell that has to draw over them; they still write and test
+// depth, so the world occludes them and they occlude themselves, and their
+// shadow comes from a shadows-only twin (SkinRig).
 shader_type spatial;
-render_mode cull_back, specular_disabled, depth_draw_always;
+render_mode cull_back, depth_draw_always;
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 #include "res://src/models/people/person_light.gdshaderinc"
 
-uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
-uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
 uniform float emission_strength = 0.0;
 
 varying vec3 world_pos;
-varying float style_packed;
 varying float skin;
-// The stepped pool of the nearest lamp or fire this fragment stands in (0, 0.5,
-// 1), handed from fragment() to light() so the moon and the fill give way to it.
-varying float in_pool;
+
+// Cloth is rough and almost never shines; skin catches a little. Both are far
+// rougher than any FOUND surface, which is half of how a person reads against a
+// machine at a glance.
+const float PERSON_CLOTH_ROUGH = 0.92;
+const float PERSON_SKIN_ROUGH = 0.66;
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	style_packed = UV.x;
 	skin = UV2.y;
 }
 
 void fragment() {
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	vec3 c = COLOR.rgb * paper(px);
+	vec3 c = COLOR.rgb;
 	vec3 at;
+	// A person standing in a lamp's pool takes the lamp's own colour on their
+	// face. The renderer lights them; this only says WHICH light is nearest, so
+	// the warm cast on a face agrees with the pool on the ground under it.
 	vec4 lamp = person_nearest_light(world_pos, 1.05, at);
-	// Only where the page is dim: by day a lamp's pool is not a colour on a face.
-	float gloom = max(sky_view.y, sky_shade.w);
-	in_pool = sky_pool(lamp.a, world_pos) * step(0.35, gloom);
-	ALBEDO = person_in_light(sky_apply(c, world_pos, TIME), c, lamp, in_pool);
+	float gloom = sky_gloom();
+	ALBEDO = matter_albedo(person_in_light(sky_apply(c, world_pos, TIME), c, lamp,
+		clamp(lamp.a, 0.0, 1.0) * step(0.35, gloom)));
 	ALPHA = 1.0;
-	EMISSION = c * emission_strength + neon_skyglow(c) * 1.4;
-}
-
-void light() {
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float ndl = dot(NORMAL, LIGHT);
-	if (LIGHT_IS_DIRECTIONAL) {
-		float lit = step(0.0, ndl) * step(0.5, ATTENUATION);
-		float band = ndl > 0.42 ? 1.0 : 0.9;
-		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
-		int style = int(mod(style_packed, 16.0) + 0.5);
-		float ink = skin > 0.5 ? 0.0 : (1.0 - lit) * hatch(style, px, depth);
-		vec3 k = mix(shade_tint * sky_shade.rgb, vec3(band), lit);
-		k = mix(k, ink_tint, ink * 0.6);
-		// In a fire's pool the moon and the fill give way to the fire.
-		DIFFUSE_LIGHT += LIGHT_COLOR * k * (1.0 - in_pool * 0.4) / PI;
-	} else {
-		// The same pool the land draws (world.gdshader), so a person in lamplight
-		// stands in it rather than in a softer disc of their own.
-		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
-		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
-		DIFFUSE_LIGHT += LIGHT_COLOR * a * 0.6 / PI;
-	}
+	ROUGHNESS = mix(PERSON_CLOTH_ROUGH, PERSON_SKIN_ROUGH, step(0.5, skin));
+	SPECULAR = mix(0.25, 0.45, step(0.5, skin));
+	METALLIC = 0.0;
+	// The weave, small enough to catch a low sun on a shoulder and nothing more.
+	NORMAL = matter_bump(NORMAL, world_pos, -1, 0.004);
+	EMISSION = matter_light(c * emission_strength);
 }

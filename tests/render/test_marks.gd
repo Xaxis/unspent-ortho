@@ -66,7 +66,10 @@ func test_both_lit_shaders_carry_the_same_flash_and_lay_it_over_the_light() -> v
 		check(src.contains("uniform float flash_r"), "%s takes its size" % path)
 		# Written as emission over a black albedo, so the struck part lands on the
 		# page's own white whatever the sun and the lamps are doing to it.
-		check(src.contains("ALBEDO = vec3(0.0);") and src.contains("EMISSION = flash_col;"),
+		# It goes through matter_light() like every other authored colour, or the
+		# one white in the game would be the one thing drawn in the wrong colour
+		# space (tests/render/test_colour_space.gd).
+		check(src.contains("ALBEDO = vec3(0.0);") and src.contains("EMISSION = matter_light(flash_col);"),
 			"%s lays the flash over the light, not under it" % path)
 
 

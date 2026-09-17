@@ -1,21 +1,19 @@
-// Screen-space ink, drawn on a full-screen quad in front of the camera.
+// SHAFTS: the light a lamp, a fire or a machine's lens throws into fog and rain,
+// drawn on a full-screen quad in front of the camera. It is the WEB path.
 //
-// Silhouettes: a pixel is inked when a neighbour is FARTHER by more than
-// `threshold` world units, which puts the line on the near object's own edge,
-// one pixel wide, never doubled onto the background.
+// This file used to be the ink: screen-space silhouettes and creases, a pen
+// drawn round every edge in the world. LANTERN removed it (docs/LOOK.md: the
+// world is lit, not drawn) -- an edge is now told by light and material, and a
+// person, who is small and must never be lost, keeps a rim of their own
+// (person_rim.gdshader). The neon halo went with it, because the Environment's
+// glow does that properly and in HDR.
 //
-// Creases: under an orthographic camera a flat face has linear depth, so the
-// second difference of depth is zero on it and jumps where two faces meet. A
-// convex fold (a terrace lip over a wall that faces the camera, a roof ridge)
-// gets a lighter line, broken now and then like a pen lifting.
-//
-// The ink is not black: it leans a little toward the colour it is drawn over,
-// so a line on snow is a blue-grey pen and a line on ash is near black.
-//
-// Fog softens the pen: inside a bank the line lifts a length at a time and pales
-// toward the bank, and a whiteout nearly takes it. Near lights in fog, rain or
-// haze throw stippled shafts downward (the glint list, sky.gdshaderinc), never
-// a bloom, and never over anything that stands in front of the light.
+// What is left is the one thing screen space is still the right answer to.
+// LOOK.md's degradation table says volumetric air is "true volumetrics" on the
+// desktop and "screen-space shafts and depth fog" on the web, so this pass runs
+// ONLY where the tier says volumetrics are off (Quality.ROWS.volumetric ->
+// CameraRig). On a tier with real volumetric fog a light throws a real cone and
+// this quad is not in the tree at all.
 shader_type spatial;
 render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_disabled;
 
@@ -24,22 +22,7 @@ render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
-uniform float threshold = 0.45;
-uniform float strength = 0.82;
-uniform float crease = 0.022;
-uniform float crease_strength = 0.45;
-uniform vec3 ink : source_color = vec3(0.031, 0.027, 0.059);
-const vec3 INK2 = vec3(0.1176, 0.1098, 0.1804);
-const float INK_FLOOR = 0.1203;  // the luma of INK2
-vec3 ink_floor(vec3 c) {
-	float l = dot(c, vec3(0.299, 0.587, 0.114));
-	return mix(INK2, c, clamp(l / INK_FLOOR, 0.0, 1.0));
-}
-// Neon halo: light spills from bright saturated pixels into the rain and haze
-// as a stippled glow, a few pixels out. Never a smooth bloom, and never at
-// noon: the air has to be dark enough to carry the light (docs/ART.md section 6).
-uniform float halo_strength = 0.55;
-// Stippled shafts from the glint list's lights in fog and rain.
+// Shafts from the glint list's lights in fog and rain.
 uniform float shaft_strength = 0.9;
 
 // A light's shafts at this pixel: a few thin rays falling from it, fanned no
@@ -99,26 +82,8 @@ void vertex() {
 void fragment() {
 	vec2 px = 1.0 / VIEWPORT_SIZE;
 	float d = linear_depth(SCREEN_UV, INV_PROJECTION_MATRIX);
-	float r = linear_depth(SCREEN_UV + vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
-	float l = linear_depth(SCREEN_UV - vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
-	float u = linear_depth(SCREEN_UV + vec2(0.0, px.y), INV_PROJECTION_MATRIX);
-	float b = linear_depth(SCREEN_UV - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
-	float e = max(max(r - d, l - d), max(u - d, b - d));
-	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
-	// Ink turns blue under the moon (docs/ART.md section 1, law 4), and it never
-	// goes below the floor the land and the machines are already held to: on a
-	// near-white landscape the pen was the last thing in the frame that could
-	// reach black (docs/ART.md section 6). Same two numbers as world.gdshader
-	// and found.gdshader; tests/render/test_ink_floor.gd holds all three.
-	vec3 pen = ink_floor(mix(sky_line(ink), c * 0.35, 0.25));
-	float edge = step(threshold, e);
-	// Convex folds: the pixel is nearer than the average of its neighbours.
-	float fold = max((l + r) * 0.5 - d, (u + b) * 0.5 - d);
-	vec2 wpx = floor(FRAGCOORD.xy) + world_px;
-	float lift = step(0.12, ink_hash(floor(wpx / 3.0) + vec2(41.0, 7.0)));
-	float cr = step(crease, fold) * (1.0 - edge) * step(e, threshold) * lift;
-	float ink_amount = max(edge * strength, cr * crease_strength);
-	// The world point under this pixel: for fog, and for where it lies from a light.
+	vec3 outc = texture(screen_tex, SCREEN_UV).rgb;
+	// The world point under this pixel: for where it lies from a light.
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, texture(depth_tex, SCREEN_UV).r * 2.0 - 1.0);
 #else
@@ -126,41 +91,7 @@ void fragment() {
 #endif
 	vec4 vp = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	vec3 wp = (INV_VIEW_MATRIX * vec4(vp.xyz / vp.w, 1.0)).xyz;
-	if (sky_fog.z > 0.001 || sky_air.w > 0.001) {
-		// Where this pixel's ground lies in a bank, the pen lifts a length at a
-		// time and what is left pales toward the bank. A whiteout takes the pen
-		// altogether away from the player: only the lines near them are drawn.
-		float white = sky_whiteout_at(wp);
-		float fogged = max(sky_fog_at(wp, wpx, 0.02) * (1.0 - 0.5 * sky_air.w), white);
-		float kept = step(ink_hash(floor(wpx / vec2(4.0, 2.0)) + vec2(9.0, 33.0)), 1.0 - fogged * (0.55 + 0.45 * sky_air.w));
-		ink_amount *= kept * (1.0 - fogged * 0.45);
-	}
-	vec3 outc = mix(c, pen, ink_amount);
-	// Halo: look out along eight directions at three radii for neon.
-	vec3 glow = vec3(0.0);
-	float haze = 1.0 + sky_fog.z * 0.8 + sky_settle.z * 0.6;
-	for (int ri = 0; ri < 3; ri++) {
-		float rad = (ri == 0 ? 2.0 : (ri == 1 ? 3.0 : 5.0)) * haze;
-		float fall = ri == 0 ? 0.5 : (ri == 1 ? 0.3 : 0.16);
-		for (int di = 0; di < 8; di++) {
-			float a = float(di) * 0.7854 + float(ri) * 0.39;
-			vec3 s = texture(screen_tex, SCREEN_UV + vec2(cos(a), sin(a)) * px * rad).rgb;
-			float mx = max(s.r, max(s.g, s.b));
-			float mn = min(s.r, min(s.g, s.b));
-			float neon = smoothstep(0.5, 0.85, mx) * smoothstep(0.3, 0.6, (mx - mn) / max(mx, 0.001));
-			glow += s * neon * fall;
-		}
-	}
-	glow /= 8.0;
-	float gl = max(glow.r, max(glow.g, glow.b));
-	// The hour decides whether the air can carry the spill at all: at noon a
-	// beacon is a bright object, not a light in the air. Only thick rain or fog
-	// lets a little through by day — rain in the AIR (sky_air.x), not wet lying
-	// on the ground, or a land that never dries would spill neon at noon.
-	float carry = max(sky_gloom(), 0.3 * clamp(sky_fog.z + sky_air.x, 0.0, 1.0));
-	// Stipple: the glow is laid as dots whose density is its strength.
-	float dots = step(ink_hash(wpx + vec2(13.0, 77.0)), clamp(gl * 3.0 * halo_strength * carry, 0.0, 0.7));
-	outc = mix(outc, max(outc, glow / max(gl, 0.001) * 0.85), dots);
+	vec2 wpx = sky_px(wp);
 	// Shafts: the air that carries them is fog, rain and haze.
 	float air = clamp(sky_fog.z * 1.1 + sky_air.x * 0.45 + sky_air.w * 0.3, 0.0, 1.0);
 	if (air > 0.05) {
