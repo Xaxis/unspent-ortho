@@ -54,4 +54,29 @@ near broadleaf
 hour 18.4
 wait 1.0
 shot 08-low-sun-through-a-crown with prop:broadleaf
+# Snow is the leaves' own now (leaf.gdshader): lumps lying on the sprays that
+# face the sky, and the needles cut through them, where a white tier laid over
+# each bough was a sliver of paper. The snowfield at the hour the canon takes it,
+# and then one laden pine close enough to see what holds the snow up.
+hour 8
+place snowfield
+wait 1.0
+shot 09-snowfield-under-snow with land:snowfield,prop:snow_pine
+near snow_pine
+zoom 6
+wait 0.8
+shot 10-a-laden-pine with prop:snow_pine
+zoom 12
+# The scrapwood: a sheet of the machine's plate caught in every crown, which is
+# the whole of what says these trees grew through salvage. It faced the ground
+# and was culled for the life of the model, so nothing was ever there to see.
+hour 11
+place scrapwood
+wait 1.0
+shot 11-scrapwood-plate-in-the-crowns with land:scrapwood,prop:scrap_tree
+near scrap_tree
+zoom 6
+wait 0.8
+shot 12-grown-through-salvage with prop:scrap_tree
+zoom 12
 weather rules
