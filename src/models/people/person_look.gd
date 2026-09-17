@@ -17,6 +17,11 @@ class_name PersonLook
 ##   salvage    Array       of SALVAGE (one or two parts, never the full set: past two are dropped)
 ##   gear       Array       of GEAR: scavenged tech and kit, MENDED (FOUND parts bound
 ##                          with MADE cord); up to GEAR_MAX, the rest dropped
+##   kit        bool        a CHOSEN kit, not a dealt one (GearLook.compose, the player's
+##                          fitted gear): the caps above rise to one piece a gear slot
+##                          (SALVAGE_KIT, GEAR_KIT) and KIT_EXTRAS may be worn, because a
+##                          player wears what they put on. A crowd never sets it, so no
+##                          villager wears the full set.
 ##   patches    int         0..3 patches sewn on coat, sleeves and knees
 ##   gaunt      int         0..2 how hunger has thinned the body
 ##   side       int         +1 salvage on the right, -1 on the left
@@ -37,6 +42,11 @@ const SHIRT_CUTS: Array[StringName] = [&"tucked", &"loose", &"smock"]
 const BEARDS: Array[StringName] = [&"none", &"chin", &"full", &"stache"]
 const HAIR_STYLES: Array[StringName] = [&"bald", &"bun", &"crop", &"long", &"tail", &"thin", &"unkempt"]
 const EXTRAS: Array[StringName] = [&"rolled", &"apron", &"buckle", &"shawl", &"neckerchief", &"satchel"]
+## Extras only a chosen kit wears (`kit: true`), never dealt to a crowd, so no
+## stranger's dice or triangle budget move for them:
+##   mitts  cord-bound leather over both hands, the made answer to a land that
+##          pulls at anything iron (the corded mitts, owner 2026-09-17)
+const KIT_EXTRAS: Array[StringName] = [&"mitts"]
 const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"tally", &"aerial", &"lens", &"mask", &"breastplate"]
 ## Mended tech and scavenging kit (PersonGear):
 ##   respirator  a machine filter on a rag mask      goggles  two machine lenses on a strap
@@ -45,6 +55,10 @@ const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"t
 ##   coil        rope or cable coiled across the body
 const GEAR: Array[StringName] = [&"respirator", &"goggles", &"slate", &"battery", &"radio", &"pack", &"coil"]
 const GEAR_MAX := 3
+## The caps for a chosen kit (`kit: true`): a piece of salvage from each of the four
+## worn slots, and the slate plus one piece of gear from each.
+const SALVAGE_KIT := 4
+const GEAR_KIT := 5
 ## What a villager does, which decides their kit (dress()).
 const TRADES: Array[StringName] = [&"cutter", &"digger", &"gatherer", &"scavenger", &"keeper", &"child"]
 
@@ -179,19 +193,20 @@ static func normalize(spec: Dictionary) -> Dictionary:
 	out.skin = StringName(str(out.skin))
 	out.skin_v = clampi(int(out.skin_v), 1, 3)
 	out.side = 1 if int(out.side) >= 0 else -1
+	var kit := bool(out.get("kit", false))
 	var ex: Array = []
 	for e: Variant in out.extras:
-		if EXTRAS.has(StringName(str(e))):
+		if EXTRAS.has(StringName(str(e))) or (kit and KIT_EXTRAS.has(StringName(str(e)))):
 			ex.append(StringName(str(e)))
 	out.extras = ex
 	var sv: Array = []
 	for s: Variant in out.salvage:
-		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))) and sv.size() < 2:
+		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))) and sv.size() < (SALVAGE_KIT if kit else 2):
 			sv.append(StringName(str(s)))
 	out.salvage = sv
 	var gv: Array = []
 	for g: Variant in out.gear:
-		if GEAR.has(StringName(str(g))) and not gv.has(StringName(str(g))) and gv.size() < GEAR_MAX:
+		if GEAR.has(StringName(str(g))) and not gv.has(StringName(str(g))) and gv.size() < (GEAR_KIT if kit else GEAR_MAX):
 			gv.append(StringName(str(g)))
 	out.gear = gv
 	out.patches = clampi(int(out.patches), 0, 3)

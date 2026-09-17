@@ -216,3 +216,19 @@ func _system(part: String) -> Node:
 		if String(s.name).contains(part):
 			return s
 	return null
+
+
+func test_what_is_fitted_is_worn_in_the_world_and_drawn_on_the_page() -> void:
+	var sys := _boot(["--fit=oilskin,scanner_lens"])
+	var model: PersonModel = game.player.model
+	eq(model.look.coat, &"oilskin", "the walking figure wears the oilskin")
+	check((model.look.salvage as Array).has(&"lens"), "and the scanner lens")
+	var figure: Dictionary = SlateFeeds.feed(&"loadout", game).get("figure", {})
+	check(not figure.is_empty(), "the gear page is handed a body to draw")
+	eq(var_to_str(PersonLook.normalize(figure.look)), var_to_str(model.look), "the page draws exactly what the world shows")
+	eq(StringName(figure.held), game.inventory.held, "holding the same thing")
+	var l: Loadout = sys.get("loadout")
+	l.clear_slot(&"body")
+	eq(model.look.coat, &"none", "the oilskin off, off the figure too")
+	check((model.look.salvage as Array).has(&"lens"), "the lens stays on")
+	game.free()

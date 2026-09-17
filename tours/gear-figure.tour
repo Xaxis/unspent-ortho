@@ -1,0 +1,44 @@
+# The gear page draws the body (owner 2026-09-17): the player's own figure, not a
+# wire outline, wearing what the loadout holds, scanned onto the slate's glass —
+# and the same look on the figure walking the coast. Each piece is put on through
+# the page's own key, and each frame is held to the world having it on (`worn:ID`
+# asks the walking figure, which the page draws the same look as).
+#
+#   tools/tour.sh tours/gear-figure.tour --seed=1 --hour=11 --weather=clear:0 --held=pick --give=scanner_lens:1,oilskin:1,mitts_corded:1,glide_wing:1
+coast calm
+tap pause
+choose loadout
+tap use
+await app:loadout 10
+wait 0.8
+shot 01-the-bare-body-on-the-gear-page with app:loadout
+choose head
+tap use
+await worn:scanner_lens 6
+wait 0.9
+shot 02-a-scanner-lens-goes-on with app:loadout,worn:scanner_lens
+choose body
+tap use
+await worn:oilskin 6
+wait 0.9
+shot 03-an-oilskin-over-it with app:loadout,worn:oilskin
+choose hands
+tap use
+await worn:mitts_corded 6
+wait 0.9
+shot 04-corded-mitts with app:loadout,worn:mitts_corded
+# The back slot turns the body round to show what is on its back.
+choose back
+tap use
+await worn:glide_wing 6
+wait 1.4
+shot 05-turned-to-show-the-wing-on-its-back with app:loadout,worn:glide_wing
+tap move_right
+wait 0.9
+shot 06-turned-round-by-hand with app:loadout
+tap pause
+tap pause
+wait 1.0
+zoom 5
+wait 0.5
+shot 07-the-same-kit-on-the-walking-figure with worn:oilskin,worn:mitts_corded,worn:scanner_lens

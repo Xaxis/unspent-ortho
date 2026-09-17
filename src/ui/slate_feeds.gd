@@ -13,9 +13,10 @@ class_name SlateFeeds
 ##   {slots: [{id: StringName, label: String, item: StringName (&"" empty),
 ##             sockets: int (how many modules the piece takes; 3 without a feed),
 ##             modules: [{id: StringName, name: String, grants: String}]}],
-##    resist: {hazard id: 0..1}, abilities: [{id, name: String, ready: bool, note: String}]}
+##    resist: {hazard id: 0..1}, abilities: [{id, name: String, ready: bool, note: String}],
+##    figure: {look: PersonLook spec, held: StringName, wing: bool}}  the body the page draws
 ##   default: head body hands back tool craft, from the worn kit and the thing in
-##   hand; resistances from Body.resist; no abilities.
+##   hand; resistances from Body.resist; no abilities; the base body in bare hands.
 ##
 ## reads (disposition, interference):
 ##   {interference: float 0..1 (or -1 unknown), network: String,

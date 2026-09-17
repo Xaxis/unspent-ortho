@@ -28,6 +28,11 @@ class_name Items
 ##   resist: {hazard: 0..1}  pressures it keeps off (src/core/hazards/hazards.gd)
 ##   ability: StringName   the ability it grants while fitted (src/core/gear/abilities.gd)
 ##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §12)
+##   wears: Dictionary     what a body is seen wearing while it is fitted, in the people
+##                         model's words (PersonLook): `hat`/`coat` name one, `extras`,
+##                         `salvage`, `gear` add to those lists, and `wing: true` puts
+##                         the glide wing on the back. GearLook.compose reads it for the
+##                         gear page and the walking figure alike, so the two agree.
 ##   icon: Array           [shape, ramp, ramp] the slate draws it as; shape names are
 ##                         UiIcons.SHAPES. A MENDED row must name a shape with cord in
 ##                         it, or the icon reads as a machine part with no maker.
@@ -174,39 +179,39 @@ const DEFS := {
 	# MADE: cloth, reed and pitch, mended by the hand that made it. Cheap, and it
 	# takes the edge off one thing each.
 	&"wrap_warm": {"name": "warm wrap", "bulk": 2.0, "group": &"kit", "tier": &"made",
-		"slot": &"body", "sockets": 1, "resist": {&"cold": 0.35}},
+		"slot": &"body", "sockets": 1, "resist": {&"cold": 0.35}, "wears": {"coat": &"wrap", "extras": [&"shawl"]}},
 	&"oilskin": {"name": "oilskin", "bulk": 2.0, "group": &"kit", "tier": &"made",
-		"slot": &"body", "sockets": 1, "resist": {&"wet": 0.55, &"cold": 0.1}},
+		"slot": &"body", "sockets": 1, "resist": {&"wet": 0.55, &"cold": 0.1}, "wears": {"coat": &"oilskin"}},
 	&"scarf_mask": {"name": "scarf-mask", "bulk": 1.0, "group": &"kit", "tier": &"made",
-		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.35, &"toxins": 0.2, &"thirst": 0.15}},
+		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.35, &"toxins": 0.2, &"thirst": 0.15}, "wears": {"hat": &"scarf"}},
 	&"hat_brim": {"name": "brimmed hat", "bulk": 1.0, "group": &"kit", "tier": &"made",
-		"slot": &"head", "sockets": 1, "resist": {&"heat": 0.3, &"wet": 0.15, &"glare": 0.45}},
+		"slot": &"head", "sockets": 1, "resist": {&"heat": 0.3, &"wet": 0.15, &"glare": 0.45}, "wears": {"hat": &"brim"}},
 	# Leather and cord with no iron anywhere in them, so nothing on your hands is
 	# being pulled. Magnetism was the only pressure with nothing wearable against
 	# it at all, and the scrapwood declares it at every hour (playtest 7).
 	&"mitts_corded": {"name": "corded mitts", "bulk": 1.0, "group": &"kit", "tier": &"made",
-		"slot": &"hands", "sockets": 1, "resist": {&"magnetism": 0.35, &"cold": 0.15}},
+		"slot": &"hands", "sockets": 1, "resist": {&"magnetism": 0.35, &"cold": 0.15}, "wears": {"extras": [&"mitts"]}},
 	# MENDED: machine parts bound to a made frame with cord. Most of the high tech
 	# a person uses, and where the abilities come from.
 	&"vest_heatsink": {"name": "heat-sink vest", "bulk": 3.0, "group": &"kit", "tier": &"mended",
-		"slot": &"body", "sockets": 2, "resist": {&"heat": 0.6, &"fumes": 0.2}},
+		"slot": &"body", "sockets": 2, "resist": {&"heat": 0.6, &"fumes": 0.2}, "wears": {"salvage": [&"breastplate"], "gear": [&"battery"]}},
 	&"rebreather": {"name": "rebreather", "bulk": 2.0, "group": &"kit", "tier": &"mended",
-		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.7, &"toxins": 0.55}},
+		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.7, &"toxins": 0.55}, "wears": {"gear": [&"respirator"]}},
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 1,
-		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple"},
+		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
 	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
-		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide"},
+		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
-		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5, &"glare": 0.35}, "ability": &"scan"},
+		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5, &"glare": 0.35}, "ability": &"scan", "wears": {"salvage": [&"lens"]}},
 	# A machine's own coolant loop, cut short and wound: it gives back what a
 	# body breathes out. The one answer to a land that drinks you.
 	&"condenser": {"name": "drip coil", "bulk": 2.0, "group": &"kit", "tier": &"mended",
-		"slot": &"back", "sockets": 1, "resist": {&"thirst": 0.55, &"heat": 0.15}},
+		"slot": &"back", "sockets": 1, "resist": {&"thirst": 0.55, &"heat": 0.15}, "wears": {"gear": [&"coil"]}},
 	# FOUND: taken whole off the machines' works, never mended.
 	&"shield_plate": {"name": "shield plate", "bulk": 3.0, "group": &"found", "tier": &"found", "stuff": &"found",
 		"slot": &"back", "sockets": 0,
-		"resist": {&"radiation": 0.6, &"heat": 0.35, &"em": 0.3, &"collapse": 0.4}},
+		"resist": {&"radiation": 0.6, &"heat": 0.35, &"em": 0.3, &"collapse": 0.4}, "wears": {"salvage": [&"plate"]}},
 
 	# --- Modules, which socket into gear -------------------------------------------
 	&"mod_wadding": {"name": "wadding", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,

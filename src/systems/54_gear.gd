@@ -84,6 +84,9 @@ var _read_for := READ_SECONDS
 ## Where the last step of a motion put the body, to notice when something else
 ## has moved it. Vector2.INF while no motion runs.
 var _last_pos := Vector2.INF
+## The player's body before any gear: whatever the start gave it (the base look,
+## or `--look`), which GearLook.compose dresses. Taken once, at setup.
+var _bare: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -93,6 +96,8 @@ func setup(g: Game) -> void:
 	SlateFeeds.provide(&"loadout", _feed)
 	SlateFeeds.on_act(&"loadout", _act)
 	SaveGame.register(&"gear", _save, _load)
+	if g.player != null and g.player.model != null:
+		_bare = g.player.model.look.duplicate(true)
 	_fit_from_options()
 	loadout.hold(g.inventory.held)
 	_refit()
@@ -115,6 +120,27 @@ func _refit() -> void:
 	game.body.resist = Gear.resist_total(loadout)
 	# Gear grants what it grants; legs are everybody's (Abilities.INNATE).
 	book.fit(Abilities.with_innate(Gear.abilities_of(loadout)))
+	_dress_player()
+
+
+## What the player is seen wearing: the body before gear, dressed by the loadout.
+## The gear page draws this same look (the feed's `figure`), so the slate and the
+## world cannot disagree about what is on.
+func worn_look() -> Dictionary:
+	return GearLook.compose(_bare if not _bare.is_empty() else PersonLook.BASE, loadout)
+
+
+## Put the worn look on the figure walking the coast. Only when it changed: a
+## refit runs on every pickup, and redressing a person rebuilds its meshes. The
+## glide wing is the one piece the walking figure does not show until it opens
+## (GlideWingModel hides it folded); the gear page draws it folded on the back.
+func _dress_player() -> void:
+	if game.player == null or game.player.model == null:
+		return
+	var m := game.player.model
+	var look := worn_look()
+	if var_to_str(PersonLook.normalize(look)) != var_to_str(m.look):
+		m.set_look(look)
 
 
 # --- input ---------------------------------------------------------------------
@@ -473,7 +499,9 @@ func _feed(_g: Game) -> Dictionary:
 	# What the gear gives, and not what the legs do: the page is about what is worn.
 	var abilities := book.rows(Time.get_ticks_msec() / 1000.0).filter(
 		func(r: Dictionary) -> bool: return not Abilities.INNATE.has(r.id))
-	return {"slots": rows, "resist": game.body.resist, "abilities": abilities}
+	# The body the page draws: the same look the world puts on the player.
+	var figure := {"look": worn_look(), "held": game.inventory.held, "wing": GearLook.wing(loadout)}
+	return {"slots": rows, "resist": game.body.resist, "abilities": abilities, "figure": figure}
 
 
 ## What a module gives, in the few characters the page has room for. A modifier
@@ -628,6 +656,8 @@ func tour_seen(what: StringName) -> bool:
 		return _fired.has(StringName(s.substr(8)))
 	if s.begins_with("jumped:"):
 		return _jumped.has(StringName(s.substr(7)))
+	if s.begins_with("worn:"):
+		return _worn(StringName(s.substr(5)))
 	match what:
 		&"jumping": return _motion != null and _motion.kind == &"jump"
 		&"jumped": return _jumped.has(&"")
@@ -637,6 +667,24 @@ func tour_seen(what: StringName) -> bool:
 		&"unnoticed": return _unnoticed()
 		&"resisting": return not game.body.resist.is_empty()
 	return false
+
+
+## `id` is fitted AND the figure walking the coast has every piece of it on: the
+## gear page draws that same look, so this is what a frame of the page is of.
+func _worn(id: StringName) -> bool:
+	if loadout.fitted_count(id) <= 0 or game.player == null or game.player.model == null:
+		return false
+	var look := game.player.model.look
+	for piece: String in GearLook.pieces(id):
+		var kv := piece.split(":")
+		match kv[0]:
+			"hat", "coat":
+				if String(look[kv[0]]) != kv[1]:
+					return false
+			"extras", "salvage", "gear":
+				if not (look[kv[0]] as Array).has(StringName(kv[1])):
+					return false
+	return true
 
 
 ## The sentence a spoof is for, proved rather than asserted: a machine standing

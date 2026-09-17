@@ -510,6 +510,9 @@ static func _arms(r: SkinRig, w: Wear) -> void:
 ## wrist, blunt fingers, a thumb toward the front.
 static func _hand(k: MeshKit, d: Dictionary, w: Wear, side: int, seed_value: int) -> void:
 	var h: float = d.hand * 1.2
+	if w.extras.has(&"mitts"):
+		_mitt(k, h * 1.12, side, seed_value)
+		return
 	_skin(k, true)
 	Sculpt.loft(k, [
 		[0.012, 0.03, 0.03, 0.0, 0.0],
@@ -520,6 +523,20 @@ static func _hand(k: MeshKit, d: Dictionary, w: Wear, side: int, seed_value: int
 	k.tri(Vector3(h * 0.3, -h * 0.18, tz), Vector3(h * 0.52, -h * 0.5, tz), Vector3(h * 0.26, -h * 0.5, tz - side * 0.02), w.skin[2])
 	k.tri(Vector3(h * 0.3, -h * 0.18, tz), Vector3(h * 0.26, -h * 0.5, tz + side * 0.02), Vector3(h * 0.52, -h * 0.5, tz), w.skin[1])
 	_skin(k, false)
+
+
+## Corded mitts: the same blunt hand a size up in dark leather, no skin showing,
+## and cord wound at the wrist, which is what says they were made here.
+static func _mitt(k: MeshKit, h: float, side: int, seed_value: int) -> void:
+	var leather: Array[Color] = [Palette.EARTH[1], Palette.EARTH[2]]
+	Sculpt.loft(k, [
+		[0.02, 0.034, 0.034, 0.0, 0.0],
+		[-h * 0.48, h * 0.42, h * 0.28, 0.01, 0.0],
+		[-h * 1.0, h * 0.31, h * 0.21, 0.004, 0.0],
+	], 5, leather, false, true, 0.0, 0.05, seed_value)
+	var tz := -side * h * 0.12
+	k.tri(Vector3(h * 0.3, -h * 0.18, tz), Vector3(h * 0.52, -h * 0.5, tz), Vector3(h * 0.26, -h * 0.5, tz - side * 0.02), leather[1])
+	Sculpt.loft(k, [[0.02, 0.037, 0.037, 0.0, 0.0], [-0.012, 0.039, 0.039, 0.0, 0.0]], 4, PersonGear.CORD, false, false, PI / 4, 0.05, seed_value + 3)
 
 
 # ---------------------------------------------------------------- head
