@@ -16,28 +16,28 @@ coast calm
 place spawn
 hour 10.0
 wait 0.6
-shot 01-village-morning
+shot 01-village-morning with prop:house
 
 # Walk in among them: at play zoom, each house has to differ from its neighbour.
 walk -1,-1 1.8
 wait 0.4
-shot 02-walked-in
+shot 02-walked-in with prop:house
 
 # Stand at a house and look at it from the ground: leaning walls, turf banked at
 # the foot, salvage against it, a roof patched in several things.
 near house
 wait 0.6
-shot 03-under-a-roof
+shot 03-under-a-roof with prop:house
 zoom 8
 wait 0.4
-shot 04-close-hand-built
+shot 04-close-hand-built with prop:house
 zoom 15
 
 # The other side of the square: houses seen turned the other way, where the
 # outline has to break just as much.
 walk 1,0 2.2
 wait 0.5
-shot 05-from-the-other-side
+shot 05-from-the-other-side with prop:house
 
 # Another village on the same seed: the deal is a rule, not one lucky village.
 # On seed 7 this one (Coombe Wood, in the pinewood) wired nothing in, so it is
@@ -45,17 +45,17 @@ shot 05-from-the-other-side
 # over the coast — five houses, five silhouettes, no tube.
 village 4
 wait 0.8
-shot 06-another-village
+shot 06-another-village with prop:house
 
 # Dusk, then dark: the stolen tube runs the roof edge, so the camera has it
 # whichever way the house was turned.
 village 0
 hour 20.2
 wait 0.6
-shot 07-village-dusk
+shot 07-village-dusk with prop:house
 hour 22.5
 wait 0.8
-shot 08-village-night
+shot 08-village-night with prop:house
 zoom 9
 wait 0.5
 shot 09-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:60
@@ -64,5 +64,5 @@ zoom 15
 # Wet: the tube mirrored in the ground is the frame the canon meant to protect.
 weather rain:1
 wait 1.4
-shot 10-village-wet-night
+shot 10-village-wet-night with prop:house
 weather clear:0

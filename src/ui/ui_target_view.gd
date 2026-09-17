@@ -24,6 +24,26 @@ const PIP_H := 4
 const PIP_GAP := 1
 const GLYPH := 5
 const TAG_LIFT := 5
+## Air between the strip of glass the pips sit on and the notice chip: they are
+## TWO salvaged parts taped near each other, not one sprite.
+const TAG_GAP := 3
+## What the tag is made of (docs/ART.md §9; A2 art finding 2).
+##
+## What was here was an opaque UiTheme.RIM lozenge behind every body on screen.
+## Measured: its darkest pixels sat at luminance 7.3 when nothing else in the
+## frame went below 12, and its pips read 161 against a frame mean of 52. It was
+## in the slate's COLOURS but not in its CONSTRUCTION — no bezel, no scrap, no
+## tape, no grain — so it was a small black HUD sprite standing in the world,
+## which is the charge the scan ring was convicted on.
+##
+## So the backing is the slate's own GLASS at TAG_GLASS alpha, never RIM and
+## never opaque: over pure black it still lands near 13, so the tag can no longer
+## cut a hole in a frame. Under it runs a rail of the bezel's own dull phosphor
+## with a screw at each end, its ends stepped in like a torn strip of tape, and a
+## few stuck pixels of grain sit on the glass. The notice glyph gets a chip of
+## its own, because an indicator lamp on the slate is a separate part.
+const TAG_GLASS := 0.55
+const TAG_RAIL := 0.85
 ## The read panel on the right edge, under the clock.
 const PANEL := Rect2i(438, 46, 194, 140)
 const SWEEP_PANEL := Rect2i(438, 46, 194, 122)
@@ -123,17 +143,22 @@ func _draw_marks() -> void:
 
 
 ## The wordless tag above a body: its health in pips, and one glyph for how far
-## it has got with the player (nothing, stirring, sure, coming).
+## it has got with the player (nothing, stirring, sure, coming). No words, ever —
+## that is the pillar a fight is read by, and the words wait for the key.
 func _draw_tag(m: MobState, top: Vector2, tag: Dictionary, lit: bool) -> void:
 	var pips: Array = tag.pips
 	var machine := bool(tag.machine)
-	var width := TargetRead.PIPS * (PIP_W + PIP_GAP) - PIP_GAP + 3 + GLYPH
+	var bar := TargetRead.PIPS * (PIP_W + PIP_GAP) - PIP_GAP
+	var width := bar + TAG_GAP + GLYPH + 2
 	var x := int(top.x) - width / 2
 	var y := int(top.y) - TAG_LIFT - PIP_H
 	var full := int(pips[0])
 	var part := float(pips[1])
-	# Dead glass behind it: pips over grass at noon are the same value as the grass.
-	UiDraw.rect(_canvas, Rect2i(x - 2, y - 2, width + 4, PIP_H + 4), UiTheme.RIM)
+	var plate := Rect2i(x - 2, y - 2, bar + 4, PIP_H + 3)
+	_strip(plate, int(m.pos.x) * 31 + int(m.pos.y))
+	# The wire from the strip to the notice lamp: two parts, joined the way
+	# everything on this device is joined.
+	UiDraw.hline(_canvas, plate.end.x, plate.end.x + TAG_GAP - 1, y + 1, Color(UiTheme.FAINT, 0.9))
 	for i in TargetRead.PIPS:
 		var cell := Rect2i(x + i * (PIP_W + PIP_GAP), y, PIP_W, PIP_H)
 		var col := UiTheme.GHOST
@@ -142,16 +167,53 @@ func _draw_tag(m: MobState, top: Vector2, tag: Dictionary, lit: bool) -> void:
 		elif i == full and part > 0.25:
 			col = UiTheme.MACHINE[2] if machine else UiTheme.TEXT_DIM
 		UiDraw.rect(_canvas, cell, col)
-	_draw_notice(Vector2i(x + TargetRead.PIPS * (PIP_W + PIP_GAP) + 2, y - 1), int(tag.notice), machine, lit)
+	_draw_notice(Vector2i(x + bar + TAG_GAP + 1, y - 1), int(tag.notice), machine, lit)
+
+
+## A strip of the slate's glass with its own bezel: the ends stepped in like torn
+## tape, a rail of dull phosphor under it with a screw at each end, and a stuck
+## pixel or two of grain on the glass. Never opaque, never square-cornered.
+func _strip(r: Rect2i, grain_seed: int) -> void:
+	var glass := Color(UiTheme.GLASS, TAG_GLASS)
+	UiDraw.rect(_canvas, Rect2i(r.position.x, r.position.y + 1, r.size.x, r.size.y - 1), glass)
+	# Torn, not cut: the top edge is short at one end and the strip is one pixel
+	# longer at the other, so no two of its four corners agree.
+	var tear := 1 + int(Rng.hash01(grain_seed, 1) * 2.0)
+	UiDraw.rect(_canvas, Rect2i(r.position.x + tear, r.position.y, r.size.x - tear - 1, 1), glass)
+	UiDraw.px(_canvas, r.end.x, r.position.y + 2, glass)
+	# The rail under it: the bezel's own dull phosphor, with a screw head at each
+	# end. It is what the strip is held on by, and it is drawn over the world
+	# rather than over the glass, so the tag has an edge without having a border.
+	var rail := Color(UiTheme.FAINT, TAG_RAIL)
+	UiDraw.hline(_canvas, r.position.x + 1, r.end.x - 2, r.end.y, rail)
+	UiDraw.px(_canvas, r.position.x, r.end.y - 1, rail)
+	UiDraw.px(_canvas, r.end.x - 1, r.end.y - 1, rail)
+	# Stuck pixels: this glass was cut out of something that was already failing
+	# (UiSlate's dead column, at the only size this thing has room for).
+	for i in 2:
+		var gx := r.position.x + 1 + int(Rng.hash01(grain_seed, i, 3) * float(r.size.x - 2))
+		var gy := r.position.y + 1 + int(Rng.hash01(grain_seed, i, 4) * float(r.size.y - 2))
+		UiDraw.px(_canvas, gx, gy, Color(UiTheme.FAINT, 0.75))
 
 
 ## The notice glyph, 5x5: a hollow ring for a body that has noticed nothing, a
 ## ring with a point for one that is wondering, a filled one for a body that is
-## sure, and a filled one with a chevron for one that is coming.
-func _draw_notice(at: Vector2i, notice: int, machine: bool, lit: bool) -> void:
+## sure, and a filled one with a chevron for one that is coming. On a chip of its
+## own, because on the slate an indicator lamp is a separate salvaged part — and
+## because the pips and this answer two different questions.
+func _draw_notice(at: Vector2i, notice: int, machine: bool, lit: bool, chip: bool = true) -> void:
 	var col := _ink(machine, lit) if notice > 0 else (UiTheme.MACHINE[2] if machine else UiTheme.TEXT_DIM)
 	if notice >= 3:
-		col = UiTheme.WARN
+		# Only the chevron keeps the alarm colour. A filled 5x5 in WARN was the
+		# loudest thing on the glass and the tag is the quietest layer.
+		col = UiTheme.WARN_DIM
+	if chip:
+		# A round lamp bezel: the corners cut off, so it is a lens and not a box.
+		var g := Color(UiTheme.GLASS, TAG_GLASS)
+		UiDraw.rect(_canvas, Rect2i(at.x - 1, at.y, GLYPH + 2, GLYPH), g)
+		UiDraw.rect(_canvas, Rect2i(at.x, at.y - 1, GLYPH, GLYPH + 2), g)
+		UiDraw.px(_canvas, at.x + 2, at.y - 2, Color(UiTheme.FAINT, 0.8))
+		UiDraw.px(_canvas, at.x + 2, at.y + GLYPH + 1, Color(UiTheme.FAINT, 0.8))
 	UiDraw.hline(_canvas, at.x + 1, at.x + 3, at.y, col)
 	UiDraw.hline(_canvas, at.x + 1, at.x + 3, at.y + 4, col)
 	UiDraw.vline(_canvas, at.x, at.y + 1, at.y + 3, col)
@@ -161,10 +223,11 @@ func _draw_notice(at: Vector2i, notice: int, machine: bool, lit: bool) -> void:
 	elif notice >= 2:
 		UiDraw.rect(_canvas, Rect2i(at.x + 1, at.y + 1, 3, 3), col)
 	if notice >= 3:
-		# The chevron of something on its way to you.
+		# The chevron of something on its way to you: the one warm mark on the tag,
+		# and the only thing here a player may never miss.
 		for k in 3:
-			UiDraw.px(_canvas, at.x + 6 + k, at.y + k, col)
-			UiDraw.px(_canvas, at.x + 6 + k, at.y + 4 - k, col)
+			UiDraw.px(_canvas, at.x + 6 + k, at.y + k, UiTheme.WARN)
+			UiDraw.px(_canvas, at.x + 6 + k, at.y + 4 - k, UiTheme.WARN)
 
 
 ## What is locked: corner brackets round it, a ring on the ground it stands on,
@@ -310,7 +373,8 @@ func _draw_sweep(rows: Array, field: Array, page: int = 1, pages: int = 1) -> vo
 			var full := int((tag.pips as Array)[0])
 			for i in TargetRead.PIPS:
 				UiDraw.rect(_canvas, Rect2i(x + i * 3, y + 2, 2, 5), _ink(machine) if i < full else UiTheme.GHOST)
-			_draw_notice(Vector2i(x + TargetRead.PIPS * 3 + 3, y + 1), int(tag.notice), machine, true)
+			# No chip in the sweep: this row already sits on the panel's own glass.
+			_draw_notice(Vector2i(x + TargetRead.PIPS * 3 + 3, y + 1), int(tag.notice), machine, true, false)
 		UiDraw.text(_canvas, Vector2i(x + TargetRead.PIPS * 3 + 15, y), _fit(str(row.name), 74), _ink(machine, false))
 		UiDraw.text_right(_canvas, r.end.x - 5, y, "%dt" % roundi(float(row.distance)), UiTheme.TEXT_DIM)
 		y += 11

@@ -16,6 +16,15 @@ extends RefCounted
 ## A main-thread stage whose job returns false runs again on the next step (a
 ## long job cut into frame-sized pieces); a worker stage runs once.
 ##
+## Such a stage may carry a DEADLINE in milliseconds, and one that waits on
+## anything outside the program must. A stage waiting for something that never
+## comes is a loading page that never ends, and the player has no way to know the
+## difference between that and a slow machine: measured on this laptop, two boots
+## in five sat at 37 s against a normal 7 s, because an off-screen window stops
+## being composited and `RenderingServer.frame_post_draw` stops firing. Past its
+## deadline a stage is counted finished and `gave_up()` names it, so the line
+## always ends and the log always says which stage was given up on.
+##
 ## Weights are expected milliseconds: progress() eases through a running stage
 ## by its elapsed time against its weight (never past 90% of it), so the drawn
 ## line keeps moving through one long job and never runs ahead of the work.
@@ -29,6 +38,10 @@ class Stage:
 	var ms := -1.0
 	## The longest single piece of this stage run on the main thread (a frame the page could not draw).
 	var held_ms := 0.0
+	## Milliseconds it may wait before it is counted finished anyway (0: for ever).
+	var deadline := 0.0
+	## It reached that deadline without saying it was done.
+	var gave_up := false
 
 
 var stages: Array[Stage] = []
@@ -47,13 +60,15 @@ var _task_done_count := 0
 var _mutex := Mutex.new()
 
 
-func add(id: StringName, label: String, weight: float, run: Callable, worker: bool = true) -> void:
+func add(id: StringName, label: String, weight: float, run: Callable, worker: bool = true,
+		deadline: float = 0.0) -> void:
 	var s := Stage.new()
 	s.id = id
 	s.label = label
 	s.weight = maxf(1.0, weight)
 	s.run = run
 	s.worker = worker
+	s.deadline = maxf(0.0, deadline)
 	stages.append(s)
 
 
@@ -86,6 +101,10 @@ func step(threaded: bool) -> bool:
 	var t0 := Time.get_ticks_usec()
 	var finished := _run_one(s)
 	s.held_ms = maxf(s.held_ms, (Time.get_ticks_usec() - t0) / 1000.0)
+	if not finished and s.deadline > 0.0 \
+			and (Time.get_ticks_usec() - _started_usec) / 1000.0 >= s.deadline:
+		s.gave_up = true
+		finished = true
 	if finished:
 		# On the main thread a stage's time is the wall time it was current,
 		# frames between its pieces included.
@@ -166,6 +185,16 @@ func progress() -> float:
 		var elapsed := (Time.get_ticks_usec() - started) / 1000.0
 		got += s.weight * minf(0.9, elapsed / s.weight)
 	return clampf(start_at + (1.0 - start_at) * got / total, 0.0, 1.0)
+
+
+## Ids of stages that reached their deadline without finishing. Empty is the
+## normal answer; anything in it is a start that went wrong and said so.
+func gave_up() -> PackedStringArray:
+	var out := PackedStringArray()
+	for s in stages:
+		if s.gave_up:
+			out.append(String(s.id))
+	return out
 
 
 ## Milliseconds of the longest main-thread piece of each stage that ran one, by id.

@@ -27,7 +27,7 @@ coast calm
 wait 2
 walk 1,0 1.5
 walk -1,0 1.5
-shot 00-standing-in-the-world
+shot 00-standing-in-the-world with land:coast
 wait 1
 tap pause
 wait 1
@@ -59,16 +59,16 @@ choose slot_1
 wait 0.5
 # The game is still there — its picture, its day, where it stood — and under it
 # the whole reason this build will not open it.
-shot 01-another-island
+shot 01-another-island with app:saves
 tap use
 wait 0.8
 # Pressing load anyway: refused, and said again on the key strip.
-shot 02-refused
+shot 02-refused with app:saves
 # Slot 2 was written by THIS build, on THIS island, and still opens: nothing was
 # broken for the saves that are still this world's.
 choose slot_2
 wait 0.4
-shot 03-the-one-that-still-opens
+shot 03-the-one-that-still-opens with app:saves
 tap use
 await game 30
 coast calm
@@ -77,7 +77,7 @@ coast calm
 walk 1,0 1.5
 walk -1,0 1.5
 wait 4
-shot 04-loaded
+shot 04-loaded with land:coast
 # --- the second line: ground that moved under a save the stamp cannot see -----
 # No stamp can see into the worldgen stages, so this is caught only after the
 # world has been grown and the game is already booting. It does not play on: it
@@ -98,16 +98,16 @@ await title 40
 wait 2
 # The title, with the whole reason on its glass in the same amber the saves app
 # says it in — not a line in the key strip the player cannot read the rest of.
-shot 05-handed-back
+shot 05-handed-back with title
 key pause
 wait 1
 # Back on the list. Continue is faded: slot 1 has no stamp, slot 2 is the one
 # this build has just tried and turned away, and nothing else holds a game.
-shot 06-continue-faded
+shot 06-continue-faded with title
 key move_down
 key use
 wait 1
 # And the whole reason comes back whenever it is asked for, so a player whose
 # only save is one of these is never left with a row they cannot press and no
 # account of why.
-shot 07-the-reason-again
+shot 07-the-reason-again with title

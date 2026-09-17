@@ -86,6 +86,33 @@ const CRACK := [[-1, 40], [-2, 16], [0, 26]]
 ## Seconds the page takes to lift off the scene once it is up.
 const LIFT_SECONDS := 0.35
 
+## THE DEADLINES. Every stage that waits on something the page does not control
+## gives up at one of these, because a loading page that never ends is the worst
+## failure this screen has: the player cannot tell it from a slow machine, and
+## there is nothing to press. Measured on this laptop (six clean boots, seed 1,
+## threads): the whole line runs 5.8-6.5 s, of which `draw` is 3.1-3.3 s and
+## `near` 0.46-0.55 s. Two boots in an earlier five sat at 36.5 and 37.4 s and
+## never handed over at all — an off-screen window stops being composited on
+## macOS, `RenderingServer.frame_post_draw` stops firing, and `draw` waits for a
+## frame that is never coming.
+##
+## So: three times the worst clean measurement for the stage that compiles the
+## first frame's shaders (which is genuinely slow on the web and must not be cut
+## short), and a shorter one for the stages that are only ever waiting on work
+## already in flight. The line cannot now exceed about 25 s even if every one of
+## them stalls, against no bound at all before — and in the case that actually
+## happens, where no frame arrives at all, `draw` gives up at DRAW_SILENT_MS and
+## the whole line is under eight seconds.
+const DRAW_DEADLINE_MS := 10000.0
+const WAIT_DEADLINE_MS := 5000.0
+## ...and how long `draw` waits for its FIRST frame before it concludes that no
+## frames are coming at all. The page is drawing itself while that stage waits,
+## so one would have arrived long before this: measured over six boots, `draw`
+## took 3.5-5.9 s in total and the first frame of every one of them landed inside
+## two and a half. Four seconds leaves a slow web compile room and still halves
+## the worst case, and when it does fire the log says which stage gave up.
+const DRAW_SILENT_MS := 4000.0
+
 ## False until the first page has planned: only that one follows the web shell.
 static var _after_shell := false
 
@@ -123,6 +150,8 @@ var _lifted := false
 var _handed := false
 ## Frames drawn since the scene was made (-1 before).
 var _drawn := -1
+## When the `draw` stage began waiting (msec), for DRAW_SILENT_MS.
+var _draw_from := 0
 
 
 ## True where slow jobs may go to the worker pool (not the no-threads web build).
@@ -224,7 +253,7 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		stages.add(&"code2", "waking", 700.0, func() -> bool:
 			if not left.is_empty():
 				load(str(left.pop_front()))
-			return left.is_empty(), false)
+			return left.is_empty(), false, WAIT_DEADLINE_MS)
 	stages.add(&"world", "raising the land", 1600.0, func() -> void:
 		_world = _bw.call("world", o.seed_value, o.size))
 	stages.add(&"view", "laying out the ground", 500.0, func() -> void:
@@ -237,17 +266,22 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		_sketch_image = BootPage._sketch_of(_bw, _world)
 		_mark = Vector2i((_focus * SKETCH / float(_world.size)).floor()))
 	# Main thread, one chunk a step: the chunks become nodes of the view.
+	# Given up on rather than waited out: the view streams the rest in anyway, so
+	# a slow chunk costs a moment of empty ground, not a page that never ends.
 	stages.add(&"near", "drawing what is near", 900.0, func() -> bool:
-		return int(_bw.call("build_near", _view, _focus)) == 0, false)
+		return int(_bw.call("build_near", _view, _focus)) == 0, false, WAIT_DEADLINE_MS)
 	if threaded:
 		# Wait, a frame at a time, for the loader threads to finish the scripts:
 		# taking them before they are done (load_threaded_get) held the page still
 		# for over a second on the web.
+		# Given up on rather than waited out: `start` takes them with
+		# load_threaded_get, which blocks, so the cost of giving up here is one
+		# long frame and not a line that never reaches its end.
 		stages.add(&"compiled", "setting out", 400.0, func() -> bool:
 			for path in needed:
 				if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 					return false
-			return true, false)
+			return true, false, WAIT_DEADLINE_MS)
 	stages.add(&"start", "setting out", 300.0, func() -> void:
 		if threaded:
 			for path in needed:
@@ -257,12 +291,20 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		_view = null
 		scene = BootPage.make_game(_parent, o) if what == "game" else BootPage.make_title(_parent, o), false)
 	# A world's first frame compiles its shaders and stalls (seconds on the web):
-	# the line ends when that frame is drawn, not before.
+	# the line ends when that frame is drawn, not before — but it ends.
 	stages.add(&"draw", "looking up", 1200.0, func() -> bool:
 		if _drawn < 0:
 			_drawn = 0
+			_draw_from = Time.get_ticks_msec()
 			RenderingServer.frame_post_draw.connect(_on_drawn)
-		return _drawn >= 2 or BootPage.headless(), false)
+		if _drawn >= 2 or BootPage.headless():
+			return true
+		# NOTHING has been drawn at all. The page itself is being drawn every
+		# frame while this waits, so one frame would have arrived by now if the
+		# window were being composited: it is not, and the whole of the long
+		# deadline buys a stall nobody can see instead of the world's first frame.
+		return Time.get_ticks_msec() - _draw_from > int(DRAW_SILENT_MS) and _drawn == 0,
+		false, DRAW_DEADLINE_MS)
 
 
 ## Every system script the game loads (Game._system_files), as res:// paths.
@@ -355,6 +397,11 @@ func _process(delta: float) -> void:
 	for k: StringName in held:
 		parts.append("%s %d" % [k, held[k]])
 	print("boot held %s: %s ms" % [kind, ", ".join(parts)])
+	# Said out loud, because a start that went past a deadline is a start that
+	# went wrong and every other symptom of it is invisible.
+	var late := stages.gave_up()
+	if not late.is_empty():
+		print("boot %s gave up waiting on: %s" % [kind, ", ".join(late)])
 	handed_over.emit(scene)
 
 

@@ -38,6 +38,11 @@ extends GameSystem
 ##                          pixels of that colour, for a subject the world cannot
 ##                          be asked about (a stolen neon tube is a handful of
 ##                          pixels of a hue nothing else on screen wears).
+##   until WHAT SECS        let the world run and STOP the moment WHAT is true, or
+##                          after SECS; never fails. `wait` is a promise about what
+##                          the world will not do in that time, and a tour standing
+##                          still in front of a hunter cannot make it: a watch ends
+##                          when what is being watched changes (tours/wild.tour)
 ##   await WHAT SECS        wait until the player could see WHAT, or fail the tour
 ##                          after SECS: tell (a body winding up a blow), grip (held),
 ##                          free (no longer held), ring (a blow rang off plate),
@@ -49,7 +54,11 @@ extends GameSystem
 ##                          mob (a live body in frame), mob:KIND (one of that kind:
 ##                          the roster id or its prefix, so mob:dog finds dog.yard),
 ##                          down:KIND (one of that kind in frame and not alive),
-##                          body:KIND (either); prop:KIND (a standing prop of that
+##                          body:KIND (either); on_round (a live body in frame and
+##                          nothing in it aware of the player) / noticed (one in
+##                          frame that HAS noticed) — what a frame of a machine at
+##                          work claims, and what ends that watch;
+##                          prop:KIND (a standing prop of that
 ##                          kind is in frame: a hulk, a fire tower, the pylon a
 ##                          frame is named after); lamp / unlit (the player's lamp
 ##                          is lit, or is not); land:ID (the landscape type under
@@ -321,6 +330,8 @@ func _run() -> void:
 				ok = await _shot_checked(parts)
 			"await":
 				ok = await _await(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
+			"until":
+				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
 				ok = await _spawn(StringName(parts[1]))
 			"choose":
@@ -425,6 +436,23 @@ static func machine_slack() -> float:
 static var _slack := 0.0
 
 
+## `until WHAT SECS` — the honest opposite of `await`: let the world run, and
+## stop the moment WHAT is true or SECS have passed, whichever comes first. It
+## never fails.
+##
+## `wait` is a promise about what the world will NOT do in that time, and a tour
+## that stands still for thirteen seconds in front of a hunter is making a
+## promise the world does not keep: `tours/wild.tour` failed about one run in
+## three that way, and every frame after the machine looked up was also a lie
+## about its own subject. A watch that ends when the thing being watched changes
+## is what a player does, and it is what a tour should write.
+func _until(what: String, secs: float) -> void:
+	var stop := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
+	while not _answered(what) and Time.get_ticks_msec() < stop:
+		await get_tree().physics_frame
+	_seen.erase(what)
+
+
 func _await(what: String, secs: float) -> bool:
 	var until := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
 	var ok := _answered(what)
@@ -467,6 +495,18 @@ func _now_true(what: String) -> bool:
 		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
+	# What a body in frame has made of the player, which is the difference between
+	# watching a machine work and standing in front of a hunter: `on_round` is a
+	# live body in frame and nothing aware of you, `noticed` is one that has you.
+	if what == "noticed" or what == "on_round":
+		var seen := false
+		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
+			if not bool(n.get("alive")) or not _in_frame(n.get("pos") as Vector2, 0.5):
+				continue
+			seen = true
+			if bool(n.get("aware")):
+				return what == "noticed"
+		return seen and what == "on_round"
 	if what.begins_with("down:"):
 		return _body_in_frame(what.substr(5), -1)
 	if what.begins_with("body:"):

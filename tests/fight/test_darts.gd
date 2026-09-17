@@ -103,8 +103,15 @@ func _count(sim: FightSim, kind: StringName) -> int:
 	return n
 
 
-## A day in a clerk's country, standing about: the coast must not read the
-## player more than the gaps allow, and must still read the player at all.
+## Days in a clerk's country, standing about: the coast must not read the player
+## more than the gaps allow, and must still read the player at all.
+##
+## THREE days, not one. One day saw a single meeting, and a single meeting is not
+## a measurement: putting the body's night on the sky's curve (FightRules.nightfall)
+## moved that one meeting out of the day and the test failed, though the rate had
+## actually RISEN — over ten days the same run gives 5 meetings on the old curve
+## and 8 on the new one. A claim that rests on one event fails for noise and
+## passes for nothing.
 func test_a_day_in_clerk_country_meets_a_few_darts_not_dozens() -> void:
 	var w := F.flat_world(96, Ground.ASH, Country.BURNING)
 	var sim := F.make_sim(w, Vector2(48.5, 48.5))
@@ -116,7 +123,7 @@ func test_a_day_in_clerk_country_meets_a_few_darts_not_dozens() -> void:
 	const WORLD_PER_MS := 6.0 / 1000.0
 	var meetings := 0
 	var filings := 0
-	var hours := 24.0
+	var hours := 72.0
 	var steps := int(hours * 60.0 / WORLD_PER_MS / 16.0)
 	var wander := Rng.make(5, 5)
 	for i in steps:
@@ -133,7 +140,7 @@ func test_a_day_in_clerk_country_meets_a_few_darts_not_dozens() -> void:
 			elif e.type == &"filed":
 				filings += 1
 	var per_hour := meetings / hours
-	print("  a day among clerks: %d meetings, %d filings (%.2f an hour)" % [meetings, filings, per_hour])
+	print("  %.0f hours among clerks: %d meetings, %d filings (%.2f an hour)" % [hours, meetings, filings, per_hour])
 	gt(float(meetings), 0.0, "a clerk country still reads you")
 	lt(per_hour, 60.0 / Coast.MEETING_GAP + 0.05, "no more than the gap allows")
 	check(filings <= meetings, "a filing is a meeting that got away")

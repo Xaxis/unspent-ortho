@@ -2,7 +2,7 @@
 #   tools/tour.sh tours/survival.tour
 # Driftwood off the strand survival lays by the spawn, dead wood under a dead tree,
 # a loose stone, then a fire laid with two presses of use, seen at night.
-shot 01-spawn
+shot 01-spawn with land:coast
 # Driftwood on the strand survival lays by the spawn. Named, not pinned to a
 # coordinate: `at 136.0,213.5` stood in a pond, and the tour pressed use on open
 # water and shot "driftwood taken" of a player who had taken nothing — green,
@@ -10,7 +10,7 @@ shot 01-spawn
 near driftwood
 press use 0.1
 wait 0.45
-shot 02-gathering-driftwood
+shot 02-gathering-driftwood with prop:driftwood
 await took 4
 shot 03-driftwood-taken
 # Dead wood under a dead tree: hold use and it gives twice.
@@ -18,7 +18,7 @@ near dead_tree
 press use 3.2
 await took 4
 wait 0.3
-shot 04-dead-wood-picked-over
+shot 04-dead-wood-picked-over with prop:dead_tree
 # A loose stone off each of two boulders (`near` moves on to the next one).
 near boulder
 press use 0.1
@@ -27,7 +27,7 @@ near boulder
 press use 0.1
 await took 14
 wait 0.4
-shot 05-stone
+shot 05-stone with prop:boulder
 # Open ground: the first press asks and rings the spot, the second lays the fire.
 at 143.5,205.5
 walk 1,-1 0.08
@@ -43,4 +43,4 @@ shot 08-fire-at-night with station:fire
 # Lie down by it: the night passes and the fire has burnt through to morning.
 press use 0.1
 wait 1.0
-shot 09-morning
+shot 09-morning with station:fire

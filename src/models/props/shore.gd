@@ -227,31 +227,142 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 		k.chamfer(0.2, 0.55, 0.1, 0.9, 0.05, 0.6, 0.06, P.PLATE[3], P.PLATE[4])
 
 
+## A hole in the ground with fire under it (art findings 16 and 2, twice asked
+## for). What was here was a solid pure-white disc 14x10 native px on a neat
+## octagonal collar, nine identical ones to a frame and the only pure white in
+## the landscape: fried eggs punched in the page. Three things were wrong and
+## each is answered here.
+##
+## 1. THE HEAT READS IN STEPS, NOT AS A DISC. Clinker crust at the lip, deep red
+##    down the throat wall, an amber floor, and a white core a THIRD the width
+##    of the old disc — so the eye reads hot-centre-to-cool-edge, which is what a
+##    hole into fire looks like, instead of one flat value.
+## 2. THE CIRCLE IS BROKEN. The collar is seven clinker blocks at their own
+##    radii and heights with two of them fallen away, the glow shows through the
+##    gaps, and slabs of crust still lie across the mouth. Nothing about it is a
+##    ring of eight equal facets.
+## 3. NO TWO ARE ALIKE. VENT now carries four variants (PropModels.variants), so
+##    the nine in one Burning frame are four different holes, each turned.
 static func vent(k: Kit, v: int, _c: int) -> void:
 	if v % 2 == 0:
-		# A vent in the ground: a rusted clinker cone (never a black hole seen from
-		# above), a wide glowing mouth, a sulphur crust round its lip.
-		k.stone(0, -0.06, 0, 0.65, 0.42, 11001, P.STONE[1], 8, 0.0, P.RUST[1])
-		k.stone(0.14, -0.06, 0.22, 0.4, 0.26, 11002, P.ASH[2], 7, 0.2)
-		k.made.prism(0, 0.3, 0, 0.26, 0.4, 0.2, 8, P.RUST[2], GroundColors.glow(P.EMBER[3], 1.3))
-		k.made.prism(0, 0.4, 0, 0.17, 0.41, 0.17, 8, GroundColors.glow(P.EMBER[4], 1.4), GroundColors.glow(P.EMBER[5], 1.6))
-		for i in 7:
-			var a := float(i) * 0.9
-			var p := Vector3(cos(a) * 0.27, 0.37, sin(a) * 0.27)
-			k.fleck(p, p + Vector3(0.07, 0.0, 0.02), p + Vector3(0.02, 0.03, 0.06), P.SAND[5] if i % 2 else P.RUST[5])
-		for i in 3:
-			var a := float(i) * 2.1 + 0.4
-			var p := Vector3(cos(a) * 0.52, 0.01, sin(a) * 0.52)
-			k.fleck(p, p + Vector3(0.05, 0.0, 0.02), p + Vector3(0.01, 0.02, 0.05), GroundColors.glow(P.EMBER[3], 0.8))
+		_vent_hole(k, v)
 	else:
-		# FOUND: a flanged pipe, bolted, still breathing heat.
-		k.stone(0, -0.08, 0, 0.55, 0.16, 11011, P.STONE[0], 8, 0.0, P.STONE[1])
-		k.found.prism(0, 0.0, 0, 0.22, 0.5, 0.22, 12, P.PLATE[2])
-		k.found.prism(0, 0.5, 0, 0.3, 0.58, 0.3, 12, P.PLATE[3], P.PLATE[4])
-		k.found.prism(0, 0.0, 0, 0.3, 0.06, 0.3, 12, P.PLATE[1], P.PLATE[2])
-		for i in 8:
-			var a := float(i) / 8.0 * TAU + PI / 8.0
-			k.found.prism(cos(a) * 0.255, 0.58, sin(a) * 0.255, 0.02, 0.62, 0.02, 6, P.PLATE[5])
-		k.found.quad(Vector3(-0.15, 0.08, 0.221), Vector3(0.15, 0.08, 0.221), Vector3(0.15, 0.42, 0.221), Vector3(-0.15, 0.42, 0.221), P.RUST[2])
-		# The heat inside is not the machine's: it is drawn by hand, and it glows.
-		k.made.prism(0, 0.57, 0, 0.17, 0.585, 0.17, 12, P.INK[0], GroundColors.glow(P.EMBER[3], 1.0))
+		_vent_pipe(k, v)
+
+
+## Widest to hottest, in five steps: crust, collar, throat, floor, core. The core
+## is the only step near the page and it is 0.11 across against the old 0.34.
+static func _vent_hole(k: Kit, v: int) -> void:
+	var s := 11000 + v * 17
+	var big := v % 4 == 0
+	var lip := 0.60 if big else 0.48
+	var deep := 0.22 if big else 0.17
+	# The crust the vent burnt through: a low, wide, uneven mound, not a cone.
+	k.stone(0, -0.08, 0, lip + 0.16, 0.20 if big else 0.15, s + 1, P.STONE[1], 9, 0.0, P.RUST[1])
+	k.stone(0.16, -0.06, 0.20, lip * 0.62, 0.13, s + 2, P.ASH[2], 7, 0.18)
+	# The collar: blocks of clinker heaved up round the mouth, two of them gone.
+	# The gap is where the glow gets out sideways, and it is what breaks the ring.
+	var gap_a := int(Rng.hash01(s, 5) * 7.0)
+	var gap_b := (gap_a + 3 + int(Rng.hash01(s, 6) * 2.0)) % 7
+	for i in 7:
+		if i == gap_a or i == gap_b:
+			continue
+		var a := float(i) / 7.0 * TAU + Rng.hash01(s, i, 3) * 0.5
+		var rr := lip * (0.92 + Rng.hash01(s, i, 4) * 0.22)
+		var h := (0.16 + Rng.hash01(s, i, 5) * 0.20) * (1.15 if big else 1.0)
+		k.stone(cos(a) * rr, 0.04, sin(a) * rr, lip * 0.32, h, s + 20 + i,
+			P.ASH[1] if i % 2 else P.STONE[2], 5, 0.0, P.INK[2])
+	# Down the throat, which is SHALLOW. A deep bowl at this camera hides its own
+	# floor behind the near rim and shows nothing but one wall — which is how the
+	# first attempt at this traded a flat white disc for a flat red one.
+	k.made.prism(0, 0.10, 0, lip * 0.80, deep * 0.35, lip * 0.68, 9, P.INK[1], P.EMBER[0])
+	# The fire, laid in three rings and then largely COVERED: what the eye reads
+	# is the seams between the crust plates, not a disc.
+	k.made.prism(0, deep * 0.35, 0, lip * 0.72, deep * 0.4, lip * 0.68, 9,
+		P.EMBER[1], GroundColors.glow(P.EMBER[3], 0.75))
+	k.made.prism(0, deep * 0.4, 0, lip * 0.28, deep * 0.44, lip * 0.24, 8,
+		GroundColors.glow(P.EMBER[4], 0.9), GroundColors.glow(P.EMBER[4], 1.0))
+	# The hottest step stops SHORT of the page: `EMBER[5]` is already within a
+	# breath of white and the emission carries it the rest of the way, so a
+	# strength that clips is a fried egg again at a third the size.
+	k.made.prism(0, deep * 0.44, 0, lip * 0.12, deep * 0.48, lip * 0.08, 7,
+		GroundColors.glow(P.EMBER[5], 0.8), GroundColors.glow(P.EMBER[5], 0.9))
+	# The crust that has not fallen in: five clinker plates floating on the fire in
+	# a broken ring, so the amber comes up between them and the white shows only
+	# through the one gap they leave. THIS is the broken circle the reviews asked
+	# for twice, and it is why nothing here is a disc of one value.
+	var open := int(Rng.hash01(s, 14) * 5.0)
+	for i in 5:
+		if i == open:
+			continue
+		var a := float(i) / 5.0 * TAU + Rng.hash01(s, i, 15) * 0.6
+		var rr := lip * (0.34 + Rng.hash01(s, i, 16) * 0.20)
+		k.stone(cos(a) * rr, deep * 0.36, sin(a) * rr, lip * (0.30 + Rng.hash01(s, i, 17) * 0.14),
+			0.07 + Rng.hash01(s, i, 18) * 0.05, s + 40 + i, P.INK[1], 5, 0.0, P.ASH[0])
+	# Sulphur burnt out on the lip, and the cracks the heat opened in the crust
+	# running away from it: the broken circle, carried on outside the collar.
+	for i in 6:
+		var a := float(i) * 1.13 + Rng.hash01(s, i, 11)
+		var p := Vector3(cos(a) * lip * 1.02, 0.12, sin(a) * lip * 1.02)
+		k.fleck(p, p + Vector3(0.06, 0.0, 0.02), p + Vector3(0.02, 0.03, 0.06),
+			P.SAND[5] if i % 2 else P.RUST[5])
+	for i in 4:
+		var a := Rng.hash01(s, i, 12) * TAU
+		var run := lip * (1.3 + Rng.hash01(s, i, 13) * 0.9)
+		var d := Vector3(cos(a), 0.0, sin(a))
+		var side := Vector3(-d.z, 0.0, d.x) * 0.035
+		k.fleck(d * (lip * 0.95) + Vector3(0, 0.015, 0), d * run + side + Vector3(0, 0.015, 0),
+			d * run - side + Vector3(0, 0.015, 0), GroundColors.glow(P.EMBER[2], 0.6))
+
+
+## FOUND: a flanged pipe, bolted, still breathing heat. Variant 3 is the same
+## pipe standing lower and gone over on its flange, so a frame of these is two
+## pipes and not one stamped twice.
+static func _vent_pipe(k: Kit, v: int) -> void:
+	var tall := v % 4 == 1
+	var y1 := 0.5 if tall else 0.33
+	var lean := 0.0 if tall else 0.055
+	k.stone(0, -0.08, 0, 0.55, 0.16, 11011 + v, P.STONE[0], 8, 0.0, P.STONE[1])
+	k.found.push(Transform3D(Basis(Vector3.FORWARD, lean), Vector3.ZERO))
+	k.found.prism(0, 0.0, 0, 0.22, y1, 0.22, 12, P.PLATE[2])
+	# The top flange is a RING, not a lid. A solid cap put a pale disc over the
+	# whole mouth, and what the camera then read was a grey drum with a grey lid —
+	# a can, which is the one shape docs/ART.md forbids outright.
+	k.found.prism(0, y1, 0, 0.3, y1 + 0.05, 0.3, 12, P.PLATE[3], P.PLATE[3])
+	k.found.prism(0, y1, 0, 0.215, y1 + 0.06, 0.215, 12, P.PLATE[1], P.PLATE[1])
+	k.hoop(Vector3(0, y1 + 0.06, 0), 0.265, 12, 0.03, P.PLATE[4])
+	k.found.prism(0, 0.0, 0, 0.3, 0.06, 0.3, 12, P.PLATE[1], P.PLATE[2])
+	for i in 8:
+		var a := float(i) / 8.0 * TAU + PI / 8.0
+		k.found.prism(cos(a) * 0.272, y1 + 0.05, sin(a) * 0.272, 0.02, y1 + 0.09, 0.02, 6, P.PLATE[5])
+	k.found.quad(Vector3(-0.15, 0.08, 0.221), Vector3(0.15, 0.08, 0.221),
+		Vector3(0.15, y1 - 0.08, 0.221), Vector3(-0.15, y1 - 0.08, 0.221), P.RUST[2])
+	k.found.pop()
+	# The lip is gone on one side: the pipe has burnt through and split, so it is
+	# never a clean can standing in a field. Clinker has grown out of the split.
+	var split := Rng.hash01(11011 + v, 2) * TAU
+	for i in 3:
+		var a := split + (i - 1) * 0.42
+		var rr := 0.30 + Rng.hash01(11011 + v, i, 3) * 0.05
+		k.stone(cos(a) * rr, y1 + 0.02 + Rng.hash01(11011 + v, i, 4) * 0.05, sin(a) * rr,
+			0.09, 0.09 + Rng.hash01(11011 + v, i, 5) * 0.07, 11031 + v * 7 + i,
+			P.INK[1], 5, 0.0, P.ASH[0])
+	# The heat inside is not the machine's: it is drawn by hand, and it glows —
+	# a shallow bore in three steps, not a bright disc filling the mouth. The
+	# steps sit high because a deep bore seen from this camera shows only its own
+	# dark wall, and then nothing tells the player the thing is alight at all.
+	var mouth := y1 + 0.06
+	k.made.prism(0, mouth, 0, 0.205, mouth - 0.10, 0.17, 11, P.INK[0], P.EMBER[0])
+	k.made.prism(0, mouth - 0.10, 0, 0.17, mouth - 0.13, 0.13, 10,
+		P.EMBER[1], GroundColors.glow(P.EMBER[3], 0.7))
+	k.made.prism(0, mouth - 0.13, 0, 0.13, mouth - 0.15, 0.07, 9,
+		GroundColors.glow(P.EMBER[4], 0.9), GroundColors.glow(P.EMBER[4], 1.0))
+	k.made.prism(0, mouth - 0.15, 0, 0.07, mouth - 0.17, 0.035, 8,
+		GroundColors.glow(P.EMBER[5], 0.75), GroundColors.glow(P.EMBER[5], 0.85))
+	# What is getting out through the split, on the shell.
+	for i in 3:
+		var a := split + (i - 1) * 0.5
+		var y := y1 * (0.30 + Rng.hash01(11011 + v, i, 6) * 0.45)
+		var p := Vector3(cos(a) * 0.235, y, sin(a) * 0.235)
+		k.fleck(p, p + Vector3(0.0, 0.09, 0.0), p + Vector3(cos(a) * 0.05, 0.03, sin(a) * 0.05),
+			GroundColors.glow(P.EMBER[2], 0.6))

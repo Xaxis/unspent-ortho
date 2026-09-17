@@ -15,27 +15,27 @@ place salt_flats
 wait 2.0
 zoom 20
 wait 0.8
-shot 01-flat-wide
+shot 01-flat-wide with land:salt_flats
 zoom 12
 wait 0.8
-shot 02-flat-play
+shot 02-flat-play with land:salt_flats
 zoom 6
 wait 0.8
-shot 03-flat-close
+shot 03-flat-close with land:salt_flats
 zoom 12
 hour 19.5
 wait 1.6
-shot 04-flat-dusk
+shot 04-flat-dusk with land:salt_flats
 hour 23
 wait 1.6
-shot 05-flat-night
+shot 05-flat-night with land:salt_flats
 hour 11
 wait 1.2
 
 # --- Glare with nothing on: the wall -----------------------------------------
 await glare 20
 await pressure_bites 20
-shot 06-the-flat-bites
+shot 06-the-flat-bites with glare,pressure_bites
 
 # --- And the kit that answers it, fitted on the slate -------------------------
 # The flat presses THREE ways and only three slots have answers in them, so the
@@ -48,7 +48,7 @@ tap pause
 choose loadout
 tap use
 await app:loadout 8
-shot 07-the-gear-page-bare
+shot 07-the-gear-page-bare with app:loadout
 choose head
 tap use
 wait 0.4
@@ -60,7 +60,7 @@ wait 0.4
 choose back
 tap use
 wait 0.4
-shot 08-the-whole-kit-on
+shot 08-the-whole-kit-on with app:loadout
 tap pause
 tap pause
 await app:none 4
@@ -68,27 +68,27 @@ wait 2.5
 await answered:glare 45
 await answered:thirst 30
 await answered:heat 30
-shot 09-the-flat-answered
+shot 09-the-flat-answered with answered:glare,land:salt_flats
 
 # --- The wood: wide, at play, and close ---------------------------------------
 place scrapwood
 wait 2.0
 zoom 20
 wait 0.8
-shot 10-wood-wide
+shot 10-wood-wide with land:scrapwood
 zoom 12
 wait 0.8
-shot 11-wood-play
+shot 11-wood-play with land:scrapwood
 zoom 6
 wait 0.8
-shot 12-wood-close
+shot 12-wood-close with land:scrapwood
 zoom 12
 hour 19.5
 wait 1.6
-shot 13-wood-dusk
+shot 13-wood-dusk with land:scrapwood
 hour 23
 wait 1.6
-shot 14-wood-night
+shot 14-wood-night with land:scrapwood
 hour 11
 wait 1.6
 
@@ -101,12 +101,12 @@ await app:loadout 8
 choose hands
 tap use
 wait 0.4
-shot 15-nothing-on-the-hands-to-pull
+shot 15-nothing-on-the-hands-to-pull with app:loadout
 tap pause
 tap pause
 await app:none 4
 wait 1.5
-shot 16-the-wood-answered
+shot 16-the-wood-answered with answered:magnetism,land:scrapwood
 
 # --- What the wood is made of, at the scale a player meets it at --------------
 # A frame named for a thing has to have that thing as its subject. The first
@@ -121,7 +121,7 @@ shot 17-a-tree-grown-through-a-machine with prop:scrap_tree
 near magnet_heap
 zoom 3.2
 wait 1.2
-shot 18-filings-standing-on-end
+shot 18-filings-standing-on-end with prop:magnet_heap
 zoom 12
 
 # --- Both borders: stood in, then walked across -------------------------------

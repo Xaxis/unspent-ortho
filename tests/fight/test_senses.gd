@@ -20,7 +20,11 @@ func test_night_dims_sight_unless_the_lamp_is_lit() -> void:
 	var lamp := _at(23.0)
 	lamp.lamp_lit = true
 	near(Senses.sight_range(row, lamp), 9.0, 0.001, "a lamp undoes the dark")
-	near(Senses.sight_range(row, _at(20.5)), 9.0 * (1.0 - 0.8 * 0.62 * 0.5), 0.001, "half way through the dusk ramp")
+	# Half way through the dusk the SKY draws (Weather.DUSK_START..DUSK_END), since
+	# the body's night and the sky's evening are one curve now: at 19:45 a machine
+	# already sees less, which is the whole point of putting them together.
+	near(Senses.sight_range(row, _at(19.75)), 9.0 * (1.0 - 0.8 * 0.62 * 0.5), 0.001, "half way through the dusk ramp")
+	gt(Senses.sight_range(row, _at(20.5)), Senses.sight_range(row, _at(23.0)), "and still falling at half past eight")
 
 
 func test_hearing_is_never_dimmed() -> void:

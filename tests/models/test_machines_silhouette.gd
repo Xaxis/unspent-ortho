@@ -201,11 +201,42 @@ static func fill(mask: PackedByteArray) -> float:
 ## two worst — the harvester and the hauler seen end-on — are slabs that genuinely
 ## fill their boxes from that bearing, and getting them under 0.6 is a bigger
 ## change to both than a fix wave should make; they are the next two to do.
+##
+## A RATCHET WITH ONE END IS A TRAP, and the watcher sprang it. At 0.25 it was
+## the emptiest thing in the roster and it passed everything here, while the one
+## a player sees from a hill away was "a thin mast and three splayed legs of
+## scattered violet pixels" (art finding 3) — nothing on it wide enough to carry
+## a chamfer, a rivet row or a slit. Giving it a body put it at 0.27, which this
+## file called a regression. So `tests/models/test_machines_mass.gd` holds the
+## other end now: how much of a machine is BODY rather than edge, floored per
+## kind. The watcher's number here went up on purpose and the reason is written
+## in both files.
 const FILLED := {
 	&"harvester": 0.71, &"hauler": 0.70, &"runner": 0.57, &"warden": 0.56,
 	&"sweeper": 0.55, &"dredger": 0.48, &"clerk": 0.47, &"lineman": 0.44,
-	&"cutter": 0.44, &"flock": 0.32, &"longlegs": 0.32, &"watcher": 0.25,
+	&"cutter": 0.44, &"flock": 0.32, &"longlegs": 0.32, &"watcher": 0.30,
 }
+## ...and the same ratchet over EVERY bearing, not the two yaws above. The two
+## sampled yaws are the bearings a player mostly sees, but a camera that never
+## turns still shows a machine from all sixteen as it walks its round, and the
+## worst of them is where a slab shows. This is the number the A2 review had to
+## take by hand (harvester and hauler "end-on", 0.69 and 0.68 of their boxes);
+## it is in the gate now, pinned where each kind stands, so the next wave that
+## rebuilds a hull can see what it bought.
+##
+## A FOURTH cheap route was tried on the harvester and it went the same way as
+## the first three: standing the unloading spout up like a derrick at alert
+## (0.4 rad of lift to 1.05) moved the worst bearing off 3.93 and took the alert
+## fill at yaw 2.3 from 0.71 to 0.76 — worse where it is measured, for nothing
+## where it is not. Raising the two lamp masts with it bought the same nothing.
+## The hull is a slab from four of the sixteen bearings and the only thing that
+## changes that is a different hull.
+const FILLED_ANY := {
+	&"harvester": 0.85, &"hauler": 0.69, &"sweeper": 0.69, &"runner": 0.67,
+	&"warden": 0.62, &"clerk": 0.55, &"dredger": 0.54, &"lineman": 0.52,
+	&"cutter": 0.47, &"flock": 0.37, &"longlegs": 0.36, &"watcher": 0.42,
+}
+const BEARINGS := 16
 ## What a kind nobody has pinned yet may fill: the bar for the thirteenth machine.
 const MOST_FILLED := 0.70
 
@@ -220,6 +251,29 @@ func test_no_machine_is_a_filled_box() -> void:
 				m.free()
 				lt(f, bar, "%s %s at yaw %.1f fills %.2f of its box (ratchet %.2f)" % [kid, p, yaw, f, bar])
 				lt(f, MOST_FILLED + 0.02, "%s %s at yaw %.1f fills %.2f: no machine is a crate" % [kid, p, yaw, f])
+
+
+## ...and from every bearing, which is the measurement the A2 review had to take
+## outside the gate. Printed as well as checked, because the next wave that opens
+## a hull needs the table more than it needs the pass.
+func test_no_machine_is_a_filled_box_from_any_bearing() -> void:
+	var lines: PackedStringArray = []
+	for kid in KINDS:
+		var bar: float = float(FILLED_ANY.get(kid, MOST_FILLED + 0.16))
+		var worst := 0.0
+		var at := 0.0
+		for i in BEARINGS:
+			var yaw := float(i) / float(BEARINGS) * TAU
+			for p: StringName in [&"stand", &"alert"]:
+				var m := posed(kid, p)
+				var f := fill(silhouette(m, yaw))
+				m.free()
+				if f > worst:
+					worst = f
+					at = yaw
+		lines.append("  %-10s worst %.2f at yaw %.2f (ratchet %.2f)" % [kid, worst, at, bar])
+		lt(worst, bar, "%s fills %.2f of its box at yaw %.2f (ratchet %.2f)" % [kid, worst, at, bar])
+	print("the worst bearing of each machine:\n", "\n".join(lines))
 
 
 func test_every_machine_reads_at_gameplay_zoom() -> void:

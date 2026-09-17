@@ -37,6 +37,42 @@ func test_night_is_dark_and_colder_and_the_heat_goes_with_the_sun() -> void:
 	check(float(noon[&"dark"]) < float(night[&"dark"]), "and less so at noon")
 
 
+## THE SKY'S EVENING AND THE BODY'S NIGHT ARE ONE CURVE.
+##
+## They were two: the look of dusk fell over 18:30-21:00 and `FightRules.nightfall`
+## was flat zero until 20:00, so a player stood in a drawn dusk carrying noon's
+## cold, and this file's own promise — a snowfield at noon is felt, at dusk it
+## bites — was false for the hour a player reads as dusk. Nothing may put them
+## apart again: the fight, the senses, the lamp and every pressure here ride
+## FightRules.nightfall, and the sky rides Weather.night_fall.
+func test_the_body_falls_into_night_on_the_curve_the_sky_falls_on() -> void:
+	for h: float in [0.0, 3.0, 4.5, 5.25, 6.0, 12.0, 18.0, 18.5, 19.0, 19.75, 20.0, 20.5, 21.0, 23.0]:
+		near(FightRules.nightfall(h), Weather.night_fall(h), 1e-6,
+			"the body and the sky disagree about %.2f" % h)
+
+
+func test_a_snowfield_at_noon_is_felt_and_the_same_snowfield_at_dusk_bites() -> void:
+	# The docstring at the top of src/core/hazards/hazards.gd, made a test. Dusk
+	# is what the sky draws as dusk (Weather.DUSK_START..DUSK_END), and the middle
+	# of it is 19:45, not 20:30.
+	var snow := {&"cold": 0.7}
+	var noon := float(Hazards.felt(place(snow, 12.0)).get(&"cold", 0.0))
+	var dusk := float(Hazards.felt(place(snow, (Weather.DUSK_START + Weather.DUSK_END) * 0.5)).get(&"cold", 0.0))
+	var small_hours := float(Hazards.felt(place(snow, 3.0)).get(&"cold", 0.0))
+	gt(noon, Hazards.FELT, "a snowfield at noon is felt")
+	lt(noon, Hazards.BITE, "and no more than felt")
+	gt(dusk, noon, "the cold comes on through the dusk the player can see")
+	gt(small_hours, Hazards.HARM, "and at three in the morning it is dangerous")
+	# The evening no longer has a step in it: nothing the body carries jumps by
+	# more than a third of the scale in half an hour.
+	var was := float(Hazards.felt(place(snow, 17.0)).get(&"cold", 0.0))
+	for i in 14:
+		var h := 17.0 + 0.5 * (i + 1)
+		var now := float(Hazards.felt(place(snow, h)).get(&"cold", 0.0))
+		lt(absf(now - was), 0.34, "the cold steps at %.1f (%.2f to %.2f)" % [h, was, now])
+		was = now
+
+
 ## The clock is a multiplier on what the landscape declares, never a term of its
 ## own: this is what stops every coast in the world growing two gauges at 23:00.
 func test_the_hour_never_makes_a_pressure_the_landscape_did_not_declare() -> void:

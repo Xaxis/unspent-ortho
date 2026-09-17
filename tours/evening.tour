@@ -22,43 +22,43 @@ zoom 13
 wait 0.8
 walk 0,1 0.6
 wait 1.4
-shot 01-the-afternoon-1700
+shot 01-the-afternoon-1700 with land:coast
 hour 17.5
 wait 3.0
 await darker 4
-shot 02-1730
+shot 02-1730 with land:coast
 hour 18
 wait 3.0
 await darker 4
-shot 03-the-turn-begins-1800
+shot 03-the-turn-begins-1800 with land:coast
 hour 18.5
 wait 3.0
 await darker 4
-shot 04-1830
+shot 04-1830 with land:coast
 hour 19
 wait 3.0
 await darker 4
-shot 05-low-and-warm-1900
+shot 05-low-and-warm-1900 with land:coast
 hour 19.5
 wait 3.0
 await darker 4
-shot 06-1930
+shot 06-1930 with land:coast
 hour 20
 wait 3.0
 await darker 4
-shot 07-the-lights-come-on-2000
+shot 07-the-lights-come-on-2000 with land:coast
 hour 20.5
 wait 3.0
 await darker 4
-shot 08-2030
+shot 08-2030 with land:coast
 hour 21
 wait 3.0
 await darker 4
-shot 09-night-lands-2100
+shot 09-night-lands-2100 with land:coast
 hour 21.5
 wait 3.0
 await darker 4
-shot 10-2130
+shot 10-2130 with land:coast
 
 # No half hour of the evening is a step. The crop is the world under the HUD's
 # top band and above its bottom one, so a clock reading 20:30 instead of 20:00
@@ -76,7 +76,7 @@ same 09-night-lands-2100 10-2130 0.075 0,84,1280,592
 # The hour to stand still in.
 hour 19.25
 wait 1.0
-shot 11-the-hour-to-stand-still-in
+shot 11-the-hour-to-stand-still-in with land:coast
 
 # The lamp in the dusk, on the real key: a flame at seven, a pool at half past
 # eight (docs/ART.md section 6, section 10).
@@ -84,10 +84,10 @@ hour 19
 wait 0.8
 tap lamp
 wait 0.8
-shot 12-a-flame-at-seven
+shot 12-a-flame-at-seven with lamp,land:coast
 hour 20.5
 wait 1.0
-shot 13-a-pool-at-half-past-eight
+shot 13-a-pool-at-half-past-eight with lamp,land:coast
 tap lamp
 wait 0.5
 
@@ -141,15 +141,15 @@ same 25-the-moss-at-2100 26-the-moss-at-2130 0.075 0,84,1280,592
 place snowfield
 hour 19.5
 wait 1.6
-shot 14-the-snowfields-long-blue-evening
+shot 14-the-snowfields-long-blue-evening with land:snowfield
 place burning
 hour 19.6
 wait 1.6
-shot 15-the-burnings-furnace-dusk
+shot 15-the-burnings-furnace-dusk with land:burning
 place pinewood
 hour 18.5
 wait 1.6
-shot 16-an-early-dusk-under-the-pines
+shot 16-an-early-dusk-under-the-pines with land:pinewood
 place bonelands
 hour 19.4
 wait 1.6

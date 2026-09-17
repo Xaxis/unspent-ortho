@@ -115,6 +115,11 @@ static func felt(place: Place) -> Dictionary:
 ## gloom off at midday and gives them back after dark, and the heat is its own,
 ## so it goes when the sun does. A snowfield at noon is felt; the same snowfield
 ## at dusk bites; at three in the morning it is dangerous.
+##
+## The sun here is `FightRules.nightfall`, which is `Weather.night_fall`: the one
+## curve the sky is drawn on. Dusk therefore means the dusk the player can SEE
+## (18:30-21:00) and not an hour of its own, which is what made that promise
+## false for a year (tests/hazards/test_hazards.gd).
 static func _hour_shift(out: Dictionary, place: Place) -> void:
 	var night := clampf(FightRules.nightfall(place.hour), 0.0, 1.0)
 	if out.has(&"cold"):

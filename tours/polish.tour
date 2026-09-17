@@ -1,0 +1,129 @@
+# What the A2 polish wave changed, through the real keys and from a normal
+# start: the Burning's vents, the crowns of the scrapwood, the machines' cuts in
+# the turf, a machine with mass at the distance a player sees it, a wrap made in
+# the HAND with no bench against a cold that now comes on with the dusk the sky
+# draws, and the targeting tag over a body in the world.
+#
+#   tools/tour.sh tours/polish.tour --seed=7 --hour=11 --weather=clear:0 \
+#     --give=rag:5,wrack:4,pitch:1
+#
+# Every frame here says what it is OF, because a frame of a vent that holds no
+# vent is worse evidence than no frame at all.
+coast calm
+
+# --- The Burning's vents ------------------------------------------------------
+# A solid pure-white disc ~14x10 native pixels, nine identical ones to a frame
+# and the only pure white in the landscape. Now: a broken clinker collar, plates
+# of crust floating on the fire with amber between them, and a core a third the
+# width. At noon, and then at night, where each one lays its own pool.
+place burning
+wait 1.2
+shot 01-the-burning-at-noon with land:burning
+at prop:vent
+zoom 5
+wait 1.0
+shot 02-a-hole-in-the-ground with prop:vent
+hour 23
+weather clear:0
+wait 1.4
+shot 03-a-vent-at-night with prop:vent
+zoom 12
+wait 0.8
+shot 04-the-vents-in-the-dark with land:burning
+
+# --- The scrapwood's crowns ---------------------------------------------------
+# Thirty near-identical mushrooms at one scale, each with the same ruled bar
+# across it. Six trees now, each with its own height, spread, arms and bar.
+coast calm
+hour 11
+weather clear:0
+place scrapwood
+wait 1.4
+shot 05-a-wood-and-not-a-texture with land:scrapwood
+near scrap_tree
+zoom 6
+wait 1.0
+shot 06-one-tree-of-six with prop:scrap_tree
+zoom 12
+
+# --- The machines' cuts in the turf -------------------------------------------
+# Four or five bars of identical width at identical spacing with the same grain
+# in each. The order is still ruled; the ladder is not stamped any more.
+place coast-salt_flats
+wait 1.4
+shot 07-the-cuts-are-work-not-a-stamp with border:coast-salt_flats
+
+# --- A machine with mass at the distance a player sees it ---------------------
+# The watcher: close up the best-drawn thing in the roster, from a hill away a
+# thin mast and three splayed legs of scattered pixels. A wide drum with a rivet
+# row, a housing with a slit on the cross bar, and a shade over the head.
+place coast
+wait 1.2
+spawn watcher
+wait 1.2
+shot 08-a-watcher-at-play-distance with mob:watcher
+# ...and the tag it carries, which is made of the slate's glass now and not of
+# an opaque black lozenge.
+hold target
+await target 5
+wait 0.9
+shot 09-read-through-the-slate with mob:watcher
+release target
+wait 1.2
+coast calm
+wait 0.8
+
+# --- Day two, with a knife and no bench ---------------------------------------
+# A warm wrap was a BENCH recipe, a day's walk and a day's building behind the
+# snowfield it answers. It is hand work, like the rest of the made tier.
+try 3
+tap craft
+await app:crafting 3
+end
+wait 0.4
+shot 10-the-made-tier-in-the-hand with app:crafting
+choose wrap_warm
+tap use
+await made 8
+wait 0.5
+# ...and the wadding that goes in its socket, out of rags and dried wrack. The
+# snowfield in a wind wants both, and both are hand work.
+choose mod_wadding
+tap use
+await made 8
+wait 0.5
+shot 11-a-wrap-and-its-wadding-made-by-hand with app:crafting
+tap pause
+await app:none 4
+
+# --- And the cold that comes on with the dusk the sky draws --------------------
+# FightRules.nightfall was flat zero until 20:00 while dusk was drawn from
+# 18:30, so a body stood in a visibly deep dusk carrying noon's cold. One curve
+# now, and eight in the evening is where the two used to disagree most: the old
+# line was still flat at 0.43 there, which is felt and no more, and this one has
+# the snowfield past HARM on a body with nothing on it.
+place snowfield
+hour 20
+weather clear:0
+wait 2.0
+await cold 20
+await pressure_bites 40
+shot 12-a-snowfield-at-eight-in-the-evening with pressure_bites,land:snowfield
+# The wrap goes on where the player is standing, and the cold comes off.
+tap pause
+wait 0.8
+choose loadout
+tap use
+await app:loadout 8
+wait 0.5
+choose body
+tap use
+wait 0.5
+tap use
+wait 0.6
+shot 13-the-wrap-on-and-packed with app:loadout
+tap pause
+tap pause
+await app:none 4
+await answered:cold 60
+shot 14-and-the-wrap-answers-it with answered:cold,land:snowfield

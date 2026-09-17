@@ -58,17 +58,23 @@ static func variants(kind: int) -> int:
 		PropKind.SNOW_PINE, PropKind.DRIFTWOOD, PropKind.BONES, PropKind.RUIN, PropKind.STANDING_STONE, PropKind.REEDS, \
 		PropKind.GORSE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK, PropKind.WRACK:
 			return 3
-		PropKind.VENT, PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
+		# Four: the Burning puts nine vents in one frame, and two shapes there is a
+		# stamp (art finding 16). Even variants are a hole burnt in the ground,
+		# odd ones a bolted pipe, and each pair differs in size and stance.
+		PropKind.VENT:
+			return 4
+		PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
 		PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
 			return 2
 		PropKind.SIGN:
 			return 4
 		PropKind.SALT_RIDGE:
 			return 3
-		# Four, so a stand of them is four heights and four crowns: fifteen
-		# near-identical silhouettes at one scale is a texture, not a wood.
+		# Six, because four was still a stamp at play zoom: thirty crowns in one
+		# frame want six heights, six spreads, six arm counts and six of the
+		# machine's bars, and `Scrap.SPREAD`/`BOUGHS` are sized for six.
 		PropKind.SCRAP_TREE:
-			return 4
+			return 6
 		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:

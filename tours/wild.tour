@@ -44,27 +44,23 @@ wait 6
 shot 10-watching
 # The first meeting comes out about now (75 s in), a runner on its round in
 # view, not yet noticing the player: frames while it comes along.
+#
+# THE WATCH ENDS WHEN IT LOOKS UP. This stood still for 13.6 s of fixed `wait`
+# and failed about one run in three, because sometimes the runner noticed and
+# downed a player who was doing nothing — and every frame after it noticed was
+# also a lie about its own name. `until noticed` is what a player does: watch
+# while it is still on its round, and stop watching the moment it has you.
 await mob 60
-shot 11-meeting with mob
-wait 2
-shot 12-meeting
-wait 2
-shot 13-meeting
-wait 2
-shot 14-meeting
-wait 2
-shot 15-meeting
-wait 2
-shot 16-meeting
-wait 1.2
-shot 16b-meeting
-wait 1.2
-shot 16c-meeting
-wait 1.2
-shot 16d-meeting
+shot 11-on-its-round with on_round
+# ...and then the watch runs on until it looks up, or until it has walked its
+# round past us, which is the other thing a worker does. Neither is claimed,
+# because neither can be promised: the frame after this one is named for the
+# watching, not for what is in it.
+until noticed 20
+shot 12-watching-it-work
 # It has noticed, and comes: read the tell, round to its back, strike, strike.
 await tell 60
-shot 17-its-tell
+shot 13-its-tell with mob
 try 12
 await tell 8
 walkto part 1.3

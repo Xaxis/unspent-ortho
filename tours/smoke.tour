@@ -1,15 +1,15 @@
 # A walk along the first coast at a few hours of the day.
-shot 01-start
+shot 01-start with land:coast
 walk 1,0 1.5
-shot 02-east
+shot 02-east with land:coast
 walk 0,1 1.5 run
-shot 03-south
+shot 03-south with land:coast
 hour 19.5
 wait 0.3
-shot 04-dusk
+shot 04-dusk with land:coast
 hour 23
 wait 0.3
-shot 05-night
+shot 05-night with land:coast
 tap lamp
 wait 0.3
 shot 06-lamp with lamp
