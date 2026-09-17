@@ -8,12 +8,57 @@ extends RefCounted
 
 var world: WorldData
 var _cells: Dictionary = {} # int tile index -> Array[WorldProp]
+## Circles that stop a body but are NOT props: the mass of something a package
+## draws itself and the world never recorded — a landmark's tower, a depot's deck
+## (src/core/landmarks, src/core/works). Kept apart from props on purpose: nothing
+## may take one, hear one, shelter under one or read it as cover, because it is
+## only a wall. Owned by whoever set it, so a realm crossing replaces the set
+## rather than piling a second island's walls on top of the first's.
+var _blocks: Dictionary = {}    # int tile index -> Array[Vector3] (x, z, radius)
+var _block_by: Dictionary = {}  # owner -> Array[Vector3]
+## Tiles of slack when a circle is stamped into the grid, so one tile lookup is
+## enough for any body narrower than this.
+const BLOCK_SLACK := 1.0
 
 
 func _init(w: WorldData) -> void:
 	world = w
 	for p in w.props:
 		add_prop(p)
+
+
+## Everything `owner` stops a body with, replacing whatever it said before. The
+## circles are in TILE space, `(x, y, radius)`.
+func set_blocks(owner: StringName, circles: Array[Vector3]) -> void:
+	if circles.is_empty():
+		if not _block_by.has(owner):
+			return
+		@warning_ignore("return_value_discarded")
+		_block_by.erase(owner)
+	else:
+		_block_by[owner] = circles
+	_blocks.clear()
+	for rows: Variant in _block_by.values():
+		for c: Vector3 in rows as Array[Vector3]:
+			var r := ceili(c.z + BLOCK_SLACK)
+			var cx := floori(c.x)
+			var cy := floori(c.y)
+			for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
+				for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+					var k := ty * world.size + tx
+					if not _blocks.has(k):
+						_blocks[k] = []
+					(_blocks[k] as Array).append(c)
+
+
+## The walls whose tile `p` stands in. One lookup: every circle is stamped into
+## every tile it could stop a body in, so this is the whole answer.
+func blocks_at(p: Vector2) -> Array:
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if tx < 0 or ty < 0 or tx >= world.size or ty >= world.size:
+		return []
+	return _blocks.get(ty * world.size + tx, [])
 
 
 func add_prop(p: WorldProp) -> void:
@@ -94,9 +139,9 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null) -> Ve
 	var full := p + delta
 	if _fits(p, full, r, on):
 		return full
-	var q := _blocker(p, full, r)
-	if q != null:
-		var n := p - q.pos
+	var hit := _blocker(p, full, r)
+	if hit.is_finite():
+		var n := p - Vector2(hit.x, hit.y)
 		n = n / n.length() if n.length_squared() > 1e-10 else -delta.normalized()
 		var t := delta - n * delta.dot(n)
 		if t.length_squared() > delta.length_squared() * 1e-4:
@@ -112,9 +157,11 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null) -> Ve
 	return ny
 
 
-## The nearest solid prop a move from `from` to `to` pushes into, or null.
-func _blocker(from: Vector2, to: Vector2, r: float) -> WorldProp:
-	var best: WorldProp = null
+## The nearest thing a move from `from` to `to` pushes into, as its centre, or
+## Vector2.INF. A solid prop or one of `set_blocks`' walls: the slide is the same
+## either way, so the caller is told where the middle of it is and nothing else.
+func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
+	var best := Vector2.INF
 	var best_d := INF
 	for q in props_near(to, 2.0):
 		if q.solid <= 0.0 or world.depleted.has(q.id):
@@ -123,7 +170,14 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> WorldProp:
 		var after := q.pos.distance_squared_to(to)
 		if after < rr * rr and after < q.pos.distance_squared_to(from) and after < best_d:
 			best_d = after
-			best = q
+			best = q.pos
+	for c: Vector3 in blocks_at(to):
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(to)
+		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
+			best_d = after
+			best = at
 	return best
 
 
@@ -140,5 +194,11 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null) -> bool:
 		var after := q.pos.distance_squared_to(to)
 		# Only block when it would bring us closer: bodies can always leave an overlap.
 		if after < rr * rr and after < q.pos.distance_squared_to(from):
+			return false
+	for c: Vector3 in blocks_at(to):
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(to)
+		if after < rr * rr and after < at.distance_squared_to(from):
 			return false
 	return true
