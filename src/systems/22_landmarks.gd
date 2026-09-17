@@ -200,7 +200,6 @@ func _watch() -> void:
 			Events.message.emit("%s. %s" % [def.display_name.capitalize(), def.near])
 			Events.sfx.emit(&"landmark_found", game.world.to_3d(s.pos))
 			Events.landmark_found.emit(s.id, s.land, s.pos)
-			_seen[&"landmark_found"] = true
 		var reach := Landmarks.cache_of(s).distance_to(at)
 		if reach <= Landmarks.OPEN_REACH and reach < best and not state.is_opened(s.id):
 			best = reach
@@ -254,7 +253,6 @@ func _open(s: LandmarkSite) -> void:
 		game.inventory.add(id, n)
 		Events.took.emit(id, n)
 		got.append(Items.display_name(id) if n <= 1 else "%s x%d" % [Items.display_name(id), n])
-	_seen[&"landmark_opened"] = true
 	Events.message.emit("Nothing in it but the lining." if got.is_empty() else ", ".join(got) + ".")
 	var def := s.def()
 	if def != null and def.guarded:
@@ -336,10 +334,16 @@ func _load(v: Variant) -> void:
 ##   landmark_near       the player is inside the distance one is found at
 ##   landmark_cache      a cache is in reach of the player
 ##   landmark_wall       a landmark's own mass stopped the body walking into it
-##   landmark_found      one has been found since the last action
-##   landmark_opened     one has been opened since the last action
+##   landmark_found      one has been found: it is on the player's map
+##   landmark_opened     one has been opened, and its cache is spent
 ##   landmark_guard      what was left on watch at one has come
 ##   found:ID            that site (lighthouse#1) is on the player's map
+##
+## Finding and opening are both SAVED, so both can be asked of the world rather
+## than remembered here — which is what `found:ID` always did, one site at a
+## time. As latches they read true for the rest of the run after the first site,
+## so a tour that walked to a second landmark and awaited `landmark_opened`
+## proved only that it had opened the first one.
 func tour_seen(what: String) -> bool:
 	if _seen.has(StringName(what)):
 		return true
@@ -351,6 +355,16 @@ func tour_seen(what: String) -> bool:
 			return false
 		"landmark_cache":
 			return reachable != null
+		"landmark_found":
+			for s in sites:
+				if state.is_found(s.id):
+					return true
+			return false
+		"landmark_opened":
+			for s in sites:
+				if state.is_opened(s.id):
+					return true
+			return false
 		"landmark_near":
 			for s in sites:
 				if s.pos.distance_to(sim.hero.pos) <= Landmarks.FOUND_AT:
@@ -365,6 +379,11 @@ func tour_seen(what: String) -> bool:
 	if what.begins_with("found:"):
 		return state.is_found(StringName(what.substr(6)))
 	return false
+
+
+## An await is spent by the tour that asked it (98_tour `_forget`).
+func tour_forget(what: StringName) -> void:
+	_seen.erase(what)
 
 
 ## IS IT REALLY IN THE PICTURE? A frame that claims a silhouette has to hold it,

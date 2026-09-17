@@ -24,3 +24,18 @@ func setup(_game: Game) -> void:
 ## overwrites it.
 func started() -> void:
 	pass
+
+
+## Spend the latch behind `what`, if this system keeps one: an `await` means
+## SINCE I LAST ASKED, and only the runner knows when a tour asked. 98_tour calls
+## this on every system the moment an await or an until is answered, beside the
+## erase of its own `_seen`.
+##
+## A latch IS the declaration that a key is an EVENT. So a system that computes
+## every answer from the live world overrides nothing and changes not at all,
+## and a system that latches spends the latch here — otherwise the first theft of
+## a run answers every `await theft` after it, which is how machine-read.tour
+## pressed `use` once where a survey post needs three, robbed nothing, turned no
+## machine, and reported green for two waves.
+func tour_forget(_what: StringName) -> void:
+	pass

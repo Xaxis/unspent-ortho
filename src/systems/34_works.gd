@@ -407,7 +407,6 @@ func _fell(s: WorksSite, st: WorksState) -> void:
 	Events.sfx.emit(SND_DARK, game.world.to_3d(s.pos))
 	Events.message.emit("The yard goes dark. Nothing here answers the plan now.")
 	Events.works_broken.emit(s.region, s.land)
-	_seen[&"works_broken"] = true
 
 
 ## The plan's own works standing in the yard, spent for good. This is the one
@@ -660,7 +659,8 @@ func _load(v: Variant) -> void:
 ##   works_lit         the depot the player is on still has its lights
 ##   works_part        a working part has been opened since the last action
 ##   works_open:N      that many parts of the depot they are on are open
-##   works_broken      a depot has been put out
+##   works_broken      a depot has been put out (asked of the world, not latched:
+##                     a yard that is dark stays dark, and `_states` says so)
 ##   works_dark        the depot the player is on is dark
 ##   works_body        the depot has put one of its own on the land
 ##   works_patrol      one of its own is on its round
@@ -694,6 +694,11 @@ func tour_seen(what: String) -> bool:
 		var st: WorksState = _states.get(s.region, null) if s != null else null
 		return st != null and st.broken_count() >= what.substr(11).to_int()
 	return false
+
+
+## An await is spent by the tour that asked it (98_tour `_forget`).
+func tour_forget(what: StringName) -> void:
+	_seen.erase(what)
 
 
 ## WHAT A DEPOT READS AS when the player puts the slate on it (42_target). A

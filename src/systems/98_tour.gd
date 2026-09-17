@@ -510,7 +510,7 @@ func _until(what: String, secs: float) -> void:
 	var stop := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
 	while not _answered(what) and Time.get_ticks_msec() < stop:
 		await get_tree().physics_frame
-	_seen.erase(what)
+	_forget(what)
 
 
 func _await(what: String, secs: float) -> bool:
@@ -519,10 +519,28 @@ func _await(what: String, secs: float) -> bool:
 	while not ok and Time.get_ticks_msec() < until:
 		await get_tree().physics_frame
 		ok = _answered(what)
-	_seen.erase(what)
+	_forget(what)
 	if not ok:
 		printerr("tour %s: no %s within %.1f s%s" % [_name, what, secs, _instead(what)])
 	return ok
+
+
+## AN AWAIT MEANS SINCE I LAST ASKED. A question that has been answered is spent,
+## here and in every system that keeps a latch of its own — the runner's `_seen`
+## was always consumed, but the erase reached this dictionary and no further, so
+## a system's latch answered every later await for free.
+##
+## That is how machine-read.tour hid a real bug for two waves: its night theft
+## pressed `use` once where a survey post needs three, so nothing was robbed and
+## no machine turned, and `await theft` passed anyway off a theft earlier in the
+## run. Only the runner knows when a tour asked a question, so only the runner
+## can spend the answer.
+func _forget(what: String) -> void:
+	_seen.erase(what)
+	if not is_instance_valid(game):
+		return
+	for sys in game.systems:
+		sys.tour_forget(StringName(what))
 
 
 ## Answered when the word has been seen, or is true now — except `game`, which
