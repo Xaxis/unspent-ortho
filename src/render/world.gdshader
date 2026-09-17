@@ -1,24 +1,43 @@
 // MADE: everything a person or the land made. Terrain, props, houses, people.
-// A flat palette wash, lit in two bands; shade is a colour AND ink hatching in
-// the style of the country (or of the hand, for made things). See docs/ART.md.
+//
+// LANTERN (docs/LOOK.md): the world is LIT, not drawn. There is no hatch, no
+// paper grain, no ink line and no two-band shade in here any more, and there is
+// no light() either -- the renderer does real physically-based lighting, and
+// this shader's whole job is to say, per fragment, WHAT THE SURFACE IS:
+//
+//   ALBEDO     the colour, through matter_albedo() and nothing else
+//   ROUGHNESS  how the light scatters off it (ice 0.16, dead ash 0.98)
+//   SPECULAR   how much comes back at a glancing angle
+//   METALLIC   0 for everything here but metal filings trodden into a floor
+//   NORMAL     bent by the material's OWN relief in world space, so the sun
+//              finds the pebble the wash draws (matter_bump)
+//
+// The big procedural library below -- ground_mark, ground_wear, strata,
+// works_mark, survey_mark -- is kept, and it is the reason a landscape looks
+// like itself. What changed is that it is now read as PIGMENT on a real
+// surface rather than as marks on a page: its patterns are anchored to the
+// world at a fixed grain (matter_px) instead of to the screen, so raising the
+// resolution draws the same pebble with more pixels instead of a smaller one.
 //
 // Vertex channels (MeshKit writes them):
 //   COLOR.rgb  wash colour (palette sRGB)
-//   COLOR.a    MARK code / 255 (GroundColors): 0 or 1.0 = plain. Marks are ink
-//              and wash details drawn into a surface by what it is: turf ticks,
-//              grikes, drifts, strata, embers (glow), lamps, glints.
+//   COLOR.a    MARK code / 255 (GroundColors): 0 or 1.0 = plain. The mark says
+//              what the surface is MADE OF -- turf, shingle, ice, slag, salt --
+//              and so it picks both its pigment and its material row.
 //   CUSTOM0    rgb = second wash for an ecotone or ground edge, a = weight (0..1)
-//   UV.x       hatch styles, style1 + style2 * 16; style2 is used where the
-//              second wash shows.   UV.y  weight of that edge (terrain: = CUSTOM0.a)
+//   UV.x       landscape hand, style1 + style2 * 16. The hatch it used to pick
+//              is gone; works_mark and survey_mark still read it to tell one
+//              landscape's ground from another's.   UV.y  weight of that edge
 //   UV2.x      wind sway weight (0 = rigid)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
 //              writes 2 + the second wash's mark code (patches at full).
 shader_type spatial;
-render_mode cull_back, specular_disabled;
+render_mode cull_back;
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 global uniform float wind_strength;
 // Where a crown must not hide a fight (18_crowns writes it every frame): up to
@@ -46,6 +65,10 @@ uniform vec4 works_survey = vec4(0.0, 0.0, 41.0, 59.0);
 uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 uniform vec3 ink_tint = vec3(0.42, 0.40, 0.55);
 uniform float emission_strength = 0.0;
+// How deep this thing's own relief runs, as a factor on the material row.
+// The land keeps 1; a small prop or a figure turns it down so a hand-sized
+// object is not covered in boulder-sized bumps.
+uniform float relief = 1.0;
 // A blow's paper-white, as a sphere in world space. See the end of fragment();
 // found.gdshader carries the same three. MobFx.set_flash writes them into a
 // COPY of a struck body's material, never into the world's own, which every
@@ -61,9 +84,6 @@ varying float style_packed;
 varying float style_blend;
 varying float patch_raw;
 varying float sway_w;
-// Written in fragment(), read in light().
-varying float style_sel;
-varying float unhatched;
 
 const vec3 STEP = vec3(0.700, 0.704, 0.749);
 const vec3 INK1 = vec3(0.0706, 0.0667, 0.1137);
@@ -154,30 +174,6 @@ float stroke(vec2 px, vec2 size, float salt, float density, float len, float lea
 		return 0.0;
 	}
 	return lp.x == ox + floor(dy * lean) ? 1.0 : 0.0;
-}
-
-// Jittered-cell distances: (nearest, second nearest, id of nearest).
-vec3 cells(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	float d1 = 8.0;
-	float d2 = 8.0;
-	float id = 0.0;
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			vec2 g = vec2(float(x), float(y));
-			vec2 o = g + vec2(ink_hash(i + g), ink_hash(i + g + vec2(5.3, 1.7))) * 0.8 + 0.1 - f;
-			float d = dot(o, o);
-			if (d < d1) {
-				d2 = d1;
-				d1 = d;
-				id = ink_hash(i + g + vec2(9.1, 3.3));
-			} else if (d < d2) {
-				d2 = d;
-			}
-		}
-	}
-	return vec3(sqrt(d1), sqrt(d2), id);
 }
 
 // Pixel-scale raggedness for any threshold drawn on a world field, so every
@@ -494,7 +490,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		float field = ink_vnoise(wp * 0.13 + vec2(17.0, 3.0)) * 0.75 + ink_vnoise(wp * 0.05 + 9.0) * 0.25;
 		if (field > 0.68) {
 			// Crust broken into plates; some seams still glow.
-			vec3 cr = cells(wp * 0.9 + (vec2(ink_vnoise(wp * 1.7), ink_vnoise(wp * 1.7 + 9.0)) - 0.5) * 0.35);
+			vec3 cr = matter_cells(wp * 0.9 + (vec2(ink_vnoise(wp * 1.7), ink_vnoise(wp * 1.7 + 9.0)) - 0.5) * 0.35);
 			float seam = cr.y - cr.x;
 			float width = 0.045 * clamp((field - 0.68) * 12.0, 0.0, 1.0);
 			bool live = ink_hash(vec2(floor(cr.z * 97.0), floor((cr.x + cr.y) * 3.0))) < 0.4 && field > 0.72;
@@ -543,7 +539,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (ink_vnoise(wp * 0.5 + 8.0) > 0.72) {
 			c = mix(c, RUST2, 0.35);
 		}
-		vec3 v = cells(wp * 0.45);
+		vec3 v = matter_cells(wp * 0.45);
 		float r = 0.08 + v.z * 0.3;
 		float dd = v.x + (ink_vnoise(wp * 3.1) - 0.5) * 0.16 + rag(wp);
 		if (v.z < 0.3 && dd < r) {
@@ -1369,7 +1365,12 @@ float crown_cut(vec3 wp, float sway) {
 }
 
 void fragment() {
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	// The grain a material's marks are drawn at, pinned to the WORLD at a fixed
+	// size (matter_px). It used to be `floor(FRAGCOORD.xy) + world_px`, a SCREEN
+	// pixel anchored to the world, which made every speck of grit three times
+	// finer the moment the floor rose to 1920x1080 and made the whole library a
+	// drawing technique instead of a surface.
+	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: leaves over the player, or over a body they can
 	// see, thin to stipple and then go. Stipple, never a fade (docs/ART.md law 5).
 	float cut = crown_cut(world_pos, sway_w);
@@ -1403,11 +1404,6 @@ void fragment() {
 	int m = second ? m2 : m1;
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
-	// The two hands dither into each other across the WHOLE band, not only where
-	// the wash turns: ART.md law 6 asks that hatch styles interleave over the
-	// 12-24 tiles of an ecotone, and following `second` snapped the hatch to the
-	// wash's own edge, which is why a border read as a seam (art review 13).
-	style_sel = float(ink_style(style_packed, style_blend, px));
 	float unh = 0.0;
 	vec3 emit = vec3(0.0);
 	if (patchy > 0.0) {
@@ -1436,7 +1432,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m < 70) {
+	} else if (m > 60 && m <= 70) {
 		c = strata(m - 60, c, world_pos, px, emit, unh);
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.
@@ -1469,17 +1465,36 @@ void fragment() {
 		}
 	}
 	if (edge_ink && unh < 0.5) {
-		c = dn(c, 0.75);
+		// Where a pale wash lies on a dark one the pale side used to be INKED.
+		// Under a real sun the two grounds are different MATERIALS, and that is
+		// a far stronger edge than a pen line; all that is left here is the
+		// darker lip a drift or a crust actually has where it rides up.
+		c = dn(c, 0.22);
 	}
-	unhatched = unh;
-	c *= paper(px);
-	ALBEDO = ink_floor(sky_apply(c, world_pos, TIME));
-	// neon_skyglow is given the WASH, not the graded result, and it takes its
-	// headroom from it: a wash already near the page gets almost no glow, which
-	// is exactly the case that was clipping. Handing it the graded value instead
-	// was tried and is worse — at dusk the grade is low, so the headroom opens
-	// up again and the snow went from 0.06% of the frame on the page to 1.67%.
-	EMISSION = c * emission_strength + emit + neon_reflect(world_pos, sky_px(world_pos)) + neon_skyglow(c);
+	// Weather that has SETTLED on this surface, the airs it is seen through,
+	// and what the hour does to its colour.
+	c = sky_apply(c, world_pos, TIME);
+
+	// --- Law 1: matter is honest (docs/LOOK.md) --------------------------
+	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec4 mr = matter_of(m);
+	float rough_add = 0.0;
+	// The land itself takes only a little: it IS the bog, it does not rust in
+	// it. Anything STANDING in the land takes it nearly whole, which is the law
+	// in one line: the same house, fence and machine carry the bog on them, or
+	// the flat, or the Burning, and nobody had to author three of each.
+	float takes = (m >= 40 && m <= 70) ? 0.14 : 0.85;
+	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
+
+	ALBEDO = matter_albedo(c);
+	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
+	SPECULAR = mr.y;
+	METALLIC = mr.w;
+	if (unh < 0.5) {
+		NORMAL = matter_bump(NORMAL, world_pos, m, mr.z * relief);
+	}
+	EMISSION = matter_light(c * emission_strength + emit)
+		+ matter_light(neon_reflect(world_pos, px) + neon_skyglow(c));
 	// A blow's paper-white, as a sphere in world space: only the part that was
 	// struck goes to paper, so the body it landed on is still showing while the
 	// mark proves the hit (docs/ART.md §7; and see found.gdshader, which carries
@@ -1489,32 +1504,13 @@ void fragment() {
 		float fd = distance(world_pos, flash_at) / flash_r;
 		if (fd < 1.0 && (fd < 0.82 || ink_hash(px) < (1.0 - fd) * 5.5)) {
 			ALBEDO = vec3(0.0);
-			EMISSION = flash_col;
+			EMISSION = matter_light(flash_col);
 		}
 	}
 }
 
-void light() {
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float ndl = dot(NORMAL, LIGHT);
-	int style = int(style_sel + 0.5);
-	if (LIGHT_IS_DIRECTIONAL) {
-		float lit = step(0.0, ndl) * step(0.5, ATTENUATION);
-		float band = ndl > 0.42 ? 1.0 : 0.9;
-		// Depth of shade: 0 in cast shadow on a sunward face, 1 on a face turned away.
-		float depth = lit > 0.5 ? 0.0 : clamp(0.55 - ndl * 0.8, 0.0, 1.0);
-		// The sky lays ink on lit faces (cloud shadow, night) and lifts it (lamplight, fog).
-		vec3 sk = sky_ink(world_pos, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
-		float ink = max(1.0 - lit, sk.x) * hatch(style, px, depth + sk.z) * (1.0 - sk.y) * (1.0 - unhatched);
-		vec3 k = mix(shade_tint * sky_shade.rgb, vec3(band), max(lit, unhatched));
-		k = mix(k, ink_tint, ink * 0.75);
-		DIFFUSE_LIGHT += LIGHT_COLOR * k / PI;
-	} else {
-		// Lamps and fire: a warm pool in hard steps; its ink is lifted in sky_ink().
-		vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
-		float a = sky_pool(clamp(ATTENUATION * step(-0.2, ndl), 0.0, 1.0) * sky_lamp_gate(up.y, (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).y), world_pos);
-		// Ink & Neon: a pool is a low stain of coloured light on wet dark ground;
-		// the light itself and its reflection carry the brightness.
-		DIFFUSE_LIGHT += LIGHT_COLOR * a * 0.3 / PI;
-	}
-}
+// There is no light() and that is the whole point of LANTERN. The renderer does
+// real diffuse and specular against the sun, the sky and every lamp, and finds
+// the relief matter_bump() put in NORMAL. What used to live here -- two flat
+// bands of N dot L, a hatch laid into DIFFUSE_LIGHT, and a lamp pool cut into
+// two hard steps -- was most of why twelve art directions all came out papery.

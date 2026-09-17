@@ -8,10 +8,11 @@
 // sheet falls. Blackwater is near-black with green edges and an oily marbling.
 // No gradients, no gloss.
 shader_type spatial;
-render_mode cull_back, specular_disabled;
+render_mode cull_back;
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform vec3 shade_tint = vec3(0.66, 0.68, 0.82);
 
@@ -51,13 +52,16 @@ float swash(vec2 wp) {
 }
 
 void fragment() {
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
+	// World-anchored grain, as everywhere else now (matter.gdshaderinc).
+	vec2 px = matter_px(world_pos);
 	vec2 wp = world_pos.xz;
 	int kind = int(COLOR.r * 8.0 + 0.5);
 	// Sea: 0 at the waterline .. 1 deep. Inland (TerrainMesher.inland_alpha):
 	// negative on the bank, 1 about 2.5 field units in.
 	float d = kind == 0 ? COLOR.a : (COLOR.a * 3.5 - 1.0) / 2.5;
 	float w = max(fwidth(d), 1e-4) * 1.2;
+	// How fast this water runs: still water is a mirror, running water is not.
+	vec2 flow = kind == 0 ? vec2(0.0) : COLOR.gb * 2.0 - 1.0;
 	vec3 c;
 	if (kind == 0) {
 		// COLOR.g on the sea: 1 where it meets an open coast, 0 where the bank is
@@ -111,7 +115,6 @@ void fragment() {
 			c = SPRUCE2;
 		}
 	} else {
-		vec2 flow = COLOR.gb * 2.0 - 1.0;
 		float fl = length(flow);
 		c = d < 0.1 ? BRINE3 : BRINE2;
 		if (band_edge(d, 0.1, w) > 0.5) {
@@ -154,16 +157,23 @@ void fragment() {
 		float l = dot(c, vec3(0.299, 0.587, 0.114));
 		c = mix(c, water_wash.rgb * (0.30 + 1.55 * l), water_wash.w);
 	}
-	ALBEDO = sky_apply(c, world_pos, TIME);
-	EMISSION += neon_skyglow(c);
+	ALBEDO = matter_albedo(sky_apply(c, world_pos, TIME));
+	// Water is the smoothest thing in the world and it is what makes a night
+	// coast worth looking at: the sky, the moon, a fire on the shore and every
+	// machine's beacon are IN it. Deep water is smoother than the ripple at the
+	// bank, and a fall is broken white and returns almost nothing.
+	float still = 1.0 - clamp(length(flow) * 1.6, 0.0, 1.0);
+	ROUGHNESS = clamp(mix(0.34, 0.06, still * clamp(d, 0.0, 1.0)), 0.04, 0.6);
+	SPECULAR = 0.9;
+	METALLIC = 0.0;
+	// The surface's own chop, small and slow, so the reflection breaks up the
+	// way water does instead of standing as a mirror.
+	float t = TIME * 0.35;
+	float chop = ink_vnoise(wp * 2.3 + vec2(t, t * 0.7)) * 0.6 + ink_vnoise(wp * 6.1 - vec2(t * 1.3, t)) * 0.4;
+	vec3 gx = vec3(dFdx(chop), -dFdy(chop), 0.0) * 0.035 / max(length(dFdx(world_pos)), 1e-5);
+	NORMAL = normalize(NORMAL - clamp(gx, vec3(-1.0), vec3(1.0)));
 }
 
-void light() {
-	if (LIGHT_IS_DIRECTIONAL) {
-		float lit = step(0.5, ATTENUATION);
-		DIFFUSE_LIGHT += LIGHT_COLOR * mix(shade_tint, vec3(1.0), lit) / PI;
-	} else {
-		float a = sky_pool(clamp(ATTENUATION, 0.0, 1.0), world_pos);
-		DIFFUSE_LIGHT += LIGHT_COLOR * a / PI;
-	}
-}
+// There is no light(): the renderer lights the water, and what it finds in it
+// is the sky, the sun and every lamp on the shore (docs/LOOK.md law 2).
+

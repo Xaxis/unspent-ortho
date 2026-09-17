@@ -58,6 +58,8 @@ const SUNSET := 21.0
 const SHADOW_NOON := 0.5
 const SHADOW_LOW := 1.35
 const MOON_ELEVATION := 58.0
+## How solid a moon shadow is. Faint, and softened by SUN_ANGLE_LOW.
+const MOON_SHADOW := 0.42
 ## Display level of the light at the dead of night. The source's rule is 0.58
 ## (Weather.light_level, which sight still uses), but our terrain albedos are
 ## darker than its sprites and at 0.58 the land sank to black; 0.70 keeps the
@@ -71,11 +73,6 @@ const MAX_LAMPS := 8
 const MAX_GLINTS := 12
 ## After every GameSystem (they run at 0), before nothing that reads the globals.
 const COMPOSE_LAST := 1000
-## Cool light from the open sky, added under the sun when it is low and all
-## night: shadows keep their blue while lit faces warm at dawn and dusk.
-## Linear colour, scaled by how low the light is.
-const SKY_AMBIENT := Color(0.18, 0.26, 0.52)
-const SKY_AMBIENT_ENERGY := 0.16
 ## Render layers the sky's lights sort by (bit masks, set on nodes as they enter
 ## the tree, so no model or view has to know). People take a fill light of their
 ## own in low light (docs/ART.md section 5: the player reads at any hour, with
@@ -89,6 +86,98 @@ const WATER_SHADER := "res://src/render/water.gdshader"
 ## only warm moving thing on screen.
 const FIGURE_FILL := 1.9
 const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
+
+## --- LANTERN: the real lights (docs/LOOK.md law 2, "light is the author") ---
+##
+## The numbers below are LINEAR light, because that is what the renderer wants
+## and what the palette is decoded into (matter.gdshaderinc). They are chosen so
+## a surface the sun is full on comes back at about the palette value it was
+## authored as, and everything else is honestly less than that.
+
+## The sun's energy at noon and the moon's in the dead of night. The gap between
+## them and the gap between DAY_AMBIENT and NIGHT_AMBIENT are the whole of why a
+## lantern matters.
+const SUN_NOON := 2.10
+const MOON_NIGHT := 0.55
+## The sun's angular size, in degrees. Real penumbra: a fence post has a crisp
+## shadow at its foot and a soft one four tiles away, which no filter can fake
+## and which is most of what says a shadow is cast by something standing up.
+## Wider when the light is low, because a low sun is seen through more air.
+const SUN_ANGLE := 0.9
+const SUN_ANGLE_LOW := 3.2
+
+## The sky. Four colours drive a ProceduralSkyMaterial: the top and horizon of
+## the sky, and the horizon and bottom of the ground under it. It is what metal
+## and water REFLECT -- a polished machine carries the horizon along its flank
+## and a still pool holds the dusk -- and it is where the ambient takes its HUE,
+## so shade is the colour of the sky over it: blue at noon, warm at dusk,
+## indigo at night.
+const DAY_SKY_TOP := Color(0.29, 0.42, 0.66)
+const DAY_SKY_HORIZON := Color(0.62, 0.68, 0.74)
+const DUSK_SKY_TOP := Color(0.16, 0.18, 0.38)
+const DUSK_SKY_HORIZON := Color(0.72, 0.42, 0.30)
+const NIGHT_SKY_TOP := Color(0.105, 0.145, 0.300)
+const NIGHT_SKY_HORIZON := Color(0.150, 0.190, 0.340)
+## The ground half of the sky dome: bounce off the land, which is what keeps an
+## underside from going to nothing.
+const SKY_GROUND_DAY := Color(0.20, 0.20, 0.18)
+const SKY_GROUND_NIGHT := Color(0.045, 0.052, 0.082)
+
+## How much light comes from the sky rather than from the sun, day and night.
+## The sky's colours above give the HUE (normalised to unit level, half way to
+## white, so shade is tinted by the sky and not made of it); these two give the
+## LEVEL, and they are stated as plain numbers rather than as a multiplier on a
+## radiance map, because a number that can be measured off a frame is a number
+## that can be argued with. Tripling the night sky's own colours and doubling
+## its multiplier once moved a night frame's median luma from 7 to 10, which is
+## to say it did nothing anyone could have predicted.
+##
+## NIGHT_AMBIENT is LANTERN law 3 in one number and it was measured, not chosen.
+## A night frame has to stay mostly clear of luma 24 -- under that, a lit room
+## shows a black screen with a green dot, which is why `noir` was beautiful and
+## unshippable -- while a lamp still has to be worth carrying. Against
+## MOON_NIGHT it also decides whether a night has SHAPE in it: a quarter of the
+## light at midnight is the moon, so a wall still turns away from something.
+const DAY_AMBIENT := 0.55
+const NIGHT_AMBIENT := 1.25
+
+## The tonemapper. This is the CEILING that replaced the shader's page shoulder
+## (see sky.gdshaderinc): the frame is rendered in HDR and rolled off once, for
+## the whole image, so a neon tube four times over white comes back as a bright
+## tube instead of a white hole -- and a pale landscape seen from a dark one
+## cannot flatten onto anything, because there is no page to flatten onto.
+const TONEMAP := Environment.TONE_MAPPER_FILMIC
+## A filmic curve costs about a third of a stop in the mids; this buys it back,
+## so the palette still lands roughly where it was authored.
+const EXPOSURE := 1.10
+
+## Bloom. A light in the dark reads as bright because it BLEEDS, and this is the
+## one effect that separates a lit tube from a bright rectangle. The threshold
+## is over 1.0 on purpose: only things that are really emitting glow, so a snow
+## field at noon does not.
+const GLOW_BLOOM := 0.15
+const GLOW_HDR := 1.05
+
+## Air. Distance is separated by ATMOSPHERE and not by a haze filter -- the fog
+## takes its colour from the sun and the sky, so at dusk the far land goes warm
+## on the sun's side and cold away from it for nothing.
+##
+## It is DEPTH fog with a begin and an end, not exponential, and that is forced
+## by the camera. Under an orthographic projection every pixel in the frame is
+## between about 26 and 60 units from the eye, so exponential fog puts almost
+## exactly the same veil over all of it -- a flat grey wash over the whole
+## picture, which is the papery failure again wearing a different coat
+## (measured: 18% over the entire first frame). Begun past the near land and
+## ended past the far, it does what air does instead.
+const FOG_BEGIN := 31.0
+const FOG_END := 74.0
+const FOG_DENSITY := 0.34
+const FOG_SKY := 0.0
+const FOG_AERIAL := 0.22
+## Volumetric air, where the tier allows it: this is what makes a lamp in rain a
+## CONE and a machine's lens a shaft.
+const VOLUME_DENSITY := 0.021
+const VOLUME_ANISOTROPY := 0.25
 
 ## Per landscape type id: (warmth, wetness) in -1..1, read by the source's
 ## light cast. A type not listed casts neutral light (its BiomeDef.light_tint
@@ -181,16 +270,29 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# The renderer decides what a colour written into ALBEDO means, and the two
+	# renderers disagree (measured; matter.gdshaderinc says what and by how
+	# much). Every lit shader reads this and converts, so one palette draws the
+	# same picture on the desktop and on the web.
+	RenderingServer.global_shader_parameter_set("sky_linear", 1.0 if Quality.forward_plus() else 0.0)
 	sun = DirectionalLight3D.new()
 	sun.name = "sun"
 	sun.shadow_enabled = true
-	sun.shadow_bias = 0.03
-	sun.shadow_normal_bias = 0.6
+	sun.shadow_bias = 0.025
+	sun.shadow_normal_bias = 0.9
+	# ONE split, not a cascade, and that is deliberate. The camera is
+	# orthographic and shows fifteen world units; over the fifty this covers, a
+	# 4096 atlas is about eighty texels to the world unit, which is crisper than
+	# any cascade would leave the near split. What buys softness here is the
+	# sun's angular size (SUN_ANGLE), which is the real thing rather than a
+	# filter: a fence post is sharp at its foot and soft four tiles out.
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	# From the camera (CameraRig.distance 30): the view's depth plus tall land
-	# behind it, and no further, so a 2048 atlas keeps crisp shadow texels.
+	# behind it, and no further, so the atlas keeps crisp shadow texels.
 	sun.directional_shadow_max_distance = 50.0
-	sun.light_energy = 1.0
+	sun.directional_shadow_blend_splits = false
+	sun.light_angular_distance = SUN_ANGLE
+	sun.light_energy = SUN_NOON
 	add_child(sun)
 	figure_light = DirectionalLight3D.new()
 	figure_light.name = "figure_light"
@@ -202,20 +304,86 @@ func _ready() -> void:
 	# face the camera sees takes it and the figure still shows two values.
 	figure_light.rotation_degrees = Vector3(-42.0, 20.0, 0.0)
 	figure_light.light_energy = 0.0
+	# It lights FIGURES and nothing else -- including nothing in the air. A
+	# directional light injects into volumetric fog whatever its cull mask says,
+	# so without this the warm fill on people was lighting the whole night's fog
+	# and turning a blue moonlit coast brown (measured: mean rgb 54/44/37).
+	figure_light.light_volumetric_fog_energy = 0.0
 	add_child(figure_light)
 	get_tree().node_added.connect(_on_node_added)
 	if get_parent() != null:
 		_tag_tree(get_parent())
 	env = WorldEnvironment.new()
+	env.environment = build_environment()
+	add_child(env)
+
+
+## The one Environment. Every expensive thing on it is gated on the tier's own
+## row (Quality.ROWS) and NOT re-derived here, so `degrade` can move a tier and
+## this file does not argue: `volumetric`, `ssao` and `ssil` are this package's
+## to honour and `shadow_lights` is the lights system's.
+static func build_environment() -> Environment:
+	var q := Quality.current()
 	var e := Environment.new()
+	# What is DRAWN behind the world stays a flat colour -- the camera looks down
+	# at 57 degrees and a horizon in the corner of the frame is a distraction --
+	# but the sky is built all the same, because it is the ambient light and it
+	# is what polished metal reflects.
 	e.background_mode = Environment.BG_COLOR
 	e.background_color = Palette.BRINE[0]
+	var sky := Sky.new()
+	var sm := ProceduralSkyMaterial.new()
+	sm.sun_angle_max = 24.0
+	sm.sun_curve = 0.18
+	sm.ground_curve = 0.06
+	sky.sky_material = sm
+	sky.radiance_size = Sky.RADIANCE_SIZE_128
+	e.sky = sky
+	# The ambient LEVEL is stated as a colour and an energy, so it is a number
+	# that can be measured off a frame and argued with; the SKY is still what
+	# metal and water reflect, and what gives a polished machine its horizon.
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color.BLACK
-	e.ambient_light_energy = 0.0
-	e.tonemap_mode = Environment.TONE_MAPPER_LINEAR
-	env.environment = e
-	add_child(env)
+	e.ambient_light_color = DAY_SKY_HORIZON
+	e.ambient_light_energy = DAY_AMBIENT
+	e.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	# The ceiling (see sky.gdshaderinc): one curve for the whole frame.
+	e.tonemap_mode = TONEMAP
+	e.tonemap_exposure = EXPOSURE
+	e.tonemap_white = 4.0
+	# A light in the dark reads as bright because it bleeds.
+	e.glow_enabled = true
+	e.glow_intensity = 0.75
+	e.glow_bloom = GLOW_BLOOM
+	e.glow_hdr_threshold = GLOW_HDR
+	e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	# Air between the planes of the world, coloured by the sun and the sky.
+	e.fog_enabled = true
+	e.fog_mode = Environment.FOG_MODE_DEPTH
+	e.fog_depth_begin = FOG_BEGIN
+	e.fog_depth_end = FOG_END
+	e.fog_depth_curve = 1.4
+	e.fog_density = FOG_DENSITY
+	e.fog_sky_affect = FOG_SKY
+	e.fog_aerial_perspective = FOG_AERIAL
+	e.volumetric_fog_enabled = bool(q.get("volumetric", false))
+	e.volumetric_fog_density = VOLUME_DENSITY
+	e.volumetric_fog_anisotropy = VOLUME_ANISOTROPY
+	e.volumetric_fog_length = 48.0
+	e.volumetric_fog_gi_inject = 0.0
+	e.ssao_enabled = bool(q.get("ssao", false))
+	e.ssao_radius = 0.7
+	e.ssao_intensity = 1.9
+	e.ssao_power = 1.4
+	e.ssao_detail = 0.6
+	e.ssil_enabled = bool(q.get("ssil", false))
+	e.ssil_radius = 3.0
+	e.ssil_intensity = 0.7
+	# The grade. It used to be a per-fragment multiply inside the shader, where
+	# nothing could know how bright the frame had turned out; here it is one
+	# knob on the finished image, set from the same hour and the same landscapes
+	# in view (see `compose`).
+	e.adjustment_enabled = true
+	return e
 
 
 ## hour: 0..24 of the world clock.
@@ -298,24 +466,103 @@ func compose() -> void:
 	if sun == null:
 		return
 	sun.rotation_degrees = Vector3(-el, az, 0.0)
-	# The renderer lights in linear space and encodes the result for display
-	# (measured: out = srgb(lin(albedo) * lin(colour) * energy)), while the
-	# source's levels are display multiplies. Energy is linear, so decode.
-	sun.light_energy = pow(float(s.energy) * glow, 2.2)
-	sun.shadow_enabled = bool(s.casts) and cast_allowed and closed < 0.5
-	sun.shadow_opacity = shadow_strength(hour)
+	# The hour's colour is now the LIGHT's colour, not a multiply over every
+	# surface: `total` is hue times level, so it is split back into the two.
+	# That is the single change that lets a face turned to a low sun be warm
+	# while the face beside it, turned away, keeps the sky's blue -- which one
+	# multiply over the whole fragment could never do, and which is most of what
+	# a lit world looks like.
+	var level := maxf((total.x + total.y + total.z) / 3.0, 0.02)
+	var hue := Color(total.x / level, total.y / level, total.z / level)
+	# Godot decodes light_color from sRGB, so encode the ratio we mean.
+	sun.light_color = hue.linear_to_srgb()
+	var lit := 1.0 - maxf(night, closed)
+	sun.light_energy = lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit)
+	# A low sun is seen through more air, so its edge is softer. Real penumbra.
+	sun.light_angular_distance = lerpf(SUN_ANGLE_LOW, SUN_ANGLE, clampf(el / 55.0, 0.0, 1.0))
+	# The moon casts too, softly. The source game's rule was that nothing casts
+	# at night, which was right when night was a blue wash over a drawing; under
+	# a real sky it is the opposite -- moonlight that casts is most of what makes
+	# a night frame have shape in it without being lifted, which is LANTERN law
+	# 3. `casts_at` still says whether the SUN casts, and everything that reads
+	# it is unchanged.
+	sun.shadow_enabled = cast_allowed and closed < 0.5
+	sun.shadow_opacity = maxf(shadow_strength(hour), MOON_SHADOW * (1.0 - lit))
 	if figure_light != null:
+		# A person still takes a fill of their own in low light, because the
+		# player has to read at any hour (docs/ART.md section 5). It is much
+		# smaller than it was: the sky is doing the work now, and a fill that
+		# beat the sky would put the one warm moving thing on screen in a light
+		# nothing in the world is casting.
 		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), closed)
 		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
-		env.environment.ambient_light_color = SKY_AMBIENT
-		env.environment.ambient_light_energy = SKY_AMBIENT_ENERGY * maxf(low_light(hour), closed)
+		_drive_environment(env.environment, hour, night)
+
+
+## The sky, the air and the grade, for this hour. The sky is the AMBIENT light
+## and the reflection: at night it is a deep indigo dome over a near-black
+## ground, which is why a night frame still has form in it without being lifted.
+func _drive_environment(e: Environment, hour: float, night: float) -> void:
+	var nightly := maxf(night, closed)
+	var dusky := clampf(low_light(hour), 0.0, 1.0)
+	var mood := Color(weather_tint.x * region_tint.x, weather_tint.y * region_tint.y, weather_tint.z * region_tint.z)
+	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
+	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
+	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
+	var sm := (e.sky.sky_material if e.sky != null else null) as ProceduralSkyMaterial
+	if sm != null:
+		sm.sky_top_color = top
+		sm.sky_horizon_color = hor
+		sm.ground_horizon_color = hor.lerp(gnd, 0.6)
+		sm.ground_bottom_color = gnd
+		sm.sun_angle_max = lerpf(18.0, 40.0, dusky)
+	# The ambient takes the sky's own hue at unit level, so shade is the colour
+	# of the sky over it -- blue at noon, warm at dusk, indigo at night -- and
+	# the LEVEL is the one number law 3 is measured by.
+	var hl := maxf((hor.r + hor.g + hor.b) / 3.0, 0.02)
+	# Half way to white: the sky's own hue at full strength paints every shadow
+	# in the frame the same blue, and shade should be TINTED by the sky, not
+	# made of it.
+	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.4)
+	# Under a roof there is no sky to be ambient: what light there is comes off
+	# the walls, and it is very little. That is what makes a cave a cave.
+	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT, nightly) * lerpf(1.0, 0.45, closed)
+	# The air takes its colour from the sky, so distance separates by atmosphere.
+	# Its ENERGY has to fall with the light or the fog stops being air and
+	# becomes a lamp: at midnight the ground is at about 0.03 and an unscaled fog
+	# colour is ten times that, so the far half of every night frame was being
+	# lit by its own haze (measured: it put the median back up to 97 after the
+	# ambient and the moon had both been cut to a third).
+	e.fog_light_color = hor
+	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
+	e.fog_density = FOG_DENSITY * lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))
+	e.volumetric_fog_albedo = hor.lerp(Color(1, 1, 1), 0.35)
+	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
+	# Volumetric air thickens in rain, in mist and at night, which is when a
+	# lamp is a cone and a machine's lens is a shaft.
+	e.volumetric_fog_density = VOLUME_DENSITY * lerpf(0.55, 2.4,
+		clampf(maxf(fog.z, maxf(air.x, nightly * 0.55)), 0.0, 1.0))
+	# The grade, on the finished image. Same inputs the shader's own multiply
+	# had; one place that can see the whole frame.
+	var g: Vector4 = neon_grade_at(hour, neon_shares)[0]
+	e.adjustment_brightness = clampf(1.0 - g.x * 0.35, 0.55, 1.4)
+	e.adjustment_saturation = clampf(1.0 - g.y * 0.30, 0.55, 1.3)
+	e.adjustment_contrast = clampf(1.0 + g.w * 0.20, 0.8, 1.35)
 
 
 ## What the land can hold (SkyGround), for snow, ash, wet and fog.
 func set_ground(tex: Texture2D, world_size: int) -> void:
 	RenderingServer.global_shader_parameter_set("sky_ground", tex)
 	ground_scale = 1.0 / maxf(1.0, float(world_size))
+
+
+## What the land DOES to a thing standing in it (SkyWear): rust, salt, soot,
+## frost, by world position. Read by matter_worn() in every lit shader, which is
+## LANTERN law 1. Kept apart from set_ground because a realm crossing replaces
+## the world and 10_sky hands both over again.
+func set_wear(tex: Texture2D) -> void:
+	RenderingServer.global_shader_parameter_set("sky_wear", tex)
 
 
 func _on_node_added(n: Node) -> void:
