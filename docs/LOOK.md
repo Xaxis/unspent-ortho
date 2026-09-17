@@ -172,17 +172,39 @@ own comments, check every line that should be keeping it.**
    loaded machine.
 3. **Print `UNMEASURED`, never `0.00 ms`.** When the GPU timer returns nothing, a
    number nobody clocked is worse than no number at all.
-4. **Run it twice at the same commit before you believe it.** `13-spawn-night`
-   came back **16.6%** of its pixels under luma 24 on one run and **24.0%** on the
-   next, at one commit, with nothing changed — and the first was about to be
-   published as "the foliage wave's snow brightened the coast night". The land was
-   identical in both; what differed was how much SEA was in shot, because nothing
-   pinned the body and water is the brightest thing in a night frame. A single run
-   is an anecdote. The canon now steps in simulated time (`tools/canon.sh`) and
-   its own header records what was ruled out on the way.
+4. **Run it twice at the same commit before you believe it — and then distrust
+   your first explanation of the difference too.** `13-spawn-night` came back
+   **16.6%** of its pixels under luma 24 on one run and **24.0%** on the next, at
+   one commit, with nothing changed. The first was a sentence away from being
+   published as "the foliage wave's snow brightened the coast night".
 
-   Two things generalise past that frame, and both are about which numbers are
-   exposed:
+   **Then the first explanation of WHY was also wrong, and it was wrong in the
+   confident way.** It looked obvious from the frames: the player settles a little
+   further right, the camera follows, more sea fills the corner, and water is the
+   brightest thing in a night picture. That account was written up and passed on
+   before it was checked. Checking it killed it — aligning the two runs over a
+   forty-pixel search finds **no shift that improves them, zero in x and y** — and
+   the reason the eye was fooled is that the two frames being compared came from
+   two different commits. Capture is not the variable either (two identical
+   `tools/shot.sh` runs of one frame differ by 0.227) and neither is elapsed time
+   (the same moment caught after 8, 60 and 120 frames moves luma by 0.34).
+
+   What it actually was, once the difference map was drawn instead of argued
+   about: the sea's wave phase, the villagers, the player's own animation and the
+   message line — **live world state**. A tour's `wait` is a real-time timer while
+   the game simulates in `_physics_process`, so a busy machine puts a different
+   amount of world in front of every shutter. The control case settles it and the
+   camera theory could never have explained it: `09-eco-pinewood-snowfield` has no
+   sea, a signed delta of **+0.00**, and what little it moved was tree sway. The
+   canon steps in simulated time now (`tools/canon.sh`), which took the worst
+   frame from 5.99 to 0.13.
+
+   So a single run is an anecdote, and a single *explanation* of a difference is
+   a hypothesis with a frame attached. Both need a second look, and the second
+   look is cheap next to publishing a wrong cause.
+
+   Two more things generalise past that frame, and both are about which numbers
+   are exposed:
 
    - **A whole-frame statistic is only as good as what is holding the frame
      still.** Measure a claim on its SUBJECT, not on every pixel. This is the same

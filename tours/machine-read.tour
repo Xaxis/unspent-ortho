@@ -151,6 +151,16 @@ near survey
 wait 0.6
 spawn harvester
 wait 1.4
+# The same three presses the noon frame above needs, and for the same reason: the
+# post is read, put down, and only then robbed. One press here read the words and
+# stole nothing, so nothing turned — and `await theft` passed anyway, because
+# 32_disposition remembers a theft for the life of the run (see the night frame's
+# own note in docs/ROADMAP.md). The frame is of a machine that has turned, so it
+# has to actually turn one.
+press use 0.3
+wait 0.3
+press use 0.2
+wait 0.3
 press use 0.3
 await theft 8
 await turned 4

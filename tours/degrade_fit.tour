@@ -15,6 +15,12 @@
 # so it runs on the desktop's Compatibility; tools/canon.sh --web is the proof in
 # the browser. It shoots nothing: the evidence is the printed rows.
 weather clear:0
+# Pinned for the same reason canon.tour pins it, and it must stay in step with
+# it: the fit is measured against the canon's own desktop frames, so an hour
+# here that is not the hour those frames were shot at would fit CompatTrim to a
+# different time of day than it is asked to reproduce.
+# tests/render/test_degrade.gd holds the two files line for line.
+hour 8
 place spawn
 wait 0.8
 perf match shots/degrade/desktop/01-spawn-morning.png
