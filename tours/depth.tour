@@ -1,0 +1,66 @@
+# The world has thickness (docs/LOOK.md law 3): things pass between the camera
+# and the place, air answers to the landscape, and weather falls at more than
+# one depth. Played through the real game.
+#
+# The frame this tour exists for is 04: a machine standing under a bough, where
+# the machine still reads. An occluder that hides a threat is a worse game
+# however beautiful the frame, and that is the one claim this package cannot
+# make with an argument.
+#   tools/tour.sh tours/depth.tour --seed=1
+#   tools/tour.sh tours/depth.tour --seed=1 --fore=0   (the same run with the
+#   layer off, to hold the two against each other)
+place pinewood
+hour 13
+weather clear:0
+wait 0.6
+# Under the wood, where a pine has something hanging off it.
+walk -1,0 1.6
+await fore 8
+shot 01-pinewood-overhead with land:pinewood
+# What it costs, shown and hidden in turn inside this one run: `--stats` fps
+# came back at 83 and then 63 for two runs of one identical command on a busy
+# machine, so a number taken across two runs says nothing at all.
+perf fore 3.0 40 3.0
+# The boughs move on the world's own wind, so two frames a second apart are not
+# the same picture -- which is the one parallax an orthographic camera can have.
+wait 1.0
+shot 02-pinewood-overhead-moved with land:pinewood
+# A machine walks in under it. The hole opens where the piece DRAWS, not where
+# it stands: at four units up that is two and a half tiles apart, and a hole in
+# the wrong place is a machine nobody can see.
+spawn longlegs
+await fore_clear 6
+shot 03-machine-under-the-canopy with mob:longlegs
+wait 0.8
+shot 04-machine-still-reads with mob:longlegs
+# Rain at three depths: long strokes past the lens, the sheet the player is in,
+# and a fine fall behind everything standing.
+weather rain:1
+wait 1.2
+shot 05-rain-at-three-depths with land:pinewood
+weather clear:0
+# The bog: far goes DARK. Its air is peat and standing water and it begins near.
+place moss
+hour 13
+wait 1.2
+shot 06-bog-far-goes-dark with land:moss
+# The snowfield: far goes PALE. The same term, inverted, for nothing.
+place snowfield
+wait 1.2
+shot 07-snow-far-goes-pale with land:snowfield
+# Snow at three depths: big slow flakes past the lens over the fall behind them.
+weather snow:1
+wait 1.2
+shot 08-snow-at-three-depths with land:snowfield
+weather clear:0
+# A village: eaves jut, and a snapped line sags from a pole across the frame.
+village 0
+hour 21.5
+wait 1.2
+shot 09-village-overhead-night
+# And the lantern under it, which is what the boughs' shadows are drawn by
+# after dark.
+tap lamp
+wait 0.6
+shot 10-lantern-under-the-overhead with lamp
+weather rules

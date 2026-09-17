@@ -85,6 +85,8 @@ extends GameSystem
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
+##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
+##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -383,7 +385,10 @@ func _run() -> void:
 				else:
 					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 			"perf":
-				ok = await TourPeople.perf(self, game, parts)
+				if parts.size() > 1 and parts[1] == "fore":
+					ok = await ForePerf.perf(self, game, parts)
+				else:
+					ok = await TourPeople.perf(self, game, parts)
 			"stale":
 				var why := SaveStaging.age(SaveSlots.path(parts[1].to_int()),
 					StringName(parts[2]) if parts.size() > 2 else &"version")

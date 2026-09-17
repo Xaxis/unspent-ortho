@@ -31,6 +31,17 @@ extends RefCounted
 ##                              0 means none may: lamps and fires light, and cast
 ##                              nothing. The lights package reads this and is its
 ##                              only enforcer — this file does not hunt for lights
+##   fore           int         how many FOREGROUND pieces may hang over the
+##                              frame at once (src/render/depth/, docs/LOOK.md
+##                              law 3): boughs, snapped lines, eaves, girders.
+##                              0 means the layer is off and the world is one
+##                              plane again. It is a COUNT and not a bool
+##                              because the cost is overdraw and overdraw is
+##                              linear in how many of them cross the picture
+##   near_focus     bool        the near depth of field that puts a piece a few
+##                              units from the eye genuinely out of focus.
+##                              Forward+ only, and the one thing in this package
+##                              that costs a real screen pass
 ##   volumetric     bool        real volumetric fog (Forward+ only)
 ##   ssao           bool        screen-space ambient occlusion (Forward+ only)
 ##   ssil           bool        screen-space indirect light (Forward+ only)
@@ -58,6 +69,7 @@ const ROWS: Array[Dictionary] = [
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
 		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16,
+		"fore": 28, "near_focus": true,
 		"volumetric": true, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
@@ -65,6 +77,7 @@ const ROWS: Array[Dictionary] = [
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8,
+		"fore": 20, "near_focus": true,
 		"volumetric": true, "ssao": true, "ssil": false, "forward_only": true,
 	},
 	{
@@ -72,6 +85,7 @@ const ROWS: Array[Dictionary] = [
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4,
+		"fore": 14, "near_focus": false,
 		"volumetric": true, "ssao": true, "ssil": false, "forward_only": false,
 	},
 	{
@@ -79,6 +93,7 @@ const ROWS: Array[Dictionary] = [
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2,
+		"fore": 9, "near_focus": false,
 		"volumetric": false, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
@@ -86,6 +101,7 @@ const ROWS: Array[Dictionary] = [
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0,
+		"fore": 7, "near_focus": false,
 		"volumetric": false, "ssao": false, "ssil": false, "forward_only": false,
 	},
 ]

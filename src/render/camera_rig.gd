@@ -47,6 +47,7 @@ func _ready() -> void:
 	near = 1.0
 	far = 250.0
 	rotation = Vector3(deg_to_rad(-pitch_deg), deg_to_rad(yaw_deg), 0.0)
+	_near_focus()
 	# The screen-space light shafts, and ONLY on a tier with no volumetric air:
 	# where the renderer can do real volumetrics a lamp throws a real cone and
 	# this quad would draw a second, worse one over it. LOOK.md's degradation
@@ -65,6 +66,82 @@ func _ready() -> void:
 		_outline.extra_cull_margin = 16384.0
 		_outline.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_outline)
+
+
+## NEAR DEPTH OF FIELD (docs/LOOK.md law 3), where the tier allows it.
+##
+## An orthographic camera draws a thing at depth 10 and a thing at depth 50 at
+## exactly the same size and moves them across the screen by exactly the same
+## number of pixels. Focus is the one cue it CANNOT flatten: a lens has one
+## focal plane whatever the projection, so a bough eight units in front of the
+## place is soft and the place is sharp, and the eye reads that as distance
+## before it reads anything else in the frame.
+##
+## Only the NEAR side is blurred. A far blur would soften the land at the top of
+## the picture, which is the air's job (`Air`) and which fog does in colour
+## rather than in focus -- and softening what a player is walking toward is how
+## a depth cue becomes a readability failure.
+##
+## WHERE IT MAY BEGIN IS A READABILITY QUESTION, and it is the hard part.
+##
+## The frame is only about ten units deep, and the foreground layer lives in the
+## SAME depths the world's tall things do: a piece at four units over ground at
+## depth 26 is at depth 22.6, and so is a four-unit tower standing at the near
+## edge. Blur cannot tell them apart, so a near plane chosen for the boughs also
+## softens whatever is standing at the bottom of the frame -- which is where
+## something comes at you from. Measured at a near plane of 25.4: a machine at
+## the bottom edge went soft, and that is the package's own rule broken by its
+## prettiest feature.
+##
+## So the plane is not a constant. It is the nearest ground the frame holds, less
+## the height a thing may stand there and still be SHARP: nothing under
+## DOF_CLEAR_LIFT off the ground is ever touched, anywhere in the picture. What
+## is left to blur is what is genuinely overhead, which is what this is for.
+##
+## 2.6 units is a machine (about 1.8) with room over it, so a hunter at the very
+## bottom edge of the frame is crisp.
+const DOF_CLEAR_LIFT := 2.6
+## How far past the plane the blur reaches full, in world units.
+const DOF_RAMP := 4.5
+const DOF_AMOUNT := 0.14
+
+var _dof_size := -1.0
+
+
+## Put the near blur on, or take it off, by the tier's own row. Never re-derived:
+## `Quality.ROWS` is the one place that says what a tier may spend.
+func _near_focus() -> void:
+	if not bool(Quality.current().get("near_focus", false)):
+		attributes = null
+		_dof_size = -1.0
+		return
+	var a := attributes as CameraAttributesPractical
+	if a == null:
+		a = CameraAttributesPractical.new()
+		# Auto exposure would fight the one tonemapper SkyLight owns, and a second
+		# thing deciding how bright the frame is is exactly the failure LOOK.md's
+		# ceiling rule exists to stop.
+		a.auto_exposure_enabled = false
+		a.exposure_multiplier = 1.0
+		# Only the near side. A far blur would soften the land at the top of the
+		# picture, which is the AIR's job (`Air`) and which fog does in colour
+		# rather than in focus -- and softening what a player is walking toward is
+		# how a depth cue becomes a readability failure.
+		a.dof_blur_far_enabled = false
+		a.dof_blur_near_enabled = true
+		a.dof_blur_amount = DOF_AMOUNT
+		attributes = a
+	var shown := size
+	if is_equal_approx(shown, _dof_size):
+		return
+	_dof_size = shown
+	# The nearest ground the frame holds, from the camera that is really drawing
+	# -- so a zoom or a target lean moves the plane with the picture instead of
+	# quietly blurring the near half of a zoomed-out frame.
+	var near_ground := distance - Air.frame_depth(shown, pitch_deg + _pitch)
+	var begin := near_ground - DOF_CLEAR_LIFT * sin(deg_to_rad(pitch_deg + _pitch))
+	a.dof_blur_near_distance = maxf(near + 1.0, begin)
+	a.dof_blur_near_transition = DOF_RAMP
 
 
 ## The yaw the screen is actually at, lean and all: screen-relative input and
@@ -141,6 +218,11 @@ func _apply() -> void:
 	local.y = roundf(local.y / texel) * texel
 	var focus := b * local
 	global_position = focus + b.z * distance
+	# The focal plane follows the picture: a lean zooms and tilts, and a plane
+	# left where the square-on frame put it would blur the near half of a
+	# zoomed-out one. Does nothing until `size` really moves.
+	if attributes != null or bool(Quality.current().get("near_focus", false)):
+		_near_focus()
 	# Ink patterns are drawn in screen pixels; shifting them by the camera's own
 	# texel offset pins every hatch line to the world instead of the glass.
 	RenderingServer.global_shader_parameter_set("world_px", Vector2(roundf(local.x / texel), roundf(local.y / texel)))
