@@ -72,6 +72,17 @@ func _open_what_is_in_front() -> void:
 	var prop := _readable_in_front()
 	var person_d: float = person.get("_d", INF) if not person.is_empty() else INF
 	var prop_d := _edge_to(prop) if prop != null else INF
+	# THE GROUND UNDER YOUR HANDS WINS WHEN IT IS NEARER. This system's reach is
+	# generous on purpose, so a notice five tiles off was outranking the driftwood
+	# the player was standing on and facing: the key meant "pick this up" and the
+	# game answered with a page. `use` is still most-specific-first — a person or
+	# a notice you are AT beats the ground — but "in front of" is not "nearer
+	# than", and only one of the three can be under your hands.
+	var take := Survival.use_target(game)
+	if take != null:
+		var take_d := _edge_to(take)
+		if take_d < person_d and take_d < prop_d:
+			return
 	if person_d <= prop_d and not person.is_empty():
 		_start_talk(person)
 	elif prop != null:

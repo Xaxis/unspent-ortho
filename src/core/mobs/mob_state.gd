@@ -107,6 +107,11 @@ var turn_filed := false
 ## that sent it when it does not come back: a player who fights off what was
 ## dispatched must be able to cool the region by breaking contact.
 var sent := false
+## One of a party sent against a holding (48_raids). It is not a wanderer, so the
+## coast never culls it: the system that sent it takes it off the land when the
+## step is over or the player leaves the yard. Without this, the cheapest answer
+## to any raid was to walk twenty-five tiles and let the culler eat the party.
+var raider := false
 ## An indifferent body the player has disturbed (struck it, stood in its way):
 ## it is hostile until it loses them.
 var disturbed := false

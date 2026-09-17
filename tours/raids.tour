@@ -1,0 +1,106 @@
+# Why the machines come for what you built, on the real keys (docs/VISION.md §9).
+# A holding put up loud on purpose, a clerk that reads it and walks off with the
+# reading, the world's warning, the plan's tag hung on the very piece that gave
+# the place away, a wall put up against it, the party at the gate, and the yard
+# after it is over.
+#
+#   tools/tour.sh tours/raids.tour --seed=1 --hour=16 --weather=clear:0 \
+#     --attention=0.7 --held=axe_felling --fail-downed \
+#     --give=stone:8,deadwood:8,timber:8,scrap:12,reeds:8,rag:6,copper:4,pitch:4,driftwood:6
+#
+# --attention stages a holding already at the raid line: what a player reaches by
+# living somewhere loud for days. It is not a shortcut past the rule — NOTHING is
+# ever sent for a place nothing has read, so the tour still has to be noticed
+# before anything comes, and it is the clerk in frame 04 that does it.
+zoom 10
+# The scripted meetings only: nothing wanders in and turns this into a fight tour.
+coast calm
+place spawn
+wait 0.4
+# Out of the village to open ground, on the real keys.
+walk -1,1 1.6
+wait 0.5
+shot 01-somewhere-to-build with land:coast
+# A hearth and a mast: the two loudest things a person can put up. This is the
+# decision the whole system hangs on, and the slate draws it as seven bars — with
+# one word under them for what the plan makes of the place, which is the only
+# thing on the glass that says what it THINKS rather than what it hears.
+tap holding
+await app:holding 4
+choose build_hearth
+tap use
+await made 8
+wait 0.4
+choose build_radio_mast
+tap use
+await made 8
+wait 0.6
+shot 02-what-a-machine-hears with app:holding
+tap pause
+wait 0.8
+shot 03-loud-on-purpose with holding, station:fire
+# Nothing has come for it, because nothing has read it. A clerk crosses the
+# ground and does. From this moment the reading is a thing in the world: kill it,
+# jam it, take it off the body, or watch it go.
+spawn clerk
+await noticed 10
+shot 04-a-clerk-reads-the-holding with mob:clerk, holding
+# And the world says what is coming before anything arrives: the set goes to
+# static, the birds go up, and every piece they mean to take wears the plan's own
+# tag (docs/ART.md §10).
+await warned 10
+await marked 8
+wait 0.8
+shot 05-the-tag-on-what-gave-them-away with marked, holding
+# Let the clerk go. What it is carrying gets home, and the holding wears that too.
+await filed 25
+# The warning is long enough to answer. A plate wall, put up out of what is
+# carried, between the yard and the way they come in.
+tap holding
+await app:holding 4
+choose build_plate_wall
+tap use
+await made 10
+tap pause
+wait 0.8
+shot 06-a-wall-against-it with piece:plate_wall, holding
+# The window runs out, and they arrive. They come out of the land at the ring
+# (PARTY_RING, twelve tiles) and cross it on foot, which is the last of the
+# warnings and the one that says from which side — so the frame that says "at the
+# gate" waits for one of them to BE at the gate (party_close), not for the moment
+# they were put down in the corner of the picture.
+hour 19.4
+wait 1.6
+await raid 20
+await party 20
+await party_close 60
+wait 0.4
+shot 07-the-party-at-the-gate with mob, holding
+# They go for what makes the signature, not for the player: a blow into a piece.
+await raid_damage 40
+wait 0.3
+shot 08-a-blow-into-the-holding with mob, holding
+# And they can be answered. A blow off a hauler's plate, and the machine that was
+# taking the mast apart stops taking it apart and comes for whoever threw it —
+# which is the whole trade a raid offers: fight one of them and the others work
+# on. (Two haulers is more than one axe wins in a night; the answers this holding
+# did not build are the turret and the spoofer, StructureKind's unbuilt rows.)
+try 25
+walkto part 1.4
+tap swing
+await ring 1.4
+end
+wait 0.3
+shot 09-answered-at-the-plate with mob, holding
+# It runs its course. A raid stands in a yard for RaidStage.MINUTES — three world
+# hours and more, which is a long wait in real seconds and was at the mercy of the
+# runner's wall clock — so the night is let go by instead: what the party had not
+# spent it spends, and what it broke stays broken. 46_settlements keeps a wreck
+# where it fell, and mending one costs what it cost to build.
+hour 23
+wait 1.5
+await raid_ended 60
+wait 1.2
+shot 10-the-yard-after with holding
+wait 1.2
+shot 11-the-holding-at-night with holding

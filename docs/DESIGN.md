@@ -179,6 +179,96 @@ on it — a figure is drawn over the water whatever its depth (people draw after
 the outline pass), so the water cannot cut it yet. That is the one thing about
 this that is not finished, and it is in ROADMAP.
 
+## Raids: why and when the machines come (docs/VISION.md §9.2-9.7)
+
+> "Certain machines and certain enemies can destroy your work, and when and how a
+> machine engages a city or shelter must be determined by encounters and other fun
+> playable systems." — owner, 2026-09-15
+
+That sentence is the whole specification, and it has one consequence the package
+is built to keep: **a raid the player could not have seen coming is a bug, however
+well it is drawn.** Everything below exists to make every step traceable back to
+something the player did, built, or watched happen.
+
+- **A notice is an encounter, not a roll.** A machine that comes near enough reads
+  ONE channel off the holding's signature — the loudest one it can hear from where
+  it stands — and walks off with it along the bearing the plan surveyed this world
+  on. Until it is clear of the yard that record is a thing in the world: kill it,
+  spoof it into nonsense, take it off the body, follow it home, or let it go.
+  Nothing is filed until one gets home, and **nothing is ever sent for a place
+  nothing has read**. A record getting home is the only step in the chain that
+  happens over the horizon, so it is heard and said: a player who watched a clerk
+  walk off is told the moment it cost them. Taken off a body instead — and
+  somebody has to be standing over the body to take it — the record is a thing in
+  the creel: proof, and, stripped with a blade, the copper a signet is wound from.
+  (It is a found thing, so nothing can ever make one. The use it deserves is as
+  the gate to a spoofer the player can BUILD, and that waits on
+  `StructureKind.buildable` naming one.)
+- **Attention is 0..1 per holding, and 1.0 is a siege led by the region's keeper.**
+  The unit it is counted in is one filed record at full strength
+  (`Attention.NOTICE_FULL`, 0.09): twelve of those unanswered bring the keeper. It
+  rises from records that got home, from the plan's network in that region going
+  up a level, from stolen FOUND technology humming inside the walls (a stolen cell
+  is the loudest thing in the game and it costs by the hour), and from machines the
+  plan sent there that never came home. It falls with quiet hours, dark nights,
+  a spoofed signature, a decoy standing, a record destroyed before it travelled, and
+  a step that has been paid. **Hours on their own only ever make a holding safer.**
+- **It is read as pressure, never as a bar.** The holding app draws what a machine
+  HEARS — seven channels with the loudest named and its percentage — so a player
+  can read the same number the machines read before anything arrives. Under it is
+  ONE WORD for what the plan THINKS: read, surveyed, wanted, marked, condemned. A
+  word and never a number, because the moment that line is a percentage the system
+  stops being about reading the world and becomes a thing to optimise. Everything
+  else the plan thinks is said by the world — the warnings, the tag bolted to the
+  piece that gave you away, and the machines themselves.
+- **Four steps, each warned by the world first**: survey (one machine looks and
+  drives a stake in at the edge), probe (two come and test the wall), raid (a
+  party with a purpose), siege (the region's own keeper leads it). The warning
+  comes 25 to 110 world minutes before the machines do, and that window is the
+  answer: fortify, take the people off the pieces, kill the mast, fire the signet,
+  pay them off with a full store, or walk away and come back to whatever is left.
+  **What turns them round on the road is the SIGNATURE falling**, not the books:
+  attention moves in units of 0.09 and no hour of play shifts enough of it, but a
+  mast pulled down halves what the place gives off in a minute. A holding that was
+  always quiet is not called off — it is walked to, found to be nothing, and left
+  at the gate. One made worse in the window is re-warned for a bigger step.
+- **A party goes for what MAKES the signature.** A breacher takes the strongest
+  thing standing between the yard and the outside, a harvester walks past the
+  walls to whatever the slate named as loudest, a snatcher comes for whoever is at
+  work. So the player's own build decides the fight, and the seven bars are a
+  decision rather than a readout.
+- **A raider is here for the holding, not for the player.** It will walk past
+  somebody standing in their own yard and start cutting their mast down, and only
+  a blow turns it. Fighting one is a choice, and its price is that nothing is
+  stopping the other two.
+- **Not being there is a legitimate answer. Walking out of one is not an answer at
+  all.** A raid the player is not present for is settled on exactly the same
+  arithmetic, so coming home to a burnt plot is the same event reached the same
+  way and never a cheaper one — and a raid they walk out of halfway through is
+  settled the same way too, with whatever the party had not spent yet. The party
+  is exempt from the coast's culling for exactly that reason: machines that
+  evaporate when the player is twenty-five tiles away would make walking the
+  cheapest answer in the game, and it would print "the holding held" while doing
+  it. A wall is worth the same share of a blow in both paths, so building one is
+  never only worth doing before leaving.
+- **Aftermath.** Broken pieces stay where they fell as wreckage 46_settlements
+  gives half of back for clearing; machines killed in the yard leave salvage in
+  it; a razed holding is left standing as ruins with what the party could not
+  carry lying in it; and the region remembers — a holding founded where one was
+  razed starts on the plan's books. **Killing the region's keeper quiets its
+  network for good**, which makes a boss fight the surest answer in the game.
+
+**A portal is not a raid path, and will not be one until portals are something a
+player knows, owns and can close.** A machine arriving through a gate the player
+has never opened, from a realm they may not have visited, is unreadable by
+construction: there is no warning it could have given and nothing they could have
+done about it, which is the one thing this system may not be. So attention is kept
+per realm — a machine in the caves never senses a village on the surface — and a
+step is only ever warned for a holding in the realm the player is standing in. When
+a portal is a thing the player has opened and can shut, a raid through one becomes
+the best set piece the system has, and it gets built then, deliberately, with a
+warning grammar of its own. Argue with that sentence, do not quietly widen it.
+
 ## Settings (owner, 2026-09-17)
 
 The slate's own page, reached from the pause menu and from the title: **sound**

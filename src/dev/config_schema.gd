@@ -85,6 +85,11 @@ const ROWS: Array[Dictionary] = [
 	{"id": "rules.works", "group": "rules", "label": "the works work", "kind": "choice", "default": 1.0,
 		"options": [0.0, 0.5, 1.0, 2.0, 4.0], "applies": "live",
 		"note": "How busy a region's depot is: how often it puts one of its own out and sends a round along the survey. None: it stands lit and sends nothing."},
+	{"id": "rules.raids", "group": "rules", "label": "machines raid", "kind": "bool", "default": true, "applies": "live",
+		"note": "No: a holding is still read and still files, and nothing is ever sent for it."},
+	{"id": "rules.raid_pace", "group": "rules", "label": "raids come", "kind": "choice", "default": 1.0,
+		"options": [0.25, 0.5, 1.0, 2.0, 4.0], "applies": "live",
+		"note": "How fast a holding earns the plan's attention, against the game as tuned."},
 
 	{"id": "builds.targets", "group": "builds", "label": "makes", "kind": "targets", "default": ["web"],
 		"options": ["web", "web-nothreads", "mac"], "applies": "build",

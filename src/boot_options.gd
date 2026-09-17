@@ -43,6 +43,9 @@ extends RefCounted
 ## --holding=KIND,...  stand a staffed holding in front of the player, free: lean-to,
 ##                     hearth, hut, store, plot, catchment, palisade, plate wall,
 ##                     netting, wind spinner, battery stack, radio mast (settlements)
+## --attention=F       every holding (stood up at boot or built in play) starts F (0..1)
+##                     of the way to a siege: 0.22 surveyed, 0.45 probed, 0.70 raided,
+##                     1.0 the region's keeper. Nothing is sent until something reads it (raids)
 ## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
 ## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
@@ -112,6 +115,8 @@ var fit: PackedStringArray = []
 var spawn: PackedStringArray = []
 ## Pieces of a holding to stand in front of the player at boot (settlements).
 var holding: PackedStringArray = []
+## How far every holding starts along the plan's escalation, 0..1 (raids).
+var attention := 0.0
 ## A craft parked in reach at boot, and one the player starts aboard (crafts).
 var craft := ""
 var aboard := ""
@@ -189,6 +194,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
 			"holding": o.holding = v.split(",", false)
+			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
 			"craft": o.craft = v
 			"aboard": o.aboard = v
 			"act": o.act = v

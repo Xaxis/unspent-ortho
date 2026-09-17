@@ -195,4 +195,14 @@ const LIST: Array[Dictionary] = [
 	{"id": &"axe_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"axe_hand": 1, &"charcoal": 8}, "makes": {&"axe_felling": 1}},
 	{"id": &"mattock_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"mattock": 1, &"charcoal": 8}, "makes": {&"mattock_steel": 1}},
 	{"id": &"pick_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"pick": 1, &"charcoal": 8}, "makes": {&"pick_steel": 1}},
+
+	# --- Raids: what a machine was carrying about you (docs/VISION.md §9.2) ---
+	# A filed record is their own account of a place, taken off the body that was
+	# walking home with it. Stripped with a blade it is what it is made of: a spool
+	# of copper and a foil card, which is the stuff a signet is wound from. Nobody
+	# out here is sentimental about proof. It is a found thing, so it can never be
+	# MADE (tests/survival/test_crafting.gd: the top rung stays found) — the deeper
+	# use, a record as the gate to a spoofer a player can BUILD, waits on
+	# StructureKind.buildable naming one.
+	{"id": &"record_stripped", "at": &"hand", "minutes": 10.0, "needs": {&"record": 1}, "makes": {&"copper": 1}, "tool": &"cut"},
 ]

@@ -86,6 +86,24 @@ const ALIAS := {
 	# same hands on the same kind of plate the works is made of.
 	&"landmark_found": &"ui_slate_ping",
 	&"landmark_open": &"break",
+	# raids: the world saying a step is coming, and the small sounds of a plan
+	# being kept about a place. Each wants a voice of its own on the sheet — a
+	# line of lights coming on over the land, a set gone to static, a stake
+	# driven in — and until there is one these read right and nothing is silent.
+	&"raid_horizon": &"fog_horn",
+	&"raid_drone": &"alert_flock",
+	&"raid_static": &"arc_snap",
+	&"raid_keeper": &"watcher_call",
+	&"raid_notice": &"relay_click",
+	&"raid_jammed": &"relay_click",
+	# A record got home, and a party loading up what was left lying in the yard.
+	# The first is the only thing in the game that raises attention by a whole
+	# unit and it happens over the horizon, so it has to be heard.
+	&"raid_filed": &"snatch_clerk",
+	&"raid_loot": &"pickup",
+	&"raid_record": &"pickup",
+	&"raid_break": &"break",
+	&"raid_snatch": &"grip",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
