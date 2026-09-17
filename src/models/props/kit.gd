@@ -154,7 +154,15 @@ const CLUMP_RINGS_TINY: Array[Vector2] = [Vector2(0.8, 0.16), Vector2(1.0, 0.52)
 ## A lumpy clump: crowns, bushes, heather, turf banks. Rings and a rounded crown,
 ## smoothed into one mass — the same correction as `stone`, for the same reason:
 ## at two rings and flat normals a bush was a cut green gem.
-func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, col: Color, sides: int = 7) -> void:
+##
+## `lobe` is what tells FOLIAGE from turf. Smoothing alone turns a bush into a
+## smooth green dome, which is a boulder painted green and no better than the
+## gem it replaced; leaves hang in masses with daylight between them. At `lobe`
+## 1 the corners alternate far out and well in, so the crease pass rounds each
+## lobe and keeps the valley between two of them hard — a broken outline out of
+## the same triangles. Turf, snow and moss pass 0, because a bank of turf is
+## smooth and that is the whole difference.
+func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, col: Color, sides: int = 7, lobe: float = 0.0) -> void:
 	var rot := Rng.hash01(seed_value, 51) * TAU
 	# A clump is widest low and falls away under itself, so the underside turns
 	# from the sun without a skirt of separate geometry to do it.
@@ -165,7 +173,8 @@ func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int,
 	var wob := PackedFloat32Array()
 	for i in n:
 		ang.append(rot + float(i) / n * TAU + j(seed_value, i, 0.26))
-		wob.append(0.74 + Rng.hash01(seed_value, i, 3) * 0.46)
+		var w := 0.74 + Rng.hash01(seed_value, i, 3) * 0.46
+		wob.append(w * lerpf(1.0, 1.3 if i % 2 == 0 else 0.62, lobe))
 	var rings: Array[PackedVector3Array] = []
 	for ri in prof.size():
 		var ring := PackedVector3Array()

@@ -146,8 +146,8 @@ static func broadleaf(k: Kit, v: int, c: int) -> void:
 		var start := k.made.vertex_count()
 		for i in tips.size():
 			var tip := tips[i]
-			k.clump(tip.x, tip.y - 0.22, tip.z, 0.4 * spread + Kit.j(s, 40 + i, 0.06), 0.62 * h, s + i * 7, leaves[i % 3], 7)
-		k.clump(top.x + lean.x * 0.35, top.y + 0.2, top.z, 0.44 * spread, 0.78 * h, s + 99, leaves[3], 8)
+			k.clump(tip.x, tip.y - 0.22, tip.z, 0.4 * spread + Kit.j(s, 40 + i, 0.06), 0.62 * h, s + i * 7, leaves[i % 3], 7, 0.45)
+		k.clump(top.x + lean.x * 0.35, top.y + 0.2, top.z, 0.44 * spread, 0.78 * h, s + 99, leaves[3], 8, 0.45)
 		k.sway_by_height(start, top.y - 0.2, top.y + 0.9, 0.55)
 		if c == Country.BONELANDS:
 			for i in 7:
@@ -265,7 +265,7 @@ static func bush(k: Kit, v: int, c: int) -> void:
 		var a := float(i) / n * TAU + Kit.j(s, i, 0.6)
 		var rr := 0.16 + Kit.j(s, 10 + i, 0.06)
 		var r := 0.3 - i * 0.02 + Kit.j(s, 20 + i, 0.05)
-		k.clump(cos(a) * rr, -0.03, sin(a) * rr, r, 0.42 + Kit.j(s, 30 + i, 0.08), s + i * 5, cols[i % 3], 7)
+		k.clump(cos(a) * rr, -0.03, sin(a) * rr, r, 0.42 + Kit.j(s, 30 + i, 0.08), s + i * 5, cols[i % 3], 7, 0.45)
 		if cap.a > 0.0:
 			k.clump(cos(a) * rr, 0.24, sin(a) * rr, r * 0.66, 0.16, s + i * 5 + 1, cap, 6)
 	if berries.a > 0.0:
@@ -293,7 +293,7 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 	for i in n:
 		var a := float(i) / n * TAU + Kit.j(s, i, 0.5)
 		var rr := 0.2 + Kit.j(s, 10 + i, 0.06)
-		k.clump(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, greens[i % 3], 6)
+		k.clump(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, greens[i % 3], 6, 0.45)
 	# Spines stick out of the mass.
 	for i in 16:
 		var a := float(i) * 2.39996
