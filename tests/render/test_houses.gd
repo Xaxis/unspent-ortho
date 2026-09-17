@@ -316,7 +316,16 @@ static func _cells(k: Kit) -> Array:
 	for i in range(0, v.size() - 5, 6):
 		if c[i].is_equal_approx(Palette.INK[2]):
 			continue    # the dark batten under a course that slipped, not a course
-		out.append([v[i].distance_to(v[i + 2]), v[i + 1] - v[i + 2]])
+		var side := v[i + 1] - v[i + 2]
+		# ...nor is the exposed EDGE of a course a course. A course lies over the
+		# one below it and leaves its own thickness standing to the sky, which is
+		# what rules the line across a slope; that face is `Houses.LAP` deep and
+		# square to the slope by construction, so measuring it as a patch of slate
+		# says only that a lip is not a slate. Every course FACE is still held to
+		# the width and the lean below.
+		if side.length() < Houses.LAP * 1.5:
+			continue
+		out.append([v[i].distance_to(v[i + 2]), side])
 	return out
 
 
