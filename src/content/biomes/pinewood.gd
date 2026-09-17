@@ -37,6 +37,11 @@ static func make() -> BiomeDef:
 	d.grass_colors = [P.SPRUCE[2], P.MOSS[2]]
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	d.grade = Vector4(-0.45, 0.15, 0.05, 0.06)
+	# A closed canopy: less of the sky reaches this floor than reaches anywhere
+	# else on the surface, which is the whole reason a wood is frightening at
+	# night. It is the one landscape whose night is darker than the coast's, and
+	# it earns it by having something overhead rather than by being told to.
+	d.night_sky = 0.80
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, PropKind.SNOW_PINE,

@@ -53,6 +53,10 @@ static func make() -> BiomeDef:
 	d.rock_color = P.SLATE[3]
 	d.decor_tints = {&"fronds": [P.EARTH[2], P.EARTH[1], P.ASH[2]]}
 	d.grade = Vector4(-0.04, 0.08, 0.08, -0.03)
+	# Open ground under an open sky, and snow throws back most of what lands on
+	# it: the one landscape where a lantern is a convenience rather than a
+	# necessity, and where the moon alone is enough to walk by.
+	d.night_sky = 1.35
 	d.lip_snow = true
 	d.props = [PropKind.SNOW_PINE, PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE,
 		PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]

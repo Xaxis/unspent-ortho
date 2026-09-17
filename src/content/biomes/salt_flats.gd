@@ -136,6 +136,9 @@ static func make() -> BiomeDef:
 	# already measures 194.7 against the snowfield's 191.6, so it may not be
 	# needed at all. Left for whoever owns that seam.
 	d.grade = Vector4(-0.58, 0.08, -0.06, 0.2)
+	# A white pan under nothing at all. It throws the night sky back harder than
+	# the snow does, and there is not a thing on it to cast a shadow.
+	d.night_sky = 1.40
 	# A warm cast taken out of the blue rather than added to the red: a light
 	# tint over 1 is one more gain on a landscape with no headroom left.
 	d.light_tint = Color(1.0, 0.985, 0.95)

@@ -51,6 +51,13 @@ const PAGES_DRAWN: Array[StringName] = [PAGE_WASH, PAGE_SCRATCH]
 ##            lifts, which every surface landscape does; a roofed realm DIMS, and
 ##            under a roof it is a FLOOR (a landscape may be darker than its
 ##            realm, never brighter), while above one it is only a start.
+##   night    how much of the NIGHT sky's light stands over a landscape in it
+##            (BiomeDef.night_sky). A surface landscape argues with this freely —
+##            a fen has more sky over it than a wood does — but a roofed realm has
+##            no sky at all, and what makes it dark is SkyLight.closed reading it
+##            as night at every hour, not a number here. So this stays 1.0 under a
+##            roof and the door exists for the realms that are not drawn yet: the
+##            orbital page has no air to soften a night, so its dark is harder.
 ##   airs     the weather table a landscape in it starts from (BiomeDef.weather).
 ##   bans     weather kinds that cannot fall in it: nothing out of the sky
 ##            reaches a roofed realm.
@@ -60,7 +67,7 @@ const PAGES_DRAWN: Array[StringName] = [PAGE_WASH, PAGE_SCRATCH]
 const DEFS := {
 	SURFACE: {
 		"page": PAGE_WASH, "roofed": false,
-		"light": Color(1, 1, 1), "lift": -0.4,
+		"light": Color(1, 1, 1), "lift": -0.4, "night": 1.0,
 		"airs": [], "bans": [], "bed": &"bed_wind", "salt": 0,
 	},
 	UNDERGROUND: {
@@ -70,7 +77,7 @@ const DEFS := {
 		# any hour, which is what brings the blue floor, the hatch, the night ink
 		# and the lamp's pool with it. This is only the colour of what light there
 		# is: dimmed further here the page went flat and muddy instead of dark.
-		"light": Color(0.62, 0.68, 0.84), "lift": 0.42,
+		"light": Color(0.62, 0.68, 0.84), "lift": 0.42, "night": 1.0,
 		# The air of a cave is its own: it hangs saturated for days and then dries
 		# and stands clear, and nothing ever falls through it. Weather is still an
 		# event down here, which is the rule every landscape keeps (tests/sky);
@@ -84,7 +91,7 @@ const DEFS := {
 	},
 	ORBITAL: {
 		"page": PAGE_GRAPHITE, "roofed": false,
-		"light": Color(0.86, 0.88, 1.0), "lift": -0.2,
+		"light": Color(0.86, 0.88, 1.0), "lift": -0.2, "night": 1.25,
 		"airs": [[Weather.CLEAR, 100, 0.0]], "bans": [Weather.RAIN, Weather.DRIZZLE,
 			Weather.STORM, Weather.HAIL, Weather.SNOW, Weather.BLIZZARD, Weather.FOG,
 			Weather.WHITEOUT, Weather.DUST, Weather.DRY_STORM, Weather.ASH, Weather.HAZE,
@@ -93,7 +100,7 @@ const DEFS := {
 	},
 	ERA: {
 		"page": PAGE_WATERCOLOUR, "roofed": false,
-		"light": Color(1, 1, 1), "lift": -0.5,
+		"light": Color(1, 1, 1), "lift": -0.5, "night": 1.0,
 		"airs": [], "bans": [], "bed": &"bed_wind", "salt": 0xBEF0EA,
 	},
 }
@@ -147,6 +154,12 @@ static func lift(kind: StringName) -> float:
 	return float(def(kind).get("lift", -0.4))
 
 
+## How much of the night sky a landscape in this realm starts with
+## (BiomeDef.night_sky).
+static func night_sky(kind: StringName) -> float:
+	return float(def(kind).get("night", 1.0))
+
+
 ## The weather table a landscape in this realm starts from (BiomeDef.weather).
 ## Empty means the realm lets a landscape write its own, as the surface does.
 static func airs(kind: StringName) -> Array:
@@ -183,7 +196,7 @@ static func problems() -> PackedStringArray:
 			out.append("realm %s has no row" % kind)
 			continue
 		var row: Dictionary = DEFS[kind]
-		for field: String in ["page", "roofed", "light", "lift", "airs", "bans", "bed", "salt"]:
+		for field: String in ["page", "roofed", "light", "lift", "night", "airs", "bans", "bed", "salt"]:
 			if not row.has(field):
 				out.append("realm %s says nothing about %s" % [kind, field])
 		for k: StringName in bans(kind):

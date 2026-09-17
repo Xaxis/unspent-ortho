@@ -65,6 +65,10 @@ const MOON_SHADOW := 0.42
 ## darker than its sprites and at 0.58 the land sank to black; 0.70 keeps the
 ## night blue and the lamps still matter.
 const NIGHT_LEVEL := 0.70
+## The hour a roofed realm reads as, whatever the clock says (`closed`). It is
+## inside the flat stretch past the last tint key (21:36), so the light a cave is
+## composed with does not drift with the time of day it cannot see.
+const NIGHT_HOUR := 23.0
 const REGION_GAIN := 1.3
 ## Pools of lamplight the ink knows about (two mat4 globals of four columns).
 const MAX_LAMPS := 8
@@ -140,6 +144,22 @@ const SKY_GROUND_NIGHT := Color(0.045, 0.052, 0.082)
 ## light at midnight is the moon, so a wall still turns away from something.
 const DAY_AMBIENT := 0.55
 const NIGHT_AMBIENT := 0.21
+
+## And it is the COAST's night. NIGHT_AMBIENT above was measured on the coast's
+## mid-value grass, and `lit` said in as many words that one global setting could
+## not serve landscapes whose albedos differ by a factor of three. Measured on
+## seed 7 at 23:00, bare ground, no village: the coast came back 81.4% under luma
+## 24 and the moss bog 95.3%, on one setting. So a landscape says how much of the
+## night sky stands over it (`BiomeDef.night_sky`) and the coast stays 1.0.
+##
+## These two are the floor and the ceiling on what a content file may ask for,
+## and they are not negotiable from the content layer: a landscape that could set
+## its own night freely could put the ground the player walks on under luma 24,
+## which is the `noir` direction that was rejected as unplayable. MOST is the
+## other end — a landscape bright enough at midnight to make a lantern pointless
+## is not a night either.
+const NIGHT_SKY_LEAST := 0.55
+const NIGHT_SKY_MOST := 1.80
 
 ## The tonemapper. This is the CEILING that replaced the shader's page shoulder
 ## (see sky.gdshaderinc): the frame is rendered in HDR and rolled off once, for
@@ -428,9 +448,32 @@ func compose() -> void:
 	var s := sun_at(hour)
 	# How far night has fallen HERE: the hour, or all the way under a roof.
 	var night := maxf(Weather.night_fall(hour), closed)
-	var total := tint_at(hour) * season_drain(season_turn) * region_tint * weather_tint
+	# `closed` says this place reads as NIGHT whatever the clock says (see the
+	# field's own header). These two were the last things that did not keep that
+	# rule: the hour's tint and the sun's energy were still read straight off the
+	# clock, so under a roof every other term in this file had gone to night while
+	# these two still said noon.
+	#
+	# It showed up as a RED LANTERN. 15_lights.compensate divides its warm lamp
+	# (0.96, 0.74, 0.53) by `last_tint` per channel and subtracts `last_energy`
+	# as a black point. In the caves at noon it was handed a daylight-level tint
+	# times the realm's cold blue -- (0.620, 0.680, 0.832) -- and a sun energy of
+	# 1.0, so it answered (2.617, 1.204, 0.371) - 1.0, the blue clamped to zero by
+	# its own maxf, and the pool came out sRGB (1.00, 0.39, 0.00): a deep red,
+	# against the coast's ochre from the same lamp. It was ochre underground at
+	# MIDNIGHT and red at noon, which is the tell -- the lamp was fighting a sun
+	# that is not there. That breaks LOOK law 2's one thematic rule, a person's
+	# light is WARM, and it is the drift a global night setting produces whenever
+	# one realm is darker than the coast it was tuned on.
+	#
+	# So the hour eases to the night key under a roof and the energy to
+	# NIGHT_LEVEL, which is exactly what they already read at midnight and why the
+	# cave lamp was already correct there. No clamp is added to the lamp: the lamp
+	# was never wrong.
+	var total := tint_at(hour).lerp(tint_at(NIGHT_HOUR), closed) \
+		* season_drain(season_turn) * region_tint * weather_tint
 	last_tint = total
-	last_energy = s.energy
+	last_energy = 1.0 - night * (1.0 - NIGHT_LEVEL)
 	RenderingServer.global_shader_parameter_set("sky_tint", total)
 	var az: float = s.azimuth
 	var el: float = s.elevation
@@ -498,6 +541,11 @@ func compose() -> void:
 	var hue := Color(total.x / level, total.y / level, total.z / level)
 	# Godot decodes light_color from sRGB, so encode the ratio we mean.
 	sun.light_color = hue.linear_to_srgb()
+	# How much of the night sky stands over the landscapes in view. It scales the
+	# moon here and the ambient in _drive_environment, TOGETHER, so the ratio
+	# between them — which is what puts shape in a night — is the same in every
+	# landscape and only the amount of light differs.
+	var ns := night_sky_at(neon_shares)
 	var lit := 1.0 - maxf(night, closed)
 	# What Compatibility's light is counted back by (CompatTrim; all ones on
 	# Forward+). Chosen before the sun is lit, because whether the sun casts is
@@ -505,7 +553,7 @@ func compose() -> void:
 	var casts := cast_allowed and closed < 0.5
 	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
 	CompatTrim.remember(trim)
-	sun.light_energy = lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) * float(trim.sun)
+	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow, lit) * float(trim.sun)
 	# A low sun is seen through more air, so its edge is softer. Real penumbra.
 	sun.light_angular_distance = lerpf(SUN_ANGLE_LOW, SUN_ANGLE, clampf(el / 55.0, 0.0, 1.0))
 	# The moon casts too, softly. The source game's rule was that nothing casts
@@ -526,7 +574,7 @@ func compose() -> void:
 		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), closed)
 		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
-		_drive_environment(env.environment, hour, night)
+		_drive_environment(env.environment, hour, night, ns)
 
 
 ## The camera that is really drawing, or null (headless, or before the rig is in
@@ -566,7 +614,7 @@ func _cam_distance() -> float:
 ## The sky, the air and the grade, for this hour. The sky is the AMBIENT light
 ## and the reflection: at night it is a deep indigo dome over a near-black
 ## ground, which is why a night frame still has form in it without being lifted.
-func _drive_environment(e: Environment, hour: float, night: float) -> void:
+func _drive_environment(e: Environment, hour: float, night: float, ns: float) -> void:
 	var nightly := maxf(night, closed)
 	var dusky := clampf(low_light(hour), 0.0, 1.0)
 	var mood := Color(weather_tint.x * region_tint.x, weather_tint.y * region_tint.y, weather_tint.z * region_tint.z)
@@ -593,7 +641,13 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.26)
 	# Under a roof there is no sky to be ambient: what light there is comes off
 	# the walls, and it is very little. That is what makes a cave a cave.
-	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT, nightly) * lerpf(1.0, 0.45, closed) * float(trim.ambient)
+	#
+	# And the NIGHT end of that lerp is the landscape's own now (BiomeDef.night_sky,
+	# blended over the shares in view). Only the night end: at noon `nightly` is 0
+	# and this term cannot reach the frame at all, which is the property that lets
+	# a bog ask for a brighter midnight without touching a single day picture.
+	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT * ns, nightly) \
+		* lerpf(1.0, 0.45, closed) * float(trim.ambient)
 	# The air takes its colour from the sky, so distance separates by atmosphere.
 	# Its ENERGY has to fall with the light or the fog stops being air and
 	# becomes a lamp: at midnight the ground is at about 0.03 and an unscaled fog
@@ -1176,6 +1230,34 @@ static func water_wash_at(shares: Dictionary) -> Vector4:
 	if total <= 0.0 or sum.w <= 0.0001:
 		return Vector4.ZERO
 	return Vector4(sum.x / sum.w, sum.y / sum.w, sum.z / sum.w, clampf(sum.w / total, 0.0, 1.0))
+
+
+## How much of the night sky's light stands over the landscapes in view
+## (`BiomeDef.night_sky`), blended on the SAME shares as the grade, the air, the
+## water and the score. That is the whole of what stops a border showing: a night
+## level that snapped from one landscape's to another's would draw the ecotone as
+## a line across the frame, and an ecotone exists to be the one place the eye
+## cannot find the join.
+##
+## Squared weights, like the water and for the same reason: the night you are
+## standing IN belongs to the land under your feet far more than to a sliver of a
+## neighbour at the edge of the picture. Unsquared, walking to within a frame's
+## width of the coast lifted a midnight bog by a third of the way to the coast's
+## while the player was still in the bog.
+static func night_sky_at(shares: Dictionary) -> float:
+	var sum := 0.0
+	var total := 0.0
+	for k: Variant in shares:
+		var w := float(shares[k])
+		if w <= 0.0:
+			continue
+		w *= w
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		sum += (d.night_sky if d != null else 1.0) * w
+		total += w
+	if total <= 0.0:
+		return 1.0
+	return clampf(sum / total, NIGHT_SKY_LEAST, NIGHT_SKY_MOST)
 
 
 ## shares: landscape type id (or Country id) -> weight.

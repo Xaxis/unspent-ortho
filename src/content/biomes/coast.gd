@@ -37,6 +37,10 @@ static func make() -> BiomeDef:
 	# Thrift in bloom on the cliff turf.
 	d.decor_tints = {&"bloom": [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]]}
 	d.grade = Vector4(-0.55, 0.16, 0.05, 0.02)
+	# 1.0 is the coast, and the coast is where the night was measured. Every other
+	# landscape's night is stated against this one, so this line is a fixed point
+	# and not a setting: moving it moves all nine.
+	d.night_sky = 1.0
 	d.wet = 0.15
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.GORSE,

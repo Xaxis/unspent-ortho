@@ -122,6 +122,10 @@ static func make() -> BiomeDef:
 	# it. Both come from the realm, not from this file (src/core/realm/realm.gd).
 	d.light_tint = Realm.light(Realm.UNDERGROUND)
 	d.grade = Vector4(Realm.lift(Realm.UNDERGROUND), 0.10, 0.24, 0.12)
+	# Taken from the realm like the other three, and 1.0 there: what makes a cave
+	# dark is the roof (SkyLight.closed), not a night level. A cave that asked for
+	# a dark night as well would be dimmed twice for one reason.
+	d.night_sky = Realm.night_sky(Realm.UNDERGROUND)
 	# Its air, out of the realm's own table (no rain, no snow, nothing that falls
 	# out of a sky): still and clear for days, then saturated and hanging.
 	d.weather = Realm.airs(Realm.UNDERGROUND)

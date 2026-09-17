@@ -120,8 +120,21 @@ vec4 matter_of(int m) {
 	else if (m == 45) { r = vec4(0.76, 0.42, 0.018, 0.0); }   // PAVEMENT: limestone
 	else if (m == 46) { r = vec4(0.98, 0.12, 0.008, 0.0); }   // ASH: dead matte
 	else if (m == 47) { r = vec4(0.40, 0.80, 0.024, 0.0); }   // CLINKER: slag glass
-	else if (m == 48) { r = vec4(0.58, 0.68, 0.010, 0.0); }   // FEN: never dries
-	else if (m == 49) { r = vec4(0.84, 0.34, 0.012, 0.0); }   // PEAT
+	// FEN: never dries -- but a bog is a MAT, not a mirror. It was (0.58, 0.68,
+	// 0.010): the second most specular ground in the game on the flattest relief
+	// in the game, and the terrain forces a level face's normal to exactly
+	// vertical (world.gdshader), so every pixel of a fen had one identical BRDF
+	// response. That is a flat sheet by construction, and it is why the moss read
+	// as one and could not be told from the pinewood. Measured on seed 7 at noon:
+	// the fen came back at luma 162 -- brighter than coast turf at 100, off a
+	// wash whose own luma is 58 -- with chroma 13, because a broad specular sheen
+	// returns the LIGHT's colour and not the ground's. Sphagnum is the mattest
+	// thing in the landscape; what is wet here is the water BETWEEN the hummocks,
+	// so the shine is bought back as relief that can catch it rather than as a
+	// wash over the whole bog.
+	else if (m == 48) { r = vec4(0.80, 0.38, 0.045, 0.0); }   // FEN
+	// PEAT: hags are cut banks with a real lip, so it gets relief to match.
+	else if (m == 49) { r = vec4(0.84, 0.34, 0.030, 0.0); }   // PEAT
 	else if (m == 50) { r = vec4(0.94, 0.20, 0.014, 0.0); }   // NEEDLES
 	else if (m == 51) { r = vec4(0.16, 0.95, 0.005, 0.0); }   // ICE: a mirror
 	else if (m == 52) { r = vec4(0.80, 0.44, 0.040, 0.0); }   // ROCK
@@ -187,7 +200,20 @@ float matter_height(int m, vec3 wp) {
 		// SALT and PAN: polygon plates lifted at their rims.
 		vec3 cd = matter_cells(p * 0.9);
 		h = smoothstep(0.0, 0.16, cd.y - cd.x);
-	} else if (m == 41 || m == 40 || m == 48 || m == 50) {
+	} else if (m == 48) {
+		// FEN: hummock and hollow, which is the SHAPE of a bog and the one thing
+		// it had none of -- it shared the generic growth-mat clump below, at a
+		// relief of 0.010, which is to say at nothing. Sphagnum builds in mounds
+		// about a tile across with standing water in the gaps, so this is one
+		// broad field for the mounds and a finer one for the tussocks on them.
+		// Both go through matter_fbm, which rotates between octaves, because a
+		// raw ink_vnoise gradient rules a lattice over open ground -- see
+		// matter_fbm's own header, where the ground it happened on was this one.
+		// Squared, so the hollows are broad and flat and the mounds stand proud
+		// of them, rather than the whole bog undulating like cloth.
+		float mound = matter_fbm(p * 0.8) * 0.72 + matter_fbm(p * 2.4 + 31.0) * 0.28;
+		h = mound * mound;
+	} else if (m == 41 || m == 40 || m == 50) {
 		// Anything with a mat of growth on it: clumps.
 		h = matter_fbm(p * 1.7);
 	} else {

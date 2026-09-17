@@ -47,6 +47,10 @@ static func make() -> BiomeDef:
 	d.hard_rock = true
 	d.decor_tints = {&"bloom": [P.BRINE[3], P.BRINE[4], P.LINEN[4]], &"spoil": [P.LINEN[4]]}
 	d.grade = Vector4(-0.03, 0.14, -0.02, 0.12)
+	# Nothing stands here and the ground is bone: an open sky over a pale floor,
+	# so the night is wide and cold rather than dark. What makes it frightening is
+	# that you can be seen in it.
+	d.night_sky = 1.20
 	d.props = [PropKind.PINE, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.TIN_ORE, PropKind.COAL_ORE,
 		PropKind.BONES, PropKind.GORSE, PropKind.CLINTS, PropKind.STANDING_STONE,
