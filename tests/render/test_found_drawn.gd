@@ -37,44 +37,33 @@ const MIN_CELLS := 8
 ## its square by leaf.gdshader and about half the square is sprig.
 const LEAF_COVER := 0.5
 
-## What was already hidden when this test was written, by model and by how many
-## pieces of it no bearing draws. These belong to other packages -- houses,
-## works, remains, rocks -- and each is a real one: the dugout's whole plate roof
-## is banked over with ash and its clump, the lean-to's roof plate is turned at
-## the ground, a standing stone's spall face sits two centimetres inside the
-## casting it is spalled off, a snowed roof's patches are under the snow.
+## NOTHING is hidden now, and nothing new may be. This list held 87 pieces
+## across 26 models when the test was written and it is empty. Each row was a
+## real fault and six of the eight causes were a WINDING, none of which raised
+## an error:
 ##
-## A model NOT in this list may hide nothing. A model in it may not hide more.
-## Hiding fewer is a fix and passes, with a line asking for the row to come down:
-## a test that fails when somebody mends something teaches people to delete it.
-const HIDDEN_ALREADY := {
-	"archive 0 in coast": 3,
-	"conveyor 0 in coast": 7,
-	"conveyor 1 in coast": 1,
-	"house 0 in coast": 2,
-	"house 0 in snowfield": 6,
-	"house 1 in snowfield": 11,
-	"house 2 in coast": 2,
-	"house 2 in snowfield": 2,
-	"house 5 in coast": 1,
-	"house 5 in snowfield": 13,
-	"house 6 in snowfield": 4,
-	"intake 0 in coast": 4,
-	"intake 1 in coast": 4,
-	"shack 0 in burning": 4,
-	"shack 0 in moss": 3,
-	"shack 1 in burning": 4,
-	"shack 1 in coast": 1,
-	"shack 1 in moss": 3,
-	"sign 2 in snowfield": 1,
-	"stack 0 in coast": 1,
-	"stack 0 in snowfield": 1,
-	"standing stone 1 in coast": 1,
-	"standing stone 1 in snowfield": 1,
-	"tip 0 in coast": 3,
-	"tip 1 in coast": 2,
-	"wreck 0 in coast": 2,
-}
+##   - `works.gd run`, `rocks.gd _run` and `remains.gd streak` took their corners
+##     in an order whose front came out at -`out`, so not one rust run in the
+##     game had ever been drawn: on the stack, the archive, a standing stone, the
+##     intake, the checkpoint, the pump house, the hull, the fire tower.
+##   - the intake's louvres were flat quads wound INTO the housing. They are
+##     blades that slope down and out now, which is the only way a thing on a
+##     wall stays visible to a camera that is always above it.
+##   - the wreck's visor slit, and the plate hanging over its torn end, faced
+##     backwards; the dugout drew both faces of a roof nobody can get under;
+##     the conveyor's rollers lay under a belt wider than they were long.
+##   - the tip's scrap sat on an imagined cone well inside its own heaps, and the
+##     stilt hut's roping cables ran through the middle of its thatch.
+##   - `houses.gd on_wall` placed things on the BILINEAR surface between four
+##     corners that never lie in a plane, so the enamel plate the machinery
+##     counts a house by sat behind the triangles the wall is drawn from -- and
+##     its own strike and tallies covered every pixel of what was left.
+##   - every plate patch on a snowed roof was under the snow sheet.
+##
+## A model in this list may not hide more than its row; hiding fewer is a fix
+## and passes, with a line asking for the row to come down, because a test that
+## fails when somebody mends something teaches people to delete it.
+const HIDDEN_ALREADY := {}
 
 
 func test_the_raster_culls_as_the_shaders_do() -> void:

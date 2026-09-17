@@ -155,6 +155,29 @@ const CLUMP_RINGS_SMALL: Array[Vector2] = [Vector2(0.76, 0.12), Vector2(1.0, 0.4
 const CLUMP_RINGS_TINY: Array[Vector2] = [Vector2(0.8, 0.16), Vector2(1.0, 0.52), Vector2(0.52, 0.9)]
 
 
+## The height share (0..1 of a `clump`'s `h`) of its upper surface at `u`, the
+## share of its radius out from the middle: CLUMP_RINGS read the other way
+## round, so anything laid ON a heap can be put where the heap actually is
+## rather than on an imagined cone. The MEAN surface — every corner of a clump
+## wobbles — so leave a little clearance, and note that a clump under
+## `STONE_SMALL` is built on a shorter profile than this one.
+static func clump_top(u: float) -> float:
+	var t := clampf(u, 0.0, 1.0)
+	var widest := 0
+	for i in CLUMP_RINGS.size():
+		if CLUMP_RINGS[i].x > CLUMP_RINGS[widest].x:
+			widest = i
+	if t >= CLUMP_RINGS[widest].x:
+		return CLUMP_RINGS[widest].y
+	for i in range(widest, CLUMP_RINGS.size() - 1):
+		var hi := CLUMP_RINGS[i]
+		var lo := CLUMP_RINGS[i + 1]
+		if t <= hi.x and t >= lo.x:
+			return lerpf(lo.y, hi.y, (t - lo.x) / maxf(hi.x - lo.x, 1e-4))
+	var last := CLUMP_RINGS[CLUMP_RINGS.size() - 1]
+	return lerpf(1.0, last.y, t / maxf(last.x, 1e-4))
+
+
 ## A lumpy clump: crowns, bushes, heather, turf banks. Rings and a rounded crown,
 ## smoothed into one mass — the same correction as `stone`, for the same reason:
 ## at two rings and flat normals a bush was a cut green gem.

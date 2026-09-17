@@ -304,8 +304,12 @@ static func _rebar(k: Kit, roots: Array, ends: Array) -> void:
 
 ## A rust run down a face from `top`: a streak `width` wide at the top, drying
 ## to a thread `length` below. `out` is the face's outward normal.
+## Wound from the direction it is meant to be seen from, not from corner order:
+## see props/works.gd `run`, which had the same fault and never drew at all.
 static func _run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
 	var along := Vector3(out.z, 0, -out.x) * width * 0.5
+	if along.cross(Vector3.DOWN).dot(out) < 0.0:
+		along = -along
 	var lift := out * 0.004
 	var mid := top + Vector3(0, -length * 0.45, 0)
 	var foot := top + Vector3(0, -length, 0)

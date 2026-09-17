@@ -63,9 +63,18 @@ static func walls(k: Kit, w: float, d: float, h: float, seed_value: int, front: 
 
 ## A point on a wall face (bl, br, tr, tl), u along, v up, pushed out a hair.
 static func on_wall(bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, v: float, out: float = 0.01) -> Vector3:
-	var p := bl.lerp(br, u).lerp(tl.lerp(tr, u), v)
-	var n := (tr - br).cross(bl - br).normalized()
-	return p + n * out
+	# On the TRIANGLE the wall is actually made of, not on the bilinear surface
+	# between its corners. `walls()` gives every corner its own lean and its own
+	# height, so a wall face is never planar, and MeshKit draws it as
+	# tri(bl, br, tr) + tri(bl, tr, tl): the bilinear point at the middle of a
+	# face can sit a finger BEHIND those triangles — measured, twice the hair a
+	# `wall_rect` stands proud by. That is why the enamel plate the machinery
+	# counts a house by drew nothing at all on three of the eight houses
+	# (tests/render/test_found_drawn.gd), and why anything else laid on a wall
+	# could silently sink into it.
+	if v <= u:
+		return bl * (1.0 - u) + br * (u - v) + tr * v + (tr - br).cross(bl - br).normalized() * out
+	return bl * (1.0 - v) + tr * u + tl * (v - u) + (tl - tr).cross(bl - tr).normalized() * out
 
 
 ## A rectangle on a wall face from (u0, v0) to (u1, v1).
@@ -77,15 +86,33 @@ static func wall_rect(pen: MeshKit, bl: Vector3, br: Vector3, tr: Vector3, tl: V
 ## hand, a third of the way along the wall and a little under half height.
 static func struck_plate(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, v: float) -> void:
 	var wlen := bl.distance_to(br)
-	var hu := 0.16 / wlen
-	var hv := 0.11
-	wall_rect(k.found, bl, br, tr, tl, u - hu, v - hv, u + hu, v + hv, 0.012, P.INK[0])
-	wall_rect(k.found, bl, br, tr, tl, u - hu * 0.85, v - hv * 0.8, u + hu * 0.85, v + hv * 0.8, 0.016, P.RIME[5])
-	for t in 5:
-		var tu := u - hu * 0.6 + t * hu * 0.3
-		wall_rect(k.found, bl, br, tr, tl, tu - 0.006, v + 0.02, tu + 0.006, v + 0.06, 0.02, P.SLATE[2])
-	# The strike: thick, a little off level, past both edges.
-	k.made.quad(on_wall(bl, br, tr, tl, u - hu * 1.25, v - 0.05, 0.026), on_wall(bl, br, tr, tl, u + hu * 1.25, v + 0.03, 0.026), on_wall(bl, br, tr, tl, u + hu * 1.25, v + 0.065, 0.026), on_wall(bl, br, tr, tl, u - hu * 1.25, v - 0.015, 0.026), P.INK[0])
+	# Every layer of it used to be covered by the one over it: the strike was a
+	# BAR a fifth of the plate's height and five tallies crossed the middle of
+	# the enamel, so between them nothing of the dark frame and nothing of the
+	# enamel face was left — the plate drew NOTHING from any bearing, on every
+	# house that carries one (tests/render/test_found_drawn.gd). A machine's
+	# plate is a cast frame with an enamel face set in it, and a strike through
+	# it is a SCORE, not a bar: the frame is wide enough to read, the tallies are
+	# small and low, and the score crosses without eating what it crosses. It is
+	# a SIZE and not a share of the wall, too: the plate a machine screwed to a
+	# house is the same plate whatever house it is on, and as a share of the
+	# height it came out two cells tall on the 1.0-high ones.
+	var wh := maxf(bl.distance_to(tl), 0.5)
+	var hu := 0.22 / wlen
+	var hv := 0.22 / wh
+	# Bolted on, so it stands clear of every other thing drawn on a wall (a rain
+	# run is 0.011 out, a board 0.030) rather than sharing their thickness.
+	wall_rect(k.found, bl, br, tr, tl, u - hu, v - hv, u + hu, v + hv, 0.036, P.INK[0])
+	wall_rect(k.found, bl, br, tr, tl, u - hu * 0.7, v - hv * 0.66, u + hu * 0.7, v + hv * 0.66, 0.042, P.RIME[5])
+	for t in 4:
+		var tu := u - hu * 0.44 + t * hu * 0.28
+		wall_rect(k.found, bl, br, tr, tl, tu - 0.005, v - hv * 0.56, tu + 0.005, v - hv * 0.2, 0.046, P.SLATE[2])
+	# The strike: a score across it, a little off level, past both edges. In
+	# world units too, so it stays a score and never becomes a bar.
+	var lo := 0.02 / wh
+	var hi := 0.055 / wh
+	var tilt := 0.035 / wh
+	k.made.quad(on_wall(bl, br, tr, tl, u - hu * 1.25, v + lo, 0.05), on_wall(bl, br, tr, tl, u + hu * 1.25, v + lo + tilt, 0.05), on_wall(bl, br, tr, tl, u + hu * 1.25, v + hi + tilt, 0.05), on_wall(bl, br, tr, tl, u - hu * 1.25, v + hi, 0.05), P.INK[0])
 
 
 ## A window: a copper frame over glass that is lit at night.
@@ -374,6 +401,15 @@ const COURSES_MOST := 9
 ## Stated in cells because that is what is dealt, and checked in area because
 ## that is what a player sees.
 const PLATE_CELLS_MOST := 0.2
+## How far up a slope, as a share of its courses, a plate cell may be laid. A
+## roof fails at the eave and the valley — that is where somebody puts a sheet
+## over the hole — and it is also the part of a roof the snow slides off, which
+## is what makes the patch read in the Snowfield. Dealt over the whole slope,
+## EVERY plate cell on a snowed house lay under the snow sheet and not one of
+## them was drawn from any bearing (tests/render/test_found_drawn.gd, 31 pieces
+## across four houses). The per-cell odds are raised by the same factor, so a
+## roof carries about as much plate as before, gathered where it is seen.
+const PLATE_ROWS := 0.5
 
 
 ## Cumulative length along a polyline, one entry per point.
@@ -476,7 +512,7 @@ static func patch_slope(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Ar
 			var c := _along(high, hc, clampf(up * 0.5 + l1 - run * 0.5, 0.0, up))
 			var d := _along(high, hc, clampf(up * 0.5 + l0 - run * 0.5, 0.0, up))
 			var h := Rng.hash01(s, r * 41 + i, 61)
-			if h < plate_share and plate_left > 0:
+			if h < plate_share / PLATE_ROWS and plate_left > 0 and float(r) < float(rows) * PLATE_ROWS:
 				plate_left -= 1
 				var lift := Vector3(0, 0.03, 0)
 				k.plate(b + lift, a + lift, d + lift, c + lift,
@@ -733,12 +769,20 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		k.made.strut(ridge[i] + Vector3(0, 0.03, 0), ridge[i + 1] + Vector3(0, 0.03, 0), 0.04, 4, P.SLATE[4])
 	# One silhouette break: a sheet of plate laid over a hole at the eave, cut to
 	# the hole and not to the roof, so it hangs past the line (art review 5).
+	#
+	# DOWN past the eave, not a third of the way up the roof. Reaching to 0.58 of
+	# the slope it lay flat over the eave courses, which are exactly where the
+	# roof's own plate patches are laid now (PLATE_ROWS), so on two of these
+	# houses the big sheet and a patch under it hid each other from every bearing
+	# (tests/render/test_found_drawn.gd). Bent down over the eave it breaks the
+	# roofline downward — the line this camera reads a house by — and it cannot
+	# cover the roof at all.
 	var oz := ez * (0.2 if form == 0 else -0.2)
 	var eave := Vector3(cx + ex, h - 0.05, oz)
-	var over_a := eave + Vector3(0.26, -0.07, -0.34)
-	var over_b := eave + Vector3(0.22, -0.05, 0.36)
-	var up_a := Vector3(cx + ex * 0.42, lerpf(h - 0.05, yr, 0.58), oz - 0.3)
-	var up_b := Vector3(cx + ex * 0.42, lerpf(h - 0.05, yr, 0.58), oz + 0.32)
+	var over_a := eave + Vector3(0.30, -0.44, -0.34)
+	var over_b := eave + Vector3(0.26, -0.40, 0.36)
+	var up_a := eave + Vector3(-0.04, 0.07, -0.3)
+	var up_b := eave + Vector3(-0.06, 0.09, 0.32)
 	k.plate(over_b, over_a, up_a, up_b, P.PLATE[3], P.PLATE[1], P.PLATE[4])
 	_chimney(k, cx + 0.05, yr - 0.55, (d * 0.5 - 0.24) * (1.0 if form == 0 else -1.0), 1.0, s + 10)
 	if form == 1:
@@ -747,12 +791,16 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		outshot(k, t, 2, s + 70, c)
 	turf_bank(k, t, s + 20, c)
 	if c == Country.SNOWFIELD:
-		# Snow over both slopes, the eaves left dark.
+		# Snow over the upper half of both slopes, the eave courses left dark: it
+		# reached 0.85 of the way down to the eave, which put it over every plate
+		# patch on the roof (see PLATE_ROWS).
 		var sl := Vector3(0, 0.05, 0)
-		k.made.quad(Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, P.RIME[5])
-		k.made.tri(Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr, ez) + sl, P.RIME[5])
-		k.made.tri(Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx + ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx, yr, -ez) + sl, P.RIME[5])
-		k.made.quad(Vector3(cx - ex * 0.85, lerpf(h, yr, 0.15), -ez) + sl, Vector3(cx - ex * 0.85, lerpf(h, yr, 0.15), ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, P.RIME[4])
+		var sf := 1.0 - PLATE_ROWS - 0.06
+		var sy := lerpf(h, yr, 1.0 - sf - 0.02)
+		k.made.quad(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, P.RIME[5])
+		k.made.tri(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr, ez) + sl, P.RIME[5])
+		k.made.tri(Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr, -ez) + sl, P.RIME[5])
+		k.made.quad(Vector3(cx - ex * sf, sy, -ez) + sl, Vector3(cx - ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, P.RIME[4])
 
 
 ## "long": a low stone house under deep thatch roped down with cable and
@@ -981,10 +1029,11 @@ static func _chimney(k: Kit, x: float, y0: float, z: float, h: float, seed_value
 	k.slab(x + lean, y0 + h - 0.01, z, 0.36, 0.07, 0.38, seed_value + 1, P.STONE[3], P.STONE[3], 0.02)
 
 
-## Snow lying on the upper slopes of a hipped roof.
+## Snow lying on the upper slopes of a hipped roof. It starts where `PLATE_ROWS`
+## stops, so the courses that carry plate are the courses the snow slid off.
 static func _snow_on(k: Kit, r: Array[Vector3]) -> void:
 	var lift := Vector3(0, 0.05, 0)
-	var f := 0.45
+	var f := PLATE_ROWS + 0.06
 	k.made.tri(r[2].lerp(r[6], f) + lift, r[1].lerp(r[4], f) + lift, r[5] + lift, P.RIME[5])
 	k.made.tri(r[6] + lift, r[2].lerp(r[6], f) + lift, r[5] + lift, P.RIME[5])
 	k.made.tri(r[5] + lift, r[1].lerp(r[4], f) + lift, r[4] + lift, P.RIME[5])
