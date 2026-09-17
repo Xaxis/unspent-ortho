@@ -54,6 +54,12 @@ const VENT_DAY_REACH := 0.45
 ## The lantern is a hand light: a small pool, a little dimmer than a lamp.
 ## compensate() never divides by a sky tint channel darker than this.
 const TINT_FLOOR := 0.45
+## How steeply a pool falls off. Not the inverse square a real point source
+## obeys: at that exponent a lamp is a hot spot with nothing round it, and what
+## a lantern is FOR is the few tiles round your feet.
+const ATTENUATION := 1.45
+## What a light's level is worth in linear light (see _set_light).
+const GAIN := 5.2
 const LANTERN_RANGE := 3.2
 ## The colour each kind of light throws (pools and wet reflections). People's
 ## lamps, windows and fires are warm, and so is the flame in the player's
@@ -190,15 +196,45 @@ func _new_light(n: String) -> OmniLight3D:
 	var l := OmniLight3D.new()
 	l.name = n
 	l.shadow_enabled = false
-	# No distance decay, only the range window: a broad even pool with a firm
-	# edge, which sky_pool() cuts into hard steps.
-	l.omni_attenuation = 0.0
-	l.light_specular = 0.0
+	l.shadow_bias = 0.035
+	l.shadow_normal_bias = 1.1
+	# It falls off the way light falls off. It used to have NO distance decay at
+	# all -- a flat disc inside a hard range window, because sky_pool() cut it
+	# into two steps afterwards anyway. There is no sky_pool any more; a lamp is
+	# a lamp.
+	l.omni_attenuation = ATTENUATION
+	# A lamp has to be ABLE to glint. Specular was off, which is why wet ground
+	# mirrored nothing and a machine's flank caught nothing: it was the one
+	# thing standing between this game and a reflection.
+	l.light_specular = 1.0
 	# Water is on its own layer and never takes lamplight (SkyLight.LAYER_WATER).
 	l.light_cull_mask = 0xFFFFF & ~SkyLight.LAYER_WATER
 	l.visible = false
 	add_child(l)
 	return l
+
+
+## Which of the live lights cast a shadow, nearest the player first.
+##
+## THE TIER DECIDES HOW MANY (`Quality.ROWS.shadow_lights`), and this system is
+## its only enforcer -- 0 on the web means lamps and fires light and cast
+## nothing, 16 on ultra means every one of them does. Nearest-first, because the
+## shadow the player can see is the one at their feet, and a light whose shadow
+## is turned off does not dim: it goes on lighting exactly as it did.
+func _cast_shadows(focus: Vector3) -> void:
+	var allow := int(Quality.current().get("shadow_lights", 0))
+	var live: Array[OmniLight3D] = []
+	for l: OmniLight3D in lights:
+		if l.visible:
+			live.append(l)
+	if lantern_light != null and lantern_light.visible:
+		# The player's own lantern casts first, whatever else is near: it is the
+		# one light they carry, and its shadow is the one they are steering by.
+		live.insert(0, lantern_light)
+	live.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool:
+		return a.position.distance_squared_to(focus) < b.position.distance_squared_to(focus))
+	for i in live.size():
+		live[i].shadow_enabled = i < allow
 
 
 func toggle_lantern() -> void:
@@ -573,6 +609,7 @@ func _update(delta: float, snap: bool) -> void:
 	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
 	game.sky.lamp_colors = pool_rgb
+	_cast_shadows(focus3)
 	_update_glints(focus3, hour, lit)
 
 
@@ -771,10 +808,14 @@ func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3) -> bool
 	l.visible = true
 	l.position = at
 	l.omni_range = reach
-	# Godot takes light_color as sRGB and linearises it before shading, but the
-	# world shader works in display values: hand it the colour pre-encoded.
+	# Godot takes light_color as sRGB and linearises it before shading; the
+	# levels here are display values, so hand it the colour pre-encoded.
 	l.light_color = Color(rgb.x / e, rgb.y / e, rgb.z / e).linear_to_srgb()
-	l.light_energy = e
+	# A lamp has to BEAT the night, or carrying one is a decoration. The gain is
+	# what puts its pool a stop and a half over SkyLight.NIGHT_AMBIENT at the
+	# foot of the post, and it is the number law 3 balances against: "night is
+	# genuinely dark, which is what makes a lantern matter".
+	l.light_energy = e * GAIN
 	return true
 
 

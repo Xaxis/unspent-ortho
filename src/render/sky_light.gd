@@ -541,8 +541,10 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
 	# lamp is a cone and a machine's lens is a shaft.
-	e.volumetric_fog_density = VOLUME_DENSITY * lerpf(0.55, 2.4,
-		clampf(maxf(fog.z, maxf(air.x, nightly * 0.55)), 0.0, 1.0))
+	# On a clear noon there is almost nothing in the air, and a volumetric haze
+	# that is always there is the papery veil again by another name.
+	e.volumetric_fog_density = VOLUME_DENSITY * lerpf(0.12, 2.4,
+		clampf(maxf(fog.z, maxf(air.x, nightly * 0.5)), 0.0, 1.0))
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
 	var g: Vector4 = neon_grade_at(hour, neon_shares)[0]

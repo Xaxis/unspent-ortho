@@ -229,47 +229,62 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	}
 	vec2 p = wp.xz;
 	float up = n_world.y;
-	// Where water sits and creeps: undersides, and the bottom of anything.
-	float under = clamp(0.55 - up, 0.0, 1.0);
+	// THE CAMERA ONLY EVER SEES TOPS AND NEAR-VERTICAL FLANKS. A wear model that
+	// puts its rust on the true underside is a wear model nobody can see: the
+	// first version of this did exactly that and the bog and the bone came out
+	// the same machine. So "low on the thing" is anything not facing the sky,
+	// and what a top face gets is what has RUN DOWN onto it from above.
+	float flank = clamp(0.78 - up, 0.0, 1.0);
+	float top = clamp(up, 0.0, 1.0);
 	// A seam or a lip: where two panels or two plates meet, which is where a
-	// crystal grows and a weld weeps. Only on something BUILT -- the land has
-	// no seams, and giving it any drew a honeycomb of cells over open ground.
+	// crystal grows and a weld weeps. Only on something BUILT -- the land has no
+	// seams, and giving it any drew a honeycomb of cells over open ground.
 	float seam = 0.0;
 	if (amount > 0.5) {
 		vec3 cd = matter_cells(vec2(p.x + wp.y * 1.7, p.y - wp.y * 1.3) * 3.3);
-		seam = smoothstep(0.10, 0.0, cd.y - cd.x);
+		seam = smoothstep(0.11, 0.0, cd.y - cd.x);
 	}
+	// Streaks: long in one world direction and short across it, so what weeps
+	// out of a seam RUNS instead of blooming in a circle.
+	float run = ink_vnoise(vec2(p.x * 0.8 + wp.y * 2.6, p.y * 3.4));
 	float grain = ink_vnoise(p * 2.7 + wp.y * 1.9);
-	// 1. RUST: creeping up from the underside in blooms, worst on the wet lands.
-	float rust = wear.r * amount * clamp(under * 1.6 + seam * 0.5, 0.0, 1.0)
-		* smoothstep(0.42, 0.72, grain * 0.7 + ink_vnoise(p * 0.7 + 13.0) * 0.3);
+	// 1. RUST: out of the seams and down the flanks, worst where nothing dries.
+	float rust = wear.r * amount
+		* clamp(flank * 1.15 + seam * 0.85 + top * run * 0.55, 0.0, 1.2)
+		* smoothstep(0.30, 0.66, grain * 0.55 + run * 0.45);
 	if (rust > 0.001) {
-		c = mix(c, mix(MATTER_RUST, MATTER_RUST_HOT, grain), clamp(rust, 0.0, 0.85));
-		rough_add += rust * 0.35;
+		c = mix(c, mix(MATTER_RUST, MATTER_RUST_HOT, grain), clamp(rust, 0.0, 0.88));
+		rough_add += rust * 0.40;
 	}
-	// 2. SALT: blooming white OUT of the seams, on what the wind dries.
-	float salt = wear.g * amount * clamp(seam * 1.5 + max(up, 0.0) * 0.35, 0.0, 1.0)
-		* smoothstep(0.40, 0.70, ink_vnoise(p * 1.3 + 41.0));
+	// 2. SALT: a dry granular bloom, out of every seam and lying on every ledge.
+	//    Rougher than what it grows on, which is how it reads apart from frost.
+	float salt = wear.g * amount
+		* clamp(seam * 1.5 + top * 0.75 + flank * 0.30, 0.0, 1.2)
+		* smoothstep(0.30, 0.62, ink_vnoise(p * 1.3 + 41.0) * 0.6 + grain * 0.4);
 	if (salt > 0.001) {
-		c = mix(c, MATTER_SALT, clamp(salt, 0.0, 0.75));
-		rough_add += salt * 0.25;
+		c = mix(c, MATTER_SALT, clamp(salt, 0.0, 0.80));
+		rough_add += salt * 0.45;
 	}
 	// 3. SOOT: in the lee. The wind says which side that is, so a whole field of
 	//    machines is blacked down one flank and clean down the other.
 	vec2 lee = normalize(sky_wind.xy + vec2(0.001, 0.0));
 	float in_lee = clamp(-dot(normalize(n_world.xz + vec2(1e-4)), lee), 0.0, 1.0);
-	float soot = wear.b * amount * clamp(in_lee * 0.8 + max(up, 0.0) * 0.5, 0.0, 1.0)
-		* smoothstep(0.30, 0.75, ink_vnoise(p * 0.9 + 7.0) * 0.6 + grain * 0.4);
+	float soot = wear.b * amount
+		* clamp(in_lee * 0.85 + top * 0.70 + seam * 0.35, 0.0, 1.2)
+		* smoothstep(0.24, 0.66, ink_vnoise(p * 0.9 + 7.0) * 0.6 + grain * 0.4);
 	if (soot > 0.001) {
-		c = mix(c, MATTER_SOOT, clamp(soot, 0.0, 0.8));
-		rough_add += soot * 0.20;
+		c = mix(c, MATTER_SOOT, clamp(soot, 0.0, 0.85));
+		rough_add += soot * 0.30;
 	}
-	// 4. FROST: on what faces the sky, and in the seams it splits.
-	float frost = wear.a * amount * clamp(max(up, 0.0) * 1.3 + seam * 0.4, 0.0, 1.0)
-		* smoothstep(0.38, 0.68, ink_vnoise(p * 1.9 + 61.0));
+	// 4. FROST: on what faces the sky, and in the seams it splits. SMOOTHER than
+	//    what it lies on -- it is ice -- so a frosted machine catches the light
+	//    where a salted one swallows it, and the two never read alike.
+	float frost = wear.a * amount
+		* clamp(top * 1.25 + seam * 0.55, 0.0, 1.2)
+		* smoothstep(0.26, 0.60, ink_vnoise(p * 1.9 + 61.0) * 0.65 + grain * 0.35);
 	if (frost > 0.001) {
-		c = mix(c, MATTER_FROST, clamp(frost, 0.0, 0.7));
-		rough_add -= frost * 0.25;
+		c = mix(c, MATTER_FROST, clamp(frost, 0.0, 0.78));
+		rough_add -= frost * 0.42;
 	}
 	return c;
 }

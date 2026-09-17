@@ -52,10 +52,34 @@ varying vec3 world_pos;
 // How metal a machine reads. Not 1.0: a fully metallic surface has no diffuse
 // at all, and in a dark game lit by two lamps that is a machine you cannot see
 // the shape of. Held here so the body keeps its ramp and the light adds to it.
-const float FOUND_METAL = 0.62;
-const float FOUND_ROUGH = 0.34;
-// Where the plate is rubbed back to bare metal: brighter, smoother, mirror-like.
-const float FOUND_RUBBED = 0.14;
+const float FOUND_METAL = 0.52;
+// These machines have stood out in the weather for years. A smooth metal under
+// a high sun throws the sun's own reflection straight up at this camera, which
+// is exactly how a harvester came to measure BRIGHTER than the turf it stands
+// on -- the one thing docs/ART.md section 4 and the Palette contract say a
+// machine must never be. It is rough because it is filthy, and what is left
+// smooth is the one rubbed edge.
+const float FOUND_ROUGH = 0.64;
+// Where the plate is rubbed back to bare metal: the chamfer lines and the one
+// worn edge, and nothing else.
+const float FOUND_RUBBED = 0.20;
+// THE MACHINE-AGAINST-THE-TURF LAW, and this is where it is enforced.
+//
+// docs/ART.md section 4 and the Palette contract: "the body fill sits BELOW the
+// turf in value, so the amber LENS stays the only saturated thing on a machine
+// and a machine is a dark mass by day". The palette keeps that -- the harvester's
+// fill is luma 0.322 against the coast turf's 0.373 -- but a palette value was
+// authored as what a surface LOOKED like when it was drawn in two flat bands,
+// not as what it reflects. Handed to a real sun and a real sky unchanged, a
+// machine's broad up-faces come back over the turf, which has meanwhile been
+// darkened by its own wear: measured +10.4 on main and +10.3 with the metal
+// merely roughened.
+//
+// So a machine's albedo is taken down to what it must be for the ordering to
+// survive the light. It is one number, it is measured, and the measurement is
+// tests/render/test_machine_mass.gd -- which shoots the frame rather than
+// reading the table, because the table was never what was wrong.
+const float FOUND_MASS = 0.55;
 
 // The panels a machine is built out of, in world space and on the machines'
 // own bearing -- ruled, regular, and nothing like the torn edges of the land.
@@ -102,8 +126,12 @@ void fragment() {
 	// Every panel is finished a shade differently, and its seams are darker and
 	// rougher than its face: that is what makes a machine read as ASSEMBLED
 	// rather than moulded, and it is the FOUND half of law 1.
-	float rub = smoothstep(0.72, 1.0, pan.y);
-	c *= 1.0 + (pan.y - 0.5) * 0.10 - pan.x * 0.28;
+	float rub = smoothstep(0.80, 1.0, pan.y);
+	// Every panel is finished a shade differently, and a seam is darker than the
+	// face either side of it. Only ever DOWN from the ramp's own value: the
+	// palette put the body fill below the turf deliberately and nothing here may
+	// lift it back over.
+	c *= 1.0 - pan.y * 0.09 - pan.x * 0.30;
 	float rough = mix(FOUND_ROUGH, FOUND_RUBBED, rub) + pan.x * 0.42;
 
 	// What standing HERE has done to it. A machine is the thing the law was
@@ -116,10 +144,10 @@ void fragment() {
 		c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, wear_take, rough_add);
 	}
 
-	ALBEDO = matter_albedo(c);
+	ALBEDO = matter_albedo(lit_part ? c : c * FOUND_MASS);
 	METALLIC = lit_part ? 0.0 : FOUND_METAL;
 	ROUGHNESS = clamp(rough + rough_add, 0.05, 1.0);
-	SPECULAR = 0.62;
+	SPECULAR = 0.48;
 	if (!lit_part) {
 		// The seams themselves, as relief: a ruled bevel, not a torn one.
 		NORMAL = matter_bump(NORMAL, world_pos, -1, 0.006 * relief);

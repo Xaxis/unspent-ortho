@@ -1,0 +1,49 @@
+# LANTERN law 1: matter is honest (docs/LOOK.md). The SAME machine, the same
+# kind, the same pose, in four landscapes, and the land it is standing in is
+# what has happened to it -- rust creeping up its underside in the bog, soot in
+# its lee in the Burning, a pale bloom out of its seams on the bone, frost on
+# what faces the sky in the snow. Nobody authored four harvesters.
+#
+#   tools/tour.sh tours/matter.tour --seed=7 --hour=11 --weather=clear:0
+#
+# Eleven in the morning and a clear sky on purpose: the wear has to read in
+# plain daylight, not be rescued by a mood. The frames are meant to be laid
+# side by side -- that is the whole proof, and it is why they are all one zoom
+# and one hour.
+weather clear:0
+hour 11
+zoom 8
+
+place moss
+wait 0.8
+spawn harvester
+wait 0.5
+shot 01-rusting-in-the-bog with mob:harvester,land:moss
+
+place burning
+wait 0.8
+spawn harvester
+wait 0.5
+shot 02-sooted-in-the-burning with mob:harvester,land:burning
+
+place bonelands
+wait 0.8
+spawn harvester
+wait 0.5
+shot 03-bloomed-on-the-bone with mob:harvester,land:bonelands
+
+place snowfield
+wait 0.8
+spawn harvester
+wait 0.5
+shot 04-frosted-on-the-snow with mob:harvester,land:snowfield
+
+# And the land itself takes a little of it, so a house and a fence in the bog
+# belong to the bog the same way the machine does.
+place moss
+wait 0.8
+zoom 14
+shot 05-the-bog-and-what-stands-in-it with land:moss
+place burning
+wait 0.8
+shot 06-the-burning-and-what-stands-in-it with land:burning
