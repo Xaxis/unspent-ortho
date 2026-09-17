@@ -32,6 +32,9 @@ const ROWS: Array[Dictionary] = [
 		"note": "Dev and playtest builds say what they are on the title; a release says nothing."},
 	{"id": "build.version", "group": "build", "label": "version", "kind": "text", "default": "0.0.0", "applies": "build",
 		"note": "Stamped into every build made from this."},
+	{"id": "build.quality", "group": "build", "label": "quality", "kind": "choice", "default": "auto",
+		"from": "quality", "applies": "boot",
+		"note": "The graphics tier a build of this boots at. auto: what the machine can do."},
 
 	{"id": "dev.access", "group": "dev", "label": "dev mode", "kind": "choice", "default": "off",
 		"options": ["off", "chord", "open"], "applies": "boot",

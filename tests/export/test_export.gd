@@ -40,7 +40,18 @@ func test_three_presets_with_their_variants() -> void:
 		var filters := str(cfg.get_value(p[name], "exclude_filter"))
 		for d in DEV_DIRS:
 			check(filters.contains(d + "*"), "%s excludes %s" % [name, d])
-	eq(ProjectSettings.get_setting("display/window/stretch/scale_mode"), "integer", "whole-number scaling, in the browser too")
+	# LANTERN took the whole-number nearest upscale out: it was the pixel-art
+	# contract and the image is fractional now (docs/LOOK.md). What is still worth
+	# pinning is the pair that keeps the tool loop alive and the web build honest —
+	# the frame is rendered into its own texture whatever size the window is
+	# ("viewport"), at the 1920x1080 base, and the browser gets Compatibility while
+	# the desktop gets Forward+.
+	eq(ProjectSettings.get_setting("display/window/stretch/scale_mode"), "fractional", "the image is no longer a whole-number upscale")
+	eq(ProjectSettings.get_setting("display/window/stretch/mode"), "viewport", "and it renders into its own texture, so an off-screen 1x1 window still shoots a full frame")
+	eq(Vector2i(int(ProjectSettings.get_setting("display/window/size/viewport_width")),
+		int(ProjectSettings.get_setting("display/window/size/viewport_height"))), UiBase.SIZE, "the base is UiBase.SIZE")
+	eq(ProjectSettings.get_setting("rendering/renderer/rendering_method"), "forward_plus", "the desktop target is Forward+")
+	eq(ProjectSettings.get_setting("rendering/renderer/rendering_method.web"), "gl_compatibility", "and the web degrades to Compatibility")
 	eq(ProjectSettings.get_setting("audio/general/default_playback_type.web"), 0, "the web mixes sound like everywhere else")
 
 

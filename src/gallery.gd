@@ -93,6 +93,7 @@ func _add_tags() -> void:
 	var layer := CanvasLayer.new()
 	layer.name = "tags"
 	layer.layer = 10
+	UiBase.fit(layer)
 	add_child(layer)
 	_tags = Control.new()
 	_tags.name = "canvas"

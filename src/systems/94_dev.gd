@@ -63,6 +63,7 @@ func setup(g: Game) -> void:
 	var layer := CanvasLayer.new()
 	layer.name = "dev"
 	layer.layer = 19
+	UiBase.fit(layer)
 	add_child(layer)
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -363,7 +364,7 @@ func _draw_overlay() -> void:
 	if _pairs.is_empty():
 		return
 	var h := _pairs.size() * UiTheme.LINE + 6
-	var r := Rect2i(14, 360 - 40 - h, 214, h)
+	var r := Rect2i(14, UiBase.DESIGN.y - 40 - h, 214, h)
 	Hud.clip(_overlay, r, true)
 	var y := r.position.y + 3
 	for pair: Array in _pairs:

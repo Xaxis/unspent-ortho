@@ -82,7 +82,7 @@ func _draw() -> void:
 		# Below the slate, where the dark band lies: what build this is, for anyone
 		# who sends word about it.
 		var words := DevStamp.label(stamp)
-		UiDraw.text_rimmed(self, Vector2i(640 - LABEL_AT.x - UiFont.width(words), 360 - LABEL_AT.y - 2), words, UiTheme.TEXT, UiTheme.RIM)
+		UiDraw.text_rimmed(self, Vector2i(UiBase.DESIGN.x - LABEL_AT.x - UiFont.width(words), UiBase.DESIGN.y - LABEL_AT.y - 2), words, UiTheme.TEXT, UiTheme.RIM)
 	if not DevMode.reachable() or is_open():
 		return
 	# A label stuck on the slate's lower bezel, clear of what is scratched into it

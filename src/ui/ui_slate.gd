@@ -84,7 +84,7 @@ static func dead_column_x(device: Rect2i) -> int:
 
 ## Dim the world behind the awake slate.
 static func veil(ci: CanvasItem) -> void:
-	UiDraw.rect(ci, Rect2i(0, 0, 640, 360), UiTheme.VEIL)
+	UiDraw.rect(ci, UiBase.screen(), UiTheme.VEIL)
 
 
 ## The device: bezel and glass, baked; a plain frame while the bake is out.

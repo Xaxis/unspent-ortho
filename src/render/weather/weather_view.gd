@@ -129,6 +129,9 @@ func setup(cam: CameraRig) -> void:
 	_bolt_layer = CanvasLayer.new()
 	_bolt_layer.name = "bolt_layer"
 	_bolt_layer.layer = -1
+	# Drawn in the slate's units like every other page-space layer, or the bolt
+	# would strike in the top-left ninth of the frame at the 1920x1080 base.
+	UiBase.fit(_bolt_layer)
 	add_child(_bolt_layer)
 	bolt = BoltDraw.new()
 	bolt.name = "bolt"

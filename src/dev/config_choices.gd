@@ -24,6 +24,14 @@ static func options(id: String) -> Array:
 			for k in Weather.KINDS:
 				out.append(String(k))
 			return out
+		"quality":
+			# Plain Strings: a configuration file is JSON and ConfigSchema compares
+			# a choice by kind as well as value. `auto` is not a tier — it is
+			# "whatever this machine can do", resolved by Quality.detect().
+			var out: Array = ["auto"]
+			for tier: StringName in Quality.ids():
+				out.append(String(tier))
+			return out
 	return (r.get("options", []) as Array).duplicate()
 
 

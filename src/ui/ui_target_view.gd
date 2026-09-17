@@ -71,6 +71,7 @@ var _t := 0.0
 
 func _ready() -> void:
 	layer = 11
+	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "marks"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)

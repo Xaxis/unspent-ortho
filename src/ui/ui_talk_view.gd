@@ -35,6 +35,7 @@ var _canvas: Control
 
 func _ready() -> void:
 	layer = 12
+	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "talk"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)

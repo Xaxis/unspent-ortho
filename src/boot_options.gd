@@ -71,6 +71,9 @@ extends RefCounted
 ##                     must be survived through real play fails if it is not (fight)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
 ##                     shaft, or at --at read as a tile of THAT realm's world (realms)
+## --quality=NAME      the graphics tier this run renders at (src/render/quality.gd):
+##                     ultra | high | medium | low | web. Beats the player's own
+##                     picture setting and the configuration, for this run only (render)
 ## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
 ##                     island, a new game's start, the live rules; named options still win (dev)
 ## --dev[=PAGE]        dev mode reachable in a tool run; PAGE opens the dev app at a page
@@ -136,6 +139,9 @@ var target_sweep := false
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
+## The graphics tier this run renders at (Quality.ROWS), or &"" to take whatever
+## the player's picture setting, the configuration, or this machine decides.
+var quality: StringName = &""
 var config := ""
 var dev := false
 var dev_page := ""
@@ -209,6 +215,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"
+			"quality": o.quality = StringName(v)
 			"config": o.config = v
 			"dev":
 				o.dev = true

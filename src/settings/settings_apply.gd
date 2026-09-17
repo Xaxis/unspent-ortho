@@ -17,12 +17,44 @@ const WORLD_BUSES: Array[StringName] = [&"World", &"Machines"]
 ## was found.
 static var for_a_person := false
 
+## A tier named on the command line (`--quality=`), or &"" for none. It beats both
+## settings doors, for this run only, and is never written to anyone's file.
+static var quality_asked: StringName = &""
+
 
 static func install(playing: bool) -> void:
 	for_a_person = playing
 	PlayerSettings.on_sound = Callable(SettingsApply, "sound")
 	PlayerSettings.on_window = Callable(SettingsApply, "window")
+	PlayerSettings.on_quality = Callable(SettingsApply, "quality")
 	PlayerSettings.apply_all()
+
+
+## The graphics tier this run renders at (docs/LOOK.md, src/render/quality.gd).
+##
+## THE SEAM. The tier ROWS live in `Quality` and are copied into neither settings
+## table; both doors only ever name one, and this is where the two meet, because
+## by design neither of them reads the other:
+##
+##   1. `--quality=NAME`          one run, for a shot or a tour. Beats everything.
+##   2. `picture.quality`         the player's, kept on their own device.
+##   3. `build.quality`           the owner's, pinned into a stamped build.
+##   4. `Quality.detect()`        what this machine can actually do.
+##
+## `auto` at any rung means "fall through to the next one", so a player who has
+## not chosen gets the build's tier, and a build that has not pinned one gets the
+## machine's. Unlike `window()` this is NOT guarded by `for_a_person`: a shot and a
+## tour must render at the same tier a player would see, or every picture in the
+## repository is evidence about a build nobody runs.
+static func quality() -> void:
+	var want := quality_asked
+	if want == &"" or want == &"auto":
+		want = StringName(str(PlayerSettings.value(&"picture.quality")))
+	if want == &"" or want == &"auto":
+		want = StringName(str(GameConfig.value("build.quality")))
+	if want == &"" or want == &"auto" or not Quality.has(want):
+		want = Quality.detect()
+	Quality.apply(want, Engine.get_main_loop() as SceneTree)
 
 
 ## Levels onto the bus layout SoundMix already declares, as an offset from what
@@ -83,14 +115,40 @@ static func window() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	if full:
 		return
-	var view := Vector2i(int(ProjectSettings.get_setting("display/window/size/viewport_width", 640)),
-		int(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
-	var want := view * maxi(1, int(PlayerSettings.value(&"picture.scale")))
+	var want := window_size(int(PlayerSettings.value(&"picture.scale")))
 	if w.size == want:
 		return
 	w.size = want
 	var screen := DisplayServer.screen_get_usable_rect(DisplayServer.SCREEN_PRIMARY)
 	w.position = screen.position + (screen.size - w.size) / 2
+
+
+## The window `picture.scale` asks for, never bigger than the screen it opens on.
+##
+## The scale counts the SLATE's pixels, not the base's (`UiBase.DESIGN`, not
+## `UiBase.SIZE`), which is what keeps the row's own words true — "whole pixels of
+## yours to one of the game's" is about the glass a player reads, and the glass is
+## still drawn in 640x360 units. It also keeps every scale the same window it was
+## before LANTERN raised the base: 2 is 1280x720 here as it was at the old floor.
+## Reading it off the base instead would make the default window 3840x2160.
+##
+## The world inside that window is rendered at the full 1920x1080 base (times the
+## quality tier's render scale) and fitted into it, so a bigger window buys a
+## bigger picture and never a coarser one.
+static func window_size(scale: int) -> Vector2i:
+	var want := UiBase.DESIGN * maxi(1, scale)
+	if not can_set_window():
+		return want
+	var room := DisplayServer.screen_get_usable_rect(DisplayServer.SCREEN_PRIMARY).size
+	if room.x <= 0 or room.y <= 0 or (want.x <= room.x and want.y <= room.y):
+		return want
+	# Too big for this display: step down whole slate-scales until it fits, so the
+	# window stays a whole multiple and never opens half off the screen.
+	for s in range(maxi(1, scale) - 1, 0, -1):
+		var smaller := UiBase.DESIGN * s
+		if smaller.x <= room.x and smaller.y <= room.y:
+			return smaller
+	return UiBase.DESIGN
 
 
 ## Whether the window rows mean anything on this device: a browser canvas and a
