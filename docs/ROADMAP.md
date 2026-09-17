@@ -713,6 +713,58 @@ Gaps it leaves for the rest of the wave:
 - Orbital and era realms are declared in the table and hold no landscape: their
   pages are not drawn, and `tests/realm` refuses a landscape registered into one.
 
+### Wave B: what the works-and-landmarks package made true
+
+`docs/VISION.md` §2, §3, §8. Two halves of one idea: a landscape must be worth
+crossing, and the machines must be doing something in it. Proved by
+`tours/works.tour` and `tours/landmarks.tour`, and by `tests/works/` and
+`tests/landmarks/`.
+
+- **A region the plan is working has a depot, and it can be put out.** One per
+  REGION with room enough and a work of the plan already standing in it
+  (`Works.sites`, pure and derived from the island, so it never moves and is
+  never saved): a raised deck on the survey bearing with a lattice mast over it,
+  bays added as the plan advances, and a strip along every rail. It is where the
+  region's machines come from — one of its own out of the yard and one on a round
+  along the survey — and three working parts hold it up, each its own walk across
+  open ground, each opened under a held key with a steel edge and filed as
+  sabotage the moment it goes. The third puts it dark for good: the lights out,
+  every plan work in the yard spent (which is what leaves that region's keeper
+  standing dark, `Sentinels.feeds`), nothing more put on the land from here, and
+  a tuft at a time of the ground closing over it. Measured: 162 bodies a day from
+  a working depot, 0 from a broken one, and ten depots on a 512-tile world found
+  in 0.6 ms.
+- **Eight kinds of place worth the walk, three to five in every landscape.** A
+  drowned lighthouse with the lens still in its cradle and no light in it; a
+  relay mast leaning in standing water with one strip still alive; a fire tower
+  whose bottom two flights are gone and whose last tenant's sacking is still on
+  the deck; the tall stack blinking over a land nothing is burning under; a ring
+  of standing stones with the fallen ones recast in concrete round rebar; a
+  salt-crusted evaporator stopped with its rake down; a hauler the land grew a
+  tree through; a clerk's post with its whole file out in the weather and still
+  in order. Each is read off the horizon before it is named, goes on the map the
+  moment it is found and stays there, and holds one deterministic roll off the
+  one economy — a landscape's own elite material where the landscape has one, so
+  the same kind of place is worth walking to twice in two landscapes.
+
+Gaps it leaves:
+
+- A landmark may not hold anything a machine carries: `Sources` walks any table
+  yielding such an item back to a roster body, and a place is not a body
+  (`tests/gear_economy/test_obtainable.gd`). So `axe_works` — the one piece in
+  the tree with no way to it, whose own row says the landmarks own it — is still
+  unreachable, and a wick in a lighthouse is still a test failure.
+- The salt flats and the scrapwood hold no elite material of their own (they have
+  no raw and no machine kind of their own, `EliteStock`), so their landmarks pay
+  in ordinary finds while every other landscape's pay in its own material.
+- A broken depot's plan stage stops where it was, but nothing else in the plan
+  reads `works_broken` yet: interference does not fall, and the region's other
+  depots (there is one per region, so there are none) cannot take over.
+- The land closing over a broken yard is proved in tests, not in a tour: it is
+  four world days and a tour cannot stand still for them.
+- Every landmark's cache is the same locker. The eight silhouettes differ; what
+  a player's hands go into does not.
+
 ## M3 — The landscapes
 
 Grow to at least 20 landscape types, each with its own props, decor, life, weather,

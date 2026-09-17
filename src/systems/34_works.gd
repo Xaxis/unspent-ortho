@@ -404,18 +404,24 @@ func _file(cause: StringName, at: Vector2) -> void:
 ## stop for good when it goes dark, which is the region quieting.
 func _put_out() -> void:
 	var minutes := game.clock.minutes
+	# How busy a depot is, live from the master configuration (docs/DEV.md): a
+	# playtest that wants to walk into a yard and look at it turns this to none,
+	# and one that wants the yard defended turns it up. Nothing else about the
+	# depot changes with it — it is lit, it can be broken, and it still quiets.
+	var busy := float(GameConfig.value("rules.works"))
 	for s in sites:
 		var st: WorksState = _states.get(s.region, null)
-		var dead: bool = st != null and st.broken()
+		var dead: bool = busy <= 0.0 or (st != null and st.broken())
 		if s.pos.distance_to(sim.hero.pos) > Works.REACH or sim.living() >= Spawner.MAX_LIVING:
 			continue
 		var kind := _worker_for(s)
 		if kind == &"":
 			continue
-		if minutes >= float(_own_at.get(s.region, -INF)) + Works.own_every(dead):
+		var rate := maxf(busy, 0.001)
+		if minutes >= float(_own_at.get(s.region, -INF)) + Works.own_every(dead) / rate:
 			_own_at[s.region] = minutes
 			_own(s, kind)
-		if minutes >= float(_round_at.get(s.region, -INF)) + Works.patrol_every(dead):
+		if minutes >= float(_round_at.get(s.region, -INF)) + Works.patrol_every(dead) / rate:
 			_round_at[s.region] = minutes
 			_patrol(s, kind)
 

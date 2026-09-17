@@ -82,6 +82,9 @@ const ROWS: Array[Dictionary] = [
 		"note": "No: nothing new is put on the land round the player."},
 	{"id": "rules.guide", "group": "rules", "label": "first-hour guide", "kind": "bool", "default": true, "applies": "live",
 		"note": "The goal line and the key hints of a first hour."},
+	{"id": "rules.works", "group": "rules", "label": "the works work", "kind": "choice", "default": 1.0,
+		"options": [0.0, 0.5, 1.0, 2.0, 4.0], "applies": "live",
+		"note": "How busy a region's depot is: how often it puts one of its own out and sends a round along the survey. None: it stands lit and sends nothing."},
 
 	{"id": "builds.targets", "group": "builds", "label": "makes", "kind": "targets", "default": ["web"],
 		"options": ["web", "web-nothreads", "mac"], "applies": "build",

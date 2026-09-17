@@ -70,5 +70,5 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 		var sites := Works.sites(w)
 		check(not sites.is_empty(), "there is something to find")
 	var ms := (Time.get_ticks_usec() - t) / 4000.0
-	print("works: %.2f ms to find every depot in a 512 world" % ms)
+	print("works: %.2f ms to find every depot in a 512 world (%d of them)" % [ms, Works.sites(w).size()])
 	lt(ms, 25.0 * machine_slack(), "finding the depots is not a stage a player waits through")
