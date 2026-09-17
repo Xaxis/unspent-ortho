@@ -110,6 +110,18 @@ static func make() -> BiomeDef:
 		&"trunk": [_w(P.LINEN[2])],
 		&"scrub": [_w(P.MOSS[4].lerp(P.SAND[4], 0.5)), _w(P.SAND[4]), _w(P.LINEN[3])],
 	}
+	# Brine takes everything: paint goes chalky, rubber perishes, and what the
+	# wind banks against a thing is crust rather than sand. The stone, the drift
+	# and the sods are its own washes because it declares them; this says only
+	# what the flat DOES to a thing left standing on it.
+	var dress := BiomeDressing.new()
+	dress.pale = [_w(P.LINEN[5]), _w(P.LINEN[4]), _w(P.LINEN[3])]
+	dress.bleach = _w(P.LINEN[4])
+	dress.facets = 5
+	# Nothing grows to build with, so a shelter here is sawn crust under tin.
+	dress.shelter = &"lean_to"
+	dress.sink = 0.1
+	d.dressing = dress
 	# Where the flat's brightness lives, and the whole of art review 1. The grade
 	# is ONE value for a frame: SkyLight averages every landscape in view and
 	# sky.gdshaderinc scales the graded colour by (1 - grade.x), a GAIN. So a

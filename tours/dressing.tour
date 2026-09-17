@@ -1,0 +1,44 @@
+# What a landscape's built things are made of (BiomeDressing).
+#   tools/tour.sh tours/dressing.tour --seed=1 --size=512 --hour=11 --weather=clear:0
+#
+# One village in each of the eight landscapes a seed-1 world holds, each frame
+# claiming the landscape it says it is in — because the whole package is the
+# claim that a village here is not a village there, and a frame that shows the
+# coast's houses under the name "bonelands" would prove the opposite of itself.
+# The village INDICES are the world's own list; if worldgen moves one under us
+# the `with land:` claim fails the tour rather than quietly renaming a picture.
+zoom 30
+hour 11
+weather clear:0
+
+village 0
+wait 0.4
+shot 01-coast with land:coast
+
+village 1
+wait 0.4
+shot 02-moss with land:moss
+
+village 4
+wait 0.4
+shot 03-pinewood with land:pinewood
+
+village 12
+wait 0.4
+shot 04-snowfield with land:snowfield
+
+village 6
+wait 0.4
+shot 05-bonelands with land:bonelands
+
+village 8
+wait 0.4
+shot 06-burning with land:burning
+
+village 7
+wait 0.4
+shot 07-salt-flats with land:salt_flats
+
+village 3
+wait 0.4
+shot 08-scrapwood with land:scrapwood

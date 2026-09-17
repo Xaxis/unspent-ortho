@@ -26,21 +26,18 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.PEAT_BANK: peat_bank(k, v, c)
 
 
-## Rock colour of a country: [body, shadowed body, what lies on top].
+## Rock colour of a landscape: [body, shadowed body, what lies on top].
+## Declared as `BiomeDressing.stone`, and worked out from the landscape's own
+## `rock_color` and `grass_colors` where it does not argue.
 static func geology(c: int) -> Array[Color]:
-	match c:
-		Country.MOSS: return [P.SLATE[2], P.SLATE[1], P.MOSS[2]]
-		Country.PINEWOOD: return [P.SLATE[2].lerp(P.SPRUCE[2], 0.3), P.SLATE[1], P.MOSS[2].lerp(P.SPRUCE[3], 0.4)]
-		Country.SNOWFIELD: return [P.SLATE[3].lerp(P.RIME[3], 0.3), P.SLATE[2], P.RIME[5]]
-		Country.BONELANDS: return [P.LINEN[3], P.LINEN[2], P.LINEN[4]]
-		Country.BURNING: return [P.STONE[1], P.STONE[0], P.RUST[2]]
-	return [P.SLATE[3], P.SLATE[2], P.LINEN[3]]
+	return BiomeDressing.of(c).stone
 
 
 static func boulder(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
+	var d := BiomeDressing.of(c)
 	var s := 7000 + v * 37 + c
-	var sides := 5 if c == Country.BONELANDS else 7
+	var sides := d.facets
 	var top := 0.0
 	match v % 4:
 		0:
@@ -60,19 +57,21 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 			k.stone(-0.34, -0.06, 0.24, 0.2, 0.3, s + 3, g[1], 5, -0.2)
 			top = 0.95
 	var cap_r: float = [0.32, 0.26, 0.4, 0.18][v % 4]
-	match c:
-		Country.SNOWFIELD:
-			k.clump(0.06, top - 0.06, 0.0, cap_r + 0.04, 0.14, s + 9, P.RIME[5], 6)
-		Country.MOSS, Country.PINEWOOD:
-			k.clump(-0.06, top - 0.08, 0.03, cap_r, 0.12, s + 9, g[2], 6)
-		Country.BURNING:
-			k.fleck(Vector3(0.3, 0.02, 0.16), Vector3(0.36, 0.02, 0.04), Vector3(0.24, top * 0.7, 0.08), GroundColors.glow(P.EMBER[2], 0.4))
-		_:
-			# Lichen blooms on the weather side.
-			for i in 3:
-				var a := float(i) * 2.1 + v
-				var p := Vector3(cos(a) * cap_r * 0.6 - 0.05, top + 0.005, sin(a) * cap_r * 0.6)
-				k.fleck(p, p + Vector3(0.08, 0.02, 0.06), p + Vector3(0.1, 0.0, -0.03), g[2] if i != 1 else P.MOSS[4])
+	# What lies on a stone here is the land's answer, not the stone's: snow where
+	# snow lies, an ember seam where nothing green survives, growth where it is
+	# damp enough for anything to take hold, and lichen everywhere else.
+	if d.cold():
+		k.clump(0.06, top - 0.06, 0.0, cap_r + 0.04, 0.14, s + 9, d.snow[0], 6)
+	elif BiomeDressing.burnt(c):
+		k.fleck(Vector3(0.3, 0.02, 0.16), Vector3(0.36, 0.02, 0.04), Vector3(0.24, top * 0.7, 0.08), GroundColors.glow(P.EMBER[2], 0.4))
+	elif BiomeDressing.mossy(c):
+		k.clump(-0.06, top - 0.08, 0.03, cap_r, 0.12, s + 9, g[2], 6)
+	else:
+		# Lichen blooms on the weather side.
+		for i in 3:
+			var a := float(i) * 2.1 + v
+			var p := Vector3(cos(a) * cap_r * 0.6 - 0.05, top + 0.005, sin(a) * cap_r * 0.6)
+			k.fleck(p, p + Vector3(0.08, 0.02, 0.06), p + Vector3(0.1, 0.0, -0.03), g[2] if i != 1 else P.MOSS[4])
 
 
 ## A rock drawn in bands: `rings` + 1 jittered rings rising to an apex, the
@@ -108,7 +107,7 @@ static func banded(k: Kit, radii: Array, heights: Array, cols: Array, apex: Vect
 ## is flat and shows its beds in bold lines and a row of wedge holes, and the
 ## split blocks lie tipped at its foot.
 static func stone_ore(k: Kit, v: int, c: int) -> void:
-	var pale := P.LINEN[4] if c != Country.BURNING else P.ASH[3]
+	var pale := BiomeDressing.of(c).pale[0]
 	var bed := GroundColors.down(pale, 0.9)
 	var s := 7500 + v * 41
 	banded(k, [0.58, 0.6, 0.6, 0.56, 0.54, 0.46, 0.34], [-0.06, 0.12, 0.16, 0.34, 0.38, 0.56, 0.66], [pale, bed, GroundColors.down(pale, 0.15), bed, pale, GroundColors.up(pale, 0.15)], Vector3(-0.04, 0.72, 0.0), 7, s, 0.85)
@@ -207,9 +206,10 @@ static func tin_ore(k: Kit, v: int, c: int) -> void:
 
 static func standing_stone(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
+	var d := BiomeDressing.of(c)
 	var s := 8000 + v * 43 + c
 	var cap_y := 0.0
-	var concrete := P.STONE[3].lerp(g[0], 0.2)
+	var concrete := d.concrete.lerp(g[0], 0.2)
 	match v % 3:
 		0:
 			# Quarried long ago: a tall leaning slab, lichen on the weather side.
@@ -265,8 +265,8 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 	# Turf round the foot.
 	k.clump(0.3, -0.05, 0.12, 0.16, 0.16, s + 30, P.MOSS[2], 5)
 	k.clump(-0.28, -0.05, -0.1, 0.13, 0.14, s + 31, P.MOSS[3], 5)
-	if c == Country.SNOWFIELD:
-		k.clump(0.0, cap_y, 0.0, 0.2, 0.12, s + 5, P.RIME[5], 6)
+	if d.cold():
+		k.clump(0.0, cap_y, 0.0, 0.2, 0.12, s + 5, d.snow[0], 6)
 
 
 ## A cast member, exact in plan (eight-sided, corners cut), standing from y0 to
@@ -318,8 +318,9 @@ static func _run(k: Kit, top: Vector3, width: float, length: float, out: Vector3
 
 
 static func clints(k: Kit, v: int, c: int) -> void:
-	var stone := P.LINEN[4] if c != Country.BURNING else P.ASH[3]
-	var side := P.LINEN[2] if c != Country.BURNING else P.ASH[1]
+	var pale := BiomeDressing.of(c).pale
+	var stone := pale[0]
+	var side := pale[2]
 	var s := 8500 + v * 7
 	# Flat worn slabs of limestone, barely proud of the turf, split by grikes:
 	# irregular polygons, never bricks.
@@ -344,7 +345,7 @@ static func clints(k: Kit, v: int, c: int) -> void:
 			var t0 := Vector3(p0.x, top_y + Kit.j(s, i * 20 + e, 0.015), p0.z).lerp(centre, 0.06)
 			var t1 := Vector3(p1.x, top_y + Kit.j(s, i * 20 + (e + 1) % sides, 0.015), p1.z).lerp(centre, 0.06)
 			k.made.quad(Vector3(p1.x, -0.04, p1.z), Vector3(p0.x, -0.04, p0.z), t0, t1, side)
-			k.made.tri(centre, t1, t0, stone if i % 2 == 0 else P.LINEN[5])
+			k.made.tri(centre, t1, t0, stone if i % 2 == 0 else GroundColors.up(stone, 0.3))
 		# A row of drill holes across the slab: the machine age in the stone.
 		if (i + v) % 2 == 0:
 			for d in 4:
@@ -352,8 +353,8 @@ static func clints(k: Kit, v: int, c: int) -> void:
 				k.made.tri(q + Vector3(-0.02, 0, -0.015), q + Vector3(0.02, 0, -0.015), q + Vector3(0.0, 0, 0.02), P.LINEN[1])
 	if v == 1:
 		# A slab split by a wedge, the halves apart.
-		k.stone(-0.02, 0.0, 0.0, 0.13, 0.16, s + 50, side, 5, 0.2, P.LINEN[5])
-		k.stone(0.22, 0.0, -0.02, 0.12, 0.14, s + 51, side, 5, -0.2, P.LINEN[5])
+		k.stone(-0.02, 0.0, 0.0, 0.13, 0.16, s + 50, side, 5, 0.2, GroundColors.up(stone, 0.3))
+		k.stone(0.22, 0.0, -0.02, 0.12, 0.14, s + 51, side, 5, -0.2, GroundColors.up(stone, 0.3))
 		k.found.prism(0.1, 0.1, -0.01, 0.03, 0.26, 0.008, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
 	# Ferns in the grikes.
 	k.hand(Ink.hand_of(c), 0.0)
@@ -370,6 +371,7 @@ static func clints(k: Kit, v: int, c: int) -> void:
 ## tapers to a point you can see from the next hill. One carries a lens off a
 ## machine looking out; one a crane arm stood up as a marker.
 static func cairn(k: Kit, v: int, c: int) -> void:
+	var d := BiomeDressing.of(c)
 	var g := geology(c)
 	var s := 8700 + v * 3 + c
 	var y := -0.06
@@ -410,8 +412,8 @@ static func cairn(k: Kit, v: int, c: int) -> void:
 			k.rod(Vector3(0.06, y + 0.3, 0), Vector3(0.4, y + 0.82, 0), 0.02, 4, P.PLATE[2])
 			k.rod(Vector3(0.7, y + 0.78, 0), Vector3(0.7, y + 0.4, 0), 0.01, 3, P.INK[2])
 			k.found.prism(0.7, y + 0.3, 0, 0.05, y + 0.4, 0.05, 4, P.PLATE[2], P.PLATE[4], PI * 0.25)
-	if c == Country.SNOWFIELD:
-		k.clump(0, y - 0.34, 0, 0.18, 0.1, s + 60, P.RIME[5], 6)
+	if d.cold():
+		k.clump(0, y - 0.34, 0, 0.18, 0.1, s + 60, d.snow[0], 6)
 
 
 static func mussel_rock(k: Kit, v: int, _c: int) -> void:

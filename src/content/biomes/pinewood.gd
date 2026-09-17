@@ -36,6 +36,22 @@ static func make() -> BiomeDef:
 	d.decor = {Ground.GRASS: [1.2, Decor.FERN, 30, Decor.BRACKEN, 26, Decor.TUFT_TALL, 14, Decor.MUSHROOM, 4, Decor.CONE, 6]}
 	d.grass_colors = [P.SPRUCE[2], P.MOSS[2]]
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
+	# Green-shadowed slate, resinous timber, and a needle mat over everything
+	# left lying. People watch the cut from a platform up among the trunks.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.SLATE[2].lerp(P.SPRUCE[2], 0.3), P.SLATE[1], P.MOSS[2].lerp(P.SPRUCE[3], 0.4)]
+	dress.timber = [P.EARTH[2], P.EARTH[1]]
+	dress.drift = [P.EARTH[2].lerp(P.EARTH[3], 0.4), P.EARTH[2]]
+	dress.covers = &"needles"
+	dress.shelter = &"blind"
+	dress.sink = 0.08
+	dress.lie = Vector2(0.05, 0.09)
+	dress.berry = P.BLOOM[1]
+	d.dressing = dress
+	d.tree_tints = {
+		&"leaf": [P.MOSS[1].lerp(P.SPRUCE[2], 0.5), P.MOSS[2], P.SPRUCE[3], P.MOSS[3]],
+		&"scrub": [P.SPRUCE[1], P.SPRUCE[2], P.SPRUCE[2].lerp(P.SPRUCE[3], 0.5)],
+	}
 	d.grade = Vector4(-0.45, 0.15, 0.05, 0.06)
 	# A closed canopy: less of the sky reaches this floor than reaches anywhere
 	# else on the surface, which is the whole reason a wood is frightening at

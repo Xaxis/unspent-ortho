@@ -56,7 +56,7 @@ const TERRAIN: Array[String] = [
 const LOOK: Array[String] = [
 	"display_name", "style_note",
 	"hatch", "grounds", "ground_marks", "cliff_wash", "water_wash", "strata", "bank_ground", "rock_ground",
-	"decor", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock",
+	"decor", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "night_sky", "grade", "wet", "lip_snow",
 	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
 ]

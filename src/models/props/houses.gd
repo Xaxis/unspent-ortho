@@ -289,8 +289,10 @@ static func outshot(k: Kit, t: Array[Vector3], side: int, s: int, c: int) -> voi
 	var hb := 0.46 + Kit.j(s, 6, 0.07)
 	var fat := fa + Vector3(Kit.j(s, 7, 0.06), ha, Kit.j(s, 8, 0.06))
 	var fbt := fb + Vector3(Kit.j(s, 9, 0.06), hb, Kit.j(s, 10, 0.06))
-	var boards: Color = P.EARTH[2] if c != Country.SNOWFIELD else P.EARTH[1]
-	var stone: Color = P.STONE[2] if c != Country.BONELANDS else P.LINEN[3]
+	# Sawn board, which is brought in and kept under a roof, so it is the same
+	# everywhere; the wall it is built off is the land's own building stone.
+	var boards := P.EARTH[2]
+	var stone := BiomeDressing.of(c).walling[0]
 	k.made.quad(fa, fb, fbt, fat, boards)
 	k.made.quad(wa, fa, fat, wat, GroundColors.down(stone, 0.2))
 	k.made.quad(fb, wb, wbt, fbt, stone)
@@ -329,11 +331,9 @@ static func door(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: 
 ## The bank runs out past the drip line as a skirt of sods, uneven along its
 ## length, with a few laid up the wall where the wind takes the corner.
 static func turf_bank(k: Kit, corners: Array[Vector3], seed_value: int, c: int) -> void:
-	var cols: Array[Color] = [P.MOSS[2], P.MOSS[3], P.MOSS[2].lerp(P.EARTH[2], 0.35)]
-	match c:
-		Country.SNOWFIELD: cols = [P.RIME[4], P.RIME[5], P.RIME[4].lerp(P.SLATE[3], 0.4)]
-		Country.BURNING: cols = [P.ASH[1], P.ASH[2], P.ASH[1].lerp(P.EARTH[1], 0.4)]
-		Country.BONELANDS: cols = [P.MOSS[3].lerp(P.SAND[4], 0.4), P.MOSS[3], P.SAND[3].lerp(P.MOSS[3], 0.4)]
+	# Sods cut from the ground the house stands on (BiomeDressing.turf): coast
+	# moss banked against a house on the Bonelands read as a stripe of paint.
+	var cols := BiomeDressing.of(c).turf
 	for side in 4:
 		var a := corners[side]
 		var b := corners[(side + 1) % 4]
@@ -626,6 +626,7 @@ static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: floa
 ## the wash has come off, where the roof failed and was plated, and the chimney,
 ## so no two in a village are the same drawing.
 static func washed(k: Kit, c: int, form: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 1400 + form * 37
 	# Three houses of plainly different size, so a village does not read as one
 	# house drawn three ways: the middle one is a third the footprint of the big.
@@ -634,7 +635,7 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	var h: float = [1.45, 1.05, 1.5][form]
 	var wash: Color = [P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form]
 	var t := walls(k, w, d, h, s, wash, GroundColors.down(wash, 0.35))
-	var moss: Color = P.MOSS[2] if c != Country.SNOWFIELD else P.SLATE[2]
+	var moss := dress.growth
 	for fi in faces(t).size():
 		var wf: Array = faces(t)[fi]
 		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 13, P.STONE[2] if fi % 2 == 0 else P.STONE[3], moss)
@@ -684,13 +685,14 @@ static func washed(k: Kit, c: int, form: int) -> void:
 		# the house is solid within: form 2 is 3.3 deep and only 2.7 across.
 		outshot(k, t, 3 if form == 0 else 2, s + 70, c)
 	turf_bank(k, t, s + 20, c)
-	if c == Country.SNOWFIELD:
-		_snow_on(k, r)
+	if dress.cold():
+		_snow_on(k, r, dress.snow)
 
 
 ## "slated": a gable house of rubble; half its slates, the other half replaced
 ## in plate course by course.
 static func slated(k: Kit, c: int, form: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 1500 + form * 41
 	var w := 2.3 if form == 0 else 1.7
 	var d := 3.2 if form == 0 else 3.55
@@ -698,7 +700,7 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	# Warm grey rubble, a clear step lighter than the slate over it.
 	var rubble: Color = P.STONE[3].lerp(P.SAND[3], 0.4) if form == 0 else P.STONE[3].lerp(P.LINEN[3], 0.35)
 	var t := walls(k, w, d, h, s, rubble, GroundColors.down(rubble, 0.3), Vector3(-0.04, 0, 0.02) if form == 0 else Vector3(0.03, 0, -0.03))
-	var moss: Color = P.MOSS[2] if c != Country.SNOWFIELD else P.SLATE[2]
+	var moss := dress.growth
 	for fi in faces(t).size():
 		var wf: Array = faces(t)[fi]
 		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 17, GroundColors.down(rubble, 0.4), moss)
@@ -790,22 +792,23 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		# spanned the door it was supposed to be reached through.
 		outshot(k, t, 2, s + 70, c)
 	turf_bank(k, t, s + 20, c)
-	if c == Country.SNOWFIELD:
+	if dress.cold():
 		# Snow over the upper half of both slopes, the eave courses left dark: it
 		# reached 0.85 of the way down to the eave, which put it over every plate
 		# patch on the roof (see PLATE_ROWS).
 		var sl := Vector3(0, 0.05, 0)
 		var sf := 1.0 - PLATE_ROWS - 0.06
 		var sy := lerpf(h, yr, 1.0 - sf - 0.02)
-		k.made.quad(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, P.RIME[5])
-		k.made.tri(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr, ez) + sl, P.RIME[5])
-		k.made.tri(Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr, -ez) + sl, P.RIME[5])
-		k.made.quad(Vector3(cx - ex * sf, sy, -ez) + sl, Vector3(cx - ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, P.RIME[4])
+		k.made.quad(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, dress.snow[0])
+		k.made.tri(Vector3(cx + ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr, ez) + sl, dress.snow[0])
+		k.made.tri(Vector3(cx, yr - sag, -ez * 0.2) + sl, Vector3(cx + ex * sf, sy, -ez) + sl, Vector3(cx, yr, -ez) + sl, dress.snow[0])
+		k.made.quad(Vector3(cx - ex * sf, sy, -ez) + sl, Vector3(cx - ex * sf, sy, ez) + sl, Vector3(cx, yr - sag, ez * 0.2) + sl, Vector3(cx, yr - sag, -ez * 0.2) + sl, dress.snow[1])
 
 
 ## "long": a low stone house under deep thatch roped down with cable and
 ## weighted with cast discs, built against the foot of a lattice pylon.
 static func long_house(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 1600
 	var w := 2.0
 	var d := 3.4
@@ -860,8 +863,8 @@ static func long_house(k: Kit, c: int) -> void:
 		k.rod(Vector3(l.x, 0.05, l.y), Vector3(n.x * 0.9, 0.9, pz + (n.y - pz) * 0.9), 0.016, 4, P.PLATE[2])
 		k.chamfer(l.x, -0.04, l.y, 0.2, 0.14, 0.2, 0.04, P.STONE[2], P.STONE[3])
 	turf_bank(k, t, s + 20, c)
-	if c == Country.SNOWFIELD:
-		_snow_on(k, r)
+	if dress.cold():
+		_snow_on(k, r, dress.snow)
 
 
 ## "half": a house whose far end came down and was never rebuilt. What is left
@@ -869,13 +872,14 @@ static func long_house(k: Kit, c: int) -> void:
 ## spill of its own stone with grass in it, and the roof over the standing half
 ## falls one way only. A shape no other house in a village can be mistaken for.
 static func half_house(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var s := 1800
 	var w := 2.0
 	var d := 2.2
 	var h := 1.25
 	var rubble := P.STONE[3].lerp(P.SAND[3], 0.25)
 	var t := walls(k, w, d, h, s, rubble, GroundColors.down(rubble, 0.3), Vector3(0.06, 0.0, -0.05))
-	var moss: Color = P.MOSS[2] if c != Country.SNOWFIELD else P.SLATE[2]
+	var moss := dress.growth
 	for fi in faces(t).size():
 		var wf: Array = faces(t)[fi]
 		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 19, GroundColors.down(rubble, 0.4), moss)
@@ -929,9 +933,9 @@ static func half_house(k: Kit, c: int) -> void:
 		k.clump(p.x, -0.05, p.y, 0.16, 0.2, s + 100 + i, moss if i % 2 else P.MOSS[3], 6)
 	k.sway_by_height(gs, 0.0, 0.2, 0.2)
 	turf_bank(k, t, s + 20, c)
-	if c == Country.SNOWFIELD:
+	if dress.cold():
 		k.made.quad(Vector3(-w * 0.5 - 0.2, h + 0.78, -d * 0.5), Vector3(0.1, h + 0.4, -d * 0.5),
-			Vector3(0.1, h + 0.4, d * 0.5), Vector3(-w * 0.5 - 0.2, h + 0.78, d * 0.5), P.RIME[5])
+			Vector3(0.1, h + 0.4, d * 0.5), Vector3(-w * 0.5 - 0.2, h + 0.78, d * 0.5), dress.snow[0])
 
 
 ## "but": a machine housing lived in. The housing is FOUND and exact: rounded
@@ -939,6 +943,7 @@ static func half_house(k: Kit, c: int) -> void:
 ## people did to it is MADE: sods along the lid, a stone chimney through it, a
 ## plank door in the burnt-through hole, bars across the hatch.
 static func but(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
 	var w := 2.1
 	var d := 2.6
 	var h := 1.15
@@ -986,11 +991,7 @@ static func but(k: Kit, c: int) -> void:
 	salvage(k, xb[0], xb[1], xb[2], xb[3], 0.62, 1340)
 	# Sods laid along the lid, uneven, and cut from the ground they stand on:
 	# coast moss on the Bonelands read as a stripe of paint on a grey landscape.
-	var sods: Array[Color] = [P.MOSS[2], P.MOSS[3]]
-	match c:
-		Country.SNOWFIELD: sods = [P.RIME[4], P.SLATE[3]]
-		Country.BURNING: sods = [P.ASH[1], P.ASH[2]]
-		Country.BONELANDS: sods = [P.MOSS[3].lerp(P.SAND[4], 0.5), P.SAND[3]]
+	var sods: Array[Color] = [dress.turf[0], dress.turf[3]]
 	var top := h + 0.26
 	for i in 5:
 		var z := -d * 0.5 + 0.42 + i * 0.44
@@ -999,16 +1000,16 @@ static func but(k: Kit, c: int) -> void:
 	_chimney(k, -0.55, top - 0.2, -0.8, 0.95, 1310)
 	var foot: Array[Vector3] = [Vector3(-w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, -d * 0.5), Vector3(w * 0.5, 0, d * 0.5), Vector3(-w * 0.5, 0, d * 0.5)]
 	turf_bank(k, foot, 1320, c)
-	if c == Country.SNOWFIELD:
+	if dress.cold():
 		# Snow lying on each sod and drifted against the chimney, the lid's
 		# ruled edge left showing where the wind cleared it.
 		for i in 5:
 			var z := -d * 0.5 + 0.42 + i * 0.44
 			var x := Kit.j(1301, i, 0.08)
-			k.clump(x - 0.1 + fmod(i * 0.37, 0.2), top + 0.05, z, (w - 0.8) * 0.5, 0.12 + fmod(i * 0.13, 0.05), 1350 + i, P.RIME[5], 7)
-			k.clump(x + 0.35 - fmod(i * 0.23, 0.2), top + 0.05, z + 0.08, 0.2, 0.1, 1370 + i, P.RIME[4], 6)
-		k.clump(-0.4, top + 0.05, -0.62, 0.26, 0.2, 1360, P.RIME[5], 7)
-		k.clump(w * 0.5 - 0.1, -0.04, -0.9, 0.34, 0.3, 1361, P.RIME[5], 7)
+			k.clump(x - 0.1 + fmod(i * 0.37, 0.2), top + 0.05, z, (w - 0.8) * 0.5, 0.12 + fmod(i * 0.13, 0.05), 1350 + i, dress.snow[0], 7)
+			k.clump(x + 0.35 - fmod(i * 0.23, 0.2), top + 0.05, z + 0.08, 0.2, 0.1, 1370 + i, dress.snow[1], 6)
+		k.clump(-0.4, top + 0.05, -0.62, 0.26, 0.2, 1360, dress.snow[0], 7)
+		k.clump(w * 0.5 - 0.1, -0.04, -0.9, 0.34, 0.3, 1361, dress.snow[0], 7)
 
 
 ## A plate taken off a machine, laid on a front roof slope (e10, e11, r1, r0)
@@ -1031,15 +1032,15 @@ static func _chimney(k: Kit, x: float, y0: float, z: float, h: float, seed_value
 
 ## Snow lying on the upper slopes of a hipped roof. It starts where `PLATE_ROWS`
 ## stops, so the courses that carry plate are the courses the snow slid off.
-static func _snow_on(k: Kit, r: Array[Vector3]) -> void:
+static func _snow_on(k: Kit, r: Array[Vector3], snow: Array[Color]) -> void:
 	var lift := Vector3(0, 0.05, 0)
 	var f := PLATE_ROWS + 0.06
-	k.made.tri(r[2].lerp(r[6], f) + lift, r[1].lerp(r[4], f) + lift, r[5] + lift, P.RIME[5])
-	k.made.tri(r[6] + lift, r[2].lerp(r[6], f) + lift, r[5] + lift, P.RIME[5])
-	k.made.tri(r[5] + lift, r[1].lerp(r[4], f) + lift, r[4] + lift, P.RIME[5])
-	k.made.tri(r[0].lerp(r[4], f) + lift, r[3].lerp(r[6], f) + lift, r[5] + lift, P.RIME[4])
-	k.made.tri(r[4] + lift, r[0].lerp(r[4], f) + lift, r[5] + lift, P.RIME[4])
-	k.made.tri(r[5] + lift, r[3].lerp(r[6], f) + lift, r[6] + lift, P.RIME[4])
+	k.made.tri(r[2].lerp(r[6], f) + lift, r[1].lerp(r[4], f) + lift, r[5] + lift, snow[0])
+	k.made.tri(r[6] + lift, r[2].lerp(r[6], f) + lift, r[5] + lift, snow[0])
+	k.made.tri(r[5] + lift, r[1].lerp(r[4], f) + lift, r[4] + lift, snow[0])
+	k.made.tri(r[0].lerp(r[4], f) + lift, r[3].lerp(r[6], f) + lift, r[5] + lift, snow[1])
+	k.made.tri(r[4] + lift, r[0].lerp(r[4], f) + lift, r[5] + lift, snow[1])
+	k.made.tri(r[5] + lift, r[3].lerp(r[6], f) + lift, r[6] + lift, snow[1])
 
 
 ## A ruin: drystone walls fallen to uneven heights, never a stack of blocks.
@@ -1047,13 +1048,8 @@ static func _snow_on(k: Kit, r: Array[Vector3]) -> void:
 ## uneven stones, coping lumps along what is left of the top, and the stones
 ## that fell lying in a spill at its foot, grassed over.
 static func ruin(k: Kit, v: int, c: int) -> void:
-	var stone: Array[Color] = [P.STONE[2], P.SLATE[2], P.STONE[3], P.SLATE[3]]
-	if c == Country.BONELANDS:
-		stone = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.SAND[3]]
-	elif c == Country.BURNING:
-		stone = [P.STONE[1], P.ASH[1], P.STONE[2], P.STONE[0]]
-	elif c == Country.SNOWFIELD:
-		stone = [P.SLATE[2], P.SLATE[3], P.STONE[3], P.RIME[2]]
+	# The stone people build a wall out of here (BiomeDressing.walling).
+	var stone := BiomeDressing.of(c).walling
 	var s := 1700 + v * 31
 	match v % 3:
 		0:

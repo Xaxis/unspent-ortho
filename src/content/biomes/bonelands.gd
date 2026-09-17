@@ -46,6 +46,30 @@ static func make() -> BiomeDef:
 	d.rock_color = P.LINEN[3]
 	d.hard_rock = true
 	d.decor_tints = {&"bloom": [P.BRINE[3], P.BRINE[4], P.LINEN[4]], &"spoil": [P.LINEN[4]]}
+	# Limestone, which breaks slabby rather than round, and a sun that takes the
+	# colour out of everything left in it — so paint goes chalky and a tyre
+	# perishes. What grows is a hawthorn bent right over by the wind.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.LINEN[3], P.LINEN[2], P.LINEN[4]]
+	dress.facets = 5
+	dress.timber = [P.LINEN[3], P.LINEN[2]]
+	dress.drift = [P.LINEN[4].lerp(P.SAND[4], 0.4), P.LINEN[3]]
+	dress.turf = [P.MOSS[3].lerp(P.SAND[4], 0.4), P.MOSS[3], P.SAND[3].lerp(P.MOSS[3], 0.4), P.SAND[3]]
+	dress.walling = [P.LINEN[3], P.LINEN[2], P.LINEN[4], P.SAND[3]]
+	dress.sign = [P.LINEN[5].lerp(P.PLATE[4], 0.2), P.INK[1]]
+	dress.bleach = P.LINEN[3]
+	dress.wind = 0.13
+	dress.sink = 0.14
+	dress.lie = Vector2(0.08, -0.07)
+	dress.berry = P.RUST[3]
+	dress.shelter = &"lean_to"
+	dress.crown = &"low"
+	dress.spread = 1.3
+	d.dressing = dress
+	d.tree_tints = {
+		&"leaf": [P.MOSS[3].lerp(P.SAND[4], 0.35), P.MOSS[3], P.MOSS[4].lerp(P.LINEN[4], 0.35), P.MOSS[3].lerp(P.SAND[3], 0.3)],
+		&"scrub": [P.MOSS[3].lerp(P.SAND[4], 0.35), P.MOSS[3], P.MOSS[4].lerp(P.LINEN[3], 0.35)],
+	}
 	d.grade = Vector4(-0.03, 0.14, -0.02, 0.12)
 	# Nothing stands here and the ground is bone: an open sky over a pale floor,
 	# so the night is wide and cold rather than dark. What makes it frightening is
