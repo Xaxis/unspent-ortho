@@ -48,6 +48,8 @@ class_name Roster
 ##                           machine is open: spent, stalled or not roused (FightSim.reaches_part)
 ##   through: bool           moves through the player's body (charges, sweepers)
 ##   sight_only: bool        notices by eye alone
+##   sentinel: StringName    this body is a landscape's keeper: the design id in
+##                           src/core/sentinel/designs/ whose phases drive it
 
 ## Standing water and the mud at its edge: where a dredger may go (a bank of turf is the answer to one).
 const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
@@ -214,7 +216,47 @@ const DEFS := {
 		"takes": 0.0, "drops": 0, "linger": 8.0, "chance": 14,
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
 	},
+
+	# --- Sentinels: the keeper a landscape has (docs/VISION.md §3) ------------
+	# A sentinel's body is a roster row like any other machine's, so everything
+	# that already reads a machine takes it as one: the senses, the plan's
+	# disposition, the fight, the enemy read under `z`. What makes it a sentinel
+	# is its design (src/core/sentinel/designs/) and the PHASES that rewrite the
+	# live body's own copy of this row as it comes apart (SentinelPhase) — the
+	# working side moves, the bite changes, and the read changes with them.
+	#
+	# `hours: [0, 0]` is no hour of any day, so the coast's own rolls can never
+	# put one out (Spawner.moment_fits); a keeper stands where its region's works
+	# are and 44_sentinels is the only thing that wakes it. `drops: 0` for the
+	# same reason: what a keeper gives comes off its table in src/core/loot.
+	&"sentinel.coast": {
+		"model": &"sentinel_reaper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"front", "guarded": true, "sentinel": &"tide_reaper",
+		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 132,
+		"sees": 15, "hears": 11, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [820, 170, 800, 900], "reach": 1.9, "width": 2.6, "dmg": 3, "knock": 9.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
+	&"sentinel.salt": {
+		"model": &"sentinel_rake", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
+		"part": &"back", "sentinel": &"pan_rake",
+		"pace": 4.6, "dash": 9.0, "quick": 310, "radius": 1.3, "height": 3.0, "life": 114,
+		"sees": 17, "hears": 8, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.8,
+		"bite": {"swing": [620, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 }
+
+
+## The sentinel design this row's body belongs to (src/core/sentinel/), or &"":
+## the one field that tells a keeper from an ordinary machine, so 44_sentinels can
+## adopt one however it was put out (its own region's station, --spawn, a tour).
+static func sentinel_of(kind: StringName) -> StringName:
+	return row(kind).get("sentinel", &"")
 
 
 static func has(kind: StringName) -> bool:

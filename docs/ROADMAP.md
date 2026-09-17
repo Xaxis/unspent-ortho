@@ -313,8 +313,8 @@ machines-day, slate-polish, score-blend.
   do about script compilation racing world generation on a cold start.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
-- `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
-  reads either yet.
+- `BiomeDef.realms` is declared and validated; nothing reads it yet.
+  (`BiomeDef.sentinel` is now the door the sentinels package comes through.)
 - `src/models/props/{houses,remains,rocks,shore,works,built}.gd` still switch on
   `Country` for per-landscape dressing, so a landscape added after the M1 six is
   dressed as the coast until they read the registry. `trees.gd` is the pattern
@@ -345,8 +345,8 @@ machines-day, slate-polish, score-blend.
 - **realms**: realms and portals; the first underground type (Limestone Caves,
   drawn as scratchboard); the first era (The Before, drawn in watercolour) with
   edits that carry into the present.
-- **sentinels**: the boss spine, plus the Coast and Salt Flats sentinels, each beatable
-  three ways.
+- **sentinels** (built, below): the boss spine, plus the Coast and Salt Flats
+  sentinels, each beatable three ways.
 - **crafts**: the vehicle spine; raft, hover sled, walker rig.
 - **gear**: the MENDED tech tree (20+ implements, 15+ modules) **plus the economy that
   places it** (VISION §6.1): five rarity grades, elite materials that exist in one or
@@ -360,6 +360,66 @@ machines-day, slate-polish, score-blend.
   the raid itself, destruction, aftermath and reclaiming.
 - **works**: machine depots that feed patrols, can be broken and let a region recover.
 - **landmarks**: 3-5 kinds per type, worth the walk.
+
+### Sentinels (wave B, built)
+
+`docs/VISION.md` §3. A landscape's keeper is one file under
+`src/core/sentinel/designs/`, claimed by name in that landscape's own file
+(`BiomeDef.sentinel`), and every REGION of that type grows its own instance from
+it. Proved by `tours/sentinels.tour` and `tests/sentinel/`.
+
+#### What is true
+
+- **A keeper stands at the work it keeps.** One per region above
+  `Sentinels.MIN_TILES`, at the first of the design's own station landmarks
+  (`intake`, `sea_wall`, `pans`, `brine_house`…) that its region holds, and never
+  within `Sentinels.CLEAR_OF_HOME` of where the player wakes. Deterministic, so
+  it can be walked to twice. Its body comes out when the player is near and is
+  culled by the coast when they leave; what has been done to it — its health, the
+  phase it reached, whether it fell and how — lives in `SentinelState` and is saved.
+- **A phase is a roster row.** Entering one rewrites the live body's own copy of
+  its row (part, guarded, bite, speeds, turn), so the fight, the senses, the poses
+  and the enemy read under `z` all tell the truth about what it is NOW without
+  knowing what a sentinel is. The side a player has to be on moves as it comes
+  apart, and nothing says so but the body (`second_act`, drawn by 40_fight).
+- **Three ways each, and none of them is trading hits** (`SentinelWay`, pure
+  rules over a `SentinelLook`): force (its working part, opening by opening),
+  founder (ground that will not carry it — the coast's tide flats, the flats' own
+  pans), starve (its works robbed until it stands dark) and spoof (inside its
+  guard with a signature it reads as one of its own; it stands down and is never
+  killed). The reaper offers force, founder and starve; the rake force, founder
+  and spoof.
+- **Its fall changes the region.** It stops holding its ground, the score's motif
+  stops with its beacon, its table is rolled into the player's hands once and for
+  good (`src/core/loot`), and a keeper that was killed leaves a hulk where it fell
+  that is saved with the world. `Events.sentinel_woke/phase/fell` is the door for
+  whatever else the plan should make of a region whose keeper has gone.
+- **Two drawings**: the reaper, an arch on two tracks with a drum of amber under
+  the front (the one silhouette on the coast with daylight through it), and the
+  rake, a delta on four stilts under a mirror. Both on the keeper's ramp, both in
+  the gallery (`--filter=sentinel`, `--filter=sentinel_beside` for scale).
+
+#### Gaps
+
+- A keeper has no machine loop of its own: `SoundMachines.RACKET` is keyed by the
+  tail of a roster id, and `sentinel.coast` has none, so it is heard through the
+  score's motif and `Racket`'s line but makes no sound of its own.
+- Its drop table names a core (`reaper_core`, `rake_core`) declared in `Materials`
+  as coming from it and nowhere else, but there is no item row to carry one yet:
+  `src/content/items.gd` belongs to the gear package this wave, so the core is a
+  promise on the table until that lands.
+- The tour proves the fight and the phases; it does not kill it. Five or six more
+  of the same pass against a boss measures the runner, not the game, so the death,
+  the phases, the openings and what a fall changes are proved headless in
+  `tests/sentinel/test_fight.gd`.
+- A keeper standing on the only work that feeds it cannot be starved, and a region
+  with no tide flat inside its reach cannot founder one: some ways are open in
+  some regions, which is VISION's own "the more a player understands the
+  landscape, the more ways they see" — but nothing yet tells a player which.
+- Nothing lowers a region's interference when its keeper falls (VISION §9.7):
+  `sentinel_fell` is emitted and the disposition package has still to listen.
+- A keeper that stood down keeps blinking its role's disposition: 32_disposition
+  writes every live body's lamps from role and interference, four times a second.
 
 ## M3 — The landscapes
 
