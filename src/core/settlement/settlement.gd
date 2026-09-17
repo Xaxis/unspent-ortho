@@ -143,8 +143,13 @@ func stored() -> float:
 	return total
 
 
-## Room for residents: a lean-to sleeps one, a hut two, and nobody moves in to
-## sleep in the rain.
+## Room for residents: a lean-to sleeps one, a hut two, a bunk four, and nobody
+## moves in to sleep in the rain.
+##
+## This is the cap on `people`, and 46_settlements' `_recruit` is what holds them
+## to it. For a long time it held nothing — it was written, documented, and called
+## by nobody, so a holding took in one resident per job it had and housed them in
+## the open, while the slate went on printing "sleeps 2" on the hut's build card.
 func beds() -> int:
 	var n := 0
 	for s in pieces:
