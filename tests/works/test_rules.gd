@@ -14,16 +14,15 @@ func _site() -> WorksSite:
 	return s
 
 
-func test_a_standing_depot_puts_bodies_on_the_land_and_a_broken_one_puts_none() -> void:
-	var day := 24.0
-	var standing := Works.bodies_in(day, false)
-	var broken := Works.bodies_in(day, true)
-	gt(float(standing), 40.0, "a working depot is why a region is busy")
-	eq(broken, 0, "a broken one is why it is quiet: not thinned, stopped")
+## The RULE, and only the rule: a dark yard's gaps are infinite, so nothing can
+## ever be due out of it again. How many bodies that is worth on the land is not
+## arithmetic over two constants — `Works.bodies_in` reproduced exactly and told
+## nobody anything — it is counted in a running game, in tests/works/test_in_game.
+func test_a_dark_yard_is_never_due_to_send_anything_again() -> void:
 	eq(Works.own_every(true), INF, "nothing more comes out of its yard, ever")
 	eq(Works.patrol_every(true), INF, "and nothing more walks its round")
-	# Said as a ratio, because that is the measurement the quieting is judged by.
-	print("works: %d bodies a day standing -> %d broken" % [standing, broken])
+	lt(Works.own_every(false), 60.0, "a working one sends its own within the hour")
+	lt(Works.patrol_every(false), 60.0, "and a round within the hour")
 
 
 func test_the_plan_advances_where_it_stands_and_stops_where_it_is_broken() -> void:

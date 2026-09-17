@@ -61,6 +61,11 @@ var spawner: Spawner
 var spawning := true
 ## Set false to keep patrols and the first meeting off (soaks of the plain rolls).
 var rounds := true
+## Another package may shut kinds out of the rolls for a reason of its own, given
+## the dictionary `shut` has built and where the player is standing: the plan's
+## depots (src/core/works) close a whole region's machines once the yard that
+## sends them is dark, which is what "the region quiets" means past the yard gate.
+var also_shut := Callable()
 var _rolls_done := -1
 ## Dart kind -> world minutes before which no other of it comes out.
 var _kind_ready: Dictionary = {}
@@ -141,6 +146,8 @@ func shut() -> Dictionary:
 			continue
 		if met or minutes < float(_kind_ready.get(k, -INF)):
 			out[k] = true
+	if also_shut.is_valid():
+		also_shut.call(out, sim.hero.pos)
 	return out
 
 
@@ -156,7 +163,9 @@ func _patrols() -> void:
 		return
 	_patrol_rolls += 1
 	var p := spawner.patrol(_patrol_rolls, sim.world, sim.query, sim.moment, sim.hero.pos)
-	if p.is_empty():
+	# A round is a roll like any other, so whatever is shut out of the rolls is
+	# shut out of the rounds: a region whose depot is dark sends nobody across it.
+	if p.is_empty() or shut().has(p.kind):
 		return
 	var m := sim.add_mob(p.kind, p.from)
 	var dir: Vector2 = (p.to - p.from).normalized()

@@ -71,9 +71,17 @@ const STAGE_DAYS := 3.0
 ## machines ARE, and a region reads busy because its depot is working — not
 ## because the spawner was told to roll harder in this landscape.
 ##
-## A broken depot puts out NEITHER, for the rest of the game. That is the whole
-## of "the region quiets": nothing is thinned by a multiplier, the source of the
-## bodies is simply gone, and a player can count the difference.
+## A broken depot puts out NEITHER, for the rest of the game.
+##
+## And that is only the yard: putting a body out of the gate reaches thirty tiles
+## and no further, so a region whose depot had been dark for a week went on
+## rolling exactly as many machines over the rest of its ground as one whose yard
+## was lit. "The region quiets" is the OTHER half, and it lives in 34_works: on
+## ground a broken depot's region covers, no machine of the plan comes out of the
+## coast's rolls at all (`Coast.also_shut`). What lives there still does, so the
+## land is quiet and not empty. Nothing is thinned by a multiplier — the source
+## of the bodies is gone, and a player can count the difference
+## (tests/works/test_in_game.gd).
 const OWN_EVERY := 14.0
 const PATROL_EVERY := 24.0
 ## How long the depot's round is, in tiles, and how far off the yard it swings.
@@ -223,15 +231,6 @@ static func own_every(broken: bool) -> float:
 
 static func patrol_every(broken: bool) -> float:
 	return INF if broken else PATROL_EVERY
-
-
-## How many bodies a depot puts on the land over `hours`, standing or broken.
-## The measurement the quieting is judged by, and pure, so a test can take it
-## without running a world for a night.
-static func bodies_in(hours: float, broken: bool) -> int:
-	if broken or hours <= 0.0:
-		return 0
-	return int(floor(hours * 60.0 / OWN_EVERY)) + int(floor(hours * 60.0 / PATROL_EVERY))
 
 
 ## How far the land has taken a broken yard back, 0..1, `hours` world hours since

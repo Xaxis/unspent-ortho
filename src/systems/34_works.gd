@@ -63,6 +63,10 @@ var _round_at: Dictionary = {}
 var _filed_at: Dictionary = {}
 ## Told once per depot, the first time the player is inside its reach.
 var _taught: Dictionary = {}
+## Region id -> how many bodies this depot has put on the land this game. What
+## "the region quiets" is measured by (tests/works/test_in_game.gd), counted
+## where it happens rather than worked out from two constants.
+var put_out: Dictionary = {}
 ## What a tour has been shown.
 var _seen: Dictionary = {}
 
@@ -74,7 +78,30 @@ func setup(g: Game) -> void:
 	_layer.name = "works"
 	g.add_child(_layer)
 	_read_sites()
+	# THE REGION'S MACHINES, and not only the yard's. Putting a body out of the
+	# gate (`_put_out`) only ever reaches the thirty tiles the player is standing
+	# in; a region whose depot had been dark for a week went on rolling exactly
+	# as many machines as one whose yard was lit, which made "the region quiets"
+	# a line in a comment. This is the whole of the other half: on ground a broken
+	# depot's region covers, no machine of the plan comes out at all. What lives
+	# there still does, so the land is quiet and not empty.
+	var mobs := g.get_node_or_null(^"30_mobs")
+	if mobs != null:
+		var c: Coast = mobs.get(&"coast")
+		if c != null:
+			c.also_shut = _shut_for_region
 	SaveGame.register(&"works", _save, _load)
+
+
+func _shut_for_region(out: Dictionary, at: Vector2) -> void:
+	if game == null or game.world == null:
+		return
+	var region := game.world.region_at(floori(at.x), floori(at.y))
+	if region < 0 or not broken(region):
+		return
+	for k: StringName in Roster.DEFS:
+		if Roster.row(k).get("machine", false):
+			out[k] = true
 
 
 ## The depots of the world the game is in now. Called again on a realm crossing,
@@ -89,6 +116,9 @@ func _read_sites() -> void:
 	_parts.clear()
 	_stood.clear()
 	_taught.clear()
+	_own_at.clear()
+	_round_at.clear()
+	_filed_at.clear()
 	_job = {}
 	for s in sites:
 		if not _states.has(s.region):
@@ -96,6 +126,29 @@ func _read_sites() -> void:
 			st.region = s.region
 			_states[s.region] = st
 		_as_landmark(s)
+	_set_walls()
+
+
+## The mass of every depot in this world, handed to the one thing that stops a
+## body (`WorldQuery.set_blocks`): the deck is a wall to go round and each working
+## part is a thing to take cover behind, which is what makes breaking one a set
+## piece rather than three keypresses in an open field.
+func _set_walls() -> void:
+	if game.query == null:
+		return
+	var walls: Array[Vector3] = []
+	for s in sites:
+		var along := Vector2.from_angle(s.facing)
+		var across := Vector2(-along.y, along.x)
+		for c: Vector3 in WorksDepot.yard_blocks():
+			var at := s.pos + along * c.x + across * c.y
+			walls.append(Vector3(at.x, at.y, c.z))
+		for i in Works.PART_NAMES.size():
+			var base := s.part(i)
+			for c: Vector3 in WorksDepot.part_blocks(i):
+				var at := base + along * c.x + across * c.y
+				walls.append(Vector3(at.x, at.y, c.z))
+	game.query.set_blocks(&"works", walls)
 
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
@@ -417,11 +470,19 @@ func _put_out() -> void:
 		var kind := _worker_for(s)
 		if kind == &"":
 			continue
+		# THE CLOCK STARTS WHEN THE YARD IS REACHED, not at the beginning of time.
+		# Left at -INF both timers were due on the first tick, so a worker and a
+		# round popped into being the instant the player crossed the thirty-tile
+		# line — the one moment a depot is being looked at from outside.
+		if not _own_at.has(s.region):
+			_own_at[s.region] = minutes
+			_round_at[s.region] = minutes
+			continue
 		var rate := maxf(busy, 0.001)
-		if minutes >= float(_own_at.get(s.region, -INF)) + Works.own_every(dead) / rate:
+		if minutes >= float(_own_at[s.region]) + Works.own_every(dead) / rate:
 			_own_at[s.region] = minutes
 			_own(s, kind)
-		if minutes >= float(_round_at.get(s.region, -INF)) + Works.patrol_every(dead) / rate:
+		if minutes >= float(_round_at[s.region]) + Works.patrol_every(dead) / rate:
 			_round_at[s.region] = minutes
 			_patrol(s, kind)
 
@@ -440,6 +501,7 @@ func _own(s: WorksSite, kind: StringName) -> void:
 	m.line_b = s.pos
 	m.facing = (s.pos - at).angle()
 	m.aim = m.facing
+	put_out[s.region] = int(put_out.get(s.region, 0)) + 1
 	_seen[&"works_body"] = true
 
 
@@ -478,6 +540,7 @@ func _patrol(s: WorksSite, kind: StringName) -> void:
 	m.put_out_at = sim.now
 	m.facing = (to - from).angle()
 	m.aim = m.facing
+	put_out[s.region] = int(put_out.get(s.region, 0)) + 1
 	_seen[&"works_patrol"] = true
 
 
