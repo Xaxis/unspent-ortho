@@ -137,6 +137,54 @@ static func set_broken(node: Node3D, done: bool) -> void:
 		(broke as Node3D).visible = done
 
 
+## THE MASS OF THE YARD, as circles in the site's own frame: `(x, z, radius)` in
+## tiles, along the survey bearing and across it, turned by 34_works and handed
+## to `WorldQuery.set_blocks`. Without them the deck was walk-through and the
+## "stealth-and-fight set piece with several working parts under pressure" was an
+## open field with decorative furniture — nothing to break a line of sight behind,
+## which is most of what a set piece IS.
+##
+## The deck is a wall and not a floor: the game has no height in its collision, so
+## a raised deck a body cannot climb is a thing it goes round. The ramp is drawn
+## and passable, which is the door into the yard.
+static func yard_blocks() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for i in 4:
+		out.append(Vector3(lerpf(-2.2, 2.2, i / 3.0), 0.0, 1.62))
+	return out
+
+
+## One working part's mass. Each stays well inside `Works.PART_REACH`, so a part
+## a player can reach is a part they can still stand at.
+static func part_blocks(i: int) -> Array[Vector3]:
+	match i:
+		0: return [Vector3(0.0, -0.6, 0.42), Vector3(0.0, 0.0, 0.42), Vector3(0.0, 0.6, 0.42)]
+		1: return [Vector3(0.0, 0.0, 0.58)]
+		_: return [Vector3(0.0, 0.0, 0.5)]
+
+
+## The yard, measured off the mesh it really builds: `{high, wide, draws}`, so a
+## test can hold the mast to the height the silhouette needs and the whole thing
+## to a draw-call budget.
+static func measure(stage: int) -> Dictionary:
+	var site := WorksSite.new()
+	site.region = 0
+	var root := yard(site, stage, null)
+	var box := AABB()
+	var first := true
+	var draws := 0
+	for c in root.get_children():
+		var m := c as MeshInstance3D
+		if m == null or not m.visible or m.mesh == null or m.mesh.get_surface_count() == 0:
+			continue
+		draws += m.mesh.get_surface_count()
+		var a := m.mesh.get_aabb()
+		box = a if first else box.merge(a)
+		first = false
+	root.free()
+	return {"high": box.end.y, "wide": maxf(box.size.x, box.size.z), "draws": draws}
+
+
 static func _mesh(node_name: String, k: MeshKit, mat: Material) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	m.name = node_name
@@ -161,23 +209,47 @@ static func _deck(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) ->
 			k.box(Vector3(x - 0.18, 0.0, z - 0.18), Vector3(x + 0.18, DECK_HIGH, z + 0.18), PLATE_DARK, PLATE)
 			# A cross-brace each side, so the legs read as a frame and not as posts.
 			k.strut(Vector3(x - 0.16, 0.12, z), Vector3(x + 0.7, DECK_HIGH - 0.1, z), 0.05, 4, SHADOW)
-	k.box(Vector3(-hl, DECK_HIGH, -hw), Vector3(hl, DECK_HIGH + 0.16, hw), PLATE_DARK, PLATE_TOP)
-	# THE DECK IS NOT ONE PLATE. Six were laid across it and welded, and the seam
-	# between each pair is a shadowed line: a floor six tiles across drawn as one
-	# quad is the flat slab ART §2 forbids, and at this camera the top face is
-	# most of what a player sees of the whole building.
-	for i in 6:
-		var x := -hl + (i + 1) * DECK_LONG / 7.0
-		k.box(Vector3(x - 0.035, DECK_HIGH + 0.16, -hw), Vector3(x + 0.035, DECK_HIGH + 0.185, hw), PLATE_DARK, PLATE_DARK)
-	k.box(Vector3(-hl, DECK_HIGH + 0.16, -0.05), Vector3(hl, DECK_HIGH + 0.185, 0.05), PLATE_DARK, PLATE_DARK)
+	# THE EDGE IS CHAMFERED, NOT CUT. A six-by-three plate with square sides is the
+	# slab ART §2 forbids however many seams are scratched on its top, and the deck
+	# is the largest mass in the depot: so the edge is three steps — a narrower
+	# skirt under, the web, and a top plate set back — which at 640x360 reads as a
+	# bevel and catches a different value on each step.
+	k.box(Vector3(-hl + 0.16, DECK_HIGH - 0.06, -hw + 0.16), Vector3(hl - 0.16, DECK_HIGH + 0.03, hw - 0.16), SHADOW, PLATE_DARK)
+	k.box(Vector3(-hl, DECK_HIGH + 0.03, -hw), Vector3(hl, DECK_HIGH + 0.13, hw), PLATE_DARK, PLATE)
+	# THE DECK IS NOT ONE PLATE. Plates were laid across it in three runs of
+	# different length, welded, and the gaps between the runs are open to the dark
+	# under the deck — so the top face is three shapes and two holes, never one
+	# rectangle. At this camera the top face is most of what a player sees of the
+	# whole building.
+	var runs: Array[Vector2] = [Vector2(-hl + 0.08, -hl + 2.05), Vector2(-hl + 2.45, hl - 2.2), Vector2(hl - 1.9, hl - 0.08)]
+	for i in runs.size():
+		var r: Vector2 = runs[i]
+		var inset := 0.09 if i != 1 else 0.05
+		# The gap between one run and the next is open to the dark under the deck,
+		# and no two runs were laid from the same batch: three values, three
+		# lengths, two holes. A six-by-three plate of one colour is the slab.
+		k.box(Vector3(r.x - 0.3, DECK_HIGH + 0.1, -hw + inset), Vector3(r.x, DECK_HIGH + 0.15, hw - inset), SHADOW, SHADOW)
+		var face := PLATE_TOP if i == 1 else PLATE
+		k.box(Vector3(r.x, DECK_HIGH + 0.13, -hw + inset), Vector3(r.y, DECK_HIGH + 0.185, hw - inset), PLATE_DARK if i == 1 else PLATE, face)
+	for i in 5:
+		var x := -hl + 0.5 + i * (DECK_LONG - 1.0) / 4.0
+		k.box(Vector3(x - 0.035, DECK_HIGH + 0.185, -hw + 0.12), Vector3(x + 0.035, DECK_HIGH + 0.2, hw - 0.12), PLATE_DARK, PLATE_DARK)
+	k.box(Vector3(-hl + 0.4, DECK_HIGH + 0.185, -0.05), Vector3(hl - 0.4, DECK_HIGH + 0.2, 0.05), PLATE_DARK, PLATE_DARK)
+	# A kick plate turned up across the FAR end (the ends are open otherwise),
+	# broken in the middle where something was driven through it: the deck's
+	# outline is not the same on all four sides, which is what stops it reading
+	# as a rectangle whichever way the camera has it.
+	for seg: Vector2 in [Vector2(-hw + 0.06, -0.55), Vector2(0.3, hw - 0.06)]:
+		k.box(Vector3(-hl + 0.02, DECK_HIGH + 0.185, seg.x), Vector3(-hl + 0.16, DECK_HIGH + 0.46, seg.y), PLATE, PLATE_TOP)
+	k.strut(Vector3(-hl + 0.09, DECK_HIGH + 0.44, -0.5), Vector3(-hl + 0.46, DECK_HIGH + 0.2, 0.26), 0.05, 4, PLATE_DARK)
 	# A hatch let into it, open, with the dark under the deck showing through.
-	k.box(Vector3(hl - 1.5, DECK_HIGH + 0.1, -hw + 0.55), Vector3(hl - 0.8, DECK_HIGH + 0.17, -hw + 1.2), SHADOW, SHADOW)
-	k.box(Vector3(hl - 0.76, DECK_HIGH + 0.16, -hw + 0.5), Vector3(hl - 0.06, DECK_HIGH + 0.2, -hw + 1.25), PLATE, PLATE_TOP)
+	k.box(Vector3(hl - 1.5, DECK_HIGH + 0.12, -hw + 0.55), Vector3(hl - 0.8, DECK_HIGH + 0.195, -hw + 1.2), SHADOW, SHADOW)
+	k.box(Vector3(hl - 0.76, DECK_HIGH + 0.185, -hw + 0.5), Vector3(hl - 0.06, DECK_HIGH + 0.225, -hw + 1.25), PLATE, PLATE_TOP)
 	# Drums stacked where the ramp comes up: the stock the yard runs on.
 	for i in 3:
 		var dz := -hw + 0.55 + i * 0.6
-		k.prism(hl - 0.62, DECK_HIGH + 0.16, dz, 0.24, DECK_HIGH + 0.74, 0.24, 8, ENAMEL, ENAMEL_TOP)
-	k.prism(hl - 0.62, DECK_HIGH + 0.74, -hw + 1.15, 0.24, DECK_HIGH + 1.32, 0.24, 8, ENAMEL, ENAMEL_TOP)
+		k.prism(hl - 0.62, DECK_HIGH + 0.185, dz, 0.24, DECK_HIGH + 0.76, 0.24, 8, ENAMEL, ENAMEL_TOP)
+	k.prism(hl - 0.62, DECK_HIGH + 0.76, -hw + 1.15, 0.24, DECK_HIGH + 1.34, 0.24, 8, ENAMEL, ENAMEL_TOP)
 	# The rail: uprights and two runs, on both long sides. The ends are open.
 	for side: float in [-1.0, 1.0]:
 		var z := side * (hw - 0.08)
@@ -194,10 +266,20 @@ static func _deck(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) ->
 	# is live, and the whole of what lights the ground a player comes up to it
 	# over. STEADY, all of them — a depot whose only light blinks is a depot that
 	# is dark in four frames out of five.
+	#
+	# AND WIDE. At 0.14 of a tile they were ONE PIXEL at the distance the depot
+	# exists to be seen from, and two village houses read brighter than the whole
+	# yard; a strip only carries across the land if it is thick enough to survive
+	# the downsample to 640x360. So: a band a third of a tile deep, standing proud
+	# of the web so it is lit from below as well as side on.
 	for side: float in [-1.0, 1.0]:
-		var z := side * hw
-		lamps.box(Vector3(-hl + 0.2, DECK_HIGH - 0.16, z - 0.05), Vector3(hl - 0.2, DECK_HIGH - 0.02, z + 0.05), W.STRIP)
-		lamps.box(Vector3(-hl + 0.6, DECK_HIGH + 0.66, z - 0.04), Vector3(hl - 0.6, DECK_HIGH + 0.72, z + 0.04), W.STRIP)
+		var z := side * (hw + 0.03)
+		lamps.box(Vector3(-hl + 0.2, DECK_HIGH - 0.24, z - 0.08), Vector3(hl - 0.2, DECK_HIGH - 0.02, z + 0.08), W.STRIP)
+		lamps.box(Vector3(-hl + 0.6, DECK_HIGH + 0.6, z - 0.07), Vector3(hl - 0.6, DECK_HIGH + 0.74, z + 0.07), W.STRIP)
+		# And a flood at each end of the run, turned down onto the ground: the
+		# yard is lit, not outlined, and a bright block reads further than a line.
+		for x: float in [-hl + 0.55, hl - 0.55]:
+			lamps.box(Vector3(x - 0.24, DECK_HIGH - 0.46, z - 0.14), Vector3(x + 0.24, DECK_HIGH - 0.06, z + 0.14), W.lit(W.STRIP, 0.95))
 	# Spoil the diggers left when they cut the footing in. MADE: the ground's own
 	# hand, hatched, so the yard reads as cut INTO the land and not set on it.
 	for i in 6:
@@ -250,32 +332,57 @@ static func _mast(k: MeshKit, lamps: MeshKit) -> void:
 	k.prism(0.0, 0.0, 0.0, 0.07, 0.46, 0.46, 7, PLATE, PLATE_TOP)
 	k.pop()
 	k.strut(Vector3(x, top + 0.12, 0.0), Vector3(x + 0.1, top + 0.36, 0.0), 0.06, 4, PLATE_DARK)
-	# The head light is TWO things: a collar that burns steady, so the mast is
-	# alive in every frame, and a beacon over it that blinks on the machines'
-	# beat, so it reads as a warning. One without the other is either a lamp
-	# post or a thing that is dark most of the time.
-	lamps.prism(x, base + MAST_HIGH + 0.12, 0.0, 0.22, base + MAST_HIGH + 0.24, 0.19, 6, W.STRIP, W.STRIP)
-	lamps.prism(x, base + MAST_HIGH + 0.62, 0.0, 0.17, base + MAST_HIGH + 0.96, 0.1, 6, W.BEACON, W.BEACON)
-	# Three strips down the mast, so it reads as a live thing from across the land.
+	# The head light is a LANTERN and a BEACON, and between them they are the whole
+	# reason the mast is here: the lantern burns steady, so the mast is alive in
+	# every frame, and the beacon over it blinks on the machines' beat, so it reads
+	# as a warning. Both are drawn big enough to survive the downsample to
+	# 640x360 — the first version's beacon was ONE PIXEL at the distance the depot
+	# exists to be seen from, and a mob's health bar was the brightest thing in a
+	# night frame of the yard. (A haze disc round the head was tried and taken out:
+	# emission does not know the hour, so at noon it was a flat pink lollipop.)
+	var head := base + MAST_HIGH
+	lamps.prism(x, head + 0.12, 0.0, 0.3, head + 0.62, 0.26, 8, W.STRIP, W.STRIP)
+	lamps.prism(x, head + 0.7, 0.0, 0.16, head + 0.78, 0.44, 8, W.lit(W.BEACON, 0.62), W.lit(W.BEACON, 0.62))
+	lamps.prism(x, head + 0.78, 0.0, 0.44, head + 1.16, 0.12, 8, W.BEACON, W.BEACON)
+	# Three collars down the mast, round the whole lattice rather than a plate on
+	# one face of it, so the mast reads as a live thing from every side.
 	for i in 3:
 		var y := base + MAST_HIGH * (0.24 + i * 0.26)
-		var r := lerpf(MAST_R, MAST_R * 0.34, 0.24 + i * 0.26)
-		lamps.box(Vector3(x - r - 0.05, y, -r - 0.05), Vector3(x + r + 0.05, y + 0.12, -r + 0.02), W.STRIP)
+		var r := lerpf(MAST_R, MAST_R * 0.34, 0.24 + i * 0.26) + 0.1
+		lamps.prism(x, y, 0.0, r, y + 0.26, r, 4, W.STRIP, W.STRIP, PI * 0.25)
 
 
 ## One plan bay, added along the deck as the plan advances here: a ruled shed
 ## with a lit strip along its eave and a stack of the plan's own stock beside it.
+## A BAY IS NOT A BRICK. Stacked as plain boxes on a plain deck they were four
+## rectangles in a row, which is the one shape ART §2 will not have. So each one
+## is a plinth, a body, a shouldered top and a capping plate that overhangs — four
+## steps of width, none of them square to the one under it — and the bays alternate
+## deep and shallow, so the run has a rhythm instead of a length.
 static func _bay(k: MeshKit, lamps: MeshKit, i: int) -> void:
-	var base := DECK_HIGH + 0.16
+	var base := DECK_HIGH + 0.185
 	var x := -DECK_LONG * 0.5 + 1.6 + i * BAY_LONG
-	var hw := DECK_WIDE * 0.5 - 0.22
-	k.box(Vector3(x, base, -hw), Vector3(x + BAY_LONG - 0.2, base + BAY_HIGH, hw), ENAMEL, ENAMEL_TOP)
-	# A pitched cap, ruled: two quads, square-ended, nothing hand about it.
-	k.box(Vector3(x - 0.08, base + BAY_HIGH, -hw - 0.1), Vector3(x + BAY_LONG - 0.12, base + BAY_HIGH + 0.12, hw + 0.1), PLATE_DARK, PLATE)
+	var hw := DECK_WIDE * 0.5 - (0.22 if i % 2 == 0 else 0.44)
+	var high := BAY_HIGH * (1.0 if i % 2 == 0 else 0.84)
+	var x1 := x + BAY_LONG - 0.2
+	# The plinth it is bolted to, proud of the body on every side.
+	k.box(Vector3(x - 0.06, base, -hw - 0.06), Vector3(x1 + 0.06, base + 0.14, hw + 0.06), PLATE_DARK, PLATE)
+	k.box(Vector3(x, base + 0.14, -hw), Vector3(x1, base + high - 0.3, hw), ENAMEL, ENAMEL_TOP)
+	# The shoulder: the body drawn in on all four sides before the cap, which is
+	# the chamfer that stops the silhouette being a stack of rectangles.
+	k.box(Vector3(x + 0.09, base + high - 0.3, -hw + 0.09), Vector3(x1 - 0.09, base + high, hw - 0.09), ENAMEL_TOP, PLATE)
+	# The cap, overhanging, with a raised ridge down it.
+	k.box(Vector3(x - 0.1, base + high, -hw - 0.12), Vector3(x1 + 0.1, base + high + 0.1, hw + 0.12), PLATE_DARK, PLATE)
+	k.box(Vector3(x + 0.12, base + high + 0.1, -0.06), Vector3(x1 - 0.12, base + high + 0.17, 0.06), PLATE, PLATE_TOP)
+	# Ribs down the flanks, so a side is never one quad at any camera angle.
+	for j in 3:
+		var rx := lerpf(x + 0.14, x1 - 0.14, j / 2.0)
+		for side: float in [-1.0, 1.0]:
+			k.box(Vector3(rx - 0.035, base + 0.14, side * hw - 0.02), Vector3(rx + 0.035, base + high - 0.3, side * hw + 0.02), PLATE_DARK, PLATE_DARK)
 	# The door: a recessed well, which is what makes a box a thing with a front.
-	k.box(Vector3(x + 0.1, base, hw - 0.03), Vector3(x + BAY_LONG - 0.36, base + BAY_HIGH * 0.72, hw + 0.02), SHADOW, SHADOW)
-	_rivets(k, Vector3(x + 0.06, base + 0.18, hw + 0.03), Vector3(x + BAY_LONG - 0.26, base + 0.18, hw + 0.03), 4)
-	lamps.box(Vector3(x, base + BAY_HIGH - 0.02, hw + 0.02), Vector3(x + BAY_LONG - 0.2, base + BAY_HIGH + 0.05, hw + 0.08), W.STRIP)
+	k.box(Vector3(x + 0.1, base + 0.14, hw - 0.03), Vector3(x1 - 0.16, base + high * 0.7, hw + 0.02), SHADOW, SHADOW)
+	_rivets(k, Vector3(x + 0.06, base + 0.3, hw + 0.03), Vector3(x1 - 0.06, base + 0.3, hw + 0.03), 4)
+	lamps.box(Vector3(x - 0.06, base + high - 0.06, hw + 0.04), Vector3(x1 + 0.06, base + high + 0.12, hw + 0.14), W.STRIP)
 
 
 ## What people did to it when nothing was looking: a ladder lashed to the near

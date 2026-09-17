@@ -74,6 +74,8 @@ static func node(kind: StringName, seed_value: int, made_material: Material) -> 
 		&"cast_stones": _cast_stones(found, made, lamps, seed_value)
 		&"evaporator": _evaporator(found, made, lamps, seed_value)
 		&"grown_hulk": _grown_hulk(found, made, lamps, seed_value)
+		&"poured_pillar": _poured_pillar(found, made, lamps, seed_value)
+		&"sump_pump": _sump_pump(found, made, lamps, seed_value)
 		_: _clerks_office(found, made, lamps, seed_value)
 	root.add_child(_mesh("found", found, PropModels.found_material()))
 	root.add_child(_mesh("lamps", lamps, PropModels.found_material()))
@@ -96,6 +98,90 @@ static func set_opened(root: Node3D, done: bool) -> void:
 		(shut as Node3D).visible = not done
 	if open != null:
 		(open as Node3D).visible = done
+
+
+## THE MASS OF ONE, as circles in the model's own frame: `(x, z, radius)` in
+## tiles, turned with the model and handed to `WorldQuery.set_blocks` by
+## 22_landmarks. Nothing in this package stopped a body at all until this was
+## written — a player walked into the middle of the lighthouse's stonework and
+## stood there, occluded and invisible, and every silhouette in the game was
+## scenery you could stand inside.
+##
+## Only the mass a BODY meets: a hulk raised on its legs blocks at the feet and
+## nowhere else, because at this camera the player walks under it. And nothing
+## may cover the cache, which stands at (`Landmarks.CACHE_OUT`, 0) — held by
+## `tests/landmarks/test_models.gd`, which walks in to it from every quarter.
+const BLOCKS := {
+	&"lighthouse": [Vector3(0.0, 0.0, 1.02)],
+	&"leaning_mast": [Vector3(-0.85, 0.0, 0.8)],
+	&"firewatch": [Vector3(-1.1, -1.1, 0.24), Vector3(1.1, -1.1, 0.24), Vector3(1.1, 1.1, 0.24), Vector3(-1.1, 1.1, 0.24)],
+	&"blinking_stack": [Vector3(0.0, 0.0, 1.12), Vector3(1.3, -1.1, 0.36), Vector3(1.3, 1.1, 0.36)],
+	&"cast_stones": [Vector3(0.0, 0.0, 0.78)],
+	&"evaporator": [Vector3(-2.2, 0.0, 0.92), Vector3(-1.2, 0.0, 0.92), Vector3(-0.2, 0.0, 0.92),
+		Vector3(0.8, 0.0, 0.92), Vector3(4.75, 0.0, 0.55)],
+	&"grown_hulk": [Vector3(-2.3, 2.4, 0.4), Vector3(0.1, 2.4, 0.4), Vector3(2.5, 2.4, 0.4),
+		Vector3(-3.2, -2.5, 0.4), Vector3(-0.8, -2.5, 0.4), Vector3(1.6, -2.5, 0.4), Vector3(3.9, 2.0, 0.42)],
+	&"clerks_office": [Vector3(0.0, 0.0, 1.12), Vector3(-2.4, 0.5, 0.3)],
+	&"poured_pillar": [Vector3(0.0, 0.0, 0.85)],
+	&"sump_pump": [Vector3(-1.25, -1.05, 0.28), Vector3(1.25, -1.05, 0.28),
+		Vector3(1.25, 1.05, 0.28), Vector3(-1.25, 1.05, 0.28), Vector3(-0.6, 0.0, 0.85)],
+}
+
+
+## The stones of a ring stand where the ring puts them, so they are worked out
+## rather than written down: `_cast_stones` lays nine on a 3.6 ring at the same
+## angles, and the one that is lying down does not stop anybody.
+static func blocks(kind: StringName) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for c: Vector3 in BLOCKS.get(kind, []):
+		out.append(c)
+	if kind == &"cast_stones":
+		for i in 9:
+			if i == 2:
+				continue
+			var a := TAU * i / 9.0 + 0.2
+			out.append(Vector3(cos(a) * 3.6, sin(a) * 3.6, 0.5))
+	return out
+
+
+## What one is, measured off the mesh it really builds: `{high, wide, draws}`.
+## The header above claims a silhouette that stands above everything round it and
+## a shape that carries at the distance it is read from; this is what lets a test
+## hold it to both instead of the claim standing on its own.
+static func measure(kind: StringName, seed_value: int = 11) -> Dictionary:
+	var root := node(kind, seed_value, null)
+	var box := AABB()
+	var first := true
+	var draws := 0
+	for c in root.get_children():
+		var m := c as MeshInstance3D
+		if m == null or not m.visible or m.mesh == null or m.mesh.get_surface_count() == 0:
+			continue
+		draws += m.mesh.get_surface_count()
+		var a := m.mesh.get_aabb()
+		box = a if first else box.merge(a)
+		first = false
+	# The cache is a child of its own, and it is furniture, not silhouette.
+	var cache := root.get_node_or_null(^"cache")
+	if cache != null:
+		for c in cache.get_children():
+			var m := c as MeshInstance3D
+			if m != null and m.visible and m.mesh != null and m.mesh.get_surface_count() > 0:
+				draws += m.mesh.get_surface_count()
+	root.free()
+	return {"high": box.end.y, "wide": maxf(box.size.x, box.size.z), "draws": draws}
+
+
+## How tall one stands, worked out once per kind off the mesh it really builds.
+## Whoever asks whether a landmark is in the frame needs it every look, and
+## building the model again to find out would be a dozen meshes a second.
+static var _high: Dictionary = {}
+
+
+static func high_of(kind: StringName) -> float:
+	if not _high.has(kind):
+		_high[kind] = float(measure(kind).high)
+	return _high[kind]
 
 
 static func _mesh(node_name: String, k: MeshKit, mat: Material) -> MeshInstance3D:
@@ -272,17 +358,57 @@ static func _firewatch(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: in
 		var sgn := 1.0 if i % 2 == 0 else -1.0
 		_limb(made, Vector3(-0.42 * sgn, y, 0.16), Vector3(0.42 * sgn, y + 0.38, 0.16), 0.045, TIMBER_PALE, seed_value + 40 + i)
 	_limb(made, Vector3(-0.8, 0.0, 1.0), Vector3(-0.5, 0.9, 0.8), 0.05, TIMBER, seed_value + 61)
-	# The cabin: a deck, a rail, four posts, a hipped cap, and no glass.
+	# THE CABIN IS THE TOP OF THE SILHOUETTE, and the first version drew it as one
+	# grey box with a pyramid on it — the one part of the model that has to carry
+	# and the one part that was a brick. So: a deck that overhangs on a joist, a
+	# sill board round all four sides, corner posts, a boarded half-wall of
+	# separate boards with one sprung, the dark set BACK behind the posts, a
+	# shutter propped open, and a cap whose eave overhangs and whose corner has
+	# gone. None of it is square to the step below it.
 	var deck := top
-	made.box(Vector3(-0.95, deck, -0.95), Vector3(0.95, deck + 0.12, 0.95), TIMBER, TIMBER_PALE)
+	made.box(Vector3(-1.02, deck, -1.02), Vector3(1.02, deck + 0.09, 1.02), TIMBER, TIMBER_PALE)
+	made.box(Vector3(-0.86, deck - 0.14, -0.86), Vector3(0.86, deck, 0.86), P.INK[1], TIMBER)
+	# A plank sprung off the near edge of the deck, hanging.
+	made.push(Transform3D(Basis(Vector3.BACK, 0.42), Vector3(0.0, deck + 0.04, 0.99)))
+	made.box(Vector3(-0.34, -0.04, 0.0), Vector3(0.38, 0.04, 0.2), TIMBER_PALE, TIMBER_PALE)
+	made.pop()
 	for i in 4:
 		var f := feet[i] * 0.78
-		made.block(f.x, deck + 0.12, f.y, 0.09, 1.25, 0.09, TIMBER)
-	made.box(Vector3(-0.9, deck + 0.12, -0.9), Vector3(0.9, deck + 0.5, -0.82), TIMBER_PALE, TIMBER_PALE)
-	made.box(Vector3(-0.9, deck + 0.12, 0.82), Vector3(0.9, deck + 0.5, 0.9), TIMBER_PALE, TIMBER_PALE)
-	made.prism(0.0, deck + 1.37, 0.0, 1.15, deck + 1.9, 0.16, 4, P.SLATE[2], P.SLATE[3])
-	# The dark inside, which is what says the glass has gone.
-	made.box(Vector3(-0.72, deck + 0.5, -0.72), Vector3(0.72, deck + 1.3, 0.72), P.INK[2], P.INK[2])
+		made.block(f.x, deck + 0.09, f.y, 0.11, 1.32, 0.11, TIMBER)
+	# The sill, all four sides, set out past the posts.
+	for side: float in [-1.0, 1.0]:
+		made.box(Vector3(-0.94, deck + 0.09, side * 0.94 - 0.07), Vector3(0.94, deck + 0.21, side * 0.94 + 0.07), TIMBER_PALE, TIMBER_PALE)
+		made.box(Vector3(side * 0.94 - 0.07, deck + 0.09, -0.88), Vector3(side * 0.94 + 0.07, deck + 0.21, 0.88), TIMBER_PALE, TIMBER_PALE)
+	# The boarded half-wall: five boards a side, laid one over the next, and on
+	# the near side one of them sprung out at the bottom.
+	for i in 5:
+		var y := deck + 0.21 + i * 0.13
+		var pale := i % 2 == 0
+		for side: float in [-1.0, 1.0]:
+			made.box(Vector3(-0.84, y, side * 0.9 - 0.05), Vector3(0.84, y + 0.14, side * 0.9 + 0.02), TIMBER_PALE if pale else TIMBER, TIMBER)
+		made.box(Vector3(-0.9 - 0.02, y, -0.8), Vector3(-0.9 + 0.05, y + 0.14, 0.8), TIMBER if pale else TIMBER_PALE, TIMBER)
+		if i != 2:
+			made.box(Vector3(0.9 - 0.05, y, -0.8), Vector3(0.9 + 0.02, y + 0.14, 0.8), TIMBER if pale else TIMBER_PALE, TIMBER)
+	made.push(Transform3D(Basis(Vector3.BACK, 0.0) * Basis(Vector3.UP, 0.3), Vector3(0.9, deck + 0.47, 0.0)))
+	made.box(Vector3(-0.04, 0.0, -0.8), Vector3(0.03, 0.14, 0.42), TIMBER_PALE, TIMBER)
+	made.pop()
+	# The dark inside, set back behind the posts so the corner posts read against
+	# it: this is what says the glass has gone, and it must not be the whole box.
+	made.box(Vector3(-0.78, deck + 0.21, -0.78), Vector3(0.78, deck + 1.32, 0.78), P.INK[2], P.INK[2])
+	# The shutter, hinged up off the seaward face and propped on a stick.
+	made.push(Transform3D(Basis(Vector3.RIGHT, 1.05), Vector3(0.0, deck + 1.32, -0.84)))
+	made.box(Vector3(-0.8, 0.0, -0.62), Vector3(0.8, 0.04, 0.06), TIMBER, TIMBER_PALE)
+	made.pop()
+	_limb(made, Vector3(-0.5, deck + 0.9, -0.8), Vector3(-0.56, deck + 1.82, -1.12), 0.03, TIMBER, seed_value + 91)
+	# The eave, overhanging, with one corner torn off; then the cap on it.
+	made.box(Vector3(-1.04, deck + 1.32, -1.04), Vector3(0.68, deck + 1.44, 1.04), P.SLATE[1], P.SLATE[2])
+	made.box(Vector3(0.68, deck + 1.32, -1.04), Vector3(1.04, deck + 1.44, 0.44), P.SLATE[1], P.SLATE[2])
+	made.prism(0.0, deck + 1.44, 0.0, 0.92, deck + 1.94, 0.12, 4, P.SLATE[2], P.SLATE[3])
+	# A sheet of plate somebody nailed over the hole in the cap: FOUND on a MADE
+	# roof, which is the whole of what has happened to this place.
+	k.push(Transform3D(Basis(Vector3.UP, 0.8) * Basis(Vector3.BACK, 0.55), Vector3(-0.34, deck + 1.66, 0.3)))
+	k.box(Vector3(-0.3, -0.02, -0.26), Vector3(0.3, 0.02, 0.26), PLATE, PLATE_TOP)
+	k.pop()
 	# What the last person up there left: sacking over the weather side, a line
 	# tied off across the deck, and a plate stove with its flue out through the cap.
 	made.box(Vector3(-0.86, deck + 0.46, -0.9), Vector3(0.1, deck + 1.28, -0.8), SACKING, SACKING)
@@ -445,6 +571,32 @@ static func _evaporator(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: i
 	# The hopper head and the boom: the shape, carried out over the pan.
 	k.prism(1.6, 1.2, 0.0, 0.95, 3.2, 0.6, 6, PLATE, PLATE_TOP)
 	k.prism(1.6, 3.2, 0.0, 0.6, 3.45, 0.55, 6, PLATE_DARK, PLATE)
+	# THE STAY TOWER, which is what the boom hangs off and what makes this thing
+	# read at all. Without it the whole hulk stood under four units on a flat that
+	# has nothing else standing on it — lower than a fire tower, which is the one
+	# height a landmark may not be. Four legs and rings, so it is a lattice and
+	# not a stick, and the stays run from its head down the boom.
+	var tow: Array[Vector2] = [Vector2(-0.42, -0.42), Vector2(0.42, -0.42), Vector2(0.42, 0.42), Vector2(-0.42, 0.42)]
+	var tip := 5.65
+	for i in 4:
+		var c: Vector2 = tow[i]
+		k.strut(Vector3(1.6 + c.x, 3.4, c.y), Vector3(1.6 + c.x * 0.4, tip, c.y * 0.4), 0.06, 4, PLATE)
+	for i in 5:
+		var t0 := i / 5.0
+		var t1 := (i + 1) / 5.0
+		var y1 := lerpf(3.4, tip, t1)
+		var r1 := lerpf(0.42, 0.17, t1)
+		for j in 4:
+			var a: Vector2 = tow[j]
+			var b: Vector2 = tow[(j + 1) % 4]
+			k.strut(Vector3(1.6 + a.x * r1 / 0.42, y1, a.y * r1 / 0.42), Vector3(1.6 + b.x * r1 / 0.42, y1, b.y * r1 / 0.42), 0.032, 4, PLATE_DARK)
+			if (i + j) % 2 == 0:
+				var y0 := lerpf(3.4, tip, t0)
+				var r0 := lerpf(0.42, 0.17, t0)
+				k.strut(Vector3(1.6 + a.x * r0 / 0.42, y0, a.y * r0 / 0.42), Vector3(1.6 + b.x * r1 / 0.42, y1, b.y * r1 / 0.42), 0.026, 4, SHADOW)
+	k.box(Vector3(1.4, tip, -0.2), Vector3(1.8, tip + 0.1, 0.2), PLATE_DARK, PLATE)
+	k.strut(Vector3(1.6, tip + 0.05, 0.0), Vector3(4.6, 0.6, 0.0), 0.05, 4, PLATE_DARK)
+	k.strut(Vector3(1.6, tip + 0.05, 0.0), Vector3(-2.4, 1.5, 0.0), 0.05, 4, PLATE_DARK)
 	k.strut(Vector3(1.7, 2.9, 0.0), Vector3(4.8, 0.45, 0.0), 0.18, 4, PLATE)
 	k.strut(Vector3(1.7, 2.9, 0.0), Vector3(3.4, 1.6, 0.0), 0.09, 4, PLATE_DARK)
 	k.strut(Vector3(2.5, 2.2, -0.5), Vector3(2.5, 2.2, 0.5), 0.06, 4, PLATE_DARK)
@@ -467,6 +619,7 @@ static func _evaporator(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: i
 	# One lens still on the head, lit: the plan has not written this one off.
 	lamps.box(Vector3(2.2, 2.3, -0.2), Vector3(2.28, 2.65, 0.2), W.WORKING)
 	lamps.box(Vector3(-2.82, 1.62, 1.5), Vector3(-2.76, 1.86, 1.56), W.STRIP)
+	lamps.prism(1.6, 5.75, 0.0, 0.16, 6.02, 0.1, 6, W.BEACON, W.BEACON)
 
 
 ## THE GROWN HULK. A hauler-sized machine that died standing and has been in one
@@ -563,6 +716,117 @@ static func _clerks_office(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value
 		made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, 0.35 + Rng.hash01(seed_value, i, 0x97) * 0.4), Vector3(cos(a) * r, 0.0, sin(a) * r)))
 		made.box(Vector3(-0.012, 0.0, -0.2), Vector3(0.012, 0.58, 0.2), PAPER, PAPER)
 		made.pop()
+
+
+## THE POURED PILLAR. Under the ground there is no weather and nothing grows, so
+## the evidence a cave holds is the working's own. A limestone column stood floor
+## to roof here and held the roof up; they cut it out for the stone and poured a
+## square concrete one in its place round rebar, while the roof was still on it.
+## The pour came up short at the head and was packed out with plate. The stumps
+## of the real one are still standing beside it, cut off clean at knee height.
+static func _poured_pillar(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
+	var top := 6.1
+	# The flare the natural column left in the floor: MADE, uneven, hatched, and
+	# the pour is standing IN it, which is what says one replaced the other.
+	made.prism(0.0, 0.0, 0.0, 1.5, 0.42, 1.15, 9, LIME, P.LINEN[4])
+	for i in 5:
+		var a := Rng.hash01(seed_value, i, 0xC1) * TAU
+		made.rock(cos(a) * 1.35, 0.0, sin(a) * 1.35, 0.4 + Rng.hash01(seed_value, i, 0xC2) * 0.24, 0.2, seed_value + i, P.STONE[2], 6)
+	# The column: ruled, square, drawn in at each lift so the silhouette is a
+	# stepped shaft and not a post — a bare box this tall is the slab ART §2 bans.
+	for i in 4:
+		var y0 := 0.32 + i * (top - 0.32) / 4.0
+		var y1 := 0.32 + (i + 1) * (top - 0.32) / 4.0
+		var r := lerpf(0.62, 0.44, i / 3.0)
+		k.box(Vector3(-r, y0, -r * 0.82), Vector3(r, y1 - 0.09, r * 0.82), LIME, P.LINEN[4])
+		# The shuttering band at every lift: where one pour met the next.
+		k.box(Vector3(-r - 0.06, y1 - 0.09, -r * 0.82 - 0.06), Vector3(r + 0.06, y1, r * 0.82 + 0.06), P.LINEN[2], P.LINEN[3])
+	# The rebar, coming up out of the head short of the roof, and the plate they
+	# packed the gap with: the one thing here that was never meant to be seen.
+	for j in 6:
+		var o := Vector3(-0.3 + (j % 3) * 0.3, 0.0, -0.18 + (j / 3) * 0.36)
+		k.prism(o.x, top - 0.1, o.z, 0.05, top + 0.42 + Rng.hash01(seed_value, j, 0xC3) * 0.5, 0.04, 4, RUST)
+	k.box(Vector3(-0.56, top, -0.5), Vector3(0.56, top + 0.16, 0.5), PLATE_DARK, PLATE)
+	k.box(Vector3(-0.66, top + 0.16, -0.58), Vector3(0.66, top + 0.34, 0.58), PLATE, PLATE_TOP)
+	# The roof it is holding up, jammed down on the pour: ROCK and not a plate, so
+	# it reads as the cavern closing on the thing rather than a cap on a post.
+	made.rock(0.0, top + 0.3, 0.0, 1.45, 0.62, seed_value + 3, P.STONE[1], 7)
+	for i in 3:
+		var a := 0.7 + i * 2.1
+		made.rock(cos(a) * 1.5, top + 0.12, sin(a) * 1.4, 0.7, 0.4, seed_value + 30 + i, P.STONE[2], 6)
+	# The stumps of the columns they took: cut off clean, which is the tell.
+	for i in 4:
+		var a := 1.1 + i * 1.5
+		var r := 2.6 + Rng.hash01(seed_value, i, 0xC4) * 1.1
+		var h := 0.7 + Rng.hash01(seed_value, i, 0xC5) * 0.6
+		made.prism(cos(a) * r, 0.0, sin(a) * r, 0.5, h, 0.42, 8, P.STONE[2], P.RIME[2])
+		made.prism(cos(a) * r, h, sin(a) * r, 0.42, h + 0.05, 0.42, 8, P.RIME[3], P.RIME[3])
+	# The gauge they left wired to the pour, still reading the load on it.
+	k.box(Vector3(0.6, 1.5, -0.24), Vector3(0.72, 2.05, 0.24), PLATE_DARK, PLATE)
+	lamps.box(Vector3(0.72, 1.66, -0.14), Vector3(0.76, 1.9, 0.14), W.WORKING)
+
+
+## THE SUMP. A gantry on four legs over black water, with the pump hung under it
+## and the float down: it kept this level dry for somebody, and stopped. The rim
+## of flowstone round the pool is where the water stood before it won.
+static func _sump_pump(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
+	var deck := 2.35
+	# The pool, and the lip the water laid round it while it was being held down.
+	# Set back off +X, because that is the face the place is approached from and
+	# what a player's hands go to stands there: nobody wades to a locker.
+	var pool := -0.9
+	made.prism(pool, -0.06, 0.0, 3.0, 0.16, 2.8, 11, P.RIME[2], P.RIME[3])
+	made.prism(pool, 0.1, 0.0, 2.4, 0.2, 2.3, 11, P.INK[1], P.INK[1])
+	for i in 7:
+		var a := Rng.hash01(seed_value, i, 0xD1) * TAU
+		var r := 2.7 + Rng.hash01(seed_value, i, 0xD2) * 0.8
+		made.rock(pool + cos(a) * r, 0.0, sin(a) * r * 0.9, 0.5, 0.22 + Rng.hash01(seed_value, i, 0xD3) * 0.3, seed_value + i, P.RIME[3], 6)
+	# Four legs standing in it, braced, each with its own foot plate.
+	var feet: Array[Vector2] = [Vector2(-1.25, -1.05), Vector2(1.25, -1.05), Vector2(1.25, 1.05), Vector2(-1.25, 1.05)]
+	for i in 4:
+		var f: Vector2 = feet[i]
+		k.box(Vector3(f.x - 0.26, -0.05, f.y - 0.26), Vector3(f.x + 0.26, 0.2, f.y + 0.26), PLATE_DARK, PLATE)
+		k.prism(f.x, 0.2, f.y, 0.19, deck, 0.13, 4, PLATE, PLATE_TOP)
+		var g: Vector2 = feet[(i + 1) % 4]
+		k.strut(Vector3(f.x, 0.5, f.y), Vector3(g.x, deck - 0.25, g.y), 0.045, 4, SHADOW)
+	# The gantry: a grating floor of separate bearers, not one plate.
+	k.box(Vector3(-1.45, deck, -1.25), Vector3(1.45, deck + 0.1, 1.25), PLATE_DARK, PLATE)
+	for i in 6:
+		var x := -1.3 + i * 0.52
+		k.box(Vector3(x - 0.06, deck + 0.1, -1.18), Vector3(x + 0.06, deck + 0.16, 1.18), PLATE, PLATE_TOP)
+	for side: float in [-1.0, 1.0]:
+		k.box(Vector3(-1.45, deck + 0.16, side * 1.2 - 0.04), Vector3(1.45, deck + 0.22, side * 1.2 + 0.04), PLATE, PLATE_TOP)
+		k.box(Vector3(-1.45, deck + 0.7, side * 1.2 - 0.04), Vector3(1.45, deck + 0.76, side * 1.2 + 0.04), PLATE, PLATE_TOP)
+		for i in 4:
+			k.block(-1.2 + i * 0.8, deck + 0.16, side * 1.2, 0.07, 0.6, 0.07, PLATE_DARK)
+	# The pump house on the deck: drawn in at the shoulder, capped, with a door.
+	k.box(Vector3(-1.1, deck + 0.16, -0.72), Vector3(0.1, deck + 1.5, 0.72), ENAMEL, ENAMEL_TOP)
+	k.box(Vector3(-1.0, deck + 1.5, -0.62), Vector3(0.0, deck + 1.78, 0.62), ENAMEL_TOP, PLATE)
+	k.box(Vector3(-1.14, deck + 1.78, -0.74), Vector3(0.14, deck + 1.9, 0.74), PLATE_DARK, PLATE)
+	k.box(Vector3(0.1, deck + 0.3, -0.34), Vector3(0.16, deck + 1.3, 0.34), SHADOW, SHADOW)
+	for j in 3:
+		k.box(Vector3(-1.12, deck + 0.4 + j * 0.34, -0.5), Vector3(-1.06, deck + 0.62 + j * 0.34, 0.5), PLATE_DARK, PLATE_DARK)
+	# The rising main down into the water, and the delivery going off into the dark.
+	k.prism(-0.55, 0.14, 0.4, 0.2, deck + 0.4, 0.2, 8, PLATE, PLATE_TOP)
+	k.push(Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.6, deck + 0.9, -0.2)))
+	k.prism(0.0, 0.0, 0.0, 0.17, 2.6, 0.17, 8, PLATE_DARK, PLATE)
+	k.pop()
+	# The float on its chain, DOWN, which is the whole of what the place says.
+	k.prism(1.05, 0.16, 0.55, 0.26, 0.5, 0.2, 7, RUST, PLATE)
+	_cable(made, Vector3(1.05, deck + 0.1, 0.55), Vector3(1.05, 0.5, 0.55), 0.028, P.STONE[2], seed_value + 7)
+	# The vent riser off the house, up into the dark, with its cowl: the one thing
+	# in a sump that stands, and what makes the shape read across a cave floor.
+	k.prism(-0.55, deck + 1.9, -0.3, 0.2, deck + 2.9, 0.17, 6, PLATE, PLATE_TOP)
+	k.prism(-0.55, deck + 2.9, -0.3, 0.34, deck + 3.06, 0.3, 6, PLATE_DARK, PLATE)
+	k.push(Transform3D(Basis(Vector3.BACK, 0.5), Vector3(-0.55, deck + 3.06, -0.3)))
+	k.prism(0.0, 0.0, 0.0, 0.3, 0.42, 0.26, 6, PLATE, PLATE_TOP)
+	k.pop()
+	for i in 3:
+		k.strut(Vector3(-0.55, deck + 2.5, -0.3), Vector3(-0.55 + cos(2.1 * i) * 0.62, deck + 0.2, -0.3 + sin(2.1 * i) * 0.62), 0.035, 4, PLATE_DARK)
+	# One strip alive on the house, and the gauge lens still reading the level.
+	lamps.box(Vector3(0.16, deck + 1.02, -0.12), Vector3(0.2, deck + 1.34, 0.12), W.STRIP)
+	lamps.box(Vector3(-1.16, deck + 0.9, -0.16), Vector3(-1.12, deck + 1.16, 0.16), W.WORKING)
+	lamps.prism(-0.55, deck + 3.2, -0.3, 0.13, deck + 3.42, 0.08, 6, W.BEACON, W.BEACON)
 
 
 # --- shared hands ---------------------------------------------------------------

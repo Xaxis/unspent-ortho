@@ -5,11 +5,16 @@
 #   tools/tour.sh tours/works.tour --seed=1 --hour=18.5 --weather=clear:0 --held=axe_felling
 #
 # What it proves, in order: a depot stands in a region the plan is working, lit,
-# with its mast over it and its own bodies about; standing in its yard is filed
-# against the region's network without a word being said; each of its three
-# housings is its own walk and opens under a steel edge; and when the third goes,
-# the region is dark for good — the lights out, the frame before and the frame
-# after of the same yard held to each other.
+# with its mast over it; it PUTS BODIES OUT — one of its own from the gate and
+# one on its round along the survey, with the coast itself calm, so what walks
+# here walks out of this yard; its mast is read across the land at night AT THE
+# ZOOM THE GAME IS PLAYED AT (the first version of this tour never looked at the
+# depot after dark, and a review found the brightest thing in a night frame of
+# the yard was a mob's health bar); standing in its yard is filed against the
+# region's network without a word being said; each of its three housings is its
+# own walk and opens under a steel edge; and when the third goes, the region is
+# dark for good — the lights out, the frame before and the frame after of the
+# same yard held to each other.
 #
 # What is NOT here: the land closing over the yard. That is four world days
 # (Works.RECOVER_HOURS) and it is proved in tests/works/test_rules.gd, where the
@@ -21,17 +26,43 @@ wait 0.8
 await works 12
 shot 01-a-depot-in-the-evening with works,works_lit,works_yard
 
+# ITS OWN TRAFFIC. The coast is calm — nothing random is coming — so the body
+# that walks out of the gate and the one that takes the survey line are this
+# depot's (Works.OWN_EVERY, Works.PATROL_EVERY, both INF once it is dark). This
+# is the half of "the region's machines come from its depot" that can be watched;
+# the other half, a dark region rolling no machine of the plan at all, is counted
+# in tests/works/test_in_game.gd.
+await works_body 60
+shot 02-the-yard-sends-one-of-its-own with works,works_lit,mob
+await works_patrol 80
+shot 03-a-round-along-the-survey with works,works_lit
+
+# NIGHT, and the whole reason the mast is there. Backed off up the screen to the
+# edge of the yard's own ground, AT PLAY ZOOM, and the picture itself is asked
+# whether the machines' own light (works.gd STRIP) is really in it. Five tiles is
+# about as far as this camera lets a depot be looked at whole — the frame is
+# 26 tiles across and 18 deep, and past that the mast's head is all that is left
+# of it (docs/ROADMAP.md: reading a thing off the horizon wants a camera change,
+# not a taller mast).
+hour 21.5
+wait 1.2
+walk 0,-1 1.0 run
+wait 0.8
+shot 04-the-mast-over-its-yard-at-night with works_yard,pixels:bebadf:30
+
 # Its ground. Everything inside its reach answers to it, and the plan keeps a
 # file on whoever is standing in the yard: nothing is written on screen about it
 # — the horn over the land and the watchers turning are the whole of the telling.
+place works
+wait 0.8
 await works_pressed 20
-shot 02-standing-in-a-working-yard with works,works_lit
+shot 05-standing-in-a-working-yard with works,works_lit
 
 # The first housing. A steel edge and the key held: the housing's own lamp
 # stutters while the work is on, and the plan hears about it the moment it opens.
 press use 5.5
 await works_part 14
-shot 03-the-first-housing-open with works,works_open:1
+shot 06-the-first-housing-open with works,works_open:1
 
 # The second. Its own walk across the open, because no two of them can be
 # reached from one spot (Works.PART_OFFSETS, held by tests/works/test_rules.gd).
@@ -39,7 +70,7 @@ place works_breaker
 wait 0.5
 press use 5.5
 await works_open:2 14
-shot 04-the-second with works,works_open:2
+shot 07-the-second with works,works_open:2
 
 # And the third, which is the one taken with the region already coming.
 place works_coolant
@@ -47,10 +78,10 @@ wait 0.5
 press use 5.5
 await works_broken 14
 wait 0.6
-shot 05-the-yard-goes-dark with works,works_dark
+shot 08-the-yard-goes-dark with works,works_dark
 
 # The same frame as the first, from the same place, so the difference is the
 # thing and not the camera: every light on it out, and out tomorrow.
 place works
 wait 0.8
-shot 06-dark-from-where-it-was-lit with works,works_dark
+shot 09-dark-from-where-it-was-lit with works,works_dark
