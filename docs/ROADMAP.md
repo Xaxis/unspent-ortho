@@ -577,25 +577,36 @@ before the set was taken. What the numbers say, accepted-to-now:
   (118 against its own brightest 87) and the bonelands' limestone (192 against
   141) look like real minor faults.
 
-**Wave B** (parallel, on top of A):
+**Wave B**, replanned 2026-09-16 after taking stock. Two of the packages this
+list used to name are already built and on main — **sentinels** (the spine and
+two designs) and **crafts** (the spine and its rides) — and a second session has
+since built dev mode, master configurations and stamped builds, which was M5 work
+arriving early. What is left is the world's reach, its economy, and the thing the
+owner asked for that nothing yet does:
+
 - **realms**: realms and portals; the first underground type (Limestone Caves,
-  drawn as scratchboard); the first era (The Before, drawn in watercolour) with
-  edits that carry into the present.
-- **sentinels** (built, below): the boss spine, plus the Coast and Salt Flats
-  sentinels, each beatable three ways.
-- **crafts**: the vehicle spine; raft, hover sled, walker rig.
-- **gear**: the MENDED tech tree (20+ implements, 15+ modules) **plus the economy that
-  places it** (VISION §6.1): five rarity grades, elite materials that exist in one or
-  two landscapes or drop from one enemy or sentinel, craft difficulty by station tier,
-  and modifiers that change decisions, combine, conflict, and can be re-socketed.
-- **settlement**: building at world scale (VISION §9) — shelter, power, food and water,
-  work stations, defence, and people who staff them; production, upkeep and repair that
-  run while the player is away.
-- **raids**: why and when machines come for a settlement — signature, notice as a
-  playable encounter, attention, the readable escalation from survey to siege, roles in
-  the raid itself, destruction, aftermath and reclaiming.
-- **works**: machine depots that feed patrols, can be broken and let a region recover.
-- **landmarks**: 3-5 kinds per type, worth the walk.
+  scratchboard); the first era (The Before, watercolour) with edits that carry
+  into the present. The largest gap in VISION and the last of its spines.
+- **gear**: the MENDED tech tree and the economy that places it (VISION §6.1) on
+  the contract already on main (`src/core/loot/`): rarity, elite materials tied to
+  one or two landscapes or to one enemy, craft difficulty, and modifiers that
+  change decisions. Sentinels now exist to drop from.
+- **settlement**: building at world scale (VISION §9) on the contract already on
+  main (`src/core/settlement/`): shelter, power, food and water, work, defence,
+  and people who staff them.
+- **raids**: why and when the machines come for it — signature, notice as a
+  playable encounter, attention, and the readable escalation to a siege.
+- **works and landmarks**: the depots that feed the patrols and can be broken,
+  and the places worth the walk that feed the economy its materials.
+- **polish**: what A2 left, listed in "Gaps A2 leaves" — the Burning's vents
+  (the ugliest thing in the build), the targeting tag standing in the world, a
+  machine with no mass at play distance, the ruts stamped five to a frame,
+  survivable day two, and a loading page with no deadline.
+
+Then **M3** grows the landscape types (Ruined Metropolis and its Undercroft
+first), each with its own sentinel and landmarks on the spines that now exist;
+**M4** is the plan, the people and the story; **M5** is ship, already part-built
+by dev mode's configurations and builds.
 
 ### Sentinels (wave B, built)
 
