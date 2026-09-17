@@ -29,11 +29,12 @@ func test_every_plant_with_leaves_draws_them_as_cards() -> void:
 
 func test_a_card_is_a_whole_quad_cut_to_a_sprig_the_shader_knows() -> void:
 	var src := FileAccess.get_file_as_string(SHADER)
-	for pair: Array in [["LEAF_BROAD", Kit.LEAF_BROAD], ["LEAF_SMALL", Kit.LEAF_SMALL], ["LEAF_NEEDLE", Kit.LEAF_NEEDLE], ["LEAF_SPINE", Kit.LEAF_SPINE]]:
-		check(src.contains("const int %s = %d;" % pair), "the shader cuts %s as the kit names it" % pair[0])
+	for pair: Array in [["LEAF_BROAD", Kit.LEAF_BROAD], ["LEAF_SMALL", Kit.LEAF_SMALL], ["LEAF_NEEDLE", Kit.LEAF_NEEDLE], ["LEAF_SPINE", Kit.LEAF_SPINE],
+			["LEAF_SHAPE_BITS", Kit.LEAF_SHAPE_BITS], ["LEAF_SNOW_STEPS", Kit.LEAF_SNOW_STEPS]]:
+		check(src.contains("const int %s = %d;" % pair), "the shader reads %s as the kit writes it" % pair[0])
 	var known := [Kit.LEAF_BROAD, Kit.LEAF_SMALL, Kit.LEAF_NEEDLE, Kit.LEAF_SPINE]
-	for kind: int in [PropKind.PINE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GORSE]:
-		var t := PropModels.template(kind, 1, Country.COAST)
+	for kind: int in [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GORSE]:
+		var t := PropModels.template(kind, 1, Country.SNOWFIELD if kind == PropKind.SNOW_PINE else Country.COAST)
 		eq(t.leaf_v.size() % 6, 0, "%s: cards are whole quads" % PropKind.NAMES[kind])
 		eq(t.leaf_uv.size(), t.leaf_v.size(), "%s: every corner has card coordinates" % PropKind.NAMES[kind])
 		for i in t.leaf_v.size():
@@ -41,9 +42,54 @@ func test_a_card_is_a_whole_quad_cut_to_a_sprig_the_shader_knows() -> void:
 			if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0:
 				fail("%s: a card corner off its own card (%s)" % [PropKind.NAMES[kind], uv])
 				break
-			if not known.has(roundi(t.leaf_c[i].a * 255.0)):
+			if not known.has(Kit.leaf_shape(t.leaf_c[i])):
 				fail("%s: a card names a sprig the shader does not cut (%d)" % [PropKind.NAMES[kind], roundi(t.leaf_c[i].a * 255.0)])
 				break
+
+
+## Snow on a plant is the leaves' own (leaf.gdshader, kit.gd `_card`). The lid it
+## replaced -- a white tier over a laden pine's needles, a white clump on a
+## snowfield bush -- read as a sliver of paper and a dome, the two things the
+## cards had just taken out of every other plant.
+func test_snow_lies_in_the_leaves_and_never_as_a_lid() -> void:
+	var lid := Palette.RIME[5]
+	var snowfield := Country.SNOWFIELD
+	for pair: Array in [[PropKind.SNOW_PINE, snowfield, Trees.PINE_LADEN], [PropKind.PINE, snowfield, Trees.PINE_SNOW],
+			[PropKind.BUSH, snowfield, Trees.SCRUB_SNOW], [PropKind.GORSE, snowfield, Trees.SCRUB_SNOW]]:
+		for v in PropModels.variants(pair[0]):
+			var t := PropModels.template(pair[0], v, pair[1])
+			var who := "%s %d in the snowfield" % [PropKind.NAMES[pair[0]], v]
+			for col in t.made_c:
+				if col.is_equal_approx(Color(lid, col.a)):
+					fail("%s still lays snow as a solid shape over its leaves" % who)
+					break
+			var most := 0.0
+			var least := 9.0
+			for col in t.leaf_c:
+				most = maxf(most, Kit.leaf_snow(col))
+				least = minf(least, Kit.leaf_snow(col))
+			var holds := float(pair[2])
+			check(most > holds * 0.7 and most <= holds + 0.02, "%s: its leaves in the light carry what it holds (%.2f of %.2f)" % [who, most, holds])
+			lt(least, most * 0.85, "%s: and the leaves the crown keeps the weather off carry less (%.2f against %.2f)" % [who, least, most])
+	for kind: int in [PropKind.PINE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GORSE]:
+		for col in PropModels.template(kind, 0, Country.COAST).leaf_c:
+			if Kit.leaf_snow(col) > 0.0:
+				fail("%s on the coast carries snow" % PropKind.NAMES[kind])
+				break
+	# The byte round-trips: every shape keeps its sprig whatever snow is on it.
+	for shape: int in [Kit.LEAF_BROAD, Kit.LEAF_SMALL, Kit.LEAF_NEEDLE, Kit.LEAF_SPINE]:
+		for snow: float in [0.0, 0.5, 1.0]:
+			var col := Color(0.3, 0.4, 0.2, Kit.leaf_code(shape, snow) / 255.0)
+			eq(Kit.leaf_shape(col), shape, "shape %d under snow %.1f" % [shape, snow])
+			check(absf(Kit.leaf_snow(col) - snow) < 1.0 / Kit.LEAF_SNOW_STEPS, "snow %.1f on shape %d" % [snow, shape])
+	# And the shader lays it where the leaf's colour is decided, before the air
+	# and the weather and the one door into ALBEDO, never after them.
+	var src := FileAccess.get_file_as_string(SHADER)
+	var laid := src.find("c = mix(c, snow_col, snow);")
+	check(laid > 0, "the shader mixes snow into the leaf's colour")
+	check(laid < src.find("c = sky_apply(c, world_pos, TIME);"), "before the air and the weather")
+	check(src.find("c = sky_apply(c, world_pos, TIME);") < src.find("ALBEDO = matter_albedo(c);"), "and through matter_albedo")
+	eq(src.count("ALBEDO ="), 1, "and nothing else writes ALBEDO")
 
 
 func test_the_cards_are_opaque_and_double_sided_and_lit_through() -> void:

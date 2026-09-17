@@ -31,6 +31,13 @@ static func wind_bent(kind: int, c: int) -> bool:
 
 ## How much of a tier's reach its solid keeps once its needles are cards.
 const PINE_CORE := 0.74
+## How laden a snow pine's needles are, and a pine that merely stands in the
+## snowfield (kit.gd `sprays`, leaf.gdshader). The old lids covered 0.78 and 0.62
+## of a tier's reach; these are the same two falls, said as snow.
+const PINE_LADEN := 1.0
+const PINE_SNOW := 0.62
+## What a snowfield bush and a snowfield gorse hold on their tops.
+const SCRUB_SNOW := 0.7
 
 
 static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
@@ -75,6 +82,10 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 	# A burnt pine has lost its needles: it keeps the tiers of dead twig and no
 	# sprays. Everywhere else the needles are cards.
 	var needled := c != Country.BURNING
+	# Snow lies in the needles themselves (leaf.gdshader), never as a lid over
+	# them: a laden pine is carrying all it can hold, a snowfield pine a lighter
+	# fall the wind has thinned.
+	var snowed := (PINE_LADEN if laden else PINE_SNOW) if snow else 0.0
 	# The top tier first, because it covers the ones under it (kit.gd `canopy`).
 	for t in range(tiers - 1, -1, -1):
 		var f := float(t) / maxf(1.0, tiers - 1)
@@ -91,13 +102,9 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 			# finds, and a gap between two sprays shows the inside of the tree.
 			k.tier(cx, y, cz, r * PINE_CORE, rise, points, droop * 0.8, s + t * 11, Kit.tone(col, 0.72), under if t == 0 else Color(0, 0, 0, 0))
 			var mass: Array[Color] = [Kit.tone(col, NEEDLE_TONE), Kit.tone(col, NEEDLE_TONE), Kit.tone(greens[mini(2, int(f * 2.99) + 1)], NEEDLE_TONE)]
-			k.sprays(cx, y, cz, r, rise, droop, points, s + t * 13, mass)
+			k.sprays(cx, y, cz, r, rise, droop, points, s + t * 13, mass, Kit.LEAF_NEEDLE, snowed)
 		else:
 			k.tier(cx, y, cz, r, rise, points, droop, s + t * 11, col, under if t == 0 else Color(0, 0, 0, 0))
-		if snow and needled:
-			# Snow lies on the upper face of each tier; the green shows at the rim.
-			var sr := r * (0.78 if laden else 0.62)
-			k.tier(cx + Kit.j(s, 40 + t, 0.02), y + droop * 0.35 + 0.03, cz, sr, rise * 0.62, points, droop * 0.7, s + t * 11 + 5, P.RIME[5], Color(0, 0, 0, 0))
 	k.sway_by_height(start, y0 - 0.1, height, 0.7)
 	k.sway_by_height(leaf_start, y0 - 0.1, height, 0.7, k.leaf)
 	if v % 4 == 3 and not laden:
@@ -292,7 +299,7 @@ static func bush(k: Kit, v: int, c: int) -> void:
 	var s := 4000 + v * 19 + c * 11
 	var cols: Array[Color] = [P.MOSS[2], P.MOSS[3], P.MOSS[2].lerp(P.SPRUCE[3], 0.5)]
 	var berries := Color(0, 0, 0, 0)
-	var cap := Color(0, 0, 0, 0)
+	var snow := 0.0
 	match c:
 		Country.MOSS:
 			cols = [P.SPRUCE[2], P.EARTH[2].lerp(P.MOSS[2], 0.5), P.SPRUCE[2].lerp(P.MOSS[3], 0.4)]
@@ -301,7 +308,7 @@ static func bush(k: Kit, v: int, c: int) -> void:
 			berries = P.BLOOM[1]
 		Country.SNOWFIELD:
 			cols = [P.SPRUCE[1], P.SPRUCE[1].lerp(P.ASH[2], 0.4), P.SPRUCE[2]]
-			cap = P.RIME[5]
+			snow = SCRUB_SNOW
 		Country.BONELANDS:
 			cols = [P.MOSS[3].lerp(P.SAND[4], 0.35), P.MOSS[3], P.MOSS[4].lerp(P.LINEN[3], 0.35)]
 			berries = P.RUST[3]
@@ -328,9 +335,9 @@ static func bush(k: Kit, v: int, c: int) -> void:
 		var r := 0.3 - i * 0.02 + Kit.j(s, 20 + i, 0.05)
 		var bh := 0.42 + Kit.j(s, 30 + i, 0.08)
 		var mass: Array[Color] = [cols[i % 3], cols[i % 3], cols[(i + 1) % 3]]
-		k.canopy(cos(a) * rr, -0.03, sin(a) * rr, r, bh, s + i * 5, mass, Kit.LEAF_SMALL, SMALL_CARD, leaf_cards(r, bh, SMALL_CARD))
-		if cap.a > 0.0:
-			k.clump(cos(a) * rr, 0.24, sin(a) * rr, r * 0.66, 0.16, s + i * 5 + 1, cap, 6)
+		# A snowfield bush carries its snow on its leaves, not as a white clump
+		# on top of them, which from above was a dome.
+		k.canopy(cos(a) * rr, -0.03, sin(a) * rr, r, bh, s + i * 5, mass, Kit.LEAF_SMALL, SMALL_CARD, leaf_cards(r, bh, SMALL_CARD), snow)
 	if berries.a > 0.0:
 		for i in 7:
 			var a := float(i) * 1.37
@@ -348,10 +355,12 @@ static func bush(k: Kit, v: int, c: int) -> void:
 static func gorse(k: Kit, v: int, c: int) -> void:
 	var s := 5000 + v * 23 + c
 	var greens: Array[Color] = [P.SPRUCE[2], P.MOSS[2], P.SPRUCE[2].lerp(P.MOSS[3], 0.5)]
+	var snow := 0.0
 	if c == Country.BURNING:
 		greens = [P.EARTH[1], P.ASH[1], P.EARTH[2]]
 	elif c == Country.SNOWFIELD:
 		greens = [P.SPRUCE[1], P.SPRUCE[1], P.SPRUCE[2]]
+		snow = SCRUB_SNOW
 	var start := k.made.vertex_count()
 	var leaf_start := k.leaf.vertex_count()
 	var n := 3 + v
@@ -359,7 +368,7 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 		var a := float(i) / n * TAU + Kit.j(s, i, 0.5)
 		var rr := 0.2 + Kit.j(s, 10 + i, 0.06)
 		var mass: Array[Color] = [greens[i % 3], greens[(i + 1) % 3]]
-		k.canopy(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, mass, Kit.LEAF_SPINE, SPINE_CARD, leaf_cards(0.27, 0.5, SPINE_CARD, SPINE_LAYERS))
+		k.canopy(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, mass, Kit.LEAF_SPINE, SPINE_CARD, leaf_cards(0.27, 0.5, SPINE_CARD, SPINE_LAYERS), snow)
 	# Spines stick out of the mass.
 	for i in 16:
 		var a := float(i) * 2.39996
