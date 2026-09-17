@@ -11,6 +11,11 @@ class_name Sculpt
 ##   Sculpt.loft(k, [[0, .1, .1, 0, 0], [.3, .07, .08, 0, 0]], 6, col)
 ##   Sculpt.limb(k, 0.3, 0.075, 0.06, 6, col, seed)        # hangs along -Y
 
+## How far a lofted WALL may turn and still be one rounded surface. Wider than
+## MeshKit's own default on purpose: a six-sided limb turns 60 degrees at every
+## corner, so any crease under that leaves it a hexagonal bar.
+const WALL_CREASE := 76.0
+
 
 ## Side walls between consecutive rings, optional caps. `cols` is one Color or an
 ## Array with one Color per band (rings - 1); caps take the end bands' colours.
@@ -46,6 +51,7 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 			ring[i] = Vector3(float(r[3]) + cos(a) * float(r[1]) * j, float(r[0]), float(r[4]) + sin(a) * float(r[2]) * j)
 		pts.append(ring)
 	var segs := n
+	var wall_from := k.vertex_count()
 	for ri in rings.size() - 1:
 		var c := _band(cols, ri)
 		var lo := pts[ri]
@@ -53,6 +59,12 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 		for i in segs:
 			var i2 := (i + 1) % count
 			k.quad(lo[i2], lo[i], hi[i], hi[i2], c)
+	# THE WALLS ROUND, THE CAPS DO NOT. An arm is a loft of six or eight sides,
+	# and a flat normal per side under a real sun makes it a hexagonal bar — the
+	# very thing this vocabulary exists to avoid, arrived at from the other
+	# direction. Done before the caps are laid, so an end stays a flat end, and a
+	# shoulder or a brim that turns harder than the crease stays an edge.
+	k.smooth_range(wall_from, k.vertex_count(), WALL_CREASE)
 	if closed and cap_lo:
 		var c0 := _centre(rings[0])
 		var lo := pts[0]
