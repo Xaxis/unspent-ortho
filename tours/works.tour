@@ -1,0 +1,56 @@
+# The machines' depot in a region, cased at dusk and broken (docs/VISION.md §2),
+# through real keys: walk to a working part, hold E with a steel edge in hand,
+# and do it three times while the yard answers.
+#
+#   tools/tour.sh tours/works.tour --seed=1 --hour=18.5 --weather=clear:0 --held=axe_felling
+#
+# What it proves, in order: a depot stands in a region the plan is working, lit,
+# with its mast over it and its own bodies about; standing in its yard is filed
+# against the region's network without a word being said; each of its three
+# housings is its own walk and opens under a steel edge; and when the third goes,
+# the region is dark for good — the lights out, the frame before and the frame
+# after of the same yard held to each other.
+#
+# What is NOT here: the land closing over the yard. That is four world days
+# (Works.RECOVER_HOURS) and it is proved in tests/works/test_rules.gd, where the
+# clock can be moved without three minutes of a runner standing still.
+
+coast calm
+place works
+wait 0.8
+await works 12
+shot 01-a-depot-in-the-evening with works,works_lit,works_yard
+
+# Its ground. Everything inside its reach answers to it, and the plan keeps a
+# file on whoever is standing in the yard: nothing is written on screen about it
+# — the horn over the land and the watchers turning are the whole of the telling.
+await works_pressed 20
+shot 02-standing-in-a-working-yard with works,works_lit
+
+# The first housing. A steel edge and the key held: the housing's own lamp
+# stutters while the work is on, and the plan hears about it the moment it opens.
+press use 5.5
+await works_part 14
+shot 03-the-first-housing-open with works,works_open:1
+
+# The second. Its own walk across the open, because no two of them can be
+# reached from one spot (Works.PART_OFFSETS, held by tests/works/test_rules.gd).
+place works_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+shot 04-the-second with works,works_open:2
+
+# And the third, which is the one taken with the region already coming.
+place works_coolant
+wait 0.5
+press use 5.5
+await works_broken 14
+wait 0.6
+shot 05-the-yard-goes-dark with works,works_dark
+
+# The same frame as the first, from the same place, so the difference is the
+# thing and not the camera: every light on it out, and out tomorrow.
+place works
+wait 0.8
+shot 06-dark-from-where-it-was-lit with works,works_dark

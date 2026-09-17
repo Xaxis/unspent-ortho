@@ -40,6 +40,14 @@ var _settle := SETTLE
 ## Site id -> true, once its far line has been said.
 var _sighted: Dictionary = {}
 var _seen: Dictionary = {}
+## Whether `use` was down last frame. The edge is worked out here rather than
+## asked of `Input.is_action_just_pressed`, which is true only for the frame the
+## press was RECORDED in: a system that runs early in the frame order (this one
+## sorts before the tour that drives the key, and before the player) sees the
+## press one frame late and reads it as already held. It cost a whole tour, and
+## it would have cost a player every press that landed on the wrong half of a
+## frame.
+var _use_was := false
 
 
 func setup(g: Game) -> void:
@@ -105,8 +113,7 @@ func _process(delta: float) -> void:
 		_look = LOOK_EVERY
 		_draw()
 		_watch()
-	if reachable != null and _settle <= 0.0 and not game.input_blocked() \
-			and Input.is_action_just_pressed(&"use") and _cache_wins():
+	if reachable != null and _settle <= 0.0 and _use_pressed() and _cache_wins():
 		_open(reachable)
 
 
@@ -177,13 +184,25 @@ func _watch() -> void:
 			reachable = s
 
 
-## `use` is one key and a cache is one more thing it can mean, so it takes the
-## key only when it is nearer than whatever else is under the hand.
+## `use` is one key and a cache is one more thing it can mean. A shaft takes the
+## key by being NEARER than what is under the hand (20_realms), and that rule is
+## wrong here: a cache is opened exactly once in a whole game, and a bush growing
+## half a tile nearer than it was enough to send the key to the bush — every
+## time, for good, because the player has no way to see which of the two won.
+##
+## So a cache that has never been opened takes the key whenever it is in reach.
+## Nothing is lost by it: the instant it is open it stops being reachable, and
+## the bush is under the hand again on the next press.
 func _cache_wins() -> bool:
-	var t := Survival.use_target(game)
-	if t == null:
-		return true
-	return Landmarks.cache_of(reachable).distance_to(sim.hero.pos) <= t.pos.distance_to(sim.hero.pos)
+	return true
+
+
+## The press, on its rising edge, whoever else is polling the same key.
+func _use_pressed() -> bool:
+	var down := Input.is_action_pressed(&"use") and not game.input_blocked()
+	var edge := down and not _use_was
+	_use_was = down
+	return edge
 
 
 ## Open it: one roll, once and for good. What comes out is the one economy's, and

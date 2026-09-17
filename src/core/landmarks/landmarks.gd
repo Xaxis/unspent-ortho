@@ -23,11 +23,13 @@ class_name Landmarks
 ## Landmarks wanted per region, before the ground has its say. A region usually
 ## yields fewer: a kind whose ground is not in it is simply not placed.
 const PER_REGION := 3
-## Tiles between the coarse candidates a region is searched on. Fine enough to
-## find every headland and rise worth standing a tower on, coarse enough that the
-## sweep is tens of milliseconds on a 512-tile world rather than a quarter of a
-## second on the loading page.
-const STRIDE := 7
+## Tiles between the candidates a region is searched on. The COARSE sweep is
+## tried first and almost always answers — a region only wants three places out
+## of thousands of tiles — and the fine one is run again only over a region the
+## coarse sweep could not fill, which on a 512-tile world is the difference
+## between 60 ms on the loading page and a quarter of a second.
+const STRIDE := 5
+const COARSE := 11
 ## Tiles a landmark keeps from where the player wakes. Not a wall — the first
 ## one should be a morning's walk, not a week's.
 const CLEAR_HOME := 26.0
@@ -51,6 +53,10 @@ const GUARD_RING := 7.0
 ## and raises another when the player walks toward a shaft; past that, the oldest
 ## answers are no longer anybody's.
 const CACHE_MOST := 6
+## However hard the siting has to loosen, two landmarks never come closer than
+## this: nearer than about twenty tiles they are in each other's frame, and two
+## silhouettes in one frame is one silhouette and half the reason for either.
+const MIN_APART := 24.0
 
 ## The kinds. Each is a silhouette of its own, and each stands in three to five
 ## landscapes so that every landscape holds three or more without the game
@@ -135,7 +141,7 @@ static func _build() -> void:
 	out.append(hulk)
 
 	var office := LandmarkDef.make(&"clerks_office", "the clerk's post")
-	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"limestone_caves"]
+	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves"]
 	office.wants = &"rough"
 	office.sees = 20.0
 	office.far = "A post, and the ground round it is pale with paper."
@@ -347,6 +353,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	for m: Dictionary in world.landmarks:
 		if m.has("mark") or m.get("kind") == &"works":
 			built.append(m.get("pos", Vector2.ZERO))
+	var solid := _solid_tiles(world)
 	var apart_scale := clampf(float(world.size) / 512.0, 0.4, 1.0)
 	for region: Dictionary in world.regions:
 		var land := StringName(str(region.get("type", &"")))
@@ -357,19 +364,20 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		for d in kinds:
 			if not wanted.has(d.wants):
 				wanted.append(d.wants)
-		var pool := _candidates(world, region, greens, built, wanted)
-		if pool.is_empty():
-			continue
+		var want := mini(PER_REGION, kinds.size())
+		var chosen := _fill(world, region, greens, built, solid, placed_at, wanted, kinds, apart_scale, COARSE)
+		if chosen.size() < want:
+			# The coarse sweep could not fill this region: look at it properly.
+			# Nothing is kept from the coarse try, so the answer is the fine
+			# sweep's alone and the result does not depend on the order they ran in.
+			var fine := _fill(world, region, greens, built, solid, placed_at, wanted, kinds, apart_scale, STRIDE)
+			if fine.size() > chosen.size():
+				chosen = fine
 		var id := int(region.get("id", -1))
-		var placed := 0
-		for d in kinds:
-			if placed >= PER_REGION:
-				break
-			var at := _pick(pool, placed_at, d, d.apart * apart_scale)
-			if not at.is_finite():
-				continue
+		for row: Dictionary in chosen:
+			var d: LandmarkDef = row.def
+			var at: Vector2 = row.at
 			placed_at.append(at)
-			placed += 1
 			var n := int(counts.get(d.id, 0)) + 1
 			counts[d.id] = n
 			var s := LandmarkSite.new()
@@ -396,7 +404,7 @@ static func forget() -> void:
 
 ## Every tile in a region a landmark could stand on, scored for each thing this
 ## region's kinds want: `{p: Vector2, s: {want -> float}}`.
-static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], wanted: Array[StringName]) -> Array:
+static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], stride: int) -> Array:
 	var out: Array = []
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
@@ -407,11 +415,11 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 		var x := floori(bounds.position.x)
 		while x < int(bounds.end.x):
 			if world.region_at(x, y) != id or not _room_at(world, x, y):
-				x += STRIDE
+				x += stride
 				continue
 			var p := Vector2(x + 0.5, y + 0.5)
-			if p.distance_to(home) < CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, CLEAR_WORKS):
-				x += STRIDE
+			if p.distance_squared_to(home) < CLEAR_HOME * CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, CLEAR_WORKS):
+				x += stride
 				continue
 			# And a player has to be able to STAND at its cache. A lighthouse on a
 			# spit whose front two tiles are surf is a place that cannot be opened,
@@ -419,8 +427,10 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 			# inland looking for dry ground, which is where the first picture of
 			# one was taken from: an empty field with a tower on the skyline.
 			var front := p + _facing(heart, p) * CACHE_OUT
-			if not _room_at(world, floori(front.x), floori(front.y)):
-				x += STRIDE
+			var fx := floori(front.x)
+			var fy := floori(front.y)
+			if not _room_at(world, fx, fy) or solid.has(fy * world.size + fx):
+				x += stride
 				continue
 			# Ties break on the tile's own hash, never on scan order, so a
 			# lighthouse is not always on the north-west corner of its coast.
@@ -430,8 +440,8 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 				var v := _wants(world, x, y, want)
 				scores[want] = -INF if v <= -1000.0 else v + jitter
 			out.append({"p": p, "s": scores})
-			x += STRIDE
-		y += STRIDE
+			x += stride
+		y += stride
 	return out
 
 
@@ -443,7 +453,7 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 static func _pick(pool: Array, placed: Array[Vector2], d: LandmarkDef, apart: float) -> Vector2:
 	for pass_index in 3:
 		var want: StringName = d.wants if pass_index < 2 else &"open"
-		var keep := apart if pass_index == 0 else apart * 0.55
+		var keep := apart if pass_index == 0 else maxf(apart * 0.55, MIN_APART)
 		var best := Vector2.INF
 		var best_score := -INF
 		for c: Dictionary in pool:
@@ -459,6 +469,42 @@ static func _pick(pool: Array, placed: Array[Vector2], d: LandmarkDef, apart: fl
 	return Vector2.INF
 
 
+## What one region can hold, at one sweep fineness: `[{def, at}]`, at most
+## PER_REGION of them, each clear of the ones already standing and of the ones
+## this region has just put down.
+static func _fill(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, placed: Array[Vector2], wanted: Array[StringName], kinds: Array[LandmarkDef], apart_scale: float, stride: int) -> Array:
+	var pool := _candidates(world, region, greens, built, solid, wanted, stride)
+	var out: Array = []
+	if pool.is_empty():
+		return out
+	var here: Array[Vector2] = placed.duplicate()
+	for d in kinds:
+		if out.size() >= PER_REGION:
+			break
+		var at := _pick(pool, here, d, d.apart * apart_scale)
+		if not at.is_finite():
+			continue
+		here.append(at)
+		out.append({"def": d, "at": at})
+	return out
+
+
+## Tiles a body cannot walk onto, as a set. A landmark's cache has to be clear of
+## them or a player cannot get their hands on it: the first pinewood tower put
+## its locker inside a pine, and the `use` key went to the tree every time.
+## The tile a solid prop stands ON, and not the square round it: a world holds
+## tens of thousands of them, and marking a three-by-three for each was half a
+## million dictionary writes on the loading page for an answer that is "is there
+## a trunk where the locker goes".
+static func _solid_tiles(world: WorldData) -> Dictionary:
+	var out := {}
+	for p: WorldProp in world.props:
+		if p.solid <= 0.0:
+			continue
+		out[floori(p.pos.y) * world.size + floori(p.pos.x)] = true
+	return out
+
+
 ## Which way a landmark at `p` is turned: toward its region's heart, so its face
 ## and its cache are on the side a player walks in from. The one place this is
 ## worked out, because the siting has to check the cache's ground before the site
@@ -468,10 +514,13 @@ static func _facing(heart: Vector2, p: Vector2) -> Vector2:
 	return d.normalized() if d.length() > 1.0 else Vector2.RIGHT
 
 
-## Is `p` within `apart` of anything in the list?
+## Is `p` within `apart` of anything in the list? Squared, because this is asked
+## of every candidate against every village and every work the machines laid, and
+## a square root per pair is most of the sweep.
 static func _too_near(p: Vector2, taken: Array[Vector2], apart: float) -> bool:
+	var limit := apart * apart
 	for q in taken:
-		if q.distance_to(p) < apart:
+		if q.distance_squared_to(p) < limit:
 			return true
 	return false
 
@@ -556,12 +605,10 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	# it stands on over the tile it stands on. Two tiles of dead flat in every
 	# direction is a parade ground, and on a terraced snowfield there is none — a
 	# whole landscape held nothing because of it.
-	for dy in range(-2, 3, 2):
-		for dx in range(-2, 3, 2):
-			var g := world.ground_at(x + dx, y + dy)
-			if Ground.is_water(g) or g == Ground.ROAD:
-				return false
-	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+	for d: Vector2i in [Vector2i(0, 0), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		var g := world.ground_at(x + d.x, y + d.y)
+		if Ground.is_water(g) or g == Ground.ROAD:
+			return false
 		if absi(world.level_at(x + d.x, y + d.y) - level) > 1:
 			return false
 	return true

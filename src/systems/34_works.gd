@@ -108,7 +108,9 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 ## quietly invalidates. Added after generation, so no island moves.
 ## Recorded at its first working part rather than at the middle of its deck, for
 ## the same reason a landmark is recorded at its cache: arriving at a works means
-## arriving where the hands go.
+## arriving where the hands go. Its other two housings are reached by name too
+## (`works_breaker`, `works_coolant`), through `GenPlaces`, without being marks
+## of their own on the map.
 func _as_landmark(s: WorksSite) -> void:
 	var at := s.part(0)
 	for m: Dictionary in game.world.landmarks:

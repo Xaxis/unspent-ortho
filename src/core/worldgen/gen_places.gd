@@ -4,6 +4,8 @@ class_name GenPlaces
 ##   "moss"                    a standing tile deep inside a country
 ##   "coast-pinewood"          a standing tile on that ecotone, where both mix
 ##   "tip", "wreck2", ...      the Nth landmark of a kind (1-based, default 1)
+##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings
+##   "lighthouse", "firewatch" the Nth landmark worth the walk of that kind
 ##   "river"                   a bank beside the longest river's middle reach
 ##   "cliff"                   a tile at the foot of the tallest nearby face
 ## find() returns Vector2(-1, -1) when a world has no such place.
@@ -47,9 +49,16 @@ static func find(w: WorldData, name: String) -> Vector2:
 ## `--place`. Both are pure functions of the island, so they are asked directly
 ## rather than made a worldgen stage: adding a stage would move every seed.
 static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
-	if key == "works":
+	if key.begins_with("works"):
 		var works := Works.sites(w)
-		return _stand_near(w, works[nth - 1].part(0)) if nth <= works.size() else Vector2(-1, -1)
+		if nth > works.size():
+			return Vector2(-1, -1)
+		# "works" is the yard; "works_feed", "works_breaker", "works_coolant" are
+		# its three working parts, which is how a tour walks to the next one
+		# without a coordinate (they lie along the survey bearing, so nothing
+		# written in a tour file could name where they are).
+		var part := Works.PART_NAMES.find(StringName(key.trim_prefix("works_")))
+		return _stand_near(w, works[nth - 1].part(maxi(0, part)))
 	if Landmarks.by_id(StringName(key)) == null:
 		return Vector2(-1, -1)
 	var want := nth

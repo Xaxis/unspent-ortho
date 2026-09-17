@@ -339,41 +339,73 @@ static func _blinking_stack(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_valu
 ## applied to somebody else's monument, which is the most dystopian thing in it.
 static func _cast_stones(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
 	var n := 9
+	var ring := 3.6
 	for i in n:
 		var a := TAU * i / float(n) + 0.2
-		var r := 2.5
-		var at := Vector3(cos(a) * r, 0.0, sin(a) * r)
-		var h := 2.1 + Rng.hash01(seed_value, i, 0x61) * 1.5
+		var at := Vector3(cos(a) * ring, 0.0, sin(a) * ring)
+		var h := 3.2 + Rng.hash01(seed_value, i, 0x61) * 1.4
 		if i == 2:
-			# One still down, half-buried, with the grass over it.
-			made.push(Transform3D(Basis(Vector3.BACK, 1.45), at))
-			made.rock(0.0, 0.0, 0.0, 0.55, h * 0.8, seed_value + i, P.STONE[2], 6)
+			# One still down, half-buried, with the grass over it. A slab lying
+			# flat is what says the ring is OLD and has been falling for a while.
+			made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, 1.5), at))
+			_slab(made, h * 0.85, 0.66, 0.34, P.STONE[1], P.STONE[2], seed_value + i)
 			made.pop()
+			made.rock(at.x, 0.0, at.z, 0.7, 0.16, seed_value + 50 + i, P.MOSS[2], 6)
 			continue
-		if i == 5 or i == 7:
-			# Recast: a square concrete column, ruled, with the rebar showing at
-			# the head where the pour came up short. It is the wrong shape and
-			# that is the point.
-			k.box(Vector3(at.x - 0.34, 0.0, at.z - 0.34), Vector3(at.x + 0.34, h, at.z + 0.34), LIME, P.LINEN[4])
-			k.box(Vector3(at.x - 0.36, h * 0.3, at.z - 0.36), Vector3(at.x + 0.36, h * 0.34, at.z + 0.36), P.LINEN[2], P.LINEN[3])
+		if i == 4 or i == 7:
+			# Recast: a square concrete column, ruled, poured round rebar that came
+			# up short at the head. It is the WRONG SHAPE beside the others, and
+			# that is the whole of what this place is about.
+			k.push(Transform3D(Basis(Vector3.UP, a), at))
+			k.box(Vector3(-0.42, 0.0, -0.3), Vector3(0.42, h, 0.3), LIME, P.LINEN[4])
+			k.box(Vector3(-0.45, h * 0.28, -0.33), Vector3(0.45, h * 0.32, 0.33), P.LINEN[2], P.LINEN[3])
+			k.box(Vector3(-0.45, h * 0.66, -0.33), Vector3(0.45, h * 0.7, 0.33), P.LINEN[2], P.LINEN[3])
 			for j in 4:
-				var o := Vector3(-0.18 + (j % 2) * 0.36, 0.0, -0.18 + (j / 2) * 0.36)
-				k.prism(at.x + o.x, h, at.z + o.z, 0.035, h + 0.42 + Rng.hash01(seed_value, i * 4 + j, 0x62) * 0.3, 0.03, 4, RUST)
+				var o := Vector3(-0.22 + (j % 2) * 0.44, 0.0, -0.14 + (j / 2) * 0.28)
+				k.prism(o.x, h, o.z, 0.045, h + 0.5 + Rng.hash01(seed_value, i * 4 + j, 0x62) * 0.4, 0.035, 4, RUST)
+			k.pop()
 			continue
-		var lean := Basis(Vector3.BACK, (Rng.hash01(seed_value, i, 0x63) - 0.5) * 0.24)
-		made.push(Transform3D(lean, at))
-		made.rock(0.0, 0.0, 0.0, 0.5 + Rng.hash01(seed_value, i, 0x64) * 0.2, h, seed_value + i * 3, P.STONE[2], 6)
+		made.push(Transform3D(Basis(Vector3.UP, a) * Basis(Vector3.BACK, (Rng.hash01(seed_value, i, 0x63) - 0.5) * 0.3), at))
+		_slab(made, h, 0.62 + Rng.hash01(seed_value, i, 0x64) * 0.2, 0.34, STONE, STONE_TOP, seed_value + i * 3)
 		made.pop()
-	# The one in the middle, tallest, with the machines' own survey plate bolted
-	# to it at head height: they measured it and moved on.
-	made.rock(0.0, 0.0, 0.0, 0.66, 3.5, seed_value + 77, P.STONE[3], 7)
-	k.box(Vector3(0.6, 1.4, -0.3), Vector3(0.68, 1.85, 0.3), PLATE, PLATE_TOP)
+	# The one in the middle, tallest and thickest, with the machines' own survey
+	# plate bolted to it at head height: they measured it and moved on.
+	made.push(Transform3D(Basis(Vector3.UP, 0.4), Vector3.ZERO))
+	_slab(made, 5.2, 0.86, 0.46, STONE_TOP, P.STONE[4], seed_value + 77)
+	made.pop()
+	k.box(Vector3(0.42, 1.5, -0.34), Vector3(0.52, 2.05, 0.34), PLATE, PLATE_TOP)
 	for j in 3:
-		k.block(0.69, 1.52 + j * 0.12, 0.0, 0.02, 0.05, 0.18, PLATE_DARK)
-	# What the ring is standing in: cropped turf and the odd boulder.
-	for i in 5:
+		k.block(0.53, 1.64 + j * 0.13, 0.0, 0.025, 0.06, 0.2, PLATE_DARK)
+	# What the ring is standing in: cropped turf, a few boulders, and the ditch
+	# somebody dug round it long before any of this.
+	for i in 6:
 		var a := Rng.hash01(seed_value, i, 0x65) * TAU
-		made.rock(cos(a) * 3.8, 0.0, sin(a) * 3.8, 0.3, 0.2, seed_value + 30 + i, P.STONE[1], 5)
+		made.rock(cos(a) * (ring + 1.6), 0.0, sin(a) * (ring + 1.6), 0.34, 0.24, seed_value + 30 + i, P.STONE[1], 5)
+
+
+## A standing stone: a tapered slab, wide one way and thin the other, with a
+## broken crown. A bipyramid (`MeshKit.rock`) reads as a shard on the ground at
+## this camera; a slab reads as something set upright by hands.
+static func _slab(k: MeshKit, h: float, wide: float, thick: float, col: Color, top: Color, seed_value: int) -> void:
+	var lean := (Rng.hash01(seed_value, 1, 0xB1) - 0.5) * 0.16
+	for i in 4:
+		var t0 := i / 4.0
+		var t1 := (i + 1) / 4.0
+		var w0 := lerpf(wide, wide * 0.66, t0) * (1.0 + (Rng.hash01(seed_value, i, 0xB2) - 0.5) * 0.14)
+		var w1 := lerpf(wide, wide * 0.66, t1)
+		var d0 := lerpf(thick, thick * 0.74, t0)
+		var d1 := lerpf(thick, thick * 0.74, t1)
+		var x0 := lean * h * t0
+		var x1 := lean * h * t1
+		k.quad(Vector3(x0 - w0, h * t0, d0), Vector3(x0 + w0, h * t0, d0), Vector3(x1 + w1, h * t1, d1), Vector3(x1 - w1, h * t1, d1), col)
+		k.quad(Vector3(x1 + w1, h * t1, -d1), Vector3(x1 - w1, h * t1, -d1), Vector3(x0 - w0, h * t0, -d0), Vector3(x0 + w0, h * t0, -d0), col)
+		k.quad(Vector3(x0 + w0, h * t0, -d0), Vector3(x1 + w1, h * t1, -d1), Vector3(x1 + w1, h * t1, d1), Vector3(x0 + w0, h * t0, d0), top)
+		k.quad(Vector3(x0 - w0, h * t0, d0), Vector3(x1 - w1, h * t1, d1), Vector3(x1 - w1, h * t1, -d1), Vector3(x0 - w0, h * t0, -d0), top)
+	var cw := wide * 0.66
+	var cd := thick * 0.74
+	var cx := lean * h
+	k.quad(Vector3(cx - cw, h, cd), Vector3(cx + cw, h, cd), Vector3(cx + cw * 0.4, h + 0.2, -cd * 0.3), Vector3(cx - cw * 0.5, h + 0.12, -cd * 0.3), top)
+	k.quad(Vector3(cx + cw, h, -cd), Vector3(cx - cw, h, -cd), Vector3(cx - cw * 0.5, h + 0.12, -cd * 0.3), Vector3(cx + cw * 0.4, h + 0.2, -cd * 0.3), col)
 
 
 ## THE EVAPORATOR. A pan machine that stopped with its rake arm down, and
@@ -410,39 +442,51 @@ static func _evaporator(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: i
 ## place long enough for the land to come up through it: its back is broken, its
 ## deck is a floor of soil, and what grows here grows out of it.
 static func _grown_hulk(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
-	# The spine, broken in the middle and both halves tipped.
-	k.push(Transform3D(Basis(Vector3.BACK, -0.16), Vector3(-1.6, 0.35, 0.0)))
-	k.box(Vector3(-1.5, 0.0, -1.1), Vector3(1.6, 1.5, 1.1), ENAMEL, ENAMEL_TOP)
-	k.box(Vector3(-1.6, 1.5, -1.2), Vector3(1.2, 1.74, 1.2), PLATE_DARK, PLATE)
-	k.pop()
-	k.push(Transform3D(Basis(Vector3.BACK, 0.42), Vector3(1.5, 0.2, 0.0)))
-	k.box(Vector3(-0.8, 0.0, -1.0), Vector3(1.9, 1.3, 1.0), ENAMEL, ENAMEL_TOP)
-	k.prism(1.9, 0.5, 0.0, 0.8, 2.4, 0.42, 6, PLATE, PLATE_TOP)
-	k.pop()
-	# The break: ribs standing out of the gap, ruled, with nothing between them.
-	for i in 6:
-		var z := -0.9 + i * 0.36
-		k.strut(Vector3(-0.4, 0.5, z), Vector3(0.5, 2.1 + Rng.hash01(seed_value, i, 0x81) * 0.5, z * 0.7), 0.055, 4, PLATE_DARK)
-	# The legs it stood on, three left, one lying.
+	# The legs it stood on, three left and one lying: they lift the body clear of
+	# the ground, which is what makes it a thing that WALKED and died standing
+	# rather than a heap somebody tipped.
 	for i in 3:
-		var x := -2.6 + i * 2.2
-		k.strut(Vector3(x, 1.0, 1.0), Vector3(x + 0.4, 0.0, 2.0), 0.16, 5, PLATE_DARK)
-		k.strut(Vector3(x, 1.0, -1.0), Vector3(x - 0.3, 0.0, -2.1), 0.16, 5, PLATE_DARK)
-	k.strut(Vector3(2.4, 0.18, 2.2), Vector3(4.2, 0.12, 1.2), 0.16, 5, PLATE_DARK)
-	# And the land, which is the whole point: soil over the deck, a tree up
-	# through the break, scrub in every hollow, moss on the north faces.
-	made.rock(-1.4, 1.5, 0.0, 1.5, 0.45, seed_value + 1, P.EARTH[2], 7)
-	made.rock(1.5, 1.2, 0.0, 1.0, 0.35, seed_value + 2, P.EARTH[1], 6)
-	_limb(made, Vector3(0.1, 1.2, 0.2), Vector3(-0.3, 4.6, -0.2), 0.2, TIMBER, seed_value + 11)
-	for i in 5:
-		var a := Rng.hash01(seed_value, i, 0x82) * TAU
-		var r := 0.7 + Rng.hash01(seed_value, i, 0x83) * 0.9
-		made.rock(-0.3 + cos(a) * r, 4.0 + sin(a) * 0.5, -0.2 + sin(a) * r, 0.75, 0.55, seed_value + 20 + i, LEAF if i % 2 == 0 else LEAF_PALE, 6)
+		var x := -2.8 + i * 2.4
+		k.strut(Vector3(x, 1.5, 1.1), Vector3(x + 0.5, 0.0, 2.4), 0.2, 5, PLATE_DARK)
+		k.strut(Vector3(x, 1.5, -1.1), Vector3(x - 0.4, 0.0, -2.5), 0.2, 5, PLATE_DARK)
+		k.prism(x + 0.5, 0.0, 2.4, 0.34, 0.2, 0.34, 6, PLATE, PLATE_TOP)
+	k.strut(Vector3(2.8, 0.22, 2.6), Vector3(5.0, 0.14, 1.4), 0.2, 5, PLATE_DARK)
+	# The spine, broken in the middle, both halves tipped away from the break.
+	k.push(Transform3D(Basis(Vector3.BACK, -0.18), Vector3(-1.8, 1.4, 0.0)))
+	k.box(Vector3(-1.7, 0.0, -1.2), Vector3(1.7, 1.9, 1.2), ENAMEL, ENAMEL_TOP)
+	k.box(Vector3(-1.8, 1.9, -1.35), Vector3(1.3, 2.18, 1.35), PLATE_DARK, PLATE)
+	k.box(Vector3(-1.72, 0.3, 1.18), Vector3(1.6, 1.0, 1.26), SHADOW, SHADOW)
+	k.pop()
+	k.push(Transform3D(Basis(Vector3.BACK, 0.44), Vector3(1.7, 1.15, 0.0)))
+	k.box(Vector3(-0.9, 0.0, -1.1), Vector3(2.1, 1.6, 1.1), ENAMEL, ENAMEL_TOP)
+	k.box(Vector3(-0.9, 1.6, -1.2), Vector3(1.9, 1.84, 1.2), PLATE_DARK, PLATE)
+	# Its head, still up, still pointed the way it was going.
+	k.prism(2.1, 0.6, 0.0, 0.9, 3.4, 0.4, 6, PLATE, PLATE_TOP)
+	k.prism(2.1, 3.4, 0.0, 0.4, 3.7, 0.2, 6, PLATE_DARK, PLATE)
+	k.pop()
+	# The break: ribs standing out of the gap with nothing between them. The one
+	# place the thing is open, and the silhouette's own notch.
 	for i in 7:
+		var z := -1.0 + i * 0.34
+		k.strut(Vector3(-0.5, 1.5, z), Vector3(0.4, 3.4 + Rng.hash01(seed_value, i, 0x81) * 0.8, z * 0.6), 0.07, 4, PLATE_DARK)
+	# And the land, which is the whole point: soil banked over the deck, a tree up
+	# through the break, scrub in every hollow, moss down the north faces.
+	made.rock(-1.7, 3.1, 0.0, 1.7, 0.6, seed_value + 1, P.EARTH[2], 7)
+	made.rock(1.7, 2.5, 0.0, 1.2, 0.5, seed_value + 2, P.EARTH[1], 6)
+	_limb(made, Vector3(0.1, 2.2, 0.2), Vector3(-0.5, 7.4, -0.4), 0.28, TIMBER, seed_value + 11)
+	for i in 4:
+		var a := 1.1 + i * 1.3
+		_limb(made, Vector3(-0.35, 5.6 + i * 0.3, -0.2), Vector3(-0.35 + cos(a) * 1.5, 6.6 + i * 0.3, -0.2 + sin(a) * 1.5), 0.09, TIMBER, seed_value + 30 + i)
+	for i in 6:
+		var a := Rng.hash01(seed_value, i, 0x82) * TAU
+		var r := 0.8 + Rng.hash01(seed_value, i, 0x83) * 1.2
+		made.rock(-0.5 + cos(a) * r, 6.4 + sin(a) * 0.6, -0.4 + sin(a) * r, 1.0, 0.8, seed_value + 20 + i, LEAF if i % 2 == 0 else LEAF_PALE, 6)
+	for i in 8:
 		var a := Rng.hash01(seed_value, i, 0x84) * TAU
-		var r := 2.0 + Rng.hash01(seed_value, i, 0x85) * 2.4
-		made.rock(cos(a) * r, 0.0, sin(a) * r, 0.34, 0.3, seed_value + 40 + i, LEAF_PALE, 5)
-	made.rock(-2.4, 1.6, -0.6, 0.5, 0.14, seed_value + 60, P.MOSS[2], 6)
+		var r := 2.4 + Rng.hash01(seed_value, i, 0x85) * 2.6
+		made.rock(cos(a) * r, 0.0, sin(a) * r, 0.4, 0.36, seed_value + 40 + i, LEAF_PALE, 5)
+	made.rock(-2.9, 2.9, -0.7, 0.6, 0.18, seed_value + 60, P.MOSS[2], 6)
+	made.rock(2.6, 2.2, 0.8, 0.5, 0.16, seed_value + 61, P.MOSS[1], 6)
 
 
 ## THE CLERK'S POST. A filing post that went over, and every reading it ever took
