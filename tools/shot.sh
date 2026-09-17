@@ -29,6 +29,8 @@ wait "$pid" 2>/dev/null
 if [ $status -eq 1 ]; then
   grep -E 'SCRIPT ERROR|ERROR|at: ' "$log" | head -30; echo "shot FAILED: script error ($out)"; rm -f "$log"; exit 1
 fi
-grep -E '^(world|shot) ' "$log"
+# `gallery` too: --piece prints the numbered pieces of a model and says which one
+# the frame is aimed at, and a list nobody sees is a list nobody can pick from.
+grep -E '^(world|shot|gallery) ' "$log"
 if [ ! -f "$out" ]; then tail -20 "$log"; echo "shot FAILED: no image ($out)"; rm -f "$log"; exit 1; fi
 rm -f "$log"
