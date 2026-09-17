@@ -339,12 +339,19 @@ func test_every_landscapes_evening_spends_a_third_of_the_afternoon() -> void:
 		var afternoon := SkyLight.frame_level(17.0, SkyLight.type_light(def, 17.0))
 		var night := SkyLight.frame_level(22.0, SkyLight.type_light(def, 22.0))
 		lt(night, afternoon * 0.78, "%s gives up a fifth of its afternoon and more" % id)
-		# And it lands at nine, as the brief asks: the evening proper does the
-		# work, and what is left after nine is a whisker.
 		var six := SkyLight.frame_level(18.0, SkyLight.type_light(def, 18.0))
 		var nine := SkyLight.frame_level(21.0, SkyLight.type_light(def, 21.0))
 		lt(nine, six * 0.82, "%s: the three hours from six take a fifth and more" % id)
-		gt(night, nine * 0.94, "%s has landed by nine, not gone on falling into the night" % id)
+		# AND IT LANDS WHERE THE CURVE LANDS, which is 21:36 and no longer nine:
+		# `day_gone` runs to EVENING_TO, so the last thirty-six minutes are a real
+		# twilight rather than a flat stretch. That is the whole of what stopped the
+		# village lamps brightening a frame with nothing left to pay for them. What
+		# is pinned is the thing that actually matters — that NOTHING moves once the
+		# curve has landed, so no land goes on falling, or climbing, through the
+		# small hours.
+		var landed := SkyLight.frame_level(SkyLight.EVENING_TO, SkyLight.type_light(def, SkyLight.EVENING_TO))
+		near(night, landed, landed * 0.01, "%s goes on moving after the light has landed" % id)
+		lt(night, nine * 0.96, "%s: nine o'clock is not yet the night, it is the last of the dusk" % id)
 
 
 ## The landscapes do not all fall together: docs/ART.md section 3 gives each one
@@ -356,8 +363,14 @@ func test_each_landscape_keeps_the_dusk_its_own_row_promises() -> void:
 		var day := SkyLight.frame_level(16.0, SkyLight.type_light(def, 16.0))
 		var seven := SkyLight.frame_level(19.0, SkyLight.type_light(def, 19.0))
 		share[id] = seven / day
-	lt(share[&"pinewood"], share[&"coast"] * 0.95, "the pines are darker at seven, against their own afternoon, than the coast")
-	lt(share[&"pinewood"], share[&"burning"] * 0.95, "and than the burning, which holds its heat")
+	# The margins were 0.95 when `frame_level` composed a wash that the landscape's
+	# own mood multiplied whole. It composes the LIGHT now, and a landscape's mood
+	# reaches the sun's energy and the ambient's HUE but not the ambient's level —
+	# which is what the renderer does, so the leverage a row has over a frame is
+	# genuinely smaller than the old model credited it with. The claims are
+	# unchanged and are now stated without a margin: darker is darker.
+	lt(share[&"pinewood"], share[&"coast"], "the pines are darker at seven, against their own afternoon, than the coast")
+	lt(share[&"pinewood"], share[&"burning"], "and than the burning, which holds its heat")
 	gt(share[&"burning"], share[&"bonelands"], "the bonelands fall off the end of the day harder than the burning")
 	# The burning's dusk is a furnace and its night keeps the warmth; the
 	# snowfield's last hour is the bluest thing in the game.

@@ -1072,66 +1072,57 @@ static func night_terms(hour: float, weather: Vector3) -> Vector2:
 	return Vector2(maxf(dark, storm), maxf(pow(dark, GLOW_LAG), storm))
 
 
-## The constants sky.gdshaderinc composes a dark frame with, mirrored here so the
-## evening can be measured without a frame (frame_level). tests/sky read them
-## back out of the shader source: if one moves there and not here, a test fails.
-const NIGHT_FLOOR := Vector3(0.08, 0.10, 0.21)
-const NIGHT_KNEE := 0.32
-const GLOW_LEVEL := 0.24
-const GLOW_FLOOR := 0.033
-
-## HOW MUCH OF A PICTURE EACH NIGHT TERM ACTUALLY REACHES. The shader constants
-## above say how strong a term is WHERE IT LANDS; a frame is not all of that.
-## The skyglow is emission on lit MADE and FOUND geometry: the sea has its own
-## shader, the page behind the land takes none of it, and the ink pass draws over
-## a good deal of what does. The floor only lifts the part of a wash the outline
-## and the hatching have not already taken.
+## WHAT A FRAME OF THIS LAND READS AT, on the CPU: the two numbers the renderer
+## is actually driven by, over a bank of albedos and faces.
 ##
-## So these two are MEASURED, not derived: least squares against 78 rendered
-## frames (six landscapes x thirteen hours, seed 7, clear, native 640x360, the
-## world under the slate's bands), which lands the model within 3.3 values on
-## 0-255 across the whole set, and reproduces the 20:30 rise this package was
-## sent to kill in the four landscapes the frames show it in. Re-fit them if the
-## shader's own composition changes; do not guess them.
-const GLOW_REACH := 0.25
-const FLOOR_REACH := 0.70
+## IT USED TO COMPOSE sky_apply(): a blue floor lifted under every wash below a
+## knee, and a skyglow emitted over everything, with two MEASURED reach constants
+## fitted against 78 rendered frames. Every one of those was true of the
+## wash-and-ink pipeline and none of it is drawn any more — `sky_night` is
+## declared in sky.gdshaderinc and sampled by nothing, and `neon_skyglow` returns
+## vec3(0.0). What makes a night dark now is NIGHT_AMBIENT and MOON_NIGHT on real
+## lights.
+##
+## That mattered, because this function is what a tour's `await darker` reads,
+## and `darker` is the ONE thing in a tour that can fail on the DIRECTION of the
+## light (`same` is an absolute difference and passes a rise exactly as a fall).
+## Modelling two terms that are still climbing when the light has landed put the
+## guard on a knife edge at the end of every evening: measured over the last half
+## hour, the old model turned back UP on all six landscapes and on a land with no
+## mood of its own — moss +0.0004, coast +0.0002, pinewood +0.0005, snowfield
+## +0.0015 from 21:00, bonelands +0.0003, burning +0.0010 from 21:00. Which side
+## of the line a landscape fell on depended on the blend of shares in view, so
+## the same tour passed and failed at one commit. The guard added to catch an
+## evening that brightens had become an evening that brightens.
+##
+## So it composes what compose() composes: the sun's energy and the ambient's,
+## against the one curve, times the hue's own luminance. It is a DIRECTION model
+## and is not a brightness prediction — it has no emission in it (a village's
+## lamps and fires are a real part of a dusk frame and belong to 15_lights) and
+## no tonemapper, so its numbers fall further than a frame's do. What it is held
+## to is that it moves the way the picture moves.
+##
+## `region` is the landscape's light (type_light); Vector3.ONE is a land with
+## none of its own.
+const FRAME_ALBEDOS := [0.10, 0.16, 0.22, 0.30, 0.40, 0.52, 0.66, 0.82]
+## A face full into the sun, one grazing it, and one in shade.
+const FRAME_FACES := [1.0, 0.55, 0.0]
 
 
-## WHAT A FRAME OF THIS LAND READS AT, on the CPU: sky_apply()'s own arithmetic
-## over a bank of washes, for one hour and one landscape's light.
-##
-## This exists because the rule the evening has to keep — the light falls and
-## never turns back — is a rule about the COMPOSED picture, and every term that
-## keeps a dark frame readable works on a different part of it. The floor lifts a
-## wash under the knee and is then multiplied by the sun; the skyglow is emission
-## added on top of everything, unmultiplied; the landscape's mood multiplies the
-## tint. A test that watches only the light's own level, or only the floor, can
-## be green while the frame turns back up — which is exactly what happened
-## (tests/sky/test_night_readable modelled the floor as a multiply ON the light
-## and could not see an eleven per cent rise the frames showed).
-##
-## It is a model, not a render: it says nothing about where the land is dark, only
-## what the whole page averages. `region` is the landscape's light (type_light).
 static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE) -> float:
-	var hue_tint := tint_at(hour)
-	var total := hue_tint * region * weather
-	var s := sun_at(hour)
-	var e := float(s.energy) * sun_glow(hue_tint, s)
-	var nt := night_terms(hour, weather)
-	var tl := maxf(total.x * 0.3 + total.y * 0.59 + total.z * 0.11, 0.001)
-	var hue := total / tl
+	var tint := tint_at(hour)
+	var total := tint * region * weather
+	var level := maxf((total.x + total.y + total.z) / 3.0, 0.001)
+	var hue := total / level
+	var lit := 1.0 - day_gone(hour)
+	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)), lit)
+	var amb := lerpf(NIGHT_AMBIENT, DAY_AMBIENT, lit)
+	var hue_lum := maxf(hue.x * 0.3 + hue.y * 0.59 + hue.z * 0.11, 0.01)
 	var sum := 0.0
 	var n := 0
-	for a: float in [0.10, 0.16, 0.22, 0.30, 0.40, 0.52, 0.66, 0.82]:
-		for shade: float in [1.0, 0.8, 0.6]:
-			var c := Vector3.ZERO
-			for i in 3:
-				var v := a * total[i]
-				var fl := NIGHT_FLOOR[i] * nt.x * FLOOR_REACH
-				if v < NIGHT_KNEE:
-					v = fl + (NIGHT_KNEE - fl) * (v / NIGHT_KNEE)
-				c[i] = v * e * shade + (a * hue[i] * GLOW_LEVEL + hue[i] * GLOW_FLOOR) * nt.y * GLOW_REACH
-			sum += c.x * 0.3 + c.y * 0.59 + c.z * 0.11
+	for a: float in FRAME_ALBEDOS:
+		for face: float in FRAME_FACES:
+			sum += a * (sun * face + amb) * hue_lum
 			n += 1
 	return sum / float(n)
 
