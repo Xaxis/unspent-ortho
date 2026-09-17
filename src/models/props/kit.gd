@@ -70,53 +70,127 @@ func _frustum(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Col
 	made.pop()
 
 
-## A faceted stone: an irregular base ring, a smaller leaning top ring and a
-## broken top. Never a sphere, never a cube. `lean` tips the top toward +x.
+## Ring profiles, ground to crown, as (radius share, height share). A stone
+## bulges BELOW its middle, the way one sits into ground it has been settling
+## into, and closes on a crown ring rather than a point: an apex fan drawn to a
+## point is a crystal's termination and nothing else, which is exactly what every
+## boulder in the game read as once the light became real (docs/LOOK.md law 1).
+const STONE_RINGS: Array[Vector2] = [Vector2(0.92, 0.0), Vector2(1.0, 0.3), Vector2(0.95, 0.58), Vector2(0.75, 0.82), Vector2(0.42, 0.95)]
+## What a cobble gets, and what a nugget gets. **Detail follows the size a thing
+## is actually SEEN at**, which is this package's whole answer to spending more
+## geometry: one screen pixel at the play camera is 14/360 of a tile, so a
+## 0.08-radius chip of slack on a conveyor is four pixels across and a boulder's
+## rings would be thrown away on it. That is not thrift, it is the same rule as
+## the distance LOD, applied where the shape is authored.
+const STONE_RINGS_SMALL: Array[Vector2] = [Vector2(0.94, 0.0), Vector2(1.0, 0.42), Vector2(0.74, 0.82), Vector2(0.4, 0.96)]
+const STONE_RINGS_TINY: Array[Vector2] = [Vector2(0.95, 0.0), Vector2(1.0, 0.5), Vector2(0.5, 0.94)]
+## Radii, in tiles, where a stone drops a ring and stops earning extra corners.
+const STONE_SMALL := 0.22
+const STONE_TINY := 0.13
+
+
+## The ring profile and corner count a stone or a clump of radius `r` has earned.
+static func _detail(r: float, sides: int, big: Array[Vector2], small: Array[Vector2], tiny: Array[Vector2]) -> Array:
+	if r < STONE_TINY:
+		return [tiny, sides]
+	if r < STONE_SMALL:
+		return [small, sides + 1]
+	return [big, sides + 3]
+
+
+## A weathered stone: rings on one coherent radial profile, rounded into a single
+## mass by the crease smoothing and closed with a crown. `lean` tips the top
+## toward +x; `sides` is a floor, raised for anything big enough to show it.
+##
+## The corner wobble is dealt ONCE and used by every ring, so the rock has
+## vertical ribs that read as form rather than as noise — per-ring noise smooths
+## into a sphere, and a sphere is the other way to fail this.
 func stone(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, col: Color, sides: int = 6, lean: float = 0.0, top_col: Color = Color(0, 0, 0, 0)) -> void:
 	var tc := col if top_col.a == 0.0 else top_col
-	var lo: Array[Vector3] = []
-	var mid: Array[Vector3] = []
-	var hi: Array[Vector3] = []
+	var detail := _detail(r, sides, STONE_RINGS, STONE_RINGS_SMALL, STONE_RINGS_TINY)
+	var prof: Array[Vector2] = detail[0]
+	var n: int = detail[1]
 	var rot := Rng.hash01(seed_value, 99) * TAU
 	var tx := lean * h + j(seed_value, 97, r * 0.15)
 	var tz := j(seed_value, 98, r * 0.15)
-	for i in sides:
-		var a := rot + float(i) / sides * TAU + j(seed_value, i, 0.35)
-		var rr := r * (0.8 + Rng.hash01(seed_value, i, 1) * 0.35)
-		lo.append(Vector3(cx + cos(a) * rr * 0.92, y0, cz + sin(a) * rr * 0.92))
-		mid.append(Vector3(cx + cos(a) * rr + tx * 0.4, y0 + h * (0.45 + j(seed_value, i, 0.1)), cz + sin(a) * rr + tz * 0.4))
-		var rt := rr * (0.45 + Rng.hash01(seed_value, i, 2) * 0.25)
-		hi.append(Vector3(cx + cos(a + 0.2) * rt + tx, y0 + h * (0.88 + j(seed_value, i + 20, 0.1)), cz + sin(a + 0.2) * rt + tz))
-	for i in sides:
-		var n := (i + 1) % sides
-		made.quad(lo[n], lo[i], mid[i], mid[n], tone(col, 0.96))
-		made.quad(mid[n], mid[i], hi[i], hi[n], col)
-	var apex := Vector3(cx + tx * 1.05, y0 + h, cz + tz)
-	for i in sides:
-		made.tri(apex, hi[(i + 1) % sides], hi[i], tc)
+	var ang := PackedFloat32Array()
+	var wob := PackedFloat32Array()
+	for i in n:
+		ang.append(rot + float(i) / n * TAU + j(seed_value, i, 0.3))
+		wob.append(0.78 + Rng.hash01(seed_value, i, 1) * 0.42)
+	var rings: Array[PackedVector3Array] = []
+	for ri in prof.size():
+		var ring := PackedVector3Array()
+		for i in n:
+			var a: float = ang[i]
+			# A little of each ring's own life, far too little to lose the rib.
+			var rr := r * prof[ri].x * wob[i] * (1.0 + j(seed_value, i * 11 + ri, 0.07))
+			var t := prof[ri].y
+			var y := y0 + h * (t + (j(seed_value, i * 7 + ri, 0.035) if ri > 0 else 0.0))
+			ring.append(Vector3(cx + cos(a) * rr + tx * t, y, cz + sin(a) * rr + tz * t))
+		rings.append(ring)
+	var start := made.vertex_count()
+	for ri in rings.size() - 1:
+		var lo := rings[ri]
+		var hi := rings[ri + 1]
+		var band := tone(col, 0.94 + 0.03 * ri)
+		for i in n:
+			var m := (i + 1) % n
+			made.quad(lo[m], lo[i], hi[i], hi[m], band)
+	var crown := rings[rings.size() - 1]
+	var top := Vector3(cx + tx, y0 + h, cz + tz)
+	for i in n:
+		made.tri(top, crown[(i + 1) % n], crown[i], tc)
+	# The whole mass rounds; where the wobble turns hard it keeps its edge, which
+	# is what a fracture plane in a boulder looks like.
+	made.smooth_range(start, made.vertex_count())
 
 
-## A lumpy faceted clump: crowns, bushes, heather, turf banks. Two rings, so
-## the underside turns away from the light and takes the hatching.
+const CLUMP_RINGS: Array[Vector2] = [Vector2(0.72, 0.1), Vector2(1.0, 0.4), Vector2(0.86, 0.68), Vector2(0.48, 0.88)]
+const CLUMP_RINGS_SMALL: Array[Vector2] = [Vector2(0.76, 0.12), Vector2(1.0, 0.46), Vector2(0.56, 0.86)]
+const CLUMP_RINGS_TINY: Array[Vector2] = [Vector2(0.8, 0.16), Vector2(1.0, 0.52), Vector2(0.52, 0.9)]
+
+
+## A lumpy clump: crowns, bushes, heather, turf banks. Rings and a rounded crown,
+## smoothed into one mass — the same correction as `stone`, for the same reason:
+## at two rings and flat normals a bush was a cut green gem.
 func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, col: Color, sides: int = 7) -> void:
 	var rot := Rng.hash01(seed_value, 51) * TAU
-	var lo: Array[Vector3] = []
-	var hi: Array[Vector3] = []
-	for i in sides:
-		var a := rot + float(i) / sides * TAU + j(seed_value, i, 0.3)
-		var rr := r * (0.75 + Rng.hash01(seed_value, i, 3) * 0.45)
-		lo.append(Vector3(cx + cos(a) * rr, y0 + h * (0.35 + j(seed_value, i + 7, 0.08)), cz + sin(a) * rr))
-		var a2 := a + PI / sides
-		var r2 := rr * (0.55 + Rng.hash01(seed_value, i, 4) * 0.2)
-		hi.append(Vector3(cx + cos(a2) * r2, y0 + h * (0.78 + j(seed_value, i + 9, 0.08)), cz + sin(a2) * r2))
-	var top := Vector3(cx + j(seed_value, 40, r * 0.2), y0 + h, cz + j(seed_value, 41, r * 0.2))
+	# A clump is widest low and falls away under itself, so the underside turns
+	# from the sun without a skirt of separate geometry to do it.
+	var detail := _detail(r, sides, CLUMP_RINGS, CLUMP_RINGS_SMALL, CLUMP_RINGS_TINY)
+	var prof: Array[Vector2] = detail[0]
+	var n: int = detail[1]
+	var ang := PackedFloat32Array()
+	var wob := PackedFloat32Array()
+	for i in n:
+		ang.append(rot + float(i) / n * TAU + j(seed_value, i, 0.26))
+		wob.append(0.74 + Rng.hash01(seed_value, i, 3) * 0.46)
+	var rings: Array[PackedVector3Array] = []
+	for ri in prof.size():
+		var ring := PackedVector3Array()
+		for i in n:
+			var a: float = ang[i]
+			var rr := r * prof[ri].x * wob[i] * (1.0 + j(seed_value, i * 13 + ri, 0.09))
+			ring.append(Vector3(cx + cos(a) * rr, y0 + h * (prof[ri].y + j(seed_value, i * 5 + ri, 0.05)), cz + sin(a) * rr))
+		rings.append(ring)
+	var start := made.vertex_count()
 	var bottom := Vector3(cx, y0, cz)
-	for i in sides:
-		var n := (i + 1) % sides
-		made.tri(bottom, lo[i], lo[n], tone(col, 0.85))
-		made.tri(lo[n], lo[i], hi[i], col)
-		made.tri(lo[n], hi[i], hi[n], tone(col, 1.03))
-		made.tri(top, hi[n], hi[i], tone(col, 1.05))
+	var base := rings[0]
+	for i in n:
+		made.tri(bottom, base[i], base[(i + 1) % n], tone(col, 0.85))
+	for ri in rings.size() - 1:
+		var lo := rings[ri]
+		var hi := rings[ri + 1]
+		var band := tone(col, 0.96 + 0.04 * ri)
+		for i in n:
+			var m := (i + 1) % n
+			made.quad(lo[m], lo[i], hi[i], hi[m], band)
+	var crown := rings[rings.size() - 1]
+	var top := Vector3(cx + j(seed_value, 40, r * 0.18), y0 + h, cz + j(seed_value, 41, r * 0.18))
+	for i in n:
+		made.tri(top, crown[(i + 1) % n], crown[i], tone(col, 1.05))
+	made.smooth_range(start, made.vertex_count())
 
 
 ## One tier of a conifer: a jagged star of drooping branch tips round an

@@ -164,11 +164,99 @@ func rock(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, 
 		ring.append(Vector3(cx + cos(a) * rr, mid + (Rng.hash01(seed_value, i, 2) - 0.5) * h * 0.2, cz + sin(a) * rr))
 	var apex := Vector3(cx + (Rng.hash01(seed_value, 9) - 0.5) * r * 0.4, y0 + h, cz + (Rng.hash01(seed_value, 10) - 0.5) * r * 0.4)
 	var base := Vector3(cx, y0, cz)
+	var start := verts.size()
 	for i in sides:
 		var j := (i + 1) % sides
 		var k := 1.0 + (Rng.hash01(seed_value, i, 3) - 0.5) * 0.12
 		tri(apex, ring[j], ring[i], Color(col.r * k, col.g * k, col.b * k))
 		tri(base, ring[i], ring[j], col.darkened(0.2))
+	# A heap of matter is a rounded mass, not a cut stone: the same crease pass
+	# the prop kit's stone takes, so a wad of straw and a boulder agree.
+	smooth_range(start, verts.size())
+	return self
+
+
+## --- smoothing ---------------------------------------------------------------
+## A flat normal per face is what a GEM is made of: every facet one value, every
+## edge a hard step. It was the right call under a 640x360 wash-and-ink pipeline,
+## where the ink drew the form and a normal only chose a shade band. Under a real
+## sun it is the whole difference between stone and crystal, and it is why the
+## boulders and the bushes read as low-poly cut glass (docs/LOOK.md law 1).
+##
+## `smooth_begin()` marks where a shape starts and `smooth_end(crease)` welds the
+## vertices pushed since, averaging each one's normal over the faces meeting
+## there that turn less than `crease` degrees — so a weathered mass rounds off
+## while a fracture plane, a chamfer and a cut face stay hard. Area-weighted, so
+## a big face leads and a sliver does not drag the average off.
+##
+## **It adds no triangles.** The same mesh, told where it curves. That is why it
+## comes first: every other thing in this package costs something.
+const CREASE := 52.0
+## Positions closer than this are the same corner. A tenth of a screen pixel at
+## the play camera, so nothing a model actually separates is ever welded.
+const WELD := 0.0005
+
+var _smooth_from := -1
+
+
+func smooth_begin() -> MeshKit:
+	_smooth_from = verts.size()
+	return self
+
+
+## Average the normals pushed since `smooth_begin()` across creases under
+## `crease_deg`. Call with the shape finished and before the next one starts.
+func smooth_end(crease_deg: float = CREASE) -> MeshKit:
+	if _smooth_from < 0:
+		return self
+	smooth_range(_smooth_from, verts.size(), crease_deg)
+	_smooth_from = -1
+	return self
+
+
+## The same over an explicit vertex range, for a builder that already knows where
+## its shape began (the prop kits keep their own marks).
+func smooth_range(from: int, to: int, crease_deg: float = CREASE) -> MeshKit:
+	to = mini(to, verts.size())
+	if to - from < 3:
+		return self
+	var limit := cos(deg_to_rad(clampf(crease_deg, 0.0, 179.0)))
+	# Triangle area rides in the accumulated normal's length, so a wide face
+	# leads the average and a sliver cannot tip it.
+	var weighted := PackedVector3Array()
+	weighted.resize(to - from)
+	for t in range(from, to, 3):
+		if t + 2 >= to:
+			break
+		var area := (verts[t + 1] - verts[t]).cross(verts[t + 2] - verts[t]).length() * 0.5
+		for c in 3:
+			weighted[t + c - from] = normals[t + c] * area
+	var at_corner := {}
+	for i in range(from, to):
+		var p := verts[i]
+		var key := Vector3i(roundi(p.x / WELD), roundi(p.y / WELD), roundi(p.z / WELD))
+		if not at_corner.has(key):
+			at_corner[key] = PackedInt32Array()
+		var bucket: PackedInt32Array = at_corner[key]
+		bucket.append(i)
+		at_corner[key] = bucket
+	for key: Vector3i in at_corner:
+		var group: PackedInt32Array = at_corner[key]
+		if group.size() < 2:
+			continue
+		var blended := PackedVector3Array()
+		blended.resize(group.size())
+		for a in group.size():
+			var n := normals[group[a]]
+			var acc := Vector3.ZERO
+			for b in group.size():
+				# Its own face always counts; a neighbour only while the surface
+				# keeps turning gently through this corner.
+				if a == b or n.dot(normals[group[b]]) >= limit:
+					acc += weighted[group[b] - from]
+			blended[a] = acc.normalized() if acc.length_squared() > 1e-12 else n
+		for a in group.size():
+			normals[group[a]] = blended[a]
 	return self
 
 
