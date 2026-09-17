@@ -1,13 +1,14 @@
 extends MachineModel
-## A sweeper: a T. A low wide deck with a tall hopper standing over the middle,
-## the only silhouette with a corner. It goes along the tracks in the early
-## morning behind the wardens, brushes turning, and comes over you, not after
-## you. The vent on the back of the hopper glows: the working part.
+## A sweeper: a T. A long axle beam with a tall hopper standing over the middle,
+## the only silhouette with a corner, and a brush head slung out in front of the
+## beam on two arms. It goes along the tracks in the early morning behind the
+## wardens, brushes turning, and comes over you, not after you. The vent on the
+## back of the hopper glows: the working part.
 ##
 ## alert  the hopper lifts on its ram and leans out over the front
 ## dead   the hopper tips off backwards and what it swept spills out
 ##
-## lights work lamps low on the deck's leading edge, one over the vent that
+## lights work lamps low on the brush head's face, one over the vent that
 ##        goes hot through a windup, a status lamp on the lid blinking once
 ## wear   a bone and a stick jutting out from under the lid, needles and grit
 ##        wound into the roller, a rag caught on the skirt,
@@ -16,10 +17,27 @@ extends MachineModel
 
 const WHEEL_R := 0.17
 const DECK_Y := 0.22
-## The crossbar: short along the way it travels, wide across it.
-const DECK_L := 0.42
+## The crossbar is TWO members, not a plank. Seen along its length the sweeper
+## was a filled column (0.67 of its own box): one board 0.42 deep, with the
+## hopper stood on the middle of it, so the T collapsed to an I and there was no
+## daylight in it from that bearing at all. What a sweeper actually has is an
+## axle beam that carries the wheels and the hopper, and a brush head slung out
+## in front of it on two arms so it can ride the ground; the gap between them
+## runs the whole width, and it is the hole the shape was missing.
+const BEAM_L := 0.22
+## The beam's depth under the hopper, the top it keeps flat, how far each side of
+## the middle it stays that deep, and what it thins to at the wheels.
+const BEAM_H := 0.16
+const BEAM_TOP := 0.07
+const BELLY_Z := 0.3
+const BEAM_END := Vector2(0.16, 0.1)
 const DECK_W := 1.56
 const WHEEL_Z := 0.86
+## The brush head: where it rides ahead of the beam, how deep and how wide.
+const HEAD_X := 0.56
+const HEAD_L := 0.2
+const HEAD_W := 1.22
+const ARM_Z := 0.44
 ## The upright: a narrow hopper about a quarter of the deck's width.
 const HOP_W := 0.36
 const HOP_H := 1.02
@@ -45,37 +63,45 @@ func build() -> void:
 	var DD := FoundKit.dirty(R, 2)
 	var pale: Array = [R[3], R[3], R[4], R[4], R[5], R[5]]
 
-	# The crossbar: a deck much wider across than it is long, thin, on a wheel at
-	# each end, brushes under its leading edge.
+	# The axle beam: much wider across than it is deep, a wheel at each end, the
+	# hopper standing in a collar on its middle.
 	var deck := joint(&"deck", self, Vector3(0, DECK_Y, 0))
 	var k := FoundKit.kit()
-	var plan := FoundKit.plan_oct(DECK_L, DECK_W, 0.12)
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.06, 0.03), FoundKit.ring(plan, -0.035), FoundKit.ring(plan, 0.035), FoundKit.ring(plan, 0.06, 0.03)], R, true, true)
+	# A FISH-BELLY beam, deepest under the hopper and thinning to the wheels, the
+	# way a beam is made that carries its load at the middle. Lofted along the
+	# axle: the kit is turned so its rings stand across the beam.
+	var section := FoundKit.plan_oct(BEAM_L, BEAM_H, 0.04)
+	var rings: Array = []
+	for zz: float in [-DECK_W * 0.5, -DECK_W * 0.5 + 0.04, -BELLY_Z, BELLY_Z, DECK_W * 0.5 - 0.04, DECK_W * 0.5]:
+		var mid := absf(zz) <= BELLY_Z + 0.001
+		var sx := 1.0 if mid else BEAM_END.x / BEAM_L
+		var sy := 1.0 if mid else BEAM_END.y / BEAM_H
+		var h := BEAM_H * sy
+		var inset := 0.02 if absf(zz) > DECK_W * 0.5 - 0.01 else 0.0
+		# Flat along the top at BEAM_TOP whatever the depth below it.
+		rings.append(FoundKit.ring(section, zz, inset, Vector2(sx, sy), Vector2(0, h * 0.5 - BEAM_TOP)))
+	k.push(Transform3D(Basis(Vector3.RIGHT, Vector3.BACK, Vector3.DOWN), Vector3.ZERO))
+	FoundKit.loft(k, rings, R, false, true)
+	k.pop()
 	for sz: float in [-1.0, 1.0]:
-		# Mudguard over each wheel, a seam and rivets along the deck, streaks off the ends.
+		# Mudguard over each wheel, a seam and rivets along the beam, streaks off the ends.
 		var guard: Array[Vector2] = [Vector2(-0.24, 0.0), Vector2(-0.17, 0.1), Vector2(0.17, 0.1), Vector2(0.24, 0.0)]
-		FoundKit.slab(k, Vector3(0, 0.04, sz * WHEEL_Z), Vector3.RIGHT, Vector3.UP, guard, 0.16, R, 0.015)
-		FoundKit.seam(k, Vector3(0.0, 0.061, sz * 0.24), Vector3(0.0, 0.061, sz * 0.62), Vector3.UP, R, 3)
-		FoundKit.streaks(k, Vector3(0.0, 0.02, sz * (DECK_W * 0.5 + 0.001)), Vector3.BACK * sz, 0.26, 0.05, 3, 101 + int(sz), R[1])
-	FoundKit.rivets(k, Vector3(-0.211, 0.0, -0.6), Vector3(-0.211, 0.0, 0.6), Vector3.LEFT, 9, R[5])
-	# The collar the hopper stands in, and the skirt across the front.
-	FoundKit.disc(k, Vector3(0, 0.08, 0), Vector3.UP, 0.2, 0.05, 8, 0.015, D, Color(0, 0, 0, 0), PI / 8.0)
-	var skirt: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(0.07, -0.04), Vector2(0.07, -0.13), Vector2(0.0, -0.11)]
-	FoundKit.slab(k, Vector3(DECK_L * 0.5 - 0.02, 0.0, 0), Vector3.RIGHT, Vector3.UP, skirt, DECK_W - 0.3, D, 0.01)
+		FoundKit.slab(k, Vector3(0, 0.05, sz * WHEEL_Z), Vector3.RIGHT, Vector3.UP, guard, 0.16, R, 0.015)
+		FoundKit.seam(k, Vector3(0.0, 0.071, sz * 0.24), Vector3(0.0, 0.071, sz * 0.62), Vector3.UP, R, 3)
+		FoundKit.streaks(k, Vector3(0.0, 0.02, sz * (DECK_W * 0.5 + 0.001)), Vector3.BACK * sz, 0.16, 0.06, 3, 101 + int(sz), R[1])
+		# The two arms the head rides on, each hung from a boss on the beam's face.
+		FoundKit.disc(k, Vector3(BEAM_L * 0.5 + 0.01, -0.01, sz * ARM_Z), Vector3.BACK, 0.05, 0.1, 6, 0.012, D, R[4], PI / 6.0)
+		FoundKit.bar(k, Vector3(BEAM_L * 0.5, -0.01, sz * ARM_Z), Vector3(HEAD_X - HEAD_L * 0.5 + 0.02, -0.05, sz * ARM_Z), 0.05, 0.06, 0.012, D)
+	FoundKit.rivets(k, Vector3(-BEAM_L * 0.5 - 0.001, 0.0, -BELLY_Z), Vector3(-BEAM_L * 0.5 - 0.001, 0.0, BELLY_Z), Vector3.LEFT, 5, R[5])
+	# The collar the hopper stands in.
+	FoundKit.disc(k, Vector3(0, 0.09, 0), Vector3.UP, 0.19, 0.05, 8, 0.015, D, Color(0, 0, 0, 0), PI / 8.0)
 	# Two rams that lift the hopper, hidden inside it until it rises.
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.tbar(k, Vector3(0, 0.08, sz * 0.07), Vector3(0, 0.62, sz * 0.07), 0.026, 0.026, 6, D)
 	body_mesh(k, deck)
-	for sz: float in [-1.0, 1.0]:
-		add_lamp(deck, Vector3(0.212, 0.0, sz * 0.46), Vector3.RIGHT, Vector3.UP, 0.07, 0.035, &"work")
-	add_beam(deck, Vector3(0.3, -0.04, 0), Vector3(1.2, -0.18, 0), 1.9, 2.0, &"work")
 	var dw := FoundKit.kit()
-	FoundKit.dirt_line(dw, Vector3(0.212, -0.03, -0.66), Vector3(0.212, -0.03, 0.66), Vector3.RIGHT, 0.02, R[0])
-	FoundKit.scorch(dw, Vector3(-0.1, 0.061, -0.5), Vector3.UP, 0.07, 71)
+	FoundKit.scorch(dw, Vector3(-0.04, 0.071, -0.5), Vector3.UP, 0.07, 71)
 	wear_mesh(dw, deck)
-	var rag := FoundKit.matter_kit(Ink.HAND)
-	FoundKit.rag(rag, Vector3(DECK_L * 0.5 + 0.05, -0.06, 0.3), 0.1, 0.1, Palette.EARTH[2], 72, Vector3(0.1, 0, 1))
-	wear_matter(rag, deck)
 	for sz: float in [-1.0, 1.0]:
 		var w := Node3D.new()
 		w.position = Vector3(0.0, WHEEL_R - DECK_Y, sz * WHEEL_Z)
@@ -86,25 +112,48 @@ func build() -> void:
 		FoundKit.mark(wk, Vector3(0, 0.11, sz * 0.056), Vector3.BACK * sz, Vector3.UP, 0.03, 0.07, R[1], 0.003)
 		body_mesh(wk, w)
 		_wheels.append(w)
-		# Side brushes turn in mirror at the front corners: a hub and a fan of bristles.
+
+	# The brush head, out in front on the arms: a hood over the roller, a skirt
+	# across its face, the work lamps, and a side brush at each end.
+	var head := joint(&"head", deck, Vector3(HEAD_X, -0.04, 0))
+	var ek := FoundKit.kit()
+	var hood: Array[Vector2] = [Vector2(-HEAD_L * 0.5, -0.1), Vector2(-HEAD_L * 0.5, 0.03), Vector2(-0.05, 0.07), Vector2(0.05, 0.06), Vector2(HEAD_L * 0.5, 0.01), Vector2(HEAD_L * 0.5, -0.08)]
+	FoundKit.slab(ek, Vector3.ZERO, Vector3.RIGHT, Vector3.UP, hood, HEAD_W, R, 0.02)
+	var skirt: Array[Vector2] = [Vector2(0.0, 0.0), Vector2(0.06, -0.03), Vector2(0.06, -0.1), Vector2(0.0, -0.08)]
+	FoundKit.slab(ek, Vector3(HEAD_L * 0.5 - 0.02, -0.07, 0), Vector3.RIGHT, Vector3.UP, skirt, HEAD_W - 0.2, D, 0.01)
+	FoundKit.rivets(ek, Vector3(-0.02, 0.066, -0.5), Vector3(-0.02, 0.066, 0.5), Vector3(0.1, 1.0, 0), 7, R[5])
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.streaks(ek, Vector3(0.0, -0.02, sz * (HEAD_W * 0.5 + 0.001)), Vector3.BACK * sz, 0.14, 0.08, 3, 103 + int(sz), R[1])
+	body_mesh(ek, head)
+	for sz: float in [-1.0, 1.0]:
+		add_lamp(head, Vector3(HEAD_L * 0.5 + 0.002, -0.035, sz * 0.4), Vector3.RIGHT, Vector3.UP, 0.07, 0.035, &"work")
+	add_beam(head, Vector3(HEAD_L * 0.5 + 0.08, -0.08, 0), Vector3(1.2, -0.18, 0), 1.9, 2.0, &"work")
+	var ew := FoundKit.kit()
+	FoundKit.dirt_line(ew, Vector3(HEAD_L * 0.5 + 0.002, -0.07, -0.56), Vector3(HEAD_L * 0.5 + 0.002, -0.07, 0.56), Vector3.RIGHT, 0.02, R[0])
+	wear_mesh(ew, head)
+	var rag := FoundKit.matter_kit(Ink.HAND)
+	FoundKit.rag(rag, Vector3(HEAD_L * 0.5 + 0.08, -0.1, 0.3), 0.1, 0.1, Palette.EARTH[2], 72, Vector3(0.1, 0, 1))
+	wear_matter(rag, head)
+	for sz: float in [-1.0, 1.0]:
+		# Side brushes turn in mirror at the head's ends: a hub and a fan of bristles.
 		var sb := Node3D.new()
-		sb.position = Vector3(0.2, -0.13, sz * 0.62)
-		deck.add_child(sb)
+		sb.position = Vector3(0.02, -0.09, sz * (HEAD_W * 0.5 + 0.02))
+		head.add_child(sb)
 		var bk := FoundKit.kit()
 		FoundKit.disc(bk, Vector3.ZERO, Vector3.UP, 0.06, 0.04, 6, 0.01, D)
 		for j in 10:
 			var a := float(j) / 10.0 * TAU
-			FoundKit.tbar(bk, Vector3(cos(a), 0, sin(a)) * 0.045, Vector3(cos(a) * 0.2, -0.08, sin(a) * 0.2), 0.01, 0.008, 3, pale)
+			FoundKit.tbar(bk, Vector3(cos(a), 0, sin(a)) * 0.045, Vector3(cos(a) * 0.18, -0.08, sin(a) * 0.18), 0.01, 0.008, 3, pale)
 		body_mesh(bk, sb)
 		_side.append(sb)
 	_roller = Node3D.new()
-	_roller.position = Vector3(0.17, -0.12, 0)
-	deck.add_child(_roller)
+	_roller.position = Vector3(0.0, -0.08, 0)
+	head.add_child(_roller)
 	var rk := FoundKit.kit()
-	FoundKit.disc(rk, Vector3.ZERO, Vector3.BACK, 0.08, DECK_W - 0.5, 8, 0.02, DD, D[1], PI / 8.0)
+	FoundKit.disc(rk, Vector3.ZERO, Vector3.BACK, 0.08, HEAD_W - 0.16, 8, 0.02, DD, D[1], PI / 8.0)
 	for j in 8:
 		var a := float(j) / 8.0 * TAU
-		FoundKit.tbar(rk, Vector3(cos(a) * 0.08, sin(a) * 0.08, -(DECK_W - 0.56) * 0.5), Vector3(cos(a) * 0.08, sin(a) * 0.08, (DECK_W - 0.56) * 0.5), 0.011, 0.011, 3, pale)
+		FoundKit.tbar(rk, Vector3(cos(a) * 0.08, sin(a) * 0.08, -(HEAD_W - 0.22) * 0.5), Vector3(cos(a) * 0.08, sin(a) * 0.08, (HEAD_W - 0.22) * 0.5), 0.011, 0.011, 3, pale)
 	body_mesh(rk, _roller)
 	# What the bristles could not let go of.
 	var clog := FoundKit.matter_kit(Ink.UPRIGHT)
