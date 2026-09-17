@@ -31,6 +31,14 @@ var channel: StringName = &"light"
 var strength := 0.0
 ## The MobState id carrying it (-1 once the body is gone).
 var mob_id := -1
+## The piece that was read INSTEAD of the holding, or -1 for a reading taken of
+## the yard itself (`Settlement.lures`). A decoy hides nothing: it shouts the
+## holding's own loudest channel from where nobody lives, and a machine that took
+## its account of the place off one walks home with a mast in a field. That is
+## worth a quarter of the real thing (`Attention.LURED`), and `at` below is the
+## DECOY's ground, because that is where the body stood and where it has to get
+## clear of before anything is filed.
+var lure := -1
 ## It got clear of the yard while somebody was watching (Notices.CLEAR_OF): past
 ## that the player could not have caught it, so if its body then goes off the
 ## land — culled, or a game put down — the reading counts as having got home.
@@ -54,7 +62,8 @@ func as_dict() -> Dictionary:
 	return {
 		"id": id, "settlement": settlement_id, "realm": String(realm),
 		"kind": String(kind), "carrier": String(carrier), "channel": String(channel),
-		"strength": strength, "mob": mob_id, "clear": clear, "at": SaveCodec.vec2(at),
+		"strength": strength, "mob": mob_id, "lure": lure, "clear": clear,
+		"at": SaveCodec.vec2(at),
 		"taken_at": taken_at, "state": String(state), "how": String(how),
 	}
 
@@ -72,6 +81,9 @@ static func from_dict(d: Dictionary) -> Notice:
 	# is one walking home with nobody in the world holding it, which is exactly
 	# what a reading that has already left looks like.
 	n.mob_id = -1
+	# The piece a reading was taken off outlives the body that took it: what it
+	# is worth when it lands, and where it has to get clear of, both hang on it.
+	n.lure = SaveCodec.to_int(d.get("lure", -1), -1)
 	n.clear = bool(d.get("clear", false))
 	n.at = SaveCodec.to_vec2(d.get("at", Vector2.ZERO))
 	n.taken_at = SaveCodec.to_num(d.get("taken_at", 0.0))

@@ -236,8 +236,19 @@ something the player did, built, or watched happen.
   up a level, from stolen FOUND technology humming inside the walls (a stolen cell
   is the loudest thing in the game and it costs by the hour), and from machines the
   plan sent there that never came home. It falls with quiet hours, dark nights,
-  a spoofed signature, a decoy standing, a record destroyed before it travelled, and
-  a step that has been paid. **Hours on their own only ever make a holding safer.**
+  a spoofed signature, a mask standing in the yard, a record destroyed before it
+  travelled, and a step that has been paid. **Hours on their own only ever make a
+  holding safer.**
+- **A decoy is read instead of the place, and that is all it does.** A machine
+  standing at a mast out in a field takes its account of the holding off the
+  mast: the record is of the pole, it was taken where the pole stands, and the
+  pole is the ground it has to be caught on — a player guarding their own fence
+  is guarding the wrong ground, which is the trade the piece makes. When it gets
+  home it is filed as a quarter of a real record (`Attention.LURED`), so the
+  place still heats up, four times slower. It is never nothing: a piece that made
+  a holding unfileable would end the decision the whole system is. And only the
+  ONE loudest decoy is ever read, however many are standing, or the answer to
+  being read would be a ring of the cheapest thing a player can build.
 - **It is read as pressure, never as a bar.** The holding app draws what a machine
   HEARS — seven channels with the loudest named and its percentage — so a player
   can read the same number the machines read before anything arrives. Under it is
@@ -261,7 +272,10 @@ something the player did, built, or watched happen.
   thing standing between the yard and the outside, a harvester walks past the
   walls to whatever the slate named as loudest, a snatcher comes for whoever is at
   work. So the player's own build decides the fight, and the seven bars are a
-  decision rather than a readout.
+  decision rather than a readout. A standing decoy is walked to before any of
+  that: it is the loudest thing the plan has ever heard of the place, so a party
+  that ignored it would know better than its own file — and the piece a player
+  built to be read is the piece that gets taken apart.
 - **A raider is here for the holding, not for the player.** It will walk past
   somebody standing in their own yard and start cutting their mast down, and only
   a blow turns it. Fighting one is a choice, and its price is that nothing is

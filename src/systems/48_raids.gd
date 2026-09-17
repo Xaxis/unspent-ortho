@@ -14,7 +14,15 @@ extends GameSystem
 ## What it owns:
 ##   the notices    a body reads a holding, and walks off with it. Until it is
 ##                  clear the record is a thing in the world: kill it, spoof it,
-##                  take the record off it, follow it home, or let it go
+##                  take the record off it, follow it home, or let it go. What it
+##                  read may be a DECOY standing out past the yard instead of the
+##                  yard itself (`Settlement.lures`), and then everything about
+##                  the record is about the decoy: where it was taken, where it
+##                  has to get clear of, and what it is worth when it lands
+##                  (`Attention.LURED`). ONE decoy is ever read, the loudest
+##                  (`_loudest_lure_read`): a ring of cheap masts is one reading
+##                  or the answer to being read is to build five of the cheapest
+##                  thing and stop thinking
 ##   the attention  one 0..1 per holding, 1 being a siege led by the region's
 ##                  keeper (`Attention` says what the unit is and what moves it)
 ##   the escalation survey -> probe -> raid -> siege, each WARNED by the world
@@ -268,11 +276,19 @@ func _sense_holdings() -> void:
 	var blind := 1.0 if minutes < game.body.spoof_until else 0.0
 	var readable: Array[Settlement] = []
 	var signs: Array[Signature] = []
+	var shouts: Array = []
 	for s in places():
 		if s.realm != here or quieted(s):
 			continue
 		readable.append(s)
 		signs.append(s.signature())
+		# The decoys standing out past the yard, each with what it shouts, read
+		# once here rather than once per machine: `lure_signature` asks the
+		# holding for its own loudest channel every time it is called.
+		var out: Array = []
+		for p in s.lures():
+			out.append({"id": p.id, "pos": p.pos, "sig": s.lure_signature(p)})
+		shouts.append(out)
 	if readable.is_empty():
 		return
 	for m in sim.mobs:
@@ -284,11 +300,44 @@ func _sense_holdings() -> void:
 			if minutes - float(_read_at.get(key, -INF)) < READ_AGAIN:
 				continue
 			var read := Notices.read(signs[i], s.centre, m.pos, m.row, blind)
+			var lure := _loudest_lure_read(shouts[i], m, blind)
+			if float(lure.get("strength", 0.0)) > float(read.get("strength", 0.0)):
+				# It stood at a pole in a field and took its account of the place
+				# off that. The READ_AGAIN key is the holding's, so this body does
+				# not walk on and read the yard as well: it has its reading, and
+				# the reading is of somewhere nobody lives.
+				read = lure
 			if read.is_empty():
 				continue
 			_read_at[key] = minutes
 			_take_notice(s, m, read)
 			break
+
+
+## The best reading a body can take off ANY of a holding's decoys, and never the
+## sum of them: ONE mast is read, whichever shouts loudest from where the machine
+## is standing. The cap is the whole of what keeps a decoy a decision — without
+## it a ring of five cheap masts round a yard would drive the plan's attention
+## into a field for the price of six timber, and the loudest answer in the game
+## would be the one that costs least.
+##
+## Each entry is {id, pos, sig}; the answer carries `lure` (the piece) and `at`
+## (its ground) so everything downstream — where the record has to get clear of,
+## what it is worth when it lands — hangs on the piece rather than on the yard.
+func _loudest_lure_read(from: Array, m: MobState, blind: float) -> Dictionary:
+	var best: Dictionary = {}
+	for row: Dictionary in from:
+		var sig: Signature = row["sig"]
+		var at: Vector2 = row["pos"]
+		var read := Notices.read(sig, at, m.pos, m.row, blind)
+		if read.is_empty():
+			continue
+		if float(read["strength"]) <= float(best.get("strength", 0.0)):
+			continue
+		read["lure"] = int(row["id"])
+		read["at"] = at
+		best = read
+	return best
 
 
 ## A body has read the place and is now walking home with it. It is announced the
@@ -305,22 +354,31 @@ func _take_notice(s: Settlement, m: MobState, read: Dictionary) -> void:
 	n.channel = read.get("channel", &"light")
 	n.strength = float(read.get("strength", 0.0))
 	n.mob_id = m.id
-	n.at = s.centre
+	# A lured reading was taken of the decoy, so it was taken WHERE the decoy
+	# stands: that is the ground the body has to get clear of before anything is
+	# filed, and the ground a player who wants to stop it has to be standing on.
+	n.lure = int(read.get("lure", -1))
+	n.at = read.get("at", s.centre)
 	n.taken_at = game.clock.minutes
 	notices.append(n)
 	_carriers[m.id] = n
 	book(s.id)["last_read"] = n.taken_at
 	# It turns for home along the plan's own survey bearing, so a player who
 	# follows one is walking the machines' line and not a random heading.
-	var home := m.pos + Notices.home_bearing(game.world.seed_value, m.pos, s.centre) * Notices.GOT_AWAY
+	var home := m.pos + Notices.home_bearing(game.world.seed_value, m.pos, n.at) * Notices.GOT_AWAY
 	m.line_a = m.pos
 	m.line_b = home
 	m.line_to_b = true
 	Events.settlement_noticed.emit(s.id, m.id, n.kind)
 	Events.sfx.emit(&"raid_notice", game.world.to_3d(m.pos))
 	_seen["noticed"] = true
+	if n.lure >= 0:
+		_seen["lured"] = true
 	if _near(s):
-		Events.hint.emit("%s read %s, and is leaving with it." % [_said_kind(n.kind), s.name], "")
+		if n.lure >= 0:
+			Events.hint.emit("%s read the decoy, and is leaving with it." % _said_kind(n.kind), "")
+		else:
+			Events.hint.emit("%s read %s, and is leaving with it." % [_said_kind(n.kind), s.name], "")
 
 
 ## The carried records: each one either gets clear, or is stopped.
@@ -378,8 +436,14 @@ func _file(n: Notice) -> void:
 	var s := get_place(n.settlement_id)
 	if s == null:
 		return
-	_raise(s, &"notice", Notices.worth(n) / Attention.NOTICE_FULL)
+	# A reading taken off a decoy is filed as one: the plan now has an account of
+	# a pole in a field. It is not nothing — something reported this place and the
+	# escalation runs off `last_read` either way — and it is not the real thing.
+	# `Attention.LURED` is the whole of what the timber bought.
+	_raise(s, &"lured" if n.lure >= 0 else &"notice", Notices.worth(n) / Attention.NOTICE_FULL)
 	_seen["filed"] = true
+	if n.lure >= 0:
+		_seen["lured"] = true
 	# And it is SAID. This is the one link in the chain the player cannot see for
 	# themselves — the taking, the jamming, the killing and every warning happen
 	# in front of them, and a record getting home happens over the horizon — so a
@@ -389,7 +453,10 @@ func _file(n: Notice) -> void:
 	# likely to be busy — a raider is walking off while they are fighting another.
 	Events.sfx.emit(&"raid_filed", game.world.to_3d(s.centre))
 	if _near(s):
-		Events.message.emit("What it had of %s is in the plan's hands now." % s.name)
+		if n.lure >= 0:
+			Events.message.emit("What it had of %s is the decoy in the field, and the plan has that." % s.name)
+		else:
+			Events.message.emit("What it had of %s is in the plan's hands now." % s.name)
 
 
 ## It never got there: killed in the yard, or its reading spoofed into nonsense.
@@ -1592,6 +1659,8 @@ func _stage() -> void:
 ##   noticed         a machine has read a holding and is walking off with it
 ##   carrier         one is carrying a reading right now
 ##   filed           a reading got home
+##   lured           a reading was taken off a DECOY instead of the holding: the
+##                   machine stood at a pole in a field and filed that
 ##   stopped         one was killed or spoofed before it did
 ##   record          a record came off a body into the creel
 ##   warned          the world warned of a step; warned:STAGE for which

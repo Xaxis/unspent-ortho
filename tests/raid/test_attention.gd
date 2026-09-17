@@ -90,13 +90,34 @@ func test_a_dark_night_cools_faster_than_a_lit_one() -> void:
 	lt(dark, lit, "a holding running dark is forgotten faster")
 
 
-func test_a_spoofed_signature_and_a_decoy_both_cool_it() -> void:
+func test_a_spoofed_signature_and_a_mask_both_cool_it() -> void:
+	# A DECOY is not one of these and never was: it masks nothing where the
+	# holding stands (StructureKind.SIGNS has no mask row for it), it is read in
+	# the holding's place, and what it buys is `Attention.LURED` at the moment a
+	# reading lands. What cools a place while nobody is reading it is a spoofer,
+	# netting or shutters.
 	var plain := Attention.cooled(0.6, 6.0, false, false)
 	var spoofed := Attention.cooled(0.6, 6.0, false, true)
 	var masked := Attention.cooled(0.6, 6.0, false, false, 1.0)
 	lt(spoofed, plain, "the signet answers for the place")
 	lt(masked, plain, "a mask standing in it goes on working")
 	lt(spoofed, masked, "and the signet is the stronger of the two")
+
+
+func test_a_reading_taken_off_a_decoy_is_worth_a_quarter_of_a_real_one() -> void:
+	# The decoy's whole bargain: the plan still hears that something is out here,
+	# and what it has an account of is a pole in a field.
+	gt(Attention.LURED, 0.0, "a decoy is not a place that is never filed")
+	lt(Attention.LURED, 1.0, "and it is not the real thing either")
+	near(Attention.of(&"lured"), Attention.of(&"notice") * Attention.LURED, 1e-6,
+		"the cause is the notice cause, at a quarter")
+	# So four decoyed records are one real one, which is what the piece costs the
+	# plan in walking and what it buys the player in time.
+	var real := Attention.raised(0.0, &"notice")
+	var decoyed := 0.0
+	for i in 4:
+		decoyed = Attention.raised(decoyed, &"lured")
+	near(decoyed, real, 1e-6, "four off a mast in a field are one off the yard")
 
 
 func test_a_raid_spends_what_brought_it() -> void:

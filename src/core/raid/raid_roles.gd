@@ -129,7 +129,17 @@ static func breach_target(s: Settlement) -> int:
 ## The piece a harvester walks to: whatever is shouting loudest. The channel is
 ## the holding's own `loudest()`, so what the slate names on its page is the
 ## thing that gets taken apart.
+##
+## A standing DECOY comes first, before any of that. It is the loudest thing the
+## plan has ever heard of this place — a reading taken off one is what brought
+## them (48_raids `_sense_holdings`) — so a party that walked past it to cut the
+## mast down would be a party that knew better than its own file, and the piece
+## would buy the player nothing but a quarter off the books. The mast in the
+## field is what they came for, and taking it apart is a walk out of the yard.
 static func harvest_target(s: Settlement) -> int:
+	var shouting := loudest_lure(s)
+	if shouting >= 0:
+		return shouting
 	var loudest := s.signature().loudest()
 	var best := -1
 	var top := 0.0
@@ -152,6 +162,22 @@ static func harvest_target(s: Settlement) -> int:
 	# Nothing gives anything off: they take the stores, which means the store.
 	var store := _biggest_of_family(s, StructureKind.Family.FOOD)
 	return store if store >= 0 else _biggest_of_family(s, StructureKind.Family.SHELTER)
+
+
+## The loudest decoy standing out past the yard, or -1 for a holding with none.
+## ONE of them, never all: five cheap masts in a ring are one thing to walk to,
+## exactly as they are one reading to take (48_raids caps a reading the same way,
+## and for the same reason — a piece that could be multiplied would be the end of
+## the decision).
+static func loudest_lure(s: Settlement) -> int:
+	var best := -1
+	var top := 0.0
+	for p in s.lures():
+		var v := s.lure_signature(p).total()
+		if v > top:
+			top = v
+			best = p.id
+	return best
 
 
 ## Who a snatcher comes for: whoever is at work, first — the plan takes hands.

@@ -24,9 +24,21 @@ class_name Attention
 ## measured in.
 const NOTICE_FULL := 0.09
 
+## What a reading taken off a DECOY is worth against one taken of the yard: a
+## quarter. A decoy hides nothing — it is read INSTEAD of the holding
+## (`Settlement.lures`) — so the plan still learns the place is there, and this is
+## the whole of what the piece buys. It cannot be nothing, or a mast in a field
+## would be a place that is never filed at all and the answer to being read would
+## be to build one and stop thinking; and it cannot be much, or building one
+## would not be worth the timber. Four decoyed records are one real one.
+const LURED := 0.25
+
 ## Every cause that moves it, and by how much. Positive raises.
 ##
 ##   notice        a reading got home (scaled by how good it was: Notices.worth)
+##   lured         the same, taken off a decoy standing out past the yard: the
+##                 plan has an account of a pole in a field, and it is worth
+##                 `LURED` of an account of the place (48_raids `_file`)
 ##   lost          a machine the plan sent to this place never came home
 ##   interference  the plan's network round the holding went up a level (§2)
 ##   found_tech    stolen FOUND technology running in the walls, per world hour
@@ -38,6 +50,7 @@ const NOTICE_FULL := 0.09
 ##   keeper_fell   the region's keeper is gone; its network is quiet for good
 const CAUSES := {
 	&"notice": NOTICE_FULL,
+	&"lured": NOTICE_FULL * LURED,
 	&"lost": 0.14,
 	&"interference": 0.07,
 	&"found_tech": 0.030,
@@ -55,9 +68,11 @@ const DARK_COOL := 2.4
 ## The player's own spoofed signature, standing in the place: the plan reads the
 ## holding as one of their own for as long as the signet holds.
 const SPOOF_COOL := 3.0
-## What a piece that masks (a decoy, netting, shutters) does to the cooling: the
+## What a piece that masks (a spoofer, netting, shutters) does to the cooling: the
 ## holding's own `mask` is already inside its Signature, so this is the part that
-## goes on working when nobody is reading it at all.
+## goes on working when nobody is reading it at all. A DECOY is not one of them
+## and never was: it hides nothing where the holding stands, it is read in its
+## place, and what it buys is `LURED` at the moment a reading lands.
 const MASK_COOL := 1.8
 
 ## Attention never sits at exactly 0 once a place has been filed: the plan does
