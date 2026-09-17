@@ -27,6 +27,7 @@ var _t := 0.0
 func _ready() -> void:
 	# Over the world and under the HUD's own glass (10).
 	layer = 9
+	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "harvest_mark"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -64,8 +65,7 @@ func _draw_mark() -> void:
 	var radius := float(target.radius)
 	var state := StringName(str(target.get("state", &"")))
 	var col := ink_of(state)
-	var glass := _canvas.get_viewport_rect()
-	if not glass.grow(40.0).has_point(cam.unproject_position(base)):
+	if not Rect2(UiBase.screen()).grow(40.0).has_point(UiBase.to_design(cam.unproject_position(base))):
 		return
 	if state == Harvest.PICKED_OVER or state == Harvest.UNDER_WATER:
 		# Nothing to take: no brackets, only the ground marked round it, so the eye
@@ -82,20 +82,21 @@ func _draw_mark() -> void:
 
 
 ## The screen box round a thing standing `height` tall and `radius` wide at `base`,
-## put through the camera so the brackets fit what is drawn at any zoom, lean or
-## turn of the rig. A rock, a seam or a bush is round and comes to a crown, not a
+## put through the camera (and brought into the slate's design units, which this
+## layer is drawn in) so the brackets fit what is drawn at any zoom, lean or turn
+## of the rig. A rock, a seam or a bush is round and comes to a crown, not a
 ## crate: its foot and its shoulder are circles and its top is a point, and the
 ## corners of an upright box stood a head above every cone.
 static func bounds(cam: Camera3D, base: Vector3, height: float, radius: float) -> Rect2i:
-	var lo := cam.unproject_position(base + Vector3(0.0, height, 0.0))
+	var lo := UiBase.to_design(cam.unproject_position(base + Vector3(0.0, height, 0.0)))
 	var hi := lo
 	for k in 8:
 		var a := float(k) * TAU / 8.0
 		var round := Vector3(cos(a) * radius, 0.0, sin(a) * radius)
 		# The foot at full width, and a shoulder high up at most of it: a seam's
 		# broad top stays inside, and a cone's point is still the top.
-		for p: Vector2 in [cam.unproject_position(base + round),
-				cam.unproject_position(base + round * 0.8 + Vector3(0.0, height * 0.75, 0.0))]:
+		for p: Vector2 in [UiBase.to_design(cam.unproject_position(base + round)),
+				UiBase.to_design(cam.unproject_position(base + round * 0.8 + Vector3(0.0, height * 0.75, 0.0)))]:
 			lo = lo.min(p)
 			hi = hi.max(p)
 	return Rect2i(Vector2i(lo.round()), Vector2i((hi - lo).round()))
@@ -109,6 +110,6 @@ func _ring(cam: Camera3D, base: Vector3, radius: float, col: Color) -> void:
 		if i % 3 == 2:
 			continue
 		var a := float(i) * TAU / float(RING_POINTS)
-		var p := cam.unproject_position(base + Vector3(cos(a) * r, 0.03, sin(a) * r)).round()
+		var p := UiBase.to_design(cam.unproject_position(base + Vector3(cos(a) * r, 0.03, sin(a) * r))).round()
 		UiDraw.rect(_canvas, Rect2i(int(p.x) - 1, int(p.y) - 1, 3, 3), UiTheme.RIM)
 		UiDraw.px(_canvas, int(p.x), int(p.y), col)

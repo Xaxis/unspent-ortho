@@ -6,8 +6,8 @@ extends CanvasLayer
 ## stacking a second one, so a run of stones reads as "+6 stone", not six lines.
 ##
 ## The rows are data (`rows`, `add`, `step`, `alpha_of`) so a test can run the feed
-## without a frame; the drawing below them is the HUD's idiom and is laid out from
-## the HUD's own margin and the viewport, never from a screen size.
+## without a frame; the drawing below them is the HUD's idiom, laid out in the
+## slate's design units (`UiBase`) from the HUD's own margin.
 
 ## Seconds a row stands at full strength, and then fades over.
 const HOLD := 2.6
@@ -34,6 +34,7 @@ var _canvas: Control
 
 func _ready() -> void:
 	layer = 10
+	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "pickup_feed"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -85,9 +86,8 @@ func _process(delta: float) -> void:
 func _draw_feed() -> void:
 	if rows.is_empty():
 		return
-	var glass := _canvas.get_viewport_rect()
 	var x := Hud.MARGIN + 6
-	var bottom := int(glass.size.y) - Hud.MARGIN - ABOVE_HELD
+	var bottom := UiBase.DESIGN.y - Hud.MARGIN - ABOVE_HELD
 	for i in rows.size():
 		var r: Dictionary = rows[rows.size() - 1 - i]
 		var a := UiDraw.stepped(alpha_of(r))
