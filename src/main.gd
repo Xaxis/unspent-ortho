@@ -138,6 +138,12 @@ func _a_person_is_playing() -> bool:
 	# (Playwright's headless Chromium runs with --mute-audio), not by the game.
 	if OS.has_feature("web"):
 		return true
+	# An exported build is somebody's copy of the game, however it was launched: the
+	# commit that brought the mute in said this scheme must never touch one, and on
+	# the web it did. Only a shot or a tour is still a tool run here, so a build a
+	# tool proves stays quiet and a player who passes `--args -- --seed=3` hears it.
+	if OS.has_feature("template") and options.shot == "" and options.tour == "":
+		return true
 	if OS.get_environment("UNSPENT_KEEP_FOCUS") == "1":
 		return true
 	if options.shot != "" or options.tour != "":
