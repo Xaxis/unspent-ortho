@@ -2,6 +2,15 @@ class_name UiIcons
 ## Tiny pictures on the slate's glass: one 9x9 icon per kind of thing carried,
 ## and the HUD's pressure glyphs. Drawn at whole-number scales only.
 ##
+## These stayed a 9x9 grid when the slate moved to the base's own pixels, and the
+## split is deliberate: **a mark is a glyph and a sketch is a picture.** A mark is
+## drawn on the module's own pixel grid (`UiBase.PITCH` to a cell) beside the name
+## it belongs to, at the size of the type; the detail lives in `UiSketch`, whose
+## part lists render at any size and now do so at the base's full resolution. So
+## no shape here was redrawn, `SHAPES` is the same contract, and the corner
+## cutting `UiFont` does is deliberately NOT applied — these rows carry a ramp
+## per pixel, and rounding them would blur the steps that are the drawing.
+##
 ## Shape rows: '.' clear, 'k' the outline (dim), '1' '2' '3' the
 ## body dark to light, '4' '5' '6' the second part (a haft, a filling), 'w' the
 ## body's brightest step (a rivet, a glint), 'l' a working part. Items pick a
@@ -307,8 +316,9 @@ static func shape_of(id: StringName) -> Array:
 	return SHAPES[style_of(id)[0]]
 
 
-## Draw an item's icon with its top-left at `at`.
-static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, scale: int = 1) -> void:
+## Draw an item's icon with its top-left at `at`. `scale` is base pixels to one
+## pixel of the 9x9, and defaults to one pixel of the module's own glass.
+static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, scale: int = UiBase.PITCH) -> void:
 	UiDraw.sprite(ci, shape_of(id), at, colours_for(id), scale)
 
 

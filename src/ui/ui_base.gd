@@ -2,75 +2,102 @@ class_name UiBase
 extends RefCounted
 ## The one place that says how big a screen is (docs/LOOK.md).
 ##
-## Two sizes, and the difference between them is the whole of this file:
+## LANTERN's floor raised the engine's base to 1920x1080 and left the slate drawn
+## at 640x360, scaled onto it three times over. This file is where that was
+## undone: **the slate is now drawn in the base's own pixels**, and the ratios
+## that used to be one number are two, because they are two different decisions.
 ##
-##   SIZE    1920x1080 — the engine's base. The frame a shot captures, the space
-##           the 3D world is drawn in, what `viewport_width/height` say.
-##   DESIGN  640x360 — the space the SLATE is drawn in. Every number in `src/ui/`
-##           (a margin, a device rect, a gauge, the pixel font's glyphs) is in
-##           these units, because the slate was drawn for them.
+##   SIZE     1920x1080 — the engine's base. The frame a shot captures, the space
+##            the 3D world is drawn in, what `viewport_width/height` say, and the
+##            units every number in `src/ui/` is now written in.
+##   PITCH    2 — base pixels to one pixel of the stolen module's glass. A rule,
+##            a pip, a dead pixel and a glyph's cell are all one module pixel, so
+##            the slate is still a pixel device; it is a device with a finer
+##            screen than it had. It is a WHOLE number on purpose.
+##   TYPE     2 — base pixels to one pixel of the hand-cut face (`UiFont`). Equal
+##            to PITCH, so type sits on the module's own grid.
+##   FURNITURE 3 — what the device, its bezel, its panes and its margins were
+##            multiplied by when they came across from the old 640x360 space.
 ##
-## LANTERN raised the first and deliberately did NOT redraw the second. A layer of
-## UI is drawn in DESIGN units and scaled by `SCALE` onto the base, so the slate,
-## the HUD and the title lay out exactly as they did at 640x360 — same margins,
-## same anchors, same whole pixels — three times the size. Nothing moved, so
-## nothing is anchored into empty space, and the pictures can be compared.
+## FURNITURE (3) is bigger than TYPE (2) and that difference is the whole change:
+## the device covers the same share of the frame it always did, while the words
+## on it are two-thirds the size they were, so **half again as much fits on the
+## glass** and the interface stops shouting over a world that is now lit and
+## sharp. Neither number appears outside this file's own comments — a pane's size
+## is written out in base pixels where it is declared.
 ##
-## This is a FLOOR, not the finished answer. The slate is to be redrawn
-## resolution-independently (docs/LOOK.md §2); when an app is, it stops scaling
-## itself and draws in SIZE units directly. That is why `fit()` is called per
-## layer and not once globally: they can be converted one at a time.
+## ## The legacy space, and why it survives
 ##
-## Why a layer transform and not `content_scale_size`: the root viewport's content
-## scale is what the 3D is rendered at, and pinning it to 640x360 would have pinned
-## the world's resolution too — which is the one thing LANTERN exists to undo.
+## DESIGN/SCALE/fit/to_design are the OLD 640x360 slate space. Exactly three
+## things still draw in it, and each has a reason:
+##
+##   the loading page   `src/boot/boot_page.gd` is drawn a second time, by hand,
+##                      in `src/boot/shell.html`, so the browser has the same
+##                      device on screen while the engine downloads. The two are
+##                      held equal by `tests/export/test_export.gd`. Moving one
+##                      without the other is a visible jump at the hand-over, and
+##                      the loading page is not what LANTERN is about.
+##   the gallery        `src/gallery.gd`: a tool scene, never shipped.
+##   lightning          `src/render/weather/` — frozen to the `lit` wave.
+##
+## They keep `fit()`, `to_design()` and `UiFont`'s legacy face, and nothing about
+## them changed. A converted layer sets no transform at all and writes base
+## pixels; that is the whole of the conversion.
 
-## The engine's base: what a frame is, and what a shot captures.
+## The engine's base: what a frame is, and what a shot captures. Everything in
+## `src/ui/` and `src/dev/` is measured in these.
 const SIZE := Vector2i(1920, 1080)
 
-## The space the slate is drawn in. Every literal in `src/ui/` is in these units.
-const DESIGN := Vector2i(640, 360)
+## Base pixels to one pixel of the stolen module's glass: a dead pixel, a grain
+## of dirt, a dot of a dotted rule. Whole on purpose, and the number `UiFont`
+## cuts its cell to. A RULE is finer than this — one base pixel — because a
+## hairline under 14-pixel type is the hierarchy, and because 3-pixel slabs are
+## half of what made the old slate shout.
+const PITCH := 2
 
-## Whole pixels of the base to one of the slate's. 1920/640 = 1080/360 = 3, and
-## it is a whole number on purpose: the pixel font and every 1px rule stay sharp.
+## The old slate space, for the three legacy drawers named above.
+const DESIGN := Vector2i(640, 360)
 const SCALE := 3
 
 
-## Draw this layer's contents in DESIGN units, scaled onto the base.
+## Draw this LEGACY layer's contents in DESIGN units, scaled onto the base.
 ##
-## Called by whoever makes a UI CanvasLayer. A layer that has been redrawn for the
-## full base simply stops calling it.
+## Only the loading page, the gallery and the bolt layer still call this. A layer
+## drawn in base pixels — every app, the HUD, every mark over the world — sets no
+## transform, and passing one here would scale it three times over.
 static func fit(layer: CanvasLayer) -> void:
 	if layer == null:
 		return
 	layer.transform = Transform2D().scaled(Vector2(SCALE, SCALE))
 
 
-## The DESIGN-space rectangle of the whole screen: what a full-screen veil, band
-## or fade covers. The sites that used to write `Rect2i(0, 0, 640, 360)` ask here.
+## The whole screen in BASE pixels: what a full-screen veil, band or fade covers.
 static func screen() -> Rect2i:
+	return Rect2i(Vector2i.ZERO, SIZE)
+
+
+## The horizontal middle of the screen, in base pixels. Anything centred on the
+## glass (a message line, a place name, the hint) measures from here rather than
+## from a number nobody could search for.
+static func mid_x() -> int:
+	return SIZE.x / 2
+
+
+## The same rectangle in the LEGACY space, for the loading page and the gallery.
+static func legacy_screen() -> Rect2i:
 	return Rect2i(Vector2i.ZERO, DESIGN)
 
 
-## The horizontal middle of the slate, in DESIGN units. Anything centred on the
-## glass (a message line, a place name, the hint) measures from here rather than
-## from a 320 nobody could search for.
-static func mid_x() -> int:
-	return DESIGN.x / 2
-
-
-## A point in VIEWPORT pixels brought into DESIGN units.
+## A point in VIEWPORT pixels brought into LEGACY DESIGN units.
 ##
-## This is the trap the base change laid, and it is worth stating plainly because
-## it is silent: `Camera3D.unproject_position` answers in the viewport's own
-## pixels, which are now 1920x1080, while anything drawn on a `fit()` layer is in
-## the slate's 640x360 units. Mixing them put every machine's tag three times too
-## far down and to the right — off the glass entirely, so the tags simply stopped
-## being drawn and two targeting tests went red with "0 marks".
+## `Camera3D.unproject_position` answers in the viewport's own pixels, which are
+## the base's. A layer drawn in base pixels therefore needs NO conversion at all
+## and must not call this: a world position is already where it should be drawn.
+## A layer still on `fit()` does, and that is all this is now for.
 ##
-## So: anything that turns a WORLD position into a place to DRAW on a fitted layer
-## goes through here. Anything that compares one unprojected point with another
-## (the audio pan, which measures against the viewport's own centre) must NOT —
-## both sides are already in the same space.
+## The trap it was written for is worth keeping on the record because it was
+## silent: mixing the two spaces put every machine's tag three times too far down
+## and to the right — off the glass entirely, so the tags simply stopped being
+## drawn and two targeting tests went red with "0 marks".
 static func to_design(p: Vector2) -> Vector2:
 	return p / float(SCALE)

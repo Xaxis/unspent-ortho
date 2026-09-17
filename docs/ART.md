@@ -264,8 +264,17 @@ piece of it.
   glass (amber or cold green; pick one and keep it), with a single warning colour.
   Machine-sourced data (scans, interference, sentinel reads) shows in the stolen
   module's violet.
-- **640x360 pixel-perfect**, integer sizes only, and the same menu standard
-  (up/down, enter, esc).
+- **Pixel-perfect, integer sizes only**, and the same menu standard (up/down,
+  enter, esc). This said 640x360 until LANTERN's `slate` wave; the slate is now
+  drawn in the base's own 1920x1080 pixels (`src/ui/ui_base.gd`), and the rule
+  survives it — `UiBase.PITCH` is one pixel of the stolen module's glass and
+  every mark on it is a whole number of those. Nothing is ever filtered or lands
+  between pixels. A mark is a glyph on that grid (`UiIcons`, the 9x9s); a sketch
+  is a picture and is drawn at the panel's full resolution (`UiSketch`).
+- **The scan keeps brightness and drops hue**, so two things that differ only in
+  colour are the same picture. Shape carries meaning on this device, not colour —
+  which is why every material the land gives has a silhouette of its own rather
+  than a tint of its neighbour's.
 
 ## 10. What the player builds (docs/VISION.md §9)
 

@@ -1,8 +1,23 @@
 class_name UiDraw
-## Pixel-exact drawing on a CanvasItem at the 640x360 base. Everything takes
-## whole-pixel positions and draws axis-aligned rects, so nothing is ever
-## filtered or lands between pixels. `seed` arguments make hand-drawn
-## irregularity repeatable: the same page looks the same every time it opens.
+## Pixel-exact drawing on a CanvasItem at the 1920x1080 base (`UiBase.SIZE`).
+## Everything takes whole-pixel positions and draws axis-aligned rects, so
+## nothing is ever filtered or lands between pixels. `seed` arguments make
+## hand-drawn irregularity repeatable: the same page looks the same every time it
+## opens.
+##
+## Two weights, and the difference is deliberate:
+##
+##   a RULE (`hline`, `vline`, `frame`) is ONE base pixel. A hairline under
+##   14-pixel type is the right hierarchy, and it is what a sharp device looks
+##   like; the 3-pixel slabs the slate used to draw are half of why it read as
+##   three times magnified.
+##   a PIXEL (`px`) is `UiBase.PITCH` square, because it stands for one pixel of
+##   the stolen module's own glass — a dead column, a grain of dirt, a dot of a
+##   dotted ring. Those are the marks that say this is a pixel device, and a
+##   hairline dot would say nothing at all.
+##
+## `text_legacy` is the old 640x360 face, for the loading page and the gallery
+## (see `UiBase`); nothing else may use it.
 
 
 ## Tests hold what is drawn to the rules: while `taping`, every word and every
@@ -15,10 +30,10 @@ static func _note(kind: StringName, ci: CanvasItem, r: Rect2, col: Color, s: Str
 	tape.append({"kind": kind, "ci": ci, "text": s, "rect": r, "col": col})
 
 
-## Text with its top-left at `at` (the font's line box, 10 px tall).
+## Text with its top-left at `at` (the font's line box, UiFont.SIZE tall).
 static func text(ci: CanvasItem, at: Vector2i, s: String, col: Color) -> void:
 	if taping:
-		_note(&"text", ci, Rect2(at.x, at.y, UiFont.width(s), 10), col, s)
+		_note(&"text", ci, Rect2(at.x, at.y, UiFont.width(s), UiFont.SIZE), col, s)
 	ci.draw_string(UiFont.font(), Vector2(at.x, at.y + UiFont.ASCENT), s, HORIZONTAL_ALIGNMENT_LEFT, -1, UiFont.SIZE, col)
 
 
@@ -31,10 +46,22 @@ static func text_centred(ci: CanvasItem, centre_x: int, y: int, s: String, col: 
 	text(ci, Vector2i(centre_x - UiFont.width(s) / 2, y), s, col)
 
 
-## Text with a one-pixel rim on all eight sides: reads over any ground.
+## The same face at the old 640x360 size, on a layer still scaled by
+## `UiBase.fit`: the loading page and the gallery, and nothing else.
+static func text_legacy(ci: CanvasItem, at: Vector2i, s: String, col: Color) -> void:
+	if taping:
+		_note(&"text", ci, Rect2(at.x, at.y, UiFont.legacy_width(s), UiFont.LEGACY_SIZE), col, s)
+	ci.draw_string(UiFont.legacy_font(), Vector2(at.x, at.y + UiFont.LEGACY_ASCENT), s, HORIZONTAL_ALIGNMENT_LEFT, -1, UiFont.LEGACY_SIZE, col)
+
+
+static func text_right_legacy(ci: CanvasItem, right_x: int, y: int, s: String, col: Color) -> void:
+	text_legacy(ci, Vector2i(right_x - UiFont.legacy_width(s), y), s, col)
+
+
+## Text with a rim on all eight sides `UiBase.PITCH` deep: reads over any ground.
 static func text_rimmed(ci: CanvasItem, at: Vector2i, s: String, fill: Color, rim: Color) -> void:
 	for d: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
-		text(ci, at + d, s, rim)
+		text(ci, at + d * UiBase.PITCH, s, rim)
 	text(ci, at, s, fill)
 
 
@@ -63,7 +90,13 @@ static func vline(ci: CanvasItem, x: int, y0: int, y1: int, col: Color) -> void:
 	ci.draw_rect(Rect2(x, y0, 1, y1 - y0 + 1), col, true)
 
 
+## One pixel of the module's glass: PITCH square, drawn from `x, y`.
 static func px(ci: CanvasItem, x: int, y: int, col: Color) -> void:
+	ci.draw_rect(Rect2(x, y, UiBase.PITCH, UiBase.PITCH), col, true)
+
+
+## One pixel of the LEGACY 640x360 space, on a layer still scaled by `UiBase.fit`.
+static func px_legacy(ci: CanvasItem, x: int, y: int, col: Color) -> void:
 	ci.draw_rect(Rect2(x, y, 1, 1), col, true)
 
 
@@ -97,8 +130,9 @@ static func hand_vline(ci: CanvasItem, x: int, y0: int, y1: int, col: Color, see
 
 
 ## A small pixel sprite from rows of characters; each character maps to a
-## colour in `colours` (missing = transparent). scale is a whole number.
-static func sprite(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionary, scale: int = 1) -> void:
+## colour in `colours` (missing = transparent). `scale` is base pixels to one
+## pixel of the sprite, and whole.
+static func sprite(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionary, scale: int = UiBase.PITCH) -> void:
 	for r in rows.size():
 		var row: String = rows[r]
 		var x := 0
@@ -115,14 +149,14 @@ static func sprite(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionar
 			x += run
 
 
-## A sprite with a one-pixel rim of `rim` around every opaque pixel (at 1x).
-static func sprite_rimmed(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionary, rim: Color) -> void:
+## A sprite with a rim of `rim` one sprite pixel deep around every opaque pixel.
+static func sprite_rimmed(ci: CanvasItem, rows: Array, at: Vector2i, colours: Dictionary, rim: Color, scale: int = UiBase.PITCH) -> void:
 	var mask := {}
 	for ch: String in colours:
 		mask[ch] = rim
 	for d: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
-		sprite(ci, rows, at + d, mask)
-	sprite(ci, rows, at, colours)
+		sprite(ci, rows, at + d * scale, mask, scale)
+	sprite(ci, rows, at, colours, scale)
 
 
 ## How many steps a fade takes: a fading line of HUD text holds each for a
@@ -149,7 +183,7 @@ static func text_rimmed_faded(ci: CanvasItem, at: Vector2i, s: String, fill: Col
 	if k >= 1.0:
 		text_rimmed(ci, at, s, fill, rim)
 		return
-	ci.draw_texture(text_picture(s, fill, rim), Vector2(at.x - 1, at.y), Color(1, 1, 1, k))
+	ci.draw_texture(text_picture(s, fill, rim), Vector2(at.x - UiBase.PITCH, at.y), Color(1, 1, 1, k))
 
 
 ## A rimmed sprite at fade `a`, the same way (a need glyph fading in or out).
@@ -160,27 +194,31 @@ static func sprite_rimmed_faded(ci: CanvasItem, rows: Array, at: Vector2i, colou
 	if k >= 1.0:
 		sprite_rimmed(ci, rows, at, colours, rim)
 		return
-	ci.draw_texture(picture("s|%s|%s|%s" % [str(rows), str(colours), rim.to_html()], rows, colours, rim, false), Vector2(at - Vector2i.ONE), Color(1, 1, 1, k))
+	var tex := picture("s|%s|%s|%s" % [str(rows), str(colours), rim.to_html()], rows, colours, rim, false, 1)
+	ci.draw_texture_rect(tex, Rect2(Vector2(at - Vector2i.ONE * UiBase.PITCH), Vector2(tex.get_size()) * UiBase.PITCH), false, Color(1, 1, 1, k))
 
 
-## Text and its eight-way rim as one texture. Drawn at text()'s `at` less one
-## column, its glyphs land exactly where text() puts them (the font sets a
-## glyph's top one row under the box; the picture's rim row fills that row).
+## Text and its eight-way rim as one texture, at the face's own resolution
+## (`UiFont.glyph_cut`). Drawn at text()'s `at` less one rim, its glyphs land
+## exactly where text() puts them: the face sets a glyph's top two rows under the
+## box, and the picture's two rim rows fill them.
 static func text_picture(s: String, fill: Color, rim: Color) -> ImageTexture:
 	var rows := PackedStringArray()
-	rows.resize(UiFont.ROWS)
+	rows.resize(UiFont.ROWS * UiBase.PITCH)
 	for i in s.length():
-		var g := UiFont.glyph(s[i])
+		var g := UiFont.glyph_cut(s[i])
 		if g.is_empty():
-			g = UiFont.glyph("?")
-		for r in UiFont.ROWS:
-			rows[r] += (" " if i > 0 else "") + g[r]
-	return picture("t|%s|%s|%s" % [s, fill.to_html(), rim.to_html()], rows, {"#": fill}, rim, true)
+			g = UiFont.glyph_cut("?")
+		for r in rows.size():
+			rows[r] += ("".rpad(UiBase.PITCH, " ") if i > 0 else "") + g[r]
+	return picture("t|%s|%s|%s" % [s, fill.to_html(), rim.to_html()], rows, {"#": fill}, rim, true, UiBase.PITCH)
 
 
-## Rows of characters (colours by character) with a one-pixel rim, as a cached
-## texture one pixel bigger on every side. `eight` rims the corners too.
-static func picture(key: String, rows: Array, colours: Dictionary, rim: Color, eight: bool) -> ImageTexture:
+## Rows of characters (colours by character) with a rim `pad` deep, as a cached
+## texture that much bigger on every side. `eight` rims the corners too. `pad` is
+## in the ROWS' own pixels: PITCH for lettering, which is already cut at the
+## face's resolution, and 1 for a sprite, which is drawn scaled.
+static func picture(key: String, rows: Array, colours: Dictionary, rim: Color, eight: bool, pad: int = 1) -> ImageTexture:
 	if _pictures.has(key):
 		return _pictures[key]
 	if _pictures.size() > 96:
@@ -189,23 +227,25 @@ static func picture(key: String, rows: Array, colours: Dictionary, rim: Color, e
 	for row: String in rows:
 		w = maxi(w, row.length())
 	var h := rows.size()
-	var img := Image.create_empty(w + 2, h + 2, false, Image.FORMAT_RGBA8)
+	var img := Image.create_empty(w + pad * 2, h + pad * 2, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	var dirs: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
-	if eight:
-		dirs.append_array([Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)])
 	for r in h:
 		var row: String = rows[r]
 		for x in row.length():
 			if not colours.has(row[x]):
 				continue
-			for d in dirs:
-				img.set_pixel(x + 1 + d.x, r + 1 + d.y, rim)
+			for dy in range(-pad, pad + 1):
+				for dx in range(-pad, pad + 1):
+					if dx == 0 and dy == 0:
+						continue
+					if not eight and dx != 0 and dy != 0:
+						continue
+					img.set_pixel(x + pad + dx, r + pad + dy, rim)
 	for r in h:
 		var row: String = rows[r]
 		for x in row.length():
 			if colours.has(row[x]):
-				img.set_pixel(x + 1, r + 1, colours[row[x]])
+				img.set_pixel(x + pad, r + pad, colours[row[x]])
 	var tex := ImageTexture.create_from_image(img)
 	_pictures[key] = tex
 	return tex

@@ -62,7 +62,6 @@ func setup(g: Game) -> void:
 	layer = CanvasLayer.new()
 	layer.name = "screens"
 	layer.layer = 20
-	UiBase.fit(layer)
 	add_child(layer)
 	_add(UiInventoryScreen.new())
 	_add(UiCraftingScreen.new())

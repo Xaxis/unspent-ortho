@@ -528,22 +528,47 @@ static var _cache := {}
 ## Images drawn ahead on a worker (a sketch takes tens of milliseconds), waiting
 ## to become textures on the main thread.
 static var _ready := {}
+## Keys whose raster is out on a worker right now, so a page redrawing every
+## frame asks for one only once.
+static var _out := {}
 static var _lock := Mutex.new()
 static var _tasks: Array[int] = []
 
 
-## Draw item `id` sketched `size` pixels square with its top-left at `at`.
+## Draw item `id` sketched `size` pixels square with its top-left at `at`, if it
+## is drawn yet. Nothing is drawn while its raster is still out on a worker, and
+## `UiScreen` redraws the page when it lands — the same way the slate's own bezel
+## is a plain frame until its bake is in.
+##
+## **Never block for one.** A sketch is rastered a pixel at a time in GDScript, so
+## it costs the square of its size: measured, one item at 78 pixels is 57 ms and
+## the same item at the base's 234 is 586 ms. Drawn on demand that is a half
+## second of frozen main thread every time the carrying page opens, on the one
+## interaction a player makes most.
 static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, size: int) -> void:
-	ci.draw_texture(item_texture(id, size), Vector2(at))
+	var tex := item_texture(id, size)
+	if tex != null:
+		ci.draw_texture(tex, Vector2(at))
 
 
+## The item's texture, or null while its raster is still out (one is started).
 static func item_texture(id: StringName, size: int) -> ImageTexture:
 	return _texture("i|%s|%d" % [id, size], func() -> Image: return _item_image(id, size))
 
 
 ## Draw a station sketched `w` pixels wide (height follows the 48x32 grid).
 static func draw_station(ci: CanvasItem, station: StringName, at: Vector2i, w: int) -> void:
-	ci.draw_texture(_texture("s|%s|%d" % [station, w], func() -> Image: return _station_image(station, w)), Vector2(at))
+	var tex := _texture("s|%s|%d" % [station, w], func() -> Image: return _station_image(station, w))
+	if tex != null:
+		ci.draw_texture(tex, Vector2(at))
+
+
+## True once every sketch this page asked to be drawn ahead can be drawn.
+static func drawn(ids: Array[StringName], size: int) -> bool:
+	for id in ids:
+		if item_texture(id, size) == null:
+			return false
+	return true
 
 
 static func station_size(w: int) -> Vector2i:
@@ -562,15 +587,30 @@ static func warm(ids: Array[StringName], size: int, stations: Array[StringName] 
 	_reap()
 	if jobs.is_empty():
 		return
-	_tasks.append(WorkerThreadPool.add_task(func() -> void:
-		for j: Array in jobs:
-			var img: Image = (j[1] as Callable).call()
+	# One task EACH, not one task for the lot. They used to be drawn in a row on a
+	# single worker, which was fine when a sketch was tens of milliseconds; at the
+	# base's resolution a full creel of ten is over five seconds of that worker,
+	# and the page shows a row with nothing in its scan window until its turn
+	# comes. Given one task apiece the pool spreads them and the whole creel lands
+	# in about the time the slowest one takes.
+	for j: Array in jobs:
+		var job := j
+		_tasks.append(WorkerThreadPool.add_task(func() -> void:
+			var img: Image = (job[1] as Callable).call()
 			_lock.lock()
-			_ready[j[0]] = img
+			_ready[job[0]] = img
 			_lock.unlock()))
 
 
-## Wait out every sketch still being drawn ahead (before the game goes away).
+## True while any sketch is still being drawn on a worker. A page redraws itself
+## while this holds, so a scan window that was empty fills in as its raster lands.
+static func waiting() -> bool:
+	_reap()
+	return not _tasks.is_empty()
+
+
+## Wait out every sketch still being drawn ahead (before the game goes away, and
+## for a shot, which has one frame to be right in).
 static func wait() -> void:
 	for t in _tasks:
 		WorkerThreadPool.wait_for_task_completion(t)
@@ -591,6 +631,8 @@ static func _has_ready(key: String) -> bool:
 	return has
 
 
+## The texture for `key`, or null while its raster is out on a worker — in which
+## case one is started. NEVER rasters on the calling thread: see `draw_item`.
 static func _texture(key: String, make: Callable) -> ImageTexture:
 	if _cache.has(key):
 		return _cache[key]
@@ -598,9 +640,19 @@ static func _texture(key: String, make: Callable) -> ImageTexture:
 	_lock.lock()
 	var img: Image = _ready.get(key)
 	_ready.erase(key)
+	var out := _out.has(key)
+	if img == null and not out:
+		_out[key] = true
 	_lock.unlock()
 	if img == null:
-		img = make.call()
+		if not out:
+			_tasks.append(WorkerThreadPool.add_task(func() -> void:
+				var made: Image = make.call()
+				_lock.lock()
+				_ready[key] = made
+				_out.erase(key)
+				_lock.unlock()))
+		return null
 	var tex := ImageTexture.create_from_image(img)
 	_cache[key] = tex
 	return tex
@@ -663,9 +715,19 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 	var h := px.y
 	var s := float(w) / grid.x
 	# 1. Which part covers each pixel (-1 none). The pen wanders on made things.
+	#
+	# Each part's box is taken first and the point tested against THAT before the
+	# polygon. A sketch is a handful of small parts on a 32 grid, so most pixels
+	# miss most parts, and the box turns those from a full edge crossing test into
+	# four comparisons. It matters now that a sketch is rasterised at the base's
+	# resolution: at 234 pixels square this loop is nine times the pixels it was
+	# and the carrying page warms one of these per thing carried.
 	var polys: Array = []
+	var boxes: Array[Rect2] = []
 	for part: Array in parts:
-		polys.append(_poly_of(part))
+		var poly := _poly_of(part)
+		polys.append(poly)
+		boxes.append(_box_of(poly))
 	var ids := PackedInt32Array()
 	ids.resize(w * h)
 	for y in h:
@@ -677,7 +739,9 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 			var got := -1
 			for i in polys.size():
 				var poly: PackedVector2Array = polys[i]
-				if poly.size() >= 3 and Geometry2D.is_point_in_polygon(p, poly):
+				if poly.size() < 3 or not boxes[i].has_point(p):
+					continue
+				if Geometry2D.is_point_in_polygon(p, poly):
 					got = i
 			ids[y * w + x] = got
 	var img := Image.create_empty(w, h, false, Image.FORMAT_RGBA8)
@@ -799,6 +863,19 @@ static func _poly_of(part: Array) -> PackedVector2Array:
 				var t := k * TAU / 24.0
 				out.append(Vector2(part[2] + cos(t) * part[4], part[3] + sin(t) * part[5]))
 	return out
+
+
+## A polygon's bounding box, grown half a grid unit so a point on its own edge is
+## never rejected before the polygon itself has been asked.
+static func _box_of(poly: PackedVector2Array) -> Rect2:
+	if poly.is_empty():
+		return Rect2()
+	var lo := poly[0]
+	var hi := poly[0]
+	for p in poly:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	return Rect2(lo, hi - lo).grow(0.5)
 
 
 static func _colour(token: String, ramp_a: StringName, ramp_b: StringName) -> Color:

@@ -64,7 +64,7 @@ func test_the_device_is_pixel_exact_and_patched() -> void:
 					continue
 				check(c.a == 1.0 and c.get_luminance() < 0.1, "glass is opaque and dark at %s" % p)
 				continue
-			if UiSlate._chamfered(x, y, size.x, size.y, 4):
+			if UiSlate._chamfered(x, y, size.x, size.y, 4 * UiSlate.UNIT):
 				continue
 			bezel += 1
 			if c.a > 0.0 and c.a < 1.0:
@@ -96,7 +96,7 @@ func test_the_flaws_never_sit_under_words() -> void:
 	gt(marked, 100, "there are flaws to see")
 	check(dead < UiSlate.GLASS_RECT.position.x + UiSlate.MARGIN_L - 4, "the dead column is in the margin")
 	check(not UiSlate.LIST.grow_individual(-UiSlate.MARGIN_L, 0, 0, 0).intersects(zone), "the list is clear of the crack")
-	check(UiSlate.SPARE.end.x - 12 <= zone.position.x, "the spare panel's words are clear of the crack")
+	check(UiSlate.SPARE.end.x - UiSlate.SPARE_INSET <= zone.position.x, "the spare panel's words are clear of the crack")
 
 
 func test_power_dims_the_glass_not_the_bezel() -> void:

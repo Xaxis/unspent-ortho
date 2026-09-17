@@ -7,7 +7,7 @@ extends CanvasLayer
 ##
 ## The rows are data (`rows`, `add`, `step`, `alpha_of`) so a test can run the feed
 ## without a frame; the drawing below them is the HUD's idiom, laid out in the
-## slate's design units (`UiBase`) from the HUD's own margin.
+## base's own pixels (`UiBase`) from the HUD's own margin.
 
 ## Seconds a row stands at full strength, and then fades over.
 const HOLD := 2.6
@@ -17,15 +17,17 @@ const MOST := 4
 ## A thing taken again inside this long adds to its standing row.
 const MERGE := HOLD
 ## Each row shows the thing as the slate scans it (UiSketch, the carrying page's
-## own drawing) at this many pixels square: at 9 a stone and a lump of coal are the
-## same disc, and at 20 a copper vein, a whelk's whorls and the fork in a tuft of
-## crottle still read, where at 16 they had begun to close up.
-const SKETCH := 20
+## own drawing) at this many pixels square: at 9 slate pixels a stone and a lump of
+## coal were the same disc, and at 20 a copper vein, a whelk's whorls and the fork
+## in a tuft of crottle still read, where at 16 they had begun to close up. The
+## sketch is a PICTURE and not a glyph, so it kept its size on screen when the type
+## came down and is now drawn from the same part list at three times the detail.
+const SKETCH := 60
 ## One row's height and the gap between rows, and how far above the held-item
 ## window the stack stands.
-const ROW := SKETCH + 2
-const GAP := 3
-const ABOVE_HELD := 17
+const ROW := SKETCH + 4
+const GAP := 6
+const ABOVE_HELD := 40
 
 ## [{item: StringName, count: int, age: float}] oldest first.
 var rows: Array[Dictionary] = []
@@ -34,7 +36,6 @@ var _canvas: Control
 
 func _ready() -> void:
 	layer = 10
-	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "pickup_feed"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -86,8 +87,8 @@ func _process(delta: float) -> void:
 func _draw_feed() -> void:
 	if rows.is_empty():
 		return
-	var x := Hud.MARGIN + 6
-	var bottom := UiBase.DESIGN.y - Hud.MARGIN - ABOVE_HELD
+	var x := Hud.MARGIN + 12
+	var bottom := UiBase.SIZE.y - Hud.MARGIN - ABOVE_HELD
 	for i in rows.size():
 		var r: Dictionary = rows[rows.size() - 1 - i]
 		var a := UiDraw.stepped(alpha_of(r))
@@ -95,19 +96,24 @@ func _draw_feed() -> void:
 			continue
 		var id := StringName(r.item)
 		var text := words_of(r)
-		var box := Rect2i(x, bottom - (ROW + GAP) * (i + 1) + GAP, SKETCH + 6 + UiFont.width(text) + 4, ROW)
+		var box := Rect2i(x, bottom - (ROW + GAP) * (i + 1) + GAP, SKETCH + 12 + UiFont.width(text) + 8, ROW)
 		_panel(box, a)
-		_canvas.draw_texture(UiSketch.item_texture(id, SKETCH), Vector2(box.position + Vector2i(1, 1)), Color(1, 1, 1, a))
+		# null while its raster is still out on a worker: the row stands with its
+		# words and fills in a frame or two later (UiSketch.draw_item says why it
+		# is never drawn on this thread). The feed redraws every frame it has rows.
+		var scan := UiSketch.item_texture(id, SKETCH)
+		if scan != null:
+			_canvas.draw_texture(scan, Vector2(box.position + Vector2i(2, 2)), Color(1, 1, 1, a))
 		var ink := UiTheme.MACHINE[3] if UiIcons.is_found(id) else UiTheme.TEXT
-		UiDraw.text_rimmed_faded(_canvas, Vector2i(box.position.x + SKETCH + 4, box.position.y + (ROW - 9) / 2), text, ink, UiTheme.RIM, a)
+		UiDraw.text_rimmed_faded(_canvas, Vector2i(box.position.x + SKETCH + 8, box.position.y + (ROW - UiFont.SIZE) / 2), text, ink, UiTheme.RIM, a)
 
 
 ## A strip of the slate's glass in its salvaged frame, as the held-item window is
 ## (Hud.clip), with no strap or tape: a stack of four would be all buckle.
 func _panel(r: Rect2i, a: float) -> void:
-	UiDraw.rect(_canvas, r.grow(2), Color(UiTheme.RIM, a))
-	UiDraw.frame(_canvas, r.grow(1), Color(Palette.FOUND[1], a))
-	UiDraw.hline(_canvas, r.position.x, r.end.x - 1, r.position.y - 1, Color(Palette.FOUND[3], a))
+	UiDraw.rect(_canvas, r.grow(4), Color(UiTheme.RIM, a))
+	UiDraw.frame(_canvas, r.grow(2), Color(Palette.FOUND[1], a))
+	UiDraw.rect(_canvas, Rect2i(r.position.x, r.position.y - 2, r.size.x, 2), Color(Palette.FOUND[3], a))
 	UiDraw.rect(_canvas, r, Color(UiTheme.GLASS, a))
-	for y in range(r.position.y + 1, r.end.y, 2):
-		UiDraw.hline(_canvas, r.position.x, r.end.x - 1, y, Color(UiTheme.GLASS_ROW, a))
+	for y in range(r.position.y + UiBase.PITCH, r.end.y, UiBase.PITCH * 2):
+		UiDraw.rect(_canvas, Rect2i(r.position.x, y, r.size.x, UiBase.PITCH), Color(UiTheme.GLASS_ROW, a))

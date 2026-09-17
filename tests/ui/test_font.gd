@@ -49,7 +49,7 @@ func test_width_matches_the_font_file() -> void:
 	for s: String in ["day 1  08:00", "pine - fell", "a piece of plate", "UNSPENT", "!"]:
 		var measured := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, UiFont.SIZE)
 		# Font advance includes the gap after the last glyph; UiFont.width does not.
-		eq(int(measured.x), UiFont.width(s) + 1, "width of '%s'" % s)
+		eq(int(measured.x), UiFont.width(s) + UiFont.PITCH, "width of '%s'" % s)
 	eq(int(f.get_height(UiFont.SIZE)), UiFont.ASCENT + UiFont.DESCENT, "line height")
 
 
@@ -67,10 +67,12 @@ func test_fading_text_is_one_picture_with_a_clean_rim() -> void:
 	eq(UiDraw.stepped(0.01), 0.25, "and is gone only at nothing")
 	var tex := UiDraw.text_picture("pine - fell", Color.WHITE, Color.BLACK)
 	var img := tex.get_image()
-	eq(img.get_width(), UiFont.width("pine - fell") + 2, "one rim column each side")
+	eq(img.get_width(), UiFont.width("pine - fell") + UiFont.PITCH * 2, "one rim each side")
+	# The picture is the face as it is CUT, not as it is written down: the cell is
+	# PITCH square and the corner fills are part of the letter.
 	var ink := 0
 	for ch in "pine - fell":
-		for row in UiFont.glyph(ch):
+		for row in UiFont.glyph_cut(ch):
 			ink += row.count("#")
 	var fill := 0
 	var rim := 0
@@ -97,10 +99,11 @@ func test_fading_text_is_one_picture_with_a_clean_rim() -> void:
 			if first < 0 and p.get_pixel(x, y) == Color.WHITE:
 				first = y
 	var glyph_top := 0
-	while not UiFont.glyph("I")[glyph_top].contains("#"):
+	while not UiFont.glyph_cut("I")[glyph_top].contains("#"):
 		glyph_top += 1
-	# text() puts a glyph's top row at at.y + ASCENT - (ROWS - 2); the picture is drawn at at.y.
-	eq(first, glyph_top + UiFont.ASCENT - (UiFont.ROWS - 2), "the picture's glyphs sit where text() draws them")
+	# text() puts a cut glyph's top row at at.y + ASCENT - (ROWS - 2) * PITCH; the
+	# picture is drawn at at.y less one rim, so its own rim fills those rows.
+	eq(first, glyph_top + UiFont.ASCENT - (UiFont.ROWS - 2) * UiFont.PITCH, "the picture's glyphs sit where text() draws them")
 
 
 ## Every character the slate can be asked to letter has a glyph: every string

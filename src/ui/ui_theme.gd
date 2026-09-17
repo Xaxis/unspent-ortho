@@ -43,8 +43,10 @@ const RIM := Color("#050809")
 ## Dims the world behind the awake slate.
 const VEIL := Color(0.02, 0.03, 0.035, 0.66)
 
-## Line pitch of every list: one text line plus a clear row.
-const LINE := 11
+## Line pitch of every list, in base pixels: one text line plus a clear row.
+## Sized off the type (`UiFont.SIZE`), not off the device, which is why a pane
+## the same share of the frame as before now holds half again as many rows.
+const LINE := UiFont.SIZE + 2
 
 static var _theme: Theme
 
@@ -65,13 +67,13 @@ static func theme() -> Theme:
 	t.default_font_size = UiFont.SIZE
 	t.set_color("font_color", "Label", TEXT)
 	t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0))
-	t.set_constant("line_spacing", "Label", 1)
+	t.set_constant("line_spacing", "Label", LINE - UiFont.SIZE)
 	var glass := StyleBoxFlat.new()
 	glass.bg_color = GLASS
 	glass.border_color = FAINT
 	glass.set_border_width_all(1)
 	glass.anti_aliasing = false
-	glass.set_content_margin_all(6)
+	glass.set_content_margin_all(12)
 	t.set_stylebox("panel", "Panel", glass)
 	t.set_stylebox("panel", "PanelContainer", glass)
 	for kind: String in ["Button", "LineEdit"]:

@@ -70,6 +70,10 @@ await app:reads 3
 shot 14-machine-reads with app:reads
 tap pause
 await app:pause 3
+# Twice: home keeps the row it was left on, and the journal was added between
+# machine reads and saves, so one step down now lands on the journal. This is
+# the count that made line 75 red on main.
+tap move_down
 tap move_down
 tap use
 await app:saves 3
