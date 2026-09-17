@@ -29,11 +29,19 @@ await took 14
 wait 0.4
 shot 05-stone with prop:boulder
 # Open ground: the first press asks and rings the spot, the second lays the fire.
-at 143.5,205.5
+# Named, not pinned — for the SECOND time in this one file. `at 143.5,205.5` was
+# open coast when it was written; every landscape added since moved the island
+# under it, and by the time anyone looked it stood in the BONELANDS beside a
+# village noticeboard. So `use` was answered by the story (49_story runs before
+# 50_survival and reaches 3 tiles, exactly as it should), the frame below was a
+# picture of a noticeboard called "asked", and the fire was never laid. It went
+# red at line 39 and stayed red for months, because 39 is the first line here
+# that CLAIMS anything.
+ground grass
 walk 1,-1 0.08
 press use 0.1
 wait 0.3
-shot 06-asked
+shot 06-asked with station:hand
 press use 0.1
 wait 1.5
 shot 07-fire-laid with station:fire
