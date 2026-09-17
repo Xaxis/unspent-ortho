@@ -64,14 +64,18 @@ const ROWS := {
 	# Under the pines: far goes dark and cold. The same trick as the bog with a
 	# different hue, which is what makes them two places and not one mood.
 	&"pinewood": {"tow": Color(0.075, 0.105, 0.135), "pull": 0.66, "depth": 1.20, "near": 0.86, "bank": 1.35},
-	# The snowfield: far goes PALE, and this is the inversion the whole idea is
-	# for. Distance eats the land instead of darkening it -- but snow is already
-	# at luma 221 and there is nothing left to carry it TOWARD, so at the depth
-	# the bog uses it moved 8% and read as nothing. What distance takes from snow
-	# is not its value, it is its TEXTURE: the row asks for half again as much
-	# air, in a colour a little cooler than the snow itself, so the far field
-	# flattens into its own glare while the near field keeps its shade.
-	&"snowfield": {"tow": Color(0.88, 0.92, 1.00), "pull": 0.72, "depth": 1.60, "near": 0.84, "bank": 1.2},
+	# The snowfield: far goes PALE against a DARK land, which is the inversion the
+	# whole idea is for -- and the hardest row here, twice measured.
+	#
+	# Snow is already at luma 221. Carried toward a paler air it has nothing to
+	# move to: at `depth` 1.30 the top fifth of the frame lost 8% of its contrast
+	# and at 1.60 it lost 7.7%, because `Air.MOST` had capped both at the same
+	# number. Raising the row past 1.13 in clear weather does nothing at all.
+	#
+	# So the air is not paler than the snow, it is COLDER and a little darker --
+	# the horizon dissolving into grey, which is what distance on a snowfield
+	# really looks like -- and the pull does the work the depth could not.
+	&"snowfield": {"tow": Color(0.76, 0.83, 0.95), "pull": 0.78, "depth": 1.15, "near": 0.84, "bank": 1.2},
 	# The salt: pale, but bone rather than snow, and drier -- it starts further
 	# out, because a salt pan is flat and the glare is what closes it, not water.
 	&"salt_flats": {"tow": Color(0.91, 0.89, 0.82), "pull": 0.62, "depth": 1.15, "near": 0.96, "bank": 0.8},
