@@ -136,6 +136,13 @@ func _ready_line(scene: Node) -> void:
 	if not is_instance_valid(scene) or not scene.is_inside_tree():
 		return
 	await RenderingServer.frame_post_draw
+	# And again on the far side of that await: a scene can be taken down DURING
+	# it. The title frees itself the moment it hands over to a loaded game, so
+	# continuing a save raced this line and read `name` off a freed object —
+	# which a tour sees as a SCRIPT ERROR and a player would see as a crash on
+	# the ordinary way back into their game.
+	if not is_instance_valid(scene) or not scene.is_inside_tree():
+		return
 	var now := Time.get_ticks_msec()
 	print("boot ready %s %d ms (engine %d ms, main at %d ms)" % [scene.name, now - t0, now, _t0])
 	if options.probe:

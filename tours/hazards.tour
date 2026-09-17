@@ -5,11 +5,22 @@
 coast calm
 
 # --- The snowfield at dusk with nothing on it ---------------------------------
-# The cold is on the slate and in the breath long before it is in the health.
+# The cold is on the slate and in the breath long before it is in the health, so
+# these are two different hours and each is pinned to the one it is about.
+#
+# MEASURED, seed 1: `place snowfield` lands at level 3, under HIGH_LEVEL, so the
+# height adds nothing, and the snowfield's declared 0.7 cold is worth 0.434 at
+# 19:00 against a BITE of 0.55 — it cannot bite before about 20:20, because
+# FightRules.nightfall is flat zero until 20:00. This section used to wait for
+# the world clock to DRIFT there while the tour stood still, which wins on an
+# idle machine and loses on a busy one; it is the hour that is being proved, so
+# the hour is set.
 place snowfield
+hour 19
 wait 1.6
 await cold 12
 shot 01-snowfield-bare with land:snowfield,cold
+hour 20.5
 await pressure_bites 15
 shot 02-cold-bites with pressure_bites
 

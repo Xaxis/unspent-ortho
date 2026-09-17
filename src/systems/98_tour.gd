@@ -390,14 +390,28 @@ func _listen() -> void:
 
 func _await(what: String, secs: float) -> bool:
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
-	var ok := _seen.has(what) or _now_true(what)
+	var ok := _answered(what)
 	while not ok and Time.get_ticks_msec() < until:
 		await get_tree().physics_frame
-		ok = _seen.has(what) or _now_true(what)
+		ok = _answered(what)
 	_seen.erase(what)
 	if not ok:
 		printerr("tour %s: no %s within %.1f s%s" % [_name, what, secs, _instead(what)])
 	return ok
+
+
+## Answered when the word has been seen, or is true now — except `game`, which
+## is set the moment the systems are wired and so is already true while the
+## loading page is still drawn over the whole screen. A tour that awaits a game
+## means the game a player can SEE, so it waits for the page to lift, the same
+## thing main.gd's own ready line waits for. Without this, continuing a save
+## photographed the loading page at 98% and called it the world that came back.
+func _answered(what: String) -> bool:
+	if not (_seen.has(what) or _now_true(what)):
+		return false
+	if what == "game":
+		return get_tree().get_nodes_in_group(&"boot_page").is_empty()
+	return true
 
 
 func _now_true(what: String) -> bool:
@@ -773,9 +787,29 @@ const PROP_SIGHT := 90.0
 ## proves the ground it happened to land on and nothing else.
 const PATCH := 3
 
+## Ground of one of `want`, nearest first — and by preference with nothing on it
+## that the hand would rather take.
+##
+## `ground` exists so a tour can stand on OPEN ground and press use. But `use`
+## takes the nearest thing in reach, so a grass tile with a bench beside it
+## answers "bench - make" and the fire the tour came to lay is never laid: that
+## is tours/saves line 17, in a spawn village the houses work made busier. The
+## fallback keeps a tour that only wants to stand on a kind of ground working
+## where there is no clear tile at all, and says so rather than pretending.
 func _ground_near(want: Array[int]) -> Vector2:
 	if want.is_empty():
 		return Vector2.INF
+	for clear_only: bool in [true, false]:
+		var p := _ground_ring(want, clear_only)
+		if p != Vector2.INF:
+			if not clear_only:
+				printerr("tour %s: no %s clear of props near %s; standing on %s with something in reach"
+					% [_name, Ground.NAMES[want[0]], game.player.pos, p])
+			return p
+	return Vector2.INF
+
+
+func _ground_ring(want: Array[int], clear_only: bool) -> Vector2:
 	var from := game.player.pos
 	var cx := floori(from.x)
 	var cy := floori(from.y)
@@ -783,9 +817,28 @@ func _ground_near(want: Array[int]) -> Vector2:
 		for i in range(-r, r + 1):
 			for p: Vector2i in [Vector2i(cx + i, cy - r), Vector2i(cx + i, cy + r),
 					Vector2i(cx - r, cy + i), Vector2i(cx + r, cy + i)]:
-				if game.query.standable(p.x, p.y) and _all_ground(want, p):
-					return Vector2(p.x + 0.5, p.y + 0.5)
+				if not game.query.standable(p.x, p.y) or not _all_ground(want, p):
+					continue
+				var spot := Vector2(p.x + 0.5, p.y + 0.5)
+				if clear_only and not _hand_is_empty_at(spot):
+					continue
+				return spot
 	return Vector2.INF
+
+
+## Nothing at all standing at `spot`: not a thing to gather, not a station, not
+## the corner of a house. Open ground means open, because `use` on it falls back
+## through eat and sleep to laying a fire, and that last one wants a clear spot
+## as well as an empty hand — a bench 1.6 tiles off is enough to answer the key
+## with "bench - make" and lay nothing.
+func _hand_is_empty_at(spot: Vector2) -> bool:
+	var clear := Survival.STATION_REACH + 0.6
+	for q: WorldProp in game.query.props_near(spot, clear + 3.0):
+		if game.world.depleted.has(q.id):
+			continue
+		if spot.distance_to(q.pos) - q.solid <= clear:
+			return false
+	return true
 
 
 func _all_ground(want: Array[int], p: Vector2i) -> bool:

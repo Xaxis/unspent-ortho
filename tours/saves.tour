@@ -67,8 +67,16 @@ shot 06-after
 # fire is never still. That is what these tolerances hold room for, and nothing
 # else: the crop below is round the player and the fire they laid, and losing
 # the fire out of it takes the difference well past its allowance.
+# The crop's allowance was 0.024, tuned when `ground grass` left the player in
+# the village square with the fire half out of frame. It is now laid on open turf
+# with the flame square in the middle of the crop, which is the most restless
+# thing in the picture — measured over three runs at this staging: whole frame
+# 0.0229 / 0.0236 / 0.0275, crop 0.0250 / 0.0255 / 0.0257. A spread of 0.0007
+# with the fire THERE, against a tolerance that has to be well under what losing
+# it costs; 0.030 keeps the guard and stops it failing on the flame it is
+# watching.
 same 02-before 06-after 0.032
-same 02-before 06-after 0.024 440,220,440,280
+same 02-before 06-after 0.030 440,220,440,280
 await station:fire 1
 # Load from home's saves app too (right turns it to loading): the autosave and the
 # three slots, and slot 1 taken up again.
