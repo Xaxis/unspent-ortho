@@ -23,6 +23,12 @@ class_name Landmarks
 ## Landmarks wanted per region, before the ground has its say. A region usually
 ## yields fewer: a kind whose ground is not in it is simply not placed.
 const PER_REGION := 3
+## The smallest run of a landscape that is a PLACE and not a corner. Below this a
+## region is a scrap of one landscape caught in the side of another, and a tower
+## put in it is a tower standing in somebody else's frame — and, because the
+## rounds give the least room the first word, a fifty-tile spur was taking a
+## landmark off the three-thousand-tile landscape beside it.
+const REGION_TILES := 400
 ## Tiles between the candidates a region is searched on. The COARSE sweep is
 ## tried first and almost always answers — a region only wants three places out
 ## of thousands of tiles — and the fine one is run again only over a region the
@@ -30,18 +36,32 @@ const PER_REGION := 3
 ## between 60 ms on the loading page and a quarter of a second.
 const STRIDE := 5
 const COARSE := 11
+## Candidates below which a region is swept again at the fine stride: a thin pool
+## means the coarse sweep walked past the region's ground, and a fat one means it
+## found plenty and the picking is what ran out.
+const FINE_BELOW := 12
 ## Tiles a landmark keeps from where the player wakes. Not a wall — the first
 ## one should be a morning's walk, not a week's.
 const CLEAR_HOME := 26.0
 const CLEAR_VILLAGE := 18.0
 ## And off the machines' own works, which are everywhere the survey line goes. A
 ## landmark twelve tiles from a pipeline is a scene; one on top of it is a mess.
+##
+## IT GIVES WAY TO THE DENSITY, because a landscape can BE their works. Held at
+## twelve everywhere, the scrapwood — whose whole ground is what the machines
+## left — held no landmark at all on seed 1 and one on seed 7, and the test
+## passed because it only asked regions over two thousand tiles for two. So the
+## rule a region really keeps is "not on top of one", and twelve is only what it
+## keeps where there is room for twelve.
 const CLEAR_WORKS := 12.0
+const CLEAR_WORKS_FLOOR := 4.0
 ## Tiles the player has to come within before a landmark goes on their map, and
 ## before they are told what it is. Well inside the nearest thing any kind claims
 ## to be readable from, so every one of them is a shape on the horizon first and
 ## a named place second — which is the whole order a landmark is experienced in.
-const FOUND_AT := 16.0
+##
+## Nine, and not sixteen, because the frame is only so big: see `read_reach`.
+const FOUND_AT := 9.0
 ## Tiles from the cache at which it can be opened, and how far in FRONT of the
 ## silhouette the cache lies: every landmark is approached from its own face, so
 ## a player who can see what a place is can also see where its hands go.
@@ -57,6 +77,38 @@ const CACHE_MOST := 6
 ## this: nearer than about twenty tiles they are in each other's frame, and two
 ## silhouettes in one frame is one silhouette and half the reason for either.
 const MIN_APART := 24.0
+
+## THE FRAME IS THE LIMIT, NOT THE MODEL. The play camera is orthographic, 15
+## world units of view height at 16:9 and pitched 57 degrees, so it shows about
+## 26.7 tiles across and 17.9 tiles of ground up and down — and a tower thirty
+## tiles away is not dim or small, it is OFF THE PICTURE. The first version of
+## this package wrote `sees` at 20-34 tiles because that is what VISION §3 asks
+## for, and every far-read line it said was said about a thing the player could
+## not see; the only frames that showed the silhouettes were shot at twice the
+## play camera's zoom.
+##
+## So a kind's reach is derived from the camera and its own height, and
+## `tests/landmarks/test_models.gd` holds every kind to it:
+##
+##   - up the screen, a thing goes off the TOP: its base is in frame only to
+##     `half_height / sin(pitch)`, about 8.9 tiles;
+##   - down the screen, height BUYS distance, because the top of the thing rises
+##     in frame as its base falls out of it: `(half_height + high * cos(pitch)) /
+##     sin(pitch)`, which is 13.7 tiles for a lighthouse and 16 for the stack;
+##   - across the screen there is no height to spend: `half_height * aspect`,
+##     about 13.3 tiles, whatever is standing there.
+##
+## The honest reach is the smaller of the last two: the distance at which a kind
+## is in frame over most of the compass. Going taller past that buys nothing —
+## which is why the stack, at eleven and a half units, reads no further than the
+## lighthouse at seven, and why growing these models is not how the twenty-tile
+## read of VISION §3 is won (docs/ROADMAP.md).
+static func read_reach(view_height: float, pitch_deg: float, aspect: float, high: float) -> float:
+	var half := view_height * 0.5
+	var p := deg_to_rad(pitch_deg)
+	var down := (half + high * cos(p)) / maxf(sin(p), 1e-3)
+	return minf(half * aspect, down)
+
 
 ## The kinds. Each is a silhouette of its own, and each stands in three to five
 ## landscapes so that every landscape holds three or more without the game
@@ -78,7 +130,7 @@ static func _build() -> void:
 	var light := LandmarkDef.make(&"lighthouse", "the drowned light")
 	light.lands = [&"coast"]
 	light.wants = &"shore"
-	light.sees = 30.0
+	light.sees = 13.0
 	light.far = "A tower out on the rocks, and no light in it."
 	light.near = "The lamp room is open to the weather. The lens is still in its cradle."
 	light.mark = &"light"
@@ -87,7 +139,7 @@ static func _build() -> void:
 	var mast := LandmarkDef.make(&"leaning_mast", "the leaning mast")
 	mast.lands = [&"moss", &"snowfield", &"pinewood"]
 	mast.wants = &"water"
-	mast.sees = 26.0
+	mast.sees = 13.0
 	mast.far = "A mast, leaning, with its guys down."
 	mast.near = "It went over years ago and nobody came. The head cabinet is still shut."
 	mast.mark = &"mast"
@@ -97,16 +149,16 @@ static func _build() -> void:
 	var tower := LandmarkDef.make(&"firewatch", "the fire tower")
 	tower.lands = [&"pinewood", &"coast", &"scrapwood"]
 	tower.wants = &"high"
-	tower.sees = 28.0
+	tower.sees = 13.0
 	tower.far = "A tower on the rise, and its stair is gone."
 	tower.near = "Somebody lived up there after the stair went. Their kit is still on the deck."
 	tower.mark = &"tower"
 	out.append(tower)
 
 	var stack := LandmarkDef.make(&"blinking_stack", "the tall stack")
-	stack.lands = [&"snowfield", &"bonelands", &"burning"]
+	stack.lands = [&"snowfield", &"bonelands", &"burning", &"scrapwood"]
 	stack.wants = &"open"
-	stack.sees = 34.0
+	stack.sees = 13.0
 	stack.far = "A stack, blinking, a long way off."
 	stack.near = "It is still lit and nothing is burning under it. The flue door is unbolted."
 	stack.mark = &"stack"
@@ -114,9 +166,9 @@ static func _build() -> void:
 	out.append(stack)
 
 	var stones := LandmarkDef.make(&"cast_stones", "the cast stones")
-	stones.lands = [&"bonelands", &"moss", &"coast", &"salt_flats", &"limestone_caves"]
+	stones.lands = [&"bonelands", &"moss", &"coast", &"salt_flats", &"pinewood", &"snowfield"]
 	stones.wants = &"high"
-	stones.sees = 22.0
+	stones.sees = 12.0
 	stones.far = "Stones standing in a ring, and one of them is not stone."
 	stones.near = "They recast the fallen ones in concrete, round rebar, and set them back up."
 	stones.mark = &"stones"
@@ -125,30 +177,54 @@ static func _build() -> void:
 	var pans := LandmarkDef.make(&"evaporator", "the evaporator")
 	pans.lands = [&"salt_flats", &"burning"]
 	pans.wants = &"open"
-	pans.sees = 26.0
+	pans.sees = 12.0
 	pans.far = "A hulk out on the flat, white to the shoulder."
 	pans.near = "The rake arm came down and stopped. Everything it touched is crusted over."
 	pans.mark = &"evaporator"
 	out.append(pans)
 
 	var hulk := LandmarkDef.make(&"grown_hulk", "the grown hulk")
-	hulk.lands = [&"coast", &"moss", &"pinewood", &"scrapwood", &"limestone_caves"]
+	hulk.lands = [&"coast", &"moss", &"pinewood", &"scrapwood"]
 	hulk.wants = &"open"
-	hulk.sees = 24.0
+	hulk.sees = 13.0
 	hulk.far = "Something big is standing in the clearing, and it is not a tree."
 	hulk.near = "The land came up through it. It has been dead long enough to be a place."
 	hulk.mark = &"hulk"
 	out.append(hulk)
 
 	var office := LandmarkDef.make(&"clerks_office", "the clerk's post")
-	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves"]
+	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves", &"moss"]
 	office.wants = &"rough"
-	office.sees = 20.0
+	office.sees = 12.0
 	office.far = "A post, and the ground round it is pale with paper."
 	office.near = "Every file it ever took is out here in the weather, and still in order."
 	office.mark = &"files"
 	office.guarded = true
 	out.append(office)
+
+	# UNDER THE GROUND, NOTHING OF THE SKY. The caves had a ring of standing
+	# stones and a machine with a tree growing out of its back in them, because
+	# both kinds named every landscape that would take them. A landmark is the
+	# evidence of what was lost HERE: there is no weather down a limestone cave
+	# and nothing grows, so what is left is what the working left.
+	var pillar := LandmarkDef.make(&"poured_pillar", "the poured pillar")
+	pillar.lands = [&"limestone_caves"]
+	pillar.wants = &"rough"
+	pillar.sees = 12.0
+	pillar.far = "One of the columns holding the roof up is the wrong colour."
+	pillar.near = "They robbed the limestone one out and poured this in its place, round rebar, while the roof was still on it."
+	pillar.mark = &"pillar"
+	out.append(pillar)
+
+	var sump := LandmarkDef.make(&"sump_pump", "the sump")
+	sump.lands = [&"limestone_caves"]
+	sump.wants = &"water"
+	sump.sees = 12.0
+	sump.far = "A gantry over black water, and the float is down."
+	sump.near = "It kept this level dry for somebody. Whatever it was keeping out is in here now."
+	sump.mark = &"sump"
+	sump.guarded = true
+	out.append(sump)
 
 	for d in out:
 		_defs[d.id] = d
@@ -261,6 +337,20 @@ static func declare_loot(force: bool = false) -> void:
 		{"item": &"cinder_glass", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"burning"]},
 		{"item": &"clint_spar", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"bonelands"]},
 	])
+	Drops.declare(&"landmark_poured_pillar", [
+		{"item": &"stone", "count": Vector2i(2, 5)},
+		{"item": &"limestone", "count": Vector2i(1, 3), "chance": 0.8},
+		{"item": &"scrap", "count": Vector2i(1, 3), "chance": 0.7},
+		{"item": &"mod_clamp", "chance": 0.35, "rarity": Rarity.RARE},
+		{"item": &"mod_spring", "chance": 0.3, "rarity": Rarity.RARE},
+	])
+	Drops.declare(&"landmark_sump_pump", [
+		{"item": &"scrap", "count": Vector2i(3, 6)},
+		{"item": &"iron", "count": Vector2i(1, 2), "chance": 0.6},
+		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.7},
+		{"item": &"mod_filter", "chance": 0.45, "rarity": Rarity.RARE},
+		{"item": &"mod_clamp", "chance": 0.3, "rarity": Rarity.RARE},
+	])
 
 
 ## Where the hands go at a landmark: in front of its face, clear of its own mass.
@@ -311,6 +401,22 @@ static func problems(land_ids: Array) -> PackedStringArray:
 			continue
 		if for_land(land).size() < 3:
 			out.append("%s holds %d landmark kinds; VISION §3 asks for three or more" % [land, for_land(land).size()])
+		# A landscape's OWN FILE is the authority (`BiomeDef.landmarks`), and a
+		# kind's `lands` is what it claims. Both are real fields, so they have to
+		# agree or one of them is a lie nobody would trip over: the tables were
+		# added to `BiomeDef` and nothing wrote them for a whole wave.
+		if def == null or def.landmarks.is_empty():
+			out.append("%s declares no landmarks of its own; write its table in src/content/biomes" % land)
+			continue
+		for id: StringName in def.landmarks:
+			var d := by_id(id)
+			if d == null:
+				out.append("%s claims a landmark kind that does not exist: %s" % [land, id])
+			elif not d.lands.has(land):
+				out.append("%s claims %s, which does not name %s among its lands" % [land, id, land])
+		for d in _order:
+			if d.lands.has(land) and not def.landmarks.has(d.id):
+				out.append("%s names %s among its lands, and %s does not claim it" % [d.id, land, land])
 	return out
 
 
@@ -350,34 +456,96 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	var placed_at: Array[Vector2] = []
 	for v: Dictionary in world.villages:
 		greens.append(v.get("pos", Vector2.ZERO))
+	var works_in := {}
 	for m: Dictionary in world.landmarks:
-		if m.has("mark") or m.get("kind") == &"works":
-			built.append(m.get("pos", Vector2.ZERO))
+		if not (m.has("mark") or m.get("kind") == &"works"):
+			continue
+		var p: Vector2 = m.get("pos", Vector2.ZERO)
+		built.append(p)
+		var r := world.region_at(floori(p.x), floori(p.y))
+		works_in[r] = int(works_in.get(r, 0)) + 1
 	var solid := _solid_tiles(world)
 	var apart_scale := clampf(float(world.size) / 512.0, 0.4, 1.0)
+	# EVERY REGION GETS ITS FIRST BEFORE ANY GETS ITS SECOND, and the smallest
+	# region chooses first inside each round.
+	#
+	# `WorldData.regions` is biggest first, and filling one region right up before
+	# starting the next put the island's landmarks down where the big landscapes
+	# wanted them and left the small ones with nowhere: on seed 1 the scrapwood's
+	# two regions could not put down one landmark between them, and the furthest
+	# tile in either of them from something already standing was 23.3 tiles
+	# against a floor of 24 (MIN_APART). Going smallest-first instead only moved
+	# the hole — the bonelands, at 3272 tiles, then got none. A small region has
+	# one place to stand and a big one has a thousand, so the rounds go round
+	# them all and the one with least room speaks first.
+	#
+	# The OUTPUT is still in region order, so `nth` and every id are what they
+	# always were, and a save's remembered ids still mean the same places.
+	var order: Array[Dictionary] = []
 	for region: Dictionary in world.regions:
-		var land := StringName(str(region.get("type", &"")))
-		var kinds := for_land(land)
-		if kinds.is_empty():
-			continue
+		if int(region.get("tiles", 0)) >= REGION_TILES and not for_land(StringName(str(region.get("type", &"")))).is_empty():
+			order.append(region)
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ta := int(a.get("tiles", 0))
+		var tb := int(b.get("tiles", 0))
+		return ta < tb if ta != tb else int(a.get("id", -1)) < int(b.get("id", -1)))
+	var by_region := {}
+	var pools := {}
+	var left := {}
+	var wanted_in := {}
+	for region: Dictionary in order:
+		var id := int(region.get("id", -1))
+		var kinds := for_land(StringName(str(region.get("type", &""))))
 		var wanted: Array[StringName] = [&"open"]
 		for d in kinds:
 			if not wanted.has(d.wants):
 				wanted.append(d.wants)
-		var want := mini(PER_REGION, kinds.size())
-		var chosen := _fill(world, region, greens, built, solid, placed_at, wanted, kinds, apart_scale, COARSE)
-		if chosen.size() < want:
-			# The coarse sweep could not fill this region: look at it properly.
-			# Nothing is kept from the coarse try, so the answer is the fine
-			# sweep's alone and the result does not depend on the order they ran in.
-			var fine := _fill(world, region, greens, built, solid, placed_at, wanted, kinds, apart_scale, STRIDE)
-			if fine.size() > chosen.size():
-				chosen = fine
+		wanted_in[id] = wanted
+		left[id] = kinds
+		by_region[id] = []
+		pools[id] = _candidates(world, region, greens, built, solid, wanted,
+			works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0))), COARSE)
+	for round_index in PER_REGION:
+		for region: Dictionary in order:
+			var id := int(region.get("id", -1))
+			if (by_region[id] as Array).size() > round_index:
+				continue
+			var row := _pick_one(pools[id], placed_at, left[id], apart_scale)
+			if row.is_empty():
+				continue
+			placed_at.append(row.at)
+			(by_region[id] as Array).append(row)
+	# A region the COARSE sweep could not fill gets looked at properly: eleven
+	# tiles between candidates is most of a small region's whole width, so a
+	# landscape that holds one place to stand can be swept straight past.
+	#
+	# Only a region whose coarse pool was THIN, though. A region that offered
+	# thirty places and took one did not run out of ground, it ran out of room
+	# between silhouettes (MIN_APART), and sweeping it again five tiles at a time
+	# finds the same answer for three times the cost: doing it everywhere took the
+	# siting of a 512-tile world from 55 ms to 159.
+	for region: Dictionary in order:
 		var id := int(region.get("id", -1))
-		for row: Dictionary in chosen:
+		var kinds: Array[LandmarkDef] = left[id]
+		var want := mini(PER_REGION, (by_region[id] as Array).size() + kinds.size())
+		if (by_region[id] as Array).size() >= want or kinds.is_empty():
+			continue
+		if (pools[id] as Array).size() >= FINE_BELOW:
+			continue
+		var fine := _candidates(world, region, greens, built, solid, wanted_in[id],
+			works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0))), STRIDE)
+		while (by_region[id] as Array).size() < want:
+			var row := _pick_one(fine, placed_at, kinds, apart_scale)
+			if row.is_empty():
+				break
+			placed_at.append(row.at)
+			(by_region[id] as Array).append(row)
+	for region: Dictionary in world.regions:
+		var id := int(region.get("id", -1))
+		var land := StringName(str(region.get("type", &"")))
+		for row: Dictionary in by_region.get(id, []):
 			var d: LandmarkDef = row.def
 			var at: Vector2 = row.at
-			placed_at.append(at)
 			var n := int(counts.get(d.id, 0)) + 1
 			counts[d.id] = n
 			var s := LandmarkSite.new()
@@ -402,9 +570,20 @@ static func forget() -> void:
 	_cache.clear()
 
 
+## How far a landmark in this region keeps off the machines' works: twelve where
+## there is room for twelve, and no more than half the ground each work has to
+## itself where there is not. Pure, so a test can read it off a region's own
+## numbers rather than guessing why a landscape came out empty.
+static func works_clear(region_tiles: int, works_in_region: int) -> float:
+	if works_in_region <= 0 or region_tiles <= 0:
+		return CLEAR_WORKS
+	var room := sqrt(float(region_tiles) / float(works_in_region)) * 0.5
+	return clampf(room, CLEAR_WORKS_FLOOR, CLEAR_WORKS)
+
+
 ## Every tile in a region a landmark could stand on, scored for each thing this
 ## region's kinds want: `{p: Vector2, s: {want -> float}}`.
-static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], stride: int) -> Array:
+static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int) -> Array:
 	var out: Array = []
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
@@ -418,7 +597,7 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 				x += stride
 				continue
 			var p := Vector2(x + 0.5, y + 0.5)
-			if p.distance_squared_to(home) < CLEAR_HOME * CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, CLEAR_WORKS):
+			if p.distance_squared_to(home) < CLEAR_HOME * CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, off_works):
 				x += stride
 				continue
 			# And a player has to be able to STAND at its cache. A lighthouse on a
@@ -469,24 +648,21 @@ static func _pick(pool: Array, placed: Array[Vector2], d: LandmarkDef, apart: fl
 	return Vector2.INF
 
 
-## What one region can hold, at one sweep fineness: `[{def, at}]`, at most
-## PER_REGION of them, each clear of the ones already standing and of the ones
-## this region has just put down.
-static func _fill(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, placed: Array[Vector2], wanted: Array[StringName], kinds: Array[LandmarkDef], apart_scale: float, stride: int) -> Array:
-	var pool := _candidates(world, region, greens, built, solid, wanted, stride)
-	var out: Array = []
+## ONE more landmark for a region, out of a pool already swept: the first of the
+## kinds it has left that can find ground, as `{def, at}` or `{}`. The kind it
+## takes is struck off `kinds`, so the next round asks for a different silhouette
+## and a region never holds two of the same thing.
+static func _pick_one(pool: Array, placed: Array[Vector2], kinds: Array[LandmarkDef], apart_scale: float) -> Dictionary:
 	if pool.is_empty():
-		return out
-	var here: Array[Vector2] = placed.duplicate()
-	for d in kinds:
-		if out.size() >= PER_REGION:
-			break
-		var at := _pick(pool, here, d, d.apart * apart_scale)
+		return {}
+	for i in kinds.size():
+		var d: LandmarkDef = kinds[i]
+		var at := _pick(pool, placed, d, d.apart * apart_scale)
 		if not at.is_finite():
 			continue
-		here.append(at)
-		out.append({"def": d, "at": at})
-	return out
+		kinds.remove_at(i)
+		return {"def": d, "at": at}
+	return {}
 
 
 ## Tiles a body cannot walk onto, as a set. A landmark's cache has to be clear of

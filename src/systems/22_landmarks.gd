@@ -26,6 +26,9 @@ const LOOK_EVERY := 0.25
 ## Seconds after arriving in a game before `use` can open anything, so the key
 ## that loaded a save cannot also empty the cache the player is standing on.
 const SETTLE := 0.4
+## How near the mass of a landmark a body has to be to count as standing against
+## it (a body's own radius, and a little for the slide along the face).
+const WALL_TOUCH := 0.55
 
 var sites: Array[LandmarkSite] = []
 var state := LandmarkState.new()
@@ -72,6 +75,26 @@ func _read_sites() -> void:
 	reachable = null
 	for s in sites:
 		_as_landmark(s)
+	_set_walls()
+
+
+## The mass of every landmark in this world, handed to the one thing that stops a
+## body (`WorldQuery.set_blocks`). Derived like the siting itself, so it is never
+## saved and never drifts, and replaced whole on a realm crossing.
+##
+## It is set for the WHOLE island and not only for what is drawn: a machine
+## chasing the player round the far side of a tower is stopped by the tower
+## whether or not the camera is looking at it, and a wall that came and went with
+## the draw distance would let a body walk through what it had just walked round.
+func _set_walls() -> void:
+	if game.query == null:
+		return
+	var walls: Array[Vector3] = []
+	for s in sites:
+		for c: Vector3 in LandmarkModels.blocks(s.kind):
+			var at := s.pos + Vector2(c.x, c.y).rotated(s.facing)
+			walls.append(Vector3(at.x, at.y, c.z))
+	game.query.set_blocks(&"landmarks", walls)
 
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
@@ -182,6 +205,15 @@ func _watch() -> void:
 		if reach <= Landmarks.OPEN_REACH and reach < best and not state.is_opened(s.id):
 			best = reach
 			reachable = s
+		# Up against its mass and not inside it: the body walked in and was
+		# STOPPED. Recorded rather than asked, because it is something that
+		# HAPPENED — a tour awaits it, and a frame taken after does not have to
+		# still be pressed against the wall to be a picture of being stopped by it.
+		for c: Vector3 in LandmarkModels.blocks(s.kind):
+			var wall := s.pos + Vector2(c.x, c.y).rotated(s.facing)
+			var against := wall.distance_to(at)
+			if against >= c.z - 0.05 and against <= c.z + WALL_TOUCH:
+				_seen[&"landmark_wall"] = true
 
 
 ## `use` is one key and a cache is one more thing it can mean. A shaft takes the
@@ -303,6 +335,7 @@ func _load(v: Variant) -> void:
 ##   landmark:KIND       that kind is
 ##   landmark_near       the player is inside the distance one is found at
 ##   landmark_cache      a cache is in reach of the player
+##   landmark_wall       a landmark's own mass stopped the body walking into it
 ##   landmark_found      one has been found since the last action
 ##   landmark_opened     one has been opened since the last action
 ##   landmark_guard      what was left on watch at one has come
@@ -312,7 +345,10 @@ func tour_seen(what: String) -> bool:
 		return true
 	match what:
 		"landmark":
-			return not _nodes.is_empty()
+			for s in sites:
+				if _in_frame(s):
+					return true
+			return false
 		"landmark_cache":
 			return reachable != null
 		"landmark_near":
@@ -323,12 +359,37 @@ func tour_seen(what: String) -> bool:
 	if what.begins_with("landmark:"):
 		var want := StringName(what.substr(9))
 		for s in sites:
-			if s.kind == want and _nodes.has(s.id):
+			if s.kind == want and _in_frame(s):
 				return true
 		return false
 	if what.begins_with("found:"):
 		return state.is_found(StringName(what.substr(6)))
 	return false
+
+
+## IS IT REALLY IN THE PICTURE? A frame that claims a silhouette has to hold it,
+## and the first version of `landmark:KIND` answered "there is one of those
+## within sixty tiles" — which is how every far frame in tours/landmarks.tour
+## passed while being shot at twice the play camera's zoom with the tower out of
+## shot at play zoom.
+##
+## So this asks the LIVE camera. Across the screen there is no height to spend;
+## up the screen the base has to be in frame; down the screen the head carries
+## it, which is the whole rule `Landmarks.read_reach` is written from.
+func _in_frame(s: LandmarkSite) -> bool:
+	if not _nodes.has(s.id) or game.camera == null:
+		return false
+	var yaw := deg_to_rad(game.camera.yaw_now())
+	var right := Vector2(cos(yaw), -sin(yaw))
+	var up := Vector2(-sin(yaw), -cos(yaw))
+	var d := s.pos - sim.hero.pos
+	# 16:9, the low-res viewport's own shape (640x360), as the spawner reads it.
+	var half_h := game.camera.size * 0.5
+	if absf(d.dot(right)) > half_h * (16.0 / 9.0):
+		return false
+	var pitch := deg_to_rad(game.camera.pitch_deg)
+	var base := d.dot(up) * sin(pitch)
+	return base <= half_h and base + LandmarkModels.high_of(s.kind) * cos(pitch) >= -half_h
 
 
 ## The sites, for a test, for dev mode and for whoever wants the list.

@@ -41,14 +41,21 @@ func test_a_world_holds_landmarks_and_each_stands_on_ground_a_player_can_reach()
 			check(not Ground.is_water(w.ground_at(cx, cy)), "seed %d: %s's cache is in the water" % [s, site.id])
 			gt(float(w.level_at(cx, cy)), 0.0, "seed %d: %s's cache is above the tide" % [s, site.id])
 		print("landmarks seed %d: %d in all, %s" % [s, sites.size(), by_land])
-		# Every landscape a world really holds a run of carries at least two.
+		# EVERY LANDSCAPE THAT IS REALLY A PLACE ON THIS ISLAND HOLDS ONE. The
+		# floor used to be two thousand tiles, and the scrapwood — whose regions
+		# come out at a thousand — held none at all on seed 1 and one on seed 7
+		# with nothing failing. A run of `Landmarks.REGION_TILES` is the smallest
+		# thing this package calls a place, so that is what it is asked for.
 		for region: Dictionary in w.regions:
-			if int(region.get("tiles", 0)) < 2000:
+			var tiles := int(region.get("tiles", 0))
+			if tiles < Landmarks.REGION_TILES:
 				continue
 			var land := StringName(str(region.get("type", &"")))
 			if BiomeRegistry.get_def(land) == null or BiomeRegistry.get_def(land).sea:
 				continue
-			gt(float(by_land.get(land, 0)), 1.0, "seed %d: %s is worth crossing" % [s, land])
+			gt(float(by_land.get(land, 0)), 0.0, "seed %d: %s is a landscape with nothing in it worth the walk" % [s, land])
+			if tiles >= 2500:
+				gt(float(by_land.get(land, 0)), 1.0, "seed %d: %s is big enough to want crossing twice" % [s, land])
 
 
 func test_they_stand_in_the_same_places_on_every_run_of_a_seed() -> void:
@@ -76,10 +83,11 @@ func test_no_two_landmarks_are_on_top_of_each_other_or_on_a_village() -> void:
 
 ## A landmark is READ before it is reached: the distance a kind claims to be
 ## visible from is further than the distance at which the game says what it is.
+## How far that may honestly be is the CAMERA's business, and it is pinned
+## against the real rig in tests/landmarks/test_models.gd.
 func test_a_landmark_is_seen_before_it_is_named() -> void:
 	for d: LandmarkDef in Landmarks.all():
-		gt(d.sees, Landmarks.FOUND_AT, "%s is read off the horizon before it is named" % d.id)
-		gt(d.sees, 18.0, "%s can be read from twenty tiles, which is what a landmark is" % d.id)
+		gt(d.sees, Landmarks.FOUND_AT + 1.0, "%s is read off the horizon well before it is named" % d.id)
 
 
 ## The start budget is real (docs/ROADMAP.md): siting them is a search over a
