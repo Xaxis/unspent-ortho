@@ -22,6 +22,17 @@ class_name UiSketch
 ##
 ## Rasterized once per (sketch, size) into a cached texture and drawn at whole
 ## pixels, never scaled.
+##
+## **The raster runs on a WorkerThreadPool worker, and the work is split in two
+## so that it can.** `_item_job` / `_station_job` / `_ramps_for` read the content
+## classes — UiIcons, Items, Palette, UiTheme — and run on the thread that ASKED
+## for the sketch; `_bake` and everything under it read only what they were
+## handed, plus Rng, Geometry2D and their own Image. The lookups are pennies
+## against the pixels, so nothing is lost by moving them, and what is gained is
+## that no worker here is ever the thread that reaches into the rest of the game.
+## `tests/ui/test_sketch_threads.gd` reads this file's own source and fails if a
+## worker-side function names one of those classes again, because the failure
+## this guards against is not a red test: it is the process gone, with no save.
 
 const GRID := 32.0
 ## The drawing's own inks, before the scanner turns it to tones: the contour, a
@@ -553,12 +564,12 @@ static func draw_item(ci: CanvasItem, id: StringName, at: Vector2i, size: int) -
 
 ## The item's texture, or null while its raster is still out (one is started).
 static func item_texture(id: StringName, size: int) -> ImageTexture:
-	return _texture("i|%s|%d" % [id, size], func() -> Image: return _item_image(id, size))
+	return _texture("i|%s|%d" % [id, size], func() -> Dictionary: return _item_job(id, size))
 
 
 ## Draw a station sketched `w` pixels wide (height follows the 48x32 grid).
 static func draw_station(ci: CanvasItem, station: StringName, at: Vector2i, w: int) -> void:
-	var tex := _texture("s|%s|%d" % [station, w], func() -> Image: return _station_image(station, w))
+	var tex := _texture("s|%s|%d" % [station, w], func() -> Dictionary: return _station_job(station, w))
 	if tex != null:
 		ci.draw_texture(tex, Vector2(at))
 
@@ -578,15 +589,31 @@ static func station_size(w: int) -> Vector2i:
 ## Draw these sketches ahead, off the main thread, so a page that shows them
 ## next does not stall. Items at `size`, stations at `station_w`.
 static func warm(ids: Array[StringName], size: int, stations: Array[StringName] = [], station_w: int = 96) -> void:
-	var jobs: Array[Array] = []
-	for id in ids:
-		jobs.append(["i|%s|%d" % [id, size], func() -> Image: return _item_image(id, size)])
-	for st in stations:
-		jobs.append(["s|%s|%d" % [st, station_w], func() -> Image: return _station_image(st, station_w)])
-	jobs = jobs.filter(func(j: Array) -> bool: return not _cache.has(j[0]) and not _has_ready(j[0]))
 	_reap()
+	# Claim the keys first, THEN resolve them. `_out` is checked here as well as
+	# `_cache` and `_ready` because it was not before: a key already out on a
+	# worker from `_texture` was warmed a second time, so the same sketch was
+	# rasterised twice — doubling the bake in exactly the busy moment warming
+	# exists to smooth out.
+	var jobs: Array[Array] = []
+	_lock.lock()
+	for id in ids:
+		var key := "i|%s|%d" % [id, size]
+		if not _cache.has(key) and not _ready.has(key) and not _out.has(key):
+			_out[key] = true
+			jobs.append([key, id, size, true])
+	for st in stations:
+		var key := "s|%s|%d" % [st, station_w]
+		if not _cache.has(key) and not _ready.has(key) and not _out.has(key):
+			_out[key] = true
+			jobs.append([key, st, station_w, false])
+	_lock.unlock()
 	if jobs.is_empty():
 		return
+	# Everything a raster needs out of a content class is read HERE, on the main
+	# thread (UiSketch.render says why). What goes to the worker is numbers.
+	for j: Array in jobs:
+		j.append(_item_job(j[1], j[2]) if j[3] else _station_job(j[1], j[2]))
 	# One task EACH, not one task for the lot. They used to be drawn in a row on a
 	# single worker, which was fine when a sketch was tens of milliseconds; at the
 	# base's resolution a full creel of ten is over five seconds of that worker,
@@ -596,9 +623,10 @@ static func warm(ids: Array[StringName], size: int, stations: Array[StringName] 
 	for j: Array in jobs:
 		var job := j
 		_tasks.append(WorkerThreadPool.add_task(func() -> void:
-			var img: Image = (job[1] as Callable).call()
+			var img := _bake(job[4])
 			_lock.lock()
 			_ready[job[0]] = img
+			_out.erase(job[0])
 			_lock.unlock()))
 
 
@@ -633,7 +661,7 @@ static func _has_ready(key: String) -> bool:
 
 ## The texture for `key`, or null while its raster is out on a worker — in which
 ## case one is started. NEVER rasters on the calling thread: see `draw_item`.
-static func _texture(key: String, make: Callable) -> ImageTexture:
+static func _texture(key: String, job_of: Callable) -> ImageTexture:
 	if _cache.has(key):
 		return _cache[key]
 	_reap()
@@ -646,8 +674,11 @@ static func _texture(key: String, make: Callable) -> ImageTexture:
 	_lock.unlock()
 	if img == null:
 		if not out:
+			# Resolved HERE, on the caller's thread, and never inside the task:
+			# `job_of` reads content classes, `_bake` reads only numbers.
+			var job: Dictionary = job_of.call()
 			_tasks.append(WorkerThreadPool.add_task(func() -> void:
-				var made: Image = make.call()
+				var made := _bake(job)
 				_lock.lock()
 				_ready[key] = made
 				_out.erase(key)
@@ -658,18 +689,65 @@ static func _texture(key: String, make: Callable) -> ImageTexture:
 	return tex
 
 
-static func _item_image(id: StringName, size: int) -> Image:
+## What an item's sketch is made of, read off the content classes. MAIN THREAD
+## ONLY (UiSketch.render says why); `_bake` is what the worker runs on it.
+static func _item_job(id: StringName, size: int) -> Dictionary:
 	var st := UiIcons.style_of(id)
 	var shape: StringName = st[0]
 	var parts: Array = SHAPES.get(shape, SHAPES[&"bundle"])
-	var img := render(parts, Vector2(GRID, GRID), Vector2i(size, size), st[1], st[2], FOUND_SHAPES.has(shape), hash(id))
-	return to_phosphor(img, UiIcons.tones_for(id))
+	return {
+		"parts": parts,
+		"grid": Vector2(GRID, GRID),
+		"px": Vector2i(size, size),
+		"ramps": _ramps_for(parts, st[1], st[2]),
+		"found": FOUND_SHAPES.has(shape),
+		"seed": hash(id),
+		"tones": UiIcons.tones_for(id),
+	}
 
 
-static func _station_image(station: StringName, w: int) -> Image:
+## The same for a station. MAIN THREAD ONLY.
+static func _station_job(station: StringName, w: int) -> Dictionary:
 	var st: Array = STATIONS.get(station, STATIONS[&"hand"])
-	var img := render(st[0], Vector2(48, 32), station_size(w), st[1], st[2], st[3], hash(station))
-	return to_phosphor(img, UiTheme.PHOSPHOR)
+	return {
+		"parts": st[0],
+		"grid": Vector2(48, 32),
+		"px": station_size(w),
+		"ramps": _ramps_for(st[0], st[1], st[2]),
+		"found": st[3],
+		"seed": hash(station),
+		"tones": UiTheme.PHOSPHOR,
+	}
+
+
+## The worker's whole job: arithmetic on what it was handed, into an Image of its
+## own. It asks no content class anything, so nothing it does can reach a Node.
+static func _bake(job: Dictionary) -> Image:
+	var img := _raster(job["parts"], job["grid"], job["px"], job["ramps"], job["found"], job["seed"])
+	return to_phosphor(img, job["tones"])
+
+
+## Every ramp this part list can name, resolved to colours. A part may name a
+## ramp of its own ("ramp:N"), so the list is read for those as well as the two
+## the item declares; `lens` and `plate` are always in, because the amber working
+## part and a rivet's glint are drawn from them whatever the item is.
+static func _ramps_for(parts: Array, ramp_a: StringName, ramp_b: StringName) -> Dictionary:
+	var out := {
+		&"a": UiIcons.ramp(ramp_a),
+		&"b": UiIcons.ramp(ramp_b),
+		&"lens": UiIcons.ramp(&"lens"),
+		&"plate": UiIcons.ramp(&"plate"),
+	}
+	for part: Array in parts:
+		if part.size() < 2 or not (part[0] == "poly" or part[0] == "bar" or part[0] == "ell"):
+			continue
+		var token: String = part[1]
+		if not token.contains(":"):
+			continue
+		var name := StringName(token.split(":")[0])
+		if not out.has(name):
+			out[name] = UiIcons.ramp(name)
+	return out
 
 
 ## The drawing as the slate's scanner shows it: the inked contour bright, the
@@ -711,6 +789,16 @@ static func to_phosphor(src: Image, tones: Array[Color]) -> Image:
 ## The sketch as a colour drawing with a clear ground round it (the scanner
 ## takes it from here: to_phosphor).
 static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName, ramp_b: StringName, found: bool, seed: int) -> Image:
+	return _raster(parts, grid, px, _ramps_for(parts, ramp_a, ramp_b), found, seed)
+
+
+## The raster itself, and the reason the ramps arrive already resolved: this runs
+## on a WorkerThreadPool worker, and a worker must not be the thread that asks a
+## content class (UiIcons, Items, Palette, UiTheme) for anything. Those lookups
+## are pennies next to the raster — the whole of a creel is microseconds of
+## dictionary reads against 1390 ms of pixels — so they are done by whoever asked
+## for the sketch, on its own thread, and the worker is handed numbers.
+static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary, found: bool, seed: int) -> Image:
 	var w := px.x
 	var h := px.y
 	var s := float(w) / grid.x
@@ -772,7 +860,7 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 				continue
 			if wi < 0:
 				wi = i
-			var base := _colour(parts[wi][1], ramp_a, ramp_b)
+			var base := _colour(parts[wi][1], ramps)
 			var col := base
 			var lit := _id(ids, w, h, x - 2, y - 2) != wi
 			var shaded := false
@@ -825,6 +913,8 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 				if ids[y * w + x] < 0 and _id(ids, w, h, x - 1, y - 1) >= 0 and (_id(ids, w, h, x - 1, y) >= 0 or _id(ids, w, h, x, y - 1) >= 0):
 					img.set_pixel(x, y, Color(ink, 0.85))
 	# 5. Details, rivets and the working part.
+	var plate: Array[Color] = ramps[&"plate"]
+	var lens: Array[Color] = ramps[&"lens"]
 	for part: Array in parts:
 		match part[0]:
 			"line":
@@ -834,13 +924,13 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 			"dot":
 				# A rivet on found plate catches the light; a knot in wood is ink.
 				var c := Vector2i(roundi(float(part[1]) * s - 0.5), roundi(float(part[2]) * s - 0.5))
-				_plot(img, c.x, c.y, Palette.PLATE[5] if found else ink)
+				_plot(img, c.x, c.y, plate[5] if found else ink)
 				if found:
 					_plot(img, c.x + 1, c.y + 1, INK)
 				elif w >= 64:
 					_plot(img, c.x + 1, c.y, ink)
 	for g in glows:
-		_glow(img, Vector2(g.x, g.y) * s, g.z * s)
+		_glow(img, Vector2(g.x, g.y) * s, g.z * s, lens)
 	return img
 
 
@@ -878,17 +968,20 @@ static func _box_of(poly: PackedVector2Array) -> Rect2:
 	return Rect2(lo, hi - lo).grow(0.5)
 
 
-static func _colour(token: String, ramp_a: StringName, ramp_b: StringName) -> Color:
-	if token == "l":
-		return Palette.LENS[2]
+## `ramps` is `_ramps_for`'s table: the item's two under &"a" and &"b", every ramp
+## a part named under its own name, and always &"lens" and &"plate".
+static func _colour(token: String, ramps: Dictionary) -> Color:
 	var ramp: Array[Color]
 	var step := 0
-	if token.contains(":"):
+	if token == "l":
+		ramp = ramps[&"lens"]
+		step = 2
+	elif token.contains(":"):
 		var kv := token.split(":")
-		ramp = UiIcons.ramp(StringName(kv[0]))
+		ramp = ramps[StringName(kv[0])]
 		step = kv[1].to_int()
 	else:
-		ramp = UiIcons.ramp(ramp_a if token[0] == "a" else ramp_b)
+		ramp = ramps[&"a" if token[0] == "a" else &"b"]
 		step = token.substr(1).to_int()
 	return ramp[clampi(step, 0, ramp.size() - 1)]
 
@@ -945,17 +1038,17 @@ static func _stroke(img: Image, a: Vector2, b: Vector2, col: Color, ruled: bool,
 
 
 ## A found machine's working part: an amber core that lights the plate round it.
-static func _glow(img: Image, c: Vector2, r: float) -> void:
+static func _glow(img: Image, c: Vector2, r: float, lens: Array[Color]) -> void:
 	var lo := Vector2i(floori(c.x - r - 2.0), floori(c.y - r - 2.0))
 	var hi := Vector2i(ceili(c.x + r + 2.0), ceili(c.y + r + 2.0))
 	for y in range(lo.y, hi.y + 1):
 		for x in range(lo.x, hi.x + 1):
 			var dist := Vector2(x + 0.5, y + 0.5).distance_to(c)
 			if dist <= r * 0.45:
-				_plot(img, x, y, Palette.LENS[3])
+				_plot(img, x, y, lens[3])
 			elif dist <= r:
-				_plot(img, x, y, Palette.LENS[2])
+				_plot(img, x, y, lens[2])
 			elif dist <= r + 1.0:
-				_plot(img, x, y, Color(Palette.LENS[1], 1.0))
+				_plot(img, x, y, Color(lens[1], 1.0))
 			elif dist <= r + 2.2:
-				_plot(img, x, y, Color(Palette.LENS[2], 0.3))
+				_plot(img, x, y, Color(lens[2], 0.3))
