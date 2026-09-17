@@ -238,3 +238,48 @@ func test_words_only_when_the_player_asks_for_them() -> void:
 	check(lines.contains("blow"), "what it hits with")
 	check(lines.contains("sees"), "what it can sense")
 	_done()
+
+
+## The tag is the QUIETEST layer (docs/ART.md §9; A2 art finding 2). What was
+## here was an opaque UiTheme.RIM lozenge over every body, whose darkest pixels
+## sat at luminance 7.3 when nothing else in frame went below 12 — a small black
+## HUD sprite standing in the world, which is the charge the scan ring was
+## convicted on. Nothing the tag lays over the world may be opaque, and nothing
+## it lays may be darker than the slate's own glass.
+func test_the_tag_never_lays_an_opaque_hole_in_the_world() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner"]))
+	var view: UiTargetView = sys.get("view")
+	await tree.process_frame
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	view._canvas.queue_redraw()
+	await tree.process_frame
+	# The darkest ground the tag is ever laid over, as the frames actually measure:
+	# nothing in a daylight frame goes below this, so this is where the tag is
+	# tested. Composited over it, the tag must still not go under it.
+	const DARKEST_GROUND := 12.0
+	var glass := _lum(UiTheme.GLASS) * 255.0
+	var backings := 0
+	var worst := 255.0
+	for d: Dictionary in UiDraw.tape:
+		if d.ci != view._canvas:
+			continue
+		var col: Color = d.col
+		var lum := _lum(col) * 255.0
+		if lum > glass:
+			continue
+		# Anything at or under the slate's own glass is a backing, and a backing
+		# that is opaque is a hole cut in the frame.
+		backings += 1
+		worst = minf(worst, lum * col.a + DARKEST_GROUND * (1.0 - col.a))
+		lt(col.a, 0.999, "the tag lays %s opaque over the world" % col.to_html(false))
+	check(backings > 0, "the tag does put something quiet behind its pips")
+	gt(worst, DARKEST_GROUND,
+		"over the darkest ground in a frame the tag still lands at %.1f, under its %.0f"
+			% [worst, DARKEST_GROUND])
+	UiDraw.taping = false
+	_done()
+
+
+static func _lum(c: Color) -> float:
+	return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
