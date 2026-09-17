@@ -26,8 +26,15 @@ shot 03-and-the-glass-is-taken-off-again with quiet_glass
 # that was already saying it. Now the badge takes the line and brackets close on
 # the tile, and the world keeps the space.
 place burning
-hour 19.5
-await pressure_bites 20
+# Noon, because the burning only BITES in the sun: `Hazards._hour_shift` takes
+# heat off as the night comes on (0.7 x 0.35 after dark), and the badge and the
+# line are only said at BITE. At 19.5 nothing here ever bit, and the tour walked
+# straight past on the SNOWFIELD's cold, which was still biting from the act
+# above — `pressure_bites` is any pressure, so it was answered by the wrong land.
+# `bites:heat` is the one this frame is about. (Fumes never bite anywhere in the
+# burning: it declares 0.5 and BITE is 0.55.)
+hour 13
+await bites:heat 40
 await badge_answered 8
 shot 04-the-badge-takes-the-line
 # That the middle stays clear is not a second picture of the same thing: it is

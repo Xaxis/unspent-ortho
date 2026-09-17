@@ -262,8 +262,11 @@ func _fx_parent() -> Node:
 	return game
 
 
-## Tours ask what the player could see: a pressure felt at all, one of them
-## biting, and each hazard by name.
+## Tours ask what the player could see: a pressure felt at all (`pressure`), any
+## of them biting (`pressure_bites`), a named one felt (`ID`) or biting
+## (`bites:ID`), one that bit and no longer does (`answered`, `answered:ID`), and
+## shelter (`sheltered`). A bare id is FELT and `bites:ID` is BITE, because that
+## is the line between a gauge and something the glass says out loud.
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"pressure":
@@ -276,6 +279,15 @@ func tour_seen(what: StringName) -> bool:
 			# Something bit earlier and nothing bites now: the gear was felt.
 			return _bit_ever and Hazards.worst(game.body.pressure) < Hazards.BITE
 	var s := String(what)
+	if s.begins_with("bites:"):
+		# THAT ONE pressure is biting now. `pressure_bites` is any of them, which a
+		# tour walking out of one landscape into another cannot use: the cold it
+		# just left goes on biting while the heat it came for has not started, so
+		# the await is satisfied by the wrong land and the frame after it is taken
+		# before anything the frame is about has happened (tours/slate-hud.tour,
+		# which is what found it). A bare hazard id answers at FELT, and a line and
+		# a badge are only said at BITE, so neither of those could say this either.
+		return float(game.body.pressure.get(StringName(s.substr(6)), 0.0)) >= Hazards.BITE
 	if s.begins_with("answered:"):
 		var id := StringName(s.substr(9))
 		return _bit_ids.has(id) and float(game.body.pressure.get(id, 0.0)) < Hazards.BITE
