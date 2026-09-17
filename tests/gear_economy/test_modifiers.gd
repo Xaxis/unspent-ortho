@@ -31,9 +31,14 @@ func test_every_module_says_what_decision_it_changes() -> void:
 ## paying — because the conflict line is what shows when something is wrong, which
 ## is exactly when a player most needs to be able to read it.
 func test_what_the_gear_page_says_about_a_module_fits_the_row_it_is_drawn_in() -> void:
-	# Where UiLoadoutScreen draws it: x0 + 71 in the LIST panel, to the right margin.
+	# Where UiLoadoutScreen draws it, ASKED FOR rather than copied: it used to say
+	# 71 and 8 here, which were that panel's numbers in the old 640x360 space. The
+	# screen moved them to 142 and 16 when the base did and this did not follow, so
+	# the test allowed 737 px against the row's real 658 -- a conflict line between
+	# the two passed here and ran across the resistances column, which is the one
+	# thing this test exists to stop.
 	var x0 := UiSlate.LIST.position.x + UiSlate.MARGIN_L
-	var room := (UiSlate.LIST.end.x - 8) - (x0 + 71)
+	var room := (UiSlate.LIST.end.x - UiLoadoutScreen.LIST_PAD_R) - (x0 + UiLoadoutScreen.ROW_TEXT_X)
 	var kits: Array = [
 		[] as Array[StringName],
 		[&"mod_lattice"] as Array[StringName],

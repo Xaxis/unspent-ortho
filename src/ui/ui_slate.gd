@@ -292,9 +292,9 @@ static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: floa
 	var x := g.position.x + MARGIN_L
 	for p: Array in pairs:
 		var k: String = p[0]
-		x += key_cap(ci, Vector2i(x, y - 2), k) + 8
+		x += key_cap(ci, Vector2i(x, y - 2), k) + CAP_GAP
 		UiDraw.text(ci, Vector2i(x, y), p[1], UiTheme.TEXT_DIM)
-		x += UiFont.width(p[1]) + 24
+		x += UiFont.width(p[1]) + HINT_GAP
 	if note != "" and note_age < 4.0:
 		var a := clampf(4.0 - note_age, 0.0, 1.0)
 		# The key hints are how the device is worked, so the NOTE gives way, never
@@ -304,8 +304,9 @@ static func keys(ci: CanvasItem, pairs: Array, note: String = "", note_age: floa
 		# sentences SaveSlots.problem() can write were drawn straight through
 		# "e choose", the worst of them over by 84 px. Clipped here so it holds
 		# for every caller instead of for the sentences one package could reach.
-		var room := g.end.x - MARGIN_R - x - NOTE_GAP
-		var shown := elided(note, room)
+		# Asked for, not worked out again: `keys_room` is what the tests measure
+		# against, so the strip and the guard can never disagree about the room.
+		var shown := elided(note, keys_room(pairs, d))
 		if shown != "":
 			UiDraw.text_right(ci, g.end.x - MARGIN_R, y, shown,
 				Color(UiTheme.WARN if warn else UiTheme.TEXT, UiDraw.stepped(a)))
@@ -326,8 +327,32 @@ static func mini_cap(ci: CanvasItem, at: Vector2i, k: String, lit: bool = false)
 
 
 ## A key cap: a dark key with a lit rim and its name in phosphor. Returns its width.
+## Between a cap and the words it explains, and between one hint and the next.
+## Named because a TEST used to re-implement this strip's layout with its own
+## copies of these numbers, and when the base moved the copies did not: every one
+## of them was left at half, so the room the hints were thought to leave for a
+## note was about 25 px a pair too generous (tests/ui/test_key_strip.gd).
+const CAP_GAP := 8
+const HINT_GAP := 24
+## The narrowest a cap is drawn, whatever one letter measures.
+const CAP_MIN := 18
+const CAP_PAD := 8
+
+
+## Where the key strip's hints end, and so what a right-aligned note has to fit
+## in. THE ONE ANSWER: `keys` lays the strip out by walking this, and a test that
+## wants to know the room asks here instead of laying it out a second time.
+static func keys_room(pairs: Array, d: Rect2i = DEVICE) -> int:
+	var g := glass_of(d)
+	var x := g.position.x + MARGIN_L
+	for p: Array in pairs:
+		x += maxi(CAP_MIN, UiFont.width(p[0] as String) + CAP_PAD) + CAP_GAP
+		x += UiFont.width(p[1] as String) + HINT_GAP
+	return g.end.x - MARGIN_R - x - NOTE_GAP
+
+
 static func key_cap(ci: CanvasItem, at: Vector2i, k: String, a: float = 1.0) -> int:
-	var w := maxi(18, UiFont.width(k) + 8)
+	var w := maxi(CAP_MIN, UiFont.width(k) + CAP_PAD)
 	var h := UiFont.SIZE + 2
 	UiDraw.rect(ci, Rect2i(at.x + 2, at.y, w - 4, h), Color(UiTheme.RIM, a))
 	UiDraw.rect(ci, Rect2i(at.x, at.y + 2, w, h - 4), Color(UiTheme.RIM, a))

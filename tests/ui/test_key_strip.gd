@@ -15,15 +15,17 @@ extends TestCase
 const LONG := "That game was made on another island and this build cannot open it at all."
 
 
-## The pixels left for a right-aligned note once the hints have had theirs, laid
-## out the way UiSlate.keys lays them.
+## The pixels left for a right-aligned note once the hints have had theirs.
+##
+## ASKED FOR, NOT LAID OUT AGAIN. This used to be its own copy of UiSlate.keys's
+## walk, and when the base moved from 640x360 to 1920x1080 the copy stayed where
+## it was: the cap floor was 9 against the strip's 18, the gap after a cap 4
+## against 8, the gap after a hint 12 against 24 — every constant exactly half,
+## the TYPE factor. It therefore reported about 25 px A PAIR more room than the
+## strip has, so a note that clipped on the glass fitted in the test, which is
+## the one thing this file exists to catch.
 func room_on(device: Rect2i, pairs: Array) -> int:
-	var g := UiSlate.glass_of(device)
-	var x := g.position.x + UiSlate.MARGIN_L
-	for p: Array in pairs:
-		x += maxi(9, UiFont.width(p[0] as String) + 4) + 4
-		x += UiFont.width(p[1] as String) + 12
-	return g.end.x - UiSlate.MARGIN_R - x - UiSlate.NOTE_GAP
+	return UiSlate.keys_room(pairs, device)
 
 
 func test_a_note_too_long_for_its_strip_is_cut_to_fit() -> void:
