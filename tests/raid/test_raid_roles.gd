@@ -32,6 +32,36 @@ func test_a_harvester_walks_to_whatever_is_shouting_loudest() -> void:
 		"with the mast gone it is the smoke, %s" % (StructureKind.display_name(next.kind) if next != null else "nothing"))
 
 
+func test_a_harvester_walks_to_the_decoy_first_because_it_shouted_loudest() -> void:
+	# A decoy is what the plan heard: a reading taken off one is what brought
+	# them (48_raids `_sense_holdings`). A party that walked past it to cut the
+	# mast down would know better than its own file.
+	var s := _place([StructureKind.HUT, StructureKind.HEARTH, StructureKind.RADIO_MAST] as Array[int])
+	s.night = 0.0
+	var mast := s.piece(RaidRoles.harvest_target(s))
+	check(mast != null and mast.kind == StructureKind.RADIO_MAST, "with no decoy it is the mast")
+	# One in the yard is the yard: it stands for nowhere else and nothing walks to it.
+	var inside := s.add(StructureKind.DECOY_MAST, s.centre + Vector2(3, 0))
+	eq(RaidRoles.harvest_target(s), mast.id, "a decoy in the yard changes nothing")
+	eq(RaidRoles.loudest_lure(s), -1, "because it is not a lure at all")
+	inside.damage(inside.max_health + 1.0)
+	# Out past the yard it is, and it is walked to before anything else.
+	var out := s.add(StructureKind.DECOY_MAST, s.centre + Vector2(Settlement.LURE_APART + 4.0, 0))
+	eq(RaidRoles.harvest_target(s), out.id, "out past the yard it is walked to first")
+	eq(StructureKind.defence(out.kind), 0.0, "and it is not a wall: it turns nothing aside")
+	# A ring of them is ONE walk, to the loudest — the same cap the reading takes.
+	var others: Array[int] = []
+	for i in 4:
+		var p := s.add(StructureKind.DECOY_MAST, s.centre + Vector2.from_angle(float(i) * 1.2) * (Settlement.LURE_APART + 2.0))
+		p.damage(p.max_health * 0.7)
+		others.append(p.id)
+	eq(s.lures().size(), 5, "five of them are standing")
+	eq(RaidRoles.harvest_target(s), out.id, "and the whole one is still the one thing they come to")
+	# Take that one down and the next loudest is what is left.
+	out.damage(out.max_health + 1.0)
+	check(others.has(RaidRoles.harvest_target(s)), "with it gone they go to one of the rest")
+
+
 func test_a_harvester_never_goes_for_the_wall() -> void:
 	var s := _place([StructureKind.PLATE_WALL, StructureKind.RADIO_MAST] as Array[int])
 	var target := s.piece(RaidRoles.harvest_target(s))

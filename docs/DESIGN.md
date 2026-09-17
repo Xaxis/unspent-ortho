@@ -169,12 +169,49 @@ matters.
   yard and it is stolen technology humming in the walls the whole time it is
   armed, so the `E` key on its row stands it down and arms it again: armed for
   the raid you were warned of, dark for the week after.
+- **And what it shoots turns on IT.** A raider hurt by the yard walks back out to
+  the turret and starts cutting it down, rather than carrying on with what it was
+  sent for or coming for whoever is standing there. So the piece buys the rest of
+  the yard exactly the time a raider spends answering it, and it pays for that
+  time itself. **The player's own swing takes the body back**, and there is no
+  rule anywhere that says so: the fight writes where the last blow came from
+  (`MobState.struck_from`, INF for a player's swing), the last blow overwrites
+  the one before it, and a body belongs to whoever hit it most recently.
 - **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
   thatch with a fringe the wind takes, and machine plate lashed over the gaps with
   the cord crossing the rivet row. A piece leans, patches and weathers by its own
   number, so the same kind built twice is not the same drawing. A spinner turns
   when there is wind in it and a battery burns amber while there is charge, so a
   player reads their own holding from a hillside before opening the slate.
+
+## Jumping (owner, 2026-09-17)
+
+A body can jump: **up two levels, across a two-tile gap, down three, and no
+further.** Walking still steps one level either way and two is still a cliff, so
+the jump is what opens a ledge, a trench or a narrow channel — and anything taller
+is still a wall and anything deeper is still the glide's to get down, so the wing
+and the rope keep their reasons to exist.
+
+- **Space jumps.** Swing keeps J, its second key since the start, and both are
+  rebindable on the settings page. The jump is everybody's: nothing sold as gear
+  grants it and nothing takes it away.
+- **It is an arc, not a lookup.** `Jump.plan` works the whole arc out at the press
+  — rising to its apex, carried at the pace the body was moving (a hop forward
+  from standing), stopped by any ground higher than the body is at that instant,
+  coming down on whatever is under it — and the gear system replays it. So a
+  two-level ledge is reachable because the apex clears it and a three-level one is
+  not because it does not; nobody wrote a table of jumpable tiles.
+- **It never goes off an edge deeper than a jump.** A planned landing more than
+  three levels down is planned again with that drop as a wall, and the body comes
+  down at the lip: a key pressed at a sea cliff is never the end of a run. Deep
+  water is the exception — a drop into it is a dive, and the water takes it.
+- **It is a decision in a fight, not a free move.** It costs a little breath,
+  nothing swings or rolls from the air, a solid thing stops a body in the air as it
+  stops one on the ground, and the landing is heard further the further the feet
+  fell.
+- **The height is honest.** While a jump runs `Player.lift` is the body's height
+  over the ground actually under it, because a lit world places the shadow from
+  that number.
 
 ## Swimming (owner, 2026-09-17)
 
@@ -236,8 +273,19 @@ something the player did, built, or watched happen.
   up a level, from stolen FOUND technology humming inside the walls (a stolen cell
   is the loudest thing in the game and it costs by the hour), and from machines the
   plan sent there that never came home. It falls with quiet hours, dark nights,
-  a spoofed signature, a decoy standing, a record destroyed before it travelled, and
-  a step that has been paid. **Hours on their own only ever make a holding safer.**
+  a spoofed signature, a mask standing in the yard, a record destroyed before it
+  travelled, and a step that has been paid. **Hours on their own only ever make a
+  holding safer.**
+- **A decoy is read instead of the place, and that is all it does.** A machine
+  standing at a mast out in a field takes its account of the holding off the
+  mast: the record is of the pole, it was taken where the pole stands, and the
+  pole is the ground it has to be caught on — a player guarding their own fence
+  is guarding the wrong ground, which is the trade the piece makes. When it gets
+  home it is filed as a quarter of a real record (`Attention.LURED`), so the
+  place still heats up, four times slower. It is never nothing: a piece that made
+  a holding unfileable would end the decision the whole system is. And only the
+  ONE loudest decoy is ever read, however many are standing, or the answer to
+  being read would be a ring of the cheapest thing a player can build.
 - **It is read as pressure, never as a bar.** The holding app draws what a machine
   HEARS — seven channels with the loudest named and its percentage — so a player
   can read the same number the machines read before anything arrives. Under it is
@@ -261,7 +309,10 @@ something the player did, built, or watched happen.
   thing standing between the yard and the outside, a harvester walks past the
   walls to whatever the slate named as loudest, a snatcher comes for whoever is at
   work. So the player's own build decides the fight, and the seven bars are a
-  decision rather than a readout.
+  decision rather than a readout. A standing decoy is walked to before any of
+  that: it is the loudest thing the plan has ever heard of the place, so a party
+  that ignored it would know better than its own file — and the piece a player
+  built to be read is the piece that gets taken apart.
 - **A raider is here for the holding, not for the player.** It will walk past
   somebody standing in their own yard and start cutting their mast down, and only
   a blow turns it. Fighting one is a choice, and its price is that nothing is

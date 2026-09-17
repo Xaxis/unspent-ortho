@@ -1,0 +1,39 @@
+# The jump, through the real keys (owner 2026-09-17): up a ledge a walk cannot
+# climb, over a gap a walk cannot cross, down a drop a walk will not take — each
+# found by what the ground IS near the player, never by a coordinate.
+#
+#   tools/tour.sh tours/jump.tour --seed=1 --hour=11 --weather=clear:0
+#
+# `ledge KIND` stands the player facing the nearest place a jump of that kind
+# lands (Jump.find); `leap SECS` walks that way on the real move path and presses
+# the real jump key, Space, on the move.
+coast calm
+zoom 9
+wait 0.6
+ledge up
+wait 0.5
+shot 01-a-ledge-a-walk-cannot-climb
+leap 0.12
+await jumping 2
+wait 0.1
+shot 02-in-the-air with jumping
+await jumped:up 3
+wait 0.5
+shot 03-on-top-of-it
+ledge down
+wait 0.5
+shot 04-a-drop-a-walk-will-not-take
+leap 0.12
+await jumped:down 3
+wait 0.5
+shot 05-down-it
+ledge across
+wait 0.5
+shot 06-a-gap
+leap 0.12
+await jumping 2
+wait 0.1
+shot 07-over-it with jumping
+await jumped:across 3
+wait 0.5
+shot 08-across-it

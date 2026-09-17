@@ -14,13 +14,23 @@ extends GameSystem
 ## What it owns:
 ##   the notices    a body reads a holding, and walks off with it. Until it is
 ##                  clear the record is a thing in the world: kill it, spoof it,
-##                  take the record off it, follow it home, or let it go
+##                  take the record off it, follow it home, or let it go. What it
+##                  read may be a DECOY standing out past the yard instead of the
+##                  yard itself (`Settlement.lures`), and then everything about
+##                  the record is about the decoy: where it was taken, where it
+##                  has to get clear of, and what it is worth when it lands
+##                  (`Attention.LURED`). ONE decoy is ever read, the loudest
+##                  (`_loudest_lure_read`): a ring of cheap masts is one reading
+##                  or the answer to being read is to build five of the cheapest
+##                  thing and stop thinking
 ##   the attention  one 0..1 per holding, 1 being a siege led by the region's
 ##                  keeper (`Attention` says what the unit is and what moves it)
 ##   the escalation survey -> probe -> raid -> siege, each WARNED by the world
 ##                  first and each answerable: fight, hide, spoof, evacuate, pay
 ##   the raid       a party with trades (breacher, harvester, snatcher) whose
-##                  targets are chosen off the holding's own signature
+##                  targets are chosen off the holding's own signature — and a
+##                  body the yard's own turret shot turns on the turret, because
+##                  the last blow on it was not the player's (`_shot_by`)
 ##   the aftermath  wrecks in the yard, what the party could not carry, people
 ##                  gone, a razed holding left standing as ruins to reclaim, and
 ##                  a region that remembers
@@ -115,6 +125,10 @@ const BLOW_SCALE := 1.2
 ## three more machines — the player chooses whether this is a fight, and the
 ## price of choosing it is that nothing is stopping the other two.
 const JOB_MS := 600.0
+## Tiles from a piece a blow has to have come from for that piece to be what
+## threw it (`MobState.struck_from` is a point: 47_defences shoots from the
+## turret's own ground). It is small because it is an identity and not a search.
+const SHOT_FROM := 1.5
 
 ## `--attention=F`, kept so a load can tell a staged game from a played one.
 var attention_out := 0.0
@@ -268,11 +282,19 @@ func _sense_holdings() -> void:
 	var blind := 1.0 if minutes < game.body.spoof_until else 0.0
 	var readable: Array[Settlement] = []
 	var signs: Array[Signature] = []
+	var shouts: Array = []
 	for s in places():
 		if s.realm != here or quieted(s):
 			continue
 		readable.append(s)
 		signs.append(s.signature())
+		# The decoys standing out past the yard, each with what it shouts, read
+		# once here rather than once per machine: `lure_signature` asks the
+		# holding for its own loudest channel every time it is called.
+		var out: Array = []
+		for p in s.lures():
+			out.append({"id": p.id, "pos": p.pos, "sig": s.lure_signature(p)})
+		shouts.append(out)
 	if readable.is_empty():
 		return
 	for m in sim.mobs:
@@ -284,11 +306,44 @@ func _sense_holdings() -> void:
 			if minutes - float(_read_at.get(key, -INF)) < READ_AGAIN:
 				continue
 			var read := Notices.read(signs[i], s.centre, m.pos, m.row, blind)
+			var lure := _loudest_lure_read(shouts[i], m, blind)
+			if float(lure.get("strength", 0.0)) > float(read.get("strength", 0.0)):
+				# It stood at a pole in a field and took its account of the place
+				# off that. The READ_AGAIN key is the holding's, so this body does
+				# not walk on and read the yard as well: it has its reading, and
+				# the reading is of somewhere nobody lives.
+				read = lure
 			if read.is_empty():
 				continue
 			_read_at[key] = minutes
 			_take_notice(s, m, read)
 			break
+
+
+## The best reading a body can take off ANY of a holding's decoys, and never the
+## sum of them: ONE mast is read, whichever shouts loudest from where the machine
+## is standing. The cap is the whole of what keeps a decoy a decision — without
+## it a ring of five cheap masts round a yard would drive the plan's attention
+## into a field for the price of six timber, and the loudest answer in the game
+## would be the one that costs least.
+##
+## Each entry is {id, pos, sig}; the answer carries `lure` (the piece) and `at`
+## (its ground) so everything downstream — where the record has to get clear of,
+## what it is worth when it lands — hangs on the piece rather than on the yard.
+func _loudest_lure_read(from: Array, m: MobState, blind: float) -> Dictionary:
+	var best: Dictionary = {}
+	for row: Dictionary in from:
+		var sig: Signature = row["sig"]
+		var at: Vector2 = row["pos"]
+		var read := Notices.read(sig, at, m.pos, m.row, blind)
+		if read.is_empty():
+			continue
+		if float(read["strength"]) <= float(best.get("strength", 0.0)):
+			continue
+		read["lure"] = int(row["id"])
+		read["at"] = at
+		best = read
+	return best
 
 
 ## A body has read the place and is now walking home with it. It is announced the
@@ -305,22 +360,31 @@ func _take_notice(s: Settlement, m: MobState, read: Dictionary) -> void:
 	n.channel = read.get("channel", &"light")
 	n.strength = float(read.get("strength", 0.0))
 	n.mob_id = m.id
-	n.at = s.centre
+	# A lured reading was taken of the decoy, so it was taken WHERE the decoy
+	# stands: that is the ground the body has to get clear of before anything is
+	# filed, and the ground a player who wants to stop it has to be standing on.
+	n.lure = int(read.get("lure", -1))
+	n.at = read.get("at", s.centre)
 	n.taken_at = game.clock.minutes
 	notices.append(n)
 	_carriers[m.id] = n
 	book(s.id)["last_read"] = n.taken_at
 	# It turns for home along the plan's own survey bearing, so a player who
 	# follows one is walking the machines' line and not a random heading.
-	var home := m.pos + Notices.home_bearing(game.world.seed_value, m.pos, s.centre) * Notices.GOT_AWAY
+	var home := m.pos + Notices.home_bearing(game.world.seed_value, m.pos, n.at) * Notices.GOT_AWAY
 	m.line_a = m.pos
 	m.line_b = home
 	m.line_to_b = true
 	Events.settlement_noticed.emit(s.id, m.id, n.kind)
 	Events.sfx.emit(&"raid_notice", game.world.to_3d(m.pos))
 	_seen["noticed"] = true
+	if n.lure >= 0:
+		_seen["lured"] = true
 	if _near(s):
-		Events.hint.emit("%s read %s, and is leaving with it." % [_said_kind(n.kind), s.name], "")
+		if n.lure >= 0:
+			Events.hint.emit("%s read the decoy, and is leaving with it." % _said_kind(n.kind), "")
+		else:
+			Events.hint.emit("%s read %s, and is leaving with it." % [_said_kind(n.kind), s.name], "")
 
 
 ## The carried records: each one either gets clear, or is stopped.
@@ -378,8 +442,14 @@ func _file(n: Notice) -> void:
 	var s := get_place(n.settlement_id)
 	if s == null:
 		return
-	_raise(s, &"notice", Notices.worth(n) / Attention.NOTICE_FULL)
+	# A reading taken off a decoy is filed as one: the plan now has an account of
+	# a pole in a field. It is not nothing — something reported this place and the
+	# escalation runs off `last_read` either way — and it is not the real thing.
+	# `Attention.LURED` is the whole of what the timber bought.
+	_raise(s, &"lured" if n.lure >= 0 else &"notice", Notices.worth(n) / Attention.NOTICE_FULL)
 	_seen["filed"] = true
+	if n.lure >= 0:
+		_seen["lured"] = true
 	# And it is SAID. This is the one link in the chain the player cannot see for
 	# themselves — the taking, the jamming, the killing and every warning happen
 	# in front of them, and a record getting home happens over the horizon — so a
@@ -389,7 +459,10 @@ func _file(n: Notice) -> void:
 	# likely to be busy — a raider is walking off while they are fighting another.
 	Events.sfx.emit(&"raid_filed", game.world.to_3d(s.centre))
 	if _near(s):
-		Events.message.emit("What it had of %s is in the plan's hands now." % s.name)
+		if n.lure >= 0:
+			Events.message.emit("What it had of %s is the decoy in the field, and the plan has that." % s.name)
+		else:
+			Events.message.emit("What it had of %s is in the plan's hands now." % s.name)
 
 
 ## It never got there: killed in the yard, or its reading spoofed into nonsense.
@@ -840,6 +913,19 @@ func _call_the_keeper(s: Settlement, bearing: float) -> void:
 ## WALKABLE to the holding — a party put down across a channel or behind a cliff
 ## walks into it for an hour and the raid never happens, which is the worst kind
 ## of failure this system can have, because from the yard it looks like nothing.
+##
+## **A party that filed a DECOY was tried coming out of the land at the decoy
+## instead, and it is worse.** Measured over five seeds: the pole is 15 tiles out,
+## and the line from it back to the yard is not walkable for a party body on ANY
+## of them (a fifteen-tile line across the gaps a holding is built in has a fence,
+## a hull or a house on it), so the address is never usable and the check that
+## keeps it honest makes the whole thing a no-op. Forced past that check it lands
+## the party 3.0 to 21.3 tiles from the yard instead of 12 — on seed 3 they come
+## out three tiles from the fence, which throws away the one warning that says
+## from which side, and the picture is a party standing on the pole rather than
+## crossing the ground to it. The yard's own ring already puts them 4.5 to 7.7
+## tiles from the pole, and the harvester walks the rest (`RaidRoles`), which is
+## the same arrival with the march still in it.
 func _march_from(s: Settlement, want: float, body: float) -> Vector2:
 	var loose := Vector2.INF
 	# Outward first, and in toward the yard until there is a way: a party seen
@@ -1011,6 +1097,15 @@ func _drive(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> void:
 	var r: Dictionary = _raiders.get(m.id, {})
 	if r.is_empty() or not _on_the_job(m, sim):
 		return
+	# Shot by the yard itself: it turns on the thing that shot it and takes that
+	# apart instead of what it was sent for. There is no rule here about the
+	# player taking it back, and there must not be one: `FightSim.strike` writes
+	# INF for the player's own swing, so the LAST blow decides and a player who
+	# swings after the turret has it coming for them again for free.
+	var shot := _shot_by(s, m)
+	if shot != null:
+		_answer(p, s, m, r, shot, sim)
+		return
 	var role: StringName = r.get("role", &"")
 	if role == RaidRoles.SNATCHER:
 		_drive_snatcher(p, s, m, r, sim)
@@ -1079,14 +1174,20 @@ func _tribute(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> bool:
 	return true
 
 
-## Is this one still about its errand? A raider that has been struck, or that
-## belongs to the fight from then on and this system leaves it alone. One that
-## has not is kept on the job: it does not even look up (`calm_until`), which is
-## the same door a keeper that has stood down uses, and it is what lets a player
-## stand in their own yard and watch their mast being taken apart, and have to
-## decide whether to make it their fight.
+## Is this one still about its errand? A raider the PLAYER has struck belongs to
+## the fight from then on and this system leaves it alone. One that has not is
+## kept on the job: it does not even look up (`calm_until`), which is the same
+## door a keeper that has stood down uses, and it is what lets a player stand in
+## their own yard and watch their mast being taken apart, and have to decide
+## whether to make it their fight.
+##
+## A blow from the yard's own turret is not that. `MobState.struck_from` is INF
+## for the player's swing and the turret's ground for the turret's bolt
+## (`FightSim.strike`), and the last blow overwrites it — so a body the yard shot
+## stays this system's and goes for the turret (`_drive`), a body the player then
+## swings at goes back to the fight, and neither needs a rule of its own.
 func _on_the_job(m: MobState, sim: FightSim) -> bool:
-	if m.health < m.max_health:
+	if m.health < m.max_health and not is_finite(m.struck_from.x):
 		return false
 	m.calm_until = maxf(m.calm_until, sim.now + JOB_MS)
 	# And it does not stop for a noise either. A body at its work puts its optics
@@ -1101,6 +1202,42 @@ func _on_the_job(m: MobState, sim: FightSim) -> bool:
 		m.charging = false
 		m.lost_beats = 999
 	return true
+
+
+## The piece of this holding that shot it, or null. `MobState.struck_from` is a
+## POINT — the fight knows nothing about pieces — so it is matched back to
+## whatever of the holding is standing there. Asked of the geometry rather than
+## of a kind on purpose: the day another piece of a yard shoots back, a raider
+## turns on that one too with no edit here.
+func _shot_by(s: Settlement, m: MobState) -> Structure:
+	if not is_finite(m.struck_from.x):
+		return null
+	var best: Structure = null
+	var top := SHOT_FROM
+	for piece in s.pieces:
+		if not piece.standing():
+			continue
+		var d := piece.pos.distance_to(m.struck_from)
+		if d <= top:
+			top = d
+			best = piece
+	return best
+
+
+## It turns on what shot it. The same march and the same blows it would have put
+## into what it came for, which is the point: a turret buys the rest of the yard
+## the time a raider spends walking back out to it and cutting it down, and it is
+## the piece that pays for that.
+func _answer(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, piece: Structure, sim: FightSim) -> void:
+	_seen["raider_turned"] = true
+	var d := m.pos.distance_to(piece.pos)
+	if d > STRIKE_REACH + m.radius + StructureKind.solid(piece.kind):
+		_march(m, r, piece.pos, d, sim)
+		return
+	m.line_a = m.pos
+	m.line_b = m.pos
+	m.aim = (piece.pos - m.pos).angle()
+	_strike(p, s, m, r, piece, sim)
 
 
 ## One step of the march, and the way round whatever is in it. A machine walking
@@ -1592,6 +1729,8 @@ func _stage() -> void:
 ##   noticed         a machine has read a holding and is walking off with it
 ##   carrier         one is carrying a reading right now
 ##   filed           a reading got home
+##   lured           a reading was taken off a DECOY instead of the holding: the
+##                   machine stood at a pole in a field and filed that
 ##   stopped         one was killed or spoofed before it did
 ##   record          a record came off a body into the creel
 ##   warned          the world warned of a step; warned:STAGE for which
@@ -1612,6 +1751,7 @@ func _stage() -> void:
 ##   razed           a holding was left with nothing standing
 ##   looted          the party took what was lying in the store
 ##   raid_ended      a step is over; raid_ended:OUTCOME for how
+##   raider_turned   one the yard shot has turned on what shot it
 ##   raider_down     one of the party did not come home
 ##   quieted         a region's keeper fell and its network went quiet
 ##   attention       a holding is on the plan's books at all

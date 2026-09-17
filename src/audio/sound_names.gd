@@ -108,6 +108,10 @@ const ALIAS := {
 	&"turret_fire": &"arc_snap",
 	&"turret_aim": &"relay_click",
 	&"piece_switch": &"relay_click",
+	# a jump: the push off, the two feet coming down, and the water taking a dive.
+	&"jump": &"dodge",
+	&"jump_land": &"dodge",
+	&"jump_dive": &"splash",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
@@ -157,6 +161,8 @@ const EMITTED: Array[StringName] = [
 	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
 	# defences (46_settlements.gd, 47_defences.gd)
 	&"turret_fire", &"turret_aim", &"piece_switch",
+	# the jump (54_gear.gd)
+	&"jump", &"jump_land", &"jump_dive",
 ]
 
 ## Names that resolve to nothing on purpose (tests tell these from typos).

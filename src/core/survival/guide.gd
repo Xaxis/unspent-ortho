@@ -27,7 +27,7 @@ const HINTS := {
 	&"carry": ["I shows what you carry. Leave what you do not need.", "i"],
 	&"lamp": ["Night. F lights the lamp.", "f"],
 	&"dodge": ["It winds up before it strikes: K gets you out of the way.", "k"],
-	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", "space"],
+	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", "j"],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", ""],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", ""],
 }

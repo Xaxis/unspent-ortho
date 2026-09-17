@@ -45,6 +45,9 @@ var from_height := 0.0
 
 ## Grapple: the height at the anchor, so the pull rises onto the ledge.
 var to_height := 0.0
+## Jump: the whole arc, planned at the press (Jump.plan) and replayed here, so
+## what is drawn and what a test measured are the same jump.
+var plan: JumpPlan = null
 
 var t := 0.0
 var lift := 0.0
@@ -101,6 +104,21 @@ static func grapple(at: Vector2, target: Vector2, p_speed: float, short: float, 
 	return m
 
 
+static func jump(p: JumpPlan) -> AbilityMotion:
+	var m := AbilityMotion.new()
+	m.kind = &"jump"
+	m.plan = p
+	m.from = p.from
+	m.to = p.to
+	m.dir = p.dir
+	m.seconds = p.seconds
+	m.from_height = p.from_height
+	m.to_height = p.to_height
+	m.height = p.from_height
+	m.landing = p.to
+	return m
+
+
 ## Move the body on by `delta`. Returns where it now is (tile space).
 ## A dash is refused by walls (it slides along them like walking does); a glide
 ## and a grapple pass over ground a walk could not climb, which is the point.
@@ -143,6 +161,20 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 				else:
 					height = maxf(height, ground + SKIM)
 					lift = height - ground
+		&"jump":
+			# Replayed, never re-simulated: the arc was decided whole at the press,
+			# and the body is where the plan says. `lift` is honest — the body's
+			# height over the ground actually under it this instant — because the
+			# shadow a lit world casts is placed from it.
+			var here: Array = plan.at(t)
+			next = here[0]
+			height = float(here[1])
+			var ground := world.height_at(next) if world != null else 0.0
+			lift = maxf(0.0, height - ground)
+			if t >= seconds:
+				next = plan.to
+				lift = 0.0
+				finished = true
 		&"grapple":
 			var left := to.distance_to(pos)
 			var stepped := speed * delta
