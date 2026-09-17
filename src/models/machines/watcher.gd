@@ -22,6 +22,14 @@ const HUB_Y := 0.64
 const FOOT := Vector3(0.5, -0.6, 0.0)
 const BEARINGS := [PI, PI / 3.0, -PI / 3.0]
 const FIN_Z := 0.31
+## The drum's radius and the survey shade's half-size: the two flat things a
+## camera that looks down can see the area of (see build()).
+const DRUM := 0.21
+## Half-size of the survey shade. Small enough that the cross bar and both
+## rangefinder eyes still stand out past it: a watcher IS a cross on a tripod,
+## and a shade wide enough to swallow the cross buys mass by throwing away the
+## one silhouette in the roster nothing else makes.
+const SHADE := Vector2(0.125, 0.17)
 
 
 func build() -> void:
@@ -34,34 +42,49 @@ func build() -> void:
 	var hub := joint(&"hub", self, Vector3(0, HUB_Y, 0))
 	var hk := FoundKit.kit()
 	# A six-sided drum, a plumb point under it, and the sleeve of the mast.
-	FoundKit.disc(hk, Vector3.ZERO, Vector3.UP, 0.15, 0.1, 6, 0.025, R, Color(0, 0, 0, 0), PI / 6.0)
-	FoundKit.lathe(hk, Vector3(0, -0.05, 0), Vector3.UP, [Vector2(0.07, 0.0), Vector2(0.0, -0.17)], 6, D, PI / 6.0)
-	FoundKit.tbar(hk, Vector3(0, 0.05, 0), Vector3(0, 0.6, 0), 0.052, 0.044, 8, R)
+	#
+	# The drum is WIDE, and that is the fix for art finding 3. Close up a watcher
+	# is the best-drawn thing in the roster; the one a player sees from a hill
+	# away was a thin mast and three splayed legs of scattered pixels, because
+	# every member on it is two screen pixels across and two pixels carry no
+	# chamfer, no rivet row and no slit. The game's camera looks DOWN, so the two
+	# things it can see the area of are the drum's deck and the shade over the
+	# head, and both are now wide enough to be a mass instead of a scribble.
+	FoundKit.disc(hk, Vector3.ZERO, Vector3.UP, DRUM, 0.15, 6, 0.035, R, Color(0, 0, 0, 0), PI / 6.0)
+	FoundKit.lathe(hk, Vector3(0, -0.075, 0), Vector3.UP, [Vector2(0.08, 0.0), Vector2(0.0, -0.17)], 6, D, PI / 6.0)
+	FoundKit.tbar(hk, Vector3(0, 0.07, 0), Vector3(0, 0.6, 0), 0.052, 0.044, 8, R)
 	FoundKit.disc(hk, Vector3(0, 0.6, 0), Vector3.UP, 0.066, 0.04, 8, 0.012, R, Color(0, 0, 0, 0), PI / 8.0)
-	FoundKit.disc(hk, Vector3(0, 0.08, 0), Vector3.UP, 0.062, 0.03, 8, 0.01, R, Color(0, 0, 0, 0), PI / 8.0)
+	FoundKit.disc(hk, Vector3(0, 0.1, 0), Vector3.UP, 0.075, 0.03, 8, 0.01, R, Color(0, 0, 0, 0), PI / 8.0)
 	for j in range(1, 6):
 		var a := float(j) / 6.0 * TAU
 		var n := Vector3(cos(a), 0, sin(a))
-		FoundKit.mark(hk, n * 0.131, n, Vector3.UP, 0.03, 0.03, R[5], 0.004)
+		FoundKit.mark(hk, n * (DRUM - 0.019), n, Vector3.UP, 0.03, 0.03, R[5], 0.004)
+	# A rivet row round the deck's rim, which is the one place on this instrument
+	# with room for one and the place the camera is looking.
+	for j in 6:
+		var a0 := float(j) / 6.0 * TAU
+		var a1 := float(j + 1) / 6.0 * TAU
+		FoundKit.rivets(hk, Vector3(cos(a0), 0, sin(a0)) * (DRUM - 0.03) + Vector3(0, 0.076, 0),
+			Vector3(cos(a1), 0, sin(a1)) * (DRUM - 0.03) + Vector3(0, 0.076, 0), Vector3.UP, 2, R[5])
 	FoundKit.streaks(hk, Vector3(0.047, 0.56, 0.0), Vector3.RIGHT, 0.05, 0.3, 2, 11, R[2])
 	body_mesh(hk, hub)
 	# The plan strip lies on the drum's deck, the one flat thing on a watcher and
 	# the thing the high camera looks straight down at: a tally across it, clear
 	# of the mast, is what says from a hill away what the instrument makes of you.
-	add_lamp(hub, Vector3(-0.02, 0.1015, 0.078), Vector3.UP, Vector3.BACK, 0.034, 0.03, &"status")
+	add_lamp(hub, Vector3(-0.03, 0.1515, 0.10), Vector3.UP, Vector3.BACK, 0.04, 0.035, &"status")
 	var hw := FoundKit.kit()
 	var back_face := Vector3(cos(TAU / 3.0), 0, sin(TAU / 3.0))
-	FoundKit.patch(hw, back_face * 0.132, back_face, Vector3.UP, 0.1, 0.07, Palette.MACHINE["lineman"], 17)
-	FoundKit.grime(hw, Vector3(-0.131, -0.02, 0), Vector3.LEFT, 0.08, 0.1, 3, 18, D)
+	FoundKit.patch(hw, back_face * (DRUM - 0.018), back_face, Vector3.UP, 0.12, 0.1, Palette.MACHINE["lineman"], 17)
+	FoundKit.grime(hw, Vector3(-(DRUM - 0.019), -0.02, 0), Vector3.LEFT, 0.08, 0.14, 3, 18, D)
 	# The drum's deck is the one flat thing on a watcher, and the camera looks
 	# straight down at it. The instrument is too thin anywhere else for a hull's
 	# marks — its members are two screen pixels wide — so the daylight it has is
 	# here: the deck stepped a value down round the mast, a well worn into it
 	# where something was unbolted, and a second run of grime down a facet.
-	FoundKit.plate(hw, Vector3(0, 0.1005, 0), Vector3.UP, Vector3.RIGHT, 0.16, 0.13, R, -2)
-	FoundKit.recess(hw, Vector3(0.055, 0.1015, 0.0), Vector3.UP, Vector3.RIGHT, 0.05, 0.05, R, 0.012, 1.4)
+	FoundKit.plate(hw, Vector3(0, 0.1505, 0), Vector3.UP, Vector3.RIGHT, 0.24, 0.20, R, -2)
+	FoundKit.recess(hw, Vector3(0.075, 0.1515, 0.0), Vector3.UP, Vector3.RIGHT, 0.07, 0.07, R, 0.012, 1.4)
 	var wet := Vector3(cos(TAU / 6.0), 0, sin(TAU / 6.0))
-	FoundKit.grime(hw, wet * 0.131 + Vector3(0, -0.02, 0), wet, 0.07, 0.1, 2, 21, D)
+	FoundKit.grime(hw, wet * (DRUM - 0.019) + Vector3(0, -0.02, 0), wet, 0.07, 0.1, 2, 21, D)
 	wear_mesh(hw, hub)
 
 	for i in 3:
@@ -103,8 +126,15 @@ func build() -> void:
 	mast.add_child(yaw)
 	var head := joint(&"head", yaw, Vector3.ZERO)
 	var bk := FoundKit.kit()
-	# The cross bar: a straight eight-sided bar with a terminal at each end.
+	# The cross bar: a straight eight-sided bar with a terminal at each end, and a
+	# HOUSING over its middle. The bar alone is two screen pixels: the housing is
+	# what a chamfer and a slit can be cut into, and it is still thin end-on, so
+	# the bar's width goes on saying which way the instrument is looking.
 	FoundKit.tbar(bk, Vector3(0, 0, -0.42), Vector3(0, 0, 0.42), 0.046, 0.046, 8, R, 0.02)
+	FoundKit.cbox(bk, Vector3(-0.005, 0.005, 0), Vector3(0.115, 0.13, 0.44), 0.028, R, 2)
+	FoundKit.visor(bk, Vector3(0, 0.02, 0.222), Vector3.BACK, Vector3.UP, 0.22, 0.026)
+	FoundKit.rivets(bk, Vector3(-0.045, 0.07, -0.19), Vector3(-0.045, 0.07, 0.19), Vector3.UP, 5, R[5])
+	FoundKit.seam(bk, Vector3(0.04, 0.071, -0.2), Vector3(0.04, 0.071, 0.2), Vector3.UP, R, 4)
 	for sz: float in [-1.0, 1.0]:
 		FoundKit.disc(bk, Vector3(0, 0, sz * 0.43), Vector3.BACK, 0.064, 0.05, 8, 0.014, R, Color(0, 0, 0, 0), PI / 8.0)
 		FoundKit.mark(bk, Vector3(0.0, 0.047, sz * 0.2), Vector3.UP, Vector3.BACK, 0.016, 0.26, R[2], 0.002)
@@ -116,6 +146,20 @@ func build() -> void:
 	# Upper arm of the cross and its cap; a collar under the barrel.
 	FoundKit.tbar(bk, Vector3(0, 0.09, 0), Vector3(0, 0.42, 0), 0.028, 0.022, 8, R)
 	FoundKit.disc(bk, Vector3(0, 0.43, 0), Vector3.UP, 0.045, 0.03, 8, 0.01, R, Color(0, 0, 0, 0), PI / 8.0)
+	# THE SURVEY SHADE: a sheet of plate bolted over the head on two stays, so the
+	# sun is off the objective. It is the one thing on a watcher with real area
+	# under a camera that looks down, and it is where its chamfer and its rivet
+	# row live. It reaches FORWARD, over the optic, so from above the instrument
+	# points, and the amber eye shows under its near edge.
+	FoundKit.cbox(bk, Vector3(0.13, 0.46, 0), Vector3(SHADE.x * 2.0, 0.034, SHADE.y * 2.0), 0.042, R, 0)
+	FoundKit.rivets(bk, Vector3(0.13 - SHADE.x * 0.8, 0.478, -SHADE.y * 0.84),
+		Vector3(0.13 - SHADE.x * 0.8, 0.478, SHADE.y * 0.84), Vector3.UP, 3, R[5])
+	FoundKit.rivets(bk, Vector3(0.13 + SHADE.x * 0.8, 0.478, -SHADE.y * 0.84),
+		Vector3(0.13 + SHADE.x * 0.8, 0.478, SHADE.y * 0.84), Vector3.UP, 3, R[5])
+	FoundKit.seam(bk, Vector3(0.13, 0.479, -SHADE.y * 0.9), Vector3(0.13, 0.479, SHADE.y * 0.9), Vector3.UP, R, 3)
+	FoundKit.streaks(bk, Vector3(0.13 + SHADE.x * 0.95, 0.455, 0.0), Vector3.RIGHT, 0.07, 0.06, 3, 29, R[2])
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.tbar(bk, Vector3(0.03, 0.26, sz * 0.09), Vector3(0.15, 0.44, sz * SHADE.y * 0.7), 0.017, 0.014, 5, R)
 	FoundKit.disc(bk, Vector3(0, -0.1, 0), Vector3.UP, 0.05, 0.04, 8, 0.01, D, Color(0, 0, 0, 0), PI / 8.0)
 	# Plate at the back of the barrel with its cold slit; rivets round the bezel.
 	FoundKit.visor(bk, Vector3(-0.19, 0.0, 0), Vector3.LEFT, Vector3.UP, 0.1, 0.022)

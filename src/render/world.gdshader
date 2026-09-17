@@ -870,20 +870,49 @@ vec3 works_mark(int m, vec3 c, vec2 wp, vec2 px, vec4 wk, float stump, int hand,
 			// Turf cut in rows: strips of bare peat ruled between strips left
 			// standing, each row stopped where the cutter stopped; sods stacked
 			// to dry on some standing strips; turf creeping back over the old.
+			//
+			// THE LAW HERE (art finding 4): the machines' order is RULED, and a
+			// ruled line is not one line stamped five times. A frame carried four
+			// or five bars of identical width at identical spacing with the same
+			// grain in each, which reads as a texture rather than as work done.
+			// So: the pitch opens and closes, every row is its own width, every
+			// row runs from somewhere to somewhere and lifts here and there, and
+			// a row's grain is its own — while all of them still lie dead
+			// straight on the bearing, which is the part that says a machine.
 			const float ROW = 1.9;
-			float row = floor(r.y / ROW);
-			float fy = r.y - row * ROW;
-			float stop_at = (ink_hash(vec2(row, 5.0)) - 0.5) * 22.0;
-			bool cutting = (r.x > stop_at || ink_hash(vec2(row, 9.0)) < 0.25) && regrow < 0.66 + ink_hash(vec2(row, 13.0)) * 0.12;
-			if (cutting && fy < 0.5) {
+			// The pitch opens and closes over tens of units, so no two neighbouring
+			// cuts are the same distance apart (the pavement's rule, in a straight field).
+			float across = r.y + (ink_vnoise(vec2(r.y * 0.05, 3.0)) - 0.5) * 2.4;
+			float row = floor(across / ROW);
+			float fy = across - row * ROW;
+			// A cutter's width is its own: the narrowest rows are half the widest.
+			float wide = 0.30 + ink_hash(vec2(row, 3.0)) * 0.36;
+			// A RUN is where the blade was down. Each row is a broken line of them,
+			// its own runs at its own offset, and a run tapers away at both ends
+			// instead of stopping square. The period is wider than a screen, so
+			// nothing on the glass ever repeats.
+			const float RUN = 26.0;
+			float rx = r.x + ink_hash(vec2(row, 5.0)) * RUN;
+			float seg = floor(rx / RUN);
+			float sx = rx - seg * RUN;
+			float len = RUN * (0.5 + ink_hash(vec2(row, seg) + 7.0) * 0.45);
+			bool cutting = sx < len && ink_hash(vec2(row, seg) + 11.0) < 0.84
+				&& regrow < 0.66 + ink_hash(vec2(row, 13.0)) * 0.12;
+			float w = wide * clamp(min(sx, len - sx) * 1.6, 0.0, 1.0);
+			if (cutting && fy < w) {
 				c = mix(EARTH1, EARTH2, step(0.55, ink_hash(floor(px / vec2(3.0, 1.0)) + row)));
-				if (stroke(px, vec2(5.0, 3.0), 51.0, 0.35, 2.0, 0.5) > 0.5) {
+				// A row's grain is its own: combed finer or coarser, and never in
+				// step with the row beside it.
+				vec2 comb = vec2(3.0 + floor(ink_hash(vec2(row, 23.0)) * 4.0), 2.0 + floor(ink_hash(vec2(row, 29.0)) * 3.0));
+				if (stroke(px, comb, 51.0 + row, 0.22 + ink_hash(vec2(row, 31.0)) * 0.26, 2.0, 0.5) > 0.5) {
 					c = EARTH0;
 				}
-				if (fy < 0.06) {
+				// The shoulder the blade left, on whichever side it came down.
+				float lip = ink_hash(vec2(row, 37.0)) < 0.5 ? fy : w - fy;
+				if (lip < 0.06) {
 					c = dn(c, 0.8);
 				}
-			} else if (cutting && fy < 0.58) {
+			} else if (cutting && fy < w + 0.08) {
 				c = up(c, 0.25);
 			} else if (cutting && ink_hash(vec2(row, 21.0)) < 0.4) {
 				float sx = fract(r.x / 3.1 + row * 0.37);

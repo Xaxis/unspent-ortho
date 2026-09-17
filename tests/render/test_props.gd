@@ -111,3 +111,46 @@ func test_mesh_surfaces_match_the_contract() -> void:
 			check(m.surface_get_material(fs) == PropModels.found_material(), "%s FOUND surface carries found.gdshader" % PropKind.NAMES[kind])
 	eq(PropModels.found_surface(PropKind.PYLON), 0, "a pylon is FOUND only")
 	eq(PropModels.found_surface(PropKind.PINE), -1, "a pine has no FOUND part")
+
+
+## THIRTY CROWNS AT ONE SCALE IS A TEXTURE, NOT A WOOD (art finding 5).
+##
+## The scrapwood's trees carried four heights and one crown size: the clump radii
+## were constants, so a tall tree and a short one wore the same hat, and a frame
+## of thirty of them read as one silhouette stamped across the land. Every tree's
+## crown is now cut against its own height and its own spread, and the machine's
+## bar over it is a different length on every third tree.
+func test_no_two_scrapwood_trees_wear_the_same_crown() -> void:
+	var wide: Array[float] = []
+	var tall: Array[float] = []
+	var bar: Array[float] = []
+	var n := PropModels.variants(PropKind.SCRAP_TREE)
+	gt(float(n), 4.0, "a wood wants more than four trees in it")
+	for v in n:
+		var t := PropModels.template(PropKind.SCRAP_TREE, v, BiomeRegistry.index_of(&"scrapwood"))
+		var leaf_r := 0.0
+		var top := 0.0
+		for i in t.made_v.size():
+			var p: Vector3 = t.made_v[i]
+			top = maxf(top, p.y)
+			# The crown is what is drawn by hand ABOVE half the tree's height.
+			if p.y > 1.2:
+				leaf_r = maxf(leaf_r, Vector2(p.x, p.z).length())
+		var reach := 0.0
+		for i in t.found_v.size():
+			var p: Vector3 = t.found_v[i]
+			reach = maxf(reach, Vector2(p.x, p.z).length())
+		wide.append(leaf_r)
+		tall.append(top)
+		bar.append(reach)
+	for got: Array in [[wide, "crown"], [tall, "height"], [bar, "what the machine left standing"]]:
+		var vals: Array = got[0]
+		var lo: float = vals.min()
+		var hi: float = vals.max()
+		gt(hi / maxf(lo, 0.001), 1.3, "%s runs %.2f to %.2f: near enough one shape stamped %d times"
+			% [got[1], lo, hi, n])
+		# ...and no two variants share it, so the spread is not two sizes repeated.
+		for i in vals.size():
+			for j in range(i + 1, vals.size()):
+				gt(absf(float(vals[i]) - float(vals[j])), 0.01,
+					"scrap trees %d and %d have the same %s (%.3f)" % [i, j, got[1], vals[i]])

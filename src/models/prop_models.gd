@@ -70,10 +70,11 @@ static func variants(kind: int) -> int:
 			return 4
 		PropKind.SALT_RIDGE:
 			return 3
-		# Four, so a stand of them is four heights and four crowns: fifteen
-		# near-identical silhouettes at one scale is a texture, not a wood.
+		# Six, because four was still a stamp at play zoom: thirty crowns in one
+		# frame want six heights, six spreads, six arm counts and six of the
+		# machine's bars, and `Scrap.SPREAD`/`BOUGHS` are sized for six.
 		PropKind.SCRAP_TREE:
-			return 4
+			return 6
 		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:

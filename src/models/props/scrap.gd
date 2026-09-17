@@ -36,10 +36,28 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 ## the player never learns what these trees are: two ribs carry on past the
 ## leaves with a level bar between them, and the plate hangs in the fork on top,
 ## where a crown cannot hide it.
+## Six trees, and no two of them the same shape from above. Thirty near-identical
+## mushroom crowns at one scale with the same ruled bar across every one of them
+## is a texture and not a wood (art finding 5), and the fault was that the crown
+## was a fixed size whatever the tree's height, and the mast and its bar were the
+## same on every tree. So height, spread, how many arms, whether one side of the
+## crown ever grew back, and what the machine left standing out of the top all
+## move together. The bar stays on most of them, because it is the one straight
+## line the player reads this wood BY.
+const SPREAD: Array[float] = [0.82, 1.18, 0.95, 1.34, 0.74, 1.06]
+const BOUGHS: Array[int] = [3, 4, 3, 5, 2, 4]
+
+
 static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var s := 610 + v * 31
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.1))
-	var h := 2.1 + v * 0.45
+	var h := 1.85 + float(v) * 0.34
+	# A crown against its own height, not a fixed blob: a young tree is a tight
+	# ball and an old one is wide and flat.
+	var spread := SPREAD[v % SPREAD.size()]
+	var crown := (0.30 + h * 0.085) * spread
+	# Two in six lost a side of the crown to whatever came through here.
+	var gap := v % 3 == 1
 	var bark := P.EARTH[2].lerp(RUSTED, 0.25)
 	# The ruled frame first, standing OUTSIDE the trunk so both drawings show:
 	# the tree grew up through the cage and closed on it, it did not swallow it.
@@ -63,7 +81,7 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# across them, so from above this wood is green blobs with a ruler through
 	# every one of them and reads as nothing else.
 	var ma := 0.8 + Kit.j(s, 3, 0.6)
-	var mast := h * (1.42 + v % 2 * 0.12)
+	var mast := h * (1.26 + float(v % 3) * 0.13)
 	var m0 := Vector3(cos(ma) * 0.24, 0.0, sin(ma) * 0.24)
 	var m1 := Vector3(cos(ma + PI) * 0.26, 0.0, sin(ma + PI) * 0.26)
 	var top0 := Vector3(m0.x * 0.5 + lean.x * mast * 0.7, mast, m0.z * 0.5 + lean.y * mast * 0.7)
@@ -82,7 +100,11 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# rather than a wood grown through machines (playtest 6). It stops at PLATE[4]:
 	# the rubbed step over it clipped white under this landscape's lift, and a
 	# white stick laid across every crown is louder than the tree.
-	k.rod(bc - bd * 0.78, bc + bd * 0.62, 0.036, 4, P.PLATE[4])
+	# ...and it is not the same bar on every tree. Two in six have lost the far
+	# half of it, so a frame of this wood carries long bars, short bars and stubs
+	# rather than one length repeated thirty times.
+	var reach := 0.78 if v % 3 != 2 else 0.22
+	k.rod(bc - bd * reach, bc + bd * (0.62 + float(v % 3) * 0.14), 0.036, 4, P.PLATE[4])
 	# A stay from the mast head out to the cage foot, clear of the crown.
 	k.rod(top0, Vector3(cos(ma + 2.4) * 0.5, h * 0.12, sin(ma + 2.4) * 0.5), 0.022, 4, P.PLATE[2])
 	# The plate caught in the fork, lying ON the crown where the light finds it.
@@ -118,18 +140,25 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var own_leaf: Array = tints.get(&"leaf", [])
 	var leaf: Color = own_leaf[v % own_leaf.size()] if not own_leaf.is_empty() else P.MOSS[3].lerp(P.SPRUCE[3], 0.3)
 	var under := Kit.tone(leaf, 0.72)
-	var boughs := 3 + v % 2
+	var boughs := BOUGHS[v % BOUGHS.size()]
+	# The side that never grew back, on the trees that lost one.
+	var bare := Kit.j(s, 4, 3.0) + 3.0
 	var start := k.made.vertex_count()
 	for i in boughs:
 		var a := float(i) / boughs * TAU + Kit.j(s, 10 + i, 0.5)
+		if gap and absf(angle_difference(a, bare)) < 0.9:
+			continue
 		var from := Vector3(lean.x * h * 0.7, h * (0.62 + (i % 2) * 0.09), lean.y * h * 0.7)
-		var to := from + Vector3(cos(a) * (0.48 + Kit.j(s, 20 + i, 0.14)), 0.3, sin(a) * (0.48 + Kit.j(s, 30 + i, 0.14)))
+		var arm := crown * (1.05 + Kit.j(s, 20 + i, 0.3))
+		var to := from + Vector3(cos(a) * arm, 0.3, sin(a) * arm)
 		k.limb(from, to, 0.055, 0.03, 5, bark)
-		k.clump(to.x, to.y - 0.1, to.z, 0.42 + Kit.j(s, 40 + i, 0.09), 0.5, s + i * 7, leaf)
-	k.clump(lean.x * h, h * 0.88, lean.y * h, 0.55, 0.62, s + 99, leaf)
+		k.clump(to.x, to.y - 0.1, to.z, crown * (0.92 + Kit.j(s, 40 + i, 0.22)), crown * 1.1, s + i * 7, leaf)
+	# The top of the crown, pushed off the trunk away from the bare side.
+	var off := Vector3(cos(bare), 0.0, sin(bare)) * (crown * -0.35 if gap else 0.0)
+	k.clump(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, leaf)
 	# The underside, one step darker, so the crown reads as a mass and not a blob.
-	k.made.push(Transform3D(Basis.IDENTITY, Vector3(lean.x * h, h * 0.82, lean.y * h)))
-	k.made.prism(0, 0, 0, 0.44, 0.09, 0.5, 7, under)
+	k.made.push(Transform3D(Basis.IDENTITY, Vector3(lean.x * h + off.x, h * 0.82, lean.y * h + off.z)))
+	k.made.prism(0, 0, 0, crown * 0.96, 0.09, crown * 1.1, 7, under)
 	k.made.pop()
 	k.sway_by_height(start, h * 0.5, h, 0.6)
 
