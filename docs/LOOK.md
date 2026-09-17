@@ -112,6 +112,17 @@ pattern, not a result:
   the tag over every *unlocked* machine sat at **1.92:1** over white — over snow at
   noon, the tag was not there — and that one item sketch was rastering **on the
   calling thread** at 586 ms, freezing the game every time the carrying page opened.
+- **"The web is washed out" was not the colour door, and not a missing feature.**
+  The first side-by-side of the canon, desktop against the exported web build,
+  put every web frame a mean **44 apart** (0..255 per channel) and a stop brighter:
+  noon 195 luma against 146. A flat quad came back from Compatibility exactly as
+  written, so `sky_linear` was right. It was the LIGHT: a sun that casts is drawn
+  by Compatibility in a pass of its own, and turning its shadow ON made the frame
+  brighter (169 -> 199; the desktop goes 154 -> 151), because that pass lights the
+  ambient and the emission again and the land far harder. Counted back by numbers
+  fitted against the desktop's own frames (`CompatTrim`), the canon is **10.6
+  apart**. And the web's own stand-in pass was writing the whole frame back every
+  frame for nothing, 4.3 luma of lift at a clear noon with no shaft in it.
 
 Each of those would have been expensive to fix at the symptom and cheap at the
 cause. **Look for the floor before repainting the room.**
@@ -135,14 +146,34 @@ cause. **Look for the floor before repainting the room.**
 almost as good.** Not a different look — the same look, with the expensive parts
 approximated:
 
-| | desktop (Forward+) | web (Compatibility) |
+What the table first said was written before anything existed. This is what the
+web build was found to have, by switching each thing off and on inside a running
+game and measuring whether the frame moved (`tours/degrade.tour`, `perf features`,
+Godot 4.7.2, headless Chromium on Metal). The desktop column is the `high` tier.
+
+| | desktop (Forward+, `high`) | web (Compatibility, `web`) |
 |---|---|---|
-| sun shadow | real, soft, cascaded | real, one cascade, harder |
-| local lights | many, shadow-casting | fewer, the important ones, unshadowed |
-| volumetric air | true volumetrics | screen-space shafts and depth fog |
-| ambient occlusion | SSAO/SSIL | baked into vertex and material |
-| resolution | native | a step down, still well above 640x360 |
+| sun shadow | real, soft, one orthogonal split | **real, soft** (the sun's angular size moves the web frame too), 2048 atlas, hard filter; its pass counted back by `CompatTrim` |
+| moon shadow | faint | the same |
+| local lights | many, eight cast | **all light, none cast**: switching every lamp's shadow on does not move the web frame |
+| volumetric air | true volumetrics | **none** (does not move the frame); the depth fog takes each landscape's volumetric bank (`air_stand_in`), and screen-space shafts carry a lamp in fog and rain |
+| depth fog, bloom, tonemapper, the grade, sky reflections | yes | yes, and each lands differently on display values: counted back by `CompatTrim` |
+| ambient occlusion | SSAO | SSAO **does** move the web frame (-3 luma at noon) but is off: its cost is unmeasured, because frame cost does not move with anything on this GPU |
+| indirect light | off on `high` | none (SSIL does not move the frame) |
+| near depth of field | yes | **none** (does not move the frame); the shaft pass blurs what is nearer than the same focal plane (`near_stand_in`) |
+| antialiasing | MSAA 4x | off; FXAA is refused by the engine on Compatibility |
+| foreground layer | 20 pieces | 7 pieces |
+| resolution | native | 0.75 (1440x810), chosen from the curve below |
 | the feeling | — | **the same place, on a worse night** |
+
+**Render scale, measured.** In headless Chromium with the frame-rate cap taken off,
+on this machine's GPU a frame cost 4.2-4.8 ms at noon and 5.1-5.3 ms in rain at
+night at every scale from 1.0 to 0.5: nothing to choose between. A GPU that is
+bound by the pixels it fills is where the scale matters, so the same curve was
+taken on the CPU renderer (SwiftShader), where it is nothing BUT fill: 1336 ms at
+1.0, 1000 at 0.85, **720 at 0.75**, 688 at 0.67, 444 at 0.5. 0.75 takes 46% off the
+full frame; 0.67 takes a further 4% for a fifth fewer pixels, and 0.5 is 960x540,
+back toward the floor this document removed. 0.75 is where the curve stops paying.
 
 Degradation is expressed through the master-configuration system that already
 exists (`docs/DEV.md`), as quality tiers, so a build says which one it is and the

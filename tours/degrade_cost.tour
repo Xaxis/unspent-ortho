@@ -1,0 +1,20 @@
+# What the web tier costs, on the build a player downloads (render_probe.gd):
+# the frame at each render scale, and the slate's bakes and textures. Timing,
+# so run it on a quiet machine and alone:
+#   tools/web.sh --no-export --quick --uncapped --tour=tours/degrade_cost.tour --args=--seed=7
+#   tools/tour.sh tours/degrade_cost.tour --seed=7 --quality=web     (the same tier on the desktop)
+# --uncapped lets the page draw as fast as it can, so a frame's interval is its
+# cost and not the display's rate. A desktop run has no such switch and sits at
+# the display's rate (8.33 ms a frame, every scale), so the scale curve is only
+# honest in the browser; the slate's numbers are honest in both. Shoots nothing.
+weather clear:0
+place spawn
+hour 12
+wait 1.5
+perf slate
+perf scale 1.0,0.85,0.75,0.67,0.5 2
+hour 22
+weather rain:0.45
+tap lamp
+wait 1.5
+perf scale 1.0,0.85,0.75,0.67,0.5 2

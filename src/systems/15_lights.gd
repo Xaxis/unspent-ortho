@@ -924,7 +924,8 @@ func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3,
 	# what puts its pool a stop and a half over SkyLight.NIGHT_AMBIENT at the
 	# foot of the post, and it is the number law 3 balances against: "night is
 	# genuinely dark, which is what makes a lantern matter".
-	l.light_energy = e * GAIN
+	# CompatTrim.lamp_gain: 1 on Forward+, the fitted count-back on Compatibility.
+	l.light_energy = e * GAIN * CompatTrim.lamp_gain()
 	return true
 
 

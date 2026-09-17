@@ -1,0 +1,18 @@
+# What the renderer this run is on can actually draw, asked by drawing
+# (src/render/degrade/render_probe.gd, docs/LOOK.md "Web is the graceful
+# degradation path"). Play it on both and read the two logs side by side:
+#   tools/tour.sh tours/degrade.tour --seed=7
+#   tools/web.sh --no-export --quick --uncapped --tour=tours/degrade.tour --args=--seed=7
+# It shoots nothing worth keeping: the evidence is the printed table.
+weather clear:0
+place spawn
+wait 1.0
+perf colour
+hour 12
+wait 0.6
+perf features noon frames
+hour 22
+weather rain:0.6
+tap lamp
+wait 1.2
+perf features night-rain frames

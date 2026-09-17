@@ -12,7 +12,7 @@ const KEYS := {
 	"id": TYPE_STRING_NAME, "label": TYPE_STRING, "note": TYPE_STRING,
 	"render_scale": TYPE_FLOAT, "upscale": TYPE_INT, "msaa": TYPE_INT,
 	"shadow_size": TYPE_INT, "shadow_filter": TYPE_INT, "shadow_lights": TYPE_INT,
-	"volumetric": TYPE_BOOL, "ssao": TYPE_BOOL, "ssil": TYPE_BOOL,
+	"near_stand_in": TYPE_BOOL, "volumetric": TYPE_BOOL, "air_stand_in": TYPE_FLOAT, "ssao": TYPE_BOOL, "ssil": TYPE_BOOL,
 	"forward_only": TYPE_BOOL,
 }
 

@@ -108,11 +108,42 @@ const DOF_AMOUNT := 0.14
 var _dof_size := -1.0
 
 
+## How much of the frame's height the web pass's near blur spreads a pixel over
+## at full blur (`near_stand_in`). Matched by eye and by frame against the
+## desktop's CameraAttributesPractical at DOF_AMOUNT, on the canon's pinewood
+## bough: the same softness at the same place.
+const NEAR_STAND_IN_REACH := 0.015
+
+
+## Where the near blur begins, in view depth, for the picture as it is shown: the
+## nearest ground the frame holds, less the height a thing may stand there and
+## stay sharp. One answer for the real blur and for the web's stand-in, so the two
+## soften exactly the same things.
+func near_plane(shown: float) -> float:
+	var near_ground := distance - Air.frame_depth(shown, pitch_deg + _pitch)
+	var begin := near_ground - DOF_CLEAR_LIFT * sin(deg_to_rad(pitch_deg + _pitch))
+	return maxf(near + 1.0, begin)
+
+
 ## Put the near blur on, or take it off, by the tier's own row. Never re-derived:
 ## `Quality.ROWS` is the one place that says what a tier may spend.
+##
+## Compatibility draws no depth of field at all (measured: `perf features`, the
+## frame does not move), so a tier with `near_stand_in` hands the same plane to
+## the screen-space pass it already runs for shafts (shafts.gdshader), which
+## blurs what is nearer than it out of the frame it already reads.
 func _near_focus() -> void:
 	if not bool(Quality.current().get("near_focus", false)):
 		attributes = null
+		if _outline != null and bool(Quality.current().get("near_stand_in", false)):
+			var shown_web := size
+			if not is_equal_approx(shown_web, _dof_size):
+				_dof_size = shown_web
+				var m := _outline.material_override as ShaderMaterial
+				m.set_shader_parameter("near_begin", near_plane(shown_web))
+				m.set_shader_parameter("near_ramp", DOF_RAMP)
+				m.set_shader_parameter("near_reach", NEAR_STAND_IN_REACH)
+			return
 		_dof_size = -1.0
 		return
 	var a := attributes as CameraAttributesPractical
@@ -138,9 +169,7 @@ func _near_focus() -> void:
 	# The nearest ground the frame holds, from the camera that is really drawing
 	# -- so a zoom or a target lean moves the plane with the picture instead of
 	# quietly blurring the near half of a zoomed-out frame.
-	var near_ground := distance - Air.frame_depth(shown, pitch_deg + _pitch)
-	var begin := near_ground - DOF_CLEAR_LIFT * sin(deg_to_rad(pitch_deg + _pitch))
-	a.dof_blur_near_distance = maxf(near + 1.0, begin)
+	a.dof_blur_near_distance = near_plane(shown)
 	a.dof_blur_near_transition = DOF_RAMP
 
 
@@ -221,7 +250,8 @@ func _apply() -> void:
 	# The focal plane follows the picture: a lean zooms and tilts, and a plane
 	# left where the square-on frame put it would blur the near half of a
 	# zoomed-out one. Does nothing until `size` really moves.
-	if attributes != null or bool(Quality.current().get("near_focus", false)):
+	if attributes != null or bool(Quality.current().get("near_focus", false)) \
+			or bool(Quality.current().get("near_stand_in", false)):
 		_near_focus()
 	# Ink patterns are drawn in screen pixels; shifting them by the camera's own
 	# texel offset pins every hatch line to the world instead of the glass.

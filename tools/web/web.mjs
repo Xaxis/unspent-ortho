@@ -33,11 +33,23 @@
 //   --verbose        print every console line
 //   --serve[=PORT]   only serve --dir (default port 8060) with those headers until killed, for a
 //                    person to play in their own browser: dev mode's "play it" (src/dev/dev_jobs.gd)
+//   --tour=PATH      play a tour (tours/*.tour) inside the exported build instead of the player's
+//                    flow, and keep its frames in --frames (default shots/export/tour/<name>/).
+//                    A tour is a tool, so neither the file nor the option can reach a build from
+//                    an address: THIS server alone hands the page the tour (Engine.preloadFile)
+//                    and the arguments (--args too), and the build it proves is the same bytes a
+//                    player downloads. The tour gives each frame to the page as a download
+//                    (src/systems/98_tour.gd), at the base's own 1920x1080. `same` needs frames
+//                    on disk and is not available to a tour played here.
+//   --frames=DIR     where a tour's frames are kept
+//   --window=WxH     the page's size in CSS pixels (default 1440x789; a tour defaults to 1920x1080)
+//   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
+//                    frame's cost can be read off its interval (perf scale in a tour)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', timeout: '90', resize: '' };
+const opt = { dir: 'build/web', out: 'shots/export/web', args: '', after: '4', timeout: '90', resize: '', tour: '', frames: '', window: '' };
 for (const a of process.argv.slice(2)) {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
   if (m) opt[m[1]] = m[2] === undefined ? true : m[2];
@@ -52,6 +64,16 @@ if (!live && !fs.existsSync(path.join(root, 'index.html'))) {
   process.exit(1);
 }
 fs.mkdirSync(path.dirname(path.resolve(opt.out)), { recursive: true });
+// A tour played inside the build: what it is called, where its frames go, and
+// the arguments the page is started with in place of the address's.
+const touring = typeof opt.tour === 'string' && opt.tour !== '';
+const tourName = touring ? path.basename(opt.tour, '.tour') : '';
+const tourDir = touring ? path.resolve(opt.frames || path.join('shots/export/tour', tourName)) : '';
+if (touring) {
+  if (!fs.existsSync(opt.tour)) { console.log(`web FAILED: no tour at ${opt.tour}`); process.exit(1); }
+  fs.rmSync(tourDir, { recursive: true, force: true });
+  fs.mkdirSync(tourDir, { recursive: true });
+}
 
 // ---- server ---------------------------------------------------------------
 const TYPES = {
@@ -68,6 +90,21 @@ const wasmGate = new Promise((r) => { releaseWasm = () => { if (wasmHeldAt) wasm
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+  if (touring && (rel === '/index.html' || rel === `/__tour/${tourName}.tour`)) {
+    // The page a tour runs in: the build's own shell, told what to play. Nothing
+    // in the build changes; only what this server says to it.
+    const body = rel === '/index.html' ? tourShell(fs.readFileSync(path.join(root, 'index.html'), 'utf8')) : fs.readFileSync(opt.tour);
+    res.writeHead(200, {
+      'Content-Type': rel === '/index.html' ? TYPES['.html'] : 'text/plain; charset=utf-8',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Cache-Control': 'no-store',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    res.end(body);
+    return;
+  }
   const file = path.join(root, path.normalize(rel));
   if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404); res.end(); return;
@@ -93,6 +130,16 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, headers);
   fs.createReadStream(body).pipe(res);
 });
+// The shell with a tour in it: the tour file is fetched into the engine's file
+// system before main() runs, and the arguments are the tour's rather than the
+// address's (the shell's ALLOWED list stays exactly as it ships).
+function tourShell(html) {
+  const anchor = '  const engine = new Engine(GODOT_CONFIG);';
+  if (!html.includes(anchor)) throw new Error('tools/web/web.mjs cannot find where the shell makes its Engine: src/boot/shell.html moved');
+  const extra = opt.args ? String(opt.args).split(',') : [];
+  const args = ['--', `--tour=/tour/${tourName}.tour`, ...extra];
+  return html.replace(anchor, `  GODOT_CONFIG.args = ${JSON.stringify(args)};\n${anchor}\n  engine.preloadFile('__tour/${tourName}.tour', '/tour/${tourName}.tour');`);
+}
 let port = 0;
 if (!live) {
   const want = opt.serve ? Number(opt.serve === true ? 8060 : opt.serve) : 0;
@@ -122,10 +169,14 @@ const gpuArgs = process.platform === 'darwin' ? ['--use-angle=metal'] : [];
 // lets a page start sound on its own, and the first-key rule would go untested).
 const launchArgs = [...(opt.swiftshader
   ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
-  : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu']), '--autoplay-policy=user-gesture-required'];
+  : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu']), '--autoplay-policy=user-gesture-required',
+  // A page's frames are held to the display's rate, so a frame that costs 4 ms
+  // and one that costs 15 both read as 16.7. Measuring cost wants them let go.
+  ...(opt.uncapped ? ['--disable-gpu-vsync', '--disable-frame-rate-limit'] : [])];
 const browser = await chromium.launch({ headless: !opt.headed, args: launchArgs });
 // Not the base's 16:9: the game (and the shell before it) sit in black bars.
-const context = await browser.newContext({ viewport: { width: 1440, height: 789 }, deviceScaleFactor: Number(opt.dpr || 1) });
+const [winW, winH] = (opt.window || (touring ? '1920x1080' : '1440x789')).split('x').map(Number);
+const context = await browser.newContext({ viewport: { width: winW, height: winH }, deviceScaleFactor: Number(opt.dpr || 1), acceptDownloads: true });
 // Record every AudioContext the engine makes, so the check can see it start, and
 // tap whatever the engine connects to the speakers, so it can hear the result.
 // Playwright's Chromium lets any page play sound and reports a gesture from the
@@ -236,6 +287,7 @@ async function silence() {
 const isTone = (h) => h.peak >= 0.001 && Math.abs(h.hz - 440) < 30 && h.share > 0.8;
 const dbfs = (h) => (h.peak > 0 ? (20 * Math.log10(h.peak)).toFixed(1) : '-inf');
 const page = await context.newPage();
+let tourEnded = false;
 const failures = [];
 const lines = [];
 let t0 = Date.now();
@@ -243,8 +295,14 @@ const since = () => ((Date.now() - t0) / 1000).toFixed(2);
 page.on('console', (m) => {
   const text = m.text();
   lines.push({ t: Number(since()), type: m.type(), text });
-  if (opt.verbose || m.type() === 'error' || /^(boot|web) /.test(text)) console.log(`  [${since()}s ${m.type()}] ${text}`);
-  if (m.type() === 'error') failures.push(`console error: ${text}`);
+  // A tour's own findings are its evidence; its per-line trace is not.
+  const told = touring && /^tour /.test(text) && !/^tour (t=|score )/.test(text);
+  if (opt.verbose || m.type() === 'error' || /^(boot|web) /.test(text) || told) console.log(`  [${since()}s ${m.type()}] ${text}`);
+  if (touring) fs.appendFileSync(path.join(tourDir, 'console.log'), `[${since()}s ${m.type()}] ${text}\n`);
+  // Once a tour has said it reached its end, what the engine says on its way out
+  // (the ObjectDB leak count a desktop run prints too) is not the tour's evidence.
+  if (m.type() === 'error' && !tourEnded) failures.push(`console error: ${text}`);
+  if (touring && /^tour .* done ->/.test(text)) tourEnded = true;
   if (/^web FAIL/.test(text)) failures.push(text);
 });
 page.on('pageerror', (e) => { failures.push(`page error: ${e.message}`); console.log(`  [${since()}s pageerror] ${e.message}`); });
@@ -451,7 +509,24 @@ if (await page.waitForFunction(() => window.unspentShell && window.unspentShell(
   failures.push('the shell never drew its page');
 }
 const first = await boot('', 0);
-if (first) {
+if (first && touring) {
+  result.first_frame_s = first.t - wasmHeldMs / 1000;
+  console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation (${first.text}); playing ${opt.tour}`);
+  const kept = [];
+  page.on('download', (d) => {
+    const file = path.join(tourDir, path.basename(d.suggestedFilename()));
+    kept.push(d.saveAs(file).then(() => console.log(`web tour frame ${path.relative(process.cwd(), file)} at ${since()}s`)));
+  });
+  // A tour's own clock: its lines are timed by the game, so the harness only
+  // waits for it to say it reached the end, or that it could not.
+  const secs = Number(opt.timeout) * 6;
+  const end = await waitLine(/^tour .* (done ->|line \d+: cannot do)/, secs, 0);
+  await page.waitForTimeout(1500);
+  await Promise.all(kept);
+  if (!end) failures.push(`the tour never reached its end within ${secs} s`);
+  else if (!/done ->/.test(end.text)) failures.push(end.text);
+  else console.log(`web tour done in ${(end.t - first.t).toFixed(1)} s after the first frame, ${kept.length} frames in ${path.relative(process.cwd(), tourDir)}`);
+} else if (first) {
   // The wasm was held while the shell was shot: that wait is not the build's.
   result.first_frame_s = first.t - wasmHeldMs / 1000;
   console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation, not counting ${(wasmHeldMs / 1000).toFixed(2)} s the harness held the wasm (${first.text})`);
@@ -560,6 +635,7 @@ if (failures.length) {
   process.exit(1);
 }
 const parts = [`first frame ${result.first_frame_s.toFixed(2)} s`];
+if (touring) parts.push(`tour ${tourName} played`);
 if (result.new_game_s !== undefined) parts.push(`new game ${result.new_game_s.toFixed(2)} s after Enter`);
 if (result.reload_s !== undefined) parts.push(`reload ${result.reload_s.toFixed(2)} s`);
 console.log(`web OK: ${parts.join(', ')}`);
