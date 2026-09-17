@@ -160,7 +160,10 @@ func test_what_the_economy_gives_without_a_recipe_is_only_ever_real() -> void:
 		var givers: Array = Drops.sources_of(id)
 		gt(float(givers.size()), 0.0, "%s is claimed and nothing gives it" % id)
 		for kind: StringName in givers:
-			check(Roster.has(kind), "%s is claimed off %s, which does not exist" % [id, kind])
+			# A table may be named for the thing rather than the body (a keeper's is,
+			# so a kill cannot pay it out twice); it still has to be a body that exists.
+			var body := Drops.body_of(kind)
+			check(Roster.has(body), "%s is claimed off %s, which does not exist" % [id, body])
 	check(not ids.has(CraftTiers.SPOIL_ITEM), "ruined stock is not a prize")
 
 

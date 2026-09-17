@@ -8,7 +8,12 @@ extends TestCase
 var _game: Game
 
 
+## A game and its target system, begun on a FRESH input frame. The engine reads a
+## key pressed and released inside one frame as just pressed for the whole of that
+## frame, so a test that starts in the frame the last one ended in inherits its
+## taps — and a lock test that inherits a scan key sweeps instead.
 func _make(extra: PackedStringArray = []) -> Node:
+	await tree.process_frame
 	var args := PackedStringArray(["--size=64", "--seed=4", "--hour=11", "--weather=clear:0"])
 	args.append_array(extra)
 	_game = Game.new()
@@ -28,7 +33,7 @@ func _done() -> void:
 
 
 func test_holding_the_key_locks_the_nearest_threat_and_leans_the_camera() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner", "--target"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner", "--target"]))
 	check(sys != null, "42_target is loaded from src/systems")
 	sys.call("_process", 0.1)
 	var locked: TargetSubject = sys.get("locked")
@@ -47,7 +52,7 @@ func test_holding_the_key_locks_the_nearest_threat_and_leans_the_camera() -> voi
 
 
 func test_letting_go_puts_the_camera_back_and_the_reads_away() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner", "--target"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner", "--target"]))
 	sys.call("_process", 0.1)
 	check(sys.get("locked") != null)
 	sys.set("_forced", false)
@@ -66,7 +71,7 @@ func test_letting_go_puts_the_camera_back_and_the_reads_away() -> void:
 
 
 func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner,cutter,watcher", "--target"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner,cutter,watcher", "--target"]))
 	sys.call("_process", 0.1)
 	var first: TargetSubject = sys.get("locked")
 	check(first != null)
@@ -75,6 +80,9 @@ func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
 	Input.action_release(&"move_right")
 	var second: TargetSubject = sys.get("locked")
 	check(second != null and second.id != first.id, "right cycles to another body")
+	# A frame between the two keys: inside one frame the engine still reads the
+	# cycle key as just pressed, and a cycle key pressed into a sweep pages it.
+	await tree.process_frame
 	Input.action_press(&"ability_scan")
 	sys.call("_process", 0.1)
 	Input.action_release(&"ability_scan")
@@ -93,7 +101,7 @@ func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
 ## grace is spent. (The fight's own clock stands still here, because only the
 ## target system is stepped — so the wait is set by hand for the second half.)
 func test_a_lock_waits_for_a_body_that_steps_out_of_reach() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner,cutter", "--target"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner,cutter", "--target"]))
 	sys.call("_process", 0.1)
 	var first: TargetSubject = sys.get("locked")
 	check(first != null)
@@ -114,7 +122,7 @@ func test_a_lock_waits_for_a_body_that_steps_out_of_reach() -> void:
 ## A villager can be locked and read, and the words are a person's words: no
 ## health, no signature, no notice glyph — what they are and what they are doing.
 func test_a_villager_can_be_read_as_a_person() -> void:
-	var sys := _make(PackedStringArray(["--folk=6", "--target"]))
+	var sys := await _make(PackedStringArray(["--folk=6", "--target"]))
 	sys.call("_process", 0.1)
 	# A person sorts below everything in the fight, so one step left from a fresh
 	# lock lands on one whatever else the coast has sent out.
@@ -148,7 +156,7 @@ func test_a_sweep_pages_through_a_big_field() -> void:
 	# The sweep is held from boot (--target=sweep) rather than pressed here: inside
 	# one frame the engine still reads a released key as just pressed, so a second
 	# read of the scan key in the same frame would toggle the sweep straight off.
-	var sys := _make(PackedStringArray(["--folk=12", "--target=sweep"]))
+	var sys := await _make(PackedStringArray(["--folk=12", "--target=sweep"]))
 	sys.call("_process", 0.1)
 	check(bool(sys.get("sweeping")))
 	gt(int(sys.get("pages")), 1, "twelve within reach is more than one page")
@@ -171,7 +179,7 @@ func test_a_sweep_pages_through_a_big_field() -> void:
 
 
 func test_targeting_changes_nothing_in_the_fight() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner", "--target"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner", "--target"]))
 	var sim := _game.player.sim
 	var body: MobState = sim.mobs[0]
 	var before := {"health": body.health, "pos": body.pos, "mood": body.mood, "facing": body.facing,
@@ -193,7 +201,7 @@ func test_targeting_changes_nothing_in_the_fight() -> void:
 ## The owner's ruling, drawn: every body carries a wordless tag at all times, and
 ## words appear only while the key is held (docs/DESIGN.md §Targeting).
 func test_words_only_when_the_player_asks_for_them() -> void:
-	var sys := _make(PackedStringArray(["--spawn=runner"]))
+	var sys := await _make(PackedStringArray(["--spawn=runner"]))
 	var view: UiTargetView = sys.get("view")
 	await tree.process_frame
 	UiDraw.tape.clear()

@@ -127,6 +127,8 @@ static func problems() -> PackedStringArray:
 static func declare_loot() -> void:
 	_ensure()
 	for d: SentinelDef in _order:
+		# Its own table id, not its kind: 56_economy rolls a kind's table on every
+		# kill, and this one is rolled once for the region it keeps.
 		Drops.declare(d.drops, [
 			# A relic's core: one per sentinel, and this keeper is the only thing
 			# in the world it comes off.
@@ -134,7 +136,7 @@ static func declare_loot() -> void:
 			# What comes off a body that size when it is opened up.
 			{"item": &"scrap", "count": Vector2i(6, 11)},
 			{"item": &"wick", "count": Vector2i(2, 5), "rarity": Rarity.UNCOMMON},
-		])
+		], d.kind)
 		Materials.declare(d.core, {
 			"sources": [d.drops], "rarity": Rarity.RELIC,
 			"what": "cut out of %s, still warm" % d.display_name,
