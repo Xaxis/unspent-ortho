@@ -1,8 +1,9 @@
 extends TestCase
-## The sky's rules for reading a frame at any hour (docs/ART.md sections 5, 6):
-## people take a fill light of their own in low light, water never takes
-## lamplight, the lantern's light sits outside the body, dusk's warmth lands on
-## lit faces while shade stays cool, and a lightning flash is a few frames.
+## The sky's rules for reading a frame at any hour (docs/ART.md sections 5, 6,
+## as LANTERN left them): people take a fill light of their own in low light,
+## water DOES take lamplight now and gives back a reflection rather than a glow
+## disc, the lantern's light sits outside the body, dusk's warmth lands on lit
+## faces while shade stays cool, and a lightning flash is a few frames.
 
 const Lights := preload("res://src/systems/15_lights.gd")
 const SkySystem := preload("res://src/systems/10_sky.gd")
@@ -69,7 +70,8 @@ func test_a_lamp_reaches_the_water_and_the_lantern_is_out_of_the_body() -> void:
 		gt(l.omni_attenuation, 0.0,
 			"and it falls off, so it is a light and not a disc with an edge")
 	var lantern: OmniLight3D = lights.lantern_light
-	eq(lantern.light_cull_mask & SkyLight.LAYER_WATER, 0, "nor the lantern")
+	check((lantern.light_cull_mask & SkyLight.LAYER_WATER) != 0,
+		"and so does the one the player is carrying, which is what wading at night is for")
 	check(lantern.visible, "lantern lit")
 	var off := Vector2(lantern.position.x - g.player.position.x, lantern.position.z - g.player.position.z)
 	gt(off.length(), 0.35, "the lantern's light is beside the body, not inside it")

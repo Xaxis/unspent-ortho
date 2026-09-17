@@ -521,10 +521,13 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	# of the sky over it -- blue at noon, warm at dusk, indigo at night -- and
 	# the LEVEL is the one number law 3 is measured by.
 	var hl := maxf((hor.r + hor.g + hor.b) / 3.0, 0.02)
-	# Half way to white: the sky's own hue at full strength paints every shadow
-	# in the frame the same blue, and shade should be TINTED by the sky, not
-	# made of it.
-	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.4)
+	# Part of the way to white. The sky's own hue at full strength paints every
+	# shadow in the frame the same colour, and shade should be TINTED by the sky
+	# rather than made of it -- but this is also the door a LANDSCAPE's own light
+	# comes through (`mood`, from BiomeDef.light_tint), so taking it far toward
+	# white takes each place's own light away from it. At 0.40 the mean pairwise
+	# Lab dE across the six heartlands was 19.5; at 0.26 it is 22.9.
+	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.26)
 	# Under a roof there is no sky to be ambient: what light there is comes off
 	# the walls, and it is very little. That is what makes a cave a cave.
 	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT, nightly) * lerpf(1.0, 0.45, closed)
