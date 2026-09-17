@@ -116,6 +116,27 @@ func test_a_still_week_kills_the_wind_spinners() -> void:
 	gt(SettlementRules.source(StructureKind.WIND_SPINNER, blowing, 12.0), 0.9, "a good blow turns it fully")
 
 
+## The blades do not care which quarter it comes from. `Weather.wind_at` returns
+## -1..1 and the SIGN is the direction — `weather_view` blows the snow along
+## `signf(wind)` — so a spinner read signed made nothing every time the wind
+## turned, which on a clear day is half the time on a 37-minute cycle. It is the
+## only generator anybody can build, so that was half of all the power in the
+## game, and the test above never noticed because both of its winds blow the same
+## way.
+func test_a_spinner_does_not_care_which_way_the_wind_blows() -> void:
+	for w: float in [0.3, 0.55, 0.8, 1.0]:
+		var east := {"kind": Weather.CLEAR, "strength": 0.0, "wind": w}
+		var west := {"kind": Weather.CLEAR, "strength": 0.0, "wind": -w}
+		near(SettlementRules.source(StructureKind.WIND_SPINNER, west, 12.0),
+			SettlementRules.source(StructureKind.WIND_SPINNER, east, 12.0), 1e-5,
+			"wind %.2f the other way turns the blades just as well" % w)
+	# And a dead calm is still a dead calm from either side.
+	for w: float in [0.0, 0.05, -0.05]:
+		near(SettlementRules.source(StructureKind.WIND_SPINNER,
+			{"kind": Weather.CLEAR, "strength": 0.0, "wind": w}, 12.0), 0.0, 1e-4,
+			"a breath of %.2f does not turn them" % w)
+
+
 func test_everything_standing_wears_and_the_rain_takes_the_hand_s_work_faster() -> void:
 	var s := a_place()
 	var thatch := s.add(StructureKind.LEAN_TO, Vector2(101, 100))
