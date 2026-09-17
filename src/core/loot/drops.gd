@@ -30,6 +30,12 @@ static var _bodies: Dictionary = {}
 ## hands its own spoils over on its own terms — a keeper, whose table is rolled
 ## once for its region and never again — must keep an id of its own or be paid
 ## twice. Saying which body it is keeps it pointable at all the same.
+##
+## So: a table is rolled by WHOEVER OWNS THE THING, and `of` is only for the case
+## where a body hands the spoils over. A landmark's cache, a works' salvage and a
+## settlement's spoils each take an id of their own and leave `of` empty — they
+## are opened, broken into and looted, not killed. Naming a body there would hand
+## the same goods out again the next time something of that kind died.
 static func declare(source: StringName, entries: Array, of: StringName = &"") -> void:
 	var rows: Array = []
 	for e: Variant in entries:
