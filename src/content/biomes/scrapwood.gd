@@ -93,6 +93,9 @@ static func make() -> BiomeDef:
 	# Under a closed canopy over dark ground: dimmer than the pines, and the
 	# darkness term goes as negative as the moss's so noon still reads as noon.
 	d.grade = Vector4(-0.52, 0.12, 0.0, 0.08)
+	# A canopy, but a broken one: more sky gets through here than through the
+	# pines and less than over open ground.
+	d.night_sky = 0.90
 	d.wet = 0.25
 	# The water here is dead. Everything the yard leached is in it, and it lies
 	# under a closed canopy: an oily green-black that gives nothing back. It was

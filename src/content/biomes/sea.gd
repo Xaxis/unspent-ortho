@@ -16,6 +16,8 @@ static func make() -> BiomeDef:
 		&"rain": 0.0, &"temp": 0.5, &"moist": 1.0, &"cliff": 0.0,
 	}
 	d.grade = Vector4(-0.1, 0.0, 0.04, 0.0)
+	# Nothing between the water and the sky, and the water holds what it is given.
+	d.night_sky = 1.20
 	d.weather = [
 		[Weather.CLEAR, 22, 0.0], [Weather.GREY, 30, 0.0], [Weather.RAIN, 20, 0.7],
 		[Weather.FOG, 14, 0.0], [Weather.STORM, 14, 0.5],

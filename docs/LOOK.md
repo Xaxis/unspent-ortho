@@ -124,8 +124,41 @@ pattern, not a result:
   apart**. And the web's own stand-in pass was writing the whole frame back every
   frame for nothing, 4.3 luma of lift at a clear noon with no shaft in it.
 
+- **"The moss is one flat teal sheet" was not its washes, and not the night.**
+  It was one number: FEN's SPECULAR, 0.68 on a relief of 0.010 — the second most
+  specular ground in the game on the flattest — and `world.gdshader` takes a
+  level face's normal to exactly vertical, so **every pixel of a bog had one
+  identical BRDF response**. That is a flat sheet by construction, and no wash
+  could have argued with it: the fen's `ground_mark` had been drawing hummocks,
+  black pools and bog cotton the whole time, and a broad sheen was painting over
+  all of it with the LIGHT's colour instead of the ground's. Measured at noon on
+  seed 7 the fen came back at luma **162** — brighter than coast turf at 100, off
+  a wash whose own luma is 58 — with chroma 13. Dropping the specular alone took
+  it to 80 and chroma to 25. The bog and the pinewood, the hardest pair in the
+  game to tell apart, were **2.61 mean-colour dE** apart, which is to say the
+  same colour; they are 7.09 now.
+- **And one global night was a real problem, but a third the size the frames
+  suggested.** The evidence quoted against it compared a frame of a lit VILLAGE
+  (24% under luma 24) with a frame of a bare BOG (92%). Bare against bare, on the
+  same seed at 23:00, it is 81% and 95% — a gap worth fixing, not a chasm. The
+  number that moved the bog was not the ambient either: scaling only the night
+  sky's ambient by 1.45 took its ground from luma 10.5 to **10.9**. A lid over
+  your head blocks the MOON as surely as the skyglow, so `BiomeDef.night_sky`
+  scales both, and the same 1.45 then moved it to 13.9.
+
 Each of those would have been expensive to fix at the symptom and cheap at the
 cause. **Look for the floor before repainting the room.**
+
+One more of the same shape, found while fixing the above: **the lantern in the
+limestone caves was DEEP RED**, sRGB (1.00, 0.39, 0.00) against the coast's
+ochre. Not a grading drift and not the tonemapper. `SkyLight.closed`'s own header
+says a roofed realm reads as night to everything the sky writes — and two lines
+did not keep it, `last_tint` and `last_energy`, both still read straight off the
+clock. `15_lights.compensate` divides its warm lamp by `last_tint` per channel
+and subtracts `last_energy` as a black point, so a cave at noon was told the sun
+was fully up in blue light, and it took the blue out of the lantern altogether.
+The lamp was never wrong and needed no clamp. **When a file states a rule in its
+own comments, check every line that should be keeping it.**
 
 ## Three methods that paid, and are worth reusing
 

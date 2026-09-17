@@ -60,6 +60,10 @@ static func make() -> BiomeDef:
 	d.hard_rock = true
 	d.decor_tints = {&"bloom": [P.BLOOM[1], P.BLOOM[2], P.ASH[3]], &"fronds": [P.EARTH[2], P.EARTH[1], P.ASH[2]], &"twig": [P.INK[2]]}
 	d.grade = Vector4(-0.42, -0.04, -0.15, 0.1)
+	# The Burning is lit from BELOW at night — vents, clinker, what is still
+	# alight — and its sky is thick with ash. A bright night sky on top of that
+	# would take the fires' own light off it, which is the whole picture here.
+	d.night_sky = 0.90
 	d.props = [PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE,
 		PropKind.COPPER_ORE, PropKind.IRON_ORE, PropKind.BONES, PropKind.VENT,
 		PropKind.DRIFTWOOD, PropKind.MUSSEL_ROCK]

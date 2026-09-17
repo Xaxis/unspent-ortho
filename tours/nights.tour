@@ -1,0 +1,53 @@
+# A night belongs to the landscape it falls on, and a bog is a mat and not a
+# mirror. The frames this package is judged on.
+#
+#   tools/tour.sh tours/nights.tour --seed=7
+#
+# Every frame is at 23:00 under a forced clear sky, EXCEPT the two that say
+# noon: the night rows are what changed and a landscape's weather rolling a fog
+# would be measuring the weather instead. The pairs are the point — a frame on
+# its own says nothing about whether a night is the LANDSCAPE's, only whether it
+# is dark, so the bog and the coast are always shot together and read together.
+#
+# What each frame has to show, so the next person can check it rather than
+# admire it:
+#   01/02  the bog by day is a BOG — dark, green, hummocked — and not the pale
+#          grey sheet it was. The fen measured luma 162 against coast turf's 100
+#          before this, off a wash whose own luma is 58, because FEN was the
+#          second most specular ground in the game on the flattest relief.
+#   03/04  the same two at midnight. The bog is darker than the coast, which is
+#          right, and there is STRUCTURE in the dark, which is the whole test:
+#          hummock, hollow, black water, the peat reading apart from the fen.
+#   05     the pinewood, the one landscape with a lid on it, darker than both.
+#   06     the border at midnight. There must be NO LINE across this frame: the
+#          night level crossfades on the same shares as the grade, the air, the
+#          water and the score.
+#   07     and the same border at noon, to hold 06 honest — a border that shows
+#          no seam because the whole frame went black is not a border that works.
+weather clear:0
+
+hour 12
+place moss
+wait 1.0
+shot 01-bog-by-day with land:moss
+place coast
+wait 1.0
+shot 02-coast-by-day with land:coast
+
+hour 23
+place moss
+wait 1.0
+shot 03-bog-at-midnight with land:moss
+place coast
+wait 1.0
+shot 04-coast-at-midnight with land:coast
+place pinewood
+wait 1.0
+shot 05-under-the-pines-at-midnight with land:pinewood
+
+place coast-moss
+wait 1.2
+shot 06-the-border-at-midnight with border:coast-moss
+hour 12
+wait 0.8
+shot 07-the-border-at-noon with border:coast-moss

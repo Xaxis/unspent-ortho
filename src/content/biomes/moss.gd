@@ -46,6 +46,13 @@ static func make() -> BiomeDef:
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	d.decor_tints = {&"bloom": [P.RUST[4], P.SAND[5], P.RUST[5]]}
 	d.grade = Vector4(-0.5, 0.16, 0.02, 0.06)
+	# A fen has NO LID ON IT. The moss is dark because its ground is dark — peat
+	# and sphagnum are the lowest-albedo surfaces in the game — and not because
+	# anything stands between it and the sky, so its night is the brightest of the
+	# surface landscapes and it still comes out the darkest picture. Under the one
+	# global night it was 95.3% below luma 24 at 23:00 against the coast's 81.4%,
+	# which is a bog nobody can cross rather than a bog that is dark.
+	d.night_sky = 1.45
 	d.wet = 0.35
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.PEAT_BANK,

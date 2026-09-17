@@ -144,6 +144,34 @@ var tree_tints: Dictionary = {}
 var hard_rock := false
 ## Multiplied into this landscape's light.
 var light_tint := Color(1, 1, 1)
+## How much of the NIGHT sky's own light reaches the ground here (1 = the
+## coast's, which is where the night was calibrated and which does not move).
+##
+## `lit` named the exposure/ambient/tonemap triple as its least confident call
+## precisely because it is ONE global setting serving landscapes whose albedos
+## differ by a factor of three: a night level tuned on the coast's mid-value
+## grass leaves a bog black and a salt pan glowing. This is that one number made
+## the landscape's own.
+##
+## It scales the night's AMBIENT and its MOON together, and the second half was
+## the correction: the first attempt scaled only the ambient, on the argument
+## that the moon is the same moon everywhere. It is — but how much of it reaches
+## the ground is exactly what a lid over your head changes, and a canopy blocks a
+## moon as surely as it blocks the skyglow. Scaling only the ambient also made
+## the lever too weak to measure: at 1.45 it moved a midnight bog's ground from
+## luma 10.5 to 10.9. Scaling both keeps the RATIO between them, which is what
+## decides whether a night has shape in it (see NIGHT_AMBIENT's own note), so a
+## dark landscape stays dark rather than going flat.
+##
+## Above 1 an open place under a wide sky (a fen, a salt pan, snow that throws
+## the sky back); below 1 anything with a lid on it (a canopy, a gorge). It is
+## spent only as far as night has fallen, so it can never touch a noon frame,
+## and it is blended across an ecotone on the same shares as the grade, the air
+## and the score (`SkyLight.night_sky_at`) — a night level that snapped at a
+## border would draw the border as a line, which is the one thing an ecotone
+## exists not to do. `SkyLight.NIGHT_SKY_LEAST/MOST` clamp it: readability at
+## night is a floor the content layer may not argue with.
+var night_sky := 1.0
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark
