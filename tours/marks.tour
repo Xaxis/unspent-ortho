@@ -22,7 +22,7 @@ walkto part 1.6
 tap swing
 await hit 1.8
 end
-shot 02-the-blow-leaves-it-standing
+shot 02-the-blow-leaves-it-standing with mob:watcher
 # And once more at the zoom the art review shot it at, where the old flash was a
 # bone-white silhouette sixty pixels tall with the amber gone out of it.
 zoom 8
@@ -32,7 +32,7 @@ walkto part 1.6
 tap swing
 await hit 1.8
 end
-shot 03-and-close-enough-to-count-the-pixels
+shot 03-and-close-enough-to-count-the-pixels with mob:watcher
 zoom 15
 wait 0.4
 
@@ -53,7 +53,7 @@ shot 04-its-light-is-smaller-than-it-is with mob:watcher
 tap ability_scan
 await ability:scan 5
 wait 0.4
-shot 05-read-over-the-thing-it-reads
+shot 05-read-over-the-thing-it-reads with mob:watcher
 
 # --- The dash leaves the body showing ----------------------------------------
 # Speed lines are ink over the world, laid where the body WAS: the player must
@@ -64,11 +64,11 @@ hour 11
 weather clear:0
 place coast
 wait 1.4
-shot 06-before-the-dash
+shot 06-before-the-dash with land:coast
 tap ability_dash
 await ability:dash 5
 wait 0.03
-shot 07-the-dash-leaves-the-body-showing
+shot 07-the-dash-leaves-the-body-showing with land:coast
 
 # --- The magnet line is a line -----------------------------------------------
 # Far enough back that the line is a LINE: a magnet throw reaches eight tiles,
@@ -80,15 +80,15 @@ place tip
 wait 0.8
 walk -1,-1 2.6
 wait 0.3
-shot 08-across-from-a-tip
+shot 08-across-from-a-tip with prop:tip
 try 8
 walk 1,1 0.3
 tap ability_grapple
 await ability:grapple 1.5
 end
-shot 09-the-line-takes-hold
+shot 09-the-line-takes-hold with prop:tip
 wait 0.45
-shot 10-and-it-shortens
+shot 10-and-it-shortens with prop:tip
 
 # --- Crouched, still a person ------------------------------------------------
 coast calm
@@ -99,14 +99,14 @@ shot 11-standing-in-the-heather
 hold crouch
 await crouched 3
 wait 0.6
-shot 12-down-in-the-heather
+shot 12-down-in-the-heather with crouched
 walk 1,0 0.5
-shot 13-and-moving-down-there
+shot 13-and-moving-down-there with crouched
 # And closer than anyone plays, which is where the art review found it: the
 # pose has to hold up under a magnifying glass as well as at 640x360.
 zoom 6
 wait 0.5
-shot 14-down-in-the-heather-close
+shot 14-down-in-the-heather-close with crouched
 release crouch
 wait 0.5
 shot 15-and-up-again-close
@@ -136,9 +136,9 @@ shot 16-the-read-is-laid with mob:watcher
 tap ability_dash
 await ability:dash 4
 wait 0.04
-shot 17-and-holds-through-the-throw
+shot 17-and-holds-through-the-throw with mob:watcher
 wait 0.7
-shot 18-and-is-still-there-after
+shot 18-and-is-still-there-after with mob:watcher
 # And through the six seconds of a glide, which is a flight and not a throw:
 # off a height with a machine still in reach, the read is on it the whole way.
 place summit
@@ -157,7 +157,7 @@ shot 19-a-machine-read-on-a-height with mob:lineman
 tap ability_glide
 await gliding 5
 wait 0.8
-shot 20-and-through-a-whole-glide
+shot 20-and-through-a-whole-glide with gliding,mob:lineman
 
 # --- Breath steps off the snow -----------------------------------------------
 # The cue fires on its own beat and hangs a second and a half, so the frame is
@@ -171,11 +171,11 @@ await cold 12
 await pressure_bites 15
 await breath 10
 wait 0.15
-shot 21-breath-on-white-ground
+shot 21-breath-on-white-ground with cold,land:snowfield
 wait 2.0
 await breath 10
 wait 0.6
-shot 22-and-the-next-breath
+shot 22-and-the-next-breath with cold,land:snowfield
 # And at night, on the same white ground. A mark's paint is as pale as snow is,
 # so under one light the two land on the same value and the cloud vanishes into
 # the field it was breathed over: a breath has to step off its page at every
@@ -186,4 +186,4 @@ wait 1.6
 await cold 12
 await breath 12
 wait 0.15
-shot 23-breath-on-white-ground-at-night
+shot 23-breath-on-white-ground-at-night with cold,land:snowfield
