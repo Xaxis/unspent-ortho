@@ -290,7 +290,7 @@ Assume you are not alone: waves run for hours, and the owner opens other session
 ```sh
 git worktree list                       # a worktree is someone's live desk
 git branch --list 'a2/*' 'm2/*'         # branches a wave is writing to
-pgrep -x godot | wc -l                  # runs in flight (a tour can take minutes)
+pgrep -ix godot | wc -l                 # runs in flight (-i: the binary is "Godot"; -x godot alone counts zero)
 sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturated
 ```
 
