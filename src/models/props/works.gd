@@ -66,9 +66,19 @@ static func lit(col: Color, a: float) -> Color:
 
 
 ## A straight rust run down a FOUND face: ruled, even, ending square.
+##
+## `along` runs ACROSS the face and a quad's front is `(c - b) x (a - b)`, which
+## in the order these corners were first written came out at -`out`: every rust
+## run in the game stood a hair proud of its plate FACING INTO IT, and
+## found.gdshader culls a back face, so not one of them has ever been drawn.
+## Nothing said so, because a missing thing raises no error
+## (tests/render/test_found_drawn.gd). The winding is decided here, from the
+## direction the run is meant to be seen from, and never left to corner order.
 static func run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
 	var o := out.normalized()
 	var along := Vector3(o.z, 0, -o.x) * width * 0.5
+	if along.cross(Vector3.DOWN).dot(o) < 0.0:
+		along = -along
 	var lift := o * 0.006
 	k.found.quad(top - along + lift, top + along + lift, top + along + Vector3(0, -length, 0) + lift, top - along + Vector3(0, -length, 0) + lift, P.RUST[2])
 
@@ -144,22 +154,29 @@ static func road_sign(k: Kit, v: int, c: int) -> void:
 			k.found.pop()
 			k.found.quad(Vector3(-0.04, y0, -0.42), Vector3(-0.04, y0, 0.42), Vector3(-0.04, y0 + 1.0, 0.42), Vector3(-0.04, y0 + 1.0, -0.42), P.PLATE[2])
 		_:
-			k.found.prism(0, -0.05, 0, 0.04, 1.1, 0.04, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
-			k.found.quad(Vector3(0.045, 0.62, 0.26), Vector3(0.045, 0.62, -0.26), Vector3(0.045, 1.02, -0.26), Vector3(0.045, 1.02, 0.26), face)
+			# The machine's plate, and it stands TALLER than what was nailed over
+			# it: at 0.62..1.02 the people's two boards covered every pixel of it,
+			# so the one thing this variant is about — their warning nailed over
+			# the machines' — read as a wood board on a post, and the plate under
+			# it was triangles nobody had ever seen.
+			k.found.prism(0, -0.05, 0, 0.04, 1.14, 0.04, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
+			k.found.quad(Vector3(0.042, 0.56, 0.3), Vector3(0.042, 0.56, -0.3), Vector3(0.042, 1.16, -0.3), Vector3(0.042, 1.16, 0.3), P.PLATE[1])
+			k.found.quad(Vector3(0.048, 0.59, 0.27), Vector3(0.048, 0.59, -0.27), Vector3(0.048, 1.13, -0.27), Vector3(0.048, 1.13, 0.27), face)
 	k.found.pop()
 	if v % 3 == 2:
 		# People's board over it: planks, a skull and a bar, a warning of their own.
 		var wood := Remains.wood_of(c)
+		# Low on the plate, so its pale ruled head stands clear over them.
 		k.made.push(Transform3D(lean * Basis(Vector3.RIGHT, 0.08), Vector3(0.07, 0.0, 0.0)))
-		k.slab(0.0, 0.55, 0.0, 0.03, 0.26, 0.7, s, wood[0], wood[1], 0.02)
-		k.slab(0.0, 0.82, 0.02, 0.03, 0.24, 0.66, s + 1, wood[1], wood[0], 0.02)
-		k.made.prism(0.02, 0.8, -0.05, 0.1, 0.83, 0.09, 7, P.LINEN[5])
-		k.made.quad(Vector3(0.025, 0.82, -0.1), Vector3(0.025, 0.82, -0.06), Vector3(0.025, 0.86, -0.06), Vector3(0.025, 0.86, -0.1), P.INK[0])
-		k.made.quad(Vector3(0.025, 0.82, -0.04), Vector3(0.025, 0.82, 0.0), Vector3(0.025, 0.86, 0.0), Vector3(0.025, 0.86, -0.04), P.INK[0])
-		k.made.quad(Vector3(0.025, 0.63, 0.28), Vector3(0.025, 0.63, -0.28), Vector3(0.025, 0.69, -0.26), Vector3(0.025, 0.69, 0.3), P.RUST[3])
+		k.slab(0.0, 0.41, 0.0, 0.03, 0.26, 0.7, s, wood[0], wood[1], 0.02)
+		k.slab(0.0, 0.68, 0.02, 0.03, 0.24, 0.66, s + 1, wood[1], wood[0], 0.02)
+		k.made.prism(0.02, 0.66, -0.05, 0.1, 0.69, 0.09, 7, P.LINEN[5])
+		k.made.quad(Vector3(0.025, 0.68, -0.1), Vector3(0.025, 0.68, -0.06), Vector3(0.025, 0.72, -0.06), Vector3(0.025, 0.72, -0.1), P.INK[0])
+		k.made.quad(Vector3(0.025, 0.68, -0.04), Vector3(0.025, 0.68, 0.0), Vector3(0.025, 0.72, 0.0), Vector3(0.025, 0.72, -0.04), P.INK[0])
+		k.made.quad(Vector3(0.025, 0.49, 0.28), Vector3(0.025, 0.49, -0.28), Vector3(0.025, 0.55, -0.26), Vector3(0.025, 0.55, 0.3), P.RUST[3])
 		k.made.pop()
 	if c == Country.SNOWFIELD:
-		k.clump(0.0, 1.28 if v % 3 == 0 else (1.7 if v % 3 == 1 else 1.02), 0.0, 0.2 if v % 3 == 0 else 0.26, 0.06, s + 7, P.RIME[5], 6)
+		k.clump(0.0, 1.28 if v % 3 == 0 else (1.7 if v % 3 == 1 else 1.16), 0.0, 0.2 if v % 3 == 0 else 0.26, 0.06, s + 7, P.RIME[5], 6)
 		Remains.banks(k, [[0.2, 0.2, 0.3, 0.2], [-0.2, -0.1, 0.25, 0.14]], P.RIME[5], s + 8)
 	elif c == Country.BONELANDS:
 		Remains.banks(k, [[-0.25, 0.1, 0.3, 0.1]], Remains.drift_of(c)[0], s + 8)
@@ -258,9 +275,18 @@ static func intake(k: Kit, v: int, c: int) -> void:
 	k.chamfer(-0.6, -0.1, 0.0, 1.6, 1.25, 1.9, 0.22, body, P.PLATE[3])
 	k.chamfer(-0.6, 1.15, 0.0, 1.3, 0.2, 1.6, 0.14, P.PLATE[1], P.PLATE[2])
 	# Louvres on the landward end, a door plate, the strip along the eave.
+	#
+	# Real blades, not a painted ladder: these were flat quads on the plane of the
+	# end wall wound to face +X, which is INTO the housing, so four of the five
+	# drew from no bearing at all. A blade that sheds rain slopes down and out,
+	# which turns its one seen face UP and out — the only way a thing on a wall
+	# stays visible to a camera that is always above it. And no slot drawn behind
+	# it: a recess under a blade that overhangs it is hidden from that same
+	# camera, so the blade's own shade on the wall is the slot.
 	for i in 5:
 		var y := 0.25 + i * 0.16
-		k.found.quad(Vector3(-1.401, y, 0.5), Vector3(-1.401, y, -0.5), Vector3(-1.401, y + 0.08, -0.5), Vector3(-1.401, y + 0.08, 0.5), P.PLATE[0])
+		Remains._facing_quad(k.found, Vector3(-1.398, y + 0.09, 0.5), Vector3(-1.398, y + 0.09, -0.5),
+			Vector3(-0.07, -0.08, 0), Vector3(-0.75, 0.66, 0), P.PLATE[0])
 	for sz: float in [1.0, -1.0]:
 		var z := 0.951 * sz
 		Remains._facing_quad(k.found, Vector3(-1.3, 0.99, z), Vector3(0.1, 0.99, z), Vector3(0, 0.09, 0), Vector3(0, 0, sz), STRIP)
@@ -624,14 +650,28 @@ static func conveyor(k: Kit, v: int, c: int) -> void:
 	var tail := Vector3(-half, h, 0.0)
 	for sz: float in [-0.26, 0.26]:
 		k.rod(tail + Vector3(0, 0, sz), tip + Vector3(0, 0, sz), 0.025, 4, P.PLATE[3])
+	# The belt RIDES its rollers and sags between them. Laid flat, it was a sheet
+	# wider than the rollers were long and the belt's own thickness above them,
+	# so every roller on this conveyor was drawn from no bearing the play camera
+	# can take. Riding them, each roller is a ruled bar across the belt where it
+	# is highest, and its ends stand out past the belt's edge into the rails it
+	# turns in — which is what a conveyor looks like.
 	var n := 8
-	for i in n:
+	var roll := 0.055
+	var sag := 0.09
+	for i in n + 1:
 		var a := tail.lerp(tip, float(i) / n) + Vector3(0, -0.03, 0)
-		var b := tail.lerp(tip, float(i + 1) / n) + Vector3(0, -0.03, 0)
-		k.found.quad(a + Vector3(0, 0, 0.22), b + Vector3(0, 0, 0.22), b + Vector3(0, 0, -0.22), a + Vector3(0, 0, -0.22), P.INK[3] if i % 2 else P.STONE[1])
-		k.rod(a + Vector3(0, -0.05, -0.24), a + Vector3(0, -0.05, 0.24), 0.03, 6, P.PLATE[4])
+		k.rod(a + Vector3(0, 0, -0.3), a + Vector3(0, 0, 0.3), roll, 6, P.PLATE[4])
+	for i in n:
+		var a := tail.lerp(tip, float(i) / n) + Vector3(0, roll - 0.032, 0)
+		var b := tail.lerp(tip, float(i + 1) / n) + Vector3(0, roll - 0.032, 0)
+		var m := a.lerp(b, 0.5) - Vector3(0, sag, 0)
+		var col: Color = P.INK[3] if i % 2 else P.STONE[1]
+		k.found.quad(a + Vector3(0, 0, 0.22), m + Vector3(0, 0, 0.22), m + Vector3(0, 0, -0.22), a + Vector3(0, 0, -0.22), col)
+		k.found.quad(m + Vector3(0, 0, 0.22), b + Vector3(0, 0, 0.22), b + Vector3(0, 0, -0.22), m + Vector3(0, 0, -0.22), col)
 		if not fallen or i < n - 2:
-			k.stone(a.x + 0.1, a.y - 0.02, Kit.j(s, i, 0.12), 0.08, 0.07, s + i, P.RUST[3] if i % 2 else P.STONE[2], 4)
+			# Ore rides in the sag, which is where it would gather.
+			k.stone(m.x, m.y - 0.01, Kit.j(s, i, 0.12), 0.08, 0.07, s + i, P.RUST[3] if i % 2 else P.STONE[2], 4)
 	if fallen:
 		k.found.quad(Vector3(half - 0.2, 0.3, -0.2), Vector3(half - 0.2, 0.3, 0.2), Vector3(half - 0.1, -0.05, 0.25), Vector3(half - 0.3, -0.05, -0.2), P.INK[2])
 	for i in 6:

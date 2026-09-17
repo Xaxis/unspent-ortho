@@ -160,8 +160,14 @@ static func corrugated(pen: MeshKit, o: Vector3, u: Vector3, v: Vector3, ribs: i
 
 
 ## A rust run down a MADE face from `top`: wide at the top, drying to a thread.
+## Wound from the direction it is meant to be seen from: taken in corner order
+## the front came out at -`out`, and world.gdshader culls a back face, so every
+## streak in this file stood proud of its wall facing into it and none of them
+## drew (props/works.gd `run` had the same fault).
 static func streak(k: Kit, top: Vector3, width: float, length: float, out: Vector3, col: Color = P.RUST[2]) -> void:
 	var along := Vector3(out.z, 0, -out.x).normalized() * width * 0.5
+	if along.cross(Vector3.DOWN).dot(out) < 0.0:
+		along = -along
 	var lift := out.normalized() * 0.008
 	var mid := top + Vector3(0, -length * 0.5, 0)
 	var foot := top + Vector3(0, -length, 0)
@@ -175,11 +181,13 @@ static func patch(k: Kit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, tone: 
 	k.plate(a, b, c, d, P.PLATE[tone], P.PLATE[maxi(tone - 2, 0)], P.PLATE[5])
 
 
-## Machine plate that must read from either side (a roof seen from above and
-## below, a panel propped at any angle).
-static func plate_both(k: Kit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, tone: int = 3) -> void:
-	patch(k, a, b, c, d, tone)
-	patch(k, d, c, b, a, tone)
+## There is no two-sided plate here any more. Its one caller was the dugout's
+## roof, which is dug into the ash with the bank closed over both slopes: the
+## play camera is always above it, so the four undersides it drew were the
+## largest unseen pieces in the game (about 450 cells each) and cost triangles
+## in every chunk bake. A plate a player really can get under wants ONE call per
+## face, wound deliberately, not a pair that hides half of itself by
+## construction (tests/render/test_found_drawn.gd).
 
 
 ## A tube of stolen neon along a wall from a to b, standing out along `out`:
@@ -513,7 +521,11 @@ static func _fish_shack(k: Kit, s: int, lit: bool) -> void:
 	for i in 3:
 		k.made.prism(1.0, i * 0.22, -0.9, 0.2, 0.2 + i * 0.22, 0.17, 6, P.EARTH[2] if i % 2 else P.EARTH[3], P.INK[2])
 	if lit:
-		_wired(k, Vector3(0.79, 0.45, -0.7), Vector3(0.79, 0.45, -0.3), Vector3(1, 0, 0), Vector3(0.6, ry + 0.02, -1.1), NEON[0])
+		# At the far end of the door wall from the creels: the nets hang out at
+		# x 1.42 from z -1.3 to 0.72 and stood squarely in front of the panel,
+		# so the one thing that says somebody wired a machine into this shack
+		# was drawn by no bearing the play camera can take.
+		_wired(k, Vector3(0.79, 0.45, 0.76), Vector3(0.79, 0.45, 1.0), Vector3(1, 0, 0), Vector3(0.6, ry + 0.02, 1.1), NEON[0])
 	banks(k, [[-0.6, 1.05, 0.4, 0.14], [0.7, 1.1, 0.35, 0.12]], P.SAND[4], s + 70)
 
 
@@ -529,16 +541,25 @@ static func _stilt_hut(k: Kit, s: int, lit: bool) -> void:
 	k.made.pop()
 	# Reed thatch, heavy and shaggy, held down with a net of cable.
 	var ry := floor_y + 0.86
-	k.clump(0.0, ry - 0.12, 0.0, 1.05, 0.75, s + 2, P.EARTH[3].lerp(P.MOSS[2], 0.3), 9)
+	var dome := Vector3(0.0, ry - 0.12, 0.0)
+	var dome_r := 1.05
+	var dome_h := 0.75
+	k.clump(dome.x, dome.y, dome.z, dome_r, dome_h, s + 2, P.EARTH[3].lerp(P.MOSS[2], 0.3), 9)
 	var th := k.made.vertex_count()
 	for i in 14:
 		var a := float(i) / 14.0 * TAU
 		var base := Vector3(cos(a) * 0.85, ry - 0.02, sin(a) * 0.95)
 		k.blade(base, base * 1.18 + Vector3(0, -0.28, 0), 0.12, a + 1.57, P.EARTH[3] if i % 2 else P.SAND[3])
 	k.sway_by_height(th, ry - 0.3, ry, 0.15)
-	k.cable(Vector3(-0.7, ry + 0.05, -0.6), Vector3(0.7, ry + 0.1, 0.6), -0.2, 4, 0.01, P.INK[2])
-	k.cable(Vector3(0.7, ry + 0.05, -0.6), Vector3(-0.7, ry + 0.1, 0.6), -0.2, 4, 0.01, P.INK[2])
-	patch(k, Vector3(0.59, floor_y + 0.2, -0.55), Vector3(0.59, floor_y + 0.2, -0.05), Vector3(0.59, floor_y + 0.65, -0.05), Vector3(0.59, floor_y + 0.65, -0.55), 3)
+	# Over the thatch, not through it: drawn as two chords lifted 0.2 the cables
+	# ran INSIDE a dome 0.75 deep, so the net that is the whole reason this roof
+	# stays on was never once drawn (tests/render/test_found_drawn.gd).
+	_rope_over(k, dome, dome_r, dome_h, 0.6, P.INK[2])
+	_rope_over(k, dome, dome_r, dome_h, 0.6 + PI * 0.5, P.INK[2])
+	# The machine plate is on the ROOF, over a hole in the reeds and weighted
+	# with a stone. On the door wall it sat under a thatch that overhangs by
+	# half a tile, and at this camera's pitch that hides the whole wall.
+	_thatch_patch(k, dome, dome_r, dome_h, -0.55, s + 7)
 	k.made.quad(Vector3(0.6, floor_y + 0.07, 0.35), Vector3(0.6, floor_y + 0.07, 0.05), Vector3(0.6, floor_y + 0.7, 0.05), Vector3(0.6, floor_y + 0.7, 0.35), P.INK[2])
 	for i in 5:
 		var y := i * 0.17
@@ -550,6 +571,37 @@ static func _stilt_hut(k: Kit, s: int, lit: bool) -> void:
 	_pool(k, Vector3(0.0, 0.0, 0.0), 1.2, s + 6)
 	if lit:
 		_wired(k, Vector3(0.6, floor_y + 0.12, -0.45), Vector3(0.6, floor_y + 0.12, -0.12), Vector3(1, 0, 0), Vector3(-0.2, ry + 0.4, 0.0), NEON[2])
+
+
+## A cable pulled over a thatch dome along `ang`, following the dome's own
+## surface (`Kit.clump_top`) and pegged past the eave at both ends.
+static func _rope_over(k: Kit, centre: Vector3, r: float, h: float, ang: float, col: Color) -> void:
+	var dir := Vector3(cos(ang), 0.0, sin(ang))
+	var pts := PackedVector3Array()
+	for i in 9:
+		var u := -1.0 + float(i) * 0.25
+		var p := centre + dir * r * u
+		p.y = centre.y + h * Kit.clump_top(absf(u)) + 0.05
+		pts.append(p)
+	for i in pts.size() - 1:
+		k.rod(pts[i], pts[i + 1], 0.011, 3, col)
+	for e: int in [0, pts.size() - 1]:
+		k.rod(pts[e], pts[e] + dir * (0.14 if e > 0 else -0.14) + Vector3(0, -0.24, 0), 0.01, 3, col)
+
+
+## A sheet of plate laid over a hole in a thatch dome on the `ang` side of it,
+## lying on the dome's own surface, with a stone on it to hold it down.
+static func _thatch_patch(k: Kit, centre: Vector3, r: float, h: float, ang: float, s: int) -> void:
+	var dir := Vector3(cos(ang), 0.0, sin(ang))
+	var side := Vector3(-sin(ang), 0.0, cos(ang))
+	var corners: Array[Vector3] = []
+	for c: Vector2 in [Vector2(0.18, 0.30), Vector2(0.66, 0.24), Vector2(0.62, -0.30), Vector2(0.14, -0.26)]:
+		var p := centre + dir * (r * c.x) + side * (r * c.y)
+		p.y = centre.y + h * Kit.clump_top(c.length()) + 0.06
+		corners.append(p)
+	patch(k, corners[0], corners[1], corners[2], corners[3], 2)
+	var mid := (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25
+	k.stone(mid.x, mid.y, mid.z, 0.11, 0.1, s, P.STONE[2], 5)
 
 
 ## A still pool of black water with a green rim, lying flat on the ground.
@@ -661,10 +713,10 @@ static func _dugout(k: Kit, s: int, lit: bool) -> void:
 		var x := -0.8 + i * 0.5
 		k.limb(Vector3(x, 0.1, -0.75), Vector3(x, 0.85, 0.0), 0.04, 0.035, 4, P.INK[2])
 		k.limb(Vector3(x, 0.85, 0.0), Vector3(x, 0.1, 0.75), 0.035, 0.03, 4, P.INK[2])
-	k.found.push(Transform3D(Basis.IDENTITY, Vector3(0, 0, 0)))
-	plate_both(k, Vector3(-0.95, 0.35, -0.55), Vector3(0.75, 0.35, -0.55), Vector3(0.75, 0.9, 0.05), Vector3(-0.95, 0.9, 0.05), 2)
-	plate_both(k, Vector3(0.75, 0.35, 0.55), Vector3(-0.95, 0.35, 0.55), Vector3(-0.95, 0.9, -0.03), Vector3(0.75, 0.9, -0.03), 3)
-	k.found.pop()
+	# One face per slope, turned to the sky: this roof is dug into the ash with
+	# the bank closed over both sides, so its undersides were never reachable.
+	patch(k, Vector3(-0.95, 0.9, 0.05), Vector3(0.75, 0.9, 0.05), Vector3(0.75, 0.35, -0.55), Vector3(-0.95, 0.35, -0.55), 2)
+	patch(k, Vector3(0.75, 0.9, -0.03), Vector3(-0.95, 0.9, -0.03), Vector3(-0.95, 0.35, 0.55), Vector3(0.75, 0.35, 0.55), 3)
 	k.clump(-0.4, 0.6, 0.0, 0.6, 0.35, s + 5, P.ASH[2], 8)
 	k.made.quad(Vector3(0.78, 0.0, 0.3), Vector3(0.78, 0.0, -0.3), Vector3(0.78, 0.6, -0.2), Vector3(0.78, 0.6, 0.2), P.INK[1])
 	k.plate(Vector3(1.05, 0.0, -0.55), Vector3(1.05, 0.0, -0.2), Vector3(1.0, 0.75, -0.2), Vector3(1.0, 0.75, -0.55), P.PLATE[3], P.PLATE[1], P.PLATE[5])

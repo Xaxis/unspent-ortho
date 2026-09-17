@@ -147,7 +147,11 @@ static func wreck(k: Kit, v: int, c: int) -> void:
 				if i == 2:
 					k.found.quad(Vector3(x0, 0.3, 0.66), Vector3(x1, 0.3, 0.66), Vector3(x1, 0.8, 0.66), Vector3(x0 + 0.1, 0.72, 0.66), rust)
 				if i == 1:
-					k.found.quad(Vector3(x0 + 0.06, 1.12, -0.3), Vector3(x1, 1.18, -0.44), Vector3(x1, 1.18, 0.2), Vector3(x0 + 0.1, 1.1, 0.1), body)
+					# Wound to face UP: in the order its corners were written this
+					# deck plate faced the ground, and found.gdshader culls a
+					# back face, so the one piece of plate still hanging on over
+					# the torn end drew from no bearing at all.
+					k.found.quad(Vector3(x0 + 0.1, 1.1, 0.1), Vector3(x1, 1.18, 0.2), Vector3(x1, 1.18, -0.44), Vector3(x0 + 0.06, 1.12, -0.3), body)
 				continue
 			# Bands: every third plate rust, the rest weathered violet, alternating.
 			var col := rust if i % 3 == 1 else (body if i % 2 == 0 else lit)
@@ -167,7 +171,12 @@ static func wreck(k: Kit, v: int, c: int) -> void:
 		for e in range(1, sec.size() - 1):
 			k.found.tri(Vector3(LEN * 0.5, sec[0].y, sec[0].x), Vector3(LEN * 0.5, sec[e].y, sec[e].x), Vector3(LEN * 0.5, sec[e + 1].y, sec[e + 1].x), GroundColors.down(body, 0.2))
 		# The visor slit at the nose, dark: the light went out.
-		k.found.quad(Vector3(LEN * 0.5 + 0.004, 0.62, -0.34), Vector3(LEN * 0.5 + 0.004, 0.62, 0.34), Vector3(LEN * 0.5 + 0.004, 0.74, 0.34), Vector3(LEN * 0.5 + 0.004, 0.74, -0.34), P.COLD[0])
+		# Wound to face OUT of the nose, and set in a hood that stands clear of
+		# the cap: taken in corner order the slit faced back into the hull, and
+		# at four thousandths proud there was no bearing it could be seen from.
+		for sy: float in [0.58, 0.78]:
+			k.found.quad(Vector3(LEN * 0.5, sy, -0.38), Vector3(LEN * 0.5, sy, 0.38), Vector3(LEN * 0.5 + 0.05, sy, 0.38), Vector3(LEN * 0.5 + 0.05, sy, -0.38), GroundColors.down(body, 0.25) if sy < 0.7 else dark)
+		k.found.quad(Vector3(LEN * 0.5 + 0.05, 0.76, -0.36), Vector3(LEN * 0.5 + 0.05, 0.76, 0.36), Vector3(LEN * 0.5 + 0.05, 0.6, 0.36), Vector3(LEN * 0.5 + 0.05, 0.6, -0.36), P.COLD[0])
 		# The crane arm, a straight lattice snapped and folded back on the hull.
 		k.rod(Vector3(0.8, 1.15, 0), Vector3(1.2, 1.9, 0), 0.05, 4, body)
 		k.rod(Vector3(1.2, 1.9, 0), Vector3(0.3, 1.5, 0.25), 0.04, 4, body)
@@ -202,6 +211,22 @@ static func _drift(k: Kit, lumps: Array, col: Color, seed_value: int) -> void:
 		k.clump(l[0], -0.2, l[1], l[2], float(l[3]) + 0.2, seed_value + i, col if i % 2 == 0 else GroundColors.down(col, 0.08), 9)
 
 
+## The three heaps of a tip, as (x, z, radius, height, foot).
+const HEAPS: Array[Array] = [[0.0, 0.0, 1.3, 0.72, -0.12], [0.45, -0.3, 0.75, 0.55, 0.1], [-0.7, 0.5, 0.5, 0.3, -0.1]]
+
+
+## Where the spoil actually is at (x, z). The scrap was laid on an imagined cone
+## (`0.55 - r * 0.35`) that sits well inside the heaps the clumps make, so five
+## of the sheets on a tip were buried in it and drew from no bearing
+## (tests/render/test_found_drawn.gd).
+static func _heap_y(x: float, z: float) -> float:
+	var top := 0.0
+	for l: Array in HEAPS:
+		var d := Vector2(x - float(l[0]), z - float(l[1])).length()
+		top = maxf(top, float(l[4]) + float(l[3]) * Kit.clump_top(d / float(l[2])))
+	return top
+
+
 static func tip(k: Kit, v: int, _c: int) -> void:
 	var s := 10800 + v * 17
 	# A heap: soil and slag under (MADE), scrap on top (FOUND).
@@ -211,7 +236,7 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 	for i in 9:
 		var a := float(i) * 2.39996 + v
 		var r := 0.3 + fmod(float(i) * 0.19, 0.8)
-		var y := 0.55 - r * 0.35
+		var y := _heap_y(cos(a) * r, sin(a) * r)
 		var col: Color = [P.PLATE[2], P.RUST[2], P.STONE[2], P.RUST[3], P.PLATE[3], P.STONE[1]][i % 6]
 		k.found.push(Transform3D(Basis(Vector3(cos(a), 0.5, sin(a)).normalized(), 0.6 + i * 0.3), Vector3(cos(a) * r, y, sin(a) * r)))
 		k.chamfer(0, 0, 0, 0.36 + fmod(i * 0.13, 0.25), 0.05 + (i % 3) * 0.04, 0.24 + fmod(i * 0.09, 0.2), 0.03, col)
@@ -224,7 +249,7 @@ static func tip(k: Kit, v: int, _c: int) -> void:
 	k.cable(Vector3(-0.9, 0.1, -0.4), Vector3(0.3, 0.7, 0.2), -0.1, 5, 0.025, P.INK[2])
 	k.cable(Vector3(0.3, 0.7, 0.2), Vector3(1.1, 0.05, 0.6), 0.1, 4, 0.025, P.INK[2])
 	if v % 2 == 1:
-		k.chamfer(0.2, 0.55, 0.1, 0.9, 0.05, 0.6, 0.06, P.PLATE[3], P.PLATE[4])
+		k.chamfer(0.2, _heap_y(0.2, 0.1), 0.1, 0.9, 0.05, 0.6, 0.06, P.PLATE[3], P.PLATE[4])
 
 
 ## A hole in the ground with fire under it (art findings 16 and 2, twice asked
