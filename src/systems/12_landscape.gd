@@ -16,6 +16,16 @@ func _process(_delta: float) -> void:
 		return
 	_frames += 1
 	if game.options.stats and _frames == maxi(3, game.options.frames - 1):
+		# What the frame was actually drawn by, before what it cost: a tier that
+		# quietly stepped down, or a machine that never got Forward+, changes every
+		# number on the next line and is invisible otherwise (docs/LOOK.md).
+		# "world " first: tools/shot.sh only forwards lines that begin `world ` or
+		# `shot `, so a line named anything else is printed and thrown away.
+		var px := Quality.render_pixels()
+		print("world render: %s, quality %s, world %dx%d of %dx%d, slate %dx%d" % [
+			"forward_plus" if Quality.forward_plus() else "gl_compatibility",
+			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
+			UiBase.DESIGN.x, UiBase.DESIGN.y])
 		print(stats_line(game.view))
 
 

@@ -44,6 +44,7 @@ func _ready() -> void:
 	name = "web_probe"
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	print("web probe start (web %s, threads %s, scene %s, args %s)" % [OS.has_feature("web"), BootPage.has_threads(), scene.name if scene != null else "none", " ".join(OS.get_cmdline_user_args())])
+	_check_renderer()
 	_check_systems()
 	_check_focus()
 	_check_save()
@@ -54,6 +55,25 @@ func _ready() -> void:
 	_proven_before = Engine.has_meta(PATH_PROVEN)
 	if _proven_before:
 		print("web skip audio path (a tone reached the meter earlier in this page; no tone now)")
+
+
+## That the web really did degrade, rather than being asked to and failing
+## quietly (docs/LOOK.md). Forward+ is the desktop target and the browser gets
+## `gl_compatibility` through a `.web` feature override in project.godot — an
+## override nobody had proved took effect, which is the sort of thing that is
+## discovered a month later by a black screen on somebody else's machine.
+##
+## The honest question is not what the setting SAYS but what the engine BUILT:
+## Compatibility has no RenderingDevice. The tier follows from that, so this one
+## line says the renderer, the tier and what the world is actually rendered at.
+func _check_renderer() -> void:
+	var asked := str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "?"))
+	var forward := Quality.forward_plus()
+	var px := Quality.render_pixels()
+	var word := "ok" if (not OS.has_feature("web")) or not forward else "FAIL"
+	print("web %s renderer %s (asked %s), quality %s, world %dx%d of %dx%d" % [
+		word, "forward_plus" if forward else "gl_compatibility", asked,
+		Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y])
 
 
 func _check_systems() -> void:
