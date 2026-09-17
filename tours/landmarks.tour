@@ -7,9 +7,10 @@
 # zoomed to 26-30 for every silhouette — twice what a player is ever given — so
 # every frame that said "from its own land" was a picture of a camera nobody has.
 # A landmark's reach is now the camera's (`Landmarks.read_reach`), and the way to
-# stand at it is to walk away from the place until it is nearly gone: that is
-# what `walk ... run` is doing in each of the far shots below, and the frame
-# fails if the silhouette is not still in it.
+# stand at it is to walk away from the place up the screen — about seven tiles,
+# which is what `walk 0,-1 ... run` is doing in each of the far shots below — and
+# the frame fails if the silhouette is not still in it. Further than that and a
+# landmark is not dim, it is off the picture.
 #
 # One per landscape, four landscapes, each shot three times: the silhouette in
 # its own land, the place close to, and what it gave. The order of the three is
@@ -26,7 +27,7 @@ coast calm
 # and that is the honest picture of it: a shape before it is a name.
 place lighthouse
 wait 0.6
-walk 0,-1 1.8 run
+walk 0,-1 1.4 run
 wait 0.5
 await landmark:lighthouse 12
 shot 01-the-drowned-light-across-its-own-headland with landmark:lighthouse,land:coast
@@ -69,7 +70,7 @@ zoom 15
 # seed's first tower is standing on is the world's business, not the tour's.
 place firewatch
 wait 0.6
-walk 0,-1 1.8 run
+walk 0,-1 1.4 run
 wait 0.5
 await landmark:firewatch 12
 shot 05-the-fire-tower-from-across-its-rise with landmark:firewatch
@@ -88,7 +89,7 @@ zoom 15
 # the tallest of them.
 place cast_stones
 wait 0.6
-walk 0,-1 1.8 run
+walk 0,-1 1.4 run
 wait 0.5
 await landmark:cast_stones 12
 shot 07-the-cast-stones-in-their-own-land with landmark:cast_stones
@@ -106,10 +107,10 @@ zoom 15
 # enough for the land to come up through it.
 place grown_hulk
 wait 0.6
-walk 0,-1 1.8 run
+walk 0,-1 1.4 run
 wait 0.5
 await landmark:grown_hulk 12
-shot 09-the-grown-hulk-over-the-clearing with landmark:grown_hulk
+shot 09-the-grown-hulk-across-its-clearing with landmark:grown_hulk
 place grown_hulk
 zoom 10
 wait 0.5
