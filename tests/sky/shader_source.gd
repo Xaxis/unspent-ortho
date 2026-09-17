@@ -7,7 +7,10 @@ extends RefCounted
 ## NUMBERS and the test does the arithmetic the shader does with them.
 
 const SKY_INC := "res://src/render/sky.gdshaderinc"
-const OUTLINE := "res://src/render/outline.gdshader"
+## Was OUTLINE, the screen-space ink pass. LANTERN removed the ink; what is
+## left of that quad is the light shafts the web tier draws in place of
+## volumetric air (src/render/shafts.gdshader).
+const SHAFTS := "res://src/render/shafts.gdshader"
 const PRECIP := "res://src/render/weather/precip.gdshader"
 
 

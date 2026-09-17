@@ -438,18 +438,36 @@ func test_a_storm_at_ten_keeps_its_glow_while_the_evening_holds_its_own_back() -
 	lt(most.y, light_most * 2.0, "the glow's biggest half hour is no more than twice the light's")
 
 
-## The constants frame_level composes with are the shader's own. A tuned number
-## that moves in sky.gdshaderinc and not here would leave every evening test
-## measuring a picture the game no longer draws.
-func test_the_cpu_composition_uses_the_shaders_own_numbers() -> void:
+## There used to be TWO statements of how dark a night is -- SkyLight's
+## constants and the shader's own SKY_NIGHT_FLOOR, SKY_NIGHT_KNEE,
+## SKY_GLOW_LEVEL and SKY_GLOW_FLOOR -- and this pinned them to each other,
+## because a number tuned in one and not the other left every evening test
+## measuring a picture the game did not draw.
+##
+## Under LANTERN there is only one statement of it. The floor lifted under every
+## wash and the skyglow emitted onto every surface are both gone (they put light
+## into a frame no light was falling on, which is most of why night was not
+## dark); what makes a night dark is now SkyLight.NIGHT_AMBIENT and
+## SkyLight.MOON_NIGHT, set on real lights, and no shader holds a copy.
+##
+## So what is pinned is that there is still only one: a night level that
+## reappears as a constant in the shader is the old two-copy bug coming back.
+func test_the_night_is_stated_in_one_place_and_the_shaders_hold_no_copy() -> void:
 	var code := ShaderSource.text(ShaderSource.SKY_INC)
-	var floor_c := ShaderSource.vec3_const(code, "SKY_NIGHT_FLOOR")
-	near((floor_c - SkyLight.NIGHT_FLOOR).length(), 0.0, 1e-6, "the night floor: shader %s, SkyLight %s" % [floor_c, SkyLight.NIGHT_FLOOR])
-	near(ShaderSource.number(code, "SKY_NIGHT_KNEE"), SkyLight.NIGHT_KNEE, 1e-6, "the knee")
-	near(ShaderSource.number(code, "SKY_GLOW_LEVEL"), SkyLight.GLOW_LEVEL, 1e-6, "the skyglow's level")
-	near(ShaderSource.number(code, "SKY_GLOW_FLOOR"), SkyLight.GLOW_FLOOR, 1e-6, "the skyglow's floor")
-	check(code.contains("SKY_NIGHT_FLOOR * sky_night.x"), "the floor is spent against sky_night.x")
-	check(code.contains("* sky_night.y"), "and the skyglow against sky_night.y")
+	for gone: String in ["SKY_NIGHT_FLOOR", "SKY_NIGHT_KNEE", "SKY_GLOW_LEVEL", "SKY_GLOW_FLOOR"]:
+		check(not code.contains("const"  + " vec3 " + gone) and not code.contains("const float " + gone),
+			"%s is not stated in the shader as well" % gone)
+	gt(SkyLight.NIGHT_AMBIENT, 0.0, "the night's level is SkyLight's")
+	# Compare the TOTALS, not the ambients: by day the sky is a small part of
+	# the light and the sun is the rest, and at night the sky is nearly all of
+	# it, so NIGHT_AMBIENT is the larger of the two numbers and says nothing on
+	# its own.
+	gt(SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8,
+		(SkyLight.NIGHT_AMBIENT + SkyLight.MOON_NIGHT * 0.85) * 1.25, "the day is brighter than the night")
+	gt(SkyLight.SUN_NOON, SkyLight.MOON_NIGHT * 3.0,
+		"and the sun is worth several stops more than the moon, which is what a lamp is for")
+	gt(SkyLight.MOON_NIGHT * 0.85, SkyLight.NIGHT_AMBIENT * 0.2,
+		"while the moon is a real share of the night, or a night frame has no shape in it")
 
 
 ## Dusk is long low shadows. They used to stop at 20:30 because they were keyed

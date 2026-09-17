@@ -157,6 +157,16 @@ void fragment() {
 		float l = dot(c, vec3(0.299, 0.587, 0.114));
 		c = mix(c, water_wash.rgb * (0.30 + 1.55 * l), water_wash.w);
 	}
+	// Water ABSORBS. Deep water is nearly black and what you see in it is the
+	// sky, the moon and whatever is burning on the shore -- which is the whole
+	// of why a night coast is worth looking at, and it cannot happen while the
+	// albedo is a bright chart blue with the reflection fighting it. The chart's
+	// own structure is kept (soundings, the bank line, the broken white of a
+	// fall): this only takes the LEVEL down with depth, and leaves the foam,
+	// which is air in water and really is that bright.
+	float pale = smoothstep(0.55, 0.88, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+	float deep = clamp(kind == 0 ? d : d * 0.8, 0.0, 1.0);
+	c *= mix(mix(1.0, 0.22, deep), 1.0, pale);
 	ALBEDO = matter_albedo(sky_apply(c, world_pos, TIME));
 	// Water is the smoothest thing in the world and it is what makes a night
 	// coast worth looking at: the sky, the moon, a fire on the shore and every

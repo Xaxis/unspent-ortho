@@ -548,7 +548,14 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
 	var g: Vector4 = neon_grade_at(hour, neon_shares)[0]
-	e.adjustment_brightness = clampf(1.0 - g.x * 0.35, 0.55, 1.4)
+	# It may only ever DARKEN. `neon_grade.x` goes negative for a landscape that
+	# wants to lift itself into daylight, and a lift applied AFTER the tonemapper
+	# is a lift with no ceiling over it: the snowfield seen from the pinewood
+	# came back with 10% of the frame at pure white, which is the exact failure
+	# the old page shoulder existed to stop, wearing a new coat. A landscape that
+	# wants to be brighter says so in its own LIGHT (BiomeDef.light_tint reaches
+	# the sun and the sky through `mood`), where the tonemapper can still hold it.
+	e.adjustment_brightness = clampf(1.0 - g.x * 0.35, 0.55, 1.0)
 	e.adjustment_saturation = clampf(1.0 - g.y * 0.30, 0.55, 1.3)
 	e.adjustment_contrast = clampf(1.0 + g.w * 0.20, 0.8, 1.35)
 

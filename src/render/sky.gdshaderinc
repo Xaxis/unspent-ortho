@@ -86,6 +86,15 @@ global uniform vec4 sky_shade;
 // can lie, b wet can show, a the ground's height smoothed over ~8 tiles / 8.
 // Sampled at world xz * sky_view.z.
 global uniform sampler2D sky_ground;
+// What the land DOES to a thing standing on it (SkyWear), by world position:
+// r rust, g salt bloom, b soot, a frost. The same sampling as sky_ground.
+// Read by matter_worn(); LANTERN law 1.
+global uniform sampler2D sky_wear;
+// 1 where the renderer wants ALBEDO in LINEAR light and will encode the frame
+// to sRGB itself (Forward+), 0 where it hands the value straight to the display
+// (Compatibility). Measured, both; matter.gdshaderinc says what it is for.
+// Written once at boot by SkyLight from Quality.forward_plus().
+global uniform float sky_linear;
 
 // --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
 // The grade every lit wash passes through last: x darkness 0..1, y desaturation

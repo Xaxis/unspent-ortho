@@ -218,14 +218,30 @@ func test_wet_ground_and_the_pool_are_drawn_edges_not_masks() -> void:
 	check(code.contains("pool * SKY_POOL_WASH * sky_gloom()"), "which shows only as far as the gloom does")
 
 
-func test_the_halo_only_spills_when_the_air_can_carry_it() -> void:
-	var code := SkySource.text(SkySource.OUTLINE)
-	check(code.contains("halo_strength * carry"), "the neon halo is multiplied by how dark the air is")
-	check(code.contains("max(sky_gloom()"), "the hour decides it, with a little left for thick rain and fog")
-	# That little is rain in the AIR. Wet lying on the ground is not weather: a
-	# land that never dries would spill neon at noon for ever.
-	check(code.contains("clamp(sky_fog.z + sky_air.x"), "and the little is fog and falling rain, not wet ground")
-	lt(code.find("float carry ="), code.find("halo_strength * carry"), "carry is decided before it is used")
+## A light SPILLS into the air round it, and that is what says it is a light
+## and not a bright rectangle.
+##
+## It used to be a stippled halo drawn in screen space on the outline quad,
+## gated on how dark the air was, because nothing in the pipeline could bloom.
+## LANTERN renders in HDR, so the spill is the Environment's own glow, over a
+## threshold above white: only a thing that is really EMITTING gets one, which
+## is the same rule the gate used to state as "the hour decides it" and is a
+## truer statement of it -- a snowfield at noon is bright and emits nothing.
+##
+## The other half of the old halo, the shafts a light throws through fog, is
+## still screen space and still gated, but on the TIER now rather than on the
+## hour: it is the web's stand-in for volumetric air (src/render/shafts.gdshader).
+func test_a_light_spills_into_the_air_and_only_a_light_does() -> void:
+	var e := SkyLight.build_environment()
+	check(e.glow_enabled, "light bleeds")
+	gt(e.glow_hdr_threshold, 1.0,
+		"over white, so a pale landscape at noon does not bloom")
+	gt(e.glow_bloom, 0.0, "and there is some bloom under the threshold")
+	var code := SkySource.text(SkySource.SHAFTS)
+	check(not code.contains("halo_strength"), "the screen-space halo is gone")
+	check(code.contains("shaft_strength"), "the shafts it shared a pass with are not")
+	check(code.contains("float air = clamp(sky_fog.z"),
+		"and a shaft still needs air to be carried in")
 
 
 func test_drips_are_drops_under_a_crown_not_lines() -> void:

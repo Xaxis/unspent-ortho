@@ -24,13 +24,8 @@
 #ifndef MATTER_GDSHADERINC
 #define MATTER_GDSHADERINC
 
-// 1 where the renderer wants ALBEDO in LINEAR light and will encode the frame
-// to sRGB itself (Forward+), 0 where it hands the value straight to the display
-// (Compatibility). Written once at boot by SkyLight from Quality.forward_plus().
-global uniform float sky_linear;
-// What the land does to a thing standing on it (SkyWear), by world position:
-// R rust, G salt bloom, B soot, A frost. Sampled at world xz * sky_view.z.
-global uniform sampler2D sky_wear;
+// `sky_linear` and `sky_wear` are declared in sky.gdshaderinc with every other
+// global SkyLight writes: one package owns them, and one test can find them all.
 
 // The grain a material's marks are drawn at, pinned to the world at a fixed
 // size. sky.gdshaderinc owns the projection (SKY_GRAIN, sky_px); this is the

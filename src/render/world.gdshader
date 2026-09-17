@@ -139,17 +139,11 @@ const vec3 RIME5 = vec3(0.8667, 0.9412, 0.9686);
 const vec3 BLOOM2 = vec3(0.6275, 0.2392, 0.4235);
 const vec3 BLOOM3 = vec3(0.8157, 0.4353, 0.5725);
 
-// The ink floor (docs/ART.md section 2: "deep shade is denser hatching, never
-// black"; section 6: "nothing is pure black"). Anything drawn darker than the
-// pen — a cavity under a slab, the inside of a hull, a bore, a wash the grade
-// has crushed — is carried up onto the pen's own colour, keeping its hue where
-// it has one. INK2 is that floor: at the darkest light the land still takes, it
-// stays clear of black by a couple of steps.
-const float INK_FLOOR = 0.1203;  // the luma of INK2
-vec3 ink_floor(vec3 c) {
-	float l = dot(c, vec3(0.299, 0.587, 0.114));
-	return mix(INK2, c, clamp(l / INK_FLOOR, 0.0, 1.0));
-}
+// WAS: ink_floor(), a floor lifted UNDER every albedo so the renderer's light
+// could not crush a wash to black. It is gone, and what replaced it is a real
+// ambient sky (SkyLight.NIGHT_AMBIENT) -- light, rather than a lie told to the
+// albedo, which nothing downstream could take back out again.
+// tests/render/test_dark_floor.gd holds both halves of the law it carried.
 
 vec3 dn(vec3 c, float n) {
 	return c * pow(STEP, vec3(n));

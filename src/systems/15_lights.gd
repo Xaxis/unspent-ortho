@@ -119,6 +119,9 @@ var lights: Array[OmniLight3D] = []
 var sources: Array[Dictionary] = []
 var lantern: Node3D
 var lantern_light: OmniLight3D
+## The one light that says what the hand can reach (see _light_the_reach).
+var reach_light: OmniLight3D
+var _reach_t := 0.0
 var _indexed := 0
 var _assigned: Array = [] # per pool light: source Dictionary or null
 var _refresh := 0.0
@@ -183,6 +186,9 @@ func setup(g: Game) -> void:
 		lights.append(_new_light("lamp_%d" % i))
 		_assigned.append(null)
 	lantern_light = _new_light("lantern_light")
+	reach_light = _new_light("reach_light")
+	reach_light.omni_attenuation = 2.2
+	reach_light.shadow_enabled = false
 	lantern = _lantern_mesh()
 	var lr := rays(Palette.COPPER[4], 2.0, 4.0, 0.15, 4.0)
 	lr.position = Vector3(0, 0.08, 0)
@@ -190,6 +196,64 @@ func setup(g: Game) -> void:
 	add_child(lantern)
 	_index_sources()
 	_update(0.0, true)
+
+
+## --- What the hand can reach --------------------------------------------
+##
+## "You can take this" said as LIGHT rather than as a mark on the glass, which
+## is what the whole direction is for: in a world that is lit and not drawn, the
+## right way to say a thing is workable is that the thing LIGHTS UP.
+##
+## The RULE is not reimplemented here and must not be. `Survival.use_target`
+## says WHICH thing the `use` key would work right now, and
+## `Survival.describe_target` says what it would do or why it would not; this
+## only reads those two and decides what colour to put on the answer.
+## (The state arrives as the tail of a sentence, which is the one thing here
+## that ought to change: whoever owns `src/core/survival` should publish it as
+## a value. Until then this reads the string the rule already publishes rather
+## than working the state out again, which would be two rules.)
+##
+## Three states have to be told apart at a glance, at night, in weather:
+const REACH_WORKABLE := Vector3(0.62, 0.86, 0.72)   ## a cool catch: take it
+const REACH_NO_TOOL := Vector3(0.95, 0.52, 0.22)    ## warm and low: wrong hand
+const REACH_SPENT := Vector3(0.34, 0.36, 0.44)      ## almost nothing: picked over
+## How far it carries and how hard. Small on purpose: it is a CATCH on the thing
+## in front of you, not a pool round it, so it never reads as a second lamp.
+## The power is divided by GAIN because it goes out through _set_light like
+## every other light and must NOT be one: at a lamp's gain it was a pale green
+## aura round the player that was the brightest thing in the Burning at dusk.
+const REACH_RANGE := 1.05
+const REACH_POWER := 0.62 / GAIN
+## Picked over is a hint that something WAS here, so it is barely lit at all.
+const REACH_SPENT_POWER := 0.14 / GAIN
+## It breathes, slowly, because a steady light on the ground is a lamp and a
+## breathing one is an offer. A machine's light never does this (LOOK.md: the
+## machines' light is exact and unwavering; a person's is unsteady) -- and this
+## is the game speaking to the player, which is the one light that is neither.
+const REACH_BREATH := 1.9
+
+
+## Light whatever the `use` key would work right now, in the colour of what it
+## would do. Nothing is lit when the key would do nothing.
+func _light_the_reach(delta: float) -> void:
+	if reach_light == null:
+		return
+	_reach_t += delta
+	var t: WorldProp = Survival.use_target(game)
+	if t == null or game.input_blocked():
+		reach_light.visible = false
+		return
+	var said := Survival.describe_target(game)
+	var rgb := REACH_WORKABLE
+	var power := REACH_POWER
+	if said.ends_with(" - picked over") or said.ends_with(" - under water"):
+		rgb = REACH_SPENT
+		power = REACH_SPENT_POWER
+	elif said.ends_with(" - no tool") or said.ends_with(" - too hard"):
+		rgb = REACH_NO_TOOL
+	var breath := 0.82 + 0.18 * sin(_reach_t * REACH_BREATH)
+	var at := game.world.to_3d(t.pos) + Vector3(0.0, 0.34 * maxf(t.scale, 0.5), 0.0)
+	_set_light(reach_light, at, REACH_RANGE * maxf(t.scale, 0.7), rgb * power * breath)
 
 
 func _new_light(n: String) -> OmniLight3D:
@@ -207,8 +271,11 @@ func _new_light(n: String) -> OmniLight3D:
 	# mirrored nothing and a machine's flank caught nothing: it was the one
 	# thing standing between this game and a reflection.
 	l.light_specular = 1.0
-	# Water is on its own layer and never takes lamplight (SkyLight.LAYER_WATER).
-	l.light_cull_mask = 0xFFFFF & ~SkyLight.LAYER_WATER
+	# Water used to be cut out of every lamp's mask, because a lamp on water was
+	# a flat glow disc and a glow disc on the sea is absurd. A lamp on water is
+	# a STREAK now -- water is the smoothest thing in the world and the light is
+	# in it, not on it -- so the sea takes lamplight like everything else, and a
+	# fire on the shore is in the water in front of it.
 	l.visible = false
 	add_child(l)
 	return l
@@ -255,6 +322,7 @@ func _process(delta: float) -> void:
 		toggle_lantern()
 	_lamp_down = down
 	_update(delta, false)
+	_light_the_reach(delta)
 
 
 ## 0..1: how far people have lit up. Lamps go on before full dark and out after

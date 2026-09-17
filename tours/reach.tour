@@ -1,0 +1,38 @@
+# "You can take this", said as LIGHT (docs/LOOK.md: the world is lit, not
+# drawn). Whatever the `use` key would work right now lights up, in the colour
+# of what it would do -- a cool catch for workable, a low warm one for the
+# wrong tool in your hand, and almost nothing at all for something already
+# picked over. No bracket, no ring, no mark on the glass.
+#
+#   tools/tour.sh tours/reach.tour --seed=7 --hour=21.5 --weather=clear:0
+#
+# Shot at dusk on purpose: this is exactly the hour a player is deciding what
+# to gather before dark, and it is where light can say it and a mark cannot.
+# The rule is Survival.use_target / Survival.describe_target and is not
+# reimplemented anywhere in the lights system.
+weather clear:0
+zoom 7
+
+hour 21.5
+at prop:driftwood
+wait 0.6
+shot 01-workable-lights-up with prop:driftwood
+
+# The same thing once it has been taken: the light goes with it.
+press use 1.2
+await took 3
+wait 0.6
+shot 02-and-goes-out-when-it-is-gone
+
+# A thing the hand in the creel cannot work: lit, but low and warm, so the
+# answer is "not with that" rather than "not at all".
+at prop:stone
+wait 0.6
+shot 03-the-wrong-tool-reads-warm with prop:stone
+
+# And by day it is still the answer, because it is a property of the thing and
+# not of the dark.
+hour 12
+at prop:driftwood
+wait 0.6
+shot 04-by-day-as-well with prop:driftwood
