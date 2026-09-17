@@ -147,6 +147,15 @@ const DEFS := {
 	&"oilcloth": {"name": "oilcloth", "bulk": 2.0, "group": &"good"},
 	&"hone": {"name": "hone", "bulk": 1.0, "group": &"good"},
 
+	# --- Crafts, carried as a bundle until they are set down (docs/VISION.md §5) ---
+	# What goes in the creel is the bundle: spars, cord, and the drums, ducts and legs
+	# cut off the machines. What comes out of it is a craft standing in the world
+	# (src/core/craft/, src/systems/44_crafts.gd). Heavy on purpose — a person carries
+	# one craft and little else, so where you leave it matters.
+	&"raft": {"name": "raft", "bulk": 10.0, "group": &"good"},
+	&"hover_sled": {"name": "hover sled", "bulk": 14.0, "group": &"good"},
+	&"walker_rig": {"name": "walker rig", "bulk": 16.0, "group": &"good"},
+
 	# --- Salvage kit, worn one at a time (§9.6) ---
 	&"kit_plate": {"name": "plate armour", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3},
 	&"kit_brace": {"name": "brace", "bulk": 2.0, "group": &"kit", "kit": &"brace", "wind": 700.0},

@@ -34,6 +34,11 @@ const CROUCH_SPEED := 0.45
 ## What a blow takes off, as a share of its damage (a configuration's
 ## `rules.harm`): 0 and nothing can down the player.
 var harm := 1.0
+## The craft carrying this body, or null on foot (src/core/craft/). It changes
+## what the ground under the body means and nothing else: the simulation still
+## moves the body, so a blow, a dodge and a grip are the same on a deck as on
+## land. The crafts package (src/systems/44_crafts.gd) is the only writer.
+var ride: CraftRide = null
 
 
 func _init() -> void:
@@ -42,8 +47,13 @@ func _init() -> void:
 	max_health = FightRules.HEALTH
 
 
-## Tiles/s on the ground under `p`: walking or running, wading slower, a worn body slower.
-static func ground_speed(world: WorldData, p: Vector2, running: bool, move_factor: float = 1.0) -> float:
+## Tiles/s on the ground under `p`: walking or running, wading slower, a worn body
+## slower. A craft under the body sets the pace instead of the ground: that is
+## what a hover sled is for, and the ONE thing a ride changes about speed.
+static func ground_speed(world: WorldData, p: Vector2, running: bool, move_factor: float = 1.0,
+		on: CraftRide = null) -> float:
+	if on != null:
+		return on.speed(running) * clampf(move_factor, 0.2, 1.5)
 	var s := Tuning.RUN_SPEED if running else Tuning.WALK_SPEED
 	if world != null and world.ground_at(floori(p.x), floori(p.y)) == Ground.WATER:
 		s *= Tuning.WADE_FACTOR

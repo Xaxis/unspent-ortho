@@ -40,6 +40,8 @@ extends RefCounted
 ## --fit=ID[,ID...]    wear this gear at start, given if not carried: a piece goes in
 ##                     its own slot, a module into the first slot it fits (hazards)
 ## --spawn=K[,K...]    place these roster kinds in front of the player (fight shots/tests)
+## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
+## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
 ##                     (MS = simulation time after the press; each has a default);
 ##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
@@ -103,6 +105,9 @@ var put: PackedStringArray = []
 var taken := false
 var fit: PackedStringArray = []
 var spawn: PackedStringArray = []
+## A craft parked in reach at boot, and one the player starts aboard (crafts).
+var craft := ""
+var aboard := ""
 var act := ""
 var screen := ""
 var explore := 0
@@ -172,6 +177,8 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"taken": o.taken = true
 			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
+			"craft": o.craft = v
+			"aboard": o.aboard = v
 			"act": o.act = v
 			"explore": o.explore = v.to_int()
 			"ui-demo": o.ui_demo = true

@@ -50,6 +50,41 @@ powers (only what its row declares), what it has noticed (`StealthQuery`, the on
 door) and what it is thinking (its mood, its blow's phase, its place in the plan).
 Nothing is invented for the panel.
 
+## Crafts (docs/VISION.md §5)
+
+A craft is a thing a person builds out of machine parts and then stands on. It
+opens ground a body cannot cross, it is a thing in the world when it is parked,
+and it can be worn out, broken under you, and lost.
+
+- **`b` is the whole verb.** Standing at a craft it boards it; carrying one it
+  puts it down and steps on; standing on one it steps off; at a wreck it strips
+  it for its parts. Nothing about a craft is a menu.
+- **The three.** A **raft** (made by hand at the shore: driftwood, a rag and one
+  drum off a wreck) crosses open water nobody can wade. A **hover sled** (mended,
+  at a bench) runs bog, salt, ice, black water and everything else at half again
+  a walking pace. A **walker rig** (mended, at a bench) strides a two-level step
+  — a cliff to a body — and takes scree and deep snow under a load.
+- **It is not a second movement system.** The fight simulation still moves the
+  player: a craft only changes what the ground under the body means (`Hero.ride`
+  -> `WorldQuery.move_body`) and what pace it allows (`Hero.ground_speed`). So a
+  dodge, a grip, a blow and a machine shouldering you aside all land on a deck
+  exactly as they land on turf, and being hauled off your raft leaves it adrift.
+- **Getting on and off is never a teleport.** A craft is set down, and stepped
+  off onto, only within a shove of the body and only along a line the craft
+  itself could travel — so a raft is pushed out past the shallows and nosed back
+  in, and a body only ever steps off onto ground it could have waded to. Getting
+  off is never how a channel is crossed; the craft is.
+- **Wear and wreck.** The shallows grind a raft's drums, scree tears at a
+  skirt, every cliff costs the rig something, and a blow that lands on the rider
+  takes it out of the hull as well. At nothing the craft breaks: whoever was on
+  it is put ashore, and what is left of it lies where it broke and can be
+  stripped for its materials — except a float wrecked in open water, which sinks,
+  because some things are simply lost.
+- **Drawn MENDED** (docs/ART.md §12): FOUND drums, pans, pods and legs in violet
+  plate with the machines' own amber still lit on them, bound to MADE spars,
+  boards and cord, both idioms in one silhouette, and the lashing crossing the
+  rivet row is the drawing.
+
 ## Owner rulings carried over (mechanics only)
 
 - Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.

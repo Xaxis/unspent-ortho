@@ -23,10 +23,17 @@ var hero: Hero = null
 var sim: FightSim = null
 var intent_move := Vector2.ZERO
 var intent_run := false
-## Height above the ground held by an ability (a glide, a grapple's arc). The
-## gear package (src/systems/54_gear.gd) is the only writer; it puts it back to
-## 0 when the body lands.
+## Height above the ground held by an ability (a glide, a grapple's arc) or by
+## the deck of a craft under the body. Two writers, and they cannot disagree:
+## the gear package (54_gear) writes it every frame a motion runs and puts it
+## back to 0 when the body lands, the crafts package (44_crafts) writes it every
+## frame a craft carries the body, and 54 runs after 44.
 var lift := 0.0
+## The craft carrying this body (src/core/craft/), or null on foot. In a running
+## game the hero's own `ride` is what the simulation moves by; this is the same
+## craft, for the tests and tools where no simulation owns the body. The crafts
+## package (src/systems/44_crafts.gd) is the only writer.
+var ride: CraftRide = null
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
@@ -57,10 +64,10 @@ func drive(move: Vector2, run: bool, delta: float) -> void:
 	intent_run = run
 	if hero != null:
 		return
-	var s := Hero.ground_speed(world, pos, run)
+	var s := Hero.ground_speed(world, pos, run, 1.0, ride)
 	var before := pos
 	if move.length() > 0.01:
-		pos = query.move_body(pos, move * s * delta, Tuning.PLAYER_RADIUS)
+		pos = query.move_body(pos, move * s * delta, Tuning.PLAYER_RADIUS, ride)
 		facing = move.angle()
 	speed = before.distance_to(pos) / maxf(delta, 1e-5)
 	_sync(delta)

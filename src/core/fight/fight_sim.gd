@@ -478,7 +478,7 @@ func _move_hero(dt: float) -> void:
 	v += _shouldered(dt)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
-		hero.pos = query.move_body(hero.pos, v * dt, hero.radius) if query != null else hero.pos + v * dt
+		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride) if query != null else hero.pos + v * dt
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:

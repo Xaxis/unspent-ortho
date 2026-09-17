@@ -89,8 +89,8 @@ func _physics_process(delta: float) -> void:
 	var player := game.player
 	hero.move = player.intent_move
 	hero.run = player.intent_run
-	hero.walk_speed = Hero.ground_speed(game.world, hero.pos, false, game.body.move_factor)
-	hero.run_speed = Hero.ground_speed(game.world, hero.pos, true, game.body.move_factor)
+	hero.walk_speed = Hero.ground_speed(game.world, hero.pos, false, game.body.move_factor, hero.ride)
+	hero.run_speed = Hero.ground_speed(game.world, hero.pos, true, game.body.move_factor, hero.ride)
 	sim.hold = _held or now_s < _stop_until
 	if not sim.hold:
 		sim.real_s = now_s
