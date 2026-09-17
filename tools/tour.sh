@@ -25,7 +25,24 @@ tools/_import.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-tour.XXXXXX")"
 focus_guard_start
 holder="$(focus_holder)"
-godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" -- --tour="$tour" "$@" >"$log" 2>&1 &
+# TOUR_FIXED_FPS makes a run step in SIMULATED time instead of wall-clock time.
+#
+# A tour's `wait` is a real-time timer (create_timer) while the game simulates in
+# _physics_process, so how much WORLD happens before the shutter falls depends on
+# how busy the machine is: villagers walk on, the sea's waves move, a hint fires
+# or does not. Two canon runs at ONE commit came out 4.00 and 5.99 apart on their
+# night frames (mean 1.69 over eighteen, against a sheet tolerance of 3) purely
+# from that. `--fixed-fps` hands every frame the same delta whatever the frame
+# really cost, so `wait 0.4` is the same 24 ticks of world on a quiet machine and
+# on a loaded one. Measured across runs at load 31 and load 40: those two frames
+# came down to 0.13 and 0.47 and the mean to 0.63.
+#
+# It is OPT-IN, and deliberately so. A tour that proves something about timing --
+# a fight, a raid arriving, anything measured in seconds a player would feel --
+# should keep running against the real clock, and a tour that merely has to be
+# comparable with ITSELF should not. tools/canon.sh turns it on.
+godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" \
+  ${TOUR_FIXED_FPS:+--fixed-fps "$TOUR_FIXED_FPS"} -- --tour="$tour" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
 deadline=$(( $(date +%s) + $(slack_secs "${TOUR_TIMEOUT:-180}") ))
