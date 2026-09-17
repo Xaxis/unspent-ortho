@@ -25,6 +25,13 @@ var ended_at := -INF
 ## What the holding's attention was when the world gave the warning: a step is
 ## called off if the player brings it down far enough before the machines arrive.
 var attention_was := 0.0
+## And what the holding was giving off at that moment. Attention is slow and a
+## signature is not: killing the mast inside the window is the answer a player
+## can actually reach in an hour, so a step is called off on this too.
+var signature_was := 0.0
+## They were paid: a full store left lying in the yard bought the party off, and
+## nothing was broken (RaidRoles.TRIBUTE).
+var paid := false
 ## [{role, kind, target, mob}] — target is a piece id, a person id, or -1.
 var party: Array = []
 ## Piece ids broken and people taken, for the aftermath and for a test.
@@ -60,6 +67,7 @@ func as_dict() -> Dictionary:
 		"stage": String(stage), "state": String(state),
 		"warned_at": warned_at, "begins_at": begins_at,
 		"ended_at": SaveCodec.num(ended_at), "attention_was": attention_was,
+		"signature_was": signature_was, "paid": paid,
 		"party": _party_out(), "broke": broke, "ruined": ruined, "took": took,
 		"lost": lost, "outcome": String(outcome),
 	}
@@ -84,6 +92,8 @@ static func from_dict(d: Dictionary) -> RaidPlan:
 	p.begins_at = SaveCodec.to_num(d.get("begins_at", 0.0))
 	p.ended_at = SaveCodec.to_num(d.get("ended_at", -INF), -INF)
 	p.attention_was = float(d.get("attention_was", 0.0))
+	p.signature_was = float(d.get("signature_was", 0.0))
+	p.paid = bool(d.get("paid", false))
 	for row: Variant in d.get("party", []):
 		var r := row as Dictionary
 		if r == null:

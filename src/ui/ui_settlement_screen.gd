@@ -16,8 +16,9 @@ extends UiScreen
 ## settlement system (46_settlements), which is handed to it when it is added.
 
 const LIST_TOP := 50
-## Pixels the signature block takes at the foot of the spare pane.
-const SIGN_H := 96
+## Pixels the signature block takes at the foot of the spare pane: seven channels,
+## what the loudest one is, and the one word for what the plan makes of the place.
+const SIGN_H := 108
 ## Under this share of its strength a piece is worth a hand: the same number the
 ## settlement system tends by, so the row never promises a verb it will not do.
 const MEND_BELOW := 0.95
@@ -332,6 +333,15 @@ func _draw_signature(R: Rect2i, x0: int, y: int) -> void:
 	UiDraw.text(self, Vector2i(x0, y + 1), "loudest: %s" % (String(sig.loudest()).replace("_", " ") if total > 0.01 else "nothing"),
 		UiTheme.MACHINE[3])
 	UiDraw.text_right(self, right, y + 1, "%d%%" % roundi(total * 100.0), UiTheme.WARN if total > 0.6 else UiTheme.MACHINE[3])
+	# And one word for what the plan THINKS, which is a different question from
+	# what it hears (48_raids owns the number; `Attention.pressure` is the only
+	# reading of it). A word and never a bar: a percentage here would turn a
+	# system about reading the world into one to optimise (docs/DESIGN.md §Raids).
+	var word := String(Attention.pressure(place.attention)).replace("_", " ")
+	UiDraw.text(self, Vector2i(x0, y + 12), "they have it down as",
+		UiTheme.MACHINE[2] if place.attention > Attention.NOTHING else UiTheme.MACHINE[1])
+	UiDraw.text_right(self, right, y + 12, word.to_upper(),
+		UiTheme.WARN if place.attention >= RaidStage.AT[1] else UiTheme.MACHINE[3])
 
 
 func _bar(r: Rect2i, share: float, col: Color) -> void:

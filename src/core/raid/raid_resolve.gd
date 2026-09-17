@@ -10,6 +10,13 @@ class_name RaidResolve
 ##
 ## Nothing here reads a clock or rolls for whether a raid happens. It is handed a
 ## holding, a step and a seed, and it says what is broken.
+##
+## The two paths agree about WALLS as well as about force: a blow thrown by a
+## machine standing in the yard is scaled by the same `turned(defence_total)`
+## that this file takes off a raid settled on paper (48_raids `_blow_of`). A
+## second plate wall has to be worth the same afternoon whether the player is
+## standing behind it or a day's walk away, or building one is only ever worth
+## doing before leaving.
 
 ## A holding's defence is worth this much: what a party has to spend before
 ## anything it brings reaches a piece. Two plate walls (4.4) turn a probe aside
@@ -57,7 +64,7 @@ static func resolve(s: Settlement, stage: StringName, seed_value: int, instance:
 		return out
 	# Hands first: a harvester takes what is lying in the store and leaves the
 	# store standing, which is what paying them off looks like from the outside.
-	var tribute := _take_stores(s, force)
+	var tribute := take_stores(s, force)
 	out["stores"] = tribute
 	var paid := 0.0
 	for k: Variant in tribute:
@@ -102,8 +109,10 @@ static func resolve(s: Settlement, stage: StringName, seed_value: int, instance:
 	return out
 
 
-## Whatever is loose in the store, up to what the party can carry.
-static func _take_stores(s: Settlement, force: float) -> Dictionary:
+## Whatever is loose in the store, up to what the party can carry. The live
+## harvester standing in the yard takes it through this same door (48_raids
+## `_tribute`), so paying them off is one answer however it is reached.
+static func take_stores(s: Settlement, force: float) -> Dictionary:
 	var want := minf(RaidRoles.TRIBUTE, force)
 	var took := {}
 	for id: Variant in s.stores.keys():

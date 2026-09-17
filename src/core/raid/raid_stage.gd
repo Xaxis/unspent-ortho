@@ -43,6 +43,14 @@ const SPENDS: Array[float] = [0.0, 0.06, 0.30, 0.55]
 ## warning: the place went dark, or the signet answered for it, and the machines
 ## that were coming have nothing to come for.
 const CALLED_OFF_UNDER := 0.8
+## And under this share of what the place was GIVING OFF when the warning came.
+## Attention is slow on purpose — a whole filed record is 0.09 of it — so inside
+## a window of an hour and a quarter the largest fall a player can cause is a
+## fraction of what CALLED_OFF_UNDER asks. The signature is the fast half: kill
+## the mast, put the fire out, take the people off the pieces, and the thing that
+## is coming has lost the reason it was sent. That is the answer the window is
+## long enough for, and it is the one the holding app already draws.
+const CALLED_OFF_SIGNATURE := 0.55
 ## A step never begins on a holding that gives off less than this at the moment
 ## the party would arrive. This is what evacuating and running dark BUY: not a
 ## better roll, but the machines turning round.

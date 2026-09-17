@@ -112,6 +112,13 @@ func tick() -> void:
 		var crossed := not m.line_to_b or m.legs > 0 or sim.now - m.put_out_at > PATROL_LIFE_MS
 		if not gone and m.patrol and not m.roused() and m.alive and crossed:
 			gone = not spawner.in_view(sim.hero.pos, m.pos, 2.0)
+		# A party sent against a holding is not a wanderer on this coast: 48_raids
+		# is the only thing that takes one off the land, when the step is over or
+		# the player leaves the yard. Culled here, a live raid evaporated mid-blow
+		# the moment the player walked past CULL, and the plan paid itself off for
+		# a yard it never touched. Its dead are culled like anything else.
+		if m.raider and m.alive:
+			gone = false
 		if gone:
 			if m.snatched and not m.reported and m.row.get("hits", {}).get("files", false):
 				m.reported = true

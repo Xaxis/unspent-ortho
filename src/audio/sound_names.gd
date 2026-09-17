@@ -84,6 +84,11 @@ const ALIAS := {
 	&"raid_keeper": &"watcher_call",
 	&"raid_notice": &"relay_click",
 	&"raid_jammed": &"relay_click",
+	# A record got home, and a party loading up what was left lying in the yard.
+	# The first is the only thing in the game that raises attention by a whole
+	# unit and it happens over the horizon, so it has to be heard.
+	&"raid_filed": &"snatch_clerk",
+	&"raid_loot": &"pickup",
 	&"raid_record": &"pickup",
 	&"raid_break": &"break",
 	&"raid_snatch": &"grip",

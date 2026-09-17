@@ -144,10 +144,91 @@ func test_a_reading_that_gets_away_is_the_thing_that_raises_it() -> void:
 	check(bool(sys.call("tour_seen", "carrier")), "it has a reading")
 	# Let it go: it walks out past where anything could catch it.
 	clerk.pos = place.centre + Vector2(Notices.GOT_AWAY + 4.0, 0.0)
+	var said: Array[StringName] = []
+	Events.sfx.connect(func(sound: StringName, _at: Vector3) -> void: said.append(sound))
 	sys.call("pass_now")
 	gt(place.attention, 0.0, "it got home, and the holding wears it")
 	check(bool(sys.call("tour_seen", "filed")), "and the plan has it on file")
+	# And the world SAYS so. It is the one link in the chain the player cannot
+	# watch — everything else happens in front of them — so a record getting home
+	# is not allowed to be the only silent thing in the system.
+	check(said.has(&"raid_filed"), "the yard hears it land: %s" % [str(said)])
 	Sx.end(g)
+
+
+func test_a_record_only_comes_off_a_body_somebody_was_standing_over() -> void:
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=22", FULL])
+	await frames(3)
+	hush(g)
+	var h := holdings(g)
+	var sys := raids(g)
+	var place: Settlement = h.call("found", g.world.realm, g.player.pos, "the works")
+	var mast: Structure = h.call("place_piece", place, StructureKind.RADIO_MAST, g.player.pos + Vector2(2, 0), 0.0)
+	mast.powered = true
+	mast.staffed_by = 1
+	place.night = 1.0
+	var clerk := g.player.sim.add_mob(&"clerk", place.centre + Vector2(6, 0))
+	sys.call("pass_now")
+	check(bool(sys.call("tour_seen", "carrier")), "it has a reading")
+	var records := g.inventory.count(RaidSpoils.RECORD_ITEM)
+	# Something else puts it down on the far side of the land. A record is a thing
+	# lying in the grass where the body fell, not a thing that appears in the
+	# creel because a clerk died somewhere.
+	clerk.pos = g.player.pos + Vector2(60, 0)
+	clerk.alive = false
+	clerk.health = 0
+	sys.call("pass_now")
+	eq(g.inventory.count(RaidSpoils.RECORD_ITEM), records, "nothing came into the creel")
+	check(bool(sys.call("tour_seen", "stopped")), "though the reading was still stopped")
+	eq(place.attention, 0.0, "and the place is no worse off")
+	Sx.end(g)
+
+
+func test_a_reading_with_nobody_holding_it_still_has_to_walk_home() -> void:
+	# A saved game comes back with no body under a reading that was halfway home
+	# (Notice.from_dict), and a realm crossing leaves every carrier behind. Filing
+	# those on the first frame meant saving the game beside a clerk turned a
+	# record the player could have killed into one the plan already has.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=22", FULL])
+	await frames(3)
+	hush(g)
+	var h := holdings(g)
+	var sys := raids(g)
+	var place: Settlement = h.call("found", g.world.realm, g.player.pos, "the works")
+	var mast: Structure = h.call("place_piece", place, StructureKind.RADIO_MAST, g.player.pos + Vector2(2, 0), 0.0)
+	mast.powered = true
+	mast.staffed_by = 1
+	place.night = 1.0
+	var clerk := g.player.sim.add_mob(&"clerk", place.centre + Vector2(6, 0))
+	sys.call("pass_now")
+	check(bool(sys.call("tour_seen", "carrier")), "a clerk is carrying it")
+	# Its body goes: culled, crossed out of the world, or loaded back without one.
+	g.player.sim.remove_mob(clerk)
+	sys.call("pass_now")
+	eq(place.attention, 0.0, "it has not arrived anywhere yet")
+	check(not bool(sys.call("tour_seen", "filed")), "and nothing is on file")
+	# It is given the walk it would have taken, and then it counts.
+	g.clock.skip(Notices.HOME_MINUTES + 5.0)
+	sys.call("pass_now")
+	gt(place.attention, 0.0, "the walk home is over, and the holding wears it")
+	Sx.end(g)
+
+
+func test_a_record_is_worth_carrying_because_something_is_made_of_it() -> void:
+	# It is dropped, it costs bulk and it is proof; it also has to be a thing a
+	# player can DO something with, or killing the carrier proves nothing.
+	check(not Items.def(RaidSpoils.RECORD_ITEM).is_empty(), "a record is a thing in the creel")
+	var into: Array[StringName] = []
+	for r: Dictionary in Recipes.LIST:
+		if (r.get("needs", {}) as Dictionary).has(RaidSpoils.RECORD_ITEM):
+			for made: Variant in (r.get("makes", {}) as Dictionary):
+				into.append(StringName(made))
+	check(not into.is_empty(), "and it is spent on something: %s" % [str(into)])
+	check(into.has(&"copper"),
+		"stripped, their own account of the place is the copper a signet is wound from: %s" % [str(into)])
+	# It is a FOUND thing, so nothing may ever make one: the only way to a record
+	# is off a body that was carrying it (tests/survival/test_crafting.gd).
+	eq(Items.def(RaidSpoils.RECORD_ITEM).get("group", &""), &"found", "a record is found, never made")
 
 
 # --- every step is warned first ------------------------------------------------
@@ -354,6 +435,150 @@ func test_a_razed_holding_is_left_as_ruins_with_what_they_could_not_carry() -> v
 	Sx.end(g)
 
 
+# --- a raid is not something you walk out of --------------------------------------
+
+## Stand a party up in the yard: staged high, read once, and the window run out
+## with the player standing where they built. Returns the live bodies.
+func party_out(g: Game, s: Settlement) -> Array[MobState]:
+	var sys := raids(g)
+	read_by_something(g, s)
+	for i in 24:
+		if bool(sys.call("tour_seen", "party")):
+			break
+		g.clock.skip(15.0)
+		hush_but_the_party(g)
+		sys.call("pass_now")
+	var out: Array[MobState] = []
+	for m in g.player.sim.mobs:
+		if m.raider and m.alive and not m.removed:
+			out.append(m)
+	return out
+
+
+## The same hush, but it leaves the party where it stands: `hush` clears every
+## body off the land, which would take the raid with it.
+func hush_but_the_party(g: Game) -> void:
+	var mobs := Sx.system(g, "30_mobs")
+	if mobs != null:
+		var coast: Coast = mobs.get("coast")
+		if coast != null:
+			coast.spawning = false
+			coast.rounds = false
+
+
+func test_a_party_is_never_culled_out_from_under_a_raid() -> void:
+	# The cheapest answer to a raid used to be walking twenty-five tiles: the
+	# coast culls at Spawner.CULL and the plan then saw an empty yard, called it
+	# held and spent the attention that brought it. A party is the plan's, and
+	# only the plan takes it off the land.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot,store,radio_mast", "--attention=0.72"])
+	await frames(3)
+	hush(g)
+	var s := here(g)
+	var party := party_out(g, s)
+	check(not party.is_empty(), "a party is in the yard")
+	var mobs := Sx.system(g, "30_mobs")
+	var coast: Coast = mobs.get("coast")
+	# The player walks off, well past the culling distance.
+	g.player.pos = s.centre + Vector2(Spawner.CULL + 8.0, 0.0)
+	g.player.hero.pos = g.player.pos
+	coast.tick()
+	var still := 0
+	for m: MobState in party:
+		if m.alive and not m.removed:
+			still += 1
+	eq(still, party.size(), "the coast left every one of them standing")
+	Sx.end(g)
+
+
+func test_walking_away_from_a_raid_settles_it_rather_than_ending_it() -> void:
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot,store,radio_mast", "--attention=0.72"])
+	await frames(3)
+	hush(g)
+	var s := here(g)
+	# Nothing loose to pay them with: this is about what walking away costs, not
+	# about the store buying them off.
+	s.stores.clear()
+	var party := party_out(g, s)
+	check(not party.is_empty(), "a party is in the yard")
+	var whole := 0.0
+	for p in s.pieces:
+		whole += p.health
+	var ended: Array[StringName] = []
+	Events.raid_ended.connect(func(_sid: int, o: StringName) -> void: ended.append(o))
+	# A day's walk away, which is a legitimate answer and always was — but it is
+	# the answer that means coming home to what happened, not the one that makes
+	# it not happen.
+	g.player.pos = s.centre + Vector2(400, 400)
+	g.player.hero.pos = g.player.pos
+	raids(g).call("pass_now")
+	eq(ended.size(), 1, "the step is over")
+	var after := 0.0
+	for p in s.pieces:
+		after += p.health
+	lt(after, whole, "the yard is worse for it: %0.1f -> %0.1f (%s)" % [whole, after, str(ended)])
+	Sx.end(g)
+
+
+func test_a_wall_takes_its_share_of_a_blow_the_player_is_standing_in_front_of() -> void:
+	# On paper a holding's defences turn up to MOST_TURNED of everything coming
+	# (RaidResolve.turned). A blow thrown by a machine standing in the yard is
+	# scaled by the same number, or a second plate wall is only ever worth
+	# building before leaving.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var h := holdings(g)
+	var s := here(g)
+	var m := g.player.sim.add_mob(&"hauler", s.centre + Vector2(2, 0))
+	eq(s.defence_total(), 0.0, "nothing is defending it yet")
+	var bare := float(sys.call("_blow_of", m, s))
+	gt(bare, RaidResolve.LEAST, "a hauler's blow is worth more than the floor")
+	@warning_ignore("return_value_discarded")
+	h.call("place_piece", s, StructureKind.PLATE_WALL, s.centre + Vector2(3, 0), 0.0)
+	gt(s.defence_total(), 0.0, "and now something is")
+	var walled := float(sys.call("_blow_of", m, s))
+	lt(walled, bare, "the wall takes its share: %0.2f -> %0.2f" % [bare, walled])
+	near(walled / bare, 1.0 - RaidResolve.turned(s.defence_total()), 0.02,
+		"exactly the share the paper settle takes")
+	Sx.end(g)
+
+
+func test_a_full_store_buys_them_off_with_the_player_standing_there() -> void:
+	# docs/DESIGN.md offers paying them as one of the answers. It used to work
+	# only for a raid nobody was at: the live harvester walked past the store and
+	# started cutting the mast down.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot,store,radio_mast"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var s := here(g)
+	s.stores[&"timber"] = 6
+	s.stores[&"scrap"] = 6
+	var before := s.stored()
+	gt(before, RaidRoles.TRIBUTE, "there is a full store lying in the yard")
+	var whole := 0.0
+	for p in s.pieces:
+		whole += p.health
+	var plan := RaidPlan.new()
+	plan.id = 77
+	plan.settlement_id = s.id
+	plan.stage = RaidStage.RAID
+	plan.state = &"under_way"
+	(sys.get("plans") as Array).append(plan)
+	var m := g.player.sim.add_mob(&"hauler", s.centre + Vector2(1, 0))
+	check(bool(sys.call("_tribute", plan, s, m, g.player.sim)), "the harvester loads up instead")
+	lt(s.stored(), before, "the store is poorer: %0.0f -> %0.0f" % [before, s.stored()])
+	eq(plan.outcome, &"held", "and the holding held")
+	var after := 0.0
+	for p in s.pieces:
+		after += p.health
+	eq(after, whole, "nothing was broken to pay them")
+	check(bool(sys.call("tour_seen", "paid")), "the world says they were paid")
+	Sx.end(g)
+
+
 # --- per realm ------------------------------------------------------------------
 
 func test_a_machine_in_one_realm_never_senses_a_holding_in_another() -> void:
@@ -383,6 +608,63 @@ func test_a_machine_in_one_realm_never_senses_a_holding_in_another() -> void:
 	eq(noticed, 0, "nothing up here reads it")
 	eq(warned, 0, "and nothing up here is sent for it: attention is per realm, or it is one number for the world")
 	eq(sys.call("network_of", under), Interference.REGIONLESS, "a holding a realm away stands in no network of this one")
+	Sx.end(g)
+
+
+func test_a_keeper_taken_here_never_quiets_the_same_region_number_a_realm_down() -> void:
+	# Region ids restart at 0 in every realm's world (GenCountries.regions), so a
+	# file kept under a bare region id had the keeper of the caves' region 3
+	# quieting a surface holding in region 3 — for good, with nothing ever filed
+	# there again and no way for the player to see why.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot,radio_mast", "--attention=0.6"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var h := holdings(g)
+	var up := here(g)
+	var region := int(sys.call("region_of", up))
+	if region < 0:
+		Sx.end(g)
+		return
+	# A holding a realm down, at the same coordinates: the same region NUMBER.
+	var under: Settlement = h.call("found", Realm.UNDERGROUND, g.player.pos, "the deep works")
+	under.attention = 0.6
+	Events.sentinel_fell.emit(region, &"coast", SentinelWay.KIND_NAMES[SentinelWay.FORCE])
+	eq(up.attention, 0.0, "the surface holding is off the books")
+	check(bool(sys.call("quieted", up)), "and its network is quiet")
+	near(under.attention, 0.6, 1e-4, "the one below is untouched")
+	# And it stays untouched when the player walks down the shaft, which is the
+	# only moment the leak could ever have been seen.
+	g.world.realm = Realm.UNDERGROUND
+	eq(int(sys.call("region_of", under)), region, "it stands in the same region number")
+	check(not bool(sys.call("quieted", under)), "and the surface's dead keeper says nothing about it")
+	var saved := sys.call("_save") as Dictionary
+	var books := saved.get("regions", {}) as Dictionary
+	check(books.has(sys.call("region_key", Realm.SURFACE, region)), "the file says which realm it is about")
+	check(not books.has(str(region)), "and never a bare region number")
+	Sx.end(g)
+
+
+func test_a_prop_taken_here_never_pulls_a_stake_out_of_a_yard_a_realm_away() -> void:
+	# Prop ids restart at 0 in every realm's world too (Survival.add_prop counts
+	# this world's props), so asking THIS world's depleted set about a stake
+	# standing in another one answered for a prop the player took on the surface.
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--holding=hut,plot"])
+	await frames(3)
+	hush(g)
+	var sys := raids(g)
+	var h := holdings(g)
+	var under: Settlement = h.call("found", Realm.UNDERGROUND, g.player.pos, "the deep works")
+	under.attention = 0.4
+	var b := sys.call("book", under.id) as Dictionary
+	b["stake"] = 7
+	b["surveyed"] = true
+	# Something taken on the SURFACE that happens to be prop 7 up here.
+	g.world.depleted[7] = true
+	sys.call("pass_now")
+	near(under.attention, 0.4, 1e-4, "the yard below lost nothing")
+	check(bool(b["surveyed"]), "and the plan still has its survey of it")
+	eq(int(b["stake"]), 7, "the stake is still in the ground where it was driven")
 	Sx.end(g)
 
 

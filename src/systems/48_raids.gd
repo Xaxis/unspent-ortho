@@ -70,8 +70,13 @@ const SENSE_EVERY := 1.5
 ## same machine on the same place twice on one pass (world minutes).
 const READ_AGAIN := 120.0
 ## Tiles from the player a raid is FOUGHT rather than settled on paper. Beyond
-## it the party is not drawn at all and the player comes home to the yard.
+## it the party is not drawn at all and the player comes home to the yard, and a
+## raid already under way when they walk out of it is settled the same way.
 const LIVE_REACH := 46.0
+## How near the body the player has to be for the record to come off it. It is
+## proof lying in the grass where the carrier fell, not a thing that appears in
+## the creel because something killed a clerk on the far side of the land.
+const RECORD_REACH := 8.0
 ## Where a party comes out, how fast it marches in against its own walking pace,
 ## and how near a piece a machine has to be to put a blow into it. A party is
 ## seen crossing the ground for the best part of a quarter of a minute before it
@@ -80,6 +85,10 @@ const LIVE_REACH := 46.0
 const PARTY_RING := 12.0
 const MARCH := 1.9
 const STRIKE_REACH := 1.4
+## Near enough the holding to be AT it: what a frame called "the party at the
+## gate" has to hold before the shutter falls, rather than the ring they were put
+## out on, which is the far corner of the picture.
+const PARTY_AT_GATE := 5.0
 ## World minutes after a step is over before the same holding is warned again:
 ## the plan does not send two parties at one place in an afternoon.
 const COOL_OFF := 240.0
@@ -114,14 +123,20 @@ var notices: Array[Notice] = []
 var plans: Array[RaidPlan] = []
 ## Settlement id -> {settled_at, last_read, stake, surveyed, felt}.
 var _books: Dictionary = {}
-## Region id -> {razed, lost, taken}. A region remembers (docs/VISION.md §9.6).
+## "REALM:region id" -> {razed, lost, taken}. A region remembers
+## (docs/VISION.md §9.6), and it remembers it in ONE realm: region ids restart at
+## 0 in every realm's world (GenCountries.regions), so a bare id had the keeper
+## of the caves' region 3 quieting a surface holding in region 3 for good.
 var _regions: Dictionary = {}
 ## MobState id -> the Notice it is carrying.
 var _carriers: Dictionary = {}
 ## MobState id -> {plan, role, target, settlement, since, strike_at}.
 var _raiders: Dictionary = {}
-## "sid:pid" -> the tag hanging on that piece.
+## "sid:pid" -> the tag hanging on that piece, and where the piece it hangs on
+## stands (the tag is turned to face the camera every frame, so it keeps its own
+## anchor rather than asking the holding for the piece again).
 var _marks: Dictionary = {}
+var _mark_at: Dictionary = {}
 ## "sid:mob id" -> the world minute that body last read that place.
 var _read_at: Dictionary = {}
 var _sweep := 0.0
@@ -211,11 +226,24 @@ func region_of(s: Settlement) -> int:
 	return game.world.region_at(floori(s.centre.x), floori(s.centre.y))
 
 
+## The plan's file on one region, which is one region OF ONE REALM. Nothing here
+## may ever be keyed on a bare region id (see `_regions`).
+func region_key(realm: StringName, region: int) -> String:
+	return "%s:%d" % [String(realm), region]
+
+
+## What the plan remembers of the region a holding stands in.
+func _memory(s: Settlement) -> Dictionary:
+	var r := region_of(s)
+	if r < 0:
+		return {}
+	return _regions.get(region_key(s.realm, r), {}) as Dictionary
+
+
 ## A region whose keeper has been taken: its network is quiet for good
 ## (docs/VISION.md §9.7). Nothing is ever filed against a holding in one again.
 func quieted(s: Settlement) -> bool:
-	var r := region_of(s)
-	return r >= 0 and bool((_regions.get(r, {}) as Dictionary).get("taken", false))
+	return bool(_memory(s).get("taken", false))
 
 
 func realm_here() -> StringName:
@@ -312,9 +340,13 @@ func _step_notices() -> void:
 			_stop(n, &"jammed")
 			continue
 		if m == null or m.removed:
-			# Its body has gone off the land with the record on it. That is what
-			# getting away looks like from the yard.
-			_file(n)
+			# Its body has gone off the land with the record on it — culled, or
+			# left behind in a world the player walked out of, or saved and loaded
+			# back with nobody holding it. It still has to WALK: filing it the
+			# moment the body went turned a clerk the player could have killed
+			# into a filed record by saving the game beside it.
+			if minutes - n.taken_at >= Notices.HOME_MINUTES:
+				_file(n)
 			continue
 		if Notices.got_away(n, m.pos) or minutes - n.taken_at >= Notices.HOME_MINUTES:
 			_file(n)
@@ -342,6 +374,13 @@ func _file(n: Notice) -> void:
 		return
 	_raise(s, &"notice", Notices.worth(n) / Attention.NOTICE_FULL)
 	_seen["filed"] = true
+	# And it is SAID. This is the one link in the chain the player cannot see for
+	# themselves — the taking, the jamming, the killing and every warning happen
+	# in front of them, and a record getting home happens over the horizon — so a
+	# player who watched a clerk walk off is told the moment it cost them.
+	Events.sfx.emit(&"raid_filed", game.world.to_3d(s.centre))
+	if _near(s):
+		Events.hint.emit("What it had of %s is in the plan's hands now." % s.name, "")
 
 
 ## It never got there: killed in the yard, or its reading spoofed into nonsense.
@@ -365,6 +404,11 @@ func _stop(n: Notice, how: StringName) -> void:
 ## is proof, and it is the one thing in the game worth more taken than left.
 func _lost_carrier(n: Notice, at: Vector2, how: StringName) -> void:
 	_stop(n, how)
+	# It comes off the body where the body fell, and somebody has to be standing
+	# there to take it. A carrier killed by something else on the far side of the
+	# land is a record lying in the grass, not a thing that appears in the creel.
+	if game.player == null or game.player.pos.distance_to(at) > RECORD_REACH:
+		return
 	for row: Dictionary in RaidSpoils.record(game.world.seed_value, n.id):
 		var id: StringName = row.get("item", &"")
 		var count := int(row.get("count", 1))
@@ -374,6 +418,9 @@ func _lost_carrier(n: Notice, at: Vector2, how: StringName) -> void:
 		Events.took.emit(id, count)
 	Events.sfx.emit(&"raid_record", game.world.to_3d(at))
 	_seen["record"] = true
+	# And what it is, once, in the moment it is in the hand: proof, and a spool of
+	# copper when proof is worth less than copper (Recipes: record_stripped).
+	Events.hint.emit("Their own account of the place. Stripped, it is the copper a signet is wound from.", "")
 
 
 func _said_kind(kind: StringName) -> String:
@@ -553,6 +600,7 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	p.warned_at = game.clock.minutes
 	p.begins_at = p.warned_at + RaidStage.warn_minutes(stage)
 	p.attention_was = s.attention
+	p.signature_was = s.signature().total()
 	p.party = _party_for(s, stage)
 	plans.append(p)
 	Events.raid_warned.emit(s.id, stage)
@@ -607,7 +655,7 @@ func _step_plans() -> void:
 			_end(p, null, &"left")
 			continue
 		if p.coming():
-			if s.attention < p.attention_was * RaidStage.CALLED_OFF_UNDER or quieted(s):
+			if _called_off(p, s):
 				# Brought down during the warning: nothing sets out. The tags come
 				# off the pieces, which is how the player knows they answered it.
 				_end(p, s, &"left")
@@ -628,6 +676,24 @@ func _step_plans() -> void:
 		_step_raid(p, s, now)
 
 
+## Has the player answered the warning? Two ways, and both are theirs. The books
+## came down far enough that the plan lost interest — slow, and rarely reachable
+## inside one window — or the place stopped giving off what it was sent for,
+## which is the fast answer and the one the warning window is the right length
+## for: the mast down, the fire out, the people off the pieces.
+func _called_off(p: RaidPlan, s: Settlement) -> bool:
+	if quieted(s):
+		return true
+	if s.attention < p.attention_was * RaidStage.CALLED_OFF_UNDER:
+		return true
+	# A place that was always quiet is not called off here: it is walked to, found
+	# to be nothing, and left (RaidResolve.nothing_here at the gate). What turns
+	# them round on the road is the place going quiet AFTER the warning — which is
+	# something the player did in the window, and the only thing they can do
+	# enough of in an hour to be answered.
+	return p.signature_was > 0.0 and s.signature().total() < p.signature_was * RaidStage.CALLED_OFF_SIGNATURE
+
+
 ## The same warning again, for a bigger step. The plan keeps its identity — one
 ## per holding — so nothing can end up with two parties on the way at once.
 func _reaim(p: RaidPlan, s: Settlement, stage: StringName) -> void:
@@ -635,6 +701,7 @@ func _reaim(p: RaidPlan, s: Settlement, stage: StringName) -> void:
 	p.warned_at = game.clock.minutes
 	p.begins_at = p.warned_at + RaidStage.warn_minutes(stage)
 	p.attention_was = s.attention
+	p.signature_was = s.signature().total()
 	p.party = _party_for(s, stage)
 	Events.raid_warned.emit(s.id, stage)
 	var w := RaidStage.warning(stage)
@@ -718,6 +785,9 @@ func _put_out(p: RaidPlan, s: Settlement) -> void:
 		m.disturbed_by = &""
 		m.turn_filed = true
 		m.sent = true
+		# And the coast does not cull it (MobState.raider): a party is taken off
+		# the land by the plan that sent it, never by the player walking away.
+		m.raider = true
 		m.home = s.centre
 		m.facing = (s.centre - at).angle()
 		m.aim = m.facing
@@ -835,23 +905,40 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 	var sim: FightSim = game.player.sim
 	var live := 0
 	for row: Dictionary in p.party:
+		if p.over():
+			# One of them bought the whole party off with what was lying in the
+			# yard (`_tribute`): there is no raid left to steer.
+			return
 		var m := _mob(sim, int(row.get("mob", -1)))
 		if m == null or not m.alive or m.removed:
 			continue
 		live += 1
 		_drive(p, s, m, sim)
+	if p.over():
+		return
+	if live > 0 and not _near(s):
+		# The player has left the yard while it was going on. The rest of it
+		# happens without them, on the same arithmetic as a raid they were never
+		# at: coming home to what happened is the ending, not a way of calling it
+		# off. Anything the party had not spent yet is spent here.
+		_pull_party(p, sim)
+		_settle_raid(p, s, _unspent(p))
+		return
 	if live > 0 and now - p.begins_at < RaidStage.minutes(p.stage):
 		return
 	if live > 0:
 		# It has run its course with bodies still standing: they take what they
 		# came for and go, which is the same arithmetic as a raid nobody saw.
+		_pull_party(p, sim)
 		_settle_raid(p, s, LEFTOVER)
-		for row: Dictionary in p.party:
-			var m := _mob(sim, int(row.get("mob", -1)))
-			if m != null and m.alive and not m.removed:
-				sim.remove_mob(m)
-				@warning_ignore("return_value_discarded")
-				_raiders.erase(m.id)
+		return
+	var left := _unspent(p)
+	if left > 0.0:
+		# Bodies went off the land without the player putting them down and
+		# without finishing their errand — a realm crossing, a game cleared. What
+		# they were sent with is settled rather than forgotten, because a step
+		# that pays itself off for nothing is the cheapest raid in the game.
+		_settle_raid(p, s, left)
 		return
 	if p.broke.is_empty() and p.took.is_empty():
 		# Every one of them went down in the yard before it got anything: the
@@ -859,6 +946,52 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 		_end(p, s, &"held")
 		return
 	_end(p, s, RaidResolve.outcome_of(s, {"broke": p.broke, "ruined": p.ruined, "took": p.took}))
+
+
+## Take whatever of a party is still standing off the land. Nothing else ever
+## removes a raider: the coast is told to leave them alone (MobState.raider), so
+## a party stands in the yard until this system is done with it.
+func _pull_party(p: RaidPlan, sim: FightSim) -> void:
+	if sim == null:
+		return
+	for row: Dictionary in p.party:
+		var m := _mob(sim, int(row.get("mob", -1)))
+		if m == null or not m.alive or m.removed:
+			continue
+		m.raider = false
+		sim.remove_mob(m)
+		@warning_ignore("return_value_discarded")
+		_raiders.erase(m.id)
+
+
+## The share of a step still in the hands of bodies that neither died in the yard
+## nor finished what they came for: what is settled on paper when the party stops
+## being something the player is standing in front of.
+func _unspent(p: RaidPlan) -> float:
+	var sent := 0
+	var left := 0
+	for row: Dictionary in p.party:
+		if int(row.get("mob", -1)) < 0:
+			continue
+		sent += 1
+		if not bool(row.get("done", false)) and not bool(row.get("killed", false)):
+			left += 1
+	if sent <= 0:
+		# Nothing of this party is a body any more: a game loaded back into the
+		# middle of a step, or a realm crossed. What it is still worth is what it
+		# had left when the bodies went — the plan saves its dead (`lost`).
+		var n := p.party.size()
+		return 1.0 if n <= 0 else clampf(float(n - p.lost) / float(n), 0.0, 1.0)
+	return float(left) / float(sent)
+
+
+## Mark what became of one of the party, so `_unspent` never pays twice for a
+## snatcher that got its person, nor forgets a breacher that was killed.
+func _spent(p: RaidPlan, mob_id: int, key: String) -> void:
+	for row: Dictionary in p.party:
+		if int(row.get("mob", -1)) == mob_id:
+			row[key] = true
+			return
 
 
 ## One raider, this step. Answered — struck, or stood in front of — the fight
@@ -896,7 +1029,34 @@ func _drive(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> void:
 	m.line_a = m.pos
 	m.line_b = m.pos
 	m.aim = (piece.pos - m.pos).angle()
+	if role == RaidRoles.HARVESTER and _tribute(p, s, m, sim):
+		return
 	_strike(p, s, m, r, piece, sim)
+
+
+## A full store lying loose in the yard buys them off, and it does so with the
+## player standing there. docs/DESIGN.md offers paying them as one of the answers
+## inside the warning window; until this, only a raid nobody was at could be paid
+## — the live harvester walked past the store and started cutting the mast down.
+## It is the same door the paper settle uses (RaidResolve.take_stores), and it is
+## expensive: they take what a week of the plot made.
+func _tribute(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> bool:
+	if p.paid or s.stored() < RaidRoles.TRIBUTE:
+		return false
+	var took := RaidResolve.take_stores(s, RaidRoles.TRIBUTE)
+	if took.is_empty():
+		return false
+	p.paid = true
+	_seen["looted"] = true
+	_seen["paid"] = true
+	Events.sfx.emit(&"raid_loot", game.world.to_3d(m.pos))
+	if _near(s):
+		Events.message.emit("They have loaded up what was lying in %s, and that is what they came for." % s.name)
+	# Paid, the whole party turns round: nothing is broken and nobody is taken,
+	# which is the same ending the arithmetic gives when nobody is home.
+	_pull_party(p, sim)
+	_end(p, s, &"held")
+	return true
 
 
 ## Is this one still about its errand? A raider that has been struck, or that
@@ -975,7 +1135,7 @@ func _strike(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, piece: Stru
 	var pending := float(r.get("strike_at", -INF))
 	if is_finite(pending) and sim.now >= pending:
 		r["strike_at"] = -INF
-		var ruined := s.damage_structure(piece.id, _blow_of(m))
+		var ruined := s.damage_structure(piece.id, _blow_of(m, s))
 		if not p.broke.has(piece.id):
 			p.broke.append(piece.id)
 		if ruined and not p.ruined.has(piece.id):
@@ -992,10 +1152,14 @@ func _strike(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, piece: Stru
 
 ## What one of its blows is worth against timber and plate. A machine's bite is
 ## written for a body; a wall is not a body, so it is the bite scaled, never a
-## number of this system's own invention.
-func _blow_of(m: MobState) -> float:
+## number of this system's own invention — and then the holding's own defences
+## take their share of it, exactly as they do when the raid is settled on paper
+## (RaidResolve.turned). Without that, a second plate wall halved a raid the
+## player was away for and changed nothing about one they stood in, which is the
+## wrong way round: a wall you are defending should be worth more, not less.
+func _blow_of(m: MobState, s: Settlement) -> float:
 	var dmg := float(m.bite.dmg if m.bite != null else 1)
-	return maxf(RaidResolve.LEAST, dmg * BLOW_SCALE)
+	return maxf(RaidResolve.LEAST, dmg * BLOW_SCALE * (1.0 - RaidResolve.turned(s.defence_total())))
 
 
 ## Somebody is carried off (docs/VISION.md §9.5). The snatcher has to stand in
@@ -1018,6 +1182,10 @@ func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim
 		Events.sfx.emit(&"raid_snatch", game.world.to_3d(s.centre))
 		if _near(s):
 			Events.message.emit("They have taken somebody out of %s." % s.name)
+	# It has what it came for and it walks off with it: its share of the step is
+	# spent, so nothing settles it a second time on paper.
+	_spent(p, m.id, "done")
+	m.raider = false
 	sim.remove_mob(m)
 	@warning_ignore("return_value_discarded")
 	_raiders.erase(m.id)
@@ -1078,6 +1246,11 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 	p.state = &"over"
 	p.outcome = outcome
 	p.ended_at = game.clock.minutes
+	# Whatever is still standing in the yard goes with it. Nothing else takes a
+	# raider off the land, so a plan that ends without this leaves its machines
+	# walking about the holding for ever.
+	if game.player != null:
+		_pull_party(p, game.player.sim)
 	for row: Dictionary in p.party:
 		var id := int(row.get("mob", -1))
 		if id >= 0:
@@ -1114,9 +1287,10 @@ func _says_ended(s: Settlement, outcome: StringName) -> String:
 func _raze(s: Settlement) -> void:
 	var region := region_of(s)
 	if region >= 0:
-		var mem: Dictionary = _regions.get(region, {"razed": 0, "lost": 0, "taken": false})
+		var key := region_key(s.realm, region)
+		var mem: Dictionary = _regions.get(key, {"razed": 0, "lost": 0, "taken": false})
 		mem["razed"] = int(mem.get("razed", 0)) + 1
-		_regions[region] = mem
+		_regions[key] = mem
 	var land: StringName = BiomeRegistry.at(game.world, s.centre).id if s.realm == realm_here() else &""
 	for row: Dictionary in RaidSpoils.razed(game.world.seed_value, s.id, land):
 		var id: StringName = row.get("item", &"")
@@ -1151,15 +1325,17 @@ func _on_killed(kind: StringName, at: Vector3) -> void:
 	var plan := _plan(int(r.get("plan", -1)))
 	if plan != null:
 		plan.lost += 1
+		_spent(plan, body.id, "killed")
 	var s := get_place(int(r.get("settlement", -1)))
 	if s == null:
 		return
 	_raise(s, &"lost")
 	var region := region_of(s)
 	if region >= 0:
-		var mem: Dictionary = _regions.get(region, {"razed": 0, "lost": 0, "taken": false})
+		var key := region_key(s.realm, region)
+		var mem: Dictionary = _regions.get(key, {"razed": 0, "lost": 0, "taken": false})
 		mem["lost"] = int(mem.get("lost", 0)) + 1
-		_regions[region] = mem
+		_regions[key] = mem
 	_seen["raider_down"] = true
 
 
@@ -1183,11 +1359,15 @@ func _plan(id: int) -> RaidPlan:
 ## it is forgotten, whatever it is running, for good (docs/VISION.md §9.7). This
 ## is the surest answer in the game, and it is a boss fight.
 func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void:
-	var mem: Dictionary = _regions.get(region, {"razed": 0, "lost": 0, "taken": false})
+	# A keeper is a keeper of a region OF A REALM. The one that fell is the one in
+	# the world the player is standing in, and nothing a realm away hears of it.
+	var here := realm_here()
+	var key := region_key(here, region)
+	var mem: Dictionary = _regions.get(key, {"razed": 0, "lost": 0, "taken": false})
 	mem["taken"] = true
-	_regions[region] = mem
+	_regions[key] = mem
 	for s in places():
-		if region_of(s) != region:
+		if s.realm != here or region_of(s) != region:
 			continue
 		var was := s.attention
 		s.attention = 0.0
@@ -1215,11 +1395,9 @@ func _on_founded(id: int) -> void:
 	# has to be able to start it somewhere other than the beginning.
 	if attention_out > 0.0:
 		s.attention = attention_out
-	var region := region_of(s)
-	if region >= 0:
-		var razed := int((_regions.get(region, {}) as Dictionary).get("razed", 0))
-		if razed > 0:
-			s.attention = clampf(s.attention + Attention.NOTICE_FULL * float(razed), 0.0, 1.0)
+	var razed := int(_memory(s).get("razed", 0))
+	if razed > 0:
+		s.attention = clampf(s.attention + Attention.NOTICE_FULL * float(razed), 0.0, 1.0)
 	if absf(s.attention - was) > 1e-5:
 		Events.attention_changed.emit(s.id, was, s.attention)
 
@@ -1243,20 +1421,13 @@ func _sync_marks() -> void:
 				continue
 			var key := "%d:%d" % [s.id, piece.id]
 			want[key] = true
-			if _marks.has(key) and is_instance_valid(_marks[key]):
-				continue
-			var mark := RaidMark.create(piece.id + s.id)
-			mark.build()
-			# On the camera's side of the piece and square to it. A warning that
-			# stands behind a hut, or edge-on, is a warning nobody was given: the
-			# one thing this drawing has to do is be legible from where the game
-			# is looked at (docs/ART.md §10).
-			var yaw := deg_to_rad(game.camera.yaw_now() if game.camera != null else 45.0)
-			var toward := Vector2(sin(yaw), cos(yaw))
-			mark.position = game.world.to_3d(piece.pos + toward * (StructureKind.solid(piece.kind) + 0.55))
-			mark.rotation.y = yaw
-			add_child(mark)
-			_marks[key] = mark
+			var mark: Node3D = _marks.get(key, null)
+			if mark == null or not is_instance_valid(mark):
+				mark = RaidMark.create(piece.id + s.id)
+				mark.call("build")
+				add_child(mark)
+				_marks[key] = mark
+			_mark_at[key] = {"pos": piece.pos, "out": StructureKind.solid(piece.kind) + 0.55}
 	for key: String in _marks.keys():
 		if want.has(key):
 			continue
@@ -1265,6 +1436,28 @@ func _sync_marks() -> void:
 			node.queue_free()
 		@warning_ignore("return_value_discarded")
 		_marks.erase(key)
+		@warning_ignore("return_value_discarded")
+		_mark_at.erase(key)
+	_face_marks()
+
+
+## Every tag stands on the camera's side of its piece and square to it, and it is
+## turned there EVERY FRAME. The camera leans when the player holds a target
+## (CameraRig.yaw_now), so a tag whose yaw was fixed when it was hung goes
+## edge-on at the very moment the player is reading the yard — and a warning
+## nobody can read is a warning nobody was given (docs/ART.md §10).
+func _face_marks() -> void:
+	if _marks.is_empty() or game == null or game.world == null:
+		return
+	var yaw := deg_to_rad(game.camera.yaw_now() if game.camera != null else 45.0)
+	var toward := Vector2(sin(yaw), cos(yaw))
+	for key: String in _marks:
+		var node: Node3D = _marks[key]
+		var anchor: Dictionary = _mark_at.get(key, {})
+		if not is_instance_valid(node) or anchor.is_empty():
+			continue
+		node.position = game.world.to_3d(anchor["pos"] as Vector2 + toward * float(anchor["out"]))
+		node.rotation.y = yaw
 
 
 # --- the frame ----------------------------------------------------------------
@@ -1278,6 +1471,7 @@ func _physics_process(delta: float) -> void:
 		_sense_holdings()
 	_step_notices()
 	_step_plans()
+	_face_marks()
 	_sweep -= delta
 	if _sweep > 0.0:
 		return
@@ -1294,6 +1488,21 @@ func sweep() -> void:
 	_stake_pulled()
 	_escalate()
 	_sync_marks()
+	_forget_old_reads()
+
+
+## A body only reads a holding once in READ_AGAIN world minutes, and the line
+## saying so is worth nothing after that. It is not saved (a loaded game has new
+## bodies with new ids), and left alone it grew for every machine that ever stood
+## near a holding, for the whole length of a game.
+func _forget_old_reads() -> void:
+	if _read_at.size() < 64:
+		return
+	var now := game.clock.minutes
+	for key: String in _read_at.keys():
+		if now - float(_read_at[key]) >= READ_AGAIN:
+			@warning_ignore("return_value_discarded")
+			_read_at.erase(key)
 
 
 ## One whole pass of the plan, in the order the running game takes it. A test or
@@ -1311,6 +1520,11 @@ func pass_now() -> void:
 ## buys is the plan losing the mark it put on the place.
 func _stake_pulled() -> void:
 	for s in places():
+		# Prop ids restart at 0 in every realm's world (Survival.add_prop counts
+		# this world's props), so the only world that can answer for a stake is
+		# the one it was driven into.
+		if s.realm != realm_here():
+			continue
 		var b := book(s.id)
 		var id := int(b["stake"])
 		if id < 0 or not game.world.depleted.has(id):
@@ -1333,6 +1547,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 		if is_instance_valid(node):
 			node.queue_free()
 	_marks.clear()
+	_mark_at.clear()
+	_read_at.clear()
 	_raiders.clear()
 	_carriers.clear()
 	for n in notices:
@@ -1368,6 +1584,10 @@ func _stage() -> void:
 ##   raid            a step began; raid:STAGE for which
 ##   raid_on         a step is under way now
 ##   party           a raiding party has bodies in the world
+##   party_close     one of them is at the holding's own fence (PARTY_AT_GATE),
+##                   which is what "at the gate" means: a frame that says so is
+##                   held to it rather than to the moment they were put out
+##   paid            a full store bought them off and the party turned round
 ##   siege_keeper    the region's keeper came with one
 ##   marked          a piece is wearing the plan's tag
 ##   stake           the plan's survey stake is standing in a yard
@@ -1399,6 +1619,17 @@ func tour_seen(what: String) -> bool:
 			return false
 		"party":
 			return not _raiders.is_empty()
+		"party_close":
+			var sim: FightSim = game.player.sim if game.player != null else null
+			for id: Variant in _raiders:
+				var r: Dictionary = _raiders[id]
+				var s := get_place(int(r.get("settlement", -1)))
+				var m := _mob(sim, int(id))
+				if s == null or m == null or not m.alive or m.removed:
+					continue
+				if m.pos.distance_to(s.centre) <= PARTY_AT_GATE:
+					return true
+			return false
 		"carrier":
 			return not _carriers.is_empty()
 		"raid_on":
@@ -1448,9 +1679,9 @@ func _save() -> Variant:
 			"last_read": SaveCodec.num(b["last_read"]), "stake": int(b["stake"]),
 			"surveyed": bool(b["surveyed"]), "felt": int(b["felt"])}
 	var out_regions := {}
-	for region: Variant in _regions:
-		var m: Dictionary = _regions[region]
-		out_regions[str(region)] = {"razed": int(m.get("razed", 0)), "lost": int(m.get("lost", 0)),
+	for key: Variant in _regions:
+		var m: Dictionary = _regions[key]
+		out_regions[str(key)] = {"razed": int(m.get("razed", 0)), "lost": int(m.get("lost", 0)),
 			"taken": bool(m.get("taken", false))}
 	return {"notices": out_notices, "plans": out_plans, "books": out_books,
 		"regions": out_regions, "next_notice": _next_notice, "next_plan": _next_plan}
@@ -1484,7 +1715,12 @@ func _load(v: Variant) -> void:
 	var regions := d.get("regions", {}) as Dictionary
 	for key: Variant in regions:
 		var m := regions[key] as Dictionary
-		_regions[SaveCodec.to_int(key)] = {"razed": SaveCodec.to_int(m.get("razed", 0)),
+		# "REALM:region": a bare number is a save from before the plan kept one
+		# file per realm, and it belongs to the realm every world started in.
+		var id := str(key)
+		if not id.contains(":"):
+			id = region_key(Realm.SURFACE, SaveCodec.to_int(key))
+		_regions[id] = {"razed": SaveCodec.to_int(m.get("razed", 0)),
 			"lost": SaveCodec.to_int(m.get("lost", 0)), "taken": bool(m.get("taken", false))}
 	_next_notice = SaveCodec.to_int(d.get("next_notice", notices.size() + 1), notices.size() + 1)
 	_next_plan = SaveCodec.to_int(d.get("next_plan", plans.size() + 1), plans.size() + 1)
