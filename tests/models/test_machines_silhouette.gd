@@ -212,7 +212,7 @@ static func fill(mask: PackedByteArray) -> float:
 ## kind. The watcher's number here went up on purpose and the reason is written
 ## in both files.
 const FILLED := {
-	&"harvester": 0.71, &"hauler": 0.70, &"runner": 0.57, &"warden": 0.56,
+	&"harvester": 0.67, &"hauler": 0.70, &"runner": 0.57, &"warden": 0.56,
 	&"sweeper": 0.55, &"dredger": 0.48, &"clerk": 0.47, &"lineman": 0.44,
 	&"cutter": 0.44, &"flock": 0.32, &"longlegs": 0.32, &"watcher": 0.30,
 }
@@ -231,8 +231,18 @@ const FILLED := {
 ## where it is not. Raising the two lamp masts with it bought the same nothing.
 ## The hull is a slab from four of the sixteen bearings and the only thing that
 ## changes that is a different hull.
+##
+## SO THE HULL CHANGED (LANTERN `form`), and 0.85 came down to 0.77. Every one
+## of those four attempts was an attempt to open the machine for FREE — to move
+## parts about on a hull that had no hole in it — and none of them could work.
+## What worked was two holes that a harvester should have had all along: the
+## hull lifted onto a frame of three bolsters a side, clear of its track wells,
+## so a slot of daylight runs the length of each side; and the header carried out
+## in front on a feeder throat a third of its width, so daylight stands either
+## side of it too. Both are structure, not decoration, and both cost triangles,
+## which is why they had to wait for the budget to rise with the resolution.
 const FILLED_ANY := {
-	&"harvester": 0.85, &"hauler": 0.69, &"sweeper": 0.69, &"runner": 0.67,
+	&"harvester": 0.77, &"hauler": 0.69, &"sweeper": 0.69, &"runner": 0.67,
 	&"warden": 0.62, &"clerk": 0.55, &"dredger": 0.54, &"lineman": 0.52,
 	&"cutter": 0.47, &"flock": 0.37, &"longlegs": 0.36, &"watcher": 0.42,
 }

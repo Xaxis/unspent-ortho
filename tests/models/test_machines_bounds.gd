@@ -136,9 +136,14 @@ func test_the_top_of_the_body_follows_the_pose() -> void:
 	# The rest rig's mesh bounds carry no spill while the machine lives.
 	var h := FigureModel.create(&"harvester") as MachineModel
 	var matter: MeshInstance3D = h.surfaces[&"matter"]
-	lt(matter.mesh.get_aabb().end.x, 1.8, "a living harvester's matter ends at its comb")
+	# The bar is where the COMB is, and the comb moved: the header is carried out
+	# in front of the hull on a feeder throat now, so that daylight stands either
+	# side of it and the machine is not one plate from the front. The rule is
+	# unchanged — the rest rig's matter stops at the comb and the spilled row is
+	# the dead node's alone.
+	lt(matter.mesh.get_aabb().end.x, 2.2, "a living harvester's matter ends at its comb")
 	h.set_pose(&"dead")
 	gt(matter.mesh.get_aabb().end.x, 2.2, "dead, the row it cut spills out past it")
 	h.set_pose(&"stand")
-	lt(matter.mesh.get_aabb().end.x, 1.8, "and a machine stood back up carries none")
+	lt(matter.mesh.get_aabb().end.x, 2.2, "and a machine stood back up carries none")
 	h.free()

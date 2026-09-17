@@ -353,7 +353,27 @@ static func wavered(a: Vector3, b: Vector3, n: int, s: int, out: Vector3, amount
 
 ## How wide a patch is laid, in world units: about ten screen pixels at the play
 ## camera, which is a piece of slate a person could carry.
-const CELL := 0.42
+const CELL := 0.3
+## How far a course stands proud of the one under it. A slate is thin, but the
+## face it leaves standing to the sky is what rules the line across the slope,
+## and that face reads by turning AWAY from the sky rather than by the shadow it
+## throws — so it works at noon, when nothing casts anything.
+const LAP := 0.035
+## How far a course reaches UP the slope. A course is a SIZE, not a count: a
+## slate is the size a slate is, so a long slope carries more courses than a
+## lean-to without anybody choosing a number per roof. The `rows` a caller passes
+## is the floor under that.
+const COURSE := 0.26
+## No slope gets more than this, whatever its length: the ceiling is here so a
+## roof nobody anticipated cannot quietly cost a thousand triangles.
+const COURSES_MOST := 9
+## The most of a slope that may be machine plate, as a share of its cells. A
+## plated cell costs about 1.75 times its own area in FOUND triangles — a rim, an
+## inner plate and four rivets — so a fifth of the cells is about a third of the
+## roof by AREA, which is where "a patch on its roof, not the roof" is drawn.
+## Stated in cells because that is what is dealt, and checked in area because
+## that is what a player sees.
+const PLATE_CELLS_MOST := 0.2
 
 
 ## Cumulative length along a polyline, one entry per point.
@@ -403,18 +423,38 @@ static func _along(line: PackedVector3Array, cum: PackedFloat32Array, at: float)
 static func patch_slope(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Array, rows: int, s: int, mats: Array[Color], plate_share: float) -> void:
 	if eave.size() < 2 or ridge.size() != eave.size() or rows < 1:
 		return
+	var mid := eave.size() / 2
+	rows = clampi(roundi((ridge[mid] - eave[mid]).length() / COURSE), rows, COURSES_MOST)
 	var grid: Array[PackedVector3Array] = []
 	for r in rows + 1:
 		var line := PackedVector3Array()
 		for i in eave.size():
 			var v := float(r) / rows
+			# The wander has to stay INSIDE a course's own spacing. At a fixed
+			# 0.1 it was tuned for three courses; once a long slope carries seven
+			# the rows cross each other, which scrambles the courses into crazy
+			# paving and cuts slivers where a slate should be.
 			if r > 0 and r < rows:
-				v = clampf(v + Kit.j(s, r * 31 + i, 0.1), 0.05, 0.95)
+				v = clampf(v + Kit.j(s, r * 31 + i, 0.25 / rows), 0.05, 0.95)
 			var p := eave[i].lerp(ridge[i], v)
+			# The old lift was dealt per grid corner, which under a real sun made
+			# every cell's flat normal disagree with its neighbours' and turned the
+			# roof into shattered glass. A roof does sag, but it sags ALONG the
+			# eave in one wave, not corner by corner.
 			if r > 0 and r < rows and i > 0 and i < eave.size() - 1:
-				p.y += Kit.j(s, r * 53 + i + 7, 0.04)
+				p.y += sin(float(i) / float(eave.size() - 1) * PI) * Kit.j(s, r + 7, 0.03) + Kit.j(s, r * 53 + i + 7, 0.012)
 			line.append(p)
 		grid.append(line)
+	# "A patch, not the roof" is a GUARANTEE here and not a hope. A per-cell
+	# probability alone drifts with whatever grid is under it — finer courses
+	# redraw every die — and a slope that comes out 0.36 machine plate on one
+	# seed IS a plated roof, whatever the intended share was. So the plated cells
+	# are counted against a ceiling taken from the slope's own size.
+	var total := 0
+	for r in rows:
+		var lcr := _arc(grid[r])
+		total += maxi(2, roundi(lcr[lcr.size() - 1] / CELL))
+	var plate_left := ceili(float(total) * minf(plate_share, PLATE_CELLS_MOST))
 	for r in rows:
 		var low := grid[r]
 		var high := grid[r + 1]
@@ -436,19 +476,36 @@ static func patch_slope(k: Kit, eave: PackedVector3Array, ridge: PackedVector3Ar
 			var c := _along(high, hc, clampf(up * 0.5 + l1 - run * 0.5, 0.0, up))
 			var d := _along(high, hc, clampf(up * 0.5 + l0 - run * 0.5, 0.0, up))
 			var h := Rng.hash01(s, r * 41 + i, 61)
-			if h < plate_share:
+			if h < plate_share and plate_left > 0:
+				plate_left -= 1
 				var lift := Vector3(0, 0.03, 0)
 				k.plate(b + lift, a + lift, d + lift, c + lift,
 					P.PLATE[2] if h < plate_share * 0.55 else P.PLATE[3], P.PLATE[1], P.PLATE[4])
 				continue
-			var pick := int(Rng.hash01(s, r * 47 + i, 62) * mats.size()) % mats.size()
+			# A COURSE IS LAID AT ONE TIME out of one heap of slate, so the material
+			# runs ALONG the course and only a repair breaks it. Dealing every cell
+			# its own material made a roof of crazy paving — noise standing exactly
+			# where the courses should be — and a slate's own life belongs in its
+			# TONE, which is what weather does to slates off one heap anyway.
+			var pick := int(Rng.hash01(s, r, 71) * mats.size()) % mats.size()
+			if Rng.hash01(s, r * 47 + i, 62) < 0.2:
+				pick = int(Rng.hash01(s, r * 47 + i, 72) * mats.size()) % mats.size()
 			# Damp only sits at the foot of the slope, where it never dries.
 			if pick == mats.size() - 1 and r > 0:
 				pick = 1
-			k.made.quad(b, a, d, c, mats[pick])
+			var slate := Kit.tone(mats[pick], 0.93 + 0.14 * Rng.hash01(s, r * 29 + i, 73))
+			# A COURSE LIES OVER THE ONE BELOW IT, and that overlap is the whole
+			# drawing of a roof: the exposed edge of each course turns away from
+			# the sky and rules a shadow line across the slope. Flat cells butted
+			# edge to edge gave the light nothing to catch, so a roof came out as
+			# one crystalline plane whatever was painted on it (docs/LOOK.md law 2).
+			var face_n := (b - a).cross(d - a)
+			var lay := face_n.normalized() * LAP if face_n.length_squared() > 1e-12 else Vector3(0, LAP, 0)
+			k.made.quad(b + lay, a + lay, d + lay, c + lay, slate)
+			k.made.quad(a, b, b + lay, a + lay, Kit.tone(slate, 0.8))
 			# A course that slipped: the dark batten shows through the gap.
 			if Rng.hash01(s, r * 53 + i, 63) < 0.08:
-				var gap := Vector3(0, 0.014, 0)
+				var gap := lay * 1.5
 				var bm := a.lerp(b, 0.45)
 				k.made.quad(bm + gap, a + gap, a.lerp(d, 0.34) + gap, bm.lerp(c, 0.34) + gap, P.INK[2])
 

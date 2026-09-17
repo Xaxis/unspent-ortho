@@ -35,8 +35,18 @@ extends MachineModel
 ##        cable spliced from the stacks; soot round the stack foot
 
 const WHEEL_R := 0.13
-const HULL_Y := 0.5
-const TRACK_Z := 1.06
+## The hull rides ON A FRAME over its tracks, not down between them. A machine
+## seen end-on was a filled rectangle from four of the sixteen bearings (0.84 of
+## its own box at alert) because the hull sat in the track wells and continuous
+## skirts closed what was left, so there was no hole anywhere in it at any
+## bearing. Four earlier attempts moved parts ABOUT on that hull and none of them
+## could work: only a different hull changes it, and this is the different hull.
+const HULL_Y := 0.62
+const TRACK_Z := 1.12
+## Half the hull's width across. Clear of the track wells (their inner faces are
+## at TRACK_Z - 0.21) so a slot of daylight runs the whole length of each side,
+## crossed only by the three bolsters that carry the hull.
+const HULL_HZ := 0.63
 
 var _travel := 0.0
 var _comb_t := 0.0
@@ -76,17 +86,22 @@ func build() -> void:
 
 	var hull := joint(&"hull", self, Vector3(0, HULL_Y, 0))
 	var k := FoundKit.kit()
-	var plan := FoundKit.plan_oct(1.86, 1.72, 0.34)
-	FoundKit.loft(k, [FoundKit.ring(plan, -0.22, 0.05), FoundKit.ring(plan, -0.14), FoundKit.ring(plan, 0.22, 0.01), FoundKit.ring(plan, 0.3, 0.09)], R, true)
-	# Skirts over the tracks.
+	var plan := FoundKit.plan_oct(1.86, HULL_HZ * 2.0, 0.3)
+	# The belly clears the track tops, so the slot beside each track is open to
+	# the ground and not a shadow line drawn on a solid mass.
+	FoundKit.loft(k, [FoundKit.ring(plan, -0.1, 0.05), FoundKit.ring(plan, -0.03), FoundKit.ring(plan, 0.22, 0.01), FoundKit.ring(plan, 0.3, 0.09)], R, true)
+	# THREE BOLSTERS a side carry the hull down onto each track, and the gaps
+	# between them are the daylight. A continuous skirt here is what made the
+	# machine a crate: it is the cheapest part on it and it was closing the only
+	# hole the shape had.
 	for sz: float in [-1.0, 1.0]:
-		var skirt: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.9, 0.06), Vector2(-0.9, 0.06), Vector2(-1.04, 0.0), Vector2(-0.98, -0.04), Vector2(0.94, -0.04)]
-		FoundKit.slab(k, Vector3(0, 0.0, sz * TRACK_Z), Vector3.RIGHT, Vector3.BACK * sz, skirt, 0.05, R)
-		FoundKit.rivets(k, Vector3(-0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3(0.8, 0.04, sz * (TRACK_Z + 0.03)), Vector3.UP, 6, R[5])
-		FoundKit.streaks(k, Vector3(0.1, 0.12, sz * 0.861), Vector3.BACK * sz, 1.3, 0.22, 4, 31 + int(sz), R[1])
+		for bx: float in [-0.72, 0.0, 0.72]:
+			FoundKit.bar(k, Vector3(bx, -0.04, sz * (HULL_HZ - 0.02)), Vector3(bx, -0.18, sz * (TRACK_Z - 0.16)), 0.26, 0.11, 0.03, D)
+		FoundKit.rivets(k, Vector3(-0.72, -0.05, sz * (HULL_HZ + 0.01)), Vector3(0.72, -0.05, sz * (HULL_HZ + 0.01)), Vector3.BACK * sz, 5, R[5])
+		FoundKit.streaks(k, Vector3(0.1, 0.12, sz * (HULL_HZ + 0.001)), Vector3.BACK * sz, 1.3, 0.22, 4, 31 + int(sz), R[1])
 	# The rear housing: low, so the whole stays a slab; a cold slit across its
 	# face like a cab window with nobody behind it, louvres on top.
-	var cab := FoundKit.plan_oct(0.66, 1.26, 0.2)
+	var cab := FoundKit.plan_oct(0.66, 1.0, 0.2)
 	FoundKit.loft(k, [FoundKit.ring(cab, 0.28, 0.0, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.42, 0.02, Vector2.ONE, Vector2(-0.5, 0)), FoundKit.ring(cab, 0.47, 0.07, Vector2.ONE, Vector2(-0.5, 0))], R)
 	FoundKit.visor(k, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.UP, 0.7, 0.04)
 	FoundKit.streaks(k, Vector3(-0.169, 0.33, 0), Vector3.RIGHT, 0.64, 0.06, 4, 33, R[1])
@@ -108,7 +123,7 @@ func build() -> void:
 	FoundKit.scorch(hw, Vector3(-0.74, 0.473, -0.22), Vector3.UP, 0.07, 44)
 	FoundKit.cable(hw, Vector3(-0.8, 0.52, 0.5), Vector3(-0.42, 0.48, 0.58), 0.05, 0.018, Palette.INK[2], Palette.MACHINE["sweeper"], 4)
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.dirt_line(hw, Vector3(-0.9, -0.1, sz * 0.862), Vector3(0.85, -0.1, sz * 0.862), Vector3.BACK * sz, 0.07, R[1])
+		FoundKit.dirt_line(hw, Vector3(-0.9, -0.06, sz * (HULL_HZ + 0.002)), Vector3(0.85, -0.06, sz * (HULL_HZ + 0.002)), Vector3.BACK * sz, 0.07, R[1])
 	wear_mesh(hw, hull)
 	add_scan(hull, Vector3(-0.169, 0.36, 0), Vector3.RIGHT, Vector3.BACK, 0.6, 0.035, 3.0)
 	# Two stacks behind the housing on a hinged foot, the way a stack is made to
@@ -174,18 +189,26 @@ func build() -> void:
 	wear_matter(chute, spout)
 
 	for sz: float in [-1.0, 1.0]:
-		var lamp := joint(&"lamp_r" if sz > 0 else &"lamp_l", hull, Vector3(0.62, 0.1, sz * 0.66))
+		var lamp := joint(&"lamp_r" if sz > 0 else &"lamp_l", hull, Vector3(0.62, 0.1, sz * 0.56))
 		var mk := FoundKit.kit()
 		FoundKit.tbar(mk, Vector3(0, -0.1, 0), Vector3(0, 0.3, 0), 0.026, 0.022, 6, D)
 		FoundKit.lathe(mk, Vector3(0, 0.34, 0), Vector3.RIGHT, [Vector2(0.04, -0.07), Vector2(0.07, -0.02), Vector2(0.07, 0.05)], 6, R)
 		body_mesh(mk, lamp)
 		add_lamp(lamp, Vector3(0.051, 0.34, 0), Vector3.RIGHT, Vector3.UP, 0.075, 0.07, &"work", true)
 
-	var intake := joint(&"intake", hull, Vector3(0.86, 0.22, 0))
+	var intake := joint(&"intake", hull, Vector3(1.24, 0.22, 0))
 	var ik := FoundKit.kit()
 	var hood: Array[Vector2] = [Vector2(0.0, 0.08), Vector2(0.5, -0.36), Vector2(0.5, -0.52), Vector2(0.08, -0.5)]
 	# The hood is the biggest plate on it: body fill, so the lit rim stays on bevels.
 	var hood_r: Array = [R[0], R[1], R[2], R[3], R[3], R[5]]
+	# THE FEEDER THROAT. The header is carried out in front of the hull on a
+	# housing a third of its width, the way the row is actually taken in, and the
+	# daylight that leaves standing either side of it is the widest hole in the
+	# machine. A header butted onto the hull made the whole front half one
+	# unbroken plate whichever way you walked round it.
+	FoundKit.cbox(ik, Vector3(-0.2, -0.1, 0), Vector3(0.54, 0.44, 0.74), 0.07, R)
+	for sz: float in [-1.0, 1.0]:
+		FoundKit.bar(ik, Vector3(-0.34, -0.24, sz * 0.3), Vector3(-0.02, -0.34, sz * 0.62), 0.11, 0.09, 0.02, D)
 	FoundKit.slab(ik, Vector3.ZERO, Vector3.RIGHT, Vector3.UP, hood, 2.46, hood_r, 0.03)
 	FoundKit.rivets(ik, Vector3(0.1, 0.01, -1.1), Vector3(0.1, 0.01, 1.1), Vector3(0.66, 0.75, 0), 6, R[5])
 	for sz: float in [-1.0, 1.0]:
@@ -199,7 +222,7 @@ func build() -> void:
 		add_lamp(intake, Vector3(0.501, -0.4, sz * 0.54), Vector3.RIGHT, Vector3.UP, 0.07, 0.05, &"work", true)
 	# The lamps' wash on the row ahead, starting past the comb's teeth; hung on
 	# the hull so it stays on the ground when the intake pitches.
-	add_beam(hull, Vector3(1.72, -0.22, 0), Vector3(1.3, -0.18, 0), 2.1, 2.8, &"work", true)
+	add_beam(hull, Vector3(2.1, -0.22, 0), Vector3(1.68, -0.18, 0), 2.1, 2.8, &"work", true)
 	var iw := FoundKit.kit()
 	FoundKit.grime(iw, Vector3(0.45, -0.3, 0.0), Vector3(0.66, 0.75, 0), 1.8, 0.12, 6, 45, hood_r)
 	FoundKit.patch(iw, Vector3(0.22, -0.12, -0.7), Vector3(0.66, 0.75, 0), Vector3(0.75, -0.66, 0), 0.26, 0.2, Palette.MACHINE["lineman"], 46)
@@ -243,7 +266,7 @@ func build() -> void:
 	for j in 16:
 		var a := Rng.hash01(71, j) * TAU
 		var dist := 0.2 + Rng.hash01(72, j) * 0.7
-		var base := Vector3(1.75 + cos(a) * dist * 0.6, 0.03, sin(a) * dist * 1.5)
+		var base := Vector3(2.13 + cos(a) * dist * 0.6, 0.03, sin(a) * dist * 1.5)
 		var tip := base + Vector3(cos(a + 1.3), 0.02, sin(a + 1.3)) * (0.22 + Rng.hash01(73, j) * 0.16)
 		sk.push(Transform3D(Basis.IDENTITY, Vector3.ZERO))
 		FoundKit.bar(sk, base, tip, 0.035, 0.03, 0.0, FoundKit.flat(stalk[j % 4]))
@@ -276,7 +299,7 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			# and the spout comes round and UP with them: the arm stops being
 			# about the field and starts being about you.
 			d[&"intake"] = pr(Vector3(0.02, -0.03, 0), Vector3(0, 0, -0.06))
-			d[&"hull"] = pr(Vector3(-0.03, -0.13, 0))
+			d[&"hull"] = pr(Vector3(-0.03, -0.05, 0))
 			d[&"lamp_l"] = pr(Vector3(0, 0.52, 0))
 			d[&"lamp_r"] = pr(Vector3(0, 0.52, 0))
 			d[&"spout"] = r(Vector3(0.4, -0.3, 0.0))
