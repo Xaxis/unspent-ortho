@@ -913,6 +913,19 @@ func _call_the_keeper(s: Settlement, bearing: float) -> void:
 ## WALKABLE to the holding — a party put down across a channel or behind a cliff
 ## walks into it for an hour and the raid never happens, which is the worst kind
 ## of failure this system can have, because from the yard it looks like nothing.
+##
+## **A party that filed a DECOY was tried coming out of the land at the decoy
+## instead, and it is worse.** Measured over five seeds: the pole is 15 tiles out,
+## and the line from it back to the yard is not walkable for a party body on ANY
+## of them (a fifteen-tile line across the gaps a holding is built in has a fence,
+## a hull or a house on it), so the address is never usable and the check that
+## keeps it honest makes the whole thing a no-op. Forced past that check it lands
+## the party 3.0 to 21.3 tiles from the yard instead of 12 — on seed 3 they come
+## out three tiles from the fence, which throws away the one warning that says
+## from which side, and the picture is a party standing on the pole rather than
+## crossing the ground to it. The yard's own ring already puts them 4.5 to 7.7
+## tiles from the pole, and the harvester walks the rest (`RaidRoles`), which is
+## the same arrival with the march still in it.
 func _march_from(s: Settlement, want: float, body: float) -> Vector2:
 	var loose := Vector2.INF
 	# Outward first, and in toward the yard until there is a way: a party seen
