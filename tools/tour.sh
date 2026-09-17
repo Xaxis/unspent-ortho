@@ -3,6 +3,8 @@
 #   tools/tour.sh tours/smoke.tour [BootOptions like --seed=3 --spawn=...]
 # Frames land in shots/tour/<tour name>/. Fails on script errors, a bad tour
 # line, or TOUR_TIMEOUT seconds (default 180).
+# A FAILED run also keeps the whole godot log beside its frames, at
+# shots/tour/<tour name>/run.log. A green run keeps nothing.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
@@ -12,7 +14,8 @@ tour="$1"; shift
 # frames are the evidence. Fail loud rather than queue — a second run means two
 # agents believe they own the same proof, and that is worth stopping to look at.
 # cksum, not md5: md5 is BSD-only and md5sum is GNU-only, and CI is Linux.
-lock="${TMPDIR:-/tmp}/unspent-tour-$(basename "$tour" .tour)-$(printf '%s' "$PWD" | cksum | cut -d' ' -f1).lock"
+name="$(basename "$tour" .tour)"
+lock="${TMPDIR:-/tmp}/unspent-tour-$name-$(printf '%s' "$PWD" | cksum | cut -d' ' -f1).lock"
 if [ -e "$lock" ] && kill -0 "$(cat "$lock" 2>/dev/null)" 2>/dev/null; then
   echo "tour FAILED: $(basename "$tour") is already running here (pid $(cat "$lock")); its frames would be overwritten"
   exit 3
@@ -53,12 +56,26 @@ while kill -0 "$pid" 2>/dev/null; do
   sleep 0.2
 done
 wait "$pid"; code=$?
+# The WHOLE log, kept on failure and only on failure, beside the frames the run
+# did manage to save. Everything printed below this samples the log: the grep
+# takes matching lines, the tail takes the last twelve, and the middle — which is
+# exactly where a crash puts its C++ backtrace — used to go in the bin with the
+# mktemp file. One abort in this repo was diagnosed no further than "a worker
+# died somewhere inside the sketch bake" because frames 0 to 17 of its backtrace
+# were in that gap, and nobody could get it to happen again. A log is cheap; a
+# crash you cannot reproduce and have no stack for costs days.
+keep_log() {
+  mkdir -p "shots/tour/$name"
+  if mv "$log" "shots/tour/$name/run.log" 2>/dev/null; then
+    echo "tour log kept: shots/tour/$name/run.log"
+  fi
+}
 grep -E '^tour|SCRIPT ERROR|ERROR|at: ' "$log" | grep -v '^tour t=' | head -60
 grep -E 'done ->' "$log" | tail -1
 # A tour that stopped early can still leave a zero exit (a quit racing a frame):
 # the run only counts when the tour says it reached its end.
 if ! grep -qE '^tour .* done ->' "$log"; then
-  tail -12 "$log"; rm -f "$log"; echo "tour FAILED: never reached its end ($tour)"; exit 1
+  tail -12 "$log"; keep_log; echo "tour FAILED: never reached its end ($tour)"; exit 1
 fi
+if [ $status -ne 0 ] || [ $code -ne 0 ]; then keep_log; echo "tour FAILED (status $status, exit $code)"; exit 1; fi
 rm -f "$log"
-if [ $status -ne 0 ] || [ $code -ne 0 ]; then echo "tour FAILED (status $status, exit $code)"; exit 1; fi
