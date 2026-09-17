@@ -75,7 +75,18 @@ static func _load_average() -> float:
 	return 0.0
 
 
-## Advance the real scene tree by n physics+process frames.
+## Advance the real scene tree by n physics frames. Most of the game is stepped
+## on those (the fight, survival, the mobs), and most tests are written against
+## them, so this is what "a frame" means here.
 func frames(n: int) -> void:
 	for i in n:
 		await tree.physics_frame
+
+
+## Advance it by n PROCESS frames instead, for the few things that only happen in
+## one: a headless loop runs several physics steps inside a single process frame,
+## so `frames(2)` can deliver no `_process` at all, and a test that asks a node to
+## do its once-a-frame late pass has to say so (tests/sky/test_one_writer).
+func process_frames(n: int) -> void:
+	for i in n:
+		await tree.process_frame

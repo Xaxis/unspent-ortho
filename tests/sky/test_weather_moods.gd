@@ -149,7 +149,17 @@ func test_a_held_bolt_asked_for_mid_play_is_struck_and_not_only_flagged() -> voi
 	check(sky_sys != null, "sky system loaded")
 	eq(sky_sys.strikes, 0, "a clear sky throws none")
 	check(bool(sky_sys.call("apply_weather", "dry_storm:1:bolt")), "the storm is forced")
-	await frames(6)
+	# Wait for the strike rather than counting frames at it: the bolt is thrown in
+	# a PROCESS frame, and a headless loop runs several physics steps inside one,
+	# so on a busy machine six physics frames can deliver none of them.
+	var waited := 0
+	var most := int(80.0 * TestCase.machine_slack())
+	# The strike and the light it throws are written in different passes of the
+	# same frame, so the wait is for both: leaving the moment it is thrown catches
+	# the sky before it has carried the afterglow anywhere.
+	while (sky_sys.strikes == 0 or g.sky.bolt.z <= 0.1 or g.sky.bolt.w <= 0.9) and waited < most:
+		await process_frames(1)
+		waited += 1
 	eq(sky_sys.strikes, 1, "and a bolt is struck for the still")
 	check((sky_sys.view as WeatherView).bolt.visible, "drawn, and held while the hold lasts")
 	gt(g.sky.bolt.z, 0.1, "the cloud carries its afterglow")

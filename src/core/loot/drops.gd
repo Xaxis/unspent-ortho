@@ -17,18 +17,28 @@ class_name Drops
 ## kill gives.
 
 static var _tables: Dictionary = {}
+## Table id -> the roster kind it comes off, when that is not the id itself.
+static var _bodies: Dictionary = {}
 
 
 ## `entries` take: item (id), chance (0..1, default 1), count (Vector2i min/max,
 ## default 1..1), rarity (the grade the piece comes out at), only_in (landscape
 ## ids this source yields it in, when the same source stands in several places).
-static func declare(source: StringName, entries: Array) -> void:
+##
+## `of` names the roster kind the table comes off when the id is NOT that kind.
+## A kill rolls the table named by the kind killed (56_economy), so anything that
+## hands its own spoils over on its own terms — a keeper, whose table is rolled
+## once for its region and never again — must keep an id of its own or be paid
+## twice. Saying which body it is keeps it pointable at all the same.
+static func declare(source: StringName, entries: Array, of: StringName = &"") -> void:
 	var rows: Array = []
 	for e: Variant in entries:
 		var row := {"item": &"", "chance": 1.0, "count": Vector2i.ONE, "rarity": Rarity.COMMON, "only_in": []}
 		row.merge(e as Dictionary, true)
 		rows.append(row)
 	_tables[source] = rows
+	if of != &"":
+		_bodies[source] = of
 
 
 static func table(source: StringName) -> Array:
@@ -37,6 +47,11 @@ static func table(source: StringName) -> Array:
 
 static func sources() -> Array:
 	return _tables.keys()
+
+
+## The roster kind a table comes off: itself, unless it said otherwise.
+static func body_of(source: StringName) -> StringName:
+	return _bodies.get(source, source)
 
 
 ## What this one thing yields: [{item, count}]. `instance` separates one harvester

@@ -170,7 +170,9 @@ static func make() -> BiomeDef:
 		&"runner": {"weight": 0.6, "hours": Vector2(10, 17), "grounds": crust},
 		&"gulls": {"weight": 0.4, "hours": Vector2(6, 20), "grounds": ["salt", "pan", "sand", "shingle", "gravel"]},
 	}
-	d.sentinel = &""
+	# Its keeper: the rake that made the pans and still goes round them
+	# (src/core/sentinel/designs/pan_rake.gd, docs/VISION.md §3).
+	d.sentinel = &"pan_rake"
 	d.sound_bed = &"bed_bones"
 	d.music_motif = &"bonelands"
 	d.surface = _surface

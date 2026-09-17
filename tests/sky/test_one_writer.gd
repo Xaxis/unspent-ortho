@@ -76,7 +76,9 @@ func test_an_undriven_sky_composes_at_once() -> void:
 	sky.driven = true
 	sky.set_hour(14.0)
 	eq(sky.compose_count, n + 1, "driven: recorded, composed in the frame's late pass")
-	await frames(2)
+	# PROCESS frames: the late pass is a _process, and a headless loop can run two
+	# physics steps inside one of them and never call it (TestCase.process_frames).
+	await process_frames(2)
 	gt(float(sky.compose_count), float(n + 1), "and composed")
 	sky.queue_free()
 	await frames(1)

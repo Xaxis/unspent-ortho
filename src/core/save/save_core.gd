@@ -54,6 +54,12 @@ static func disagrees(game: Game, header: Dictionary) -> String:
 	var want := StringName(str(header.get("landscape", "")))
 	if want == &"" or game == null or game.world == null:
 		return ""
+	# A save made in another REALM stood on another world, and the world a game
+	# opens with is always the surface's: the realms system crosses to the saved
+	# one in started(). Holding a cave save to the ground of the coast above it
+	# would refuse every save ever made under the world.
+	if StringName(str(header.get("realm", "surface"))) != game.world.realm:
+		return ""
 	var p := SaveCodec.to_vec2(header.get("pos"), Vector2(-1, -1))
 	if p.x < 0.0 or p.y < 0.0 or p.x >= float(game.world.size) or p.y >= float(game.world.size):
 		return ""
@@ -92,8 +98,14 @@ static func header(game: Game, play_seconds: float, thumb_png: PackedByteArray) 
 		"minutes": game.clock.minutes,
 		"landscape": String(land.id),
 		"place": land.display_name,
+		# Which realm it stood in, so a save made under the world is not held to
+		# the ground of the surface it opens on (disagrees, above).
+		"realm": String(game.world.realm),
 		"play_seconds": play_seconds,
-		"seed": game.world.seed_value,
+		# The GAME's seed, not the world it happens to be standing in: a realm's
+		# world is grown from that seed with the realm's own salt (Realm.seed_for),
+		# and a slot boots the seed the player was given.
+		"seed": game.options.seed_value,
 		"size": game.world.size,
 		"pos": SaveCodec.vec2(p),
 		"thumb": Marshalls.raw_to_base64(thumb_png) if not thumb_png.is_empty() else "",
@@ -119,7 +131,8 @@ static func save_world(game: Game) -> Dictionary:
 	var built: Array = []
 	for q: WorldProp in state.built:
 		built.append(q.id)
-	return {"seed": w.seed_value, "size": w.size, "stamp": WorldStamp.current(), "props_base": base,
+	return {"seed": game.options.seed_value, "size": w.size, "realm": String(w.realm),
+		"stamp": WorldStamp.current(), "props_base": base,
 		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built}
 
 
@@ -128,7 +141,14 @@ static func load_world(game: Game, v: Variant) -> void:
 	var w := game.world
 	# A save's edits only mean anything on the world they were made on. (A slot
 	# always boots its own seed and size; this guards a hand-built BootOptions.)
-	if SaveCodec.to_int(d.get("seed"), -1) != w.seed_value or SaveCodec.to_int(d.get("size"), -1) != w.size:
+	if SaveCodec.to_int(d.get("seed"), -1) != game.options.seed_value or SaveCodec.to_int(d.get("size"), -1) != w.size:
+		return
+	# Nor on another REALM's world. A loaded game always opens on the surface and
+	# crosses afterwards, so a save made under the world would otherwise lay a
+	# cave's prop ids over the coast's. What each realm had TAKEN out of it comes
+	# back through the realms system's own key; what was BUILT in another realm
+	# does not yet, because the core world state here is one realm's.
+	if StringName(str(d.get("realm", "surface"))) != w.realm:
 		return
 	# Nor on another island grown from the same seed: prop ids and depleted marks
 	# only mean anything against the props this build's registry laid.

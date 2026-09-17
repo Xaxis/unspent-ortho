@@ -149,6 +149,14 @@ func test_every_piece_of_gear_is_made_drawn_and_worth_wearing() -> void:
 ## makes, all the way down. Unreachable gear is a dead page on the slate.
 func test_every_piece_of_gear_can_be_reached_from_a_normal_start() -> void:
 	var have := {&"knife": true, &"lamp": true}
+	# Taking and making were the only two ways to hold a thing when this was
+	# written. The economy added a third — what a machine gives up when it goes
+	# down (docs/VISION.md §6.1) — so what counts as reachable is widened here and
+	# nothing is let off: every wearable and every module still has to be gettable.
+	# `without_making` is computed from roster kinds that really exist, so it can
+	# never claim a path through a body nobody has built.
+	for id: StringName in GearEconomy.without_making():
+		have[id] = true
 	for kind: int in Takes.table():
 		for o: Dictionary in Takes.options(kind):
 			have[StringName(o.item)] = true

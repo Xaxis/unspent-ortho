@@ -312,7 +312,7 @@ func test_every_country_reachable_on_foot_from_spawn() -> void:
 				total[w.country[i]] += 1.0
 				if reached[i] != 0:
 					got[w.country[i]] += 1.0
-		for c: int in BiomeRegistry.land_indices():
+		for c: int in BiomeRegistry.land_indices_in(w.realm):
 			gt(got[c] / maxf(1.0, total[c]), 0.85, "seed %d %s reachable share" % [s, BiomeRegistry.name_of(c)])
 		for v in w.villages:
 			var p: Vector2 = v.pos
@@ -543,7 +543,7 @@ func test_places_worth_walking_to() -> void:
 			kinds[m.kind] = int(kinds.get(m.kind, 0)) + 1
 			if m.kind == &"tip":
 				tips[m.country] += 1
-		for c: int in BiomeRegistry.land_indices():
+		for c: int in BiomeRegistry.land_indices_in(w.realm):
 			gt(tips[c], 0, "seed %d tips in %s" % [s, BiomeRegistry.name_of(c)])
 		for kind: StringName in [&"stone_circle", &"wreck", &"ruin", &"summit", &"caldera", &"bridge", &"falls"]:
 			gt(int(kinds.get(kind, 0)), 0, "seed %d %s landmarks" % [s, kind])
@@ -565,7 +565,7 @@ func test_ore_is_richest_in_the_bonelands() -> void:
 		if p.kind in [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]:
 			ore[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 	var bone := ore[Country.BONELANDS] / area[Country.BONELANDS]
-	for c: int in BiomeRegistry.land_indices():
+	for c: int in BiomeRegistry.land_indices_in(w.realm):
 		if c != Country.BONELANDS:
 			check(bone >= ore[c] / area[c], "bonelands ore density %.4f below %s %.4f" % [bone, BiomeRegistry.name_of(c), ore[c] / area[c]])
 

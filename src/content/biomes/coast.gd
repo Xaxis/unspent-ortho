@@ -67,6 +67,9 @@ static func make() -> BiomeDef:
 		&"bull.field": {"weight": 1.0},
 		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
 	}
+	# Its keeper: the reaper on the gantry at the machines' intake
+	# (src/core/sentinel/designs/tide_reaper.gd, docs/VISION.md §3).
+	d.sentinel = &"tide_reaper"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

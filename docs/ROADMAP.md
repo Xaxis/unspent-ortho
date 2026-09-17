@@ -352,8 +352,8 @@ wave A left that A2 did not take on.
   md5s or it has changed what a seed makes, and that bumps `WorldStamp.GEN`.
 - Salt Flats and Scrapwood borrow existing machine kinds (pan rakers, mirage
   decoys, recyclers and magnet swarms are named in VISION and not yet drawn).
-- `BiomeDef.sentinel` and `BiomeDef.realms` are declared and validated; nothing
-  reads either yet.
+- `BiomeDef.realms` is declared and validated; nothing reads it yet.
+  (`BiomeDef.sentinel` is now the door the sentinels package comes through.)
 - `src/models/props/{houses,remains,rocks,shore,works,built}.gd` still switch on
   `Country` for per-landscape dressing, so a landscape added after the M1 six is
   dressed as the coast until they read the registry. `trees.gd` is the pattern
@@ -577,25 +577,141 @@ before the set was taken. What the numbers say, accepted-to-now:
   (118 against its own brightest 87) and the bonelands' limestone (192 against
   141) look like real minor faults.
 
-**Wave B** (parallel, on top of A):
+**Wave B**, replanned 2026-09-16 after taking stock. Two of the packages this
+list used to name are already built and on main — **sentinels** (the spine and
+two designs) and **crafts** (the spine and its rides) — and a second session has
+since built dev mode, master configurations and stamped builds, which was M5 work
+arriving early. What is left is the world's reach, its economy, and the thing the
+owner asked for that nothing yet does:
+
 - **realms**: realms and portals; the first underground type (Limestone Caves,
-  drawn as scratchboard); the first era (The Before, drawn in watercolour) with
-  edits that carry into the present.
-- **sentinels**: the boss spine, plus the Coast and Salt Flats sentinels, each beatable
-  three ways.
-- **crafts**: the vehicle spine; raft, hover sled, walker rig.
-- **gear**: the MENDED tech tree (20+ implements, 15+ modules) **plus the economy that
-  places it** (VISION §6.1): five rarity grades, elite materials that exist in one or
-  two landscapes or drop from one enemy or sentinel, craft difficulty by station tier,
-  and modifiers that change decisions, combine, conflict, and can be re-socketed.
-- **settlement**: building at world scale (VISION §9) — shelter, power, food and water,
-  work stations, defence, and people who staff them; production, upkeep and repair that
-  run while the player is away.
-- **raids**: why and when machines come for a settlement — signature, notice as a
-  playable encounter, attention, the readable escalation from survey to siege, roles in
-  the raid itself, destruction, aftermath and reclaiming.
-- **works**: machine depots that feed patrols, can be broken and let a region recover.
-- **landmarks**: 3-5 kinds per type, worth the walk.
+  scratchboard); the first era (The Before, watercolour) with edits that carry
+  into the present. The largest gap in VISION and the last of its spines.
+- **gear**: the MENDED tech tree and the economy that places it (VISION §6.1) on
+  the contract already on main (`src/core/loot/`): rarity, elite materials tied to
+  one or two landscapes or to one enemy, craft difficulty, and modifiers that
+  change decisions. Sentinels now exist to drop from.
+- **settlement**: building at world scale (VISION §9) on the contract already on
+  main (`src/core/settlement/`): shelter, power, food and water, work, defence,
+  and people who staff them.
+- **raids**: why and when the machines come for it — signature, notice as a
+  playable encounter, attention, and the readable escalation to a siege.
+- **works and landmarks**: the depots that feed the patrols and can be broken,
+  and the places worth the walk that feed the economy its materials.
+- **polish**: what A2 left, listed in "Gaps A2 leaves" — the Burning's vents
+  (the ugliest thing in the build), the targeting tag standing in the world, a
+  machine with no mass at play distance, the ruts stamped five to a frame,
+  survivable day two, and a loading page with no deadline.
+
+Then **M3** grows the landscape types (Ruined Metropolis and its Undercroft
+first), each with its own sentinel and landmarks on the spines that now exist;
+**M4** is the plan, the people and the story; **M5** is ship, already part-built
+by dev mode's configurations and builds.
+
+### Sentinels (wave B, built)
+
+`docs/VISION.md` §3. A landscape's keeper is one file under
+`src/core/sentinel/designs/`, claimed by name in that landscape's own file
+(`BiomeDef.sentinel`), and every REGION of that type grows its own instance from
+it. Proved by `tours/sentinels.tour` and `tests/sentinel/`.
+
+#### What is true
+
+- **A keeper stands at the work it keeps.** One per region above
+  `Sentinels.MIN_TILES`, at the first of the design's own station landmarks
+  (`intake`, `sea_wall`, `pans`, `brine_house`…) that its region holds, and never
+  within `Sentinels.CLEAR_OF_HOME` of where the player wakes. Deterministic, so
+  it can be walked to twice. Its body comes out when the player is near and is
+  culled by the coast when they leave; what has been done to it — its health, the
+  phase it reached, whether it fell and how — lives in `SentinelState` and is saved.
+- **A phase is a roster row.** Entering one rewrites the live body's own copy of
+  its row (part, guarded, bite, speeds, turn), so the fight, the senses, the poses
+  and the enemy read under `z` all tell the truth about what it is NOW without
+  knowing what a sentinel is. The side a player has to be on moves as it comes
+  apart, and nothing says so but the body (`second_act`, drawn by 40_fight).
+- **Three ways each, and none of them is trading hits** (`SentinelWay`, pure
+  rules over a `SentinelLook`): force (its working part, opening by opening),
+  founder (ground that will not carry it — the coast's tide flats, the flats' own
+  pans), starve (its works robbed until it stands dark) and spoof (inside its
+  guard with a signature it reads as one of its own; it stands down and is never
+  killed). The reaper offers force, founder and starve; the rake force, founder
+  and spoof.
+- **Its fall changes the region.** It stops holding its ground, the score's motif
+  stops with its beacon, its table is rolled into the player's hands once and for
+  good (`src/core/loot`), and a keeper that was killed leaves a hulk where it fell
+  that is saved with the world. `Events.sentinel_woke/phase/fell` is the door for
+  whatever else the plan should make of a region whose keeper has gone.
+- **Two drawings**: the reaper, an arch on two tracks with a drum of amber under
+  the front (the one silhouette on the coast with daylight through it), and the
+  rake, a delta on four stilts under a mirror. Both on the keeper's ramp, both in
+  the gallery (`--filter=sentinel`, `--filter=sentinel_beside` for scale).
+
+#### Gaps
+
+- A keeper has no machine loop of its own: `SoundMachines.RACKET` is keyed by the
+  tail of a roster id, and `sentinel.coast` has none, so it is heard through the
+  score's motif and `Racket`'s line but makes no sound of its own.
+- Its drop table names a core (`reaper_core`, `rake_core`) declared in `Materials`
+  as coming from it and nowhere else, but there is no item row to carry one yet:
+  `src/content/items.gd` belongs to the gear package this wave, so the core is a
+  promise on the table until that lands.
+- The tour proves the fight and the phases; it does not kill it. Five or six more
+  of the same pass against a boss measures the runner, not the game, so the death,
+  the phases, the openings and what a fall changes are proved headless in
+  `tests/sentinel/test_fight.gd`.
+- A keeper standing on the only work that feeds it cannot be starved, and a region
+  with no tide flat inside its reach cannot founder one: some ways are open in
+  some regions, which is VISION's own "the more a player understands the
+  landscape, the more ways they see" — but nothing yet tells a player which.
+- Nothing lowers a region's interference when its keeper falls (VISION §9.7):
+  `sentinel_fell` is emitted and the disposition package has still to listen.
+- A keeper that stood down keeps blinking its role's disposition: 32_disposition
+  writes every live body's lamps from role and interference, four times a second.
+
+### Wave B: what the realms package made true
+
+- **A realm is a world of its own** (`src/core/realm/`). `BiomeDef.realms` is read
+  at last: `GenContext` lays only the landscape types registered in the realm its
+  world is being grown for, so a surface island is exactly the island it was and
+  nothing under the world can appear on it. Each realm's world is grown from the
+  game's one seed with the realm's own salt (`Realm.seed_for`), raised once and
+  kept (`RealmWorlds`), and the game holds one of them at a time.
+- **`Realm` is the authority over its own light, sky, weather and sound**, and a
+  landscape declares them THROUGH it: `limestone_caves.gd` takes `Realm.light`,
+  `Realm.lift`, `Realm.airs` and `Realm.bed` and colours inside them. The one
+  thing no landscape file can say is that the HOUR has stopped mattering, so
+  `SkyLight.closed` reads a roofed realm as night at any time of day — the blue
+  floor, the hatch, the night ink, the lamp's pool and no cast shadows.
+- **A portal is a place** (`Portals`, `RealmGate`): a shaft the machines sank at a
+  cliff foot, inland, clear of the villages and of where the player wakes, laid
+  deterministically per REGION and paired with the shaft of the same number on the
+  far side. It is a hole in the ground with a headframe over it and a ladder
+  somebody hung in it, it is in `WorldData.landmarks` so the map and a tour can
+  find it by name, and it is entered by standing on it and pressing `use`.
+- **A crossing does not make a new game** (`src/systems/20_realms.gd`): the world,
+  the query, the body, its simulation and the view are pointed at the other realm,
+  which is why the score, the sound, the clock and what is carried all survive it
+  (`tours/realms.tour` awaits `score_unbroken` across both crossings).
+- **Limestone Caves**, drawn as scratchboard: a near-black page of wet limestone,
+  pale calcite flowstone massing on the rises and along the water, terrace walls
+  bedded in calcite, black sumps that are still a chart, and the machines' drills,
+  pipe runs and graves. `--realm=underground` opens a shot or a tour in it.
+
+Gaps it leaves for the rest of the wave:
+
+- The map, the explored ground and the lights' source index are not rebuilt on a
+  crossing: `20_realms` calls `realm_changed(from, to)` on every system that has
+  it, and none does yet (90_ui and 15_lights are the two that want it).
+- The core save's world state is ONE realm's. What each realm had TAKEN out of it
+  comes back (the realms key carries it); what was BUILT in another realm does not.
+- The flooded bottom of a cave system is still drawn as the sea, with surf and a
+  pale shore: `sea.gd` is one type shared by every realm.
+- `src/models/props/rocks.gd` puts turf at the foot of every boulder in every
+  landscape, which underground is the one thing that says "outside".
+- The caves have no sentinel and no blind crawlers; they borrow the bonelands'
+  cutters and haulers, and no works network of their own.
+- Orbital and era realms are declared in the table and hold no landscape: their
+  pages are not drawn, and `tests/realm` refuses a landscape registered into one.
 
 ## M3 — The landscapes
 

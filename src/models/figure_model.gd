@@ -33,7 +33,9 @@ var material: Material
 
 static func create(kind_id: StringName, mat: Material = null) -> FigureModel:
 	var m: FigureModel = null
-	for dir: String in ["res://src/models/machines/", "res://src/models/animals/"]:
+	# Sentinels are machines drawn the same way in their own directory, so a
+	# landscape's keeper is found by `model` like any other kind (VISION §3).
+	for dir: String in ["res://src/models/machines/", "res://src/models/machines/sentinels/", "res://src/models/animals/"]:
 		var path := dir + String(kind_id) + ".gd"
 		if ResourceLoader.exists(path):
 			m = _instance_of(load(path) as GDScript)

@@ -54,7 +54,7 @@ func test_every_landscape_holds_its_own_works_on_every_seed() -> void:
 		for p in w.props:
 			if is_evidence(p.kind):
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
-		for cc: int in BiomeRegistry.land_indices():
+		for cc: int in BiomeRegistry.land_indices_in(w.realm):
 			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, BiomeRegistry.name_of(cc)])
 
 

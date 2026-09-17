@@ -23,7 +23,9 @@ func test_every_world_records_its_regions() -> void:
 			check(b.has_point(r.centre), "seed %d: region %d centre lies in its bounds" % [s, r.id])
 			seen[r.type] = int(seen.get(r.type, 0)) + 1
 			tiles += int(r.tiles)
-		for d: BiomeDef in BiomeRegistry.land():
+		# The landscapes of THIS world's realm: a world is one realm's world
+		# (GenContext), so the ones registered under it are not in this island.
+		for d: BiomeDef in BiomeRegistry.land_in(w.realm):
 			check(seen.has(d.id), "seed %d: %s holds at least one region" % [s, d.id])
 		var land := 0
 		for c in w.country:

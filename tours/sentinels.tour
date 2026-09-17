@@ -1,0 +1,92 @@
+# The keeper a landscape has (docs/VISION.md §3), walked to and fought with real
+# keys: the Coast's reaper at the machines' intake, where it stands on every seed.
+#
+#   tools/tour.sh tours/sentinels.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling
+#
+# What it proves, in order: a keeper stands at the works it keeps and holds the
+# ground round it; a blow into its plated side rings off; it tells before it bites
+# and the tell hangs over the side that is about to take you; dodging the bite
+# leaves its working part open and a blow there hurts it; the side to be on MOVES
+# as it comes apart, and nothing says so but the body; and the slate reads it off
+# the same simulation while the key is held.
+#
+# What is NOT here, and why: its death, and the other two ways it can be taken.
+# Killing it is five or six more of the same pass, and a scripted player fed to a
+# boss for two minutes is downed about as often as it lands a blow — which makes a
+# tour that measures the runner and not the game. Its death, its phases, the
+# openings it gives and what its fall changes are proved in the real simulation,
+# headless and without luck, in tests/sentinel/test_fight.gd; the tide flats and
+# its works are rules, and are proved in tests/sentinel/test_ways.gd. Neither
+# could be staged honestly on this seed anyway: the reaper stands on the only work
+# that feeds it, and no patch of tide flat wide enough to stand on lies inside the
+# ground it holds.
+
+coast calm
+place intake
+wait 0.6
+await sentinel 12
+shot 01-the-keeper-at-its-intake with mob:sentinel.coast,prop:intake,land:coast
+
+# Its ground: everything inside its reach is held while it stands.
+walkto mob 8
+await sentinel_reach 6
+shot 02-inside-the-keepers-guard with mob:sentinel.coast,sentinel_reach
+
+# The plated side: a blow anywhere but the working part rings off it.
+try 4
+  walkto plate 6
+  press swing 0.25
+  await ring 4
+end
+shot 03-a-blow-off-its-plate with mob:sentinel.coast
+
+# It tells before it bites, and the tell stands over the drum: the thing about to
+# take you is the thing you have to hit.
+try 4
+  walkto mob 6
+  await tell 14
+end
+shot 04-the-tell-over-its-drum with mob:sentinel.coast
+
+# The pass a player learns: in front of it where it will bite, out of the bite as
+# the tell starts, and into the drum while it is jammed and grinding round. Its
+# working side in this phase is its FRONT, so there is nowhere safe to stand and
+# swing: the dodge is the whole of the opening.
+try 8
+  walkto mob 6
+  await tell 14
+  press dodge 0.12
+  await sentinel_open 6
+  walkto part 2
+  press swing 0.25
+  await hit 5
+end
+shot 05-into-the-working-part with mob:sentinel.coast,sentinel_hurt
+
+# The side to be on MOVES as it comes apart. Nothing is said about it: the arch
+# rears, the drum comes up out of the row, and what is open now is the drive in
+# its left leg. Each pass is a player's: wait for the opening, take it, get out.
+try 10
+  walkto mob 6
+  await tell 14
+  press dodge 0.12
+  walkto part 2
+  press swing 0.25
+  await hit 5
+  await sentinel_phase:raised 1
+end
+shot 06-the-arch-rears-and-its-side-moves with mob:sentinel.coast,sentinel_phase:raised
+
+# And what the slate makes of it, held under the key: a keeper reads like any
+# other machine, off the same simulation — its powers, the side that is open NOW,
+# and what it is thinking. The phase it is in is what the read says, because the
+# phase IS the row (src/core/sentinel/sentinel_phase.gd).
+hold target
+await target 6
+shot 07-the-keeper-read-under-the-key with mob:sentinel.coast,target
+release target
+
+# Taking it down from here is the same pass again and again, and it is proved
+# where a real-time tour cannot prove it honestly: tests/sentinel/test_fight.gd
+# fights both keepers to death in the real simulation, through the openings they
+# give, and holds what their fall changes.

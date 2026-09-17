@@ -34,6 +34,9 @@ const POWERS_MOST := 2
 ## at the foot (what it has noticed, what it is doing) with the keys under them.
 const READ_HEAD := 25
 const READ_FOOT := 37
+## Clear air between the last row and the rule above the anchored lines: without
+## it a body with everything to say had its last power struck through by that rule.
+const READ_GAP := 5
 ## A body further than this from the player is tagged but never named.
 const NAME_REACH := 14.0
 ## A person's ring, since a villager carries no roster radius.
@@ -219,7 +222,7 @@ func _draw_read(read: Dictionary) -> void:
 	# no health, no powers and little else, and a half-empty frame round two lines
 	# reads as a slate with something missing rather than a person plainly read.
 	var told := mini(stats.size(), STATS_MOST) + mini(powers.size(), POWERS_MOST)
-	var r := Rect2i(PANEL.position, Vector2i(PANEL.size.x, mini(PANEL.size.y, READ_HEAD + told * 10 + READ_FOOT)))
+	var r := Rect2i(PANEL.position, Vector2i(PANEL.size.x, mini(PANEL.size.y, READ_HEAD + told * 10 + READ_GAP + READ_FOOT)))
 	Hud.clip(_canvas, r, false)
 	var x := r.position.x + 5
 	var y := r.position.y + 3
