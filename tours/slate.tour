@@ -20,6 +20,15 @@ tap move_up
 wait 0.2
 shot 04-title-new-game
 tap use
+# "New game" opens the character page now (docs/DESIGN.md §Who wakes), so the
+# title no longer goes straight to a world. Begin is its last row and the list
+# wraps, so one step up from the top reaches it. Without this the tour was red
+# here on main, six lines before the line anybody had noticed.
+await character 8
+wait 0.3
+shot 04b-who-wakes
+key move_up
+key use
 await game 40
 wait 2.5
 shot 05-hud-in-the-world

@@ -61,10 +61,19 @@ await app:saves 3
 shot 14-saves with app:saves
 tap pause
 await app:pause 3
-choose controls
+# Home's "controls" row became "settings" when the player's own settings landed
+# (src/settings/), and what each key does moved inside it. Same frame, two steps.
+choose settings
+tap use
+await app:settings 3
+choose keys
 tap use
 wait 0.4
 shot 15-controls-say-x
+# Three levels back to the world now, not two: the keys are a page inside
+# settings, settings is an app under home, and home is over the world.
+tap pause
+wait 0.3
 tap pause
 wait 0.3
 tap pause
