@@ -321,6 +321,7 @@ static func system_scripts() -> PackedStringArray:
 func _ready() -> void:
 	name = "boot"
 	layer = 100
+	UiBase.fit(self)
 	add_to_group(&"boot_page")
 	_sheet = Control.new()
 	_sheet.name = "sheet"
@@ -468,7 +469,7 @@ func _chrome_key() -> Vector2:
 ## and they are the expensive half of the drawing.
 func _draw_glass() -> void:
 	var key := _chrome_key()
-	UiDraw.rect(_sheet, Rect2i(0, 0, 640, 360), Color(GLASS, key.x))
+	UiDraw.rect(_sheet, UiBase.screen(), Color(GLASS, key.x))
 	_draw_device(_sheet, key.x * key.y)
 	_draw_marks(_sheet, key.x * key.y)
 
@@ -509,7 +510,7 @@ func _draw_device(ci: CanvasItem, a: float) -> void:
 		UiDraw.rect(ci, Rect2i(d.position.x + 6, d.position.y + 115 + i * 4, 5, 2), Color(CHROME[0], a))
 		UiDraw.hline(ci, d.position.x + 6, d.position.x + 10, d.position.y + 117 + i * 4, Color(CHROME[2], a))
 	# 3. Rivets along the top in an exact row, and the module's cold sensor slit.
-	var slit := Rect2i(320 - 22, d.position.y + 4, 44, 5)
+	var slit := Rect2i(UiBase.mid_x() - 22, d.position.y + 4, 44, 5)
 	var rx := d.position.x + 30
 	while rx < d.end.x - 30:
 		if rx < slit.position.x - 6 or rx > slit.end.x + 4:

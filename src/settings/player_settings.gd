@@ -72,6 +72,9 @@ const ROWS: Array[Dictionary] = [
 		"help": "whole pixels of yours to one of the game's"},
 	{"id": &"picture.fullscreen", "group": &"picture", "label": "fullscreen", "kind": SWITCH,
 		"default": false, "applies": &"window"},
+	{"id": &"picture.quality", "group": &"picture", "label": "quality", "kind": CHOICE,
+		"default": &"auto", "from": &"quality", "applies": &"quality",
+		"help": "how much of the picture this machine is asked to draw"},
 	{"id": &"picture.shake", "group": &"picture", "label": "the camera shakes", "kind": LEVEL,
 		"default": 1.0, "applies": &"",
 		"help": "how far the picture moves when something lands"},
@@ -117,6 +120,7 @@ static var _loaded := false
 ## its own and a headless test can read every rule without a display.
 static var on_sound := Callable()
 static var on_window := Callable()
+static var on_quality := Callable()
 
 
 static func row(id: StringName) -> Dictionary:
@@ -128,6 +132,21 @@ static func row(id: StringName) -> Dictionary:
 
 static func default_of(id: StringName) -> Variant:
 	return row(id).get("default", null)
+
+
+## A choice's values, in stepping order. A row either names them itself with
+## `options` or says where they come from with `from`, so a list that is owned
+## somewhere else — the graphics tiers, which five packages read — is never copied
+## into this table and cannot drift from it.
+static func options_of(r: Dictionary) -> Array:
+	match StringName(str(r.get("from", &""))):
+		&"quality":
+			# `auto` is not a tier: it is "decide for me", and what it decides is
+			# Quality.detect(). It leads because it is the honest default.
+			var out: Array = [&"auto"]
+			out.append_array(Quality.ids())
+			return out
+	return r.get("options", []) as Array
 
 
 static func value(id: StringName) -> Variant:
@@ -163,7 +182,7 @@ static func _clean(r: Dictionary, v: Variant) -> Variant:
 		SWITCH:
 			return bool(v)
 		CHOICE:
-			var options: Array = r.get("options", [])
+			var options: Array = options_of(r)
 			if options.has(v):
 				return v
 			# JSON has no StringName and one number kind: match by how it prints.
@@ -186,7 +205,7 @@ static func step(id: StringName, by: int) -> void:
 		SWITCH:
 			set_value(id, not bool(value(id)))
 		CHOICE:
-			var options: Array = r.get("options", [])
+			var options: Array = options_of(r)
 			var at: int = options.find(value(id))
 			set_value(id, options[posmod(at + by, options.size())] if not options.is_empty() else value(id))
 
@@ -336,6 +355,8 @@ static func apply_all() -> void:
 		on_sound.call()
 	if on_window.is_valid():
 		on_window.call()
+	if on_quality.is_valid():
+		on_quality.call()
 
 
 static func _apply_one(r: Dictionary) -> void:
@@ -346,6 +367,9 @@ static func _apply_one(r: Dictionary) -> void:
 		&"window":
 			if on_window.is_valid():
 				on_window.call()
+		&"quality":
+			if on_quality.is_valid():
+				on_quality.call()
 
 
 ## Only for tests: forget what is in memory and read the runner's file again, so

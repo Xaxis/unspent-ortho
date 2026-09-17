@@ -185,7 +185,7 @@ func test_the_goal_line_is_read_off_a_window_like_every_other_readout() -> void:
 	var r := Hud.goal_clip(hud.goal)
 	check(r.size.x > UiFont.width(hud.goal), "the window holds the whole line")
 	check(r.size.y >= 12, "and a line box")
-	check(Rect2i(0, 0, 640, 360).encloses(r), "and stands on the screen")
+	check(UiBase.screen().encloses(r), "and stands on the screen")
 	# Clipped to a corner, not banded across the middle (docs/ART.md §9).
 	lt(r.end.x, 440, "it keeps to the left")
 	lt(r.end.y, 60, "and the top")

@@ -297,10 +297,10 @@ func _read_keys() -> void:
 func _draw() -> void:
 	# Dark bands top and bottom keep the slate calm over bright ground.
 	for i in 6:
-		UiDraw.rect(self, Rect2i(0, i * 6, 640, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
-		UiDraw.rect(self, Rect2i(0, 354 - i * 6, 640, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
+		UiDraw.rect(self, Rect2i(0, i * 6, UiBase.DESIGN.x, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
+		UiDraw.rect(self, Rect2i(0, UiBase.DESIGN.y - 6 - i * 6, UiBase.DESIGN.x, 6), Color(UiTheme.GLASS_OFF, 0.3 - i * 0.05))
 	if fade > 0.0:
-		UiDraw.rect(self, Rect2i(0, 0, 640, 360), Color(UiTheme.GLASS_OFF, fade))
+		UiDraw.rect(self, UiBase.screen(), Color(UiTheme.GLASS_OFF, fade))
 	draw_device()
 	var g := UiSlate.glass_of(DEVICE)
 	if not is_lit() and wake_stage()[1] <= 0.0:

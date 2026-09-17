@@ -6,6 +6,14 @@ extends DevPage
 const ZOOMS: Array[float] = [8.0, 11.0, 15.0, 20.0, 26.0, 34.0, 46.0]
 
 
+## What the quality row reads: what the player chose, and what that came out as
+## when it was `auto`, because "auto" alone does not say what is being drawn.
+func _quality_now() -> String:
+	var chose := StringName(str(PlayerSettings.value(&"picture.quality")))
+	var now := Quality.current_id()
+	return String(now) if chose == now else "%s (%s)" % [chose, now]
+
+
 func heading() -> String:
 	return "VIEW"
 
@@ -15,6 +23,7 @@ func rows() -> Array[Dictionary]:
 		item(&"zoom", "zoom", str(snappedf(game.camera.view_height, 0.1)), {"steps": true}),
 		item(&"readout", "readout on the edge", "yes" if DevMode.readout else "no", {"steps": true}),
 		item(&"hud", "slate's edge", "hidden" if DevSession.hud_hidden else "shown", {"steps": true}),
+		item(&"quality", "quality", _quality_now(), {"steps": true}),
 		item(&"picture", "a picture, nothing of the slate"),
 		header(""),
 		item(&"title", "to the title", "", {"tone": "warn"}),
@@ -50,6 +59,10 @@ func side(row: Dictionary, dir: int) -> void:
 			DevMode.set_readout(not DevMode.readout)
 		&"hud":
 			DevSession.hud_hidden = not DevSession.hud_hidden
+		&"quality":
+			# Through the player's own door, so what dev mode changes here is what
+			# a player would have changed, and it is applied the same way.
+			PlayerSettings.step(&"picture.quality", dir)
 		_:
 			return
 	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
@@ -67,6 +80,12 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 		&"hud":
 			y = panel_heading(ci, r, y, "slate's edge")
 			panel_wrapped(ci, r, y, "The health, the clock and every readout clipped to the corners, gone until shown again.")
+		&"quality":
+			y = panel_heading(ci, r, y, "quality")
+			var q := Quality.current()
+			var px := Quality.render_pixels()
+			panel_wrapped(ci, r, y, "How much of the picture this machine is asked to draw. %s: %s The world is rendered at %d x %d and the slate always at %d x %d." % [
+				str(q.get("label", "?")), str(q.get("note", "")), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y])
 		&"picture":
 			y = panel_heading(ci, r, y, "picture")
 			var where := "shots/dev/ beside the game" if DevMode.local() else ("a download" if DevMode.web() else "user://dev/pictures")

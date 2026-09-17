@@ -68,9 +68,18 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
   let words = 'fetching';
   const t0 = performance.now();
 
-  // The rectangle Godot draws 640x360 into (scene/main/window.cpp, keep aspect,
-  // integer stretch), in device pixels of a canvas sized like Godot's (the
-  // window times the pixel ratio). tools/web.sh checks it against the engine's.
+  // The rectangle Godot draws the game into (scene/main/window.cpp, keep aspect),
+  // in device pixels of a canvas sized like Godot's (the window times the pixel
+  // ratio). tools/web.sh checks it against the engine's, and a mismatch is seen
+  // as the glass jumping at the hand-over from this page to the engine's.
+  //
+  // There is no whole-number snap any more: LANTERN's image is fractional
+  // (docs/LOOK.md), so the game fills the aspect-correct box exactly and the
+  // scale below is a fraction. Snapping here while the engine did not was worth
+  // 1280x720 against the engine's 1402x789 on a 1440x789 canvas.
+  //
+  // The shape is the SLATE's, not the base's, and they are the same 16:9 — this
+  // page draws in 640x360 units (UiBase.DESIGN) because boot_page.gd does.
   function gameRect() {
     const dpr = window.devicePixelRatio || 1;
     const vw = Math.floor(window.innerWidth * dpr), vh = Math.floor(window.innerHeight * dpr);
@@ -80,8 +89,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
       if (want < have) { sw = vh * want; sh = vh; } else { sw = vw; sh = vw / want; }
     }
     sw = Math.floor(sw); sh = Math.floor(sh);
-    const scale = Math.max(1, Math.min(Math.floor(sw / 640), Math.floor(sh / 360)));
-    sw = 640 * scale; sh = 360 * scale;
+    const scale = sw / 640;
     const mx = sw < vw ? Math.round((vw - sw) / 2) : 0;
     // Godot rounds the bar below the game (GL counts rows from the bottom), so
     // an odd leftover row goes to the bar above: measured on 1440x789, top 34.

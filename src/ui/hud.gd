@@ -106,6 +106,7 @@ var _pages := {}
 
 func _ready() -> void:
 	layer = 10
+	UiBase.fit(self)
 	_canvas = Control.new()
 	_canvas.name = "canvas"
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -475,12 +476,12 @@ static func _charge_glyph(ci: CanvasItem, at: Vector2i, col: Color) -> void:
 
 func _draw_clock(ci: Control) -> void:
 	var w := UiFont.width(clock_text) + 24
-	var win := Rect2i(640 - MARGIN - w, MARGIN, w, 11)
+	var win := Rect2i(UiBase.DESIGN.x - MARGIN - w, MARGIN, w, 11)
 	clip(ci, win, false)
 	UiSlate.cell(ci, Vector2i(win.position.x + 3, win.position.y + 2), power)
 	UiDraw.text(ci, Vector2i(win.position.x + 19, win.position.y), clock_text, UiTheme.TEXT)
 	# Felt pressures, right to left under the clock, in a fixed order so they never swap.
-	var x := 640 - MARGIN - GAUGE.x
+	var x := UiBase.DESIGN.x - MARGIN - GAUGE.x
 	var level := {}
 	var value := {}
 	for p in pressures:
@@ -569,7 +570,7 @@ func _draw_gauge(ci: Control, id: StringName, at: Vector2i, col: Color, v: float
 func _draw_held(ci: Control) -> void:
 	var name := UiRules.item_name(held) if held != &"" else "hands"
 	var w := UiFont.width(name) + (19 if held != &"" else 6)
-	var win := Rect2i(MARGIN + 6, 360 - MARGIN - 11, w, 11)
+	var win := Rect2i(MARGIN + 6, UiBase.DESIGN.y - MARGIN - 11, w, 11)
 	clip(ci, win, true)
 	var x := win.position.x + 3
 	if held != &"":
@@ -585,13 +586,13 @@ func _draw_bottom(ci: Control) -> void:
 		var line: Dictionary = lines[lines.size() - 1 - i]
 		var a: float = line.alpha * (1.0 if i == 0 else 0.72)
 		var text: String = line.text
-		var y := 360 - MARGIN - 25 - i * 12
-		UiDraw.text_rimmed_faded(ci, Vector2i(320 - UiFont.width(text) / 2, y), text, UiTheme.TEXT if i == 0 else UiTheme.TEXT_DIM, UiTheme.RIM, a)
+		var y := UiBase.DESIGN.y - MARGIN - 25 - i * 12
+		UiDraw.text_rimmed_faded(ci, Vector2i(UiBase.mid_x() - UiFont.width(text) / 2, y), text, UiTheme.TEXT if i == 0 else UiTheme.TEXT_DIM, UiTheme.RIM, a)
 	if _hint_alpha > 0.0 and hint != "":
 		var cap := maxi(9, UiFont.width(hint_key) + 4)
 		var total := cap + 5 + UiFont.width(hint)
-		var x := 320 - total / 2
-		var y := 360 - MARGIN - 11
+		var x := UiBase.mid_x() - total / 2
+		var y := UiBase.DESIGN.y - MARGIN - 11
 		var k := UiDraw.stepped(_hint_alpha)
 		UiSlate.key_cap(ci, Vector2i(x, y), hint_key, k)
 		UiDraw.text_rimmed_faded(ci, Vector2i(x + cap + 5, y + 1), hint, UiTheme.TEXT, UiTheme.RIM, _hint_alpha)
@@ -636,7 +637,7 @@ static func place_half(w: int, grow: float) -> int:
 ## to rest, so the plate IS the clip they close on.
 static func place_plate(w: int) -> Rect2i:
 	var half := place_half(w, 1.0)
-	return Rect2i(320 - half, PLACE_Y - 14, half * 2, 25)
+	return Rect2i(UiBase.mid_x() - half, PLACE_Y - 14, half * 2, 25)
 
 
 ## Where the ping's ring stands at `age`, in screen pixels: an ellipse ringing
@@ -720,11 +721,11 @@ func _draw_place(ci: Control) -> void:
 		for p in Hud.ring_points(_place_age, plate):
 			UiDraw.px(ci, p.x, p.y + 1, Color(UiTheme.RIM, ring_a * 0.8))
 			UiDraw.px(ci, p.x, p.y, Color(UiTheme.BRIGHT, ring_a))
-	UiDraw.text(ci, Vector2i(320 - w / 2, y), spaced, Color(UiTheme.BRIGHT, ink))
-	UiDraw.text(ci, Vector2i(320 - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, ink))
+	UiDraw.text(ci, Vector2i(UiBase.mid_x() - w / 2, y), spaced, Color(UiTheme.BRIGHT, ink))
+	UiDraw.text(ci, Vector2i(UiBase.mid_x() - UiFont.width("location") / 2, y - 12), "location", Color(UiTheme.TEXT_DIM, ink))
 	var half := place_half(w, grow)
 	for side: int in [-1, 1]:
-		var bx := 320 + side * half
+		var bx := UiBase.mid_x() + side * half
 		UiDraw.rect(ci, Rect2i(bx - 1, plate.position.y - 1, 3, plate.size.y + 2), Color(UiTheme.RIM, k))
 		UiDraw.vline(ci, bx, plate.position.y, plate.end.y - 1, Color(UiTheme.TEXT, k))
 		UiDraw.hline(ci, mini(bx, bx - side * 3), maxi(bx, bx - side * 3), plate.position.y, Color(UiTheme.TEXT, k))

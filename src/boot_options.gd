@@ -13,7 +13,7 @@ extends RefCounted
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
 ## --frames=N          frames to wait after loading before the shot (default 8)
-## --scale=N           upscale the shot N times, nearest (default 2)
+## --scale=N           upscale the shot N times, nearest (default 1)
 ## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
@@ -74,6 +74,9 @@ extends RefCounted
 ##                     must be survived through real play fails if it is not (fight)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
 ##                     shaft, or at --at read as a tile of THAT realm's world (realms)
+## --quality=NAME      the graphics tier this run renders at (src/render/quality.gd):
+##                     ultra | high | medium | low | web. Beats the player's own
+##                     picture setting and the configuration, for this run only (render)
 ## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
 ##                     island, a new game's start, the live rules; named options still win (dev)
 ## --dev[=PAGE]        dev mode reachable in a tool run; PAGE opens the dev app at a page
@@ -91,7 +94,11 @@ var walk_seconds := 0.0
 var run := false
 var shot := ""
 var frames := 8
-var scale := 2
+## 1 since the base became 1920x1080: a shot is already the size a player sees,
+## and doubling it wrote 3840x2160 frames — 56 MB for one canon run, and slower
+## to open than to render. Someone reviewing a frame wants the game's own pixels,
+## not more of them. Pass --scale=2 deliberately when a detail needs enlarging.
+var scale := 1
 var scene := "game"
 var place := ""
 var stats := false
@@ -143,6 +150,9 @@ var talk := ""
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
+## The graphics tier this run renders at (Quality.ROWS), or &"" to take whatever
+## the player's picture setting, the configuration, or this machine decides.
+var quality: StringName = &""
 var config := ""
 var dev := false
 var dev_page := ""
@@ -218,6 +228,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"
+			"quality": o.quality = StringName(v)
 			"config": o.config = v
 			"dev":
 				o.dev = true
