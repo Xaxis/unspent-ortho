@@ -121,8 +121,15 @@ static func stop() -> void:
 	_end(143)
 
 
+## The whole tree is collected BEFORE anything is signalled, because a child whose
+## parent dies is handed to launchd and `pgrep -P` stops finding it. TERM first, so
+## a run that can still hear it closes its log; then KILL, because a hung engine does
+## not hear TERM — twenty-four exit-test runs were found idling for a day, parent
+## pid 1, having ignored exactly that. The KILL runs in a subshell with its output
+## sent to /dev/null: OS.execute waits for the pipe to close, not for the shell to
+## exit, so a subshell still holding it would block the page for the whole second.
 static func _kill_tree(pid: int) -> void:
-	OS.execute("/bin/sh", PackedStringArray(["-c", "k() { for c in $(pgrep -P $1); do k $c; done; kill -TERM $1 2>/dev/null; }; k %d" % pid]))
+	OS.execute("/bin/sh", PackedStringArray(["-c", "t() { echo $1; for c in $(pgrep -P $1); do t $c; done; }; p=$(t %d); kill -TERM $p 2>/dev/null; (sleep 1; kill -KILL $p) >/dev/null 2>&1 & true" % pid]))
 
 
 ## Real seconds the job has run (or ran).
