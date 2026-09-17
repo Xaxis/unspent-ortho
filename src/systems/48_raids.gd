@@ -44,8 +44,15 @@ extends GameSystem
 ##                   never part of a normal start, and it still sends nothing
 ##                   until a machine has read the place.
 ##
-##   tools/shot.sh shots/raids/marked.png --holding=hut,plot,radio_mast --attention=0.5
-##   tools/tour.sh tours/raids.tour --seed=1 --hour=17 --weather=clear:0 --attention=0.46
+## A staged holding is still not warned until something reads it, so a shot that
+## wants the plan's tags on the pieces puts a reader beside it:
+##
+##   tools/shot.sh shots/raids/marked.png --seed=1 --hour=19.5 --weather=clear:0 \
+##     --holding=hearth,hut,plot,radio_mast,palisade --attention=0.72 --spawn=clerk --frames=200
+##   tools/tour.sh tours/raids.tour --seed=1 --hour=16 --weather=clear:0 --attention=0.7 \
+##     --held=axe_felling --give=stone:8,deadwood:8,timber:8,scrap:12,reeds:8,rag:6,copper:4,pitch:4,driftwood:6
+##   tools/tour.sh tours/raids-dark.tour --seed=7 --hour=15 --weather=clear:0 --held=axe_felling \
+##     --give=driftwood:8,rag:6,deadwood:8,stone:8,timber:6,reeds:8
 
 ## Real seconds between sweeps. Everything here is settled against the WORLD
 ## clock from each holding's own timestamp, so this only decides how soon the
