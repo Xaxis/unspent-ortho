@@ -341,6 +341,10 @@ const DEFS := {
 	&"dredge_screw": {"name": "dredge screw", "bulk": 2.5, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"fab_jig": {"name": "fabricator jig", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"brace", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
+	# raids: a machine's own account of a place, taken off the body that was
+	# carrying it home. It is proof, and it is the only thing in the game worth
+	# more in a person's hands than where it was (docs/VISION.md §9.2).
+	&"record": {"name": "filed record", "bulk": 0.5, "group": &"found", "icon": [&"paper", &"slate", &"lens"]},
 }
 
 

@@ -1,0 +1,73 @@
+class_name Notice
+extends RefCounted
+## One reading of a holding, in a machine's hands (docs/VISION.md §9.2).
+##
+## A notice is the whole reason a raid can be seen coming. Nothing files a
+## settlement by dice: a body stood somewhere, read one channel of the place off
+## `Signature`, and is now walking away with it. Until it gets clear the record
+## is a thing in the world — it has a carrier, the carrier has a heading, and the
+## player can kill it, jam it, or watch it go and know what that cost.
+##
+## Three ends, and the player decides which:
+##   carried   the body still has it and is making for the plan's works
+##   filed     it got away: the holding's attention rises by `worth`
+##   stopped   the carrier died, or the reading was spoofed into nonsense
+##
+## Pure data. `Notices` holds the rules; 48_raids holds the live ones and saves
+## them, so a game saved with a clerk halfway home resumes with it still walking.
+
+var id := 0
+var settlement_id := 0
+## The realm the reading was taken in. A machine only ever senses a holding in
+## its own realm (CLAUDE.md, the Raids row), so this is the realm of both.
+var realm: StringName = Realm.SURFACE
+## What took it: &"worker" &"watcher" &"drone" &"clerk" (Events.settlement_noticed).
+var kind: StringName = &"worker"
+## The roster kind of the body carrying it, for what the player is looking at.
+var carrier: StringName = &""
+## The Signature channel that gave the place away, and how good the reading is
+## (0..1). One channel, not a sum: a machine reports the thing it noticed.
+var channel: StringName = &"light"
+var strength := 0.0
+## The MobState id carrying it (-1 once the body is gone).
+var mob_id := -1
+## Where it was taken, and the world minute.
+var at := Vector2.ZERO
+var taken_at := 0.0
+## &"carried" &"filed" &"stopped".
+var state: StringName = &"carried"
+## Why it ended, for the line the world says: &"away" &"killed" &"jammed" &"lost".
+var how: StringName = &""
+
+
+func carried() -> bool:
+	return state == &"carried"
+
+
+func as_dict() -> Dictionary:
+	return {
+		"id": id, "settlement": settlement_id, "realm": String(realm),
+		"kind": String(kind), "carrier": String(carrier), "channel": String(channel),
+		"strength": strength, "mob": mob_id, "at": SaveCodec.vec2(at),
+		"taken_at": taken_at, "state": String(state), "how": String(how),
+	}
+
+
+static func from_dict(d: Dictionary) -> Notice:
+	var n := Notice.new()
+	n.id = SaveCodec.to_int(d.get("id", 0))
+	n.settlement_id = SaveCodec.to_int(d.get("settlement", 0))
+	n.realm = StringName(str(d.get("realm", Realm.SURFACE)))
+	n.kind = StringName(str(d.get("kind", &"worker")))
+	n.carrier = StringName(str(d.get("carrier", "")))
+	n.channel = StringName(str(d.get("channel", &"light")))
+	n.strength = float(d.get("strength", 0.0))
+	# A body is only ever a body in the game it was spawned in: a loaded notice
+	# is one walking home with nobody in the world holding it, which is exactly
+	# what a reading that has already left looks like.
+	n.mob_id = -1
+	n.at = SaveCodec.to_vec2(d.get("at", Vector2.ZERO))
+	n.taken_at = SaveCodec.to_num(d.get("taken_at", 0.0))
+	n.state = StringName(str(d.get("state", &"carried")))
+	n.how = StringName(str(d.get("how", "")))
+	return n

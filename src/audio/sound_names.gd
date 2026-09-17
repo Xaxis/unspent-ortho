@@ -74,6 +74,19 @@ const ALIAS := {
 	# something. A watcher's signal tone, heard from a long way away; it wants a
 	# horn of its own on the sheet.
 	&"works_horn": &"watcher_call",
+	# raids: the world saying a step is coming, and the small sounds of a plan
+	# being kept about a place. Each wants a voice of its own on the sheet — a
+	# line of lights coming on over the land, a set gone to static, a stake
+	# driven in — and until there is one these read right and nothing is silent.
+	&"raid_horizon": &"fog_horn",
+	&"raid_drone": &"alert_flock",
+	&"raid_static": &"arc_snap",
+	&"raid_keeper": &"watcher_call",
+	&"raid_notice": &"relay_click",
+	&"raid_jammed": &"relay_click",
+	&"raid_record": &"pickup",
+	&"raid_break": &"break",
+	&"raid_snatch": &"grip",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.

@@ -1,0 +1,75 @@
+# The other half of the raid system: running dark, and killing the record before
+# it travels (docs/VISION.md §9.2, §9.3). A holding built out of the pieces that
+# say nothing, the one comfort that gives it away, a clerk that reads it, that
+# reading taken off the body — and then nothing comes, because nothing was ever
+# filed.
+#
+#   tools/tour.sh tours/raids-dark.tour --seed=7 --hour=15 --weather=clear:0 \
+#     --held=axe_felling \
+#     --give=driftwood:8,rag:6,deadwood:8,stone:8,timber:6,reeds:8
+#
+# No --attention: this one starts where a player starts, at nothing, and the
+# whole proof is that it is still at nothing at the end.
+zoom 10
+coast calm
+place spawn
+wait 0.4
+walk -1,1 1.6
+wait 0.5
+# A roof and a plot. Both are SILENT on purpose (StructureKind.SIGNS): a place
+# can be lived in without being found, and that is the decision this tour makes.
+tap holding
+await app:holding 4
+choose build_lean_to
+tap use
+await made 8
+wait 0.4
+choose build_plot
+tap use
+await made 8
+wait 0.6
+# The same seven bars the machines read, with nothing on them. Nothing has ever
+# been filed about this place and nothing is carrying anything away from it.
+await unfiled 4
+shot 01-nothing-to-hear with app:holding, holding
+# And then the one comfort: a hearth is smoke by day and light by night, and it
+# is the first thing about this place a machine can hear.
+choose build_hearth
+tap use
+await made 8
+wait 0.6
+shot 02-the-hearth-is-the-mistake with app:holding, holding
+tap pause
+wait 0.8
+# A watcher on the ground beside it reads what the page just said. From here the
+# reading is a thing in the world, and the player has until it gets clear of the
+# yard — which for a watcher is a long, slow walk.
+spawn watcher
+await noticed 12
+shot 03-a-watcher-reads-the-hearth with mob:watcher, holding, station:fire
+# Take it off the body before it travels. Its working part is its lens, which is
+# the side it is reading you with.
+try 25
+walkto part 1.4
+tap swing
+await hit 1.4
+end
+try 25
+walkto part 1.2
+tap swing
+await killed 1.6
+end
+await stopped 8
+await record 8
+# Back to the fire it was reading, with the record in the creel.
+near fire
+wait 0.8
+shot 04-the-record-off-the-body with holding, station:fire
+# Night, and nothing comes: the plan has nothing on this place, so there is no
+# step for it to be due. That is what running dark buys, said as a state of the
+# world rather than as a thing that failed to happen.
+hour 23
+wait 2.0
+await unfiled 8
+await nothing_coming 8
+shot 05-nothing-is-coming with holding, station:fire
