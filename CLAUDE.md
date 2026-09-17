@@ -93,7 +93,10 @@ anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour sav
 says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `prop:KIND`,
 `land:ID` (or `land:a|b`), `border:A-B`, `station:fire`, `app:map`, `lamp`,
 `unlit`, `folk`, a hazard, or `pixels:RRGGBB[:N]` when only the picture can
-answer — and the runner asks again at the instant the shutter falls, throwing the
+answer (name the colour as the PALETTE holds it: a lit thing is matched washed up
+to `PIXEL_WASH` of the way to white, because emission carries a neon tube toward
+the page as it burns and the flat value never reaches the screen) — and the
+runner asks again at the instant the shutter falls, throwing the
 frame away and failing the tour if it is not there. A refused claim says what the
 world holds instead, so the diagnosis costs no second run. `spawn` fails when the
 roster has no such kind, when nothing was placed, or when what was placed landed
