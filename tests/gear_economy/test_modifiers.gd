@@ -31,9 +31,16 @@ func test_every_module_says_what_decision_it_changes() -> void:
 ## paying — because the conflict line is what shows when something is wrong, which
 ## is exactly when a player most needs to be able to read it.
 func test_what_the_gear_page_says_about_a_module_fits_the_row_it_is_drawn_in() -> void:
-	# Where UiLoadoutScreen draws it: x0 + 71 in the LIST panel, to the right margin.
+	# Where UiLoadoutScreen draws it: x0 + 142 in the LIST panel, to its right
+	# margin at end.x - 16 (ui_loadout_screen.gd `_draw`, the module line and
+	# `right`). Both numbers came across x2 when the slate moved to the base's own
+	# pixels and this copy of them did not, so the budget was 737 px against a row
+	# that holds 658: a conflict line 79 px too long for the panel passed here and
+	# was drawn off it, which is the one failure the paragraph above exists to
+	# stop. Spelling the drawer's numbers twice is what let them drift; this is
+	# still a copy, and the real fix is for the screen to say how wide its row is.
 	var x0 := UiSlate.LIST.position.x + UiSlate.MARGIN_L
-	var room := (UiSlate.LIST.end.x - 8) - (x0 + 71)
+	var room := (UiSlate.LIST.end.x - 16) - (x0 + 142)
 	var kits: Array = [
 		[] as Array[StringName],
 		[&"mod_lattice"] as Array[StringName],

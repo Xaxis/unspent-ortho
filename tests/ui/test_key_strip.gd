@@ -21,8 +21,10 @@ func room_on(device: Rect2i, pairs: Array) -> int:
 	var g := UiSlate.glass_of(device)
 	var x := g.position.x + UiSlate.MARGIN_L
 	for p: Array in pairs:
-		x += maxi(9, UiFont.width(p[0] as String) + 4) + 4
-		x += UiFont.width(p[1] as String) + 12
+		# UiSlate.key_cap and UiSlate.keys' two advances, which all doubled when
+		# the slate moved to the base's own pixels while this copy did not.
+		x += maxi(18, UiFont.width(p[0] as String) + 8) + 8
+		x += UiFont.width(p[1] as String) + 24
 	return g.end.x - UiSlate.MARGIN_R - x - UiSlate.NOTE_GAP
 
 
