@@ -176,16 +176,24 @@ static func box_hits(o: Vector2, facing: float, orad: float, b: Blow, t: Vector2
 	return local.distance_squared_to(Vector2(fx, fy)) <= trad * trad
 
 
-## Nightfall 0..1: up over 20:00-21:00, down over 04:30-06:00 (design-extract §5).
+## Nightfall 0..1, and it is the SAME CURVE THE SKY FALLS ON (`Weather.night_fall`,
+## 18:30-21:00 eased at both ends). This is the fight's door onto it — the senses,
+## the hazards, the dark hand's reach, the lamp and Survival.in_the_dark all come
+## through here — and until this wave it was a different curve: flat zero until
+## 20:00, then a straight ramp. The source had them together because the source's
+## evening was that one hour; A2 widened the LOOK of dusk to two and a half hours
+## and left the BODY on the old line, so a player stood on a snowfield at seven in
+## a visibly deep dusk carrying noon's cold, and `Hazards`' own docstring — "a
+## snowfield at noon is felt; the same snowfield at dusk bites" — was false for
+## exactly the hour a player reads as dusk.
+##
+## What it costs: night's terms arrive earlier and more gently. At 19:00 it is
+## 0.10 where it was 0; at 20:00 0.65 where it was 0; at 20:30 0.90 where it was
+## 0.50; at 21:00 and after, unchanged. So cold and dark begin to tell during the
+## evening the player can see, machines see less through the same gloom their own
+## sky is drawn in, and no hour of the evening is a step any more.
 static func nightfall(hour: float) -> float:
-	var h := fposmod(hour, 24.0)
-	if h >= 21.0 or h < 4.5:
-		return 1.0
-	if h >= 20.0:
-		return h - 20.0
-	if h < 6.0:
-		return 1.0 - (h - 4.5) / 1.5
-	return 0.0
+	return Weather.night_fall(hour)
 
 
 ## 0, 1 or 2: load at or over a creel (40), two creels.

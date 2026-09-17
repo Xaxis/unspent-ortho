@@ -104,6 +104,62 @@ func test_a_line_continued_from_the_shell_starts_where_it_left_off() -> void:
 	eq(s.progress(), 1.0, "and full at the end")
 
 
+func test_a_stage_that_waits_for_ever_is_given_up_on_at_its_deadline() -> void:
+	# The loading page's failure mode: `draw` waits on a frame that never comes
+	# (an off-screen window stops being composited), and before there were
+	# deadlines the line simply never ended.
+	var tries := [0]
+	var s := BootStages.new()
+	s.add(&"never", "waiting", 10.0, func() -> bool:
+		tries[0] += 1
+		return false, false, 60.0)
+	s.add(&"after", "after", 10.0, func() -> void: pass, false)
+	var t0 := Time.get_ticks_msec()
+	var guard := 0
+	while not s.step(false) and guard < 100000:
+		guard += 1
+	check(s.done(), "the line reaches its end even though a stage never finished")
+	gt(float(tries[0]), 1.0, "and it really was asked more than once first")
+	var took := Time.get_ticks_msec() - t0
+	gt(float(took), 55.0, "it waited out its deadline")
+	lt(float(took), 60.0 + 900.0 * TestCase.machine_slack(), "and not much past it")
+	eq(Array(s.gave_up()), ["never"], "which stage was given up on is on the record")
+	check(s.timings().has(&"after"), "and the stages after it still ran")
+
+
+func test_a_stage_that_finishes_in_time_is_never_given_up_on() -> void:
+	var n := [0]
+	var s := BootStages.new()
+	s.add(&"soon", "soon", 10.0, func() -> bool:
+		n[0] += 1
+		return n[0] == 3, false, 5000.0)
+	while not s.step(false):
+		pass
+	eq(Array(s.gave_up()), [], "nothing was given up on")
+	eq(n[0], 3, "the job ran to its own end")
+
+
+func test_the_loading_page_puts_a_deadline_on_everything_that_waits() -> void:
+	# The rule, held on the page itself rather than on a copy of it: a main-thread
+	# stage whose job returns a bool is a stage that WAITS, and every one of those
+	# must carry a deadline or the page can hang on it.
+	var page := BootPage.new()
+	var o := BootOptions.new()
+	page._plan(null, o, "game", true)
+	var waiting := 0
+	for st: BootStages.Stage in page.stages.stages:
+		if st.worker:
+			continue
+		var r: Variant = st.run.get_method()
+		# Only the repeating ones: a stage that returns nothing runs once and cannot wait.
+		if st.id == &"start":
+			continue
+		waiting += 1
+		gt(st.deadline, 0.0, "the page's %s stage waits with no deadline (%s)" % [st.id, r])
+	gt(float(waiting), 2.0, "there are waiting stages to hold to the rule")
+	page.free()
+
+
 func test_held_reports_the_longest_main_thread_piece() -> void:
 	var s := BootStages.new()
 	var n := [0]

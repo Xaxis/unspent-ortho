@@ -93,9 +93,17 @@ const LIST: Array[Dictionary] = [
 	# bench (playtest 3 and 7).
 	{"id": &"mod_shade", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 2, &"driftwood": 2}, "makes": {&"mod_shade": 1}, "tool": &"cut"},
 	{"id": &"mitts_corded", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"pitch": 1}, "makes": {&"mitts_corded": 1}, "tool": &"cut"},
-	{"id": &"wrap_warm", "at": &"bench", "minutes": 45.0, "needs": {&"rag": 3, &"wrack": 2, &"pitch": 1}, "makes": {&"wrap_warm": 1}},
-	{"id": &"oilskin", "at": &"bench", "minutes": 40.0, "needs": {&"rag": 3, &"pitch": 2}, "makes": {&"oilskin": 1}},
-	{"id": &"hat_brim", "at": &"bench", "minutes": 35.0, "needs": {&"rag": 2, &"reeds": 3, &"pitch": 1}, "makes": {&"hat_brim": 1}},
+	# The whole MADE tier is hand work, and these three were the exception for no
+	# reason but the order they were written in. A made piece is cloth, reed and
+	# pitch, cut and bound: a bench is for MENDED work, where machine parts are
+	# fitted to a frame. Leaving them at a bench put the answer to cold, wet and
+	# glare a day's walk and a day's building behind the landscapes that press
+	# with them, which are the ones a player reaches first (tests/hazards/test_day_two).
+	# Each under Survival.MAX_JUMP_MINUTES, because a hand recipe cannot be set
+	# going at a station and jumps the clock whole.
+	{"id": &"wrap_warm", "at": &"hand", "minutes": 30.0, "needs": {&"rag": 3, &"wrack": 2, &"pitch": 1}, "makes": {&"wrap_warm": 1}, "tool": &"cut"},
+	{"id": &"oilskin", "at": &"hand", "minutes": 28.0, "needs": {&"rag": 3, &"pitch": 2}, "makes": {&"oilskin": 1}, "tool": &"cut"},
+	{"id": &"hat_brim", "at": &"hand", "minutes": 26.0, "needs": {&"rag": 2, &"reeds": 3, &"pitch": 1}, "makes": {&"hat_brim": 1}, "tool": &"cut"},
 	# Mended: plate and wire off the machines, bound to a made frame. Both idioms show.
 	{"id": &"mod_foil", "at": &"bench", "minutes": 50.0, "needs": {&"scrap": 2, &"tin": 2}, "makes": {&"mod_foil": 1}},
 	{"id": &"mod_spring", "at": &"bench", "minutes": 60.0, "needs": {&"scrap": 2, &"iron": 1}, "makes": {&"mod_spring": 1}},

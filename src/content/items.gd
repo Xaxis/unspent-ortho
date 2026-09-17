@@ -229,8 +229,14 @@ const DEFS := {
 	# answers in them, so the capacity has to come from SOCKETS, which is what
 	# they are for. One of these under a brim takes glare from 0.550 to 0.385;
 	# one on its own leaves 0.70, still biting, so a rag is not a hat.
+	#
+	# It answers THIRST as well, because shade is what actually stops a flat
+	# drinking a body: out of the sun you sweat a fraction of what you do in it.
+	# Without that, thirst was the one pressure with no made answer at all — the
+	# drip coil is a machine's coolant loop and wants a bench — so the flat
+	# harmed a day-two body a third of the time with nothing to put on.
 	&"mod_shade": {"name": "rag shade", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,
-		"fits": [&"head", &"body", &"back"], "resist": {&"glare": 0.3, &"heat": 0.15}},
+		"fits": [&"head", &"body", &"back"], "resist": {&"glare": 0.3, &"heat": 0.15, &"thirst": 0.2}},
 	# Cord and pitch wound round a haft: it damps the ring that comes back up a
 	# tool struck against machine plate, and it is what the hand's slot is for.
 	&"mod_grip": {"name": "bound grip", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
