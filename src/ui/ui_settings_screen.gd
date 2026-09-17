@@ -262,11 +262,16 @@ func _draw() -> void:
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
 	var right := L.end.x - 8
-	for i in menu.rows.size():
+	# The keys page grows with every action a package adds, and it outgrew the
+	# pane once: the rows past the glass could still be chosen, blind. It scrolls
+	# with the cursor now, the way every other long list on the slate does.
+	var first := L.position.y + LIST_TOP
+	var lines := (L.end.y - ROW_PITCH - first) / ROW_PITCH + 1
+	keep_in_view(lines)
+	for n in mini(lines, menu.rows.size() - scroll):
+		var i := scroll + n
 		var row := menu.rows[i]
-		var top := L.position.y + LIST_TOP + i * ROW_PITCH
-		if top > L.end.y - ROW_PITCH:
-			break
+		var top := first + n * ROW_PITCH
 		if row.has("header"):
 			UiDraw.text(self, Vector2i(x0, top), String(row.header).to_upper(), UiTheme.TEXT_DIM)
 			UiDraw.hline(self, x0, right, top + 10, UiTheme.GHOST)
@@ -280,6 +285,10 @@ func _draw() -> void:
 			_draw_key_value(row, right, top, chosen)
 		elif row.has("row"):
 			_draw_value(row.row, right, top, chosen)
+	if scroll > 0:
+		UiDraw.text_right(self, right, first - 12, "↑", UiTheme.TEXT_DIM)
+	if scroll + lines < menu.rows.size():
+		UiDraw.text_right(self, right, first + lines * ROW_PITCH - 4, "↓", UiTheme.TEXT_DIM)
 	_draw_help()
 	if page == "keys":
 		draw_keys([["e", "ask for a key"], ["esc", "back"]])

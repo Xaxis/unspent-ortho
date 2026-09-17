@@ -52,7 +52,7 @@ extends RefCounted
 ##                     (MS = simulation time after the press; each has a default);
 ##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
 ## --screen=NAME       open a slate app once loaded: inventory | crafting | map | pause | controls |
-##                     loadout | reads | saves (these three over home) | sheet; NAME:ROW chooses a row,
+##                     loadout | reads | saves (these three over home) | sheet | journal; NAME:ROW chooses a row,
 ##                     map:N opens at scale N; lowpower[:NAME] drains the slate's power first;
 ##                     on --scene=title: keys, or wake:SECS to hold the wake (slate)
 ## --explore=N         the map remembers N tiles of wandering from the start (ui)

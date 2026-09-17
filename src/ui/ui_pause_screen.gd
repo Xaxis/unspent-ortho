@@ -2,7 +2,8 @@ class_name UiPauseScreen
 extends UiScreen
 ## Esc: the slate's home. The world stops (the ui system pauses the tree).
 ## Resume, the apps that have no key of their own (gear, machine reads, saves),
-## the keys, back to the title, or quit. The keys are one level down; Esc backs
+## the journal for a player who has forgotten its key, the keys, back to the
+## title, or quit. The keys are one level down; Esc backs
 ## out. The replacement sub-panel says where and when the player is, and when
 ## the game was last saved. Leaving (to the title, or quit) takes the autosave
 ## first when it is calm (05_save).
@@ -50,6 +51,7 @@ func refresh() -> void:
 		{"id": &"resume", "text": "resume"},
 		{"id": &"loadout", "text": "gear", "app": true},
 		{"id": &"reads", "text": "machine reads", "app": true},
+		{"id": &"journal", "text": "journal", "app": true},
 		{"id": &"saves", "text": "saves", "app": true},
 		{"id": &"settings", "text": "settings", "app": true},
 		{"id": &"title", "text": "to the title", "enabled": true},

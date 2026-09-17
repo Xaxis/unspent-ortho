@@ -32,6 +32,10 @@ var _up_down := false
 var _down_down := false
 var _back_down := false
 var _folk: Node
+## The journal on the slate (UiJournalScreen): what has been found, kept.
+var journal: UiJournalScreen
+var _ui: Node
+var _journal_down := false
 
 
 func setup(g: Game) -> void:
@@ -45,9 +49,38 @@ func setup(g: Game) -> void:
 	add_child(view)
 
 
+func started() -> void:
+	# The journal goes on the slate here and not in setup: the ui system is loaded
+	# after this one (90 after 49) and does not exist while setup runs.
+	for s in game.systems:
+		if s.name == "90_ui":
+			_ui = s
+	if _ui != null:
+		journal = UiJournalScreen.new()
+		_ui.call("add_app", journal)
+
+
+## The journal's key, read as 46_settlements reads the holding's: it opens the
+## journal over the world and closes it again. It never opens over a conversation
+## or another app, whose keys it would take.
+func _read_journal_key() -> void:
+	var now := InputMap.has_action(&"journal") and Input.is_action_pressed(&"journal")
+	var pressed := (now and not _journal_down) or (InputMap.has_action(&"journal") and Input.is_action_just_pressed(&"journal"))
+	_journal_down = now
+	if not pressed or journal == null or _ui == null:
+		return
+	if journal.is_open:
+		@warning_ignore("return_value_discarded")
+		journal.handle(&"journal")
+	elif not game.input_blocked():
+		@warning_ignore("return_value_discarded")
+		_ui.call("open_screen", &"journal")
+
+
 func _process(_delta: float) -> void:
 	if game == null or game.player == null:
 		return
+	_read_journal_key()
 	var use_down := InputMap.has_action(&"use") and Input.is_action_pressed(&"use")
 	var use_pressed := use_down and not _use_down
 	_use_down = use_down
@@ -267,6 +300,8 @@ func tour_seen(what: StringName) -> bool:
 		return Story.knows(StringName(what.substr(6)))
 	if what.begins_with("beat:"):
 		return Story.landed(StringName(what.substr(5)))
+	if what.begins_with("journal:"):
+		return journal != null and journal.is_open and journal.section() == StringName(what.substr(8))
 	return false
 
 
