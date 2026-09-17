@@ -45,18 +45,21 @@ func test_the_enum_is_bigger_than_the_game_and_by_exactly_this_much() -> void:
 	print("settlements: %d pieces named, %d a player can put up; nobody can build %s"
 		% [named, offered, missing])
 	eq(named, 38, "pieces named")
-	eq(offered, 15, "pieces a player can put up")
+	# 15 when this was written; the bunk and the solar array closed the two holes
+	# that audit found, and no enum value was added for either.
+	eq(offered, 17, "pieces a player can put up")
 	eq(StructureKind.ROWS.size(), offered,
 		"a row nobody can choose, or a choice with no row, is a half-built piece")
 	for k: int in StructureKind.BUILDABLE:
 		check(not StructureKind.row(k).is_empty(), "%s is offered and has no row" % k)
 
 
-## Every family should have something in it, or the slate offers a heading with
-## nothing under it. LIVING does not, and that is the one that stops a holding
-## housing anybody it took in: `BUNK` is the only living piece and it has no row,
-## so residents are 35_folk's villagers walking over and never anybody who lives
-## there.
+## Every family must have something in it, or the slate offers a heading with
+## nothing under it. LIVING was the one that did not, and that was what stopped a
+## holding housing anybody it took in — `BUNK` was its only piece and had no row,
+## so residents could only ever be 35_folk's villagers walking over from a
+## village. A bunk is buildable now and `Settlement.beds()` is the cap, so the
+## right answer here is NONE.
 func test_which_families_a_player_can_build_nothing_in() -> void:
 	var empty: Array[int] = []
 	for f: int in _families():
@@ -66,8 +69,8 @@ func test_which_families_a_player_can_build_nothing_in() -> void:
 				n += 1
 		if n == 0:
 			empty.append(f)
-	eq(empty, [StructureKind.Family.LIVING] as Array[int],
-		"LIVING is the one family with nothing in it; these are empty: %s" % [empty])
+	eq(empty, [] as Array[int],
+		"every family needs a piece a player can put up; these are empty: %s" % [empty])
 
 
 ## A signature nobody can produce. Three of the four `found_tech` kinds cannot be
@@ -84,7 +87,10 @@ func test_the_loudest_stolen_technology_a_player_can_stand_up() -> void:
 			by = kind
 	eq(by, int(StructureKind.TURRET), "the turret is the only stolen technology a player can build")
 	near(loudest, 0.5, 1e-6, "and it is half a signature, not a whole one")
-	for kind: int in [int(StructureKind.STOLEN_CELL), int(StructureKind.SOLAR_ARRAY),
+	# The solar array was on this list and is buildable now — its day curve and
+	# weather dimming had been written and left unreachable. The turret is still
+	# the loudest a player can stand up, so the assertion above is untouched.
+	for kind: int in [int(StructureKind.STOLEN_CELL),
 			int(StructureKind.MACHINE_SHOP)]:
 		gt(float((StructureKind.SIGNS[kind] as Dictionary).get("found_tech", 0.0)), 0.0,
 			"%d is only named here because it declares found_tech" % kind)

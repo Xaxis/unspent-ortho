@@ -33,7 +33,11 @@ const HOURS: Array[float] = [2.0, 7.0, 12.0, 17.0, 22.0]
 ##             (`32_disposition._spot_for`), which is the door
 ##             `test_the_jig_at_the_top_of_the_ladder_is_reachable_by_being_hunted`
 ##             walks. So this line is about the roll, not about the material.
-const NOT_ROLLED: Array[StringName] = [&"lineman", &"longlegs"]
+# The lineman came off this list when its green gate came down to the roster's
+# own floor: seeds 1, 4 and 7 went from 6, 41 and 35 qualifying tiles to 170, 424
+# and 194, and from 0, 3 and 4 hits per 12000 rolls to 8, 12 and 5.
+# tests/gear_economy/test_line_coil_door.gd holds it there.
+const NOT_ROLLED: Array[StringName] = [&"longlegs"]
 
 
 func _declared() -> void:
