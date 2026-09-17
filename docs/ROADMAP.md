@@ -1140,6 +1140,20 @@ What the wave still leaves, in the order it should be taken:
   running beside them and pass on a quiet machine: tours step in WALL-CLOCK time,
   so CPU load changes what happens in `walk 1,0 1.5`. Anything that reads a tour
   result has to know that — a red tour on a busy machine is not yet a bug.
+
+  **Two of the six were the use key, and they are fixed** (the integration pass,
+  above): a survey post has WORDS on it and is also the plan's WORKS, so the read
+  took the key and the theft could never happen. `disposition` now gets from line
+  31 to line 84 and `machine-read` from 91 to 183; what stops them now is a
+  stealth read and a walk to a watcher, not the key. `characters` was red only
+  under load and passes on a quiet machine (its last step measures a crowd's
+  render cost and waits on `frame_post_draw`, which stalls when another session
+  takes the window). **Four remain**: `disposition` (84, `await read`),
+  `machine-read` (183, `await machine:watcher`), `realms` (37, `await lamp`),
+  `slate-hud` (31, `await badge_answered`), `slate-polish` (64, `choose
+  controls`) and `survival` (39, no fire laid) — all older than the wave, and the
+  lamp and the fire are worth looking at together with the key, since both are an
+  action the player takes with it.
 - **The canon's accepted set is stale, and the sheet's own metric is too coarse
   to say so.** `04-pinewood` now has a works depot standing in the corner and a
   "Corridor works, pinewood" read under it — a whole building, 41,764 pixels away
@@ -1153,6 +1167,17 @@ What the wave still leaves, in the order it should be taken:
   real changes would. Re-accepting is a deliberate, frame-by-frame job for
   whoever owns the works and polish frames; raids moved nothing and accepted
   nothing.
+
+  **Re-accepted deliberately (2026-09-17, the integration pass.)** Two frames
+  moved and both moved for one reason: the machines' depot now stands in the
+  landscape. `04-pinewood` (3.1) has its plate deck in the bottom-left corner
+  with "Corridor works, pinewood — Three housings hold this yard up" under it,
+  and `10-eco-bonelands-burning` (2.3, under the threshold) has one coming in at
+  the top-left. The land under both is untouched: what changed is that the plan
+  is VISIBLE in a landscape frame, which is the whole point of the wave, and the
+  FOUND deck reads instantly as not of this world against the hand-drawn wood.
+  The other sixteen are the same pictures. The variance warning above stands —
+  the night frames' threshold still cannot be trusted, and that is M3's to fix.
 - **`tests/sky/test_lamp_pools.gd` fails about one run in three and nobody owns
   it.** The same 5.84 every time, so it is a race, not noise: the lantern's pool
   is push_front'ed only when `_set_light` turns the light on, and whether a world
