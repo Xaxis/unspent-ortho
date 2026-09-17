@@ -29,13 +29,22 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 
 
 ## A broadleaf that took a dead hauler for a trellis: the ribs of its frame
-## still stand inside the trunk, a plate or two caught in the fork, and the bark
-## has closed over the rest. The crown is the hand's; the ribs never bend.
+## still stand inside the trunk, a sheet of its plate caught up in the crown, and
+## the bark has closed over the rest. The crown is the hand's; the ribs never
+## bend.
 ##
 ## The camera looks DOWN on this wood, so the frame has to clear the crown or
 ## the player never learns what these trees are: two ribs carry on past the
-## leaves with a level bar between them, and the plate hangs in the fork on top,
-## where a crown cannot hide it.
+## leaves with a level bar between them, and a sheet of plate lies IN the leaves,
+## bent over a bough with the crown grown up round it (`_caught_sheet`).
+##
+## That sheet was, for the whole life of this model, a slab laid on top of the
+## crown facing the ground, and found.gdshader culls a face turned away from the
+## camera, so from every bearing the play camera can take it drew nothing: a
+## playtest asked for it bigger, a review asked again, and nobody could see that
+## there was nothing there. Turned over it would have been a table top on every
+## tree, wider than the crown under it. tests/render/test_found_drawn.gd holds
+## every FOUND part of every prop to being drawn now.
 ## Six trees, and no two of them the same shape from above. Thirty near-identical
 ## mushroom crowns at one scale with the same ruled bar across every one of them
 ## is a texture and not a wood (art finding 5), and the fault was that the crown
@@ -46,6 +55,10 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 ## line the player reads this wood BY.
 const SPREAD: Array[float] = [0.82, 1.18, 0.95, 1.34, 0.74, 1.06]
 const BOUGHS: Array[int] = [3, 4, 3, 5, 2, 4]
+## How far the bar reaches each way: two of the six are stubs where the far half
+## went, and no two trees carry the same length either side.
+const BAR_BACK: Array[float] = [0.78, 0.64, 0.22, 0.86, 0.5, 0.3]
+const BAR_OUT: Array[float] = [0.62, 0.9, 0.7, 0.45, 0.83, 0.55]
 
 
 static func tree(k: Kit, v: int, c: int = 0) -> void:
@@ -67,16 +80,17 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 		var foot := Vector3(cos(a) * 0.42, 0.0, sin(a) * 0.42)
 		var head := Vector3(cos(a) * 0.26, h * (0.5 + (i % 2) * 0.14), sin(a) * 0.26)
 		k.rod(foot, head, 0.03, 5, P.PLATE[2] if i % 2 == 0 else P.PLATE[3])
-		# A cross member, exactly level, going nowhere.
-		var next := float((i + 1) % ribs) / ribs * TAU + 0.3
-		k.rod(Vector3(cos(a) * 0.34, h * 0.26, sin(a) * 0.34),
-			Vector3(cos(next) * 0.34, h * 0.26, sin(next) * 0.34), 0.02, 4, P.PLATE[3])
-	# One plate still bolted across two ribs, rubbed bright on its lower edge,
-	# clear of the crown so it reads against the ground.
-	var pa := 0.3
-	k.plate(Vector3(cos(pa) * 0.4, h * 0.2, sin(pa) * 0.4), Vector3(cos(pa + 2.1) * 0.4, h * 0.2, sin(pa + 2.1) * 0.4),
-		Vector3(cos(pa + 2.1) * 0.34, h * 0.46, sin(pa + 2.1) * 0.34), Vector3(cos(pa) * 0.34, h * 0.46, sin(pa) * 0.34),
-		P.PLATE[2], P.PLATE[1], P.PLATE[4])
+		# A cross member, exactly level, going nowhere: a stub off the rib along
+		# the line the frame once ran. It was a ring from rib to rib, and a chord
+		# between two ribs a third of a turn apart runs straight through the trunk
+		# and its collar, so the whole ring was inside the bark.
+		var at := Vector3(cos(a) * 0.35, h * 0.3, sin(a) * 0.35)
+		var run := Vector3(-sin(a), 0.0, cos(a)) * (0.2 + float(i % 2) * 0.08)
+		k.rod(at, at + run, 0.02, 4, P.PLATE[3])
+	# There was a plate bolted across two ribs down here too, turned in to the
+	# trunk under the crown's shade, and no bearing of the camera ever showed it.
+	# Turned out and moved to the foot it read as a plinth under every tree, so
+	# the plate this tree is known by is the one in its crown.
 	# Two of the ribs never stopped: they carry on out of the leaves with a bar
 	# across them, so from above this wood is green blobs with a ruler through
 	# every one of them and reads as nothing else.
@@ -102,28 +116,16 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# white stick laid across every crown is louder than the tree.
 	# ...and it is not the same bar on every tree. Two in six have lost the far
 	# half of it, so a frame of this wood carries long bars, short bars and stubs
-	# rather than one length repeated thirty times.
-	var reach := 0.78 if v % 3 != 2 else 0.22
-	k.rod(bc - bd * reach, bc + bd * (0.62 + float(v % 3) * 0.14), 0.036, 4, P.PLATE[4])
+	# rather than one length repeated thirty times. Six lengths, not three: the
+	# slab that used to hang over the crown was the widest FOUND thing on half
+	# these trees, and with it gone three of them reached exactly as far as each
+	# other (tests/render/test_props.gd measures what the machine left standing).
+	# Scaled by the tree's own spread as everything else here is, so no two of the
+	# six reach the same distance out of the leaves.
+	var bar_k := 0.7 + spread * 0.35
+	k.rod(bc - bd * BAR_BACK[v % BAR_BACK.size()] * bar_k, bc + bd * BAR_OUT[v % BAR_OUT.size()] * bar_k, 0.036, 4, P.PLATE[4])
 	# A stay from the mast head out to the cage foot, clear of the crown.
 	k.rod(top0, Vector3(cos(ma + 2.4) * 0.5, h * 0.12, sin(ma + 2.4) * 0.5), 0.022, 4, P.PLATE[2])
-	# The plate caught in the fork, lying ON the crown where the light finds it.
-	# This is the ONE thing that says "a tree closed over a frame" at the zoom a
-	# player actually walks at: at zoom 12 a crown is about twenty pixels across,
-	# so a plate at 0.58 of a tile covered four of them in the crown's own dark
-	# and the wood read as ordinary broadleaf (playtest 6, and the review after
-	# it). Half again as wide, lifted clear of the leaves, and a step up the
-	# ramp, so it is a hard bright quadrilateral over a soft dark blob — which is
-	# Law 3 twice over and the only shape in the game that makes it.
-	var fa := ma + 1.3
-	var fx := lean.x * h * 0.85
-	var fz := lean.y * h * 0.85
-	var fy := h * 1.12
-	k.plate(Vector3(fx + cos(fa) * 0.88, fy, fz + sin(fa) * 0.88),
-		Vector3(fx + cos(fa + 1.5) * 0.94, fy + 0.13, fz + sin(fa + 1.5) * 0.94),
-		Vector3(fx + cos(fa + 2.7) * 0.82, fy + 0.24, fz + sin(fa + 2.7) * 0.82),
-		Vector3(fx + cos(fa + 4.3) * 0.72, fy + 0.1, fz + sin(fa + 4.3) * 0.72),
-		P.PLATE[4], P.PLATE[3], P.PLATE[5])
 	# The trunk, swelling where it grew round the frame.
 	var mid := Vector3(lean.x * h * 0.5, h * 0.5, lean.y * h * 0.5)
 	k.limb(Vector3.ZERO, mid, 0.19, 0.13, 7, bark)
@@ -161,12 +163,92 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 	# The top of the crown, pushed off the trunk away from the bare side.
 	var off := Vector3(cos(bare), 0.0, sin(bare)) * (crown * -0.35 if gap else 0.0)
 	k.canopy(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(crown * 1.2, crown * 1.32, Trees.BROAD_CARD))
+	# The sheet the crown grew up round: on the side away from the bar, and never
+	# on the side that did not grow back, where there would be nothing to hold it.
+	var sa := ma + PI + Kit.j(s, 5, 0.5)
+	if gap and absf(angle_difference(sa, bare)) < 1.2:
+		sa = bare + PI
+	var top := Vector3(lean.x * h + off.x, h * 0.88 + crown * 1.32 * 0.46, lean.y * h + off.z)
+	_caught_sheet(k, top, Vector3(crown * 1.2, crown * 1.32 * 0.54, crown * 1.2), sa, v, s)
 	# The underside, one step darker, so the crown reads as a mass and not a blob.
 	k.made.push(Transform3D(Basis.IDENTITY, Vector3(lean.x * h + off.x, h * 0.82, lean.y * h + off.z)))
 	k.made.prism(0, 0, 0, crown * 0.96, 0.09, crown * 1.1, 7, under)
 	k.made.pop()
 	k.sway_by_height(start, h * 0.5, h, 0.6)
 	k.sway_by_height(leaf_start, h * 0.5, h, 0.6, k.leaf)
+
+
+## A sheet of the machine's plate caught up in the crown of the tree that grew
+## through it: lying in the leaves on the crown's shoulder, bent down over the
+## bough that holds it, the crown grown up round its edges. From above at play it
+## is a hard straight-edged plane, lit like metal, with leaves over its rim --
+## the one shape in the wood that says "grew through salvage" and not "has a
+## snag in it" -- and it is a HAND's width of the crown, not a lid over it.
+##
+## `centre` and `radii` are the crown's top mass as `canopy` took it; `bearing`
+## the side of the crown it lies on. Only the outer faces are drawn: the backs
+## face into the crown, and no bearing of the play camera ever reaches them.
+static func _caught_sheet(k: Kit, centre: Vector3, radii: Vector3, bearing: float, v: int, s: int) -> void:
+	var out := Vector3(cos(bearing), 0.0, sin(bearing))
+	# The hinge: where the bough holding it leaves the crown's skin, high on its
+	# shoulder, a little proud so the leaves close over its edges and not over
+	# its face. High, because a sheet down the flank faces half the bearings a
+	# prop can be turned to and is a sliver over the crown's far rim at the rest.
+	var el := 0.98 + Kit.j(s, 60, 0.1)
+	var skin := 1.04
+	var hinge := centre + out * radii.x * cos(el) * skin + Vector3.UP * radii.y * sin(el) * skin
+	# Up the crown along its skin...
+	var up_run := (-out * radii.x * sin(el) + Vector3.UP * radii.y * cos(el)).normalized()
+	# ...and never square to it. A sheet laid level across a crown's shoulder
+	# with a flap turned down over the edge is a little roof, and a crown with a
+	# roof on it is a bird box: the fold runs across the slope at a slant, so
+	# one end of the sheet is lodged deeper than the other.
+	var slant := 0.5 + Kit.j(s, 63, 0.15)
+	var flat := Vector3(-sin(bearing), 0.0, cos(bearing))
+	var along := (flat * cos(slant) + up_run * sin(slant)).normalized()
+	var across := (up_run - along * up_run.dot(along)).normalized()
+	var size := radii.x
+	var wide := size * (0.9 + float(v % 3) * 0.08)
+	var reach := size * (0.72 + Kit.j(s, 61, 0.08))
+	# Its low end sunk a little into the crown and its high end standing clear:
+	# the sheet is bent to it, as a sheet that has hung in a tree for years is.
+	# Not deeper than a leaf: sunk a fifth of the crown it was a shard glimpsed
+	# on one tree in four at play, and the wood read as ordinary broadleaf again.
+	var skin_n := (out * cos(el) / radii.x + Vector3.UP * sin(el) / radii.y).normalized()
+	var a0 := hinge - along * wide * 0.5 - skin_n * size * 0.07
+	var a1 := hinge + along * wide * 0.5 + skin_n * size * 0.06
+	# Torn, not cut: one far corner is missing a bite, so the outline is never a
+	# rectangle.
+	var t0 := a0 + across * reach * 0.62 + along * wide * 0.2 + skin_n * size * 0.1
+	var t1 := a1 + across * reach + along * wide * (0.04 + Kit.j(s, 62, 0.05)) + skin_n * size * 0.04
+	var face_n := across.cross(along)
+	if face_n.dot(out + Vector3.UP) < 0.0:
+		face_n = -face_n
+	_sheet(k, a0, a1, t1, t0, face_n, P.PLATE[4], Kit.tone(P.PLATE[4], 0.82), P.PLATE[5])
+	if v % 2 == 1:
+		# Half the sheets are bent where the bough caught them: a short lip under
+		# the low end only, turned down into the leaves.
+		var hang := (out * 0.55 + Vector3.DOWN * 0.84).normalized()
+		var lip := size * 0.3
+		var d0 := a0 + hang * lip
+		var d1 := a0.lerp(a1, 0.55) + hang * lip * 0.7
+		var lip_n := along.cross(hang)
+		if lip_n.dot(out) < 0.0:
+			lip_n = -lip_n
+		_sheet(k, d0, d1, a0.lerp(a1, 0.55), a0, lip_n, P.PLATE[3], Kit.tone(P.PLATE[3], 0.82), P.PLATE[4])
+
+
+## One sheet of plate, `k.plate` wound so it faces the way `facing` points --
+## the winding is decided HERE, from the direction the sheet is meant to show,
+## and never left to the order its corners happened to be written in, which is
+## how the old crown plate came to face the ground.
+static func _sheet(k: Kit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, facing: Vector3, col: Color, rim: Color, rivet: Color) -> void:
+	# kit.gd `plate` faces (c - b) x (a - b).
+	if (c - b).cross(a - b).dot(facing) < 0.0:
+		var t := b
+		b = d
+		d = t
+	k.plate(a, b, c, d, col, rim, rivet)
 
 
 ## A cone of iron filings standing where the field in a dead frame still pulls,

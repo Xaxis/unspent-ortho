@@ -384,10 +384,17 @@ func sway_by_height(start: int, y0: float, y1: float, w: float, pen: MeshKit = n
 # What a card also carries, and where:
 #   COLOR.rgb  the leaf's wash, toned darker the deeper into the crown it sits,
 #              because the inside of a canopy is in its own shade (baked AO)
-#   COLOR.a    which sprig the shader cuts (LEAF_*) / 255
+#   COLOR.a    one byte / 255: which sprig the shader cuts (LEAF_*) in the low
+#              LEAF_SHAPE_BITS, and above them how much snow lies on the card
 #   UV         card coordinates, 0..1, the stem at v = 0 and the tip at v = 1
 #   UV2        (sway weight, phase) exactly as MADE carries them; the phase is
 #              also the card's seed, so no two sprigs are cut alike
+#
+# SNOW is the leaf's, not a lid's (leaf.gdshader says why). A builder says how
+# laden a plant is, 0..1, and each card is dealt that much less what the crown
+# keeps off it: a card sunk inside the crown, or low on its flank, holds little.
+# Where on the card it lies -- the side facing the sky, in lumps -- is the
+# shader's, per fragment.
 
 ## The sprigs leaf.gdshader cuts. Kept in step with its LEAF_* consts, which
 ## tests/render/test_foliage.gd reads out of the shader.
@@ -395,6 +402,24 @@ const LEAF_BROAD := 1
 const LEAF_SMALL := 2
 const LEAF_NEEDLE := 3
 const LEAF_SPINE := 4
+## The byte a card's COLOR.a carries: the shape in the low bits, the snow in the
+## steps above them. Kept in step with the shader's own consts.
+const LEAF_SHAPE_BITS := 3
+const LEAF_SNOW_STEPS := 31
+
+
+## The COLOR.a byte of a card of `shape` carrying `snow` (0..1).
+static func leaf_code(shape: int, snow: float) -> int:
+	return shape | (roundi(clampf(snow, 0.0, 1.0) * LEAF_SNOW_STEPS) << LEAF_SHAPE_BITS)
+
+
+## The shape and the snow (0..1) back out of a card's colour.
+static func leaf_shape(col: Color) -> int:
+	return roundi(col.a * 255.0) & ((1 << LEAF_SHAPE_BITS) - 1)
+
+
+static func leaf_snow(col: Color) -> float:
+	return float(roundi(col.a * 255.0) >> LEAF_SHAPE_BITS) / LEAF_SNOW_STEPS
 
 ## The golden angle, so cards spread over a shell without a pole or a seam.
 const _GOLDEN := 2.39996323
@@ -410,7 +435,7 @@ const _GOLDEN := 2.39996323
 ## web) shades triangles in order, so a card that a nearer one will cover must
 ## come later, where the depth test throws it away unshaded.
 func canopy(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, cols: Array[Color],
-		shape: int = LEAF_BROAD, size: float = 0.26, count: int = 28) -> void:
+		shape: int = LEAF_BROAD, size: float = 0.26, count: int = 28, snow: float = 0.0) -> void:
 	var centre := Vector3(cx, y0 + h * 0.46, cz)
 	var radii := Vector3(r, h * 0.54, r)
 	var inv2 := Vector3(1.0 / (radii.x * radii.x), 1.0 / (radii.y * radii.y), 1.0 / (radii.z * radii.z))
@@ -447,10 +472,13 @@ func canopy(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int
 		var shade := lerpf(0.58, 1.0, smoothstep(0.5, 1.0, depth)) * (0.9 + 0.13 * clampf(dir.y, -1.0, 1.0))
 		var col := cols[int(Rng.hash01(seed_value, i, 78) * cols.size()) % cols.size()]
 		col = tone(col, shade * (0.92 + Rng.hash01(seed_value, i, 79) * 0.16))
-		cards.append([depth + dir.y * 0.35, p, up, side, s, col, Rng.hash01(seed_value, i, 80)])
+		# What the crown keeps off a card: the ones sunk inside it and the ones low
+		# on its flank hold little, the skin of its top holds it all.
+		var held := snow * smoothstep(0.6, 0.95, depth) * clampf(0.5 + dir.y * 0.8, 0.0, 1.0)
+		cards.append([depth + dir.y * 0.35, p, up, side, s, col, Rng.hash01(seed_value, i, 80), held])
 	cards.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
 	for cd: Array in cards:
-		_card(cd[1], cd[2], cd[3], cd[4], cd[5], shape, cd[6], centre, inv2)
+		_card(cd[1], cd[2], cd[3], cd[4], cd[5], shape, cd[6], centre, inv2, cd[7])
 
 
 ## Needle sprays round one conifer tier (see `tier`, which takes the same
@@ -461,7 +489,7 @@ func canopy(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int
 ## against 131 thousand for the solid tiers, and looked no better than this. The spray is what reaches the light;
 ## the tier under it is the bough's own shade.
 func sprays(cx: float, y_rim: float, cz: float, r: float, rise: float, droop: float, points: int,
-		seed_value: int, cols: Array[Color], shape: int = LEAF_NEEDLE) -> void:
+		seed_value: int, cols: Array[Color], shape: int = LEAF_NEEDLE, snow: float = 0.0) -> void:
 	# The crown normal of a tier is a cone's: out from the trunk and up.
 	var centre := Vector3(cx, y_rim - droop - rise * 0.2, cz)
 	var inv2 := Vector3(1.0 / (r * r), 1.0 / maxf(rise * rise, 0.04), 1.0 / (r * r))
@@ -488,19 +516,22 @@ func sprays(cx: float, y_rim: float, cz: float, r: float, rise: float, droop: fl
 		var col := tone(cols[int(Rng.hash01(seed_value, i, 84) * cols.size()) % cols.size()], 0.9 + Rng.hash01(seed_value, i, 85) * 0.2)
 		if high:
 			col = tone(col, 1.06)
-		_card(from + dir * length * 0.5, dir, side, length, col, shape, Rng.hash01(seed_value, i, 86), centre, inv2)
+		# The sprays laid on a tier's upper face hold the most; the long ones
+		# reaching past its rim droop, and the tier above keeps some off them.
+		var held := snow * (1.0 if high else 0.8)
+		_card(from + dir * length * 0.5, dir, side, length, col, shape, Rng.hash01(seed_value, i, 86), centre, inv2, held)
 
 
 ## One card: centred on `p`, stem to tip along `up`, `s` on an edge. Its vertex
 ## normals are the crown's (see the block above), taken at each corner so the
-## light turns smoothly across the whole mass.
+## light turns smoothly across the whole mass. `snow` 0..1 is how much lies on it.
 func _card(p: Vector3, up: Vector3, side: Vector3, s: float, col: Color, shape: int, phase: float,
-		centre: Vector3, inv2: Vector3) -> void:
+		centre: Vector3, inv2: Vector3, snow: float = 0.0) -> void:
 	var half := s * 0.5
 	var corners: Array[Vector3] = [p - up * half - side * half, p - up * half + side * half,
 		p + up * half + side * half, p + up * half - side * half]
 	var uv: Array[Vector2] = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
-	var c := Color(col.r, col.g, col.b, shape / 255.0)
+	var c := Color(col.r, col.g, col.b, leaf_code(shape, snow) / 255.0)
 	for idx: int in [0, 1, 2, 0, 2, 3]:
 		var v := corners[idx]
 		# A little lift toward the sky in the crown normal: a canopy is lit from

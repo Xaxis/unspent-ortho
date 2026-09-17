@@ -38,10 +38,24 @@
 //
 // Vertex channels (kit.gd `_card` writes them):
 //   COLOR.rgb  the leaf's wash, already darkened by how deep in the crown it sits
-//   COLOR.a    which sprig to cut, LEAF_* / 255
+//   COLOR.a    one byte, / 255: the low LEAF_SHAPE_BITS say which sprig to cut
+//              (LEAF_*), the rest how much snow lies on this card (0..LEAF_SNOW_STEPS)
 //   NORMAL     the CROWN's normal, not the card's: see fragment()
 //   UV         the card, 0..1: stem at v = 0, tip at v = 1
 //   UV2        x wind sway weight, y phase -- which is also the card's seed
+//
+// SNOW IS A MATERIAL, NOT A LID. A laden pine used to carry a white tier laid
+// over its needles and a snowfield bush a white clump on its crown, and under a
+// real sun both read as the two things the cards had just removed from every
+// other plant: a sliver of paper on the pine, a white dome on the bush. Snow
+// lies on the side of a leaf that faces the sky, in lumps, and bridges the gaps
+// between needles where it is deep -- so it is laid on HERE, per fragment, by
+// how much the leaf faces up and where it stands, and the silhouette and the
+// dapple stay the leaves'. It goes through sky_apply() and matter_albedo() with
+// the leaf, in the snow ground's own wash, so it is lit as the drift under the
+// tree is lit and never matched against it by eye: a white quad on snow was
+// tried for footprints, and white shaded one way on white shaded another
+// vanished.
 shader_type spatial;
 render_mode cull_disabled;
 
@@ -64,6 +78,23 @@ const int LEAF_BROAD = 1;
 const int LEAF_SMALL = 2;
 const int LEAF_NEEDLE = 3;
 const int LEAF_SPINE = 4;
+// The byte in COLOR.a, as kit.gd packs it: shape low, snow above.
+const int LEAF_SHAPE_BITS = 3;
+const int LEAF_SNOW_STEPS = 31;
+// Lying snow: the snow ground's own wash (GroundColors SNOW, RIME[5]) and the
+// step under it that a drift's lee is drawn in (world.gdshader, RIME[4]).
+const vec3 SNOW_LIT = vec3(0.8667, 0.9412, 0.9686);
+const vec3 SNOW_LEE = vec3(0.5882, 0.7529, 0.8157);
+// Snow's surface, as matter_of() gives the snow ground (roughness, specular), so
+// a lump on a bough answers the sun as the drift under it does.
+const float SNOW_ROUGH = 0.74;
+const float SNOW_SPEC = 0.5;
+// How big a lump of snow is, in world units: a handful. Pinned to where the card
+// RESTS, not where the wind has it, or the snow would crawl over the needles.
+const float SNOW_LUMP = 0.14;
+// The lump threshold at a trace of snow and at all a leaf can hold.
+const float SNOW_BARE = 0.2;
+const float SNOW_FULL = 0.56;
 
 // How far a card's own face leads its light over the crown's volume normal.
 // 0 is a dome again; 1 is sixty random facets. Found against the canon frames.
@@ -78,14 +109,16 @@ const vec3 THROUGH_TINT = vec3(1.0, 1.15, 0.5);
 const float LEAF_WEAR = 0.2;
 
 varying vec3 world_pos;
+varying vec3 rest_pos;
 varying float sway_w;
 
 void vertex() {
 	sway_w = UV2.x;
+	rest_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	if (sway_w > 0.0) {
 		// The crown's sway is world.gdshader's, from the same globals, so a card
 		// moves with the trunk it grew on and not to its own beat...
-		vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+		vec3 wp = rest_pos;
 		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
 		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
 		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
@@ -211,6 +244,24 @@ float sprig_needle(vec2 uv, float seed, float stiff, out float which) {
 	return best;
 }
 
+// Where deep snow can bridge the gaps of a sprig, above 0 inside: the inner part
+// of a spray along its twig, and the heart of a cluster -- never out at the
+// tips, so a laden bough is still cut to needles at its edge and never becomes
+// the solid it replaced.
+float snow_bed(int shape, vec2 uv, float seed) {
+	if (shape == LEAF_NEEDLE || shape == LEAF_SPINE) {
+		float bend = (ink_hash(vec2(seed, 5.0)) - 0.5) * 0.35;
+		float x = uv.x - 0.5 - bend * uv.y * uv.y;
+		// As wide on a gorse spray as on a pine's: a bed the width of the spines'
+		// own reach laid snow along each twig as a white line, a sliver again.
+		float reach = 0.24 * (1.0 - uv.y * 0.6);
+		return min(1.0 - abs(x) / reach, min(uv.y - 0.04, 0.8 - uv.y) * 8.0);
+	} else if (shape == LEAF_SMALL) {
+		return 1.0 - length(uv - vec2(0.5)) / 0.2;
+	}
+	return min(1.0 - abs(uv.x - 0.5) / 0.1, min(uv.y - 0.06, 0.62 - uv.y) * 8.0);
+}
+
 float leaf_mask(int shape, vec2 uv, float seed, out float which) {
 	if (shape == LEAF_SMALL) {
 		return sprig_small(uv, seed, which);
@@ -233,11 +284,55 @@ void fragment() {
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
-	int shape = int(COLOR.a * 255.0 + 0.5);
+	int code = int(COLOR.a * 255.0 + 0.5);
+	int shape = code & ((1 << LEAF_SHAPE_BITS) - 1);
+	float laden = float(code >> LEAF_SHAPE_BITS) / float(LEAF_SNOW_STEPS);
 	float seed = UV2.y * 97.0;
+	// Godot turns NORMAL round for a back face before this code runs; turning it
+	// back recovers the crown normal kit.gd wrote, whichever side of the card is
+	// showing. The card's own face (above) is the dapple.
+	vec3 crown = FRONT_FACING ? NORMAL : -NORMAL;
 	float which = 0.0;
 	float inside = leaf_mask(shape, UV, seed, which);
-	if (inside <= 0.0) {
+
+	// SNOW: how much of this pixel of leaf lies under it (see the header).
+	float snow = 0.0;
+	float deep = 0.0;
+	if (laden > 0.0) {
+		// Only the side that faces the sky holds any, and more of it on the top of
+		// the crown than round its flanks; a drooping tip sheds what lands on it.
+		float face_up = (INV_VIEW_MATRIX * vec4(face, 0.0)).y;
+		float crown_up = (INV_VIEW_MATRIX * vec4(crown, 0.0)).y;
+		float lie = laden * smoothstep(0.05, 0.6, face_up) * smoothstep(-0.45, 0.35, crown_up)
+			* (1.0 - 0.6 * smoothstep(0.55, 0.95, UV.y));
+		// In lumps: a handful across, pinned to where the leaf rests, with a little
+		// of the sprig's own grain so no two lumps have the same edge.
+		vec3 lp = rest_pos / SNOW_LUMP;
+		float lump = ink_vnoise(lp.xz + lp.y * vec2(0.61, -0.37)) * 0.72
+			+ ink_vnoise(UV * 3.3 + vec2(seed * 0.71, seed * 0.29)) * 0.28;
+		// `lump` sits about 0.5 with a spread of about 0.12, so the threshold is
+		// what share of a leaf is covered: a laden top about two thirds, the thin
+		// fall on a snowfield pine's rim barely any, and a leaf turned to the side
+		// none at all -- never a white tree with green holes in it.
+		float t = mix(SNOW_BARE, SNOW_FULL, lie) * step(0.02, lie);
+		snow = 1.0 - smoothstep(t - 0.05, t + 0.03, lump);
+		// Where it lies deepest it fills the gaps between the needles, inside the
+		// spray's own bed, and nowhere a leaf would not have held it up. The bed's
+		// edge is the lump's own, so a lump is never ruled along its twig.
+		float bed = step(0.0, snow_bed(shape, UV, seed) + (t - lump) * 1.2);
+		if (shape == LEAF_NEEDLE || shape == LEAF_SPINE) {
+			// A needle is a pixel wide: snow on one needle and not the gap beside
+			// it is a white dot, and a band of them round every lump is glitter. On
+			// a conifer the snow is the whole lump, needles and gaps alike, or none.
+			deep = (1.0 - smoothstep(t - 0.03, t + 0.01, lump)) * bed;
+			snow = deep;
+		} else {
+			deep = (1.0 - smoothstep(t - 0.07, t - 0.03, lump)) * bed;
+			// A leaf inside a lump is under it as deeply as the gap beside it.
+			snow = max(snow, deep);
+		}
+	}
+	if (inside <= 0.0 && deep < 0.5) {
 		discard;
 	}
 	vec3 c = COLOR.rgb;
@@ -250,24 +345,28 @@ void fragment() {
 	if (broad) {
 		c *= mix(1.0, 1.1, smoothstep(0.82, 0.96, inside));
 	}
+	// A lump is lit at its crown and falls into its own lee at the rim, which is
+	// the whole of how snow on a bough reads as lying ON it and not painted.
+	vec3 snow_col = mix(SNOW_LEE, SNOW_LIT, 0.45 + 0.55 * max(deep, smoothstep(0.0, 0.6, snow)));
+	c = mix(c, snow_col, snow);
 	c = sky_apply(c, world_pos, TIME);
 
-	// THE LIGHT. Godot turns NORMAL round for a back face before this code runs;
-	// turning it back recovers the crown normal kit.gd wrote, whichever side of
-	// the card is showing. The card's own face (above) is the dapple.
-	vec3 crown = FRONT_FACING ? NORMAL : -NORMAL;
+	// THE LIGHT. Snow lies level whatever the leaf under it is doing, so where it
+	// lies the normal is the sky's, as the drift's under the tree is.
 	vec3 n = normalize(mix(crown, face, LEAF_FACE));
+	n = normalize(mix(n, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, snow * 0.75));
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	float rough_add = 0.0;
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, LEAF_WEAR, rough_add);
 
 	ALBEDO = matter_albedo(c);
-	ROUGHNESS = clamp(0.7 + rough_add, 0.04, 1.0);
+	ROUGHNESS = clamp(mix(0.7, SNOW_ROUGH, snow) + rough_add, 0.04, 1.0);
 	// A leaf has a waxy face: a little comes back off it at a glancing sun.
-	SPECULAR = 0.36;
+	SPECULAR = mix(0.36, SNOW_SPEC, snow);
 	METALLIC = 0.0;
 	NORMAL = n;
-	BACKLIGHT = THROUGH_TINT * through;
+	// No sun comes through a lump of snow.
+	BACKLIGHT = THROUGH_TINT * through * (1.0 - snow);
 }
 
 // No light(). The renderer lights a leaf against the same sun, sky and lamps as
