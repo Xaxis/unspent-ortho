@@ -12,7 +12,7 @@
 //
 // FAILS (exit 1) on: a console error, a page error, a request that never
 // completes, no ready line within --timeout, a blank canvas, a canvas that is not
-// an exact integer nearest upscale of 640x360, the canvas not holding keyboard
+// the game drawn at the base's 16:9 shape, the canvas not holding keyboard
 // focus, an AudioContext that is not running after the first key, and any
 // `web FAIL` line from the in-game probe (src/boot/web_probe.gd: systems, focus,
 // audio on the master bus, saves on IndexedDB).
@@ -123,7 +123,7 @@ const launchArgs = [...(opt.swiftshader
   ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
   : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu']), '--autoplay-policy=user-gesture-required'];
 const browser = await chromium.launch({ headless: !opt.headed, args: launchArgs });
-// Not a whole multiple of 640x360: the game (and the shell before it) sit in black bars.
+// Not the base's 16:9: the game (and the shell before it) sit in black bars.
 const context = await browser.newContext({ viewport: { width: 1440, height: 789 }, deviceScaleFactor: Number(opt.dpr || 1) });
 // Record every AudioContext the engine makes, so the check can see it start, and
 // tap whatever the engine connects to the speakers, so it can hear the result.
@@ -258,8 +258,14 @@ function waitLine(re, secs, from = 0) {
   });
 }
 
-// Pixels of the page as shown: blank or not, and whether every game pixel is an
-// exact square block (the 640x360 image upscaled by a whole number, nearest).
+// Pixels of the page as shown: blank or not, and what shape the game is drawn at.
+//
+// This used to check that every game pixel was an exact square block — the
+// 640x360 image upscaled by a whole number, nearest. LANTERN took that contract
+// out (docs/LOOK.md): the base is 1920x1080 and the image is scaled fractionally,
+// so there are no blocks left to be exact and a whole-number scale is not
+// expected. What is still worth proving is that the game fills the canvas at its
+// own 16:9 shape, in letterbox bars, rather than being stretched or cropped.
 async function inspect(pngPath) {
   const b64 = fs.readFileSync(pngPath).toString('base64');
   return page.evaluate(async (data) => {
@@ -280,17 +286,11 @@ async function inspect(pngPath) {
     const colours = new Set();
     for (let y = 0; y < c.height; y += 5) for (let x = 0; x < c.width; x += 5) colours.add(at(x, y));
     const w = x1 - x0 + 1, h = y1 - y0 + 1;
-    const scale = Math.max(1, Math.round(w / 640));
-    let blocks = 0, uniform = 0;
-    for (let by = 0; by < 360; by += 3) for (let bx = 0; bx < 640; bx += 3) {
-      const ox = x0 + bx * scale, oy = y0 + by * scale;
-      if (ox + scale > c.width || oy + scale > c.height) continue;
-      const v = at(ox, oy);
-      let same = true;
-      for (let dy = 0; dy < scale && same; dy += 1) for (let dx = 0; dx < scale; dx += 1) if (at(ox + dx, oy + dy) !== v) { same = false; break; }
-      blocks += 1; if (same) uniform += 1;
-    }
-    return { drawn: [x0, y0, w, h], colours: colours.size, scale, uniform: blocks ? uniform / blocks : 0 };
+    // How much of the 1920x1080 base the canvas shows it at, and the shape it
+    // came out: 16:9 means nothing was stretched or cropped to fit.
+    const scale = w / 1920;
+    const aspect = h > 0 ? w / h : 0;
+    return { drawn: [x0, y0, w, h], colours: colours.size, scale, aspect };
   }, b64);
 }
 
@@ -329,8 +329,11 @@ async function inspectPage(pngPath) {
       if (r + gg + b > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     }
     const w = x1 - x0 + 1, h = y1 - y0 + 1;
-    const s = Math.max(1, Math.round(w / 640));
-    const at = (gx, gy) => rgb(x0 + gx * s, y0 + gy * s);
+    // The loading page draws in the slate's 640x360 units (UiBase.DESIGN) and is
+    // scaled onto the canvas, so this factor is fractional and must be rounded at
+    // the point of sampling rather than forced to a whole number.
+    const s = w / 640;
+    const at = (gx, gy) => rgb(x0 + Math.round(gx * s), y0 + Math.round(gy * s));
     // By brightness, not by one channel: the page is drawn in the slate's phosphor.
     const lum = ([r, gg, b]) => 0.2126 * r + 0.7152 * gg + 0.0722 * b;
     let lit = -1;
@@ -352,15 +355,23 @@ async function shoot(name, { expectScale = null, still = false } = {}) {
     return null;
   }
   const s = await inspect(file);
-  console.log(`web shot ${file} at ${since()}s: ${s.colours} colours, ${s.drawn[2]}x${s.drawn[3]} at ${s.drawn[0]},${s.drawn[1]} (x${s.scale}, ${(s.uniform * 100).toFixed(1)}% blocks exact)`);
+  console.log(`web shot ${file} at ${since()}s: ${s.colours} colours, ${s.drawn[2]}x${s.drawn[3]} at ${s.drawn[0]},${s.drawn[1]} (${s.scale.toFixed(3)} of the 1920x1080 base, ${s.aspect.toFixed(3)}:1)`);
   if (!still && s.colours < 24) failures.push(`blank canvas in ${file} (${s.colours} colours)`);
   // The loading page is mostly one dark colour, so its bounding box says little.
   if (!still) {
     const [, , w, h] = s.drawn;
-    if (w !== 640 * s.scale || h !== 360 * s.scale) failures.push(`${file}: drawn ${w}x${h} is not a whole multiple of 640x360`);
-    if (s.uniform < 0.995) failures.push(`${file}: only ${(s.uniform * 100).toFixed(1)}% of pixel blocks are exact (not a nearest whole-number upscale)`);
+    // 16:9, the shape of the base. A pixel of slack each way: the drawn box is
+    // found by bounding-box, and a fractional scale can leave the outermost row
+    // or column a shade off the letterbox black.
+    const want = 1920 / 1080;
+    if (Math.abs(s.aspect - want) > 0.01) {
+      failures.push(`${file}: drawn ${w}x${h} is ${s.aspect.toFixed(3)}:1, not the base's ${want.toFixed(3)}:1 — the game is stretched or cropped`);
+    }
+    if (s.scale < 0.1) failures.push(`${file}: drawn ${w}x${h} is a sliver of the base, not a frame`);
   }
-  if (expectScale !== null && s.scale !== expectScale) failures.push(`${file}: scale x${s.scale}, expected x${expectScale}`);
+  if (expectScale !== null && Math.abs(s.scale - expectScale) > 0.02) {
+    failures.push(`${file}: shown at ${s.scale.toFixed(3)} of the base, expected ${expectScale.toFixed(3)}`);
+  }
   return s;
 }
 
@@ -489,7 +500,8 @@ if (first) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(1500);
     const dpr = Number(opt.dpr || 1);
-    await shoot(`resize-${w}x${h}`, { expectScale: Math.max(1, Math.min(Math.floor(w * dpr / 640), Math.floor(h * dpr / 360))) });
+    // Fractional now: the game fills the viewport on its tighter axis.
+    await shoot(`resize-${w}x${h}`, { expectScale: Math.min(w * dpr / 1920, h * dpr / 1080) });
   }
 
   if (opt.reload) {

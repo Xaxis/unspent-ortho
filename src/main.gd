@@ -36,6 +36,11 @@ func _ready() -> void:
 	if options.scene == "game":
 		GameConfig.fill_new_game(options, DevMode.explicit(OS.get_cmdline_user_args()))
 	_take_focus_if_a_person_is_playing()
+	# Named before the settings are applied, because applying them is what puts a
+	# graphics tier in force (SettingsApply.quality) and a named tier beats both
+	# doors. The root viewport already exists here, so the tier lands before the
+	# first frame and before any scene is built.
+	SettingsApply.quality_asked = options.quality
 	_read_player_settings()
 	var root: Node
 	match options.scene:
@@ -104,12 +109,12 @@ func _take_focus_if_a_person_is_playing() -> void:
 	# Locally the window comes up one pixel across, so a person playing gets it
 	# back to the size the game is meant to be looked at, in the middle of their
 	# screen. An exported build already opens that way and is only centred here.
-	# Two whole pixels to one of the game's, from the viewport itself: the window
-	# override cannot be asked, because locally it is the 1 that hides the window.
-	var view := Vector2i(int(ProjectSettings.get_setting("display/window/size/viewport_width", 640)),
-		int(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
-	if w.size.x <= view.x:
-		w.size = view * 2
+	# Two whole pixels to one of the SLATE's, which is 1280x720 — measured off
+	# UiBase.DESIGN and not off the 1920x1080 base, or a player would be handed a
+	# 3840x2160 window. The world still renders at the full base inside it.
+	var want := SettingsApply.window_size(2)
+	if w.size.x < want.x:
+		w.size = want
 	var screen := DisplayServer.screen_get_usable_rect(DisplayServer.SCREEN_PRIMARY)
 	w.position = screen.position + (screen.size - w.size) / 2
 	DisplayServer.window_move_to_foreground()

@@ -64,7 +64,7 @@ func _init() -> void:
 	add_child(shown)
 	_overlay = Control.new()
 	_overlay.name = "marks"
-	_overlay.size = Vector2(640, 360)
+	_overlay.size = Vector2(UiBase.DESIGN)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)

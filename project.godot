@@ -28,12 +28,26 @@ gdscript/warnings/narrowing_conversion=0
 
 [display]
 
-window/size/viewport_width=640
-window/size/viewport_height=360
+; LANTERN's floor (docs/LOOK.md): the world is lit, not drawn, and 640x360 with a
+; whole-number nearest upscale was the pixel-art contract that made every look a
+; variation on a page. The base is 1920x1080 and the image is fractional.
+;
+; The stretch mode stays "viewport", and that is load-bearing rather than
+; inherited: under "canvas_items" the root viewport IS the window, and every tool
+; run opens a one-pixel window on purpose (below), so a shot would capture the
+; window and not the game. Under "viewport" the frame is rendered into its own
+; 1920x1080 texture whatever size the window is, which is the whole reason the
+; off-screen trick works. Both were measured here, same seed, same command:
+; canvas_items wrote a 64x36 PNG, viewport wrote 1920x1080.
+;
+; The 3D image is scaled INSIDE that texture by rendering/scaling_3d (see
+; src/render/quality.gd), so a tier costs render scale and never the UI's size.
+window/size/viewport_width=1920
+window/size/viewport_height=1080
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
-window/stretch/scale_mode="integer"
+window/stretch/scale_mode="fractional"
 ; The window opens without taking the focus of whatever the person at the
 ; keyboard is doing: a hundred shots and tours a day must not interrupt them.
 ; A real play session takes its focus back in src/main.gd, where it can tell a
@@ -43,8 +57,9 @@ window/size/no_focus=true
 ; back onto some screen, so there is no off-screen to hide in — a position picked
 ; to be far away landed dead centre on a fourth monitor. A 1x1 window needs no
 ; luck: it is invisible on any arrangement of any number of displays, and the
-; frame is unaffected, because the viewport renders 640x360 into its own texture
-; whatever size the window is.
+; frame is unaffected, because the viewport renders 1920x1080 into its own texture
+; whatever size the window is. That last clause is exactly why stretch/mode above
+; may not become "canvas_items".
 ;
 ; The `.editor` suffix means this applies to every run made with the Godot binary
 ; — our tools, and the ad-hoc runs an agent writes for itself, which is the half
@@ -88,12 +103,31 @@ ability_spoof={"deadzone": 0.2, "events": [Object(InputEventKey,"resource_local_
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
+; Forward+ is the target and Compatibility is the degradation path (docs/LOOK.md).
+; The `.web` and `.mobile` overrides are feature-tag settings the exported build
+; reads; a desktop run (and every tool run) takes the bare one. Verified in a real
+; exported web build: the browser reports gl_compatibility, the desktop Forward+.
+renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method.web="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
-anti_aliasing/quality/msaa_3d=0
-lights_and_shadows/directional_shadow/size=2048
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+; What follows is the `high` tier of src/render/quality.gd, which is the default
+; a desktop run boots at. These were all pinned low for a 640x360 nearest image:
+; msaa off because there was nothing to smooth at one screen pixel a texel, a
+; small shadow map and no filtering because the shadow was three pixels wide.
+; QualityTier.apply() overwrites each of these at boot, so a tier is the authority
+; and these are only what the engine starts with before it runs.
+anti_aliasing/quality/msaa_3d=2
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2
+lights_and_shadows/positional_shadow/atlas_size=4096
+; The tier knob. `scaling_3d/scale` is a fraction of the 1920x1080 base that the
+; 3D image is rendered at and then upscaled into; the UI is a canvas item and is
+; never touched by it, so degrading costs sharpness in the world and nothing on
+; the slate. Mode 0 is bilinear, 1 FSR1, 2 FSR2; every tier is on 0 for now and
+; src/render/quality.gd says why. QualityTier.apply() overwrites both of these.
+rendering/scaling_3d/mode=0
+rendering/scaling_3d/scale=1.0
 ; The macOS export refuses arm64 without it; nothing here is an imported texture.
 textures/vram_compression/import_etc2_astc=true
 
