@@ -137,6 +137,25 @@ func test_a_chunk_draws_its_leaves_in_one_more_call_with_the_views_own_material(
 	await tree.process_frame
 
 
+## `Broken.work_down` cuts a thing's MADE and FOUND geometry down to what the
+## taking has left, and leaves its cards alone: a plant worked down that way would
+## stand a whole crown over half a trunk. Nothing that grows leaves is taken like
+## that today (gathering keeps the plant, felling takes it whole), and this is the
+## line that says so before a take is added that would change it.
+func test_nothing_with_leaves_is_worked_down_under_its_crown() -> void:
+	for kind in PropKind.COUNT:
+		var leafy := false
+		for v in PropModels.variants(kind):
+			for c: int in BiomeRegistry.land_indices():
+				leafy = leafy or not PropModels.template(kind, v, c).leaf_v.is_empty()
+		if not leafy:
+			continue
+		for o: Dictionary in Takes.options(kind):
+			check(bool(o.keep) or int(o.uses) <= 1,
+				"%s grows leaves and a take (%s) works it down: Broken would cut the trunk under a whole crown"
+				% [PropKind.NAMES[kind], o.verb])
+
+
 func test_a_falling_tree_takes_its_crown_down_in_its_own_material() -> void:
 	var leaves := PropModels.leaf_node(PropKind.BROADLEAF)
 	check(leaves != null, "a broadleaf's leaves as a node")
