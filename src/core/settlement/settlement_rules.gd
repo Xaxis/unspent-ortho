@@ -163,6 +163,12 @@ static func _wire(s: Settlement, weather: Dictionary, hour: float) -> void:
 			made += out * p.condition() * source(p.kind, weather, hour)
 	var spare := made
 	var room := s.charge_room()
+	# Power is a RATE (per world hour) and charge is an AMOUNT, so both ways across
+	# the bank are weighed by the slice: a cell filled at one an hour and drawn at
+	# one an hour lasts as long as it took to fill. (It once drained a whole hour's
+	# worth every half hour, and a staged holding's cells went flat while a
+	# spoofer was still being put up.)
+	var hours := SLICE / 60.0
 	for p in s.pieces:
 		var want := StructureKind.draw_power(p.kind)
 		if want <= 0.0:
@@ -174,13 +180,15 @@ static func _wire(s: Settlement, weather: Dictionary, hour: float) -> void:
 		if spare >= want:
 			spare -= want
 			p.powered = true
-		elif s.charge >= want:
-			# What the batteries are for: the mast stays up through a still night.
-			s.charge -= want
+		elif (want - spare) * hours <= s.charge:
+			# What the batteries are for: the mast stays up through a still night,
+			# the wind giving what it has and the bank the rest.
+			s.charge -= (want - spare) * hours
+			spare = 0.0
 			p.powered = true
 		else:
 			p.powered = false
-	s.charge = clampf(s.charge + maxf(0.0, spare) * (SLICE / 60.0), 0.0, room)
+	s.charge = clampf(s.charge + maxf(0.0, spare) * hours, 0.0, room)
 
 
 ## How well the holding works this slice: hungry people do a third of it.

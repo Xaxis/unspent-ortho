@@ -63,7 +63,8 @@ func add(name: StringName, amount: float) -> void:
 	set_channel(name, get_channel(name) + amount)
 
 
-## Take `amount` off every channel: what a spoofer, netting or a decoy does.
+## Take `amount` off every channel: what a spoofer, netting or shutters do. A
+## decoy does not: it is read in the holding's place, not over it (`Settlement.lures`).
 func mask(amount: float) -> void:
 	for c in CHANNELS:
 		set_channel(c, get_channel(c) - amount)

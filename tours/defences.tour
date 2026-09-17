@@ -1,0 +1,60 @@
+# The two answers to being read that a player can build (owner 2026-09-17,
+# docs/VISION.md §9.3), on the real keys: a spoofer that hides the whole place
+# while there is power in it, and a decoy walked out past the yard, which hides
+# nothing and is read in the place's stead.
+#
+#   tools/tour.sh tours/defences.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --holding=hut,wind_spinner,battery_stack,radio_mast \
+#     --give=record:1,copper:4,scrap:8,timber:4,rag:4
+#
+# (--holding stands a loud place with power in it already: a mast and the
+# spinner and cells that feed it. Building those is the settlements tour's proof;
+# this one starts where a player reaches for an answer. The record in --give is
+# the one taken off a carrier in tours/raids.tour — a spoofer is built round one.)
+coast calm
+wait 0.6
+shot 01-a-loud-place-with-power-in-it with holding, piece:radio_mast, land:coast
+# What a machine hears of it, before anything is done about it.
+tap holding
+await app:holding 4
+wait 0.6
+shot 02-what-a-machine-hears-before with app:holding
+# The spoofer: the relay's voice box on a stake, wired to the cells.
+choose build_spoofer
+tap use
+await made 8
+await spoofing 6
+wait 0.6
+shot 03-what-it-hears-with-a-spoofer-running with app:holding, spoofing
+tap pause
+wait 0.5
+# A step aside, so the frame is of the spoofer and not of the back of the player.
+walk 0,1 1.0
+wait 0.6
+shot 04-a-spoofer-in-the-yard with holding, piece:spoofer, spoofing
+# The decoy has to be out past the yard: in it, the slate says why not before
+# anything is spent.
+tap holding
+await app:holding 4
+choose build_decoy_mast
+tap use
+wait 0.4
+shot 05-a-decoy-in-the-yard-is-the-yard with app:holding
+tap pause
+wait 0.5
+# Out along the open ground, on the real keys, and put it up there. The holding
+# key closes the page whether the slate took the piece or refused it, so a try
+# that was not far enough out walks on with its hands free.
+try 4
+  walk 1,0 2.2
+  tap holding
+  await app:holding 4
+  choose build_decoy_mast
+  tap use
+  wait 0.5
+  tap holding
+  await lure 3
+end
+walk -1,0 0.7
+wait 1.0
+shot 06-a-decoy-out-past-the-yard with lure, piece:decoy_mast

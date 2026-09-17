@@ -1211,19 +1211,14 @@ func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim
 	_raiders.erase(m.id)
 
 
-## Off the holding's books, and off whatever they were working. The body walking
-## in the yard is let go of through the settlement system's own door when there
-## is one; until then it is left to walk away, which is what it looks like.
+## Off the holding's books, off whatever they were working, and the body in the
+## yard let go of — all through the settlement system's own door
+## (`46_settlements.lose_person`), so this package never keeps its own copy of
+## what it means to lose somebody.
 func _take_person(s: Settlement, who: int) -> void:
-	for piece in s.pieces:
-		if piece.staffed_by == who:
-			piece.staffed_by = -1
-	s.people.erase(who)
-	@warning_ignore("return_value_discarded")
-	s.looks.erase(who)
 	var h := holdings()
-	if h != null and h.has_method("_send_away"):
-		h.call("_send_away", s, who)
+	if h != null:
+		h.call("lose_person", s, who)
 	_seen["snatched"] = true
 
 

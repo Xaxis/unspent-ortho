@@ -65,7 +65,9 @@ func test_a_spoofer_earns_its_place_by_taking_from_every_channel() -> void:
 	s.add(StructureKind.RADIO_MAST, Vector2.ZERO)
 	s.add(StructureKind.FORGE, Vector2(2, 0))
 	var seen := s.signature().total()
-	s.add(StructureKind.SPOOFER, Vector2(4, 0))
+	# A spoofer is a machine's voice and runs on a machine's power
+	# (tests/settlement/test_defences.gd holds the dark one to hiding nothing).
+	s.add(StructureKind.SPOOFER, Vector2(4, 0)).powered = true
 	lt(s.signature().total(), seen * 0.7, "hidden, the same town reads much quieter")
 
 

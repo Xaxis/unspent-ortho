@@ -31,6 +31,11 @@ const VARIANTS := 8
 ## How fast a spinner's rotor turns at full power (radians a second). Slow enough
 ## to read as a bodged thing rather than a fan.
 const SPIN_FULL := 2.6
+## How long a piece shudders after a blow, and how far it rocks at the hardest
+## one (radians). Enough to read at 640x360 from across a yard, gone before the
+## next blow lands.
+const STRUCK_SECONDS := 0.4
+const STRUCK_ROCK := 0.09
 
 var kind := StructureKind.LEAN_TO
 var variant := 0
@@ -42,6 +47,9 @@ var _made: MeshInstance3D
 var _found: MeshInstance3D
 var _rotor: Node3D
 var _spin := 0.0
+## Seconds of shudder left from the last blow, and how hard it was (0..1).
+var _struck := 0.0
+var _struck_by := 0.0
 ## kind|variant|ruined|lit -> [made mesh, found mesh, rotor mesh or null]
 static var _cache: Dictionary = {}
 
@@ -104,9 +112,28 @@ func set_spin(share: float) -> void:
 	_spin = clampf(share, 0.0, 1.0) * SPIN_FULL
 
 
+## A blow landed on it: `share` of its whole strength. It rocks on its foot and
+## settles, so a party working at a piece is seen working at it and not only read
+## off the wreck afterwards.
+func struck(share: float) -> void:
+	_struck = STRUCK_SECONDS
+	_struck_by = clampf(0.35 + share * 3.0, 0.35, 1.0)
+	set_process(true)
+
+
 func _process(delta: float) -> void:
 	if _rotor != null and _spin > 0.0:
 		_rotor.rotate_x(_spin * delta)
+	if _struck > 0.0:
+		_struck = maxf(0.0, _struck - delta)
+		var t := _struck / STRUCK_SECONDS
+		var rock := sin((1.0 - t) * TAU * 3.0) * t * STRUCK_ROCK * _struck_by
+		_made.rotation.z = rock
+		_found.rotation.z = rock
+		if _struck <= 0.0:
+			_made.rotation.z = 0.0
+			_found.rotation.z = 0.0
+			set_process(_rotor != null)
 
 
 func _apply() -> void:
@@ -158,6 +185,12 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 			Defence.plate_wall_found(found, v, broken)
 		StructureKind.NETTING:
 			Defence.netting(made, v, broken)
+		StructureKind.DECOY_MAST:
+			Defence.decoy_made(made, v, broken)
+			Defence.decoy_found(found, v, broken)
+		StructureKind.SPOOFER:
+			Defence.spoofer_made(made, v, broken)
+			Defence.spoofer_found(found, v, broken, on)
 		_:
 			if drawn(piece_kind):
 				push_warning("no drawing for structure %s" % StructureKind.display_name(piece_kind))

@@ -97,6 +97,10 @@ func signs() -> Dictionary:
 	var base: Dictionary = StructureKind.signs(kind)
 	if base.is_empty():
 		return base
+	# A mask that is a machine's voice needs a machine's power to speak: a spoofer
+	# with none in it is a box on a stake, and it hides nothing at all.
+	if not powered and StructureKind.draw_power(kind) > 0.0 and StructureKind.masks(kind):
+		return {}
 	var scale := 1.0
 	if base.has("power") and not powered:
 		scale = 0.25

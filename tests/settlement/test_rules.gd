@@ -93,6 +93,22 @@ func test_a_mast_runs_on_the_wind_and_then_on_what_was_banked() -> void:
 	lt(s.charge, 4.0, "and the bank is that much emptier")
 
 
+func test_a_bank_lasts_as_long_as_it_took_to_fill() -> void:
+	# A still week: nothing made, a mast drawing 0.6 an hour off a bank of 3.
+	var s := a_place()
+	var mast := s.add(StructureKind.RADIO_MAST, Vector2(101, 100))
+	s.people.append(1)
+	mast.staffed_by = 1
+	s.add(StructureKind.BATTERY_STACK, Vector2(103, 100))
+	s.worked_at = 0.0
+	s.charge = 3.0
+	var still := ctx()
+	@warning_ignore("return_value_discarded")
+	SettlementRules.catch_up(s, 240.0, still)
+	near(s.charge, 3.0 - 0.6 * 4.0, 0.05, "four hours at 0.6 an hour is 2.4 out of the bank, not twice that")
+	check(mast.powered, "and the mast is still up")
+
+
 func test_a_still_week_kills_the_wind_spinners() -> void:
 	var still := {"kind": Weather.CLEAR, "strength": 0.0, "wind": 0.05}
 	var blowing := {"kind": Weather.CLEAR, "strength": 0.0, "wind": 0.8}

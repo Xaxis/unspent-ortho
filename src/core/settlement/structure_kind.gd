@@ -79,7 +79,7 @@ enum Idiom {
 
 ## What a kind gives off that a machine can sense, and what it hides. Keys are
 ## Signature channels; `mask` is subtracted from every channel instead of added,
-## which is how a spoofer, netting or a decoy earns its place. A kind with no row
+## which is how a spoofer, netting or shutters earn their place. A kind with no row
 ## is seen by nobody: a palisade is just timber.
 ##
 ## A shelter, a plot and a water butt are deliberately not in this table, and
@@ -99,7 +99,10 @@ const SIGNS := {
 	KILN: {"smoke": 0.8},
 	RADIO_MAST: {"radio": 1.0, "power": 0.3},
 	TURRET: {"found_tech": 0.5, "power": 0.4},
-	DECOY_MAST: {"mask": 0.35},
+	# A decoy hides nothing where the holding stands. What it buys is readings
+	# taken of IT instead (`lure` in ROWS), and one piece buys one thing: a decoy
+	# that also masked the yard and cooled it would be a discount on everything
+	# rather than a decision.
 	SPOOFER: {"mask": 0.5},
 	NETTING: {"mask": 0.2},
 	SHUTTERS: {"mask": 0.15},
@@ -125,6 +128,9 @@ const SIGNS := {
 ##   defence   what a raiding party has to get through (the raids package reads it)
 ##   water     it makes HALF unless the holding catches its own water
 ##   water_gives  it is what catches the water
+##   lure      it shouts for the holding from where IT stands, this loud, so a
+##             machine that would have read the yard reads it instead
+##             (`Settlement.lures`); only counted out past `Settlement.LURE_APART`
 const ROWS := {
 	LEAN_TO: {
 		"name": "lean-to", "idiom": Idiom.MADE, "health": 6.0, "solid": 0.8,
@@ -185,12 +191,35 @@ const ROWS := {
 		"cost": {&"reeds": 2, &"rag": 2}, "minutes": 35.0, "wear": 0.06,
 		"defence": 0.4,
 	},
+	# The answer that sends the machines' eyes somewhere else. A lashed pole with
+	# plate shards that catch the light and rag that moves, stood out past the
+	# yard: it says what the holding says, louder, from where nobody lives. It is
+	# torn at by the weather and by whatever it fooled, so it wears like netting.
+	DECOY_MAST: {
+		"name": "decoy mast", "idiom": Idiom.MENDED, "health": 7.0, "solid": 0.3,
+		"cost": {&"timber": 2, &"scrap": 2, &"rag": 2}, "minutes": 55.0, "wear": 0.05,
+		"lure": 0.7,
+	},
+	# A relay's own voice box, answering the plan's pings in the plan's own
+	# language. It wants a machine's power to do it — dark, it is a box on a stake
+	# — and it is built round a record taken off a carrier, because nobody out
+	# here knows what the machines say to each other until they have read some
+	# (docs/DESIGN.md §Raids: the record as the gate to a spoofer).
+	SPOOFER: {
+		"name": "spoofer", "idiom": Idiom.FOUND, "health": 6.0, "solid": 0.35,
+		"cost": {&"record": 1, &"copper": 2, &"scrap": 2}, "minutes": 90.0, "wear": 0.025,
+		"draw": 1.0,
+	},
 }
 
 ## The order the slate offers them in: a roof and a fire first, because that is
-## the order a person builds in, and the pieces that shout last.
+## the order a person builds in, and the pieces that shout last. The two answers
+## to being read stand after what gives a place away, because a player reaches
+## for them once something has: the decoy wants nothing but hands, the spoofer a
+## record and a holding with power in it.
 const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, STORE, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, BATTERY_STACK, RADIO_MAST]
+	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, BATTERY_STACK, RADIO_MAST,
+	DECOY_MAST, SPOOFER]
 
 
 ## What this kind gives off, standing and working. Empty for most pieces.
@@ -299,3 +328,13 @@ static func wants_water(kind: int) -> bool:
 
 static func gives_water(kind: int) -> bool:
 	return bool(row(kind).get("water_gives", false))
+
+
+## How loud it shouts for the holding from where it stands, 0 for a piece that
+## does not (see `lure` in ROWS).
+static func lure(kind: int) -> float:
+	return float(row(kind).get("lure", 0.0))
+
+
+static func masks(kind: int) -> bool:
+	return float(signs(kind).get("mask", 0.0)) > 0.0

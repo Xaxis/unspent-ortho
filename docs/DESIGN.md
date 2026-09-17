@@ -116,10 +116,11 @@ matters.
 - **The first piece founds the place.** After that a piece within a walk of the
   centre joins it, and further off starts another. A holding is named plainly and
   its centre creeps as it grows.
-- **Twelve pieces, in the six families**: lean-to, hearth, hut, store (shelter);
-  plot, catchment (food and water); palisade, plate wall, netting (defence);
-  wind spinner, battery stack (power); radio mast (work). What each costs, wears,
-  makes and gives away is one row in `StructureKind.ROWS`.
+- **Fourteen pieces, in the six families**: lean-to, hearth, hut, store
+  (shelter); plot, catchment (food and water); palisade, plate wall, netting,
+  decoy mast, spoofer (defence); wind spinner, battery stack (power); radio mast
+  (work). What each costs, wears, makes and gives away is one row in
+  `StructureKind.ROWS`.
 - **A hearth is the game's own campfire.** Laid, it puts a `PropKind.FIRE` in the
   world, so it lights the yard, warms a body, can be slept beside and worked at.
   The holding only records that it has one, what it costs to keep, and that its
@@ -143,6 +144,20 @@ matters.
   noon), and netting takes a little off every channel. A settlement is engaged
   because of what it made, never because of a clock — and the raids package is
   what comes. The two meet on `Settlement` and neither imports the other.
+- **Two pieces answer being read, and each buys ONE thing** (owner, 2026-09-17).
+  A **spoofer** is a relay's voice box on a stake: while it has power it takes
+  half off every channel, and dark it is a box on a stake. It is built round a
+  record taken off a carrier, because nobody out here knows what the machines say
+  to each other until they have read some — so a spoofer is earned by having
+  been read once and having done something about it. A **decoy mast** hides
+  nothing. It is walked out past the yard (the slate refuses one in it: a decoy
+  in the yard is the yard) and there it shouts what the holding shouts, louder,
+  from where nobody lives, so a machine that would have read the place reads the
+  mast instead. It is torn at by the weather and by what it fooled, and when it
+  falls the glass says so, because nothing else would: from then on the place is
+  read at full strength again. A decoy that also masked and cooled the yard was
+  considered and refused — three benefits on one row of timber is a discount,
+  not a decision.
 - **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
   thatch with a fringe the wind takes, and machine plate lashed over the gaps with
   the cord crossing the rivet row. A piece leans, patches and weathers by its own
@@ -201,9 +216,8 @@ something the player did, built, or watched happen.
   walk off is told the moment it cost them. Taken off a body instead — and
   somebody has to be standing over the body to take it — the record is a thing in
   the creel: proof, and, stripped with a blade, the copper a signet is wound from.
-  (It is a found thing, so nothing can ever make one. The use it deserves is as
-  the gate to a spoofer the player can BUILD, and that waits on
-  `StructureKind.buildable` naming one.)
+  (It is a found thing, so nothing can ever make one. It is the gate to the
+  spoofer the player can BUILD: one record goes into every one.)
 - **Attention is 0..1 per holding, and 1.0 is a siege led by the region's keeper.**
   The unit it is counted in is one filed record at full strength
   (`Attention.NOTICE_FULL`, 0.09): twelve of those unanswered bring the keeper. It

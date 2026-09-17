@@ -238,8 +238,17 @@ func why_not_here(kind: int) -> String:
 		return "Not here."
 	if Survival.threat_near(game):
 		return Survival.THREAT_LINE
-	if not is_finite(_spot_for(kind).x):
+	var spot := _spot_for(kind)
+	if not is_finite(spot.x):
 		return "No room for it here."
+	if StructureKind.lure(kind) > 0.0:
+		# A decoy stands FOR somewhere, and it is only elsewhere out past the yard.
+		# Said before the creel is emptied, not discovered after.
+		var s := here()
+		if s == null:
+			return "A decoy has to stand for somewhere. Build the place first."
+		if spot.distance_to(s.centre) < Settlement.LURE_APART:
+			return "In the yard a decoy is the yard. Walk it out past the last roof."
 	return ""
 
 
@@ -308,12 +317,18 @@ func _realise(s: Settlement, p: Structure) -> void:
 
 
 func _recentre(s: Settlement) -> void:
-	if s.pieces.is_empty():
-		return
+	# A decoy is out in a field on purpose. Counted in, it would drag the centre —
+	# where a machine reads the place and a party marches to — toward itself, and
+	# then stand inside the very yard it was built to be away from.
 	var sum := Vector2.ZERO
+	var n := 0
 	for p in s.pieces:
+		if StructureKind.lure(p.kind) > 0.0:
+			continue
 		sum += p.pos
-	s.centre = sum / float(s.pieces.size())
+		n += 1
+	if n > 0:
+		s.centre = sum / float(n)
 
 
 ## Where a piece of `kind` would go: in front of the player if the ground is
@@ -488,6 +503,11 @@ func _reconcile() -> void:
 			var was := float(_health.get(key, p.health))
 			if p.health < was - 1e-4:
 				Events.structure_damaged.emit(s.id, p.id, was - p.health)
+				# The blow is seen landing, not only read off a wreck later: a party
+				# working at a mast is a mast that shudders.
+				var node: StructureModel = _nodes.get(key)
+				if node != null and is_instance_valid(node):
+					node.struck(clampf((was - p.health) / maxf(p.max_health, 0.01), 0.0, 1.0))
 			_health[key] = p.health
 			if p.ruined and not _wrecked.has(key):
 				_wrecked[key] = true
@@ -512,6 +532,15 @@ func _on_wrecked(s: Settlement, p: Structure) -> void:
 	if p.kind == StructureKind.HEARTH:
 		_douse(p.pos)
 		return
+	# The one wreck that changes what happens next without changing the yard: the
+	# readings it was taking go back to the place itself, at full strength, and
+	# nothing else on the screen would say so.
+	if StructureKind.lure(p.kind) > 0.0 and game.player != null and s.realm == realm_here() \
+			and p.pos.distance_to(game.player.pos) <= EARSHOT:
+		Events.message.emit("The decoy is down. Whatever reads %s now reads the place itself." % s.name)
+	if StructureKind.masks(p.kind) and StructureKind.draw_power(p.kind) > 0.0 and game.player != null \
+			and s.realm == realm_here() and s.centre.distance_to(game.player.pos) <= EARSHOT:
+		Events.message.emit("The spoofer is broken. %s answers for itself again." % _said(s.name))
 	var ghost: WorldProp = _ghosts.get(_key(s, p))
 	if ghost != null:
 		ghost.solid = StructureKind.solid(p.kind) * 0.5
@@ -670,6 +699,22 @@ static func _tool_for(kind: int) -> StringName:
 	return &"billhook"
 
 
+## Somebody taken off the holding by an outside hand — a snatcher, a raid settled
+## on paper. The books and the body both, in one door, so nothing outside this
+## package reaches into who staffs what: off whatever they were working, out of
+## the people and their look forgotten, and the body let go of.
+func lose_person(s: Settlement, who: int) -> void:
+	if s == null:
+		return
+	for piece in s.pieces:
+		if piece.staffed_by == who:
+			piece.staffed_by = -1
+	s.people.erase(who)
+	@warning_ignore("return_value_discarded")
+	s.looks.erase(who)
+	_send_away(s, who)
+
+
 ## Somebody who has gone: their body goes back to being nobody's, and the holding
 ## forgets them.
 func _send_away(s: Settlement, who: int) -> void:
@@ -770,7 +815,7 @@ func _lit(s: Settlement, p: Structure) -> bool:
 	match p.kind:
 		StructureKind.BATTERY_STACK:
 			return s.charge > 0.05
-		StructureKind.RADIO_MAST:
+		StructureKind.RADIO_MAST, StructureKind.SPOOFER:
 			return p.powered
 	return false
 
@@ -881,7 +926,8 @@ func _from_options() -> void:
 		return
 	_recentre(s)
 	s.stores[&"berries"] = 3
-	s.charge = 2.0
+	# Its cells full, as a place somebody has lived in for a while would have them.
+	s.charge = maxf(2.0, s.charge_room())
 	_sync_people()
 
 
@@ -950,6 +996,16 @@ func tour_seen(what: StringName) -> bool:
 			return false
 		&"app:holding":
 			return screen != null and screen.is_open
+		&"lure":
+			# A decoy standing out past the yard, where it is somewhere else.
+			return s != null and not s.lures().is_empty()
+		&"spoofing":
+			if s == null:
+				return false
+			for p in s.pieces:
+				if p.standing() and StructureKind.masks(p.kind) and StructureKind.draw_power(p.kind) > 0.0 and p.powered:
+					return true
+			return false
 	if String(what).begins_with("piece:"):
 		var kind := _kind_named(String(what).substr(6))
 		if kind < 0 or s == null:

@@ -198,6 +198,41 @@ func _by_hour(channel: String) -> float:
 	return 1.0
 
 
+## Tiles out from the centre a decoy has to stand before it is anywhere else. The
+## raids package's `Notices.CLEAR_OF` is the same distance for the same reason:
+## inside it a machine is still in the yard, and a decoy in the yard is the yard.
+## Without it one decoy in the middle of the square would be read in place of the
+## square every time and cut every record to a fraction of itself.
+const LURE_APART := 12.0
+
+
+## The decoys standing out past the yard, which a machine may read in place of
+## the holding. Ruined ones say nothing, and one inside `LURE_APART` is not
+## elsewhere.
+func lures() -> Array[Structure]:
+	var out: Array[Structure] = []
+	for s in pieces:
+		if s.standing() and StructureKind.lure(s.kind) > 0.0 and s.pos.distance_to(centre) >= LURE_APART:
+			out.append(s)
+	return out
+
+
+## What a decoy shouts, from where it stands: the channel the holding itself is
+## loudest on, so what a machine reads off it is the same account of the place,
+## louder and in the wrong spot. A holding giving nothing away is shouted for as
+## a light by night and a rattle by day, which is what a decoy is made of.
+func lure_signature(p: Structure) -> Signature:
+	var sig := Signature.new()
+	if p == null or not p.standing():
+		return sig
+	var loud := signature().loudest()
+	if loud == &"":
+		loud = &"light" if night >= 0.5 else &"noise"
+	var v := StructureKind.lure(p.kind) * lerpf(0.4, 1.0, p.condition())
+	sig.set_channel(loud, v * _by_hour(String(loud)))
+	return sig
+
+
 func damage_structure(piece_id: int, amount: float) -> bool:
 	var s := piece(piece_id)
 	if s == null:
