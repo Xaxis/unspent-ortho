@@ -81,14 +81,16 @@ shot 06-after
 # 440,220,440,280, which is that same box round the player written for the
 # 1280x720 frames of the 640x360 floor and never rescaled when LANTERN moved the
 # floor. On a 3840x2160 frame that box is the TOP-LEFT CORNER — x 11..23%,
-# y 10..23% of the picture — so it held neither the player nor the fire, which is
-# the whole of what the paragraph above says it watches. Looked at, it is a patch
-# of village turf with one sheet of scrap lying on it, sixty feet from anything
-# this tour does: the fire could go out, the player could walk off the island,
-# and the number would not move. x3 puts the box back on the fractions of the
-# frame the old numbers meant, which is the player and their fire and nothing
-# else. The tolerances are the ones measured with the fire THERE, so they are
-# only now being asked the question they were tuned for.
+# y 10..23% of the picture. Cropped out of this tour's own 02-before and looked
+# at, it is THE SEA: open water, surf and a strip of beach, with neither the
+# player nor the fire in it, which is the whole of what the paragraph above says
+# it watches. And the sea is the most restless thing in the frame, so the box was
+# not merely idle — measured on that pair it reads 0.0433 against its own 0.030
+# allowance, a red this tour would have taken for a lost save.
+# x3 puts the box back on the fractions of the frame the old numbers meant: the
+# player, their fire, and the turf round both. It reads 0.0122 and 0.0121 there,
+# under a whole-frame 0.0141 — so the tolerances below are, at last, being asked
+# the question they were tuned for, and no number had to move to make it green.
 same 02-before 06-after 0.032
 same 02-before 06-after 0.030 1320,660,1320,840
 await station:fire 1
