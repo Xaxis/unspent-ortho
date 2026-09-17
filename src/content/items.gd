@@ -28,6 +28,10 @@ class_name Items
 ##   resist: {hazard: 0..1}  pressures it keeps off (src/core/hazards/hazards.gd)
 ##   ability: StringName   the ability it grants while fitted (src/core/gear/abilities.gd)
 ##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §12)
+##   icon: Array           [shape, ramp, ramp] the slate draws it as; shape names are
+##                         UiIcons.SHAPES. A MENDED row must name a shape with cord in
+##                         it, or the icon reads as a machine part with no maker.
+##   sockets on a tool     a mended implement says how many modules bind to its haft.
 
 ## Hardness ladder: a seam needs a tool of at least its stuff.
 const STUFF_RANK := {&"wood": 0, &"iron": 1, &"steel": 2, &"crucible": 3, &"found": 4}
@@ -236,6 +240,104 @@ const DEFS := {
 		"fits": [&"body", &"hands", &"back"], "resist": {}, "ability": &"dash"},
 	&"mod_signet": {"name": "signet", "bulk": 0.5, "group": &"found", "tier": &"found", "stuff": &"found", "module": true,
 		"fits": [&"head", &"body", &"back"], "resist": {&"em": 0.15}, "ability": &"spoof"},
+
+	# --- MENDED implements (docs/ART.md 12, docs/VISION.md 6.1) -----------------
+	# Every rung of a family does exactly what the common rung does: the same
+	# damage, reach, timing and work rate, copied verbatim. What the elite
+	# material buys is a MOUNT -- a spar bound along a back, a collar, a lacquered
+	# ferrule -- and what the mount buys is SOCKETS. That is the whole ladder, and
+	# `GearTree.SAME_ACROSS_A_FAMILY` is what holds it (tests/gear_economy).
+	# A mended rung is heavier than the tool it was: machine parts weigh.
+	&"knife_spar": {"name": "spar knife", "bulk": 1.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"knife", &"rime", &"earth"], "tool": true, "verb": &"cut", "stuff": &"iron", "speed": 8200, "bite": 90, "swing": [60, 100, 120, 140], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.0, "knock_ms": 150},
+	&"knife_mono": {"name": "filament knife", "bulk": 2.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"knife", &"slate", &"earth"], "tool": true, "verb": &"cut", "stuff": &"iron", "speed": 8200, "bite": 90, "swing": [60, 100, 120, 140], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.0, "knock_ms": 150},
+	&"axe_bog": {"name": "bog-iron axe", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"axe", &"rust", &"earth"], "tool": true, "verb": &"fell", "stuff": &"iron", "speed": 6500, "bite": 120, "swing": [130, 120, 170, 200], "reach": 1.15, "width": 1.6, "dmg": 4, "knock": 6.5, "knock_ms": 200},
+	&"axe_tide": {"name": "tide-iron axe", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"axe", &"rust", &"earth"], "tool": true, "verb": &"fell", "stuff": &"iron", "speed": 6500, "bite": 120, "swing": [130, 120, 170, 200], "reach": 1.15, "width": 1.6, "dmg": 4, "knock": 6.5, "knock_ms": 200},
+	&"bill_glass": {"name": "glass bill", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"billhook", &"ink", &"earth"], "tool": true, "verb": &"cut", "stuff": &"iron", "speed": 6200, "bite": 120, "swing": [100, 110, 150, 170], "reach": 1.05, "width": 1.5, "dmg": 3, "knock": 5.0, "knock_ms": 170},
+	&"bill_vane": {"name": "vane bill", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"billhook", &"stone", &"earth"], "tool": true, "verb": &"cut", "stuff": &"iron", "speed": 6200, "bite": 120, "swing": [100, 110, 150, 170], "reach": 1.05, "width": 1.5, "dmg": 3, "knock": 5.0, "knock_ms": 170},
+	&"mattock_bog": {"name": "bog-iron mattock", "bulk": 4.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"mattock", &"rust", &"earth"], "tool": true, "verb": &"dig", "stuff": &"iron", "speed": 6500, "bite": 140, "swing": [180, 130, 220, 260], "reach": 1.25, "width": 1.3, "dmg": 3, "knock": 7.5, "knock_ms": 230},
+	&"mattock_gyro": {"name": "gyro mattock", "bulk": 5.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"mattock", &"slate", &"earth"], "tool": true, "verb": &"dig", "stuff": &"iron", "speed": 6500, "bite": 140, "swing": [180, 130, 220, 260], "reach": 1.25, "width": 1.3, "dmg": 3, "knock": 7.5, "knock_ms": 230},
+	&"pick_spar": {"name": "spar pick", "bulk": 4.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"pick", &"rime", &"earth"], "tool": true, "verb": &"break", "stuff": &"iron", "speed": 6000, "bite": 140, "swing": [180, 130, 220, 260], "reach": 1.25, "width": 1.2, "dmg": 4, "knock": 7.0, "knock_ms": 220},
+	&"pick_glass": {"name": "glass pick", "bulk": 5.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"pick", &"ink", &"earth"], "tool": true, "verb": &"break", "stuff": &"iron", "speed": 6000, "bite": 140, "swing": [180, 130, 220, 260], "reach": 1.25, "width": 1.2, "dmg": 4, "knock": 7.0, "knock_ms": 220},
+	&"stave_varnish": {"name": "lacquered stave", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"stave", &"linen", &"earth"], "tool": true, "verb": &"", "stuff": &"wood", "speed": 10000, "bite": 0, "swing": [90, 110, 130, 150], "reach": 1.6, "width": 1.3, "dmg": 2, "knock": 8.0, "knock_ms": 240},
+	&"stave_coil": {"name": "coil stave", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"stave", &"copper", &"earth"], "tool": true, "verb": &"", "stuff": &"wood", "speed": 10000, "bite": 0, "swing": [90, 110, 130, 150], "reach": 1.6, "width": 1.3, "dmg": 2, "knock": 8.0, "knock_ms": 240},
+	&"hook_varnish": {"name": "lacquered gaff", "bulk": 3.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"boathook", &"linen", &"earth"], "tool": true, "verb": &"", "stuff": &"iron", "speed": 10000, "bite": 0, "swing": [160, 120, 200, 240], "reach": 2.1, "width": 0.8, "dmg": 2, "knock": 9.5, "knock_ms": 260},
+	&"hook_screw": {"name": "screw gaff", "bulk": 4.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"boathook", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"iron", "speed": 10000, "bite": 0, "swing": [160, 120, 200, 240], "reach": 2.1, "width": 0.8, "dmg": 2, "knock": 9.5, "knock_ms": 260},
+	&"beam_hafted": {"name": "hafted beam", "bulk": 1.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"stave", &"rust", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [70, 90, 110, 130], "reach": 1.3, "width": 1.1, "dmg": 7, "knock": 5.0, "knock_ms": 180},
+	&"beam_lens": {"name": "sighted beam", "bulk": 2.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"stave", &"lens", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [70, 90, 110, 130], "reach": 1.3, "width": 1.1, "dmg": 7, "knock": 5.0, "knock_ms": 180},
+	&"arc_hafted": {"name": "hafted cutter", "bulk": 1.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"knife", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [60, 80, 100, 120], "reach": 0.7, "width": 0.8, "dmg": 10, "knock": 3.0, "knock_ms": 140},
+	&"hammer_hafted": {"name": "hafted hammer", "bulk": 3.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"mattock", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 2, "swing": [190, 130, 210, 250], "reach": 1.15, "width": 1.6, "dmg": 5, "knock": 20.0, "knock_ms": 340},
+	&"lance_hafted": {"name": "hafted lance", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"boathook", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
+	&"lance_die": {"name": "stamped lance", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"boathook", &"ink", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
+	# The flawed twin of the relic below: the same blade with no name set into it.
+	# A relic pour that goes wrong comes out as this, and it is also worth making
+	# on purpose (CraftTiers: "flawed but usable" is a real rung, not a punishment).
+	&"blade_die": {"name": "die blade", "bulk": 2.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"knife", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [45, 80, 90, 110], "reach": 0.9, "width": 0.9, "dmg": 11, "knock": 2.0, "knock_ms": 120},
+	&"blade_seal": {"name": "filer's blade", "bulk": 2.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"knife", &"ink", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [45, 80, 90, 110], "reach": 0.9, "width": 0.9, "dmg": 11, "knock": 2.0, "knock_ms": 120, "ability": &"spoof", "resist": {&"em": 0.5}},
+
+	# --- MENDED modules: the modifiers (ModifierTable says what each decides) ---
+	# A part that COSTS the kit something (`loud`, `hot`) never answers a pressure
+	# a landscape actually declares, so the best kit for a place is never one that
+	# is quietly paying a price (tests/gear_economy/test_modifiers.gd).
+	&"mod_gyro": {"name": "gyro brace", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"slate", &"earth"], "fits": [&"hands", &"back"], "resist": {&"resonance": 0.3, &"collapse": 0.2}},
+	&"mod_clamp": {"name": "magnet clamp", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"boot", &"rust", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.5, &"collapse": 0.3}},
+	&"mod_ablative": {"name": "ablative plate", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"foil", &"ink", &"earth"], "fits": [&"body", &"back"], "resist": {&"radiation": 0.3, &"heat": 0.2}},
+	&"mod_cooling": {"name": "cooling loop", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"rust", &"earth"], "fits": [&"body", &"back", &"tool"], "resist": {&"heat": 0.35}},
+	&"mod_capacitor": {"name": "capacitor bank", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"flask", &"copper", &"earth"], "fits": [&"back", &"tool"], "resist": {&"em": 0.2}},
+	&"mod_harmonic": {"name": "harmonic edge", "bulk": 0.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"knife", &"slate", &"earth"], "fits": [&"tool"], "resist": {&"resonance": 0.2}},
+	&"mod_damp": {"name": "hush damper", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"timber", &"linen", &"earth"], "fits": [&"tool", &"hands", &"body"], "resist": {&"resonance": 0.45}},
+	&"mod_leech": {"name": "leech coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"ink", &"earth"], "fits": [&"tool", &"back"], "resist": {&"em": 0.15}},
+	&"mod_phase": {"name": "phase coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"lens", &"earth"], "fits": [&"head", &"body"], "resist": {&"em": 0.3, &"time_shear": 0.2}, "ability": &"scan"},
+	&"mod_lattice": {"name": "shock lattice", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"vest", &"plate", &"earth"], "fits": [&"tool"], "resist": {&"em": 0.25}},
+
+	# --- elite materials (EliteStock says where each one, and only one, is got) -
+	# Each keeps its landscape's or its machine's own colour and hand, so a
+	# player reads where a tool came from off the tool (docs/ART.md 11).
+	&"cinder_glass": {"name": "cinder glass", "bulk": 2.0, "group": &"material", "icon": [&"lump", &"ink", &"ink"]},
+	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
+	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
+	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
+	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
+	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},
+	&"haul_gyro": {"name": "haul gyro", "bulk": 2.0, "group": &"found", "stuff": &"found", "icon": [&"rig", &"plate", &"lens"]},
+	&"line_coil": {"name": "line coil", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"aerial", &"plate", &"lens"]},
+	&"clerk_die": {"name": "filer die", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"signet", &"found", &"lens"]},
+	&"vane_true": {"name": "trued vane", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"broad", &"plate", &"lens"]},
+	&"dredge_screw": {"name": "dredge screw", "bulk": 2.5, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
+	&"fab_jig": {"name": "fabricator jig", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"brace", &"plate", &"lens"]},
+	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 }
 
 

@@ -62,6 +62,9 @@ var _line: MeshInstance3D = null
 ## Ability ids that have fired in this game, for the tour's awaits.
 var _fired: Dictionary = {}
 var _gliding := false
+## Modules prised out of a socket in this game: the count a pull's risk is indexed
+## by, so a reload cannot reroll a part that broke (`Reforge`).
+var _pulls := 0
 ## Real seconds the next ink mark over an aware machine, and the next spoof
 ## glint, are due (the marks keep their own beat, not the frame rate's).
 var _aware_at := 0.0
@@ -414,8 +417,13 @@ func _feed(_g: Game) -> Dictionary:
 	return {"slots": rows, "resist": game.body.resist, "abilities": book.rows(Time.get_ticks_msec() / 1000.0)}
 
 
-## What a module gives, in the few characters the page has room for.
+## What a module gives, in the few characters the page has room for. A modifier
+## says the DECISION it changes and the price it is paying in this kit, because a
+## row of resistance percentages never told anybody what a part was for
+## (`ModifierTable`, docs/VISION.md §6.1).
 func _grants(id: StringName) -> String:
+	if ModifierTable.has(id):
+		return Modifiers.note(id, loadout.all_ids())
 	var a := Gear.ability_of(id)
 	if a != &"":
 		return String(a)
@@ -454,8 +462,9 @@ func _act(_g: Game, row_id: StringName) -> String:
 		return "%s socketed." % UiRules.item_name(mod).capitalize()
 	var next := _next_piece(slot, here)
 	if next == &"":
+		var broke := _pull_modules(slot)
 		loadout.clear_slot(slot)
-		return "Off."
+		return "Off." if broke == "" else "Off. %s" % broke
 	loadout.fit(slot, next)
 	return "%s on." % UiRules.item_name(next).capitalize()
 
@@ -474,9 +483,30 @@ func _act_hand(here: StringName) -> String:
 			return "%s bound to the %s." % [UiRules.item_name(mod).capitalize(), held_name]
 		return "!Nothing you carry binds to a %s." % held_name
 	if not loadout.modules(Gear.HAND_SLOT).is_empty():
+		var broke := _pull_modules(Gear.HAND_SLOT)
 		loadout.clear_slot(Gear.HAND_SLOT)
-		return "Unbound."
+		return "Unbound." if broke == "" else "Unbound. %s" % broke
 	return "!A %s takes no binding." % held_name
+
+
+## Taking a slot off pulls its modules out, and where you are standing decides
+## whether they survive it (`Reforge`, docs/VISION.md §6.1: re-socketed at a
+## bench, at the risk of losing the part). Cord unties anywhere; a panel drilled
+## into a frame is being prised with the wrong tool out in the field. So a player
+## either plans the build at a bench or gambles on the road.
+func _pull_modules(slot: StringName) -> String:
+	var at_bench := Survival.stations_near(game).has(&"bench")
+	var broke := PackedStringArray()
+	for m in loadout.modules(slot):
+		_pulls += 1
+		if Reforge.survives(m, at_bench, game.world.seed_value, _pulls):
+			continue
+		game.inventory.remove(m)
+		broke.append(Reforge.broke_line(m))
+	if broke.is_empty():
+		return ""
+	Events.sfx.emit(&"work_broken", game.player.position)
+	return " ".join(broke)
 
 
 ## Pieces for this slot that are carried and not already fitted somewhere.
@@ -566,7 +596,8 @@ func _unnoticed() -> bool:
 
 
 func _save() -> Variant:
-	return {"loadout": loadout.save(), "cooldowns": book.save(Time.get_ticks_msec() / 1000.0)}
+	return {"loadout": loadout.save(), "cooldowns": book.save(Time.get_ticks_msec() / 1000.0),
+		"pulls": _pulls}
 
 
 func _load(v: Variant) -> void:
@@ -575,4 +606,5 @@ func _load(v: Variant) -> void:
 	loadout.load_from((v as Dictionary).get("loadout", {}))
 	loadout.hold(game.inventory.held)
 	book.load_from((v as Dictionary).get("cooldowns", {}), Time.get_ticks_msec() / 1000.0)
+	_pulls = SaveCodec.to_int((v as Dictionary).get("pulls", 0))
 	_refit()

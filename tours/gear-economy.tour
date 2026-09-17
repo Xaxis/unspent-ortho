@@ -1,0 +1,120 @@
+# The MENDED tech tree and the economy that places it (docs/VISION.md §6.1),
+# through the real keys: a bench turns a landscape's material into a modifier, the
+# modifier goes into a socket, the land it was made for stops biting, a machine
+# gives up the part it was carrying, and a second modifier changes what the body
+# can DO rather than what it resists.
+#
+#   tools/tour.sh tours/gear-economy.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --build=bench --held=mono_blade \
+#     --give=wick:60,scrap:2,copper:2,bog_iron:1,scarf_mask:1,mod_phase:1
+#
+# What is in the creel at boot and why. Plate and copper are ordinary stock off
+# any tip. The BOG IRON is the moss's own material, and refining it is four peats
+# and two hours at a fire, which is a night of world time no tour should spend;
+# its gate — peat only comes out of a bank, and banks only stand in the moss — is
+# walked in tests/gear_economy/test_obtainable.gd. Everything the modifiers
+# themselves do is earned here, in front of the camera.
+#
+# MEASURED, seed 1. The first CUTTER put down gives up its filament edge
+# (GearEconomy.kills_for(&"mono_edge", 1) == 1), so one body is enough, and the
+# bonelands is where cutters work.
+#
+# The THIN BLADE in hand is the other half of that measurement, and two earlier
+# versions of this tour are the reason it is there. A clerk has 6 life and looked
+# like the easy kill, but a clerk darts — it comes in close, files you and goes,
+# and it is faster than a person — so 24 chases with a knife and then 24 with a
+# beam both ended with an empty frame and no body in it. A worker on its round
+# does not run: it walks, and it can be walked down. A cutter has 70 life, which
+# is seven connects at 11 damage, and that is a tour-length fight. The charges are
+# sixty because a thin blade spends one a swing and a chase misses: the run before
+# this one ended with the cutter alive and the counter on zero.
+coast calm
+hour 11
+
+# --- 1. A bench turns a landscape's material into a modifier -------------------
+await station:bench 8
+shot 01-a-bench-on-the-strand with station:bench,land:coast
+tap craft
+await app:crafting 8
+choose mod_cooling
+tap use
+await made 20
+shot 02-a-cooling-loop-off-the-making-page with app:crafting,station:bench
+tap craft
+await app:none 6
+
+# --- 2. The burning, on a body with nothing between it and the heat ------------
+place burning
+wait 1.8
+await heat 15
+await pressure_bites 20
+shot 03-the-burning-bites with land:burning,pressure_bites,heat
+
+# --- 3. The loop bound to the blade, on the slate, with the real keys ----------
+# The hand's row is the only slot open here, which is the point: no vest, no body
+# piece, nothing else keeping the heat off, and the blade itself resists nothing.
+# What happens next is the modifier's doing and nothing else's.
+tap pause
+choose loadout
+tap use
+await app:loadout 10
+shot 04-the-gear-page-before with app:loadout
+choose tool
+tap use
+wait 0.4
+await modifier 6
+shot 05-the-loop-bound-to-the-blade with app:loadout,modifier
+tap pause
+tap pause
+wait 2.2
+await answered:heat 25
+shot 06-the-burning-answered with land:burning,answered:heat
+
+# --- 4. The part comes out of the body that was carrying it -------------------
+# Round it to its WORKING PART and swing, over and over, the way a player does. A
+# cutter carries its part at its back, so met face on it is all plate: a run of
+# this tour that used `walkto mob` put twenty-four swings into the front of one
+# and rang every single one of them off. The await has to be INSIDE the loop, too:
+# nothing else in there can fail, and a `try` whose lines all succeed runs once.
+place bonelands
+wait 1.5
+spawn cutter
+shot 07-a-cutter-on-its-round with mob:cutter,land:bonelands
+try 26
+  walkto part 4
+  tap swing
+  await killed 1.2
+end
+# No second `await killed` here: an await CONSUMES the event it waited for
+# (98_tour `_seen.erase`), so asking twice fails the second time even though the
+# body is lying right there. What is asked instead is a state — the filament edge
+# is in the creel — which is the thing this section is actually about.
+await elite:mono_edge 5
+shot 08-what-it-was-carrying with spoils,land:bonelands
+
+# --- 5. A modifier that changes what the body can DO --------------------------
+# A phase coil under a scarf-mask reads the working part through the plate over
+# it: the same socket, a power instead of a resistance.
+tap pause
+choose loadout
+tap use
+await app:loadout 10
+choose head
+tap use
+wait 0.4
+tap use
+wait 0.4
+await modifier:mod_phase 8
+shot 09-a-phase-coil-in-a-head-socket with app:loadout,modifier:mod_phase
+tap pause
+tap pause
+wait 1.0
+# Something ALIVE to read: a scan brackets living machines, and the first version
+# of this fired it over the cutter it had just killed, so the frame was called a
+# reading and held nothing being read.
+spawn watcher
+wait 0.9
+tap ability_scan
+await ability:scan 8
+wait 0.4
+shot 10-a-watcher-read-through-a-socketed-coil with mob:watcher,land:bonelands
