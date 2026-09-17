@@ -454,9 +454,11 @@ func canopy(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int
 
 
 ## Needle sprays round one conifer tier (see `tier`, which takes the same
-## numbers): `points` twice over, each a card leaving the trunk inside the tier
-## and reaching past its rim as it droops, and half as many again shorter and
-## higher, laid on the tier's upper face. The spray is what reaches the light;
+## numbers): one and a half to a point, each a card leaving the trunk inside the
+## tier and reaching past its rim as it droops, and half a point more, shorter
+## and higher, laid on the tier's upper face. Two to a point was measured at 221
+## thousand triangles of leaves across every pass in the canon's pinewood frame,
+## against 131 thousand for the solid tiers, and looked no better than this. The spray is what reaches the light;
 ## the tier under it is the bough's own shade.
 func sprays(cx: float, y_rim: float, cz: float, r: float, rise: float, droop: float, points: int,
 		seed_value: int, cols: Array[Color], shape: int = LEAF_NEEDLE) -> void:
@@ -464,8 +466,8 @@ func sprays(cx: float, y_rim: float, cz: float, r: float, rise: float, droop: fl
 	var centre := Vector3(cx, y_rim - droop - rise * 0.2, cz)
 	var inv2 := Vector3(1.0 / (r * r), 1.0 / maxf(rise * rise, 0.04), 1.0 / (r * r))
 	var rot := Rng.hash01(seed_value, 81) * TAU
-	var outer := points * 2
-	var inner := maxi(3, points - 1)
+	var outer := points + points / 2
+	var inner := maxi(3, points / 2)
 	for i in outer + inner:
 		var high := i >= outer
 		var n := inner if high else outer
