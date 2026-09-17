@@ -22,10 +22,34 @@ shot 03-snow-noon-lamp-lit with lamp
 # a second with nothing done at all, and the second pair must come in under the
 # same number with the lamp lit between them — the lamp adds no more to the page
 # than standing still does. The crop is centred on the player, over the whole
-# oval the disc used to cover (the playtest measured it about 470x330 shot
+# oval the disc used to cover (the playtest measured it about 470x330 frame
 # pixels across, around the hand).
-same 01-snow-noon-drift-a 02-snow-noon-drift-b 0.010 400,195,480,330
-same 02-snow-noon-drift-b 03-snow-noon-lamp-lit 0.010 400,195,480,330
+#
+# THE CROP IS IN FRAME PIXELS AND A TOUR FRAME IS 3840x2160 — the base
+# (UiBase.SIZE, 1920x1080) taken x2 by 98_tour._save_frame. It used to read
+# 400,195,480,330, which is that oval written for the 1280x720 frames of the
+# 640x360 floor and never rescaled when LANTERN moved the floor. On a 3840x2160
+# frame that box is the TOP-LEFT CORNER — x 10..23%, y 9..24% of the picture.
+# Looked at on this very staging it is BLANK SNOW: no player, no hand, no lamp,
+# nothing that moves. So the two lines below, the strictest pair of numbers in
+# any tour (0.010), were measuring a patch of flat white a hundred feet from the
+# lantern and passing for free — a lamp that laid a saturated pink disc over the
+# whole snowfield would still have come in under the tolerance, because the disc
+# would not have reached the corner being measured. x3 puts the box back on the
+# fractions of the frame the old numbers meant: the same world oval, 6.9 units
+# of ground round the player, at three times the pixels.
+#
+# Measured on one run of this tour, over the very same two pairs of frames:
+#   drift, nothing done   old box 0.0005   new box 0.0093
+#   with the lamp lit     old box 0.0006   new box 0.0074
+# The old box was spending 6% of its allowance on flat snow. The tolerance did
+# NOT have to move: 0.010 is the number that was always meant, and the lamp pair
+# now comes in UNDER the do-nothing pair, which is the sentence this test exists
+# to say. It runs close to the line (0.0093 of 0.0100) because the world really
+# does drift that much in a quarter second — do not raise it to buy room; a red
+# here under load is re-run alone before it is believed.
+same 01-snow-noon-drift-a 02-snow-noon-drift-b 0.010 1200,585,1440,990
+same 02-snow-noon-drift-b 03-snow-noon-lamp-lit 0.010 1200,585,1440,990
 tap lamp
 wait 0.4
 
