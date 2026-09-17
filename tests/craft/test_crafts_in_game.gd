@@ -120,7 +120,11 @@ func test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it(
 			break
 	check(sys.call("tour_seen", &"ride_crossed"), "it carried the body over open water")
 	gt(from.distance_to(game.player.hero.pos), 1.0, "and the body went somewhere")
-	eq(game.player.pos, game.player.hero.pos, "the fight body is still the one that moves")
+	# The node follows the body; it does not race it. Not exact equality: the sim
+	# steps in _physics_process and the node copies the body in _process, so a
+	# frame of the ride can always sit between them, and on a busy machine it does.
+	# A craft moving the node itself would put them tiles apart, not a step apart.
+	lt(game.player.pos.distance_to(game.player.hero.pos), 0.25, "the fight body is still the one that moves")
 	var aboard: Craft = sys.get("aboard")
 	eq(aboard.pos, game.player.hero.pos, "and the craft is under it")
 	lt(aboard.hull, CraftKinds.hull(&"raft"), "the crossing told on the hull")
