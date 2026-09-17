@@ -38,7 +38,8 @@ const WARM := 44.0
 ## How often the shafts near the player are looked at (seconds).
 const LOOK_EVERY := 0.2
 ## Seconds after arriving in which `use` does nothing, so the key that brought a
-## player through a shaft cannot also take them straight back out of it.
+## player through a shaft cannot also take them straight back out of it — and,
+## through `use_spent()`, cannot be answered a second time by anything else.
 const SETTLE := 0.6
 
 ## This game's shafts, in the realm it is in now.
@@ -139,6 +140,16 @@ func _shaft_wins() -> bool:
 	if t == null:
 		return true
 	return reachable.pos.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
+
+
+## THE PRESS THAT CROSSED IS SPENT. A crossing MOVES the player, so the same
+## press that took them down the ladder was then answered again where they
+## landed: `tours/realms.tour` came up underground with a clerk's screen already
+## open over the cave, which held every key and the lamp never lit. Any system
+## that reads `use` after this one asks here first, the way a place answers
+## targeting with `target_rows`.
+func use_spent() -> bool:
+	return _settle > 0.0
 
 
 ## Which shaft is near, which is worth raising a world for, and what to say.

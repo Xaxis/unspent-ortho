@@ -148,8 +148,20 @@ func _process(delta: float) -> void:
 		return
 	if game.input_blocked():
 		return
-	if use_pressed:
+	if use_pressed and not _use_already_spent():
 		_open_what_is_in_front()
+
+
+## A system numbered before this one may have already spent this press. A shaft
+## does: it takes the key AND moves the player, so without this the press that
+## carried somebody underground also read the first thing at the bottom of the
+## ladder. It is asked rather than known, so a new thing the key can mean adds
+## no line here.
+func _use_already_spent() -> bool:
+	for sys in game.systems:
+		if sys.has_method(&"use_spent") and bool(sys.call(&"use_spent")):
+			return true
+	return false
 
 
 # --- starting ------------------------------------------------------------------
