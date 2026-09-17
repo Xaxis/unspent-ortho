@@ -163,15 +163,19 @@ const GLOW_HDR := 1.05
 ## on the sun's side and cold away from it for nothing.
 ##
 ## It is DEPTH fog with a begin and an end, not exponential, and that is forced
-## by the camera. Under an orthographic projection every pixel in the frame is
-## between about 26 and 60 units from the eye, so exponential fog puts almost
-## exactly the same veil over all of it -- a flat grey wash over the whole
+## by the camera. Under an orthographic projection exponential fog puts almost
+## exactly the same veil over every pixel -- a flat grey wash over the whole
 ## picture, which is the papery failure again wearing a different coat
-## (measured: 18% over the entire first frame). Begun past the near land and
-## ended past the far, it does what air does instead.
-const FOG_BEGIN := 31.0
-const FOG_END := 74.0
-const FOG_DENSITY := 0.34
+## (measured: 18% over the entire first frame).
+##
+## WHERE it begins and ends is no longer written here. It was (31 and 74), and
+## those numbers were chosen against the depth range of the loaded CHUNKS rather
+## than of the FRAME: the ground a player can actually see lies between depth
+## 25.1 and 34.9, so the air reached about one per cent at the top of the picture
+## and distance did nothing at all. `Air.reach()` derives it from the camera that
+## is really drawing, so a zoom or a lean cannot put it outside the frame again,
+## and `Air.ROWS` says what distance DOES in each landscape -- dark in the bog,
+## pale on the snow. See src/render/depth/air.gd; this file only spends it.
 const FOG_SKY := 0.0
 const FOG_AERIAL := 0.22
 ## Volumetric air, where the tier allows it: this is what makes a lamp in rain a
@@ -238,6 +242,10 @@ var closed := 0.0
 ## lamps) to match the lit world.
 var last_tint := Vector3.ONE
 var last_energy := 1.0
+## The air last composed over the landscapes in view (`Air.at`). Read-only to
+## everyone else: the fore layer asks it how thick the air is so an occluder
+## sits in the same weather the land behind it does, and a test measures it.
+var last_air: Dictionary = Air.DEFAULT.duplicate()
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
 var air := Vector4.ZERO
@@ -356,13 +364,17 @@ static func build_environment() -> Environment:
 	e.glow_bloom = GLOW_BLOOM
 	e.glow_hdr_threshold = GLOW_HDR
 	e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	# Air between the planes of the world, coloured by the sun and the sky.
+	# Air between the planes of the world, coloured by the sun and the sky. The
+	# reach is the play camera's until a real one drives it (`_drive_environment`
+	# asks the camera that is drawing), so a headless build_environment() is
+	# already truthful about the frame rather than about the loaded chunks.
 	e.fog_enabled = true
 	e.fog_mode = Environment.FOG_MODE_DEPTH
-	e.fog_depth_begin = FOG_BEGIN
-	e.fog_depth_end = FOG_END
-	e.fog_depth_curve = 1.4
-	e.fog_density = FOG_DENSITY
+	var reach := Air.reach(30.0, 15.0, 57.0)
+	e.fog_depth_begin = reach.x
+	e.fog_depth_end = reach.y
+	e.fog_depth_curve = Air.CURVE
+	e.fog_density = Air.DEPTH
 	e.fog_sky_affect = FOG_SKY
 	e.fog_aerial_perspective = FOG_AERIAL
 	e.volumetric_fog_enabled = bool(q.get("volumetric", false))
@@ -500,6 +512,40 @@ func compose() -> void:
 		_drive_environment(env.environment, hour, night)
 
 
+## The camera that is really drawing, or null (headless, or before the rig is in
+## the tree). The air is stated in multiples of the frame's own depth, so these
+## three are what it is spent on; asked of the live camera rather than of the
+## CameraRig's exported defaults, because a target lean and a `--zoom` both move
+## the picture and neither of them touches the export.
+func _cam() -> Camera3D:
+	if not is_inside_tree():
+		return null
+	return get_viewport().get_camera_3d()
+
+
+func _cam_size() -> float:
+	var c := _cam()
+	return c.size if c != null else 15.0
+
+
+func _cam_pitch() -> float:
+	var c := _cam()
+	return absf(rad_to_deg(c.rotation.x)) if c != null else 57.0
+
+
+## How far back the camera stands from what it is looking at. The rig puts it at
+## `focus + basis.z * distance` (basis.z points back out of the screen), so the
+## depth of the focus is what is left of that along the same axis. Measured off
+## the live camera and the live focus rather than off CameraRig.distance, so a
+## rig that is moved, or a scene with a camera of its own, still gets air that
+## lands inside its own picture.
+func _cam_distance() -> float:
+	var c := _cam()
+	if c == null:
+		return 30.0
+	return maxf(1.0, (c.global_position - focus).dot(c.global_transform.basis.z))
+
+
 ## The sky, the air and the grade, for this hour. The sky is the AMBIENT light
 ## and the reflection: at night it is a deep indigo dome over a near-black
 ## ground, which is why a night frame still has form in it without being lifted.
@@ -537,16 +583,29 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	# colour is ten times that, so the far half of every night frame was being
 	# lit by its own haze (measured: it put the median back up to 97 after the
 	# ambient and the moon had both been cut to a third).
-	e.fog_light_color = hor
+	# WHICH WAY distance goes is the landscape's (Air.ROWS, docs/LOOK.md law 3):
+	# the hour still gives the colour and the air only BENDS it, so dusk is still
+	# dusk in the bog -- but the bog bends it down into peat and the snowfield
+	# bends it up into glare, and a frame that holds both crossfades between them
+	# on the same shares the light and the grade are composed from.
+	var a := Air.at(neon_shares)
+	last_air = a
+	e.fog_light_color = Air.colour(hor, a)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
-	e.fog_density = FOG_DENSITY * lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))
-	e.volumetric_fog_albedo = hor.lerp(Color(1, 1, 1), 0.35)
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0)))
+	# And WHERE it lies is the camera's, not a constant: the frame is only about
+	# ten units deep, so two numbers written for the loaded chunks left the air
+	# entirely outside the picture (Air's header has the measurement).
+	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near))
+	e.fog_depth_begin = reach.x
+	e.fog_depth_end = reach.y
+	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(Color(1, 1, 1), 0.35)
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
 	# lamp is a cone and a machine's lens is a shaft.
 	# On a clear noon there is almost nothing in the air, and a volumetric haze
 	# that is always there is the papery veil again by another name.
-	e.volumetric_fog_density = VOLUME_DENSITY * lerpf(0.12, 2.4,
+	e.volumetric_fog_density = VOLUME_DENSITY * float(a.bank) * lerpf(0.12, 2.4,
 		clampf(maxf(fog.z, maxf(air.x, nightly * 0.5)), 0.0, 1.0))
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
