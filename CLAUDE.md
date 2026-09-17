@@ -2,15 +2,35 @@
 
 *UNSPENT*, rebuilt: a real-time action-survival game on a generated coast where
 half-broken machines hunt the people still living in the gaps. Godot 4.7,
-GDScript, orthographic 3D rendered at 640x360 and upscaled with nearest
-filtering. The land is drawn by hand: washes, inked contours, hatched shade;
-the machines are drawn by a ruler; and every screen the player reads is one
-hacked slate made of machine parts (docs/ART.md §9). **`docs/VISION.md` is the destination** (the
+GDScript, orthographic 3D; every screen the player reads is one hacked slate made
+of machine parts. **`docs/VISION.md` is the destination** (the
 machines' plan, 20+ procedurally composed landscape types across surface,
 underground and orbital realms, a mecha sentinel per landscape, portals and time,
-crafts, mended high tech). **`docs/ART.md` is the binding style bible. Nothing may
-look like Minecraft or any voxel game; every landscape must be hauntingly beautiful
-and detailed.**
+crafts, mended high tech). **Nothing may look like Minecraft or any voxel game;
+every landscape must be hauntingly beautiful and detailed.**
+
+## The look is mid-rebuild — read this before you touch `src/render/` or `src/models/`
+
+The owner was shown twelve art directions and rejected all twelve: they all
+looked "papery" because they all inherited the same floor. **`docs/LOOK.md` is
+the direction of record and it outranks `docs/ART.md` wherever the two conflict.**
+The new direction is LANTERN — *the world is lit, not drawn*: no ink, no wash, no
+hatch, no paper; Forward+ on desktop with `gl_compatibility` as the web
+degradation path; the internal resolution off 640x360; real dynamic light and
+honest materials doing the work ink used to do.
+
+Still true on `main` today: 640x360, nearest upscaling, washes, inked contours,
+hatched shade, machines drawn by a ruler. All of it is being replaced by a
+sequential wave — `floor` (renderer, resolution, quality tiers), then `lit`
+(materials and light together), then `form` / `depth` / `slate` in parallel, then
+`degrade` (the web path proven almost as good).
+
+**So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
+to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
+work in. If you are writing UI, do not spell `640` or `360` anywhere — put one
+`const BASE` at the top of the file and lay out against it, so converting it later
+is one line. If you are adding a model, plain `MeshKit` through the existing
+`Parts.hand/ruled` state is still correct; it converts with everything else.
 
 `../unspent` is the old Unity attempt. Read it for mechanics numbers and art
 direction (already distilled in `docs/research/`). **Never port its story, arcs,
@@ -197,6 +217,16 @@ tools print their own summaries.
 - A branch is done when: `tools/check.sh` is green in its worktree, its own new
   shots were looked at, and the feature is **reachable from a normal game start**
   (or from `--scene=gallery` for models). Unreachable code is not a feature.
+- **Stage explicit paths. Never `git add -A` or `git commit -a`** in the main
+  checkout. Another session's work in progress lives in the same tree and a sweep
+  takes whatever it finds, including files that are not yours and were not ready
+  (`03e25bb` swept up CLAUDE.md, docs/ROADMAP.md and an unfinished
+  `src/core/raid/attention.gd` along with the one test it meant to add). Run
+  `git status` before and after every commit; if a path you did not touch is
+  staged, unstage it rather than explain it in the message.
+- **One run of a tour at a time per checkout.** `shots/tour/<name>/` is a single
+  directory, so two concurrent runs overwrite each other's frames and both come
+  out worthless with a green exit. `tools/tour.sh` now refuses the second run.
 - Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
 
 ## Another session may be running right now
