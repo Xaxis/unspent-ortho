@@ -114,6 +114,37 @@ func started() -> void:
 	_note_health()
 
 
+## The realm the game is in now. A world is one realm's world, so this is the
+## whole of what decides which holdings are under the player's feet.
+func realm_here() -> StringName:
+	return game.world.realm if game != null and game.world != null else Realm.SURFACE
+
+
+## A crossing hands the game a new world AND a new WorldQuery, so every footprint
+## this package put in the old one has gone with it and every drawing standing in
+## it is standing in the wrong world. The holdings of the realm being entered are
+## stood up again; the ones left behind go on working, because a place with
+## people in it does not stop for being out of sight (`settle_up` settles every
+## realm's).
+func realm_changed(_from: StringName, _to: StringName) -> void:
+	for key: String in _nodes:
+		var node: StructureModel = _nodes[key]
+		if is_instance_valid(node):
+			node.queue_free()
+	_nodes.clear()
+	# Nothing to remove them from: that query is gone.
+	_ghosts.clear()
+	_bodies.clear()
+	for s in places:
+		if s.realm != realm_here():
+			continue
+		for piece in s.pieces:
+			_realise(s, piece)
+	settle_up()
+	_sync_nodes()
+	_sync_people()
+
+
 func _slate() -> Node:
 	if _ui == null or not is_instance_valid(_ui):
 		_ui = null
@@ -134,7 +165,7 @@ func _exit_tree() -> void:
 
 ## Start a place at `at` in `realm`. The founding is announced so the guide, the
 ## slate and the raids package all learn about it the same way.
-func found(realm: int, at: Vector2, called: String = "") -> Settlement:
+func found(realm: StringName, at: Vector2, called: String = "") -> Settlement:
 	var s := Settlement.new(_next_id, realm, at, called if called != "" else SettlementBuild.name_for(_next_id))
 	_next_id += 1
 	places.append(s)
@@ -153,8 +184,8 @@ func get_one(id: int) -> Settlement:
 	return null
 
 
-func all(realm: int = -1) -> Array[Settlement]:
-	if realm < 0:
+func all(realm: StringName = &"") -> Array[Settlement]:
+	if realm == &"":
 		return places.duplicate()
 	var out: Array[Settlement] = []
 	for s in places:
@@ -165,7 +196,7 @@ func all(realm: int = -1) -> Array[Settlement]:
 
 ## Every place whose centre is within `radius` of `pos`: what a machine passing
 ## through asks before it notices anything.
-func at(realm: int, pos: Vector2, radius: float) -> Array[Settlement]:
+func at(realm: StringName, pos: Vector2, radius: float) -> Array[Settlement]:
 	var out: Array[Settlement] = []
 	for s in places:
 		if s.realm == realm and s.centre.distance_to(pos) <= radius:
@@ -174,7 +205,7 @@ func at(realm: int, pos: Vector2, radius: float) -> Array[Settlement]:
 
 
 ## The place nearest `pos` in `realm`, or null.
-func nearest(realm: int, pos: Vector2) -> Settlement:
+func nearest(realm: StringName, pos: Vector2) -> Settlement:
 	var best: Settlement = null
 	var best_d := INF
 	for s in places:
@@ -192,7 +223,7 @@ func nearest(realm: int, pos: Vector2) -> Settlement:
 func here() -> Settlement:
 	if game == null or game.player == null:
 		return null
-	var s := nearest(0, game.player.pos)
+	var s := nearest(realm_here(), game.player.pos)
 	if s == null or s.centre.distance_to(game.player.pos) > SettlementBuild.JOIN:
 		return null
 	return s
@@ -225,7 +256,7 @@ func build_here(kind: int) -> String:
 		return "!" + SettlementBuild.why_not(game.inventory, kind)
 	var s := here()
 	if s == null:
-		s = found(0, spot)
+		s = found(realm_here(), spot)
 	var p := place_piece(s, kind, spot, game.player.facing)
 	# The clock is charged what the work took, the way a station's building is.
 	var minutes := StructureKind.minutes(kind)
@@ -520,7 +551,12 @@ func settle_up() -> void:
 		return
 	var now := game.clock.minutes
 	for s in places:
-		var land := BiomeRegistry.at(game.world, s.centre).id if game.world != null else &""
+		# A holding out of this realm is settled by its own clock all the same,
+		# under the weather of the landscape it was built in, which only the world
+		# it stands in can be asked for.
+		var land := &""
+		if s.realm == realm_here() and game.world != null:
+			land = BiomeRegistry.at(game.world, s.centre).id
 		var report := SettlementRules.catch_up(s, now, {"seed": game.world.seed_value if game.world != null else 0, "land": land})
 		_announce(s, report)
 	_note_health()
@@ -548,7 +584,7 @@ func _announce(s: Settlement, report: Dictionary) -> void:
 	var left: Array = report.get("left", [])
 	for who: int in left:
 		_send_away(s, who)
-	var near := game.player != null and s.centre.distance_to(game.player.pos) <= EARSHOT
+	var near := game.player != null and s.realm == realm_here() and s.centre.distance_to(game.player.pos) <= EARSHOT
 	if not near:
 		return
 	if not made.is_empty():
@@ -652,7 +688,7 @@ func _sync_people() -> void:
 	if folk == null or game.player == null:
 		return
 	for s in places:
-		if s.centre.distance_to(game.player.pos) > DRAW_REACH:
+		if s.realm != realm_here() or s.centre.distance_to(game.player.pos) > DRAW_REACH:
 			continue
 		for who: int in s.people:
 			var key := "%d:%d" % [s.id, who]
@@ -703,7 +739,7 @@ func _sync_nodes() -> void:
 	var hour := game.clock.hour()
 	var want: Dictionary = {}
 	for s in places:
-		if s.centre.distance_to(game.player.pos) > DRAW_REACH:
+		if s.realm != realm_here() or s.centre.distance_to(game.player.pos) > DRAW_REACH:
 			continue
 		for p in s.pieces:
 			var key := _key(s, p)
@@ -825,7 +861,7 @@ func _from_options() -> void:
 		kinds.append(kind)
 	if kinds.is_empty():
 		return
-	var s := found(0, game.player.pos)
+	var s := found(realm_here(), game.player.pos)
 	var placed := 0
 	for i in kinds.size():
 		var kind: int = kinds[i]

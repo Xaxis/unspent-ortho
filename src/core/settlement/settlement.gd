@@ -10,7 +10,11 @@ extends RefCounted
 ## gate. Nothing here runs a clock: the world does that and tells it.
 
 var id := 0
-var realm := 0
+## The realm it was built in (Realm.KINDS). A world is one realm's world, so a
+## holding belongs to the ground it stands on and never follows the player down
+## a shaft: the settlement system draws, walks and blocks only the holdings of
+## the realm the game is in.
+var realm: StringName = Realm.SURFACE
 var name := ""
 var centre := Vector2.ZERO
 var pieces: Array[Structure] = []
@@ -48,7 +52,7 @@ var _next_piece := 1
 var _next_person := 1
 
 
-func _init(settlement_id: int = 0, in_realm: int = 0, at: Vector2 = Vector2.ZERO, called: String = "") -> void:
+func _init(settlement_id: int = 0, in_realm: StringName = Realm.SURFACE, at: Vector2 = Vector2.ZERO, called: String = "") -> void:
 	id = settlement_id
 	realm = in_realm
 	centre = at
@@ -212,7 +216,7 @@ func as_dict() -> Dictionary:
 	for s in pieces:
 		out_pieces.append(s.as_dict())
 	return {
-		"id": id, "realm": realm, "name": name, "centre": SaveCodec.vec2(centre),
+		"id": id, "realm": String(realm), "name": name, "centre": SaveCodec.vec2(centre),
 		"pieces": out_pieces, "people": people, "looks": _looks_out(),
 		"stores": SaveCodec.counts(stores), "tally": tally,
 		"attention": attention, "night": night, "charge": charge,
@@ -230,7 +234,7 @@ func _looks_out() -> Array:
 
 
 static func from_dict(d: Dictionary) -> Settlement:
-	var s := Settlement.new(SaveCodec.to_int(d.get("id", 0)), SaveCodec.to_int(d.get("realm", 0)), SaveCodec.to_vec2(d.get("centre", Vector2.ZERO)), String(d.get("name", "")))
+	var s := Settlement.new(SaveCodec.to_int(d.get("id", 0)), StringName(d.get("realm", Realm.SURFACE)), SaveCodec.to_vec2(d.get("centre", Vector2.ZERO)), String(d.get("name", "")))
 	for p: Variant in d.get("pieces", []):
 		s.pieces.append(Structure.from_dict(p as Dictionary))
 	for person: Variant in d.get("people", []):

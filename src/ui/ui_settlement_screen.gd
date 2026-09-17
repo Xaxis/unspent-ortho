@@ -279,7 +279,7 @@ func _draw_piece(R: Rect2i, x0: int, y: int, p: Structure) -> int:
 		y += 11
 	UiDraw.text(self, Vector2i(x0, y), "working" if p.working() else "idle", UiTheme.TEXT_DIM)
 	y += 11
-	var gives := _gives_words(p.kind)
+	var gives := _gives_words(p.kind, false)
 	if gives != "":
 		UiDraw.text(self, Vector2i(x0, y), gives, UiTheme.TEXT_DIM)
 		y += 11

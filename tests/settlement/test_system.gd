@@ -233,3 +233,18 @@ func test_time_away_reaches_the_holding_through_the_running_game() -> void:
 	gt(place.stored(), 0.0, "the plot was worked while nobody was watching")
 	check(bool(sys.call("tour_seen", &"produced")), "and the holding says so")
 	Sx.end(g)
+
+
+func test_a_holding_belongs_to_the_realm_it_was_built_in() -> void:
+	var g := Sx.game(tree, ["--seed=4", "--size=128", FULL])
+	await frames(3)
+	var sys := holdings(g)
+	@warning_ignore("return_value_discarded")
+	sys.call("build_here", StructureKind.PALISADE)
+	var place: Settlement = sys.call("here")
+	eq(place.realm, Realm.SURFACE, "put up on the surface, and it says so")
+	eq((sys.call("all", Realm.SURFACE) as Array).size(), 1, "one holding in this realm")
+	eq((sys.call("all", Realm.UNDERGROUND) as Array).size(), 0, "and none under it")
+	check(sys.call("nearest", Realm.UNDERGROUND, g.player.pos) == null,
+		"standing on the same coordinates a realm down finds nothing: a holding does not follow anybody through a shaft")
+	Sx.end(g)

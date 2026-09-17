@@ -6,7 +6,7 @@ extends TestCase
 
 
 func a_place() -> Settlement:
-	var s := Settlement.new(1, 0, Vector2(100, 100), "the holding")
+	var s := Settlement.new(1, Realm.SURFACE, Vector2(100, 100), "the holding")
 	s.worked_at = 0.0
 	return s
 
