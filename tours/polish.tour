@@ -22,14 +22,14 @@ shot 01-the-burning-at-noon with land:burning
 at prop:vent
 zoom 5
 wait 1.0
-shot 02-a-hole-with-fire-under-it with prop:vent
+shot 02-a-hole-in-the-ground with prop:vent
 hour 23
 weather clear:0
 wait 1.4
-shot 03-and-at-night-it-is-a-fire with prop:vent
+shot 03-a-vent-at-night with prop:vent
 zoom 12
 wait 0.8
-shot 04-nine-small-fires-in-the-dark with land:burning
+shot 04-the-vents-in-the-dark with land:burning
 
 # --- The scrapwood's crowns ---------------------------------------------------
 # Thirty near-identical mushrooms at one scale, each with the same ruled bar

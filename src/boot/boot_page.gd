@@ -100,9 +100,18 @@ const LIFT_SECONDS := 0.35
 ## first frame's shaders (which is genuinely slow on the web and must not be cut
 ## short), and a shorter one for the stages that are only ever waiting on work
 ## already in flight. The line cannot now exceed about 25 s even if every one of
-## them stalls, against no bound at all before.
+## them stalls, against no bound at all before — and in the case that actually
+## happens, where no frame arrives at all, `draw` gives up at DRAW_SILENT_MS and
+## the whole line is under eight seconds.
 const DRAW_DEADLINE_MS := 10000.0
 const WAIT_DEADLINE_MS := 5000.0
+## ...and how long `draw` waits for its FIRST frame before it concludes that no
+## frames are coming at all. The page is drawing itself while that stage waits,
+## so one would have arrived long before this: measured over six boots, `draw`
+## took 3.5-5.9 s in total and the first frame of every one of them landed inside
+## two and a half. Four seconds leaves a slow web compile room and still halves
+## the worst case, and when it does fire the log says which stage gave up.
+const DRAW_SILENT_MS := 4000.0
 
 ## False until the first page has planned: only that one follows the web shell.
 static var _after_shell := false
@@ -141,6 +150,8 @@ var _lifted := false
 var _handed := false
 ## Frames drawn since the scene was made (-1 before).
 var _drawn := -1
+## When the `draw` stage began waiting (msec), for DRAW_SILENT_MS.
+var _draw_from := 0
 
 
 ## True where slow jobs may go to the worker pool (not the no-threads web build).
@@ -284,8 +295,16 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 	stages.add(&"draw", "looking up", 1200.0, func() -> bool:
 		if _drawn < 0:
 			_drawn = 0
+			_draw_from = Time.get_ticks_msec()
 			RenderingServer.frame_post_draw.connect(_on_drawn)
-		return _drawn >= 2 or BootPage.headless(), false, DRAW_DEADLINE_MS)
+		if _drawn >= 2 or BootPage.headless():
+			return true
+		# NOTHING has been drawn at all. The page itself is being drawn every
+		# frame while this waits, so one frame would have arrived by now if the
+		# window were being composited: it is not, and the whole of the long
+		# deadline buys a stall nobody can see instead of the world's first frame.
+		return Time.get_ticks_msec() - _draw_from > int(DRAW_SILENT_MS) and _drawn == 0,
+		false, DRAW_DEADLINE_MS)
 
 
 ## Every system script the game loads (Game._system_files), as res:// paths.
