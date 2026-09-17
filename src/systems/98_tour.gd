@@ -87,6 +87,10 @@ extends GameSystem
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
+##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
+##   perf features NAME     every expensive thing the frame has, off and on, world held
+##                          still: which ones this renderer really draws (render_probe.gd)
+##   perf scale LIST SECS   frame cost at each render scale in LIST (render_probe.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -387,6 +391,8 @@ func _run() -> void:
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:
+					ok = await RenderProbe.run(self, game, parts)
 				else:
 					ok = await TourPeople.perf(self, game, parts)
 			"stale":
@@ -1271,10 +1277,17 @@ func _drawn() -> bool:
 
 func _save_frame(label: String) -> void:
 	var img := get_viewport().get_texture().get_image()
+	# In a web build (tools/web.sh --tour) a file written here lands in the page's
+	# memory and nobody can open it, so the frame is handed to the page as a
+	# download and the harness keeps it. At the base's own size: the 2x below is
+	# nearest, so it holds nothing more, and encoding it in wasm costs seconds.
+	if OS.has_feature("web"):
+		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), label + ".png", "image/png")
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	_last_frame = img
 	var path := _out.path_join(label + ".png")
-	img.save_png(path)
+	if not OS.has_feature("web"):
+		img.save_png(path)
 	print("tour shot ", path)
 
 

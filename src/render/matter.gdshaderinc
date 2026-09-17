@@ -63,9 +63,12 @@ vec3 matter_albedo(vec3 srgb) {
 	return mix(srgb, matter_linear(srgb), sky_linear);
 }
 
-// A light's or a flame's colour, which is authored the same way.
+// A light's or a flame's colour, which is authored the same way. This is the
+// door to EMISSION and nothing else, so it also carries `sky_emission`: the one
+// renderer that draws a surface's own light twice under a casting sun is told
+// how much of it to draw each time (sky.gdshaderinc, CompatTrim).
 vec3 matter_light(vec3 srgb) {
-	return matter_albedo(srgb);
+	return matter_albedo(srgb) * sky_emission;
 }
 
 // Jittered-cell distances: (nearest, second nearest, id of nearest). Pebbles,

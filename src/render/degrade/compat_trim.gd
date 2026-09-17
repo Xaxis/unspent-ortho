@@ -1,0 +1,96 @@
+class_name CompatTrim
+extends RefCounted
+## What the Compatibility renderer's light has to be told so that a web frame is
+## the desktop's place (docs/LOOK.md: "the same place, on a worse night").
+##
+## THE FLOOR UNDER THE WEB FRAME. The first side-by-side of the canon had every
+## web frame lifted and flattened -- the spawn at noon 195 luma against the
+## desktop's 146, the night 87 against 46 -- and it was not the colour door: a
+## flat unshaded quad comes back from Compatibility exactly as it was written
+## (`perf colour`), so `sky_linear` is right on both renderers. It was the LIGHT,
+## found by switching it (`perf features`, `perf shadowpass`, `perf sunpath` in
+## render_probe.gd), with desktop gl_compatibility and the exported web build
+## agreeing to the third decimal:
+##
+##   1. A sun that CASTS is drawn by Compatibility in a pass of its own, and that
+##      pass does not add what the base pass would have. On a lit quad, turning the
+##      shadow on added the surface's ambient again (+0.169 on a 0.5 red) and its
+##      emission again (+0.071 of 0.1). On the land it adds far more than that: with
+##      the ambient and the emission taken to zero the shadowed frame was STILL
+##      brighter than the unshadowed one, and the sun energy that matches the
+##      desktop is about a seventh of the desktop's. The desktop goes 154 -> 151
+##      luma for the switch; Compatibility 169 -> 199.
+##   2. Compatibility lights the palette's display values (it has to: it hands
+##      ALBEDO to the screen unchanged), so the lamps, the bloom, the depth fog and
+##      the filmic curve all land on different numbers than on the desktop, where
+##      they work on linear light. Glow lifted the web noon by 10.6 luma against
+##      the desktop's 2.5; the fog by 10.8 against 5.6.
+##
+## Neither is a feature the web lacks, so neither has a stand-in: it is the same
+## light counted differently, and the answer is to count it back. The rows are
+## multipliers on what SkyLight and the lights compose, and they were FITTED, not
+## chosen: `perf match` holds a frame of the running game against the desktop's
+## own frame of the same canon moment, pixel for pixel, and `tours/degrade_fit.tour`
+## sweeps every number over all eighteen canon places.
+##
+## Day and night are fitted apart and blended by how far night has fallen, because
+## the error is not one number: lighting display values instead of linear light is
+## wrong by a different amount at every level of light. Over the canon's day
+## frames the day row sits 12.4 from the desktop and the best night row 17.9; over
+## its night frames the night row sits 9.8 and the day row 12.3.
+##
+## On Forward+ every number is 1 and this file does nothing.
+
+## What a row may say, and the identity.
+const IDENTITY := {"sun": 1.0, "ambient": 1.0, "lamps": 1.0, "emission": 1.0, "glow": 1.0, "fog": 1.0, "exposure": 1.0}
+## The keys in the order a fit walks them: the ones that move the most light
+## first, so the finer ones are fitted against a frame already near the target.
+const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog", "emission"]
+
+## While the sun casts (Compatibility's second pass runs), by day and by night --
+## the moon casts too. `emission` fits flat from 0.5 to 1.5 (the canon's distance
+## moved by 0.02 across that range), so it stays at 1 rather than be chosen by
+## noise.
+const SHADOWED_DAY := {"sun": 0.15, "ambient": 0.9, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.75, "exposure": 1.0}
+const SHADOWED_NIGHT := {"sun": 0.15, "ambient": 0.75, "lamps": 0.35, "emission": 1.0, "glow": 0.5, "fog": 0.75, "exposure": 0.95}
+## While it does not (an overcast that takes the shadows away, a roof overhead):
+## no second pass, only the difference in where the lighting is done.
+const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 1.0, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0}
+const OPEN_NIGHT := {"sun": 0.35, "ambient": 0.6, "lamps": 0.45, "emission": 0.5, "glow": 0.6, "fog": 1.25, "exposure": 1.0}
+
+## A fit in progress sets this; nothing else may.
+static var override: Dictionary = {}
+## The row SkyLight composed last (`remember`), which the lamps follow.
+static var _last: Dictionary = IDENTITY
+
+
+## The row in force for a frame whose sun does or does not cast, `night` 0 (day)
+## to 1 (night fallen, or a roof overhead).
+static func row(sun_casts: bool, night: float = 0.0) -> Dictionary:
+	if Quality.forward_plus():
+		return IDENTITY
+	if not override.is_empty():
+		return override
+	var day: Dictionary = SHADOWED_DAY if sun_casts else OPEN_DAY
+	var dark: Dictionary = SHADOWED_NIGHT if sun_casts else OPEN_NIGHT
+	var t := clampf(night, 0.0, 1.0)
+	var out := {}
+	for k: String in KEYS:
+		out[k] = lerpf(float(day[k]), float(dark[k]), t)
+	return out
+
+
+## SkyLight hands over the row it composed this frame with.
+static func remember(r: Dictionary) -> void:
+	_last = r
+
+
+## What a local light's energy is multiplied by (15_lights `_set_light`): the row
+## SkyLight composed with, so a lamp and the sun are always counted back together.
+## 1 on Forward+.
+static func lamp_gain() -> float:
+	if Quality.forward_plus():
+		return 1.0
+	if not override.is_empty():
+		return float(override.get("lamps", 1.0))
+	return float(_last.get("lamps", 1.0))

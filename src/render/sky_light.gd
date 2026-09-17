@@ -155,6 +155,7 @@ const EXPOSURE := 1.10
 ## one effect that separates a lit tube from a bright rectangle. The threshold
 ## is over 1.0 on purpose: only things that are really emitting glow, so a snow
 ## field at noon does not.
+const GLOW_INTENSITY := 0.75
 const GLOW_BLOOM := 0.15
 const GLOW_HDR := 1.05
 
@@ -263,6 +264,8 @@ var glow_reach := 0.0
 var glints: Array[Vector4] = []
 ## The colour of each glint (rgb, w spare), parallel to `glints`.
 var glint_colors: Array[Vector4] = []
+## The CompatTrim row this frame was composed with (all ones on Forward+).
+var trim: Dictionary = CompatTrim.IDENTITY
 ## True once a sky system fills this node every frame (see the header).
 var driven := false
 ## The world clock hour set_hour() last recorded.
@@ -282,7 +285,7 @@ func _ready() -> void:
 	# renderers disagree (measured; matter.gdshaderinc says what and by how
 	# much). Every lit shader reads this and converts, so one palette draws the
 	# same picture on the desktop and on the web.
-	RenderingServer.global_shader_parameter_set("sky_linear", 1.0 if Quality.forward_plus() else 0.0)
+	RenderingServer.global_shader_parameter_set("sky_linear", 1.0 if decodes() else 0.0)
 	sun = DirectionalLight3D.new()
 	sun.name = "sun"
 	sun.shadow_enabled = true
@@ -326,6 +329,13 @@ func _ready() -> void:
 	add_child(env)
 
 
+## Whether the palette must be decoded before it is written into ALBEDO on the
+## renderer this run is on (matter.gdshaderinc, `sky_linear`).
+static func decodes() -> bool:
+	return Quality.forward_plus()
+
+
+
 ## The one Environment. Every expensive thing on it is gated on the tier's own
 ## row (Quality.ROWS) and NOT re-derived here, so `degrade` can move a tier and
 ## this file does not argue: `volumetric`, `ssao` and `ssil` are this package's
@@ -360,7 +370,7 @@ static func build_environment() -> Environment:
 	e.tonemap_white = 4.0
 	# A light in the dark reads as bright because it bleeds.
 	e.glow_enabled = true
-	e.glow_intensity = 0.75
+	e.glow_intensity = GLOW_INTENSITY
 	e.glow_bloom = GLOW_BLOOM
 	e.glow_hdr_threshold = GLOW_HDR
 	e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
@@ -489,7 +499,13 @@ func compose() -> void:
 	# Godot decodes light_color from sRGB, so encode the ratio we mean.
 	sun.light_color = hue.linear_to_srgb()
 	var lit := 1.0 - maxf(night, closed)
-	sun.light_energy = lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit)
+	# What Compatibility's light is counted back by (CompatTrim; all ones on
+	# Forward+). Chosen before the sun is lit, because whether the sun casts is
+	# what decides which row: a casting sun is a second pass there.
+	var casts := cast_allowed and closed < 0.5
+	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
+	CompatTrim.remember(trim)
+	sun.light_energy = lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) * float(trim.sun)
 	# A low sun is seen through more air, so its edge is softer. Real penumbra.
 	sun.light_angular_distance = lerpf(SUN_ANGLE_LOW, SUN_ANGLE, clampf(el / 55.0, 0.0, 1.0))
 	# The moon casts too, softly. The source game's rule was that nothing casts
@@ -498,8 +514,9 @@ func compose() -> void:
 	# a night frame have shape in it without being lifted, which is LANTERN law
 	# 3. `casts_at` still says whether the SUN casts, and everything that reads
 	# it is unchanged.
-	sun.shadow_enabled = cast_allowed and closed < 0.5
+	sun.shadow_enabled = casts
 	sun.shadow_opacity = maxf(shadow_strength(hour), MOON_SHADOW * (1.0 - lit))
+	RenderingServer.global_shader_parameter_set("sky_emission", float(trim.emission))
 	if figure_light != null:
 		# A person still takes a fill of their own in low light, because the
 		# player has to read at any hour (docs/ART.md section 5). It is much
@@ -576,7 +593,7 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.26)
 	# Under a roof there is no sky to be ambient: what light there is comes off
 	# the walls, and it is very little. That is what makes a cave a cave.
-	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT, nightly) * lerpf(1.0, 0.45, closed)
+	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT, nightly) * lerpf(1.0, 0.45, closed) * float(trim.ambient)
 	# The air takes its colour from the sky, so distance separates by atmosphere.
 	# Its ENERGY has to fall with the light or the fog stops being air and
 	# becomes a lamp: at midnight the ground is at about 0.03 and an unscaled fog
@@ -592,7 +609,9 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	last_air = a
 	e.fog_light_color = Air.colour(hor, a)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
-	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0)))
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog)
+	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
+	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
 	# ten units deep, so two numbers written for the loaded chunks left the air
 	# entirely outside the picture (Air's header has the measurement).
