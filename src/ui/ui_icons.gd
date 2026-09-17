@@ -209,6 +209,14 @@ static func style_of(id: StringName) -> Array:
 	if ITEMS.has(id):
 		return ITEMS[id]
 	var d := Items.def(id)
+	# An item row may name its own mark (`icon: [shape, ramp, ramp]`). SHAPES above
+	# still owns which marks exist; this only lets content pick one. It is here
+	# because a MENDED row HAS to be able to name a mark with cord pixels in it
+	# (docs/ART.md §12, both idioms in one 9x9) and every fallback below reaches
+	# for a shape with none, so a whole tech tree of mended gear would have read
+	# as machine parts nobody made.
+	if d.has("icon"):
+		return d["icon"]
 	if d.get("stuff", &"") == &"found":
 		return [&"glim", &"found", &"lens"]
 	if d.has("kit"):

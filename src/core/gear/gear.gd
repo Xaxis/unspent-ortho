@@ -102,14 +102,22 @@ static func combine(into: Dictionary, add: Dictionary) -> void:
 
 
 ## The whole loadout's resistances: hazard id -> 0..1, for Body.resist.
+##
+## The last step is the modules arguing: a part that pays for another's heat, a
+## part that shouts through another's hush (`Modifiers`, docs/VISION.md §6.1).
+## It is here because this is the ONE place the kit is added up, so the body, the
+## hazards system, the slate and every test see the same answer.
 static func resist_total(loadout: Loadout) -> Dictionary:
 	var out: Dictionary = {}
 	for id in loadout.all_ids():
 		combine(out, resist_of(id))
+	Modifiers.settle(loadout.all_ids(), out)
 	return out
 
 
-## The ability ids the loadout grants, in slot order, without repeats.
+## The ability ids the loadout grants, in slot order, without repeats. A conflict
+## can smother one — a signature spoofed by a part that shouts is no signature —
+## so the last word is `Modifiers` (docs/VISION.md §6.1).
 static func abilities_of(loadout: Loadout) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for slot in SLOTS:
@@ -117,7 +125,7 @@ static func abilities_of(loadout: Loadout) -> Array[StringName]:
 			var a := ability_of(id)
 			if a != &"" and not out.has(a):
 				out.append(a)
-	return out
+	return Modifiers.allow(loadout.all_ids(), out)
 
 
 ## What the slate calls a slot.
