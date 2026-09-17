@@ -384,9 +384,12 @@ func _file(n: Notice) -> void:
 	# themselves — the taking, the jamming, the killing and every warning happen
 	# in front of them, and a record getting home happens over the horizon — so a
 	# player who watched a clerk walk off is told the moment it cost them.
+	# A message and not a hint: a hint is a lesson and is dropped if its moment is
+	# busy (CLAUDE.md, the signal bus), and this is the moment a player is most
+	# likely to be busy — a raider is walking off while they are fighting another.
 	Events.sfx.emit(&"raid_filed", game.world.to_3d(s.centre))
 	if _near(s):
-		Events.hint.emit("What it had of %s is in the plan's hands now." % s.name, "")
+		Events.message.emit("What it had of %s is in the plan's hands now." % s.name)
 
 
 ## It never got there: killed in the yard, or its reading spoofed into nonsense.
