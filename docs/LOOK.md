@@ -146,6 +146,23 @@ pattern, not a result:
   your head blocks the MOON as surely as the skyglow, so `BiomeDef.night_sky`
   scales both, and the same 1.45 then moved it to 13.9.
 
+- **And the evening falling off a cliff was not one half hour.** It was TWO
+  SCHEDULES doing the same job, which only ever overlapped for forty minutes.
+  The tint keys give the day's level up from 16:48 and are flat again by 19:12;
+  `Weather.night_fall` — which the sun's handover to the moon and the ambient's
+  fall both rode — is still zero at 18:30 and does all of its work by 21:00. So
+  from five to half past six almost nothing moved, and from seven to half past
+  eight everything did: measured on the coast, half hour by half hour, 3.4, 2.6,
+  5.5, 9.8 values and then 22.3, 23.3, 22.8. **Neither could have been reshaped
+  on its own, because each is flat exactly where the other is steep.** One curve
+  on the tint keys' own shoulders (`SkyLight.day_gone`) spends the same light in
+  8.9 to 11.2 values a half hour. Two more hid behind it: the cast shadow stopped
+  half an hour before the sunset the same file declares, and the last half hour
+  of the evening turned back UP at a village while bare coast stayed flat — the
+  light had landed but the TINT had not, and `15_lights.compensate` divides its
+  lamp by that tint, so the lamps went on brightening with nothing left to pay
+  for them.
+
 Each of those would have been expensive to fix at the symptom and cheap at the
 cause. **Look for the floor before repainting the room.**
 

@@ -213,15 +213,21 @@ func test_a_burning_dusk_keeps_its_warm_darks() -> void:
 	# only a third lifted: the lift follows HOW DARK IT IS, not how warm the tint
 	# has gone. It was the other way round, and every night term came on at once
 	# in the middle of a bright evening (art review finding 2).
+	# The hours below moved with `day_gone`, not the claims: the evening is one
+	# curve from 16:48 to 21:36 now, so a quarter to nine is two thirds of the way
+	# through it rather than all but done, and the far end of the lift is where the
+	# light lands. Six o'clock is still the day, but the turn began at ten to five
+	# and an eighth of it has gone by then — which is what stops the whole evening
+	# arriving in the three half hours after seven.
 	var cold := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"snowfield"))
-	var late := SkyLight.dusk_lift(20.75, SkyLight.type_tint(&"snowfield"))
+	var late := SkyLight.dusk_lift(21.4, SkyLight.type_tint(&"snowfield"))
 	var burning := SkyLight.dusk_lift(19.5, SkyLight.type_tint(&"burning"))
 	gt(cold, 0.25, "a snowfield dusk has begun to lift its darks to blue")
 	lt(cold, 0.5, "but only as far as the evening has come")
 	gt(late, 0.9, "and all the way once the night is on it")
 	lt(burning, cold * 0.5, "a burning dusk keeps them warm")
 	near(SkyLight.dusk_lift(12.0, Vector3.ONE), 0.0, 0.02, "nothing to lift at noon")
-	lt(SkyLight.dusk_lift(18.0, Vector3.ONE), 0.05, "nor at six, which is still the day")
+	lt(SkyLight.dusk_lift(18.0, Vector3.ONE), 0.20, "nor at six, which has given up a sixth of the day and no more")
 
 
 ## The level of light a lit face takes at an hour: the tint's own luminance times
@@ -272,9 +278,13 @@ func test_the_evening_warms_into_the_last_of_the_sun_and_only_then_turns_blue() 
 ## as a dark one, so the skyglow's blue wash came up at seven in the evening.
 func test_the_darks_follow_how_dark_it_is_not_how_warm_the_tint_has_gone() -> void:
 	near(SkyLight.low_light(12.0), 0.0, 0.01, "noon")
-	lt(SkyLight.low_light(18.0), 0.05, "six o'clock is still daylight")
-	lt(SkyLight.low_light(19.2), 0.35, "the dusk key is warm, not dark")
-	gt(SkyLight.low_light(20.5), 0.8, "by half past eight it really is going")
+	lt(SkyLight.low_light(18.0), 0.20, "six o'clock is still daylight")
+	lt(SkyLight.low_light(19.2), 0.40, "the dusk key is warm, not dark")
+	gt(SkyLight.low_light(20.5), 0.6, "by half past eight it really is going")
+	# And it lands where the light lands (EVENING_TO), not half an hour early:
+	# this is `day_gone` now, so how little light there is and how much of the
+	# evening has gone are one number rather than two that drift apart.
+	gt(SkyLight.low_light(21.3), 0.9, "and by half past nine it has all but gone")
 	near(SkyLight.low_light(23.0), 1.0, 0.01, "night")
 	var prev := SkyLight.low_light(17.0)
 	var h := 17.1
@@ -395,11 +405,11 @@ func test_no_landscapes_light_climbs_through_the_small_hours() -> void:
 func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_back() -> void:
 	near(SkyLight.night_dark(12.0), 0.0, 1e-6, "noon")
 	near(SkyLight.night_dark(8.0), 0.0, 1e-6, "eight in the morning is full day")
-	lt(SkyLight.night_dark(18.0), 0.02, "and six in the evening still is")
+	lt(SkyLight.night_dark(18.0), 0.10, "and six in the evening still all but is")
 	gt(SkyLight.night_dark(19.5), 0.2, "half past seven has begun")
 	lt(SkyLight.night_dark(19.5), 0.55, "but is nowhere near the night")
 	lt(SkyLight.night_dark(20.5), 0.9, "half past eight is not the night either: the light still has a sixth of its fall left")
-	near(SkyLight.night_dark(SkyLight.DARK_FULL), 1.0, 1e-6, "full where the light stops falling, and not before")
+	near(SkyLight.night_dark(SkyLight.EVENING_TO), 1.0, 1e-6, "full where the light stops falling, and not before")
 	near(SkyLight.night_dark(23.0), 1.0, 1e-6, "and all night")
 	near(SkyLight.night_dark(3.0), 1.0, 1e-6, "including the small hours")
 	var prev := SkyLight.night_dark(17.0)
@@ -410,7 +420,11 @@ func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_ba
 		prev = n
 		h += 0.1
 	# The dawn is the same rule read backwards: the light comes back, it goes.
-	gt(SkyLight.night_dark(5.0), 0.9, "still dark at five")
+	# The dawn is `Weather.night_fall`'s still (`day_gone` hands it back outside
+	# the evening) and it is read through DARK_EASE like the evening, so five in
+	# the morning — three quarters of the way back to the night — answers 0.69
+	# rather than the flat 1.0 the old `light_level` ratio clamped it to.
+	gt(SkyLight.night_dark(5.0), 0.65, "still dark at five")
 	lt(SkyLight.night_dark(7.5), 0.02, "gone by half past seven in the morning")
 	# A sky darker than its hour is the other half of it, so a storm at ten in
 	# the morning still keeps its shapes readable (docs/ART.md section 6).
@@ -438,19 +452,40 @@ func test_a_storm_at_ten_keeps_its_glow_while_the_evening_holds_its_own_back() -
 	near(midday.y, 0.0, 1e-6, "and no glow")
 	# Neither term may arrive in a lump: the frames measured an eleven per cent
 	# rise in the half hour where the glow went 0.21 to 1.00 (art review, wave A2).
-	# The biggest half hour either of them is allowed is the light's own biggest
-	# half hour, 20:00 to 20:30, where the sun gives up a quarter of the evening.
-	var h := 18.0
-	while h <= 21.9001:
+	# The bar is the LIGHT's own biggest half hour, and it is no longer assumed to
+	# be 20:00-20:30 — that assumption was the old two-schedule evening speaking,
+	# where one half hour really did carry a quarter of it. Every half hour is
+	# walked, so the test says what it means.
+	#
+	# The floor is held to twice the light's biggest half hour. The GLOW is held to
+	# a third of itself, not to the light, because it is deliberately LAGGED behind
+	# the floor (GLOW_LAG) and a term that arrives later has to arrive faster —
+	# holding it to the light's own pace is asking for no lag at all. What the
+	# original finding failed on was 0.79 in one half hour, and a third still
+	# catches that.
+	#
+	# AND BOTH ARE PUBLISHED AND UNREAD under LANTERN: `sky_night` is declared in
+	# sky.gdshaderinc and sampled by nothing, and `neon_skyglow` returns vec3(0.0),
+	# so the blue floor under the washes and the emission over every surface are
+	# both gone and NIGHT_AMBIENT and MOON_NIGHT are what make a night dark now.
+	# These bounds are kept so the terms stay coherent for whoever draws them
+	# again, NOT because a frame moves with them today — which is also why no
+	# number here may be read as evidence about a picture.
+	var span := SkyLight.light_level(SkyLight.EVENING_FROM) - SkyLight.light_level(SkyLight.EVENING_TO)
+	var light_most := 0.0
+	var floor_most := 0.0
+	var glow_most := 0.0
+	var h := SkyLight.EVENING_FROM
+	while h <= SkyLight.EVENING_TO + 0.3001:
 		var a := SkyLight.night_terms(h, clear)
 		var b := SkyLight.night_terms(h + 0.5, clear)
-		lt(b.x - a.x, 0.32, "the floor arrives in a lump at %.2f h" % h)
-		lt(b.y - a.y, 0.45, "the skyglow arrives in a lump at %.2f h" % h)
+		floor_most = maxf(floor_most, b.x - a.x)
+		glow_most = maxf(glow_most, b.y - a.y)
+		light_most = maxf(light_most, (SkyLight.light_level(h) - SkyLight.light_level(h + 0.5)) / span)
 		h += 0.1
-	var most := SkyLight.night_terms(20.5, clear) - SkyLight.night_terms(20.0, clear)
-	var light_most := (SkyLight.light_level(20.0) - SkyLight.light_level(20.5)) / (SkyLight.light_level(SkyLight.DARK_FROM) - SkyLight.light_level(SkyLight.DARK_FULL))
-	gt(light_most, 0.2, "and that half hour really is where the light goes")
-	lt(most.y, light_most * 2.0, "the glow's biggest half hour is no more than twice the light's")
+	lt(light_most, 0.2, "no half hour of the evening's own light is a cliff")
+	lt(floor_most, light_most * 2.0, "the floor's biggest half hour is no more than twice the light's")
+	lt(glow_most, 0.4, "the glow arrives in a lump")
 
 
 ## There used to be TWO statements of how dark a night is -- SkyLight's
@@ -485,18 +520,33 @@ func test_the_night_is_stated_in_one_place_and_the_shaders_hold_no_copy() -> voi
 		"while the moon is a real share of the night, or a night frame has no shape in it")
 
 
-## Dusk is long low shadows. They used to stop at 20:30 because they were keyed
-## off how far night had fallen, and that curve is two and a half hours wide now.
+## Dusk is long low shadows, and they have to LENGTHEN, SOFTEN AND FADE rather
+## than stop. They used to end at 20:30, half an hour before the sunset this same
+## file declares, while the sun was still the brightest thing in the frame; the
+## fade itself was 45 minutes long because it was sized to hide an instant that
+## no longer exists (there is no `step(0.5, ATTENUATION)` under LANTERN, and no
+## `light()` left in the game to hold one).
 func test_the_sun_casts_through_the_whole_dusk_and_its_shadows_fade_out() -> void:
 	check(SkyLight.casts_at(19.5), "half past seven still casts")
 	check(SkyLight.casts_at(20.25), "and so does the last of it")
-	check(not SkyLight.casts_at(21.0), "gone by nine")
+	check(SkyLight.casts_at(20.6), "and half past eight, which is still broad evening")
+	check(not SkyLight.casts_at(21.0), "gone by nine, where the sun sets")
 	check(not SkyLight.casts_at(4.9), "and not before the sun is properly up")
 	near(SkyLight.shadow_strength(12.0), 1.0, 1e-6, "full at noon")
 	gt(SkyLight.shadow_strength(19.5), 0.9, "still solid at half seven")
-	lt(SkyLight.shadow_strength(20.25), 0.5, "going with the light")
-	near(SkyLight.shadow_strength(20.5), 0.0, 1e-6, "and gone where the sun stops casting")
+	lt(SkyLight.shadow_strength(20.5), 0.5, "going with the light")
+	near(SkyLight.shadow_strength(SkyLight.SHADOW_TO), 0.0, 1e-6, "and gone where the sun stops casting")
 	near(SkyLight.shadow_strength(2.0), 0.0, 1e-6, "the moon casts nothing")
+	# It fades rather than switching, and it is still worth looking at at half
+	# past seven: a monotone walk from full to nothing over the whole late evening.
+	var prev := SkyLight.shadow_strength(19.0)
+	var h := 19.1
+	while h <= SkyLight.SHADOW_TO + 1e-6:
+		var s := SkyLight.shadow_strength(h)
+		lt(s, prev + 1e-6, "the shadow turns back at %.2f h" % h)
+		lt(prev - s, 0.12, "the shadow goes out in a lump at %.2f h" % h)
+		prev = s
+		h += 0.1
 
 
 ## n drawn (process) frames: what a system that polls input in _process sees.

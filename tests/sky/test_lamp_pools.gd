@@ -93,7 +93,13 @@ func test_a_lamp_lit_in_daylight_lays_nothing_and_at_night_lays_its_own_colour()
 	# there is, never to how warm the tint has gone (art review finding 2).
 	gt(Lights.gloom(19.0, Vector3(0.98, 0.8, 0.66), 0.9), 0.1, "the evening has begun")
 	lt(Lights.gloom(19.0, Vector3(0.98, 0.8, 0.66), 0.9), 0.4, "but seven is not the dark")
-	gt(Lights.gloom(20.5, Vector3(0.88, 0.71, 0.65), 0.78), 0.8, "half past eight is")
+	# Half past eight is two thirds of the way through the evening now, not all but
+	# done: `day_gone` runs 16:48 to 21:36 and the frame there reads 74 against the
+	# 55 it did when the light landed at nine (SkyLight.EVENING_FROM). The lamp is
+	# worth carrying a little later and a little less early, which is the twilight
+	# that was missing.
+	gt(Lights.gloom(20.5, Vector3(0.88, 0.71, 0.65), 0.78), 0.65, "half past eight is")
+	gt(Lights.gloom(21.5, Vector3(0.7, 0.66, 0.78), 0.72), 0.9, "and half past nine all but")
 	near(Lights.gloom(23.0, Vector3(0.56, 0.64, 0.9), 0.7), 1.0, 0.02, "and the dead of night is all of it")
 	gt(Lights.gloom(12.0, Vector3(0.5, 0.55, 0.66), 1.0), 0.2, "a storm dark enough at noon is gloom too")
 	# Every pool colour is the light's own, and the ones people carry are warm.

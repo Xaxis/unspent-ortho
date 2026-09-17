@@ -63,15 +63,27 @@ shot 10-2130 with land:coast
 # No half hour of the evening is a step. The crop is the world under the HUD's
 # top band and above its bottom one, so a clock reading 20:30 instead of 20:00
 # is not what the numbers are measuring.
-same 01-the-afternoon-1700 02-1730 0.075 0,84,1280,592
-same 02-1730 03-the-turn-begins-1800 0.075 0,84,1280,592
-same 03-the-turn-begins-1800 04-1830 0.075 0,84,1280,592
-same 04-1830 05-low-and-warm-1900 0.075 0,84,1280,592
-same 05-low-and-warm-1900 06-1930 0.075 0,84,1280,592
-same 06-1930 07-the-lights-come-on-2000 0.075 0,84,1280,592
-same 07-the-lights-come-on-2000 08-2030 0.075 0,84,1280,592
-same 08-2030 09-night-lands-2100 0.075 0,84,1280,592
-same 09-night-lands-2100 10-2130 0.075 0,84,1280,592
+#
+# IT IS IN FRAME PIXELS, AND A TOUR FRAME IS 3840x2160 — the base (UiBase.SIZE,
+# 1920x1080) taken x2 by 98_tour._save_frame. It used to read 0,84,1280,592,
+# which was that same band written for the 1280x720 frames of the 640x360 floor
+# and never rescaled when LANTERN moved the floor. On a 3840x2160 frame that box
+# is a corner, and 28% of its rows are the HUD's own message bar: measured on
+# 17:00 against 17:30, the bar differs by 51.6 (0-255) and the world under it by
+# 6.2, so the tour was grading the evening almost entirely on the one thing this
+# comment says it crops out. The pair that this tour failed on reads 0.0859 in
+# the old box and 0.0963 in the band below — the correction is stricter, not
+# kinder. tours/saves.tour and tours/sky-polish.tour carry crops from the same
+# era and have not been checked.
+same 01-the-afternoon-1700 02-1730 0.075 0,252,3840,1776
+same 02-1730 03-the-turn-begins-1800 0.075 0,252,3840,1776
+same 03-the-turn-begins-1800 04-1830 0.075 0,252,3840,1776
+same 04-1830 05-low-and-warm-1900 0.075 0,252,3840,1776
+same 05-low-and-warm-1900 06-1930 0.075 0,252,3840,1776
+same 06-1930 07-the-lights-come-on-2000 0.075 0,252,3840,1776
+same 07-the-lights-come-on-2000 08-2030 0.075 0,252,3840,1776
+same 08-2030 09-night-lands-2100 0.075 0,252,3840,1776
+same 09-night-lands-2100 10-2130 0.075 0,252,3840,1776
 
 # The hour to stand still in.
 hour 19.25
@@ -131,11 +143,11 @@ hour 21.5
 wait 3.0
 await darker 4
 shot 26-the-moss-at-2130 with land:moss
-same 21-the-moss-at-1800 22-the-moss-at-1900 0.09 0,84,1280,592
-same 22-the-moss-at-1900 23-the-moss-at-2000 0.09 0,84,1280,592
-same 23-the-moss-at-2000 24-the-moss-at-2030 0.075 0,84,1280,592
-same 24-the-moss-at-2030 25-the-moss-at-2100 0.075 0,84,1280,592
-same 25-the-moss-at-2100 26-the-moss-at-2130 0.075 0,84,1280,592
+same 21-the-moss-at-1800 22-the-moss-at-1900 0.09 0,252,3840,1776
+same 22-the-moss-at-1900 23-the-moss-at-2000 0.09 0,252,3840,1776
+same 23-the-moss-at-2000 24-the-moss-at-2030 0.075 0,252,3840,1776
+same 24-the-moss-at-2030 25-the-moss-at-2100 0.075 0,252,3840,1776
+same 25-the-moss-at-2100 26-the-moss-at-2130 0.075 0,252,3840,1776
 
 # Each landscape's own evening, by the promise docs/ART.md section 3 makes it.
 place snowfield
