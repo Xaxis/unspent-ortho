@@ -89,11 +89,27 @@ func test_all_poses_are_settable_and_unknown_ones_ignored() -> void:
 		m.free()
 
 
+## A MACHINE'S BUDGET, and why it moved. 2000 was chosen for a 640x360 image
+## where a chamfer was under a pixel and a greeble was dither. The base is
+## 1920x1080 now and the renderer lights the geometry instead of inking it
+## (docs/LOOK.md), so what a machine cannot afford is a CLOSED hull: the
+## harvester sat at 1988 of 2000 and every one of the four attempts to open it
+## was really an attempt to open it for free.
+##
+## 3600 is not "as much as it takes". Measured on this machine at the floor
+## `lit` left: the coast at noon renders in 8.7 ms of a 16.7 ms frame and the
+## whole frame with 24 villagers in 12.0 ms, nine times the pixels of the old
+## floor and twice as fast. A dozen machines at 3600 is 43k triangles, which is
+## a fifth of what one chunk of terrain already costs. The number to watch is
+## draw calls, not triangles, and that budget below has NOT moved.
+const TRIANGLES := 3600
+
+
 func test_triangle_budget() -> void:
 	for kid in KINDS:
 		var m := FigureModel.create(kid)
 		var tris := m.triangle_count()
-		lt(tris, 2001.0, "%s triangles" % kid)
+		lt(tris, TRIANGLES + 1.0, "%s triangles" % kid)
 		gt(tris, 60.0, "%s is more than a placeholder" % kid)
 		m.free()
 
