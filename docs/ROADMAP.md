@@ -1202,10 +1202,92 @@ What the wave still leaves, in the order it should be taken:
   salt flats and the scrapwood still have no elite material of their own, so
   their landmarks pay in ordinary finds.
 
+## LANTERN — the look, rebuilt (integrated, 2026-09-17)
+
+The owner was shown twelve art directions and rejected all twelve: they all read
+"papery", and the reason was that they all inherited the same floor. `docs/LOOK.md`
+is the direction of record and outranks `docs/ART.md` where they conflict. The
+direction is **the world is lit, not drawn**.
+
+Six packages, merged one at a time behind the gate: `floor`, `lit`, then `form`,
+`depth` and `slate` in parallel, then `degrade`. Two follow-ups the wave raised
+itself landed after: `foliage` (snow) and `nights` (per-landscape night, the moss).
+
+### What is true
+
+- **No ink, no hatch, no paper grain, no screen-space outline pass, and no
+  `light()` in any lit shader.** A shader says what a surface IS — albedo,
+  roughness, specular, metallic, a normal bent by the material's own relief — and
+  the renderer lights it, against a real sun with real penumbra, a sky that colours
+  the shade, many local lights that cast, volumetric air and one tonemapper over
+  the finished image.
+- **The base is 1920x1080**, `stretch/mode="viewport"`, `forward_plus` on the
+  desktop and `gl_compatibility` on the web through a `.web` override, proved in a
+  real exported build. A tier spends render scale, never window size.
+- **Wear accumulates by world position**, so the same machine rusts in the bog and
+  blooms on the salt.
+- **The web is the same place on a worse night**, measured: mean absolute channel
+  difference over the eighteen canon places **44.4 -> 10.5**.
+
+### The numbers
+
+| | before | after |
+|---|---|---|
+| Whole frame, 24 villagers | 31.0 ms | 12.0 ms (at 9x the pixels) |
+| Landscapes told apart (mean pairwise Lab dE) | 14.86 | 22.73 |
+| Moss against pinewood (Lab dE) | 2.61 | 7.09 |
+| Night, unlit, share under luma 24 | 2.3% | 23.6% |
+| A machine's value against the turf | +10.4 | -13.0 |
+| Web against desktop (mean channels) | 44.4 | 10.5 |
+
+### What the wave actually taught
+
+**In every package the visible symptom was not the problem.** Papery was the
+floor. Washed out was two renderers disagreeing about what a value in `ALBEDO`
+means. Faceted was flat normals. Flat was fog tuned to the wrong depth range.
+Coarse UI was hiding an unreadable machine tag. The web being darker was a casting
+sun drawn in a pass that added ambient and emission a second time — turning its
+shadow ON brightened the frame. And the moss reading as one flat teal sheet was
+not night at all: `FEN` carried specular 0.68 on relief 0.010, and a level face's
+normal is taken to exactly vertical, so every pixel of a bog answered the light
+identically. It was a mirror.
+
+Three methods paid, and are written up in `docs/LOOK.md`: draw the measurement
+before guessing; toggle a layer inside ONE run rather than across runs; print
+`UNMEASURED` rather than a fake `0.00 ms`.
+
+### Gaps
+
+- **The evening falls off a cliff.** `tours/evening.tour` fails on the coast at
+  19:00->19:30 (0.0859 against a 0.075 tolerance): the sun goes under the horizon
+  and takes every cast shadow with it in one half-hour step, and the frame
+  flattens. Proven independent of the per-landscape night. Because it fails at
+  line 70, the moss half of that tour has never run to completion.
+- **87 FOUND pieces across 26 models draw from no bearing** —
+  `tests/render/test_found_drawn.gd` lists them in `HIDDEN_ALREADY`. A shack's
+  whole plate roof, lean-to roofs on four house variants, a standing stone's spall
+  face inside its own casting, the conveyor's rollers. Built, baked into every
+  chunk, never seen.
+- **`07-burning` by day is the web's worst frame** (13.7 luma darker): the
+  desktop's volumetric air scatters light around every cold vent and the depth fog
+  standing in for it scatters nothing. The moss fails the same way.
+- Snow on a laden pine reads as stipple at a close zoom; not established whether
+  that is the snow or the leaf shader's own discard cut.
+- A save's photo is captured at 160x90 and the title now draws it at 288x162 — a
+  non-integer resample where it used to be an exact 3x. The lever is the capture
+  size, not the draw rect. Owner's call.
+
 ## M3 — The landscapes
 
 Grow to at least 20 landscape types, each with its own props, decor, life, weather,
 light, hazards, enemies, landmarks and **sentinel**, and fill every realm.
+
+**Blocked on one thing first:** what a landscape's OBJECTS are made of is still
+hard-coded — `src/models/props/{houses,remains,rocks,shore,works,trees,built}.gd`
+still `match` on `Country`, so a new landscape's houses, boulders, wrecks, signs
+and shore dressing fall back to the coast's. A new landscape added today is
+dressed as the coast. Make those files read the registry before the landscape
+wave, or every new type looks borrowed.
 
 - **Surface families**, built in parallel:
   - wet: Drowned City, Frost Sea
