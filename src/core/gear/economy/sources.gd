@@ -9,6 +9,7 @@ class_name Sources
 ##   {how: &"take", item, prop, lands}      pick it up where that prop stands
 ##   {how: &"kill", item, kind, lands}      cut it out of one kind of machine
 ##   {how: &"make", item, recipe, at, tier} make it, and then its own steps
+##   {how: &"open", item, place, lands}     walk to a place and open what is there
 ##
 ## A test walks these (`tests/gear_economy/test_obtainable.gd`) and the slate can
 ## say them out loud, which is the same thing said twice on purpose: a promise
@@ -200,7 +201,28 @@ static func path_to(id: StringName, depth: int = DEPTH) -> Array[Dictionary]:
 		out.append({"how": &"make", "item": id, "recipe": StringName(r.get("id", &"")),
 			"at": StringName(r.get("at", &"hand")), "tier": CraftTiers.of_recipe(r)})
 		return out
+	# Lying in a place worth walking to, and LAST, because it is the one way a
+	# player cannot repeat: a cache is opened once and then it is empty. Taking,
+	# killing and making are all things a player can go and do again, so when a
+	# thing has any of those the path should say so; a place is the answer for
+	# what nothing else in the world leads to.
+	var opened := place_yielding(id)
+	if opened != &"":
+		return [{"how": &"open", "item": id, "place": opened,
+			"lands": Drops.place_lands(opened)}]
 	return []
+
+
+## The place a thing can be found lying in, &"" if none. Only tables that
+## declared themselves places count (`Drops.declare_place`): a body's table is
+## walked back to the body, and a place is not a body.
+static func place_yielding(item: StringName) -> StringName:
+	for source: StringName in Drops.places():
+		if Drops.place_lands(source).is_empty():
+			continue
+		if Drops.can_yield(source).has(item):
+			return source
+	return &""
 
 
 ## Everything a recipe wants in hand: what it spends, and what it keeps.
@@ -237,6 +259,10 @@ static func said(id: StringName) -> String:
 					" or ".join(_strings(s.get("lands", [])))])
 			&"make":
 				words.append("make %s %s" % [s.get("item"), CraftTiers.words(int(s.get("tier", 0)))])
+			&"open":
+				var place := String(s.get("place", &"")).trim_prefix("landmark_").replace("_", " ")
+				words.append("find %s at %s in the %s" % [s.get("item"), place,
+					" or ".join(_strings(s.get("lands", [])))])
 	return ", then ".join(words)
 
 

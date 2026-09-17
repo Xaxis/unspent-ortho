@@ -54,10 +54,27 @@ const AT_THE_SCENE := 0.3
 ## stripping a mast is one theft, not eight.
 const SAME_CAUSE_GAP := 20.0
 
+## A NETWORK WITH NOTHING RUNNING IT. Its depot has been put out, or its keeper
+## is down (`Events.works_broken`, `Events.sentinel_fell`): the file is still
+## open and the machines standing in the region still read it, but there is no
+## plant left to keep it and nothing left to send. So it cools fast and it can
+## never reach `hunted` again — being hunted means a yard picking bodies and
+## putting them on you, and the yard is dark.
+##
+## This is the whole reward for the set piece. Breaking a depot does not make a
+## region safe; it makes it a region that can no longer come after you.
+const LOST_DECAY := 2.6
+## Just under `hostile`, so a lost region still stiffens when robbed and never
+## dispatches.
+const LOST_CEILING := 0.55
+
 ## network id -> 0..1.
 var levels: Dictionary = {}
 ## network id -> the tile where it last rose.
 var scenes: Dictionary = {}
+## network id -> true, for networks whose plant has gone. Saved: a region stays
+## lost for the rest of the game.
+var lost: Dictionary = {}
 ## "network|cause" -> the world minute it last counted.
 var counted: Dictionary = {}
 
@@ -112,9 +129,20 @@ func raise(net: int, cause: StringName, at: Vector2, minutes: float) -> float:
 		return 0.0
 	counted[key] = minutes
 	var before := value(net)
-	levels[net] = clampf(before + add, 0.0, 1.0)
+	levels[net] = clampf(before + add, 0.0, LOST_CEILING if is_lost(net) else 1.0)
 	scenes[net] = at
 	return value(net) - before
+
+
+## This network's plant has gone. Called once, and it holds for the game.
+func lose(net: int) -> void:
+	lost[net] = true
+	if levels.has(net):
+		levels[net] = minf(float(levels[net]), LOST_CEILING)
+
+
+func is_lost(net: int) -> bool:
+	return lost.has(net)
 
 
 ## Time passing. `hours` world hours; `hidden` the player is in cover and
@@ -138,7 +166,8 @@ func decay(hours: float, hidden: bool, spoofed: bool, player_net: int, at: Vecto
 		if net == player_net and scenes.has(net):
 			var d: float = (scenes[net] as Vector2).distance_to(at)
 			away = lerpf(AT_THE_SCENE, 1.0, clampf(d / COOL_DISTANCE, 0.0, 1.0))
-		var v := maxf(0.0, float(levels[net]) - DECAY_PER_HOUR * scale * away * hours)
+		var here := scale * (LOST_DECAY if is_lost(net) else 1.0)
+		var v := maxf(0.0, float(levels[net]) - DECAY_PER_HOUR * here * away * hours)
 		if v <= 0.0:
 			levels.erase(net)
 			scenes.erase(net)
@@ -164,14 +193,20 @@ func save() -> Dictionary:
 		out[str(net)] = float(levels[net])
 	for net: int in scenes:
 		scene_out[str(net)] = SaveCodec.vec2(scenes[net])
-	return {"levels": out, "scenes": scene_out}
+	var lost_out: Array = []
+	for net: int in lost:
+		lost_out.append(net)
+	return {"levels": out, "scenes": scene_out, "lost": lost_out}
 
 
 func load(data: Dictionary) -> void:
 	levels.clear()
 	scenes.clear()
 	counted.clear()
+	lost.clear()
 	for k: String in data.get("levels", {}):
 		levels[int(k)] = float(data.levels[k])
 	for k: String in data.get("scenes", {}):
 		scenes[int(k)] = SaveCodec.to_vec2(data.scenes[k])
+	for net: Variant in data.get("lost", []):
+		lost[int(net)] = true

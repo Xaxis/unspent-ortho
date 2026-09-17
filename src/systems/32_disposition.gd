@@ -76,6 +76,8 @@ func setup(g: Game) -> void:
 	Events.took.connect(_on_took)
 	Events.made.connect(_on_made)
 	Events.hit.connect(_on_hit)
+	Events.works_broken.connect(_on_plant_lost)
+	Events.sentinel_fell.connect(_on_keeper_fell)
 	SaveGame.register(&"disposition", _save, _load)
 	SlateFeeds.provide(&"reads", _reads)
 	_resync()
@@ -283,6 +285,24 @@ func _on_took(_item: StringName, _count: int) -> void:
 
 func _on_made(_item: StringName, _count: int) -> void:
 	_noise(&"make")
+
+
+## A REGION WHOSE PLAN HAS LOST ITS PLANT. Both of these were emitted for a whole
+## wave with nothing listening, so putting a depot out or bringing a keeper down
+## changed the yard and changed nothing about how the region READ the player: it
+## could still work itself up to hunted and send bodies out of a dark yard.
+##
+## Now the file on that region is capped under hostile for good and cools at
+## `Interference.LOST_DECAY`. The region is not safe — what is standing in it is
+## still standing — but nothing in it can pick a hunter and send it.
+func _on_plant_lost(region: int, _land: StringName) -> void:
+	interference.lose(region)
+	_apply_dispositions()
+
+
+func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
+	interference.lose(region)
+	_apply_dispositions()
 
 
 ## A blow the player struck. `Events.hit` carries NODES, not fighters: the

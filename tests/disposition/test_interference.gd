@@ -115,12 +115,53 @@ func test_it_survives_a_trip_through_json() -> void:
 	var f := Interference.new()
 	f.raise(COAST, &"killed_worker", Vector2(12.5, 34.5), 0.0)
 	f.raise(MOSS, &"theft", Vector2(80.0, 3.0), 0.0)
+	f.lose(MOSS)
 	var text := JSON.stringify(f.save())
 	var back := Interference.new()
 	back.load(JSON.parse_string(text) as Dictionary)
 	near(back.value(COAST), f.value(COAST), 1e-5, "the coast comes back")
 	near(back.value(MOSS), f.value(MOSS), 1e-5, "and the moss")
 	eq(back.scenes[COAST], Vector2(12.5, 34.5), "and where it happened")
+	check(back.is_lost(MOSS) and not back.is_lost(COAST),
+		"a region whose plant has gone is still gone after a load")
+
+
+## WHAT BREAKING THE PLAN IS WORTH. `Events.works_broken` and `Events.sentinel_fell`
+## were emitted for a whole wave with nothing listening: a player could put a
+## depot out and the same region would go on working itself up to hunted and
+## sending bodies out of a dark yard. A region with nothing running it is not
+## safe — what stands in it still stands — but its file can never climb past
+## hostile again, and `32_disposition._dispatch` will not pick a hunter below
+## hunted, so nothing more is ever sent from there.
+func test_a_region_whose_plant_has_gone_can_never_hunt_again() -> void:
+	var f := Interference.new()
+	var at := Vector2(40.0, 40.0)
+	# Worked all the way up to hunted first, so this is a real climb being capped.
+	# Every cause there is: one of each is what it takes (0.88 of the 0.84 a
+	# network hunts at), which is itself the measure of how far a player has to go.
+	for cause: StringName in Interference.CAUSES:
+		f.raise(COAST, cause, at, 0.0)
+	eq(f.level(COAST), 3, "a player who did all that is hunted: %.2f" % f.value(COAST))
+	f.lose(COAST)
+	lt(f.value(COAST), Interference.THRESHOLDS[3], "and the yard going dark takes that off them")
+	lt(f.level(COAST), 3, "nothing is left to send")
+	# And it cannot be climbed back into, however much is done in that region.
+	for cause: StringName in [&"killed_worker", &"sabotage", &"filed", &"killed_machine"]:
+		f.raise(COAST, cause, at, 1000.0 * float(cause.length()))
+	lt(f.level(COAST), 3, "a dark yard cannot work itself back up to hunting: %.2f" % f.value(COAST))
+	# It is not peace, though: a region that has been robbed still stiffens.
+	gt(f.value(COAST), Interference.THRESHOLDS[1], "the machines standing in it still read the file")
+
+
+func test_a_lost_region_cools_faster_than_one_with_a_yard_behind_it() -> void:
+	var f := Interference.new()
+	f.raise(COAST, &"sabotage", Vector2.ZERO, 0.0)
+	f.raise(MOSS, &"sabotage", Vector2.ZERO, 0.0)
+	f.lose(MOSS)
+	var before := f.value(COAST)
+	f.decay(1.0, false, false, -99, Vector2(500.0, 500.0))
+	lt(f.value(MOSS), f.value(COAST), "the file with no plant behind it goes cold first")
+	lt(f.value(COAST), before, "and the working one cools too, only slower")
 
 
 ## A network is a REGION: one connected run of one landscape type. Two

@@ -105,3 +105,46 @@ func test_two_of_a_kind_in_one_world_are_not_the_same_cache() -> void:
 	var a := Landmarks.loot(_site(&"grown_hulk", &"moss", 1), 77)
 	var b := Landmarks.loot(_site(&"grown_hulk", &"moss", 2), 77)
 	check(str(a) != str(b), "the second hulk is its own cache")
+
+
+## THE FINE AXE, and the seam it needed. `Sources` walks every drop table back
+## to the roster body it comes off, so for a whole wave a landmark could hold
+## nothing a machine carries: a wick in a lighthouse failed the economy's own
+## test rather than being a find, and `axe_works` sat in the gear tree with a
+## note saying the landmarks owned it and nothing in the world holding one.
+## A table that is OPENED rather than killed now says so, and says where it
+## stands, and the walker can answer with the walk.
+func test_a_place_is_a_way_to_a_thing_and_the_economy_can_say_the_walk() -> void:
+	GearEconomy.declare(true)
+	Sources.clear()
+	check(Sources.reachable(&"axe_works"), "the one piece that had no way to it: %s"
+		% Sources.said(&"axe_works"))
+	var steps := Sources.path_to(&"axe_works")
+	eq(steps.size(), 1, "it is found, not made: %s" % [steps])
+	eq(StringName(steps[0].get("how", &"")), &"open", "and it is opened at a place")
+	eq(StringName(steps[0].get("place", &"")), &"landmark_firewatch")
+	var said := Sources.said(&"axe_works")
+	check(said.contains("firewatch") and not said.contains("no way to it"), said)
+	# The landscapes it names are the ones a fire tower really stands in, asked
+	# the way the placer asks: a landscape's own file, not the kind's own row.
+	var lands: Array[StringName] = steps[0].get("lands", [] as Array[StringName])
+	eq(lands, Landmarks.lands_of(&"firewatch"), "the walk names where they stand")
+	for land: StringName in lands:
+		var kinds := PackedStringArray()
+		for d: LandmarkDef in Landmarks.for_land(land):
+			kinds.append(String(d.id))
+		check(kinds.has("firewatch"), "%s holds no fire tower to find it at" % land)
+
+
+## And a place is the LAST answer, never the first: taking, killing and making
+## are things a player can go and do again, and a cache is opened once. Anything
+## with another way to it must still be told that way.
+func test_a_cache_is_the_answer_only_for_what_nothing_else_leads_to() -> void:
+	GearEconomy.declare(true)
+	Sources.clear()
+	# The hone lies in a fire tower too, and is made of a stone off any boulder.
+	check(Drops.can_yield(&"landmark_firewatch").has(&"hone"), "a tower holds a hone")
+	var steps := Sources.path_to(&"hone")
+	check(not steps.is_empty(), "the hone has a way to it")
+	eq(StringName(steps[steps.size() - 1].get("how", &"")), &"make",
+		"a thing a player can make again is not sent to a one-off cache: %s" % Sources.said(&"hone"))

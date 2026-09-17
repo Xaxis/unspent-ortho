@@ -183,3 +183,77 @@ func test_a_body_cannot_walk_through_the_deck() -> void:
 	gt(away.distance_to(from), 2.0, "the yard is walled all round instead of walled at the deck")
 	g.queue_free()
 	await frames(1)
+
+
+## THE SEAM WITH THE KEEPERS, which each package held half of and neither
+## measured. Breaking a depot spends every plan work in its YARD, and a keeper
+## eats the same works over its OWN reach — so putting a yard out is a real bite
+## out of what feeds the region's keeper, and the STARVE way opens that far.
+##
+## IT IS A BITE AND NOT A KILL, which is the thing the package claimed and this
+## is the measurement. A yard is `Works.YARD` (8 tiles) and a keeper feeds over
+## `def.reach * FEED_SHARE` (about 21), so on seed 4 the salt flats keeper is fed
+## by twelve works and breaking the depot spends four of them: it is a third of
+## the way to starving, and the rest has to be robbed by hand. That is better
+## than the claim — the set piece pays into the boss route without being a
+## shortcut past it — so the radius is left alone and the number written down.
+##
+## Only two landscapes have a keeper at all (coast, salt flats), and where the
+## island put no plan work inside one of their yards this way is not open there:
+## seed 1's coast yard is such a one (docs/ROADMAP.md).
+func test_what_a_broken_depot_spends_is_what_a_keeper_eats() -> void:
+	var g := _game(PackedStringArray(["--seed=4", "--size=256", "--hour=11", "--weather=clear:0"]))
+	await frames(4)
+	var sys := _works(g)
+	var found := false
+	for s: WorksSite in Works.sites(g.world):
+		var def := Sentinels.for_land(s.land)
+		if def == null:
+			continue
+		var reach := def.reach * Sentinels.FEED_SHARE
+		var before := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+			g.world.depleted, reach)
+		if before <= 0:
+			continue
+		found = true
+		sys._strip(s, sys.state(s.region))
+		var after := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+			g.world.depleted, reach)
+		lt(float(after), float(before),
+			"%s: the yard went dark and its keeper lost nothing" % s.land)
+		# Which is exactly how far the STARVE way has come, in the sentinel
+		# package's own arithmetic: nothing here invents a second rule.
+		var got := 1.0 - float(after) / float(before)
+		gt(got, 0.1, "%s: a broken yard is worth less than a tenth of its keeper" % s.land)
+		print("works/sentinels: the %s yard feeds its keeper %d works standing -> %d broken, %.0f%% of the way to starving it"
+			% [s.land, before, after, got * 100.0])
+	check(found, "seed 4 held no depot whose yard feeds a keeper; the chain went untested")
+	g.queue_free()
+	await frames(1)
+
+
+## And the plan's own file: `Events.works_broken` was emitted for a whole wave
+## with nothing listening, so a region whose yard had gone dark went on working
+## itself up to hunted and sending bodies out of it. 32_disposition listens now.
+func test_a_broken_depot_costs_the_plan_the_region() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--place=works"]))
+	await frames(4)
+	var sys := _works(g)
+	var disp := g.get_node("32_disposition")
+	var site: WorksSite = sys.here()
+	check(site != null, "the player is standing on a depot's ground")
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	check(not disp.interference.is_lost(site.region), "the plan has not lost it yet")
+	for i in Works.PART_NAMES.size():
+		sys._break(site, i)
+	await frames(2)
+	check(sys.broken(site.region), "the yard is out")
+	check(disp.interference.is_lost(site.region),
+		"the plan still runs a region whose yard is dark")
+	# Which is worth exactly one thing: nothing can be sent from there again.
+	lt(disp.interference.level(site.region), 3, "a dark yard cannot hunt")
+	g.queue_free()
+	await frames(1)

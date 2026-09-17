@@ -19,6 +19,8 @@ class_name Drops
 static var _tables: Dictionary = {}
 ## Table id -> the roster kind it comes off, when that is not the id itself.
 static var _bodies: Dictionary = {}
+## Table id -> the landscapes the PLACE it is opened at stands in.
+static var _places: Dictionary = {}
 
 
 ## `entries` take: item (id), chance (0..1, default 1), count (Vector2i min/max,
@@ -47,8 +49,33 @@ static func declare(source: StringName, entries: Array, of: StringName = &"") ->
 		_bodies[source] = of
 
 
+## A table that is opened at a PLACE rather than cut off a body: a landmark's
+## cache, and whatever else is walked to rather than killed. `lands` is the
+## landscapes that place stands in, which is the whole of what the economy needs
+## to answer "is there a path a player can walk to this" — `Sources` walks a
+## normal table back to the roster kind it comes off, and a place is not one, so
+## without this a wick in a lighthouse is a test failure instead of a find.
+##
+## Declaring the landscapes here, rather than letting the economy import whoever
+## owns the place, is what keeps that dependency from existing at all.
+static func declare_place(source: StringName, entries: Array, lands: Array[StringName]) -> void:
+	declare(source, entries)
+	_places[source] = lands
+
+
 static func table(source: StringName) -> Array:
 	return _tables.get(source, [])
+
+
+## The landscapes the place this table is opened at stands in; empty for a table
+## that comes off a body, which is every table that never said otherwise.
+static func place_lands(source: StringName) -> Array[StringName]:
+	return _places.get(source, [] as Array[StringName])
+
+
+## Every table that is opened at a place.
+static func places() -> Array:
+	return _places.keys()
 
 
 static func sources() -> Array:
@@ -118,3 +145,5 @@ static func sources_of(item: StringName) -> Array:
 
 static func clear() -> void:
 	_tables.clear()
+	_bodies.clear()
+	_places.clear()

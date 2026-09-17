@@ -84,3 +84,29 @@ func test_nothing_swings_from_the_water() -> void:
 	# A dodge is still allowed: that is a kick away, which is the one thing a body
 	# in water CAN do, and the fight has no other way out of a bite.
 	eq(sim.hero.dodge_refusal(sim.now), &"", "a kick away is still a kick away")
+
+
+## THE SEAM BETWEEN SWIMMING AND THE THINGS WAVE B PUT IN THE WATER. A body
+## whose move is refused falls back on stepping one axis at a time, and the
+## second of those two steps was being asked whether a WALKER could stand
+## there — so to a swimmer every tile of deep water refused it, and a swimmer
+## pushed into anything solid stopped dead instead of working its way round.
+## Nothing caught it while the only walls were trunks on dry land; the drowned
+## lighthouse stands in the water, which is where a player meets one.
+func test_a_swimmer_pushed_into_a_wall_still_gets_round_it() -> void:
+	var w := _bay()
+	var q := WorldQuery.new(w)
+	# A pocket of drowned stonework out in the channel, as a long landmark is
+	# walled: a chain of circles, which is what makes a corner to be caught in.
+	var walls: Array[Vector3] = [
+		Vector3(30.0, 23.2, 1.3), Vector3(30.0, 25.8, 1.3), Vector3(31.2, 24.5, 1.3)]
+	q.set_blocks(&"landmarks", walls)
+	var from := Vector2(28.4, 24.2)
+	var delta := Vector2(0.6, 0.6)
+	var swum := q.move_body(from, delta, 0.34, null, true)
+	gt(swum.distance_to(from), 0.2,
+		"a swimmer stuck fast against the stonework: it got to %.2f,%.2f" % [swum.x, swum.y])
+	gt(swum.distance_to(Vector2(30.0, 25.8)), 1.3, "and it is not inside the stonework")
+	# The same push on legs is refused outright, because deep water IS a wall to
+	# a walker: the fallback must read the water differently for the two of them.
+	eq(q.move_body(from, delta, 0.34, null, false), from, "a walker does not paddle out")

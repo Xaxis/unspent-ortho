@@ -43,14 +43,12 @@ const PIECES := {
 	&"axe_felling": {"grade": &"uncommon", "family": &"axe_steel"},
 	&"mattock_steel": {"grade": &"uncommon", "family": &"mattock_steel"},
 	&"pick_steel": {"grade": &"uncommon", "family": &"pick_steel"},
-	# The one implement in the game with no way to it: it is not made, not taken,
-	# not dropped. It predates this package (items.gd: "Rare; never craftable") and
-	# it belongs to whoever builds the landmarks worth walking to, which is where a
-	# fine axe should be lying. `no_source` is the only way a row may have no path,
-	# and `tests/gear_economy/test_obtainable.gd` allows exactly one of them, so
-	# nothing new can be hidden behind it.
-	&"axe_works": {"grade": &"rare", "family": &"axe_works",
-		"no_source": "nothing in the world holds one yet: M2's landmarks own it"},
+	# The one implement that is never made and never cut off a machine (items.gd:
+	# "Rare; never craftable"). It is FOUND, on the deck of a fire tower whose last
+	# tenant left their sacking up — which is what this row promised for a whole
+	# wave while nothing in the world held one. `no_source` is gone with it, and
+	# `tests/gear_economy/test_obtainable.gd` now allows none at all.
+	&"axe_works": {"grade": &"rare", "family": &"axe_works"},
 
 	# --- found implements, taken whole off the works --------------------------
 	# Graded by where they are got, never by what they do. Machine tech taken whole

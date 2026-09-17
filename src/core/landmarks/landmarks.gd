@@ -241,6 +241,19 @@ static func by_id(id: StringName) -> LandmarkDef:
 	return _defs.get(id, null)
 
 
+## Every landscape that really holds a kind: `for_land` read backwards, not the
+## row's own `lands`. A landscape's file is the authority over what stands in it,
+## so a kind's row can say one thing and the world do another — and what the
+## economy needs is where a player will actually find one.
+static func lands_of(kind: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for d: BiomeDef in BiomeRegistry.land():
+		for k: LandmarkDef in for_land(d.id):
+			if k.id == kind and not out.has(d.id):
+				out.append(d.id)
+	return out
+
+
 ## The kinds a landscape holds: what its own file declares (`BiomeDef.landmarks`),
 ## else every kind that names it. A landscape's file is the authority, which is
 ## what lets a new landscape carry an existing kind without this file changing.
@@ -268,67 +281,78 @@ static func for_land(land: StringName) -> Array[LandmarkDef]:
 ## gated with `only_in` so the same kind of place gives something different in
 ## each landscape that holds it — which is what makes a second one worth the walk.
 ##
-## One thing a landmark may NOT hold: anything a machine carries. The economy
-## walks every table that yields such an item back to the body it comes off
-## (`tests/gear_economy/test_obtainable.gd`), and a place is not a body — so a
-## wick in a lighthouse fails that test rather than being a find. Until `Sources`
-## can read a place, these tables keep to what is taken, made or refined.
+## Every table goes in as a PLACE (`Drops.declare_place`), with the landscapes
+## that hold that kind. The economy walks an ordinary table back to the body it
+## comes off, and a place is not a body — so until places existed, a wick in a
+## lighthouse failed `tests/gear_economy/test_obtainable.gd` instead of being a
+## find, and the fine axe sat in the tree with no way to it. Now the landscapes
+## come with the table and the walker can answer "open it".
 static func declare_loot(force: bool = false) -> void:
 	_build()
 	if _declared and not force and not Drops.table(&"landmark_lighthouse").is_empty():
 		return
 	_declared = true
-	Drops.declare(&"landmark_lighthouse", [
+	Drops.declare_place(&"landmark_lighthouse", [
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.8},
+		# The one thing a lighthouse obviously holds, and the thing this table had
+		# to give up before places existed: spare wick, in the store under a lamp
+		# nobody has lit in years.
+		{"item": &"wick", "count": Vector2i(1, 2), "chance": 0.7},
 		{"item": &"kit_lens", "chance": 0.45, "rarity": Rarity.RARE},
 		{"item": &"mod_foil", "chance": 0.3, "rarity": Rarity.RARE},
-	])
-	Drops.declare(&"landmark_leaning_mast", [
+	], lands_of(&"lighthouse"))
+	Drops.declare_place(&"landmark_leaning_mast", [
 		{"item": &"scrap", "count": Vector2i(2, 4)},
 		{"item": &"mod_signet", "chance": 0.7, "rarity": Rarity.RARE},
 		{"item": &"mod_foil", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"bog_iron", "chance": 0.5, "rarity": Rarity.RARE, "only_in": [&"moss"]},
 		{"item": &"frost_varnish", "chance": 0.5, "rarity": Rarity.RARE, "only_in": [&"snowfield"]},
 		{"item": &"resin", "count": Vector2i(1, 2), "chance": 0.5, "only_in": [&"pinewood"]},
-	])
-	Drops.declare(&"landmark_firewatch", [
+	], lands_of(&"leaning_mast"))
+	# THE FINE AXE, and the one place in the game it is. Its own row in the gear
+	# tree has said since the economy was written that the landmarks own it, and
+	# a fire tower is where a person who cut their own firebreaks kept one: the
+	# last tenant's sacking is still on the deck. Uncommon enough to be a find
+	# and not a reward, because nothing about the tower is a fight.
+	Drops.declare_place(&"landmark_firewatch", [
 		{"item": &"timber", "count": Vector2i(1, 3)},
 		{"item": &"rag", "count": Vector2i(1, 3), "chance": 0.8},
 		{"item": &"oil", "chance": 0.6},
 		{"item": &"hone", "chance": 0.4, "rarity": Rarity.UNCOMMON},
 		{"item": &"pitch", "chance": 0.5},
-	])
-	Drops.declare(&"landmark_blinking_stack", [
+		{"item": &"axe_works", "chance": 0.35, "rarity": Rarity.RARE},
+	], lands_of(&"firewatch"))
+	Drops.declare_place(&"landmark_blinking_stack", [
 		{"item": &"scrap", "count": Vector2i(2, 5)},
 		{"item": &"shield_plate", "chance": 0.5, "rarity": Rarity.RARE},
 		{"item": &"charcoal", "count": Vector2i(1, 3), "chance": 0.7},
 		{"item": &"cinder_glass", "chance": 0.5, "rarity": Rarity.RARE, "only_in": [&"burning"]},
 		{"item": &"clint_spar", "chance": 0.5, "rarity": Rarity.RARE, "only_in": [&"bonelands"]},
 		{"item": &"frost_varnish", "chance": 0.5, "rarity": Rarity.RARE, "only_in": [&"snowfield"]},
-	])
-	Drops.declare(&"landmark_cast_stones", [
+	], lands_of(&"blinking_stack"))
+	Drops.declare_place(&"landmark_cast_stones", [
 		{"item": &"stone", "count": Vector2i(2, 4)},
 		{"item": &"dye", "chance": 0.5},
 		{"item": &"limestone", "count": Vector2i(1, 2), "chance": 0.6, "only_in": [&"bonelands", &"limestone_caves"]},
 		{"item": &"clint_spar", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"bonelands"]},
 		{"item": &"mod_spring", "chance": 0.25, "rarity": Rarity.RARE},
-	])
-	Drops.declare(&"landmark_evaporator", [
+	], lands_of(&"cast_stones"))
+	Drops.declare_place(&"landmark_evaporator", [
 		{"item": &"salt", "count": Vector2i(2, 5)},
 		{"item": &"scrap", "count": Vector2i(2, 4)},
 		{"item": &"lime", "chance": 0.5},
 		{"item": &"shield_plate", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"cinder_glass", "chance": 0.45, "rarity": Rarity.RARE, "only_in": [&"burning"]},
-	])
-	Drops.declare(&"landmark_grown_hulk", [
+	], lands_of(&"evaporator"))
+	Drops.declare_place(&"landmark_grown_hulk", [
 		{"item": &"scrap", "count": Vector2i(4, 8)},
 		{"item": &"iron", "count": Vector2i(1, 2), "chance": 0.6},
 		{"item": &"mod_clamp", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"mod_spring", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"bog_iron", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"moss"]},
-	])
-	Drops.declare(&"landmark_clerks_office", [
+	], lands_of(&"grown_hulk"))
+	Drops.declare_place(&"landmark_clerks_office", [
 		{"item": &"rag", "count": Vector2i(2, 4)},
 		{"item": &"dye", "count": Vector2i(1, 2), "chance": 0.7},
 		{"item": &"mod_filter", "chance": 0.4, "rarity": Rarity.RARE},
@@ -336,21 +360,21 @@ static func declare_loot(force: bool = false) -> void:
 		{"item": &"scanner_lens", "chance": 0.2, "rarity": Rarity.RARE},
 		{"item": &"cinder_glass", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"burning"]},
 		{"item": &"clint_spar", "chance": 0.4, "rarity": Rarity.RARE, "only_in": [&"bonelands"]},
-	])
-	Drops.declare(&"landmark_poured_pillar", [
+	], lands_of(&"clerks_office"))
+	Drops.declare_place(&"landmark_poured_pillar", [
 		{"item": &"stone", "count": Vector2i(2, 5)},
 		{"item": &"limestone", "count": Vector2i(1, 3), "chance": 0.8},
 		{"item": &"scrap", "count": Vector2i(1, 3), "chance": 0.7},
 		{"item": &"mod_clamp", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"mod_spring", "chance": 0.3, "rarity": Rarity.RARE},
-	])
-	Drops.declare(&"landmark_sump_pump", [
+	], lands_of(&"poured_pillar"))
+	Drops.declare_place(&"landmark_sump_pump", [
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"iron", "count": Vector2i(1, 2), "chance": 0.6},
 		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.7},
 		{"item": &"mod_filter", "chance": 0.45, "rarity": Rarity.RARE},
 		{"item": &"mod_clamp", "chance": 0.3, "rarity": Rarity.RARE},
-	])
+	], lands_of(&"sump_pump"))
 
 
 ## Where the hands go at a landmark: in front of its face, clear of its own mass.

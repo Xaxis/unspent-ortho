@@ -114,10 +114,10 @@ func test_every_piece_in_the_tree_can_be_walked_back_to_the_world() -> void:
 		# And the path says something a person could follow.
 		var said := Sources.said(id)
 		check(said.length() > 8 and not said.contains("no way to it"), "%s: %s" % [id, said])
-	# A row may only say it has no source if that is STILL TRUE, and only one may:
-	# the pre-existing works axe. Anything else hiding behind the same note is a
-	# piece somebody gave up on.
-	eq(owned_up.size(), 1, "one piece in the game has no way to it: %s" % [owned_up])
+	# NOTHING may say it has no source any more. The works axe was the last one,
+	# and the landmarks it always said owned it now hold it, so a row using this
+	# note is a piece somebody gave up on rather than a debt the game is carrying.
+	eq(owned_up.size(), 0, "every piece has a way to it; these say otherwise: %s" % [owned_up])
 	for id in owned_up:
 		check(not Sources.reachable(id),
 			"%s says nothing leads to it and something now does; take the note off" % id)
@@ -160,8 +160,17 @@ func test_what_the_economy_gives_without_a_recipe_is_only_ever_real() -> void:
 		var givers: Array = Drops.sources_of(id)
 		gt(float(givers.size()), 0.0, "%s is claimed and nothing gives it" % id)
 		for kind: StringName in givers:
-			# A table may be named for the thing rather than the body (a keeper's is,
-			# so a kill cannot pay it out twice); it still has to be a body that exists.
+			# A table is either a BODY or a PLACE, and it has to be a real one of
+			# whichever it says. A body's table may be named for the thing rather
+			# than the body (a keeper's is, so a kill cannot pay it out twice); a
+			# place's names the landscapes it stands in, and a place that stands in
+			# no landscape is a cache nobody can walk to.
+			var where: Array[StringName] = Drops.place_lands(kind)
+			if not where.is_empty():
+				for land: StringName in where:
+					check(BiomeRegistry.get_def(land) != null,
+						"%s is claimed at %s, in %s, which is not a landscape" % [id, kind, land])
+				continue
 			var body := Drops.body_of(kind)
 			check(Roster.has(body), "%s is claimed off %s, which does not exist" % [id, body])
 	check(not ids.has(CraftTiers.SPOIL_ITEM), "ruined stock is not a prize")

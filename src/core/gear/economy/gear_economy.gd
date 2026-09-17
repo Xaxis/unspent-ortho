@@ -41,6 +41,11 @@ static func declare(force: bool = false) -> void:
 		Materials.declare(id, where)
 	for kind: StringName in EliteStock.kinds():
 		Drops.declare(kind, EliteStock.table_for(kind))
+	# And the places, which are the other half of one economy: what is opened
+	# rather than killed. Poured here so that anything asking the economy a
+	# question gets the whole of it, rather than whatever happened to be declared
+	# by the time it asked.
+	Landmarks.declare_loot(force)
 
 
 ## Everything the economy hands a player without a recipe: what a machine gives

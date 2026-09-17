@@ -157,7 +157,7 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims
 	if not _fits(p, nx, r, on, swims):
 		nx = p
 	var ny := Vector2(nx.x, nx.y + delta.y)
-	if not _fits(nx, ny, r, on):
+	if not _fits(nx, ny, r, on, swims):
 		ny = nx
 	return ny
 
