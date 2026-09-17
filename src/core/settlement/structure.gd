@@ -20,14 +20,21 @@ var powered := false
 var staffed_by := -1
 ## Broken past mending: it stands as wreckage until it is cleared.
 var ruined := false
+## Which drawing of this kind. The same kind built twice is not the same piece
+## (docs/ART.md §10, nothing is prefabricated): the model leans, patches and
+## weathers by this number, and it is dealt when the piece is founded so that a
+## loaded holding stands exactly as the player left it.
+var variant := 0
 
 
-func _init(piece_id: int = 0, piece_kind: int = StructureKind.LEAN_TO, at: Vector2 = Vector2.ZERO, strength: float = 1.0) -> void:
+func _init(piece_id: int = 0, piece_kind: int = StructureKind.LEAN_TO, at: Vector2 = Vector2.ZERO, strength: float = -1.0) -> void:
 	id = piece_id
 	kind = piece_kind
 	pos = at
-	max_health = strength
-	health = strength
+	# A piece is as strong as its kind unless somebody says otherwise: a hut is
+	# not a lean-to, and a plate wall is not a net.
+	max_health = strength if strength > 0.0 else StructureKind.health(piece_kind)
+	health = max_health
 
 
 func family() -> StructureKind.Family:
@@ -36,6 +43,30 @@ func family() -> StructureKind.Family:
 
 func standing() -> bool:
 	return not ruined
+
+
+## 0..1: how much of this piece is still there. What it produces, what it keeps
+## off a body and what it gives off all ride on it, so a holding nobody mends is
+## a holding that slowly stops working rather than one that fails all at once.
+func condition() -> float:
+	if ruined or max_health <= 0.0:
+		return 0.0
+	return clampf(health / max_health, 0.0, 1.0)
+
+
+## It is doing its work now: whole enough, staffed if it needs hands, and wired
+## if it needs power.
+func working() -> bool:
+	if ruined or condition() < WORKS_ABOVE:
+		return false
+	if StructureKind.needs_staff(kind) and staffed_by < 0:
+		return false
+	return powered or StructureKind.draw_power(kind) <= 0.0
+
+
+## Under this share of its strength a piece has stopped working: a plot trampled
+## to a quarter is not a plot, and a spinner with one blade left turns nothing.
+const WORKS_ABOVE := 0.25
 
 
 ## Returns true if this blow is what ruined it.
@@ -58,25 +89,31 @@ func repair(amount: float) -> void:
 
 
 ## What a machine can sense from this piece as it stands now. A piece that is
-## ruined says nothing; one that needs power and has none says almost nothing.
+## ruined says nothing; one that needs power and has none says almost nothing;
+## and a piece falling apart is quieter than a piece kept up.
 func signs() -> Dictionary:
 	if ruined:
 		return {}
 	var base: Dictionary = StructureKind.signs(kind)
 	if base.is_empty():
 		return base
+	var scale := 1.0
 	if base.has("power") and not powered:
-		var quiet := base.duplicate()
-		for k: String in quiet:
-			quiet[k] = float(quiet[k]) * 0.25
-		return quiet
-	return base
+		scale = 0.25
+	# A mask is a thing you keep in repair or it stops hiding you.
+	scale *= lerpf(0.4, 1.0, condition())
+	if is_equal_approx(scale, 1.0):
+		return base
+	var out := base.duplicate()
+	for k: String in out:
+		out[k] = float(out[k]) * scale
+	return out
 
 
 func as_dict() -> Dictionary:
 	return {
 		"id": id, "kind": kind, "pos": SaveCodec.vec2(pos), "facing": facing,
-		"health": health, "max_health": max_health,
+		"health": health, "max_health": max_health, "variant": variant,
 		"powered": powered, "staffed_by": staffed_by, "ruined": ruined,
 	}
 
@@ -85,6 +122,7 @@ static func from_dict(d: Dictionary) -> Structure:
 	var s := Structure.new(SaveCodec.to_int(d.get("id", 0)), SaveCodec.to_int(d.get("kind", 0)), SaveCodec.to_vec2(d.get("pos", Vector2.ZERO)), float(d.get("max_health", 1.0)))
 	s.facing = float(d.get("facing", 0.0))
 	s.health = float(d.get("health", s.max_health))
+	s.variant = SaveCodec.to_int(d.get("variant", 0))
 	s.powered = bool(d.get("powered", false))
 	s.staffed_by = SaveCodec.to_int(d.get("staffed_by", -1))
 	s.ruined = bool(d.get("ruined", false))

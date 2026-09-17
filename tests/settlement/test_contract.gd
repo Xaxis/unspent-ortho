@@ -5,7 +5,7 @@ extends TestCase
 
 
 func test_a_place_holds_its_pieces_and_finds_them_by_kind_and_family() -> void:
-	var s := Settlement.new(1, 0, Vector2(100, 100), "the yard")
+	var s := Settlement.new(1, Realm.SURFACE, Vector2(100, 100), "the yard")
 	var hut := s.add(StructureKind.HUT, Vector2(101, 100))
 	s.add(StructureKind.PALISADE, Vector2(103, 100))
 	s.add(StructureKind.PALISADE, Vector2(104, 100))
@@ -79,7 +79,7 @@ func test_people_coming_and_going_are_themselves_a_sign() -> void:
 
 
 func test_a_whole_town_survives_a_trip_through_json() -> void:
-	var s := Settlement.new(7, 2, Vector2(12.5, -3.25), "the quarry")
+	var s := Settlement.new(7, Realm.UNDERGROUND, Vector2(12.5, -3.25), "the quarry")
 	var mast := s.add(StructureKind.RADIO_MAST, Vector2(13, -3))
 	mast.powered = true
 	mast.staffed_by = 4
@@ -90,7 +90,7 @@ func test_a_whole_town_survives_a_trip_through_json() -> void:
 	s.attention = 0.42
 	var back := Settlement.from_dict(JSON.parse_string(JSON.stringify(s.as_dict())))
 	eq(back.id, 7, "id")
-	eq(back.realm, 2, "realm")
+	eq(back.realm, Realm.UNDERGROUND, "the realm it was built in")
 	eq(back.name, "the quarry", "name")
 	near(back.centre.x, 12.5, 1e-4, "where it stands")
 	eq(back.pieces.size(), 2, "both pieces")
