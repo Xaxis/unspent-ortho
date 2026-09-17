@@ -160,7 +160,7 @@ was fully up in blue light, and it took the blue out of the lantern altogether.
 The lamp was never wrong and needed no clamp. **When a file states a rule in its
 own comments, check every line that should be keeping it.**
 
-## Three methods that paid, and are worth reusing
+## Four methods that paid, and are worth reusing
 
 1. **Draw the measurement before guessing.** The harvester's hull had defeated
    four attempts that guessed at it. Drawing its silhouette mask as ASCII showed
@@ -172,6 +172,30 @@ own comments, check every line that should be keeping it.**
    loaded machine.
 3. **Print `UNMEASURED`, never `0.00 ms`.** When the GPU timer returns nothing, a
    number nobody clocked is worse than no number at all.
+4. **Run it twice at the same commit before you believe it.** `13-spawn-night`
+   came back **16.6%** of its pixels under luma 24 on one run and **24.0%** on the
+   next, at one commit, with nothing changed — and the first was about to be
+   published as "the foliage wave's snow brightened the coast night". The land was
+   identical in both; what differed was how much SEA was in shot, because nothing
+   pinned the body and water is the brightest thing in a night frame. A single run
+   is an anecdote. The canon now steps in simulated time (`tools/canon.sh`) and
+   its own header records what was ruled out on the way.
+
+   Two things generalise past that frame, and both are about which numbers are
+   exposed:
+
+   - **A whole-frame statistic is only as good as what is holding the frame
+     still.** Measure a claim on its SUBJECT, not on every pixel. This is the same
+     principle that says frame 18 is not a defect — whole-frame luma is the wrong
+     question for a picture whose subject is one lamp — arriving from the other
+     direction, and it is the more dangerous direction, because here the wrong
+     metric does not merely mislead, it invents a finding.
+   - **A difference measured WITHIN one run is safe where a difference measured
+     ACROSS runs is not.** The desktop-against-web distances came through this
+     untouched (44.4 → 10.5 → 10.51) precisely because both sides are captured in
+     the same run, so a drifting world hits both equally and cancels. The exposed
+     numbers were the canon's own before/after diffs. When you report a figure,
+     know which of the two kinds it is.
 
 ## Web is the graceful degradation path
 

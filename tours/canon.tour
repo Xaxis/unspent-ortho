@@ -9,7 +9,34 @@
 # (Playtest wave A finding 9: the snowfield frames moved 4.14 between two runs
 # at one commit, against a tolerance of 3, because its climate rolls whiteouts
 # and a whiteout over white ground moves a great many pixels.)
+#
+# THE SECOND THING THAT MOVED, and it was not the weather: LIVE WORLD STATE.
+# Two runs at one commit came out 4.00 apart on 13-spawn-night and 5.99 on
+# 16-burning-dusk, mean 1.69 over the eighteen. It was nearly reported as a
+# rendering change somebody else had made. It was none of the obvious suspects
+# and each was ruled out by measurement rather than by argument:
+#   the CAMERA had not moved   -- aligning the two runs over a +/-40px search
+#                                 found no shift that improved them, 0 in x and y
+#   CAPTURE was deterministic  -- two identical tools/shot.sh runs of one frame
+#                                 differ by 0.227, signed luma +0.003
+#   ELAPSED TIME was not it    -- the same moment caught after 8, 60 and 120
+#                                 frames moves luma by 0.34 in total
+# Drawing the difference map showed what it really was: the sea's wave and surf
+# phase, the villagers, the player's own animation and the HUD message line. A
+# tour's `wait` is a REAL-TIME timer while the game simulates in
+# _physics_process, so a busy machine puts a different amount of world in front
+# of each shutter. 09-eco-pinewood-snowfield is the control -- no sea, signed
+# delta +0.00, and what little it moved was tree sway.
+#
+# So the canon runs in SIMULATED time (tools/canon.sh sets TOUR_FIXED_FPS), which
+# took those two frames to 0.13 and 0.47 and the mean to 0.63 across runs at load
+# 31 and load 40. And the HOUR is pinned below, because frames 01-11 used to run
+# at "the start hour plus however long boot happened to take": the moss declares
+# the deepest dawn mist in the game (BiomeDef.mist 1.0) and Weather.mist is a
+# function of minutes, so 03-moss alone still drifted 2.31 of its 3 allowance on
+# the clock. Anything added here that is about a MOMENT must pin its hour too.
 weather clear:0
+hour 8
 place spawn
 wait 0.8
 shot 01-spawn-morning

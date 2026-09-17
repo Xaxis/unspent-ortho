@@ -13,6 +13,13 @@
 # against the desktop frames this leaves (tours/degrade_fit.tour).
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# The canon is the one set of frames whose whole job is to be comparable with
+# ITSELF, so it steps in simulated time and not in wall-clock time. Without this
+# two runs at one commit differed by a mean of 1.69 and by as much as 5.99 on a
+# single frame, against a tolerance of 3 -- not because anything had changed but
+# because a loaded machine simulates a different amount of world before each
+# shutter falls. tools/tour.sh says what the flag does and what it costs.
+export TOUR_FIXED_FPS="${TOUR_FIXED_FPS:-60}"
 if [ "${1:-}" = "--accept" ]; then
   test -d shots/canon/now || { echo "canon: nothing shot yet"; exit 1; }
   rm -rf shots/canon/accepted && cp -R shots/canon/now shots/canon/accepted
