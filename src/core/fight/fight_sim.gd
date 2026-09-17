@@ -140,6 +140,7 @@ func press_dodge() -> void:
 ## Advance by real seconds, in whole slices; the remainder carries.
 func step(delta_s: float) -> void:
 	hero.read_body()
+	hero.swimming = hero.ride == null and Swim.deep(world, hero.pos)
 	_carry += minf(delta_s * 1000.0, FightRules.MAX_FRAME_MS)
 	while _carry >= FightRules.SLICE_MS:
 		_carry -= FightRules.SLICE_MS
@@ -478,7 +479,7 @@ func _move_hero(dt: float) -> void:
 	v += _shouldered(dt)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
-		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride) if query != null else hero.pos + v * dt
+		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims) if query != null else hero.pos + v * dt
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -576,8 +577,15 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if v.length_squared() < 1e-6:
 		m.speed = 0.0
 		return
+	# A stroke is a stroke for anything that swims: a dog that came in after the
+	# player crosses at the same share of its pace the player does, or the water
+	# is a trap rather than the escape the ruling made it (Swim).
+	if world != null and Swim.swims(m.row) and Swim.deep(world, m.pos):
+		v *= Tuning.SWIM_FACTOR
 	var before := m.pos
-	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45)) if query != null else m.pos + v * dt
+	# Deep water stops a body that cannot take it, which is most of the roster
+	# (Swim): the few that cross carry it on their own row, not here.
+	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), null, Swim.may_cross(m.row)) if query != null else m.pos + v * dt
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
 		if not _ground_in(next, keeps):

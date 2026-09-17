@@ -41,6 +41,9 @@ const PERSON_SHADER := preload("res://src/models/people/person.gdshader")
 
 ## Poses per second; 0 = every animate() call. See the header.
 var pose_hz := 0.0
+## In water over its head: the gait is a stroke and not a walk (Swim). Whoever
+## places the figure says so — the model knows nothing about the world.
+var swimming := false
 ## Skeleton poses applied so far (tests and budgets count them).
 var poses_applied := 0
 const CROWD_HZ := 12.0
@@ -150,6 +153,12 @@ func busy() -> bool:
 	return action != &""
 
 
+## How tall this figure is built, in world units: what a roster row calls
+## `height` for everything that has one (the water reads it to know where to cut).
+func stature() -> float:
+	return float(_dims.get(&"hip_y", 0.7)) + float(_dims.get(&"torso", 0.45)) + float(_dims.get(&"head", 0.35))
+
+
 ## 0..1 through the current action (held actions report 1 once settled).
 func action_progress() -> float:
 	if action == &"":
@@ -166,7 +175,12 @@ func animate(speed: float, delta: float) -> void:
 	_clock += delta
 	_speed = lerpf(_speed, speed, 1.0 - exp(-12.0 * delta)) if delta > 0.0 else speed
 	var leg: float = _dims.thigh + _dims.shin + _dims.boot
-	if _speed > 0.05:
+	if swimming:
+		# A stroke keeps its own time: a body going nowhere in deep water is
+		# treading it, not standing in it.
+		var share := lerpf(PersonAnim.TREAD_SHARE, 1.0, clampf(_speed / 1.4, 0.0, 1.0))
+		_phase = fposmod(_phase + delta * share / PersonAnim.STROKE_SECONDS, 1.0)
+	elif _speed > 0.05:
 		_phase = fposmod(_phase + delta * _speed / PersonAnim.cycle_length(_speed, leg), 1.0)
 	_shadow_follows_sun(delta)
 	# The action's clock runs on every call; only the pose waits for its step.
@@ -193,7 +207,8 @@ func animate(speed: float, delta: float) -> void:
 			_last = _resolved(ended, ended_len, ended_len)
 		return
 	var klass := HeldTools.klass(held)
-	var pose := PersonAnim.locomotion(_phase, _speed, _clock, _dims, klass)
+	var pose := PersonAnim.stroke(_phase, _speed, _clock, _dims, klass) if swimming \
+		else PersonAnim.locomotion(_phase, _speed, _clock, _dims, klass)
 	if ended != &"":
 		_last = _resolved(ended, ended_len, ended_len)
 	elif action != &"":
@@ -303,7 +318,10 @@ func _shadow_follows_sun(delta: float) -> void:
 		return
 	_sun_check = 0.25
 	var s: DirectionalLight3D = sun if is_instance_valid(sun) else null
-	rig.shadow.visible = s == null or (s.visible and s.shadow_enabled)
+	# Nothing swimming lays a shadow on the water it is in: the twin under a body
+	# in the sea is what gave away that the figure was floating above the sheet
+	# rather than through it.
+	rig.shadow.visible = not swimming and (s == null or (s.visible and s.shadow_enabled))
 
 
 ## Resolved (IK-solved) action poses, shared by everyone of a build holding the

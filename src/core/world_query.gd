@@ -62,17 +62,22 @@ func nearest_prop(p: Vector2, r: float, kinds: Array[int] = []) -> WorldProp:
 ## `on` is the craft carrying the body (src/core/craft/), and the only thing that
 ## changes the answer: what a craft travels over counts as standable while it
 ## carries you. On foot it is null and the rules are a walker's.
-func standable(tx: int, ty: int, on: CraftRide = null) -> bool:
+## `swims` is a body that can take deep water on its own (a person, a beast, the
+## dredger): to anything else deep water is the wall it has always been. A craft
+## under the body answers first, because a raft is not a swimmer.
+func standable(tx: int, ty: int, on: CraftRide = null, swims: bool = false) -> bool:
 	if not world.in_bounds(tx, ty):
 		return false
 	var g := world.ground[ty * world.size + tx]
-	return on.crosses(g) if on != null else g != Ground.DEEP_WATER
+	if on != null:
+		return on.crosses(g)
+	return swims or g != Ground.DEEP_WATER
 
 
 ## A craft may step further than a body's one level: two is a cliff to a body and
 ## a stride to a walker rig.
-func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null) -> bool:
-	if not standable(tx, ty, on):
+func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null, swims: bool = false) -> bool:
+	if not standable(tx, ty, on, swims):
 		return false
 	if fx == tx and fy == ty:
 		return true
@@ -88,11 +93,11 @@ const SLIDE_MIN := 0.5
 ## walls. Returns the new position. Pushed into a circle the move is turned along
 ## its edge; testing x and y apart alone left a diagonal push dead against a
 ## trunk (both axes refused), so the player stuck instead of slipping past.
-func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null) -> Vector2:
+func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims: bool = false) -> Vector2:
 	if delta.length_squared() < 1e-12:
 		return p
 	var full := p + delta
-	if _fits(p, full, r, on):
+	if _fits(p, full, r, on, swims):
 		return full
 	var q := _blocker(p, full, r)
 	if q != null:
@@ -101,10 +106,10 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null) -> Ve
 		var t := delta - n * delta.dot(n)
 		if t.length_squared() > delta.length_squared() * 1e-4:
 			var slide := t.normalized() * maxf(t.length(), delta.length() * SLIDE_MIN)
-			if _fits(p, p + slide, r, on):
+			if _fits(p, p + slide, r, on, swims):
 				return p + slide
 	var nx := Vector2(p.x + delta.x, p.y)
-	if not _fits(p, nx, r, on):
+	if not _fits(p, nx, r, on, swims):
 		nx = p
 	var ny := Vector2(nx.x, nx.y + delta.y)
 	if not _fits(nx, ny, r, on):
@@ -127,11 +132,11 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> WorldProp:
 	return best
 
 
-func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null) -> bool:
+func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bool = false) -> bool:
 	var ftx := floori(from.x)
 	var fty := floori(from.y)
 	for c: Vector2 in [to, to + Vector2(-r, -r), to + Vector2(r, -r), to + Vector2(-r, r), to + Vector2(r, r)]:
-		if not passable(ftx, fty, floori(c.x), floori(c.y), on):
+		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims):
 			return false
 	for q in props_near(to, 2.0):
 		if q.solid <= 0.0 or world.depleted.has(q.id):

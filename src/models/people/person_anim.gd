@@ -361,6 +361,60 @@ static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klas
 	return p
 
 
+## Seconds a stroke takes, and how much of one a body still turns over when it is
+## going nowhere: nobody floats still in deep water, they tread it.
+const STROKE_SECONDS := 1.45
+const TREAD_SHARE := 0.55
+
+
+## A stroke — what a person does in water over their head (Swim, owner
+## 2026-09-17). It is a breaststroke: the one somebody who was never taught still
+## does, and the only one that reads at this size and this angle, because both
+## arms make the same shape at the same time and the head stays up where the
+## player can see it.
+##
+## The body is drawn sunk to the chest (`Swim.drop_for`), so what carries this is
+## the arms and the head. The legs are under the water and their kick is only
+## felt in the roll.
+static func stroke(phase: float, speed: float, t: float, d: Dictionary, klass: StringName) -> Pose:
+	var st := _stand(d)
+	var hip_y: float = d.get("hip_y", 0.6)
+	# 0 folded in at the chest, 1 swept right out; the pull is the fast half.
+	var out := 0.5 - 0.5 * cos(TAU * phase)
+	var pull := smoothstep(0.0, 0.55, phase) - smoothstep(0.55, 1.0, phase)
+	# The head rises on the pull (the breath) and settles on the recovery.
+	var lift := 0.5 - 0.5 * cos(TAU * phase)
+	var roll := sin(TAU * phase) * 0.06
+	# Lying in the water, face down the way the body is going, hips just under.
+	var flat := -1.18
+	var p := st.with({
+		"root": Vector3(roll, 0, flat + lift * 0.1),
+		# Up to the surface, not down to the bed: over deep water the ground plane
+		# a figure stands on is the sea floor clamped to zero and the water is
+		# drawn at Swim.WATER_Y above it, so a swimmer is RAISED to float. The
+		# body lies through the waterline: back and shoulders out, the rest under.
+		"@root": Vector3(-hip_y * 0.12, 0.02 + lift * 0.03, 0.0),
+		"spine": Vector3(0, 0, 0.16 + lift * 0.07),
+		"head": Vector3(0, 0, 0.62 + lift * 0.16),
+		# Arms: forward and together, out and back, in under the chest, forward again.
+		"arm_l": Vector3(0.35 + out * 0.95, 0, 1.75 - pull * 1.35),
+		"arm_r": Vector3(-0.35 - out * 0.95, 0, 1.75 - pull * 1.35),
+		"fore_l": Vector3(0, 0, 0.25 + (1.0 - out) * 0.85),
+		"fore_r": Vector3(0, 0, 0.25 + (1.0 - out) * 0.85),
+		# A frog kick, half a beat behind the arms and mostly felt, not seen.
+		"thigh_l": Vector3(0.12 + out * 0.3, 0, -0.1 - (1.0 - out) * 0.5),
+		"thigh_r": Vector3(-0.12 - out * 0.3, 0, -0.1 - (1.0 - out) * 0.5),
+		"shin_l": Vector3(0, 0, -(1.0 - out) * 1.25),
+		"shin_r": Vector3(0, 0, -(1.0 - out) * 1.25),
+		"foot_l": Vector3(0, 0, 0.35),
+		"foot_r": Vector3(0, 0, 0.35),
+		"hem": Vector3(0, 0, 0.2),
+		"aerial": Vector3(0.5, 0, -0.5),
+		"tool": Vector3(0, 0, -1.6),
+	})
+	return p
+
+
 ## How the held thing rides while walking: blades forward in the fist, heavy
 ## tools on the shoulder, poles upright like a staff.
 static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float, t: float) -> void:
@@ -382,9 +436,11 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed"]
-## Actions with no natural end: they hold their last pose until replaced.
-const HELD: Array[StringName] = [&"carried", &"downed"]
+const ACTIONS: Array[StringName] = [&"swing", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim"]
+## Actions with no natural end: they hold their last pose until replaced. `swim`
+## is here so a shot can stage a stroke on dry land and the gallery can show it;
+## in a game the water chooses it, frame by frame, and nobody plays it by hand.
+const HELD: Array[StringName] = [&"carried", &"downed", &"swim"]
 ## Actions whose legs follow the gait when the body is moving (a swing creeps).
 const UPPER_ONLY: Array[StringName] = [&"swing", &"eat"]
 const LOWER: Array[StringName] = [&"hips", &"thigh_l", &"thigh_r", &"shin_l", &"shin_r", &"foot_l", &"foot_r", &"hem"]
@@ -431,6 +487,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 			return hurt(clampf(t / maxf(seconds, 1e-3), 0.0, 1.0), d)
 		&"eat":
 			return eat(t, d)
+		&"swim":
+			return stroke(fposmod(t / STROKE_SECONDS, 1.0), 1.0, t, d, klass)
 		&"carried":
 			return carried(t, d)
 		&"downed":

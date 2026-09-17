@@ -150,6 +150,35 @@ matters.
   when there is wind in it and a battery burns amber while there is charge, so a
   player reads their own holding from a hillside before opening the slate.
 
+## Swimming (owner, 2026-09-17)
+
+Deep water was a wall to everything without a raft under it. A body that can take
+it swims now.
+
+- **What it costs is time and a soaking.** Two fifths of a walk, no running, and
+  the wet that any water gives (`Hazards` already answers water with `wet` 1.0
+  and a little more cold). Nothing is dropped, no load is refused, nothing
+  drowns. That is the owner's ruling, and it is why the rules here are short.
+- **What a raft is still for**: speed, a dry creel, and carrying what a swimmer
+  cannot be bothered to carry. A crossing the sea can be swum; whether it is
+  worth swimming is the player's to judge.
+- **Who crosses** is one key on a roster row, `crosses`: `&"swim"` goes in after
+  you, `&"fly"` goes over, and absent — which is most of the roster — the
+  waterline is where it stops. The dogs swim, the flock and the gulls fly, and
+  the dredger swims because it was built to work in water. So swimming away from
+  a fight works, and never on everything.
+- **Nothing swings from the water.** Not a toll: a blow wants something to push
+  against. A dodge still works, because a kick away is the one thing a body in
+  water can do.
+- **It is the loudest way to travel.** Open water gives no cover and a stroke
+  carries further than a footfall, so crossing in the open is a decision.
+
+A swimmer is drawn lying through the surface with the stroke of somebody who was
+never taught, and the rings it leaves are what say it is in the water rather than
+on it — a figure is drawn over the water whatever its depth (people draw after
+the outline pass), so the water cannot cut it yet. That is the one thing about
+this that is not finished, and it is in ROADMAP.
+
 ## Raids: why and when the machines come (docs/VISION.md §9.2-9.7)
 
 > "Certain machines and certain enemies can destroy your work, and when and how a

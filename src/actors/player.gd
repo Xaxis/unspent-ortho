@@ -67,7 +67,7 @@ func drive(move: Vector2, run: bool, delta: float) -> void:
 	var s := Hero.ground_speed(world, pos, run, 1.0, ride)
 	var before := pos
 	if move.length() > 0.01:
-		pos = query.move_body(pos, move * s * delta, Tuning.PLAYER_RADIUS, ride)
+		pos = query.move_body(pos, move * s * delta, Tuning.PLAYER_RADIUS, ride, true)
 		facing = move.angle()
 	speed = before.distance_to(pos) / maxf(delta, 1e-5)
 	_sync(delta)
@@ -118,16 +118,51 @@ func flash(seconds: float = 0.07) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
+## In water over the head, and not standing on something that floats: the gait
+## is a stroke, the body is drawn at the waterline, and the slate's own rules
+## about what a body may do from there are 40_fight's (Swim).
+var swimming := false
+var _wake_in := 0.0
+
+
+## What the water does about a body in it: a ring off each stroke, drawn on the
+## surface in the surf own broken white, and one where the body went in. The
+## figure itself draws over the water whatever its depth (people are drawn after
+## the outline pass), so the rings are what say it is IN the sea and not on it.
+const WAKE_EVERY := 0.55
+const WAKE_COLD := 3
+
+
+func _wake(delta: float, was_swimming: bool) -> void:
+	if not swimming:
+		_wake_in = 0.0
+		return
+	var at := Vector3(pos.x, Swim.WATER_Y, pos.y)
+	if not was_swimming:
+		# Going in: a bigger ring, because that is the moment somebody hears.
+		MobFx.ring(get_parent(), at, Palette.COLD[WAKE_COLD], 1.05, 0.45)
+		Events.sfx.emit(&"splash", at)
+	_wake_in -= delta
+	if _wake_in > 0.0:
+		return
+	_wake_in = WAKE_EVERY
+	MobFx.ring(get_parent(), at, Palette.COLD[WAKE_COLD], 0.62 + minf(speed, 2.0) * 0.12, 0.5)
+
+
 ## Something has hold: the figure shudders against it.
 func shudder(seconds: float = 0.12) -> void:
 	_shudder_left = seconds
 
 
 func _sync(delta: float) -> void:
+	var was_swimming := swimming
+	swimming = ride == null and Swim.deep(world, pos)
+	_wake(delta, was_swimming)
 	var target := world.height_at(pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
 	position = Vector3(pos.x, _z + lift, pos.y)
 	if model:
+		model.swimming = swimming
 		model.rotation.y = -facing
 		model.position = Vector3.ZERO
 		var held := hero != null and hero.held()

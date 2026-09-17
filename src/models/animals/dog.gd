@@ -171,6 +171,26 @@ func _pose(p: StringName, t: float, speed: float) -> Dictionary:
 		&"stand":
 			d[&"head"] = Vector3(0, sin(clock * 0.6) * 0.5, 0.4 + sin(clock * 0.33) * 0.12)
 			d[&"jaw"] = Vector3(0, 0, -0.15 - absf(sin(clock * 4.0)) * 0.1)
+		&"swim":
+			# Paddling: the head and the shoulders up out of it, the back level, the
+			# forelegs working under the surface and the tail out flat behind.
+			var paddle := TAU * gait_phase
+			d["@body"] = Vector3(0, sin(paddle * 2.0) * 0.012, 0)
+			d[&"body"] = Vector3(0, 0, -0.16)
+			d[&"neck"] = Vector3(0, 0, -0.95)
+			d[&"head"] = Vector3(0, sin(clock * 1.1) * 0.2, 0.95)
+			d[&"tail"] = Vector3(sin(paddle) * 0.1, 0, 0.35)
+			d[&"tail2"] = Vector3(0, 0, 0.1)
+			# The legs are the quadruped rig own (fl/fr/bl/br, upper and lower): the
+			# forelegs reach and pull under the surface, the hind ones only trail.
+			for leg: String in ["fl", "fr"]:
+				var off := 0.0 if leg == "fl" else PI
+				d[StringName(leg + "_u")] = Vector3(0, 0, -0.55 + sin(paddle + off) * 0.75)
+				d[StringName(leg + "_l")] = Vector3(0, 0, -0.9 - maxf(0.0, sin(paddle + off)) * 0.5)
+			for leg: String in ["bl", "br"]:
+				var off2 := 0.0 if leg == "bl" else PI
+				d[StringName(leg + "_u")] = Vector3(0, 0, 0.3 + sin(paddle + off2) * 0.3)
+				d[StringName(leg + "_l")] = Vector3(0, 0, 0.45)
 		&"walk", &"flee":
 			var run := p == &"flee" or speed > 4.0
 			var kind := &"gallop" if run else (&"trot" if speed > 2.4 else &"walk")

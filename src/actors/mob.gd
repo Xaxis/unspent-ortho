@@ -45,6 +45,7 @@ var _flash_until := 0
 var _flash_at := Vector3.ZERO
 var _world: WorldData
 var _was_lit := true
+var _wake_in := 0.0
 var _holding := false
 var _flashing := false
 ## The lean kept as a quaternion: slerping the node's basis frame after frame
@@ -102,9 +103,14 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	# A body still at its round is not a threat to hush the notebook for, whether
 	# it is working calmly or watching the player hard (MobState.at_work).
 	hostile = bool(s.row.get("hostile", true)) and not (s.at_work() and not s.roused())
-	var ground := _world.height_at(s.pos)
+	# In water over its head it floats at the surface, not on the bed below it
+	# (Swim): the bed under deep water is the zero plane and the sheet is drawn
+	# above it, so a body left on the ground there is a body under the sea.
+	var swimming := Swim.swims(s.row) and Swim.deep(_world, s.pos)
+	var ground := _world.height_at(s.pos) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
 	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
+	_wake(delta, swimming)
 	model.rotation.y = -s.facing
 	var p := _pose(now_ms)
 	if p != model.pose:
@@ -153,10 +159,28 @@ func _suspecting(now_ms: float, lit: bool) -> bool:
 	return true
 
 
+## Rings on the water off a body swimming, the same mark the player leaves: what
+## says a thing is IN the water rather than drawn over it.
+func _wake(delta: float, swimming: bool) -> void:
+	if not swimming:
+		_wake_in = 0.0
+		return
+	_wake_in -= delta
+	if _wake_in > 0.0:
+		return
+	_wake_in = 0.62
+	MobFx.ring(get_parent(), Vector3(state.pos.x, Swim.WATER_Y, state.pos.y),
+		Palette.COLD[3], 0.5 + float(state.row.get("radius", 0.4)), 0.5)
+
+
 func _pose(now_ms: float) -> StringName:
 	var s := state
 	if not s.alive:
 		return &"dead"
+	# Nothing strikes, stands or works while it is swimming: it is keeping its
+	# head up, and a dog that came in after you is still coming.
+	if Swim.swims(s.row) and Swim.deep(_world, s.pos):
+		return &"swim"
 	if _holding:
 		return &"strike"
 	var phase := s.blow_phase(now_ms)

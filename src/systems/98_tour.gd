@@ -57,7 +57,11 @@ extends GameSystem
 ##                          as a step out of an ecotone is);
 ##                          border:A-B (the player is in the band between two
 ##                          landscape types, which is what an ecotone frame is of);
-##                          folk, crowd, dog, gulls
+##                          swimming:KIND (a body of that kind is in frame and out
+##                          of its depth: what a frame of something crossing is of),
+##                          swimming (the body is in water over its head and
+##                          taking it on its own: Swim), wading (it is in the
+##                          shallows); folk, crowd, dog, gulls
 ##                          (people and animals: see src/systems/tour/tour_people.gd);
 ##                          and whatever a system answers for with tour_seen(what)
 ##                          (75_music: score, score_pad, score_pulse, score_tense,
@@ -471,6 +475,22 @@ func _now_true(what: String) -> bool:
 		return game.body.lamp_lit
 	if what == "unlit":
 		return not game.body.lamp_lit
+	if what.begins_with("swimming:"):
+		# A body of that kind, alive, in frame and out of its depth: what a frame
+		# of something crossing the water is actually of (Swim).
+		var kind := Roster.resolve(what.substr(9))
+		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
+			if not bool(n.get("alive")) or (kind != &"" and StringName(n.get("kind")) != kind):
+				continue
+			if Swim.deep(game.world, n.get("pos")) and _body_in_frame(what.substr(9), 1):
+				return true
+		return false
+	if what == "swimming":
+		# In water over the head and taking it under its own steam (Swim): a
+		# present-tense fact about the body, which is what a  claim is for.
+		return game.player.swimming
+	if what == "wading":
+		return Ground.is_shallow(game.world.ground_at(floori(game.player.pos.x), floori(game.player.pos.y)))
 	if what.begins_with("land:"):
 		# `land:a|b` for a frame taken where either answer is honest: a walk out
 		# of an ecotone lands in one of the two, and which one is a fact about
@@ -850,7 +870,9 @@ func _ground_ring(want: Array[int], clear_only: bool) -> Vector2:
 		for i in range(-r, r + 1):
 			for p: Vector2i in [Vector2i(cx + i, cy - r), Vector2i(cx + i, cy + r),
 					Vector2i(cx - r, cy + i), Vector2i(cx + r, cy + i)]:
-				if not game.query.standable(p.x, p.y) or not _all_ground(want, p):
+				# The player is the body being staged and the player can swim, so
+				# deep water is a place to stand a tour on now (Swim).
+				if not game.query.standable(p.x, p.y, null, true) or not _all_ground(want, p):
 					continue
 				var spot := Vector2(p.x + 0.5, p.y + 0.5)
 				if clear_only and not _hand_is_empty_at(spot):

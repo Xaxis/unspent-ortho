@@ -12,7 +12,7 @@ extends FigureModel
 ## variation) and _pose(pose, t, speed) -> {bone: euler, "@bone": offset}.
 ## Limb conventions follow PersonAnim: +Z swings a hanging limb forward.
 
-const POSES: Array[StringName] = [&"stand", &"walk", &"alert", &"flee", &"windup", &"strike", &"hurt", &"dead", &"fly", &"land"]
+const POSES: Array[StringName] = [&"stand", &"walk", &"alert", &"flee", &"windup", &"strike", &"hurt", &"dead", &"fly", &"land", &"swim"]
 
 var rig: SkinRig
 var seed_value := 0

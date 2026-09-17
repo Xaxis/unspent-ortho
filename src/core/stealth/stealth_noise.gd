@@ -44,6 +44,9 @@ const GROUNDS := {
 	Ground.PEAT: 0.7,
 	Ground.SNOW: 0.65,
 	Ground.MUD: 0.8,
+	# Swimming is the loudest way anybody travels: there is no crouching in open
+	# water and nothing to be behind (Cover gives the deep nothing either).
+	Ground.DEEP_WATER: 1.6,
 	Ground.WATER: 1.5,
 	Ground.RIVER: 1.5,
 	Ground.BLACKWATER: 1.45,

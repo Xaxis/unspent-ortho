@@ -1,0 +1,44 @@
+# Swimming, through the real keys (owner, 2026-09-17): deep water was a wall to
+# everything without a raft under it, and it is a slow crossing now for a body
+# that can take it. What it costs is time and a soaking — nothing is dropped,
+# nothing drowns — and most machines still stop at the waterline, which is the
+# other half of the ruling and the last frame here.
+#   tools/tour.sh tours/swimming.tour --seed=1 --hour=11 --weather=clear:0
+coast calm
+place spawn
+wait 0.6
+
+# --- out of its depth ------------------------------------------------------------
+# `ground deep_water` stands the player where, until today, nobody could stand.
+ground deep_water
+wait 1.2
+await swimming 4
+shot 01-out-of-its-depth with swimming
+
+# --- taking it under its own steam, on the real keys ------------------------------
+walk 1,0 1.8
+wait 0.4
+shot 02-crossing-under-its-own-steam with swimming
+
+# --- and out: back on the strand it went in from ----------------------------------
+# Staged by name rather than walked: which way this seed's shore lies is not what
+# the frame is about, and a walk that guesses it is a walk that fails elsewhere.
+place spawn
+wait 1.2
+shot 03-ashore-and-dripping with land:coast
+
+# --- the other half: a hunter that will not follow ---------------------------------
+# The machine is put out on the only ground there is — the shore — and that is
+# where it stays. Swimming away works, and the one machine it does not work on is
+# the dredger, which was built for the water and says so on its own row.
+#
+# That the beasts come in after you (a dog swims, at a swimmer pace) and that the
+# dredger crosses are proved in tests/swim/test_swim_chase.gd, in the real
+# simulation: staging a chase across open water in a tour measures the runner and
+# the shape of one seed bay, not the rule.
+ground deep_water
+wait 1.0
+await swimming 4
+spawn runner
+wait 2.0
+shot 04-it-stops-at-the-waterline with swimming,mob:runner

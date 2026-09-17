@@ -409,6 +409,17 @@ wave A left that A2 did not take on.
   roof edge where the camera can see it, and put one near every village square;
   it did not give it a mark of its own, so it is now visibly steady rather than
   invisibly steady.)
+- **A swimmer is drawn over the water, not through it.** People draw after the
+  outline pass (render priority 10), so depth cannot cut a figure at the
+  waterline: a body in deep water is floated to the surface and reads as lying ON
+  it, with `MobFx.ring` wakes doing the work of saying it is in the sea. The fix
+  is a waterline clip in `person.gdshader` (discard below a world-space y, the
+  cut inked the way this art inks everything else) — worth doing when somebody is
+  already in that file, and the one piece of swimming that is not finished.
+- Villagers and the fauna system still keep out of all water
+  (`35_folk._standable`, `37_fauna._ok`), so a villager never swims and a dog
+  crosses only as a fight body. The roster says the beasts can (`crosses`); their
+  own systems have not been asked to.
 - `WorldData.temperature` and `moisture` are written by worldgen and read by
   nothing.
 
