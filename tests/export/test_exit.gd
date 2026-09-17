@@ -17,6 +17,12 @@ const RUN_SECONDS := 120.0
 ## child exiting: on a CI runner this test sat on a closed-but-unfinished pipe for
 ## twenty-eight minutes until the job was killed, and the log said nothing at all.
 ## A run that hangs now fails by name, in two minutes, saying what it was doing.
+##
+## The shell `exec`s the engine, so the pid handed back IS the engine. Without it
+## the pid was /bin/sh's: a hung run killed the shell, the engine under it was
+## handed to launchd, and it lived on forever with nothing waiting for it. Twenty-
+## four of them were found idling 17 to 21 hours later, ignoring SIGTERM, and no
+## session could see them because they were not the process anyone had started.
 func _run(args: PackedStringArray) -> String:
 	var log_path := OS.get_user_data_dir().path_join("exit-run-%d.log" % Time.get_ticks_usec())
 	var line := PackedStringArray([OS.get_executable_path(), "--headless", "--path", ProjectSettings.globalize_path("res://")])
@@ -24,7 +30,7 @@ func _run(args: PackedStringArray) -> String:
 	var quoted := PackedStringArray()
 	for a in line:
 		quoted.append('"%s"' % a.replace('"', '\\"'))
-	var pid := OS.create_process("/bin/sh", PackedStringArray(["-c", "%s > \"%s\" 2>&1" % [" ".join(quoted), log_path]]))
+	var pid := OS.create_process("/bin/sh", PackedStringArray(["-c", "exec %s > \"%s\" 2>&1" % [" ".join(quoted), log_path]]))
 	if pid <= 0:
 		fail("could not start a child run")
 		return ""
