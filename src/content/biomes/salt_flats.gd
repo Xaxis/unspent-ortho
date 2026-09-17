@@ -173,6 +173,10 @@ static func make() -> BiomeDef:
 	# Its keeper: the rake that made the pans and still goes round them
 	# (src/core/sentinel/designs/pan_rake.gd, docs/VISION.md §3).
 	d.sentinel = &"pan_rake"
+	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# what a player crosses this landscape FOR. Its own file is the authority;
+	# `Landmarks.problems` fails if a kind here does not name this landscape back.
+	d.landmarks = [&"cast_stones", &"evaporator", &"clerks_office"]
 	d.sound_bed = &"bed_bones"
 	d.music_motif = &"bonelands"
 	d.surface = _surface

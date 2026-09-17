@@ -753,6 +753,145 @@ Gaps it leaves for the rest of the wave:
 - Orbital and era realms are declared in the table and hold no landscape: their
   pages are not drawn, and `tests/realm` refuses a landscape registered into one.
 
+### Wave B: what the works-and-landmarks package made true
+
+`docs/VISION.md` §2, §3, §8. Two halves of one idea: a landscape must be worth
+crossing, and the machines must be doing something in it. Proved by
+`tours/works.tour` and `tours/landmarks.tour`, and by `tests/works/` and
+`tests/landmarks/`.
+
+- **A region the plan is working has a depot, and it can be put out.** One per
+  REGION with room enough and a work of the plan already standing in it
+  (`Works.sites`, pure and derived from the island, so it never moves and is
+  never saved): a raised deck on the survey bearing with a lattice mast over it,
+  bays added as the plan advances, and a lit strip along every rail. Three
+  working parts hold it up, each its own walk across open ground, each opened
+  under a held key with a steel edge and filed as sabotage the moment it goes.
+  The third puts it dark for good: the lights out, every plan work in the yard
+  spent (which is what leaves that region's keeper standing dark,
+  `Sentinels.feeds`), nothing more put on the land from here, and a tuft at a
+  time of the ground closing over it.
+- **The region's machines come from it, and a dark yard quiets the whole
+  region.** Two halves, and only the first was ever built: the yard sends one of
+  its own out of the gate every `OWN_EVERY` world minutes and one on a round
+  along the survey every `PATROL_EVERY`, both within thirty tiles of the player.
+  Past that the coast's own rolls did not care whether the yard was lit, so a
+  region dark for a week held exactly as many machines as a working one. Now a
+  broken depot shuts every machine of the plan out of the rolls over its whole
+  region (`Coast.also_shut`, one additive field) and leaves what lives there
+  alone, so the land goes quiet and not empty. Measured in a running game
+  (`tests/works/test_in_game.gd`): **40 bodies out of the yard over 6 world
+  hours standing -> 0 broken**, and **11 machine kinds shut out of the region,
+  1 living kind left in it**. (The old figure, "162 bodies a day", was
+  `floor(24*60/14) + floor(24*60/24)` over two constants and measured nothing;
+  `Works.bodies_in` has been deleted rather than left to be quoted again.)
+- **Breaking one really moves the plan's file on you.** Both systems find the
+  disposition system by the string `"32_disposition"`, and nothing proved the
+  call landed. Measured through a held key on a real housing:
+  **interference on the yard's own network 0.05 -> 0.20**.
+- **Ten kinds of place worth the walk, three or four in every landscape, and
+  every landscape declares its own.** A drowned lighthouse with the lens still in
+  its cradle and no light in it; a relay mast leaning in standing water with one
+  strip still alive; a fire tower whose bottom two flights are gone and whose
+  last tenant's sacking is still on the deck; the tall stack blinking over a land
+  nothing is burning under; a ring of standing stones with the fallen ones recast
+  in concrete round rebar; a salt-crusted evaporator stopped with its rake down;
+  a hauler the land grew a tree through; a clerk's post with its whole file out
+  in the weather and still in order; and, underground, a limestone column robbed
+  out and replaced with a poured one round rebar, and a sump gantry over black
+  water with its float down. `BiomeDef.landmarks` is now written in all nine
+  landscape files and `Landmarks.problems` fails if a landscape and a kind
+  disagree about each other — the field was added to `BiomeDef` and nothing wrote
+  it for a whole wave.
+- **Every one of them stops a body.** Nothing in the package had a collider of
+  any kind: a player walked into the middle of the lighthouse's stonework and
+  stood there, occluded and invisible at screen centre, and the depot deck was
+  walk-through, which is why "a stealth-and-fight set piece with several working
+  parts under pressure" was an open field with decorative furniture. Each model
+  now declares its mass as circles (`LandmarkModels.BLOCKS`,
+  `WorksDepot.yard_blocks`) and `WorldQuery.set_blocks` stops a body on them —
+  props and walls are kept apart on purpose, because nothing may take a wall,
+  hear it or shelter under it.
+- **Every landmark holds one deterministic roll off the one economy** — a
+  landscape's own elite material where the landscape has one, so the same kind of
+  place is worth walking to twice in two landscapes.
+
+**What the camera can actually show, which is the thing this package was
+wrong about.** `CameraRig` is 15 world units of view height at 16:9, pitched 57
+degrees: **26.7 tiles across and 17.9 tiles of ground**, so nothing further than
+about 13 tiles to the side or 9 tiles up the screen is ever in frame. The kinds
+were written claiming `sees` of 20-34 tiles (VISION §3 asks for twenty), so every
+far-read line the game said was said about a thing the player could not see, and
+the only frames that showed the silhouettes were shot at twice the play camera's
+zoom. Now:
+
+- `Landmarks.read_reach(view_height, pitch_deg, aspect, high)` is the rule, and
+  `tests/landmarks/test_models.gd` pins every kind's `sees` against the real rig;
+- `sees` is **11-13 tiles** (was 20-34) and `FOUND_AT` is **9** (was 16);
+- `tour_seen("landmark:KIND")` asks the LIVE camera whether the thing is in the
+  frame, instead of "there is one within sixty tiles", which is what let every
+  far frame pass;
+- both tours shoot their far frames at play zoom, backing off UP the screen,
+  which is the one direction where a tall thing's head carries after its base has
+  gone off the bottom.
+
+**Reading a landmark off the horizon from twenty tiles wants a camera change,
+not a taller mast**: at 57 degrees a thing only buys `high * cos(pitch)` of
+screen height, so the stack at 12 units tall reads no further than the lighthouse
+at 8. That is M3's to decide, and it is a whole-game decision.
+
+Gaps it leaves:
+
+- **The twenty-tile read of VISION §3 is not met and cannot be at this camera**
+  (above). The models are built to carry; the frame is not big enough.
+- A landmark may not hold anything a machine carries: `Sources` walks any table
+  yielding such an item back to a roster body, and a place is not a body
+  (`tests/gear_economy/test_obtainable.gd`). So `axe_works` — the one piece in
+  the tree with no way to it, whose own row says the landmarks own it — is still
+  unreachable, and a wick in a lighthouse is still a test failure.
+- The salt flats, the scrapwood and the limestone caves hold no elite material of
+  their own (no raw and no machine kind of their own, `EliteStock`), so their
+  landmarks pay in ordinary finds while every other landscape's pay in its own
+  material.
+- A broken depot's plan stage stops where it was, but nothing else in the plan
+  reads `works_broken` yet: interference does not fall, and the region's other
+  depots (there is one per region, so there are none) cannot take over.
+- The land closing over a broken yard is proved in tests, not in a tour: it is
+  four world days and a tour cannot stand still for them.
+- Every landmark's cache is the same locker. The ten silhouettes differ; what a
+  player's hands go into does not.
+- A landmark's mass is circles, so a long thing (the evaporator, the grown hulk)
+  is a chain of them and its corners are softer than its drawing. Nothing in the
+  game has a real polygon collider and this package is not the place to add one.
+- **`tests/sky/test_lamp_pools.gd` fails about one run in three, and it is not
+  this package's doing.** `test_lamps_hand_their_pools_to_the_ink_at_night_only`
+  reads the lantern's pool as 5.84 tiles off the player's hand instead of under
+  0.8, and it is the SAME number every time it fails, so it is a race and not
+  noise: something else deterministic is taking the first pool. Measured three
+  runs on this branch (two failures) and three on `origin/main` with the branch
+  checked out of the way (one failure, same 5.84); it passes twice out of two
+  when run alone. Whoever owns 15_lights should make the lantern's pool first by
+  construction rather than by arriving first.
+
+Costs, measured on this laptop under load:
+
+| What | Before | After |
+|---|---|---|
+| Every depot found in a 512-tile world (10 of them) | 0.59 ms | 0.67 ms |
+| Every landmark sited in a 512-tile world, cold | 48.7 ms | 52.1 ms |
+| Asking for the list again | under 1 ms | under 1 ms |
+| Landmarks on seed 1, by landscape | coast 4, pinewood 3, bonelands 2, moss 3, burning 3, salt_flats 2, snowfield 2, **scrapwood 0** | coast 3, pinewood 3, bonelands 2, moss 2, burning 2, salt_flats 1, snowfield 3, **scrapwood 3** |
+| Landmarks on seed 7, by landscape | 22 in all, **scrapwood 1** | 23 in all, **scrapwood 2** |
+
+The scrapwood held nothing because regions were filled biggest-first, so the big
+landscapes put their silhouettes down and the small ones came last to ground
+where every tile was inside `MIN_APART` of something already standing: the
+furthest tile in scrapwood region 8 on seed 1 from an existing landmark was
+**23.3 tiles against a floor of 24**. The rounds now go round every region, least
+room first, and a run under `Landmarks.REGION_TILES` (400) is a corner and not a
+place. `tests/landmarks/test_world.gd` asks every landscape with a region that
+size for at least one, which is the test that would have caught it.
+
 ## M3 — The landscapes
 
 Grow to at least 20 landscape types, each with its own props, decor, life, weather,

@@ -1,0 +1,136 @@
+# The places worth the walk (docs/VISION.md §3, §8), visited through real keys:
+# read from a distance, named on arrival, opened with E, and on the map after.
+#
+#   tools/tour.sh tours/landmarks.tour --seed=1 --hour=10 --weather=clear:0
+#
+# THE FAR FRAMES ARE SHOT AT THE PLAY CAMERA. The first version of this tour
+# zoomed to 26-30 for every silhouette — twice what a player is ever given — so
+# every frame that said "from its own land" was a picture of a camera nobody has.
+# A landmark's reach is now the camera's (`Landmarks.read_reach`), and the way to
+# stand at it is to walk away from the place up the screen — about seven tiles,
+# which is what `walk 0,-1 ... run` is doing in each of the far shots below — and
+# the frame fails if the silhouette is not still in it. Further than that and a
+# landmark is not dim, it is off the picture.
+#
+# One per landscape, four landscapes, each shot three times: the silhouette in
+# its own land, the place close to, and what it gave. The order of the three is
+# the order a landmark is meant to be experienced in, and it is the whole of what
+# this package is for — a landscape you can see something in from across it, and
+# something in it when you get there.
+
+coast calm
+
+# THE DROWNED LIGHT, on the coast. Backed off UP the screen — which is away from
+# the camera, so the tower ends up on the near side of the frame where its head
+# carries above the bottom edge (Landmarks.read_reach) — at the zoom the game is
+# really played at. Ten tiles is as far as this camera lets a tower be read from,
+# and that is the honest picture of it: a shape before it is a name.
+place lighthouse
+wait 0.6
+walk 0,-1 1.4 run
+wait 0.5
+await landmark:lighthouse 12
+shot 01-the-drowned-light-across-its-own-headland with landmark:lighthouse,land:coast
+
+# And the tower is a THING, not a picture of one. Back at its face, walk INTO it:
+# the stonework stops the body, which nothing in this package did at all until
+# the masses were written. Pushed each way round the compass from its own face,
+# because which way the tower lies from its cache is the island's business and
+# not the tour's: one of the four drives into the stonework and is stopped by it,
+# and `await landmark_wall` fails the tour if none of them is.
+place lighthouse
+wait 0.4
+walk -1,1 0.7
+walk 1,1 0.7
+walk 1,-1 0.7
+walk -1,-1 0.7
+await landmark_wall 4
+shot 02-the-stonework-stops-the-body with landmark:lighthouse
+
+# Close to: the lamp room open to the weather, and the locker somebody dragged
+# out of it standing in front. Round to its own face, which is where the hands go.
+place lighthouse
+zoom 10
+wait 0.6
+await landmark_cache 8
+shot 03-the-drowned-light with landmark:lighthouse,landmark_cache
+
+# And what was in it. One roll, once and for good (tests/landmarks/test_loot.gd).
+press use 0.3
+await took 8
+# The slate wakes on anything taken, and a frame shot the instant it does is a
+# picture of a pane half way up. Let it settle: what the place gave is meant to
+# be read off the glass.
+wait 1.6
+shot 04-what-the-light-held with landmark:lighthouse
+zoom 15
+
+# THE FIRE TOWER: its stair gone, and the last person's kit still on the deck
+# above where it was. It stands on a rise in three landscapes, and which one this
+# seed's first tower is standing on is the world's business, not the tour's.
+place firewatch
+wait 0.6
+walk 0,-1 1.4 run
+wait 0.5
+await landmark:firewatch 12
+shot 05-the-fire-tower-from-across-its-rise with landmark:firewatch
+place firewatch
+zoom 10
+wait 0.5
+await landmark_cache 8
+press use 0.3
+await took 8
+wait 1.6
+shot 06-what-the-tower-held with landmark:firewatch
+zoom 15
+
+# THE CAST STONES: what stood here before the machines, with the fallen ones
+# recast in concrete round rebar and set back up, and a survey plate bolted to
+# the tallest of them.
+place cast_stones
+wait 0.6
+walk 0,-1 1.4 run
+wait 0.5
+await landmark:cast_stones 12
+shot 07-the-cast-stones-in-their-own-land with landmark:cast_stones
+place cast_stones
+zoom 10
+wait 0.5
+await landmark_cache 8
+press use 0.3
+await took 8
+wait 1.6
+shot 08-what-the-ring-held with landmark:cast_stones
+zoom 15
+
+# THE GROWN HULK: a machine that died standing, and has been in one place long
+# enough for the land to come up through it.
+place grown_hulk
+wait 0.6
+walk 0,-1 1.4 run
+wait 0.5
+await landmark:grown_hulk 12
+shot 09-the-grown-hulk-across-its-clearing with landmark:grown_hulk
+place grown_hulk
+zoom 10
+wait 0.5
+await landmark_cache 8
+press use 0.3
+await took 8
+wait 1.6
+shot 10-what-the-hulk-held with landmark:grown_hulk
+
+# And every one of them is on the slate's survey now, and stays there: a place
+# found is found for the rest of the game, whether or not it was ever opened
+# (tests/landmarks/test_loot.gd holds that through a save). The frame is named
+# for what it can actually be seen to hold — a mark over each place found, each
+# drawn with its own shape (`LandmarkDef.mark`, `UiMapScreen.MARKS`) instead of
+# the same diamond nine times — and not for a survey the picture does not show:
+# the first version of this frame was called "four places on the survey" over
+# 0.8% of the island explored and at most one legible glyph.
+zoom 15
+press map 0.2
+await app:map 6
+wait 0.4
+shot 11-the-places-found-marked-on-the-survey with app:map,found:lighthouse#1,found:grown_hulk#1
+press map 0.2

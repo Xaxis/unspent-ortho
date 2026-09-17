@@ -70,6 +70,10 @@ static func make() -> BiomeDef:
 	# Its keeper: the reaper on the gantry at the machines' intake
 	# (src/core/sentinel/designs/tide_reaper.gd, docs/VISION.md §3).
 	d.sentinel = &"tide_reaper"
+	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# what a player crosses this landscape FOR. Its own file is the authority;
+	# `Landmarks.problems` fails if a kind here does not name this landscape back.
+	d.landmarks = [&"lighthouse", &"firewatch", &"cast_stones", &"grown_hulk"]
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
