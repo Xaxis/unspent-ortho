@@ -162,11 +162,11 @@ func test_home_opens_its_apps_and_its_keys_back_out_one_level() -> void:
 		s.handle(&"confirm")
 	eq(opened, [&"loadout", &"reads", &"saves"] as Array[StringName], "gear, reads and saves open from home")
 	check(s.is_open, "and home stays under them")
-	s.select(&"controls")
+	# Settings is an app like the others now, not a page of letters home turns into.
+	s.select(&"settings")
 	s.handle(&"confirm")
-	eq(s.page, "keys")
-	s.handle(&"back")
-	eq(s.page, "list", "esc leaves the keys first")
+	eq(opened.back(), &"settings", "settings opens from home too")
+	eq(s.page, "list", "and home is still home under it")
 	check(s.is_open, "and home stays")
 	s.select(&"resume")
 	s.handle(&"confirm")
@@ -189,10 +189,11 @@ func test_title_menu_navigates_without_a_world() -> void:
 	s.handle(&"up")
 	eq(s.menu.selected().id, &"quit", "wraps")
 	s.handle(&"up")
+	# The row that was a list of letters is the settings app now: it opens over the
+	# title rather than turning the title into a page of its own.
+	eq(s.menu.selected().id, &"settings")
 	s.handle(&"confirm")
-	eq(s.page, "keys")
-	s.handle(&"back")
-	eq(s.page, "list")
+	eq(s.page, "list", "the title stays the title")
 	check(s.is_open, "esc never closes the title")
 	s.free()
 
@@ -201,7 +202,7 @@ func test_a_key_held_as_the_title_opens_is_not_a_press_on_it() -> void:
 	var s := UiTitleMenu.new()
 	tree.root.add_child(s)
 	s.open()
-	s.select(&"controls")
+	s.select(&"settings")
 	s.close()
 	Input.action_press(&"use")
 	# A press counts as "just pressed" until the frame it was made in is behind
@@ -213,15 +214,19 @@ func test_a_key_held_as_the_title_opens_is_not_a_press_on_it() -> void:
 	for i in 2:
 		await tree.process_frame
 	s.open()
-	eq(s.menu.selected().id, &"controls")
+	eq(s.menu.selected().id, &"settings")
+	# What says the press was taken is the slate answering it: the row it is on
+	# opens an app over the title, and this menu has no title scene behind it.
+	_listen()
 	s._read_keys()
-	eq(s.page, "list", "the E that left the game does not choose on the title")
+	check(not _sounds.has(&"ui_slate_confirm"), "the E that left the game does not choose on the title")
 	Input.action_release(&"use")
 	s._read_keys()
 	Input.action_press(&"use")
 	s._read_keys()
 	Input.action_release(&"use")
-	eq(s.page, "keys", "a fresh press does")
+	check(_sounds.has(&"ui_slate_confirm"), "a fresh press does")
+	_unlisten()
 	s.free()
 	# Input keeps a press "just pressed" for the rest of its frame: let it pass
 	# before the next test's title reads the keys.

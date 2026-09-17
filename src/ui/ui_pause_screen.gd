@@ -51,7 +51,7 @@ func refresh() -> void:
 		{"id": &"loadout", "text": "gear", "app": true},
 		{"id": &"reads", "text": "machine reads", "app": true},
 		{"id": &"saves", "text": "saves", "app": true},
-		{"id": &"controls", "text": "controls"},
+		{"id": &"settings", "text": "settings", "app": true},
 		{"id": &"title", "text": "to the title", "enabled": true},
 		{"id": &"quit", "text": "quit"},
 	]
@@ -77,9 +77,9 @@ func _on_confirm(row: Dictionary) -> void:
 	match row.id:
 		&"resume":
 			close()
-		&"controls":
-			page = "keys"
-			queue_redraw()
+		&"settings":
+			if open_app.is_valid():
+				open_app.call(&"settings")
 		&"title":
 			_save_on_leaving()
 			close()

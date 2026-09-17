@@ -87,7 +87,12 @@ func snap_to(p: Vector3) -> void:
 
 ## A short shake of `strength` world units, decaying over `seconds`. Moves only
 ## h_offset/v_offset, rounded to whole texels so the pixel grid holds.
+## `PlayerSettings` may turn this down to nothing: it is the only thing that moves
+## the whole picture without the player asking, so it is theirs to refuse.
 func shake(strength: float, seconds: float = 0.12) -> void:
+	strength *= float(PlayerSettings.value(&"picture.shake"))
+	if strength <= 0.001:
+		return
 	if not is_inside_tree():
 		return
 	var texel := view_height / float(get_viewport().get_visible_rect().size.y)

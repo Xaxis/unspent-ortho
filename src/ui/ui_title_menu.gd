@@ -75,7 +75,7 @@ func refresh() -> void:
 	var rows: Array[Dictionary] = [
 		{"id": &"new", "text": "new game"},
 		{"id": &"seed", "text": "island"},
-		{"id": &"controls", "text": "controls"},
+		{"id": &"settings", "text": "settings"},
 		{"id": &"quit", "text": "quit"},
 	]
 	var entries := SaveSlots.list()
@@ -239,10 +239,10 @@ func _on_confirm(row: Dictionary) -> void:
 				title.new_game()
 		&"seed":
 			_on_side(1)
-		&"controls":
+		&"settings":
 			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
-			page = "keys"
-			queue_redraw()
+			if title != null:
+				title.open_settings()
 		&"quit":
 			get_tree().quit()
 

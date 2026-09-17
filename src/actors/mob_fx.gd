@@ -966,6 +966,10 @@ static func swing_material() -> ShaderMaterial:
 static func set_flash(root: Node, on: bool, at: Vector3 = Vector3.ZERO, radius: float = 0.0) -> void:
 	if root == null:
 		return
+	# A player may ask for no flashes at all (PlayerSettings): what is struck still
+	# shows it in the mark, the sound and the pose, so nothing is lost but the glare.
+	if on and not bool(PlayerSettings.value(&"picture.flashes")):
+		return
 	if root.has_method(&"set_flash"):
 		root.call(&"set_flash", on, at, radius)
 		return

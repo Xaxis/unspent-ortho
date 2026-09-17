@@ -26,6 +26,9 @@ var camera: CameraRig
 var menu: UiTitleMenu
 ## Dev mode on the title (DevTitle): its keys, its app, its label.
 var dev: DevTitle
+## The settings app on the title's own slate: the same page the pause menu opens,
+## reading its keys itself because the title has no ui system to route them.
+var settings: UiSettingsScreen
 
 ## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
 ## there a coast is made on the main thread and would hold the title still for seconds.
@@ -78,6 +81,10 @@ func setup(o: BootOptions) -> void:
 	menu.title = self
 	_layer.add_child(menu)
 	dev = DevTitle.attach(self, _layer)
+	settings = UiSettingsScreen.new()
+	settings.standalone = true
+	settings.device_rect = UiTitleMenu.DEVICE
+	_layer.add_child(settings)
 	if o.shot != "":
 		# A shot has a few frames, not a second: draw the coast now and show it.
 		_show(WorldGen.generate(seed_value, o.size), seed_value, null, [], true)
@@ -324,3 +331,11 @@ static func replace_game(game: Game) -> void:
 	parent.remove_child(game)
 	game.queue_free()
 	BootPage.open_title(parent, o)
+
+
+## Open the settings app over the title, if it is not already up.
+func open_settings() -> void:
+	if settings == null:
+		return
+	if not settings.is_open:
+		settings.open()

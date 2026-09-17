@@ -211,7 +211,7 @@ func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read
 	var menu := UiTitleMenu.new()
 	tree.root.add_child(menu)
 	menu.open()
-	eq(_ids(menu), [&"new", &"seed", &"controls", &"quit"], "nothing saved: no continue")
+	eq(_ids(menu), [&"new", &"seed", &"settings", &"quit"], "nothing saved: no continue")
 	eq(menu.note, "", "and nothing to say")
 	menu.close()
 
@@ -220,7 +220,7 @@ func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read
 	eq(SaveFile.write(SaveSlots.path(1), older, DATA), OK)
 	eq(SaveFile.write(SaveSlots.path(2), HEADER, DATA), OK)
 	menu.open()
-	eq(_ids(menu), [&"continue", &"new", &"seed", &"controls", &"quit"], "continue heads the slip")
+	eq(_ids(menu), [&"continue", &"new", &"seed", &"settings", &"quit"], "continue heads the slip")
 	eq(menu.menu.selected().get("id"), &"continue", "and is chosen")
 	eq(int(menu.saved.get("slot", -1)), 2, "the newest save")
 	check(menu.photo_rect().has_area(), "its picture takes a place on the glass")
@@ -229,7 +229,7 @@ func test_the_title_offers_continue_for_the_newest_and_names_what_cannot_be_read
 	for slot: int in [1, 2]:
 		_put(SaveSlots.path(slot), "garbage".to_utf8_buffer())
 	menu.open()
-	eq(_ids(menu), [&"new", &"continue", &"seed", &"controls", &"quit"], "unreadable saves: continue is faded, not first")
+	eq(_ids(menu), [&"new", &"continue", &"seed", &"settings", &"quit"], "unreadable saves: continue is faded, not first")
 	eq(menu.note, "Slot 1 cannot be read.", "the title says so plainly")
 	menu.select(&"continue")
 	menu.handle(&"confirm")

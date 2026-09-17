@@ -179,6 +179,26 @@ on it — a figure is drawn over the water whatever its depth (people draw after
 the outline pass), so the water cannot cut it yet. That is the one thing about
 this that is not finished, and it is in ROADMAP.
 
+## Settings (owner, 2026-09-17)
+
+The slate's own page, reached from the pause menu and from the title: **sound**
+(everything, the world, the score — levels against the mix as it was tuned, not
+absolutes), **picture** (the window and fullscreen where there is a window, how
+far the camera shakes, and whether a struck body flashes), **playing** (crouch
+and the slate-on-a-machine as a hold or a press), and **keys** — every action the
+game answers to, read off the live input map, each one movable, and `put the keys
+back` to undo the lot.
+
+What it is not: a master configuration. Those are the owner's, packed into a
+build (docs/DEV.md); these are the player's, kept on their own device. Nothing
+here changes what a world is or how hard it presses — a settings page that can
+change the game is a settings page that has to be balanced.
+
+Two of them exist because holding a key for minutes is the commonest thing an
+accessibility setting is asked to undo, and two because the camera moving and the
+screen flashing are the only things in the game that happen to the player rather
+than to their body.
+
 ## Owner rulings carried over (mechanics only)
 
 - Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.
