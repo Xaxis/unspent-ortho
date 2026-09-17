@@ -3,8 +3,10 @@ class_name Broken
 ## as it is seen). A boulder half quarried is not a smaller boulder: it is the same
 ## boulder with a piece off it, standing as wide as it ever did, with a fresh
 ## unweathered face where the hammer went. This is the geometry of that, over any
-## model at all: the mesh is cut at the height what is left reaches, everything
-## above goes, and the cut is capped.
+## model at all: the mesh is opened at the height what is left reaches, everything
+## above goes, and what was opened is capped. The surface it is opened along is a
+## shallow BOWL and not a plane, because a plane reads as a machined table top
+## however it is coloured (looked at in a real frame, 2026-09-17).
 ##
 ##   Broken.work_down(kit, share, seed)     cut a built MeshKit down to `share` left
 ##   Broken.bucket(share) / share_of(b)     the five steps a worked thing is drawn in
@@ -48,9 +50,10 @@ static func height_for(share: float) -> float:
 	return clampf(pow(clampf(share, 0.0, 1.0), 0.8), LEAST, 1.0)
 
 
-## Cut `kit` down to what `share` leaves. Everything above the cut goes; triangles
-## across it are clipped; the rim left is capped with a face in the thing's own
-## colour, lightened, because what the hammer opens has not been weathered.
+## Work `kit` down to what `share` leaves. Everything above the surface goes,
+## triangles running through it are clipped, and the rim left is capped with a face
+## in the colour of what is LEFT, marked `GroundColors.FRESH` so the land's wear
+## never settles on it: what the hammer opens has not been weathered.
 static func work_down(kit: MeshKit, share: float, seed_value: int = 0) -> void:
 	if kit == null or share >= 1.0 or kit.verts.size() < 3:
 		return
