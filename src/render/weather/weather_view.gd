@@ -26,8 +26,31 @@ enum Mode { STROKE, FLECK, WAVE, FLICK, TICK, SPARK, RING, SWIRL }
 ## Marks in one dust devil's column.
 const DEVIL_MARKS := 260
 
+## WEATHER AT SEVERAL DEPTHS (docs/LOOK.md law 3). Rain and snow used to fall in
+## ONE sheet in a box round the focus, which under an orthographic camera is a
+## texture over the picture: every drop the same length, the same speed, all of
+## them behind everything. Air is not like that. So each falls in three bands,
+## and the bands are not a style choice, they are POSITIONS:
+##
+##   FAR    y 0..2.5 over the ground. Behind a standing body, small and slow,
+##          barely slanted. It is what makes a machine at the top of the frame
+##          have weather BEHIND it.
+##   MIDDLE the old box, y 0..11, where the player is.
+##   NEAR   y 8..13, which under this camera is eight units closer to the eye
+##          than the ground -- genuinely between the lens and the place. Few,
+##          long, fast, and drawn over everything including the player.
+##
+## The near band is the one that sells it and it is nearly free: a few hundred
+## marks, no shadow, no depth write. It is also the only weather a player can
+## tell is moving at a different rate from the world, which is the one parallax
+## an orthographic camera can be given.
+
 var camera: CameraRig
 var rain: CPUParticles3D
+## Rain in front of the eye: long, fast strokes crossing the whole picture.
+var near_rain: CPUParticles3D
+## Rain behind everything standing: short, small, slow.
+var far_rain: CPUParticles3D
 ## Drizzle: a fine grain of short pale strokes, slow, hardly slanted.
 var drizzle: CPUParticles3D
 var splash: CPUParticles3D
@@ -71,6 +94,17 @@ func setup(cam: CameraRig) -> void:
 	# Rain: mostly ink strokes, a third pale ones, so it reads on turf and on sand.
 	rain = _emitter("rain", 3400, 0.62, air, mid, false)
 	_mat(rain, Mode.STROKE, {"color_a": Palette.INK[2], "color_b": Palette.RIME[4], "mix_b": 0.5, "length_px": Vector2(5, 8), "columns": 1.0, "ground_mask": 3})
+	# NEAR rain. Eight units nearer the eye than the ground, so it draws over the
+	# player and over a machine and the depth test does the work. Few and long:
+	# three hundred strokes at three times the length read as rain past the lens,
+	# and three thousand read as a grey curtain, which is the papery failure by
+	# another name.
+	near_rain = _emitter("near_rain", 320, 0.40, Vector3(18.0, 2.4, 16.0), Vector3(0, TOP * 0.95, 0), false)
+	_mat(near_rain, Mode.STROKE, {"color_a": Palette.INK[1], "color_b": Palette.RIME[5], "mix_b": 0.45, "length_px": Vector2(16, 26), "columns": 0.25, "ground_mask": 3})
+	# FAR rain, behind anything standing: short, fine and slow, so the far half
+	# of the frame has weather in it that is plainly not the near half's.
+	far_rain = _emitter("far_rain", 2000, 0.9, Vector3(17.0, 1.2, 15.0), Vector3(0, 0.9, 0), false)
+	_mat(far_rain, Mode.STROKE, {"color_a": Palette.INK[3], "color_b": Palette.RIME[4], "mix_b": 0.4, "length_px": Vector2(2, 4), "columns": 0.8, "ground_mask": 3})
 	drizzle = _emitter("drizzle", 3600, 1.3, air, mid, false)
 	_mat(drizzle, Mode.STROKE, {"color_a": Palette.RIME[4], "color_b": Palette.INK[3], "mix_b": 0.35, "length_px": Vector2(2, 3), "columns": 0.3, "ground_mask": 3})
 	splash = _emitter("splash", 260, 0.16, Vector3(15.0, 0.02, 13.0), Vector3.ZERO, false)
@@ -97,9 +131,12 @@ func setup(cam: CameraRig) -> void:
 	# The rim is the snowfield's own blue shade, not ink: a flake is pale first
 	# and held second, and only some of them (mix_b) are held at all.
 	_mat(snow, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.5, "length_px": Vector2(1, 2.4), "wander": 2.0, "highlight": 1.0, "ground_mask": 1})
-	# Flakes near the eye: fewer, three pixels across, falling faster past.
-	flurry = _emitter("flurry", 2200, 5.0, Vector3(16.0, 2.0, 14.0), Vector3(0, TOP * 0.8, 0), true)
-	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[3], "color_b": Palette.RIME[5], "mix_b": 0.7, "length_px": Vector2(2, 3), "wander": 3.0, "highlight": 1.0, "ground_mask": 1})
+	# Flakes near the eye. This band already existed and was the only depth any
+	# weather had; it is pushed further out and made bigger to match the near
+	# rain, because a flake past the lens is five pixels across and slow, and a
+	# flake three pixels across at the same height is only more snow.
+	flurry = _emitter("flurry", 900, 4.0, Vector3(18.0, 2.4, 16.0), Vector3(0, TOP * 0.95, 0), true)
+	_mat(flurry, Mode.FLECK, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 0.8, "length_px": Vector2(4, 7), "wander": 4.5, "highlight": 1.0, "ground_mask": 1})
 	# Blown snow: long low streaks racing along the ground in a blizzard and a
 	# whiteout — paper on a cold shade rim, like the flecks, so the wind is drawn
 	# pale over pale ground and a whiteout is streaks and not specks. A streak is
@@ -283,6 +320,19 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 		"slant": lean * SLANT_PER_LEAN,
 		"length_px": Vector2(5, 8) + Vector2(1, 3) * storm,
 	})
+	# The near band falls half again as fast and leans further, because it is
+	# nearer: that difference in rate is the ONE parallax an orthographic camera
+	# can be given, and it is what makes a still frame of rain read as air rather
+	# than as a hatch. It comes in sooner than the sheet does, so the first of the
+	# rain is a few drops past the lens.
+	_drive(near_rain, clampf(float(look.rain) * 1.35, 0.0, 1.0), Vector3(lean * 1.25, -1.0, 0.0), 27.0, {
+		"slant": lean * 1.25 * SLANT_PER_LEAN,
+		"length_px": Vector2(16, 26) + Vector2(4, 8) * storm,
+	})
+	# And the far band falls slower and straighter, for the same reason.
+	_drive(far_rain, float(look.rain), Vector3(lean * 0.6, -1.0, 0.0), 13.0, {
+		"slant": lean * 0.6 * SLANT_PER_LEAN,
+	})
 	var fine := lean * 0.5
 	_drive(drizzle, float(look.get("drizzle", 0.0)), Vector3(fine, -1.0, 0.0), 7.5, {"slant": fine * SLANT_PER_LEAN})
 	_drive(hail, float(look.hail), Vector3(lean * 0.5, -1.0, 0.0), 22.0, {"slant": lean * 0.5 * SLANT_PER_LEAN * 0.3})
@@ -293,7 +343,9 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var curtains := 0.7 * (1.0 - whiteout)
 	var gale := maxf(absf(wind), whiteout)
 	_drive(snow, float(look.snow), Vector3(wind * 1.4 + whiteout * signf(wind + 0.001) * 1.2, -1.0, 0.0), 1.1 + gale * 2.2, {"wander": 2.0 * (1.0 - gale * 0.6), "columns": curtains})
-	_drive(flurry, float(look.snow), Vector3(wind * 1.6 + whiteout * signf(wind + 0.001) * 1.4, -1.0, 0.0), 1.8 + gale * 2.6, {"columns": curtains})
+	# The near flakes drift rather than fall: big and slow past the lens, which
+	# is what a flake three feet from your eye does.
+	_drive(flurry, float(look.snow), Vector3(wind * 1.9 + whiteout * signf(wind + 0.001) * 1.6, -1.0, 0.0), 1.3 + gale * 1.8, {"columns": curtains * 0.5})
 	var blow_snow := signf(wind) if absf(wind) > 0.05 else 1.0
 	_drive(spindrift, blizzard, Vector3(blow_snow, -0.04, 0.1), 7.0 + absf(wind) * 6.0, {"facing": blow_snow})
 	_drive(ash, float(look.ash), Vector3(wind * 0.8, -1.0, 0.2), 0.55, {})

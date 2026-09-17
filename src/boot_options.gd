@@ -77,6 +77,11 @@ extends RefCounted
 ## --quality=NAME      the graphics tier this run renders at (src/render/quality.gd):
 ##                     ultra | high | medium | low | web. Beats the player's own
 ##                     picture setting and the configuration, for this run only (render)
+## --fore=N            how many FOREGROUND pieces may hang over the frame this run
+##                     (src/render/depth/), instead of the tier's own `fore` row.
+##                     0 turns the layer off, which is the ONLY way to take two
+##                     frames of one moment with and without it and measure what
+##                     it costs and what it hides (render)
 ## --config=NAME       the master configuration (configs/NAME.json) this run is made from: the
 ##                     island, a new game's start, the live rules; named options still win (dev)
 ## --dev[=PAGE]        dev mode reachable in a tool run; PAGE opens the dev app at a page
@@ -157,6 +162,9 @@ var realm: StringName = &"surface"
 ## The graphics tier this run renders at (Quality.ROWS), or &"" to take whatever
 ## the player's picture setting, the configuration, or this machine decides.
 var quality: StringName = &""
+## How many foreground pieces may hang over the frame, or -1 to take the tier's
+## own `fore` row. 0 is the layer off.
+var fore := -1
 var config := ""
 var dev := false
 var dev_page := ""
@@ -233,6 +241,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 				o.target = true
 				o.target_sweep = v == "sweep"
 			"quality": o.quality = StringName(v)
+			"fore": o.fore = maxi(0, int(v.to_int()))
 			"config": o.config = v
 			"dev":
 				o.dev = true

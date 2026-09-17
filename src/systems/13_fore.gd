@@ -24,6 +24,13 @@ func setup(g: Game) -> void:
 	view.name = "fore"
 	add_child(view)
 	view.setup(g.world, g.query, g.camera)
+	# `--fore=N` beats the tier, for this run only, so two frames of one moment
+	# can be taken with the layer and without it. Everything this package claims
+	# -- what it costs, and that it hides nothing -- is a difference between
+	# those two frames, and a claim nobody can take the other half of is not
+	# evidence (see tours/depth.tour).
+	if g.options.fore >= 0:
+		view.budget = g.options.fore
 
 
 ## A crossing points everything at the other realm's world. The pieces hung over

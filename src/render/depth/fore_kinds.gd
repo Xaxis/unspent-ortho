@@ -139,12 +139,14 @@ static func forget() -> void:
 ## on screen is the foliage, and what reads as DEPTH is the shadow it throws on
 ## the ground four units below.
 static func _bough(k: MeshKit, seed_value: int, tint: Color) -> void:
-	var segments := 5
+	# Seven, not five: MeshKit joins struts end to end with no mitre, so a limb
+	# built of few long ones reads as a chain of black boxes under a near blur.
+	var segments := 7
 	# A LIMB IS NEEDLES, not timber, and the difference is not cosmetic: the
 	# wear model only grows seams on a material outside the ground range, and a
 	# limb declared as built came back blooming salt and frost out of its own
 	# bark -- a white stick over a dark wood. Nothing grew this; it grew.
-	var wood := Palette.EARTH[1].lerp(tint, 0.45).darkened(0.25)
+	var wood := Palette.EARTH[2].lerp(tint, 0.5)
 	wood.a = M_NEEDLES / 255.0
 	# The limb bends a little and the foliage on it a lot, which is what a limb
 	# does: a bough that moved as one piece would read as a pasted cutout, and
@@ -158,7 +160,7 @@ static func _bough(k: MeshKit, seed_value: int, tint: Color) -> void:
 		var droop := -t * t * 0.42 - Rng.hash01(seed_value, i, 3) * 0.05
 		var wander := (Rng.hash01(seed_value, i, 4) - 0.5) * 0.5 * t
 		var here := Vector3(t, droop, wander)
-		k.strut(prev, here, lerpf(0.070, 0.020, t), 4, wood)
+		k.strut(prev, here, lerpf(0.042, 0.012, t), 5, wood)
 		prev = here
 	# Sprays of needles along the limb. Many small ones, not a few big: the first
 	# version hung eleven sprays two tiles across and the bough came out as a
