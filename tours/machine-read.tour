@@ -177,6 +177,7 @@ shot 08-night-hostile with mob:harvester
 # A watcher at night threw nothing on the ground it stood on: its lens was in the
 # glint list, which only mirrors in WET ground. Close, so the pool round its feet
 # is a thing a player can see, and on the machines' power so it stutters.
+# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
 coast calm
 hour 23
 weather clear:0
