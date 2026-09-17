@@ -62,6 +62,9 @@ hour 8
 place snowfield
 wait 1.0
 shot 09-snowfield-under-snow with land:snowfield,prop:snow_pine
+# And what the snow costs, where it is: the same toggle, in the one landscape
+# whose cards carry any.
+perf foliage 3.0
 near snow_pine
 zoom 6
 wait 0.8
