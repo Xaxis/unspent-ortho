@@ -866,15 +866,19 @@ Gaps it leaves:
 - A landmark's mass is circles, so a long thing (the evaporator, the grown hulk)
   is a chain of them and its corners are softer than its drawing. Nothing in the
   game has a real polygon collider and this package is not the place to add one.
-- **`tests/sky/test_lamp_pools.gd` fails about one run in three, and it is not
-  this package's doing.** `test_lamps_hand_their_pools_to_the_ink_at_night_only`
-  reads the lantern's pool as 5.84 tiles off the player's hand instead of under
-  0.8, and it is the SAME number every time it fails, so it is a race and not
-  noise: something else deterministic is taking the first pool. Measured three
-  runs on this branch (two failures) and three on `origin/main` with the branch
-  checked out of the way (one failure, same 5.84); it passes twice out of two
-  when run alone. Whoever owns 15_lights should make the lantern's pool first by
-  construction rather than by arriving first.
+- ~~**`tests/sky/test_lamp_pools.gd` fails about one run in three**~~ — **FIXED
+  (6a9de30), and it was never a race.** The finding was right that the same 5.84
+  every time meant something deterministic; the diagnosis of a race was wrong,
+  and so was sending the fix to 15_lights. The lights draw the lantern down to
+  nothing where another lamp already lights the ground (`night *= 1.0 - 0.9 *
+  under`), on purpose, so two pools never stack into two ruled discs; `_set_light`
+  refuses anything under 0.01; and the `push_front` that puts the lantern at the
+  head of the list sits inside that refusal. The test planted a lamp two tiles
+  from the player and then asserted the lantern comes first — the one thing the
+  lights promise not to do there. Load only decided whether the planted lamp had
+  been indexed yet: a slower frame lets the indexing cadence catch up inside the
+  same twenty frames. Asked in the other order it is true by construction, and
+  green across a 2.6x spread in wall clock.
 
 Costs, measured on this laptop under load:
 
@@ -1178,12 +1182,16 @@ What the wave still leaves, in the order it should be taken:
   FOUND deck reads instantly as not of this world against the hand-drawn wood.
   The other sixteen are the same pictures. The variance warning above stands —
   the night frames' threshold still cannot be trusted, and that is M3's to fix.
-- **`tests/sky/test_lamp_pools.gd` fails about one run in three and nobody owns
-  it.** The same 5.84 every time, so it is a race, not noise: the lantern's pool
-  is push_front'ed only when `_set_light` turns the light on, and whether a world
-  lamp already covers the player depends on what the chunk worker has streamed by
-  that frame. A flaky gate is corrosive to everybody. 15_lights should decide
-  whether a covered lantern still lays the first pool, and say so in one place.
+- ~~**`tests/sky/test_lamp_pools.gd` fails about one run in three**~~ — **FIXED
+  (6a9de30).** This note had the mechanism exactly right and still drew the wrong
+  conclusion from it: the lantern IS push_front'ed only when `_set_light` turns
+  the light on, and a world lamp covering the player IS what stops it. That is not
+  a race and not something for 15_lights to decide — it is the lights working as
+  designed, and a test that staged the opposite of what it asserted. Fixed by
+  asking the lantern before planting a lamp beside it. Worth remembering as a
+  pattern: a failure that reports the SAME number every time is not noise, and it
+  is usually not a race either — it is an assumption that is false under some
+  orderings and true under others.
 - **The 20-tile read of VISION §3 is still not met and cannot be at this camera**
   (the arithmetic is above). M3's to decide, and a whole-game decision.
 - A depot whose yard holds no plan work strips nothing, so on seed 1 the coast

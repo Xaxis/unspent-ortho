@@ -33,6 +33,28 @@ func test_lamps_hand_their_pools_to_the_ink_at_night_only() -> void:
 		if s.get_script() == Lights:
 			lights = s
 	check(lights != null, "lights system loaded")
+	# The lantern's own pool comes first and follows the player. Asked BEFORE any
+	# lamp is planted beside it, and that ordering is the point: where another
+	# lamp already lights the ground the lantern is deliberately drawn down to
+	# nothing (`night *= 1.0 - 0.9 * under`), `_set_light` then refuses it under
+	# 0.01, nothing is pushed to the front, and lamps[0] is whichever village
+	# light the chunk stream had reached. Asserting "the lantern comes first"
+	# while standing in a lamp's pool asks for the opposite of what the lights
+	# promise, and it failed about one run in three with the same number because
+	# under load a frame takes longer, the indexing cadence catches up inside the
+	# same twenty frames, and the planted lamp joins the pools in time to
+	# suppress it. Nothing was racing.
+	g.body.lamp_lit = true
+	await frames(20)
+	check(not g.sky.lamps.is_empty(), "lantern pool")
+	if not g.sky.lamps.is_empty():
+		var first: Vector4 = g.sky.lamps[0]
+		var off := Vector2(first.x, first.z).distance_to(Vector2(g.player.position.x, g.player.position.z))
+		gt(off, 0.3, "the lantern's light is out of the body")
+		lt(off, 0.8, "and still at the player's hand")
+	g.body.lamp_lit = false
+	await frames(3)
+
 	# A lamp two tiles from the player, placed after the world was indexed.
 	var at := g.player.pos + Vector2(2, 0)
 	var lamp := WorldProp.new(g.world.props.size(), PropKind.LAMP, at, 0.0, 1.0)
@@ -45,16 +67,6 @@ func test_lamps_hand_their_pools_to_the_ink_at_night_only() -> void:
 			near(p.w, float(Lights.SOURCES[PropKind.LAMP][0]), 1e-4, "pool range is the light's range")
 	check(found, "the lamp's pool reaches the sky at night: %s" % [g.sky.lamps])
 	lt(g.sky.lamps.size(), SkyLight.MAX_LAMPS + 1, "never more pools than the sky can hold")
-
-	# The lantern's own pool comes first and follows the player.
-	g.body.lamp_lit = true
-	await frames(3)
-	check(not g.sky.lamps.is_empty(), "lantern pool")
-	if not g.sky.lamps.is_empty():
-		var first: Vector4 = g.sky.lamps[0]
-		var off := Vector2(first.x, first.z).distance_to(Vector2(g.player.position.x, g.player.position.z))
-		gt(off, 0.3, "the lantern's light is out of the body")
-		lt(off, 0.8, "and still at the player's hand")
 
 	# By day nobody's lamp leaves a pool in the ink — the lit lantern included.
 	g.body.lamp_lit = false

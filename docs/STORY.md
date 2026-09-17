@@ -135,9 +135,16 @@ a whole thread, and a player who uses all four should find they agree.
 3. **Machines, by being watched** — what a clerk does to you, what a keeper's
    round is for, what the works are laying. The slate's read of a machine is
    already testimony; the story only has to name what the player is looking at.
+   It does, in one line under the machine's name while the target key is held
+   (`StoryContent.TESTIMONY`, by role: *taking a count, not a fight*), and a
+   machine the player has stopped to read for a moment lands what reading it
+   tells.
 4. **The player's own state** — being filed, being hunted, a region gone quiet, a
    save refused. The mechanics are evidence, and the arc's turn is the moment the
-   player understands that the number on the slate was about them.
+   player understands that the number on the slate was about them. What is
+   watched is written down in one table (`StoryContent.WITNESSED`) and each lands
+   on the CHANGE, once, with its line said on the glass — because nothing else
+   would tell the player that being filed was a sentence in somebody's account.
 
 ## 8. The arcs
 
@@ -153,19 +160,39 @@ Each is a handful of beats; a beat lands when something is read, said or done.
    hurt. They are settled, and they are wrong in a way nobody can point at.
 4. *The unattested.* The player is not hunted for what they did. They are hunted
    for what they are: a version nobody can check.
-5. *No outside.* The last thing the arc gives is the removal of escape as an
-   option, and the offer of the fork in its place.
+5. *Branches.* There is more than one of this place, and they do not agree with
+   each other. Standing in another realm is how it is known; a map with two
+   YOU ARE HERE dots is how it is suspected.
+6. *No outside.* The last thing the arc gives is the removal of escape as an
+   option, and the offer of the fork in its place. It is only ever said to
+   somebody who already knows there is more than one of here.
 
-### Sub-arcs (each its own file, each finishable many ways)
+### Sub-arcs (each finishable many ways, in any order)
 - **the tide** — the repeating world, read off the shore and the weather.
+  *Noticed, written, named.*
 - **the quiet region** — a place whose interference never rises: everyone there
-  already agrees. The horror is that it is pleasant.
+  already agrees. The horror is that it is pleasant. *Calm* (a noticeboard at
+  100% agreement), *glad* (somebody who stopped disagreeing and was rested by
+  it), *the cost* (the part that could have said no, which nobody misses — that
+  is the cost).
 - **the forged key** — who made the first signature the machines accepted, and
-  what it cost them. Ties to the signet the player can wear.
-- **the last clerk** — a machine that files people, and the person who asks it to
-  file them on purpose.
+  what it cost them. Ties to the signet the player can wear. *Accepted* (a gate
+  reader welcoming back a blank name), *the price* (a key works only while
+  nobody knows whose it is), *carried* (firing the signet, once the first key is
+  known of, is wearing a copy of a copy of it).
+- **the last clerk** — a machine that files people, and the people who ask it to
+  file them on purpose. *Written* (being filed), *the record* (holding their
+  account of a place), *asked* (a form that says `reason: tired`, and a cutter
+  who sleeps all night now).
 - **the ones who went in** — people who walked into the works and did not come
-  out, and the ones who did.
+  out, and the one who did. *Boots* (left at the fence, laces tied), *the tally*
+  (INTAKE 31, RELEASE a dash — not a zero), *came out* (will not go near the
+  water, says there is no inside), *dark* (a yard put out, and nobody in it, and
+  nobody for a long time).
+
+A conversation belongs to a TRADE (a keeper, a gatherer, a scavenger, a cutter,
+a digger), one each, so whoever of that trade the player stops to talk to says
+it: villagers are streamed, and nothing may hang on one body being one person.
 
 ## 9. Choices, and what they cost
 
@@ -194,8 +221,14 @@ without playing to it.
 
 ## 11. What is written so far
 
-The first pass covers the spine's first two beats and the sub-arc **the tide**:
-the fragments that say the world repeats and the vocabulary that says who is
-keeping it, one conversation with a villager who has noticed, and the journal
-that holds what has been found. Everything else in §8 is declared and empty,
-which is the honest state of it.
+Every beat of every arc in §8 has at least one door the player can find, and
+`tests/story/test_arcs.gd` fails the day one does not. Written: 23 things to read
+(signs, notebooks, terminals, marks), five conversations (a keeper, a gatherer, a
+scavenger, a cutter, a digger), a line of testimony for every role of the plan
+and for a landscape's keeper, and six beats that the player's own state lands.
+What is thin is placement: the words are there, but which readable thing in the
+world carries which of them is still `StoryFragments.pick` over every fragment of
+a kind, so a player meets the threads in whatever order the coast deals them.
+Giving the landmarks and the works their own fragments is the next pass.
+`--read=ID` and `--talk=ID[:NODE]` put any page or conversation on the glass for
+a writer to look at.

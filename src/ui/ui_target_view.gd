@@ -53,6 +53,9 @@ const POWERS_MOST := 2
 ## The read's own furniture: the title, the pips line, and the two anchored lines
 ## at the foot (what it has noticed, what it is doing) with the keys under them.
 const READ_HEAD := 25
+## One line of text on this glass, for anything laid under the title (the
+## testimony) so the panel grows by what it says rather than by a number.
+const READ_LINE := 10
 const READ_FOOT := 37
 ## Clear air between the last row and the rule above the anchored lines: without
 ## it a body with everything to say had its last power struck through by that rule.
@@ -290,13 +293,21 @@ func _draw_read(read: Dictionary) -> void:
 	# no health, no powers and little else, and a half-empty frame round two lines
 	# reads as a slate with something missing rather than a person plainly read.
 	var told := mini(stats.size(), STATS_MOST) + mini(powers.size(), POWERS_MOST)
-	var r := Rect2i(PANEL.position, Vector2i(PANEL.size.x, mini(PANEL.size.y, READ_HEAD + told * 10 + READ_GAP + READ_FOOT)))
+	# What the plan has it doing, under its name: the story's line (docs/STORY.md
+	# §7, machines by being watched). It adds its own height to the panel, so a
+	# machine with everything to say still has room for the anchored foot.
+	var testimony := str(read.get("testimony", ""))
+	var extra := READ_LINE if testimony != "" else 0
+	var r := Rect2i(PANEL.position, Vector2i(PANEL.size.x, mini(PANEL.size.y + extra, READ_HEAD + extra + told * 10 + READ_GAP + READ_FOOT)))
 	Hud.clip(_canvas, r, false)
 	var x := r.position.x + 5
 	var y := r.position.y + 3
 	var title := "%s  %s" % [String(read.name).to_upper(), read.role]
 	UiDraw.text(_canvas, Vector2i(x, y), _fit(title, r.size.x - 10), _ink(machine))
 	y += 11
+	if testimony != "":
+		UiDraw.text(_canvas, Vector2i(x, y), _fit(testimony, r.size.x - 10), UiTheme.MACHINE[2])
+		y += READ_LINE
 	y = _draw_pips_line(x, y, read, machine)
 	# Laid out in order and cut to what fits, so the last two lines — what it has
 	# noticed and what it is doing about it — always have their room.

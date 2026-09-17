@@ -108,6 +108,7 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"inventory", "label": "carrying"},
 	{"action": &"craft", "label": "making"},
 	{"action": &"map", "label": "map"},
+	{"action": &"journal", "label": "journal"},
 	{"action": &"pause", "label": "pause, or back"},
 ]
 

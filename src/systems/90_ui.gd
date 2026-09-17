@@ -182,7 +182,9 @@ func why_not_open(n: StringName) -> String:
 	if n == &"dev":
 		# Dev mode is for looking at a fight as much as anything else.
 		return ""
-	var reads_only := n in SlateFeeds.APPS and stack.has(screens.get(&"pause"))
+	# From home, with the world already stopped, an app that only reads is no help
+	# to a fight and no harm to one: the journal is kept with the feeds for that.
+	var reads_only := (n in SlateFeeds.APPS or n == &"journal") and stack.has(screens.get(&"pause"))
 	if n != &"pause" and not reads_only and _hostile_near():
 		return NEAR_LINE
 	if n == &"crafting":

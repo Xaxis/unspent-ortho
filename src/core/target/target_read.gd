@@ -129,6 +129,9 @@ static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = nu
 		"powers": powers(m),
 		"awareness": awareness(m, from, moment, world, query),
 		"thinking": thinking(m, now),
+		# What it is FOR, in the plan's own terms (StoryContent.TESTIMONY): the
+		# story's one line on this panel, and "" for anything not of the plan.
+		"testimony": String(StoryContent.testimony(m.role, row).get("says", "")),
 		"open": m.spent(now) or m.part_dark(now),
 		"part": String(row.get("part", &"none")),
 		"part_at_you": FightRules.reaches(row.get("part", &"none"), m.pos, m.facing, from),

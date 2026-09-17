@@ -52,7 +52,7 @@ extends RefCounted
 ##                     (MS = simulation time after the press; each has a default);
 ##                     fx[:MS] draws every hit mark about the player, MS/1000 through its life
 ## --screen=NAME       open a slate app once loaded: inventory | crafting | map | pause | controls |
-##                     loadout | reads | saves (these three over home) | sheet; NAME:ROW chooses a row,
+##                     loadout | reads | saves (these three over home) | sheet | journal; NAME:ROW chooses a row,
 ##                     map:N opens at scale N; lowpower[:NAME] drains the slate's power first;
 ##                     on --scene=title: keys, or wake:SECS to hold the wake (slate)
 ## --explore=N         the map remembers N tiles of wandering from the start (ui)
@@ -67,6 +67,9 @@ extends RefCounted
 ## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)
 ## --target[=sweep]    hold the target key at boot: a shot of a lock, or of the whole
 ##                     field swept (targeting)
+## --read=ID           open a thing's words on the glass once loaded, by fragment id (story:
+##                     a writer's view of a page, never a normal start)
+## --talk=ID[:NODE]     open a conversation, at its start or at NODE (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
@@ -136,6 +139,10 @@ var probe := false
 var fail_downed := false
 var target := false
 var target_sweep := false
+## A fragment to open on the glass, and a conversation (and the node in it) to open,
+## once loaded: staging for a writer looking at the words (49_story).
+var read := ""
+var talk := ""
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
@@ -212,6 +219,8 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
 			"fail-downed": o.fail_downed = true
+			"read": o.read = v
+			"talk": o.talk = v
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"

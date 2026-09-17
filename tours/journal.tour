@@ -1,0 +1,86 @@
+# The journal, through the real keys (docs/STORY.md §7): what was said to
+# somebody and what was read off a thing, kept on the slate where both can be
+# read again after walking away from them.
+#
+#   tools/tour.sh tours/journal.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --folk=6 --put=sign
+#
+# The same staging as tours/story.tour: --folk rings villagers round the player,
+# one of them a keeper with a conversation written for them, and --put stands a
+# notice where it can be walked to. The conversation comes first for the reason
+# that tour gives: `use` answers whatever is nearest, so a notice read first
+# would be read again by the next press.
+#
+# Nothing here names a fragment, a beat or an answer: the journal opens on what
+# was found last and the rest is reached by walking its list, so a writer can
+# change every word the story holds and this still proves the same page.
+coast calm
+wait 0.6
+
+# --- somebody says something, and the player says something back ----------------------
+try 4
+  walkto folk 6
+  press use
+  await talking 3
+end
+wait 0.4
+# The first reply three times over: it goes somewhere each time, and the third
+# is the player telling them the tide came in at the same minute twice.
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+wait 0.5
+shot 01-an-answer-given with talking
+press pause
+wait 0.5
+
+# --- a thing with words on it ------------------------------------------------------------
+near sign
+press use
+await reading 4
+wait 0.4
+shot 02-words-on-a-notice with reading
+press use
+wait 0.5
+
+# --- the journal, on its own key -----------------------------------------------------------
+# It opens on what was found last, which is the notice: its words come back on the
+# spare pane exactly as they were written, blank lines and all.
+tap journal
+await app:journal 3
+wait 0.3
+shot 03-the-notice-kept with app:journal,journal:read
+
+# Down the list: what the player said, and what it was said to.
+tap move_down
+wait 0.3
+shot 04-what-was-said with app:journal,journal:said
+
+# Up past the notice to what the talk taught: a beat, under its arc's title, and
+# nothing of the arc that has not happened yet.
+tap move_up
+wait 0.2
+tap move_up
+wait 0.3
+shot 05-what-is-known-now with app:journal,journal:beat
+
+tap journal
+await app:none 3
+wait 0.3
+
+# --- and from home, the way a player who has forgotten the key finds it ----------------------
+tap pause
+await app:pause 3
+choose journal
+tap use
+await app:journal 3
+wait 0.3
+shot 06-over-home with app:journal
+tap pause
+await app:pause 3
+tap pause
+await app:none 3
+wait 0.3
+shot 07-back-to-the-world with app:none
