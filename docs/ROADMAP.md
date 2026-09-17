@@ -764,6 +764,14 @@ Gaps it leaves:
   four world days and a tour cannot stand still for them.
 - Every landmark's cache is the same locker. The eight silhouettes differ; what
   a player's hands go into does not.
+- **`tests/sky/test_lamp_pools.gd` fails about one run in three, and it is not
+  this package's doing.** `test_lamps_hand_their_pools_to_the_ink_at_night_only`
+  reads the lantern's pool as 5.84 tiles off the player's hand instead of under
+  0.8, and it is the SAME number every time it fails, so it is a race and not
+  noise: something else deterministic is taking the first pool. Measured three
+  runs on this branch (two failures) and three on `origin/main` with the branch
+  checked out of the way (one failure, same 5.84). Whoever owns 15_lights should
+  make the lantern's pool first by construction rather than by arriving first.
 
 ## M3 — The landscapes
 
