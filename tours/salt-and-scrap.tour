@@ -132,10 +132,14 @@ wait 2.2
 shot 19-coast-meets-salt with border:coast-salt_flats
 walk 1,-1 2.5 run
 wait 0.6
-shot 20-coast-salt-crossed with border:coast-salt_flats
+# Running 2.5 s carries a body clean out the far side of a band that is 12-24
+# tiles wide, so a CROSSED frame is named for having come through it and claims
+# the land on either side, the way tours/biomes.tour does. Claiming the band
+# itself here asks the frame to prove the player never finished crossing.
+shot 20-coast-salt-crossed with land:coast|salt_flats
 place moss-scrapwood
 wait 2.2
 shot 21-moss-meets-scrapwood with border:moss-scrapwood
 walk 1,-1 2.5 run
 wait 0.6
-shot 22-moss-scrapwood-crossed with border:moss-scrapwood
+shot 22-moss-scrapwood-crossed with land:moss|scrapwood
