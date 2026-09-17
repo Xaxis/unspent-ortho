@@ -70,6 +70,7 @@ func setup(g: Game) -> void:
 	_add(UiReadsScreen.new())
 	_add(UiSavesScreen.new())
 	_add(UiPauseScreen.new())
+	_add(UiSettingsScreen.new())
 	_add(UiSheetScreen.new())
 	# Survival gives these first when it is loaded; this never adds twice.
 	UiRules.apply_give(g.inventory, g.options.give)
@@ -116,11 +117,14 @@ func top() -> UiScreen:
 ## Open an app by name. Returns false (and says why) when it cannot open now.
 func open_screen(n: StringName, switched: bool = false) -> bool:
 	if n == &"controls":
-		# The keys live one level down home.
-		if not open_screen(&"pause"):
+		# What `controls` used to open was a list of letters somebody typed out.
+		# It is the settings app's keys page now, which reads the real input map.
+		if not open_screen(&"settings"):
 			return false
-		(screens[&"pause"] as UiPauseScreen).page = "keys"
-		top().queue_redraw()
+		var s := top() as UiSettingsScreen
+		if s != null:
+			s.page = "keys"
+			s.refresh()
 		return true
 	if not screens.has(n):
 		return false

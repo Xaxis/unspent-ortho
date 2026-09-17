@@ -36,6 +36,7 @@ func _ready() -> void:
 	if options.scene == "game":
 		GameConfig.fill_new_game(options, DevMode.explicit(OS.get_cmdline_user_args()))
 	_take_focus_if_a_person_is_playing()
+	_read_player_settings()
 	var root: Node
 	match options.scene:
 		"gallery":
@@ -77,6 +78,18 @@ func _ready() -> void:
 ## to the middle of their screen, takes the keyboard, and keeps its sound. That
 ## is a run with no tool arguments at all, or one that says so with
 ## UNSPENT_KEEP_FOCUS=1.
+## What the person at this keyboard has set, before anything is drawn or heard
+## (src/settings/). A tool run reads them too — a shot of the settings page has
+## to show the same page a player sees — but the window rows and the master mute
+## are left alone for one, which SettingsApply decides for itself.
+func _read_player_settings() -> void:
+	# A shot or a tour keeps its own settings file: one that wrote the player's
+	# would change what the next run of the game looked and sounded like.
+	PlayerSettings.use_file(&"player" if _a_person_is_playing() else &"tool")
+	PlayerSettings.load_once()
+	SettingsApply.install(_a_person_is_playing())
+
+
 func _take_focus_if_a_person_is_playing() -> void:
 	if DisplayServer.get_name() == "headless":
 		return

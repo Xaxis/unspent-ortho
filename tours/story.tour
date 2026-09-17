@@ -1,0 +1,55 @@
+# The story, through the real keys (docs/STORY.md, owner 2026-09-17): nothing
+# speaks because the player walked onto a tile. A line is said because they
+# pressed a key standing in front of somebody, or in front of a thing that has
+# something written on it.
+#
+#   tools/tour.sh tours/story.tour --seed=1 --hour=11 --weather=clear:0 \
+#     --folk=6 --put=sign
+#
+# (--folk rings villagers round the player — one is a keeper, the trade the first
+# conversation is written for — and --put stands one of the machines' own notices
+# where it can be walked to. Where notices and people really stand is worldgen's
+# business and the landmarks package's, not this tour's.)
+#
+# The conversation comes first on purpose: `use` answers whatever is NEAREST and
+# in front, so a tour that read the notice first would press the key again with
+# the notice still at its boot and read it twice.
+coast calm
+wait 0.6
+
+# --- somebody to talk to --------------------------------------------------------------
+# A villager walks their own round: if they have stepped out of reach by the time
+# the key is pressed, walk them down again rather than failing the tour on it.
+try 4
+  walkto folk 6
+  press use
+  await talking 3
+end
+wait 0.4
+shot 01-a-keeper-with-something-to-say with talking,folk
+
+# --- what the player says is theirs, and it is remembered -------------------------------
+# Down to the third reply and take it: saying nothing is always on the list, and
+# in this arc it is never the cowardly one.
+tap move_down
+tap move_down
+wait 0.3
+shot 02-what-you-may-say with talking,folk
+press use
+wait 0.5
+shot 03-said-nothing with talking
+press pause
+wait 0.5
+
+# --- a thing with something written on it -----------------------------------------------
+# The machines have bolted notices to their gates since worldgen was written.
+# Until today not one of them could be read: use only ever offered what could be
+# worked, and Takes has no row for a sign.
+near sign
+press use
+await reading 4
+wait 0.4
+shot 04-a-notice-that-can-be-read with reading
+press use
+wait 0.4
+shot 05-back-to-the-world with land:coast

@@ -139,7 +139,9 @@ func _read_player() -> void:
 	var body := game.body
 	var m := sim.moment
 	var hero := sim.hero
-	body.crouched = Input.is_action_pressed(CROUCH_ACTION) and not game.input_blocked()
+	# Held, or pressed once and left on: the player's own rule for this key
+	# (PlayerSettings, playing.crouch).
+	body.crouched = HoldToggle.on(CROUCH_ACTION, &"playing.crouch") and not game.input_blocked()
 	game.player.model.crouched = body.crouched
 	m.crouched = body.crouched
 	m.spoofed = game.clock.minutes < body.spoof_until

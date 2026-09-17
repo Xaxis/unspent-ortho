@@ -91,10 +91,13 @@ func _went_down(action: StringName) -> bool:
 func _process(delta: float) -> void:
 	if game == null or game.world == null or game.player == null:
 		return
-	var down := _forced or (InputMap.has_action(ACTION) and Input.is_action_pressed(ACTION))
+	# Held, or pressed once and left on, as the player asked for it
+	# (PlayerSettings, playing.target).
+	var down := _forced or HoldToggle.on(ACTION, &"playing.target")
 	# An app on the glass has the keys; a target held into one is let go.
 	if not game.open_screens.is_empty():
 		down = false
+		HoldToggle.forget()
 	var cycle := signi(int(_went_down(&"move_right")) - int(_went_down(&"move_left")))
 	var sweep_pressed := _went_down(SWEEP_ACTION)
 	if down and not _held and not _forced:

@@ -269,6 +269,26 @@ a portal is a thing the player has opened and can shut, a raid through one becom
 the best set piece the system has, and it gets built then, deliberately, with a
 warning grammar of its own. Argue with that sentence, do not quietly widen it.
 
+## Settings (owner, 2026-09-17)
+
+The slate's own page, reached from the pause menu and from the title: **sound**
+(everything, the world, the score — levels against the mix as it was tuned, not
+absolutes), **picture** (the window and fullscreen where there is a window, how
+far the camera shakes, and whether a struck body flashes), **playing** (crouch
+and the slate-on-a-machine as a hold or a press), and **keys** — every action the
+game answers to, read off the live input map, each one movable, and `put the keys
+back` to undo the lot.
+
+What it is not: a master configuration. Those are the owner's, packed into a
+build (docs/DEV.md); these are the player's, kept on their own device. Nothing
+here changes what a world is or how hard it presses — a settings page that can
+change the game is a settings page that has to be balanced.
+
+Two of them exist because holding a key for minutes is the commonest thing an
+accessibility setting is asked to undo, and two because the camera moving and the
+screen flashing are the only things in the game that happen to the player rather
+than to their body.
+
 ## Owner rulings carried over (mechanics only)
 
 - Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.
@@ -304,6 +324,15 @@ that can take what grows there.
 | Abilities | one interface (id, input action, cooldown, cost in charges or wind, press/hold/passive): dash, glide, scan, grapple, signature spoof. An ability asks for a move and for a mark; the gear system does both, so it never touches a node |
 
 ## Story
+
+**The arc and every rule for writing it are in `docs/STORY.md`** (owner,
+2026-09-17): the machines are reconcilers, not jailers — one attested reality,
+every mind agreed — and to be free is not to escape but to fork. The words are
+uncovered by reading a thing, talking to somebody, or watching a machine work,
+never by walking onto a tile; a conversation is drawn over the world with the
+world still running; and what the player says is remembered against the question,
+not the person. What is built so far is the spine's first beats and the tide
+sub-arc; the rest is declared and empty, which STORY.md §11 says plainly.
 
 The premise shape is the owner's (2026-09-15) and lives in **`docs/VISION.md`**: the
 few dwindling humans after the machine apocalypse; machines that still mean to end
