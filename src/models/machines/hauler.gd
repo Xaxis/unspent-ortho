@@ -1,9 +1,10 @@
 extends MachineModel
-## A hauler: a line. Two flared ore hoppers on six wheels a side, pivoting on a
-## hinge, carrying stone that is never loaded level, with a signal mast standing
-## between them. It will not turn for you. The hinge is open on the LEFT flank
-## only; the right carries a cover plate with a cold slit, so the body is
-## deliberately not mirrored there.
+## A hauler: a line. Two flared ore hoppers on six wheels a side, the wheels out
+## on bogie outriggers past the hoppers' flanks, drawn together on drawbars to a
+## low knuckle, carrying stone that is never loaded level, with a signal mast
+## standing up out of the knuckle between them. It will not turn for you. The
+## knuckle is open on the LEFT flank only; the right carries a cover plate with a
+## cold slit, so the body is deliberately not mirrored there.
 ##
 ## walk   the rear hopper swings on the hinge in an exact sway; wheels turn with distance
 ## alert  jacks up on its rams and BREAKS at the hinge, squaring the rear hopper
@@ -23,6 +24,24 @@ extends MachineModel
 const WHEEL_R := 0.11
 const SEG_L := 1.0
 const SEG_W := 0.58
+## Seen end-on a hauler was one filled column, 0.67 of its own box: two hoppers
+## in a line overlap into one strip, the wheels sat tucked under the rims, and
+## the hinge between them was two plates as wide as the hoppers themselves, so
+## there was no daylight in it from nose or tail. Two holes, both of which a
+## train of ore wagons has anyway:
+##
+## the WHEELS RUN ON OUTRIGGERS, a track wider than the hopper, so a slot of
+## daylight runs the whole length of the machine either side of it, crossed only
+## by the stub axles; and
+const TRACK_Z := 0.44
+## the two units are held apart on DRAWBARS to a low knuckle, so the gap between
+## them is open over the kingpin and only the signal mast stands up through it.
+## Each unit's centre is this far from the hinge (the hoppers' ends are
+## HINGE_HALF - SEG_L / 2 from it).
+const HINGE_HALF := 0.82
+## Height of the knuckle's centre: the working part and its cover sit here.
+const KNUCKLE_Y := 0.22
+const TURNTABLE_R := 0.12
 
 var _travel := 0.0
 var _wheels: Array[Node3D] = []
@@ -37,13 +56,14 @@ func build() -> void:
 	var R := ramp
 	var D := FoundKit.dirty(R)
 
-	var front := joint(&"front", self, Vector3(0.6, 0, 0))
+	var front := joint(&"front", self, Vector3(HINGE_HALF, 0, 0))
 	_segment(front, true)
-	var rear := joint(&"rear", front, Vector3(-0.62, 0, 0))
-	var rear_seg := joint(&"rear_seg", rear, Vector3(-0.6, 0, 0))
+	var rear := joint(&"rear", front, Vector3(-HINGE_HALF, 0, 0))
+	var rear_seg := joint(&"rear_seg", rear, Vector3(-HINGE_HALF, 0, 0))
 	_segment(rear_seg, false)
 
-	# The hinge: a post between the hoppers, open on the left, plated on the right.
+	# The hinge: a knuckle low between the drawbars, open on the left, plated on
+	# the right, with the post standing up out of it.
 	#
 	# The post runs on up past both rims into the SIGNAL MAST, a head raked back
 	# over the rear hopper on a stay down to its rim. It is the one high thing on
@@ -63,30 +83,33 @@ func build() -> void:
 	FoundKit.slab(mk, Vector3(-0.04, 0.95, 0), Vector3.BACK, Vector3(0.97, 0.24, 0).normalized(), head, 0.05, R, 0.012)
 	FoundKit.tbar(mk, Vector3(-0.05, 0.88, 0), Vector3(-0.52, 0.48, 0), 0.02, 0.016, 4, D)
 	body_mesh(mk, mast)
-	FoundKit.disc(hk, Vector3(0, 0.2, 0), Vector3.UP, 0.12, 0.06, 8, 0.015, D, Color(0, 0, 0, 0), PI / 8.0)
-	FoundKit.tbar(hk, Vector3(-0.22, 0.16, 0), Vector3(0.22, 0.16, 0), 0.035, 0.035, 6, D)
-	# Left: the open socket, a dark frame round the hinge.
-	var sock: Array[Vector2] = [Vector2(-0.14, -0.12), Vector2(0.14, -0.12), Vector2(0.17, 0.0), Vector2(0.14, 0.14), Vector2(-0.14, 0.14), Vector2(-0.17, 0.0)]
-	FoundKit.slab(hk, Vector3(0, 0.42, -0.2), Vector3.RIGHT, Vector3.UP, sock, 0.1, FoundKit.dirty(R, 2), 0.02)
+	# The turntable the two drawbars meet on, and the kingpin boss the post
+	# stands in. Everything here stays LOW: anything tall between the hoppers
+	# closes the gap end-on, which is what the old full-width plates did.
+	FoundKit.disc(hk, Vector3(0, 0.15, 0), Vector3.UP, TURNTABLE_R, 0.06, 8, 0.015, D, Color(0, 0, 0, 0), PI / 8.0)
+	FoundKit.disc(hk, Vector3(0, 0.21, 0), Vector3.UP, 0.08, 0.08, 6, 0.012, R, R[4], PI / 6.0)
+	# Left: the open knuckle, a dark frame round the working part.
+	var sock: Array[Vector2] = [Vector2(-0.1, -0.08), Vector2(0.1, -0.08), Vector2(0.12, 0.0), Vector2(0.1, 0.09), Vector2(-0.1, 0.09), Vector2(-0.12, 0.0)]
+	FoundKit.slab(hk, Vector3(0, KNUCKLE_Y, -0.12), Vector3.RIGHT, Vector3.UP, sock, 0.08, FoundKit.dirty(R, 2), 0.015)
 	# Right: the cover plate, riveted, with its slit.
-	var cover: Array[Vector2] = [Vector2(-0.16, -0.16), Vector2(0.16, -0.16), Vector2(0.2, -0.08), Vector2(0.2, 0.12), Vector2(0.14, 0.18), Vector2(-0.14, 0.18), Vector2(-0.2, 0.12), Vector2(-0.2, -0.08)]
-	FoundKit.slab(hk, Vector3(0, 0.42, 0.19), Vector3.RIGHT, Vector3.UP, cover, 0.07, R, 0.02)
-	FoundKit.visor(hk, Vector3(0, 0.47, 0.226), Vector3.BACK, Vector3.UP, 0.22, 0.03)
-	FoundKit.rivets(hk, Vector3(-0.15, 0.3, 0.226), Vector3(0.15, 0.3, 0.226), Vector3.BACK, 4, R[5])
-	FoundKit.streaks(hk, Vector3(0, 0.44, 0.226), Vector3.BACK, 0.18, 0.12, 3, 51, R[1])
+	var cover: Array[Vector2] = [Vector2(-0.11, -0.1), Vector2(0.11, -0.1), Vector2(0.13, -0.05), Vector2(0.13, 0.08), Vector2(0.09, 0.11), Vector2(-0.09, 0.11), Vector2(-0.13, 0.08), Vector2(-0.13, -0.05)]
+	FoundKit.slab(hk, Vector3(0, KNUCKLE_Y, 0.11), Vector3.RIGHT, Vector3.UP, cover, 0.06, R, 0.015)
+	FoundKit.visor(hk, Vector3(0, KNUCKLE_Y + 0.035, 0.141), Vector3.BACK, Vector3.UP, 0.16, 0.03)
+	FoundKit.rivets(hk, Vector3(-0.09, KNUCKLE_Y - 0.06, 0.141), Vector3(0.09, KNUCKLE_Y - 0.06, 0.141), Vector3.BACK, 3, R[5])
+	FoundKit.streaks(hk, Vector3(0, KNUCKLE_Y + 0.01, 0.141), Vector3.BACK, 0.14, 0.08, 3, 51, R[1])
 	body_mesh(hk, rear)
-	add_scan(rear, Vector3(0, 0.47, 0.226), Vector3.BACK, Vector3.RIGHT, 0.16, 0.025, 2.0)
+	add_scan(rear, Vector3(0, KNUCKLE_Y + 0.035, 0.141), Vector3.BACK, Vector3.RIGHT, 0.12, 0.025, 2.0)
 	add_lamp(mast, Vector3(-0.04, 0.976, 0), Vector3(-0.24, 0.97, 0), Vector3(0.97, 0.24, 0), 0.07, 0.07, &"status")
-	add_lamp(rear, Vector3(0.1, 0.52, -0.251), Vector3.FORWARD, Vector3.UP, 0.05, 0.04, &"work", true)
+	add_lamp(rear, Vector3(0.07, KNUCKLE_Y + 0.05, -0.161), Vector3.FORWARD, Vector3.UP, 0.05, 0.04, &"work", true)
 	var rw := FoundKit.kit()
-	FoundKit.cable(rw, Vector3(0.04, 0.64, 0.06), Vector3(0.2, 0.18, 0.14), 0.05, 0.015, Palette.INK[2], Palette.MACHINE["watcher"], 5)
-	FoundKit.grime(rw, Vector3(0, 0.36, 0.227), Vector3.BACK, 0.3, 0.12, 4, 53, D)
+	FoundKit.cable(rw, Vector3(0.04, 0.6, 0.05), Vector3(0.3, 0.16, 0.1), 0.05, 0.015, Palette.INK[2], Palette.MACHINE["watcher"], 5)
+	FoundKit.grime(rw, Vector3(0, KNUCKLE_Y - 0.03, 0.142), Vector3.BACK, 0.2, 0.1, 4, 53, D)
 	wear_mesh(rw, rear)
 	var pk := FoundKit.kit()
-	FoundKit.optic(pk, Vector3(0, 0.42, -0.251), Vector3.FORWARD, 0.08)
-	FoundKit.mark(pk, Vector3(0, 0.42, -0.251), Vector3.FORWARD, Vector3.UP, 0.03, 0.24, Palette.LENS[1], 0.014)
+	FoundKit.optic(pk, Vector3(0, KNUCKLE_Y, -0.161), Vector3.FORWARD, 0.07)
+	FoundKit.mark(pk, Vector3(0, KNUCKLE_Y, -0.161), Vector3.FORWARD, Vector3.UP, 0.03, 0.16, Palette.LENS[1], 0.014)
 	part_mesh(pk, rear)
-	set_part_anchor(rear, Vector3(0, 0.42, -0.27), 0.6)
+	set_part_anchor(rear, Vector3(0, KNUCKLE_Y, -0.18), 0.6)
 	finish_rig()
 
 
@@ -104,12 +127,20 @@ func _segment(seg: Node3D, is_front: bool) -> void:
 		# The jack's ram, sleeved inside the hopper until it runs out.
 		FoundKit.tbar(ck, Vector3(x, 0.28, 0), Vector3(x, 0.58, 0), 0.024, 0.024, 6, R)
 		FoundKit.ticks(ck, Vector3(x + 0.024, 0.32, 0), Vector3(x + 0.024, 0.56, 0), Vector3.RIGHT, 5, R[5], 0.02)
-	FoundKit.tbar(ck, Vector3(0, WHEEL_R, -SEG_W * 0.5 - 0.02), Vector3(0, WHEEL_R, SEG_W * 0.5 + 0.02), 0.02, 0.02, 4, DD)
+	# The drawbar back to the knuckle, on the end of the beam that faces it.
+	var toward := -1.0 if is_front else 1.0
+	FoundKit.bar(ck, Vector3(toward * SEG_L * 0.4, 0.12, 0), Vector3(toward * (HINGE_HALF - TURNTABLE_R + 0.05), 0.14, 0), 0.07, 0.08, 0.015, D)
+	for sz: float in [-1.0, 1.0]:
+		# The outrigger: a bogie beam along each side at hub height, carried out
+		# past the hopper's flank on a stub axle to every wheel.
+		FoundKit.bar(ck, Vector3(-0.42, WHEEL_R + 0.02, sz * (TRACK_Z - 0.05)), Vector3(0.42, WHEEL_R + 0.02, sz * (TRACK_Z - 0.05)), 0.035, 0.04, 0.008, DD)
+		for x: float in [-0.34, 0.0, 0.34]:
+			FoundKit.tbar(ck, Vector3(x, WHEEL_R, sz * 0.12), Vector3(x, WHEEL_R, sz * (TRACK_Z - 0.03)), 0.022, 0.018, 4, DD)
 	body_mesh(ck, seg)
 	for x: float in [-0.34, 0.0, 0.34]:
 		for sz: float in [-1.0, 1.0]:
 			var w := Node3D.new()
-			w.position = Vector3(x, WHEEL_R, sz * (SEG_W * 0.5 + 0.02))
+			w.position = Vector3(x, WHEEL_R, sz * TRACK_Z)
 			seg.add_child(w)
 			var wk := FoundKit.kit()
 			FoundKit.disc(wk, Vector3.ZERO, Vector3.BACK, WHEEL_R, 0.06, 6, 0.0, DD, D[2], PI / 6.0)

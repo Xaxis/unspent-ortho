@@ -1,11 +1,12 @@
 extends MachineModel
 ## A runner: almost a person, and headless. A tapered torso with square flat
-## shoulders and nothing above them but a bolted plate; a satchel rides on its
-## back at the shoulder line, and a visor slit runs across the chest instead of
-## a face. It strides like a person, except that every step is the
+## shoulders and nothing above them but a bolted plate; a satchel rides on a rack
+## off its back at the shoulder line, and a visor slit runs across the chest
+## instead of a face. It strides like a person, except that every step is the
 ## same step, the weight never shifts, and the arms hang still. The satchel is
 ## the working part (back).
 ##
+## stand  holds the step it stopped on: it never brings its feet together
 ## walk   a real stride with knees; no sway, no torso turn, arms hanging still
 ## alert  stops and squares up: planted wide, arms held out still, flap open
 ## dead   folds at the knees, goes down on its front; the satchel falls open
@@ -16,6 +17,16 @@ extends MachineModel
 ##        with cable, a plate off another machine on the chest, grime
 
 const HIP_Y := 0.72
+## How far the satchel's face stands off the torso's spine on its rack.
+const SATCHEL_OFF := 0.18
+## How deep the satchel is, face to back.
+const SATCHEL_D := 0.18
+## The step it holds when it stops: front thigh forward with the shin brought
+## back upright under the knee, back leg straight behind, and the hips down by
+## what that costs so both feet stay on the ground.
+const STANCE_FRONT := 0.36
+const STANCE_BACK := 0.256
+const STANCE_DROP := -0.022
 
 
 func build() -> void:
@@ -94,30 +105,37 @@ func build() -> void:
 			wear_matter(ck2, arm)
 
 	# The satchel rides on the back below the shoulder line, so the top of the
-	# figure stays flat: headless, not hooded.
-	var satchel := joint(&"satchel", torso, Vector3(-0.09, 0.3, 0))
+	# figure stays flat: headless, not hooded. It is carried on a RACK standing
+	# off the spine, not strapped flat to it: seen side-on, a satchel against the
+	# back and arms hanging inside the torso's outline made the runner one filled
+	# column (0.65 of its own box), and the slot between spine and load is the
+	# daylight a courier's frame has always had.
+	var satchel := joint(&"satchel", torso, Vector3(-SATCHEL_OFF, 0.3, 0))
 	var bk := FoundKit.kit()
 	var bag: Array[Vector2] = [Vector2(-0.15, -0.16), Vector2(0.15, -0.16), Vector2(0.17, -0.11), Vector2(0.17, 0.12), Vector2(-0.17, 0.12), Vector2(-0.17, -0.11)]
-	FoundKit.slab(bk, Vector3(-0.07, 0.0, 0), Vector3.BACK, Vector3.UP, bag, 0.14, R, 0.025)
-	FoundKit.rivets(bk, Vector3(-0.13, -0.1, 0.171), Vector3(-0.01, -0.1, 0.171), Vector3.BACK, 3, R[5], 0.03)
-	FoundKit.rivets(bk, Vector3(-0.13, -0.1, -0.171), Vector3(-0.01, -0.1, -0.171), Vector3.FORWARD, 3, R[5], 0.03)
-	FoundKit.streaks(bk, Vector3(-0.141, -0.1, 0), Vector3.LEFT, 0.22, 0.05, 5, 152, R[1])
-	# Two straps over the shoulders to the chest.
+	FoundKit.slab(bk, Vector3(-SATCHEL_D * 0.5, 0.0, 0), Vector3.BACK, Vector3.UP, bag, SATCHEL_D, R, 0.025)
+	FoundKit.rivets(bk, Vector3(-SATCHEL_D + 0.01, -0.1, 0.171), Vector3(-0.01, -0.1, 0.171), Vector3.BACK, 3, R[5], 0.03)
+	FoundKit.rivets(bk, Vector3(-SATCHEL_D + 0.01, -0.1, -0.171), Vector3(-0.01, -0.1, -0.171), Vector3.FORWARD, 3, R[5], 0.03)
+	FoundKit.streaks(bk, Vector3(-SATCHEL_D - 0.001, -0.1, 0), Vector3.LEFT, 0.22, 0.05, 5, 152, R[1])
+	# The rack: two stays over the shoulders down onto the load, and two struts
+	# from the small of the back to its foot, each pair clear of the other.
+	var back_x := SATCHEL_OFF - 0.09
 	for sz: float in [-1.0, 1.0]:
-		FoundKit.mark(bk, Vector3(0.0, 0.121, sz * 0.11), Vector3.UP, Vector3.RIGHT, 0.2, 0.04, R[1], 0.003)
+		FoundKit.bar(bk, Vector3(back_x + 0.03, 0.2, sz * 0.11), Vector3(-0.02, 0.11, sz * 0.11), 0.026, 0.03, 0.006, D)
+		FoundKit.bar(bk, Vector3(back_x + 0.02, -0.12, sz * 0.12), Vector3(-0.02, -0.12, sz * 0.12), 0.022, 0.026, 0.006, DD)
 	body_mesh(bk, satchel)
 	var sw := FoundKit.kit()
 	FoundKit.cable(sw, Vector3(-0.02, 0.125, -0.13), Vector3(-0.06, -0.12, -0.172), 0.02, 0.012, Palette.INK[2], Palette.MACHINE["clerk"], 3)
 	wear_mesh(sw, satchel)
 	var pk := FoundKit.kit()
-	var pc := Vector3(-0.141, -0.03, 0)
+	var pc := Vector3(-SATCHEL_D - 0.001, -0.03, 0)
 	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.28, 0.14, Palette.LENS[0], 0.003)
 	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.24, 0.1, Palette.LENS[2], 0.007)
 	FoundKit.mark(pk, pc, Vector3.LEFT, Vector3.UP, 0.14, 0.035, Palette.LENS[3], 0.01)
 	part_mesh(pk, satchel)
 	set_part_anchor(satchel, pc + Vector3(-0.01, 0, 0), 0.5)
 
-	var flap := joint(&"flap", satchel, Vector3(-0.14, 0.12, 0))
+	var flap := joint(&"flap", satchel, Vector3(-SATCHEL_D, 0.12, 0))
 	var fk := FoundKit.kit()
 	var lid: Array[Vector2] = [Vector2(-0.17, 0.0), Vector2(0.17, 0.0), Vector2(0.16, -0.08), Vector2(0.0, -0.11), Vector2(-0.16, -0.08)]
 	FoundKit.slab(fk, Vector3(-0.012, 0.0, 0), Vector3.BACK, Vector3.UP, lid, 0.025, R, 0.008)
@@ -143,6 +161,16 @@ func build() -> void:
 func _pose_deltas(p: StringName) -> Dictionary:
 	var d := {}
 	match p:
+		&"stand":
+			# It does not bring its feet together when it stops, because it is
+			# never finished going: it holds the step it was on, the front knee
+			# over the front foot and the back leg straight behind, weight on
+			# neither. Two straight legs side by side were the other half of the
+			# filled column; the stride leaves daylight between them.
+			d[&"thigh_r"] = r(Vector3(0, 0, STANCE_FRONT))
+			d[&"shin_r"] = r(Vector3(0, 0, -STANCE_FRONT))
+			d[&"thigh_l"] = r(Vector3(0, 0, -STANCE_BACK))
+			d[&"hips"] = pr(Vector3(0, STANCE_DROP, 0))
 		&"alert":
 			# Stops and squares up: feet planted wide and flat, knees set, arms
 			# held out from the sides and still, the satchel flap thrown open.
