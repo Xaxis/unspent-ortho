@@ -5,16 +5,21 @@
 #
 # What it proves, in order: a keeper stands at the works it keeps and holds the
 # ground round it; a blow into its plated side rings off; it tells before it bites
-# and the tell hangs over the side that is about to take you; its working part
-# opens when a bite goes past, and a blow there hurts it; the side to be on MOVES
-# as it comes apart, and nothing says so but the body; and it goes down, one
-# opening at a time, which leaves its region taken.
+# and the tell hangs over the side that is about to take you; dodging the bite
+# leaves its working part open and a blow there hurts it; the side to be on MOVES
+# as it comes apart, and nothing says so but the body; and the slate reads it off
+# the same simulation while the key is held.
 #
-# The other two ways it can be taken (the tide flats under it, its works robbed)
-# are rules, not luck, and they are proved where rules belong: tests/sentinel/
-# test_ways.gd and test_fight.gd. Neither can be staged honestly here — this seed
-# puts its keeper on the only work that feeds it, and no patch of tide flat wide
-# enough to stand on lies inside the ground it holds.
+# What is NOT here, and why: its death, and the other two ways it can be taken.
+# Killing it is five or six more of the same pass, and a scripted player fed to a
+# boss for two minutes is downed about as often as it lands a blow — which makes a
+# tour that measures the runner and not the game. Its death, its phases, the
+# openings it gives and what its fall changes are proved in the real simulation,
+# headless and without luck, in tests/sentinel/test_fight.gd; the tide flats and
+# its works are rules, and are proved in tests/sentinel/test_ways.gd. Neither
+# could be staged honestly on this seed anyway: the reaper stands on the only work
+# that feeds it, and no patch of tide flat wide enough to stand on lies inside the
+# ground it holds.
 
 coast calm
 place intake
