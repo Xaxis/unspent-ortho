@@ -97,6 +97,16 @@ const SHAPES := {
 		["dot", 9.0, 20.5], ["dot", 22.5, 16.5],
 		["line", 6.0, 22.5, 12.0, 20.0],
 	],
+	# Dead wood: a few dry sticks thrown down across each other, one with a twig
+	# still on it, so it never reads as driftwood's one sea-worn log or timber's cut ends.
+	&"sticks": [
+		["bar", "a3", 4.0, 26.0, 27.0, 7.0, 3.4, 2.0],
+		["bar", "a4", 5.0, 8.0, 26.0, 25.0, 3.0, 1.8],
+		["bar", "a4", 16.0, 16.5, 22.0, 3.5, 1.8, 1.0],
+		["bar", "a2", 3.0, 18.0, 28.0, 20.0, 2.4, 1.6],
+		["dot", 11.0, 20.5], ["dot", 20.5, 12.0],
+		["line", 7.0, 23.0, 12.0, 19.0],
+	],
 	&"scrap": [
 		["poly", "a3", [5.0, 9.0, 25.0, 5.0, 28.0, 23.0, 21.0, 24.0, 19.0, 27.5, 7.0, 27.0]],
 		["poly", "a4", [5.0, 9.0, 25.0, 5.0, 25.5, 8.0, 5.5, 12.0]],

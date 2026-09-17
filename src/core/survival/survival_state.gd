@@ -44,6 +44,10 @@ var lamp_low_said := false
 ## What the player left on the ground: heap prop id -> {item id: count}. A heap is
 ## a cairn in the world; `use` on it takes everything back (Survival.take_back).
 var left: Dictionary = {}
+## A prop's size before the taking began to shrink it: id -> Vector2(scale, solid)
+## (Harvest.apply_shown). Not saved: a loaded world grows every prop at its own
+## size again, and the takes that were saved shrink it back.
+var base_size: Dictionary = {}
 
 
 static func of(game: Node) -> SurvivalState:

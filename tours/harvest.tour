@@ -1,0 +1,40 @@
+# Taking from the world, as it is SEEN (owner 2026-09-17): what the use key would
+# work is marked where it stands, what is taken is said on the HUD with its own
+# mark, and a thing taken in goes stands smaller with each until the last go takes
+# it away. Everything is found by name, never by a coordinate.
+#
+#   tools/tour.sh tours/harvest.tour --seed=1 --hour=11 --weather=clear:0 --give=pick:1 --held=pick
+#
+# The mark is the interim drawing (src/ui/ui_harvest_mark.gd says why); the rule
+# under it is Harvest.target, the same choice the key makes.
+coast calm
+zoom 9
+# A stone seam with a pick in hand: marked as workable.
+near stone_ore
+wait 0.6
+shot 01-a-seam-the-pick-would-work with harvest_target:workable,prop:stone_ore
+# One go: stone in the creel, said with its mark, and the seam a third smaller.
+press use 0.1
+await picked_up:stone 20
+wait 0.4
+shot 02-one-go-a-third-gone with shrunk,prop:stone_ore
+# A second go on the same seam: two stone more, merged into the same row.
+press use 0.1
+await took 20
+wait 0.4
+shot 03-two-goes-a-third-left with shrunk,prop:stone_ore
+# The last go takes it away.
+press use 0.1
+await took 20
+wait 1.2
+shot 04-the-seam-worked-out
+# A copper seam: the iron pick rings off it, and the mark says so before the key does.
+near copper_ore
+wait 0.6
+shot 05-copper-too-hard-for-iron with harvest_target:too_hard,prop:copper_ore
+# A bush picked bare stands whole, marked only by the ring.
+near bush
+press use 0.1
+await took 12
+wait 0.6
+shot 06-a-bush-picked-over with harvest_target:picked_over,prop:bush

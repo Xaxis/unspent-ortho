@@ -1,0 +1,133 @@
+class_name Harvest
+## What the use key would do to the thing in reach, as a state a highlight can be
+## drawn from, and how much of a thing the taking has left standing (owner,
+## 2026-09-17: "auto highlighted when the player is in position ... once
+## harvested they proportionally disappear").
+##
+## Both are read off the rules the key itself runs on — `Survival.use_target`,
+## the choice `Takes.choose` makes for what is in hand, `SurvivalState.taken` —
+## so a highlight can never promise what the key will not do, and a rock can never
+## look more broken than the takes it has had.
+##
+##   Harvest.target(game) -> {prop, state, verb, item, tool}    or {} with nothing in reach
+##   Harvest.shown(game, prop) -> float                          0..1 of it still standing
+##   Harvest.apply_shown(game, prop) -> bool                     size the prop to it; true if it changed
+##
+## States, in the words a player would use:
+##   WORKABLE     the key works it now, with what is in hand
+##   OTHER_TOOL   something carried would; the key takes it out and works it
+##   TOO_HARD     nothing carried is hard enough
+##   PICKED_OVER  its gatherable part is spent until it grows back
+##   UNDER_WATER  the tide is over it
+##   NO_TOOL      it wants a tool the player does not carry at all
+##   YOURS        the heap the player left at their feet
+
+const WORKABLE := &"workable"
+const OTHER_TOOL := &"other_tool"
+const TOO_HARD := &"too_hard"
+const PICKED_OVER := &"picked_over"
+const UNDER_WATER := &"under_water"
+const NO_TOOL := &"no_tool"
+const YOURS := &"yours"
+
+## A thing the taking consumes is never drawn below this share of its size before
+## it goes: the last take is what takes it away, not a shrink to nothing.
+const SHOWN_LEAST := 0.25
+
+
+## What the use key would do to what is in reach right now.
+static func target(game: Game) -> Dictionary:
+	if game == null or game.player == null or game.query == null:
+		return {}
+	var t := Survival.use_target(game)
+	if t == null:
+		return {}
+	var state := SurvivalState.of(game)
+	if state.left.has(t.id):
+		return {"prop": t, "state": YOURS, "verb": &"take", "item": &"", "tool": &""}
+	var c := Survival.choice_for(game, t)
+	var o: Dictionary = c.get("option", {})
+	var out := {"prop": t, "verb": StringName(str(o.get("verb", &""))), "item": StringName(str(o.get("item", &""))), "tool": &""}
+	if bool(c.get("ok", false)):
+		out["state"] = WORKABLE
+		return out
+	var alt := Survival.tool_for(game, t)
+	if alt != &"":
+		out["state"] = OTHER_TOOL
+		out["tool"] = alt
+		out["verb"] = Items.verb(alt)
+		return out
+	match StringName(str(c.get("why", &""))):
+		&"hard":
+			out["state"] = TOO_HARD
+		&"spent":
+			out["state"] = PICKED_OVER
+		&"tide":
+			out["state"] = UNDER_WATER
+		_:
+			out["state"] = NO_TOOL
+	return out
+
+
+## How much of `prop` the taking has left standing, 0..1. Only a take that
+## CONSUMES the thing counts (`keep` false: a boulder broken, a vein worked out, a
+## wreck stripped): gathering a bush's berries or a tree's deadfall leaves the
+## bush and the tree whole. With two ways of consuming one thing (peat cut or dug)
+## the further-gone one is what is left, since both are taking the same bank.
+static func shown(game: Game, prop: WorldProp) -> float:
+	if game == null or prop == null:
+		return 1.0
+	var state := SurvivalState.of(game)
+	var gone := 0.0
+	var opts := Takes.options(prop.kind)
+	for i in opts.size():
+		var o: Dictionary = opts[i]
+		if bool(o.keep) or int(o.uses) <= 1:
+			continue
+		var taken := int(state.taken.get(SurvivalState.key(prop.id, i), 0))
+		gone = maxf(gone, clampf(float(taken) / float(o.uses), 0.0, 1.0))
+	return 1.0 - gone
+
+
+## INTERIM, and it says so on purpose: a thing half taken is drawn as a SMALLER
+## thing, because scale is the one lever the world view already has and it needs
+## no render change. It is not the look. Under the lit world (docs/LOOK.md) a
+## half-broken boulder keeps its silhouette minus a piece, with fresh unweathered
+## faces where the hammer went — that is the form/lit wave's to build, and when it
+## lands this shrink is to be replaced, not preserved as an art choice. What stays
+## is `shown`: how much of the thing is left, which any drawing of it reads.
+##
+## Size `prop` to what is left of it: its drawn scale and its solid footprint both,
+## so a half-broken rock stops a body where it is drawn. Its size before any
+## taking is remembered on first use and put back when it grows back. Returns true
+## when anything changed (the caller refreshes the view).
+static func apply_shown(game: Game, prop: WorldProp) -> bool:
+	if game == null or prop == null:
+		return false
+	var state := SurvivalState.of(game)
+	var share := shown(game, prop)
+	if share >= 1.0:
+		if not state.base_size.has(prop.id):
+			return false
+		var base: Vector2 = state.base_size[prop.id]
+		state.base_size.erase(prop.id)
+		var changed := not is_equal_approx(prop.scale, base.x) or not is_equal_approx(prop.solid, base.y)
+		prop.scale = base.x
+		prop.solid = base.y
+		return changed
+	if not state.base_size.has(prop.id):
+		state.base_size[prop.id] = Vector2(prop.scale, prop.solid)
+	var b: Vector2 = state.base_size[prop.id]
+	var k := size_for(share)
+	var was := prop.scale
+	prop.scale = b.x * k
+	prop.solid = b.y * k
+	return not is_equal_approx(was, prop.scale)
+
+
+## How big a thing is drawn with `share` of it left: its footprint, not its height,
+## is what the camera above it reads, so the AREA follows what is left (the square
+## root of the share in each direction). Straight scaling drew a seam with a third
+## still in it as a pebble.
+static func size_for(share: float) -> float:
+	return maxf(SHOWN_LEAST, sqrt(clampf(share, 0.0, 1.0)))

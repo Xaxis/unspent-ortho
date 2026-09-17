@@ -233,6 +233,17 @@ static func _choose(game: Game, state: SurvivalState, prop: WorldProp, held: Str
 	return Takes.choose(prop.kind, g, h, exhausted, game.clock.minutes)
 
 
+## The choice the use key would make on `prop` with what is in hand (Takes.choose's
+## shape): the one answer the key, the line under it and the highlight all read.
+static func choice_for(game: Game, prop: WorldProp) -> Dictionary:
+	return _choose(game, SurvivalState.of(game), prop)
+
+
+## The best carried tool that could work `prop` now, or &"".
+static func tool_for(game: Game, prop: WorldProp) -> StringName:
+	return _tool_for(game, SurvivalState.of(game), prop)
+
+
 ## Has this prop any work left in it for the player as they stand (tools and all)?
 ## Tours and tools use it to find something that is not already picked over.
 ## `in_hand` true asks only what the player could do with what they hold now.
@@ -450,6 +461,9 @@ static func finish_work(game: Game) -> bool:
 			game.world.depleted[prop.id] = back
 			if game.view != null:
 				game.view.refresh_props(prop)
+	elif not o.keep and Harvest.apply_shown(game, prop) and game.view != null:
+		# Taken from but not taken away: it stands that much smaller.
+		game.view.refresh_props(prop)
 	Events.sfx.emit(&"took", game.world.to_3d(prop.pos))
 	return true
 
@@ -950,6 +964,8 @@ static func sweep(game: Game, _delta: float) -> void:
 		for k: String in state.taken.keys():
 			if k.begins_with("%d:" % id):
 				state.taken.erase(k)
+		# Grown back whole: the size it had before anybody took from it.
+		Harvest.apply_shown(game, prop)
 		if game.view != null:
 			game.view.refresh_props(prop)
 		Events.sfx.emit(&"regrow", w.to_3d(prop.pos))

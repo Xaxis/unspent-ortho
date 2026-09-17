@@ -213,6 +213,39 @@ and the rope keep their reasons to exist.
   over the ground actually under it, because a lit world places the shadow from
   that number.
 
+## Taking, as it is seen (owner, 2026-09-17)
+
+What the use key would take is **marked where it stands** the moment the player is
+in position; what is taken **goes away in proportion** to what was had off it; and
+what came into the creel is **said on the HUD with a picture of that material**.
+
+- **The mark is the key's own answer.** `Harvest.target` reads the choice the key
+  makes (`Survival.use_target`, then `Takes.choose` for what is in hand), so a mark
+  never promises what the key will not do. It says one of: works it now (bright
+  brackets), works it with something else you carry (dimmer: the key takes that
+  tool out), too hard or no tool at all (the warning's dull red), or picked over
+  (no brackets, a ring on the ground round it, so a key that does nothing is not a
+  mystery). No words: the line under the HUD already names the verb.
+- **Taken in goes, a thing stands smaller.** A take that CONSUMES the thing (a seam
+  broken, a wreck stripped, a peat bank cut) shrinks it by what is left of it
+  (`Harvest.shown`), its drawing and what stops a body alike; the area follows the
+  share, since the camera reads a footprint, and the last go takes it away as
+  before. A take that leaves it (berries, dead wood under a tree, a tip picked
+  over) does not shrink it. A save brings it back as it was left; grown back, it is
+  its own size again.
+- **What was taken** stands a moment over the held-item window: the thing as the
+  slate scans it (the carrying page's own sketch), `+N`, its name. The same thing
+  again while the row stands adds to it.
+
+**Interim, and said so.** The brackets and the shrink are the drawings that exist
+now. Under the lit world (docs/LOOK.md) "this can be taken" is meant to be light on
+the thing, and a half-broken rock keeps its silhouette short a piece with fresh
+faces where the hammer went. When that lands both are replaced; the rule
+(`Harvest.target`) and the share (`Harvest.shown`) are what stay. And several
+materials still share one picture (ores, shells, the greens, stone and its kin):
+`tests/ui/test_pickup_feed.gd` lists them and fails on any new sharing, so the list
+only gets shorter.
+
 ## Swimming (owner, 2026-09-17)
 
 Deep water was a wall to everything without a raft under it. A body that can take
