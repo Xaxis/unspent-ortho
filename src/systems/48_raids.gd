@@ -339,20 +339,19 @@ func _step_notices() -> void:
 		if m != null and minutes < game.body.spoof_until and not Notices.got_away(n, m.pos):
 			_stop(n, &"jammed")
 			continue
-		if m != null and m.removed:
-			# Its body has gone off the land with the record on it, and where it
-			# was standing when it went is the whole question. Past the yard it
-			# was past catching, and walking over the horizon IS getting away.
-			# Still in the yard, it has to walk the way home like anything else.
-			if Notices.clear_of_holding(n, m.pos) or minutes - n.taken_at >= Notices.HOME_MINUTES:
-				_file(n)
-			continue
-		if m == null:
-			# Nobody in the world is holding it: a game loaded back with a reading
-			# already in flight, or a realm crossed and left behind. It walks.
-			# Filing these on the first frame turned a clerk the player could have
-			# killed into a filed record by saving the game beside it.
-			if minutes - n.taken_at >= Notices.HOME_MINUTES:
+		if m != null and not n.clear and Notices.clear_of_holding(n, m.pos):
+			# Watched out of the yard. From here the player could not have caught
+			# it anyway, and that is remembered on the record itself, because the
+			# body will not be here to ask a minute from now.
+			n.clear = true
+		if m == null or m.removed:
+			# Nobody in the world is holding it: culled out past the coast, left
+			# behind in a world the player walked out of, or a game loaded back
+			# with a reading already in flight. One that was clear of the yard when
+			# it went is away — walking over the horizon IS getting away. One that
+			# was still IN the yard has to walk the whole way home first, or saving
+			# the game beside a clerk files a record the player could have killed.
+			if n.clear or minutes - n.taken_at >= Notices.HOME_MINUTES:
 				_file(n)
 			continue
 		if Notices.got_away(n, m.pos) or minutes - n.taken_at >= Notices.HOME_MINUTES:

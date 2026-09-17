@@ -31,6 +31,12 @@ var channel: StringName = &"light"
 var strength := 0.0
 ## The MobState id carrying it (-1 once the body is gone).
 var mob_id := -1
+## It got clear of the yard while somebody was watching (Notices.CLEAR_OF): past
+## that the player could not have caught it, so if its body then goes off the
+## land — culled, or a game put down — the reading counts as having got home.
+## While it is false the record is still catchable, and a body that vanishes with
+## one has to walk the whole way (Notices.HOME_MINUTES) before it is filed.
+var clear := false
 ## Where it was taken, and the world minute.
 var at := Vector2.ZERO
 var taken_at := 0.0
@@ -48,7 +54,7 @@ func as_dict() -> Dictionary:
 	return {
 		"id": id, "settlement": settlement_id, "realm": String(realm),
 		"kind": String(kind), "carrier": String(carrier), "channel": String(channel),
-		"strength": strength, "mob": mob_id, "at": SaveCodec.vec2(at),
+		"strength": strength, "mob": mob_id, "clear": clear, "at": SaveCodec.vec2(at),
 		"taken_at": taken_at, "state": String(state), "how": String(how),
 	}
 
@@ -66,6 +72,7 @@ static func from_dict(d: Dictionary) -> Notice:
 	# is one walking home with nobody in the world holding it, which is exactly
 	# what a reading that has already left looks like.
 	n.mob_id = -1
+	n.clear = bool(d.get("clear", false))
 	n.at = SaveCodec.to_vec2(d.get("at", Vector2.ZERO))
 	n.taken_at = SaveCodec.to_num(d.get("taken_at", 0.0))
 	n.state = StringName(str(d.get("state", &"carried")))
