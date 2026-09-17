@@ -212,7 +212,7 @@ static func fill(mask: PackedByteArray) -> float:
 ## kind. The watcher's number here went up on purpose and the reason is written
 ## in both files.
 const FILLED := {
-	&"harvester": 0.67, &"hauler": 0.70, &"runner": 0.57, &"warden": 0.56,
+	&"harvester": 0.67, &"hauler": 0.59, &"runner": 0.51, &"warden": 0.56,
 	&"sweeper": 0.55, &"dredger": 0.48, &"clerk": 0.47, &"lineman": 0.44,
 	&"cutter": 0.44, &"flock": 0.32, &"longlegs": 0.32, &"watcher": 0.30,
 }
@@ -241,8 +241,25 @@ const FILLED := {
 ## in front on a feeder throat a third of its width, so daylight stands either
 ## side of it too. Both are structure, not decoration, and both cost triangles,
 ## which is why they had to wait for the budget to rise with the resolution.
+##
+## THE NEXT THREE WENT THE SAME WAY, and each mask showed its cause at a glance.
+## The hauler end-on was one 14-pixel column: two hoppers in a line, the wheels
+## tucked under the rims and a hinge of two plates as wide as the hoppers. Its
+## wheels went out on bogie outriggers and the two units onto drawbars to a low
+## knuckle, so a slot runs the length of it either side and the gap between the
+## units is open round the mast: 0.67 to 0.56. The sweeper seen along its
+## crossbar was an I, not a T: one plank 0.42 deep with the hopper stood on it.
+## It is an axle beam and a brush head slung out in front on two arms now, the
+## beam deepest under the hopper and thin at the wheels: 0.67 to 0.53. The
+## runner side-on was a column too: a satchel strapped flat to its back, arms
+## hanging inside the torso's outline and its feet together. The satchel rides
+## a rack off the spine, and a runner that stops holds the step it was on, so
+## there is daylight between the legs: 0.65 to 0.55. The hauler's and the
+## runner's numbers at the two sampled yaws above came down with them. The
+## runner's mass came down with its hole (0.53 to 0.49 of body, floor 0.40),
+## which is the counterweight doing its job and why the rack stands no further off.
 const FILLED_ANY := {
-	&"harvester": 0.77, &"hauler": 0.69, &"sweeper": 0.69, &"runner": 0.67,
+	&"harvester": 0.77, &"hauler": 0.58, &"sweeper": 0.55, &"runner": 0.57,
 	&"warden": 0.62, &"clerk": 0.55, &"dredger": 0.54, &"lineman": 0.52,
 	&"cutter": 0.47, &"flock": 0.37, &"longlegs": 0.36, &"watcher": 0.42,
 }
