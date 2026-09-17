@@ -388,8 +388,41 @@ func _listen() -> void:
 			_seen["slept"] = true)
 
 
+## How much slower this machine is than an idle one, 1.0 to 8.0.
+##
+## A tour's budgets bound "it never came" — they are not a measure of how fast
+## the world opens. With a wave's worth of tours running one after another a
+## world can take three times as long to open as it does on a quiet laptop, and
+## a budget that does not stretch turns that into a failed proof and a frame
+## thrown away: exactly the trap `test_exit` fell into with a frame count, one
+## commit before this one. Mirrors `TestCase.machine_slack()`; `src` must not
+## depend on `tests`, so the arithmetic is deliberately written in both places.
+static func machine_slack() -> float:
+	if _slack > 0.0:
+		return _slack
+	_slack = 1.0
+	var load := 0.0
+	if FileAccess.file_exists("/proc/loadavg"):
+		var f := FileAccess.open("/proc/loadavg", FileAccess.READ)
+		if f != null:
+			load = float(f.get_line().split(" ")[0])
+	if load <= 0.0:
+		var out: Array = []
+		if OS.execute("sysctl", ["-n", "vm.loadavg"], out) == 0 and not out.is_empty():
+			# { 50.49 60.10 63.36 }
+			var parts := String(out[0]).replace("{", "").replace("}", "").strip_edges().split(" ", false)
+			if not parts.is_empty():
+				load = float(parts[0])
+	if load > 0.0:
+		_slack = clampf(load / float(maxi(1, OS.get_processor_count())), 1.0, 8.0)
+	return _slack
+
+
+static var _slack := 0.0
+
+
 func _await(what: String, secs: float) -> bool:
-	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	var until := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
 	var ok := _answered(what)
 	while not ok and Time.get_ticks_msec() < until:
 		await get_tree().physics_frame
