@@ -62,9 +62,9 @@ const ROWS := {
 	PropKind.POLE: {"shape": LINE, "lift": Vector2(3.0, 4.2), "span": Vector2(6.0, 9.0), "chance": 0.55},
 	PropKind.PYLON: {"shape": LINE, "lift": Vector2(4.2, 5.8), "span": Vector2(7.0, 10.0), "chance": 0.70},
 	PropKind.RELAY: {"shape": LINE, "lift": Vector2(3.4, 4.6), "span": Vector2(5.0, 8.0), "chance": 0.60},
-	PropKind.HOUSE: {"shape": EAVE, "lift": Vector2(2.1, 2.7), "span": Vector2(2.2, 3.2), "chance": 0.35},
-	PropKind.SHACK: {"shape": EAVE, "lift": Vector2(1.9, 2.4), "span": Vector2(2.0, 2.8), "chance": 0.40},
-	PropKind.PUMP_HOUSE: {"shape": EAVE, "lift": Vector2(2.2, 2.8), "span": Vector2(2.2, 3.0), "chance": 0.40},
+	PropKind.HOUSE: {"shape": EAVE, "lift": Vector2(2.1, 2.7), "span": Vector2(1.3, 1.8), "chance": 0.40},
+	PropKind.SHACK: {"shape": EAVE, "lift": Vector2(1.9, 2.4), "span": Vector2(1.2, 1.6), "chance": 0.45},
+	PropKind.PUMP_HOUSE: {"shape": EAVE, "lift": Vector2(2.2, 2.8), "span": Vector2(1.3, 1.7), "chance": 0.45},
 	PropKind.RUIN: {"shape": GIRDER, "lift": Vector2(2.4, 3.4), "span": Vector2(3.4, 5.4), "chance": 0.45},
 	PropKind.WRECKAGE: {"shape": GIRDER, "lift": Vector2(2.2, 3.2), "span": Vector2(3.2, 5.0), "chance": 0.50},
 	PropKind.STACK: {"shape": GIRDER, "lift": Vector2(4.0, 5.6), "span": Vector2(4.0, 6.4), "chance": 0.65},
@@ -271,8 +271,10 @@ static func _eave(k: MeshKit, seed_value: int, tint: Color) -> void:
 	timber.a = M_MADE / 255.0
 	var plate := Palette.PLATE[2].lerp(tint, 0.2)
 	plate.a = M_SWARF / 255.0
-	# The roof's own lip: a shallow wedge, wide across the reach.
-	var w := 0.62
+	# The roof's own LIP, and the word is load-bearing: this is the last foot of
+	# a roof and the gutter under it, not a second roof. Authored at a three-unit
+	# reach it came out wider than the house it hung off (see ROWS).
+	var w := 0.46
 	k.quad(Vector3(0.0, 0.0, -w), Vector3(1.0, -0.20, -w * 0.82),
 		Vector3(1.0, -0.20, w * 0.82), Vector3(0.0, 0.0, w), plate)
 	# Two rafters under it, so the underside is not a blank plane.
