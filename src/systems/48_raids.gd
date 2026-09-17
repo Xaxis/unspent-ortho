@@ -1048,15 +1048,26 @@ func _drive(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> void:
 ## It is the same door the paper settle uses (RaidResolve.take_stores), and it is
 ## expensive: they take what a week of the plot made.
 func _tribute(p: RaidPlan, s: Settlement, m: MobState, sim: FightSim) -> bool:
-	if p.paid or s.stored() < RaidRoles.TRIBUTE:
+	if p.paid or s.stores.is_empty():
 		return false
-	var took := RaidResolve.take_stores(s, RaidRoles.TRIBUTE)
+	# The same arithmetic as the paper settle, to the number: they carry what the
+	# step's force is worth, up to a tribute, and only a FULL tribute buys them.
+	var took := RaidResolve.take_stores(s, RaidResolve.through(p.stage, s.defence_total()))
 	if took.is_empty():
 		return false
 	p.paid = true
 	_seen["looted"] = true
-	_seen["paid"] = true
 	Events.sfx.emit(&"raid_loot", game.world.to_3d(m.pos))
+	var carried := 0.0
+	for k: Variant in took:
+		carried += float(took[k])
+	if carried < RaidRoles.TRIBUTE:
+		# Not enough lying loose to be worth the walk on its own: they take it and
+		# go on to the thing they came for.
+		if _near(s):
+			Events.message.emit("They have taken what was lying in %s, and they are not finished." % s.name)
+		return false
+	_seen["paid"] = true
 	if _near(s):
 		Events.message.emit("They have loaded up what was lying in %s, and that is what they came for." % s.name)
 	# Paid, the whole party turns round: nothing is broken and nobody is taken,

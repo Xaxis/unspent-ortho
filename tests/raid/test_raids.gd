@@ -576,6 +576,19 @@ func test_a_full_store_buys_them_off_with_the_player_standing_there() -> void:
 		after += p.health
 	eq(after, whole, "nothing was broken to pay them")
 	check(bool(sys.call("tour_seen", "paid")), "the world says they were paid")
+	# And a handful in the store is not a tribute: they take it and go on to what
+	# they came for, which is what the paper settle does with the same numbers.
+	var plan2 := RaidPlan.new()
+	plan2.id = 78
+	plan2.settlement_id = s.id
+	plan2.stage = RaidStage.RAID
+	plan2.state = &"under_way"
+	(sys.get("plans") as Array).append(plan2)
+	s.stores.clear()
+	s.stores[&"timber"] = 2
+	check(not bool(sys.call("_tribute", plan2, s, m, g.player.sim)), "two of anything buys nobody off")
+	eq(plan2.outcome, &"", "the step is not over")
+	eq(s.stored(), 0.0, "though what there was went with them")
 	Sx.end(g)
 
 

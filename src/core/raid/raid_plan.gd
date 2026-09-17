@@ -29,8 +29,9 @@ var attention_was := 0.0
 ## signature is not: killing the mast inside the window is the answer a player
 ## can actually reach in an hour, so a step is called off on this too.
 var signature_was := 0.0
-## They were paid: a full store left lying in the yard bought the party off, and
-## nothing was broken (RaidRoles.TRIBUTE).
+## The store has been loaded into their arms already, so nobody takes it twice.
+## A FULL tribute (RaidRoles.TRIBUTE) buys the party off and nothing is broken;
+## less than that they keep, and go on to what they came for.
 var paid := false
 ## [{role, kind, target, mob}] — target is a piece id, a person id, or -1.
 var party: Array = []
