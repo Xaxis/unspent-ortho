@@ -13,7 +13,7 @@ extends RefCounted
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
 ## --frames=N          frames to wait after loading before the shot (default 8)
-## --scale=N           upscale the shot N times, nearest (default 2)
+## --scale=N           upscale the shot N times, nearest (default 1)
 ## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
@@ -94,7 +94,11 @@ var walk_seconds := 0.0
 var run := false
 var shot := ""
 var frames := 8
-var scale := 2
+## 1 since the base became 1920x1080: a shot is already the size a player sees,
+## and doubling it wrote 3840x2160 frames — 56 MB for one canon run, and slower
+## to open than to render. Someone reviewing a frame wants the game's own pixels,
+## not more of them. Pass --scale=2 deliberately when a detail needs enlarging.
+var scale := 1
 var scene := "game"
 var place := ""
 var stats := false
