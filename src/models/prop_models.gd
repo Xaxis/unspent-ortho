@@ -58,7 +58,12 @@ static func variants(kind: int) -> int:
 		PropKind.SNOW_PINE, PropKind.DRIFTWOOD, PropKind.BONES, PropKind.RUIN, PropKind.STANDING_STONE, PropKind.REEDS, \
 		PropKind.GORSE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK, PropKind.WRACK:
 			return 3
-		PropKind.VENT, PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
+		# Four: the Burning puts nine vents in one frame, and two shapes there is a
+		# stamp (art finding 16). Even variants are a hole burnt in the ground,
+		# odd ones a bolted pipe, and each pair differs in size and stance.
+		PropKind.VENT:
+			return 4
+		PropKind.TIP, PropKind.WRECK, PropKind.KILN, PropKind.STONE_ORE, PropKind.IRON_ORE, \
 		PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE:
 			return 2
 		PropKind.SIGN:
