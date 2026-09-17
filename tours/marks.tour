@@ -157,7 +157,7 @@ shot 19-a-machine-read-on-a-height with mob:lineman
 tap ability_glide
 await gliding 5
 wait 0.8
-shot 20-and-through-a-whole-glide with gliding,mob:lineman
+shot 20-and-through-a-whole-glide with gliding
 
 # --- Breath steps off the snow -----------------------------------------------
 # The cue fires on its own beat and hangs a second and a half, so the frame is
