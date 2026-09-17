@@ -17,8 +17,16 @@ class_name Attention
 ## stolen technology they chose to run inside their own walls, a machine that
 ## went there and never came back. A holding that gives off nothing and is never
 ## read gains nothing, however many days pass — `tests/raid/test_attention.gd`
-## names that rule. Time only ever takes attention AWAY, and only while the place
-## is quiet, which is the thing a quiet week is for.
+## names that rule.
+##
+## There is ONE thing time carries in the other direction and it is not an
+## exception to that: a holding running stolen technology pays `found_tech` by
+## the world hour, because the thing is switched on and humming the whole time
+## and that is what a machine passing smells. The player chose to build it, the
+## slate draws the channel, and switching the piece off stops the clock — so the
+## rise is still caused, it is only PAID over hours instead of at once. Every
+## other way time moves the number takes it away, and only while the place is
+## quiet, which is the thing a quiet week is for.
 
 ## What one filed record at full strength is worth: the unit everything else is
 ## measured in.
@@ -42,12 +50,19 @@ const LURED := 0.25
 ##   lost          a machine the plan sent to this place never came home
 ##   interference  the plan's network round the holding went up a level (§2)
 ##   found_tech    stolen FOUND technology running in the walls, per world hour
-##                 at full strength (a stolen cell is 1.0: the loudest thing in
-##                 the game, and it is meant to cost)
+##                 at full strength. A stolen cell is 1.0 and `STOLEN_CELL` has
+##                 no row, so nobody can build one: the loudest stolen thing a
+##                 player can actually stand up today is a TURRET at 0.5, and
+##                 `tests/settlement/test_what_can_be_built.gd` fails if that
+##                 changes without this line changing with it.
 ##   stopped       a record destroyed before it travelled
 ##   quiet         a quiet world hour: nothing read the place and nothing came
-##   raided        what a step spends when it has been paid (RaidStage.spends)
 ##   keeper_fell   the region's keeper is gone; its network is quiet for good
+##
+## What a step SPENDS when it has been paid is not here: it is per stage, in
+## `RaidStage.SPENDS`, because a siege ridden out is worth nine times a survey.
+## A single `raided` row sat here duplicating the RAID rung of that table and
+## nothing ever read it, which is the failure this list is supposed to prevent.
 const CAUSES := {
 	&"notice": NOTICE_FULL,
 	&"lured": NOTICE_FULL * LURED,
@@ -56,7 +71,6 @@ const CAUSES := {
 	&"found_tech": 0.030,
 	&"stopped": -0.05,
 	&"quiet": -0.012,
-	&"raided": -0.30,
 	&"keeper_fell": -1.0,
 }
 
