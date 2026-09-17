@@ -257,3 +257,46 @@ func test_a_broken_depot_costs_the_plan_the_region() -> void:
 	lt(disp.interference.level(site.region), 3, "a dark yard cannot hunt")
 	g.queue_free()
 	await frames(1)
+
+
+## THE SLATE CAN BE PUT ON IT. A depot could be walked to, cased, broken and left
+## dark, and the one thing in the game that says what a thing is had nothing to
+## say about it — every body and every person on screen reads, and the biggest
+## set piece in the game did not. It sorts BELOW every body and every person, so
+## putting it in the list can never take the lock off what is coming at you.
+func test_a_depot_reads_on_the_slate_and_never_steals_the_lock() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--place=works"]))
+	await frames(4)
+	var sys := _works(g)
+	var site: WorksSite = sys.here()
+	check(site != null, "the player is standing on a depot's ground")
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	var rows: Array = sys.target_rows(g.player.pos, 40.0)
+	gt(float(rows.size()), 0.0, "the depot answers for itself")
+	var subject := TargetSubject.from_place(rows[0])
+	var read := TargetRead.of_subject(subject, g.player.pos, g.player.sim.moment)
+	check(str(read.get("name", "")).to_lower().contains("works"), "it says what it is: %s" % read.get("name"))
+	var said := PackedStringArray()
+	for pair: Array in (read.get("stats", []) as Array):
+		said.append(String(pair[0]))
+	for want: String in ["trade", "stage", "housings"]:
+		check(said.has(want), "a player casing a yard is told its %s: %s" % [want, said])
+	eq(int(read.get("health", -1)), 0, "a place has no health and does not invent one")
+	# And it is the last thing a lock would take: below a person, which is itself
+	# below every body.
+	var far := g.player.pos
+	lt(Targeting.threat_of(subject, far), Targeting.THREAT_PERSON,
+		"a yard outranked a person for the lock")
+	# What it says changes with what has been done to it.
+	for i in Works.PART_NAMES.size():
+		sys._break(site, i)
+	await frames(2)
+	var after: Array = sys.target_rows(g.player.pos, 40.0)
+	var dark := TargetRead.of_subject(TargetSubject.from_place(after[0]), g.player.pos, g.player.sim.moment)
+	check(str(dark.get("thinking", "")).to_lower().contains("dark"),
+		"a broken yard still reads as a working one: %s" % dark.get("thinking"))
+	g.queue_free()
+	await frames(1)

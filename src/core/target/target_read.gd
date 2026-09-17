@@ -21,7 +21,43 @@ const CALM := 0.05
 static func of_subject(s: TargetSubject, from: Vector2, moment: Moment, world: WorldData = null, query: WorldQuery = null, now: float = 0.0) -> Dictionary:
 	if s.body != null:
 		return of(s.body, from, moment, world, query, now)
+	if not s.place.is_empty():
+		return of_place(s, from)
 	return of_person(s, from)
+
+
+## A PLACE: a depot, a place worth the walk. No health, no signature, nothing it
+## is thinking — what a player wants off a works is what it is, how far the plan
+## has got here and how many of its housings are still shut, and off a landmark
+## what the place was and whether its cache has been opened.
+##
+## Every one of those is worked out by the system that owns the place and handed
+## over in the row, so this file goes on knowing nothing about depots.
+static func of_place(s: TargetSubject, from: Vector2) -> Dictionary:
+	var row := s.place
+	return {
+		"id": s.id,
+		"kind": s.kind,
+		"name": s.name,
+		"role": str(row.get("role", "a place")),
+		"machine": bool(row.get("machine", false)),
+		"person": false,
+		"place": true,
+		"disposition": "",
+		"distance": s.here().distance_to(from),
+		"health": 0,
+		"max_health": 0,
+		"fraction": 1.0,
+		"pips": [],
+		"stats": row.get("stats", []),
+		"powers": PackedStringArray(),
+		"awareness": {"suspicion": 0.0, "sure": false, "sees": false, "hears": false,
+			"word": str(row.get("notices", "it does not look up"))},
+		"thinking": str(row.get("thinking", "")),
+		"open": false,
+		"part": "none",
+		"part_at_you": false,
+	}
 
 
 ## A villager: no health, no working part, nothing that fights. What a player

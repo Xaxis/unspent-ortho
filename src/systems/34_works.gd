@@ -694,3 +694,42 @@ func tour_seen(what: String) -> bool:
 		var st: WorksState = _states.get(s.region, null) if s != null else null
 		return st != null and st.broken_count() >= what.substr(11).to_int()
 	return false
+
+
+## WHAT A DEPOT READS AS when the player puts the slate on it (42_target). A
+## works could be walked to, cased and broken and the slate had nothing to say
+## about it — every other thing a player can look at in this game says what it
+## is. What it says is what a player casing one wants: what trade it was founded
+## on, how far the plan has got here, and how many of its three housings are
+## still shut.
+func target_rows(from: Vector2, reach: float) -> Array:
+	var out: Array = []
+	for s in sites:
+		if s.pos.distance_to(from) > reach:
+			continue
+		var st: WorksState = _states.get(s.region, null)
+		var shut := Works.PART_NAMES.size() - (0 if st == null else st.broken_count())
+		var dark := st != null and st.broken()
+		var stats: Array = [
+			["trade", String(s.trade).capitalize()],
+			["stage", "%d of %d" % [stage_of(s) + 1, Works.STAGES]],
+			["housings", "out" if dark else "%d still shut" % shut],
+		]
+		var thinking := "The yard is dark. Nothing here answers the plan."
+		if not dark:
+			thinking = "The plan is working here. %s" % ("Three housings hold it up."
+				if shut == 3 else "%d of its housings still hold it up." % shut)
+		out.append({
+			"id": s.region,
+			"kind": &"works",
+			"name": Works.says(s),
+			"pos": s.pos,
+			"height": 3.0,
+			"radius": Works.YARD * 0.5,
+			"role": "the plan's own depot",
+			"machine": true,
+			"notices": "the yard is watching" if not dark else "nothing here is awake",
+			"stats": stats,
+			"thinking": thinking,
+		})
+	return out

@@ -395,3 +395,39 @@ func _in_frame(s: LandmarkSite) -> bool:
 ## The sites, for a test, for dev mode and for whoever wants the list.
 func all() -> Array[LandmarkSite]:
 	return sites
+
+
+## WHAT A PLACE READS AS when the player puts the slate on it (42_target). The
+## order a landmark is experienced in is a shape, then a name, then hands on it —
+## so the slate only has something to say about one the player has already FOUND.
+## Reading an unfound silhouette off the horizon would hand over the whole of the
+## walk that the place exists to be worth.
+func target_rows(from: Vector2, reach: float) -> Array:
+	var out: Array = []
+	for s in sites:
+		if s.pos.distance_to(from) > reach or not state.is_found(s.id):
+			continue
+		var def := s.def()
+		if def == null:
+			continue
+		var opened := state.is_opened(s.id)
+		var stats: Array = [
+			["land", String(s.land).replace("_", " ")],
+			["cache", "emptied" if opened else "not opened"],
+		]
+		if def.guarded:
+			stats.append(["watch", "something of the plan is still on it"])
+		out.append({
+			"id": hash(s.id) & 0xFFFF,
+			"kind": s.kind,
+			"name": def.display_name.capitalize(),
+			"pos": s.pos,
+			"height": LandmarkModels.high_of(s.kind),
+			"radius": 1.8,
+			"role": "a place worth the walk",
+			"machine": false,
+			"notices": "it has stood here a long time",
+			"stats": stats,
+			"thinking": def.near,
+		})
+	return out

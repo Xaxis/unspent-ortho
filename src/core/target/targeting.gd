@@ -27,6 +27,9 @@ const LOST_GRACE := 1.5
 ## Where a person sits in the order: below anything in the fight, and further down
 ## the further off they are. A villager is not a threat and never sorts like one.
 const THREAT_PERSON := -1000.0
+## And a PLACE below every person: a depot is worth reading and it is never the
+## thing about to hit you, so it can never take the lock off something that is.
+const THREAT_PLACE := -2000.0
 ## What each thing about a body adds when the list is ordered. Coming for you
 ## outweighs everything; a body that has not noticed you sits at the bottom.
 const THREAT_ATTACKING := 100.0
@@ -45,7 +48,11 @@ static func reach_with(has_lens: bool) -> float:
 
 ## The bodies that may be locked, nearest threat first. `bodies` are MobStates
 ## (alive, not removed); `from` is the player.
-static func candidates(bodies: Array, from: Vector2, reach: float = REACH, people: Array = []) -> Array[TargetSubject]:
+## `places` are rows built by whoever owns them (34_works, 22_landmarks): things
+## that stand still and can be looked at. They sort below every body and every
+## person, so putting a depot in the list can never cost a player the lock on
+## what is coming at them.
+static func candidates(bodies: Array, from: Vector2, reach: float = REACH, people: Array = [], places: Array = []) -> Array[TargetSubject]:
 	var out: Array[TargetSubject] = []
 	for b: Variant in bodies:
 		var m := b as MobState
@@ -60,6 +67,14 @@ static func candidates(bodies: Array, from: Vector2, reach: float = REACH, peopl
 		if not at.is_finite() or at.distance_to(from) > reach:
 			continue
 		out.append(TargetSubject.from_folk(row, i))
+	for row: Variant in places:
+		var r := row as Dictionary
+		if r == null:
+			continue
+		var at: Vector2 = r.get("pos", Vector2.INF)
+		if not at.is_finite() or at.distance_to(from) > reach:
+			continue
+		out.append(TargetSubject.from_place(r))
 	out.sort_custom(func(a: TargetSubject, c: TargetSubject) -> bool:
 		var ta := threat_of(a, from)
 		var tc := threat_of(c, from)
@@ -72,6 +87,8 @@ static func candidates(bodies: Array, from: Vector2, reach: float = REACH, peopl
 
 ## What the list is sorted by, for any subject: a person sits below every body.
 static func threat_of(s: TargetSubject, from: Vector2) -> float:
+	if not s.place.is_empty():
+		return THREAT_PLACE - s.here().distance_to(from) * THREAT_PER_TILE
 	if s.body == null:
 		return THREAT_PERSON - s.here().distance_to(from) * THREAT_PER_TILE
 	return threat(s.body, from)

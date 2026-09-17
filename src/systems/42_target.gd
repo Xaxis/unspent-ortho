@@ -107,7 +107,7 @@ func _process(delta: float) -> void:
 	if not down:
 		_let_go(delta)
 		return
-	_list = Targeting.candidates(_bodies(), game.player.pos, _reach(), _people())
+	_list = Targeting.candidates(_bodies(), game.player.pos, _reach(), _people(), _places())
 	if sweep_pressed:
 		sweeping = not sweeping
 		_page = 0
@@ -181,6 +181,19 @@ func _people() -> Array:
 		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
 		out.append(row)
+	return out
+
+
+## THE PLACES IN REACH. A depot and a place worth the walk are both things a
+## player can stand and look at, and until this existed the slate had nothing to
+## say about the biggest set piece in the game. Each system answers for its own
+## (`target_rows`), so this one goes on knowing nothing about depots or towers
+## and a package that adds a new kind of place needs no line here.
+func _places() -> Array:
+	var out: Array = []
+	for sys in game.systems:
+		if sys.has_method(&"target_rows"):
+			out.append_array(sys.call(&"target_rows", game.player.pos, _reach()) as Array)
 	return out
 
 

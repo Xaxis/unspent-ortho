@@ -254,7 +254,11 @@ func _draw_lock(s: TargetSubject) -> void:
 ## what it is round.
 func _draw_ring(s: TargetSubject, col: Color) -> void:
 	var cam := game.camera
-	var r := PERSON_RADIUS if s.body == null else maxf(0.45, float(s.body.row.get("radius", 0.5)) + 0.25)
+	# A body has its roster radius, a place has its own (a depot's yard is wider
+	# than anything that walks), and a person has neither and takes PERSON_RADIUS.
+	var r := s.radius()
+	if r <= 0.0:
+		r = PERSON_RADIUS
 	var base := game.world.to_3d(s.here())
 	var was := Vector2.ZERO
 	for i in range(0, 25):
