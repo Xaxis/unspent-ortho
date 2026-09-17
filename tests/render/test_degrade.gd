@@ -47,7 +47,7 @@ func test_the_light_is_counted_back_where_it_is_composed() -> void:
 	var sky := FileAccess.get_file_as_string("res://src/render/sky_light.gd")
 	check(sky.contains("CompatTrim.row("), "SkyLight picks the row")
 	check(sky.contains("CompatTrim.remember("), "and hands it to the lamps")
-	for key: String in ["trim.sun", "trim.ambient", "trim.fog", "trim.glow", "trim.exposure", "trim.emission"]:
+	for key: String in ["trim.sun", "trim.ambient", "trim.fog", "trim.glow", "trim.exposure", "trim.emission", "trim.contrast", "trim.saturation"]:
 		check(sky.contains(key), "SkyLight spends %s" % key)
 	var lights := FileAccess.get_file_as_string("res://src/systems/15_lights.gd")
 	check(lights.contains("CompatTrim.lamp_gain()"), "a lamp's energy is counted back")
@@ -95,7 +95,7 @@ func test_the_fit_stages_what_the_canon_shoots() -> void:
 func test_every_measurement_the_tours_ask_for_exists() -> void:
 	for t: String in ["res://tours/degrade.tour", "res://tours/degrade_cost.tour", "res://tours/degrade_fit.tour"]:
 		for line: String in _commands(t):
-			if line.begins_with("perf ") and line.split(" ")[1] != "fore" and line.split(" ")[1] != "folk":
+			if line.begins_with("perf ") and not line.split(" ")[1] in ["fore", "folk", "foliage"]:
 				check(RenderProbe.KINDS.has(line.split(" ")[1]), "%s: perf %s is a RenderProbe measurement" % [t, line.split(" ")[1]])
 
 

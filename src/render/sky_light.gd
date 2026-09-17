@@ -640,8 +640,8 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	# wants to be brighter says so in its own LIGHT (BiomeDef.light_tint reaches
 	# the sun and the sky through `mood`), where the tonemapper can still hold it.
 	e.adjustment_brightness = clampf(1.0 - g.x * 0.35, 0.55, 1.0)
-	e.adjustment_saturation = clampf(1.0 - g.y * 0.30, 0.55, 1.3)
-	e.adjustment_contrast = clampf(1.0 + g.w * 0.20, 0.8, 1.35)
+	e.adjustment_saturation = clampf(1.0 - g.y * 0.30, 0.55, 1.3) * float(trim.saturation)
+	e.adjustment_contrast = clampf(1.0 + g.w * 0.20, 0.8, 1.35) * float(trim.contrast)
 
 
 ## What the land can hold (SkyGround), for snow, ash, wet and fog.

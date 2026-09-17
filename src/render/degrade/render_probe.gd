@@ -5,9 +5,9 @@ extends RefCounted
 ##
 ## Godot's Compatibility renderer has gained features release to release, so a
 ## table of what it "has" written from recollection is wrong in a way nobody can
-## see. These three measurements are played by a tour (`tours/degrade.tour`), on
-## the desktop and inside a real exported web build (`tools/web.sh --tour=`), and
-## the two logs side by side are the table:
+## see. These measurements are played by tours, on the desktop and inside a real
+## exported web build (`tools/web.sh --tour=`), and the two logs side by side are
+## the table (docs/LOOK.md holds what they said on 4.7.2):
 ##
 ##   perf colour            what the renderer does to a value written into ALBEDO,
 ##                          on a flat unshaded quad, under the game's own pipeline
@@ -15,11 +15,25 @@ extends RefCounted
 ##                          matter.gdshaderinc) is only as right as this answer.
 ##   perf features NAME     every expensive thing the desktop frame has, switched
 ##                          off and on again with the world held still: whether
-##                          the frame changes at all, and by how much, against the
-##                          noise of two frames with nothing switched. A feature
-##                          that does not move the frame does not exist here.
+##                          the frame moves at all, against the noise of the same
+##                          switch thrown off twice. A feature that does not move
+##                          the frame does not exist here. `frames` keeps both.
+##   perf shadowpass        what turning the sun's shadow on does to the frame's
+##                          brightness, under bases that each take one thing away
+##   perf sunpath           the same on a lit quad with one thing at a time on it:
+##                          which light the casting pass counts again
+##   perf match REF [sweep[=KEY,..] | ROW;ROW]
+##                          the frame against the desktop's frame of the same
+##                          moment, and the fit of CompatTrim that walks each
+##                          number to where they differ least
 ##   perf scale LIST SECS   the frame's cost at each render scale in LIST, taken
-##                          in turn inside one run, three rounds, median of each.
+##                          in turn inside one run, three rounds, median of each
+##   perf slate             the slate's bakes and textures on this build, and
+##                          whether a bake handed to the WorkerThreadPool holds
+##                          this thread (it does, on a build with no threads)
+##
+## Tours: degrade.tour (colour, features), degrade_cost.tour (scale, slate),
+## degrade_fit.tour and degrade_grey.tour (the fit).
 ##
 ## Every number is printed with what it was measured against. A clock that did
 ## not run is printed as UNMEASURED and never as 0.00 (LOOK.md, method 3).
@@ -608,6 +622,8 @@ const FIT_STEPS := {
 	"glow": [0.0, 0.25, 0.5, 0.75, 1.0],
 	"fog": [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
 	"emission": [0.5, 1.0, 1.5],
+	"contrast": [0.8, 0.85, 0.9, 0.95, 1.0, 1.05],
+	"saturation": [0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1],
 }
 
 
@@ -635,7 +651,7 @@ static func match_frame(tour: Node, game: Node, parts: PackedStringArray) -> boo
 	tree.paused = true
 	var sky: SkyLight = game.get("sky")
 	var row: Dictionary = CompatTrim.IDENTITY.duplicate()
-	if parts.size() > 3 and parts[3] == "sweep":
+	if parts.size() > 3 and parts[3].begins_with("sweep"):
 		# One step of a JOINT fit: every candidate of every key, the rest held at
 		# the row that is in force here (CompatTrim.row, as SkyLight composed it).
 		# Summed over the places by whoever reads the log, the best value per key
@@ -643,7 +659,11 @@ static func match_frame(tour: Node, game: Node, parts: PackedStringArray) -> boo
 		var centre: Dictionary = CompatTrim.row(sky.sun.shadow_enabled, maxf(Weather.night_fall(sky.clock_hour), sky.closed)).duplicate()
 		var here := await _distance(tour, game, centre, ref)
 		print("tour perf match %s (%s): sweep centre %s -> distance %.2f" % [label, _renderer(), _row_text(centre), here])
+		# `sweep=KEY,KEY` sweeps only those.
+		var only := parts[3].get_slice("=", 1).split(",", false) if parts[3].contains("=") else PackedStringArray()
 		for key: String in CompatTrim.KEYS:
+			if not only.is_empty() and not only.has(key):
+				continue
 			for v: float in FIT_STEPS[key]:
 				var trial: Dictionary = centre.duplicate()
 				trial[key] = v

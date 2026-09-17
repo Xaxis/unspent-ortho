@@ -28,24 +28,32 @@ extends RefCounted
 ##
 ## Neither is a feature the web lacks, so neither has a stand-in: it is the same
 ## light counted differently, and the answer is to count it back. The rows are
-## multipliers on what SkyLight and the lights compose, and they were FITTED, not
-## chosen: `perf match` holds a frame of the running game against the desktop's
-## own frame of the same canon moment, pixel for pixel, and `tours/degrade_fit.tour`
-## sweeps every number over all eighteen canon places.
+## multipliers on what SkyLight and the lights compose -- the sun, the ambient, the
+## lamps, the exposure, the bloom, the fog, the emission, and the grade's contrast
+## and saturation -- and they were FITTED, not chosen: `perf match` holds a frame of
+## the running game against the desktop's own frame of the same moment, pixel for
+## pixel, and walks each number to where the two differ least (`tours/degrade_fit.tour`,
+## on the desktop's Compatibility, which measured identical to the web build).
 ##
-## Day and night are fitted apart and blended by how far night has fallen, because
-## the error is not one number: lighting display values instead of linear light is
-## wrong by a different amount at every level of light. Over the canon's day
-## frames the day row sits 12.4 from the desktop and the best night row 17.9; over
-## its night frames the night row sits 9.8 and the day row 12.3.
+## Each row is the median, key by key, of what the fit walked to at every place of
+## its kind, and day and night are fitted apart and blended by how far night has
+## fallen, because the error is not one number: lighting display values instead of
+## linear light is wrong by a different amount at every level of light.
+##
+## Measured in the exported web build against the desktop, mean absolute channel
+## difference 0..255 (tools/canon.sh --web): the eighteen canon places 44.4 before,
+## 10.6 after; five overcast places (tours/degrade_grey.tour) 17.9 before, 7.9 after.
+## The furthest is still the Burning by day (17.3): the web is 14 luma darker and
+## the machines' cold vent light carries no halo, which on the desktop is the
+## volumetric air round it.
 ##
 ## On Forward+ every number is 1 and this file does nothing.
 
 ## What a row may say, and the identity.
-const IDENTITY := {"sun": 1.0, "ambient": 1.0, "lamps": 1.0, "emission": 1.0, "glow": 1.0, "fog": 1.0, "exposure": 1.0}
+const IDENTITY := {"sun": 1.0, "ambient": 1.0, "lamps": 1.0, "emission": 1.0, "glow": 1.0, "fog": 1.0, "exposure": 1.0, "contrast": 1.0, "saturation": 1.0}
 ## The keys in the order a fit walks them: the ones that move the most light
 ## first, so the finer ones are fitted against a frame already near the target.
-const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog", "emission"]
+const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog", "emission", "contrast", "saturation"]
 
 ## While the sun casts (Compatibility's second pass runs), by day and by night --
 ## the moon casts too. Each is the median, key by key, of the rows `perf match`
@@ -53,13 +61,13 @@ const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog
 ## two dusks sat between the two, which is what the blend by `night` gives them).
 ## A key no place could tell apart from its neighbours (the lamps by day) takes
 ## the value the places that could see it chose.
-const SHADOWED_DAY := {"sun": 0.17, "ambient": 1.0, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.6, "exposure": 1.0}
-const SHADOWED_NIGHT := {"sun": 0.1, "ambient": 0.65, "lamps": 0.4, "emission": 0.75, "glow": 1.0, "fog": 1.5, "exposure": 1.0}
+const SHADOWED_DAY := {"sun": 0.17, "ambient": 1.0, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.6, "exposure": 1.0, "contrast": 0.95, "saturation": 0.85}
+const SHADOWED_NIGHT := {"sun": 0.1, "ambient": 0.65, "lamps": 0.4, "emission": 0.75, "glow": 1.0, "fog": 1.5, "exposure": 1.0, "contrast": 0.95, "saturation": 0.8}
 ## While it does not (an overcast that takes the shadows away, a roof overhead):
 ## no second pass, only the difference in where the lighting is done. Fitted the
 ## same way over tours/degrade_grey.tour: three places by day, two by night.
-const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0}
-const OPEN_NIGHT := {"sun": 0.35, "ambient": 0.6, "lamps": 0.45, "emission": 0.5, "glow": 0.6, "fog": 1.25, "exposure": 1.0}
+const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0, "contrast": 1.05, "saturation": 0.95}
+const OPEN_NIGHT := {"sun": 0.35, "ambient": 0.6, "lamps": 0.45, "emission": 0.5, "glow": 0.6, "fog": 1.25, "exposure": 1.0, "contrast": 0.95, "saturation": 0.9}
 
 ## A fit in progress sets this; nothing else may.
 static var override: Dictionary = {}

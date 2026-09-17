@@ -81,8 +81,13 @@ func setup(o: BootOptions) -> void:
 	add_child(_layer)
 	# The title's slate bakes on a worker; until it is in, a plain frame shows.
 	UiSlate.warm(UiTitleMenu.DEVICE.size)
-	# The character page opens on the full-size slate.
-	UiSlate.warm(UiSlate.DEVICE.size)
+	# The character page opens on the full-size slate. Not on a build with no
+	# threads: there is no worker to hand it to, so WorkerThreadPool bakes it on
+	# this thread, and it held the title's first frame 1305 ms on the web's
+	# no-threads build (`perf slate`, src/render/degrade/render_probe.gd). It is
+	# baked when the page first asks for it instead, behind the loading page.
+	if BootPage.has_threads():
+		UiSlate.warm(UiSlate.DEVICE.size)
 	if o.shot != "":
 		UiSlate.wait()
 	menu = UiTitleMenu.new()
