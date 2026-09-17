@@ -38,6 +38,9 @@ var _tone_at := 0.0
 var _game_from := 0.0
 var _tone_done := false
 var _proven_before := false
+## Frames the test tone was seen playing: proof it was asked for and started,
+## kept apart from whether anything reached the meter.
+var _tone_plays := 0
 
 
 func _ready() -> void:
@@ -182,6 +185,8 @@ func _process(delta: float) -> void:
 			if _tone == null or _t - _tone_at >= 1.0:
 				_play_tone()
 				_tone_at = _t
+			elif _tone.playing:
+				_tone_plays += 1
 			if not proven and db > SILENT_DB:
 				Engine.set_meta(PATH_PROVEN, true)
 				print("web ok audio path: a test tone reached %.1f dB on the master bus %.1f s after the first gesture" % [db, since])
@@ -236,7 +241,10 @@ func _play_tone() -> void:
 
 
 ## "N of M players playing, mix R Hz" over the checked scene, to tell a silent
-## mix from nothing asked to play.
+## mix from nothing asked to play — and the two things that count cannot see: the
+## probe's own tone is not in the scene, and a muted master meters silence
+## whatever is playing. Both were left out once, and "0 of 0 players" was read as
+## the tone never playing when it had played every second into a muted bus.
 func _players() -> String:
 	var total := 0
 	var playing := 0
@@ -250,7 +258,9 @@ func _players() -> String:
 			total += 1
 			if n.get("playing") == true:
 				playing += 1
-	return "%d of %d players playing, mix %d Hz, %d buses" % [playing, total, int(AudioServer.get_mix_rate()), AudioServer.bus_count]
+	var tone := "no test tone" if _tone_plays == 0 else "the test tone seen playing for %d frames" % _tone_plays
+	var master := "master MUTED" if AudioServer.is_bus_mute(0) else "master %.1f dB" % AudioServer.get_bus_volume_db(0)
+	return "%d of %d players playing, %s, %s, mix %d Hz, %d buses" % [playing, total, tone, master, int(AudioServer.get_mix_rate()), AudioServer.bus_count]
 
 
 func _finish_if_done() -> void:
