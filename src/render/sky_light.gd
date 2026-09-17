@@ -609,7 +609,10 @@ func _drive_environment(e: Environment, hour: float, night: float) -> void:
 	last_air = a
 	e.fog_light_color = Air.colour(hor, a)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
-	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog)
+	# Where the tier has no volumetric air, the depth fog stands in for its bank
+	# (Quality.ROWS.air_stand_in), so the bog is still thicker than the salt.
+	var stand_in := 1.0 + float(Quality.current().get("air_stand_in", 0.0)) * (float(a.bank) - 1.0)
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2)
 	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
 	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
 	# And WHERE it lies is the camera's, not a constant: the frame is only about

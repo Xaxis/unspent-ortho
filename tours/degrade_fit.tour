@@ -100,6 +100,11 @@ zoom 14
 weather clear:0
 
 # An overcast: the sun does not cast, so no second pass (CompatTrim OPEN_*).
+# tours/degrade_grey.tour begins at the camera's own height with the lamp out;
+# the canon above ends at zoom 14 with the lamp lit, and a fit against frames
+# framed or lit otherwise walks every number somewhere wrong.
+zoom 15
+tap lamp
 weather grey:1
 place spawn
 hour 12

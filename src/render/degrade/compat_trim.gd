@@ -48,14 +48,17 @@ const IDENTITY := {"sun": 1.0, "ambient": 1.0, "lamps": 1.0, "emission": 1.0, "g
 const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog", "emission"]
 
 ## While the sun casts (Compatibility's second pass runs), by day and by night --
-## the moon casts too. `emission` fits flat from 0.5 to 1.5 (the canon's distance
-## moved by 0.02 across that range), so it stays at 1 rather than be chosen by
-## noise.
-const SHADOWED_DAY := {"sun": 0.15, "ambient": 0.9, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.75, "exposure": 1.0}
-const SHADOWED_NIGHT := {"sun": 0.15, "ambient": 0.75, "lamps": 0.35, "emission": 1.0, "glow": 0.5, "fog": 0.75, "exposure": 0.95}
+## the moon casts too. Each is the median, key by key, of the rows `perf match`
+## walked to at every canon place of its kind: twelve by day, four by night (the
+## two dusks sat between the two, which is what the blend by `night` gives them).
+## A key no place could tell apart from its neighbours (the lamps by day) takes
+## the value the places that could see it chose.
+const SHADOWED_DAY := {"sun": 0.17, "ambient": 1.0, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.6, "exposure": 1.0}
+const SHADOWED_NIGHT := {"sun": 0.1, "ambient": 0.65, "lamps": 0.4, "emission": 0.75, "glow": 1.0, "fog": 1.5, "exposure": 1.0}
 ## While it does not (an overcast that takes the shadows away, a roof overhead):
-## no second pass, only the difference in where the lighting is done.
-const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 1.0, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0}
+## no second pass, only the difference in where the lighting is done. Fitted the
+## same way over tours/degrade_grey.tour: three places by day, two by night.
+const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0}
 const OPEN_NIGHT := {"sun": 0.35, "ambient": 0.6, "lamps": 0.45, "emission": 0.5, "glow": 0.6, "fog": 1.25, "exposure": 1.0}
 
 ## A fit in progress sets this; nothing else may.

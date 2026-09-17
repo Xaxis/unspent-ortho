@@ -33,7 +33,7 @@ const ROUNDS := 3
 ## there. Mean absolute channel difference, 0..255.
 const THERE := 0.08
 ## What `perf KIND` this file answers (98_tour dispatches on it).
-const KINDS: Array[String] = ["colour", "features", "scale", "shadowpass", "sunpath", "match"]
+const KINDS: Array[String] = ["colour", "features", "scale", "shadowpass", "sunpath", "match", "slate"]
 ## The value the colour probe writes: the one the lit package measured with.
 const PROBE := Vector3(0.5, 0.25, 0.125)
 
@@ -52,6 +52,8 @@ static func run(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 			return await sun_path(tour, game)
 		"match":
 			return await match_frame(tour, game, parts)
+		"slate":
+			return await slate_cost(tour)
 	printerr("tour perf %s: no such measurement (%s)" % [parts[1], ", ".join(KINDS)])
 	return false
 
@@ -694,6 +696,69 @@ static func _row_text(row: Dictionary) -> String:
 	for k: String in CompatTrim.KEYS:
 		bits.append("%s=%.2f" % [k, float(row[k])])
 	return ",".join(bits)
+
+
+# ---- the slate ---------------------------------------------------------------
+
+## `perf slate`: what the slate's baked device costs on THIS build. Each bake is
+## timed on this thread (the CPU it costs wherever it runs), the texture made
+## from it is measured by the renderer's own counter rather than by width times
+## height, and one bake is handed to the WorkerThreadPool the way UiSlate hands
+## it, to see whether the frames go on while it runs: on a build with no threads
+## there is no worker to hand it to, and the frame it lands in is the bake.
+static func slate_cost(tour: Node) -> bool:
+	var tree := tour.get_tree()
+	var jobs := [["game device", "d", UiSlate.DEVICE.size], ["game marks", "m", UiSlate.DEVICE.size],
+		["spare panel", "s", UiSlate.SPARE.size], ["title device", "d", UiTitleMenu.DEVICE.size],
+		["title marks", "m", UiTitleMenu.DEVICE.size]]
+	var total_ms := 0.0
+	var total_mb := 0.0
+	var game_ms := 0.0
+	print("tour perf slate (%s, threads %s, quality %s): the slate's bakes, each on this thread"
+		% [_renderer(), OS.has_feature("threads"), Quality.current_id()])
+	for job: Array in jobs:
+		var t0 := Time.get_ticks_usec()
+		var img := UiSlate._bake(job[1], job[2])
+		var ms := (Time.get_ticks_usec() - t0) / 1000.0
+		await RenderingServer.frame_post_draw
+		var before := Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED)
+		var t1 := Time.get_ticks_usec()
+		var tex := ImageTexture.create_from_image(img)
+		var upload_ms := (Time.get_ticks_usec() - t1) / 1000.0
+		await RenderingServer.frame_post_draw
+		var mb := (Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) - before) / 1048576.0
+		total_ms += ms
+		total_mb += mb
+		if String(job[0]).begins_with("game") or job[0] == "spare panel":
+			game_ms += ms
+		print("tour perf slate: %-13s %dx%d  bake %7.1f ms  texture %5.2f MB (counted by the renderer), made in %.1f ms"
+			% [job[0], img.get_width(), img.get_height(), ms, mb, upload_ms])
+		tex = null
+	print("tour perf slate: all five %.0f ms of bake and %.1f MB of texture; the game's own three %.0f ms"
+		% [total_ms, total_mb, game_ms])
+	# One real hand-over, as UiSlate.warm makes it: how long the add itself held
+	# this thread, and the longest frame while the worker ran.
+	var t2 := Time.get_ticks_usec()
+	var id := WorkerThreadPool.add_task(func() -> void: UiSlate._bake("d", UiSlate.DEVICE.size))
+	var add_ms := (Time.get_ticks_usec() - t2) / 1000.0
+	var worst := 0.0
+	var frames := 0
+	var last := Time.get_ticks_usec()
+	var give_up := Time.get_ticks_msec() + 30000
+	while not WorkerThreadPool.is_task_completed(id) and Time.get_ticks_msec() < give_up:
+		await tree.process_frame
+		var now := Time.get_ticks_usec()
+		worst = maxf(worst, (now - last) / 1000.0)
+		last = now
+		frames += 1
+	WorkerThreadPool.wait_for_task_completion(id)
+	var held := (Time.get_ticks_usec() - t2) / 1000.0
+	print("tour perf slate: handed to the WorkerThreadPool, the add held this thread %.1f ms; the bake took %.0f ms over %d frames, the longest %.1f ms"
+		% [add_ms, held, frames, worst])
+	print("tour perf slate: in the game now, %.1f MB of texture and %.1f MB of video memory"
+		% [Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+	return true
 
 
 # ---- scale ----------------------------------------------------------------

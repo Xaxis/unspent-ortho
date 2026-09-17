@@ -471,7 +471,9 @@ static func machine_slack() -> float:
 		var f := FileAccess.open("/proc/loadavg", FileAccess.READ)
 		if f != null:
 			load = float(f.get_line().split(" ")[0])
-	if load <= 0.0:
+	# A page cannot start a process (tools/web.sh --tour): it asks nothing, and
+	# the budgets stay as written.
+	if load <= 0.0 and not OS.has_feature("web"):
 		var out: Array = []
 		if OS.execute("sysctl", ["-n", "vm.loadavg"], out) == 0 and not out.is_empty():
 			# { 50.49 60.10 63.36 }
