@@ -1,8 +1,8 @@
 class_name WorldView
 extends Node3D
 ## Streams the world into the scene as chunks around a focus point. A chunk is
-## at most five draws, however much is in it: terrain, water, decor, MADE props
-## and FOUND props. Props and decor are baked into one mesh each per chunk
+## at most six draws, however much is in it: terrain, water, decor, MADE props,
+## FOUND props and the leaf cards of every plant in it (props/kit.gd `canopy`). Props and decor are baked into one mesh each per chunk
 ## (native array transforms), so draw calls do not grow with the trees.
 ## While playing, chunks are built one at a time on a worker thread (land,
 ## water, decor and baked prop arrays) and only turned into meshes on the main
@@ -49,6 +49,10 @@ var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
 var _water_mat: ShaderMaterial
+## The leaves' own material (src/render/foliage/leaf.gdshader). One per view, not
+## PropModels' shared one, for the reason the world material is one per view:
+## 18_crowns writes the clearings into it every frame.
+var _leaf_mat: ShaderMaterial
 ## Where the machines cut the ground (read-only once baked; both threads read it).
 var works: WorksMap
 
@@ -66,6 +70,8 @@ func setup(w: WorldData) -> void:
 	_world_mat.shader = preload("res://src/render/world.gdshader")
 	_water_mat = ShaderMaterial.new()
 	_water_mat.shader = preload("res://src/render/water.gdshader")
+	_leaf_mat = ShaderMaterial.new()
+	_leaf_mat.shader = preload("res://src/render/foliage/leaf.gdshader")
 	_bind(w)
 
 
@@ -143,6 +149,10 @@ func world_material() -> ShaderMaterial:
 
 func water_material() -> ShaderMaterial:
 	return _water_mat
+
+
+func leaf_material() -> ShaderMaterial:
+	return _leaf_mat
 
 
 func chunk_count() -> int:
@@ -358,7 +368,7 @@ func refresh_props(prop: WorldProp) -> void:
 	if not _chunks.has(key):
 		return
 	var node: Node3D = _chunks[key]
-	for part: String in ["props", "props_found"]:
+	for part: String in ["props", "props_found", "props_leaf"]:
 		var old := node.get_node_or_null(part)
 		if old != null:
 			node.remove_child(old)
@@ -393,8 +403,8 @@ func _snapshot(key: Vector2i) -> Array:
 	return [props, spans]
 
 
-## A chunk's props baked into two surfaces' arrays: [MADE arrays or [], FOUND
-## arrays or []]. Pure given its inputs, so safe on a worker thread with that
+## A chunk's props baked into three surfaces' arrays: [MADE arrays or [], FOUND
+## arrays or [], LEAF arrays or []]. Pure given its inputs, so safe on a worker thread with that
 ## worker's own mesher (`m` answers heights outside the chunk).
 func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: Array) -> Array:
 	var mv := PackedVector3Array()
@@ -405,6 +415,11 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var fv := PackedVector3Array()
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
+	var lv := PackedVector3Array()
+	var ln := PackedVector3Array()
+	var lc := PackedColorArray()
+	var luv := PackedVector2Array()
+	var luv2 := PackedVector2Array()
 	for p: WorldProp in props:
 		var variant := PropModels.variant_of(p, world.seed_value)
 		var country := prop_country(p, ch)
@@ -442,6 +457,12 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			fv.append_array(xf * tpl.found_v)
 			fn.append_array(nx * tpl.found_n)
 			fc.append_array(tpl.found_c)
+		if not tpl.leaf_v.is_empty():
+			lv.append_array(xf * tpl.leaf_v)
+			ln.append_array(nx * tpl.leaf_n)
+			lc.append_array(tpl.leaf_c)
+			luv.append_array(tpl.leaf_uv)
+			luv2.append_array(tpl.leaf_uv2)
 	if not spans.is_empty():
 		var ck := MeshKit.new()
 		var ice := MeshKit.new()
@@ -470,7 +491,15 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		found[Mesh.ARRAY_VERTEX] = fv
 		found[Mesh.ARRAY_NORMAL] = fn
 		found[Mesh.ARRAY_COLOR] = fc
-	return [made, found]
+	var leaves := []
+	if not lv.is_empty():
+		leaves.resize(Mesh.ARRAY_MAX)
+		leaves[Mesh.ARRAY_VERTEX] = lv
+		leaves[Mesh.ARRAY_NORMAL] = ln
+		leaves[Mesh.ARRAY_COLOR] = lc
+		leaves[Mesh.ARRAY_TEX_UV] = luv
+		leaves[Mesh.ARRAY_TEX_UV2] = luv2
+	return [made, found, leaves]
 
 
 ## Height of the drawn land under p: the chunk's own surface inside it, the
@@ -481,7 +510,7 @@ static func _height(ch: TerrainMesher.Chunk, m: TerrainMesher, p: Vector2) -> fl
 	return m.surface_height(p.x, p.y)
 
 
-## Turn baked prop arrays into the chunk's two prop meshes (main thread).
+## Turn baked prop arrays into the chunk's prop meshes (main thread).
 func _attach_props(node: Node3D, baked: Array) -> void:
 	if baked.size() < 2:
 		return
@@ -502,6 +531,15 @@ func _attach_props(node: Node3D, baked: Array) -> void:
 		mi.name = "props_found"
 		mi.mesh = mesh
 		mi.material_override = PropModels.found_material()
+		node.add_child(mi)
+	var leaves: Array = baked[2] if baked.size() > 2 else []
+	if not leaves.is_empty():
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, leaves)
+		var mi := MeshInstance3D.new()
+		mi.name = "props_leaf"
+		mi.mesh = mesh
+		mi.material_override = _leaf_mat
 		node.add_child(mi)
 
 

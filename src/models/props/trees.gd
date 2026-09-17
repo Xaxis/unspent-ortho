@@ -29,6 +29,10 @@ static func wind_bent(kind: int, c: int) -> bool:
 	return kind == PropKind.BROADLEAF or kind == PropKind.PINE or kind == PropKind.GORSE or kind == PropKind.DEAD_TREE
 
 
+## How much of a tier's reach its solid keeps once its needles are cards.
+const PINE_CORE := 0.74
+
+
 static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 	var s := 1000 + v * 17 + c * 3 + (500 if laden else 0)
 	var height: float = [2.8, 2.3, 3.3, 2.6][v % 4]
@@ -65,9 +69,14 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 		var a := float(i) / 3.0 * TAU + Kit.j(s, 10 + i, 0.5)
 		k.spike(Vector3(0, 0.14, 0), Vector3(cos(a) * 0.24, -0.02, sin(a) * 0.24), 0.05, 3, trunk)
 	var start := k.made.vertex_count()
+	var leaf_start := k.leaf.vertex_count()
 	var y0 := height * 0.2
 	var y1 := height * 0.8
-	for t in tiers:
+	# A burnt pine has lost its needles: it keeps the tiers of dead twig and no
+	# sprays. Everywhere else the needles are cards.
+	var needled := c != Country.BURNING
+	# The top tier first, because it covers the ones under it (kit.gd `canopy`).
+	for t in range(tiers - 1, -1, -1):
 		var f := float(t) / maxf(1.0, tiers - 1)
 		var r := base_r * (1.0 - f * 0.68)
 		var y := lerpf(y0, y1, f)
@@ -76,12 +85,21 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 		var col := greens[mini(2, int(f * 2.99))]
 		var cx := lean.x * y + Kit.j(s, 20 + t, 0.04)
 		var cz := lean.y * y + Kit.j(s, 30 + t, 0.04)
-		k.tier(cx, y, cz, r, rise, points, droop, s + t * 11, col, under if t == 0 else Color(0, 0, 0, 0))
-		if snow and c != Country.BURNING:
+		if needled:
+			# The tier is the bough's shade now, not its needles: drawn a size in
+			# and a step darker, so the sprays reaching past it are what the light
+			# finds, and a gap between two sprays shows the inside of the tree.
+			k.tier(cx, y, cz, r * PINE_CORE, rise, points, droop * 0.8, s + t * 11, Kit.tone(col, 0.72), under if t == 0 else Color(0, 0, 0, 0))
+			var mass: Array[Color] = [Kit.tone(col, NEEDLE_TONE), Kit.tone(col, NEEDLE_TONE), Kit.tone(greens[mini(2, int(f * 2.99) + 1)], NEEDLE_TONE)]
+			k.sprays(cx, y, cz, r, rise, droop, points, s + t * 13, mass)
+		else:
+			k.tier(cx, y, cz, r, rise, points, droop, s + t * 11, col, under if t == 0 else Color(0, 0, 0, 0))
+		if snow and needled:
 			# Snow lies on the upper face of each tier; the green shows at the rim.
 			var sr := r * (0.78 if laden else 0.62)
 			k.tier(cx + Kit.j(s, 40 + t, 0.02), y + droop * 0.35 + 0.03, cz, sr, rise * 0.62, points, droop * 0.7, s + t * 11 + 5, P.RIME[5], Color(0, 0, 0, 0))
 	k.sway_by_height(start, y0 - 0.1, height, 0.7)
+	k.sway_by_height(leaf_start, y0 - 0.1, height, 0.7, k.leaf)
 	if v % 4 == 3 and not laden:
 		# A dead spike where the leader broke.
 		k.limb(top, top + Vector3(0.05, 0.45, -0.03), 0.03, 0.008, 3, P.ASH[2])
@@ -95,6 +113,33 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 		k.sway_by_height(bs, -10.0, -9.0, 0.5)
 	if c == Country.BURNING:
 		k.made.prism(0.02, 0.0, 0.0, 0.12, 0.08, 0.1, 5, GroundColors.glow(P.EMBER[3], 0.7))
+
+
+## A broadleaf's card, edge in tiles: about nineteen pixels at the play camera,
+## which is a sprig of five leaves each still a few pixels across.
+const BROAD_CARD := 0.26
+## A bush's and a bramble's: smaller leaves, closer.
+const SMALL_CARD := 0.2
+## Gorse: a spray of spines, and deeper, because gorse is a thicket you cannot
+## see into, not a crown with daylight in it.
+const SPINE_CARD := 0.2
+const SPINE_LAYERS := 3.6
+## The needles of a pine are a step under the tier's old wash: the pinewood is
+## dark under its canopy, and a spray lit on both faces came back a shade of
+## teal the wood never was.
+const NEEDLE_TONE := 0.82
+## Cards per unit of shell, as a multiple of what would tile it once. Above one
+## so the outer cards overlap and the gaps show sunk cards in the crown's own
+## shade rather than the ground through it; not so far above that the fill is
+## paid three times over for nothing the eye can tell apart.
+const LAYERS := 2.4
+
+
+## How many cards a mass of radius `r` and height `h` wants at card size `size`:
+## the upper shell's area over a card's, `layers` deep.
+static func leaf_cards(r: float, h: float, size: float, layers: float = LAYERS) -> int:
+	var shell := TAU * r * (r + h * 0.5) * 0.66
+	return clampi(roundi(shell * layers / (size * size)), 6, 90)
 
 
 static func broadleaf(k: Kit, v: int, c: int) -> void:
@@ -143,12 +188,18 @@ static func broadleaf(k: Kit, v: int, c: int) -> void:
 		k.limb(top, tip, 0.05, 0.025, 4, trunk)
 		tips.append(tip)
 	if crown:
-		var start := k.made.vertex_count()
+		# Leaf cards, not a lobed solid (kit.gd `canopy` says why). Each mass keeps
+		# the one wash it always had, with the crown's top wash through it, so the
+		# masses still read apart.
+		var start := k.leaf.vertex_count()
 		for i in tips.size():
 			var tip := tips[i]
-			k.clump(tip.x, tip.y - 0.22, tip.z, 0.4 * spread + Kit.j(s, 40 + i, 0.06), 0.62 * h, s + i * 7, leaves[i % 3], 7, 0.35)
-		k.clump(top.x + lean.x * 0.35, top.y + 0.2, top.z, 0.44 * spread, 0.78 * h, s + 99, leaves[3], 8, 0.35)
-		k.sway_by_height(start, top.y - 0.2, top.y + 0.9, 0.55)
+			var r := 0.4 * spread + Kit.j(s, 40 + i, 0.06)
+			var mass: Array[Color] = [leaves[i % 3], leaves[i % 3], leaves[3]]
+			k.canopy(tip.x, tip.y - 0.22, tip.z, r, 0.62 * h, s + i * 7, mass, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(r, 0.62 * h, BROAD_CARD))
+		var crest: Array[Color] = [leaves[3], leaves[3], leaves[0]]
+		k.canopy(top.x + lean.x * 0.35, top.y + 0.2, top.z, 0.44 * spread, 0.78 * h, s + 99, crest, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(0.44 * spread, 0.78 * h, BROAD_CARD))
+		k.sway_by_height(start, top.y - 0.2, top.y + 0.9, 0.55, k.leaf)
 		if c == Country.BONELANDS:
 			for i in 7:
 				var a := float(i) * 1.1
@@ -260,12 +311,22 @@ static func bush(k: Kit, v: int, c: int) -> void:
 	if own.has(&"scrub"):
 		cols.assign(own[&"scrub"])
 	var start := k.made.vertex_count()
+	var leaf_start := k.leaf.vertex_count()
 	var n := 2 + v % 3
+	# What the leaves grow on, seen only through the gaps between them, which is
+	# exactly where a bush of cards would otherwise show the ground straight
+	# through and read as a hovering cloud.
+	for i in 2 + n:
+		var a := float(i) * 2.2 + Kit.j(s, 50 + i, 0.4)
+		var to := Vector3(cos(a) * 0.22, 0.3 + Kit.j(s, 60 + i, 0.06), sin(a) * 0.22)
+		k.limb(Vector3(cos(a) * 0.03, -0.02, sin(a) * 0.03), to, 0.028, 0.01, 3, P.EARTH[1])
 	for i in n:
 		var a := float(i) / n * TAU + Kit.j(s, i, 0.6)
 		var rr := 0.16 + Kit.j(s, 10 + i, 0.06)
 		var r := 0.3 - i * 0.02 + Kit.j(s, 20 + i, 0.05)
-		k.clump(cos(a) * rr, -0.03, sin(a) * rr, r, 0.42 + Kit.j(s, 30 + i, 0.08), s + i * 5, cols[i % 3], 7, 0.35)
+		var bh := 0.42 + Kit.j(s, 30 + i, 0.08)
+		var mass: Array[Color] = [cols[i % 3], cols[i % 3], cols[(i + 1) % 3]]
+		k.canopy(cos(a) * rr, -0.03, sin(a) * rr, r, bh, s + i * 5, mass, Kit.LEAF_SMALL, SMALL_CARD, leaf_cards(r, bh, SMALL_CARD))
 		if cap.a > 0.0:
 			k.clump(cos(a) * rr, 0.24, sin(a) * rr, r * 0.66, 0.16, s + i * 5 + 1, cap, 6)
 	if berries.a > 0.0:
@@ -274,6 +335,7 @@ static func bush(k: Kit, v: int, c: int) -> void:
 			var p := Vector3(cos(a) * 0.24, 0.26 + Kit.j(s, 40 + i, 0.08), sin(a) * 0.24)
 			k.fleck(p, p + Vector3(0.045, 0.0, 0.01), p + Vector3(0.02, 0.045, 0.0), berries)
 	k.sway_by_height(start, 0.0, 0.5, 0.25)
+	k.sway_by_height(leaf_start, 0.0, 0.5, 0.25, k.leaf)
 	if c == Country.BURNING:
 		for i in 4:
 			var a := float(i) * 1.6
@@ -289,11 +351,13 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 	elif c == Country.SNOWFIELD:
 		greens = [P.SPRUCE[1], P.SPRUCE[1], P.SPRUCE[2]]
 	var start := k.made.vertex_count()
+	var leaf_start := k.leaf.vertex_count()
 	var n := 3 + v
 	for i in n:
 		var a := float(i) / n * TAU + Kit.j(s, i, 0.5)
 		var rr := 0.2 + Kit.j(s, 10 + i, 0.06)
-		k.clump(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, greens[i % 3], 6, 0.35)
+		var mass: Array[Color] = [greens[i % 3], greens[(i + 1) % 3]]
+		k.canopy(cos(a) * rr, -0.02, sin(a) * rr, 0.27, 0.5, s + i * 3, mass, Kit.LEAF_SPINE, SPINE_CARD, leaf_cards(0.27, 0.5, SPINE_CARD, SPINE_LAYERS))
 	# Spines stick out of the mass.
 	for i in 16:
 		var a := float(i) * 2.39996
@@ -310,6 +374,7 @@ static func gorse(k: Kit, v: int, c: int) -> void:
 			var p := Vector3(cos(a) * r, y, sin(a) * r)
 			k.fleck(p, p + Vector3(0.05, 0.0, 0.02), p + Vector3(0.02, 0.05, -0.01), P.RUST[5] if i % 3 else P.SAND[5])
 	k.sway_by_height(start, 0.0, 0.6, 0.3)
+	k.sway_by_height(leaf_start, 0.0, 0.6, 0.3, k.leaf)
 
 
 static func reeds(k: Kit, v: int, c: int) -> void:

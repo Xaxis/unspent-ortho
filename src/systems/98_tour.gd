@@ -87,6 +87,8 @@ extends GameSystem
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
+##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
+##                          shown and hidden in turn (foliage_perf.gd)
 ##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
@@ -387,6 +389,8 @@ func _run() -> void:
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "foliage":
+					ok = await FoliagePerf.perf(self, game, parts)
 				else:
 					ok = await TourPeople.perf(self, game, parts)
 			"stale":

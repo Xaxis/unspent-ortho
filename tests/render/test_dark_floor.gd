@@ -107,6 +107,8 @@ func test_no_prop_is_drawn_below_the_ink_floor() -> void:
 					worst = minf(worst, luma(col))
 				for col in t.found_c:
 					worst = minf(worst, luma(col))
+				for col in t.leaf_c:
+					worst = minf(worst, luma(col))
 				if worst < luma(Palette.INK[0]) - 0.0005:
 					fail("%s %d in %s is drawn at luma %.4f, under the pen" % [PropKind.NAMES[kind], v, d.id, worst])
 
