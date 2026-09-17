@@ -123,9 +123,16 @@ deploy workflow by hand with `production`, or `tools/deploy.sh --prod`.
 Shot and boot options live in `src/boot_options.gd` (its header lists every one).
 The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
 --zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery|title
---stats --load=N --saves=DIR`; staging a moment: `--weather=KIND:S --lamp --spawn=K,K --act=NAME[:MS]
+--stats --load=N --saves=DIR`; staging a moment: `--weather=KIND:S --lamp --spawn=K[@DEG],K --act=NAME[:MS]
 --give=ID:N --held=ID --build=STATION --put=KIND --use[=KIND] --hold=SECS
 --screen=NAME --explore=N --parade=K --folk=N --fauna=KIND:N --look= --pose= --face=`.
+A body put out at a bearing (`--spawn=runner@-112`, the tour's `spawn runner@-112`)
+is in **degrees, 0 east, 90 south**, like `--face`. A yaw read off
+`tests/models/test_machines_silhouette.gd` (radians, already taken down the play
+camera) is asked for as its **negation**, because a model is drawn at
+`rotation.y = -facing`: the runner's worst yaw 1.96 is `@-112`. Get the sign wrong
+and the frame shows the machine from its best side while its name claims the worst.
+Boot, the tour and the claims test all read the token through `Spawner.staged`.
 
 **Tours** (`tours/*.tour`, commands in the header of `src/systems/98_tour.gd`) are
 how a feature is proven reachable: walk there, press the real action, `await`
