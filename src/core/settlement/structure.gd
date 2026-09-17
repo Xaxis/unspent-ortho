@@ -20,6 +20,9 @@ var powered := false
 var staffed_by := -1
 ## Broken past mending: it stands as wreckage until it is cleared.
 var ruined := false
+## Switched off by hand (`StructureKind.switched`): it draws nothing, does nothing
+## and gives off only what a cold piece of stolen technology does.
+var off := false
 ## Which drawing of this kind. The same kind built twice is not the same piece
 ## (docs/ART.md §10, nothing is prefabricated): the model leans, patches and
 ## weathers by this number, and it is dealt when the piece is founded so that a
@@ -57,7 +60,7 @@ func condition() -> float:
 ## It is doing its work now: whole enough, staffed if it needs hands, and wired
 ## if it needs power.
 func working() -> bool:
-	if ruined or condition() < WORKS_ABOVE:
+	if ruined or off or condition() < WORKS_ABOVE:
 		return false
 	if StructureKind.needs_staff(kind) and staffed_by < 0:
 		return false
@@ -118,7 +121,7 @@ func as_dict() -> Dictionary:
 	return {
 		"id": id, "kind": kind, "pos": SaveCodec.vec2(pos), "facing": facing,
 		"health": health, "max_health": max_health, "variant": variant,
-		"powered": powered, "staffed_by": staffed_by, "ruined": ruined,
+		"powered": powered, "staffed_by": staffed_by, "ruined": ruined, "off": off,
 	}
 
 
@@ -130,4 +133,5 @@ static func from_dict(d: Dictionary) -> Structure:
 	s.powered = bool(d.get("powered", false))
 	s.staffed_by = SaveCodec.to_int(d.get("staffed_by", -1))
 	s.ruined = bool(d.get("ruined", false))
+	s.off = bool(d.get("off", false))
 	return s

@@ -112,6 +112,11 @@ var sent := false
 ## step is over or the player leaves the yard. Without this, the cheapest answer
 ## to any raid was to walk twenty-five tiles and let the culler eat the party.
 var raider := false
+## Where the last blow that hurt it came from, when that was NOT the player's own
+## swing (FightSim.strike: a turret); INF when it was the player's, or never. A
+## party body hurt by the yard goes for what shot it and one hurt by the player
+## goes for the player (48_raids), so the two must be told apart.
+var struck_from := Vector2.INF
 ## An indifferent body the player has disturbed (struck it, stood in its way):
 ## it is hostile until it loses them.
 var disturbed := false

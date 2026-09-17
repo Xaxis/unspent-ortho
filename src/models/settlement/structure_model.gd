@@ -36,6 +36,13 @@ const SPIN_FULL := 2.6
 ## next blow lands.
 const STRUCK_SECONDS := 0.4
 const STRUCK_ROCK := 0.09
+## How fast a turret's head comes round (radians a second): quick enough to keep
+## on a running body, slow enough that the turn is seen and is the tell.
+const AIM_TURN := 5.5
+## How far a shot kicks the head back along its barrel (tiles), and how fast it
+## settles.
+const KICK := 0.07
+const KICK_SETTLE := 0.5
 
 var kind := StructureKind.LEAN_TO
 var variant := 0
@@ -47,6 +54,11 @@ var _made: MeshInstance3D
 var _found: MeshInstance3D
 var _rotor: Node3D
 var _spin := 0.0
+## A turret's head, which turns onto what it is shooting at, and where it is
+## turning to (radians, the world's own angle), and how far back it has kicked.
+var _head: Node3D
+var _aim := NAN
+var _kick := 0.0
 ## Seconds of shudder left from the last blow, and how hard it was (0..1).
 var _struck := 0.0
 var _struck_by := 0.0
@@ -88,6 +100,15 @@ func build(made: Material) -> void:
 		blades.material_override = PropModels.found_material()
 		_rotor.add_child(blades)
 		add_child(_rotor)
+	if kind == StructureKind.TURRET:
+		_head = Node3D.new()
+		_head.name = "head"
+		_head.position = Defence.TURRET_PIVOT
+		var gun := MeshInstance3D.new()
+		gun.name = "gun"
+		gun.material_override = PropModels.found_material()
+		_head.add_child(gun)
+		add_child(_head)
 	set_process(_rotor != null)
 	_apply()
 
@@ -112,6 +133,31 @@ func set_spin(share: float) -> void:
 	_spin = clampf(share, 0.0, 1.0) * SPIN_FULL
 
 
+## Turn a turret's head onto the world angle `angle` (tile space, as
+## `Vector2.angle()`): eased round in `_process`, never snapped, because the turn
+## is what tells a player which body it has picked.
+func aim(angle: float) -> void:
+	if _head == null:
+		return
+	_aim = angle
+	set_process(true)
+
+
+## Where a turret's bolt leaves from, in the world.
+func muzzle() -> Vector3:
+	if _head == null or not _head.is_inside_tree():
+		return global_position + Defence.TURRET_PIVOT if is_inside_tree() else position + Defence.TURRET_PIVOT
+	return _head.global_transform * Defence.TURRET_MUZZLE
+
+
+## A shot kicks the head back along its barrel.
+func recoil() -> void:
+	if _head == null:
+		return
+	_kick = KICK
+	set_process(true)
+
+
 ## A blow landed on it: `share` of its whole strength. It rocks on its foot and
 ## settles, so a party working at a piece is seen working at it and not only read
 ## off the wreck afterwards.
@@ -124,6 +170,20 @@ func struck(share: float) -> void:
 func _process(delta: float) -> void:
 	if _rotor != null and _spin > 0.0:
 		_rotor.rotate_x(_spin * delta)
+	var busy := _rotor != null
+	if _head != null and not ruined:
+		if is_finite(_aim):
+			# The head's own yaw in the piece's frame: the piece is turned by
+			# -facing, so a world angle a is -(a) - rotation.y here.
+			var want := -_aim - rotation.y
+			var turn := wrapf(want - _head.rotation.y, -PI, PI)
+			var step := AIM_TURN * delta
+			_head.rotation.y += clampf(turn, -step, step)
+			busy = busy or absf(turn) > step
+		if _kick > 0.0:
+			_kick = maxf(0.0, _kick - KICK / KICK_SETTLE * delta)
+			_head.position = Defence.TURRET_PIVOT - Vector3(cos(_head.rotation.y), 0.0, -sin(_head.rotation.y)) * _kick
+			busy = true
 	if _struck > 0.0:
 		_struck = maxf(0.0, _struck - delta)
 		var t := _struck / STRUCK_SECONDS
@@ -133,7 +193,10 @@ func _process(delta: float) -> void:
 		if _struck <= 0.0:
 			_made.rotation.z = 0.0
 			_found.rotation.z = 0.0
-			set_process(_rotor != null)
+		else:
+			busy = true
+	if not busy:
+		set_process(false)
 
 
 func _apply() -> void:
@@ -145,6 +208,10 @@ func _apply() -> void:
 	if _rotor != null:
 		(_rotor.get_child(0) as MeshInstance3D).mesh = meshes[2]
 		_rotor.position = Power.HUB_RUINED if ruined else Power.HUB
+	if _head != null:
+		(_head.get_child(0) as MeshInstance3D).mesh = meshes[2]
+		# A wrecked turret's gun lies in the grass, drawn with the rest of it.
+		_head.visible = not ruined
 
 
 static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
@@ -191,6 +258,11 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 		StructureKind.SPOOFER:
 			Defence.spoofer_made(made, v, broken)
 			Defence.spoofer_found(found, v, broken, on)
+		StructureKind.TURRET:
+			Defence.turret_made(made, v, broken)
+			Defence.turret_found(found, v, broken, on)
+			rotor = MeshKit.new()
+			Defence.turret_head(rotor, v)
 		_:
 			if drawn(piece_kind):
 				push_warning("no drawing for structure %s" % StructureKind.display_name(piece_kind))

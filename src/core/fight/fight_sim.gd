@@ -376,6 +376,30 @@ func make_noise(at: Vector2, radius: float) -> void:
 	noise_ms = now
 
 
+## A blow that is not the player's swing: a turret in a holding. It meets the
+## rules a swing meets — the plate (`reaches_part` from where it came from), the
+## hit window, the flare and the stall, the second act and the nerve — because a
+## second way for a body to be hurt would be a second set of rules to keep level
+## with the first. What differs is who is standing where: the body turns on the
+## place the blow came FROM, and nothing about it is the player's (no swing box,
+## no edge worn, no `hit` event — `struck` instead, so the camera, the hitstop
+## and every "the player hit something" lesson stay the player's own).
+##
+## Returns &"hit", &"plate" (it rang off), or &"" (nothing there to strike, or
+## still inside the window of the last blow).
+func strike(m: MobState, b: Blow, from: Vector2) -> StringName:
+	if m == null or b == null or not m.alive or m.removed:
+		return &""
+	if not reaches_part(m, from, b.cuts):
+		emit(&"struck", {"from": from, "target": m, "damage": 0, "plate": true, "at": m.pos})
+		_wake(m, &"damaged", from)
+		return &"plate"
+	if m.invulnerable(now):
+		return &""
+	_hurt_mob(m, b, from)
+	return &"hit"
+
+
 ## The player has done something to this body that its role takes amiss
 ## (Roles.TURNS: blocked, damaged, theft, trespass, curfew). A body that does
 ## not care goes on working; a worker robbed of its parts turns.
@@ -712,7 +736,11 @@ func _wear_on_contact() -> void:
 		emit(&"dulled", {"item": inv.held})
 
 
-func _hurt_mob(m: MobState, b: Blow) -> void:
+## `from` is where the blow came from; INF is the player's own swing.
+func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF) -> void:
+	var player_swing := not is_finite(from.x)
+	var source := hero.pos if player_swing else from
+	m.struck_from = from
 	m.health -= b.dmg
 	m.invuln_until = now + m.mob_iframes()
 	m.last_hit_at = now
@@ -720,7 +748,7 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 	m.flare_until = now + (FightRules.PART_FLARE_MS if m.machine else 0.0)
 	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
 	if m.row.get("stagger", false):
-		m.throw(m.pos - hero.pos, b.knock, b.knock_ms, now)
+		m.throw(m.pos - source, b.knock, b.knock_ms, now)
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
 	elif m.machine and now >= m.stall_ready_at:
@@ -732,9 +760,12 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 		m.charging = false
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
-	emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
+	if player_swing:
+		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
+	else:
+		emit(&"struck", {"from": from, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
 	if m.health <= 0:
-		_kill(m)
+		_kill(m, player_swing)
 		return
 	if m.row.has("then") and not m.second_act and m.health_fraction() <= float(m.row.get("then_at", 0.0)):
 		m.second_act = true
@@ -750,7 +781,7 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 		m.flee_home = false
 		m.set_mood(MobState.FLEEING, now)
 		return
-	_wake(m)
+	_wake(m, &"damaged", source)
 
 
 ## Struck, a body that was not pressing turns on whoever struck it (errands only look).
@@ -758,11 +789,14 @@ func _hurt_mob(m: MobState, b: Blow) -> void:
 ## deals with it, even a body whose whole trade is to report; anything else
 ## reaches only a role that takes that cause amiss, and only a role that fights
 ## is actually turned by it.
-func _wake(m: MobState, cause: StringName = &"damaged") -> void:
+##
+## `from` is where it was struck from, when that was not the player (INF): it
+## looks there first, and finds whoever it finds.
+func _wake(m: MobState, cause: StringName = &"damaged", from: Vector2 = Vector2.INF) -> void:
 	var turns := Disposition.turned_by(m.role, cause)
 	if not turns and cause != &"damaged":
 		return
-	m.last_seen = hero.pos
+	m.last_seen = hero.pos if not is_finite(from.x) else from
 	m.lost_beats = 0
 	m.calm_until = 0.0
 	m.suspicion = 1.0
@@ -798,7 +832,10 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
 
 
-func _kill(m: MobState) -> void:
+## `by_player`: the player's own blow did it, so the kill is theirs to feel (the
+## hitstop, the shake) and the scrap off it is in their hands. A turret's kill in
+## a yard is a body lying in the yard.
+func _kill(m: MobState, by_player: bool = true) -> void:
 	m.health = 0
 	m.alive = false
 	m.blow = null
@@ -810,7 +847,7 @@ func _kill(m: MobState) -> void:
 	if hero.holder == m:
 		hero.release()
 		emit(&"loose", {"by": m})
-	emit(&"killed", {"mob": m, "at": m.pos})
+	emit(&"killed", {"mob": m, "at": m.pos, "by_player": by_player})
 
 
 ## A dart reached the player: it takes what it came for and runs.

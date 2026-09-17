@@ -333,3 +333,85 @@ static func spoofer_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
 		Parts.tell_tale(k, Vector3(0.17, y + 0.26, -0.1), 0.03)
 	else:
 		k.prism(0.17, y + 0.26, -0.1, 0.03, y + 0.31, 0.022, 6, P.LENS[0], P.LENS[0])
+
+
+# --- turret -------------------------------------------------------------------
+
+## Where the gun turns, on top of its crib, and where a bolt leaves it in the
+## head's own frame (the head faces +X), so the model and the shot agree.
+const TURRET_PIVOT := Vector3(0.0, 0.7, 0.0)
+const TURRET_MUZZLE := Vector3(0.7, 0.16, 0.0)
+
+## The hand's half of a turret: a crib of logs laid two by two, notched and
+## crossed, with sacks of earth banked against it. The only thing about it anybody
+## here could make is what holds the stolen gun up off the ground.
+static func turret_made(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var layers := 4 if not ruined else 2
+	for layer in layers:
+		var y := 0.07 + 0.16 * float(layer)
+		var across := layer % 2 == 1
+		for side: int in [-1, 1]:
+			var off := 0.3 * float(side) + Parts.lean(v, 10 + layer * 2 + side, 0.03)
+			var a := Vector3(off, y, -0.42) if not across else Vector3(-0.42, y, off)
+			var b := Vector3(off, y + Parts.lean(v, 20 + layer, 0.03), 0.42) if not across else Vector3(0.42, y + Parts.lean(v, 20 + layer, 0.03), off)
+			k.strut(a, b, 0.075, 5, Parts.pick(Parts.TIMBER, v, 30 + layer * 2 + side))
+	# Sacks of earth against two sides of it: rag stuffed and tied.
+	for i in 3:
+		var a := PI * 0.6 + float(i) * 0.55 + Parts.lean(v, 40 + i, 0.15)
+		var at := Vector3(cos(a) * 0.56, 0.0, sin(a) * 0.56)
+		k.rock(at.x, 0.0, at.z, 0.17, 0.2 + Parts.wob(v, 50 + i) * 0.06, v * 13 + i, Parts.pick(Parts.CLOTH, v, 60 + i), 6)
+	if ruined:
+		# Two logs rolled off into the grass.
+		for i in 2:
+			var a := Parts.wob(v, 70 + i) * TAU
+			var at := Vector3(cos(a) * 0.7, 0.07, sin(a) * 0.7)
+			var dir := Vector3(cos(a + 1.2), 0.0, sin(a + 1.2)) * 0.42
+			k.strut(at - dir, at + dir, 0.075, 5, Parts.pick(Parts.TIMBER, v, 80 + i))
+
+
+## The machine's half that does not turn: the ring it pivots on, bolted down
+## through the top logs, the cable run down the crib and away to the power, and
+## the tell-tale that says it is armed. Wrecked, the gun lies beside the crib.
+static func turret_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
+	Parts.ruled(k)
+	if ruined:
+		k.strut(Vector3(0.5, 0.08, 0.3), Vector3(1.1, 0.05, 0.62), 0.035, 6, P.PLATE[3])
+		k.strut(Vector3(0.2, 0.1, 0.18), Vector3(0.56, 0.09, 0.34), 0.09, 6, P.PLATE[2])
+		k.prism(-0.2, 0.36, 0.1, 0.16, 0.42, 0.15, 8, P.PLATE[1], P.PLATE[2])
+		k.prism(0.52, 0.02, 0.5, 0.03, 0.07, 0.02, 6, P.LENS[0], P.LENS[0])
+		return
+	var y := TURRET_PIVOT.y
+	k.prism(0.0, y - 0.06, 0.0, 0.2, y, 0.18, 8, P.PLATE[2], P.PLATE[3])
+	for i in 4:
+		var a := TAU * float(i) / 4.0 + PI / 4.0
+		k.prism(cos(a) * 0.16, y - 0.02, sin(a) * 0.16, 0.022, y + 0.01, 0.02, 6, P.PLATE[4], P.PLATE[4])
+	k.strut(Vector3(-0.16, y - 0.04, 0.12), Vector3(-0.36, 0.06, 0.3), 0.018, 4, P.PLATE[1])
+	k.strut(Vector3(-0.36, 0.06, 0.3), Vector3(-1.0, 0.01, 0.46 + Parts.lean(v, 90, 0.2)), 0.018, 4, P.PLATE[1])
+	if lit:
+		Parts.tell_tale(k, Vector3(0.0, y - 0.03, -0.2), 0.035)
+	else:
+		k.prism(0.0, y - 0.03, -0.2, 0.035, y + 0.03, 0.026, 6, P.LENS[0], P.LENS[0])
+
+
+## The gun, drawn round its own pivot and facing +X so a node can turn it: the
+## repeater's receiver, its barrel and shroud, the lens it fires through, and a
+## cut plate bolted on as a shield — the one thing about it a person added.
+static func turret_head(k: MeshKit, v: int) -> void:
+	Parts.ruled(k)
+	# The yoke it sits in.
+	k.prism(0.0, 0.0, 0.0, 0.1, 0.08, 0.09, 6, P.PLATE[2], P.PLATE[3])
+	# Receiver and barrel, along +X.
+	k.strut(Vector3(-0.22, 0.16, 0.0), Vector3(0.14, 0.16, 0.0), 0.1, 6, P.PLATE[3])
+	k.strut(Vector3(0.12, 0.16, 0.0), Vector3(TURRET_MUZZLE.x - 0.02, TURRET_MUZZLE.y, 0.0), 0.034, 6, P.PLATE[4])
+	k.strut(Vector3(0.3, 0.16, 0.0), Vector3(0.44, 0.16, 0.0), 0.05, 6, P.PLATE[2])
+	# The lens at the muzzle, cold amber: it catches when the gun picks a body.
+	k.strut(Vector3(TURRET_MUZZLE.x - 0.04, TURRET_MUZZLE.y, 0.0), TURRET_MUZZLE, 0.045, 6, P.LENS[1])
+	# The feed drum under the receiver, and the cable out of its back.
+	k.prism(-0.06, 0.02, 0.0, 0.07, 0.1, 0.065, 6, P.PLATE[2], P.PLATE[3])
+	k.strut(Vector3(-0.22, 0.16, 0.0), Vector3(-0.36, 0.05, 0.08), 0.016, 4, P.PLATE[1])
+	# The shield: a cut plate stood up across the front of the receiver, the
+	# barrel run through a gap nobody squared.
+	Parts.panel_facing(k, Vector3(0.18, 0.02, -0.06 + Parts.lean(v, 100, 0.02)), Vector3(1.0, 0.0, 0.0))
+	Parts.plate(k, 0.17, 0.3, v, 101)
+	k.pop()

@@ -1,0 +1,39 @@
+# A holding that answers back (owner 2026-09-17, docs/VISION.md §9.5), on the
+# real keys: an armed turret in the yard, a body coming for the place, the gun
+# coming round onto it, the bolts, and the switch that stands it down again —
+# because a turret armed is stolen technology humming in the walls, and running
+# dark is an answer too.
+#
+#   tools/tour.sh tours/turret.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --holding=hut,wind_spinner,battery_stack,battery_stack,turret --fail-downed
+#
+# (--holding stands the yard already built, its cells full: putting a turret up
+# is the holding app's proof and settlements.tour's. This one starts at the
+# moment it matters.)
+coast calm
+wait 0.8
+shot 01-an-armed-turret-in-the-yard with holding, piece:turret, turret_armed
+# Something comes for the place. It is pressing a fight, so the gun takes it.
+spawn runner
+wait 0.2
+shot 02-something-comes-for-the-yard with mob:runner
+await turret_target 8
+wait 0.35
+shot 03-the-gun-comes-round with mob:runner, turret_target
+await turret_hit 10
+shot 04-the-yard-answers-back with turret_hit
+until turret_kill 20
+wait 0.6
+shot 05-after with turret_fired
+# The switch: a live gun is stood down before anything else is done to it, and
+# the page says what the key will do before it is pressed.
+coast calm
+tap holding
+await app:holding 4
+choose piece_5
+wait 0.4
+shot 06-armed-on-the-page with app:holding, turret_armed
+tap use
+wait 0.5
+shot 07-stood-down with app:holding
+tap pause
