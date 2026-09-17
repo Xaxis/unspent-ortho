@@ -24,11 +24,18 @@ await took 3
 wait 0.6
 shot 02-and-goes-out-when-it-is-gone
 
-# A thing the hand in the creel cannot work: lit, but low and warm, so the
-# answer is "not with that" rather than "not at all".
-at prop:stone
+# Another thing, another catch: it follows the hand round the world rather than
+# belonging to one prop.
+#
+# The OTHER two states -- "not with that tool" warm and low, "picked over"
+# barely lit at all -- are in REACH_NO_TOOL and REACH_SPENT and are separated
+# by colour and by level, but they are not photographed here: staging one takes
+# a prop that wants a tool the player has not got, standing where `use` reaches
+# it and nothing nearer answers first, and seed 7's spawn has none. Whoever
+# stages one is welcome to the frame.
+near boulder
 wait 0.6
-shot 03-the-wrong-tool-reads-warm with prop:stone
+shot 03-another-thing-another-catch with prop:boulder
 
 # And by day it is still the answer, because it is a property of the thing and
 # not of the dark.
