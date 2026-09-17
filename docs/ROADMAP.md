@@ -643,6 +643,9 @@ owner asked for that nothing yet does:
   machine with no mass at play distance, the ruts stamped five to a frame,
   survivable day two, and a loading page with no deadline.
 
+**All six landed** (2026-09-17). What each made true, and what each still leaves,
+is in its own section below; raids was the last in and closed the list.
+
 Then **M3** grows the landscape types (Ruined Metropolis and its Undercroft
 first), each with its own sentinel and landmarks on the spines that now exist;
 **M4** is the plan, the people and the story; **M5** is ship, already part-built
@@ -891,6 +894,256 @@ furthest tile in scrapwood region 8 on seed 1 from an existing landmark was
 room first, and a run under `Landmarks.REGION_TILES` (400) is a corner and not a
 place. `tests/landmarks/test_world.gd` asks every landscape with a region that
 size for at least one, which is the test that would have caught it.
+
+### Wave B: what the A2 polish package made true
+
+Nine things the A2 assessment left. Seven landed, one was measured and refused,
+one was handed on. Proved by `tours/polish.tour` and by `tests/hazards/`,
+`tests/models/`, `tests/export/`.
+
+- **A player can survive day two.** Five landscapes out of nine could HARM a body
+  wearing the best kit two days of play can reach; none can now. Three warm-kit
+  recipes (`wrap_warm`, `oilskin`, `hat_brim`) were at a bench for no reason but
+  the order they were written in, and shade answered glare and never thirst.
+  Salt flats glare 0.70 BITE -> 0.39 felt, salt flats heat 0.85 HARM -> 0.59
+  BITE, snowfield cold 0.68 -> 0.44, moss wet 0.67 -> 0.26.
+  `tests/hazards/test_day_two.gd` prints the whole table and is the rule.
+- **The Burning's vents are not eggs on a griddle.** Nine identical pure-white
+  discs on neat octagonal collars, the only pure white in the game, are now
+  broken clinker collars with plates of crust floating on the fire, so what the
+  eye reads is amber SEAMS: **252 pure-white pixels in nine blobs -> 19 in six**,
+  largest blob 9x7 -> 3x2. Four variants, not two.
+- **The targeting tag is made of the slate, not of black.** An opaque lozenge
+  behind every body on screen became two salvaged parts — torn glass at 0.55
+  alpha and a rail of the bezel's phosphor. Darkest pixel inside the tag 7.2 ->
+  20.4 against a frame floor of 12, and a test fails on any backing darker than
+  the frame's own floor.
+- **The sky's evening and the body's night are one curve.** `FightRules.nightfall`
+  IS `Weather.night_fall`, which the hazards file had promised in a comment for
+  two waves; `tests/hazards/test_hazards.gd` fails if they ever part again.
+- **The loading page has deadlines**, so a boot that never draws gives up in
+  seconds instead of hanging: six of six boots through at 6.2-9.7 s, against a
+  run where two of five never handed over at all (36.5 and 37.4 s).
+- The ruts and the scrapwood's crowns are no longer stamps (commonest turf-cut
+  bar 13 px at 25.2% of crossings -> 3 px at 19.7%; tree variants 4 -> 6, no two
+  sharing a crown radius), the watcher has a body (0.40 -> 0.52 of its silhouette)
+  and **76% of tour frames now say what they are OF**, up from 61%.
+
+Gaps it leaves:
+
+- **The harvester and the hauler are still slabs end-on**, and the package said
+  so rather than dressing it up: a fourth attempt (standing the spout up like a
+  derrick at alert) made the measured number worse and was reverted. What landed
+  instead is the measurement — `test_no_machine_is_a_filled_box_from_any_bearing`
+  sweeps sixteen bearings and pins each kind where it stands (harvester 0.84 at
+  yaw 3.93, hauler 0.67, sweeper 0.67, runner 0.65). Only a different hull moves
+  those, which is a machine-models job and not a polish one.
+- **The watcher's fill ratchet went UP**, 0.25 -> 0.30, the first time that
+  number has moved the wrong way. It was deliberate: the watcher was the emptiest
+  thing in the roster and unreadable at play distance. `tests/models/test_machines_mass.gd`
+  is the counterweight, a per-kind FLOOR on how much of a machine is body. If
+  that file is ever dropped, the ratchet comes back down with it.
+- Collapse and dark have no hand-made answer: both are answered by WHERE YOU
+  STAND, which `Hazards._answer_shift` already models and `test_day_two` holds to
+  being real.
+- The scrapwood's ground still reads brown-mauve rather than its own green-brown
+  gloom, and the Burning at noon still reads chocolate brown (R-B +33). Both were
+  on the A2 list and neither is in this package's ownership.
+
+### Wave B: what the raids package made true
+
+`m2b/raids`, merged `--no-ff` behind `tools/check.sh` (**1489 tests green**) after
+works-and-landmarks and polish. `docs/VISION.md` §9.2-9.7, and `docs/DESIGN.md`
+§Raids is the argument. Proved by `tours/raids.tour`, `tours/raids-dark.tour` and
+`tests/raid/`.
+
+#### What is true
+
+- **Nothing is ever sent for a place nothing has read.** A machine that comes
+  near a holding reads ONE channel off `Settlement.signature()` — the loudest it
+  can hear from where it stands, weighed by `Signature.CARRY` over 34 tiles — and
+  walks home with the record along the plan's survey bearing. Until it is clear
+  of the yard that reading is a thing in the world: kill it, spoof it into
+  nonsense, take it off the body (a `record` item, and the copper a signet is
+  wound from), follow it home, or let it go. **Only a record that got home raises
+  attention**, which is what makes running dark an answer rather than a delay —
+  `tours/raids-dark.tour` builds out of the pieces that say nothing, lets one
+  comfort give the place away, takes the reading off the body, and ends where it
+  started, at nothing.
+- **Attention is one 0..1 scale and the scale IS the escalation.** 0 is a place
+  nothing has ever reported; 1.0 is a siege led by the region's keeper. It is
+  counted in ONE FILED RECORD at full strength (`Attention.NOTICE_FULL` = 0.09),
+  so twelve unanswered readings bring the keeper, and every other cause is stated
+  as a share of the same thing: a machine lost in the yard 0.14, the network
+  going up a level 0.07, stolen FOUND tech 0.030 per world hour, a quiet world
+  hour -0.012, a record destroyed -0.05, a step paid -0.30, the keeper falling
+  -1.0. `Attention.CAUSES` is the closed list, `48_raids` is the only writer, and
+  `Events.attention_changed` is the only door out. **Hours alone only ever make a
+  holding safer.**
+- **It is read as pressure, never as a bar.** The holding app draws what a machine
+  HEARS (seven channels, the loudest named, its percentage) and under it ONE WORD
+  for what the plan THINKS — read, surveyed, wanted, marked, condemned. A number
+  there would turn a system about reading the world into one to optimise, and
+  there is no third readout.
+- **Four steps, each warned by the world 25-110 world minutes first.** Survey,
+  probe, raid, siege, at 0.22/0.45/0.70/1.0. The warning is a sound off along the
+  survey bearing, a line on the glass, and the plan's own tag — a new FOUND model,
+  `src/models/raid/raid_mark.gd` — bolted to every piece the party is coming for.
+  The window is the answer: fortify, take the people off, kill the mast, fire the
+  signet, leave a full store out as tribute, or be elsewhere. What turns them
+  round on the road is the SIGNATURE falling, not the books.
+- **The build decides the fight.** A party's trades take their targets off the
+  holding's own signature — breacher to the strongest thing standing, harvester
+  to whatever the slate named loudest, snatcher to whoever is at work — so the
+  seven bars are a decision rather than a readout. A raider is here for the
+  holding: it walks past somebody standing in their own yard, and only a blow
+  turns it.
+- **Walking away is not walking out.** A raid the player is not present for
+  settles on exactly the same arithmetic, and one they leave halfway is settled
+  the same way with whatever the party had not spent. A party body carries
+  `MobState.raider` and is exempt from the coast's cull for exactly that reason.
+- **Aftermath is left in the yard.** Broken pieces stay as wreckage 46 gives half
+  back for, machines killed in the yard leave salvage, a razed holding keeps what
+  the party could not carry, the region remembers a place razed on its ground, and
+  **killing its keeper quiets the network for good**.
+
+#### The ruling: a portal is not a raid path
+
+Written down in `docs/DESIGN.md` §Raids as one sentence to argue with, not to
+quietly widen. A machine arriving through a gate the player has never opened,
+from a realm they may not have visited, is unreadable BY CONSTRUCTION: there is no
+warning it could have given and nothing they could have done about it, which is
+the one thing this system may not be. So attention is kept per realm — a machine
+in the caves never senses a village on the surface, a step is only warned in the
+realm the player is standing in, and the plan's memory of a region is keyed
+`"REALM:region id"` because region and prop ids both restart at 0 in every realm's
+world. **When a portal is a thing the player has opened and can shut, a raid
+through one becomes the best set piece the system has, and it gets built then,
+deliberately, with a warning grammar of its own.**
+
+#### Gaps
+
+- **None of the raid's real ANSWERS can be built.** `StructureKind` names turret,
+  spoofer, decoy mast, EMP stake, mine, ditch, tower, shutters and bunker;
+  `BUILDABLE` lists twelve kinds and none of them is one. `SIGNS` already carries
+  mask rows for spoofer (0.5), decoy mast (0.35), netting (0.2) and shutters
+  (0.15), and `Attention._mask_of` and `RaidStage.CALLED_OFF_UNDER` already read
+  them — **the moment those rows become buildable the answers work with no change
+  in this package.** Until then a raid has fight, hide, evacuate, pay and the gear
+  signet, and no BUILT answer at all. This is the first thing to fix.
+- `tours/raids.tour` proves the answer with `await ring` — a blow struck at the
+  party, which turns it on the player — rather than a kill. A RAID party resolves
+  to two haulers (life 66, plated) plus a snatcher, and one felling axe does not
+  take two haulers down inside the window, so "survive a raid" is honestly
+  "strike back and come out the other side of it". The reason is the gap above.
+- **A snatcher resolves to a clerk or a flock**, because the roster has no body
+  whose trade is carrying people off. A clerk walking somebody out of a yard reads
+  oddly. `RaidRoles.score_for` picks by what a body IS, so a row with a
+  `hits: {minutes, ...}` and a good dash is chosen the day it exists.
+- A snatched resident is taken off the holding's books here, and its BODY let go
+  through 46_settlements' private `_send_away` (guarded by `has_method`). It
+  works, and it is a cross-package private call that wants a public
+  `lose_person(settlement, person_id)`.
+- **A holding gives no shelter from a landscape's pressures** (`52_hazards.ROOFS`
+  is keyed by `PropKind`), so evacuating into your own hut does nothing against
+  the weather. Named by the settlement package's own author and still true.
+- A step called off during its warning emits `raid_ended(&"left")` with no
+  matching `raid_began`. Nothing pairs the two yet; documented in the system
+  header.
+- **Nine `raid_*` sound names are aliased onto existing sheet rows** (fog_horn,
+  alert_flock, arc_snap, watcher_call, relay_click, pickup, break, grip). They
+  read right and nothing is silent, but none has a voice of its own: raid_horizon,
+  raid_drone, raid_static, raid_keeper, raid_notice, raid_jammed, raid_record,
+  raid_break, raid_snatch.
+- A party paths by straight lines plus a sidestep when it stops getting nearer.
+  `_march_from` proves a start point has a way in that is dry, level and clear of
+  solid props and falls inward until it finds one, so a party always arrives — but
+  a holding ringed by ruin gets a party that comes out nearer than the full twelve
+  tiles instead of one crossing the whole field.
+- The siege's keeper is put down at the party ring and adopted by 44_sentinels
+  (`_adopt` takes any sentinel body and gives it its region's real health and
+  phases). **No tour reaches 1.0 attention**, so that path is proven by reading
+  44_sentinels rather than by playing it.
+- `Attention.pressure()` returns a word and the holding app is its only reader, by
+  design. If a second reader is ever wanted, that is the function — but a second
+  readout would make attention a number to optimise.
+
+### Wave B, integrated (2026-09-17)
+
+`m2b/works-landmarks`, then `m2b/polish`, then `m2b/raids`, each merged `--no-ff`
+behind `tools/check.sh`, with realms, the gear economy, settlement and the story
+already on main. **1368 tests before the wave, 1432 after polish, 1489 after
+raids, green.** What the
+integration itself had to find and fix, which is what a seam is for:
+
+- **A place is a way to a thing.** `Sources` walked every drop table back to the
+  roster body it came off, so a landmark could hold nothing a machine carries:
+  the fine axe sat in the gear tree with a note saying the landmarks owned it and
+  nothing in the world holding one, and a wick in a lighthouse was a test failure
+  rather than a find. A table now declares whether it is OPENED or killed, and
+  where it stands (`Drops.declare_place`), and the walker answers with a fourth
+  step — `find axe_works at firewatch in the coast or pinewood or scrapwood`.
+  **The last `no_source` is gone and `tests/gear_economy/test_obtainable.gd` now
+  allows none.** A place is the LAST answer, never the first: taking, killing and
+  making are repeatable and a cache is opened once.
+- **A region with nothing running it cannot hunt you.** `Events.works_broken` and
+  `Events.sentinel_fell` were both emitted with nothing listening, so a player
+  could put a depot out and that same region went on working itself up to hunted
+  and sending bodies out of a dark yard. `Interference.lose` caps a lost
+  network's file under `hostile` for good (`LOST_CEILING` 0.55, under the 0.56
+  threshold, so `_dispatch` can never pick a hunter there) and cools it at
+  `LOST_DECAY`. It is saved: a region stays lost for the game.
+- **What a broken yard is worth to a keeper, measured instead of asserted.** The
+  works package claimed breaking a depot "marks every plan work in the yard
+  spent, which is exactly what leaves that region's keeper standing dark". It is
+  not exactly that: a yard is `Works.YARD` (8 tiles) and a keeper feeds over
+  `def.reach * FEED_SHARE` (about 21), so on seed 4 the salt flats keeper is fed
+  by twelve works and breaking the depot spends four — **a third of the way to
+  starving it**, with the rest to be robbed by hand. That is a better game than
+  the claim, so the radius stands and the number is in
+  `tests/works/test_in_game.gd`.
+- **A swimmer pushed into a wall stopped dead.** `WorldQuery.move_body` falls back
+  on stepping one axis at a time, and the second step was asking whether a WALKER
+  could stand there — so to a swimmer every tile of deep water refused it, and a
+  swimmer beside anything solid could only move east and west. Nothing caught it
+  while the only walls were trunks on dry land; this wave put a drowned
+  lighthouse in the water, which is where a player meets one. (The missing
+  argument came in with the craft package and swimming did not thread it.)
+- **The ground under your hands beats a notice across the square.** The story
+  package numbered itself before survival so the most specific thing answers
+  `use` first, and gave itself a generous reach (3 tiles) so a key pressed at a
+  villager who has just stepped still lands. Together those meant a notice two
+  tiles off outranked the driftwood the player was standing on and facing: the
+  key that meant "pick this up" opened a page, and every press after it went to
+  the page. `tours/core_loop.tour` died at its first `await took` because of it.
+  "In front of" is not "nearer than", and only one of the three can be under your
+  hands.
+- **The slate can be put on a place.** Every body and every person on screen could
+  be read and the two biggest things this wave put in the world could not. A
+  depot says what trade it was founded on, how far the plan has got and how many
+  housings are still shut; a landmark says what the place was and whether its
+  cache is emptied, and only once it has been FOUND. Each system answers for its
+  own (`target_rows`), so targeting still knows nothing about depots, and places
+  sort below every person, which is below every body — a yard can never take the
+  lock off what is coming at you.
+
+What the wave still leaves, in the order it should be taken:
+
+- **`tests/sky/test_lamp_pools.gd` fails about one run in three and nobody owns
+  it.** The same 5.84 every time, so it is a race, not noise: the lantern's pool
+  is push_front'ed only when `_set_light` turns the light on, and whether a world
+  lamp already covers the player depends on what the chunk worker has streamed by
+  that frame. A flaky gate is corrosive to everybody. 15_lights should decide
+  whether a covered lantern still lays the first pool, and say so in one place.
+- **The 20-tile read of VISION §3 is still not met and cannot be at this camera**
+  (the arithmetic is above). M3's to decide, and a whole-game decision.
+- A depot whose yard holds no plan work strips nothing, so on seed 1 the coast
+  keeper cannot be starved by breaking the coast depot at all. That is the
+  island's business rather than a broken seam, and only two landscapes have a
+  keeper to starve.
+- `axe_works` is reachable but nothing else in the tree is found at a place: the
+  salt flats and the scrapwood still have no elite material of their own, so
+  their landmarks pay in ordinary finds.
 
 ## M3 — The landscapes
 

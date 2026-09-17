@@ -8,7 +8,9 @@ class_name Attention
 ## keeper. Everything else is stated as a share of that, so a number is always
 ## answerable — 0.45 is "a probe is due", not "forty-five points". The unit it is
 ## counted in is ONE NOTICE THAT GOT AWAY at a full-strength reading
-## (`NOTICE_FULL`): eleven of those, unanswered, bring the keeper.
+## (`NOTICE_FULL`): twelve of those, unanswered, bring the keeper — eleven make
+## 0.99 and a siege wants `RaidStage.AT[3]`, 1.0, which
+## `tests/raid/test_attention.gd` holds to.
 ##
 ## **Nothing here is a timer.** Every rise is caused by something the player did
 ## or built and could have seen: a record that got home, a network they stirred,
