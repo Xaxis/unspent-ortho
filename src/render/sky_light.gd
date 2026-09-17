@@ -98,7 +98,7 @@ const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 ## them and the gap between DAY_AMBIENT and NIGHT_AMBIENT are the whole of why a
 ## lantern matters.
 const SUN_NOON := 2.10
-const MOON_NIGHT := 0.55
+const MOON_NIGHT := 0.115
 ## The sun's angular size, in degrees. Real penumbra: a fence post has a crisp
 ## shadow at its foot and a soft one four tiles away, which no filter can fake
 ## and which is most of what says a shadow is cast by something standing up.
@@ -139,7 +139,7 @@ const SKY_GROUND_NIGHT := Color(0.045, 0.052, 0.082)
 ## MOON_NIGHT it also decides whether a night has SHAPE in it: a quarter of the
 ## light at midnight is the moon, so a wall still turns away from something.
 const DAY_AMBIENT := 0.55
-const NIGHT_AMBIENT := 1.25
+const NIGHT_AMBIENT := 0.21
 
 ## The tonemapper. This is the CEILING that replaced the shader's page shoulder
 ## (see sky.gdshaderinc): the frame is rendered in HDR and rolled off once, for

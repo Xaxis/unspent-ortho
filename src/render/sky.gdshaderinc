@@ -617,8 +617,15 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// reflection nothing was computing; the reflection is real now (ROUGHNESS
 	// falls where it is wet, and the sky and the lamps are in it), so the sheen
 	// is gone and only the darkening is left.
+	// How much it darkens depends on how much light there is to be absorbed.
+	// Wet ground looks dark by DAY because it swallows the light falling on it;
+	// at night there is nothing to swallow and what you see in it is reflected,
+	// so a full daylight darkening laid on a wet bog at midnight took the moss
+	// frames to 86% of the picture under luma 24, which is a black screen with
+	// a green dot in it -- the exact thing LOOK.md law 3 is guarding against.
 	float wet = neon_wetness(world_pos) * step(0.9, face_up);
-	c = mix(c, c * vec3(0.66, 0.70, 0.78), step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
+	vec3 soak = mix(vec3(0.78, 0.81, 0.87), vec3(0.66, 0.70, 0.78), 1.0 - sky_gloom());
+	c = mix(c, c * soak, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
 	float cloud = sky_cloud(world_pos);
 	if (cloud > 0.0) {

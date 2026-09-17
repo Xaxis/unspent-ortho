@@ -58,6 +58,30 @@ const TINT_FLOOR := 0.45
 ## obeys: at that exponent a lamp is a hot spot with nothing round it, and what
 ## a lantern is FOR is the few tiles round your feet.
 const ATTENUATION := 1.45
+
+## --- A FLAME IS NOT A POINT ---------------------------------------------
+##
+## Two things were wrong with firelight and they have the same cause: a fire
+## was being lit like a bulb.
+##
+## 1. It cast. A point light at the middle of a burning stack throws a hard
+##    shadow of every stick in it, and the fire in the canon's night village
+##    sat in a STARBURST of radial spokes across the gravel. Real firelight has
+##    no crisp shadow of its own fuel, because the flame is bigger than the
+##    fuel and comes from all round it. So a flame lights and casts nothing,
+##    and the shadows in a camp are thrown by the lamps on the posts and by the
+##    lantern in your hand -- which is also where the player is looking.
+## 2. It ended. `omni_range` 3.2 put a visible boundary on the gravel where the
+##    pool stopped. A flame's reach is much longer and its falloff much
+##    steeper, so the core is the same size and the tail dies away with no edge
+##    anywhere for the eye to find.
+const FLAME_KINDS: Array[int] = [PropKind.FIRE, PropKind.KILN, PropKind.VENT, PropKind.HOUSE]
+const FLAME_REACH := 1.9
+const FLAME_ATTEN := 2.4
+
+
+static func is_flame(kind: int) -> bool:
+	return FLAME_KINDS.has(kind)
 ## What a light's level is worth in linear light (see _set_light).
 const GAIN := 5.2
 const LANTERN_RANGE := 3.2
@@ -291,9 +315,18 @@ func _new_light(n: String) -> OmniLight3D:
 func _cast_shadows(focus: Vector3) -> void:
 	var allow := int(Quality.current().get("shadow_lights", 0))
 	var live: Array[OmniLight3D] = []
-	for l: OmniLight3D in lights:
-		if l.visible:
-			live.append(l)
+	for i in lights.size():
+		var l: OmniLight3D = lights[i]
+		if not l.visible:
+			continue
+		# A FLAME CASTS NOTHING (see FLAME_KINDS). It is the biggest light in a
+		# camp and the one the player looks at longest, and a point light in the
+		# middle of a burning stack throws a hard shadow of every stick in it.
+		var src: Variant = _assigned[i] if i < _assigned.size() else null
+		if src != null and is_flame(int((src as Dictionary).get("kind", -1))):
+			l.shadow_enabled = false
+			continue
+		live.append(l)
 	if lantern_light != null and lantern_light.visible:
 		# The player's own lantern casts first, whatever else is near: it is the
 		# one light they carry, and its shadow is the one they are steering by.
@@ -639,7 +672,12 @@ func _update(delta: float, snap: bool) -> void:
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
 		level *= _flicker(s)
-		if _set_light(l, s.at, reach, compensate(warm, tint, sun) * level) and lays:
+		# A flame reaches much further and falls off much faster, so its core is
+		# the same size and its tail has no edge on it anywhere (FLAME_KINDS).
+		var flame := is_flame(kind)
+		var lit_reach := reach * (FLAME_REACH if flame else 1.0)
+		var atten := FLAME_ATTEN if flame else ATTENUATION
+		if _set_light(l, s.at, lit_reach, compensate(warm, tint, sun) * level, atten) and lays:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
@@ -867,14 +905,17 @@ static func neon_colour(s: Dictionary) -> Vector3:
 			return NEON_FIRE
 
 
-## Returns whether the light is on.
-func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3) -> bool:
+## Returns whether the light is on. `atten` is how steeply it falls off; a
+## flame's is steeper over a much longer reach, so its pool has no edge.
+func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3,
+		atten: float = ATTENUATION) -> bool:
 	var e := maxf(rgb.x, maxf(rgb.y, rgb.z))
 	if e < 0.01:
 		l.visible = false
 		return false
 	l.visible = true
 	l.position = at
+	l.omni_attenuation = atten
 	l.omni_range = reach
 	# Godot takes light_color as sRGB and linearises it before shading; the
 	# levels here are display values, so hand it the colour pre-encoded.

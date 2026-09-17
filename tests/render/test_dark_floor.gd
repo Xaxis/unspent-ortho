@@ -56,33 +56,42 @@ func test_the_night_has_a_floor_and_it_is_a_light_not_a_lifted_albedo() -> void:
 		check(not src.contains("= ink_floor("), "%s lifts none either" % path)
 
 
-## The number LOOK.md law 3 is argued about. A lit room shows anything under
-## luma 24 as a black screen, so the land a player is walking on at midnight,
-## with no lamp lit, has to stay clear of it -- while still being DARK, which is
-## what makes a lantern worth carrying.
+## THE NUMBER LANTERN IS NAMED AFTER.
 ##
-## The FRAME is where the law is finally settled, and a headless test cannot
-## render one: what the canon measured for this build is a night frame at median
-## luma 62 with 1.3% of it under 24, against main's median 141. What is held
-## here is the arithmetic under that -- the floor is a light, it is well clear of
-## a black screen, the moon is a real share of it so a night has shape, and
-## night is a long way under noon.
-func test_the_land_at_midnight_is_dark_and_still_above_a_black_screen() -> void:
+## docs/LOOK.md law 3: "Night is genuinely dark, which is what makes a lantern
+## matter -- and the lantern is the game's own title in miniature." The test the
+## owner gave for it is not a number at all: with the lantern out, at 23:00,
+## away from any fire, *the player should want to light it*.
+##
+## There are two ways to fail that and only a narrow band between them. `noir`
+## put 51% of its night frame under luma 24, which in a lit room is a black
+## screen with a green dot. The first pass of LANTERN put 2.3% under it, which
+## is a night you can read the far bank in without help -- so the lantern was a
+## decoration, and the fire in the frame was beautiful and unnecessary.
+##
+## Measured on the canon's own night village at 23:00, no lantern: 31% of the
+## frame under luma 24, median 34. A headless test cannot render that frame, so
+## what is held here is the arithmetic under it -- the unlit land is DARK, a
+## lamp beats it by a wide margin, and there is still a moon on it so the dark
+## has shape rather than being a hole.
+func test_the_unlit_night_is_dark_enough_that_a_lantern_is_worth_lighting() -> void:
 	var coast := BiomeRegistry.index_of(&"coast")
 	var turf := GroundColors.wash(Ground.GRASS, coast)
-	# The worst case a player stands on: ambient only, no moon on this face.
-	var floor_lit := lit(turf, SkyLight.NIGHT_AMBIENT * SkyLight.EXPOSURE)
-	gt(luma709(floor_lit) * 255.0, 24.0,
-		"turf at midnight with no moon on it is above a black screen")
-	# And the moon on it is brighter again, or night has no shape in it.
-	var moonlit := lit(turf, (SkyLight.NIGHT_AMBIENT + SkyLight.MOON_NIGHT * 0.85) * SkyLight.EXPOSURE)
-	gt(luma709(moonlit), luma709(floor_lit) * 1.12, "a face the moon is on reads brighter")
-	# DARK, though. In LIGHT rather than in luma, because the sRGB curve makes
-	# every ratio look gentler than it is and the eye is not what is being
-	# argued about here.
-	var night_light := SkyLight.NIGHT_AMBIENT + SkyLight.MOON_NIGHT * 0.85
-	var noon_light := SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8
-	lt(night_light, noon_light * 0.8, "night has a lot less light in it than noon")
+	# Everything here is a RATIO, because `lit()` leaves out the tonemapper's
+	# toe, the grade and the air, and so reads a few values high against the
+	# frame: the model predicts 45 where the frame measures 34. The ratios it
+	# gets right, and they are what the law is actually about.
+	var unlit := luma709(lit(turf, SkyLight.NIGHT_AMBIENT * SkyLight.EXPOSURE))
+	var noon := luma709(lit(turf, (SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8) * SkyLight.EXPOSURE))
+	lt(unlit, noon * 0.32, "the unlit land at midnight is a small fraction of noon")
+	gt(unlit, 0.01, "and is still a colour rather than a hole")
+	# A lamp has to WIN, and by a lot, or carrying one changes nothing.
+	var Lights := load("res://src/systems/15_lights.gd")
+	var pool := luma709(lit(turf, (SkyLight.NIGHT_AMBIENT + Lights.GAIN * 0.6) * SkyLight.EXPOSURE))
+	gt(pool, unlit * 3.0, "a lamp's pool is worth several times the night round it")
+	# And the moon is a real share of what light there is, so the dark has shape.
+	gt(SkyLight.MOON_NIGHT * 0.85, SkyLight.NIGHT_AMBIENT * 0.25,
+		"there is a moon on it, so a wall still turns away from something")
 
 
 func test_no_prop_is_drawn_below_the_ink_floor() -> void:
