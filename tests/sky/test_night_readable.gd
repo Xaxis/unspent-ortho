@@ -38,7 +38,17 @@ func test_people_are_tagged_for_their_fill_and_water_is_kept_from_lamps() -> voi
 	await frames(1)
 
 
-func test_lamps_never_light_water_and_the_lantern_is_out_of_the_body() -> void:
+## A lamp by the sea used to be cut out of the water's render layer altogether,
+## because what it laid on the water was a flat glow DISC and a glow disc on the
+## sea is absurd. Under LANTERN water is the smoothest surface in the world and
+## a light on it is a STREAK -- the light is in it, not on it -- so the water
+## takes lamplight like everything else and a fire on the shore is in the water
+## in front of it, which is most of what a night coast is for.
+##
+## What is still true, and is what this now holds: the lantern hangs off the
+## body rather than inside it, and the pool the sky is handed is the pool the
+## lights really made.
+func test_a_lamp_reaches_the_water_and_the_lantern_is_out_of_the_body() -> void:
 	var o := BootOptions.new()
 	o.size = 64
 	o.hour = 23.0
@@ -54,7 +64,10 @@ func test_lamps_never_light_water_and_the_lantern_is_out_of_the_body() -> void:
 	check(lights != null, "lights system loaded")
 	await frames(3)
 	for l: OmniLight3D in lights.lights:
-		eq(l.light_cull_mask & SkyLight.LAYER_WATER, 0, "no lamp lights the sea")
+		check((l.light_cull_mask & SkyLight.LAYER_WATER) != 0,
+			"a lamp reaches the water, and what it leaves there is a reflection")
+		gt(l.omni_attenuation, 0.0,
+			"and it falls off, so it is a light and not a disc with an edge")
 	var lantern: OmniLight3D = lights.lantern_light
 	eq(lantern.light_cull_mask & SkyLight.LAYER_WATER, 0, "nor the lantern")
 	check(lantern.visible, "lantern lit")

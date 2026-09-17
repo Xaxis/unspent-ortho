@@ -1484,6 +1484,23 @@ void fragment() {
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
+	// THE TILE LATTICE MUST NOT REACH THE EYE (CLAUDE.md: no grid on screen).
+	//
+	// The terrain is a triangle lattice with FLAT per-face normals, and its
+	// gentle bump cells give every triangle a slightly different one. Under two
+	// hard bands of N dot L that was invisible -- both triangles landed in the
+	// same band. Under a real sun it is a herringbone of chevrons about two
+	// thirds of a tile across, ruled over every open field in the game, and it
+	// is the tile grid arriving in the picture by the back door.
+	//
+	// So a face that is already all but level is taken to level, and the relief
+	// the eye is meant to find is matter_bump's, which belongs to the MATERIAL
+	// and not to the mesh. Slopes, walls and everything a body can climb keep
+	// the normal they were built with.
+	float level = smoothstep(0.80, 0.97, n_world.y);
+	if (level > 0.0) {
+		NORMAL = normalize(mix(NORMAL, normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz), level));
+	}
 	if (unh < 0.5) {
 		NORMAL = matter_bump(NORMAL, world_pos, m, mr.z * relief);
 	}

@@ -131,6 +131,27 @@ vec4 matter_of(int m) {
 	return r;
 }
 
+// Value noise, but ROTATED BETWEEN OCTAVES, and it has to be.
+//
+// `ink_vnoise` interpolates over a square lattice. That is invisible in a WASH,
+// where only its value is read, and glaringly visible in a NORMAL, where its
+// gradient is: the first version of matter_height used two plain octaves and
+// the moss came back with a herringbone of diamonds about two thirds of a tile
+// across ruled over the whole bog -- a grid on screen, which is the one thing
+// CLAUDE.md says the eye must never be given. Turning each octave off the last
+// leaves no lattice for the eye to lock onto.
+float matter_fbm(vec2 p) {
+	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	float v = ink_vnoise(p) * 0.5;
+	p = rot * p * 2.07 + 19.0;
+	v += ink_vnoise(p) * 0.28;
+	p = rot * p * 2.13 + 41.0;
+	v += ink_vnoise(p) * 0.15;
+	p = rot * p * 2.03 + 7.0;
+	v += ink_vnoise(p) * 0.07;
+	return v;
+}
+
 // A material's own relief as a height in 0..1, in WORLD space, at the scale its
 // marks are drawn at. Smooth on purpose: the fine speckle in the wash is
 // pigment, not geometry, and differentiating it would give the light noise to
@@ -147,26 +168,26 @@ float matter_height(int m, vec3 wp) {
 	} else if (m == 52 || (m >= 60 && m <= 70)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
-		h = (cd.y - cd.x) * 0.9 + ink_vnoise(p * 0.7) * 0.3;
-		h += sin(wp.y * 5.3 + ink_vnoise(p * 0.4) * 3.0) * 0.12;
+		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;
+		h += sin(wp.y * 5.3 + matter_fbm(p * 0.4) * 3.0) * 0.12;
 	} else if (m == 42) {
 		// SAND: the same wind ripples, as ripples.
-		float q = dot(p, vec2(0.6, 0.8)) * 2.4 + ink_vnoise(p * 0.3) * 2.5;
-		h = sin(q * 6.2832) * 0.4 + 0.5 + ink_vnoise(p * 0.16 + 12.0) * 0.3;
+		float q = dot(p, vec2(0.6, 0.8)) * 2.4 + matter_fbm(p * 0.3) * 2.5;
+		h = sin(q * 6.2832) * 0.4 + 0.5 + matter_fbm(p * 0.16 + 12.0) * 0.3;
 	} else if (m == 44) {
 		// SNOW: long drifts across one wind.
 		vec2 wd = vec2(0.83, -0.55);
 		vec2 q = vec2(dot(p, wd), dot(p, vec2(-wd.y, wd.x)));
-		h = ink_vnoise(q * vec2(0.30, 0.85)) * 0.7 + ink_vnoise(q * vec2(0.9, 2.4)) * 0.3;
+		h = matter_fbm(q * vec2(0.30, 0.85)) * 0.7 + matter_fbm(q * vec2(0.9, 2.4)) * 0.3;
 	} else if (m == 55 || m == 57) {
 		// SALT and PAN: polygon plates lifted at their rims.
 		vec3 cd = matter_cells(p * 0.9);
 		h = smoothstep(0.0, 0.16, cd.y - cd.x);
 	} else if (m == 41 || m == 40 || m == 48 || m == 50) {
 		// Anything with a mat of growth on it: clumps.
-		h = ink_vnoise(p * 1.7) * 0.6 + ink_vnoise(p * 4.3) * 0.4;
+		h = matter_fbm(p * 1.7);
 	} else {
-		h = ink_vnoise(p * 1.1) * 0.6 + ink_vnoise(p * 3.1) * 0.4;
+		h = matter_fbm(p * 1.1);
 	}
 	return clamp(h, 0.0, 1.0);
 }
