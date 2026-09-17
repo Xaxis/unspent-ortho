@@ -18,9 +18,9 @@ const MOST := 4
 const MERGE := HOLD
 ## Each row shows the thing as the slate scans it (UiSketch, the carrying page's
 ## own drawing) at this many pixels square: at 9 a stone and a lump of coal are the
-## same disc, at 16 the grain of the stone, the specks in ore and the ridges of a
-## shell are all there to read.
-const SKETCH := 16
+## same disc, and at 20 a copper vein, a whelk's whorls and the fork in a tuft of
+## crottle still read, where at 16 they had begun to close up.
+const SKETCH := 20
 ## One row's height and the gap between rows, and how far above the held-item
 ## window the stack stands.
 const ROW := SKETCH + 2

@@ -241,10 +241,15 @@ what came into the creel is **said on the HUD with a picture of that material**.
 now. Under the lit world (docs/LOOK.md) "this can be taken" is meant to be light on
 the thing, and a half-broken rock keeps its silhouette short a piece with fresh
 faces where the hammer went. When that lands both are replaced; the rule
-(`Harvest.target`) and the share (`Harvest.shown`) are what stay. And several
-materials still share one picture (ores, shells, the greens, stone and its kin):
-`tests/ui/test_pickup_feed.gd` lists them and fails on any new sharing, so the list
-only gets shorter.
+(`Harvest.target`) and the share (`Harvest.shown`) are what stay.
+
+**Every material the land gives has a picture of its own**, not a tint of another's:
+the slate's scan keeps brightness and throws hue away, so copper ore drawn as iron
+ore in another colour was the same picture. Each is told by its form — copper's
+vein, tin's crystals, limestone's beds, brimstone's crust, a whelk's whorls beside
+a pair of mussels, reeds tied, wrack forked, gorse in flower, crottle's tuft on its
+chip, a cut turf of peat — in the 9x9 mark and the sketch alike, and
+`tests/ui/test_pickup_feed.gd` fails if two ever share one again.
 
 ## Swimming (owner, 2026-09-17)
 
