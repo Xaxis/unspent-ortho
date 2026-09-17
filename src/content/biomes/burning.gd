@@ -76,6 +76,10 @@ static func make() -> BiomeDef:
 		[Weather.CLEAR, 22, 0.0], [Weather.HEAT, 16, 0.0], [Weather.GREY, 10, 0.0],
 		[Weather.ASH, 30, 0.35], [Weather.HAZE, 22, 0.0],
 	]
+	# Fumes sit just under BITE (0.55) on purpose: the air is always noticed and
+	# only unbreathable when the ash falls, which adds 0.35 x its strength and so
+	# bites from ash 0.14 up — the commonest weather above. That is the day a
+	# respirator earns its slot. Heat is the sun's, and falls under BITE after dark.
 	d.hazards = {&"heat": 0.7, &"fumes": 0.5}
 	d.roster = {&"clerk": {"weight": 1.0}}
 	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
