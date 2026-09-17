@@ -23,16 +23,17 @@ extends Node3D
 ## (19:12) to full night blue at 21:36, so between 19:12 and 21:00 the level sat
 ## flat at about 0.81 and only the hue moved: the last two hours of the day were
 ## as bright as the afternoon and steadily bluer. Now the warmth is HELD to about
-## 20:15 (the sun is low and warm on what it lights, and Weather.night_fall takes
-## the level down under it), and the blue of the sky takes the land over the last
+## 20:15 (the sun is low and warm on what it lights, and `day_gone` takes the
+## level down under it), and the blue of the sky takes the land over the last
 ## three quarters of an hour, landing on night where night_fall lands.
 ## The 21:00 key is short of the night's own blue on purpose: blue is the
 ## BRIGHTEST channel at night (0.90 against 0.56 red), so a key that went the
 ## whole way there in the last half hour of the evening measurably LIFTED a
 ## blue-leaning land like the snowfield just as it should have been settling.
 ## The last of that blue deepens over 21:00-21:36, under a level that is flat.
-## 21:36 (t = 0.90) is where the light stops moving at all, and it is the anchor
-## every other term in the evening is paced against (night_dark).
+## 21:36 (t = 0.90) is where the light stops moving at all, and 16:48 (t = 0.70)
+## is where it starts: those two are EVENING_FROM and EVENING_TO, the anchors the
+## whole evening is now paced against (`day_gone`).
 const KEYS := [
 	[0.00, Vector3(0.56, 0.64, 0.90), 0.82],
 	[0.22, Vector3(0.56, 0.64, 0.90), 0.82],
@@ -447,7 +448,7 @@ func compose() -> void:
 	var hour := clock_hour
 	var s := sun_at(hour)
 	# How far night has fallen HERE: the hour, or all the way under a roof.
-	var night := maxf(Weather.night_fall(hour), closed)
+	var night := maxf(day_gone(hour), closed)
 	# `closed` says this place reads as NIGHT whatever the clock says (see the
 	# field's own header). These two were the last things that did not keep that
 	# rule: the hour's tint and the sun's energy were still read straight off the
@@ -554,8 +555,14 @@ func compose() -> void:
 	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
 	CompatTrim.remember(trim)
 	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow, lit) * float(trim.sun)
-	# A low sun is seen through more air, so its edge is softer. Real penumbra.
-	sun.light_angular_distance = lerpf(SUN_ANGLE_LOW, SUN_ANGLE, clampf(el / 55.0, 0.0, 1.0))
+	# A low sun is seen through more air, so its edge is softer. Real penumbra,
+	# and it is spent against the evening rather than against `el`: the elevation
+	# this file computes is chosen to give a SCREEN-SPACE shadow length, not to say
+	# how high the sun really is, and it never drops below about 60 degrees in the
+	# evening at all — so the widening this constant exists for had never once
+	# happened at dusk. On the one curve the shadows soften as they lengthen and
+	# fade, which is the whole of what a low sun looks like.
+	sun.light_angular_distance = lerpf(SUN_ANGLE, SUN_ANGLE_LOW, clampf(night, 0.0, 1.0))
 	# The moon casts too, softly. The source game's rule was that nothing casts
 	# at night, which was right when night was a blue wash over a drawing; under
 	# a real sky it is the opposite -- moonlight that casts is most of what makes
@@ -842,43 +849,98 @@ static func sun_at(hour: float) -> Dictionary:
 		az = KEY_AZIMUTH + lerpf(SWING, -SWING, n)
 		var edge := _elevation_for_shadow(az, SHADOW_LOW)
 		el = lerpf(edge, MOON_ELEVATION, sin(n * PI))
-	var nf := Weather.night_fall(h)
+	var nf := day_gone(h)
 	# `cast` is how much of a shadow is left (shadow_strength); `casts` is only
 	# whether there is any. The low-sun glow rides the first of those, because a
 	# glow keyed to the second stepped 7% of the frame's light off in one frame
-	# at half past eight, in the middle of the smoothest part of the fall.
+	# at the hour the sun stopped casting, in the middle of the smoothest part of
+	# the fall.
 	return {"azimuth": az, "elevation": el, "energy": 1.0 - nf * (1.0 - NIGHT_LEVEL),
 		"casts": casts_at(h), "cast": shadow_strength(h)}
 
 
-## The hours the sun casts a shadow: from properly up in the morning to the last
-## of the dusk. It is stated in hours and not in how far night has fallen,
-## because the evening's fall is long now (Weather.DUSK_START) and dusk's LONG
-## LOW SHADOWS are the whole picture at 19:30. The moon never casts.
+## THE EVENING, AS ONE CURVE: how much of the day's light has gone, 0 in full
+## daylight and 1 once the light has settled for the night.
+##
+## It replaced two schedules that only ever overlapped for forty minutes, which
+## is the whole of the defect. The SKY's evening was the tint keys, whose level
+## falls from t=0.70 (16:48) and is flat again by t=0.80 (19:12); the BODY's
+## night was `Weather.night_fall`, a smoothstep still at zero at 18:30 that does
+## all of its work by 21:00. So from five to half past six nothing moved but the
+## tint, and from seven to half past eight the smoothstep moved alone, at its
+## steepest. Measured on the coast at seed 7, half hour by half hour, the frame
+## fell 3.4, 2.6, 5.5, 9.8 values and then 22.3, 23.3, 22.8 — three half hours
+## carrying four times what the first three did. That is the cliff, and no
+## reshaping of either schedule ON ITS OWN could have taken it out, because each
+## of them is flat exactly where the other is steep.
+##
+## The anchors are the tint keys' OWN shoulders, which is what makes this one
+## curve rather than a third: 16:48 is where KEYS begins giving up level and
+## 21:36 is where it lands and stops moving at all. The sun's handover to the
+## moon, the ambient's fall, the sky's colours, the cast shadow, the sun's
+## penumbra, the blue floor, the skyglow and the grade are all spent against this
+## now, so there is no hour at which one of them has finished and another has not
+## started.
+##
+## `Weather.night_fall` is untouched and still means what it always did — it is
+## the rest of the game's word for "it is night" (the lamps, the mobs, the score,
+## the hazards) — and this curve only says how the LIGHT is spent. Outside the
+## evening the two agree by construction: night_fall is 0 at EVENING_FROM and 1
+## at EVENING_TO, and it still owns the dawn, unchanged.
+const EVENING_FROM := 16.8
+const EVENING_TO := 21.6
+## The evening lingers and then goes, rather than walking down a straight line.
+## It is MEASURED, not chosen: what a half hour of it buys was modelled against
+## ten rendered coast frames (mean luma of the world band the tour crops to; the
+## fit lands within 1.1 values on 0-255), and the model was then swept over
+## EVENING_FROM, EVENING_TO and this exponent for the flattest evening. At 1.35
+## the coast's nine half hours fall 8.9, 10.2, 10.8, 11.0, 10.3, 10.4, 10.7, 10.9
+## and 11.2 values, against a spread of 3.1 to 25.4 before. Lower flattens it a
+## little further and costs the afternoon its light; higher buys a brighter seven
+## o'clock and steepens the last hour, which is where the budget is tightest
+## because the sky dome is going to night there as well (1.5 was tried: 19:00 kept
+## three more values and the last half hour cost one more than it gained).
+const EVENING_EASE := 1.35
+
+
+## 0 in full daylight, 1 once the light has settled: THE curve (see above).
+static func day_gone(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h <= EVENING_FROM or h >= EVENING_TO:
+		return Weather.night_fall(h)
+	return pow((h - EVENING_FROM) / (EVENING_TO - EVENING_FROM), EVENING_EASE)
+
+
+## The hours the sun casts a shadow: from properly up in the morning until it
+## SETS. It used to stop at 20:30, half an hour before `SUNSET`, which is a third
+## schedule disagreeing with the other two — at half past eight the sun was still
+## the brightest thing in the frame and had stopped throwing anything. The moon
+## never casts; it takes the shadow over through MOON_SHADOW.
 const SHADOW_FROM := 5.0
-const SHADOW_TO := 20.5
+const SHADOW_TO := SUNSET
 ## How long shadow_strength takes to walk from 1 to 0 at either end of the day.
 ##
-## IT IS NOT A FADE, whatever it reads like. All three lit shaders take the cast
-## shadow through `step(0.5, ATTENUATION)` (world.gdshader, found.gdshader,
-## water.gdshader), so a face is lit or it is shaded and there is nothing in
-## between: every cast shadow in the world goes out in one instant, at the hour
-## this constant puts shadow_opacity through a half — 20:07 as it stands. Moving
-## that instant is worth about TWENTY VALUES of frame on the coast, a third of
-## everything the evening has to spend: widening this to two hours (to spread a
-## fade that does not exist) moved the switch to 20:00 and turned the coast's
-## half past eight back up by sixteen values, measured.
+## The comment that stood here said this was NOT a fade, because all three lit
+## shaders took the cast shadow through `step(0.5, ATTENUATION)` and every shadow
+## in the world therefore went out in one instant. That was true of the
+## wash-and-ink pipeline and it is not true now: `lit` deleted every `light()`
+## function in the game, there is no ATTENUATION left anywhere in src/, and
+## `shadow_opacity` is a real continuous fade that this constant is the length
+## of. The old 0.75 was chosen to land an instant inside the steepest half hour
+## it could find, which stopped being a reason when the instant did.
 ##
-## So 0.75 is not a taste. It lands the switch inside 20:00-20:30, the half hour
-## where the light's own fall is steepest and can swallow it. A shadow that
-## really faded wants `smoothstep` in place of that `step` in the three lit
-## shaders, which is the render package's to give, not the sky's.
-const SHADOW_FADE := 0.75
+## 1.2 runs the fade from 19:48 to sunset, so half past seven still throws the
+## long hard warm shadows that are the best thing in the evening, and they
+## lengthen, soften (SUN_ANGLE_LOW, spent against `day_gone` now) and fade out
+## onto the moon's own instead of stopping.
+const SHADOW_FADE := 1.2
 
 
+## Whether there is any sun shadow left at all. Strict at SHADOW_TO, so the sun
+## has stopped casting BY sunset rather than at it.
 static func casts_at(hour: float) -> bool:
 	var h := fposmod(hour, 24.0)
-	return h >= SHADOW_FROM and h <= SHADOW_TO
+	return h >= SHADOW_FROM and h < SHADOW_TO
 
 
 ## 0..1 how solid the sun's cast shadow is drawn at this hour.
@@ -903,7 +965,7 @@ static func shadow_strength(hour: float) -> float:
 static func low_light(hour: float) -> float:
 	var t := tint_at(hour)
 	var lum := (t.x * 0.3 + t.y * 0.59 + t.z * 0.11) * float(sun_at(hour).energy)
-	return clampf(maxf(Weather.night_fall(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
+	return clampf(maxf(day_gone(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)
 
 
 ## The level of light a lit face takes at this hour: the tint's own luminance,
@@ -926,47 +988,53 @@ static func light_level(hour: float) -> float:
 ## where the light's own fall is at its smallest, so the land measured BRIGHTER
 ## at eight in the evening than at half past seven (art review finding 2).
 ##
-## The anchors are the last of the day and THE HOUR THE LIGHT ACTUALLY SETTLES.
-## That is 21:36, where the last tint key lands (light_level: 0.539 at 20:00,
-## 0.442 at 20:30, 0.404 at 21:00, 0.370 from 21:36 on) — not 20:30, where the
-## shadows go. Anchored at 20:30 the term hit 1.0 by construction while the light
-## still had a sixth of its fall left, and the skyglow — cubed, so most of it was
-## still to come — went 0.21 to 1.00 in that one half hour: 80% of a full-frame
-## emission spent in thirty minutes. Five landscapes of six measurably turned
-## back up there (moss +11.9%, pinewood +10.3%, burning +10.3%, snowfield +5.7%).
+## It IS `day_gone` now, which is what the sentence above claims and what the
+## term could not do while the light was spent on a different schedule from it.
+## The anchors used to be two hours (18:30 and 21:12) read off `light_level`, a
+## DISPLAY model that falls by a factor of 1.7 across the evening while the light
+## the renderer is actually driven by falls by a factor of thirteen. Hung on the
+## one curve the term cannot outrun the light: it lands at 21:36 because that is
+## where the light lands.
 ##
-## It also answers the dawn without a second rule: the light comes back, the term
-## goes down. A sky darker than its hour is the other half (weather_dark).
+## AND NEITHER THIS NOR THE SKYGLOW REACHES A FRAME UNDER LANTERN. `sky_night` is
+## declared in sky.gdshaderinc and sampled by nothing; `neon_skyglow` returns
+## vec3(0.0). The blue floor under the washes and the emission over every surface
+## are gone, and NIGHT_AMBIENT and MOON_NIGHT are what make a night dark now. So
+## this is kept coherent for whoever draws it again, and no number in it is
+## evidence about a picture — which is also the reason the last half hour of the
+## evening turned back UP on main and nothing here could have been blamed for it.
 ##
-## There is no second shaping on top. The earlier `gone / max(here, gone)`
-## division was argued from a reading of the shader in which the floor is laid
-## on AFTER the light; the floor is written into ALBEDO and the sun multiplies it
-## like everything else (see frame_level, which composes what the shader
-## composes), so the division only back-loaded the term into the hours where the
-## light has nothing left to pay for it.
-const DARK_FROM := 18.5
-const DARK_FULL := 21.2
+## What that rise really was, measured on seed 7 at 21:00 against 21:30, clear:
+## on bare coast the frame moved -0.29 values, and at the village it moved +2.10.
+## The light was identical at both hours (night_fall is 1 from 21:00, so the sun
+## sat at MOON_NIGHT and the ambient at NIGHT_AMBIENT), but the TINT was still
+## falling, and `15_lights.compensate` divides its warm lamp by `last_tint` and
+## subtracts `last_energy` as a black point — so the village lamps went on getting
+## brighter after the light had nothing left to pay for them. The one curve fixes
+## it by giving those thirty-six minutes a real twilight to spend: the same pair
+## now falls 12.35 values at the village and 13.29 on bare coast.
+##
+## It still answers the dawn without a second rule — `day_gone` is night_fall
+## there — and a sky darker than its hour is still the other half (weather_dark).
 
 
-## And it is spent a WHISKER behind that, not on the same line, because the sky's
-## own dark is not the only thing filling a dusk frame in. Two more arrive early
-## and neither is the sky's: the village lamps, which `15_lights.compensate` pins
-## to a target brightness, so a pool-lit surface stops getting darker at all once
-## it is lit (measured: on the coast the lamps alone almost exactly cancel the
-## light's fall between 19:30 and 20:00); and the cast shadows, which all switch
-## off in one instant around 20:07 (SHADOW_FADE). Spent on the same line as the
-## light, the sky's dark left no room for either and the coast turned back up by
-## 1.5 values at eight. The ease is small — the term is still inside a fortieth
-## of the light's own fall at every hour — and it is measured, not chosen.
+## And it is spent a WHISKER behind the light, not on the same line, because the
+## sky's own dark is not the only thing filling a dusk frame in. Two more arrive
+## early and neither is the sky's: the village lamps, which `15_lights.compensate`
+## pins to a target brightness, so a pool-lit surface stops getting darker at all
+## once it is lit (measured: on the coast the lamps alone almost exactly cancel
+## the light's fall between 19:30 and 20:00); and the cast shadows, which give up
+## most of their strength over SHADOW_FADE. Spent on the same line as the light,
+## the sky's dark left no room for either and the coast turned back up by 1.5
+## values at eight. The ease is small — the term is still inside a fortieth of
+## the light's own fall at every hour. It WAS measured, on frames the shaders no
+## longer draw (see night_dark above): it is kept because the shape is right, not
+## because anything today moves with it.
 const DARK_EASE := 1.25
 
 
 static func night_dark(hour: float) -> float:
-	var day := light_level(DARK_FROM)
-	var gone := light_level(DARK_FULL)
-	var here := light_level(hour)
-	var gone_share := clampf((day - here) / maxf(1e-4, day - gone), 0.0, 1.0)
-	return pow(gone_share, DARK_EASE)
+	return pow(day_gone(hour), DARK_EASE)
 
 
 ## And the other half of what `sky_night` carries: a sky darker than its hour.
@@ -1262,7 +1330,7 @@ static func night_sky_at(shares: Dictionary) -> float:
 
 ## shares: landscape type id (or Country id) -> weight.
 static func neon_grade_at(hour: float, shares: Dictionary) -> Array:
-	var night := Weather.night_fall(hour)
+	var night := day_gone(hour)
 	var g := NEON_DAY.lerp(NEON_NIGHT, night)
 	var wet := 0.1
 	if not shares.is_empty():

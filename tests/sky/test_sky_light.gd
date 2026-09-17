@@ -29,9 +29,12 @@ func test_night_is_blue_not_black() -> void:
 
 
 func test_nothing_casts_at_night_and_the_sun_casts_by_day() -> void:
-	for h: float in [0.0, 1.0, 2.0, 3.0, 4.0, 4.9, 20.6, 21.5, 23.0]:
+	# The sun now casts until it SETS (SHADOW_TO is SUNSET), not until 20:30: the
+	# old hour was half an hour short of the sunset the same file declares, and at
+	# half past eight the sun is still the brightest thing in the frame.
+	for h: float in [0.0, 1.0, 2.0, 3.0, 4.0, 4.9, 21.0, 21.5, 23.0]:
 		check(not SkyLight.sun_at(h).casts, "casts at %.1f" % h)
-	for h: float in [6.0, 7.0, 9.0, 12.0, 15.0, 18.0, 19.5, 20.0]:
+	for h: float in [6.0, 7.0, 9.0, 12.0, 15.0, 18.0, 19.5, 20.0, 20.6]:
 		check(SkyLight.sun_at(h).casts, "no shadow at %.1f" % h)
 	lt(SkyLight.sun_at(2.0).energy, SkyLight.sun_at(12.0).energy, "moonlight is dim")
 
