@@ -32,11 +32,32 @@ static func find(w: WorldData, name: String) -> Vector2:
 		digits = key.right(1) + digits
 		key = key.left(key.length() - 1)
 	var nth := maxi(1, digits.to_int()) if digits != "" else 1
+	var want := nth
 	for m in w.landmarks:
 		if String(m.kind) == key:
-			nth -= 1
-			if nth == 0:
+			want -= 1
+			if want == 0:
 				return _stand_near(w, m.pos)
+	return _placed_after(w, key, nth)
+
+
+## Places that are laid AFTER the world is generated — the plan's depots
+## (`Works`) and the landmarks worth the walk (`Landmarks`) — are put in
+## `w.landmarks` by their own systems, which have not run when a shot resolves
+## `--place`. Both are pure functions of the island, so they are asked directly
+## rather than made a worldgen stage: adding a stage would move every seed.
+static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
+	if key == "works":
+		var works := Works.sites(w)
+		return _stand_near(w, works[nth - 1].part(0)) if nth <= works.size() else Vector2(-1, -1)
+	if Landmarks.by_id(StringName(key)) == null:
+		return Vector2(-1, -1)
+	var want := nth
+	for s in Landmarks.sites(w):
+		if String(s.kind) == key:
+			want -= 1
+			if want == 0:
+				return _stand_near(w, Landmarks.cache_of(s))
 	return Vector2(-1, -1)
 
 

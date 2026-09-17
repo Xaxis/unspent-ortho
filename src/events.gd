@@ -39,6 +39,14 @@ signal sentinel_woke(region: int, land: StringName)
 signal sentinel_phase(region: int, phase: StringName)
 signal sentinel_fell(region: int, land: StringName, how: StringName)
 
+## Works and landmarks (docs/VISION.md §2, §3). `works_broken` when a region's
+## depot has been put out for good — its lights out, its yard's works spent, and
+## nothing more coming out of it (what the plan makes of a region it has lost is
+## every other package's own business). `landmark_found` the first time a player
+## gets close enough to a place worth the walk for it to go on their map.
+signal works_broken(region: int, land: StringName)
+signal landmark_found(id: StringName, land: StringName, at: Vector2)
+
 ## Settlements (docs/VISION.md §9). The settlement package emits the first four;
 ## the raids package emits the rest, so neither has to import the other.
 signal settlement_founded(id: int)

@@ -224,6 +224,11 @@ var hazards: Dictionary = {}
 var roster: Dictionary = {}
 ## Sentinel design id for this type (empty until designed).
 var sentinel: StringName = &""
+## Landmark kinds this type holds (`Landmarks`), three or more: the places worth
+## the walk in it. Empty takes every kind that names this landscape itself, so a
+## landscape only writes this line when it wants something other than that.
+## Placed after generation, like a shaft, so the island does not move (LOOK).
+var landmarks: Array[StringName] = []
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""

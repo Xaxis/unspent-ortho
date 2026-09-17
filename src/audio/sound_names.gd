@@ -74,6 +74,18 @@ const ALIAS := {
 	# something. A watcher's signal tone, heard from a long way away; it wants a
 	# horn of its own on the sheet.
 	&"works_horn": &"watcher_call",
+	# works: a steel edge worked into a housing, the housing giving, and a whole
+	# yard losing its power. Each wants a voice of its own on the sheet (a prise
+	# and a groan of plate, a bank of strips dying together); until then these
+	# read right and nothing is silent.
+	&"works_prise": &"wreck_knock",
+	&"works_part": &"arc_snap",
+	&"works_dark": &"machine_down",
+	# landmarks: a place found from a distance, and a cache opened at one. The
+	# finding is the slate marking it, which is a slate sound; the opening is the
+	# same hands on the same kind of plate the works is made of.
+	&"landmark_found": &"ui_slate_ping",
+	&"landmark_open": &"break",
 }
 
 ## Emitted bare by the fight; the sound depends on which mob is there.
@@ -108,6 +120,8 @@ const EMITTED: Array[StringName] = [
 	&"lamp_on", &"lamp_off",
 	# disposition (32_disposition.gd)
 	&"works_horn",
+	# works and landmarks (34_works.gd, 22_landmarks.gd)
+	&"works_prise", &"works_part", &"works_dark", &"landmark_found", &"landmark_open",
 	# ui
 	&"menu_move", &"menu_select", &"open_book", &"close_book", &"refused",
 	# slate (src/ui, src/systems/90_ui.gd)
