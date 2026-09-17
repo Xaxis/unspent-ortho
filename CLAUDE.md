@@ -215,6 +215,13 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
 - **Wall-clock results lie under load.** Test budgets scale by
   `TestCase.machine_slack()` and tool timeouts by `tools/_slack.sh`; a timing failure
   while a wave runs must be re-run alone before it is believed.
+- **A builder starts from `origin/main`, not from whatever its worktree was cut at**:
+  `git fetch origin && git checkout -B <branch> origin/main` is the first line of a
+  brief, and a builder that runs for hours takes main again when it moves under it.
+  A wave now runs longer than the gaps between other people's merges, so one cut
+  before another wave landed writes against a contract that no longer exists —
+  declaring yields against a loot table with no economy behind it, or holding a
+  world to every landscape after realms made a world one realm's.
 - **A change under `tools/` does not reach a running wave**: every worktree holds
   its own copy, frozen when it branched. Patch the live worktrees too, or the fix
   only applies to the next wave.
