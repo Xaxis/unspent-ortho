@@ -123,7 +123,8 @@ lights_and_shadows/positional_shadow/atlas_size=4096
 ; The tier knob. `scaling_3d/scale` is a fraction of the 1920x1080 base that the
 ; 3D image is rendered at and then upscaled into; the UI is a canvas item and is
 ; never touched by it, so degrading costs sharpness in the world and nothing on
-; the slate. 1 = bilinear, 2 = FSR2 (Forward+ only; Compatibility falls back).
+; the slate. Mode 0 is bilinear, 1 FSR1, 2 FSR2; every tier is on 0 for now and
+; src/render/quality.gd says why. QualityTier.apply() overwrites both of these.
 rendering/scaling_3d/mode=0
 rendering/scaling_3d/scale=1.0
 ; The macOS export refuses arm64 without it; nothing here is an imported texture.

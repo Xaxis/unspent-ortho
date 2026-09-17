@@ -17,8 +17,13 @@ extends RefCounted
 ##   note           String      one plain line for the slate's panel
 ##   render_scale   float       fraction of the 1920x1080 base the 3D renders at
 ##                              (1.0 native, 0.5 a quarter of the pixels)
-##   upscale        int         Viewport.Scaling3DMode: SCALING_3D_MODE_BILINEAR or
-##                              _FSR2. FSR2 needs Forward+; Compatibility ignores it
+##   upscale        int         Viewport.Scaling3DMode: 0 bilinear, 1 FSR1, 2 FSR2.
+##                              Every tier is on 0 today and that is deliberate:
+##                              FSR2 is temporal, wants motion vectors and a TAA-
+##                              shaped pipeline, and this game has neither yet and
+##                              an orthographic camera besides. It is the obvious
+##                              thing to try once `lit` lands, which is why the
+##                              knob is a column here and not a constant somewhere
 ##   msaa           int         Viewport.MSAA_* (0 off, 1 2x, 2 4x, 3 8x)
 ##   shadow_size    int         the sun's shadow map, px square
 ##   shadow_filter  int         soft shadow filter quality 0..4 (0 hard, 4 softest)
