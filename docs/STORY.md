@@ -153,7 +153,10 @@ and the game walks toward it.
   | THRESHOLD | Hale | The platform in the sea |
 
   What each says is remembered. The past cannot change, but the machine made of
-  it can.
+  it can. Having promised June in her paper crown, he can walk out of THRESHOLD
+  in the gate to be at her play. It changes nothing that happened. That night the
+  voice tells June, 75, that it saw her in a paper crown, front row, which in
+  sixty-nine years it has never said.
 - **The After is a gate too:** the Emissary's forecast of the world after the
   treaty. It has no people in it.
 
@@ -250,7 +253,8 @@ their own land nearest where he wakes, and what they have noticed is theirs.
 - **The Holdfast:** survival, holdings, raids, and Vera's silence.
 - **The crew:** trust built and broken; Dace's missile, Teague's deal.
 - **June:** from a voice on a broadcast to a table between them.
-- **Hannah:** the wife he lied to, and whether there is a grave.
+- **Hannah:** the wife he lied to. She died in the winter of 2034 on the north
+  road. The voice that warned June off that road did not warn her mother.
 - **WHITETHORN:** did the CIA do this to him, or did he?
 - **Priya:** the one who tried to stop it. She thought he was selling HALCYON
   and reported him to his own handler. After the war began she heard his rhythm

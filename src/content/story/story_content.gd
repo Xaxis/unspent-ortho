@@ -77,7 +77,7 @@ const ARCS := {
 	&"hannah": {
 		"title": "Hannah",
 		"note": "The wife he lied to.",
-		"beats": [&"hannah_play", &"hannah_phone"],
+		"beats": [&"hannah_play", &"hannah_phone", &"hannah_died"],
 	},
 	&"whitethorn": {
 		"title": "WHITETHORN",
@@ -87,7 +87,7 @@ const ARCS := {
 	&"the_echo": {
 		"title": "the Echo",
 		"note": "A part of the machines that still thinks it is you.",
-		"beats": [&"echo_voice", &"echo_hand", &"echo_kept"],
+		"beats": [&"echo_voice", &"echo_hand", &"echo_kept", &"play_kept"],
 	},
 	&"the_secret": {
 		"title": "the secret",
@@ -153,6 +153,8 @@ const BEATS := {
 	&"june_crown": {"short": "a paper crown", "arc": &"june", "says": "You promised June, six, in a paper crown, that you would sit where she could see you."},
 	&"hannah_play": {"short": "two o'clock", "arc": &"hannah", "says": "Hannah told you the play was at two, in the school hall, on the fourteenth."},
 	&"hannah_phone": {"reveal": true, "short": "face down", "arc": &"hannah", "says": "Hannah knew about your second phone. She never asked."},
+	&"hannah_died": {"reveal": true, "short": "the north road", "arc": &"hannah", "says": "Hannah died in the winter of 2034. The voice warned June off the north road. It did not warn her mother."},
+	&"play_kept": {"short": "front row", "arc": &"the_echo", "says": "In the Seeker's 2029 you walked out to be at June's play. The past did not change. The Echo did."},
 	&"kerr_money": {"short": "Virginia", "arc": &"whitethorn", "says": "Cairn's founder took money from your other employer to keep HALCYON his."},
 	&"ruth_signed": {"short": "the fourth", "arc": &"whitethorn", "says": "Ruth offered you THRESHOLD knowing the three before you had not come back."},
 	&"ruth_volunteered": {"reveal": true, "short": "before she asked", "arc": &"whitethorn", "says": "You said yes to THRESHOLD before Ruth had finished asking."},
@@ -1005,11 +1007,22 @@ const TALKS := {
 				"replies": [
 					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
 					{"text": "What does the voice say?", "pick": &"asked_voice", "to": &"voice"},
+					{"text": "Has the voice said anything new?", "when": &"play_kept", "pick": &"asked_new", "to": &"new"},
+					{"text": "What happened to your mother?", "when": &"hannah_play", "pick": &"asked_hannah", "to": &"mother"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"play": {
 				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"new": {
+				"says": ["Last night. It said it had seen me in a paper crown. Front row, it said.", "Sixty-nine years it has talked to me.", "It has never once said it came."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"mother": {
+				"says": ["The winter of thirty-four. The north road.", "The voice told me not to take it. I didn't.", "It didn't tell her."],
+				"beats": [&"hannah_died"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"voice": {
@@ -1463,6 +1476,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What happened to the others?", "pick": &"asked_others", "to": &"others"},
 					{"text": "Will I remember any of this?", "pick": &"asked_remember", "to": &"remember"},
+					{"text": "[walk out. It's nearly two.]", "when": &"june_crown", "pick": &"walked_out", "to": &"walked"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
@@ -1474,6 +1488,11 @@ const TALKS := {
 			&"remember": {
 				"says": ["You'll remember everything. That's rather the point.", "Where you remember it FROM is the part we're testing."],
 				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"walked": {
+				"says": ["Mr. Marr. The window is today. There isn't another one.", "...You'll be back. They always come back."],
+				"beats": [&"play_kept"],
+				"replies": [{"text": "[go]", "to": &""}],
 			},
 		},
 	},

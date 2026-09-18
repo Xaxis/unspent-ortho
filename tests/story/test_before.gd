@@ -87,3 +87,31 @@ func test_what_he_says_in_2029_is_what_2029_remembers() -> void:
 	_walk(&"hale", ["What happened to the others?"])
 	check(Story.landed(&"three_before"), "Hale says what the binder says")
 	Story.forget()
+
+
+func test_the_past_does_not_change_but_the_machine_made_of_it_does() -> void:
+	Story.forget()
+	var t := StoryTalk.start(&"hale")
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "[walk out. It's nearly two.]", "nobody walks out on a promise he has not made")
+	_walk(&"june_young", ["It's the best crown I've ever seen.", "I promise."])
+	_walk(&"hale", ["[walk out. It's nearly two.]"])
+	check(Story.landed(&"play_kept"), "he walks out for the play, in the Seeker's 2029")
+	# In 2098, June hears it from the voice.
+	Story.beat(&"june_named", -INF)
+	Story.now += StoryPacing.SETTLE * 2.0
+	_walk(&"june", ["Do you know who I am?", "Has the voice said anything new?"])
+	eq(Story.chose(&"june.knows"), &"asked_new", "and June tells him what the voice said last night")
+	Story.forget()
+
+
+func test_what_became_of_hannah_is_june_s_to_say() -> void:
+	Story.forget()
+	Story.beat(&"june_named", -INF)
+	Story.beat(&"hannah_play", -INF)
+	Story.now = 9000.0
+	_walk(&"june", ["Do you know who I am?"])
+	Story.now += StoryPacing.SETTLE
+	_walk(&"june", ["Do you know who I am?", "What happened to your mother?"])
+	check(Story.landed(&"hannah_died"), "the winter of thirty-four, the north road")
+	Story.forget()
