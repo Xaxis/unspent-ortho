@@ -2003,10 +2003,14 @@ const SUBARCS := {
 			"Every season there's less of this place than there was.",
 			"Somebody could put it dark. I'm not somebody.",
 		],
-		"answer": "[say nothing]",
+		"answer": "I'll see to it.",
 		"thanks": [
 			"The yard's dark. We heard it stop in the night.",
 			"Nobody here will say it was you. That's how we thank people.",
+		],
+		"kept": [
+			"You said you'd see to it, and the yard's dark.",
+			"I've told nobody you said it. I'll tell nobody you did it.",
 		],
 	},
 	&"recover": {
@@ -2015,10 +2019,14 @@ const SUBARCS := {
 			"He didn't come back for it, and I've the children.",
 			"You'd find it, if you were going that way.",
 		],
-		"answer": "[say nothing]",
+		"answer": "I'll go that way.",
 		"thanks": [
 			"You got to his cache, then. Keep what was in it.",
 			"He'd rather it was used than counted.",
+		],
+		"kept": [
+			"You said you'd go that way, and you went.",
+			"Keep what was in it. He'd rather it was used than counted.",
 		],
 	},
 	&"discover": {
@@ -2026,9 +2034,13 @@ const SUBARCS := {
 			"Nobody's walked out to %s since my mother's time.",
 			"It's still standing, they say. Somebody should know what's at it.",
 		],
-		"answer": "[say nothing]",
+		"answer": "I'll go and look.",
 		"thanks": [
 			"So it is still standing. Good.",
+			"That's all I wanted. You can't miss what you've never seen.",
+		],
+		"kept": [
+			"You went, then. And it's still standing.",
 			"That's all I wanted. You can't miss what you've never seen.",
 		],
 	},

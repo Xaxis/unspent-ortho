@@ -97,3 +97,27 @@ func test_somebody_in_the_region_says_it_in_a_running_game() -> void:
 		check(Story.heard(said.id), "which is remembered")
 	Sx.end(g)
 	Story.forget()
+
+
+func test_saying_he_will_is_remembered_and_changes_what_they_say_after() -> void:
+	Story.forget()
+	var lit := _look(Vector2(20, 20), false, [])
+	var said := StorySubarc.raised(lit)
+	var ask := StorySubarc.talk(lit, said)
+	var replies: Array = ask.nodes[&"open"].replies
+	eq(replies.size(), 2, "he can say he will, or say nothing")
+	check(str(replies[1].text) == "[say nothing]", "and saying nothing is always one of them")
+	var t := StoryTalk.of_made(ask)
+	@warning_ignore("return_value_discarded")
+	t.pick(0)
+	check(StorySubarc.promised(said), "he said he would")
+	var dark := _look(Vector2(20, 20), true, [])
+	var thanks := StorySubarc.talk(dark, said)
+	check("\n".join(thanks.nodes[&"open"].says).contains("You said you'd see to it"), "so they say he said he would")
+	Story.forget()
+	# And when he never said it, they thank him for a thing that was simply done.
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(lit, said))
+	var quiet := StorySubarc.talk(dark, said)
+	check("\n".join(quiet.nodes[&"open"].says).contains("We heard it stop in the night"), "and otherwise they only say what happened")
+	Story.forget()

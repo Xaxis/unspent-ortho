@@ -302,8 +302,13 @@ func _start_talk(row: Dictionary) -> void:
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
-		var asked := StorySubarc.talk(subarc_look(), StorySubarc.raised(subarc_look()))
+		var look := subarc_look()
+		var asked := StorySubarc.talk(look, StorySubarc.raised(look))
 		if not asked.is_empty():
+			# Whoever it is, they are what their trade is: a cutter, a digger.
+			var theirs := StoryProps.talk_for(row, game)
+			if theirs != &"":
+				asked["title"] = str(StoryContent.TALKS[theirs].get("title", asked.title))
 			talk = StoryTalk.of_made(asked)
 			view.talk = talk
 			view.choice = 0

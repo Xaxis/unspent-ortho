@@ -78,7 +78,9 @@ static func talk(look: StorySubarcLook, said: Dictionary) -> Dictionary:
 	var done := answered(look, said.goal, str(said.place))
 	var heard := Story.heard(said.id)
 	if done and heard and not Story.heard(StringName("%s:said" % said.id)):
-		return _page(said, words.thanks, StringName("%s:said" % said.id), "[leave]")
+		# What they say is different if he said he would, and then did.
+		var lines: Array = words.kept if promised(said) and words.has("kept") else words.thanks
+		return _page(said, lines, StringName("%s:said" % said.id), "[leave]")
 	# Then what the region itself is doing: they are hunting him through it, or
 	# the plan has lost it. Either outranks what the region wanted. Said once.
 	var by_mood := _mood_page(look, said)
@@ -86,7 +88,9 @@ static func talk(look: StorySubarcLook, said: Dictionary) -> Dictionary:
 		return by_mood
 	if done or heard:
 		return {}
-	return _page(said, words.ask, said.id, str(words.get("answer", "[say nothing]")))
+	# Saying nothing is always one of the answers (docs/STORY.md §13), and saying
+	# he will is remembered, so what they say after is about what he said.
+	return _page(said, words.ask, said.id, str(words.get("answer", "[say nothing]")), true)
 
 
 ## What the region itself has to say, or {}: said once per mood.
@@ -100,13 +104,24 @@ static func _mood_page(look: StorySubarcLook, said: Dictionary) -> Dictionary:
 	return _page(said, StoryContent.MOODS[here], mark, "[leave]")
 
 
-static func _page(said: Dictionary, lines: Array, mark: StringName, last: String) -> Dictionary:
+## Whether he told them he would.
+static func promised(said: Dictionary) -> bool:
+	return Story.chose(StringName("ask.%s" % said.get("id", &""))) == &"will"
+
+
+static func _page(said: Dictionary, lines: Array, mark: StringName, last: String, asking := false) -> Dictionary:
 	var says := PackedStringArray()
 	for l: String in lines:
 		says.append(l % str(said.get("place", "")) if l.contains("%s") else l)
+	var replies: Array = [{"text": last, "to": &""}]
+	if asking:
+		replies = [
+			{"text": last, "pick": &"will", "to": &""},
+			{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+		]
 	return {
 		"made": true, "mark": mark, "title": "somebody who lives here", "start": &"open",
-		"nodes": {&"open": {"says": says, "replies": [{"text": last, "to": &""}]}},
+		"nodes": {&"open": {"says": says, "pick_at": StringName("ask.%s" % said.get("id", &"")), "replies": replies}},
 	}
 
 

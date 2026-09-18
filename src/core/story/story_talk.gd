@@ -87,7 +87,10 @@ func pick(i: int) -> bool:
 	var r: Dictionary = rs[i]
 	var said := StringName(str(r.get("pick", &"")))
 	if said != &"":
-		Story.choose(StringName("%s.%s" % [id, node]), said)
+		# A made conversation says under what name its answer is remembered, since
+		# it has no id of its own (StorySubarc: "ask.REGION:goal").
+		var where := StringName(str(_node().get("pick_at", &"")))
+		Story.choose(where if where != &"" else StringName("%s.%s" % [id, node]), said)
 	for b: StringName in r.get("beats", []):
 		Story.beat(b)
 	var to := StringName(str(r.get("to", &"")))
