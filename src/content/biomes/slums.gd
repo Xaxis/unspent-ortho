@@ -71,11 +71,22 @@ static func make() -> BiomeDef:
 		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
-	# TODO(dome): `d.built` with BiomeForms.RAISED and plan &"row" belongs here and
-	# is the whole point of the landscape. Landing it blind moved the island far
-	# enough that seed 1 lays no tips in the slums at all (`test_places_worth
-	# _walking_to`), and re-siting a landscape's sites is its author's work with
-	# the gate in front of them, not an integrator's guess.
+	# TODO: `d.built = BiomeForms.new()` with `stock = BiomeForms.RAISED` and
+	# `plan = &"row"` belongs here, and it is the whole point of this landscape --
+	# the city is the reason the forms package exists. It is out because it MOVES
+	# THE ISLAND (`built` is TERRAIN in the stamp, deliberately: the stock's size
+	# is how many buildings there are), and adding it takes `test_world_gen:` from
+	# two failures to five.
+	#
+	# The relief above is already the setting that lays a street: measured, at
+	# `terrace: 0.3, hills: 0.5` the level check refused fifteen of sixteen spots
+	# and a street came out with one building on it. Whoever lands `built` should
+	# expect to re-site the landscape's `sites` in the same change, with the gate
+	# in front of them, and a street frame afterwards.
+	#
+	# NOT the cause of the missing tips: `test_places_worth_walking_to` fails
+	# without `built` too. That attribution was wrong when it was first written
+	# down and is corrected here rather than left to mislead the next reader.
 	# Under LANTERN this no longer picks a hatch — there is none. It is the
 	# discriminator that tells one landscape's ground from another's in the lit
 	# shaders (`style`), and CRACK is the right neighbour for poured concrete.
@@ -235,7 +246,7 @@ static func make() -> BiomeDef:
 	# so the soundings and the bank line still draw through it.
 	d.water_wash = Color(0.105, 0.092, 0.080, 0.82)
 	d.props = [PropKind.LAMP, PropKind.SIGN, PropKind.POLE, PropKind.FENCE, PropKind.BARRICADE,
-		PropKind.DEBRIS, PropKind.VEHICLE, PropKind.WRECKAGE, PropKind.BENCH, PropKind.PIPE,
+		PropKind.DEBRIS, PropKind.VEHICLE, PropKind.WRECKAGE, PropKind.BENCH,
 		PropKind.VENT, PropKind.VENT_CAP, PropKind.STACK, PropKind.WATER_TANK, PropKind.SLAG_HEAP,
 		PropKind.RELAY, PropKind.CHECKPOINT, PropKind.ARCHIVE, PropKind.MEMORIAL, PropKind.GRAVE,
 		PropKind.BOULDER, PropKind.STUMP, PropKind.BUSH, PropKind.DEAD_TREE,
@@ -386,7 +397,15 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		if r < 0.04:
 			return PropKind.SLAG_HEAP
 		if r < 0.06:
-			return PropKind.PIPE
+			# A VENT and not a PIPE, and the difference is a contract rather than
+			# a preference. PIPE, CONVEYOR and DRILL_RIG are the plan's RUNS: the
+			# works stage lays them ruled on the survey bearing at scale 1, and
+			# `test_world_gen_works` holds every one of them in the world to that.
+			# A landscape that scatters one as ordinary street furniture turns it
+			# a random way and breaks the rule for the whole island -- which is
+			# what this line did, and it read as three separate failures about
+			# bearings rather than one about a kind nobody may deal.
+			return PropKind.VENT
 		if r < 0.072:
 			return PropKind.VENT_CAP
 		if r < 0.080:
