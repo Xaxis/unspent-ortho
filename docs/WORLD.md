@@ -103,12 +103,83 @@ What a landscape declares, on `BiomeDef`:
   positions within **this body's** bounds, `adjacency` is read against sites on
   **this body**.
 
-**`temp_range` / `moist_range` need splitting deliberately and this is not yet
-decided (§8).** Latitude is a property of the world — a continent near the pole
-should be cold — while continentality (distance from that body's own shore) is a
-property of the body. Today both come from "the island's own latitude and
-continentality". Getting this wrong makes every continent a copy of the others
-with different names, which defeats the point of the request.
+**`spread` is `WorldStamp.TERRAIN`**, because it decides where a type may lie, and
+a field added to `BiomeDef` that is in neither list fails `test_world_stamp.gd`.
+The deeper half: **the DEAL is part of what a seed makes**, so the stamp has to
+cover the dealing rule too — otherwise a save opens onto a world where the
+exclusive landscape is on a different continent, which is exactly the class of
+silent wrongness `WorldStamp` exists to refuse.
+
+**`temp_range` / `moist_range` split by §4a**, which is what stops every continent
+being a copy of the others with different names.
+
+## 4a. Climate: latitude is the world's, continentality is the body's
+
+Today `temperature` and `moisture` both come from the one island's own latitude
+and distance from its own shore. Split them:
+
+- **Latitude is GLOBAL.** A body's position down the world square sets the
+  temperature band it sits in. The journey already runs south to north and the
+  snowfield is northern; a continent laid in the north is a cold continent and one
+  laid in the south is a warm one, before a single landscape is chosen.
+- **Continentality is PER BODY.** Distance from *that body's own* shore drives
+  moisture down and swings temperature wider — a wet, mild coast and a dry, harsh
+  interior. This is the gradient that makes a continent feel like a place rather
+  than a tile of one, and it must be measured against the body's shore, never the
+  world square's edge.
+- **Relief modifies locally**, as it already does.
+- **And each body is DEALT a climate BAND** — a temperature and moisture offset
+  with real spread — which the stage records with everything else it decided.
+
+That third part is what actually stops the reskins, and neither of the first two
+gives it to you: if a body's climate is only (latitude here) + (distance from this
+body's shore), then **two continents at the same latitude with similar shapes ARE
+the same place**, however cleverly the types are dealt. A type's `temp_range` /
+`moist_range` is therefore read against `body.band + latitude(tile) +
+continentality(tile)`. The polar continent is still cold and its middle is still
+dry; the band is what makes two continents at one latitude two places rather than
+two draws from the same bag. It is also the one knob worth exposing: "make the
+continents more alike" is a single number.
+
+**The reason this is the right split, and not a preference:** it makes exclusivity
+partly EMERGENT instead of wholly declared. A landscape whose `temp_range` only
+reaches cold can only be dealt to a continent whose band reaches cold, so the rare
+thing is rare *because of where its continent lies*, which a player can read off
+the world. `spread` (§4) then handles the rest — the types that are rare for
+reasons other than climate.
+
+## 4b. Weather: landscape character, a moving front, and a real blend
+
+The owner asks for weather that varies, merges and blends, and is specific to a
+landscape at times. Two thirds of that exists and the missing third is the
+interesting one.
+
+**What is already right, and stays.** Each landscape declares its own weather
+table and mist (`BiomeDef.weather`, `BiomeDef.mist`), and the sky reads it through
+`Weather.climate(type_id)`. Spells, fronts over time and the seasons are already
+there (`spell_index`, `spell_start`, `day_of`). The burning's ash and the
+snowfield's blizzards are properties of those landscapes and should be.
+
+**What is missing: PLACE.** `Weather.at_type(seed, minutes, type_id)` takes no
+position. Two regions of the same landscape on opposite sides of the world have
+identical weather at the same instant, and no front ever crosses the map. With one
+island that was invisible. With oceans between continents it is the difference
+between a world and a diagram: **it should be able to be raining on one continent
+and clear on another**, and a front should arrive.
+
+So weather gains a place: the body's climate band (§4a) and a front whose phase
+depends on where you are, so a spell sweeps across the world instead of switching
+everywhere at once.
+
+**What is missing: the BLEND.** The sky reads the weather of the type under the
+tile, so today weather changes in one step at a border while the ground either
+side of it is carefully crossfaded. **This project already solved that seam once**
+— the score crossfades landscapes with equal power on `country2`/`blend`
+(`SoundMix.land_share`, and `land_soon` so the next landscape is ready before its
+border). Weather should cross the same seam by the same means rather than inventing
+a second one: read `country`, `country2` and `blend`, and mix the two readings.
+Walking out of the pinewood into the burning should see the rain thin and the ash
+thicken across the ecotone, on the same curve the trees and the score already use.
 
 ## 5. Continents compose WITH realms, not under them
 
@@ -117,13 +188,35 @@ A world is already one realm's world: `GenContext` lays only the types whose
 game's seed with that realm's own salt (`Realm.seed_for`, `RealmWorlds`), and
 `BootWorld.world(seed, size, realm)` is the only door.
 
-**The underground inherits the surface's body layout.** `Portals` lays one shaft
-per REGION and pairs them **by index** across the two worlds. If the underground
-generated its own unrelated continents, a shaft would stop being a hole in the
-ground and become a teleport between unrelated places — and the pairing, which is
-the thing that makes a shaft legible, would mean nothing. So the underground is
-generated with the surface's footprints as its input, and fills them with cavern
-systems and its own type set.
+**The underground inherits the surface's body layout**, for the geographical
+reason: **a shaft should come up where it went down.** A hole in the ground that
+surfaces under a different continent is not a hole in the ground.
+
+Do NOT lean on the pairing for that argument — it is weaker than it looks.
+`Portals.paired` is `all[posmod(id, all.size())]`: **it wraps**, so the moment the
+two realms lay different numbers of shafts the pairing is already not one-to-one
+(two above and five below means surface shaft 0 is reached from underground 0, 2
+and 4). With one island that puts you in the wrong bay. With continents it would
+put you under a different landmass, which is the thing this section exists to
+prevent. **So the pairing becomes per body: a shaft pairs within its own body, and
+wraps only inside it, never across.** The `Portals._lay` fallback ladder — "EVERY
+world has a way out of it, or a realm can be generated and never reached" — was
+right to exist and has to grow the same way: it is guarded on `out.is_empty()` for
+the whole world today, so a body whose regions are all too small would get nothing
+because another body had already filled the list. **Per body, or a continent can
+be generated and never left.**
+
+**And the inheritance must NOT make one realm's world depend on another's.**
+`RealmWorlds._raise(key, seed, size, kind)` builds a realm from (seed, size, kind)
+alone, on a worker; `begin()` speculatively raises a realm on a pool thread, and
+the no-threads web path raises one inline for "the one frame the shaft costs".
+Making the underground need the surface *world* would turn that frame into two
+world generations and hold both resident — a hitch becomes a hang, on the web,
+where it is hardest to see coming. So the body stage splits in two: **`Bodies.plan(seed, size, realm)` is pure, cheap and deterministic — footprints, budgets, bands, dealt
+type sets — and the expensive filling is what `GenShape` and the rest do.** The
+underground calls `plan` for the SURFACE (cheap, no world) and fills those
+footprints itself. The dependency is on a plan, not on a world, and nothing about
+`RealmWorlds` changes.
 
 **The orbital realm does not inherit anything.** A captured asteroid is not under
 a continent. Its bodies are laid freely, and a portal to orbit is a different
@@ -164,20 +257,48 @@ costs exactly what a distant part of the island costs today — nothing, until i
 is walked to. **This is the reason the ocean is real ground and not a gap:** a
 crossing has to stream like anything else.
 
-## 8. Not decided, deliberately
+## 8. Decided
 
-These want answering before code, and one of them wants the owner:
+These were open when this document was first written. They are engineering calls,
+so they are made here rather than asked upward.
 
-1. **Climate.** How `temp_range` / `moist_range` split between world latitude and
-   per-body continentality (§4). The difference between continents that feel
-   like different parts of a planet and continents that are reskins.
-2. **How many bodies, and how much ocean.** `GenShape.LAND_SHARE` is 0.47 of the
-   square today. Two continents at 0.47 total is a very different world from two
-   at 0.47 *each*, and it decides how much of the game is crossing water.
-3. **Whether the spawn continent is special.** The journey runs south to north on
-   one island today, and `GenSettle.spawn` puts the player beside a coast village.
-4. **What a region id means across bodies.** `WorldData.region` keys sentinels,
-   works and saves. Ids must stay unique across the whole world, not per body.
+1. **Climate** — §4a. Latitude global, continentality per body.
+2. **How much ocean, and how many bodies.** `GenShape.LAND_SHARE` (0.47) stays the
+   whole WORLD's land budget and is divided among the bodies; it does not become
+   0.47 each. A world of two continents therefore has about the land of today's
+   island, with a real ocean in it, rather than twice the land and a channel.
+   **Body count rises with world size, not on its own**, because a continent that
+   cannot hold a mixture of landscapes is a big island with a label: 512 takes two
+   bodies, and more only as the square grows. The reason to be strict here is that
+   crossing water is a deliberate journey made in a craft (`docs/VISION.md` §5) —
+   it should be an act, not the medium the game is played in.
+3. **The spawn continent is special, deliberately.** The player wakes on a HOME
+   continent that holds the coast, the spawn village and a full starting economy,
+   and that is not dealt the harshest or rarest types. The others are destinations:
+   reached by craft or portal, allowed to be stranger, harder and thinner. This is
+   the same argument as the first hour teaching the game, and it is where "some
+   rarer landscapes exclusive to some continents" gets its meaning — the rare ones
+   are somewhere you travel TO.
+4. **How big a world is, and `k` per body — the number the rest hangs off.**
+   `GenContext.k` is "size relative to the 512-tile design world" and the floors
+   are computed through it: `min_tiles = maxi(24, REGION_TILES * k * k)`, which is
+   QUADRATIC. On a 1024 world `k` is 2 and the smallest thing that counts as a
+   place becomes four times what it was — so the small orbital bodies in §2 would
+   hold no region at all: no place, no depot, no keeper, no landmark, on a world
+   that generated perfectly. **`k` becomes per body**, derived from that body's own
+   land against the design world's, so every size-derived floor in worldgen is
+   computed against the thing it is being asked about. This is §1's argument
+   applied to a single letter, and it threads through more stages than
+   `LAND_SHARE` does.
+   **The body, not the world, is the unit that stays constant**: a continent should
+   hold about what today's island holds, or landscapes stop being legible and
+   regions stop qualifying as places. So the world square GROWS with body count
+   rather than the bodies shrinking to fit it — roughly `512 * sqrt(bodies)` plus
+   the ocean between them.
+5. **Region ids are global.** `WorldData.region` is already an int array for
+   exactly this reason, and ids continue across bodies rather than restarting;
+   each entry in `regions` carries its `continent`. Sentinels, works and saves key
+   on `id` and must not learn about bodies to stay correct.
 
 ## 9. Rules this document is built on
 
