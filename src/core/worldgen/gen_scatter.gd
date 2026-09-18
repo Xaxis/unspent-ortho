@@ -409,9 +409,23 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		_add(c, PropKind.LAMP, lamp_at)
 		_occupy(c, occ, vp, 2.5)
 		_occupy(c, occ, lamp_at, 0.5)
-		var count := rng.randi_range(5, 8)
+		# What this landscape's people build, and how they stand (`BiomeForms`).
+		# The village record already carries its country, so this costs no lookup
+		# and no renderer: the form table is core, which is why world gen may read
+		# it at all.
+		var forms := BiomeForms.of(int(v.get("country", Country.COAST)))
+		# A settlement deals its buildings one form each, so HOW MANY there are is
+		# the stock's own size and never a number written down beside it: a
+		# landscape with six forms raises six buildings, and a seventh could only
+		# repeat a silhouette, which is the whole thing the deal exists to stop.
+		var most := forms.stock.size()
+		var count := rng.randi_range(mini(5, most), mini(8, most))
 		var placed := 0
 		var start := rng.randf() * TAU
+		# A frontage runs on a bearing this village keeps: half a turn, because a
+		# street is a line and not a direction.
+		var street := Rng.hash01(c.s, floori(vp.x), floori(vp.y), 4203) * PI
+		var stride := forms.widest() * 2.0 + 0.4
 		# A village deals its houses one model each, so no two silhouettes in it
 		# repeat: on seed 7 the hash alone gave the spawn village three of one
 		# house and two of another out of seven (art review 5). Dealt AFTER
@@ -423,17 +437,53 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		# every house position after it, and `tests/render/test_parity.gd` pins
 		# those to the world M1 made. Dealing a model must not move a house.
 		var pack := _house_pack(Rng.make(c.s, 4200 + floori(vp.x) * 131 + floori(vp.y)),
-			Rng.hash01(c.s, floori(vp.x), floori(vp.y), 4202) < LIT_SHARE)
+			Rng.hash01(c.s, floori(vp.x), floori(vp.y), 4202) < LIT_SHARE, forms)
 		var houses: Array[WorldProp] = []
+		var row := forms.plan == &"row"
 		for h in 120:
 			if placed >= count:
 				break
-			var a := start + h * 2.39996
-			if absf(wrapf(a - PI * 0.25, -PI, PI)) < 0.4:
-				continue
-			# Inner ring first, spreading out as the good spots are taken.
-			var rad := 5.8 + fmod(h * 0.618, 1.0) * 2.8 + h * 0.035
-			var hp := vp + Vector2.from_angle(a) * rad
+			if row and (h >> 2) > ROW_RANKS:
+				# A STREET, not ribbon development. The ring spirals outward until it
+				# finds room, which is right for scattered buildings; a frontage that
+				# did the same walked off across the island one refused spot at a
+				# time — measured, a settlement whose far end stood 150 tiles from
+				# its square on ground the level check kept refusing. Past the last
+				# rank the settlement is simply smaller, which is what a street on
+				# bad ground is.
+				break
+			var hp := Vector2.ZERO
+			# Where this building FACES before the hand that set it down is added.
+			# The jitter itself is still drawn after every check below, because the
+			# ring's stream is what every seed's village was laid from and a draw
+			# made for a candidate that is then refused moves all of them.
+			var bearing := 0.0
+			if row:
+				# A FRONTAGE: two lines either side of a street, filled outward from
+				# the square both ways, each building square to the line and hard up
+				# against its neighbour. What a player does here is walk THROUGH it,
+				# and what stands between them and the camera is the far side of the
+				# street — which is the whole reason a landscape gets to say this.
+				var along := Vector2.from_angle(street)
+				var across := Vector2(-along.y, along.x)
+				var side := 1.0 if (h & 1) == 0 else -1.0
+				var way := 1.0 if (h & 2) == 0 else -1.0
+				# The street's own width wanders a little rank by rank, so a frontage
+				# whose exact band of ground is broken has somewhere else to stand:
+				# every spot in a row is at one fixed offset, and on rough ground
+				# that put three buildings on a street with room for six.
+				var rank := h >> 2
+				var wobble := 1.0 + (Rng.hash01(c.s, floori(vp.x) + rank, floori(vp.y), 4204) - 0.5) * 0.5
+				hp = vp + along * (forms.apart + float(rank) * stride) * way + across * (side * ROW_STREET * wobble)
+				bearing = (across * -side).angle()
+			else:
+				var a := start + h * 2.39996
+				if absf(wrapf(a - PI * 0.25, -PI, PI)) < 0.4:
+					continue
+				# Inner ring first, spreading out as the good spots are taken.
+				var rad := forms.apart + fmod(h * 0.618, 1.0) * 2.8 + h * 0.035
+				hp = vp + Vector2.from_angle(a) * rad
+				bearing = (vp - hp).angle()
 			hp = hp.floor() + Vector2(0.5, 0.5)
 			# The player wakes with room around them and the view ahead open.
 			var to_spawn := hp - w.spawn
@@ -452,9 +502,12 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 				continue
 			var house := _add(c, PropKind.HOUSE, hp)
 			houses.append(house)
-			# Facing the square, never quite square to it.
-			house.rot = wrapf((vp - hp).angle() + rng.randf_range(-0.2, 0.2), 0.0, TAU)
-			_occupy(c, occ, hp, 2.0)
+			# Facing the square, never quite square to it — and on a frontage barely
+			# off it at all, because a line of doors pointing every which way is a
+			# ring with extra steps. ONE draw either way, so the ring's stream is
+			# the stream every seed's village was laid from.
+			house.rot = wrapf(bearing + rng.randf_range(-0.2, 0.2) * (0.25 if row else 1.0), 0.0, TAU)
+			_occupy(c, occ, hp, forms.room())
 			placed += 1
 		houses.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
 			return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
@@ -464,14 +517,23 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		assert(houses.size() <= pack.size(), "a village placed more houses than there are models")
 		for i in houses.size():
 			houses[i].variant = pack[i % pack.size()]
+			# How much ground a building stands on is its FORM's, not its kind's:
+			# a tower is not a croft with more storeys, and a body walking a street
+			# has to be stopped by the frontage rather than by a coastal radius.
+			# Set only now, because world gen places first and deals afterwards so
+			# that the lit one comes out nearest the square; `forms.room()` above
+			# already kept the widest of them clear at placing time.
+			houses[i].solid = forms.reach(houses[i].variant) * houses[i].scale
 
 
-## How many house models there are to deal (`Houses.VARIANTS`). World gen holds
-## no rendering, so the count is named here and `tests/render/test_houses.gd`
-## fails if the two ever disagree.
-const HOUSE_MODELS := 8
-## The two that wired a machine's light into a wall (15_lights.NEON_HOUSE_VARIANTS).
-const HOUSE_NEON: Array[int] = [1, 4]
+## Half the width of a street, in tiles: how far a frontage stands off the line
+## through the square. Five tiles across is wide enough for two bodies to pass
+## and narrow enough that the far side is in frame with the near one.
+const ROW_STREET := 2.6
+## How many buildings deep a frontage runs from the square, each way and each
+## side. Four spots to a rank, so three ranks offer twelve — twice the largest
+## stock — and the far end still stands inside one frame of the square.
+const ROW_RANKS := 3
 
 
 ## How many villages have somebody's stolen light on the square. NOT all of them:
@@ -488,19 +550,26 @@ const LIT_SHARE := 0.4
 ## standing in it is looking. Whichever lit models the village does not want go
 ## to the BACK, so a village of five or six has no stolen light at all and only
 ## one big enough to need every model there is shows a second tube, out on its rim.
-static func _house_pack(rng: RandomNumberGenerator, lit_village: bool) -> Array[int]:
+static func _house_pack(rng: RandomNumberGenerator, lit_village: bool, forms: BiomeForms) -> Array[int]:
+	# Which of a landscape's forms wired a machine's light in is its own to say
+	# (`BiomeForms.lit`), which is the one place it is written down now: the
+	# [1, 4] that stood here and in 15_lights was the coastal village's answer
+	# given to every landscape that would ever exist.
+	var neon := forms.lit()
 	var rest: Array[int] = []
-	for v: int in range(HOUSE_MODELS):
+	for v: int in range(forms.stock.size()):
 		rest.append(v)
 	for i in range(rest.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var t: int = rest[i]
 		rest[i] = rest[j]
 		rest[j] = t
-	var lit: int = HOUSE_NEON[rng.randi_range(0, HOUSE_NEON.size() - 1)]
+	if neon.is_empty():
+		return rest
+	var lit: int = neon[rng.randi_range(0, neon.size() - 1)]
 	var tail: Array[int] = []
 	for v: int in rest:
-		if HOUSE_NEON.has(v) and (v != lit or not lit_village):
+		if neon.has(v) and (v != lit or not lit_village):
 			tail.append(v)
 	for v: int in tail:
 		rest.erase(v)
@@ -795,7 +864,17 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				var kind := BiomeScatter.PASS
 				if up >= 2 or wet:
 					kind = BiomeScatter.first(t, g, r, up, wet)
-				if kind == BiomeScatter.PASS:
+				if kind == BiomeScatter.PASS and recipe_fn.is_valid():
+					# A TYPE MAY DECLARE NO RECIPE, and one of the shipped types does
+					# not: the SEA, which holds index 0 and is not a landscape you
+					# walk. `recipe[i]` is the island a tile's ground came from, and
+					# a worldgen change that leaves one land tile's at 0 calls an
+					# invalid Callable and takes the whole scatter stage down —
+					# reported as a bare "script error" with no tile, no seed and no
+					# landscape named. Adding a landscape moves every island, so this
+					# is a trap laid for exactly the wave that adds them; it was hit
+					# on the first try. A type with no recipe falls through to the
+					# shared table, which is what having no recipe means.
 					kind = recipe_fn.call(t, i, g, r)
 				if kind == BiomeScatter.PASS:
 					kind = BiomeScatter.shared(t, i, g, r)

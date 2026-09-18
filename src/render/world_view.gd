@@ -421,8 +421,8 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var luv := PackedVector2Array()
 	var luv2 := PackedVector2Array()
 	for p: WorldProp in props:
-		var variant := PropModels.variant_of(p, world.seed_value)
 		var country := prop_country(p, ch)
+		var variant := PropModels.variant_of(p, world.seed_value, country)
 		# What a thing the taking has worked on is DRAWN as: the same thing with a
 		# piece off it and a fresh face where the tool went (`Broken`), quantised
 		# to the five steps a template is cached in. `shown` is 1.0 on anything
