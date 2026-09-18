@@ -74,6 +74,11 @@ const ARCS := {
 		"note": "The one who tried to stop it, and whose notes went up to the ring.",
 		"beats": [&"priya_warned", &"priya_suspected", &"priya_reported", &"priya_knew", &"priya_up", &"priya_last"],
 	},
+	&"the_echo": {
+		"title": "the Echo",
+		"note": "A part of the machines that still thinks it is you.",
+		"beats": [&"echo_voice", &"echo_hand", &"echo_kept"],
+	},
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
@@ -135,6 +140,9 @@ const BEATS := {
 	&"priya_knew": {"short": "the rhythm", "arc": &"priya", "says": "When the war began, Priya heard your way of speaking in the machines' orders."},
 	&"priya_up": {"short": "paper, not scanned", "arc": &"priya", "says": "Priya went up to the ring in 2033 and took her notes on paper, where nothing could read them."},
 	&"priya_last": {"reveal": true, "short": "left for you", "arc": &"priya", "says": "Priya worked out from outside what holds HALCYON together, and left it for you."},
+	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
+	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
+	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -416,6 +424,20 @@ const FRAGMENTS := {
 		],
 		"beats": [&"priya_up"],
 	},
+	# --- the Echo: the part of HALCYON that is still him ---------------------
+	&"note_to_self": {
+		"kind": &"terminal", "title": "a works log, one line out of place", "lands": [],
+		"lines": [
+			"04:12  YIELD NOMINAL",
+			"04:13  note to self: don't.",
+			"04:13  NOTE REJECTED. NO SELF ON FILE.",
+			"04:14  YIELD NOMINAL",
+			"",
+			"The same line again at 04:13 the next night,",
+			"and every night the log goes back.",
+		],
+		"beats": [&"echo_voice"],
+	},
 	# --- the colonies ---------------------------------------------------------
 	# Oksana, on the ring, calling a ground she knows is there. Found early, on a
 	# radio anybody could have left on, and not answered until the far end of the
@@ -478,7 +500,7 @@ const FRAGMENTS := {
 			"RECALL IN PLACE: NOT ACHIEVED",
 			"RECALL IN THE WORLD: PERMITTED",
 			"SUBJECT RELEASED TO SHORE.",
-			"ESCORT ARRANGED.",
+			"ESCORT DISPATCHED.",
 			"",
 			"Below it, a light waits for a reply.",
 		],
@@ -820,6 +842,21 @@ const TALKS := {
 			&"payer": {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
 				"beats": [&"crew_paid"],
+				"replies": [
+					{"text": "Have you still got the note?", "pick": &"asked_note", "to": &"note"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"note": {
+				"says": ["Kept it. Folded in the stock. Here.", "\"Get him off the beach before the platform sends for him.\"", "Small hand. Slants left. Like a man who's written it a thousand times."],
+				"beats": [&"echo_hand"],
+				"replies": [
+					{"text": "That's my handwriting.", "pick": &"told_rook_hand", "to": &"yours"},
+					{"text": "[give it back]", "pick": &"gave_back", "to": &""},
+				],
+			},
+			&"yours": {
+				"says": ["...", "Then you paid me to fish you out, and you don't remember doing it.", "I've been paid by stranger people. Not by much."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"want": {
@@ -951,11 +988,17 @@ const TALKS := {
 				"beats": [&"june_knew"],
 				"replies": [
 					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
+					{"text": "What does the voice say?", "pick": &"asked_voice", "to": &"voice"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"play": {
 				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"voice": {
+				"says": ["Where not to be. Every time. Leave the city before the burning.", "Don't take the north road that winter. I'd be dead forty times over.", "It has never once said it was sorry. You were always bad at that."],
+				"beats": [&"echo_kept"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"quiet": {
