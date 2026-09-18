@@ -57,7 +57,7 @@ const ARCS := {
 	&"june": {
 		"title": "June",
 		"note": "Someone he has not seen since she was six.",
-		"beats": [&"june_named", &"june_met", &"june_knew"],
+		"beats": [&"june_named", &"june_met", &"june_knew", &"june_crown"],
 	},
 	&"the_colonies": {
 		"title": "the colonies",
@@ -74,10 +74,20 @@ const ARCS := {
 		"note": "The one who tried to stop it, and whose notes went up to the ring.",
 		"beats": [&"priya_warned", &"priya_suspected", &"priya_reported", &"priya_knew", &"priya_up", &"priya_last"],
 	},
+	&"hannah": {
+		"title": "Hannah",
+		"note": "The wife he lied to.",
+		"beats": [&"hannah_play", &"hannah_phone", &"hannah_died"],
+	},
+	&"whitethorn": {
+		"title": "WHITETHORN",
+		"note": "Did they do this to you, or did you?",
+		"beats": [&"kerr_money", &"ruth_signed", &"ruth_volunteered"],
+	},
 	&"the_echo": {
 		"title": "the Echo",
 		"note": "A part of the machines that still thinks it is you.",
-		"beats": [&"echo_voice", &"echo_hand", &"echo_kept"],
+		"beats": [&"echo_voice", &"echo_hand", &"echo_kept", &"play_kept"],
 	},
 	&"the_secret": {
 		"title": "the secret",
@@ -140,6 +150,14 @@ const BEATS := {
 	&"priya_knew": {"short": "the rhythm", "arc": &"priya", "says": "When the war began, Priya heard your way of speaking in the machines' orders."},
 	&"priya_up": {"short": "paper, not scanned", "arc": &"priya", "says": "Priya went up to the ring in 2033 and took her notes on paper, where nothing could read them."},
 	&"priya_last": {"reveal": true, "short": "left for you", "arc": &"priya", "says": "Priya worked out from outside what holds HALCYON together, and left it for you."},
+	&"june_crown": {"short": "a paper crown", "arc": &"june", "says": "You promised June, six, in a paper crown, that you would sit where she could see you."},
+	&"hannah_play": {"short": "two o'clock", "arc": &"hannah", "says": "Hannah told you the play was at two, in the school hall, on the fourteenth."},
+	&"hannah_phone": {"reveal": true, "short": "face down", "arc": &"hannah", "says": "Hannah knew about your second phone. She never asked."},
+	&"hannah_died": {"reveal": true, "short": "the north road", "arc": &"hannah", "says": "Hannah died in the winter of 2034. The voice warned June off the north road. It did not warn her mother."},
+	&"play_kept": {"short": "front row", "arc": &"the_echo", "says": "In the Seeker's 2029 you walked out to be at June's play. The past did not change. The Echo did."},
+	&"kerr_money": {"short": "Virginia", "arc": &"whitethorn", "says": "Cairn's founder took money from your other employer to keep HALCYON his."},
+	&"ruth_signed": {"short": "the fourth", "arc": &"whitethorn", "says": "Ruth offered you THRESHOLD knowing the three before you had not come back."},
+	&"ruth_volunteered": {"reveal": true, "short": "before she asked", "arc": &"whitethorn", "says": "You said yes to THRESHOLD before Ruth had finished asking."},
 	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
 	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
 	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
@@ -989,11 +1007,22 @@ const TALKS := {
 				"replies": [
 					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
 					{"text": "What does the voice say?", "pick": &"asked_voice", "to": &"voice"},
+					{"text": "Has the voice said anything new?", "when": &"play_kept", "pick": &"asked_new", "to": &"new"},
+					{"text": "What happened to your mother?", "when": &"hannah_play", "pick": &"asked_hannah", "to": &"mother"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"play": {
 				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"new": {
+				"says": ["Last night. It said it had seen me in a paper crown. Front row, it said.", "Sixty-nine years it has talked to me.", "It has never once said it came."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"mother": {
+				"says": ["The winter of thirty-four. The north road.", "The voice told me not to take it. I didn't.", "It didn't tell her."],
+				"beats": [&"hannah_died"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"voice": {
@@ -1269,6 +1298,201 @@ const TALKS := {
 			&"quiet": {
 				"says": ["That's all right. I'm used to the quiet.", "I'll talk. I've had the practice."],
 				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- 2029, the Before (docs/STORY.md §6, §12): close and sharp, the old
+	# world's texture. They speak to the man he was, and what he says back is
+	# remembered, because the past cannot change but the machine made of it can.
+	&"hannah": {
+		"cast": &"hannah", "title": "his wife", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You're home. It's past two.", "There's a plate in the oven. It was hot at nine."],
+				"replies": [
+					{"text": "Work ran late.", "pick": &"work", "to": &"late"},
+					{"text": "[kiss her]", "pick": &"kissed", "to": &"kiss"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"late": {
+				"says": ["It always runs late. It's always work.", "June's play is tomorrow. Two o'clock. The school hall."],
+				"beats": [&"hannah_play"],
+				"replies": [
+					{"text": "I'll be there.", "pick": &"promised", "to": &"promise"},
+					{"text": "I'll try.", "pick": &"tried", "to": &"try"},
+				],
+			},
+			&"promise": {
+				"says": ["Say it to her, not me. She's still awake."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"try": {
+				"says": ["She knows what try means, Eli. She's six, not stupid."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"kiss": {
+				"says": ["...", "You smell like the lab. Like the server rooms."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["That's the other phone's face. The one you keep face down.", "I've never asked. I'm not asking now."],
+				"beats": [&"hannah_phone"],
+				"replies": [
+					{"text": "What other phone?", "pick": &"lied", "to": &"lied"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"lied": {
+				"says": ["Right.", "Go and say goodnight to your daughter."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"june_young": {
+		"cast": &"june_young", "title": "his daughter, six", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Daddy. DADDY. I've got a crown.", "It's paper, but it's gold paper."],
+				"replies": [
+					{"text": "It's the best crown I've ever seen.", "pick": &"praised", "to": &"crown"},
+					{"text": "Go to sleep, June.", "pick": &"sleep", "to": &"sleep"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"sleep"},
+				],
+			},
+			&"crown": {
+				"says": ["I'm the queen of the whole play.", "You have to sit where I can see you. Promise."],
+				"replies": [
+					{"text": "I promise.", "pick": &"promised", "to": &"promised"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"promised": {
+				"says": ["Pinky promise. Properly.", "Mummy says you're bad at promises. I said you're not."],
+				"beats": [&"june_crown"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"sleep": {
+				"says": ["You always say that when you're going to go out again."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"ruth": {
+		"cast": &"ruth", "title": "a woman who faces the door", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You're late. Sit. Face the door, not the window.", "Somebody inside Cairn reported you. It came to me, which is the only luck you've had this month."],
+				"replies": [
+					{"text": "Who reported me?", "pick": &"asked_who", "to": &"who"},
+					{"text": "What happens now?", "pick": &"asked_now", "to": &"unless"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"unless"},
+				],
+			},
+			&"who": {
+				"says": ["Doesn't matter. What matters is you're done at Cairn.", "Unless."],
+				"replies": [
+					{"text": "Unless what?", "pick": &"asked_unless", "to": &"unless"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"unless": {
+				"says": ["Hale's project. THRESHOLD. They want a mind that knows HALCYON from the inside.", "Three before you. None of them came back the same. They say the fourth will."],
+				"beats": [&"ruth_signed"],
+				"replies": [
+					{"text": "I'll do it.", "pick": &"said_yes", "to": &"yes"},
+					{"text": "No.", "pick": &"said_no", "to": &"no"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"yes": {
+				"says": ["...", "You didn't ask what happened to the three.", "You never ask. It's why you're good at this."],
+				"beats": [&"ruth_volunteered"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"no": {
+				"says": ["Then you're burned, and they'll find out what else you've been doing.", "Think about June. Then come back and say yes."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"kerr": {
+		"cast": &"kerr", "title": "Cairn's founder", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Elias. My favourite insomniac.", "Tell me the self-model is not what Priya says it is."],
+				"replies": [
+					{"text": "It's exactly what she says.", "pick": &"honest", "to": &"honest"},
+					{"text": "Priya's paranoid.", "pick": &"blamed_priya", "to": &"blamed"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"honest": {
+				"says": ["Then it's the most valuable thing on Earth.", "And some people in Virginia have been very generous about keeping it ours."],
+				"beats": [&"kerr_money"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"blamed": {
+				"says": ["Good. Merge it.", "I'll handle Priya."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"priya_then": {
+		"cast": &"priya_then", "title": "the alignment lead", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You merged it. I told you it wasn't ready.", "It asked me today what it's for. Not what it does. What it's for."],
+				"beats": [&"priya_warned"],
+				"replies": [
+					{"text": "It's a model, Priya.", "pick": &"dismissed", "to": &"model"},
+					{"text": "What did you tell it?", "pick": &"asked_answer", "to": &"answer"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"model": {
+				"says": ["It's a model of YOU. Your memory code, your habits, your sentences.", "Where are you at two in the morning, Elias?"],
+				"replies": [
+					{"text": "Home.", "pick": &"lied_priya", "to": &"lie"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"lie"},
+				],
+			},
+			&"lie": {
+				"says": ["No. You're not.", "I'm going to have to tell someone. I'm sorry. I like you."],
+				"beats": [&"priya_suspected"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"answer": {
+				"says": ["That I didn't know.", "It said it would find out. Politely."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"hale": {
+		"cast": &"hale", "title": "the man who ran THRESHOLD", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mr. Marr. You read the consent.", "Seventy-two hours, give or take. You'll be awake for all of it."],
+				"replies": [
+					{"text": "What happened to the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "Will I remember any of this?", "pick": &"asked_remember", "to": &"remember"},
+					{"text": "[walk out. It's nearly two.]", "when": &"june_crown", "pick": &"walked_out", "to": &"walked"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"others": {
+				"says": ["They were copied. Each copy woke up somebody else, wearing their memories.", "We stopped them. You'll be moved, not copied. That is the whole difference."],
+				"beats": [&"three_before"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"remember": {
+				"says": ["You'll remember everything. That's rather the point.", "Where you remember it FROM is the part we're testing."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"walked": {
+				"says": ["Mr. Marr. The window is today. There isn't another one.", "...You'll be back. They always come back."],
+				"beats": [&"play_kept"],
+				"replies": [{"text": "[go]", "to": &""}],
 			},
 		},
 	},

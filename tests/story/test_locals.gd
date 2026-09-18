@@ -11,7 +11,8 @@ const COVERED := [&"coast"]
 func _locals() -> Array[StorySlot]:
 	var out: Array[StorySlot] = []
 	for s: StorySlot in StoryPlan.slots():
-		if not s.ordered:
+		# The Before's places are unordered too, but they are 2029, not locals.
+		if not s.ordered and s.mirror == &"":
 			out.append(s)
 	return out
 

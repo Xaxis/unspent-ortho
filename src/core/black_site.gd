@@ -24,13 +24,20 @@ const BEARINGS := 72
 const STEP := 1.0
 
 static var _found: Dictionary = {}
+## Worlds remembered at once; a test run grows hundreds and a game holds a few.
+const CACHE_MOST := 64
 
 
 ## The site in `w`, or Vector2.INF where there is none.
 static func site(w: WorldData) -> Vector2:
-	var key := "%d:%d:%s" % [w.seed_value, w.size, w.realm]
+	# Keyed by the world itself, as Landmarks.sites is: two worlds grown from one
+	# seed are not one world when a test has narrowed the registry, and a key of
+	# seed, size and realm handed one of them the other's water.
+	var key := w.get_instance_id()
 	if _found.has(key):
 		return _found[key]
+	if _found.size() >= CACHE_MOST:
+		_found.clear()
 	var out := _look(w)
 	_found[key] = out
 	return out
