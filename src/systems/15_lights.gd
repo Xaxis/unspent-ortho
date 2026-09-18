@@ -231,7 +231,13 @@ func setup(g: Game) -> void:
 	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_glow_mat.vertex_color_use_as_albedo = true
 	_glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	for i in SkyLight.MAX_LAMPS - 1:
+	# HOW MANY LOCAL LIGHTS EXIST is the quality tier's business (`Quality.ROWS`
+	# `lamps`), not the shader pool's. This built `SkyLight.MAX_LAMPS - 1` = seven
+	# for the game's whole life, and MAX_LAMPS is 8 only because `sky_lamps` packs
+	# into two mat4s for a pass LANTERN deleted. Every settlement has been over
+	# that ceiling since before the rebuild -- eleven sources in a coast green,
+	# eight in the city -- and it never showed where there is a sun.
+	for i in Quality.lamp_count() - 1:
 		lights.append(_new_light("lamp_%d" % i))
 		_assigned.append(null)
 	lantern_light = _new_light("lantern_light")
