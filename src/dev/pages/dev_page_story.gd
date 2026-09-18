@@ -10,15 +10,30 @@ extends DevPage
 ## playing to it, and see what a line will say when they get there.
 ##
 ## The words themselves live in `src/content/story/story_content.gd`, which this
-## page names so nobody has to go looking.
+## page names so nobody has to go looking. Three pages open off it: the people
+## (DevPageStoryCast), the path (DevPageStoryPlan) and the ledger
+## (DevPageStoryLedger).
 
 
 func heading() -> String:
 	return "STORY"
 
 
+## The story's other pages, by their row here.
+static func page_for(id: StringName) -> DevPage:
+	match id:
+		&"people": return DevPageStoryCast.new()
+		&"path": return DevPageStoryPlan.new()
+		&"ledger": return DevPageStoryLedger.new()
+	return null
+
+
 func rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	out.append(header("the rest of it"))
+	out.append(item(&"people", "people", "%d named" % StoryCast.all().size()))
+	out.append(item(&"path", "the path", "being felt" if StoryPacing.settling() else ""))
+	out.append(item(&"ledger", "the ledger", "%d seen" % Story.ledger().size()))
 	for arc: StringName in StoryContent.arcs():
 		var def: Dictionary = StoryContent.ARCS[arc]
 		var at := Story.at(arc)
@@ -61,6 +76,10 @@ func side(row: Dictionary, _dir: int) -> void:
 
 func confirm(row: Dictionary) -> void:
 	var id: String = String(row.id)
+	var sub := page_for(row.id)
+	if sub != null:
+		screen.push_page(sub)
+		return
 	if StoryContent.BEATS.has(row.id):
 		side(row, 1)
 		return

@@ -40,9 +40,28 @@ const SPINE: Array[Dictionary] = [
 ]
 
 
+## Colour, one local per landscape (docs/STORY.md §8): each stands at the village
+## of their own land nearest to where he woke, on whatever body that is. Never
+## required and never ordered: a world not dealt that land has no such local,
+## and meeting one moves the journey nowhere. The coast's is Maren, at `home`.
+const LOCALS: Array[Dictionary] = [
+	{"id": &"local_bonelands", "needs": &"village", "land": &"bonelands", "nearest": true, "ordered": false},
+	{"id": &"local_burning", "needs": &"village", "land": &"burning", "nearest": true, "ordered": false},
+	{"id": &"local_moss", "needs": &"village", "land": &"moss", "nearest": true, "ordered": false},
+	{"id": &"local_pinewood", "needs": &"village", "land": &"pinewood", "nearest": true, "ordered": false},
+	{"id": &"local_salt_flats", "needs": &"village", "land": &"salt_flats", "nearest": true, "ordered": false},
+	{"id": &"local_scrapwood", "needs": &"village", "land": &"scrapwood", "nearest": true, "ordered": false},
+	{"id": &"local_slums", "needs": &"village", "land": &"slums", "nearest": true, "ordered": false},
+	{"id": &"local_snowfield", "needs": &"village", "land": &"snowfield", "nearest": true, "ordered": false},
+	{"id": &"local_limestone_caves", "needs": &"village", "land": &"limestone_caves", "realm": &"underground", "nearest": true, "ordered": false},
+]
+
+
 static func slots() -> Array[StorySlot]:
 	var out: Array[StorySlot] = []
 	for d: Dictionary in SPINE:
+		out.append(StorySlot.make(d))
+	for d: Dictionary in LOCALS:
 		out.append(StorySlot.make(d))
 	return out
 

@@ -159,6 +159,11 @@ continent has villages, a works depot per worked region, landmarks and a portal,
 whatever landscapes it drew. A spine built from those cannot be dealt out of a
 world.
 
+**Locals are not stops.** A slot with `ordered: false` is sought from home
+outward on every body and moves the journey's floor nowhere. The nine locals
+(`StoryPlan.LOCALS`) are cast this way, each at the nearest village of their own
+land, so meeting one never pulls the path forward or back.
+
 **Legs, not distances.** The story crosses every continent people live on, in
 order (owner, 2026-09-18). A slot names its `leg`; `StoryJourney` orders the
 world's inhabited bodies outward from the spawn, and casting puts each slot on its
@@ -357,18 +362,20 @@ Casting is **not** saved (§5). Plan progress is saved; the plan itself is deriv
 
 ## 10. Dev mode
 
-Everything above is data and the owner can move all of it without a rebuild:
+Everything above is data and the owner can move all of it without a rebuild.
+**Built**: the story page and three pages off it (`src/dev/pages/dev_page_story*.gd`,
+`--dev=people|path|ledger`, `tests/story/test_dev_story.gd`).
 
 | Page | What it does |
 |---|---|
-| cast | every character, where they were cast in THIS world, their situation — and set it |
-| arcs | land a beat, take one back, land a whole arc, read every choice |
-| plan | the stages, which slot each one cast to, and **warp to it** |
-| ledger | what the world has written about this playthrough, and add an entry |
-| words | which fragment a given thing is holding, and read it on the glass |
+| people | every named person by the place they stand at: where it was cast in THIS world, there, met, waiting (and on what) or gone; E stands beside them |
+| story (arcs) | land a beat, take one back, land a whole arc, read every choice |
+| the path | every spine stop by leg and body, the revelation still settling, `problems()`; E goes to the stop |
+| ledger | what the world has seen, both records as they read now, and a row per act to note one here |
+| words | *not built*: which fragment a given thing is holding, and read it on the glass |
 
-`--read=ID` and `--talk=ID[:NODE]` already stage any page or conversation for a
-writer. `--slot=ID` should stage a casting.
+`--read=ID`, `--talk=ID[:NODE]` and `--beats=ID,ID` stage a page, a conversation
+or what he already knows for a writer.
 
 ---
 

@@ -30,6 +30,9 @@ func test_everyone_is_cast_somewhere_a_body_can_stand() -> void:
 			if _slot(c.at).realm != w.realm:
 				check(not placed.has(c.at), "seed %d: %s's place is not on the surface" % [s, c.id])
 				continue
+			# A local is colour: a world not dealt their land has no such person.
+			if not _slot(c.at).require:
+				continue
 			check(placed.has(c.at), "seed %d: %s's place, %s, is in this world" % [s, c.id, c.at])
 
 

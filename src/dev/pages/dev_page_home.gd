@@ -18,7 +18,8 @@ static func page_for(id: StringName) -> DevPage:
 		&"notes": return DevPageNotes.new()
 		&"builds": return DevPageBuilds.new()
 		&"proofs": return DevPageProofs.new()
-	return null
+	# The story's own pages (people, path, ledger), so --dev can open one straight.
+	return DevPageStory.page_for(id)
 
 
 ## Counts that read files (notes, the shelf) are read again at most this often (s).

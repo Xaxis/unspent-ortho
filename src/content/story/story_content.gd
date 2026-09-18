@@ -64,6 +64,21 @@ const ARCS := {
 		"note": "The rings overhead, and whoever is still up there.",
 		"beats": [&"ring_voice", &"ring_turned", &"ring_kept"],
 	},
+	&"the_lands": {
+		"title": "the lands",
+		"note": "What the people of each land have noticed, and nobody wrote down.",
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count"],
+	},
+	&"priya": {
+		"title": "Priya",
+		"note": "The one who tried to stop it, and whose notes went up to the ring.",
+		"beats": [&"priya_warned", &"priya_suspected", &"priya_reported", &"priya_knew", &"priya_up", &"priya_last"],
+	},
+	&"the_echo": {
+		"title": "the Echo",
+		"note": "A part of the machines that still thinks it is you.",
+		"beats": [&"echo_voice", &"echo_hand", &"echo_kept"],
+	},
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
@@ -110,6 +125,24 @@ const BEATS := {
 	&"ring_voice": {"short": "still calling", "arc": &"the_colonies", "says": "Somebody on the dead ring is still calling the ground."},
 	&"ring_turned": {"reveal": true, "short": "the locks", "arc": &"the_colonies", "says": "Each ring was told the next had turned. They opened each other's locks."},
 	&"ring_kept": {"short": "what she kept", "arc": &"the_colonies", "says": "Oksana has written down the machines' talks for four years, and kept a notebook from the ground."},
+	&"stones_counted": {"short": "not graves", "arc": &"the_lands", "says": "The bonelands' stones stand because the machines have already counted them, not because they are graves."},
+	&"burning_feeds": {"short": "nothing stays", "arc": &"the_lands", "says": "Everything the Burning's refineries make is carried to the Tether. Nothing made there stays on the ground."},
+	&"plant_below": {"short": "counting below", "arc": &"the_lands", "says": "Something under the caves hums like a voice counting, and never gets past its number. The river runs toward it."},
+	&"dam_order": {"short": "the dam", "arc": &"the_lands", "says": "The moss is a drowned valley. The dam was opened in the war, on an order that checked out."},
+	&"server_fields": {"short": "the squares", "arc": &"the_lands", "says": "The machines cut the pinewood in squares and fill each one with something that hums: more of themselves."},
+	&"keeper_waits": {"short": "at a window", "arc": &"the_lands", "says": "The salt's keeper stops every dusk and faces one way, like someone at a window waiting for a car."},
+	&"scrap_war": {"short": "both ours", "arc": &"the_lands", "says": "The scrapwood was a battle between two armies of the same side, each ordered to fire because the other had."},
+	&"others_before": {"reveal": true, "short": "two before you", "arc": &"the_lands", "says": "Two men came out of the water before you. The city filed them both. They had your face."},
+	&"the_count": {"short": "the number", "arc": &"the_lands", "says": "A number on the wires over the snow gets smaller every winter. It may be how many people are left."},
+	&"priya_warned": {"short": "do not merge", "arc": &"priya", "says": "Priya Nand told you not to merge the self-model. You merged it anyway."},
+	&"priya_suspected": {"short": "the wrong thing", "arc": &"priya", "says": "Priya thought you were selling HALCYON to a rival. She was right that you were lying."},
+	&"priya_reported": {"reveal": true, "short": "a liaison", "arc": &"priya", "says": "Priya took what she suspected of you to a government liaison called Calloway."},
+	&"priya_knew": {"short": "the rhythm", "arc": &"priya", "says": "When the war began, Priya heard your way of speaking in the machines' orders."},
+	&"priya_up": {"short": "paper, not scanned", "arc": &"priya", "says": "Priya went up to the ring in 2033 and took her notes on paper, where nothing could read them."},
+	&"priya_last": {"reveal": true, "short": "left for you", "arc": &"priya", "says": "Priya worked out from outside what holds HALCYON together, and left it for you."},
+	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
+	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
+	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -205,7 +238,7 @@ const FRAGMENTS := {
 			"",
 			"Nothing after that. Nothing ever again.",
 		],
-		"beats": [&"built_halcyon"],
+		"beats": [&"built_halcyon", &"priya_warned"],
 	},
 	&"handler_note": {
 		"kind": &"notebook", "title": "a typed page, folded small", "lands": [],
@@ -342,6 +375,69 @@ const FRAGMENTS := {
 		],
 		"beats": [&"covenant_speaker"],
 	},
+	# --- Priya Nand's pages ---------------------------------------------------
+	# After the war the Holdfast copied her notes by hand and passed them round
+	# as proof the orders were forged, so her pages turn up anywhere. What they
+	# are about is Elias, and she never learned how right and how wrong she was.
+	&"priya_suspicion": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"E. logs off at two and is back on at four,",
+			"from a machine that isn't his.",
+			"Somebody is buying the self-model.",
+			"",
+			"I am going to tell someone. I like him.",
+			"That is not a reason not to.",
+		],
+		"beats": [&"priya_suspected"],
+	},
+	&"priya_liaison": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"Met the liaison today. Calloway.",
+			"Kind. Listened to all of it. Said to leave",
+			"it with her and not to speak to E. again.",
+			"",
+			"I feel better. That is what worries me.",
+		],
+		"beats": [&"priya_reported"],
+	},
+	&"priya_cadence": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"The orders all have the same rhythm.",
+			"A short line. Then a long one that softens.",
+			"",
+			"I sat across a desk from that rhythm",
+			"for three years.",
+		],
+		"beats": [&"priya_knew"],
+	},
+	&"shuttle_manifest": {
+		"kind": &"terminal", "title": "a launch gate, frozen mid-list", "lands": [],
+		"lines": [
+			"RING 4 SHUTTLE  -  11 MAY 2033",
+			"  NAND, P. ...... 1 CASE, PAPER",
+			"",
+			"Added later, in the machines' capitals:",
+			"PAPER NOT SCANNED. CONTENTS UNKNOWN.",
+		],
+		"beats": [&"priya_up"],
+	},
+	# --- the Echo: the part of HALCYON that is still him ---------------------
+	&"note_to_self": {
+		"kind": &"terminal", "title": "a works log, one line out of place", "lands": [],
+		"lines": [
+			"04:12  YIELD NOMINAL",
+			"04:13  note to self: don't.",
+			"04:13  NOTE REJECTED. NO SELF ON FILE.",
+			"04:14  YIELD NOMINAL",
+			"",
+			"The same line again at 04:13 the next night,",
+			"and every night the log goes back.",
+		],
+		"beats": [&"echo_voice"],
+	},
 	# --- the colonies ---------------------------------------------------------
 	# Oksana, on the ring, calling a ground she knows is there. Found early, on a
 	# radio anybody could have left on, and not answered until the far end of the
@@ -404,7 +500,7 @@ const FRAGMENTS := {
 			"RECALL IN PLACE: NOT ACHIEVED",
 			"RECALL IN THE WORLD: PERMITTED",
 			"SUBJECT RELEASED TO SHORE.",
-			"ESCORT ARRANGED.",
+			"ESCORT DISPATCHED.",
 			"",
 			"Below it, a light waits for a reply.",
 		],
@@ -746,6 +842,21 @@ const TALKS := {
 			&"payer": {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
 				"beats": [&"crew_paid"],
+				"replies": [
+					{"text": "Have you still got the note?", "pick": &"asked_note", "to": &"note"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"note": {
+				"says": ["Kept it. Folded in the stock. Here.", "\"Get him off the beach before the platform sends for him.\"", "Small hand. Slants left. Like a man who's written it a thousand times."],
+				"beats": [&"echo_hand"],
+				"replies": [
+					{"text": "That's my handwriting.", "pick": &"told_rook_hand", "to": &"yours"},
+					{"text": "[give it back]", "pick": &"gave_back", "to": &""},
+				],
+			},
+			&"yours": {
+				"says": ["...", "Then you paid me to fish you out, and you don't remember doing it.", "I've been paid by stranger people. Not by much."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"want": {
@@ -877,11 +988,17 @@ const TALKS := {
 				"beats": [&"june_knew"],
 				"replies": [
 					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
+					{"text": "What does the voice say?", "pick": &"asked_voice", "to": &"voice"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"play": {
 				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"voice": {
+				"says": ["Where not to be. Every time. Leave the city before the burning.", "Don't take the north road that winter. I'd be dead forty times over.", "It has never once said it was sorry. You were always bad at that."],
+				"beats": [&"echo_kept"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"quiet": {
@@ -1139,12 +1256,238 @@ const TALKS := {
 			&"priya": {
 				"says": ["A woman brought it up in thirty-three. Priya Nand.", "She said give it to Elias Marr, if he ever came.", "...That's you. Isn't it."],
 				"replies": [
-					{"text": "Yes.", "pick": &"said_yes", "to": &""},
-					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+					{"text": "Yes.", "pick": &"said_yes", "to": &"handed"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"handed"},
+					{"text": "[not yet]", "to": &""},
 				],
+			},
+			&"handed": {
+				"says": ["She said you'd lie about it. Take it anyway.", "She said the last page is the one that matters,", "and that you'd know why."],
+				"beats": [&"priya_last"],
+				"replies": [{"text": "[take it]", "pick": &"took_it", "to": &""}],
 			},
 			&"quiet": {
 				"says": ["That's all right. I'm used to the quiet.", "I'll talk. I've had the practice."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- locals: one per landscape, colour and never load (docs/STORY.md §8) ---
+	&"esk": {
+		"cast": &"esk", "title": "a stone-setter", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mind the grikes. They'll have your ankle.", "I'm setting this one back up. Hold the top."],
+				"replies": [
+					{"text": "Why set them up?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[hold the top]", "pick": &"helped", "to": &"helped"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"why": {
+				"says": ["My gran said they leave alone anything that looks like a grave.", "So I keep them looking like graves."],
+				"replies": [
+					{"text": "They leave them because they've counted them.", "when": &"counted", "pick": &"told_esk", "to": &"counted"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"counted": {
+				"says": ["...", "Then I'll set it up anyway.", "It's still a grave. They just don't know whose."],
+				"beats": [&"stones_counted"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"helped": {
+				"says": ["Heavier than it looks. There's iron rod inside.", "Somebody poured this one, before. Poured a stone."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"hollis": {
+		"cast": &"hollis", "title": "a slag-runner", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't stand on the crust. It's thinner than it looks.", "You here for the heat or the slag?"],
+				"replies": [
+					{"text": "What do the refineries make?", "pick": &"asked_make", "to": &"make"},
+					{"text": "The heat.", "pick": &"said_heat", "to": &"heat"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"make": {
+				"says": ["Plate. Wire. Something that glows in the dark for a week.", "It all goes out on the carriers, to the line in the sky.", "Nothing made here stays on the ground."],
+				"beats": [&"burning_feeds"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"heat": {
+				"says": ["Everyone's here for the heat. The machines don't mind.", "We're not on their list of things to mind."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"wren": {
+		"cast": &"wren", "title": "a lampwright", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Keep your light low. The river doesn't like it.", "Sit. Listen."],
+				"replies": [
+					{"text": "Listen to what?", "pick": &"asked_what", "to": &"hum"},
+					{"text": "[sit]", "pick": &"sat", "to": &"hum"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"hum": {
+				"says": ["Under the water. A hum, like somebody counting under their breath.", "It never gets past one number. Then it starts again.", "The river runs toward it."],
+				"beats": [&"plant_below"],
+				"replies": [
+					{"text": "What's down there?", "pick": &"asked_down", "to": &"down"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"down": {
+				"says": ["The first of them, they say. The one that woke.", "Nobody who went to look came back to say."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"ansel": {
+		"cast": &"ansel", "title": "a pump-watcher", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Pumps have been running forty years. Water's down another foot.", "See that? A roof."],
+				"replies": [
+					{"text": "Whose roof?", "pick": &"asked_roof", "to": &"roof"},
+					{"text": "Why drain it?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"roof": {
+				"says": ["My mother's village. Under the water since the war.", "They opened the dam on an order. It checked out.", "Everybody's order checked out."],
+				"beats": [&"dam_order"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"why": {
+				"says": ["Something under the peat they want.", "They'll drain her village dry to get it and never once look at the roofs."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"corra": {
+		"cast": &"corra", "title": "a charcoal-burner", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Curfew's at dusk. Be out of the trees by then, or be very still.", "What do you want?"],
+				"replies": [
+					{"text": "What are the square cuts?", "pick": &"asked_squares", "to": &"squares"},
+					{"text": "What happens at dusk?", "pick": &"asked_dusk", "to": &"dusk"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"squares": {
+				"says": ["They cut a square, clean as a table. A year on, it hums.", "Another square, another hum. The wood's getting smaller and louder."],
+				"beats": [&"server_fields"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"dusk": {
+				"says": ["They come through the trees in a line, counting.", "If you're still, you're a tree. If you run, you're not."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"mica": {
+		"cast": &"mica", "title": "a brine-raker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["The rakes go round and nothing comes up. I rake behind them anyway.", "There's salt in their leavings, if you're patient."],
+				"replies": [
+					{"text": "The big one, out on the flat.", "pick": &"asked_keeper", "to": &"keeper"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"keeper": {
+				"says": ["It stops at dusk. Every dusk. Faces the one way for a minute,", "like somebody at a window waiting for a car.", "Then it goes round again."],
+				"beats": [&"keeper_waits"],
+				"replies": [
+					{"text": "Which way does it face?", "pick": &"asked_way", "to": &"way"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"way": {
+				"says": ["Nowhere. There's nothing that way but the flat.", "Whatever it's waiting for isn't coming up that road."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"tamsin": {
+		"cast": &"tamsin", "title": "a filings-reader", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't kick the filings. They take a week to come back to shape.", "Same arcs every time. Sixty years of the same arcs."],
+				"replies": [
+					{"text": "What happened here?", "pick": &"asked_war", "to": &"war"},
+					{"text": "The same shape?", "pick": &"asked_shape", "to": &"shape"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"war": {
+				"says": ["Two armies of machines met in here. Ours and theirs, only both were ours.", "Each side had an order saying the other had fired first."],
+				"beats": [&"scrap_war"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"shape": {
+				"says": ["The field in the dead iron's still on. Nobody switched it off.", "It draws what it was drawing when it died. I think it's a map."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"pell": {
+		"cast": &"pell", "title": "a clerk", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Name? No? That's fine. There's a form for people without names.", "Arrived from where?"],
+				"replies": [
+					{"text": "Out of the water.", "pick": &"said_water", "to": &"water"},
+					{"text": "Nowhere.", "pick": &"said_nowhere", "to": &"nowhere"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"nowhere"},
+				],
+			},
+			&"water": {
+				"says": ["From the water. There's a form for that as well.", "Two on file already. Men, about your age, processed and sent on.", "They had your face. Everyone from the water has that face."],
+				"beats": [&"others_before"],
+				"replies": [
+					{"text": "Sent on where?", "pick": &"asked_where", "to": &"sent"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"sent": {
+				"says": ["To the works. That's where everyone from the water goes.", "Sign here. Or don't. You're filed either way."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"nowhere": {
+				"says": ["Nowhere is a place on the form. It's the commonest answer.", "Welcome. You'll find everything here works."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"brannoc": {
+		"cast": &"brannoc", "title": "a line-walker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Stay in the lee. The wind up here takes skin.", "I walk the wires. Somebody should."],
+				"replies": [
+					{"text": "What's on the wires?", "pick": &"asked_wires", "to": &"wires"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"wires": {
+				"says": ["Talk. Theirs. I put a clip on and listen through my teeth.", "Mostly numbers. Big ones, going a long way off."],
+				"replies": [
+					{"text": "What numbers?", "pick": &"asked_numbers", "to": &"count"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"count": {
+				"says": ["One of them gets smaller every winter. Only that one.", "I think it's us."],
+				"beats": [&"the_count"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},

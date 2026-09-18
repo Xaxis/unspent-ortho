@@ -32,11 +32,13 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	for s: StorySlot in slots:
 		var place := {}
 		var start := clampi(maxi(s.leg, floor_rank), 0, maxi(order.size() - 1, 0))
+		if not s.ordered:
+			start = 0
 		for rank in range(start, order.size()):
 			place = _fill(world, s, taken, order[rank])
 			if not place.is_empty():
 				place["body"] = order[rank]
-				if s.realm == world.realm:
+				if s.realm == world.realm and s.ordered:
 					floor_rank = rank
 				break
 		if place.is_empty():
