@@ -17,8 +17,9 @@ class_name StoryPlan
 ## THIS world. Per-REGION features only (StorySlot.NEEDS says why), and only
 ## `home` names a landscape, because the coast is the one a world cannot be without.
 ##
-## The orbit leg is not declared yet: nothing grows the orbital realm, and a
-## required slot in a realm nobody can reach would fail every world.
+## The orbit leg is declared as COLOUR until the orbital realm is grown: a required
+## slot in a realm nobody can reach would fail every world, so `the_ring` casts
+## nowhere today and whoever stands there (Oksana) waits for it.
 const SPINE: Array[Dictionary] = [
 	# Leg 0, the home coast: where he wakes, his town, the first works.
 	{"id": &"home", "needs": &"village", "land": &"coast", "leg": 0, "nearest": true, "require": true},
@@ -32,6 +33,8 @@ const SPINE: Array[Dictionary] = [
 	{"id": &"the_shaft", "needs": &"portal", "leg": 2, "require": true},
 	# Leg 3, the far shore: the Emissary's works at the Tether's foot.
 	{"id": &"the_far_works", "needs": &"works", "leg": 3, "require": true},
+	# Leg 4, orbit: the dead ring, where the last colonist is still calling.
+	{"id": &"the_ring", "needs": &"landmark", "realm": &"orbital", "leg": 4, "require": false},
 ]
 
 

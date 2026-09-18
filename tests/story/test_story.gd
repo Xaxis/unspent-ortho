@@ -82,15 +82,18 @@ func test_a_conversation_goes_where_the_replies_go() -> void:
 
 
 func test_a_conversation_can_be_walked_to_its_end() -> void:
+	# Every conversation, named people's too: always take the last reply, because
+	# every node's last way out is a leaving one.
+	for talk: StringName in StoryContent.TALKS:
+		Story.forget()
+		var t := StoryTalk.start(talk)
+		var guard := 0
+		while not t.over and guard < 40:
+			guard += 1
+			t.pick(t.replies().size() - 1)
+		check(t.over, "%s: every node has a way out of the conversation" % talk)
+		lt(float(guard), 40.0, "%s: and it is not a loop" % talk)
 	Story.forget()
-	var t := StoryTalk.start(&"the_keeper")
-	var guard := 0
-	while not t.over and guard < 40:
-		guard += 1
-		# Always take the last reply: every node's last way out is a leaving one.
-		t.pick(t.replies().size() - 1)
-	check(t.over, "every node has a way out of the conversation")
-	lt(float(guard), 40.0, "and it is not a loop")
 
 
 func test_a_reply_that_teaches_something_lands_its_beat() -> void:

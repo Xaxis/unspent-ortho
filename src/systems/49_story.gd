@@ -80,12 +80,18 @@ func started() -> void:
 
 
 ## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
-## at, without walking to the one sign in the world that happens to carry them.
-## Staging only — a normal start names neither.
+## at, without walking to the one sign in the world that happens to carry them;
+## `--beats=ID,ID`, what he already knows. Staging only — a normal start names none.
 func _stage() -> void:
 	var o := game.options
 	if o == null:
 		return
+	# `--beats`: a story that happened long ago, so whoever waits on it is there.
+	for b: String in o.beats.split(",", false):
+		if StoryContent.BEATS.has(StringName(b)):
+			Story.beat(StringName(b), -INF)
+		else:
+			push_warning("--beats: %s is not a beat" % b)
 	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
 		var id := StringName(o.read)
 		reading = id

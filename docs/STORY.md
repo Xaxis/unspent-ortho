@@ -292,10 +292,16 @@ Saying nothing is always one of the answers.
 
 ## 15. What is written so far
 
-This document replaced the previous story (the machines as "reconcilers") on
-2026-09-18. **The words in the game are still that previous story's**:
-`src/content/story/story_content.gd` holds its arcs, fragments and five
-conversations, and `tests/story/test_arcs.gd` names its arcs. Both are rewritten
-next against this document, with the cast system and the ledger narrator
-(`docs/STORY_SYSTEM.md` §7–8). Until then, nothing new is written against the old
-premise.
+The words in the game are this story's (`src/content/story/story_content.gd`):
+nine arcs, the fragments, five trades' conversations and eleven named people.
+
+- **Met in play:** Maren, Rook, Sabine, Dace, Teague, Lark and Vera on the home
+  coast; Imre, Solis and June at the Covenant's seat.
+- **Written, waiting on the orbital realm:** Oksana. Her voice is found on the
+  ground from the start (`ring_calling`).
+- **Not yet written:** Hannah, Ruth, Priya, Tobias and Hale, who belong to the
+  gates, and the Echo, the Seeker and the Emissary, who are not bodies. A local
+  per landscape is also still to come.
+
+Revelations are paced as §9 says (`StoryPacing`). A reply that would land one,
+or a person who waits on one, is held back until the last has settled.

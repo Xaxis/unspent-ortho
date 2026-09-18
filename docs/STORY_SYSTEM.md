@@ -300,7 +300,29 @@ their own.
   him. Following, orders and control are the actors' business and not built;
   the story's half of the seam is this flag.
 - **Tours** stand beside one with `at cast:ID` and answer `cast:ID` (drawn) and
-  `met:ID` (spoken to): `tours/cast.tour`.
+  `met:ID` (spoken to): `tours/cast.tour`. `--beats=ID,ID` stages what he already
+  knows, as long ago, so whoever waits on it is there.
+- **A realm not yet grown** can hold someone: Oksana's `the_ring` is an orbital
+  slot declared as colour, so it casts nowhere today and she waits for it.
+
+### Pacing — one revelation at a time
+
+**Built.** `docs/STORY.md` §9: the next revelation waits until the last has been
+felt. A beat marked `reveal` is a revelation, and `Story` keeps the world minute
+each beat landed. For `StoryPacing.SETTLE` world minutes after a revelation (four
+real minutes; a night's sleep settles anything), the story holds back what it
+OFFERS:
+
+- a reply that would land a new revelation, by itself or by the node it leads to,
+  is not offered (`StoryTalk.replies`); the same person can be asked again later;
+- a person whose `appears_when` is a revelation is not there until it has settled.
+  June does not walk in the minute Imre says her name; she sends for him.
+
+It never holds back what the player has already done. A page read lands at once,
+because it cannot be unread, and so does a beat that happened to him. Both still
+count as the revelation that everything else then waits on.
+`tests/story/test_pacing.gd` also proves that no conversation node is ever left
+with nothing to say while a revelation settles.
 
 ## 9. State, and what must never happen to a save
 

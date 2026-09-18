@@ -25,7 +25,27 @@ func test_everyone_is_cast_somewhere_a_body_can_stand() -> void:
 		var w := WorldGen.generate(s, SIZE)
 		var placed := StoryPlan.cast(w)
 		for c: StoryCharacter in StoryCast.all():
+			# Somebody whose place is in another realm is cast when that realm's
+			# world is grown, and not in this one.
+			if _slot(c.at).realm != w.realm:
+				check(not placed.has(c.at), "seed %d: %s's place is not on the surface" % [s, c.id])
+				continue
 			check(placed.has(c.at), "seed %d: %s's place, %s, is in this world" % [s, c.id, c.at])
+
+
+func test_whoever_waits_on_an_unreached_realm_waits_as_colour() -> void:
+	# Oksana's ring is declared before the orbital realm is grown. It may not be
+	# load until it can be reached, or every world fails the spine.
+	var ring := _slot(StoryCast.get_def(&"oksana").at)
+	eq(ring.realm, Realm.ORBITAL, "she is on the ring")
+	check(not ring.require, "which is colour until the orbital realm is grown")
+
+
+func _slot(id: StringName) -> StorySlot:
+	for sl: StorySlot in StoryPlan.slots():
+		if sl.id == id:
+			return sl
+	return null
 
 
 func test_home_is_the_village_he_wakes_beside() -> void:

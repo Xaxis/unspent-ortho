@@ -2,7 +2,10 @@
 # the place the story cast her or him in THIS world, and the one `use` key opens
 # their own words, not a trade's.
 #
-#   tools/tour.sh tours/cast.tour --seed=1 --hour=11 --weather=clear:0
+#   tools/tour.sh tours/cast.tour --seed=1 --hour=11 --weather=clear:0 --beats=holdfast_hope
+#
+# `--beats=holdfast_hope` is the story so far: Rook has sent word, so Vera has come
+# to the camp. Everyone else here stands where they stand from the first morning.
 #
 # `at cast:NAME` asks 49_cast where that person stands; nothing here is a
 # coordinate, so a new worldgen moves them and this still finds them.
@@ -29,3 +32,44 @@ wait 0.4
 shot 02-rook-speaks with talking,cast:rook
 press pause
 wait 0.5
+
+# --- Vera, come to the camp for the weapon Rook found ------------------------------------
+at cast:vera
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 03-vera-speaks with talking,cast:vera
+press pause
+wait 0.5
+await met:vera 2
+
+# --- Teague and Lark, the rest of the crew ------------------------------------------------
+at cast:teague
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 04-teague-speaks with talking,cast:teague
+press pause
+wait 0.5
+
+at cast:lark
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 05-lark-speaks with talking,cast:lark
+press pause
+wait 0.5
+
+# --- Solis, across the water at the Covenant's seat ---------------------------------------
+at cast:solis
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 06-solis-speaks with talking,cast:solis
+press pause
+wait 0.5
+await met:solis 2
