@@ -25,6 +25,8 @@ const GOALS: Array[StringName] = [&"sabotage", &"recover", &"discover"]
 ## DURING, they have noticed him and a warning lands better than an ask; AFTER,
 ## the plan has lost the place, and it is the first time anybody here is safe.
 static func mood(look: StorySubarcLook) -> StringName:
+	if look.answered:
+		return &"done"
 	if look.lost():
 		return &"after"
 	return &"during" if look.roused() else &"before"

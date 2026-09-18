@@ -274,12 +274,17 @@ a system gathers and the rules decide.
   nobody has walked to (`discover`).
 - **Answered by the world, never counted**: the yard is dark, the cache is open,
   the place is found. Only the TELLING is saved (`Story.hear`).
-- **Three moods, and they are not the demands** (unspent-ortho-cb): BEFORE, the
+- **Four moods, and they are not the demands** (unspent-ortho-cb): BEFORE, the
   place is quiet and something is wrong with it; DURING, they are hunting him
   through it (`Interference.level_name`) and a warning lands better than an ask;
   AFTER, the plan has lost the place (the yard dark or the keeper down) and it is
-  the first time anybody here is safe. What he did for them is said first, then
-  the mood, then the ask.
+  the first time anybody here is safe; DONE, the chapter is wholly answered
+  (`Chapters.answered_here`) and somebody tells him to go on. What he did for them
+  is said first, then the mood, then the ask.
+  **AFTER and DONE are different things on purpose.** Defended changes the WORLD
+  and a person can see it; explored and mined change only the player, and a
+  villager cannot know what is in his creel. So DONE is said from having watched
+  him work, never from a count.
 - **Said by a person**, always: whoever lives there, through the one `use` key,
   as a conversation built at the moment it is had (`StoryTalk.of_made`). Never a
   list on the glass. `tours/region.tour` is the proof; a tour asks with `asked`,

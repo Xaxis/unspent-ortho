@@ -660,6 +660,7 @@ func subarc_look() -> StorySubarcLook:
 		for st: SentinelState in keepers.get("_states"):
 			if st.region == look.region and st.fallen:
 				look.keeper_down = true
+	look.answered = Chapters.answered_here(game)
 	var net := Interference.network(game.world, game.player.pos)
 	var disposition := _system("32_disposition")
 	var file: Interference = disposition.get("interference") if disposition != null else null

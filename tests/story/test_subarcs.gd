@@ -121,3 +121,18 @@ func test_saying_he_will_is_remembered_and_changes_what_they_say_after() -> void
 	var quiet := StorySubarc.talk(dark, said)
 	check("\n".join(quiet.nodes[&"open"].says).contains("We heard it stop in the night"), "and otherwise they only say what happened")
 	Story.forget()
+
+
+## The quietest thing anybody says: the place is wholly done with him. A person
+## says it from having watched him, never from a count of what he carried out.
+func test_a_place_that_is_answered_says_so_in_the_words_of_somebody_watching() -> void:
+	Story.forget()
+	var look := _look(Vector2(20, 20), true, [])
+	look.keeper_down = true
+	look.answered = true
+	eq(StorySubarc.mood(look), &"done", "answered outranks the plan having lost it")
+	var page := StorySubarc.talk(look, StorySubarc.raised(look))
+	var words := "\n".join(page.nodes[&"open"].says)
+	check(words.contains("every track on this ground"), "what they have watched him do:\n%s" % words)
+	check(not words.contains("enough") and not words.contains("counted"), "and nothing about a count")
+	Story.forget()
