@@ -130,6 +130,64 @@ func test_a_street_of_forty_keeps_its_silhouettes_apart() -> void:
 	gt(sigs.size(), 32, "and %d distinct ones" % sigs.size())
 
 
+# ---------------------------------------------------------------- the cost
+
+func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
+	# THE NUMBER THAT DECIDES THE DESIGN. 35_folk builds one villager per EVEN
+	# frame because building one is dear, and six per village is what that budget
+	# was drawn for; a city asks for forty through the same door. This measures
+	# the real path — crowd(), dress(), set_apart(), PersonModel.make(), the rig
+	# and the dressing — and then what forty cost to keep, every frame, for ever.
+	#
+	# The build is the one-off and the step is the forever, so they are reported
+	# apart: a build that is dear but STREAMED costs a ramp, not a stall.
+	var g := _game()
+	var f := _folk(g)
+	var t0 := Time.get_ticks_usec()
+	f.call("_ring", 40)
+	var build_us := Time.get_ticks_usec() - t0
+	var folk: Array = f.get("folk")
+	var n := folk.size()
+	# Asked for forty and report what STOOD: the outer ring seats test the ground,
+	# so a spawn near the shore drops the ones that landed in the sea. Naming a
+	# count the measurement did not take is how a number starts lying.
+	gt(n, 23, "a street's worth stood up (%d of the 40 asked for)" % n)
+	var each_ms := float(build_us) / float(n) / 1000.0
+
+	f.call("_count_crowd")
+	var t1 := Time.get_ticks_usec()
+	f.call("_count_crowd")
+	var count_us := Time.get_ticks_usec() - t1
+
+	var t2 := Time.get_ticks_usec()
+	for row: Dictionary in folk:
+		f.call("_step", row, 0.016, false)
+	var step_us := Time.get_ticks_usec() - t2
+
+	var tris := 0
+	var draws := 0
+	for row: Dictionary in folk:
+		var p := row.model as PersonModel
+		tris += p.body_triangles() + p.tool_triangles()
+		draws += p.get_child_count()
+
+	print("  A STREET OF %d, through 35_folk's own path:" % n)
+	print("    build   %6.1f ms total, %5.2f ms each (streamed one an even frame: %.1f s to fill)"
+		% [build_us / 1000.0, each_ms, float(n) * 2.0 / 60.0])
+	print("    step    %6.1f us a frame for all %d, %4.1f us each" % [step_us, n, float(step_us) / float(n)])
+	print("    crowd   %6.1f us a tick (O(n^2), twice a second)" % count_us)
+	print("    draw    %6d triangles, %d each over %d meshes" % [tris, tris / maxi(n, 1), draws])
+
+	var slack := TestCase.machine_slack()
+	# The forever cost is what a frame has to carry, and it is the one that must
+	# hold: a street may not cost more than a millisecond a frame to walk through.
+	lt(float(step_us) + float(count_us) * 0.5, 1000.0 * slack,
+		"forty on a street cost under a millisecond a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
+	# And the build stays a ramp rather than a stall, because nothing builds two
+	# in one frame: what a player feels is the street filling in, not a hitch.
+	lt(each_ms, 12.0 * slack, "one villager still builds in the time a frame can spare (%.2f ms)" % each_ms)
+
+
 # ---------------------------------------------------------------- indifference
 
 func test_a_village_looks_up_and_a_street_does_not() -> void:
