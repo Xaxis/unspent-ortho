@@ -281,6 +281,16 @@ var pools: Dictionary = {}
 var villages := 0
 var village_names: Array = []
 var village_order := 50
+## How many people this landscape puts on the street round each of its villages,
+## when that is more than the six a village gets (`35_folk.PER_VILLAGE`). A city
+## is not a village with the same handful of people in it, and the count is what
+## its crowd is made of: past `35_folk.CROWD_BLIND` standing together nobody
+## looks up at a stranger any more, so this one number is also what decides
+## whether the player is an event here or traffic.
+##
+## Runtime only — worldgen lays the village, not the people in it — so it is a
+## LOOK field in `WorldStamp` and adding it refuses nobody's save.
+var street_folk := 0
 ## The player wakes in this landscape.
 var spawn_home := false
 

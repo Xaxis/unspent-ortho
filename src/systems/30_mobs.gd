@@ -96,6 +96,14 @@ func _ensure_nodes() -> void:
 			var mob := Mob.new()
 			_layer.add_child(mob)
 			mob.setup(m, game.world, game.view.world_material())
+			# A figure that draws itself as a PERSON (a machine that passes) needs
+			# what every other person is given and no machine ever is: a seed, so
+			# a street is not the same body six times, and the world's sun, since
+			# somebody casting no shadow where everyone else casts one would be
+			# the loudest tell in the landscape.
+			if mob.model.has_method(&"pass_as"):
+				mob.model.call(&"pass_as", Rng.hash_ints(game.world.seed_value, m.id, 0x9A55),
+					game.sky.sun if game.sky != null else null)
 
 
 func _read_moment() -> void:

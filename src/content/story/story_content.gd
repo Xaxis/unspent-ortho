@@ -760,6 +760,14 @@ const TESTIMONY := {
 ## A landscape's keeper is read as what the rest of them answer to.
 const TESTIMONY_SENTINEL := {"says": "what the account here answers to", "beats": [&"clerks_words"]}
 
+## A MACHINE THAT PASSES (roster `passes`), in a city where the settlement was
+## accepted. It keeps no account and lays no ground: it is the agreement itself,
+## out for a walk in a good coat. The line has to land as the OFFER and not as a
+## threat, because that is what the place is — the fork taken, wearing a face —
+## and it lands `quiet_calm` because a street where nothing is ever roused, and
+## nobody finds that strange, is exactly what the player has been standing in.
+const TESTIMONY_PASSES := {"says": "shows what agreeing looks like", "beats": [&"quiet_calm"]}
+
 
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
@@ -786,6 +794,8 @@ static func testimony(role: StringName, row: Dictionary) -> Dictionary:
 		return {}
 	if StringName(str(row.get("sentinel", &""))) != &"":
 		return TESTIMONY_SENTINEL
+	if bool(row.get("passes", false)):
+		return TESTIMONY_PASSES
 	return TESTIMONY.get(role, {})
 
 

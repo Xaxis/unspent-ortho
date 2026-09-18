@@ -221,7 +221,7 @@ func test_a_village_dressed_for_one_weather_never_repeats_a_silhouette() -> void
 			var sigs := {}
 			var i := 0
 			for spec: Dictionary in PersonLook.crowd(v * 31 + 7, 6):
-				var trade: StringName = PersonLook.TRADES[(v + i) % PersonLook.TRADES.size()]
+				var trade: StringName = PersonLook.VILLAGE_TRADES[(v + i) % PersonLook.VILLAGE_TRADES.size()]
 				if spec.build == &"boy":
 					trade = &"child"
 				var d := PersonLook.set_apart(PersonLook.dress(spec, hz, trade, v * 977 + i), taken, hz, v * 977 + i)

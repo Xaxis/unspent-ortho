@@ -27,6 +27,40 @@ const CAUSES := {
 	&"killed_worker": 0.22,
 }
 
+## VIOLENCE HAS A SOCIAL PRICE, AND THE PRICE IS WHO SAW IT. The same blow is one
+## machine's word for it in an empty bog and a street's worth of filings in a
+## city, because the plan's network is only ever as good as what reports to it.
+## So a witnessed cause is multiplied by the people who watched it happen, and
+## `WITNESSED` is the closed list of what a crowd can actually SEE: a blow, a
+## body. Theft in a doorway, a curfew broken and being filed are not on it —
+## nobody watching a street can tell those happened at all.
+##
+## With nobody there `witness_scale` is 1.0, so every landscape that is not a
+## crowd behaves exactly as it did before this existed. In a full street one
+## swing at a machine (`sabotage`, 0.16) carries a network from calm past
+## `hostile`, which is the whole point: where the machines are not hunting
+## anybody, the swing is the expensive answer and almost never the right one.
+const WITNESSED: Array[StringName] = [&"sabotage", &"killed_machine", &"killed_worker"]
+## IT TAKES A CROWD, and below one nothing changes AT ALL. Two people in a lane
+## are not a crowd, and pricing them as one would quietly re-tune the stealth
+## economy of every village in the game — which is how this was first written,
+## and `tests/disposition/test_in_game.gd` caught it by measuring a dead worker
+## on the coast at 0.32 where the table says 0.22. So the count starts here, and
+## every landscape that is not a city is left exactly as it was.
+##
+## This is the same threshold `35_folk.CROWD_BLIND` uses to decide that nobody
+## looks up any more, and deliberately so: the number of people it takes before
+## a stranger stops being an event is the number it takes before a street can
+## testify. Core holds no systems, so it is written twice on purpose and
+## `tests/models/test_street_crowd.gd` fails if the two ever drift apart.
+const WITNESS_CROWD := 8
+const WITNESS_EACH := 0.20
+## Past this many, another onlooker tells the network nothing it does not have.
+const WITNESS_MOST := 20
+## How near a person has to be to have seen it. The play camera shows 26.7 x 17.9
+## tiles of ground, so this is "in the same street", not "on the same island".
+const WITNESS_REACH := 9.0
+
 ## Network ids for tiles with no region recorded (off the map, or a world made
 ## before regions existed): negative, so they can never collide with a region id.
 const REGIONLESS := -1
@@ -106,6 +140,15 @@ static func name_of(v: float) -> StringName:
 	return LEVELS[level_of(v)]
 
 
+## What `n` onlookers multiply a WITNESSED cause by: 1.0 until there are enough
+## of them to be a crowd, and climbing from there. At `WITNESS_MOST` one swing at
+## a machine carries a calm network past `hostile` on its own.
+static func witness_scale(n: int) -> float:
+	if n < WITNESS_CROWD:
+		return 1.0
+	return 1.0 + WITNESS_EACH * float(clampi(n, 0, WITNESS_MOST) - WITNESS_CROWD + 1)
+
+
 func value(net: int) -> float:
 	return float(levels.get(net, 0.0))
 
@@ -119,11 +162,14 @@ func level_name(net: int) -> StringName:
 
 
 ## Raise a network by a cause. Returns how much it actually rose (0 when the
-## same cause has already counted recently).
-func raise(net: int, cause: StringName, at: Vector2, minutes: float) -> float:
+## same cause has already counted recently). `witnesses` is how many people
+## watched it happen, which multiplies the causes a crowd can see (WITNESSED).
+func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: int = 0) -> float:
 	var add: float = CAUSES.get(cause, 0.0)
 	if add <= 0.0:
 		return 0.0
+	if witnesses > 0 and WITNESSED.has(cause):
+		add *= witness_scale(witnesses)
 	var key := "%d|%s" % [net, cause]
 	if counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
 		return 0.0
