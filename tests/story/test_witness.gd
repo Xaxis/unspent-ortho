@@ -1,6 +1,6 @@
 extends TestCase
 ## The story in a running game, through the two channels that are not reading or
-## talking (docs/STORY.md §7): what a machine is, by being watched, and what was
+## talking (docs/STORY.md §13): what a machine is, by being watched, and what was
 ## done to the player. Each lands on the change, once, and says so.
 
 const Sx := preload("res://tests/save/save_fixture.gd")

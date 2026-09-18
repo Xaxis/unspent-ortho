@@ -10,7 +10,7 @@ extends GameSystem
 ##
 ## Nothing here opens by itself. A line is said because the player pressed a key
 ## standing in front of somebody, and never because they walked onto a tile
-## (docs/STORY.md §3).
+## (docs/STORY.md §13).
 
 ## How far a person or a thing can be and still be talked to or read. Generous
 ## on purpose: a villager walks their own round, and a key pressed at somebody
@@ -340,7 +340,7 @@ func _close() -> void:
 	view.refresh()
 
 
-# --- what was done to the player (docs/STORY.md §7, channels 3 and 4) -------------
+# --- what was done to the player (docs/STORY.md §13) -------------
 
 ## The player's own state as evidence. Each of these is a thing that happened to
 ## them or that they did — never where they walked — and each lands its beat on

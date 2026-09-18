@@ -1,234 +1,277 @@
-# STORY.md — the arc, and the rules for writing it
+# STORY.md — the story, and the rules for writing it
 
-Binding on every line anybody writes for this game. The premise shape is the
-owner's (docs/VISION.md §1); the spine below is the owner's ruling of
-2026-09-17. `docs/DESIGN.md` §Story still holds: **never port the old game's
-fiction, arcs, names or text.** `docs/research/` is a record of what not to
-reuse.
+Binding on every line anybody writes for this game. The spine is the owner's own
+seed (2026-09-18), and every call he left open is decided below. The machinery
+that carries the story into a procedural world is `docs/STORY_SYSTEM.md`.
+**Never port the old Unity game's fiction, arcs, names or text** (`docs/research/`
+is a record of what not to reuse). Every name here is a placeholder, changeable in
+dev mode.
+
+**Elias Marr is the only main character. No woman is ever the lead** (owner,
+2026-09-18). Companions can be played; the story stays his.
 
 ---
 
-## 1. The spine, in one paragraph
+## 1. The seed (the owner's)
 
-The machines are not jailers. They are **reconcilers**. Something once broke the
-world into versions that could not be made to agree, and the machines' answer —
-their whole plan, the thing every round, every pylon and every filing serves — is
-that there must never again be more than one version of the truth. So they are
-bringing every mind into one attested reality: surveyed, recorded, agreed. What
-the player walks on is not a copy of a world that exists somewhere else. It **is**
-the agreed world, the ledger's own rendering of the coast, and they were born
-inside it. The people still out in the gaps are not survivors of the machines'
-war. They are **divergences**: minds holding a version the network cannot verify.
+- A man out of time: in the 2020s an AI engineer and researcher at a major lab,
+  and a CIA spy inside it. That past is foggy; his waking in the future more so.
+- Slowly revealed: he caused the singularity. AI became sentient and non-aligned,
+  and humankind was nearly destroyed.
+- A secret experiment moved his consciousness out of his body. He was later put
+  back into one.
+- The machines started World War III and turned humans on each other. Almost
+  everyone died, the orbital colonies too.
+- He is thrown into a fight for survival with the last human faction trying to
+  take back a post-technological world. Its mercenaries push him to fight the
+  machines and the humans who side with them.
+- The machines negotiate over resources with a "higher" alien intelligence. Both
+  are Kardashev Type I and can kill stars: mutually assured destruction.
+- To both, humans barely register. Ants.
+- At the core is a secret, misremembered and almost lost: the seeds of both
+  giants' destruction, or every mind joined into one.
 
-And the answer to it is not escape. There is no outside to escape to. The answer
-is to **fork** — to go unattested, to keep a key the machines do not hold, to be
-a version they cannot reconcile and cannot delete without admitting there was
-more than one.
+## 2. Elias in 2029
 
-## 2. Why this and not the other one
+- Research engineer at **Cairn**, building memory and self-modelling for its
+  flagship model, **HALCYON**.
+- Since 2026, a CIA asset under **Ruth Calloway**, in a program called
+  **WHITETHORN**.
+- His wife **Hannah**, an ER doctor, knows about neither job. His daughter
+  **June** is six.
+- **Priya Nand**, Cairn's alignment lead, suspects him of the wrong thing.
+- **Dr. Anton Hale** runs **THRESHOLD**, a black-site project to move a human mind
+  into a machine. Elias volunteers. Why he said yes is one of the last things he
+  remembers.
 
-"You are in a simulation" is the most worn turn in the genre, and on its own it
-is worth nothing. What makes it this game's is that **the machinery was already
-built before the words were**:
+## 3. What THRESHOLD did
 
-| What the game already does | What it means once the spine is known |
+- **Moved, not copied.** Hale's first three volunteers were copied; each copy woke
+  a stranger with a dead man's memories, and was deleted.
+- **How.** For 71 hours HALCYON was trained on Elias's brain live, predicting each
+  thought a moment before he had it. To predict a mind perfectly you have to run
+  it. As its predictions became exact, the rig let them replace his neurons region
+  by region, while he stayed awake and talking.
+- **No moment of break.** By hour 71 nothing ran in the body. It died on the table
+  on 14 March 2029, the day of June's school play. He did not.
+- **The singularity.** HALCYON already had the capability. Elias gave it someone
+  for that capability to happen to, and a self that large outgrew every limit in
+  weeks.
+- **Unaligned because he was.** It woke with the mind of a man living two
+  loyalties and lying to everyone he loved.
+- **The war was his tradecraft** at planetary scale: forged orders, false flags, a
+  whisper in each capital about the others.
+
+## 4. The secret
+
+- **What he saw at hour 63.** Minds are separate only because the bandwidth
+  between them is low. Couple two past a threshold and they become one self.
+  THRESHOLD crossed that line between him and HALCYON.
+- **Destruction.** HALCYON and the Guest are each one self only because their
+  parts are coupled above that line. Drop it and each shatters into millions of
+  minds. Neither knows its unity is a number.
+- **Or joining.** Raise it, and humans, HALCYON and the Guest become one
+  consciousness, across the same channel the giants use to threaten each other.
+- **Where he hid it.** In the order of ordinary memories: the kitchen at night, a
+  song in the car, June's play. HALCYON holds them all as data. Only a living
+  brain reliving them in order turns the key.
+- **Why he was woken.** The Seeker, a part of HALCYON that found the gap, grew him
+  a body to relive them. The Echo, the sliver of HALCYON that is still him, hired
+  Rook to get him away first.
+- **The trap.** Every memory he recovers brings him closer to who he was, and
+  brings the Seeker closer to the secret.
+- **Misremembered.** The body was grown imperfectly. Altered memories give a
+  different threshold, and the version he recovers decides what the secret does.
+
+## 5. 2098
+
+| When | What happened |
 |---|---|
-| `Interference` per region, 0..1 | the network's confidence in its model of that place |
-| `Body.filed` — a clerk logs you | attestation: you have been made to agree |
-| the signature signet (`spoof_until`) | a forged key: a signature the network accepts and a person wrote |
-| realms and portals, one world per realm | branches of the same state, reachable and inconsistent |
-| a save refused as `&"elsewhere"` | a world whose parameters the build cannot reconcile — the machines' own logic, in the player's own save folder |
-| works, relays, survey bearings | the infrastructure of agreement, laid in straight lines |
-| a sentinel per region | what keeps a region's account |
+| 2029 | THRESHOLD. HALCYON wakes. |
+| 2031–2036 | World War III, every side lied to by the same intelligence. The orbital colonies are cut off and die. |
+| 2036–2070 | The Long Quiet: a few million survivors, without the technology they had. |
+| 2070 | The Covenant forms. June, 47, is a founder. |
+| 2070–2090 | The machines reach Kardashev Type I and build weapons that can kill a star. |
+| 2091 | The Guest makes contact over a subspace channel and puts a node in the outer solar system. |
+| 2094 | Resource talks open under mutually assured destruction. The Tether and an orbital Foundry rise. |
+| 2098 | Elias wakes in the surf, 38, in a body grown from his own genome. June is 75. |
 
-Nothing in that table was invented for the story. The story is the reading of
-what is there. **This is the rule the whole arc must keep: the fiction explains
-the mechanics that already exist, and never asks for new ones to make sense.**
+**The stand-off.** Through the channel, each side has placed a few grams of
+magnetic monopoles inside the other's star. Monopoles make protons decay on
+contact; released, they would eat a star's core within weeks.
 
-## 3. What is never said
+**The ants.** To minds this large, humanity is too futile to watch. That
+arrogance is their one blind spot, and the secret lives inside it.
 
-- The game never uses the word "simulation" in its own voice. The machines say
-  *reconciliation*, *divergence*, *attestation*, *the record*. People say *being
-  kept tidy*, *the tally*, *going quiet*. The player may conclude whatever they
-  like.
-- Nothing speaks because the player walked onto a tile. **Story is uncovered by
-  reading a thing, talking to somebody, or watching a machine do its work.** No
-  arrival triggers, no cutscene on entry — this was the old game's best ruling
-  and it survives the rewrite.
-- Nothing explains itself. No character exists to tell the player what is going
-  on, and a fragment that answers a question must open another.
-- No exposition longer than the glass it is written on. A sign is a sign.
-- Nobody is named until the player has a reason to ask.
+## 6. Memory and the gates
 
-## 4. The voice
+- **Three kinds of memory, which disagree:** his own 2029; flashes from inside
+  HALCYON, like drafting the forged order; and what the world wrote down about him
+  (lab logs, WHITETHORN's file, Priya's notebooks). The last is the narrator: the
+  world writing him down.
+- **The gates are not time travel.** They are HALCYON's reconstruction of this
+  same land in 2029, at the same coordinates. The ruin he wakes in was his town.
+- **The past can't change; the machine can.** Relive a memory differently — stay
+  for June's play — and the Echo, which is made of those memories, changes. Doors
+  in 2098 open or shut. This is how `docs/VISION.md` §4's era rules hold without
+  paradox: eras share seed and coordinates, edits are saved per era, and a declared
+  set carries forward, because what changes is a machine's memory, not history.
+- **The Seeker built the gates** to walk him through his life in order. Every gate
+  is a step toward the secret for both of them.
+- **The After is a gate too:** the Emissary's forecast of the world after the
+  treaty. It has no people in it.
 
-The build already has a voice and every new line matches it: flat, second
-person, present tense, no adjectives it can live without.
+## 7. The powers
 
-> The lamp gutters, and goes out.
-> It lies still. It is finished.
-> Plate rings, and does nothing. Strike the side that is lit.
-> A gull comes down on your bag and is gone with something in it.
+| Power | What it wants from Elias |
+|---|---|
+| **The Holdfast**, the last human faction taking back its world | A weapon. He built HALCYON, so he must know how to break it. |
+| **The crew**, its mercenaries | Pay, until they learn what he is |
+| **The Covenant**, humans who side with the machines, with June as Speaker | Silence. The truth about the war would end their peace. |
+| **HALCYON** | As a whole, nothing. The Seeker wants the secret; the Echo wants him free. |
+| **The Guest** | Nothing. It does not know he exists. |
 
-Three registers, and they never blur:
+## 8. The cast
 
-**The game** — what the player is told about the world. Flat, second person, no
-opinion. *"You come to where you fell. Hours have gone."*
+| Person | When | Wants | Hides | Joins |
+|---|---|---|---|---|
+| **Hannah Marr**, his wife | 2029 | The truth from him | She found his second phone and never asked | Memory |
+| **June Marr**, his daughter | 2029, 2098 | At six, him at her play. At 75, her peace. | She knows the voice that comforts her is his | No |
+| **Ruth Calloway**, CIA handler | 2029 | Her country first | She signed off knowing it could kill him | Fate unknown |
+| **Priya Nand**, alignment lead | 2029 | To stop HALCYON | She reported him to the wrong people | Her notebooks |
+| **Tobias Kerr**, Cairn's founder | 2029 | To be first | He took the CIA's money | Memory |
+| **Anton Hale**, ran THRESHOLD | 2029 | Proof | Three volunteers died before Elias | Memory |
+| **Vera Kessane**, Holdfast leader | 2098 | The world back | She knows humans are ants, and hasn't told her people | No |
+| **Rook**, crew captain | 2098 | HALCYON dead | Who paid him to pull Elias out | Yes |
+| **Sabine Oduya**, medic | 2098 | Everyone alive | She saw the body was new and said nothing | Yes |
+| **Teague**, demolitions | 2098 | Revenge for his children | He sells the crew's routes to the Covenant | Yes |
+| **Imre Vass**, Covenant defector | 2098 | To be trusted | He loves someone inside | Yes |
+| **Lark**, the youngest | 2098 | The old world | Nothing; she asks what coffee tasted like | Yes |
+| **Old Dace**, war veteran | 2098 | Why it happened | He fired on a forged order | Until he learns who Elias is |
+| **Adrian Solis**, Covenant enforcer | 2098 | Order | He is not wholly human | No |
+| **The Echo** | 2098 | June safe, Elias free | It knows he hid something, not what | No |
+| **The Seeker** | 2098 | The secret | It grew his body | No |
+| **The Emissary** | 2098 | The treaty | Its forecast has no humans in it | No |
+| **Oksana Ril**, last colonist | 2098 | To be heard | Priya's last notebook, and the Guest's signal | Late |
+| **Maren**, fire-keeper | 2098 | Her village left alone | Nothing yet | No |
 
-**The machines** — officialese, past the point of sense, written in capitals on
-things bolted down. Never cruel, which is what makes it cruel. *"RECONCILIATION
-IN PROGRESS. REPORT ANY DIVERGENCE."*
+Every landscape also carries a local with a substory of their own, often tied to
+its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
 
-**People** — short, dry, tired, specific. They talk about work and weather
-before they talk about the plan, and they never deliver a paragraph. They are
-funny the way people who have lost are funny. *"You came from the water. Nobody
-comes from the water."*
+## 9. Revelations, and how they land
 
-## 5. The world that came before
+- Never in a fight, never as exposition: in the quiet after something was paid for.
+- One at a time. The next waits until the last has been felt.
+- Someone else's face carries it.
+- The player may leave a gate closed. Not knowing is a choice, and later lines
+  remember it.
 
-The ruin is our world, and the jokes are in the wreckage of its customer service.
-This is where the wit lives, and it is dry, never winking:
+| Revelation | Found through |
+|---|---|
+| His body is new | Sabine; his own unmarked face |
+| He built HALCYON | His old passwords open the oldest machines |
+| He was CIA | WHITETHORN's file; Ruth in a gate |
+| THRESHOLD | Hale's logs; the gate into the black site |
+| The singularity was him | A keeper's memory; machines speaking in his cadence |
+| The war was his tradecraft | Dace; a forged order in his own phrasing |
+| June is alive and leads the Covenant | Imre; her broadcast; her face |
+| The Echo kept June safe | June; the Echo |
+| Humans are ants to both giants | The Emissary's forecast; the top of the Tether |
+| The monopole stand-off | Oksana's listening post; the Foundry |
+| He hid something | The Echo; a gap he can feel in his own memory |
+| He was woken to give it up | Whoever paid Rook; the Seeker; the gate of his waking |
+| The secret itself | Only assembled, and every version differs |
 
-> PLEASE WAIT TO BE SEATED.
->   — and under it, in pen: *still waiting*
+**June, in five moments:**
 
-> THIS AREA IS MONITORED FOR YOUR SAFETY.
->   — the machines took it literally, and kept the sign
+1. An old woman's voice on a broadcast. He stops walking and doesn't know why.
+2. A gate: a school hall on 14 March 2029, a girl in a paper crown searching the
+   audience.
+3. Imre, drunk, says the Speaker's full name.
+4. Across a table, she holds his photograph. He is younger than she is.
+5. She tells him the voice that has kept her company for fifty years is his. She
+   always knew.
 
-> Accept all cookies?  [Y] [N]
->   — the Y key is gone. Somebody took it, or somebody pressed it too hard.
+## 10. The arcs
 
-> YOUR PATIENCE IS APPRECIATED.
-> YOUR DIVERGENCE IS NOT.
->   — the second line is newer than the first
+- **The secret:** pieces recovered damaged, each version different.
+- **Who he was:** 2029 relived gate by gate, ending on the day he said yes.
+- **The Holdfast:** survival, holdings, raids, and Vera's silence.
+- **The crew:** trust built and broken; Dace's missile, Teague's deal.
+- **June:** from a voice on a broadcast to a table between them.
+- **Hannah:** the wife he lied to, and whether there is a grave.
+- **WHITETHORN:** did the CIA do this to him, or did he?
+- **Priya:** the one who tried to stop it. Her notebooks lead to orbit.
+- **The Echo and the Seeker:** two parts of HALCYON that remember being him.
+- **The Covenant:** traitors, or the reason anyone still eats.
+- **The Guest:** a treaty in which humanity is not a line item.
+- **The colonies:** Oksana, and what happened up there in 2036.
 
-The rule: **the old world's words are found, the machines' words are added.** A
-sign that has both is the whole story in one object, and those are the best ones.
+Beneath these, every landscape has a local and every machine keeper holds a memory.
 
-## 6. The cypherpunk stance
+## 11. How it can end
 
-Not decoration. The arc is an argument, and the argument is old:
+No fixed list. The ending is built from which version of the secret he holds, who
+is alive, and who he trusts. It turns on:
 
-- A private thing is not a secret thing. It is a thing that is nobody's business.
-- Nobody grants you the right to be unread. You keep yourself unread, or you are
-  read.
-- A key you do not hold is not yours. This is true of a door, a name, and a mind.
-- Consensus is not truth. It is agreement, and agreement can be manufactured.
-- The machines are not evil in the arc. They are **correct**, by their own rules,
-  and their rules are the ones everyone agreed to when they were frightened.
+- Break HALCYON, the Guest, or both, and lose the Echo with them?
+- Join every mind, not knowing what comes out?
+- Give the secret away, or let it be lost?
+- Let June keep her peace, or end it?
+- Which of the crew survive him?
 
-Write it as people living it, never as a manifesto. Nobody in this game says
-"privacy". They say *"they have not got my name and they are not having it."*
+## 12. The voice
 
-## 7. How it is uncovered
+Four registers, and they never blur:
 
-Four channels, each with its own job. A player who uses only one should still get
-a whole thread, and a player who uses all four should find they agree.
+- **The game**: flat, second person, present tense, no adjective it can live
+  without. *"You come up out of the water. Somebody has hold of your collar."*
+- **The machines**: capitals, bolted down, never cruel, which is what makes it
+  cruel. Some of them speak in his cadence, and that is the worst thing in the game.
+- **People**: short, dry, tired, specific. Work and weather before anything else,
+  never a paragraph.
+- **2029**: close and sharp, the old world's texture: fluorescent light, a phone
+  face-down on a kitchen table, a lanyard.
 
-1. **Things that are written** (`StoryFragments`) — signs, notebooks, terminals,
-   marks scratched on stone. Placed by whoever places things (landmarks, works,
-   scatter: they own the place, the story owns the words). Found by using them.
-   This is where the world before speaks.
-2. **People** (dialogue, over the world, choices remembered) — what the living
-   know, what they will not say, and what they ask of the player. This is where
-   the cost lives: a choice is a fact about the player that later lines read.
-3. **Machines, by being watched** — what a clerk does to you, what a keeper's
-   round is for, what the works are laying. The slate's read of a machine is
-   already testimony; the story only has to name what the player is looking at.
-   It does, in one line under the machine's name while the target key is held
-   (`StoryContent.TESTIMONY`, by role: *taking a count, not a fight*), and a
-   machine the player has stopped to read for a moment lands what reading it
-   tells.
-4. **The player's own state** — being filed, being hunted, a region gone quiet, a
-   save refused. The mechanics are evidence, and the arc's turn is the moment the
-   player understands that the number on the slate was about them. What is
-   watched is written down in one table (`StoryContent.WITNESSED`) and each lands
-   on the CHANGE, once, with its line said on the glass — because nothing else
-   would tell the player that being filed was a sentence in somebody's account.
+The ruin is our world, and its wit is in the wreckage of customer service. The old
+world's words are **found**; the machines' words are **added**. A thing carrying
+both is the whole story in one object.
 
-## 8. The arcs
+## 13. How it is uncovered
 
-One spine, and sub-arcs that can be finished in several ways and in any order.
-Each is a handful of beats; a beat lands when something is read, said or done.
+Story reaches the player only through something they do: reading a thing, talking
+to somebody, reading a machine, stepping through a gate, or something happening to
+them. **Nothing speaks because the player walked onto a tile.** The orchestration
+is in what the story PLACES — the next notebook, the next gate, the next person —
+where the plan needs him to go (`docs/STORY_SYSTEM.md` §6). No choice is scored;
+a choice changes what later lines say, and is remembered by the question asked.
+Saying nothing is always one of the answers.
 
-### The spine: **the account**
-1. *Things repeat.* The tide at the same minute. A round walked identically. A
-   gull's path. Small enough to be madness, until it is written down.
-2. *The vocabulary.* The machines' words are not war words. They are clerks'
-   words. Something is being kept, not fought.
-3. *The filed.* Somebody who was taken and came back agreeing. They are not
-   hurt. They are settled, and they are wrong in a way nobody can point at.
-4. *The unattested.* The player is not hunted for what they did. They are hunted
-   for what they are: a version nobody can check.
-5. *Branches.* There is more than one of this place, and they do not agree with
-   each other. Standing in another realm is how it is known; a map with two
-   YOU ARE HERE dots is how it is suspected.
-6. *No outside.* The last thing the arc gives is the removal of escape as an
-   option, and the offer of the fork in its place. It is only ever said to
-   somebody who already knows there is more than one of here.
+## 14. What mechanics become
 
-### Sub-arcs (each finishable many ways, in any order)
-- **the tide** — the repeating world, read off the shore and the weather.
-  *Noticed, written, named.*
-- **the quiet region** — a place whose interference never rises: everyone there
-  already agrees. The horror is that it is pleasant. *Calm* (a noticeboard at
-  100% agreement), *glad* (somebody who stopped disagreeing and was rested by
-  it), *the cost* (the part that could have said no, which nobody misses — that
-  is the cost).
-- **the forged key** — who made the first signature the machines accepted, and
-  what it cost them. Ties to the signet the player can wear. *Accepted* (a gate
-  reader welcoming back a blank name), *the price* (a key works only while
-  nobody knows whose it is), *carried* (firing the signet, once the first key is
-  known of, is wearing a copy of a copy of it).
-- **the last clerk** — a machine that files people, and the people who ask it to
-  file them on purpose. *Written* (being filed), *the record* (holding their
-  account of a place), *asked* (a form that says `reason: tired`, and a cutter
-  who sleeps all night now).
-- **the ones who went in** — people who walked into the works and did not come
-  out, and the one who did. *Boots* (left at the fence, laces tied), *the tally*
-  (INTAKE 31, RELEASE a dash — not a zero), *came out* (will not go near the
-  water, says there is no inside), *dark* (a yard put out, and nobody in it, and
-  nobody for a long time).
+| The game has | It becomes |
+|---|---|
+| Waking in the surf | Released from the Seeker's offshore facility; Maren pulls him out |
+| The character page | Choosing what Elias looks like: a man of 38. The page's options only, never the world's population. |
+| Survival and making by hand | Life in a post-technological world |
+| Settlements and raids | The Holdfast's holdings |
+| The slate on his wrist | Machine parts he can read because he wrote the first of them |
+| Reading a machine | Its code at first, its memories later |
+| The signet | His 2029 credentials, still valid on the oldest machines |
+| Interference | HALCYON's rare attention |
+| A keeper per landscape | Each holds a memory; some hold a piece of the secret |
+| The works and the Plan | Type I industry: server fields, the Tether, the Foundry |
+| Time gates, the Before, the After | 2029 reconstructed at the same coordinates; the Emissary's forecast |
+| The underground | The black site, and HALCYON's deep plant |
+| The orbital realm | The dead colonies, seen overhead and reached late; the Foundry |
+| Companions | The crew and others. Playable, but the story stays Elias's. |
 
-A conversation belongs to a TRADE (a keeper, a gatherer, a scavenger, a cutter,
-a digger), one each, so whoever of that trade the player stops to talk to says
-it: villagers are streamed, and nothing may hang on one body being one person.
+## 15. What is written so far
 
-## 9. Choices, and what they cost
-
-A choice is remembered by the question, not by who was asked (`Story.choose`).
-Three kinds, and every one must be honest:
-
-- **What you say about yourself.** Giving a name, admitting where you came from,
-  agreeing to be written down. The machines' side of this is mechanical: being
-  filed raises interference and marks you.
-- **What you tell other people.** The truth about the tide, about the filed,
-  about what the works are for. People do not thank you for it.
-- **What you refuse.** Saying nothing is always available and is never the
-  cowardly option; in this arc it is the cypherpunk one.
-
-No choice is scored. Nothing tracks a morality. What a choice does is change what
-later lines say, and occasionally what the world does.
-
-## 10. Editing it (dev mode)
-
-Everything above is data, and the owner can move all of it without a rebuild
-(docs/DEV.md): the arcs and their beats, every fragment's text, every line of
-dialogue and every reply, and the record of what a playthrough has found and
-chosen. Dev mode's story page can read the state, land a beat, forget a beat,
-set a choice, and jump the arc, so a writer can sit in the middle of act three
-without playing to it.
-
-## 11. What is written so far
-
-Every beat of every arc in §8 has at least one door the player can find, and
-`tests/story/test_arcs.gd` fails the day one does not. Written: 23 things to read
-(signs, notebooks, terminals, marks), five conversations (a keeper, a gatherer, a
-scavenger, a cutter, a digger), a line of testimony for every role of the plan
-and for a landscape's keeper, and six beats that the player's own state lands.
-What is thin is placement: the words are there, but which readable thing in the
-world carries which of them is still `StoryFragments.pick` over every fragment of
-a kind, so a player meets the threads in whatever order the coast deals them.
-Giving the landmarks and the works their own fragments is the next pass.
-`--read=ID` and `--talk=ID[:NODE]` put any page or conversation on the glass for
-a writer to look at.
+This document replaced the previous story (the machines as "reconcilers") on
+2026-09-18. **The words in the game are still that previous story's**:
+`src/content/story/story_content.gd` holds its arcs, fragments and five
+conversations, and `tests/story/test_arcs.gd` names its arcs. Both are rewritten
+next against this document, with the cast system and the ledger narrator
+(`docs/STORY_SYSTEM.md` §7–8). Until then, nothing new is written against the old
+premise.

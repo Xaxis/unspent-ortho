@@ -739,7 +739,7 @@ const TALKS := {
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
-# The slate's read of a machine is already testimony (docs/STORY.md §7): what it
+# The slate's read of a machine is already testimony (docs/STORY.md §13): what it
 # is, what it can do, what it has noticed. This is the one line more — what it is
 # FOR, in the plan's own terms — shown under its name while the target key is
 # held. By role, because a landscape that brings its own roster is read in the
@@ -772,7 +772,7 @@ const TESTIMONY_PASSES := {"says": "shows what agreeing looks like", "beats": [&
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
 # Beats that land because of something that HAPPENED to the player or that they
-# did, never because of where they walked (docs/STORY.md §3). 49_story watches for
+# did, never because of where they walked (docs/STORY.md §13). 49_story watches for
 # each; this table is what it watches for, in words, so a writer can see every
 # door a beat has and a test can hold every beat to having at least one.
 
