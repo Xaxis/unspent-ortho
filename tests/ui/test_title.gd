@@ -1,6 +1,20 @@
 extends TestCase
 ## The title: it shows a coast, draws the next one after a while, and New game
 ## starts a game on the coast being shown.
+##
+## WHAT IS ON DISK IS PART OF WHAT NEW GAME DOES, so the tests that press it give
+## themselves a slot folder of their own. `UiTitleMenu` asks once, before a new
+## game writes over an autosave, and that ask is a real feature — but it made
+## these two tests depend on whether some EARLIER test in the same shard had left
+## an autosave in the runner's shared folder. They failed in the gate and passed
+## run alone, which read as a flake and was diagnosed twice as the three shards
+## sharing a save directory. They do share one, and that was not it: shard 0 run
+## completely by itself failed the same way. It is one process, in file order.
+##
+## So the precondition is stated instead of inherited, and the ask has a test of
+## its own below — it had none, and the only thing exercising it was the accident.
+
+const Sx := preload("res://tests/save/save_fixture.gd")
 
 
 func _title() -> UiTitle:
@@ -67,6 +81,7 @@ func test_pause_can_leave_for_the_title() -> void:
 
 
 func test_new_game_starts_on_the_coast_shown() -> void:
+	Sx.use_root("title-new")
 	var t := _title()
 	var holder := t.get_parent()
 	check(await _run(t, 20.0, func() -> bool: return t.world != null), "a coast is drawn")
@@ -88,9 +103,11 @@ func test_new_game_starts_on_the_coast_shown() -> void:
 		eq(game.options.seed_value, 5, "same coast")
 		eq(StringName(game.options.avatar.get("build", &"")), build, "with the body made on the page")
 	holder.free()
+	Sx.finish()
 
 
 func test_back_on_the_character_page_is_the_title_again() -> void:
+	Sx.use_root("title-back")
 	var t := _title()
 	var holder := t.get_parent()
 	t.menu.settle()
@@ -102,6 +119,30 @@ func test_back_on_the_character_page_is_the_title_again() -> void:
 	check(not t._starting, "and nothing starts")
 	check(t.menu.is_open, "the title's list is still there")
 	holder.free()
+	Sx.finish()
+
+
+## The ask that made the two above depend on what ran before them, tested on
+## purpose: with an autosave standing, the first press says what it would cost
+## and starts nothing, and the second press goes through.
+func test_new_game_asks_once_before_it_writes_over_an_autosave() -> void:
+	Sx.use_root("title-ask")
+	var g := Sx.game(tree, ["--seed=3", "--size=64"])
+	eq(Sx.system(g, "05_save").call("save_to", SaveSlots.AUTO), "", "an autosave is written")
+	Sx.end(g)
+	check(SaveSlots.exists(SaveSlots.AUTO), "and it is on disk for the title to find")
+	var t := _title()
+	var holder := t.get_parent()
+	t.menu.settle()
+	t.menu.select(&"new")
+	t.menu.handle(&"confirm")
+	check(not t.character.is_open, "the first press does not start a game")
+	check(not t._starting)
+	eq(t.menu.note, UiTitleMenu.ASK_NEW, "it says what pressing again would cost")
+	t.menu.handle(&"confirm")
+	check(t.character.is_open, "the second press goes through to who wakes")
+	holder.free()
+	Sx.finish()
 
 
 func test_a_new_coast_fades_up_only_once_it_is_drawn() -> void:
