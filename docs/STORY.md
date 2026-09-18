@@ -179,8 +179,22 @@ and the game walks toward it.
 | **Oksana Ril**, last colonist | 2098 | To be heard | Priya's last notebook, and the Guest's signal | Late |
 | **Maren**, fire-keeper | 2098 | Her village left alone | Nothing yet | No |
 
-Every landscape also carries a local with a substory of their own, often tied to
-its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
+Every landscape also carries a local with a substory of their own. A local is
+colour, never load (`docs/STORY_SYSTEM.md` §4): they stand at the village of
+their own land nearest where he wakes, and what they have noticed is theirs.
+
+| Land | Local | What they have noticed |
+|---|---|---|
+| coast | Maren | (she is the home fire) |
+| bonelands | **Esk**, stone-setter | The stones stand because they were counted, not because they are graves. He sets them up anyway. |
+| burning | **Hollis**, slag-runner | Everything the refineries make goes up the Tether |
+| limestone caves | **Wren**, lampwright | Something below hums like a voice counting, and never gets past its number |
+| moss | **Ansel**, pump-watcher | The fen is a valley drowned by a dam opened on an order that checked out |
+| pinewood | **Corra**, charcoal-burner | Each square the machines cut fills with something that hums |
+| salt flats | **Mica**, brine-raker | The keeper stops at dusk and faces one way, like someone waiting for a car |
+| scrapwood | **Tamsin**, filings-reader | The battle here was two armies of the same side |
+| slums | **Pell**, clerk | Two men came out of the water before him, and the city filed them both. They had his face. |
+| snowfield | **Brannoc**, line-walker | A number on the wires gets smaller every winter. It may be the people. |
 
 ## 9. Revelations, and how they land
 
@@ -204,6 +218,7 @@ its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
 | The monopole stand-off | Oksana's listening post; the Foundry |
 | He hid something | The Echo; a gap he can feel in his own memory |
 | He was woken to give it up | Whoever paid Rook; the Seeker; the gate of his waking |
+| He was not the first grown | Maren's two who walked out to the point; Pell's file of arrivals from the water |
 | The secret itself | Only assembled, and every version differs |
 
 **June, in five moments:**

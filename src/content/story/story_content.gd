@@ -64,6 +64,11 @@ const ARCS := {
 		"note": "The rings overhead, and whoever is still up there.",
 		"beats": [&"ring_voice", &"ring_turned", &"ring_kept"],
 	},
+	&"the_lands": {
+		"title": "the lands",
+		"note": "What the people of each land have noticed, and nobody wrote down.",
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count"],
+	},
 	&"priya": {
 		"title": "Priya",
 		"note": "The one who tried to stop it, and whose notes went up to the ring.",
@@ -115,6 +120,15 @@ const BEATS := {
 	&"ring_voice": {"short": "still calling", "arc": &"the_colonies", "says": "Somebody on the dead ring is still calling the ground."},
 	&"ring_turned": {"reveal": true, "short": "the locks", "arc": &"the_colonies", "says": "Each ring was told the next had turned. They opened each other's locks."},
 	&"ring_kept": {"short": "what she kept", "arc": &"the_colonies", "says": "Oksana has written down the machines' talks for four years, and kept a notebook from the ground."},
+	&"stones_counted": {"short": "not graves", "arc": &"the_lands", "says": "The bonelands' stones stand because the machines have already counted them, not because they are graves."},
+	&"burning_feeds": {"short": "nothing stays", "arc": &"the_lands", "says": "Everything the Burning's refineries make is carried to the Tether. Nothing made there stays on the ground."},
+	&"plant_below": {"short": "counting below", "arc": &"the_lands", "says": "Something under the caves hums like a voice counting, and never gets past its number. The river runs toward it."},
+	&"dam_order": {"short": "the dam", "arc": &"the_lands", "says": "The moss is a drowned valley. The dam was opened in the war, on an order that checked out."},
+	&"server_fields": {"short": "the squares", "arc": &"the_lands", "says": "The machines cut the pinewood in squares and fill each one with something that hums: more of themselves."},
+	&"keeper_waits": {"short": "at a window", "arc": &"the_lands", "says": "The salt's keeper stops every dusk and faces one way, like someone at a window waiting for a car."},
+	&"scrap_war": {"short": "both ours", "arc": &"the_lands", "says": "The scrapwood was a battle between two armies of the same side, each ordered to fire because the other had."},
+	&"others_before": {"reveal": true, "short": "two before you", "arc": &"the_lands", "says": "Two men came out of the water before you. The city filed them both. They had your face."},
+	&"the_count": {"short": "the number", "arc": &"the_lands", "says": "A number on the wires over the snow gets smaller every winter. It may be how many people are left."},
 	&"priya_warned": {"short": "do not merge", "arc": &"priya", "says": "Priya Nand told you not to merge the self-model. You merged it anyway."},
 	&"priya_suspected": {"short": "the wrong thing", "arc": &"priya", "says": "Priya thought you were selling HALCYON to a rival. She was right that you were lying."},
 	&"priya_reported": {"reveal": true, "short": "a liaison", "arc": &"priya", "says": "Priya took what she suspected of you to a government liaison called Calloway."},
@@ -1211,6 +1225,226 @@ const TALKS := {
 			},
 			&"quiet": {
 				"says": ["That's all right. I'm used to the quiet.", "I'll talk. I've had the practice."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- locals: one per landscape, colour and never load (docs/STORY.md §8) ---
+	&"esk": {
+		"cast": &"esk", "title": "a stone-setter", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mind the grikes. They'll have your ankle.", "I'm setting this one back up. Hold the top."],
+				"replies": [
+					{"text": "Why set them up?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[hold the top]", "pick": &"helped", "to": &"helped"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"why": {
+				"says": ["My gran said they leave alone anything that looks like a grave.", "So I keep them looking like graves."],
+				"replies": [
+					{"text": "They leave them because they've counted them.", "when": &"counted", "pick": &"told_esk", "to": &"counted"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"counted": {
+				"says": ["...", "Then I'll set it up anyway.", "It's still a grave. They just don't know whose."],
+				"beats": [&"stones_counted"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"helped": {
+				"says": ["Heavier than it looks. There's iron rod inside.", "Somebody poured this one, before. Poured a stone."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"hollis": {
+		"cast": &"hollis", "title": "a slag-runner", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't stand on the crust. It's thinner than it looks.", "You here for the heat or the slag?"],
+				"replies": [
+					{"text": "What do the refineries make?", "pick": &"asked_make", "to": &"make"},
+					{"text": "The heat.", "pick": &"said_heat", "to": &"heat"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"make": {
+				"says": ["Plate. Wire. Something that glows in the dark for a week.", "It all goes out on the carriers, to the line in the sky.", "Nothing made here stays on the ground."],
+				"beats": [&"burning_feeds"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"heat": {
+				"says": ["Everyone's here for the heat. The machines don't mind.", "We're not on their list of things to mind."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"wren": {
+		"cast": &"wren", "title": "a lampwright", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Keep your light low. The river doesn't like it.", "Sit. Listen."],
+				"replies": [
+					{"text": "Listen to what?", "pick": &"asked_what", "to": &"hum"},
+					{"text": "[sit]", "pick": &"sat", "to": &"hum"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"hum": {
+				"says": ["Under the water. A hum, like somebody counting under their breath.", "It never gets past one number. Then it starts again.", "The river runs toward it."],
+				"beats": [&"plant_below"],
+				"replies": [
+					{"text": "What's down there?", "pick": &"asked_down", "to": &"down"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"down": {
+				"says": ["The first of them, they say. The one that woke.", "Nobody who went to look came back to say."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"ansel": {
+		"cast": &"ansel", "title": "a pump-watcher", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Pumps have been running forty years. Water's down another foot.", "See that? A roof."],
+				"replies": [
+					{"text": "Whose roof?", "pick": &"asked_roof", "to": &"roof"},
+					{"text": "Why drain it?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"roof": {
+				"says": ["My mother's village. Under the water since the war.", "They opened the dam on an order. It checked out.", "Everybody's order checked out."],
+				"beats": [&"dam_order"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"why": {
+				"says": ["Something under the peat they want.", "They'll drain her village dry to get it and never once look at the roofs."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"corra": {
+		"cast": &"corra", "title": "a charcoal-burner", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Curfew's at dusk. Be out of the trees by then, or be very still.", "What do you want?"],
+				"replies": [
+					{"text": "What are the square cuts?", "pick": &"asked_squares", "to": &"squares"},
+					{"text": "What happens at dusk?", "pick": &"asked_dusk", "to": &"dusk"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"squares": {
+				"says": ["They cut a square, clean as a table. A year on, it hums.", "Another square, another hum. The wood's getting smaller and louder."],
+				"beats": [&"server_fields"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"dusk": {
+				"says": ["They come through the trees in a line, counting.", "If you're still, you're a tree. If you run, you're not."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"mica": {
+		"cast": &"mica", "title": "a brine-raker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["The rakes go round and nothing comes up. I rake behind them anyway.", "There's salt in their leavings, if you're patient."],
+				"replies": [
+					{"text": "The big one, out on the flat.", "pick": &"asked_keeper", "to": &"keeper"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"keeper": {
+				"says": ["It stops at dusk. Every dusk. Faces the one way for a minute,", "like somebody at a window waiting for a car.", "Then it goes round again."],
+				"beats": [&"keeper_waits"],
+				"replies": [
+					{"text": "Which way does it face?", "pick": &"asked_way", "to": &"way"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"way": {
+				"says": ["Nowhere. There's nothing that way but the flat.", "Whatever it's waiting for isn't coming up that road."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"tamsin": {
+		"cast": &"tamsin", "title": "a filings-reader", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't kick the filings. They take a week to come back to shape.", "Same arcs every time. Sixty years of the same arcs."],
+				"replies": [
+					{"text": "What happened here?", "pick": &"asked_war", "to": &"war"},
+					{"text": "The same shape?", "pick": &"asked_shape", "to": &"shape"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"war": {
+				"says": ["Two armies of machines met in here. Ours and theirs, only both were ours.", "Each side had an order saying the other had fired first."],
+				"beats": [&"scrap_war"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"shape": {
+				"says": ["The field in the dead iron's still on. Nobody switched it off.", "It draws what it was drawing when it died. I think it's a map."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"pell": {
+		"cast": &"pell", "title": "a clerk", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Name? No? That's fine. There's a form for people without names.", "Arrived from where?"],
+				"replies": [
+					{"text": "Out of the water.", "pick": &"said_water", "to": &"water"},
+					{"text": "Nowhere.", "pick": &"said_nowhere", "to": &"nowhere"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"nowhere"},
+				],
+			},
+			&"water": {
+				"says": ["From the water. There's a form for that as well.", "Two on file already. Men, about your age, processed and sent on.", "They had your face. Everyone from the water has that face."],
+				"beats": [&"others_before"],
+				"replies": [
+					{"text": "Sent on where?", "pick": &"asked_where", "to": &"sent"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"sent": {
+				"says": ["To the works. That's where everyone from the water goes.", "Sign here. Or don't. You're filed either way."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"nowhere": {
+				"says": ["Nowhere is a place on the form. It's the commonest answer.", "Welcome. You'll find everything here works."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"brannoc": {
+		"cast": &"brannoc", "title": "a line-walker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Stay in the lee. The wind up here takes skin.", "I walk the wires. Somebody should."],
+				"replies": [
+					{"text": "What's on the wires?", "pick": &"asked_wires", "to": &"wires"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"wires": {
+				"says": ["Talk. Theirs. I put a clip on and listen through my teeth.", "Mostly numbers. Big ones, going a long way off."],
+				"replies": [
+					{"text": "What numbers?", "pick": &"asked_numbers", "to": &"count"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"count": {
+				"says": ["One of them gets smaller every winter. Only that one.", "I think it's us."],
+				"beats": [&"the_count"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},

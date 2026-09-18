@@ -1,0 +1,42 @@
+# One local per landscape (docs/STORY.md §8), through the real keys: each stands
+# at the village of their own land nearest where he woke, and the one `use` key
+# opens their own words. A big world, because a small one is a single island
+# that may not have been dealt these lands at all.
+#
+#   tools/tour.sh tours/locals.tour --seed=7 --size=1024 --hour=11 --weather=clear:0
+#
+# `at cast:NAME` asks 49_cast where that person stands, never a coordinate.
+coast calm
+wait 0.6
+
+# --- Pell, a clerk in the city where the plan worked -------------------------------------
+at cast:pell
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 01-pell-files-him with talking,cast:pell
+press pause
+wait 0.5
+await met:pell 2
+
+# --- Mica, raking behind the machines' rakes on the salt ---------------------------------
+at cast:mica
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 02-mica-on-the-salt with talking,cast:mica
+press pause
+wait 0.5
+
+# --- Brannoc, who listens to the wires over the snow -------------------------------------
+at cast:brannoc
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 03-brannoc-on-the-wires with talking,cast:brannoc
+press pause
+wait 0.5
+await met:brannoc 2

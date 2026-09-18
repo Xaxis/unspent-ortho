@@ -25,11 +25,12 @@ func rows() -> Array[Dictionary]:
 			"%d min" % ceili(StoryPacing.settles_in()), {"tone": "warn"}))
 	else:
 		out.append(item(&"settled", "nothing settling", String(last) if last != &"" else "", {"tone": "dim"}))
-	var leg := -1
+	var group := ""
 	for s: StorySlot in StoryPlan.slots():
-		if s.leg != leg:
-			leg = s.leg
-			out.append(header("leg %d" % (leg + 1)))
+		var g := "leg %d" % (s.leg + 1) if s.ordered else "locals"
+		if g != group:
+			group = g
+			out.append(header(g))
 		var value := "colour"
 		if s.realm != game.world.realm:
 			value = "in the %s" % s.realm

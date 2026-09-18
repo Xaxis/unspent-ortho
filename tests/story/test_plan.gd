@@ -98,7 +98,8 @@ func _crosses_in_order(w: WorldData) -> void:
 	var last_leg := -1
 	var last_rank := -1
 	for sl: StorySlot in StoryPlan.slots():
-		if not done.has(sl.id):
+		# A local is colour and no stop on the journey (StorySlot.ordered).
+		if not done.has(sl.id) or not sl.ordered:
 			continue
 		var p: Vector2 = done[sl.id].pos
 		var rank := order.find(int(done[sl.id].body))

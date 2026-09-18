@@ -159,6 +159,11 @@ continent has villages, a works depot per worked region, landmarks and a portal,
 whatever landscapes it drew. A spine built from those cannot be dealt out of a
 world.
 
+**Locals are not stops.** A slot with `ordered: false` is sought from home
+outward on every body and moves the journey's floor nowhere. The nine locals
+(`StoryPlan.LOCALS`) are cast this way, each at the nearest village of their own
+land, so meeting one never pulls the path forward or back.
+
 **Legs, not distances.** The story crosses every continent people live on, in
 order (owner, 2026-09-18). A slot names its `leg`; `StoryJourney` orders the
 world's inhabited bodies outward from the spawn, and casting puts each slot on its
