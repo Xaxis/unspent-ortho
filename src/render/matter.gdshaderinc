@@ -12,8 +12,9 @@
 //      bends the normal by a world-space height field at that material's own
 //      scale, so the light finds the pebbles the wash draws.
 //   3. WHAT HAS HAPPENED TO IT. `matter_wear()` reads the wear map baked for
-//      this world (SkyWear) and `matter_worn()` lays it on by FACE: rust along
-//      an underside, salt blooming white out of a seam, soot in the lee of the
+//      this world (SkyWear) and `matter_worn()` lays it on by FACE: rust down a
+//      FLANK (see `matter_worn`: never the true underside, which nobody sees),
+//      salt blooming white out of a seam, soot in the lee of the
 //      wind, frost on what faces the sky. The same machine rusts in the bog,
 //      blooms on the flat and blacks in the Burning, and it does it by world
 //      position, deterministically, with no randf() anywhere.

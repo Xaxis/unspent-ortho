@@ -35,10 +35,18 @@ Three laws replace the six that governed the page.
 A surface is what it is made of, and what has happened to it. Wet slate, rusted
 plate, frozen mud, ash, salt crust, bog water, oiled steel, rotten timber, snow
 that has thawed once and refrozen. Wear accumulates **by world position**: a
-machine standing in a bog rusts along its underside, the same machine on a salt
-flat blooms white in its seams, the same machine in the Burning carries soot in
-its lee. The land tells you what it has been through by what it is made of, not by
-a mark drawn on top of it.
+machine standing in a bog rusts down its FLANKS, the same machine on a salt flat
+blooms white in its seams, the same machine in the Burning carries soot in its
+lee. The land tells you what it has been through by what it is made of, not by a
+mark drawn on top of it.
+
+*Flanks, not the underside.* This law said "underside" until wear was rendered
+for the first time (#81, `--wear=`) and the word could be checked against the
+shader: `matter_worn` puts rust on `clamp(0.78 - up, 0, 1)`, which is anything
+not facing the sky, and its own comment says the true-underside version was
+built first, was seen by nobody at a 57-degree camera, and made the bog and the
+bone the same machine. "Underside" is the word the eye reaches for and it names
+the model that was thrown away, so it is worth spending a line on.
 
 ### 2. Light is the author
 
@@ -239,7 +247,7 @@ own comments, check every line that should be keeping it.**
 ## An instrument that fails toward green is invisible
 
 The look wave was rebuilt by measuring. The measuring was then audited, and what
-the audit found is worth more than any single fix: **eight instruments in this
+the audit found is worth more than any single fix: **nine instruments in this
 repository were returning numbers that meant nothing, and not one of them ever
 said so.**
 
@@ -258,6 +266,16 @@ said so.**
   waves, so everyone re-ran it and blamed the scheduler.
 - `await darker` graded a composition the shaders had stopped drawing, and went
   green over a real 5.4% RISE in the thing it was watching for.
+- **The gallery — the surface every model in this project has ever been judged on
+  — never set `sky_view.z`, so `matter_wear()` returned `vec4(0.0)` and every
+  model review ever taken showed the same one unworn state** (#81). Law 1 of this
+  document is that a machine wears by where it stands; the instrument that was
+  used to decide whether models looked right was structurally incapable of
+  showing it, and drew a perfectly good picture anyway. It is the widest of the
+  nine because it is not a test: **a picture is an instrument too**, and a
+  reviewer looking at one is taking a reading. Two of this document's own
+  sentences were written from those frames and one of them was wrong (law 1 said
+  "underside"; see the note there).
 - `test_modifiers.gd` allowed 737 pixels where the panel has 658, so a line of any
   length in between passed the test **and** ran across the column — the single
   failure that test exists to stop.
@@ -286,6 +304,16 @@ examined. So:
 4. **Name a number where it is DRAWN and have the test ask.** Both pixel-constant
    failures above were drawing code written out a second time inside a test.
    Correcting the copies leaves copies.
+5. **A review surface has a configuration, and it will not tell you what it left
+   at zero.** The gallery is where every model is judged, and it is a scene like
+   any other: it decides an hour, a sky, a ground, a wear map. Whatever it leaves
+   unset is simply absent from every judgement ever made there, silently and
+   forever, and a beautiful picture is no evidence that it set anything. So when
+   a surface is the thing under review, ask what the surface is NOT drawing
+   before you ask whether what it drew is good. Cheapest form of the question:
+   force the channel to an absurd value and see whether the picture changes —
+   that is how #81 was finally pinned, after the correct fix had already been
+   made and still rendered nothing.
 
 ## Web is the graceful degradation path
 

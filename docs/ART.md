@@ -186,7 +186,12 @@ the shacks that stole it — nowhere else.
 
 ## 5. Readability rules
 
-- The player and every machine must read against any ground at any hour, at 640x360.
+- The player and every machine must read against any ground at any hour, at the
+  base size (`UiBase.SIZE`, 1920x1080 since LANTERN's `floor` wave — this said
+  640x360, and #89 moved the constants that enforce it). **And under any WEAR**:
+  the same machine is rusted in the bog, salted on the flat and frosted on the
+  snowfield, and it has to read on all of them. `--wear=LAND,LAND` is how you
+  look at that; until #81 it could not be looked at at all.
 - **People** get no black outline. Their silhouette is held by a one-pixel rim one
   step lighter on the side toward the light and one step darker opposite (or their
   own darkest ramp step as a line). They are the only warm moving thing on screen.
@@ -238,9 +243,15 @@ The mood core (`sky.gdshaderinc` neon_*, `outline.gdshader` halo, `sky_light.gd`
 1. Any visible square, cube or tile edge? Fix it.
 2. Any gradient on a surface, smooth bloom, glossy highlight or pure black? Fix it.
 3. MADE in `world.gdshader`, FOUND in `found.gdshader`, nothing mixed?
-4. Does the hatch hand match the country or thing?
-5. Readable at 640x360: player, machines, working parts, props that can be taken?
-6. At noon, dusk and night?
+4. Does the surface say what it is MADE of? (This asked whether the hatch hand
+   matched the country until LANTERN; there is no hatch. The question it became
+   is `matter.gdshaderinc`'s: roughness, specular, metallic and the material's
+   own relief.)
+5. Readable at the base size (`UiBase.SIZE`): player, machines, working parts,
+   props that can be taken?
+6. At noon, dusk and night — and, for anything FOUND, in a second landscape's
+   WEAR (`--wear=coast,snowfield`)? A machine is judged on one land's wear by
+   default, and was judged on NO land's for this project's whole history (#81).
 7. Is it dystopian in its content (ruin, machine order, scavenged tech, what was lost),
    is the light and weather right for this landscape and hour, is it hauntingly
    beautiful? Neon and rain only where they belong.
