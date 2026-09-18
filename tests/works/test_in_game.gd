@@ -190,46 +190,69 @@ func test_a_body_cannot_walk_through_the_deck() -> void:
 ## eats the same works over its OWN reach — so putting a yard out is a real bite
 ## out of what feeds the region's keeper, and the STARVE way opens that far.
 ##
-## IT IS A BITE AND NOT A KILL, which is the thing the package claimed and this
-## is the measurement. A yard is `Works.YARD` (8 tiles) and a keeper feeds over
-## `def.reach * FEED_SHARE` (about 21), so on seed 4 the salt flats keeper is fed
-## by twelve works and breaking the depot spends four of them: it is a third of
-## the way to starving, and the rest has to be robbed by hand. That is better
-## than the claim — the set piece pays into the boss route without being a
-## shortcut past it — so the radius is left alone and the number written down.
+## IT IS A BITE AND NOT A KILL, which is the thing the package claimed. A yard is
+## `Works.YARD` (8 tiles) and a keeper feeds over `def.reach * FEED_SHARE` (about
+## 21), so the two overlap only partly and the rest has to be robbed by hand: the
+## set piece pays into the boss route without being a shortcut past it. The share
+## it pays is a property of the island and is measured per site below, not fixed
+## here — an earlier version of this header recorded one seed's twelve-and-four as
+## though it were the rule, and that number is what broke when an eleventh
+## landscape moved the ground.
 ##
-## Only two landscapes have a keeper at all (coast, salt flats), and where the
-## island put no plan work inside one of their yards this way is not open there:
-## seed 1's coast yard is such a one (docs/ROADMAP.md).
+## Only two landscapes have a keeper at all (coast, salt flats), and where an
+## island put no plan work inside one of their yards this way is not open there.
+## ASKED OF A SAMPLE, AND THE CLOSED YARDS ARE COUNTED (owner, 2026-09-18). This
+## pinned seed 4 and asserted the bite at EVERY qualifying site on it, with the
+## numbers above written into the header as if they were laws. They were one
+## island's measurement: on today's island the same salt flats keeper is fed by
+## nine works and its yard spends none, because nothing in that yard passes
+## `Takes.is_plan_work` — pan gates and salt heaps are the landscape's own
+## furniture. The mechanism is intact; the ground moved under a number.
+##
+## READ THE FAILURE, NOT THE GREEN. A sampled pass says the chain works SOMEWHERE,
+## not that the STARVE way is open on your island: `Works.sites` picks a yard by
+## what the plan has been doing there and takes no account of what the region's
+## keeper eats, so the two sets can miss entirely. The closed count is printed on
+## purpose. If it ever climbs toward all of them, the answer is not a looser bar
+## here — it is that the seam only ever worked by coincidence and the siting has
+## to learn about the keeper.
 func test_what_a_broken_depot_spends_is_what_a_keeper_eats() -> void:
-	var g := _game(PackedStringArray(["--seed=4", "--size=256", "--hour=11", "--weather=clear:0"]))
-	await frames(4)
-	var sys := _works(g)
-	var found := false
-	for s: WorksSite in Works.sites(g.world):
-		var def := Sentinels.for_land(s.land)
-		if def == null:
-			continue
-		var reach := def.reach * Sentinels.FEED_SHARE
-		var before := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
-			g.world.depleted, reach)
-		if before <= 0:
-			continue
-		found = true
-		sys._strip(s, sys.state(s.region))
-		var after := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
-			g.world.depleted, reach)
-		lt(float(after), float(before),
-			"%s: the yard went dark and its keeper lost nothing" % s.land)
-		# Which is exactly how far the STARVE way has come, in the sentinel
-		# package's own arithmetic: nothing here invents a second rule.
-		var got := 1.0 - float(after) / float(before)
-		gt(got, 0.1, "%s: a broken yard is worth less than a tenth of its keeper" % s.land)
-		print("works/sentinels: the %s yard feeds its keeper %d works standing -> %d broken, %.0f%% of the way to starving it"
-			% [s.land, before, after, got * 100.0])
-	check(found, "seed 4 held no depot whose yard feeds a keeper; the chain went untested")
-	g.queue_free()
-	await frames(1)
+	var bit := 0
+	var closed := 0
+	var said := PackedStringArray()
+	for seed_value: int in [4, 1, 42]:
+		var g := _game(PackedStringArray(["--seed=%d" % seed_value, "--size=256", "--hour=11", "--weather=clear:0"]))
+		await frames(4)
+		var sys := _works(g)
+		for s: WorksSite in Works.sites(g.world):
+			var def := Sentinels.for_land(s.land)
+			if def == null:
+				continue
+			var reach := def.reach * Sentinels.FEED_SHARE
+			var before := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+				g.world.depleted, reach)
+			if before <= 0:
+				continue
+			sys._strip(s, sys.state(s.region))
+			var after := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+				g.world.depleted, reach)
+			var got := 1.0 - float(after) / float(before)
+			if after >= before:
+				closed += 1
+				said.append("seed %d %s: %d works, yard spends none" % [seed_value, s.land, before])
+				continue
+			bit += 1
+			# Which is exactly how far the STARVE way has come, in the sentinel
+			# package's own arithmetic: nothing here invents a second rule.
+			gt(got, 0.1, "seed %d %s: a broken yard is worth less than a tenth of its keeper" % [seed_value, s.land])
+			said.append("seed %d %s: %d works standing -> %d broken, %.0f%% of the way to starving it"
+				% [seed_value, s.land, before, after, got * 100.0])
+		g.queue_free()
+		await frames(1)
+	for line: String in said:
+		print("works/sentinels: %s" % line)
+	gt(float(bit), 0.0, "no yard in the sample fed a keeper anything: the chain is untested, or the siting has stopped meeting the keepers (%d closed)" % closed)
+	print("works/sentinels: the yard-to-keeper chain bit at %d sites and was closed at %d" % [bit, closed])
 
 
 ## And the plan's own file: `Events.works_broken` was emitted for a whole wave
