@@ -61,6 +61,24 @@ const GLASS := 0.52
 ## is clear of the wall behind it rather than fighting with it.
 const FRAME := 0.07
 
+## WHAT A CITY'S WINDOWS ARE MADE OF, and it is NOT the landscape's timber.
+##
+## These were `BiomeDressing.timber`, which is the right answer for a house: a
+## cottage's window is a wooden frame in a wooden wall. It is the wrong answer
+## for a cast-concrete tower, and it was the single thing making one read as a
+## shanty — every storey of every face is outlined by its mullions, its sill and
+## its head, so a brown frame paints eleven brown bands up a grey building and
+## the eye calls the whole thing timber. The owner's word for it was "shitty
+## wooden shanties", and he was describing this and not the massing.
+##
+## A mullion is dark anodised metal, near black, because that is what a curtain
+## wall is and because a DARK frame is what makes a lit pane read as a lit pane
+## rather than as a painted rectangle. The boarding over a broken light is plate
+## and ply — what somebody nailed up, which is the one place a city admits it is
+## patched.
+const MULLION := Color(0.208, 0.220, 0.239)
+const BOARDING := Color(0.478, 0.451, 0.416)
+
 ## Stolen light, as the city runs it: a sign nobody has turned off in twenty
 ## years. Wider than a house's tube (`Houses.NEON_TUBES`) because a billboard is
 ## a FIELD of colour and not a line of it.
@@ -495,7 +513,7 @@ static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: in
 			# is reading the column of lit floors, not which side of it they are on.
 			if not near_ground and fi % 2 == 1:
 				continue
-			band(k, wf, v0, v1, 4 if fi % 2 == 0 else 5, s + i * 41 + fi, state, glass, dress.timber[0], dress.timber[1])
+			band(k, wf, v0, v1, 4 if fi % 2 == 0 else 5, s + i * 41 + fi, state, glass, MULLION, BOARDING)
 		y += STOREY
 		ledge(k, w - step * i, d - step * i, y - SLAB * 0.5, s + i * 23, GroundColors.up(body, 0.12))
 	return y
