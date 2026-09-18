@@ -83,14 +83,36 @@ func test_every_landscape_declares_what_the_readers_ask_for() -> void:
 		gt(d.share_target(), 0.0, "%s: wants some of the land" % w)
 
 
+## Worlds this asks rather than the one it used to ask. Cheap: 192 is the smallest
+## size worldgen is run at anywhere, and six of them cost about a second.
+const GROUND_SAMPLE: Array[int] = [11, 1, 42, 7, 90210, 3]
+
+
 func test_the_grounds_a_landscape_names_are_grounds_it_can_have() -> void:
 	# A wash for a ground this landscape never lays is dead paint; the tables
 	# are big, so say so rather than let it rot.
+	#
+	# ASKED OF A SAMPLE, NOT OF ONE WORLD (owner, 2026-09-18). This used to assert
+	# against a single 192-tile SURFACE world on seed 11, which made it a question
+	# about that one island and not about the game. BONE is the rarest ground the
+	# bonelands lays — 98 tiles out of 17,000 on exactly that world — so adding an
+	# eleventh landscape, which shrinks every landscape's share of the map, dropped
+	# it off that island and four landscapes that had painted BONE for months all
+	# failed at once. Not one of them had changed. Every landscape added shrinks
+	# the shares again, so one world can only ever get less representative: that is
+	# the whole of why this samples.
+	#
+	# BOTH REALMS, because a world is one realm's world (`GenContext` lays only the
+	# types whose `BiomeDef.realms` names it). Asked of a surface world alone, an
+	# underground landscape's grounds can never appear at all, and limestone_caves
+	# was passing only because the bonelands happened to lay the same ground
+	# overhead — a coincidence, and it is what broke when the bonelands' share fell.
 	var laid := {}
-	var w := WorldGen.generate(11, 192)
-	for i in w.ground.size():
-		var key := w.country[i] * 256 + w.ground[i]
-		laid[key] = true
+	for realm: StringName in [Realm.SURFACE, Realm.UNDERGROUND]:
+		for s: int in GROUND_SAMPLE:
+			var w := WorldGen.generate(s, 192, &"", realm)
+			for i in w.ground.size():
+				laid[w.country[i] * 256 + w.ground[i]] = true
 	for d: BiomeDef in BiomeRegistry.land():
 		for g: int in d.grounds:
 			# An ecotone can carry a neighbour's ground in, so a wash is only
