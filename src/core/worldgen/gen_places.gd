@@ -12,6 +12,10 @@ class_name GenPlaces
 ##                             every depot: room to fight in with nothing built
 ##                             in shot, in the landscape the player wakes in or
 ##                             in the one named
+##   "typical", "typical_moss" the most CHARACTERISTIC standing ground of a
+##                             landscape, clear of everything built: what the
+##                             place looks like, where `open` is where there is
+##                             room to fight
 ## find() returns Vector2(-1, -1) when a world has no such place.
 
 
@@ -33,6 +37,10 @@ static func find(w: WorldData, name: String) -> Vector2:
 		return river_sample(w)
 	if key == "cliff":
 		return cliff_sample(w)
+	if key == "typical" or key.begins_with("typical_"):
+		var tland := key.trim_prefix("typical").trim_prefix("_")
+		var twant := BiomeRegistry.index_of(StringName(tland)) if tland != "" else w.country[int(w.spawn.y) * w.size + int(w.spawn.x)]
+		return typical_sample(w, twant) if twant >= 0 else Vector2(-1, -1)
 	if key == "open" or key.begins_with("open_"):
 		var land := key.trim_prefix("open").trim_prefix("_")
 		var want := BiomeRegistry.index_of(StringName(land)) if land != "" else w.country[int(w.spawn.y) * w.size + int(w.spawn.x)]
@@ -219,6 +227,145 @@ static func open_sample(w: WorldData, cc: int) -> Vector2:
 				best_score = score
 				best = here
 	return best
+
+
+## How far round a candidate its surroundings are read. The play camera holds
+## about 26.7 x 17.9 tiles, so eleven each way is close to what a frame taken here
+## will actually contain -- the score is about the PICTURE, not the map.
+const TYPICAL_REACH := 11
+## Props are binned into squares this wide once, so reading a neighbourhood is
+## nine lookups instead of a walk over every prop in the world.
+const TYPICAL_BUCKET := 8
+## What a portrait must stand clear of, measured against what the camera can hold
+## (`Landmarks.read_reach` is 11-13 tiles at the play camera, so 16 puts a
+## landmark out of shot). Wider than `open`'s single rule because this frame is
+## about the LAND, and one roof in it is the whole subject changed.
+const TYPICAL_OF_YARD := 30.0
+const TYPICAL_OF_VILLAGE := 22.0
+const TYPICAL_OF_LANDMARK := 16.0
+
+
+## The most CHARACTERISTIC standing ground of a landscape: the tile whose
+## surroundings look most like that landscape's own average, clear of everything
+## built.
+##
+## `open` is the other question and both are worth having. Measured on seed 1,
+## `open` takes a REED MARSH -- 32 reeds within eleven tiles where the coast's own
+## mean is driftwood, gorse and broadleaf. Nothing is wrong with that answer: it
+## is "where is there room to fight", and a marsh has room. It is simply not
+## "what does the coast look like", and a portrait staged there is a picture of
+## the one place on the coast that is unlike the coast.
+##
+## So this scores a candidate by how far its neighbourhood is from the
+## landscape's own make-up, over ground types AND prop kinds together, and takes
+## the nearest. Nothing declares a signature list that could rot -- what counts
+## as typical is measured off the world every time it is asked.
+static func typical_sample(w: WorldData, cc: int) -> Vector2:
+	var solid := solid_mask(w)
+	var yards: Array[Vector2] = []
+	for site in Works.sites(w):
+		yards.append(site.pos)
+	var villages: Array[Vector2] = []
+	for v: Dictionary in w.villages:
+		villages.append(v.pos as Vector2)
+	# Both sets: the survey's marks and the places worth the walk are different
+	# lists, and the lighthouse is only in the second.
+	var marks: Array[Vector2] = []
+	for m: Dictionary in w.landmarks:
+		marks.append(m.pos as Vector2)
+	for site in Landmarks.sites(w):
+		marks.append(site.pos)
+
+	var bw := w.size / TYPICAL_BUCKET + 1
+	var bins := PackedFloat32Array()
+	bins.resize(bw * bw * PropKind.COUNT)
+	var land_props := PackedFloat32Array()
+	land_props.resize(PropKind.COUNT)
+	for pr in w.props:
+		var px := int(pr.pos.x)
+		var py := int(pr.pos.y)
+		if not w.in_bounds(px, py):
+			continue
+		bins[((py / TYPICAL_BUCKET) * bw + px / TYPICAL_BUCKET) * PropKind.COUNT + pr.kind] += 1.0
+		if w.country[py * w.size + px] == cc:
+			land_props[pr.kind] += 1.0
+
+	var land_ground := PackedFloat32Array()
+	land_ground.resize(Ground.COUNT)
+	for y in w.size:
+		for x in w.size:
+			var i := y * w.size + x
+			if w.country[i] == cc:
+				land_ground[w.ground[i]] += 1.0
+	_share(land_ground)
+	_share(land_props)
+
+	var best := Vector2(-1, -1)
+	var best_score := INF
+	for y in range(6, w.size - 6, 2):
+		for x in range(6, w.size - 6, 2):
+			var i := y * w.size + x
+			if w.country[i] != cc or w.blend[i] > 0.0 or not standable(w, solid, x, y):
+				continue
+			var here := Vector2(x + 0.5, y + 0.5)
+			if _nearest_of(yards, here) < TYPICAL_OF_YARD:
+				continue
+			if _nearest_of(villages, here) < TYPICAL_OF_VILLAGE:
+				continue
+			if _nearest_of(marks, here) < TYPICAL_OF_LANDMARK:
+				continue
+			var near_ground := PackedFloat32Array()
+			near_ground.resize(Ground.COUNT)
+			for dy in range(-TYPICAL_REACH, TYPICAL_REACH + 1, 2):
+				for dx in range(-TYPICAL_REACH, TYPICAL_REACH + 1, 2):
+					if w.in_bounds(x + dx, y + dy):
+						near_ground[w.ground[(y + dy) * w.size + x + dx]] += 1.0
+			var near_props := PackedFloat32Array()
+			near_props.resize(PropKind.COUNT)
+			var bx := x / TYPICAL_BUCKET
+			var by := y / TYPICAL_BUCKET
+			for oy in range(-1, 2):
+				for ox in range(-1, 2):
+					if bx + ox < 0 or by + oy < 0 or bx + ox >= bw or by + oy >= bw:
+						continue
+					var base := ((by + oy) * bw + bx + ox) * PropKind.COUNT
+					for k in PropKind.COUNT:
+						near_props[k] += bins[base + k]
+			_share(near_ground)
+			_share(near_props)
+			var score := _apart(near_ground, land_ground) + _apart(near_props, land_props)
+			# A hair of noise so two identical neighbourhoods do not depend on scan order.
+			score += Rng.hash01(w.seed_value, x, y, 13) * 0.002
+			if score < best_score:
+				best_score = score
+				best = here
+	return best
+
+
+## In place, to shares summing to one (all zero stays all zero).
+static func _share(h: PackedFloat32Array) -> void:
+	var total := 0.0
+	for v in h:
+		total += v
+	if total <= 0.0:
+		return
+	for i in h.size():
+		h[i] = h[i] / total
+
+
+## How far apart two share histograms are, 0 (the same) .. 2 (nothing in common).
+static func _apart(a: PackedFloat32Array, b: PackedFloat32Array) -> float:
+	var d := 0.0
+	for i in mini(a.size(), b.size()):
+		d += absf(a[i] - b[i])
+	return d
+
+
+static func _nearest_of(of: Array[Vector2], p: Vector2) -> float:
+	var d := INF
+	for q in of:
+		d = minf(d, q.distance_to(p))
+	return d
 
 
 static func ecotone_sample(w: WorldData, a: int, b: int) -> Vector2:
