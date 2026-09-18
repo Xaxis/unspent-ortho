@@ -10,8 +10,10 @@ coast calm
 wait 0.6
 
 # --- Pell, a clerk in the city where the plan worked -------------------------------------
+# Long enough for the street to fill: a villager is built one an even frame, and a
+# city that still runs has thirty of them (unspent-ortho-cb).
 at cast:pell
-wait 0.8
+wait 2.5
 press use
 await talking 3
 wait 0.4

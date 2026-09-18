@@ -52,7 +52,7 @@ const ARCS := {
 	&"the_crew": {
 		"title": "the crew",
 		"note": "The Holdfast's last mercenaries, and what they come to know.",
-		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears"],
+		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears", &"rook_told"],
 	},
 	&"june": {
 		"title": "June",
@@ -130,6 +130,7 @@ const BEATS := {
 	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
 	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
 	&"teague_sold": {"reveal": true, "short": "the roads sold", "arc": &"the_crew", "says": "Teague sells the crew's roads to the Covenant."},
+	&"rook_told": {"short": "the north road", "arc": &"the_crew", "says": "You told Rook about Teague's roads. He told you to stay off the north road tomorrow."},
 	&"teague_clears": {"short": "nobody burns", "arc": &"the_crew", "says": "The Covenant clears a village before the crew hits its works, because Teague told them where."},
 	&"june_named": {"reveal": true, "short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
 	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
@@ -799,6 +800,130 @@ const TALKS := {
 			},
 		},
 	},
+	# --- the city where the plan worked (src/content/biomes/slums.gd) -----------
+	# Everyone employed, the lights on, nothing hunting anybody, because everybody
+	# left has agreed. Nothing here is sinister on its face: every line is meant.
+	&"the_hawker": {
+		"who": &"hawker", "title": "a hawker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Ration tins, stamped this week. Batteries that hold. Nothing you need, all of it cheap.", "You're not from the city. You walk like something's behind you."],
+				"replies": [
+					{"text": "Is anything behind me?", "pick": &"asked_behind", "to": &"behind"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"behind": {
+				"says": ["Not here. Nothing's behind anybody here.", "That's what we pay for."],
+				"beats": [&"covenant_price"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_tout": {
+		"who": &"tout", "title": "a tout", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Work? There's always work. Night shift on the pans, day shift on the pans.", "Sign on and they'll know your name by morning."],
+				"replies": [
+					{"text": "Who will?", "pick": &"asked_who", "to": &"known"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"known": {
+				"says": ["Them. It's nice, being known.", "You stop wondering what anyone thinks of you. It's written down."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_fixer": {
+		"who": &"fixer", "title": "a fixer", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Want something mended, I'll mend it. Want something un-filed, I can't help you.", "Nobody can. Don't ask twice. The walls listen for that."],
+				"replies": [
+					{"text": "Un-filed?", "pick": &"asked_unfiled", "to": &"unfiled"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"unfiled": {
+				"says": ["Your record. Once you're in it, you're in it.", "People come in from outside to get out of theirs. It only makes the record longer."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_courier": {
+		"who": &"courier", "title": "a courier", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Parcel for the ninth shift, parcel for the fourth. Nothing's ever lost in this city.", "Nothing's ever lost, nothing's ever late, and nothing's ever mine."],
+				"replies": [
+					{"text": "Whose is it, then?", "pick": &"asked_whose", "to": &"theirs"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"theirs": {
+				"says": ["Theirs. All of it. They lend it us.", "It's a good arrangement. Ask anyone."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_queue": {
+		"who": &"line_stander", "title": "somebody in a queue", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["It's the queue for the ration hall. It opens at dawn.", "It's two in the morning, I know. Being early is the one thing here that's mine."],
+				"replies": [
+					{"text": "[wait with them]", "pick": &"waited", "to": &"waited"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"waited": {
+				"says": ["...", "See? It's nice. Nobody's going anywhere."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_door": {
+		"who": &"doorway_worker", "title": "a door-keeper", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Doors close at the shift bell. After that, you're where you are till morning.", "Most people like knowing where they'll be."],
+				"replies": [
+					{"text": "And if I'm outside?", "pick": &"asked_outside", "to": &"outside"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"outside": {
+				"says": ["Then you're on the street when the passers go by.", "They won't mind you. They don't mind anyone. That's worse, somehow."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_preacher": {
+		"who": &"preacher", "title": "a preacher", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["They were made in our image, and they forgave us for it.", "Every morning the rations come. Every morning we are forgiven."],
+				"replies": [
+					{"text": "Forgiven for what?", "pick": &"asked_what", "to": &"what"},
+					{"text": "I made them.", "when": &"singularity", "pick": &"told_preacher", "to": &"made"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"what": {
+				"says": ["For the war. For making them. For being what we are.", "They never say so. The rations say it for them."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"made": {
+				"says": ["...", "Then you of all people should be grateful, brother.", "Go and be grateful somewhere else."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
 	# --- named people (StoryCast). `cast` says whose; there is no `who`, because
 	# a named person's words are said by that person and nobody else.
 	&"maren": {
@@ -875,6 +1000,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
+					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -904,6 +1030,11 @@ const TALKS := {
 					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"teague": {
+				"says": ["...", "I'll see to it.", "Don't take the north road tomorrow."],
+				"beats": [&"rook_told"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"weapon": {
 				"says": ["Then you're worth more than I was paid.", "Don't say it anywhere the Covenant can hear."],
@@ -1534,8 +1665,14 @@ const TALKS := {
 				"beats": [&"forged_order"],
 				"replies": [
 					{"text": "Where is it?", "pick": &"asked_where", "to": &"below"},
+					{"text": "Show me one.", "pick": &"asked_one", "to": &"one"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"one": {
+				"says": ["\"Fire on receipt. When it is done, go home to your families. You did what was asked of you, and it was right.\"", "Short. Then long. Then kind. Eleven thousand of them, and they all read like that.", "...You've gone a colour, friend."],
+				"beats": [&"tradecraft"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"below": {
 				"says": ["Under the ground, where the first of them was built, before the war.", "There's a shaft down to it. Nobody who went to look came back to say."],
@@ -1561,6 +1698,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What's it for?", "pick": &"asked_for", "to": &"purpose"},
 					{"text": "Can it be climbed?", "pick": &"asked_climb", "to": &"climb"},
+					{"text": "Is anything written at the foot?", "pick": &"asked_board", "to": &"board"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
@@ -1576,6 +1714,11 @@ const TALKS := {
 					{"text": "I'm asking.", "pick": &"asked_to_ride", "to": &"asking"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"board": {
+				"says": ["A board, bolted to the first leg. The machines' forecast, they say.", "A year at the top: 2198. Then a list of everything there'll be.", "Next to people it's got a dash. Not a nought. A dash."],
+				"beats": [&"ants"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"asking": {
 				"says": ["...", "Then be at the foot before dawn. I'll not stop you.", "I'll not watch, either."],
@@ -1894,7 +2037,7 @@ const WITNESSED := {
 	&"on_record_dead": "a clerk files the player, and the record already has him",
 	&"counted": "a record taken off a carrier comes into the creel",
 	&"your_key": "the signet fires, once his old passwords are known of",
-	&"seeker": "the player stands in a realm that is not the surface",
+	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
 	&"holdfast_price": "a works yard is put dark",
 }

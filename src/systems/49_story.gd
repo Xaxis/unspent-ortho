@@ -66,6 +66,8 @@ func setup(g: Game) -> void:
 	Events.works_broken.connect(_on_works_broken)
 	_wall_the_site()
 	Events.sentinel_fell.connect(_on_sentinel_fell)
+	Events.settlement_founded.connect(_on_settlement_founded)
+	Events.raid_ended.connect(_on_raid_ended)
 
 
 func started() -> void:
@@ -134,6 +136,10 @@ func _exit_tree() -> void:
 		Events.works_broken.disconnect(_on_works_broken)
 	if Events.sentinel_fell.is_connected(_on_sentinel_fell):
 		Events.sentinel_fell.disconnect(_on_sentinel_fell)
+	if Events.settlement_founded.is_connected(_on_settlement_founded):
+		Events.settlement_founded.disconnect(_on_settlement_founded)
+	if Events.raid_ended.is_connected(_on_raid_ended):
+		Events.raid_ended.disconnect(_on_raid_ended)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -243,22 +249,34 @@ func _person_in_front() -> Dictionary:
 	var folk: Array = _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
+	# Somebody with something to say beats a nearer somebody without: in a street
+	# of thirty, a passer-by stepping between him and the clerk he walked up to
+	# was answering the key with "nothing to say".
 	var best: Dictionary = {}
 	var best_d := REACH
+	var mute: Dictionary = {}
+	var mute_d := REACH
 	for row: Dictionary in folk:
 		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
 		var at: Vector2 = row.get("pos", Vector2.INF)
 		var to := at - from
 		var d := to.length()
-		if d > best_d or d < 0.01:
+		if d < 0.01 or d > REACH:
 			continue
 		if d > CLOSE and ahead.dot(to / d) < AHEAD:
 			continue
-		best = row.duplicate()
-		best["_d"] = d
-		best_d = d
-	return best
+		if StoryProps.talk_for(row, game) == &"":
+			if d < mute_d:
+				mute = row.duplicate()
+				mute["_d"] = d
+				mute_d = d
+			continue
+		if d < best_d:
+			best = row.duplicate()
+			best["_d"] = d
+			best_d = d
+	return best if not best.is_empty() else mute
 
 
 func _readable_in_front() -> WorldProp:
@@ -396,7 +414,9 @@ func _witness() -> void:
 		# knows he had one.
 		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
 			_witnessed(StoryContent.WITNESS_ON[&"signet"])
-	if game.world != null and game.world.realm != Realm.SURFACE:
+	# Below the world or above it, not the Before: 2029 is his own past, and
+	# landing a revelation on the crossing held back the one Hannah's scene is for.
+	if game.world != null and game.world.realm != Realm.SURFACE and game.world.realm != Realm.ERA:
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
@@ -436,6 +456,18 @@ func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void
 	var d := BiomeRegistry.get_def(land)
 	if d != null and StoryContent.KEEPER_MEMORY.has(d.sentinel):
 		_witnessed(StoryContent.KEEPER_MEMORY[d.sentinel].memory)
+
+
+## A holding put up is seen from far off; so is one held, or lost.
+func _on_settlement_founded(_id: int) -> void:
+	_note(&"founded")
+
+
+func _on_raid_ended(_id: int, outcome: StringName) -> void:
+	if outcome == &"held":
+		_note(&"raid_held")
+	elif outcome == &"razed":
+		_note(&"razed")
 
 
 ## Going below is seen: a shaft is a place people watch.
@@ -544,6 +576,26 @@ func _save() -> Variant:
 func _load(v: Variant) -> void:
 	if v is Dictionary:
 		Story.load_state(v)
+
+
+## Where a tour stands to reach a story place by name (98_tour's `at KIND:NAME`):
+## `gate:ID` is a gate into 2029 (StoryGates), in whichever year he is in, on the
+## nearest ground a body can stand on beside it.
+func tour_place(what: String) -> Vector2:
+	if not what.begins_with("gate:") or game.world == null:
+		return Vector2.INF
+	var id := StringName(what.substr(5))
+	for g: Dictionary in StoryGates.all(game.world):
+		if g.id != id:
+			continue
+		var at: Vector2 = g.pos
+		for r: float in [0.0, 0.8, 1.2]:
+			for i in 12:
+				var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+				if game.query.standable(floori(p.x), floori(p.y)):
+					return Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+		return at
+	return Vector2.INF
 
 
 ## What a tour may await of the story.

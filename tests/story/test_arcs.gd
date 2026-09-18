@@ -425,3 +425,29 @@ func test_every_stop_of_the_journey_says_where_the_next_one_is() -> void:
 	check(Story.landed(&"the_climb"), "the far shore: Sefa says how to go up")
 	eq(Story.chose(&"sefa.climb"), &"asked_to_ride", "and he asked")
 	Story.forget()
+
+
+func test_telling_rook_about_teague_is_the_end_of_teague() -> void:
+	Story.forget()
+	Story.beat(&"teague_sold", -INF)
+	check(StoryCast.get_def(&"teague").present(), "Teague is at the camp")
+	@warning_ignore("return_value_discarded")
+	_walk(&"rook", ["Teague sells our roads to the Covenant."])
+	check(Story.landed(&"rook_told"), "Rook will see to it")
+	check(not StoryCast.get_def(&"teague").present(), "and Teague is not at the camp after")
+	check("\n".join(StoryEnding.lines()).contains("Rook shot Teague"), "and the ending remembers it")
+	Story.forget()
+
+
+## A revelation a page may deal anywhere also has somebody who says it, so the
+## path does not hang on which sign a world happened to deal (docs/STORY.md §9).
+func test_the_war_s_phrasing_and_the_forecast_each_have_a_person() -> void:
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"otto", ["How the war started.", "Show me one."])
+	check(Story.landed(&"tradecraft"), "Otto shows him an order in his own rhythm")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"sefa", ["Is anything written at the foot?"])
+	check(Story.landed(&"ants"), "Sefa has read the forecast: next to people, a dash")
+	Story.forget()

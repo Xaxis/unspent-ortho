@@ -52,11 +52,10 @@ static func _people() -> PackedStringArray:
 			out.append("Vera's four hundred go on fighting a war that is weather.")
 		&"will_tell":
 			out.append("Vera's people were told. Some stopped. Some did not.")
-	match Story.chose(&"teague.sold"):
-		&"will_tell_rook":
-			out.append("Rook shot Teague on the north road. The burning started again.")
-		&"kept_teague", &"nothing":
-			out.append("Teague goes on selling the roads, and nobody burns.")
+	if Story.landed(&"rook_told"):
+		out.append("Rook shot Teague on the north road. The burning started again.")
+	elif Story.landed(&"teague_sold"):
+		out.append("Teague goes on selling the roads, and nobody burns.")
 	if Story.landed(&"dace_left"):
 		out.append("Dace is not there to see any of it.")
 	if Story.chose(&"lark.coffee") == &"told_lark":

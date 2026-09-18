@@ -22,6 +22,9 @@ const ACTS := {
 	&"keeper_fell": {"people": "brought a keeper down", "machines": "KEEPER LOST"},
 	&"went_below": {"people": "went down a shaft", "machines": "UNLOGGED DESCENT"},
 	&"filed": {"people": "was read by a clerk", "machines": "DUPLICATE READ"},
+	&"founded": {"people": "built a place and stayed in it", "machines": "UNLICENSED STRUCTURE"},
+	&"raid_held": {"people": "turned them back from his own door", "machines": "RECOVERY FAILED"},
+	&"razed": {"people": "watched them take his place down", "machines": "STRUCTURE RECOVERED"},
 }
 
 
