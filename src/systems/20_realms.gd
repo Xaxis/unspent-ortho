@@ -232,6 +232,7 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 	pl.pos = land
 	if pl.hero != null:
 		pl.hero.pos = land
+	Events.warped.emit(land)
 	var sim := pl.sim
 	if sim != null:
 		sim.world = w

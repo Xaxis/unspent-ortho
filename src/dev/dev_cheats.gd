@@ -294,6 +294,7 @@ static func teleport(game: Game, p: Vector2) -> void:
 	var sky := system(game, "10_sky")
 	if sky != null:
 		sky.call("_update", 0.0, true)
+	Events.warped.emit(p)
 	DevMode.touched = true
 
 

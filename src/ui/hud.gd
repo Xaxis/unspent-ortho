@@ -116,6 +116,8 @@ func _ready() -> void:
 	_canvas.draw.connect(_draw_hud)
 	add_child(_canvas)
 	Events.message.connect(show_message)
+	# A line said about where you WERE is not about where you are.
+	Events.warped.connect(func(_to: Vector2) -> void: messages.clear())
 	Events.hint.connect(teach)
 	Events.screen_changed.connect(_on_screen_changed)
 

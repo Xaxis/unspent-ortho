@@ -1082,6 +1082,10 @@ func _teleport(p: Vector2) -> void:
 	var sky := _system("10_sky")
 	if sky != null:
 		sky.call("_update", 0.0, true)
+	# Say it was a warp, so nothing goes on showing what was true where we left.
+	# Every reference frame in the canon carried the last place's message line
+	# under the new place's badge before this (#101).
+	Events.warped.emit(p)
 
 
 ## A real key event for the first key bound to `action`, held across whole frames.
