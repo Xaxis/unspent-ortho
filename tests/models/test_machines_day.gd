@@ -13,9 +13,11 @@ extends TestCase
 ##   sub-pixel detail that never reaches the screen)
 ##
 ## The second is the one with teeth, because it needs no threshold argument: a
-## 0.018-wide scribed line is exact, and it is also half a screen pixel, so a
-## machine drawn entirely in them is a machine drawn in nothing. Marks are
-## budgeted in screen pixels (FoundKit.PX) for exactly that reason.
+## 0.018-wide scribed line is exact, and it is under half a cell of this raster,
+## so a machine drawn entirely in them is a machine drawn in nothing here. Marks
+## are budgeted in screen pixels (FoundKit.PX) for exactly that reason — and at
+## the 1080-row base that same line is 1.3 pixels of the FRAME, so it reaches the
+## screen even where it cannot reach this measurement.
 
 ## Every kind marks the one face the camera at 57 degrees cannot miss: a deck, a
 ## hull flank, a cap's shoulder, a chest, a lid, a drum's top. The big kinds use
@@ -29,11 +31,24 @@ extends TestCase
 ## no weak side; it reads by the shape of its cloud and its amber points.
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"runner", &"clerk"]
 const MG := preload("res://src/models/machines/machine_gallery.gd")
-## One screen pixel at the game's default view height (14 units over 360 px).
-const TEXEL := 14.0 / 360.0
+## One CELL of this raster, in world units — a fixed number of pixels of the
+## frame at the camera players get, asked of the rig and the base rather than
+## written down again (docs/LOOK.md).
+##
+## It read `14.0 / 360.0` for two waves after LANTERN's floor took the base to
+## 1080 rows, against a rig whose view height has never been 14: so every count
+## below was in cells that nothing in the repository could name. 2.8 is what
+## leaves the raster exactly where these gates were calibrated (3 for the rows,
+## times 14/15 for the view height that was never right), and the cell is
+## deliberately COARSER than a frame pixel — that is what keeps a whole roster
+## affordable, and it is conservative, since detail that survives a coarse raster
+## survives the frame. W and H are the raster's size in cells and every threshold
+## below counts in them, so the cell and the thresholds can only move together.
+const CELL := 2.8
+static var TEXEL := CameraRig.VIEW_HEIGHT / float(UiBase.SIZE.y) * CELL
 const W := 190
 const H := 170
-## A colour covering fewer pixels than this is a speck, not something read.
+## A colour covering fewer cells than this is a speck, not something read.
 const MIN_PATCH := 4
 const MIN_COLOURS := 8
 const MAX_SHARE := 0.48

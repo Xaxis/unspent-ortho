@@ -1,18 +1,31 @@
 extends TestCase
 ## Trophies of the trade have to reach the player: from the fixed game camera at
 ## gameplay zoom, each machine's trophy (matter on a `wear` holder) must win the
-## depth test on enough screen pixels to be seen, in the pose and turn the review
-## lineup shows it (machine_gallery.gd make). Rasterised with a depth buffer at
-## one screen pixel per texel, so a bone hidden under a comb counts for nothing.
+## depth test on enough raster cells to be seen, in the pose and turn the review
+## lineup shows it (machine_gallery.gd make). Rasterised with a depth buffer one
+## CELL to a cell, so a bone hidden under a comb counts for nothing.
 
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 ## Every kind but the flock, which is too small to carry anything.
 const CARRIERS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"runner", &"clerk"]
-## One screen pixel at the game's default view height (14 units over 360 px).
-const TEXEL := 14.0 / 360.0
+## One CELL of this raster, in world units — a fixed number of pixels of the
+## frame at the camera players get, asked of the rig and the base rather than
+## written down again (docs/LOOK.md).
+##
+## It read `14.0 / 360.0` for two waves after LANTERN's floor took the base to
+## 1080 rows, against a rig whose view height has never been 14: so every count
+## below was in cells that nothing in the repository could name. 2.8 is what
+## leaves the raster exactly where these gates were calibrated (3 for the rows,
+## times 14/15 for the view height that was never right), and the cell is
+## deliberately COARSER than a frame pixel — that is what keeps a whole roster
+## affordable, and it is conservative, since detail that survives a coarse raster
+## survives the frame. W and H are the raster's size in cells and every threshold
+## below counts in them, so the cell and the thresholds can only move together.
+const CELL := 2.8
+static var TEXEL := CameraRig.VIEW_HEIGHT / float(UiBase.SIZE.y) * CELL
 const W := 180
 const H := 160
-## Fewer solid pixels than this is a speck: it does not read as a thing.
+## Fewer solid cells than this is a speck: it does not read as a thing.
 const MIN_PX := 6
 
 

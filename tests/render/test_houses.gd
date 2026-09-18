@@ -16,10 +16,22 @@ extends TestCase
 const Houses := preload("res://src/models/props/houses.gd")
 const Kit := preload("res://src/models/props/kit.gd")
 const Lights := preload("res://src/systems/15_lights.gd")
-## camera_rig.gd view_height 15 over 360 rows: screen pixels to a world unit.
-const PX := 24.0
+## Frame pixels to a world unit at the camera players get: the base's own rows
+## over the rig's own view height, asked of both rather than written down again
+## (docs/LOOK.md). This read 24 — 360 rows — for two waves after LANTERN's floor
+## took the base to 1080, so every readability gate below quietly demanded three
+## times the pixels its own message named.
+static var PX := float(UiBase.SIZE.y) / CameraRig.VIEW_HEIGHT
+## A cell of the silhouette raster, in those pixels. Coarser than one on purpose:
+## it is what keeps eight houses at two bearings affordable, and it is
+## conservative, since an outline that is straight on a coarse raster is straight
+## on the frame too. `_edge_straight`'s window and tolerance are in THESE cells,
+## so the raster's fineness and their calibration can only move together — and W
+## and H below are its size in them.
 ## The house that is a machine's housing lived in (Houses.build variant 3).
 const BUT := 3
+const CELL := 3.0
+static var RASTER := PX / CELL
 const W := 190
 const H := 180
 
@@ -44,12 +56,12 @@ func test_every_corner_leans_its_own_way() -> void:
 	for i in 4:
 		for j in 4:
 			spread = maxf(spread, (offs[i] - offs[j]).length())
-	gt(spread * PX, 3.0, "corners lean apart by at least 3 screen px")
+	gt(spread * PX, 9.0, "corners lean apart by at least 9 screen px")
 	var tall := 0.0
 	for i in 4:
 		for j in 4:
 			tall = maxf(tall, absf(highs[i] - highs[j]))
-	gt(tall * PX, 2.5, "no two corners stand the same height, in screen px")
+	gt(tall * PX, 7.5, "no two corners stand the same height, in screen px")
 
 
 func test_a_ridge_sags_more_than_the_ink_that_draws_it() -> void:
@@ -58,7 +70,7 @@ func test_a_ridge_sags_more_than_the_ink_that_draws_it() -> void:
 	var t := Houses.walls(k, 2.3, 2.9, 1.35, 1400, Palette.LINEN[4], Palette.LINEN[3])
 	var r := Houses.hipped(k, t, 0.24, 1.05, 0.58, 0.22, 1460, Houses.SLATE_ROOF, 0.2, Palette.SLATE[2])
 	var sag := (r[4].y + r[6].y) * 0.5 - r[5].y
-	gt(sag * PX, 4.0, "the ridge sags at least 4 screen px")
+	gt(sag * PX, 12.0, "the ridge sags at least 12 screen px")
 
 
 func test_a_roof_has_a_break_in_its_line() -> void:
@@ -70,23 +82,22 @@ func test_a_roof_has_a_break_in_its_line() -> void:
 	for i in 4:
 		lo = minf(lo, r[i].y)
 		hi = maxf(hi, r[i].y)
-	gt((hi - lo) * PX, 3.0, "one eave corner has given way, by at least 3 screen px")
+	gt((hi - lo) * PX, 9.0, "one eave corner has given way, by at least 9 screen px")
 
 
-## Where a world point lands on screen, in pixels, at the play camera:
-## orthographic, yaw 45, pitch 57, view_height 15 over 360 rows (camera_rig.gd).
-## Only the up axis is needed to read a roofline, and the right axis to walk
-## along it.
+## Where a world point lands in the RASTER, in its cells, at the play camera:
+## orthographic, yaw 45, pitch 57 (camera_rig.gd). Only the up axis is needed to
+## read a roofline, and the right axis to walk along it.
 static func _screen(p: Vector3) -> Vector2:
 	var pitch := deg_to_rad(57.0)
 	var yaw := deg_to_rad(45.0)
 	var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 	var up := Vector3(-sin(pitch) * sin(yaw), cos(pitch), -sin(pitch) * cos(yaw))
-	return Vector2(p.dot(right), p.dot(up)) * PX
+	return Vector2(p.dot(right), p.dot(up)) * RASTER
 
 
-## The break in a house's own skyline, in screen pixels: how far the highest
-## thing along it gets from the straightest line that skyline could be.
+## The break in a house's own skyline, in RASTER CELLS: how far the highest thing
+## along it gets from the straightest line that skyline could be.
 static func _roofline_break(verts: PackedVector3Array) -> float:
 	# Above head height is roof and whatever stands on it. Measuring from a share
 	# of the tallest vertex instead would let one aerial or pylon leg decide what
@@ -140,13 +151,13 @@ static func _roofline_break(verts: PackedVector3Array) -> float:
 
 func test_every_house_breaks_its_roofline_at_the_zoom_it_is_seen_from() -> void:
 	# Proving `hipped` CAN drop an eave proves a capability, not that all seven
-	# variants use it — and a roof is seen from above at 24 px to the unit, where
-	# a break of a pixel or two is under the pen that inks the ridge.
+	# variants use it — and a roof is seen from above at 72 px to the unit, where
+	# a break of a few pixels is lost in the run of the ridge itself.
 	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var all := PackedVector3Array(k.made.verts)
 		all.append_array(k.found.verts)
-		gt(_roofline_break(all), 10.0, "house %d has a break in its roofline, in screen px" % v)
+		gt(_roofline_break(all) * CELL, 30.0, "house %d has a break in its roofline, in screen px" % v)
 
 
 func test_every_house_keeps_salvage_against_a_wall() -> void:

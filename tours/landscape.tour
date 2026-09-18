@@ -88,4 +88,9 @@ place stolen_light
 walk 1,0 0.5
 hour 21.5
 wait 0.6
-shot 23-stolen-light-dusk with prop:shack,pixels:4df2ff+ff40cc+8cff59:40
+# Three runs all read exactly 80 pixels here, and a frame of the same dusk with
+# no tube in it reads 0. The number is small for a lit tube because this is a
+# WIDE frame and the tube's core burns past `PIXEL_WASH` — what is counted is
+# its fringe. So the floor is 55: under the 80 a real run holds, well over the
+# nothing an unlit shack holds, and not the 40 that would pass on half of it.
+shot 23-stolen-light-dusk with prop:shack,pixels:4df2ff+ff40cc+8cff59:55
