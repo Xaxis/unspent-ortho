@@ -25,6 +25,7 @@ static func page_for(id: StringName) -> DevPage:
 		&"people": return DevPageStoryCast.new()
 		&"path": return DevPageStoryPlan.new()
 		&"ledger": return DevPageStoryLedger.new()
+		&"words": return DevPageStoryWords.new()
 	return null
 
 
@@ -34,6 +35,7 @@ func rows() -> Array[Dictionary]:
 	out.append(item(&"people", "people", "%d named" % StoryCast.all().size()))
 	out.append(item(&"path", "the path", "being felt" if StoryPacing.settling() else ""))
 	out.append(item(&"ledger", "the ledger", "%d seen" % Story.ledger().size()))
+	out.append(item(&"words", "words", "%d of %d read" % [Story.found_count(), StoryFragments.all().size()]))
 	for arc: StringName in StoryContent.arcs():
 		var def: Dictionary = StoryContent.ARCS[arc]
 		var at := Story.at(arc)

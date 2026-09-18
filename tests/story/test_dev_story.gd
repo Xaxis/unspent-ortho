@@ -86,3 +86,18 @@ func test_the_ledger_page_notes_an_act_the_notebook_has_heard_of() -> void:
 	var told := "\n".join(StoryLedger.lines(&"people"))
 	check(told.contains("put a works yard dark"), "and the people have heard of it already:\n%s" % told)
 	_end(g)
+
+
+func test_the_words_page_puts_a_page_on_the_glass_without_finding_it() -> void:
+	var g := _make()
+	await frames(3)
+	var s := _open(g, &"words")
+	check(s.page() is DevPageStoryWords, "words opens off the story page")
+	check(_has_row(s, &"frag_growth_bay"), "a place's own words are listed")
+	check(_has_row(s, &"frag_seated"), "and every dealt page")
+	s.select(&"frag_hale_log")
+	s.handle(&"confirm")
+	var story := DevCheats.system(g, "49_story")
+	eq(story.get("reading"), &"hale_log", "the page is on the glass")
+	check(not Story.knows(&"hale_log"), "and the playthrough has not found it")
+	_end(g)
