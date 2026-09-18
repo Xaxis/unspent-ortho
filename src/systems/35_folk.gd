@@ -241,7 +241,7 @@ func pump() -> bool:
 	if queue.is_empty():
 		return false
 	var q: Dictionary = queue.pop_front()
-	_add(q.look, q.home, q.role, q.village, q.h, q.door, q.get("trade", &""))
+	_add(q.look, q.home, q.role, q.village, q.h, q.door, q.get("trade", &""), bool(q.get("street", false)))
 	return true
 
 
@@ -289,7 +289,14 @@ func _populate(index: int, centre: Vector2) -> void:
 		elif h < 0.7:
 			role = &"walk"
 		var trade: StringName = PersonLook.street_trade(w.seed_value + index, n) if street else &""
-		queue.append({"look": looks[n], "home": home, "door": door, "role": role, "village": index, "h": h, "trade": trade})
+		# A CITY'S STREET DOES NOT GO TO BED. Everything past the first six was
+		# asked for by the landscape (`BiomeDef.street_folk`) and is out there
+		# because the place still runs at midnight -- which is the slums' whole
+		# argument about itself. The rule it would otherwise take, that a villager
+		# is indoors after dark, is right for a fishing village and was written
+		# when every settlement was one.
+		queue.append({"look": looks[n], "home": home, "door": door, "role": role,
+			"village": index, "h": h, "trade": trade, "street": n >= PER_VILLAGE and street})
 
 
 ## `--folk=N` round the player, for crowd shots. The first RING_FIRST lie on the
@@ -339,12 +346,12 @@ static func _ring_holds(r: int) -> int:
 
 ## `trade` names what they sell when the landscape dealt them one (a street);
 ## &"" works it out from the day's work, which is what a village has.
-func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: float, door: Vector2, trade: StringName = &"") -> void:
+func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: float, door: Vector2, trade: StringName = &"", street: bool = false) -> void:
 	_ids += 1
 	var f := {
 		"id": _ids, "trade": &"", "pos": home, "home": home, "door": door, "role": role, "village": village, "t": h * 5.0,
 		"facing": h * TAU, "target": home, "wait": h * 3.0, "tool": &"", "work": &"",
-		"job_pos": home, "job_facing": h * TAU, "state": &"out", "near": 0,
+		"job_pos": home, "job_facing": h * TAU, "state": &"out", "near": 0, "street": street,
 	}
 	if role == &"work":
 		var job := _job(home)
@@ -372,8 +379,8 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 	model.name = "villager_%d" % folk.size()
 	add_child(model)
 	f.model = model
-	if village >= 0 and is_night(_hour()):
-		# Built after dark: already indoors.
+	if village >= 0 and not street and is_night(_hour()):
+		# Built after dark: already indoors — unless they are a city's street.
 		f.state = &"in"
 		f.pos = door
 		model.visible = false
@@ -441,7 +448,7 @@ func _seen(p: Vector2) -> bool:
 
 func _step(f: Dictionary, delta: float, night: bool) -> void:
 	var model: PersonModel = f.model
-	if f.village < 0:
+	if f.village < 0 or bool(f.get("street", false)):
 		night = false
 	if night and f.state == &"out":
 		f.state = &"home"
