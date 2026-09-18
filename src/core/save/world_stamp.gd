@@ -71,6 +71,7 @@ const LOOK: Array[String] = [
 	"decor", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "night_sky", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
 	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
+	"fliers",
 ]
 
 

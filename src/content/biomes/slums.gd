@@ -351,6 +351,13 @@ static func make() -> BiomeDef:
 	# A LOOK field in `WorldStamp` — worldgen lays the village, not the people in it
 	# — so it moves no island and refuses no save.
 	d.street_folk = 30
+	# AND THE PLAN'S TRAFFIC OVERHEAD. The owner's direction for this landscape
+	# names flying machines, and until now nothing in this game flew at all. Six
+	# within reach: enough that the sky over a street is never empty and few
+	# enough that one crossing the frame is still an event. They fly the machines'
+	# own survey bearing, which is the line every ruled work on the island already
+	# lies on, so the traffic runs on the same grid as everything else they laid.
+	d.fliers = 6
 	# Smog weather. The cliché is rain, so rain is here and is not the most of it:
 	# what a city under a working plant really gets is haze and flat grey, and the
 	# clear days are the ones the wind took the dome sideways.
