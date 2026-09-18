@@ -54,13 +54,26 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"coast": 0.6, &"bonelands": 0.35, &"scrapwood": 0.3, &"salt_flats": 0.2,
 		&"snowfield": -0.6, &"moss": -0.4}
 	# Flat, and stepped rather than rolling: a city is built on platforms. The
-	# terrace term is what gives the mesher long level slabs with a step between
-	# them, which is what a street reads as from above; hills and ridge are near
-	# zero because nothing here was allowed to stay a hill.
+	# terrace term gives the mesher long level slabs with a step between them,
+	# which is what a street reads as from above; hills and ridge are near zero
+	# because nothing here was allowed to stay a hill.
+	#
+	# FLATTER THAN THE FIRST DRAFT, and two independent reasons converge on it.
+	# A `row` plan refuses any spot whose nine neighbouring tiles are not level,
+	# so on terraced ground it lays a street with one building on it and calls
+	# that a city. And `neon_reflect` only mirrors where the ground's up-normal
+	# is at least 0.9, so a stepped street holds the billboards nowhere. Both
+	# wanted the same thing, which is how you know it is the ground and not a
+	# taste: hills 0.5 -> 0.25, terrace 0.85 -> 0.30.
 	d.relief = {
 		&"base": 2.6, &"hills": 0.5, &"ridge": 0.0, &"terrace": 0.85, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
+	# TODO(dome): `d.built` with BiomeForms.RAISED and plan &"row" belongs here and
+	# is the whole point of the landscape. Landing it blind moved the island far
+	# enough that seed 1 lays no tips in the slums at all (`test_places_worth
+	# _walking_to`), and re-siting a landscape's sites is its author's work with
+	# the gate in front of them, not an integrator's guess.
 	# Under LANTERN this no longer picks a hatch — there is none. It is the
 	# discriminator that tells one landscape's ground from another's in the lit
 	# shaders (`style`), and CRACK is the right neighbour for poured concrete.
@@ -180,7 +193,15 @@ static func make() -> BiomeDef:
 	d.grade = Vector4(-0.50, 0.04, -0.10, 0.14)
 	# It rains often and the lanes never dry: wet concrete under a low warm light
 	# is the best thing this landscape has, and `wet` is what buys the sheen.
-	d.wet = 0.55
+	# The wettest land in the game by design — limestone_caves at 0.55 is next.
+	# It is not raining: the dome condenses on everything above and comes down as
+	# a permanent drip, so the street is wet at every hour in every weather, which
+	# is better than rain because it is always there and it is this place's own.
+	# And it is the one field the whole reflection path hangs on: `neon_reflect`
+	# early-outs under 0.05, and a modest value leaves the puddles holding nothing
+	# — which would throw away half the light in the frame, since what the
+	# billboards do to standing water is the second picture this landscape has.
+	d.wet = 0.90
 	# The water in a city is what has run off it. Oily black-brown that gives
 	# almost nothing back — but a WASH and not a hole (tests/render/test_water_wash),
 	# so the soundings and the bank line still draw through it.

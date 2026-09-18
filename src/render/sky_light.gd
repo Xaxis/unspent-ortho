@@ -581,6 +581,10 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_settle", settle)
 	RenderingServer.global_shader_parameter_set("sky_wind", wind)
 	RenderingServer.global_shader_parameter_set("wind_strength", sway)
+	# What a lamp, a window and a stolen tube burn by when the SKY is not what
+	# made the street dark (`neon_burn`, sky.gdshaderinc). 0 for every landscape
+	# under an open sky, so this reaches only the one that asked for a lid.
+	RenderingServer.global_shader_parameter_set("sky_lid", shut)
 	var texel := 14.0 / 360.0
 	if is_inside_tree():
 		var cam := get_viewport().get_camera_3d()

@@ -100,6 +100,12 @@ global uniform float sky_linear;
 // casting sun lights a surface's emission a second time (measured: `perf
 // sunpath`, src/render/degrade/render_probe.gd). SkyLight writes it every frame.
 global uniform float sky_emission;
+// How far the landscape under the camera is shut off from the sky
+// (`BiomeDef.sky_shut`, blended across an ecotone by `SkyLight.sky_shut_at`).
+// 0 under an open sky, which is every landscape but one, so nothing that reads
+// it can move another landscape's evening by a pixel. SkyLight writes it every
+// frame beside the other sky_* globals and is their only writer.
+global uniform float sky_lid;
 
 // --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
 // The grade every lit wash passes through last: x darkness 0..1, y desaturation
@@ -208,6 +214,29 @@ float sky_fbm(vec2 p) {
 	v += 0.2 * sky_noise(p);
 	return v;
 }
+
+// How far a lamp, a window or a stolen tube is burning, given the mean of the
+// light it stands under. It was a function of the sky alone -- a tube lights
+// when the light goes -- which is right under an open sky and wrong under a
+// lid. Measured in the Slums, whose light_tint is (1.0, 0.88, 0.72): the mean
+// at noon is 0.86, so the old expression gave 0.24, and a street made dark at
+// noon had every sign in it burning at a QUARTER. That reads as a city whose
+// advertising is guttering, which is the exact opposite of the one thing that
+// landscape is about -- it functions, and advertising does not sleep. Dead
+// would have been a better failure than dying.
+//
+// The lid is a FLOOR and never a replacement, so a landscape under an open sky
+// is untouched to the pixel: sky_lid is 0 for all but one of them.
+//
+// Not solved by darkening sky_tint, and this is the case that tests the rule:
+// sky_tint is hue TIMES level and this gate reads its mean, so dimming it to
+// switch the signs on would also swing the sun's hue, the shade's hue and the
+// divisor 15_lights.compensate subtracts -- which is the exact chain that gave
+// the caves a red lantern. Hue and level stay separate.
+float neon_burn(float tint_mean) {
+	return max(clamp((0.9 - tint_mean) * 6.0, 0.0, 1.0), sky_lid);
+}
+
 
 float sky_power() {
 	return clamp(sky_bolt.w, 0.0, 1.0);
