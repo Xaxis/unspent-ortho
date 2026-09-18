@@ -16,6 +16,16 @@ var s: int
 ## island's shape scale by it; tile-scale features (ecotone width, river
 ## width, villages) do not.
 var k: float
+## `k` for ONE BODY rather than for the square, and it is what nearly every use of
+## `k` actually wanted. The floors are quadratic in it — `min_tiles` is
+## `REGION_TILES * k * k` — so on a 1024 world `k` is 2 and the smallest thing
+## that counts as a place becomes four times what it was. Right for one island
+## filling the square; wrong for four continents in it, and it would have left the
+## small orbital bodies of docs/WORLD.md §2 holding no region at all: no place, no
+## depot, no keeper, no landmark, on a world that generated perfectly and passed
+## every test. Every distance, count and noise wavelength in worldgen is about a
+## PLACE, so they all ask this. With one body it equals `k` exactly.
+var body_k: float = 1.0
 ## The bodies this world is made of, as `GenBodies.plan` dealt them: each
 ## {id, at, share, band, home}. Every stage that used to speak about "the island"
 ## speaks about one of these (docs/WORLD.md §1). One body, centred, at full share

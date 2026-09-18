@@ -37,6 +37,11 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# size asked for is a ceiling: at every size this project currently uses it
 	# comes back one body, which is the island that has always been here.
 	c.bodies = GenBodies.plan(seed_value, realm, size).bodies
+	# A place is measured against the BODY it stands on, never against the square.
+	var share := 1.0
+	for body: Dictionary in c.bodies:
+		share = minf(share, float(body.get("share", 1.0)))
+	c.body_k = c.k * sqrt(clampf(share, 0.01, 1.0))
 	var t := Time.get_ticks_usec()
 	var marks := {}
 	c.mark(&"start")

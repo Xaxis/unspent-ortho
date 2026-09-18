@@ -69,11 +69,11 @@ static func run(c: GenContext) -> void:
 			lobe_amp.append(rng.randf_range(0.9, 1.3))
 	var ax: float = shapes[0].ax
 	var ay: float = shapes[0].ay
-	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.k), 2)
+	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.body_k), 2)
 	const N := GenFields.NOISE
 	var fl := GenFields.batch(size, [
-		[N, GenFields.noise(s, 101, 1.0 / (150.0 * c.k), 4), hw, hs],
-		[N, GenFields.noise(s, 105, 1.0 / (58.0 * maxf(c.k, 0.5)), 3), hw, hs],
+		[N, GenFields.noise(s, 101, 1.0 / (150.0 * c.body_k), 4), hw, hs],
+		[N, GenFields.noise(s, 105, 1.0 / (58.0 * maxf(c.body_k, 0.5)), 3), hw, hs],
 		[N, GenFields.noise(s, 102, 1.0 / 20.0, 3), hw, hs],
 		[N, warp, hw, hs],
 		[N, warp, hw, hs, 731.0, -419.0],
