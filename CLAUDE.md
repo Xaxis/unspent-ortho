@@ -328,10 +328,24 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
   ...; fi` is refused as too complex to verify. What works is
   **`tools/git-here.sh <worktree-root> <branch> <git args...>`**: one process that
   cds, asks git itself where it is and what branch it is on, and only then `exec`s
-  — there is no gap to be relocated through. The second belt needs no script:
-  **limit a commit by pathspec** (`git commit -F msg -- <your files>`), which in
-  the wrong tree fails harmlessly because those paths have no changes there. Use
-  both; one refuses loudly, the other cannot do damage quietly.
+  — there is no gap to be relocated through.
+- **A bare `git commit` is unsafe by construction in a session whose shell can
+  move, and this is worse than it sounds: it does not FAIL in the wrong tree, it
+  SUCCEEDS.** It sweeps whatever index it finds, so a commit landed on another
+  builder's branch carrying their sixteen staged files under someone else's
+  message. Nothing was lost and nothing warned. Guarding the path is not enough
+  — the path was pinned and the INDEX was not. So **always limit a commit by
+  pathspec**: `git commit -F msg -- <your files>`, which in the wrong tree finds
+  those paths unmodified and does nothing. It is the only form that cannot do
+  damage quietly, and it pairs with `git-here.sh`, which refuses loudly. Note a
+  pathspec cannot carry a NEW file, so `git add` it explicitly first — that is
+  still safe, because in the wrong tree the file does not exist either.
+- **Repairing one of these is more dangerous than causing it.** The obvious fix
+  (`git reset --soft HEAD~1` to shed a wrong commit) is safe only while that
+  commit is still the tip, and the owning session has usually already amended it
+  by the time anyone else notices — at which point the reset destroys their real
+  work instead. Check the tip, say what you found, and let the owner repair
+  their own branch.
 - **Before writing a line on a task, run `git status` across the worktrees and say
   so.** Four times in one day two builders wrote the same fix; the two that were
   caught were caught by that one command, and both times the other builder was
