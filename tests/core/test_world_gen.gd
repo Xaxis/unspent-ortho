@@ -254,6 +254,15 @@ func test_country2_never_flips_where_it_shows() -> void:
 	# A renderer mixes country2's wash in by blend: away from the borders
 	# themselves (where three countries can meet), two neighbours of the same
 	# country must not switch country2 while either is visibly blended.
+	#
+	# COUNTED AWAY FROM JUNCTIONS, AND THE BAR IS ZERO (owner, 2026-09-18). This
+	# counted every flip and asserted the total was under 12. But a junction of
+	# three landscapes is exactly where a flip is allowed, an island with eleven
+	# landscapes has more junctions than one with ten, and VISION wants 20+ — so a
+	# fixed total was really the assertion "this world has about ten landscapes in
+	# it", and it was a countdown rather than a test. Measured: on the ten-landscape
+	# world, EVERY flip on every seed here is within 4 tiles of a junction, so the
+	# property away from junctions already holds perfectly and can be asserted as 0.
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var size := w.size
@@ -270,11 +279,42 @@ func test_country2_never_flips_where_it_shows() -> void:
 				if c == Country.SEA or d[i] < 3 or blend[i] == 0.0 and blend[i + 1] == 0.0 and blend[i + size] == 0.0:
 					continue
 				var c2 := country2[i]
+				var flipped := false
 				if country[i + 1] == c and country2[i + 1] != c2 and maxf(blend[i], blend[i + 1]) > 0.1:
-					visible += 1
+					flipped = true
 				if country[i + size] == c and country2[i + size] != c2 and maxf(blend[i], blend[i + size]) > 0.1:
+					flipped = true
+				# A junction of three landscapes is a place country2 is ALLOWED to
+				# flip, which is what the comment above always said. Counting those
+				# and holding the total under a constant made this "the world has
+				# about ten landscapes in it" — see JUNCTION.
+				if flipped and _kinds_near(w, i, JUNCTION) < 3:
 					visible += 1
-		lt(visible, 12, "seed %d country2 flips under a visible blend" % s)
+		eq(visible, 0, "seed %d country2 flips under a visible blend, away from any junction" % s)
+
+
+## How far a three-landscape junction reaches, in tiles, for the flip test below.
+## CALIBRATED AGAINST THE WORLD WE ACCEPT, not against the answer we wanted: on the
+## ten-landscape registry that shipped and was reviewed, the number of flips further
+## than this from any junction is exactly 0 on every seed here, at 4, 6 and 8 alike.
+## So the bar is 0, which is stricter than the count it replaces and does not move
+## when a landscape is added.
+const JUNCTION := 6
+
+
+## How many distinct land types stand within `r` tiles of `i`. Three or more is a
+## junction: the place the second-nearest landscape is entitled to change.
+static func _kinds_near(w: WorldData, i: int, r: int) -> int:
+	var size := w.size
+	var cx := i % size
+	var cy := i / size
+	var seen := {}
+	for y in range(maxi(0, cy - r), mini(size, cy + r + 1)):
+		for x in range(maxi(0, cx - r), mini(size, cx + r + 1)):
+			var c := w.country[y * size + x]
+			if c != Country.SEA:
+				seen[c] = true
+	return seen.size()
 
 
 static func _borders(w: WorldData) -> PackedByteArray:
