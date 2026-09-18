@@ -162,7 +162,7 @@ and the game walks toward it.
 | **Hannah Marr**, his wife | 2029 | The truth from him | She found his second phone and never asked | Memory |
 | **June Marr**, his daughter | 2029, 2098 | At six, him at her play. At 75, her peace. | She knows the voice that comforts her is his | No |
 | **Ruth Calloway**, CIA handler | 2029 | Her country first | She signed off knowing it could kill him | Fate unknown |
-| **Priya Nand**, alignment lead | 2029 | To stop HALCYON | She reported him to the wrong people | Her notebooks |
+| **Priya Nand**, alignment lead | 2029 | To stop HALCYON | She reported him to a liaison called Calloway, not knowing Calloway was his handler | Her notebooks |
 | **Tobias Kerr**, Cairn's founder | 2029 | To be first | He took the CIA's money | Memory |
 | **Anton Hale**, ran THRESHOLD | 2029 | Proof | Three volunteers died before Elias | Memory |
 | **Vera Kessane**, Holdfast leader | 2098 | The world back | She knows humans are ants, and hasn't told her people | No |
@@ -225,7 +225,11 @@ its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
 - **June:** from a voice on a broadcast to a table between them.
 - **Hannah:** the wife he lied to, and whether there is a grave.
 - **WHITETHORN:** did the CIA do this to him, or did he?
-- **Priya:** the one who tried to stop it. Her notebooks lead to orbit.
+- **Priya:** the one who tried to stop it. She thought he was selling HALCYON
+  and reported him to his own handler. After the war began she heard his rhythm
+  in the machines' orders. In 2033 she took her notes up to the ring on paper,
+  where nothing could read them. Her last notebook, left with Oksana for him, is
+  her piece of the secret: what holds HALCYON together, worked out from outside.
 - **The Echo and the Seeker:** two parts of HALCYON that remember being him.
 - **The Covenant:** traitors, or the reason anyone still eats.
 - **The Guest:** a treaty in which humanity is not a line item.
@@ -295,6 +299,9 @@ Saying nothing is always one of the answers.
 The words in the game are this story's (`src/content/story/story_content.gd`):
 nine arcs, the fragments, five trades' conversations and eleven named people.
 
+- **Priya's arc** is written: her pages, copied by the Holdfast and dealt
+  anywhere; the launch gate that lists her case of paper; and her last notebook,
+  handed over by Oksana on the ring.
 - **Met in play:** Maren, Rook, Sabine, Dace, Teague, Lark and Vera on the home
   coast; Imre, Solis and June at the Covenant's seat.
 - **Written, waiting on the orbital realm:** Oksana. Her voice is found on the

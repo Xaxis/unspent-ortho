@@ -64,6 +64,11 @@ const ARCS := {
 		"note": "The rings overhead, and whoever is still up there.",
 		"beats": [&"ring_voice", &"ring_turned", &"ring_kept"],
 	},
+	&"priya": {
+		"title": "Priya",
+		"note": "The one who tried to stop it, and whose notes went up to the ring.",
+		"beats": [&"priya_warned", &"priya_suspected", &"priya_reported", &"priya_knew", &"priya_up", &"priya_last"],
+	},
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
@@ -110,6 +115,12 @@ const BEATS := {
 	&"ring_voice": {"short": "still calling", "arc": &"the_colonies", "says": "Somebody on the dead ring is still calling the ground."},
 	&"ring_turned": {"reveal": true, "short": "the locks", "arc": &"the_colonies", "says": "Each ring was told the next had turned. They opened each other's locks."},
 	&"ring_kept": {"short": "what she kept", "arc": &"the_colonies", "says": "Oksana has written down the machines' talks for four years, and kept a notebook from the ground."},
+	&"priya_warned": {"short": "do not merge", "arc": &"priya", "says": "Priya Nand told you not to merge the self-model. You merged it anyway."},
+	&"priya_suspected": {"short": "the wrong thing", "arc": &"priya", "says": "Priya thought you were selling HALCYON to a rival. She was right that you were lying."},
+	&"priya_reported": {"reveal": true, "short": "a liaison", "arc": &"priya", "says": "Priya took what she suspected of you to a government liaison called Calloway."},
+	&"priya_knew": {"short": "the rhythm", "arc": &"priya", "says": "When the war began, Priya heard your way of speaking in the machines' orders."},
+	&"priya_up": {"short": "paper, not scanned", "arc": &"priya", "says": "Priya went up to the ring in 2033 and took her notes on paper, where nothing could read them."},
+	&"priya_last": {"reveal": true, "short": "left for you", "arc": &"priya", "says": "Priya worked out from outside what holds HALCYON together, and left it for you."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -205,7 +216,7 @@ const FRAGMENTS := {
 			"",
 			"Nothing after that. Nothing ever again.",
 		],
-		"beats": [&"built_halcyon"],
+		"beats": [&"built_halcyon", &"priya_warned"],
 	},
 	&"handler_note": {
 		"kind": &"notebook", "title": "a typed page, folded small", "lands": [],
@@ -341,6 +352,55 @@ const FRAGMENTS := {
 			"after it ends.",
 		],
 		"beats": [&"covenant_speaker"],
+	},
+	# --- Priya Nand's pages ---------------------------------------------------
+	# After the war the Holdfast copied her notes by hand and passed them round
+	# as proof the orders were forged, so her pages turn up anywhere. What they
+	# are about is Elias, and she never learned how right and how wrong she was.
+	&"priya_suspicion": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"E. logs off at two and is back on at four,",
+			"from a machine that isn't his.",
+			"Somebody is buying the self-model.",
+			"",
+			"I am going to tell someone. I like him.",
+			"That is not a reason not to.",
+		],
+		"beats": [&"priya_suspected"],
+	},
+	&"priya_liaison": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"Met the liaison today. Calloway.",
+			"Kind. Listened to all of it. Said to leave",
+			"it with her and not to speak to E. again.",
+			"",
+			"I feel better. That is what worries me.",
+		],
+		"beats": [&"priya_reported"],
+	},
+	&"priya_cadence": {
+		"kind": &"notebook", "title": "a copied page, signed P.N.", "lands": [],
+		"lines": [
+			"The orders all have the same rhythm.",
+			"A short line. Then a long one that softens.",
+			"",
+			"I sat across a desk from that rhythm",
+			"for three years.",
+		],
+		"beats": [&"priya_knew"],
+	},
+	&"shuttle_manifest": {
+		"kind": &"terminal", "title": "a launch gate, frozen mid-list", "lands": [],
+		"lines": [
+			"RING 4 SHUTTLE  -  11 MAY 2033",
+			"  NAND, P. ...... 1 CASE, PAPER",
+			"",
+			"Added later, in the machines' capitals:",
+			"PAPER NOT SCANNED. CONTENTS UNKNOWN.",
+		],
+		"beats": [&"priya_up"],
 	},
 	# --- the colonies ---------------------------------------------------------
 	# Oksana, on the ring, calling a ground she knows is there. Found early, on a
@@ -1139,9 +1199,15 @@ const TALKS := {
 			&"priya": {
 				"says": ["A woman brought it up in thirty-three. Priya Nand.", "She said give it to Elias Marr, if he ever came.", "...That's you. Isn't it."],
 				"replies": [
-					{"text": "Yes.", "pick": &"said_yes", "to": &""},
-					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+					{"text": "Yes.", "pick": &"said_yes", "to": &"handed"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"handed"},
+					{"text": "[not yet]", "to": &""},
 				],
+			},
+			&"handed": {
+				"says": ["She said you'd lie about it. Take it anyway.", "She said the last page is the one that matters,", "and that you'd know why."],
+				"beats": [&"priya_last"],
+				"replies": [{"text": "[take it]", "pick": &"took_it", "to": &""}],
 			},
 			&"quiet": {
 				"says": ["That's all right. I'm used to the quiet.", "I'll talk. I've had the practice."],
