@@ -305,3 +305,36 @@ func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
 	# A caller that does not know the landscape gets the kind's row, because a
 	# guess would hang a walkway over a fishing village.
 	eq(ForeKinds.row_of(p, 7, -1), ForeKinds.ROWS[PropKind.HOUSE], "no country, no guess")
+
+
+## THE LAND NEVER OPENS AND NO VILLAGE CHANGES. `world.gdshader`'s tall cut is
+## what stops a city building standing between the camera and the player, and it
+## is the one thing in this package that can reach into a landscape nobody is
+## working on. Both of its guards are held here against the DATA rather than
+## against the number written in the shader, so raising a village form above the
+## floor fails this instead of quietly putting a hole in a cottage roof.
+func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
+	check(src.contains("float tall_cut("), "the tall cut exists")
+	check(src.contains("if (m >= 40 && m <= 70) {"), "and the ground band is refused: the land never opens")
+	# The floor, read out of the shader so the two cannot drift apart.
+	var at := src.find("const float TALL_FLOOR = ")
+	gt(float(at), 0.0, "the floor is named")
+	var floor_v := src.substr(at + 25, 8).to_float()
+	gt(floor_v, 0.0, "and is a number (%f)" % floor_v)
+	# Nothing a village raises may reach it. `PLAIN` is the eight one-storey forms
+	# every landscape built before `built` existed, so this is the whole of "no
+	# village in the game changes".
+	var tallest := 0.0
+	var worst := &""
+	for id: StringName in BiomeForms.PLAIN:
+		var high := float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0))
+		if high > tallest:
+			tallest = high
+			worst = id
+	lt(tallest, floor_v, "the tallest village form (%s at %.1f) stands under the cut's floor %.1f" % [worst, tallest, floor_v])
+	# And something a CITY raises has to reach it, or the cut is dead code.
+	var city := 0.0
+	for id: StringName in BiomeForms.RAISED:
+		city = maxf(city, float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0)))
+	gt(city, floor_v, "a city form (%.1f) is tall enough to be cut" % city)
