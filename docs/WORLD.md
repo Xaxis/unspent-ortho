@@ -360,6 +360,26 @@ so they are made here rather than asked upward.
    each entry in `regions` carries its `continent`. Sentinels, works and saves key
    on `id` and must not learn about bodies to stay correct.
 
+## 8a. Known, measured, and deliberately not fixed
+
+**A skerry can be a region.** `GenCountries` calls a run of land a place at
+`REGION_TILES * body_k^2` tiles, and `GenShape` lets detached land up to
+`ISLET_TILES` (900) survive as an islet — so an islet between those two numbers
+qualifies as a REGION, which is what sentinels, works and saves key on. A keeper
+can therefore be assigned to a rock.
+
+Measured on seed 1: **five of twenty-five regions at 512, and five of forty at
+1024.** It is the same count at both sizes, so it is not a consequence of the
+region floor becoming per-body — it has been true since regions existed.
+
+It is left alone on purpose. Fixing it moves region ids, which sentinels, works
+and saves all key on, so it costs a `WorldStamp.GEN` bump and a re-accepted canon
+— a real world-shape change, for something nothing currently depends on. The
+story session's journey needed "which bodies are worth stopping at" and answered
+it the better way, with **a village stands there** rather than with a region
+count. When something does depend on it, decide it deliberately rather than
+discovering it here.
+
 ## 9. Rules this document is built on
 
 Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
