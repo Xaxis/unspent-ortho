@@ -1355,10 +1355,30 @@ func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim
 ## (`46_settlements.lose_person`), so this package never keeps its own copy of
 ## what it means to lose somebody.
 func _take_person(s: Settlement, who: int) -> void:
+	# WHO THEY ARE, BEFORE THE ROW IS GONE. `lose_person` takes them off the books
+	# and the row with it, so a name asked for afterwards is a number — and nobody
+	# rescues a number. Asked first, and empty is allowed: the story can still say
+	# "somebody out of Oyster Row".
+	# `Settlement.people` is ids, and 35_folk's rows are streamed and nameless, so
+	# there is usually no name to take. What there always is, and what makes a
+	# record a person rather than a number, is WHERE they were taken from — kept
+	# now because the holding may be razed by the time anybody asks.
+	var home_name := s.name
 	var h := holdings()
 	if h != null:
 		h.call("lose_person", s, who)
 	_seen["snatched"] = true
+	# And they are REMEMBERED. The game has carried people off since the raids
+	# package landed and then forgotten them the same frame, so nothing could be
+	# written about getting one back. They are held at the plan's depot in the
+	# region whose network took them — a network IS a region — which is a place
+	# the player could already walk to, and breaking it is already half of a
+	# chapter's DEFENDED.
+	var region := Interference.network(game.world, s.centre)
+	for sys in game.systems:
+		if sys.has_method("took") and sys.get("taken") is Taken:
+			sys.call("took", who, "", s.id, home_name, region)
+			break
 
 
 ## Settle whatever the party did not do by hand.
