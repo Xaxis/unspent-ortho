@@ -270,6 +270,13 @@ func test_the_warp_list_holds_every_region_border_and_work_the_world_has() -> vo
 ##
 ## The bar is stated against one real sweep rather than in milliseconds, so it
 ## scales with the machine, the load and the size of the world.
+##
+## BOTH SIDES ARE THE BEST OF THREE, because the gate runs three shards and four
+## shots at once and each measurement here is a few tens of milliseconds — one
+## scheduler slice lands inside the window. Noise only ever ADDS time, never
+## takes it away, so the minimum of a few runs is close to the true cost while a
+## single reading is not: this test failed the gate at 91 ms against a sweep read
+## as 4.9 ms, where the same two on a quiet machine are 37 ms and 27.5 ms.
 func test_the_warp_list_costs_about_one_sweep_of_the_island() -> void:
 	_keep()
 	var g := _make(true, ["--size=192"])
@@ -278,12 +285,17 @@ func test_the_warp_list_costs_about_one_sweep_of_the_island() -> void:
 	Works.sites(w)
 	Sentinels.states(w)
 	Portals.in_world(w)
-	var t := Time.get_ticks_usec()
-	GenPlaces.country_sample(w, w.country[int(w.spawn.y) * w.size + int(w.spawn.x)])
-	var one := Time.get_ticks_usec() - t
-	t = Time.get_ticks_usec()
-	var places := DevCheats.places(g)
-	var all := Time.get_ticks_usec() - t
+	var cc := w.country[int(w.spawn.y) * w.size + int(w.spawn.x)]
+	var one := 1 << 40
+	var all := 1 << 40
+	var places: Array[Dictionary] = []
+	for _try in 3:
+		var t := Time.get_ticks_usec()
+		GenPlaces.country_sample(w, cc)
+		one = mini(one, Time.get_ticks_usec() - t)
+		t = Time.get_ticks_usec()
+		places = DevCheats.places(g)
+		all = mini(all, Time.get_ticks_usec() - t)
 	check(places.size() > 10, "there is a list to have cost anything")
 	check(all < one * 6, "the whole list is %d us against one sweep's %d" % [all, one])
 	g.free()
