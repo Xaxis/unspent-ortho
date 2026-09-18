@@ -117,11 +117,13 @@ wait 0.04
 shot 11-plate-rings with mob:runner
 # A watcher stands its ground further on. Its working part is its lens, in
 # front: there the blow goes home.
-# A SECOND ground, and that is why this one is still a number: `open` names one
-# tile per landscape, so asking for it twice would stand the watcher where the
-# runner was just fought.
+# The same ground as the runner above, which is fine because the `coast calm`
+# below clears the bodies — `FightSim.clear_mobs` removes every MobState, the
+# dead included. It was `at 160,352`, which sat at blend 0.20: a fight staged in
+# a transition band, lit and dressed by two landscapes at once, and nothing in
+# the file said so.
 coast calm
-at 160,352
+place open_coast
 wait 1.0
 spawn watcher
 wait 0.5

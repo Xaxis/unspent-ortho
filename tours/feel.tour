@@ -137,6 +137,13 @@ end
 wait 0.6
 shot 14-the-runner-down with down:runner
 # Sliding: a run held north-east into a broadleaf goes round its trunk.
+#
+# THE COORDINATE STAYS and the tree is why. `near broadleaf` stands the player
+# already IN reach of a trunk and facing it, and the slide needs the opposite: a
+# run of 1.4 s held INTO one from open ground, so the body meets it at speed and
+# goes round. Converting this does not move the frame, it deletes what the frame
+# is of. What would retire it is a name for "far enough from a KIND to run into
+# it", which nothing needs yet.
 coast calm
 zoom 9
 at 119.64,358.00

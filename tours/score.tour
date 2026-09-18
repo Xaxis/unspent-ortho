@@ -18,7 +18,11 @@ await score_pulse 300
 shot 03-the-pulse-plays
 # From the village square, run east along the coast (around the trees at the
 # village's edge and a wreck past them) to the pylon.
-at 201,432.5
+# The square the player wakes in, by name. This was `at 201,432.5`, which is
+# 1.1 tiles from the spawn — and the three run legs below are hand-timed from it
+# to reach the pylon fifty tiles east, so a coordinate that drifts takes the
+# whole walk with it. `prop:pylon` on frame 04 is what catches that.
+place spawn
 walk 0.71,0.71 4.7 run
 walk 0.88,0.47 1.26 run
 walk 0.71,0.71 3.5 run

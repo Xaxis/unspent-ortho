@@ -7,7 +7,7 @@
 #   tools/tour.sh tours/machines.tour --seed=1 --hour=22.5 --weather=clear:0
 # A runner coming after you: its walk is a hunt, so the slit's scan holds dead
 # centre and its eyes stay hot all the way in, never looking round as on an errand.
-at 132,366
+place open_coast
 zoom 7
 coast calm
 wait 1.0
