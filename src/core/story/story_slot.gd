@@ -45,9 +45,11 @@ var realm: StringName = &"surface"
 ## home than the one before it and moves that floor on; a local who is colour is
 ## not a stop, is sought from home outward on every body, and moves nothing.
 var ordered := true
-## Another slot's id to be cast exactly as: the Before is the same coast tile for
-## tile (Realm.ERA), so 2029's lab is cast where 2098's works yard stands, by the
-## same pick, and the ruin he wakes beside was his street.
+## A surface slot whose tile this one stands on, in another realm: the Before is
+## the same coast (Realm.ERA), so 2029's lab stands where 2098's works yard does,
+## and the ruin he wakes beside was his street. A mirrored slot takes its twin's
+## place outright and never asks its own world for its own kind of ground, since
+## in 2029 the yard has not risen yet (StoryCasting._twin).
 var mirror: StringName = &""
 ## Which leg of the journey this belongs to: 0 is the body Elias wakes on, 1 the
 ## next one out, and so on (`StoryJourney`). The story spans every continent in

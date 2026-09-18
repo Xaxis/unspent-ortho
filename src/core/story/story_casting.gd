@@ -15,6 +15,16 @@ class_name StoryCasting
 ## a content error is `StoryPlan`'s question and not this file's: casting reports
 ## what the world can carry and never decides what the story may ask for.
 
+## The surface's own casting, per seed, size and registry, for a slot that
+## mirrors one of its places (StorySlot.mirror). Not keyed by seed alone: a test
+## that narrows the registry grows a different world under the same seed, and a
+## cache keyed on the seed handed one of them the other's places (the black site
+## did exactly that). Not keyed by WorldStamp either: it costs a millisecond and
+## the gates are cast every frame.
+static var _surface: Dictionary = {}
+const SURFACE_MOST := 16
+
+
 static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	var out := {}
 	if world == null:
@@ -29,7 +39,19 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	# before it. So the journey only ever moves outward, whatever this world dealt
 	# where, and a leg whose own continent lacks the place moves on rather than back.
 	var floor_rank := 0
+	var twin := {}
 	for s: StorySlot in slots:
+		# A slot that mirrors a place of the surface stands on that place's tile and
+		# never asks this world for its own kind of ground: 2029 has no works yard,
+		# and the lab stands where the yard WILL rise (unspent-ortho-df).
+		if s.mirror != &"":
+			if s.realm != world.realm:
+				continue
+			if twin.is_empty():
+				twin = _twin(world, slots)
+			if twin.has(s.mirror):
+				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
+			continue
 		var place := {}
 		var start := clampi(maxi(s.leg, floor_rank), 0, maxi(order.size() - 1, 0))
 		if not s.ordered:
@@ -45,7 +67,29 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 			continue
 		out[s.id] = place
 		taken.append(place.get("pos", Vector2.ZERO) as Vector2)
+	if world.realm == Realm.SURFACE:
+		if _surface.size() >= SURFACE_MOST:
+			_surface.clear()
+		_surface[_key(world)] = out
 	return out
+
+
+## The surface's casting for the world `world` mirrors: the one already cast in
+## this game if there is one (the game starts on the surface, so crossing into
+## 2029 costs nothing), and otherwise the surface grown from the same seed.
+static func _twin(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
+	var key := _key(world)
+	if not _surface.has(key):
+		@warning_ignore("return_value_discarded")
+		cast(WorldGen.generate(world.seed_value, world.size), slots)
+	return _surface.get(key, {})
+
+
+static func _key(world: WorldData) -> String:
+	var ids := PackedStringArray()
+	for d: BiomeDef in BiomeRegistry.all():
+		ids.append(String(d.id))
+	return "%d:%d:%s" % [world.seed_value, world.size, ",".join(ids)]
 
 
 static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: int) -> Dictionary:
