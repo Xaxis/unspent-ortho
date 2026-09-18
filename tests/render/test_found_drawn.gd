@@ -19,10 +19,13 @@ extends TestCase
 ## is big enough to be seen at play has to show at least VISIBLE_SHARE of itself
 ## from the bearing that shows it best.
 
-## The play camera (src/render/camera_rig.gd): its pitch, and one screen pixel
-## at its view height (15 units over 1080 pixels).
-const PITCH_DEG := 57.0
-const SCREEN_PX := 15.0 / 1080.0
+## The play camera (src/render/camera_rig.gd): its pitch, and one pixel of the
+## frame at its view height. Asked of the rig and the base rather than written
+## out: this file had the right numbers, but written down they are a copy, and a
+## copy is what let four other tests go on measuring a 360-row frame for two
+## waves after LANTERN's floor moved (docs/LOOK.md).
+const PITCH_DEG := CameraRig.PITCH_DEG
+static var SCREEN_PX := CameraRig.VIEW_HEIGHT / float(UiBase.SIZE.y)
 ## A cell of the raster, in screen pixels. Four is enough to see a rod and cheap
 ## enough to run over every model in the game.
 const CELL := 4.0
