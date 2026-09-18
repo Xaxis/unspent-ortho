@@ -42,13 +42,41 @@ static func find(w: WorldData, name: String) -> Vector2:
 		digits = key.right(1) + digits
 		key = key.left(key.length() - 1)
 	var nth := maxi(1, digits.to_int()) if digits != "" else 1
-	var want := nth
+	var here: Array[Vector2] = []
 	for m in w.landmarks:
 		if String(m.kind) == key:
-			want -= 1
-			if want == 0:
-				return _stand_near(w, m.pos)
+			here.append(m.pos as Vector2)
+	if not here.is_empty():
+		return _stand_near(w, _out_of_the_yard(w, here, nth))
 	return _placed_after(w, key, nth)
+
+
+## The nth of `marks`, preferring one no depot has been built over.
+##
+## A depot goes up at the BUSIEST marked landmark of its region (`Works.sites`),
+## so a works mark being under a yard is the world working, not a fault -- but it
+## makes the mark's NAME a lie about the picture. Measured on seed 7, seven of
+## them resolved inside a yard: turf_rows, drill_field, pans, drained, corridor,
+## slag and breaking_yard. `place turf_rows` was a photograph of a depot and
+## nothing about the name said so.
+##
+## So the name goes to an instance in the open where there is one, and `turf_rows2`
+## still reaches the buried one for anybody who wants the yard built on the cut.
+static func _out_of_the_yard(w: WorldData, marks: Array[Vector2], nth: int) -> Vector2:
+	var yards: Array[Vector2] = []
+	for s in Works.sites(w):
+		yards.append(s.pos)
+	var open_ones: Array[Vector2] = []
+	for m in marks:
+		var shut := false
+		for y in yards:
+			if y.distance_to(m) < Works.YARD:
+				shut = true
+				break
+		if not shut:
+			open_ones.append(m)
+	var pick := open_ones if open_ones.size() >= nth else marks
+	return pick[mini(nth, pick.size()) - 1]
 
 
 ## Places that are laid AFTER the world is generated — the plan's depots
@@ -158,6 +186,11 @@ static func open_sample(w: WorldData, cc: int) -> Vector2:
 	for v: Dictionary in w.villages:
 		built.append(v.pos as Vector2)
 	for s in Works.sites(w):
+		built.append(s.pos)
+	# And the places worth the walk. A lighthouse is as much a building as a
+	# village is, and a name promising nothing built in shot that lands at the
+	# foot of one has swapped one photograph of a building for another.
+	for s in Landmarks.sites(w):
 		built.append(s.pos)
 	var best := Vector2(-1, -1)
 	var best_score := -1.0
