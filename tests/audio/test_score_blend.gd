@@ -490,7 +490,10 @@ func test_without_threads_a_core_is_in_hand_in_seconds() -> void:
 		gt(job.loudest, 0.02, "%s has sound in it" % key)
 	var usec := Time.get_ticks_usec() - t0
 	var secs := float(usec) / SoundBank.SCORE_BUDGET_USEC / 60.0
-	lt(secs, 60.0, "the coast's drone and air are in hand in %.1f s of sixty-frame seconds (%.2f s of work)" % [secs, usec / 1e6])
+	# A COST, and it takes eighteen seconds of work, so it cannot be run again to
+	# find its floor: `cost_lt` says so rather than failing a busy machine, which
+	# is what three shards of one gate did to it (TestCase.can_measure_cost).
+	cost_lt(secs, 60.0, "the coast's drone and air are in hand in %.1f s of sixty-frame seconds (%.2f s of work)" % [secs, usec / 1e6])
 
 
 ## The frame's own slack, not a fixed slice: a browser labouring at twenty

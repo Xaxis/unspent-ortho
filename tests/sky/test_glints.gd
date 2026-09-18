@@ -95,10 +95,13 @@ func test_a_night_village_hands_its_lights_to_the_sky_and_a_strike_dims_machine_
 	for n in lights.get_children():
 		if n is OmniLight3D:
 			omni += 1
-	# MAX_LAMPS is the pool plus the lantern; the one extra is the reach light,
+	# How many lights burn is the TIER's (`Quality.lamps`), and it is no longer
+	# MAX_LAMPS: that is the size of the shader's packed pool, which held the
+	# engine to seven lamps for the game's whole life and left a city dark. The
+	# count here is that row plus the lantern, plus one for the reach light,
 	# which is not a glint and not a lamp -- it says what the `use` key would
 	# work right now (15_lights, LANTERN's answer to a bracket).
-	eq(omni, SkyLight.MAX_LAMPS + 1, "the glint list adds no lights")
+	eq(omni, Quality.lamp_count() + 1, "the glint list adds no lights")
 	g.queue_free()
 	await frames(1)
 	Weather.unforce()
