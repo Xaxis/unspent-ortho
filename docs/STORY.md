@@ -327,7 +327,8 @@ nine arcs, the fragments, five trades' conversations and eleven named people.
 
 The old black site off the home coast is cast (`BlackSite`) and keeps its own
 words: the tank he came out of, the list of the three who died on the table before
-him, and the order that let him ashore with an escort arranged. Maren points at
+him, and the order that let him ashore and sent an escort after him. Rook's
+crew, hired by the Echo, got to him first. Maren points at
 it from the first morning.
 
 Revelations are paced as §9 says (`StoryPacing`). A reply that would land one,

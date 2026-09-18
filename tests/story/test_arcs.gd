@@ -40,7 +40,7 @@ func test_every_beat_has_a_door_the_player_can_find() -> void:
 
 
 func test_the_arcs_story_md_promises_are_all_declared() -> void:
-	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_colonies", &"priya", &"the_secret"]:
+	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_colonies", &"priya", &"the_echo", &"the_secret"]:
 		check(StoryContent.ARCS.has(arc), "%s is declared" % arc)
 		gt(float(StoryContent.arc_beats(arc).size()), 2.0, "%s is more than a line" % arc)
 
@@ -363,4 +363,26 @@ func test_priya_is_found_a_page_at_a_time_and_ends_on_the_ring() -> void:
 	_walk(&"oksana", ["What are you listening to?", "Whose notebook?", "Yes.", "[take it]"])
 	check(Story.landed(&"priya_last"), "it is handed to him on the ring")
 	eq(Story.at(&"priya"), 1.0, "and the whole of her is known")
+	Story.forget()
+
+
+func test_the_echo_is_found_in_his_own_hand_and_his_daughter_s_luck() -> void:
+	Story.forget()
+	check(Story.read(&"note_to_self"), "a works log with one line out of place")
+	check(Story.landed(&"echo_voice"), "something still writes notes to itself in his voice")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"rook", ["Who paid you?", "Have you still got the note?", "That's my handwriting."])
+	check(Story.landed(&"echo_hand"), "the note that paid Rook is his own")
+	eq(Story.chose(&"rook.note"), &"told_rook_hand", "and he said so")
+	Story.forget()
+	Story.beat(&"june_named", -INF)
+	Story.now = 5000.0
+	var t := _walk(&"june", ["Do you know who I am?"])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "What does the voice say?", "she has just told him the voice is his: the next thing waits")
+	Story.now += StoryPacing.SETTLE
+	@warning_ignore("return_value_discarded")
+	_walk(&"june", ["Do you know who I am?", "What does the voice say?"])
+	check(Story.landed(&"echo_kept"), "and when it has settled, what the voice has done for her")
 	Story.forget()
