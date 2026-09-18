@@ -99,8 +99,17 @@ static func make() -> BiomeDef:
 	# building on it, which is why the terrace term is a third of what it was.
 	d.built = BiomeForms.new()
 	d.built.stock = BiomeForms.RAISED
-	d.built.plan = &"row"
+	# A CITY IS BLOCKS, NOT A STREET. One frontage through the square is a village
+	# with a street; this is several of them side by side, which is what lets the
+	# count below be a city's rather than a stock's.
+	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
+	# Six shapes and six buildings is a village that happens to be tall. The pack
+	# stays six; how many go up is said here, and a form may be dealt again past
+	# the pack's size as long as no two of a kind stand within `repeat_apart` --
+	# which is the whole of what the no-repeat rule was ever protecting.
+	d.built.buildings = Vector2i(22, 34)
+	d.built.repeat_apart = 15.0
 	#
 	# NOT the cause of the missing tips: `test_places_worth_walking_to` failed
 	# without `built` too. That attribution was wrong when it was first written

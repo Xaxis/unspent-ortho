@@ -43,7 +43,7 @@ const UNKNOWN := "unknown"
 ##    landscape has a new id. It is the largest deliberate move of this list and
 ##    it is the landscape finally being the thing it was written to be: without
 ##    it a megacity rendered as eight one-storey huts.
-const GEN := 3
+const GEN := 4
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
