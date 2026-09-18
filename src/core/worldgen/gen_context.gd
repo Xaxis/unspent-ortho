@@ -16,6 +16,11 @@ var s: int
 ## island's shape scale by it; tile-scale features (ecotone width, river
 ## width, villages) do not.
 var k: float
+## The bodies this world is made of, as `GenBodies.plan` dealt them: each
+## {id, at, share, band, home}. Every stage that used to speak about "the island"
+## speaks about one of these (docs/WORLD.md §1). One body, centred, at full share
+## is the island this game has always had.
+var bodies: Array[Dictionary] = []
 
 # --- shape ---
 ## 1 = land. Final after GenShape except where later stages cut ramps or causeways.

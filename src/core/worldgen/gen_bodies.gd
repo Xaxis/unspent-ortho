@@ -103,9 +103,14 @@ const COUNT := {
 ## An orbital body is a captured asteroid, not a continent: it takes this share of
 ## the land a continent would.
 const ORBITAL_SHARE := 0.32
-## How far apart body centres are kept, as a share of the square. Below this the
-## ocean between them stops reading as an ocean.
-const APART := 0.28
+## The radius of the ONE island this game has always had, as a share of the
+## square: `GenShape` draws it at 0.34-0.38 by 0.38-0.41, so about this.
+const ONE_RADIUS := 0.375
+## Clear water between two bodies, and clear water between a body and the frame,
+## as shares of the square. The second exists because `GenShape` drowns land that
+## runs into the frame, so a body laid across the edge is a body cut in half.
+const SEA_GAP := 0.06
+const FRAME := 0.05
 ## The spread of the climate band a body is dealt, in the 0..1 units
 ## `BiomeDef.temp_range` and `moist_range` are written in. Two continents at one
 ## latitude are otherwise the same place.
@@ -139,15 +144,47 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 		while count > 1 and roundi(BASE_SIZE * sqrt(float(count) * small)) > want_size:
 			count -= 1
 		size = maxi(want_size, 64)
+	# HOW BIG A BODY CAN BE IS A PACKING PROBLEM, NOT A DIVISION. The first version
+	# of this gave each body 1/count of the land and scattered the centres, and at
+	# 1024 the four "continents" came out as ONE mass of half a million tiles with
+	# a litter of islets round it. Two reasons, and both matter: the centres were
+	# closer than the bodies were wide, and `GenShape` normalises the land to a
+	# fixed share whatever shapes it is given, so it simply filled the gaps in.
+	#
+	# So the radius is solved for instead. Bodies sit on a ring of radius R, and
+	# two constraints have to hold at once: a body must not touch the frame
+	# (R = 0.5 - r - FRAME) and two neighbours must not touch each other
+	# (2 R sin(pi/n) >= 2r + SEA_GAP). Solving the pair gives
+	#
+	#     r = (sin(pi/n) (1 - 2 FRAME) - SEA_GAP) / (2 (1 + sin(pi/n)))
+	#
+	# and the share each body takes of the land follows from its area, so the
+	# TOTAL land of a world falls out of the packing rather than being decreed.
+	# A world of continents therefore has less land than a world of one island,
+	# which is right: the ocean has to come from somewhere.
+	var r := ONE_RADIUS
+	var ring := 0.0
+	if count > 1:
+		var sn := sin(PI / float(count))
+		r = (sn * (1.0 - 2.0 * FRAME) - SEA_GAP) / (2.0 * (1.0 + sn))
+		r = maxf(r, 0.06)
+		ring = 0.5 - r - FRAME
+	var share_each := small * pow(r / ONE_RADIUS, 2.0)
 	var bodies: Array[Dictionary] = []
-	var placed: Array[Vector2] = []
+	var turn := rng.randf() * TAU
 	for i in count:
-		var at := _spot(rng, placed, count)
-		placed.append(at)
+		# ONE BODY IS THE WHOLE SQUARE, CENTRED. Not a special case for its own
+		# sake: it is what makes the stage a no-op on every world this project
+		# generates today, because `GenShape` has always laid its island about the
+		# middle. Move it and every seed's island moves with it.
+		var at := Vector2(0.5, 0.5)
+		if count > 1:
+			var a := turn + TAU * float(i) / float(count)
+			at = Vector2(0.5 + cos(a) * ring, 0.5 + sin(a) * ring)
 		bodies.append({
 			"id": i + 1,
 			"at": at,
-			"share": small / float(count),
+			"share": share_each,
 			# Latitude is the WORLD's: a body laid north is a cold body before a
 			# landscape is chosen. The band is what it was DEALT, and it is what
 			# stops two bodies at one latitude being the same place.
@@ -162,23 +199,3 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 			home = i
 	bodies[home]["home"] = true
 	return {"size": size, "bodies": bodies}
-
-
-## A centre at least APART from the ones already placed, given a few tries.
-static func _spot(rng: RandomNumberGenerator, placed: Array[Vector2], count: int) -> Vector2:
-	var want := APART / maxf(1.0, sqrt(float(count)) * 0.7)
-	var best := Vector2(0.5, 0.5)
-	var best_gap := -1.0
-	for _try in 24:
-		var p := Vector2(rng.randf_range(0.22, 0.78), rng.randf_range(0.22, 0.78))
-		var gap := 9.0
-		for q: Vector2 in placed:
-			gap = minf(gap, p.distance_to(q))
-		if placed.is_empty():
-			return p
-		if gap > best_gap:
-			best_gap = gap
-			best = p
-		if gap >= want:
-			return p
-	return best

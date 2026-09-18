@@ -146,3 +146,33 @@ func test_every_body_is_dealt_a_climate_band() -> void:
 				"seed %d body %d: a band inside its spread" % [s, int(b.id)])
 			seen["%.4f,%.4f" % [band.x, band.y]] = true
 	gt(float(seen.size()), 2.0, "the bands are not all the same deal")
+
+
+## THE STAGE IS A NO-OP ON EVERY WORLD THIS PROJECT GENERATES TODAY, and that is
+## a promise worth a test rather than a comment. `plan` returns one body at every
+## size anything currently asks for, one body is the whole square centred, and
+## `GenShape` then takes the identical random stream — so no island moved, no
+## stamp bumped and no baseline was re-accepted when continents arrived.
+func test_the_sizes_this_project_uses_are_one_island() -> void:
+	for s: int in SEEDS:
+		for want: int in [64, 128, 256, Tuning.WORLD_SIZE]:
+			var p := GenBodies.plan(s, Realm.SURFACE, want)
+			eq((p.bodies as Array).size(), 1, "seed %d at %d: one island" % [s, want])
+			var at: Vector2 = (p.bodies as Array)[0].at
+			check(at.is_equal_approx(Vector2(0.5, 0.5)), "seed %d at %d: centred" % [s, want])
+			near(float((p.bodies as Array)[0].share), 1.0, 1e-6, "seed %d at %d: the whole share" % [s, want])
+
+
+## And when the square IS big enough, the bodies are really separate land, not one
+## mass with arms. Both of those were real failures on the way here: the headlands
+## bridged the straits, and `GenShape._clean` drowned every mass but the largest.
+func test_a_big_square_holds_separate_continents() -> void:
+	var w := WorldGen.generate(1, 1024)
+	var big := 0
+	for b: Dictionary in w.continents:
+		if int(b.tiles) > 20000:
+			big += 1
+	eq(big, 4, "four continents, each a landmass of its own")
+	for b: Dictionary in w.continents:
+		if int(b.tiles) > 20000:
+			gt(float(b.tiles), 50000.0, "continent %d is a place, not a spit" % int(b.id))
