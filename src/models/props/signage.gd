@@ -60,6 +60,10 @@ const SIGN_FOOT := 0.23
 const SIGN_HEAD := 0.65
 ## How far the gantry stands off the wall, so the sign clears the paint under it.
 const SIGN_WALL := 0.30
+## How far in luminance a pigment must stand from the wall under it. Small enough
+## that the paint still reads as soaked into the render rather than fresh, large
+## enough to survive a landscape whose ambient is a third of an open noon.
+const APART := 0.13
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
@@ -160,7 +164,27 @@ static func _figure(pen: MeshKit, x: float, cz: float, y0: float, h: float, col:
 ## read, the billboard over it is covering nothing and the landscape's one image
 ## says nothing.
 static func _faded(col: Color, wall: Color, age: float) -> Color:
-	return col.lerp(wall, age)
+	var out := col.lerp(wall, age)
+	# AND THEN FORCED BACK APART FROM THE WALL, which is the half that matters.
+	#
+	# Fading toward the render was right on the coast's pale grey concrete and
+	# invisible on the Slums' dark brown: every pigment landed within a few
+	# values of the wall, and under an ambient a third of an open noon the whole
+	# painting went to one flat slab. Measured in the Slums at BOTH noon and
+	# midnight (they differ by 0.0881 there, so there is no brighter hour to be
+	# saved by) the figures could not be made out at all, while the drip stains
+	# -- which are the wall's own colour pushed DARKER -- read perfectly.
+	#
+	# That is the whole diagnosis: what survives is VALUE separation, not hue. So
+	# the pigment keeps its hue and chroma and is scaled until it stands clear of
+	# whatever it was painted on, away from the wall in the direction it already
+	# leaned. A mural is bold paint on somebody's wall; it cannot be defined
+	# relative to the wall and then expected to be seen against it.
+	var lw := wall.get_luminance()
+	var lo := maxf(out.get_luminance(), 0.002)
+	var want := clampf(lw - APART if lo <= lw else lw + APART, 0.04, 0.90)
+	var k := want / lo
+	return Color(minf(out.r * k, 1.0), minf(out.g * k, 1.0), minf(out.b * k, 1.0), out.a)
 
 
 ## What the mural shows. It is wordless and it is about PEOPLE: a crowd holding

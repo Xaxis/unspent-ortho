@@ -54,19 +54,21 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"coast": 0.6, &"bonelands": 0.35, &"scrapwood": 0.3, &"salt_flats": 0.2,
 		&"snowfield": -0.6, &"moss": -0.4}
 	# Flat, and stepped rather than rolling: a city is built on platforms. The
-	# terrace term gives the mesher long level slabs with a step between them,
-	# which is what a street reads as from above; hills and ridge are near zero
-	# because nothing here was allowed to stay a hill.
+	# terrace term is what gives the mesher long level slabs with a step between
+	# them, which is what a street reads as from above; hills and ridge are near
+	# zero because nothing here was allowed to stay a hill.
 	#
-	# FLATTER THAN THE FIRST DRAFT, and two independent reasons converge on it.
-	# A `row` plan refuses any spot whose nine neighbouring tiles are not level,
-	# so on terraced ground it lays a street with one building on it and calls
-	# that a city. And `neon_reflect` only mirrors where the ground's up-normal
-	# is at least 0.9, so a stepped street holds the billboards nowhere. Both
-	# wanted the same thing, which is how you know it is the ground and not a
-	# taste: hills 0.5 -> 0.25, terrace 0.85 -> 0.30.
+	# AND THE PLATFORMS HAVE TO BE BIG ENOUGH TO BUILD A STREET ON, which is why
+	# the terrace term is a third of what it first was and the hills half. Two
+	# things demand it and neither was known when these were chosen: a `row` city
+	# plan (`BiomeForms`) refuses any spot whose nine neighbouring tiles are not
+	# level, so on terraced ground a street comes out with one building on it; and
+	# `neon_reflect()` only mirrors a light where the ground's up-normal is 0.9 or
+	# better, so a stretch of flat street is literally what buys the reflections
+	# this landscape's wet look is made of. The stepping is still here — it is what
+	# stops a city reading as a field — there is just more slab between the steps.
 	d.relief = {
-		&"base": 2.6, &"hills": 0.5, &"ridge": 0.0, &"terrace": 0.85, &"valley": 0.2,
+		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
 	# TODO(dome): `d.built` with BiomeForms.RAISED and plan &"row" belongs here and
@@ -191,16 +193,18 @@ static func make() -> BiomeDef:
 	# term is pushed to zero against SkyLight.NEON_DAY's 0.10, because a city
 	# under sodium is the one landscape in the game that must not go blue.
 	d.grade = Vector4(-0.50, 0.04, -0.10, 0.14)
-	# It rains often and the lanes never dry: wet concrete under a low warm light
-	# is the best thing this landscape has, and `wet` is what buys the sheen.
-	# The wettest land in the game by design — limestone_caves at 0.55 is next.
-	# It is not raining: the dome condenses on everything above and comes down as
-	# a permanent drip, so the street is wet at every hour in every weather, which
-	# is better than rain because it is always there and it is this place's own.
-	# And it is the one field the whole reflection path hangs on: `neon_reflect`
-	# early-outs under 0.05, and a modest value leaves the puddles holding nothing
-	# — which would throw away half the light in the frame, since what the
-	# billboards do to standing water is the second picture this landscape has.
+	# THE WETTEST LAND IN THE GAME, and deliberately so: limestone_caves at 0.55 is
+	# the next. The dome does not only stop the sun, it CONDENSES — what the plant
+	# sends up comes back down as a permanent drip — so the street is wet at every
+	# hour and in every weather rather than when it rains. Wet concrete under a low
+	# warm light is the best thing this landscape has.
+	#
+	# It is also the ONE field the whole reflection path hangs on, which is why it
+	# is this high rather than merely high: `wet` reaches `neon_wetness()` through
+	# `SkyLight.neon_row` and the `neon_wet.x` global, and `neon_reflect()` — what
+	# actually mirrors a light in the ground — EARLY-OUTS ENTIRELY under 0.05. A
+	# modest number here would let the signs light the street and leave nothing in
+	# the puddles, which is half this landscape's picture missing.
 	d.wet = 0.90
 	# The water in a city is what has run off it. Oily black-brown that gives
 	# almost nothing back — but a WASH and not a hole (tests/render/test_water_wash),
@@ -211,7 +215,11 @@ static func make() -> BiomeDef:
 		PropKind.VENT, PropKind.VENT_CAP, PropKind.STACK, PropKind.WATER_TANK, PropKind.SLAG_HEAP,
 		PropKind.RELAY, PropKind.CHECKPOINT, PropKind.ARCHIVE, PropKind.MEMORIAL, PropKind.GRAVE,
 		PropKind.BOULDER, PropKind.STUMP, PropKind.BUSH, PropKind.DEAD_TREE,
-		PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.STONE_ORE, PropKind.COAL_ORE]
+		PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.STONE_ORE, PropKind.COAL_ORE,
+		# The wall somebody painted, and what got bolted over it. This landscape
+		# is the only one that declares it, and until it did, nothing in the game
+		# placed a mural and the kind was unreachable code.
+		PropKind.MURAL]
 	# What a city's rock gives is what was poured into it: iron and copper come
 	# up out of the rubble easily, stone hardly at all.
 	d.ore = [[PropKind.IRON_ORE, 0.055], [PropKind.COPPER_ORE, 0.095], [PropKind.COAL_ORE, 0.115],
@@ -328,6 +336,19 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.SIGN
 		return PropKind.VEHICLE if r > 0.88 and r < 0.892 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
+		# A party wall on a cleared lot, which is the only place a mural can
+		# honestly stand: a building came down and left one gable up with a
+		# picture on it.
+		#
+		# GRAVEL and never FLOOR, even though FLOOR is the plain ground and would
+		# place these far more reliably. FLOOR is also `village_square_ground`,
+		# and at one mural per 285 floor tiles one landed IN a village square on
+		# seed 42 and took `test_villages_stand_in_clearings_with_a_square` from
+		# 0.9 to 0.71 -- a six-tile wall across a market square, and an
+		# intermittent failure that would have looked like flake. A wall belongs
+		# on a cleared lot; the square is where people stand.
+		if r < 0.035:
+			return PropKind.MURAL
 		if r < 0.05:
 			return PropKind.DEBRIS
 		if r < 0.075:

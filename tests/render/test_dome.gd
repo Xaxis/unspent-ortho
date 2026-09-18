@@ -127,6 +127,11 @@ func test_the_slums_keeps_its_own_colour_and_never_goes_to_the_night_key() -> vo
 	# the one landscape whose whole argument is that it is orange, so the lid is
 	# deliberately absent from `last_tint`. If somebody ever adds it there, this
 	# is the line that says why not.
+	#
+	# It is the one test here that catches a future GOOD IDEA rather than a bug:
+	# the next person to read `sky_shut` will reasonably think "closed eases the
+	# tint, so the lid should too", and it is a one-line change that would turn
+	# the Slums blue without failing anything else.
 	var d := BiomeRegistry.get_def(&"slums")
 	gt(d.light_tint.r, d.light_tint.b, "the slums lights itself warm")
 	var lit := SkyLight.type_light(d, NOON)

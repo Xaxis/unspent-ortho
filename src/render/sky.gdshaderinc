@@ -100,11 +100,13 @@ global uniform float sky_linear;
 // casting sun lights a surface's emission a second time (measured: `perf
 // sunpath`, src/render/degrade/render_probe.gd). SkyLight writes it every frame.
 global uniform float sky_emission;
-// How far the landscape under the camera is shut off from the sky
-// (`BiomeDef.sky_shut`, blended across an ecotone by `SkyLight.sky_shut_at`).
-// 0 under an open sky, which is every landscape but one, so nothing that reads
-// it can move another landscape's evening by a pixel. SkyLight writes it every
-// frame beside the other sky_* globals and is their only writer.
+// How much LID is over this place: 0 under the open sky, 1 with something
+// between it and the sun at every hour (`BiomeDef.sky_shut`, blended across an
+// ecotone by `SkyLight.sky_shut_at`, written every frame beside the other sky_*
+// globals by their only writer). It is 0 in every landscape that has not asked
+// for one, so nothing reading it can move another landscape's evening by a
+// pixel. It is what lets a shader tell "the SKY is dark" from "the STREET is
+// dark", which used to be the same sentence.
 global uniform float sky_lid;
 
 // --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
@@ -555,6 +557,28 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 // whole image. Kept as the identity while the callers are converted.
 vec3 neon_graded(vec3 c, float found) {
 	return c;
+}
+
+// HOW FAR A NEON-CODED FACE IS BURNING, 0..1.
+//
+// It was `clamp((0.9 - mean(sky_tint)) * 6.0, 0, 1)` written out at each of the
+// two call sites in world.gdshader — a stolen tube lights when the light goes.
+// That is right under an open sky and wrong under one that is SHUT, because it
+// asks whether the SKY is dark when what decides an advertisement is whether the
+// STREET is. Measured on the slums at noon, `sky_tint` means 0.86 and the old
+// expression answered 0.24: every sign in a street drawn dark at midday burning
+// at a quarter, which reads as a city guttering out. That is the exact opposite
+// of what that landscape is for — the horror there is that it FUNCTIONS.
+//
+// The lid is a FLOOR and never a replacement, so no other landscape moves by a
+// pixel: `sky_lid` is 0 everywhere that has not asked for one, and the tint term
+// still owns every evening in the game.
+//
+// It is a function rather than a third copy of the expression because the number
+// belongs where it is DRAWN and the caller should ask (docs/LOOK.md): the two
+// call sites had already drifted into two spellings of one rule.
+float neon_burn(float tint_mean) {
+	return max(clamp((0.9 - tint_mean) * 6.0, 0.0, 1.0), sky_lid);
 }
 
 // How wet the ground lies here, 0..1: the rain-slicked default plus rain, only
