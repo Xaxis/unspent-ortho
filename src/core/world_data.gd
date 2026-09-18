@@ -118,6 +118,26 @@ func in_bounds(x: int, y: int) -> bool:
 	return x >= 0 and y >= 0 and x < size and y < size
 
 
+## Which BODY a tile is on: 0 is the void between them (`GenBodies.VOID`) — the
+## ocean on the surface, solid rock underground, vacuum in orbit.
+func continent_at(x: int, y: int) -> int:
+	if not in_bounds(x, y):
+		return 0
+	return continent[y * size + x]
+
+
+## Do these two stand on the same landmass? THE QUESTION MOST CALLERS ACTUALLY
+## HAVE, and the one a distance cannot answer: two points forty tiles apart may
+## have an ocean between them, and every "within N tiles" in this game was written
+## when they could not. A story slot held near the spawn, a road between villages,
+## a survey line, a keeper's feeding ground — all of them mean "and you can walk
+## there". Neither point being on a body at all is false, not true: the void is
+## not a place two things can share.
+func same_body(a: Vector2, b: Vector2) -> bool:
+	var ia := continent_at(floori(a.x), floori(a.y))
+	return ia != 0 and ia == continent_at(floori(b.x), floori(b.y))
+
+
 func level_at(x: int, y: int) -> int:
 	if not in_bounds(x, y):
 		return -3

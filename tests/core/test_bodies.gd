@@ -176,3 +176,39 @@ func test_a_big_square_holds_separate_continents() -> void:
 	for b: Dictionary in w.continents:
 		if int(b.tiles) > 20000:
 			gt(float(b.tiles), 50000.0, "continent %d is a place, not a spit" % int(b.id))
+
+
+## The door callers ask through, rather than indexing the array themselves.
+func test_a_world_says_which_body_a_place_is_on() -> void:
+	var w := WorldGen.generate(1, 256)
+	eq(w.continent_at(-1, 0), GenBodies.VOID, "off the map is the void")
+	eq(w.continent_at(w.size, 0), GenBodies.VOID, "and so is past the far edge")
+	# The spawn is on land, so it is on a body, and it shares that body with itself.
+	var sp := w.spawn
+	gt(float(w.continent_at(floori(sp.x), floori(sp.y))), 0.0, "the player wakes on a body")
+	check(w.same_body(sp, sp), "a place is on the same body as itself")
+	# Open sea is nobody's: the void is not a place two things can share.
+	var sea := Vector2.ZERO
+	check(not w.same_body(sp, sea), "the spawn does not share a landmass with the open sea")
+	check(not w.same_body(sea, sea), "and two points in the void share nothing")
+
+
+## On one island everything walkable shares a body; the question only gets
+## interesting when there is water in the middle.
+func test_two_places_on_one_island_share_it_and_on_four_they_may_not() -> void:
+	var one := WorldGen.generate(1, 256)
+	var a := one.spawn
+	var b := Vector2.ZERO
+	for r: Dictionary in one.regions:
+		b = r.centre
+		break
+	check(one.same_body(a, b), "one island: the spawn and a region are the same land")
+	var many := WorldGen.generate(1, 1024)
+	var apart := 0
+	var seen: Array[Vector2] = []
+	for r: Dictionary in many.regions:
+		seen.append(r.centre)
+	for i in mini(seen.size(), 12):
+		if not many.same_body(seen[0], seen[i]):
+			apart += 1
+	gt(float(apart), 0.0, "four continents: some regions are across water from each other")
