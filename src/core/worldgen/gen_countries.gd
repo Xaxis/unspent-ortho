@@ -871,9 +871,32 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 			for gx in range(1, hw - 1):
 				var k := gy * hw + gx
 				var o := other_h[k]
-				if o == 0:
-					continue
 				var own := own_h[k]
+				# A CELL WHOSE NEAREST PAIR DOES NOT NAME IT IS THE SEAM ITSELF.
+				# `other_h` is 0 where the pair the chamfer carried here holds two
+				# countries and neither is this cell's own — which happens exactly
+				# where a cell is equidistant between two DIFFERENT neighbours, near
+				# a place three landscapes meet. That is the definition of the seam
+				# this loop is looking for, and it was the one case it skipped.
+				#
+				# It skipped it twice over, because the loop below cannot work out
+				# `other` for such a cell either and leaves `country2` holding
+				# whatever it had before — so the stale value is what flips, along
+				# the very line that was never faded. Measured on seed 42 with
+				# eleven landscapes: a straight run of eight tiles of moss, in a
+				# corridor with the coast on one side and the city on the other,
+				# where country2 changed allegiance under a blend of 0.09 to 0.30.
+				#
+				# Marking them costs almost nothing, which is how you can tell it is
+				# the right place: over the three test seeds the blend band loses
+				# 0.08% of its tiles and 0.2% of its mass. Widening the FADE until
+				# the same seams went quiet was tried first and cost 40% of the
+				# world's blend mass and 56% of everything over 0.25 — passing the
+				# test by flattening the ecotones the test exists to protect.
+				if o == 0:
+					if own != SEA:
+						seam[k] = 1
+					continue
 				var r := other_h[k + 1]
 				var dn := other_h[k + hw]
 				var l := other_h[k - 1]

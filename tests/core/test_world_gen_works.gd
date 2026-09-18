@@ -374,5 +374,12 @@ func test_budgets() -> void:
 			verts += tpl.made_v.size() + tpl.found_v.size()
 			n += 1
 	print("       works at 512: %d evidence props, %d template vertices (%.0f each)" % [n, verts, float(verts) / maxf(n, 1)])
-	lt(works_ms, 400.0, "works stage at 256")
+	# A WALL-CLOCK BUDGET IN THE GATE MUST BE SCALED, or it measures the machine.
+	# The gate runs three shards and four shots at once: this stage takes 56 ms
+	# run alone and was read as 462 ms beside them, failing a bar of 400 with
+	# nothing whatever changed in the stage. `machine_slack` is the project's own
+	# answer to that and every other clock-watching test already uses it.
+	lt(works_ms, 400.0 * TestCase.machine_slack(), "works stage at 256")
+	# The vertex count is not a clock and is not scaled: it is the same number on
+	# any machine, under any load.
 	lt(float(verts) / maxf(n, 1), 1500.0, "vertices per piece of evidence")

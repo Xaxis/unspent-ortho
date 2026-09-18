@@ -31,7 +31,13 @@ const UNKNOWN := "unknown"
 ## Bump when a worldgen stage changes what a seed makes (a different island from
 ## the same inputs). Nothing here can see into GenShape or GenRelief; this is
 ## the hand that says they moved.
-const GEN := 1
+##
+## 2: GenCountries marks a half-cell whose nearest border pair does not name its
+##    own country as a SEAM, which it always was. `blend` changes by a fifth of a
+##    percent over the three test seeds, and `GenScatter` chooses a tile's recipe
+##    by blend, so a handful of props move. Small, but not nothing, and a save
+##    grows its world again from the seed.
+const GEN := 2
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
