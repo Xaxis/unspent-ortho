@@ -21,32 +21,39 @@ const MACHINE_FROM := 240.0 / 360.0
 const MACHINE_TO := 336.0 / 360.0
 
 
-func test_no_sign_is_lit_in_the_machines_colours() -> void:
-	for i in Towers.SIGN_COLOURS.size():
-		var col: Color = Towers.SIGN_COLOURS[i]
-		# A near-grey is SKIPPED, not failed. The city's list carries a dirty warm
-		# white whose saturation is about 0.14, and an earlier version of this
-		# test asserted every sign was a saturated colour -- it would have failed
-		# the CORRECT list the moment it arrived, which is the worst kind of test
-		# there is. Hue only means anything where there is chroma to carry it,
-		# and a wash that pale can never be mistaken for a machine.
-		if col.s <= 0.25:
-			continue
-		var inside := col.h >= MACHINE_FROM and col.h <= MACHINE_TO
-		check(not inside, "sign colour %d is at hue %.0f, inside the machines' 240-336" % [i, col.h * 360.0])
-
-
-func test_the_sodium_is_the_same_sodium_the_lights_throw() -> void:
-	# Written out twice on purpose: a model may not depend on a system, so
-	# towers.gd cannot import 15_lights. It is the same deliberate duplication
-	# `GenScatter.HOUSE_MODELS` keeps against `Houses.VARIANTS`, and like that one
-	# it is only safe while something fails the moment the two drift.
+func test_the_ground_note_is_not_a_machines_colour() -> void:
+	# THE RULE IS ABOUT THE FIELD, NOT ABOUT HUE, and the measurement is why.
+	#
+	# The obvious guard -- no sign colour inside the machines' 240-336 -- is wrong,
+	# and wrong against SHIPPED CANON. The coast's stolen neon
+	# (`Houses.NEON_TUBES[1]`, `15_lights.NEON_MAGENTA`, the ff40cc that
+	# `18-stolen-neon-close.png` claims by name) is hue 316.0: inside the band, on
+	# the lit house of every lit village, right since M1. A hue ban fails it.
+	#
+	# Nor does brightness separate them. Measured:
+	#   coast neon      hue 316.0  sat 0.75  val 1.00   <- correct, shipped
+	#   removed violet  hue 258.5  sat 0.65  val 1.00   <- wrong, removed
+	#   machine fill    hue 257.5  sat 0.35  val 0.41   <- what the band protects
+	# The first two are the same brightness and nearly the same chroma. No
+	# property of the COLOUR tells them apart.
+	#
+	# What told them apart was AREA. The violet was proposed as the ground note --
+	# the four-storey FIELD `Towers.billboard` throws on a wall, which is mass --
+	# and a magenta is one shop's accent. So this guards the ground note and
+	# leaves accents free: the decision that was actually taken, and the only part
+	# of it that is derivable rather than curated.
+	#
+	# The blanket rule this replaces passed the shipped list by 0.9 of a degree,
+	# which is not a rule, it is a coincidence with a green light on it.
+	var ground: Color = Towers.SIGN_COLOURS[0]
+	var inside := ground.h >= MACHINE_FROM and ground.h <= MACHINE_TO
+	check(not inside, "the ground note is at hue %.0f, inside the machines' 240-336" % [ground.h * 360.0])
+	# And it is the street's own sodium, not a second orange that looks like it.
+	# Written out twice because a model may not import a system.
 	var sodium: Vector3 = Lights.NEON_SODIUM
-	var found := false
-	for col: Color in Towers.SIGN_COLOURS:
-		if absf(col.r - sodium.x) < 0.002 and absf(col.g - sodium.y) < 0.002 and absf(col.b - sodium.z) < 0.002:
-			found = true
-	check(found, "the street's sodium (%.2f, %.2f, %.2f) is one of the sign colours" % [sodium.x, sodium.y, sodium.z])
+	check(absf(ground.r - sodium.x) < 0.002 and absf(ground.g - sodium.y) < 0.002
+			and absf(ground.b - sodium.z) < 0.002,
+		"the ground note is the street's own sodium (%.2f, %.2f, %.2f)" % [sodium.x, sodium.y, sodium.z])
 
 
 func test_a_mural_lights_only_where_something_was_bolted_over_it() -> void:
