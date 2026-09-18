@@ -82,6 +82,56 @@ static var _slack := 0.0
 static var _slack_at := 0
 
 
+## Is this machine quiet enough for a COST to mean anything at all?
+##
+## `best_of` removes the noise of a machine that is busy in bursts, because at
+## least one run lands in a clear window. It cannot remove the noise of a machine
+## that is SATURATED, because then no run does: the landmarks sweep measures 41
+## ms quiet, 51 ms beside ten other processes, and 161 ms inside a gate running
+## three shards and four shots while another session ran a wave. Best-of-three
+## was every one of those.
+##
+## So there are three regimes and only two of them can be asserted in. When the
+## third arrives, a cost test PRINTS ITS NUMBER AND DOES NOT JUDGE IT — which is
+## docs/LOOK.md's own third method, "print UNMEASURED, never 0.00 ms", arriving
+## in the place it was really needed. The alternative is a bar wide enough to
+## pass on a saturated machine, and that is a bar that can no longer fail for a
+## real reason, which is the whole thing this file gave up on widening for.
+##
+## A skipped measurement is not a hole: the gate is run on a quiet machine before
+## anything lands, and `tools/check.sh` is where that happens.
+##
+## AND A RELATIONAL BAR IS NOT IMMUNE EITHER, which is worth writing down because
+## it was argued here first and it was an over-claim. Stating a cost as a SHARE
+## of something measured in the same run does cancel a load that slows everything
+## equally — but contention does not slow everything equally. Three relational or
+## best-of bars tripped in one afternoon on this machine: the works stage against
+## its own generation (0.269 against a bar of 0.22), the warp list against one
+## sweep of the island, and the landmarks sweep at best-of-three. A stage that
+## allocates harder loses more of a shared machine than the whole it is a share
+## of, so the ratio moves too. Relational is still the better bar — it is tighter
+## and it survives the ordinary case — it just is not a licence to assert on a
+## machine that cannot be measured.
+static func can_measure_cost() -> bool:
+	return machine_slack() < 2.0
+
+
+## Say the number and why it was not judged, so a skipped bar is visible in the
+## log rather than being a test that quietly asserts nothing.
+func unmeasured(what: String, got: float, bound: float) -> void:
+	print("  UNMEASURED %s: %.2f against %.2f, machine at %.1fx — too loaded to mean anything"
+		% [what, got, bound, machine_slack()])
+
+
+## Assert a COST, unless the machine is too loaded for the number to mean
+## anything, in which case say so and judge nothing.
+func cost_lt(got: float, bound: float, what: String) -> void:
+	if can_measure_cost():
+		lt(got, bound, what)
+	else:
+		unmeasured(what, got, bound)
+
+
 ## The cheapest of `n` runs of `what`, in microseconds -- the honest cost of a
 ## thing on a machine that is also doing something else.
 ##

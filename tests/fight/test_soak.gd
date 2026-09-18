@@ -99,4 +99,4 @@ func test_minutes_on_a_generated_coast() -> void:
 	# which is orders out, not tens of percent). It is the middle second that
 	# has to hold, not every one: the bad seconds are the scheduler's and there
 	# is no point pretending otherwise.
-	lt(ms_per_second, 45.0, "cheap enough to run every frame")
+	cost_lt(ms_per_second, 45.0, "cheap enough to run every frame")

@@ -84,4 +84,4 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	# cost is low because the sweep only reads what worldgen already recorded;
 	# if it ever has to LOOK at the land the way Landmarks.sites does, this
 	# number moves by two orders and that is exactly what should be caught here.
-	lt(ms, 5.0, "finding the depots is not a stage a player waits through")
+	cost_lt(ms, 5.0, "finding the depots is not a stage a player waits through")

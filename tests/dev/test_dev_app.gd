@@ -297,7 +297,7 @@ func test_the_warp_list_costs_about_one_sweep_of_the_island() -> void:
 		places = DevCheats.places(g)
 		all = mini(all, Time.get_ticks_usec() - t)
 	check(places.size() > 10, "there is a list to have cost anything")
-	check(all < one * 6, "the whole list is %d us against one sweep's %d" % [all, one])
+	cost_lt(float(all), float(one) * 6.0, "the whole list is %d us against one sweep's %d" % [all, one])
 	g.free()
 	_restore()
 

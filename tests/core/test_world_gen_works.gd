@@ -415,7 +415,7 @@ func test_budgets() -> void:
 	#
 	# If the ratio ever turns out NOT to cancel load, this failure says so out
 	# loud, because both numbers are printed above it.
-	lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
+	cost_lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
 		"the works stage as a share of generation (%.0f ms of %d)" % [works_ms, gen_ms])
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.
