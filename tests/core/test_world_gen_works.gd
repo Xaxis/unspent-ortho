@@ -26,6 +26,13 @@ const HOME := {
 
 
 ## Walking-scale evidence every landscape holds, per 1000 dry tiles.
+##
+## Measured 2026-09-18 over all three seeds: 24.6 to 46.5 per 1000 tiles. The salt
+## flats is sparsest on every seed (28.8 / 32.4 / 24.6) and the city is now the
+## densest land in the game (39 to 46), which is what moved the salt flats under
+## the bar — the slums went from five buildings to twenty-odd and shifted what is
+## scattered everywhere else. The run PRINTS the table, so the next person reads
+## these numbers off the gate instead of instrumenting the test to find them.
 const EVIDENCE_PER_1000 := 25.0
 ## The share of that a landscape must clear on EVERY island, whatever the sample
 ## says. Under this the machines have not worked the place at all, which is a
@@ -82,8 +89,14 @@ func test_every_landscape_holds_its_own_works() -> void:
 		# number to land that diff is how these bars got their shape in the first
 		# place. So the bar's VALUE does not move; what moves is how much of the
 		# sample has to clear it.
+		# A RULE THAT IS RIGHT AND SILENT IS ONE NOBODY CAN RE-DERIVE. The shape of
+		# the bar is settled above; what the table below costs is one printed line a
+		# seed, and it is the difference between the next person reading these
+		# numbers off a gate run and instrumenting the test to find them again.
+		var shown := PackedStringArray()
 		for cc: int in BiomeRegistry.land_indices_in(w.realm):
 			var per := evidence[cc] * 1000.0 / maxf(land[cc], 1.0)
+			shown.append("%s %.1f" % [BiomeRegistry.name_of(cc), per])
 			var rows: Array = worked.get(cc, [])
 			rows.append(per)
 			worked[cc] = rows
@@ -92,6 +105,7 @@ func test_every_landscape_holds_its_own_works() -> void:
 			# came out a little under.
 			gt(per, EVIDENCE_PER_1000 * EVIDENCE_FLOOR,
 				"seed %d %s is all but untouched at %.1f per 1000 tiles" % [s, BiomeRegistry.name_of(cc), per])
+		print("  evidence per 1000 tiles, seed %d: %s" % [s, ", ".join(shown)])
 	var most := (Worlds.WORLD_SEEDS.size() + 1) / 2
 	for cc: Variant in worked:
 		var rows: Array = worked[cc]

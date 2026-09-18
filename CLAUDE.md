@@ -302,6 +302,16 @@ tools print their own summaries.
   directory, so two concurrent runs overwrite each other's frames and both come
   out worthless with a green exit. `tools/tour.sh` now refuses the second run.
 - Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
+- **Never edit under `src/` while a gate is running, and do not believe a gate
+  that ran over an edit.** Each shard loads its scripts when its own process
+  starts, so "the frames are already shot, it must be safe" is wrong. A
+  half-written `src/systems/NN_*.gd` takes down every system after it in name
+  order and the failures name the VICTIMS, not the file: twenty-six reds saying
+  "90_ui is loaded from src/systems", "lights system", "the guide system loads",
+  and nothing anywhere pointing at the file being typed (measured 2026-09-18; the
+  same tests were green in forty seconds on the finished tree). If a gate comes
+  back with a pile of "X is loaded from src/systems", run `git status` before
+  you believe a word of it.
 
 ## Another session may be running right now
 

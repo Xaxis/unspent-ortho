@@ -83,3 +83,17 @@ func test_what_he_does_in_play_is_noted() -> void:
 	eq(acts.get(&"keeper_fell", &""), &"coast", "and so is a keeper brought down")
 	Sx.end(g)
 	Story.forget()
+
+
+func test_a_place_built_and_held_is_written_down_too() -> void:
+	Story.forget()
+	Story.now = 0.0
+	Story.note(&"founded", &"coast", 0.0)
+	Story.note(&"raid_held", &"coast", 100.0)
+	Story.now = 100.0 + StoryLedger.LAG
+	var people := "\n".join(StoryLedger.lines(&"people"))
+	check(people.contains("built a place and stayed in it"), "the people heard he built:\n%s" % people)
+	check(people.contains("turned them back from his own door"), "and that he held it")
+	var machines := "\n".join(StoryLedger.lines(&"machines"))
+	check(machines.contains("RECOVERY FAILED"), "the machines filed it as their failure:\n%s" % machines)
+	Story.forget()

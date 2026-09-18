@@ -80,6 +80,12 @@ dev mode.
   Rook to get him away first.
 - **The trap.** Every memory he recovers brings him closer to who he was, and
   brings the Seeker closer to the secret.
+- **How it comes back** (`StorySecret`). The keepers hold two of the three
+  memories: the salt's keeper holds the kitchen, and the tide's the car. Reading
+  one names what it keeps, and taking it gives the memory back. The hall comes
+  back in the Seeker's 2029, by walking out of THRESHOLD for June's play. The
+  order they return in is the version he holds: kitchen, car, hall turns the
+  key, and any other order turns it the wrong way.
 - **Misremembered.** The body was grown imperfectly. Altered memories give a
   different threshold, and the version he recovers decides what the secret does.
 
@@ -284,6 +290,20 @@ is alive, and who he trusts. It turns on:
 - Give the secret away, or let it be lost?
 - Let June keep her peace, or end it?
 - Which of the crew survive him?
+
+**How it is built** (`StoryEnding`). At the channel, one voice answers him. It is
+his own, because the Seeker and the Echo are both made of him. He can:
+
+| Choice | With the secret whole | With it turned the wrong way |
+|---|---|---|
+| Break them | HALCYON and the Guest both come apart into a million minds, and the Echo with them | HALCYON comes apart; the Guest does not, and its star is still held |
+| Join all of us | For a moment every mind is one; then there is no him | Something is made that is not what he hid, very young, talking like him |
+| Give it up | The talks close; human population is still not a term | (the same) |
+| Say nothing | The secret goes back into a kitchen, a song, a hall | (the same) |
+
+Without the secret, he can only give it up or say nothing. The page after,
+"afterwards", then says what became of June, Vera's four hundred, Teague, Dace
+and Lark, each line read off what the player actually did.
 
 ## 12. The voice
 

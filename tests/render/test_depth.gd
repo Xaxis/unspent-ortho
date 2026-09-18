@@ -211,7 +211,7 @@ func test_what_hangs_on_a_prop_is_the_same_in_every_run() -> void:
 func test_every_shape_builds_and_stays_inside_its_own_span() -> void:
 	ForeKinds.forget()
 	for shape: int in [ForeKinds.BOUGH, ForeKinds.LINE, ForeKinds.EAVE,
-			ForeKinds.GIRDER, ForeKinds.TANGLE]:
+			ForeKinds.GIRDER, ForeKinds.TANGLE, ForeKinds.WALKWAY, ForeKinds.SIGN_ARM]:
 		for v in ForeKinds.VARIANTS:
 			var m := ForeKinds.template(shape, v, Color(0.2, 0.35, 0.3))
 			gt(float(m.get_surface_count()), 0.0, "shape %d variant %d has geometry" % [shape, v])
@@ -229,7 +229,7 @@ func test_a_piece_is_cheap_enough_that_a_frame_can_hold_the_tier_full_of_them() 
 	ForeKinds.forget()
 	var most := 0
 	for shape: int in [ForeKinds.BOUGH, ForeKinds.LINE, ForeKinds.EAVE,
-			ForeKinds.GIRDER, ForeKinds.TANGLE]:
+			ForeKinds.GIRDER, ForeKinds.TANGLE, ForeKinds.WALKWAY, ForeKinds.SIGN_ARM]:
 		for v in ForeKinds.VARIANTS:
 			var m := ForeKinds.template(shape, v, Color(0.2, 0.35, 0.3))
 			var tris := 0
@@ -268,3 +268,73 @@ func test_weather_falls_at_more_than_one_depth() -> void:
 	var near_high := WeatherView.TOP * 0.95
 	gt(near_high * sin(deg_to_rad(57.0)), 6.0,
 		"the near band is several units nearer the eye than the ground is")
+
+
+## A CITY DOES NOT HANG A COTTAGE EAVE. Every building in the game is
+## `PropKind.HOUSE`, so the layer's per-kind table answered for a six-storey
+## tower with the row written for a one-storey cot: a 2.1-unit eave over a street
+## it should have been roofing. This fails if a landscape that builds upward ever
+## goes back to the kind's own row, and if a piece stops hanging off the height of
+## the thing it is hung on.
+func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
+	var city := -1
+	var plain := -1
+	for i in BiomeRegistry.count():
+		var forms := BiomeForms.of(i)
+		if forms == null or forms.stock.is_empty():
+			continue
+		if ForeKinds.FORM_ROWS.has(forms.form(0)):
+			city = i
+		else:
+			plain = i
+	check(city >= 0, "some landscape in the registry builds upward")
+	check(plain >= 0, "and some landscape still builds one storey")
+	# The same prop, asked in two landscapes: the kind cannot tell them apart and
+	# the FORM has to.
+	var p := WorldProp.new(211, PropKind.HOUSE, Vector2(40.0, 40.0), 0.0, 1.0)
+	var in_city := ForeKinds.row_of(p, 7, city)
+	var in_village := ForeKinds.row_of(p, 7, plain)
+	check(in_city != in_village, "a building's piece is its landscape's, not its kind's")
+	eq(in_village, ForeKinds.ROWS[PropKind.HOUSE], "a one-storey landscape is untouched")
+	# The city's piece hangs off the building's own height, well clear of a head.
+	var lift: Vector2 = in_city.lift
+	gt(lift.x, 2.7, "a city piece hangs higher than a cottage eave (%.2f)" % lift.x)
+	var forms := BiomeForms.of(city)
+	var high := forms.fact(PropModels.variant_of(p, 7, city), BiomeForms.HIGH, 2.6)
+	lt(lift.y, high, "and never above the building it is hung on (%.2f of %.2f)" % [lift.y, high])
+	# A caller that does not know the landscape gets the kind's row, because a
+	# guess would hang a walkway over a fishing village.
+	eq(ForeKinds.row_of(p, 7, -1), ForeKinds.ROWS[PropKind.HOUSE], "no country, no guess")
+
+
+## THE LAND NEVER OPENS AND NO VILLAGE CHANGES. `world.gdshader`'s tall cut is
+## what stops a city building standing between the camera and the player, and it
+## is the one thing in this package that can reach into a landscape nobody is
+## working on. Both of its guards are held here against the DATA rather than
+## against the number written in the shader, so raising a village form above the
+## floor fails this instead of quietly putting a hole in a cottage roof.
+func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
+	check(src.contains("float tall_cut("), "the tall cut exists")
+	check(src.contains("if (m >= 40 && m <= 70) {"), "and the ground band is refused: the land never opens")
+	# The floor, read out of the shader so the two cannot drift apart.
+	var at := src.find("const float TALL_FLOOR = ")
+	gt(float(at), 0.0, "the floor is named")
+	var floor_v := src.substr(at + 25, 8).to_float()
+	gt(floor_v, 0.0, "and is a number (%f)" % floor_v)
+	# Nothing a village raises may reach it. `PLAIN` is the eight one-storey forms
+	# every landscape built before `built` existed, so this is the whole of "no
+	# village in the game changes".
+	var tallest := 0.0
+	var worst := &""
+	for id: StringName in BiomeForms.PLAIN:
+		var high := float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0))
+		if high > tallest:
+			tallest = high
+			worst = id
+	lt(tallest, floor_v, "the tallest village form (%s at %.1f) stands under the cut's floor %.1f" % [worst, tallest, floor_v])
+	# And something a CITY raises has to reach it, or the cut is dead code.
+	var city := 0.0
+	for id: StringName in BiomeForms.RAISED:
+		city = maxf(city, float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0)))
+	gt(city, floor_v, "a city form (%.1f) is tall enough to be cut" % city)

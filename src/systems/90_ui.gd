@@ -417,6 +417,13 @@ func _feed_hud() -> void:
 	hud.set_charge(UiRules.charge_shown(inv.held), inv.count(&"wick"))
 	hud.set_pressures(UiRules.pressures(b, game.clock.minutes, inv.bulk(), UiLink.creel(inv, b), Survival.lamp_oil(game), b.lamp_lit))
 	hud.set_goal(_goal)
+	# A conversation is drawn over the world, not on the slate, so nothing else
+	# here knows one is up. The glass is cleared as it OPENS rather than only
+	# hushed, because a line already standing would go on being drawn under the
+	# words the player is reading.
+	if game.talking and not hud.talking:
+		hud.messages.clear()
+	hud.talking = game.talking
 	var busy := Time.get_ticks_msec() / 1000.0 < b.busy_until
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")

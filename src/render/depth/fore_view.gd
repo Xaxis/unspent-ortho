@@ -185,7 +185,7 @@ func _gather(focus: Vector2) -> void:
 		# is what was hanging off it.
 		if world.depleted.has(p.id):
 			continue
-		if not ForeKinds.hung_on(p, world.seed_value):
+		if not ForeKinds.hung_on(p, world.seed_value, _country(p)):
 			continue
 		found.append([p.pos.distance_squared_to(focus), p])
 	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
@@ -207,8 +207,16 @@ func _gather(focus: Vector2) -> void:
 	drawn = want
 
 
+## The landscape a prop stands in. A BUILDING's piece is decided by what its
+## landscape BUILT (`ForeKinds.row_of`), so the country has to travel with the
+## prop: every building in the game is one PropKind and the kind alone cannot
+## tell a six-storey tower from a cot.
+func _country(p: WorldProp) -> int:
+	return maxi(Country.COAST, world.country_at(floori(p.pos.x), floori(p.pos.y)))
+
+
 func _place(i: int, p: WorldProp, focus: Vector2) -> void:
-	var hang := ForeKinds.hang(p, world.seed_value)
+	var hang := ForeKinds.hang(p, world.seed_value, _country(p))
 	var node := _slot(i)
 	var tint := _tint(p)
 	node.mesh = ForeKinds.template(int(hang.shape), int(hang.variant), tint)

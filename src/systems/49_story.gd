@@ -66,6 +66,8 @@ func setup(g: Game) -> void:
 	Events.works_broken.connect(_on_works_broken)
 	_wall_the_site()
 	Events.sentinel_fell.connect(_on_sentinel_fell)
+	Events.settlement_founded.connect(_on_settlement_founded)
+	Events.raid_ended.connect(_on_raid_ended)
 
 
 func started() -> void:
@@ -134,6 +136,10 @@ func _exit_tree() -> void:
 		Events.works_broken.disconnect(_on_works_broken)
 	if Events.sentinel_fell.is_connected(_on_sentinel_fell):
 		Events.sentinel_fell.disconnect(_on_sentinel_fell)
+	if Events.settlement_founded.is_connected(_on_settlement_founded):
+		Events.settlement_founded.disconnect(_on_settlement_founded)
+	if Events.raid_ended.is_connected(_on_raid_ended):
+		Events.raid_ended.disconnect(_on_raid_ended)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -308,6 +314,13 @@ func _start_reading(prop: WorldProp) -> void:
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "no_read")
 		return
+	# A thing that answers (`talk`): reading it is being spoken to.
+	var answers := StringName(str(StoryContent.FRAGMENTS[id].get("talk", &"")))
+	if answers != &"":
+		@warning_ignore("return_value_discarded")
+		Story.read(id)
+		_start_talk({"talk": answers})
+		return
 	reading = id
 	view.reading = StoryFragments.lines(id)
 	view.reading_title = StoryFragments.title_of(id)
@@ -347,7 +360,12 @@ func _read_talk_keys(use_pressed: bool) -> void:
 	if not use_pressed:
 		return
 	if not talk.pick(view.choice):
+		# A conversation may close onto a page (`after`): the channel closes onto
+		# how it ended, composed from everything he chose.
+		var after := StringName(str(StoryContent.TALKS.get(talk.id, {}).get("after", &"")))
 		_close()
+		if after != &"":
+			open_reading(after, true)
 		return
 	view.choice = 0
 	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
@@ -388,6 +406,10 @@ func _witness() -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
+	# The three memories the secret is hidden in, all back: which version he holds.
+	var secret := StorySecret.version()
+	if secret != &"":
+		_witnessed(secret)
 
 
 func _hunted_here() -> bool:
@@ -416,6 +438,22 @@ func _on_works_broken(_region: int, land: StringName) -> void:
 
 func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void:
 	Story.note(&"keeper_fell", land, Story.now)
+	# The memory the keeper was holding comes back with it (StoryContent.KEEPER_MEMORY).
+	var d := BiomeRegistry.get_def(land)
+	if d != null and StoryContent.KEEPER_MEMORY.has(d.sentinel):
+		_witnessed(StoryContent.KEEPER_MEMORY[d.sentinel].memory)
+
+
+## A holding put up is seen from far off; so is one held, or lost.
+func _on_settlement_founded(_id: int) -> void:
+	_note(&"founded")
+
+
+func _on_raid_ended(_id: int, outcome: StringName) -> void:
+	if outcome == &"held":
+		_note(&"raid_held")
+	elif outcome == &"razed":
+		_note(&"razed")
 
 
 ## Going below is seen: a shaft is a place people watch.

@@ -72,6 +72,10 @@ var wind := 1.0
 var max_wind := 1.0
 var held: StringName = &""
 var pressures: Array[Dictionary] = []
+## Somebody is being talked to, drawn over the world rather than on the glass.
+## 90_ui writes it from `game.talking` every frame; the HUD holds no reference to
+## the game and does not want one.
+var talking := false
 var hint := ""
 var hint_key := "e"
 var messages := UiMessages.new()
@@ -308,11 +312,20 @@ func teach(text: String, _key: String = "") -> void:
 
 
 ## True while a teaching line said now would be read: nothing hostile close,
-## nothing over the glass. A lesson whose moment is "the fight is over" (the
-## guide's plate line, said after a machine has broken off) waits on this rather
-## than being emitted into the quiet, where `teach` would drop it for good.
+## nothing over the glass, nobody talking. A lesson whose moment is "the fight is
+## over" (the guide's plate line, said after a machine has broken off) waits on
+## this rather than being emitted into the quiet, where `teach` would drop it for
+## good.
+##
+## A CONVERSATION IS NOT A PAGE, which is why it had to be named here. It is
+## drawn over the WORLD (`UiTalkView`, the owner's ruling) and not on the slate,
+## so `_pages` is empty while one is up and a hint went straight onto the glass
+## underneath the words somebody was reading — seen in tours/cast.tour frame 08,
+## a works arrival line drawn under an open panel. The hint channel is "said in
+## its moment or dropped", and the moment a hint arrives in is not one where the
+## player is reading somebody's answer.
 func can_teach() -> bool:
-	return not messages.quiet and _pages.is_empty()
+	return not messages.quiet and _pages.is_empty() and not talking
 
 
 ## True while the goal line is on the glass: nothing louder is using the space.

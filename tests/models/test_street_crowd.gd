@@ -243,13 +243,16 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# And the build stays a ramp rather than a stall, because nothing builds two
 	# in one frame: what a player feels is the street filling in, not a hitch.
 	#
-	# This one KEEPS its slack, and it is the weakest of the three on purpose:
-	# building forty people is not repeatable cheaply, so there is no best-of to
-	# take and the only honest options are a widened bar or no bar. Widened, it
-	# cannot see a regression smaller than the slack it was handed. If the build
-	# ever needs to be held to a real figure, `_ring` has to time each villager
-	# as it stands one up, and this becomes a `middle()` of those.
-	lt(each_ms, 12.0 * TestCase.machine_slack(),
+	# Building forty people is not repeatable cheaply, so there is no best-of to
+	# take. This used to widen the bar by `machine_slack()` instead, which is the
+	# trade the file's own header argues against: widened to 3.2x it could not see
+	# a regression smaller than the slack it was handed, and it still went red at
+	# 41 ms in a gate sharing the machine with two other sessions.
+	#
+	# `cost_lt` is the third option. The bar is the REAL figure with no slack on
+	# it, and on a machine too busy to measure a cost the test says so rather than
+	# failing or passing meaninglessly (TestCase.can_measure_cost).
+	cost_lt(each_ms, 12.0,
 		"one villager still builds in the time a frame can spare (%.2f ms)" % each_ms)
 
 

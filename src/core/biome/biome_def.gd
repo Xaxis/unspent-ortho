@@ -307,6 +307,18 @@ var village_order := 50
 ## Runtime only — worldgen lays the village, not the people in it — so it is a
 ## LOOK field in `WorldStamp` and adding it refuses nobody's save.
 var street_folk := 0
+## How many of the machines' flying craft stand over this landscape at once,
+## within reach of the player (`src/render/depth/flier_view.gd`, `14_fliers`).
+## 0 is every landscape that has not asked, and the layer builds nothing there.
+##
+## They are not bodies: nothing fights them, nothing spawns them and no roster
+## row is read. They are the plan's traffic, on the plan's own survey bearing,
+## and what they do for the picture is cross between the camera and the place
+## and lay a bar of shade along a lit street.
+##
+## Runtime only, so a LOOK field in `WorldStamp`: it moves no island and refuses
+## no save.
+var fliers := 0
 ## The player wakes in this landscape.
 var spawn_home := false
 

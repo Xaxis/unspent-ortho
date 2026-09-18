@@ -6,6 +6,7 @@ static func make() -> StoryCharacter:
 		"at": &"the_camp", "talk": &"teague", "trade": &"digger",
 		"look": {"build": &"heavy", "hair": &"red", "hair_style": &"crop", "beard": &"full"},
 		"may_join": true,
+		"gone_when": &"rook_told",
 		"wants": "Revenge for Lise and Tam.",
 		"fears": "Another village burning for the crew.",
 		"hides": "He sells the crew's roads to the Covenant, so it can clear a village before the crew hits its works.",

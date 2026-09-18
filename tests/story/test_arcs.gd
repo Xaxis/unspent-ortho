@@ -26,6 +26,12 @@ func _doors() -> Dictionary:
 		out[b] = "a keeper's testimony"
 	for b: StringName in StoryContent.WITNESSED:
 		out[b] = "witnessed"
+	# A keeper taken gives back the memory it was holding (49_story, sentinel_fell).
+	for keeper: StringName in StoryContent.KEEPER_MEMORY:
+		out[StoryContent.KEEPER_MEMORY[keeper].memory] = "the keeper %s taken" % keeper
+	# The three memories back, in whatever order: the version he holds (StorySecret).
+	for b: StringName in [&"secret_whole", &"secret_misremembered"]:
+		out[b] = "StorySecret"
 	return out
 
 
@@ -53,6 +59,11 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 		check(nodes.has(start), "%s starts somewhere that exists" % talk)
 		if def.has("cast"):
 			check(StoryCast.get_def(StringName(str(def.cast))) != null, "%s belongs to %s, who is in the cast" % [talk, def.cast])
+		elif bool(def.get("machine", false)):
+			var opened := false
+			for f: StringName in StoryContent.FRAGMENTS:
+				opened = opened or StringName(str(StoryContent.FRAGMENTS[f].get("talk", &""))) == talk
+			check(opened, "%s is a machine's, and some thing that answers opens it" % talk)
 		else:
 			check(PersonLook.TRADES.has(StringName(str(def.get("who", &"")))),
 				"%s is for a trade people actually have: %s" % [talk, def.get("who", &"")])
@@ -82,7 +93,7 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 func test_one_conversation_per_trade_so_nobody_is_silently_unreachable() -> void:
 	var by: Dictionary = {}
 	for talk: StringName in StoryContent.TALKS:
-		if StoryContent.TALKS[talk].has("cast"):
+		if StoryContent.TALKS[talk].has("cast") or bool(StoryContent.TALKS[talk].get("machine", false)):
 			continue
 		var who := StringName(str(StoryContent.TALKS[talk].get("who", &"")))
 		check(not by.has(who), "%s and %s are both for a %s, and only the first would ever be said" % [by.get(who, ""), talk, who])
@@ -413,4 +424,30 @@ func test_every_stop_of_the_journey_says_where_the_next_one_is() -> void:
 	_walk(&"sefa", ["Can it be climbed?", "I'm asking."])
 	check(Story.landed(&"the_climb"), "the far shore: Sefa says how to go up")
 	eq(Story.chose(&"sefa.climb"), &"asked_to_ride", "and he asked")
+	Story.forget()
+
+
+func test_telling_rook_about_teague_is_the_end_of_teague() -> void:
+	Story.forget()
+	Story.beat(&"teague_sold", -INF)
+	check(StoryCast.get_def(&"teague").present(), "Teague is at the camp")
+	@warning_ignore("return_value_discarded")
+	_walk(&"rook", ["Teague sells our roads to the Covenant."])
+	check(Story.landed(&"rook_told"), "Rook will see to it")
+	check(not StoryCast.get_def(&"teague").present(), "and Teague is not at the camp after")
+	check("\n".join(StoryEnding.lines()).contains("Rook shot Teague"), "and the ending remembers it")
+	Story.forget()
+
+
+## A revelation a page may deal anywhere also has somebody who says it, so the
+## path does not hang on which sign a world happened to deal (docs/STORY.md §9).
+func test_the_war_s_phrasing_and_the_forecast_each_have_a_person() -> void:
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"otto", ["How the war started.", "Show me one."])
+	check(Story.landed(&"tradecraft"), "Otto shows him an order in his own rhythm")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"sefa", ["Is anything written at the foot?"])
+	check(Story.landed(&"ants"), "Sefa has read the forecast: next to people, a dash")
 	Story.forget()

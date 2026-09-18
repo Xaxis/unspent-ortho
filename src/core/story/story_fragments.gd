@@ -46,8 +46,9 @@ static func kinds() -> Array[StringName]:
 static func pick(kind: StringName, land: StringName, seed_value: int, instance: int) -> StringName:
 	var fits: Array[StringName] = []
 	for id: StringName in StoryContent.FRAGMENTS:
-		# A place's own words are never dealt anywhere else.
-		if placed(id):
+		# A place's own words are never dealt anywhere else, nor is a page only
+		# something else opens (`dealt: false`: the end).
+		if placed(id) or not bool(StoryContent.FRAGMENTS[id].get("dealt", true)):
 			continue
 		var f: Dictionary = StoryContent.FRAGMENTS[id]
 		if StringName(str(f.get("kind", &""))) != kind:
@@ -114,6 +115,9 @@ static func lines(id: StringName) -> PackedStringArray:
 	# The world writing him down: composed from what he has done, not written once.
 	if f.has("ledger"):
 		return StoryLedger.lines(StringName(str(f.ledger)))
+	# How it ended: composed from everything he chose.
+	if bool(f.get("ending", false)):
+		return StoryEnding.lines()
 	var out := PackedStringArray()
 	for l: String in f.get("lines", []):
 		out.append(l)

@@ -31,9 +31,14 @@ const M_MADE := 0
 const M_NEEDLES := 50
 const M_ROCK := 52
 const M_SWARF := 56
+## Not a material: the STOLEN NEON mark (`GroundColors.NEON`), which every lit
+## shader reads the same way — dark by day, burning when the light goes, and on
+## the machines' power so a strike stutters it. A sign over a street is the one
+## thing this package hangs that is supposed to be a light.
+const M_NEON := 34
 
 ## Piece shapes.
-enum { BOUGH, LINE, EAVE, GIRDER, TANGLE }
+enum { BOUGH, LINE, EAVE, GIRDER, TANGLE, WALKWAY, SIGN_ARM }
 
 ## Variants per shape. Four is enough that a wood does not repeat within a
 ## frame, and few enough that the cache is a handful of meshes.
@@ -73,6 +78,55 @@ const ROWS := {
 	PropKind.FIRE_TOWER: {"shape": GIRDER, "lift": Vector2(4.2, 6.0), "span": Vector2(4.0, 6.0), "chance": 0.75},
 }
 
+## WHAT A BUILDING HANGS IS DECIDED BY ITS FORM, NOT BY ITS PROP KIND. Every
+## building in the game is `PropKind.HOUSE` — a cot and a six-storey tower are the
+## same kind with a different variant — so the row above hung a 2.1-unit cottage
+## eave over a city street. That was right for as long as a house was always a
+## cot, and it stopped being right the day a landscape could declare `RAISED`.
+##
+## THIS IS WHERE A CITY'S HEIGHT LIVES. The camera is orthographic: nothing far
+## away is smaller, so there is no skyline to put on the horizon and a tower
+## thirty tiles off is not distant, it is off the picture. The only place height
+## can be read is right where the player is standing — which makes what crosses
+## OVER the street the whole of it.
+##
+##   at    Vector2 (least, most) share of the FORM's own height the piece hangs at
+##   span  Vector2 (least, most) how far it reaches, in tiles
+##
+## `at` is a share and not a number because the piece hangs off the building: a
+## walkway leaves a tower near its top and a shopfront's sign arm hangs at the
+## first floor whatever is standing behind it.
+const FORM_ROWS := {
+	&"tower": {"shape": WALKWAY, "at": Vector2(0.52, 0.72), "span": Vector2(4.5, 7.0), "chance": 0.75},
+	&"stack": {"shape": WALKWAY, "at": Vector2(0.48, 0.68), "span": Vector2(4.0, 6.5), "chance": 0.70},
+	&"block": {"shape": SIGN_ARM, "at": Vector2(0.40, 0.58), "span": Vector2(2.2, 3.6), "chance": 0.65},
+	&"shell": {"shape": GIRDER, "at": Vector2(0.55, 0.80), "span": Vector2(3.0, 5.0), "chance": 0.60},
+	&"arcade": {"shape": SIGN_ARM, "at": Vector2(0.34, 0.50), "span": Vector2(2.4, 3.8), "chance": 0.80},
+	&"spire": {"shape": WALKWAY, "at": Vector2(0.44, 0.62), "span": Vector2(4.0, 6.0), "chance": 0.65},
+}
+
+
+## The row this prop actually carries. A HOUSE asks the landscape what it BUILT
+## and takes the form's row if there is one; everything else, and every landscape
+## whose buildings are one storey, takes `ROWS` exactly as before.
+##
+## `country` is -1 where the caller does not know it (a test, a gallery), and the
+## answer is then the kind's own row: a wrong guess about a landscape would hang a
+## city walkway over a fishing village.
+static func row_of(p: WorldProp, seed_value: int, country: int) -> Dictionary:
+	if p.kind != PropKind.HOUSE or country < 0:
+		return ROWS.get(p.kind, {})
+	var forms := BiomeForms.of(country)
+	var v := PropModels.variant_of(p, seed_value, country)
+	var row: Variant = FORM_ROWS.get(forms.form(v))
+	if row == null:
+		return ROWS.get(p.kind, {})
+	var city: Dictionary = row
+	var high := forms.fact(v, BiomeForms.HIGH, 2.6)
+	var at: Vector2 = city.at
+	return {"shape": city.shape, "lift": Vector2(at.x * high, at.y * high),
+		"span": city.span, "chance": city.chance}
+
 ## Salts, so no two decisions about one prop share a stream.
 const S_TAKE := 0xF0
 const S_LIFT := 0xF1
@@ -89,15 +143,16 @@ static func carries(kind: int) -> bool:
 
 
 ## Whether THIS prop does. Deterministic and stable for the life of the world.
-static func hung_on(p: WorldProp, seed_value: int) -> bool:
-	if not ROWS.has(p.kind):
+static func hung_on(p: WorldProp, seed_value: int, country: int = -1) -> bool:
+	var row := row_of(p, seed_value, country)
+	if row.is_empty():
 		return false
-	return Rng.hash01(seed_value, p.id, S_TAKE) < float(ROWS[p.kind].chance)
+	return Rng.hash01(seed_value, p.id, S_TAKE) < float(row.chance)
 
 
 ## How the piece on `p` stands: {shape, lift, span, turn, variant}. Pure.
-static func hang(p: WorldProp, seed_value: int) -> Dictionary:
-	var row: Dictionary = ROWS[p.kind]
+static func hang(p: WorldProp, seed_value: int, country: int = -1) -> Dictionary:
+	var row := row_of(p, seed_value, country)
 	var lift: Vector2 = row.lift
 	var span: Vector2 = row.span
 	return {
@@ -123,6 +178,8 @@ static func template(shape: int, variant: int, tint: Color) -> ArrayMesh:
 		EAVE: _eave(k, seed_value, tint)
 		GIRDER: _girder(k, seed_value, tint)
 		TANGLE: _tangle(k, seed_value, tint)
+		WALKWAY: _walkway(k, seed_value, tint)
+		SIGN_ARM: _sign_arm(k, seed_value, tint)
 	var mesh := k.build()
 	_cache[key] = mesh
 	return mesh
@@ -349,3 +406,89 @@ static func _tangle(k: MeshKit, seed_value: int, tint: Color) -> void:
 		k.sway = 0.6
 		k.strut(Vector3(0.22, -0.12, 0.1), Vector3(0.85, -0.66, -0.2), 0.013, 3, wire)
 		k.sway = 0.0
+
+
+## A WALKWAY: the way across, two storeys up. This is the piece that makes a city
+## a city under this camera. Nothing far away is smaller here, so a skyline does
+## nothing — what says "canyon" is a deck crossing over the player's head with a
+## lit building standing behind it, and its shadow laid across the street they
+## are walking on.
+##
+## Steel, ruled, and not maintained: a plate deck with a handrail on each side,
+## two stays back to the wall it leaves, and one panel gone. It does not sway —
+## a bridge that moves in the wind is a rope bridge, and this was poured with the
+## block.
+static func _walkway(k: MeshKit, seed_value: int, tint: Color) -> void:
+	var steel := Palette.PLATE[1].lerp(tint, 0.22)
+	steel.a = M_SWARF / 255.0
+	var rail := Palette.PLATE[2].lerp(tint, 0.15)
+	rail.a = M_SWARF / 255.0
+	var w := 0.19
+	# The deck in four bays with one of them missing, because a gap is what says
+	# nobody has been up here to fix it and it lets the light through.
+	var gone := 1 + int(Rng.hash01(seed_value, 1) * 3.0)
+	for i in 4:
+		if i == gone:
+			continue
+		var x0 := float(i) * 0.25
+		k.box(Vector3(x0, -0.05, -w), Vector3(x0 + 0.245, 0.0, w), steel)
+	# Two rails and their stanchions. The rails run the whole way whatever the
+	# deck is doing: the gap is in the floor, not in the handrail.
+	for s in 2:
+		var zz := w * (1.0 if s == 0 else -1.0)
+		k.strut(Vector3(0.0, 0.34, zz), Vector3(1.0, 0.30, zz), 0.022, 4, rail)
+		k.strut(Vector3(0.0, 0.17, zz), Vector3(1.0, 0.15, zz), 0.014, 3, rail)
+		for i in 4:
+			var t := 0.08 + float(i) * 0.28
+			k.strut(Vector3(t, 0.0, zz), Vector3(t, 0.33, zz), 0.018, 4, rail)
+	# Two stays back to the wall it left, so the deck is held up by something.
+	for s in 2:
+		var zz := w * 0.8 * (1.0 if s == 0 else -1.0)
+		k.strut(Vector3(0.02, 0.46, zz), Vector3(0.58, -0.02, zz), 0.020, 4, steel)
+	# A conduit slung under it, which is what a city runs between two buildings.
+	if Rng.hash01(seed_value, 2) < 0.75:
+		k.strut(Vector3(0.0, -0.10, w * 0.4), Vector3(1.0, -0.14, w * 0.4), 0.026, 4, steel)
+
+
+## A SIGN ARM: the bracket a shopfront hangs its board off, out over the lane.
+##
+## NOT the sign's LIGHT. What a building's stolen tube is and where it burns is
+## `PropModels.neon_point`'s and it hangs on the building itself; this is the
+## thing that holds a board out over the street, and what the tube's light falls
+## on. Under sodium at head height that is most of what an advertising street IS,
+## and it costs a bracket and a plate.
+static func _sign_arm(k: MeshKit, seed_value: int, tint: Color) -> void:
+	var steel := Palette.PLATE[1].lerp(tint, 0.2)
+	steel.a = M_SWARF / 255.0
+	# Enamel, and warm, because everything the eye reads at street level is lit by
+	# sodium and a cold board would be the one thing arguing with the light.
+	# Barely lifted toward white: the board is a LIGHT, and emission carries a
+	# colour toward the page as it burns, so a board that starts pale arrives on
+	# screen as a blank white slab and the street has lost the one saturated warm
+	# thing in it.
+	var enamel := Palette.EMBER[3].lerp(Palette.LINEN[3], 0.10).lerp(tint, 0.12)
+	enamel.a = M_NEON / 255.0
+	k.strut(Vector3(0.0, 0.0, 0.0), Vector3(1.0, -0.06, 0.0), 0.05, 4, steel)
+	k.strut(Vector3(0.04, 0.26, 0.0), Vector3(0.74, -0.04, 0.0), 0.028, 4, steel)
+	# The board, hung under the end and turned a few degrees off the arm, because
+	# one bolt has gone and nothing here is square any more.
+	#
+	# The drop is held under the stay's own height for a reason a test keeps: the
+	# instance scales this template by the piece's SPAN, so a board that hangs a
+	# whole unit down at unit span hangs four units down on a shopfront and the
+	# street has a curtain across it instead of a sign over it.
+	var lean := (Rng.hash01(seed_value, 1) - 0.5) * 0.22
+	var drop := 0.46 + Rng.hash01(seed_value, 2) * 0.16
+	var half := 0.30 + Rng.hash01(seed_value, 3) * 0.10
+	var x0 := 0.52
+	var x1 := 0.98
+	k.quad(Vector3(x0, -0.10, -half), Vector3(x1, -0.12, -half),
+		Vector3(x1, -0.12 - drop, -half + lean), Vector3(x0, -0.10 - drop, -half + lean), enamel)
+	k.quad(Vector3(x0, -0.10, half), Vector3(x0, -0.10 - drop, half + lean),
+		Vector3(x1, -0.12 - drop, half + lean), Vector3(x1, -0.12, half), enamel)
+	# Two hangers, and the conduit that feeds it.
+	for s in 2:
+		var zz := half * 0.7 * (1.0 if s == 0 else -1.0)
+		k.strut(Vector3(x0 + 0.06, -0.04, zz), Vector3(x0 + 0.06, -0.12, zz), 0.016, 3, steel)
+		k.strut(Vector3(x1 - 0.06, -0.06, zz), Vector3(x1 - 0.06, -0.14, zz), 0.016, 3, steel)
+	k.strut(Vector3(0.0, 0.06, 0.03), Vector3(x1 - 0.1, -0.06, 0.03), 0.014, 3, steel)

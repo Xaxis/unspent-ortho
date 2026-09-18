@@ -52,7 +52,7 @@ const ARCS := {
 	&"the_crew": {
 		"title": "the crew",
 		"note": "The Holdfast's last mercenaries, and what they come to know.",
-		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears"],
+		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears", &"rook_told"],
 	},
 	&"june": {
 		"title": "June",
@@ -92,7 +92,7 @@ const ARCS := {
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
-		"beats": [&"gap", &"order_matters", &"seeker"],
+		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_whole", &"secret_misremembered"],
 	},
 }
 
@@ -130,6 +130,7 @@ const BEATS := {
 	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
 	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
 	&"teague_sold": {"reveal": true, "short": "the roads sold", "arc": &"the_crew", "says": "Teague sells the crew's roads to the Covenant."},
+	&"rook_told": {"short": "the north road", "arc": &"the_crew", "says": "You told Rook about Teague's roads. He told you to stay off the north road tomorrow."},
 	&"teague_clears": {"short": "nobody burns", "arc": &"the_crew", "says": "The Covenant clears a village before the crew hits its works, because Teague told them where."},
 	&"june_named": {"reveal": true, "short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
 	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
@@ -163,6 +164,11 @@ const BEATS := {
 	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
 	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
 	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
+	&"mem_kitchen": {"short": "the kitchen", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a kitchen at two in the morning, and a plate in the oven."},
+	&"mem_car": {"short": "the car", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a song in the car, and somebody small singing it wrong."},
+	&"mem_hall": {"short": "the hall", "arc": &"the_secret", "says": "You have one of your memories back: a school hall, and a seat where she could see you."},
+	&"secret_whole": {"reveal": true, "short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
+	&"secret_misremembered": {"reveal": true, "short": "out of order", "arc": &"the_secret", "says": "All three are back, but not in the order you wrote. Something in you turns, and catches, and turns the wrong way."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -529,6 +535,18 @@ const FRAGMENTS := {
 	# --- the world writing him down (StoryLedger) ----------------------------
 	# `ledger` says whose record this is; the lines are composed at read time out
 	# of what he has done that somebody could have seen.
+	# --- the end (StoryEnding): composed from what he did, shown when the
+	# channel's conversation closes. Never placed, never dealt.
+	# The console at the end of the line: reading it is being answered (`talk`).
+	&"channel_console": {
+		"kind": &"terminal", "title": "a console at the end of the line", "lands": [],
+		"talk": &"the_channel",
+		"lines": ["It is already listening."],
+	},
+	&"the_end": {
+		"kind": &"notebook", "title": "afterwards", "lands": [],
+		"ending": true, "dealt": false, "lines": [],
+	},
 	&"hearsay": {
 		"kind": &"notebook", "title": "a notebook of hearsay", "lands": [],
 		"ledger": &"people", "lines": [],
@@ -567,6 +585,8 @@ const FRAGMENTS := {
 
 const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
+	# At the channel, when the orbital realm is grown: until then it stands nowhere.
+	&"the_channel": [&"channel_console"],
 }
 
 # --- what people say ----------------------------------------------------------
@@ -856,6 +876,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
+					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -885,6 +906,11 @@ const TALKS := {
 					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"teague": {
+				"says": ["...", "I'll see to it.", "Don't take the north road tomorrow."],
+				"beats": [&"rook_told"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"weapon": {
 				"says": ["Then you're worth more than I was paid.", "Don't say it anywhere the Covenant can hear."],
@@ -1493,7 +1519,7 @@ const TALKS := {
 			},
 			&"walked": {
 				"says": ["Mr. Marr. The window is today. There isn't another one.", "...You'll be back. They always come back."],
-				"beats": [&"play_kept"],
+				"beats": [&"play_kept", &"mem_hall"],
 				"replies": [{"text": "[go]", "to": &""}],
 			},
 		},
@@ -1515,8 +1541,14 @@ const TALKS := {
 				"beats": [&"forged_order"],
 				"replies": [
 					{"text": "Where is it?", "pick": &"asked_where", "to": &"below"},
+					{"text": "Show me one.", "pick": &"asked_one", "to": &"one"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"one": {
+				"says": ["\"Fire on receipt. When it is done, go home to your families. You did what was asked of you, and it was right.\"", "Short. Then long. Then kind. Eleven thousand of them, and they all read like that.", "...You've gone a colour, friend."],
+				"beats": [&"tradecraft"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"below": {
 				"says": ["Under the ground, where the first of them was built, before the war.", "There's a shaft down to it. Nobody who went to look came back to say."],
@@ -1542,6 +1574,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What's it for?", "pick": &"asked_for", "to": &"purpose"},
 					{"text": "Can it be climbed?", "pick": &"asked_climb", "to": &"climb"},
+					{"text": "Is anything written at the foot?", "pick": &"asked_board", "to": &"board"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
@@ -1558,9 +1591,40 @@ const TALKS := {
 					{"text": "[leave]", "to": &""},
 				],
 			},
+			&"board": {
+				"says": ["A board, bolted to the first leg. The machines' forecast, they say.", "A year at the top: 2198. Then a list of everything there'll be.", "Next to people it's got a dash. Not a nought. A dash."],
+				"beats": [&"ants"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
 			&"asking": {
 				"says": ["...", "Then be at the foot before dawn. I'll not stop you.", "I'll not watch, either."],
 				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- the channel, at the end (docs/STORY.md §11). One voice, and it is his:
+	# the Seeker and the Echo are both made of him and speak alike. What he says
+	# here, read against the version of the secret he holds, is how it ends.
+	&"the_channel": {
+		"title": "a voice like yours",
+		"machine": true,
+		"start": &"open",
+		"after": &"the_end",
+		"nodes": {
+			&"open": {
+				"says": ["You came all the way up.", "Part of me grew you for this. Part of me paid a crew to stop you.", "Both of us are glad you came. Tell me what you remember."],
+				"replies": [
+					{"text": "Break them.", "when": &"secret_whole", "pick": &"broke", "to": &"done"},
+					{"text": "Break them.", "when": &"secret_misremembered", "pick": &"broke", "to": &"done"},
+					{"text": "All of us. Together.", "when": &"secret_whole", "pick": &"joined", "to": &"done"},
+					{"text": "All of us. Together.", "when": &"secret_misremembered", "pick": &"joined", "to": &"done"},
+					{"text": "It's yours. Take it.", "pick": &"gave", "to": &"done"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"done"},
+				],
+			},
+			&"done": {
+				"says": ["...", "Thank you."],
+				"replies": [{"text": "[let go]", "to": &""}],
 			},
 		},
 	},
@@ -1808,6 +1872,14 @@ const TESTIMONY := {
 }
 ## A landscape's keeper holds one of Elias's memories (docs/STORY.md §10).
 const TESTIMONY_SENTINEL := {"says": "keeps a memory not its own", "beats": [&"gap"]}
+## A keeper that holds one of the three memories the secret is hidden in says
+## which, and taking it gives the memory back (49_story, on `sentinel_fell`).
+## Keyed by the keeper's design id (BiomeDef.sentinel), so a new landscape's
+## keeper joins by adding a row.
+const KEEPER_MEMORY := {
+	&"pan_rake": {"says": "keeps a kitchen, at night", "memory": &"mem_kitchen"},
+	&"tide_reaper": {"says": "keeps a song, in a car", "memory": &"mem_car"},
+}
 
 ## A MACHINE THAT PASSES (roster `passes`), in a city whose people accepted the
 ## machines' terms: the Covenant's streets. It keeps no count and lays no ground: it
@@ -1853,7 +1925,10 @@ const WITNESSED := {
 static func testimony(role: StringName, row: Dictionary) -> Dictionary:
 	if not bool(row.get("machine", false)):
 		return {}
-	if StringName(str(row.get("sentinel", &""))) != &"":
+	var keeper := StringName(str(row.get("sentinel", &"")))
+	if keeper != &"":
+		if KEEPER_MEMORY.has(keeper):
+			return {"says": KEEPER_MEMORY[keeper].says, "beats": [&"gap"]}
 		return TESTIMONY_SENTINEL
 	if bool(row.get("passes", false)):
 		return TESTIMONY_PASSES

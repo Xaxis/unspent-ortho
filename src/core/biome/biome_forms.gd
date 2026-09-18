@@ -55,12 +55,12 @@ const FORMS := {
 	&"steading": {REACH: 1.6, HIGH: 2.8, LIT: false},
 	&"half": {REACH: 1.6, HIGH: 2.2, LIT: false},
 	# --- the city: storeys stacked, a frontage, somebody's sign burning -------
-	&"tower": {REACH: 2.1, HIGH: 7.4, LIT: true},
-	&"stack": {REACH: 2.0, HIGH: 6.1, LIT: true},
+	&"tower": {REACH: 2.1, HIGH: 14.3, LIT: true},
+	&"stack": {REACH: 2.0, HIGH: 10.6, LIT: true},
 	&"block": {REACH: 2.4, HIGH: 4.6, LIT: true},
 	&"shell": {REACH: 2.0, HIGH: 4.6, LIT: false},
 	&"arcade": {REACH: 2.3, HIGH: 4.8, LIT: true},
-	&"spire": {REACH: 1.7, HIGH: 9.6, LIT: true},
+	&"spire": {REACH: 1.7, HIGH: 16.3, LIT: true},
 }
 
 ## The stock a landscape that argues with nothing builds: the fishing village,

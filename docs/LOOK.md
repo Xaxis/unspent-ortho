@@ -71,6 +71,27 @@ of it; rain and snow fall at several depths; distant land is separated by air
 rather than by a haze filter. The orthographic camera stays — it is the game's
 grammar — but what it looks at is deep.
 
+**And nothing that passes in front may hide what the player has to see.** Under
+an orthographic camera that is arithmetic rather than taste: a thing of height
+*h* draws over ground *h/tan(pitch)* — 0.649 tiles per unit at the play pitch —
+further from the eye than it stands, so an occluder is always covering ground
+somebody could be standing on. Three layers keep the same promise and each cuts
+where the piece DRAWS, never where it stands: leaves and crowns (`crown_cut`),
+the foreground pieces (`fore_clear`), and, since the city, **anything BUILT above
+3.0 units** (`tall_cut`). All three stipple out rather than fade, because a
+half-transparent branch over a machine is worse evidence than either a branch or
+no branch.
+
+The third one is the city's, and its two guards are the whole of why it is safe
+in a landscape nobody is working on: **the land never opens** (the ground band
+40..70 is refused, so a cliff or a terrace is solid and a player under an
+overhang is still under it), and **nothing a village raises is tall enough** —
+3.0 stands above the steading, the tallest of `BiomeForms.PLAIN`, so only a
+city's forms, the landmarks and the machines' works can ever be cut.
+`tests/render/test_depth.gd` holds both against the DATA rather than against the
+number in the shader, so raising a village form past the floor fails a test
+instead of quietly opening a hole in a cottage roof.
+
 ## What this costs, said before anyone is surprised
 
 1. **The resolution floor rises.** 640x360 goes. That is the change that makes the

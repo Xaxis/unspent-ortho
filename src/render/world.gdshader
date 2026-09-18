@@ -51,6 +51,29 @@ const float CROWN_LIFT = 0.85;
 // Below this sway weight the geometry is a trunk, a wall or the land, and never
 // opens. Both numbers are pinned by tests/render/test_crowns.gd.
 const float CROWN_SWAY = 0.25;
+// A TALL BUILT THING NEVER HIDES THE PLAYER EITHER. The line above says walls
+// never open, and it was right for as long as a wall was a cottage wall you
+// stand beside. It stopped being right the day a landscape could build upward:
+// at this pitch a fragment draws over ground 1/tan(pitch) = 0.649 tiles further
+// from the eye per unit of its height, so a six-storey block covers everything
+// within four tiles behind it -- and a city street has a row of them on the near
+// side, with the player walking between.
+//
+// Two things stop this opening holes in the world at large:
+//
+//   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
+//   40..70, the same discriminator fore.gdshader uses to decide how much wear a
+//   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
+//   overhang is still under it.
+//
+//   NOTHING A VILLAGE RAISES IS TALL ENOUGH. TALL_FLOOR is 3.0 and the tallest
+//   form in `BiomeForms.PLAIN` is the steading at 2.8, so no village in the game
+//   changes by a pixel and only the city's forms, the landmarks and the machines'
+//   own works can ever stipple.
+const float TALL_FLOOR = 3.0;
+// Wider than a crown's hole for the same reason ForeView's CLEAR_REACH is wider
+// than 18_crowns': the higher the thing, the further off its own ground it draws.
+const float TALL_WIDEN = 1.4;
 // The machines' works cut into the ground (WorksMap): one texel per tile,
 // R cut, G scorch, B quarry, A bores. works_inv_size 0 = no map (the gallery,
 // hand-built worlds). works_dir: the survey bearing every ruled work lies on.
@@ -1358,6 +1381,35 @@ float crown_cut(vec3 wp, float sway) {
 	return cut * clamp((sway - CROWN_SWAY) * 2.5, 0.0, 1.0);
 }
 
+
+// How much of a TALL BUILT thing is taken away here (TALL_FLOOR above). Cut where
+// the fragment DRAWS and never where it stands: cutting by plain horizontal
+// distance opens the hole in clear air, which is the mistake ForeView's own
+// header records. The lean is read off the LIVE camera rather than the rig's
+// fixed pitch, because a target lock leans the picture and a hole that did not
+// lean with it would sit beside the machine exactly when the player was reading
+// it (fore_view.gd `_aim`).
+// `toward` and `lean` are handed in rather than read here: a Godot built-in like
+// INV_VIEW_MATRIX exists only inside the stage function, so a user function
+// cannot see the camera at all (the shader simply refuses to compile).
+float tall_cut(vec3 wp, int m, vec2 toward, float lean) {
+	if (m >= 40 && m <= 70) {
+		return 0.0;
+	}
+	float cut = 0.0;
+	for (int i = 0; i < CROWN_CLEAR; i++) {
+		vec4 p = crown_clear[i];
+		if (p.w <= 0.0 || wp.y < p.y + TALL_FLOOR) {
+			continue;
+		}
+		vec2 g = wp.xz - toward * (wp.y - p.y) * lean;
+		float d = length(g - p.xz);
+		float r = p.w * TALL_WIDEN;
+		cut = max(cut, 1.0 - smoothstep(r * 0.58, r, d));
+	}
+	return cut;
+}
+
 void fragment() {
 	// The grain a material's marks are drawn at, pinned to the WORLD at a fixed
 	// size (matter_px). It used to be `floor(FRAGCOORD.xy) + world_px`, a SCREEN
@@ -1367,11 +1419,19 @@ void fragment() {
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: leaves over the player, or over a body they can
 	// see, thin to stipple and then go. Stipple, never a fade (docs/ART.md law 5).
-	float cut = crown_cut(world_pos, sway_w);
+	int m1 = int(COLOR.a * 255.0 + 0.5);
+	// Where the camera is, for the tall cut: the horizontal part of the camera's
+	// own Z over its vertical part is exactly 1/tan(pitch), with no trigonometry
+	// and no assumption about the rig it was built with.
+	vec3 camz = INV_VIEW_MATRIX[2].xyz;
+	vec2 cam_flat = vec2(camz.x, camz.z);
+	float cam_fl = max(length(cam_flat), 1e-4);
+	vec2 cam_toward = cam_flat / cam_fl;
+	float cam_lean = cam_fl / max(0.05, abs(camz.y));
+	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, cam_toward, cam_lean));
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
-	int m1 = int(COLOR.a * 255.0 + 0.5);
 	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
 	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
 	float patchy = min(patch_raw, 1.0);

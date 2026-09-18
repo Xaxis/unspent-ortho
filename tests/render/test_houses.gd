@@ -598,8 +598,20 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			villages += 1
 			if neon.has(nearest):
 				lit_on_square += 1
-				if not forms.repeats():
-					eq(lit, 1 if seen.size() < forms.stock.size() else neon.size(), "%s: one stolen light, not a street of them" % v.get("name", "?"))
+				# A DEAL MAY NOT PREFER THE LIT FORMS. Lit houses are no commoner in
+				# the street than lit forms are in the pack: the coast has one in
+				# eight and a village of seven still gets one; the city has four in
+				# six and a street of twenty-two is mostly lit, which is the
+				# landscape being what it is and not a filter over it.
+				#
+				# This said "one stolen light, not a street of them" as a flat
+				# number, which was the coast's answer written down as every
+				# landscape's. Stated as a SHARE of the pack it is the same claim
+				# where the stock is dealt once each, and it goes on meaning
+				# something where a city repeats a form — which a count cannot.
+				var most := ceili(float(seen.size()) * float(neon.size()) / float(maxi(forms.stock.size(), 1)))
+				check(lit <= most, "%s: %d lit of %d houses, %d of %d forms lit" %
+					[v.get("name", "?"), lit, seen.size(), neon.size(), forms.stock.size()])
 			if lit == 0:
 				dark += 1
 	gt(villages, 20, "three seeds have villages to read")
