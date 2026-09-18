@@ -317,6 +317,26 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
 
 - **Never write in another session's worktree**, commit on its branch, or delete it.
   What is under `.claude/worktrees/` belongs to a builder that is probably mid-edit.
+- **A shell can be moved into another worktree between one command and the next,
+  and sometimes between a check and the write it was guarding.** In one day it put
+  stray commits on four branches, ran a `git add` of one builder's paths inside
+  another's tree, and left an integrator unable to reach the main checkout at all.
+  Three guards that look sufficient are not: a `pwd` checked in an EARLIER call
+  proves nothing, because the move happens after it; `git -C <path>` is refused
+  outright when the sandbox believes the session is elsewhere, so it cannot aim at
+  your own tree either; and an inline `cd X && git ...` or `if [ ... ]; then git
+  ...; fi` is refused as too complex to verify. What works is
+  **`tools/git-here.sh <worktree-root> <branch> <git args...>`**: one process that
+  cds, asks git itself where it is and what branch it is on, and only then `exec`s
+  — there is no gap to be relocated through. The second belt needs no script:
+  **limit a commit by pathspec** (`git commit -F msg -- <your files>`), which in
+  the wrong tree fails harmlessly because those paths have no changes there. Use
+  both; one refuses loudly, the other cannot do damage quietly.
+- **Before writing a line on a task, run `git status` across the worktrees and say
+  so.** Four times in one day two builders wrote the same fix; the two that were
+  caught were caught by that one command, and both times the other builder was
+  further along. It is also the integrator's job to say who holds a task — the two
+  that were NOT caught were handed out twice without saying.
 - **Never rebase, reset or force-push `main`**, and never rewrite pushed history.
   Merge, and only the branches of the wave you are integrating.
 - **Do not kill stray `godot` processes.** One of them is likely another session's
