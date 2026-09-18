@@ -162,6 +162,50 @@ const NIGHT_AMBIENT := 0.21
 const NIGHT_SKY_LEAST := 0.55
 const NIGHT_SKY_MOST := 1.80
 
+## --- A LID OVER A LANDSCAPE (`BiomeDef.sky_shut`) ---
+##
+## What the light is under something that stands between a place and the sun at
+## every hour: a smog dome a city still runs its plant for, a gorge, a canopy
+## nothing gets through. The HOUR IS UNTOUCHED — the clock, the weather, the
+## schedule and the cast shadows all go on running, which is the whole difference
+## between this and `closed`, and it is why a landscape may have one and a realm
+## still owns the other.
+##
+## The two numbers below are what a FULL lid leaves, and they are chosen as a
+## RATIO to each other rather than for their own sakes, because that ratio is
+## what decides whether the hour can still be read off the ground.
+##
+## Under the open sky the sun is most of the light and the ambient fills the
+## shade: SUN_NOON 2.10 against DAY_AMBIENT 0.55, so noon and midnight are a
+## different world from each other. Under a lid it is the other way round — the
+## brightest thing overhead is the lid ITSELF, lit from beneath by whatever the
+## place runs at night and from above by a sun it does not let through. So the
+## ambient becomes the light and the sun becomes a residue, and the residue is
+## what is left of the hour.
+##
+## LID_SUN is a share of whatever the sun would have been, so it still moves with
+## the day and still throws the same shadows in the same direction, only faintly.
+## LID_AMBIENT is a LEVEL, not a share, and it does not move with the hour at all
+## -- that is the point of it, and it is why a landscape under a full lid measures
+## nearly the same at noon and at midnight. The difference that is left is the
+## residue: at 0.035 the sun contributes about a fifth of what a lit face takes
+## at noon and almost nothing at midnight, so the hour is a thing you can still
+## find in the frame and not a thing the frame is about.
+##
+## A landscape still says its own LEVEL under the lid with `night_sky` (which
+## reaches the day as far as the lid is shut) and its own COLOUR with
+## `light_tint`. Neither is spelled here, because a lid is not one landscape's.
+const LID_AMBIENT := 0.26
+const LID_SUN := 0.035
+## The underside of the lid: what metal reflects under it, and the hue the shade
+## takes. Dirty, warm and dim, because a lid low enough to stop the sun is lit
+## from beneath by the place under it. It is multiplied by the landscape's own
+## light (`mood`), so a smog dome over sodium lamps and a rock roof over a river
+## are the same rule and two different ceilings.
+const LID_SKY_TOP := Color(0.115, 0.098, 0.088)
+const LID_SKY_HORIZON := Color(0.225, 0.180, 0.142)
+const LID_SKY_GROUND := Color(0.070, 0.058, 0.050)
+
 ## The tonemapper. This is the CEILING that replaced the shader's page shoulder
 ## (see sky.gdshaderinc): the frame is rendered in HDR and rolled off once, for
 ## the whole image, so a neon tube four times over white comes back as a bright
@@ -260,6 +304,32 @@ var cast_allowed := true
 ## night to everything the sky writes, whatever the clock says, and the one thing
 ## it does NOT get is the skyglow — there is no sky up there to glow.
 var closed := 0.0
+## How much LID is over this place, composed from the landscapes in view
+## (`BiomeDef.sky_shut`, blended by `sky_shut_at`). Written here once a frame,
+## read by anyone who has to know how dark a place is rather than what o'clock
+## it is.
+##
+## It is the partial, per-landscape companion to `closed` above, and the pair
+## divide the work: `closed` says the HOUR HAS STOPPED MATTERING (a realm with a
+## roof, all or nothing, 20_realms' to write, and it takes the cast shadows with
+## it); this says THE SKY DOES NOT REACH HERE (a landscape's own, partial, and
+## the hour goes on running underneath it).
+##
+## WHY IT IS A FIELD AND NOT A STATIC FUNCTION OF THE HOUR. Everything in this
+## game that asks "how dark is it" has asked the clock — `low_light(hour)`,
+## `Lights.lamps_wanted(hour)`, `Weather.night_fall(hour)` — and that was exactly
+## true while every landscape stood under the same sky. It stops being true the
+## moment one of them has a lid on it: a city under a smog dome keeps its street
+## lamps burning at noon, because it is dark at noon, and a lamp rule that reads
+## the clock turns them all off at half past six in the morning and leaves the
+## street a flat murk until seven at night. That was measured, not guessed — it
+## is the difference between the slums at 00:00 and at 12:00 on seed 7, and the
+## midnight frame is the better picture by a long way.
+##
+## So this is the seam. A reader that already spends `closed` spends this beside
+## it; a reader that spends neither is saying its answer belongs to the clock
+## alone, which is still right for a schedule and wrong for a light.
+var lid := 0.0
 ## What set_hour last composed, for systems that tint unlit things (particles,
 ## lamps) to match the lit world.
 var last_tint := Vector3.ONE
@@ -449,6 +519,13 @@ func compose() -> void:
 	var s := sun_at(hour)
 	# How far night has fallen HERE: the hour, or all the way under a roof.
 	var night := maxf(day_gone(hour), closed)
+	# And how much LID the landscapes in view have over them, which is the same
+	# question asked of a landscape rather than of a realm. Composed here, before
+	# anything spends it, because `last_energy` below is one of the things that
+	# has to know (see the note under it).
+	var shut := sky_shut_at(neon_shares)
+	lid = shut
+	remember_lid(shut)
 	# `closed` says this place reads as NIGHT whatever the clock says (see the
 	# field's own header). These two were the last things that did not keep that
 	# rule: the hour's tint and the sun's energy were still read straight off the
@@ -474,7 +551,22 @@ func compose() -> void:
 	var total := tint_at(hour).lerp(tint_at(NIGHT_HOUR), closed) \
 		* season_drain(season_turn) * region_tint * weather_tint
 	last_tint = total
-	last_energy = 1.0 - night * (1.0 - NIGHT_LEVEL)
+	# THE LID IS IN HERE AND THE TINT ABOVE IS DELIBERATELY NOT, and that split is
+	# the whole of what makes a smog dome different from a rock roof.
+	#
+	# `last_energy` is the black point `15_lights.compensate` subtracts, so it has
+	# to mean HOW MUCH LIGHT IS ON THIS PLACE. Left on the clock it says the sun is
+	# fully up at noon under a dome that stops the sun, and the street lamps then
+	# fight a sun that is not there — which is the RED LANTERN above, in a new
+	# coat: measured on the slums at seed 7, the pools at noon came out a fraction
+	# of the same lamps at midnight, in the same street, under the same lid.
+	#
+	# The TINT does not take it, because `closed` eases the tint to the NIGHT KEY
+	# and the night key is BLUE. That is right for a cave and exactly wrong here:
+	# it would take the sodium out of the one landscape in the game whose whole
+	# argument is that it is orange. A lid says how MUCH light arrives, not what
+	# colour it is; the colour is the landscape's own (`BiomeDef.light_tint`).
+	last_energy = 1.0 - maxf(night, shut) * (1.0 - NIGHT_LEVEL)
 	RenderingServer.global_shader_parameter_set("sky_tint", total)
 	var az: float = s.azimuth
 	var el: float = s.elevation
@@ -547,6 +639,9 @@ func compose() -> void:
 	# between them — which is what puts shape in a night — is the same in every
 	# landscape and only the amount of light differs.
 	var ns := night_sky_at(neon_shares)
+	# How far the landscapes in view are shut off from the sky
+	# (`BiomeDef.sky_shut`). Unlike `ns` it is spent at EVERY hour, because a lid
+	# does not know what time it is.
 	var lit := 1.0 - maxf(night, closed)
 	# What Compatibility's light is counted back by (CompatTrim; all ones on
 	# Forward+). Chosen before the sun is lit, because whether the sun casts is
@@ -554,7 +649,12 @@ func compose() -> void:
 	var casts := cast_allowed and closed < 0.5
 	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
 	CompatTrim.remember(trim)
-	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow, lit) * float(trim.sun)
+	# A lid takes the sun down to a residue and leaves everything else about it
+	# alone: the same bearing, the same penumbra, the same shadows, faintly. It is
+	# a SHARE and not a level, so what little is left still rises and sets, and
+	# that residue is the hour a player can still find in a shut street.
+	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow, lit) \
+		* lerpf(1.0, LID_SUN, shut) * float(trim.sun)
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
 	# and it is spent against the evening rather than against `el`: the elevation
 	# this file computes is chosen to give a SCREEN-SPACE shadow length, not to say
@@ -578,10 +678,12 @@ func compose() -> void:
 		# smaller than it was: the sky is doing the work now, and a fill that
 		# beat the sky would put the one warm moving thing on screen in a light
 		# nothing in the world is casting.
-		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), closed)
+		# A lid counts as low light for this, whatever the clock says: under one
+		# the street IS as dark as a night, and the player has to read at any hour.
+		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), maxf(closed, shut))
 		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
-		_drive_environment(env.environment, hour, night, ns)
+		_drive_environment(env.environment, hour, night, ns, shut)
 
 
 ## The camera that is really drawing, or null (headless, or before the rig is in
@@ -621,13 +723,22 @@ func _cam_distance() -> float:
 ## The sky, the air and the grade, for this hour. The sky is the AMBIENT light
 ## and the reflection: at night it is a deep indigo dome over a near-black
 ## ground, which is why a night frame still has form in it without being lifted.
-func _drive_environment(e: Environment, hour: float, night: float, ns: float) -> void:
+func _drive_environment(e: Environment, hour: float, night: float, ns: float, shut := 0.0) -> void:
 	var nightly := maxf(night, closed)
 	var dusky := clampf(low_light(hour), 0.0, 1.0)
 	var mood := Color(weather_tint.x * region_tint.x, weather_tint.y * region_tint.y, weather_tint.z * region_tint.z)
 	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
 	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
 	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
+	# A lid REPLACES the sky rather than dimming it. What is overhead is no longer
+	# blue at noon and indigo at midnight: it is the underside of the thing in the
+	# way, the same colour at every hour, and it is what metal reflects and where
+	# the shade takes its hue. The landscape's own light still multiplies through
+	# `mood`, so the lid is that landscape's ceiling and not one grey lid for all.
+	if shut > 0.0:
+		top = top.lerp(LID_SKY_TOP * mood, shut)
+		hor = hor.lerp(LID_SKY_HORIZON * mood, shut)
+		gnd = gnd.lerp(LID_SKY_GROUND * mood, shut)
 	var sm := (e.sky.sky_material if e.sky != null else null) as ProceduralSkyMaterial
 	if sm != null:
 		sm.sky_top_color = top
@@ -653,7 +764,15 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float) ->
 	# blended over the shares in view). Only the night end: at noon `nightly` is 0
 	# and this term cannot reach the frame at all, which is the property that lets
 	# a bog ask for a brighter midnight without touching a single day picture.
-	e.ambient_light_energy = lerpf(DAY_AMBIENT, NIGHT_AMBIENT * ns, nightly) \
+	# And under a lid the ambient STOPS WALKING FROM DAY TO NIGHT. It settles on
+	# LID_AMBIENT, which does not read the hour at all, and that one substitution
+	# is the whole of why a shut landscape measures nearly the same at noon and at
+	# midnight: what is left of the difference is the sun's residue (LID_SUN), and
+	# where the lid is torn. A landscape still says its own level here — `ns` is
+	# on both ends now, so `night_sky` reaches the day as far as the lid is shut,
+	# and a landscape that wanted a brighter night gets a brighter street with it.
+	var open_sky := lerpf(DAY_AMBIENT, NIGHT_AMBIENT * ns, nightly)
+	e.ambient_light_energy = lerpf(open_sky, LID_AMBIENT * ns, shut) \
 		* lerpf(1.0, 0.45, closed) * float(trim.ambient)
 	# The air takes its colour from the sky, so distance separates by atmosphere.
 	# Its ENERGY has to fall with the light or the fog stops being air and
@@ -688,8 +807,17 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float) ->
 	# lamp is a cone and a machine's lens is a shaft.
 	# On a clear noon there is almost nothing in the air, and a volumetric haze
 	# that is always there is the papery veil again by another name.
+	# A LID IS AIR, and this term did not know it. The thickness was keyed to the
+	# hour (`nightly`), so a smog dome at noon — which is the thickest air in the
+	# game, being nothing but what is suspended in it — was drawn at the clear-noon
+	# floor of 0.12, and a shaft of daylight through a tear in it had no medium to
+	# be a shaft IN. It came back as a flat pale decal on the street.
+	#
+	# It is weighted above night on purpose: a night is dark air and a lid is FULL
+	# air, and the one thing the player is meant to walk into here is a column you
+	# can see the edges of.
 	e.volumetric_fog_density = VOLUME_DENSITY * float(a.bank) * lerpf(0.12, 2.4,
-		clampf(maxf(fog.z, maxf(air.x, nightly * 0.5)), 0.0, 1.0))
+		clampf(maxf(fog.z, maxf(air.x, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
 	var g: Vector4 = neon_grade_at(hour, neon_shares)[0]
@@ -1109,14 +1237,17 @@ const FRAME_ALBEDOS := [0.10, 0.16, 0.22, 0.30, 0.40, 0.52, 0.66, 0.82]
 const FRAME_FACES := [1.0, 0.55, 0.0]
 
 
-static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE) -> float:
+static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE, shut := 0.0) -> float:
 	var tint := tint_at(hour)
 	var total := tint * region * weather
 	var level := maxf((total.x + total.y + total.z) / 3.0, 0.001)
 	var hue := total / level
 	var lit := 1.0 - day_gone(hour)
-	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)), lit)
-	var amb := lerpf(NIGHT_AMBIENT, DAY_AMBIENT, lit)
+	# The lid is spent here exactly as compose() spends it, or this model would go
+	# on predicting a sunlit noon for a landscape the renderer draws as a shut one
+	# — and this is what `await darker` reads.
+	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)), lit) * lerpf(1.0, LID_SUN, shut)
+	var amb := lerpf(lerpf(NIGHT_AMBIENT, DAY_AMBIENT, lit), LID_AMBIENT, shut)
 	var hue_lum := maxf(hue.x * 0.3 + hue.y * 0.59 + hue.z * 0.11, 0.01)
 	var sum := 0.0
 	var n := 0
@@ -1317,6 +1448,56 @@ static func night_sky_at(shares: Dictionary) -> float:
 	if total <= 0.0:
 		return 1.0
 	return clampf(sum / total, NIGHT_SKY_LEAST, NIGHT_SKY_MOST)
+
+
+## How far the landscapes in view are shut off from the sky (`BiomeDef.sky_shut`),
+## blended on the SAME shares as the night, the grade, the air, the water and the
+## score, and squared for the same reason: the lid you are standing under belongs
+## to the land at your feet far more than to a sliver of a neighbour at the edge
+## of the picture.
+##
+## Unsquared, a shut landscape would start dimming the open one a whole frame
+## before its border — and this is the one of the five that is spent at every
+## hour, so that error would show at noon, which is where it would be worst.
+static func sky_shut_at(shares: Dictionary) -> float:
+	var sum := 0.0
+	var total := 0.0
+	for k: Variant in shares:
+		var w := float(shares[k])
+		if w <= 0.0:
+			continue
+		w *= w
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		sum += (d.sky_shut if d != null else 0.0) * w
+		total += w
+	if total <= 0.0:
+		return 0.0
+	return clampf(sum / total, 0.0, 1.0)
+
+
+## The last lid this node composed, for the STATIC rules that were written when
+## the clock was the whole story (`Lights.lamps_wanted`). Same shape as
+## `CompatTrim.remember`, and for the same reason: those rules are pure
+## functions of the hour, they are called from places that hold no reference to
+## the sky, and the alternative is threading a number through eight call sites in
+## another package's file.
+##
+## It is deliberately NOT read by `low_light`, `day_gone`, `tint_at` or anything
+## else in this file. Those are pure functions of the hour and every test in the
+## repository is entitled to keep treating them that way; a remembered global
+## quietly changing what a pure function answers is exactly the instrument that
+## fails toward green (docs/LOOK.md). This is a door for one kind of caller, it
+## says so, and the live value is `SkyLight.lid` on the node.
+static var _last_lid := 0.0
+
+
+static func remember_lid(v: float) -> void:
+	_last_lid = clampf(v, 0.0, 1.0)
+
+
+## How much lid the sky last composed with. 0 anywhere no landscape declares one.
+static func last_lid() -> float:
+	return _last_lid
 
 
 ## shares: landscape type id (or Country id) -> weight.

@@ -189,6 +189,37 @@ var light_tint := Color(1, 1, 1)
 ## exists not to do. `SkyLight.NIGHT_SKY_LEAST/MOST` clamp it: readability at
 ## night is a floor the content layer may not argue with.
 var night_sky := 1.0
+## How far this landscape is SHUT OFF from the sky: 0 under the open one, 1 with
+## something between it and the sun at every hour of the day.
+##
+## It is the DAY's half of `night_sky` above, and the two are deliberately
+## separate. `night_sky` says how much of the NIGHT sky reaches the ground and is
+## spent only as far as night has fallen, so it can never touch a noon frame.
+## This one is spent at EVERY hour, because a lid does not know what time it is.
+##
+## It is not `SkyLight.closed`, which is the realm's all-or-nothing door: that
+## reads a place as night whatever the clock says, takes the cast shadows away
+## with it, and no landscape file may set it (a roof belongs to a realm). This is
+## a landscape's own, it is partial, and THE HOUR GOES ON RUNNING UNDER IT — the
+## clock, the weather, the schedule and the shadows are all untouched. What
+## changes is only how much of the sky's own light arrives.
+##
+## Three things move together, and together is the point (see SkyLight.LID_*):
+## the SUN falls away to a residue, so nothing is lit from one hard direction any
+## more; the AMBIENT stops walking from day to night and settles on a level that
+## does not move with the hour; and the sky dome — what metal reflects and where
+## the shade takes its hue — stops being blue and becomes the underside of
+## whatever is overhead. A landscape still says its LEVEL with `night_sky`, which
+## reaches the day too as far as this is spent, and its COLOUR with `light_tint`.
+##
+## What it must NOT become is a multiply over every surface. `sky_apply`'s four
+## retired no-ops are there because that is what was tried, and a per-fragment
+## dim was most of why night was not dark (docs/LOOK.md). This is spent on the
+## LIGHT, once, in `SkyLight.compose`, and it is blended across an ecotone on the
+## same shares as the grade, the air, the night and the score, so a border
+## between an open landscape and a shut one is a walk into shade and not a line
+## drawn across the frame.
+var sky_shut := 0.0
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark
