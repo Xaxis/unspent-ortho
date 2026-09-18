@@ -497,33 +497,41 @@ const STREAK := 6
 const BRACKET := 7
 const VAPOUR := 8
 
-## World units per screen pixel of the 640x360 image (the fight system keeps it
-## to the camera's). Marks are never smaller on screen than their *_PX sizes.
-static var texel := 14.0 / 360.0
-## Smallest on-screen size, in pixels, of each mark (its quad's full width).
+## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
+## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
+## than their *_PX sizes.
+static var texel := 15.0 / 1080.0
+## Smallest on-screen size of each mark (its quad's full width), IN PIXELS OF THE
+## 1080-ROW BASE. They were written as pixels of the old 640x360 image and did not
+## move when the floor did, so every floor has been a third of its intended reach
+## ever since -- and a floor is all they are: a caller passes a size in WORLD units
+## (`burst(..., 0.8)`) and only a size under the floor is raised. Measured against
+## 640x360 that cost the plain burst 13% and a tell on the smallest machine 36%,
+## while the clang and the lens-hit burst never moved at all, their callers'
+## sizes having already cleared the floor. Tripling restores every one exactly.
 ## A hit mark has to be read at a glance and then be gone; it must never be the
 ## biggest thing in the frame, and it must never be the thing standing in front
 ## of what it proves (docs/ART.md §7: a SHORT ink burst, sparks as two or three
 ## bright pixels). The burst and the plate ring came in at 30 px with a filled
 ## paper star at the heart, which put an opaque disc over the amber working part
 ## at the exact moment the player needed to see it.
-const BURST_PX := 22.0
-const PUFF_PX := 16.0
-const RING_PX := 22.0
-const CLANG_PX := 20.0
-const GLINT_PX := 9.0
+const BURST_PX := 66.0
+const PUFF_PX := 48.0
+const RING_PX := 66.0
+const CLANG_PX := 60.0
+const GLINT_PX := 27.0
 ## A tell is the one mark that is NOT a record of a blow: it is a warning, and it
 ## is read at the far edge of vision while the player is deciding to dodge. It
 ## keeps the full 30 px it has always had — shrunk to 26 it read as one thin bar
 ## beside the machine instead of a fan pointing anywhere.
-const TELL_PX := 30.0
+const TELL_PX := 90.0
 ## Speed lines came in at 40 px, which at 640x360 is a mark wider than the body
 ## that made it; back down beside the burst's 22, where a dash is a flick of the
 ## pen behind a body that is still plainly a person (wave A2, art finding 3).
-const STREAK_PX := 34.0
-const BRACKET_PX := 26.0
+const STREAK_PX := 102.0
+const BRACKET_PX := 78.0
 ## Breath and steam: small, because they are a cue and not an event.
-const VAPOUR_PX := 18.0
+const VAPOUR_PX := 54.0
 ## A magnet line's width in whole screen pixels: one of the machines' cold with
 ## one of their dark each side. Three is the least that reads over pale gravel.
 const LINE_PX := 3.0

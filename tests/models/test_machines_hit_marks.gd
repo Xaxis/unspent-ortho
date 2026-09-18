@@ -14,7 +14,12 @@ const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutte
 ## What 40_fight passes for a blow landing in a machine's working part.
 const MACHINE_HIT := 1.1
 ## One screen pixel at the game's default view height (14 units over 360 px).
-const TEXEL := 14.0 / 360.0
+## World units per screen pixel at the play camera, in the BASE's own rows -- the
+## modern form (tests/render/test_found_drawn.gd). It read 14.0 / 360.0, the old
+## floor's, while the constants under test are pixels of 1080 rows: a mark came
+## out three times its real size against a part measured correctly, and the gate
+## below then read 42% of a harvester's working part covered instead of 14%.
+const TEXEL := 15.0 / 1080.0
 
 
 static func camera_axes() -> Array[Vector3]:
@@ -80,13 +85,19 @@ func test_a_burst_leaves_the_working_part_showing() -> void:
 func test_no_mark_that_lands_on_a_body_is_bigger_than_the_body() -> void:
 	# A record of a blow is read and gone, and it is drawn ON the thing it proves:
 	# it may never be the biggest thing in the frame, and the smallest machine in
-	# the roster is about 26 px across at gameplay zoom. The tell is not in this
+	# the roster is about 78 px across at gameplay zoom. The tell is not in this
 	# list: it is a warning, and it hangs clear of the machine (below).
+	#
+	# IN PIXELS OF THE 1080-ROW BASE, like the constants they hold. Both were
+	# written when a frame was 360 rows and the smallest machine 26 px, and
+	# neither moved when the floor did -- so this asked the marks to stay a third
+	# of the size their own reason names, and would have told anyone restoring
+	# them that they were wrong.
 	for got: Array in [["burst", MobFx.BURST_PX], ["clang", MobFx.CLANG_PX], ["ring", MobFx.RING_PX], ["puff", MobFx.PUFF_PX]]:
-		lt(float(got[1]), 27.0, "%s is %.0f px at its smallest" % got)
+		lt(float(got[1]), 81.0, "%s is %.0f px at its smallest" % got)
 	# And the two that land on a struck body are the ones held tightest.
-	lt(MobFx.BURST_PX, 24.0, "burst")
-	lt(MobFx.CLANG_PX, 22.0, "clang")
+	lt(MobFx.BURST_PX, 72.0, "burst")
+	lt(MobFx.CLANG_PX, 66.0, "clang")
 
 
 ## The tell is the one mark drawn before anything has happened, read at the edge
@@ -96,7 +107,7 @@ func test_no_mark_that_lands_on_a_body_is_bigger_than_the_body() -> void:
 ## it had almost no contrast at all. It is a fan, it is big enough to be a fan,
 ## and every stroke is backed by page.
 func test_a_tell_is_a_fan_that_reads_on_a_dark_body() -> void:
-	gt(MobFx.TELL_PX, 29.0, "a tell is %.0f px at its smallest" % MobFx.TELL_PX)
+	gt(MobFx.TELL_PX, 87.0, "a tell is %.0f px at its smallest" % MobFx.TELL_PX)
 	# Not so big that it becomes the frame: it is still smaller than the swing.
 	lt(MobFx.TELL_PX, MobFx.STREAK_PX, "and smaller than a swing's speed lines")
 	# More than the one pixel every other mark gets, so it reads on a hull; and
