@@ -61,14 +61,27 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
 ## over what the world already recorded, and it must not be a stage a player
-## waits through. Scaled by machine_slack, because several builders share this
-## laptop and a wall-clock budget taken under load says nothing.
+## waits through. Measured BEST of four rather than scaled by `machine_slack`:
+## several builders share this laptop, but load only ever ADDS time, so the
+## cheapest run is the honest cost and the bar stays at the real number. A bar
+## widened by up to 8x is one that can no longer fail for a real reason
+## (TestCase.machine_slack, and its twin in tests/landmarks/test_world.gd --
+## these two are one measurement written out twice and must stay in step).
 func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	var w := WorldGen.generate(1, 512)
-	var t := Time.get_ticks_usec()
-	for i in 4:
-		var sites := Works.sites(w)
-		check(not sites.is_empty(), "there is something to find")
-	var ms := (Time.get_ticks_usec() - t) / 4000.0
-	print("works: %.2f ms to find every depot in a 512 world (%d of them)" % [ms, Works.sites(w).size()])
-	lt(ms, 25.0 * machine_slack(), "finding the depots is not a stage a player waits through")
+	# Nothing here is remembered between asks, so every run is a cold one.
+	check(not Works.sites(w).is_empty(), "there is something to find")
+	var find := func() -> void:
+		@warning_ignore("return_value_discarded")
+		Works.sites(w)
+	var ms := best_of(4, find) / 1000.0
+	print("works: %.2f ms to find every depot in a 512 world (%d of them, best of 4)"
+		% [ms, Works.sites(w).size()])
+	# 0.45 ms measured on a quiet machine, so 5 is eleven times its own subject
+	# and can still see a real regression. The bar was 25 x machine_slack --
+	# fifty-five times the true cost before any scaling, and up to four hundred
+	# after it. Nothing this sweep could ever do would have tripped that. The
+	# cost is low because the sweep only reads what worldgen already recorded;
+	# if it ever has to LOOK at the land the way Landmarks.sites does, this
+	# number moves by two orders and that is exactly what should be caught here.
+	lt(ms, 5.0, "finding the depots is not a stage a player waits through")

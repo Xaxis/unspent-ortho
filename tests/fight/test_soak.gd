@@ -35,9 +35,22 @@ func test_minutes_on_a_generated_coast() -> void:
 	var most := 0
 	var meetings := 0
 	var start_minutes := moment.minutes
+	# One sample per SECOND OF PLAY, and the middle of them is the answer. A
+	# total over 90 seconds is one number holding every hiccup the scheduler had
+	# in a minute and a half, which is why this bound used to be a flat 120 ms
+	# over a measured 18 -- nearly seven times its own figure, and so unable to
+	# see a fivefold regression. The middle sample throws the scheduler's tail
+	# away instead of making room for it (TestCase.middle).
+	var per_second: Array[float] = []
+	var steps_a_second := int(1000.0 / 16.0)
 	var t0 := Time.get_ticks_usec()
+	var chunk := t0
 	var steps := int(SECONDS * 1000.0 / 16.0)
 	for i in steps:
+		if i > 0 and i % steps_a_second == 0:
+			var now := Time.get_ticks_usec()
+			per_second.append(float(now - chunk) / 1000.0)
+			chunk = now
 		moment.minutes += 16.0 / 1000.0
 		coast.tick()
 		var near := false
@@ -65,15 +78,25 @@ func test_minutes_on_a_generated_coast() -> void:
 			check(Senses.chebyshev(m.pos, hero.pos) <= cull + 1.0, "%s culled past %d" % [m.kind, cull])
 		if hero.health <= 0:
 			hero.health = FightRules.HEALTH
-	var ms_per_second := (Time.get_ticks_usec() - t0) / 1000.0 / SECONDS
+	var ms_per_second := middle(per_second)
+	var mean_ms := (Time.get_ticks_usec() - t0) / 1000.0 / SECONDS
 	var game_hours := (moment.minutes - start_minutes) / 60.0
-	print("  soak: %d kinds %s, most living %d, outcomes %s, %d dart meetings in %.1f game hours, %.2f ms per second played" % [kinds.size(), kinds.keys(), most, outcomes, meetings, game_hours, ms_per_second])
+	print("  soak: %d kinds %s, most living %d, outcomes %s, %d dart meetings in %.1f game hours, %.2f ms per second played (middle of %d; mean %.2f)"
+		% [kinds.size(), kinds.keys(), most, outcomes, meetings, game_hours, ms_per_second, per_second.size(), mean_ms])
 	# Even at ten times the trickle, darts keep to their gap: seen, met rarely.
 	lt(float(meetings), game_hours * 60.0 / Coast.MEETING_GAP + 1.01, "dart meetings per game hour")
 	lt(float(most), float(Spawner.MAX_LIVING) + 0.5, "six living at most")
 	gt(float(kinds.size()), 1.0, "the coast put more than one kind out")
 	check(not is_nan(hero.pos.x) and w.in_bounds(floori(hero.pos.x), floori(hero.pos.y)), "the player is still on the coast")
-	# A second of play is sixty frames, 1000 ms. Measured about 18 ms on an idle
-	# machine with ten times the ordinary spawning; the bound is loose so a busy
-	# machine passes and a runaway (a field rebuilt every slice) does not.
-	lt(ms_per_second, 120.0, "cheap enough to run every frame")
+	# A second of play is sixty frames, 1000 ms. The middle second measures 6.95
+	# ms on a quiet machine with ten times the ordinary spawning (mean 8.56, and
+	# the gap between those two IS the scheduler). This comment said "about 18"
+	# for the whole life of the test, which was a MEAN taken under load being
+	# read as the cost of the code -- the same mistake one line down was making.
+	#
+	# 45 leaves a loaded machine room for a slow middle second without leaving
+	# room for the runaway this is here to catch (a field rebuilt every slice,
+	# which is orders out, not tens of percent). It is the middle second that
+	# has to hold, not every one: the bad seconds are the scheduler's and there
+	# is no point pretending otherwise.
+	lt(ms_per_second, 45.0, "cheap enough to run every frame")

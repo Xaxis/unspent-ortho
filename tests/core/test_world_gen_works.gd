@@ -393,11 +393,25 @@ func test_budgets() -> void:
 			verts += tpl.made_v.size() + tpl.found_v.size()
 			n += 1
 	print("       works at 512: %d evidence props, %d template vertices (%.0f each)" % [n, verts, float(verts) / maxf(n, 1)])
-	# A WALL-CLOCK BUDGET IN THE GATE MUST BE SCALED, or it measures the machine.
-	# The gate runs three shards and four shots at once: this stage takes 56 ms
-	# run alone and was read as 462 ms beside them, failing a bar of 400 with
-	# nothing whatever changed in the stage. `machine_slack` is the project's own
-	# answer to that and every other clock-watching test already uses it.
+	# THIS BAR IS KNOWN TO BE BLIND, and is left standing only because the honest
+	# fix needs a number nobody has measured yet. Read the whole note before
+	# copying the line, because the rule it used to state is no longer the
+	# project's: scaling is for WAITING, not for COSTING (TestCase.machine_slack).
+	#
+	# The figures here make the case better than the argument does. The stage
+	# takes 56 ms run alone and was read as 462 ms beside three shards and four
+	# shots, against a bar of 400 with nothing whatever changed in it. So the bar
+	# was already seven times its own subject before any slack; multiplied by a
+	# slack that clamps at 8 it reaches 3200 ms, which is fifty-seven times the
+	# real cost. Nothing a regression could plausibly do would trip it.
+	#
+	# The right answer is RELATIONAL, and it is already sitting in the same
+	# function: `works_ms` against `gen_ms`. Load inflates both together, so the
+	# share survives a busy machine exactly the way the desktop-against-web
+	# distances did (docs/LOOK.md, "a difference measured WITHIN one run is safe
+	# where a difference measured ACROSS runs is not"). It is not written that
+	# way today because the true share has never been measured on a quiet
+	# machine, and a bar picked to make the test pass is how this one got here.
 	lt(works_ms, 400.0 * TestCase.machine_slack(), "works stage at 256")
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.

@@ -358,9 +358,19 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
 - **Keep total builders across all sessions to about six.** Past saturation nobody
   goes faster and the clock-watching tests start lying. If the load is already high,
   wait rather than launch.
-- **Wall-clock results lie under load.** Test budgets scale by
-  `TestCase.machine_slack()` and tool timeouts by `tools/_slack.sh`; a timing failure
-  while a wave runs must be re-run alone before it is believed.
+- **Wall-clock results lie under load, and SLACK IS FOR WAITING, NOT FOR COSTING.**
+  `TestCase.machine_slack()` (and `tools/_slack.sh` for tool timeouts) is right for
+  "how long may I wait for something to happen" — a job, a page, a body arriving —
+  because that genuinely takes longer on a busy machine. It is wrong for "how much
+  does this cost": it clamps at 8, so it can hand a cost bar eight times its real
+  value and the test can no longer fail for a real reason. **A cost is measured with
+  `TestCase.best_of(n, fn)`** (the cheapest of n runs — load only ever ADDS time, so
+  the minimum is the honest number and the bar stays tight), or `TestCase.middle()`
+  where the work cannot be repeated whole, or best of all stated as a SHARE of
+  something measured in the same run. It was cached once per process until
+  `machine_slack`'s own header explains what that cost: two shards of one gate
+  disagreeing 3.2x about the same machine at the same moment. A timing failure while
+  a wave runs must still be re-run alone before it is believed.
 - **A builder starts from `origin/main`, not from whatever its worktree was cut at**:
   `git fetch origin && git checkout -B <branch> origin/main` is the first line of a
   brief, and a builder that runs for hours takes main again when it moves under it.

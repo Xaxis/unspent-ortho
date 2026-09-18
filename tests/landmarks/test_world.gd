@@ -94,16 +94,22 @@ func test_a_landmark_is_seen_before_it_is_named() -> void:
 ## region's bounds and it must not be a stage a player waits through.
 func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 	var w := WorldGen.generate(1, 512)
-	var t := Time.get_ticks_usec()
-	for i in 3:
-		# The answer is remembered per island, so the measurement has to forget it
-		# or it times a dictionary lookup and says the sweep is free.
+	# The answer is remembered per island, so every measurement has to forget it
+	# first or it times a dictionary lookup and says the sweep is free.
+	Landmarks.forget()
+	check(not Landmarks.sites(w).is_empty(), "there is something to find")
+	# BEST of three, not the mean of three: load only ever ADDS time, so the
+	# cheapest run is the honest cost and the bar can stay at the real number.
+	# This was `90.0 * machine_slack()` over the MEAN, which failed at 398
+	# against a bar of 369 -- a bar four times its own number, missed anyway,
+	# and by then far too wide to have caught a real regression.
+	var cold := func() -> void:
 		Landmarks.forget()
-		var sites := Landmarks.sites(w)
-		check(not sites.is_empty(), "there is something to find")
-	var ms := (Time.get_ticks_usec() - t) / 3000.0
-	print("landmarks: %.2f ms to site every landmark in a 512 world (cold)" % ms)
-	lt(ms, 90.0 * machine_slack(), "siting them is not a stage a player waits through")
+		@warning_ignore("return_value_discarded")
+		Landmarks.sites(w)
+	var ms := best_of(3, cold) / 1000.0
+	print("landmarks: %.2f ms to site every landmark in a 512 world (cold, best of 3)" % ms)
+	lt(ms, 90.0, "siting them is not a stage a player waits through")
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
 	var t2 := Time.get_ticks_usec()

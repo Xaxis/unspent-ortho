@@ -204,15 +204,21 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	gt(n, 23, "a street's worth stood up (%d of the 40 asked for)" % n)
 	var each_ms := float(build_us) / float(n) / 1000.0
 
+	# Both of these are FOREVER costs and both repeat, so they are measured
+	# best-of-five rather than once: load only adds time, and the cheapest run is
+	# the honest one. Measured once and widened by `machine_slack()`, this pair
+	# failed at 2233 us against a bar of 1316 in the same gate run where the
+	# landmarks budget had sampled a slack of 4.1 -- two shards, one machine, one
+	# moment, disagreeing 3.2x about how busy it was (TestCase.machine_slack).
 	f.call("_count_crowd")
-	var t1 := Time.get_ticks_usec()
-	f.call("_count_crowd")
-	var count_us := Time.get_ticks_usec() - t1
+	var count := func() -> void:
+		f.call("_count_crowd")
+	var count_us := best_of(5, count)
 
-	var t2 := Time.get_ticks_usec()
-	for row: Dictionary in folk:
-		f.call("_step", row, 0.016, false)
-	var step_us := Time.get_ticks_usec() - t2
+	var step := func() -> void:
+		for row: Dictionary in folk:
+			f.call("_step", row, 0.016, false)
+	var step_us := best_of(5, step)
 
 	var tris := 0
 	var draws := 0
@@ -228,14 +234,23 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	print("    crowd   %6.1f us a tick (O(n^2), twice a second)" % count_us)
 	print("    draw    %6d triangles, %d each over %d meshes" % [tris, tris / maxi(n, 1), draws])
 
-	var slack := TestCase.machine_slack()
 	# The forever cost is what a frame has to carry, and it is the one that must
-	# hold: a street may not cost more than a millisecond a frame to walk through.
-	lt(float(step_us) + float(count_us) * 0.5, 1000.0 * slack,
+	# hold: a street may not cost more than a millisecond a frame to walk
+	# through. No slack on it -- the measurement above already took the noise out,
+	# so this bar is the real number and can still fail for a real reason.
+	lt(step_us + count_us * 0.5, 1000.0,
 		"forty on a street cost under a millisecond a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
 	# And the build stays a ramp rather than a stall, because nothing builds two
 	# in one frame: what a player feels is the street filling in, not a hitch.
-	lt(each_ms, 12.0 * slack, "one villager still builds in the time a frame can spare (%.2f ms)" % each_ms)
+	#
+	# This one KEEPS its slack, and it is the weakest of the three on purpose:
+	# building forty people is not repeatable cheaply, so there is no best-of to
+	# take and the only honest options are a widened bar or no bar. Widened, it
+	# cannot see a regression smaller than the slack it was handed. If the build
+	# ever needs to be held to a real figure, `_ring` has to time each villager
+	# as it stands one up, and this becomes a `middle()` of those.
+	lt(each_ms, 12.0 * TestCase.machine_slack(),
+		"one villager still builds in the time a frame can spare (%.2f ms)" % each_ms)
 
 
 # ---------------------------------------------------------------- indifference

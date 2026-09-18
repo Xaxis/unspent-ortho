@@ -40,15 +40,32 @@ func lt(actual: float, bound: float, msg: String = "") -> void:
 
 
 ## How much less of a processor this run is getting than it would on a quiet
-## machine, measured once. Eight builders on one laptop put the load average
-## past sixty, and every wall-clock budget then misses by three or four times
-## over for reasons that have nothing to do with the code under test. A budget
-## that fails for that is a budget everyone learns to ignore, so the budgets
-## here are multiplied by this instead: still strict on a quiet machine, honest
-## on a busy one.
+## machine. Eight builders on one laptop put the load average past sixty, and
+## every wall-clock budget then misses by three or four times over for reasons
+## that have nothing to do with the code under test. A budget that fails for
+## that is a budget everyone learns to ignore.
+##
+## **SLACK IS FOR WAITING, NOT FOR COSTING.** Use it for "how long may I wait
+## for something to happen" — a job to finish, a page to open, a body to arrive
+## — because that really does take longer on a loaded machine. Do NOT use it for
+## "how much does this cost": widening a cost bar by up to 8x makes the test
+## blind to a 4x regression, which is docs/LOOK.md's whole chapter on
+## instruments that fail toward green. A cost is measured with `best_of()`
+## instead, which removes the noise rather than making room for it.
+##
+## It is RE-SAMPLED (`SAMPLE_GOOD_FOR`), and that is not a detail. It used to be
+## cached for the life of the process, and the gate's three shards are three
+## processes: in one run `siting_them_costs_nothing` failed at 398 against a bar
+## of 90 x 4.1 while `street_crowd` failed at 2233 against 1000 x 1.3 — two
+## shards, one machine, one moment, disagreeing by 3.2x about how loaded it was.
+## The shard that starts first reads a machine whose siblings have not spun up
+## yet, and then spends that number on budgets minutes later. The one-minute
+## load average lags the same ramp, which is why the TTL is short.
 static func machine_slack() -> float:
-	if _slack > 0.0:
+	var now := Time.get_ticks_msec()
+	if _slack > 0.0 and now - _slack_at < SAMPLE_GOOD_FOR:
 		return _slack
+	_slack_at = now
 	_slack = 1.0
 	var cores := maxi(1, OS.get_processor_count())
 	var load := _load_average()
@@ -57,7 +74,45 @@ static func machine_slack() -> float:
 	return _slack
 
 
+## Long enough that a wait loop asking every frame does not spawn a `sysctl` a
+## frame, short enough that a shard cannot spend one reading for a whole run.
+const SAMPLE_GOOD_FOR := 3000
+
 static var _slack := 0.0
+static var _slack_at := 0
+
+
+## The cheapest of `n` runs of `what`, in microseconds -- the honest cost of a
+## thing on a machine that is also doing something else.
+##
+## Contention only ever ADDS time: no amount of load makes work finish sooner.
+## So the MINIMUM over a few repeats is the closest thing to the quiet-machine
+## number that a busy machine can give you, and it lets the bar stay tight
+## instead of being widened by `machine_slack()` until it cannot fail. This is
+## what fixed the `DevCheats.places()` cost guard, which read 91 ms under gate
+## load for a sweep that takes 4.9 ms.
+##
+## `what` must be repeatable and must do the same work every time -- warm any
+## cache it is not measuring first, or forget it inside the callable.
+static func best_of(n: int, what: Callable) -> float:
+	var best := INF
+	for i in maxi(1, n):
+		var t := Time.get_ticks_usec()
+		what.call()
+		best = minf(best, float(Time.get_ticks_usec() - t))
+	return best
+
+
+## The middle of `samples`, which is what to report when a thing is measured
+## many times and cannot be repeated whole (a frame inside a soak, one villager
+## inside a street). Same reasoning as `best_of`: the tail is the scheduler's,
+## not the code's. Takes the low middle of an even count; 0.0 if empty.
+static func middle(samples: Array[float]) -> float:
+	if samples.is_empty():
+		return 0.0
+	var s := samples.duplicate()
+	s.sort()
+	return s[(s.size() - 1) / 2]
 
 
 ## The one-minute load average, or 0.0 where it cannot be read.
