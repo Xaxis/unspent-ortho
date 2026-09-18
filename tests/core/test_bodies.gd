@@ -79,3 +79,70 @@ static func _walk(path: String, out: PackedStringArray) -> void:
 			if t.contains(".continent =") or t.contains(".continent[") or t.contains(".continents ="):
 				out.append(whole)
 				break
+
+
+## The planning half: pure, cheap, and not yet wired into generation.
+func test_a_plan_is_the_same_plan_every_time() -> void:
+	for s: int in SEEDS:
+		var a := GenBodies.plan(s)
+		var b := GenBodies.plan(s)
+		eq(a.size, b.size, "seed %d: the same square" % s)
+		eq((a.bodies as Array).size(), (b.bodies as Array).size(), "seed %d: the same count" % s)
+		for i in (a.bodies as Array).size():
+			eq(str(a.bodies[i]), str(b.bodies[i]), "seed %d body %d is dealt the same" % [s, i])
+
+
+func test_a_realm_says_how_many_bodies_it_has() -> void:
+	for realm: StringName in [Realm.SURFACE, Realm.ORBITAL]:
+		var least: int = (GenBodies.COUNT[realm] as Vector2i).x
+		var most: int = (GenBodies.COUNT[realm] as Vector2i).y
+		for s: int in SEEDS:
+			var p := GenBodies.plan(s, realm)
+			var n: int = (p.bodies as Array).size()
+			check(n >= least and n <= most, "%s seed %d: %d bodies, wanted %d..%d" % [realm, s, n, least, most])
+			gt(float(p.size), 63.0, "%s seed %d: a square to hold them" % [realm, s])
+			var home := 0
+			for b: Dictionary in p.bodies:
+				if bool(b.home):
+					home += 1
+			eq(home, 1, "%s seed %d: exactly one body is woken on" % [realm, s])
+
+
+## THE LINE THAT KEEPS THE REPOSITORY WORKING. Every --size=64 and --size=256 in
+## the tests and tours has to go on meaning what it meant, and one body is exactly
+## the island this game has always had.
+func test_a_small_world_is_one_body_as_it_always_was() -> void:
+	for s: int in SEEDS:
+		for want: int in [64, 128, 256]:
+			var p := GenBodies.plan(s, Realm.SURFACE, want)
+			eq((p.bodies as Array).size(), 1, "seed %d at %d: one island" % [s, want])
+			eq(p.size, want, "seed %d: the size that was asked for" % s)
+		# And a square big enough is allowed more than one.
+		var big := GenBodies.plan(s, Realm.SURFACE, 2048)
+		gt(float((big.bodies as Array).size()), 1.0, "seed %d: room for continents" % s)
+
+
+## A shaft has to come up where it went down, so the underground is the surface's
+## map. The rule lives in `plan`, not in the caller: asking for the underground
+## returns the surface's footprints (docs/WORLD.md §5).
+func test_the_underground_is_the_surface_seen_from_below() -> void:
+	for s: int in SEEDS:
+		var up := GenBodies.plan(s, Realm.SURFACE)
+		var down := GenBodies.plan(s, Realm.UNDERGROUND)
+		eq(down.size, up.size, "seed %d: the same square" % s)
+		eq((down.bodies as Array).size(), (up.bodies as Array).size(), "seed %d: the same bodies" % s)
+		for i in (up.bodies as Array).size():
+			eq(str(down.bodies[i].at), str(up.bodies[i].at), "seed %d body %d stands in the same place" % [s, i])
+
+
+## Two bodies at one latitude are the same place unless they are dealt different
+## weather, which is the whole of why the band exists (docs/WORLD.md §4a).
+func test_every_body_is_dealt_a_climate_band() -> void:
+	var seen := {}
+	for s: int in SEEDS:
+		for b: Dictionary in GenBodies.plan(s, Realm.SURFACE, 2048).bodies:
+			var band: Vector2 = b.band
+			check(absf(band.x) <= GenBodies.BAND + 1e-5 and absf(band.y) <= GenBodies.BAND + 1e-5,
+				"seed %d body %d: a band inside its spread" % [s, int(b.id)])
+			seen["%.4f,%.4f" % [band.x, band.y]] = true
+	gt(float(seen.size()), 2.0, "the bands are not all the same deal")
