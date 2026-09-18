@@ -8,6 +8,69 @@ set -uo pipefail
 web=0
 for a in "$@"; do [ "$a" = "--web" ] && web=1; done
 cd "$(dirname "$0")/.."
+
+# A MACHINE-WIDE limit on how many gates run at once, because the gate measures
+# time and time is the one thing a busy machine takes away.
+#
+# Measured, with seven builders working: load average 80 on 14 cores, 13 godot
+# processes. CLAUDE.md already says past ~20 nobody goes faster and the
+# clock-watching tests start lying -- but nothing stopped seven worktrees from
+# gating simultaneously, so every one of those runs was measuring the others.
+# A gate that is wrong is worse than a gate that is late: a red one gets re-run
+# until it is green, which is how a real regression ships.
+#
+# This WAITS rather than refusing, which is the opposite of tools/tour.sh's lock
+# and deliberately so. Two tour runs in one checkout overwrite each other's
+# frames, so the second must die; two gates do not corrupt each other's output
+# at all, they only corrupt each other's timings. Refusing would throw away work
+# somebody legitimately needs done. Waiting just puts it in a queue.
+#
+# The slots live in TMPDIR and are keyed to the MACHINE, not the checkout --
+# every worktree holds its own copy of this script, and limiting each copy
+# separately would limit nothing. `mkdir` is the lock because it is atomic on
+# every POSIX filesystem; the pid inside lets a slot whose holder was killed be
+# reclaimed instead of wedging the queue forever.
+#
+# Two slots by default: a gate is three test shards plus four shot processes,
+# about seven, against fourteen cores here. UNSPENT_GATE_SLOTS overrides it, and
+# 0 disables the queue entirely for anyone who wants the old behaviour.
+gate_slot=""
+gate_slots="${UNSPENT_GATE_SLOTS:-2}"
+# `rm -r`, not `rmdir`: the slot holds a pid file, so rmdir fails on a non-empty
+# directory and the slot is never given back. Caught by a test that ran two gates
+# through one slot and found it still held afterwards -- left as it was, every
+# slot would have leaked on first use and the queue wedged for good.
+release_slot() { [ -n "$gate_slot" ] && rm -rf "$gate_slot" 2>/dev/null; }
+if [ "$gate_slots" -gt 0 ]; then
+  trap release_slot EXIT INT TERM
+  waited=0
+  while [ -z "$gate_slot" ]; do
+    freed=0
+    for s in $(seq 1 "$gate_slots"); do
+      d="${TMPDIR:-/tmp}/unspent-gate-$s.lock"
+      if mkdir "$d" 2>/dev/null; then
+        echo $$ > "$d/pid"; gate_slot="$d"; break
+      fi
+      # Reclaim a slot whose holder is gone (killed run, crashed shell).
+      holder="$(cat "$d/pid" 2>/dev/null || echo 0)"
+      if [ "$holder" -gt 0 ] 2>/dev/null && ! kill -0 "$holder" 2>/dev/null; then
+        rm -rf "$d" 2>/dev/null; freed=1
+      fi
+    done
+    [ -n "$gate_slot" ] && break
+    # A slot we just reclaimed is free NOW, so take it rather than serving a
+    # ten-second sentence for somebody else's crashed run.
+    [ "$freed" -eq 1 ] && continue
+    # A gate that never runs is worse than one that runs noisy, so give up
+    # waiting eventually and say loudly that the numbers are suspect.
+    if [ "$waited" -ge 1800 ]; then
+      echo "== gate queue: waited 30 min for a slot, running anyway -- TIMINGS ARE SUSPECT"
+      break
+    fi
+    [ "$waited" -eq 0 ] && echo "== gate queue: $gate_slots slots busy, waiting (load $(sysctl -n vm.loadavg 2>/dev/null || uptime))"
+    sleep 10; waited=$((waited + 10))
+  done
+fi
 t0=$(date +%s)
 tools/_import.sh
 fail=0

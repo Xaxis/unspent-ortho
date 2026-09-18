@@ -9,7 +9,8 @@
 # `tools/map.sh --seed=1` run, and four of the six had quietly stopped being
 # what the run said they were:
 #   coast     338,398 sat at blend 0.36 — deep in an ECOTONE band. A frame
-#             called "coast-heart" was a picture of a border. (Now 250,406.)
+#             called "coast-heart" was a picture of a border. See the note on
+#             its line below: it is the one place here still on a coordinate.
 #   moss      262,242 was on GRAVEL, 47 tiles off the sample. (Now 266,290, moss.)
 #   pinewood  362,222 had no PINE within nine tiles. (Now 366,222, four of them.)
 #   bonelands 138,242 was a RIVERBED. (Now 134,254, limestone pavement under
@@ -18,9 +19,40 @@
 # written down, so those two frames do not move at all — which is the point: a
 # name costs nothing when nothing has changed and fixes itself when it has.
 coast calm
-place coast
+# THE COAST IS THE ONE HEART STILL ON A COORDINATE, and it is the only frame in
+# this file taken on the strength of what it LOOKS like rather than what it is
+# called. Three tiles were shot and looked at:
+#   338,398    what was here. Blend 0.36 — an ecotone. A frame named for one
+#              landscape showing two, with a stone circle in the middle of it.
+#   250,406    `place coast`, which is GenPlaces.country_sample and therefore
+#              the coast's heartland by construction. On seed 1 that lands
+#              twenty tiles off the plan's Turf Rows depot, and the picture is
+#              masts, wire, a fire tower and cleared earth. Honest about the
+#              tile, wrong about the subject: a photograph of a depot that
+#              happens to stand on the coast (owner's ruling).
+#   110,436    this. Turf terraces stepping down to a sand bay, the sun on the
+#              water, boulders, driftwood, broadleaf wood behind, and one fallen
+#              pylon truss for the machines. No village, no depot, no landmark.
+#
+# A search of the whole island says seed 1 holds 740 tiles like the third: coast,
+# blend 0, at least 30 from any depot, 22 from any village, 16 from any landmark,
+# with the sea within nine. So the coast is not short of heartland — what is
+# missing is a NAME for it. Every name GenPlaces knows that reaches the coast is
+# the spawn, the country sample, or a landmark, and a landmark in frame is the
+# same objection as the depot.
+#
+# So this number stays until the new GenPlaces key for open ground in a landscape
+# lands, and then it goes. TWO THINGS THAT KEY MUST DO for this frame, which are
+# not in its brief as written: clear LANDMARKS as well as villages and works, or
+# it can still resolve to the lighthouse; and prefer a tile with the landscape's
+# own character in shot, which on the coast means the strand — the highest-scoring
+# open tile on this island by prop count alone is a reed marsh.
+# `prop:driftwood` is what guards it in the meantime: the frame has to hold the
+# strand, so a worldgen change that moves the shoreline out of it fails the tour
+# rather than filing a field under the name "coast-heart".
+at 110.5,436.5
 wait 2.0
-shot 01-coast-heart with land:coast
+shot 01-coast-heart with land:coast,prop:driftwood
 walk 0,-1 1.2
 shot 02-coast-walked with land:coast
 place moss
