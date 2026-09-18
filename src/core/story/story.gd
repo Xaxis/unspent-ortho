@@ -31,6 +31,10 @@ static var _beats: Dictionary = {}
 static var _choices: Dictionary = {}
 ## Named people he has spoken to, in the order he met them (StoryCast).
 static var _met: Array[StringName] = []
+## What a region has already asked him, and what it has already thanked him for
+## (StorySubarc): ids of the form "REGION:goal". Whether a thing is DONE is read
+## off the world, so only the telling is remembered.
+static var _heard: Array[StringName] = []
 ## What the world has seen him do, for whoever writes it down (StoryLedger):
 ## {act, land, at} in the order it happened.
 static var _ledger: Array[Dictionary] = []
@@ -44,6 +48,7 @@ static func forget() -> void:
 	_beats.clear()
 	_choices.clear()
 	_met.clear()
+	_heard.clear()
 	_ledger.clear()
 	now = 0.0
 
@@ -97,6 +102,18 @@ static func meet(id: StringName) -> bool:
 
 static func met(id: StringName) -> bool:
 	return _met.has(id)
+
+
+## Somebody has said this to him. True the first time only.
+static func hear(id: StringName) -> bool:
+	if id == &"" or _heard.has(id):
+		return false
+	_heard.append(id)
+	return true
+
+
+static func heard(id: StringName) -> bool:
+	return _heard.has(id)
 
 
 ## Something the world saw him do. Only what could have been OBSERVED belongs
@@ -206,10 +223,13 @@ static func save_state() -> Dictionary:
 	var met := PackedStringArray()
 	for id: StringName in _met:
 		met.append(String(id))
+	var heard := PackedStringArray()
+	for id: StringName in _heard:
+		heard.append(String(id))
 	var seen: Array = []
 	for e: Dictionary in _ledger:
 		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
-	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "ledger": seen}
+	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "heard": heard, "ledger": seen}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -226,6 +246,8 @@ static func load_state(d: Dictionary) -> void:
 		_choices[StringName(str(k))] = StringName(str(choices[k]))
 	for s: String in d.get("met", []):
 		_met.append(StringName(s))
+	for s: String in d.get("heard", []):
+		_heard.append(StringName(s))
 	for e: Variant in d.get("ledger", []):
 		if e is Dictionary:
 			var row: Dictionary = e

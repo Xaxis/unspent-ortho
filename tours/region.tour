@@ -1,0 +1,16 @@
+# What a region asks of him (docs/VISION.md §10.4), through the real keys: walk up
+# to somebody who lives here and press use, and they say what is wrong with this
+# place in their own words — never a list on the glass. What they ask for is read
+# off the region's own state, so it differs by seed and by what has been done.
+#
+#   tools/tour.sh tours/region.tour --seed=1 --hour=11 --weather=clear:0 --folk=6
+coast calm
+wait 0.8
+await asked 3
+press use
+await talking 3
+wait 0.4
+shot 01-what-is-wrong-here with talking,folk
+press pause
+wait 0.6
+await heard_ask 2

@@ -1974,6 +1974,66 @@ const TALKS := {
 	},
 }
 
+# --- what a region asks of him (StorySubarc, docs/VISION.md §10.4) ------------
+#
+# A chapter with three demands and no stories in it is a checklist, so each
+# region raises one of these out of its own state and somebody who lives there
+# says it. One resolved token at most per line (docs/STORY_SYSTEM.md §6): the
+# place's own name, and never a coordinate, a count or a task.
+
+## What somebody who lives here says when the region itself has changed under
+## him: they have noticed him, or the plan has lost the place. Said once each.
+const MOODS := {
+	&"during": [
+		"They've been through twice this week, asking after somebody.",
+		"Whatever you've started, don't start it again here. Finish it or go.",
+		"It only stops when the yard stops.",
+	],
+	&"after": [
+		"Nothing's come up the road in a month.",
+		"The children are out past the rows again. I keep counting them in.",
+		"I don't know what to do with a quiet like this. I'll learn.",
+	],
+}
+
+const SUBARCS := {
+	&"sabotage": {
+		"ask": [
+			"They put a yard up at %s and it hasn't stopped since.",
+			"Every season there's less of this place than there was.",
+			"Somebody could put it dark. I'm not somebody.",
+		],
+		"answer": "[say nothing]",
+		"thanks": [
+			"The yard's dark. We heard it stop in the night.",
+			"Nobody here will say it was you. That's how we thank people.",
+		],
+	},
+	&"recover": {
+		"ask": [
+			"My brother's cache is still out at %s.",
+			"He didn't come back for it, and I've the children.",
+			"You'd find it, if you were going that way.",
+		],
+		"answer": "[say nothing]",
+		"thanks": [
+			"You got to his cache, then. Keep what was in it.",
+			"He'd rather it was used than counted.",
+		],
+	},
+	&"discover": {
+		"ask": [
+			"Nobody's walked out to %s since my mother's time.",
+			"It's still standing, they say. Somebody should know what's at it.",
+		],
+		"answer": "[say nothing]",
+		"thanks": [
+			"So it is still standing. Good.",
+			"That's all I wanted. You can't miss what you've never seen.",
+		],
+	},
+}
+
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
 # The slate's read of a machine is already testimony (docs/STORY.md §13): what it
