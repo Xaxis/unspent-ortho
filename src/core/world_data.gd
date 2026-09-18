@@ -70,6 +70,21 @@ var road: PackedByteArray
 ## slums. Anything asking "whose rules made this?" asks here; `country` answers
 ## "whose land is this?" and the two are only the same away from a border.
 var recipe: PackedByteArray
+## Which BODY each tile belongs to: 0 is the void between them (the ocean on the
+## surface, solid rock underground, vacuum in orbit), and bodies are numbered from
+## 1 (`docs/WORLD.md`).
+##
+## The third of a set with `road` and `recipe`, and the same argument: a stage
+## decided it, so a stage records it, and nobody downstream infers it. Continent
+## is the one of the three most likely to be guessed at — from latitude, or from
+## the ocean mask — and a guess would be wrong the first time a continent was not
+## where its latitude suggested. `GenBodies` is its only writer
+## (`tests/core/test_bodies.gd`).
+var continent: PackedByteArray
+## What each body was dealt, biggest first: {id: int, tiles: int, centre: Vector2,
+## bounds: Rect2}. `docs/WORLD.md` §4 adds the budget, the climate band and the
+## type set when the planning half lands.
+var continents: Array[Dictionary] = []
 ## The machines' grid: {kind: PropKind.PYLON or POLE, props: PackedInt32Array
 ## of prop ids in stringing order}. Cables run between consecutive ids.
 var lines: Array[Dictionary] = []
@@ -95,6 +110,7 @@ func _init(p_seed: int, p_size: int) -> void:
 	blend.resize(n)
 	moisture.resize(n)
 	temperature.resize(n)
+	continent.resize(n)
 	spawn = Vector2(size * 0.5, size * 0.5)
 
 

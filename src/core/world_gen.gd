@@ -80,6 +80,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# whose land a tile is on.
 	w.road = c.road
 	w.recipe = c.recipe
+	GenBodies.run(c)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]
