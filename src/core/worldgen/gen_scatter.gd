@@ -532,6 +532,31 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			# that the lit one comes out nearest the square; `forms.room()` above
 			# already kept the widest of them clear at placing time.
 			houses[i].solid = forms.reach(houses[i].variant) * houses[i].scale
+		# A STREET LIGHTS ITSELF. A square gets one lamp, which is a village's whole
+		# public light and is nothing down a frontage that runs nineteen tiles out
+		# either way. `PropKind.LAMP` is the strongest source 15_lights has (reach
+		# 3.8 at full energy) and a `row` settlement was getting the same ONE, so
+		# the city measured 4.9x darker than the coast at noon and its own towers
+		# five tiles off did not read. The sky cannot answer that — a lidded
+		# landscape takes LID_SUN (0.035) of a sun whatever the hour, so what is
+		# left has to come off the ground.
+		#
+		# They stand at the kerb BETWEEN ranks and change sides as they go, so the
+		# light crosses the street rather than running down one gutter, and no
+		# stretch of the frontage is left dark between two pools.
+		if row:
+			var along2 := Vector2.from_angle(street)
+			var across2 := Vector2(-along2.y, along2.x)
+			for rank2 in ROW_RANKS:
+				for way_i in 2:
+					var way2 := 1.0 if way_i == 0 else -1.0
+					var side2 := 1.0 if ((rank2 + way_i) & 1) == 0 else -1.0
+					var lp := vp + along2 * (forms.apart + (float(rank2) + 0.5) * stride) * way2 						+ across2 * (side2 * ROW_STREET * ROW_KERB)
+					lp = lp.floor() + Vector2(0.5, 0.5)
+					if not _free(c, occ, lp, 0.6):
+						continue
+					_add(c, PropKind.LAMP, lp)
+					_occupy(c, occ, lp, 0.5)
 		# AND WHERE YOU STAND IN IT, for the same reason as `reach` above: four
 		# callers and two tests each carried their own `vp + Vector2(3, 3)`, which
 		# was a clear spot on a village green and is a doorway on a street. The
@@ -576,6 +601,9 @@ const ROW_STREET := 2.6
 ## stock — and the far end still stands inside one frame of the square.
 const ROW_RANKS := 3
 ## How much ground the square itself keeps clear of buildings, in tiles.
+## How far out from the street's middle a lamp post stands, as a share of the
+## street's half width: at the kerb, just inside the frontage it lights.
+const ROW_KERB := 0.82
 const SQUARE_CLEAR := 2.5
 const STREET_CLEAR := 1.1
 
