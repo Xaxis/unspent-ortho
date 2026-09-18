@@ -304,14 +304,27 @@ so they are made here rather than asked upward.
    bodies, and more only as the square grows. The reason to be strict here is that
    crossing water is a deliberate journey made in a craft (`docs/VISION.md` §5) —
    it should be an act, not the medium the game is played in.
-3. **The spawn continent is special, deliberately.** The player wakes on a HOME
+3. **The ocean is no wider than the FIRST craft can survive.** A raft is made in
+   the hand out of strand wood on day one (`recipes.gd`: no station, 30 minutes,
+   driftwood and a drum off a wreck) and its `grounds` include `DEEP_WATER` — so
+   an ocean crossing is gated behind a beachcomb and a cutting edge, which is the
+   right gate and an early one. But a raft has `hull: 100` and takes wear afloat,
+   and **nobody has ever sailed one across an ocean, because there has never been
+   an ocean**: the widest water in the game is a sea loch. Lay the ocean wider
+   than a raft survives and the crossing is silently gated behind a mended craft —
+   a bench, iron and copper — with nothing failing to say so, and anything built
+   on "after the raft" breaks quietly. So the width is MEASURED against the first
+   craft's hull and wear before it is chosen, not after a player is adrift.
+   (Raised by the story session asking when a guided path may send someone across
+   water — a consumer question that found a worldgen constraint.)
+4. **The spawn continent is special, deliberately.** The player wakes on a HOME
    continent that holds the coast, the spawn village and a full starting economy,
    and that is not dealt the harshest or rarest types. The others are destinations:
    reached by craft or portal, allowed to be stranger, harder and thinner. This is
    the same argument as the first hour teaching the game, and it is where "some
    rarer landscapes exclusive to some continents" gets its meaning — the rare ones
    are somewhere you travel TO.
-4. **How big a world is, and `k` per body — the number the rest hangs off.**
+5. **How big a world is, and `k` per body — the number the rest hangs off.**
    `GenContext.k` is "size relative to the 512-tile design world" and the floors
    are computed through it: `min_tiles = maxi(24, REGION_TILES * k * k)`, which is
    QUADRATIC. On a 1024 world `k` is 2 and the smallest thing that counts as a
@@ -342,7 +355,7 @@ so they are made here rather than asked upward.
    `--size=256` in the tests and tours gets ONE body, which is exactly today's world,
    so every spatial assertion written against one island goes on meaning what it
    meant. The continents appear at the sizes a played world uses.
-5. **Region ids are global.** `WorldData.region` is already an int array for
+6. **Region ids are global.** `WorldData.region` is already an int array for
    exactly this reason, and ids continue across bodies rather than restarting;
    each entry in `regions` carries its `continent`. Sentinels, works and saves key
    on `id` and must not learn about bodies to stay correct.
