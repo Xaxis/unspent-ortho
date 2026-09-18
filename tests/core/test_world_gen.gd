@@ -523,8 +523,8 @@ func test_villages_spread_across_countries_with_a_square() -> void:
 					houses += 1
 			gt(houses, 2, "seed %d village %s houses" % [s, v.name])
 
-			# --village=N starts at (3, 3) from the square: standing room.
-			var st := p + Vector2(3, 3)
+			# Wherever the settlement says you stand, there is standing room.
+			var st := w.village_stand(v)
 			check(not Ground.is_water(w.ground_at(floori(st.x), floori(st.y))), "seed %d village %s start in water" % [s, v.name])
 			for prop in q.props_near(st, 2.0):
 				check(prop.solid <= 0.0 or prop.pos.distance_to(st) > prop.solid + 0.3, "seed %d village %s start blocked by %s" % [s, v.name, PropKind.NAMES[prop.kind]])

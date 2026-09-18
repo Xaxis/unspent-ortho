@@ -407,13 +407,13 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		bench.rot = (fire.pos - bench.pos).angle()
 		var lamp_at := vp + Vector2.from_angle(-PI * 0.3) * clampf(GenSettle.square_radius(c, v, -PI * 0.3) - 0.6, 2.4, 3.4)
 		_add(c, PropKind.LAMP, lamp_at)
-		_occupy(c, occ, vp, 2.5)
-		_occupy(c, occ, lamp_at, 0.5)
 		# What this landscape's people build, and how they stand (`BiomeForms`).
 		# The village record already carries its country, so this costs no lookup
 		# and no renderer: the form table is core, which is why world gen may read
 		# it at all.
 		var forms := BiomeForms.of(int(v.get("country", Country.COAST)))
+		_occupy(c, occ, vp, SQUARE_CLEAR if forms.plan != &"row" else STREET_CLEAR)
+		_occupy(c, occ, lamp_at, 0.5)
 		# A settlement deals its buildings one form each, so HOW MANY there are is
 		# the stock's own size and never a number written down beside it: a
 		# landscape with six forms raises six buildings, and a seventh could only
@@ -532,6 +532,39 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			# that the lit one comes out nearest the square; `forms.room()` above
 			# already kept the widest of them clear at placing time.
 			houses[i].solid = forms.reach(houses[i].variant) * houses[i].scale
+		# AND WHERE YOU STAND IN IT, for the same reason as `reach` above: four
+		# callers and two tests each carried their own `vp + Vector2(3, 3)`, which
+		# was a clear spot on a village green and is a doorway on a street. The
+		# historical offset is tried FIRST and kept whenever it is clear, so every
+		# ring village stands exactly where it always did.
+		v["stand"] = _standing_spot(c, vp, houses)
+
+
+## Where a player staged into this settlement stands: clear of every building it
+## put up, on ground they could be put down on. `WorldData.STAND_OFFSET` first,
+## because that is where every village in this game has started since M1.
+static func _standing_spot(c: GenContext, vp: Vector2, houses: Array[WorldProp]) -> Vector2:
+	var tries: Array[Vector2] = [WorldData.STAND_OFFSET]
+	for ring: float in [4.3, 5.6, 7.0]:
+		for i in 12:
+			tries.append(Vector2.from_angle(TAU * float(i) / 12.0) * ring)
+	for off: Vector2 in tries:
+		var p := vp + off
+		var x := floori(p.x)
+		var y := floori(p.y)
+		if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
+			continue
+		var i2 := y * c.size + x
+		if c.land[i2] == 0 or c.water[i2] != 0:
+			continue
+		var clear := true
+		for h: WorldProp in houses:
+			if h.pos.distance_to(p) <= h.solid + 0.6:
+				clear = false
+				break
+		if clear:
+			return p
+	return vp + WorldData.STAND_OFFSET
 
 
 ## Half the width of a street, in tiles: how far a frontage stands off the line
@@ -542,6 +575,9 @@ const ROW_STREET := 2.6
 ## side. Four spots to a rank, so three ranks offer twelve — twice the largest
 ## stock — and the far end still stands inside one frame of the square.
 const ROW_RANKS := 3
+## How much ground the square itself keeps clear of buildings, in tiles.
+const SQUARE_CLEAR := 2.5
+const STREET_CLEAR := 1.1
 
 
 ## How many villages have somebody's stolen light on the square. NOT all of them:

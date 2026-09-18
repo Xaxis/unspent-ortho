@@ -60,6 +60,21 @@ const VILLAGE_LEAST_REACH := 11.0
 
 func village_reach(v: Dictionary) -> float:
 	return maxf(float(v.get("reach", 0.0)), VILLAGE_LEAST_REACH)
+
+
+## Where a player staged into this settlement is put down (`--village=N`, the
+## tour's `place`, dev mode's warp). Recorded by GenScatter once its buildings are
+## up, because only it knows where they went.
+##
+## This was `pos + Vector2(3, 3)` written out in four places and two tests. On a
+## green with houses round the edge that spot is always clear; on a street it is
+## a doorway, and the moment a landscape could declare a `row` plan all four
+## copies started putting the player inside a building at once.
+const STAND_OFFSET := Vector2(3, 3)
+
+
+func village_stand(v: Dictionary) -> Vector2:
+	return v.get("stand", (v.pos as Vector2) + STAND_OFFSET)
 var spawn: Vector2
 ## Radians the player faces on waking (0 = east, -PI/2 = north): toward open land.
 var spawn_facing := -PI * 0.5

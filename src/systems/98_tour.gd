@@ -350,7 +350,7 @@ func _run() -> void:
 			"village":
 				var vi := parts[1].to_int()
 				if vi < game.world.villages.size():
-					_teleport((game.world.villages[vi].pos as Vector2) + Vector2(3, 3))
+					_teleport(game.world.village_stand(game.world.villages[vi]))
 				else:
 					ok = false
 			"hour":
