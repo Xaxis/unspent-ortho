@@ -48,9 +48,26 @@ this page, this page wins.
 >   material rather than by two pens: MADE is timber, mud, thatch and cloth,
 >   FOUND is panelled ruled metal, and the amber `LENS` is still the only
 >   saturated thing on a machine;
-> * **the machine-against-the-turf law** (§4): a machine is a DARK mass by day.
->   It is measured on a frame now (`tests/render/test_dark_floor.gd`, and the
->   `FOUND_MASS` constant in `found.gdshader` is where it is enforced);
+> * **the machine-against-the-turf law** (§4): a machine is a DARK mass by day —
+>   restated 2026-09-18, because WEAR bends it and nobody could see that. What it
+>   protects is the dark FLANK and the unbroken silhouette, not a luma bar. The
+>   `FOUND_MASS` constant in `found.gdshader` is where the body is held down, and
+>   `tests/models/test_machines_ramps.gd` holds the palette under the coast turf
+>   (fill 0.30 against turf 0.350, Rec.601 as that test weighs it). But `matter_worn` then lays SALT at luma 0.865
+>   and FROST at 0.922 over it, capped at 0.80 and 0.78, and the salt flats and
+>   the snowfield declare those channels at FULL — so an up-facing face of a
+>   machine reaches 0.75 to 0.79, twice the turf. The letter of the law is false
+>   there and its purpose holds, because **both light channels are gated on what
+>   faces the SKY** (`top * 1.25 + seam * 0.55`) while rust and soot are not: the
+>   flanks, wheels and underside keep their mass, and at the play camera's 57
+>   degrees the flank is most of what is seen. Frost is also SMOOTHER than what
+>   it lies on, so a frosted machine catches the light where matte snow does not.
+>   Measured on `shots/wear/frost.png`, one hauler on the coast beside the same
+>   hauler on the snowfield. **Do not cap the light channels to restore the
+>   number** — it would cost LANTERN law 1 its most visible effect to fix
+>   something the frame says is not wrong. `tests/render/test_wear_keeps_the_flank.gd`
+>   holds the gating, because the ramps test reads the PALETTE and is structurally
+>   blind to anything `matter_worn` does;
 > * §5 readability, including the people's rim, which is now the ONLY outline
 >   left in the game;
 > * §9 the slate, §10 what the player builds, §11 gear, §12 MENDED, and the
