@@ -124,3 +124,24 @@ func test_a_chapter_is_answered_only_when_all_three_are() -> void:
 			took += 1
 	check(bool(Chapter.read(w, id, all, true, false).answered), "all three is")
 	w.depleted = before
+
+
+## The one door a live game asks through, so the story, the way on, the slate and
+## dev mode can never disagree about whether a place is done.
+func test_the_door_answers_for_a_running_game() -> void:
+	var o := BootOptions.new()
+	o.size = 64
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	await frames(4)
+	var here := Chapters.here(g)
+	check(not here.is_empty(), "the player is standing in a region, and it is a chapter")
+	eq(bool(here.get("answered", true)), false, "and a chapter nobody has touched is not answered")
+	check(Chapters.found_of(g) != null, "the door finds the landmark memory by what it keeps")
+	# A region nobody laid answers without erroring: the door is asked by the UI
+	# every frame and must never be the thing that breaks a frame.
+	var none := Chapters.of(g, -1)
+	eq(bool(none.get("answered", true)), false, "no region, nothing answered, no error")
+	g.queue_free()
+	await frames(1)

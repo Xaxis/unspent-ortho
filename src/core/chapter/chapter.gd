@@ -119,6 +119,10 @@ static func ore_wanted(standing: int) -> int:
 ## is still asking, which somebody has to be able to say out loud.
 static func read(world: WorldData, region_id: int, found: Dictionary,
 		keeper_down: bool, yard_broken: bool) -> Dictionary:
+	if world == null:
+		return {"region": region_id, "explored": false, "seen": 0, "landmarks": 0, "want_seen": 0,
+			"mined": false, "taken": 0, "ore": 0, "want_ore": 0,
+			"defended": false, "keeper_down": false, "yard_broken": false, "answered": false}
 	var ids := landmark_ids(world, region_id)
 	var seen := 0
 	for id: StringName in ids:
