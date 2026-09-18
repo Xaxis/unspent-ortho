@@ -1,0 +1,48 @@
+# The Slums' signage: the landscape's one image -- a hand-painted mural,
+# generations old, half covered by a hoarding that is still cheerfully selling
+# something -- and the light that hoarding throws on wet ground.
+#
+# tools/tour.sh tours/slums-signage.tour --seed=3 --place=coast --hour=23 --weather=rain:0.85 --put=mural,mural,mural
+#
+# STAGED ON THE COAST ON PURPOSE, and this is the one thing to know before
+# reading the frames: the Slums' own landscape file belongs to another builder
+# and does not exist on this branch, so there is no Slums to stand in. What is
+# proved here is the SIGNAGE half -- that the wall stands, that the painting
+# reads, that `Towers.billboard` hangs on it, and that the sign is a real LIGHT
+# rather than only a lit face. When the landscape lands this tour should lose
+# `--put` and say `place slums`, and the rain should come off, because the Slums
+# is wet at every hour without it.
+#
+# THREE murals, not one. `Survival.add_prop` deals a variant from the seed, and
+# only variants 2 and 3 carry a hoarding: with one prop the tour would shoot a
+# bare wall half the time and a frame named for the hoarding would be a picture
+# of no hoarding, which is worse than no frame at all.
+#
+# The rain stands in for the Slums' permanent wet: `neon_wetness` takes
+# max(BiomeDef.wet, settled rain) and the coast declares 0.15.
+
+# No `at prop:` -- `--put` already stands the player in front of what it set out,
+# and `at prop:mural` cannot find a footing beside a wall of solid radius 1.5
+# ("nothing stands beside the mural"). Walking back is what a player would do to
+# see the top of it.
+wait 0.8
+walk 0,-1 0.9
+wait 0.5
+shot 01-mural-under-the-hoarding with prop:mural
+
+# Further back, so the frame holds the GROUND the hoarding is lighting as well as
+# the hoarding. That is the claim worth making: paint emits nothing, a projection
+# lights the street, and both are in this one picture.
+walk 0,-1 0.8
+wait 0.6
+shot 02-the-hoardings-light-on-the-ground with prop:mural
+
+# And by day. A sign here is never switched off (15_lights `source_lit`) because
+# nobody living under it decides -- but its FACE is a NEON mark, which
+# world.gdshader dims to nothing in daylight. So this frame is the honest test of
+# whether the Slums' own darkness is what keeps it burning, and on the coast at
+# noon it should read as a dead panel on a painted wall.
+hour 12
+weather clear:0
+wait 0.8
+shot 03-the-painting-by-day with prop:mural

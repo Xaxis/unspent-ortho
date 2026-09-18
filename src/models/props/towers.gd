@@ -60,21 +60,34 @@ const FRAME := 0.07
 ## years. Wider than a house's tube (`Houses.NEON_TUBES`) because a billboard is
 ## a FIELD of colour and not a line of it.
 ##
-## **NOTHING HERE MAY SIT IN THE MACHINE BAND** (`palette.gd`, hue 240-336). That
-## band is reserved so a patched roof never reads as a live machine, and it is a
-## solved packing that cannot be retuned at one end. The first version of this
-## list ended in a violet at hue 258 — inside it — which in a city street, the
-## most crowded frame this game will ever draw, breaks the one cue that keeps a
-## machine legible.
+## WHY THESE AND NOT THE OBVIOUS ONES. This list read pink, cyan, VIOLET. The
+## violet sat at hue 261, inside the 240-336 band `palette.gd` reserves for the
+## machines, and that reservation is load-bearing rather than decorative: it is
+## the whole reason a patched roof never reads as a live machine. The city is
+## about to be the most crowded frame in the game, which is exactly where that
+## one cue does the most work, so a violet sign spends the thing that makes the
+## frame legible. The cyan went with it -- a purple-to-teal gradient is the most
+## copied palette in this genre and says nothing about this place.
 ##
-## So the ground note is SODIUM: `15_lights.NEON_SODIUM` exactly, because a light
-## and a sign of the same colour must be one number and not two that drifted.
-## Mercury green beside it, and one dirty warm white, which is what a city at
-## night actually is and the fastest way for this not to look like every other
-## cyberpunk frame. The magenta is a COMMERCIAL ACCENT and is last on purpose:
-## one shop's sign, never the street's ground note.
+## Two builders found this independently and reached the same verdict from
+## opposite directions, which is why the list is ordered as well as recoloured.
+##
+## What a real city at night is actually lit by: SODIUM vapour first, as the
+## ground note, and the MERCURY green of whatever the municipality stopped
+## maintaining -- a stairwell, an underpass, a sign nobody replaced. Then one
+## dirty warm white. The magenta is LAST on purpose and is a COMMERCIAL ACCENT:
+## one shop's sign, never the street's ground note, because advertising is the
+## one thing here that still has money in it. Order matters because a stock of
+## six deals these out, and a list led by the accent puts a burning pink sign on
+## half the buildings, which is the neon-filter mistake in miniature.
+##
+## The sodium is `15_lights.NEON_SODIUM` written out a second time on purpose: a
+## model may not depend on a system. `tests/render/test_signage.gd` fails if the
+## two ever drift, and fails if any colour here re-enters the machines' band --
+## which is the assert that matters, because the violet had never drawn a single
+## pixel and so nothing anywhere would ever have said a word about it.
 const SIGN_SODIUM := Color(1.0, 0.52, 0.16)
-const SIGN_COLOURS: Array[Color] = [SIGN_SODIUM, Color(0.42, 1.0, 0.62), Color(1.0, 0.88, 0.72), Color(1.0, 0.25, 0.8)]
+const SIGN_COLOURS: Array[Color] = [SIGN_SODIUM, Color(0.522, 0.878, 0.549), Color(1.0, 0.88, 0.72), Color(1.0, 0.22, 0.52)]
 
 
 ## A ground wash used as a MATERIAL. `BiomeDressing.drift` (and anything else

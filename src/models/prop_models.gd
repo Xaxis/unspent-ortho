@@ -32,6 +32,7 @@ const Remains := preload("res://src/models/props/remains.gd")
 const Works := preload("res://src/models/props/works.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
+const Signage := preload("res://src/models/props/signage.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -98,6 +99,11 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 6
 		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
+		# Four: a street holds several at once and two shapes would be a stamp.
+		# They differ in what is PAINTED and in whether a hoarding was bolted over
+		# it -- 0 and 1 are bare paint, 2 and 3 carry a sign.
+		PropKind.MURAL:
+			return 4
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
@@ -181,6 +187,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Salt.build(k, kind, variant, country)
 		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
 			Scrap.build(k, kind, variant, country)
+		PropKind.MURAL:
+			Signage.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -367,6 +375,15 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			return [{"at": Vector3(0, 4.05, 0), "size": Vector2(0.12, 0.12), "color": beacon, "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
 		PropKind.FIRE:
 			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
+		PropKind.MURAL:
+			# READ OFF THE GEOMETRY, never typed. The hoarding's face is a NEON
+			# mark, so `neon_point` gives its middle and its own colour, and the
+			# light cannot end up standing where the sign is not. A bare mural
+			# has no NEON in it at all, so this returns nothing and
+			# `15_lights.PLACED_SOURCES` drops it: paint emits nothing and a
+			# projection lights the street, said once, by the models themselves.
+			var sign := neon_point(kind, variant, country)
+			return [] if sign.is_empty() else [sign]
 	return []
 
 
