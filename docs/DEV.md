@@ -15,13 +15,14 @@ build of the game are all things you can name, keep, send and get back**.
    which takes a coordinate or any name `--place=` takes, so what can be staged
    for a picture can be walked to in a running game by the same word.
    **STORY** is the story from the inside: every beat to land or take back, and
-   three pages off it (`--dev=people|path|ledger` opens one straight). **People**
+   four pages off it (`--dev=people|path|ledger|words` opens one straight). **People**
    shows where each named person was cast in this world, whether they are there
    and what they wait on, and E stands beside them. **The path** shows every stop
    of the spine by leg, what revelation is still settling, and anything that
    could not be cast, and E goes to it. **The ledger** shows what the world has
    seen him do and both records as they read now, with a row per act to note one
-   here.
+   here. **Words** lists every readable thing near him and what it holds in this
+   world, and every fragment, and E puts one on the glass without finding it.
 2. **Master configurations**: named files that say what a build of the game is —
    its channel and version, whether dev mode is reachable, the island a new game
    starts on, what the player starts with, the rules it runs by, and what a build

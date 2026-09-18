@@ -94,13 +94,7 @@ func _stage() -> void:
 		else:
 			push_warning("--beats: %s is not a beat" % b)
 	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
-		var id := StringName(o.read)
-		reading = id
-		view.reading = StoryFragments.lines(id)
-		view.reading_title = StoryFragments.title_of(id)
-		game.talking = true
-		_hush(true)
-		view.refresh()
+		open_reading(StringName(o.read), false)
 	elif o.talk != "":
 		var parts := o.talk.split(":")
 		talk = StoryTalk.start(StringName(parts[0]))
@@ -114,6 +108,23 @@ func _stage() -> void:
 		game.talking = true
 		_hush(true)
 		view.refresh()
+
+
+## A fragment's words on the glass, as if read off the thing that holds them: for
+## a writer (`--read`, dev mode's words page). `found` marks it read, which a
+## writer looking at a page usually does not want.
+func open_reading(id: StringName, found: bool) -> void:
+	if not StoryContent.FRAGMENTS.has(id):
+		return
+	reading = id
+	view.reading = StoryFragments.lines(id)
+	view.reading_title = StoryFragments.title_of(id)
+	game.talking = true
+	_hush(true)
+	if found:
+		@warning_ignore("return_value_discarded")
+		Story.read(id)
+	view.refresh()
 
 
 func _exit_tree() -> void:
