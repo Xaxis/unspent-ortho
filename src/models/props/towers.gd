@@ -58,9 +58,23 @@ const FRAME := 0.07
 
 ## Stolen light, as the city runs it: a sign nobody has turned off in twenty
 ## years. Wider than a house's tube (`Houses.NEON_TUBES`) because a billboard is
-## a FIELD of colour and not a line of it, and colder, because the machines' own
-## plant lit this place before anyone hung washing off it.
-const SIGN_COLOURS: Array[Color] = [Color(1.0, 0.22, 0.52), Color(0.25, 0.9, 1.0), Color(0.55, 0.35, 1.0)]
+## a FIELD of colour and not a line of it.
+##
+## **NOTHING HERE MAY SIT IN THE MACHINE BAND** (`palette.gd`, hue 240-336). That
+## band is reserved so a patched roof never reads as a live machine, and it is a
+## solved packing that cannot be retuned at one end. The first version of this
+## list ended in a violet at hue 258 — inside it — which in a city street, the
+## most crowded frame this game will ever draw, breaks the one cue that keeps a
+## machine legible.
+##
+## So the ground note is SODIUM: `15_lights.NEON_SODIUM` exactly, because a light
+## and a sign of the same colour must be one number and not two that drifted.
+## Mercury green beside it, and one dirty warm white, which is what a city at
+## night actually is and the fastest way for this not to look like every other
+## cyberpunk frame. The magenta is a COMMERCIAL ACCENT and is last on purpose:
+## one shop's sign, never the street's ground note.
+const SIGN_SODIUM := Color(1.0, 0.52, 0.16)
+const SIGN_COLOURS: Array[Color] = [SIGN_SODIUM, Color(0.42, 1.0, 0.62), Color(1.0, 0.88, 0.72), Color(1.0, 0.25, 0.8)]
 
 
 ## A ground wash used as a MATERIAL. `BiomeDressing.drift` (and anything else
@@ -449,7 +463,7 @@ static func tower(k: Kit, c: int) -> void:
 	Houses.door(k, fb[0], fb[1], fb[2], fb[3], 0.62, 0.11, 0.16)
 	Houses.struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.28, 0.1)
 	# The sign on the +z flank, where a street would run past it.
-	billboard(k, faces[1], 0.32, 0.86, SIGN_COLOURS[0], s + 5)
+	billboard(k, faces[1], 0.40, 0.74, SIGN_COLOURS[0], s + 5)
 	Houses.salvage(k, faces[3][0], faces[3][1], faces[3][2], faces[3][3], 0.3, s + 9)
 	var r := parapet(k, w, d, top, s + 60, c)
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
