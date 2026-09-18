@@ -10,31 +10,37 @@ extends RefCounted
 ## A house faces +X (its door), like every model.
 
 const Kit := preload("res://src/models/props/kit.gd")
+const Towers := preload("res://src/models/props/towers.gd")
 const P := preload("res://src/render/palette.gd")
 
 
+## What a building of this landscape's `v`th form is. The variant is an index
+## into THE LANDSCAPE'S OWN STOCK (`BiomeForms`), not a global model number, so
+## a landscape that builds towers and one that builds crofts both deal 0, 1, 2
+## and get their own shapes — which is what makes the model cache's per-country
+## key do the work and costs no extra variants at all.
+##
+## The match is on a FORM and never on a landscape. Naming a landscape in this
+## directory is what dressed every new one as the coast, and `tests/biome` fails
+## on it; a form id is the opposite — the landscape asked for it, by name.
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	k.hand(Ink.HAND)
 	if kind == PropKind.RUIN:
 		ruin(k, v, c)
 		return
-	match v:
-		0: washed(k, c, 0)
-		1: slated(k, c, 0)
-		2: long_house(k, c)
-		3: but(k, c)
-		4: washed(k, c, 1)
-		5: slated(k, c, 1)
-		6: washed(k, c, 2)
-		_: half_house(k, c)
-
-
-## Variants of HOUSE (PropModels.variants): three washed, two slated, the long
-## house, the but and the half house, so a village of up to eight can deal one
-## each and no two silhouettes in it repeat (GenScatter deals the pack). A ninth
-## needs a village big enough to want it: `GenScatter.HOUSE_MODELS` must match,
-## and `PropModels.MAX_VARIANTS` is the ceiling on the cache key.
-const VARIANTS := 8
+	match BiomeForms.of(c).form(v):
+		&"washed": washed(k, c, 0)
+		&"slated": slated(k, c, 0)
+		&"long": long_house(k, c)
+		&"but": but(k, c)
+		&"cot": washed(k, c, 1)
+		&"narrow": slated(k, c, 1)
+		&"steading": washed(k, c, 2)
+		&"half": half_house(k, c)
+		# Everything else a landscape may name is built upward, and lives in its
+		# own file: this one is the open country's and has no business knowing
+		# how a tower is made.
+		var form: Towers.build(k, form, c)
 
 
 ## Four leaning walls on an irregular footprint. Returns the corners as

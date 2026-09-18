@@ -24,6 +24,13 @@ const W := 190
 const H := 180
 
 
+## Which of the COAST'S forms wired a machine's light in. Every measurement in
+## this file is taken on the coast's own stock: a landscape that builds towers
+## hangs its sign on a flank and would fail the roof test below on purpose.
+func _lit() -> Array[int]:
+	return BiomeForms.of(Country.COAST).lit()
+
+
 func test_every_corner_leans_its_own_way() -> void:
 	# One shared lean vector is a shear: the prism stays a rigid box, just tilted.
 	var k := Kit.new()
@@ -135,7 +142,7 @@ func test_every_house_breaks_its_roofline_at_the_zoom_it_is_seen_from() -> void:
 	# Proving `hipped` CAN drop an eave proves a capability, not that all seven
 	# variants use it — and a roof is seen from above at 24 px to the unit, where
 	# a break of a pixel or two is under the pen that inks the ridge.
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var all := PackedVector3Array(k.made.verts)
 		all.append_array(k.found.verts)
@@ -146,7 +153,7 @@ func test_every_house_keeps_salvage_against_a_wall() -> void:
 	# A village reads as people living in a ruin, not as a village before the
 	# end: plate leaned up, a drum, firewood, under a lean-to of machine plate.
 	# Salvage stands ON THE GROUND; roof plate and the enamel plate are higher.
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var low := 0
 		for p: Vector3 in k.found.verts:
@@ -260,7 +267,7 @@ func test_no_house_outline_is_made_of_long_straight_runs() -> void:
 	# ridge and an added-on room bring that to 0.14 / 0.31.
 	var sum := 0.0
 	var n := 0
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var all := PackedVector3Array(k.made.verts)
 		all.append_array(k.found.verts)
@@ -277,7 +284,7 @@ func test_no_roof_is_one_ruled_corrugation() -> void:
 	# as a machine shed. A roof is what could be got — slate in several tones,
 	# tar, a board, damp at the foot, plate off a machine — and no one material
 	# owns it.
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var seen: Dictionary = {}
 		var roof := 0
@@ -365,7 +372,7 @@ func test_a_roof_is_hand_made_with_found_plate_only_as_patches() -> void:
 	# The brief: the MADE idiom dominant, FOUND plate as PATCHES on it. Counting
 	# MADE materials alone cannot see plate taking a roof over, and it had: 0.60
 	# of the half house's roof area and 0.38 of the slated one's was machine plate.
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var made := 0.0
 		var found := 0.0
@@ -410,7 +417,7 @@ func test_the_stolen_neon_is_where_the_play_camera_can_see_it() -> void:
 	# the door wall — which faces the village square, not the camera — and at
 	# v=0.85, under an eave overhang that at this pitch hides the top of a wall.
 	# So the run of it goes on the ROOF, the one surface this camera always sees.
-	for v: int in Lights.NEON_HOUSE_VARIANTS:
+	for v: int in _lit():
 		var k := PropModels.build_kit(PropKind.HOUSE, v, Country.COAST)
 		var on_roof := 0
 		var on_wall := 0
@@ -432,9 +439,9 @@ func test_the_light_a_tube_throws_comes_from_the_tube() -> void:
 	# door wall, in the other lit house's colour (a2 review): a light written down
 	# in one file and its geometry in another. `PropModels.neon_point` reads the
 	# model, so they cannot part company again.
-	for v in Houses.VARIANTS:
+	for v in BiomeForms.PLAIN.size():
 		var point := PropModels.neon_point(PropKind.HOUSE, v, Country.COAST)
-		if not Lights.NEON_HOUSE_VARIANTS.has(v):
+		if not _lit().has(v):
 			check(point.is_empty(), "house %d wired nothing in, so it declares no tube" % v)
 			continue
 		check(not point.is_empty(), "house %d declares where its stolen tube is" % v)
@@ -464,8 +471,8 @@ func test_the_light_a_tube_throws_comes_from_the_tube() -> void:
 				want = t
 		lt(best, 0.35, "house %d: the light is the tube's own colour, not a constant" % v)
 	# The two lit houses do not share a colour, so a glint in the wrong one shows.
-	var a: Color = PropModels.neon_point(PropKind.HOUSE, Lights.NEON_HOUSE_VARIANTS[0], Country.COAST).color
-	var b: Color = PropModels.neon_point(PropKind.HOUSE, Lights.NEON_HOUSE_VARIANTS[1], Country.COAST).color
+	var a: Color = PropModels.neon_point(PropKind.HOUSE, _lit()[0], Country.COAST).color
+	var b: Color = PropModels.neon_point(PropKind.HOUSE, _lit()[1], Country.COAST).color
 	gt(Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length(), 0.3, "the two lit houses burn different colours")
 
 
@@ -486,9 +493,9 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 			lights = s
 	check(lights != null, "lights system")
 	var houses: Array[WorldProp] = []
-	for i in Lights.NEON_HOUSE_VARIANTS.size():
+	for i in _lit().size():
 		var p := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + Vector2(3.0 + i * 4.0, 1.0), 0.0, 1.0)
-		p.variant = Lights.NEON_HOUSE_VARIANTS[i]
+		p.variant = _lit()[i]
 		g.world.props.append(p)
 		houses.append(p)
 	var dark := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + Vector2(-3.0, 1.0), 0.0, 1.0)
@@ -526,8 +533,11 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 	# On seed 7 the spawn village had seven houses drawn from four models, three
 	# of them the same (art review 5). A village deals a pack now, and the house
 	# nearest the square is always the one with a machine's light on it.
-	eq(GenScatter.HOUSE_MODELS, Houses.VARIANTS, "the pack has one card per house model")
-	eq(GenScatter.HOUSE_NEON, Lights.NEON_HOUSE_VARIANTS, "the pack knows which houses are lit")
+	# The pack and the models could drift once, so a test held `HOUSE_MODELS` and
+	# `HOUSE_NEON` equal to their two copies in the renderer. There is nothing to
+	# hold equal now: both world gen and the geometry read one table in core
+	# (`BiomeForms`), and `tests/biome/test_forms.gd` holds the table against what
+	# is actually built.
 	var villages := 0
 	var lit_on_square := 0
 	var dark := 0
@@ -535,6 +545,13 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 		var w := WorldGen.generate(seed_value)
 		for v: Dictionary in w.villages:
 			var vp: Vector2 = v.pos
+			# EACH VILLAGE'S OWN LANDSCAPE. Which forms are lit and how many there
+			# are to deal are the landscape's (`BiomeForms`), so asking the coast's
+			# question of a village somewhere else counts the wrong house and holds
+			# it to the wrong pack size.
+			var here := int(v.get("country", Country.COAST))
+			var forms := BiomeForms.of(here)
+			var neon := forms.lit()
 			var seen: Array[int] = []
 			var lit := 0
 			var nearest := -1
@@ -542,21 +559,21 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			for p: WorldProp in w.props:
 				if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > 18.0:
 					continue
-				var variant := PropModels.variant_of(p, w.seed_value)
+				var variant := PropModels.variant_of(p, w.seed_value, here)
 				check(not seen.has(variant), "%s: two houses drawn the same (model %d)" % [v.get("name", "?"), variant])
 				seen.append(variant)
 				var d := p.pos.distance_to(vp)
 				if d < best:
 					best = d
 					nearest = variant
-				if GenScatter.HOUSE_NEON.has(variant):
+				if neon.has(variant):
 					lit += 1
 			if seen.is_empty():
 				continue
 			villages += 1
-			if GenScatter.HOUSE_NEON.has(nearest):
+			if neon.has(nearest):
 				lit_on_square += 1
-				eq(lit, 1 if seen.size() < GenScatter.HOUSE_MODELS else 2, "%s: one stolen light, not a street of them" % v.get("name", "?"))
+				eq(lit, 1 if seen.size() < forms.stock.size() else neon.size(), "%s: one stolen light, not a street of them" % v.get("name", "?"))
 			if lit == 0:
 				dark += 1
 	gt(villages, 20, "three seeds have villages to read")
@@ -592,4 +609,4 @@ func test_the_canon_stands_where_a_tube_burns() -> void:
 		if d < near:
 			near = d
 			nearest = PropModels.variant_of(p, w.seed_value)
-	check(GenScatter.HOUSE_NEON.has(nearest), "the village the canon stands in has its stolen light on the square")
+	check(_lit().has(nearest), "the village the canon stands in has its stolen light on the square")

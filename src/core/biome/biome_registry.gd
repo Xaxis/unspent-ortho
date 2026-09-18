@@ -205,6 +205,7 @@ static func problems() -> PackedStringArray:
 			if not _defs.has(other):
 				out.append(w + "tongue names no type: %s" % other)
 		out.append_array(BiomeDressing.problems(d))
+		out.append_array(BiomeForms.problems(d))
 	if seen_sea != 1:
 		out.append("the registry needs exactly one sea, it has %d" % seen_sea)
 	if _by_index.size() > SLOTS:

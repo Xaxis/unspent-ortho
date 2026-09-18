@@ -21,8 +21,8 @@ end
 wait 0.05
 shot 03-blow-rings-off-plate with mob:runner
 # Away from it (far past its tether), to a watcher out in a field.
-# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
-at 135,375
+# Open ground by name; tours/machines-day.tour says what it replaced.
+place open_coast
 wait 1.5
 spawn watcher
 wait 0.6
@@ -41,7 +41,10 @@ tap swing
 wait 0.6
 shot 06-watcher-after with body:watcher
 # A lineman's hook: stand in its reach through the tell, and it takes hold;
-# then pull (swing) until it lets go.
+# then pull (swing) until it lets go. A SECOND ground, and that is why this one
+# is still a number: nothing clears the bodies between here and the watcher
+# above, so `place open_coast` a second time would fight the lineman over the
+# watcher's corpse. `open` names one tile per landscape, not a supply of them.
 at 160,352
 wait 1.5
 spawn lineman

@@ -46,8 +46,8 @@ wait 0.1
 tap dodge
 wait 0.6
 # Away from it, to a watcher out in a field clear of the wrecks, drawn back so its mast shows.
-# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
-at 135,375
+# Open ground by name; tours/machines-day.tour says what it replaced.
+place open_coast
 zoom 13
 wait 1.5
 coast calm
