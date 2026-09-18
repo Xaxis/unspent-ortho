@@ -109,8 +109,13 @@ StorySlot.make({
 })
 ```
 
-Four kinds of place today, and all four are per-region, which is the point (see
-below). `shore`, `holding` and `region` are the obvious next ones and are not
+Five kinds of place today. Four are per-region, which is the point (see below).
+The fifth, `black_site`, is the one exception: ONE per world, the old THRESHOLD
+site in the sea off the home coast (`BlackSite.site`, unspent-ortho-df). It is
+safe to require because every world is grown around a coast spawn, and a world
+with no sea off its spawn answers `Vector2.INF`, which casts nothing and so is
+named by `problems()`. A place in the sea stands on no body, so its candidate
+says which coast it belongs to, and casting reports every slot's `body`. `shore`, `holding` and `region` are the obvious next ones and are not
 built; add a `needs` only with the `_candidates` branch that answers it and a
 test, or `problems()` will call the slot uncastable on every seed.
 
@@ -233,6 +238,17 @@ that cannot carry the story is a content error caught in `tools/check.sh` rather
 than a player stuck at three in the morning.
 
 ---
+
+### Words that belong to a place
+
+A story place keeps its own words (`StoryContent.PLACED`), which are never dealt
+to a sign anywhere else: the tank he came out of is not a notice in somebody's
+village. A placer stands a readable prop there and never names the words.
+`StoryFragments.held_by(world, prop)` asks `StoryWorld.place_of` which place the
+prop stands at (within `PLACE_REACH`). It then deals that place's words of the
+prop's kind in id order: the n'th terminal on the platform holds the n'th
+terminal's words (`pick_at`). Anywhere else it deals by kind, as `pick` always
+has. Like casting, this is pure and derived, so a save opens onto the same words.
 
 ## 7. The ledger — the world writing you down
 

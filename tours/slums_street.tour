@@ -42,7 +42,7 @@ shot 03-one-of-these-is-a-machine with mob:passer,folk
 hold target
 await target 5
 await testimony 6
-await beat:quiet_calm 6
+await beat:covenant_fed 6
 shot 04-the-read-says-what-it-is with mob:passer
 release target
 wait 0.5
