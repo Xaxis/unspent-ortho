@@ -509,6 +509,14 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			house.rot = wrapf(bearing + rng.randf_range(-0.2, 0.2) * (0.25 if row else 1.0), 0.0, TAU)
 			_occupy(c, occ, hp, forms.room())
 			placed += 1
+		# HOW FAR THIS SETTLEMENT REACHES IS RECORDED HERE, BECAUSE THIS IS WHAT
+		# KNOWS. A ring's furthest house and a street's furthest tower are nine
+		# tiles apart and nothing downstream can tell which it is looking at
+		# (`WorldData.village_reach` says what that cost).
+		var reach := 0.0
+		for h2: WorldProp in houses:
+			reach = maxf(reach, h2.pos.distance_to(vp) + forms.widest())
+		v["reach"] = reach
 		houses.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
 			return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
 		# A village that outgrew the pack would repeat a silhouette, which is the

@@ -70,7 +70,10 @@ const STATION_REACH := 1.6
 const CONE := 0.42
 ## A sleeping place: a fire this close, or a village this close to its centre.
 const FIRE_WARMTH := 3.0
-const VILLAGE_RADIUS := 11.0
+## A village reaches as far as its own buildings do (`WorldData.village_reach`),
+## which a settlement records when it is laid. This is the floor under that, for a
+## village that never placed a building.
+const VILLAGE_RADIUS := WorldData.VILLAGE_LEAST_REACH
 const BUILD_DISTANCE := 1.25
 ## Real seconds a first press on open ground waits for the second that builds.
 const BUILD_ASK_SECONDS := 2.0
@@ -150,7 +153,7 @@ static func fire_near(game: Game, r: float = FIRE_WARMTH) -> WorldProp:
 
 static func in_village(game: Game) -> bool:
 	for v in game.world.villages:
-		if (v.pos as Vector2).distance_to(game.player.pos) <= VILLAGE_RADIUS:
+		if (v.pos as Vector2).distance_to(game.player.pos) <= game.world.village_reach(v):
 			return true
 	return false
 

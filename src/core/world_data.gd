@@ -39,8 +39,27 @@ var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
 var props: Array[WorldProp] = []
 ## {pos: Vector2 square centre, country: int, name: String, level: int,
-## radius: float (cleared core), id: int}. Village 0 is the spawn village.
+## radius: float (cleared core), reach: float (built extent), id: int}. Village 0
+## is the spawn village.
 var villages: Array[Dictionary] = []
+
+## How far this settlement's own buildings stand from its square, in tiles —
+## RECORDED by GenScatter when it places them, never guessed from a constant.
+##
+## There were two constants guessing it and both were the same mistake. A ring of
+## eight one-storey houses fits inside about nine tiles, so `props_near(p, 10.0)`
+## counted a village's houses and `Survival.VILLAGE_RADIUS` (11) decided you were
+## standing in one. Then a landscape could declare a `row` plan, and the city's
+## street runs four ranks out: its furthest towers stand 19 tiles from the square.
+## The test then counted two of six buildings and called the city broken, and the
+## live game told a player standing among the towers that they were in open
+## country and could not sleep. The placer had done nothing wrong; nothing had
+## asked it how far it went (docs/WORLD.md §9).
+const VILLAGE_LEAST_REACH := 11.0
+
+
+func village_reach(v: Dictionary) -> float:
+	return maxf(float(v.get("reach", 0.0)), VILLAGE_LEAST_REACH)
 var spawn: Vector2
 ## Radians the player faces on waking (0 = east, -PI/2 = north): toward open land.
 var spawn_facing := -PI * 0.5
