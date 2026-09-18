@@ -30,6 +30,7 @@ const Built := preload("res://src/models/props/built.gd")
 const Houses := preload("res://src/models/props/houses.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 const Works := preload("res://src/models/props/works.gd")
+const Site := preload("res://src/models/props/black_site.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
 const Signage := preload("res://src/models/props/signage.gd")
@@ -189,6 +190,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Scrap.build(k, kind, variant, country)
 		PropKind.MURAL:
 			Signage.build(k, kind, variant, country)
+		PropKind.PLATFORM, PropKind.GROWTH_TANK, PropKind.CONSOLE:
+			Site.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)

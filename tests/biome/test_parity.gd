@@ -24,16 +24,32 @@ extends TestCase
 ## The washes, the pools, the mud and the ash all fall in the same places; a few
 ## scattered sprigs and timbers move. Re-shoot those three before accepting any
 ## further number here.
+##
+## RE-ACCEPTED A SECOND TIME, for the THRESHOLD site (`GenScatter._black_site`),
+## and this one needed no pictures because the evidence is stronger than a
+## picture. **Only the `props` digest moved, on all five seeds; `country`,
+## `country2`, `ground`, `level` and `blend` are byte-identical.** The site is
+## five props laid in open water at the very END of the props stage, after the
+## scatter, and they are the LAST FIVE ids in every world -- measured, not
+## assumed: seed 1 ends 3193 props with the highest id that is not the site's at
+## 3187, seed 7 3160 and 3154, seed 90210 3244 and 3238. Nothing that already
+## stood anywhere moved by a tile, because nothing that already stood anywhere
+## was asked to.
+##
+## That is the shape of a safe re-acceptance here, and it is worth saying so the
+## next one can be judged the same way: five digests still equal and one that
+## grew by exactly what was appended. A change that moved `ground` or `blend`
+## would not be this, and would want the seam frames again.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f 905bd765 7b99a6e3 ce54a897 d77ef81c",
-	3: "d7a39e67 dba8792b 0ff796f3 090631fd a8be1d60 8c1b5599",
-	7: "aa526bae 4ff8f6b7 03d1260a 7fb78385 be4cc1f0 54a7bd2c",
-	42: "325e4566 8d16e00c eae7e32e b88a5d6e 8cce8022 1dd38e5c",
-	90210: "5b1e7401 4d0ad4be 0ddbbde8 bf578b00 ed81f772 dc65f737",
+	1: "d1335897 8b46ae9f 905bd765 7b99a6e3 ce54a897 3534d191",
+	3: "d7a39e67 dba8792b 0ff796f3 090631fd a8be1d60 c411ebeb",
+	7: "aa526bae 4ff8f6b7 03d1260a 7fb78385 be4cc1f0 f66d805d",
+	42: "325e4566 8d16e00c eae7e32e b88a5d6e 8cce8022 27fd6d6f",
+	90210: "5b1e7401 4d0ad4be 0ddbbde8 bf578b00 ed81f772 5a193be9",
 }
 
 

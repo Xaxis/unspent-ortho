@@ -64,6 +64,7 @@ func setup(g: Game) -> void:
 	add_child(view)
 	Events.took.connect(_on_took)
 	Events.works_broken.connect(_on_works_broken)
+	_wall_the_site()
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 
 
@@ -410,6 +411,21 @@ func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void
 func realm_changed(_from: StringName, to: StringName) -> void:
 	if to == Realm.UNDERGROUND:
 		_note(&"went_below")
+	_wall_the_site()
+
+
+## The THRESHOLD platform is a wall in the water (`BlackSite.blocks`), handed over
+## the way a landmark's tower and a depot's deck are: a prop's own `solid` is one
+## circle and a deck is square, and nothing out there may be TAKEN, heard or
+## sheltered under. Re-handed on every crossing, because `set_blocks` replaces an
+## owner's set whole and the era's sea is not this one's.
+func _wall_the_site() -> void:
+	if game == null or game.query == null or game.world == null:
+		return
+	var walls: Array[Vector3] = []
+	for b: Vector3 in BlackSite.blocks(game.world):
+		walls.append(b)
+	game.query.set_blocks(&"black_site", walls)
 
 
 ## Something the world saw him do, where he is standing (StoryLedger).

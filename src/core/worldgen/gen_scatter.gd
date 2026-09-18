@@ -234,6 +234,40 @@ static func props(c: GenContext) -> void:
 	_scatter(c, occ)
 	c.mark(&"props.scatter")
 	_way_in(c)
+	_black_site(c)
+
+
+## THE THRESHOLD SITE, out in the water off the beach he washes up on
+## (`BlackSite`, docs/STORY.md). Where Elias died in 2029 and where the Seeker
+## grew the body he wakes in, so it stands where the spawn can see it and is
+## reached by raft.
+##
+## Laid LAST, after the scatter, for one reason: it is the only thing in this
+## file that stands in deep water, so nothing else has an opinion about the tiles
+## it wants and it has no opinion about theirs. It takes no `occ` and asks for no
+## `_free` -- there is nothing out there to be free of.
+##
+## **THE ORDER OF THESE FOUR IS A CONTRACT.** The story hands each readable thing
+## its words by counting props of that kind in ID order within
+## `StoryWorld.PLACE_REACH` of the site (`StoryFragments.held_by`), so the first
+## CONSOLE laid is the tank's own panel and the second is the console by the sea
+## door. Insert a third and the two that exist start saying each other's lines.
+static func _black_site(c: GenContext) -> void:
+	var at := BlackSite.site(c.w)
+	if at == Vector2.INF:
+		return
+	# The deck faces the shore it was reached from, so the ladder and the open
+	# side of the handrail are the side a raft comes at.
+	var face := (c.w.spawn - at).angle()
+	_add(c, PropKind.PLATFORM, at, face)
+	# On the deck: the tank off to one side, its panel beside the door, the sea
+	# door's console across from it, and the binder left where somebody read it.
+	var along := Vector2.from_angle(face)
+	var across := Vector2(-along.y, along.x)
+	_add(c, PropKind.GROWTH_TANK, at - along * 1.15 + across * 0.5, face)
+	_add(c, PropKind.CONSOLE, at - along * 0.15 + across * 1.55, face)
+	_add(c, PropKind.CONSOLE, at + along * 1.5 - across * 0.9, face + PI * 0.5)
+	_add(c, PropKind.ARCHIVE, at - along * 1.3 - across * 1.5, face - PI * 0.4)
 
 
 ## The first iron within a morning's walk of the spawn. The coast's own rock is

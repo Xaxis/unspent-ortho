@@ -76,9 +76,18 @@ enum {
 	# The Slums: the wall the city painted, and what got bolted over it. The
 	# sign itself is not a kind -- `Towers.billboard` hangs it on a wall.
 	MURAL,
+	# THE THRESHOLD SITE, standing in the sea off the home coast (`BlackSite`,
+	# docs/STORY.md): the deck, the tank he was grown in, and the screens that
+	# still have something to say. A CONSOLE is deliberately NOT one of the plan's
+	# works -- a relay or a survey post is `Takes.PLAN_WORKS` and a second `use`
+	# robs it, and the panel on the tank a man was grown in is not a thing you
+	# strip for a signet.
+	PLATFORM,
+	GROWTH_TANK,
+	CONSOLE,
 }
 
-const COUNT := 65
+const COUNT := 68
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -91,6 +100,7 @@ const NAMES: PackedStringArray = [
 	"wreckage", "memorial",
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
+	"platform", "growth tank", "console",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -115,4 +125,9 @@ const SOLID: PackedFloat32Array = [
 	# landmark's tower and a depot's deck already do, or a player walks through
 	# both ends of it.
 	1.5,
+	# The deck is 0: its mass is `BlackSite.blocks` handed to
+	# `WorldQuery.set_blocks`, because a platform is a wall in the water and one
+	# circle on a prop cannot say that. The tank and the console stop a body
+	# themselves, as anything you walk up to and read should.
+	0.0, 1.1, 0.35,
 ]

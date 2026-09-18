@@ -45,15 +45,34 @@ func test_a_place_s_words_are_never_dealt() -> void:
 func test_a_thing_standing_there_holds_the_place_s_words() -> void:
 	var w := WorldGen.generate(1, SIZE)
 	var at := BlackSite.site(w)
+	# THE REAL THINGS, not stand-ins. This test invented three props at the site
+	# because nothing stood there yet; world gen now lays the platform, the tank,
+	# its two consoles and the binder (`GenScatter._black_site`), so the fixtures
+	# would be a SECOND terminal and a second notebook and would be dealt the
+	# words meant for something else. Reading what the world actually put there
+	# is also the only version of this that can fail when the placement moves.
+	var tank: WorldProp = null
+	var door: WorldProp = null
+	var binder: WorldProp = null
+	for q: WorldProp in w.props:
+		if q.pos.distance_to(at) > StoryWorld.PLACE_REACH:
+			continue
+		if q.kind == PropKind.CONSOLE:
+			if tank == null:
+				tank = q
+			elif door == null:
+				door = q
+		elif q.kind == PropKind.ARCHIVE and binder == null:
+			binder = q
+	check(tank != null and door != null and binder != null,
+		"the site stands two screens and a binder")
+	if tank == null or door == null or binder == null:
+		return
 	var top := 0
 	for q: WorldProp in w.props:
 		top = maxi(top, q.id)
-	var tank := WorldProp.new(top + 1, PropKind.RELAY, at + Vector2(1, 0), 0.0, 1.0)
-	var door := WorldProp.new(top + 2, PropKind.SURVEY, at + Vector2(-1, 1), 0.0, 1.0)
-	var binder := WorldProp.new(top + 3, PropKind.ARCHIVE, at + Vector2(0, -1), 0.0, 1.0)
-	var ashore := WorldProp.new(top + 4, PropKind.RELAY, w.spawn, 0.0, 1.0)
-	for p: WorldProp in [tank, door, binder, ashore]:
-		w.props.append(p)
+	var ashore := WorldProp.new(top + 1, PropKind.RELAY, w.spawn, 0.0, 1.0)
+	w.props.append(ashore)
 	eq(StoryFragments.held_by(w, tank), &"growth_bay", "the first screen is the tank's")
 	eq(StoryFragments.held_by(w, door), &"release_order", "the second is the sea door's")
 	eq(StoryFragments.held_by(w, binder), &"volunteers", "the binder holds the list")
