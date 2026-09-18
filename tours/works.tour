@@ -48,10 +48,11 @@ hour 21.5
 wait 1.2
 walk 0,-1 1.0 run
 wait 0.8
-# Measured over two runs: 7372 and 3928 pixels of the mast's own violet. It
-# swings by half because the frame is staged by a wall-clock walk, so the floor
-# is set under the LOWER reading and not under a single one -- against a 30 that
-# would have passed on a speck, and against the nothing an absent mast holds.
+# Measured on main: 4640 pixels of the mast's own violet, and 3928 / 7372 /
+# 10796 on branches cut before `evening` and `nights` changed what a night is.
+# The claim counts LIGHT, so it must be measured on the commit it lands on, and
+# it also swings with a wall-clock walk. 700 is under the lowest of the four,
+# against a 30 that passed on a speck and the nothing an absent mast holds.
 shot 04-the-mast-over-its-yard-at-night with works_yard,pixels:bebadf:700
 
 # Its ground. Everything inside its reach answers to it, and the plan keeps a
