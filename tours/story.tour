@@ -30,8 +30,12 @@ shot 01-a-keeper-with-something-to-say with talking,folk
 
 # --- what the player says is theirs, and it is remembered -------------------------------
 # Down to the third reply and take it: saying nothing is always on the list, and
-# in this arc it is never the cowardly one.
+# it is never the cowardly answer. The wait between the taps is load-bearing: a
+# tap releases and the next presses in the SAME frame, so without it the talk
+# never sees the key come up and two taps are read as one, and the frame named
+# "said-nothing" showed the keeper answering the second reply instead.
 tap move_down
+wait 0.1
 tap move_down
 wait 0.3
 shot 02-what-you-may-say with talking,folk

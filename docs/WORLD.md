@@ -304,19 +304,27 @@ so they are made here rather than asked upward.
    bodies, and more only as the square grows. The reason to be strict here is that
    crossing water is a deliberate journey made in a craft (`docs/VISION.md` §5) —
    it should be an act, not the medium the game is played in.
-3. **The ocean is no wider than the FIRST craft can survive.** A raft is made in
-   the hand out of strand wood on day one (`recipes.gd`: no station, 30 minutes,
-   driftwood and a drum off a wreck) and its `grounds` include `DEEP_WATER` — so
-   an ocean crossing is gated behind a beachcomb and a cutting edge, which is the
-   right gate and an early one. But a raft has `hull: 100` and takes wear afloat,
-   and **nobody has ever sailed one across an ocean, because there has never been
-   an ocean**: the widest water in the game is a sea loch. Lay the ocean wider
-   than a raft survives and the crossing is silently gated behind a mended craft —
-   a bench, iron and copper — with nothing failing to say so, and anything built
-   on "after the raft" breaks quietly. So the width is MEASURED against the first
-   craft's hull and wear before it is chosen, not after a player is adrift.
-   (Raised by the story session asking when a guided path may send someone across
-   water — a consumer question that found a worldgen constraint.)
+3. **The ocean is no wider than the first craft can survive — MEASURED, and it
+   does not bind.** A raft is made in the hand out of strand wood on day one
+   (`recipes.gd`: no station, 30 minutes, driftwood and a drum off a wreck) and
+   its `grounds` include `DEEP_WATER`, so a crossing is gated behind a beachcomb
+   and a cutting edge, which is the right gate and an early one. The worry was
+   that an ocean laid wider than a raft survives would silently move that gate to
+   a bench, iron and copper, with nothing failing to say so.
+
+   The numbers say otherwise. `44_crafts._carry` takes `hull -= step * wear`, and
+   `step` is TILES: a raft is `hull 100` against `wear[DEEP_WATER] 0.08`, so it
+   crosses **1250 tiles of open water** before it is gone. Measured between
+   continent centres on seed 1 at 1024, the crossings are **25, 51, 74, 108, 275
+   and 293 tiles**. The worst of them costs 23 hull of 100.
+
+   **So the width is not a constraint at these sizes and the oceans are not
+   graded.** The variety the journey wants — a short first crossing and longer
+   ones later — is already there and emergent, an order of magnitude apart from
+   narrowest to widest, without anybody placing it. Re-measure this if a raft's
+   hull or wear changes, or if the square grows past about 4000 tiles; until then
+   there is nothing here to build.
+
 4. **The spawn continent is special, deliberately.** The player wakes on a HOME
    continent that holds the coast, the spawn village and a full starting economy,
    and that is not dealt the harshest or rarest types. The others are destinations:
@@ -359,6 +367,26 @@ so they are made here rather than asked upward.
    exactly this reason, and ids continue across bodies rather than restarting;
    each entry in `regions` carries its `continent`. Sentinels, works and saves key
    on `id` and must not learn about bodies to stay correct.
+
+## 8a. Known, measured, and deliberately not fixed
+
+**A skerry can be a region.** `GenCountries` calls a run of land a place at
+`REGION_TILES * body_k^2` tiles, and `GenShape` lets detached land up to
+`ISLET_TILES` (900) survive as an islet — so an islet between those two numbers
+qualifies as a REGION, which is what sentinels, works and saves key on. A keeper
+can therefore be assigned to a rock.
+
+Measured on seed 1: **five of twenty-five regions at 512, and five of forty at
+1024.** It is the same count at both sizes, so it is not a consequence of the
+region floor becoming per-body — it has been true since regions existed.
+
+It is left alone on purpose. Fixing it moves region ids, which sentinels, works
+and saves all key on, so it costs a `WorldStamp.GEN` bump and a re-accepted canon
+— a real world-shape change, for something nothing currently depends on. The
+story session's journey needed "which bodies are worth stopping at" and answered
+it the better way, with **a village stands there** rather than with a region
+count. When something does depend on it, decide it deliberately rather than
+discovering it here.
 
 ## 9. Rules this document is built on
 

@@ -269,27 +269,30 @@ you by name, with the ink still wet.
 
 ## 8. The cast, and companions
 
-```gdscript
-StoryCharacter: id, name, trade, slot, wants, fears, talk, situation, may_join
-```
+**Built.** A named person is ONE file under `src/content/story/cast/`
+(`static func make() -> StoryCharacter`), found by `StoryCast` the way landscapes
+are found. Their words live in `StoryContent.TALKS` beside everyone else's, marked
+`cast` = their id, so the journal, dev mode and the tests read them with no second
+path; a trade's words never match a named person, and a named person says only
+their own.
 
-**A character is anchored to a slot, not to a body.** `35_folk` streams villagers
-and nothing may hang on one body being one person — that constraint is not being
-removed, it is being *routed around*: a character's persistence comes from the
-place, the way a works depot's does. Walk away and come back and they are there,
-because the slot is there.
-
-`situation` is the development: `present`, `filed`, `fled`, `gone`, `joined`. It
-changes because of what the player did, it is saved, and later lines read it.
-
-**Companions** (owner: *"do not limit me"*). A character with `may_join` can be
-taken along and eventually controlled. The story owns **who may join, why, and
-what it costs them**; it does not own following, pathing, fighting or control —
-that is the actors' and `33_avatar`'s business. The seam is declared now, in a
-`StoryCompanion` state the story writes and another package reads, so that
-control is added later without the fiction being retrofitted around it.
-
----
+- **Anchored to a place, not a body.** `at` names a spine slot; `49_cast` stands
+  them a few paces off wherever that slot was cast in THIS world, on ground a body
+  can stand on, and draws them while the player is within `STREAM`. `35_folk`
+  streams villagers nobody may count on meeting twice; a named person is there
+  again when he comes back, because the place is.
+- **Development is beats.** `appears_when` brings someone in (June, once her name
+  has been said to him), `gone_when` takes them away (Dace, once he learns whose
+  order it was). Both are story state that is already saved, so a person's arc
+  costs no new save format.
+- **Met** is `Story.meet(id)` / `Story.met(id)`, saved with the rest.
+- **The one `use` key** reaches them through `49_story`, which reads `49_cast`'s
+  rows beside the villagers'.
+- **Companions** (owner: *"do not limit me"*): `may_join` says who can walk with
+  him. Following, orders and control are the actors' business and not built;
+  the story's half of the seam is this flag.
+- **Tours** stand beside one with `at cast:ID` and answer `cast:ID` (drawn) and
+  `met:ID` (spoken to): `tours/cast.tour`.
 
 ## 9. State, and what must never happen to a save
 

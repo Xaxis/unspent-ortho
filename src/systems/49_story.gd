@@ -46,6 +46,7 @@ var _up_down := false
 var _down_down := false
 var _back_down := false
 var _folk: Node
+var _cast: Node = null
 ## The journal on the slate (UiJournalScreen): what has been found, kept.
 var journal: UiJournalScreen
 var _ui: Node
@@ -216,7 +217,8 @@ func _edge_to(q: WorldProp) -> float:
 
 
 func _person_in_front() -> Dictionary:
-	var folk := _folk_rows()
+	# Villagers and named people alike: the one key answers whoever is in front.
+	var folk: Array = _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
 	var best: Dictionary = {}
@@ -258,6 +260,7 @@ func _readable_in_front() -> WorldProp:
 
 func _start_talk(row: Dictionary) -> void:
 	var id := StoryProps.talk_for(row, game)
+	var character := StringName(str(row.get("character", &"")))
 	if id == &"":
 		# Nobody has anything written for this one yet. Say so in the world's own
 		# flat voice rather than opening an empty page.
@@ -267,6 +270,9 @@ func _start_talk(row: Dictionary) -> void:
 	if talk.over:
 		talk = null
 		return
+	if character != &"":
+		@warning_ignore("return_value_discarded")
+		Story.meet(character)
 	view.talk = talk
 	view.choice = 0
 	game.talking = true
@@ -352,15 +358,15 @@ func _witness() -> void:
 			_filed_seen = body.filed
 		elif body.filed > _filed_seen:
 			_filed_seen = body.filed
-			_witnessed(&"clerk_written")
-		# The signet is a forged key; it only means that once the player knows a
-		# key was ever forged.
-		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(&"key_accepted"):
-			_witnessed(&"key_carried")
+			_witnessed(StoryContent.WITNESS_ON[&"filed"])
+		# The signet is his own old password, copied; it only means that once he
+		# knows he had one.
+		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
+			_witnessed(StoryContent.WITNESS_ON[&"signet"])
 	if game.world != null and game.world.realm != Realm.SURFACE:
-		_witnessed(&"branches")
+		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
-		_witnessed(&"unattested")
+		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
 
 
 func _hunted_here() -> bool:
@@ -379,11 +385,11 @@ func _hunted_here() -> bool:
 
 func _on_took(item: StringName, _count: int) -> void:
 	if item == &"record":
-		_witnessed(&"clerk_record")
+		_witnessed(StoryContent.WITNESS_ON[&"record"])
 
 
 func _on_works_broken(_region: int, _land: StringName) -> void:
-	_witnessed(&"went_in_dark")
+	_witnessed(StoryContent.WITNESS_ON[&"works_dark"])
 
 
 ## A beat the world handed the player rather than a page they read: nothing else
@@ -434,6 +440,17 @@ func _locked_body() -> MobState:
 
 
 # --- the rest -------------------------------------------------------------------
+
+## The named people 49_cast has stood in the world (StoryCast).
+func _cast_rows() -> Array:
+	if _cast == null or not is_instance_valid(_cast):
+		for sys in game.systems:
+			var script := sys.get_script() as Script
+			if script != null and script.resource_path.ends_with("49_cast.gd"):
+				_cast = sys
+				break
+	return _cast.get("people") if _cast != null else []
+
 
 func _folk_rows() -> Array:
 	if _folk == null or not is_instance_valid(_folk):

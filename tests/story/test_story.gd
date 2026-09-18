@@ -54,20 +54,19 @@ func test_which_thing_holds_which_words_never_changes_under_a_save() -> void:
 
 func test_reading_a_thing_is_knowing_it_and_only_once() -> void:
 	Story.forget()
-	var id := &"tide_book"
+	var id := &"on_record"
 	check(Story.read(id), "the first time is the first time")
 	check(not Story.read(id), "and there is no second first time")
 	check(Story.knows(id))
 	eq(Story.found(), [id] as Array[StringName])
-	# That notebook is the tide sub-arc's own evidence: reading it lands its beats.
-	check(Story.landed(&"repeats"), "and what it taught is known")
-	check(Story.landed(&"tide_written"))
-	gt(Story.at(&"tide"), 0.0, "which moves the arc along")
+	# A clerk's screen with his own name on it: reading it IS the knowing.
+	check(Story.landed(&"on_record_dead"), "and what it taught is known")
+	gt(Story.at(&"who_he_was"), 0.0, "which moves the arc along")
 
 
 func test_a_conversation_goes_where_the_replies_go() -> void:
 	Story.forget()
-	var t := StoryTalk.start(&"tide_keeper")
+	var t := StoryTalk.start(&"the_keeper")
 	check(not t.over, "it started")
 	check(t.says().size() > 0, "and it said something")
 	var rs := t.replies()
@@ -79,12 +78,12 @@ func test_a_conversation_goes_where_the_replies_go() -> void:
 			quiet = true
 	check(quiet, "and saying nothing is always one of them")
 	check(t.pick(0), "the first reply goes somewhere")
-	eq(Story.chose(&"tide_keeper.open"), &"plain", "and what was said is remembered by where it was said")
+	eq(Story.chose(&"the_keeper.open"), &"asked_where", "and what was said is remembered by where it was said")
 
 
 func test_a_conversation_can_be_walked_to_its_end() -> void:
 	Story.forget()
-	var t := StoryTalk.start(&"tide_keeper")
+	var t := StoryTalk.start(&"the_keeper")
 	var guard := 0
 	while not t.over and guard < 40:
 		guard += 1
@@ -96,33 +95,32 @@ func test_a_conversation_can_be_walked_to_its_end() -> void:
 
 func test_a_reply_that_teaches_something_lands_its_beat() -> void:
 	Story.forget()
-	var t := StoryTalk.start(&"tide_keeper")
-	# open -> swam -> tide -> told the minute: the tide is noticed out loud.
-	t.pick(0)
-	var to_tide := -1
+	var t := StoryTalk.start(&"maren")
+	# open -> who pulled you out -> hold out your hands: the body has no past.
+	var to_pulled := -1
 	var rs := t.replies()
 	for i in rs.size():
-		if String(rs[i].text).contains("tide"):
-			to_tide = i
-	gt(float(to_tide), -1.0, "the keeper can be asked about the tide")
-	t.pick(to_tide)
+		if String(rs[i].text).contains("pulled"):
+			to_pulled = i
+	gt(float(to_pulled), -1.0, "the keeper can be asked who pulled him out")
+	t.pick(to_pulled)
 	t.pick(0)
-	check(Story.landed(&"tide_noticed"), "telling somebody is knowing it together")
+	check(Story.landed(&"body_new"), "being looked at is how he learns it")
 
 
 func test_what_is_found_and_said_comes_back_through_a_save() -> void:
 	Story.forget()
-	Story.read(&"gate_notice")
-	Story.choose(&"tide_keeper.open", &"nothing")
-	Story.beat(&"unattested")
+	Story.read(&"on_record")
+	Story.choose(&"the_keeper.open", &"nothing")
+	Story.beat(&"noticed")
 	var d := Story.save_state()
 	Story.forget()
-	check(not Story.knows(&"gate_notice"), "forgotten is forgotten")
+	check(not Story.knows(&"on_record"), "forgotten is forgotten")
 	Story.load_state(d)
-	check(Story.knows(&"gate_notice"), "and a save brings it back")
-	eq(Story.chose(&"tide_keeper.open"), &"nothing")
-	check(Story.landed(&"unattested"))
-	check(Story.landed(&"clerks_words"), "including what the reading itself taught")
+	check(Story.knows(&"on_record"), "and a save brings it back")
+	eq(Story.chose(&"the_keeper.open"), &"nothing")
+	check(Story.landed(&"noticed"))
+	check(Story.landed(&"on_record_dead"), "including what the reading itself taught")
 
 
 ## The seam with whoever places things: a placer asks for a kind and gets an id,
@@ -142,6 +140,7 @@ func test_the_placer_seam_is_the_whole_of_what_a_placer_needs() -> void:
 
 
 func test_a_person_has_something_to_say_only_if_it_was_written_for_them() -> void:
-	eq(StoryProps.talk_for({"trade": &"keeper"}, null), &"tide_keeper")
+	eq(StoryProps.talk_for({"trade": &"keeper"}, null), &"the_keeper")
+	eq(StoryProps.talk_for({"character": &"maren", "trade": &"keeper"}, null), &"maren", "a named person says her own words, whatever her trade")
 	eq(StoryProps.talk_for({}, null), &"", "somebody with no trade has nothing written")
 	check(StoryProps.trades_with_talk().has(&"keeper"))

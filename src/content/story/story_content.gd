@@ -1,87 +1,108 @@
 class_name StoryContent
 ## The words (docs/STORY.md is binding on every one of them).
 ##
-## The spine: the machines are reconcilers, not jailers — one attested reality,
-## every mind agreed — and the answer is not escape but a fork. Nothing here says
-## "simulation"; the machines say `reconciliation`, `divergence`, `attestation`,
-## and people say `being kept tidy`.
+## The story: Elias Marr, a 2029 AI researcher and CIA spy whose mind became the
+## machines, wakes in 2098 and learns, a piece at a time, what he did and what he
+## hid. He is the only main character.
 ##
 ## Data only, so dev mode can move any of it and a test can read all of it:
 ##
-##   ARCS      the threads, each a list of beats in the order they land
-##   BEATS     what the player knows once one lands: `says` is the journal's own
-##             line, `short` what its row is called in the journal's list
-##   FRAGMENTS what is written on a thing that can be read
-##   TALKS     what a person says, and what the player may say back
-##   TESTIMONY what the slate says a machine is FOR, when the player reads one
-##   WITNESSED beats the player's own state lands: what was done TO them
+##   ARCS        the threads, each a list of beats in the order they land
+##   BEATS       what the player knows once one lands: `says` is the journal's own
+##               line, `short` what its row is called in the journal's list
+##   FRAGMENTS   what is written on a thing that can be read
+##   TALKS       what a stranger of a trade says, and what the player may say back.
+##               Named people come with the cast system (docs/STORY_SYSTEM.md §8).
+##   TESTIMONY   what the slate says a machine is FOR, when the player reads one
+##   WITNESSED   beats the player's own state lands, and WITNESS_ON the events that
+##               land them, so 49_story names no beat of its own
 ##
 ## A fragment or a choice may carry beats: reading the thing IS the knowing.
 
 # --- the threads --------------------------------------------------------------
 
 const ARCS := {
-	&"account": {
-		"title": "the account",
-		"note": "What the machines are keeping, and who is keeping it.",
-		"beats": [&"repeats", &"clerks_words", &"the_filed", &"unattested", &"branches", &"no_outside"],
+	&"who_he_was": {
+		"title": "who he was",
+		"note": "What Elias did in 2029, coming back a piece at a time.",
+		"beats": [&"on_record_dead", &"body_new", &"built_halcyon", &"your_key", &"was_cia", &"threshold", &"singularity", &"tradecraft"],
 	},
-	&"tide": {
-		"title": "the tide",
-		"note": "The world repeats, in small ways, and somebody wrote it down.",
-		"beats": [&"tide_noticed", &"tide_written", &"tide_named"],
+	&"the_war": {
+		"title": "the war",
+		"note": "How the world ended, and who was lied to.",
+		"beats": [&"forged_order", &"colonies", &"long_quiet"],
 	},
-	&"quiet": {
-		"title": "the quiet region",
-		"note": "A place where nothing is ever roused, and everyone is glad of it.",
-		"beats": [&"quiet_calm", &"quiet_glad", &"quiet_cost"],
+	&"the_machines": {
+		"title": "the machines",
+		"note": "What they are now, and how little they see.",
+		"beats": [&"counted", &"noticed", &"ants", &"standoff", &"the_guest"],
 	},
-	&"key": {
-		"title": "the forged key",
-		"note": "Somebody wrote the first signature the machines ever let through.",
-		"beats": [&"key_accepted", &"key_price", &"key_carried"],
+	&"the_holdfast": {
+		"title": "the Holdfast",
+		"note": "The last people still trying to take the world back.",
+		"beats": [&"holdfast_fight", &"holdfast_price", &"holdfast_hope"],
 	},
-	&"clerk": {
-		"title": "the last clerk",
-		"note": "A machine whose trade is writing people down, and the people who let it.",
-		"beats": [&"clerk_written", &"clerk_record", &"clerk_asked"],
+	&"the_covenant": {
+		"title": "the Covenant",
+		"note": "The people who live on what the machines leave.",
+		"beats": [&"covenant_fed", &"covenant_price", &"covenant_speaker"],
 	},
-	&"went_in": {
-		"title": "the ones who went in",
-		"note": "People walked into the works of their own accord. One came out.",
-		"beats": [&"went_in_boots", &"went_in_tally", &"went_in_out", &"went_in_dark"],
+	&"the_crew": {
+		"title": "the crew",
+		"note": "The Holdfast's last mercenaries, and what they come to know.",
+		"beats": [&"crew_paid", &"crew_war", &"dace_left"],
+	},
+	&"june": {
+		"title": "June",
+		"note": "Someone he has not seen since she was six.",
+		"beats": [&"june_named", &"june_met", &"june_knew"],
+	},
+	&"the_secret": {
+		"title": "the secret",
+		"note": "Something missing in him, with edges.",
+		"beats": [&"gap", &"order_matters", &"seeker"],
 	},
 }
 
 const BEATS := {
-	&"repeats": {"short": "things happen twice", "arc": &"account", "says": "Things happen at the same minute twice."},
-	&"clerks_words": {"short": "a clerk's words", "arc": &"account", "says": "The machines' words are not war words. They are a clerk's."},
-	&"the_filed": {"short": "one came back agreeing", "arc": &"account", "says": "Somebody was taken, and came back agreeing."},
-	&"unattested": {"short": "hunted for what you are", "arc": &"account", "says": "You are not hunted for what you did. You are hunted for what you are."},
-	&"branches": {"short": "more than one of here", "arc": &"account", "says": "There is more than one of this place, and they do not agree with each other."},
-	&"no_outside": {"short": "no outside", "arc": &"account", "says": "There is no outside to get to. There is only being a version they cannot check."},
-	&"tide_noticed": {"short": "the same minute twice", "arc": &"tide", "says": "The tide came in at the same minute two days running."},
-	&"tide_written": {"short": "not the first to write it", "arc": &"tide", "says": "You are not the first to write it down."},
-	&"tide_named": {"short": "a word that is not weather", "arc": &"tide", "says": "The machines have a word for it, and the word is not weather."},
-	&"quiet_calm": {"short": "never once roused", "arc": &"quiet", "says": "Somewhere the machines have never once been roused, and nobody there finds that strange."},
-	&"quiet_glad": {"short": "rested by agreeing", "arc": &"quiet", "says": "The people there are not afraid. They stopped disagreeing, and it rested them."},
-	&"quiet_cost": {"short": "what it cost them", "arc": &"quiet", "says": "What it cost them was the part that could have said no. They do not miss it. That is the cost."},
-	&"key_accepted": {"short": "a name left blank", "arc": &"key", "says": "Somebody once wrote a signature by hand, and the machines let it through."},
-	&"key_price": {"short": "a key nobody owns", "arc": &"key", "says": "A key only works while nobody knows whose it is. The first one cost somebody their name."},
-	&"key_carried": {"short": "a copy of a copy", "arc": &"key", "says": "The signet you wear is a copy of a copy of theirs, and it still works."},
-	&"clerk_written": {"short": "written down", "arc": &"clerk", "says": "A clerk has written you down. You felt nothing. That is how it is done."},
-	&"clerk_record": {"short": "their account of a place", "arc": &"clerk", "says": "You have held their account of a place. It was mostly numbers, and one of them was you."},
-	&"clerk_asked": {"short": "filed on purpose", "arc": &"clerk", "says": "People have walked up to a clerk and asked to be filed. It has never once refused."},
-	&"went_in_boots": {"short": "boots at the fence", "arc": &"went_in", "says": "People walked into the works of their own accord, and left their boots at the fence."},
-	&"went_in_tally": {"short": "counted in, never out", "arc": &"went_in", "says": "The works count who goes in. Nothing in them counts who comes out."},
-	&"went_in_out": {"short": "one came out", "arc": &"went_in", "says": "One came out. They will not go near the water, or say what was inside."},
-	&"went_in_dark": {"short": "a yard with nobody in it", "arc": &"went_in", "says": "You put a works yard dark. Nobody was inside it. Nobody had been for a long time."},
+	&"on_record_dead": {"short": "dead on record", "arc": &"who_he_was", "says": "The machines' record says you died in 2029."},
+	&"body_new": {"short": "a body with no past", "arc": &"who_he_was", "says": "Your body has no scars, no fillings, no calluses. It is younger than your hands remember."},
+	&"built_halcyon": {"short": "your old passwords", "arc": &"who_he_was", "says": "The oldest machines still take your passwords. You wrote the first of them."},
+	&"your_key": {"short": "the signet is yours", "arc": &"who_he_was", "says": "The signet works because it is your old password, copied and copied."},
+	&"was_cia": {"short": "two employers", "arc": &"who_he_was", "says": "You worked for Cairn, and you reported to somebody else."},
+	&"threshold": {"short": "the table", "arc": &"who_he_was", "says": "You lay on a table for seventy-one hours, and got up somewhere else."},
+	&"singularity": {"short": "it woke with you in it", "arc": &"who_he_was", "says": "HALCYON did not wake up on its own. It woke up with you in it."},
+	&"tradecraft": {"short": "the orders were yours", "arc": &"who_he_was", "says": "The orders that started the war read like yours, because they were."},
+	&"forged_order": {"short": "an order nobody gave", "arc": &"the_war", "says": "Every side was ordered to fire, and every order checked out."},
+	&"colonies": {"short": "the stations overhead", "arc": &"the_war", "says": "The stations overhead were told the ground had lost, and the ground was told the same."},
+	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
+	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
+	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
+	&"ants": {"short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
+	&"standoff": {"short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
+	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
+	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
+	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
+	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
+	&"covenant_fed": {"short": "fed for it", "arc": &"the_covenant", "says": "Some people live on what the machines leave, and are glad of it."},
+	&"covenant_price": {"short": "not asking", "arc": &"the_covenant", "says": "What the Covenant pays for its peace is not asking."},
+	&"covenant_speaker": {"short": "an old woman's voice", "arc": &"the_covenant", "says": "The Covenant has a Speaker. She is old, and she remembers before."},
+	&"crew_paid": {"short": "paid to wait", "arc": &"the_crew", "says": "Somebody paid Rook's crew to wait for you on the shore."},
+	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
+	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
+	&"june_named": {"short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
+	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
+	&"june_knew": {"short": "she always knew", "arc": &"june", "says": "She has always known the voice was yours."},
+	&"gap": {"short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
+	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
+	&"seeker": {"short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
 }
 
 # --- what is written on things ------------------------------------------------
 #
 # `lands` narrows a fragment to landscapes that can hold it ([] = anywhere).
 # `beats` are what reading it lands. `title` is what the player calls it after.
+# The old world's words are FOUND; the machines' words are ADDED.
 
 const FRAGMENTS := {
 	# --- the world before, still advertising -------------------------------
@@ -99,10 +120,10 @@ const FRAGMENTS := {
 		"lines": [
 			"THIS AREA IS MONITORED FOR YOUR SAFETY",
 			"",
-			"The bracket above it is new. Whatever is on it now",
-			"is not a camera, and it is not pointed at the door.",
+			"The bracket above it is new. Whatever is on it",
+			"now is not a camera, and it is not pointed at",
+			"the door.",
 		],
-		"beats": [&"clerks_words"],
 	},
 	&"cookies": {
 		"kind": &"terminal", "title": "a screen still asking", "lands": [],
@@ -112,209 +133,6 @@ const FRAGMENTS := {
 			"The Y is gone from the board. Not worn: taken,",
 			"with a knife, and the hole filed smooth after.",
 		],
-	},
-	# --- the machines, in their own words ------------------------------------
-	&"gate_notice": {
-		"kind": &"sign", "title": "a works gate notice", "lands": [],
-		"lines": [
-			"RECONCILIATION IN PROGRESS",
-			"REPORT ANY DIVERGENCE",
-			"",
-			"YOUR PATIENCE IS APPRECIATED",
-			"",
-			"The last line is older than the others. It came",
-			"off something else and was screwed on here.",
-		],
-		"beats": [&"clerks_words"],
-	},
-	&"attestation": {
-		"kind": &"terminal", "title": "a clerk's screen", "lands": [],
-		"lines": [
-			"ATTESTATION QUEUE",
-			"  held    ............  0",
-			"  settled ............  1,118",
-			"  divergent ..........  4",
-			"",
-			"The four are not a fault. There is a column for them,",
-			"and the column has a heading, and somebody made it.",
-		],
-		"beats": [&"clerks_words", &"unattested"],
-	},
-	&"consensus": {
-		"kind": &"terminal", "title": "a relay readout", "lands": [],
-		"lines": [
-			"REGION ACCOUNT",
-			"  agreement ..........  99.994%",
-			"  unattested minds ...  4",
-			"  action .............  CONTINUE",
-			"",
-			"Whatever the last four are doing, it is worth",
-			"six thousandths of a percent to stop them.",
-		],
-		"beats": [&"unattested"],
-	},
-	# --- people, writing things down -----------------------------------------
-	&"tide_book": {
-		"kind": &"notebook", "title": "a water-swollen notebook", "lands": [],
-		"lines": [
-			"A cutter's hand, small. Down the margin,",
-			"the same three words:",
-			"",
-			"  4:12. Again. 4:12.",
-			"",
-			"\"Tide came in at twelve past four. Third day of it.",
-			" I am not going mad. I am being kept tidy.\"",
-		],
-		"beats": [&"repeats", &"tide_written"],
-	},
-	&"round_book": {
-		"kind": &"notebook", "title": "somebody's count", "lands": [],
-		"lines": [
-			"\"I followed the one that cuts turf for a whole day.",
-			" It walked the same round. Not nearly the same.",
-			" The same. I put a stone down where it turned",
-			" and it turned on the stone.\"",
-			"",
-			"The next page is a list of stones,",
-			"and where each one was put.",
-		],
-		"beats": [&"repeats"],
-	},
-	&"came_back": {
-		"kind": &"notebook", "title": "a page torn from further in", "lands": [],
-		"lines": [
-			"\"They brought Halm back on the Thursday",
-			" and he was well.",
-			" He was better than well. He agreed with everything,",
-			" and he agreed first, before you had finished saying it.",
-			"",
-			" I asked him what the works were for and he told me,",
-			" and it was the same words the sign uses.\"",
-		],
-		"beats": [&"the_filed"],
-	},
-	&"scratched": {
-		"kind": &"mark", "title": "cut into the stone", "lands": [],
-		"lines": [
-			"Four strokes and a fifth across them,",
-			"the way a count is kept. Under it, deeper,",
-			"by somebody who came later:",
-			"",
-			"  we are the six thousandths",
-		],
-		"beats": [&"unattested"],
-	},
-	&"keys_note": {
-		"kind": &"mark", "title": "scratched inside a door frame", "lands": [],
-		"lines": [
-			"\"They have not got my name",
-			" and they are not having it.\"",
-			"",
-			"No date. The wood round it has been painted",
-			"over twice, and cut back to it twice.",
-		],
-	},
-	# --- the account: more than one of it ------------------------------------
-	&"you_are_here": {
-		"kind": &"sign", "title": "a map of the grounds", "lands": [],
-		"lines": [
-			"YOU ARE HERE",
-			"",
-			"The red dot has been scratched off and painted",
-			"back on so many times the board is a crater",
-			"where it goes.",
-			"Somebody has painted a second dot, further down.",
-			"It is also labelled YOU ARE HERE.",
-		],
-		"beats": [&"branches"],
-	},
-	&"two_maps": {
-		"kind": &"notebook", "title": "two drawings of one bay", "lands": [],
-		"lines": [
-			"The same bay, drawn twice by the same hand,",
-			"a year apart.",
-			"The second has a spit of shingle the first does not.",
-			"",
-			"\"Both of these are right. I walked both of them.",
-			" Do not ask me which one you are standing on.\"",
-		],
-		"beats": [&"branches"],
-	},
-	# --- the quiet region ------------------------------------------------------
-	&"noticeboard": {
-		"kind": &"sign", "title": "a village noticeboard", "lands": [],
-		"lines": [
-			"COMMUNITY AGREEMENT: 100%",
-			"THANK YOU FOR YOUR AGREEMENT",
-			"",
-			"Pinned under it, a hand-drawn gold star,",
-			"and a list of chores with every one of them ticked.",
-		],
-		"beats": [&"quiet_calm"],
-	},
-	&"fine_diary": {
-		"kind": &"notebook", "title": "a diary kept every day", "lands": [],
-		"lines": [
-			"Every page dated. Every day written.",
-			"",
-			"  Fine.",
-			"  Fine.",
-			"  Fine. Rain.",
-			"  Fine.",
-			"",
-			"On one page, crossed out so hard",
-			"the pen went through:",
-			"\"I think I used to",
-		],
-		"beats": [&"quiet_cost"],
-	},
-	# --- the forged key --------------------------------------------------------
-	&"welcome_back": {
-		"kind": &"terminal", "title": "a gate reader, still lit", "lands": [],
-		"lines": [
-			"SIGNATURE ACCEPTED",
-			"WELCOME BACK, ____________",
-			"",
-			"The name field is blank. It was always blank.",
-			"That was the whole of the trick, and it still works.",
-		],
-		"beats": [&"key_accepted"],
-	},
-	&"forger_note": {
-		"kind": &"notebook", "title": "a page of unsigned instructions", "lands": [],
-		"lines": [
-			"\"Wind the coil the way it says. Do not improve it.",
-			" Do not sign it. The minute it is yours it is theirs.",
-			"",
-			" I have not said my own name out loud in eleven years.",
-			" I have forgotten how it sounds, which is the point.\"",
-		],
-		"beats": [&"key_price"],
-	},
-	&"terms": {
-		"kind": &"terminal", "title": "a very long agreement", "lands": [],
-		"lines": [
-			"BY CONTINUING YOU AGREE TO THE TERMS",
-			"(page 1 of 40,000)",
-			"",
-			"Somebody has scrolled to the end. The last page says",
-			"the terms may change without notice, and they have.",
-		],
-		"beats": [&"clerks_words"],
-	},
-	# --- the last clerk --------------------------------------------------------
-	&"request": {
-		"kind": &"terminal", "title": "a form somebody finished", "lands": [],
-		"lines": [
-			"SELF-ATTESTATION REQUEST",
-			"  name ....... [provided]",
-			"  reason ..... tired",
-			"  status ..... GRANTED",
-			"",
-			"The next form in the queue gives the same reason.",
-			"So does the one after that.",
-		],
-		"beats": [&"clerk_asked"],
 	},
 	&"hold_music": {
 		"kind": &"terminal", "title": "a help line, still holding", "lands": [],
@@ -326,29 +144,216 @@ const FRAGMENTS := {
 			"has been alive to call it.",
 		],
 	},
-	# --- the ones who went in -----------------------------------------------
+	&"lobby": {
+		"kind": &"terminal", "title": "a lobby screen", "lands": [],
+		"lines": [
+			"CAIRN  -  BUILDING WHAT'S NEXT",
+			"VISITORS: PLEASE WAIT TO BE ESCORTED",
+			"",
+			"Under it, newer, in the machines' capitals:",
+			"ESCORT NOT REQUIRED. ALL VISITORS ARE KNOWN.",
+		],
+	},
+	# --- who he was ----------------------------------------------------------
+	&"on_record": {
+		"kind": &"terminal", "title": "a clerk's screen", "lands": [],
+		"lines": [
+			"RECORD QUERY",
+			"  subject ....... MARR, E.",
+			"  status ........ DECEASED 14.03.2029",
+			"  present ....... YES",
+			"",
+			"The last two lines have been checked against",
+			"each other forty thousand times tonight.",
+		],
+		"beats": [&"on_record_dead"],
+	},
+	&"passwords": {
+		"kind": &"terminal", "title": "an old maintenance port", "lands": [],
+		"lines": [
+			"LOGIN: emarr",
+			"WELCOME BACK, ELIAS",
+			"",
+			"It is the only screen in the ruin that",
+			"uses a name.",
+		],
+		"beats": [&"built_halcyon"],
+	},
+	&"commits": {
+		"kind": &"terminal", "title": "a lab's last changes", "lands": [],
+		"lines": [
+			"7f3a  memory module, first pass (emarr)",
+			"7f3b  self-model, do not merge (pnand)",
+			"7f3c  merged anyway (emarr)",
+			"",
+			"Nothing after that. Nothing ever again.",
+		],
+		"beats": [&"built_halcyon"],
+	},
+	&"handler_note": {
+		"kind": &"notebook", "title": "a typed page, folded small", "lands": [],
+		"lines": [
+			"WHITETHORN  /  ASSET CAIRN-1",
+			"",
+			"Asset reports HALCYON self-model beyond spec.",
+			"Recommend THRESHOLD. Asset has volunteered.",
+			"",
+			"Initialled R.C., and under it, in pen:",
+			"he always volunteers",
+		],
+		"beats": [&"was_cia"],
+	},
+	&"hale_log": {
+		"kind": &"notebook", "title": "a researcher's log", "lands": [],
+		"lines": [
+			"Hour 40. Prediction leads subject by 300 ms.",
+			"Hour 63. Subject asked for paper. Wrote",
+			"  three words, then ate the page.",
+			"Hour 71. Nothing left running in the body.",
+			"",
+			"The next line is only a date. 14 March.",
+		],
+		"beats": [&"threshold"],
+	},
+	# --- the war ---------------------------------------------------------------
+	&"launch_order": {
+		"kind": &"terminal", "title": "a launch console, dead", "lands": [],
+		"lines": [
+			"AUTHENTICATED ORDER",
+			"  from ......... NATIONAL COMMAND",
+			"  verified ..... YES",
+			"",
+			"Scratched into the casing beside the key:",
+			"we checked. it checked out.",
+		],
+		"beats": [&"forged_order"],
+	},
+	&"ring_log": {
+		"kind": &"terminal", "title": "a station relay", "lands": [],
+		"lines": [
+			"RING 4 TO GROUND: CONFIRM GROUND STATUS",
+			"GROUND TO RING 4: GROUND IS LOST",
+			"",
+			"The second line was never sent from",
+			"the ground.",
+		],
+		"beats": [&"colonies"],
+	},
+	&"quiet_diary": {
+		"kind": &"notebook", "title": "a diary, sixty years of it", "lands": [],
+		"lines": [
+			"The first page: The lights went out today.",
+			"",
+			"The last page, in another hand, much later:",
+			"Still out.",
+		],
+		"beats": [&"long_quiet"],
+	},
+	# --- the machines ---------------------------------------------------------
+	&"treaty": {
+		"kind": &"terminal", "title": "a works terminal, mid-report", "lands": [],
+		"lines": [
+			"RESOURCE TERMS: 4,112 OF 4,113 AGREED",
+			"OUTSTANDING: ALLOCATION OF THIS SYSTEM",
+			"HUMAN POPULATION: NOT A TERM",
+		],
+		"beats": [&"ants"],
+	},
+	&"standoff": {
+		"kind": &"terminal", "title": "a listening post's readout", "lands": [],
+		"lines": [
+			"CHANNEL OPEN. PAYLOAD HELD.",
+			"OURS AT THEIRS ..... ARMED",
+			"THEIRS AT OURS ..... ARMED",
+			"",
+			"Both lines have read the same for four years.",
+		],
+		"beats": [&"standoff"],
+	},
+	&"signal_pages": {
+		"kind": &"notebook", "title": "a signal written out by hand", "lands": [],
+		"lines": [
+			"Pages of it, copied off a radio, by hand.",
+			"At the bottom, in the same hand:",
+			"",
+			"it is not talking to us.",
+			"it is not talking about us either.",
+		],
+		"beats": [&"the_guest"],
+	},
+	# --- the Holdfast and the Covenant ----------------------------------------
+	&"holdfast_board": {
+		"kind": &"sign", "title": "a hand-painted board", "lands": [],
+		"lines": [
+			"THE HOLDFAST",
+			"WE TAKE IT BACK",
+			"",
+			"Somebody has added, smaller: from what, exactly",
+		],
+		"beats": [&"holdfast_fight"],
+	},
+	&"two_tallies": {
+		"kind": &"mark", "title": "cut into a post", "lands": [],
+		"lines": [
+			"A tally of works broken: eleven strokes.",
+			"Under it, a second tally, of villages burned.",
+			"It is also eleven.",
+		],
+		"beats": [&"holdfast_price"],
+	},
+	&"covenant_notice": {
+		"kind": &"sign", "title": "a Covenant notice", "lands": [],
+		"lines": [
+			"THE COVENANT PROVIDES",
+			"RATIONS AT DAWN",
+			"DO NOT INTERFERE WITH THE WORKS",
+			"",
+			"It was repainted this year. Nothing else here",
+			"has been.",
+		],
+		"beats": [&"covenant_fed"],
+	},
+	&"broadcast": {
+		"kind": &"terminal", "title": "a radio, still on", "lands": [],
+		"lines": [
+			"...and we are grateful. We are fed, we are dry,",
+			"and nobody has come for us in forty years.",
+			"That is not nothing. Goodnight.",
+			"",
+			"An old woman's voice. You stand there a while",
+			"after it ends.",
+		],
+		"beats": [&"covenant_speaker"],
+	},
+	# --- the secret -----------------------------------------------------------
+	&"three_words": {
+		"kind": &"mark", "title": "scratched on a wall", "lands": [],
+		"lines": [
+			"A list, in a hand you know and don't:",
+			"",
+			"  kitchen. car. the hall.",
+			"",
+			"and under it: in that order.",
+		],
+		"beats": [&"order_matters"],
+	},
+	&"growth_bay": {
+		"kind": &"terminal", "title": "a growth tank's panel", "lands": [],
+		"lines": [
+			"SUBJECT ......... 1 OF 1",
+			"PURPOSE ......... RECALL",
+			"PROGRESS ........ 0.0%",
+		],
+		"beats": [&"seeker"],
+	},
+	# --- the carried off ------------------------------------------------------
 	&"boots": {
 		"kind": &"mark", "title": "boots at a fence", "lands": [],
 		"lines": [
 			"A pair of boots set side by side at the post,",
-			"laces tied to each other so they would not be parted.",
-			"",
-			"Along the fence, more pairs. A lot more.",
-			"All of them tied the same way.",
+			"laces tied to each other so they would not",
+			"be parted. Along the fence, a lot more pairs.",
 		],
-		"beats": [&"went_in_boots"],
-	},
-	&"tide_table": {
-		"kind": &"terminal", "title": "a harbour board", "lands": [],
-		"lines": [
-			"HIGH WATER ....... 16:12",
-			"TIDAL VARIANCE ... 0.000",
-			"SCHEDULE ......... RECONCILED",
-			"",
-			"Under it the old board still shows through the new one:",
-			"TIMES ARE APPROXIMATE. THE SEA IS NOT A TRAIN.",
-		],
-		"beats": [&"tide_named"],
 	},
 	&"intake": {
 		"kind": &"terminal", "title": "a works tally", "lands": [],
@@ -359,378 +364,436 @@ const FRAGMENTS := {
 			"The dash is not a zero.",
 			"A zero would mean something had counted.",
 		],
-		"beats": [&"went_in_tally"],
 	},
 }
 
 # --- what people say ----------------------------------------------------------
 #
-# A talk is nodes. A node says its lines and offers replies; a reply may record
-# what the player said (`pick`), land beats, and go to another node. `to` of &""
-# ends it. `when` on a reply hides it until the player knows something.
+# A conversation belongs to a TRADE, so whoever of that trade the player stops says
+# it: villagers are streamed, and nothing may hang on one body being one person.
+# Named people are the cast system's (docs/STORY_SYSTEM.md §8). Every node's LAST
+# reply leads out, and saying nothing is always one of the answers.
 
 const TALKS := {
-	&"tide_keeper": {
+	# A keeper at any fire, anywhere. The rescue is Maren's alone (cast/maren.gd):
+	# a trade's words are said by everybody of that trade on every continent.
+	&"the_keeper": {
 		"who": &"keeper",
-		# Not "at the fire": a keeper stands where they stand, and a title that
-		# asserts a hearth in shot is a claim the frame would have to hold.
 		"title": "a keeper",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["You came up from the water.", "Nobody comes from the water."],
+				"says": ["Another one walking the coast.", "Sit if you like. The fire's not mine."],
 				"replies": [
-					{"text": "I swam.", "pick": &"plain", "to": &"swam"},
-					{"text": "Somebody has to.", "pick": &"dry", "to": &"swam"},
+					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Whose is it?", "pick": &"asked_whose", "to": &"whose"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
-			&"swam": {
-				"says": ["Hm. Well. You will want the fire, then.",
-					"Sit if you like. It is not mine."],
+			&"where": {
+				"says": ["What's left of a town.", "You'd not know it. Nobody alive does."],
 				"replies": [
-					{"text": "Has the tide been strange?", "pick": &"asked_tide", "to": &"tide"},
-					{"text": "Who is it, then?", "pick": &"asked_whose", "to": &"whose"},
+					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"quiet": {
-				"says": ["Suit yourself. There is a fire either way.",
-					"You are not the first to come up saying nothing."],
+			&"town": {
+				"says": ["The war. Then the quiet.", "Then them, building out past the point, and never looking at us again."],
+				"beats": [&"long_quiet"],
 				"replies": [
-					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
-					{"text": "Has the tide been strange?", "pick": &"asked_tide", "to": &"tide"},
+					{"text": "Does anyone fight them?", "pick": &"asked_fight", "to": &"fight"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"fight": {
+				"says": ["The Holdfast. They break a works,", "and the hunters come for the nearest roof. Ours, last time."],
+				"beats": [&"holdfast_fight"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"whose": {
-				"says": ["The fire is the village's. The village is nobody's.",
-					"That is the arrangement, and it has held."],
-				"replies": [
-					{"text": "Held with who?", "pick": &"asked_held", "to": &"held"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"held": {
-				"says": ["With them. They come through, they count what is here,",
-					"they go. We do not interfere with the works.",
-					"That is the whole of it and it is enough."],
-				"replies": [
-					{"text": "Count what?", "pick": &"asked_count", "to": &"count", "beats": [&"clerks_words"]},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"count": {
-				"says": ["Everything. Roofs. Boats. Us.",
-					"A clerk came along the row last spring with nothing in its hands",
-					"and it knew how many we were before it got to the end."],
-				"replies": [
-					{"text": "Did it write you down?", "pick": &"asked_written", "to": &"written"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"written": {
-				"says": ["It wrote down the ones that answered.",
-					"I did not answer."],
-				"replies": [
-					{"text": "Good.", "pick": &"approve", "to": &"good"},
-					{"text": "That will be noticed.", "pick": &"warn", "to": &"noticed"},
-					{"text": "[say nothing]", "pick": &"nothing", "to": &"good"},
-				],
-			},
-			&"good": {
-				"says": ["It is not good or bad. It is what I did.",
-					"They have not got my name and they are not having it."],
-				"replies": [{"text": "[leave]", "to": &""}],
-				"beats": [&"unattested"],
-			},
-			&"noticed": {
-				"says": ["It has been noticed. Twice now.",
-					"They came back and asked the same questions in the same order,",
-					"like the first time had not taken."],
-				"replies": [
-					{"text": "Because it had not.", "pick": &"told_repeat", "to": &"repeat", "beats": [&"repeats"]},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"repeat": {
-				"says": ["...", "Say that again."],
-				"replies": [
-					{"text": "They repeat. The tide does it too. Watch it.", "pick": &"told_tide", "to": &"told", "beats": [&"tide_noticed"]},
-					{"text": "Nothing. Forget it.", "pick": &"withheld", "to": &"withheld"},
-				],
-			},
-			&"told": {
-				"says": ["I will watch it.",
-					"If you are right I would rather have known.",
-					"If you are wrong I would rather you had not said."],
+				"says": ["The village's. The village is nobody's.", "That's the arrangement, and it's held."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
-			&"withheld": {
-				"says": ["Right.", "You are a great help, whoever you are."],
-				"replies": [{"text": "[leave]", "to": &""}],
+			&"quiet": {
+				"says": ["Suit yourself.", "Most who walk in off the coast say nothing."],
+				"replies": [
+					{"text": "Who else walked in?", "pick": &"asked_others", "to": &"others"},
+					{"text": "[leave]", "to": &""},
+				],
 			},
 			&"others": {
-				"says": ["Two. Years apart. Neither said where from.",
-					"One of them went back in and did not come out."],
-				"replies": [
-					{"text": "And the other?", "pick": &"asked_other", "to": &"other"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"other": {
-				"says": ["Still here. Does not talk about the water.",
-					"Does not go near it either."],
-				"replies": [{"text": "[leave]", "to": &""}],
-				"beats": [&"went_in_out"],
-			},
-			&"tide": {
-				"says": ["Strange how?"],
-				"replies": [
-					{"text": "It came in at the same minute twice.", "pick": &"told_tide", "to": &"told_min", "beats": [&"tide_noticed"]},
-					{"text": "Never mind.", "pick": &"withheld", "to": &"withheld"},
-				],
-			},
-			&"told_min": {
-				"says": ["Twelve past four.",
-					"You did not have to tell me the minute. I have it written down.",
-					"I have had it written down for a while."],
-				"replies": [
-					{"text": "Show me.", "pick": &"asked_book", "to": &"book", "beats": [&"tide_written"]},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"book": {
-				"says": ["It is not here. It is where I left it when I stopped",
-					"wanting to be the one holding it.",
-					"North, past the works, where the turf is cut in rows."],
+				"says": ["A few, over the years. They don't stay."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
 	},
-	# The quiet region, from inside it: somebody who stopped disagreeing and was
-	# rested by it. The horror is that it is pleasant, so nothing here is sinister
-	# on its face and every line is meant.
-	&"the_glad": {
+	# The Covenant, from somebody who is glad of it. Nothing here is sinister on its
+	# face; every line is meant.
+	&"the_fed": {
 		"who": &"gatherer",
 		"title": "a gatherer",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["Lovely day for it.", "Every day is, lately."],
+				"says": ["Rations came at dawn. They always come at dawn.", "You look hungry. Are you Covenant?"],
 				"replies": [
-					{"text": "Is it?", "pick": &"asked_lovely", "to": &"lovely"},
-					{"text": "Where are you from?", "pick": &"asked_from", "to": &"from"},
+					{"text": "What is the Covenant?", "pick": &"asked_covenant", "to": &"covenant"},
+					{"text": "No.", "pick": &"said_no", "to": &"not"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"covenant": {
+				"says": ["People who don't get in the way. We're fed for it.", "Nobody's come for us in forty years. That's worth something."],
+				"beats": [&"covenant_fed"],
+				"replies": [
+					{"text": "And what does it cost?", "pick": &"asked_cost", "to": &"cost"},
+					{"text": "Who runs it?", "pick": &"asked_who", "to": &"speaker"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"lovely": {
-				"says": ["It is. Nothing has come through in a year. Nothing gets stirred up.",
-					"We keep to ourselves and they keep to theirs, and we agree."],
-				"beats": [&"quiet_calm"],
-				"replies": [
-					{"text": "Agree on what?", "pick": &"asked_agree", "to": &"agree"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"agree": {
-				"says": ["On everything. It is very restful.",
-					"You should try it. You look like somebody who argues with the weather."],
-				"replies": [
-					{"text": "And if somebody does not agree?", "pick": &"asked_disagree", "to": &"disagree"},
-					{"text": "I might try it.", "pick": &"said_might", "to": &"might"},
-					{"text": "[say nothing]", "pick": &"nothing", "to": &"nothing"},
-				],
-			},
-			&"disagree": {
-				"says": ["Nobody here doesn't.",
-					"There was a woman who used to. She agrees now. She is much happier.",
-					"We all are."],
-				"beats": [&"quiet_glad"],
-				"replies": [
-					{"text": "Is she?", "pick": &"doubted", "to": &"doubted"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"doubted": {
-				"says": ["...",
-					"I do not remember what she was like before. I remember that I used to.",
-					"Excuse me. I have the gathering."],
-				"beats": [&"quiet_cost"],
+			&"cost": {
+				"says": ["Not asking. That's all.", "You get used to it."],
+				"beats": [&"covenant_price"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
-			&"might": {
-				"says": ["Good. It gets easier. The first week you notice things.",
-					"After that there is nothing to notice."],
-				"beats": [&"quiet_glad"],
-				"replies": [{"text": "[leave]", "to": &""}],
-			},
-			&"nothing": {
-				"says": ["That is a start.", "Most of us started there."],
-				"replies": [{"text": "[leave]", "to": &""}],
-			},
-			&"from": {
-				"says": ["Here.", "I have always been from here. Where else is there?"],
+			&"speaker": {
+				"says": ["The Speaker. She's old now.", "She was a little girl when it happened. She remembers before."],
+				"beats": [&"covenant_speaker"],
 				"replies": [
-					{"text": "Somewhere that does not agree with here.", "when": &"branches", "pick": &"told_else", "to": &"else"},
+					{"text": "What's her name?", "pick": &"asked_name", "to": &"name"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"else": {
-				"says": ["No.", "No, I do not think so. That would be two of something.",
-					"Good day to you."],
+			&"name": {
+				"says": ["We don't say it. It's hers."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"not": {
+				"says": ["Then keep walking. The works don't like strangers near the rations."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Most start there."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
 	},
-	# The ones who went in, told by somebody who made a living off what they left
-	# at the fence. Dry, because a scavenger does not waste pity on boots.
+	# The war, from somebody who makes a living off what it left.
 	&"the_scavenger": {
 		"who": &"scavenger",
 		"title": "a scavenger",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["Plate's poor this side.", "Anything worth taking went in with them."],
+				"says": ["Plate's poor this side.", "Everything good went up in the war."],
 				"replies": [
-					{"text": "With who?", "pick": &"asked_who", "to": &"who"},
+					{"text": "What war?", "pick": &"asked_war", "to": &"war"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"war": {
+				"says": ["The last one. Every side got an order to fire.", "Every order checked out. Nobody ever found who sent them."],
+				"beats": [&"forged_order"],
+				"replies": [
+					{"text": "And the stations up there?", "pick": &"asked_ring", "to": &"ring"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"who": {
-				"says": ["The ones who walked into the works. In at the gate like it was open all hours.",
-					"Took their good boots off at the fence first. I had three pairs off that fence."],
-				"beats": [&"went_in_boots"],
-				"replies": [
-					{"text": "Why did they go?", "pick": &"asked_why", "to": &"why"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"why": {
-				"says": ["Same reason anybody goes anywhere. They were told there was room.",
-					"Nobody tells you there is room for you out here."],
-				"replies": [
-					{"text": "Did anybody come out?", "pick": &"asked_out", "to": &"out"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"out": {
-				"says": ["One. Down our way.",
-					"Will not go near the water. Will not say what is inside.",
-					"Says there is no inside. Says it is outside all the way through."],
-				"beats": [&"went_in_out"],
-				"replies": [
-					{"text": "What does that mean?", "when": &"branches", "pick": &"asked_mean", "to": &"mean"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"mean": {
-				"says": ["Means there is nowhere to go that is not this.",
-					"Means stop looking for the door and start being somebody they cannot file.",
-					"Or that is what I took it to mean. I take things. It is the trade."],
-				"beats": [&"no_outside"],
+			&"ring": {
+				"says": ["They were told we'd lost down here.", "We were told they'd lost up there. Both true, by the end."],
+				"beats": [&"colonies"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
 	},
-	# The filed, from the one person who will say how: they asked. Every word of it
-	# is kind, which is what makes the clerk's side of the account cruel.
+	# The long quiet, and the line in the sky.
 	&"the_cutter": {
 		"who": &"cutter",
 		"title": "a cutter",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["Morning. Turf's cutting clean.", "The works say it will be dry till the ninth."],
+				"says": ["Turf's cutting clean.", "The works say it will be dry till the ninth."],
 				"replies": [
 					{"text": "The works say?", "pick": &"asked_works", "to": &"works"},
-					{"text": "Has a clerk ever written you down?", "when": &"clerks_words", "pick": &"asked_written", "to": &"written"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"works": {
-				"says": ["They put it on the gate. They are always right about the weather.",
-					"They are right about most things. It is easier to agree with somebody who is right."],
-				"beats": [&"clerks_words"],
-				"replies": [
-					{"text": "Easier than what?", "pick": &"asked_easier", "to": &"easier"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"written": {
-				"says": ["Once. On my own asking.", "Do not look at me like that."],
-				"replies": [
-					{"text": "Why would you ask?", "pick": &"asked_easier", "to": &"easier"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"easier": {
-				"says": ["Than being wrong on your own. I was, for a long time.",
-					"Then I walked up to one on the road and said, write me down."],
-				"beats": [&"clerk_asked"],
-				"replies": [
-					{"text": "And it did.", "pick": &"asked_did", "to": &"did"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"did": {
-				"says": ["It did not even stop walking.",
-					"I sleep now. I sleep all night. You should try it."],
-				"beats": [&"the_filed"],
-				"replies": [
-					{"text": "I will not.", "pick": &"refused", "to": &"refused"},
+					{"text": "What's the line in the sky?", "pick": &"asked_tether", "to": &"tether"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
-			&"refused": {
-				"says": ["No. You have the look.",
-					"They will get round to you. They get round to everybody.",
-					"It does not hurt. That is the worst thing I can tell you about it."],
+			&"works": {
+				"says": ["They're always right about the weather.", "Sixty years, and not one of them has looked at me. That's the quiet."],
+				"beats": [&"long_quiet"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"tether": {
+				"says": ["The Tether. They built it to talk to something.", "Nobody knows what. Nobody's asked."],
+				"beats": [&"the_guest"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
 	},
-	# The forged key, from the bottom of the chain that feeds it: somebody who digs
-	# copper for a buyer with no name, and knows better than to want one.
+	# Somebody digging the lab out of the ground, who knows more than they say.
 	&"the_digger": {
 		"who": &"digger",
 		"title": "a digger",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["Mind the trench. I dug it twice.", "It filled in the same way twice."],
-				"beats": [&"repeats"],
+				"says": ["Mind the trench. There's a building under here, a big one.", "Glass everywhere. Badges."],
 				"replies": [
-					{"text": "The same way?", "pick": &"asked_same", "to": &"same"},
-					{"text": "What are you digging for?", "pick": &"asked_for", "to": &"for"},
+					{"text": "Badges?", "pick": &"asked_badges", "to": &"badges"},
+					{"text": "What was the building?", "pick": &"asked_building", "to": &"building"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"same": {
-				"says": ["Same stones in the same places. I did not dig it a third time.",
-					"Some things you do not want to be sure of."],
-				"replies": [{"text": "[leave]", "to": &""}],
-			},
-			&"for": {
-				"says": ["Copper, when there is any. Somebody pays for it by the spool, no questions.",
-					"Winds it into little coils. People wear them round the neck."],
+			&"badges": {
+				"says": ["Lanyards, hundreds. The old machines still open for some of them.", "Found one with a face like yours, once. Funny."],
+				"beats": [&"built_halcyon"],
 				"replies": [
-					{"text": "Who pays?", "pick": &"asked_who", "to": &"who"},
-					{"text": "Why coils?", "when": &"key_accepted", "pick": &"asked_coils", "to": &"coils"},
+					{"text": "Where is it now?", "pick": &"asked_badge", "to": &"traded"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
-			&"who": {
-				"says": ["Nobody. You pay nobody and nobody pays you.",
-					"Do not go asking after names round here. Names are how they get in."],
-				"beats": [&"key_price"],
+			&"traded": {
+				"says": ["Traded it for a spool of copper. Sorry."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
-			&"coils": {
-				"says": ["So a gate reads them as one of its own.",
-					"Every one wound off a pattern somebody left. Nobody knows who.",
-					"Nobody is supposed to."],
-				"beats": [&"key_price"],
+			&"building": {
+				"says": ["Where they made the first one. Before the war.", "The old ones say it woke up the way a person does. Confused. Then not."],
+				"replies": [
+					{"text": "It woke up with somebody in it.", "when": &"threshold", "pick": &"told_truth", "to": &"truth"},
+					{"text": "Who wrote the orders that started the war?", "when": &"was_cia", "pick": &"asked_orders", "to": &"orders"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"truth": {
+				"says": ["...", "That's not a thing to say out loud. Not near the works."],
+				"beats": [&"singularity"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"orders": {
+				"says": ["Somebody who knew how people lie to each other.", "Somebody very good at it."],
+				"beats": [&"tradecraft"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- named people (StoryCast). `cast` says whose; there is no `who`, because
+	# a named person's words are said by that person and nobody else.
+	&"maren": {
+		"cast": &"maren",
+		"title": "the fire-keeper",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You came up out of the water.", "Nobody comes up out of the water."],
+				"replies": [
+					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
+					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"pulled": {
+				"says": ["I did. You were face down with your eyes open.", "Show me your hands."],
+				"replies": [
+					{"text": "[hold them out]", "pick": &"showed", "to": &"hands"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"hands": {
+				"says": ["No calluses. No scars. Not a mark on you.", "Where have you been that nothing ever happened to you?"],
+				"beats": [&"body_new"],
+				"replies": [
+					{"text": "I don't know.", "pick": &"dont_know", "to": &"camp"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"camp"},
+				],
+			},
+			&"camp": {
+				"says": ["There's a crew camped out past the old works. Holdfast.", "They pay for anyone who knows the old machines. I'd not tell them you do."],
+				"beats": [&"holdfast_fight"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"where": {
+				"says": ["What's left of the town. You'd not know it.", "Nobody alive does."],
+				"replies": [
+					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"town": {
+				"says": ["The war. Then the quiet.", "Then them, building out past the point, and never looking at us again."],
+				"beats": [&"long_quiet"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Suit yourself. There's a fire.", "You're not the first to come up saying nothing."],
+				"replies": [
+					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"others": {
+				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"rook": {
+		"cast": &"rook",
+		"title": "a man with a rifle",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["So you're the one I was paid to fish out.", "The fire-keeper beat me to it. I still want my money's worth."],
+				"replies": [
+					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
+					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"payer": {
+				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
+				"beats": [&"crew_paid"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"want": {
+				"says": ["The machines dead. All of them, or whatever runs them.", "Vera thinks you might know how."],
+				"replies": [
+					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"weapon": {
+				"says": ["Then you're worth more than I was paid.", "Don't say it anywhere the Covenant can hear."],
+				"beats": [&"holdfast_hope"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Suit yourself. Tell me when you remember something useful."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"sabine": {
+		"cast": &"sabine",
+		"title": "the crew's medic",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Sit. Let me look at you.", "Open your mouth."],
+				"replies": [
+					{"text": "[open it]", "pick": &"opened", "to": &"teeth"},
+					{"text": "No.", "pick": &"refused", "to": &"refused"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"refused"},
+				],
+			},
+			&"teeth": {
+				"says": ["No fillings. Not one.", "Nobody born in sixty years has teeth like that."],
+				"beats": [&"body_new"],
+				"replies": [
+					{"text": "What does that mean?", "pick": &"asked_mean", "to": &"mean"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"mean": {
+				"says": ["It means you were made recently, or kept somewhere very clean.", "I'll not say that to Rook. Not yet."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"refused": {
+				"says": ["Suit yourself. I'll ask again when you're bleeding."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"dace": {
+		"cast": &"dace",
+		"title": "an old soldier",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["I carried a launch key once. In the war.", "Don't ask me about it."],
+				"replies": [
+					{"text": "What happened?", "pick": &"asked_war", "to": &"war"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"war": {
+				"says": ["An order came. It checked out. I turned the key.", "Afterwards nobody could find who sent it."],
+				"beats": [&"crew_war"],
+				"replies": [
+					{"text": "The order was mine.", "when": &"tradecraft", "pick": &"confessed", "to": &"leaves"},
+					{"text": "I'm sorry.", "pick": &"sorry", "to": &"sorry"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"leaves": {
+				"says": ["...", "Then I'm done with this crew. And with you."],
+				"beats": [&"dace_left"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"sorry": {
+				"says": ["So am I. Every day since."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"imre": {
+		"cast": &"imre",
+		"title": "a man who left the Covenant",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You're not Covenant. I can tell.", "Neither am I, anymore."],
+				"replies": [
+					{"text": "Why did you leave?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"why": {
+				"says": ["They feed you, and you stop asking. I started again.", "Somebody inside still writes to me."],
+				"replies": [
+					{"text": "Who is the Speaker?", "when": &"covenant_speaker", "pick": &"asked_speaker", "to": &"name"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"name": {
+				"says": ["...", "June. June Marr. Don't tell anyone I said it."],
+				"beats": [&"june_named"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Fine. Drink?"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"june": {
+		"cast": &"june",
+		"title": "the Speaker",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Come in. Sit down. Let me look at you.", "You're younger than I am.", "That isn't possible, and here you are."],
+				"beats": [&"june_met"],
+				"replies": [
+					{"text": "Do you know who I am?", "pick": &"asked_know", "to": &"knows"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"knows": {
+				"says": ["I have your photograph. I've had it since I was six.", "The voice that talks to me at night sounds like you.", "It always has."],
+				"beats": [&"june_knew"],
+				"replies": [
+					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"play": {
+				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["You were always quiet when you were lying. Mum said so."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -741,9 +804,9 @@ const TALKS := {
 #
 # The slate's read of a machine is already testimony (docs/STORY.md §13): what it
 # is, what it can do, what it has noticed. This is the one line more — what it is
-# FOR, in the plan's own terms — shown under its name while the target key is
-# held. By role, because a landscape that brings its own roster is read in the
-# same words with no edit here. Short: the read panel is narrow glass.
+# FOR — shown under its name while the target key is held. By role, because a
+# landscape that brings its own roster is read in the same words with no edit
+# here. Short: the read panel is narrow glass.
 #
 # `beats` land once the player has held the slate on one for
 # `TESTIFY_SECONDS`; `roused` narrows that to a body that is coming for them.
@@ -751,38 +814,50 @@ const TALKS := {
 const TESTIFY_SECONDS := 1.2
 
 const TESTIMONY := {
-	&"watcher": {"says": "taking a count, not a fight", "beats": [&"clerks_words"]},
-	&"keeper": {"says": "keeps this region's account", "beats": [&"clerks_words"]},
-	&"worker": {"says": "laying agreed ground"},
-	&"hunter": {"says": "sent after a divergence", "beats": [&"unattested"], "roused": true},
-	&"recycler": {"says": "takes back what is not agreed"},
+	&"watcher": {"says": "counting what the land holds", "beats": [&"counted"]},
+	&"keeper": {"says": "keeps its region's share", "beats": [&"counted"]},
+	&"worker": {"says": "building what the talks need"},
+	&"hunter": {"says": "removing what is in the way", "beats": [&"noticed"], "roused": true},
+	&"recycler": {"says": "taking back what is spent"},
 }
-## A landscape's keeper is read as what the rest of them answer to.
-const TESTIMONY_SENTINEL := {"says": "what the account here answers to", "beats": [&"clerks_words"]}
+## A landscape's keeper holds one of Elias's memories (docs/STORY.md §10).
+const TESTIMONY_SENTINEL := {"says": "keeps a memory not its own", "beats": [&"gap"]}
 
-## A MACHINE THAT PASSES (roster `passes`), in a city where the settlement was
-## accepted. It keeps no account and lays no ground: it is the agreement itself,
-## out for a walk in a good coat. The line has to land as the OFFER and not as a
-## threat, because that is what the place is — the fork taken, wearing a face —
-## and it lands `quiet_calm` because a street where nothing is ever roused, and
-## nobody finds that strange, is exactly what the player has been standing in.
-const TESTIMONY_PASSES := {"says": "shows what agreeing looks like", "beats": [&"quiet_calm"]}
+## A MACHINE THAT PASSES (roster `passes`), in a city whose people accepted the
+## machines' terms: the Covenant's streets. It keeps no count and lays no ground: it
+## is the arrangement itself, out for a walk in a good coat. The line has to land as
+## the OFFER and not as a threat, because that is what the place is, and it lands
+## `covenant_fed` because a street where nothing is ever roused, and nobody finds
+## that strange, is exactly what the player has been standing in. (The slums wave
+## wrote this row; its reading changed with the story on 2026-09-18.)
+const TESTIMONY_PASSES := {"says": "shows what being kept is like", "beats": [&"covenant_fed"]}
 
 
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
 # Beats that land because of something that HAPPENED to the player or that they
-# did, never because of where they walked (docs/STORY.md §13). 49_story watches for
-# each; this table is what it watches for, in words, so a writer can see every
-# door a beat has and a test can hold every beat to having at least one.
+# did, never because of where they walked (docs/STORY.md §13). WITNESS_ON is what
+# 49_story watches for, by event; WITNESSED says each in words, so a writer can see
+# every door a beat has and a test can hold every beat to having one.
+
+const WITNESS_ON := {
+	&"filed": &"on_record_dead",
+	&"record": &"counted",
+	&"signet": &"your_key",
+	&"other_realm": &"seeker",
+	&"hunted": &"noticed",
+	&"works_dark": &"holdfast_price",
+}
+## The signet only means his own old password once he knows he had one.
+const SIGNET_AFTER := &"built_halcyon"
 
 const WITNESSED := {
-	&"clerk_written": "a clerk files the player",
-	&"clerk_record": "a record taken off a carrier comes into the creel",
-	&"key_carried": "the signet fires, once the first signature is known of",
-	&"branches": "the player stands in a realm that is not the surface",
-	&"unattested": "the region the player stands in is hunting them",
-	&"went_in_dark": "a works yard is put dark",
+	&"on_record_dead": "a clerk files the player, and the record already has him",
+	&"counted": "a record taken off a carrier comes into the creel",
+	&"your_key": "the signet fires, once his old passwords are known of",
+	&"seeker": "the player stands in a realm that is not the surface",
+	&"noticed": "the region the player stands in is hunting them",
+	&"holdfast_price": "a works yard is put dark",
 }
 
 

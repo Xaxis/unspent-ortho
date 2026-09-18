@@ -4,6 +4,7 @@ extends GameSystem
 ##
 ## A tour is a text file, one command per line, `#` comments:
 ##   at X,Y                 teleport the player (tile space)
+##   at KIND:NAME           stand where a system says (`cast:maren`: beside a named person)
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
@@ -254,6 +255,10 @@ func _run() -> void:
 			"at":
 				if parts[1].begins_with("prop:"):
 					ok = _stand_by(parts[1].substr(5))
+				elif parts[1].contains(":"):
+					# KIND:NAME that a system owns (`cast:maren`): whichever answers
+					# `tour_place` says where, so the runner knows no story names.
+					ok = _stand_at_named(parts[1])
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
@@ -699,6 +704,18 @@ func _now_true(what: String) -> bool:
 ## what is built), so a tour names what it wants instead of the tile it lay on
 ## last month. It tries each way round until the prop is the thing under the hand:
 ## what the ruin left beside it can be nearer, and `use` takes what is in front.
+func _stand_at_named(what: String) -> bool:
+	for sys in game.systems:
+		if not sys.has_method(&"tour_place"):
+			continue
+		var p: Vector2 = sys.call(&"tour_place", what)
+		if p != Vector2.INF:
+			_teleport(p)
+			return true
+	printerr("tour %s: nothing answers at %s" % [_name, what])
+	return false
+
+
 func _stand_by(name: String) -> bool:
 	var kind := PropKind.NAMES.find(name.replace("_", " "))
 	if kind < 0:

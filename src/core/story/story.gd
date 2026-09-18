@@ -29,12 +29,15 @@ static var _read: Array[StringName] = []
 static var _beats: Dictionary = {}
 ## Where a question was asked -> what the player said.
 static var _choices: Dictionary = {}
+## Named people he has spoken to, in the order he met them (StoryCast).
+static var _met: Array[StringName] = []
 
 
 static func forget() -> void:
 	_read.clear()
 	_beats.clear()
 	_choices.clear()
+	_met.clear()
 
 
 # --- what has been found -----------------------------------------------------
@@ -74,6 +77,18 @@ static func choose(id: StringName, pick: StringName) -> void:
 	_choices[id] = pick
 	Events.story_chose.emit(id, pick)
 	_land_beats_for(id)
+
+
+## He has spoken to this named person. True the first time only.
+static func meet(id: StringName) -> bool:
+	if id == &"" or _met.has(id):
+		return false
+	_met.append(id)
+	return true
+
+
+static func met(id: StringName) -> bool:
+	return _met.has(id)
 
 
 static func chose(id: StringName) -> StringName:
@@ -146,7 +161,10 @@ static func save_state() -> Dictionary:
 	var beats := PackedStringArray()
 	for id: StringName in _beats:
 		beats.append(String(id))
-	return {"read": read, "beats": beats, "choices": choices}
+	var met := PackedStringArray()
+	for id: StringName in _met:
+		met.append(String(id))
+	return {"read": read, "beats": beats, "choices": choices, "met": met}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -158,3 +176,5 @@ static func load_state(d: Dictionary) -> void:
 	var choices: Dictionary = d.get("choices", {})
 	for k: Variant in choices:
 		_choices[StringName(str(k))] = StringName(str(choices[k]))
+	for s: String in d.get("met", []):
+		_met.append(StringName(s))
