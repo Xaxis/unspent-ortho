@@ -23,11 +23,19 @@ extends RefCounted
 ## and the fifth, story, is what somebody says about it, which is the story
 ## package's and never this file's.
 ##
-## WHAT THIS FILE IS NOT. It places nothing and draws nothing. `GenScatter` reads
-## it and lays what it says; the models are the props' own. A kind here is a
-## sentence about a place, and a landscape claims the ones it holds by name in
-## `BiomeDef.sites` — so adding a place to the game is adding a row here and a
-## word in one landscape file, and no worldgen stage learns a new name.
+## WHAT THIS FILE IS NOT. It places nothing, draws nothing, and **says nothing
+## about HOW MANY of anything a region holds.** It lays no patch and picks no
+## spot; `GenScatter` reads it and lays what it says, and the models are the
+## props' own. A kind here is a sentence about a place, and a landscape claims
+## the ones it holds by name in `BiomeDef.sites` — so adding a place to the game
+## is adding a row here and a word in one landscape file, and no worldgen stage
+## learns a new name.
+##
+## The density is deliberately not here, and this line is the whole reason to say
+## so: a count answered in two files is a count that will disagree with itself,
+## and every one of this project's worst days has been a rule nobody restated
+## when its premise changed. A per-region count lived here for a day. It is
+## worldgen's, where the tiles are known.
 ##
 ## COMPOSED FROM PROPS THAT ALREADY EXIST, deliberately: a kind that needs a new
 ## model cannot land until somebody draws it, and this project has a long list of
@@ -165,20 +173,3 @@ static func has(id: StringName) -> bool:
 
 static func row(id: StringName) -> Dictionary:
 	return ROWS.get(id, {})
-
-
-## How many of a kind a REGION of this many tiles holds, given what the landscape
-## declared. The declared number is per CHAPTER — a region big enough to be one —
-## and everything else is a share of that, so a spur gets one and a landscape you
-## cannot cross in a minute gets a landscape's worth.
-##
-## This is the line that answers "a bigger region was a bigger empty one": the
-## count is no longer per island, per TYPE, absolute, which is what it was when
-## the whole world was one island and every landscape was two screens across.
-const CHAPTER_TILES := 42000.0
-
-static func want(declared: int, region_tiles: int) -> int:
-	if declared <= 0:
-		return 0
-	var share := float(region_tiles) / CHAPTER_TILES
-	return maxi(1, roundi(float(declared) * share))

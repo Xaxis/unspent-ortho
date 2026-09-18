@@ -3,10 +3,12 @@ extends TestCase
 ##
 ## What is held here is that every kind is a PLACE and not scenery: a reason to
 ## walk there, something standing in it, and — for the ones that are meant to be
-## earned — something in the way. Four kinds of place and an absolute count per
-## island is what made a bigger landscape a bigger empty one, so the two things
-## most worth failing on are a kind that gives nothing and a count that does not
-## know how big the region is.
+## earned — something in the way. Four kinds of place across a whole island is
+## what made a bigger landscape a bigger empty one, so the thing most worth
+## failing on is a kind that gives nothing.
+##
+## And one boundary: how MANY of anything a region holds is worldgen's question,
+## never this file's.
 
 
 func test_every_kind_can_actually_be_built_today() -> void:
@@ -58,17 +60,25 @@ func test_the_walls_are_the_games_own_and_never_new_ones() -> void:
 	gt(float(open_ones) / float(SiteKinds.ids().size()), 0.5, "most places are simply out there")
 
 
-func test_how_many_a_region_holds_knows_how_big_the_region_is() -> void:
-	# THE LINE THAT ANSWERS "a bigger region was a bigger empty one". The count was
-	# absolute, per landscape TYPE, across the whole island — so a region ten times
-	# the size held exactly as many places.
-	var chapter := int(SiteKinds.CHAPTER_TILES)
-	eq(SiteKinds.want(4, chapter), 4, "a chapter-sized region holds what the landscape declared")
-	eq(SiteKinds.want(4, chapter * 2), 8, "twice the region, twice the places")
-	eq(SiteKinds.want(4, chapter / 4), 1, "a quarter of one holds a quarter of them")
-	eq(SiteKinds.want(0, chapter), 0, "a landscape that declares none holds none")
-	# A spur is still a place with something in it, never a blank.
-	gt(SiteKinds.want(1, 200), 0, "the smallest run that is a region still holds one")
+func test_this_file_never_answers_how_many() -> void:
+	# THE OWNERSHIP LINE, and it is worth a test because it was crossed. For one
+	# day this file held a per-region density of its own beside the one worldgen
+	# owns — two answers to one question, which is how every long-lived bug in
+	# this project has started: a rule nobody restated when its premise changed.
+	#
+	# Nothing here may know how big a region is. Every number in this file is
+	# about ONE place — how wide it is, how far it keeps from a village — so a
+	# constant in the thousands could only be a tile count, and a tile count is
+	# `GenScatter`'s, where the tiles are actually known.
+	var consts := (SiteKinds as Script).get_script_constant_map()
+	for name: String in consts:
+		var v: Variant = consts[name]
+		if v is float or v is int:
+			lt(absf(float(v)), 1000.0, "SiteKinds.%s is about a place, not about a region" % name)
+	for id: StringName in SiteKinds.ids():
+		var r := SiteKinds.row(id)
+		lt(float(r.radius), 1000.0, "%s is a place, not a region" % id)
+		lt(float(r.clear), 1000.0, "%s keeps a walk's distance, not a region's" % id)
 
 
 func test_a_place_is_a_walk_and_not_a_doorstep() -> void:
