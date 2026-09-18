@@ -1302,6 +1302,39 @@ wave, or every new type looks borrowed.
 - **Crafts:** glider wings, drill crawler, submersible, climber.
 - **Sentinels** for every new type.
 
+### The city wave, in flight (2026-09-18)
+
+The Slums is the first urban landscape and the owner's direction for it is a
+Blade Runner city: decayed and thriving at once, high tech, holograms and
+advertising and technology everywhere, skyscrapers, flying machines, crowds.
+What it was a day ago was eight one-storey huts. Three things had been built for
+it and never claimed, which is the pattern this project keeps finding: `built`
+(the city declares `BiomeForms.RAISED` and a street plan now), `street_folk`
+(thirty people rather than a village's six) and the whole foreground layer.
+
+What has landed: the lid stopped dimming the moon and the engine stopped being
+held to seven lamps, so the city lights itself; `BiomeForms` split the PACK of
+shapes from the COUNT of buildings, so a settlement can be bigger than the six
+silhouettes it owns (17-25 buildings on three lanes); and the foreground layer
+asks a building's FORM rather than its prop kind, so the city hangs walkways and
+lit sign arms over its street instead of a cottage eave.
+
+**The thing that decides the rest is the camera, and it is worth stating plainly
+because it is not obvious**: the play camera is ORTHOGRAPHIC, so nothing far away
+is smaller. There is no skyline to put on a horizon — a tower thirty tiles off is
+not distant, it is off the picture, which is the same arithmetic
+`Landmarks.read_reach` already found. So a city's height can only ever be read
+from INSIDE the canyon, which makes what crosses over the street, and what
+happens to geometry between the camera and the player, the whole of the problem
+rather than a polish item. See #96.
+
+Still open: real height (the tallest form is 9.6 units, five times a person),
+density read against the frame (16.4 tiles between street centres against a
+26.7-tile frame is one street and the backs of two others), holograms as light in
+the air rather than boards on brackets, and **flying machines — nothing in this
+game flies at all**, though the roster's vocabulary already has `crosses: &"fly"`
+waiting for something to use it.
+
 ## M4 — The plan and the people
 
 - **Story:** the words, written from nothing. What the machines' ultimate plan is,
