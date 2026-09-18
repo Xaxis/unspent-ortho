@@ -199,3 +199,69 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 			home = i
 	bodies[home]["home"] = true
 	return {"size": size, "bodies": bodies}
+
+
+# --- The deal (docs/WORLD.md §4) ------------------------------------------------
+
+## Which landscapes may lie on which body, recorded on `WorldData.continents` so
+## nobody downstream has to work it out. Honours `BiomeDef.spread`:
+## `most` caps how many bodies carry a type, `least` floors it.
+##
+## ONE BODY TAKES EVERY TYPE, which is what a world has always done, so this is a
+## no-op on every world the project generates today.
+##
+## A body is never left with nothing: a world with an empty continent on it is a
+## worse outcome than a type appearing once more than its `most` asked, so the
+## floor wins and the reason is written into the deal.
+static func deal(c: GenContext) -> void:
+	var bodies := c.w.continents
+	if bodies.is_empty():
+		return
+	# Only the CONTINENTS the plan asked for are dealt to. Everything else that
+	# came out of the shape is a skerry and is left alone: `w.continents` records
+	# every run of land, and a 512 world is one island and half a dozen of them.
+	var planned := maxi(1, c.bodies.size())
+	if planned == 1:
+		bodies[0]["types"] = PackedInt32Array(c.land_types)
+		return
+	var rng := Rng.make(c.s, 0xDEA1)
+	var home := 0
+	for i in bodies.size():
+		if bool((c.bodies[i] as Dictionary).get("home", false)) if i < c.bodies.size() else false:
+			home = i
+	planned = mini(planned, bodies.size())
+	var got: Array[PackedInt32Array] = []
+	for i in planned:
+		got.append(PackedInt32Array())
+	for cc: int in c.land_types:
+		var sp: Vector2i = c.defs[cc].spread
+		var most := planned if sp.y <= 0 else mini(sp.y, planned)
+		var want := maxi(1, mini(most, planned))
+		# A guaranteed type goes on the HOME body first: the spine of the game
+		# lives there (docs/WORLD.md §8.4) and a player who never crosses water
+		# must still meet everything something depends on.
+		var order: Array[int] = []
+		if sp.x >= 1:
+			order.append(home)
+		var rest: Array[int] = []
+		for i in planned:
+			if i != home or sp.x < 1:
+				rest.append(i)
+		while not rest.is_empty():
+			order.append(rest.pop_at(rng.randi() % rest.size()))
+		for r in mini(want, order.size()):
+			got[order[r]].append(cc)
+	# Nothing may be left barren.
+	for i in planned:
+		if got[i].is_empty() and not c.land_types.is_empty():
+			got[i].append(c.land_types[rng.randi() % c.land_types.size()])
+	for i in planned:
+		bodies[i]["types"] = got[i]
+
+
+## The tile rect a body occupies, for placing anything within it.
+static func bounds_of(w: WorldData, id: int) -> Rect2:
+	for b: Dictionary in w.continents:
+		if int(b.id) == id:
+			return b.bounds
+	return Rect2(0, 0, w.size, w.size)

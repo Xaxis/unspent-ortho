@@ -212,3 +212,49 @@ func test_two_places_on_one_island_share_it_and_on_four_they_may_not() -> void:
 		if not many.same_body(seen[0], seen[i]):
 			apart += 1
 	gt(float(apart), 0.0, "four continents: some regions are across water from each other")
+
+
+## Which landscapes a continent was dealt, recorded on the world so nothing has to
+## infer it. One body takes every type, which is what a world has always done.
+func test_a_body_is_dealt_the_landscapes_it_may_carry() -> void:
+	var one := WorldGen.generate(1, 256)
+	var types: PackedInt32Array = one.continents[0].get("types", PackedInt32Array())
+	gt(float(types.size()), 4.0, "one island carries every landscape the world has")
+	var many := WorldGen.generate(1, 1024)
+	var dealt := 0
+	for b: Dictionary in many.continents:
+		if not b.has("types"):
+			continue
+		dealt += 1
+		gt(float((b.get("types") as PackedInt32Array).size()), 0.0,
+			"continent %d is not left barren" % int(b.id))
+	eq(dealt, 4, "every planned continent was dealt, and the skerries were left alone")
+
+
+## EXCLUSIVITY, PROVED RATHER THAN DECLARED. A landscape that naturally spans
+## every continent is confined to one by `spread`, which is the whole point of
+## the field and the thing the owner asked for.
+func test_spread_confines_a_landscape_to_one_continent() -> void:
+	var d := BiomeRegistry.get_def(&"snowfield")
+	if d == null:
+		return
+	var was := d.spread
+	var wide := _continents_holding(&"snowfield", 1, 1024)
+	d.spread = Vector2i(0, 1)
+	var narrow := _continents_holding(&"snowfield", 1, 1024)
+	d.spread = was
+	gt(float(wide), 1.0, "the snowfield spans several continents when nothing confines it")
+	eq(narrow, 1, "and exactly one when spread says at most one")
+
+
+static func _continents_holding(id: StringName, seed_value: int, size: int) -> int:
+	var w := WorldGen.generate(seed_value, size)
+	var per := {}
+	for i in w.country.size():
+		if w.continent[i] != GenBodies.VOID and BiomeRegistry.name_of(w.country[i]) == String(id):
+			per[w.continent[i]] = int(per.get(w.continent[i], 0)) + 1
+	var n := 0
+	for b: int in per:
+		if int(per[b]) > 400:
+			n += 1
+	return n

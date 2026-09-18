@@ -66,6 +66,9 @@ static func fit_types(c: GenContext) -> void:
 
 static func coarse(c: GenContext) -> void:
 	fit_types(c)
+	# WHICH LANDSCAPES MAY LIE ON WHICH BODY, decided and recorded before a site is
+	# placed. With one body it is every type, which is what a world has always had.
+	GenBodies.deal(c)
 	var rng := Rng.make(c.s, 201)
 	var sites := _sites(c, rng)
 	var cw := c.cw
@@ -264,14 +267,21 @@ static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
 			continue
 		kept.append(e)
 	var mirror := rng.randf() < 0.5
-	var r := c.land_rect
 	var out: Array[Vector3] = []
+	# An anchor is a place on a BODY, not a place in the square. With one body the
+	# two are the same rect and nothing moves; with several, mapping u,v across the
+	# whole archipelago would put a landscape's heart in open ocean.
+	var seen_of := {}
 	for e: Dictionary in kept:
 		var u := float(e.u) + rng.randf_range(-0.05, 0.05)
 		var v := float(e.v) + rng.randf_range(-0.035, 0.035)
 		if mirror:
 			u = 1.0 - u
-		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, e["type"]))
+		var cc: int = e["type"]
+		var nth: int = int(seen_of.get(cc, 0))
+		seen_of[cc] = nth + 1
+		var r := _rect_for(c, cc, nth)
+		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, cc))
 	_envelope_sites(c, rng, out)
 	return out
 
@@ -280,6 +290,45 @@ static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
 ## distance from the sea give a climate before any relief exists, and a type
 ## goes where that climate fits it, near what it likes and away from its own
 ## other sites.
+## The rect the `nth` site of type `cc` is placed in: the whole land when there is
+## one body, and otherwise the bounds of one of the bodies that type was dealt,
+## taken in turn so a type on two continents puts a heart on each.
+static func _rect_for(c: GenContext, cc: int, nth: int) -> Rect2:
+	# THE PLAN SAYS HOW MANY CONTINENTS THERE ARE, not `w.continents`, which counts
+	# every scrap of land — a 512 world has one island and half a dozen skerries,
+	# and reading its length as a body count moved every seed's island the first
+	# time this was written.
+	if c.bodies.size() <= 1:
+		return c.land_rect
+	var bodies := c.w.continents
+	var mine: Array[int] = []
+	for i in bodies.size():
+		var types: PackedInt32Array = bodies[i].get("types", PackedInt32Array())
+		if types.has(cc):
+			mine.append(i)
+	if mine.is_empty():
+		return c.land_rect
+	return bodies[mine[nth % mine.size()]].bounds as Rect2
+
+
+## May this type stand here? True everywhere on a one-body world.
+static func _dealt_here(c: GenContext, cc: int, p: Vector2) -> bool:
+	if c.bodies.size() <= 1:
+		return true
+	var id := c.w.continent_at(floori(p.x), floori(p.y))
+	if id == GenBodies.VOID:
+		return false
+	for b: Dictionary in c.w.continents:
+		if int(b.id) != id:
+			continue
+		# A mass nobody dealt is a skerry, not a continent: whatever washed up on
+		# it is welcome. Only a DEALT body turns a type away.
+		if not b.has("types"):
+			return true
+		return (b.get("types") as PackedInt32Array).has(cc)
+	return false
+
+
 static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Array[Vector3]) -> void:
 	var wanted: Array[int] = []
 	for cc: int in c.land_types:
@@ -312,6 +361,8 @@ static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Arra
 			for j in cells.size():
 				var p := Vector2(cells[j].x, cells[j].y)
 				if cells[j].z > 0.0:
+					continue
+				if not _dealt_here(c, cc, p):
 					continue
 				var score := _fit(c, d, p, r)
 				if score <= 0.0:
