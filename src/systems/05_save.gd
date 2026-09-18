@@ -27,7 +27,28 @@ extends GameSystem
 
 signal wrote(slot: int, reason: StringName)
 
-const THUMB := Vector2i(160, 90)
+## How big the save's picture is CAPTURED, and it is the size the saves app
+## draws it at (`UiSavesScreen.THUMB`), so there is no upscale in front of it any
+## more. It was 160x90 — a quarter of the legacy 640x360 base — and drawn at two
+## times, which is the softness LANTERN exists to remove.
+##
+## Measured on a real frame, as base64 in the header, against about 6 KB for
+## everything else a save holds:
+##
+##   160x90  PNG   39 KB   what it was
+##   320x180 PNG  144 KB   why nobody simply raised it
+##   480x270 PNG  313 KB
+##   320x180 JPEG  34 KB   <- four times the pixels, SMALLER than what it replaced
+##
+## So the picture got sharper and the save got smaller, and the choice that
+## looked like a trade was only ever a trade in PNG. `SaveSlots.thumbnail` reads
+## both formats, so every save written before this still opens with its picture:
+## the format was never a contract outside that one function — `SaveFile` md5s
+## the base64 string and never looks inside it.
+const THUMB := Vector2i(320, 180)
+## What a lossy picture of a lit world costs before anyone can see it go. At 80
+## the artefacts are under the grain the frame already has at this size.
+const THUMB_QUALITY := 0.8
 ## Frames drawn with no page open before an autosave takes its picture: the
 ## frame a page closes on still shows the page.
 const CLEAR_FRAMES := 3
@@ -198,7 +219,7 @@ func save_to(slot: int) -> String:
 		return "There is no such slot."
 	if not calm():
 		return "Not with that so close."
-	var thumb := png(_world_frame) if not game.open_screens.is_empty() else thumbnail()
+	var thumb := photo(_world_frame) if not game.open_screens.is_empty() else thumbnail()
 	return _write(slot, &"manual", thumb)
 
 
@@ -212,7 +233,7 @@ func save_on_leaving() -> String:
 		return ""
 	if not calm():
 		return "Not with that so close."
-	var thumb := png(_world_frame) if not game.open_screens.is_empty() else thumbnail()
+	var thumb := photo(_world_frame) if not game.open_screens.is_empty() else thumbnail()
 	return _write(SaveSlots.AUTO, &"quit", thumb)
 
 
@@ -275,7 +296,7 @@ func _land() -> StringName:
 
 ## The last drawn frame, small, as PNG bytes; empty where nothing is drawn (headless).
 func thumbnail() -> PackedByteArray:
-	return png(frame())
+	return photo(frame())
 
 
 ## The last drawn frame, THUMB-sized; null where nothing is drawn (headless).
@@ -292,5 +313,15 @@ func frame() -> Image:
 	return img
 
 
-static func png(img: Image) -> PackedByteArray:
-	return img.save_png_to_buffer() if img != null and not img.is_empty() else PackedByteArray()
+## A save's picture as bytes. JPEG since 2026-09-18 — see THUMB for what that
+## bought and why it needed no migration. Kept named `png` nowhere: a reader that
+## believes the name would believe the wrong format.
+static func photo(img: Image) -> PackedByteArray:
+	if img == null or img.is_empty():
+		return PackedByteArray()
+	# A viewport hands back RGBA8 and JPEG has no alpha. Converting here rather
+	# than hoping the encoder does it: a save's picture is not worth a chance of
+	# an encoder refusing a format at the one moment the player is leaving.
+	if img.get_format() != Image.FORMAT_RGB8:
+		img.convert(Image.FORMAT_RGB8)
+	return img.save_jpg_to_buffer(THUMB_QUALITY)
