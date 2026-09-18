@@ -46,6 +46,11 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	var marks := {}
 	c.mark(&"start")
 	GenShape.run(c)
+	# WHICH BODY EACH TILE IS ON, BEFORE ANYTHING IS LAID ON IT. It ran at the end
+	# when all it had to do was record; the dealer needs it here, because "may this
+	# landscape stand on THIS continent" cannot be asked of a world that does not
+	# yet know where its continents are (docs/WORLD.md §4).
+	GenBodies.run(c)
 	t = _mark(c, marks, &"shape", t)
 	GenCountries.coarse(c)
 	t = _mark(c, marks, &"layout", t)
@@ -89,7 +94,6 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# whose land a tile is on.
 	w.road = c.road
 	w.recipe = c.recipe
-	GenBodies.run(c)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]
