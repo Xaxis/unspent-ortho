@@ -1,0 +1,223 @@
+extends TestCase
+## A CITY STREET, and the three things that make one: everybody is working, the
+## crowd is indifferent to a stranger, and violence in front of it is expensive.
+##
+## The measurements here are the point as much as the passes. A crowd is where
+## `PersonLook`'s caps actually bind, and the numbers below are what they bind
+## at, taken rather than assumed.
+
+static var _world: WorldData
+
+
+func _game(hour: float = 12.0) -> Game:
+	if _world == null:
+		_world = WorldGen.generate(5)
+	var g := Game.new()
+	g.world = _world
+	g.query = WorldQuery.new(_world)
+	g.clock = WorldClock.new(hour)
+	g.player = Player.new()
+	g.player.world = _world
+	g.player.query = g.query
+	g.player.pos = _world.spawn
+	return g
+
+
+func _folk(g: Game) -> GameSystem:
+	var f: GameSystem = (load("res://src/systems/35_folk.gd") as GDScript).new()
+	f.game = g
+	return f
+
+
+func _free(g: Game, f: GameSystem) -> void:
+	for p: Dictionary in f.get("folk"):
+		(p.model as Node).free()
+	f.free()
+	g.player.free()
+	g.free()
+
+
+## How many others somebody must stand among before they stop looking up.
+func _blind() -> int:
+	var s := load("res://src/systems/35_folk.gd") as GDScript
+	return int(s.get_script_constant_map()["CROWD_BLIND"])
+
+
+## Stand `n` people round the player and settle who is standing among whom.
+func _street(g: Game, n: int) -> GameSystem:
+	var f := _folk(g)
+	f.call("_ring", n)
+	f.call("_count_crowd")
+	return f
+
+
+# ---------------------------------------------------------------- the trades
+
+func test_every_street_trade_is_somebody_at_work_and_still_reads_apart() -> void:
+	for trade: StringName in PersonLook.STREET_TRADES:
+		var carried := 0
+		for i in 40:
+			var d := PersonLook.dress(PersonLook.random(31, i), {}, trade, i)
+			eq(d.trade, trade, "%s is kept by normalize" % trade)
+			check(PersonLook.contrast_ok(d), "%s %d still meets the contrast bar" % [trade, i])
+			lt((d.salvage as Array).size(), 3, "%s is a stranger, not a kitted player" % trade)
+			lt((d.gear as Array).size(), PersonLook.GEAR_MAX + 1, "%s carries no more than a body can" % trade)
+			if not (d.gear as Array).is_empty() or not (d.extras as Array).is_empty() or not (d.salvage as Array).is_empty():
+				carried += 1
+		# Working is the whole of what the place says, so every trade has to show
+		# it on the body somewhere.
+		gt(float(carried) / 40.0, 0.8, "%s shows its work on the body" % trade)
+
+
+func test_a_preacher_carries_nothing_and_a_courier_is_never_bent() -> void:
+	for i in 40:
+		var p := PersonLook.dress(PersonLook.random(47, i), {}, &"preacher", i)
+		eq((p.gear as Array).size(), 0, "a preacher carries nothing")
+		gt(int(p.gaunt), 0, "and is hungry with it")
+		var c := PersonLook.dress(PersonLook.random(51, i), {}, &"courier", i)
+		check(c.build != &"old" and c.build != &"bent", "a courier sells legs")
+
+
+func test_no_village_anywhere_is_ever_dealt_a_street_trade() -> void:
+	# The whole reason STREET_TRADES is a separate list: dealing one to a coast
+	# village would put a city's wraps on a fishing hamlet and move every frame
+	# already taken.
+	for land: StringName in [&"coast", &"snowfield", &"moss", &"burning"]:
+		var hz: Dictionary = BiomeRegistry.get_def(land).hazards
+		for d: Dictionary in PersonLook.villagers(3, 40, hz):
+			check(not PersonLook.STREET_TRADES.has(d.trade), "%s dealt %s to a village" % [land, d.trade])
+
+
+# ---------------------------------------------------------------- the caps
+
+func test_how_many_silhouettes_a_crowd_can_actually_hold() -> void:
+	# MEASURED, not assumed. `random()` draws build x FAIR_HATS x FAIR_COATS and
+	# insists on two of {build, hat, coat} differing from the base man, so the
+	# space is smaller than BUILDS x HATS x COATS suggests. Ask for far more than
+	# a street needs and see where it stops.
+	var most := PersonLook.crowd(9, 400).size()
+	print("  crowd: %d distinct silhouettes at the ceiling (build x fair hat x fair coat = %d)" % [most, 10 * 7 * 4])
+	gt(most, 120, "a crowd can hold more silhouettes than any street needs (%d)" % most)
+	lt(most, 10 * 7 * 4 + 1, "and never more than build x fair hat x fair coat")
+	# What a real street asks for, which must be met exactly.
+	for n: int in [24, 40, 60]:
+		eq(PersonLook.crowd(9, n).size(), n, "a street of %d is dealt in full" % n)
+
+
+func test_a_street_of_forty_keeps_its_silhouettes_apart() -> void:
+	# The dense case the village test never reached: forty people, dressed for a
+	# land with real weather in it and set apart from each other afterwards.
+	var hz := {&"dark": 0.7, &"fumes": 0.5, &"wet": 0.3}
+	var taken := {}
+	var sigs := {}
+	var repeats := 0
+	var i := 0
+	for spec: Dictionary in PersonLook.crowd(77, 40):
+		var trade := PersonLook.street_trade(77, i)
+		var d := PersonLook.set_apart(PersonLook.dress(spec, hz, trade, 77 * 31 + i), taken, hz, 77 * 17 + i)
+		var sig := PersonLook.signature(d)
+		if sigs.has(sig):
+			repeats += 1
+		sigs[sig] = true
+		check(PersonLook.contrast_ok(d), "%d of forty still meets the contrast bar" % i)
+		i += 1
+	# dress() pushes a whole street toward the one hood its weather asks for, and
+	# set_apart only has the hats and coats that land still allows to pull them
+	# back with. Some collision is the honest outcome; a street that was mostly
+	# one silhouette would not be.
+	print("  street of 40 in dark/fumes/wet: %d distinct silhouettes, %d repeats" % [sigs.size(), repeats])
+	lt(repeats, 8, "forty on one street: %d repeated silhouettes of 40" % repeats)
+	gt(sigs.size(), 32, "and %d distinct ones" % sigs.size())
+
+
+# ---------------------------------------------------------------- indifference
+
+func test_a_village_looks_up_and_a_street_does_not() -> void:
+	var g := _game()
+	var small := _street(g, 6)
+	var looked := 0
+	for f: Dictionary in small.get("folk"):
+		small.call("_step", f, 0.1, false)
+		if not is_nan((f.model as PersonModel).gaze):
+			looked += 1
+	gt(looked, 0, "in a village of six a stranger is an event")
+	_free(g, small)
+
+	var g2 := _game()
+	var big := _street(g2, 30)
+	var turned := 0
+	for f: Dictionary in big.get("folk"):
+		gt(int(f.near), _blind() - 1, "everybody in a street of thirty stands among enough others")
+		big.call("_step", f, 0.1, false)
+		if not is_nan((f.model as PersonModel).gaze):
+			turned += 1
+	eq(turned, 0, "in a street nobody looks up: %d heads turned" % turned)
+	_free(g2, big)
+
+
+func test_a_witness_is_somebody_who_is_out_and_within_reach() -> void:
+	var g := _game()
+	var f := _street(g, 30)
+	var at: Vector2 = g.player.pos
+	var near: int = f.call("witnesses", at, Interference.WITNESS_REACH)
+	print("  street of 30: %d witnesses within %.0f tiles, scaling a swing x%.2f"
+		% [near, Interference.WITNESS_REACH, Interference.witness_scale(near)])
+	gt(near, 8, "a street of thirty is a street of witnesses (%d)" % near)
+	eq(f.call("witnesses", at + Vector2(400, 400), Interference.WITNESS_REACH), 0, "nobody sees it from across the island")
+	# Somebody who has gone in at their door saw nothing.
+	for row: Dictionary in f.get("folk"):
+		row.state = &"in"
+	eq(f.call("witnesses", at, Interference.WITNESS_REACH), 0, "an empty street files nothing")
+	_free(g, f)
+
+
+# ---------------------------------------------------------------- the price
+
+func test_what_counts_as_a_crowd_is_one_number_written_in_two_places() -> void:
+	# Core holds no systems, so the threshold is duplicated on purpose. The whole
+	# design rests on them being the same number: the point at which a stranger
+	# stops being an event is the point at which a street can testify.
+	eq(Interference.WITNESS_CROWD, _blind(), "Interference and 35_folk disagree about what a crowd is")
+
+
+func test_nobody_watching_leaves_every_other_landscape_exactly_as_it_was() -> void:
+	eq(Interference.witness_scale(0), 1.0, "an empty bog costs what it always did")
+	# The regression that started this: a coast village has a couple of people
+	# standing about, and pricing them as a crowd re-tuned every landscape in the
+	# game. Everything under a crowd must cost precisely what the table says.
+	for n in Interference.WITNESS_CROWD:
+		eq(Interference.witness_scale(n), 1.0, "%d onlookers are not a crowd" % n)
+	gt(Interference.witness_scale(Interference.WITNESS_CROWD), 1.0, "and one more is")
+	var quiet := Interference.new()
+	near(quiet.raise(1, &"sabotage", Vector2.ZERO, 0.0), Interference.CAUSES[&"sabotage"], 1e-5,
+		"a raise with no witnesses named is the cause's own weight")
+
+
+func test_one_swing_in_a_full_street_turns_the_network() -> void:
+	var crowd := Interference.new()
+	var rose := crowd.raise(1, &"sabotage", Vector2.ZERO, 0.0, Interference.WITNESS_MOST)
+	gt(rose, Interference.THRESHOLDS[2], "one swing seen by a street crosses hostile (%.2f)" % rose)
+	eq(crowd.level_name(1), &"hostile")
+	# And the same blow where nobody is standing does not.
+	var alone := Interference.new()
+	var quiet := alone.raise(1, &"sabotage", Vector2.ZERO, 0.0, 0)
+	lt(quiet, Interference.THRESHOLDS[1], "the same swing alone is not even wary (%.2f)" % quiet)
+
+
+func test_a_crowd_only_scales_what_a_crowd_can_see() -> void:
+	for cause: StringName in Interference.CAUSES:
+		var seen := Interference.new().raise(1, cause, Vector2.ZERO, 0.0, Interference.WITNESS_MOST)
+		var unseen := Interference.new().raise(1, cause, Vector2.ZERO, 0.0, 0)
+		if Interference.WITNESSED.has(cause):
+			gt(seen, unseen, "%s is something a street can watch happen" % cause)
+		else:
+			near(seen, unseen, 1e-5, "%s is not, so a crowd may not price it" % cause)
+
+
+func test_a_lost_region_still_cannot_be_driven_past_its_ceiling_by_a_crowd() -> void:
+	# The reward for breaking a depot survives the crowd: a region with nothing
+	# running it can never reach `hunted`, however many people watched.
+	var i := Interference.new()
+	i.lose(1)
+	i.raise(1, &"killed_worker", Vector2.ZERO, 0.0, Interference.WITNESS_MOST)
+	lt(i.value(1), Interference.LOST_CEILING + 0.001, "a lost region keeps its ceiling")

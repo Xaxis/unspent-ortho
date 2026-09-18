@@ -60,7 +60,23 @@ const GEAR_MAX := 3
 const SALVAGE_KIT := 4
 const GEAR_KIT := 5
 ## What a villager does, which decides their kit (dress()).
-const TRADES: Array[StringName] = [&"cutter", &"digger", &"gatherer", &"scavenger", &"keeper", &"child"]
+const VILLAGE_TRADES: Array[StringName] = [&"cutter", &"digger", &"gatherer", &"scavenger", &"keeper", &"child"]
+
+## WHAT SOMEBODY SELLS ON A CITY STREET. In a place the settlement was accepted
+## in, the plan holds and the lights stay on, and the whole of what that looks
+## like from the ground is that EVERYBODY IS WORKING: full employment, and what
+## is left to sell is labour, attention, access, legs, patience, the body, or the
+## word. Nobody here is pitiable — they are occupied, which is the only dignity
+## the place hands out and the reason it is hard to be sure anything is wrong.
+##
+## Dealt only where a landscape puts a street's worth of people out
+## (`BiomeDef.street_folk`), and kept out of `villagers()` so no village anywhere
+## else deals one and no frame already taken moves.
+const STREET_TRADES: Array[StringName] = [&"hawker", &"tout", &"fixer", &"courier", &"line_stander", &"doorway_worker", &"preacher"]
+
+## Every trade dress() knows and normalize() will keep.
+const TRADES: Array[StringName] = [&"cutter", &"digger", &"gatherer", &"scavenger", &"keeper", &"child",
+	&"hawker", &"tout", &"fixer", &"courier", &"line_stander", &"doorway_worker", &"preacher"]
 
 ## Body proportions as multipliers on the base man. stoop is radians of spine lean.
 ##   leg torso: lengths   chest hip girth: width, width, depth   head arm limb: sizes
@@ -388,6 +404,40 @@ static func trade_for(role: StringName, tool_id: StringName) -> StringName:
 	return &"keeper"
 
 
+## A BODY THAT PASSES: what the plan looks like wearing a coat (the higher
+## machines of the city, `src/models/machines/passer.gd`).
+##
+## Every tell is an ABSENCE, and that is the whole design. Nothing patched,
+## nothing scavenged, nobody hungry — while the street around it is patched,
+## scavenged and hungry to a person. There is no hue, no seam, no lamp and no
+## silhouette to find it by: the colours come off the same worn tables everybody
+## else's do, so at a glance in bad light it is one more person. It gives itself
+## up to the slate's read, or to a player who has learnt what somebody with
+## nothing wrong with them looks like — and who then cannot stop seeing them.
+static func passing(seed_value: int) -> Dictionary:
+	var out := random(seed_value, 909)
+	var r := Rng.make(seed_value, 6271)
+	# Better dressed than anyone: a whole coat, and a head that is not wrapped
+	# against anything, because nothing here has to be endured.
+	out.coat = &"long"
+	out.hat = [&"none", &"cap", &"brim", &"band"][r.randi_range(0, 3)]
+	if out.build == &"boy":
+		out.build = [&"man", &"woman", &"tall"][r.randi_range(0, 2)]
+	out.patches = 0
+	out.gaunt = 0
+	out.salvage = []
+	out.gear = []
+	out.extras = []
+	out.trade = &""
+	return _keep_contrast(normalize(out))
+
+
+## What the index'th person on a city street sells, dealt by seed.
+static func street_trade(seed_value: int, index: int) -> StringName:
+	var i := int(Rng.hash01(seed_value, index, 43) * float(STREET_TRADES.size()))
+	return STREET_TRADES[clampi(i, 0, STREET_TRADES.size() - 1)]
+
+
 static func _hazard(hazards: Dictionary, id: String) -> float:
 	return float(hazards.get(StringName(id), hazards.get(id, 0.0)))
 
@@ -542,6 +592,91 @@ static func dress(spec: Dictionary, hazards: Dictionary, trade: StringName, seed
 				gear.append(&"goggles")
 			s.patches = r.randi_range(2, 3)
 			s.beard = &"none"
+		# --- the street (STREET_TRADES) ---------------------------------
+		# Every one of these is somebody AT WORK, which is the whole of what
+		# the place says: the settlement was accepted here, the plan holds,
+		# and everybody is employed. The register is exhaustion and hustle,
+		# never spectacle — what marks a trade out is the kit its hours ask
+		# for and nothing else.
+		&"hawker":
+			# Sells goods: off a tray, out of a bag, off the ground.
+			if not extras.has(&"apron"):
+				extras.append(&"apron")
+			if r.randf() < 0.7 and not extras.has(&"satchel"):
+				extras.append(&"satchel")
+			if not weather_coat and r.randf() < 0.5:
+				s.coat = &"jerkin"
+			if r.randf() < 0.4:
+				gear.append(&"pack")
+		&"tout":
+			# Sells attention: steers you somewhere, for a cut. The coat is
+			# the whole of the pitch, so it is the best thing they own.
+			if not weather_coat and r.randf() < 0.75:
+				s.coat = &"long"
+			if r.randf() < 0.5 and not extras.has(&"buckle"):
+				extras.append(&"buckle")
+			if r.randf() < 0.3:
+				gear.append(&"radio")
+		&"fixer":
+			# Sells access: knows which door, and who is owed.
+			if not weather_coat and r.randf() < 0.6:
+				s.coat = &"long"
+			if r.randf() < 0.65:
+				gear.append(&"radio")
+			if r.randf() < 0.4:
+				gear.append(&"goggles")
+			if r.randf() < 0.6:
+				salvage.append(&"tally")
+		&"courier":
+			# Sells legs. Carries it and is gone; nothing that slows them.
+			if not weather_coat:
+				s.coat = &"none"
+			if r.randf() < 0.75:
+				gear.append(&"coil")
+			if r.randf() < 0.6:
+				gear.append(&"pack")
+			if not extras.has(&"rolled"):
+				extras.append(&"rolled")
+			if s.build == &"old" or s.build == &"bent":
+				s.build = [&"slight", &"tall", &"stark"][r.randi_range(0, 2)]
+		&"line_stander":
+			# Sells patience: stands in the plan's queue in somebody else's
+			# place, all day, for whatever the queue is dispensing.
+			if r.randf() < 0.45:
+				s.build = [&"old", &"bent"][r.randi_range(0, 1)]
+			if r.randf() < 0.5 and not extras.has(&"shawl"):
+				extras.append(&"shawl")
+			if r.randf() < 0.5:
+				salvage.append(&"tally")
+		&"doorway_worker":
+			# Works a doorway in bad light, and is staged exactly as every
+			# other trade here is: dressed, tired, transactional — one more
+			# thing being sold in a street where everything is. The kit is
+			# what the hours ask for, a coat against standing still and
+			# something to keep the count by, and there is nothing else to
+			# it ON PURPOSE. It reads as commerce at the bottom of a working
+			# economy because that is what it is and that is the point.
+			if not weather_coat and r.randf() < 0.6:
+				s.coat = &"wrap"
+				s.coat_col = _wear(r, WRAP_WEAR)
+			if r.randf() < 0.55 and not extras.has(&"shawl"):
+				extras.append(&"shawl")
+			if r.randf() < 0.5 and not extras.has(&"neckerchief"):
+				extras.append(&"neckerchief")
+			if r.randf() < 0.35:
+				salvage.append(&"tally")
+		&"preacher":
+			# Sells meaning, which in a place that agreed is the one thing
+			# with no buyers left. Carries nothing.
+			if not weather_coat and r.randf() < 0.7:
+				s.coat = &"wrap"
+				s.coat_col = _wear(r, WRAP_WEAR)
+			if r.randf() < 0.4:
+				s.hat = &"none"
+			if r.randf() < 0.4:
+				s.build = [&"old", &"bent", &"stark"][r.randi_range(0, 2)]
+			s.gaunt = maxi(int(s.gaunt), 1)
+			gear.clear()
 	# Children carry nothing heavy; nobody here has the slate but the player.
 	var kit: Array = []
 	for g: StringName in gear:
@@ -683,7 +818,7 @@ static func villagers(seed_value: int, n: int, hazards: Dictionary) -> Array[Dic
 	var taken := {}
 	var i := 0
 	for p: Dictionary in crowd(seed_value, n):
-		var trade: StringName = TRADES[int(Rng.hash01(seed_value, i, 41) * (TRADES.size() - 1))]
+		var trade: StringName = VILLAGE_TRADES[int(Rng.hash01(seed_value, i, 41) * (VILLAGE_TRADES.size() - 1))]
 		if p.build == &"boy":
 			trade = &"child"
 		out.append(set_apart(dress(p, hazards, trade, seed_value * 17 + i), taken, hazards, seed_value * 23 + i))

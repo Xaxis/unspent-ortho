@@ -171,13 +171,27 @@ func _cover_now(p: Vector2, m: Moment) -> float:
 
 # --- 2. the interference of a plan network -----------------------------------
 
-## What the player just did, filed against the network they did it in.
+## What the player just did, filed against the network they did it in, and what
+## it cost given who watched. Each system that puts people on the land answers
+## `witnesses` for its own (35_folk), so this one goes on knowing nothing about
+## villagers or crowds and a package that adds people needs no line here.
 func raise(cause: StringName, at: Vector2) -> float:
 	var net := Interference.network(game.world, at)
-	var rose := interference.raise(net, cause, at, game.clock.minutes)
+	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at))
 	if rose > 0.0:
 		_seen[&"interference"] = true
 	return rose
+
+
+## People who can see a spot, over every system that puts any there. Named apart
+## from the `witnesses(at, reach)` those systems answer on purpose: this gather
+## would otherwise find itself in `game.systems` and call itself forever.
+func crowd_witnesses(at: Vector2) -> int:
+	var n := 0
+	for sys in game.systems:
+		if sys.has_method(&"witnesses"):
+			n += int(sys.call(&"witnesses", at, Interference.WITNESS_REACH))
+	return n
 
 
 ## Time, distance, hiding and a misread signature. A player crouched in cover
@@ -565,6 +579,11 @@ func tour_seen(what: StringName) -> bool:
 				if m.alive and not m.removed and m.machine and (m.roused() or m.suspicion >= 1.0):
 					return true
 			return false
+		&"network_hostile":
+			# Live, not latched: the file the player is standing in has actually
+			# reached hostile. `interference` only says something rose at all,
+			# which a tour about what a CROWD costs cannot be proved by.
+			return interference.level(Interference.network(game.world, sim.hero.pos)) >= 2
 	return bool(_seen.get(what, false))
 
 

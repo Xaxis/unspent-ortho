@@ -200,6 +200,31 @@ const DEFS := {
 		"takes": 60.0, "drops": 0, "linger": 20.0, "chance": 3,
 		"where": {"countries": ["burning"], "grounds": ["ash", "clinker", "rock", "gravel", "mud", "road"]},
 	},
+	# A MACHINE THAT PASSES, in a city the settlement was accepted in. Drawn as a
+	# person (src/models/machines/passer.gd) and answering as a machine, because
+	# nothing that reads a body reads its model. `watcher` is the role and it is
+	# the point: it files nothing and throws no blow, so unlike the clerk it does
+	# not even take a count — it is here to BE the agreement, walking about in a
+	# good coat, and `Roles.TURNS[WATCHER]` is empty so nothing the player does
+	# turns it. The only one in the landscape not working.
+	#
+	# `errand` never lunges (Mob._lean) and the pace is a stroll: everybody else
+	# on this street is somewhere they have to be, and it is not.
+	&"passer": {
+		"model": &"passer", "role": &"watcher", "machine": true, "approach": &"errand", "part": &"none",
+		"passes": true,
+		"pace": 1.6, "dash": 1.6, "radius": 0.34, "height": 1.7, "life": 40,
+		"sees": 13, "hears": 7, "racket": 0, "reach": 2, "ready": 4, "forget": 12, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 320, "disposition": &"observant",
+		# No `takes`: that is the minutes a body costs you when it DOWNS you, and
+		# `TargetRead.powers` prints it as "carries you off". With no bite and no
+		# hits this one can never down anybody, so the line was the read telling
+		# the player a thing about this body that is not true — caught in the
+		# tour's own frame of the read panel, which is what those frames are for.
+		"drops": 0, "linger": 30.0, "chance": 3,
+		# The city admits it through its own BiomeDef.roster; nowhere else has one.
+		"where": {"countries": ["slums"], "grounds": ["road", "floor", "gravel", "rock"]},
+	},
 	&"dog.yard": {
 		# A dog goes in after you: the beasts were never the ones the water stopped.
 		"crosses": &"swim",

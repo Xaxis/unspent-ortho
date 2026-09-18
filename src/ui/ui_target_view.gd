@@ -160,6 +160,16 @@ func _draw_marks() -> void:
 	for m in sim.mobs:
 		if not m.alive or m.removed:
 			continue
+		# A MACHINE THAT PASSES carries none either, and this is the one place the
+		# always-on tag gives way (roster `passes`; docs/ART.md §9). That body's
+		# whole nature is that you cannot tell what it is without putting the
+		# slate on it — and in a street of thirty people, who carry no tags, two
+		# floating pip bars answer that question for free and for ever. Measured
+		# in a real frame: the crowd was indistinguishable and the tags were not.
+		# It is still locked, bracketed and read like anything else; the read is
+		# simply made the only way to learn it, which is the point of the place.
+		if m.row.get("passes", false):
+			continue
 		var at := _screen_of(m)
 		if not _on_glass(at[1]):
 			continue

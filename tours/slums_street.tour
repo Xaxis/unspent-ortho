@@ -1,0 +1,56 @@
+# THE SLUMS, from the ground: the three things that make a city the one place in
+# the game where the fork was taken (docs/STORY.md §8, the quiet region).
+#
+#   1. a crowd passes the player and not one head turns
+#   2. a machine that passes is walked past unrecognised, and gives itself up
+#      only to the slate's read
+#   3. one swing in front of that street turns the whole network hostile
+#
+# Staged on the coast because the city's own landscape file is another builder's
+# (`slums/dome`); what is being proved here is the CROWD, the passer and the
+# price, none of which is coast-specific. `--folk=30` is the street.
+#
+#   tools/tour.sh tours/slums_street.tour --seed=4 --village=0 --hour=13 \
+#       --weather=clear:0 --folk=30 --give=knife:1 --held=knife
+
+# Nothing of the plan wandering in to confuse what the frames are of.
+coast calm
+wait 1.0
+
+# --- 1. traffic, not an event -------------------------------------------------
+# Everywhere else the player is the most interesting thing to happen all week.
+# Here they are one more body going past, and the crowd is the proof.
+await crowd_indifferent 6
+shot 01-a-street-that-does-not-look-up with folk
+
+walk 1,0 1.2
+await crowd_indifferent 6
+shot 02-walked-through-and-nobody-turned with folk
+
+# --- 2. one of these is not a person ------------------------------------------
+# No lamp, no seam, no violet, and no tag: a body that passes carries none, so
+# the picture cannot answer what it is and neither can the player.
+spawn passer
+wait 1.0
+shot 03-one-of-these-is-a-machine with mob:passer,folk
+
+# --- 3. the read is the only way to know --------------------------------------
+# Hold the slate on it and the plan says what it is FOR, in its own words.
+hold target
+await target 5
+await testimony 6
+await beat:quiet_calm 6
+shot 04-the-read-says-what-it-is with mob:passer
+release target
+wait 0.5
+
+# --- 4. what a street charges for a swing -------------------------------------
+# The machines are not hunting anybody here, so violence is not answered with
+# violence: it is WITNESSED. One blow in front of thirty people carries a calm
+# network past hostile on its own, which is why the swing is almost never the
+# right answer in this landscape.
+walkto mob 6
+press swing
+await hit 6
+await network_hostile 8
+shot 05-one-swing-in-front-of-a-street with mob:passer,folk
