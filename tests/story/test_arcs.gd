@@ -40,7 +40,7 @@ func test_every_beat_has_a_door_the_player_can_find() -> void:
 
 
 func test_the_arcs_story_md_promises_are_all_declared() -> void:
-	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_colonies", &"the_secret"]:
+	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_colonies", &"priya", &"the_secret"]:
 		check(StoryContent.ARCS.has(arc), "%s is declared" % arc)
 		gt(float(StoryContent.arc_beats(arc).size()), 2.0, "%s is more than a line" % arc)
 
@@ -343,4 +343,24 @@ func test_the_ring_is_heard_long_before_it_is_reached() -> void:
 	@warning_ignore("return_value_discarded")
 	_walk(&"oksana", ["What are you listening to?", "Whose notebook?"])
 	check(Story.landed(&"ring_kept"), "and she kept what Priya brought up")
+	Story.forget()
+
+
+func test_priya_is_found_a_page_at_a_time_and_ends_on_the_ring() -> void:
+	Story.forget()
+	check(Story.read(&"commits"), "the lab's last changes")
+	check(Story.landed(&"priya_warned"), "her name is on the change he merged over her")
+	for page: StringName in [&"priya_suspicion", &"priya_liaison", &"priya_cadence", &"shuttle_manifest"]:
+		check(Story.read(page), "%s can be read" % page)
+	for b: StringName in [&"priya_suspected", &"priya_reported", &"priya_knew", &"priya_up"]:
+		check(Story.landed(b), "%s lands from her pages" % b)
+	check(not Story.landed(&"priya_last"), "what she left him is not on any page on the ground")
+	Story.now += StoryPacing.SETTLE
+	@warning_ignore("return_value_discarded")
+	_walk(&"oksana", ["What are you listening to?"])
+	Story.now += StoryPacing.SETTLE
+	@warning_ignore("return_value_discarded")
+	_walk(&"oksana", ["What are you listening to?", "Whose notebook?", "Yes.", "[take it]"])
+	check(Story.landed(&"priya_last"), "it is handed to him on the ring")
+	eq(Story.at(&"priya"), 1.0, "and the whole of her is known")
 	Story.forget()

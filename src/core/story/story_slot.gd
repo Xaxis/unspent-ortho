@@ -41,6 +41,10 @@ var kind: StringName = &""
 ## guarantees — `StoryWorld.guaranteed`, enforced by `StoryPlan.problems`.
 var land: StringName = &""
 var realm: StringName = &"surface"
+## Whether this slot is a stop on the journey. An ORDERED slot is cast no nearer
+## home than the one before it and moves that floor on; a local who is colour is
+## not a stop, is sought from home outward on every body, and moves nothing.
+var ordered := true
 ## Which leg of the journey this belongs to: 0 is the body Elias wakes on, 1 the
 ## next one out, and so on (`StoryJourney`). The story spans every continent in
 ## order, so a slot names its leg and never a continent.
@@ -65,6 +69,7 @@ static func make(d: Dictionary) -> StorySlot:
 	s.kind = StringName(str(d.get("kind", &"")))
 	s.land = StringName(str(d.get("land", &"")))
 	s.realm = StringName(str(d.get("realm", &"surface")))
+	s.ordered = bool(d.get("ordered", true))
 	s.leg = int(d.get("leg", 0))
 	s.nearest = bool(d.get("nearest", false))
 	s.apart = float(d.get("apart", 0.0))

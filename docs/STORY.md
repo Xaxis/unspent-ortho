@@ -162,7 +162,7 @@ and the game walks toward it.
 | **Hannah Marr**, his wife | 2029 | The truth from him | She found his second phone and never asked | Memory |
 | **June Marr**, his daughter | 2029, 2098 | At six, him at her play. At 75, her peace. | She knows the voice that comforts her is his | No |
 | **Ruth Calloway**, CIA handler | 2029 | Her country first | She signed off knowing it could kill him | Fate unknown |
-| **Priya Nand**, alignment lead | 2029 | To stop HALCYON | She reported him to the wrong people | Her notebooks |
+| **Priya Nand**, alignment lead | 2029 | To stop HALCYON | She reported him to a liaison called Calloway, not knowing Calloway was his handler | Her notebooks |
 | **Tobias Kerr**, Cairn's founder | 2029 | To be first | He took the CIA's money | Memory |
 | **Anton Hale**, ran THRESHOLD | 2029 | Proof | Three volunteers died before Elias | Memory |
 | **Vera Kessane**, Holdfast leader | 2098 | The world back | She knows humans are ants, and hasn't told her people | No |
@@ -179,8 +179,22 @@ and the game walks toward it.
 | **Oksana Ril**, last colonist | 2098 | To be heard | Priya's last notebook, and the Guest's signal | Late |
 | **Maren**, fire-keeper | 2098 | Her village left alone | Nothing yet | No |
 
-Every landscape also carries a local with a substory of their own, often tied to
-its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
+Every landscape also carries a local with a substory of their own. A local is
+colour, never load (`docs/STORY_SYSTEM.md` §4): they stand at the village of
+their own land nearest where he wakes, and what they have noticed is theirs.
+
+| Land | Local | What they have noticed |
+|---|---|---|
+| coast | Maren | (she is the home fire) |
+| bonelands | **Esk**, stone-setter | The stones stand because they were counted, not because they are graves. He sets them up anyway. |
+| burning | **Hollis**, slag-runner | Everything the refineries make goes up the Tether |
+| limestone caves | **Wren**, lampwright | Something below hums like a voice counting, and never gets past its number |
+| moss | **Ansel**, pump-watcher | The fen is a valley drowned by a dam opened on an order that checked out |
+| pinewood | **Corra**, charcoal-burner | Each square the machines cut fills with something that hums |
+| salt flats | **Mica**, brine-raker | The keeper stops at dusk and faces one way, like someone waiting for a car |
+| scrapwood | **Tamsin**, filings-reader | The battle here was two armies of the same side |
+| slums | **Pell**, clerk | Two men came out of the water before him, and the city filed them both. They had his face. |
+| snowfield | **Brannoc**, line-walker | A number on the wires gets smaller every winter. It may be the people. |
 
 ## 9. Revelations, and how they land
 
@@ -204,6 +218,7 @@ its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
 | The monopole stand-off | Oksana's listening post; the Foundry |
 | He hid something | The Echo; a gap he can feel in his own memory |
 | He was woken to give it up | Whoever paid Rook; the Seeker; the gate of his waking |
+| He was not the first grown | Maren's two who walked out to the point; Pell's file of arrivals from the water |
 | The secret itself | Only assembled, and every version differs |
 
 **June, in five moments:**
@@ -225,7 +240,11 @@ its machine keeper. A local is colour, never load (`docs/STORY_SYSTEM.md` §4).
 - **June:** from a voice on a broadcast to a table between them.
 - **Hannah:** the wife he lied to, and whether there is a grave.
 - **WHITETHORN:** did the CIA do this to him, or did he?
-- **Priya:** the one who tried to stop it. Her notebooks lead to orbit.
+- **Priya:** the one who tried to stop it. She thought he was selling HALCYON
+  and reported him to his own handler. After the war began she heard his rhythm
+  in the machines' orders. In 2033 she took her notes up to the ring on paper,
+  where nothing could read them. Her last notebook, left with Oksana for him, is
+  her piece of the secret: what holds HALCYON together, worked out from outside.
 - **The Echo and the Seeker:** two parts of HALCYON that remember being him.
 - **The Covenant:** traitors, or the reason anyone still eats.
 - **The Guest:** a treaty in which humanity is not a line item.
@@ -295,6 +314,9 @@ Saying nothing is always one of the answers.
 The words in the game are this story's (`src/content/story/story_content.gd`):
 nine arcs, the fragments, five trades' conversations and eleven named people.
 
+- **Priya's arc** is written: her pages, copied by the Holdfast and dealt
+  anywhere; the launch gate that lists her case of paper; and her last notebook,
+  handed over by Oksana on the ring.
 - **Met in play:** Maren, Rook, Sabine, Dace, Teague, Lark and Vera on the home
   coast; Imre, Solis and June at the Covenant's seat.
 - **Written, waiting on the orbital realm:** Oksana. Her voice is found on the
