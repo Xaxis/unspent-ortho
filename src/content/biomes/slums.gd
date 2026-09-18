@@ -210,7 +210,11 @@ static func make() -> BiomeDef:
 		PropKind.VENT, PropKind.VENT_CAP, PropKind.STACK, PropKind.WATER_TANK, PropKind.SLAG_HEAP,
 		PropKind.RELAY, PropKind.CHECKPOINT, PropKind.ARCHIVE, PropKind.MEMORIAL, PropKind.GRAVE,
 		PropKind.BOULDER, PropKind.STUMP, PropKind.BUSH, PropKind.DEAD_TREE,
-		PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.STONE_ORE, PropKind.COAL_ORE]
+		PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.STONE_ORE, PropKind.COAL_ORE,
+		# The wall somebody painted, and what got bolted over it. This landscape
+		# is the only one that declares it, and until it did, nothing in the game
+		# placed a mural and the kind was unreachable code.
+		PropKind.MURAL]
 	# What a city's rock gives is what was poured into it: iron and copper come
 	# up out of the rubble easily, stone hardly at all.
 	d.ore = [[PropKind.IRON_ORE, 0.055], [PropKind.COPPER_ORE, 0.095], [PropKind.COAL_ORE, 0.115],
@@ -327,6 +331,19 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.SIGN
 		return PropKind.VEHICLE if r > 0.88 and r < 0.892 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
+		# A party wall on a cleared lot, which is the only place a mural can
+		# honestly stand: a building came down and left one gable up with a
+		# picture on it.
+		#
+		# GRAVEL and never FLOOR, even though FLOOR is the plain ground and would
+		# place these far more reliably. FLOOR is also `village_square_ground`,
+		# and at one mural per 285 floor tiles one landed IN a village square on
+		# seed 42 and took `test_villages_stand_in_clearings_with_a_square` from
+		# 0.9 to 0.71 -- a six-tile wall across a market square, and an
+		# intermittent failure that would have looked like flake. A wall belongs
+		# on a cleared lot; the square is where people stand.
+		if r < 0.035:
+			return PropKind.MURAL
 		if r < 0.05:
 			return PropKind.DEBRIS
 		if r < 0.075:
