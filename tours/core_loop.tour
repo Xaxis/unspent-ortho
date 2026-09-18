@@ -10,19 +10,13 @@ shot 01-wake-by-the-square
 coast calm
 # Driftwood on the strand below the village: walk to it, press use. The tour
 # names what it takes, so where the strand lays it does not matter.
-#
-# THE COORDINATES IN THIS FILE STAY, for now, and each is a different reason.
-# `at 200,436` is open SEA — it is not a place to stand, it is a seed for the
-# `at prop:driftwood` on the next line, which is what actually chooses. The
-# takes below have a name-form already proved in tours/feel.tour (`near
-# driftwood`, `near boulder,stone_ore`), but swapping them changes which prop
-# is taken and so what the next four frames are pictures of, and the two fires
-# at 188.5,428.5 have to go on agreeing with the `at prop:fire` that comes back
-# to them at line 136 — a fire laid somewhere else is a fire the night frame
-# walks sixty tiles to the wrong one of. That is a frame-by-frame job, not a
-# sweep, and doing it blind is how this repo got pictures of the wrong place
-# for months.
-at 200,436
+# The four takes are asked for BY NAME, the way tours/feel.tour asks for the same
+# ones. `near KIND` finds the nearest of that kind with work still in it, stands
+# in reach and turns to face it, which is the whole of what the four `at X,Y`
+# lines here used to arrange by hand. One of them, `at 200,436`, was open SEA: it
+# was never a place to stand, only a seed thrown south of the square so that the
+# `at prop:driftwood` under it would choose a strand piece. It worked, and the
+# rule it broke is the one this repo has already paid for twice.
 at prop:driftwood
 press use 0.1
 await took 3
@@ -31,21 +25,22 @@ shot 02-driftwood-taken
 at prop:driftwood
 press use 0.1
 await took 3
-# Dead wood fallen under the broadleaf by the strand (worldgen's own trees and
-# rocks stand where they always did: only the strand moves with what is around it).
-at 202.97,434.41
-walk 0,1 0.08
+# Dead wood fallen under a broadleaf: `Takes` gives a broadleaf as fell_tree or
+# deadfall, and what the key chooses with a knife in hand is the deadfall.
+near broadleaf
+walk 0,0 0.05
 press use 0.1
 await took 8
 wait 0.2
 shot 03-dead-wood
-# A loose stone off each of two boulders.
-at 189.54,440.34
-walk -1,0 0.08
+# A loose stone off each of two boulders. `near` will not offer the same one
+# twice, which is what the two hand-picked boulders were arranging.
+near boulder,stone_ore
+walk 0,0 0.05
 press use 0.1
 await took 14
-at 190.90,417.27
-walk 0.38,-0.92 0.08
+near boulder,stone_ore
+walk 0,0 0.05
 press use 0.1
 await took 14
 wait 0.2
