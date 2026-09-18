@@ -101,9 +101,31 @@ then balances shares across *that list* and that body's land.
 
 What a landscape declares, on `BiomeDef`:
 
-- **`spread`** — how many bodies of a realm it may appear on. `0` = anywhere
-  (the default, what every type does today), `1` = exclusive to one continent,
-  `n` = at most n. This is the whole of exclusivity from a content author's side.
+- **`spread: Vector2i(least, most)`** — how many bodies of a realm this type must
+  and may lie on. `(0, 0)` is the default and means what every type does today:
+  anywhere, as many as the balance loop wants, **and it may be absent**.
+  `(0, 1)` is "at most one continent, and a world may not have it at all" — the
+  rare thing you travel to. **`(1, 0)` is the important one: at least one body
+  always carries it.** `(1, 1)` is exactly one, guaranteed and exclusive.
+
+  **`least` exists because the story is a consumer we did not have in mind.** A
+  fragment, a talk or a beat keyed to a landscape that a world may not contain is
+  unreachable, and a beat gating an arc on one could strand a player who never
+  crosses the ocean. The alternative was asking the fiction to be careful — to keep
+  arc spines off exclusive landscapes — and careful is a thing that holds until the
+  first writer who did not read this file. `least >= 1` makes it safe by
+  construction instead, and `BiomeRegistry.always_present(id)` is the question a
+  consumer asks rather than inferring it from `share`.
+
+  Landscapes with `least >= 1` are dealt to the HOME continent first (§8.3), which
+  is where the game's spine already lives.
+
+  **The dealer fails loudly when the guaranteed set cannot fit**, in
+  `BiomeRegistry.problems()` alongside the checks `Landmarks` and `GearEconomy`
+  already make: a world that cannot carry everything something depends on is a
+  content error, not a runtime surprise. Note this question is not new with
+  continents — `fit_types` can already leave a type out of a small world — it is
+  only newly ANSWERABLE, and the story is what made it worth answering.
 - Existing fields keep their meaning but change their frame of reference:
   `share` normalises across **the types dealt to this body**, `anchors` are
   positions within **this body's** bounds, `adjacency` is read against sites on
@@ -343,6 +365,12 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   seam test pass and cost **40% of the world's blend mass** — passing a test by
   flattening the ecotones the test exists to protect.
 - **A clock in the gate is scaled, or it is measuring the laptop.**
+- **A test that cannot observe the thing it rules is not a test of it.**
+  ART.md §4 ("a machine is a dark mass by day") is held by `test_machines_ramps.gd`,
+  which reads the PALETTE — so it cannot see `matter_worn`, and when wear began
+  lightening machines on the snowfield and the salt the test went on passing.
+  Honest, green, and blind in exactly the direction the feature moved. Before
+  trusting a law, ask what would fail if it broke.
 - **A feature that is silently off looks exactly like a feature that is subtle.**
   `matter_wear()` returns early while `sky_view.z <= 0`, only `SkyLight.set_ground`
   writes it, and the gallery never called it — so LANTERN's first law was switched
