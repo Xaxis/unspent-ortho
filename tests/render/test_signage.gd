@@ -24,8 +24,14 @@ const MACHINE_TO := 336.0 / 360.0
 func test_no_sign_is_lit_in_the_machines_colours() -> void:
 	for i in Towers.SIGN_COLOURS.size():
 		var col: Color = Towers.SIGN_COLOURS[i]
-		# A near-grey has no meaningful hue to judge, and nothing here is grey.
-		gt(col.s, 0.25, "sign colour %d is a colour at all" % i)
+		# A near-grey is SKIPPED, not failed. The city's list carries a dirty warm
+		# white whose saturation is about 0.14, and an earlier version of this
+		# test asserted every sign was a saturated colour -- it would have failed
+		# the CORRECT list the moment it arrived, which is the worst kind of test
+		# there is. Hue only means anything where there is chroma to carry it,
+		# and a wash that pale can never be mistaken for a machine.
+		if col.s <= 0.25:
+			continue
 		var inside := col.h >= MACHINE_FROM and col.h <= MACHINE_TO
 		check(not inside, "sign colour %d is at hue %.0f, inside the machines' 240-336" % [i, col.h * 360.0])
 
