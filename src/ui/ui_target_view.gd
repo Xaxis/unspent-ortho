@@ -160,14 +160,24 @@ func _draw_marks() -> void:
 	for m in sim.mobs:
 		if not m.alive or m.removed:
 			continue
-		# A MACHINE THAT PASSES carries none either, and this is the one place the
-		# always-on tag gives way (roster `passes`; docs/ART.md §9). That body's
-		# whole nature is that you cannot tell what it is without putting the
-		# slate on it — and in a street of thirty people, who carry no tags, two
-		# floating pip bars answer that question for free and for ever. Measured
-		# in a real frame: the crowd was indistinguishable and the tags were not.
-		# It is still locked, bracketed and read like anything else; the read is
-		# simply made the only way to learn it, which is the point of the place.
+		# A MACHINE THAT PASSES carries none either (roster `passes`), and this is
+		# NOT a hole in the pillar — it is the line above applied honestly. The tag
+		# marks what can hurt you, and a passer is never in the fight: it has no
+		# bite and no hits, `Roles.FILES` holds `watcher` so `Disposition.of`
+		# answers observant at every interference level and however disturbed, and
+		# `Roles.TURNS[&"watcher"]` is empty, so nothing the player does turns it.
+		# That is not argued, it is provoked and measured:
+		# `test_a_passer_never_joins_the_fight_however_hard_it_is_provoked` stands
+		# one under the knife until it dies and watches every slice for a mood or
+		# a blow. Never roused, never a blow, never hostile. So the exception is
+		# UNCONDITIONAL — there is no transition at which the tag becomes owed,
+		# and if a passer is ever given a bite this rule must go with it.
+		#
+		# Why it matters: the body's whole nature is that you cannot tell what it
+		# is without putting the slate on it, and in a street of thirty people who
+		# carry no tags, two floating pip bars answer that for free and for ever.
+		# Measured in a real frame — the crowd was indistinguishable, the tags
+		# were not. It is still locked, bracketed and read like anything else.
 		if m.row.get("passes", false):
 			continue
 		var at := _screen_of(m)

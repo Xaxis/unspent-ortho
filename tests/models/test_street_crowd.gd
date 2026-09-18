@@ -6,6 +6,8 @@ extends TestCase
 ## `PersonLook`'s caps actually bind, and the numbers below are what they bind
 ## at, taken rather than assumed.
 
+const Fx := preload("res://tests/fight/fixture.gd")
+
 static var _world: WorldData
 
 
@@ -128,6 +130,54 @@ func test_a_street_of_forty_keeps_its_silhouettes_apart() -> void:
 	print("  street of 40 in dark/fumes/wet: %d distinct silhouettes, %d repeats" % [sigs.size(), repeats])
 	lt(repeats, 8, "forty on one street: %d repeated silhouettes of 40" % repeats)
 	gt(sigs.size(), 32, "and %d distinct ones" % sigs.size())
+
+
+# ---------------------------------------------------------------- the tag
+
+func test_a_passer_never_joins_the_fight_however_hard_it_is_provoked() -> void:
+	# THE CONDITION ON THE TAG EXCEPTION (docs/ART.md §9, ui_target_view.gd). A
+	# body may carry no wordless tag only if it can never become a threat: losing
+	# the read at the moment something turns on you would be the pillar failing in
+	# the one moment it exists for. So this does not argue it, it provokes one.
+	var row := Roster.row(&"passer")
+	check(not row.has("bite"), "a passer has no blow to throw")
+	check(not row.has("hits"), "and takes nothing off you")
+
+	# The plan can never hand a watcher `hostile`: Roles.FILES holds it, and
+	# Disposition.of answers observant before it ever reads `disturbed`. So there
+	# is no interference level and no provocation that turns this body.
+	for level in Interference.LEVELS.size():
+		for disturbed: bool in [false, true]:
+			eq(Disposition.of(&"watcher", level, disturbed), &"observant",
+				"a watcher at %s, disturbed %s" % [Interference.LEVELS[level], disturbed])
+	check((Roles.TURNS[&"watcher"] as Array).is_empty(), "and nothing in the game turns it")
+
+	# And live, in a real fight: stand one next to the player and hit it until it
+	# dies, watching every slice for a mood or a blow it is not supposed to have.
+	var sim := Fx.make_sim(Fx.flat_world(96, Ground.GRASS), Vector2(48.5, 48.5))
+	sim.hero.inventory.add(&"knife")
+	sim.hero.inventory.set_held(&"knife")
+	var m := sim.add_mob(&"passer", Vector2(49.6, 48.5))
+	m.facing = PI
+	m.aim = PI
+	var ever_roused := false
+	var ever_blow := false
+	var ever_hostile := false
+	var t := 0.0
+	while t < 30000.0 and m.alive:
+		sim.press_swing()
+		sim.slices(2)
+		t += 16.0
+		ever_roused = ever_roused or m.roused()
+		ever_blow = ever_blow or m.bite != null or m.blow != null
+		ever_hostile = ever_hostile or Disposition.hostile(m.disposition)
+	print("  a passer under the knife for %.1f s: alive %s, roused %s, blow %s, hostile %s"
+		% [t / 1000.0, m.alive, ever_roused, ever_blow, ever_hostile])
+	check(not ever_roused, "a passer never chases and never attacks, even struck")
+	check(not ever_blow, "and never has a blow to throw")
+	check(not ever_hostile, "and is never hostile")
+	# It is still a body the player can put down — it is unreadable, not immortal.
+	check(m.health < m.max_health or not m.alive, "and a blow still tells on it")
 
 
 # ---------------------------------------------------------------- the cost
