@@ -1,5 +1,5 @@
 extends TestCase
-## The journal (docs/STORY.md §7): what it shows of the story, what it keeps back,
+## The journal (docs/STORY.md §13): what it shows of the story, what it keeps back,
 ## and that reading it is only reading.
 ##
 ## Every test here picks its arc, fragment and conversation out of the content

@@ -497,13 +497,14 @@ that can take what grows there.
 ## Story
 
 **The arc and every rule for writing it are in `docs/STORY.md`** (owner,
-2026-09-17): the machines are reconcilers, not jailers — one attested reality,
-every mind agreed — and to be free is not to escape but to fork. The words are
+2026-09-18): Elias Marr, a 2029 AI researcher and CIA spy whose mind became the
+machines, wakes in 2098 and must learn what he hid. He is the only main
+character. The words are
 uncovered by reading a thing, talking to somebody, or watching a machine work,
 never by walking onto a tile; a conversation is drawn over the world with the
 world still running; and what the player says is remembered against the question,
-not the person. What is built so far is the spine's first beats and the tide
-sub-arc; the rest is declared and empty, which STORY.md §11 says plainly.
+not the person. The words in the game are still the previous story's and are
+being rewritten against it (STORY.md §15).
 
 The premise shape is the owner's (2026-09-15) and lives in **`docs/VISION.md`**: the
 few dwindling humans after the machine apocalypse; machines that still mean to end
