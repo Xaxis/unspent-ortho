@@ -121,6 +121,10 @@ and the game walks toward it.
   world carries the whole journey.
 - Each stop is cast on its leg's continent or farther out, and never nearer home
   than the stop before it (`docs/STORY_SYSTEM.md` §4).
+- **Every stop has somebody who names the next.** Maren sends him to the camp.
+  Vera sends him across the water to the archive. Otto says every forged order
+  passed through one relay below, and a shaft goes down to it. Wren hears what
+  it is part of. Sefa says the Tether's cars go up empty, and nobody has asked.
 - The order holds in play through LEADS, not the water: somebody or something
   written tells him where next, and the casting never puts a later stop nearer
   home. A day-one raft crosses every strait in the game with three quarters of
@@ -193,6 +197,8 @@ and the game walks toward it.
 | **The Emissary** | 2098 | The treaty | Its forecast has no humans in it | No |
 | **Oksana Ril**, last colonist | 2098 | To be heard | Priya's last notebook, and the Guest's signal | Late |
 | **Maren**, fire-keeper | 2098 | Her village left alone | Nothing yet | No |
+| **Otto Vey**, archivist | 2098 | The record kept, whatever it costs | He left the Speaker's name out of the record, for rations | No |
+| **Sefa**, Tether-tender | 2098 | To see where the cars go | Nine years watching, and never asked to ride one | No |
 
 Every landscape also carries a local with a substory of their own. A local is
 colour, never load (`docs/STORY_SYSTEM.md` §4): they stand at the village of

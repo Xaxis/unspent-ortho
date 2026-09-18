@@ -130,3 +130,51 @@ func test_what_feeds_it_is_the_plans_works_near_it_and_robbing_them_counts() -> 
 	eq(Sentinels.feeds_among(props, at, def, {1: INF}, 20.0), 2, "one robbed and it is down to two")
 	eq(Sentinels.feeds_among(props, at, def, {}, 2.5), 1, "and only what stands inside its reach counts")
 	check(Sentinels.feeds(w, Vector2(1.5, 1.5), def) >= 0, "asking the world for it costs nothing")
+
+
+## WHAT IT EATS HAS TO STAND IN ITS OWN LAND, IN A REAL WORLD.
+##
+## The test above builds the works itself "so the count is known by construction",
+## which is why it could not see this: measured on three seeds, the coast's keeper
+## fed on ONE prop. `tide_reaper.feeds` names INTAKE, PUMP_HOUSE, PIPE and RELAY,
+## and `test_world_gen_works.HOME` gives pump houses to the moss and relays to the
+## pinewood -- so three quarters of its diet stood where it could never reach, and
+## the fourth was the single intake it dens on. `SentinelWay.STARVE` refuses to
+## open when nothing feeds a keeper, and at one prop it opened and was won by
+## robbing one thing: the design's own line, "The intake feeds it. Rob the
+## intake", was a sentence about a world that did not exist.
+##
+## So the bar is not "more than none". It is "enough that robbing its larder is a
+## task", and it is asked of the world world gen actually makes.
+func test_a_keeper_has_enough_to_eat_where_it_actually_stands() -> void:
+	for s: int in [1, 4, 42]:
+		var w := WorldGen.generate(s, 512)
+		for region: Dictionary in w.regions:
+			var def := Sentinels.for_land(StringName(str(region.get("type", &""))))
+			if def == null or def.feeds.is_empty():
+				continue
+			var has_starve := false
+			for way: SentinelWay in def.ways:
+				if way.kind == SentinelWay.STARVE:
+					has_starve = true
+			if not has_starve:
+				continue
+			var lair := Sentinels.lair(w, region, def)
+			var fed := Sentinels.feeds(w, lair, def)
+			# NONE IS ALLOWED AND ONE IS NOT. A region with nothing of the plan in
+			# it closes the way itself (`SentinelWay.progress`: a way with no larder
+			# "must never read as already won because there is nothing to break"),
+			# and that keeper is taken by force or foundering instead. What must not
+			# happen is the way standing OPEN on a larder so small that one press
+			# wins it, which is what the coast had.
+			if fed == 0:
+				continue
+			gt(fed, STARVE_LEAST - 1,
+				"seed %d: the %s keeper's starve way is open on %d works, which is %s"
+					% [s, def.land, fed, "one theft" if fed <= 1 else "too small a task"])
+
+
+## The fewest works a keeper may feed on and still have starving mean something.
+## Under this, robbing its larder is one or two presses and the way is won by
+## accident rather than chosen.
+const STARVE_LEAST := 4

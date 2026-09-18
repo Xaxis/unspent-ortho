@@ -386,3 +386,31 @@ func test_the_echo_is_found_in_his_own_hand_and_his_daughter_s_luck() -> void:
 	_walk(&"june", ["Do you know who I am?", "What does the voice say?"])
 	check(Story.landed(&"echo_kept"), "and when it has settled, what the voice has done for her")
 	Story.forget()
+
+
+## The chain of leads (docs/STORY_SYSTEM.md §6): every stop of the journey has
+## somebody who says, in their own words, where the next one is.
+func test_every_stop_of_the_journey_says_where_the_next_one_is() -> void:
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"maren", ["Who pulled me out?", "[hold them out]", "I don't know."])
+	check(Story.landed(&"holdfast_fight"), "home: Maren sends him to the crew's camp")
+	Story.forget()
+	Story.beat(&"holdfast_hope", -INF)
+	@warning_ignore("return_value_discarded")
+	_walk(&"vera", ["What do you want from me?", "Where would I start?"])
+	check(Story.landed(&"war_archive"), "the camp: Vera sends him across the water to the archive")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"otto", ["How the war started.", "Where is it?"])
+	check(Story.landed(&"war_relay"), "the archive: Otto sends him down the shaft")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"wren", ["Listen to what?", "What's down there?"])
+	check(Story.landed(&"plant_below"), "below: Wren hears what the relay is part of")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"sefa", ["Can it be climbed?", "I'm asking."])
+	check(Story.landed(&"the_climb"), "the far shore: Sefa says how to go up")
+	eq(Story.chose(&"sefa.climb"), &"asked_to_ride", "and he asked")
+	Story.forget()
