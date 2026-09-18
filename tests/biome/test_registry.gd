@@ -121,3 +121,22 @@ func test_the_grounds_a_landscape_names_are_grounds_it_can_have() -> void:
 			for c in BiomeRegistry.count():
 				anywhere = anywhere or laid.has(c * 256 + g)
 			check(anywhere, "%s paints %s, which no world lays" % [d.id, Ground.NAMES[g]])
+
+
+## IS THIS LANDSCAPE IN EVERY WORLD? The question a story beat, an economy gate or
+## a guided path asks before it rests on a landscape (docs/WORLD.md §4). It reads
+## `spread.x` and nothing else, so it cannot drift from what the dealer honours.
+func test_guaranteed_answers_only_for_a_landscape_with_a_floor() -> void:
+	for d: BiomeDef in BiomeRegistry.land():
+		eq(BiomeRegistry.guaranteed(d.id), d.spread.x >= 1,
+			"%s: guaranteed iff it asks for at least one body" % d.id)
+	check(not BiomeRegistry.guaranteed(&"no_such_landscape"), "a name nobody registered is not guaranteed")
+	# Nothing declares a floor today and that is deliberate: the story spine rests
+	# on per-REGION features and on the coast, which the opening hour guarantees,
+	# so the whole variety budget is free for continents to spend.
+	var promised := 0
+	for d: BiomeDef in BiomeRegistry.land():
+		if BiomeRegistry.guaranteed(d.id):
+			promised += 1
+	lt(float(promised), float(BiomeRegistry.count()) * 0.5,
+		"the guaranteed set stays small: every floor is a landscape that can never be rare")

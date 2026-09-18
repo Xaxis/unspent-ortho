@@ -44,7 +44,7 @@ const GEN := 2
 ## surface and scatter recipes.
 const TERRAIN: Array[String] = [
 	"id", "index", "order", "sea", "realms",
-	"share", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
+	"share", "spread", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
 	"relief", "caldera", "dunes",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",

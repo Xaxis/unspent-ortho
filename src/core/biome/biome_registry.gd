@@ -135,7 +135,23 @@ static func mute_to(ids: Array) -> void:
 		_defs.clear()
 	_ensure()
 
-
+## IS THIS LANDSCAPE IN EVERY WORLD? The one question anything building on a
+## landscape should ask — a story beat, an economy gate, a guided path. It reads
+## `BiomeDef.spread.x >= 1` and nothing else, so it cannot drift from what the
+## dealer honours.
+##
+## NEVER ask "is it exclusive?" instead. That is a proxy and it is false in
+## exactly the case nobody tests: `GenCountries.fit_types` can leave an ORDINARY
+## landscape out of a small world, and it could before continents existed. It is
+## also not a thing this registry knows, so a law written in terms of it cannot be
+## turned into a test at all (unspent-ortho-9b, 2026-09-18).
+##
+## This is a statement of INTENT. The world is the fact: a sampled test that grows
+## real worlds and looks for the landscape is what proves the dealer kept the
+## promise.
+static func guaranteed(id: StringName) -> bool:
+	var d := get_def(id)
+	return d != null and d.spread.x >= 1
 ## Every type's problems, as lines. Empty means the registry is sound; the
 ## registry test fails on anything here.
 static func problems() -> PackedStringArray:
@@ -206,6 +222,24 @@ static func problems() -> PackedStringArray:
 				out.append(w + "tongue names no type: %s" % other)
 		out.append_array(BiomeDressing.problems(d))
 		out.append_array(BiomeForms.problems(d))
+	# WHAT IS GUARANTEED HAS TO FIT. A world that cannot carry everything something
+	# depends on is a content error caught here, beside the checks `Landmarks` and
+	# `GearEconomy` already make — not a player stranded on seed 12 at 3am. The
+	# smallest world this game supports is ONE body, so the guaranteed types must
+	# fit on one: their least shares summed cannot fill the land.
+	var floor_share := 0.0
+	var promised := PackedStringArray()
+	for d: BiomeDef in land():
+		if d.spread.x < 0 or d.spread.y < 0:
+			out.append("%s: spread is (least, most) and neither may be negative" % d.id)
+		if d.spread.y > 0 and d.spread.x > d.spread.y:
+			out.append("%s: spread wants at least %d bodies and at most %d" % [d.id, d.spread.x, d.spread.y])
+		if d.spread.x >= 1:
+			floor_share += maxf(d.share.x, 0.0)
+			promised.append(String(d.id))
+	if floor_share > 0.9:
+		out.append("%d landscapes are guaranteed and their least shares come to %.2f of the land, which one body cannot carry: %s"
+			% [promised.size(), floor_share, ", ".join(promised)])
 	if seen_sea != 1:
 		out.append("the registry needs exactly one sea, it has %d" % seen_sea)
 	if _by_index.size() > SLOTS:
