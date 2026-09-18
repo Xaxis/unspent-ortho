@@ -31,6 +31,12 @@ static var _beats: Dictionary = {}
 static var _choices: Dictionary = {}
 ## Named people he has spoken to, in the order he met them (StoryCast).
 static var _met: Array[StringName] = []
+## What the world has seen him do, for whoever writes it down (StoryLedger):
+## {act, land, at} in the order it happened.
+static var _ledger: Array[Dictionary] = []
+## The world clock as the story last saw it, in minutes. What "a while ago" is
+## measured from: 49_story writes it every frame, a test writes it by hand.
+static var now := 0.0
 
 
 static func forget() -> void:
@@ -38,6 +44,8 @@ static func forget() -> void:
 	_beats.clear()
 	_choices.clear()
 	_met.clear()
+	_ledger.clear()
+	now = 0.0
 
 
 # --- what has been found -----------------------------------------------------
@@ -89,6 +97,22 @@ static func meet(id: StringName) -> bool:
 
 static func met(id: StringName) -> bool:
 	return _met.has(id)
+
+
+## Something the world saw him do. Only what could have been OBSERVED belongs
+## here (docs/STORY_SYSTEM.md §7), and the same act in the same land inside an hour
+## is one thing seen, not two.
+static func note(act: StringName, land: StringName, minutes: float) -> void:
+	if act == &"":
+		return
+	for e: Dictionary in _ledger:
+		if e.act == act and e.land == land and absf(float(e.at) - minutes) < 60.0:
+			return
+	_ledger.append({"act": act, "land": land, "at": minutes})
+
+
+static func ledger() -> Array[Dictionary]:
+	return _ledger.duplicate()
 
 
 static func chose(id: StringName) -> StringName:
@@ -164,7 +188,10 @@ static func save_state() -> Dictionary:
 	var met := PackedStringArray()
 	for id: StringName in _met:
 		met.append(String(id))
-	return {"read": read, "beats": beats, "choices": choices, "met": met}
+	var seen: Array = []
+	for e: Dictionary in _ledger:
+		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
+	return {"read": read, "beats": beats, "choices": choices, "met": met, "ledger": seen}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -178,3 +205,7 @@ static func load_state(d: Dictionary) -> void:
 		_choices[StringName(str(k))] = StringName(str(choices[k]))
 	for s: String in d.get("met", []):
 		_met.append(StringName(s))
+	for e: Variant in d.get("ledger", []):
+		if e is Dictionary:
+			var row: Dictionary = e
+			_ledger.append({"act": StringName(str(row.get("act", ""))), "land": StringName(str(row.get("land", ""))), "at": float(row.get("at", 0.0))})

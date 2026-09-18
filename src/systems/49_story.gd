@@ -64,6 +64,7 @@ func setup(g: Game) -> void:
 	add_child(view)
 	Events.took.connect(_on_took)
 	Events.works_broken.connect(_on_works_broken)
+	Events.sentinel_fell.connect(_on_sentinel_fell)
 
 
 func started() -> void:
@@ -113,6 +114,8 @@ func _exit_tree() -> void:
 		Events.took.disconnect(_on_took)
 	if Events.works_broken.is_connected(_on_works_broken):
 		Events.works_broken.disconnect(_on_works_broken)
+	if Events.sentinel_fell.is_connected(_on_sentinel_fell):
+		Events.sentinel_fell.disconnect(_on_sentinel_fell)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -133,6 +136,8 @@ func _read_journal_key() -> void:
 
 
 func _process(delta: float) -> void:
+	if game != null and game.clock != null:
+		Story.now = game.clock.minutes
 	if game == null or game.player == null:
 		return
 	_read_journal_key()
@@ -359,6 +364,7 @@ func _witness() -> void:
 		elif body.filed > _filed_seen:
 			_filed_seen = body.filed
 			_witnessed(StoryContent.WITNESS_ON[&"filed"])
+			_note(&"filed")
 		# The signet is his own old password, copied; it only means that once he
 		# knows he had one.
 		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
@@ -388,8 +394,27 @@ func _on_took(item: StringName, _count: int) -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"record"])
 
 
-func _on_works_broken(_region: int, _land: StringName) -> void:
+func _on_works_broken(_region: int, land: StringName) -> void:
 	_witnessed(StoryContent.WITNESS_ON[&"works_dark"])
+	Story.note(&"works_dark", land, Story.now)
+
+
+func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void:
+	Story.note(&"keeper_fell", land, Story.now)
+
+
+## Going below is seen: a shaft is a place people watch.
+func realm_changed(_from: StringName, to: StringName) -> void:
+	if to == Realm.UNDERGROUND:
+		_note(&"went_below")
+
+
+## Something the world saw him do, where he is standing (StoryLedger).
+func _note(act: StringName) -> void:
+	if game.world == null or game.player == null:
+		return
+	var d := BiomeRegistry.at(game.world, game.player.pos)
+	Story.note(act, d.id if d != null else &"", Story.now)
 
 
 ## A beat the world handed the player rather than a page they read: nothing else

@@ -346,6 +346,17 @@ const FRAGMENTS := {
 		],
 		"beats": [&"seeker"],
 	},
+	# --- the world writing him down (StoryLedger) ----------------------------
+	# `ledger` says whose record this is; the lines are composed at read time out
+	# of what he has done that somebody could have seen.
+	&"hearsay": {
+		"kind": &"notebook", "title": "a notebook of hearsay", "lands": [],
+		"ledger": &"people", "lines": [],
+	},
+	&"error_log": {
+		"kind": &"terminal", "title": "an error log", "lands": [],
+		"ledger": &"machines", "lines": [],
+	},
 	# --- the carried off ------------------------------------------------------
 	&"boots": {
 		"kind": &"mark", "title": "boots at a fence", "lands": [],

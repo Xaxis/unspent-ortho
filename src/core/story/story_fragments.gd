@@ -64,6 +64,9 @@ static func pick(kind: StringName, land: StringName, seed_value: int, instance: 
 ## What it says: the lines, in the order they are read.
 static func lines(id: StringName) -> PackedStringArray:
 	var f: Dictionary = StoryContent.FRAGMENTS.get(id, {})
+	# The world writing him down: composed from what he has done, not written once.
+	if f.has("ledger"):
+		return StoryLedger.lines(StringName(str(f.ledger)))
 	var out := PackedStringArray()
 	for l: String in f.get("lines", []):
 		out.append(l)

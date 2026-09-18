@@ -121,8 +121,11 @@ and the game walks toward it.
   world carries the whole journey.
 - Each stop is cast on its leg's continent or farther out, and never nearer home
   than the stop before it (`docs/STORY_SYSTEM.md` §4).
-- Each crossing is gated by what can cross that water, a raft first and better
-  crafts later (`docs/WORLD.md`). That is what holds the order in play.
+- The order holds in play through LEADS, not the water: somebody or something
+  written tells him where next, and the casting never puts a later stop nearer
+  home. A day-one raft crosses every strait in the game with three quarters of
+  its hull left (measured, `docs/WORLD.md`), so no leg is gated on a craft. A hard
+  gate, if one is ever wanted, comes from danger or a thing that must be carried.
 
 ## 6. Memory and the gates
 
