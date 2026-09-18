@@ -59,6 +59,11 @@ appear, where, how large, how many times, and how they meet. No two worlds are t
 same map; every world is recognisably made of the same landscapes. The tables below
 are the types, not places.
 
+Every world holds one or a few large **oceans separating continents**, some of the
+rarer types exclusive to particular continents, with the underground beneath them
+and the orbital bodies above (owner, 2026-09-18). **`docs/WORLD.md` is the shape
+of a world and worldgen answers to it**; this section is what a world is made OF.
+
 The world is several **realms**, each generated from the seed, joined by roads,
 shafts, portals and crafts. Within a realm, landscapes **blend seamlessly** through
 ecotones (ART.md §1 law 6). Every landscape has its own ground, hatch hand, props,
