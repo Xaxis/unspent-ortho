@@ -1436,7 +1436,7 @@ void fragment() {
 	} else if (m >= 17 && m <= 32) {
 		// A lamp or a window: dark glass by day, lit when the light goes.
 		float dim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
-		float on = clamp((0.9 - dim) * 6.0, 0.0, 1.0);
+		float on = neon_burn(dim);
 		emit += c * (float(m - 16) / 8.0) * on;
 		c = mix(BRINE2, c, on);
 		unh = on;
@@ -1446,7 +1446,7 @@ void fragment() {
 		// it was cut from — and its pool, glint and shafts (15_lights) stutter
 		// with it. A hearth or a window in the same wall keeps burning.
 		float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
-		float non = clamp((0.9 - ndim) * 6.0, 0.0, 1.0) * sky_power();
+		float non = neon_burn(ndim) * sky_power();
 		emit += c * 2.0 * non;
 		c = mix(BRINE2, c, non);
 		unh = non;

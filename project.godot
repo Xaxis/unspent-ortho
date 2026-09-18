@@ -189,6 +189,10 @@ sky_emission={
 "type": "float",
 "value": 1.0
 }
+sky_lid={
+"type": "float",
+"value": 0.0
+}
 sky_wear={
 "type": "sampler2D",
 "value": ""
