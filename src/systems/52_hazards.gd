@@ -105,6 +105,11 @@ func place() -> Hazards.Place:
 	p.in_water = Ground.is_water(game.world.ground_at(floori(pos.x), floori(pos.y)))
 	p.fire = _fire()
 	p.shelter = _shelter()
+	# The realm decides whether there is a sky, and it is the SAME question
+	# 20_realms asks to set `SkyLight.closed`. Asked here rather than derived
+	# from the landscape, because no landscape file may say the hour has stopped
+	# mattering (src/core/realm/realm.gd).
+	p.roofed = Realm.roofed(game.world.realm)
 	return p
 
 

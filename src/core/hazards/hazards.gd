@@ -87,6 +87,13 @@ class Place:
 	var fire := 0.0
 	var lamp := false
 	var in_water := false
+	## There is no sky over this place at all: a roofed realm (`Realm.roofed`,
+	## which is what 20_realms reads to set `SkyLight.closed`). It is kept apart
+	## from `shelter` on purpose — a roof you walked under is shelter and can be
+	## walked out of, and a realm with rock over it is a fact about the world.
+	## The one thing no landscape file may say is that the HOUR has stopped
+	## mattering, so this comes from the realm and never from `BiomeDef`.
+	var roofed := false
 
 
 ## Raw strengths where the body stands, before any gear: hazard id -> 0..1.
@@ -122,25 +129,47 @@ static func felt(place: Place) -> Dictionary:
 ## false for a year (tests/hazards/test_hazards.gd).
 static func _hour_shift(out: Dictionary, place: Place) -> void:
 	var night := clampf(FightRules.nightfall(place.hour), 0.0, 1.0)
+	# UNDER A LID THE SUN IS GONE AT EVERY HOUR, exactly as it is for the light.
+	# `SkyLight.closed` has read a roofed realm as night since realms landed, so
+	# a cave at noon was drawn black — while everything below read the raw clock
+	# and pressed the body as if it were standing in the midday sun. The gauge
+	# said the least dark it can say in the darkest place in the game.
+	#
+	# So the sun's terms are spent against `sun_gone` and the clock's against
+	# `night`, and which is which is a question about the WORLD, not a tuning
+	# number: cold, dark, heat, glare and thirst are the sun's.
+	var sun_gone := maxf(night, 1.0 if place.roofed else 0.0)
 	if out.has(&"cold"):
-		out[&"cold"] = float(out[&"cold"]) * (0.62 + 0.38 * night)
+		out[&"cold"] = float(out[&"cold"]) * (0.62 + 0.38 * sun_gone)
 	if out.has(&"dark"):
-		out[&"dark"] = float(out[&"dark"]) * (0.45 + 0.55 * night)
+		out[&"dark"] = float(out[&"dark"]) * (0.45 + 0.55 * sun_gone)
+	# Heat is treated as the SUN's, so a lid takes it the way dusk does. That is
+	# right for an ordinary cave and will be wrong for the first hot one: a
+	# volcanic realm's heat comes up from below and owes the sky nothing. When
+	# that landscape exists, heat needs a source of its own here rather than a
+	# second reading of this line.
 	if out.has(&"heat"):
-		out[&"heat"] = float(out[&"heat"]) * (0.35 + 0.65 * (1.0 - night))
+		out[&"heat"] = float(out[&"heat"]) * (0.35 + 0.65 * (1.0 - sun_gone))
 	# Glare is the sun itself coming back off the ground: it is gone the moment
 	# the sun is, more completely than heat, which the ground holds on to.
 	if out.has(&"glare"):
-		out[&"glare"] = float(out[&"glare"]) * (0.05 + 0.95 * (1.0 - night))
+		out[&"glare"] = float(out[&"glare"]) * (0.05 + 0.95 * (1.0 - sun_gone))
 	# The field in the dead iron runs off the grid the wood is still wired into,
 	# and the grid works the machines' day: it hums up through the morning and
 	# sags in the small hours. Without this term it sat at one number at every
 	# hour in every weather, alone among the signature pressures (playtest 7).
+	#
+	# THIS ONE KEEPS THE CLOCK, and it is the reason a lid is not simply a second
+	# name for night. The grid's day is the MACHINES' day and it runs under the
+	# rock as well as over it, so a roofed realm at noon is a place where the
+	# hum is at its loudest and the light is wholly gone. Spending `sun_gone`
+	# here would have quietly said the opposite.
 	if out.has(&"magnetism"):
 		out[&"magnetism"] = float(out[&"magnetism"]) * (0.45 + 0.55 * (1.0 - night))
-	# A dry land takes water out of a body all day and eases off at night.
+	# A dry land takes water out of a body all day and eases off at night — and
+	# under a lid there is no sun to take it, so this is the sun's.
 	if out.has(&"thirst"):
-		out[&"thirst"] = float(out[&"thirst"]) * (0.55 + 0.45 * (1.0 - night))
+		out[&"thirst"] = float(out[&"thirst"]) * (0.55 + 0.45 * (1.0 - sun_gone))
 	# A wet land is damp underfoot; it only soaks a body that is in the water
 	# (or, below, out in the rain).
 	if out.has(&"wet") and not place.in_water:
@@ -150,8 +179,13 @@ static func _hour_shift(out: Dictionary, place: Place) -> void:
 	# before there were gauges, and a pinewood that declares 0.4 is a place you
 	# want a lamp for. The clock is a multiplier on the landscape, never a term
 	# of its own (see NIGHT_MOST).
-	_add(out, &"dark", minf(NIGHT_DARK * float(place.hazards.get(&"dark", 0.0)), NIGHT_MOST) * night)
-	_add(out, &"cold", minf(NIGHT_COLD * float(place.hazards.get(&"cold", 0.0)), NIGHT_MOST) * night)
+	# `sun_gone`, so a lid deepens a place's own dark and cold the way midnight
+	# does — and is capped by the same NIGHT_MOST, so a roofed realm still cannot
+	# manufacture a pressure its landscape never declared. A cave that says it is
+	# not dark shows no gauge, which is what keeps `BiomeDef.hazards` the
+	# authority rather than the roof.
+	_add(out, &"dark", minf(NIGHT_DARK * float(place.hazards.get(&"dark", 0.0)), NIGHT_MOST) * sun_gone)
+	_add(out, &"cold", minf(NIGHT_COLD * float(place.hazards.get(&"cold", 0.0)), NIGHT_MOST) * sun_gone)
 
 
 ## What is falling out of the sky, read through the families a hazard knows.
