@@ -65,7 +65,25 @@ static func lit(col: Color, a: float) -> Color:
 	return Color(col.r, col.g, col.b, a)
 
 
-## A straight rust run down a FOUND face: ruled, even, ending square.
+## Rust weeping down a FOUND face from `top`: dark and narrow where it starts,
+## warmer and wider as it runs, a pale stain at the tail.
+##
+## IT WAS A STRAP. The first version was one quad, uniform width and RUST[2] end
+## to end, and the moment it could be photographed (#79, #80) it read as
+## something painted on: square cuts top and bottom starting in the middle of a
+## flat panel, no source, no tail, no halo, and crossing a flange without being
+## interrupted. Measured, it was also DARKER than the metal it lay on — RUST[2]
+## is luma 0.244 against PLATE[2] 0.287 and PLATE[3] 0.389 — and rust on grey
+## steel reads warmer AND lighter. Three faults, one of them arithmetic.
+##
+## So: a graded strip. The darkest rung at the weep, the light rungs down the
+## run, and a last step lerped toward the plate so it thins into staining rather
+## than stopping on a ruled line. It leans as it falls, by a hash of where it
+## starts, so two runs on one drum are not two copies of each other.
+##
+## WHERE it begins is still the caller's and cannot be worked out here: rust
+## starts where water sits or metal is broken, so pass a `top` at a seam, a bolt
+## or a lip rather than the middle of a panel.
 ##
 ## `along` runs ACROSS the face and a quad's front is `(c - b) x (a - b)`, which
 ## in the order these corners were first written came out at -`out`: every rust
@@ -74,13 +92,33 @@ static func lit(col: Color, a: float) -> Color:
 ## Nothing said so, because a missing thing raises no error
 ## (tests/render/test_found_drawn.gd). The winding is decided here, from the
 ## direction the run is meant to be seen from, and never left to corner order.
+const RUN_STEPS := 6
+## Per step down the run, how wide it is against `width`. It only ever WIDENS:
+## narrowing it again at the tail drew a dagger — a brush stroke with a point on
+## it — where what is wanted is a weep that spreads. The tail fades by COLOUR
+## instead, which is what staining does.
+const RUN_WIDE: Array[float] = [0.34, 0.72, 0.98, 1.12, 1.22, 1.30]
+
+
 static func run(k: Kit, top: Vector3, width: float, length: float, out: Vector3) -> void:
 	var o := out.normalized()
-	var along := Vector3(o.z, 0, -o.x) * width * 0.5
-	if along.cross(Vector3.DOWN).dot(o) < 0.0:
-		along = -along
+	var side := Vector3(o.z, 0, -o.x)
+	if side.cross(Vector3.DOWN).dot(o) < 0.0:
+		side = -side
 	var lift := o * 0.006
-	k.found.quad(top - along + lift, top + along + lift, top + along + Vector3(0, -length, 0) + lift, top - along + Vector3(0, -length, 0) + lift, P.RUST[2])
+	# The tail is rust let down toward the plate: a stain, not an edge.
+	var shades: Array[Color] = [P.RUST[1], P.RUST[3], P.RUST[4], P.RUST[4],
+		P.RUST[4].lerp(P.PLATE[4], 0.35), P.RUST[4].lerp(P.PLATE[4], 0.62)]
+	# A lean of its own, from where it starts, so a drum's runs are not copies.
+	var lean := sin(top.x * 12.9898 + top.y * 4.1414 + top.z * 78.233) * width * 0.6
+	for i in RUN_STEPS:
+		var t0 := float(i) / RUN_STEPS
+		var t1 := float(i + 1) / RUN_STEPS
+		var a0 := top + Vector3(0, -length * t0, 0) + side * lean * t0 * t0 + lift
+		var a1 := top + Vector3(0, -length * t1, 0) + side * lean * t1 * t1 + lift
+		var w0 := side * width * 0.5 * RUN_WIDE[i]
+		var w1 := side * width * 0.5 * RUN_WIDE[mini(i + 1, RUN_STEPS - 1)]
+		k.found.quad(a0 - w0, a0 + w0, a1 + w1, a1 - w1, shades[i])
 
 
 ## A row of rivets along a line on a face.
