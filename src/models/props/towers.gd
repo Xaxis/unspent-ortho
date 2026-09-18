@@ -43,6 +43,11 @@ static func build(k: Kit, form: StringName, c: int) -> void:
 ## floor lines run level across the buildings that share a street — which is the
 ## one thing that makes a row of them read as a city and not as a shelf of boxes.
 const STOREY := 1.25
+## How many floors up a building is drawn in full. Above this it keeps its
+## silhouette and its floor lines and drops the wear, the growth and half the
+## glazing — see `shaft`, which explains why that is a readability argument and
+## not only a budget one.
+const DETAIL_FLOORS := 4
 ## How far a floor slab stands proud of the wall under it, and how deep it is.
 ## Three screen pixels at the play camera: enough for the sun to rule a line
 ## along and to drop a bar of shade under, and not so much that the building
@@ -449,11 +454,23 @@ static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: in
 		var shade := GroundColors.down(body, 0.18 + 0.05 * (i % 2))
 		var t := storey(k, w, d, y, STOREY, s + i * 17, GroundColors.down(body, 0.04 * i), shade, inset)
 		var faces := Houses.faces(t)
+		# ABOVE THE FOURTH FLOOR, LESS OF IT — and this is a readability argument
+		# before it is a budget one. The camera shows fifteen world units and a
+		# thing of height h takes h * cos(57) = 0.545 of them up the screen, so
+		# from the fifth floor of an eleven-storey tower up you are in the top
+		# third of the frame or out of it altogether. Wear, growth and the
+		# per-face glazing states are all read at arm's length and none of them
+		# survives being drawn there; what carries at that height is the
+		# SILHOUETTE and the floor lines, which are `storey` and `ledge`, and
+		# every floor keeps both. It is also what makes a tower three times its
+		# old height cost about what it did.
+		var near_ground := i < DETAIL_FLOORS
 		# Every face is worn, as every face of a house is: a building worn only
 		# where the camera happens to look is what made a village read tidy.
-		for fi in faces.size():
-			var wf: Array = faces[fi]
-			Houses.weathered(k, wf[0], wf[1], wf[2], wf[3], s + i * 31 + fi * 7, GroundColors.down(body, 0.35), dress.growth)
+		if near_ground:
+			for fi in faces.size():
+				var wf: Array = faces[fi]
+				Houses.weathered(k, wf[0], wf[1], wf[2], wf[3], s + i * 31 + fi * 7, GroundColors.down(body, 0.35), dress.growth)
 		var v0 := (1.0 - GLASS) * 0.55
 		var v1 := v0 + GLASS
 		for fi in 4:
@@ -473,6 +490,11 @@ static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: in
 				# The ground floor is a frontage, not a band of glazing.
 				frontage(k, wf, s + fi * 13, c)
 				continue
+			# High up, the two long faces carry the glazing and the two short ones
+			# are blank wall: half the bands, and at that height in frame the eye
+			# is reading the column of lit floors, not which side of it they are on.
+			if not near_ground and fi % 2 == 1:
+				continue
 			band(k, wf, v0, v1, 4 if fi % 2 == 0 else 5, s + i * 41 + fi, state, glass, dress.timber[0], dress.timber[1])
 		y += STOREY
 		ledge(k, w - step * i, d - step * i, y - SLAB * 0.5, s + i * 23, GroundColors.up(body, 0.12))
@@ -488,7 +510,7 @@ static func tower(k: Kit, c: int) -> void:
 	var s := 3100
 	var w := 2.5
 	var d := 2.9
-	var top := shaft(k, w, d, 5, 0.0, s, c)
+	var top := shaft(k, w, d, 11, 0.0, s, c)
 	var t := corners(w + FRAME, d + FRAME, 0.0, top, s)
 	var faces := Houses.faces(t)
 	var fb: Array = faces[0]
@@ -508,8 +530,8 @@ static func stack(k: Kit, c: int) -> void:
 	var s := 3200
 	var w := 2.8
 	var d := 2.6
-	var step := 0.34
-	var top := shaft(k, w, d, 4, step, s, c)
+	var step := 0.16
+	var top := shaft(k, w, d, 8, step, s, c)
 	# The ground storey's frame, not the whole shaft's: everything hung on this
 	# one is at street level, and the storeys above it step back out of its plan.
 	var t := corners(w + FRAME, d + FRAME, 0.0, STOREY, s)
@@ -523,7 +545,7 @@ static func stack(k: Kit, c: int) -> void:
 	# read across the stock rather than each form reaching for the sodium.
 	billboard(k, faces[1], 0.30, 0.86, SIGN_COLOURS[1], s + 5)
 	# What people put on a terrace they can get out onto: a rail, a tank, washing.
-	for i in range(1, 4):
+	for i in range(1, 8):
 		var y := STOREY * i
 		var hw := (w - step * i) * 0.5
 		var hd := (d - step * i) * 0.5
@@ -678,7 +700,7 @@ static func spire(k: Kit, c: int) -> void:
 	var s := 3600
 	var w := 1.8
 	var d := 1.9
-	var top := shaft(k, w, d, 6, 0.06, s, c)
+	var top := shaft(k, w, d, 11, 0.04, s, c)
 	var t := corners(w + FRAME, d + FRAME, 0.0, STOREY, s)
 	var faces := Houses.faces(t)
 	Houses.door(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.5, 0.1, 0.74)
@@ -711,7 +733,7 @@ static func spire(k: Kit, c: int) -> void:
 		k.cable(Vector3(a.x, head + 0.1, a.y), tip.lerp(Vector3(0, head, 0), 0.25), 0.08, 3, 0.008, P.PLATE[1])
 	k.found.prism(tip.x, tip.y - 0.12, tip.z, 0.09, tip.y + 0.06, 0.07, 8, P.PLATE[1], P.RUST[2])
 	# The stair somebody bolted up the outside once the inside one went.
-	for i in 9:
+	for i in 19:
 		var y := 0.4 + i * 0.7
 		var side := 1.0 if i % 2 == 0 else -1.0
 		k.rod(Vector3(-w * 0.5 - 0.03, y, -0.3 * side), Vector3(-w * 0.5 - 0.03, y, 0.3 * side), 0.014, 3, P.PLATE[3])
