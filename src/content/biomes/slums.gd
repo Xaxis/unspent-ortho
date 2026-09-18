@@ -51,8 +51,8 @@ static func make() -> BiomeDef:
 	d.moist_range = Vector2(0.25, 0.65)
 	d.site_count = Vector2i(1, 1)
 	d.coastal = 0.3
-	d.adjacency = {&"coast": 0.6, &"bonelands": 0.35, &"scrapwood": 0.3, &"salt_flats": 0.2,
-		&"snowfield": -0.6, &"moss": -0.4}
+	d.adjacency = {&"coast": 0.6, &"bonelands": 0.35,
+		&"scrapwood": -0.3, &"salt_flats": -0.3, &"snowfield": -0.6, &"moss": -0.4}
 	# Flat, and stepped rather than rolling: a city is built on platforms. The
 	# terrace term is what gives the mesher long level slabs with a step between
 	# them, which is what a street reads as from above; hills and ridge are near
