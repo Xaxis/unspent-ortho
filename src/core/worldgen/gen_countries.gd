@@ -801,9 +801,9 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 	var dist := PackedFloat32Array()
 	dist.resize(hn)
 	dist.fill(1e4)
-	var pair := PackedByteArray()
+	var pair := PackedInt32Array()
 	pair.resize(hn)
-	var edge := PackedByteArray()
+	var edge := PackedInt32Array()
 	edge.resize(c.n)
 	const SEA := Country.SEA
 	# Bands are an even number of rows, so each half-resolution cell is written
@@ -836,7 +836,7 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 	# Exact to 28 tiles, past the widest ecotone.
 	var spread := GenFields.banded([dist, pair], hw, 14, func(arrays: Array, width: int) -> Array:
 		var dd: PackedFloat32Array = arrays[0]
-		var pp: PackedByteArray = arrays[1]
+		var pp: PackedInt32Array = arrays[1]
 		_spread_labelled(dd, pp, width, 2.0)
 		return [dd, pp]
 	)
@@ -943,7 +943,7 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 
 ## Two-sweep 8-neighbour chamfer distance (cell = `unit` tiles) that also
 ## carries each source's label to the cells it is nearest.
-static func _spread_labelled(d: PackedFloat32Array, label: PackedByteArray, width: int, unit: float) -> void:
+static func _spread_labelled(d: PackedFloat32Array, label: PackedInt32Array, width: int, unit: float) -> void:
 	var height := d.size() / width
 	var dc := unit * 1.4142
 	for y in height:

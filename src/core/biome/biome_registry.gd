@@ -17,7 +17,7 @@ class_name BiomeRegistry
 ## (GenCountries), so the registry holds at most SLOTS types in one realm.
 
 ## Index slots. Border pairs pack two indices into one byte as lo * SLOTS + hi.
-const SLOTS := 16
+const SLOTS := 32
 const DIR := "res://src/content/biomes"
 
 static var _defs: Dictionary = {}
