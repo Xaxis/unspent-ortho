@@ -83,6 +83,38 @@ func test_nobody_moves_in_where_there_is_nowhere_to_sleep() -> void:
 	Sx.end(g)
 
 
+## AND THE KEY STRIP DOES NOT OFFER WHAT THE PRESS REFUSES, which is the rule the
+## contract table states in the Taking row: a mark can never promise what the key
+## will not do. The strip said "work it" over a piece nothing could staff and the
+## press then said "Nowhere for anybody else to sleep here." — the same defect as
+## the harvest mark's, in a second package, and reachable only once beds began to
+## decide who may move in. One answer serves both readers now.
+func test_the_strip_never_offers_to_work_a_piece_nobody_can_be_put_on() -> void:
+	Sx.use_root("living")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10"])
+	await frames(3)
+	var h := _holdings(g)
+	var s := Settlement.new()
+	s.realm = g.world.realm
+	s.centre = g.player.pos
+	var plot := s.add(StructureKind.PLOT, g.player.pos + Vector2(2, 0))
+	(h.get(&"places") as Array).append(s)
+	eq(s.beds(), 0, "nowhere to sleep, so nobody can be put on the plot")
+	var why := String(h.call("why_not_staff", s))
+	eq(why, "Nowhere for anybody else to sleep here.", "and it says which of the two walls it is")
+	eq(String(h.call("verb_for", plot)), "-", "so the strip offers nothing")
+	eq(String(h.call("why_not_tend", plot)), why, "and the row says why, in the press's own words")
+	eq(String(h.call("tend", plot.id)), "!" + why, "and pressing says exactly the same")
+	# A bed, and the offer and the press agree again — the other way round.
+	@warning_ignore("return_value_discarded")
+	s.add(StructureKind.BUNK, g.player.pos + Vector2(0, 2))
+	eq(String(h.call("why_not_staff", s)), "", "with a bed, somebody can come")
+	eq(String(h.call("verb_for", plot)), "work it", "so the strip offers it")
+	eq(String(h.call("why_not_tend", plot)), "", "and the row is live")
+	check(not String(h.call("tend", plot.id)).begins_with("!"), "and the press does it")
+	Sx.end(g)
+
+
 ## Staging is documented as "free and staffed", and a shot or a tour that asks
 ## for one plot must get a working plot rather than a lesson about roofs. Every
 ## existing `--holding=` in the tests and tours leans on this.

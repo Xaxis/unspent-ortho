@@ -405,13 +405,11 @@ func tend(piece_id: int) -> String:
 	# an hour of going up, and a plot that demanded to be tidied before anybody
 	# could be put on it would never be worked at all.
 	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
-		var full := s.people.size() >= s.beds()
+		var why := why_not_staff(s)
+		if why != "":
+			return "!" + why
 		var who := _staff(s, p)
 		if who < 0:
-			# Which of the two walls it is, or the lesson is unlearnable: one is
-			# answered by building a bed and the other by founding somewhere else.
-			if full:
-				return "!Nowhere for anybody else to sleep here."
 			return "!Nobody near enough to come and work it."
 		return "Somebody is on the %s now." % StructureKind.display_name(p.kind)
 	if p.condition() < MEND_BELOW:
@@ -422,8 +420,42 @@ func tend(piece_id: int) -> String:
 	return "!It wants nothing."
 
 
+## Whether anybody COULD be put on a piece of this holding, and in the words the
+## press would use when they could not. "" means yes.
+##
+## THE POINT IS THAT ONE ANSWER SERVES BOTH READERS. `verb_for` draws the key
+## strip and `tend` does the deed, and the contract table states the rule in the
+## Taking row: *a mark can never promise what the key will not do*. The strip
+## offered "work it" on a piece nothing could staff, and the press then said
+## "Nowhere for anybody else to sleep here." — the same defect in a second
+## package, and it became reachable only when beds stopped being dead code and
+## started deciding who may move in.
+##
+## Pure: it looks at the same three things `_staff` does — somebody already here
+## and idle, a bed for somebody new, and anybody near enough to ask — and touches
+## none of them. Which of the two walls it is matters, or the lesson is
+## unlearnable: one is answered by building a bed and the other by founding
+## somewhere else.
+func why_not_staff(s: Settlement) -> String:
+	if s == null:
+		return ""
+	for id: int in s.people:
+		var busy := false
+		for q in s.pieces:
+			if q.staffed_by == id:
+				busy = true
+				break
+		if not busy:
+			return ""
+	if s.people.size() >= s.beds():
+		return "Nowhere for anybody else to sleep here."
+	if _villager_near(s).is_empty() and _village_within(s, LODGE_REACH) < 0:
+		return "Nobody near enough to come and work it."
+	return ""
+
+
 ## What E will do to a piece, in the page's own words, so the key strip and the
-## press never disagree (UiSettlementScreen reads this).
+## press never disagree (UiSettlementScreen reads this). "-" is nothing to do.
 func verb_for(p: Structure) -> String:
 	if p == null:
 		return "-"
@@ -435,11 +467,24 @@ func verb_for(p: Structure) -> String:
 		if p.condition() < MEND_BELOW:
 			return "mend"
 		return "arm" if p.kind == StructureKind.TURRET else "switch on"
-	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
+	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0 and why_not_staff(here()) == "":
 		return "work it"
 	if p.condition() < MEND_BELOW:
 		return "mend"
 	return "leave" if p.staffed_by >= 0 else "-"
+
+
+## Why E would do nothing to this piece, for the row to say instead of offering
+## an act that refuses — the same channel `why_not_here` fills for building.
+## "" when there is something to do.
+func why_not_tend(p: Structure) -> String:
+	if p == null or verb_for(p) != "-":
+		return ""
+	if StructureKind.needs_staff(p.kind) and p.staffed_by < 0:
+		var why := why_not_staff(here())
+		if why != "":
+			return why
+	return "It wants nothing."
 
 
 func _switch(s: Settlement, p: Structure, on: bool) -> String:

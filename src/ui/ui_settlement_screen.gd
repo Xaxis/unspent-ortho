@@ -61,7 +61,11 @@ func refresh() -> void:
 	else:
 		rows.append({"header": place.name})
 		for p in place.pieces:
-			rows.append({"id": StringName("piece_%d" % p.id), "piece": p.id, "enabled": true,
+			# A row that E would do nothing to says why, the way a piece you
+			# cannot afford does: the strip must never offer an act that refuses.
+			var idle := String(holdings.call("why_not_tend", p)) if holdings != null else ""
+			rows.append({"id": StringName("piece_%d" % p.id), "piece": p.id,
+				"enabled": idle == "", "why": idle,
 				"title": StructureKind.display_name(p.kind)})
 		if place.stored() > 0.0:
 			rows.append({"id": &"stores", "stores": true, "enabled": true, "title": "take what is laid by"})
