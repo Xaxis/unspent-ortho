@@ -60,10 +60,21 @@ static var _found_mat: ShaderMaterial
 static var _leaf_mat: ShaderMaterial
 
 
-static func variants(kind: int) -> int:
+## How many models of `kind` there are IN THIS LANDSCAPE. Only a building's
+## answer moves: its forms are the landscape's own stock (`BiomeForms`), so a
+## city deals six towers where a coast deals eight crofts, and neither costs the
+## other a slot — the cache key already carries the country
+## (`(kind * MAX_VARIANTS + variant) * SLOTS + country`), so variants have always
+## been per-landscape in the CACHE and only the COUNT was global.
+##
+## The default is the coast because every caller outside a running world means
+## "the plain answer": the gallery's first pass, a test, a mesh asked for on its
+## own. A caller that has a world passes the country, or it deals a model this
+## landscape does not build.
+static func variants(kind: int, country: int = Country.COAST) -> int:
 	match kind:
 		PropKind.HOUSE:
-			return Houses.VARIANTS
+			return BiomeForms.of(country).stock.size()
 		PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER:
 			return 4
 		PropKind.SNOW_PINE, PropKind.DRIFTWOOD, PropKind.BONES, PropKind.RUIN, PropKind.STANDING_STONE, PropKind.REEDS, \
@@ -105,18 +116,18 @@ static func variants(kind: int) -> int:
 
 
 ## A variant for an instance from its hash (any int).
-static func pick_variant(kind: int, h: int) -> int:
-	return absi(h) % variants(kind)
+static func pick_variant(kind: int, h: int, country: int = Country.COAST) -> int:
+	return absi(h) % variants(kind, country)
 
 
 ## The model one placed prop is drawn as: what world gen dealt it (`WorldProp.variant`,
 ## which a village uses so no two of its houses repeat a silhouette), or, where
 ## nothing was dealt, the one its id hashes to. Every reader — the chunk bake,
 ## the lights — asks here, so a dealt variant reaches all of them.
-static func variant_of(p: WorldProp, seed_value: int) -> int:
+static func variant_of(p: WorldProp, seed_value: int, country: int = Country.COAST) -> int:
 	if p.variant >= 0:
-		return clampi(p.variant, 0, variants(p.kind) - 1)
-	return pick_variant(p.kind, Rng.hash_ints(seed_value, p.id, 90))
+		return clampi(p.variant, 0, variants(p.kind, country) - 1)
+	return pick_variant(p.kind, Rng.hash_ints(seed_value, p.id, 90), country)
 
 
 ## Chunk workers bake props while the main thread may too.
@@ -468,6 +479,16 @@ static func gallery() -> Array:
 			out.append({"name": "%s %s" % [PropKind.NAMES[kind], BiomeRegistry.names()[c]], "node": node(kind, 0, c)})
 	# The but in snow: its sods carry the snow, not a lid of it.
 	out.append({"name": "%s 3 snowfield" % PropKind.NAMES[PropKind.HOUSE], "node": node(PropKind.HOUSE, 3, Country.SNOWFIELD)})
+	# Every form of a landscape that builds something other than the plain stock
+	# (`BiomeForms`). The rows above show the plain eight once; a landscape whose
+	# people build upward shows its own, or the gallery is evidence about a stock
+	# nobody in that world raises.
+	for d: BiomeDef in BiomeRegistry.land():
+		var stock := BiomeForms.of(d.index).stock
+		if stock == BiomeForms.PLAIN:
+			continue
+		for v in stock.size():
+			out.append({"name": "%s %s %s" % [PropKind.NAMES[PropKind.HOUSE], stock[v], d.id], "node": node(PropKind.HOUSE, v, d.index)})
 	# The evidence each landscape dresses its own way.
 	for kind: int in DRESSED:
 		for c: int in lands:

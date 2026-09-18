@@ -13,7 +13,9 @@ shot 01-wake-the-goal
 # Up in the coast fields in the first minute: a worker crosses on its round,
 # well off, and goes by. (No hunter comes out this early: the first meeting
 # waits a minute or so into the game.)
-at 130,370
+# Open coast ground by name: clear of every village and depot, which is what
+# "up in the coast fields" means, and where a worker on its round reads clear.
+place open_coast
 wait 1.0
 await mob 20
 shot 01b-a-worker-on-its-round with mob

@@ -70,7 +70,22 @@ keep_log() {
     echo "tour log kept: shots/tour/$name/run.log"
   fi
 }
-grep -E '^tour|SCRIPT ERROR|ERROR|at: ' "$log" | grep -v '^tour t=' | head -60
+# EVERY matching line. `head -60` used to sit here and dropped the rest in
+# silence -- including the `pixels:` counts the runner prints, which is the whole
+# reason four measured claim floors could not be checked from a tour's own output
+# and one of them stood 246 times under what its frame really holds. CLAUDE.md's
+# rule is that a run is never piped through head or tail in a way that hides what
+# it said, and this was the tool itself breaking it, in the same file and the
+# same week as the backtrace that fell down the gap between a grep and a tail.
+# If the summary is ever long enough to cut, the log is KEPT even on a pass:
+# a sample nobody can go back to is the same bug in a smaller box.
+summary=$(grep -E '^tour|SCRIPT ERROR|ERROR|at: ' "$log" | grep -v '^tour t=')
+printf '%s\n' "$summary" | head -400
+cut_summary=0
+if [ "$(printf '%s\n' "$summary" | wc -l | tr -d ' ')" -gt 400 ]; then
+  cut_summary=1
+  echo "tour summary cut at 400 lines; the whole log is kept below"
+fi
 grep -E 'done ->' "$log" | tail -1
 # A tour that stopped early can still leave a zero exit (a quit racing a frame):
 # the run only counts when the tour says it reached its end.
@@ -78,4 +93,8 @@ if ! grep -qE '^tour .* done ->' "$log"; then
   tail -12 "$log"; keep_log; echo "tour FAILED: never reached its end ($tour)"; exit 1
 fi
 if [ $status -ne 0 ] || [ $code -ne 0 ]; then keep_log; echo "tour FAILED (status $status, exit $code)"; exit 1; fi
-rm -f "$log"
+# A PASS whose summary was cut keeps its log too. This is the half that actually
+# bit: the run was green, the counts past line 60 were never printed, and the log
+# holding them was deleted on the next line -- so the evidence existed, was
+# thrown away, and the tour reported success.
+if [ "$cut_summary" -eq 1 ]; then keep_log; else rm -f "$log"; fi

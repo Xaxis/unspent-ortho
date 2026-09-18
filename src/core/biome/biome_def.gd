@@ -127,6 +127,17 @@ var rock_ground := Ground.ROCK
 ## A village's cleared ground here, and what its square is trodden to.
 var village_ground := Ground.GRASS
 var village_square_ground := Ground.GRAVEL
+## What its people BUILT (`BiomeForms`): which shapes their buildings take, how
+## those buildings stand relative to each other and to the square, and how far
+## out the nearest one is. Null builds one storey and a hearth, which is what
+## every landscape did before a landscape could argue.
+##
+## It sits here among the worldgen fields and not among the look ones because
+## the forms decide the SETTLEMENT and not only its drawing: how many buildings
+## there are is the stock's own size, how much ground each stands on is its
+## form's, and the plan decides where they go. Move it and every prop after the
+## first village takes a different id.
+var built: BiomeForms = null
 ## Ground id -> [density, kind, weight, kind, weight, ...] for the decor layer.
 ## A ground with no row here uses the shared table.
 var decor: Dictionary = {}
