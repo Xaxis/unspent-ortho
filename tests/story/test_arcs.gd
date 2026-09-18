@@ -59,6 +59,11 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 		check(nodes.has(start), "%s starts somewhere that exists" % talk)
 		if def.has("cast"):
 			check(StoryCast.get_def(StringName(str(def.cast))) != null, "%s belongs to %s, who is in the cast" % [talk, def.cast])
+		elif bool(def.get("machine", false)):
+			var opened := false
+			for f: StringName in StoryContent.FRAGMENTS:
+				opened = opened or StringName(str(StoryContent.FRAGMENTS[f].get("talk", &""))) == talk
+			check(opened, "%s is a machine's, and some thing that answers opens it" % talk)
 		else:
 			check(PersonLook.TRADES.has(StringName(str(def.get("who", &"")))),
 				"%s is for a trade people actually have: %s" % [talk, def.get("who", &"")])
@@ -88,7 +93,7 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 func test_one_conversation_per_trade_so_nobody_is_silently_unreachable() -> void:
 	var by: Dictionary = {}
 	for talk: StringName in StoryContent.TALKS:
-		if StoryContent.TALKS[talk].has("cast"):
+		if StoryContent.TALKS[talk].has("cast") or bool(StoryContent.TALKS[talk].get("machine", false)):
 			continue
 		var who := StringName(str(StoryContent.TALKS[talk].get("who", &"")))
 		check(not by.has(who), "%s and %s are both for a %s, and only the first would ever be said" % [by.get(who, ""), talk, who])

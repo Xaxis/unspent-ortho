@@ -257,6 +257,15 @@ than a player stuck at three in the morning.
 
 ---
 
+### The end, and things that answer
+
+A fragment may name a conversation (`talk`): reading it is being answered, as the
+console at the channel is. A conversation may close onto a page (`after`): the
+channel closes onto `the_end`, whose lines `StoryEnding` composes from the
+choice made there, the version of the secret (`StorySecret`) and what the player
+did with everyone the story touched. A page only something else opens is marked
+`dealt: false` and is never put on a thing in the world.
+
 ### Words that belong to a place
 
 A story place keeps its own words (`StoryContent.PLACED`), which are never dealt
