@@ -235,9 +235,8 @@ float sky_fbm(vec2 p) {
 // switch the signs on would also swing the sun's hue, the shade's hue and the
 // divisor 15_lights.compensate subtracts -- which is the exact chain that gave
 // the caves a red lantern. Hue and level stay separate.
-float neon_burn(float tint_mean) {
-	return max(clamp((0.9 - tint_mean) * 6.0, 0.0, 1.0), sky_lid);
-}
+//
+// `neon_burn` itself lives further down, beside the other neon functions.
 
 
 float sky_power() {
