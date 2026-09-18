@@ -60,7 +60,25 @@ const FRAME := 0.07
 ## years. Wider than a house's tube (`Houses.NEON_TUBES`) because a billboard is
 ## a FIELD of colour and not a line of it, and colder, because the machines' own
 ## plant lit this place before anyone hung washing off it.
-const SIGN_COLOURS: Array[Color] = [Color(1.0, 0.22, 0.52), Color(0.25, 0.9, 1.0), Color(0.55, 0.35, 1.0)]
+##
+## WHY THESE THREE AND NOT THE OBVIOUS ONES. This list read pink, cyan, VIOLET.
+## The violet sat at hue 261, inside the 240-336 band `palette.gd` reserves for
+## the machines, and that reservation is load-bearing rather than decorative: it
+## is the whole reason a patched roof never reads as a live machine. The city is
+## about to be the most crowded frame in the game, which is exactly where that
+## one cue does the most work, so a violet sign spends the thing that makes the
+## frame legible. The cyan went with it -- a purple-to-teal gradient is the most
+## copied palette in this genre and says nothing about this place.
+##
+## What a real city at night is actually lit by: SODIUM vapour, and the MERCURY
+## green of whatever the municipality stopped maintaining -- a stairwell, an
+## underpass, a sign nobody replaced. The pink stays as the one commercial
+## accent, because advertising is the one thing here that still has money in it.
+##
+## The sodium is `15_lights.NEON_SODIUM` written out a second time on purpose: a
+## model may not depend on a system. `tests/render/test_signage.gd` fails if the
+## two ever drift, and fails if any colour here re-enters the machines' band.
+const SIGN_COLOURS: Array[Color] = [Color(1.0, 0.22, 0.52), Color(1.0, 0.52, 0.16), Color(0.522, 0.878, 0.549)]
 
 
 ## A ground wash used as a MATERIAL. `BiomeDressing.drift` (and anything else

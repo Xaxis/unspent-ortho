@@ -7,26 +7,24 @@ extends RefCounted
 ## worn by the land like every other made thing (`matter_worn` reads world
 ## position, so one mural weathers differently at the two ends of a street).
 ##
-## A BILLBOARD is projected. It is FOUND: a metal rig, and a face that is LIGHT
-## rather than paint -- immense, in motion, and bright enough to lay the street
-## and the standing water under it in its own colour.
+## A HOARDING is projected, and it is the CITY's, not this file's:
+## `Towers.billboard` draws every lit sign in the Slums and this wall is just
+## another wall to hang one on.
 ##
-## They are built in one file because the landscape's one image is the two of
-## them TOUCHING: a mural half-covered by a billboard that is still cheerfully
-## selling something. Nobody cleaned the mural off; nobody defended it either.
-## MURAL variants 2 and 3 ARE that picture, so it cannot be lost by a placer
-## putting the two kinds in different streets -- it is one prop, and the frame
-## the landscape exists for can always be taken.
+## The landscape's one image is the two of them TOUCHING -- a mural half covered
+## by a sign that is still cheerfully selling something. Nobody cleaned the mural
+## off; nobody defended it either. MURAL variants 2 and 3 ARE that picture, and
+## it is ONE PROP on purpose: a placer cannot put the halves in different streets
+## and lose the only frame the landscape exists to take.
 ##
 ## WHY THE COLOURS ARE WHAT THEY ARE. The machines own the violet band (hue
 ## 240-336) and the amber LENS, and that contract is what lets a player pick the
-## one machine out of the most crowded frame in the game at a glance. So the
-## Slums is lit by what a real city is lit by and the machines are not: SODIUM
-## orange on the street, MERCURY green on whatever stopped being maintained, and
-## a dirty warm white on the advertising, which wants to look clean and does not
-## quite manage it through the haze. Nothing here goes near the violet band, and
-## the purple-to-teal gradient every other lit city in games is made of is
-## absent on purpose.
+## one machine out of the most crowded frame in the game at a glance. So the city
+## is lit by what a real city is lit by and the machines are not: sodium orange,
+## and the mercury green of whatever stopped being maintained. Those live in
+## `Towers.SIGN_COLOURS` -- one list, not this file's own -- and the violet and
+## the teal that used to be in it are gone. `tests/render/test_signage.gd` fails
+## if either comes back.
 ##
 ## Models face +X, so a panel's face looks down +X and its light hangs in front
 ## of it. Props turn by `-rot`.
@@ -35,76 +33,38 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 const Works := preload("res://src/models/props/works.gd")
+const Towers := preload("res://src/models/props/towers.gd")
 
-## The Slums' own light, and the ONE place its colour is written: the emissive
-## geometry, the pool it throws on the street, its streak in the standing water
-## and its shaft in the smog all read these, so they cannot disagree about what
-## colour a sign is. `props/works.gd` keeps the same rule for the machines'
-## STRIP/BEACON/WORKING, for the same reason -- a light and the thing casting it
-## written down twice drift apart, and the player only ever sees the light.
+## THE HOARDING IS NOT DRAWN HERE. `Towers.billboard` already draws the city's
+## lit sign -- a gantry of brackets off a wall and a NEON-coded face inside it --
+## and a second implementation would be two things that disagree about what a
+## sign is the first time either is touched. This file gives it a WALL and asks.
 ##
-## The ALPHA is the FOUND light code (found.gdshader): 0.5..0.98 is a steady
-## strip and BRIGHTER AS IT FALLS (`glow = (1 - a) * 5`); below 0.5 is a beacon
-## blinking on the machines' beat. So a LOW number here is a loud sign.
+## What that buys beyond not repeating the work: the face is a `GroundColors.NEON`
+## mark on MADE geometry, so `PropModels.neon_point` reads its middle and its
+## colour off the geometry itself. The mural's glow point is therefore not a
+## coordinate anybody typed -- it is measured from the thing that is glowing, and
+## the light and its cause cannot part company. A bare mural has no NEON in it at
+## all, so the same call returns nothing and `15_lights.PLACED_SOURCES` drops it.
+## Paint emits nothing, a projection lights the street, and neither fact is
+## written down twice.
+##
+## The colours come from `Towers.SIGN_COLOURS` for the same reason: one list.
 
-## Street sodium vapour: the ground note, and what a real city at night is.
-const SODIUM := Color(0.980, 0.576, 0.180, 0.70)
-## The failing institutional light -- a stairwell, an underpass, a municipal sign
-## nobody replaced. Hue 127, a true green kept clear of teal, and held DIM,
-## because the point of it is that it is old and going out. A bright mercury lamp
-## would only be a second billboard.
-const MERCURY := Color(0.522, 0.878, 0.549, 0.88)
-## The projector lamps themselves: a dirty warm white, because advertising wants
-## to look clean and does not quite manage it through this air.
-const DAYLIGHT := Color(0.949, 0.910, 0.824, 0.62)
-## The advertising's dirty warm white, and the two loud shapes it prints on.
-## All of it inside hue 10-50, so a billboard can never read as a machine.
-##
-## THE INK IS DIMMER THAN THE GROUND, and that ordering is the whole reason a
-## billboard reads as a PICTURE rather than as a lamp. A backlit sign is lit
-## from behind: the white field is the brightest thing on it and every printed
-## shape BLOCKS some of that light. Drawn the other way round -- loud shapes
-## brighter than the field -- the panel crushes to one white slab with faint
-## marks on it, which is measured, not guessed: at a ground of 0.64 (glow 1.8)
-## the first gallery frame came back as four white rectangles and the artwork
-## was gone.
-const AD_GROUND := Color(0.949, 0.910, 0.824, 0.78)
-const AD_LOUD := Color(0.980, 0.576, 0.180, 0.86)
-const AD_DEEP := Color(0.784, 0.353, 0.082, 0.93)
-## The one element that MOVES. Below 0.5, found.gdshader blinks it on the
-## machines' slow beat -- the only motion a baked mesh can have, and enough: a
-## sign with one pulsing element reads as RUNNING, where a whole panel blinking
-## would read as broken, which is the opposite of what this landscape says.
-const AD_PULSE := Color(0.980, 0.576, 0.180, 0.34)
-
-## How high the biggest billboard's face reaches. The play camera shows 26.7 x
-## 17.9 tiles of ground, so anything over about ten units is CUT OFF by the top
-## of the frame at play zoom, which is what "immense" has to mean here: you
-## cannot see the whole of it at once and you look up at it.
-const TALL := 12.4
-## And why the panel is carried high rather than made wide: a glint's streak in
-## wet ground is `max(lp.y - gp.y, 4) * 1.8 + 10` screen pixels
-## (sky.gdshaderinc), i.e. bought ENTIRELY with the light's height above the
-## ground. A sign at 9 units lays a reflection several times the length of a
-## lamp post's, for nothing. The puddles are half the light in this landscape
-## and this constant is what pays for them.
-## Where the light that reaches the STREET comes from: the foot of the panel,
-## not its middle. It is one number shared by every variant because
-## `15_lights.SOURCES` states it a second time as its own height column, and the
-## two are measured against each other by `tests/sky/test_lamp_pools.gd`.
-##
-## It was 9.0 — the middle of the biggest panel — and the pool came out with a
-## radius of exactly ZERO, because an omni whose reach equals its own height
-## lands nothing on the ground beneath it. The sign burned and the street stayed
-## black. Raising it back buys a longer reflection and loses the light; this is
-## the compromise, and the ground wins.
-const LIGHT_AT := 6.5
+## Where the hoarding sits on the wall, as a share of its height. Chosen against
+## the painting rather than for its own sake: the figures stand from 0.7 to about
+## 4.5, so a sign from 1.4 to 4.0 takes their heads and bodies and leaves their
+## RAISED HANDS above it and their feet below. What a billboard covers is the
+## whole point of this landscape, so it is picked, not centred.
+const SIGN_FOOT := 0.23
+const SIGN_HEAD := 0.65
+## How far the gantry stands off the wall, so the sign clears the paint under it.
+const SIGN_WALL := 0.30
 
 
 static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	k.hand(Ink.hand_of(c))
 	match kind:
-		PropKind.BILLBOARD: billboard(k, v, c)
 		PropKind.MURAL: mural(k, v, c)
 
 
@@ -155,196 +115,6 @@ static func _disc(pen: MeshKit, x: float, cz: float, cy: float, r: float, n: int
 		var a := float(i) / float(n) * TAU
 		pts.append(Vector2(cz + cos(a) * r, cy + sin(a) * r))
 	_paint(pen, x, pts, col, out)
-
-
-# --- billboards ------------------------------------------------------------------
-
-## The advertisement. Bold shapes and NO WRITING: at play zoom real lettering
-## would be illegible anyway, and inventing a script -- katakana or an
-## imagined-Asian alphabet -- is the single most copied move in this genre and
-## says nothing about this world. A row of blocks of uneven length reads as a
-## line of type at distance, which is honest about what the eye actually
-## resolves, and invents no language.
-##
-## It is drawn in LAYERS at slightly different depths rather than flat on the
-## backing, because a projection is not a painted board: the shapes sit in front
-## of the field they are thrown on, and under a raking light that separation is
-## the whole difference between a lit sign and a glowing sticker.
-static func _advert(k: Kit, x: float, hz: float, y0: float, h: float, s: int) -> void:
-	var z0 := -hz + 0.18
-	var z1 := hz - 0.18
-	var ya := y0 + 0.16
-	var yb := y0 + h - 0.16
-	# The field it is all thrown on.
-	_rect(k.found, x, z0, ya, z1, yb, AD_GROUND)
-	var pick := absi(s) % 3
-	var mid := (ya + yb) * 0.5
-	if pick == 0:
-		# A sweep across the corner and a product held over it.
-		_paint(k.found, x + 0.02, PackedVector2Array([
-			Vector2(z0, ya + h * 0.12), Vector2(z1, ya + h * 0.44),
-			Vector2(z1, ya + h * 0.66), Vector2(z0, ya + h * 0.30)]), AD_LOUD, 1.0)
-		_disc(k.found, x + 0.04, lerpf(z0, z1, 0.30), mid + h * 0.10, h * 0.22, 16, AD_DEEP)
-		_disc(k.found, x + 0.05, lerpf(z0, z1, 0.30), mid + h * 0.13, h * 0.10, 12, AD_GROUND)
-	elif pick == 1:
-		# A tall block of colour with the product standing clear of it.
-		_rect(k.found, x + 0.02, z0, ya, lerpf(z0, z1, 0.46), yb, AD_DEEP)
-		_disc(k.found, x + 0.04, lerpf(z0, z1, 0.68), mid + h * 0.08, h * 0.26, 16, AD_LOUD)
-		_rect(k.found, x + 0.05, lerpf(z0, z1, 0.60), ya + h * 0.16, lerpf(z0, z1, 0.76), mid - h * 0.04, AD_GROUND)
-	else:
-		# Three bands and a mark, the oldest layout there is.
-		for b in 3:
-			var by := lerpf(ya, yb, 0.30 + b * 0.19)
-			_rect(k.found, x + 0.02, z0, by, lerpf(z0, z1, 0.86 - b * 0.16), by + h * 0.10,
-				AD_LOUD if b % 2 == 0 else AD_DEEP)
-		_disc(k.found, x + 0.04, lerpf(z0, z1, 0.82), ya + h * 0.22, h * 0.15, 14, AD_DEEP)
-	# The line of "type" along the foot: uneven blocks, never glyphs.
-	var z := z0 + 0.1
-	var i := 0
-	while z < z1 - 0.3 and i < 14:
-		var w := 0.18 + Rng.hash01(s, i) * 0.42
-		w = minf(w, z1 - 0.2 - z)
-		if w > 0.05:
-			_rect(k.found, x + 0.03, z, ya + h * 0.045, z + w, ya + h * 0.105, AD_DEEP)
-		z += w + 0.12
-		i += 1
-	# The one thing that moves: a bar at the head, blinking on the machines' beat.
-	_rect(k.found, x + 0.03, lerpf(z0, z1, 0.06), yb - h * 0.11, lerpf(z0, z1, 0.30), yb - h * 0.035, AD_PULSE)
-
-
-## The hoarding: what is projected on, the frame round it, the catwalk under it
-## and the projectors on the catwalk throwing up at it.
-##
-## `dead` 0..1 is how much of the face has gone out, taken off the +z end. It is
-## the landscape's thesis in one parameter: even the broken one is still
-## selling, because nobody stopped paying for it and nobody came to switch it
-## off. A wholly dark billboard would say the city had failed, which is the
-## story every other landscape tells and the exact opposite of this one.
-static func _hoarding(k: Kit, x: float, y0: float, hz: float, h: float, s: int, dead: float = 0.0) -> void:
-	# The dark backing, seen from behind, and its bracing: a billboard from the
-	# wrong side is a rusting steel hoarding and that is most of its silhouette
-	# on the approach.
-	# The back is a HOARDING, not a slab: dark horizontal strips with seams
-	# between them, on bracing that stands proud of them. One flat back plate
-	# would be another big ruled face for `found_panels` to draw a grid across,
-	# and a billboard's back is the one part of it nobody paid to finish.
-	var strips := 7
-	for i in strips:
-		var sy0 := lerpf(y0, y0 + h, float(i) / float(strips))
-		var sy1 := lerpf(y0, y0 + h, float(i + 1) / float(strips)) - 0.05
-		_rect(k.found, x - 0.06, -hz, sy0, hz, sy1, P.PLATE[0] if i % 2 == 0 else P.INK[2], -1.0)
-	for i in 5:
-		var bz := lerpf(-hz, hz, (i + 0.5) / 5.0)
-		k.found.prism(x - 0.16, y0 + 0.1, bz, 0.05, y0 + h - 0.1, 0.05, 4, P.PLATE[2], P.PLATE[3], PI * 0.25)
-	for r in 2:
-		var ry := lerpf(y0, y0 + h, 0.3 + r * 0.4)
-		k.rod(Vector3(x - 0.16, ry, -hz + 0.1), Vector3(x - 0.16, ry, hz - 0.1), 0.045, 4, P.PLATE[2])
-	Works.run(k, Vector3(x - 0.07, y0 + h - 0.3, -hz * 0.55), 0.07, h * 0.5, Vector3(-1, 0, 0))
-	# The frame: a chamfered surround, which is what stops a big flat rectangle
-	# reading as a decal pasted on the sky.
-	for sz: float in [-1.0, 1.0]:
-		k.chamfer(x - 0.02, y0 - 0.1, (hz + 0.08) * sz, 0.24, h + 0.2, 0.2, 0.05, P.PLATE[2], P.PLATE[3])
-	for sy: float in [0.0, 1.0]:
-		k.chamfer(x - 0.02, y0 - 0.1 + sy * (h + 0.1), 0.0, 0.24, 0.16, hz * 2.0 + 0.36, 0.05, P.PLATE[2], P.PLATE[3])
-	# The live face.
-	var live := hz * (1.0 - dead * 2.0)
-	if dead > 0.0:
-		# What is left of the dead half: the backing, and the cracked glass over
-		# it catching whatever light the live half throws sideways.
-		_rect(k.found, x, live, y0 + 0.16, hz - 0.18, y0 + h - 0.16, P.INK[1])
-		for i in 5:
-			var cz := lerpf(live, hz - 0.2, Rng.hash01(s, i + 30))
-			var cy := lerpf(y0 + 0.2, y0 + h - 0.2, Rng.hash01(s, i + 40))
-			_paint(k.found, x + 0.012, PackedVector2Array([
-				Vector2(cz, cy), Vector2(cz + 0.4, cy + 0.9), Vector2(cz + 0.46, cy + 0.86)]),
-				Works.lit(SODIUM, 0.9), 1.0)
-	if live > 0.4:
-		_advert(k, x, live, y0, h, s)
-	# The catwalk, and the projectors standing on it looking up at the face. The
-	# lamps are what make this a PROJECTION: without something visibly throwing
-	# the picture, a bright rectangle is a window.
-	# `chamfer` takes EXTENTS; `prism` takes RADII. Written as a prism this was a
-	# four-sided cone flaring from 0.3 to hz + 0.2, i.e. a flat plate four tiles
-	# across lying through the whole model -- which is exactly what the first
-	# in-world frame showed, and because found.gdshader rules its panel seams in
-	# world space, that one big flat face came out as a grey GRID, the one thing
-	# docs/ART.md forbids on screen. The gallery never caught it: at that
-	# distance it read as part of the rig.
-	k.chamfer(x + 0.5, y0 - 0.24, 0.0, 0.62, 0.09, hz * 2.0 + 0.36, 0.02, P.PLATE[3], P.PLATE[2])
-	for i in 3:
-		var pz := lerpf(-hz * 0.72, hz * 0.72, i / 2.0)
-		k.rod(Vector3(x + 0.05, y0 - 0.2, pz), Vector3(x + 0.62, y0 - 0.18, pz), 0.035, 4, P.PLATE[2])
-		var lit_up := i < 2 or dead <= 0.0
-		k.chamfer(x + 0.52, y0 - 0.16, pz, 0.22, 0.2, 0.22, 0.04, P.PLATE[1], P.PLATE[2])
-		# Its lens looks UP at the panel, which is the one face this camera sees.
-		k.found.quad(Vector3(x + 0.45, y0 + 0.045, pz - 0.09), Vector3(x + 0.6, y0 + 0.045, pz - 0.09),
-			Vector3(x + 0.6, y0 + 0.045, pz + 0.09), Vector3(x + 0.45, y0 + 0.045, pz + 0.09),
-			Works.lit(DAYLIGHT, 0.56) if lit_up else P.PLATE[4])
-	# A handrail nobody has used in years.
-	k.rod(Vector3(x + 0.78, y0 - 0.14, -hz - 0.1), Vector3(x + 0.78, y0 - 0.14, hz + 0.1), 0.02, 4, P.RUST[2])
-	for i in 4:
-		var rz := lerpf(-hz, hz, i / 3.0)
-		k.rod(Vector3(x + 0.78, y0 - 0.2, rz), Vector3(x + 0.78, y0 + 0.16, rz), 0.016, 4, P.RUST[2])
-
-
-## Where a billboard's light stands, in the model's own frame. Read by the
-## builder AND by PropModels.glow_points, so the lamp on the street and the
-## panel throwing it can never be in different places -- the mistake a house's
-## stolen tube made for a whole wave (prop_models.gd `neon_point`).
-static func light_point(v: int) -> Vector3:
-	match v % 4:
-		1: return Vector3(1.0, LIGHT_AT, 0.4)
-		2: return Vector3(1.0, LIGHT_AT, 0.0)
-		3: return Vector3(1.0, LIGHT_AT, -1.6)
-	return Vector3(1.0, LIGHT_AT, 0.0)
-
-
-## A monopole carrying the whole thing, tapering, with the street's rubbish
-## banked at its foot. One pole and not two legs, because a prop stops a body
-## with ONE circle (`PropKind.SOLID`): a trestle whose feet stand four tiles
-## apart would be a wall the player walks through, and an honest footprint is
-## worth more than a second leg.
-static func _pole(k: Kit, top: float, r0: float, s: int, c: int) -> void:
-	k.chamfer(0.0, -0.14, 0.0, 1.15, 0.34, 1.15, 0.12, P.STONE[2], P.STONE[3])
-	k.found.prism(0, 0.1, 0, r0, top, r0 * 0.66, 8, P.PLATE[3], P.PLATE[2], PI / 8.0)
-	for i in 4:
-		var y := 0.6 + i * (top - 1.2) / 4.0
-		k.found.prism(0, y, 0, r0 * 1.12, y + 0.1, r0 * 1.1, 8, P.PLATE[1], P.PLATE[1], PI / 8.0)
-	Works.run(k, Vector3(r0 * 0.96, top * 0.82, 0.0), 0.09, top * 0.5, Vector3(1, 0, 0))
-	Works.run(k, Vector3(-r0 * 0.5, top * 0.55, r0 * 0.8), 0.05, top * 0.3, Vector3(-0.5, 0, 0.8))
-	# The grid it is spliced into: a bundle of feeds clipped up the pole and a
-	# junction box at head height, because a billboard here is not salvage -- it
-	# is maintained, connected and paid for, which is the whole thesis.
-	k.chamfer(r0 * 0.9, 1.15, 0.0, 0.2, 0.5, 0.34, 0.04, P.PLATE[2], P.PLATE[1])
-	k.found.quad(Vector3(r0 * 0.9 + 0.101, 1.3, -0.1), Vector3(r0 * 0.9 + 0.101, 1.3, 0.1),
-		Vector3(r0 * 0.9 + 0.101, 1.44, 0.1), Vector3(r0 * 0.9 + 0.101, 1.44, -0.1), Works.lit(MERCURY, 0.9))
-	for i in 3:
-		k.cable(Vector3(r0 * 0.8, 1.6 + i * 0.1, -0.1 + i * 0.1), Vector3(r0 * 0.6, top * 0.7, 0.05), 0.12, 5, 0.018, P.INK[2])
-	Remains.banks(k, [[0.9, 0.5, 0.5, 0.16], [-0.8, -0.6, 0.45, 0.13], [0.2, -0.95, 0.4, 0.1]], Remains.drift_of(c)[0], s)
-
-
-## 0 the hero: one immense face carried high over the street, cut off by the top
-## of the frame at play zoom. 1 a stack of two, the upper one newer than the
-## lower. 2 a low wide face down at second-storey height, close enough to read
-## the projectors. 3 one whose far half has gone out and which is still selling
-## with the half that has not.
-static func billboard(k: Kit, v: int, c: int) -> void:
-	var s := 41000 + v * 7 + c
-	match v % 4:
-		1:
-			_pole(k, 10.6, 0.36, s, c)
-			_hoarding(k, 0.46, 6.0, 3.1, 3.4, s + 1)
-			_hoarding(k, 0.46, 2.3, 3.1, 3.0, s + 2)
-			k.rod(Vector3(0.2, 5.6, -3.1), Vector3(0.2, 5.6, 3.1), 0.05, 4, P.PLATE[2])
-		2:
-			_pole(k, 6.2, 0.34, s, c)
-			_hoarding(k, 0.44, 3.0, 4.6, 4.2, s + 1)
-		3:
-			_pole(k, 11.4, 0.42, s, c)
-			_hoarding(k, 0.48, 6.2, 4.2, 5.4, s + 1, 0.3)
-		_:
-			_pole(k, 11.6, 0.44, s, c)
-			_hoarding(k, 0.48, 6.2, 4.2, 5.4, s + 1)
 
 
 # --- murals ----------------------------------------------------------------------
@@ -533,16 +303,24 @@ static func mural(k: Kit, v: int, c: int) -> void:
 ## even aware. It is simply brighter, and somebody with the right to put it
 ## there put it there.
 static func _bolted_over(k: Kit, v: int, s: int) -> void:
-	var hz := 2.0 if v % 4 == 2 else 1.55
-	var h := 2.6 if v % 4 == 2 else 2.4
-	var y0 := 1.4 if v % 4 == 2 else 2.2
-	var cz := -1.4 if v % 4 == 2 else 0.5
-	var tilt := 0.035 if v % 4 == 2 else -0.055
-	for i in 6:
-		var bz := cz + lerpf(-hz * 0.8, hz * 0.8, (i % 3) / 2.0)
-		var by := y0 + (0.25 if i < 3 else 0.75) * h
-		k.rod(Vector3(FACE - 0.05, by, bz), Vector3(FACE + 0.3, by + bz * tilt, bz), 0.045, 4, P.PLATE[2])
-	k.found.push(Transform3D(Basis(Vector3.RIGHT, tilt), Vector3(0.0, 0.0, cz)))
-	_hoarding(k, FACE + 0.42, y0, hz, h, s)
-	k.found.pop()
+	# The wall handed over as the four corners `Towers.billboard` expects, wound
+	# so `Houses.wall_out` gives +X: bl and br run along the foot from +z to -z.
+	# Getting that order backwards would point the whole sign INTO the wall and
+	# cull every triangle of it without a word.
+	var x := SIGN_WALL
+	var face: Array = [
+		Vector3(x, 0.0, WALL_HZ), Vector3(x, 0.0, -WALL_HZ),
+		Vector3(x, WALL_H, -WALL_HZ), Vector3(x, WALL_H, WALL_HZ)]
+	# `billboard` spans u 0.14..0.80 of the wall it is given, so it is already
+	# narrower than the wall and already off-centre. That is the picture for
+	# free: the figures at each end of the painting stand clear of it, and a
+	# player reads two of them whole and infers the three behind the sign.
+	var col: Color = Towers.SIGN_COLOURS[absi(s) % Towers.SIGN_COLOURS.size()]
+	if v % 4 == 2:
+		Towers.billboard(k, face, SIGN_FOOT, SIGN_HEAD, col, s)
+	else:
+		# Hung higher and shallower, so the two walls are not the same wall
+		# twice: this one takes the heads and leaves the bodies, where the first
+		# takes the bodies and leaves the raised hands.
+		Towers.billboard(k, face, 0.44, 0.74, col, s + 3)
 

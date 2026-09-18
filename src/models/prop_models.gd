@@ -99,11 +99,10 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 6
 		PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.MAGNET_HEAP:
 			return 2
-		# Four each: a street holds several of both at once, and two shapes there
-		# would be a stamp. The billboards differ in height and stance so a run
-		# of them reads as a skyline; the murals differ in what is PAINTED and in
-		# whether a hoarding has been bolted over it.
-		PropKind.BILLBOARD, PropKind.MURAL:
+		# Four: a street holds several at once and two shapes would be a stamp.
+		# They differ in what is PAINTED and in whether a hoarding was bolted over
+		# it -- 0 and 1 are bare paint, 2 and 3 carry a sign.
+		PropKind.MURAL:
 			return 4
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
@@ -188,7 +187,7 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Salt.build(k, kind, variant, country)
 		PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP:
 			Scrap.build(k, kind, variant, country)
-		PropKind.BILLBOARD, PropKind.MURAL:
+		PropKind.MURAL:
 			Signage.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
@@ -376,25 +375,15 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			return [{"at": Vector3(0, 4.05, 0), "size": Vector2(0.12, 0.12), "color": beacon, "box": true, "rays": [2.0, 4.0, 0.0, 4.0]}]
 		PropKind.FIRE:
 			return [{"at": Vector3(0, 0.35, 0), "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
-		PropKind.BILLBOARD:
-			# The face's own light, standing in front of the panel where the
-			# model puts it (`Signage.light_point`), so the wash on the street
-			# and the thing throwing it come from one place. Carried HIGH on
-			# purpose: a glint's streak in wet ground is bought entirely with the
-			# light's height above the ground (sky.gdshaderinc), and the standing
-			# water holding the billboards is half the light in this landscape.
-			return [{"at": Signage.light_point(variant), "size": Vector2.ZERO, "color": Color(Signage.AD_GROUND, 1.0)}]
 		PropKind.MURAL:
-			# Only the variants that had a hoarding bolted over them give light.
-			# A bare mural is paint and emits nothing, which is the entire
-			# difference between the two halves of this landscape.
-			if variant % 4 < 2:
-				return []
-			# 3.1 on both, because `15_lights.SOURCES[MURAL]` states that height a
-			# second time and `tests/sky/test_lamp_pools.gd` measures the pool
-			# against THAT number, not this one.
-			return [{"at": Vector3(1.2, 3.1, -1.4 if variant % 4 == 2 else 0.5),
-				"size": Vector2.ZERO, "color": Color(Signage.AD_GROUND, 1.0)}]
+			# READ OFF THE GEOMETRY, never typed. The hoarding's face is a NEON
+			# mark, so `neon_point` gives its middle and its own colour, and the
+			# light cannot end up standing where the sign is not. A bare mural
+			# has no NEON in it at all, so this returns nothing and
+			# `15_lights.PLACED_SOURCES` drops it: paint emits nothing and a
+			# projection lights the street, said once, by the models themselves.
+			var sign := neon_point(kind, variant, country)
+			return [] if sign.is_empty() else [sign]
 	return []
 
 

@@ -119,29 +119,23 @@ const SOURCES := {
 	PropKind.INTAKE: [2.6, 0.45, 1.0],
 	PropKind.PUMP_HOUSE: [2.4, 0.45, 1.0],
 	PropKind.CHECKPOINT: [5.2, 0.8, 2.9],
-	# The Slums' signage (props/signage.gd). A BILLBOARD is the largest light in
-	# the game and it is meant to be: it is an immense emissive SURFACE, and the
-	# nearest instrument this pool has to an area light is one omni with a long
-	# reach and a soft power. A MURAL only lights on the variants that had a
-	# hoarding bolted over them; the bare ones return no glow point and
-	# `PLACED_SOURCES` drops them, which is the whole difference between paint
-	# and projection stated once.
-	# THE HEIGHT HERE MUST EQUAL THE MODEL'S OWN GLOW POINT (`Signage.light_point`,
-	# `PropModels.glow_points`), because a PLACED source takes its position from
-	# the model and this column is what `tests/sky/test_lamp_pools.gd` measures:
-	# let them drift and the pool is tested at a height the game never uses.
+	# The Slums' signage (props/signage.gd). A MURAL lights ONLY on the variants
+	# that had a hoarding bolted over the painting: the bare ones return no glow
+	# point at all and `PLACED_SOURCES` drops them, which is the whole difference
+	# between paint and projection stated once and nowhere else. The sign itself
+	# is `Towers.billboard`, hung on a wall like every other sign in the city.
+	# THE HEIGHT HERE MUST MATCH WHERE THE MODEL'S NEON ACTUALLY IS. A PLACED
+	# source takes its position from `PropModels.glow_points`, which reads the
+	# hoarding's own geometry; this column is what `tests/sky/test_lamp_pools.gd`
+	# measures the pool against. Let the two drift and the pool is tested at a
+	# height the game never uses.
 	#
-	# 6.5 is not the middle of the panel, and that is the point. The light was at
-	# 9.0 with a reach of 9.0, and `pool_radius` came back 0.0 — a light whose
-	# reach is its own height lands NOTHING on the ground under it, so the
-	# biggest sign in the game lit the street not at all while burning brightly
-	# on its own face. 6.5 is the panel's FOOT, which is where the light that
-	# reaches a pavement actually comes from, and 10.3 of reach puts a 1.92-tile
-	# core on the ground. It costs some of the reflection — a streak is as long
-	# as its light is high — but a streak of a light that lights nothing is a
-	# picture of a lie.
-	PropKind.BILLBOARD: [10.3, 0.85, 6.5],
-	PropKind.MURAL: [5.6, 0.6, 3.1],
+	# And the pair has to make a pool at all. An earlier sign stood at 9.0 with a
+	# reach of 9.0, and `pool_radius` answered exactly 0.0: an omni whose reach is
+	# its own height lands NOTHING on the ground beneath it, so the brightest
+	# thing in the landscape lit the street not at all while burning on its own
+	# face. 2.7 against 5.0 puts a 1.88-tile core under the sign.
+	PropKind.MURAL: [5.0, 0.7, 2.7],
 }
 ## Sources whose light is the machines' own (cold, and the machines' colour).
 const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
@@ -158,10 +152,10 @@ const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropK
 ## would stutter the panel and not the street under it, which is worse than
 ## either choice made whole.
 const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.SHACK,
-	PropKind.BILLBOARD, PropKind.MURAL]
+	PropKind.MURAL]
 ## Sources placed at their model's own glow point, lit only on the variants that have one.
 const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT,
-	PropKind.BILLBOARD, PropKind.MURAL]
+	PropKind.MURAL]
 ## The machines' cold strip light, for a pool and a glint. It is the SAME light
 ## as the strip on the machine that casts it (`Works.STRIP`), so the pool on the
 ## ground and the geometry throwing it can never disagree: this was an inlined
@@ -493,7 +487,7 @@ static func source_lit(src: Dictionary, hour: float) -> bool:
 				var asleep: bool = (hh >= bed or hh < 5.0) if bed > 5.0 else (hh >= bed and hh < 5.0)
 				return not asleep
 			return true
-		PropKind.BILLBOARD, PropKind.MURAL:
+		PropKind.MURAL:
 			# Advertising does not sleep. Every other light in this file is lit
 			# when somebody WANTS it -- a lamp as the dark comes on, a house
 			# until its people go to bed -- and this one is never switched off,
@@ -610,7 +604,7 @@ func _index_sources() -> void:
 				# is the brightest thing in the frame, so the street under it
 				# must be the colour of the advertisement and not a generic warm
 				# — that tint IS how the player reads which sign they are under.
-				PropKind.BILLBOARD, PropKind.MURAL: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.15)
+				PropKind.MURAL: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.15)
 				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
 		else:
@@ -812,7 +806,7 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * _flicker(s), "shaft": SHAFT_RAYED})
 			PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * power, "shaft": SHAFT_MACHINE})
-			PropKind.BILLBOARD, PropKind.MURAL:
+			PropKind.MURAL:
 				# The loudest glint in the game, and the reason it is worth one of
 				# the twelve slots: a streak in wet ground is as long as its light
 				# stands HIGH (sky.gdshaderinc `neon_streak`), so a sign nine
@@ -954,7 +948,7 @@ static func neon_colour(s: Dictionary) -> Vector3:
 			return Vector3(1.0, 0.68, 0.4)
 		PropKind.SHACK:
 			return s.get("neon", NEON_MAGENTA)
-		PropKind.BILLBOARD, PropKind.MURAL:
+		PropKind.MURAL:
 			return s.get("neon", NEON_SODIUM)
 		PropKind.FIRE_TOWER:
 			return Vector3(1.0, 0.72, 0.42)

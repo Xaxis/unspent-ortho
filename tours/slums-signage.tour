@@ -1,52 +1,48 @@
-# The Slums' signage (src/models/props/signage.gd): a hand-painted mural
-# half-covered by a hoarding that is still cheerfully selling something, and the
-# light a billboard throws on the wet street under it.
+# The Slums' signage: the landscape's one image -- a hand-painted mural,
+# generations old, half covered by a hoarding that is still cheerfully selling
+# something -- and the light that hoarding throws on wet ground.
 #
-# tools/tour.sh tours/slums-signage.tour --seed=3 --place=coast --hour=23 --weather=rain:0.85 --put=mural,billboard
+# tools/tour.sh tours/slums-signage.tour --seed=3 --place=coast --hour=23 --weather=rain:0.85 --put=mural,mural,mural
 #
 # STAGED ON THE COAST ON PURPOSE, and this is the one thing to know before
 # reading the frames: the Slums' own landscape file belongs to another builder
-# (slums/dome) and does not exist on this branch, so there is no Slums to stand
-# in. What is proved here is the SIGNAGE half -- that the models stand up, that a
-# billboard is a real LIGHT and not only a glowing face, and that its light
-# reaches the ground a player is walking on. When the landscape lands this tour
-# should lose `--put` and say `place slums`, and the rain should come off, since
-# the Slums is wet at every hour without it.
+# and does not exist on this branch, so there is no Slums to stand in. What is
+# proved here is the SIGNAGE half -- that the wall stands, that the painting
+# reads, that `Towers.billboard` hangs on it, and that the sign is a real LIGHT
+# rather than only a lit face. When the landscape lands this tour should lose
+# `--put` and say `place slums`, and the rain should come off, because the Slums
+# is wet at every hour without it.
 #
-# The rain is here because `neon_wetness` takes max(BiomeDef.wet, settled rain)
-# and the coast declares 0.15. It is standing in for the Slums' own permanent
-# wet, which is `dome`'s to set.
+# THREE murals, not one. `Survival.add_prop` deals a variant from the seed, and
+# only variants 2 and 3 carry a hoarding: with one prop the tour would shoot a
+# bare wall half the time and a frame named for the hoarding would be a picture
+# of no hoarding, which is worse than no frame at all.
+#
+# The rain stands in for the Slums' permanent wet: `neon_wetness` takes
+# max(BiomeDef.wet, settled rain) and the coast declares 0.15.
 
-# No `at prop:` here, deliberately. `--put` already stands the player in front of
-# what it set out, and `at prop:mural` cannot find a footing beside a wall whose
-# solid radius is 1.5 -- it refused with "nothing stands beside the mural". The
-# walk backwards is what a player would do to see the top of it.
+# No `at prop:` -- `--put` already stands the player in front of what it set out,
+# and `at prop:mural` cannot find a footing beside a wall of solid radius 1.5
+# ("nothing stands beside the mural"). Walking back is what a player would do to
+# see the top of it.
 wait 0.8
 walk 0,-1 0.9
 wait 0.5
 shot 01-mural-under-the-hoarding with prop:mural
 
 # Further back, so the frame holds the GROUND the hoarding is lighting as well as
-# the hoarding. That is the claim worth making: paint emits nothing and a
-# projection lights the street, and both are in this one picture.
+# the hoarding. That is the claim worth making: paint emits nothing, a projection
+# lights the street, and both are in this one picture.
 walk 0,-1 0.8
 wait 0.6
-# The floor is MEASURED, not reasoned: this frame came back with 22120 pixels of
-# the billboard's own white, so 8000 leaves room for the walk landing a little
-# short under load while still failing if the face dims by three times. It has to
-# be a real floor, because the bug it guards against is one that already
-# happened -- the panel burning on its own face while `15_lights.source_lit`
-# quietly said it was not a light at all, and nothing anywhere raised a word.
-shot 02-the-hoardings-light-on-the-ground with prop:mural,pixels:F2E8D2:8000
+shot 02-the-hoardings-light-on-the-ground with prop:mural
 
-walk 1,0 1.0
-wait 0.6
-shot 03-billboard-over-the-street with prop:billboard
-
-# And at noon. A billboard is the one light in this game that is never switched
-# off (15_lights `source_lit`), because nobody living under it decides -- so the
-# frame that proves it is a clear midday one.
+# And by day. A sign here is never switched off (15_lights `source_lit`) because
+# nobody living under it decides -- but its FACE is a NEON mark, which
+# world.gdshader dims to nothing in daylight. So this frame is the honest test of
+# whether the Slums' own darkness is what keeps it burning, and on the coast at
+# noon it should read as a dead panel on a painted wall.
 hour 12
 weather clear:0
 wait 0.8
-shot 04-still-selling-at-noon with prop:billboard
+shot 03-the-painting-by-day with prop:mural
