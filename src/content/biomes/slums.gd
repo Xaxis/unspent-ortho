@@ -163,8 +163,15 @@ static func make() -> BiomeDef:
 	# Soot, not drift: something is still burning, and it settles on everything
 	# anybody leaves out.
 	dress.covers = &"ash"
-	# What people patch together against a wall, in the lee of the lanes.
-	dress.shelter = &"lean_to"
+	# What people patch together in the lee of the lanes. A SHACK, and declared
+	# rather than derived, because both the derivation and the obvious pick are
+	# wrong here. Unset, the ladder would read `wet` 0.90 and give this place
+	# STILTS — right for standing water, and this city is not flooded, it is a
+	# dry street that never dries. And the lean-to it first asked for is what the
+	# landscape before it in the order already builds, which is the one thing
+	# `test_dressing` will not have: two neighbours in the registry raising the
+	# same patched hut makes the order itself invisible.
+	dress.shelter = &"shack"
 	dress.crown = &"bare"
 	# Concrete takes nothing in, and the canyons are out of the wind.
 	dress.sink = 0.02
