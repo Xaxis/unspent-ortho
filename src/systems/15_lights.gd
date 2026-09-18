@@ -189,12 +189,13 @@ const TOUR_MARGIN := 0.12
 ## The game's frame, which is fixed however big the window on it is.
 static var FRAME_ASPECT := float(ProjectSettings.get_setting("display/window/size/viewport_width", 640)) \
 	/ maxf(1.0, float(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
-## House variants that wired a machine's light in (props/houses.gd: washed form 1
-## and slated form 0). The LIGHT does not read this list — it asks the model where
-## its tube is (`PropModels.neon_point`) — but world gen deals houses by variant
-## and cannot load a model, so the list is what it is told. A test fails if the
-## models and this list ever disagree.
-const NEON_HOUSE_VARIANTS: Array[int] = [1, 4]
+## Which buildings wired a machine's light in used to be written down twice — a
+## bare [1, 4] here and the same [1, 4] in `GenScatter.HOUSE_NEON` — because
+## world gen holds no rendering and could not read a model. It is one answer in
+## core now, `BiomeForms.of(country).lit()`, which world gen reads directly and
+## which is the landscape's OWN: a city's lit form is not a fishing village's.
+## Nothing in this file ever read the list (the light asks the MODEL where its
+## tube is, `PropModels.neon_point`), so it is simply gone.
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 
 
@@ -539,8 +540,8 @@ func _index_sources() -> void:
 				# prop a model (WorldProp.variant), and a light read off the other
 				# one puts the glow point, its colour and the "no light on this
 				# variant" early-out on a model that is not the one on screen.
-				var variant := PropModels.variant_of(p, game.world.seed_value)
 				var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+				var variant := PropModels.variant_of(p, game.world.seed_value, country)
 				var pts := PropModels.glow_points(p.kind, variant, country)
 				if pts.is_empty():
 					# A dead pump, a shack with nothing wired in: no light to give.
@@ -582,8 +583,8 @@ func _tube_of(s: Dictionary) -> void:
 	if s.has("neon_at") or bool(s.get("dark", false)):
 		return
 	var p: WorldProp = s.prop
-	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value),
-		maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y))))
+	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value, country), country)
 	if tube.is_empty():
 		s.dark = true
 		return
