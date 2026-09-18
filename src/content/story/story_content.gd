@@ -32,7 +32,7 @@ const ARCS := {
 	&"the_war": {
 		"title": "the war",
 		"note": "How the world ended, and who was lied to.",
-		"beats": [&"forged_order", &"colonies", &"long_quiet", &"war_archive"],
+		"beats": [&"forged_order", &"colonies", &"long_quiet", &"war_archive", &"war_relay"],
 	},
 	&"the_machines": {
 		"title": "the machines",
@@ -62,7 +62,7 @@ const ARCS := {
 	&"the_colonies": {
 		"title": "the colonies",
 		"note": "The rings overhead, and whoever is still up there.",
-		"beats": [&"ring_voice", &"ring_turned", &"ring_kept"],
+		"beats": [&"the_climb", &"ring_voice", &"ring_turned", &"ring_kept"],
 	},
 	&"the_lands": {
 		"title": "the lands",
@@ -110,6 +110,8 @@ const BEATS := {
 	&"forged_order": {"short": "an order nobody gave", "arc": &"the_war", "says": "Every side was ordered to fire, and every order checked out."},
 	&"colonies": {"short": "the stations overhead", "arc": &"the_war", "says": "The stations overhead were told the ground had lost, and the ground was told the same."},
 	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
+	&"war_relay": {"short": "one relay", "arc": &"the_war", "says": "Every forged order passed through one relay, under the ground where the first machine was built. A shaft goes down to it."},
+	&"the_climb": {"short": "the empty cars", "arc": &"the_colonies", "says": "The Tether's cars go up empty every dawn and come down empty at dusk. Nobody has ever asked to ride one."},
 	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
@@ -1493,6 +1495,72 @@ const TALKS := {
 				"says": ["Mr. Marr. The window is today. There isn't another one.", "...You'll be back. They always come back."],
 				"beats": [&"play_kept"],
 				"replies": [{"text": "[go]", "to": &""}],
+			},
+		},
+	},
+	# --- the stops of the journey that had nobody at them ---------------------
+	&"otto": {
+		"cast": &"otto", "title": "the archivist", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mind the stacks. They're older than the war and less steady.", "You're looking for something. Everyone who walks this far is."],
+				"replies": [
+					{"text": "How the war started.", "pick": &"asked_war", "to": &"orders"},
+					{"text": "Is the Speaker in the record?", "when": &"covenant_speaker", "pick": &"asked_speaker", "to": &"speaker"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"orders": {
+				"says": ["Every order that started it checked out. I have eleven thousand of them.", "And every one passed through the same relay before it reached anybody."],
+				"beats": [&"forged_order"],
+				"replies": [
+					{"text": "Where is it?", "pick": &"asked_where", "to": &"below"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"below": {
+				"says": ["Under the ground, where the first of them was built, before the war.", "There's a shaft down to it. Nobody who went to look came back to say."],
+				"beats": [&"war_relay"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"speaker": {
+				"says": ["...", "No. She isn't. There's a ration for every name that isn't.", "I kept everything else. I tell myself that."],
+				"beats": [&"covenant_price"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Take your time. Paper waits."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"sefa": {
+		"cast": &"sefa", "title": "a Tether-tender", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't look up too long. People fall over.", "It goes up past the weather, then past the sky. They say it doesn't stop."],
+				"replies": [
+					{"text": "What's it for?", "pick": &"asked_for", "to": &"purpose"},
+					{"text": "Can it be climbed?", "pick": &"asked_climb", "to": &"climb"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"purpose": {
+				"says": ["Carrying up what the Burning makes, to something they're building up there.", "And talking. Something up there is always talking to something much further off."],
+				"beats": [&"the_guest"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"climb": {
+				"says": ["The cars go up empty every dawn and come down empty at dusk.", "Nine years I've watched them. Nobody's ever asked to ride one."],
+				"beats": [&"the_climb"],
+				"replies": [
+					{"text": "I'm asking.", "pick": &"asked_to_ride", "to": &"asking"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"asking": {
+				"says": ["...", "Then be at the foot before dawn. I'll not stop you.", "I'll not watch, either."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
 	},
