@@ -119,6 +119,23 @@ void fragment() {
 	int mi = int(COLOR.a * 255.0 + 0.5);
 	vec4 mr = matter_of(mi);
 	float rough_add = 0.0;
+	// A LIT BOARD OVER THE STREET. A sign arm's board carries `GroundColors.NEON`
+	// (34) and means exactly what it means in world.gdshader: dark enamel by day,
+	// burning when the light goes, and on the MACHINES' power, so a strike
+	// stutters the advertising over the lane the same way it stutters the strip it
+	// was cut from. At ten units up, over a street, the LIGHT is the whole of what
+	// carries -- nobody is reading the lettering from this camera.
+	//
+	// Wear is skipped on it on purpose: `matter_worn` grows salt and rust in the
+	// seams of a built thing, and a tube that is lit does not bloom.
+	vec3 emit = vec3(0.0);
+	bool neon = (mi == 34);
+	if (neon) {
+		float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+		float non = neon_burn(ndim) * sky_power();
+		emit = c * 2.0 * non;
+		c = mix(c * 0.32, c, non);
+	}
 	// How much of the land a piece takes ON, by exactly world.gdshader's rule:
 	// a GROUND material (40..70) takes a little, anything else takes it nearly
 	// whole. It matters more here than anywhere, because `matter_worn` only
@@ -127,13 +144,15 @@ void fragment() {
 	// blooming out of the seams of a pine needle. A girder over the bog still
 	// rusts along its flanks and an eave over the salt still blooms.
 	float takes = (mi >= 40 && mi <= 70) ? 0.14 : 0.85;
-	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes, rough_add);
+	if (!neon) {
+		c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes, rough_add);
+	}
 	ALBEDO = matter_albedo(c);
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
 	NORMAL = matter_bump(NORMAL, world_pos, mi, mr.z);
-	EMISSION = matter_light(neon_reflect(world_pos, px));
+	EMISSION = matter_light(neon_reflect(world_pos, px) + emit);
 }
 
 // No light(). The renderer lights it, against the same sun, the same sky and

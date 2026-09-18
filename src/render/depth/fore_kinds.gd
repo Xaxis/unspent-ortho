@@ -31,6 +31,11 @@ const M_MADE := 0
 const M_NEEDLES := 50
 const M_ROCK := 52
 const M_SWARF := 56
+## Not a material: the STOLEN NEON mark (`GroundColors.NEON`), which every lit
+## shader reads the same way — dark by day, burning when the light goes, and on
+## the machines' power so a strike stutters it. A sign over a street is the one
+## thing this package hangs that is supposed to be a light.
+const M_NEON := 34
 
 ## Piece shapes.
 enum { BOUGH, LINE, EAVE, GIRDER, TANGLE, WALKWAY, SIGN_ARM }
@@ -457,14 +462,23 @@ static func _sign_arm(k: MeshKit, seed_value: int, tint: Color) -> void:
 	steel.a = M_SWARF / 255.0
 	# Enamel, and warm, because everything the eye reads at street level is lit by
 	# sodium and a cold board would be the one thing arguing with the light.
-	var enamel := Palette.EMBER[3].lerp(Palette.LINEN[3], 0.35).lerp(tint, 0.2)
-	enamel.a = M_SWARF / 255.0
+	# Barely lifted toward white: the board is a LIGHT, and emission carries a
+	# colour toward the page as it burns, so a board that starts pale arrives on
+	# screen as a blank white slab and the street has lost the one saturated warm
+	# thing in it.
+	var enamel := Palette.EMBER[3].lerp(Palette.LINEN[3], 0.10).lerp(tint, 0.12)
+	enamel.a = M_NEON / 255.0
 	k.strut(Vector3(0.0, 0.0, 0.0), Vector3(1.0, -0.06, 0.0), 0.05, 4, steel)
-	k.strut(Vector3(0.04, 0.34, 0.0), Vector3(0.74, -0.04, 0.0), 0.028, 4, steel)
+	k.strut(Vector3(0.04, 0.26, 0.0), Vector3(0.74, -0.04, 0.0), 0.028, 4, steel)
 	# The board, hung under the end and turned a few degrees off the arm, because
 	# one bolt has gone and nothing here is square any more.
+	#
+	# The drop is held under the stay's own height for a reason a test keeps: the
+	# instance scales this template by the piece's SPAN, so a board that hangs a
+	# whole unit down at unit span hangs four units down on a shopfront and the
+	# street has a curtain across it instead of a sign over it.
 	var lean := (Rng.hash01(seed_value, 1) - 0.5) * 0.22
-	var drop := 0.62 + Rng.hash01(seed_value, 2) * 0.22
+	var drop := 0.46 + Rng.hash01(seed_value, 2) * 0.16
 	var half := 0.30 + Rng.hash01(seed_value, 3) * 0.10
 	var x0 := 0.52
 	var x1 := 0.98

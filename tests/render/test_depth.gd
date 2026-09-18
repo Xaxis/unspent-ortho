@@ -211,7 +211,7 @@ func test_what_hangs_on_a_prop_is_the_same_in_every_run() -> void:
 func test_every_shape_builds_and_stays_inside_its_own_span() -> void:
 	ForeKinds.forget()
 	for shape: int in [ForeKinds.BOUGH, ForeKinds.LINE, ForeKinds.EAVE,
-			ForeKinds.GIRDER, ForeKinds.TANGLE]:
+			ForeKinds.GIRDER, ForeKinds.TANGLE, ForeKinds.WALKWAY, ForeKinds.SIGN_ARM]:
 		for v in ForeKinds.VARIANTS:
 			var m := ForeKinds.template(shape, v, Color(0.2, 0.35, 0.3))
 			gt(float(m.get_surface_count()), 0.0, "shape %d variant %d has geometry" % [shape, v])
@@ -229,7 +229,7 @@ func test_a_piece_is_cheap_enough_that_a_frame_can_hold_the_tier_full_of_them() 
 	ForeKinds.forget()
 	var most := 0
 	for shape: int in [ForeKinds.BOUGH, ForeKinds.LINE, ForeKinds.EAVE,
-			ForeKinds.GIRDER, ForeKinds.TANGLE]:
+			ForeKinds.GIRDER, ForeKinds.TANGLE, ForeKinds.WALKWAY, ForeKinds.SIGN_ARM]:
 		for v in ForeKinds.VARIANTS:
 			var m := ForeKinds.template(shape, v, Color(0.2, 0.35, 0.3))
 			var tris := 0
@@ -268,3 +268,40 @@ func test_weather_falls_at_more_than_one_depth() -> void:
 	var near_high := WeatherView.TOP * 0.95
 	gt(near_high * sin(deg_to_rad(57.0)), 6.0,
 		"the near band is several units nearer the eye than the ground is")
+
+
+## A CITY DOES NOT HANG A COTTAGE EAVE. Every building in the game is
+## `PropKind.HOUSE`, so the layer's per-kind table answered for a six-storey
+## tower with the row written for a one-storey cot: a 2.1-unit eave over a street
+## it should have been roofing. This fails if a landscape that builds upward ever
+## goes back to the kind's own row, and if a piece stops hanging off the height of
+## the thing it is hung on.
+func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
+	var city := -1
+	var plain := -1
+	for i in BiomeRegistry.count():
+		var forms := BiomeForms.of(i)
+		if forms == null or forms.stock.is_empty():
+			continue
+		if ForeKinds.FORM_ROWS.has(forms.form(0)):
+			city = i
+		else:
+			plain = i
+	check(city >= 0, "some landscape in the registry builds upward")
+	check(plain >= 0, "and some landscape still builds one storey")
+	# The same prop, asked in two landscapes: the kind cannot tell them apart and
+	# the FORM has to.
+	var p := WorldProp.new(211, PropKind.HOUSE, Vector2(40.0, 40.0), 0.0, 1.0)
+	var in_city := ForeKinds.row_of(p, 7, city)
+	var in_village := ForeKinds.row_of(p, 7, plain)
+	check(in_city != in_village, "a building's piece is its landscape's, not its kind's")
+	eq(in_village, ForeKinds.ROWS[PropKind.HOUSE], "a one-storey landscape is untouched")
+	# The city's piece hangs off the building's own height, well clear of a head.
+	var lift: Vector2 = in_city.lift
+	gt(lift.x, 2.7, "a city piece hangs higher than a cottage eave (%.2f)" % lift.x)
+	var forms := BiomeForms.of(city)
+	var high := forms.fact(PropModels.variant_of(p, 7, city), BiomeForms.HIGH, 2.6)
+	lt(lift.y, high, "and never above the building it is hung on (%.2f of %.2f)" % [lift.y, high])
+	# A caller that does not know the landscape gets the kind's row, because a
+	# guess would hang a walkway over a fishing village.
+	eq(ForeKinds.row_of(p, 7, -1), ForeKinds.ROWS[PropKind.HOUSE], "no country, no guess")
