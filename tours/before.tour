@@ -30,3 +30,43 @@ shot 03-hannah-at-two-in-the-morning with talking,cast:hannah
 press pause
 wait 0.5
 await met:hannah 2
+
+# --- June at six, the night before the play ------------------------------------------------
+at cast:june_young
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 04-june-in-a-paper-crown with talking,cast:june_young
+press pause
+wait 0.5
+
+# --- Cairn, where the first works yard will stand ------------------------------------------
+at cast:priya_then
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 05-priya-before-she-told with talking,cast:priya_then
+press pause
+wait 0.5
+
+at cast:kerr
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 06-kerr-at-cairn with talking,cast:kerr
+press pause
+wait 0.5
+
+# --- Ruth, at a table facing the door, where the Holdfast will camp ------------------------
+at cast:ruth
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 07-ruth-faces-the-door with talking,cast:ruth
+press pause
+wait 0.5
+await met:ruth 2
