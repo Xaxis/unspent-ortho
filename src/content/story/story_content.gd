@@ -52,7 +52,7 @@ const ARCS := {
 	&"the_crew": {
 		"title": "the crew",
 		"note": "The Holdfast's last mercenaries, and what they come to know.",
-		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears"],
+		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears", &"rook_told"],
 	},
 	&"june": {
 		"title": "June",
@@ -130,6 +130,7 @@ const BEATS := {
 	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
 	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
 	&"teague_sold": {"reveal": true, "short": "the roads sold", "arc": &"the_crew", "says": "Teague sells the crew's roads to the Covenant."},
+	&"rook_told": {"short": "the north road", "arc": &"the_crew", "says": "You told Rook about Teague's roads. He told you to stay off the north road tomorrow."},
 	&"teague_clears": {"short": "nobody burns", "arc": &"the_crew", "says": "The Covenant clears a village before the crew hits its works, because Teague told them where."},
 	&"june_named": {"reveal": true, "short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
 	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
@@ -875,6 +876,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
+					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -904,6 +906,11 @@ const TALKS := {
 					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"teague": {
+				"says": ["...", "I'll see to it.", "Don't take the north road tomorrow."],
+				"beats": [&"rook_told"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"weapon": {
 				"says": ["Then you're worth more than I was paid.", "Don't say it anywhere the Covenant can hear."],

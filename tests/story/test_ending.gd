@@ -68,7 +68,7 @@ func test_who_is_left_is_what_he_did() -> void:
 	Story.forget()
 	Story.beat(&"play_kept", -INF)
 	Story.choose(&"vera.people", &"kept_quiet")
-	Story.choose(&"teague.sold", &"will_tell_rook")
+	Story.beat(&"rook_told", -INF)
 	Story.beat(&"dace_left", -INF)
 	Story.choose(&"lark.coffee", &"told_lark")
 	_walk(["[say nothing]"])

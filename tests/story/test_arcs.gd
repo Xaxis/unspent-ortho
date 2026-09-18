@@ -425,3 +425,15 @@ func test_every_stop_of_the_journey_says_where_the_next_one_is() -> void:
 	check(Story.landed(&"the_climb"), "the far shore: Sefa says how to go up")
 	eq(Story.chose(&"sefa.climb"), &"asked_to_ride", "and he asked")
 	Story.forget()
+
+
+func test_telling_rook_about_teague_is_the_end_of_teague() -> void:
+	Story.forget()
+	Story.beat(&"teague_sold", -INF)
+	check(StoryCast.get_def(&"teague").present(), "Teague is at the camp")
+	@warning_ignore("return_value_discarded")
+	_walk(&"rook", ["Teague sells our roads to the Covenant."])
+	check(Story.landed(&"rook_told"), "Rook will see to it")
+	check(not StoryCast.get_def(&"teague").present(), "and Teague is not at the camp after")
+	check("\n".join(StoryEnding.lines()).contains("Rook shot Teague"), "and the ending remembers it")
+	Story.forget()

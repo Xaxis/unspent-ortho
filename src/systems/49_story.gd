@@ -66,6 +66,8 @@ func setup(g: Game) -> void:
 	Events.works_broken.connect(_on_works_broken)
 	_wall_the_site()
 	Events.sentinel_fell.connect(_on_sentinel_fell)
+	Events.settlement_founded.connect(_on_settlement_founded)
+	Events.raid_ended.connect(_on_raid_ended)
 
 
 func started() -> void:
@@ -134,6 +136,10 @@ func _exit_tree() -> void:
 		Events.works_broken.disconnect(_on_works_broken)
 	if Events.sentinel_fell.is_connected(_on_sentinel_fell):
 		Events.sentinel_fell.disconnect(_on_sentinel_fell)
+	if Events.settlement_founded.is_connected(_on_settlement_founded):
+		Events.settlement_founded.disconnect(_on_settlement_founded)
+	if Events.raid_ended.is_connected(_on_raid_ended):
+		Events.raid_ended.disconnect(_on_raid_ended)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -436,6 +442,18 @@ func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void
 	var d := BiomeRegistry.get_def(land)
 	if d != null and StoryContent.KEEPER_MEMORY.has(d.sentinel):
 		_witnessed(StoryContent.KEEPER_MEMORY[d.sentinel].memory)
+
+
+## A holding put up is seen from far off; so is one held, or lost.
+func _on_settlement_founded(_id: int) -> void:
+	_note(&"founded")
+
+
+func _on_raid_ended(_id: int, outcome: StringName) -> void:
+	if outcome == &"held":
+		_note(&"raid_held")
+	elif outcome == &"razed":
+		_note(&"razed")
 
 
 ## Going below is seen: a shaft is a place people watch.
