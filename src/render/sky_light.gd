@@ -610,6 +610,14 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("neon_grade", ng[0])
 	RenderingServer.global_shader_parameter_set("neon_wet", ng[1])
 	RenderingServer.global_shader_parameter_set("water_wash", water_wash_at(neon_shares))
+	# The lid, as a fact the shaders can read (`neon_burn` in sky.gdshaderinc).
+	# A NEON face decided whether it was burning off the mean of `sky_tint` alone,
+	# which is right under an open sky and wrong under one that is shut: measured
+	# on the slums at noon, `sky_tint` means 0.86 and the gate answered 0.24, so
+	# every sign in a street drawn dark at noon was burning at a QUARTER — which
+	# reads as a city guttering out, and this is the one landscape whose whole
+	# argument is that it works.
+	RenderingServer.global_shader_parameter_set("sky_lid", shut)
 	RenderingServer.global_shader_parameter_set("sky_air", air)
 	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
 	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, 0.0))

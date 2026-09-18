@@ -57,8 +57,18 @@ static func make() -> BiomeDef:
 	# terrace term is what gives the mesher long level slabs with a step between
 	# them, which is what a street reads as from above; hills and ridge are near
 	# zero because nothing here was allowed to stay a hill.
+	#
+	# AND THE PLATFORMS HAVE TO BE BIG ENOUGH TO BUILD A STREET ON, which is why
+	# the terrace term is a third of what it first was and the hills half. Two
+	# things demand it and neither was known when these were chosen: a `row` city
+	# plan (`BiomeForms`) refuses any spot whose nine neighbouring tiles are not
+	# level, so on terraced ground a street comes out with one building on it; and
+	# `neon_reflect()` only mirrors a light where the ground's up-normal is 0.9 or
+	# better, so a stretch of flat street is literally what buys the reflections
+	# this landscape's wet look is made of. The stepping is still here — it is what
+	# stops a city reading as a field — there is just more slab between the steps.
 	d.relief = {
-		&"base": 2.6, &"hills": 0.5, &"ridge": 0.0, &"terrace": 0.85, &"valley": 0.2,
+		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
 	# Under LANTERN this no longer picks a hatch — there is none. It is the
@@ -178,9 +188,19 @@ static func make() -> BiomeDef:
 	# term is pushed to zero against SkyLight.NEON_DAY's 0.10, because a city
 	# under sodium is the one landscape in the game that must not go blue.
 	d.grade = Vector4(-0.50, 0.04, -0.10, 0.14)
-	# It rains often and the lanes never dry: wet concrete under a low warm light
-	# is the best thing this landscape has, and `wet` is what buys the sheen.
-	d.wet = 0.55
+	# THE WETTEST LAND IN THE GAME, and deliberately so: limestone_caves at 0.55 is
+	# the next. The dome does not only stop the sun, it CONDENSES — what the plant
+	# sends up comes back down as a permanent drip — so the street is wet at every
+	# hour and in every weather rather than when it rains. Wet concrete under a low
+	# warm light is the best thing this landscape has.
+	#
+	# It is also the ONE field the whole reflection path hangs on, which is why it
+	# is this high rather than merely high: `wet` reaches `neon_wetness()` through
+	# `SkyLight.neon_row` and the `neon_wet.x` global, and `neon_reflect()` — what
+	# actually mirrors a light in the ground — EARLY-OUTS ENTIRELY under 0.05. A
+	# modest number here would let the signs light the street and leave nothing in
+	# the puddles, which is half this landscape's picture missing.
+	d.wet = 0.90
 	# The water in a city is what has run off it. Oily black-brown that gives
 	# almost nothing back — but a WASH and not a hole (tests/render/test_water_wash),
 	# so the soundings and the bank line still draw through it.
