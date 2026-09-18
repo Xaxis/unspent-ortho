@@ -25,6 +25,11 @@ const READABLE := {
 	PropKind.ARCHIVE: StoryFragments.NOTEBOOK,
 	PropKind.RELAY: StoryFragments.TERMINAL,
 	PropKind.SURVEY: StoryFragments.TERMINAL,
+	# The THRESHOLD site's screens. A kind of its own rather than a RELAY or a
+	# SURVEY because both of those are `Takes.PLAN_WORKS` and a second `use` robs
+	# them: the panel on the tank a man was grown in is not a thing you strip for
+	# a signet (`src/models/props/black_site.gd`).
+	PropKind.CONSOLE: StoryFragments.TERMINAL,
 	PropKind.MEMORIAL: StoryFragments.MARK,
 	PropKind.STANDING_STONE: StoryFragments.MARK,
 	PropKind.GRAVE: StoryFragments.MARK,

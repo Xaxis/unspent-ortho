@@ -355,7 +355,12 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# A mural carries light only on the variants that had a
 					# hoarding bolted over the painting, and that light is the
 					# city's own: maintained, not stolen and not salvaged.
-					PropKind.MURAL],
+					PropKind.MURAL,
+					# The THRESHOLD site still has power and nobody living: the
+					# strip across the tank's head and the line still running on
+					# a console are the point of the place, not decoration on it
+					# (`src/models/props/black_site.gd`, docs/STORY.md).
+					PropKind.GROWTH_TANK, PropKind.CONSOLE],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)
