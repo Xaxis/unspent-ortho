@@ -27,17 +27,24 @@ const HOURS: Array[float] = [2.0, 7.0, 12.0, 17.0, 22.0]
 ##             snowfield's own grounds leave SIX tiles on a 65536-tile island, and
 ##             40 minutes stood at the best of them rolled nothing. A lineman is a
 ##             worker, so nothing sends one either: `line_coil` has no door.
-##   longlegs  `green_min` 55, and seed 1's island only reaches 56 from green at
-##             its deepest. It is rolled almost nowhere — but it is a HUNTER, and
-##             a hunted network SENDS one past `place_fits` entirely
-##             (`32_disposition._spot_for`), which is the door
-##             `test_the_jig_at_the_top_of_the_ladder_is_reachable_by_being_hunted`
-##             walks. So this line is about the roll, not about the material.
 # The lineman came off this list when its green gate came down to the roster's
 # own floor: seeds 1, 4 and 7 went from 6, 41 and 35 qualifying tiles to 170, 424
 # and 194, and from 0, 3 and 4 hits per 12000 rolls to 8, 12 and 5.
 # tests/gear_economy/test_line_coil_door.gd holds it there.
-const NOT_ROLLED: Array[StringName] = [&"longlegs"]
+#
+# THE LONGLEGS CAME OFF IT WHEN THE ISLAND GREW A CITY, and nobody loosened
+# anything. Its gate is `green_min` 55, and seed 1 used to reach 56 from green at
+# its very deepest, so it rolled almost nowhere; the note here said so and added
+# that it is a HUNTER, reachable anyway because a hunted network SENDS one past
+# `place_fits` entirely (`32_disposition._spot_for`). Adding the Slums moved
+# every seed's island — which is what adding a landscape does — and seed 1 now
+# holds ground deep enough in green to roll one. The debt was paid by the world
+# getting bigger, which is the good way for a debt like this to end.
+#
+# The list is empty and that is a state to keep, not a shape to fill. The rule in
+# the paragraph above still stands: a line comes OUT when its `where` is loosened
+# or the island outgrows it, and a line never goes IN to make this pass.
+const NOT_ROLLED: Array[StringName] = []
 
 
 func _declared() -> void:

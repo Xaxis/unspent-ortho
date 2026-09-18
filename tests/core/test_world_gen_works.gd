@@ -164,6 +164,18 @@ func test_the_first_frame_shows_what_was_lost() -> void:
 		gt(n, 10, "seed %d: evidence round the spawn" % s)
 
 
+## A road people LAID stays clear. Not every tile painted `Ground.ROAD`: a
+## landscape may pave its own streets, and the Slums does — its lanes are ROAD
+## so the map draws them, so nothing is sited in one, and so a foot on one
+## sounds like a foot on tarmac. A barricade across a city lane, a burnt-out
+## vehicle, a sign down in the gutter: that is the place, not a fault in it.
+##
+## `GenWorks` and `GenScatter` have always asked the right question —
+## `c.road[i] != 0`, the mask the access stage laid — and this test asked a
+## proxy for it that was exact until a landscape started paving. `WorldData.road`
+## is now that same mask, so both ask one question again. Measured on seed 1
+## with the Slums muted, ROAD ground is 2955 tiles and every one of them is a
+## laid road; with the Slums in it is 5853, of which 2786 are the city's lanes.
 func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
@@ -171,9 +183,11 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 		for p in w.props:
 			if not is_evidence(p.kind):
 				continue
-			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
+			var px := floori(p.pos.x)
+			var py := floori(p.pos.y)
+			var g := w.ground_at(px, py)
 			var why := ""
-			if g == Ground.ROAD:
+			if w.on_road(px, py):
 				why = "on a road"
 			elif Ground.is_water(g) or w.level_at(floori(p.pos.x), floori(p.pos.y)) <= 0:
 				why = "in water"

@@ -74,6 +74,12 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	GenScatter.props(c)
 	t = _mark(c, marks, &"props", t)
 	w.rivers = c.rivers
+	# The mask every placing stage sited against, and the recipe every tile's
+	# ground and scatter came out of: kept so anything outside worldgen can ask
+	# the questions the stages asked, instead of guessing from the ground or from
+	# whose land a tile is on.
+	w.road = c.road
+	w.recipe = c.recipe
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]

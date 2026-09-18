@@ -793,8 +793,22 @@ static func _relief(world: WorldData, x: int, y: int, r: int) -> int:
 	return high - low
 
 
-## Room for a landmark: dry, on the map, off a road, and level within a step over
-## the ground it stands on.
+## Room for a landmark: dry, on the map, off a road people LAID, and level within
+## a step over the ground it stands on.
+##
+## "Off a road" asks `WorldData.road` — the mask the access stage wrote — and not
+## `ground == Ground.ROAD`. The two were the same question for the project's
+## whole life, because nothing but the access stage painted ROAD. A landscape may
+## now pave its own streets, and the Slums does: its lanes run on the zero line of
+## the mass field, a few tiles apart, over the whole city. This function wants FIVE
+## tiles clear in a cross four wide, so with the ground read as the answer, almost
+## no point in a city ever had room — the Slums held nothing worth the walk at all
+## on seed 7, and one place on seed 1, while declaring three kinds.
+##
+## For every landscape that does not pave, the two questions still give the same
+## answer: measured on seed 1 with the Slums muted, all 2955 tiles of ROAD ground
+## are laid road. The mask is a shade wider at a village square (a road runs in and
+## becomes GRAVEL), which is right — a landmark does not stand in a square either.
 static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	if not world.in_bounds(x - 2, y - 2) or not world.in_bounds(x + 2, y + 2):
 		return false
@@ -806,8 +820,7 @@ static func _room_at(world: WorldData, x: int, y: int) -> bool:
 	# direction is a parade ground, and on a terraced snowfield there is none — a
 	# whole landscape held nothing because of it.
 	for d: Vector2i in [Vector2i(0, 0), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
-		var g := world.ground_at(x + d.x, y + d.y)
-		if Ground.is_water(g) or g == Ground.ROAD:
+		if Ground.is_water(world.ground_at(x + d.x, y + d.y)) or world.on_road(x + d.x, y + d.y):
 			return false
 		if absi(world.level_at(x + d.x, y + d.y) - level) > 1:
 			return false

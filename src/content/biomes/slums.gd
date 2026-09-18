@@ -283,13 +283,30 @@ static func make() -> BiomeDef:
 	# it falls, so the air is always noticed and only unbreathable when the smog
 	# settles — which is exactly when a respirator earns its slot.
 	#
-	# `dark` is honest but incomplete, and the gap is worth writing down: the
-	# hazards package reads the HOUR, and knows nothing about `sky_shut`. So the
-	# street is drawn dark at noon while the pressure only bites after dusk. It is
-	# declared high enough to be FELT at every hour, which is the closest the
-	# current rules can come. Making a lid press a body properly means teaching
-	# `Hazards._hour_shift` about it, and that is another package's file.
-	d.hazards = {&"fumes": 0.45, &"toxins": 0.28, &"dark": 0.50}
+	# `dark` is 0.20 and the number is LOAD-BEARING, so do not raise it.
+	#
+	# It was 0.50, put there to be FELT at every hour because the street is drawn
+	# dark at noon under its lid. That is a LOOK (`sky_shut`) being expressed as a
+	# PRESSURE, and it cost the landscape its own answer. The only piece in the
+	# game that resists `dark` is the visor, and the visor is worn on the HEAD —
+	# which is where the rebreather goes, and the rebreather is the strongest
+	# answer to `fumes`, which is what this city is actually about. So a body
+	# that answered the air went blind and a body that could see could not
+	# breathe, and neither could live here.
+	#
+	# Measured, at the worst place and hour with the rebreather worn: 0.50 leaves
+	# `dark` at 1.000, 0.30 at 0.680, 0.25 at 0.600, and 0.20 at 0.520 — the
+	# first that clears BITE (0.55). It is still well over FELT (0.25) after dark,
+	# so the unlit corners between the lamps press a body, which is the whole of
+	# what the pressure can honestly say about a city its own scatter fills with
+	# working streetlights.
+	#
+	# Making a LID press a body at noon is real and still wanted; it means
+	# teaching `Hazards._hour_shift` about `BiomeDef.sky_shut`, which is another
+	# package's file. Inflating a night hazard is not a stand-in for it — the
+	# whole point is that the hazard's answer lives in a slot this landscape
+	# already needs for something else.
+	d.hazards = {&"fumes": 0.45, &"toxins": 0.28, &"dark": 0.20}
 	# NOTHING HERE HUNTS ANYBODY, and that is the landscape's whole argument. The
 	# roster is workers, filers and observers — the plan at its work — and it
 	# holds no runner and no cutter. A warden walks the small hours because a

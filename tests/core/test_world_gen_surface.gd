@@ -193,10 +193,28 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 func test_villages_stand_in_clearings_with_a_square() -> void:
 	# No scree, rock, clinker, shingle, mud or peat in a village's core; a
 	# square of trodden ground in its middle, not a road splat.
+	#
+	# Trodden ground is two answers and the test needs both. The SHARED one comes
+	# first and is most of it: `GenSurface` turns a road running into a square
+	# into GRAVEL, leaves the road itself ROAD, and the cleared ground round a
+	# village is GRASS — which is why gravel, grass and road were enough while
+	# every village was somebody's field. The LANDSCAPE's own answer is the rest:
+	# it lays `village_square_ground` and `village_ground` wherever the road mask
+	# is not already set, and every landscape declares at least one (the salt
+	# flats PAN, the snowfield SNOW, the burning ASH, the city FLOOR).
+	#
+	# The Slums came out 15 of 21 with only the shared list: the fifteen ARE
+	# gravel and grass, laid exactly as everywhere else, and the six the test had
+	# no word for are the city's own FLOOR. Not a village with a hole in it — a
+	# village this test could not read. Asking the landscape INSTEAD is worse and
+	# was tried: 6 of 21, because the shared answer really is most of a square.
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		for v in w.villages:
 			var vp: Vector2 = v.pos
+			var b := BiomeRegistry.at(w, vp)
+			var trodden := [Ground.GRAVEL, Ground.GRASS, Ground.ROAD,
+				b.village_square_ground, b.village_ground]
 			var square := 0
 			var total := 0
 			for dy in range(-10, 11):
@@ -209,15 +227,31 @@ func test_villages_stand_in_clearings_with_a_square() -> void:
 						fail("seed %d village %s has %s in its core" % [s, v.name, Ground.NAMES[g]])
 					if d < 2.5:
 						total += 1
-						if g == Ground.GRAVEL or g == Ground.GRASS or g == Ground.ROAD:
+						if trodden.has(g):
 							square += 1
-			gt(float(square) / total, 0.9, "seed %d village %s square" % [s, v.name])
+			gt(float(square) / total, 0.9, "seed %d village %s (%s) square is %s"
+				% [s, v.name, b.id, Ground.NAMES[b.village_square_ground]])
 
 
 func test_props_keep_to_their_country() -> void:
 	# Scatter follows the ground's recipe and each country's list: no reeds or
 	# peat banks on the Snowfield, no pines in the Burning, no snow pines in the
 	# Moss, no clints or standing stones on the Coast.
+	#
+	# In an ECOTONE all three readings of a tile are live and any of them may be
+	# the one that laid a prop, so a prop is off-theme only when none of them
+	# allows it. `GenScatter`'s own header says a tile's scatter follows the
+	# recipe its GROUND did, and in the blend band that recipe is the SECOND
+	# type's where the warped patch says so; on top of that a prop is jittered
+	# off the centre of the tile it was dealt to, so the tile it ends up standing
+	# in need not be the tile whose recipe dealt it.
+	#
+	# Measured on the three seeds: reading `country` alone called one prop
+	# off-theme (a driftwood at blend 0.46, on a slums tile whose second type is
+	# the coast, standing on the coast's own grass); reading `recipe` alone
+	# called eighteen, all of them at borders. Away from a border the three
+	# readings are one number, so this is unchanged over almost all of the world
+	# — which is where "no pines in the Burning" is a real claim.
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var bad := {}
@@ -225,8 +259,15 @@ func test_props_keep_to_their_country() -> void:
 		for p in w.props:
 			if p.kind in GenScatter.PLACED:
 				continue
-			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
-			if (allow[cc] >> p.kind) & 1 == 0:
+			var px := floori(p.pos.x)
+			var py := floori(p.pos.y)
+			var i := py * w.size + px if w.in_bounds(px, py) else 0
+			var cc := w.country_at(px, py)
+			var ok := false
+			for c: int in [cc, w.recipe_at(px, py), w.country2[i]]:
+				if (allow[c] >> p.kind) & 1 != 0:
+					ok = true
+			if not ok:
 				var key := "%s in %s" % [PropKind.NAMES[p.kind], BiomeRegistry.name_of(cc)]
 				bad[key] = int(bad.get(key, 0)) + 1
 		check(bad.is_empty(), "seed %d off-theme props: %s" % [s, bad])

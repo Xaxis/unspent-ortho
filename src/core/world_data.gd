@@ -49,6 +49,27 @@ var spawn_facing := -PI * 0.5
 var rivers: Array[PackedVector2Array] = []
 ## Each road as tile-centre points between two village squares.
 var roads: Array[PackedVector2Array] = []
+## 1 where the access stage LAID a road, tile by tile (`GenContext.road`).
+##
+## Not the same question as `ground == Ground.ROAD`, and the difference is why
+## this is kept: a landscape may pave its own streets, and the Slums does, so
+## most of the ROAD ground in a world with a city in it is lanes nobody laid.
+## Every placing stage already asks `c.road` and is right; anything outside
+## worldgen that asked the ground instead was reading a proxy that was exact
+## until the first city. Measured on seed 1 with the Slums muted, a mask off
+## `roads` covers all 2955 tiles of ROAD ground; with it in, 2786 of 5853 are
+## the city's own.
+var road: PackedByteArray
+## Which landscape's RECIPE made each tile (`GenContext.recipe`).
+##
+## Not the same as `country`, and the difference is the whole of what an ecotone
+## is: in the blend band a tile follows its SECOND type's recipe where the warped
+## patch says so, and its ground and its scatter both come from there. So the
+## driftwood at a slums/coast border really is the coast's driftwood, laid by the
+## coast's rules, standing on the coast's grass, on a tile whose `country` says
+## slums. Anything asking "whose rules made this?" asks here; `country` answers
+## "whose land is this?" and the two are only the same away from a border.
+var recipe: PackedByteArray
 ## The machines' grid: {kind: PropKind.PYLON or POLE, props: PackedInt32Array
 ## of prop ids in stringing order}. Cables run between consecutive ids.
 var lines: Array[Dictionary] = []
@@ -91,6 +112,23 @@ func ground_at(x: int, y: int) -> int:
 	if not in_bounds(x, y):
 		return Ground.DEEP_WATER
 	return ground[y * size + x]
+
+
+## Whether a road was LAID here — see `road`. A world grown only as far as
+## `--until=tiles` has no roads yet and answers false everywhere.
+func on_road(x: int, y: int) -> bool:
+	if not in_bounds(x, y) or road.is_empty():
+		return false
+	return road[y * size + x] != 0
+
+
+## Whose rules made this tile — see `recipe`. Falls back to whose LAND it is,
+## for a world grown only as far as `--until=tiles`.
+func recipe_at(x: int, y: int) -> int:
+	if not in_bounds(x, y):
+		return 0
+	var i := y * size + x
+	return recipe[i] if not recipe.is_empty() else country[i]
 
 
 func country_at(x: int, y: int) -> int:
