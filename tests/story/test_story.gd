@@ -1,4 +1,6 @@
 extends TestCase
+
+const Sx := preload("res://tests/save/save_fixture.gd")
 ## The story spine (docs/STORY.md): what is written, what a conversation does,
 ## what is remembered, and the rules the words themselves have to keep.
 
@@ -168,3 +170,32 @@ func test_every_tour_asks_after_words_that_exist() -> void:
 				check(StoryContent.BEATS.has(id), "%s waits on beat %s, which the story does not declare" % [f, id])
 			else:
 				check(StoryContent.FRAGMENTS.has(id), "%s waits on reading %s, which is not written" % [f, id])
+
+
+## The first thing the game says is the game's own voice (docs/STORY.md §12),
+## said on the first morning and never again.
+func test_the_first_morning_is_said_once() -> void:
+	Sx.use_root("first-morning")
+	Story.forget()
+	var said := PackedStringArray()
+	var hear := func(text: String) -> void: said.append(text)
+	Events.message.connect(hear)
+	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=8"])
+	# The first morning is said in a PROCESS frame, so ask for process frames.
+	await process_frames(3)
+	check(said.has("You come up out of the water."), "it says what happened to him: %s" % "\n".join(said))
+	check(Story.began, "and remembers having said it")
+	# A game carried on from a save is not told again: the story's own state is
+	# applied before the first morning would be said (05_save starts before 49).
+	var saver: Node = Sx.system(g, "05_save")
+	eq(str(saver.call("save_to", 2)), "", "saved")
+	Sx.end(g)
+	said.clear()
+	var o := BootOptions.new()
+	eq(SaveSlots.options_for(2, o), "", "slot 2 boots")
+	var g2 := Sx.game(tree, [], o)
+	await process_frames(3)
+	check(not said.has("You come up out of the water."), "a loaded game is not told again: %s" % "\n".join(said))
+	Events.message.disconnect(hear)
+	Sx.end(g2)
+	Story.forget()

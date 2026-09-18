@@ -1974,6 +1974,18 @@ const TALKS := {
 	},
 }
 
+# --- the first thing said (docs/STORY.md §12) ---------------------------------
+#
+# The game's own register: flat, second person, present tense, no adjective it
+# can live without. Said once, on the first morning, and never again — a save
+# remembers having heard it. It says what happened to him and nothing about what
+# it means, because he does not know yet either.
+
+const OPENING: Array[String] = [
+	"You come up out of the water.",
+	"You do not remember the water.",
+]
+
 # --- what a region asks of him (StorySubarc, docs/VISION.md §10.4) ------------
 #
 # A chapter with three demands and no stories in it is a checklist, so each
