@@ -2037,7 +2037,7 @@ const WITNESSED := {
 	&"on_record_dead": "a clerk files the player, and the record already has him",
 	&"counted": "a record taken off a carrier comes into the creel",
 	&"your_key": "the signet fires, once his old passwords are known of",
-	&"seeker": "the player stands in a realm that is not the surface",
+	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
 	&"holdfast_price": "a works yard is put dark",
 }

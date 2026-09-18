@@ -1,0 +1,32 @@
+# The way into 2029 (docs/STORY.md §6), through the real keys. Once he knows his
+# body has no past, the gate at his house is open: step into it, press use, and
+# the same coast is 2029 on the same tile, with Hannah at the door at two in the
+# morning. Nothing here is a coordinate: `at gate:ID` asks the story where the
+# gate stands, and `at cast:NAME` where a person stands in whichever year he is in.
+#
+#   tools/tour.sh tours/before.tour --seed=1 --hour=2 --weather=clear:0 --beats=body_new
+coast calm
+wait 0.6
+
+# --- the gate, standing in the ruin of his street ----------------------------------------
+at gate:gate_home
+wait 0.8
+await era_gate:gate_home 3
+shot 01-the-gate-in-the-ruin
+
+# --- through it -----------------------------------------------------------------------------
+press use
+await before 5
+wait 1.5
+shot 02-the-same-street-in-2029
+
+# --- Hannah, at the door of the house ------------------------------------------------------
+at cast:hannah
+wait 0.8
+press use
+await talking 3
+wait 0.4
+shot 03-hannah-at-two-in-the-morning with talking,cast:hannah
+press pause
+wait 0.5
+await met:hannah 2

@@ -68,6 +68,11 @@ func test_standing_below_is_learning_what_grew_him() -> void:
 	await frames(40)
 	check(not Story.landed(StoryContent.WITNESS_ON[&"other_realm"]), "the surface is only here")
 	var was := g.world.realm
+	# The Before is his own past, not the Seeker's plant: it lands nothing here,
+	# or the crossing's revelation holds back the one Hannah's scene is for.
+	g.world.realm = Realm.ERA
+	await frames(45)
+	check(not Story.landed(StoryContent.WITNESS_ON[&"other_realm"]), "2029 is not below the world")
 	g.world.realm = Realm.UNDERGROUND
 	await frames(45)
 	g.world.realm = was

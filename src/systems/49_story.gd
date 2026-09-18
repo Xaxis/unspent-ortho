@@ -414,7 +414,9 @@ func _witness() -> void:
 		# knows he had one.
 		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
 			_witnessed(StoryContent.WITNESS_ON[&"signet"])
-	if game.world != null and game.world.realm != Realm.SURFACE:
+	# Below the world or above it, not the Before: 2029 is his own past, and
+	# landing a revelation on the crossing held back the one Hannah's scene is for.
+	if game.world != null and game.world.realm != Realm.SURFACE and game.world.realm != Realm.ERA:
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
@@ -574,6 +576,26 @@ func _save() -> Variant:
 func _load(v: Variant) -> void:
 	if v is Dictionary:
 		Story.load_state(v)
+
+
+## Where a tour stands to reach a story place by name (98_tour's `at KIND:NAME`):
+## `gate:ID` is a gate into 2029 (StoryGates), in whichever year he is in, on the
+## nearest ground a body can stand on beside it.
+func tour_place(what: String) -> Vector2:
+	if not what.begins_with("gate:") or game.world == null:
+		return Vector2.INF
+	var id := StringName(what.substr(5))
+	for g: Dictionary in StoryGates.all(game.world):
+		if g.id != id:
+			continue
+		var at: Vector2 = g.pos
+		for r: float in [0.0, 0.8, 1.2]:
+			for i in 12:
+				var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+				if game.query.standable(floori(p.x), floori(p.y)):
+					return Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+		return at
+	return Vector2.INF
 
 
 ## What a tour may await of the story.
