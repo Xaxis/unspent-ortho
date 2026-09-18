@@ -343,6 +343,12 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   seam test pass and cost **40% of the world's blend mass** — passing a test by
   flattening the ecotones the test exists to protect.
 - **A clock in the gate is scaled, or it is measuring the laptop.**
+- **A test that cannot observe the thing it rules is not a test of it.**
+  ART.md §4 ("a machine is a dark mass by day") is held by `test_machines_ramps.gd`,
+  which reads the PALETTE — so it cannot see `matter_worn`, and when wear began
+  lightening machines on the snowfield and the salt the test went on passing.
+  Honest, green, and blind in exactly the direction the feature moved. Before
+  trusting a law, ask what would fail if it broke.
 - **A feature that is silently off looks exactly like a feature that is subtle.**
   `matter_wear()` returns early while `sky_view.z <= 0`, only `SkyLight.set_ground`
   writes it, and the gallery never called it — so LANTERN's first law was switched
