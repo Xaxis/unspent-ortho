@@ -70,6 +70,24 @@ func _run() -> void:
 			inst.current = id
 			var t := Time.get_ticks_msec()
 			await inst.call(name)
+			# NO TEST INHERITS ANOTHER'S SAVES. `SaveSlots.root` is a static, so a
+			# test that points it at its own folder (`Sx.use_root`) and does not
+			# call `Sx.finish` leaves every later test in the shard reading THAT
+			# folder — with that test's save still in it. Nothing about the victim
+			# looks wrong: `UiTitleMenu` simply finds a save, offers "continue",
+			# selects it, and three title tests fail asserting "new" while passing
+			# alone. That is docs/LOOK.md's whole chapter arriving as a red test
+			# instead of a green one, and it has now bitten three times (#92, the
+			# title menu; test_round_trip; these three), each time looking like a
+			# different bug. The fixture already knew the rule — its own comment
+			# says TEST_ROOT is "where tests outside tests/save read an empty set
+			# of slots" — it was just left to every test to remember.
+			#
+			# `turned_away` goes with it: it is process-lived by design, so one
+			# game's refusal would otherwise still be standing for the next test.
+			SaveSlots.root = SaveSlots.TEST_ROOT
+			SaveSlots.turned_away.clear()
+			SaveSlots.handed_back = -1
 			var ms := Time.get_ticks_msec() - t
 			if inst.failures.is_empty():
 				_passed += 1
