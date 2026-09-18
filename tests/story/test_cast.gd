@@ -76,6 +76,12 @@ func test_a_named_person_is_there_and_answers_the_use_key() -> void:
 			maren = row
 		var at: Vector2 = row.pos
 		check(g.query.standable(floori(at.x), floori(at.y)), "%s stands on ground a body can stand on" % row.character)
+		# The one `use` key answers the NEAREST thing: a person standing inside a
+		# terminal's reach is a person the key reads the terminal instead of.
+		for q: WorldProp in g.query.props_near(at, StoryProps.REACH + 2.0):
+			if StoryProps.readable(q.kind):
+				gt(q.pos.distance_to(at) - q.solid, StoryProps.REACH,
+					"%s stands clear of the %s beside them, so the key reaches them" % [row.character, StoryProps.kind_of(q.kind)])
 	check(not maren.is_empty(), "Maren is at her fire")
 	# Stand beside her the way a tour does, and let her be drawn.
 	var spot: Vector2 = cast.call("tour_place", "cast:maren")

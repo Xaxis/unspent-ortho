@@ -92,15 +92,31 @@ func _clear() -> void:
 
 
 ## A standable tile a few paces off the slot, at a bearing of their own, so two
-## people cast at one place do not stand in each other.
+## people cast at one place do not stand in each other — and out of reach of
+## anything with words on it, or the one `use` key reads the post beside them
+## instead of speaking to them (a works yard is full of the plan's terminals).
 func _stand_near(at: Vector2, id: StringName) -> Vector2:
 	var turn := Rng.hash01(game.world.seed_value, absi(int(id.hash())), 0, 0xCA57) * TAU
-	for r: float in [2.5, 3.5, 1.5, 4.5]:
+	var fallback := Vector2.INF
+	for r: float in [2.5, 3.5, 1.5, 4.5, 5.5, 6.5, 8.0]:
 		for i in 12:
 			var p := at + Vector2.from_angle(turn + TAU * i / 12.0) * r
-			if game.query.standable(floori(p.x), floori(p.y)):
-				return Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
-	return at
+			if not game.query.standable(floori(p.x), floori(p.y)):
+				continue
+			var spot := Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+			if fallback == Vector2.INF and r <= 4.5:
+				fallback = spot
+			if not _near_words(spot):
+				return spot
+	return fallback if fallback != Vector2.INF else at
+
+
+## Whether a thing somebody could read stands within the key's reach of `p`.
+func _near_words(p: Vector2) -> bool:
+	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
+		if StoryProps.readable(q.kind) and q.pos.distance_to(p) - q.solid <= StoryProps.REACH:
+			return true
+	return false
 
 
 func _dress(row: Dictionary, c: StoryCharacter) -> void:

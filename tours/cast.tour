@@ -73,3 +73,24 @@ shot 06-solis-speaks with talking,cast:solis
 press pause
 wait 0.5
 await met:solis 2
+
+# --- Otto, at the war's archive: the lead down --------------------------------------------
+at cast:otto
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 07-otto-keeps-the-record with talking,cast:otto
+press pause
+wait 0.5
+
+# --- Sefa, at the Tether's foot: the lead up ----------------------------------------------
+at cast:sefa
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 08-sefa-at-the-tether with talking,cast:sefa
+press pause
+wait 0.5
+await met:sefa 2
