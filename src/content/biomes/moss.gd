@@ -45,6 +45,26 @@ static func make() -> BiomeDef:
 	d.grass_colors = [P.SPRUCE[3], P.MOSS[3]]
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	d.decor_tints = {&"bloom": [P.RUST[4], P.SAND[5], P.RUST[5]]}
+	# Wet slate, timber gone black in the bog, and peat banked against anything
+	# left standing. What people build here stands on stilts over the water.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.SLATE[2], P.SLATE[1], P.MOSS[2]]
+	dress.timber = [P.EARTH[1], P.INK[3]]
+	dress.drift = [P.EARTH[1].lerp(P.MOSS[1], 0.4), P.EARTH[1]]
+	dress.sign = [P.RIME[4].lerp(P.MOSS[3], 0.25), P.INK[1]]
+	dress.spread = 0.85
+	dress.sink = 0.34
+	dress.lie = Vector2(-0.26, -0.12)
+	d.dressing = dress
+	d.tree_tints = {
+		&"needle": [P.SPRUCE[2].lerp(P.MOSS[2], 0.35), P.SPRUCE[3].lerp(P.MOSS[3], 0.3), P.SPRUCE[3].lerp(P.MOSS[4], 0.3)],
+		&"leaf": [P.MOSS[2].lerp(P.ASH[2], 0.4), P.MOSS[2], P.ASH[3].lerp(P.MOSS[3], 0.5), P.MOSS[3]],
+		&"trunk": [P.LINEN[2]],
+		&"scrub": [P.SPRUCE[2], P.EARTH[2].lerp(P.MOSS[2], 0.5), P.SPRUCE[2].lerp(P.MOSS[3], 0.4)],
+		&"dead": [P.LINEN[2].lerp(P.SPRUCE[2], 0.25), P.ASH[1]],
+		&"reed": [P.MOSS[2], P.EARTH[3], P.MOSS[3]],
+		&"reed_head": [P.EARTH[1]],
+	}
 	d.grade = Vector4(-0.5, 0.16, 0.02, 0.06)
 	# A fen has NO LID ON IT. The moss is dark because its ground is dark — peat
 	# and sphagnum are the lowest-albedo surfaces in the game — and not because

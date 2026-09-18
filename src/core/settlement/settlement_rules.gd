@@ -69,7 +69,18 @@ static func source(kind: int, weather: Dictionary, hour: float) -> float:
 		StructureKind.WIND_SPINNER:
 			# A still week kills the wind spinners (VISION §9): below a breath
 			# the blades do not turn at all.
-			return clampf((float(weather.get("wind", 0.0)) - 0.12) / 0.6, 0.0, 1.0)
+			#
+			# The MAGNITUDE, because `Weather.wind_at` returns -1..1 and the SIGN
+			# is which way the air is going — `weather_view` literally blows the
+			# snow along `signf(wind)`. Read signed, a spinner made nothing every
+			# time the wind came from the other quarter, which on a clear day is
+			# half the time on a 37-minute cycle; and since the spinner is the
+			# only generator anybody can build (no row for SOLAR_ARRAY or
+			# PEDAL_DYNAMO), that was half of all the power in the game. Every
+			# other reader of this field already takes `absf`: `Weather.mist`,
+			# `Spawner` on `calm`, `Hazards` on gale, the weather visuals and the
+			# mix. Found by a tour whose yard went dark between two frames.
+			return clampf((absf(float(weather.get("wind", 0.0))) - 0.12) / 0.6, 0.0, 1.0)
 		StructureKind.SOLAR_ARRAY:
 			var light := clampf(sin(PI * clampf((hour - 5.5) / 13.0, 0.0, 1.0)), 0.0, 1.0)
 			return light * lerpf(1.0, 0.35, clampf(float(weather.get("strength", 0.0)), 0.0, 1.0))

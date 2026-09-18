@@ -18,6 +18,15 @@ extends UiScreen
 const LIST_TOP := UiSlate.LIST.position.y + 36
 ## A slot's row holds two lines: what it is, and what is in it.
 const ROW_PITCH := UiTheme.LINE * 2
+## The list panel's right margin, and where a row's words begin across from the
+## slot's name. Named because a TEST measures the room a module's conflict line
+## has against them (tests/gear_economy/test_modifiers.gd) and used to carry its
+## own copies: 71 against this 142 and 8 against this 16, both left behind when
+## the base moved. It therefore allowed 737 px where the row has 658 — a line
+## between the two fitted the test and ran across the resistances column, which
+## is the exact failure that test was written to stop.
+const LIST_PAD_R := 16
+const ROW_TEXT_X := 142
 ## Where the figure stands on the spare panel. The viewport is a PICTURE, so it
 ## covers the share of the panel it always did and is simply drawn at three times
 ## the detail; the gap between it and the panel's edge is type-sized.
@@ -186,7 +195,7 @@ func _draw() -> void:
 	UiSlate.title(self, L, "GEAR")
 	UiSlate.spare(self)
 	var x0 := L.position.x + UiSlate.MARGIN_L
-	var right := L.end.x - 16
+	var right := L.end.x - LIST_PAD_R
 	UiDraw.text_right(self, right, L.position.y + 8, "SLOT / FITTED", UiTheme.TEXT_DIM)
 	for i in menu.rows.size():
 		var s: Dictionary = menu.rows[i].slot
@@ -206,7 +215,7 @@ func _draw() -> void:
 				UiDraw.text(self, Vector2i(x0 + 116, top + UiTheme.LINE), fits, UiTheme.TEXT_DIM)
 		else:
 			UiIcons.draw_item(self, item, Vector2i(x0 + 116, top - 2))
-			UiDraw.text(self, Vector2i(x0 + 142, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
+			UiDraw.text(self, Vector2i(x0 + ROW_TEXT_X, top), UiRules.item_name(item), UiTheme.MACHINE[3] if UiIcons.is_found(item) else (UiTheme.BRIGHT if chosen else UiTheme.TEXT))
 		# A socket per module: lit when one is fitted.
 		# A socket per module the piece takes; without a feed, three.
 		for k in int(s.get("sockets", 3)):
@@ -219,7 +228,7 @@ func _draw() -> void:
 			if k > 0:
 				break
 			var m: Dictionary = mods[k]
-			UiDraw.text(self, Vector2i(x0 + 142, top + UiTheme.LINE), "%s  %s" % [m.get("name", ""), m.get("grants", "")], UiTheme.MACHINE[2])
+			UiDraw.text(self, Vector2i(x0 + ROW_TEXT_X, top + UiTheme.LINE), "%s  %s" % [m.get("name", ""), m.get("grants", "")], UiTheme.MACHINE[2])
 	# Abilities fitted, under the slots that give them.
 	var ay := LIST_TOP + menu.rows.size() * ROW_PITCH + 12
 	UiSlate.heading(self, Vector2i(x0, ay), "abilities", right)

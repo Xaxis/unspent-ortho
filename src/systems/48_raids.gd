@@ -516,7 +516,12 @@ func _said_kind(kind: StringName) -> String:
 # --- 2. attention -------------------------------------------------------------
 
 ## Move a holding's attention by a declared cause, and say so. `attention_changed`
-## is the one door: nothing else in the game writes `Settlement.attention`.
+## is the one door OUT — nothing outside this system may write
+## `Settlement.attention`, and everything that wants the number reads it or
+## listens. Inside it there are three other writers, each with a reason this
+## function cannot serve: `_settle_attention` walks whole slices of the clock,
+## `_end` spends per RAID STAGE (`RaidStage.SPENDS`), and `_stage` is the
+## `--attention` boot option staging a holding for a tour.
 ##
 ## A rise is scaled by the configuration's `rules.raid_pace`; a FALL never is,
 ## because a playtest that wanted raids sooner must not also make quiet weeks
@@ -1518,10 +1523,11 @@ func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void
 	for s in places():
 		if s.realm != here or region_of(s) != region:
 			continue
-		var was := s.attention
-		s.attention = 0.0
-		if was > 0.0:
-			Events.attention_changed.emit(s.id, was, 0.0)
+		# Through the table, not by hand: `keeper_fell` is -1.0 and attention is
+		# clamped to the scale, so this is the same zero it always was — but the
+		# number is now stated where every other cause states its own, and a row
+		# nothing applies cannot sit in `CAUSES` looking load-bearing.
+		_raise(s, &"keeper_fell")
 		var p := _plan_for(s.id)
 		if p != null:
 			_end(p, s, &"left")

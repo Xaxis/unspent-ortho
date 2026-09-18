@@ -10,52 +10,82 @@ class_name StructureKind
 ## The enum is saved and read by two packages: append, never reorder, never
 ## renumber. `family()` reads the ranges, so a new kind goes inside its family's
 ## own run.
+##
+## MORE KINDS ARE NAMED HERE THAN CAN BE BUILT, and that is allowed — `buildable()`
+## exists so the raids package may name a piece nobody has learnt to put up. But an
+## enum two and a half times the size of the game is the shape a system takes when
+## it is called finished and is not, so **every name below says which it is**:
+##
+##   (built)     a player can put it up now: it is in ROWS and in BUILDABLE.
+##   (planned)   meant, and something already leans on it — its physics, its
+##               signature, or another package's test. The note says WHAT, so a
+##               reader can tell a plan from a leftover without running the game.
+##   (elsewhere) the game already has this under another package's name. A
+##               duplicate, not a gap: nothing here should ever grow a row for it.
+##
+## **Nothing may be deleted from this enum in passing.** A kind is saved as its
+## integer, so removing one renumbers every kind after it and silently turns a
+## saved plate wall into a gate — and unlike a landscape change, no `WorldStamp`
+## refuses that save, it just misreads it. Retiring the three (elsewhere) names is
+## a real job with a `SaveFile.migrate` step behind it, not a tidy-up.
 
 enum {
 	## Shelter: a roof, a bed, a place to come back to.
-	LEAN_TO,
-	HUT,
-	CELLAR,
-	HEARTH,
-	STORE,
+	LEAN_TO,          # (built)
+	HUT,              # (built)
+	CELLAR,           # (planned) stores a raid cannot loot — the answer to RaidRoles
+	                  # going for the stores, which has no answer today.
+	HEARTH,           # (built)
+	STORE,            # (built)
 	## Power: made, mended and stolen.
-	SOLAR_ARRAY,
-	WIND_SPINNER,
-	PEDAL_DYNAMO,
-	BATTERY_STACK,
-	STOLEN_CELL,
+	SOLAR_ARRAY,      # (built)
+	WIND_SPINNER,     # (built)
+	PEDAL_DYNAMO,     # (planned) power that costs a person instead of attention:
+	                  # the only generator with no SIGNS row, which is its whole point.
+	BATTERY_STACK,    # (built)
+	STOLEN_CELL,      # (planned) the loudest piece in the game (found_tech 1.0), and the
+	                  # holding `tests/raid/test_attention.gd` weighs every other against.
 	## Food and water.
-	PLOT,
-	GREENHOUSE,
-	MUSHROOM_CELLAR,
-	FISH_TRAP,
-	SNARE_LINE,
-	CATCHMENT,
-	FILTER,
-	STILL,
-	## Work: these are the stations the making ladder asks for.
-	FORGE,
-	BENCH,
-	MACHINE_SHOP,
-	KILN,
-	LOOM,
-	RADIO_MAST,
+	PLOT,             # (built)
+	GREENHOUSE,       # (planned) declares SIGNS light 0.5: lit glass at night is food
+	                  # bought with being seen.
+	MUSHROOM_CELLAR,  # (planned) food that wants no sun — the underground realm's, which exists.
+	FISH_TRAP,        # (planned) food off water, for a coast holding.
+	SNARE_LINE,       # (planned) food off the fauna 37_fauna already puts on the land.
+	CATCHMENT,        # (built)
+	FILTER,           # (planned) the thirst hazard's answer at holding scale.
+	STILL,            # (planned) water out of brine: the salt flats', where a catchment cannot work.
+	## Work. These are NOT "the stations the making ladder asks for", which is what
+	## this line used to claim. The ladder asks for fire, bench, kiln, loom and
+	## wheel, and `Recipes` / `Survival.STATION_KINDS` own every one of them. What
+	## belongs to this package is the two the ladder has no station for.
+	FORGE,            # (planned) nothing says `at: forge` yet, but it declares SIGNS
+	                  # (smoke 0.7, noise 0.6) and `tests/settlement/test_defences.gd` builds one.
+	BENCH,            # (elsewhere) `Recipes` builds it: {"builds": &"bench"}.
+	MACHINE_SHOP,     # (planned) the FOUND-tier bench. SIGNS found_tech 0.5, and
+	                  # `tests/settlement/test_contract.gd` builds one.
+	KILN,             # (elsewhere) `Recipes` builds it: {"builds": &"kiln"}.
+	LOOM,             # (elsewhere) `Survival.STATION_KINDS` puts one in a village house.
+	RADIO_MAST,       # (built)
 	## Defence.
-	PALISADE,
-	PLATE_WALL,
-	GATE,
-	DITCH,
-	TOWER,
-	SNARE,
-	MINE,
-	EMP_STAKE,
-	TURRET,
-	DECOY_MAST,
-	SPOOFER,
-	NETTING,
-	SHUTTERS,
+	PALISADE,         # (built)
+	PLATE_WALL,       # (built)
+	GATE,             # (planned) a wall you can get out of. Ring a yard in palisade
+	                  # today and you have walled yourself in.
+	DITCH,            # (planned) defence that costs hours and no materials.
+	TOWER,            # (planned) height, which a turret and a watch both want.
+	SNARE,            # (planned) a trap that holds a raider.
+	MINE,             # (planned) a trap that kills one.
+	EMP_STAKE,        # (planned) the trap that answers a MACHINE specifically. Not the
+	                  # raids package's `stake` — that is the plan's own survey stake
+	                  # driven into the player's yard, and shares only the word.
+	TURRET,           # (built)
+	DECOY_MAST,       # (built)
+	SPOOFER,          # (built)
+	NETTING,          # (built)
+	SHUTTERS,         # (planned) declares SIGNS mask 0.15: the cheapest mask there is.
 	## Living: beds for the rescued, who staff the rest.
-	BUNK,
+	BUNK,             # (built)
 	COUNT,
 }
 
@@ -166,6 +196,25 @@ const ROWS := {
 		"cost": {&"timber": 1, &"scrap": 2, &"iron": 1}, "minutes": 95.0, "wear": 0.05,
 		"power": 2.0,
 	},
+	# The other half of the answer to "where does the power come from", and the
+	# opposite bargain from the spinner: the spinner is free and unreliable — a
+	# still week kills it — while an array is dear, wants charge cells nobody makes,
+	# and is dependable right up until the sun goes down. Neither alone keeps a mast
+	# up through a still night; an array and a battery stack do, which is the point.
+	#
+	# Its physics were written long before this row was (`SettlementRules.source`
+	# has carried its day curve and its weather dimming the whole time) and could
+	# not run, because nobody could build one.
+	#
+	# `power` is higher than the spinner's on purpose: `source` averages about 0.35
+	# over a whole day against the spinner's ~0.38 at typical wind, so 2.4 against
+	# 2.0 puts the two within a hair of each other per day and leaves the DIFFERENCE
+	# where it belongs — in when the power arrives, not how much.
+	SOLAR_ARRAY: {
+		"name": "solar array", "idiom": Idiom.MENDED, "health": 8.0, "solid": 0.45,
+		"cost": {&"wick": 2, &"scrap": 3, &"copper": 1}, "minutes": 100.0, "wear": 0.03,
+		"power": 2.4,
+	},
 	BATTERY_STACK: {
 		"name": "battery stack", "idiom": Idiom.MENDED, "health": 9.0, "solid": 0.45,
 		"cost": {&"scrap": 3, &"copper": 1}, "minutes": 80.0, "wear": 0.03,
@@ -221,6 +270,23 @@ const ROWS := {
 		"cost": {&"rep_light": 1, &"scrap": 4, &"copper": 2, &"iron": 1}, "minutes": 120.0, "wear": 0.02,
 		"draw": 1.2, "defence": 1.2,
 	},
+	# The LIVING family's one piece, and what makes `sleeps` mean anything at all.
+	# Until it had a row the family was empty, `Settlement.beds()` was called by
+	# nobody, and the slate printed "sleeps 2" on a hut's build card while beds
+	# decided nothing — a holding took in as many people as it had jobs and housed
+	# them in the open.
+	#
+	# A lean-to and a hut sleep the player's own household; a bunk is the piece
+	# whose whole job is somebody else's bed, so it is the only cheap way past two.
+	# It gives off nothing of its own and gets no SIGNS row on purpose — like a
+	# shelter and a plot, it is not a comfort a machine can smell. What it is loud
+	# with is PEOPLE: `Settlement.signature` already reads the residents as
+	# `traffic`, so filling a bunk is heard, and an empty one never is.
+	BUNK: {
+		"name": "bunk", "idiom": Idiom.MADE, "health": 7.0, "solid": 0.5,
+		"cost": {&"timber": 2, &"reeds": 3, &"rag": 2}, "minutes": 70.0, "wear": 0.035,
+		"sleeps": 4,
+	},
 }
 
 ## The order the slate offers them in: a roof and a fire first, because that is
@@ -228,8 +294,12 @@ const ROWS := {
 ## to being read stand after what gives a place away, because a player reaches
 ## for them once something has: the decoy wants nothing but hands, the spoofer a
 ## record and a holding with power in it.
-const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, STORE, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, BATTERY_STACK, RADIO_MAST,
+##
+## The bunk stands with the roofs it is one of, straight after the hut, because
+## the moment a player wants one is the moment a piece asks for hands they have
+## not got. The array stands beside the spinner it is the alternative to.
+const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, PLOT, CATCHMENT,
+	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
 
 

@@ -174,6 +174,14 @@ const DEFS := {
 		"keeps_to": WET_AND_DEEP,
 		"where": {"countries": ["moss", "coast"], "grounds": WET, "green_min": 16},
 	},
+	# `near_props` is the whole of what a lineman is, and it is a narrow gate on its
+	# own: a pylon or pole within 4 tiles of snowfield ground is 188-431 tiles on a
+	# 65536-tile island. `green_min` 34 on top of it left SIX on seed 1, and forty
+	# minutes stood at the best of them rolled nothing — and a lineman is a worker,
+	# so nothing ever SENDS one either, which left `line_coil` with no door at all.
+	# 10 is the roster's own floor and says the one thing the gate was for: no
+	# machine works the line inside a village. Measured, tiles at green_min
+	# 0/10/34 — seed 1: 188/170/6, seed 4: 431/424/41, seed 7: 197/194/35.
 	&"lineman": {
 		"model": &"lineman", "role": &"worker", "machine": true, "approach": &"rush", "part": &"front",
 		"pace": 4.0, "dash": 9.0, "quick": 320, "radius": 0.35, "height": 1.4, "life": 60,
@@ -181,7 +189,7 @@ const DEFS := {
 		"nerve": 100, "invuln": 440, "disposition": &"indifferent",
 		"bite": {"swing": [400, 120, 280, 520], "reach": 1.9, "width": 1.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 3},
 		"takes": 45.0, "drops": 2, "linger": 25.0, "chance": 3,
-		"where": {"countries": ["snowfield"], "grounds": ["snow", "ice", "rock", "gravel", "grass"], "green_min": 34, "near_props": ["pylon", "pole"]},
+		"where": {"countries": ["snowfield"], "grounds": ["snow", "ice", "rock", "gravel", "grass"], "green_min": 10, "near_props": ["pylon", "pole"]},
 	},
 	&"clerk": {
 		"model": &"clerk", "role": &"watcher", "machine": true, "approach": &"dart", "part": &"none",

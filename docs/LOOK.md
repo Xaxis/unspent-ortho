@@ -236,6 +236,57 @@ own comments, check every line that should be keeping it.**
      numbers were the canon's own before/after diffs. When you report a figure,
      know which of the two kinds it is.
 
+## An instrument that fails toward green is invisible
+
+The look wave was rebuilt by measuring. The measuring was then audited, and what
+the audit found is worth more than any single fix: **eight instruments in this
+repository were returning numbers that meant nothing, and not one of them ever
+said so.**
+
+- A tour's `await` was answered by a system's own latch that nothing ever spent,
+  so a step that proved nothing reported green — and hid a real bug for two waves.
+- `tours/evening.tour`'s comparison crop had 28% of its rows on the HUD message
+  bar, which differs between frames by 51.6 while the world under it differs by
+  6.2. It was grading the evening almost entirely on the one thing its own comment
+  says it crops out.
+- `tours/sky-polish.tour`'s crop was pointed at blank snow in a corner: **thirty
+  times less sensitive than no crop at all.** It exists to prove the lamp lays no
+  pink disc on bright ground, and it could never have caught that regression once.
+- `tours/saves.tour`'s crop had walked onto the village — moving people and dogs,
+  the one thing in frame guaranteed to differ between runs. It was **failing on a
+  quiet machine**, and had been labelled "flaky under load" in a task for two
+  waves, so everyone re-ran it and blamed the scheduler.
+- `await darker` graded a composition the shaders had stopped drawing, and went
+  green over a real 5.4% RISE in the thing it was watching for.
+- `test_modifiers.gd` allowed 737 pixels where the panel has 658, so a line of any
+  length in between passed the test **and** ran across the column — the single
+  failure that test exists to stop.
+- `test_a_still_week_kills_the_wind_spinners` tried two winds of different
+  magnitudes and the same sign, and so could not see a sign bug that was removing
+  half the power in the game.
+- The gate check written into five briefs — `pgrep -f 'tests/run.gd'` — matched
+  the waiter shells built from that very rule, so eight builders waited on each
+  other for a machine that was idle.
+
+The pattern is one thing. **None of them announced anything. They all just kept
+returning numbers.** A test that fails toward red gets fixed the day it breaks; a
+test that fails toward green is never examined, because a green answer is not
+examined. So:
+
+1. **Every one of these was found by somebody chasing a different bug.** Nobody
+   audits a passing test. Budget for that: when a measurement surprises you, check
+   the instrument before you believe the reading OR dismiss it.
+2. **A "flaky" label is a hypothesis, not an observation.** `saves.tour` cost real
+   hours because one was written down and never tested on a quiet machine.
+3. **Prefer a relational assertion to an absolute bar.** `sky-polish.tour`'s real
+   claim is "the lamp adds no more than standing still does", which holds
+   comfortably (0.0078 against 0.0095); its absolute 0.010 bar sits 5% above a
+   number that is a property of the world's own animation. The relational form
+   cannot drift with the scenery.
+4. **Name a number where it is DRAWN and have the test ask.** Both pixel-constant
+   failures above were drawing code written out a second time inside a test.
+   Correcting the copies leaves copies.
+
 ## Web is the graceful degradation path
 
 **Forward+ is the target. `gl_compatibility` is the fallback, and it must be

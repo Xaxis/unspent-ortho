@@ -1,0 +1,76 @@
+# A power chain put up BY HAND and a piece run off it (docs/VISION.md §9), which
+# nothing proved before: `tours/defences.tour` and `tours/turret.tour` both open
+# with `--holding=...,wind_spinner,battery_stack,...`, so every frame in the
+# repository showing a powered holding is a frame of a holding the boot option
+# stood up. The claim "build shelters/towns, POWER, food, defence" had its power
+# half staged, and the half nobody walked held a real bug: a spinner read the
+# wind SIGNED, so it made nothing every time the air came from the other quarter.
+#
+#   tools/tour.sh tours/power.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --give=timber:4,scrap:8,iron:2,copper:3,deadwood:4,stone:4
+#
+# (--give is exactly the four pieces' costs — a spinner is timber 1, plate 2 and
+# iron 1; a stack plate 3 and copper 1; a mast timber 1, plate 1 and copper 1;
+# a hearth stone 3 and dead wood 2 — all of it takeable off the coast by hand.
+# The taking is survival's proof, not this one's.)
+#
+# The eight world hours in the middle are not padding. A bank starts empty, a
+# spinner makes 2.0 against the mast's 0.6, and the wind on a clear day comes and
+# goes on a 37-minute swing — so a yard wired one minute is dark the next until
+# the stack has something in it. That is the whole reason the piece exists, and
+# it is why the frame that claims `powered` is taken after the hours and not
+# before: the first run of this tour held `powered` at 13 s and had lost it by
+# 15 s, which is what turned up the signed-wind bug.
+coast calm
+place spawn
+wait 0.4
+# Out of the village square to open ground, on the real keys.
+walk -1,1 1.5
+wait 0.5
+shot 01-somewhere-to-put-it with land:coast
+# The spinner first, because it is the only thing here that MAKES anything, and
+# the only generator anybody can build at all: SOLAR_ARRAY and PEDAL_DYNAMO are
+# named in StructureKind and have no row. It founds the holding.
+tap holding
+await app:holding 4
+wait 0.6
+shot 02-the-slate-asks-what-to-put-up with app:holding
+choose build_wind_spinner
+tap use
+await made 8
+wait 0.5
+shot 03-something-that-makes-power with app:holding, piece:wind_spinner
+# A stack to hold what the wind made, so the mast does not go off every time the
+# air drops. Power is a RATE and charge is an AMOUNT, and this is the amount.
+choose build_battery_stack
+tap use
+await made 8
+wait 0.4
+# And the thing that spends it. A mast draws 0.6 and gives the place away on the
+# loudest channel there is, which is the whole bargain: power buys reach and
+# reach is what a machine hears.
+choose build_radio_mast
+tap use
+await made 8
+wait 0.4
+# A hearth, so the yard is somewhere a person lives and not an installation.
+choose build_hearth
+tap use
+await made 8
+wait 0.4
+tap pause
+wait 0.6
+# Eight world hours. The holding settles up from its own timestamp in half-hour
+# slices: the wind turns the blades, the surplus goes into the stack, and by the
+# far end the mast is up whether it is blowing at that exact minute or not.
+hour 18
+wait 1.6
+await powered 8
+shot 04-a-yard-with-power-in-it with holding, powered, piece:wind_spinner, piece:battery_stack
+# What it cost: the slate's bars now carry a power channel nobody staged.
+tap holding
+await app:holding 4
+wait 0.6
+shot 05-what-a-machine-hears-of-it with app:holding, powered, piece:radio_mast
+tap pause
+wait 0.8

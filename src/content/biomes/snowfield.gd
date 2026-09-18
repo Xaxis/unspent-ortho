@@ -52,6 +52,17 @@ static func make() -> BiomeDef:
 	d.grass_colors = [P.ASH[3], P.LINEN[3]]
 	d.rock_color = P.SLATE[3]
 	d.decor_tints = {&"fronds": [P.EARTH[2], P.EARTH[1], P.ASH[2]]}
+	# Snow lies here, which is the one line the rest follows from: rime on every
+	# wire, drifts to the belt on the windward side of anything, cold cast
+	# concrete, sods that are half ice, and an emergency shell for a shelter.
+	var dress := BiomeDressing.new()
+	dress.snow = [P.RIME[5], P.RIME[4], P.RIME[3], P.RIME[2]]
+	dress.stone = [P.SLATE[3].lerp(P.RIME[3], 0.3), P.SLATE[2], P.RIME[5]]
+	dress.drift = [P.RIME[5], P.RIME[4]]
+	dress.walling = [P.SLATE[2], P.SLATE[3], P.STONE[3], P.RIME[2]]
+	dress.sink = 0.14
+	dress.lie = Vector2(-0.05, 0.1)
+	d.dressing = dress
 	d.grade = Vector4(-0.04, 0.08, 0.08, -0.03)
 	# Open ground under an open sky, and snow throws back most of what lands on
 	# it: the one landscape where a lantern is a convenience rather than a

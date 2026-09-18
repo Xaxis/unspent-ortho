@@ -118,6 +118,20 @@ static func make() -> BiomeDef:
 		&"spoil": [P.LINEN[2], P.STONE[2], P.STONE[3]],
 	}
 	d.tree_tints = {}
+	# Nothing weathers down here, so nothing is silvered or bleached: a post left
+	# in a hall is the wet dark it was cut as. What banks against a thing is the
+	# grit off the roof, and the shelter a sump crew put up stands on stilts out
+	# of the standing water.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.SLATE[2], P.SLATE[1], P.LINEN[2]]
+	dress.pale = [P.LINEN[4], P.LINEN[3], P.STONE[3]]
+	dress.timber = [P.EARTH[1], P.INK[3]]
+	dress.drift = [P.STONE[2], P.STONE[1]]
+	dress.walling = [P.LINEN[3], P.LINEN[2], P.STONE[3], P.SLATE[2]]
+	dress.covers = &"drift"
+	dress.growth = P.SPRUCE[1]
+	dress.sink = 0.08
+	d.dressing = dress
 	# What a roofed realm is: no sky over it, so no sun on it and no weather off
 	# it. Both come from the realm, not from this file (src/core/realm/realm.gd).
 	d.light_tint = Realm.light(Realm.UNDERGROUND)

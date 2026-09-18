@@ -59,6 +59,16 @@ static func make() -> BiomeDef:
 	d.rock_color = P.STONE[1]
 	d.hard_rock = true
 	d.decor_tints = {&"bloom": [P.BLOOM[1], P.BLOOM[2], P.ASH[3]], &"fronds": [P.EARTH[2], P.EARTH[1], P.ASH[2]], &"twig": [P.INK[2]]}
+	# Basalt, ash banked against everything, and the rest taken from `scorched`:
+	# charred timber, ash-bleached bone, blackened plate, a dugout for a shelter
+	# and nothing that keeps a leaf.
+	var dress := BiomeDressing.new()
+	dress.stone = [P.STONE[1], P.STONE[0], P.RUST[2]]
+	dress.drift = [P.ASH[2], P.ASH[1]]
+	dress.walling = [P.STONE[1], P.ASH[1], P.STONE[2], P.STONE[0]]
+	dress.sink = 0.14
+	dress.lie = Vector2(-0.09, 0.17)
+	d.dressing = dress
 	d.grade = Vector4(-0.42, -0.04, -0.15, 0.1)
 	# The Burning is lit from BELOW at night — vents, clinker, what is still
 	# alight — and its sky is thick with ash. A bright night sky on top of that
