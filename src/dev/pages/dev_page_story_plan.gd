@@ -40,6 +40,20 @@ func rows() -> Array[Dictionary]:
 			value = "NOT CAST"
 		out.append(item(StringName("slot_%s" % s.id), String(s.id).trim_prefix("the_").replace("_", " "), value,
 			{"tone": "warn" if value == "NOT CAST" else ("" if _placed.has(s.id) else "dim")}))
+	var story := DevCheats.system(game, "49_story")
+	if story != null:
+		var look: StorySubarcLook = story.call("subarc_look")
+		out.append(header("this region asks"))
+		var said: Dictionary = StorySubarc.raised(look)
+		if said.is_empty():
+			out.append(item(&"asks", "nothing: %s" % String(StorySubarc.mood(look)), "", {"tone": "dim"}))
+		else:
+			var state := "asked" if Story.heard(said.id) else "not said yet"
+			if StorySubarc.answered(look, said.goal, str(said.place)):
+				state = "done"
+			out.append(item(&"asks", "%s: %s" % [String(said.goal), said.place], state,
+				{"tone": "" if state != "done" else "dim"}))
+			out.append(item(&"asks_mood", "mood", String(StorySubarc.mood(look)), {"tone": "dim"}))
 	out.append(header("the secret"))
 	var got := StorySecret.order()
 	var names := PackedStringArray()

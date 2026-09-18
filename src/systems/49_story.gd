@@ -51,6 +51,8 @@ var _cast: Node = null
 var journal: UiJournalScreen
 var _ui: Node
 var _journal_down := false
+## The first morning is still to be said (StoryContent.OPENING).
+var _opening := false
 
 
 func setup(g: Game) -> void:
@@ -80,6 +82,20 @@ func started() -> void:
 		journal = UiJournalScreen.new()
 		_ui.call("add_app", journal)
 	_stage()
+	# The first morning is said on the first FRAME, not here: the slate's message
+	# line is built by 90_ui, which starts after this one, and a line said into
+	# the gap is a line nobody sees.
+	_opening = not Story.began
+	Story.began = true
+
+
+## The first thing the game says, on the first morning only (StoryContent.OPENING).
+## Through the message line, which holds its words until the glass is quiet, so
+## it cannot arrive over a fight or under a page. A loaded game has heard it.
+func _open_the_game() -> void:
+	_opening = false
+	for line: String in StoryContent.OPENING:
+		Events.message.emit(line)
 
 
 ## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
@@ -160,6 +176,8 @@ func _read_journal_key() -> void:
 
 
 func _process(delta: float) -> void:
+	if _opening:
+		_open_the_game()
 	if game != null and game.clock != null:
 		Story.now = game.clock.minutes
 	if game == null or game.player == null:
@@ -302,8 +320,13 @@ func _start_talk(row: Dictionary) -> void:
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
-		var asked := StorySubarc.talk(subarc_look(), StorySubarc.raised(subarc_look()))
+		var look := subarc_look()
+		var asked := StorySubarc.talk(look, StorySubarc.raised(look))
 		if not asked.is_empty():
+			# Whoever it is, they are what their trade is: a cutter, a digger.
+			var theirs := StoryProps.talk_for(row, game)
+			if theirs != &"":
+				asked["title"] = str(StoryContent.TALKS[theirs].get("title", asked.title))
 			talk = StoryTalk.of_made(asked)
 			view.talk = talk
 			view.choice = 0

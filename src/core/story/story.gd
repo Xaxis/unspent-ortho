@@ -38,6 +38,9 @@ static var _heard: Array[StringName] = []
 ## What the world has seen him do, for whoever writes it down (StoryLedger):
 ## {act, land, at} in the order it happened.
 static var _ledger: Array[Dictionary] = []
+## Whether the first morning has been said (StoryContent.OPENING). Saved, so a
+## game that is loaded does not open by telling him again where he came from.
+static var began := false
 ## The world clock as the story last saw it, in minutes. What "a while ago" is
 ## measured from: 49_story writes it every frame, a test writes it by hand.
 static var now := 0.0
@@ -50,6 +53,7 @@ static func forget() -> void:
 	_met.clear()
 	_heard.clear()
 	_ledger.clear()
+	began = false
 	now = 0.0
 
 
@@ -229,7 +233,7 @@ static func save_state() -> Dictionary:
 	var seen: Array = []
 	for e: Dictionary in _ledger:
 		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
-	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "heard": heard, "ledger": seen}
+	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "heard": heard, "ledger": seen, "began": began}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -248,6 +252,7 @@ static func load_state(d: Dictionary) -> void:
 		_met.append(StringName(s))
 	for s: String in d.get("heard", []):
 		_heard.append(StringName(s))
+	began = bool(d.get("began", false))
 	for e: Variant in d.get("ledger", []):
 		if e is Dictionary:
 			var row: Dictionary = e
