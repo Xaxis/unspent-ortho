@@ -446,14 +446,15 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		# and no renderer: the form table is core, which is why world gen may read
 		# it at all.
 		var forms := BiomeForms.of(int(v.get("country", Country.COAST)))
-		_occupy(c, occ, vp, SQUARE_CLEAR if forms.plan != &"row" else STREET_CLEAR)
+		var streets := forms.plan == &"row" or forms.plan == &"block"
+		_occupy(c, occ, vp, STREET_CLEAR if streets else SQUARE_CLEAR)
 		_occupy(c, occ, lamp_at, 0.5)
-		# A settlement deals its buildings one form each, so HOW MANY there are is
-		# the stock's own size and never a number written down beside it: a
-		# landscape with six forms raises six buildings, and a seventh could only
-		# repeat a silhouette, which is the whole thing the deal exists to stop.
-		var most := forms.stock.size()
-		var count := rng.randi_range(mini(5, most), mini(8, most))
+		# How many buildings go up is the LANDSCAPE's to say (`BiomeForms.how_many`).
+		# It used to be the stock's own size, one form to each so no two shared a
+		# silhouette, which is right for a village and is what a village still gets
+		# when it declares nothing.
+		var want := forms.how_many()
+		var count := rng.randi_range(want.x, want.y)
 		var placed := 0
 		var start := rng.randf() * TAU
 		# A frontage runs on a bearing this village keeps: half a turn, because a
@@ -473,11 +474,25 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		var pack := _house_pack(Rng.make(c.s, 4200 + floori(vp.x) * 131 + floori(vp.y)),
 			Rng.hash01(c.s, floori(vp.x), floori(vp.y), 4202) < LIT_SHARE, forms)
 		var houses: Array[WorldProp] = []
-		var row := forms.plan == &"row"
-		for h in 120:
+		var row := streets
+		# A BLOCK IS A ROW WITH LANES. One street through the square is a village
+		# with a street; a city is several of them side by side with frontage on
+		# both sides of each, which is the same rule run per lane. `row` is the
+		# one-lane case and lays every building exactly where it did, so no world
+		# that has a street today moves.
+		var lanes := forms.lanes()
+		for h in 480:
 			if placed >= count:
 				break
-			if row and (h >> 2) > ROW_RANKS:
+			var lane := 0
+			var hh := h
+			if lanes > 1:
+				# Lanes are filled in step rather than one after another, so a city
+				# that runs out of ground is short on every street instead of
+				# having two full ones and a field.
+				lane = (h % lanes) - (lanes >> 1)
+				hh = h / lanes
+			if row and (hh >> 2) > ROW_RANKS:
 				# A STREET, not ribbon development. The ring spirals outward until it
 				# finds room, which is right for scattered buildings; a frontage that
 				# did the same walked off across the island one refused spot at a
@@ -500,15 +515,16 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 				# street — which is the whole reason a landscape gets to say this.
 				var along := Vector2.from_angle(street)
 				var across := Vector2(-along.y, along.x)
-				var side := 1.0 if (h & 1) == 0 else -1.0
-				var way := 1.0 if (h & 2) == 0 else -1.0
+				var side := 1.0 if (hh & 1) == 0 else -1.0
+				var way := 1.0 if (hh & 2) == 0 else -1.0
 				# The street's own width wanders a little rank by rank, so a frontage
 				# whose exact band of ground is broken has somewhere else to stand:
 				# every spot in a row is at one fixed offset, and on rough ground
 				# that put three buildings on a street with room for six.
-				var rank := h >> 2
+				var rank := hh >> 2
 				var wobble := 1.0 + (Rng.hash01(c.s, floori(vp.x) + rank, floori(vp.y), 4204) - 0.5) * 0.5
-				hp = vp + along * (forms.apart + float(rank) * stride) * way + across * (side * ROW_STREET * wobble)
+				hp = vp + along * (forms.apart + float(rank) * stride) * way \
+					+ across * (float(lane) * forms.block_deep() + side * ROW_STREET * wobble)
 				bearing = (across * -side).angle()
 			else:
 				var a := start + h * 2.39996
@@ -556,15 +572,55 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		# A village that outgrew the pack would repeat a silhouette, which is the
 		# whole thing this deal exists to stop. The modulo keeps it deterministic
 		# if it ever happens; the assert is so nobody finds out from a screenshot.
-		assert(houses.size() <= pack.size(), "a village placed more houses than there are models")
+		#
+		# A CITY REPEATS ITSELF AND IS NOT WRONG TO. What the rule protects against
+		# is two of one silhouette standing next to each other, which reads as a
+		# stamp -- not the second one existing at all. A landscape that says how far
+		# apart two of a kind must stand (`BiomeForms.repeat_apart`) keeps the
+		# protection and gets to be bigger than its own stock.
+		if forms.repeats():
+			for i in houses.size():
+				var pick := -1
+				for t in pack.size():
+					var cand: int = pack[(i + t) % pack.size()]
+					var clear := true
+					for j in i:
+						if houses[j].variant != cand:
+							continue
+						if houses[j].pos.distance_to(houses[i].pos) < forms.repeat_apart:
+							clear = false
+							break
+					if clear:
+						pick = cand
+						break
+				# Nothing clear means the street is denser than the stock can dress
+				# at that spacing: take the cycle's own answer rather than leave a
+				# building with no model, and `tests/biome/test_forms.gd` is what
+				# says whether a landscape asked for more than it can carry.
+				houses[i].variant = pick if pick >= 0 else pack[i % pack.size()]
+				# AND THE SECOND OF A KIND IS NOT THE SAME SIZE AS THE FIRST. The
+				# distance rule keeps two identical silhouettes from standing
+				# together; this is what keeps them from reading as one silhouette
+				# twice when both are in the same frame at different depths, which
+				# is most of what makes a real skyline out of six shapes.
+				var nth := 0
+				for j in i:
+					if houses[j].variant == houses[i].variant:
+						nth += 1
+				houses[i].scale = REPEAT_BANDS[nth % REPEAT_BANDS.size()]
+		else:
+			assert(houses.size() <= pack.size(), "a village placed more houses than there are models")
+			for i in houses.size():
+				houses[i].variant = pack[i % pack.size()]
+		# How much ground a building stands on is its FORM's, not its kind's:
+		# a tower is not a croft with more storeys, and a body walking a street
+		# has to be stopped by the frontage rather than by a coastal radius.
+		# Set only now, because world gen places first and deals afterwards so
+		# that the lit one comes out nearest the square; `forms.room()` above
+		# already kept the widest of them clear at placing time. Its own pass,
+		# because there are two ways to deal a form now and only one answer to
+		# what a dealt form stands on.
 		for i in houses.size():
-			houses[i].variant = pack[i % pack.size()]
-			# How much ground a building stands on is its FORM's, not its kind's:
-			# a tower is not a croft with more storeys, and a body walking a street
-			# has to be stopped by the frontage rather than by a coastal radius.
-			# Set only now, because world gen places first and deals afterwards so
-			# that the lit one comes out nearest the square; `forms.room()` above
-			# already kept the widest of them clear at placing time.
 			houses[i].solid = forms.reach(houses[i].variant) * houses[i].scale
 		# A STREET LIGHTS ITSELF. A square gets one lamp, which is a village's whole
 		# public light and is nothing down a frontage that runs nineteen tiles out
@@ -634,10 +690,12 @@ const ROW_STREET := 2.6
 ## side. Four spots to a rank, so three ranks offer twelve — twice the largest
 ## stock — and the far end still stands inside one frame of the square.
 const ROW_RANKS := 3
-## How much ground the square itself keeps clear of buildings, in tiles.
 ## How far out from the street's middle a lamp post stands, as a share of the
 ## street's half width: at the kerb, just inside the frontage it lights.
 const ROW_KERB := 0.82
+## How much ground the square itself keeps clear of buildings, in tiles. A green
+## keeps its whole circle; a street junction keeps only its own furniture, or the
+## first rank of the frontage falls inside it and a city has a hole in the middle.
 const SQUARE_CLEAR := 2.5
 const STREET_CLEAR := 1.1
 
@@ -647,6 +705,13 @@ const STREET_CLEAR := 1.1
 ## house of every village on every seed, which is the neon filter this game is
 ## not (the owner's own correction: neon is a situational accent). A share of
 ## villages wired one in; the rest are hearths and a lamp post.
+## The sizes a repeated form is dealt, in the order it is dealt them. A building
+## is `scale`d whole, so a band changes its height, its width and the ground it
+## stands on together (`solid` is `reach * scale`) -- which is the point: a second
+## stack of another size is another building, not the same one moved.
+const REPEAT_BANDS: Array[float] = [1.0, 1.26, 0.84, 1.12, 0.92, 1.34]
+
+
 const LIT_SHARE := 0.4
 
 

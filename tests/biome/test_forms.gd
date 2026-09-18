@@ -238,3 +238,43 @@ func test_an_object_that_names_no_fields_is_never_spelled_as_an_instance_id() ->
 	var f := BiomeForms.new()
 	f.stock = [&"tower"] as Array[StringName]
 	check(WorldStamp._spell(f).contains("tower"), "a type that names its fields has them spelled")
+
+
+## A CITY IS BIGGER THAN ITS STOCK AND STILL NEVER STANDS TWO THE SAME TOGETHER.
+## `buildings` and `repeat_apart` are what split the pack of shapes from how many
+## go up; before them the stock's own size was the count, which is right for a
+## village and is why a metropolis was impossible.
+func test_a_landscape_may_raise_more_buildings_than_it_has_shapes() -> void:
+	for d: BiomeDef in BiomeRegistry.land():
+		var f := BiomeForms.of(d.index)
+		var want := f.how_many()
+		gt(want.x, 0, "%s raises at least one building" % d.id)
+		check(want.y >= want.x, "%s: %s is not a range" % [d.id, want])
+		if want.y > f.stock.size():
+			check(f.repeats(),
+				"%s raises up to %d buildings from %d shapes and has not said how far apart two of a kind may stand"
+					% [d.id, want.y, f.stock.size()])
+		if f.repeats():
+			gt(f.repeat_apart, 0.0, "%s names a distance" % d.id)
+		# A landscape that declares nothing is the village it always was.
+		if d.built == null:
+			eq(want, Vector2i(mini(5, f.stock.size()), mini(8, f.stock.size())),
+				"%s declares nothing and raises what it always did" % d.id)
+			check(not f.repeats(), "%s declares nothing and never repeats a shape" % d.id)
+
+
+## A block plan's street spacing is stated in core and a street's own width lives
+## in world gen, so the two are written twice on purpose (core holds no world
+## gen). This is the line that stops them drifting -- the same bargain
+## `Swim.WATER_Y` keeps with `TerrainMesher`.
+func test_the_street_a_block_is_laid_round_is_the_street_world_gen_lays() -> void:
+	var gen := load("res://src/core/worldgen/gen_scatter.gd")
+	eq(BiomeForms.STREET_WIDE, gen.ROW_STREET, "half a street's width")
+	# And a lane has to be wider than the two frontages that back onto it, or
+	# a city's buildings stand in each other.
+	for d: BiomeDef in BiomeRegistry.land():
+		var f := BiomeForms.of(d.index)
+		if f.plan != &"block":
+			continue
+		gt(f.block_deep(), f.widest() * 4.0 + BiomeForms.STREET_WIDE * 2.0 - 0.01,
+			"%s: two frontages and a street fit between two lanes" % d.id)

@@ -564,15 +564,29 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			var forms := BiomeForms.of(here)
 			var neon := forms.lit()
 			var seen: Array[int] = []
+			var at: Array[Vector2] = []
 			var lit := 0
 			var nearest := -1
 			var best := INF
 			for p: WorldProp in w.props:
-				if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > 18.0:
+				if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > w.village_reach(v) + 2.0:
 					continue
 				var variant := PropModels.variant_of(p, w.seed_value, here)
-				check(not seen.has(variant), "%s: two houses drawn the same (model %d)" % [v.get("name", "?"), variant])
+				# A SETTLEMENT NEVER STANDS TWO OF ONE SILHOUETTE TOGETHER, which is
+				# not the same rule as "never twice". A village cannot repeat at all,
+				# because its stock is its count; a city says how far apart two of a
+				# kind must stand (`BiomeForms.repeat_apart`) and is allowed to be
+				# bigger than the six shapes it owns. The purpose survives either
+				# way -- what was ever wrong was two the same side by side.
+				if forms.repeats():
+					for j in seen.size():
+						if seen[j] == variant:
+							gt(at[j].distance_to(p.pos), forms.repeat_apart - 0.01,
+								"%s: two of model %d stand closer than %.0f tiles" % [v.get("name", "?"), variant, forms.repeat_apart])
+				else:
+					check(not seen.has(variant), "%s: two houses drawn the same (model %d)" % [v.get("name", "?"), variant])
 				seen.append(variant)
+				at.append(p.pos)
 				var d := p.pos.distance_to(vp)
 				if d < best:
 					best = d
@@ -584,7 +598,8 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			villages += 1
 			if neon.has(nearest):
 				lit_on_square += 1
-				eq(lit, 1 if seen.size() < forms.stock.size() else neon.size(), "%s: one stolen light, not a street of them" % v.get("name", "?"))
+				if not forms.repeats():
+					eq(lit, 1 if seen.size() < forms.stock.size() else neon.size(), "%s: one stolen light, not a street of them" % v.get("name", "?"))
 			if lit == 0:
 				dark += 1
 	gt(villages, 20, "three seeds have villages to read")

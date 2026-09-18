@@ -85,7 +85,7 @@ const MOST := 16
 ##   &"row"   a frontage — two lines either side of a street running through the
 ##            square, each building square to the line and its neighbours hard up
 ##            against it. A place people walk THROUGH.
-const PLANS: Array[StringName] = [&"ring", &"row"]
+const PLANS: Array[StringName] = [&"ring", &"row", &"block"]
 
 ## How far the nearest building stands off the square's middle, in tiles, when a
 ## landscape does not argue. The ring's number is the one every seed's village
@@ -106,6 +106,24 @@ var stock: Array[StringName] = []
 var plan: StringName = &""
 ## How far the nearest one stands off the middle, in tiles. 0 takes the plan's.
 var apart := 0.0
+## How many buildings a settlement here raises, as (least, most). `Vector2i()`
+## takes the STOCK's own size, which is what every landscape did before a city
+## existed and is still right for a village.
+##
+## THE STOCK'S SIZE WAS THE COUNT, AND THAT WAS EXACTLY RIGHT UNTIL A CITY ASKED.
+## One form dealt to each building so no two in a settlement share a silhouette
+## is a good rule and it stays; what it cannot survive is being the ANSWER to a
+## different question. Six forms meant six buildings, so the most a landscape
+## could raise was however many shapes somebody had modelled -- and a metropolis
+## is not a village with more shapes, it is the same shapes many times over.
+var buildings := Vector2i(0, 0)
+## How far apart two buildings of the SAME form must stand, in tiles. 0 is the
+## old rule: never repeat, so a settlement can be no bigger than its stock.
+##
+## A real city repeats itself and it is not a defect: what the no-repeat rule was
+## protecting against is two identical silhouettes SIDE BY SIDE, which reads as a
+## stamp. Stated as a distance, the protection survives and the city is possible.
+var repeat_apart := 0.0
 
 
 ## The declared fields, in the order `WorldStamp` spells them.
@@ -119,7 +137,7 @@ var apart := 0.0
 ## silently outside the stamp; `tests/biome/test_forms.gd` fails on exactly that,
 ## so the boring version cannot drift either way.
 func stamped() -> PackedStringArray:
-	return PackedStringArray(["stock", "plan", "apart"])
+	return PackedStringArray(["stock", "plan", "apart", "buildings", "repeat_apart"])
 
 
 # --- the one door ---------------------------------------------------------------
@@ -157,7 +175,56 @@ static func resolve(d: BiomeDef) -> BiomeForms:
 		r.apart = s.apart
 	else:
 		r.apart = ROW_APART if r.plan == &"row" else RING_APART
+	r.buildings = s.buildings
+	r.repeat_apart = s.repeat_apart
 	return r
+
+
+## How many buildings this settlement raises, as (least, most), resolved. A
+## landscape that says nothing gets the stock's own size, which is the rule every
+## village in this game was laid by.
+func how_many() -> Vector2i:
+	if buildings.x > 0 and buildings.y >= buildings.x:
+		return buildings
+	var most := stock.size()
+	return Vector2i(mini(5, most), mini(8, most))
+
+
+## May this settlement deal one form to two buildings? Only if it said how far
+## apart they have to stand.
+func repeats() -> bool:
+	return repeat_apart > 0.0
+
+
+## How many parallel streets this settlement is laid on. One for everything that
+## is not a `block`, which is what makes `row` and `ring` come out exactly as they
+## did. A block plan takes as many as its building count needs, because a city
+## with thirty buildings on one street is a ribbon and not a city.
+func lanes() -> int:
+	if plan != &"block":
+		return 1
+	return clampi(ceili(float(how_many().y) / float(PER_LANE)), 2, MOST_LANES)
+
+
+## Tiles between the middles of two streets. Wide enough that the frontages
+## backing onto each other do not touch: a street's own half width each side,
+## plus a building's width each side, plus a yard between the backs.
+func block_deep() -> float:
+	return widest() * 4.0 + STREET_WIDE * 2.0 + BACKS
+
+
+## Spots a single street offers: four to a rank (two sides, two ways) over the
+## ranks a frontage runs (`GenScatter.ROW_RANKS` + the one at the junction).
+const PER_LANE := 16
+## No more streets than a player can hold as one place. Past this a settlement is
+## not a city, it is the whole island built over, and the region is the unit that
+## is supposed to say that.
+const MOST_LANES := 5
+## Half a street's width in tiles, duplicated from `GenScatter.ROW_STREET` because
+## core holds no world gen; `tests/biome/test_forms.gd` fails if the two drift.
+const STREET_WIDE := 2.6
+## The yard between two frontages that back onto each other.
+const BACKS := 1.6
 
 
 # --- the questions world gen and the model builders ask --------------------------
