@@ -42,6 +42,20 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	for body: Dictionary in c.bodies:
 		share = minf(share, float(body.get("share", 1.0)))
 	c.body_k = c.k * sqrt(clampf(share, 0.01, 1.0))
+	# A REALM NOBODY HAS BUILT IS EMPTY, NOT A FAKE OF ANOTHER ONE. `land_types` is
+	# the types whose `BiomeDef.realms` names this realm, and for `orbital` and
+	# `era` there are none yet. Asked for one anyway, the stages downstream fall
+	# back on defaults — `Country.COAST` is index 1 and a great many readers reach
+	# for it when unsure — and what came out was a plausible little island with
+	# eleven regions, six villages and 378 props, labelled `orbital`. A world that
+	# is convincingly the wrong thing is worse than one that is nothing, because
+	# nothing announces itself and this did not: it passed every test that asks
+	# whether a world generates.
+	if c.land_types.is_empty():
+		push_error("no landscape declares BiomeDef.realms = [&\"%s\"], so that realm has no world to grow" % realm)
+		for i in w.level.size():
+			w.level[i] = -1
+		return w
 	var t := Time.get_ticks_usec()
 	var marks := {}
 	c.mark(&"start")

@@ -92,3 +92,31 @@ func test_a_landscape_under_a_roof_is_dark_and_one_above_it_is_not() -> void:
 			gt(d.grade.x, 0.0, "%s is under a roof and must dim its page" % d.id)
 		else:
 			check(d.grade.x <= 0.0, "%s is under the sky and may not dim its noon" % d.id)
+
+
+## A REALM NOBODY HAS BUILT IS EMPTY, NOT A FAKE OF ANOTHER ONE. `orbital` and
+## `era` are in `Realm.KINDS` and no landscape declares them yet. Asked for one
+## anyway, the stages fell back on defaults — `Country.COAST` is index 1 and a
+## great many readers reach for it when unsure — and what came out was a plausible
+## little island with eleven regions, six villages and 378 props, labelled
+## `orbital`. It passed every test that asks whether a world generates, because
+## every one of them asks that rather than asking whether it is the right world.
+func test_a_realm_with_no_landscapes_grows_nothing() -> void:
+	for realm: StringName in Realm.KINDS:
+		var has := not BiomeRegistry.land_in(realm).is_empty()
+		var w := WorldGen.generate(1, 192, &"", realm)
+		var land := 0
+		for i in w.level.size():
+			if w.level[i] > 0:
+				land += 1
+		if has:
+			gt(float(land), 100.0, "%s has landscapes and grows a world" % realm)
+			for i in w.country.size():
+				if w.level[i] > 0 and w.country[i] != Country.SEA:
+					check(BiomeRegistry.by_index(w.country[i]).realms.has(realm),
+						"%s: every tile is a landscape of this realm, not another's" % realm)
+					break
+		else:
+			eq(land, 0, "%s has no landscapes, so it has no land" % realm)
+			eq(w.regions.size(), 0, "%s: and no places" % realm)
+			eq(w.villages.size(), 0, "%s: and nobody living in them" % realm)

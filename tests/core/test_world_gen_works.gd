@@ -371,14 +371,35 @@ static func _lamp(cols: PackedColorArray) -> bool:
 
 
 func test_budgets() -> void:
-	# Printed so a change that fattens the world shows in the log.
-	var t := Time.get_ticks_msec()
-	var w := WorldGen.generate(Worlds.WORLD_SEEDS[0], 256)
-	var gen_ms := Time.get_ticks_msec() - t
+	# THE LEAST CONTENDED OF THREE RUNS, because a SHARE does not cancel load and
+	# I was wrong to think it did. Measured: the works stage is 0.109 of generation
+	# run alone and 0.288 of it inside a full gate — nearly triple, from the same
+	# code on the same machine. Two stages sharing a worker pool do not slow down
+	# together; whichever is more threaded loses more to contention, so the ratio
+	# moves. (The "a difference measured WITHIN one run is safe" rule this was
+	# built on is docs/LOOK.md's, and it is true of PIXELS in one rendered frame,
+	# where both values come from the same pass. Two timings are not that.)
+	#
+	# So the same answer as everywhere else: load only ever ADDS time, so the
+	# cheapest run is the honest one (TestCase.best_of, CLAUDE.md's rule line).
+	# Both numbers have to come from ONE run to be a share at all, so this keeps
+	# the pair from the run whose generation was quickest rather than timing the
+	# two separately.
 	var works_ms := 0.0
-	for key: StringName in WorldGen.last_detail:
-		if String(key).begins_with("works."):
-			works_ms += float(WorldGen.last_detail[key])
+	var gen_ms := 0
+	var w: WorldData = null
+	for attempt in 3:
+		var t := Time.get_ticks_msec()
+		var made := WorldGen.generate(Worlds.WORLD_SEEDS[0], 256)
+		var ms := Time.get_ticks_msec() - t
+		var stage := 0.0
+		for key: StringName in WorldGen.last_detail:
+			if String(key).begins_with("works."):
+				stage += float(WorldGen.last_detail[key])
+		if w == null or ms < gen_ms:
+			gen_ms = ms
+			works_ms = stage
+			w = made
 	var evidence := 0
 	for p in w.props:
 		if p.kind >= FIRST:
@@ -393,30 +414,33 @@ func test_budgets() -> void:
 			verts += tpl.made_v.size() + tpl.found_v.size()
 			n += 1
 	print("       works at 512: %d evidence props, %d template vertices (%.0f each)" % [n, verts, float(verts) / maxf(n, 1)])
-	# MEASURED, AND RELATIONAL. This held the works stage to `400 * machine_slack()`
-	# — 56 ms of real work against a bar of 400, which a slack clamping at 8 took
-	# to 3200: fifty-seven times its own subject, and nothing a regression could
-	# plausibly do would have tripped it. Scaling is for WAITING, not for COSTING
-	# (TestCase.machine_slack, and CLAUDE.md's rule line).
+	# NO CLOCK IS ASSERTED HERE ANY MORE, and the two numbers above are printed as
+	# diagnostics only. The history is worth keeping because I got it wrong twice:
 	#
-	# So it is a SHARE now, and both numbers come out of the same run: load
-	# inflates the works stage and the generation around it together, so the ratio
-	# survives a busy machine exactly the way the desktop-against-web distances did
-	# (docs/LOOK.md, "a difference measured WITHIN one run is safe where a
-	# difference measured ACROSS runs is not").
+	#   400 * machine_slack()   56 ms of real work against a bar slack took to
+	#                           3200. Blind: nothing could trip it.
+	#   share < 0.22            0.141-0.162 measured on a quiet machine, so the bar
+	#                           looked tight. In a full gate the same code gives
+	#                           0.288. Two stages sharing a worker pool do NOT
+	#                           slow down together — whichever is more threaded
+	#                           loses more to contention — so a ratio does not
+	#                           cancel load. (docs/LOOK.md's "measured WITHIN one
+	#                           run" is about PIXELS in one rendered frame. Two
+	#                           timings are not that.)
+	#   best of three shares    still 0.224 in a gate against 0.109 alone: every
+	#                           one of the three runs is contended, so the best of
+	#                           them is too.
 	#
-	# The share, measured on a quiet machine — four seeds, three passes each, at
-	# 256: 0.141, 0.142, 0.144 (seed 42), 0.149-0.154 (seeds 1 and 90210), up to
-	# 0.162 (seed 7). Mean 0.152, and the spread is SEED and not load, because a
-	# ratio has no load in it. The bar is 0.22: about a third clear of the worst
-	# seed, which is headroom for a landscape being added, and tight enough that
-	# the works stage growing by half against everything else fails it. That is
-	# roughly fourteen times tighter than what it replaces.
-	#
-	# If the ratio ever turns out NOT to cancel load, this failure says so out
-	# loud, because both numbers are printed above it.
+	# Both, and they answer different questions. `cost_lt` keeps the share as a
+	# bar that says "cannot measure" under load instead of guessing (cb's
+	# 07b98fb, and the better answer — a door every cost test can use rather than
+	# one test's workaround). And the evidence COUNT is asserted outright, because
+	# it is the CAUSE: what would make this stage expensive is the world getting
+	# fatter, and a count is the same number on any machine under any load, which
+	# no timing here has ever been.
 	cost_lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
 		"the works stage as a share of generation (%.0f ms of %d)" % [works_ms, gen_ms])
+	lt(float(evidence), 1400.0, "evidence the works stage lays at 256 (%d)" % evidence)
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.
 	lt(float(verts) / maxf(n, 1), 1500.0, "vertices per piece of evidence")
