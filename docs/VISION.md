@@ -382,3 +382,98 @@ saved, damageable, repairable); **a settlement as an entity** with signature, st
 production, people and attention; **encounter-driven escalation** (notice → attention →
 raid plan) that reads disposition and interference; and **raid actors** with roles and
 targets that machines' existing senses and brains drive.
+
+## 10. A landscape is a CHAPTER, and the game is won one at a time (owner, 2026-09-18)
+
+> "Each landscape area is supposed to be far far far more immense and detailed
+> with sub arcs and story paths and each one must be explored, mined, defended to
+> advance to the next landscape and to progress in the game."
+
+**This is the game's spine and it is not built.** What exists is a set of
+landscape types laid by climate, blending seamlessly into one another, which a
+player can walk across in a few minutes with nothing asked of them and nothing
+gained by it. Sections 2 and 3 above describe the plan and the types; neither
+says what PROGRESSION is, and so nothing was built for it. Everything below is
+the owner's direction and it outranks any composition rule it contradicts.
+
+### 10.1 The unit is a REGION, not a type
+
+A landscape TYPE is a definition (§3). A REGION — `WorldData.regions`, every
+connected run of one type, with its own id, tiles, centre and bounds — is a
+PLACE, and a place is a chapter. Two runs of the pinewood on one island are two
+chapters, not one, and each is finished on its own.
+
+This matters because almost everything a chapter needs is already keyed per
+region and was built without anyone noticing it added up to this:
+
+| Already per region | What it becomes |
+|---|---|
+| `Sentinels` — one keeper, three ways to take it | the chapter's DEFENDED |
+| `Works` — one depot, three parts, the region quiets when broken | the chapter's DEFENDED, the other half |
+| `Landmarks` — the places worth the walk | the chapter's EXPLORED |
+| `Interference` — one plan network, saved | what the chapter costs while it is open |
+| `BiomeDef.ore` and the landscape's own raws | the chapter's MINED |
+
+So this is not a new game on top of the old one. It is the SPINE the existing
+machinery has been waiting for, and most of the work is stating the demand,
+gating the way on, and showing the player what a chapter is asking of them.
+
+### 10.2 The three demands
+
+A chapter is answered when all three are:
+
+1. **EXPLORED** — its landmarks found, a real share of its ground crossed. Not a
+   percentage counter on the glass: what is asked is that the player has BEEN
+   there, which the map and `Landmarks.found` already record.
+2. **MINED** — a quantity of what this landscape alone gives, taken and carried
+   out. Every landscape declares its own ore and raws already; this is what makes
+   a place worth working rather than worth crossing.
+3. **DEFENDED** — the plan's hold on it broken: its keeper taken (any of the three
+   ways `SentinelWay` already offers) or its depot put dark, which `34_works`
+   already makes quiet the region for good.
+
+None of the three may be a fetch quest with a number on the slate. Each is a thing
+the player was going to do anyway, COUNTED — and the slate says what the place is
+asking in the words the machine reads, never as a checklist.
+
+### 10.3 The way on is closed until it is answered
+
+A seamless ecotone (ART.md §1 law 6) is how a landscape LOOKS at its border. It is
+not how a chapter is left. The way out of an unanswered chapter is held — by the
+machines, by the ground, by water, by a pass barred — and it opens when the
+chapter is answered. **Closed must always be diegetic**: a checkpoint with
+something standing at it, a lift with no power, a bridge down, a shaft flooded.
+Never an invisible wall and never a message saying no.
+
+The border is still seamless to look at. What changes is that crossing it is an
+ACT, the way a craft crossing water is an act (§5) and never the medium the game
+is played in.
+
+### 10.4 Sub-arcs are the chapter's content, and they are per region
+
+§2's subarc generator is unbuilt and is now load-bearing rather than a flourish: a
+chapter with three demands and no stories in it is a checklist. Each region raises
+its own from its own state — who lives there, what the plan is doing to it, what
+it has that nothing else has, who has been taken — and they are finished in the
+several ways §2 already names. The story package's arcs and beats
+(`src/core/story/`) are the spine they hang on; `StoryContent` already holds
+words per place and per role.
+
+### 10.5 Immense
+
+A region today is about three thousand tiles at test size — two screens across —
+and the whole island is crossable in minutes. That is the scale of the thing the
+owner is calling garbage, and no amount of detail inside it answers "far far far
+more immense". Raising it is not a constant: it touches worldgen cost, the
+streaming budget, save size and how long a chapter takes to walk. **`docs/WORLD.md`
+§7 owns the measurements and the decision belongs there**, with the numbers taken
+rather than argued — but the direction is settled and the answer is not "it is
+already big enough".
+
+### 10.6 What this adds to §7
+
+10. **Chapters**: a region's three demands as derived state, what has been answered
+    saved per region, the way on held and released, and the slate saying what a
+    place is asking of you.
+11. **The subarc generator**, now a dependency of progression rather than of
+    flavour: goals from region state, methods, consequences, all saved.
