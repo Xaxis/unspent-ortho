@@ -206,10 +206,20 @@ func _read_keys() -> void:
 	if screen.editing():
 		return
 	if toggle:
-		if not DevMode.reachable():
-			if DevMode.chord(Time.get_ticks_msec()):
-				Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+		# The chord is asked on EVERY strike, not only while dev mode is away. It
+		# used to be consulted under `not reachable()`, so three strikes could arm
+		# dev mode and never put it back — the gesture the owner asked for went one
+		# way and getting out meant finding a row on the home page. A strike that
+		# does not complete the chord still opens and shuts the app, so pressing `
+		# three times fast flickers the app and then turns dev mode itself.
+		if DevMode.chord(Time.get_ticks_msec()):
+			Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+			if DevMode.reachable():
 				open()
+			elif screen.is_open:
+				screen.close()
+			return
+		if not DevMode.reachable():
 			return
 		if screen.is_open:
 			screen.handle(&"dev_toggle")

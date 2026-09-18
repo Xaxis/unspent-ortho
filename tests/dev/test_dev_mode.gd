@@ -7,7 +7,8 @@ var _was := {}
 
 
 func _keep() -> void:
-	_was = {"tool_run": DevMode.tool_run, "asked": DevMode.asked, "configured": DevMode.configured, "armed": DevMode.armed}
+	_was = {"tool_run": DevMode.tool_run, "asked": DevMode.asked, "configured": DevMode.configured,
+		"armed": DevMode.armed, "readout": DevMode.readout}
 
 
 func _restore() -> void:
@@ -15,6 +16,7 @@ func _restore() -> void:
 	DevMode.asked = _was.asked
 	DevMode.configured = _was.configured
 	DevMode.armed = _was.armed
+	DevMode.readout = _was.readout
 	GameConfig.clear()
 
 
@@ -68,6 +70,38 @@ func test_the_chord_arms_on_three_quick_strikes_only() -> void:
 	check(DevMode.armed and DevMode.reachable())
 	for action: StringName in DevMode.ACTIONS:
 		check(InputMap.has_action(action), "%s is on the input map once armed" % action)
+	_restore()
+
+
+## The owner asked for a hotkey "to toggle into and out of developer mode"
+## (2026-09-18). It armed only for its whole life, and the way out was a row on
+## the dev app's home page — so the gesture existed and went one way.
+func test_the_same_chord_puts_dev_mode_away_again() -> void:
+	_keep()
+	DevMode.tool_run = true
+	DevMode.asked = false
+	DevMode.configured = true
+	DevMode.armed = false
+	DevMode.readout = true
+	GameConfig.use("playtest")
+	check(not DevMode.chord(1000))
+	check(not DevMode.chord(1400))
+	check(DevMode.chord(1800), "three quick strikes arm it")
+	check(DevMode.reachable())
+	check(not DevMode.chord(1900), "and the count starts again, so a fourth strike is not a fifth")
+	check(not DevMode.chord(2200))
+	check(DevMode.chord(2500), "three more put it away")
+	check(not DevMode.armed and not DevMode.reachable())
+	check(not DevMode.readout, "and the readout goes off the glass with it")
+	# Where the configuration itself says dev mode is open the chord is not the
+	# door, so it must not become a way to shut what the build declared.
+	DevMode.armed = true
+	GameConfig.use("dev")
+	eq(DevMode.access(), &"open")
+	check(not DevMode.chord(3000))
+	check(not DevMode.chord(3200))
+	check(not DevMode.chord(3400), "the chord is ignored where access is open")
+	check(DevMode.reachable())
 	_restore()
 
 

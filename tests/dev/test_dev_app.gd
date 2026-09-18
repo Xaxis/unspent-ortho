@@ -206,6 +206,134 @@ func test_go_time_body_things_and_bodies_act_on_the_game() -> void:
 	_restore()
 
 
+## "Jump anywhere in the world so I can inspect and debug" (owner, 2026-09-18).
+## The list is every REGION of every landscape, every border, the plan's three
+## kinds of work, and the typed line is what covers the rest.
+func test_the_warp_list_holds_every_region_border_and_work_the_world_has() -> void:
+	_keep()
+	var g := _make(true)
+	var w := g.world
+	var places := DevCheats.places(g)
+	var ids := {}
+	var settled := 0
+	for p: Dictionary in places:
+		check(not ids.has(p.id), "%s is listed once" % p.id)
+		ids[p.id] = true
+		if p.has("later"):
+			# A row whose exact spot still costs a sweep is handed back unresolved,
+			# for the page to settle a frame after the list is on the glass.
+			settled += 1
+			p.pos = DevCheats.settle(w, str(p.later))
+			if not (p.pos as Vector2).is_finite():
+				continue # this world has no such place; the page drops the row
+		var at: Vector2 = p.pos
+		check(at.is_finite() and at.x >= 0.0 and at.x < w.size and at.y >= 0.0 and at.y < w.size,
+			"%s is somewhere in this world, not %s" % [p.id, at])
+		check(str(p.label) != "" and str(p.get("note", "")) != "" or p.id == &"river" or p.id == &"cliff",
+			"%s says what it is" % p.id)
+	# Every run of every landscape big enough to be a region has a row of its own.
+	var by_type := {}
+	for r: Dictionary in w.regions:
+		var t := StringName(str(r.get("type", &"")))
+		if BiomeRegistry.get_def(t) == null:
+			continue
+		by_type[t] = int(by_type.get(t, 0)) + 1
+		check(ids.has(StringName("land_" + String(t))) or ids.has(StringName("region_%d" % int(r.get("id", -1)))),
+			"region %d of %s can be reached" % [int(r.get("id", -1)), t])
+	for t: StringName in by_type:
+		check(ids.has(StringName("land_" + String(t))), "%s keeps its plain name" % t)
+	# The borders are the pairs the world really lays, and each row goes to a tile
+	# that is really on that border.
+	for p: Dictionary in places:
+		if not String(p.id).begins_with("border_"):
+			continue
+		var key := String(p.id).trim_prefix("border_").to_int()
+		var at: Vector2 = p.pos
+		var i := floori(at.y) * w.size + floori(at.x)
+		var pair := mini(w.country[i], w.country2[i]) * BiomeRegistry.SLOTS + maxi(w.country[i], w.country2[i])
+		eq(pair, key, "%s stands on the border it names" % p.label)
+	for s in Works.sites(w):
+		check(ids.has(StringName("works_%d" % s.region)), "the depot in region %d has a row" % s.region)
+	for s in Sentinels.states(w):
+		check(ids.has(StringName("lair_%d" % s.region)), "the keeper of region %d has a row" % s.region)
+	for p in Portals.in_world(w):
+		check(ids.has(StringName("shaft_%d" % p.id)), "shaft %d has a row" % p.id)
+	eq(settled, 2, "the river and the cliff are the two that settle late")
+	g.free()
+	_restore()
+
+
+## The page is opened in a RUNNING game, so the list costs one sweep of the island
+## and not one per row. Asking GenPlaces per row measured 2645 ms on a 512-tile
+## world — nine sweeps for the landscapes, forty-five for the landmark kinds, and
+## the solid mask rebuilt inside every one — which is a freeze, not a menu.
+##
+## The bar is stated against one real sweep rather than in milliseconds, so it
+## scales with the machine, the load and the size of the world.
+func test_the_warp_list_costs_about_one_sweep_of_the_island() -> void:
+	_keep()
+	var g := _make(true, ["--size=192"])
+	var w := g.world
+	# Warm what memoises, so this measures the sweeping and not the first call.
+	Works.sites(w)
+	Sentinels.states(w)
+	Portals.in_world(w)
+	var t := Time.get_ticks_usec()
+	GenPlaces.country_sample(w, w.country[int(w.spawn.y) * w.size + int(w.spawn.x)])
+	var one := Time.get_ticks_usec() - t
+	t = Time.get_ticks_usec()
+	var places := DevCheats.places(g)
+	var all := Time.get_ticks_usec() - t
+	check(places.size() > 10, "there is a list to have cost anything")
+	check(all < one * 6, "the whole list is %d us against one sweep's %d" % [all, one])
+	g.free()
+	_restore()
+
+
+## The typed line takes a coordinate and every name the tools take, so what can be
+## staged for a picture can be walked to by the same word.
+func test_a_place_typed_by_hand_goes_there_and_a_name_nobody_has_refuses() -> void:
+	_keep()
+	var g := _make(true)
+	var w := g.world
+	eq(DevCheats.find_place(w, "20, 30"), Vector2(20.0, 30.0), "a coordinate is taken as one")
+	eq(DevCheats.find_place(w, "20.5 30.5"), Vector2(20.5, 30.5), "with or without the comma")
+	check(not DevCheats.find_place(w, "900, 900").is_finite(), "off the world is nowhere")
+	check(not DevCheats.find_place(w, "the moon").is_finite(), "and so is a name nobody has")
+	eq(DevCheats.find_place(w, "spawn"), w.spawn, "a GenPlaces name is the same place the tools stage")
+	var tried := 0
+	for name: String in ["river", "cliff", "tip", "open", "typical", "works"]:
+		var want := GenPlaces.find(w, name)
+		if want.x < 0.0:
+			continue # this small world has no such place; that is GenPlaces' answer, not ours
+		tried += 1
+		eq(DevCheats.find_place(w, name), want, "\"%s\" is the place the tools stage" % name)
+	check(tried > 0, "at least one of the tools' own names resolved")
+	# And a border, spelled the way --place= spells one: two landscapes with a dash.
+	var pair := ""
+	for p: Dictionary in DevCheats.places(g):
+		if String(p.id).begins_with("border_"):
+			var key := String(p.id).trim_prefix("border_").to_int()
+			pair = "%s-%s" % [BiomeRegistry.by_index(key / BiomeRegistry.SLOTS).id, BiomeRegistry.by_index(key % BiomeRegistry.SLOTS).id]
+			break
+	check(pair != "", "this world lays at least one border")
+	check(DevCheats.find_place(w, pair).is_finite(), "\"%s\" is a place you can type" % pair)
+	# And the page goes there on the line being kept, without a second press.
+	var s := _open(g)
+	s.open_at(&"go", &"typed")
+	s.handle(&"confirm")
+	check(s.editing(), "e on the typed row starts a line")
+	var to := Vector2(20.5, 30.5)
+	for c in "20.5 30.5".to_utf8_buffer():
+		s.type_key(KEY_A, c)
+	s.type_key(KEY_ENTER, 0)
+	check(not s.editing())
+	check(g.player.pos.distance_to(to) < 6.0, "the player stands where it was told, or the nearest standable tile")
+	check(not s.is_open, "and the app shuts so the place is seen")
+	g.free()
+	_restore()
+
+
 func test_a_line_is_typed_kept_and_the_key_that_kept_it_does_nothing_more() -> void:
 	_keep()
 	var g := _make(true)

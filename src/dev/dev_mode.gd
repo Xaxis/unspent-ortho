@@ -130,18 +130,31 @@ static func reachable() -> bool:
 	return false
 
 
-## A strike of the chord key at `now_ms`. True when this strike armed dev mode.
+## A strike of the chord key at `now_ms`. True when this strike TURNED dev mode,
+## either way: the same three strikes that arm it put it away again (owner,
+## 2026-09-18, "a hotkey to toggle into and out of developer mode... pressing the
+## backtick 3 times in rapid succession").
+##
+## It used to arm only, and the way out was a row on the dev app's home page —
+## so the gesture the owner asked for existed but went one way, and getting out
+## meant finding a menu. A toggle has to be a toggle or nobody trusts it.
+##
+## Where access is `open` the configuration has already said dev mode is reachable
+## and the chord is not the door, so it stays out of the way.
 static func chord(now_ms: int) -> bool:
-	if access() != &"chord" or armed:
+	if access() != &"chord":
 		return false
 	_strikes.append(now_ms)
 	while not _strikes.is_empty() and now_ms - _strikes[0] > CHORD_MS:
 		_strikes.remove_at(0)
-	if _strikes.size() >= CHORD_COUNT:
-		_strikes.clear()
+	if _strikes.size() < CHORD_COUNT:
+		return false
+	_strikes.clear()
+	if armed:
+		disarm()
+	else:
 		arm()
-		return true
-	return false
+	return true
 
 
 static func arm() -> void:

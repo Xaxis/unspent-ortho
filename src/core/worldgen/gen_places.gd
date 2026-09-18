@@ -417,14 +417,19 @@ static func cliff_sample(w: WorldData) -> Vector2:
 	var best_rise := 2
 	for y in range(20, w.size - 20, 2):
 		for x in range(20, w.size - 20, 2):
-			if not standable(w, solid, x, y) or not _mainland(w, x, y):
+			if not standable(w, solid, x, y):
 				continue
 			var i := y * w.size + x
 			var l := w.level[i]
 			var rise := maxi(maxi(w.level[i - 2] - l, w.level[i - 2 * w.size] - l), maxi(w.level[i + 2] - l, w.level[i + 2 * w.size] - l))
-			if rise > best_rise:
-				best_rise = rise
-				best = Vector2(x + 0.5, y + 0.5)
+			# The rise is four lookups and `_mainland` is eighty-one, and both must
+			# hold, so the cheap one goes first. Same answer, measured 869 ms -> 142 ms
+			# on a 512-tile island: `best_rise` only ever climbs, so a cell that does
+			# not beat it could not have won whatever `_mainland` said.
+			if rise <= best_rise or not _mainland(w, x, y):
+				continue
+			best_rise = rise
+			best = Vector2(x + 0.5, y + 0.5)
 	return best
 
 

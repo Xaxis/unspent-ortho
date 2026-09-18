@@ -8,6 +8,12 @@ build of the game are all things you can name, keep, send and get back**.
 1. **Feedback and testing** in any build it is allowed in, the web included:
    warp, time, weather, body, give, spawn, a readout, clean pictures, and notes
    that capture a frame, the state and the exact command that stages it again.
+   **GO is anywhere in the world**: every REGION of every landscape (a type that
+   the island lays twice is listed twice), every border two landscapes share,
+   every village, the river, the cliff, the plan's depots, the keepers' lairs,
+   the shafts down, the first of every kind of landmark — and a line to type,
+   which takes a coordinate or any name `--place=` takes, so what can be staged
+   for a picture can be walked to in a running game by the same word.
 2. **Master configurations**: named files that say what a build of the game is —
    its channel and version, whether dev mode is reachable, the island a new game
    starts on, what the player starts with, the rules it runs by, and what a build
@@ -23,7 +29,7 @@ build of the game are all things you can name, keep, send and get back**.
 | access | what a player sees |
 |---|---|
 | `open`  | a **dev** row on home and on the title; `` ` `` opens the dev app |
-| `chord` | nothing, until `` ` `` is struck three times inside 1.5 s; then as open, remembered on that device |
+| `chord` | nothing, until `` ` `` is struck three times inside 1.5 s; then as open, remembered on that device. **The same three strikes put it away again** |
 | `off`   | nothing; the chord does nothing |
 
 - **An export with no configuration is `off`**, and its stamp calls itself a
@@ -125,7 +131,7 @@ game at that moment, in that build.
 
 | key | |
 |---|---|
-| `` ` `` | open or close the dev app (three times to arm, where access is `chord`) |
+| `` ` `` | open or close the dev app; **three strikes inside 1.5 s turn dev mode itself, in or out**, where access is `chord` |
 | F2 | a note, now: the picture is taken before the slate wakes |
 | F3 | the readout on the glass's edge |
 | F4 | a picture with nothing of the slate on it |
