@@ -303,5 +303,10 @@ nine arcs, the fragments, five trades' conversations and eleven named people.
   gates, and the Echo, the Seeker and the Emissary, who are not bodies. A local
   per landscape is also still to come.
 
+The old black site off the home coast is cast (`BlackSite`) and keeps its own
+words: the tank he came out of, the list of the three who died on the table before
+him, and the order that let him ashore with an escort arranged. Maren points at
+it from the first morning.
+
 Revelations are paced as §9 says (`StoryPacing`). A reply that would land one,
 or a person who waits on one, is held back until the last has settled.

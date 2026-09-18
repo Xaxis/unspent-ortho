@@ -23,6 +23,8 @@ class_name StoryPlan
 const SPINE: Array[Dictionary] = [
 	# Leg 0, the home coast: where he wakes, his town, the first works.
 	{"id": &"home", "needs": &"village", "land": &"coast", "leg": 0, "nearest": true, "require": true},
+	# The old THRESHOLD site in the sea off that coast, where he died and was grown.
+	{"id": &"the_black_site", "needs": &"black_site", "leg": 0, "require": true},
 	{"id": &"the_yard", "needs": &"works", "leg": 0, "apart": 24.0, "require": true},
 	# The Holdfast's camp, where Rook's crew waits.
 	{"id": &"the_camp", "needs": &"landmark", "leg": 0, "apart": 20.0, "require": true},

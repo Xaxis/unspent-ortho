@@ -101,7 +101,10 @@ func _crosses_in_order(w: WorldData) -> void:
 		if not done.has(sl.id):
 			continue
 		var p: Vector2 = done[sl.id].pos
-		var rank := order.find(w.continent_at(floori(p.x), floori(p.y)))
+		var rank := order.find(int(done[sl.id].body))
+		check(rank >= 0, "%s is cast on a body of the journey" % sl.id)
+		if sl.needs != StorySlot.BLACK_SITE:
+			eq(int(done[sl.id].body), w.continent_at(floori(p.x), floori(p.y)), "%s stands on the body it was cast on" % sl.id)
 		gt(float(rank), float(mini(sl.leg, order.size() - 1)) - 0.5, "%s stands no nearer home than its own leg" % sl.id)
 		gt(float(rank), float(last_rank) - 0.5, "%s is no nearer home than the slot before it" % sl.id)
 		last_rank = rank

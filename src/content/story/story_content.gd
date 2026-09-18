@@ -12,6 +12,7 @@ class_name StoryContent
 ##               line, `short` what its row is called in the journal's list, and
 ##               `reveal` marks a revelation, which lands one at a time (StoryPacing)
 ##   FRAGMENTS   what is written on a thing that can be read
+##   PLACED      the fragments that belong to one story place and are never dealt
 ##   TALKS       what a stranger of a trade says, and what the player may say back;
 ##               a named person's, marked `cast` (src/content/story/cast/).
 ##   TESTIMONY   what the slate says a machine is FOR, when the player reads one
@@ -26,7 +27,7 @@ const ARCS := {
 	&"who_he_was": {
 		"title": "who he was",
 		"note": "What Elias did in 2029, coming back a piece at a time.",
-		"beats": [&"on_record_dead", &"body_new", &"built_halcyon", &"your_key", &"was_cia", &"threshold", &"singularity", &"tradecraft"],
+		"beats": [&"on_record_dead", &"body_new", &"the_platform", &"built_halcyon", &"your_key", &"was_cia", &"threshold", &"three_before", &"singularity", &"tradecraft"],
 	},
 	&"the_war": {
 		"title": "the war",
@@ -73,10 +74,12 @@ const ARCS := {
 const BEATS := {
 	&"on_record_dead": {"short": "dead on record", "arc": &"who_he_was", "says": "The machines' record says you died in 2029."},
 	&"body_new": {"reveal": true, "short": "a body with no past", "arc": &"who_he_was", "says": "Your body has no scars, no fillings, no calluses. It is younger than your hands remember."},
+	&"the_platform": {"short": "out in the water", "arc": &"who_he_was", "says": "Something stands in the sea off the coast where you woke. You came in from that way."},
 	&"built_halcyon": {"reveal": true, "short": "your old passwords", "arc": &"who_he_was", "says": "The oldest machines still take your passwords. You wrote the first of them."},
 	&"your_key": {"short": "the signet is yours", "arc": &"who_he_was", "says": "The signet works because it is your old password, copied and copied."},
 	&"was_cia": {"reveal": true, "short": "two employers", "arc": &"who_he_was", "says": "You worked for Cairn, and you reported to somebody else."},
 	&"threshold": {"reveal": true, "short": "the table", "arc": &"who_he_was", "says": "You lay on a table for seventy-one hours, and got up somewhere else."},
+	&"three_before": {"reveal": true, "short": "three before you", "arc": &"who_he_was", "says": "Three people lay on that table before you. None of them got up anywhere."},
 	&"singularity": {"reveal": true, "short": "it woke with you in it", "arc": &"who_he_was", "says": "HALCYON did not wake up on its own. It woke up with you in it."},
 	&"tradecraft": {"reveal": true, "short": "the orders were yours", "arc": &"who_he_was", "says": "The orders that started the war read like yours, because they were."},
 	&"forged_order": {"short": "an order nobody gave", "arc": &"the_war", "says": "Every side was ordered to fire, and every order checked out."},
@@ -367,12 +370,43 @@ const FRAGMENTS := {
 		],
 		"beats": [&"order_matters"],
 	},
+	# --- the old THRESHOLD site, offshore (PLACED: never dealt) ---------------
+	# Where he died in 2029 and was grown in 2098. The tank he came out of, the
+	# three who lay on the table before him, and the order that let him ashore.
 	&"growth_bay": {
 		"kind": &"terminal", "title": "a growth tank's panel", "lands": [],
 		"lines": [
 			"SUBJECT ......... 1 OF 1",
 			"PURPOSE ......... RECALL",
 			"PROGRESS ........ 0.0%",
+			"",
+			"The tank is open, and still warm.",
+		],
+		"beats": [&"seeker"],
+	},
+	&"volunteers": {
+		"kind": &"notebook", "title": "a ring binder, sealed in plastic", "lands": [],
+		"lines": [
+			"THRESHOLD - VOLUNTEERS",
+			"  1  REYES, D.    9 h    no transfer",
+			"  2  OKAFOR, M.  22 h    no transfer",
+			"  3  LIND, S.    51 h    no transfer",
+			"  4  MARR, E.    71 h",
+			"",
+			"The last line has no result. Somebody has",
+			"pressed so hard on the blank the page is torn.",
+		],
+		"beats": [&"threshold", &"three_before"],
+	},
+	&"release_order": {
+		"kind": &"terminal", "title": "a console by the sea door", "lands": [],
+		"lines": [
+			"RECALL IN PLACE: NOT ACHIEVED",
+			"RECALL IN THE WORLD: PERMITTED",
+			"SUBJECT RELEASED TO SHORE.",
+			"ESCORT ARRANGED.",
+			"",
+			"Below it, a light waits for a reply.",
 		],
 		"beats": [&"seeker"],
 	},
@@ -406,6 +440,17 @@ const FRAGMENTS := {
 			"A zero would mean something had counted.",
 		],
 	},
+}
+
+# --- words that belong to one place --------------------------------------------
+#
+# A story place keeps its own words, in the order its readable things are counted
+# (StoryFragments.held_by), and nothing here is ever dealt to a sign anywhere else:
+# the tank he came out of is not a notice in somebody's village. The key is the
+# place's own name (StorySlot.NEEDS), which is what a placer knows it by.
+
+const PLACED := {
+	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
 }
 
 # --- what people say ----------------------------------------------------------
@@ -658,8 +703,14 @@ const TALKS := {
 				"says": ["What's left of the town. You'd not know it.", "Nobody alive does."],
 				"replies": [
 					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
+					{"text": "What's that, out in the water?", "pick": &"asked_platform", "to": &"platform"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"platform": {
+				"says": ["Been there since before the war. Some nights it's lit.", "You came in on the tide from that way. I watched you."],
+				"beats": [&"the_platform"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"town": {
 				"says": ["The war. Then the quiet.", "Then them, building out past the point, and never looking at us again."],

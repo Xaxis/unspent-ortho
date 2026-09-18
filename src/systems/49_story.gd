@@ -218,8 +218,7 @@ func _open_what_is_in_front() -> void:
 func _already_read(prop: WorldProp) -> bool:
 	if prop == null:
 		return true
-	var id := StoryFragments.pick(StoryProps.kind_of(prop.kind),
-		BiomeRegistry.at(game.world, prop.pos).id, game.world.seed_value, prop.id)
+	var id := StoryFragments.held_by(game.world, prop)
 	return id == &"" or Story.knows(id)
 
 
@@ -293,9 +292,7 @@ func _start_talk(row: Dictionary) -> void:
 
 
 func _start_reading(prop: WorldProp) -> void:
-	var kind := StoryProps.kind_of(prop.kind)
-	var id := StoryFragments.pick(kind, BiomeRegistry.at(game.world, prop.pos).id,
-		game.world.seed_value, prop.id)
+	var id := StoryFragments.held_by(game.world, prop)
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "no_read")
 		return
