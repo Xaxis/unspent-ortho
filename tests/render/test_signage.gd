@@ -21,19 +21,46 @@ const MACHINE_FROM := 240.0 / 360.0
 const MACHINE_TO := 336.0 / 360.0
 
 
-func test_no_sign_is_lit_in_the_machines_colours() -> void:
+func test_the_grounding_sign_colour_is_never_a_machines_colour() -> void:
+	# ONLY INDEX 0, and the reason is a measurement rather than a concession.
+	#
+	# This test used to hold every entry to the hue band, and that rule is wrong
+	# twice over. It already had to skip near-greys, because an earlier version
+	# would have failed the correct list's dirty warm white the moment it landed.
+	# And it would have failed the ACCENT too: that magenta is hue 316, inside the
+	# band -- and it is `Houses.NEON_TUBES[1]`, the coast's own stolen neon,
+	# shipped since M1 and claimed by name in a canon frame. A gate that reddens
+	# on shipped canon-protected content is one the next person deletes.
+	#
+	# What the reservation actually protects is measured: every machine body fill
+	# spans 240.0-336.0 exactly, with no headroom, and every one is dark and
+	# low-chroma -- value at most 0.43, saturation at most 0.37. A machine reads
+	# as a cold heavy MASS. Nothing small and burning at value 1.00 competes with
+	# that whatever its hue, which is why one shop's sign may sit in the band and
+	# a four-storey field of the same colour may not.
+	#
+	# Index 0 is the entry that covers a building, so it is the one that carries
+	# area, so it is the only one a colour test can hold to anything true.
+	var col: Color = Towers.SIGN_COLOURS[0]
+	var inside := col.h >= MACHINE_FROM and col.h <= MACHINE_TO
+	check(not inside,
+		"the grounding sign colour is at hue %.0f, inside the machines' 240-336" % [col.h * 360.0])
+
+
+func test_an_accent_that_sits_in_the_band_still_cannot_read_as_a_machine() -> void:
+	# The other half of the rule above, so admitting the accent is not a hole:
+	# whatever its hue, a sign colour has to be far outside what a machine's fill
+	# can ever be, and those two numbers are the ones `palette.gd` solved for.
+	const MACHINE_MOST_VALUE := 0.43
+	const MACHINE_MOST_SAT := 0.37
 	for i in Towers.SIGN_COLOURS.size():
 		var col: Color = Towers.SIGN_COLOURS[i]
-		# A near-grey is SKIPPED, not failed. The city's list carries a dirty warm
-		# white whose saturation is about 0.14, and an earlier version of this
-		# test asserted every sign was a saturated colour -- it would have failed
-		# the CORRECT list the moment it arrived, which is the worst kind of test
-		# there is. Hue only means anything where there is chroma to carry it,
-		# and a wash that pale can never be mistaken for a machine.
-		if col.s <= 0.25:
+		if col.h < MACHINE_FROM or col.h > MACHINE_TO:
 			continue
-		var inside := col.h >= MACHINE_FROM and col.h <= MACHINE_TO
-		check(not inside, "sign colour %d is at hue %.0f, inside the machines' 240-336" % [i, col.h * 360.0])
+		check(col.v > MACHINE_MOST_VALUE + 0.3,
+			"sign colour %d sits in the machines' band at value %.2f, which is not far enough above a machine's 0.43" % [i, col.v])
+		check(col.s > MACHINE_MOST_SAT + 0.2,
+			"sign colour %d sits in the machines' band at saturation %.2f, too near a machine's 0.37" % [i, col.s])
 
 
 func test_the_sodium_is_the_same_sodium_the_lights_throw() -> void:

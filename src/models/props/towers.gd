@@ -86,8 +86,27 @@ const FRAME := 0.07
 ## two ever drift, and fails if any colour here re-enters the machines' band --
 ## which is the assert that matters, because the violet had never drawn a single
 ## pixel and so nothing anywhere would ever have said a word about it.
+## THE RESERVATION IS ABOUT MASS, NOT HUE, and the measurement says so. Every
+## machine body fill spans 240.0 to 336.0 EXACTLY -- clerk at one end, runner at
+## the other, no headroom -- and every one of them is dark and low-chroma: value
+## at most 0.43, saturation at most 0.37. That is the cue. A machine is a cold
+## heavy MASS, and nothing bright and small is ever going to be mistaken for one.
+##
+## So the accent below sits at hue 316, inside the band, ON PURPOSE. It is the
+## coast's own stolen neon (`Houses.NEON_TUBES[1]`, `15_lights.NEON_MAGENTA`),
+## shipped since M1 and named in a canon frame, at value 1.00 against a machine's
+## 0.43 -- and it is written as that same number rather than a near-match, for
+## the same reason the sodium is: a light and the sign it comes off must be one
+## value and not two that drifted.
+##
+## What was actually wrong with the violet this list used to end on was never its
+## hue of 258. It was that it was offered as the GROUND NOTE -- a field of it up
+## four storeys, which is area, which is mass, which is the one thing the
+## reservation protects. Index 0 is the only entry that covers a building, so
+## index 0 is the only entry the gate can meaningfully hold.
 const SIGN_SODIUM := Color(1.0, 0.52, 0.16)
-const SIGN_COLOURS: Array[Color] = [SIGN_SODIUM, Color(0.522, 0.878, 0.549), Color(1.0, 0.88, 0.72), Color(1.0, 0.22, 0.52)]
+const SIGN_MAGENTA := Color(1.0, 0.25, 0.8)
+const SIGN_COLOURS: Array[Color] = [SIGN_SODIUM, Color(0.522, 0.878, 0.549), Color(1.0, 0.88, 0.72), SIGN_MAGENTA]
 
 
 ## A ground wash used as a MATERIAL. `BiomeDressing.drift` (and anything else
