@@ -92,7 +92,7 @@ const ARCS := {
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
-		"beats": [&"gap", &"order_matters", &"seeker"],
+		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_whole", &"secret_misremembered"],
 	},
 }
 
@@ -163,6 +163,11 @@ const BEATS := {
 	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
 	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
 	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
+	&"mem_kitchen": {"short": "the kitchen", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a kitchen at two in the morning, and a plate in the oven."},
+	&"mem_car": {"short": "the car", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a song in the car, and somebody small singing it wrong."},
+	&"mem_hall": {"short": "the hall", "arc": &"the_secret", "says": "You have one of your memories back: a school hall, and a seat where she could see you."},
+	&"secret_whole": {"reveal": true, "short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
+	&"secret_misremembered": {"reveal": true, "short": "out of order", "arc": &"the_secret", "says": "All three are back, but not in the order you wrote. Something in you turns, and catches, and turns the wrong way."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -1493,7 +1498,7 @@ const TALKS := {
 			},
 			&"walked": {
 				"says": ["Mr. Marr. The window is today. There isn't another one.", "...You'll be back. They always come back."],
-				"beats": [&"play_kept"],
+				"beats": [&"play_kept", &"mem_hall"],
 				"replies": [{"text": "[go]", "to": &""}],
 			},
 		},
@@ -1808,6 +1813,14 @@ const TESTIMONY := {
 }
 ## A landscape's keeper holds one of Elias's memories (docs/STORY.md §10).
 const TESTIMONY_SENTINEL := {"says": "keeps a memory not its own", "beats": [&"gap"]}
+## A keeper that holds one of the three memories the secret is hidden in says
+## which, and taking it gives the memory back (49_story, on `sentinel_fell`).
+## Keyed by the keeper's design id (BiomeDef.sentinel), so a new landscape's
+## keeper joins by adding a row.
+const KEEPER_MEMORY := {
+	&"pan_rake": {"says": "keeps a kitchen, at night", "memory": &"mem_kitchen"},
+	&"tide_reaper": {"says": "keeps a song, in a car", "memory": &"mem_car"},
+}
 
 ## A MACHINE THAT PASSES (roster `passes`), in a city whose people accepted the
 ## machines' terms: the Covenant's streets. It keeps no count and lays no ground: it
@@ -1853,7 +1866,10 @@ const WITNESSED := {
 static func testimony(role: StringName, row: Dictionary) -> Dictionary:
 	if not bool(row.get("machine", false)):
 		return {}
-	if StringName(str(row.get("sentinel", &""))) != &"":
+	var keeper := StringName(str(row.get("sentinel", &"")))
+	if keeper != &"":
+		if KEEPER_MEMORY.has(keeper):
+			return {"says": KEEPER_MEMORY[keeper].says, "beats": [&"gap"]}
 		return TESTIMONY_SENTINEL
 	if bool(row.get("passes", false)):
 		return TESTIMONY_PASSES

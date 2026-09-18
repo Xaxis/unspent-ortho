@@ -388,6 +388,10 @@ func _witness() -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
+	# The three memories the secret is hidden in, all back: which version he holds.
+	var secret := StorySecret.version()
+	if secret != &"":
+		_witnessed(secret)
 
 
 func _hunted_here() -> bool:
@@ -416,6 +420,10 @@ func _on_works_broken(_region: int, land: StringName) -> void:
 
 func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void:
 	Story.note(&"keeper_fell", land, Story.now)
+	# The memory the keeper was holding comes back with it (StoryContent.KEEPER_MEMORY).
+	var d := BiomeRegistry.get_def(land)
+	if d != null and StoryContent.KEEPER_MEMORY.has(d.sentinel):
+		_witnessed(StoryContent.KEEPER_MEMORY[d.sentinel].memory)
 
 
 ## Going below is seen: a shaft is a place people watch.
