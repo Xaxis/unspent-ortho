@@ -73,9 +73,12 @@ enum {
 	PAN_GATE,
 	SCRAP_TREE,
 	MAGNET_HEAP,
+	# The Slums: what the city puts over what the city painted.
+	BILLBOARD,
+	MURAL,
 }
 
-const COUNT := 64
+const COUNT := 66
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -87,6 +90,7 @@ const NAMES: PackedStringArray = [
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",
 	"wreckage", "memorial",
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
+	"billboard", "mural",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -105,4 +109,10 @@ const SOLID: PackedFloat32Array = [
 	0.0, 0.0, 0.7, 1.0, 0.4, 0.6,
 	0.0, 0.25,
 	0.0, 0.55, 0.45, 0.4, 0.3,
+	# A billboard is one monopole and its footprint is honest. A mural wall is
+	# SIX TILES of wall answered by one circle, which is the limit of what a prop
+	# can say about itself: whoever places these should hand the wall to
+	# `WorldQuery.set_blocks` as circles along its length, the way a landmark's
+	# tower and a depot's deck already do, or a player walks through the ends.
+	0.55, 1.5,
 ]
