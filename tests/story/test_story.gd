@@ -82,15 +82,18 @@ func test_a_conversation_goes_where_the_replies_go() -> void:
 
 
 func test_a_conversation_can_be_walked_to_its_end() -> void:
+	# Every conversation, named people's too: always take the last reply, because
+	# every node's last way out is a leaving one.
+	for talk: StringName in StoryContent.TALKS:
+		Story.forget()
+		var t := StoryTalk.start(talk)
+		var guard := 0
+		while not t.over and guard < 40:
+			guard += 1
+			t.pick(t.replies().size() - 1)
+		check(t.over, "%s: every node has a way out of the conversation" % talk)
+		lt(float(guard), 40.0, "%s: and it is not a loop" % talk)
 	Story.forget()
-	var t := StoryTalk.start(&"the_keeper")
-	var guard := 0
-	while not t.over and guard < 40:
-		guard += 1
-		# Always take the last reply: every node's last way out is a leaving one.
-		t.pick(t.replies().size() - 1)
-	check(t.over, "every node has a way out of the conversation")
-	lt(float(guard), 40.0, "and it is not a loop")
 
 
 func test_a_reply_that_teaches_something_lands_its_beat() -> void:
@@ -144,3 +147,24 @@ func test_a_person_has_something_to_say_only_if_it_was_written_for_them() -> voi
 	eq(StoryProps.talk_for({"character": &"maren", "trade": &"keeper"}, null), &"maren", "a named person says her own words, whatever her trade")
 	eq(StoryProps.talk_for({}, null), &"", "somebody with no trade has nothing written")
 	check(StoryProps.trades_with_talk().has(&"keeper"))
+
+
+## A tour that waits on a beat or a fragment the words no longer declare waits
+## for ever, and fails as a timeout that names nothing about why: slums_street
+## waited on a beat of the previous story for a day after it was rewritten.
+func test_every_tour_asks_after_words_that_exist() -> void:
+	var dir := DirAccess.open("res://tours")
+	check(dir != null, "the tours are there")
+	if dir == null:
+		return
+	var rx := RegEx.create_from_string("(beat|knows):([a-z_0-9]+)")
+	for f: String in dir.get_files():
+		if not f.ends_with(".tour"):
+			continue
+		var text := FileAccess.get_file_as_string("res://tours/" + f)
+		for m: RegExMatch in rx.search_all(text):
+			var id := StringName(m.get_string(2))
+			if m.get_string(1) == "beat":
+				check(StoryContent.BEATS.has(id), "%s waits on beat %s, which the story does not declare" % [f, id])
+			else:
+				check(StoryContent.FRAGMENTS.has(id), "%s waits on reading %s, which is not written" % [f, id])

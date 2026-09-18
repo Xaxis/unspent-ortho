@@ -88,6 +88,10 @@ const DEFS := {
 			Weather.GLARE, Weather.DUST, Weather.DRY_STORM, Weather.ASH, Weather.HAZE,
 			Weather.GREY, Weather.HEAT],
 		"bed": &"bed_river", "salt": 0x5CA1EF,
+		# The caves run UNDER the surface, so they are cut in the same footprints
+		# (see `same_land_as` on the era for the other half of this pair: that one
+		# shares the landscapes too, this one only the map).
+		"footprints_of": SURFACE,
 	},
 	ORBITAL: {
 		"page": PAGE_GRAPHITE, "roofed": false,
@@ -98,12 +102,28 @@ const DEFS := {
 			Weather.GREY, Weather.HEAT],
 		"bed": &"bed_far_drone", "salt": 0x0B117A,
 	},
+	# THE SAME LAND, EARLIER. An era is not another place: it is this coast in
+	# 2029, at the same coordinates, which is what makes the ruin he wakes in his
+	# own town (docs/STORY.md) and what VISION §4 meant by "realm pairs sharing
+	# coordinates". So its salt is 0 — the same seed grows the same island — and
+	# it lays the SURFACE's landscapes, because the coast was the coast then too.
+	# What differs is what stands on it, which is dressing and not terrain.
 	ERA: {
 		"page": PAGE_WATERCOLOUR, "roofed": false,
 		"light": Color(1, 1, 1), "lift": -0.5, "night": 1.0,
-		"airs": [], "bans": [], "bed": &"bed_wind", "salt": 0xBEF0EA,
+		"airs": [], "bans": [], "bed": &"bed_wind", "salt": 0,
+		"same_land_as": SURFACE,
+		"footprints_of": SURFACE,
 	},
 }
+
+
+## Whose landscapes this realm lays. Its own, unless it IS another realm at a
+## different time (`same_land_as`): the Before is this coast in 2029, so it grows
+## the same coast. Every reader of `BiomeDef.realms` goes through here, or one of
+## them lays a world nobody declared a landscape for.
+static func land_realm(kind: StringName) -> StringName:
+	return def(kind).get("same_land_as", kind)
 
 
 static func def(kind: StringName) -> Dictionary:

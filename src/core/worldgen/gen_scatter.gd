@@ -407,13 +407,13 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		bench.rot = (fire.pos - bench.pos).angle()
 		var lamp_at := vp + Vector2.from_angle(-PI * 0.3) * clampf(GenSettle.square_radius(c, v, -PI * 0.3) - 0.6, 2.4, 3.4)
 		_add(c, PropKind.LAMP, lamp_at)
-		_occupy(c, occ, vp, 2.5)
-		_occupy(c, occ, lamp_at, 0.5)
 		# What this landscape's people build, and how they stand (`BiomeForms`).
 		# The village record already carries its country, so this costs no lookup
 		# and no renderer: the form table is core, which is why world gen may read
 		# it at all.
 		var forms := BiomeForms.of(int(v.get("country", Country.COAST)))
+		_occupy(c, occ, vp, SQUARE_CLEAR if forms.plan != &"row" else STREET_CLEAR)
+		_occupy(c, occ, lamp_at, 0.5)
 		# A settlement deals its buildings one form each, so HOW MANY there are is
 		# the stock's own size and never a number written down beside it: a
 		# landscape with six forms raises six buildings, and a seventh could only
@@ -509,6 +509,14 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			house.rot = wrapf(bearing + rng.randf_range(-0.2, 0.2) * (0.25 if row else 1.0), 0.0, TAU)
 			_occupy(c, occ, hp, forms.room())
 			placed += 1
+		# HOW FAR THIS SETTLEMENT REACHES IS RECORDED HERE, BECAUSE THIS IS WHAT
+		# KNOWS. A ring's furthest house and a street's furthest tower are nine
+		# tiles apart and nothing downstream can tell which it is looking at
+		# (`WorldData.village_reach` says what that cost).
+		var reach := 0.0
+		for h2: WorldProp in houses:
+			reach = maxf(reach, h2.pos.distance_to(vp) + forms.widest())
+		v["reach"] = reach
 		houses.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
 			return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
 		# A village that outgrew the pack would repeat a silhouette, which is the
@@ -524,6 +532,64 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			# that the lit one comes out nearest the square; `forms.room()` above
 			# already kept the widest of them clear at placing time.
 			houses[i].solid = forms.reach(houses[i].variant) * houses[i].scale
+		# A STREET LIGHTS ITSELF. A square gets one lamp, which is a village's whole
+		# public light and is nothing down a frontage that runs nineteen tiles out
+		# either way. `PropKind.LAMP` is the strongest source 15_lights has (reach
+		# 3.8 at full energy) and a `row` settlement was getting the same ONE, so
+		# the city measured 4.9x darker than the coast at noon and its own towers
+		# five tiles off did not read. The sky cannot answer that — a lidded
+		# landscape takes LID_SUN (0.035) of a sun whatever the hour, so what is
+		# left has to come off the ground.
+		#
+		# They stand at the kerb BETWEEN ranks and change sides as they go, so the
+		# light crosses the street rather than running down one gutter, and no
+		# stretch of the frontage is left dark between two pools.
+		if row:
+			var along2 := Vector2.from_angle(street)
+			var across2 := Vector2(-along2.y, along2.x)
+			for rank2 in ROW_RANKS:
+				for way_i in 2:
+					var way2 := 1.0 if way_i == 0 else -1.0
+					var side2 := 1.0 if ((rank2 + way_i) & 1) == 0 else -1.0
+					var lp := vp + along2 * (forms.apart + (float(rank2) + 0.5) * stride) * way2 						+ across2 * (side2 * ROW_STREET * ROW_KERB)
+					lp = lp.floor() + Vector2(0.5, 0.5)
+					if not _free(c, occ, lp, 0.6):
+						continue
+					_add(c, PropKind.LAMP, lp)
+					_occupy(c, occ, lp, 0.5)
+		# AND WHERE YOU STAND IN IT, for the same reason as `reach` above: four
+		# callers and two tests each carried their own `vp + Vector2(3, 3)`, which
+		# was a clear spot on a village green and is a doorway on a street. The
+		# historical offset is tried FIRST and kept whenever it is clear, so every
+		# ring village stands exactly where it always did.
+		v["stand"] = _standing_spot(c, vp, houses)
+
+
+## Where a player staged into this settlement stands: clear of every building it
+## put up, on ground they could be put down on. `WorldData.STAND_OFFSET` first,
+## because that is where every village in this game has started since M1.
+static func _standing_spot(c: GenContext, vp: Vector2, houses: Array[WorldProp]) -> Vector2:
+	var tries: Array[Vector2] = [WorldData.STAND_OFFSET]
+	for ring: float in [4.3, 5.6, 7.0]:
+		for i in 12:
+			tries.append(Vector2.from_angle(TAU * float(i) / 12.0) * ring)
+	for off: Vector2 in tries:
+		var p := vp + off
+		var x := floori(p.x)
+		var y := floori(p.y)
+		if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
+			continue
+		var i2 := y * c.size + x
+		if c.land[i2] == 0 or c.water[i2] != 0:
+			continue
+		var clear := true
+		for h: WorldProp in houses:
+			if h.pos.distance_to(p) <= h.solid + 0.6:
+				clear = false
+				break
+		if clear:
+			return p
+	return vp + WorldData.STAND_OFFSET
 
 
 ## Half the width of a street, in tiles: how far a frontage stands off the line
@@ -534,6 +600,12 @@ const ROW_STREET := 2.6
 ## side. Four spots to a rank, so three ranks offer twelve — twice the largest
 ## stock — and the far end still stands inside one frame of the square.
 const ROW_RANKS := 3
+## How much ground the square itself keeps clear of buildings, in tiles.
+## How far out from the street's middle a lamp post stands, as a share of the
+## street's half width: at the kerb, just inside the frontage it lights.
+const ROW_KERB := 0.82
+const SQUARE_CLEAR := 2.5
+const STREET_CLEAR := 1.1
 
 
 ## How many villages have somebody's stolen light on the square. NOT all of them:

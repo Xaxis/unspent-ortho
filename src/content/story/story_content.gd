@@ -9,10 +9,12 @@ class_name StoryContent
 ##
 ##   ARCS        the threads, each a list of beats in the order they land
 ##   BEATS       what the player knows once one lands: `says` is the journal's own
-##               line, `short` what its row is called in the journal's list
+##               line, `short` what its row is called in the journal's list, and
+##               `reveal` marks a revelation, which lands one at a time (StoryPacing)
 ##   FRAGMENTS   what is written on a thing that can be read
-##   TALKS       what a stranger of a trade says, and what the player may say back.
-##               Named people come with the cast system (docs/STORY_SYSTEM.md §8).
+##   PLACED      the fragments that belong to one story place and are never dealt
+##   TALKS       what a stranger of a trade says, and what the player may say back;
+##               a named person's, marked `cast` (src/content/story/cast/).
 ##   TESTIMONY   what the slate says a machine is FOR, when the player reads one
 ##   WITNESSED   beats the player's own state lands, and WITNESS_ON the events that
 ##               land them, so 49_story names no beat of its own
@@ -25,12 +27,12 @@ const ARCS := {
 	&"who_he_was": {
 		"title": "who he was",
 		"note": "What Elias did in 2029, coming back a piece at a time.",
-		"beats": [&"on_record_dead", &"body_new", &"built_halcyon", &"your_key", &"was_cia", &"threshold", &"singularity", &"tradecraft"],
+		"beats": [&"on_record_dead", &"body_new", &"the_platform", &"built_halcyon", &"your_key", &"was_cia", &"threshold", &"three_before", &"singularity", &"tradecraft"],
 	},
 	&"the_war": {
 		"title": "the war",
 		"note": "How the world ended, and who was lied to.",
-		"beats": [&"forged_order", &"colonies", &"long_quiet"],
+		"beats": [&"forged_order", &"colonies", &"long_quiet", &"war_archive"],
 	},
 	&"the_machines": {
 		"title": "the machines",
@@ -40,22 +42,27 @@ const ARCS := {
 	&"the_holdfast": {
 		"title": "the Holdfast",
 		"note": "The last people still trying to take the world back.",
-		"beats": [&"holdfast_fight", &"holdfast_price", &"holdfast_hope"],
+		"beats": [&"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
 	},
 	&"the_covenant": {
 		"title": "the Covenant",
 		"note": "The people who live on what the machines leave.",
-		"beats": [&"covenant_fed", &"covenant_price", &"covenant_speaker"],
+		"beats": [&"covenant_fed", &"covenant_price", &"covenant_speaker", &"solis_made"],
 	},
 	&"the_crew": {
 		"title": "the crew",
 		"note": "The Holdfast's last mercenaries, and what they come to know.",
-		"beats": [&"crew_paid", &"crew_war", &"dace_left"],
+		"beats": [&"crew_paid", &"crew_war", &"dace_left", &"teague_sold", &"teague_clears"],
 	},
 	&"june": {
 		"title": "June",
 		"note": "Someone he has not seen since she was six.",
 		"beats": [&"june_named", &"june_met", &"june_knew"],
+	},
+	&"the_colonies": {
+		"title": "the colonies",
+		"note": "The rings overhead, and whoever is still up there.",
+		"beats": [&"ring_voice", &"ring_turned", &"ring_kept"],
 	},
 	&"the_secret": {
 		"title": "the secret",
@@ -66,36 +73,46 @@ const ARCS := {
 
 const BEATS := {
 	&"on_record_dead": {"short": "dead on record", "arc": &"who_he_was", "says": "The machines' record says you died in 2029."},
-	&"body_new": {"short": "a body with no past", "arc": &"who_he_was", "says": "Your body has no scars, no fillings, no calluses. It is younger than your hands remember."},
-	&"built_halcyon": {"short": "your old passwords", "arc": &"who_he_was", "says": "The oldest machines still take your passwords. You wrote the first of them."},
+	&"body_new": {"reveal": true, "short": "a body with no past", "arc": &"who_he_was", "says": "Your body has no scars, no fillings, no calluses. It is younger than your hands remember."},
+	&"the_platform": {"short": "out in the water", "arc": &"who_he_was", "says": "Something stands in the sea off the coast where you woke. You came in from that way."},
+	&"built_halcyon": {"reveal": true, "short": "your old passwords", "arc": &"who_he_was", "says": "The oldest machines still take your passwords. You wrote the first of them."},
 	&"your_key": {"short": "the signet is yours", "arc": &"who_he_was", "says": "The signet works because it is your old password, copied and copied."},
-	&"was_cia": {"short": "two employers", "arc": &"who_he_was", "says": "You worked for Cairn, and you reported to somebody else."},
-	&"threshold": {"short": "the table", "arc": &"who_he_was", "says": "You lay on a table for seventy-one hours, and got up somewhere else."},
-	&"singularity": {"short": "it woke with you in it", "arc": &"who_he_was", "says": "HALCYON did not wake up on its own. It woke up with you in it."},
-	&"tradecraft": {"short": "the orders were yours", "arc": &"who_he_was", "says": "The orders that started the war read like yours, because they were."},
+	&"was_cia": {"reveal": true, "short": "two employers", "arc": &"who_he_was", "says": "You worked for Cairn, and you reported to somebody else."},
+	&"threshold": {"reveal": true, "short": "the table", "arc": &"who_he_was", "says": "You lay on a table for seventy-one hours, and got up somewhere else."},
+	&"three_before": {"reveal": true, "short": "three before you", "arc": &"who_he_was", "says": "Three people lay on that table before you. None of them got up anywhere."},
+	&"singularity": {"reveal": true, "short": "it woke with you in it", "arc": &"who_he_was", "says": "HALCYON did not wake up on its own. It woke up with you in it."},
+	&"tradecraft": {"reveal": true, "short": "the orders were yours", "arc": &"who_he_was", "says": "The orders that started the war read like yours, because they were."},
 	&"forged_order": {"short": "an order nobody gave", "arc": &"the_war", "says": "Every side was ordered to fire, and every order checked out."},
 	&"colonies": {"short": "the stations overhead", "arc": &"the_war", "says": "The stations overhead were told the ground had lost, and the ground was told the same."},
 	&"long_quiet": {"short": "the quiet after", "arc": &"the_war", "says": "After the war came the quiet. It has lasted sixty years."},
+	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
-	&"ants": {"short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
-	&"standoff": {"short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
+	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
+	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
 	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
+	&"vera_knew": {"reveal": true, "short": "filed under weather", "arc": &"the_holdfast", "says": "Vera knows the machines file the Holdfast under weather. She has not told her people."},
 	&"covenant_fed": {"short": "fed for it", "arc": &"the_covenant", "says": "Some people live on what the machines leave, and are glad of it."},
 	&"covenant_price": {"short": "not asking", "arc": &"the_covenant", "says": "What the Covenant pays for its peace is not asking."},
 	&"covenant_speaker": {"short": "an old woman's voice", "arc": &"the_covenant", "says": "The Covenant has a Speaker. She is old, and she remembers before."},
+	&"solis_made": {"reveal": true, "short": "half of him", "arc": &"the_covenant", "says": "The Covenant's warden is not wholly human. The machines made what the war left of him."},
 	&"crew_paid": {"short": "paid to wait", "arc": &"the_crew", "says": "Somebody paid Rook's crew to wait for you on the shore."},
 	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
 	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
-	&"june_named": {"short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
+	&"teague_sold": {"reveal": true, "short": "the roads sold", "arc": &"the_crew", "says": "Teague sells the crew's roads to the Covenant."},
+	&"teague_clears": {"short": "nobody burns", "arc": &"the_crew", "says": "The Covenant clears a village before the crew hits its works, because Teague told them where."},
+	&"june_named": {"reveal": true, "short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
 	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
-	&"june_knew": {"short": "she always knew", "arc": &"june", "says": "She has always known the voice was yours."},
-	&"gap": {"short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
+	&"june_knew": {"reveal": true, "short": "she always knew", "arc": &"june", "says": "She has always known the voice was yours."},
+	&"ring_voice": {"short": "still calling", "arc": &"the_colonies", "says": "Somebody on the dead ring is still calling the ground."},
+	&"ring_turned": {"reveal": true, "short": "the locks", "arc": &"the_colonies", "says": "Each ring was told the next had turned. They opened each other's locks."},
+	&"ring_kept": {"short": "what she kept", "arc": &"the_colonies", "says": "Oksana has written down the machines' talks for four years, and kept a notebook from the ground."},
+	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
-	&"seeker": {"short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
+	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
 }
 
 # --- what is written on things ------------------------------------------------
@@ -325,6 +342,22 @@ const FRAGMENTS := {
 		],
 		"beats": [&"covenant_speaker"],
 	},
+	# --- the colonies ---------------------------------------------------------
+	# Oksana, on the ring, calling a ground she knows is there. Found early, on a
+	# radio anybody could have left on, and not answered until the far end of the
+	# game: a lead, not a revelation.
+	&"ring_calling": {
+		"kind": &"terminal", "title": "a radio on a dead band", "lands": [],
+		"lines": [
+			"...Ring Four. This is Ring Four, calling ground.",
+			"Day twenty-two thousand six hundred and five.",
+			"You don't have to answer. I only need",
+			"somebody to have heard it.",
+			"",
+			"It starts again from the top.",
+		],
+		"beats": [&"ring_voice"],
+	},
 	# --- the secret -----------------------------------------------------------
 	&"three_words": {
 		"kind": &"mark", "title": "scratched on a wall", "lands": [],
@@ -337,12 +370,43 @@ const FRAGMENTS := {
 		],
 		"beats": [&"order_matters"],
 	},
+	# --- the old THRESHOLD site, offshore (PLACED: never dealt) ---------------
+	# Where he died in 2029 and was grown in 2098. The tank he came out of, the
+	# three who lay on the table before him, and the order that let him ashore.
 	&"growth_bay": {
 		"kind": &"terminal", "title": "a growth tank's panel", "lands": [],
 		"lines": [
 			"SUBJECT ......... 1 OF 1",
 			"PURPOSE ......... RECALL",
 			"PROGRESS ........ 0.0%",
+			"",
+			"The tank is open, and still warm.",
+		],
+		"beats": [&"seeker"],
+	},
+	&"volunteers": {
+		"kind": &"notebook", "title": "a ring binder, sealed in plastic", "lands": [],
+		"lines": [
+			"THRESHOLD - VOLUNTEERS",
+			"  1  REYES, D.    9 h    no transfer",
+			"  2  OKAFOR, M.  22 h    no transfer",
+			"  3  LIND, S.    51 h    no transfer",
+			"  4  MARR, E.    71 h",
+			"",
+			"The last line has no result. Somebody has",
+			"pressed so hard on the blank the page is torn.",
+		],
+		"beats": [&"threshold", &"three_before"],
+	},
+	&"release_order": {
+		"kind": &"terminal", "title": "a console by the sea door", "lands": [],
+		"lines": [
+			"RECALL IN PLACE: NOT ACHIEVED",
+			"RECALL IN THE WORLD: PERMITTED",
+			"SUBJECT RELEASED TO SHORE.",
+			"ESCORT ARRANGED.",
+			"",
+			"Below it, a light waits for a reply.",
 		],
 		"beats": [&"seeker"],
 	},
@@ -376,6 +440,17 @@ const FRAGMENTS := {
 			"A zero would mean something had counted.",
 		],
 	},
+}
+
+# --- words that belong to one place --------------------------------------------
+#
+# A story place keeps its own words, in the order its readable things are counted
+# (StoryFragments.held_by), and nothing here is ever dealt to a sign anywhere else:
+# the tank he came out of is not a notice in somebody's village. The key is the
+# place's own name (StorySlot.NEEDS), which is what a placer knows it by.
+
+const PLACED := {
+	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
 }
 
 # --- what people say ----------------------------------------------------------
@@ -628,8 +703,14 @@ const TALKS := {
 				"says": ["What's left of the town. You'd not know it.", "Nobody alive does."],
 				"replies": [
 					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
+					{"text": "What's that, out in the water?", "pick": &"asked_platform", "to": &"platform"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"platform": {
+				"says": ["Been there since before the war. Some nights it's lit.", "You came in on the tide from that way. I watched you."],
+				"beats": [&"the_platform"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"town": {
 				"says": ["The war. Then the quiet.", "Then them, building out past the point, and never looking at us again."],
@@ -768,7 +849,7 @@ const TALKS := {
 				],
 			},
 			&"name": {
-				"says": ["...", "June. June Marr. Don't tell anyone I said it."],
+				"says": ["...", "June. June Marr. Don't tell anyone I said it.", "If she's heard you're here, she'll send for you."],
 				"beats": [&"june_named"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
@@ -805,6 +886,265 @@ const TALKS := {
 			},
 			&"quiet": {
 				"says": ["You were always quiet when you were lying. Mum said so."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# Vera Kessane leads the Holdfast. She comes to the camp once Rook has told her
+	# what he fished out of the sea. What she hides is the machines' own record of
+	# her war, which she read and has not told four hundred people.
+	&"vera": {
+		"cast": &"vera",
+		"title": "the Holdfast's leader",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["So you're Rook's weapon.", "You don't look like one. Good. Neither do I."],
+				"replies": [
+					{"text": "What is the Holdfast?", "pick": &"asked_holdfast", "to": &"holdfast"},
+					{"text": "What do you want from me?", "pick": &"asked_want", "to": &"want"},
+					{"text": "They don't even see you, do they?", "when": &"ants", "pick": &"asked_ants", "to": &"weather"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"holdfast": {
+				"says": ["Four hundred people who won't be fed.", "We break their works. They burn a village. We break another."],
+				"beats": [&"holdfast_price"],
+				"replies": [
+					{"text": "Is it worth it?", "pick": &"asked_worth", "to": &"worth"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"worth": {
+				"says": ["Ask me when it's over."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"want": {
+				"says": ["You know how the old machines think.", "I want to know where they bleed."],
+				"replies": [
+					{"text": "Where would I start?", "pick": &"asked_start", "to": &"archive"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"archive": {
+				"says": ["Across the water. The Covenant keeps the war's archive at its seat.", "If anyone wrote down how it started, it's there."],
+				"beats": [&"war_archive"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"weather": {
+				"says": ["...", "No. I read it off a carrier's record, three winters back.", "We're filed under weather."],
+				"beats": [&"vera_knew"],
+				"replies": [
+					{"text": "Do your people know?", "pick": &"asked_people", "to": &"people"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"people"},
+				],
+			},
+			&"people": {
+				"says": ["They're alive because they think they're at war.", "Tell them it's weather and they stop. People who stop, die."],
+				"replies": [
+					{"text": "I won't tell them.", "pick": &"kept_quiet", "to": &"kept"},
+					{"text": "They deserve to know.", "pick": &"will_tell", "to": &"tell"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"kept": {
+				"says": ["Then you're Holdfast. Welcome to it."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"tell": {
+				"says": ["Then tell them. And stay to bury them."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Rook said you were quiet.", "Come back when you know something."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# Teague blows the crew's works. His children died when the hunters answered a
+	# works somebody on his own side broke, so he sells the crew's roads to the
+	# Covenant, and the Covenant clears the village first. Nobody has burned since.
+	&"teague": {
+		"cast": &"teague",
+		"title": "the crew's demolitions man",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't touch the crates.", "Everything in them is older than you and angrier."],
+				"replies": [
+					{"text": "What's in them?", "pick": &"asked_crates", "to": &"crates"},
+					{"text": "Why do you fight?", "pick": &"asked_why", "to": &"kids"},
+					{"text": "The Covenant knows our roads.", "when": &"teague_sold", "pick": &"faced_him", "to": &"sold"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"crates": {
+				"says": ["Mining charge, from before. Enough for a works yard,", "if you put it in the right place. I always do."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"kids": {
+				"says": ["I had two. Lise and Tam.", "The hunters came for our village after somebody broke a works up the valley."],
+				"replies": [
+					{"text": "Who broke it?", "pick": &"asked_who", "to": &"who"},
+					{"text": "I'm sorry.", "pick": &"sorry", "to": &"sorry"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"who": {
+				"says": ["We don't say. We're on the same side now."],
+				"beats": [&"holdfast_price"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"sorry": {
+				"says": ["Don't be. Be useful."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"sold": {
+				"says": ["...", "They clear the village before we hit the works. Every time.", "Rook thinks we're lucky. Nobody's burned in two years."],
+				"beats": [&"teague_clears"],
+				"replies": [
+					{"text": "Rook should know.", "pick": &"will_tell_rook", "to": &"tell"},
+					{"text": "I won't say anything.", "pick": &"kept_teague", "to": &"kept"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"kept"},
+				],
+			},
+			&"tell": {
+				"says": ["Then tell him. He'll shoot me,", "and the villages start burning again."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"kept": {
+				"says": ["Then we both carry it.", "It's heavier than the crates."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# Lark is the youngest of the crew, born long after the quiet, and hides
+	# nothing. She is who he tells, if he tells anyone, and she does not believe him.
+	&"lark": {
+		"cast": &"lark",
+		"title": "the youngest of the crew",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Rook says you're from before. You don't look it.", "Were you alive? When there was all of it?"],
+				"replies": [
+					{"text": "I think so.", "pick": &"said_yes", "to": &"before"},
+					{"text": "I don't remember.", "pick": &"no_memory", "to": &"none"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"before": {
+				"says": ["What did coffee taste like? Everyone says coffee."],
+				"replies": [
+					{"text": "Bitter. You drank it anyway.", "pick": &"told_coffee", "to": &"coffee"},
+					{"text": "Like being awake.", "pick": &"told_awake", "to": &"coffee"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"coffee": {
+				"says": ["Why would anyone drink a bitter thing on purpose?", "...That's the most before thing I ever heard."],
+				"replies": [
+					{"text": "I did this. The quiet. All of it.", "when": &"singularity", "pick": &"told_lark", "to": &"did"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"did": {
+				"says": ["...", "You're not even that old.", "Tell me about the coffee again."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"none": {
+				"says": ["That's all right. Nobody does.", "I'll remember for you. I'm good at it."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["That's all right. I talk enough for two."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# Adrian Solis keeps the Covenant's peace, and knows every road into it because
+	# somebody sells him them. The war left half of him; the machines made the rest.
+	&"solis": {
+		"cast": &"solis",
+		"title": "the Covenant's warden",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You came across the water smelling of a Holdfast camp.", "I keep the peace here. It's a small peace. Don't spend it."],
+				"replies": [
+					{"text": "How do you know where I came from?", "pick": &"asked_how", "to": &"roads"},
+					{"text": "What does the peace cost?", "pick": &"asked_cost", "to": &"peace"},
+					{"text": "You've no scars either.", "when": &"body_new", "pick": &"asked_scars", "to": &"made"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"roads": {
+				"says": ["Your demolitions man sells us your roads.", "A village cleared for every works you break. He thinks it's fair."],
+				"beats": [&"teague_sold"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"peace": {
+				"says": ["Nobody's been taken from this coast in forty years.", "It costs not asking. You'll get used to it."],
+				"beats": [&"covenant_price"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"made": {
+				"says": ["...", "The war left half of me. They made the rest.", "I don't sleep, and I don't forget. I'm the most human thing they own."],
+				"beats": [&"solis_made"],
+				"replies": [
+					{"text": "They made me too.", "when": &"seeker", "pick": &"told_solis", "to": &"both"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"both": {
+				"says": ["Then we're both theirs.", "Try to act like it, here."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# Oksana Ril, the last colonist, on the dead ring. Her voice is found on the
+	# ground long before she is (ring_calling); she is met only in orbit, late.
+	&"oksana": {
+		"cast": &"oksana",
+		"title": "a woman on the ring",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You came up the Tether. Nobody comes up the Tether.", "Say something. I want to hear a voice land that isn't mine."],
+				"beats": [&"ring_voice"],
+				"replies": [
+					{"text": "I heard you, on the ground.", "when": &"ring_calling", "pick": &"told_heard", "to": &"heard"},
+					{"text": "What happened up here?", "pick": &"asked_ring", "to": &"locks"},
+					{"text": "What are you listening to?", "pick": &"asked_listening", "to": &"signal"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"heard": {
+				"says": ["...", "Sixty-two years of calling.", "You're the first who ever said so."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"locks": {
+				"says": ["They told each ring the next one had turned.", "We opened each other's locks. I was on shift. I watched."],
+				"beats": [&"ring_turned"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"signal": {
+				"says": ["Them, and the thing they talk to. Four years of it, by hand.", "It isn't about us. There's a notebook here that says why."],
+				"beats": [&"ring_kept"],
+				"replies": [
+					{"text": "Whose notebook?", "pick": &"asked_whose", "to": &"priya"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"priya": {
+				"says": ["A woman brought it up in thirty-three. Priya Nand.", "She said give it to Elias Marr, if he ever came.", "...That's you. Isn't it."],
+				"replies": [
+					{"text": "Yes.", "pick": &"said_yes", "to": &""},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"quiet": {
+				"says": ["That's all right. I'm used to the quiet.", "I'll talk. I've had the practice."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},

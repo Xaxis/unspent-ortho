@@ -65,19 +65,31 @@ func test_a_world_of_a_realm_holds_only_that_realms_landscapes() -> void:
 			ids[w.country[i]] = true
 		for c: Variant in ids:
 			var d := BiomeRegistry.by_index(int(c))
-			check(d.sea or d.realms.has(kind), "a %s world holds %s, which is not in it" % [kind, d.id])
+			check(d.sea or d.realms.has(Realm.land_realm(kind)),
+				"a %s world holds %s, which is not in it" % [kind, d.id])
 		# And the realm of a tile is the realm of the world it is in — the water
 		# at the bottom of it included, which belongs to no realm of its own.
 		for p: Vector2 in [Vector2(80, 80), w.spawn, Vector2(20, 140), Vector2(1, 1)]:
 			eq(Realm.at(w, p), kind, "the realm of the tile at %s" % p)
 
 
+## ...WITH ONE EXCEPTION, AND IT IS THE STORY'S. A realm is somewhere else, so
+## its salt must not be able to land it on another realm's world — except the
+## Before, which IS the surface at another time and therefore must land on
+## exactly that world and no other. So the collision rule is stated twice here:
+## forbidden for a realm that is its own place, REQUIRED for one that says whose
+## land it lays.
 func test_each_realm_is_its_own_island_from_one_seed() -> void:
 	for s: int in [1, 7, 42]:
 		var seen := {}
 		for kind: StringName in Realm.KINDS:
 			var n := Realm.seed_for(s, kind)
 			eq(Realm.seed_for(s, kind), n, "%s of seed %d is the same number twice" % [kind, s])
+			var lays := Realm.land_realm(kind)
+			if lays != kind:
+				eq(n, Realm.seed_for(s, lays),
+					"%s is %s at another time and must grow %s's own island" % [kind, lays, lays])
+				continue
 			check(not seen.has(n), "%s of seed %d collides with another realm's" % [kind, s])
 			seen[n] = true
 		eq(Realm.seed_for(s, Realm.SURFACE), s, "the surface keeps the seed the player was given")
@@ -94,9 +106,11 @@ func test_a_landscape_under_a_roof_is_dark_and_one_above_it_is_not() -> void:
 			check(d.grade.x <= 0.0, "%s is under the sky and may not dim its noon" % d.id)
 
 
-## A REALM NOBODY HAS BUILT IS EMPTY, NOT A FAKE OF ANOTHER ONE. `orbital` and
-## `era` are in `Realm.KINDS` and no landscape declares them yet. Asked for one
-## anyway, the stages fell back on defaults — `Country.COAST` is index 1 and a
+## A REALM NOBODY HAS BUILT IS EMPTY, NOT A FAKE OF ANOTHER ONE. `orbital` is in
+## `Realm.KINDS` and no landscape declares it yet. (`era` was in the same state
+## and is not any more: it lays the surface's landscapes, because the Before is
+## this coast in 2029 rather than a fourth place — see tests/core/test_era.gd.)
+## Asked for one anyway, the stages fell back on defaults — `Country.COAST` is index 1 and a
 ## great many readers reach for it when unsure — and what came out was a plausible
 ## little island with eleven regions, six villages and 378 props, labelled
 ## `orbital`. It passed every test that asks whether a world generates, because
@@ -113,8 +127,8 @@ func test_a_realm_with_no_landscapes_grows_nothing() -> void:
 			gt(float(land), 100.0, "%s has landscapes and grows a world" % realm)
 			for i in w.country.size():
 				if w.level[i] > 0 and w.country[i] != Country.SEA:
-					check(BiomeRegistry.by_index(w.country[i]).realms.has(realm),
-						"%s: every tile is a landscape of this realm, not another's" % realm)
+					check(BiomeRegistry.by_index(w.country[i]).realms.has(Realm.land_realm(realm)),
+						"%s: every tile is a landscape this realm lays, not a third realm's" % realm)
 					break
 		else:
 			eq(land, 0, "%s has no landscapes, so it has no land" % realm)

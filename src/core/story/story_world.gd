@@ -32,3 +32,25 @@ const COAST := &"coast"
 ## fails the gate rather than a player.
 static func guaranteed(land: StringName) -> bool:
 	return land == COAST or BiomeRegistry.guaranteed(land)
+
+
+## How near the old THRESHOLD site a readable thing must stand to be one of its
+## own: the platform's mass is three tiles across (`BlackSite.blocks`), and what
+## stands on it or moored against it belongs to it.
+const PLACE_REACH := 5.0
+
+
+## Where Elias died and was grown, or Vector2.INF (`BlackSite`, unspent-ortho-df).
+static func black_site(world: WorldData) -> Vector2:
+	if world == null or world.realm != Realm.SURFACE:
+		return Vector2.INF
+	return BlackSite.site(world)
+
+
+## The story place a point belongs to, or &"": a thing standing there holds that
+## place's own words (StoryContent.PLACED), not words dealt by kind.
+static func place_of(world: WorldData, p: Vector2) -> StringName:
+	var at := black_site(world)
+	if at != Vector2.INF and p.distance_to(at) <= PLACE_REACH:
+		return StorySlot.BLACK_SITE
+	return &""

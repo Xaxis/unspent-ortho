@@ -53,7 +53,9 @@ func side(row: Dictionary, _dir: int) -> void:
 			Story.forget_beat(id)
 			report("Forgotten: %s" % StoryContent.beat_says(id))
 		else:
-			Story.beat(id)
+			# Landed long ago: a writer moving about in the arc wants what waits on
+			# it now, not after a revelation's settle (StoryPacing).
+			Story.beat(id, -INF)
 			report("Landed: %s" % StoryContent.beat_says(id))
 
 
@@ -65,7 +67,7 @@ func confirm(row: Dictionary) -> void:
 	if id.begins_with("arc_"):
 		var arc := StringName(id.substr(4))
 		for beat: StringName in StoryContent.arc_beats(arc):
-			Story.beat(beat)
+			Story.beat(beat, -INF)
 		report("The whole of %s is known." % arc)
 		return
 	if id == "forget":

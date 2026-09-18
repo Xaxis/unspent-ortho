@@ -126,7 +126,7 @@ static func fire_name(game: Game, fire: WorldProp) -> String:
 	if fire == null:
 		return "a fire"
 	for v in game.world.villages:
-		if (v.pos as Vector2).distance_to(fire.pos) <= Survival.VILLAGE_RADIUS:
+		if (v.pos as Vector2).distance_to(fire.pos) <= game.world.village_reach(v):
 			return "the village fire"
 	if SurvivalState.of(game).built.has(fire):
 		return "your fire"

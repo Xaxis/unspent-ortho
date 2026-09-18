@@ -24,7 +24,9 @@ var trade: StringName = &"keeper"
 ## Fields laid over a look dealt from their id (build, hair, beard, ...), so a
 ## writer says only what matters about how they look.
 var look: Dictionary = {}
-## A beat that must have landed before they are there, or &"" for always.
+## A beat that must have landed before they are there, or &"" for always. A
+## revelation must also have been felt (StoryPacing.felt): nobody walks in on the
+## minute their name is said.
 var appears_when: StringName = &""
 ## A beat after which they are gone, or &"" for never.
 var gone_when: StringName = &""
@@ -57,6 +59,6 @@ static func make(d: Dictionary) -> StoryCharacter:
 
 ## Whether they are there now, by the story so far.
 func present() -> bool:
-	if appears_when != &"" and not Story.landed(appears_when):
+	if appears_when != &"" and not StoryPacing.felt(appears_when):
 		return false
 	return gone_when == &"" or not Story.landed(gone_when)

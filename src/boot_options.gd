@@ -83,6 +83,8 @@ extends RefCounted
 ## --read=ID           open a thing's words on the glass once loaded, by fragment id (story:
 ##                     a writer's view of a page, never a normal start)
 ## --talk=ID[:NODE]     open a conversation, at its start or at NODE (story, the same)
+## --beats=ID,ID       land these story beats at boot, long since settled: a person who waits
+##                     on one is there, and a reply that wants one is offered (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
@@ -169,6 +171,8 @@ var target_sweep := false
 ## once loaded: staging for a writer looking at the words (49_story).
 var read := ""
 var talk := ""
+## Story beats landed before the first frame, as if long ago (49_story).
+var beats := ""
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
@@ -250,6 +254,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"fail-downed": o.fail_downed = true
 			"read": o.read = v
 			"talk": o.talk = v
+			"beats": o.beats = v
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"

@@ -109,8 +109,13 @@ StorySlot.make({
 })
 ```
 
-Four kinds of place today, and all four are per-region, which is the point (see
-below). `shore`, `holding` and `region` are the obvious next ones and are not
+Five kinds of place today. Four are per-region, which is the point (see below).
+The fifth, `black_site`, is the one exception: ONE per world, the old THRESHOLD
+site in the sea off the home coast (`BlackSite.site`, unspent-ortho-df). It is
+safe to require because every world is grown around a coast spawn, and a world
+with no sea off its spawn answers `Vector2.INF`, which casts nothing and so is
+named by `problems()`. A place in the sea stands on no body, so its candidate
+says which coast it belongs to, and casting reports every slot's `body`. `shore`, `holding` and `region` are the obvious next ones and are not
 built; add a `needs` only with the `_candidates` branch that answers it and a
 test, or `problems()` will call the slot uncastable on every seed.
 
@@ -234,6 +239,17 @@ than a player stuck at three in the morning.
 
 ---
 
+### Words that belong to a place
+
+A story place keeps its own words (`StoryContent.PLACED`), which are never dealt
+to a sign anywhere else: the tank he came out of is not a notice in somebody's
+village. A placer stands a readable prop there and never names the words.
+`StoryFragments.held_by(world, prop)` asks `StoryWorld.place_of` which place the
+prop stands at (within `PLACE_REACH`). It then deals that place's words of the
+prop's kind in id order: the n'th terminal on the platform holds the n'th
+terminal's words (`pick_at`). Anywhere else it deals by kind, as `pick` always
+has. Like casting, this is pure and derived, so a save opens onto the same words.
+
 ## 7. The ledger — the world writing you down
 
 **Built.** `Story.note(act, land, minutes)` records what could have been seen
@@ -300,7 +316,29 @@ their own.
   him. Following, orders and control are the actors' business and not built;
   the story's half of the seam is this flag.
 - **Tours** stand beside one with `at cast:ID` and answer `cast:ID` (drawn) and
-  `met:ID` (spoken to): `tours/cast.tour`.
+  `met:ID` (spoken to): `tours/cast.tour`. `--beats=ID,ID` stages what he already
+  knows, as long ago, so whoever waits on it is there.
+- **A realm not yet grown** can hold someone: Oksana's `the_ring` is an orbital
+  slot declared as colour, so it casts nowhere today and she waits for it.
+
+### Pacing — one revelation at a time
+
+**Built.** `docs/STORY.md` §9: the next revelation waits until the last has been
+felt. A beat marked `reveal` is a revelation, and `Story` keeps the world minute
+each beat landed. For `StoryPacing.SETTLE` world minutes after a revelation (four
+real minutes; a night's sleep settles anything), the story holds back what it
+OFFERS:
+
+- a reply that would land a new revelation, by itself or by the node it leads to,
+  is not offered (`StoryTalk.replies`); the same person can be asked again later;
+- a person whose `appears_when` is a revelation is not there until it has settled.
+  June does not walk in the minute Imre says her name; she sends for him.
+
+It never holds back what the player has already done. A page read lands at once,
+because it cannot be unread, and so does a beat that happened to him. Both still
+count as the revelation that everything else then waits on.
+`tests/story/test_pacing.gd` also proves that no conversation node is ever left
+with nothing to say while a revelation settles.
 
 ## 9. State, and what must never happen to a save
 

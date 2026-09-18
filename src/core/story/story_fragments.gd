@@ -46,6 +46,9 @@ static func kinds() -> Array[StringName]:
 static func pick(kind: StringName, land: StringName, seed_value: int, instance: int) -> StringName:
 	var fits: Array[StringName] = []
 	for id: StringName in StoryContent.FRAGMENTS:
+		# A place's own words are never dealt anywhere else.
+		if placed(id):
+			continue
 		var f: Dictionary = StoryContent.FRAGMENTS[id]
 		if StringName(str(f.get("kind", &""))) != kind:
 			continue
@@ -59,6 +62,50 @@ static func pick(kind: StringName, land: StringName, seed_value: int, instance: 
 	# two landmarks in a row do not say the same thing.
 	var at := int(Rng.hash01(seed_value, instance, 0x5709) * float(fits.size()))
 	return fits[clampi(at, 0, fits.size() - 1)]
+
+
+## The n'th of a story place's own words, or &"" past the end of them. `kind`,
+## when given, counts only that place's words of that kind, so the n'th terminal
+## on the platform holds the n'th terminal's words and a binder never shows a
+## screen's (StoryContent.PLACED).
+static func pick_at(place: StringName, n: int, kind: StringName = &"") -> StringName:
+	var i := 0
+	for id: StringName in StoryContent.PLACED.get(place, []):
+		if kind != &"" and kind_of(id) != kind:
+			continue
+		if i == n:
+			return id
+		i += 1
+	return &""
+
+
+## Whether a fragment belongs to one place and is never dealt.
+static func placed(id: StringName) -> bool:
+	for place: StringName in StoryContent.PLACED:
+		if (StoryContent.PLACED[place] as Array).has(id):
+			return true
+	return false
+
+
+## Which words THIS standing thing holds: a story place's own, counted among the
+## readable things of its kind that stand there in id order, or else the words its
+## kind deals. Pure and derived, like `pick`, so a save opens onto the same words.
+## A placer stands a readable prop at the place; it never names the words.
+static func held_by(world: WorldData, prop: WorldProp) -> StringName:
+	var kind := StoryProps.kind_of(prop.kind)
+	if kind == &"":
+		return &""
+	var place := StoryWorld.place_of(world, prop.pos)
+	if place != &"":
+		var n := 0
+		for q: WorldProp in world.props:
+			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and StoryWorld.place_of(world, q.pos) == place:
+				n += 1
+		var own := pick_at(place, n, kind)
+		if own != &"":
+			return own
+	var d := BiomeRegistry.at(world, prop.pos)
+	return pick(kind, d.id if d != null else &"", world.seed_value, prop.id)
 
 
 ## What it says: the lines, in the order they are read.

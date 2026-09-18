@@ -80,12 +80,18 @@ func started() -> void:
 
 
 ## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
-## at, without walking to the one sign in the world that happens to carry them.
-## Staging only — a normal start names neither.
+## at, without walking to the one sign in the world that happens to carry them;
+## `--beats=ID,ID`, what he already knows. Staging only — a normal start names none.
 func _stage() -> void:
 	var o := game.options
 	if o == null:
 		return
+	# `--beats`: a story that happened long ago, so whoever waits on it is there.
+	for b: String in o.beats.split(",", false):
+		if StoryContent.BEATS.has(StringName(b)):
+			Story.beat(StringName(b), -INF)
+		else:
+			push_warning("--beats: %s is not a beat" % b)
 	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
 		var id := StringName(o.read)
 		reading = id
@@ -212,8 +218,7 @@ func _open_what_is_in_front() -> void:
 func _already_read(prop: WorldProp) -> bool:
 	if prop == null:
 		return true
-	var id := StoryFragments.pick(StoryProps.kind_of(prop.kind),
-		BiomeRegistry.at(game.world, prop.pos).id, game.world.seed_value, prop.id)
+	var id := StoryFragments.held_by(game.world, prop)
 	return id == &"" or Story.knows(id)
 
 
@@ -287,9 +292,7 @@ func _start_talk(row: Dictionary) -> void:
 
 
 func _start_reading(prop: WorldProp) -> void:
-	var kind := StoryProps.kind_of(prop.kind)
-	var id := StoryFragments.pick(kind, BiomeRegistry.at(game.world, prop.pos).id,
-		game.world.seed_value, prop.id)
+	var id := StoryFragments.held_by(game.world, prop)
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "no_read")
 		return

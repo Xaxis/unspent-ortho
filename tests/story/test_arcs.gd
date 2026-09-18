@@ -40,7 +40,7 @@ func test_every_beat_has_a_door_the_player_can_find() -> void:
 
 
 func test_the_arcs_story_md_promises_are_all_declared() -> void:
-	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_secret"]:
+	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_colonies", &"the_secret"]:
 		check(StoryContent.ARCS.has(arc), "%s is declared" % arc)
 		gt(float(StoryContent.arc_beats(arc).size()), 2.0, "%s is more than a line" % arc)
 
@@ -174,7 +174,7 @@ func test_a_question_nobody_has_a_reason_to_ask_is_not_offered_yet() -> void:
 		check(str(r.text) != "Who wrote the orders that started the war?", "he asks who wrote the orders only once he knows he wrote orders of his own")
 		check(str(r.text) != "It woke up with somebody in it.", "and says what woke up only once he knows")
 	Story.forget()
-	Story.beat(&"was_cia")
+	Story.beat(&"was_cia", -INF)
 	@warning_ignore("return_value_discarded")
 	_walk(&"the_digger", ["What was the building?", "Who wrote the orders that started the war?"])
 	check(Story.landed(&"tradecraft"), "knowing what he was, the answer lands on him")
@@ -210,7 +210,7 @@ func test_the_fire_keeper_sees_what_he_is_before_he_does() -> void:
 	for r: Dictionary in t.replies():
 		check(str(r.text) != "I know the old machines.", "he cannot offer what he does not know he knows")
 	Story.forget()
-	Story.beat(&"built_halcyon")
+	Story.beat(&"built_halcyon", -INF)
 	@warning_ignore("return_value_discarded")
 	_walk(&"rook", ["What do you want?", "I know the old machines."])
 	check(Story.landed(&"holdfast_hope"), "and once he does, he is a weapon to them")
@@ -224,10 +224,12 @@ func test_june_is_named_before_she_is_met() -> void:
 		check(str(r.text) != "Who is the Speaker?", "nobody asks after a Speaker they have not heard of")
 	check(not StoryCast.get_def(&"june").present(), "and she is not there to be met")
 	Story.forget()
-	Story.beat(&"covenant_speaker")
+	Story.beat(&"covenant_speaker", -INF)
 	@warning_ignore("return_value_discarded")
 	_walk(&"imre", ["Why did you leave?", "Who is the Speaker?"])
 	check(Story.landed(&"june_named"), "Imre says her name")
+	check(not StoryCast.get_def(&"june").present(), "and she sends for him once it has settled, not before")
+	Story.now += StoryPacing.SETTLE
 	check(StoryCast.get_def(&"june").present(), "and now she can be found")
 	@warning_ignore("return_value_discarded")
 	_walk(&"june", ["Do you know who I am?"])
@@ -244,7 +246,7 @@ func test_dace_leaves_when_he_learns_whose_order_it_was() -> void:
 	for r: Dictionary in t.replies():
 		check(str(r.text) != "The order was mine.", "a confession needs knowing what there is to confess")
 	Story.forget()
-	Story.beat(&"tradecraft")
+	Story.beat(&"tradecraft", -INF)
 	@warning_ignore("return_value_discarded")
 	_walk(&"dace", ["What happened?", "The order was mine."])
 	check(Story.landed(&"dace_left"), "told, he goes")
@@ -263,3 +265,82 @@ func test_every_witnessed_beat_has_an_event_and_every_event_a_beat() -> void:
 	for b: StringName in StoryContent.WITNESSED:
 		check(landed_by.has(b), "%s is said to be witnessed, and some event lands it" % b)
 	check(StoryContent.BEATS.has(StoryContent.SIGNET_AFTER), "the signet waits on a beat that exists")
+
+
+func test_vera_comes_for_the_weapon_and_keeps_what_she_read() -> void:
+	Story.forget()
+	check(not StoryCast.get_def(&"vera").present(), "she is not at the camp until Rook has something to show her")
+	Story.beat(&"holdfast_hope", -INF)
+	check(StoryCast.get_def(&"vera").present(), "and then she is")
+	var t := _walk(&"vera", [])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "They don't even see you, do they?", "nobody asks that who has not read a treaty")
+	@warning_ignore("return_value_discarded")
+	_walk(&"vera", ["What do you want from me?", "Where would I start?"])
+	check(Story.landed(&"war_archive"), "she says where the war was written down: the lead across the water")
+	Story.forget()
+	Story.beat(&"ants", -INF)
+	@warning_ignore("return_value_discarded")
+	_walk(&"vera", ["They don't even see you, do they?", "Do your people know?", "I won't tell them."])
+	check(Story.landed(&"vera_knew"), "she has read the machines' record of her war")
+	eq(Story.chose(&"vera.people"), &"kept_quiet", "and what he promised her is his")
+	Story.forget()
+
+
+func test_teague_is_found_out_by_someone_else_first() -> void:
+	Story.forget()
+	var t := _walk(&"teague", ["Why do you fight?", "Who broke it?"])
+	check(Story.landed(&"holdfast_price"), "his children are what the Holdfast costs")
+	t = _walk(&"teague", [])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "The Covenant knows our roads.", "he cannot be faced with what nobody has told")
+	@warning_ignore("return_value_discarded")
+	_walk(&"solis", ["How do you know where I came from?"])
+	check(Story.landed(&"teague_sold"), "Solis says it: somebody else's face carries it")
+	Story.now += StoryPacing.SETTLE
+	@warning_ignore("return_value_discarded")
+	_walk(&"teague", ["The Covenant knows our roads.", "I won't say anything."])
+	check(Story.landed(&"teague_clears"), "and Teague says why: nobody burns")
+	Story.forget()
+
+
+func test_solis_is_what_the_machines_made_of_a_man() -> void:
+	Story.forget()
+	var t := _walk(&"solis", [])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "You've no scars either.", "he sees it only once he knows it of himself")
+	Story.beat(&"body_new", -INF)
+	@warning_ignore("return_value_discarded")
+	_walk(&"solis", ["You've no scars either."])
+	check(Story.landed(&"solis_made"), "the war left half of him")
+	Story.forget()
+
+
+func test_lark_is_who_he_tells() -> void:
+	Story.forget()
+	var t := _walk(&"lark", ["I think so.", "Bitter. You drank it anyway."])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "I did this. The quiet. All of it.", "there is nothing to confess yet")
+	Story.forget()
+	Story.beat(&"singularity", -INF)
+	@warning_ignore("return_value_discarded")
+	_walk(&"lark", ["I think so.", "Like being awake.", "I did this. The quiet. All of it."])
+	eq(Story.chose(&"lark.coffee"), &"told_lark", "and what he told her is remembered")
+	Story.forget()
+
+
+func test_the_ring_is_heard_long_before_it_is_reached() -> void:
+	Story.forget()
+	check(Story.read(&"ring_calling"), "a radio on a dead band")
+	check(Story.landed(&"ring_voice"), "somebody up there is still calling")
+	@warning_ignore("return_value_discarded")
+	_walk(&"oksana", ["I heard you, on the ground."])
+	eq(Story.chose(&"oksana.open"), &"told_heard", "and she is told so, when he gets there")
+	@warning_ignore("return_value_discarded")
+	_walk(&"oksana", ["What happened up here?"])
+	check(Story.landed(&"ring_turned"), "the rings opened each other's locks")
+	Story.now += StoryPacing.SETTLE
+	@warning_ignore("return_value_discarded")
+	_walk(&"oksana", ["What are you listening to?", "Whose notebook?"])
+	check(Story.landed(&"ring_kept"), "and she kept what Priya brought up")
+	Story.forget()

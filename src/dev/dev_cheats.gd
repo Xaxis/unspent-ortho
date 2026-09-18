@@ -52,7 +52,7 @@ static func places(game: Game) -> Array[Dictionary]:
 	out.append_array(_borders(survey))
 	for i in w.villages.size():
 		var v: Dictionary = w.villages[i]
-		var vp: Vector2 = (v.pos as Vector2) + Vector2(3, 3)
+		var vp: Vector2 = game.world.village_stand(v)
 		out.append({"id": StringName("village_%d" % i), "label": "village %d" % i, "pos": vp,
 			"note": "in %s" % BiomeRegistry.at(w, vp).display_name.to_lower()})
 	for pair: Array in [["river", "the river"], ["cliff", "the cliff"]]:

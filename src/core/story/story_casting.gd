@@ -1,7 +1,10 @@
 class_name StoryCasting
 ## Binding a slot to somewhere real (docs/STORY_SYSTEM.md §5).
 ##
-##   StoryCasting.cast(world, slots) -> {slot id: {pos, region, land, site}}
+##   StoryCasting.cast(world, slots) -> {slot id: {pos, region, land, site, body}}
+##
+## `body` is the continent the slot was cast on, which is the journey's answer and
+## not always the tile's: the black site stands in the sea off the home coast.
 ##
 ## Pure and deterministic: the same world casts identically every time it is
 ## grown, which is what lets casting stay OUT of the save. A save keeps the seed
@@ -32,6 +35,7 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 		for rank in range(start, order.size()):
 			place = _fill(world, s, taken, order[rank])
 			if not place.is_empty():
+				place["body"] = order[rank]
 				if s.realm == world.realm:
 					floor_rank = rank
 				break
@@ -48,7 +52,9 @@ static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: i
 	var fits: Array[Dictionary] = []
 	for c: Dictionary in _candidates(world, s):
 		var p: Vector2 = c.get("pos", Vector2.ZERO)
-		if world.continent_at(floori(p.x), floori(p.y)) != body:
+		# A place in the sea stands on no body, so it says which coast it belongs to.
+		var on := int(c.get("body", world.continent_at(floori(p.x), floori(p.y))))
+		if on != body:
 			continue
 		if s.land != &"" and StringName(str(c.get("land", &""))) != s.land:
 			continue
@@ -97,6 +103,11 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 		StorySlot.PORTAL:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
+		StorySlot.BLACK_SITE:
+			var at := StoryWorld.black_site(world)
+			if at != Vector2.INF:
+				var home := world.continent_at(floori(world.spawn.x), floori(world.spawn.y))
+				out.append({"pos": at, "region": -1, "land": &"", "site": StorySlot.BLACK_SITE, "body": home})
 	return out
 
 

@@ -73,7 +73,7 @@ static func clear() -> void:
 ## so the page can draw the first view round it before the game exists.
 static func start_of(w: WorldData, o: BootOptions) -> Vector2:
 	if o.village >= 0 and o.village < w.villages.size():
-		return (w.villages[o.village].pos as Vector2) + Vector2(3, 3)
+		return w.village_stand(w.villages[o.village])
 	if o.at.x >= 0:
 		return o.at
 	if o.place != "" and GenPlaces.find(w, o.place).x >= 0:

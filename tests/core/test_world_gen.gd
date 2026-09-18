@@ -514,17 +514,44 @@ func test_villages_spread_across_countries_with_a_square() -> void:
 			var p: Vector2 = v.pos
 			for kind: int in [PropKind.LAMP, PropKind.FIRE, PropKind.BENCH]:
 				check(q.nearest_prop(p, 4.0, [kind]) != null, "seed %d village %s lacks a %s" % [s, v.name, PropKind.NAMES[kind]])
+			# ASK THE SETTLEMENT HOW FAR IT REACHES. A flat 10 tiles counted the
+			# houses of a ring village and two of a city's six towers, because a
+			# `row` plan runs four ranks out and the far ones stand 19 tiles off.
 			var houses := 0
-			for prop in q.props_near(p, 10.0):
+			for prop in q.props_near(p, w.village_reach(v) + 1.0):
 				if prop.kind == PropKind.HOUSE:
 					houses += 1
 			gt(houses, 2, "seed %d village %s houses" % [s, v.name])
-			# --village=N starts at (3, 3) from the square: standing room.
-			var st := p + Vector2(3, 3)
+
+			# Wherever the settlement says you stand, there is standing room.
+			var st := w.village_stand(v)
 			check(not Ground.is_water(w.ground_at(floori(st.x), floori(st.y))), "seed %d village %s start in water" % [s, v.name])
 			for prop in q.props_near(st, 2.0):
 				check(prop.solid <= 0.0 or prop.pos.distance_to(st) > prop.solid + 0.3, "seed %d village %s start blocked by %s" % [s, v.name, PropKind.NAMES[prop.kind]])
 		gt(countries.size(), 4, "seed %d village countries" % s)
+
+
+## EVERY BUILDING IN THE WORLD BELONGS TO A SETTLEMENT THAT ADMITS TO IT. Stated
+## with no radius of its own on purpose: a test that invents a number to check a
+## number is the mistake it is checking for. `GenScatter` is the only thing that
+## places a HOUSE and it places them all round a square, so if any house lies
+## outside the recorded reach of every village, the record is short — which is
+## precisely how a city's far ranks went missing while nothing failed.
+func test_every_building_stands_inside_a_settlement_that_records_it() -> void:
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		var houses := 0
+		for prop in w.props:
+			if prop.kind != PropKind.HOUSE:
+				continue
+			houses += 1
+			var owned := false
+			for v in w.villages:
+				if (v.pos as Vector2).distance_to(prop.pos) <= w.village_reach(v):
+					owned = true
+					break
+			check(owned, "seed %d: a house at %s is outside every village's reach" % [s, prop.pos])
+		gt(houses, 0, "seed %d has buildings at all" % s)
 
 
 func test_spawn_is_beside_a_south_coast_village_facing_open_land() -> void:

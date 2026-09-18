@@ -24,8 +24,14 @@ const VILLAGE := &"village"
 const WORKS := &"works"
 const LANDMARK := &"landmark"
 const PORTAL := &"portal"
+## The one exception to per-region: the old THRESHOLD site, ONE per world, in the
+## sea off the home coast (`BlackSite`, unspent-ortho-df). Safe to require because
+## every world is grown around a coast spawn; a world with no sea off its spawn
+## answers Vector2.INF, which casts nothing, so `StoryPlan.problems` names the seed
+## rather than the spine trusting it.
+const BLACK_SITE := &"black_site"
 
-const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL]
+const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL, BLACK_SITE]
 
 var id: StringName = &""
 var needs: StringName = VILLAGE

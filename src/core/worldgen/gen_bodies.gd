@@ -128,12 +128,14 @@ const BAND := 0.22
 ## {id, at: Vector2 (0..1 of the square), share: float, band: Vector2 (temp, moist), home: bool}.
 static func plan(seed_value: int, realm: StringName = &"surface", want_size: int = 0) -> Dictionary:
 	var range_of: Vector2i = COUNT.get(realm, Vector2i(1, 1))
-	# The underground is the surface's map with its own type sets: ask for the
-	# surface's plan rather than making a second, unrelated one. The rule lives
-	# HERE so no caller has to know the underground is special.
-	if realm == Realm.UNDERGROUND:
-		var above := plan(seed_value, Realm.SURFACE, want_size)
-		return {"size": above.size, "bodies": above.bodies}
+	# A realm may lie UNDER another one, or BE it at another time: either way it is
+	# the same map and it says so with `Realm.DEFS[...].footprints_of`. Ask for that
+	# realm's plan rather than making a second, unrelated one. The rule lives HERE
+	# so no caller has to know which realms share a map (docs/WORLD.md §5).
+	var shares: StringName = Realm.def(realm).get("footprints_of", &"")
+	if shares != &"" and shares != realm:
+		var other := plan(seed_value, shares, want_size)
+		return {"size": other.size, "bodies": other.bodies}
 	var rng := Rng.make(seed_value, 0xB0D1E5)
 	var count := range_of.x + (rng.randi() % maxi(1, range_of.y - range_of.x + 1))
 	var small: float = ORBITAL_SHARE if realm == Realm.ORBITAL else 1.0

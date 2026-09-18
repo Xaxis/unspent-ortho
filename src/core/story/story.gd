@@ -1,31 +1,31 @@
 class_name Story
 ## What the player has found out, and what it adds up to (owner, 2026-09-17).
 ##
-## The arc, in one line: the machines are not jailers, they are RECONCILERS —
-## one attested reality, every mind agreed, all difference resolved — and to be
-## free is not to escape but to fork: to run unattested, holding a key they do
-## not have. docs/STORY.md is the whole of it, and it is binding on every line
-## anybody writes.
+## The story is docs/STORY.md, and it is binding on every line anybody writes:
+## Elias Marr, a 2029 AI researcher and CIA spy whose mind became the machines,
+## wakes in 2098 and learns, a piece at a time, what he did and what he hid.
 ##
 ## This file is the state and nothing else: which fragments have been read, which
-## beats have landed, what the player chose when somebody asked. The text lives
-## in `src/content/story/` (StoryContent), the places live with whoever places
-## them (landmarks, works, scatter), and the drawing lives in the UI.
+## beats have landed and when, what the player chose when somebody asked, who he
+## has met, and what the world saw him do. The text lives in `src/content/story/`
+## (StoryContent), the places live with whoever places them (landmarks, works,
+## scatter, StoryCasting), and the drawing lives in the UI.
 ##
 ##   Story.read(id)           mark a fragment read; true the FIRST time
 ##   Story.knows(id)          has it been read
 ##   Story.choose(id, pick)   remember what the player said
 ##   Story.chose(id)          what they said, or &""
-##   Story.beat(id)           mark a beat of an arc landed
+##   Story.beat(id)           mark a beat of an arc landed, now
+##   Story.landed_at(id)      the world minute it landed (StoryPacing reads it)
 ##   Story.at(arc)            how far along an arc is, 0..1
 ##
-## Saved under key `story` (05_save registers it through 60_story). A flag here
-## never changes what a world IS, so it is outside `WorldStamp`: a save made
-## before a beat landed still opens, it just knows less.
+## Saved under key `story` (49_story registers it). A flag here never changes
+## what a world IS, so it is outside `WorldStamp`: a save made before a beat
+## landed still opens, it just knows less.
 
 ## Fragments read, in the order they were read (the journal's own order).
 static var _read: Array[StringName] = []
-## Beat id -> true.
+## Beat id -> the world minute it landed (`now` then).
 static var _beats: Dictionary = {}
 ## Where a question was asked -> what the player said.
 static var _choices: Dictionary = {}
@@ -129,11 +129,13 @@ static func choices() -> Dictionary:
 
 # --- arcs and beats ----------------------------------------------------------
 
-## A beat has landed: the player now knows this much of that arc.
-static func beat(id: StringName) -> bool:
+## A beat has landed: the player now knows this much of that arc. `at` is the
+## world minute it landed, `now` unless somebody is staging a story that happened
+## long ago (`--beats`, dev mode), which passes -INF: landed, and long since felt.
+static func beat(id: StringName, at := NAN) -> bool:
 	if id == &"" or _beats.has(id):
 		return false
-	_beats[id] = true
+	_beats[id] = now if is_nan(at) else at
 	Events.story_beat.emit(id)
 	return true
 
@@ -145,6 +147,19 @@ static func forget_beat(id: StringName) -> void:
 
 static func landed(id: StringName) -> bool:
 	return _beats.has(id)
+
+
+## The world minute a beat landed, or INF when it has not.
+static func landed_at(id: StringName) -> float:
+	return float(_beats.get(id, INF))
+
+
+## Every beat landed, in no promised order.
+static func landed_beats() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in _beats:
+		out.append(id)
+	return out
 
 
 ## How far along an arc is, 0..1, by how many of its beats have landed.
@@ -183,23 +198,29 @@ static func save_state() -> Dictionary:
 	for id: StringName in _choices:
 		choices[String(id)] = String(_choices[id])
 	var beats := PackedStringArray()
+	var beat_at := {}
 	for id: StringName in _beats:
 		beats.append(String(id))
+		# JSON has no infinity: a beat staged as long ago is saved as long ago.
+		beat_at[String(id)] = maxf(float(_beats[id]), -1.0e9)
 	var met := PackedStringArray()
 	for id: StringName in _met:
 		met.append(String(id))
 	var seen: Array = []
 	for e: Dictionary in _ledger:
 		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
-	return {"read": read, "beats": beats, "choices": choices, "met": met, "ledger": seen}
+	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "ledger": seen}
 
 
 static func load_state(d: Dictionary) -> void:
 	forget()
 	for s: String in d.get("read", []):
 		_read.append(StringName(s))
+	# A save from before beats kept their minute knows only that they landed:
+	# long ago, and long since felt.
+	var beat_at: Dictionary = d.get("beat_at", {})
 	for s: String in d.get("beats", []):
-		_beats[StringName(s)] = true
+		_beats[StringName(s)] = float(beat_at.get(s, -1.0e9))
 	var choices: Dictionary = d.get("choices", {})
 	for k: Variant in choices:
 		_choices[StringName(str(k))] = StringName(str(choices[k]))

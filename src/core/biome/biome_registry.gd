@@ -56,9 +56,15 @@ static func count() -> int:
 ## surface island to a landscape that exists only under the world.
 static func land_in(realm: StringName) -> Array[BiomeDef]:
 	_ensure()
+	# A realm may be another one at a different time rather than a place of its
+	# own (`Realm.DEFS[...].same_land_as`): the Before is this coast in 2029, so
+	# it lays the same landscapes on the same island and only what STANDS there
+	# is different. Asked as data rather than special-cased here, so a second era
+	# is a row and not a branch.
+	var lays := Realm.land_realm(realm)
 	var out: Array[BiomeDef] = []
 	for d in _land:
-		if d.realms.has(realm):
+		if d.realms.has(lays):
 			out.append(d)
 	return out
 
