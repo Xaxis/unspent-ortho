@@ -431,11 +431,15 @@ func test_budgets() -> void:
 	#                           one of the three runs is contended, so the best of
 	#                           them is too.
 	#
-	# ASSERT THE CAUSE, NOT THE COST. What would make this stage expensive is the
-	# world getting fatter, and the count of evidence it lays is that cause — the
-	# same number on any machine, under any load, which no timing here has ever
-	# been. If it grows, the cost grows with it and the two printed numbers say by
-	# how much.
+	# Both, and they answer different questions. `cost_lt` keeps the share as a
+	# bar that says "cannot measure" under load instead of guessing (cb's
+	# 07b98fb, and the better answer — a door every cost test can use rather than
+	# one test's workaround). And the evidence COUNT is asserted outright, because
+	# it is the CAUSE: what would make this stage expensive is the world getting
+	# fatter, and a count is the same number on any machine under any load, which
+	# no timing here has ever been.
+	cost_lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
+		"the works stage as a share of generation (%.0f ms of %d)" % [works_ms, gen_ms])
 	lt(float(evidence), 1400.0, "evidence the works stage lays at 256 (%d)" % evidence)
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.

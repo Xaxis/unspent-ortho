@@ -109,7 +109,7 @@ func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 		Landmarks.sites(w)
 	var ms := best_of(3, cold) / 1000.0
 	print("landmarks: %.2f ms to site every landmark in a 512 world (cold, best of 3)" % ms)
-	lt(ms, 90.0, "siting them is not a stage a player waits through")
+	cost_lt(ms, 90.0, "siting them is not a stage a player waits through")
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
 	var t2 := Time.get_ticks_usec()

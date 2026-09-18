@@ -394,6 +394,17 @@ func _run() -> void:
 					await get_tree().process_frame
 				await get_tree().physics_frame
 				Input.action_release(parts[1])
+				# AND LET GO WHERE SOMETHING CAN SEE IT, for exactly the reason above
+				# read backwards. Without this the release and the NEXT press land in
+				# one frame, so anything watching for a rising edge never sees the key
+				# come up and two taps of one key are one press. It cost a real frame:
+				# `tours/story.tour` tapped `move_down` twice to reach the third reply,
+				# moved once, and shot `03-said-nothing` showing the keeper answering
+				# the SECOND reply — green, and proving the opposite of its own name.
+				# Thirteen sites across eleven tours were written against the broken
+				# behaviour; they are listed in the task and re-run with this.
+				await get_tree().process_frame
+				await get_tree().physics_frame
 			"wait":
 				await get_tree().create_timer(parts[1].to_float()).timeout
 			"shot":

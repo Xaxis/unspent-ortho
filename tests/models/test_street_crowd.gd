@@ -238,7 +238,7 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# hold: a street may not cost more than a millisecond a frame to walk
 	# through. No slack on it -- the measurement above already took the noise out,
 	# so this bar is the real number and can still fail for a real reason.
-	lt(step_us + count_us * 0.5, 1000.0,
+	cost_lt(step_us + count_us * 0.5, 1000.0,
 		"forty on a street cost under a millisecond a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
 	# And the build stays a ramp rather than a stall, because nothing builds two
 	# in one frame: what a player feels is the street filling in, not a hitch.

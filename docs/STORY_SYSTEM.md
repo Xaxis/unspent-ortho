@@ -236,6 +236,14 @@ than a player stuck at three in the morning.
 
 ## 7. The ledger — the world writing you down
 
+**Built.** `Story.note(act, land, minutes)` records what could have been seen
+(a works put dark, a keeper brought down, going below, being filed); `49_story`
+notes each from the event that is it. `StoryLedger` composes two records from it:
+the `hearsay` notebook, in a stranger's hand, which hears each act `LAG` (half a
+day) late, and the `error_log` terminal, which files it at once as an error. A
+fragment with `ledger` set is composed at read time. The ledger saves with the
+rest of `Story`, outside `WorldStamp`.
+
 The owner's chosen narrator (2026-09-18). There is no narrator voice and no
 omniscient line: instead **the record catches up with the player**, and what they
 find written about themselves is the narration.
