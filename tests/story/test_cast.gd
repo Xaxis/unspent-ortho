@@ -96,3 +96,31 @@ func test_a_named_person_is_there_and_answers_the_use_key() -> void:
 	check(Story.met(&"maren"), "and he has met her")
 	Sx.end(g)
 	Story.forget()
+
+
+## In a street of thirty, a passer-by with nothing to say who steps between him
+## and a named person must not take the key: somebody with words wins.
+func test_the_key_reaches_someone_with_words_before_a_nearer_stranger_without() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=11"])
+	await frames(3)
+	var cast: Node = Sx.system(g, "49_cast")
+	var spot: Vector2 = cast.call("tour_place", "cast:maren")
+	g.player.pos = spot
+	g.player.hero.pos = spot
+	await frames(10)
+	var maren := Vector2.INF
+	for row: Dictionary in cast.get("people"):
+		if row.character == &"maren":
+			maren = row.pos
+	g.player.facing = (maren - spot).angle()
+	var folk: Node = Sx.system(g, "folk")
+	var rows: Array = folk.get("folk")
+	var stranger := {"pos": spot + (maren - spot) * 0.4, "trade": &"child", "state": &"out"}
+	rows.append(stranger)
+	var story: Node = Sx.system(g, "49_story")
+	var picked: Dictionary = story.call("_person_in_front")
+	eq(StringName(str(picked.get("character", &""))), &"maren", "Maren, not the child standing nearer with nothing to say")
+	rows.erase(stranger)
+	Sx.end(g)
+	Story.forget()

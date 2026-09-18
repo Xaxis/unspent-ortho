@@ -249,22 +249,34 @@ func _person_in_front() -> Dictionary:
 	var folk: Array = _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
+	# Somebody with something to say beats a nearer somebody without: in a street
+	# of thirty, a passer-by stepping between him and the clerk he walked up to
+	# was answering the key with "nothing to say".
 	var best: Dictionary = {}
 	var best_d := REACH
+	var mute: Dictionary = {}
+	var mute_d := REACH
 	for row: Dictionary in folk:
 		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
 		var at: Vector2 = row.get("pos", Vector2.INF)
 		var to := at - from
 		var d := to.length()
-		if d > best_d or d < 0.01:
+		if d < 0.01 or d > REACH:
 			continue
 		if d > CLOSE and ahead.dot(to / d) < AHEAD:
 			continue
-		best = row.duplicate()
-		best["_d"] = d
-		best_d = d
-	return best
+		if StoryProps.talk_for(row, game) == &"":
+			if d < mute_d:
+				mute = row.duplicate()
+				mute["_d"] = d
+				mute_d = d
+			continue
+		if d < best_d:
+			best = row.duplicate()
+			best["_d"] = d
+			best_d = d
+	return best if not best.is_empty() else mute
 
 
 func _readable_in_front() -> WorldProp:

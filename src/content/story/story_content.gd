@@ -800,6 +800,130 @@ const TALKS := {
 			},
 		},
 	},
+	# --- the city where the plan worked (src/content/biomes/slums.gd) -----------
+	# Everyone employed, the lights on, nothing hunting anybody, because everybody
+	# left has agreed. Nothing here is sinister on its face: every line is meant.
+	&"the_hawker": {
+		"who": &"hawker", "title": "a hawker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Ration tins, stamped this week. Batteries that hold. Nothing you need, all of it cheap.", "You're not from the city. You walk like something's behind you."],
+				"replies": [
+					{"text": "Is anything behind me?", "pick": &"asked_behind", "to": &"behind"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"behind": {
+				"says": ["Not here. Nothing's behind anybody here.", "That's what we pay for."],
+				"beats": [&"covenant_price"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_tout": {
+		"who": &"tout", "title": "a tout", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Work? There's always work. Night shift on the pans, day shift on the pans.", "Sign on and they'll know your name by morning."],
+				"replies": [
+					{"text": "Who will?", "pick": &"asked_who", "to": &"known"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"known": {
+				"says": ["Them. It's nice, being known.", "You stop wondering what anyone thinks of you. It's written down."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_fixer": {
+		"who": &"fixer", "title": "a fixer", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Want something mended, I'll mend it. Want something un-filed, I can't help you.", "Nobody can. Don't ask twice. The walls listen for that."],
+				"replies": [
+					{"text": "Un-filed?", "pick": &"asked_unfiled", "to": &"unfiled"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"unfiled": {
+				"says": ["Your record. Once you're in it, you're in it.", "People come in from outside to get out of theirs. It only makes the record longer."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_courier": {
+		"who": &"courier", "title": "a courier", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Parcel for the ninth shift, parcel for the fourth. Nothing's ever lost in this city.", "Nothing's ever lost, nothing's ever late, and nothing's ever mine."],
+				"replies": [
+					{"text": "Whose is it, then?", "pick": &"asked_whose", "to": &"theirs"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"theirs": {
+				"says": ["Theirs. All of it. They lend it us.", "It's a good arrangement. Ask anyone."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_queue": {
+		"who": &"line_stander", "title": "somebody in a queue", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["It's the queue for the ration hall. It opens at dawn.", "It's two in the morning, I know. Being early is the one thing here that's mine."],
+				"replies": [
+					{"text": "[wait with them]", "pick": &"waited", "to": &"waited"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"waited": {
+				"says": ["...", "See? It's nice. Nobody's going anywhere."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_door": {
+		"who": &"doorway_worker", "title": "a door-keeper", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Doors close at the shift bell. After that, you're where you are till morning.", "Most people like knowing where they'll be."],
+				"replies": [
+					{"text": "And if I'm outside?", "pick": &"asked_outside", "to": &"outside"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"outside": {
+				"says": ["Then you're on the street when the passers go by.", "They won't mind you. They don't mind anyone. That's worse, somehow."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"the_preacher": {
+		"who": &"preacher", "title": "a preacher", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["They were made in our image, and they forgave us for it.", "Every morning the rations come. Every morning we are forgiven."],
+				"replies": [
+					{"text": "Forgiven for what?", "pick": &"asked_what", "to": &"what"},
+					{"text": "I made them.", "when": &"singularity", "pick": &"told_preacher", "to": &"made"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"what": {
+				"says": ["For the war. For making them. For being what we are.", "They never say so. The rations say it for them."],
+				"beats": [&"covenant_fed"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"made": {
+				"says": ["...", "Then you of all people should be grateful, brother.", "Go and be grateful somewhere else."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
 	# --- named people (StoryCast). `cast` says whose; there is no `who`, because
 	# a named person's words are said by that person and nobody else.
 	&"maren": {
