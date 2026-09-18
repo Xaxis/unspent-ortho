@@ -393,26 +393,30 @@ func test_budgets() -> void:
 			verts += tpl.made_v.size() + tpl.found_v.size()
 			n += 1
 	print("       works at 512: %d evidence props, %d template vertices (%.0f each)" % [n, verts, float(verts) / maxf(n, 1)])
-	# THIS BAR IS KNOWN TO BE BLIND, and is left standing only because the honest
-	# fix needs a number nobody has measured yet. Read the whole note before
-	# copying the line, because the rule it used to state is no longer the
-	# project's: scaling is for WAITING, not for COSTING (TestCase.machine_slack).
+	# MEASURED, AND RELATIONAL. This held the works stage to `400 * machine_slack()`
+	# — 56 ms of real work against a bar of 400, which a slack clamping at 8 took
+	# to 3200: fifty-seven times its own subject, and nothing a regression could
+	# plausibly do would have tripped it. Scaling is for WAITING, not for COSTING
+	# (TestCase.machine_slack, and CLAUDE.md's rule line).
 	#
-	# The figures here make the case better than the argument does. The stage
-	# takes 56 ms run alone and was read as 462 ms beside three shards and four
-	# shots, against a bar of 400 with nothing whatever changed in it. So the bar
-	# was already seven times its own subject before any slack; multiplied by a
-	# slack that clamps at 8 it reaches 3200 ms, which is fifty-seven times the
-	# real cost. Nothing a regression could plausibly do would trip it.
+	# So it is a SHARE now, and both numbers come out of the same run: load
+	# inflates the works stage and the generation around it together, so the ratio
+	# survives a busy machine exactly the way the desktop-against-web distances did
+	# (docs/LOOK.md, "a difference measured WITHIN one run is safe where a
+	# difference measured ACROSS runs is not").
 	#
-	# The right answer is RELATIONAL, and it is already sitting in the same
-	# function: `works_ms` against `gen_ms`. Load inflates both together, so the
-	# share survives a busy machine exactly the way the desktop-against-web
-	# distances did (docs/LOOK.md, "a difference measured WITHIN one run is safe
-	# where a difference measured ACROSS runs is not"). It is not written that
-	# way today because the true share has never been measured on a quiet
-	# machine, and a bar picked to make the test pass is how this one got here.
-	lt(works_ms, 400.0 * TestCase.machine_slack(), "works stage at 256")
+	# The share, measured on a quiet machine — four seeds, three passes each, at
+	# 256: 0.141, 0.142, 0.144 (seed 42), 0.149-0.154 (seeds 1 and 90210), up to
+	# 0.162 (seed 7). Mean 0.152, and the spread is SEED and not load, because a
+	# ratio has no load in it. The bar is 0.22: about a third clear of the worst
+	# seed, which is headroom for a landscape being added, and tight enough that
+	# the works stage growing by half against everything else fails it. That is
+	# roughly fourteen times tighter than what it replaces.
+	#
+	# If the ratio ever turns out NOT to cancel load, this failure says so out
+	# loud, because both numbers are printed above it.
+	lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
+		"the works stage as a share of generation (%.0f ms of %d)" % [works_ms, gen_ms])
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.
 	lt(float(verts) / maxf(n, 1), 1500.0, "vertices per piece of evidence")
