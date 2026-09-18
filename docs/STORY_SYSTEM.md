@@ -169,6 +169,14 @@ tile (`Realm.ERA`), so a 2029 slot names a 2098 one as its `mirror` and is cast 
 the same pick, exactly where its twin stands (`StoryPlan.THEN`,
 `tests/story/test_before.gd`).
 
+**Gates into 2029** (`StoryGates`): one at each of four 2098 places, opening
+onto the same tile in the era once its revelation has been felt, in the order
+the Seeker walks him through his life (house on `body_new`, the lab on
+`built_halcyon`, Ruth's table on `was_cia`, THRESHOLD on `threshold`). The story
+says where and when; crossing, and what a gate looks like, are the realms
+system's. The rooms of 2029 are not built as interiors: people stand at their
+thresholds in the world, and the words carry the room.
+
 **Legs, not distances.** The story crosses every continent people live on, in
 order (owner, 2026-09-18). A slot names its `leg`; `StoryJourney` orders the
 world's inhabited bodies outward from the spawn, and casting puts each slot on its
