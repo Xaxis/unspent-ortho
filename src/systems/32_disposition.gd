@@ -61,6 +61,10 @@ var _apply_left := 0.0
 var _work_left := 0.0
 var _last_minutes := 0.0
 var _stealing: int = -1
+## The seam being worked, so a region being stripped is filed once per seam and
+## not once a frame. Kept apart from `_stealing` because one is the plan's own
+## works and the other is the land's, and they are different sentences.
+var _quarrying: int = -1
 var _dispatch_at := -INF
 var _felt_level := 0
 ## Body.filed as this system last saw it (a clerk that got away raises it).
@@ -349,6 +353,7 @@ func _work_noise(delta: float) -> void:
 	var job := SurvivalState.of(game).job
 	if job.is_empty():
 		_stealing = -1
+		_quarrying = -1
 		return
 	var prop: WorldProp = job.get("prop")
 	_work_left -= delta
@@ -356,7 +361,16 @@ func _work_noise(delta: float) -> void:
 		_work_left = WORK_NOISE_EVERY
 		var verb: StringName = (job.get("option", {}) as Dictionary).get("verb", &"work")
 		_noise(verb if StealthNoise.ACTS.has(verb) else &"work")
-	if prop == null or prop.id == _stealing or not Takes.is_plan_work(prop.kind):
+	if prop == null:
+		return
+	# The land's own seams are not the plan's works, and taking one is not theft —
+	# but a region being stripped is a resource the plan surveyed going away, and
+	# it files that. Once per prop, like a theft, so leaning on one seam for a
+	# minute is one filing and not sixty.
+	if prop.id != _quarrying and Chapter.ore_kinds(game.world, game.world.region_at(floori(prop.pos.x), floori(prop.pos.y))).has(prop.kind):
+		_quarrying = prop.id
+		raise(&"quarried", prop.pos)
+	if prop.id == _stealing or not Takes.is_plan_work(prop.kind):
 		return
 	_stealing = prop.id
 	_theft(prop)
