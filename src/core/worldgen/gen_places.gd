@@ -8,6 +8,10 @@ class_name GenPlaces
 ##   "lighthouse", "firewatch" the Nth landmark worth the walk of that kind
 ##   "river"                   a bank beside the longest river's middle reach
 ##   "cliff"                   a tile at the foot of the tallest nearby face
+##   "open", "open_moss"       open standable ground, clear of every village and
+##                             every depot: room to fight in with nothing built
+##                             in shot, in the landscape the player wakes in or
+##                             in the one named
 ## find() returns Vector2(-1, -1) when a world has no such place.
 
 
@@ -29,6 +33,10 @@ static func find(w: WorldData, name: String) -> Vector2:
 		return river_sample(w)
 	if key == "cliff":
 		return cliff_sample(w)
+	if key == "open" or key.begins_with("open_"):
+		var land := key.trim_prefix("open").trim_prefix("_")
+		var want := BiomeRegistry.index_of(StringName(land)) if land != "" else w.country[int(w.spawn.y) * w.size + int(w.spawn.x)]
+		return open_sample(w, want) if want >= 0 else Vector2(-1, -1)
 	var digits := ""
 	while key.length() > 0 and key.right(1).is_valid_int():
 		digits = key.right(1) + digits
@@ -116,6 +124,67 @@ static func country_sample(w: WorldData, cc: int) -> Vector2:
 			if score > best_score:
 				best_score = score
 				best = Vector2(x + 0.5, y + 0.5)
+	return best
+
+
+## How far open ground must be from anything built. The play camera shows about
+## 26.7 x 17.9 tiles of ground, so half its width is 13.4: at twenty tiles no
+## village and no depot is in the shot, and there is room left for a target lock
+## to lean the frame off the player without walking one into it.
+const CLEAR_OF_BUILT := 20.0
+## How far round the tile itself has to be standable, so a body can be put down
+## beside the player and fought without a boulder in the way.
+const ROOM := 5
+
+
+## Open standable ground in a landscape, well clear of every village and every
+## depot of the plan.
+##
+## This is what twelve staged tour frames were reaching for with a coordinate and
+## could not ask for by name (CLAUDE.md, "Stage by name, never by a coordinate"):
+## room to fight in, with nothing built in shot. `country_sample` is NOT it --
+## that one is a tile deep inside a country, and deep inside a country is exactly
+## where a village sits. Measured: "coast" lands 21.5 tiles from the nearest
+## built thing on seed 1, 35.0 on seed 4 and 25.5 on seed 42 -- over the line, but
+## by luck rather than by rule, and the first of those by a tile and a half.
+## "open" is 44.6, 56.6 and 45.4 on the same three.
+##
+## Pure and derived like every other name here, so a tour asking for it gets the
+## same ground every run, and different but still-correct ground the day worldgen
+## moves the island under it.
+static func open_sample(w: WorldData, cc: int) -> Vector2:
+	var solid := solid_mask(w)
+	var built: Array[Vector2] = []
+	for v: Dictionary in w.villages:
+		built.append(v.pos as Vector2)
+	for s in Works.sites(w):
+		built.append(s.pos)
+	var best := Vector2(-1, -1)
+	var best_score := -1.0
+	for y in range(6, w.size - 6, 3):
+		for x in range(6, w.size - 6, 3):
+			var i := y * w.size + x
+			if w.country[i] != cc or w.blend[i] > 0.0 or not standable(w, solid, x, y):
+				continue
+			var here := Vector2(x + 0.5, y + 0.5)
+			var shut := false
+			for b in built:
+				if b.distance_to(here) < CLEAR_OF_BUILT:
+					shut = true
+					break
+			if shut:
+				continue
+			# Of the ground that qualifies, the most open: the tile with the fewest
+			# things to stand behind is the one a fight reads in.
+			var room := 0.0
+			for dy in range(-ROOM, ROOM + 1):
+				for dx in range(-ROOM, ROOM + 1):
+					if standable(w, solid, x + dx, y + dy):
+						room += 1.0
+			var score := room + Rng.hash01(w.seed_value, x, y, 11) * 0.5
+			if score > best_score:
+				best_score = score
+				best = here
 	return best
 
 
