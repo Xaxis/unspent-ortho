@@ -358,6 +358,12 @@ static func make() -> BiomeDef:
 	# own survey bearing, which is the line every ruled work on the island already
 	# lies on, so the traffic runs on the same grid as everything else they laid.
 	d.fliers = 6
+	# AND LIGHT STANDING IN THE AIR. The boards on brackets are the advertising you
+	# can read; this is the half you cannot — a column of light over a roof with
+	# nothing holding it up, which is the one piece of a cyberpunk city this engine
+	# had in no form at all. A third of the buildings, because a street where every
+	# roof projects is a fairground and this city is supposed to be TIDY.
+	d.holograms = 0.34
 	# Smog weather. The cliché is rain, so rain is here and is not the most of it:
 	# what a city under a working plant really gets is haze and flat grey, and the
 	# clear days are the ones the wind took the dome sideways.

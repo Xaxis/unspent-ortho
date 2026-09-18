@@ -319,6 +319,19 @@ var street_folk := 0
 ## Runtime only, so a LOOK field in `WorldStamp`: it moves no island and refuses
 ## no save.
 var fliers := 0
+## The share of this landscape's BUILDINGS that project a hologram over their own
+## roof, 0..1 (`src/render/depth/holo_view.gd`, `17_holo`). 0 is every landscape
+## that has not asked, and the layer builds nothing there.
+##
+## Only what a landscape built UPWARD can carry one — a column of light over a
+## cottage is a joke — so this does nothing at all without a `built` whose forms
+## stand over four units. It is the other half of "advertising": a sign arm hangs
+## a lit BOARD over a lane, and this is light standing in the air with nothing
+## holding it up.
+##
+## Runtime only, so a LOOK field in `WorldStamp`: it moves no island and refuses
+## no save.
+var holograms := 0.0
 ## The player wakes in this landscape.
 var spawn_home := false
 
