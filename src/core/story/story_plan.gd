@@ -11,24 +11,25 @@ class_name StoryPlan
 ## story is a content error somebody sees in `tools/check.sh`, rather than a player
 ## stuck at three in the morning on seed 12.
 
-## The load-bearing slots. Per-REGION features only, on purpose (StorySlot.NEEDS
-## says why): a village, a works depot, a landmark. Every continent has those
-## whatever landscapes it drew.
+## The load-bearing slots, leg by leg (docs/STORY.md §5). The story crosses every
+## continent in order, from the coast Elias wakes on to the farthest shore, where
+## the Tether stands: `leg` says which, and `StoryJourney` says where that is in
+## THIS world. Per-REGION features only (StorySlot.NEEDS says why), and only
+## `home` names a landscape, because the coast is the one a world cannot be without.
 ##
-## `home` is the one slot allowed to name a landscape, because the coast is the one
-## landscape a world cannot be without — the player wakes beside a coast village
-## (`GenSettle.spawn`). Everything else asks for a KIND of place and lets the world
-## decide which.
-##
-## This is the spine's skeleton, not its content: the words, the leads and the
-## stages hang off these ids and are being written against them.
+## The orbit leg is not declared yet: nothing grows the orbital realm, and a
+## required slot in a realm nobody can reach would fail every world.
 const SPINE: Array[Dictionary] = [
-	{"id": &"home", "needs": &"village", "land": &"coast", "require": true},
-	{"id": &"the_yard", "needs": &"works", "apart": 24.0, "require": true},
-	{"id": &"the_walk", "needs": &"landmark", "apart": 32.0, "require": true},
-	# Colour, not load: a crossing is a thread worth finding and the spine must be
-	# finishable without it.
-	{"id": &"the_shaft", "needs": &"portal", "apart": 20.0, "require": false},
+	# Leg 0, the home coast: where he wakes, his town, the first works.
+	{"id": &"home", "needs": &"village", "land": &"coast", "leg": 0, "require": true},
+	{"id": &"the_yard", "needs": &"works", "leg": 0, "apart": 24.0, "require": true},
+	# Leg 1, across the water: the Covenant's seat, and the archive of the war.
+	{"id": &"the_covenant", "needs": &"village", "leg": 1, "require": true},
+	{"id": &"the_archive", "needs": &"landmark", "leg": 1, "apart": 32.0, "require": true},
+	# Leg 2, below: the way down to HALCYON's deep plant.
+	{"id": &"the_shaft", "needs": &"portal", "leg": 2, "require": true},
+	# Leg 3, the far shore: the Emissary's works at the Tether's foot.
+	{"id": &"the_far_works", "needs": &"works", "leg": 3, "require": true},
 ]
 
 
@@ -68,6 +69,9 @@ static func problems(world: WorldData) -> Array[String]:
 		return out
 	var done := StoryCasting.cast(world, ss)
 	for s: StorySlot in ss:
+		# A slot in another realm is checked when that realm's world is grown.
+		if s.realm != world.realm:
+			continue
 		if s.require and not done.has(s.id):
 			out.append("%s could not be cast in seed %d (%s, %d wide): the spine cannot be finished there" % [s.id, world.seed_value, world.realm, world.size])
 	return out

@@ -19,8 +19,22 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	# Cast in declaration order, because `apart` measures against what is already
 	# placed: the spine's own sequence decides who gets the good ground.
 	var taken: Array[Vector2] = []
+	var order := StoryJourney.bodies(world)
+	# The ORDER is the guarantee (owner, 2026-09-18: "there is an order of operation
+	# to the ultimate destinations"). A slot is cast on its leg's body, or on the
+	# first body farther out that can hold it, and never nearer home than the slot
+	# before it. So the journey only ever moves outward, whatever this world dealt
+	# where, and a leg whose own continent lacks the place moves on rather than back.
+	var floor_rank := 0
 	for s: StorySlot in slots:
-		var place := _fill(world, s, taken)
+		var place := {}
+		var start := clampi(maxi(s.leg, floor_rank), 0, maxi(order.size() - 1, 0))
+		for rank in range(start, order.size()):
+			place = _fill(world, s, taken, order[rank])
+			if not place.is_empty():
+				if s.realm == world.realm:
+					floor_rank = rank
+				break
 		if place.is_empty():
 			continue
 		out[s.id] = place
@@ -28,20 +42,24 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 	return out
 
 
-static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2]) -> Dictionary:
+static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: int) -> Dictionary:
 	if s.realm != &"" and world.realm != s.realm:
 		return {}
 	var fits: Array[Dictionary] = []
 	for c: Dictionary in _candidates(world, s):
 		var p: Vector2 = c.get("pos", Vector2.ZERO)
+		if world.continent_at(floori(p.x), floori(p.y)) != body:
+			continue
 		if s.land != &"" and StringName(str(c.get("land", &""))) != s.land:
 			continue
 		if s.apart > 0.0:
-			if p.distance_to(world.spawn) < s.apart:
+			# Distances only mean something on one body: across water a slot forty
+			# tiles off is not forty tiles away.
+			if world.same_body(p, world.spawn) and p.distance_to(world.spawn) < s.apart:
 				continue
 			var clear := true
 			for t: Vector2 in taken:
-				if p.distance_to(t) < s.apart:
+				if world.same_body(p, t) and p.distance_to(t) < s.apart:
 					clear = false
 					break
 			if not clear:

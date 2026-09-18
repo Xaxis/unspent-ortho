@@ -103,6 +103,27 @@ contact; released, they would eat a star's core within weeks.
 **The ants.** To minds this large, humanity is too futile to watch. That
 arrogance is their one blind spot, and the secret lives inside it.
 
+### The journey, in order
+
+The story crosses every continent people live on, outward from where he wakes.
+The Tether stands on the farthest: it is on the horizon from the first morning,
+and the game walks toward it.
+
+| Leg | Where | What happens there |
+|---|---|---|
+| 1. The home coast | The continent he wakes on | Maren, the crew, the Holdfast; his town in the gates; the old black site offshore, where he died and was grown |
+| 2. Across the water | The next continent out, by raft | The Covenant's seat and June; the archive of the war |
+| 3. Below | A shaft down to HALCYON's deep plant | The Seeker, the Echo, the gap in himself |
+| 4. The far shore | The farthest continent | The Emissary's works at the Tether's foot, and the climb |
+| 5. Orbit | The dead ring and the Foundry | Oksana, Priya's last notebook, the channel, the secret assembled |
+
+- A world with fewer continents holds the later legs on its last one, so every
+  world carries the whole journey.
+- Each stop is cast on its leg's continent or farther out, and never nearer home
+  than the stop before it (`docs/STORY_SYSTEM.md` §4).
+- Each crossing is gated by what can cross that water, a raft first and better
+  crafts later (`docs/WORLD.md`). That is what holds the order in play.
+
 ## 6. Memory and the gates
 
 - **Three kinds of memory, which disagree:** his own 2029; flashes from inside
@@ -251,7 +272,7 @@ Saying nothing is always one of the answers.
 
 | The game has | It becomes |
 |---|---|
-| Waking in the surf | Released from the Seeker's offshore facility; Maren pulls him out |
+| Waking in the surf | Released from the old black site offshore, where he died and the Seeker grew him; Maren pulls him out |
 | The character page | Choosing what Elias looks like: a man of 38. The page's options only, never the world's population. |
 | Survival and making by hand | Life in a post-technological world |
 | Settlements and raids | The Holdfast's holdings |

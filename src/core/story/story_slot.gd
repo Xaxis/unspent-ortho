@@ -35,8 +35,14 @@ var kind: StringName = &""
 ## guarantees — `StoryWorld.guaranteed`, enforced by `StoryPlan.problems`.
 var land: StringName = &""
 var realm: StringName = &"surface"
-## Tiles clear of the spawn, and of every slot cast before this one, so a thread
-## the player is meant to walk to is not three paces from the fire.
+## Which leg of the journey this belongs to: 0 is the body Elias wakes on, 1 the
+## next one out, and so on (`StoryJourney`). The story spans every continent in
+## order, so a slot names its leg and never a continent.
+var leg := 0
+## Tiles clear of the spawn (on the home leg), and of every slot cast before this
+## one on the same body, so a thread the player is meant to walk to is not three
+## paces from the fire. Never measured across water: a distance cannot say whether
+## two places share land (`WorldData.same_body`).
 var apart := 0.0
 ## LOAD, not colour. The spine needs it; a world that cannot cast it is a content
 ## error caught in the gate.
@@ -50,6 +56,7 @@ static func make(d: Dictionary) -> StorySlot:
 	s.kind = StringName(str(d.get("kind", &"")))
 	s.land = StringName(str(d.get("land", &"")))
 	s.realm = StringName(str(d.get("realm", &"surface")))
+	s.leg = int(d.get("leg", 0))
 	s.apart = float(d.get("apart", 0.0))
 	s.require = bool(d.get("require", false))
 	return s
