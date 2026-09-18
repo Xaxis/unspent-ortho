@@ -154,13 +154,13 @@ continent has villages, a works depot per worked region, landmarks and a portal,
 whatever landscapes it drew. A spine built from those cannot be dealt out of a
 world.
 
-**Across water, `apart` lies.** Continents are real (`bbaf89f`): at large sizes a
-world is several landmasses with ocean between them. `apart` measures tiles in a
-straight line, so on such a world a slot forty tiles off may be across the sea.
-Every size the tests and tours use today is still one island, so nothing has
-moved yet. Before a multi-continent world is cast, required slots must be held
-to the player's home landmass and `apart` measured over land (unspent-ortho-df,
-2026-09-18).
+**Legs, not distances.** The story crosses every continent people live on, in
+order (owner, 2026-09-18). A slot names its `leg`; `StoryJourney` orders the
+world's inhabited bodies outward from the spawn, and casting puts each slot on its
+leg's body or farther out, never nearer home than the slot before it. `apart` is
+measured only between places on one body (`WorldData.same_body`), because across
+water a slot forty tiles off is not forty tiles away. A body counts only if a
+village stands on it: a 1024 world has four continents and forty islets.
 
 ---
 
