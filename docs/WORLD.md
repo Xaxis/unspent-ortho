@@ -83,6 +83,12 @@ derivable-but-not-recorded, downstream code will infer continent from latitude o
 from the ocean mask, and this document will be rewritten in a month with twenty
 landscapes instead of eleven.
 
+**Guard the door with a test, not with care.** `tests/render/test_one_writer.gd`
+fails when anything but `SkyLight` writes the sky globals, and it caught a real
+bypass this week by somebody who knew the rule. `WorldData.continent` wants the
+same on the day it lands: one writer, and a test that fails when a second appears.
+A rule that is only in a header is a rule until the first hurry.
+
 `WorldData.region`'s own comment already records this lesson being learnt once:
 it is an int array and not bytes because *"a byte would silently alias the tail of
 them onto each other's ids"*.
@@ -213,10 +219,14 @@ the no-threads web path raises one inline for "the one frame the shaft costs".
 Making the underground need the surface *world* would turn that frame into two
 world generations and hold both resident — a hitch becomes a hang, on the web,
 where it is hardest to see coming. So the body stage splits in two: **`Bodies.plan(seed, size, realm)` is pure, cheap and deterministic — footprints, budgets, bands, dealt
-type sets — and the expensive filling is what `GenShape` and the rest do.** The
-underground calls `plan` for the SURFACE (cheap, no world) and fills those
-footprints itself. The dependency is on a plan, not on a world, and nothing about
-`RealmWorlds` changes.
+type sets — and the expensive filling is what `GenShape` and the rest do.** **And `plan` OWNS that rule — the caller never does.** Asking it for the
+underground's plan returns the surface's footprints carrying the underground's own
+type sets and bands. Putting "the underground asks for the surface's plan" in the
+caller would mean every future caller has to know the underground is special, and
+the first one that does not gets its own unrelated caverns under somebody else's
+continents. That is rule one applied to an API: the rule lives in one place and
+nobody can fail to apply it. The dependency is on a plan, not on a world, and
+nothing about `RealmWorlds` changes.
 
 **The orbital realm does not inherit anything.** A captured asteroid is not under
 a continent. Its bodies are laid freely, and a portal to orbit is a different
@@ -295,6 +305,21 @@ so they are made here rather than asked upward.
    regions stop qualifying as places. So the world square GROWS with body count
    rather than the bodies shrinking to fit it — roughly `512 * sqrt(bodies)` plus
    the ocean between them.
+
+   **Which makes `size` an OUTPUT of planning, not an input**, and the signature has
+   to say so or it is circular: you cannot size the square until you know how many
+   bodies, and the bodies are decided in the plan. So it is
+   `Bodies.plan(seed, realm, want_size := 0) -> {size, bodies}`, and `BootWorld`
+   asks the plan for the size instead of being told it. **How many bodies is the
+   REALM's to say** (the table in §2), not a caller's argument and not a function of
+   resolution — "one or a few large oceans" is a property of the world, not a
+   consequence of how big a square somebody asked for.
+   `want_size` is what `--size=` becomes: a ceiling, honoured by reducing the body
+   count until each remaining body still holds a legible continent, with a floor of
+   one. **This is what keeps the repository working**: every `--size=64` and
+   `--size=256` in the tests and tours gets ONE body, which is exactly today's world,
+   so every spatial assertion written against one island goes on meaning what it
+   meant. The continents appear at the sizes a played world uses.
 5. **Region ids are global.** `WorldData.region` is already an int array for
    exactly this reason, and ids continue across bodies rather than restarting;
    each entry in `regions` carries its `continent`. Sentinels, works and saves key
@@ -318,3 +343,10 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   seam test pass and cost **40% of the world's blend mass** — passing a test by
   flattening the ecotones the test exists to protect.
 - **A clock in the gate is scaled, or it is measuring the laptop.**
+- **A feature that is silently off looks exactly like a feature that is subtle.**
+  `matter_wear()` returns early while `sky_view.z <= 0`, only `SkyLight.set_ground`
+  writes it, and the gallery never called it — so LANTERN's first law was switched
+  OFF in every model review this project has ever taken, the wave's own included,
+  and every one of those reviews read as "the wear is subtle here". It was found by
+  forcing the input to white and seeing nothing change. When a thing looks weak,
+  prove it is running before you tune it.
