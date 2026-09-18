@@ -415,7 +415,9 @@ func _on_hurt(e: Dictionary) -> void:
 	Events.hit.emit(_node_of(by), player, int(e.damage), false, _at3(hero.pos))
 	Events.sfx.emit(&"hit_flesh", player.position)
 	player.model.play_action(&"hurt", 0.3)
-	player.flash(0.08)
+	# Where the blow came from, so the flash goes hot on the side it landed on
+	# rather than over the whole body (Player.flash).
+	player.flash(0.08, _at3(hero.pos - dir * 0.35, 0.9))
 	_stop(HITSTOP_HURT)
 	game.camera.shake(0.12, 0.18)
 	MobFx.burst(fx, _at3(hero.pos - dir * 0.15, 0.75), 0.9, int(sim.now) + 9)

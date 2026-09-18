@@ -142,7 +142,16 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	var flashing := Time.get_ticks_msec() < _flash_until
 	if flashing != _flashing:
 		_flashing = flashing
-		var r := MobFx.flash_radius(float(s.row.get("height", 1.0))) if s.machine else 0.0
+		# EVERY BODY FLASHES THROUGH ITS OWN MATERIAL, not only machines. A radius
+		# of 0 is what sends `MobFx.set_flash` down the ink-era path — an unshaded
+		# paper silhouette laid over the whole body — and a person or an animal
+		# went down it for no reason anybody wrote down. Both lit shaders carry
+		# `flash_at`/`flash_r` (world.gdshader for MADE, found.gdshader for FOUND),
+		# so a struck villager now goes hot where it was hit and stays the material
+		# it is. A machine still flashes by PART, which is the narrower thing and
+		# the reason the point was being carried in the first place.
+		var h := float(s.row.get("height", 1.0))
+		var r := MobFx.flash_radius(h) if s.machine else maxf(h, MobFx.flash_radius(h))
 		MobFx.set_flash(model, flashing, _flash_at, r)
 
 

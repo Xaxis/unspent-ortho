@@ -37,6 +37,13 @@ var ride: CraftRide = null
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
+## Where in the world the blow landed, so the flash is made of light and not of
+## paper (see `flash`). Mobs have carried this since machines flashed by part.
+var _flash_at := Vector3.ZERO
+## Half a body up: what "the whole of you" means to a flash with no point.
+const FLASH_MID := 0.85
+## How much of a body one flash covers when nothing says where it was struck.
+const FLASH_WHOLE := 1.4
 var _shudder_left := 0.0
 var _arc: MeshInstance3D
 var _arc_blow: Blow
@@ -114,8 +121,24 @@ func draw_swing(now_ms: float) -> void:
 
 
 ## A hit landed on this body: a short bright flash.
-func flash(seconds: float = 0.07) -> void:
+##
+## `at` is WHERE, in world space, and it is what keeps the flash made of light.
+## Given a point, `MobFx.set_flash` writes `flash_at`/`flash_r` into a copy of
+## the body's own material and the lit shaders answer with EMISSION over a black
+## albedo (world.gdshader, found.gdshader) — the body stays the material it is
+## and a part of it goes hot. Given nothing, it falls back to an unshaded paper
+## silhouette from the ink era, which is what the player's flash has always been:
+## `flash()` never took a point, so the one body the camera is always on was the
+## one body still painted over. Vector3.INF means "no point": the whole body.
+func flash(seconds: float = 0.07, at: Vector3 = Vector3.INF) -> void:
 	_flash_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+	_flash_at = at if at.is_finite() else model_centre()
+
+
+## The middle of the body, for a flash nobody located: pressure and cold strike
+## the whole of you, not a plate.
+func model_centre() -> Vector3:
+	return position + Vector3(0.0, FLASH_MID, 0.0)
 
 
 ## In water over the head, and not standing on something that floats: the gait
@@ -180,7 +203,7 @@ func _sync(delta: float) -> void:
 	var flashing := Time.get_ticks_msec() < _flash_until
 	if flashing != _flashing and model != null:
 		_flashing = flashing
-		MobFx.set_flash(model, flashing)
+		MobFx.set_flash(model, flashing, _flash_at, FLASH_WHOLE)
 
 
 ## Screen-relative input to world-space intent for a camera at yaw_deg.
