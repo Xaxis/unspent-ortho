@@ -41,11 +41,21 @@ const LOOK_EVERY := 0.2
 ## player through a shaft cannot also take them straight back out of it — and,
 ## through `use_spent()`, cannot be answered a second time by anything else.
 const SETTLE := 0.6
+## How near an era gate a body must be to step through it. Smaller than a shaft's
+## reach: a gate is a patch of another day lying on the ground and you step INTO
+## it, rather than walking up to a mouth and climbing down.
+const GATE_REACH := 1.5
 
 ## This game's shafts, in the realm it is in now.
 var here: Array[Portal] = []
 ## The shaft within reach of the player, or null.
 var reachable: Portal = null
+## The id of the open era gate the player is standing in, or &"". A gate is not a
+## `Portal`: it pairs by COORDINATE rather than by index, because the Before is
+## this same coast (`Realm.land_realm`) and a way through time that moved you
+## sideways as well as back would be a different place, not a different year.
+var gate_near: StringName = &""
+var _gate_nodes: Dictionary = {}
 ## How many times the player has crossed.
 var crossings := 0
 
@@ -126,9 +136,14 @@ func _process(delta: float) -> void:
 	if _look <= 0.0:
 		_look = LOOK_EVERY
 		_watch()
+		_watch_gates()
+		_draw_gates()
 	if reachable != null and _settle <= 0.0 and not game.input_blocked() \
 			and Input.is_action_just_pressed(&"use") and _shaft_wins():
 		cross(reachable)
+	elif gate_near != &"" and _settle <= 0.0 and not game.input_blocked() \
+			and Input.is_action_just_pressed(&"use"):
+		cross_era()
 
 
 ## `use` is one key and a shaft is one more thing it can mean, so it takes the
@@ -175,6 +190,15 @@ func _watch() -> void:
 func _stand_gates() -> void:
 	if game.view == null:
 		return
+	for gid: Variant in _gate_nodes:
+		var gn := _gate_nodes[gid] as Node3D
+		if bool(gn.get_meta(&"stood", false)):
+			continue
+		var gp: Vector2 = gn.get_meta(&"at", Vector2.ZERO)
+		if game.view.chunk_at(gp) == null:
+			continue
+		gn.position = Vector3(gp.x, game.view.surface_height(gp), gp.y)
+		gn.set_meta(&"stood", true)
 	for id: int in _nodes:
 		if bool(_placed.get(id, false)):
 			continue
@@ -183,6 +207,72 @@ func _stand_gates() -> void:
 			continue
 		(_nodes[id] as Node3D).position = Vector3(p.pos.x, game.view.surface_height(p.pos), p.pos.y)
 		_placed[id] = true
+
+
+## Go through a gate into 2029, or back out of it (docs/STORY.md §6).
+##
+## AT THE SAME COORDINATES, BOTH WAYS. A shaft pairs by index because two realms
+## are two islands that share no ground; the era shares every tile, so a gate
+## lands you on the tile you left and the way back is the spot you are standing
+## on. That is the whole reason the Before was built tile for tile, and it is why
+## this does not go anywhere near `Portals`.
+func cross_era() -> void:
+	var here_pos: Vector2 = game.player.pos
+	var to := Realm.SURFACE if _realm == Realm.ERA else Realm.ERA
+	Events.sfx.emit(&"door", game.player.position)
+	_go(to, here_pos, -1, true)
+	crossings += 1
+	if to == Realm.ERA:
+		Events.message.emit("The light changes, and the year with it. 2029.")
+	else:
+		Events.message.emit("Back, and the years come with you.")
+
+
+## A drawn gate for every gate this world holds, open or shut, rebuilt when its
+## OPENNESS changes. A shut gate is still a thing standing in the world — the
+## Seeker put the frame there before the beat lands — and seeing one before it
+## works is most of what makes the next beat mean anything.
+func _draw_gates() -> void:
+	if game.view == null or _gates == null:
+		return
+	for g: Dictionary in StoryGates.all(game.world):
+		var id: StringName = g.id
+		var was: Variant = _gate_nodes.get(id)
+		var is_open := bool(g.open)
+		if was != null and bool((was as Node3D).get_meta(&"open", false)) == is_open:
+			continue
+		if was != null:
+			(was as Node3D).queue_free()
+		var n := EraGate.node(is_open)
+		n.set_meta(&"open", is_open)
+		var p: Vector2 = g.pos
+		# STOOD ONCE THE CHUNK UNDER IT EXISTS, for the same reason a shaft is
+		# (`_stand_gates`): before the mesher has been there `surface_height`
+		# answers 0, and a gate placed on that answer is buried under its own
+		# ground on every terrace above sea level. It was invisible in the first
+		# frame I shot of it and nothing errored.
+		n.position = Vector3(p.x, game.world.height_at(p), p.y)
+		n.set_meta(&"at", p)
+		_gates.add_child(n)
+		_gate_nodes[id] = n
+		var mi := n.get_child(0) as MeshInstance3D
+		print("world GATEDBG %s open=%s at=%s surfaces=%d verts=%d" % [id, str(is_open), str(n.position), mi.mesh.get_surface_count() if mi.mesh != null else -1, mi.mesh.surface_get_array_len(0) if mi.mesh != null and mi.mesh.get_surface_count() > 0 else -1])
+
+
+## Which open gate the player is standing in, if any. Asked on the same beat as
+## the shafts, because they answer the same key.
+func _watch_gates() -> void:
+	gate_near = &""
+	if game.world == null:
+		return
+	var at: Vector2 = game.player.pos
+	for g: Dictionary in StoryGates.open(game.world):
+		if (g.pos as Vector2).distance_to(at) <= GATE_REACH:
+			gate_near = g.id
+			if not _taught.has(g.id):
+				_taught[g.id] = true
+				Events.hint.emit("Another day is standing on the ground here. E to step into it.", "use")
+			return
 
 
 ## Go through a shaft.
@@ -265,6 +355,10 @@ func _read_portals() -> void:
 	reachable = null
 	_taught.clear()
 	_placed.clear()
+	gate_near = &""
+	for g: Variant in _gate_nodes.values():
+		(g as Node3D).queue_free()
+	_gate_nodes.clear()
 	for c: Variant in _nodes.values():
 		(c as Node3D).queue_free()
 	_nodes.clear()
@@ -310,6 +404,12 @@ func tour_seen(what: String) -> bool:
 		return crossings > 0
 	if what.begins_with("realm:"):
 		return String(_realm) == what.substr(6)
+	if what == "era_gate":
+		return gate_near != &""
+	if what.begins_with("era_gate:"):
+		return String(gate_near) == what.substr(9)
+	if what == "before":
+		return _realm == Realm.ERA
 	return false
 
 
