@@ -13,6 +13,17 @@ extends Node3D
 ## the review surface's and not the game's (boot_options.gd lists them beside
 ## --silhouette):
 ##
+##   --wear=LAND,LAND  stand each model once per landscape and lay THAT LAND'S
+##                     WEAR on it: the same hull rusted in the bog, bloomed on
+##                     the salt, sooted in the Burning, iced on the snowfield,
+##                     side by side under one sky. LANTERN law 1 is "wear
+##                     accumulates by world position" and until this flag existed
+##                     no model review had ever shown it — not in one state, in
+##                     NONE, because `matter_wear()` returns zero while
+##                     `sky_view.z <= 0` and the gallery never set it. So the law
+##                     could not be shown or refuted by any frame anybody looked
+##                     at. Names are `SkyWear.OF`'s: an unknown one is refused
+##                     rather than quietly worn like the coast.
 ##   --filter=NAME     only items whose name contains NAME
 ##   --bearing=DEG     turn the camera DEG round the models. 0 is the play
 ##                     camera's own 45 degrees; 180 is the half of every model
@@ -100,6 +111,7 @@ func setup(o: BootOptions) -> void:
 	var bearing := 0.0
 	var turned := false
 	var piece := ""
+	var wear: PackedStringArray = []
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--filter="):
 			filter = a.trim_prefix("--filter=")
@@ -108,11 +120,24 @@ func setup(o: BootOptions) -> void:
 			turned = true
 		elif a.begins_with("--piece="):
 			piece = a.trim_prefix("--piece=")
+		elif a.begins_with("--wear="):
+			wear = a.trim_prefix("--wear=").split(",", false)
 	if filter != "":
 		items = items.filter(func(it: Dictionary) -> bool: return String(it.name).contains(filter))
 
-	var cols := maxi(1, ceili(sqrt(items.size() * 1.8)))
 	var spacing := 3.2
+	var cols := maxi(1, ceili(sqrt(items.size() * 1.8)))
+	if not wear.is_empty():
+		for land in wear:
+			if not SkyWear.OF.has(StringName(land)):
+				push_error("--wear=%s: no such landscape in SkyWear.OF (%s)" % [land, ", ".join(SkyWear.OF.keys())])
+				get_tree().quit(1)
+				return
+		# One COLUMN per landscape and one ROW per model, so a row reads as the
+		# same thing in four places and a column as four things in one place.
+		items = _per_wear(items, wear)
+		cols = wear.size()
+		_wear_swatch(sky, wear, spacing)
 	var rows := ceili(float(items.size()) / cols)
 	var plinth := MeshKit.new()
 	plinth.box(Vector3(-1.5, -0.5, -1.5), Vector3(cols * spacing + 0.3, 0.0, rows * spacing + 0.3), Palette.STONE[2], Palette.MOSS[3])
@@ -124,7 +149,12 @@ func setup(o: BootOptions) -> void:
 	for i in items.size():
 		var it: Dictionary = items[i]
 		var node: Node3D = it.node
-		node.position = Vector3((i % cols) * spacing, 0.0, (i / cols) * spacing)
+		# Half a cell across WHEN THE WEAR BANDS ARE ON, so a model sits at the
+		# centre of its own texel and not on the seam between two of them (see
+		# `_wear_swatch`). Off, the grid is where it always was, so every frame
+		# this instrument has already taken stays comparable with the next.
+		var mid := 0.5 if not wear.is_empty() else 0.0
+		node.position = Vector3(((i % cols) + mid) * spacing, 0.0, (i / cols) * spacing)
 		_apply_material(node)
 		add_child(node)
 		shown.append(node)
@@ -524,6 +554,62 @@ func _is_found(mi: MeshInstance3D, surface: int) -> bool:
 	if mat == null:
 		mat = mi.mesh.surface_get_material(surface)
 	return mat is ShaderMaterial and (mat as ShaderMaterial).shader == FOUND_SHADER
+
+
+## Each item once per landscape, in the order the landscapes were named, so the
+## grid comes out a row per model and a column per land.
+static func _per_wear(items: Array, wear: PackedStringArray) -> Array:
+	var out: Array = []
+	for it: Dictionary in items:
+		for i in wear.size():
+			var node: Node3D = it.node if i == 0 else (it.node as Node3D).duplicate()
+			out.append({"name": "%s %s" % [it.name, wear[i]], "node": node})
+	return out
+
+
+## Bind a wear texture the gallery's own grid samples, and the scale that makes
+## it line up. Built HERE and not in `SkyWear`, which is under the frozen
+## `src/render/` (CLAUDE.md): this reads that file's public table and nothing
+## else, so the review surface can show the law without the law's own package
+## being touched.
+##
+## The shaders sample `sky_wear` at `world.xz * sky_view.z`, so a column of the
+## grid maps to a band of the image. Each landscape gets BLOCK texels rather than
+## one: the sampler filters linearly, and a model two units wide centred in a
+## 3.2-unit cell would otherwise blend a third of its neighbour's rust into its
+## own bloom. At 32 texels a cell, a model of that width spans twenty of them,
+## centred, and never reaches the seam.
+##
+## `sky_ground` is bound to zeroes at the same time. It is sampled WITHOUT the
+## `sky_view.z` guard `matter_wear` has, so switching the scale on would
+## otherwise start every snow, ash, wet and fog lookup reading whatever texture
+## was last left in the global.
+func _wear_swatch(sky: SkyLight, wear: PackedStringArray, spacing: float) -> void:
+	const BLOCK := 32
+	var n := wear.size()
+	var w := n * BLOCK
+	var wear_img := Image.create(w, 1, false, Image.FORMAT_RGBA8)
+	var zero_img := Image.create(w, 1, false, Image.FORMAT_RGBA8)
+	for i in w:
+		wear_img.set_pixel(i, 0, SkyWear.of(StringName(wear[i / BLOCK])))
+		zero_img.set_pixel(i, 0, Color(0, 0, 0, 0))
+	sky.set_wear(ImageTexture.create_from_image(wear_img))
+	# THROUGH SkyLight, never round it. It is the one writer of every sky_* global
+	# (CLAUDE.md's sky row), and `tests/render/test_one_writer.gd` holds that —
+	# it caught this file writing `sky_ground` directly, which is the rule doing
+	# its job. The size handed over is overwritten a line down; only the texture
+	# matters here.
+	sky.set_ground(ImageTexture.create_from_image(zero_img), 1)
+	# One cell of the grid is one landscape's block: u = x / (n * spacing).
+	sky.ground_scale = 1.0 / (spacing * float(n))
+	# AND WRITE THE GLOBALS AGAIN. `SkyLight.compose()` is what puts `ground_scale`
+	# into `sky_view.z`, and it runs once from `set_hour` — which the gallery calls
+	# before this, when the scale was still 0. Without this line the scale never
+	# reaches the shader, `matter_wear` takes its `sky_view.z <= 0` exit, and the
+	# frame comes out exactly as it did before the flag existed: no wear at all,
+	# at any strength. Measured by forcing the swatch to (1,1,1,1) and seeing
+	# nothing change.
+	sky.compose()
 
 
 func _apply_material(n: Node) -> void:
