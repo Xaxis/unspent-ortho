@@ -99,19 +99,31 @@ static func make() -> BiomeDef:
 	# WHAT A GROUND IS MARKED AS, which is not the same question as what colour
 	# it is, and here it is load-bearing rather than decorative.
 	#
-	# `GroundColors.PLAIN` and `GroundColors.GLOW` are BOTH 0. `_base_mark` has no
-	# row for FLOOR, so an unmarked ground falls through to PLAIN -- which IS
-	# GLOW. FLOOR is this city's `plain_ground` and most of what is underfoot in
-	# it, so every street drew as a web of glowing seams: cooling lava rather than
-	# wet asphalt, at every hour, and nothing anywhere said a word.
+	# FLOOR had no row in `GroundColors._base_mark`, so it took PLAIN, and PLAIN
+	# is the one code `world.gdshader` dispatches NOWHERE: not to `ground_mark`,
+	# not to `ground_wear`, not to the works or survey marks. FLOOR is this
+	# city's `plain_ground` and most of what is underfoot in it, so every street
+	# drew as a flat untreated wash with the neon reflection lying on top of it,
+	# and nothing anywhere said a word.
 	#
 	# It was found by forcing every ground here to PLAIN to localise it, and
-	# watching the web SPREAD over the whole frame and BRIGHTEN instead of going
-	# away. That is the measurement that named it; a guess would not have.
+	# watching the frame BRIGHTEN and the effect SPREAD instead of going away.
+	# That is the measurement that named it; a guess would not have.
 	#
-	# This is the landscape-level answer. The real fix is a FLOOR row in shared
-	# code, because the next landscape to use a ground with no mark walks into it
-	# just as silently.
+	# THE MECHANISM FIRST WRITTEN HERE WAS WRONG, and the correction is worth
+	# keeping because the wrong version is the plausible one. It said PLAIN and
+	# GLOW are both 0 "so an unmarked ground IS a glowing one". They are both 0,
+	# but nothing can confuse them: the shader's glow branch is guarded
+	# `m >= 1 && m <= 16`, and `GroundColors.glow()` only ever spends GLOW as
+	# `GLOW + clampi(..., 1, 16)`. Code 0 can be neither produced nor consumed by
+	# that door. What an unmarked ground loses is its MATERIAL, not its darkness
+	# -- the symptom was real and the cause named for it was not.
+	#
+	# The shared fix has landed (FLOOR takes ROAD in `_base_mark`) and
+	# `tests/render/test_ground_marks.gd` now fails on any walkable ground with
+	# no material, so the next landscape cannot walk into this silently. This
+	# override is kept because it is this city's own statement about its streets
+	# rather than an inherited default, and it is what the shared row was set to.
 	d.ground_marks = {Ground.FLOOR: GroundColors.ROAD}
 	d.grounds = {
 		# The slab. Poured concrete that has been walked on for a lifetime:
