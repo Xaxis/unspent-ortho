@@ -80,6 +80,12 @@ dev mode.
   Rook to get him away first.
 - **The trap.** Every memory he recovers brings him closer to who he was, and
   brings the Seeker closer to the secret.
+- **How it comes back** (`StorySecret`). The keepers hold two of the three
+  memories: the salt's keeper holds the kitchen, and the tide's the car. Reading
+  one names what it keeps, and taking it gives the memory back. The hall comes
+  back in the Seeker's 2029, by walking out of THRESHOLD for June's play. The
+  order they return in is the version he holds: kitchen, car, hall turns the
+  key, and any other order turns it the wrong way.
 - **Misremembered.** The body was grown imperfectly. Altered memories give a
   different threshold, and the version he recovers decides what the secret does.
 
