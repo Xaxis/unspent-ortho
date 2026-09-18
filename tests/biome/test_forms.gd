@@ -30,9 +30,37 @@ func test_a_landscape_that_declares_nothing_builds_what_it_always_built() -> voi
 	eq(r.stock, BiomeForms.PLAIN, "it builds the plain stock")
 	eq(String(r.plan), "ring", "scattered round a square")
 	eq(r.apart, BiomeForms.RING_APART, "at the distance every seed's village was laid at")
+	# AND A LANDSCAPE THAT DECLARES NOTHING ON PURPOSE. The coast is the baseline
+	# every other landscape is stated against — its village is the village every
+	# seed's first frame has always held — so it arguing with none of this is a
+	# decision and not an omission, which is what makes it the honest example.
+	var coast := BiomeRegistry.get_def(&"coast")
+	check(coast != null, "the coast is registered")
+	if coast != null:
+		eq(BiomeForms.of(coast.index).stock, BiomeForms.PLAIN,
+			"the coast builds what it always built, so its island did not move")
+
+
+## WHICH LANDSCAPES ARGUE, named, because declaring `built` MOVES THAT
+## LANDSCAPE'S ISLAND: the stock's size is how many buildings a settlement
+## raises and the plan is where each one stands, so every prop placed after the
+## first village in it takes a new id (`WorldStamp.TERRAIN`, GEN 3).
+##
+## This replaces a loop asserting that EVERY landscape shipped `PLAIN` — written
+## as a safety net while the field existed and nothing used it, and true only
+## because the one landscape the forms package was built for had a TODO where
+## its declaration should be. The net outlived what it was protecting and became
+## the thing arguing the city should stay a village. A list that has to be edited
+## deliberately is the honest form: adding a landscape here is a decision, and
+## the diff says so.
+func test_the_landscapes_that_argue_with_the_plain_stock_are_named() -> void:
+	var arguing: Array[String] = []
 	for land: BiomeDef in BiomeRegistry.land():
-		eq(BiomeForms.of(land.index).stock, BiomeForms.PLAIN,
-			"%s ships arguing with none of it, so no island moved" % land.id)
+		if BiomeForms.of(land.index).stock != BiomeForms.PLAIN:
+			arguing.append(String(land.id))
+	arguing.sort()
+	eq(arguing, ["slums"],
+		"a landscape declaring its own `built` moves its island; say so on purpose: %s" % [arguing])
 
 
 func test_the_plain_stock_is_the_eight_models_in_the_order_they_were_dealt() -> void:
