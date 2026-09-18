@@ -63,21 +63,15 @@ tap dodge
 wait 0.5
 shot 05-and-it-throws-the-whole-slab-forward with mob:harvester
 
-# `at 135,375` STAYS, and this is the one place the reason is written out.
-# It is an open coast field 86 tiles from the spawn village, which is what these
-# frames need: room to put a machine down, walk round it and fight it, with
-# nothing between the camera and the body. Shot and looked at, it still is one.
-# There is no NAME for that. `place coast` is GenPlaces.country_sample, which
-# scores a tile by how much of its own country surrounds it — on seed 1 that is
-# 250,406, and 250,406 is inside the plan's own depot yard: walls that stop a
-# body, housings that break a line of sight, and the region's machines coming out
-# of it. A fight staged there is a fight in a yard. The other `place` keys are
-# landmarks, and a landmark is a thing in the frame, not a clearing.
-# So what would retire this number is a new GenPlaces key meaning "open standable
-# ground in country C, clear of props for R tiles and D from any village" —
-# pure, derived, and no more expensive than country_sample. Until somebody writes
-# it and looks at what these five frames become, the coordinate is the honest
-# answer and the pretence of a name is not.
+# `place open_coast` is GenPlaces' open standable ground: clear of every village
+# and every depot, and the MOST open tile that qualifies — fewest things to stand
+# behind, which is what a fight reads in. This was `at 135,375`, and the two
+# frames tell the story: at the coordinate a fallen pylon truss cuts across the
+# right half of the picture and the watcher lands behind it with the truss's
+# shadow over it, which is ground that HIDES the body; at `open_coast` it stands
+# clear on open turf with its own shadow under it. The number was not wrong, it
+# was just a field somebody found once, and a field is not a thing worldgen
+# promises to keep.
 #
 # A real blow into a working part, and then a kill, in daylight. Both on a
 # watcher: it holds its ground, and a start knife against a harvester's plate is
@@ -85,7 +79,7 @@ shot 05-and-it-throws-the-whole-slab-forward with mob:harvester
 # old filled burst used to swallow whole.
 coast calm
 wait 0.5
-at 135,375
+place open_coast
 zoom 8
 wait 1.2
 spawn watcher
@@ -110,7 +104,7 @@ shot 07-down-in-daylight with down:watcher
 coast calm
 hour 23
 weather clear:0
-at 135,375
+place open_coast
 zoom 8
 wait 1.4
 spawn watcher
