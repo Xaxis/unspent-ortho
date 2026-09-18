@@ -153,10 +153,17 @@ static func _base_mark(g: int) -> int:
 		Ground.NEEDLES: return NEEDLES
 		Ground.ICE: return ICE
 		Ground.ROCK, Ground.SCREE: return ROCK
-		Ground.ROAD: return ROAD
+		Ground.ROAD, Ground.FLOOR: return ROAD
 		Ground.SALT: return SALT
 		Ground.PAN: return PAN
 		Ground.SWARF: return SWARF
+	# Only water reaches here, and water is drawn by the chart rather than by a
+	# ground material. Every WALKABLE ground must have a row above: one with no
+	# row takes PLAIN, and PLAIN is the one code `world.gdshader` dispatches
+	# NOWHERE -- not to `ground_mark`, not to `ground_wear`, not to the works or
+	# survey marks -- so it draws as a flat untreated wash and nothing says a
+	# word. FLOOR was in exactly that state and is the reason this is now held
+	# by `tests/render/test_ground_marks.gd` rather than by a comment.
 	return PLAIN
 
 
