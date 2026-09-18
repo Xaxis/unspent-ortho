@@ -67,6 +67,12 @@ static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: i
 		fits.append(c)
 	if fits.is_empty():
 		return {}
+	if s.nearest:
+		var best: Dictionary = fits[0]
+		for f: Dictionary in fits:
+			if (f.pos as Vector2).distance_to(world.spawn) < (best.pos as Vector2).distance_to(world.spawn):
+				best = f
+		return best
 	# Deterministic: the same slot in the same world always takes the same place,
 	# or a save would open onto a thread that had moved.
 	var at := int(Rng.hash01(world.seed_value, absi(int(s.id.hash())), 0, 0x5717) * float(fits.size()))

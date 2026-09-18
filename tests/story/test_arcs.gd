@@ -40,7 +40,7 @@ func test_every_beat_has_a_door_the_player_can_find() -> void:
 
 
 func test_the_arcs_story_md_promises_are_all_declared() -> void:
-	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_secret"]:
+	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_crew", &"june", &"the_secret"]:
 		check(StoryContent.ARCS.has(arc), "%s is declared" % arc)
 		gt(float(StoryContent.arc_beats(arc).size()), 2.0, "%s is more than a line" % arc)
 
@@ -51,8 +51,11 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 		var nodes: Dictionary = def.nodes
 		var start := StringName(str(def.get("start", &"")))
 		check(nodes.has(start), "%s starts somewhere that exists" % talk)
-		check(PersonLook.TRADES.has(StringName(str(def.get("who", &"")))),
-			"%s is for a trade people actually have: %s" % [talk, def.get("who", &"")])
+		if def.has("cast"):
+			check(StoryCast.get_def(StringName(str(def.cast))) != null, "%s belongs to %s, who is in the cast" % [talk, def.cast])
+		else:
+			check(PersonLook.TRADES.has(StringName(str(def.get("who", &"")))),
+				"%s is for a trade people actually have: %s" % [talk, def.get("who", &"")])
 		# Every node reachable from the start, every reply going to a node or out.
 		var seen := {start: true}
 		var queue: Array[StringName] = [start]
@@ -79,6 +82,8 @@ func test_every_conversation_goes_somewhere_and_can_be_left() -> void:
 func test_one_conversation_per_trade_so_nobody_is_silently_unreachable() -> void:
 	var by: Dictionary = {}
 	for talk: StringName in StoryContent.TALKS:
+		if StoryContent.TALKS[talk].has("cast"):
+			continue
 		var who := StringName(str(StoryContent.TALKS[talk].get("who", &"")))
 		check(not by.has(who), "%s and %s are both for a %s, and only the first would ever be said" % [by.get(who, ""), talk, who])
 		by[who] = talk
@@ -195,15 +200,55 @@ func test_the_covenant_costs_what_it_feeds() -> void:
 	Story.forget()
 
 
-func test_the_keeper_sees_what_he_is_before_he_does() -> void:
+func test_the_fire_keeper_sees_what_he_is_before_he_does() -> void:
 	Story.forget()
-	var t := _walk(&"the_keeper", ["Where am I?", "What happened to it?", "Does anyone fight them?"])
+	@warning_ignore("return_value_discarded")
+	_walk(&"maren", ["Who pulled me out?", "[hold them out]"])
+	check(Story.landed(&"body_new"), "his hands say it before he can")
+	Story.forget()
+	var t := _walk(&"rook", ["What do you want?"])
 	for r: Dictionary in t.replies():
 		check(str(r.text) != "I know the old machines.", "he cannot offer what he does not know he knows")
 	Story.forget()
+	Story.beat(&"built_halcyon")
 	@warning_ignore("return_value_discarded")
-	_walk(&"the_keeper", ["Who pulled me out?", "[hold them out]"])
-	check(Story.landed(&"body_new"), "his hands say it before he can")
+	_walk(&"rook", ["What do you want?", "I know the old machines."])
+	check(Story.landed(&"holdfast_hope"), "and once he does, he is a weapon to them")
+	Story.forget()
+
+
+func test_june_is_named_before_she_is_met() -> void:
+	Story.forget()
+	var t := _walk(&"imre", ["Why did you leave?"])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "Who is the Speaker?", "nobody asks after a Speaker they have not heard of")
+	check(not StoryCast.get_def(&"june").present(), "and she is not there to be met")
+	Story.forget()
+	Story.beat(&"covenant_speaker")
+	@warning_ignore("return_value_discarded")
+	_walk(&"imre", ["Why did you leave?", "Who is the Speaker?"])
+	check(Story.landed(&"june_named"), "Imre says her name")
+	check(StoryCast.get_def(&"june").present(), "and now she can be found")
+	@warning_ignore("return_value_discarded")
+	_walk(&"june", ["Do you know who I am?"])
+	for b: StringName in [&"june_met", &"june_knew"]:
+		check(Story.landed(b), "%s lands at her table" % b)
+	Story.forget()
+
+
+func test_dace_leaves_when_he_learns_whose_order_it_was() -> void:
+	Story.forget()
+	check(StoryCast.get_def(&"dace").present(), "he is with the crew")
+	var t := _walk(&"dace", ["What happened?"])
+	check(Story.landed(&"crew_war"), "he turned the key")
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "The order was mine.", "a confession needs knowing what there is to confess")
+	Story.forget()
+	Story.beat(&"tradecraft")
+	@warning_ignore("return_value_discarded")
+	_walk(&"dace", ["What happened?", "The order was mine."])
+	check(Story.landed(&"dace_left"), "told, he goes")
+	check(not StoryCast.get_def(&"dace").present(), "and he is not at the camp any more")
 	Story.forget()
 
 

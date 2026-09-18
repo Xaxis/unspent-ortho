@@ -21,8 +21,10 @@ class_name StoryPlan
 ## required slot in a realm nobody can reach would fail every world.
 const SPINE: Array[Dictionary] = [
 	# Leg 0, the home coast: where he wakes, his town, the first works.
-	{"id": &"home", "needs": &"village", "land": &"coast", "leg": 0, "require": true},
+	{"id": &"home", "needs": &"village", "land": &"coast", "leg": 0, "nearest": true, "require": true},
 	{"id": &"the_yard", "needs": &"works", "leg": 0, "apart": 24.0, "require": true},
+	# The Holdfast's camp, where Rook's crew waits.
+	{"id": &"the_camp", "needs": &"landmark", "leg": 0, "apart": 20.0, "require": true},
 	# Leg 1, across the water: the Covenant's seat, and the archive of the war.
 	{"id": &"the_covenant", "needs": &"village", "leg": 1, "require": true},
 	{"id": &"the_archive", "needs": &"landmark", "leg": 1, "apart": 32.0, "require": true},

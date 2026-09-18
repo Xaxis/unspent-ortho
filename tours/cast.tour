@@ -1,0 +1,31 @@
+# The named people, through the real keys (docs/STORY_SYSTEM.md §8): each stands at
+# the place the story cast her or him in THIS world, and the one `use` key opens
+# their own words, not a trade's.
+#
+#   tools/tour.sh tours/cast.tour --seed=1 --hour=11 --weather=clear:0
+#
+# `at cast:NAME` asks 49_cast where that person stands; nothing here is a
+# coordinate, so a new worldgen moves them and this still finds them.
+coast calm
+wait 0.6
+
+# --- Maren, at the village he wakes beside -----------------------------------------------
+at cast:maren
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 01-maren-speaks with talking,cast:maren
+press pause
+wait 0.5
+await met:maren 2
+
+# --- Rook, at the Holdfast's camp ----------------------------------------------------------
+at cast:rook
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 02-rook-speaks with talking,cast:rook
+press pause
+wait 0.5

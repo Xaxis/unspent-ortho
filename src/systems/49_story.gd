@@ -46,6 +46,7 @@ var _up_down := false
 var _down_down := false
 var _back_down := false
 var _folk: Node
+var _cast: Node = null
 ## The journal on the slate (UiJournalScreen): what has been found, kept.
 var journal: UiJournalScreen
 var _ui: Node
@@ -216,7 +217,8 @@ func _edge_to(q: WorldProp) -> float:
 
 
 func _person_in_front() -> Dictionary:
-	var folk := _folk_rows()
+	# Villagers and named people alike: the one key answers whoever is in front.
+	var folk: Array = _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
 	var best: Dictionary = {}
@@ -258,6 +260,7 @@ func _readable_in_front() -> WorldProp:
 
 func _start_talk(row: Dictionary) -> void:
 	var id := StoryProps.talk_for(row, game)
+	var character := StringName(str(row.get("character", &"")))
 	if id == &"":
 		# Nobody has anything written for this one yet. Say so in the world's own
 		# flat voice rather than opening an empty page.
@@ -267,6 +270,9 @@ func _start_talk(row: Dictionary) -> void:
 	if talk.over:
 		talk = null
 		return
+	if character != &"":
+		@warning_ignore("return_value_discarded")
+		Story.meet(character)
 	view.talk = talk
 	view.choice = 0
 	game.talking = true
@@ -434,6 +440,17 @@ func _locked_body() -> MobState:
 
 
 # --- the rest -------------------------------------------------------------------
+
+## The named people 49_cast has stood in the world (StoryCast).
+func _cast_rows() -> Array:
+	if _cast == null or not is_instance_valid(_cast):
+		for sys in game.systems:
+			var script := sys.get_script() as Script
+			if script != null and script.resource_path.ends_with("49_cast.gd"):
+				_cast = sys
+				break
+	return _cast.get("people") if _cast != null else []
+
 
 func _folk_rows() -> Array:
 	if _folk == null or not is_instance_valid(_folk):

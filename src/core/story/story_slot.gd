@@ -39,6 +39,9 @@ var realm: StringName = &"surface"
 ## next one out, and so on (`StoryJourney`). The story spans every continent in
 ## order, so a slot names its leg and never a continent.
 var leg := 0
+## Take the candidate nearest the spawn instead of dealing one by hash: `home` is
+## the village he wakes beside, where Maren keeps the fire, not any coast village.
+var nearest := false
 ## Tiles clear of the spawn (on the home leg), and of every slot cast before this
 ## one on the same body, so a thread the player is meant to walk to is not three
 ## paces from the fire. Never measured across water: a distance cannot say whether
@@ -57,6 +60,7 @@ static func make(d: Dictionary) -> StorySlot:
 	s.land = StringName(str(d.get("land", &"")))
 	s.realm = StringName(str(d.get("realm", &"surface")))
 	s.leg = int(d.get("leg", 0))
+	s.nearest = bool(d.get("nearest", false))
 	s.apart = float(d.get("apart", 0.0))
 	s.require = bool(d.get("require", false))
 	return s

@@ -45,11 +45,18 @@ static func readable(prop_kind: int) -> bool:
 ## (35_folk streams them), so nothing may hang on this one body being this one
 ## person. What is remembered is what the PLAYER said, which is theirs and keeps.
 static func talk_for(row: Dictionary, _game: Game) -> StringName:
+	# A named person says their own words and nobody else's (StoryCast).
+	var character := StringName(str(row.get("character", &"")))
+	if character != &"":
+		var c := StoryCast.get_def(character)
+		return c.talk if c != null else &""
 	var trade := StringName(str(row.get("trade", &"")))
 	if trade == &"":
 		return &""
 	for id: StringName in StoryContent.TALKS:
 		var t: Dictionary = StoryContent.TALKS[id]
+		if t.has("cast"):
+			continue
 		var who := StringName(str(t.get("who", &"")))
 		if who == &"" or who == trade:
 			return id

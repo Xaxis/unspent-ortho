@@ -95,7 +95,7 @@ func test_a_conversation_can_be_walked_to_its_end() -> void:
 
 func test_a_reply_that_teaches_something_lands_its_beat() -> void:
 	Story.forget()
-	var t := StoryTalk.start(&"the_keeper")
+	var t := StoryTalk.start(&"maren")
 	# open -> who pulled you out -> hold out your hands: the body has no past.
 	var to_pulled := -1
 	var rs := t.replies()
@@ -141,5 +141,6 @@ func test_the_placer_seam_is_the_whole_of_what_a_placer_needs() -> void:
 
 func test_a_person_has_something_to_say_only_if_it_was_written_for_them() -> void:
 	eq(StoryProps.talk_for({"trade": &"keeper"}, null), &"the_keeper")
+	eq(StoryProps.talk_for({"character": &"maren", "trade": &"keeper"}, null), &"maren", "a named person says her own words, whatever her trade")
 	eq(StoryProps.talk_for({}, null), &"", "somebody with no trade has nothing written")
 	check(StoryProps.trades_with_talk().has(&"keeper"))

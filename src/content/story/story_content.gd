@@ -47,6 +47,16 @@ const ARCS := {
 		"note": "The people who live on what the machines leave.",
 		"beats": [&"covenant_fed", &"covenant_price", &"covenant_speaker"],
 	},
+	&"the_crew": {
+		"title": "the crew",
+		"note": "The Holdfast's last mercenaries, and what they come to know.",
+		"beats": [&"crew_paid", &"crew_war", &"dace_left"],
+	},
+	&"june": {
+		"title": "June",
+		"note": "Someone he has not seen since she was six.",
+		"beats": [&"june_named", &"june_met", &"june_knew"],
+	},
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
@@ -77,6 +87,12 @@ const BEATS := {
 	&"covenant_fed": {"short": "fed for it", "arc": &"the_covenant", "says": "Some people live on what the machines leave, and are glad of it."},
 	&"covenant_price": {"short": "not asking", "arc": &"the_covenant", "says": "What the Covenant pays for its peace is not asking."},
 	&"covenant_speaker": {"short": "an old woman's voice", "arc": &"the_covenant", "says": "The Covenant has a Speaker. She is old, and she remembers before."},
+	&"crew_paid": {"short": "paid to wait", "arc": &"the_crew", "says": "Somebody paid Rook's crew to wait for you on the shore."},
+	&"crew_war": {"short": "a key turned", "arc": &"the_crew", "says": "Dace turned a launch key on an order that checked out."},
+	&"dace_left": {"short": "Dace is gone", "arc": &"the_crew", "says": "Dace knows the order was yours, and he is gone."},
+	&"june_named": {"short": "her name", "arc": &"june", "says": "The Speaker's name is June Marr."},
+	&"june_met": {"short": "younger than her", "arc": &"june", "says": "You are younger than your daughter."},
+	&"june_knew": {"short": "she always knew", "arc": &"june", "says": "She has always known the voice was yours."},
 	&"gap": {"short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
 	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
 	&"seeker": {"short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
@@ -359,22 +375,23 @@ const FRAGMENTS := {
 # reply leads out, and saying nothing is always one of the answers.
 
 const TALKS := {
-	# The first voice he hears. The keeper at the fire pulled him out of the surf.
+	# A keeper at any fire, anywhere. The rescue is Maren's alone (cast/maren.gd):
+	# a trade's words are said by everybody of that trade on every continent.
 	&"the_keeper": {
 		"who": &"keeper",
 		"title": "a keeper",
 		"start": &"open",
 		"nodes": {
 			&"open": {
-				"says": ["You came up out of the water.", "Nobody comes up out of the water."],
+				"says": ["Another one walking the coast.", "Sit if you like. The fire's not mine."],
 				"replies": [
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
-					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
+					{"text": "Whose is it?", "pick": &"asked_whose", "to": &"whose"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
 			&"where": {
-				"says": ["The coast. What's left of the town.", "You'd not know it. Nobody alive does."],
+				"says": ["What's left of a town.", "You'd not know it. Nobody alive does."],
 				"replies": [
 					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
 					{"text": "[leave]", "to": &""},
@@ -391,40 +408,21 @@ const TALKS := {
 			&"fight": {
 				"says": ["The Holdfast. They break a works,", "and the hunters come for the nearest roof. Ours, last time."],
 				"beats": [&"holdfast_fight"],
-				"replies": [
-					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"weapon": {
-				"says": ["Then don't say that where anyone can hear.", "The Holdfast would take you, and never give you back."],
-				"beats": [&"holdfast_hope"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
-			&"pulled": {
-				"says": ["I did. You were face down with your eyes open.", "Show me your hands."],
-				"replies": [
-					{"text": "[hold them out]", "pick": &"showed", "to": &"hands"},
-					{"text": "[leave]", "to": &""},
-				],
-			},
-			&"hands": {
-				"says": ["No calluses. No scars. Not a mark on you.", "Where have you been that nothing ever happened to you?"],
-				"beats": [&"body_new"],
-				"replies": [
-					{"text": "I don't know.", "pick": &"dont_know", "to": &""},
-					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
-				],
+			&"whose": {
+				"says": ["The village's. The village is nobody's.", "That's the arrangement, and it's held."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"quiet": {
-				"says": ["Suit yourself. There's a fire.", "You're not the first to come up saying nothing."],
+				"says": ["Suit yourself.", "Most who walk in off the coast say nothing."],
 				"replies": [
-					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "Who else walked in?", "pick": &"asked_others", "to": &"others"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"others": {
-				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"says": ["A few, over the years. They don't stay."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -576,6 +574,226 @@ const TALKS := {
 			&"orders": {
 				"says": ["Somebody who knew how people lie to each other.", "Somebody very good at it."],
 				"beats": [&"tradecraft"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- named people (StoryCast). `cast` says whose; there is no `who`, because
+	# a named person's words are said by that person and nobody else.
+	&"maren": {
+		"cast": &"maren",
+		"title": "the fire-keeper",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You came up out of the water.", "Nobody comes up out of the water."],
+				"replies": [
+					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
+					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"pulled": {
+				"says": ["I did. You were face down with your eyes open.", "Show me your hands."],
+				"replies": [
+					{"text": "[hold them out]", "pick": &"showed", "to": &"hands"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"hands": {
+				"says": ["No calluses. No scars. Not a mark on you.", "Where have you been that nothing ever happened to you?"],
+				"beats": [&"body_new"],
+				"replies": [
+					{"text": "I don't know.", "pick": &"dont_know", "to": &"camp"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"camp"},
+				],
+			},
+			&"camp": {
+				"says": ["There's a crew camped out past the old works. Holdfast.", "They pay for anyone who knows the old machines. I'd not tell them you do."],
+				"beats": [&"holdfast_fight"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"where": {
+				"says": ["What's left of the town. You'd not know it.", "Nobody alive does."],
+				"replies": [
+					{"text": "What happened to it?", "pick": &"asked_town", "to": &"town"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"town": {
+				"says": ["The war. Then the quiet.", "Then them, building out past the point, and never looking at us again."],
+				"beats": [&"long_quiet"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Suit yourself. There's a fire.", "You're not the first to come up saying nothing."],
+				"replies": [
+					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"others": {
+				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"rook": {
+		"cast": &"rook",
+		"title": "a man with a rifle",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["So you're the one I was paid to fish out.", "The fire-keeper beat me to it. I still want my money's worth."],
+				"replies": [
+					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
+					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"payer": {
+				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
+				"beats": [&"crew_paid"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"want": {
+				"says": ["The machines dead. All of them, or whatever runs them.", "Vera thinks you might know how."],
+				"replies": [
+					{"text": "I know the old machines.", "when": &"built_halcyon", "pick": &"told_machines", "to": &"weapon"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"weapon": {
+				"says": ["Then you're worth more than I was paid.", "Don't say it anywhere the Covenant can hear."],
+				"beats": [&"holdfast_hope"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Suit yourself. Tell me when you remember something useful."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"sabine": {
+		"cast": &"sabine",
+		"title": "the crew's medic",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Sit. Let me look at you.", "Open your mouth."],
+				"replies": [
+					{"text": "[open it]", "pick": &"opened", "to": &"teeth"},
+					{"text": "No.", "pick": &"refused", "to": &"refused"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"refused"},
+				],
+			},
+			&"teeth": {
+				"says": ["No fillings. Not one.", "Nobody born in sixty years has teeth like that."],
+				"beats": [&"body_new"],
+				"replies": [
+					{"text": "What does that mean?", "pick": &"asked_mean", "to": &"mean"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"mean": {
+				"says": ["It means you were made recently, or kept somewhere very clean.", "I'll not say that to Rook. Not yet."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"refused": {
+				"says": ["Suit yourself. I'll ask again when you're bleeding."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"dace": {
+		"cast": &"dace",
+		"title": "an old soldier",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["I carried a launch key once. In the war.", "Don't ask me about it."],
+				"replies": [
+					{"text": "What happened?", "pick": &"asked_war", "to": &"war"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"war": {
+				"says": ["An order came. It checked out. I turned the key.", "Afterwards nobody could find who sent it."],
+				"beats": [&"crew_war"],
+				"replies": [
+					{"text": "The order was mine.", "when": &"tradecraft", "pick": &"confessed", "to": &"leaves"},
+					{"text": "I'm sorry.", "pick": &"sorry", "to": &"sorry"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"leaves": {
+				"says": ["...", "Then I'm done with this crew. And with you."],
+				"beats": [&"dace_left"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"sorry": {
+				"says": ["So am I. Every day since."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"imre": {
+		"cast": &"imre",
+		"title": "a man who left the Covenant",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You're not Covenant. I can tell.", "Neither am I, anymore."],
+				"replies": [
+					{"text": "Why did you leave?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"why": {
+				"says": ["They feed you, and you stop asking. I started again.", "Somebody inside still writes to me."],
+				"replies": [
+					{"text": "Who is the Speaker?", "when": &"covenant_speaker", "pick": &"asked_speaker", "to": &"name"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"name": {
+				"says": ["...", "June. June Marr. Don't tell anyone I said it."],
+				"beats": [&"june_named"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["Fine. Drink?"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"june": {
+		"cast": &"june",
+		"title": "the Speaker",
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Come in. Sit down. Let me look at you.", "You're younger than I am.", "That isn't possible, and here you are."],
+				"beats": [&"june_met"],
+				"replies": [
+					{"text": "Do you know who I am?", "pick": &"asked_know", "to": &"knows"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
+				],
+			},
+			&"knows": {
+				"says": ["I have your photograph. I've had it since I was six.", "The voice that talks to me at night sounds like you.", "It always has."],
+				"beats": [&"june_knew"],
+				"replies": [
+					{"text": "I'm sorry I missed your play.", "when": &"threshold", "pick": &"sorry", "to": &"play"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"play": {
+				"says": ["...", "Fourteenth of March. I wore a paper crown.", "I looked for you the whole time."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"quiet": {
+				"says": ["You were always quiet when you were lying. Mum said so."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
