@@ -339,6 +339,18 @@ static func make() -> BiomeDef:
 	# order instead. Until it does the same, the city asks first, because it is
 	# the one landscape that is nothing without its settlement.
 	d.village_order = 0
+	# A STREET, AND NOT SIX PEOPLE. `35_folk` puts `PER_VILLAGE` (6) out round a
+	# village and reads this where a landscape wants more. It was written for
+	# exactly this city and this city never asked, so the one landscape in the game
+	# where everybody is employed had the same handful of people in it as a fishing
+	# hamlet. Thirty, because `CROWD_BLIND` is 8 within `CROWD_NEAR`: past that
+	# nobody looks up at a stranger any more, and the player stops being an event
+	# and becomes traffic. That is this landscape's whole argument about itself, and
+	# this number is what decides whether it reads.
+	#
+	# A LOOK field in `WorldStamp` — worldgen lays the village, not the people in it
+	# — so it moves no island and refuses no save.
+	d.street_folk = 30
 	# Smog weather. The cliché is rain, so rain is here and is not the most of it:
 	# what a city under a working plant really gets is haze and flat grey, and the
 	# clear days are the ones the wind took the dome sideways.

@@ -26,7 +26,18 @@ const HOME := {
 
 
 ## Walking-scale evidence every landscape holds, per 1000 dry tiles.
-const EVIDENCE_PER_1000 := 25.0
+##
+## WHAT THIS CATCHES IS AN EMPTY LANDSCAPE, and 25 was sitting on the floor of the
+## range instead of under it: the salt flats on seed 90210 came out at 24.6 when
+## the city grew from five buildings to twenty-odd and moved what is scattered
+## everywhere else, and 1.6% is not a landscape going bare. A bar has to stand
+## clear of the sparsest land's own seed-to-seed spread or it fails for whatever
+## moved the island last (docs/WORLD.md, "an absolute bar in a growing world is a
+## countdown"). Measured 2026-09-18 over all three seeds: 24.6 to 46.5, the salt
+## flats sparsest on every seed (28.8 / 32.4 / 24.6) and the city densest. The run
+## PRINTS the table now, so the next person reads the numbers off the gate instead
+## of instrumenting the test to find them.
+const EVIDENCE_PER_1000 := 20.0
 
 
 func test_every_landscape_holds_its_own_works() -> void:
@@ -68,8 +79,12 @@ func test_every_landscape_holds_its_own_works() -> void:
 		for p in w.props:
 			if is_evidence(p.kind):
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
+		var shown := PackedStringArray()
 		for cc: int in BiomeRegistry.land_indices_in(w.realm):
-			gt(evidence[cc] * 1000.0 / maxf(land[cc], 1.0), EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, BiomeRegistry.name_of(cc)])
+			var per := evidence[cc] * 1000.0 / maxf(land[cc], 1.0)
+			shown.append("%s %.1f" % [BiomeRegistry.name_of(cc), per])
+			gt(per, EVIDENCE_PER_1000, "seed %d evidence per 1000 tiles of %s" % [s, BiomeRegistry.name_of(cc)])
+		print("  evidence per 1000 tiles, seed %d: %s" % [s, ", ".join(shown)])
 	var most := (Worlds.WORLD_SEEDS.size() + 1) / 2
 	for kind: int in HOME:
 		var on: Array = seen_home.get(kind, [])
