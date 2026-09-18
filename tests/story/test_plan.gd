@@ -79,3 +79,38 @@ func test_what_the_story_calls_guaranteed_is_in_every_world_it_grows() -> void:
 					found[def.id] = true
 		for land: StringName in leaned_on:
 			check(found.has(land), "seed %d holds %s, which the story was promised it always would" % [s, land])
+
+
+## The story spans every continent in order (owner, 2026-09-18), so a world big
+## enough to hold several must put each leg on its own land, farther out each time.
+func test_the_journey_crosses_the_continents_in_order() -> void:
+	for s: int in [1, 7]:
+		_crosses_in_order(WorldGen.generate(s, 1024))
+
+
+func _crosses_in_order(w: WorldData) -> void:
+	var order := StoryJourney.bodies(w)
+	gt(float(order.size()), 1.0, "a big world holds more than one continent to cross")
+	eq(order[0], w.continent_at(floori(w.spawn.x), floori(w.spawn.y)), "the journey starts where he wakes")
+	var bad := StoryPlan.problems(w)
+	check(bad.is_empty(), "every required slot casts across the continents:\n  %s" % "\n  ".join(bad))
+	var done := StoryPlan.cast(w)
+	var last_leg := -1
+	var last_rank := -1
+	for sl: StorySlot in StoryPlan.slots():
+		if not done.has(sl.id):
+			continue
+		var p: Vector2 = done[sl.id].pos
+		var rank := order.find(w.continent_at(floori(p.x), floori(p.y)))
+		gt(float(rank), float(mini(sl.leg, order.size() - 1)) - 0.5, "%s stands no nearer home than its own leg" % sl.id)
+		gt(float(rank), float(last_rank) - 0.5, "%s is no nearer home than the slot before it" % sl.id)
+		last_rank = rank
+		last_leg = sl.leg
+
+
+func test_a_one_island_world_still_holds_the_whole_journey() -> void:
+	# Every test and tour size is one island: the later legs share it.
+	var w := WorldGen.generate(1, SIZE)
+	eq(StoryJourney.bodies(w).size(), 1, "a small world is one island")
+	for sl: StorySlot in StoryPlan.slots():
+		eq(StoryJourney.body_for(w, sl.leg), StoryJourney.bodies(w)[0], "%s's leg folds onto the island" % sl.id)
