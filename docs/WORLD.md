@@ -220,6 +220,32 @@ game's seed with that realm's own salt (`Realm.seed_for`, `RealmWorlds`), and
 reason: **a shaft should come up where it went down.** A hole in the ground that
 surfaces under a different continent is not a hole in the ground.
 
+**The Before inherits more than that: it IS the surface.** `docs/STORY.md` rests
+on the ruin at spawn being his own town, and `portals.gd`'s header already said an
+era gate opens on "the same coordinates in another time" — while `Realm.DEFS[ERA]`
+carried a salt of its own, so 2029 grew a different island with a different spawn.
+Written down and contradicted by the data, which is §9's rule with the halves
+swapped. Two declarations fix it, and both are DATA so a second era is a row and
+not a branch:
+
+- **`footprints_of`** — whose body layout this realm takes. The underground's
+  hard-coded case in `plan` became this, so neither `plan` nor any caller knows
+  which realms share a map.
+- **`same_land_as`** — whose LANDSCAPES it lays. The underground does not declare
+  it (a cave is not a coast); the era does, because the coast was the coast then
+  too. `Realm.land_realm` is the one door, and **both readers of `BiomeDef.realms`
+  must ask it** — `BiomeRegistry.land_in` AND `GenContext._init`, which asked
+  `d.realms.has(w.realm)` directly and so grew an empty era after `land_in` had
+  been fixed.
+
+With `salt: 0` beside them the era is the surface tile for tile: same ground, same
+spawn, same regions, same props, same shafts on the same tiles
+(`tests/core/test_era.gd`). **That identity is the floor, not the finish** — what
+makes it 2029 is what STANDS on it, which is dressing and still to build. And the
+exception is the era's alone: `test_each_realm_is_its_own_island_from_one_seed`
+now states the collision rule twice, forbidden for a realm that is its own place
+and REQUIRED for one that says whose land it lays.
+
 Do NOT lean on the pairing for that argument — it is weaker than it looks.
 `Portals.paired` is `all[posmod(id, all.size())]`: **it wraps**, so the moment the
 two realms lay different numbers of shafts the pairing is already not one-to-one

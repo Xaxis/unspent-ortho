@@ -125,12 +125,15 @@ func _init(p_world: WorldData) -> void:
 	k = size / 512.0
 	defs = BiomeRegistry.all()
 	types = defs.size()
+	# Whose landscapes this realm lays, which is its own unless it is another
+	# realm at a different time (`Realm.land_realm`).
+	var lays := Realm.land_realm(w.realm)
 	for d in defs:
 		if not d.sea:
 			# A world is one REALM's world: only the types registered in it are
 			# laid (docs/VISION.md §7.1). `types` is still the whole registry,
 			# because every per-type array here is indexed by a type's own index.
-			if not d.realms.has(w.realm):
+			if not d.realms.has(lays):
 				continue
 			land_types.append(d.index)
 		if d.caldera > 0.0 and caldera_type < 0:
