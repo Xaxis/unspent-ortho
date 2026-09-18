@@ -37,7 +37,13 @@ const UNKNOWN := "unknown"
 ##    percent over the three test seeds, and `GenScatter` chooses a tile's recipe
 ##    by blend, so a handful of props move. Small, but not nothing, and a save
 ##    grows its world again from the seed.
-const GEN := 2
+## 3. The slums declared what it is BUILT of (`BiomeForms.RAISED`, `plan = row`).
+##    The stock's size is how many buildings a settlement raises and the plan is
+##    where each one stands, so every prop placed after the first village in that
+##    landscape has a new id. It is the largest deliberate move of this list and
+##    it is the landscape finally being the thing it was written to be: without
+##    it a megacity rendered as eight one-storey huts.
+const GEN := 3
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

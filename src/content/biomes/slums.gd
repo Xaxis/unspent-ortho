@@ -67,24 +67,42 @@ static func make() -> BiomeDef:
 	# better, so a stretch of flat street is literally what buys the reflections
 	# this landscape's wet look is made of. The stepping is still here — it is what
 	# stops a city reading as a field — there is just more slab between the steps.
+	# FLATTER AGAIN, because a street is only a street if a row of buildings can
+	# stand on it: the `row` plan refuses any spot whose nine neighbours are not
+	# all one level, and the city was coming out with TWO buildings in it.
+	#
+	# AND FLATNESS IS NOT THE WHOLE CAUSE, which is worth writing down so the next
+	# person does not spend the afternoon here as I did. Measured on three seeds:
+	# these values fixed seed 1, left seed 42 at two, and dropping `base` to 1.1
+	# as well made seed 90210 WORSE (one building), because lower land is less
+	# land once the sea has its share. The rest of the cap is in `GenScatter`s row
+	# placement, not in this file -- see the task, and `ROW_RANKS`.
 	d.relief = {
-		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
+		&"base": 2.6, &"hills": 0.08, &"ridge": 0.0, &"terrace": 0.12, &"valley": 0.1,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
-	# TODO: `d.built = BiomeForms.new()` with `stock = BiomeForms.RAISED` and
-	# `plan = &"row"` belongs here, and it is the whole point of this landscape --
-	# the city is the reason the forms package exists. It is out because it MOVES
-	# THE ISLAND (`built` is TERRAIN in the stamp, deliberately: the stock's size
-	# is how many buildings there are), and adding it takes `test_world_gen:` from
-	# two failures to five.
+	# WHAT THIS CITY IS BUILT OF, and it is the whole point of the landscape: the
+	# forms package exists because of this line. Without it the slums fell
+	# through to `BiomeForms.PLAIN` — the eight one-storey shapes every landscape
+	# raised before the field existed — so a megacity at permanent night rendered
+	# as a shantytown of huts, braziers and fences with not one building of any
+	# height in the frame. It was left out because it MOVES THE ISLAND (`built`
+	# is TERRAIN in the stamp, deliberately: the stock's size is how many
+	# buildings there are) and took some seed-pinned assertions with it. That is
+	# a reason to fix the assertions, which are pinned to a world nobody promised
+	# would never change, and never a reason to ship a city as a village.
 	#
-	# The relief above is already the setting that lays a street: measured, at
-	# `terrace: 0.3, hills: 0.5` the level check refused fifteen of sixteen spots
-	# and a street came out with one building on it. Whoever lands `built` should
-	# expect to re-site the landscape's `sites` in the same change, with the gate
-	# in front of them, and a street frame afterwards.
+	# `row` is what makes a STREET: two frontages either side of a way through,
+	# rather than `ring`'s detached houses round a green. The relief above was
+	# already tuned for it — measured, at `terrace: 0.3, hills: 0.5` the level
+	# check refused fifteen of sixteen spots and a street came out with one
+	# building on it, which is why the terrace term is a third of what it was.
+	d.built = BiomeForms.new()
+	d.built.stock = BiomeForms.RAISED
+	d.built.plan = &"row"
+	d.built.apart = BiomeForms.ROW_APART
 	#
-	# NOT the cause of the missing tips: `test_places_worth_walking_to` fails
+	# NOT the cause of the missing tips: `test_places_worth_walking_to` failed
 	# without `built` too. That attribution was wrong when it was first written
 	# down and is corrected here rather than left to mislead the next reader.
 	# Under LANTERN this no longer picks a hatch — there is none. It is the
@@ -279,8 +297,24 @@ static func make() -> BiomeDef:
 	d.beached_wrecks = false
 	d.villages = 1
 	d.village_names = ["Ninth Shift", "Lampway", "Cinderrow"]
-	# Settled late: the city takes what is left, which is what a city does.
-	d.village_order = 8
+	# SETTLED FIRST OF THE LANDSCAPES, and the line this replaces ("settled late:
+	# the city takes what is left, which is what a city does") was a good sentence
+	# that cost the landscape its whole reason for existing.
+	#
+	# Villages are dealt in `village_order` and no two may stand within `gap`
+	# (26 tiles at this size). The slums is 5.4% of the island on seed 1 and it
+	# borders coast, moss, salt flats and scrapwood — so by the time order 8 came
+	# round, the eight villages already placed had crowded out every candidate it
+	# had, and it got NONE. A city landscape with no settlement in it builds no
+	# buildings, which is why the megacity rendered as braziers and huts however
+	# `built` was declared. Measured on seed 1: eight villages, not one in the
+	# slums, while the scrapwood at 5.2% — practically the same share — had one.
+	#
+	# `Landmarks` already solved this shape by going least-room-first so a small
+	# landscape is not crowded out by a big one; `GenSettle` settles in declared
+	# order instead. Until it does the same, the city asks first, because it is
+	# the one landscape that is nothing without its settlement.
+	d.village_order = 0
 	# Smog weather. The cliché is rain, so rain is here and is not the most of it:
 	# what a city under a working plant really gets is haze and flat grey, and the
 	# clear days are the ones the wind took the dome sideways.
