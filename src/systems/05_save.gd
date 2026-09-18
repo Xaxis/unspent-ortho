@@ -159,7 +159,7 @@ func _process(delta: float) -> void:
 	# The test runner's own folder takes no autosaves: every game a test starts
 	# would otherwise leave a Continue behind for the next test's title. A test
 	# that wants them points SaveSlots.root at a folder of its own.
-	if why != &"" and SaveSlots.root != SaveSlots.TEST_ROOT:
+	if why != &"" and not SaveSlots.testing():
 		_write(SaveSlots.AUTO, why, thumbnail())
 
 
@@ -208,7 +208,7 @@ func save_to(slot: int) -> String:
 func save_on_leaving() -> String:
 	if _loading or rules == null:
 		return WHY_LOADING if _loading else ""
-	if SaveSlots.root == SaveSlots.TEST_ROOT:
+	if SaveSlots.testing():
 		return ""
 	if not calm():
 		return "Not with that so close."

@@ -9,7 +9,10 @@ extends RefCounted
 
 
 static func use_root(name: String) -> String:
-	SaveSlots.root = "user://test-saves".path_join(name)
+	# The SHARD's test root, never the literal: this fixture is where most save
+	# tests write, so a hard-coded "user://test-saves" here leaves three gate
+	# shards sharing one folder even after SaveSlots stopped doing so.
+	SaveSlots.root = SaveSlots.test_root.path_join(name)
 	forget()
 	wipe()
 	return SaveSlots.root
@@ -20,7 +23,7 @@ static func use_root(name: String) -> String:
 static func finish() -> void:
 	wipe()
 	forget()
-	SaveSlots.root = SaveSlots.TEST_ROOT
+	SaveSlots.root = SaveSlots.test_root
 
 
 ## What one game's refusal left standing for the next (SaveSlots.turn_away lives

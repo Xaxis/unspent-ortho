@@ -21,6 +21,11 @@ class_name DevMode
 ## writes into the owner's notes, configurations or logs.
 const USER_ROOT := "user://dev"
 const TEST_ROOT := "user://test-dev"
+## One root per SHARD, for the reason in `SaveSlots.shard_root`.
+static func shard_root(i: int) -> String:
+	return TEST_ROOT if i <= 0 else "%s-%d" % [TEST_ROOT, i]
+## This process's own; `tests/run.gd` sets it from its shard.
+static var test_root := TEST_ROOT
 const TOOL_ROOT := "user://tool-dev"
 ## Three strikes of ` inside this many milliseconds arm dev mode.
 const CHORD_MS := 1500
@@ -219,7 +224,7 @@ static func ensure_actions() -> void:
 
 static func user_root() -> String:
 	if OS.get_cmdline_args().has("-s"):
-		return TEST_ROOT
+		return test_root
 	return TOOL_ROOT if tool_run else USER_ROOT
 
 

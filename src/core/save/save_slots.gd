@@ -28,6 +28,35 @@ const TOOL_ROOT := "user://tool-saves"
 ## A process run as a script (the test runner) keeps its saves here.
 const TEST_ROOT := "user://test-saves"
 
+## ONE ROOT PER SHARD, because `user://` is one path per PROJECT and the gate
+## runs three godot processes at once (`tools/check.sh`). All three wrote this
+## directory together: an md5 of "" is a file another shard deleted mid-test, and
+## "Nothing is saved there" is a slot another shard cleared.
+##
+## It is worse than an ordinary flake. The honest answer to a red gate is to run
+## it again, and running it again makes it green -- so it teaches the whole team
+## to re-run instead of read, and the first time that habit meets a real
+## regression it ships. And `--shard=I/N` splits test FILES round-robin, so WHICH
+## tests collide changes every time a file is added or renamed: it returns at a
+## random future date with nothing in the diff to blame.
+##
+## Two tests had already worked around it by hand with timestamped roots
+## (test_bank, test_score_system) without anybody naming the cause.
+static func shard_root(i: int) -> String:
+	return TEST_ROOT if i <= 0 else "%s-%d" % [TEST_ROOT, i]
+
+## This process's own test root: `tests/run.gd` sets it from its shard.
+static var test_root := TEST_ROOT
+
+## Whether saves are going to the BARE root of the test runner -- which is what
+## "nothing here should autosave" means. Not `begins_with`: `SaveFixture` points
+## `root` at a folder UNDER the test root and those tests need the autosave to
+## run, so a prefix test silenced all four of them (measured: every autosave
+## assertion in tests/save/test_autosave.gd read "Nothing is saved there"). This
+## is the old equality against TEST_ROOT, asked of the shard's own root instead.
+static func testing() -> bool:
+	return root == test_root
+
 ## Where slots live. Tests point it somewhere of their own.
 static var root := TEST_ROOT if OS.get_cmdline_args().has("-s") else PLAYER_ROOT
 

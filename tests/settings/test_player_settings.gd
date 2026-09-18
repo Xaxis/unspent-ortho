@@ -106,7 +106,7 @@ func test_what_is_kept_comes_back_and_is_not_a_save() -> void:
 	check(PlayerSettings.file.begins_with("user://"))
 	check(not PlayerSettings.file.begins_with(SaveSlots.PLAYER_ROOT), "never in with the saves")
 	check(not PlayerSettings.file.begins_with(DevMode.USER_ROOT), "never in with dev mode's")
-	eq(PlayerSettings.file, PlayerSettings.TEST_FILE, "and a test never writes the player's own")
+	eq(PlayerSettings.file, PlayerSettings.test_file, "and a test never writes the player's own")
 	for r: Dictionary in ConfigSchema.ROWS:
 		check(PlayerSettings.row(r.id).is_empty(),
 			"%s is the owner's to set in a build, not the player's" % r.id)

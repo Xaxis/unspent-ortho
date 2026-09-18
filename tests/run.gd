@@ -33,6 +33,13 @@ func _run() -> void:
 			shards = maxi(1, sp[1].to_int())
 		elif a != "":
 			filter = a
+	# Every `user://` a test writes gets this shard's own name. One path per
+	# project and three processes at once is a directory they share, and the
+	# failures it makes read as real ones (see `SaveSlots.shard_root`).
+	SaveSlots.test_root = SaveSlots.shard_root(shard)
+	SaveSlots.root = SaveSlots.test_root
+	PlayerSettings.test_file = PlayerSettings.shard_file(shard)
+	DevMode.test_root = DevMode.shard_root(shard)
 	var index := -1
 
 	for path in _find("res://src", ".gd"):

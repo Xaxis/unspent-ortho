@@ -24,6 +24,13 @@ class_name PlayerSettings
 ## on the screen said why.
 const FILE := "user://settings.json"
 const TEST_FILE := "user://test-settings.json"
+## One file per SHARD, for the reason in `SaveSlots.shard_root`. This family has
+## already caused one silent cross-contamination: a test that wrote the PLAYER's
+## settings once turned the world's sound off in every shot taken afterwards.
+static func shard_file(i: int) -> String:
+	return TEST_FILE if i <= 0 else "user://test-settings-%d.json" % i
+## This process's own settings file; `tests/run.gd` sets it from its shard.
+static var test_file := TEST_FILE
 const TOOL_FILE := "user://tool-settings.json"
 const VERSION := 1
 
@@ -40,7 +47,7 @@ static func use_file(which: StringName) -> void:
 		&"tool":
 			want = TOOL_FILE
 		&"test":
-			want = TEST_FILE
+			want = test_file
 	if want == file:
 		return
 	file = want
@@ -386,8 +393,8 @@ static func forget_for_test() -> void:
 	use_file(&"test")
 	# And the runner's file with it: a test that starts from what the last test
 	# wrote is a test whose result depends on what ran before it.
-	if FileAccess.file_exists(TEST_FILE):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_FILE))
+	if FileAccess.file_exists(test_file):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_file))
 	_values.clear()
 	_keys.clear()
 	_defaults.clear()
