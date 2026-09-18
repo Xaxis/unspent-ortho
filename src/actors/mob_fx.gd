@@ -411,14 +411,20 @@ void fragment() {
 
 ## The swing's stroke over an arc mesh: u runs along the swing, v across it.
 const _SWING := """
-render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
+render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled, blend_add;
+// The order found.gdshader uses, and it is load-bearing: matter reaches for
+// `ink_hash`, so ink comes before it.
+#define SKY_FOUND
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform float head = 1.0;
 uniform float tail = 0.7;
-uniform vec3 paper_col = vec3(0.91, 0.86, 0.75);
-uniform vec3 ink_col = vec3(0.031, 0.027, 0.059);
+// The light a steel edge carries through its sweep: cold and near white, and
+// never the amber of a machine's working part, which is the one saturated thing
+// a player is aiming AT and must not be competed with (src/render/palette.gd).
+uniform vec3 edge_col = vec3(0.86, 0.91, 0.96);
 varying vec3 wp;
 
 void vertex() {
@@ -439,29 +445,26 @@ void fragment() {
 	if (v < inner) {
 		discard;
 	}
-	vec2 px = floor(FRAGCOORD.xy) + world_px;
 	// In the mark's own pen, as every other width here is (MobFx.PEN).
 	float pu = max(fwidth(u), 1e-5) * PEN;
-	float pv = max(fwidth(v), 1e-5) * PEN;
-	// Two whole pixels of ink on every edge, whatever the camera's distance.
-	bool edge = v > 1.0 - pv * 2.0 || v < inner + pv * 2.0 || head - u < pu * 2.0;
-	bool paper = !edge;
-	// Only the leading hand's width fills solid. Behind it the stroke breaks into
-	// the hand's own lines along the sweep — in the page's light for most of it,
-	// falling to ink as it trails away. A swing landing on a machine has to be a
-	// drawn arc over it, never a solid wedge across it (docs/ART.md §7).
-	if (!edge && k < 0.88) {
-		if (mod(floor(v / pv), k < 0.4 ? 3.0 : 2.0) > 0.5) {
-			discard;
-		}
-		if (k < 0.4) {
-			paper = false;
-		}
+	// THE EDGE IS WHAT CATCHES. A swing is light smeared along the sweep, not a
+	// crescent drawn round it: brightest on the outer rim where the blade is and
+	// at the leading hand, dying back down the tail. It is ADDITIVE, so it reads
+	// on a dark machine and on bright gravel for the same reason a lamp does,
+	// and it needs neither the two pixels of ink this had on every edge nor the
+	// paper behind them to be seen (docs/LOOK.md: the world is lit, not drawn).
+	float across = smoothstep(inner, 1.0, v);
+	float along = pow(1.0 - k, 1.6);
+	float lead = smoothstep(pu * 5.0, 0.0, head - u);
+	float a = clamp(across * along * 0.8 + lead * across * 0.95, 0.0, 1.0);
+	if (a < 0.015) {
+		discard;
 	}
-	vec3 c = paper ? paper_col : ink_col;
-	vec3 lit = sky_apply(c, wp, TIME);
-	ALBEDO = paper ? mix(lit, paper_col, 0.4) : lit;
-	ALPHA = 1.0;
+	// Through the one colour door, so the two renderers agree about what this
+	// value MEANS and the web gets it through `sky_emission` like every other
+	// light in the game (matter.gdshaderinc).
+	ALBEDO = matter_light(edge_col) * a;
+	ALPHA = a;
 }
 """
 
