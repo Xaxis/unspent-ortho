@@ -114,7 +114,7 @@ static func rivers(c: GenContext) -> void:
 		var k := order[j]
 		if parent[k] >= 0:
 			acc[parent[k]] += acc[k]
-	var threshold := maxf(12.0, RIVER_CATCHMENT * c.k * c.k)
+	var threshold := maxf(12.0, RIVER_CATCHMENT * c.body_k * c.body_k)
 	var is_river := PackedByteArray()
 	is_river.resize(cn)
 	var has_child := PackedByteArray()

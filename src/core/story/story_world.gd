@@ -9,31 +9,26 @@ class_name StoryWorld
 
 ## The one landscape a world cannot be without. The player wakes beside a coast
 ## village and that is a hard requirement of the opening hour, not a coincidence
-## (`GenSettle.spawn`). The worldgen session said this plainly rather than
-## inventing a floor for the rest, and was right to: guaranteeing a set of
-## landscapes on the spawn continent is exactly the flattening continents exist to
-## avoid — "no two worlds are the same map" dies if every home body must carry the
-## same six things (unspent-ortho-df, 2026-09-18).
+## (`GenSettle.spawn`). It is guaranteed by that and not by a `spread` floor, and
+## the worldgen session offered to set one and was told not to: a floor spends a
+## landscape's worth of the variety continents exist to buy, and the opening hour
+## already pays for this one (unspent-ortho-df, 2026-09-18).
 const COAST := &"coast"
 
 
 ## Whether EVERY world of this realm is guaranteed to contain this landscape, so
 ## the spine may rest a required beat on it.
 ##
-## `BiomeRegistry.guaranteed(id)` is the committed name on the worldgen side and
-## reads `BiomeDef.spread.least >= 1` and nothing else (docs/WORLD.md §spread).
-## IT HAS NOT SHIPPED: as of 6782828 the design is on main and the source is not —
-## that commit is `docs/WORLD.md | 28 +++`, one file, and there is no
-## `always_present` or `guaranteed` anywhere in `src/`. Verified, not assumed.
+## Two things guarantee a landscape, and this answers yes to either: the opening
+## hour (the coast, above), or the dealer's own floor, `BiomeRegistry.guaranteed`,
+## which reads `BiomeDef.spread.x >= 1` and nothing else. Do NOT duplicate that
+## reading here — the dealer's answer is the authority, or the two drift and the
+## gate stops meaning anything. And never ask "is it exclusive?" instead: that is a
+## proxy, false exactly when an ordinary landscape is left out of a small world, and
+## not a thing the registry knows, so a rule written in terms of it cannot be tested.
 ##
-## Until it lands this answers false for everything but the coast, which is
-## conservative on purpose: nothing is guaranteed, so `StoryPlan.problems` refuses
-## to let a required beat rest on a landscape at all and the spine stays on
-## per-region features — which is the better spine anyway.
-##
-## WHEN IT LANDS: replace the body with `return BiomeRegistry.guaranteed(land)`.
-## One line, and nothing else in the story package knows the difference. Do NOT
-## duplicate the `spread.least` reading here; the dealer's own answer is the
-## authority, or the two drift and the gate stops meaning anything.
+## `tests/story/test_plan.gd` holds whatever this says yes to against the tiles of
+## worlds that were really grown, so a promise here that the world does not keep
+## fails the gate rather than a player.
 static func guaranteed(land: StringName) -> bool:
-	return land == COAST
+	return land == COAST or BiomeRegistry.guaranteed(land)

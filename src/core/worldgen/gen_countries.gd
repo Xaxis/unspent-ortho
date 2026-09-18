@@ -74,12 +74,12 @@ static func coarse(c: GenContext) -> void:
 	var size := c.size
 	var types := c.types
 	var target := targets(c)
-	var warp := GenFields.noise(c.s, 202, 1.0 / (190.0 * c.k), 3)
-	var wamp := 58.0 * c.k
+	var warp := GenFields.noise(c.s, 202, 1.0 / (190.0 * c.body_k), 3)
+	var wamp := 58.0 * c.body_k
 	var own: Array[FastNoiseLite] = []
 	for cc in types:
-		own.append(GenFields.noise(c.s, 210 + cc, 1.0 / (90.0 * c.k), 3))
-	var oamp := 38.0 * c.k
+		own.append(GenFields.noise(c.s, 210 + cc, 1.0 / (90.0 * c.body_k), 3))
+	var oamp := 38.0 * c.body_k
 	# dist[cc * cn + k]: warped distance from cell k to type cc's nearest site.
 	var dist := PackedFloat32Array()
 	dist.resize(types * cn)
@@ -305,7 +305,7 @@ static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Arra
 		y += stepy
 	for cc: int in wanted:
 		var d := c.defs[cc]
-		var want := maxi(d.site_count.x, mini(d.site_count.y, roundi(d.site_count.x + (d.site_count.y - d.site_count.x) * c.k)))
+		var want := maxi(d.site_count.x, mini(d.site_count.y, roundi(d.site_count.x + (d.site_count.y - d.site_count.x) * c.body_k)))
 		for i in want:
 			var best := -1
 			var best_score := -1e9
@@ -321,12 +321,12 @@ static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Arra
 					var other := c.defs[int(s.z)]
 					# Never on top of another site; drawn toward the neighbours
 					# it likes and pushed off the ones it does not.
-					if dist < 40.0 * maxf(0.5, c.k):
+					if dist < 40.0 * maxf(0.5, c.body_k):
 						score -= 3.0
 					var like := float(d.adjacency.get(other.id, 0.0))
-					score += like * clampf(1.0 - dist / (140.0 * maxf(0.5, c.k)), 0.0, 1.0)
+					score += like * clampf(1.0 - dist / (140.0 * maxf(0.5, c.body_k)), 0.0, 1.0)
 					if int(s.z) == cc:
-						score -= clampf(1.0 - dist / (200.0 * maxf(0.5, c.k)), 0.0, 1.0) * 2.0
+						score -= clampf(1.0 - dist / (200.0 * maxf(0.5, c.body_k)), 0.0, 1.0) * 2.0
 				score += rng.randf() * 0.25
 				if score > best_score:
 					best_score = score
@@ -345,7 +345,7 @@ static func _fit(c: GenContext, d: BiomeDef, p: Vector2, r: Rect2) -> float:
 	var i := clampi(int(p.y), 0, c.size - 1) * c.size + clampi(int(p.x), 0, c.size - 1)
 	var inland := c.inland[i]
 	# The shore is wet, the middle of the island is dry.
-	var moist := clampf(1.0 - smoothstep(4.0, 150.0 * maxf(0.5, c.k), inland) * 0.85, 0.0, 1.0)
+	var moist := clampf(1.0 - smoothstep(4.0, 150.0 * maxf(0.5, c.body_k), inland) * 0.85, 0.0, 1.0)
 	if temp < d.temp_range.x or temp > d.temp_range.y:
 		return 0.0
 	if moist < d.moist_range.x or moist > d.moist_range.y:
@@ -354,7 +354,7 @@ static func _fit(c: GenContext, d: BiomeDef, p: Vector2, r: Rect2) -> float:
 	var mid_m := (d.moist_range.x + d.moist_range.y) * 0.5
 	var fit := 1.0 - absf(temp - mid_t) - absf(moist - mid_m)
 	if d.coastal != 0.0:
-		var shore := clampf(1.0 - inland / (60.0 * maxf(0.5, c.k)), 0.0, 1.0)
+		var shore := clampf(1.0 - inland / (60.0 * maxf(0.5, c.body_k)), 0.0, 1.0)
 		fit += d.coastal * (shore - 0.5)
 	return maxf(0.05, fit)
 
@@ -590,7 +590,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
-	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.k * c.k))
+	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.body_k * c.body_k))
 	c.mark(&"tiles.enclaves")
 	if with_blend:
 		_blend(c, widen)
@@ -672,7 +672,7 @@ static func regions(c: GenContext) -> void:
 	)
 	var sizes := PackedInt32Array()
 	var label := GenFields.patches(country, sea, size, sizes)
-	var min_tiles := maxi(24, roundi(REGION_TILES * c.k * c.k))
+	var min_tiles := maxi(24, roundi(REGION_TILES * c.body_k * c.body_k))
 	# Biggest first, so region 0 is the largest place in the world and ids stay
 	# stable as long as the shape of the land does.
 	var order := PackedInt32Array()

@@ -43,7 +43,7 @@ static func sites(c: GenContext) -> void:
 	var rng := Rng.make(c.s, 81)
 	# Tips: scrap heaps where a landscape says the machines dumped them.
 	for cc: int in c.land_types:
-		var want := maxi(1, roundi(int(c.defs[cc].sites.get("tips", 0)) * maxf(c.k, 0.4)))
+		var want := maxi(1, roundi(int(c.defs[cc].sites.get("tips", 0)) * maxf(c.body_k, 0.4)))
 		var placed := 0
 		for attempt in 2500:
 			if placed >= want:
@@ -52,7 +52,7 @@ static func sites(c: GenContext) -> void:
 			var i := p.y * c.size + p.x
 			if w.country[i] != cc or w.blend[i] > 0.42:
 				continue
-			if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), 36.0 * maxf(c.k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+			if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), 36.0 * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 				continue
 			_lay_tip(c, p, rng.randf_range(4.0, 7.5))
 			w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
@@ -60,7 +60,7 @@ static func sites(c: GenContext) -> void:
 	# Stone circles on open flat ground where a landscape keeps them.
 	for cc: int in c.land_types:
 		var declared := int(c.defs[cc].sites.get("stone_circles", 0))
-		var circles := maxi(2, roundi(declared * c.k)) if declared > 0 else 0
+		var circles := maxi(2, roundi(declared * c.body_k)) if declared > 0 else 0
 		var placed := 0
 		for attempt in 2500:
 			if placed >= circles:
@@ -76,7 +76,7 @@ static func sites(c: GenContext) -> void:
 	# Ruins where people had steadings to lose.
 	var ruins := 0
 	for attempt in 1200:
-		if ruins >= maxi(2, roundi(7 * maxf(c.k, 0.3))):
+		if ruins >= maxi(2, roundi(7 * maxf(c.body_k, 0.3))):
 			break
 		var p := _random_tile(c, rng)
 		var i := p.y * c.size + p.x
@@ -99,7 +99,7 @@ static func sites(c: GenContext) -> void:
 	var fumaroles := 0
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	for attempt in (6000 if vented >= 0 else 0):
-		if fumaroles >= maxi(2, roundi(vent_count * c.k)):
+		if fumaroles >= maxi(2, roundi(vent_count * c.body_k)):
 			break
 		var p := _random_tile(c, rng)
 		var i := p.y * c.size + p.x
@@ -109,7 +109,7 @@ static func sites(c: GenContext) -> void:
 			continue
 		# Later attempts settle for rougher ground and closer company.
 		var rough := 1 if attempt < 3000 else 2
-		if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+		if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 			continue
 		_lay_patch(c, p, rng.randf_range(4.0, 6.0), Ground.CLINKER)
 		w.landmarks.append({"kind": &"fumarole", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": vented})
@@ -348,13 +348,13 @@ static func _wrecks(c: GenContext) -> void:
 	for part in parts:
 		cands.append_array(part)
 	var wrecks := 0
-	var want := maxi(1, roundi(4 * maxf(c.k, 0.3)))
+	var want := maxi(1, roundi(4 * maxf(c.body_k, 0.3)))
 	for attempt in mini(400, cands.size() * 2):
 		if wrecks >= want:
 			break
 		var i := cands[rng.randi_range(0, cands.size() - 1)]
 		var p := Vector2i(i % size, i / size)
-		if _near_landmark(w, Vector2(p), 50.0 * maxf(c.k, 0.4)) or _near_village(w, Vector2(p), 16.0):
+		if _near_landmark(w, Vector2(p), 50.0 * maxf(c.body_k, 0.4)) or _near_village(w, Vector2(p), 16.0):
 			continue
 		w.landmarks.append({"kind": &"wreck", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": country[i]})
 		wrecks += 1
@@ -706,7 +706,7 @@ static func _lines(c: GenContext, occ: PackedByteArray) -> void:
 	for v in w.villages:
 		var vp: Vector2 = v.pos + Vector2(-3.5, 3.5)
 		var best := Vector2.ZERO
-		var best_d := 90.0 * maxf(c.k, 0.4)
+		var best_d := 90.0 * maxf(c.body_k, 0.4)
 		for line in w.lines:
 			for id: int in line.props:
 				var d := w.props[id].pos.distance_to(vp)

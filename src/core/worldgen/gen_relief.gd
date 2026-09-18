@@ -117,7 +117,7 @@ static func run(c: GenContext) -> void:
 static func crater_radius(c: GenContext) -> float:
 	if c.caldera_type < 0:
 		return 1.0
-	return c.defs[c.caldera_type].caldera * maxf(0.6, c.k)
+	return c.defs[c.caldera_type].caldera * maxf(0.6, c.body_k)
 
 
 ## The soft membership of the type that sinks a caldera, if any.

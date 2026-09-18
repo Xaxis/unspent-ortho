@@ -37,10 +37,20 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# size asked for is a ceiling: at every size this project currently uses it
 	# comes back one body, which is the island that has always been here.
 	c.bodies = GenBodies.plan(seed_value, realm, size).bodies
+	# A place is measured against the BODY it stands on, never against the square.
+	var share := 1.0
+	for body: Dictionary in c.bodies:
+		share = minf(share, float(body.get("share", 1.0)))
+	c.body_k = c.k * sqrt(clampf(share, 0.01, 1.0))
 	var t := Time.get_ticks_usec()
 	var marks := {}
 	c.mark(&"start")
 	GenShape.run(c)
+	# WHICH BODY EACH TILE IS ON, BEFORE ANYTHING IS LAID ON IT. It ran at the end
+	# when all it had to do was record; the dealer needs it here, because "may this
+	# landscape stand on THIS continent" cannot be asked of a world that does not
+	# yet know where its continents are (docs/WORLD.md §4).
+	GenBodies.run(c)
 	t = _mark(c, marks, &"shape", t)
 	GenCountries.coarse(c)
 	t = _mark(c, marks, &"layout", t)
@@ -84,7 +94,6 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# whose land a tile is on.
 	w.road = c.road
 	w.recipe = c.recipe
-	GenBodies.run(c)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]

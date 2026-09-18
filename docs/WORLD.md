@@ -378,6 +378,19 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   seam test pass and cost **40% of the world's blend mass** — passing a test by
   flattening the ecotones the test exists to protect.
 - **A clock in the gate is scaled, or it is measuring the laptop.**
+- **A correct invariant is not restated when its premise changes, and that is how
+  it becomes a lie.** `GenShape._clean` keeping exactly one landmass was not a
+  bug — it was the line that MADE "every country lies on the one walkable island"
+  true, and it was right for as long as that sentence was. It became wrong the
+  moment a world could have two, and it silently deleted three continents out of
+  four. The same animal as ART.md's review checklist still asking after a hatch in
+  a world with no hatch, and as the wear law naming a model that was thrown away.
+  When a premise moves, go and read what was true because of it.
+- **A digest is an instrument too.** Comparing bytes answered exactly the question
+  it was asked — *did the world move?* — and was structurally unable to answer the
+  one that mattered: *is this one island or four?* Both of the multi-body failures
+  passed every test in the repository, and only `tools/map.sh` showed the four arms
+  of a single mass. Measure, then look at it.
 - **A test that cannot observe the thing it rules is not a test of it.**
   ART.md §4 ("a machine is a dark mass by day") is held by `test_machines_ramps.gd`,
   which reads the PALETTE — so it cannot see `matter_worn`, and when wear began

@@ -109,7 +109,7 @@ static func villages(c: GenContext) -> void:
 	cands.sort_custom(by_score)
 	relaxed.sort_custom(by_score)
 	rough.sort_custom(by_score)
-	var gap := maxf(26.0, 56.0 * c.k)
+	var gap := maxf(26.0, 56.0 * c.body_k)
 	var chosen: Array[Vector3] = []
 	# The spawn village: as far south as flat coast allows, and close enough to
 	# the sea that the first frame holds the square and the water together (a
@@ -353,7 +353,7 @@ static func roads(c: GenContext) -> void:
 	var root := PackedInt32Array()
 	for j in vs.size():
 		root.append(j)
-	for e in _edges(vs, c.k):
+	for e in _edges(vs, c.body_k):
 		if _connect(c, grid, hw, e.x, e.y):
 			root[GenAccess.find_root(root, e.x)] = GenAccess.find_root(root, e.y)
 	# A tree edge can fail (a loch in the way, no footing): join any village

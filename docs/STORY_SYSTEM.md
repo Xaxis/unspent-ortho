@@ -154,6 +154,14 @@ continent has villages, a works depot per worked region, landmarks and a portal,
 whatever landscapes it drew. A spine built from those cannot be dealt out of a
 world.
 
+**Across water, `apart` lies.** Continents are real (`bbaf89f`): at large sizes a
+world is several landmasses with ocean between them. `apart` measures tiles in a
+straight line, so on such a world a slot forty tiles off may be across the sea.
+Every size the tests and tours use today is still one island, so nothing has
+moved yet. Before a multi-continent world is cast, required slots must be held
+to the player's home landmass and `apart` measured over land (unspent-ortho-df,
+2026-09-18).
+
 ---
 
 ## 5. Casting — pure, derived, never saved

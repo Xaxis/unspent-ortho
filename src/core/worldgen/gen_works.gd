@@ -176,7 +176,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 
 ## How many of a thing a world of this size gets.
 static func _n(c: GenContext, base: float) -> int:
-	return maxi(1, roundi(base * maxf(c.k, 0.3)))
+	return maxi(1, roundi(base * maxf(c.body_k, 0.3)))
 
 
 ## How hard a landscape's works have to look for room. 1 at the six landscapes
@@ -628,7 +628,7 @@ static func _pinewood(L: Lay) -> void:
 		for side in 2:
 			var sgn := -1.0 if side == 0 else 1.0
 			var t := 0.0
-			while t < 90.0 * maxf(c.k, 0.4):
+			while t < 90.0 * maxf(c.body_k, 0.4):
 				var q := mid + along * sgn * (t + 1.0)
 				var qx := floori(q.x)
 				var qy := floori(q.y)

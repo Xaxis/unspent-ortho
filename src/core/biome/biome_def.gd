@@ -54,6 +54,22 @@ var temp_range := Vector2(0.0, 1.0)
 var moist_range := Vector2(0.0, 1.0)
 ## Sites wanted when placed by envelope: (min, max), scaled by world size.
 var site_count := Vector2i(1, 2)
+## How many BODIES of a realm this type must and may lie on, as (least, most)
+## (`docs/WORLD.md` §4). `most` 0 is "as many as the balance wants".
+##
+##   (0, 0)  the default, and what every type did before continents: anywhere,
+##           any number — AND A WORLD MAY NOT HAVE IT AT ALL.
+##   (1, 0)  at least one body always carries it. What a story or an economy may
+##           build on; ask `BiomeRegistry.guaranteed(id)` rather than reading this.
+##   (0, 1)  at most one continent, and a world may not have it. The rare thing
+##           you cross an ocean for.
+##   (1, 1)  exactly one, guaranteed and exclusive.
+##
+## KEEP THE GUARANTEED SET SMALL. Every type given `least >= 1` is one that can
+## never be made rare, so a long guaranteed list quietly spends the variety
+## continents exist to buy. A spine resting on one landscape that always exists is
+## more robust than one resting on eight that usually do.
+var spread := Vector2i(0, 0)
 ## Placement bias by neighbour: other type id -> weight (+ likes to lie beside
 ## it, - keeps away). Read against the sites already placed.
 var adjacency: Dictionary = {}
