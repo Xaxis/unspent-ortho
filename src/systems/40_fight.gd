@@ -121,10 +121,18 @@ func _process(delta: float) -> void:
 		game.player.model.set_held(game.inventory.held)
 
 
-## Marks are sized in screen pixels of the camera players actually have.
+## Marks are sized in pixels of the frame the camera players actually have. The
+## rig's LIVE `size` and not its `view_height`: a target lock leans the camera in
+## and out by up to 14% (42_target's LOCK_ZOOM and SWEEP_ZOOM) and `size` is what
+## the rig itself divides by rows for its own texel, so asking for anything else
+## puts every mark's floor on a camera nobody is looking through -- in the one
+## moment a player is reading a machine before a blow.
 func _keep_texel() -> void:
-	var h := game.camera.get_viewport().get_visible_rect().size.y if game.camera.is_inside_tree() else 360.0
-	MobFx.texel = game.camera.view_height / maxf(1.0, h)
+	if not game.camera.is_inside_tree():
+		MobFx.texel = MobFx.play_texel()
+		return
+	var h := game.camera.get_viewport().get_visible_rect().size.y
+	MobFx.texel = game.camera.size / maxf(1.0, h)
 
 
 ## The camera's up on screen, as a world direction (a tell stands above a body along it).

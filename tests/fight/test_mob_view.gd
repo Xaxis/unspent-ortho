@@ -144,8 +144,9 @@ func test_marks_are_never_smaller_than_their_screen_size() -> void:
 	var root := Node3D.new()
 	tree.root.add_child(root)
 	var was := MobFx.texel
-	# The camera players get: 15 world units over 360 pixels.
-	MobFx.texel = 15.0 / 360.0
+	# The camera players get, asked of the rig and the base rather than written
+	# down again: 15 world units over 1080 rows.
+	MobFx.texel = MobFx.play_texel()
 	MobFx.burst(root, Vector3.ZERO, 0.1, 1)
 	MobFx.tell(root, Vector3(0, 1, 0), Vector3.UP, 0.4, 2, 0.1)
 	var quads: Array[MeshInstance3D] = []
@@ -153,12 +154,13 @@ func test_marks_are_never_smaller_than_their_screen_size() -> void:
 		quads.append(c as MeshInstance3D)
 	eq(quads.size(), 2, "two marks")
 	if quads.size() == 2:
-		# A mark's quad is 2 units, scaled by half its size.
-		gt(quads[0].scale.x * 2.0 / MobFx.texel, MobFx.BURST_PX - 0.01, "a burst at least %d px across" % MobFx.BURST_PX)
-		gt(quads[1].scale.x * 2.0 / MobFx.texel, MobFx.TELL_PX - 0.01, "a tell at least %d px" % MobFx.TELL_PX)
+		# A mark's quad is 2 units, scaled by half its size; the floors are in the
+		# mark's own grid, so the division is by one of THOSE and not by a texel.
+		gt(quads[0].scale.x * 2.0 / MobFx.px(1.0), MobFx.BURST_PX - 0.01, "a burst at least %d px across" % MobFx.BURST_PX)
+		gt(quads[1].scale.x * 2.0 / MobFx.px(1.0), MobFx.TELL_PX - 0.01, "a tell at least %d px" % MobFx.TELL_PX)
 		gt(quads[1].position.y, 1.0 + MobFx.px(3.0) - 0.001, "the tell stands clear above the top it was given")
 	# Zoomed in, a mark keeps its world size when that is the larger.
-	MobFx.texel = 4.0 / 360.0
+	MobFx.texel = MobFx.play_texel() * 0.25
 	MobFx.burst(root, Vector3.ZERO, 1.2, 3)
 	var last := root.get_child(root.get_child_count() - 1) as MeshInstance3D
 	near(last.scale.x * 2.0, 1.2, 0.001, "world size when close")

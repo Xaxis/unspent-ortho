@@ -48,7 +48,9 @@ hour 21.5
 wait 1.2
 walk 0,-1 1.0 run
 wait 0.8
-shot 04-the-mast-over-its-yard-at-night with works_yard,pixels:bebadf:30
+# A tenth of what a real run holds: measured 7372 pixels of the mast's own
+# violet here, against a 30 that would have passed on a speck of it.
+shot 04-the-mast-over-its-yard-at-night with works_yard,pixels:bebadf:700
 
 # Its ground. Everything inside its reach answers to it, and the plan keeps a
 # file on whoever is standing in the yard: nothing is written on screen about it

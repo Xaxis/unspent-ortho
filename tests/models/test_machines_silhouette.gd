@@ -8,8 +8,21 @@ extends TestCase
 ##   every machine is visibly bigger than nothing and fits its footprint
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
-## One screen pixel at the game's default view height (14 units over 360 px).
-const TEXEL := 14.0 / 360.0
+## One CELL of this raster, in world units — a fixed number of pixels of the
+## frame at the camera players get, asked of the rig and the base rather than
+## written down again (docs/LOOK.md).
+##
+## It read `14.0 / 360.0` for two waves after LANTERN's floor took the base to
+## 1080 rows, against a rig whose view height has never been 14: so every count
+## below was in cells that nothing in the repository could name. 2.8 is what
+## leaves the raster exactly where these gates were calibrated (3 for the rows,
+## times 14/15 for the view height that was never right), and the cell is
+## deliberately COARSER than a frame pixel — that is what keeps a whole roster
+## affordable, and it is conservative, since detail that survives a coarse raster
+## survives the frame. W and H are the raster's size in cells and every threshold
+## below counts in them, so the cell and the thresholds can only move together.
+const CELL := 2.8
+static var TEXEL := CameraRig.VIEW_HEIGHT / float(UiBase.SIZE.y) * CELL
 const W := 160
 const H := 130
 const YAW := 0.6
@@ -140,7 +153,8 @@ func test_alert_and_dead_change_the_silhouette_more_than_any_walk_pose() -> void
 ## Two gates, because one is not enough for a set that runs from a flock of shards
 ## to a two-and-a-half-tile slab: the change must be at least a twelfth of the
 ## body's own area (a small machine has to move a lot of itself) AND at least
-## three screen pixels of outline travel (a big one must not hide its poses inside
+## three raster cells of outline travel, about eight frame pixels (a big one
+## must not hide its poses inside
 ## its own bulk — the harvester used to manage only 0.063 of itself).
 func test_the_poses_a_player_reads_differ_in_silhouette() -> void:
 	for kid in KINDS:
@@ -308,6 +322,6 @@ func test_every_machine_reads_at_gameplay_zoom() -> void:
 		var m := posed(kid, &"stand")
 		var px := count(silhouette(m))
 		m.free()
-		# A person is roughly 20 x 8 screen pixels; nothing here should vanish.
+		# A person is roughly 20 x 8 raster cells; nothing here should vanish.
 		gt(float(px), 80.0, "%s covers %d px" % [kid, px])
 		lt(float(px), W * H * 0.5, "%s covers %d px" % [kid, px])

@@ -5,9 +5,16 @@ extends Camera3D
 ## full-screen shaft pass, on the tiers that have no volumetric air.
 
 @export var yaw_deg := 45.0
-@export var pitch_deg := 57.0
-## Vertical extent of the view in world units.
-@export var view_height := 15.0
+## As with VIEW_HEIGHT below: a test rasterising a model the way the play camera
+## sees it asks for this rather than writing 57 down a second time.
+const PITCH_DEG := 57.0
+@export var pitch_deg := PITCH_DEG
+## Vertical extent of the view in world units. The const is here so anything
+## sizing itself against the play camera off-screen — a test, a mark's floor —
+## can ASK for it instead of writing 15 down a second time (docs/LOOK.md: name a
+## number where it is drawn).
+const VIEW_HEIGHT := 15.0
+@export var view_height := VIEW_HEIGHT
 ## How far the camera stands back along its view axis. Orthographic, so it only
 ## has to clear the tallest land in front of the focus; close keeps the depth
 ## range (and the sun's shadow range, SkyLight) tight.

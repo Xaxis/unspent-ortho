@@ -3,8 +3,9 @@ class_name MobFx
 ## blow lands, dust as stipple puffs, a plate's ring as a pen's sound marks and
 ## two or three bright pixels, a dashed ink ring on the ground, the swing's
 ## stroke, and a paper-white flash on a struck body. No particles that look like
-## a physics engine: every mark is drawn in whole screen pixels by a shader on a
-## single quad, and its patterns are pinned to the world through `world_px`.
+## a physics engine: every mark is drawn in whole pixels of a MARK'S OWN GRID
+## (`PITCH`) by a shader on a single quad, and its patterns are pinned to the
+## world through `world_px`.
 ##
 ## Ink and dust are tinted by the sky like the page they sit on; sparks and
 ## glints are light, so they are not. Each mark frees itself.
@@ -43,8 +44,9 @@ void vertex() {
 }
 """
 
-## Every width below is in whole screen pixels (`pw` is one pixel in quad units),
-## so a mark reads the same at the camera players get as in a close shot.
+## Every width below is in whole pixels of the mark's own grid (`pw` is one of
+## them in quad units, PITCH frame pixels wide), so a mark reads the same at the
+## camera players get as in a close shot.
 const _MARKS := """
 
 vec4 ink_out() {
@@ -139,7 +141,7 @@ vec4 puff(vec2 p, vec2 px, float pw, float pr) {
 // across and along, so widths come from the radius' own screen rate.
 vec4 ring(vec2 p, float pr) {
 	float r = length(p);
-	float pw = max(fwidth(r), 1e-4);
+	float pw = max(fwidth(r), 1e-4) * PITCH;
 	float R = mix(0.3, 1.0, 1.0 - (1.0 - pr) * (1.0 - pr)) - pw * 3.0;
 	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 14.0);
 	if (mod(seg, 2.0) > 0.5 || ink_hash(vec2(seg, seed)) < pr * 0.95) {
@@ -367,7 +369,8 @@ vec4 bracket(vec2 p, float pw, float pr) {
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float pw = max(fwidth(p.x), 1e-4);
+	// One pixel of the MARK's own grid, in quad units: PITCH of the frame's.
+	float pw = max(fwidth(p.x), 1e-4) * PITCH;
 	float pr = clamp(progress, 0.0, 1.0);
 	vec4 o = vec4(0.0);
 	if (mode == 0) { o = burst(p, pw, pr); }
@@ -391,7 +394,6 @@ void fragment() {
 
 ## The swing's stroke over an arc mesh: u runs along the swing, v across it.
 const _SWING := """
-shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
@@ -421,8 +423,9 @@ void fragment() {
 		discard;
 	}
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float pu = max(fwidth(u), 1e-5);
-	float pv = max(fwidth(v), 1e-5);
+	// In the mark's own grid, as every other width here is (MobFx.PITCH).
+	float pu = max(fwidth(u), 1e-5) * PITCH;
+	float pv = max(fwidth(v), 1e-5) * PITCH;
 	// Two whole pixels of ink on every edge, whatever the camera's distance.
 	bool edge = v > 1.0 - pv * 2.0 || v < inner + pv * 2.0 || head - u < pu * 2.0;
 	bool paper = !edge;
@@ -474,7 +477,7 @@ void vertex() {
 }
 
 void fragment() {
-	// The ribbon is exactly LINE_PX wide, so UV.y maps whole screen pixels.
+	// The ribbon is exactly LINE_PX wide, so UV.y maps whole pixels of the mark grid.
 	float v = abs(UV.y - 0.5) * 2.0;
 	// A line given a life of its own retracts toward the hand as it goes. A
 	// grapple's does not: it is re-pointed every frame and freed when the pull
@@ -497,10 +500,43 @@ const STREAK := 6
 const BRACKET := 7
 const VAPOUR := 8
 
-## World units per screen pixel of the 640x360 image (the fight system keeps it
-## to the camera's). Marks are never smaller on screen than their *_PX sizes.
-static var texel := 14.0 / 360.0
-## Smallest on-screen size, in pixels, of each mark (its quad's full width).
+## World units per pixel of the FRAME at the camera players get, asked of the rig
+## and the base rather than written down again (docs/LOOK.md). 40_fight keeps
+## `texel` to the LIVE camera and viewport every frame; this is what it is when
+## nothing is running, and it is what a test measuring a mark off-screen must put
+## back before it measures anything.
+static func play_texel() -> float:
+	return CameraRig.VIEW_HEIGHT / float(UiBase.SIZE.y)
+
+static var texel := play_texel()
+## Frame pixels to one pixel of a MARK'S OWN GRID, the way `UiBase.PITCH` is one
+## pixel of the stolen module's glass. Every width in this file and in its
+## shaders — a stroke's half width, a halo, a spark, a glint's arm, the floors
+## below — is in that grid and not in frame pixels.
+##
+## The marks were drawn against a 360-row frame and LANTERN's floor took the base
+## to 1080 (docs/LOOK.md), so left at 1 every pen was a third of its weight and
+## every floor a third of its reach: seven hairlines inside a quad of the right
+## size, which is a scratch on a lit world and not the record of a blow.
+##
+## It is 2 and not the 3 the rows moved by, and that was settled on frames rather
+## than on the arithmetic. A mark's LAYOUT is fixed -- seven strokes round a
+## circle, three dashes side by side -- while its pen is not, so widening the pen
+## closes the gaps the layout leaves. At 3 both of this file's own named failures
+## come back at once: a burst's paper halos meet across its open heart and it is
+## the filled star BURST_OPEN exists to prevent, and a speed line's three strokes
+## are again "three white lozenges with a slit down each" (see `streak`). At 2
+## neither does. It also leaves the marks inside the bodies they are drawn on:
+## the narrowest machine in the roster measures 25.7 of these pixels and the
+## widest of these floors is 22, where at 3 the machine is 17 and a burst alone
+## is wider than what it is a record of
+## (tests/models/test_machines_hit_marks.gd measures both, every run).
+##
+## Compiled into the shaders as PITCH, so the grid the test measures on and the
+## grid they draw on are one number.
+const PITCH := 2.0
+## Smallest on-screen size, in pixels of that grid, of each mark (its quad's full
+## width).
 ## A hit mark has to be read at a glance and then be gone; it must never be the
 ## biggest thing in the frame, and it must never be the thing standing in front
 ## of what it proves (docs/ART.md §7: a SHORT ink burst, sparks as two or three
@@ -524,7 +560,7 @@ const STREAK_PX := 34.0
 const BRACKET_PX := 26.0
 ## Breath and steam: small, because they are a cue and not an event.
 const VAPOUR_PX := 18.0
-## A magnet line's width in whole screen pixels: one of the machines' cold with
+## A magnet line's width in whole pixels of the mark grid: one of the machines' cold with
 ## one of their dark each side. Three is the least that reads over pale gravel.
 const LINE_PX := 3.0
 ## The fraction of a burst's (and a plate ring's) radius that never takes ink, so
@@ -568,15 +604,16 @@ static func _shader(key: StringName) -> Shader:
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
-	# One number for the open heart of a mark, in the shader and in the test.
-	var open := "#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n" % [BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK]
+	# One number for the open heart of a mark, and one for the grid every width in
+	# this file is drawn on, in the shader and in the test.
+	var open := "#define PITCH %0.4f\n#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n" % [PITCH, BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK]
 	match key:
 		&"over":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
 		&"flat":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
 		&"swing":
-			s.code = _SWING
+			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
 			s.code = _LINE
 		_:
@@ -638,14 +675,14 @@ static func _ok(parent: Node) -> bool:
 	return parent != null and parent.is_inside_tree()
 
 
-## `size` world units, or `min_px` screen pixels if that is larger.
+## `size` world units, or `min_px` pixels of the mark's grid if that is larger.
 static func at_least(size: float, min_px: float) -> float:
-	return maxf(size, min_px * texel)
+	return maxf(size, px(min_px))
 
 
-## World units covered by `n` screen pixels.
+## World units covered by `n` pixels of the mark's grid.
 static func px(n: float) -> float:
-	return n * texel
+	return n * PITCH * texel
 
 
 ## How much of a struck body goes to paper, as a share of its height. Enough to
@@ -655,16 +692,16 @@ const FLASH_SHARE := 0.24
 
 
 ## The flash sphere for a body `height` world units tall, never smaller than a
-## few screen pixels (a low body would otherwise flash nothing at all).
+## few pixels of the mark grid (a low body would otherwise flash nothing at all).
 static func flash_radius(height: float) -> float:
 	return maxf(height * FLASH_SHARE, px(4.0))
 
 
-## Screen pixels at the heart of a burst that never take ink, at the moment of
-## the blow. What was struck has to show through: the burst proves the hit, the
-## part proves where to hit.
+## Pixels of the mark's grid at the heart of a burst that never take ink, at the
+## moment of the blow. What was struck has to show through: the burst proves the
+## hit, the part proves where to hit.
 static func burst_clear_px(size: float = 0.9) -> float:
-	return at_least(size, BURST_PX) / maxf(texel, 1e-5) * 0.5 * BURST_OPEN
+	return at_least(size, BURST_PX) / maxf(px(1.0), 1e-5) * 0.5 * BURST_OPEN
 
 
 ## Where a blow landed: a burst of ink strokes over whatever was struck. An
@@ -833,7 +870,7 @@ static func line(parent: Node, from: Vector3, to: Vector3, col: Color, seconds: 
 
 
 ## Re-point a line drawn by `line`. The ribbon is rebuilt across the camera, so
-## it keeps its exact width in screen pixels from any angle and at any distance.
+## it keeps its exact width on the mark grid from any angle and at any distance.
 static func aim_line(mi: MeshInstance3D, from: Vector3, to: Vector3) -> void:
 	if mi == null or not mi.is_inside_tree():
 		return
