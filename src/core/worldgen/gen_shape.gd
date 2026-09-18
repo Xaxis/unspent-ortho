@@ -22,28 +22,53 @@ static func run(c: GenContext) -> void:
 	var hw := GenFields.coarse_width(size, hs)
 	var hn := hw * hw
 	var rng := Rng.make(s, 100)
-	var ax := rng.randf_range(0.34, 0.38)
-	var ay := rng.randf_range(0.38, 0.41)
-	var tilt := rng.randf_range(-0.22, 0.22)
-	var ct := cos(tilt)
-	var st := sin(tilt)
-	# Peninsulas: bumps straddling the rim, never on the south coast's middle
-	# (the spawn bay stays a broad open shore).
+	# ONE SUPERELLIPSE PER BODY (docs/WORLD.md §1). The draws are made in the same
+	# order they always were, so a world of ONE body — which is every world this
+	# project generates today — takes the identical stream and comes out identical.
+	# A body's radii scale by the square root of its share of the land, because a
+	# share is an area.
+	var plan: Array[Dictionary] = c.bodies
+	if plan.is_empty():
+		plan = [{"at": Vector2(0.5, 0.5), "share": 1.0}]
+	var shapes: Array[Dictionary] = []
 	var lobes := PackedVector3Array()
 	var lobe_amp := PackedFloat32Array()
-	var lobe_count := rng.randi_range(3, 5)
-	for k in lobe_count:
-		var ang := _rim_angle(rng)
-		var reach := rng.randf_range(0.9, 1.08)
-		lobes.append(Vector3(0.5 + cos(ang) * ax * reach, 0.5 + sin(ang) * ay * reach, rng.randf_range(0.06, 0.11)))
-		lobe_amp.append(rng.randf_range(0.35, 0.6))
-	# Islets offshore: small, close enough that some sit on the shallow shelf.
-	var islet_count := rng.randi_range(4, 8)
-	for k in islet_count:
-		var ang := rng.randf() * TAU
-		var reach := rng.randf_range(1.12, 1.24)
-		lobes.append(Vector3(0.5 + cos(ang) * ax * reach, 0.5 + sin(ang) * ay * reach, rng.randf_range(0.012, 0.022)))
-		lobe_amp.append(rng.randf_range(0.9, 1.3))
+	for body: Dictionary in plan:
+		var at: Vector2 = body.get("at", Vector2(0.5, 0.5))
+		var scale := sqrt(clampf(float(body.get("share", 1.0)), 0.02, 1.0))
+		var ax := rng.randf_range(0.34, 0.38) * scale
+		var ay := rng.randf_range(0.38, 0.41) * scale
+		var tilt := rng.randf_range(-0.22, 0.22)
+		shapes.append({"at": at, "ax": ax, "ay": ay, "ct": cos(tilt), "st": sin(tilt)})
+		# A CONTINENT'S HEADLANDS REACH INTO ITS OWN OCEAN. With one island every
+		# direction is its own ocean and this does nothing. With several, a
+		# peninsula thrown inward lands in the strait — and they are big enough to
+		# bridge it: the first multi-body world came out as ONE mass with four
+		# visible arms, not because the bodies overlapped (they are 60 tiles clear
+		# at 1024) but because each one's inward lobes met in the middle. The draws
+		# are unchanged and only the ANGLE is turned, so a single body still takes
+		# the identical stream.
+		var outward := (at - Vector2(0.5, 0.5)).angle() if plan.size() > 1 else 0.0
+		var many := plan.size() > 1
+		var lobe_count := rng.randi_range(3, 5)
+		for k in lobe_count:
+			var ang := _rim_angle(rng)
+			if many:
+				ang = outward + wrapf(ang, -PI, PI) * 0.42
+			var reach := rng.randf_range(0.9, 1.08)
+			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rng.randf_range(0.06, 0.11)))
+			lobe_amp.append(rng.randf_range(0.35, 0.6))
+		# Islets offshore: small, close enough that some sit on the shallow shelf.
+		var islet_count := rng.randi_range(4, 8)
+		for k in islet_count:
+			var ang := rng.randf() * TAU
+			if many:
+				ang = outward + wrapf(ang, -PI, PI) * 0.42
+			var reach := rng.randf_range(1.12, 1.24)
+			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rng.randf_range(0.012, 0.022)))
+			lobe_amp.append(rng.randf_range(0.9, 1.3))
+	var ax: float = shapes[0].ax
+	var ay: float = shapes[0].ay
 	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.k), 2)
 	const N := GenFields.NOISE
 	var fl := GenFields.batch(size, [
@@ -76,11 +101,17 @@ static func run(c: GenContext) -> void:
 				if hard < 0.035:
 					lf[i] = -1.0
 					continue
-				var wu := u + warp_u[i] * 0.05 - 0.5
-				var wv := v + warp_v[i] * 0.05 - 0.5
-				var pu := absf((wu * ct - wv * st) / ax)
-				var pv := absf((wu * st + wv * ct) / ay)
-				var r := pow(pow(pu, BODY_POWER) + pow(pv, BODY_POWER), 1.0 / BODY_POWER)
+				# The nearest body wins the cell: the void between them is simply
+				# where no body reaches, which is what makes an ocean an ocean and
+				# not a hole cut in one.
+				var r := 1e9
+				for sh: Dictionary in shapes:
+					var at: Vector2 = sh.at
+					var wu := u + warp_u[i] * 0.05 - at.x
+					var wv := v + warp_v[i] * 0.05 - at.y
+					var pu := absf((wu * float(sh.ct) - wv * float(sh.st)) / float(sh.ax))
+					var pv := absf((wu * float(sh.st) + wv * float(sh.ct)) / float(sh.ay))
+					r = minf(r, pow(pow(pu, BODY_POWER) + pow(pv, BODY_POWER), 1.0 / BODY_POWER))
 				var h := (1.0 - r) * 1.1
 				# Bays bite hardest near the rim, where the coast is.
 				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
@@ -99,7 +130,16 @@ static func run(c: GenContext) -> void:
 	)
 	c.mark(&"shape.noise")
 	var inner_count := inner.count(1)
-	var want := clampf(1.0 - (LAND_SHARE + 0.012) * hn / maxf(1.0, inner_count), 0.05, 0.95)
+	# THE LAND A WORLD HAS FOLLOWS ITS BODIES. `LAND_SHARE` is what ONE island
+	# takes; a world of continents takes the sum of what its bodies take, which is
+	# less, because the ocean between them is the difference. Without this the
+	# quantile below hands back the same total land whatever shapes it was given
+	# and simply fills the water in — which is exactly what four continents did on
+	# the first run, coming out as one mass of half a million tiles.
+	var share := 0.0
+	for body: Dictionary in plan:
+		share += float(body.get("share", 1.0))
+	var want := clampf(1.0 - (LAND_SHARE * share + 0.012) * hn / maxf(1.0, inner_count), 0.05, 0.95)
 	var thr := GenFields.quantile(lf, inner, want, -2.5, 2.5)
 	for i in hn:
 		lf[i] -= thr
@@ -109,7 +149,7 @@ static func run(c: GenContext) -> void:
 	for i in hn:
 		land_h[i] = 1 if lf[i] > 0.0 else 0
 	c.mark(&"shape.quantile")
-	var islet_h := _clean(lf, land_h, hw)
+	var islet_h := _clean(lf, land_h, hw, plan.size())
 	c.mark(&"shape.clean")
 	# Tiles: bilinear, then a whisper of fine noise right at the waterline so
 	# rock shores crinkle and throw the odd skerry.
@@ -231,7 +271,7 @@ static func _lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32A
 
 ## Fill enclosed seas; sink detached land bigger than an islet. Returns 1
 ## on the islets that stay.
-static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> PackedByteArray:
+static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int, keep: int) -> PackedByteArray:
 	var hn := hw * hw
 	var sea := PackedByteArray()
 	sea.resize(hn)
@@ -246,18 +286,27 @@ static func _clean(lf: PackedFloat32Array, land_h: PackedByteArray, hw: int) -> 
 			lf[i] = maxf(lf[i], 0.12)
 	var lsizes := PackedInt32Array()
 	var llabels := GenFields.components(land_h, hw, lsizes)
-	var main := 0
+	# KEEP AS MANY MASSES AS THE WORLD WAS PLANNED TO HAVE. This kept exactly one
+	# and drowned every other run of land above islet size, which is what made
+	# "every country lies on the one walkable island" true — and it is the line
+	# that silently deleted three continents out of four the first time the body
+	# stage laid them. With `keep` at 1 it does exactly what it always did.
+	var order: Array[int] = []
 	for id in lsizes.size():
-		if lsizes[id] > lsizes[main]:
-			main = id
+		if lsizes[id] > 0:
+			order.append(id)
+	order.sort_custom(func(a: int, b: int) -> bool: return lsizes[a] > lsizes[b])
+	var kept := {}
+	for r in mini(maxi(keep, 1), order.size()):
+		kept[order[r]] = true
 	var islet_cells := ISLET_TILES / 4
 	for i in hn:
 		var id := llabels[i]
-		if id >= 0 and id != main and lsizes[id] > islet_cells:
+		if id >= 0 and not kept.has(id) and lsizes[id] > islet_cells:
 			land_h[i] = 0
 			lf[i] = -0.04
 	var islets := PackedByteArray()
 	islets.resize(hn)
 	for i in hn:
-		islets[i] = 1 if land_h[i] != 0 and llabels[i] != main else 0
+		islets[i] = 1 if land_h[i] != 0 and not kept.has(llabels[i]) else 0
 	return islets

@@ -33,6 +33,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	var w := WorldData.new(seed_value, size)
 	w.realm = realm
 	var c := GenContext.new(w)
+	# What the world is MADE of, before a tile of it exists (docs/WORLD.md). The
+	# size asked for is a ceiling: at every size this project currently uses it
+	# comes back one body, which is the island that has always been here.
+	c.bodies = GenBodies.plan(seed_value, realm, size).bodies
 	var t := Time.get_ticks_usec()
 	var marks := {}
 	c.mark(&"start")
