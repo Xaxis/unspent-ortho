@@ -121,10 +121,19 @@ func _process(delta: float) -> void:
 		game.player.model.set_held(game.inventory.held)
 
 
-## Marks are sized in screen pixels of the camera players actually have.
+## Marks are sized in pixels of the frame the camera players actually have, and
+## it is the rig's LIVE `size` that says so, never its `view_height`. A target
+## lock leans the camera in and out (42_target's LOCK_ZOOM 0.86 and SWEEP_ZOOM
+## 1.14), and `size` is what the rig itself divides by rows for its own texel --
+## so for the whole time `z` is held, which is exactly when a player is reading a
+## machine and deciding whether to fight it, every mark's floor was being worked
+## out against a camera nobody was looking through, by up to a seventh either way.
 func _keep_texel() -> void:
-	var h := game.camera.get_viewport().get_visible_rect().size.y if game.camera.is_inside_tree() else 360.0
-	MobFx.texel = game.camera.view_height / maxf(1.0, h)
+	if not game.camera.is_inside_tree():
+		MobFx.texel = game.camera.view_height / float(UiBase.SIZE.y)
+		return
+	var h := game.camera.get_viewport().get_visible_rect().size.y
+	MobFx.texel = game.camera.size / maxf(1.0, h)
 
 
 ## The camera's up on screen, as a world direction (a tell stands above a body along it).
@@ -362,7 +371,7 @@ func _on_hit(e: Dictionary) -> void:
 		# The blow is in the working part: the burst is drawn over it, and it flares
 		# (Mob). A machine is not knocked about, so no dust: one mark, read at a glance.
 		# Lifted a little up the screen, so the swinger's own body is not under it.
-		MobFx.burst(fx, _part_at(m) + _screen_up() * MobFx.px(6.0), 1.1, int(sim.now), Palette.LENS[3])
+		MobFx.burst(fx, _part_at(m) + _screen_up() * MobFx.pen_px(6.0), 1.1, int(sim.now), Palette.LENS[3])
 	else:
 		MobFx.burst(fx, impact, 0.8, int(sim.now))
 		MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
