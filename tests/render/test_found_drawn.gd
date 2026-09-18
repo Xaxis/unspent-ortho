@@ -124,6 +124,210 @@ func test_every_found_part_of_every_prop_is_drawn_from_the_play_camera() -> void
 	check(seen.size() > 40, "measured %d distinct models" % seen.size())
 
 
+## MADE IS WHERE THE BUG KEPT COMING BACK, and this file could not see it.
+##
+## The winding trap has been fallen into four times by four builders chasing four
+## unrelated tasks, and only the first was FOUND: the scrap tree's plate. After
+## it came `works.gd run`, `rocks.gd _run` and `remains.gd streak` — not one rust
+## run in the game had ever been drawn — and then the bunk and the solar array,
+## both of which first drew with no faces at all and cost three renders to
+## diagnose. `MeshKit.tri` takes its normal from `(c - b).cross(a - b)`, so a face
+## meant to be seen from above runs round the OPPOSITE way to the one that reads
+## naturally when you write it out. That is not a mistake somebody makes once; it
+## is a trap in the API, and vigilance has now failed four times.
+##
+## The tell, from the builder who burned two renders on it: the geometry is
+## ABSENT, not dark, so it looks exactly like something in front hiding it.
+## Anyone reshaping the occluder first is chasing the wrong thing.
+##
+## IT ASKS A DIFFERENT QUESTION OF MADE THAN OF FOUND, on purpose. FOUND is
+## machine parts — a rod, a panel, a housing, each put there to be seen — so
+## "nothing of it reaches the screen" is a fault however it came about, and the
+## test above raster's it against everything in front of it.
+##
+## MADE is trunks, thatch, mud and stone, and being inside something else is
+## ORDINARY there: a ring of pine trunk under its own crown is hidden and is
+## perfectly correct. Measured, the occlusion question asked of MADE reports
+## dozens of those and would have to be silenced with a list of dozens of rows,
+## which teaches the reader to ignore it.
+##
+## So MADE is asked the question the four bugs actually failed: is this surface
+## TURNED AWAY from every bearing the camera can take — not "is it covered", but
+## "does it face outward at all". A trunk swallowed by a canopy passes, because
+## it faces out and something is in front of it. A panel wound the wrong way
+## fails from every bearing at once, because there is no bearing it faces. That
+## is the trap exactly, with no judgement in it and nothing to baseline.
+##
+## THE FIRST RUN FOUND THE FIFTH INSTANCE OF THE TRAP and it is fixed: the ochre
+## stain fanned on the ground under the IRON ORE, two triangles, both wound to
+## face the ground, never drawn once in the model's life (`rocks.gd iron_ore`).
+## It also found both of the houses' eave planes — the hipped roof's and the flat
+## one's — each written as "the dark overhang under the eaves" and each culled
+## from every bearing, so the overhang was absent rather than dark and a sagging
+## ridge left a hole through the house to the ground (`houses.gd`).
+##
+## These are what is left, and they are a DEBT rather than a decision. Each wants
+## a look at a frame before it is turned, because turning a surface that is meant
+## to be an underside puts a dark plane where nothing was:
+##
+##   - house 7 is the tower form; the two planes are up under its top storey.
+##   - the two vehicles fail in the BURNING alone, which is the tell that it is
+##     the landscape's dressing and not the model: elsewhere something lies over
+##     the chassis and the question never arises.
+##   - wreckage 2 is five or six faces in every landscape, so it is one builder's
+##     habit rather than a slip, and it should be read as a whole.
+##
+## Take a row DOWN when you mend one; the run says so. Do not add one to make
+## this pass — the fifth instance was found in ninety seconds by a test nobody
+## had written, and the sixth will be too.
+const BACKWARDS_ALREADY := {
+	"house 7 in coast": 1,
+	"house 7 in snowfield": 2,
+	"vehicle 0 in burning": 3,
+	"vehicle 1 in burning": 3,
+	"wreckage 2 in bonelands": 5,
+	"wreckage 2 in burning": 5,
+	"wreckage 2 in coast": 5,
+	"wreckage 2 in limestone_caves": 5,
+	"wreckage 2 in moss": 5,
+	"wreckage 2 in pinewood": 6,
+	"wreckage 2 in salt_flats": 5,
+	"wreckage 2 in scrapwood": 5,
+	"wreckage 2 in slums": 5,
+	"wreckage 2 in snowfield": 5,
+}
+
+
+func test_no_made_surface_faces_away_from_every_bearing_at_once() -> void:
+	var seen := {}
+	var bad := {}
+	var where := {}
+	for kind in PropKind.COUNT:
+		for v in PropModels.variants(kind):
+			for c: int in BiomeRegistry.land_indices():
+				var t := PropModels.template(kind, v, c)
+				if t.made_v.is_empty():
+					continue
+				var key: int = [t.made_v].hash()
+				if seen.has(key):
+					continue
+				seen[key] = true
+				var who := "%s %d in %s" % [PropKind.NAMES[kind], v, BiomeRegistry.name_of(c)]
+				for piece: Dictionary in _pieces_backwards(t.made_v, t.found_v, t.leaf_v):
+					bad[who] = int(bad.get(who, 0)) + 1
+					where[who] = "%d triangles around %s" % [piece.tris, piece.at]
+	for who: String in bad:
+		var known := int(BACKWARDS_ALREADY.get(who, 0))
+		if bad[who] > known:
+			fail(("%s has %d MADE surfaces facing away from every bearing the play camera can take (%s). "
+				+ "That is the WINDING: MeshKit.tri takes its normal from (c - b) x (a - b), so a face meant to "
+				+ "be seen from above is written the opposite way round to the one that reads naturally. It will "
+				+ "be ABSENT rather than dark, which looks exactly like something in front of it — do not reshape "
+				+ "the occluder. Known already: %d.") % [who, bad[who], where[who], known])
+	for who: String in BACKWARDS_ALREADY:
+		if int(bad.get(who, 0)) < int(BACKWARDS_ALREADY[who]):
+			print("made parts: %s now turns %d away, not %d -- take its row in BACKWARDS_ALREADY down." % [who, int(bad.get(who, 0)), BACKWARDS_ALREADY[who]])
+	check(seen.size() > 40, "measured %d distinct models" % seen.size())
+
+
+## A piece big enough to be worth saying so about. Two triangles is one quad, and
+## one quad is what the ochre stain under the iron ore was.
+const BACKWARDS_TRIS := 2
+
+
+## MADE pieces that are wound the wrong way: {tris, at}.
+##
+## FACING AWAY IS NOT ENOUGH ON ITS OWN, and measuring taught me so. Plenty of
+## MADE geometry faces down because it SHOULD: a vehicle's belly, the ceiling
+## under a house's roof. Asking only "does it face out" reported seventeen
+## surfaces and most were undersides doing their job.
+##
+## So the question is the one that has an answer: **would it be seen if it were
+## wound the other way round?** Flip the piece, put everything else in front of
+## it, and raster. The ochre stain fanned on open ground beside the iron ore
+## draws the moment it is flipped, because nothing is over it — it was meant to
+## be seen and never was. A car's belly draws nothing either way, because the car
+## is on top of it. That separates the bug from the honest underside with no
+## judgement in it and nothing to baseline.
+static func _pieces_backwards(made: PackedVector3Array, found: PackedVector3Array, leaf: PackedVector3Array) -> Array[Dictionary]:
+	var piece_of := _join(made)
+	var count := 0
+	for pid in piece_of:
+		count = maxi(count, pid + 1)
+	var faces := PackedByteArray()
+	faces.resize(count)
+	var tris := PackedInt32Array()
+	tris.resize(count)
+	var centre := PackedVector3Array()
+	centre.resize(count)
+	var bz: Array[Vector3] = []
+	for b in BEARINGS:
+		bz.append(Basis.from_euler(Vector3(deg_to_rad(-PITCH_DEG), TAU * b / BEARINGS, 0.0)).z)
+	for t in range(0, made.size() - 2, 3):
+		var pid := piece_of[t / 3]
+		tris[pid] += 1
+		centre[pid] += made[t] + made[t + 1] + made[t + 2]
+		if faces[pid] != 0:
+			continue
+		# The same test `_raster` culls by, so the two can never disagree.
+		var n := (made[t + 2] - made[t]).cross(made[t + 1] - made[t])
+		for z: Vector3 in bz:
+			if n.dot(z) > 0.0:
+				faces[pid] = 1
+				break
+	var out: Array[Dictionary] = []
+	for pid in count:
+		if faces[pid] != 0 or tris[pid] < BACKWARDS_TRIS:
+			continue
+		var flipped := PackedVector3Array()
+		var rest := PackedVector3Array()
+		for t in range(0, made.size() - 2, 3):
+			if piece_of[t / 3] == pid:
+				flipped.append_array([made[t], made[t + 2], made[t + 1]])
+			else:
+				rest.append_array([made[t], made[t + 1], made[t + 2]])
+		if _would_show(flipped, rest, found, leaf) >= MIN_CELLS:
+			out.append({"tris": tris[pid], "at": (centre[pid] / maxf(tris[pid] * 3, 1)).snappedf(0.01)})
+	return out
+
+
+## Cells `subject` shows from its best bearing with everything else in front of it.
+static func _would_show(subject: PackedVector3Array, rest: PackedVector3Array,
+		found: PackedVector3Array, leaf: PackedVector3Array) -> int:
+	var reach := 0.0
+	for set: PackedVector3Array in [subject, rest, found, leaf]:
+		for p in set:
+			reach = maxf(reach, p.length())
+	var cell := SCREEN_PX * CELL
+	var side := int(ceil(reach * 2.0 / cell)) + 4
+	var ids := PackedInt32Array()
+	ids.resize(subject.size() / 3)
+	var best := 0
+	for b in BEARINGS:
+		var basis := Basis.from_euler(Vector3(deg_to_rad(-PITCH_DEG), TAU * b / BEARINGS, 0.0))
+		var depth := PackedFloat32Array()
+		depth.resize(side * side)
+		depth.fill(-INF)
+		var owner := PackedInt32Array()
+		owner.resize(side * side)
+		owner.fill(-1)
+		var size := PackedInt32Array()
+		size.resize(1)
+		var stamp := PackedInt32Array()
+		stamp.resize(side * side)
+		stamp.fill(-1)
+		_raster(rest, basis, cell, side, depth, owner, -1, PackedInt32Array(), false, 0.0, size, stamp)
+		_raster(found, basis, cell, side, depth, owner, -1, PackedInt32Array(), false, 0.0, size, stamp)
+		_raster(leaf, basis, cell, side, depth, owner, -1, PackedInt32Array(), true, LEAF_COVER, size, stamp)
+		_raster(subject, basis, cell, side, depth, owner, 0, ids, false, 0.0, size, stamp)
+		var shown := 0
+		for o in owner:
+			if o >= 0:
+				shown += 1
+		best = maxi(best, shown)
+	return best
+
+
 func test_a_scrap_tree_shows_its_salvage_through_its_crown() -> void:
 	# The tree the rule was written for: every variant shows plate THROUGH its
 	# leaves from above, and not only the ribs it has always shown.
@@ -143,9 +347,9 @@ func test_a_scrap_tree_shows_its_salvage_through_its_crown() -> void:
 const Kit := preload("res://src/models/props/kit.gd")
 
 
-static func _pieces_hidden(made: PackedVector3Array, found: PackedVector3Array, leaf: PackedVector3Array) -> Array[Dictionary]:
+static func _pieces_hidden(made: PackedVector3Array, found: PackedVector3Array, leaf: PackedVector3Array, want: int = FOUND) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for p in _measure(made, found, leaf):
+	for p in _measure(made, found, leaf, [], want):
 		if p.size >= MIN_CELLS and p.shown == 0:
 			out.append(p)
 	return out
@@ -160,10 +364,19 @@ static func _best(pieces: Array[Dictionary]) -> Dictionary:
 	return best
 
 
-## Every FOUND piece of a model, measured at `bearings`: {size, shown, at, flat},
-## each the piece's best bearing -- the one where the most of it is shown.
-static func _measure(made: PackedVector3Array, found: PackedVector3Array, leaf: PackedVector3Array, bearings: Array = []) -> Array[Dictionary]:
-	var piece_of := _join(found)
+## Which of a model's three surfaces is being measured; the other two are
+## rasterised as occluders, culled the way their own shaders cull them.
+const FOUND := 0
+const MADE := 1
+
+
+## Every piece of one surface of a model, measured at `bearings`: {size, shown,
+## at, flat}, each the piece's best bearing -- the one where the most of it is
+## shown.
+static func _measure(made: PackedVector3Array, found: PackedVector3Array, leaf: PackedVector3Array,
+		bearings: Array = [], want: int = FOUND) -> Array[Dictionary]:
+	var subject := made if want == MADE else found
+	var piece_of := _join(subject)
 	var count := 0
 	for pid in piece_of:
 		count = maxi(count, pid + 1)
@@ -198,9 +411,12 @@ static func _measure(made: PackedVector3Array, found: PackedVector3Array, leaf: 
 		var stamp := PackedInt32Array()
 		stamp.resize(side * side)
 		stamp.fill(-1)
-		_raster(made, basis, cell, side, depth, owner, -1, PackedInt32Array(), false, 0.0, size, stamp)
+		# The two that are not the subject go down first as plain occluders, then
+		# the subject with its piece ids, so a pixel it wins is a pixel it shows.
+		var other := found if want == MADE else made
+		_raster(other, basis, cell, side, depth, owner, -1, PackedInt32Array(), false, 0.0, size, stamp)
 		_raster(leaf, basis, cell, side, depth, owner, -1, PackedInt32Array(), true, LEAF_COVER, size, stamp)
-		_raster(found, basis, cell, side, depth, owner, 0, piece_of, false, 0.0, size, stamp)
+		_raster(subject, basis, cell, side, depth, owner, 0, piece_of, false, 0.0, size, stamp)
 		var shown := PackedInt32Array()
 		shown.resize(count)
 		for o in owner:
@@ -219,9 +435,9 @@ static func _measure(made: PackedVector3Array, found: PackedVector3Array, leaf: 
 		for i in piece_of.size():
 			if piece_of[i] == pid:
 				for j in 3:
-					centre += found[i * 3 + j]
-					lo = lo.min(found[i * 3 + j])
-					hi = hi.max(found[i * 3 + j])
+					centre += subject[i * 3 + j]
+					lo = lo.min(subject[i * 3 + j])
+					hi = hi.max(subject[i * 3 + j])
 				n += 3
 		var ext := hi - lo
 		var dims := [ext.x, ext.y, ext.z]
