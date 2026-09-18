@@ -40,7 +40,7 @@ func test_every_beat_has_a_door_the_player_can_find() -> void:
 
 
 func test_the_arcs_story_md_promises_are_all_declared() -> void:
-	for arc: StringName in [&"account", &"tide", &"quiet", &"key", &"clerk", &"went_in"]:
+	for arc: StringName in [&"who_he_was", &"the_war", &"the_machines", &"the_holdfast", &"the_covenant", &"the_secret"]:
 		check(StoryContent.ARCS.has(arc), "%s is declared" % arc)
 		gt(float(StoryContent.arc_beats(arc).size()), 2.0, "%s is more than a line" % arc)
 
@@ -162,34 +162,59 @@ func _walk(talk: StringName, picks: Array[String]) -> StoryTalk:
 	return t
 
 
-func test_there_is_no_outside_only_once_there_is_more_than_one_of_here() -> void:
+func test_a_question_nobody_has_a_reason_to_ask_is_not_offered_yet() -> void:
 	Story.forget()
-	var t := _walk(&"the_scavenger", ["With who?", "Why did they go?", "Did anybody come out?"])
-	check(Story.landed(&"went_in_out"), "one came out")
+	var t := _walk(&"the_digger", ["What was the building?"])
 	for r: Dictionary in t.replies():
-		check(str(r.text) != "What does that mean?", "a question nobody has a reason to ask is not offered yet")
+		check(str(r.text) != "Who wrote the orders that started the war?", "he asks who wrote the orders only once he knows he wrote orders of his own")
+		check(str(r.text) != "It woke up with somebody in it.", "and says what woke up only once he knows")
 	Story.forget()
-	Story.beat(&"branches")
+	Story.beat(&"was_cia")
 	@warning_ignore("return_value_discarded")
-	_walk(&"the_scavenger", ["With who?", "Why did they go?", "Did anybody come out?", "What does that mean?"])
-	check(Story.landed(&"no_outside"), "knowing there is more than one of this place, the answer lands")
+	_walk(&"the_digger", ["What was the building?", "Who wrote the orders that started the war?"])
+	check(Story.landed(&"tradecraft"), "knowing what he was, the answer lands on him")
 	Story.forget()
 
 
-func test_the_quiet_region_costs_what_it_rests() -> void:
+func test_the_war_is_told_by_those_who_lived_off_it() -> void:
 	Story.forget()
 	@warning_ignore("return_value_discarded")
-	_walk(&"the_glad", ["Is it?", "Agree on what?", "And if somebody does not agree?", "Is she?"])
-	for b: StringName in [&"quiet_calm", &"quiet_glad", &"quiet_cost"]:
+	_walk(&"the_scavenger", ["What war?", "And the stations up there?"])
+	check(Story.landed(&"forged_order"), "every order checked out")
+	check(Story.landed(&"colonies"), "and the stations were lied to as well")
+	Story.forget()
+
+
+func test_the_covenant_costs_what_it_feeds() -> void:
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	_walk(&"the_fed", ["What is the Covenant?", "And what does it cost?"])
+	for b: StringName in [&"covenant_fed", &"covenant_price"]:
 		check(Story.landed(b), "%s lands along the way" % b)
-	eq(Story.chose(&"the_glad.agree"), &"asked_disagree", "and what the player asked is theirs")
+	eq(Story.chose(&"the_fed.covenant"), &"asked_cost", "and what the player asked is theirs")
 	Story.forget()
 
 
-func test_the_filed_asked() -> void:
+func test_the_keeper_sees_what_he_is_before_he_does() -> void:
+	Story.forget()
+	var t := _walk(&"the_keeper", ["Where am I?", "What happened to it?", "Does anyone fight them?"])
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "I know the old machines.", "he cannot offer what he does not know he knows")
 	Story.forget()
 	@warning_ignore("return_value_discarded")
-	_walk(&"the_cutter", ["The works say?", "Easier than what?", "And it did."])
-	check(Story.landed(&"clerk_asked"), "somebody asked to be written down")
-	check(Story.landed(&"the_filed"), "and came back agreeing")
+	_walk(&"the_keeper", ["Who pulled me out?", "[hold them out]"])
+	check(Story.landed(&"body_new"), "his hands say it before he can")
 	Story.forget()
+
+
+## 49_story names no beat of its own: every event it watches lands a beat the
+## content declares, and every witnessed beat has an event that lands it.
+func test_every_witnessed_beat_has_an_event_and_every_event_a_beat() -> void:
+	var landed_by := {}
+	for event: StringName in StoryContent.WITNESS_ON:
+		var b: StringName = StoryContent.WITNESS_ON[event]
+		check(StoryContent.BEATS.has(b), "%s lands %s, which is declared" % [event, b])
+		landed_by[b] = true
+	for b: StringName in StoryContent.WITNESSED:
+		check(landed_by.has(b), "%s is said to be witnessed, and some event lands it" % b)
+	check(StoryContent.BEATS.has(StoryContent.SIGNET_AFTER), "the signet waits on a beat that exists")

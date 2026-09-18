@@ -352,15 +352,15 @@ func _witness() -> void:
 			_filed_seen = body.filed
 		elif body.filed > _filed_seen:
 			_filed_seen = body.filed
-			_witnessed(&"clerk_written")
-		# The signet is a forged key; it only means that once the player knows a
-		# key was ever forged.
-		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(&"key_accepted"):
-			_witnessed(&"key_carried")
+			_witnessed(StoryContent.WITNESS_ON[&"filed"])
+		# The signet is his own old password, copied; it only means that once he
+		# knows he had one.
+		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
+			_witnessed(StoryContent.WITNESS_ON[&"signet"])
 	if game.world != null and game.world.realm != Realm.SURFACE:
-		_witnessed(&"branches")
+		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
-		_witnessed(&"unattested")
+		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
 
 
 func _hunted_here() -> bool:
@@ -379,11 +379,11 @@ func _hunted_here() -> bool:
 
 func _on_took(item: StringName, _count: int) -> void:
 	if item == &"record":
-		_witnessed(&"clerk_record")
+		_witnessed(StoryContent.WITNESS_ON[&"record"])
 
 
 func _on_works_broken(_region: int, _land: StringName) -> void:
-	_witnessed(&"went_in_dark")
+	_witnessed(StoryContent.WITNESS_ON[&"works_dark"])
 
 
 ## A beat the world handed the player rather than a page they read: nothing else

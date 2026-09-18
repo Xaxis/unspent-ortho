@@ -81,12 +81,30 @@ func _init() -> void:
 	add_child(figure)
 
 
+## Builds this PAGE offers, which since the story named its lead is the set that
+## reads as one man of 38 (owner, 2026-09-18): the page dresses Elias Marr now
+## rather than inventing a body. `woman` and `boy` are out because he is neither;
+## `old` and `bent` because he is 38 and they read as a life longer than his.
+##
+## **THIS LIST IS THE PAGE'S, AND `PersonLook.BUILDS` IS THE WORLD'S.** They must
+## never become one list. Every villager, crowd and passer is dealt from
+## `PersonLook.BUILDS` (`PersonLook.random`), so narrowing THAT to match this
+## would not give the game one protagonist, it would give it a world with no
+## women in it — silently, in one line, everywhere at once, the same way a
+## kit-only piece put in plain `EXTRAS` reshuffles every crowd. Held apart by
+## `tests/ui/test_character_builds.gd`.
+const PAGE_BUILDS: Array[StringName] = [&"man", &"heavy", &"slight", &"tall", &"stark", &"squat"]
+## What a dealt stranger's build falls back to when it is not one of the above:
+## the plain one, never the first that happens to sort.
+const PAGE_FALLBACK := &"man"
+
+
 ## What a row may be. Builds are the grown ones: the one who wakes on this coast
 ## has been surviving it.
 static func choices(key: String) -> Array:
 	match key:
 		"build":
-			return PersonLook.BUILDS.filter(func(b: StringName) -> bool: return b != &"boy")
+			return PAGE_BUILDS.duplicate()
 		"skin": return PersonLook.SKIN_WINDOWS.duplicate()
 		"skin_v": return [1, 2, 3]
 		"hair_style": return PersonLook.HAIR_STYLES.duplicate()
@@ -201,8 +219,11 @@ func _on_confirm(row: Dictionary) -> void:
 			# A stranger's hat, coat and kit are theirs; the body and its clothes are
 			# what is dealt here, and gear comes later, from the world.
 			look = AvatarState.bare(dealt)
-			if not choices("build").has(look.get("build", &"man")):
-				look["build"] = &"slight"
+			# "Someone else" reshuffles within ELIAS's options: a stranger is dealt
+			# from the world's whole pool and then read back onto the man this page
+			# is for, rather than the page dealing from a narrower world.
+			if not PAGE_BUILDS.has(look.get("build", &"man")):
+				look["build"] = PAGE_FALLBACK
 			Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 			_dress()
 			queue_redraw()
