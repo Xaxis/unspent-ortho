@@ -40,16 +40,35 @@ extends TestCase
 ## next one can be judged the same way: five digests still equal and one that
 ## grew by exactly what was appended. A change that moved `ground` or `blend`
 ## would not be this, and would want the seam frames again.
+##
+## RE-ACCEPTED A THIRD TIME, and this one DID move `ground` -- on seeds 1 and 3,
+## with `country`, `country2`, `level` and `blend` still equal on all five. So the
+## rule above was followed rather than waived: the picture was looked at
+## (`shots/intake.png`, seed 1 at 123,294, the run inland of the coast intake).
+##
+## The cause is two works changes, both deliberate. The coast's intake now runs
+## its pipe inland, because an intake that stops at its own fence is a machine
+## doing half a job and it left the coast's keeper feeding on ONE prop
+## (`tests/sentinel/test_world.gd` holds that now). And a cistern asks for 14
+## tiles of room instead of 26, because at an installation's spacing it lost every
+## draw against the bonelands' drill rigs and a whole world came out with nought
+## to two water tanks in fourteen thousand tiles of their own landscape. Works
+## stamp the ground they stand on, so both move `ground` where they moved.
+##
+## What the frame shows: steel pipe on trestles running inland across coast turf,
+## the sea wall behind it, the land either side of it unchanged in character. It
+## reads as infrastructure that was always meant to be there, which is the test
+## this file actually cares about.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f 905bd765 7b99a6e3 ce54a897 3534d191",
-	3: "d7a39e67 dba8792b 0ff796f3 090631fd a8be1d60 c411ebeb",
-	7: "aa526bae 4ff8f6b7 03d1260a 7fb78385 be4cc1f0 f66d805d",
-	42: "325e4566 8d16e00c eae7e32e b88a5d6e 8cce8022 27fd6d6f",
-	90210: "5b1e7401 4d0ad4be 0ddbbde8 bf578b00 ed81f772 5a193be9",
+	1: "d1335897 8b46ae9f b3f77d2c 7b99a6e3 ce54a897 888e2e4d",
+	3: "d7a39e67 dba8792b c8e83efa 090631fd a8be1d60 e7f928b7",
+	7: "aa526bae 4ff8f6b7 03d1260a 7fb78385 be4cc1f0 feb6ebca",
+	42: "325e4566 8d16e00c eae7e32e b88a5d6e 8cce8022 ecd89d2d",
+	90210: "5b1e7401 4d0ad4be 0ddbbde8 bf578b00 ed81f772 4b9a6adf",
 }
 
 

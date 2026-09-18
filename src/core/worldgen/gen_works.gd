@@ -439,6 +439,22 @@ static func _coast(L: Lay) -> void:
 		_run(L, PropKind.FENCE, at - sea * 4.0 + side * 4.0, sea, 4, 2.0, -99, 0.1)
 		_put(L, PropKind.SIGN, at - sea * 5.2 + side * 1.0, (-sea).angle(), -99, 0.2)
 		_gauge(L, at + side * 2.5, sea)
+		# AND THE PIPE IT TAKES THE WATER AWAY IN. An intake that stops at its own
+		# fence is a machine doing half a job, and it left the coast's keeper with
+		# nothing to eat: `tide_reaper` dens AT the intake (`stations`) and feeds on
+		# INTAKE, PUMP_HOUSE, PIPE and RELAY, of which the coast held exactly one --
+		# the intake itself. Pump houses are the moss's (`test_world_gen_works.HOME`)
+		# and relays the pinewood's, so three quarters of its diet was somewhere it
+		# could never reach, and starving it was a way of taking it that was already
+		# taken. The run goes inland, which is where the water was going anyway.
+		# ON THE SURVEY BEARING, like every other work the machines laid: `L.d` is
+		# `GenWorks.bearing` and `test_the_machines_works_lie_ruled_on_the_survey_bearing`
+		# holds the whole file to it. The first version ran the pipe straight inland
+		# on `-sea`, which is what a water main would do and is not what THESE
+		# builders do -- they ruled the coast on one line and the pipe is theirs.
+		# Whichever way along that line leads away from the water.
+		var inland := L.d if L.d.dot(-sea) >= 0.0 else -L.d
+		_run(L, PropKind.PIPE, at - sea * 6.0, inland, rng.randi_range(9, 14), 2.0, -99, 0.1)
 	# Trawlers beached where the sea put them: on the sand or the shingle, lying
 	# along the shore, a field of debris and wreckage round each.
 	var hulls := 0
@@ -980,8 +996,17 @@ static func _bonelands(L: Lay) -> void:
 				else:
 					_put(L, PropKind.DRILL_RIG, q, nrm.angle(), -99, 0.2, true)
 	# Cisterns where people keep water, a lean-to by each, a fence, a grave.
+	#
+	# A CISTERN IS A SMALL THING AND WAS ASKING FOR AN INSTALLATION'S ROOM. At 26
+	# tiles clear of every other work it lost the draw against the drill rigs and
+	# the conveyors that share the bonelands, and a whole 512 world came out with
+	# nought to two of them across fourteen thousand tiles of its own landscape --
+	# a kind with a model, a home and a place in a keeper's diet that a player
+	# would never meet. `test_every_prop_kind_and_ground_is_placed` had been
+	# failing on whichever seed happened to lose the last one, which reads as a
+	# flaky test and was a content answer nobody had looked at.
 	for n in _n(c, 2.0):
-		var p := _site(L, 4, 1, [], 26.0, 500, 0.45)
+		var p := _site(L, 4, 1, [], 14.0, 500, 0.45)
 		if p.x < 0:
 			continue
 		var at := Vector2(p) + Vector2(0.5, 0.5)
