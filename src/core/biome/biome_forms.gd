@@ -108,6 +108,20 @@ var plan: StringName = &""
 var apart := 0.0
 
 
+## The declared fields, in the order `WorldStamp` spells them.
+##
+## Written out by hand rather than read off `get_property_list()`, which is what
+## it was. The order of that list is the engine's to decide and nothing promises
+## it survives an export — and if it does not, the SAME landscape stamps
+## differently in the desktop build and the web one, so a save made in either is
+## refused by name in the other. There is no way to notice that from the editor.
+## The cost of writing it down is that a field added here and not added below is
+## silently outside the stamp; `tests/biome/test_forms.gd` fails on exactly that,
+## so the boring version cannot drift either way.
+func stamped() -> PackedStringArray:
+	return PackedStringArray(["stock", "plan", "apart"])
+
+
 # --- the one door ---------------------------------------------------------------
 
 static var _rows: Array[BiomeForms] = []

@@ -99,29 +99,31 @@ static func _spell(v: Variant) -> String:
 			return "none"
 		TYPE_OBJECT:
 			# A declared object (`BiomeDef.built`, a BiomeForms). `str()` on one is
-			# its instance id, which changes every run, so the one field that is an
-			# object would have moved the stamp on every launch and refused every
-			# save on disk — silently, and only for the players who had one. Spelled
-			# out instead: the script's bare file name (an exported build serves it
-			# as .gdc or through a .remap) and every `var` the script declares, in
-			# declaration order, which is stable across runs and across builds.
+			# its INSTANCE ID, which changes every run, so the one field that is an
+			# object would have moved the stamp on every launch and refused every save
+			# on disk as &"elsewhere" — silently, and ONLY for the players who had a
+			# landscape declaring one. Everybody else would be fine and nobody could
+			# reproduce it. So it is spelled out: the script's bare file name (an
+			# exported build serves the same script as .gdc or through a .remap, and a
+			# save written by the mac build must still open in the web one), and the
+			# fields the OBJECT ITSELF names, in the order it names them.
+			#
+			# It was `get_property_list()`. That order is the engine's to decide and
+			# nothing promises it survives an export — and if it does not, the same
+			# landscape stamps differently in the two builds and a save made in either
+			# is refused in the other, with nothing in the editor able to show it. A
+			# type that declares no `stamped()` is spelled as its class alone, loudly
+			# enough for a test to catch, because guessing at a field list is the
+			# thing this replaced.
 			var o := v as Object
 			if o == null:
 				return "none"
 			var sc := o.get_script() as Script
 			var where: String = sc.resource_path.get_file().get_basename() if sc != null else o.get_class()
+			if not o.has_method("stamped"):
+				return "%s(?)" % where
 			var fields := PackedStringArray()
-			for p: Dictionary in o.get_property_list():
-				if int(p.get("usage", 0)) & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
-					continue
-				var name := str(p.get("name", ""))
-				# A leading underscore is a package's own working state — a cache, a
-				# resolved copy — not part of what the landscape DECLARED. Spelling
-				# one in would put a value that changes with use inside a digest
-				# whose whole job is to be the same every run, and could walk back
-				# into the registry it came from.
-				if name.begins_with("_"):
-					continue
+			for name: String in (o.call("stamped") as PackedStringArray):
 				fields.append("%s=%s" % [name, _spell(o.get(name))])
 			return "%s(%s)" % [where, ";".join(fields)]
 		TYPE_FLOAT:

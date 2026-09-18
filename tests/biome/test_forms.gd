@@ -154,3 +154,59 @@ func test_the_forms_are_inside_the_stamp_and_spell_the_same_every_run() -> void:
 	d.built = keep
 	check(moved != was, "a landscape that starts building towers moves the stamp")
 	eq(WorldStamp.current(), was, "and putting it back puts the stamp back")
+
+
+func test_the_stamped_fields_are_every_field_and_no_others() -> void:
+	# `BiomeForms.stamped()` is written out by hand, because `get_property_list()`
+	# orders itself however the engine likes and nothing promises that survives an
+	# export — and a landscape that stamped differently in the desktop build and
+	# the web one would have each build refuse the other's saves by name, with
+	# nothing in the editor able to show it.
+	#
+	# The price of writing it down is that a field added and not listed is silently
+	# outside the stamp: a landscape could change where its buildings go and every
+	# save on disk would open onto the moved island believing it knew it. So the
+	# list is held to being EXACTLY the declared fields, which is the only thing
+	# that makes the boring version safe in both directions.
+	var declared := PackedStringArray()
+	for p: Dictionary in BiomeForms.new().get_property_list():
+		if int(p.get("usage", 0)) & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		var name := str(p.get("name", ""))
+		if name.begins_with("_"):
+			continue
+		declared.append(name)
+	var listed := BiomeForms.new().stamped()
+	var missing := PackedStringArray()
+	for name: String in declared:
+		if not listed.has(name):
+			missing.append(name)
+	var unknown := PackedStringArray()
+	for name: String in listed:
+		if not declared.has(name):
+			unknown.append(name)
+	eq(" ".join(missing), "", "every declared field is stamped; these are not, so a landscape could move its buildings under a save")
+	eq(" ".join(unknown), "", "and nothing is stamped that is not declared")
+
+
+func test_an_object_that_names_no_fields_is_never_spelled_as_an_instance_id() -> void:
+	# The whole bug this arm exists to stop: `str()` on an object is an id that
+	# changes every run, so a stamp that fell back to it would move on every
+	# launch and refuse every save on disk. A type that forgets `stamped()` must
+	# still spell the SAME for two instances of it, or the fallback carries the
+	# original bug.
+	#
+	# Asked of `_spell` directly, and that is deliberate. The obvious test — put
+	# one on a `BiomeDef` and stamp the registry — cannot be written: `built` is
+	# typed, so the assignment is refused at runtime, `built` stays null, both
+	# stamps come out as "none" and the test passes having proved nothing. It did
+	# exactly that before this comment was written.
+	var a := WorldStamp._spell(RefCounted.new())
+	var b := WorldStamp._spell(RefCounted.new())
+	eq(a, b, "two objects that name no fields spell alike: %s against %s" % [a, b])
+	check(not a.contains("<"), "and never as the `<RefCounted#...>` an instance id prints as: %s" % a)
+	# And one that DOES name its fields spells them, so the fallback is not simply
+	# what everything gets.
+	var f := BiomeForms.new()
+	f.stock = [&"tower"] as Array[StringName]
+	check(WorldStamp._spell(f).contains("tower"), "a type that names its fields has them spelled")
