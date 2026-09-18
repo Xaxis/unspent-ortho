@@ -622,8 +622,13 @@ static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: floa
 	var end_mats: Array[Color] = [ends, GroundColors.down(ends, 0.18), mats[0], GroundColors.up(ends, 0.12), mats[1], ends, mats[3], mats[mats.size() - 1]]
 	patch_slope(k, end_p, _apex(ridge[N], end_p.size()), 3, s + 23, end_mats, plate_share * 0.5)
 	patch_slope(k, end_m, _apex(ridge[0], end_m.size()), 3, s + 29, end_mats, plate_share * 0.35)
-	# The dark overhang under the eaves.
-	k.made.quad(e[0], e[1], e[2], e[3], P.INK[2])
+	# The dark overhang under the eaves — wound to face UP, which is the only way
+	# it is ever seen. The play camera is always above (pitch 57), so a plane
+	# wound downward here is culled from every bearing and the "dark overhang" was
+	# absent rather than dark. Where the sagging ridge or a dropped corner leaves
+	# the slopes short of the eave line, this is what the eye meets instead of a
+	# hole through the house to the ground.
+	k.made.quad(e[3], e[2], e[1], e[0], P.INK[2])
 	return [e[0], e[1], e[2], e[3], r0, rm, r1]
 
 
@@ -765,7 +770,10 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	if form == 0:
 		neon_run(k, front, ridge, 0.09, NEON_TUBES[1])
 	patch_slope(k, back_rev, ridge_rev, 4, s + 17, SLATE_ROOF, 0.10)
-	k.made.quad(Vector3(cx - ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx - ex, h - 0.05, ez), P.INK[2])
+	# Wound to face UP: the camera is always above, so this plane read downward
+	# was culled from every bearing and the shadow under the eaves was absent
+	# rather than dark. See the hipped roof's own eave plane for the same fix.
+	k.made.quad(Vector3(cx - ex, h - 0.05, ez), Vector3(cx + ex, h - 0.05, ez), Vector3(cx + ex, h - 0.05, -ez), Vector3(cx - ex, h - 0.05, -ez), P.INK[2])
 	# Gable ends in stone, up to the ridge where it actually lands.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), ridge[N] - Vector3(0, 0.06, 0.1), GroundColors.down(rubble, 0.3))
 	k.made.tri(t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), ridge[0] - Vector3(0, 0.06, -0.1), GroundColors.down(rubble, 0.5))

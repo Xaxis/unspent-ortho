@@ -140,9 +140,13 @@ static func iron_ore(k: Kit, v: int, c: int) -> void:
 	for i in 3 + v:
 		var a := float(i) * 2.2 + 0.4
 		k.stone(cos(a) * 0.42, 0.1 + i * 0.08, sin(a) * 0.36, 0.14, 0.16, s + 20 + i, P.RUST[3] if i % 2 else P.RUST[1], 5, 0.2)
-	# Ochre stain fanned out on the ground below it.
-	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.95, 0.01, 0.2), Vector3(0.6, 0.01, 0.75), P.RUST[4])
-	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.6, 0.01, 0.75), Vector3(0.1, 0.01, 0.62), P.EARTH[3])
+	# Ochre stain fanned out on the ground below it. BOTH WOUND THE OTHER WAY
+	# ROUND than they read: `MeshKit.tri` takes its normal from (c - b) x (a - b),
+	# so these two faced the ground and the stain had never been drawn once —
+	# the fifth instance of the same trap, and the first that a test found rather
+	# than a person (tests/render/test_found_drawn.gd).
+	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.6, 0.01, 0.75), Vector3(0.95, 0.01, 0.2), P.RUST[4])
+	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.1, 0.01, 0.62), Vector3(0.6, 0.01, 0.75), P.EARTH[3])
 
 
 ## Copper: a tall jagged spur of dark slate streaked top to bottom in
