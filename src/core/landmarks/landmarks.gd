@@ -137,7 +137,7 @@ static func _build() -> void:
 	out.append(light)
 
 	var mast := LandmarkDef.make(&"leaning_mast", "the leaning mast")
-	mast.lands = [&"moss", &"snowfield", &"pinewood"]
+	mast.lands = [&"moss", &"snowfield", &"pinewood", &"slums"]
 	mast.wants = &"water"
 	mast.sees = 13.0
 	mast.far = "A mast, leaning, with its guys down."
@@ -156,7 +156,7 @@ static func _build() -> void:
 	out.append(tower)
 
 	var stack := LandmarkDef.make(&"blinking_stack", "the tall stack")
-	stack.lands = [&"snowfield", &"bonelands", &"burning", &"scrapwood"]
+	stack.lands = [&"snowfield", &"bonelands", &"burning", &"scrapwood", &"slums"]
 	stack.wants = &"open"
 	stack.sees = 13.0
 	stack.far = "A stack, blinking, a long way off."
@@ -193,7 +193,7 @@ static func _build() -> void:
 	out.append(hulk)
 
 	var office := LandmarkDef.make(&"clerks_office", "the clerk's post")
-	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves", &"moss"]
+	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves", &"moss", &"slums"]
 	office.wants = &"rough"
 	office.sees = 12.0
 	office.far = "A post, and the ground round it is pale with paper."

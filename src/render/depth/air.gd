@@ -90,6 +90,12 @@ const ROWS := {
 	# is nearer than anywhere on the surface. A roofed realm reads as night at
 	# any hour (SkyLight.closed), and this is the air that goes with it.
 	&"limestone_caves": {"tow": Color(0.035, 0.040, 0.055), "pull": 0.86, "depth": 1.45, "near": 0.70, "bank": 1.8},
+	# Under the dome the air IS the landscape. Distance goes PALE and dirty, not
+	# dark: smog over a lit city is lit from underneath and whites the far end of
+	# a street out, which is the opposite of a cave and the opposite of what was
+	# first written here. A near-black tow at pull 0.58 took a noon frame to
+	# almost nothing — past the luma-24 floor `noir` was rejected for.
+	&"slums": {"tow": Color(0.300, 0.228, 0.170), "pull": 0.34, "depth": 1.20, "near": 0.90, "bank": 1.45},
 }
 
 ## A landscape with no row of its own: the coast's air, which is nearly neutral.

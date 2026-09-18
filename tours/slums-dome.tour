@@ -1,0 +1,66 @@
+# THE SLUMS: the city still runs its atmosphere plant, and the smog dome it makes
+# is thick enough that the street never gets the sun (`BiomeDef.sky_shut`,
+# src/render/sky_light.gd LID_*, src/systems/11_dome.gd).
+#
+# What this proves, in order: the landscape is reachable and names itself; it is
+# under a lid at every hour; and THE HOUR BARELY REACHES THE STREET.
+#   tools/tour.sh tours/slums-dome.tour --seed=7
+
+# --- the control, first, and it is the whole instrument -------------------
+#
+# The coast is where this game's night was calibrated (SkyLight.NIGHT_AMBIENT was
+# measured on its mid-value grass, and `night_sky` 1.0 is its). So the coast's own
+# noon-against-midnight is what a day costs in a landscape with nothing over it,
+# measured in this same run, on this same machine, under this same load.
+place coast
+hour 12
+weather clear:0
+wait 1.4
+shot 01-coast-noon with land:coast
+hour 0
+wait 1.4
+shot 02-coast-midnight with land:coast
+
+# --- the same day, under the dome ------------------------------------------
+place slums
+hour 12
+weather clear:0
+wait 1.6
+# The lid is over this place at noon. `dome` is computed off the live blended
+# shares the sky composed with (11_dome.tour_seen), never off a latch, so it
+# cannot answer for a lid the player walked out of ten minutes ago.
+await dome 6
+shot 03-slums-noon with land:slums
+hour 0
+wait 1.6
+shot 04-slums-midnight with land:slums
+
+# --- THE CLAIM --------------------------------------------------------------
+#
+# A whole day and a whole night cost this street LESS than they cost the coast.
+#
+# It is deliberately relational and not an absolute bar, for the reason
+# docs/LOOK.md gives in as many words: an absolute number here would be pinned to
+# how much the world animates — tufts, cloud shade, the player's own breathing —
+# and would go red for the weather while saying nothing whatever about the lid.
+# Both pairs are captured inside ONE run, so a busy machine moves both equally
+# and cancels (docs/LOOK.md, "a difference measured WITHIN one run is safe where
+# a difference measured ACROSS runs is not").
+#
+# NO SLACK IS GIVEN. If the dome ever stops holding the hour off the street this
+# goes red, and that is the entire point of the file: the number it is held to is
+# a property of the coast, so it follows the game rather than drifting from it.
+same 03-slums-noon 04-slums-midnight no_more_than 01-coast-noon 02-coast-midnight
+
+# --- and where the lid is torn ---------------------------------------------
+#
+# `until` and not `await`: a tear is dealt on a 26-tile grid (Dome.CELL) and the
+# pool it lays walks across the street over the day, so whether one is within
+# reach of this particular spawn at this particular hour is a property of the
+# seed and not something the landscape owes anybody. A tour that FAILED here
+# would be asserting something this file cannot honestly promise — and a green
+# step that proved nothing is worse than a red one.
+hour 11
+wait 1.2
+until shaft 8
+shot 05-light-through-a-tear with land:slums

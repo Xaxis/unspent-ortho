@@ -359,8 +359,22 @@ func _process(delta: float) -> void:
 
 
 ## 0..1: how far people have lit up. Lamps go on before full dark and out after
-## first light: up over 19:00-20:30, down over 05:00-06:30.
+## first light: up over 19:00-20:30, down over 05:00-06:30 — OR whenever there is
+## a lid over the landscape, whatever the clock says.
+##
+## People light up because it is DARK, and until a landscape could have something
+## between it and the sun that was the same thing as because it is LATE. It is
+## not: under a smog dome the street never gets the sun, and read off the clock
+## alone every lamp in a city went out at half past six in the morning and left
+## it a flat brown murk until seven at night — measured on the slums, seed 7,
+## where midnight was by a long way the better picture. The lid is
+## `SkyLight.last_lid()` (`BiomeDef.sky_shut`), and it is taken as a floor rather
+## than a replacement, so nothing about an open landscape's evening moves.
 static func lamps_wanted(hour: float) -> float:
+	return maxf(_lamps_by_clock(hour), SkyLight.last_lid())
+
+
+static func _lamps_by_clock(hour: float) -> float:
 	var h := fposmod(hour, 24.0)
 	if h >= 20.5 or h < 5.0:
 		return 1.0
@@ -632,7 +646,9 @@ func _update(delta: float, snap: bool) -> void:
 	# A roof is as dark as the hour ever gets. Under one the hour says nothing at
 	# all, so a pool of lamplight tells at noon down there exactly as it does at
 	# midnight up here (SkyLight.closed, src/core/realm, src/systems/20_realms.gd).
-	var hour_dark := maxf(pool_dark(hour), game.sky.closed)
+	# A lit lamp with no pool under it is not a lit street: a landscape with a lid
+	# on it needs both, or the lamps come on at noon and lay nothing (`SkyLight.lid`).
+	var hour_dark := maxf(pool_dark(hour), maxf(game.sky.closed, game.sky.lid))
 	var dark := hour_dark * flash
 	var pools: Array[Vector4] = []
 	var pool_rgb: Array[Vector4] = []
