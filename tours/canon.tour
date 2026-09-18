@@ -117,6 +117,8 @@ zoom 9
 wait 1.2
 walk 0,1 1.2
 wait 0.6
-shot 18-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:60
+# Measured on main: 1488 pixels of stolen neon, and 1544 / 1628 / 1632 on three
+# other branches -- a tenth of the lowest, against a 60 that passed on a speck.
+shot 18-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:160
 zoom 14
 weather clear:0

@@ -361,7 +361,7 @@ func _on_hit(e: Dictionary) -> void:
 	Events.hit.emit(_node_of(attacker), _node_of(target), int(e.damage), bool(e.plate), _at3(at))
 	if e.plate:
 		Events.sfx.emit(&"hit_plate", impact)
-		MobFx.clang(fx, impact, int(sim.now))
+		MobFx.clang(fx, impact, int(sim.now), target.radius * 2.0)
 		game.camera.shake(0.025, 0.07)
 		return
 	Events.sfx.emit(&"hit_flesh", impact)
@@ -371,9 +371,9 @@ func _on_hit(e: Dictionary) -> void:
 		# The blow is in the working part: the burst is drawn over it, and it flares
 		# (Mob). A machine is not knocked about, so no dust: one mark, read at a glance.
 		# Lifted a little up the screen, so the swinger's own body is not under it.
-		MobFx.burst(fx, _part_at(m) + _screen_up() * MobFx.pen_px(6.0), 1.1, int(sim.now), Palette.LENS[3])
+		MobFx.burst(fx, _part_at(m) + _screen_up() * MobFx.pen_px(6.0), 1.1, int(sim.now), Palette.LENS[3], m.radius * 2.0)
 	else:
-		MobFx.burst(fx, impact, 0.8, int(sim.now))
+		MobFx.burst(fx, impact, 0.8, int(sim.now), Color(0, 0, 0, 0), target.radius * 2.0)
 		MobFx.puff(fx, _at3(target.pos), from_dir, _dust_colour(target.pos), 0.6, int(sim.now) + 3)
 	if target.node is Mob:
 		# The part's flare follows from the state (Mob.sync_view), in its order.
@@ -395,7 +395,7 @@ func _on_struck(e: Dictionary) -> void:
 	var impact := _at3(m.pos - dir * m.radius, clampf(h * 0.5, 0.35, 0.7))
 	if e.plate:
 		Events.sfx.emit(&"hit_plate", impact)
-		MobFx.clang(fx, impact, int(sim.now))
+		MobFx.clang(fx, impact, int(sim.now), m.radius * 2.0)
 		return
 	Events.sfx.emit(&"hit_flesh", impact)
 	if m.machine:
@@ -592,6 +592,12 @@ func _play_act(spec: String) -> void:
 			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_now(), game.camera.pitch_deg, 10)
 			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
 			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[2], 0.4, 1.6, Vector2.ZERO, 12)
+			# And one burst on the BODY, at that body's own width, because the rule
+			# that sizes it (MobFx.on_body) cannot be seen in marks laid on grass:
+			# every mark above is drawn with no body under it and takes the plain
+			# floor. This is the one a player actually gets on a machine.
+			if target != null:
+				MobFx.burst(game, _part_at(target), 1.1, 13, Palette.LENS[3], target.radius * 2.0)
 		"alert":
 			for m in sim.mobs:
 				m.calm_until = 0.0

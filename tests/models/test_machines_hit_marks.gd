@@ -22,9 +22,47 @@ const MACHINE_HIT := 1.1
 const TEXEL := 15.0 / 1080.0
 
 
+## The play camera's own angles, off the rig rather than written out again.
 static func camera_axes() -> Array[Vector3]:
-	var b := Basis.from_euler(Vector3(deg_to_rad(-57.0), deg_to_rad(45.0), 0.0))
+	var rig := CameraRig.new()
+	var b := Basis.from_euler(Vector3(deg_to_rad(-rig.pitch_deg), deg_to_rad(rig.yaw_deg), 0.0))
+	rig.free()
 	return [b.x, b.y]
+
+
+## How wide a machine really stands on screen, in pixels of the 1080-row frame,
+## at the bearing that shows it WIDEST -- the world may deal it any of them, and
+## the widest is the only one a mark can be asked to stay under. (Seen edge-on a
+## lineman is 32.7 px and nothing legible fits inside that; the band's LEAST_PX
+## is the deliberate answer, and this is where you would see it bite.)
+static func body_px(kind: StringName) -> float:
+	var axes := camera_axes()
+	var unit: float = MobFx.px(1.0)
+	var m := FigureModel.create(kind) as MachineModel
+	m.settle()
+	var widest := 0.0
+	for b in 8:
+		var turn := Basis(Vector3.UP, TAU * float(b) / 8.0)
+		var lo := INF
+		var hi := -INF
+		for key: StringName in m.surfaces:
+			var mi: MeshInstance3D = m.surfaces[key]
+			if mi == null:
+				continue
+			for p: Vector3 in m.posed_triangles(mi):
+				var x := (turn * p).dot(axes[0]) / unit
+				lo = minf(lo, x)
+				hi = maxf(hi, x)
+		if lo <= hi:
+			widest = maxf(widest, hi - lo)
+	m.free()
+	return widest
+
+
+## How wide the FIGHT thinks that machine is: twice its roster radius, which is
+## what it places and reaches with, and what a mark on it is now sized by.
+static func body_world(kind: StringName) -> float:
+	return 2.0 * float(Roster.row(kind).get("radius", 0.4))
 
 
 ## [part pixels on screen, pixels the burst's ink could possibly touch]: the ring
@@ -83,21 +121,48 @@ func test_a_burst_leaves_the_working_part_showing() -> void:
 
 
 func test_no_mark_that_lands_on_a_body_is_bigger_than_the_body() -> void:
-	# A record of a blow is read and gone, and it is drawn ON the thing it proves:
-	# it may never be the biggest thing in the frame, and the smallest machine in
-	# the roster is about 78 px across at gameplay zoom. The tell is not in this
-	# list: it is a warning, and it hangs clear of the machine (below).
+	# A record of a blow is drawn ON the thing it proves and may never be the thing
+	# standing in front of it. This test used to assert that against the sentence
+	# "the smallest machine in the roster is about 78 px across" -- and 78 was 26
+	# multiplied by three when the frame's rows tripled. Nobody had ever taken the
+	# number. Taken here, through the real rig at every bearing, the roster runs
+	# from a lineman 32.7 px edge-on to a harvester at 354.2: ELEVEN TO ONE, which
+	# is why the single absolute floor it was guarding could not be right for both
+	# ends and came out at 66 px on a runner 51.5 wide.
 	#
-	# IN PIXELS OF THE 1080-ROW BASE, like the constants they hold. Both were
-	# written when a frame was 360 rows and the smallest machine 26 px, and
-	# neither moved when the floor did -- so this asked the marks to stay a third
-	# of the size their own reason names, and would have told anyone restoring
-	# them that they were wrong.
-	for got: Array in [["burst", MobFx.BURST_PX], ["clang", MobFx.CLANG_PX], ["ring", MobFx.RING_PX], ["puff", MobFx.PUFF_PX]]:
-		lt(float(got[1]), 81.0, "%s is %.0f px at its smallest" % got)
-	# And the two that land on a struck body are the ones held tightest.
-	lt(MobFx.BURST_PX, 72.0, "burst")
-	lt(MobFx.CLANG_PX, 66.0, "clang")
+	# So the rule is `MobFx.on_body`, and this measures what it produces rather
+	# than what anyone remembers.
+	MobFx.texel = 15.0 / float(UiBase.SIZE.y)
+	var least := INF
+	var who := &""
+	for kid in KINDS:
+		var across := body_world(kid)
+		var wide := body_px(kid)
+		if wide < least:
+			least = wide
+			who = kid
+		# The two marks that land ON the struck body. MACHINE_HIT is the largest
+		# size any caller asks for, so if that fits, every smaller one does.
+		var burst_px := MobFx.on_body(MACHINE_HIT, across) / MobFx.px(1.0)
+		var clang_px := MobFx.on_body(1.0, across) / MobFx.px(1.0)
+		lt(burst_px, wide, "%s: a burst is %.0f px on a body %.0f px across" % [kid, burst_px, wide])
+		lt(clang_px, wide, "%s: a clang is %.0f px on the same" % [kid, clang_px])
+	gt(least, 12.0, "the narrowest machine (%s) is %.0f px at its widest bearing" % [who, least])
+
+
+func test_the_band_is_a_share_of_the_body_with_a_floor_under_it() -> void:
+	# The construction, not a sample of it: whatever a caller asks for, a mark on a
+	# body is at most BODY_SHARE of that body -- and at least LEAST_PX, which wins
+	# only when the body is too small for both rules to hold at once.
+	MobFx.texel = 15.0 / float(UiBase.SIZE.y)
+	var big := MobFx.on_body(99.0, 2.4)
+	near(big, 2.4 * MobFx.BODY_SHARE, 1e-4, "a huge ask is cut to the body's share")
+	var small := MobFx.on_body(0.01, 2.4)
+	near(small, MobFx.px(MobFx.LEAST_PX), 1e-4, "a tiny ask is lifted to the floor")
+	lt(MobFx.BODY_SHARE, 1.0, "a mark never covers the whole body")
+	# A gull-sized body: the floor wins, deliberately, and it is bigger than the
+	# body. That is the trade -- a mark too small to see is not a record.
+	gt(MobFx.on_body(0.5, 0.2), 0.2 * MobFx.BODY_SHARE, "on something tiny the floor wins")
 
 
 ## The tell is the one mark drawn before anything has happened, read at the edge
@@ -144,18 +209,46 @@ func test_a_tell_is_a_fan_that_reads_on_a_dark_body() -> void:
 ## heavy rather than the other way. Anything that moves PEN, the stroke count,
 ## the taper or the halo now has to face it.
 func test_the_bursts_roots_clear_each_other_at_the_pen_it_is_drawn_with() -> void:
+	# `BURST_OPEN` says nothing is inked inside a fraction of the radius, and the
+	# test above measures against that fraction -- but it measures an analytic ring
+	# and cannot see the strokes MEET. They can, because the quad's radius is in
+	# PENS and shrinks both when the pen widens and when the body it lands on is
+	# small, while a stroke's width does neither.
+	#
+	# BOTH ends of that bit. At PEN 1 on the old absolute floor a burst's roots
+	# stood 12.5 pens apart; at PEN 3 they are 3.7; and on the NARROWEST machine in
+	# the roster, where `on_body` makes the quad smaller again, they would be 1.3.
+	# Measured on the frame, the ground inside a plain burst's heart fell from 99%
+	# to 55% on the first of those. So the shader draws as many strokes as clear at
+	# whatever size it is given, and this holds it to that at the size the game
+	# really asks for -- the SMALLEST body in the roster, which is the worst case.
 	MobFx.texel = 15.0 / float(UiBase.SIZE.y)
-	# The burst the fight draws on a working part, as a radius in pens.
-	var r := MobFx.at_least(MACHINE_HIT, MobFx.BURST_PX) / MobFx.pen_px(1.0) * 0.5
-	# Where the SHORTEST stroke starts, at the instant of the blow (pr = 0).
+	var tightest := INF
+	var who := &""
+	for kid in KINDS:
+		var across := body_world(kid)
+		if across < tightest:
+			tightest = across
+			who = kid
+	var r: float = MobFx.on_body(MACHINE_HIT, tightest) / MobFx.pen_px(1.0) * 0.5
 	var r0: float = MobFx.BURST_OPEN * MobFx.BURST_SHORT * (r - 2.0)
-	var gap := TAU * r0 / float(MobFx.BURST_STROKES)
 	var wide: float = 2.0 * (MobFx.BURST_ROOT + MobFx.MARK_HALO)
-	gt(gap, wide, "roots %.2f pens apart, %.2f wide: the heart stays open" % [gap, wide])
-	# And the far ends must NOT clear each other, or seven separate flecks read as
-	# scattered dirt rather than one burst thrown from one point.
-	var r1: float = (MobFx.BURST_OPEN + 0.34) * MobFx.BURST_SHORT * (r - 2.0)
-	lt(TAU * r1 / float(MobFx.BURST_STROKES), 3.0 * (MobFx.BURST_TIP + MobFx.MARK_HALO), "and it is still one mark")
+	var fits := clampi(int(floor(TAU * r0 / wide)), 3, MobFx.BURST_STROKES)
+	gt(r0, 0.0, "the tightest burst (%s) has a heart at all" % who)
+	# What the shader will draw there, and that it clears -- except at the floor of
+	# three, which is deliberate: below that a burst stops being one.
+	if fits > 3:
+		gt(TAU * r0 / float(fits), wide, "%s: %d strokes, roots %.2f pens apart, %.2f wide" % [who, fits, TAU * r0 / float(fits), wide])
+	lt(float(fits), float(MobFx.BURST_STROKES) + 0.5, "never more than the full count")
+	# And the full count IS reached on a big body, or the rule has quietly become
+	# "always three".
+	var big: float = MobFx.on_body(MACHINE_HIT, 2.4) / MobFx.pen_px(1.0) * 0.5
+	var big0: float = MobFx.BURST_OPEN * MobFx.BURST_SHORT * (big - 2.0)
+	eq(clampi(int(floor(TAU * big0 / wide)), 3, MobFx.BURST_STROKES), MobFx.BURST_STROKES, "a harvester still gets the whole burst")
+	# The shader and this share one rule, not two copies of it.
+	var code: String = MobFx._shader(&"over").code
+	check(code.contains("int strokes = clamp(int(floor(TAU * root / (2.0 * (BURST_ROOT + MARK_HALO)))), 3, BURST_STROKES);"),
+		"the shader counts its strokes the way this does")
 
 
 func test_the_shader_and_the_gate_share_one_open_heart() -> void:

@@ -87,10 +87,19 @@ vec4 burst(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw;
 	float e = 1e5;
-	for (int i = 0; i < BURST_STROKES; i++) {
+	// AS MANY STROKES AS CLEAR EACH OTHER AT THIS SIZE, and no more. The quad is
+	// sized by the body the mark lands on (MobFx.on_body), so it is not one size:
+	// seven roots that stand well apart round a harvester touch round a runner,
+	// and touching roots are the filled star BURST_OPEN exists to prevent. The pen
+	// does not get finer to fit -- a smaller mark is simply drawn with less ink,
+	// the way a smaller drawing is. Three is the fewest that still reads as thrown
+	// from a point rather than as a stray tick.
+	float root = OPEN * BURST_SHORT * (R - 2.0);
+	int strokes = clamp(int(floor(TAU * root / (2.0 * (BURST_ROOT + MARK_HALO)))), 3, BURST_STROKES);
+	for (int i = 0; i < strokes; i++) {
 		float fi = float(i);
 		float h = ink_hash(vec2(seed * 13.1 + fi, 3.7));
-		float ang = fi / float(BURST_STROKES) * TAU + seed + (h - 0.5) * 0.7;
+		float ang = fi / float(strokes) * TAU + seed + (h - 0.5) * 0.7;
 		vec2 d = vec2(cos(ang), sin(ang));
 		float len = BURST_SHORT + (1.0 - BURST_SHORT) * ink_hash(vec2(fi, seed * 7.3));
 		float r0 = mix(OPEN, 0.84, pr) * len * (R - 2.0);
@@ -684,6 +693,39 @@ static func _ok(parent: Node) -> bool:
 	return parent != null and parent.is_inside_tree()
 
 
+## How wide a mark drawn ON a body may be, as a share of that body's own width.
+##
+## MEASURED, through the real CameraRig at all eight bearings, in pixels of the
+## 1080-row frame: lineman 32.7 edge-on to harvester 354.2. The roster runs
+## ELEVEN TO ONE, and that is why no single absolute number ever worked here. A
+## floor is a legibility minimum ("too small to notice is no record at all") and
+## a cap is a proportion rule ("never the thing standing in front of what it
+## proves"); across that range the two pull opposite ways, and every attempt to
+## serve both with one constant has failed in one direction or the other. The
+## floors tripled for the 1080 frame came out 66 px against a runner 51.5 wide.
+##
+## So a mark that lands on a body is held into a BAND set by that body, and the
+## width it is measured against is `2 x` the roster's own `radius` -- the same
+## number the fight already places and reaches with, so the mark and the fight
+## cannot disagree about how big the thing is. It reads under the drawn
+## silhouette for every machine in the roster, which
+## tests/models/test_machines_hit_marks.gd measures rather than asserts.
+const BODY_SHARE := 0.8
+## And under the band, the size below which there is no point drawing at all. It
+## wins when a body is so small that a legible mark cannot also be a modest one:
+## better a mark wider than a gull than no record that the blow landed.
+const LEAST_PX := 24.0
+
+
+## `size` world units, held into the band a mark may take on a body `across` wide
+## (world units). Used by the marks that are drawn OVER the thing they prove --
+## the burst and the plate ring. A mark that lands beside a body instead (dust at
+## the feet, a ring on the ground, a tell hanging clear above) keeps the plain
+## floor below, because none of them stands in front of anything.
+static func on_body(size: float, across: float) -> float:
+	return maxf(px(LEAST_PX), minf(size, across * BODY_SHARE))
+
+
 ## `size` world units, or `min_px` pixels of the FRAME if that is larger (a
 ## floor, in the floors' own unit -- not the pen's).
 static func at_least(size: float, min_px: float) -> float:
@@ -725,10 +767,13 @@ static func burst_clear_px(size: float = 0.9) -> float:
 
 ## Where a blow landed: a burst of ink strokes over whatever was struck. An
 ## `accent` other than transparent adds two or three pixels of that light.
-static func burst(parent: Node, at: Vector3, size: float = 0.9, seed_value: int = 0, accent: Color = Color(0, 0, 0, 0)) -> void:
+## `across` is how wide the struck body is, in world units; 0 means the mark is
+## not landing on a body and takes the plain floor.
+static func burst(parent: Node, at: Vector3, size: float = 0.9, seed_value: int = 0, accent: Color = Color(0, 0, 0, 0), across: float = 0.0) -> void:
 	if not _ok(parent):
 		return
-	_run(_mark(parent, at, at_least(size, BURST_PX), BURST, &"over", seed_value, Palette.LINEN[5], Palette.LINEN[5]), 0.16)
+	var wide := on_body(size, across) if across > 0.0 else at_least(size, BURST_PX)
+	_run(_mark(parent, at, wide, BURST, &"over", seed_value, Palette.LINEN[5], Palette.LINEN[5]), 0.16)
 	if accent.a > 0.0:
 		glint(parent, at + Vector3(0, 0.05, 0), accent, seed_value + 5, 0.4)
 
@@ -784,10 +829,11 @@ static func ring(parent: Node, at: Vector3, col: Color, radius: float = 0.8, sec
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.
-static func clang(parent: Node, at: Vector3, seed_value: int = 0) -> void:
+static func clang(parent: Node, at: Vector3, seed_value: int = 0, across: float = 0.0) -> void:
 	if not _ok(parent):
 		return
-	_run(_mark(parent, at, at_least(1.0, CLANG_PX), CLANG, &"over", seed_value, Palette.COLD[3], Palette.COLD[3]), 0.2)
+	var wide := on_body(1.0, across) if across > 0.0 else at_least(1.0, CLANG_PX)
+	_run(_mark(parent, at, wide, CLANG, &"over", seed_value, Palette.COLD[3], Palette.COLD[3]), 0.2)
 
 
 ## A small plus of light shrinking to a pixel: a lens catching the light, a part flaring.
