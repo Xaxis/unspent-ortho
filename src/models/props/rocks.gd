@@ -315,10 +315,22 @@ static func _run(k: Kit, top: Vector3, width: float, length: float, out: Vector3
 	if along.cross(Vector3.DOWN).dot(out) < 0.0:
 		along = -along
 	var lift := out * 0.004
+	# DARK AT THE WEEP AND LIGHT AT THE TAIL, and WIDENING all the way down. Both
+	# were the other way round: RUST[3] at the top falling to RUST[2] at a foot
+	# a tenth of its width, which is a stain that gets heavier as it dries and
+	# ends in a point. Rust on grey steel reads warmer AND lighter as it spreads
+	# (RUST[2] is luma 0.244 against PLATE[3]'s 0.389), and it fades by colour
+	# rather than by coming to a tip. See `Works.run` for the measurement.
 	var mid := top + Vector3(0, -length * 0.45, 0)
 	var foot := top + Vector3(0, -length, 0)
-	k.found.quad(top - along + lift, top + along + lift, mid + along * 0.5 + lift, mid - along * 0.6 + lift, P.RUST[3])
-	k.found.quad(mid - along * 0.6 + lift, mid + along * 0.5 + lift, foot + along * 0.12 + lift, foot - along * 0.1 + lift, P.RUST[2])
+	# ONLY THE GRADE CHANGES HERE, and the shape is left alone deliberately. The
+	# widening that `Works.run` gets is right on a flat panel and wrong on a
+	# STONE: widen the foot and its outer corners leave a rounded face and end up
+	# inside the rock. Measured twice — at 1.3x and at 1.0x — and
+	# `test_found_drawn` caught the standing stone hiding the run both times.
+	# A host that curves away is why this one tapers, and the taper stays.
+	k.found.quad(top - along + lift, top + along + lift, mid + along * 0.5 + lift, mid - along * 0.6 + lift, P.RUST[2])
+	k.found.quad(mid - along * 0.6 + lift, mid + along * 0.5 + lift, foot + along * 0.12 + lift, foot - along * 0.1 + lift, P.RUST[4].lerp(P.PLATE[4], 0.3))
 
 
 static func clints(k: Kit, v: int, c: int) -> void:

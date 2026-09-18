@@ -158,10 +158,16 @@ static func streak(k: Kit, top: Vector3, width: float, length: float, out: Vecto
 	if along.cross(Vector3.DOWN).dot(out) < 0.0:
 		along = -along
 	var lift := out.normalized() * 0.008
+	# A STAIN FADES TOWARD WHAT IT LIES ON. This DARKENED as it fell
+	# (`down(col, 0.3)`), which is a stain getting heavier as it dries, and it is
+	# most of why a run read as a strap somebody painted on. The taper is kept:
+	# these lie on hulls and drums that curve away, and a widening foot leaves
+	# the surface — `Works.run` may widen because a panel is flat, and
+	# `Rocks._run` may not for the same reason this may not.
 	var mid := top + Vector3(0, -length * 0.5, 0)
 	var foot := top + Vector3(0, -length, 0)
 	k.made.quad(top - along + lift, top + along + lift, mid + along * 0.45 + lift, mid - along * 0.6 + lift, col)
-	k.made.quad(mid - along * 0.6 + lift, mid + along * 0.45 + lift, foot + along * 0.1 + lift, foot - along * 0.08 + lift, GroundColors.down(col, 0.3))
+	k.made.quad(mid - along * 0.6 + lift, mid + along * 0.45 + lift, foot + along * 0.1 + lift, foot - along * 0.08 + lift, GroundColors.up(col, 0.5))
 
 
 ## A piece of machine plate put to a person's use: ruled, riveted, on the
