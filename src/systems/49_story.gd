@@ -308,6 +308,13 @@ func _start_reading(prop: WorldProp) -> void:
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "no_read")
 		return
+	# A thing that answers (`talk`): reading it is being spoken to.
+	var answers := StringName(str(StoryContent.FRAGMENTS[id].get("talk", &"")))
+	if answers != &"":
+		@warning_ignore("return_value_discarded")
+		Story.read(id)
+		_start_talk({"talk": answers})
+		return
 	reading = id
 	view.reading = StoryFragments.lines(id)
 	view.reading_title = StoryFragments.title_of(id)
@@ -347,7 +354,12 @@ func _read_talk_keys(use_pressed: bool) -> void:
 	if not use_pressed:
 		return
 	if not talk.pick(view.choice):
+		# A conversation may close onto a page (`after`): the channel closes onto
+		# how it ended, composed from everything he chose.
+		var after := StringName(str(StoryContent.TALKS.get(talk.id, {}).get("after", &"")))
 		_close()
+		if after != &"":
+			open_reading(after, true)
 		return
 	view.choice = 0
 	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)

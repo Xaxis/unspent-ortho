@@ -291,6 +291,20 @@ is alive, and who he trusts. It turns on:
 - Let June keep her peace, or end it?
 - Which of the crew survive him?
 
+**How it is built** (`StoryEnding`). At the channel, one voice answers him. It is
+his own, because the Seeker and the Echo are both made of him. He can:
+
+| Choice | With the secret whole | With it turned the wrong way |
+|---|---|---|
+| Break them | HALCYON and the Guest both come apart into a million minds, and the Echo with them | HALCYON comes apart; the Guest does not, and its star is still held |
+| Join all of us | For a moment every mind is one; then there is no him | Something is made that is not what he hid, very young, talking like him |
+| Give it up | The talks close; human population is still not a term | (the same) |
+| Say nothing | The secret goes back into a kitchen, a song, a hall | (the same) |
+
+Without the secret, he can only give it up or say nothing. The page after,
+"afterwards", then says what became of June, Vera's four hundred, Teague, Dace
+and Lark, each line read off what the player actually did.
+
 ## 12. The voice
 
 Four registers, and they never blur:

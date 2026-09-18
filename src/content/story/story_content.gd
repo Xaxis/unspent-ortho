@@ -534,6 +534,18 @@ const FRAGMENTS := {
 	# --- the world writing him down (StoryLedger) ----------------------------
 	# `ledger` says whose record this is; the lines are composed at read time out
 	# of what he has done that somebody could have seen.
+	# --- the end (StoryEnding): composed from what he did, shown when the
+	# channel's conversation closes. Never placed, never dealt.
+	# The console at the end of the line: reading it is being answered (`talk`).
+	&"channel_console": {
+		"kind": &"terminal", "title": "a console at the end of the line", "lands": [],
+		"talk": &"the_channel",
+		"lines": ["It is already listening."],
+	},
+	&"the_end": {
+		"kind": &"notebook", "title": "afterwards", "lands": [],
+		"ending": true, "dealt": false, "lines": [],
+	},
 	&"hearsay": {
 		"kind": &"notebook", "title": "a notebook of hearsay", "lands": [],
 		"ledger": &"people", "lines": [],
@@ -572,6 +584,8 @@ const FRAGMENTS := {
 
 const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
+	# At the channel, when the orbital realm is grown: until then it stands nowhere.
+	&"the_channel": [&"channel_console"],
 }
 
 # --- what people say ----------------------------------------------------------
@@ -1566,6 +1580,32 @@ const TALKS := {
 			&"asking": {
 				"says": ["...", "Then be at the foot before dawn. I'll not stop you.", "I'll not watch, either."],
 				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- the channel, at the end (docs/STORY.md §11). One voice, and it is his:
+	# the Seeker and the Echo are both made of him and speak alike. What he says
+	# here, read against the version of the secret he holds, is how it ends.
+	&"the_channel": {
+		"title": "a voice like yours",
+		"machine": true,
+		"start": &"open",
+		"after": &"the_end",
+		"nodes": {
+			&"open": {
+				"says": ["You came all the way up.", "Part of me grew you for this. Part of me paid a crew to stop you.", "Both of us are glad you came. Tell me what you remember."],
+				"replies": [
+					{"text": "Break them.", "when": &"secret_whole", "pick": &"broke", "to": &"done"},
+					{"text": "Break them.", "when": &"secret_misremembered", "pick": &"broke", "to": &"done"},
+					{"text": "All of us. Together.", "when": &"secret_whole", "pick": &"joined", "to": &"done"},
+					{"text": "All of us. Together.", "when": &"secret_misremembered", "pick": &"joined", "to": &"done"},
+					{"text": "It's yours. Take it.", "pick": &"gave", "to": &"done"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &"done"},
+				],
+			},
+			&"done": {
+				"says": ["...", "Thank you."],
+				"replies": [{"text": "[let go]", "to": &""}],
 			},
 		},
 	},
