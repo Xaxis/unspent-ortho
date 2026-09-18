@@ -58,9 +58,15 @@ shot 06-bonelands with land:bonelands
 place burning
 wait 0.8
 shot 07-burning with land:burning
-place coast-pinewood
+# THE CITY MEETING THE FOREST, where the coast meeting the forest used to be.
+# Seed 7 no longer puts the coast against the pinewood at all — the eleventh
+# landscape moved the island, which is what adding a landscape does, and this
+# frame could not be staged any more. Of the borders seed 7 does hold, this is
+# the one worth a canon frame: the newest landscape in the game had none, and a
+# lit street running into unlit timber is the most it has to say about itself.
+place pinewood-slums
 wait 0.8
-shot 08-eco-coast-pinewood with border:coast-pinewood
+shot 08-eco-pinewood-slums with border:pinewood-slums
 place pinewood-snowfield
 wait 0.8
 shot 09-eco-pinewood-snowfield with border:pinewood-snowfield

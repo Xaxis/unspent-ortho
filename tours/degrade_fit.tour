@@ -42,9 +42,11 @@ perf match shots/degrade/desktop/06-bonelands.png
 place burning
 wait 0.8
 perf match shots/degrade/desktop/07-burning.png
-place coast-pinewood
+# Follows the canon: seed 7 no longer puts the coast against the pinewood, so
+# frame 08 is the city meeting the forest now. See tours/canon.tour.
+place pinewood-slums
 wait 0.8
-perf match shots/degrade/desktop/08-eco-coast-pinewood.png
+perf match shots/degrade/desktop/08-eco-pinewood-slums.png
 place pinewood-snowfield
 wait 0.8
 perf match shots/degrade/desktop/09-eco-pinewood-snowfield.png
