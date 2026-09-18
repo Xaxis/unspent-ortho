@@ -8,6 +8,45 @@ extends TestCase
 const Sx := preload("res://tests/save/save_fixture.gd")
 
 
+## Keys that hold REAL elapsed time, and the field of each that does.
+##
+## `play` counts `play_seconds += delta` and `score` carries the conductor's own
+## clock. Neither stops for the comparison: the save is collected, a game is torn
+## down, a world is grown again and a second game is built, and by then both have
+## moved on. Held to bit-equality they were a coin flip on how busy the machine
+## was -- seen once at 0.0192 against 0.0021 with the laptop at load 30-50, green
+## alone, red in a gate.
+##
+## A TOLERANCE WOULD BE THE SAME MISTAKE ONE STEP OUT: a number small enough to
+## catch a reset today is a number a slower machine breaches tomorrow. What the
+## round trip is actually for is that the value CAME BACK -- that the key was
+## written, read and not silently reset to zero -- and a running clock can be
+## asked that exactly: it may only have gone forward.
+const RUNNING := {"play": "seconds", "score": "clock"}
+
+
+## A clock that was saved and read back: it carries, and it only moves forward.
+func _carried(key: String, was: Variant, now: Variant) -> void:
+	check(now != null, "key %s came back at all" % key)
+	if now == null:
+		return
+	var field: String = RUNNING[key]
+	var a := SaveCodec.to_num((was as Dictionary).get(field), -1.0)
+	var b := SaveCodec.to_num((now as Dictionary).get(field), -1.0)
+	check(a >= 0.0 and b >= 0.0, "key %s: %s is a number on both sides" % [key, field])
+	# The one thing that can be said about a clock that never stopped: it did not
+	# go backwards, and it was not reset. A headless play runs no real seconds, so
+	# both are usually 0.0 and the value of this line is the day somebody makes
+	# `_load` drop the field -- b would come back below a, or not at all.
+	check(b >= a, "key %s: %s came back as %.4f, under the %.4f that was saved" % [key, field, b, a])
+	# Everything else under that key is ordinary state and is held exactly.
+	for other: Variant in (was as Dictionary):
+		if String(other) == field:
+			continue
+		eq(SaveCodec.canonical((now as Dictionary).get(other)),
+			SaveCodec.canonical((was as Dictionary)[other]), "key %s.%s:" % [key, other])
+
+
 func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	Sx.use_root("round-trip")
 	var a := Sx.game(tree, ["--seed=1", "--size=64", "--hour=9", "--give=driftwood:7,stone:4,kit_rig:1,kit_lens:1,oil:2",
@@ -35,6 +74,9 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	# No frame has run: what follows is what the first frame draws.
 	var after := SaveGame.collect()
 	for k: String in before:
+		if RUNNING.has(k):
+			_carried(k, before[k], after.get(k))
+			continue
 		eq(SaveCodec.canonical(after.get(k)), SaveCodec.canonical(before[k]), "key %s:" % k)
 	eq(after.keys().size(), before.keys().size(), "no key lost or gained")
 	var now := _live(b)

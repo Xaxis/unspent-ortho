@@ -257,6 +257,34 @@ than a player stuck at three in the morning.
 
 ---
 
+### What a region asks of him (sub-arcs)
+
+**Built, first pass.** `docs/VISION.md` §10 makes a landscape a chapter and its
+sub-arcs load-bearing: a chapter with three demands and no stories in it is a
+checklist. Each REGION raises one out of its own state (`StorySubarc`), pure over
+a `StorySubarcLook` that `49_story` fills in — the shape `SentinelLook` set, where
+a system gathers and the rules decide.
+
+- **Not beats.** Beats are authored, finite and listed in the journal; sub-arcs
+  are generated, one per region, and a big world has dozens. A sub-arc may land
+  an authored beat where it touches the spine; that is what keeps them one story.
+- **Raised in order of what is worst**: the plan's yard still running (`sabotage`,
+  named by the machines' own mark on the ground — the cut, the burn, the quarry,
+  the bore field), then a cache nobody went back for (`recover`), then a place
+  nobody has walked to (`discover`).
+- **Answered by the world, never counted**: the yard is dark, the cache is open,
+  the place is found. Only the TELLING is saved (`Story.hear`).
+- **Three moods, and they are not the demands** (unspent-ortho-cb): BEFORE, the
+  place is quiet and something is wrong with it; DURING, they are hunting him
+  through it (`Interference.level_name`) and a warning lands better than an ask;
+  AFTER, the plan has lost the place (the yard dark or the keeper down) and it is
+  the first time anybody here is safe. What he did for them is said first, then
+  the mood, then the ask.
+- **Said by a person**, always: whoever lives there, through the one `use` key,
+  as a conversation built at the moment it is had (`StoryTalk.of_made`). Never a
+  list on the glass. `tours/region.tour` is the proof; a tour asks with `asked`,
+  `asked:GOAL`, `heard_ask` and `thanked`.
+
 ### The end, and things that answer
 
 A fragment may name a conversation (`talk`): reading it is being answered, as the

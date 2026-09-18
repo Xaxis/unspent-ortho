@@ -315,6 +315,51 @@ costs exactly what a distant part of the island costs today — nothing, until i
 is walked to. **This is the reason the ocean is real ground and not a gap:** a
 crossing has to stream like anything else.
 
+### 7a. How big a place has to be, measured (2026-09-18)
+
+`docs/VISION.md` §10 asks that each landscape be far more immense, and that it be
+**explored, mined and defended** before the next one opens. That is a demand on
+SCALE before it is a demand on content: a chapter cannot be asked of a place a
+player crosses without stopping. So the numbers were taken rather than guessed —
+seed 1, one process, `Tuning.WALK_SPEED` 3.4 tiles a second:
+
+| world | gen | land tiles | regions | median region | **walk across it** | biggest |
+|---|---|---|---|---|---|---|
+| 512 | 1.9 s | 126,395 | 25 | 1,133 (34 across) | **10 s** | 22,865 |
+| 768 | 5.1 s | 183,127 | 27 | 1,189 (34 across) | **10 s** | 12s at 1,618 |
+| 1024 | 9.8 s | 409,154 | 40 | 1,618 (40 across) | **12 s** | 76,033 |
+
+And the whole world, corner to corner:
+
+| world | island | **cross the world** | over 5k tiles | over 20k |
+|---|---|---|---|---|
+| 512 | 438 x 431 | **2.1 minutes** | 8 of 25 | 1 |
+| 1024 | 926 x 931 | **4.5 minutes** | 14 of 40 | 8 |
+
+**Three things fall out, and the third is the one nobody had.**
+
+**A region is ten seconds wide, and doubling the world does not change that.**
+34 tiles across at 512, 40 at 1024 — because a world twice as wide is cut into
+twice as many regions and each is the same two screens. Growing the world ALONE
+answers nothing, at four times the generation cost.
+
+**Most regions are scraps.** At 512, 17 of 25 are under 5,000 tiles. The median is
+not a small chapter, it is not a chapter at all.
+
+**1024 ALREADY HAS THE LAND.** A place worth a chapter is one that cannot be
+crossed in under a minute: 60 s at walking pace is 204 tiles across, about 42,000
+tiles. Ten of those is 420,000 tiles, and 1024 holds **409,154**. So the world is
+not too small — **it is cut into forty pieces instead of ten.** The lever is the
+landscape LAYOUT (how big a run of one landscape is, `GenCountries`), not the
+world's width, and the width is needed only to carry the land.
+
+What that costs and what is still open: generation is 9.8 s at 1024 against 1.9 s
+at 512, which is a boot-time problem before it is a memory one, and `REGION_TILES`
+(220 in `GenCountries`, 400 in `Landmarks`) are floors that DISCARD small runs
+rather than make large ones — raising them alone deletes places, it does not grow
+them. Fewer, larger runs is a change to how landscapes are laid, and it moves
+every seed's island.
+
 ## 8. Decided
 
 These were open when this document was first written. They are engineering calls,
