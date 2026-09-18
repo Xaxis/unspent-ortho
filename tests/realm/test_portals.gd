@@ -88,3 +88,26 @@ func test_a_shaft_reads_back_the_same_off_a_save() -> void:
 		eq(back.to_realm, p.to_realm)
 		eq(back.open, p.open)
 		near(back.facing, p.facing, 1e-6)
+
+
+## A WAY DOWN ON EVERY LANDMASS PEOPLE LIVE ON. `MOST` is a cap for one island and
+## it was still being applied to a whole archipelago: measured on seed 1 at 1024,
+## the first continent to yield a shaft took every slot and the world came out with
+## ONE portal while people lived on four continents — three a player could sail to
+## and never leave. Asked for by the story session, whose spine sends a player
+## across the water and then below it.
+func test_every_landmass_anyone_lives_on_has_a_way_out() -> void:
+	for pair: Array in [[1, 512], [1, 1024], [7, 1024]]:
+		var w := WorldGen.generate(int(pair[0]), int(pair[1]))
+		var lived := {}
+		for v: Dictionary in w.villages:
+			var p: Vector2 = v.pos
+			var b := w.continent_at(floori(p.x), floori(p.y))
+			if b != 0:
+				lived[b] = true
+		var served := {}
+		for pt: Portal in Portals.in_world(w):
+			served[w.continent_at(floori(pt.pos.x), floori(pt.pos.y))] = true
+		check(not lived.is_empty(), "seed %d at %d: somebody lives somewhere" % pair)
+		for b: int in lived:
+			check(served.has(b), "seed %d at %d: people live on body %d and it has no shaft" % [pair[0], pair[1], b])

@@ -133,14 +133,37 @@ static func _lay(w: WorldData) -> Array[Portal]:
 	var out: Array[Portal] = []
 	var to := Realm.beyond(w.realm)
 	var solid := GenPlaces.solid_mask(w)
+	# A WAY DOWN ON EVERY LANDMASS, not `MOST` for the whole world. The cap was
+	# written when a world was one island and it is still right for one; with
+	# continents it meant the first landmass to yield a shaft could take every
+	# slot, and measured on seed 1 at 1024 it did — ONE portal, on the fourth
+	# continent, while people lived on all four. Three continents a player could
+	# sail to and never leave (docs/WORLD.md §5).
+	var by_body := {}
+	var order: Array[int] = []
 	for region: Dictionary in w.regions:
-		if out.size() >= MOST:
-			break
-		var found := _in_region(w, solid, region, out, 0)
-		if found == null:
-			continue
-		found.region = int(region.get("id", -1))
-		out.append(found)
+		var id := _body_of(w, region)
+		if not by_body.has(id):
+			by_body[id] = []
+			order.append(id)
+		(by_body[id] as Array).append(region)
+	for body: int in order:
+		var got := 0
+		# The same loosening the whole world used to get, now given to each
+		# landmass on its own: a body whose regions are all awkward still gets a
+		# shaft rather than being left sealed because another body was easier.
+		for ease: int in [0, 1, 2]:
+			if got > 0 and ease > 0:
+				break
+			for region: Dictionary in by_body[body]:
+				if got >= MOST:
+					break
+				var found := _in_region(w, solid, region, out, ease)
+				if found == null:
+					continue
+				found.region = int(region.get("id", -1))
+				out.append(found)
+				got += 1
 	# EVERY world has a way out of it, or a realm can be generated and never
 	# reached — and a small island, a world with no region big enough to be a
 	# place, or a shape with no cliff foot inland would all be one. So the rule
@@ -165,6 +188,27 @@ static func _lay(w: WorldData) -> Array[Portal]:
 
 
 ## The best shaft head in one region, or null.
+## Which landmass a region is on. Its centre is the cheap answer and it is right
+## almost always; a horseshoe region can have its middle in the water, so fall
+## back to the first tile the region actually owns.
+static func _body_of(w: WorldData, region: Dictionary) -> int:
+	var c: Vector2 = region.get("centre", Vector2.ZERO)
+	var id := w.continent_at(floori(c.x), floori(c.y))
+	if id != 0:
+		return id
+	var rid := int(region.get("id", -1))
+	var b: Rect2 = region.get("bounds", Rect2())
+	var y := int(b.position.y)
+	while y < int(b.end.y):
+		var x := int(b.position.x)
+		while x < int(b.end.x):
+			if w.region_at(x, y) == rid:
+				return w.continent_at(x, y)
+			x += STRIDE
+		y += STRIDE
+	return 0
+
+
 static func _in_region(w: WorldData, solid: PackedByteArray, region: Dictionary, taken: Array[Portal], ease: int) -> Portal:
 	var b: Rect2 = region.get("bounds", Rect2())
 	if b.size.x < 8.0 or b.size.y < 8.0:
