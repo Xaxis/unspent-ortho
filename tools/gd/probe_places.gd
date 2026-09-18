@@ -104,7 +104,7 @@ static func _nearest(of: Array[Vector2], p: Vector2) -> float:
 ## Every name GenPlaces can resolve on this world, to where it resolves.
 func _names(w: WorldData) -> Dictionary:
 	var out := {}
-	for key: String in ["spawn", "river", "cliff", "open"]:
+	for key: String in ["spawn", "river", "cliff", "open", "typical"]:
 		out[key] = GenPlaces.find(w, key)
 	# The marks the machines' survey left (GenWorks): these live in w.landmarks
 	# and are named places too, and one of them is how this probe found a tour
