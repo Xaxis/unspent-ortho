@@ -1541,8 +1541,14 @@ const TALKS := {
 				"beats": [&"forged_order"],
 				"replies": [
 					{"text": "Where is it?", "pick": &"asked_where", "to": &"below"},
+					{"text": "Show me one.", "pick": &"asked_one", "to": &"one"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"one": {
+				"says": ["\"Fire on receipt. When it is done, go home to your families. You did what was asked of you, and it was right.\"", "Short. Then long. Then kind. Eleven thousand of them, and they all read like that.", "...You've gone a colour, friend."],
+				"beats": [&"tradecraft"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"below": {
 				"says": ["Under the ground, where the first of them was built, before the war.", "There's a shaft down to it. Nobody who went to look came back to say."],
@@ -1568,6 +1574,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What's it for?", "pick": &"asked_for", "to": &"purpose"},
 					{"text": "Can it be climbed?", "pick": &"asked_climb", "to": &"climb"},
+					{"text": "Is anything written at the foot?", "pick": &"asked_board", "to": &"board"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
@@ -1583,6 +1590,11 @@ const TALKS := {
 					{"text": "I'm asking.", "pick": &"asked_to_ride", "to": &"asking"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"board": {
+				"says": ["A board, bolted to the first leg. The machines' forecast, they say.", "A year at the top: 2198. Then a list of everything there'll be.", "Next to people it's got a dash. Not a nought. A dash."],
+				"beats": [&"ants"],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"asking": {
 				"says": ["...", "Then be at the foot before dawn. I'll not stop you.", "I'll not watch, either."],
