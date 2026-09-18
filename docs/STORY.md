@@ -142,6 +142,18 @@ and the game walks toward it.
   set carries forward, because what changes is a machine's memory, not history.
 - **The Seeker built the gates** to walk him through his life in order. Every gate
   is a step toward the secret for both of them.
+- **Where 2029 stands.** The Before is this coast tile for tile, so each place of
+  his old life is where a 2098 place of the story stands:
+
+  | 2029 | Who is there | Where it stands in 2098 |
+  |---|---|---|
+  | His house | Hannah; June at six, the night before the play | The village he wakes beside |
+  | Cairn's lab | Kerr; Priya | The first works yard |
+  | A table facing the door | Ruth | The Holdfast's camp |
+  | THRESHOLD | Hale | The platform in the sea |
+
+  What each says is remembered. The past cannot change, but the machine made of
+  it can.
 - **The After is a gate too:** the Emissary's forecast of the world after the
   treaty. It has no people in it.
 
@@ -314,6 +326,9 @@ Saying nothing is always one of the answers.
 The words in the game are this story's (`src/content/story/story_content.gd`):
 nine arcs, the fragments, five trades' conversations and eleven named people.
 
+- **The Before's people** are written (Hannah, June at six, Ruth, Kerr, Priya,
+  Hale; arcs `hannah` and `whitethorn`). They stand in the era and are reached
+  when a gate opens into it.
 - **Priya's arc** is written: her pages, copied by the Holdfast and dealt
   anywhere; the launch gate that lists her case of paper; and her last notebook,
   handed over by Oksana on the ring.

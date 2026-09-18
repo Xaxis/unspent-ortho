@@ -57,11 +57,27 @@ const LOCALS: Array[Dictionary] = [
 ]
 
 
+## 2029, relived (docs/STORY.md §6). The Before is this same coast tile for tile
+## (Realm.ERA, unspent-ortho-df), so each place of his old life is cast exactly
+## where a 2098 place of the story stands (`mirror`): his house is the village he
+## wakes beside, Cairn's lab is where the first works yard rose, his handler met
+## him where the Holdfast now camps, and THRESHOLD is the platform in the sea.
+## Colour until a gate opens into the era.
+const THEN: Array[Dictionary] = [
+	{"id": &"then_home", "needs": &"village", "land": &"coast", "realm": &"era", "nearest": true, "ordered": false, "mirror": &"home"},
+	{"id": &"then_lab", "needs": &"works", "realm": &"era", "apart": 24.0, "ordered": false, "mirror": &"the_yard"},
+	{"id": &"then_meet", "needs": &"landmark", "realm": &"era", "apart": 20.0, "ordered": false, "mirror": &"the_camp"},
+	{"id": &"then_site", "needs": &"black_site", "realm": &"era", "ordered": false, "mirror": &"the_black_site"},
+]
+
+
 static func slots() -> Array[StorySlot]:
 	var out: Array[StorySlot] = []
 	for d: Dictionary in SPINE:
 		out.append(StorySlot.make(d))
 	for d: Dictionary in LOCALS:
+		out.append(StorySlot.make(d))
+	for d: Dictionary in THEN:
 		out.append(StorySlot.make(d))
 	return out
 

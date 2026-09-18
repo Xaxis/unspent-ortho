@@ -83,7 +83,8 @@ static func _fill(world: WorldData, s: StorySlot, taken: Array[Vector2], body: i
 		return best
 	# Deterministic: the same slot in the same world always takes the same place,
 	# or a save would open onto a thread that had moved.
-	var at := int(Rng.hash01(world.seed_value, absi(int(s.id.hash())), 0, 0x5717) * float(fits.size()))
+	var key := s.mirror if s.mirror != &"" else s.id
+	var at := int(Rng.hash01(world.seed_value, absi(int(key.hash())), 0, 0x5717) * float(fits.size()))
 	return fits[clampi(at, 0, fits.size() - 1)]
 
 

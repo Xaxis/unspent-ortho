@@ -164,6 +164,11 @@ outward on every body and moves the journey's floor nowhere. The nine locals
 (`StoryPlan.LOCALS`) are cast this way, each at the nearest village of their own
 land, so meeting one never pulls the path forward or back.
 
+**The Before mirrors the story's places.** The era is the same coast tile for
+tile (`Realm.ERA`), so a 2029 slot names a 2098 one as its `mirror` and is cast by
+the same pick, exactly where its twin stands (`StoryPlan.THEN`,
+`tests/story/test_before.gd`).
+
 **Legs, not distances.** The story crosses every continent people live on, in
 order (owner, 2026-09-18). A slot names its `leg`; `StoryJourney` orders the
 world's inhabited bodies outward from the spawn, and casting puts each slot on its
