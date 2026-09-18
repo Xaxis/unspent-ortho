@@ -85,6 +85,23 @@ static func make() -> BiomeDef:
 	# for a coast, which is how the scrapwood's own floor came out looking like
 	# an ordinary wood on bare earth (playtest 6). The bleed-ins are named too,
 	# because a ground that reaches in over a border still has to be in a city.
+	# WHAT A GROUND IS MARKED AS, which is not the same question as what colour
+	# it is, and here it is load-bearing rather than decorative.
+	#
+	# `GroundColors.PLAIN` and `GroundColors.GLOW` are BOTH 0. `_base_mark` has no
+	# row for FLOOR, so an unmarked ground falls through to PLAIN -- which IS
+	# GLOW. FLOOR is this city's `plain_ground` and most of what is underfoot in
+	# it, so every street drew as a web of glowing seams: cooling lava rather than
+	# wet asphalt, at every hour, and nothing anywhere said a word.
+	#
+	# It was found by forcing every ground here to PLAIN to localise it, and
+	# watching the web SPREAD over the whole frame and BRIGHTEN instead of going
+	# away. That is the measurement that named it; a guess would not have.
+	#
+	# This is the landscape-level answer. The real fix is a FLOOR row in shared
+	# code, because the next landscape to use a ground with no mark walks into it
+	# just as silently.
+	d.ground_marks = {Ground.FLOOR: GroundColors.ROAD}
 	d.grounds = {
 		# The slab. Poured concrete that has been walked on for a lifetime:
 		# a mid grey with the warmth of the dust that never washes off it.
