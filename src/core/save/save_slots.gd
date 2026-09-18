@@ -234,17 +234,28 @@ static func play_time(header: Dictionary) -> String:
 	return "%d h %02d m" % [m / 60, m % 60]
 
 
-## The save's picture, or null. Bytes that are not a whole PNG are never handed
-## to the decoder, which would fill the log with CRC errors.
+## The save's picture, or null. Bytes that are not a whole picture are never
+## handed to a decoder, which would fill the log with CRC errors.
+##
+## IT READS BOTH FORMATS ON PURPOSE, and that is what let the picture get better
+## without a migration. Saves written before 2026-09-18 carry a PNG; ones
+## written since carry a JPEG (05_save.THUMB, and the note there for the
+## measurements). Nothing else in the file cares: `SaveFile` only md5s the
+## base64 string, so the format was never a contract anywhere but here, and
+## teaching the READER a second format leaves every save on disk readable.
 static func thumbnail(header: Dictionary) -> ImageTexture:
 	var b64 := str(header.get("thumb", ""))
 	if b64 == "":
 		return null
-	var png := Marshalls.base64_to_raw(b64)
-	if not is_png(png):
-		return null
+	var raw := Marshalls.base64_to_raw(b64)
 	var img := Image.new()
-	if img.load_png_from_buffer(png) != OK or img.is_empty():
+	if is_png(raw):
+		if img.load_png_from_buffer(raw) != OK or img.is_empty():
+			return null
+	elif is_jpg(raw):
+		if img.load_jpg_from_buffer(raw) != OK or img.is_empty():
+			return null
+	else:
 		return null
 	return ImageTexture.create_from_image(img)
 
@@ -252,6 +263,11 @@ static func thumbnail(header: Dictionary) -> ImageTexture:
 const PNG_MAGIC: Array[int] = [137, 80, 78, 71, 13, 10, 26, 10]
 ## The IEND chunk every whole PNG ends on: length 0, "IEND", its CRC.
 const PNG_END: Array[int] = [0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]
+## A JPEG opens on SOI + the first marker and closes on EOI. Same shape of test
+## as the PNG one and for the same reason: a truncated picture must be refused
+## here rather than in the decoder's log.
+const JPG_MAGIC: Array[int] = [255, 216, 255]
+const JPG_END: Array[int] = [255, 217]
 
 
 ## Starts as a PNG and ends as one.
@@ -264,5 +280,19 @@ static func is_png(b: PackedByteArray) -> bool:
 	var tail := b.size() - PNG_END.size()
 	for i in PNG_END.size():
 		if b[tail + i] != PNG_END[i]:
+			return false
+	return true
+
+
+## Whole-JPEG test, the twin of `is_png`.
+static func is_jpg(b: PackedByteArray) -> bool:
+	if b.size() < JPG_MAGIC.size() + JPG_END.size() + 25:
+		return false
+	for i in JPG_MAGIC.size():
+		if b[i] != JPG_MAGIC[i]:
+			return false
+	var tail := b.size() - JPG_END.size()
+	for i in JPG_END.size():
+		if b[tail + i] != JPG_END[i]:
 			return false
 	return true

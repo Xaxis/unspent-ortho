@@ -14,21 +14,21 @@ extends UiScreen
 
 ## Real seconds a first press on a filled slot waits for the second that writes.
 const ASK_SECONDS := 3.0
-## How big the save's picture is DRAWN.
+## How big the save's picture is DRAWN — and now also the size it is CAPTURED at
+## (`05_save.THUMB`), so it is a photograph at 1:1 with no upscale in front of it.
 ##
-## **It is held down by its source, not chosen.** The picture is captured at
-## `05_save.THUMB` — 160x90 — so anything drawn here is an upscale of that, and
-## an upscale is exactly the softness this wave exists to remove. Drawn at three
-## times it was a blur on the first screen of the game; at two it reads as a
-## small photograph, which is what it is.
+## This said the size was "held down by its source, not chosen", and that the
+## real fix was the owner's call because a bigger picture meant a bigger save.
+## That was true of PNG and only of PNG. Measured on a real frame, as base64:
+## 160x90 PNG 39 KB, 320x180 PNG 144 KB — but 320x180 JPEG is 34 KB, which is
+## four times the pixels and SMALLER than the 160x90 it replaced. There was no
+## trade to approve.
 ##
-## Capturing it at the size it is drawn is the real fix and it is the owner's
-## call, because it is a save-file change: measured on a real frame, the PNG in a
-## save's header goes from 40 KB at 160x90 to 147 KB at 320x180 and 318 KB at
-## 480x270, against about 6 KB for everything else a save holds. A JPEG thumb
-## would take a 480-wide picture back under 40 KB, but the header's `thumb` is a
-## PNG by contract (`SaveFile`, `SaveSlots.thumbnail`) and changing that is a
-## migration, not a constant.
+## The other half of the old objection was that the header's `thumb` is a PNG by
+## contract and changing it is a migration. It is not: `SaveFile` only md5s the
+## base64 string, so the format lived in exactly one function, and teaching
+## `SaveSlots.thumbnail` to read BOTH leaves every save ever written readable.
+## An additive reader is not a migration.
 const THUMB := Vector2i(320, 180)
 ## Under the title, relative to the list pane; the rows start below them.
 const TABS_TOP := 36
