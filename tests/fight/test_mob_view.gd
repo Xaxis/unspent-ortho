@@ -144,8 +144,11 @@ func test_marks_are_never_smaller_than_their_screen_size() -> void:
 	var root := Node3D.new()
 	tree.root.add_child(root)
 	var was := MobFx.texel
-	# The camera players get: 15 world units over 360 pixels.
-	MobFx.texel = 15.0 / 360.0
+	# The camera players get: 15 world units over the BASE's own rows. It read
+	# `15.0 / 360.0` here — three times too generous — so every floor below was
+	# met by a quad three times the size the game really draws, which is how a
+	# floor a third of its intended reach went on passing its own test.
+	MobFx.texel = 15.0 / float(UiBase.SIZE.y)
 	MobFx.burst(root, Vector3.ZERO, 0.1, 1)
 	MobFx.tell(root, Vector3(0, 1, 0), Vector3.UP, 0.4, 2, 0.1)
 	var quads: Array[MeshInstance3D] = []
@@ -156,9 +159,9 @@ func test_marks_are_never_smaller_than_their_screen_size() -> void:
 		# A mark's quad is 2 units, scaled by half its size.
 		gt(quads[0].scale.x * 2.0 / MobFx.texel, MobFx.BURST_PX - 0.01, "a burst at least %d px across" % MobFx.BURST_PX)
 		gt(quads[1].scale.x * 2.0 / MobFx.texel, MobFx.TELL_PX - 0.01, "a tell at least %d px" % MobFx.TELL_PX)
-		gt(quads[1].position.y, 1.0 + MobFx.px(3.0) - 0.001, "the tell stands clear above the top it was given")
+		gt(quads[1].position.y, 1.0 + MobFx.pen_px(3.0) - 0.001, "the tell stands clear above the top it was given")
 	# Zoomed in, a mark keeps its world size when that is the larger.
-	MobFx.texel = 4.0 / 360.0
+	MobFx.texel = 15.0 / float(UiBase.SIZE.y) * 0.25
 	MobFx.burst(root, Vector3.ZERO, 1.2, 3)
 	var last := root.get_child(root.get_child_count() - 1) as MeshInstance3D
 	near(last.scale.x * 2.0, 1.2, 0.001, "world size when close")

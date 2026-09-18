@@ -43,8 +43,9 @@ void vertex() {
 }
 """
 
-## Every width below is in whole screen pixels (`pw` is one pixel in quad units),
-## so a mark reads the same at the camera players get as in a close shot.
+## Every width below is in whole pixels of a mark's own PEN (`pw` is one of them
+## in quad units, `PEN` pixels of the frame wide), so a mark reads the same at the
+## camera players get as in a close shot.
 const _MARKS := """
 
 vec4 ink_out() {
@@ -86,20 +87,29 @@ vec4 burst(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
 	float R = 1.0 / pw;
 	float e = 1e5;
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < BURST_STROKES; i++) {
 		float fi = float(i);
 		float h = ink_hash(vec2(seed * 13.1 + fi, 3.7));
-		float ang = fi / 7.0 * TAU + seed + (h - 0.5) * 0.7;
+		float ang = fi / float(BURST_STROKES) * TAU + seed + (h - 0.5) * 0.7;
 		vec2 d = vec2(cos(ang), sin(ang));
-		float len = 0.78 + 0.22 * ink_hash(vec2(fi, seed * 7.3));
+		float len = BURST_SHORT + (1.0 - BURST_SHORT) * ink_hash(vec2(fi, seed * 7.3));
 		float r0 = mix(OPEN, 0.84, pr) * len * (R - 2.0);
 		float r1 = mix(OPEN + 0.34, 1.0, sqrt(pr)) * len * (R - 2.0);
 		float along = dot(q, d);
 		float k = clamp((along - r0) / max(r1 - r0, 1e-4), 0.0, 1.0);
-		float hw = mix(1.5, 0.55, k) * (1.0 - pr * 0.3);
+		// Thin where the stroke leaves the heart, heavy where it lands. Ink thrown
+		// out by a blow pools at the far end, so this is the truer pen -- but it is
+		// here because it is the only thing that keeps the heart OPEN at a full pen.
+		// The radius R is in pen units, so it shrinks as the pen widens while these
+		// widths do not: at PEN 3 seven strokes are 3.7 pens apart at OPEN, and a
+		// root 1.5 wide with a pen of paper round it is 5.0 -- the halos meet and
+		// the mark becomes the filled star BURST_OPEN exists to prevent. (That is
+		// how the 640x360 drawing really looked; the 1080 floor hid it by making R
+		// three times larger in pen units, and restoring the pen brought it back.)
+		float hw = mix(BURST_ROOT, BURST_TIP, k) * (1.0 - pr * 0.3);
 		e = min(e, stroke(q, d * r0, d * r1, hw));
 	}
-	return inked(e, 1.0);
+	return inked(e, MARK_HALO);
 }
 
 // Dust as a drawn puff: a scalloped contour, inked on the side away from the
@@ -139,13 +149,13 @@ vec4 puff(vec2 p, vec2 px, float pw, float pr) {
 // across and along, so widths come from the radius' own screen rate.
 vec4 ring(vec2 p, float pr) {
 	float r = length(p);
-	float pw = max(fwidth(r), 1e-4);
+	float pw = max(fwidth(r), 1e-4) * PEN;
 	float R = mix(0.3, 1.0, 1.0 - (1.0 - pr) * (1.0 - pr)) - pw * 3.0;
 	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 14.0);
 	if (mod(seg, 2.0) > 0.5 || ink_hash(vec2(seg, seed)) < pr * 0.95) {
 		return vec4(0.0);
 	}
-	return inked(abs(r - R) / pw - 1.0, 1.0);
+	return inked(abs(r - R) / pw - 1.0, MARK_HALO);
 }
 
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
@@ -180,7 +190,7 @@ vec4 clang(vec2 p, float pw, float pr) {
 			e = min(e, abs(r - Rj) - 0.7);
 		}
 	}
-	return inked(e, 1.0);
+	return inked(e, MARK_HALO);
 }
 
 // A glint: a small plus of light that shrinks to one pixel.
@@ -367,7 +377,8 @@ vec4 bracket(vec2 p, float pw, float pr) {
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float pw = max(fwidth(p.x), 1e-4);
+	// One pixel of the mark's own pen, in quad units: PEN of the frame's.
+	float pw = max(fwidth(p.x), 1e-4) * PEN;
 	float pr = clamp(progress, 0.0, 1.0);
 	vec4 o = vec4(0.0);
 	if (mode == 0) { o = burst(p, pw, pr); }
@@ -391,7 +402,6 @@ void fragment() {
 
 ## The swing's stroke over an arc mesh: u runs along the swing, v across it.
 const _SWING := """
-shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
@@ -421,8 +431,9 @@ void fragment() {
 		discard;
 	}
 	vec2 px = floor(FRAGCOORD.xy) + world_px;
-	float pu = max(fwidth(u), 1e-5);
-	float pv = max(fwidth(v), 1e-5);
+	// In the mark's own pen, as every other width here is (MobFx.PEN).
+	float pu = max(fwidth(u), 1e-5) * PEN;
+	float pv = max(fwidth(v), 1e-5) * PEN;
 	// Two whole pixels of ink on every edge, whatever the camera's distance.
 	bool edge = v > 1.0 - pv * 2.0 || v < inner + pv * 2.0 || head - u < pu * 2.0;
 	bool paper = !edge;
@@ -501,6 +512,15 @@ const VAPOUR := 8
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
 ## than their *_PX sizes.
 static var texel := 15.0 / 1080.0
+## Pixels of the frame to one pixel of a mark's own PEN. Every width inside the
+## shaders is in that pen -- a stroke's half width, the paper laid round it, a
+## spark, a glint's arm, the comb across the swing's arc -- and none of them moved
+## when LANTERN's floor took the base from 640x360 to 1920x1080, so every pen came
+## out a third of its weight. The FLOORS beside this are a different number and
+## are already in pixels of the frame: a floor decides how big a mark is, this
+## decides how heavily it is drawn, and a mark whose quad never fell under its
+## floor still lost two thirds of its line. Compiled into the shaders as PEN.
+const PEN := 3.0
 ## Smallest on-screen size of each mark (its quad's full width), IN PIXELS OF THE
 ## 1080-ROW BASE. They were written as pixels of the old 640x360 image and did not
 ## move when the floor did, so every floor has been a third of its intended reach
@@ -532,9 +552,24 @@ const STREAK_PX := 102.0
 const BRACKET_PX := 78.0
 ## Breath and steam: small, because they are a cue and not an event.
 const VAPOUR_PX := 54.0
-## A magnet line's width in whole screen pixels: one of the machines' cold with
-## one of their dark each side. Three is the least that reads over pale gravel.
-const LINE_PX := 3.0
+## A magnet line's width in pixels of the frame: one PEN of the machines' cold
+## with one of their dark each side, which is the least that reads over pale
+## gravel. It is the one floor `look/marks` left at its 640x360 value, so the
+## line was drawn with a one-pixel core until this.
+const LINE_PX := 9.0
+## A burst's stroke, in pens: thin where it leaves the heart, heavy where it lands.
+## How many there are, how short the shortest may be, and how much paper is laid
+## round one. They are here and not buried in the shader because together with
+## `PEN` and `BURST_OPEN` they decide whether the heart stays open at all, and
+## tests/models/test_machines_hit_marks.gd does that arithmetic every run.
+const BURST_STROKES := 7
+const BURST_ROOT := 0.55
+const BURST_TIP := 1.5
+const BURST_SHORT := 0.78
+## Pens of paper laid round an ordinary mark's strokes (a tell asks for more:
+## TELL_HALO). It is what makes ink read on dark ground, and it is also half of
+## what can close a burst's heart, since it is laid on BOTH flanks of every stroke.
+const MARK_HALO := 1.0
 ## The fraction of a burst's (and a plate ring's) radius that never takes ink, so
 ## what was struck shows through the middle of its own mark. Compiled into the
 ## shader as OPEN and measured against the machines' parts in
@@ -576,15 +611,18 @@ static func _shader(key: StringName) -> Shader:
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
-	# One number for the open heart of a mark, in the shader and in the test.
-	var open := "#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n" % [BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK]
+	# One number for the open heart of a mark, and one for the pen every width in
+	# this file is drawn with, in the shaders and in the tests.
+	var open := ("#define PEN %0.4f\n#define OPEN %0.4f\n#define VAPOUR_SUN %0.4f\n#define VAPOUR_DARK %0.4f\n"
+		+ "#define BURST_STROKES %d\n#define BURST_ROOT %0.4f\n#define BURST_TIP %0.4f\n#define BURST_SHORT %0.4f\n#define MARK_HALO %0.4f\n") % [
+		PEN, BURST_OPEN, VAPOUR_SUN, VAPOUR_DARK, BURST_STROKES, BURST_ROOT, BURST_TIP, BURST_SHORT, MARK_HALO]
 	match key:
 		&"over":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
 		&"flat":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
 		&"swing":
-			s.code = _SWING
+			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
 			s.code = _LINE
 		_:
@@ -646,14 +684,22 @@ static func _ok(parent: Node) -> bool:
 	return parent != null and parent.is_inside_tree()
 
 
-## `size` world units, or `min_px` screen pixels if that is larger.
+## `size` world units, or `min_px` pixels of the FRAME if that is larger (a
+## floor, in the floors' own unit -- not the pen's).
 static func at_least(size: float, min_px: float) -> float:
 	return maxf(size, min_px * texel)
 
 
-## World units covered by `n` screen pixels.
+## World units covered by `n` pixels of the frame. What the floors are in.
 static func px(n: float) -> float:
 	return n * texel
+
+
+## World units covered by `n` pixels of a mark's own pen. What a clearance, a
+## flash or a lift written beside the shader's own widths is in, so the two
+## cannot drift apart.
+static func pen_px(n: float) -> float:
+	return n * PEN * texel
 
 
 ## How much of a struck body goes to paper, as a share of its height. Enough to
@@ -662,10 +708,12 @@ static func px(n: float) -> float:
 const FLASH_SHARE := 0.24
 
 
-## The flash sphere for a body `height` world units tall, never smaller than a
-## few screen pixels (a low body would otherwise flash nothing at all).
+## The flash sphere for a body `height` world units tall, never smaller than a few
+## pixels of the pen's grid (a low body would otherwise flash nothing at all).
+## Written as pixels of the 640x360 image, like the shader's widths and unlike the
+## floors, which is why it is restored here and not with them.
 static func flash_radius(height: float) -> float:
-	return maxf(height * FLASH_SHARE, px(4.0))
+	return maxf(height * FLASH_SHARE, pen_px(4.0))
 
 
 ## Screen pixels at the heart of a burst that never take ink, at the moment of
@@ -774,7 +822,7 @@ static func tell(parent: Node, anchor: Vector3, up: Vector3, seconds: float, see
 	# The fan's furthest tips are 0.4 of the half size from the quad's centre, so
 	# aimed down it hangs a clear three pixels above the thing it points at: a
 	# tell must send the eye to the part, never stand in front of it.
-	var clear := (0.72 if flick == FLICK_DOWN else 0.45) * size * 0.5 + px(3.0)
+	var clear := (0.72 if flick == FLICK_DOWN else 0.45) * size * 0.5 + pen_px(3.0)
 	var mi := _mark(parent, anchor + up.normalized() * clear, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0])
 	var mat := mi.material_override as ShaderMaterial
 	mat.set_shader_parameter(&"dir", flick)

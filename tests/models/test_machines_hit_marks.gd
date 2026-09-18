@@ -128,6 +128,36 @@ func test_a_tell_is_a_fan_that_reads_on_a_dark_body() -> void:
 	root.queue_free()
 
 
+## THE HEART, AT THE PEN THE GAME ACTUALLY DRAWS WITH.
+##
+## `BURST_OPEN` says nothing is inked inside a fraction of the radius, and the
+## test above measures against that fraction -- but it measures an analytic ring,
+## so it cannot see the strokes MEET. They can, because the quad's radius R is in
+## pens and shrinks as the pen widens, while a stroke's width does not: seven
+## roots that were 12.5 pens apart at PEN 1 are 3.7 apart at PEN 3, and a root
+## 1.5 wide with a pen of paper on each flank is 5.0 across. That is the filled
+## paper star this file was written to prevent, and at PEN 3 with the old taper
+## it came back -- measured on the frame, the ground showing inside the heart of
+## a plain burst fell from 99% to 55%.
+##
+## So this is the arithmetic of it, and it is the reason the taper runs thin-to-
+## heavy rather than the other way. Anything that moves PEN, the stroke count,
+## the taper or the halo now has to face it.
+func test_the_bursts_roots_clear_each_other_at_the_pen_it_is_drawn_with() -> void:
+	MobFx.texel = 15.0 / float(UiBase.SIZE.y)
+	# The burst the fight draws on a working part, as a radius in pens.
+	var r := MobFx.at_least(MACHINE_HIT, MobFx.BURST_PX) / MobFx.pen_px(1.0) * 0.5
+	# Where the SHORTEST stroke starts, at the instant of the blow (pr = 0).
+	var r0: float = MobFx.BURST_OPEN * MobFx.BURST_SHORT * (r - 2.0)
+	var gap := TAU * r0 / float(MobFx.BURST_STROKES)
+	var wide: float = 2.0 * (MobFx.BURST_ROOT + MobFx.MARK_HALO)
+	gt(gap, wide, "roots %.2f pens apart, %.2f wide: the heart stays open" % [gap, wide])
+	# And the far ends must NOT clear each other, or seven separate flecks read as
+	# scattered dirt rather than one burst thrown from one point.
+	var r1: float = (MobFx.BURST_OPEN + 0.34) * MobFx.BURST_SHORT * (r - 2.0)
+	lt(TAU * r1 / float(MobFx.BURST_STROKES), 3.0 * (MobFx.BURST_TIP + MobFx.MARK_HALO), "and it is still one mark")
+
+
 func test_the_shader_and_the_gate_share_one_open_heart() -> void:
 	# The number the test measures against is the number the shader draws with.
 	var code: String = MobFx._shader(&"over").code
