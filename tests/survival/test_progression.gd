@@ -17,9 +17,25 @@ const Fx := preload("res://tests/survival/fixture.gd")
 const REAL_BUDGET := 600.0
 ## Real seconds a person spends in a crafting screen per thing made.
 const MENU_SECONDS := 4.0
-## The bot will walk this far for anything (the first vein can be a trip into the
-## hills); the real-time budget says whether the whole path still fits.
-const FAR := 100.0
+## How far the bot will LOOK for anything. This is a search cap, not a budget:
+## what says whether a start is playable is the ten real minutes below, and the
+## clock already charges every step of the walk. A distance cap as well was a
+## second and weaker assertion of the same thing, and it is the one that failed
+## first -- when a landscape moved every seed's island, seed 2's nearest iron
+## went to 162 tiles and this reported "nothing within 100 tiles gives iron_ore"
+## about a start the bot had otherwise played straight through: wood, fire,
+## charcoal, mussels, all of it.
+##
+## Measured then, spawn to the nearest prop that can give the item at all:
+##     seed         1       2      3      4     42
+##     iron_ore  44.5   162.4   29.8   30.1   32.9
+##     timber     6.5     5.8    5.0    6.7   11.5
+## Seed 2 is an outlier for ORE and perfectly ordinary for WOOD -- so its second
+## failure, "nothing within 100 tiles gives timber", was a cascade and not a
+## fact: no iron, so no iron axe, so the timber five tiles away is unworkable.
+## A distance cap reports that as two faults in two materials. The clock reports
+## it as one long walk, which is what it is. Let the clock judge.
+const FAR := 220.0
 const WOOD: Array[StringName] = [&"driftwood", &"deadwood"]
 ## The first pick is in hand by this hour of day 1 for a bot that gathers
 ## thoroughly and walks a far strand (seed 1 lands it before noon, seed 2 just

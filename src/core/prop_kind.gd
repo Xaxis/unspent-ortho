@@ -73,9 +73,12 @@ enum {
 	PAN_GATE,
 	SCRAP_TREE,
 	MAGNET_HEAP,
+	# The Slums: the wall the city painted, and what got bolted over it. The
+	# sign itself is not a kind -- `Towers.billboard` hangs it on a wall.
+	MURAL,
 }
 
-const COUNT := 64
+const COUNT := 65
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -87,6 +90,7 @@ const NAMES: PackedStringArray = [
 	"conveyor", "survey", "water tank", "slag heap", "vent cap", "archive",
 	"wreckage", "memorial",
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
+	"mural",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -105,4 +109,10 @@ const SOLID: PackedFloat32Array = [
 	0.0, 0.0, 0.7, 1.0, 0.4, 0.6,
 	0.0, 0.25,
 	0.0, 0.55, 0.45, 0.4, 0.3,
+	# A mural wall is SIX TILES of wall answered by ONE circle, which is the
+	# limit of what a prop can say about itself. Whoever places these should hand
+	# the wall to `WorldQuery.set_blocks` as circles along its length, the way a
+	# landmark's tower and a depot's deck already do, or a player walks through
+	# both ends of it.
+	1.5,
 ]

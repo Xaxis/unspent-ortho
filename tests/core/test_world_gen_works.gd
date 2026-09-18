@@ -318,7 +318,11 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					lit = true
 					break
 			if lit:
-				check(kind in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.RELAY, PropKind.STACK, PropKind.CHECKPOINT, PropKind.DRILL_RIG, PropKind.TIDE_GAUGE, PropKind.SIGN, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.SHACK, PropKind.PAN_GATE],
+				check(kind in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.RELAY, PropKind.STACK, PropKind.CHECKPOINT, PropKind.DRILL_RIG, PropKind.TIDE_GAUGE, PropKind.SIGN, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.SHACK, PropKind.PAN_GATE,
+					# A mural carries light only on the variants that had a
+					# hoarding bolted over the painting, and that light is the
+					# city's own: maintained, not stolen and not salvaged.
+					PropKind.MURAL],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)

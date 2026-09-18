@@ -41,7 +41,7 @@ const TERRAIN: Array[String] = [
 	"share", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
 	"relief", "caldera", "dunes",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
-	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground",
+	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter",
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
 	"spawn_home",
@@ -95,6 +95,37 @@ static func of(defs: Array[BiomeDef]) -> String:
 ## sorted key, a recipe by the method and script it came from.
 static func _spell(v: Variant) -> String:
 	match typeof(v):
+		TYPE_NIL:
+			return "none"
+		TYPE_OBJECT:
+			# A declared object (`BiomeDef.built`, a BiomeForms). `str()` on one is
+			# its INSTANCE ID, which changes every run, so the one field that is an
+			# object would have moved the stamp on every launch and refused every save
+			# on disk as &"elsewhere" — silently, and ONLY for the players who had a
+			# landscape declaring one. Everybody else would be fine and nobody could
+			# reproduce it. So it is spelled out: the script's bare file name (an
+			# exported build serves the same script as .gdc or through a .remap, and a
+			# save written by the mac build must still open in the web one), and the
+			# fields the OBJECT ITSELF names, in the order it names them.
+			#
+			# It was `get_property_list()`. That order is the engine's to decide and
+			# nothing promises it survives an export — and if it does not, the same
+			# landscape stamps differently in the two builds and a save made in either
+			# is refused in the other, with nothing in the editor able to show it. A
+			# type that declares no `stamped()` is spelled as its class alone, loudly
+			# enough for a test to catch, because guessing at a field list is the
+			# thing this replaced.
+			var o := v as Object
+			if o == null:
+				return "none"
+			var sc := o.get_script() as Script
+			var where: String = sc.resource_path.get_file().get_basename() if sc != null else o.get_class()
+			if not o.has_method("stamped"):
+				return "%s(?)" % where
+			var fields := PackedStringArray()
+			for name: String in (o.call("stamped") as PackedStringArray):
+				fields.append("%s=%s" % [name, _spell(o.get(name))])
+			return "%s(%s)" % [where, ";".join(fields)]
 		TYPE_FLOAT:
 			return "%.6f" % (v as float)
 		TYPE_VECTOR2:

@@ -119,6 +119,23 @@ const SOURCES := {
 	PropKind.INTAKE: [2.6, 0.45, 1.0],
 	PropKind.PUMP_HOUSE: [2.4, 0.45, 1.0],
 	PropKind.CHECKPOINT: [5.2, 0.8, 2.9],
+	# The Slums' signage (props/signage.gd). A MURAL lights ONLY on the variants
+	# that had a hoarding bolted over the painting: the bare ones return no glow
+	# point at all and `PLACED_SOURCES` drops them, which is the whole difference
+	# between paint and projection stated once and nowhere else. The sign itself
+	# is `Towers.billboard`, hung on a wall like every other sign in the city.
+	# THE HEIGHT HERE MUST MATCH WHERE THE MODEL'S NEON ACTUALLY IS. A PLACED
+	# source takes its position from `PropModels.glow_points`, which reads the
+	# hoarding's own geometry; this column is what `tests/sky/test_lamp_pools.gd`
+	# measures the pool against. Let the two drift and the pool is tested at a
+	# height the game never uses.
+	#
+	# And the pair has to make a pool at all. An earlier sign stood at 9.0 with a
+	# reach of 9.0, and `pool_radius` answered exactly 0.0: an omni whose reach is
+	# its own height lands NOTHING on the ground beneath it, so the brightest
+	# thing in the landscape lit the street not at all while burning on its own
+	# face. 2.7 against 5.0 puts a 1.88-tile core under the sign.
+	PropKind.MURAL: [5.0, 0.7, 2.7],
 }
 ## Sources whose light is the machines' own (cold, and the machines' colour).
 const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
@@ -129,9 +146,16 @@ const MACHINE_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropK
 ## `GroundColors.NEON` mark, which world.gdshader multiplies by `sky_power()`,
 ## so the tube, its pool, its glint in wet ground and its shafts in fog all
 ## stutter together. A hearth or a window in the same wall keeps burning.
-const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.SHACK]
+##
+## The Slums' signage is on this list because found.gdshader multiplies its
+## emissive face by `sky_power()` whatever this array says: leaving the POOL out
+## would stutter the panel and not the street under it, which is worse than
+## either choice made whole.
+const POWERED_SOURCES: Array[int] = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT, PropKind.SHACK,
+	PropKind.MURAL]
 ## Sources placed at their model's own glow point, lit only on the variants that have one.
-const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT]
+const PLACED_SOURCES: Array[int] = [PropKind.SHACK, PropKind.FIRE_TOWER, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT,
+	PropKind.MURAL]
 ## The machines' cold strip light, for a pool and a glint. It is the SAME light
 ## as the strip on the machine that casts it (`Works.STRIP`), so the pool on the
 ## ground and the geometry throwing it can never disagree: this was an inlined
@@ -189,12 +213,13 @@ const TOUR_MARGIN := 0.12
 ## The game's frame, which is fixed however big the window on it is.
 static var FRAME_ASPECT := float(ProjectSettings.get_setting("display/window/size/viewport_width", 640)) \
 	/ maxf(1.0, float(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
-## House variants that wired a machine's light in (props/houses.gd: washed form 1
-## and slated form 0). The LIGHT does not read this list — it asks the model where
-## its tube is (`PropModels.neon_point`) — but world gen deals houses by variant
-## and cannot load a model, so the list is what it is told. A test fails if the
-## models and this list ever disagree.
-const NEON_HOUSE_VARIANTS: Array[int] = [1, 4]
+## Which buildings wired a machine's light in used to be written down twice — a
+## bare [1, 4] here and the same [1, 4] in `GenScatter.HOUSE_NEON` — because
+## world gen holds no rendering and could not read a model. It is one answer in
+## core now, `BiomeForms.of(country).lit()`, which world gen reads directly and
+## which is the landscape's OWN: a city's lit form is not a fishing village's.
+## Nothing in this file ever read the list (the light asks the MODEL where its
+## tube is, `PropModels.neon_point`), so it is simply gone.
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 
 
@@ -476,6 +501,19 @@ static func source_lit(src: Dictionary, hour: float) -> bool:
 				var asleep: bool = (hh >= bed or hh < 5.0) if bed > 5.0 else (hh >= bed and hh < 5.0)
 				return not asleep
 			return true
+		PropKind.MURAL:
+			# Advertising does not sleep. Every other light in this file is lit
+			# when somebody WANTS it -- a lamp as the dark comes on, a house
+			# until its people go to bed -- and this one is never switched off,
+			# because nobody living under it decides. That is the landscape's
+			# argument said in one `return true`.
+			return true
+	# A kind with no arm here IS NOT A LIGHT, however brightly its model glows.
+	# That is how a billboard came to burn on its own face while laying nothing
+	# on the street under it: a model's emission is per-vertex and knows nothing
+	# about this file, so the two halves disagreed and neither raised anything.
+	# A new light-giving kind needs an arm HERE, in `_update_glints` and in
+	# `neon_colour`, or it lights nothing and mirrors in nothing.
 	return false
 
 
@@ -553,8 +591,8 @@ func _index_sources() -> void:
 				# prop a model (WorldProp.variant), and a light read off the other
 				# one puts the glow point, its colour and the "no light on this
 				# variant" early-out on a model that is not the one on screen.
-				var variant := PropModels.variant_of(p, game.world.seed_value)
 				var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+				var variant := PropModels.variant_of(p, game.world.seed_value, country)
 				var pts := PropModels.glow_points(p.kind, variant, country)
 				if pts.is_empty():
 					# A dead pump, a shack with nothing wired in: no light to give.
@@ -576,6 +614,11 @@ func _index_sources() -> void:
 				PropKind.VENT: s.warm = VENT_WARM
 				PropKind.HOUSE: s.warm = HEARTH_WARM
 				PropKind.SHACK: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.35)
+				# The sign's own colour, barely pulled toward white: a billboard
+				# is the brightest thing in the frame, so the street under it
+				# must be the colour of the advertisement and not a generic warm
+				# — that tint IS how the player reads which sign they are under.
+				PropKind.MURAL: s.warm = (s.neon as Vector3).lerp(Vector3.ONE, 0.15)
 				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
 		else:
@@ -596,8 +639,8 @@ func _tube_of(s: Dictionary) -> void:
 	if s.has("neon_at") or bool(s.get("dark", false)):
 		return
 	var p: WorldProp = s.prop
-	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value),
-		maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y))))
+	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value, country), country)
 	if tube.is_empty():
 		s.dark = true
 		return
@@ -779,6 +822,14 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * _flicker(s), "shaft": SHAFT_RAYED})
 			PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
 				cands.append({"at": s.at, "rgb": neon_colour(s), "level": (0.8 if source_lit(s, hour) else 0.0) * power, "shaft": SHAFT_MACHINE})
+			PropKind.MURAL:
+				# The loudest glint in the game, and the reason it is worth one of
+				# the twelve slots: a streak in wet ground is as long as its light
+				# stands HIGH (sky.gdshaderinc `neon_streak`), so a sign nine
+				# units up lays a reflection several times a lamp post's. The
+				# standing water holding the billboards is half the light in the
+				# Slums and this line is where it comes from.
+				cands.append({"at": s.at, "rgb": neon_colour(s), "level": 0.95 * power, "shaft": SHAFT_MACHINE})
 	if lantern_lit:
 		cands.append({"at": lantern.position + Vector3(0, 0.1, 0), "rgb": LANTERN_WARM, "level": 0.7, "shaft": SHAFT_RAYED})
 	glint_list = Glints.pick(cands, focus3)
@@ -913,6 +964,8 @@ static func neon_colour(s: Dictionary) -> Vector3:
 			return Vector3(1.0, 0.68, 0.4)
 		PropKind.SHACK:
 			return s.get("neon", NEON_MAGENTA)
+		PropKind.MURAL:
+			return s.get("neon", NEON_SODIUM)
 		PropKind.FIRE_TOWER:
 			return Vector3(1.0, 0.72, 0.42)
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT:
