@@ -16,6 +16,25 @@ func _game(args: PackedStringArray) -> Game:
 	return g
 
 
+## The name of a solid prop standing across the walk from `from` along `step`,
+## or "" where the way is clear of everything the world grew. A prop's own
+## `solid` and the body's radius are both counted, because either alone is not
+## what stops a body.
+static func _solid_across(g: Game, from: Vector2, step: Vector2) -> String:
+	var to := from + step
+	var along := step.length()
+	if along <= 0.0:
+		return ""
+	var dir := step / along
+	for p in g.query.props_near(from, along + 1.5):
+		if p.solid <= 0.0:
+			continue
+		var t := clampf((p.pos - from).dot(dir), 0.0, along)
+		if p.pos.distance_to(from + dir * t) < p.solid + 0.34:
+			return "%s at %s" % [PropKind.NAMES[p.kind], p.pos]
+	return ""
+
+
 func _nearest(g: Game, kind: StringName) -> LandmarkSite:
 	var sys := g.get_node("22_landmarks")
 	var best: LandmarkSite = null
@@ -43,10 +62,31 @@ func test_a_body_cannot_walk_into_a_tower() -> void:
 		var from := site.pos + Vector2.from_angle(a) * 4.0
 		var to := g.query.move_body(from, (site.pos - from) * 1.2, 0.34)
 		gt(to.distance_to(site.pos), 1.0, "a body walks into the tower from %.1f rad" % a)
-	# And the ground beside it is still open ground.
-	var off := site.pos + Vector2.from_angle(site.facing) * 6.0
-	var walked := g.query.move_body(off, Vector2.from_angle(site.facing) * 2.0, 0.34)
-	gt(walked.distance_to(off), 1.0, "the land round it is walled too")
+	# AND THE GROUND BESIDE IT IS STILL GROUND — which is a claim about the
+	# LANDMARK'S MASS and not about the world's furniture. This walked two tiles
+	# in from six tiles out along one bearing, and a broadleaf grew into that one
+	# line when the eleventh landscape moved the island: 0.28 tiles against a
+	# tile, with the ground under it open grass at the same level the whole way
+	# and the lighthouse's own mass a single circle of radius 1.02. A tree is not
+	# a tower walling its neighbourhood.
+	#
+	# So every bearing is tried, the ones the WORLD stops are set aside with their
+	# reason, and what is left must be free. A mass registered too wide still
+	# fails, on every bearing at once, and says so.
+	var walled: PackedStringArray = []
+	for i in 8:
+		var a := TAU * i / 8.0
+		var from := site.pos + Vector2.from_angle(a) * 6.0
+		var step := (site.pos - from).normalized() * 2.0
+		if not g.query.standable(floori(from.x), floori(from.y)):
+			continue # the sea, or a step it cannot climb: not the tower's doing
+		if g.query.move_body(from, step, 0.34).distance_to(from) > 1.0:
+			continue
+		var tree := _solid_across(g, from, step)
+		if tree != "":
+			continue # something standing in the way, which is the world working
+		walled.append("%.2f rad" % a)
+	check(walled.is_empty(), "the land round it is walled at %s" % [walled])
 	g.queue_free()
 	await frames(1)
 
