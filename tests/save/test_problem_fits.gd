@@ -37,15 +37,23 @@ func room_on(device: Rect2i, pairs: Array) -> int:
 	var g := UiSlate.glass_of(device)
 	var x := g.position.x + UiSlate.MARGIN_L
 	for p: Array in pairs:
-		x += maxi(9, UiFont.width(p[0] as String) + 6) + 4
-		x += UiFont.width(p[1] as String) + 12
-	# The 12 above is the gap after the last hint; a note may start there.
-	return (g.end.x - UiSlate.MARGIN_R) - x
+		# UiSlate.key_cap, then UiSlate.keys' own two advances. Every one of these
+		# four numbers doubled when the slate moved to the base's own pixels and
+		# this copy did not follow, and the NOTE_GAP the drawer has always taken
+		# off the end was never here at all — so the strip was reported about 36 px
+		# wider than it is, and a sentence in that band passed here and was
+		# lettered through "e choose" on the glass.
+		x += maxi(18, UiFont.width(p[0] as String) + 8) + 8
+		x += UiFont.width(p[1] as String) + 24
+	return (g.end.x - UiSlate.MARGIN_R) - x - UiSlate.NOTE_GAP
 
 
 func test_every_problem_a_slot_can_have_fits_the_title_key_strip() -> void:
 	var room := room_on(UiTitleMenu.DEVICE, title_keys())
-	gt(float(room), 100.0, "the title leaves a note somewhere to go (%d px)" % room)
+	# NOT a round number: UiSlate.keys itself says nothing at all below NOTE_MIN,
+	# so that is what "somewhere to go" means. The 100 that stood here was 100 px
+	# of the 640x360 slate and had no reader.
+	gt(float(room), float(UiSlate.NOTE_MIN), "the title leaves a note somewhere to go (%d px)" % room)
 	for code: StringName in CODES:
 		for slot: int in range(SaveSlots.COUNT):
 			var s := SaveSlots.problem(slot, code)

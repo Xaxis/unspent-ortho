@@ -1,26 +1,41 @@
 # The six countries at their hearts and the land turning at three borders,
 # on seed 1 at a clear late morning, each with a short real walk.
-# Places come from `tools/map.sh --seed=1` (country and ecotone samples).
 #   tools/tour.sh tours/countries.tour --seed=1 --hour=10.5 --weather=clear:0
+#
+# Every heart is asked for BY NAME. `place coast` is GenPlaces.country_sample,
+# which scores a standing tile by how much of its own country surrounds it at
+# 6, 12, 20 and 30 tiles — so it IS the heart, by definition, in whatever world
+# it is asked in. These six lines used to be six numbers copied off one
+# `tools/map.sh --seed=1` run, and four of the six had quietly stopped being
+# what the run said they were:
+#   coast     338,398 sat at blend 0.36 — deep in an ECOTONE band. A frame
+#             called "coast-heart" was a picture of a border. (Now 250,406.)
+#   moss      262,242 was on GRAVEL, 47 tiles off the sample. (Now 266,290, moss.)
+#   pinewood  362,222 had no PINE within nine tiles. (Now 366,222, four of them.)
+#   bonelands 138,242 was a RIVERBED. (Now 134,254, limestone pavement under
+#             clints, which is what the bonelands are.)
+# The snowfield and the burning still resolve to the very tiles that were
+# written down, so those two frames do not move at all — which is the point: a
+# name costs nothing when nothing has changed and fixes itself when it has.
 coast calm
-at 338,398
+place coast
 wait 2.0
 shot 01-coast-heart with land:coast
 walk 0,-1 1.2
 shot 02-coast-walked with land:coast
-at 262,242
+place moss
 wait 2.0
 shot 03-moss-heart with land:moss
-at 362,222
+place pinewood
 wait 2.0
 shot 04-pinewood-heart with land:pinewood
-at 374,146
+place snowfield
 wait 2.0
 shot 05-snowfield-heart with land:snowfield
-at 138,242
+place bonelands
 wait 2.0
 shot 06-bonelands-heart with land:bonelands
-at 162,126
+place burning
 wait 2.0
 shot 07-burning-heart with land:burning
 # Borders: stand in the band, then walk across it. The band is asked for by

@@ -58,7 +58,19 @@ wait 0.8
 shot 08-village-night with prop:house
 zoom 9
 wait 0.5
-shot 09-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:60
+# A `pixels:` floor is a COUNT of frame pixels, and the frame went from 1280x720
+# to 3840x2160 — nine times the area — when LANTERN moved the base. The 60 here
+# was written for the small frame and never rescaled, so the same tube now covers
+# nine times the pixels and the floor asks for a ninth of what it meant. Measured
+# on this very frame: 6232 pixels of tube against a floor of 60, which is a
+# hundred times over. A frame holding one speck of the right hue passed as proof
+# of stolen neon. 540 is the 60 the line meant, at this frame's size, and still
+# leaves the tube an order of magnitude of room to be dimmed or moved.
+# tours/canon.tour:120 (60), tours/landscape.tour:91 (40) and tours/works.tour:51
+# (bebadf, 30) carry the same stale floors and have NOT been rescaled here,
+# because nobody has measured what those three frames really hold and a floor
+# raised without a measurement is the same mistake the other way round.
+shot 09-stolen-neon-close with pixels:4df2ff+ff40cc+8cff59:540
 zoom 15
 
 # Wet: the tube mirrored in the ground is the frame the canon meant to protect.

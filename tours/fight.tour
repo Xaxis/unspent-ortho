@@ -21,6 +21,7 @@ end
 wait 0.05
 shot 03-blow-rings-off-plate with mob:runner
 # Away from it (far past its tether), to a watcher out in a field.
+# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
 at 135,375
 wait 1.5
 spawn watcher

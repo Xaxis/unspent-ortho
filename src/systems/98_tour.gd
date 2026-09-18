@@ -127,6 +127,20 @@ extends GameSystem
 ##   same A B TOL [X,Y,W,H] shots A and B (already taken) differ by at most TOL, the mean
 ##                          per-channel difference 0..1, over the whole frame or only the
 ##                          rectangle given (shot pixels, 2x); fails otherwise and prints it
+##   same A B no_more_than C D [SLACK] [X,Y,W,H]
+##                          the pair A,B differs no more than the pair C,D does
+##                          (plus SLACK, default 0; either extra may come first,
+##                          a crop being the one with commas in it). The honest
+##                          form when the claim is "DOING this changed the picture
+##                          no more than doing NOTHING did": an absolute bar there
+##                          is pinned to how much the WORLD animates and not to
+##                          what the action did, so it goes red for swaying tufts
+##                          and says nothing about the action. Measured on
+##                          sky-polish: the control pair sat at 0.0095 of a 0.010
+##                          bar while the lamp it exists to measure sat at 0.0078,
+##                          one noisy run from a red that would have taught nobody
+##                          anything. A pair that cannot be compared at all fails
+##                          BOTH forms rather than reading as equally broken.
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
@@ -414,7 +428,20 @@ func _run() -> void:
 			"key":
 				ok = await _key(parts[1])
 			"same":
-				ok = _same(parts[1], parts[2], parts[3].to_float() if parts.size() > 3 else 0.02, parts[4] if parts.size() > 4 else "")
+				if parts.size() > 5 and parts[3] == "no_more_than":
+					# SLACK and the crop are both optional and either may come
+					# first: the crop is the one with commas in it, so a crop
+					# written without a slack can never be read as a slack of 0.
+					var slack := 0.0
+					var crop := ""
+					for i in range(6, parts.size()):
+						if parts[i].contains(","):
+							crop = parts[i]
+						else:
+							slack = parts[i].to_float()
+					ok = _no_more_than(parts[1], parts[2], parts[4], parts[5], slack, crop)
+				else:
+					ok = _same(parts[1], parts[2], parts[3].to_float() if parts.size() > 3 else 0.02, parts[4] if parts.size() > 4 else "")
 			_:
 				ok = false
 		if not ok and not tries.is_empty() and int(tries.back()[1]) > 0:
@@ -1079,18 +1106,50 @@ func _key(action: String) -> bool:
 	return false
 
 
-func _same(a: String, b: String, tol: float, crop: String) -> bool:
+## How far apart two saved frames are over `crop`, or **-1.0 when the question
+## cannot be asked** — a frame missing, the two different sizes, or the crop not
+## inside them. `frame_difference` answers 1.0 for all three, which fails an
+## absolute bar honestly enough but would make two unanswerable pairs read as
+## EQUAL to each other, and a relational assertion pass on a tour that saved no
+## frames at all. So the unanswerable case is a value of its own here.
+func _difference(a: String, b: String, crop: String) -> float:
 	var ia := Image.load_from_file(_out.path_join(a + ".png"))
 	var ib := Image.load_from_file(_out.path_join(b + ".png"))
+	if ia == null or ib == null or ia.is_empty() or ib.is_empty() or ia.get_size() != ib.get_size():
+		printerr("tour %s: %s and %s cannot be compared" % [_name, a, b])
+		return -1.0
 	var rect := Rect2i()
 	if crop != "":
 		var c := crop.split(",")
 		if c.size() != 4:
-			return false
+			return -1.0
 		rect = Rect2i(c[0].to_int(), c[1].to_int(), c[2].to_int(), c[3].to_int())
-	var d := frame_difference(ia, ib, rect)
+		if not Rect2i(Vector2i.ZERO, ia.get_size()).encloses(rect):
+			printerr("tour %s: crop %s is not inside a %s frame" % [_name, crop, ia.get_size()])
+			return -1.0
+	return frame_difference(ia, ib, rect)
+
+
+func _same(a: String, b: String, tol: float, crop: String) -> bool:
+	var d := _difference(a, b, crop)
+	if d < 0.0:
+		return false
 	print("tour %s: %s against %s%s differs by %.4f (at most %.4f)" % [_name, a, b, "" if crop == "" else " at " + crop, d, tol])
 	return d <= tol
+
+
+## `same A B no_more_than C D [SLACK] [CROP]`: A,B moved the picture no more than
+## the control pair C,D did. See the header for why an absolute bar is the wrong
+## instrument for that claim.
+func _no_more_than(a: String, b: String, c: String, d: String, slack: float, crop: String) -> bool:
+	var moved := _difference(a, b, crop)
+	var control := _difference(c, d, crop)
+	if moved < 0.0 or control < 0.0:
+		return false
+	print("tour %s: %s against %s differs by %.4f%s, against %s / %s at %.4f%s" % [_name, a, b, moved,
+		"" if crop == "" else " at " + crop, c, d, control,
+		"" if is_zero_approx(slack) else " + %.4f allowed" % slack])
+	return moved <= control + slack
 
 
 ## Mean per-channel difference of two frames, 0 (the same) .. 1, over `rect`

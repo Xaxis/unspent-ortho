@@ -36,6 +36,10 @@ zoom 15
 weather clear:0
 
 # --- noon ---------------------------------------------------------------------
+# The village square the player wakes in, asked for by name. It used to read
+# `at 200.5,431.5`, which is the seed-1 spawn tile to the half-tile and would
+# have stopped being it the next time worldgen moved the island. Ten frames
+# across four tours were staged on that one number.
 hour 12
 place spawn
 wait 1.2
@@ -173,6 +177,7 @@ shot 08-night-hostile with mob:harvester
 # A watcher at night threw nothing on the ground it stood on: its lens was in the
 # glint list, which only mirrors in WET ground. Close, so the pool round its feet
 # is a thing a player can see, and on the machines' power so it stutters.
+# The coordinate stays; tours/machines-day.tour says why, at its own copy of it.
 coast calm
 hour 23
 weather clear:0

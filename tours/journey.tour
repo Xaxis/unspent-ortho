@@ -1,7 +1,8 @@
 # The journey north across seed 1: wake on the south coast, walk inland, then
 # stand in each ecotone and walk across it, so the land can be seen turning.
 #   tools/tour.sh tours/journey.tour --seed=1
-# Coordinates come from `tools/map.sh --seed=1` (country and ecotone samples).
+# Every ecotone and the caldera are asked for by NAME. One coordinate is left,
+# and the note on it says why.
 zoom 30
 shot 01-spawn
 walk 0,-1 2.5 run
@@ -26,10 +27,19 @@ place bonelands-burning
 shot 09-bonelands-burning with border:bonelands-burning
 walk -1,-1 2.5 run
 shot 10-bonelands-burning-walked with land:bonelands|burning
-# a fumarole field out on the Burning's slopes
+# A fumarole field out on the Burning's slopes. THE COORDINATE STAYS, and the
+# claim is what guards it now. `place fumarole` was tried and looked at: it
+# resolves to the first vent in the world's list, which on seed 1 stands on a
+# spit with the sea taking half the frame — a worse picture of the same thing.
+# This tile is an ash field with seven or eight vents burning in it, which is
+# what "a fumarole field" means. So instead of moving the frame, the frame now
+# has to PROVE it found vents: `prop:vent` is asked again at the shutter, and a
+# worldgen change that takes the vents away fails the tour instead of filing a
+# picture of empty ash under the name "fumarole".
 at 207,145
-shot 11-fumarole with land:burning
-# the caldera
-at 134,142
+shot 11-fumarole with land:burning,prop:vent
+# The caldera, which is a landmark and therefore has a name. This was
+# `at 134,142`, the caldera's own tile on seed 1 to the half-tile.
+place caldera
 zoom 44
 shot 12-caldera with land:burning

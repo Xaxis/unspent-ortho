@@ -75,8 +75,24 @@ shot 06-after
 # with the fire THERE, against a tolerance that has to be well under what losing
 # it costs; 0.030 keeps the guard and stops it failing on the flame it is
 # watching.
+#
+# THE CROP IS IN FRAME PIXELS AND A TOUR FRAME IS 3840x2160 — the base
+# (UiBase.SIZE, 1920x1080) taken x2 by 98_tour._save_frame. It used to read
+# 440,220,440,280, which is that same box round the player written for the
+# 1280x720 frames of the 640x360 floor and never rescaled when LANTERN moved the
+# floor. On a 3840x2160 frame that box is the TOP-LEFT CORNER — x 11..23%,
+# y 10..23% of the picture. Cropped out of this tour's own 02-before and looked
+# at, it is THE SEA: open water, surf and a strip of beach, with neither the
+# player nor the fire in it, which is the whole of what the paragraph above says
+# it watches. And the sea is the most restless thing in the frame, so the box was
+# not merely idle — measured on that pair it reads 0.0433 against its own 0.030
+# allowance, a red this tour would have taken for a lost save.
+# x3 puts the box back on the fractions of the frame the old numbers meant: the
+# player, their fire, and the turf round both. It reads 0.0122 and 0.0121 there,
+# under a whole-frame 0.0141 — so the tolerances below are, at last, being asked
+# the question they were tuned for, and no number had to move to make it green.
 same 02-before 06-after 0.032
-same 02-before 06-after 0.030 440,220,440,280
+same 02-before 06-after 0.030 1320,660,1320,840
 await station:fire 1
 # Load from home's saves app too (right turns it to loading): the autosave and the
 # three slots, and slot 1 taken up again.
@@ -99,5 +115,5 @@ shot 08-loaded
 # Further from the save than 06 was: this one went out through home's saves app
 # and back, so a few more world minutes of sun are in it (same reasons as above).
 same 02-before 08-loaded 0.036
-same 02-before 08-loaded 0.028 440,220,440,280
+same 02-before 08-loaded 0.028 1320,660,1320,840
 await station:fire 1
