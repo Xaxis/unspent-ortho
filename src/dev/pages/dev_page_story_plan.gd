@@ -40,6 +40,11 @@ func rows() -> Array[Dictionary]:
 			value = "NOT CAST"
 		out.append(item(StringName("slot_%s" % s.id), String(s.id).trim_prefix("the_").replace("_", " "), value,
 			{"tone": "warn" if value == "NOT CAST" else ("" if _placed.has(s.id) else "dim")}))
+	out.append(header("gates into 2029"))
+	for g: Dictionary in StoryGates.all(game.world):
+		out.append(item(StringName("gate_%s" % g.id), String(g.id).trim_prefix("gate_"),
+			"open" if bool(g.open) else "on %s" % String(StoryContent.BEATS[g.opens].short),
+			{"tone": "" if bool(g.open) else "dim"}))
 	var bad := StoryPlan.problems(game.world)
 	out.append(header("problems"))
 	if bad.is_empty():

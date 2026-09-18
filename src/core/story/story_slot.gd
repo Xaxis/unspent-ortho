@@ -45,6 +45,10 @@ var realm: StringName = &"surface"
 ## home than the one before it and moves that floor on; a local who is colour is
 ## not a stop, is sought from home outward on every body, and moves nothing.
 var ordered := true
+## Another slot's id to be cast exactly as: the Before is the same coast tile for
+## tile (Realm.ERA), so 2029's lab is cast where 2098's works yard stands, by the
+## same pick, and the ruin he wakes beside was his street.
+var mirror: StringName = &""
 ## Which leg of the journey this belongs to: 0 is the body Elias wakes on, 1 the
 ## next one out, and so on (`StoryJourney`). The story spans every continent in
 ## order, so a slot names its leg and never a continent.
@@ -70,6 +74,7 @@ static func make(d: Dictionary) -> StorySlot:
 	s.land = StringName(str(d.get("land", &"")))
 	s.realm = StringName(str(d.get("realm", &"surface")))
 	s.ordered = bool(d.get("ordered", true))
+	s.mirror = StringName(str(d.get("mirror", &"")))
 	s.leg = int(d.get("leg", 0))
 	s.nearest = bool(d.get("nearest", false))
 	s.apart = float(d.get("apart", 0.0))

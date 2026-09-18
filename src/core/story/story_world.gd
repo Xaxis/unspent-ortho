@@ -42,7 +42,8 @@ const PLACE_REACH := 5.0
 
 ## Where Elias died and was grown, or Vector2.INF (`BlackSite`, unspent-ortho-df).
 static func black_site(world: WorldData) -> Vector2:
-	if world == null or world.realm != Realm.SURFACE:
+	# The Before is the same coast tile for tile, so the site is where it was.
+	if world == null or not (world.realm == Realm.SURFACE or world.realm == Realm.ERA):
 		return Vector2.INF
 	return BlackSite.site(world)
 
