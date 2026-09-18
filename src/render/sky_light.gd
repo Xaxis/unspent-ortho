@@ -661,12 +661,25 @@ func compose() -> void:
 	var casts := cast_allowed and closed < 0.5
 	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
 	CompatTrim.remember(trim)
-	# A lid takes the sun down to a residue and leaves everything else about it
+	# A lid takes the SUN down to a residue and leaves everything else about it
 	# alone: the same bearing, the same penumbra, the same shadows, faintly. It is
 	# a SHARE and not a level, so what little is left still rises and sets, and
 	# that residue is the hour a player can still find in a shut street.
-	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow, lit) \
-		* lerpf(1.0, LID_SUN, shut) * float(trim.sun)
+	#
+	# AND IT IS THE SUN'S SHARE, NOT THE MOON'S. It used to multiply the whole
+	# term, so a lid dimmed the moon as hard as it dimmed the noon sky -- which
+	# is backwards twice over. A dome of smog stops the sun; the moon's light is
+	# already what NIGHT means, and a lidded landscape's whole argument is that
+	# it looks like night. Measured on the city, seed 1, village 1, `--frames=8`:
+	# noon 43.9 mean luma against midnight's 34.3, and the noon frame is flat
+	# brown murk while the midnight one has lamp pools, cast shadows and depth.
+	# Brighter and much worse. `sky_light.gd` already promised the opposite --
+	# "a landscape under a full lid measures nearly the same at noon and at
+	# midnight" -- and it was not true because the hour still swung the one term
+	# that is directional. Taking LID_SUN off the moon is what lets that residue
+	# be cut from the noon side without touching the midnight frame at all.
+	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut), lit) \
+		* float(trim.sun)
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
 	# and it is spent against the evening rather than against `el`: the elevation
 	# this file computes is chosen to give a SCREEN-SPACE shadow length, not to say
@@ -1258,7 +1271,10 @@ static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE, sh
 	# The lid is spent here exactly as compose() spends it, or this model would go
 	# on predicting a sunlit noon for a landscape the renderer draws as a shut one
 	# — and this is what `await darker` reads.
-	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)), lit) * lerpf(1.0, LID_SUN, shut)
+	# The lid is spent on the SUN and not on the moon, exactly as compose() spends
+	# it now; these two must stay in step or `await darker` grades a composition
+	# the renderer is not drawing.
+	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)) * lerpf(1.0, LID_SUN, shut), lit)
 	var amb := lerpf(lerpf(NIGHT_AMBIENT, DAY_AMBIENT, lit), LID_AMBIENT, shut)
 	var hue_lum := maxf(hue.x * 0.3 + hue.y * 0.59 + hue.z * 0.11, 0.01)
 	var sum := 0.0

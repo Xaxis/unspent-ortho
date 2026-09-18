@@ -509,14 +509,9 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	for region: Dictionary in world.regions:
 		if int(region.get("tiles", 0)) >= REGION_TILES and not for_land(StringName(str(region.get("type", &"")))).is_empty():
 			order.append(region)
-	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var ta := int(a.get("tiles", 0))
-		var tb := int(b.get("tiles", 0))
-		return ta < tb if ta != tb else int(a.get("id", -1)) < int(b.get("id", -1)))
 	var by_region := {}
 	var pools := {}
 	var left := {}
-	var wanted_in := {}
 	for region: Dictionary in order:
 		var id := int(region.get("id", -1))
 		var kinds := for_land(StringName(str(region.get("type", &""))))
@@ -524,11 +519,37 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		for d in kinds:
 			if not wanted.has(d.wants):
 				wanted.append(d.wants)
-		wanted_in[id] = wanted
 		left[id] = kinds
 		by_region[id] = []
-		pools[id] = _candidates(world, region, greens, built, solid, wanted,
-			works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0))), COARSE)
+		var clear := works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0)))
+		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE)
+		# A THIN POOL IS SWEPT AGAIN BEFORE ANYBODY CHOOSES, never after everybody
+		# has. Eleven tiles between candidates is most of a small region's whole
+		# width, and on a big region that villages and works have eaten it can come
+		# back EMPTY: pinewood on seed 1 is 3466 tiles holding 288 places a landmark
+		# could stand, thirty of them far enough from everything, and the coarse
+		# sweep found none of them. The second sweep used to run at the end, by which
+		# time the neighbours had taken the room — ten of the eleven it found were
+		# then refused by MIN_APART against landmarks in OTHER regions, and a
+		# landscape big enough to want crossing twice held one thing worth the walk.
+		# Only a thin pool is swept again, so the cost is what it was: doing it
+		# everywhere took the siting of a 512-tile world from 55 ms to 159.
+		if pool.size() < FINE_BELOW:
+			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE)
+		pools[id] = pool
+	# LEAST ROOM FIRST — AND ROOM IS THE POOL, not the tile count. Sorting on tiles
+	# stands in for room only while a region's places are spread evenly through it,
+	# and villages, works and solid ground are not spread evenly. The biggest
+	# landscape on the island can be the one with nowhere to stand, and sorted by
+	# tiles it speaks last and gets what is left, which is nothing.
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var pa := (pools[int(a.get("id", -1))] as Array).size()
+		var pb := (pools[int(b.get("id", -1))] as Array).size()
+		if pa != pb:
+			return pa < pb
+		var ta := int(a.get("tiles", 0))
+		var tb := int(b.get("tiles", 0))
+		return ta < tb if ta != tb else int(a.get("id", -1)) < int(b.get("id", -1)))
 	for round_index in PER_REGION:
 		for region: Dictionary in order:
 			var id := int(region.get("id", -1))
@@ -537,31 +558,6 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 			var row := _pick_one(pools[id], placed_at, left[id], apart_scale)
 			if row.is_empty():
 				continue
-			placed_at.append(row.at)
-			(by_region[id] as Array).append(row)
-	# A region the COARSE sweep could not fill gets looked at properly: eleven
-	# tiles between candidates is most of a small region's whole width, so a
-	# landscape that holds one place to stand can be swept straight past.
-	#
-	# Only a region whose coarse pool was THIN, though. A region that offered
-	# thirty places and took one did not run out of ground, it ran out of room
-	# between silhouettes (MIN_APART), and sweeping it again five tiles at a time
-	# finds the same answer for three times the cost: doing it everywhere took the
-	# siting of a 512-tile world from 55 ms to 159.
-	for region: Dictionary in order:
-		var id := int(region.get("id", -1))
-		var kinds: Array[LandmarkDef] = left[id]
-		var want := mini(PER_REGION, (by_region[id] as Array).size() + kinds.size())
-		if (by_region[id] as Array).size() >= want or kinds.is_empty():
-			continue
-		if (pools[id] as Array).size() >= FINE_BELOW:
-			continue
-		var fine := _candidates(world, region, greens, built, solid, wanted_in[id],
-			works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0))), STRIDE)
-		while (by_region[id] as Array).size() < want:
-			var row := _pick_one(fine, placed_at, kinds, apart_scale)
-			if row.is_empty():
-				break
 			placed_at.append(row.at)
 			(by_region[id] as Array).append(row)
 	for region: Dictionary in world.regions:

@@ -28,6 +28,34 @@ extends RefCounted
 ##   shadow_size    int         the sun's shadow map, px square
 ##   shadow_filter  int         soft shadow filter quality 0..4 (0 hard, 4 softest)
 ##   shadow_lights  int         how many LOCAL lights may cast a shadow at once.
+##   lamps          int         how many LOCAL lights may EXIST at once, which is
+##                              a different and much cheaper question. Casting is
+##                              what costs; a non-casting omni is clustered and
+##                              nearly free on Forward+, which is why this number
+##                              is several times `shadow_lights` on every row.
+##
+##                              IT USED TO BE SEVEN, EVERYWHERE, and not because
+##                              anyone costed it: `15_lights` built
+##                              `SkyLight.MAX_LAMPS - 1` nodes, and MAX_LAMPS is 8
+##                              because `sky_lamps` packs into two mat4s of four
+##                              columns -- a SHADER global sized for the ink pass,
+##                              which LANTERN deleted (`sky_pool` is a documented
+##                              no-op saying "a real light makes its own pool").
+##                              The packing outlived the pass and the count of
+##                              real Godot lights was chained to it, so every
+##                              settlement in the game has been silently dropping
+##                              lights for its whole life: the coast greens have
+##                              eleven sources within fourteen tiles and the city
+##                              eight. It never showed on the coast because the
+##                              coast has a sun. The slums has `LID_SUN` 0.035 and
+##                              is lit ONLY by the sources that were being thrown
+##                              away, which is why a street of lamps measured 0.2
+##                              luma more than no lamps at all.
+##
+##                              The shader global still takes its eight NEAREST
+##                              pools and the player's lantern is still first in
+##                              that list; the two numbers are separate now
+##                              because they always were two questions.
 ##                              0 means none may: lamps and fires light, and cast
 ##                              nothing. The lights package reads this and is its
 ##                              only enforcer — this file does not hunt for lights
@@ -85,7 +113,7 @@ const ROWS: Array[Dictionary] = [
 		"id": &"ultra", "label": "ultra",
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
-		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16,
+		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16, "lamps": 32,
 		"fore": 28, "near_focus": true, "near_stand_in": false,
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
@@ -93,7 +121,7 @@ const ROWS: Array[Dictionary] = [
 		"id": &"high", "label": "high",
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
-		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8,
+		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8, "lamps": 24,
 		"fore": 20, "near_focus": true, "near_stand_in": false,
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": true,
 	},
@@ -101,7 +129,7 @@ const ROWS: Array[Dictionary] = [
 		"id": &"medium", "label": "medium",
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
-		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4,
+		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4, "lamps": 16,
 		"fore": 14, "near_focus": false, "near_stand_in": false,
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": false,
 	},
@@ -109,7 +137,7 @@ const ROWS: Array[Dictionary] = [
 		"id": &"low", "label": "low",
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
-		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2,
+		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2, "lamps": 12,
 		"fore": 9, "near_focus": false, "near_stand_in": false,
 		"volumetric": false, "air_stand_in": 0.0, "ssao": false, "ssil": false, "forward_only": false,
 	},
@@ -117,7 +145,7 @@ const ROWS: Array[Dictionary] = [
 		"id": &"web", "label": "web",
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
-		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0,
+		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0, "lamps": 8,
 		"fore": 7, "near_focus": false, "near_stand_in": true,
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
@@ -153,6 +181,14 @@ static func has(id: StringName) -> bool:
 ## runs before `apply()` still gets a truthful answer rather than an empty one.
 static func current() -> Dictionary:
 	return row(_now if _now != &"" else detect())
+
+
+## How many LOCAL lights may exist at once on the tier in force, never fewer than
+## the shader pool can carry so the two can never disagree about the nearest ones.
+## `15_lights` builds its pool from this; `shadow_lights` still says how many of
+## them may CAST, which is the expensive half.
+static func lamp_count() -> int:
+	return maxi(int(current().get("lamps", SkyLight.MAX_LAMPS)), SkyLight.MAX_LAMPS)
 
 
 ## The id in force.

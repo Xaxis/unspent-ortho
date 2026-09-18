@@ -199,8 +199,18 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var bad := {}
+		# THE ONE PLACE THAT STANDS IN THE SEA ON PURPOSE. This rule is about the
+		# machines' SCATTERED works — a platform in the water is a placement bug —
+		# and the threshold site is not scattered: it is one named place, laid last
+		# and deliberately out in the water off the beach the player washes up on
+		# (`GenScatter._black_site`, docs/STORY.md). Named here by WHERE IT STANDS
+		# rather than by its kinds, because `ARCHIVE` and `CONSOLE` stand elsewhere
+		# too and exempting the kinds would blind the rule to the bug it exists for.
+		var threshold := BlackSite.site(w)
 		for p in w.props:
 			if not is_evidence(p.kind):
+				continue
+			if threshold != Vector2.INF and p.pos.distance_to(threshold) < 6.0:
 				continue
 			var px := floori(p.pos.x)
 			var py := floori(p.pos.y)

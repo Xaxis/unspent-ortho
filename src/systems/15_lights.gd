@@ -231,7 +231,13 @@ func setup(g: Game) -> void:
 	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_glow_mat.vertex_color_use_as_albedo = true
 	_glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	for i in SkyLight.MAX_LAMPS - 1:
+	# HOW MANY LOCAL LIGHTS EXIST is the quality tier's business (`Quality.ROWS`
+	# `lamps`), not the shader pool's. This built `SkyLight.MAX_LAMPS - 1` = seven
+	# for the game's whole life, and MAX_LAMPS is 8 only because `sky_lamps` packs
+	# into two mat4s for a pass LANTERN deleted. Every settlement has been over
+	# that ceiling since before the rebuild -- eleven sources in a coast green,
+	# eight in the city -- and it never showed where there is a sun.
+	for i in Quality.lamp_count() - 1:
 		lights.append(_new_light("lamp_%d" % i))
 		_assigned.append(null)
 	lantern_light = _new_light("lantern_light")
@@ -740,6 +746,28 @@ func _update(delta: float, snap: bool) -> void:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
 			pool_rgb.append(Vector4(nc.x, nc.y, nc.z, 0.0) * clampf(level, 0.0, 1.2))
+	# NEAREST WINS THE SHADER'S POOL. More lamps burn now than `sky_lamps` can
+	# carry: the tier's `lamps` row builds up to 32 OmniLights and the packed
+	# global holds MAX_LAMPS. Which eight the sky was handed used to be the order
+	# the light SLOTS happened to fill, which is stable per source and has nothing
+	# to do with where the camera is — so a street of lit posts could crowd out
+	# the machine standing next to the player, and three tests read a pool of zero
+	# under a light that was burning in shot. Sorted by distance to the camera,
+	# which is what `_assign` already does for the lights themselves.
+	if pools.size() > SkyLight.MAX_LAMPS:
+		var order: Array[int] = []
+		for i in pools.size():
+			order.append(i)
+		var away := func(v: Vector4) -> float:
+			return focus3.distance_squared_to(Vector3(v.x, v.y, v.z))
+		order.sort_custom(func(a: int, b: int) -> bool: return away.call(pools[a]) < away.call(pools[b]))
+		var near_pools: Array[Vector4] = []
+		var near_rgb: Array[Vector4] = []
+		for i in SkyLight.MAX_LAMPS:
+			near_pools.append(pools[order[i]])
+			near_rgb.append(pool_rgb[order[i]])
+		pools = near_pools
+		pool_rgb = near_rgb
 	var lit := game.body.lamp_lit
 	lantern.visible = lit
 	if lit:

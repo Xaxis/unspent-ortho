@@ -516,6 +516,12 @@ static func stack(k: Kit, c: int) -> void:
 	var faces := Houses.faces(t)
 	Houses.door(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.34, 0.11, 0.72)
 	Houses.struck_plate(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.76, 0.42)
+	# A SIGN ON THE FLANK. A city where only the tower and the block burn is a
+	# city with two lit buildings in it; what the owner asked for is technology
+	# everywhere, and a stack of let storeys is exactly the wall a sign is hung
+	# on. Mercury green here, so the street is not one colour: SIGN_COLOURS is
+	# read across the stock rather than each form reaching for the sodium.
+	billboard(k, faces[1], 0.30, 0.86, SIGN_COLOURS[1], s + 5)
 	# What people put on a terrace they can get out onto: a rail, a tank, washing.
 	for i in range(1, 4):
 		var y := STOREY * i
@@ -634,6 +640,11 @@ static func arcade(k: Kit, c: int) -> void:
 	var faces := Houses.faces(t)
 	Houses.door(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.7, 0.11, 0.17)
 	Houses.struck_plate(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.34, 0.12)
+	# AN ARCADE IS SHOPS, so it is the one form whose sign belongs LOW, at the
+	# height somebody walking under it reads rather than four storeys up. Warm
+	# white: the light a frontage spills onto a wet pavement, which is what the
+	# landscape's reflections are made of.
+	billboard(k, faces[1], 0.14, 0.52, SIGN_COLOURS[2], s + 5)
 	# The walkway: a deck out of the second storey, a rail along both sides, the
 	# struts under it, and the torn end where it stopped.
 	var y := STOREY * 2.0 + 0.2
@@ -672,6 +683,24 @@ static func spire(k: Kit, c: int) -> void:
 	var faces := Houses.faces(t)
 	Houses.door(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.5, 0.1, 0.74)
 	Houses.struck_plate(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.82, 0.4)
+	# THE SIGN GOES HIGH ON THIS ONE, on its own band of frame four storeys up
+	# rather than on the ground storey every other form hangs from. A spire is
+	# the vertical a street gets one of, so its sign is the thing read from the
+	# far end of the street and over the roofs of everything between — which is
+	# the whole reason a city has a skyline rather than a row of shopfronts.
+	# SODIUM, and NOT the magenta this first reached for. `SIGN_MAGENTA` is in
+	# SIGN_COLOURS and was unused by every form on purpose: slums.gd's own header
+	# says the machine ramps own the violet band and the amber LENS is the one
+	# saturated thing on a machine, "so in the most crowded frame in the game the
+	# ONE violet thing is a machine and the player reads it instantly -- that is
+	# the payoff, and nothing in this file may spend it". Hanging magenta on the
+	# tallest sign in the city spends exactly that, and the frame showed it: a
+	# four-storey pink slab that owned the picture and would have made every
+	# machine in the street harder to find. Sodium is what a real city at night
+	# is anyway, and it is the surest way not to look like every cyberpunk frame
+	# ever made.
+	var high := Houses.faces(corners(w + FRAME, d + FRAME, STOREY * 3.6, STOREY * 5.4, s + 11))
+	billboard(k, high[1], 0.24, 0.78, SIGN_COLOURS[0], s + 12)
 	var r := parapet(k, w - 0.3, d - 0.3, top, s + 60, c)
 	var head := r[0] + 0.05
 	# The mast, guyed to three corners of the deck.

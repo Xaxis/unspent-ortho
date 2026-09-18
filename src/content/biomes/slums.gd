@@ -78,7 +78,7 @@ static func make() -> BiomeDef:
 	# land once the sea has its share. The rest of the cap is in `GenScatter`s row
 	# placement, not in this file -- see the task, and `ROW_RANKS`.
 	d.relief = {
-		&"base": 2.6, &"hills": 0.08, &"ridge": 0.0, &"terrace": 0.12, &"valley": 0.1,
+		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
 	# WHAT THIS CITY IS BUILT OF, and it is the whole point of the landscape: the
@@ -260,6 +260,21 @@ static func make() -> BiomeDef:
 	# which is the opposite of what every other shut place in this game wants.
 	# That contradiction is the landscape: it is dark because of the dome and
 	# bright because of the city, and both are true at once.
+	# RAISED FROM 1.15 toward the 1.80 ceiling, because the lid was winning.
+	# Measured by Teammate 2 on seed 1 at 11:00 clear: the city read 36.8 mean
+	# luma against the coast's 180.2 at the same hour, seed and weather -- 4.9x
+	# darker, with a spire nine and a half units tall five tiles from the player
+	# that did not read at all. The brightest pixel was nearly the same in both,
+	# so it was not the tonemapper running out of range; almost nothing in the
+	# frame was being lit.
+	#
+	# The arithmetic says the same: ambient lerps to `LID_AMBIENT` 0.26 against
+	# the coast's `DAY_AMBIENT` 0.55 and the sun is cut to `LID_SUN` 0.035, so
+	# noon under a full lid is night with the lights on. That is the lid working
+	# as written -- and `night_sky` is the door the sky file names for exactly
+	# this, the landscape saying its own LEVEL under a lid, spent into the day as
+	# far as the lid is shut. The dome is lit from beneath by the city under it;
+	# turning that up is the fiction, not a cheat around it.
 	d.night_sky = 1.15
 	# The darkness term is a lift like every other surface landscape's and it is
 	# CLAMPED TO A NO-OP by the sky (a lift after the tonemapper has no ceiling

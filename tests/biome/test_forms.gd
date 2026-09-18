@@ -123,6 +123,20 @@ func test_the_table_and_the_geometry_agree_about_which_forms_are_lit() -> void:
 		var drew := not PropModels.neon_point(PropKind.HOUSE, v, Country.COAST).is_empty()
 		var says: bool = bool(BiomeForms.FORMS[BiomeForms.PLAIN[v]][BiomeForms.LIT])
 		eq(drew, says, "%s: the table says lit=%s and the model drew a tube=%s" % [BiomeForms.PLAIN[v], says, drew])
+	# AND THE CITY'S STOCK, which this was blind to for its whole life. It walked
+	# `PLAIN` only, because when it was written `PLAIN` was the only stock any
+	# landscape shipped — so the six forms the forms package exists FOR were the
+	# six it could not see. Same shape as `GroundColors.PLAIN`, as the wear law's
+	# "underside", as `_clean` keeping one landmass: a guard that was complete
+	# when it was written and silently stopped being so.
+	var city := BiomeRegistry.get_def(&"slums")
+	check(city != null, "the city is registered")
+	if city != null:
+		for v in BiomeForms.RAISED.size():
+			var drew := not PropModels.neon_point(PropKind.HOUSE, v, city.index).is_empty()
+			var says: bool = bool(BiomeForms.FORMS[BiomeForms.RAISED[v]][BiomeForms.LIT])
+			eq(drew, says, "%s: the table says lit=%s and the model drew a tube=%s"
+				% [BiomeForms.RAISED[v], says, drew])
 
 
 func test_no_stock_is_longer_than_the_model_cache_can_tell_apart() -> void:

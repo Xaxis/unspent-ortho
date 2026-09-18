@@ -440,6 +440,24 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   four. The same animal as ART.md's review checklist still asking after a hatch in
   a world with no hatch, and as the wear law naming a model that was thrown away.
   When a premise moves, go and read what was true because of it.
+  Three more of it came in with the city, all on 2026-09-18, and they are worth
+  listing because not one is a bug anybody wrote: `SkyLight.MAX_LAMPS` is the size
+  of the SHADER's packed pool and was also, for the game's whole life, how many
+  lights the engine built — so a city could not be lit without overrunning the
+  other meaning; `test_houses` held every village to "one stolen light, not a
+  street of them", which is the coast's true answer written down as every
+  landscape's; and `ForeKinds.ROWS` hangs a 2.1-unit cottage eave over a
+  `PropKind.HOUSE`, which was right until a HOUSE could be six storeys.
+- **A PROXY IS A PREMISE TOO, and it rots the same way.** `Landmarks.sites` gives
+  the region with least room the first word — and measured room as TILES, which
+  stands in for room only while a region's places are spread evenly through it.
+  Villages, works and solid ground are not spread evenly: pinewood on seed 1 is
+  the second biggest region on the island with eleven places a landmark may stand,
+  so sorted by tiles it spoke last and took what was left, which was one thing
+  worth the walk in a landscape big enough to want crossing twice. The comment
+  above that sort said "the one with least room speaks first" the whole time. When
+  a rule names the thing it wants, check that the code measures THAT, and not
+  something that used to correlate with it.
 - **A digest is an instrument too.** Comparing bytes answered exactly the question
   it was asked — *did the world move?* — and was structurally unable to answer the
   one that mattered: *is this one island or four?* Both of the multi-body failures
