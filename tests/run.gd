@@ -81,6 +81,19 @@ func _run() -> void:
 					print("       ", f)
 	var total := Time.get_ticks_msec() - t0
 	print("\n%d passed, %d failed, %d load errors in %d ms" % [_passed, _failed, _load_errors, total])
+	# A test that started a sketch bake and did not wait for it leaves a worker
+	# inside `_bake` when this quits, and the runner then either deadlocks on
+	# GDScript's own lock or dies on freed memory. It killed a gate shard: shards
+	# 0 and 2 printed their results and shard 1 printed nothing at all, which
+	# reads as a red gate with no failing assertion and nothing to blame. A pool
+	# task cannot be cancelled, so the runner waits out what it started.
+	#
+	# BY PATH, not by class name, for the same reason src/main.gd does it that
+	# way: naming UiSketch in this file compiles the UI package before the Events
+	# autoload exists, and game.gd, crafting.gd and survival.gd all fail to load
+	# behind it. Measured — three load errors, and the gate red for a new reason.
+	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
+	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
 
 

@@ -209,6 +209,26 @@ func _shoot() -> void:
 
 
 func _exit_tree() -> void:
+	# The pool is drained before the process is allowed to come apart, and this is
+	# the last place that can be true of a game, a shot or a tour: the scene root
+	# leaves the tree once, at the end, whichever of the six `quit()` doors was
+	# taken. 90_ui drains too, but only while a game is up — a shot that quits
+	# from the title, or a tour between games, goes out past it.
+	#
+	# BY PATH, not by class name, for the reason this file's header gives: naming
+	# UiSketch here pulls the whole UI package into main.gd's compile, and that
+	# lands before the Events autoload exists — measured, it took game.gd,
+	# crafting.gd and survival.gd down with it as load errors.
+	#
+	# A sketch cannot be cancelled (WorkerThreadPool has no such call), so waiting
+	# is the only way to end one, and the cost is the tail of one raster against a
+	# process that is leaving anyway. Without it the main thread tears the
+	# scripting language down with a worker still inside `_bake`, and it is a coin
+	# toss: the worker reads freed memory and takes signal 11 in `_poly_of` — a
+	# line that only reads an array — or the main thread blocks forever on
+	# GDScript's own recursive lock, which the worker holds.
+	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
+	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
 	if FileAccess.file_exists(PLAY_MARK):
 		var f := FileAccess.open(PLAY_MARK, FileAccess.READ)
 		var whose := f.get_as_text().strip_edges() if f != null else ""
