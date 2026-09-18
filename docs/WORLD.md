@@ -448,6 +448,23 @@ Earned the hard way on 2026-09-17 and 18; each has a worked example in the repo.
   street of them", which is the coast's true answer written down as every
   landscape's; and `ForeKinds.ROWS` hangs a 2.1-unit cottage eave over a
   `PropKind.HOUSE`, which was right until a HOUSE could be six storeys.
+- **A GATE READS THE TREE AS IT FINDS IT, and a file edited while it runs fails
+  it in someone else's name.** Measured 2026-09-18: a half-written
+  `src/systems/14_fliers.gd` took twenty-six tests down across all three shards,
+  and not one of the failures named it. What they said was "90_ui is loaded from
+  src/systems", "42_target is loaded from src/systems", "lights system", "the
+  guide system loads" — because the loader walks `src/systems/NN_*.gd` in name
+  order and everything after the broken file is simply not there. It reads
+  exactly like a catastrophic regression in the UI, the lights and the fight, and
+  it is an artefact of typing. Re-running the same tests on the finished tree was
+  green in forty seconds.
+
+  So: **do not edit under `src/` while a gate is running.** The shards load their
+  scripts when each process starts, not when the gate does, so "the frames are
+  done, it must be safe" is wrong — and the failure does not point at the file
+  you touched, which is what makes it expensive. If a gate comes back with a
+  pile of "X is loaded from src/systems", check `git status` before you believe
+  any of it.
 - **A PROXY IS A PREMISE TOO, and it rots the same way.** `Landmarks.sites` gives
   the region with least room the first word — and measured room as TILES, which
   stands in for room only while a region's places are spread evenly through it.
