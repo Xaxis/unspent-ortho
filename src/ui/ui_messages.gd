@@ -59,6 +59,12 @@ var quiet := false:
 
 
 ## `now` says it even in a fight (a refusal the player must hear at once).
+## Let go of everything on the line. The player has been put somewhere else and
+## nothing said about the last place is true of this one (Events.warped).
+func clear() -> void:
+	lines.clear()
+
+
 func push(text: String, now: bool = false) -> void:
 	if text == "":
 		return

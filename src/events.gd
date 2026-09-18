@@ -6,6 +6,14 @@ extends Node
 signal sfx(name: StringName, at: Vector3)
 ## One short line for the player (the HUD shows it, then lets it fade).
 signal message(text: String)
+## The player has been PUT somewhere rather than walked there: a tour's `place`
+## or `at`, dev mode's warp, a realm crossing. Anything showing what is true
+## HERE has to let go of what was true THERE — the message line especially,
+## which holds a line for 2.2 s and so was still naming the last landscape in
+## most of the canon's reference frames. Emitted by whoever moves the body, not
+## worked out from how far it went, because a body that is put somewhere is a
+## decision and not a distance.
+signal warped(to: Vector2)
 ## A teaching line and the key it is about ("" for none): said now or not at
 ## all. Unlike `message` it is never queued behind a fight's quiet, so a lesson
 ## cannot arrive minutes later, out of the moment that earned it. It is dropped
