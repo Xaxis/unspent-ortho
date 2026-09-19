@@ -10,6 +10,7 @@ extends RefCounted
 
 const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
+const Works := preload("res://src/models/props/works.gd")
 
 ## The machines' cold strip and the salt's own light.
 ##
@@ -19,7 +20,15 @@ const P := preload("res://src/render/palette.gd")
 ## drawn at LINEN[5] stood on coast turf as a flat white blob with no facets,
 ## no rake lines and no shadow in it (art review 1). CRUST is the crust wash
 ## itself, CRUST_UP the one lit edge, and nothing here goes above it.
-const STRIP := Color(0.3, 0.95, 1.0, 0.8)
+## The machines' own light is written ONCE, in `props/works.gd`, and read by the
+## geometry, the pool, the glint and the fog shaft alike (CLAUDE.md, Palette).
+## This declared its own instead: a bright cyan at hue 184, where every other
+## strip in the game is `Works.STRIP` at 246 -- inside the violet band the
+## machine ramps are packed into, which runs 240 to 336. It reached two places,
+## the chamfer that draws the strip and the `glow_points` entry 15_lights hangs a
+## pool on, so a pan gate lit the crust round it a colour nothing else in the
+## world lights anything.
+const STRIP := Works.STRIP
 ## The crust as a THING, which sits lower than the crust as GROUND: a prop's
 ## lit top face gets the full sun band with no shade step and no ground mark
 ## under it, so the same value that draws as crust at 215 draws on a salt heap
