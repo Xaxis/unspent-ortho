@@ -44,6 +44,8 @@ const ACTIONS := {
 	# the game does.
 	&"dev_fly_in": KEY_EQUAL,
 	&"dev_fly_out": KEY_MINUS,
+	# Every region picked out and named, over the flyover (`DevRegions`).
+	&"dev_regions": KEY_F6,
 }
 
 ## Armed by the chord (or --dev), and remembered on this device.

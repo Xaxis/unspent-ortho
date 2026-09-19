@@ -53,3 +53,17 @@ tap dev_fly
 await grounded 4
 wait 1.5
 shot 06-the-body-never-moved
+
+# --- every region picked out and named ------------------------------------------
+# The instrument the owner asked for: which run of a landscape is which, where it
+# gives way to the next, and its name on it. F6, in the air or on the ground.
+tap dev_fly
+await flying 4
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+wait 2.0
+tap dev_regions
+wait 1.2
+shot 07-every-region-named
