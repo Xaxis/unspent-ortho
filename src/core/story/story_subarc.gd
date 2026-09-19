@@ -23,8 +23,10 @@ class_name StorySubarc
 ## Rescue and sabotage are ONE ACT and two askings on purpose (`src/core/taken/`,
 ## unspent-ortho-cb). Putting the yard dark is what frees them, so a region that
 ## is holding somebody never asks about the ground: it asks about the person, and
-## the ground is what he has to walk over to answer.
-const GOALS: Array[StringName] = [&"rescue", &"sabotage", &"recover", &"discover"]
+## the ground is what he has to walk over to answer. The escort is what is left
+## when the yard is dark and somebody is stood at its gate who will not come down
+## the road alone.
+const GOALS: Array[StringName] = [&"rescue", &"escort", &"sabotage", &"recover", &"discover"]
 
 
 ## What a region says has three moods and they are not its demands (owner's §10,
@@ -64,9 +66,17 @@ static func _owed(look: StorySubarcLook) -> Dictionary:
 		if not Story.heard(id) or Story.heard(StringName("%s:said" % id)):
 			continue
 		var place := Story.heard_about(id)
-		if answered(look, goal, place):
+		if answered(look, goal, place) or failed(look, goal, place):
 			return {"id": id, "goal": goal, "place": place, "pos": _where(look, goal, place)}
 	return {}
+
+
+## Whether the world has ENDED what the region asked for without it being done.
+## Only the walk can: a yard can wait and a cache can wait, and a person cannot.
+## It is not a grade and nothing anywhere calls it a failure — it is a fact about
+## somebody, and what a village does with it is say what it knows and leave.
+static func failed(look: StorySubarcLook, goal: StringName, place: String) -> bool:
+	return goal == &"escort" and look.lost_on_road.has(place)
 
 
 ## What the region wants now, or {}.
@@ -76,6 +86,10 @@ static func _asking(look: StorySubarcLook) -> Dictionary:
 	# to answer, and a sub-arc nobody can answer is a cruelty, not a story.
 	if not look.held.is_empty() and look.works != Vector2.INF:
 		return _one(look, &"rescue", look.held[0], look.works)
+	# Out of the yard and not down the road. Asked for one at a time, by name,
+	# because two people walked at once is a column and not a rescue.
+	if not look.waiting.is_empty():
+		return _one(look, &"escort", look.waiting[0], look.works)
 	if look.works != Vector2.INF and not look.works_dark:
 		return _one(look, &"sabotage", look.works_name, look.works)
 	var cache := look.any(true, false)
@@ -89,7 +103,7 @@ static func _asking(look: StorySubarcLook) -> Dictionary:
 
 ## Where the thing a goal is about stands, for whoever shows it.
 static func _where(look: StorySubarcLook, goal: StringName, place: String) -> Vector2:
-	if goal == &"rescue" or goal == &"sabotage":
+	if goal == &"rescue" or goal == &"sabotage" or goal == &"escort":
 		return look.works
 	for l: Dictionary in look.landmarks:
 		if str(l.name) == place:
@@ -104,6 +118,8 @@ static func answered(look: StorySubarcLook, goal: StringName, place: String) -> 
 	match goal:
 		&"rescue":
 			return look.held.is_empty()
+		&"escort":
+			return look.arrived.has(place)
 		&"sabotage":
 			return look.works_dark
 		&"recover":
@@ -132,7 +148,16 @@ static func talk(look: StorySubarcLook, said: Dictionary) -> Dictionary:
 	# anybody here has to say to him, and it is said once.
 	var done := answered(look, said.goal, str(said.place))
 	var heard := Story.heard(said.id)
-	if done and heard and not Story.heard(StringName("%s:said" % said.id)):
+	var last_word := not Story.heard(StringName("%s:said" % said.id))
+	# THE THIRD ENDING, ahead of everything, because it is the heaviest thing
+	# anybody here has to say to him and nothing else may be said first. What
+	# took them decides which of the two it is: a village carries the cold and
+	# the water differently to being come back for.
+	if heard and last_word and failed(look, said.goal, str(said.place)):
+		var took := StringName(str(look.lost_to.get(str(said.place), &"")))
+		var ending: Array = words.lost_to if took != &"" and words.has("lost_to") else words.lost
+		return _page(said, ending, StringName("%s:said" % said.id), "[leave]")
+	if done and heard and last_word:
 		# What they say is different if he said he would, and then did.
 		var lines: Array = words.kept if promised(said) and words.has("kept") else words.thanks
 		return _page(said, lines, StringName("%s:said" % said.id), "[leave]")

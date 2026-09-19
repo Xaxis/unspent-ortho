@@ -2041,6 +2041,36 @@ const SUBARCS := {
 			"I'll not say it was you. I'll only say they're home.",
 		],
 	},
+	# THE WALK HOME, and the only sub-arc in the game that can end badly. The words
+	# for that ending are the reason it was worth building: nothing here calls it
+	# a failure, nobody asks him for an account of it and nobody forgives him,
+	# because a village that has lost somebody says what it knows and leaves. Two
+	# endings, because being come back for and dying of the cold are different
+	# things to be told — and only one of them is nobody's fault.
+	&"escort": {
+		"ask": [
+			"They let %s out and they're stood at the gate of that yard still.",
+			"Can't blame them. I wouldn't walk that road on my own either.",
+			"Somebody could walk it with them.",
+		],
+		"answer": "I'll walk with them.",
+		"thanks": [
+			"They're in. Sat by the fire with their boots off, saying nothing.",
+			"That's the road walked twice, and the second time with somebody.",
+		],
+		"kept": [
+			"You said you'd walk it with them, and they're in, boots off, saying nothing.",
+			"I'll remember that you went out. Not everybody does.",
+		],
+		"lost": [
+			"They say %s never came up the road.",
+			"We kept the fire in all night for them. This morning we banked it.",
+		],
+		"lost_to": [
+			"They took %s again. On the road, in the open, where anybody could see it.",
+			"Once, a village can carry. I don't know yet what we do with twice.",
+		],
+	},
 	&"sabotage": {
 		"ask": [
 			"They put a yard up at %s and it hasn't stopped since.",
