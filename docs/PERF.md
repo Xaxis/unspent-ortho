@@ -79,12 +79,38 @@ world (switching it off makes p99 worse), the fight simulation (worst catch-up
 0.6 ms in two slices — the twelve-slice cap its constants allow is never
 reached), `24_holds`, music, audio or sky (all under 4 ms).
 
-**What they are**: at a 140 ms frame, `TIME_PROCESS` and `TIME_PHYSICS_PROCESS`
-together account for 44 ms. The other ~96 ms is outside both, so it is in no
-`_process` or `_physics_process` this game owns. The live suspect is pipeline and
-shader compilation on first use of a material-and-light combination — it is
-deterministic, it fires the first time a combination is drawn, and it stalls the
-main thread by this order of magnitude. See task #126.
+**What they are: NOT ESTABLISHED. Do not plan against this paragraph yet.**
+
+The claim that stood here — "at a 140 ms frame, process and physics account for
+44 ms, so the other ~96 ms is in no `_process` this game owns" — rests on an
+instrument that reports on the step BEFORE the one being measured, which is the
+exact trap this file's rule 1 exists to catch.
+
+**`Performance.TIME_PROCESS` and `TIME_PHYSICS_PROCESS` lag by one frame.** They
+are written at the end of a frame, so a read taken during the spike frame
+describes the frame before it — a fast one. Attributing 44 ms of a 140 ms frame
+from that read compares two different frames. Until the monitors are aligned
+(read on frame N+1, attributed to frame N), the split is unproven in both
+directions: the work may be in game script after all.
+
+A second instrument was wrong the same way and is retracted with it. A
+`frame_post_draw` probe was read as proving "the spikes are WORK, not waiting"
+(work 113-145 ms against wait 1-4 ms). Its `wait` measured only post-draw to the
+next process-start — the frame-pacing sleep — so the main thread *blocking on
+the render thread* was counted as work. The honest residue is narrow: the time
+is spent before the draw completes, and the split between script, engine and
+driver is not yet known.
+
+**Eliminated as suspects anyway**, since these were measured directly rather
+than by subtraction: engine shader compilation at boot (419 variants, all
+served from cache, zero compiles in `--verbose`), and MoltenVK pipeline
+translation (this machine runs Godot's native **Metal** backend on an M3 Max, so
+the empty `user://vulkan/` cache directory means nothing here).
+
+The next measurement is a correctly-aligned three-way split — script, engine,
+driver — on a **quiet machine**, plus a 600-frame run to see whether the spikes
+stop after the first pass (which is what first-use compilation would predict and
+a recurring cause would not). See task #126.
 
 ## The rule this standard exists to enforce
 
