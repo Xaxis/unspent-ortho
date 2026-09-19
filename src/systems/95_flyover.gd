@@ -45,11 +45,25 @@ const ZOOM_STEP := 1.22
 const CROSS := 0.62
 const CROSS_FAST := 2.1
 
+## THE MOUSE IS A FIRST-CLASS CONTROL HERE, and it was missing for no reason
+## anybody ever decided: there was not one `InputEventMouse` in the whole of
+## `src/` before this. The keys were built first and nobody came back.
+##
+## Over a map you are reading rather than a body you are driving, the mouse is
+## not a convenience — it is the natural instrument. Drag takes hold of the
+## ground and moves it under you, which is the one scheme nobody has to be
+## taught, and the wheel zooms about the POINTER rather than the middle of the
+## screen, so you go toward the thing you are looking at instead of having to
+## centre it first and then zoom.
+const WHEEL_STEP := 1.14
+
 ## Where the picture is, and where it was taken from, so F5 puts it back.
 var flying := false
 var _at := Vector2.ZERO
 var _was_high := 0.0
 var _seen: Dictionary = {}
+## The ground the drag took hold of, in tiles, and where the pointer was.
+var _grabbed := Vector2.INF
 
 
 var _regions: DevRegions
@@ -112,7 +126,7 @@ func _toggle() -> void:
 	# thing, near enough that what he was standing next to is still recognisable,
 	# so the transition itself tells him where he is.
 	game.camera.view_height = clampf(_was_high * 4.0, LEAST, MOST)
-	Events.message.emit("Flying. wasd to cross, e/c to zoom, F5 to come back.")
+	Events.message.emit("Flying. Drag to move, wheel to zoom, wasd too. F6 names the regions, F5 comes back.")
 
 
 func _land() -> void:
@@ -142,6 +156,72 @@ func _fly(delta: float) -> void:
 		_at.y = clampf(_at.y, 0.0, n - 1.0)
 	# The ground under the picture, so flying over a cliff does not sink the view
 	# into it: the camera rig takes a point in the world and stands back from it.
+	game.watch = game.world.to_3d(_at)
+
+
+# --- the mouse -----------------------------------------------------------------
+
+## Drag the ground, and zoom about the pointer.
+##
+## `_unhandled_input` rather than `_input`, so anything with a page open on the
+## glass gets the event first and the slate is never dragged out from under the
+## person reading it.
+func _unhandled_input(event: InputEvent) -> void:
+	if not flying or game == null or game.camera == null or game.input_blocked():
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		match mb.button_index:
+			MOUSE_BUTTON_WHEEL_UP:
+				if mb.pressed:
+					_zoom_at(mb.position, 1.0 / WHEEL_STEP)
+			MOUSE_BUTTON_WHEEL_DOWN:
+				if mb.pressed:
+					_zoom_at(mb.position, WHEEL_STEP)
+			MOUSE_BUTTON_LEFT, MOUSE_BUTTON_MIDDLE:
+				# Take hold of the GROUND, not the screen: what is under the pointer
+				# when the button goes down is what stays under it while it is held,
+				# however far out the zoom is. A drag measured in pixels-to-tiles
+				# would need the zoom folded in by hand and would drift.
+				_grabbed = _ground_at(mb.position) if mb.pressed else Vector2.INF
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _grabbed.is_finite():
+		var now := _ground_at((event as InputEventMouseMotion).position)
+		if now.is_finite():
+			_go_to(_at + (_grabbed - now))
+		get_viewport().set_input_as_handled()
+
+
+## Zoom, keeping whatever is under the pointer under it.
+func _zoom_at(at: Vector2, by: float) -> void:
+	var before := _ground_at(at)
+	var was := game.camera.view_height
+	game.camera.view_height = clampf(was * by, LEAST, MOST)
+	if is_equal_approx(game.camera.view_height, was) or not before.is_finite():
+		return
+	# The camera has to be where it will BE before the ground under the pointer
+	# can be asked again, so the move is made, measured and corrected.
+	game.watch = game.world.to_3d(_at)
+	game.camera.force_update_transform()
+	var after := _ground_at(at)
+	if after.is_finite():
+		_go_to(_at + (before - after))
+
+
+## Where a screen point meets the ground, in tiles, or INF. Shares `DevRegions`'
+## walk down the ray: the camera is orthographic and the ground is terraced, so a
+## plane solve answers for a world that is flat and this one is not.
+func _ground_at(at: Vector2) -> Vector2:
+	if _regions == null:
+		return Vector2.INF
+	return _regions.ground_under(game.camera, at, game.world)
+
+
+## Move the picture, held inside the world.
+func _go_to(to: Vector2) -> void:
+	var n := float(game.world.size)
+	_at.x = clampf(to.x, 0.0, n - 1.0)
+	_at.y = clampf(to.y, 0.0, n - 1.0)
 	game.watch = game.world.to_3d(_at)
 
 
