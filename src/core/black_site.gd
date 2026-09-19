@@ -69,13 +69,41 @@ static func _look(w: WorldData) -> Vector2:
 				break
 			if afloat and d >= NEAREST and g == Ground.DEEP_WATER:
 				# The nearest such place wins, so it reads from the shore.
+				var at := Vector2(x + 0.5, y + 0.5)
+				# AND THE WHOLE CROSSING IS WALKED BEFORE IT IS ACCEPTED. The loop
+				# above steps `STEP` along a bearing and this walks the finished
+				# line tile by tile to the site's own centre -- the same line, but
+				# sampled at a different phase and ending half a tile further on,
+				# which is exactly how a one-tile bar got missed here and caught by
+				# the test that holds the claim. A place chosen by one rule and
+				# judged by another is only ever accidentally right.
+				if not _no_way_out(w, from, at):
+					break
 				var score := 100.0 - d
 				if score > best_score:
 					best_score = score
-					best = Vector2(x + 0.5, y + 0.5)
+					best = at
 				break
 			d += STEP
 	return best
+
+
+## Once the line from `from` to `to` is IN the water, does it stay in it? No bar,
+## no spit, no stepping stones: only a craft crosses it.
+##
+## Walked at the finest step the tiles have, so nothing can hide between two
+## samples. `_look` steps a bearing in whole units and a one-tile bar sat exactly
+## in the gap; the rule a place is chosen by has to be the rule it is judged by.
+static func _no_way_out(w: WorldData, from: Vector2, to: Vector2) -> bool:
+	var steps := maxi(2, int(ceilf(from.distance_to(to) * 2.0)))
+	var afloat := false
+	for i in range(1, steps + 1):
+		var q := from.lerp(to, float(i) / float(steps))
+		if Ground.is_water(w.ground_at(floori(q.x), floori(q.y))):
+			afloat = true
+		elif afloat:
+			return false
+	return afloat
 
 
 ## Everything the site stands on, as circles a body cannot walk through, in the
