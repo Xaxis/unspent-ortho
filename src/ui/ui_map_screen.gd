@@ -1,11 +1,19 @@
 class_name UiMapScreen
 extends UiScreen
-## The survey app (M): only the land the player has seen, as the slate's
-## scanner draws it (src/ui/map.gdshader), with regions lettered over their own
-## land, villages, the places found on the way (landmarks), the machines' lines
-## in the module's violet, and the way the player came. Arrows look around a
-## step at a time (held keys repeat, per the menu standard); E changes the
-## scale; M or Esc close.
+## The survey app (M): the whole world's SHAPE, with the land the player has
+## walked drawn in full, as the slate's scanner draws it (src/ui/map.gdshader) --
+## regions lettered over their own land, villages, the places found on the way
+## (landmarks), the machines' lines in the module's violet, and the way the
+## player came. Arrows look around a step at a time (held keys repeat, per the
+## menu standard); E changes the scale; M or Esc close.
+##
+## **WALKING BUYS DETAIL, NOT EXISTENCE** (owner, 2026-09-19). This app used to
+## draw only what had been seen, which on a 1300-tile world is a smear on an
+## empty field -- the readout says 0.1% of the land seen after a long walk, and
+## that number was the whole picture. Now every tile's landmass, water and
+## coarse landscape value are there from the first time it is opened, dimmed to
+## `UNSEEN_LIGHT`, and what a player earns by going there is the contours, the
+## hatch, the roads, the symbols, the soundings and the names.
 
 ## The survey is a PICTURE, so it kept the share of the frame it always had and
 ## is simply drawn at three times the detail: its window and every scale below
