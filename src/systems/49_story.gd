@@ -267,9 +267,21 @@ func _person_in_front() -> Dictionary:
 	var folk: Array = _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
-	# Somebody with something to say beats a nearer somebody without: in a street
-	# of thirty, a passer-by stepping between him and the clerk he walked up to
-	# was answering the key with "nothing to say".
+	# THREE RANKS, and distance only ever decides inside one of them. A street of
+	# thirty puts somebody between him and whoever he walked up to every second,
+	# so the key answers the most SPECIFIC person in reach, exactly as `use`
+	# answers the most specific thing:
+	#
+	#   a NAMED person of the cast, who has words nobody else in the world has;
+	#   then anybody who lives here, who has their trade's words or the region's;
+	#   then somebody with nothing to say, so the key is never simply dropped.
+	#
+	# Without the first rank a frame of the one clerk the story is about showed a
+	# door-keeper reciting the region's errand, and `at cast:pell` could not put
+	# him in front of anybody in a crowd (tours/locals.tour, which is the only
+	# reason it was caught: `await met:pell` is what a NAMED talk records).
+	var named: Dictionary = {}
+	var named_d := REACH
 	var best: Dictionary = {}
 	var best_d := REACH
 	var mute: Dictionary = {}
@@ -284,6 +296,12 @@ func _person_in_front() -> Dictionary:
 			continue
 		if d > CLOSE and ahead.dot(to / d) < AHEAD:
 			continue
+		if StringName(str(row.get("character", &""))) != &"":
+			if d < named_d:
+				named = row.duplicate()
+				named["_d"] = d
+				named_d = d
+			continue
 		if StoryProps.talk_for(row, game) == &"":
 			if d < mute_d:
 				mute = row.duplicate()
@@ -294,6 +312,8 @@ func _person_in_front() -> Dictionary:
 			best = row.duplicate()
 			best["_d"] = d
 			best_d = d
+	if not named.is_empty():
+		return named
 	return best if not best.is_empty() else mute
 
 
