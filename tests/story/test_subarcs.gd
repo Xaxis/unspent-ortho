@@ -236,3 +236,114 @@ func test_a_staged_world_holds_somebody_and_the_region_asks_about_them() -> void
 	check(StorySubarc.answered(after, &"rescue", str(said.place)), "and the world says it is answered")
 	Sx.end(g)
 	Story.forget()
+
+
+## THE WALK HOME, and the only sub-arc that can end badly (`Escort`). Out of the
+## yard is not home: somebody stood at its gate who will not come down the road
+## alone is what the region asks about next, and what he gets asked for is a
+## person and not an errand.
+func _freed(who: String) -> StorySubarcLook:
+	var look := _look(Vector2(20, 20), true, [])
+	look.freed = [who]
+	look.waiting = [who]
+	return look
+
+
+## A yard that is dark is a yard somebody put dark, so the quiet is always
+## pending the first time anybody speaks after one. Say it and have done: the
+## order is the feature — what he answered, then what the place is like now, then
+## the next thing they want.
+func _past_the_quiet(look: StorySubarcLook) -> void:
+	var page := StorySubarc.talk(look, StorySubarc.raised(look))
+	check("\n".join(page.nodes[&"open"].says).contains("quiet"), "the quiet is said first")
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(page)
+
+
+func test_out_of_the_yard_is_not_home() -> void:
+	Story.forget()
+	var look := _freed("somebody out of Oyster Row")
+	# The rescue's thanks is owed first and is said first: the region does not
+	# hand him the next thing to do before anybody has said the last one happened.
+	Story.hear(StringName("3:rescue"))
+	Story.hear_about(StringName("3:rescue"), "somebody out of Oyster Row")
+	eq(StringName(str(StorySubarc.raised(look).goal)), &"rescue", "what he answered is said first")
+	Story.hear(StringName("3:rescue:said"))
+	_past_the_quiet(look)
+	var said := StorySubarc.raised(look)
+	eq(StringName(str(said.goal)), &"escort", "and then they ask him to walk them home")
+	var ask := StorySubarc.talk(look, said)
+	var words := "\n".join(ask.nodes[&"open"].says)
+	check(words.contains("stood at the gate of that yard still"), "in their own words:\n%s" % words)
+	check(str(ask.nodes[&"open"].replies[0].text) == "I'll walk with them.", "and he can say he will")
+	Story.forget()
+
+
+func test_they_got_home_and_somebody_says_so() -> void:
+	Story.forget()
+	var look := _freed("Ruth")
+	_past_the_quiet(look)
+	var said := StorySubarc.raised(look)
+	var t := StoryTalk.of_made(StorySubarc.talk(look, said))
+	@warning_ignore("return_value_discarded")
+	t.pick(0)
+	check(StorySubarc.promised(said), "he said he would walk it")
+	var home := _freed("Ruth")
+	home.waiting = []
+	home.arrived = ["Ruth"]
+	var owed := StorySubarc.raised(home)
+	eq(StringName(str(owed.goal)), &"escort", "arriving is what answers it")
+	var thanks := "\n".join(StorySubarc.talk(home, owed).nodes[&"open"].says)
+	check(thanks.contains("You said you'd walk it with them"), "and they say he said he would:\n%s" % thanks)
+	check(thanks.contains("boots off"), "and what it looks like to be back")
+	Story.forget()
+
+
+## THE THIRD ENDING, and the reason the walk was worth building. Nothing calls it
+## a failure, nobody asks him to account for it, and nobody forgives him: a
+## village that has lost somebody says what it knows and leaves.
+func test_he_got_them_out_and_did_not_get_them_home() -> void:
+	Story.forget()
+	var look := _freed("somebody out of Oyster Row")
+	_past_the_quiet(look)
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(look, StorySubarc.raised(look)))
+	check(Story.heard(&"3:escort"), "he was asked to walk them home")
+	var gone := _freed("somebody out of Oyster Row")
+	gone.waiting = []
+	gone.lost_on_road = ["somebody out of Oyster Row"]
+	var owed := StorySubarc.raised(gone)
+	eq(StringName(str(owed.goal)), &"escort", "the region still has its last word to say")
+	check(StorySubarc.failed(gone, &"escort", str(owed.place)), "and the world has ended it without it being done")
+	check(not StorySubarc.answered(gone, &"escort", str(owed.place)), "which is never the same as done")
+	var page := StorySubarc.talk(gone, owed)
+	var words := "\n".join(page.nodes[&"open"].says)
+	check(words.contains("never came up the road"), "somebody says what they know:\n%s" % words)
+	check(words.contains("banked it"), "and what they did about it")
+	for ugly: String in ["fail", "sorry", "forgive", "should have", "your fault"]:
+		check(not words.to_lower().contains(ugly), "and nothing that grades him: %s" % ugly)
+	eq((page.nodes[&"open"].replies as Array).size(), 1, "there is nothing to answer")
+	# Said once, and then the place has its mood and nothing more.
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(page)
+	var after := StorySubarc.raised(gone)
+	check(StringName(str(after.get("goal", &""))) != &"escort", "and it is not said twice")
+	Story.forget()
+
+
+## Being come back for is a different thing to be told than the cold and the
+## water, and only one of them is nobody's fault.
+func test_the_machines_taking_them_back_is_its_own_ending() -> void:
+	Story.forget()
+	var look := _freed("Ruth")
+	_past_the_quiet(look)
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(look, StorySubarc.raised(look)))
+	var gone := _freed("Ruth")
+	gone.waiting = []
+	gone.lost_on_road = ["Ruth"]
+	gone.lost_to = {"Ruth": &"hauler"}
+	var words := "\n".join(StorySubarc.talk(gone, StorySubarc.raised(gone)).nodes[&"open"].says)
+	check(words.contains("took Ruth again"), "they say what took them:\n%s" % words)
+	check(words.contains("what we do with twice"), "and what a second time is")
+	Story.forget()

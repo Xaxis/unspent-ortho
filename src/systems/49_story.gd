@@ -776,6 +776,23 @@ func subarc_look() -> StorySubarcLook:
 			look.held.append(Taken.say(t))
 		for t: Taken.TakenPerson in record.freed_in(look.region):
 			look.freed.append(Taken.say(t))
+		# The walk home (`Escort`). `waiting_in` is the question the offer is made
+		# on — freed and nothing has happened since — and the other three are read
+		# off the record itself, because a person who did not get home is a fact
+		# nothing else in the world can be asked about.
+		for t: Taken.TakenPerson in record.waiting_in(look.region):
+			look.waiting.append(Taken.say(t))
+		for t: Taken.TakenPerson in record.people:
+			if t.region != look.region:
+				continue
+			var who := Taken.say(t)
+			if t.walking:
+				look.walking.append(who)
+			if t.arrived:
+				look.arrived.append(who)
+			if t.lost:
+				look.lost_on_road.append(who)
+				look.lost_to[who] = t.lost_to
 	# What the plan has lost here, which is the only thing that ends a region's
 	# danger (docs/VISION.md §10, unspent-ortho-cb): the yard dark or the keeper down.
 	var keepers := _system("44_sentinels")
@@ -857,6 +874,8 @@ func tour_seen(what: StringName) -> bool:
 	# question of the whole world; this one is the one a sub-arc is raised from.
 	if what == &"held_here":
 		return not subarc_look().held.is_empty()
+	if what == &"waiting":
+		return not subarc_look().waiting.is_empty()
 
 	if what == &"testimony":
 		var m := _locked_body()
