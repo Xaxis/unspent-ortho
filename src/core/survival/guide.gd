@@ -83,6 +83,12 @@ const HINTS := {
 	&"ability_scan": ["%s reads every working part near you, and what each machine makes of you.", [&"ability_scan"]],
 	&"ability_grapple": ["%s throws a line at what you face and pulls you to it, ledges included.", [&"ability_grapple"]],
 	&"ability_spoof": ["%s answers their challenge in their own language. They read you as one of theirs.", [&"ability_spoof"]],
+	# The seventh, and the only app the guide never named. Everything found is
+	# already being written down -- pages read, beats landed, answers given -- and
+	# a player who is never told carries the whole story in their head or loses
+	# it. Offered only once there IS something in it: a lesson that opens an
+	# empty book teaches that the book is empty.
+	&"journal": ["%s opens what you have found: what you read, what you were told, what you said back.", [&"journal"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -171,6 +177,14 @@ static func granted(game: Game) -> Array[StringName]:
 	return out
 
 
+## Whether anything has been written down yet: a page read, a beat landed, or an
+## answer given. The journal only ever READS what already happened, so this asks
+## `Story` -- who WROTE IT DOWN -- rather than looking for evidence in the live
+## world, which is the rule this file's own lessons are built on.
+static func _journal_holds_something() -> bool:
+	return Story.found_count() > 0 or not Story.landed_beats().is_empty() or not Story.choices().is_empty()
+
+
 ## Whether the creel holds enough for any piece somebody has learnt to build.
 ## Asked of `SettlementBuild.can_make`, which is the same question the holding
 ## page answers, so the lesson cannot offer a key that would refuse.
@@ -229,6 +243,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(StringName("ability_%s" % id))
 	if _can_build(game):
 		out.append(&"holding")
+	if _journal_holds_something():
+		out.append(&"journal")
 	if game.world != null and game.player != null \
 			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
 		out.append(&"map")

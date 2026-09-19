@@ -184,6 +184,8 @@ func _on_screen(n: StringName, open: bool) -> void:
 		retired[&"map"] = true
 	if open and n == &"holding":
 		retired[&"holding"] = true
+	if open and n == &"journal":
+		retired[&"journal"] = true
 
 
 func _on_hit(_attacker: Object, target: Object, damage: int, plate: bool, _at: Vector3) -> void:

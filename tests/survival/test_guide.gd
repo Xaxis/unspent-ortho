@@ -407,3 +407,29 @@ func test_the_key_row_on_the_glass_gets_a_spelled_line_and_a_real_key() -> void:
 	check(line.contains(PlayerSettings.label_of(Guide.MOVE)) or key == walks or key.length() <= 4,
 		"the cap reads as a key, got %s" % key)
 	g.free()
+
+
+func test_the_journal_is_taught_once_there_is_something_in_it() -> void:
+	# The only app the guide never named. Everything found is already written
+	# down; a player never told carries the story in their head or loses it.
+	# Said only once the book has a page, because a lesson that opens an empty
+	# book teaches that the book is empty.
+	Story.forget()
+	var g := Fx.flat(60)
+	check(not _offered(g).has(&"journal"), "nothing found yet, nothing to open")
+	# Read one page, the way play would.
+	var id: StringName = StoryContent.FRAGMENTS.keys()[0]
+	check(Story.read(id), "a page is read")
+	check(_offered(g).has(&"journal"), "offered once the book holds one, got %s" % str(_offered(g)))
+	Story.forget()
+	Fx.done(g)
+
+
+func test_opening_the_journal_retires_its_lesson() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	guide.call("_on_screen", &"journal", true)
+	check((guide.get("retired") as Dictionary).has(&"journal"), "opening it spends the lesson")
+	g.free()
