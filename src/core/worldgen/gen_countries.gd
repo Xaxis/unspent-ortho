@@ -62,6 +62,52 @@ const REGION_TILES := 220
 ## this size holds no region, no keeper and no chapter. For the orbital pebbles of
 ## docs/WORLD.md §2 that is a design question and not a bug — a rock you cross in
 ## four seconds was never going to be asked to be explored, mined and defended.
+## **AND AT THE SIZE THE GAME SHIPS AT, THIS IS CURRENTLY WRONG. MEASURED
+## 2026-09-19, seed 7 at `Tuning.WORLD_SIZE` (1300), which is what every player
+## gets:**
+##
+##   floor 8,059 tiles       five continents, 104,140 to 140,313 tiles each
+##   coverage 73.6%          a QUARTER of the land is in no region at all
+##   server_fields           26 runs, biggest 6,616  -> NO REGION
+##   glass_desert            14 runs, biggest 7,456  -> NO REGION
+##
+## Two landscapes with no keeper, no depot and no chapter, which the paragraph
+## above calls the thing that must not happen -- and both miss by about 1,500
+## tiles, so this is a floor just over the height of the world it floors.
+##
+## THE REASON IS THE ONE `gen_context.gd` ALREADY WROTE DOWN about `k` versus
+## `body_k`: "right for one island filling the square; wrong for four continents
+## in it". This floor is a share of the SQUARE (`c.k = size / 512`), and it grows
+## with the square's AREA -- but a run lies on ONE CONTINENT, and the world did
+## not get one bigger island when it grew, it got FIVE. A continent is about 7.7%
+## of the 1300 square, so it holds roughly 130,000 tiles across 21 landscapes:
+## about 6,600 each. The floor asks for 8,059. It outgrew the bodies it measures.
+##
+## `body_k` was swapped out for `c.k` because it SHRANK as the world grew (178 at
+## 1024, under the 220 it allowed at 512). That was a real bug and the swap fixed
+## it. It just swung past the answer: the square grows faster than any single
+## body in it, so the floor now overshoots in the other direction.
+##
+## **NOT FIXED HERE, AND THE COST IS WHY.** `GenScatter` iterates `w.regions` and
+## filters props with `region_at` (gen_scatter.gd:110, 140, 159), so ANY change to
+## which runs become regions MOVES PROPS. That is a `tests/biome/test_parity.gd`
+## re-acceptance, a `WorldStamp.GEN` bump by hand and a re-shoot of every frame
+## that stands somewhere by name -- the owner's call to spend, not a builder's.
+## The candidates, in the order they were judged:
+##
+##   PROMOTE        after the floor runs, give any landscape with no region its
+##                  own biggest run. Smallest change, and it encodes exactly the
+##                  rule this header already states. Does not lift coverage.
+##   PER BODY       state the floor as a share of the BODY a run lies on rather
+##                  than of the square. Principled, and it is what `body_k`
+##                  exists for; the most work and the biggest parity move.
+##   FLAT           back to a constant in tiles. Correct at 1300 and the reason
+##                  it was rejected is a 256 TEST world, not a shipped one --
+##                  `tests/biome/test_regions.gd` runs at 256 and so reports
+##                  87-90% where the real number is 73.6%.
+##
+## Whichever is taken, note the test understates the bug by fifteen points
+## because it measures a size nobody plays.
 const PLACE_TILES := 1250.0
 ## The island's climate before any relief exists, for placing a type by its
 ## envelope: north is cold, the shore is wet, the middle is dry.
