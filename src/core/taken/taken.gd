@@ -41,7 +41,27 @@ extends RefCounted
 ##   home      the settlement they were taken from
 ##   region    the region whose network holds them, which is where the depot is
 ##   minutes   the world minute it happened, so "three days ago" can be said
-##   freed     they are out, and the record stays so the story can remember it
+##   freed     they are out of the yard, and the record stays so the story can
+##             remember it. It does NOT mean they got home: see below.
+##   walking   they are on the road with him right now (`Escort`)
+##   arrived   they reached the door
+##   lost      they did not, and this is the third ending. A rescue that cannot
+##             fail is a fetch quest with a face on it; the walk is the danger.
+##   at        WHERE they went down, because `lost` has no witness but him — the
+##             village hears "they came up the road" by itself and hears nothing
+##             at all about this
+##   lost_to   the roster kind that took them back, or &"" for the cold, the
+##             water and the fall. The two are different things to be told, and
+##             only one of them is nobody's fault.
+##   home_at   the door they were walking to, FIXED when the walk was accepted
+##             and never recomputed. If the roof is razed on the way that is a
+##             thing that happened to them; a target that quietly slides to the
+##             next village makes the whole walk mean nothing.
+##
+## `freed` and `arrived` are kept apart on purpose. Somebody let out of a yard
+## nobody walked home is freed and not arrived, which is what every rescue was
+## before this file learned to walk, and the story's existing words for that are
+## still exactly true.
 class TakenPerson extends RefCounted:
 	var who := -1
 	var name := ""
@@ -50,10 +70,29 @@ class TakenPerson extends RefCounted:
 	var region := -1
 	var minutes := 0.0
 	var freed := false
+	var walking := false
+	var arrived := false
+	var lost := false
+	var at := Vector2.INF
+	var lost_to := &""
+	var home_at := Vector2.INF
 
 	func save() -> Dictionary:
 		return {"who": who, "name": name, "home_name": home_name, "home": home,
-			"region": region, "minutes": SaveCodec.num(minutes), "freed": freed}
+			"region": region, "minutes": SaveCodec.num(minutes), "freed": freed,
+			"walking": walking, "arrived": arrived, "lost": lost,
+			"at": _place(at), "lost_to": String(lost_to), "home_at": _place(home_at)}
+
+	## Not `SaveCodec.vec2`: that writes the two floats raw, and both of these are
+	## Vector2.INF until something happens at a real tile. INF is the one number
+	## JSON cannot carry, which is exactly what `SaveCodec.num` is for.
+	static func _place(p: Vector2) -> Array:
+		return [SaveCodec.num(p.x), SaveCodec.num(p.y)]
+
+	static func _to_place(v: Variant) -> Vector2:
+		if v is Array and (v as Array).size() >= 2:
+			return Vector2(SaveCodec.to_num(v[0], INF), SaveCodec.to_num(v[1], INF))
+		return Vector2.INF
 
 	static func load_from(d: Dictionary) -> TakenPerson:
 		var t := TakenPerson.new()
@@ -64,6 +103,12 @@ class TakenPerson extends RefCounted:
 		t.region = SaveCodec.to_int(d.get("region", -1))
 		t.minutes = float(d.get("minutes", 0.0))
 		t.freed = bool(d.get("freed", false))
+		t.walking = bool(d.get("walking", false))
+		t.arrived = bool(d.get("arrived", false))
+		t.lost = bool(d.get("lost", false))
+		t.at = _to_place(d.get("at"))
+		t.lost_to = StringName(str(d.get("lost_to", "")))
+		t.home_at = _to_place(d.get("home_at"))
 		return t
 
 
@@ -126,6 +171,55 @@ func free_region(region: int) -> Array[TakenPerson]:
 	for t in people:
 		if not t.freed and t.region == region:
 			t.freed = true
+			out.append(t)
+	return out
+
+
+## They are on the road with him now, walking to `to` — which is written down
+## here and never worked out again (`TakenPerson.home_at` says why).
+func walk(t: TakenPerson, to: Vector2) -> void:
+	if not t.freed or t.arrived or t.lost:
+		return
+	t.walking = true
+	t.home_at = to
+
+
+## They reached the door.
+func arrive(t: TakenPerson) -> void:
+	t.walking = false
+	t.arrived = true
+
+
+## They did not. `where` is the tile they went down on and `to` the roster kind
+## that took them back, or &"" for the cold, the water and the fall — nobody was
+## there but him, so the record is the only witness there will ever be.
+func lose(t: TakenPerson, where: Vector2, to: StringName = &"") -> void:
+	t.walking = false
+	t.lost = true
+	t.at = where
+	t.lost_to = to
+
+
+## Whoever is on the road right now. At most one in practice, but the record does
+## not enforce that: how many a player may walk at once is the system's rule and
+## not a fact about people.
+func walking_now() -> Array[TakenPerson]:
+	var out: Array[TakenPerson] = []
+	for t in people:
+		if t.walking:
+			out.append(t)
+	return out
+
+
+## Freed, and nothing has happened to them since: not walking, not home, not
+## lost. THE QUESTION THE ESCORT IS OFFERED ON, and the reason `freed` was left
+## meaning exactly what it meant before — somebody let out of a yard that nobody
+## walked home is still freed, and every line already written about that is still
+## true of them.
+func waiting_in(region: int) -> Array[TakenPerson]:
+	var out: Array[TakenPerson] = []
+	for t in people:
+		if t.freed and t.region == region and not t.walking and not t.arrived and not t.lost:
 			out.append(t)
 	return out
 
