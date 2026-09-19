@@ -232,15 +232,62 @@ extends TestCase
 ## the table below would have buried the save bug it was reporting.
 
 
+## RE-ACCEPTED A TENTH TIME, and this one BROKE THE SAFE SHAPE ON PURPOSE:
+## `ground` moved as well as `props`, on three of the five seeds, and seeds 3 and
+## 90210 did not move at all. `country`, `country2`, `level` and `blend` are
+## byte-identical everywhere, so the LAND is the same land.
+##
+## The cause is the region floor: a place is now floored against the CONTINENT it
+## lies on rather than against the square, because the world stopped being one
+## island and became five (`gen_countries.gd` carries the measurement). At the
+## shipped size a quarter of the world belonged to no region and two landscapes
+## had no chapter anywhere on the island.
+##
+## **I WAS TOLD TO EXPECT `ground` NOT TO MOVE, AND IT DID, SO I DID NOT ACCEPT
+## UNTIL I COULD SAY WHY.** The author's reasoning was that regions are computed
+## after the terrain is final and nothing writes back to it. That is true of the
+## TERRAIN and false of the GROUND: works stamp the ground they stand on, and a
+## works site is chosen per REGION. This file's own third re-acceptance says it in
+## one line -- "Works stamp the ground they stand on, so both move `ground` where
+## they moved" -- and nobody, including me, remembered it.
+##
+## MEASURED, not argued. The same five muted worlds, before and after, counting
+## regions and digesting every works landmark:
+##
+##   seed    regions      works        works digest      parity
+##   1       8 -> 6       77 -> 74     changed           moved
+##   7       7 -> 6       76 -> 75     changed           moved
+##   42      7 -> 6       92 -> 91     changed           moved
+##   3       6 -> 6       80 -> 80     IDENTICAL         unchanged
+##   90210   6 -> 6       81 -> 81     IDENTICAL         unchanged
+##
+## Exactly the seeds whose region COUNT changed are the seeds whose works changed,
+## and exactly those are the seeds whose digests moved. Two seeds where the floor
+## changed nothing moved nothing. That is as tight as this file has ever managed
+## and it is why a broken shape was safe to take.
+##
+## Causation proved the way the seventh asks: with the old square-based floor put
+## back and nothing else touched, this test PASSES on the previous hashes.
+##
+## `props` moves for the second, documented reason: `GenScatter` iterates
+## `w.regions` and filters with `region_at`, so which runs are places decides
+## where things stand. `WorldStamp.GEN` is 14, turned by hand.
+##
+## **The rule this adds to the file: "only `props` moved" is the safe shape for a
+## SCATTER change, and it is the wrong expectation for a REGION change.** A region
+## decides who stamps the ground. Expect `ground` with it, and be suspicious if it
+## does not come.
+
+
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 86ea03fd",
+	1: "06fa726c d5b85d6c 3a2e2753 673b50ca fe4b52d9 cf7dfca2",
 	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b 0aaa6cc8",
-	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 5d3f926d",
-	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b e081b44b",
+	7: "4b153668 3424d5c9 771043cf 1ba2d360 72103915 e9842620",
+	42: "e5a96b5f bef1bc39 d84bd16c bc57666e 824c752b d624c3c4",
 	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed 56e4195f",
 }
 
