@@ -73,6 +73,15 @@ extends TestCase
 ## — one site per 3,326 tiles against one per 9,350 is two and a half times as
 ## much to walk into, and the failure mode of that change is clutter.
 ##
+## RE-ACCEPTED A FIFTH TIME, for the scale wave. `props` moved on all five and
+## `ground` on seed 7 alone; `country`, `country2`, `level` and `blend` are equal
+## everywhere, so the land is the same land. The cause is one rule: still water
+## must not stand under a building's own footprint. `_free` clears a radius of
+## one, which was the whole of a coastal cottage, and a city form stands on 2.4 —
+## so a tower could be set down with a bog pool at its door and nothing refused
+## it. Refusing those spots moves the buildings that would have taken them, and a
+## building stamps the ground it stands on.
+##
 ## Seed 42's `props` moved once more after that, and only seed 42's: a stone must
 ## stand in its own circle's landscape. A circle's centre is held to its region,
 ## but its stones are laid three or four tiles out, which is far enough to cross a
@@ -84,11 +93,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 007c247b",
-	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 eeca157d",
-	7: "aa526bae 4ff8f6b7 93243ecb 7fb78385 be4cc1f0 b63ba6b5",
-	42: "325e4566 8d16e00c 094afc29 b88a5d6e 8cce8022 46f5c69a",
-	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 f822ec07",
+	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 08c78a84",
+	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 78092377",
+	7: "aa526bae 4ff8f6b7 68b03eda 7fb78385 be4cc1f0 fbdb0e61",
+	42: "325e4566 8d16e00c 094afc29 b88a5d6e 8cce8022 010a9369",
+	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 705228d2",
 }
 
 
