@@ -9,8 +9,6 @@ var _frames := 0
 ## AVERAGE cannot see a hitch and a hitch is what a player calls jumpy: 72 fps
 ## with one frame in twenty at 40 ms reads as stutter and averages as fine.
 var _ms := PackedFloat32Array()
-var _proc := PackedFloat32Array()
-var _phys := PackedFloat32Array()
 
 ## Every system whose own script defines `_physics_process`, driven from here
 ## under `--stats` so each one can be timed separately. See `_driven_line`.
@@ -65,6 +63,23 @@ func _physics_process(delta: float) -> void:
 ## The WORST tick each system took, dearest first. The worst and not the mean,
 ## for the reason the whole of docs/PERF.md exists: a 224 ms tick once a second
 ## averages to about 4 ms and reads as nothing at all.
+##
+## **THIS TIMES EACH CALL ITSELF RATHER THAN ASKING THE ENGINE, AND THAT IS THE
+## POINT.** `TIME_PROCESS` and `TIME_PHYSICS_PROCESS` cannot attribute a frame at
+## all: measured over a 199-frame run, each of them **changed 4 times**. They are
+## not per-frame values that lag by one, they are a sample taken about twice a
+## second and held flat in between. So `proc 29 + phys 126` printed beside a
+## 132 ms frame is not that frame's split -- it is whatever the sample happened to
+## hold, which is why five separated spikes all read an identical `proc 78`.
+##
+## A line was built here that "aligned" those by reading them a frame later, and
+## it was false precision: no offset fixes a value that is not computed per frame.
+## It first said the cost was outside every `_process` this game owns while the
+## whole of it sat in a `_physics_process`, and when it later pointed AT physics
+## it was right by coincidence, on evidence just as bad. **When an engine counter
+## will not answer the question, time the thing yourself instead of hunting the
+## offset that makes the counter honest.** `stats_line` still prints one
+## end-of-run sample of each, which is all they ever honestly were.
 func _driven_line() -> String:
 	if _driven.is_empty():
 		return ""
@@ -78,36 +93,17 @@ func _driven_line() -> String:
 	return "\nworld physics worst per system (ms): " + ", ".join(out)
 
 
-## **THE MONITORS LAG BY ONE FRAME** and reading them without that is how this
-## hunt lost hours. `TIME_PROCESS` and `TIME_PHYSICS_PROCESS` are written at the
-## END of a frame, so the read taken during frame i describes frame i-1 -- a fast
-## one, next to the spike. Attributing a spike from its own frame's read compares
-## two different frames, and it said the cost was in no `_process` we own while
-## the whole of it sat in a `_physics_process`.
-##
-## So each slow frame is printed beside the reads taken the frame AFTER it, which
-## are the ones that belong to it. `total 132 = proc 29 + phys 126` names the half
-## of the engine to look in, in one line, which is the question every other
-## instrument here answered slightly to the side of.
-func _aligned_line() -> String:
-	var out := PackedStringArray()
-	for i in _ms.size():
-		if _ms[i] > P99_MS and i + 1 < _phys.size():
-			out.append("%d: total %.0f = proc %.0f + phys %.0f" % [i, _ms[i], _proc[i + 1], _phys[i + 1]])
-	if out.is_empty():
-		return ""
-	return "\nworld slow frames aligned: " + " | ".join(out)
-
-
 func _process(_delta: float) -> void:
 	if game == null or game.view == null:
 		return
 	_tell_camera_how_tall_it_builds()
 	_frames += 1
 	if game.options.stats:
+		# Only the frame's own delta is worth keeping per frame. The engine's
+		# TIME_PROCESS / TIME_PHYSICS_PROCESS monitors were collected here too and
+		# are not per-frame values -- see `_driven_line`'s header for the
+		# measurement that retired them.
 		_ms.append(_delta * 1000.0)
-		_proc.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
-		_phys.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 	# The renderer does not time itself unless asked, and it must be asked BEFORE
 	# the frame that is read: `stats_line` runs at frames-1, so switching this on
 	# here gives it several frames of measurement to report.
@@ -127,7 +123,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms) + _aligned_line() + _driven_line())
+		print(frame_line(_ms) + _driven_line())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
