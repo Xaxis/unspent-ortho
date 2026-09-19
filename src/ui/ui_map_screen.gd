@@ -91,6 +91,16 @@ func _on_open() -> void:
 	data.ensure()
 	if explored == null:
 		explored = UiExplored.new(game.world.size)
+	# A SURVEY OF 0.3% OF THE LAND IS NOT A SURVEY. The map draws only what has
+	# been walked, which is right for a player and useless for the person
+	# reviewing the world: on 1300 tiles across five continents, a long walk
+	# reveals a fraction of a percent and the shape of it reads as a wedge rather
+	# than a map (owner, 2026-09-18: "it only renders like a large triangle at a
+	# time and never the entire thing"). Where dev mode is open at all, the whole
+	# thing is shown -- the reveal already existed and was a row somebody had to
+	# find, which is the same as not existing.
+	if DevMode.reachable() and not explored.revealed:
+		explored.reveal_all(game.world)
 	_seen_tex = ImageTexture.create_from_image(Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.shown_mask()))
 	_material.set_shader_parameter("ground_tex", data.ground)
 	_material.set_shader_parameter("level_tex", data.level)
@@ -101,6 +111,9 @@ func _on_open() -> void:
 	_material.set_shader_parameter("seen_tex", _seen_tex)
 	_material.set_shader_parameter("rect_size", Vector2(MAP_RECT.size))
 	_material.set_shader_parameter("world_size", float(game.world.size))
+	# World tiles to one texel: the survey is built at a capped size so its cost
+	# does not follow the world's (UiMapData.MOST).
+	_material.set_shader_parameter("tex_step", float(data.step))
 	_regions = UiMapScreen.region_labels(game.world, explored)
 	_seen_share = explored.fraction()
 	var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, SCALES)
@@ -245,7 +258,9 @@ func place_region(label: Dictionary, free: Callable) -> Vector2i:
 				continue
 			var mean := 0.0
 			if data != null:
-				mean = UiMapData.ink_in(data.ink, game.world.size, t) / float(maxi(1, t.get_area()))
+				mean = UiMapData.ink_in(data.ink, data.tex_size, Rect2i(t.position / data.step, \
+					Vector2i(maxi(1, t.size.x / data.step), maxi(1, t.size.y / data.step)))) \
+					/ float(maxi(1, (t.get_area()) / (data.step * data.step)))
 			var score := mean + moved * 0.006
 			if score < best_score:
 				best_score = score

@@ -35,6 +35,25 @@ var ink := PackedInt32Array()
 var ready := false
 var build_ms := 0
 
+## THE SURVEY IS NOT A SATELLITE PHOTO, and its cost must not follow the world.
+##
+## Every pass below is O(tiles) in GDScript on one worker: the shore distance
+## alone is five sweeps, two of them chamfers that cannot be split by rows. At
+## 512 that was 262,000 tiles and merely slow; at 1300 it is 1,690,000 and the
+## map takes seconds to open. Nothing about this file changed -- the world grew
+## 6.4x underneath it, which is the same countdown the flyover's 120-unit ceiling
+## and the absolute test bars were on.
+##
+## So the textures are built at MOST texels a side and no more, sampling the
+## world with a stride. A survey drawn at 580 pixels wide never had a use for one
+## texel per tile, and past this the cost is flat whatever size the world becomes.
+const MOST := 512
+
+## World tiles to one texel: 1 until the world is bigger than MOST.
+var step := 1
+## Texels a side -- what the images and the ink table are actually built at.
+var tex_size := 0
+
 var _images := {}
 var _task := -1
 
@@ -85,19 +104,52 @@ func _finish_textures() -> void:
 
 func _build_images() -> void:
 	var t0 := Time.get_ticks_msec()
-	var n := world.size
-	_images.ground = Image.create_from_data(n, n, false, Image.FORMAT_L8, world.ground)
-	_images.level = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, world.level.to_byte_array())
-	_images.coast = Image.create_from_data(n, n, false, Image.FORMAT_L8, shore_distance(world))
-	var mk := mark_bytes(world)
+	step = maxi(1, ceili(float(world.size) / float(MOST)))
+	var w := thinned(world, step) if step > 1 else world
+	tex_size = w.size
+	var n := tex_size
+	_images.ground = Image.create_from_data(n, n, false, Image.FORMAT_L8, w.ground)
+	_images.level = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, w.level.to_byte_array())
+	_images.coast = Image.create_from_data(n, n, false, Image.FORMAT_L8, shore_distance(w))
+	var mk := mark_bytes(world, step, n)
 	_images.marks = Image.create_from_data(n, n, false, Image.FORMAT_L8, mk)
-	_images.ink = ink_table(world, mk)
-	_images.country = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, country_bytes(world))
+	_images.ink = ink_table(w, mk)
+	_images.country = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, country_bytes(w))
 	var pal := Image.create_empty(32, 1, false, Image.FORMAT_RGBA8)
 	for g in Ground.COUNT:
 		pal.set_pixel(g, 0, GroundColors.top(g, 1))
 	_images.palette = pal
 	build_ms = Time.get_ticks_msec() - t0
+
+
+## The world sampled every `step` tiles, as a world of its own, so every pass
+## below runs unchanged against a smaller grid.
+##
+## NEAREST, NOT AVERAGED, and deliberately: level, ground and country are IDS.
+## The mean of two ground ids is a third ground, and the mean of two levels is a
+## cliff that is not there -- averaging them would invent terrain the world does
+## not have. Taking the tile at the corner of each block keeps every value one
+## the world actually holds.
+static func thinned(w: WorldData, step: int) -> WorldData:
+	var n := w.size
+	var m := ceili(float(n) / float(step))
+	var out := WorldData.new(w.seed_value, m)
+	var has2 := w.country2.size() == n * n and w.blend.size() == n * n
+	for y in m:
+		var sy := mini(y * step, n - 1)
+		var row := y * m
+		var srow := sy * n
+		for x in m:
+			var sx := mini(x * step, n - 1)
+			var i := row + x
+			var si := srow + sx
+			out.level[i] = w.level[si]
+			out.ground[i] = w.ground[si]
+			out.country[i] = w.country[si]
+			if has2:
+				out.country2[i] = w.country2[si]
+				out.blend[i] = w.blend[si]
+	return out
 
 
 ## Country, ecotone neighbour and blend weight per tile, four bytes each.
@@ -188,8 +240,8 @@ static func mark_of(kind: int) -> int:
 
 
 ## One mark per tile; stronger marks (houses) win over weaker (trees).
-static func mark_bytes(w: WorldData) -> PackedByteArray:
-	var n := w.size
+static func mark_bytes(w: WorldData, step: int = 1, side: int = 0) -> PackedByteArray:
+	var n := side if side > 0 else w.size
 	var out := PackedByteArray()
 	out.resize(n * n)
 	const RANK := [0, 2, 2, 3, 1, 6, 5, 4, 0]
@@ -197,9 +249,9 @@ static func mark_bytes(w: WorldData) -> PackedByteArray:
 		var m := mark_of(p.kind)
 		if m == MARK_NONE:
 			continue
-		var x := floori(p.pos.x)
-		var y := floori(p.pos.y)
-		if not w.in_bounds(x, y):
+		var x := floori(p.pos.x) / step
+		var y := floori(p.pos.y) / step
+		if x < 0 or y < 0 or x >= n or y >= n:
 			continue
 		var i := y * n + x
 		if RANK[m] >= RANK[out[i]]:

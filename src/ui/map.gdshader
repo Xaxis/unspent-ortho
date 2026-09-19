@@ -29,6 +29,16 @@ uniform vec2 rect_size = vec2(580.0, 290.0);
 uniform vec2 origin_px = vec2(0.0);
 uniform float scale = 2.0;
 uniform float world_size = 256.0;
+// World tiles to one texel. The survey's textures are capped at UiMapData.MOST a
+// side so their build cost does not follow the world's size, so a WORLD tile and
+// a TEXEL stopped being the same thing. Every fetch below that reads the world's
+// own textures divides by it; `seen_tex` does NOT, because the explored mask is
+// a straight copy of the player's own grid and is cheap at any size.
+uniform float tex_step = 1.0;
+
+ivec2 texel(ivec2 t) {
+	return t / int(tex_step);
+}
 
 uniform vec3 glass = vec3(0.043, 0.075, 0.082);
 uniform vec3 ph0 = vec3(0.09, 0.188, 0.161);
@@ -54,22 +64,22 @@ bool inside(ivec2 t) {
 
 int level_at(ivec2 t) {
 	if (!inside(t)) return -3;
-	int v = int(texelFetch(level_tex, t, 0).r * 255.0 + 0.5);
+	int v = int(texelFetch(level_tex, texel(t), 0).r * 255.0 + 0.5);
 	return v > 127 ? v - 256 : v;
 }
 
 int ground_at(ivec2 t) {
-	return int(texelFetch(ground_tex, clamp_tile(t), 0).r * 255.0 + 0.5);
+	return int(texelFetch(ground_tex, texel(clamp_tile(t)), 0).r * 255.0 + 0.5);
 }
 
 int mark_at(ivec2 t) {
 	if (!inside(t)) return 0;
-	return int(texelFetch(marks_tex, t, 0).r * 255.0 + 0.5);
+	return int(texelFetch(marks_tex, texel(t), 0).r * 255.0 + 0.5);
 }
 
 float coast_at(ivec2 t) {
 	if (!inside(t)) return 16.0;
-	return texelFetch(coast_tex, t, 0).r * 255.0 / 16.0;
+	return texelFetch(coast_tex, texel(t), 0).r * 255.0 / 16.0;
 }
 
 float seen_raw(ivec2 t) {
@@ -144,7 +154,7 @@ float land_field(vec2 tp) {
 
 // The country's hatch hand at a tile, dithered across an ecotone as the world does.
 int hand_at(ivec2 t, vec2 mp) {
-	vec4 c = texelFetch(country_tex, clamp_tile(t), 0);
+	vec4 c = texelFetch(country_tex, texel(clamp_tile(t)), 0);
 	int c1 = int(c.r * 255.0 + 0.5);
 	int c2 = int(c.g * 255.0 + 0.5);
 	return ink_hash(mp + vec2(17.0, 91.0)) < c.b ? c2 : c1;
