@@ -93,11 +93,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 08c78a84",
-	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 78092377",
-	7: "aa526bae 4ff8f6b7 68b03eda 7fb78385 be4cc1f0 fbdb0e61",
+	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 1f9c2642",
+	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 9eac8325",
+	7: "aa526bae 4ff8f6b7 68b03eda 7fb78385 be4cc1f0 207cf9d8",
 	42: "325e4566 8d16e00c 094afc29 b88a5d6e 8cce8022 010a9369",
-	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 705228d2",
+	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 4e00501a",
 }
 
 
