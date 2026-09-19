@@ -13,6 +13,7 @@ render_mode unshaded, depth_draw_never, cull_disabled, shadows_disabled, fog_dis
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform vec3 core = vec3(0.9098, 0.7608, 0.2275);
 uniform vec3 rim = vec3(0.5608, 0.4157, 0.0706);
@@ -73,6 +74,7 @@ void fragment() {
 	if (ink_hash(px) >= d) {
 		discard;
 	}
-	ALBEDO = t < 0.34 ? core : rim;
+	// The one colour door, and `matter_light` because a working part IS a light.
+	ALBEDO = matter_light(t < 0.34 ? core : rim);
 	ALPHA = 1.0;
 }
