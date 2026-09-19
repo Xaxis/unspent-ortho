@@ -208,3 +208,42 @@ func test_the_game_teaches_the_key_that_reads_a_machine() -> void:
 	Input.action_release(&"target")
 	check((guide.get("retired") as Dictionary).has(&"target"), "holding the key retires the lesson")
 	g.free()
+
+
+func test_the_game_teaches_the_jump_at_something_worth_jumping() -> void:
+	# **INNATE AND UNTAUGHT.** Nothing grants the jump and nothing takes it away,
+	# so a player who never learns it walks round every ledge the game meant them
+	# to go over -- and it was one of the sixteen things the guide never named.
+	# Said STANDING AT ONE, because a movement lesson given on flat ground is a
+	# sentence about nothing.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=96"])))
+	var sim := g.player.sim
+	var spot := Jump.find(g.world, g.query, sim.hero.pos, Jump.UP, 40.0)
+	if spot.is_empty():
+		spot = Jump.find(g.world, g.query, sim.hero.pos, Jump.ACROSS, 40.0)
+	check(not spot.is_empty(), "this world has a ledge to stand at")
+	if spot.is_empty():
+		g.free()
+		return
+	# On flat ground the lesson must NOT be offered -- that is the half that
+	# stops it being said everywhere, which is what a key prompt on the glass is.
+	var flat_ids := []
+	for i in 4:
+		flat_ids.append(Guide.hint_for(g, {}).get("id", &""))
+	check(not flat_ids.has(&"jump"), "not said where a jump would do nothing")
+	# Now stand at the ledge, facing it, the way the tour's `ledge` does.
+	sim.hero.pos = spot.at
+	sim.hero.facing = (spot.dir as Vector2).angle()
+	g.player.pos = sim.hero.pos
+	var at_ledge := []
+	for i in 6:
+		at_ledge.append(Guide.hint_for(g, {}).get("id", &""))
+	check(at_ledge.has(&"jump"), "said standing at one, got %s" % str(at_ledge[0]))
+	# And the feet leaving the ground spends it.
+	var guide: Node = g.get_node("58_guide")
+	sim.hero.airborne = true
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"jump"), "jumping retires it")
+	g.free()

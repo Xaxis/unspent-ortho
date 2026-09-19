@@ -50,6 +50,11 @@ const HINTS := {
 	# ahead of the lines that describe a runner and a worker, because it is how
 	# you would find those out for yourself.
 	&"target": ["%s holds the slate on it: what it is, what it is doing, where its plate is thin.", [&"target"]],
+	# The other verb nobody was told about, and this one is INNATE: no gear
+	# grants it and nothing takes it away, so a player who never learns it is
+	# walking round ledges the game meant them to go over. Said standing at one,
+	# because a movement lesson given on flat ground is a sentence about nothing.
+	&"jump": ["%s clears it: up two, across two, down three, and no further.", [&"jump"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -100,6 +105,24 @@ static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
 
 
 ## The hints that fit the moment, most pressing first.
+## Whether a jump from where the player stands, the way they face, would CLEAR
+## something -- a ledge up or a gap across. Asked of `Jump.plan`, which works the
+## whole arc out, so the lesson cannot promise a jump the body could not make:
+## the same answer the key itself will give when it is pressed.
+static func _at_a_ledge(game: Game) -> bool:
+	var sim := game.player.sim if game.player != null else null
+	if sim == null or game.query == null or sim.hero.airborne:
+		return false
+	# `Jump.CARRY`, which is the speed `Jump.find` plans at -- the game's own
+	# idea of a jump taken at a walk. Planning at a STANDING speed instead was
+	# the first version and it answered "hop" at ledges the finder calls a
+	# climb, so the lesson was never said anywhere: the moment and the thing
+	# that defines a ledge have to ask the same question.
+	var p := Jump.plan(game.world, game.query, sim.hero.pos,
+		Vector2.from_angle(sim.hero.facing), Jump.CARRY)
+	return p != null and (p.kind == Jump.UP or p.kind == Jump.ACROSS)
+
+
 static func _applicable(game: Game) -> Array[StringName]:
 	var out: Array[StringName] = []
 	var sim := game.player.sim if game.player != null else null
@@ -122,6 +145,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")
+	if _at_a_ledge(game):
+		out.append(&"jump")
 	if Survival.use_target(game) != null:
 		out.append(&"take")
 	if _fire(game) == null and not Survival._makeable_build(game, &"fire").is_empty():
