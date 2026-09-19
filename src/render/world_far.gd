@@ -224,7 +224,17 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 				luv2[ln_at + k] = Vector2.ZERO
 			ln_at += 6
 			if Ground.is_water(g):
-				var y := TerrainMesher.WATER_Y
+				# THE WATER IS DROPPED TOO, and forgetting that is the worst thing
+				# this file has done. The land is a floor less `DROP` precisely so
+				# the near chunks always win where the two overlap -- and then the
+				# sea was laid at `WATER_Y` exactly, which is where the near water
+				# is laid, so two perfectly flat coplanar surfaces fought across
+				# the whole sea. It is the one place the floor trick cannot work by
+				# itself: a flat surface has no lowest corner to be lower than.
+				# Measured from the frame, not reasoned: the sea came out blocky
+				# white noise on the 4-tile cell grid with a hard wedge at the
+				# shore, and switching the far mesh off cleared both.
+				var y := TerrainMesher.WATER_Y - DROP
 				wv[wn_at] = Vector3(xa, y, ya)
 				wv[wn_at + 1] = Vector3(xb, y, ya)
 				wv[wn_at + 2] = Vector3(xb, y, yb)

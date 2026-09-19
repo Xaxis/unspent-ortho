@@ -343,9 +343,13 @@ func _process(_delta: float) -> void:
 	for key in wanted:
 		if _parked.has(key):
 			_revive(key)
+	# Whether the near square still owes the player ground. `_far_step` reads it
+	# and stands down: see the note there for what it cost not to.
+	var near_busy := _task >= 0
 	for key in wanted:
 		if _chunks.has(key) or (_task >= 0 and key == _task_key):
 			continue
+		near_busy = true
 		if threaded:
 			if _task < 0:
 				_task_key = key
@@ -361,13 +365,24 @@ func _process(_delta: float) -> void:
 	for key: Vector2i in _chunks.keys():
 		if not keep_set.has(key):
 			_park(key)
-	_far_step()
+	_far_step(near_busy)
 
 
-## Fill the coarse world in, a block at a time, on its own worker so it never
-## queues behind a chunk. It is built ONCE and kept: that is what makes zooming
-## out, in and out again cost nothing at all.
-func _far_step() -> void:
+## Fill the coarse world in, a block at a time, on its own workers. It is built
+## ONCE and kept: that is what makes zooming out, in and out again cost nothing
+## at all.
+##
+## **IT STANDS DOWN WHILE THE NEAR SQUARE OWES THE PLAYER GROUND.** The header of
+## this function used to say the opposite -- "on its own worker so it never
+## queues behind a chunk" -- which is the same sentence read from the machine's
+## side instead of the player's. A near chunk is what they are standing on; a far
+## block is what they might look at later, it is built once and kept, and so it
+## loses nothing at all by waiting. Without this it took FOUR workers from the
+## first frame while the near square, which builds ONE chunk at a time, was still
+## empty: measured at 1 fps with 4 chunks up and 4 of 121 far blocks done, and the
+## opening of every game stuttered while the land popped in around the player.
+## **A background job that outranks the foreground is not a background job.**
+func _far_step(near_busy: bool) -> void:
 	if far == null:
 		return
 	for i in _far_tasks.size():
@@ -376,9 +391,21 @@ func _far_step() -> void:
 			_far_tasks[i] = -1
 			far.add_block(_far_keys[i], _far_out[i], _world_mat, _water_mat)
 			_far_out[i] = []
-			far_ms += (Time.get_ticks_usec() - _far_at[i]) / 1000.0
+			# The WORKER's own microseconds, which `_far_worker` writes back. It
+			# was dispatch-to-collection: queue wait, plus however long until a
+			# frame came round to collect it. So it reported 661 ms for a block
+			# and got WORSE the busier the machine was -- which is backwards for
+			# a cost, and is the same mistake as timing a chunk by when its
+			# picture appeared. It sent me looking for a twelvefold regression
+			# in the builder that was never there.
+			far_ms += _far_at[i] / 1000.0
 			far_count += 1
 	if far.done(world.size):
+		return
+	# Collecting a finished block above is free and always worth doing; STARTING
+	# one is what yields. So this sits here rather than at the top, or a block
+	# already paid for would hang in the pool unclaimed while the player walks.
+	if near_busy:
 		return
 	# What is already in flight is not free to ask for again.
 	var busy := {}
@@ -393,12 +420,14 @@ func _far_step() -> void:
 			return
 		busy[key] = true
 		_far_keys[i] = key
-		_far_at[i] = Time.get_ticks_usec()
+		_far_at[i] = 0
 		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
 
 
 func _far_worker(slot: int, key: Vector2i) -> void:
+	var began := Time.get_ticks_usec()
 	_far_out[slot] = WorldFar.build_arrays(world, key.x, key.y, _far_tables)
+	_far_at[slot] = Time.get_ticks_usec() - began
 
 
 func _exit_tree() -> void:
