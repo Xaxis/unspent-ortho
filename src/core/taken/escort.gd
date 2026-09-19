@@ -53,6 +53,13 @@ const LOSE_SECONDS := 12.0
 ## part and a person stuck on a doorstep is only annoying.
 const HOME_REACH := 6.0
 
+## How near a hostile machine gets before it takes them back. Close — inside a
+## swing — because the answer has to be that he stood between them, not that he
+## kept a radius clear. It is also what gives `lost_to` a real value: losing
+## somebody to the plan and losing them to the cold are different things to be
+## told, and only one of them is nobody's fault.
+const SNATCH_TILES := 2.6
+
 ## How fast they walk, as a share of the player's own pace. Under 1 on purpose:
 ## they have been in a yard, and a person who keeps up perfectly is a camera
 ## attachment rather than somebody being helped.

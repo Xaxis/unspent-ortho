@@ -390,6 +390,77 @@ func _add(look: Dictionary, home: Vector2, role: StringName, village: int, h: fl
 	folk.append(f)
 
 
+# --- being walked home (`Escort`, 45_taken) ------------------------------------
+
+## Stand somebody up at `from` and set them walking to `to`. Returns the folk id,
+## or -1 if there is no standable ground to put them on.
+##
+## THEY ARE ONE OF THIS SYSTEM'S OWN PEOPLE and not a new kind of thing: the same
+## row, the same model, the same dressing, the same step. What makes them
+## different is a role, which is how every other kind of villager is different
+## from every other. `village` is -1 so the night never sends them indoors —
+## they have no door to go to, which is the whole problem.
+func lead(from: Vector2, to: Vector2, seed_h: float) -> int:
+	var at := from
+	if not _standable(at):
+		var found := false
+		for i in 12:
+			var h := Rng.hash01(int(from.x), int(from.y), i)
+			var p := from + Vector2(cos(h * TAU), sin(h * TAU)) * (1.5 + float(i) * 0.6)
+			if _standable(p):
+				at = p
+				found = true
+				break
+		if not found:
+			return -1
+	var look := PersonLook.random(int(seed_h * 100003.0))
+	_add(look, at, &"led", -1, seed_h, at)
+	var f: Dictionary = folk[folk.size() - 1]
+	f.target = to
+	return int(f.id)
+
+
+## Where that person is now, or INF once they are gone.
+func led_at(id: int) -> Vector2:
+	for f: Dictionary in folk:
+		if int(f.get("id", -1)) == id:
+			return f.pos
+	return Vector2.INF
+
+
+## Put them beside `near` — he was MOVED rather than walked (a dev warp, a tour's
+## `at`, a realm crossing), and the walk comes with him. 45_taken says why that
+## is not the same as being left behind.
+func led_to(id: int, near: Vector2) -> void:
+	for f: Dictionary in folk:
+		if int(f.get("id", -1)) != id:
+			continue
+		for i in 16:
+			var h := Rng.hash01(int(near.x), int(near.y), i)
+			var p := near + Vector2(cos(h * TAU), sin(h * TAU)) * (1.6 + float(i) * 0.5)
+			if _standable(p):
+				f.pos = p
+				_place(f)
+				return
+		f.pos = near
+		_place(f)
+		return
+
+
+## Take them off the land: they went through a door, or they were taken back.
+## The record outlives them either way; this only stops drawing one.
+func led_done(id: int) -> void:
+	for i in folk.size():
+		var f: Dictionary = folk[i]
+		if int(f.get("id", -1)) != id:
+			continue
+		var model: PersonModel = f.get("model")
+		if model != null:
+			model.queue_free()
+		folk.remove_at(i)
+		return
+
+
 ## The world's sun, for people's shadow twins (PersonModel.sun).
 func _sun() -> DirectionalLight3D:
 	return game.sky.sun if game.sky != null else null
@@ -476,6 +547,20 @@ func _step(f: Dictionary, delta: float, night: bool) -> void:
 			return
 	else:
 		match f.role:
+			&"led":
+				# BEING WALKED HOME (`Escort`). They head for the door they were
+				# given and STOP when he falls behind, so he can never outrun the
+				# person he is helping: the walk is his to lose by leaving, not by
+				# being slower than somebody who has just come out of a yard.
+				#
+				# Half the losing distance is where they wait, so there is a whole
+				# band between "they are waiting for me" and "they are gone", and
+				# a player who looks back can see which one it is.
+				var to: Vector2 = f.target
+				if to_player.length() < Escort.LOSE_TILES * 0.5 and (f.pos as Vector2).distance_to(to) > 0.2:
+					speed = _walk_to(f, to, Tuning.WALK_SPEED * Escort.PACE, delta)
+				else:
+					f.facing = lerp_angle(float(f.facing), to_player.angle(), 1.0 - exp(-3.0 * delta))
 			&"walk", &"play":
 				var target: Vector2 = f.target
 				var d := target - (f.pos as Vector2)
