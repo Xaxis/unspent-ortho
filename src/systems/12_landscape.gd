@@ -15,6 +15,12 @@ var _ms := PackedFloat32Array()
 var _driven: Array[GameSystem] = []
 var _driven_worst := PackedFloat32Array()
 
+## The same for `_process`, over every node under the game rather than only the
+## systems -- the view, the camera, the player and the HUD all have one, and the
+## remaining spikes are on this side. See `_proc_line`.
+var _pdriven: Array[Node] = []
+var _pdriven_worst := PackedFloat32Array()
+
 
 func setup(g: Game) -> void:
 	super.setup(g)
@@ -49,6 +55,31 @@ func started() -> void:
 				_driven.append(s)
 				break
 	_driven_worst.resize(_driven.size())
+	_gather_process(game)
+	_pdriven_worst.resize(_pdriven.size())
+
+
+## Depth-first, parent before children, which IS the order Godot runs `_process`
+## in -- so driving the whole pass from one place preserves it exactly. Nothing
+## else is left with a `_process`, so there is nothing to interleave wrongly with.
+##
+## **WHAT THIS DOES NOT COVER, said out loud rather than implied**: a node that
+## joins the tree after `started()` -- a mob, a raid party -- keeps its own
+## `_process` and is neither driven nor timed. That is exactly the population
+## that could be the cost, so `_proc_line` prints how many nodes it is actually
+## driving. An instrument that quietly covers most of the candidates reads the
+## same as one that covers all of them.
+func _gather_process(n: Node) -> void:
+	if n != self:
+		var src: Script = n.get_script()
+		if src != null:
+			for m: Dictionary in src.get_script_method_list():
+				if String(m.get("name", "")) == "_process":
+					n.set_process(false)
+					_pdriven.append(n)
+					break
+	for c: Node in n.get_children():
+		_gather_process(c)
 
 
 func _physics_process(delta: float) -> void:
@@ -93,7 +124,35 @@ func _driven_line() -> String:
 	return "\nworld physics worst per system (ms): " + ", ".join(out)
 
 
+## The same for the `_process` pass, and the count is part of the reading: it
+## says how much of the frame this line can actually see (`_gather_process`).
+func _proc_line() -> String:
+	if _pdriven.is_empty():
+		return ""
+	var rows: Array = []
+	for i in _pdriven.size():
+		if not is_instance_valid(_pdriven[i]):
+			continue
+		var src := _pdriven[i].get_script() as Script
+		rows.append([_pdriven_worst[i], src.resource_path.get_file()])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	for r: Array in rows.slice(0, 8):
+		out.append("%s %.1f" % [String(r[1]), float(r[0])])
+	return "\nworld proc worst per node (ms, %d driven): " % _pdriven.size() + ", ".join(out)
+
+
 func _process(_delta: float) -> void:
+	# Driven FIRST, and before the early return, because a frame this file bails
+	# out of is still a frame every other node has to run in.
+	for i in _pdriven.size():
+		if not is_instance_valid(_pdriven[i]):
+			continue
+		var began := Time.get_ticks_usec()
+		_pdriven[i].call(&"_process", _delta)
+		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		if took > _pdriven_worst[i]:
+			_pdriven_worst[i] = took
 	if game == null or game.view == null:
 		return
 	_tell_camera_how_tall_it_builds()
@@ -123,7 +182,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms) + _driven_line())
+		print(frame_line(_ms) + _driven_line() + _proc_line())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
