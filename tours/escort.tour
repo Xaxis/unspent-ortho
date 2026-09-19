@@ -1,0 +1,55 @@
+# GETTING THEM HOME, which is a different thing from getting them out
+# (docs/VISION.md §9.5). tours/rescue.tour ends where this begins: the yard is
+# dark and somebody is standing in it. Nobody has walked them anywhere yet.
+#
+#   tools/tour.sh tours/escort.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling --carried=1
+#
+# WHAT THIS PROVES THAT THE RULES CANNOT. `tests/taken/test_escort.gd` argues
+# about distances and destinations with no world in it; what it cannot show is
+# that somebody is really stood up on standable ground at the yard, really walks,
+# and really arrives — three places the pure rules are all correct and the thing
+# still does not happen. The frame at the end is the whole feature: a person who
+# was in a yard, standing at a village.
+#
+# The staging is 9b's, by name and never by a coordinate: `--carried=1` puts one
+# person at the first depot with a village in its region, `at rescue:yard` is that
+# depot and `at rescue:asker` that village.
+
+coast calm
+
+# --- the yard, and the one act -------------------------------------------------
+at rescue:yard
+wait 1.0
+await held_here 6
+press use 5.5
+await works_part 14
+at rescue:yard_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+at rescue:yard_coolant
+wait 0.5
+press use 5.5
+await works_broken 14
+wait 0.8
+
+# SOMEBODY IS ON THE ROAD. Not a line on the glass saying so — the record says
+# it, and the person is standing in the yard where the frame can hold them.
+await walking_home 6
+shot 01-somebody-is-standing-in-the-dark-yard with works,works_dark,folk
+
+# --- the walk ------------------------------------------------------------------
+# `at` is a warp, and a warp is not walking away: the walk comes with him, which
+# is the rule that stops every staged tour silently losing the person it is
+# about. Proved here rather than asserted — if it were wrong, `got_home` below
+# would never come and this line is where it would show.
+at rescue:asker
+wait 1.0
+shot 02-the-walk-came-with-him with folk
+
+# They make their own way to the door once he is near it, at their own pace,
+# which is slower than his on purpose.
+until got_home 30
+shot 03-somebody-out-of-oyster-row-is-home with folk
+press pause
+wait 0.5
