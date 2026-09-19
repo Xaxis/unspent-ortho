@@ -34,6 +34,20 @@ press dev_fly_out 0.15
 wait 2.5
 shot 03-the-island-reads-as-an-island
 
+# ALL THE WAY OUT, which has to hold the WHOLE world and nothing but it. At 45
+# degrees of yaw a square world is a diamond on the glass, so the frame must
+# carry its diagonal, and the pitch foreshortens the down axis -- both of which
+# the old ceiling ignored, so the far end of the zoom left the world short of the
+# frame with black under it and the focus still pinned wherever the player stood
+# (owner, 2026-09-18: "the bottom 3rd or so is always solid black space and the
+# world isnt centred").
+# HELD, not tapped: each step is a factor of 1.22, so the ceiling is some
+# seventeen of them away from where the flyover opens and four taps is nowhere
+# near it. This is the one frame that can catch the fault at all.
+press dev_fly_out 6.0
+wait 1.0
+shot 03b-the-whole-world-centred
+
 # --- across --------------------------------------------------------------------
 # Flying, not warping: the ground streams under the picture the whole way, which
 # is the half `at NAME` can never show.
