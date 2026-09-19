@@ -113,6 +113,20 @@ func _report(w: WorldData, gen_ms: int) -> void:
 	for k: StringName in WorldGen.last_timings:
 		timing += "%s %.0f  " % [k, WorldGen.last_timings[k]]
 	print("timings gen %d ms: %s" % [gen_ms, timing])
+	# The FINE marks too, biggest first. `GenContext.mark` collects about forty-five
+	# of these and `WorldGen.last_detail` keeps them, and this printed only the
+	# eleven coarse ones -- so the number that says WHICH PART of a stage costs
+	# what was thrown away on every run, and had to be gone and got with a
+	# throwaway test every time anybody wanted it.
+	var fine: Array = []
+	for k: StringName in WorldGen.last_detail:
+		fine.append([float(WorldGen.last_detail[k]), String(k)])
+	fine.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var detail := ""
+	for row: Array in fine:
+		if row[0] >= 1.0:
+			detail += "%s %.0f  " % [row[1], row[0]]
+	print("timings detail: %s" % detail)
 
 
 func _pixel(w: WorldData, mesher: TerrainMesher, layer: String, x: int, y: int) -> Color:
