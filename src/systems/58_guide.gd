@@ -165,6 +165,8 @@ func _watch() -> void:
 	# does the thing, not when a lock happens to land on something.
 	if not retired.has(&"target") and Input.is_action_pressed(&"target"):
 		retired[&"target"] = true
+	if sim != null and not retired.has(&"jump") and sim.hero.airborne:
+		retired[&"jump"] = true
 
 
 func _on_took(_item: StringName, _n: int) -> void:
