@@ -94,6 +94,14 @@ var main_ms_max := 0.0
 ## What the coarse world cost, all in: a block's worker plus putting it in.
 var far_ms := 0.0
 var far_count := 0
+## The two halves of a chunk's build that the MESHER's own profile cannot see,
+## because they are this file's work and not its. Without them the stats line
+## named 36 ms of a 46 ms build and looked perfectly healthy doing it — which is
+## how six of seven stages got quoted as the whole cost. See `stats_line`.
+var decor_ms := 0.0
+var props_ms := 0.0
+var _last_decor_usec := 0
+var _last_props_usec := 0
 
 
 func setup(w: WorldData) -> void:
@@ -406,9 +414,14 @@ func _exit_tree() -> void:
 func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	_task_chunk = _bg_mesher.build_arrays(key.x, key.y)
+	var t1 := Time.get_ticks_usec()
 	_task_decor = _bg_decor.build_arrays(_task_chunk)
+	var t2 := Time.get_ticks_usec()
 	_task_props = bake_props(_task_chunk, _bg_mesher, props, spans)
-	_task_usec = Time.get_ticks_usec() - t0
+	var t3 := Time.get_ticks_usec()
+	_task_usec = t3 - t0
+	_last_decor_usec = t2 - t1
+	_last_props_usec = t3 - t2
 
 
 ## Half the side, in tiles, of the square around the focus that the camera sees.
@@ -458,10 +471,15 @@ func _wanted(extra: float) -> Array[Vector2i]:
 func _build(key: Vector2i) -> void:
 	var t0 := Time.get_ticks_usec()
 	var ch := mesher.build_arrays(key.x, key.y)
+	var t1 := Time.get_ticks_usec()
 	var dec := decor.build_arrays(ch)
+	var t2 := Time.get_ticks_usec()
 	var snap := _snapshot(key)
 	var baked := bake_props(ch, mesher, snap[0], snap[1])
-	_add_chunk(key, ch, dec, Time.get_ticks_usec() - t0, baked)
+	var t3 := Time.get_ticks_usec()
+	_last_decor_usec = t2 - t1
+	_last_props_usec = t3 - t2
+	_add_chunk(key, ch, dec, t3 - t0, baked)
 
 
 ## Put a chunk built as arrays into the scene: meshes, decor, props.
@@ -501,6 +519,8 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 	_chunks[key] = node
 	var main := (Time.get_ticks_usec() - t0) / 1000.0
 	var ms := worker_usec / 1000.0 + main
+	decor_ms += _last_decor_usec / 1000.0
+	props_ms += _last_props_usec / 1000.0
 	build_count += 1
 	build_ms += ms
 	build_ms_max = maxf(build_ms_max, ms)
