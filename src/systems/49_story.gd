@@ -365,6 +365,9 @@ func _start_talk(row: Dictionary) -> void:
 		# the frame". Asked of whoever can teach rather than of a named system,
 		# the way 42_target gathers `target_rows`, so the guide can be renumbered
 		# or replaced without a line changing here.
+		# Reachable and not dead code: measured on seed 4, two of six villagers in
+		# the spawn village have nothing written for them. The rest carry their
+		# region's sub-arc, which is the better answer and still wins.
 		if _somebody_teaches():
 			return
 		# Nothing left to teach either. Say so in the world's own flat voice
