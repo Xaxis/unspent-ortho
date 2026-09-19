@@ -161,7 +161,12 @@ vec4 matter_of(int m) {
 	// as a gap between this band and the cliff strata, so an off-by-one lands on
 	// nothing rather than on a material.
 	else if (m == 80) { r = vec4(0.82, 0.36, 0.006, 0.0); }   // TIMBER: sawn board, weathered post
-	else if (m == 81) { r = vec4(0.97, 0.10, 0.030, 0.0); }   // THATCH: dead matte, deepest relief here
+	// THATCH was 0.97 / 0.10 on the auditor's spec, and a frame said no. Dead
+	// matte took the courses out of a roof: at this camera a roof is the one
+	// surface always seen, and what reads on it is the step from course to
+	// course. Matte enough that it never sheens like slate, bright enough that
+	// the thatcher's work survives.
+	else if (m == 81) { r = vec4(0.95, 0.17, 0.030, 0.0); }   // THATCH
 	else if (m == 82) { r = vec4(0.90, 0.22, 0.004, 0.0); }   // CLOTH: canvas, awning, sail
 	else if (m == 83) { r = vec4(0.86, 0.28, 0.012, 0.0); }   // ROPE: lashing, cable-laid cord
 	else if (m == 84) { r = vec4(0.92, 0.24, 0.016, 0.0); }   // CLAY: daub, mud render, cob
@@ -256,8 +261,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// TIMBER: grain the long way of the board, a few knots across it.
 		h = matter_fbm(p * vec2(2.4, 26.0)) * 0.72 + matter_fbm(p * 4.5 + 7.0) * 0.28;
 	} else if (m == 81) {
-		// THATCH: combed stems, fine and all one way, laid in courses.
-		float st = fract(p.y * 38.0 + matter_fbm(p * 2.6) * 2.4);
+		// THATCH: combed stems, all one way, laid in courses. **16 CYCLES PER
+		// WORLD UNIT AND NOT 38.** The frame is 72 pixels to the unit, so 38 put
+		// a stem on two pixels — under the sampler, where it averages to a flat
+		// sheet and the relief is paid for and not seen. 16 is a stem about four
+		// pixels wide, which is a stem.
+		float st = fract(p.y * 16.0 + matter_fbm(p * 2.6) * 2.4);
 		h = st * 0.5 + matter_fbm(p * vec2(1.4, 9.0)) * 0.5;
 	} else if (m == 82) {
 		// CLOTH: a weave, both ways and shallow, over the sag of the bolt.

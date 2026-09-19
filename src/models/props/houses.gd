@@ -364,10 +364,33 @@ static func turf_bank(k: Kit, corners: Array[Vector3], seed_value: int, c: int) 
 ## hole. A roof carries value even where no plate landed — but slate is the
 ## ground of it, so the odd materials stay odd. THE LAST ENTRY IS THE DAMP, and
 ## `patch_slope` only lets it lie at the foot of a slope, where it never dries.
-static var SLATE_ROOF: Array[Color] = [P.SLATE[2], P.SLATE[3], P.SLATE[2], P.SLATE[4], P.SLATE[3], P.SLATE[1],
-	P.SLATE[3], P.SLATE[2], P.SLATE[1].lerp(P.EARTH[1], 0.45), P.EARTH[2], P.MOSS[2].lerp(P.SLATE[2], 0.5)]
-static var THATCH_ROOF: Array[Color] = [P.EARTH[2], P.EARTH[3], P.SAND[3], P.EARTH[2], P.EARTH[3], P.SAND[2],
-	P.EARTH[3], P.SAND[3], P.EARTH[1], P.EARTH[2], P.MOSS[3].lerp(P.EARTH[2], 0.5)]
+## **WHAT THE ROOF IS MADE OF, told to the renderer and not only to the eye.**
+## Every colour here used to reach the shader at alpha 1.0, which is mark 255 and
+## falls to `matter_of`'s default — so slate and thatch came back with the same
+## roughness, the same specular and the same relief, and only the mesh normal
+## told them apart. Under one sun that is two roofs made of one substance.
+## `GroundColors.made` puts the material in the alpha the shader already reads.
+## **SLATE IS DELIBERATELY NOT TAGGED, and that is a finding rather than an
+## omission.** I tagged it CUTSTONE and shot it: the roof did not move, because
+## dressed building stone is (0.84, 0.36) against the default's (0.88, 0.32) —
+## inside the 0.05 that `matter_worn` erases in a week of weather, which is the
+## band's own rule for when a row is not worth having. And slate is not dressed
+## stone anyway: it is a thin, cleaved, faintly glossy tile that should catch
+## MORE light than the default, not less. It wants a row of its own, and until
+## there is one the default is the honest answer.
+static var SLATE_ROOF: Array[Color] = ([
+	P.SLATE[2], P.SLATE[3], P.SLATE[2], P.SLATE[4], P.SLATE[3], P.SLATE[1],
+	P.SLATE[3], P.SLATE[2], P.SLATE[1].lerp(P.EARTH[1], 0.45), P.EARTH[2], P.MOSS[2].lerp(P.SLATE[2], 0.5)])
+static var THATCH_ROOF: Array[Color] = _made(GroundColors.THATCH, [
+	P.EARTH[2], P.EARTH[3], P.SAND[3], P.EARTH[2], P.EARTH[3], P.SAND[2],
+	P.EARTH[3], P.SAND[3], P.EARTH[1], P.EARTH[2], P.MOSS[3].lerp(P.EARTH[2], 0.5)])
+
+
+static func _made(kind: int, bag: Array[Color]) -> Array[Color]:
+	var out: Array[Color] = []
+	for c in bag:
+		out.append(GroundColors.made(c, kind))
+	return out
 
 
 ## Points along a line from a to b, `n + 1` of them, each pushed off the line by
