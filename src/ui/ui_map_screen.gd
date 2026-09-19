@@ -35,10 +35,20 @@ const MARGIN := 72
 const NAME_FROM := 9
 ## Seconds the scanner's line takes to cross the survey.
 const SWEEP_SECONDS := 3.2
+## The widest step of all, and the only one that is COMPUTED: what puts the whole
+## world on the glass at once (owner, 2026-09-19, "zoom out and view the ENTIRE
+## map"). It cannot be a constant beside `SCALES`, because it is a ratio between
+## two things that both move -- 1300 tiles into 810 survey pixels is 0.62 of a
+## pixel a tile, and the next world size changes it. It is offered only when the
+## world does not already fit at `SCALES[0]`, so a small world never grows a
+## redundant step, and `SCALES` itself is untouched so `fit()` and everything
+## holding it still mean what they meant.
+static func whole_world(world_size: int, window: Vector2i) -> float:
+	return minf(float(window.x) / maxf(1.0, world_size), float(window.y) / maxf(1.0, world_size))
 
 var explored: UiExplored
 var data: UiMapData
-var map_scale := 6
+var map_scale := 6.0
 ## Map pixel (tile * map_scale) under the window's top-left pixel.
 var origin_px := Vector2i.ZERO
 
@@ -308,6 +318,25 @@ func _anchor() -> Vector2i:
 	return MAP_RECT.size / 2
 
 
+## Every scale the key offers, widest first.
+func steps() -> Array[float]:
+	var out: Array[float] = []
+	if game != null:
+		var whole := UiMapScreen.whole_world(game.world.size, MAP_RECT.size)
+		if whole < float(SCALES[0]):
+			out.append(whole)
+	for s: int in SCALES:
+		out.append(float(s))
+	return out
+
+
+## Whether the survey is showing the world whole -- the one step at which there
+## is no more to zoom out to, and the readout says so instead of a ratio.
+func at_whole_world() -> bool:
+	var all := steps()
+	return all.size() > SCALES.size() and is_equal_approx(map_scale, all[0])
+
+
 func handle(action: StringName) -> bool:
 	if not is_open:
 		return false
@@ -318,11 +347,25 @@ func handle(action: StringName) -> bool:
 		&"right": _pan(Vector2i(PAN_STEP, 0))
 		&"confirm":
 			var centre := Vector2(origin_px + _anchor()) / map_scale
-			map_scale = SCALES[(SCALES.find(map_scale) + 1) % SCALES.size()]
+			var all := steps()
+			var at := 0
+			for i in all.size():
+				if is_equal_approx(all[i], map_scale):
+					at = i
+					break
+			map_scale = all[(at + 1) % all.size()]
 			if game != null:
-				# Zoom about the middle, but never leave the player off the survey.
-				var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(MARGIN, MARGIN)) / map_scale
-				centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
+				if at_whole_world():
+					# The step whose whole purpose is the world entire centres the
+					# WORLD. Centring on the player here is what the other steps
+					# want and it put a 1300-tile island in the right-hand half of
+					# the glass with the rest empty -- a picture of where he is
+					# standing, at the one scale that is not about that.
+					centre = Vector2(game.world.size, game.world.size) * 0.5
+				else:
+					# Zoom about the middle, but never leave the player off the survey.
+					var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(MARGIN, MARGIN)) / map_scale
+					centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
 			centre_on(centre)
 			Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
 		_:
@@ -335,7 +378,7 @@ func select(id: StringName) -> void:
 	var s := String(id).to_int()
 	if SCALES.has(s) and game != null:
 		var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, [s])
-		map_scale = s
+		map_scale = float(s)
 		centre_on(f.centre)
 
 
@@ -347,7 +390,7 @@ func _pan(d: Vector2i) -> void:
 func _apply() -> void:
 	if game != null:
 		# Keep some of the world in the window: stop a half-window past its edge.
-		var world_px := game.world.size * map_scale
+		var world_px := roundi(game.world.size * map_scale)
 		var half := MAP_RECT.size / 2
 		origin_px.x = clampi(origin_px.x, -half.x, maxi(-half.x, world_px - half.x))
 		origin_px.y = clampi(origin_px.y, -half.y, maxi(-half.y, world_px - half.y))
@@ -388,7 +431,7 @@ func _draw() -> void:
 	var p := game.player.pos
 	var here := BiomeRegistry.at(game.world, p).display_name
 	UiDraw.text(self, Vector2i(r.position.x + 100, HEADER_Y), here, UiTheme.BRIGHT)
-	UiDraw.text_right(self, r.end.x, HEADER_Y, "%s of the land seen   1:%d" % [UiRules.share(_seen_share), map_scale], UiTheme.TEXT_DIM)
+	UiDraw.text_right(self, r.end.x, HEADER_Y, "%s of the land seen   %s" % [UiRules.share(_seen_share), ("whole world" if at_whole_world() else "1:%d" % roundi(map_scale))], UiTheme.TEXT_DIM)
 	draw_keys([["wasd", "look"], ["e", "scale"], ["m", "close"], ["esc", "back"]])
 
 
@@ -427,7 +470,7 @@ func _draw_overlay() -> void:
 	# when a name can find nowhere clear of the marks as well, it takes the best
 	# place clear of the other words and its clearing covers the mark under it.
 	# A name that gives way to a diamond is a name nobody reads.
-	var placed: Array[Rect2i] = [Rect2i(me.x - 32, me.y - 32, 66, 66), Rect2i(r.end.x - 38, r.position.y + 4, 36, 60), Rect2i(r.position.x + 2, r.end.y - 42, 10 * map_scale + 108, 40)]
+	var placed: Array[Rect2i] = [Rect2i(me.x - 32, me.y - 32, 66, 66), Rect2i(r.end.x - 38, r.position.y + 4, 36, 60), Rect2i(r.position.x + 2, r.end.y - 42, roundi(bar_tiles(map_scale) * map_scale) + 108, 40)]
 	var words: Array[Rect2i] = placed.duplicate()
 	var villages: Array[Dictionary] = []
 	for v in game.world.villages:
@@ -471,7 +514,7 @@ func _draw_overlay() -> void:
 				continue
 			if not inner.has_point(a0) and not inner.has_point(a1):
 				continue
-			var col := Color(UiTheme.BRIGHT, (0.3 + 0.6 * float(i) / n) * (0.55 if map_scale == SCALES[0] else 1.0))
+			var col := Color(UiTheme.BRIGHT, (0.3 + 0.6 * float(i) / n) * (0.55 if map_scale <= float(SCALES[0]) else 1.0))
 			var d := a1 - a0
 			var len := maxi(absi(d.x), absi(d.y))
 			# One dot of the module's glass at a time, two in three laid down.
@@ -557,15 +600,27 @@ func _draw_overlay() -> void:
 	UiDraw.rect(ci, Rect2i(nx + 2, ny + 22, p, 21), UiTheme.TEXT)
 	UiDraw.rect(ci, Rect2i(nx, ny + 24, 3 * p, p), UiTheme.TEXT)
 	UiDraw.rect(ci, Rect2i(nx - 2, ny + 26, 5 * p, p), UiTheme.TEXT)
-	# A scale bar: ten tiles at this scale.
+	# A scale bar. It used to be ten tiles always, which is six pixels long once
+	# the whole world is on the glass -- a scale bar shorter than its own label
+	# measures nothing. It now takes a round number of tiles wide enough to read.
+	var tiles := bar_tiles(map_scale)
 	var bx := r.position.x + 12
 	var by := r.end.y - 16
-	var bw := 10 * map_scale
+	var bw := roundi(tiles * map_scale)
 	UiDraw.rect(ci, Rect2i(bx - 6, by - 22, bw + 100, 32), Color(UiTheme.GLASS, 0.85))
 	UiDraw.rect(ci, Rect2i(bx, by, bw + p, p), UiTheme.TEXT)
 	UiDraw.rect(ci, Rect2i(bx, by - 2 * p, p, 3 * p), UiTheme.TEXT)
 	UiDraw.rect(ci, Rect2i(bx + bw, by - 2 * p, p, 3 * p), UiTheme.TEXT)
-	UiDraw.text(ci, Vector2i(bx + bw + 8, by - 16), "10 tiles", UiTheme.TEXT_DIM)
+	UiDraw.text(ci, Vector2i(bx + bw + 8, by - 16), "%d tiles" % tiles, UiTheme.TEXT_DIM)
+
+
+## A round number of tiles whose bar is long enough to be a measure. 1:18 takes
+## ten; the whole world takes hundreds.
+static func bar_tiles(scale: float) -> int:
+	for n: int in [10, 20, 50, 100, 200, 500, 1000]:
+		if n * scale >= 90.0:
+			return n
+	return 1000
 
 
 static func _dotted(ci: CanvasItem, a: Vector2i, b: Vector2i, col: Color, every: int, clip: Rect2i) -> void:
