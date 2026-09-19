@@ -127,6 +127,38 @@ func _group(key: String, shape: StringName, white: bool, rough: float) -> Dictio
 	return {"mm": mm, "next": 0}
 
 
+## Build every mark's textures now, so none is built under a walking player.
+##
+## **A LAZY CACHE IS A HITCH WITH A DELAY ON IT.** `textures` has always been
+## remembered, so this cost nothing on the second step and looked free -- but the
+## FIRST print of each shape-and-ground built a height field, two images pixel by
+## pixel, their mipmaps and two `ImageTexture`s on the main thread, and that is
+## **18.5 ms for the first mark and 7.5 for the next** (#126, measured walking on
+## seed 1). It is not a warm-up cost, because the combinations are not all used at
+## the start: the player pays it again the first time they walk onto a ground that
+## wears differently, which is to say at every border they cross.
+##
+## Ten sets, and the owner has said in writing that loading time is not what he
+## waits on. A cache that is filled when the world is made cannot stutter; one
+## that is filled when the thing is first needed always can.
+##
+## **WHAT IS DELIBERATELY LEFT LAZY, and the measurement behind the choice.** This
+## takes the first mark from 18.5 ms to 13.5 and kills the 7.5 ms second one
+## outright, but it does not reach zero: `_group` still builds a
+## `StandardMaterial3D` per shape-ground-roughness, and a new material with alpha
+## and a normal map is a new pipeline, compiled when it is first DRAWN. Warming
+## those too would mean standing up a group for every combination the ground
+## table allows -- and `groups()` is one draw call per group, so that trades a
+## rare 13 ms for tens of draw calls carried for the whole run. The hitch is the
+## cheaper of the two. Left measured and named rather than silently accepted.
+static func warm() -> void:
+	for shape: StringName in PIXELS:
+		@warning_ignore("return_value_discarded")
+		textures(shape, false)
+		@warning_ignore("return_value_discarded")
+		textures(shape, true)
+
+
 ## [mask, normal] textures for a shape, made once; `hollow_only` for a white ground.
 static func textures(shape: StringName, hollow_only: bool = false) -> Array:
 	var key := "%s|%s" % [shape, hollow_only]

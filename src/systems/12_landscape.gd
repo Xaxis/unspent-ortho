@@ -9,23 +9,160 @@ var _frames := 0
 ## AVERAGE cannot see a hitch and a hitch is what a player calls jumpy: 72 fps
 ## with one frame in twenty at 40 ms reads as stutter and averages as fine.
 var _ms := PackedFloat32Array()
-var _proc := PackedFloat32Array()
-var _phys := PackedFloat32Array()
+
+## Every system whose own script defines `_physics_process`, driven from here
+## under `--stats` so each one can be timed separately. See `_driven_line`.
+var _driven: Array[GameSystem] = []
+var _driven_worst := PackedFloat32Array()
+
+## The same for `_process`, over every node under the game rather than only the
+## systems -- the view, the camera, the player and the HUD all have one, and the
+## remaining spikes are on this side. See `_proc_line`.
+var _pdriven: Array[Node] = []
+var _pdriven_worst := PackedFloat32Array()
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 
 
+## WHICH SYSTEM IS THE SPIKE. Nothing in Godot answers that: `TIME_PHYSICS_PROCESS`
+## is the whole pass, so a 224 ms tick names no culprit and the search becomes
+## reading twenty-five files. So the pass is driven from here instead and each
+## system timed on its own -- which found `24_holds` at **224.6 ms against
+## 30_mobs' 0.7**, a 320x gap between first and second place (#126, docs/PERF.md).
+##
+## **ASK THE SCRIPT, NOT THE NODE.** `has_method("_physics_process")` answers true
+## for a virtual every Node declares, so it would hand back all twenty-five and
+## this would drive systems that never defined one. `get_script_method_list()`
+## lists only what the script itself declares.
+##
+## Order is preserved exactly: `game.systems` IS tree order, and every system
+## that defines `_physics_process` is numbered above 12, so none runs earlier
+## than it did. Only under `--stats`, so a played game is untouched.
+func started() -> void:
+	if game == null or not game.options.stats:
+		return
+	for s: GameSystem in game.systems:
+		if s == self:
+			continue
+		var src: Script = s.get_script()
+		if src == null:
+			continue
+		for m: Dictionary in src.get_script_method_list():
+			if String(m.get("name", "")) == "_physics_process":
+				s.set_physics_process(false)
+				_driven.append(s)
+				break
+	_driven_worst.resize(_driven.size())
+	_gather_process(game)
+	_pdriven_worst.resize(_pdriven.size())
+
+
+## Depth-first, parent before children, which IS the order Godot runs `_process`
+## in -- so driving the whole pass from one place preserves it exactly. Nothing
+## else is left with a `_process`, so there is nothing to interleave wrongly with.
+##
+## **WHAT THIS DOES NOT COVER, said out loud rather than implied**: a node that
+## joins the tree after `started()` -- a mob, a raid party -- keeps its own
+## `_process` and is neither driven nor timed. That is exactly the population
+## that could be the cost, so `_proc_line` prints how many nodes it is actually
+## driving. An instrument that quietly covers most of the candidates reads the
+## same as one that covers all of them.
+func _gather_process(n: Node) -> void:
+	if n != self:
+		var src: Script = n.get_script()
+		if src != null:
+			for m: Dictionary in src.get_script_method_list():
+				if String(m.get("name", "")) == "_process":
+					n.set_process(false)
+					_pdriven.append(n)
+					break
+	for c: Node in n.get_children():
+		_gather_process(c)
+
+
+func _physics_process(delta: float) -> void:
+	for i in _driven.size():
+		var began := Time.get_ticks_usec()
+		_driven[i].call(&"_physics_process", delta)
+		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		if took > _driven_worst[i]:
+			_driven_worst[i] = took
+
+
+## The WORST tick each system took, dearest first. The worst and not the mean,
+## for the reason the whole of docs/PERF.md exists: a 224 ms tick once a second
+## averages to about 4 ms and reads as nothing at all.
+##
+## **THIS TIMES EACH CALL ITSELF RATHER THAN ASKING THE ENGINE, AND THAT IS THE
+## POINT.** `TIME_PROCESS` and `TIME_PHYSICS_PROCESS` cannot attribute a frame at
+## all: measured over a 199-frame run, each of them **changed 4 times**. They are
+## not per-frame values that lag by one, they are a sample taken about twice a
+## second and held flat in between. So `proc 29 + phys 126` printed beside a
+## 132 ms frame is not that frame's split -- it is whatever the sample happened to
+## hold, which is why five separated spikes all read an identical `proc 78`.
+##
+## A line was built here that "aligned" those by reading them a frame later, and
+## it was false precision: no offset fixes a value that is not computed per frame.
+## It first said the cost was outside every `_process` this game owns while the
+## whole of it sat in a `_physics_process`, and when it later pointed AT physics
+## it was right by coincidence, on evidence just as bad. **When an engine counter
+## will not answer the question, time the thing yourself instead of hunting the
+## offset that makes the counter honest.** `stats_line` still prints one
+## end-of-run sample of each, which is all they ever honestly were.
+func _driven_line() -> String:
+	if _driven.is_empty():
+		return ""
+	var rows: Array = []
+	for i in _driven.size():
+		rows.append([_driven_worst[i], (_driven[i].get_script() as Script).resource_path.get_file()])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	for r: Array in rows.slice(0, 6):
+		out.append("%s %.1f" % [String(r[1]), float(r[0])])
+	return "\nworld physics worst per system (ms): " + ", ".join(out)
+
+
+## The same for the `_process` pass, and the count is part of the reading: it
+## says how much of the frame this line can actually see (`_gather_process`).
+func _proc_line() -> String:
+	if _pdriven.is_empty():
+		return ""
+	var rows: Array = []
+	for i in _pdriven.size():
+		if not is_instance_valid(_pdriven[i]):
+			continue
+		var src := _pdriven[i].get_script() as Script
+		rows.append([_pdriven_worst[i], src.resource_path.get_file()])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	for r: Array in rows.slice(0, 8):
+		out.append("%s %.1f" % [String(r[1]), float(r[0])])
+	return "\nworld proc worst per node (ms, %d driven): " % _pdriven.size() + ", ".join(out)
+
+
 func _process(_delta: float) -> void:
+	# Driven FIRST, and before the early return, because a frame this file bails
+	# out of is still a frame every other node has to run in.
+	for i in _pdriven.size():
+		if not is_instance_valid(_pdriven[i]):
+			continue
+		var began := Time.get_ticks_usec()
+		_pdriven[i].call(&"_process", _delta)
+		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		if took > _pdriven_worst[i]:
+			_pdriven_worst[i] = took
 	if game == null or game.view == null:
 		return
 	_tell_camera_how_tall_it_builds()
 	_frames += 1
 	if game.options.stats:
+		# Only the frame's own delta is worth keeping per frame. The engine's
+		# TIME_PROCESS / TIME_PHYSICS_PROCESS monitors were collected here too and
+		# are not per-frame values -- see `_driven_line`'s header for the
+		# measurement that retired them.
 		_ms.append(_delta * 1000.0)
-		_proc.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
-		_phys.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 	# The renderer does not time itself unless asked, and it must be asked BEFORE
 	# the frame that is read: `stats_line` runs at frames-1, so switching this on
 	# here gives it several frames of measurement to report.
@@ -45,7 +182,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms))
+		print(frame_line(_ms) + _driven_line() + _proc_line())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
@@ -158,27 +295,61 @@ const WORST_MS := 33.3
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
 
+## How many frames a run is allowed to spend warming up, and the ceiling on any
+## one of them (docs/PERF.md: warm-up is a separate promise, not an exemption).
+const WARM_MOST := 12
+const WARM_CEILING_MS := 250.0
+
+
+## Where warm-up ends: the leading run of frames that miss the p99 budget, which
+## on a real run is the first one or two while the world lands. Capped, so a
+## pathological run cannot classify its whole self as warm-up and pass.
+##
+## **THIS EXISTS BECAUSE THE JUDGEMENT WAS WRONG WITHOUT IT, IN THE DIRECTION
+## THAT MATTERS.** docs/PERF.md has always bounded warm-up separately, and this
+## line took its percentiles over every frame including it -- so a run measuring
+## p95 9.3 and p99 12.9 in steady play, both inside budget, printed PERF FAIL on
+## the strength of frame 0. An instrument that cannot report a pass cannot be
+## used to tell you when to stop working, and it teaches the reader to discount
+## it, which is worse than printing nothing.
+static func warm_frames(ms: PackedFloat32Array) -> int:
+	var n := 0
+	while n < ms.size() and n < WARM_MOST + 1 and ms[n] > P99_MS:
+		n += 1
+	return n
+
+
 ## WHAT A PLAYER CALLS JUMPY, stated as a distribution rather than an average.
 ## The worst frames are the whole complaint: a run that sits at 8 ms and spikes
-## to 60 four times a second is unplayable and has a fine mean. Percentiles are
-## taken over every frame of the run, and the count is printed so a short run
-## cannot pretend to be evidence.
+## to 60 four times a second is unplayable and has a fine mean. The count is
+## printed so a short run cannot pretend to be evidence.
+##
+## STEADY PLAY IS JUDGED AGAINST THE BUDGETS AND WARM-UP AGAINST ITS OWN BOUND,
+## because they are different promises and a player meets them differently: the
+## warm-up frames are seen once, the rest are lived with.
 static func frame_line(ms: PackedFloat32Array) -> String:
 	if ms.size() < 4:
 		return "world frames: too few to say (%d)" % ms.size()
-	var a := Array(ms)
+	var warm := warm_frames(ms)
+	var warm_worst := 0.0
+	for i in warm:
+		warm_worst = maxf(warm_worst, ms[i])
+	var steady := ms.slice(warm)
+	if steady.size() < 4:
+		return "world frames: too few after warm-up to say (%d of %d)" % [steady.size(), ms.size()]
+	var a := Array(steady)
 	a.sort()
 	var pick := func(q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)])
 	var over := 0
 	for v: float in a:
-		if v > 16.7:
+		if v > P99_MS:
 			over += 1
 	# WHERE the slow frames fall decides what kind of problem it is: bunched at the
 	# start is warm-up a player sees once, spread through the run is a hitch they
 	# live with. An average cannot tell those apart and they want opposite fixes.
 	var where := PackedStringArray()
-	for i in ms.size():
-		if ms[i] > 16.7:
+	for i in range(warm, ms.size()):
+		if ms[i] > P99_MS:
 			where.append("%d:%.0f" % [i, ms[i]])
 	# JUDGED, not just reported. docs/PERF.md sets the budgets and the reason the
 	# headline is the WORST frame: BotW's target frame is 33.3 ms, so ours may
@@ -200,8 +371,14 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 		bad.append("worst")
 	if p50 > 0.0 and worst / p50 > WORST_OVER_P50:
 		bad.append("worst/p50")
-	return "world frames: n %d, p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over 16.7 ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
-		a.size(), p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
-		over, 100.0 * over / a.size(),
+	# Warm-up is judged too, on its own terms, so it can never be a hiding place:
+	# a loading screen that is not over is still a loading screen.
+	if warm > WARM_MOST:
+		bad.append("warm-up frames")
+	if warm_worst > WARM_CEILING_MS:
+		bad.append("warm-up ceiling")
+	return "world frames: n %d steady (+%d warm-up, worst %.0f ms), p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over %.1f ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
+		a.size(), warm, warm_worst, p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
+		P99_MS, over, 100.0 * over / a.size(),
 		("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad)),
 		" ".join(where)]
