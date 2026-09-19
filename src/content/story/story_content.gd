@@ -2017,6 +2017,30 @@ const MOODS := {
 }
 
 const SUBARCS := {
+	# The rescue and the sabotage are the same act, and these words are why it is
+	# worth doing: the yard was always the most dangerous ground in a landscape,
+	# and now it is the ground somebody's neighbour is standing on. `%s` is who
+	# the plan took, as anybody here speaks of them (`Taken.say`) — a name where
+	# one is known, and "somebody out of Oyster Row" where none is, which is
+	# still a person and not a number.
+	&"rescue": {
+		"ask": [
+			"They took %s. Out of the door, in the morning, and not one of us moved.",
+			"They're at the yard. Everybody here knows it and nobody says it.",
+			"A yard that's dark doesn't hold anybody.",
+		],
+		"answer": "Then I'll put it dark.",
+		# `%s` never opens a line here: "somebody out of Oyster Row" is a phrase,
+		# not a name, and a sentence that begins with it begins in lower case.
+		"thanks": [
+			"They say %s came up the road at dusk. Thin. Walking.",
+			"We don't ask what a yard is for any more. We ask who's come back.",
+		],
+		"kept": [
+			"You said you'd put it dark, and they say %s came up the road at dusk.",
+			"I'll not say it was you. I'll only say they're home.",
+		],
+	},
 	&"sabotage": {
 		"ask": [
 			"They put a yard up at %s and it hasn't stopped since.",
@@ -2064,6 +2088,20 @@ const SUBARCS := {
 			"That's all I wanted. You can't miss what you've never seen.",
 		],
 	},
+}
+
+## What is said on the glass when the plan carries somebody off, and when a yard
+## going dark lets them out (`src/systems/45_taken.gd`, `src/core/taken/`).
+##
+## Here rather than in that system for the reason every other line is here: the
+## words can be moved without touching the record that holds them. The first of
+## them is doing work beyond its own moment — it says WHERE they were taken, and
+## that is the only teaching the rescue sub-arc ever gets. Nothing else in the
+## game tells a player that a depot holds people.
+const TAKEN := {
+	"took": "They carried %s off toward the yard.",
+	"freed": "%s walked out of the yard and took the road home.",
+	"freed_many": "They walked out of the yard: %s.",
 }
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------

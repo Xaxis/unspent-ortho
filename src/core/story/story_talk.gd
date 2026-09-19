@@ -31,6 +31,9 @@ static func of_made(def: Dictionary) -> StoryTalk:
 	t.node = StringName(str(def.get("start", &"")))
 	@warning_ignore("return_value_discarded")
 	Story.hear(StringName(str(def.get("mark", &""))))
+	# What the asking was about, kept with the asking, so whoever thanks him for
+	# it can still name it once the world has changed out from under it.
+	Story.hear_about(StringName(str(def.get("mark", &""))), str(def.get("about", "")))
 	t._land(t._node())
 	return t
 

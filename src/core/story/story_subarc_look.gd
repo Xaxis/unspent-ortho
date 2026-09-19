@@ -12,6 +12,13 @@ var works_dark := false
 ## What the people here call the ground the yard works: the machines' own mark on
 ## it (GenWorks: a cut, a burn, a quarry, a bore field).
 var works_name := "the works"
+## Who the plan is holding at that yard, and who has walked back out of it, as
+## they are spoken of (`Taken.say`: a name when anybody knows one, and "somebody
+## out of Oyster Row" when nobody does). The first is why a yard is worth walking
+## into; the second is what somebody thanks him for afterwards, and is why the
+## record outlives the rescue.
+var held: Array[String] = []
+var freed: Array[String] = []
 ## Every landmark of the region: {id: int, kind, name, pos, found, opened}.
 var landmarks: Array[Dictionary] = []
 ## Whether this region's keeper has been taken, and what the plan's network here

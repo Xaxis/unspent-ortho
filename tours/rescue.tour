@@ -1,0 +1,74 @@
+# WHAT A YARD IS WORTH WALKING INTO (docs/VISION.md §9.5, §10.4). The plan has
+# carried somebody off, and the region stops asking him about its ground and
+# starts asking him about a person. The same three housings, the same steel edge,
+# the same dark yard as tours/works.tour — and this time somebody walks out of it
+# and somebody at the village says so.
+#
+#   tools/tour.sh tours/rescue.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling --carried=1
+#
+# `--carried=1` stages what hours of real play would: one person held at the
+# first depot of the plan that has a village in its region (45_taken), because a
+# rescue needs both halves — a yard to put dark and somebody left who knew them.
+# `at rescue:asker` is that village and `at rescue:yard` is that depot: named, never a
+# coordinate and never an index, because `place works` is the first depot
+# anywhere on the island and the plan does not take people to it out of politeness.
+
+coast calm
+at rescue:asker
+wait 2.5
+at rescue:somebody
+wait 0.4
+
+# THE ASK. Whoever is in front of him lives here, and what they have to say is
+# what the region has to say: not the yard, not the ground, the neighbour who was
+# taken out of a door in the morning. "A yard that's dark doesn't hold anybody"
+# is the whole of the teaching — no marker, no task line, no arrow.
+press use
+await talking 4
+wait 0.5
+shot 01-somebody-asks-after-a-neighbour with talking,folk
+# And he says he will, because what they say at the end is about what he said
+# here: saying nothing is always the other answer and is never punished.
+tap use
+wait 0.6
+await heard_ask:rescue 3
+
+# THE YARD, and the reason it is not a number any more. It is the most dangerous
+# ground in a landscape and it was always the most important, and only now can
+# anybody say why.
+at rescue:yard
+wait 1.0
+await held_here 6
+shot 02-the-yard-that-is-holding-them with works,works_lit,works_yard
+
+# THE ONE ACT. Three housings, three walks, a steel edge and the key held — the
+# same thing tours/works.tour proves, doing three things at once: half of a
+# chapter's DEFENDED, the region quiet for good, and the door open.
+press use 5.5
+await works_part 14
+at rescue:yard_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+at rescue:yard_coolant
+wait 0.5
+press use 5.5
+await works_broken 14
+wait 0.6
+await freed 6
+shot 03-the-yard-goes-dark-and-they-walk-out with works,works_dark
+
+# THE THANKS. Back at the village, and this is the line the package could not
+# say for its whole life: the act that answers a goal is the act that stops the
+# goal being raised, so the region used to greet him with the next errand.
+at rescue:asker
+wait 2.5
+at rescue:somebody
+wait 0.4
+press use
+await talking 4
+await thanked:rescue 4
+wait 0.5
+shot 04-he-said-he-would-and-they-say-he-did with talking,folk
+press pause
+wait 0.5

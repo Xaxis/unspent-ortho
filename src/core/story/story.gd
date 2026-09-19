@@ -120,6 +120,29 @@ static func heard(id: StringName) -> bool:
 	return _heard.has(id)
 
 
+## What a telling was ABOUT, remembered with the telling itself. A sub-arc is
+## answered by the world CHANGING — the cache is opened, the yard goes dark — so
+## afterwards the thing it was about can no longer be found by looking for one
+## that is still waiting, and somebody who thanks him has to be able to name it.
+## Kept in the same list as the telling, and so saved and forgotten with it.
+static func hear_about(id: StringName, about: String) -> void:
+	if id == &"" or about == "":
+		return
+	var mark := StringName("at.%s|%s" % [id, about])
+	if not _heard.has(mark):
+		_heard.append(mark)
+
+
+## What that telling was about, or "".
+static func heard_about(id: StringName) -> String:
+	var head := "at.%s|" % id
+	for m: StringName in _heard:
+		var s := String(m)
+		if s.begins_with(head):
+			return s.substr(head.length())
+	return ""
+
+
 ## Something the world saw him do. Only what could have been OBSERVED belongs
 ## here (docs/STORY_SYSTEM.md §7), and the same act in the same land inside an hour
 ## is one thing seen, not two.

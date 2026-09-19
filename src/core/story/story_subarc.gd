@@ -15,9 +15,16 @@ class_name StorySubarc
 ## read the authored list). A sub-arc may land an authored beat where it touches
 ## the spine, which is what keeps them one story.
 
-## In the order a region offers them: the yard that is taking the place apart
-## first, then what its own people have lost, then what nobody has been to see.
-const GOALS: Array[StringName] = [&"sabotage", &"recover", &"discover"]
+## In the order a region offers them: somebody the plan is holding first, because
+## a yard stops being a number the moment a neighbour is inside it; then the yard
+## itself taking the place apart; then what its own people have lost; then what
+## nobody has been to see.
+##
+## Rescue and sabotage are ONE ACT and two askings on purpose (`src/core/taken/`,
+## unspent-ortho-cb). Putting the yard dark is what frees them, so a region that
+## is holding somebody never asks about the ground: it asks about the person, and
+## the ground is what he has to walk over to answer.
+const GOALS: Array[StringName] = [&"rescue", &"sabotage", &"recover", &"discover"]
 
 
 ## What a region says has three moods and they are not its demands (owner's §10,
@@ -33,9 +40,42 @@ static func mood(look: StorySubarcLook) -> StringName:
 
 
 ## What this region is asking, or {} when it asks nothing: {id, goal, place, pos}.
+##
+## A goal the world has ANSWERED outranks the next thing the region wants, until
+## somebody has thanked him for it. Without that the thanks could never be said:
+## the one act that answers a goal is the act that stops it being raised, so the
+## moment the yard went dark the region began asking for a cache instead, and the
+## person he did it for met him with an errand. The thanks was written and
+## unreachable for the whole life of the package.
 static func raised(look: StorySubarcLook) -> Dictionary:
 	if look == null or look.region < 0:
 		return {}
+	var owed := _owed(look)
+	return owed if not owed.is_empty() else _asking(look)
+
+
+## A goal he was told about, has answered, and nobody has thanked him for. What
+## it was ABOUT comes from the telling (`Story.heard_about`) rather than from the
+## world, because the world answered it by changing: the cache he opened is no
+## longer one that is waiting to be opened.
+static func _owed(look: StorySubarcLook) -> Dictionary:
+	for goal: StringName in GOALS:
+		var id := StringName("%d:%s" % [look.region, goal])
+		if not Story.heard(id) or Story.heard(StringName("%s:said" % id)):
+			continue
+		var place := Story.heard_about(id)
+		if answered(look, goal, place):
+			return {"id": id, "goal": goal, "place": place, "pos": _where(look, goal, place)}
+	return {}
+
+
+## What the region wants now, or {}.
+static func _asking(look: StorySubarcLook) -> Dictionary:
+	# Only ever asked where there is a yard to put dark, because that is the one
+	# act that lets anybody out of it: a region with nobody to break has no way
+	# to answer, and a sub-arc nobody can answer is a cruelty, not a story.
+	if not look.held.is_empty() and look.works != Vector2.INF:
+		return _one(look, &"rescue", look.held[0], look.works)
 	if look.works != Vector2.INF and not look.works_dark:
 		return _one(look, &"sabotage", look.works_name, look.works)
 	var cache := look.any(true, false)
@@ -47,10 +87,23 @@ static func raised(look: StorySubarcLook) -> Dictionary:
 	return {}
 
 
+## Where the thing a goal is about stands, for whoever shows it.
+static func _where(look: StorySubarcLook, goal: StringName, place: String) -> Vector2:
+	if goal == &"rescue" or goal == &"sabotage":
+		return look.works
+	for l: Dictionary in look.landmarks:
+		if str(l.name) == place:
+			return l.pos as Vector2
+	return Vector2.INF
+
+
 ## Whether what the region asked for has been done. Read off the world, never
-## counted: the yard is dark, or the cache is open, or the place has been found.
+## counted: nobody is held there any more, or the yard is dark, or the cache is
+## open, or the place has been found.
 static func answered(look: StorySubarcLook, goal: StringName, place: String) -> bool:
 	match goal:
+		&"rescue":
+			return look.held.is_empty()
 		&"sabotage":
 			return look.works_dark
 		&"recover":
@@ -121,10 +174,15 @@ static func _page(said: Dictionary, lines: Array, mark: StringName, last: String
 			{"text": last, "pick": &"will", "to": &""},
 			{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 		]
-	return {
+	var page := {
 		"made": true, "mark": mark, "title": "somebody who lives here", "start": &"open",
 		"nodes": {&"open": {"says": says, "pick_at": StringName("ask.%s" % said.get("id", &"")), "replies": replies}},
 	}
+	# An ASKING remembers what it was about, so the thanks can name it after the
+	# world has changed (`Story.hear_about`, read back by `_owed`).
+	if asking:
+		page["about"] = str(said.get("place", ""))
+	return page
 
 
 static func _one(look: StorySubarcLook, goal: StringName, place: String, pos: Vector2) -> Dictionary:

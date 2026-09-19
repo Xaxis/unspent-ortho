@@ -136,3 +136,103 @@ func test_a_place_that_is_answered_says_so_in_the_words_of_somebody_watching() -
 	check(words.contains("every track on this ground"), "what they have watched him do:\n%s" % words)
 	check(not words.contains("enough") and not words.contains("counted"), "and nothing about a count")
 	Story.forget()
+
+
+## The one a yard is worth walking into for. The plan carries somebody off, the
+## region stops asking about the ground and starts asking about the person, and
+## the same act answers both.
+func test_a_region_holding_somebody_asks_about_them_and_not_about_the_ground() -> void:
+	Story.forget()
+	var look := _look(Vector2(20, 20), false, [_mark("the mast", true, false)])
+	look.held = ["somebody out of Oyster Row"]
+	var said := StorySubarc.raised(look)
+	eq(StringName(str(said.goal)), &"rescue", "a neighbour in the yard outranks the yard")
+	eq(str(said.place), "somebody out of Oyster Row", "and they are spoken of as a person")
+	var ask := StorySubarc.talk(look, said)
+	var words := "\n".join(ask.nodes[&"open"].says)
+	check(words.contains("They took somebody out of Oyster Row"), "in their own words:\n%s" % words)
+	check(words.contains("dark doesn't hold anybody"), "and the answer is named without being a marker")
+	# A region with nobody to break has no way to let anybody out, so it never
+	# asks: a sub-arc that cannot be answered is a cruelty and not a story.
+	var nowhere := _look(Vector2.INF, false, [])
+	nowhere.held = ["somebody out of Oyster Row"]
+	check(StringName(str(StorySubarc.raised(nowhere).get("goal", &""))) != &"rescue", "and no yard is no asking")
+	Story.forget()
+
+
+## The bug this closes is the shape the whole package had: the ACT that answers a
+## goal is the act that stops the goal being raised, so the moment the yard went
+## dark the region began asking for a cache instead and nobody ever thanked him.
+func test_a_goal_the_world_answered_is_still_owed_a_thanks() -> void:
+	Story.forget()
+	var lit := _look(Vector2(20, 20), false, [_mark("the mast", true, false)])
+	lit.held = ["Ruth"]
+	var said := StorySubarc.raised(lit)
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(lit, said))
+	check(Story.heard(said.id), "he was asked")
+	# The yard goes dark: Ruth walks out, and the region now wants a cache.
+	var dark := _look(Vector2(20, 20), true, [_mark("the mast", true, false)])
+	dark.freed = ["Ruth"]
+	var owed := StorySubarc.raised(dark)
+	eq(StringName(str(owed.goal)), &"rescue", "what he answered outranks what they want next")
+	eq(str(owed.place), "Ruth", "and they can still name who it was about")
+	var thanks := StorySubarc.talk(dark, owed)
+	check("\n".join(thanks.nodes[&"open"].says).contains("Ruth came up the road"), "so they can thank him for her")
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(thanks)
+	# Thanked, the region goes back to wanting things.
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(dark, StorySubarc.raised(dark)))
+	eq(StringName(str(StorySubarc.raised(dark).goal)), &"recover", "and then it asks for the next thing")
+	Story.forget()
+
+
+## What he was asked for is remembered with the asking, because the world answers
+## by CHANGING: the cache he opened is no longer one that is waiting to be opened,
+## so it cannot be found by looking for one.
+func test_what_the_asking_was_about_outlives_the_thing_being_done() -> void:
+	Story.forget()
+	# No yard at all, so the region is quiet and has only its own losses to ask
+	# about: a yard gone dark would be a MOOD, and a mood outranks an errand.
+	var waiting := _look(Vector2.INF, false, [_mark("the mast", true, false), _mark("the tower", true, false)])
+	var said := StorySubarc.raised(waiting)
+	eq(StringName(str(said.goal)), &"recover")
+	eq(str(said.place), "the mast")
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(StorySubarc.talk(waiting, said))
+	eq(Story.heard_about(said.id), "the mast", "which cache it was is kept with the telling")
+	var opened := _look(Vector2.INF, false, [_mark("the mast", true, true), _mark("the tower", true, false)])
+	var owed := StorySubarc.raised(opened)
+	eq(str(owed.place), "the mast", "so the thanks is for the one he opened")
+	check("\n".join(StorySubarc.talk(opened, owed).nodes[&"open"].says).contains("his cache"), "in the words written for it")
+	Story.forget()
+
+
+## The whole of it in a running game: the plan is holding somebody at the yard the
+## player is standing in, the region asks about THEM rather than about the ground,
+## and the one act that answers it says so on the glass in the story's own words.
+func test_a_staged_world_holds_somebody_and_the_region_asks_about_them() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--place=works", "--carried=1"])
+	await frames(6)
+	var story: Node = Sx.system(g, "49_story")
+	var look: StorySubarcLook = story.call("subarc_look")
+	check(not look.held.is_empty(), "the story sees who the yard is holding: %s" % [look.held])
+	var said: Dictionary = StorySubarc.raised(look)
+	eq(StringName(str(said.get("goal", &""))), &"rescue", "and the region asks about the person")
+	eq(str(said.place), look.held[0], "by the name anybody here would use")
+	# The one act. The works package's own signal is what frees them, so nothing
+	# in the story had to know what a depot is.
+	var lines := PackedStringArray()
+	var heard := func(text: String) -> void: lines.append(text)
+	Events.message.connect(heard)
+	Events.works_broken.emit(look.region, look.land)
+	await frames(2)
+	Events.message.disconnect(heard)
+	check("\n".join(lines).contains("walked out of the yard"), "and somebody walks out of it: %s" % [lines])
+	var after: StorySubarcLook = story.call("subarc_look")
+	check(after.held.is_empty() and not after.freed.is_empty(), "the record outlives the rescue")
+	check(StorySubarc.answered(after, &"rescue", str(said.place)), "and the world says it is answered")
+	Sx.end(g)
+	Story.forget()
