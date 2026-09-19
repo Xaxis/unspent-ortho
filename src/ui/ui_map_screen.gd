@@ -91,7 +91,7 @@ func _on_open() -> void:
 	data.ensure()
 	if explored == null:
 		explored = UiExplored.new(game.world.size)
-	_seen_tex = ImageTexture.create_from_image(Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.mask))
+	_seen_tex = ImageTexture.create_from_image(Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.shown_mask()))
 	_material.set_shader_parameter("ground_tex", data.ground)
 	_material.set_shader_parameter("level_tex", data.level)
 	_material.set_shader_parameter("coast_tex", data.coast)
@@ -103,7 +103,7 @@ func _on_open() -> void:
 	_material.set_shader_parameter("world_size", float(game.world.size))
 	_regions = UiMapScreen.region_labels(game.world, explored)
 	_seen_share = explored.fraction()
-	var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, SCALES)
+	var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, SCALES)
 	map_scale = f.scale
 	centre_on(f.centre)
 
@@ -311,7 +311,7 @@ func handle(action: StringName) -> bool:
 func select(id: StringName) -> void:
 	var s := String(id).to_int()
 	if SCALES.has(s) and game != null:
-		var f := UiMapScreen.fit(explored.bounds, game.player.pos, MAP_RECT.size, [s])
+		var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, [s])
 		map_scale = s
 		centre_on(f.centre)
 

@@ -8,6 +8,11 @@ extends DevPage
 ##
 ## E goes there and shuts the app, so the place is what is seen next.
 ##
+## And the map whole (owner, 2026-09-18, "in dev mode you should obviously be able
+## to reveal the full world map on the map"), which belongs here rather than on
+## VIEW because it is the other half of warping: the rows below say where a place
+## is, and the survey is how you decide it is worth the trip.
+##
 ## The typed line is the whole of "anywhere": it takes a coordinate ("342, 362")
 ## and every name GenPlaces answers to — the same words the tools' `--place=` and
 ## a tour's `place` take, including the ones no row here could ever list, like
@@ -52,6 +57,9 @@ func rows() -> Array[Dictionary]:
 	if DevSession.came_from.is_finite():
 		out.append(item(&"back", "back where I was", _tiles(DevSession.came_from)))
 	out.append(item(&"typed", "by name or x,y…", _typed))
+	# On GO rather than VIEW because it is half of warping: the list below says
+	# where a place IS, and the map is how you decide it is worth going.
+	out.append(item(&"map", "the whole map", "shown" if _map_shown() else "as walked", {"steps": true}))
 	var group := ""
 	for p: Dictionary in _places:
 		var g := _group(String(p.id))
@@ -106,10 +114,35 @@ func _to(id: StringName) -> Vector2:
 	return p.pos as Vector2
 
 
+## The explored map of whichever system keeps one, through the same door the save
+## takes: systems are found by what they KEEP, never by their number.
+func _explored() -> UiExplored:
+	return SaveCore.explored_of(game)
+
+
+func _map_shown() -> bool:
+	var e := _explored()
+	return e != null and e.revealed
+
+
+func _show_map(on: bool) -> void:
+	var e := _explored()
+	if e == null:
+		return
+	if on:
+		e.reveal_all(game.world)
+	else:
+		e.revealed = false
+	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+
+
 func confirm(row: Dictionary) -> void:
 	var id: StringName = row.get("id", &"")
 	if id == &"typed":
 		screen.edit_text(&"typed", _typed, TYPED_MAX, _resolve)
+		return
+	if id == &"map":
+		_show_map(not _map_shown())
 		return
 	_go(_to(id))
 
@@ -146,9 +179,17 @@ func _resolve(text: String) -> void:
 	_go(at)
 
 
+func side(row: Dictionary, _dir: int) -> void:
+	if row.get("id") == &"map":
+		_show_map(not _map_shown())
+
+
 func keys(row: Dictionary) -> Array:
-	if row.get("id") == &"typed":
-		return [["e", "type a place"], ["esc", "back"]]
+	match row.get("id"):
+		&"typed":
+			return [["e", "type a place"], ["esc", "back"]]
+		&"map":
+			return [["e", "shown / as walked"], ["esc", "back"]]
 	return [["e", "go there"], ["esc", "back"]]
 
 
@@ -160,6 +201,9 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 	if id == &"typed":
 		_typed_detail(ci, r, y)
 		return
+	if id == &"map":
+		_map_detail(ci, r, y)
+		return
 	var to := _to(id)
 	if not to.is_finite():
 		return
@@ -170,6 +214,18 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 			return
 		note = str(p.note)
 	_where(ci, r, y, to, note)
+
+
+## Says what it does and, as plainly, what it does NOT: the walked map is still
+## underneath and the share on the pause page still counts it, so this can be
+## turned on to read a seed and off again without having spent anybody's game.
+func _map_detail(ci: CanvasItem, r: Rect2i, y: int) -> void:
+	var e := _explored()
+	y = panel_pair(ci, r, y, "walked", "%d%%" % roundi((e.fraction() if e != null else 0.0) * 100.0))
+	y = panel_wrapped(ci, r, y + 8, "The survey (m) drawn whole, every landscape, border and "
+		+ "village, whether it has been walked to or not.")
+	panel_wrapped(ci, r, y + 8, "Shown only. What the player has really seen is untouched "
+		+ "underneath, the walked share above still counts it, and nothing of this reaches a save.")
 
 
 func _typed_detail(ci: CanvasItem, r: Rect2i, y: int) -> void:
