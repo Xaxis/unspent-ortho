@@ -293,6 +293,22 @@ tools print their own summaries.
   `worked_down`, which had to be recorded because a prop that has been taken from
   looks like a smaller prop. When you catch yourself asking the live world whether
   something was done, ask instead who wrote it down.
+- **A landscape's own declaration outranks the shared list, and the shared list
+  is usually older than the landscape.** Four bugs in one evening were this, and
+  every one read as a world that had broken: the Ruined Metropolis's own iron ore
+  called an intruder in its ground (declared in `BiomeDef.ore`, checked against
+  `props`); Steam Row read as a village with a bog in it for all hundred and
+  thirty tiles of its core (the Sulphur Jungle declares `village_ground = MUD`
+  and the shared forbidden list bans mud); the Middens' pools called unrimmed
+  (it declares `pool_rim_ground = SWARF`, the check read "peat or mud"); and a
+  village cap of 28 that no world could reach, because `12 + (lands - 6)` assumed
+  every landscape brings people and five declare `villages = 0` on purpose. The
+  shared list was right when there were six landscapes and every village was
+  somebody's field. **So before adding a landscape to a rule's exception list,
+  check whether the landscape already declared the answer** — `BiomeDef` is the
+  authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
+  presses a body with, and a shared rule that cannot see a declaration will keep
+  reporting content as breakage.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
