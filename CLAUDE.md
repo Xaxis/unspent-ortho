@@ -211,6 +211,11 @@ integrating a wave, and never delete or weaken a tour to make one pass.
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
 change, shoot the gallery. Judge beauty, not just correctness.
+**But a SHOT cannot show the guide**: `58_guide` sets `_off = options.shot != ""`,
+so the goal line and the key row are switched off in every `tools/shot.sh` run,
+not only the single-frame ones its comment mentions. Four shots of an empty glass
+before reading that. A guide line needs a TOUR, where `options.shot` is empty —
+and `feel.tour`'s `01-wake-the-goal` is the frame for it.
 
 Never pipe a gate through `tail`/`head` in a way that hides its exit code. The
 tools print their own summaries.
