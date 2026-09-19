@@ -51,19 +51,25 @@ this table existed. Do not plan against `lattice` before reading `props`.
 
 ## 1. Correctness — things that change a frame today
 
-1. **~8 unshaded draw paths write raw sRGB into `ALBEDO`**, bypassing the one
-   colour door: `15_lights.gd:230-233` (`_glow_mat`, which draws the player's
-   LANTERN and every lit window pane), `beam.gdshader:106`,
-   `part_glow.gdshader:76`, `mob_fx.gd:405/:476/:508`,
-   `survival_fx/mark.gdshaderinc:46`, `shafts.gdshader:172`. On Forward+ — which
-   every `tools/shot.sh` uses — these sit ~1.5 stops bright and flat and differ
-   from the web build, the one gap `CompatTrim` closes everywhere else.
-   `render_probe.gd:203` measured the encode on an `unshaded` quad, so
-   `unshaded` is not an exemption, it is the case that was measured.
-   `test_colour_space.gd:26-33` guards six shaders, all already compliant.
-   **The tell it is drift, not a decision:** `mob_fx.gd:466` goes through
-   `matter_light` with a comment saying why, and it is one of four in its own
-   file. Overlaps open task #90.
+1. ~~~8 unshaded draw paths write raw sRGB into `ALBEDO`~~ — **FIXED at
+   `23b4a13`, except `mob_fx`.** The lantern and every lit window pane
+   (`_glow_mat`, which is a `StandardMaterial3D` and so cannot call the door —
+   it gets `vertex_color_is_srgb` from `Quality.forward_plus()` instead), the
+   scan beams, the working-part halos, the survival marks and the light shafts.
+   `mob_fx.gd:405/:476/:508` are deliberately NOT done: they are open task #90's
+   and two people fixing one file is a merge, not a fix.
+   **Two things came out of it worth keeping.** First, the test named six
+   shaders and all six already obeyed, so it could not fail and never did; it
+   sweeps the tree now and found two more the moment it could. Second, **there
+   are two doors and nobody had written down the second**: `matter_albedo()`
+   converts in the fragment off `sky_linear`, and a `uniform vec3 x :
+   source_color` converts when the uniform is SET, per renderer — the same
+   decision made once instead of per pixel, and the better door for a colour
+   constant over a draw. `rays.gdshader` uses the second correctly and is
+   excused by name; the excuse is checked. `precip.gdshader` used it for its
+   three colours and then mixed them toward `SKY_PAGE`, a raw palette const, so
+   lit rain and snow were driven toward a page colour in the wrong space on one
+   renderer. That one was found BY the new sweep, not by the audit.
 2. **`found.gdshader`'s `wear_take` is documented, read, and never written.** It
    occurs twice in the whole repository, both in that file, so every FOUND
    surface wears at 1.0 and trips `matter_worn`'s `amount > 0.5` seam branch. A
