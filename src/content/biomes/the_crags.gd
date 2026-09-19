@@ -88,9 +88,12 @@ static func make() -> BiomeDef:
 	d.villages = 1
 	d.village_order = 20
 	d.village_names = ["Cairnwell", "Thin Ford"]
+	# Still the foggiest place there is, and clear is still its rarest weather --
+	# but 6 of 100 meant a player could cross it and never once see it. A day the
+	# fog lifts is what makes the fog mean something.
 	d.weather = [
-		[Weather.FOG, 34, 0.0], [Weather.GREY, 26, 0.0], [Weather.RAIN, 22, 0.55],
-		[Weather.DRIZZLE, 12, 0.0], [Weather.CLEAR, 6, 0.0],
+		[Weather.FOG, 30, 0.0], [Weather.GREY, 24, 0.0], [Weather.RAIN, 20, 0.55],
+		[Weather.CLEAR, 16, 0.0], [Weather.DRIZZLE, 10, 0.0],
 	]
 	# The foggiest place there is: it is what the landscape is FOR.
 	d.mist = 0.55
