@@ -48,6 +48,20 @@ this table existed. Do not plan against `lattice` before reading `props`.
 - The coarse far world (`world_far.gd`), the chunk park, the capped reach, and
   the clip planes following the frame. See `433cf68`.
 - The self-checking stats line and the dry-chunk water gate. See `fe783a4`.
+- The colour door, eight draw paths, and a test that sweeps the tree instead of
+  a hand-written list. See `23b4a13`.
+- The MADE material band's FOUNDATION: twelve rows at 80..91, a height branch
+  each, and the grain drawn in the right plane. **Nothing is tagged to them yet**
+  — see §2.1. See `e822694`.
+- The player's zoom, and the sun's shadow range following the camera with it.
+
+**AND A PROCESS RULE PAID FOR IN FULL: MERGE TO MAIN AFTER EVERY PIECE.** Eleven
+of the above sat green and pushed on a branch while the owner started the game
+the way he always does — `godot --path .` in the main checkout — and reported
+that the new zoom "doesnt do anything". It did not, for him, and would not have
+for anyone. A branch that is green and unmerged is worth nothing, and "green" is
+a true statement about the step before the one that matters. It is the same shape
+as the stats line that read 121 of 121 while the world was not on the screen.
 
 ## 1. Correctness — things that change a frame today
 
