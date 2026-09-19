@@ -141,7 +141,12 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	gt(float(said.size()), 0.0, "then the hints resume")
 	said.clear()
 	Events.fight_ended.emit(&"won")
-	for i in 3:
+	# **LONGER THAN `SPACING`, OR THIS IS A TEST OF THE SCHEDULE.** The guide says
+	# one line every 4.5 s and this allowed 3, so whether the goal arrived inside
+	# the window depended on exactly when the last lesson happened to land. It
+	# passed for as long as the lesson list produced a convenient rhythm and went
+	# red the day a lesson was added -- with the behaviour it is about unchanged.
+	for i in 6:
 		guide.call("_process", 1.0)
 	check(said.has(Guide.goal(g)), "a fight won: the goal again: %s" % [said])
 	Events.hint.disconnect(listen)
@@ -476,3 +481,40 @@ func test_the_swing_is_named_before_the_dodge_when_a_machine_comes_on() -> void:
 func test_the_swing_lesson_names_the_swing_key() -> void:
 	eq(Guide.HINTS[&"fight"][1], [&"swing"], "it names the action, not a letter")
 	check(not String(Guide.HINTS[&"fight"][0]).contains("J"), "and spells no key in its words")
+
+
+func test_a_town_says_it_is_safe_ground_while_you_stand_in_it() -> void:
+	# The owner's ask: "safe havens like towns to systematically teach players
+	# the game". The ground round a village IS the safest in the game -- sixteen
+	# of nineteen roster rows keep a `green_min` off it -- and nothing ever said
+	# so. A safety the player cannot know about buys them nothing.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=256", "--village=0"])))
+	check(not g.world.villages.is_empty(), "the world has a town")
+	if g.world.villages.is_empty():
+		g.free()
+		return
+	check(Haven.holds(g.world, g.player.pos), "--village=0 stands the player in one")
+	check(_offered(g).has(&"haven"), "and the town says so, got %s" % str(_offered(g)))
+	# Out in the country it has nothing to say.
+	var v: Dictionary = g.world.villages[0]
+	g.player.pos = (v.pos as Vector2) + Vector2(g.world.village_reach(v) + 40.0, 0.0)
+	check(not Haven.holds(g.world, g.player.pos), "walked well clear of it")
+	check(not _offered(g).has(&"haven"), "open country does not claim to be a haven")
+	g.free()
+
+
+func test_the_key_row_skips_a_lesson_that_names_no_key() -> void:
+	# `haven`, `runner` and `worker` are things to KNOW, not things to press. The
+	# slate's key row is drawn from `hint_for`, so a keyless lesson standing at
+	# the front of the list blanked the row until the guide got round to saying
+	# it -- which `runner` and `worker` have been doing since before `haven`.
+	var g := Fx.flat(60)
+	var retired := {}
+	var keyed := Guide.hint_for(g, retired, true)
+	check(not keyed.is_empty(), "the row is offered something")
+	check(not (keyed.get("keys", []) as Array).is_empty(), "and it names a key")
+	for id: StringName in [&"haven", &"runner", &"worker"]:
+		eq((Guide.HINTS[id][1] as Array).size(), 0, "%s names no key, so the row must skip it" % id)
+	Fx.done(g)

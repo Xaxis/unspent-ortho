@@ -505,10 +505,12 @@ func _guide_hint() -> Dictionary:
 	if not _guided():
 		return {}
 	var retired: Dictionary = _guide.get("retired")
-	var h := Guide.hint_for(game, retired)
+	# A line with no key of its own is said, not shown on a key row -- so the row
+	# asks for the first lesson that NAMES one rather than taking the first and
+	# giving up when it is keyless.
+	var h := Guide.hint_for(game, retired, true)
 	if h.is_empty():
 		return {}
-	# A line with no key of its own is said, not shown on a key row.
 	var keys: Array = h.get("keys", [])
 	if keys.is_empty():
 		return {}
