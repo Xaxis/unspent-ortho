@@ -137,7 +137,7 @@ static func _build() -> void:
 	out.append(light)
 
 	var mast := LandmarkDef.make(&"leaning_mast", "the leaning mast")
-	mast.lands = [&"moss", &"snowfield", &"pinewood", &"slums"]
+	mast.lands = [&"moss", &"snowfield", &"pinewood", &"slums", &"frost_sea"]
 	mast.wants = &"water"
 	mast.sees = 13.0
 	mast.far = "A mast, leaning, with its guys down."
@@ -156,7 +156,7 @@ static func _build() -> void:
 	out.append(tower)
 
 	var stack := LandmarkDef.make(&"blinking_stack", "the tall stack")
-	stack.lands = [&"snowfield", &"bonelands", &"burning", &"scrapwood", &"slums"]
+	stack.lands = [&"snowfield", &"bonelands", &"burning", &"scrapwood", &"slums", &"mesas", &"glass_desert", &"frost_sea", &"server_fields"]
 	stack.wants = &"open"
 	stack.sees = 13.0
 	stack.far = "A stack, blinking, a long way off."
@@ -166,7 +166,7 @@ static func _build() -> void:
 	out.append(stack)
 
 	var stones := LandmarkDef.make(&"cast_stones", "the cast stones")
-	stones.lands = [&"bonelands", &"moss", &"coast", &"salt_flats", &"pinewood", &"snowfield"]
+	stones.lands = [&"bonelands", &"moss", &"coast", &"salt_flats", &"pinewood", &"snowfield", &"mesas", &"glass_desert", &"frost_sea"]
 	stones.wants = &"high"
 	stones.sees = 12.0
 	stones.far = "Stones standing in a ring, and one of them is not stone."
@@ -175,7 +175,7 @@ static func _build() -> void:
 	out.append(stones)
 
 	var pans := LandmarkDef.make(&"evaporator", "the evaporator")
-	pans.lands = [&"salt_flats", &"burning"]
+	pans.lands = [&"salt_flats", &"burning", &"glass_desert"]
 	pans.wants = &"open"
 	pans.sees = 12.0
 	pans.far = "A hulk out on the flat, white to the shoulder."
@@ -193,7 +193,7 @@ static func _build() -> void:
 	out.append(hulk)
 
 	var office := LandmarkDef.make(&"clerks_office", "the clerk's post")
-	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves", &"moss", &"slums"]
+	office.lands = [&"bonelands", &"salt_flats", &"burning", &"snowfield", &"scrapwood", &"limestone_caves", &"moss", &"slums", &"mesas", &"server_fields"]
 	office.wants = &"rough"
 	office.sees = 12.0
 	office.far = "A post, and the ground round it is pale with paper."
@@ -208,7 +208,7 @@ static func _build() -> void:
 	# evidence of what was lost HERE: there is no weather down a limestone cave
 	# and nothing grows, so what is left is what the working left.
 	var pillar := LandmarkDef.make(&"poured_pillar", "the poured pillar")
-	pillar.lands = [&"limestone_caves"]
+	pillar.lands = [&"limestone_caves", &"mesas", &"glass_desert", &"server_fields"]
 	pillar.wants = &"rough"
 	pillar.sees = 12.0
 	pillar.far = "One of the columns holding the roof up is the wrong colour."
@@ -217,7 +217,7 @@ static func _build() -> void:
 	out.append(pillar)
 
 	var sump := LandmarkDef.make(&"sump_pump", "the sump")
-	sump.lands = [&"limestone_caves"]
+	sump.lands = [&"limestone_caves", &"frost_sea", &"server_fields"]
 	sump.wants = &"water"
 	sump.sees = 12.0
 	sump.far = "A gantry over black water, and the float is down."
