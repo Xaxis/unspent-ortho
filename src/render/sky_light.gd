@@ -51,13 +51,24 @@ const KEYS := [
 ## upper-left in the world's west; this bearing lights the south faces the
 ## camera sees and shades its east faces, so every solid shows two values.
 const KEY_AZIMUTH := -72.0
-## The sun swings this far either side of the key over the day. (source: 70 total)
-const SWING := 35.0
+## The sun swings this far either side of the key over the day.
+##
+## WIDER THAN THE SOURCE'S 70 TOTAL, and on purpose: this camera almost never
+## shows sky, so the ONLY way a player senses that a sun is crossing overhead is
+## the shadows swinging round under it (owner, 2026-09-18: "we should see or
+## sense the orbiting sun ... so we see our night day transitions"). At 35 either
+## side the sweep is inside the noise of a shadow's own shape; at 52 a thing you
+## walked past in the morning is lit from the other hand by evening.
+const SWING := 52.0
 const SUNRISE := 4.5
 const SUNSET := 21.0
-## Shadow length on screen, as a share of the caster's screen height. (source)
+## Shadow length on screen, as a share of the caster's screen height. The ends
+## rake much further than the source asked for, for the reason SWING does: a long
+## shadow is how a low sun is READ from above, and the difference between noon
+## and evening has to be a difference you can see on the ground rather than one
+## you can only measure.
 const SHADOW_NOON := 0.5
-const SHADOW_LOW := 1.35
+const SHADOW_LOW := 2.10
 const MOON_ELEVATION := 58.0
 ## How solid a moon shadow is. Faint, and softened by SUN_ANGLE_LOW.
 const MOON_SHADOW := 0.42

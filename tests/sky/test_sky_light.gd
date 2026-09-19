@@ -39,7 +39,14 @@ func test_nothing_casts_at_night_and_the_sun_casts_by_day() -> void:
 	lt(SkyLight.sun_at(2.0).energy, SkyLight.sun_at(12.0).energy, "moonlight is dim")
 
 
-func test_sun_swings_seventy_degrees_about_the_key_and_never_jumps() -> void:
+## THE SWING IS READ OFF `SkyLight.SWING`, NOT WRITTEN OUT AGAIN. It was 70.0
+## here and 35.0 there, so the day the owner asked to be able to SENSE the sun
+## crossing ("we should see or sense the orbiting sun ... so we see our night day
+## transitions") the widened sweep failed a test whose name was the old number.
+## What this is actually for is the two things below it — that the bearing never
+## jumps, and that it stays centred on the key — and neither of those cares how
+## wide it is.
+func test_the_sun_swings_evenly_about_the_key_and_never_jumps() -> void:
 	var lo := INF
 	var hi := -INF
 	var prev := SkyLight.sun_at(23.99)
@@ -51,7 +58,7 @@ func test_sun_swings_seventy_degrees_about_the_key_and_never_jumps() -> void:
 		lt(absf(float(s.azimuth) - float(prev.azimuth)), 0.5, "azimuth jump at %.2f" % h)
 		lt(absf(float(s.elevation) - float(prev.elevation)), 1.0, "elevation jump at %.2f" % h)
 		prev = s
-	near(hi - lo, 70.0, 0.01, "swing")
+	near(hi - lo, SkyLight.SWING * 2.0, 0.01, "swing")
 	near((hi + lo) * 0.5, SkyLight.KEY_AZIMUTH, 0.01, "about the key")
 
 
