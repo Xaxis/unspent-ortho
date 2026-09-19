@@ -230,6 +230,15 @@ func setup(g: Game) -> void:
 	_glow_mat = StandardMaterial3D.new()
 	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_glow_mat.vertex_color_use_as_albedo = true
+	# THE ONE COLOUR DOOR, for the one material in this package that is not a
+	# shader and so cannot call `matter_albedo()`. The vertex colours here are
+	# palette sRGB — the player's lantern, every lit window pane, every door slit
+	# — and this flag was never set, so on Forward+ they went into a linear
+	# ALBEDO raw and burned about a stop and a half bright and flat, while the web
+	# build got them right. `unshaded` is not an exemption: render_probe.gd
+	# measured the encode on an unshaded quad, which IS this case. Decided the
+	# same way `sky_linear` is, because it is the same decision.
+	_glow_mat.vertex_color_is_srgb = Quality.forward_plus()
 	_glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	# HOW MANY LOCAL LIGHTS EXIST is the quality tier's business (`Quality.ROWS`
 	# `lamps`), not the shader pool's. This built `SkyLight.MAX_LAMPS - 1` = seven

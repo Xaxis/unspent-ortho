@@ -46,6 +46,31 @@ const ROAD := 54
 const SALT := 55
 const SWARF := 56
 const PAN := 57
+## --- WHAT A PERSON MADE (matter.gdshaderinc `matter_of`) ---------------------
+## 40..58 above are GROUND. Until this band existed, every timber post, thatched
+## roof, canvas awning, concrete slab, glass pane and rope lashing came back as
+## ONE default material, so under a single sun only the mesh normal told a roof
+## from a wall — and the normals are flat facets.
+##
+## **71..79 ARE DELIBERATELY EMPTY**, between the cliff strata (60..70) and this
+## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
+## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
+## builder that tags nothing still gets the default, which is what every model
+## got before and is a perfectly good unpainted timber.
+const TIMBER := 80
+const THATCH := 81
+const CLOTH := 82
+const ROPE := 83
+const CLAY := 84
+const CONCRETE := 85
+const GLASS := 86
+const TAR := 87
+const ENAMEL := 88
+const HIDE := 89
+const BONE_MADE := 90
+const CUTSTONE := 91
+const MADE_FIRST := TIMBER
+const MADE_LAST := CUTSTONE
 ## A face the taking has just opened: the cut through a boulder a pick has been
 ## into, a wreck cut down. Nothing has settled on it yet, so the wear the land
 ## lays on everything standing in it (`matter_worn`) is kept off this face alone
@@ -212,6 +237,14 @@ static func strata(g: int, c: int) -> int:
 ## A colour carrying mark `code` in its alpha.
 static func marked(col: Color, code: int) -> Color:
 	return Color(col.r, col.g, col.b, clampi(code, 0, 255) / 255.0)
+
+
+## What a made surface IS, so the renderer can light it as that rather than as
+## the one default every made thing shared. Thatch stops reflecting like a mud
+## wall, a pane reads as glass beside the timber holding it, and wet clay, dry
+## straw and oiled board separate in a single frame.
+static func made(col: Color, kind: int) -> Color:
+	return marked(col, clampi(kind, MADE_FIRST, MADE_LAST))
 
 
 ## Glowing: embers, flames, a kiln mouth. strength 0.125..2.

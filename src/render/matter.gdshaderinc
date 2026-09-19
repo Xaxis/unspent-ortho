@@ -146,6 +146,36 @@ vec4 matter_of(int m) {
 	else if (m == 57) { r = vec4(0.86, 0.30, 0.008, 0.0); }   // PAN: dry silt
 	else if (m == 58) { r = vec4(0.90, 0.28, 0.010, 0.0); }   // FRESH: broken open, so dusty and dead matte -- a glossy fracture reads as ice
 	else if (m >= 60 && m <= 70) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// --- WHAT A PERSON MADE ---------------------------------------------------
+	// Everything above is GROUND, and until these rows existed every timber post,
+	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
+	// the game came back as the one default at the top of this function. Under a
+	// single sun that means only the mesh normal tells a roof from a wall — and
+	// the normals are flat facets. It is most of what still read as papery.
+	//
+	// The SPREAD is what matters here, not the absolutes: `matter_worn` already
+	// adds up to +0.45 roughness on salt and takes 0.42 off under frost, so two
+	// rows within about 0.05 of each other are erased by a week of weather and
+	// are not worth having. Nothing here is metallic; FOUND owns metal and has
+	// its own shader. 92..95 are left spare, and 71..79 are left EMPTY on purpose
+	// as a gap between this band and the cliff strata, so an off-by-one lands on
+	// nothing rather than on a material.
+	else if (m == 80) { r = vec4(0.82, 0.36, 0.006, 0.0); }   // TIMBER: sawn board, weathered post
+	else if (m == 81) { r = vec4(0.97, 0.10, 0.030, 0.0); }   // THATCH: dead matte, deepest relief here
+	else if (m == 82) { r = vec4(0.90, 0.22, 0.004, 0.0); }   // CLOTH: canvas, awning, sail
+	else if (m == 83) { r = vec4(0.86, 0.28, 0.012, 0.0); }   // ROPE: lashing, cable-laid cord
+	else if (m == 84) { r = vec4(0.92, 0.24, 0.016, 0.0); }   // CLAY: daub, mud render, cob
+	else if (m == 85) { r = vec4(0.78, 0.40, 0.010, 0.0); }   // CONCRETE: cast, aggregate-pitted
+	// GLASS is the one row measured before it was believed, the way FOUND_MASS
+	// was: at specular 0.90 and this pitch a noon sun comes straight back off a
+	// pane into the lens. 0.62 keeps a window reading as glass against the timber
+	// beside it without putting a white hole in a village.
+	else if (m == 86) { r = vec4(0.12, 0.62, 0.002, 0.0); }   // GLASS: a pane
+	else if (m == 87) { r = vec4(0.45, 0.62, 0.006, 0.0); }   // TAR: roof felt, pitch, tarred plank
+	else if (m == 88) { r = vec4(0.35, 0.55, 0.003, 0.0); }   // ENAMEL: a painted sign, vehicle paint
+	else if (m == 89) { r = vec4(0.74, 0.34, 0.008, 0.0); }   // HIDE: leather, skin
+	else if (m == 90) { r = vec4(0.58, 0.48, 0.005, 0.0); }   // BONE: bone, horn
+	else if (m == 91) { r = vec4(0.84, 0.36, 0.022, 0.0); }   // CUTSTONE: dressed building stone
 	return r;
 }
 
@@ -174,8 +204,7 @@ float matter_fbm(vec2 p) {
 // marks are drawn at. Smooth on purpose: the fine speckle in the wash is
 // pigment, not geometry, and differentiating it would give the light noise to
 // find instead of shape.
-float matter_height(int m, vec3 wp) {
-	vec2 p = wp.xz;
+float matter_height(int m, vec3 wp, vec2 p) {
 	float h = 0.0;
 	if (m == 43) {
 		// SHINGLE: the pebbles themselves, on the same warped cells the wash
@@ -217,6 +246,51 @@ float matter_height(int m, vec3 wp) {
 	} else if (m == 41 || m == 40 || m == 50) {
 		// Anything with a mat of growth on it: clumps.
 		h = matter_fbm(p * 1.7);
+	// --- WHAT A PERSON MADE, each at the scale the thing is actually made at.
+	// These MUST have their own branches. `matter_of().z` only SCALES a height
+	// field, it does not choose one, so a row with no branch here falls to the
+	// land-scale `else` below — and thatch at relief 0.030 would then get lumps a
+	// tile across instead of straw. The numbers are cycles per world unit, and a
+	// world unit is a tile.
+	} else if (m == 80) {
+		// TIMBER: grain the long way of the board, a few knots across it.
+		h = matter_fbm(p * vec2(2.4, 26.0)) * 0.72 + matter_fbm(p * 4.5 + 7.0) * 0.28;
+	} else if (m == 81) {
+		// THATCH: combed stems, fine and all one way, laid in courses.
+		float st = fract(p.y * 38.0 + matter_fbm(p * 2.6) * 2.4);
+		h = st * 0.5 + matter_fbm(p * vec2(1.4, 9.0)) * 0.5;
+	} else if (m == 82) {
+		// CLOTH: a weave, both ways and shallow, over the sag of the bolt.
+		h = (sin(p.x * 54.0) * sin(p.y * 54.0)) * 0.22 + 0.5 + matter_fbm(p * 1.8) * 0.28;
+	} else if (m == 83) {
+		// ROPE: the helical lay of the strands, one way, coarse.
+		h = fract(dot(p, vec2(0.72, 0.69)) * 17.0) * 0.62 + matter_fbm(p * 6.0) * 0.38;
+	} else if (m == 84) {
+		// CLAY: daub pressed on by hand, so lumps and trowel drag, not noise.
+		vec3 cd = matter_cells(p * 7.0);
+		h = smoothstep(0.0, 0.5, cd.x) * 0.6 + matter_fbm(p * 3.2) * 0.4;
+	} else if (m == 85) {
+		// CONCRETE: aggregate pits and the odd blowhole, on a flat cast face.
+		vec3 cd = matter_cells(p * 11.0);
+		h = 1.0 - smoothstep(0.0, 0.30, cd.x) * 0.7 - matter_fbm(p * 5.0) * 0.3;
+	} else if (m == 86 || m == 88) {
+		// GLASS and ENAMEL: made flat and meant to stay flat. What relief they
+		// have is the wave in old glass and the brush in old paint.
+		h = matter_fbm(p * vec2(1.2, 3.4)) * 0.5 + 0.5;
+	} else if (m == 87) {
+		// TAR: felt laid in overlapping strips, with the grit rolled into it.
+		h = fract(p.y * 3.1) * 0.35 + matter_fbm(p * 14.0) * 0.65;
+	} else if (m == 89) {
+		// HIDE: a fine pebble grain, no direction to it.
+		vec3 cd = matter_cells(p * 20.0);
+		h = smoothstep(0.0, 0.42, cd.x);
+	} else if (m == 90) {
+		// BONE: the long fibre of it, and the odd pit.
+		h = matter_fbm(p * vec2(1.6, 12.0)) * 0.7 + matter_fbm(p * 9.0) * 0.3;
+	} else if (m == 91) {
+		// CUTSTONE: courses, with the face of each block dressed.
+		float course = smoothstep(0.0, 0.10, abs(fract(p.y * 3.2) - 0.5));
+		h = course * 0.55 + matter_fbm(p * 5.5) * 0.45;
 	} else {
 		h = matter_fbm(p * 1.1);
 	}
@@ -234,7 +308,25 @@ vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	if (relief <= 0.0) {
 		return n;
 	}
-	float h = matter_height(m, wp);
+	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
+	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
+	// alone, so on a VERTICAL face the field does not change with height and the
+	// surface gets a smeared vertical streak instead of a grain. Every ground in
+	// the game is near-horizontal, so it never showed — and a village is walls.
+	//
+	// The face's own normal comes back out of the derivatives that are already
+	// being taken two lines down, so this needs no varying, no tangent basis and
+	// no new parameter at any call site. On anything near-horizontal `p` IS
+	// `wp.xz` and nothing about the land moves.
+	vec3 fn = cross(dFdx(wp), dFdy(wp));
+	vec3 a = abs(fn);
+	vec2 p = wp.xz;
+	if (a.y < a.x && a.z < a.x) {
+		p = wp.zy;
+	} else if (a.y < a.z) {
+		p = wp.xy;
+	}
+	float h = matter_height(m, wp, p);
 	float wx = max(length(dFdx(wp)), 1e-5);
 	float wy = max(length(dFdy(wp)), 1e-5);
 	vec2 g = vec2(dFdx(h) / wx, -dFdy(h) / wy) * relief;

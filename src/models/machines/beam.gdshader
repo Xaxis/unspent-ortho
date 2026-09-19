@@ -18,6 +18,7 @@ render_mode unshaded, depth_draw_never, cull_disabled, shadows_disabled, fog_dis
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform vec3 col = vec3(0.6961, 0.7720, 0.8044);
 uniform float beam_length = 2.5;
@@ -103,6 +104,12 @@ void fragment() {
 	if (stipple(px) >= d) {
 		discard;
 	}
-	ALBEDO = col;
+	// Through the one colour door. `unshaded` is not an exemption from it: the
+	// repo's own probe measured the stop-and-a-half on an unshaded quad
+	// (render_probe.gd), so this beam sat that much bright and flat on Forward+
+	// and disagreed with the web build, which is the one gap CompatTrim closes
+	// everywhere else. matter_light also carries `sky_emission`, which is what a
+	// beam is: light, not paint.
+	ALBEDO = matter_light(col);
 	ALPHA = 1.0;
 }

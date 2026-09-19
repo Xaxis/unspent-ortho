@@ -19,6 +19,7 @@ render_mode unshaded, fog_disabled, depth_draw_never, depth_test_disabled, cull_
 
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
@@ -160,7 +161,13 @@ void fragment() {
 				vec2 guv = SCREEN_UV - vec2(to_px.x, -to_px.y) * px;
 				float gdepth = max(linear_depth(guv, INV_PROJECTION_MATRIX), max(linear_depth(guv + vec2(px.x, 0.0), INV_PROJECTION_MATRIX), linear_depth(guv - vec2(px.x, 0.0), INV_PROJECTION_MATRIX)));
 				if (gdepth >= ldepth - 0.5) {
-					outc = mix(outc, max(outc, rgb[i].rgb), 0.6);
+					// `outc` was seeded from the SCREEN, which is linear light on
+					// Forward+ and display values on Compatibility; the glint is a
+					// raw palette colour. Mixing the two without the door compares
+					// and blends numbers in different spaces — right on `web`, where
+					// this was fitted, and wrong on any Forward+ tier with no
+					// volumetrics (`low`), which is the one that gets this quad.
+					outc = mix(outc, max(outc, matter_albedo(rgb[i].rgb)), 0.6);
 					touched = true;
 				}
 			}
