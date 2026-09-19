@@ -176,3 +176,35 @@ func test_a_lesson_names_the_key_that_actually_does_it() -> void:
 	var back: String = guide.call("_spell", Guide.HINTS[&"take"][0], Guide.HINTS[&"take"][1])
 	eq(back, line, "and comes back with the keys")
 	g.free()
+
+
+func test_the_game_teaches_the_key_that_reads_a_machine() -> void:
+	# **THE VERB THE GUIDE NEVER NAMED.** A player can press 27 things and this
+	# taught 11; targeting was one of the sixteen it did not, so the whole read
+	# of a machine -- what it is, what it is doing, where its plate is thin --
+	# belonged to whoever pressed an unmentioned key. It is said when the first
+	# machine comes into view, ahead of the lines describing a runner and a
+	# worker, because it is how you would find those out for yourself.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--spawn=runner"])))
+	var sim := g.player.sim
+	var machine := false
+	for m in sim.mobs:
+		machine = machine or (m.alive and m.machine)
+	check(machine, "a machine is in the world to be read")
+	if not machine:
+		g.free()
+		return
+	var offered := []
+	for i in 6:
+		var h := Guide.hint_for(g, {})
+		offered.append(h.get("id", &""))
+	check(offered.has(&"target"), "the lesson is offered with a machine in view, got %s" % str(offered[0]))
+	# And holding the key spends it: doing the thing IS learning it.
+	var guide: Node = g.get_node("58_guide")
+	Input.action_press(&"target")
+	guide.call("_watch")
+	Input.action_release(&"target")
+	check((guide.get("retired") as Dictionary).has(&"target"), "holding the key retires the lesson")
+	g.free()
