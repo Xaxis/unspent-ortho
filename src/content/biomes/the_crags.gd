@@ -33,7 +33,7 @@ static func make() -> BiomeDef:
 	# Broken, steep and high: crags rather than hills, with the valleys between
 	# them deep enough to hold the fog all day.
 	d.relief = {
-		&"base": 11.0, &"hills": 5.5, &"ridge": 9.0, &"terrace": 0.6, &"valley": 2.8,
+		&"base": 11.0, &"hills": 8.0, &"ridge": 4.0, &"terrace": 0.55, &"valley": 2.8,
 		&"rain": 1.3, &"temp": 0.14, &"moist": 0.75, &"cliff": 0.85,
 	}
 	d.border_elevation = 2.0

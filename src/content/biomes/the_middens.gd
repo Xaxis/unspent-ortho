@@ -34,7 +34,7 @@ static func make() -> BiomeDef:
 	# between them rather than as hills — which is the difference between a place
 	# you cross and a place you get lost in.
 	d.relief = {
-		&"base": 5.5, &"hills": 2.0, &"ridge": 13.5, &"terrace": 0.5, &"valley": 3.0,
+		&"base": 5.5, &"hills": 9.0, &"ridge": 3.0, &"terrace": 0.9, &"valley": 3.0,
 		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0,
 	}
 	d.border_elevation = 1.2

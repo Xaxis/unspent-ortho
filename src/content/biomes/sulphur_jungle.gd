@@ -31,7 +31,7 @@ static func make() -> BiomeDef:
 	# Broken volcanic ground — cones, collapsed chambers, a lot of small steep
 	# stuff rather than one big shape.
 	d.relief = {
-		&"base": 7.5, &"hills": 4.5, &"ridge": 5.0, &"terrace": 0.5, &"valley": 2.2,
+		&"base": 7.5, &"hills": 6.5, &"ridge": 2.5, &"terrace": 0.45, &"valley": 2.2,
 		&"rain": 1.4, &"temp": 0.3, &"moist": 0.85, &"cliff": 0.6,
 	}
 	d.border_elevation = 1.2
