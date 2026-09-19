@@ -122,7 +122,21 @@ var continents: Array[Dictionary] = []
 ## The machines' grid: {kind: PropKind.PYLON or POLE, props: PackedInt32Array
 ## of prop ids in stringing order}. Cables run between consecutive ids.
 var lines: Array[Dictionary] = []
-## Places worth walking to: {kind: StringName, pos: Vector2, country: int}.
+## Places worth walking to:
+## {kind: StringName, pos: Vector2, country: int, region: int}.
+##
+## `region` IS ON THE ROW AND IS NOT DERIVED AT THE POINT OF USE. It is the same
+## rule `WorldData.road` and `WorldData.continent` exist for: a reader that works
+## a region out from a position is right until the first thing that straddles a
+## border, and this is what a sub-arc, a picket and a chapter's demand all key on.
+## -1 where a place stands on land too small to be a region at all.
+##
+## THIS IS THE SITE RECORD. It was asked for as a new `WorldData.sites` array,
+## because `SiteKinds` had nowhere to point and `holds`, `guard` and `behind` were
+## all declared and unclaimable. A second array would have been a third answer to
+## one question, on the day three of those were written up: these rows already
+## carry every site world gen lays, with its kind and its position, and the only
+## thing missing was which place it is in.
 ## Kinds: tip, stone_circle, wreck, ruin, summit, caldera, fumarole; and for renderers
 ## and sound, bridge (a road over a river; `dir` runs along the road) and
 ## falls (a river's bed steps down a level; `dir` runs downstream).

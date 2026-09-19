@@ -99,3 +99,37 @@ func test_every_local_tells_what_their_land_has_noticed() -> void:
 	_walk(&"esk", ["Why set them up?", "They leave them because they've counted them."])
 	check(Story.landed(&"stones_counted"), "and sets it up anyway")
 	Story.forget()
+
+
+## A NAMED PERSON OUTRANKS A CROWD. `use` answers the most specific person in
+## reach, exactly as it answers the most specific thing: the one clerk the story
+## is about, then anybody who lives here, then somebody with nothing to say.
+##
+## The bug it fails on shipped for a day and only a tour caught it: in the slums
+## a door-keeper standing nearer than Pell answered the key with the region's
+## errand, so the frame named "pell files him" held somebody else entirely, and
+## `at cast:pell` could not put him in front of anybody in a crowd.
+func test_a_named_person_answers_the_key_before_a_nearer_villager() -> void:
+	var Sx := preload("res://tests/save/save_fixture.gd")
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11"])
+	await frames(6)
+	var cast: Node = Sx.system(g, "49_cast")
+	var at: Vector2 = cast.call("tour_place", "cast:maren")
+	check(at != Vector2.INF, "Maren stands somewhere on this island")
+	if at != Vector2.INF:
+		g.player.pos = at
+		if g.player.hero != null:
+			g.player.hero.pos = at
+		# Somebody who lives here, standing between him and her, with a trade
+		# that has words of its own — which is what makes this the hard case.
+		var folk: Node = Sx.system(g, "folk")
+		var rows: Array = folk.get("folk")
+		rows.append({"state": &"walk", "pos": at + Vector2(0.2, 0.0), "trade": &"digger"})
+		var story: Node = Sx.system(g, "49_story")
+		var who: Dictionary = story.call("_person_in_front")
+		eq(StringName(str(who.get("character", &""))), &"maren", "she answers, though she stands further off")
+		story.call("_start_talk", who)
+		check(Story.met(&"maren"), "and it is her words that open, which is what a named talk records")
+	Sx.end(g)
+	Story.forget()

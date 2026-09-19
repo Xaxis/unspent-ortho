@@ -518,7 +518,9 @@ static func _lay_road(c: GenContext, path: Array[Vector2i], a: Vector2, b: Vecto
 				if m.kind == &"bridge" and (m.pos as Vector2).distance_squared_to(mid) < 16.0:
 					known = true
 			if not known:
-				w.landmarks.append({"kind": &"bridge", "pos": mid, "country": w.country_at(floori(mid.x), floori(mid.y)), "dir": along})
+				w.landmarks.append({"kind": &"bridge", "pos": mid,
+					"country": w.country_at(floori(mid.x), floori(mid.y)),
+					"region": w.region_at(floori(mid.x), floori(mid.y)), "dir": along})
 			run_start = -1
 	# Fill the other corner of every stair step, so a diagonal road is a
 	# ribbon two tiles wide rather than a zigzag one tile wide.

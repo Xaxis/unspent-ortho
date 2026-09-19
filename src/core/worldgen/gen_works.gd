@@ -149,6 +149,12 @@ class Lay:
 
 
 static func place(c: GenContext, occ: PackedByteArray) -> void:
+	# NOT IN A YEAR BEFORE THEY BEGAN. Everything this file lays is the machines'
+	# — ruled on their survey bearing, keeping their hours — and in 2029 there is
+	# no plan to have laid it. The land underneath is identical either way, which
+	# is what `Realm.same_land_as` is for; this is the sixty-nine years.
+	if Realm.before_the_plan(c.w.realm):
+		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
 	for def in BiomeRegistry.all():
 		var row := evidence(def.id)
@@ -228,7 +234,11 @@ static func _crowded(w: WorldData, p: Vector2, d: float) -> bool:
 
 static func _record(c: GenContext, kind: StringName, p: Vector2, dir: Vector2, half: Vector2, mark: StringName = &"") -> void:
 	var at := Vector2i(clampi(floori(p.x), 0, c.size - 1), clampi(floori(p.y), 0, c.size - 1))
-	var m := {"kind": kind, "pos": p, "country": int(c.w.country[at.y * c.size + at.x]), "dir": dir, "half": half}
+	# `region` goes on the row here too (`WorldData.landmarks`): a works mark is
+	# the busiest of these and is what a depot is sited at, so whoever asks which
+	# place a yard belongs to must not have to work it out from a position.
+	var m := {"kind": kind, "pos": p, "country": int(c.w.country[at.y * c.size + at.x]),
+		"region": c.w.region_at(at.x, at.y), "dir": dir, "half": half}
 	if mark != &"":
 		m["mark"] = mark
 	c.w.landmarks.append(m)

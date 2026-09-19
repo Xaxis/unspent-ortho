@@ -19,6 +19,19 @@ var works_name := "the works"
 ## record outlives the rescue.
 var held: Array[String] = []
 var freed: Array[String] = []
+## The walk home, which is the first thing in this game that can fail slowly
+## (`Escort`, unspent-ortho-cb): who is out of the yard and will not come down
+## the road alone, who is on it with him now, who reached a door, and who did
+## not — `lost_on_road`, spelled out because `lost()` on this same look already
+## means the PLAN has lost this place, and two words that far apart may not share
+## a name. `lost_to` is the roster kind that took one back, by the same name, or
+## `&""` for the cold and the water and the fall — the two are different things
+## for a village to be told, and only one of them is nobody's fault.
+var waiting: Array[String] = []
+var walking: Array[String] = []
+var arrived: Array[String] = []
+var lost_on_road: Array[String] = []
+var lost_to: Dictionary = {}
 ## Every landmark of the region: {id: int, kind, name, pos, found, opened}.
 var landmarks: Array[Dictionary] = []
 ## Whether this region's keeper has been taken, and what the plan's network here
