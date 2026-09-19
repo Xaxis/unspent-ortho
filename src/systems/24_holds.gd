@@ -66,6 +66,14 @@ var _job: Dictionary = {}
 var _held := 0.0
 var _seen: Dictionary = {}
 var sim: FightSim = null
+## The four announcements that can move a chapter's answer. A FUNCTION and not an
+## `@onready var`: `setup()` is called by the loader and does not wait for
+## `_ready`, so an onready list would still be empty when the connecting happens
+## and every signal would be silently unconnected -- a refresh that never fires,
+## with nothing to see but a barrier that stays up. Held in one place so a fifth
+## cause is one line here rather than a timer somebody puts back.
+func _watched() -> Array[Signal]:
+	return [Events.landmark_found, Events.took, Events.sentinel_fell, Events.works_broken]
 
 
 func setup(g: Game) -> void:
@@ -76,6 +84,8 @@ func setup(g: Game) -> void:
 	g.add_child(_layer)
 	_read_sites()
 	SaveGame.register(&"holds", _save, _load)
+	for sig: Signal in _watched():
+		sig.connect(_chapters_moved)
 
 
 func started() -> void:
@@ -206,9 +216,19 @@ func _stand() -> void:
 		_nodes[k] = root
 
 
+func _exit_tree() -> void:
+	for sig: Signal in _watched():
+		if sig.is_connected(_chapters_moved):
+			sig.disconnect(_chapters_moved)
+
+
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	if _dirty:
+		_dirty = false
+		_refresh_chapters()
+		_set_walls()
 	_stand()
 	_work(delta)
 
@@ -277,16 +297,39 @@ func _break(h: Hold.HoldSite) -> void:
 	_set_walls()
 
 
-## A chapter answered lifts its own booms, so this is asked once a second rather
-## than every frame: nothing here is worth a per-frame sweep of every region.
-func _physics_process(_delta: float) -> void:
-	_tick += 1
-	if _tick % 60 != 0:
-		return
-	_refresh_chapters()
-	_set_walls()
+## **ASKED WHEN AN ANSWER COULD HAVE CHANGED, NEVER ON A TIMER.**
+##
+## This read the chapters live, every frame, for every hold: `Chapter.read` walks
+## `world.props` to count a region's standing ore, so eleven holds at sixty frames
+## measured 86.74 ms in `_stand` alone. I moved it to once a second and called it
+## fixed. It was not fixed, it was RESCHEDULED -- and that trade is worse than it
+## looks, because it turns a low frame rate, which reads as "slow", into a hitch,
+## which reads as "broken". Measured afterwards at 224.6 ms in a single physics
+## tick, once a second, while the median frame was a healthy 8.3 ms. The owner's
+## word for the result was "jumpy".
+##
+## **Work too expensive to do every frame is usually too expensive to do at all.**
+## The question was never how OFTEN to pay it; it was why it was being recomputed
+## when its inputs cannot have moved. A chapter's answer changes on exactly four
+## things happening, and each one already announces itself:
+##
+##   a landmark found   `Events.landmark_found`   -> EXPLORED
+##   ore taken          `Events.took`             -> MINED
+##   a keeper down      `Events.sentinel_fell`    -> DEFENDED
+##   a yard put dark    `Events.works_broken`     -> DEFENDED
+##
+## So this asks then, and at no other time. An idle frame costs nothing at all,
+## which a timer can never manage. It is the file's own rule from CLAUDE.md read
+## the right way round: the act that answers a question is the act that should
+## stop it being asked.
+##
+## Coalesced to the next frame rather than run inside the signal, so four things
+## landing together cost one refresh and nothing re-enters worldgen from inside
+## somebody else's emit.
+func _chapters_moved(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
+	_dirty = true
 
-var _tick := 0
+var _dirty := false
 
 
 func tour_seen(what: StringName) -> bool:

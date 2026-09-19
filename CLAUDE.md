@@ -387,6 +387,20 @@ tools print their own summaries.
   blamed a bug in the chapter rules that does not exist. A default on a
   "is this done / did it work" question is the caller supplying the evidence and
   then believing it: assert the key is THERE, then read it.
+- **RESCHEDULING A COST IS NOT FIXING IT, AND IT MAKES THE SYMPTOM WORSE.**
+  `24_holds` read every chapter every frame, and `Chapter.read` walks
+  `world.props` to count a region's standing ore: 86.74 ms a frame. Moving it to
+  once a second looked like a 300x win and was measured as one. It was not a
+  fix — it was the same work on a different clock, and it converted a LOW FRAME
+  RATE, which reads as "slow", into a 224.6 ms STALL once a second, which reads
+  as "broken". The median frame was a healthy 8.3 ms the whole time and the
+  owner's word for the result was "jumpy". **Work too expensive to do every
+  frame is usually too expensive to do at all**: the question is never how often
+  to pay it, it is why it is recomputed when its inputs cannot have moved. A
+  prop never moves and worldgen never adds one, so the sweep had one answer for
+  the life of a world. Ask what announces a change (`Events.landmark_found`,
+  `took`, `sentinel_fell`, `works_broken`) and recompute then — an idle frame
+  then costs nothing, which no timer can manage.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel

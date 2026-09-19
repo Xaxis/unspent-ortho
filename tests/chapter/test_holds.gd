@@ -116,3 +116,34 @@ func test_what_was_broken_survives_a_save() -> void:
 	eq(int(h2.call(&"open_count")), 1, "and nothing else came open with it")
 	g.queue_free()
 	g2.queue_free()
+
+
+func test_a_chapter_is_asked_again_only_when_something_could_have_moved_it() -> void:
+	# **THE FIX FOR A 224 ms HITCH, AND WHY IT IS NOT A SLOWER TIMER.** This
+	# system read every chapter on a clock, and a chapter's answer walks every
+	# prop in the world. Rescheduling that cost turned a low frame rate into a
+	# stall; the answer was that its inputs cannot move without something saying
+	# so. Four things say so, and this holds all four to being wired.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=256"])))
+	var holds: Node = g.get_node("24_holds")
+	check(holds != null, "the holds system loads")
+	if holds == null:
+		g.free()
+		return
+	# Nothing has happened, so nothing is pending: an idle frame costs nothing,
+	# which is the whole point and the thing a timer can never do.
+	holds.call("_process", 0.016)
+	eq(holds.get("_dirty"), false, "an idle frame leaves nothing to recompute")
+	for sig: Signal in (holds.call("_watched") as Array[Signal]):
+		check(sig.is_connected(Callable(holds, "_chapters_moved")),
+			"the holds system is listening to what can move a chapter")
+	# Each of the four marks it, and a frame spends the mark exactly once.
+	Events.took.emit(&"iron_ore", 1)
+	eq(holds.get("_dirty"), true, "ore taken asks the chapters again")
+	holds.call("_process", 0.016)
+	eq(holds.get("_dirty"), false, "and one frame answers it once")
+	Events.works_broken.emit(0, &"coast")
+	eq(holds.get("_dirty"), true, "a yard put dark asks again")
+	g.free()
