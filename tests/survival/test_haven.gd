@@ -50,3 +50,25 @@ func test_a_kind_that_belongs_near_a_village_is_exempt_by_saying_so() -> void:
 	check((yard.get("where", {}) as Dictionary).has("green_max"),
 		"the yard dog says it belongs at the yard")
 	eq(Haven.held_to(&"dog.yard"), &"", "so the floor does not reach it")
+
+
+## **THE PLAYER WAKES ON HAVEN GROUND, AND NOTHING SAID SO.** docs/DESIGN.md
+## §Safe havens asks for "the spawn choosing a haven rather than any coast
+## village", and measured, it already does -- `GenSettle` lays the spawn beside
+## village 0 and the distance falls inside that village's own reach on every seed
+## tried. That is the same shape as the green floor itself: true by accumulation,
+## written down nowhere, and repealed in silence by whoever next moves the spawn.
+##
+## Measured at the SHIPPED size before being asserted at a cheap one, because
+## the claim is about where two placers put things relative to each other and
+## not about density: seed 1 spawn 9.2 tiles from a village of reach 11.8, seed 4
+## 7.0 of 11.0, seed 7 7.1 of 12.4 -- all inside. Six seeds at 256 agree.
+func test_the_player_wakes_on_haven_ground() -> void:
+	for s: int in [1, 3, 4, 7, 42, 90210]:
+		var w := WorldGen.generate(s, 256)
+		gt(float(w.villages.size()), 0.0, "seed %d grew somewhere to wake beside" % s)
+		check(Haven.holds(w, w.spawn), "seed %d: the player wakes inside a town's own reach" % s)
+		# And the question really discriminates -- a haven that answered yes
+		# everywhere would pass the line above and mean nothing.
+		var away := (w.villages[0].pos as Vector2) + Vector2(w.village_reach(w.villages[0]) + 60.0, 0.0)
+		check(not Haven.holds(w, away), "seed %d: and open country is not a haven" % s)

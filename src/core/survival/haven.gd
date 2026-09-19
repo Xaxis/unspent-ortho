@@ -46,6 +46,33 @@ const PLAN_REACH := 14.0
 const BEAST_REACH := 10.0
 
 
+## The haven a point stands in, or `{}` for open country. A village's own
+## recorded extent (`WorldData.village_reach`), never a constant: a ring of eight
+## huts fits in nine tiles and a city's street runs nineteen out, and guessing
+## that number is what once told a player standing among the towers that they
+## were in open country and could not sleep.
+##
+## **THIS IS THE ONE DOOR.** The question "am I in a town" was being asked in
+## several places by comparing a distance by hand, which is how the two constants
+## that got it wrong came to exist in the first place.
+static func at(world: WorldData, p: Vector2) -> Dictionary:
+	if world == null:
+		return {}
+	var best := {}
+	var near := INF
+	for v: Dictionary in world.villages:
+		var d: float = (v.get("pos", Vector2.INF) as Vector2).distance_to(p)
+		if d <= world.village_reach(v) and d < near:
+			near = d
+			best = v
+	return best
+
+
+## Whether this point stands on haven ground.
+static func holds(world: WorldData, p: Vector2) -> bool:
+	return not at(world, p).is_empty()
+
+
 ## Whether a roster row is held to the floor at all, and to which one.
 ## `&""` for a row the rule does not reach, with the reason in this file's
 ## header rather than in a caller's branch.

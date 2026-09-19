@@ -97,6 +97,14 @@ const HINTS := {
 	# it. Offered only once there IS something in it: a lesson that opens an
 	# empty book teaches that the book is empty.
 	&"journal": ["%s opens what you have found: what you read, what you were told, what you said back.", [&"journal"]],
+	# **THE SAFE HAVEN, SAID WHEN YOU ARE STANDING IN ONE** (owner: "the game
+	# needs guided narratives to start it, safe havens like towns to
+	# systematically teach players the game"). The ground round a village really
+	# is the safest in the game -- sixteen of nineteen roster rows keep a
+	# `green_min` off it, which `Haven` writes down and a test holds -- and
+	# nothing ever told the player so. A safety the player cannot know about
+	# buys them nothing.
+	&"haven": ["People live here, and nothing of the plan comes this close. Rest, make, and ask them things.", []],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -147,8 +155,16 @@ static func goal(game: Game) -> String:
 	return "A pick, made at %s." % at
 
 
-static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
+## The first lesson that fits and has not been spent. `keyed_only` asks for the
+## first that NAMES A KEY, which is what the slate's key row wants: several
+## lessons carry no key of their own (`runner`, `worker`, `haven` -- they are
+## things to know, not things to press), and the row is drawn from whatever this
+## answers, so a keyless lesson standing at the front of the list blanked the row
+## until the guide got round to saying it. Two different questions, one door.
+static func hint_for(game: Game, retired: Dictionary, keyed_only := false) -> Dictionary:
 	for id: StringName in _applicable(game):
+		if keyed_only and (HINTS[id][1] as Array).is_empty():
+			continue
 		if not retired.has(id):
 			# The line is a TEMPLATE and the actions are names: whoever says it
 			# resolves them against the live keys (58_guide), because a key label
@@ -252,6 +268,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(StringName("ability_%s" % id))
 	if _can_build(game):
 		out.append(&"holding")
+	if game.world != null and game.player != null and Haven.holds(game.world, game.player.pos):
+		out.append(&"haven")
 	if _journal_holds_something():
 		out.append(&"journal")
 	if game.world != null and game.player != null \
@@ -290,9 +308,8 @@ static func _fire(game: Game) -> WorldProp:
 static func fire_name(game: Game, fire: WorldProp) -> String:
 	if fire == null:
 		return "a fire"
-	for v in game.world.villages:
-		if (v.pos as Vector2).distance_to(fire.pos) <= game.world.village_reach(v):
-			return "the village fire"
+	if Haven.holds(game.world, fire.pos):
+		return "the village fire"
 	if SurvivalState.of(game).built.has(fire):
 		return "your fire"
 	return "the fire"
