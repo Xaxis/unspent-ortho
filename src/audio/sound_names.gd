@@ -81,6 +81,12 @@ const ALIAS := {
 	&"works_prise": &"wreck_knock",
 	&"works_part": &"arc_snap",
 	&"works_dark": &"machine_down",
+	# holds: the plan's barricade across a road, cut off it by hand. The same
+	# hands on the same plate as a works housing, so it borrows the depot's two
+	# voices rather than inventing a thinner pair -- a prise while it gives, and
+	# plate letting go at the end.
+	&"hold_cut": &"wreck_knock",
+	&"hold_broken": &"break",
 	# landmarks: a place found from a distance, and a cache opened at one. The
 	# finding is the slate marking it, which is a slate sound; the opening is the
 	# same hands on the same kind of plate the works is made of.
