@@ -33,6 +33,17 @@ const ACTIONS := {
 	&"dev_note": KEY_F2,
 	&"dev_readout": KEY_F3,
 	&"dev_picture": KEY_F4,
+	# Off the player and out over the island (95_flyover). F5 because it belongs
+	# with F3 and F4: the three things that change what you are LOOKING at rather
+	# than what the world is doing.
+	&"dev_fly": KEY_F5,
+	# The zoom gets keys of its OWN rather than borrowing the game's. The first
+	# version used `craft` and `crouch`, which are c and ctrl — so the first frame
+	# of the proof was the MAKING page, opened four times by the zoom. A dev mode
+	# that steals a key the player already owns is a dev mode that lies about what
+	# the game does.
+	&"dev_fly_in": KEY_EQUAL,
+	&"dev_fly_out": KEY_MINUS,
 }
 
 ## Armed by the chord (or --dev), and remembered on this device.
