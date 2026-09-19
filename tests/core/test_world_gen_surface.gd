@@ -325,9 +325,15 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 					continue
 				if w.ground[i - 1] == Ground.BLACKWATER or w.ground[i + 1] == Ground.BLACKWATER or w.ground[i - size] == Ground.BLACKWATER or w.ground[i + size] == Ground.BLACKWATER:
 					shore += 1.0
-					if g == Ground.PEAT or g == Ground.MUD:
+					# PEAT AND MUD ARE THE MOSS'S ANSWER, NOT EVERY LANDSCAPE'S.
+					# Black water is not the Moss's alone any more: the Middens
+					# rims its pools with SWARF and the frost sea with ICE, and
+					# both say so in `BiomeDef.pool_rim_ground`. Read the shared
+					# pair only, and 38 of the 40 tiles this called bare were
+					# landscapes rimming their pools exactly as they declared.
+					if g == Ground.PEAT or g == Ground.MUD or g == BiomeRegistry.at(w, Vector2(x + 0.5, y + 0.5)).pool_rim_ground:
 						rimmed += 1.0
-		gt(rimmed / maxf(1.0, shore), 0.9, "seed %d blackwater rimmed with peat or mud" % s)
+		gt(rimmed / maxf(1.0, shore), 0.9, "seed %d black water rimmed as its landscape says it is" % s)
 		for p in w.props:
 			if p.kind != PropKind.HOUSE:
 				continue
@@ -390,7 +396,15 @@ func test_villages_stand_in_clearings_with_a_square() -> void:
 					var y := floori(vp.y) + dy
 					var d := Vector2(x + 0.5, y + 0.5).distance_to(vp)
 					var g := w.ground_at(x, y)
-					if d < 8.0 and g in [Ground.SCREE, Ground.ROCK, Ground.CLINKER, Ground.SHINGLE, Ground.MUD, Ground.PEAT]:
+					# **NOT A GROUND THE LANDSCAPE CHOSE FOR ITS OWN VILLAGES.** This
+					# list is shared and it was written when every village was
+					# somebody's field, so it forbids mud outright -- and the
+					# Sulphur Jungle declares `village_ground = MUD` on purpose,
+					# because that is what its people live on. Steam Row was read
+					# as a village with a bog in it for every tile of its core.
+					# A landscape's own declaration outranks the shared list; what
+					# the list is still for is ground nobody asked for.
+					if d < 8.0 and g in [Ground.SCREE, Ground.ROCK, Ground.CLINKER, Ground.SHINGLE, Ground.MUD, Ground.PEAT] and not g in trodden:
 						fail("seed %d village %s has %s in its core" % [s, v.name, Ground.NAMES[g]])
 					if d < 2.5:
 						total += 1
@@ -440,7 +454,10 @@ func test_props_keep_to_their_country() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var bad := {}
-		var allow := GenScatter.allow(GenContext.new(w))
+		# EVERY kind the landscape declares, props AND ore: `allow` is only what
+		# the scatter may deal, and reading it alone called a landscape's own
+		# declared ore an intruder in its own ground.
+		var allow := GenScatter.declared(GenContext.new(w))
 		for p in w.props:
 			if p.kind in GenScatter.PLACED:
 				continue

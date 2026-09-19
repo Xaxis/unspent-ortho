@@ -77,7 +77,7 @@ static func make() -> BiomeDef:
 	d.dressing = dress
 	d.grade = Vector4(-0.03, 0.03, 0.0, 0.02)
 	d.night_sky = 1.0
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK, PropKind.PIPE,
+	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
 	d.sites = {"tips": 2}

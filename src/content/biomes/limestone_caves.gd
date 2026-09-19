@@ -160,7 +160,7 @@ static func make() -> BiomeDef:
 	d.hard_rock = true
 	d.props = [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
-		PropKind.TIN_ORE, PropKind.BONES, PropKind.DEBRIS, PropKind.PIPE]
+		PropKind.TIN_ORE, PropKind.BONES, PropKind.DEBRIS]
 	# Deep seams: what the surface only shows at a broken face is everywhere here,
 	# and that is the reason to come down (VISION §6.1, elite materials by place).
 	d.ore = [[PropKind.STONE_ORE, 0.075], [PropKind.IRON_ORE, 0.115],
@@ -271,6 +271,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.BONES
 		if r < 0.013:
 			return PropKind.DEBRIS
-		# What they ran down here and left: pipe, in runs along the clay floor.
-		return PropKind.PIPE if r > 0.6 and r < 0.607 else BiomeScatter.NONE
+		# The pipe they ran down here is laid as RUNS by the works stage
+		# (`pipe_run` and the `pipe_line` survey in this file's GenWorks row), not
+		# dealt a piece at a time here: see `GenWorks.RUNS`.
+		return BiomeScatter.NONE
 	return BiomeScatter.PASS

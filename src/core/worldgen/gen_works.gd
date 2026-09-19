@@ -26,6 +26,37 @@ class_name GenWorks
 ## keep the spawn's first steps clear. Runs and grids stand at scale 1 so their
 ## order is exact.
 
+## THE PLAN'S RUNS, WHICH NOBODY MAY SCATTER. A pipe, a conveyor and a drill rig
+## are laid by this file in RUNS -- ruled on the survey bearing, at scale exactly
+## 1, so a line of them reads as one thing the machines built rather than as
+## litter. `tests/core/test_world_gen_works.gd` holds every one of them in the
+## world to that, and a single loose one turned a random way fails it for the
+## whole island.
+##
+## All three are already in `GenScatter.PLACED`, so a landscape never has to ask
+## for them: the works stage may put them anywhere. That means naming one in
+## `BiomeDef.props` buys exactly one thing -- permission for that landscape's own
+## `_scatter` to DEAL one, at a random angle -- and there is no case where that is
+## what anybody wanted. So the declaration is the bug, and `BiomeRegistry.problems`
+## fails on it by name. A landscape that wants pipe on its ground asks for the
+## `pipe_run` vignette in its `GenWorks.register` row, which lays a real run.
+##
+## Learned once in `slums.gd`, in a comment inside one landscape's scatter, where
+## the next four authors never saw it -- and four of them did it again.
+## How far a checkpoint's booth may stand from the ROAD'S EDGE and still be a gate
+## ON that road. The booth sits off the carriageway with its boom swinging over
+## it, so it is never ON the road; this is how far off is still "at" it.
+##
+## It was three bare numbers for one rule and they did not agree: the placer
+## offered offsets of 2.2 and 2.7 tiles from the road's centre line, and the test
+## demanded 2.01 from the road's nearest SQUARE. 2.2 clears it once the half tile
+## from centre to edge is taken off; **2.7 cannot, ever** -- it was a fallback
+## that could only ever place a booth the rule forbids, and it did, on seed 90210.
+## So the placer proves this now instead of the test discovering the breach.
+const CHECKPOINT_AT_ROAD := 2.0
+
+const RUNS: Array[int] = [PropKind.PIPE, PropKind.CONVEYOR, PropKind.DRILL_RIG]
+
 const CUT := &"cut"
 const SCORCH := &"scorch"
 const QUARRY := &"quarry"
@@ -267,7 +298,13 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	if level != -99 and l != level:
 		return null
 	for v in w.villages:
-		if (v.pos as Vector2).distance_squared_to(p) < pow(float(v.get("radius", 4.0)) + 0.8, 2.0):
+		# THE VILLAGE IS A LOBE (`GenSettle.village_core`). This kept a CIRCLE of
+		# `radius` clear, and the village's own ground reaches 11.4 tiles where the
+		# circle stops at 9.5, so a barricade, a fence or a survey post could be
+		# stood on ground the village had already claimed -- outside the number
+		# this asked, inside the place.
+		var away: Vector2 = p - (v.pos as Vector2)
+		if away.length() < GenSettle.village_core(c.s, v, away.angle()) + 0.8:
 			return null
 	if PropKind.SOLID[kind] > 0.0 and not berthed:
 		# Not on a terrace lip: a solid stands on one level.
@@ -289,6 +326,22 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 ## A straight run of pieces from `a` along `dir`, `step` apart, each turned
 ## along the run; a piece that cannot stand leaves a gap, and `gaps` of them
 ## are left out anyway. Returns the ids placed.
+## Distance from `p` to the nearest ROAD TILE'S SQUARE, or INF past `reach`. The
+## square rather than its centre, because a road tile is a tile wide and a booth
+## beside its edge is beside the road.
+static func road_gap(w: WorldData, p: Vector2, reach: int = 4) -> float:
+	var best := INF
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			if not w.in_bounds(x, y) or w.ground[y * w.size + x] != Ground.ROAD:
+				continue
+			var q := Vector2(clampf(p.x, x, x + 1.0), clampf(p.y, y, y + 1.0))
+			best = minf(best, q.distance_to(p))
+	return best
+
+
 static func _run(L: Lay, kind: int, a: Vector2, dir: Vector2, pieces: int, step: float, level: int, gaps: float = 0.0) -> PackedInt32Array:
 	var ids := PackedInt32Array()
 	for i in pieces:
@@ -855,7 +908,12 @@ static func _snowfield(L: Lay) -> void:
 			for side: float in [-1.0, 1.0]:
 				# The gate's boom (the model's +Z) swings from the booth over the road.
 				var turn := along.angle() if side < 0.0 else (-along).angle()
-				booth = _put(L, PropKind.CHECKPOINT, q + across * side * off, turn, w.level[i], 0.6, true, true)
+				var stand := q + across * side * off
+				# A booth further from the road than the rule allows is not a gate
+				# on that road, whatever the offset that reached it.
+				if road_gap(w, stand) >= CHECKPOINT_AT_ROAD:
+					continue
+				booth = _put(L, PropKind.CHECKPOINT, stand, turn, w.level[i], 0.6, true, true)
 				if booth != null:
 					across = across * -side
 					break
@@ -1378,6 +1436,11 @@ static func _compose(L: Lay, name: StringName, at: Vector2, turn: float, angle: 
 		&"pipe_run":
 			n += _run(L, PropKind.PIPE, at, d, 2 + int(turn * 3.0), 2.0, -99, 0.2).size()
 			n += _about(L, PropKind.DEBRIS, at + d * 2.0, 1, 1.0, 2.5)
+		&"conveyor_run":
+			# Longer than a pipe run and unbroken: a conveyor with pieces missing
+			# has nothing to carry, and where these are laid the plant still runs.
+			n += _run(L, PropKind.CONVEYOR, at, d, 3 + int(turn * 4.0), 2.5, -99, 0.0).size()
+			n += _about(L, PropKind.DEBRIS, at + d * 2.5, 1, 1.0, 2.5)
 		&"stump_rows":
 			# A small cut in the wood: stumps in the harvester's rows.
 			var k := 2 + int(turn * 2.0)

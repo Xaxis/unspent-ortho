@@ -96,10 +96,17 @@ static func make() -> BiomeDef:
 	# so it is neither dark nor warm, which is worse than either.
 	d.night_sky = 0.7
 	d.props = [PropKind.RELAY, PropKind.PYLON, PropKind.CONSOLE, PropKind.STACK,
-		PropKind.PIPE, PropKind.CHECKPOINT, PropKind.FENCE, PropKind.PLATFORM,
-		PropKind.CONVEYOR, PropKind.WATER_TANK]
+		PropKind.CHECKPOINT, PropKind.FENCE, PropKind.PLATFORM, PropKind.WATER_TANK]
 	d.ore = [[PropKind.COPPER_ORE, 0.024], [PropKind.IRON_ORE, 0.02]]
 	d.sites = {"tips": 1}
+	# The runs the plant was laid out around, put down ruled on the survey bearing
+	# rather than dealt loose by the scatter (`GenWorks.RUNS`): conveyor first,
+	# because that is what a works city moves things on.
+	GenWorks.register(&"machine_city", {
+		"vignettes": [[5, &"conveyor_run"], [4, &"pipe_run"], [3, &"debris_field"], [3, &"wreck_parts"],
+			[2, &"survey_posts"], [2, &"tipped_signs"], [1, &"barricade"]],
+		"survey": [[0.5, &"pipe_line"]],
+	})
 	d.beached_wrecks = false
 	d.pools = {"order": 4, "cell": 48, "chance": 0.2, "r_min": 1.6, "r_max": 2.8, "ground": Ground.WATER}
 	# NOBODY LIVES HERE. Not a village, not a shack, not one fire — the only
@@ -149,10 +156,10 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 ## being done rather than where it is being routed.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.FLOOR:
-		if r < 0.030:
-			return PropKind.CONVEYOR
-		if r < 0.048:
-			return PropKind.PIPE
+		# THE RUNS ARE NOT SCATTERED. The conveyor and pipe this floor was laid out
+		# around are the plan's own, put down ruled on the survey bearing by the
+		# works stage (`pipe_run`/`conveyor_run`, this file's GenWorks row). Dealing
+		# them here turned each piece a random way: see `GenWorks.RUNS`.
 		if r < 0.060:
 			return PropKind.PLATFORM
 		if r < 0.068:
@@ -169,5 +176,5 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.WATER_TANK
 		return PropKind.RELAY if r > 0.30 and r < 0.312 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
-		return PropKind.PIPE if r < 0.014 else BiomeScatter.NONE
+		return BiomeScatter.NONE
 	return BiomeScatter.NONE
