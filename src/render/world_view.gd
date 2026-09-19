@@ -18,6 +18,9 @@ extends Node3D
 signal chunk_built(cx: int, cy: int)
 
 const CHUNK := TerrainMesher.CHUNK
+## The coarse world, by PATH not by global class name: see its header for what a
+## `class_name` here cost the owner.
+const Far := preload("res://src/render/world_far.gd")
 ## Rotation that turns a model's +X downwind (east-north-east).
 const WIND_BEARING := 0.42
 
@@ -26,7 +29,7 @@ const WIND_BEARING := 0.42
 ## Chunks are PARKED once they are this many tiles outside the wanted square.
 @export var keep := 20.0
 ## How far the chunks ever reach, whatever the camera asks for. Past this the
-## coarse `WorldFar` carries the world, because a chunk is the wrong unit for
+## coarse `world_far.gd` carries the world, because a chunk is the wrong unit for
 ## looking at an island: see that file's header for the measurement.
 @export var near_limit := 110.0
 ## How many chunks are kept built after they leave the view. **This is what
@@ -60,7 +63,7 @@ var _parked: Dictionary = {} # Vector2i -> Node3D
 var _park_seen: Dictionary = {} # Vector2i -> int, for evicting the least recently wanted
 var _park_clock := 0
 ## The whole world, coarse, built once and never dropped.
-var far: WorldFar
+var far: Far
 var _far_tables: Array = []
 ## Far blocks are built on SEVERAL workers at once, unlike chunks. A chunk is
 ## built because the player is about to walk into it, so one at a time is right:
@@ -195,7 +198,7 @@ func _bind(w: WorldData) -> void:
 	_add_open_sea()
 	# Read off the registry HERE, on the main thread, so a far block's worker
 	# never touches it (the chunk workers learnt the same lesson above).
-	_far_tables = WorldFar.tables()
+	_far_tables = Far.tables()
 	_far_tasks.clear()
 	_far_keys.clear()
 	_far_out.clear()
@@ -205,7 +208,7 @@ func _bind(w: WorldData) -> void:
 		_far_keys.append(Vector2i.ZERO)
 		_far_out.append([])
 		_far_at.append(0)
-	far = WorldFar.new()
+	far = Far.new()
 	far.name = "far"
 	add_child(far)
 
@@ -234,7 +237,7 @@ func parked_count() -> int:
 func far_wanted() -> int:
 	if world == null:
 		return 0
-	var n := WorldFar.across(world.size)
+	var n := Far.across(world.size)
 	return n * n
 
 
@@ -426,7 +429,7 @@ func _far_step(near_busy: bool) -> void:
 
 func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
-	_far_out[slot] = WorldFar.build_arrays(world, key.x, key.y, _far_tables)
+	_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
 
 
@@ -480,7 +483,7 @@ static func half_extent_for(vh: float, aspect: float, pitch: float) -> float:
 ## the wanted square grows with the square of the view height and a pulled-back
 ## camera asks for the whole world: 1,681 chunks on this island, 77 seconds of
 ## building, for a frame in which a tile is a pixel and a half. Past the cap the
-## coarse `WorldFar` is already standing there.
+## coarse `world_far.gd` is already standing there.
 func _wanted(extra: float) -> Array[Vector2i]:
 	var r := minf(view_half_extent(), near_limit) + margin + extra
 	var n := ceili(float(world.size) / CHUNK)

@@ -1,4 +1,3 @@
-class_name WorldFar
 extends Node3D
 ## The whole world at a distance, so that pulling the camera back is never a
 ## reason to BUILD anything.
@@ -19,6 +18,17 @@ extends Node3D
 ## frustum can throw away what is behind the camera, built once on the worker and
 ## **never dropped** -- which is the whole point. A world that is built once can
 ## be looked at from any height, in any order, for the rest of the game.
+##
+## **NO `class_name`, AND THAT IS DELIBERATE.** It had one, and it broke the game
+## for the owner while every test, shot, tour and gate stayed green: a global
+## class resolves out of Godot's class cache, `tools/_import.sh` refreshes that
+## cache whenever a script is newer, and so every instrument in this repository
+## repairs the very thing it would otherwise be testing. A person running
+## `godot --path .` by hand after a pull does not, and this file then fails to
+## PARSE -- taking the render boot down with it, which is nearer the bottom than
+## the `RoadHold` that found this the same evening. `WorldView` reaches it through
+## a `const` preload, which is resolved by PATH and cannot go stale, the way
+## `src/models/` has always done it.
 ##
 ## HEIGHT IS TAKEN AS A FLOOR, NEVER AS A SAMPLE. Every corner is the LOWEST
 ## land within a cell of it, less `DROP`. The two surfaces overlap wherever the
