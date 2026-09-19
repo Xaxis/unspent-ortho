@@ -52,8 +52,20 @@ var _was_high := 0.0
 var _seen: Dictionary = {}
 
 
+var _regions: DevRegions
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
+	# Its own layer, over the world and under dev mode's own app (19), because it
+	# is about the world rather than about the slate.
+	var layer := CanvasLayer.new()
+	layer.name = "flyover"
+	layer.layer = 18
+	add_child(layer)
+	_regions = DevRegions.new()
+	_regions.game = g
+	layer.add_child(_regions)
 
 
 func _process(delta: float) -> void:
@@ -61,6 +73,13 @@ func _process(delta: float) -> void:
 		return
 	if _pressed(&"dev_fly"):
 		_toggle()
+	# The regions may be picked out on the ground as well as from the air: which
+	# region you are STANDING in is a fair question at head height too.
+	if _pressed(&"dev_regions"):
+		_regions.showing = not _regions.showing
+		Events.message.emit("Regions shown." if _regions.showing else "Regions hidden.")
+	if _regions.showing:
+		_regions.step()
 	if not flying:
 		return
 	# A page on the glass holds every other key, and the map is the page most
