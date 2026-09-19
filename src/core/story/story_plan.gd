@@ -82,8 +82,39 @@ static func slots() -> Array[StorySlot]:
 	return out
 
 
+## Where every slot of the story stands in this world. Held per world, because
+## it is pure and derived and the systems ask it on a beat: `20_realms` asks
+## twice every 0.2 s through `StoryGates.all` and `.open`, and rebuilding it cost
+## **15-44 ms a call** on a 1300-tile world -- the whole of the proc-side hitch
+## left after the chapters one (#126, docs/PERF.md). Casting re-searches the
+## world for a village, a works, a landmark and the black site per slot, and
+## nothing it reads can move while a world stands.
+##
+## **KEYED ON THE WORLD ITSELF, NOT ON ITS SEED**, and the difference is a test
+## that would have gone green against the bug. `tests/story/test_plan.gd` grows
+## the same seed TWICE and casts both to prove the casting is deterministic — so
+## a cache keyed `seed:size:realm` would hand the second world the first one's
+## answer and that test would pass without the casting being deterministic at
+## all. Identity cannot do that, and it also makes a realm crossing a miss for
+## free, since the other realm is a different object.
+static var _cast_world: WorldData = null
+static var _cast: Dictionary = {}
+
+
 static func cast(world: WorldData) -> Dictionary:
-	return StoryCasting.cast(world, slots())
+	if world == null:
+		return {}
+	if world == _cast_world:
+		return _cast
+	_cast_world = world
+	_cast = StoryCasting.cast(world, slots())
+	return _cast
+
+
+## Only the tests want this; a running game casts once per world for its life.
+static func forget() -> void:
+	_cast_world = null
+	_cast = {}
 
 
 ## Everything wrong with the story in THIS world, in words a writer can act on.
