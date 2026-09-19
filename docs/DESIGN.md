@@ -510,8 +510,16 @@ test can fail on rather than a hope about spawn tables.
   correctly and must never be stopped, told off or rewound. The opening is a
   place that is kind, not a corridor.
 
-**What this needs that does not exist yet**: a haven declared per village with a
-tested safety floor; a lesson type that names its place, its teacher and the
+**Landed so far**: the safety floor (`Haven`). The guarantee was already true by
+accumulation -- sixteen of nineteen roster rows declare a `where.green_min`, so a
+village was quietly the safest ground in the game -- and nobody had written it
+down, which means the next row added without one repeals it in silence. Measured
+and then stated: the plan's hunters keep 14 tiles off a green (the runner's own
+number, and the runner is the first hunter a player meets), beasts keep 10, and a
+kind that BELONGS near a village is exempt by declaring `green_max` in its own row
+rather than by being named in a list somewhere else.
+
+**What this still needs**: a lesson type that names its place, its teacher and the
 live state that retires it; `Guide` widened from a first hour to the ordered
 list above; and the spawn choosing a haven rather than any coast village. The
 sub-arc generator (VISION §10.4) is the machinery for the words; this is the
