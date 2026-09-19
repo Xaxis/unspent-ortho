@@ -65,7 +65,7 @@ func test_a_file_that_names_an_unknown_setting_or_a_bad_value_is_refused() -> vo
 	check(not GameConfig.parse('{"settings": {"world.seed": 0}}', "x").ok, "a seed out of range")
 	check(not GameConfig.parse('{"settings": {"builds.targets": []}}', "x").ok, "a build of nothing")
 	check(not GameConfig.parse('not json', "x").ok)
-	var ok := GameConfig.parse('{"settings": {"world.size": 384.0, "start.kit": {"driftwood": 3.0}}}', "x")
+	var ok := GameConfig.parse('{"settings": {"world.size": 512.0, "start.kit": {"driftwood": 3.0}}}', "x")
 	check(ok.ok, ok.why)
 	eq(typeof(ok.settings["world.size"]), TYPE_INT, "numbers come back as the game reads them")
 	eq(typeof(ok.settings["start.kit"]["driftwood"]), TYPE_INT)
@@ -138,8 +138,8 @@ func test_keep_as_writes_only_what_differs_from_the_base_and_reads_back() -> voi
 
 
 func test_choices_step_round_and_say_what_they_are() -> void:
-	eq(ConfigChoices.step("world.size", 768, 1), 256, "a choice wraps")
-	eq(ConfigChoices.step("world.size", 512, -1), 384)
+	eq(ConfigChoices.step("world.size", 1666, 1), 256, "a choice wraps")
+	eq(ConfigChoices.step("world.size", 512, -1), 256)
 	eq(ConfigChoices.step("start.lamp", false, 1), true)
 	eq(ConfigChoices.step("world.seed", 99999, 1), 1)
 	eq(ConfigChoices.show("rules.clock", 1.0), "x1  a day in 24 min")

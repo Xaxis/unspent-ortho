@@ -73,8 +73,30 @@ static func run(c: GenContext) -> void:
 			"id": id, "tiles": tiles,
 			"centre": Vector2(float(sum_x[id]) / tiles, float(sum_y[id]) / tiles),
 			"bounds": Rect2(int(b[0]), int(b[1]), int(b[2]) - int(b[0]) + 1, int(b[3]) - int(b[1]) + 1),
+			"home": false,
 		})
 	w.continents = out
+
+
+## WHICH CONTINENT IS HOME IS RECORDED, not worked out by whoever asks. The
+## journey is authored on it, a chapter's first demand is there, and the story's
+## legs start there — and until now the only way to know was to find the spawn and
+## look its continent up, which is the shape of bug `WorldData.road` and the
+## landmark `region` field both exist to end.
+##
+## It is called AFTER `GenSettle.spawn`, and read off the spawn rather than off
+## the plan's home body, because the two can disagree: measured, on seed 42 the
+## plan's home centre and the tile the player actually wakes on are different
+## masses. **Home is where he wakes.** Anything else is a second answer that will
+## be wrong on one seed in three.
+static func mark_home(c: GenContext) -> void:
+	var w := c.w
+	var at := w.spawn
+	var x := clampi(floori(at.x), 0, c.size - 1)
+	var y := clampi(floori(at.y), 0, c.size - 1)
+	var id := w.continent_at(x, y)
+	for row: Dictionary in w.continents:
+		row["home"] = int(row.get("id", -1)) == id
 
 
 # --- The planning half (docs/WORLD.md) -----------------------------------------

@@ -200,9 +200,16 @@ func test_journey_runs_north_from_a_southern_coast() -> void:
 				var key := b * 256 + int(w.country[i])
 				sums[key] = float(sums.get(key, 0.0)) + float(y)
 				counts[key] = float(counts.get(key, 0.0)) + 1.0
+		# ON THE CONTINENT THE JOURNEY IS AUTHORED ON, which is the one he wakes on
+		# (`GenBodies.mark_home`). A landscape's anchors are dealt to the home body
+		# first, so that is where the south-to-north order is placed on purpose;
+		# everywhere else a landscape lands by its CLIMATE, which is the design
+		# (`BiomeDef.temp_range`/`moist_range`) and is not a journey. Asking every
+		# continent to repeat the journey was asking climate-placed land to honour
+		# an order nothing had written there.
 		var tested := 0
 		for b: Dictionary in w.continents:
-			if int(b.get("tiles", 0)) < 20000:
+			if not bool(b.get("home", false)):
 				continue
 			var id := int(b.get("id", -1))
 			var mean := func(c: int) -> float:
@@ -229,7 +236,7 @@ func test_journey_runs_north_from_a_southern_coast() -> void:
 				tested += 1
 				lt(at2, middle, "seed %d: %s lies beyond the middle belt on continent %d"
 					% [s, BiomeRegistry.name_of(c), id])
-		gt(float(tested), 0.0, "seed %d: some continent carries enough of the journey to read it" % s)
+		gt(float(tested), 0.0, "seed %d: the home continent carries enough of the journey to read it" % s)
 
 
 func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
