@@ -281,6 +281,18 @@ tools print their own summaries.
   need the import cache refreshed; the tools do it automatically.
 - **Game logic in `src/core` or in an actor's `drive/step` methods that take
   explicit inputs and delta**, so tests and bots can run them without devices.
+- **The act that answers a question is the act that stops the question being
+  asked.** So anything that proves a thing happened has to be written down AT the
+  moment it happens, never looked for afterwards — by then the world has moved on
+  and the only honest answer is "nothing is being asked", which reads exactly like
+  "it never happened". Found four times in one day wearing four costumes: a tour
+  `await` that passed off a latch set long before (98_tour's spend rule); a
+  sub-arc's thanks, unreachable because breaking the yard is what stops the region
+  asking for the yard to be broken; a works part that could not be opened because
+  the survey post beside it answered the same key first; and `Broken`'s
+  `worked_down`, which had to be recorded because a prop that has been taken from
+  looks like a smaller prop. When you catch yourself asking the live world whether
+  something was done, ask instead who wrote it down.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
