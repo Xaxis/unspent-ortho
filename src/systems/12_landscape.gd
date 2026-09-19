@@ -14,6 +14,7 @@ func setup(g: Game) -> void:
 func _process(_delta: float) -> void:
 	if game == null or game.view == null:
 		return
+	_tell_camera_how_tall_it_builds()
 	_frames += 1
 	if game.options.stats and _frames == maxi(3, game.options.frames - 1):
 		# What the frame was actually drawn by, before what it cost: a tier that
@@ -27,6 +28,36 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
+
+
+## The camera's near focus clears the tallest thing a landscape BUILDS, and only
+## this file is in a position to say what that is: the camera package may not know
+## about landscapes and the biome package may not know about cameras.
+##
+## The TALLEST of what can be in frame, not what is underfoot, and the difference
+## is the whole point: the buildings this rule is about stand at the near edge of
+## the picture, which on a border is the other landscape. Asking the tile the
+## player is standing on would keep the city's towers blurred until they had
+## walked past them, which is exactly the frame that started this.
+##
+## Five samples round the frame's own reach — cheap, and it cannot be wrong about
+## a landscape it can see. The camera eases the change itself, so the number
+## arriving a little early and leaving a little late is also the pull that reads
+## best walking in.
+const LOOK_ROUND := 16.0
+
+func _tell_camera_how_tall_it_builds() -> void:
+	if game.camera == null or game.world == null:
+		return
+	var w := game.world
+	var p: Vector2 = game.player.pos if game.player != null else w.spawn
+	var high := 0.0
+	for d: Vector2 in [Vector2.ZERO, Vector2(LOOK_ROUND, 0.0), Vector2(-LOOK_ROUND, 0.0),
+			Vector2(0.0, LOOK_ROUND), Vector2(0.0, -LOOK_ROUND)]:
+		var x := clampi(floori(p.x + d.x), 0, w.size - 1)
+		var y := clampi(floori(p.y + d.y), 0, w.size - 1)
+		high = maxf(high, BiomeForms.of(w.country_at(x, y)).tallest())
+	game.camera.clear_lift = high
 
 
 static func stats_line(view: WorldView) -> String:

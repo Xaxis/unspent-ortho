@@ -106,13 +106,35 @@ func _ready() -> void:
 ## is left to blur is what is genuinely overhead, which is what this is for.
 ##
 ## 2.6 units is a machine (about 1.8) with room over it, so a hunter at the very
-## bottom edge of the frame is crisp.
+## bottom edge of the frame is crisp. It is the FLOOR now rather than the answer:
+## see `clear_lift`.
 const DOF_CLEAR_LIFT := 2.6
 ## How far past the plane the blur reaches full, in world units.
 const DOF_RAMP := 4.5
 const DOF_AMOUNT := 0.14
+## How fast the clear lift crosses a border, per second. Slow enough that walking
+## into the city pulls focus rather than snapping it.
+const CLEAR_EASE := 1.6
+
+## HOW TALL A THING MAY BE AT THE NEAR EDGE AND STAY SHARP, set by whoever knows
+## what this landscape builds (`12_landscape`, off `BiomeForms.tallest`).
+##
+## Measured, in the city, and it is the same shape as every other long-lived bug
+## in this project: a correct rule whose premise moved. DOF_CLEAR_LIFT was fitted
+## to a stock of one-storey buildings — the tallest thing anybody raised was 2.8
+## — so "2.6 clears a machine with room over it" cleared everything there was.
+## Then a landscape was allowed to build a 14.3 tower and a 16.3 spire, and the
+## two tallest buildings in the Slums came out as unreadable smears at the bottom
+## of the frame: the near blur was eating precisely what makes a city a city.
+##
+## The rule itself was never wrong. It just stopped being asked of the right
+## number, and a constant cannot notice that. So the height belongs to the stock
+## that decides it, and this is only where the camera keeps the answer.
+var clear_lift := DOF_CLEAR_LIFT
 
 var _dof_size := -1.0
+var _clear_now := DOF_CLEAR_LIFT
+var _dof_clear := -1.0
 
 
 ## How much of the frame's height the web pass's near blur spreads a pixel over
@@ -128,7 +150,7 @@ const NEAR_STAND_IN_REACH := 0.015
 ## soften exactly the same things.
 func near_plane(shown: float) -> float:
 	var near_ground := distance - Air.frame_depth(shown, pitch_deg + _pitch)
-	var begin := near_ground - DOF_CLEAR_LIFT * sin(deg_to_rad(pitch_deg + _pitch))
+	var begin := near_ground - _clear_now * sin(deg_to_rad(pitch_deg + _pitch))
 	return maxf(near + 1.0, begin)
 
 
@@ -170,9 +192,12 @@ func _near_focus() -> void:
 		a.dof_blur_amount = DOF_AMOUNT
 		attributes = a
 	var shown := size
-	if is_equal_approx(shown, _dof_size):
+	# Both inputs, or a landscape that changes how tall it builds without changing
+	# the zoom leaves the plane where the last one put it.
+	if is_equal_approx(shown, _dof_size) and is_equal_approx(_clear_now, _dof_clear):
 		return
 	_dof_size = shown
+	_dof_clear = _clear_now
 	# The nearest ground the frame holds, from the camera that is really drawing
 	# -- so a zoom or a target lean moves the plane with the picture instead of
 	# quietly blurring the near half of a zoomed-out frame.
@@ -228,6 +253,7 @@ func shake(strength: float, seconds: float = 0.12) -> void:
 
 func _process(delta: float) -> void:
 	_smoothed = _smoothed.lerp(target, 1.0 - exp(-follow_rate * delta))
+	_clear_now = lerpf(_clear_now, maxf(DOF_CLEAR_LIFT, clear_lift), 1.0 - exp(-CLEAR_EASE * delta))
 	_ease_lean(delta)
 	_apply()
 
