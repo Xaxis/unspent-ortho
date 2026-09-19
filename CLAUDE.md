@@ -28,14 +28,27 @@ in any lit shader. A shader says what the surface IS and the renderer lights it,
 against a real sun with real penumbra, a sky that colours the shade, many local
 lights that can cast, volumetric air and a tonemapper. Wear accumulates by world
 position (`SkyWear`, `matter_worn`), so the same machine rusts in the bog and
-blooms on the salt. The wave runs `floor` (done), `lit` (done), then `form` /
-`depth` / `slate` in parallel, then `degrade` (the web path proven almost as
-good).
+blooms on the salt. The wave ran `floor`, `lit`, `slate`, `depth` and `degrade`,
+all landed; `form` is the only one still open, and it is narrower than it used to
+be.
 
-**Two things `lit` left for whoever is next.** Models read faceted under real
-light — they were built for 640x360 and their budgets have not risen (`form`).
-The world is still one plane seen from above; nothing passes between the camera
-and the player (`depth`). The third, the slate, is done: see below.
+**What `form` still means, measured rather than remembered.** At play zoom the
+frame is 26.67 world units across 1920 pixels — **72 pixels per world unit**, so
+a 0.02 chamfer that was half a pixel at 640x360 is 1.4 pixels now and a 4-sided
+`strut` of radius 0.04 is a 5.8-pixel square bar. Three things follow, and none
+of them is "raise the budgets": MADE geometry has ONE material row for every
+timber, thatch, cloth, rope, concrete and glass surface in the game
+(`matter_of()` returns its default for all of them, so only the mesh normal tells
+a roof from a wall); welding reaches four call sites out of sixty-four model
+files, and `MeshKit.smooth_begin`/`smooth_end` — the pair this file used to
+present as the API — have **no callers anywhere**, so every machine and every
+sentinel is flat-shaded; and 96 of 167 `strut` calls pass n=4. Two independent
+audits found the welding gap separately, which is why it is written down here.
+
+**This paragraph was wrong for weeks and nobody caught it**, because a stale
+contract reads exactly like a true one: it claimed `depth` was undone while
+`src/render/depth/` and `src/systems/13_fore.gd` were shipped, passing twenty
+tests. Check the directory before you believe a wave status.
 
 **So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
 to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
@@ -309,6 +322,20 @@ tools print their own summaries.
   authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
   presses a body with, and a shared rule that cannot see a declaration will keep
   reporting content as breakage.
+- **A SPEEDUP THAT MOVES A TILE IS NOT A SPEEDUP.** World generation is 13 s and
+  the biggest stages are `settle.roads` (2,408 ms, ~59 A* searches over a 650x650
+  weighted grid) and `shape` (3,296 ms) — and both were deliberately left alone.
+  Every way to make that A* cheaper changes where the roads run, which moves every
+  seed's world, which is a parity re-acceptance and a re-shoot of every frame in
+  the repository, paid to speed up something the owner has said in writing he does
+  not wait on. The optimisations worth taking are the ones with the SAME OUTPUT:
+  `BlackSite._sea` went 3,265 ms → 334 ms (9.8x) by flooding a `PackedByteArray`
+  off `w.ground` instead of a Dictionary calling `ground_at` per neighbour, **and
+  seed 7 picks the identical tile before and after** — the check is the half that
+  makes it count, because a number without it is just a diff. The lever itself is
+  general and large: a GDScript method call is about ten times an array index, and
+  `append` on a Packed array copies it. Reading `w.level`/`w.ground`/`w.country`
+  directly and sizing arrays once took a coarse-world block from 480 ms to 34 ms.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
