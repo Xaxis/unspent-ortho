@@ -26,9 +26,9 @@ func _restore() -> void:
 		Weather.unforce()
 
 
-func _make(dev: bool, extra: PackedStringArray = []) -> Game:
+func _make(dev: bool, extra: PackedStringArray = [], size: int = 64) -> Game:
 	DevMode.asked = dev
-	var args := PackedStringArray(["--size=64", "--seed=4"])
+	var args := PackedStringArray(["--size=%d" % size, "--seed=4"])
 	args.append_array(extra)
 	var g := Game.new()
 	tree.root.add_child(g)
@@ -312,7 +312,12 @@ func test_the_warp_list_costs_about_one_sweep_of_the_island() -> void:
 ## staged for a picture can be walked to by the same word.
 func test_a_place_typed_by_hand_goes_there_and_a_name_nobody_has_refuses() -> void:
 	_keep()
-	var g := _make(true)
+	# **THE NAMES ARE ASKED OF A WORLD THAT HAS PLACES IN IT.** 64 squared holds
+	# about 1,500 tiles of land and raises no region at all, so `GenPlaces` could
+	# answer none of its own names and this test was checking that a loop ran
+	# zero times. Every other test in this file is about the dev app and is happy
+	# at 64; this one is about the WORLD, so it asks a world.
+	var g := _make(true, [], 256)
 	var w := g.world
 	eq(DevCheats.find_place(w, "20, 30"), Vector2(20.0, 30.0), "a coordinate is taken as one")
 	eq(DevCheats.find_place(w, "20.5 30.5"), Vector2(20.5, 30.5), "with or without the comma")
@@ -341,8 +346,14 @@ func test_a_place_typed_by_hand_goes_there_and_a_name_nobody_has_refuses() -> vo
 	s.open_at(&"go", &"typed")
 	s.handle(&"confirm")
 	check(s.editing(), "e on the typed row starts a line")
-	var to := Vector2(20.5, 30.5)
-	for c in "20.5 30.5".to_utf8_buffer():
+	# **THE TARGET IS THE WORLD'S OWN SPAWN, NOT A COORDINATE.** This typed
+	# "20.5 30.5", which is inland on a 64 world and open SEA on a bigger one, so
+	# the warp landed at the nearest standable tile half the map away and the
+	# assertion read as the page being broken. `w.spawn` is standable by
+	# construction at every size (CLAUDE.md: stage by name, never by a
+	# coordinate). The PARSING of a typed pair is already covered above.
+	var to := Vector2(snappedf(w.spawn.x, 0.5), snappedf(w.spawn.y, 0.5))
+	for c in ("%.1f %.1f" % [to.x, to.y]).to_utf8_buffer():
 		s.type_key(KEY_A, c)
 	s.type_key(KEY_ENTER, 0)
 	check(not s.editing())

@@ -104,25 +104,41 @@ func test_a_seed_says_how_much_of_the_ladder_it_holds() -> void:
 ## A landscape's own material is refined from a raw, and a raw comes off a PROP
 ## that has to be standing there. `Sources` reads the landscape's declared prop
 ## list; worldgen decides what is really scattered. This asks the world.
+##
+## **ASKED OF A SHIPPED-SIZE WORLD, AND IT HAS TO BE.** At 256 the island is a
+## twentieth of the real one and its scatter is thin: seed 7 grew 851 tiles of
+## snowfield with NOT ONE boulder on them, so `frost_varnish` looked unreachable.
+## Measured at `Tuning.WORLD_SIZE` the same seed grows 38,204 tiles of snowfield
+## carrying 151 boulders. The claim is about a world a player is given, and a toy
+## island cannot answer it either way. Its siblings above keep the four seeds at
+## 256, where they are asking about the SPREAD of landscapes rather than the
+## density of props.
+##
+## One seed, because a world at 1300 costs about eleven seconds to grow. The
+## `checked` counter is what stops that becoming a test of nothing: every
+## material here is skipped when its landscape is absent, and a loop that skips
+## everything passes in silence.
 func test_the_prop_a_landscapes_material_is_refined_from_really_stands_in_it() -> void:
 	_declared()
-	for s: int in SEEDS:
-		var w := WorldGen.generate(s, SIZE)
-		var here := _lands_in(w)
-		for id: StringName in EliteStock.ids():
-			var land := EliteStock.land_of(id)
-			if land == &"" or not here.has(land):
+	var w := WorldGen.generate(7, Tuning.WORLD_SIZE)
+	var here := _lands_in(w)
+	var checked := 0
+	for id: StringName in EliteStock.ids():
+		var land := EliteStock.land_of(id)
+		if land == &"" or not here.has(land):
+			continue
+		var raw := StringName(EliteStock.material(id).get("raw", &""))
+		var kind := Sources.prop_yielding(raw)
+		gt(float(kind), -1.0, "%s is refined from %s and nothing yields it" % [id, raw])
+		var standing := 0
+		for p: WorldProp in w.props:
+			if p.kind != kind:
 				continue
-			var raw := StringName(EliteStock.material(id).get("raw", &""))
-			var kind := Sources.prop_yielding(raw)
-			gt(float(kind), -1.0, "%s is refined from %s and nothing yields it" % [id, raw])
-			var standing := 0
-			for p: WorldProp in w.props:
-				if p.kind != kind:
-					continue
-				var d := BiomeRegistry.at(w, p.pos)
-				if d != null and d.id == land:
-					standing += 1
-			gt(float(standing), 0.0,
-				"seed %d: %s wants %s off a %s in the %s, and the %s has none standing in it"
-				% [s, id, raw, PropKind.NAMES[kind], land, land])
+			var d := BiomeRegistry.at(w, p.pos)
+			if d != null and d.id == land:
+				standing += 1
+		checked += 1
+		gt(float(standing), 0.0,
+			"%s wants %s off a %s in the %s, and the %s has none standing in it"
+			% [id, raw, PropKind.NAMES[kind], land, land])
+	gt(float(checked), 0.0, "at least one elite material was really asked about")
