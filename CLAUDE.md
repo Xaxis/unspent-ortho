@@ -309,6 +309,26 @@ tools print their own summaries.
   authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
   presses a body with, and a shared rule that cannot see a declaration will keep
   reporting content as breakage.
+- **A speedup that moves a tile is not a speedup, it is a re-acceptance wearing
+  one.** Worldgen output is pinned by `tests/biome/test_parity.gd` and by every
+  frame in the repository, so a faster stage that lands things half a tile
+  elsewhere costs a parity re-acceptance and a re-shoot, and buys load time the
+  owner has said in writing he does not wait on ("loading time doesnt matter",
+  asking for the bigger world). So the measurement has TWO halves and the second
+  is the one that counts: `BlackSite._sea` went 3,265 ms to 334 (a Dictionary and
+  `ground_at` per neighbour became a `PackedByteArray` and a direct read of
+  `w.ground`) **and seed 7 still lands on (143.5, 1030.5)**. Profile with
+  `WorldGen.last_timings` / `last_detail` before reaching for anything: the two
+  biggest stages are roads and the country score fields, and both were looked at
+  and DECLINED on exactly this rule.
+- **A count of things built is not evidence that anything was drawn.** Far blocks
+  wound backwards built cleanly, dispatched their draw calls and had their
+  primitives counted -- the stats line read 121 of 121 while the world was not on
+  the screen. The same shape as a test runner printing "0 load errors" over a
+  parse error that dropped five files, and a green suite over a comment that was
+  never inserted. **An instrument that reports on the step before the one you
+  care about will report success for a failure every time.** Check the thing
+  itself: read the pixels, read the file back, ask the live camera.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
