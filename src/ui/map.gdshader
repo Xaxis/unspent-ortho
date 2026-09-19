@@ -10,7 +10,15 @@
 //            and the coast in the brightest tone
 //   marks    trees, rocks, reeds, houses and stations as tiny symbols; ruins,
 //            wrecks, tips and pylons in the machines' violet
-//   unseen   bare glass; the edge of the known breaks up in a scan dither
+//   unseen   THE SHAPE ONLY: the same land fill stepped by the ground's value,
+//            dimmed to UNSEEN_LIGHT, with no contour, hatch, road, symbol,
+//            sounding or name. Owner's ruling, 2026-09-19: he should be able to
+//            zoom out and see the ENTIRE map, because walking does not buy a
+//            tile's EXISTENCE, it buys its DETAIL. It was bare glass, which drew
+//            a 1300-tile world as an empty field with a smear on it -- after a
+//            long walk the survey still reported 0.3% seen. Inland water stays
+//            glass so a lake reads as a hole and not as land.
+//            The edge of what is KNOWN still breaks up in a scan dither.
 // Tones come in as uniforms from UiTheme so the slate's colours live in one place.
 shader_type canvas_item;
 render_mode unshaded;
@@ -35,6 +43,12 @@ uniform float world_size = 256.0;
 // own textures divides by it; `seen_tex` does NOT, because the explored mask is
 // a straight copy of the player's own grid and is cheap at any size.
 uniform float tex_step = 1.0;
+
+// How much of the land's lit fill an UNSURVEYED tile keeps. Low enough that the
+// eye reads the surveyed country as the subject and the rest as the shape it
+// sits in; high enough that five continents read as five continents on the
+// first frame the map is ever opened.
+const float UNSEEN_LIGHT = 0.42;
 
 ivec2 texel(ivec2 t) {
 	return t / int(tex_step);
@@ -300,6 +314,28 @@ void fragment() {
 		// The scanner's rows: every other map row a touch dimmer.
 		if (mod(pix.y, 2.0) > 0.5) {
 			col = mix(col, glass, 0.12);
+		}
+	} else {
+		// UNSEEN: the world's SHAPE, and nothing that walking is supposed to buy.
+		// Deliberately the same fill expression as the known branch above, at
+		// UNSEEN_LIGHT, so a surveyed country and its unsurveyed continuation are
+		// the same land in two states rather than two different drawings meeting
+		// at a line.
+		float lv = land_field(tp);
+		if (lv >= 0.5) {
+			ivec2 gt = ground_tile(mp, tp);
+			int g = ground_at(gt);
+			if (!is_inland_water(g)) {
+				alpha = 1.0;
+				vec3 wash = texelFetch(palette_tex, ivec2(g, 0), 0).rgb;
+				float value = dot(wash, vec3(0.3, 0.55, 0.15));
+				float bayer = mod(mp.x, 2.0) * 0.5 + mod(mp.y, 2.0) * 0.25 + mod(mp.x + mp.y, 2.0) * 0.125;
+				col = (value * 1.3 > 0.35 + bayer * 0.5) ? mix(ph0, ph1, 0.35) : ph0;
+				col = mix(glass, col, UNSEEN_LIGHT);
+				if (mod(pix.y, 2.0) > 0.5) {
+					col = mix(col, glass, 0.12);
+				}
+			}
 		}
 	}
 	COLOR = vec4(col, alpha);
