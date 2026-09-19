@@ -483,6 +483,24 @@ static func _occupy(c: GenContext, occ: PackedByteArray, p: Vector2, r: float) -
 				occ[y * c.size + x] = 1
 
 
+## No river and no still water within `r` of `p`. Kept apart from `_free` because
+## it asks a different question over a different radius: what a building STANDS
+## on rather than what it is crowded by.
+static func _dry_around(c: GenContext, p: Vector2, r: float) -> bool:
+	var ri := ceili(r)
+	for dy in range(-ri, ri + 1):
+		for dx in range(-ri, ri + 1):
+			if Vector2(dx, dy).length() > r:
+				continue
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			if x < 0 or y < 0 or x >= c.size or y >= c.size:
+				continue
+			if c.water[y * c.size + x] != 0:
+				return false
+	return true
+
+
 static func _free(c: GenContext, occ: PackedByteArray, p: Vector2, r: float) -> bool:
 	var ri := ceili(r)
 	for dy in range(-ri, ri + 1):
@@ -618,6 +636,15 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 					if w.level_at(floori(hp.x) + dx, floori(hp.y) + dy) != l:
 						level_ok = false
 			if not level_ok:
+				continue
+			# NO STILL WATER UNDER A BUILDING'S OWN FOOTPRINT. `_free` clears a
+			# radius of one, which was the whole of a coastal cottage; a city form
+			# stands on 2.4 and `tests/core/test_world_gen_surface.gd` asks for
+			# three tiles of dry ground past its `solid`, so a tower could be set
+			# down with a bog pool at its door and nothing refused it. It showed as
+			# one blackwater beside one house on one seed, which is what a rule
+			# that was true for small buildings looks like when buildings grow.
+			if not _dry_around(c, hp, forms.widest() + 3.0):
 				continue
 			var house := _add(c, PropKind.HOUSE, hp)
 			houses.append(house)
