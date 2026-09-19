@@ -518,3 +518,46 @@ func test_the_key_row_skips_a_lesson_that_names_no_key() -> void:
 	for id: StringName in [&"haven", &"runner", &"worker"]:
 		eq((Guide.HINTS[id][1] as Array).size(), 0, "%s names no key, so the row must skip it" % id)
 	Fx.done(g)
+
+
+func test_somebody_who_lives_here_can_give_the_lesson_instead_of_the_glass() -> void:
+	# docs/DESIGN.md §Safe havens: "the teaching lives in the place, not on the
+	# glass. A lesson is somebody who lives there... never a key prompt hung in
+	# the middle of the frame." A villager with nothing scripted used to answer
+	# "They have nothing to say to you" -- a dead end standing exactly where a
+	# teacher belongs.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=256", "--village=0"])))
+	var guide: Node = g.get_node("58_guide")
+	check(guide.has_method(&"teach_now"), "somebody in the game can be asked to teach")
+	var said: Array[String] = []
+	var listen := func(t: String, _key: String) -> void: said.append(t)
+	Events.hint.connect(listen)
+	var gave: bool = guide.call("teach_now")
+	Events.hint.disconnect(listen)
+	check(gave, "there was a lesson to give")
+	eq(said.size(), 1, "and it was said once, got %s" % [said])
+	if not said.is_empty():
+		check(said[0].begins_with("\"") and said[0].ends_with("\""),
+			"in somebody's voice rather than as a caption: %s" % said[0])
+		check(not said[0].contains("%s"), "spelled, not a raw template")
+	# **ONE CURRICULUM, NOT TWO.** A lesson given by a person is THE lesson, so it
+	# is spent: the glass must not say it again afterwards.
+	var retired: Dictionary = guide.get("retired")
+	gt(float(retired.size()), 0.0, "giving it spends it")
+	g.free()
+
+
+func test_a_teacher_with_nothing_left_to_teach_says_so() -> void:
+	# The fall-back has to survive, or a village with a taught player becomes a
+	# row of people who answer nothing at all.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=256", "--village=0"])))
+	var guide: Node = g.get_node("58_guide")
+	var retired: Dictionary = guide.get("retired")
+	for id: StringName in Guide.HINTS:
+		retired[id] = true
+	eq(guide.call("teach_now"), false, "with every lesson spent, nobody claims to teach")
+	g.free()

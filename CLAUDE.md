@@ -387,6 +387,28 @@ tools print their own summaries.
   blamed a bug in the chapter rules that does not exist. A default on a
   "is this done / did it work" question is the caller supplying the evidence and
   then believing it: assert the key is THERE, then read it.
+- **A LAZY CACHE IS A HITCH WITH A DELAY ON IT.** `TrackMarks` built each
+  footprint's height field, two images pixel by pixel, mipmaps and two textures
+  on first use and remembered them: 18.5 ms, paid once per shape-and-ground. It
+  reads as free because the SECOND step costs nothing — and it is not a warm-up
+  cost either, because the combinations are not all used at the start. **The
+  player pays it again at every border they cross onto a ground that wears
+  differently**, which is exactly the moment the frame is already busiest.
+  "Remembered after first use" hides a stall wherever the first use happens to
+  fall; build it when the world is made, or accept it deliberately and write down
+  why (that file's header does both).
+- **"PURE AND DERIVED" IN A HEADER IS A PROMISE THAT SOMETHING IS CACHEABLE, AND
+  THREE TIMES IN ONE DAY IT MEANT NOBODY HAD.** It says the answer is a function
+  of the world and cannot drift — which is exactly the licence to compute it once
+  and keep it. `Works.sites` and `Landmarks.sites` do. `Chapter.ore_standing`
+  (224.6 ms a tick) and `StoryPlan.cast` (51 ms, twice every 0.2 s) did not, and
+  both carried the phrase. When you read it, check whether the promise was
+  collected. **And key such a cache on the WORLD OBJECT, not on
+  `seed:size:realm`**: those three name a world the game grows once, so a seed
+  key is correct in play and silently makes a TEST unable to fail — a suite that
+  grows one seed twice to prove a layout is deterministic gets handed the first
+  answer back and compares a thing against itself (`Portals.in_world`,
+  `StoryPlan.cast`).
 - **RESCHEDULING A COST IS NOT FIXING IT, AND IT MAKES THE SYMPTOM WORSE.**
   `24_holds` read every chapter every frame, and `Chapter.read` walks
   `world.props` to count a region's standing ore: 86.74 ms a frame. Moving it to

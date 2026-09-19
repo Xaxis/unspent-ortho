@@ -139,6 +139,29 @@ func _say(line: String, key: String = "") -> void:
 	_next = _t + SPACING
 
 
+## **SAY THE NEXT LESSON IN SOMEBODY ELSE'S VOICE, AND SPEND IT.** docs/DESIGN.md
+## §Safe havens: "the teaching lives in the place, not on the glass. A lesson is
+## somebody who lives there... not a modal panel and never a key prompt hung in
+## the middle of the frame." This is the first half of that -- a villager with
+## nothing scripted to say used to answer "They have nothing to say to you",
+## which is a dead end standing exactly where a teacher should be.
+##
+## Returns whether there was a lesson to give, so the caller can fall back to its
+## own flat line. The lesson is retired either way it is said: one channel, one
+## curriculum, no second counter -- a villager who teaches you the map is the map
+## lesson, not a copy of it.
+func teach_now() -> bool:
+	if game == null or _off:
+		return false
+	var h := Guide.hint_for(game, retired)
+	if h.is_empty():
+		return false
+	retired[h.id] = true
+	var keys: Array = h.get("keys", [])
+	_say('"%s"' % _spell(String(h.line), keys), _first_label(keys))
+	return true
+
+
 ## Uses that retire hints without an event of their own.
 func _watch() -> void:
 	if not retired.has(&"walk") and game.player.pos.distance_to(_from) >= WALKED:

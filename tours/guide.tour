@@ -35,3 +35,24 @@ shot 02-the-goal-changes-and-the-lesson-holds-its-place
 at prop:driftwood
 wait 3.0
 shot 03-what-is-in-front-of-you-takes-the-row
+
+# --- The teaching channel a person is ------------------------------------------
+# docs/DESIGN.md §Safe havens: "the teaching lives in the place, not on the glass.
+# A lesson is somebody who lives there." Walked to on the real move path and asked
+# with the real `use` key.
+#
+# **THIS FRAME HOLDS A SCRIPTED TALK, AND IT IS NAMED FOR THAT.** It was called
+# "somebody who lives here teaches you" and showed a digger's sub-arc instead --
+# a frame proving the opposite of its own name, which is the thing the claims
+# test exists for. `walkto folk` takes whoever the camera can see, and the one it
+# reached had words of her own. The teaching FALLBACK is the same key on a
+# villager who has none: measured on seed 4, two of six villagers have nothing
+# scripted, so the path is reachable and not dead -- but a tour cannot ask for
+# "a villager with nothing written", so it is held by
+# tests/survival/test_guide.gd rather than pretended at here.
+village 0
+wait 1.0
+walkto folk 8
+tap use
+wait 0.9
+shot 04-a-person-here-has-words-of-her-own with folk

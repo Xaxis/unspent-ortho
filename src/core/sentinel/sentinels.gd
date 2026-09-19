@@ -213,7 +213,25 @@ static func states(world: WorldData) -> Array[SentinelState]:
 static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vector2:
 	var id := int(region.get("id", -1))
 	var home := world.spawn
+	# **AMONG THE STATIONS OF ONE KIND, THE ONE IT CAN EAT AT.** This took the
+	# FIRST station of the best kind the region held, which is deterministic and
+	# was the whole of the requirement -- and it is why the STARVE way was open on
+	# no island. A keeper was placed by what the plan BUILT and a depot by what the
+	# plan was DOING, and neither asked about the other, so breaking a yard took
+	# nothing out of any keeper's reach: measured, six of six depots spent nothing.
+	# `Works._knot` now sites a depot at a work its keeper can feel; this is the
+	# same agreement from the other end, and the two are not circular because both
+	# read the same fixed thing -- the marked works worldgen already laid.
+	#
+	# The design's own `stations` order still decides the KIND. This only chooses
+	# between stations of that kind, and prefers the one with the most marked
+	# works inside its feeding reach. Ties keep landmark order, so it is as
+	# deterministic as it was: a boss that moves between runs cannot be walked to
+	# twice.
+	var feed := def.reach * FEED_SHARE
 	for want: StringName in def.stations:
+		var best := Vector2.INF
+		var best_works := -1
 		for m: Dictionary in world.landmarks:
 			if StringName(str(m.get("kind", &""))) != want:
 				continue
@@ -221,8 +239,19 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
 			var at := stand_near(world, p)
-			if at.distance_to(home) >= CLEAR_OF_HOME:
-				return at
+			if at.distance_to(home) < CLEAR_OF_HOME:
+				continue
+			var n := 0
+			for w2: Dictionary in world.landmarks:
+				if not w2.has("mark"):
+					continue
+				if (w2.get("pos", Vector2.ZERO) as Vector2).distance_to(at) <= feed:
+					n += 1
+			if n > best_works:
+				best_works = n
+				best = at
+		if best.is_finite():
+			return best
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
 	var heart := stand_near(world, centre)
 	if heart.distance_to(home) >= CLEAR_OF_HOME:

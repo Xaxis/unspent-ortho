@@ -61,10 +61,23 @@ static var _cache: Dictionary = {}
 
 ## Every shaft in `w`. Held per world, because a system asks every frame and the
 ## search reads a region's whole bounding box.
+##
+## **KEYED ON THE WORLD OBJECT AND NOT ON `seed:size:realm`.** Those three name a
+## world the game will only ever grow once, so the old key was correct in play --
+## and it quietly made a TEST unable to fail. `test_portals` grows one seed twice
+## and compares the two layouts to prove a shaft cannot move under a player who
+## reloads a save; under a seed key the second grow was handed the first one's
+## array and the comparison was a thing against itself. That test escapes it
+## today only because it calls `forget()` in between, which is a discipline every
+## future test has to remember and one of them eventually will not.
+##
+## Identity cannot make that mistake: two worlds grown separately are two objects
+## and are recomputed, while the one world a game holds is one object and is
+## cached exactly as before. `forget()` is still here for a suite that grows many.
 static func in_world(w: WorldData) -> Array[Portal]:
 	if w == null:
 		return []
-	var key := "%d:%d:%s" % [w.seed_value, w.size, w.realm]
+	var key := w.get_instance_id()
 	if _cache.has(key):
 		return _cache[key]
 	var out := _lay(w)
