@@ -173,24 +173,70 @@ static func _shares(w: WorldData) -> PackedFloat32Array:
 	return counts
 
 
+## THE JOURNEY RUNS NORTH ON EACH CONTINENT, NOT ACROSS THE SQUARE.
+##
+## This took the mean Y of every landscape over the whole world, which asked the
+## right question while there was one island in the middle of it. With five, a
+## landscape on a southern continent reads as southern however far north it sits
+## on its own land, and the test failed saying "moss lies north of the coast" of a
+## moss that does. Anchors are placed by `u, v` inside a BODY's own rect
+## (`GenCountries._rect_for`), so the claim was always about a body and the
+## measurement is what had to catch up.
 func test_journey_runs_north_from_a_southern_coast() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
-		var mean_y := PackedFloat32Array()
-		mean_y.resize(BiomeRegistry.count())
-		var counts := PackedFloat32Array()
-		counts.resize(BiomeRegistry.count())
+		# Mean Y per landscape, per continent.
+		var sums := {}
+		var counts := {}
 		for y in w.size:
+			var row := y * w.size
 			for x in w.size:
-				var c := w.country[y * w.size + x]
-				mean_y[c] += y
-				counts[c] += 1.0
-		for c in BiomeRegistry.count():
-			mean_y[c] /= maxf(1.0, counts[c])
-		for c: int in [Country.MOSS, Country.PINEWOOD, Country.BONELANDS]:
-			lt(mean_y[c], mean_y[Country.COAST], "seed %d %s lies north of the coast" % [s, BiomeRegistry.name_of(c)])
-		for c: int in [Country.SNOWFIELD, Country.BURNING]:
-			lt(mean_y[c], mean_y[Country.MOSS], "seed %d %s lies beyond the middle belt" % [s, BiomeRegistry.name_of(c)])
+				var i := row + x
+				if w.level[i] <= 0:
+					continue
+				var b := int(w.continent[i])
+				if b <= 0:
+					continue
+				var key := b * 256 + int(w.country[i])
+				sums[key] = float(sums.get(key, 0.0)) + float(y)
+				counts[key] = float(counts.get(key, 0.0)) + 1.0
+		# ON THE CONTINENT THE JOURNEY IS AUTHORED ON, which is the one he wakes on
+		# (`GenBodies.mark_home`). A landscape's anchors are dealt to the home body
+		# first, so that is where the south-to-north order is placed on purpose;
+		# everywhere else a landscape lands by its CLIMATE, which is the design
+		# (`BiomeDef.temp_range`/`moist_range`) and is not a journey. Asking every
+		# continent to repeat the journey was asking climate-placed land to honour
+		# an order nothing had written there.
+		var tested := 0
+		for b: Dictionary in w.continents:
+			if not bool(b.get("home", false)):
+				continue
+			var id := int(b.get("id", -1))
+			var mean := func(c: int) -> float:
+				var k := id * 256 + c
+				var n: float = counts.get(k, 0.0)
+				return -1.0 if n < 600.0 else float(sums[k]) / n
+			var south: float = mean.call(Country.COAST)
+			if south < 0.0:
+				continue
+			for c: int in [Country.MOSS, Country.PINEWOOD, Country.BONELANDS]:
+				var at: float = mean.call(c)
+				if at < 0.0:
+					continue
+				tested += 1
+				lt(at, south, "seed %d: %s lies north of the coast on continent %d"
+					% [s, BiomeRegistry.name_of(c), id])
+			var middle: float = mean.call(Country.MOSS)
+			if middle < 0.0:
+				continue
+			for c: int in [Country.SNOWFIELD, Country.BURNING]:
+				var at2: float = mean.call(c)
+				if at2 < 0.0:
+					continue
+				tested += 1
+				lt(at2, middle, "seed %d: %s lies beyond the middle belt on continent %d"
+					% [s, BiomeRegistry.name_of(c), id])
+		gt(float(tested), 0.0, "seed %d: the home continent carries enough of the journey to read it" % s)
 
 
 func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
@@ -338,6 +384,12 @@ static func _borders(w: WorldData) -> PackedByteArray:
 	return border
 
 
+## The fewest tiles a landmass can have and still be a continent rather than a
+## skerry. Measured, a continent is 104,000 to 146,000 tiles and the biggest thing
+## in a strait is under 1,000.
+const CONTINENT_TILES := 20000
+
+
 func test_every_country_reachable_on_foot_from_spawn() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
@@ -352,10 +404,48 @@ func test_every_country_reachable_on_foot_from_spawn() -> void:
 				total[w.country[i]] += 1.0
 				if reached[i] != 0:
 					got[w.country[i]] += 1.0
+		# ON YOUR OWN CONTINENT, AND NOT ACROSS THE OCEAN. This asked that every
+		# landscape in the world be walkable from the spawn, which was the same
+		# question as "is the island connected" while there was one island. There
+		# are five now, so the honest half of the claim is that nothing on the
+		# continent he wakes on is walled off from him — and the other half, which
+		# this could not say before, is that the ocean IS a wall: a continent you
+		# have not sailed to must NOT be reachable on foot, or the sea is
+		# decoration.
+		var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
+		# Which landmasses are CONTINENTS. A skerry off the shore gets a body id of
+		# its own and wading out to one is a thing a player should be able to do —
+		# the claim is about the ocean between continents, not about every scrap of
+		# land that floats.
+		var mass := {}
+		for i in w.continent.size():
+			var cid := int(w.continent[i])
+			if cid > 0:
+				mass[cid] = int(mass.get(cid, 0)) + 1
+		var here_total := PackedFloat32Array()
+		here_total.resize(BiomeRegistry.count())
+		var here_got := PackedFloat32Array()
+		here_got.resize(BiomeRegistry.count())
+		var away := 0
+		for i in w.country.size():
+			if w.level[i] <= 0:
+				continue
+			if int(w.continent[i]) == home:
+				here_total[w.country[i]] += 1.0
+				if reached[i] != 0:
+					here_got[w.country[i]] += 1.0
+			elif reached[i] != 0 and int(mass.get(int(w.continent[i]), 0)) >= CONTINENT_TILES:
+				away += 1
 		for c: int in BiomeRegistry.land_indices_in(w.realm):
-			gt(got[c] / maxf(1.0, total[c]), 0.85, "seed %d %s reachable share" % [s, BiomeRegistry.name_of(c)])
+			if here_total[c] < 400.0:
+				continue
+			gt(here_got[c] / maxf(1.0, here_total[c]), 0.85,
+				"seed %d %s on his own continent is walkable" % [s, BiomeRegistry.name_of(c)])
+		eq(away, 0, "seed %d: %d tiles of another continent are reachable on foot" % [s, away])
 		for v in w.villages:
 			var p: Vector2 = v.pos
+			if w.continent_at(floori(p.x), floori(p.y)) != home:
+				continue
 			check(reached[floori(p.y) * w.size + floori(p.x)] != 0, "seed %d village %s unreachable" % [s, v.name])
 
 
@@ -464,7 +554,21 @@ func test_roads_join_every_village_and_are_walkable() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var size := w.size
-		gt(w.roads.size(), w.villages.size() - 2, "seed %d roads" % s)
+		# A ROAD CANNOT CROSS AN OCEAN. This asked for a road per village less two,
+		# which was the right shape while every village stood on one island. With
+		# five continents a village is joined to its OWN continent's villages and
+		# the sea is the gap between the networks, so the count is per continent:
+		# a continent with one village on it needs no road at all.
+		var on_body := {}
+		for v in w.villages:
+			var vp: Vector2 = v.pos
+			var b := w.continent_at(floori(vp.x), floori(vp.y))
+			on_body[b] = int(on_body.get(b, 0)) + 1
+		var want_roads := 0
+		for b: Variant in on_body:
+			want_roads += maxi(0, int(on_body[b]) - 1)
+		gt(w.roads.size(), float(want_roads) * 0.5 - 1.0,
+			"seed %d roads: %d for %d villages over %d continents" % [s, w.roads.size(), w.villages.size(), on_body.size()])
 		for r in w.roads:
 			for j in range(1, r.size()):
 				var a := r[j - 1]
@@ -489,8 +593,14 @@ func test_roads_join_every_village_and_are_walkable() -> void:
 				if seen[j] == 0 and (w.ground[j] == Ground.ROAD or (w.ground[j] == Ground.GRAVEL and _in_square(w, j))):
 					seen[j] = 1
 					stack.append(j)
+		# Every village on the spawn's OWN continent is on the network walked from
+		# its square. The others have their own networks and no road reaches them,
+		# which is what an ocean is for.
+		var home := w.continent_at(floori(start.x), floori(start.y))
 		for v in w.villages:
 			var p: Vector2 = v.pos
+			if w.continent_at(floori(p.x), floori(p.y)) != home:
+				continue
 			check(seen[floori(p.y) * size + floori(p.x)] != 0, "seed %d village %s not on the road network" % [s, v.name])
 
 

@@ -4,7 +4,12 @@ class_name Tuning
 ## original game's content and engine (docs/research/design-extract.md).
 
 # --- World ---
-const WORLD_SIZE := 512
+## The square a new game is grown in. 1300 is what five continents need to be
+## five WHOLE ISLANDS rather than five shares of one (GenBodies._square_for), and
+## five is the least the journey is written for -- StoryPlan.SPINE walks them in
+## order and has carried a `leg` per slot for weeks. A wider square holds more:
+## 1477 takes six, 1666 takes seven.
+const WORLD_SIZE := 1300
 ## Game-world minutes per real second. 1 = a day in 24 real minutes. (source)
 const MINUTES_PER_SECOND := 1.0
 const START_HOUR := 8.0

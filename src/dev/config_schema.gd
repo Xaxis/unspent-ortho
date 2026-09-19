@@ -44,8 +44,15 @@ const ROWS: Array[Dictionary] = [
 		"note": "The island the title shows first, and a new game's unless another is chosen."},
 	{"id": "world.seed_locked", "group": "world", "label": "island fixed", "kind": "bool", "default": false, "applies": "boot",
 		"note": "Yes: the title shows only the first island, offers no other, and every new game is played on it."},
-	{"id": "world.size", "group": "world", "label": "size", "kind": "choice", "default": 512,
-		"options": [256, 384, 512, 640, 768], "applies": "boot", "note": "Tiles along a side of the island."},
+	# THE DEFAULT IS `Tuning.WORLD_SIZE` AND IS NOT WRITTEN OUT AGAIN HERE. It was
+	# 512 spelled a second time, so the day the world became five continents this
+	# page still offered a one-island world as "the game as it is" and
+	# `tests/dev/test_configs.gd` was the only thing that noticed. The options are
+	# the sizes worth choosing between: one island, and the squares that hold three,
+	# five, six and seven continents at full size (`GenBodies._square_for`).
+	{"id": "world.size", "group": "world", "label": "size", "kind": "choice", "default": Tuning.WORLD_SIZE,
+		"options": [256, 512, 996, 1138, Tuning.WORLD_SIZE, 1477, 1666], "applies": "boot",
+		"note": "Tiles along a side of the world. 512 is one island; 1300 is five continents."},
 	{"id": "world.hour", "group": "world", "label": "starts at", "kind": "choice", "default": 8.0,
 		"options": [5.0, 6.5, 8.0, 10.0, 12.0, 15.0, 17.5, 19.5, 21.0, 23.0, 1.0], "applies": "new",
 		"note": "The hour a new game wakes at."},

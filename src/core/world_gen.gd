@@ -92,6 +92,8 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	GenSettle.roads(c)
 	c.mark(&"settle.roads")
 	GenSettle.spawn(c)
+	# Which continent he wakes on, once there is a spawn to read it from.
+	GenBodies.mark_home(c)
 	t = _mark(c, marks, &"settle", t)
 	GenAccess.run(c)
 	t = _mark(c, marks, &"access", t)
