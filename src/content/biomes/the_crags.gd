@@ -49,6 +49,12 @@ static func make() -> BiomeDef:
 		Ground.PEAT: P.EARTH[2].lerp(P.SPRUCE[1], 0.4),
 		Ground.LIMESTONE: P.STONE[3].lerp(P.MOSS[2], 0.25),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own limestone, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.LIMESTONE]
 	d.cliff_wash = P.SLATE[2].lerp(P.MOSS[2], 0.3)
 	d.strata = GroundColors.STRATA_MOSS
 	d.plain_ground = Ground.MOSS
@@ -98,7 +104,7 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"cast_stones", &"firewatch", &"leaning_mast", &"clerks_office"]
-	d.sound_bed = &"bed_the_crags"
+	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

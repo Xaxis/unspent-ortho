@@ -11,9 +11,10 @@
 ## beaten the plan without fighting it.
 ##
 ## SO THE GEOMETRY IS A CITY AND THE SURFACE IS A FOREST, and neither gives way.
-## The buildings stand (`RAISED`, the same stock as the other three) and the
-## ground under them is the thickest growth outside the sulphur jungle, which is
-## what "covering" has to mean if it is to mean anything.
+## The ground under the buildings is the thickest growth outside the sulphur
+## jungle, which is what "covering" has to mean if it is to mean anything — and
+## the buildings are only the three forms a forest could not pull down, so the
+## city reads as survivors in trees rather than as a city with trees in it.
 
 const P := preload("res://src/render/palette.gd")
 
@@ -49,6 +50,12 @@ static func make() -> BiomeDef:
 		Ground.GRAVEL: P.STONE[3].lerp(P.MOSS[2], 0.3),
 		Ground.ROCK: P.SLATE[3].lerp(P.MOSS[2], 0.2),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own gravel, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.MOSS[2], 0.4)
 	d.strata = GroundColors.STRATA_MOSS
 	d.plain_ground = Ground.GRASS
@@ -70,15 +77,15 @@ static func make() -> BiomeDef:
 	dress.sink = 0.24
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress
-	# It is a city, and it stands up like the other three.
-	# ONLY WHAT COULD NOT FALL IS STILL STANDING. The tall thin ones came through
-	# because there was less of them for a root to get into, and a gutted shell
-	# stands because it has nothing left to pull it over; the blocks and the
-	# arcades are under the canopy already and are the ground here, not the
-	# buildings. So the stock is three, they stand scattered rather than along a
-	# street, and each one reads as an individual survivor rather than a row.
+	# ONLY WHAT COULD NOT FALL IS STILL STANDING, and in this table that means the
+	# three TALL forms and nothing else: a tower, a spire and a stack are the only
+	# rows high enough to still be over the canopy. The low ones — block, arcade
+	# and the gutted shell — are all about a storey and a half, which down here is
+	# under the leaves and is the ground rather than the skyline. So the stock is
+	# three, they stand scattered rather than along a street, and each reads as an
+	# individual survivor instead of a row.
 	d.built = BiomeForms.new()
-	d.built.stock = [&"tower", &"spire", &"shell"] as Array[StringName]
+	d.built.stock = [&"tower", &"spire", &"stack"] as Array[StringName]
 	d.built.plan = &"ring"
 	d.built.apart = BiomeForms.RING_APART
 	d.built.buildings = Vector2i(8, 14)
@@ -106,14 +113,14 @@ static func make() -> BiomeDef:
 	# down one at a time.
 	d.hazards = {&"wet": 0.55, &"dark": 0.4, &"collapse": 0.35}
 	d.roster = {
-		&"harvester": {"weight": 0.9},
-		&"cutter": {"weight": 0.8},
-		&"sweeper": {"weight": 0.7},
+		&"harvester": {"weight": 0.9, "grounds": ["grass", "moss", "floor"]},
+		&"cutter": {"weight": 0.8, "grounds": ["rock", "gravel", "floor"]},
+		&"sweeper": {"weight": 0.7, "grounds": ["floor", "gravel", "mud", "needles"]},
 		&"dog.feral": {"weight": 0.9},
-		&"bull.field": {"weight": 0.6},
+		&"bull.field": {"weight": 0.6, "grounds": ["grass", "moss"]},
 	}
 	d.landmarks = [&"poured_pillar", &"clerks_office", &"firewatch", &"blinking_stack"]
-	d.sound_bed = &"bed_green_towers"
+	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

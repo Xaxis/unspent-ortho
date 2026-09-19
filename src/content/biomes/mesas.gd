@@ -63,6 +63,12 @@ static func make() -> BiomeDef:
 		Ground.SCREE: P.RUST[2].lerp(P.STONE[2], 0.4),
 		Ground.GRAVEL: P.SAND[3].lerp(P.RUST[3], 0.3),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own sand, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.SAND]
 	d.cliff_wash = P.RUST[2].lerp(P.EARTH[2], 0.3)
 	d.strata = GroundColors.STRATA_SAND
 	d.plain_ground = Ground.SCREE
@@ -82,7 +88,7 @@ static func make() -> BiomeDef:
 	dress.sink = 0.05
 	dress.lie = Vector2(-0.02, 0.04)
 	d.dressing = dress
-	d.grade = Vector4(0.06, -0.02, -0.05, 0.02)
+	d.grade = Vector4(0.0, -0.02, -0.05, 0.02)
 	# Dry air and no cloud: a hard bright night with black shadows under the walls.
 	d.night_sky = 1.1
 	d.props = [PropKind.BOULDER, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.IRON_ORE,
@@ -105,13 +111,13 @@ static func make() -> BiomeDef:
 	# actually presses a body with is the sun on bare rock and no water in reach.
 	d.hazards = {&"heat": 0.5, &"thirst": 0.55}
 	d.roster = {
-		&"cutter": {"weight": 1.0},
+		&"cutter": {"weight": 1.0, "grounds": ["rock", "scree", "gravel"]},
 		&"hauler": {"weight": 0.8},
 		&"watcher": {"weight": 1.0, "hours": Vector2(5, 21)},
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"cast_stones", &"blinking_stack", &"poured_pillar", &"clerks_office"]
-	d.sound_bed = &"bed_mesas"
+	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

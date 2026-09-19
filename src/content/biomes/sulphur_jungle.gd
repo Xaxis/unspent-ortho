@@ -47,6 +47,12 @@ static func make() -> BiomeDef:
 		Ground.CLINKER: P.SLATE[2].lerp(P.RUST[2], 0.3),
 		Ground.NEEDLES: P.SPRUCE[2].lerp(P.EARTH[2], 0.4),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own ash, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.ASH]
 	d.cliff_wash = P.SLATE[2].lerp(P.EARTH[2], 0.35)
 	d.strata = GroundColors.STRATA_BASALT
 	d.plain_ground = Ground.GRASS
@@ -68,7 +74,7 @@ static func make() -> BiomeDef:
 	dress.sink = 0.2
 	dress.lie = Vector2(-0.08, 0.14)
 	d.dressing = dress
-	d.grade = Vector4(0.02, 0.04, -0.02, 0.03)
+	d.grade = Vector4(0.0, 0.04, -0.02, 0.03)
 	# Thick canopy and standing steam: dark under the trees even on a clear night.
 	d.night_sky = 0.75
 	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.VENT, PropKind.VENT_CAP,
@@ -91,14 +97,14 @@ static func make() -> BiomeDef:
 	# wet, which here is most of the time.
 	d.hazards = {&"heat": 0.5, &"fumes": 0.5, &"wet": 0.45}
 	d.roster = {
-		&"dredger": {"weight": 0.9},
-		&"cutter": {"weight": 0.9},
-		&"harvester": {"weight": 0.8},
+		&"dredger": {"weight": 0.9, "grounds": ["mud", "water"]},
+		&"cutter": {"weight": 0.9, "grounds": ["rock", "clinker", "ash"]},
+		&"harvester": {"weight": 0.8, "grounds": ["grass", "moss", "mud"]},
 		&"watcher": {"weight": 0.8},
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"evaporator", &"blinking_stack", &"firewatch", &"clerks_office"]
-	d.sound_bed = &"bed_sulphur_jungle"
+	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

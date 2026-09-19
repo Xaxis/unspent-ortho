@@ -49,6 +49,12 @@ static func make() -> BiomeDef:
 		Ground.MUD: P.EARTH[2].lerp(P.RUST[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.3),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own gravel, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.RUST[2].lerp(P.SLATE[2], 0.4)
 	d.strata = GroundColors.STRATA_SCRAP
 	d.plain_ground = Ground.SWARF
@@ -67,7 +73,7 @@ static func make() -> BiomeDef:
 	dress.sink = 0.22
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress
-	d.grade = Vector4(0.03, -0.02, -0.02, -0.02)
+	d.grade = Vector4(0.0, -0.02, -0.02, -0.02)
 	# Down in a slot you see almost no sky at all, which is most of why a lamp
 	# matters here in a way it does not on open ground.
 	d.night_sky = 0.6
@@ -91,13 +97,13 @@ static func make() -> BiomeDef:
 	# ferrous, and the walls come down.
 	d.hazards = {&"magnetism": 0.6, &"collapse": 0.45}
 	d.roster = {
-		&"sweeper": {"weight": 1.0},
-		&"cutter": {"weight": 0.9},
+		&"sweeper": {"weight": 1.0, "grounds": ["road", "gravel", "mud", "swarf"]},
+		&"cutter": {"weight": 0.9, "grounds": ["rock", "scree", "gravel"]},
 		&"hauler": {"weight": 0.9},
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
-	d.sound_bed = &"bed_the_middens"
+	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

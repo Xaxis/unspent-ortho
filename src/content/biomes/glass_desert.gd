@@ -85,11 +85,11 @@ static func make() -> BiomeDef:
 	d.hazards = {&"heat": 0.6, &"glare": 0.7, &"thirst": 0.6}
 	d.roster = {
 		&"watcher": {"weight": 1.0},
-		&"harvester": {"weight": 0.7},
-		&"runner": {"weight": 0.6, "hours": Vector2(9, 18)},
+		&"harvester": {"weight": 0.7, "grounds": ["sand", "salt", "gravel"]},
+		&"runner": {"weight": 0.6, "hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
-	d.sound_bed = &"bed_glass_desert"
+	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

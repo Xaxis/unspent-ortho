@@ -53,6 +53,12 @@ static func make() -> BiomeDef:
 		Ground.GRASS: P.MOSS[2].lerp(P.ASH[2], 0.55),
 		Ground.MUD: P.EARTH[2].lerp(P.ASH[2], 0.4),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own gravel, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.SLATE[2], 0.4)
 	d.strata = GroundColors.STRATA_SCRAP
 	d.plain_ground = Ground.FLOOR
@@ -104,13 +110,13 @@ static func make() -> BiomeDef:
 	d.hazards = {&"dark": 0.35, &"collapse": 0.5}
 	d.roster = {
 		&"warden": {"weight": 1.0},
-		&"sweeper": {"weight": 1.0},
+		&"sweeper": {"weight": 1.0, "grounds": ["floor", "road", "mud", "grass"]},
 		&"watcher": {"weight": 0.9},
-		&"clerk": {"weight": 0.6},
+		&"clerk": {"weight": 0.6, "grounds": ["floor", "road", "gravel", "rock"]},
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"blinking_stack", &"cast_stones"]
-	d.sound_bed = &"bed_ruined_metropolis"
+	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

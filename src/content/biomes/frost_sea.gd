@@ -113,11 +113,11 @@ static func make() -> BiomeDef:
 	d.hazards = {&"cold": 0.85, &"collapse": 0.4}
 	d.roster = {
 		&"longlegs": {"weight": 1.0},
-		&"lineman": {"weight": 0.8},
+		&"lineman": {"weight": 0.8, "grounds": ["ice", "snow", "rock", "gravel"]},
 		&"watcher": {"weight": 0.7},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
-	d.sound_bed = &"bed_frost_sea"
+	d.sound_bed = &"bed_snowfield"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

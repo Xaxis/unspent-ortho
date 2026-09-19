@@ -49,6 +49,12 @@ static func make() -> BiomeDef:
 		Ground.ROCK: P.SLATE[3],
 		Ground.SWARF: P.SLATE[2].lerp(P.RUST[2], 0.2),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own gravel, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.SLATE[2]
 	d.strata = GroundColors.STRATA_SCRAP
 	d.plain_ground = Ground.FLOOR
@@ -112,12 +118,12 @@ static func make() -> BiomeDef:
 	d.roster = {
 		&"warden": {"weight": 1.0},
 		&"watcher": {"weight": 1.0},
-		&"clerk": {"weight": 1.0},
-		&"sweeper": {"weight": 0.9},
+		&"clerk": {"weight": 1.0, "grounds": ["floor", "road", "gravel", "rock"]},
+		&"sweeper": {"weight": 0.9, "grounds": ["floor", "road", "gravel"]},
 		&"longlegs": {"weight": 0.6},
 	}
 	d.landmarks = [&"clerks_office", &"blinking_stack", &"poured_pillar", &"cast_stones"]
-	d.sound_bed = &"bed_machine_city"
+	d.sound_bed = &"bed_hum"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d

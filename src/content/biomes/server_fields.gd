@@ -46,6 +46,12 @@ static func make() -> BiomeDef:
 		Ground.MUD: P.EARTH[2].lerp(P.SLATE[2], 0.3),
 		Ground.WATER: P.SLATE[2].lerp(P.SPRUCE[2], 0.3),
 	}
+	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# through to the shared table, which is the COAST's and is far brighter than
+	# here, so it would arrive as the loudest object in the frame. Each takes this
+	# landscape's own gravel, because they only have to be in key.
+	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.SLATE[2].lerp(P.ASH[2], 0.35)
 	d.strata = GroundColors.STRATA_SCRAP
 	d.plain_ground = Ground.FLOOR
@@ -87,13 +93,13 @@ static func make() -> BiomeDef:
 	# place a body is pressed by something that is simply RUNNING, not weather.
 	d.hazards = {&"heat": 0.45, &"em": 0.6}
 	d.roster = {
-		&"clerk": {"weight": 1.0},
+		&"clerk": {"weight": 1.0, "grounds": ["floor", "road", "gravel", "rock"]},
 		&"watcher": {"weight": 1.0},
 		&"warden": {"weight": 0.9},
-		&"sweeper": {"weight": 0.7},
+		&"sweeper": {"weight": 0.7, "grounds": ["floor", "road", "mud", "grass"]},
 	}
 	d.landmarks = [&"clerks_office", &"blinking_stack", &"poured_pillar", &"sump_pump"]
-	d.sound_bed = &"bed_server_fields"
+	d.sound_bed = &"bed_hum"
 	d.surface = _surface
 	d.scatter = _scatter
 	return d
