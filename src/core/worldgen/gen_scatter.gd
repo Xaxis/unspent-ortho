@@ -72,6 +72,19 @@ const PLACES_APART := 28.0
 
 ## Every region of type `cc`, biggest first, as {id, tiles} — the unit a site
 ## count is now spent over.
+## Write down a place worth walking to. THE REGION GOES ON THE ROW: a reader that
+## works out which place a site is in from its position is right until the first
+## one that straddles a border, and a sub-arc, a picket and a chapter's demand all
+## ask that question (`WorldData.landmarks`). -1 where it stands on land too small
+## to be a region at all.
+static func _mark(w: WorldData, kind: StringName, at: Vector2, country: int, more: Dictionary = {}) -> void:
+	var row := {"kind": kind, "pos": at, "country": country,
+		"region": w.region_at(floori(at.x), floori(at.y))}
+	for k: Variant in more:
+		row[k] = more[k]
+	w.landmarks.append(row)
+
+
 static func _regions_of(w: WorldData, cc: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for r: Dictionary in w.regions:
@@ -109,7 +122,7 @@ static func sites(c: GenContext) -> void:
 				if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 					continue
 				_lay_tip(c, p, rng.randf_range(4.0, 7.5))
-				w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
+				_mark(w, &"tip", Vector2(p) + Vector2(0.5, 0.5), cc)
 				placed += 1
 	# Stone circles on open flat ground where a landscape keeps them, per region
 	# for the same reason.
@@ -127,7 +140,7 @@ static func sites(c: GenContext) -> void:
 					continue
 				if not _clear_site(c, p, 5, 1) or _near_landmark(w, Vector2(p), PLACES_APART) or _near_village(w, Vector2(p), 26.0):
 					continue
-				w.landmarks.append({"kind": &"stone_circle", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
+				_mark(w, &"stone_circle", Vector2(p) + Vector2(0.5, 0.5), cc)
 				placed += 1
 	# Ruins where people had steadings to lose.
 	var ruins := 0
@@ -141,7 +154,7 @@ static func sites(c: GenContext) -> void:
 			continue
 		if not _clear_site(c, p, 3, 1) or _near_landmark(w, Vector2(p), 36.0) or _near_village(w, Vector2(p), 24.0):
 			continue
-		w.landmarks.append({"kind": &"ruin", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
+		_mark(w, &"ruin", Vector2(p) + Vector2(0.5, 0.5), cc)
 		ruins += 1
 	# Fumaroles: fields of vents on their own clinker, out on the slopes of a
 	# landscape that breathes, so a walk through the ash has somewhere to go.
@@ -168,7 +181,7 @@ static func sites(c: GenContext) -> void:
 		if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 			continue
 		_lay_patch(c, p, rng.randf_range(4.0, 6.0), Ground.CLINKER)
-		w.landmarks.append({"kind": &"fumarole", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": vented})
+		_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented)
 		fumaroles += 1
 	# Summits: the highest walkable ground in each upland landscape gets a cairn,
 	# raised in the order its type declares (BiomeDef.sites.summit).
@@ -196,16 +209,16 @@ static func sites(c: GenContext) -> void:
 		return int(c.defs[a].sites.summit) < int(c.defs[b].sites.summit))
 	for cc: int in summits:
 		if best_at[cc].x >= 0:
-			w.landmarks.append({"kind": &"summit", "pos": Vector2(best_at[cc]) + Vector2(0.5, 0.5), "country": cc})
+			_mark(w, &"summit", Vector2(best_at[cc]) + Vector2(0.5, 0.5), cc)
 	# Falls: wherever a river's bed steps down a level.
 	for r in c.rivers:
 		for j in range(1, r.size()):
 			var a := r[j - 1]
 			var b := r[j]
 			if w.level_at(floori(a.x), floori(a.y)) > w.level_at(floori(b.x), floori(b.y)):
-				w.landmarks.append({"kind": &"falls", "pos": a, "country": w.country_at(floori(a.x), floori(a.y)), "dir": b - a})
+				_mark(w, &"falls", a, w.country_at(floori(a.x), floori(a.y)), {"dir": b - a})
 	if heart.x >= 0.0:
-		w.landmarks.append({"kind": &"caldera", "pos": heart, "country": w.country_at(int(heart.x), int(heart.y))})
+		_mark(w, &"caldera", heart, w.country_at(int(heart.x), int(heart.y)))
 
 
 static func _random_tile(c: GenContext, rng: RandomNumberGenerator) -> Vector2i:
@@ -446,7 +459,7 @@ static func _wrecks(c: GenContext) -> void:
 		var p := Vector2i(i % size, i / size)
 		if _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.4)) or _near_village(w, Vector2(p), 16.0):
 			continue
-		w.landmarks.append({"kind": &"wreck", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": country[i]})
+		_mark(w, &"wreck", Vector2(p) + Vector2(0.5, 0.5), country[i])
 		wrecks += 1
 
 

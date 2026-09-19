@@ -677,3 +677,35 @@ func test_places_resolve() -> void:
 	var moss := GenPlaces.find(w, "moss")
 	eq(w.country_at(floori(moss.x), floori(moss.y)), Country.MOSS, "moss sample country")
 	eq(GenPlaces.find(w, "nowhere"), Vector2(-1, -1), "unknown place")
+
+
+## EVERY PLACE WORTH WALKING TO SAYS WHICH PLACE IT IS IN.
+##
+## `WorldData.landmarks` is the site record — every tip, circle, ruin, fumarole,
+## summit, wreck and works mark world gen lays, with its kind and its position. It
+## was asked for as a NEW array, because `SiteKinds` had nowhere to point and
+## `holds`, `guard` and `behind` were declared and unclaimable; a second array
+## would have been a third answer to one question. What was actually missing was
+## `region`, and it has to be ON THE ROW: a reader that works out which place a
+## site is in from its position is right until the first one that straddles a
+## border, which is the bug `WorldData.road` and `WorldData.continent` both exist
+## to end. -1 is allowed and means land too small to be a region at all.
+func test_every_landmark_says_which_place_it_stands_in() -> void:
+	for s in WORLD_SEEDS:
+		var w := world(s)
+		gt(w.landmarks.size(), 0, "seed %d lays places at all" % s)
+		var homeless := 0
+		for m: Dictionary in w.landmarks:
+			check(m.has("region"), "seed %d: a %s does not say which place it is in" % [s, m.get("kind", "?")])
+			if not m.has("region"):
+				continue
+			var r := int(m.region)
+			if r < 0:
+				homeless += 1
+				continue
+			# And it says the RIGHT one, which a position could not be trusted for.
+			var p: Vector2 = m.pos
+			eq(w.region_at(floori(p.x), floori(p.y)), r,
+				"seed %d: a %s says region %d and stands in another" % [s, m.get("kind", "?"), r])
+		lt(float(homeless), float(w.landmarks.size()) * 0.5,
+			"seed %d: %d of %d places stand on land too small to be a region" % [s, homeless, w.landmarks.size()])
