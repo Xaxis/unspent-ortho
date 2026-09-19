@@ -121,10 +121,46 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.MOSS
 
 
+## A BOG THAT REACHES THE SEA, which is the thing about this place that one prop
+## kind could never say. The MOSS is the open bog and what grows on it is
+## stunted and sparse -- a pine out here is a survivor, not a wood. The PEAT
+## banks are cut faces with a lip, so they carry the peat and the dead standing
+## trees; the MUD is where the reeds are; and the SAND is a real SHORE, with
+## driftwood and wrack and mussel rock on it, because the Moss ends at the water
+## and a bog with no coast is half a landscape.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.MOSS:
+		if r < 0.036:
+			return PropKind.BUSH
+		if r < 0.048:
+			return PropKind.DEAD_TREE
+		return PropKind.PINE if r > 0.55 and r < 0.5625 else BiomeScatter.NONE
+	if g == Ground.PEAT:
+		if r < 0.055:
+			return PropKind.PEAT_BANK
+		return PropKind.DEAD_TREE if r < 0.070 else BiomeScatter.NONE
 	if g == Ground.MUD:
-		if r < 0.1 + maxf(0.0, t.clump[i]) * 0.35:
+		if r < 0.060:
 			return PropKind.REEDS
-		# Drowned trunks stand where the fen took the ground back.
-		return PropKind.DEAD_TREE if r > 0.49 else BiomeScatter.NONE
-	return BiomeScatter.PASS
+		return PropKind.PEAT_BANK if r < 0.074 else BiomeScatter.NONE
+	if g == Ground.HEATH:
+		if r < 0.040:
+			return PropKind.BUSH
+		return PropKind.PINE if r < 0.055 else BiomeScatter.NONE
+	if g == Ground.GRASS:
+		if r < 0.050:
+			return PropKind.BROADLEAF
+		return PropKind.BUSH if r < 0.068 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.034:
+			return PropKind.BOULDER
+		if r < 0.046:
+			return PropKind.STONE_ORE
+		return PropKind.COAL_ORE if r < 0.056 else BiomeScatter.NONE
+	if g == Ground.SAND:
+		if r < 0.038:
+			return PropKind.DRIFTWOOD
+		if r < 0.052:
+			return PropKind.WRACK
+		return PropKind.MUSSEL_ROCK if r < 0.062 else BiomeScatter.NONE
+	return BiomeScatter.NONE

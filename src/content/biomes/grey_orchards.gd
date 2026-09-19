@@ -122,10 +122,35 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.MOSS if gb > 0.35 else Ground.GRASS
 
 
-## THE ROWS ARE THE POINT. Planted on a grid the machines still keep, so the
-## trees come in lines rather than in drifts — which is what says at a glance
-## that this was a farm and not a wood.
+## THE ROWS ARE THE POINT: planted on a grid the machines still keep, so the
+## trees come in lines rather than in drifts, and that is what says at a glance
+## this was a FARM and not a wood. Everything else here is the plant that tends
+## them -- the tanks and the standpipes on the service GRAVEL, the fences and the
+## relays along the ROAD -- and the stumps are where a row was taken out and
+## never replanted, which is the only thing in the landscape that is failing.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
-	if g != Ground.GRASS:
-		return BiomeScatter.NONE
-	return PropKind.BROADLEAF if r < 0.085 else BiomeScatter.NONE
+	if g == Ground.GRASS:
+		if r < 0.085:
+			return PropKind.BROADLEAF
+		if r < 0.100:
+			return PropKind.BUSH
+		return PropKind.STUMP if r > 0.50 and r < 0.508 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		if r < 0.032:
+			return PropKind.GROWTH_TANK
+		return PropKind.WATER_TANK if r < 0.046 else BiomeScatter.NONE
+	if g == Ground.ROAD:
+		if r < 0.028:
+			return PropKind.FENCE
+		return PropKind.RELAY if r > 0.60 and r < 0.6055 else BiomeScatter.NONE
+	if g == Ground.MUD:
+		if r < 0.026:
+			return PropKind.STUMP
+		return PropKind.DEBRIS if r < 0.036 else BiomeScatter.NONE
+	if g == Ground.HEATH or g == Ground.MOSS:
+		if r < 0.030:
+			return PropKind.BUSH
+		return PropKind.STUMP if r < 0.040 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
+	return BiomeScatter.NONE
