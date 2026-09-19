@@ -5,6 +5,12 @@ extends GameSystem
 
 
 var _frames := 0
+## Every frame's own milliseconds, for the distribution `--stats` reports. An
+## AVERAGE cannot see a hitch and a hitch is what a player calls jumpy: 72 fps
+## with one frame in twenty at 40 ms reads as stutter and averages as fine.
+var _ms := PackedFloat32Array()
+var _proc := PackedFloat32Array()
+var _phys := PackedFloat32Array()
 
 
 func setup(g: Game) -> void:
@@ -16,6 +22,10 @@ func _process(_delta: float) -> void:
 		return
 	_tell_camera_how_tall_it_builds()
 	_frames += 1
+	if game.options.stats:
+		_ms.append(_delta * 1000.0)
+		_proc.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+		_phys.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
 	# The renderer does not time itself unless asked, and it must be asked BEFORE
 	# the frame that is read: `stats_line` runs at frames-1, so switching this on
 	# here gives it several frames of measurement to report.
@@ -35,6 +45,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
+		print(frame_line(_ms))
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
@@ -135,3 +146,30 @@ static func _render_cpu(view: WorldView) -> String:
 		return "unmeasured"
 	var ms := RenderingServer.viewport_get_measured_render_time_cpu(vp.get_viewport_rid())
 	return "%.2f ms" % ms if ms > 0.0 else "unmeasured"
+
+
+## WHAT A PLAYER CALLS JUMPY, stated as a distribution rather than an average.
+## The worst frames are the whole complaint: a run that sits at 8 ms and spikes
+## to 60 four times a second is unplayable and has a fine mean. Percentiles are
+## taken over every frame of the run, and the count is printed so a short run
+## cannot pretend to be evidence.
+static func frame_line(ms: PackedFloat32Array) -> String:
+	if ms.size() < 4:
+		return "world frames: too few to say (%d)" % ms.size()
+	var a := Array(ms)
+	a.sort()
+	var pick := func(q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)])
+	var over := 0
+	for v: float in a:
+		if v > 16.7:
+			over += 1
+	# WHERE the slow frames fall decides what kind of problem it is: bunched at the
+	# start is warm-up a player sees once, spread through the run is a hitch they
+	# live with. An average cannot tell those apart and they want opposite fixes.
+	var where := PackedStringArray()
+	for i in ms.size():
+		if ms[i] > 16.7:
+			where.append("%d:%.0f" % [i, ms[i]])
+	return "world frames: n %d, p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, over 16.7 ms: %d (%.0f%%)\nworld slow frames (index:ms): %s" % [
+		a.size(), pick.call(0.5), pick.call(0.95), pick.call(0.99), float(a[-1]),
+		over, 100.0 * over / a.size(), " ".join(where)]
