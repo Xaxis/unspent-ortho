@@ -73,10 +73,18 @@ static func make() -> BiomeDef:
 	# It stands up, and it stands up in RANKS. `block` for the same reason the
 	# other two cities take it, and `apart` tighter than either: there is no
 	# street here, only clearance.
+	# THREE SHAPES, MANY TIMES OVER, AND THAT IS THE WHOLE LOOK. "Perfectly
+	# organized, efficient and clean" is not more variety than a human city, it is
+	# far less: nothing here is an arcade, because a covered walk is for somebody
+	# on foot; nothing is a shell, because nothing has been allowed to fall; and
+	# nothing is a spire, because a spire is a gesture and the plan makes none.
+	# What is left repeats on a short pitch, which is what reads as engineered.
 	d.built = BiomeForms.new()
-	d.built.stock = BiomeForms.RAISED
+	d.built.stock = [&"tower", &"stack", &"block"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
+	d.built.buildings = Vector2i(26, 38)
+	d.built.repeat_apart = 6.0
 	d.grade = Vector4(-0.08, -0.04, 0.06, -0.05)
 	# Lit exactly as much as the work needs and no more, all night, every night —
 	# so it is neither dark nor warm, which is worse than either.

@@ -71,10 +71,18 @@ static func make() -> BiomeDef:
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress
 	# It is a city, and it stands up like the other three.
+	# ONLY WHAT COULD NOT FALL IS STILL STANDING. The tall thin ones came through
+	# because there was less of them for a root to get into, and a gutted shell
+	# stands because it has nothing left to pull it over; the blocks and the
+	# arcades are under the canopy already and are the ground here, not the
+	# buildings. So the stock is three, they stand scattered rather than along a
+	# street, and each one reads as an individual survivor rather than a row.
 	d.built = BiomeForms.new()
-	d.built.stock = BiomeForms.RAISED
-	d.built.plan = &"block"
-	d.built.apart = BiomeForms.ROW_APART
+	d.built.stock = [&"tower", &"spire", &"shell"] as Array[StringName]
+	d.built.plan = &"ring"
+	d.built.apart = BiomeForms.RING_APART
+	d.built.buildings = Vector2i(8, 14)
+	d.built.repeat_apart = 20.0
 	d.grade = Vector4(-0.02, 0.05, 0.0, 0.03)
 	# Under a closed canopy at night there is nothing at all, and no machine keeps
 	# a light here.

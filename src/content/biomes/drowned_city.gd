@@ -72,10 +72,17 @@ static func make() -> BiomeDef:
 	# Blocks, because it was a city before the water came in — the streets between
 	# them are what the sea is standing in now, and a `row` would make it one
 	# waterfront rather than a grid with canals through it.
+	# THIS WAS A PORT AND NEVER THE TALLEST CITY, which is most of why the water
+	# took it: it was built low and near the water on purpose. No tower and no
+	# spire, so the silhouette against the sea is a long flat one broken by
+	# stacks, and the standing water reads as the thing that is out of place
+	# rather than the buildings.
 	d.built = BiomeForms.new()
-	d.built.stock = BiomeForms.RAISED
+	d.built.stock = [&"stack", &"block", &"shell", &"arcade"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
+	d.built.buildings = Vector2i(14, 22)
+	d.built.repeat_apart = 11.0
 	d.grade = Vector4(-0.06, 0.02, 0.06, -0.03)
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.PIPE,
