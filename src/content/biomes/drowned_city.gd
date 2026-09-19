@@ -135,9 +135,33 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.MOSS if gb > 0.25 else Ground.FLOOR
 
 
-## What grows here came in on the tide and stayed: reeds in the silt, nothing on
-## the slabs.
+## THE WATER IS STILL IN IT, and that is the whole landscape: a city at the
+## waterline rather than a city with a lake in it. So the MUD -- where the tide
+## still reaches -- carries the reeds and the poles and the gauge somebody set to
+## watch it, the FLOOR slabs that are still dry carry what came down when it came
+## in, and the SEA WALL that failed stands on the dry ground it was built to
+## keep. Nothing here deals PIPE or CONVEYOR: the plan lays its runs at scale.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.FLOOR:
+		if r < 0.034:
+			return PropKind.DEBRIS
+		if r < 0.048:
+			return PropKind.RUIN
+		return PropKind.SEA_WALL if r > 0.60 and r < 0.6065 else BiomeScatter.NONE
 	if g == Ground.MUD:
-		return PropKind.REEDS if r < 0.05 else BiomeScatter.NONE
+		if r < 0.055:
+			return PropKind.REEDS
+		if r < 0.070:
+			return PropKind.POLE
+		return PropKind.TIDE_GAUGE if r > 0.50 and r < 0.5045 else BiomeScatter.NONE
+	if g == Ground.SHINGLE:
+		if r < 0.030:
+			return PropKind.DEBRIS
+		return PropKind.HULL if r > 0.40 and r < 0.4075 else BiomeScatter.NONE
+	if g == Ground.MOSS:
+		return PropKind.REEDS if r < 0.024 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		return PropKind.WRECKAGE if r < 0.018 else BiomeScatter.NONE
+	if g == Ground.ROAD:
+		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE

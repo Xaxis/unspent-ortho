@@ -115,7 +115,42 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.SNOW
 
 
+## THE COLD AND THE SHORE, which are two places rather than one white sheet.
+## Under the snow this is still a coast: the SHINGLE and the SAND carry what the
+## sea puts down, and the ore is in the rock the wind keeps bare. The snow pines
+## thicken where the NEEDLES say a wood already stands and stand alone out on the
+## open SNOW, which is the difference between a wood and a survivor.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
-	if g == Ground.GRASS:
-		return PropKind.SNOW_PINE if r < 0.02 else BiomeScatter.NONE
-	return BiomeScatter.PASS
+	if g == Ground.NEEDLES:
+		if r < 0.115:
+			return PropKind.SNOW_PINE
+		return PropKind.DEAD_TREE if r < 0.130 else BiomeScatter.NONE
+	if g == Ground.SNOW:
+		if r < 0.034:
+			return PropKind.SNOW_PINE
+		if r < 0.044:
+			return PropKind.DEAD_TREE
+		return PropKind.BOULDER if r > 0.50 and r < 0.5085 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.038:
+			return PropKind.BOULDER
+		if r < 0.050:
+			return PropKind.STONE_ORE
+		if r < 0.060:
+			return PropKind.IRON_ORE
+		return PropKind.TIN_ORE if r < 0.068 else BiomeScatter.NONE
+	if g == Ground.SHINGLE:
+		if r < 0.040:
+			return PropKind.DRIFTWOOD
+		if r < 0.056:
+			return PropKind.WRACK
+		return PropKind.MUSSEL_ROCK if r < 0.066 else BiomeScatter.NONE
+	if g == Ground.SAND:
+		if r < 0.026:
+			return PropKind.DRIFTWOOD
+		return PropKind.WRACK if r < 0.038 else BiomeScatter.NONE
+	if g == Ground.MOSS or g == Ground.HEATH:
+		if r < 0.022:
+			return PropKind.DEAD_TREE
+		return PropKind.BOULDER if r < 0.032 else BiomeScatter.NONE
+	return BiomeScatter.NONE

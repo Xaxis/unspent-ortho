@@ -148,10 +148,31 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.SCREE
 
 
-## Almost nothing grows, and what does grows in the wash where the water was.
+## RED ROCK AND WHAT LIVES ON IT, which is almost nothing. That is the point of
+## the place and it is not the same thing as EMPTY, which is what one prop kind
+## made it. The boulders came off the scarps, so they lie on scree and rock and
+## never on the flats; the dead trees are the only things that ever stood in the
+## sand; and the ore is in the cut faces rather than the floors, because that is
+## where the rock is broken open instead of covered.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
-	if g == Ground.SAND:
-		return PropKind.BUSH if r < 0.012 else BiomeScatter.NONE
+	if g == Ground.SCREE:
+		if r < 0.048:
+			return PropKind.BOULDER
+		return PropKind.STONE_ORE if r < 0.060 else BiomeScatter.NONE
 	if g == Ground.ROCK:
-		return BiomeScatter.NONE
-	return BiomeScatter.PASS
+		if r < 0.040:
+			return PropKind.BOULDER
+		if r < 0.052:
+			return PropKind.IRON_ORE
+		return PropKind.COPPER_ORE if r < 0.062 else BiomeScatter.NONE
+	if g == Ground.SAND:
+		if r > 0.70 and r < 0.7075:
+			return PropKind.DEAD_TREE
+		return PropKind.BOULDER if r > 0.30 and r < 0.3065 else BiomeScatter.NONE
+	if g == Ground.HEATH or g == Ground.GRASS:
+		if r < 0.030:
+			return PropKind.BUSH
+		return PropKind.STUMP if r > 0.55 and r < 0.5565 else BiomeScatter.NONE
+	if g == Ground.GRAVEL or g == Ground.SHINGLE:
+		return PropKind.BOULDER if r < 0.024 else BiomeScatter.NONE
+	return BiomeScatter.NONE

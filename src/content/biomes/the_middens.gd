@@ -124,9 +124,37 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.SCREE if rs > 0.8 else Ground.SWARF
 
 
-## What grows out of a dump is a scrap tree, and only in the slots where water
-## collects long enough for anything to take.
+## THE REFUSE IS THE TERRAIN, so what stands on it is what has not settled yet.
+## It declared ten kinds and placed one. The SWARF is the tip still being tipped,
+## the SCREE is what a wall shed coming down, and the ROAD is the only ground
+## anybody ever sorted -- which is why the barricades and the cars are on it and
+## nowhere else. The magnet heap is windowed high: filings stand up on their own
+## only where the field is strongest, and a wonder that is common is scenery.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SWARF:
-		return PropKind.SCRAP_TREE if r < 0.018 else BiomeScatter.NONE
+		if r < 0.045:
+			return PropKind.DEBRIS
+		if r < 0.062:
+			return PropKind.WRECKAGE
+		if r < 0.074:
+			return PropKind.SLAG_HEAP
+		if r < 0.086:
+			return PropKind.SCRAP_TREE
+		return PropKind.MAGNET_HEAP if r > 0.40 and r < 0.412 else BiomeScatter.NONE
+	if g == Ground.SCREE:
+		if r < 0.036:
+			return PropKind.DEBRIS
+		return PropKind.HULL if r > 0.60 and r < 0.607 else BiomeScatter.NONE
+	if g == Ground.ROAD:
+		if r < 0.026:
+			return PropKind.BARRICADE
+		return PropKind.VEHICLE if r < 0.040 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.030:
+			return PropKind.IRON_ORE
+		return PropKind.COPPER_ORE if r < 0.042 else BiomeScatter.NONE
+	if g == Ground.MUD:
+		return PropKind.WRECKAGE if r < 0.024 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		return PropKind.DEBRIS if r < 0.022 else BiomeScatter.NONE
 	return BiomeScatter.NONE
