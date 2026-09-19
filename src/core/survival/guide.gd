@@ -105,6 +105,13 @@ const HINTS := {
 	# nothing ever told the player so. A safety the player cannot know about
 	# buys them nothing.
 	&"haven": ["People live here, and nothing of the plan comes this close. Rest, make, and ask them things.", []],
+	# **WHAT THE ROAD OUT WILL ASK FOR** (docs/DESIGN.md §Safe havens: "each haven
+	# teaches what the road out of it will ask for"). The plan stands on the road
+	# out of an unanswered chapter, and VISION §10.3 is emphatic that this is not
+	# a lock -- there are three ways past and all three are real. A player who is
+	# told none of them meets a barricade and reads it as a wall, which is the
+	# message saying no that §10.3 forbids, wearing a model.
+	&"road": ["The plan is standing on the road out. Cut it with a steel edge (%s), answer the place, or leave the road.", [&"use"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -122,6 +129,11 @@ const SIGHT := 13.0
 ## back is no longer a thing you can see, which is the first moment a map is
 ## worth opening rather than a picture of what is already in front of you.
 const MAP_FAR := 60.0
+
+## How near a held road has to be before it is worth naming. A little over twice
+## what the camera shows, so the lesson lands while walking toward the barricade
+## rather than when it is already filling the frame and reading as a wall.
+const ROAD_NEAR := 60.0
 
 
 static func goal(game: Game) -> String:
@@ -174,6 +186,18 @@ static func hint_for(game: Game, retired: Dictionary, keyed_only := false) -> Di
 
 
 ## The hints that fit the moment, most pressing first.
+## Whether the plan is standing on a road the player could walk to from here.
+## Asked of whoever KEEPS the holds rather than derived again: `RoadHold.sites`
+## walks every road in the world, and a lesson is not worth that on any frame.
+static func _road_is_held(game: Game) -> bool:
+	if game == null or game.player == null:
+		return false
+	for sys in game.systems:
+		if sys.has_method(&"held_road_near"):
+			return bool(sys.call(&"held_road_near", game.player.pos, ROAD_NEAR))
+	return false
+
+
 ## The gear system's ability book, found BY WHAT IT KEEPS and never by its name
 ## -- the idiom `Chapters` uses, and the reason renumbering a system file has
 ## never broken anything. Null in a fixture with no systems, which is correct:
@@ -270,6 +294,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"holding")
 	if game.world != null and game.player != null and Haven.holds(game.world, game.player.pos):
 		out.append(&"haven")
+	if _road_is_held(game):
+		out.append(&"road")
 	if _journal_holds_something():
 		out.append(&"journal")
 	if game.world != null and game.player != null \

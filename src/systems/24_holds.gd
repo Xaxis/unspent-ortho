@@ -145,6 +145,19 @@ func _refresh_chapters() -> void:
 		_answered[h.region] = bool(Chapters.of(game, h.region).get("answered", false))
 
 
+## Whether the plan is standing on a road within `within` tiles, still closed.
+## Asked by the GUIDE so a haven can teach what the road out of it will ask for
+## (docs/DESIGN.md §Safe havens). Exposed as a METHOD rather than leaving the
+## guide to walk `RoadHold.sites` itself: this system already keeps the list, and
+## re-deriving it per frame is the mistake that cost 224 ms a tick here once
+## already.
+func held_road_near(p: Vector2, within: float) -> bool:
+	for h: Hold.HoldSite in sites:
+		if h.pos.distance_to(p) <= within and closed(h):
+			return true
+	return false
+
+
 func open_count() -> int:
 	var n := 0
 	for h: Hold.HoldSite in sites:
