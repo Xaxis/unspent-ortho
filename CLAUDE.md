@@ -298,7 +298,17 @@ tools print their own summaries.
 - **Determinism.** No `randf()`. Positional: `Rng.hash01(seed, x, y, salt)`.
   Sequences: `Rng.make(seed, salt)`.
 - **`class_name` must not shadow a native class** (`Sky` failed). New class names
-  need the import cache refreshed; the tools do it automatically.
+  need the import cache refreshed; the tools do it automatically — **and that is
+  exactly why a new one can break the game for the owner while every test passes.**
+  A `class_name` resolves out of Godot's global class cache. `tools/_import.sh`
+  refreshes it whenever a script is newer, so every test, shot, tour and gate sees
+  the new class; a person running `godot --path .` by hand after a pull does not,
+  and the file fails to PARSE — which takes down whatever loads it. Two new classes
+  did this in one evening (`RoadHold`, `WorldFar`) and the suite could not see
+  either, because the suite is the thing that fixes it on the way in. So: after
+  pulling, `tools/_import.sh` before playing from source; and a NEW class used by a
+  system is safer reached through a `const X := preload(...)`, which is resolved by
+  path and cannot go stale — which is why `src/models/` has always done it that way.
 - **Game logic in `src/core` or in an actor's `drive/step` methods that take
   explicit inputs and delta**, so tests and bots can run them without devices.
 - **The act that answers a question is the act that stops the question being
