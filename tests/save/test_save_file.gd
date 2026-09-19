@@ -149,7 +149,14 @@ func test_a_header_is_checked_whole_and_a_damaged_picture_is_only_dropped() -> v
 		var head := _head_of(p)
 		match field:
 			"pos": head[field] = [11.5, 20.25]
-			"data_md5": head[field] = "0" + str(head[field]).substr(1)
+			# **A CORRUPTION THAT IS NOT ALWAYS A CORRUPTION.** This forced the
+			# first character to "0", which changes nothing one time in sixteen --
+			# when the md5 already begins with one. The test then wrote back an
+			# IDENTICAL header, read it as whole, and failed saying the damage was
+			# not noticed. It went red the day `WorldStamp.GEN` turned, because a
+			# new stamp means new data means a new md5, and that roll came up 0.
+			# Flip it to something it is not, so the damage is always damage.
+			"data_md5": head[field] = ("1" if str(head[field]).begins_with("0") else "0") + str(head[field]).substr(1)
 			_: head[field] = SaveCodec.to_num(head[field]) + 1.0
 		_rewrite(SaveSlots.path(2), head, _data_line_of(p))
 		var r := SaveFile.read_header(SaveSlots.path(2))

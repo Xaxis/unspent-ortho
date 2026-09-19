@@ -381,6 +381,12 @@ tools print their own summaries.
   feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
   rather than waiting for the world to produce it, or the test reports on the
   weather.
+  **And a DEFAULT can do the asserting.** `here.get("answered", true)` read off
+  an empty dictionary returns the caller's own `true` — so a player standing in
+  no region at all reported as a finished chapter, and the test that caught it
+  blamed a bug in the chapter rules that does not exist. A default on a
+  "is this done / did it work" question is the caller supplying the evidence and
+  then believing it: assert the key is THERE, then read it.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel

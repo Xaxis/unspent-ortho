@@ -23,14 +23,27 @@ func _declared() -> void:
 	Sources.clear()
 
 
-## The landscape ids a grown world actually holds, as REGIONS: a run too small to
-## be a region is too small to hold a machine's round or a bank of peat.
+## **WHAT THE WORLD GREW, READ OFF THE GROUND AND NOT OFF THE CHAPTERS.** This
+## listed the types that hold a REGION, which is a different question: a run too
+## small to be a place is still snowfield, its ore still stands there and a
+## player can still walk onto it and take it. Using regions as the proxy made
+## this test report that a seed had not grown the snowfield at all, and fail a
+## material gated on it, while 1,945 tiles of snowfield lay on the island.
+##
+## The distinction is the whole of `GenCountries.PLACE_LEAST`: a region is a
+## CHAPTER, and whether a landscape is somewhere you can obtain a raw has
+## nothing to do with whether the plan keeps a chapter there.
 static func _lands_in(w: WorldData) -> Array[StringName]:
 	var out: Array[StringName] = []
-	for r: Dictionary in w.regions:
-		var id := StringName(str(r.get("type", &"")))
-		if id != &"" and not out.has(id):
-			out.append(id)
+	var seen := {}
+	for i in w.country.size():
+		var cc: int = w.country[i]
+		if cc == Country.SEA or seen.has(cc):
+			continue
+		seen[cc] = true
+		var d := BiomeRegistry.by_index(cc)
+		if d != null and d.id != &"" and not out.has(d.id):
+			out.append(d.id)
 	return out
 
 

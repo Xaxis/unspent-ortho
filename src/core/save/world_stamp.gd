@@ -60,7 +60,16 @@ const UNKNOWN := "unknown"
 ##    count that moved: every prop id after the first changed tile shifts, so a
 ##    village is dealt different buildings. Same blindness as 4 -- the recipe is
 ##    hashed by name -- which is why this is the second hand turn in a row.
-const GEN := 13
+##  6. The region floor became a share of the BODY a run lies on and of how many
+##     landscapes share that body, instead of a share of the whole square
+##     (`GenCountries.BODY_SHARE`, owner 2026-09-19). The square grew five times
+##     faster than any continent in it once the world became five bodies, so the
+##     floor had outgrown them: at 1300 it asked 8,059 tiles of continents
+##     holding about 6,600 each, leaving 26% of the land in no region and the
+##     server fields and the glass desert with no chapter anywhere. `GenScatter`
+##     iterates `w.regions` and filters props by `region_at`, so which runs
+##     become places decides where props go -- this moves every seed.
+const GEN := 14
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

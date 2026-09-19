@@ -130,18 +130,35 @@ func test_a_chapter_is_answered_only_when_all_three_are() -> void:
 ## dev mode can never disagree about whether a place is done.
 func test_the_door_answers_for_a_running_game() -> void:
 	var o := BootOptions.new()
-	o.size = 64
+	# **A 64-TILE WORLD HAS NO CHAPTER FOR THE PLAYER TO BE STANDING IN.** 64
+	# squared holds about 1,500 tiles of land in total, and it raised at most one
+	# region -- not where the player wakes. `Chapters.here` then answered {}, and
+	# the line below read `here.get("answered", true)` off an EMPTY dictionary and
+	# got its own DEFAULT back. So the second failure was never a computation: a
+	# missing key reported as a finished chapter.
+	#
+	# (An earlier version of this comment blamed a chapter that "asks nothing"
+	# being born answered. It is not: `defended` is `keeper_down or yard_broken`
+	# and both are false where neither ever existed. Wrong cause, right symptom.)
+	o.size = 256
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(o)
 	await frames(4)
 	var here := Chapters.here(g)
 	check(not here.is_empty(), "the player is standing in a region, and it is a chapter")
+	# **THE KEY IS ASKED FOR, NOT DEFAULTED.** `get("answered", true)` answered
+	# this question ITSELF whenever the dictionary was empty, and that is how a
+	# player standing in no region at all read as a finished chapter. A default on
+	# a "is this done" question is the caller supplying the evidence and then
+	# believing it.
+	check(here.has("answered"), "the chapter says whether it is answered")
 	eq(bool(here.get("answered", true)), false, "and a chapter nobody has touched is not answered")
 	check(Chapters.found_of(g) != null, "the door finds the landmark memory by what it keeps")
 	# A region nobody laid answers without erroring: the door is asked by the UI
 	# every frame and must never be the thing that breaks a frame.
 	var none := Chapters.of(g, -1)
+	check(none.has("answered"), "a region nobody laid still answers the question")
 	eq(bool(none.get("answered", true)), false, "no region, nothing answered, no error")
 	g.queue_free()
 	await frames(1)

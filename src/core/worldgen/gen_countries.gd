@@ -108,6 +108,45 @@ const REGION_TILES := 220
 ##
 ## Whichever is taken, note the test understates the bug by fifteen points
 ## because it measures a size nobody plays.
+## **WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE**
+## (owner, 2026-09-19, chosen from measurement rather than taste).
+##
+## Stated against the BODY a run lies on and against HOW MANY LANDSCAPES SHARE
+## THAT BODY, because those are the two things that actually decide how big a
+## run can be. `body tiles / landscape count` is what a typical landscape holds
+## on that continent; this is the share of it that makes a place.
+##
+## Both halves are needed and a floor with either one missing was measured and
+## rejected:
+##
+##   SHARE OF THE SQUARE (what was here) grew with the square's AREA while a run
+##   lies on ONE CONTINENT. At 1300 it asked 8,059 tiles of continents that hold
+##   about 6,600 each: 73.6% coverage, two landscapes with no chapter.
+##
+##   SHARE OF THE BODY ALONE fixed 1300 (0 homeless, 83.4%) and destroyed the
+##   small worlds the suite runs on: at 256 it left fifteen landscapes homeless
+##   and 43.6% coverage, because twenty-one landscapes on a small island hold
+##   about a thousand tiles each and no fixed share of the body can be right for
+##   both. Dividing by the count is what makes one number serve every size.
+##
+## `PLACE_LEAST` is the hard floor under it, in plain tiles: a region under
+## `Landmarks.REGION_TILES` can never have a landmark stood in it, so it is a
+## place that can only ever be CROSSED -- `Chapter.read` gives it `explored` for
+## free, because there is nothing there to have been at. Tying the two means a
+## chapter is at least big enough to hold one thing a chapter asks for.
+##
+## **IT IS NOT A BUG FIX AND AN EARLIER VERSION OF THIS COMMENT CLAIMED IT WAS.**
+## I wrote that such regions were "born answered" and lifted their road holds
+## unseen. They are not: `defended` is `keeper_down or yard_broken`, both of
+## which are FALSE where no keeper and no yard ever existed (`Chapters` is
+## careful about exactly that, and says so), so a place that asks nothing is
+## never answered. What actually failed was `test_chapter` reading
+## `here.get("answered", true)` on an EMPTY dictionary, because the player was
+## not standing in a region at all -- the default, not a computation. I had the
+## right symptom, the wrong cause, and I asserted it to a teammate before
+## measuring it. The floor tie stands on the plain reason above and nothing more.
+const BODY_SHARE := 0.35
+const PLACE_LEAST := Landmarks.REGION_TILES
 const PLACE_TILES := 1250.0
 ## The island's climate before any relief exists, for placing a type by its
 ## envelope: north is cold, the shore is wet, the middle is dry.
@@ -789,6 +828,17 @@ static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
 				country[i] = winner[la]
 
 
+## Land as one value, so `GenFields.patches` answers with one patch per CONTINENT
+## rather than one per landscape. The sea is masked out by the same `fixed` array
+## the run pass uses, so the two labellings line up tile for tile.
+static func _land_mask(country: PackedByteArray, n: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(n)
+	for i in n:
+		out[i] = 0 if country[i] == Country.SEA else 1
+	return out
+
+
 ## Every connected run of one landscape type is a REGION of that type: one type
 ## can hold several in a world, and a sentinel, a works network, a subarc and a
 ## save all key on a region's id (docs/VISION.md §3, §7.2). Runs too small to
@@ -805,12 +855,26 @@ static func regions(c: GenContext) -> void:
 	)
 	var sizes := PackedInt32Array()
 	var label := GenFields.patches(country, sea, size, sizes)
-	var min_tiles := maxi(roundi(PLACE_TILES * c.k * c.k), roundi(REGION_TILES * c.body_k * c.body_k))
+	# **THE FLOOR IS A SHARE OF THE BODY THE RUN LIES ON** (owner, 2026-09-19).
+	# A run of one landscape is connected land, so it lies wholly within one
+	# continent, and `body_of` says which. See `BODY_SHARE`.
+	var body_sizes := PackedInt32Array()
+	var body := GenFields.patches(_land_mask(country, c.n), sea, size, body_sizes)
+	var floor_of := PackedInt32Array()
+	floor_of.resize(sizes.size())
+	floor_of.fill(0)
+	for i in c.n:
+		if sea[i] != 0:
+			continue
+		var la := label[i]
+		if floor_of[la] == 0:
+			floor_of[la] = maxi(PLACE_LEAST,
+				roundi(BODY_SHARE * float(body_sizes[body[i]]) / float(maxi(1, c.land_types.size()))))
 	# Biggest first, so region 0 is the largest place in the world and ids stay
 	# stable as long as the shape of the land does.
 	var order := PackedInt32Array()
 	for la in sizes.size():
-		if sizes[la] >= min_tiles:
+		if floor_of[la] > 0 and sizes[la] >= floor_of[la]:
 			order.append(la)
 	var by_size := Array(order)
 	by_size.sort_custom(func(a: int, b: int) -> bool:
