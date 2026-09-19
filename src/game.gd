@@ -24,6 +24,18 @@ var scripted_move := Vector2.ZERO
 var scripted_run := false
 var scripted_seconds := 0.0
 
+## WHERE THE PICTURE IS TAKEN FROM, when that is not the player (owner,
+## 2026-09-18: "a view where I can zoom out over the entire world, travel over
+## everything and zoom into a given landscape"). `Vector3.INF` — the default and
+## the whole of normal play — means the player, exactly as before.
+##
+## ONE FIELD, because the camera and the world's streaming must never disagree
+## about where the picture is: `view.focus` decides which chunks exist and
+## `camera.target` decides what is drawn, and a flyover that moved only the
+## camera would fly over ground nobody had built. They are set together, below,
+## from this one place. 95_flyover is its only writer.
+var watch := Vector3.INF
+
 
 func setup(o: BootOptions) -> void:
 	options = o
@@ -135,7 +147,11 @@ func _physics_process(delta: float) -> void:
 		input = scripted_move
 		run = scripted_run
 		scripted_seconds -= delta
-	elif not input_blocked():
+	# `watch` finite means the picture is not on the player, so the movement keys
+	# are not the player's either — they are flying the camera (95_flyover). The
+	# body stays exactly where it was left, which is the claim the whole tool
+	# rests on: what he is shown is the game as it is, not a game he is nudging.
+	elif not input_blocked() and not watch.is_finite():
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 		run = Input.is_action_pressed("run")
 	if Time.get_ticks_msec() / 1000.0 < body.busy_until:
@@ -148,7 +164,8 @@ func _physics_process(delta: float) -> void:
 func _process(_delta: float) -> void:
 	if world == null:
 		return
-	camera.target = player.position
-	view.focus = player.pos
+	var eye := watch if watch.is_finite() else player.position
+	camera.target = eye
+	view.focus = Vector2(eye.x, eye.z)
 	sky.set_hour(clock.hour())
 	hud.set_clock(clock.label())

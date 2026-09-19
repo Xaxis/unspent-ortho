@@ -24,14 +24,37 @@ func rows() -> Array[Dictionary]:
 		item(&"readout", "readout on the edge", "yes" if DevMode.readout else "no", {"steps": true}),
 		item(&"hud", "slate's edge", "hidden" if DevSession.hud_hidden else "shown", {"steps": true}),
 		item(&"quality", "quality", _quality_now(), {"steps": true}),
+		item(&"fly", "fly over the island", "flying" if _flying() else "on the ground"),
 		item(&"picture", "a picture, nothing of the slate"),
 		header(""),
 		item(&"title", "to the title", "", {"tone": "warn"}),
 	]
 
 
+## The flyover, found by what it KEEPS rather than by its number.
+func _flyover() -> Object:
+	if game == null:
+		return null
+	for sys in game.systems:
+		if sys.has_method(&"where") and sys.get("flying") != null:
+			return sys
+	return null
+
+
+func _flying() -> bool:
+	var f := _flyover()
+	return f != null and bool(f.get("flying"))
+
+
 func confirm(row: Dictionary) -> void:
 	match row.id:
+		&"fly":
+			var f := _flyover()
+			if f == null:
+				refuse("no flyover in this game")
+				return
+			f.call(&"_toggle")
+			screen.close()
 		&"picture":
 			var dev := DevCheats.system(game, "94_dev")
 			if dev != null:
@@ -86,6 +109,13 @@ func detail(ci: CanvasItem, r: Rect2i) -> void:
 			var px := Quality.render_pixels()
 			panel_wrapped(ci, r, y, "How much of the picture this machine is asked to draw. %s: %s The world is rendered at %d x %d and the slate always at %d x %d." % [
 				str(q.get("label", "?")), str(q.get("note", "")), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y])
+		&"fly":
+			y = panel_heading(ci, r, y, "fly over the island")
+			y = panel_wrapped(ci, r, y, "The picture comes off the player and goes up. "
+				+ "wasd crosses the island, e and c zoom, shift is faster, F5 here or anywhere.")
+			panel_wrapped(ci, r, y + 8, "Nothing is moved and nothing is paused: the body stays "
+				+ "where it is and the world goes on, so what you are looking at is the game as it "
+				+ "really is. For the whole island at once, read the survey (m) — dev mode draws it whole.")
 		&"picture":
 			y = panel_heading(ci, r, y, "picture")
 			var where := "shots/dev/ beside the game" if DevMode.local() else ("a download" if DevMode.web() else "user://dev/pictures")

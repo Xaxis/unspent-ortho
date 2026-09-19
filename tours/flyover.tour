@@ -1,0 +1,55 @@
+# FLYING OVER THE ISLAND (owner, 2026-09-18: "a view where I can zoom out over
+# the entire world and see everything, and travel over everything and zoom into a
+# given landscape so I can explore the world and give meaningful feedback").
+#
+#   tools/tour.sh tours/flyover.tour --seed=4 --hour=11 --weather=clear:0 --dev=view
+#
+# WHAT THE FRAMES HAVE TO SHOW, in order, because a flyover that is only a wider
+# camera proves nothing: the ground on the player's shoulder, the same ground from
+# the air with the island reading as an island, a different landscape reached by
+# flying rather than by warping, and the player still standing where he was left.
+#
+# The last is the one worth failing on. This is a camera and not a cheat — the
+# body does not move, the world is not paused — so what he is being shown is the
+# game as it really is, which is the whole reason to be able to look at it.
+
+coast calm
+tap dev_toggle
+await app:none 5
+wait 1.0
+shot 01-on-his-shoulder
+
+# --- up ------------------------------------------------------------------------
+tap dev_fly
+await flying 4
+wait 1.5
+shot 02-off-the-ground with land:coast
+
+# Out, four steps, each a fifth again: the island stops being a clearing and
+# starts being a coastline.
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+press dev_fly_out 0.15
+wait 2.5
+shot 03-the-island-reads-as-an-island
+
+# --- across --------------------------------------------------------------------
+# Flying, not warping: the ground streams under the picture the whole way, which
+# is the half `at NAME` can never show.
+walk 0,-1 4.0
+wait 2.0
+shot 04-crossed-by-flying-not-by-warping
+
+# --- and down into a place -----------------------------------------------------
+press dev_fly_in 0.15
+press dev_fly_in 0.15
+press dev_fly_in 0.15
+wait 2.0
+shot 05-down-into-what-is-actually-there
+
+# --- back where he was ---------------------------------------------------------
+tap dev_fly
+await grounded 4
+wait 1.5
+shot 06-the-body-never-moved
