@@ -147,3 +147,32 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+
+
+func test_a_lesson_names_the_key_that_actually_does_it() -> void:
+	# **THE ONE PLACE A WRONG KEY COSTS THE MOST.** The lines used to carry their
+	# letters -- "E takes what is in front of you" -- while a player may rebind
+	# every action on the settings page. `PlayerSettings` is careful that a PAGE
+	# can never drift from the live `InputMap`; the first thing the game ever
+	# teaches was the one thing that could, and it would say E to somebody whose
+	# key was Q, in the first hour, with no way of knowing which to believe.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	if guide == null:
+		g.free()
+		return
+	var line: String = guide.call("_spell", Guide.HINTS[&"take"][0], Guide.HINTS[&"take"][1])
+	var was := PlayerSettings.key_of(&"use")
+	check(line.contains(OS.get_keycode_string(was)), "the lesson names the key `use` is on: %s" % line)
+	# Move it, and the lesson has to move with it.
+	@warning_ignore("return_value_discarded")
+	PlayerSettings.bind_key(&"use", KEY_Q)
+	var moved: String = guide.call("_spell", Guide.HINTS[&"take"][0], Guide.HINTS[&"take"][1])
+	check(moved.contains("Q"), "and follows it when it is rebound: %s" % moved)
+	check(moved != line, "which is a different line from the one before")
+	PlayerSettings.reset_keys()
+	var back: String = guide.call("_spell", Guide.HINTS[&"take"][0], Guide.HINTS[&"take"][1])
+	eq(back, line, "and comes back with the keys")
+	g.free()

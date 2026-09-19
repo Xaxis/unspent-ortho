@@ -19,17 +19,32 @@ class_name Guide
 ## opened), dodge (a dodge), side (a blow reached a working part), lamp (lit),
 ## runner/worker (said once when one is first in view).
 
+## The four that are one lesson: shown joined, so they read as "WASD" while they
+## are W, A, S and D and as whatever they become if somebody rebinds them.
+const MOVE: Array[StringName] = [&"move_up", &"move_left", &"move_down", &"move_right"]
+
+## id -> [line, actions]. The line carries `%s` where a KEY belongs and the
+## actions say which, in order; a line with no `%s` still names its action so the
+## slate's key row has something to draw.
+##
+## **THE KEY IS NAMED, NEVER SPELLED.** These lines used to carry the letters:
+## "E takes what is in front of you", with "e" beside it for the key row. A
+## player may rebind every action on the settings page, and `PlayerSettings` is
+## careful that a PAGE can never drift from the live `InputMap` -- and then the
+## first thing the game ever teaches them said E while their key was Q, in the
+## first hour, to somebody with no way of knowing which to believe. The one place
+## a lie like that costs the most is the one place it was.
 const HINTS := {
-	&"walk": ["WASD walks, Shift runs.", "wasd"],
-	&"take": ["E takes what is in front of you.", "e"],
-	&"fire": ["E twice on open ground lays a fire.", "e"],
-	&"make": ["C makes things at the fire. Long work cooks while you go.", "c"],
-	&"carry": ["I shows what you carry. Leave what you do not need.", "i"],
-	&"lamp": ["Night. F lights the lamp.", "f"],
-	&"dodge": ["It winds up before it strikes: K gets you out of the way.", "k"],
-	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", "j"],
-	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", ""],
-	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", ""],
+	&"walk": ["%s walks, %s runs.", [MOVE, &"run"]],
+	&"take": ["%s takes what is in front of you.", [&"use"]],
+	&"fire": ["%s twice on open ground lays a fire.", [&"use"]],
+	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
+	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
+	&"lamp": ["Night. %s lights the lamp.", [&"lamp"]],
+	&"dodge": ["It winds up before it strikes: %s gets you out of the way.", [&"dodge"]],
+	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
+	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
+	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
 }
 
 ## Load over this share of the creel asks for the carrying page.
@@ -69,7 +84,10 @@ static func goal(game: Game) -> String:
 static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
 	for id: StringName in _applicable(game):
 		if not retired.has(id):
-			return {"id": id, "line": HINTS[id][0], "key": HINTS[id][1]}
+			# The line is a TEMPLATE and the actions are names: whoever says it
+			# resolves them against the live keys (58_guide), because a key label
+			# is the settings package's to answer and core does not read it.
+			return {"id": id, "line": HINTS[id][0], "keys": HINTS[id][1]}
 	return {}
 
 
