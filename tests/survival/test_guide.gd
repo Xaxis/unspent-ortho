@@ -319,3 +319,19 @@ func _offered(g: Game) -> Array:
 		out.append(id)
 		retired[id] = true
 	return out
+
+
+func test_building_is_taught_when_the_creel_can_actually_build() -> void:
+	# A whole pillar of the game nobody was told about (VISION §9): a player can
+	# put a place up, keep it, and have the machines come for it. Said the first
+	# time the creel really holds enough for a piece -- before that the lesson is
+	# an advertisement, which is the thing a key prompt on the glass always is.
+	var g := Fx.flat(60)
+	check(not _offered(g).has(&"holding"), "not with an empty creel")
+	# Fill it until something is buildable, the way play would.
+	var want := StructureKind.BUILDABLE[0]
+	for id: StringName in (SettlementBuild.missing(g.inventory, want) as Dictionary):
+		g.inventory.add(id, int((SettlementBuild.missing(g.inventory, want) as Dictionary)[id]))
+	check(SettlementBuild.can_make(g.inventory, want), "the creel now holds a piece")
+	check(_offered(g).has(&"holding"), "offered once it does")
+	Fx.done(g)
