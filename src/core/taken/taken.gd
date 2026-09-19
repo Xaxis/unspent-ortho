@@ -96,6 +96,17 @@ func held_in(region: int) -> Array[TakenPerson]:
 	return out
 
 
+## Who was held in that region and has walked back out of it. The list the story
+## thanks him for: a rescue is answered by a yard going dark, so by the time
+## anybody can say anything about it there is nobody being held to name.
+func freed_in(region: int) -> Array[TakenPerson]:
+	var out: Array[TakenPerson] = []
+	for t in people:
+		if t.freed and t.region == region:
+			out.append(t)
+	return out
+
+
 ## Everyone still held, anywhere.
 func held() -> Array[TakenPerson]:
 	var out: Array[TakenPerson] = []
