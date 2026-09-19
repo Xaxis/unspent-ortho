@@ -52,9 +52,16 @@ tests. Check the directory before you believe a wave status.
 
 **So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
 to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
-work in. If you are adding a model, plain `MeshKit` through the existing
-`Parts.hand/ruled` state is still correct; what it writes is read as material
-now rather than as a pen, and it converts with everything else.
+work in. **If you are adding a model, use `Kit`** (`src/models/props/kit.gd`):
+it holds the three MeshKits a model needs — `made`, `found` and `leaf` — and it
+is the only one of the three idioms in this package that can carry leaves at all.
+`Parts.hand/ruled` (which this line used to send you to) flips one MeshKit's
+style and is used by five files under `src/models/settlement/`; `FoundKit`'s
+statics are the third. **And weld what you build**: `smooth_range` reaches four
+call sites out of sixty-four model files, so the default is still a flat normal
+per face under a real sun. See `mesh_kit.gd`'s smoothing block for why that is a
+wave rather than a sweep — welding is per shape, so eight `cbox` calls are
+eight hard seams whatever you bracket.
 
 **The slate is drawn in the base's own pixels** (`src/ui/ui_base.gd`, docs/ART.md
 §9): every number in `src/ui/` and `src/dev/` is in 1920x1080 pixels, no UI layer
