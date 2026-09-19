@@ -107,6 +107,11 @@ const COUNT := {
 ## An orbital body is a captured asteroid, not a continent: it takes this share of
 ## the land a continent would.
 const ORBITAL_SHARE := 0.32
+## The share of a world's continents a landscape lies on when it declares no
+## `BiomeDef.spread`. Half is what makes two continents different places rather
+## than two draws of one deck; a landscape that wants to be everywhere (a coast)
+## or nowhere but one (a rarity) says so in its own file.
+const MOST_BODIES := 0.5
 ## The radius of the ONE island this game has always had, as a share of the
 ## square: `GenShape` draws it at 0.34-0.38 by 0.38-0.41, so about this.
 const ONE_RADIUS := 0.375
@@ -163,13 +168,17 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	var small: float = ORBITAL_SHARE if realm == Realm.ORBITAL else 1.0
 	# THE SQUARE'S WIDTH DECIDES HOW MANY CONTINENTS FIT IN IT, because a continent
 	# is a whole island and not a share of one (see `share_each` below). Asked for
-	# a size, drop the count until they fit at that size rather than shrinking them
-	# to suit — never below the least this realm is allowed, because "at least five"
-	# is the shape of the journey (`StoryPlan.SPINE` walks them in order) and not a
-	# budget. A world too small for its own least count gets small continents, and
-	# that is the honest failure: it says the square is too small.
+	# a size, drop the count until they fit AT FULL SIZE rather than shrinking them
+	# to suit.
+	#
+	# DOWN TO ONE, and "at least five" is not a floor here. It is what
+	# `Tuning.WORLD_SIZE` (1300) buys, which is the world a game is played in; a
+	# 64-tile test fixture is not a small world with five continents in it, it is
+	# one island, as it always was. Flooring the count at the realm's least instead
+	# put five continents on a 64-tile square and took thirty tests down with it —
+	# every one of them a true statement about a world nobody meant to make.
 	if want_size > 0:
-		while count > range_of.x and _square_for(count, small) > want_size:
+		while count > 1 and _square_for(count, small) > want_size:
 			count -= 1
 	# HOW BIG A BODY CAN BE IS A PACKING PROBLEM, NOT A DIVISION. The first version
 	# of this gave each body 1/count of the land and scattered the centres, and at
@@ -280,7 +289,21 @@ static func deal(c: GenContext) -> void:
 		got.append(PackedInt32Array())
 	for cc: int in c.land_types:
 		var sp: Vector2i = c.defs[cc].spread
-		var most := planned if sp.y <= 0 else mini(sp.y, planned)
+		# A LANDSCAPE THAT SAYS NOTHING LIES ON SOME CONTINENTS, NOT ALL OF THEM.
+		#
+		# The default was `planned` — every landscape on every continent — which
+		# made five continents five copies of one island, each carrying the same
+		# nine landscapes in the same climate order. That is the owner's brief
+		# defeated by its own default: "continents can have different landscapes on
+		# them and a well distributed mixture, but some of the rarer types
+		# exclusive only to some continents". `BiomeDef.spread` was built to say
+		# exactly that and could never be heard over a default that gave everything
+		# to everybody.
+		#
+		# So a landscape that argues with nothing lands on about half of them, and
+		# one that wants to be everywhere or nowhere says so. `spread.x >= 1` still
+		# guarantees the home continent first, because the spine lives there.
+		var most := maxi(1, roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
 		var want := maxi(1, mini(most, planned))
 		# A guaranteed type goes on the HOME body first: the spine of the game
 		# lives there (docs/WORLD.md §8.4) and a player who never crosses water

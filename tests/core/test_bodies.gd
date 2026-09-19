@@ -148,14 +148,19 @@ func test_every_body_is_dealt_a_climate_band() -> void:
 	gt(float(seen.size()), 2.0, "the bands are not all the same deal")
 
 
-## THE STAGE IS A NO-OP ON EVERY WORLD THIS PROJECT GENERATES TODAY, and that is
-## a promise worth a test rather than a comment. `plan` returns one body at every
-## size anything currently asks for, one body is the whole square centred, and
-## `GenShape` then takes the identical random stream — so no island moved, no
-## stamp bumped and no baseline was re-accepted when continents arrived.
-func test_the_sizes_this_project_uses_are_one_island() -> void:
+## A SMALL SQUARE IS STILL ONE ISLAND, CENTRED, EXACTLY AS IT ALWAYS WAS.
+##
+## This used to include `Tuning.WORLD_SIZE` and read "the stage is a no-op on
+## every world this project generates today" — true while the game was played on
+## one island, and a lie the moment the owner asked for five continents. The
+## promise it was protecting is still worth keeping and is now the OTHER half: a
+## 64-tile test fixture is not a small world with five continents in it. Flooring
+## the count at the realm's least instead of at one put five continents on a
+## 64-tile square and took thirty tests down, every one of them a true statement
+## about a world nobody meant to make.
+func test_a_small_square_is_still_one_island() -> void:
 	for s: int in SEEDS:
-		for want: int in [64, 128, 256, Tuning.WORLD_SIZE]:
+		for want: int in [64, 128, 256, 512]:
 			var p := GenBodies.plan(s, Realm.SURFACE, want)
 			eq((p.bodies as Array).size(), 1, "seed %d at %d: one island" % [s, want])
 			var at: Vector2 = (p.bodies as Array)[0].at
@@ -163,16 +168,41 @@ func test_the_sizes_this_project_uses_are_one_island() -> void:
 			near(float((p.bodies as Array)[0].share), 1.0, 1e-6, "seed %d at %d: the whole share" % [s, want])
 
 
+## AND THE SIZE A GAME IS PLAYED AT IS FIVE CONTINENTS, each a whole island.
+## `Tuning.WORLD_SIZE` is 1300 because that is what five bodies of a full island's
+## share need (`GenBodies._square_for`), and "at least five" is the shape of the
+## journey: `StoryPlan.SPINE` crosses them in order and has carried a `leg` per
+## slot since before this stage could lay them.
+func test_the_size_a_game_is_played_at_is_five_continents() -> void:
+	for s: int in SEEDS:
+		var p := GenBodies.plan(s, Realm.SURFACE, Tuning.WORLD_SIZE)
+		var bodies: Array = p.bodies
+		gt(float(bodies.size()), 4.0, "seed %d: at least five continents" % s)
+		for b: Dictionary in bodies:
+			# Each is a whole island's worth, not a share of one: a body's share of
+			# this square times this square is about a 512 island's tiles.
+			var tiles := float(b.share) * float(Tuning.WORLD_SIZE) * float(Tuning.WORLD_SIZE)
+			near(tiles / (512.0 * 512.0), 1.0, 0.25,
+				"seed %d: a continent is an island's worth of land" % s)
+
+
 ## And when the square IS big enough, the bodies are really separate land, not one
 ## mass with arms. Both of those were real failures on the way here: the headlands
 ## bridged the straits, and `GenShape._clean` drowned every mass but the largest.
 func test_a_big_square_holds_separate_continents() -> void:
+	# ASKED OF THE PLAN, NOT PINNED AT FOUR. The count a square holds is what fits
+	# in it at FULL island size (`GenBodies._square_for`), so 1024 held four while
+	# a body was a fifth of an island and holds three now that it is a whole one.
+	# Pinning the number made this a test of a constant; what it is for is that
+	# every body the plan laid came out as a landmass of its own.
 	var w := WorldGen.generate(1, 1024)
+	var want: int = (GenBodies.plan(1, Realm.SURFACE, 1024).bodies as Array).size()
+	gt(float(want), 1.0, "1024 is big enough for more than one")
 	var big := 0
 	for b: Dictionary in w.continents:
 		if int(b.tiles) > 20000:
 			big += 1
-	eq(big, 4, "four continents, each a landmass of its own")
+	eq(big, want, "every one of the %d planned is a landmass of its own" % want)
 	for b: Dictionary in w.continents:
 		if int(b.tiles) > 20000:
 			gt(float(b.tiles), 50000.0, "continent %d is a place, not a spit" % int(b.id))
@@ -228,7 +258,8 @@ func test_a_body_is_dealt_the_landscapes_it_may_carry() -> void:
 		dealt += 1
 		gt(float((b.get("types") as PackedInt32Array).size()), 0.0,
 			"continent %d is not left barren" % int(b.id))
-	eq(dealt, 4, "every planned continent was dealt, and the skerries were left alone")
+	eq(dealt, (GenBodies.plan(1, Realm.SURFACE, 1024).bodies as Array).size(),
+		"every planned continent was dealt, and the skerries were left alone")
 
 
 ## EXCLUSIVITY, PROVED RATHER THAN DECLARED. A landscape that naturally spans
