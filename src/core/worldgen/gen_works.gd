@@ -149,6 +149,12 @@ class Lay:
 
 
 static func place(c: GenContext, occ: PackedByteArray) -> void:
+	# NOT IN A YEAR BEFORE THEY BEGAN. Everything this file lays is the machines'
+	# — ruled on their survey bearing, keeping their hours — and in 2029 there is
+	# no plan to have laid it. The land underneath is identical either way, which
+	# is what `Realm.same_land_as` is for; this is the sixty-nine years.
+	if Realm.before_the_plan(c.w.realm):
+		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
 	for def in BiomeRegistry.all():
 		var row := evidence(def.id)

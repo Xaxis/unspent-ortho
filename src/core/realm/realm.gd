@@ -114,6 +114,12 @@ const DEFS := {
 		"airs": [], "bans": [], "bed": &"bed_wind", "salt": 0,
 		"same_land_as": SURFACE,
 		"footprints_of": SURFACE,
+		# THE PLAN HAD NOT STARTED. 2029 is before the machines ruled this coast
+		# on a bearing, so none of their works stand in it: no relays, no survey
+		# posts, no drill rigs, no depot. The land is the same land and what is
+		# ON it is sixty-nine years of difference, which is the whole of why a
+		# player is walked back here (docs/STORY.md).
+		"before_the_plan": true,
 	},
 }
 
@@ -122,6 +128,12 @@ const DEFS := {
 ## different time (`same_land_as`): the Before is this coast in 2029, so it grows
 ## the same coast. Every reader of `BiomeDef.realms` goes through here, or one of
 ## them lays a world nobody declared a landscape for.
+## Whether this realm is from before the machines began (`GenWorks`). The land is
+## laid the same; their works are simply not there yet.
+static func before_the_plan(kind: StringName) -> bool:
+	return bool(def(kind).get("before_the_plan", false))
+
+
 static func land_realm(kind: StringName) -> StringName:
 	return def(kind).get("same_land_as", kind)
 
