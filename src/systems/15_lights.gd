@@ -571,7 +571,7 @@ func _index_sources() -> void:
 		if not SOURCES.has(p.kind) and p.kind != PropKind.PYLON:
 			# Any other kind whose model says where its lights are (a relay's
 			# beacon, an array's strip) glints on the machines' power.
-			var pts := _glow_points_cached(p.kind)
+			var pts := _points_for(p)
 			if not pts.is_empty():
 				var world_pts: Array[Vector3] = []
 				var rgb: Array[Vector3] = []
@@ -592,13 +592,18 @@ func _index_sources() -> void:
 			var spec: Array = SOURCES[p.kind]
 			var base := game.world.to_3d(p.pos)
 			var local := Vector3(0, float(spec[2]), 0)
+			# `variant_of`, never the id's hash: world gen may have DEALT this
+			# prop a model (WorldProp.variant), and a light read off the other one
+			# puts the glow point, its colour and the "no light on this variant"
+			# early-out on a model that is not the one on screen.
+			#
+			# Hoisted out of the branch below, because the HOUSE branch beside it
+			# needed the same two numbers and could not see them: a hearth was
+			# placed at the front wall of coast variant 0 whatever house the baker
+			# had actually built.
+			var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+			var variant := PropModels.variant_of(p, game.world.seed_value, country)
 			if PLACED_SOURCES.has(p.kind):
-				# `variant_of`, never the id's hash: world gen may have DEALT this
-				# prop a model (WorldProp.variant), and a light read off the other
-				# one puts the glow point, its colour and the "no light on this
-				# variant" early-out on a model that is not the one on screen.
-				var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
-				var variant := PropModels.variant_of(p, game.world.seed_value, country)
 				var pts := PropModels.glow_points(p.kind, variant, country)
 				if pts.is_empty():
 					# A dead pump, a shack with nothing wired in: no light to give.
@@ -608,7 +613,7 @@ func _index_sources() -> void:
 				s.neon = Vector3(c.r, c.g, c.b)
 			if p.kind == PropKind.HOUSE:
 				# Just outside the front wall, before the window and door.
-				var front := _front_of(p.kind)
+				var front := _front_of(p.kind, variant, country)
 				var out := Vector3(front.x, 0.0, front.z).normalized() * 0.5
 				local = Vector3(front.x + out.x, float(spec[2]), front.z + out.z)
 			# Props turn by -rot (a model faces +X; WorldView draws them so).
@@ -658,10 +663,10 @@ func _tube_of(s: Dictionary) -> void:
 ## Where a house's lit front is, in its own frame: the middle of the glow points
 ## that are its OWN light. A stolen tube is somebody else's and hangs where the
 ## model runs it, so it must not drag the hearth's pool off the door.
-static func _front_of(kind: int) -> Vector3:
+static func _front_of(kind: int, variant: int, country: int) -> Vector3:
 	var sum := Vector3.ZERO
 	var n := 0
-	for g: Dictionary in glow_points(kind):
+	for g: Dictionary in glow_points(kind, variant, country):
 		if bool(g.get("neon", false)):
 			continue
 		sum += g.at as Vector3
@@ -869,11 +874,18 @@ func _update_glints(focus3: Vector3, hour: float, lantern_lit: bool) -> void:
 var _glow_cache: Dictionary = {}
 
 
-## PropModels.glow_points(kind), asked once per kind.
-func _glow_points_cached(kind: int) -> Array:
-	if not _glow_cache.has(kind):
-		_glow_cache[kind] = glow_points(kind)
-	return _glow_cache[kind]
+## Where THIS prop gives light, asked once per (kind, variant, country).
+##
+## The cache used to key on kind alone, which is why the bug above could not be
+## corrected per prop even where the caller knew better: the first prop of a kind
+## to be indexed decided for every other one in the world.
+func _points_for(p: WorldProp) -> Array:
+	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var variant := PropModels.variant_of(p, game.world.seed_value, country)
+	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+	if not _glow_cache.has(key):
+		_glow_cache[key] = glow_points(p.kind, variant, country)
+	return _glow_cache[key]
 
 
 ## The sources and machines that could glint near the focus, nearest first.
@@ -1129,15 +1141,24 @@ func _blink() -> void:
 			n.visible = fposmod(_time + float(n.get_meta("blink")) * 3.0, 3.0) < 1.1 and powered
 
 
-## Where a prop gives light, in its own frame: PropModels.glow_points(kind),
-## which follows the models' own shapes.
-static func glow_points(kind: int) -> Array:
-	return PropModels.glow_points(kind)
+## Where a prop gives light, in ITS OWN frame -- the variant world gen dealt it,
+## in the landscape it stands in.
+##
+## **THIS TOOK NO VARIANT AND NO COUNTRY, so every reader of it got coast variant
+## 0.** `_index_sources` already had the rule written out twenty lines further
+## down, on the branch that does it properly: a light read off the other model
+## puts the glow point, its colour and the "no light on this variant" early-out
+## on a model that is not the one on screen. The pool, the glow quad and the
+## house's lit front all came through here, so all three agreed with each other
+## and all three disagreed with the mesh the chunk baked -- a house lit where its
+## tube is not, which is the trap `PropModels` own header names.
+static func glow_points(kind: int, variant: int = 0, country: int = Country.COAST) -> Array:
+	return PropModels.glow_points(kind, variant, country)
 
 
 func _glow_node(s: Dictionary) -> Node3D:
 	var p: WorldProp = s.prop
-	var pts := glow_points(p.kind)
+	var pts := _points_for(p)
 	if pts.is_empty():
 		return null
 	var k := MeshKit.new()

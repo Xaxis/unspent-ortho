@@ -322,20 +322,29 @@ tools print their own summaries.
   authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
   presses a body with, and a shared rule that cannot see a declaration will keep
   reporting content as breakage.
-- **A SPEEDUP THAT MOVES A TILE IS NOT A SPEEDUP.** World generation is 13 s and
-  the biggest stages are `settle.roads` (2,408 ms, ~59 A* searches over a 650x650
-  weighted grid) and `shape` (3,296 ms) — and both were deliberately left alone.
-  Every way to make that A* cheaper changes where the roads run, which moves every
-  seed's world, which is a parity re-acceptance and a re-shoot of every frame in
-  the repository, paid to speed up something the owner has said in writing he does
-  not wait on. The optimisations worth taking are the ones with the SAME OUTPUT:
-  `BlackSite._sea` went 3,265 ms → 334 ms (9.8x) by flooding a `PackedByteArray`
-  off `w.ground` instead of a Dictionary calling `ground_at` per neighbour, **and
-  seed 7 picks the identical tile before and after** — the check is the half that
-  makes it count, because a number without it is just a diff. The lever itself is
-  general and large: a GDScript method call is about ten times an array index, and
-  `append` on a Packed array copies it. Reading `w.level`/`w.ground`/`w.country`
-  directly and sizing arrays once took a coarse-world block from 480 ms to 34 ms.
+- **A speedup that moves a tile is not a speedup, it is a re-acceptance wearing
+  one.** Worldgen output is pinned by `tests/biome/test_parity.gd` and by every
+  frame in the repository, so a faster stage that lands things half a tile
+  elsewhere costs a parity re-acceptance and a re-shoot, and buys load time the
+  owner has said in writing he does not wait on ("loading time doesnt matter",
+  asking for the bigger world). So the measurement has TWO halves and the second
+  is the one that counts: `BlackSite._sea` went 3,265 ms to 334 (a Dictionary and
+  `ground_at` per neighbour became a `PackedByteArray` and a direct read of
+  `w.ground`) **and seed 7 still lands on (143.5, 1030.5)**. Profile with
+  `WorldGen.last_timings` / `last_detail` before reaching for anything: the two
+  biggest stages are roads and the country score fields, and both were looked at
+  and DECLINED on exactly this rule. **The lever that DOES pass it is general and
+  large**: a GDScript method call is about ten times an array index and `append`
+  on a Packed array copies it, so reading `w.level`/`w.ground`/`w.country`
+  directly and sizing arrays once took a coarse-world block from 480 ms to 34.
+- **A count of things built is not evidence that anything was drawn.** Far blocks
+  wound backwards built cleanly, dispatched their draw calls and had their
+  primitives counted -- the stats line read 121 of 121 while the world was not on
+  the screen. The same shape as a test runner printing "0 load errors" over a
+  parse error that dropped five files, and a green suite over a comment that was
+  never inserted. **An instrument that reports on the step before the one you
+  care about will report success for a failure every time.** Check the thing
+  itself: read the pixels, read the file back, ask the live camera.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
