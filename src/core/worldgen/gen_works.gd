@@ -26,6 +26,25 @@ class_name GenWorks
 ## keep the spawn's first steps clear. Runs and grids stand at scale 1 so their
 ## order is exact.
 
+## THE PLAN'S RUNS, WHICH NOBODY MAY SCATTER. A pipe, a conveyor and a drill rig
+## are laid by this file in RUNS -- ruled on the survey bearing, at scale exactly
+## 1, so a line of them reads as one thing the machines built rather than as
+## litter. `tests/core/test_world_gen_works.gd` holds every one of them in the
+## world to that, and a single loose one turned a random way fails it for the
+## whole island.
+##
+## All three are already in `GenScatter.PLACED`, so a landscape never has to ask
+## for them: the works stage may put them anywhere. That means naming one in
+## `BiomeDef.props` buys exactly one thing -- permission for that landscape's own
+## `_scatter` to DEAL one, at a random angle -- and there is no case where that is
+## what anybody wanted. So the declaration is the bug, and `BiomeRegistry.problems`
+## fails on it by name. A landscape that wants pipe on its ground asks for the
+## `pipe_run` vignette in its `GenWorks.register` row, which lays a real run.
+##
+## Learned once in `slums.gd`, in a comment inside one landscape's scatter, where
+## the next four authors never saw it -- and four of them did it again.
+const RUNS: Array[int] = [PropKind.PIPE, PropKind.CONVEYOR, PropKind.DRILL_RIG]
+
 const CUT := &"cut"
 const SCORCH := &"scorch"
 const QUARRY := &"quarry"
@@ -1378,6 +1397,11 @@ static func _compose(L: Lay, name: StringName, at: Vector2, turn: float, angle: 
 		&"pipe_run":
 			n += _run(L, PropKind.PIPE, at, d, 2 + int(turn * 3.0), 2.0, -99, 0.2).size()
 			n += _about(L, PropKind.DEBRIS, at + d * 2.0, 1, 1.0, 2.5)
+		&"conveyor_run":
+			# Longer than a pipe run and unbroken: a conveyor with pieces missing
+			# has nothing to carry, and where these are laid the plant still runs.
+			n += _run(L, PropKind.CONVEYOR, at, d, 3 + int(turn * 4.0), 2.5, -99, 0.0).size()
+			n += _about(L, PropKind.DEBRIS, at + d * 2.5, 1, 1.0, 2.5)
 		&"stump_rows":
 			# A small cut in the wood: stumps in the harvester's rows.
 			var k := 2 + int(turn * 2.0)

@@ -200,6 +200,11 @@ static func problems() -> PackedStringArray:
 		for k: int in d.props:
 			if k < 0 or k >= PropKind.COUNT:
 				out.append(w + "prop kind %d is not a kind" % k)
+			elif k in GenWorks.RUNS:
+				# See `GenWorks.RUNS`: naming one here buys nothing but permission
+				# to DEAL it from this landscape's `_scatter`, at a random angle,
+				# which breaks the ruled-on-the-bearing rule for the whole island.
+				out.append(w + "declares %s, which is one of the plan's RUNS and may not be scattered; ask for the pipe_run vignette instead" % PropKind.NAMES[k])
 		for row: Array in d.ore:
 			if int(row[0]) < 0 or int(row[0]) >= PropKind.COUNT:
 				out.append(w + "ore kind %d is not a kind" % int(row[0]))

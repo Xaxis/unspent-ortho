@@ -91,7 +91,7 @@ static func make() -> BiomeDef:
 	d.built.repeat_apart = 11.0
 	d.grade = Vector4(-0.06, 0.02, 0.06, -0.03)
 	d.night_sky = 0.95
-	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.PIPE,
+	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE]
 	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
 	d.sites = {"tips": 2, "ruins": true}

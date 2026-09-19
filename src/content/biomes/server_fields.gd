@@ -75,10 +75,17 @@ static func make() -> BiomeDef:
 	# Lit all night by things that never stop: the least dark place in the game,
 	# and none of the light is anybody's to warm their hands at.
 	d.night_sky = 0.8
-	d.props = [PropKind.RELAY, PropKind.PIPE, PropKind.WATER_TANK, PropKind.INTAKE,
+	d.props = [PropKind.RELAY, PropKind.WATER_TANK, PropKind.INTAKE,
 		PropKind.PYLON, PropKind.CONSOLE, PropKind.DEBRIS, PropKind.STACK, PropKind.FENCE]
 	d.ore = [[PropKind.COPPER_ORE, 0.02], [PropKind.IRON_ORE, 0.016]]
 	d.sites = {"tips": 3}
+	# Pipe is the crop here, so it is laid THICK and as runs, on the bearing
+	# (`GenWorks.RUNS`) -- never a piece at a time from the scatter.
+	GenWorks.register(&"server_fields", {
+		"vignettes": [[6, &"pipe_run"], [3, &"debris_field"], [3, &"survey_posts"],
+			[2, &"wreck_parts"], [2, &"tipped_signs"], [1, &"grave_cluster"]],
+		"survey": [[0.5, &"pipe_line"]],
+	})
 	d.beached_wrecks = false
 	d.pools = {"order": 3, "cell": 34, "chance": 0.4, "r_min": 2.0, "r_max": 4.0, "ground": Ground.WATER}
 	d.villages = 0
@@ -125,8 +132,8 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 ## could take; and the one thing on the grass is what has got in since.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.FLOOR:
-		if r < 0.034:
-			return PropKind.PIPE
+		# The pipe that is the crop here is laid in RUNS by the works stage
+		# (`pipe_run`, this file's GenWorks row), never dealt loose: `GenWorks.RUNS`.
 		if r < 0.052:
 			return PropKind.CONSOLE
 		if r < 0.062:
@@ -145,9 +152,7 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.FENCE
 		return PropKind.PYLON if r > 0.45 and r < 0.458 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
-		if r < 0.018:
-			return PropKind.DEBRIS
-		return PropKind.PIPE if r < 0.026 else BiomeScatter.NONE
+		return PropKind.DEBRIS if r < 0.018 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		return PropKind.BUSH if r < 0.01 else BiomeScatter.NONE
 	return BiomeScatter.NONE
