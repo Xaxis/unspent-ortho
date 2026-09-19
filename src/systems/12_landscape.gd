@@ -84,6 +84,14 @@ func _tell_camera_how_tall_it_builds() -> void:
 ## Believing it cost an hour hunting a stall that was not there, on the same
 ## night `ForePerf`'s header already said in writing that this number lies.
 ##
+## **AND THE LINE NOW ACCOUNTS FOR THE WHOLE FRAME, not just the chunks**, which
+## is the same rule as `unaccounted` one paragraph up. `proc` and `phys` are what
+## the main thread spent on every node and every physics tick. They are here
+## because the night this field was fixed, play was at 5 fps with `proc` at 88 ms
+## and render CPU at 0.40 -- and nothing printed said so, so the chase started at
+## the renderer, which was the one part doing its job. A line that reports only
+## the part you own will send the next person to the part you own.
+##
 ## The honest replacement is the one thing a shot CAN know: what the renderer
 ## measured for the frame it just drew. The GPU half is left off because Metal
 ## through MoltenVK answers zero here (`ForePerf` again), and a nought is worse
@@ -95,7 +103,7 @@ static func stats_line(view: WorldView) -> String:
 	# on every chunk since the mesher was written and read by nothing.
 	var mesher_ms := (pr[0] + pr[1] + pr[2] + pr[3] + pr[4] + pr[5] + pr[7]) / 1000.0
 	var gap := view.build_ms - view.main_ms - mesher_ms - view.decor_ms - view.props_ms
-	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d (parked %d, far %d/%d avg %.1f ms), chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f decor %.1f props %.1f unaccounted %.1f), verts %d, render cpu %s" % [
+	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d (parked %d, far %d/%d avg %.1f ms), chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f decor %.1f props %.1f unaccounted %.1f), verts %d, frame: proc %.1f ms, phys %.1f ms, render cpu %s" % [
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
@@ -106,6 +114,8 @@ static func stats_line(view: WorldView) -> String:
 		view.main_ms / n, view.main_ms_max,
 		pr[0] / 1000.0 / n, pr[1] / 1000.0 / n, pr[2] / 1000.0 / n, pr[7] / 1000.0 / n, pr[3] / 1000.0 / n, pr[4] / 1000.0 / n, pr[5] / 1000.0 / n,
 		view.decor_ms / n, view.props_ms / n, gap / n, int(pr[6] / n),
+		Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+		Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
 		_render_cpu(view)]
 
 
