@@ -10,8 +10,12 @@ class_name Tuning
 ## order and has carried a `leg` per slot for weeks. A wider square holds more:
 ## 1477 takes six, 1666 takes seven.
 const WORLD_SIZE := 1300
-## Game-world minutes per real second. 1 = a day in 24 real minutes. (source)
-const MINUTES_PER_SECOND := 1.0
+## Game-world minutes per real second. 1 = a day in 24 real minutes; at 1.4 a
+## day is a little over seventeen, which is what the owner asked for
+## (2026-09-18: "the game time which should be configurable should be faster
+## slightly"). It is a SOURCE value and `rules.clock` follows it, so the
+## setting and the shipped game cannot drift apart.
+const MINUTES_PER_SECOND := 1.4
 const START_HOUR := 8.0
 
 # --- Player movement ---

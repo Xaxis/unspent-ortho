@@ -32,10 +32,30 @@ extends GameSystem
 ## to go, fly there to see what it actually looks like.
 
 ## How high the picture may be taken from, in world units of view height. The
-## play camera is 15. `MOST` is not "as far as the arithmetic allows" — see the
-## header: past it the streamer is the thing you are looking at.
+## play camera is 15.
+##
+## THE CEILING IS THE WORLD NOW, not a frame rate. It was 120 because past that
+## the streamer builds more ground than it can carry — which is true, and on a
+## 1300-tile world across five continents it also meant a tool for looking at the
+## world could show a tenth of one continent. The owner asked for the whole thing
+## (2026-09-18: "make it so I can zoom further out in dev flying over mode so I
+## can see the entire world if I want") and has already ruled on the trade
+## ("loading time doesnt matter"). So it goes all the way out and it will chug
+## while it builds: this is dev mode, the chug is honest, and a tool that cannot
+## show you the thing you are reviewing is worse than a slow one.
+##
+## `ceiling()` is asked per world rather than written down, because a constant
+## measured against one world size is a countdown against the next one.
 const LEAST := 8.0
 const MOST := 120.0
+
+
+## As far out as this world can be looked at: the whole of it, with a margin so
+## the edges are not flush against the frame.
+func ceiling() -> float:
+	if game == null or game.world == null:
+		return MOST
+	return maxf(MOST, float(game.world.size) * 1.15)
 ## What one press of e/c does, as a share: zooming by a fixed number of units is
 ## crawling when you are far out and violent when you are close in.
 const ZOOM_STEP := 1.22
@@ -125,8 +145,8 @@ func _toggle() -> void:
 	# Opens at four times the play height: far enough to be obviously a different
 	# thing, near enough that what he was standing next to is still recognisable,
 	# so the transition itself tells him where he is.
-	game.camera.view_height = clampf(_was_high * 4.0, LEAST, MOST)
-	Events.message.emit("Flying. Drag to move, wheel to zoom, wasd too. F6 names the regions, F5 comes back.")
+	game.camera.view_height = clampf(_was_high * 4.0, LEAST, ceiling())
+	Events.message.emit("Flying. Drag to move, wheel to zoom, wasd too. g names the regions, v comes back.")
 
 
 func _land() -> void:
@@ -139,9 +159,9 @@ func _land() -> void:
 func _fly(delta: float) -> void:
 	var high := game.camera.view_height
 	if _pressed(&"dev_fly_in"):
-		game.camera.view_height = clampf(high / ZOOM_STEP, LEAST, MOST)
+		game.camera.view_height = clampf(high / ZOOM_STEP, LEAST, ceiling())
 	if _pressed(&"dev_fly_out"):
-		game.camera.view_height = clampf(high * ZOOM_STEP, LEAST, MOST)
+		game.camera.view_height = clampf(high * ZOOM_STEP, LEAST, ceiling())
 	var input := Vector2(
 		Input.get_axis(&"move_left", &"move_right"),
 		Input.get_axis(&"move_up", &"move_down"))
@@ -196,7 +216,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _zoom_at(at: Vector2, by: float) -> void:
 	var before := _ground_at(at)
 	var was := game.camera.view_height
-	game.camera.view_height = clampf(was * by, LEAST, MOST)
+	game.camera.view_height = clampf(was * by, LEAST, ceiling())
 	if is_equal_approx(game.camera.view_height, was) or not before.is_finite():
 		return
 	# The camera has to be where it will BE before the ground under the pointer

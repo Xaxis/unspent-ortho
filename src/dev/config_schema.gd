@@ -70,9 +70,12 @@ const ROWS: Array[Dictionary] = [
 	{"id": "start.lamp", "group": "start", "label": "lamp lit", "kind": "bool", "default": false, "applies": "new",
 		"note": "A new game starts with the lamp burning."},
 
-	{"id": "rules.clock", "group": "rules", "label": "clock", "kind": "choice", "default": 1.0,
-		"options": [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0], "applies": "live",
-		"note": "World minutes to a real second. At 1 a day takes 24 minutes."},
+	# The default is the shipped rate itself rather than a second copy of it, and
+	# the steps near it are fine because that is where the choice actually is:
+	# 1 to 2 is a day going from 24 minutes to 12, which is not a nudge.
+	{"id": "rules.clock", "group": "rules", "label": "clock", "kind": "choice", "default": Tuning.MINUTES_PER_SECOND,
+		"options": [0.0, 0.5, 0.75, 1.0, 1.2, 1.4, 1.7, 2.0, 3.0, 5.0, 10.0, 30.0, 60.0], "applies": "live",
+		"note": "World minutes to a real second. At 1 a day takes 24 minutes; at 1.4, about 17."},
 	{"id": "rules.harm", "group": "rules", "label": "harm taken", "kind": "choice", "default": 1.0,
 		"options": [0.0, 0.25, 0.5, 1.0, 1.5, 2.0], "applies": "live",
 		"note": "What a blow takes off the player. None: nothing can down them."},
