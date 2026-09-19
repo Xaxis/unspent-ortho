@@ -67,7 +67,7 @@ const PLACE_TILES := 1250.0
 ## envelope: north is cold, the shore is wet, the middle is dry.
 const CLIMATE_COLD := 0.78
 
-const PARAMS := [&"base", &"hills", &"ridge", &"terrace", &"valley", &"rain", &"temp", &"moist", &"cliff"]
+const PARAMS := [&"base", &"hills", &"ridge", &"near", &"terrace", &"valley", &"rain", &"temp", &"moist", &"cliff"]
 
 
 ## Each land type's share of the land, normalised over the registry.

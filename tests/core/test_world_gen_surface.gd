@@ -167,27 +167,9 @@ const WASH_CEILING := 2.2
 
 
 func test_snow_and_ash_keep_to_their_countries() -> void:
-	var rows: Array = []
 	# Snow creeps down ridges and ash drifts over the rim, inside the ecotone:
 	# never more than 3% of another country.
-	# TWO THIRDS OF THE SAMPLE, not every last row, and the value is untouched.
-	#
-	# The header below worked out that a landscape's seed-to-seed spread is about
-	# 0.04 and moved the bar from 0.25 to 0.28 to stand clear of it. That was
-	# right and it is still not enough, because the spread is not a property of
-	# the landscape — it is a property of the ISLAND, and every landscape added to
-	# the registry re-rolls every seed's layout. Measured today: adding one type
-	# put the Burning at 0.2803, adding four put it at 0.2900, and moving one of
-	# those four left its number identical to eleven places. Nothing about the
-	# Burning changed in any of it.
-	#
-	# So a per-seed absolute bar fails for whatever moved the island last, and the
-	# owner has asked for a dozen more landscapes. What is kept is the VALUE — a
-	# ground that has really broken up still has to be caught — and what changes
-	# is how much of the sample has to clear it, plus a hard ceiling no amount of
-	# noise can reach. Same medicine df used on `test_every_landscape_holds_its_own_works`.
-	var clear := 0
-	var rows := 0
+	var rows: Array = []
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var land := PackedFloat32Array()
