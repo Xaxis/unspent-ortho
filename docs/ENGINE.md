@@ -11,6 +11,34 @@ the order it is worth doing, with the measurements attached.
 anyone can check. The standard is: every finding below is either FIXED, or
 DECLINED IN WRITING with the reason. A line that is neither is unfinished work.
 
+## THE RULE THE `form` WAVE IS HELD TO
+
+**THE SCORE IS NOT THE PICTURE.** Every specification in §2 was written from a
+table, and every one that has been tested against a frame has been wrong in a way
+the table could not show. Two people found this separately in one night, from
+opposite ends:
+
+- **Judge it at the SIZE it is seen at.** Welding is free and correct, and at the
+  ~70 pixels a small prop actually gets in play, welded and unwelded ore is
+  *indistinguishable*; it reads close up and under raking light. The other way
+  round, thatch specified at 38 stems per world unit against a frame that is 72
+  pixels to the unit is a stem on two pixels — relief computed, paid for, and
+  averaged to a flat sheet. At 16 it is straw. Some things are too SMALL now, not
+  only too coarse.
+- **And at the SHAPE it is seen on.** *"A long thin limb shows its facet seam
+  down its whole length; a lumpy mass hides it."* Ore at 52% hard corners welds
+  to a shrug; driftwood at 91% is transformed — and the payoff is not
+  proportional to the hard-corner percentage at all, but to how much unbroken
+  surface the seam runs across.
+- **And a row inside 0.05 of its neighbour is not a row.** Slate tagged as
+  dressed building stone did not move the roof: (0.84, 0.36) against the
+  default's (0.88, 0.32) is inside what `matter_worn` adds and takes away in a
+  week of weather. If two materials are that close, one of them does not exist.
+
+A percentage of hard corners, a count of blocks built, a green suite, an exit
+code, a branch that is green and unmerged: every one is a number that is true
+about something ADJACENT to what you care about. Take the frame.
+
 ## The two rules the audits produced
 
 **A SPEEDUP THAT MOVES A TILE IS NOT A SPEEDUP.** See CLAUDE.md's Conventions.
