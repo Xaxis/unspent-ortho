@@ -1,4 +1,7 @@
 extends TestCase
+## Preloaded rather than named: a `class_name` resolves out of Godot's global
+## class cache, which the tools refresh and a player's own run does not.
+const Hold := preload("res://src/core/chapter/road_hold.gd")
 ## The plan standing on the road out of an unanswered chapter (VISION §10.3).
 
 
@@ -56,7 +59,7 @@ func test_it_holds_the_road_and_not_the_country() -> void:
 		return
 	var stopped := 0
 	var through := 0
-	for s: RoadHold.HoldSite in sites:
+	for s: Hold.HoldSite in sites:
 		var across := Vector2(-s.along.y, s.along.x)
 		if _walk(g, s.pos - s.along * 4.0, s.along) < 3.5:
 			stopped += 1
@@ -68,10 +71,10 @@ func test_it_holds_the_road_and_not_the_country() -> void:
 	# in the world. So take every barrier away and walk the same lines again: the
 	# number has to be IDENTICAL, because the plan's effect off the carriageway
 	# is meant to be nothing at all. Measured on seed 7, it is 14 of 17 both ways.
-	for s2: RoadHold.HoldSite in sites:
+	for s2: Hold.HoldSite in sites:
 		h.call(&"_break", s2)
 	var through_open := 0
-	for s3: RoadHold.HoldSite in sites:
+	for s3: Hold.HoldSite in sites:
 		var across3 := Vector2(-s3.along.y, s3.along.x)
 		if _walk(g, s3.pos + across3 * 10.0 - s3.along * 4.0, s3.along) >= 7.0:
 			through_open += 1
@@ -85,13 +88,13 @@ func test_breaking_one_opens_that_road_and_leaves_the_others() -> void:
 	var sites: Array = h.get(&"sites")
 	if sites.is_empty():
 		return
-	var one: RoadHold.HoldSite = sites[0]
+	var one: Hold.HoldSite = sites[0]
 	h.call(&"_break", one)
 	check(not bool(h.call(&"closed", one)), "the one taken apart is open")
 	eq(int(h.call(&"open_count")), 1, "and only that one")
 	check((g.query.blocks_at(one.pos) as Array).is_empty(), "its road is clear")
 	if sites.size() > 1:
-		var other: RoadHold.HoldSite = sites[1]
+		var other: Hold.HoldSite = sites[1]
 		check(bool(h.call(&"closed", other)), "the next crossing is still held")
 	g.queue_free()
 

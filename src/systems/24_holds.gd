@@ -20,6 +20,13 @@ extends GameSystem
 ## What is DONE to a hold is saved (`holds`); where a hold IS never is, because
 ## `RoadHold` derives it from the world.
 
+## **PRELOADED, NOT THE GLOBAL CLASS NAME.** `RoadHold` carries a `class_name`,
+## and a `class_name` resolves out of Godot's global class cache -- which is
+## refreshed by the tools and NOT by a player double-clicking the game. So every
+## test passed while `godot --path .` could not parse this file at all, and the
+## whole boot came down with it: no world, no query, no view. A preloaded const
+## is resolved by path and cannot go stale, which is why the model files have
+## always used one.
 const Hold := preload("res://src/core/chapter/road_hold.gd")
 
 ## How far apart the three panels stand, across the road. A barricade is about a
@@ -47,7 +54,7 @@ const TICKS := 6
 const BREAK_STUFF := &"steel"
 const BREAK_CAUSE := &"sabotage"
 
-var sites: Array[RoadHold.HoldSite] = []
+var sites: Array = []
 ## Holds taken apart, keyed by the tile they stand on, so the key survives a
 ## world growing new regions around it.
 var _broken: Dictionary = {}
@@ -82,18 +89,18 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 
 
 func _read_sites() -> void:
-	sites = Hold.sites(game.world) if game != null and game.world != null else ([] as Array[RoadHold.HoldSite])
+	sites = Hold.sites(game.world) if game != null and game.world != null else []
 
 
 ## The tile a hold stands on, which is its name for as long as the world lasts.
-static func key_of(h: RoadHold.HoldSite) -> String:
+static func key_of(h: Hold.HoldSite) -> String:
 	return "%d,%d" % [floori(h.pos.x), floori(h.pos.y)]
 
 
 ## Whether the plan still holds this road. Broken is broken for good; answered is
 ## read LIVE off the chapter, so a keeper falling in the next valley lifts the
 ## boom without anything here being told.
-func closed(h: RoadHold.HoldSite) -> bool:
+func closed(h: Hold.HoldSite) -> bool:
 	if bool(_broken.get(key_of(h), false)):
 		return false
 	return not bool(Chapters.of(game, h.region).get("answered", false))
@@ -101,7 +108,7 @@ func closed(h: RoadHold.HoldSite) -> bool:
 
 func open_count() -> int:
 	var n := 0
-	for h: RoadHold.HoldSite in sites:
+	for h: Hold.HoldSite in sites:
 		if not closed(h):
 			n += 1
 	return n
@@ -114,7 +121,7 @@ func _set_walls() -> void:
 	if game == null or game.query == null:
 		return
 	var walls: Array[Vector3] = []
-	for h: RoadHold.HoldSite in sites:
+	for h: Hold.HoldSite in sites:
 		if not closed(h):
 			continue
 		var across := Vector2(-h.along.y, h.along.x)
@@ -136,7 +143,7 @@ func _stand() -> void:
 	if game == null or game.player == null:
 		return
 	var at: Vector2 = game.player.pos
-	for h: RoadHold.HoldSite in sites:
+	for h: Hold.HoldSite in sites:
 		var k := key_of(h)
 		var want: bool = closed(h) and h.pos.distance_to(at) < DRAW_WITHIN
 		var have: bool = _nodes.has(k)
@@ -210,12 +217,12 @@ func _work(delta: float) -> void:
 		_job = {}
 
 
-func _near() -> RoadHold.HoldSite:
+func _near() -> Hold.HoldSite:
 	if sim == null:
 		return null
-	var best: RoadHold.HoldSite = null
+	var best: Hold.HoldSite = null
 	var near := REACH
-	for h: RoadHold.HoldSite in sites:
+	for h: Hold.HoldSite in sites:
 		var d: float = h.pos.distance_to(sim.hero.pos)
 		if d < near:
 			near = d
@@ -223,14 +230,14 @@ func _near() -> RoadHold.HoldSite:
 	return best
 
 
-func _hold_wins(h: RoadHold.HoldSite) -> bool:
+func _hold_wins(h: Hold.HoldSite) -> bool:
 	var t := Survival.use_target(game)
 	if t == null:
 		return true
 	return h.pos.distance_to(sim.hero.pos) <= t.pos.distance_to(sim.hero.pos)
 
 
-func _break(h: RoadHold.HoldSite) -> void:
+func _break(h: Hold.HoldSite) -> void:
 	_broken[key_of(h)] = true
 	_seen[&"hold_broken"] = true
 	Events.message.emit("The barrier comes off the road. Whatever is down there, the way is open.")
