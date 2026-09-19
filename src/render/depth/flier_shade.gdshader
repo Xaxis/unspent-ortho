@@ -32,10 +32,28 @@ void vertex() {
 }
 
 void fragment() {
-	// Soft all the way out, with no core and no edge: a hard disc under a moving
-	// thing reads as a decal, and what says a machine is overhead is that a
-	// patch of street brightens and passes.
-	float a = COLOR.a * pow(1.0 - clamp(radius, 0.0, 1.0), 2.0);
+	float r = clamp(radius, 0.0, 1.0);
+	// A BEAM'S FOOTPRINT, NOT A CLOUD, and this is the second correction taken off
+	// a frame. What stood here was soft all the way out with no core and no edge,
+	// on the reasoning that a hard disc under a moving thing reads as a decal.
+	// True, and it solved the wrong half: a featureless falloff five and a half
+	// tiles wide, over a street, IS FOG. Shot over the city it read as weather —
+	// a pale patch with no cause anywhere in the frame — and the machine it was
+	// supposed to be evidence of went unnoticed entirely.
+	//
+	// What says "something is up there looking down" is STRUCTURE: a core bright
+	// enough to have a middle, falling away fast, and a rim where the cone's edge
+	// cuts. Neither is hard — the rim is two smoothsteps wide, so it is a beam
+	// seen through night air and not a sticker — but between them the patch has a
+	// shape the eye can attribute to a source, which a gaussian never has.
+	// The two terms have to OVERLAP. Cubed, the core was spent by 0.6 while the rim
+	// did not begin until 0.55, which left a dark trough between them and drew a
+	// halo — a ring with a hole in it, which is a flying saucer and not a beam.
+	// The core is carried out far enough to meet the rim and the rim is only a
+	// firming of the edge, so the falloff stays monotonic all the way out.
+	float core = pow(1.0 - r, 1.8);
+	float rim = smoothstep(0.52, 0.84, r) * (1.0 - smoothstep(0.84, 1.0, r));
+	float a = COLOR.a * (core + rim * 0.22);
 	// On the machines' power, like every other light of theirs, so a strike
 	// stutters the traffic overhead exactly as it stutters the strip it was cut
 	// from. And only once the light has gone: a searchlight at noon is a stain.

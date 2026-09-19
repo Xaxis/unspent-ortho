@@ -244,6 +244,23 @@ func fact(v: int, key: StringName, fallback: float) -> float:
 	return float((row as Dictionary).get(key, fallback))
 
 
+## The tallest thing this landscape's people build, in world units.
+##
+## Asked by anything that has to CLEAR a building rather than place one — the
+## camera's near focus is the first, because "how tall may a thing be and stay
+## sharp" was a constant fitted to the one-storey stock (2.8 at the most) and the
+## city put a 16.3 spire in front of it. A number like that belongs to the stock
+## that decides it, so a landscape added later cannot silently breach a rule
+## nobody thought to restate.
+func tallest() -> float:
+	var most := 0.0
+	for f: StringName in (stock if not stock.is_empty() else PLAIN):
+		var row: Variant = FORMS.get(f)
+		if row != null:
+			most = maxf(most, float((row as Dictionary).get(HIGH, 0.0)))
+	return most
+
+
 ## How much ground the `v`th building stands on, in tiles.
 func reach(v: int) -> float:
 	return fact(v, REACH, PropKind.SOLID[PropKind.HOUSE])
