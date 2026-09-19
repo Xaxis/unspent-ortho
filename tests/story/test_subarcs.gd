@@ -230,7 +230,17 @@ func test_a_staged_world_holds_somebody_and_the_region_asks_about_them() -> void
 	Events.works_broken.emit(look.region, look.land)
 	await frames(2)
 	Events.message.disconnect(heard)
-	check("\n".join(lines).contains("walked out of the yard"), "and somebody walks out of it: %s" % [lines])
+	# Held to the WORDS and not to a phrase inside them: whether they walked out
+	# by themselves or are waiting to be walked home is the taken package's call
+	# (`StoryContent.TAKEN.freed` / `out`), and this test is only asking that the
+	# act was announced at all.
+	var who: String = look.held[0]
+	var announced := false
+	for said_line: String in lines:
+		for key: String in ["freed", "out"]:
+			if said_line == str(StoryContent.TAKEN[key]) % who:
+				announced = true
+	check(announced, "and somebody walks out of it: %s" % [lines])
 	var after: StorySubarcLook = story.call("subarc_look")
 	check(after.held.is_empty() and not after.freed.is_empty(), "the record outlives the rescue")
 	check(StorySubarc.answered(after, &"rescue", str(said.place)), "and the world says it is answered")
