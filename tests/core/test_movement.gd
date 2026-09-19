@@ -159,4 +159,9 @@ func test_clock_runs_on_real_time_not_on_walking() -> void:
 	var c := WorldClock.new(8.0)
 	for i in 60:
 		c.advance(1.0)
-	near(c.hour(), 9.0, 1e-6, "an hour of world time per real minute")
+	# THE RATE IS READ, NOT SPELLED AGAIN. This asked for exactly 9.0 -- "an hour
+	# of world time per real minute" -- which was not the rule but a CONSEQUENCE
+	# of the rate being 1.0, and it failed the day the owner asked for a shorter
+	# day. What it is actually for is the name: the clock moves on real seconds
+	# and a walk buys none of it.
+	near(c.hour(), 8.0 + Tuning.MINUTES_PER_SECOND, 1e-6, "sixty real seconds of world time")

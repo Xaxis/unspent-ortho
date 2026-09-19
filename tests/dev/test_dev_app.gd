@@ -118,7 +118,13 @@ func test_live_rules_reach_the_running_game() -> void:
 	s.handle(&"right")
 	var dev := _sys(g, "94_dev")
 	dev.call("_process", 0.0)
-	eq(g.clock.rate, 2.0, "the clock runs at the edited rate at once")
+	# WHAT THIS HOLDS is that an edit on the page reaches the running clock in the
+	# same frame -- not which number one step right happens to land on. It asked
+	# for 2.0, which was the next option up when the steps went 1, 2, 5, and broke
+	# the day fine steps were put in around the shipped rate.
+	var clock_opts: Array = ConfigSchema.row("rules.clock").options
+	var one_up: float = float(clock_opts[clock_opts.find(Tuning.MINUTES_PER_SECOND) + 1])
+	eq(g.clock.rate, one_up, "the clock runs at the edited rate at once")
 	check(GameConfig.edits.has("rules.clock"), "as an edit, not kept")
 	s.open_at(&"body", &"harm")
 	for i in 3:

@@ -23,7 +23,7 @@ static func make() -> BiomeDef:
 	d.coastal = 1.0
 	d.dunes = true
 	d.relief = {
-		&"base": 2.6, &"hills": 3.4, &"ridge": 1.0, &"terrace": 0.0, &"valley": 0.42,
+		&"base": 2.6, &"hills": 3.4, &"ridge": 1.0, &"near": 2.0, &"terrace": 0.0, &"valley": 0.42,
 		&"rain": 1.0, &"temp": 0.58, &"moist": 0.55, &"cliff": 0.0,
 	}
 	d.hatch = Ink.WIND

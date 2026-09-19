@@ -20,7 +20,7 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"pinewood": 0.3, &"bonelands": 0.1}
 	d.coastal = -0.5
 	d.relief = {
-		&"base": 7.8, &"hills": 3.0, &"ridge": 6.5, &"terrace": 0.2, &"valley": 0.85,
+		&"base": 7.8, &"hills": 3.0, &"ridge": 6.5, &"near": 4.0, &"terrace": 0.2, &"valley": 0.85,
 		&"rain": 1.1, &"temp": 0.08, &"moist": 0.5, &"cliff": 0.3,
 	}
 	# Snow takes the high ground: the lie of the land moves its border.
