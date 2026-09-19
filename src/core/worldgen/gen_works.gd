@@ -43,6 +43,18 @@ class_name GenWorks
 ##
 ## Learned once in `slums.gd`, in a comment inside one landscape's scatter, where
 ## the next four authors never saw it -- and four of them did it again.
+## How far a checkpoint's booth may stand from the ROAD'S EDGE and still be a gate
+## ON that road. The booth sits off the carriageway with its boom swinging over
+## it, so it is never ON the road; this is how far off is still "at" it.
+##
+## It was three bare numbers for one rule and they did not agree: the placer
+## offered offsets of 2.2 and 2.7 tiles from the road's centre line, and the test
+## demanded 2.01 from the road's nearest SQUARE. 2.2 clears it once the half tile
+## from centre to edge is taken off; **2.7 cannot, ever** -- it was a fallback
+## that could only ever place a booth the rule forbids, and it did, on seed 90210.
+## So the placer proves this now instead of the test discovering the breach.
+const CHECKPOINT_AT_ROAD := 2.0
+
 const RUNS: Array[int] = [PropKind.PIPE, PropKind.CONVEYOR, PropKind.DRILL_RIG]
 
 const CUT := &"cut"
@@ -314,6 +326,22 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 ## A straight run of pieces from `a` along `dir`, `step` apart, each turned
 ## along the run; a piece that cannot stand leaves a gap, and `gaps` of them
 ## are left out anyway. Returns the ids placed.
+## Distance from `p` to the nearest ROAD TILE'S SQUARE, or INF past `reach`. The
+## square rather than its centre, because a road tile is a tile wide and a booth
+## beside its edge is beside the road.
+static func road_gap(w: WorldData, p: Vector2, reach: int = 4) -> float:
+	var best := INF
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			if not w.in_bounds(x, y) or w.ground[y * w.size + x] != Ground.ROAD:
+				continue
+			var q := Vector2(clampf(p.x, x, x + 1.0), clampf(p.y, y, y + 1.0))
+			best = minf(best, q.distance_to(p))
+	return best
+
+
 static func _run(L: Lay, kind: int, a: Vector2, dir: Vector2, pieces: int, step: float, level: int, gaps: float = 0.0) -> PackedInt32Array:
 	var ids := PackedInt32Array()
 	for i in pieces:
@@ -880,7 +908,12 @@ static func _snowfield(L: Lay) -> void:
 			for side: float in [-1.0, 1.0]:
 				# The gate's boom (the model's +Z) swings from the booth over the road.
 				var turn := along.angle() if side < 0.0 else (-along).angle()
-				booth = _put(L, PropKind.CHECKPOINT, q + across * side * off, turn, w.level[i], 0.6, true, true)
+				var stand := q + across * side * off
+				# A booth further from the road than the rule allows is not a gate
+				# on that road, whatever the offset that reached it.
+				if road_gap(w, stand) >= CHECKPOINT_AT_ROAD:
+					continue
+				booth = _put(L, PropKind.CHECKPOINT, stand, turn, w.level[i], 0.6, true, true)
 				if booth != null:
 					across = across * -side
 					break

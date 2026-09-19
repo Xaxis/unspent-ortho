@@ -132,20 +132,14 @@ func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
 			if p.kind != PropKind.CHECKPOINT:
 				continue
 			found += 1
-			# Distance from the booth to the nearest road tile's square.
-			var best := 99.0
-			for dy in range(-4, 5):
-				for dx in range(-4, 5):
-					var x := floori(p.pos.x) + dx
-					var y := floori(p.pos.y) + dy
-					if w.in_bounds(x, y) and w.ground[y * w.size + x] == Ground.ROAD:
-						var q := Vector2(clampf(p.pos.x, x, x + 1.0), clampf(p.pos.y, y, y + 1.0))
-						best = minf(best, q.distance_to(p.pos))
-			if best > 90.0 and not _road_within(w, p.pos, 40):
+			# The same measurement the placer makes, out of the same function, so
+			# the two can never drift into disagreeing about what "at a road" is.
+			var best := GenWorks.road_gap(w, p.pos)
+			if best == INF and not _road_within(w, p.pos, 40):
 				# A landscape no road reaches still gets its gate: it stands on
 				# the open field, checking a way nobody drives any more.
 				continue
-			lt(best, 2.01, "seed %d: the checkpoint at %s stands within 2 tiles of a road" % [s, p.pos])
+			lt(best, GenWorks.CHECKPOINT_AT_ROAD, "seed %d: the checkpoint at %s stands at a road" % [s, p.pos])
 			# The gate's boom (+Z of the model) reaches over the road.
 			var over := p.pos + Vector2.from_angle(p.rot + PI * 0.5) * 2.4
 			var on_road := false
