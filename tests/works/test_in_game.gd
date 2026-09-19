@@ -227,13 +227,39 @@ func test_a_body_cannot_walk_through_the_deck() -> void:
 ## somewhere in the sample, and the depth is measured and printed rather than
 ## legislated. The siting gap is real and is its own task; it is not this test's
 ## to hold main red over.
+##
+## **AND AT THE SHIPPED SIZE THE GAP IS TOTAL. MEASURED 2026-09-19, seeds 4, 1
+## and 42 at `Tuning.WORLD_SIZE`:**
+##
+##   seed  4  coast: 9 works, yard spends none    salt_flats: 6 works, none
+##   seed  1  coast: 8 works, yard spends none    salt_flats: 15 works, none
+##   seed 42  coast: 7 works, yard spends none    salt_flats: 9 works, none
+##
+## Six of six closed. The header above says what to do when closed climbs toward
+## all of them, and it is not a looser bar here: the seam only ever worked by
+## coincidence, and `Works.sites` has to learn what the region's keeper eats.
+##
+## The other half of the picture is why the sample is only ever two landscapes:
+## **the game has TWO sentinel designs** (`tide_reaper`, `pan_rake`) for
+## twenty-one landscapes, against docs/VISION.md §3's one keeper per landscape.
+## So nineteen landscapes have no keeper for a yard to starve in the first place,
+## and on the two that do, no depot falls inside the keeper's feeding reach.
+## **The STARVE way of taking a sentinel is currently open on no island at all.**
+## That is content and siting, not this file, and this test failing is how it is
+## visible rather than a thing to tune away.
 func test_what_a_broken_depot_spends_is_what_a_keeper_eats() -> void:
 	var bit := 0
 	var closed := 0
 	var best := 0.0
 	var said := PackedStringArray()
+	# **ASKED OF A SHIPPED-SIZE WORLD.** At 256 this sampled three seeds of a toy
+	# island whose regions are a twentieth of a real one's: few runs clear
+	# `Works.MIN_TILES`, so few depots exist, and whether any of them happened to
+	# land inside a keeper's feeding reach was luck. One real world holds more
+	# depots and more keepers than three toy ones, which is what makes the sample
+	# a sample. One seed, because a world at 1300 costs about eleven seconds.
 	for seed_value: int in [4, 1, 42]:
-		var g := _game(PackedStringArray(["--seed=%d" % seed_value, "--size=256", "--hour=11", "--weather=clear:0"]))
+		var g := _game(PackedStringArray(["--seed=%d" % seed_value, "--size=%d" % Tuning.WORLD_SIZE, "--hour=11", "--weather=clear:0"]))
 		await frames(4)
 		var sys := _works(g)
 		for s: WorksSite in Works.sites(g.world):
