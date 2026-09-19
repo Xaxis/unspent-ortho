@@ -2128,10 +2128,28 @@ const SUBARCS := {
 ## them is doing work beyond its own moment — it says WHERE they were taken, and
 ## that is the only teaching the rescue sub-arc ever gets. Nothing else in the
 ## game tells a player that a depot holds people.
+## EVERY LINE TAKES EXACTLY ONE `%s`, and it is always the person, as anybody
+## here speaks of them (`Taken.say`). A line that took two would put the writing
+## of a sentence in the hands of whoever emits it.
+##
+## The glass is not the village. These are said in the moment, in the world's own
+## flat voice, by somebody watching it happen; what a village says about the same
+## person is `SUBARCS` and is said later, in a doorway, by somebody who knew
+## them. `tests/story/test_taken_lines.gd` fails if the two ever become one.
 const TAKEN := {
 	"took": "They carried %s off toward the yard.",
+	# Out of the yard and nobody with them: they take the road by themselves.
 	"freed": "%s walked out of the yard and took the road home.",
 	"freed_many": "They walked out of the yard: %s.",
+	# Out of the yard and WAITING to be walked. The true half of the same
+	# sentence, and the reason it is its own line: the other one was said over a
+	# frame of that person still standing in the yard, plainly not on any road.
+	"out": "%s walked out of the yard.",
+	"home": "%s went in at their own door.",
+	# The walk that ended badly. Flat, and never a verdict: the glass reports
+	# what happened in the world and has no opinion about who let it.
+	"lost": "%s did not get up again.",
+	"lost_to": "They took %s back.",
 }
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------
