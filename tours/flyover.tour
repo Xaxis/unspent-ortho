@@ -48,6 +48,21 @@ press dev_fly_out 6.0
 wait 1.0
 shot 03b-the-whole-world-centred
 
+# AND AGAIN, WITHOUT BUILDING IT A SECOND TIME (owner, 2026-09-18: "when I zoom
+# out and the world finally loads, I zoom in, and then zoom out again and it has
+# to reload"). All the way back down to walking height and all the way out
+# again, then held for barely longer than a frame: if anything in the view is
+# rebuilt on the way, this frame is caught with it half missing. The coarse
+# world is built once and never dropped, and the chunks that leave the square
+# are parked rather than freed, so the only honest evidence is the picture taken
+# before there would have been time to make one.
+press dev_fly_in 6.0
+wait 0.5
+press dev_fly_out 6.0
+wait 0.15
+shot 03c-the-same-world-again-with-nothing-rebuilt
+same 03b-the-whole-world-centred 03c-the-same-world-again-with-nothing-rebuilt 3
+
 # --- across --------------------------------------------------------------------
 # Flying, not warping: the ground streams under the picture the whole way, which
 # is the half `at NAME` can never show.

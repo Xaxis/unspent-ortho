@@ -23,8 +23,18 @@ const WIND_BEARING := 0.42
 
 ## Extra tiles around the camera footprint built before they are seen.
 @export var margin := 6.0
-## Chunks are dropped once they are this many tiles outside the wanted square.
+## Chunks are PARKED once they are this many tiles outside the wanted square.
 @export var keep := 20.0
+## How far the chunks ever reach, whatever the camera asks for. Past this the
+## coarse `WorldFar` carries the world, because a chunk is the wrong unit for
+## looking at an island: see that file's header for the measurement.
+@export var near_limit := 110.0
+## How many chunks are kept built after they leave the view. **This is what
+## stops a zoom out, in and out again rebuilding the world** -- a chunk that
+## leaves the square is taken out of the scene, not thrown away, and coming back
+## costs nothing. 192 covers the whole near square at `near_limit` three times
+## over, so ordinary play never evicts anything.
+@export var park_most := 192
 ## Build streamed chunks on a worker thread (off: build in _process).
 @export var threaded := true
 
@@ -44,6 +54,24 @@ var _task_usec := 0
 ## The in-flight chunk's props changed while its worker was baking them.
 var _task_dirty := false
 var _chunks: Dictionary = {} # Vector2i -> Node3D
+## Chunks built, then taken out of the scene when the view left them. They cost
+## no draw and no cull here, and putting one back is free.
+var _parked: Dictionary = {} # Vector2i -> Node3D
+var _park_seen: Dictionary = {} # Vector2i -> int, for evicting the least recently wanted
+var _park_clock := 0
+## The whole world, coarse, built once and never dropped.
+var far: WorldFar
+var _far_tables: Array = []
+## Far blocks are built on SEVERAL workers at once, unlike chunks. A chunk is
+## built because the player is about to walk into it, so one at a time is right:
+## it keeps the machine free. The coarse world is a hundred-odd blocks wanted all
+## at once the first time the camera pulls back, and each is small, so what
+## matters there is finishing.
+const FAR_WORKERS := 4
+var _far_tasks: Array[int] = []
+var _far_keys: Array[Vector2i] = []
+var _far_out: Array = []
+var _far_at: Array[int] = []
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
@@ -63,6 +91,9 @@ var build_ms := 0.0
 var build_ms_max := 0.0
 var main_ms := 0.0
 var main_ms_max := 0.0
+## What the coarse world cost, all in: a block's worker plus putting it in.
+var far_ms := 0.0
+var far_count := 0
 
 
 func setup(w: WorldData) -> void:
@@ -87,10 +118,23 @@ func rebind(w: WorldData) -> void:
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0:
+			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
+			_far_tasks[i] = -1
+			_far_out[i] = []
 	for key: Vector2i in _chunks.keys():
 		(_chunks[key] as Node3D).queue_free()
 	_chunks.clear()
+	for key: Vector2i in _parked.keys():
+		(_parked[key] as Node3D).queue_free()
+	_parked.clear()
+	_park_seen.clear()
 	_data.clear()
+	if far != null:
+		remove_child(far)
+		far.queue_free()
+		far = null
 	var sea := get_node_or_null("open_sea")
 	if sea != null:
 		remove_child(sea)
@@ -141,6 +185,21 @@ func _bind(w: WorldData) -> void:
 					_cables_by_chunk[key] = []
 				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
 	_add_open_sea()
+	# Read off the registry HERE, on the main thread, so a far block's worker
+	# never touches it (the chunk workers learnt the same lesson above).
+	_far_tables = WorldFar.tables()
+	_far_tasks.clear()
+	_far_keys.clear()
+	_far_out.clear()
+	_far_at.clear()
+	for i in FAR_WORKERS:
+		_far_tasks.append(-1)
+		_far_keys.append(Vector2i.ZERO)
+		_far_out.append([])
+		_far_at.append(0)
+	far = WorldFar.new()
+	far.name = "far"
+	add_child(far)
 
 
 func world_material() -> ShaderMaterial:
@@ -157,6 +216,18 @@ func leaf_material() -> ShaderMaterial:
 
 func chunk_count() -> int:
 	return _chunks.size()
+
+
+func parked_count() -> int:
+	return _parked.size()
+
+
+## How many far blocks this world has in all.
+func far_wanted() -> int:
+	if world == null:
+		return 0
+	var n := WorldFar.across(world.size)
+	return n * n
 
 
 ## The built chunk data under a tile-space point, or null.
@@ -176,11 +247,50 @@ static func _key_of(p: Vector2) -> Vector2i:
 	return Vector2i(floori(p.x) / CHUNK, floori(p.y) / CHUNK)
 
 
+## Whether this chunk is built, in the scene or parked out of it.
+func _have(key: Vector2i) -> bool:
+	return _chunks.has(key) or _parked.has(key)
+
+
+## Put a parked chunk back in the scene. Free: it was never unbuilt.
+func _revive(key: Vector2i) -> void:
+	var node: Node3D = _parked[key]
+	_parked.erase(key)
+	_park_seen.erase(key)
+	add_child(node)
+	_chunks[key] = node
+
+
+## Take a chunk out of the scene but keep it built. The least recently wanted
+## are let go once the park is full, and only THEY lose their height data.
+func _park(key: Vector2i) -> void:
+	var node: Node3D = _chunks[key]
+	remove_child(node)
+	_chunks.erase(key)
+	_parked[key] = node
+	_park_clock += 1
+	_park_seen[key] = _park_clock
+	while _parked.size() > park_most:
+		var oldest := Vector2i.ZERO
+		var oldest_at := 0x7FFFFFFF
+		for k: Vector2i in _parked.keys():
+			var at: int = _park_seen.get(k, 0)
+			if at < oldest_at:
+				oldest_at = at
+				oldest = k
+		(_parked[oldest] as Node3D).queue_free()
+		_parked.erase(oldest)
+		_park_seen.erase(oldest)
+		_data.erase(oldest)
+
+
 ## Build every chunk near the focus synchronously.
 func ensure_near(p: Vector2) -> void:
 	focus = p
 	for key in _wanted(0.0):
-		if not _chunks.has(key):
+		if _parked.has(key):
+			_revive(key)
+		elif not _chunks.has(key):
 			_build(key)
 
 
@@ -191,7 +301,9 @@ func build_one_near(p: Vector2) -> int:
 	focus = p
 	var missing := 0
 	for key in _wanted(0.0):
-		if not _chunks.has(key):
+		if _parked.has(key):
+			_revive(key)
+		elif not _chunks.has(key):
 			if missing == 0:
 				_build(key)
 			missing += 1
@@ -201,7 +313,7 @@ func build_one_near(p: Vector2) -> int:
 func pending() -> int:
 	var n := 0
 	for key in _wanted(0.0):
-		if not _chunks.has(key):
+		if not _have(key):
 			n += 1
 	return n
 
@@ -212,12 +324,17 @@ func _process(_delta: float) -> void:
 	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
-		if not _chunks.has(_task_key):
+		if not _have(_task_key):
 			_add_chunk(_task_key, _task_chunk, _task_decor, _task_usec, [] if _task_dirty else _task_props)
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
 	var wanted := _wanted(0.0)
+	# Reviving is free, so every parked chunk the view has come back to goes in
+	# at once; only building is one at a time.
+	for key in wanted:
+		if _parked.has(key):
+			_revive(key)
 	for key in wanted:
 		if _chunks.has(key) or (_task >= 0 and key == _task_key):
 			continue
@@ -235,15 +352,55 @@ func _process(_delta: float) -> void:
 		keep_set[key] = true
 	for key: Vector2i in _chunks.keys():
 		if not keep_set.has(key):
-			_chunks[key].queue_free()
-			_chunks.erase(key)
-			_data.erase(key)
+			_park(key)
+	_far_step()
+
+
+## Fill the coarse world in, a block at a time, on its own worker so it never
+## queues behind a chunk. It is built ONCE and kept: that is what makes zooming
+## out, in and out again cost nothing at all.
+func _far_step() -> void:
+	if far == null:
+		return
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0 and WorkerThreadPool.is_task_completed(_far_tasks[i]):
+			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
+			_far_tasks[i] = -1
+			far.add_block(_far_keys[i], _far_out[i], _world_mat, _water_mat)
+			_far_out[i] = []
+			far_ms += (Time.get_ticks_usec() - _far_at[i]) / 1000.0
+			far_count += 1
+	if far.done(world.size):
+		return
+	# What is already in flight is not free to ask for again.
+	var busy := {}
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0:
+			busy[_far_keys[i]] = true
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0:
+			continue
+		var key := far.next_block(world.size, focus, busy)
+		if key.x < 0:
+			return
+		busy[key] = true
+		_far_keys[i] = key
+		_far_at[i] = Time.get_ticks_usec()
+		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
+
+
+func _far_worker(slot: int, key: Vector2i) -> void:
+	_far_out[slot] = WorldFar.build_arrays(world, key.x, key.y, _far_tables)
 
 
 func _exit_tree() -> void:
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0:
+			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
+			_far_tasks[i] = -1
 
 
 func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
@@ -277,8 +434,13 @@ static func half_extent_for(vh: float, aspect: float, pitch: float) -> float:
 	return (hw + hh) / sqrt(2.0) + rise
 
 
+## The chunks the camera wants. **The reach is CAPPED at `near_limit`**, because
+## the wanted square grows with the square of the view height and a pulled-back
+## camera asks for the whole world: 1,681 chunks on this island, 77 seconds of
+## building, for a frame in which a tile is a pixel and a half. Past the cap the
+## coarse `WorldFar` is already standing there.
 func _wanted(extra: float) -> Array[Vector2i]:
-	var r := view_half_extent() + margin + extra
+	var r := minf(view_half_extent(), near_limit) + margin + extra
 	var n := ceili(float(world.size) / CHUNK)
 	var x0 := clampi(floori((focus.x - r) / CHUNK), 0, n - 1)
 	var x1 := clampi(floori((focus.x + r) / CHUNK), 0, n - 1)
@@ -365,6 +527,14 @@ func refresh_props(prop: WorldProp) -> void:
 		_props_by_chunk[key].append(prop)
 	if _task >= 0 and key == _task_key:
 		_task_dirty = true
+	# A parked chunk cannot be patched where it stands, and a stale one is worse
+	# than a missing one: let it go, and it is built again as it is now.
+	if _parked.has(key):
+		(_parked[key] as Node3D).queue_free()
+		_parked.erase(key)
+		_park_seen.erase(key)
+		_data.erase(key)
+		return
 	if not _chunks.has(key):
 		return
 	var node: Node3D = _chunks[key]
