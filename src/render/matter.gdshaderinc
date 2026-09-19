@@ -180,7 +180,11 @@ vec4 matter_of(int m) {
 	else if (m == 88) { r = vec4(0.35, 0.55, 0.003, 0.0); }   // ENAMEL: a painted sign, vehicle paint
 	else if (m == 89) { r = vec4(0.74, 0.34, 0.008, 0.0); }   // HIDE: leather, skin
 	else if (m == 90) { r = vec4(0.58, 0.48, 0.005, 0.0); }   // BONE: bone, horn
-	else if (m == 91) { r = vec4(0.84, 0.36, 0.022, 0.0); }   // CUTSTONE: dressed building stone
+	// CUTSTONE was (0.84, 0.36) on the spec, which is 0.04 and 0.04 off the
+	// default — inside what `matter_worn` adds and removes in a week, so tagging
+	// a slate roof with it moved nothing at all and the row did not exist. A
+	// dressed block IS harder and glassier than a sawn board, so it says so now.
+	else if (m == 91) { r = vec4(0.80, 0.42, 0.022, 0.0); }   // CUTSTONE: dressed building stone
 	return r;
 }
 
