@@ -12,9 +12,91 @@ var _ms := PackedFloat32Array()
 var _proc := PackedFloat32Array()
 var _phys := PackedFloat32Array()
 
+## Every system whose own script defines `_physics_process`, driven from here
+## under `--stats` so each one can be timed separately. See `_driven_line`.
+var _driven: Array[GameSystem] = []
+var _driven_worst := PackedFloat32Array()
+
 
 func setup(g: Game) -> void:
 	super.setup(g)
+
+
+## WHICH SYSTEM IS THE SPIKE. Nothing in Godot answers that: `TIME_PHYSICS_PROCESS`
+## is the whole pass, so a 224 ms tick names no culprit and the search becomes
+## reading twenty-five files. So the pass is driven from here instead and each
+## system timed on its own -- which found `24_holds` at **224.6 ms against
+## 30_mobs' 0.7**, a 320x gap between first and second place (#126, docs/PERF.md).
+##
+## **ASK THE SCRIPT, NOT THE NODE.** `has_method("_physics_process")` answers true
+## for a virtual every Node declares, so it would hand back all twenty-five and
+## this would drive systems that never defined one. `get_script_method_list()`
+## lists only what the script itself declares.
+##
+## Order is preserved exactly: `game.systems` IS tree order, and every system
+## that defines `_physics_process` is numbered above 12, so none runs earlier
+## than it did. Only under `--stats`, so a played game is untouched.
+func started() -> void:
+	if game == null or not game.options.stats:
+		return
+	for s: GameSystem in game.systems:
+		if s == self:
+			continue
+		var src: Script = s.get_script()
+		if src == null:
+			continue
+		for m: Dictionary in src.get_script_method_list():
+			if String(m.get("name", "")) == "_physics_process":
+				s.set_physics_process(false)
+				_driven.append(s)
+				break
+	_driven_worst.resize(_driven.size())
+
+
+func _physics_process(delta: float) -> void:
+	for i in _driven.size():
+		var began := Time.get_ticks_usec()
+		_driven[i].call(&"_physics_process", delta)
+		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		if took > _driven_worst[i]:
+			_driven_worst[i] = took
+
+
+## The WORST tick each system took, dearest first. The worst and not the mean,
+## for the reason the whole of docs/PERF.md exists: a 224 ms tick once a second
+## averages to about 4 ms and reads as nothing at all.
+func _driven_line() -> String:
+	if _driven.is_empty():
+		return ""
+	var rows: Array = []
+	for i in _driven.size():
+		rows.append([_driven_worst[i], (_driven[i].get_script() as Script).resource_path.get_file()])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	for r: Array in rows.slice(0, 6):
+		out.append("%s %.1f" % [String(r[1]), float(r[0])])
+	return "\nworld physics worst per system (ms): " + ", ".join(out)
+
+
+## **THE MONITORS LAG BY ONE FRAME** and reading them without that is how this
+## hunt lost hours. `TIME_PROCESS` and `TIME_PHYSICS_PROCESS` are written at the
+## END of a frame, so the read taken during frame i describes frame i-1 -- a fast
+## one, next to the spike. Attributing a spike from its own frame's read compares
+## two different frames, and it said the cost was in no `_process` we own while
+## the whole of it sat in a `_physics_process`.
+##
+## So each slow frame is printed beside the reads taken the frame AFTER it, which
+## are the ones that belong to it. `total 132 = proc 29 + phys 126` names the half
+## of the engine to look in, in one line, which is the question every other
+## instrument here answered slightly to the side of.
+func _aligned_line() -> String:
+	var out := PackedStringArray()
+	for i in _ms.size():
+		if _ms[i] > P99_MS and i + 1 < _phys.size():
+			out.append("%d: total %.0f = proc %.0f + phys %.0f" % [i, _ms[i], _proc[i + 1], _phys[i + 1]])
+	if out.is_empty():
+		return ""
+	return "\nworld slow frames aligned: " + " | ".join(out)
 
 
 func _process(_delta: float) -> void:
@@ -45,7 +127,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms))
+		print(frame_line(_ms) + _aligned_line() + _driven_line())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
