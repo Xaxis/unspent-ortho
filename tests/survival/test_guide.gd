@@ -229,17 +229,13 @@ func test_the_game_teaches_the_jump_at_something_worth_jumping() -> void:
 		return
 	# On flat ground the lesson must NOT be offered -- that is the half that
 	# stops it being said everywhere, which is what a key prompt on the glass is.
-	var flat_ids := []
-	for i in 4:
-		flat_ids.append(Guide.hint_for(g, {}).get("id", &""))
+	var flat_ids := _offered(g)
 	check(not flat_ids.has(&"jump"), "not said where a jump would do nothing")
 	# Now stand at the ledge, facing it, the way the tour's `ledge` does.
 	sim.hero.pos = spot.at
 	sim.hero.facing = (spot.dir as Vector2).angle()
 	g.player.pos = sim.hero.pos
-	var at_ledge := []
-	for i in 6:
-		at_ledge.append(Guide.hint_for(g, {}).get("id", &""))
+	var at_ledge := _offered(g)
 	check(at_ledge.has(&"jump"), "said standing at one, got %s" % str(at_ledge[0]))
 	# And the feet leaving the ground spends it.
 	var guide: Node = g.get_node("58_guide")
@@ -263,17 +259,63 @@ func test_the_survey_is_offered_once_the_wake_is_out_of_sight() -> void:
 	g.player.pos = near_home
 	if g.player.sim != null:
 		g.player.sim.hero.pos = near_home
-	var at_home := []
-	for i in 6:
-		at_home.append(Guide.hint_for(g, {}).get("id", &""))
+	var at_home := _offered(g)
 	check(not at_home.has(&"map"), "not while the wake is still in sight")
 	# Walk out past it.
 	var away: Vector2 = g.world.spawn + Vector2(Guide.MAP_FAR + 6.0, 0)
 	g.player.pos = away
 	if g.player.sim != null:
 		g.player.sim.hero.pos = away
-	var far := []
-	for i in 6:
-		far.append(Guide.hint_for(g, {}).get("id", &""))
+	var far := _offered(g)
 	check(far.has(&"map"), "offered once it is not, got %s" % str(far[0]))
 	Fx.done(g)
+
+
+func test_crouching_is_taught_while_it_is_still_a_choice() -> void:
+	# The pair to `target`: you have learned to look at a machine, now learn not
+	# to be looked at. Said only with one in view that has NOT noticed you --
+	# after it has, crouching is a regret rather than a choice, and a lesson
+	# arriving then is the game telling you what you should have done.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--spawn=hauler"])))
+	var sim := g.player.sim
+	var quiet: MobState = null
+	for m in sim.mobs:
+		if m.alive and m.machine and not m.roused():
+			quiet = m
+	check(quiet != null, "a machine is about that has not noticed the player")
+	if quiet == null:
+		g.free()
+		return
+	var offered := _offered(g)
+	check(offered.has(&"crouch"), "offered while it has not seen you, got %s" % str(offered[0]))
+	# Already crouching: the lesson has nothing to say.
+	g.body.crouched = true
+	var crouched := _offered(g)
+	check(not crouched.has(&"crouch"), "and not while you already are")
+	g.body.crouched = false
+	# And doing it spends it.
+	var guide: Node = g.get_node("58_guide")
+	g.body.crouched = true
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"crouch"), "crouching retires it")
+	g.free()
+
+## The lessons that apply right now, in the order the guide would say them.
+##
+## `hint_for` answers the FIRST one that is not retired, so calling it in a loop
+## with an empty set returns the same lesson every time. Retiring each as it
+## comes is how you see the list -- and a test that read the first answer alone
+## was only passing when the lesson it wanted happened to be first.
+func _offered(g: Game) -> Array:
+	var out: Array = []
+	var retired := {}
+	for i in 12:
+		var h := Guide.hint_for(g, retired)
+		var id: StringName = h.get("id", &"")
+		if id == &"":
+			break
+		out.append(id)
+		retired[id] = true
+	return out

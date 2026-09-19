@@ -60,6 +60,11 @@ const HINTS := {
 	# is out of sight behind you, because a survey of ground you can see is a
 	# picture of nothing.
 	&"map": ["%s opens the survey: where you have walked, and what the machines have been doing to it.", [&"map"]],
+	# The fourth, and the pair to `target`: you have learned to look at a machine,
+	# now learn not to be looked at. Said with one in view that has NOT noticed
+	# you, because that is the only moment crouching is a choice rather than a
+	# regret.
+	&"crouch": ["%s keeps you low and quiet. It has not seen you yet.", [&"crouch"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -148,6 +153,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
 			if seen and m.machine:
 				out.append(&"target")
+			if seen and m.machine and not m.roused() and not game.body.crouched:
+				out.append(&"crouch")
 			if seen and m.first_meeting and not m.roused():
 				out.append(&"runner")
 			if seen and m.patrol and m.indifferent():

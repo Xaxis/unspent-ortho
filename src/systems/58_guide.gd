@@ -167,6 +167,8 @@ func _watch() -> void:
 		retired[&"target"] = true
 	if sim != null and not retired.has(&"jump") and sim.hero.airborne:
 		retired[&"jump"] = true
+	if not retired.has(&"crouch") and game.body.crouched:
+		retired[&"crouch"] = true
 
 
 func _on_took(_item: StringName, _n: int) -> void:
