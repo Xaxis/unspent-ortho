@@ -108,21 +108,36 @@ func test_a_stage_that_waits_for_ever_is_given_up_on_at_its_deadline() -> void:
 	# The loading page's failure mode: `draw` waits on a frame that never comes
 	# (an off-screen window stops being composited), and before there were
 	# deadlines the line simply never ended.
+	# **THE CHEAPEST OF THREE, NOT ONE RUN TIMES `machine_slack`.** The overshoot
+	# past a deadline IS load-sensitive -- the line polls, so a run descheduled
+	# between two steps takes the deadline plus however long it was away -- which
+	# is why slack was reached for. But slack is for WAITING and clamps at 8, so
+	# this bar stood at 7,260 ms for an overshoot that measures under a TENTH of
+	# a millisecond: a hundred-thousand-fold too loose to fail for a real reason.
+	#
+	# The line is cheap to rebuild, so run it three times and keep the fastest.
+	# Load only ever ADDS time, so the minimum is the honest overshoot and the bar
+	# can sit close to the deadline where it means something.
+	var deadline := 60.0
 	var tries := [0]
-	var s := BootStages.new()
-	s.add(&"never", "waiting", 10.0, func() -> bool:
-		tries[0] += 1
-		return false, false, 60.0)
-	s.add(&"after", "after", 10.0, func() -> void: pass, false)
-	var t0 := Time.get_ticks_msec()
-	var guard := 0
-	while not s.step(false) and guard < 100000:
-		guard += 1
-	check(s.done(), "the line reaches its end even though a stage never finished")
-	gt(float(tries[0]), 1.0, "and it really was asked more than once first")
-	var took := Time.get_ticks_msec() - t0
-	gt(float(took), 55.0, "it waited out its deadline")
-	lt(float(took), 60.0 + 900.0 * TestCase.machine_slack(), "and not much past it")
+	var quickest := INF
+	var s: BootStages = null
+	for attempt in 3:
+		tries[0] = 0
+		s = BootStages.new()
+		s.add(&"never", "waiting", 10.0, func() -> bool:
+			tries[0] += 1
+			return false, false, deadline)
+		s.add(&"after", "after", 10.0, func() -> void: pass, false)
+		var t0 := Time.get_ticks_msec()
+		var guard := 0
+		while not s.step(false) and guard < 100000:
+			guard += 1
+		quickest = minf(quickest, float(Time.get_ticks_msec() - t0))
+		check(s.done(), "the line reaches its end even though a stage never finished")
+		gt(float(tries[0]), 1.0, "and it really was asked more than once first")
+	gt(quickest, deadline - 5.0, "it waited out its deadline")
+	lt(quickest, deadline + 20.0, "and not much past it")
 	eq(Array(s.gave_up()), ["never"], "which stage was given up on is on the record")
 	check(s.timings().has(&"after"), "and the stages after it still ran")
 
