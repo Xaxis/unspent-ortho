@@ -353,12 +353,58 @@ not too small — **it is cut into forty pieces instead of ten.** The lever is t
 landscape LAYOUT (how big a run of one landscape is, `GenCountries`), not the
 world's width, and the width is needed only to carry the land.
 
-What that costs and what is still open: generation is 9.8 s at 1024 against 1.9 s
-at 512, which is a boot-time problem before it is a memory one, and `REGION_TILES`
-(220 in `GenCountries`, 400 in `Landmarks`) are floors that DISCARD small runs
-rather than make large ones — raising them alone deletes places, it does not grow
-them. Fewer, larger runs is a change to how landscapes are laid, and it moves
-every seed's island.
+What that costs: generation is 9.8 s at 1024 against 1.9 s at 512, which is a
+boot-time problem before it is a memory one.
+
+### 7b. What was actually wrong, and what was done (2026-09-18)
+
+**"The world is not too small" was my sentence and the owner overruled it: the
+landscapes ARE too small — size, detail, story, challenge and barriers, all of
+it.** Two separate faults were found under that, and they compose: one decides
+how big a place is, the other how full.
+
+**A region could be a puddle, and the bigger the world the smaller it was allowed
+to be.** The floor was `REGION_TILES * body_k * body_k`, and `body_k` is a BODY's
+scale, so it came out at 220 tiles on a 512 island — 15 across, **four seconds at
+walking pace** — 31 tiles on a 192 test world, and 178 at 1024, because `body_k`
+FALLS when a world gains continents. A region is what a keeper, a depot, a
+landmark round, an interference file and now a whole chapter key on.
+
+That is `body_k` used for the one question it was never right for. It exists so a
+distance scales with the body a thing stands on rather than with the square —
+right for a noise wavelength, right for how far apart two villages sit. It is
+wrong for *is this a place*, because **a place is the same size on a continent as
+on an island: it is measured in a body's own footsteps.**
+
+So `GenCountries.PLACE_TILES` (1,250 at 512) floors it against the WORLD, and
+therefore grows with it: 5,000 at 1024, 312 at a 256 test world. Flat 1,250 was
+tried first and the suite refused it in one run — the scrapwood and the slums are
+about 5% of the land each, so neither could raise a single region on a 256 world
+and 16% of the land belonged to no place at all. **A floor has to be a share of
+the world it is floored in.** After: 11 regions at 512, 14 at 1024 of which 8 are
+over 20,000 tiles, all nine landscapes holding a place at every size, 91–95% of
+the land inside one.
+
+**And a bigger landscape was a bigger EMPTY one, exactly.** `GenScatter.sites`
+counted per TYPE across the whole island from an absolute number — the coast is
+29.6% of a 512 world, about 37,400 tiles, and laid four tips: one place per 9,350
+tiles. The loop was `for cc in c.land_types`, so **growing a region could not add
+one thing to it.** It is per REGION now, scaled by that region's tiles against
+`GenScatter.TILES_PER_SITE`, so a place twice the size holds twice as much and no
+landscape file has to be retuned when the layout moves. Measured after: one site
+per 3,326 tiles at 512 and 4,496 at 1024, against one per 9,350 before — and the
+count now follows the world at all (23 sites at 512 and at 1024 before; 38 and 91
+after).
+
+`TILES_PER_SITE` is deliberately not "a chapter's tiles". How big a place is and
+how full it is are two questions, and tying the second to the first makes a bigger
+chapter the same emptiness spread further.
+
+Still open: `REGION_TILES` (220) and `Landmarks.REGION_TILES` (400) are floors
+that DISCARD small runs rather than make large ones — they cannot grow a place and
+raising them only deletes places. Fewer, larger RUNS is a change to how landscapes
+are laid (`GenCountries._sites`, a power diagram over each type's anchors), and it
+is the next thing if 14 regions at 1024 is still too many.
 
 ## 8. Decided
 
@@ -458,6 +504,28 @@ story session's journey needed "which bodies are worth stopping at" and answered
 it the better way, with **a village stands there** rather than with a region
 count. When something does depend on it, decide it deliberately rather than
 discovering it here.
+
+### 8a. A floor is a share of the world it is floored in (2026-09-18)
+
+Two rules, both bought with a failing suite rather than reasoned out, both from
+the same afternoon as §7b.
+
+**A DISTANCE scales with the body; a SIZE does not.** `GenContext.body_k` exists
+so a noise wavelength, a spacing, a how-far-apart scales with the body a thing
+stands on rather than with the square. It is silently wrong for *is this a place*:
+a place is the same size on a continent as on an island, because it is measured in
+a body's own footsteps. Asking `body_k` that question gave a region floor that
+SHRANK as the world grew — 220 tiles at 512, 155 at 768, 178 at 1024, 31 on a test
+world. Before reaching for `body_k`, ask whether the number is a distance or a
+size.
+
+**A floor stated as an absolute deletes content on a small world.** Flat 1,250
+tiles looked right at 512 and was refused in one suite run: the scrapwood and the
+slums are about 5% of the land each, so on a 256 world neither could raise a
+single region and 16% of the land belonged to no place at all — no keeper, no
+depot, no chapter, two landscapes that no longer happen. A floor that deletes a
+landscape has not made places bigger. State it against the world (`c.k`) so it
+grows with the world and shrinks with it.
 
 ## 9. Rules this document is built on
 

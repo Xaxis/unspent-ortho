@@ -240,13 +240,28 @@ func test_what_a_broken_depot_spends_is_what_a_keeper_eats() -> void:
 			var def := Sentinels.for_land(s.land)
 			if def == null:
 				continue
+			# MEASURED AT THE KEEPER'S LAIR, NOT AT THE YARD. The claim is that
+			# breaking a depot takes food out of a KEEPER's reach, and a keeper does
+			# not stand in the yard: measured, the coast's reaper dens at its intake
+			# and its region's depot is 60 to 168 tiles away, well outside the 21 it
+			# feeds over. Asking the question at the yard was asking whether the
+			# yard contains anything of the right kind, which is a different
+			# question and was true or false by luck. The salt flats' rake dens on
+			# its own brine house, so there the two genuinely overlap.
+			var region := {}
+			for r: Dictionary in g.world.regions:
+				if int(r.get("id", -1)) == s.region:
+					region = r
+			if region.is_empty():
+				continue
+			var lair := Sentinels.lair(g.world, region, def)
 			var reach := def.reach * Sentinels.FEED_SHARE
-			var before := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+			var before := Sentinels.feeds_among(g.query.props_near(lair, reach), lair, def,
 				g.world.depleted, reach)
 			if before <= 0:
 				continue
 			sys._strip(s, sys.state(s.region))
-			var after := Sentinels.feeds_among(g.query.props_near(s.pos, reach), s.pos, def,
+			var after := Sentinels.feeds_among(g.query.props_near(lair, reach), lair, def,
 				g.world.depleted, reach)
 			var got := 1.0 - float(after) / float(before)
 			if after >= before:

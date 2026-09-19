@@ -38,41 +38,97 @@ const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKi
 
 
 ## Sites that shape grounds. Records landmarks.
+## How many tiles of a region ONE DECLARED SITE covers. `BiomeDef.sites` counts
+## are read against this, so a landscape file still reads as a list of what one of
+## its places holds and a region twice the size holds twice as many without
+## anybody retuning a landscape.
+##
+## It is deliberately NOT "a chapter's tiles". Those are two questions — how big a
+## place is, and how FULL — and tying the density to the chapter size means a
+## bigger chapter is the same emptiness spread further. This is the fullness knob,
+## and it is the one to turn when a landscape reads bare.
+##
+## IT USED TO BE PER TYPE, ACROSS THE WHOLE ISLAND, and that is why a bigger
+## landscape was a bigger EMPTY one. The coast is 29.6% of a 512 world — about
+## 37,400 tiles — and laid four tips: one place per 9,350 tiles. The loop was
+## `for cc in c.land_types`, so growing a region could not add a single thing to
+## it. A number that was right when the island was the world.
+const TILES_PER_SITE := 14000.0
+## How far two places worth walking to stand apart, in tiles.
+##
+## IT HAS TO FOLLOW THE DENSITY OR IT STARVES WHOEVER IS PLACED LAST. A wreck
+## asked for 50 tiles clear of any landmark and a tip for 36, which were roomy
+## numbers in a world holding 23 sites. At one site per ~3,300 tiles the mean
+## spacing between places is about 57 tiles, so a 50-tile exclusion is nearly the
+## whole spacing: the first pass fills the island and the beaches have nowhere
+## left. Measured, seed 1 came out with NO wrecks at all, and the failure read as
+## "wreck placed expected > 0, got 0" — a kind vanishing, not a spacing being
+## tight.
+##
+## Half the mean spacing is about the most that can be asked. Turning
+## `TILES_PER_SITE` moves this with it rather than quietly emptying the coast.
+const PLACES_APART := 28.0
+
+
+## Every region of type `cc`, biggest first, as {id, tiles} — the unit a site
+## count is now spent over.
+static func _regions_of(w: WorldData, cc: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for r: Dictionary in w.regions:
+		if int(r.get("index", -1)) == cc:
+			out.append(r)
+	return out
+
+
+## How many of a per-chapter count this region earns, never fewer than one where
+## the landscape declares any: a place that holds none of what its landscape is
+## known for is not that landscape.
+static func _want_here(declared: int, region: Dictionary) -> int:
+	if declared <= 0:
+		return 0
+	return maxi(1, roundi(float(declared) * float(region.get("tiles", 0)) / TILES_PER_SITE))
+
+
 static func sites(c: GenContext) -> void:
 	var w := c.w
 	var rng := Rng.make(c.s, 81)
-	# Tips: scrap heaps where a landscape says the machines dumped them.
+	# Tips: scrap heaps where a landscape says the machines dumped them. PER
+	# REGION, so a place twice the size holds twice as many (`TILES_PER_SITE`).
 	for cc: int in c.land_types:
-		var want := maxi(1, roundi(int(c.defs[cc].sites.get("tips", 0)) * maxf(c.body_k, 0.4)))
-		var placed := 0
-		for attempt in 2500:
-			if placed >= want:
-				break
-			var p := _random_tile(c, rng)
-			var i := p.y * c.size + p.x
-			if w.country[i] != cc or w.blend[i] > 0.42:
-				continue
-			if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), 36.0 * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
-				continue
-			_lay_tip(c, p, rng.randf_range(4.0, 7.5))
-			w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
-			placed += 1
-	# Stone circles on open flat ground where a landscape keeps them.
+		for region: Dictionary in _regions_of(w, cc):
+			var want := _want_here(int(c.defs[cc].sites.get("tips", 0)), region)
+			var here := int(region.get("id", -1))
+			var placed := 0
+			for attempt in 2500:
+				if placed >= want:
+					break
+				var p := _random_tile(c, rng)
+				var i := p.y * c.size + p.x
+				if w.country[i] != cc or w.blend[i] > 0.42 or w.region_at(p.x, p.y) != here:
+					continue
+				if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+					continue
+				_lay_tip(c, p, rng.randf_range(4.0, 7.5))
+				w.landmarks.append({"kind": &"tip", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
+				placed += 1
+	# Stone circles on open flat ground where a landscape keeps them, per region
+	# for the same reason.
 	for cc: int in c.land_types:
-		var declared := int(c.defs[cc].sites.get("stone_circles", 0))
-		var circles := maxi(2, roundi(declared * c.body_k)) if declared > 0 else 0
-		var placed := 0
-		for attempt in 2500:
-			if placed >= circles:
-				break
-			var p := _random_tile(c, rng)
-			var i := p.y * c.size + p.x
-			if w.country[i] != cc or w.blend[i] > 0.3:
-				continue
-			if not _clear_site(c, p, 5, 1) or _near_landmark(w, Vector2(p), 30.0) or _near_village(w, Vector2(p), 26.0):
-				continue
-			w.landmarks.append({"kind": &"stone_circle", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
-			placed += 1
+		for region: Dictionary in _regions_of(w, cc):
+			var circles := _want_here(int(c.defs[cc].sites.get("stone_circles", 0)), region)
+			var here := int(region.get("id", -1))
+			var placed := 0
+			for attempt in 2500:
+				if placed >= circles:
+					break
+				var p := _random_tile(c, rng)
+				var i := p.y * c.size + p.x
+				if w.country[i] != cc or w.blend[i] > 0.3 or w.region_at(p.x, p.y) != here:
+					continue
+				if not _clear_site(c, p, 5, 1) or _near_landmark(w, Vector2(p), PLACES_APART) or _near_village(w, Vector2(p), 26.0):
+					continue
+				w.landmarks.append({"kind": &"stone_circle", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": cc})
+				placed += 1
 	# Ruins where people had steadings to lose.
 	var ruins := 0
 	for attempt in 1200:
@@ -388,7 +444,7 @@ static func _wrecks(c: GenContext) -> void:
 			break
 		var i := cands[rng.randi_range(0, cands.size() - 1)]
 		var p := Vector2i(i % size, i / size)
-		if _near_landmark(w, Vector2(p), 50.0 * maxf(c.body_k, 0.4)) or _near_village(w, Vector2(p), 16.0):
+		if _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.4)) or _near_village(w, Vector2(p), 16.0):
 			continue
 		w.landmarks.append({"kind": &"wreck", "pos": Vector2(p) + Vector2(0.5, 0.5), "country": country[i]})
 		wrecks += 1
@@ -773,8 +829,18 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 			&"stone_circle":
 				var stones := rng.randi_range(7, 9)
 				var radius := rng.randf_range(3.2, 4.2)
+				# A STONE STANDS IN ITS OWN CIRCLE'S LANDSCAPE. The centre is held
+				# to its region and to `blend`, but a stone is laid three or four
+				# tiles out from it, which is far enough to be over a border — and
+				# once there are several circles in a region instead of one or two
+				# for the whole island, one of them lands near an edge. The failure
+				# reads "standing stone on the Coast", which is a landscape holding
+				# somebody else's monument.
+				var mine: int = int(m.get("country", -1))
 				for k in stones:
 					var q := p + Vector2.from_angle(float(k) / stones * TAU + rng.randf_range(-0.12, 0.12)) * radius
+					if mine >= 0 and c.w.country_at(floori(q.x), floori(q.y)) != mine:
+						continue
 					if _free(c, occ, q, 0.0):
 						var st := _add(c, PropKind.STANDING_STONE, q)
 						st.rot = (p - q).angle()
