@@ -519,11 +519,35 @@ number, and the runner is the first hunter a player meets), beasts keep 10, and 
 kind that BELONGS near a village is exempt by declaring `green_max` in its own row
 rather than by being named in a list somewhere else.
 
-**What this still needs**: a lesson type that names its place, its teacher and the
-live state that retires it; `Guide` widened from a first hour to the ordered
-list above; and the spawn choosing a haven rather than any coast village. The
-sub-arc generator (VISION §10.4) is the machinery for the words; this is the
-machinery for the order.
+**Also landed (2026-09-19)**: the curriculum, and the haven as a place the game
+knows it is in.
+
+`Guide` is no longer a first hour. Of the sixteen actions it never taught, it
+now teaches targeting, the jump, the map, crouching, the holding app, the
+journal, the SWING -- the core verb of an action game, which nothing had ever
+named, because `side` assumes you have been striking all along -- and one lesson
+per fitted gear ability, each naming its own key and what that key is for.
+Riding a craft is NOT here on purpose: `44_crafts` already teaches boarding
+itself, and a second teacher on one channel was nearly shipped before anybody
+looked. Every key a lesson says is asked of the live `InputMap`
+(`PlayerSettings.label_of/cap_of/spell`) and never spelled, held by
+`tests/settings/test_taught_keys.gd`, which reads the shipped source.
+
+`Haven.at` / `Haven.holds` are the one door for "am I in a town", off the
+village's own recorded extent rather than a constant, and the guide says so when
+you are standing in one. The safety was real and unsaid, which buys a player
+nothing.
+
+And the spawn already chooses a haven: measured at the shipped size, the player
+wakes inside village 0's own reach on every seed, which is now written down and
+held (`tests/survival/test_haven.gd`) instead of being true by accident.
+
+**What this still needs**: a lesson type that names its PLACE and its TEACHER --
+somebody who lives there, a thing standing in the open -- rather than a line on
+the glass, which is the half of the ruling still unbuilt; and each haven teaching
+what the road out of it will ask for, so that a chapter answered is also a
+curriculum finished. The sub-arc generator (VISION §10.4) is the machinery for
+the words; this is the machinery for the order.
 
 ## Owner rulings carried over (mechanics only)
 
