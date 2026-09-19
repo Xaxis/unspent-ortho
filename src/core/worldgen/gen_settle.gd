@@ -13,16 +13,28 @@ class_name GenSettle
 ## ribbons on the diagonals. A village a tree edge fails to reach is joined to
 ## its nearest reachable neighbour.
 
-## How many villages a world holds. Twelve was right for six landscapes; every
-## landscape the registry adds brings its own people, or the new land takes a
-## village off an old one and leaves it with no road and nobody to trade with.
-const BASE_VILLAGES := 12
-const BASE_LANDS := 6
+## How many villages a world holds: **what the landscapes say, added up.**
+##
+## This was `12 + (lands - 6)`, on the premise that every landscape the registry
+## adds brings its own people. That premise is false and was false the moment
+## anybody wrote a landscape nobody lives in. Five of the twenty-two declare
+## `villages = 0` on purpose -- the frost sea, the glass desert, the server
+## fields, the Middens and the limestone caves -- so the formula stood at 28
+## while the landscapes between them asked for 22, and six of the difference
+## could never be placed by anything.
+##
+## A cap that no world can reach is not a cap, it is a second opinion, and the
+## test that held worlds to "within four of the most" was measuring the gap
+## between the two numbers rather than anything about the world. `BiomeDef.villages`
+## is the authority, as `BiomeDef.hazards` is for pressure; this adds it up.
 const MIN_VILLAGES := 10
 
 
 static func max_villages() -> int:
-	return BASE_VILLAGES + maxi(0, BiomeRegistry.land().size() - BASE_LANDS)
+	var most := 0
+	for d: BiomeDef in BiomeRegistry.land():
+		most += d.villages
+	return maxi(most, MIN_VILLAGES)
 const CORE := 9.5
 ## Only the square and the first ring of houses is levelled; the rest of the
 ## core keeps the lie of the land, so terraces run on through a village.

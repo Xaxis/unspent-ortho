@@ -28,6 +28,26 @@ static func allow(c: GenContext) -> PackedInt64Array:
 	return out
 
 
+## Every kind a landscape declares as ITS OWN, in either list, as bit masks by
+## type index.
+##
+## **A LANDSCAPE DECLARES WHAT IT HOLDS IN TWO PLACES AND THEY MEAN DIFFERENT
+## THINGS.** `props` is what the per-tile scatter may DEAL, and `allow` above is
+## built from it because that is the question the scatter asks. `ore` is a second
+## list with its own rates, laid by its own pass, and its kinds are usually not
+## repeated in `props` -- the Ruined Metropolis declares iron, copper and stone
+## ore and names none of them twice.
+##
+## So anything asking "is this thing on theme where it stands" must read BOTH, or
+## it calls a landscape's own ore an intruder. That is what it did.
+static func declared(c: GenContext) -> PackedInt64Array:
+	var out := allow(c)
+	for cc: int in c.land_types:
+		for row: Array in c.defs[cc].ore:
+			out[cc] |= 1 << int(row[0])
+	return out
+
+
 ## Kinds placed by design (villages, landmarks, the grid), allowed anywhere.
 const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKind.HOUSE, PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.TIP, PropKind.WRECK, PropKind.CAIRN, PropKind.STANDING_STONE,
 	PropKind.FENCE, PropKind.BARRICADE, PropKind.SIGN, PropKind.GRAVE, PropKind.DEBRIS, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL,
