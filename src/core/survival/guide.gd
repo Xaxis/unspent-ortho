@@ -42,6 +42,14 @@ const HINTS := {
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s lights the lamp.", [&"lamp"]],
 	&"dodge": ["It winds up before it strikes: %s gets you out of the way.", [&"dodge"]],
+	# **THE VERB THE GAME NEVER TAUGHT.** A player can press 27 things and the
+	# guide named 11 of them; targeting was one of the sixteen it did not, which
+	# means the whole read -- what a machine is, what it is doing, where its
+	# plate is thin, whether it has noticed you -- was reachable only by somebody
+	# who pressed an unmentioned key. Taught when the first machine is in view,
+	# ahead of the lines that describe a runner and a worker, because it is how
+	# you would find those out for yourself.
+	&"target": ["%s holds the slate on it: what it is, what it is doing, where its plate is thin.", [&"target"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -104,6 +112,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 			if m.machine and not m.indifferent() and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) > Survival.THREAT_RADIUS:
 				out.append(&"dodge")
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
+			if seen and m.machine:
+				out.append(&"target")
 			if seen and m.first_meeting and not m.roused():
 				out.append(&"runner")
 			if seen and m.patrol and m.indifferent():
