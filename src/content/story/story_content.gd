@@ -2146,9 +2146,12 @@ const TAKEN := {
 	# frame of that person still standing in the yard, plainly not on any road.
 	"out": "%s walked out of the yard.",
 	"home": "%s went in at their own door.",
-	# The walk that ended badly. Flat, and never a verdict: the glass reports
-	# what happened in the world and has no opinion about who let it.
-	"lost": "%s did not get up again.",
+	# The walk that ended badly. Flat, and never a verdict: the glass reports what
+	# happened in the world and has no opinion about who let it. It also says the
+	# only thing that is TRUE in every case — a person left too far behind for too
+	# long may have gone down or may simply be somewhere else, and the glass was
+	# not there either. What it might have been is the village's to wonder about.
+	"lost": "%s did not get home.",
 	"lost_to": "They took %s back.",
 }
 
