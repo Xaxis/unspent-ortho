@@ -228,8 +228,7 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 	var w := c.w
 	var size := c.size
 	var reach := ceili(CORE * 1.2 + APRON)
-	var ph1 := GenFields.h01(c.s, tx, ty, 63) * TAU
-	var ph2 := GenFields.h01(c.s, tx, ty, 64) * TAU
+	var ph := village_phases(c.s, Vector2(tx, ty))
 	var ph3 := GenFields.h01(c.s, tx, ty, 67) * TAU
 	var elev := c.elev
 	for dy in range(-reach, reach + 1):
@@ -243,7 +242,7 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 				continue
 			var d := sqrt(float(dx * dx + dy * dy))
 			var ang := atan2(float(dy), float(dx))
-			var wander := 1.0 + 0.12 * sin(ang * 2.0 + ph1) + 0.08 * sin(ang * 3.0 + ph2)
+			var wander := village_wander(ph, ang)
 			if d <= CORE * wander:
 				c.village[i] = 1
 				c.water[i] = 0
@@ -261,6 +260,32 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 			var allow := ceili((d - core) / APRON_RUN)
 			elev[i] = e
 			w.level[i] = clampi(floori(e), maxi(1, lv - allow), lv + allow)
+
+
+## **THE VILLAGE IS A LOBE AND `radius` IS A CIRCLE, AND THEY ANSWER DIFFERENT
+## QUESTIONS.** `_flatten` lays a village's own ground out to `CORE * wander`,
+## which runs from 7.6 tiles to 11.4, and every stage that keeps things OUT of a
+## village reads the `village` mask that lobe wrote. The `radius` recorded on the
+## village is a flat `CORE`, and it is right for what it is used for -- works and
+## corridors keep `radius` plus a margin clear, and a conservative circle is what
+## a clearance wants.
+##
+## What it is NOT is the answer to "is this thing IN the village", and reading it
+## that way says a prop standing 8 tiles out on a side where the lobe only reaches
+## 7.6 is in the square, when it is on open ground the village never claimed. Ask
+## this instead, and you are asking the same shape the ground was laid to.
+static func village_wander(ph: Vector2, ang: float) -> float:
+	return 1.0 + 0.12 * sin(ang * 2.0 + ph.x) + 0.08 * sin(ang * 3.0 + ph.y)
+
+
+static func village_phases(s: int, vp: Vector2) -> Vector2:
+	return Vector2(GenFields.h01(s, floori(vp.x), floori(vp.y), 63) * TAU,
+		GenFields.h01(s, floori(vp.x), floori(vp.y), 64) * TAU)
+
+
+## How far a village's own ground reaches from its centre at `ang`.
+static func village_core(s: int, v: Dictionary, ang: float) -> float:
+	return CORE * village_wander(village_phases(s, v.pos), ang)
 
 
 ## Radius of a village's square at an angle: about three and a half tiles,

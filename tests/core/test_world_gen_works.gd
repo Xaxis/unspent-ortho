@@ -268,9 +268,21 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 			elif Ground.is_water(g) or w.level_at(floori(p.pos.x), floori(p.pos.y)) <= 0:
 				why = "in water"
 			else:
+				# ASK THE LOBE, NOT THE CIRCLE. `v.radius` is a flat `GenSettle.CORE`
+				# and the village's own ground is `CORE * wander`, 7.6 tiles to 11.4;
+				# the scatter keeps off the mask that lobe wrote. Reading the circle
+				# here called a prop standing on open ground the village never
+				# claimed "in the square". `GenSettle.village_core` is the shape the
+				# ground was actually laid to.
+				# AND ASK IT PER TILE, because that is how it was decided. The
+				# scatter takes a whole tile or leaves it (`c.village[i]`), then
+				# jitters the prop inside the tile it took; measuring the jittered
+				# point calls a prop whose tile is outside the village "in" it when
+				# the corner it happens to sit in reaches over the line.
 				for v in w.villages:
-					if (v.pos as Vector2).distance_to(p.pos) < float(v.get("radius", 4.0)):
-						why = "in the square of %s" % v.name
+					var away := Vector2(floori(p.pos.x) + 0.5, floori(p.pos.y) + 0.5) - (v.pos as Vector2)
+					if away.length() < GenSettle.village_core(w.seed_value, v, away.angle()):
+						why = "in the village of %s" % v.name
 						break
 			if why != "":
 				var key := "%s %s" % [PropKind.NAMES[p.kind], why]
@@ -370,7 +382,8 @@ func test_the_works_keep_off_roads_and_village_squares_on_every_seed() -> void:
 				if w.ground[y * w.size + x] == Ground.ROAD:
 					road += 1
 				for v in w.villages:
-					if (v.pos as Vector2).distance_to(Vector2(x + 0.5, y + 0.5)) < float(v.get("radius", 4.0)):
+					var away := Vector2(x + 0.5, y + 0.5) - (v.pos as Vector2)
+					if away.length() < GenSettle.village_core(w.seed_value, v, away.angle()):
 						square += 1
 						break
 		eq(road, 0, "seed %d: road tiles under the works" % s)

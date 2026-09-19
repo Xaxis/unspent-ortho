@@ -286,7 +286,13 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	if level != -99 and l != level:
 		return null
 	for v in w.villages:
-		if (v.pos as Vector2).distance_squared_to(p) < pow(float(v.get("radius", 4.0)) + 0.8, 2.0):
+		# THE VILLAGE IS A LOBE (`GenSettle.village_core`). This kept a CIRCLE of
+		# `radius` clear, and the village's own ground reaches 11.4 tiles where the
+		# circle stops at 9.5, so a barricade, a fence or a survey post could be
+		# stood on ground the village had already claimed -- outside the number
+		# this asked, inside the place.
+		var away: Vector2 = p - (v.pos as Vector2)
+		if away.length() < GenSettle.village_core(c.s, v, away.angle()) + 0.8:
 			return null
 	if PropKind.SOLID[kind] > 0.0 and not berthed:
 		# Not on a terrace lip: a solid stands on one level.

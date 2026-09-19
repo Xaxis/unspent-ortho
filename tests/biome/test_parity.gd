@@ -162,16 +162,38 @@ extends TestCase
 ## a comment that is missing.
 
 
+## RE-ACCEPTED AN EIGHTH TIME, and back to the safe shape: **only `props` moved,
+## on all five seeds; the other five digests are byte-identical everywhere.**
+##
+## The cause is one refusal in `GenWorks._put`. It kept works clear of a CIRCLE of
+## the village's recorded `radius`, and a village's own ground is a LOBE -- 7.6
+## tiles to 11.4 where the circle stops at 9.5 -- so a barricade, a fence or a
+## survey post could stand on ground the village had already claimed, outside the
+## number the check asked and inside the place. Both now ask
+## `GenSettle.village_core`, which is the shape `_flatten` laid the ground to.
+##
+## Proved by the check the seventh re-acceptance asks for: with that one line put
+## back, this test passes on the previous hashes, all five seeds.
+##
+## **And a number I got wrong by reasoning instead of measuring, kept here because
+## the reasoning was the convincing kind.** A refusal can only ever place FEWER
+## props -- it adds a condition and takes nothing away. Four seeds do place fewer
+## (12, 4, 22 and 4). Seed 90210 places TWELVE MORE, because a refused spot does
+## not drop its prop: it sends the placer round its attempt loop to try somewhere
+## else, and somewhere else can succeed where this one would have failed for
+## another reason. Count them; do not derive them from the diff.
+
+
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 f765de64",
-	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b afccb52f",
-	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 19c2a3fb",
-	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b c13aed2c",
-	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed 8c608290",
+	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 a0516927",
+	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b 6c137284",
+	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 43e21a46",
+	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b 71706cc7",
+	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed b5619acb",
 }
 
 
