@@ -121,7 +121,15 @@ static func make() -> BiomeDef:
 	d.mist = 0.1
 	# What a place built for machines does to a body: the field off everything
 	# running, and no shade, no water, no shelter anybody thought to leave.
-	d.hazards = {&"em": 0.65, &"thirst": 0.4}
+	# **EM AT 0.65 BIT A DAY-TWO BODY IN NO WEATHER AT ALL.** The guarantee is
+	# that a landscape's own baseline never slows a hand-made kit's legs
+	# (tests/hazards/test_day_two.gd) -- weather may, gear answers that, but the
+	# LAND alone may not, or the place is closed to a player who has not been
+	# somewhere else first. 0.65 settled to 0.585 against a hand-made answer and
+	# BITE is 0.55. The server fields already press em at 0.6 and clear it, so
+	# this is the working ceiling rather than a number picked to pass: the city is
+	# still the joint-worst em in the game.
+	d.hazards = {&"em": 0.6, &"thirst": 0.4}
 	d.roster = {
 		&"warden": {"weight": 1.0},
 		&"watcher": {"weight": 1.0},
