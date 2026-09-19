@@ -167,7 +167,6 @@ const WASH_CEILING := 2.2
 
 
 func test_snow_and_ash_keep_to_their_countries() -> void:
-	var rows: Array = []
 	# Snow creeps down ridges and ash drifts over the rim, inside the ecotone:
 	# never more than 3% of another country.
 	# TWO THIRDS OF THE SAMPLE, not every last row, and the value is untouched.
@@ -186,6 +185,7 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 	# ground that has really broken up still has to be caught — and what changes
 	# is how much of the sample has to clear it, plus a hard ceiling no amount of
 	# noise can reach. Same medicine df used on `test_every_landscape_holds_its_own_works`.
+	var rows: Array = []
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var land := PackedFloat32Array()

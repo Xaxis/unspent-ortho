@@ -255,8 +255,6 @@ func _draw_gates() -> void:
 		n.set_meta(&"at", p)
 		_gates.add_child(n)
 		_gate_nodes[id] = n
-		var mi := n.get_child(0) as MeshInstance3D
-		print("world GATEDBG %s open=%s at=%s surfaces=%d verts=%d" % [id, str(is_open), str(n.position), mi.mesh.get_surface_count() if mi.mesh != null else -1, mi.mesh.surface_get_array_len(0) if mi.mesh != null and mi.mesh.get_surface_count() > 0 else -1])
 
 
 ## Which open gate the player is standing in, if any. Asked on the same beat as

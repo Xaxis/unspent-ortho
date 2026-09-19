@@ -86,7 +86,17 @@ var coastal := 0.0
 ##   rain    runoff feeding rivers           temp    0 frozen .. 1 furnace
 ##   moist   0 desert .. 1 drowned           cliff   headland cliff tendency
 var relief := {
-	&"base": 3.0, &"hills": 2.0, &"ridge": 0.0, &"terrace": 0.0, &"valley": 0.5,
+	# `near` is relief AT WALKING SCALE and it is the one a landscape has to ask
+	# for by name. `hills` and `ridge` ride noise whose wavelengths are 58 and 92
+	# TILES, and the play camera shows 26.7 x 17.9 — so a player always stands
+	# inside a third of one undulation and a landform arrives as a gentle ramp.
+	# Raising `ridge` makes that ramp steeper over 92 tiles, never narrower:
+	# measured, the middens at `ridge` 13.5 (the largest in the registry) render
+	# as a flat plain, and so do the crags at `base` 11 and `cliff` 0.85. The
+	# landforms were real on the map and absent at eye level, which is exactly
+	# what the wavelengths predict. `near` rides the 1/13 field (13 and 6.5 tiles
+	# over its two octaves), which is the scale a body walks through.
+	&"base": 3.0, &"hills": 2.0, &"ridge": 0.0, &"near": 0.0, &"terrace": 0.0, &"valley": 0.5,
 	&"rain": 1.0, &"temp": 0.5, &"moist": 0.5, &"cliff": 0.0,
 }
 ## > 0: this type's heart is a crater of this radius in tiles (at world size

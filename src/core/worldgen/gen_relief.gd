@@ -12,7 +12,7 @@ static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"terrace", &"cliff"])
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff"])
 	c.mark(&"relief.params")
 	const F := GenFields.FIELD
 	const U := GenFields.UP
@@ -21,6 +21,7 @@ static func run(c: GenContext) -> void:
 	var step := GenContext.STEP
 	var fl := GenFields.batch(size, [
 		[U, p[&"base"], cw, step], [U, p[&"hills"], cw, step], [U, p[&"ridge"], cw, step],
+		[U, p[&"near"], cw, step],
 		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
 		[U, _caldera_soft(c), cw, step], [U, _dunes_soft(c), cw, step],
 		[F, GenFields.noise(s, 301, 1.0 / 58.0, 4), 2],
@@ -37,20 +38,21 @@ static func run(c: GenContext) -> void:
 	var base := fl[0]
 	var hills_amp := fl[1]
 	var ridge_amp := fl[2]
-	var terrace := fl[3]
-	var cliff_bias := fl[4]
-	var burning := fl[5]
-	var coastal := fl[6]
-	var hills := fl[7]
-	var ridge := fl[8]
-	var detail := fl[9]
-	var cliffn := fl[10]
-	var shoren := fl[11]
-	var shelf := fl[12]
-	var dunes := fl[13]
+	var near_amp := fl[3]
+	var terrace := fl[4]
+	var cliff_bias := fl[5]
+	var burning := fl[6]
+	var coastal := fl[7]
+	var hills := fl[8]
+	var ridge := fl[9]
+	var detail := fl[10]
+	var cliffn := fl[11]
+	var shoren := fl[12]
+	var shelf := fl[13]
+	var dunes := fl[14]
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	var crater := crater_radius(c)
-	var rim_warp := fl[14]
+	var rim_warp := fl[15]
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -74,6 +76,9 @@ static func run(c: GenContext) -> void:
 				e += r * r * r * ridge_amp[i]
 				if ha > 1.0:
 					e += detail[i] * (0.3 + ha * 0.12)
+				# What this landscape asked for at walking scale, on top of
+				# whatever its hills happen to carry (`BiomeDef.relief.near`).
+				e += detail[i] * near_amp[i]
 				var t := terrace[i]
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
