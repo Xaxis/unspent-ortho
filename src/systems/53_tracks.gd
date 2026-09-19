@@ -46,6 +46,9 @@ func setup(g: Game) -> void:
 	marks = TrackMarks.new()
 	marks.name = "track_marks"
 	add_child(marks)
+	# Before anybody walks: see TrackMarks.warm for why a lazily built mark is a
+	# hitch at every border rather than a cost paid once at the start.
+	TrackMarks.warm()
 	_minutes = g.clock.minutes
 
 
