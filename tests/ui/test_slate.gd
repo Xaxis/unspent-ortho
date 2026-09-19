@@ -149,9 +149,22 @@ func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
 	# A size nobody warmed: asking for it never bakes on the main thread. It is
 	# null at once, a plain frame is drawn, and the bake arrives from a worker.
 	var odd := Vector2i(301, 187)
-	var t0 := Time.get_ticks_usec()
 	check(UiSlate.device_texture(odd) == null, "not baked in the caller")
-	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0 * machine_slack(), "and asking does not wait for it")
+	# **A COST, SO THE CHEAPEST OF SEVERAL AND NOT ONE RUN TIMES `machine_slack`.**
+	# Slack is for WAITING -- how long a thing may take to happen on a busy
+	# machine -- and it clamps at 8, so as a cost bar it stood at 160 ms here and
+	# could no longer fail for a real reason. Load only ever ADDS time, so the
+	# minimum of several runs is the honest number and the value can stay where
+	# it was. Each run asks for a size nobody has warmed, so every one of them
+	# measures the same thing: the early-out. A bake is half a second, so 20 ms
+	# is clear of any plausible noise and nowhere near a bake.
+	var asking := INF
+	for i in 5:
+		var t0 := Time.get_ticks_usec()
+		@warning_ignore("return_value_discarded")
+		UiSlate.device_texture(Vector2i(303 + i * 2, 189 + i))
+		asking = minf(asking, float(Time.get_ticks_usec() - t0) / 1000.0)
+	lt(asking, 20.0, "and asking does not wait for it")
 	var s := UiPauseScreen.new()
 	s.device_rect = Rect2i(10, 10, odd.x, odd.y)
 	tree.root.add_child(s)

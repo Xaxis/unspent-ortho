@@ -113,9 +113,21 @@ func test_a_page_warms_the_size_its_scan_window_draws() -> void:
 ## so asking for one on a frame must hand back nothing and start a worker, or
 ## opening the carrying page freezes the game every time.
 func test_a_sketch_nobody_warmed_is_never_drawn_on_the_caller() -> void:
-	var t0 := Time.get_ticks_usec()
 	check(UiSketch.item_texture(&"whelk", 231) == null, "not drawn in the caller")
-	lt((Time.get_ticks_usec() - t0) / 1000.0, 20.0 * machine_slack(), "and asking does not wait for it")
+	# **A COST, SO THE CHEAPEST OF SEVERAL AND NOT ONE RUN TIMES `machine_slack`.**
+	# Slack is for WAITING and clamps at 8, so as a cost bar this stood at 160 ms
+	# and could not fail for a real reason. Load only ever ADDS time, so the
+	# minimum is the honest number and the value stays where it was. Each run asks
+	# for a size nobody has warmed, so each measures the early-out and not a cache
+	# hit -- and the thing it is guarding against costs over half a second, so
+	# 20 ms is clear of noise and nowhere near a draw.
+	var asking := INF
+	for i in 5:
+		var t0 := Time.get_ticks_usec()
+		@warning_ignore("return_value_discarded")
+		UiSketch.item_texture(&"whelk", 199 + i * 2)
+		asking = minf(asking, float(Time.get_ticks_usec() - t0) / 1000.0)
+	lt(asking, 20.0, "and asking does not wait for it")
 	check(UiSketch.waiting(), "a worker took it")
 	UiSketch.wait()
 	var tex := UiSketch.item_texture(&"whelk", 231)
