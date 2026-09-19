@@ -89,8 +89,14 @@ func test_rebinding_a_key_moves_what_the_lesson_says() -> void:
 	eq(PlayerSettings.label_of(&"use"), "P", "rebound, it is named P")
 	eq(PlayerSettings.cap_of(&"use"), "p", "and the cap wears it lowercase")
 	check(PlayerSettings.spell(line, [&"use"]).contains("hold P on"), "and the words follow")
-	PlayerSettings.reset_keys()
-	eq(PlayerSettings.key_of(&"use"), was, "put back")
+	# **PUT BACK ONLY WHAT THIS TEST MOVED.** `reset_keys()` restores EVERY
+	# action and clears the whole rebind table, which is a global this test does
+	# not own -- one file reaching across the runner and resetting another's
+	# state is how a suite grows failures that only appear in a particular order.
+	# Rebinding the one key back leaves everything else exactly as it was found.
+	@warning_ignore("return_value_discarded")
+	PlayerSettings.bind_key(&"use", was)
+	eq(PlayerSettings.key_of(&"use"), was, "put back, and nothing else touched")
 
 
 ## A cluster is one word: WASD while those are its keys, and not after.
