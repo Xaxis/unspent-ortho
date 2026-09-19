@@ -75,6 +75,16 @@ const ROWS: Array[Dictionary] = [
 	{"id": &"picture.quality", "group": &"picture", "label": "quality", "kind": CHOICE,
 		"default": &"auto", "from": &"quality", "applies": &"quality",
 		"help": "how much of the picture this machine is asked to draw"},
+	# 0..1 across the range `src/systems/09_view.gd` holds (CLOSE..FAR), not a
+	# height in world units: a level is what the page's own widget draws, and a
+	# unit would put the camera's numbers on it. The default is that file's
+	# `level_of(CameraRig.VIEW_HEIGHT)` — written out as a number here because
+	# ROWS is a const and cannot call it, and a system's file name cannot be a
+	# class_name to call it THROUGH. `tests/settings/test_zoom.gd` asks the real
+	# function and fails if this number stops meaning the play camera.
+	{"id": &"picture.zoom", "group": &"picture", "label": "how far back the camera sits", "kind": LEVEL,
+		"default": 0.24, "applies": &"",
+		"help": "+ and - move it while you play; this is where it opens"},
 	{"id": &"picture.shake", "group": &"picture", "label": "the camera shakes", "kind": LEVEL,
 		"default": 1.0, "applies": &"",
 		"help": "how far the picture moves when something lands"},
@@ -108,6 +118,8 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"lamp", "label": "lamp"},
 	{"action": &"inventory", "label": "carrying"},
 	{"action": &"craft", "label": "making"},
+	{"action": &"zoom_in", "label": "zoom in"},
+	{"action": &"zoom_out", "label": "zoom out"},
 	{"action": &"map", "label": "map"},
 	{"action": &"journal", "label": "journal"},
 	{"action": &"pause", "label": "pause, or back"},

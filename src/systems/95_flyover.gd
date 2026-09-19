@@ -426,6 +426,13 @@ func where() -> Vector2:
 	return _at
 
 
+## While the flyover is up it drives `view_height` itself, so the play zoom
+## (09_view) must not spend the same press a second time on the same camera.
+## One pair of keys for one idea, and one owner of it at a time.
+func owns_zoom() -> bool:
+	return flying
+
+
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"flying":

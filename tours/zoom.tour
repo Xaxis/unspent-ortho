@@ -1,0 +1,34 @@
+# ZOOMING IN NORMAL PLAY (owner, 2026-09-19: "it shouldnt have to be dev mode,
+# just in normal play a user can press + or - to zoom in and out").
+#
+#   tools/tour.sh tours/zoom.tour --seed=4 --hour=11 --weather=clear:0
+#
+# THERE IS NO --dev ON THAT LINE AND THAT IS THE WHOLE POINT. The flyover proves
+# the same keys work for the owner; this proves they work for a player who can
+# never open dev mode. If somebody puts `--dev=` in this header to make it pass,
+# the tour has stopped testing anything.
+#
+# The frames have to show the SAME PLACE at three distances, so that what is
+# being proved is the camera moving and not the world changing under it.
+
+wait 0.6
+shot 01-where-the-camera-opens with land:coast
+
+# Out. Held, not tapped: a press is a nudge and a hold is a sweep, and the
+# ceiling is far enough away that a tap could not reach it.
+press zoom_out 1.6
+await zoomed_out 3
+wait 0.4
+shot 02-pulled-back with land:coast
+
+# And in, past where it started, to the near end.
+press zoom_in 3.2
+await zoomed_in 3
+wait 0.4
+shot 03-close-in with land:coast
+
+# Back to where a player would leave it, so the last frame of this tour is the
+# game as it is normally played.
+press zoom_out 1.6
+wait 0.6
+shot 04-back-to-the-walk with land:coast
