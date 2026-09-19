@@ -460,6 +460,63 @@ accessibility setting is asked to undo, and two because the camera moving and th
 screen flashing are the only things in the game that happen to the player rather
 than to their body.
 
+## Safe havens and the guided opening (owner, 2026-09-19)
+
+**The owner's words:** the game needs guided narrative to start it — "safe
+havens" like towns — to systematically teach the player the game and its
+mechanics, and to guide them along intelligently. Everything below is the design
+proposal for that; the sentence above is the ruling.
+
+**The measurement first, because it is worse than it feels.** A player can press
+27 things in this game. `Guide.HINTS` teaches 11 of them. Never taught at all:
+the jump, crouch, the map, the journal, targeting, riding a craft, dropping,
+the holding app, and every one of the five gear abilities. The hints that exist
+are good and they are a first hour, not a curriculum — and a first hour is what
+we have instead of a game that teaches itself.
+
+**A haven is a MEASURED property, not a label.** It already half exists: a roster
+row declares `where.green_min`, how far from a village green a kind may stand,
+and 16 of 19 kinds keep between 10 and 55 tiles off one. So "nothing hunts you
+here" is already expressible and already partly true. What is missing is that it
+is not stated, not held to a floor, and not something a player is ever told. A
+haven should be a village whose safety is **declared and tested** — no hostile
+kind may stand within its green's own reach — so the guarantee is a number a
+test can fail on rather than a hope about spawn tables.
+
+- **The teaching lives in the place, not on the glass.** A lesson is somebody who
+  lives there, a thing standing in the open to be taken, a station that wants
+  using — not a modal panel and never a key prompt hung in the middle of the
+  frame. `Events.hint` stays what it is: said in its moment or dropped.
+- **It is derived, like a chapter.** What a player has not yet done is read off
+  the state the game already keeps — what is in the creel, what has been made,
+  what stations are known, what beats have landed — and never off a lesson
+  counter. `Chapter`'s own header is the rule: **if it needs its own bookkeeping
+  it is a quest log wearing a landscape's clothes.** A player who worked a
+  mechanic out for themselves before anybody taught it has been taught it.
+- **Systematic means ORDERED, not exhaustive.** The 16 untaught actions are not
+  16 lessons; jumping and crouching belong to moving, the five abilities belong
+  to the first piece of gear that grants one, and the map and journal belong to
+  the first time there is something in them worth opening. The order is the one
+  the world already imposes: wake, walk, take, warm, make, carry, look, fight,
+  cross, build, and the plan's attention last, because it is the only one that
+  costs you something to learn by doing.
+- **Guided along means the NEXT haven, not a quest arrow.** Each haven teaches
+  what the road out of it will ask for, and the way on is the road the plan is
+  standing on (§10.3, `RoadHold`). So a chapter answered is also a curriculum
+  finished, and the two progressions are one progression seen twice — which is
+  the test of whether this is a teaching system or a tutorial bolted to a game.
+- **Nothing here may gate.** A haven is safe, not compulsory. A player who walks
+  out on the first minute and learns everything the hard way is playing the game
+  correctly and must never be stopped, told off or rewound. The opening is a
+  place that is kind, not a corridor.
+
+**What this needs that does not exist yet**: a haven declared per village with a
+tested safety floor; a lesson type that names its place, its teacher and the
+live state that retires it; `Guide` widened from a first hour to the ordered
+list above; and the spawn choosing a haven rather than any coast village. The
+sub-arc generator (VISION §10.4) is the machinery for the words; this is the
+machinery for the order.
+
 ## Owner rulings carried over (mechanics only)
 
 - Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.
