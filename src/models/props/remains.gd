@@ -1540,12 +1540,20 @@ static func wreckage(k: Kit, v: int, c: int) -> void:
 			for i in 6:
 				var p := Vector3(-0.95 + i * 0.2 + Kit.j(s, i, 0.08), 0.015, 0.55 + Kit.j(s, i + 10, 0.25))
 				var col := cloth[i % cloth.size()] if not rot else (P.INK[2] if i % 2 else P.ASH[2])
-				k.made.quad(p + Vector3(-0.1, 0.0, -0.06), p + Vector3(0.09, 0.004, -0.09), p + Vector3(0.12, 0.008, 0.05), p + Vector3(-0.07, 0.004, 0.08), col)
+				# WOUND TO FACE THE SKY. These lie flat on the ground, and wound the
+				# other way `MeshKit.tri`'s normal — (c - b) x (a - b) — came out
+				# pointing DOWN, so six scraps of cloth were drawn into the dirt and
+				# nothing was on the screen. Not dark: ABSENT, which reads as
+				# something standing in front of them, which is why the fix is the
+				# winding and never the shape.
+				k.made.quad(p + Vector3(-0.1, 0.0, -0.06), p + Vector3(-0.07, 0.004, 0.08), p + Vector3(0.12, 0.008, 0.05), p + Vector3(0.09, 0.004, -0.09), col)
 			# A mattress sunk half under the land.
 			k.made.push(Transform3D(Basis(Vector3.UP, -0.2) * Basis(Vector3.BACK, 0.08), Vector3(-0.2, -0.05, -0.55)))
 			k.slab(0.0, 0.0, 0.0, 1.0, 0.12, 0.5, s + 2, P.LINEN[3] if not rot else P.ASH[1], P.LINEN[4] if not rot else P.ASH[2], 0.03)
 			for i in 3:
-				k.made.quad(Vector3(-0.4 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, -0.22), Vector3(-0.38 + i * 0.3, 0.125, 0.22), Vector3(-0.4 + i * 0.3, 0.125, 0.22), P.EARTH[2] if not rot else P.INK[2])
+				# Same winding, same result: the mattress's own straps lay face down
+				# on top of it.
+				k.made.quad(Vector3(-0.4 + i * 0.3, 0.125, 0.22), Vector3(-0.38 + i * 0.3, 0.125, 0.22), Vector3(-0.38 + i * 0.3, 0.125, -0.22), Vector3(-0.4 + i * 0.3, 0.125, -0.22), P.EARTH[2] if not rot else P.INK[2])
 			k.made.pop()
 	if dress.cold():
 		drift(k, Vector3(0.1, 0.0, -0.3), 0.9, 0.45, 0.2, 0.3, dress.snow[0], s + 30)
