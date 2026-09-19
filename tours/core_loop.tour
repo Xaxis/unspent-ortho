@@ -45,10 +45,15 @@ press use 0.1
 await took 14
 wait 0.2
 shot 04-stone
-# Open ground west of the village: the first press asks, the second lays the fire.
-at 188.5,428.5
-walk -1,0 0.08
+# Open ground near the village: the first press asks, the second lays the fire.
+# ASKED FOR BY NAME, like the four takes above. `at 188.5,428.5` was a number off
+# an old map run, and on this world it is THE CRAGS -- fog and bare terraces most
+# of a world away from the coast, where the slate says "lay it on open ground"
+# and the press is rightly refused. `ground grass` takes the coast's own
+# plain_ground and prefers a tile clear of props, which is what open ground IS.
+ground grass
 press use 0.1
+await asked 2
 wait 0.3
 shot 05-asked-where
 press use 0.1
@@ -168,10 +173,13 @@ await slept 3
 end
 wait 0.6
 shot 16-slept-to-morning
-# North to the border: the land turns to limestone and the notebook names it.
-at 160.5,352.5
+# North to the border: the land turns and the notebook names it. The border is
+# asked for BY NAME (GenPlaces ecotone), the way countries.tour asks for its
+# three -- `at 160.5,352.5` was the same stale-number bug as the fire above, and
+# it had quietly become moss on the machine_city border.
+place coast-bonelands
 wait 0.5
-shot 17-coast-before-the-border with land:coast
+shot 17-the-coast-bonelands-border with border:coast-bonelands
 # Loaded with a pick, charcoal, wood and stone, the same walk covers less
 # ground than an empty-handed one: the old 4.5 s stopped short of the border
 # it is named for.

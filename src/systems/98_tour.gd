@@ -145,7 +145,8 @@ extends GameSystem
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
-## started since the last action), saved (a save was written); and station:NAME
+## started since the last action), saved (a save was written), asked (`use` has
+## asked where a fire would go and wants a second press); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
 ##                          with --scene=title, or one whose game gave way to the title)
@@ -618,6 +619,14 @@ func _now_true(what: String) -> bool:
 		return (top == null and want == "none") or (top != null and String(top.screen_name) == want and top.wake >= 1.0)
 	if what.begins_with("station:"):
 		return Survival.stations_near(game).has(StringName(what.trim_prefix("station:")))
+	# The fire's FIRST press: `use` has asked where it would go and is waiting for
+	# a second. Read live off `Survival.build_asked` rather than latched, because
+	# the ask expires on its own and a latch would go on saying yes after it had.
+	# It is here because a frame called "asked where" was a picture of the player
+	# picking up a stone -- the press had answered a pebble in reach, which is the
+	# key working correctly, and nothing in the tour could tell.
+	if what == "asked":
+		return Survival.build_asked(game).is_finite()
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
 	# What a body in frame has made of the player, which is the difference between
