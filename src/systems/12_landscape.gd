@@ -148,6 +148,16 @@ static func _render_cpu(view: WorldView) -> String:
 	return "%.2f ms" % ms if ms > 0.0 else "unmeasured"
 
 
+## The frame budgets, and docs/PERF.md is why each one is the number it is. The
+## headline: BotW targets a 33.3 ms frame, so OUR WORST MAY NOT EXCEED THEIR
+## TARGET -- our worst frame no worse than their best.
+const P50_MS := 8.3
+const P95_MS := 13.9
+const P99_MS := 16.7
+const WORST_MS := 33.3
+## A frame four times its neighbours reads as a jolt however fast they were.
+const WORST_OVER_P50 := 4.0
+
 ## WHAT A PLAYER CALLS JUMPY, stated as a distribution rather than an average.
 ## The worst frames are the whole complaint: a run that sits at 8 ms and spikes
 ## to 60 four times a second is unplayable and has a fine mean. Percentiles are
@@ -170,6 +180,28 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 	for i in ms.size():
 		if ms[i] > 16.7:
 			where.append("%d:%.0f" % [i, ms[i]])
-	return "world frames: n %d, p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, over 16.7 ms: %d (%.0f%%)\nworld slow frames (index:ms): %s" % [
-		a.size(), pick.call(0.5), pick.call(0.95), pick.call(0.99), float(a[-1]),
-		over, 100.0 * over / a.size(), " ".join(where)]
+	# JUDGED, not just reported. docs/PERF.md sets the budgets and the reason the
+	# headline is the WORST frame: BotW's target frame is 33.3 ms, so ours may
+	# never exceed it -- our worst no worse than their best. A line that prints a
+	# number and leaves the reader to know whether it is good is half an
+	# instrument.
+	var p50: float = pick.call(0.5)
+	var p95: float = pick.call(0.95)
+	var p99: float = pick.call(0.99)
+	var worst := float(a[-1])
+	var bad := PackedStringArray()
+	if p50 > P50_MS:
+		bad.append("p50")
+	if p95 > P95_MS:
+		bad.append("p95")
+	if p99 > P99_MS:
+		bad.append("p99")
+	if worst > WORST_MS:
+		bad.append("worst")
+	if p50 > 0.0 and worst / p50 > WORST_OVER_P50:
+		bad.append("worst/p50")
+	return "world frames: n %d, p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over 16.7 ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
+		a.size(), p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
+		over, 100.0 * over / a.size(),
+		("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad)),
+		" ".join(where)]
