@@ -65,6 +65,12 @@ const HINTS := {
 	# you, because that is the only moment crouching is a choice rather than a
 	# regret.
 	&"crouch": ["%s keeps you low and quiet. It has not seen you yet.", [&"crouch"]],
+	# The fifth, and a whole pillar of the game nobody was told about (VISION
+	# §9): a player can put a place up, keep it, and have the machines come for
+	# it. Said the first time the creel actually holds enough for a piece --
+	# before that it is an advertisement, and after the first piece goes up it
+	# has taught itself.
+	&"holding": ["%s puts a piece up out of the creel. What you build, the plan eventually hears.", [&"holding"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -121,6 +127,18 @@ static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
 
 
 ## The hints that fit the moment, most pressing first.
+## Whether the creel holds enough for any piece somebody has learnt to build.
+## Asked of `SettlementBuild.can_make`, which is the same question the holding
+## page answers, so the lesson cannot offer a key that would refuse.
+static func _can_build(game: Game) -> bool:
+	if game.inventory == null:
+		return false
+	for kind: int in StructureKind.BUILDABLE:
+		if SettlementBuild.can_make(game.inventory, kind):
+			return true
+	return false
+
+
 ## Whether a jump from where the player stands, the way they face, would CLEAR
 ## something -- a ledge up or a gap across. Asked of `Jump.plan`, which works the
 ## whole arc out, so the lesson cannot promise a jump the body could not make:
@@ -163,6 +181,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")
+	if _can_build(game):
+		out.append(&"holding")
 	if game.world != null and game.player != null \
 			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
 		out.append(&"map")
