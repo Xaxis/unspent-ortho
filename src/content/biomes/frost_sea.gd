@@ -51,7 +51,7 @@ static func make() -> BiomeDef:
 		# no room to be one: `test_pools_are_round_rimmed` found a blackwater pool
 		# ONE tile across. Flat is the point, but flat has to be flat ABOVE
 		# something or the pools are clipped away to nothing.
-		&"base": 3.6, &"hills": 0.5, &"ridge": 3.2, &"terrace": 0.15, &"valley": 0.3,
+		&"base": 3.6, &"hills": 0.5, &"ridge": 3.2, &"near": 5.0, &"terrace": 0.15, &"valley": 0.3,
 		&"rain": 1.3, &"temp": 0.02, &"moist": 0.8, &"cliff": 0.15,
 	}
 	d.border_elevation = -0.5

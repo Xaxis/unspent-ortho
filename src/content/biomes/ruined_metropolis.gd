@@ -37,7 +37,7 @@ static func make() -> BiomeDef:
 	# them where a deck has come down. The terraces do the work here that canyon
 	# walls do in the mesas.
 	d.relief = {
-		&"base": 8.5, &"hills": 3.0, &"ridge": 4.5, &"terrace": 1.0, &"valley": 2.0,
+		&"base": 8.5, &"hills": 3.0, &"ridge": 4.5, &"near": 5.5, &"terrace": 1.0, &"valley": 2.0,
 		&"rain": 0.8, &"temp": 0.12, &"moist": 0.3, &"cliff": 0.75,
 	}
 	d.border_elevation = 1.0

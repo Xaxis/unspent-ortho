@@ -30,7 +30,7 @@ static func make() -> BiomeDef:
 	# Graded flat by machines that wanted it flat, with a fall on it so the
 	# coolant runs the way they want it to run.
 	d.relief = {
-		&"base": 5.0, &"hills": 0.8, &"ridge": 1.0, &"terrace": 0.4, &"valley": 1.4,
+		&"base": 5.0, &"hills": 0.8, &"ridge": 1.0, &"near": 1.0, &"terrace": 0.4, &"valley": 1.4,
 		&"rain": 0.9, &"temp": 0.1, &"moist": 0.4, &"cliff": 0.25,
 	}
 	d.border_elevation = 0.4

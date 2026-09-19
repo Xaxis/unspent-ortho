@@ -32,7 +32,7 @@ static func make() -> BiomeDef:
 	# Graded into long shallow terraces for the machinery to run along, which is
 	# why it reads as ruled from the air even where nothing is standing.
 	d.relief = {
-		&"base": 6.5, &"hills": 1.8, &"ridge": 2.0, &"terrace": 0.9, &"valley": 1.6,
+		&"base": 6.5, &"hills": 1.8, &"ridge": 2.0, &"near": 1.2, &"terrace": 0.9, &"valley": 1.6,
 		&"rain": 1.0, &"temp": 0.12, &"moist": 0.6, &"cliff": 0.3,
 	}
 	d.border_elevation = 0.5

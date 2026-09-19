@@ -58,7 +58,7 @@ static func make() -> BiomeDef:
 	# TERRACED hard, because a terrace step is the line this landscape is drawn
 	# with. `cliff` raises the faces the galleries run under.
 	d.relief = {
-		&"base": 5.0, &"hills": 3.6, &"ridge": 2.6, &"terrace": 1.0, &"valley": 1.15,
+		&"base": 5.0, &"hills": 3.6, &"ridge": 2.6, &"near": 6.0, &"terrace": 1.0, &"valley": 1.15,
 		&"rain": 1.3, &"temp": 0.34, &"moist": 0.9, &"cliff": 0.7,
 	}
 	d.hatch = Ink.CRACK

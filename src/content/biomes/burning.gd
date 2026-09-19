@@ -21,7 +21,7 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"bonelands": 0.2}
 	d.coastal = -0.4
 	d.relief = {
-		&"base": 4.6, &"hills": 2.0, &"ridge": 1.8, &"terrace": 0.25, &"valley": 0.7,
+		&"base": 4.6, &"hills": 2.0, &"ridge": 1.8, &"near": 3.5, &"terrace": 0.25, &"valley": 0.7,
 		&"rain": 0.12, &"temp": 0.95, &"moist": 0.08, &"cliff": 0.2,
 	}
 	d.caldera = 30.0

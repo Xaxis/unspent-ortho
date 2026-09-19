@@ -35,7 +35,7 @@ static func make() -> BiomeDef:
 	# LEVELLED, and that is the point: the lowest relief of any landscape here,
 	# because they graded it flat and nothing has been allowed to move since.
 	d.relief = {
-		&"base": 6.0, &"hills": 0.4, &"ridge": 0.5, &"terrace": 0.2, &"valley": 0.6,
+		&"base": 6.0, &"hills": 0.4, &"ridge": 0.5, &"near": 0.5, &"terrace": 0.2, &"valley": 0.6,
 		&"rain": 0.5, &"temp": 0.08, &"moist": 0.2, &"cliff": 0.15,
 	}
 	d.border_elevation = 0.3

@@ -28,7 +28,7 @@ static func make() -> BiomeDef:
 	# Flat, because it was flattened. The only relief is the crater rim and what
 	# the wind has banked against it.
 	d.relief = {
-		&"base": 4.5, &"hills": 1.1, &"ridge": 1.4, &"terrace": 0.25, &"valley": 0.5,
+		&"base": 4.5, &"hills": 1.1, &"ridge": 1.4, &"near": 4.0, &"terrace": 0.25, &"valley": 0.5,
 		&"rain": 0.2, &"temp": 0.25, &"moist": 0.05, &"cliff": 0.2,
 	}
 	d.border_elevation = 0.6

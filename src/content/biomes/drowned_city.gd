@@ -31,7 +31,7 @@ static func make() -> BiomeDef:
 	# Flat and LOW — the streets are at sea level because that is what drowned
 	# them — with the towers doing all the standing up.
 	d.relief = {
-		&"base": 2.2, &"hills": 0.7, &"ridge": 1.2, &"terrace": 0.3, &"valley": 1.8,
+		&"base": 2.2, &"hills": 0.7, &"ridge": 1.2, &"near": 2.5, &"terrace": 0.3, &"valley": 1.8,
 		&"rain": 1.2, &"temp": 0.1, &"moist": 0.9, &"cliff": 0.35,
 	}
 	d.border_elevation = -0.8

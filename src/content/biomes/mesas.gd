@@ -46,7 +46,7 @@ static func make() -> BiomeDef:
 		# about thousand-foot canyons, and the shot came back a gently rolling sandy
 		# plain. `hills` and `ridge` are AMPLITUDES (`GenRelief`), so the landscape
 		# whose whole argument is its relief has to declare the biggest ones here.
-		&"base": 10.0, &"hills": 8.0, &"ridge": 4.0, &"terrace": 1.0, &"valley": 2.6,
+		&"base": 10.0, &"hills": 8.0, &"ridge": 4.0, &"near": 7.0, &"terrace": 1.0, &"valley": 2.6,
 		&"rain": 0.4, &"temp": 0.2, &"moist": 0.1, &"cliff": 1.0,
 	}
 	d.border_elevation = 1.9

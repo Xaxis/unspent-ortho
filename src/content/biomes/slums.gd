@@ -78,7 +78,7 @@ static func make() -> BiomeDef:
 	# land once the sea has its share. The rest of the cap is in `GenScatter`s row
 	# placement, not in this file -- see the task, and `ROW_RANKS`.
 	d.relief = {
-		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"terrace": 0.30, &"valley": 0.2,
+		&"base": 2.6, &"hills": 0.25, &"ridge": 0.0, &"near": 0.8, &"terrace": 0.30, &"valley": 0.2,
 		&"rain": 0.85, &"temp": 0.6, &"moist": 0.42, &"cliff": 0.0,
 	}
 	# WHAT THIS CITY IS BUILT OF, and it is the whole point of the landscape: the

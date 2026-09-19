@@ -17,7 +17,7 @@ static func make() -> BiomeDef:
 	d.moist_range = Vector2(0.0, 0.4)
 	d.adjacency = {&"burning": 0.2, &"snowfield": 0.1}
 	d.relief = {
-		&"base": 5.8, &"hills": 2.4, &"ridge": 0.6, &"terrace": 1.0, &"valley": 1.25,
+		&"base": 5.8, &"hills": 2.4, &"ridge": 0.6, &"near": 5.5, &"terrace": 1.0, &"valley": 1.25,
 		&"rain": 0.45, &"temp": 0.5, &"moist": 0.22, &"cliff": 0.45,
 	}
 	d.hatch = Ink.CROSS

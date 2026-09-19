@@ -24,7 +24,7 @@ static func make() -> BiomeDef:
 	d.site_count = Vector2i(1, 2)
 	d.adjacency = {&"pinewood": 0.5, &"moss": 0.3, &"coast": 0.2, &"burning": -0.5, &"snowfield": -0.4}
 	d.relief = {
-		&"base": 3.4, &"hills": 2.6, &"ridge": 0.8, &"terrace": 0.0, &"valley": 0.5,
+		&"base": 3.4, &"hills": 2.6, &"ridge": 0.8, &"near": 4.0, &"terrace": 0.0, &"valley": 0.5,
 		&"rain": 1.15, &"temp": 0.5, &"moist": 0.72, &"cliff": 0.0,
 	}
 	d.hatch = Ink.UPRIGHT

@@ -34,7 +34,7 @@ static func make() -> BiomeDef:
 	# A city's ground: flat where the plan of it was, broken where a tower came
 	# down and made a hill of itself.
 	d.relief = {
-		&"base": 6.0, &"hills": 2.6, &"ridge": 3.0, &"terrace": 0.7, &"valley": 1.8,
+		&"base": 6.0, &"hills": 2.6, &"ridge": 3.0, &"near": 4.5, &"terrace": 0.7, &"valley": 1.8,
 		&"rain": 1.4, &"temp": 0.2, &"moist": 0.85, &"cliff": 0.45,
 	}
 	d.border_elevation = 0.6

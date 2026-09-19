@@ -40,7 +40,7 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"bonelands": 0.5, &"burning": 0.2, &"moss": -0.6, &"pinewood": -0.5}
 	# A basin: low, flat, barely any relief, and rivers die in it.
 	d.relief = {
-		&"base": 1.6, &"hills": 0.5, &"ridge": 0.0, &"terrace": 0.0, &"valley": 0.35,
+		&"base": 1.6, &"hills": 0.5, &"ridge": 0.0, &"near": 0.3, &"terrace": 0.0, &"valley": 0.35,
 		&"rain": 0.2, &"temp": 0.72, &"moist": 0.1, &"cliff": -0.3,
 	}
 	# The crust drifts out thin on the wind and stops, and little of what grows
