@@ -1,12 +1,20 @@
 extends TestCase
-## The six M1 countries became six landscape files. This pins the proof: a world
-## generated from only those six is the world M1 generated, tile for tile and
-## prop for prop.
+## The six M1 countries became six landscape files, and this pins their world:
+## five whole-world digests that nothing may move by accident. If a change here
+## moves one of them, the six landscapes are no longer what they were and the
+## canon frames will have moved with them: look at the pictures before accepting
+## a new number.
 ##
-## The digests were taken on main at 2faee61, before the registry existed. If a
-## change here moves one of them, the six landscapes are no longer what they
-## were and the canon frames will have moved with them: look at the pictures
-## before accepting a new number.
+## **It was a parity proof and it is not one any more, and the fifth
+## re-acceptance below is where that happened.** The digests were taken on main
+## at 2faee61, before the registry existed, and for four re-acceptances the claim
+## held: a world of the six was the world M1 generated, tile for tile. Giving the
+## six relief at walking scale ended that deliberately, and nothing can restore
+## it, because M1's coast had no shape a body could walk over. The name of the
+## test below says what it checks NOW. Do not write the old claim back into it:
+## a file whose header promises more than it delivers is worse than one that
+## promises less, and the whole value of this file is that its evidence is
+## believed.
 ##
 ## RE-ACCEPTED ONCE, at `WorldStamp.GEN` 2, and here is the evidence, because the
 ## instruction above is the whole value of this file. `GenCountries` now marks a
@@ -88,16 +96,82 @@ extends TestCase
 ## border once there are several circles in a place instead of one or two on the
 ## whole island. It read as "standing stone on the Coast" — a landscape holding
 ## somebody else's monument.
+## RE-ACCEPTED A SIXTH TIME, for the THRESHOLD site again (`BlackSite`), and
+## this is the same safe shape as the second: **only `props` moved, and only on
+## four of the five seeds; `country`, `country2`, `ground`, `level` and `blend`
+## are byte-identical everywhere.** Measured rather than argued, by dumping every
+## prop of all five muted worlds before and after: 16,215 rows, of which 24
+## differ, and they are the site's own five on seeds 1, 3, 7 and 90210. Every
+## prop COUNT is unchanged (3223, 3220, 3233), so nothing was added or dropped --
+## the same five things stand in different water. Seed 42 did not move at all.
+##
+## Why it moved: `BlackSite` asked for proxies instead of properties. It threw 72
+## rays from the spawn and took the first deep tile past `NEAREST` on a ray that
+## had not touched land since going wet, which let the site stand on ONE deep
+## tile in a shelf of shallows -- and a body that cannot swim could walk within a
+## tile of the ladder on all four seeds, which is the opposite of the one thing
+## the place has to be. It now asks outright: in the sea, a `MOAT` of deep water
+## wider than the deck's own wall, and 15-40 tiles measured to the tile that is
+## written down rather than to the ray that found it.
+##
+## RE-ACCEPTED A SEVENTH TIME, and this one is different in kind from every one
+## above it: **all six digests moved on all five seeds.** Nothing is
+## byte-identical. That is the largest movement this file can record and it was
+## taken deliberately, by df and cb together.
+##
+## The cause is `near` on the six -- relief at WALKING scale, which `hills` and
+## `ridge` cannot give because they ride noise 58 and 92 tiles wide against a
+## camera that shows 26.7. It is not a drift: `BiomeDef.relief` is read by
+## `GenRelief`, which runs BEFORE `GenCountries.fine`, so moving it moves the
+## levels, then the borders, then the water, then the settlements, then every
+## prop id. Six digests is what a relief change LOOKS like, and one that moved
+## fewer would be the suspicious one.
+##
+## **Proved to be that and nothing else**, which is the only reason a hit this
+## size is safe to take: with `near` set to 0.0 on the six and everything else on
+## the branch left standing -- the map rebuild, the black site, `near` on the
+## fourteen landscapes added since -- this test PASSES on the previous hashes, all
+## five seeds, first try. So the whole movement is the one decision and no part of
+## it is something else riding along. **Run that check before accepting any future
+## number here that moves more than `props`: zero the thing you believe did it and
+## see whether the old hashes come back.**
+##
+## The pictures were looked at and they are the argument:
+##   tools/shot.sh shots/near.png --seed=7 --place=coast --hour=9 --weather=clear:0
+## Before, with coast `near` at 0.0, is a flat green plane with props standing on
+## it and one terrace edge away in the distance -- no shape at all under the feet.
+## After, the player stands on a raised bank with a scarp falling off it and
+## terraces winding through the turf. The owner's standing complaint is that the
+## landscapes are too flat; this is that answered on the six he spends his first
+## hours in.
+##
+## **So the test was RENAMED rather than annotated.** It was
+## `test_a_world_of_the_six_is_the_world_m1_made`, and it is now
+## `test_the_six_keep_the_world_they_have`, because a note explaining that a name
+## is no longer true is the weaker half of the job: the next reader believes the
+## name, not the note beneath it.
+##
+## **AND A WARNING PAID FOR TWICE IN THIS FILE, ON ONE DAY.** The sixth
+## re-acceptance above was written, the hashes were updated, the test went green,
+## and the NOTE never landed -- a scripted insert whose anchor had stopped
+## matching after a merge, which reported success because it checked the hashes it
+## had changed and not the text it had failed to add. It shipped to main as five
+## moved digests with no evidence beside them, in the one file whose whole value
+## is that its evidence is written down. If you accept a number here with a
+## script, read the note back out of the file afterwards. A green test cannot see
+## a comment that is missing.
+
+
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 1f9c2642",
-	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 9eac8325",
-	7: "aa526bae 4ff8f6b7 68b03eda 7fb78385 be4cc1f0 207cf9d8",
-	42: "325e4566 8d16e00c 094afc29 b88a5d6e 8cce8022 010a9369",
-	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 4e00501a",
+	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 f765de64",
+	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b afccb52f",
+	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 19c2a3fb",
+	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b c13aed2c",
+	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed 8c608290",
 }
 
 
@@ -115,7 +189,7 @@ class Muted extends RefCounted:
 			BiomeRegistry.mute_to([])
 
 
-func test_a_world_of_the_six_is_the_world_m1_made() -> void:
+func test_the_six_keep_the_world_they_have() -> void:
 	var guard := Muted.new(SIX)
 	eq(BiomeRegistry.count(), 7, "the sea and the six")
 	for s: int in M1:
