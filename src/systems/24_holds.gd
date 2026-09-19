@@ -60,6 +60,8 @@ var sites: Array = []
 var _broken: Dictionary = {}
 var _layer: Node3D = null
 var _nodes: Dictionary = {}
+## Answered, per region that keeps a hold. See `closed`.
+var _answered: Dictionary = {}
 var _job: Dictionary = {}
 var _held := 0.0
 var _seen: Dictionary = {}
@@ -77,6 +79,7 @@ func setup(g: Game) -> void:
 
 
 func started() -> void:
+	_refresh_chapters()
 	_set_walls()
 
 
@@ -84,6 +87,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	# A crossing is per world: another realm's island has its own roads and its
 	# own plan standing on them.
 	_read_sites()
+	_answered.clear()
+	_refresh_chapters()
 	_clear_nodes()
 	_set_walls()
 
@@ -97,13 +102,37 @@ static func key_of(h: Hold.HoldSite) -> String:
 	return "%d,%d" % [floori(h.pos.x), floori(h.pos.y)]
 
 
-## Whether the plan still holds this road. Broken is broken for good; answered is
-## read LIVE off the chapter, so a keeper falling in the next valley lifts the
-## boom without anything here being told.
+## Whether the plan still holds this road. Broken is broken for good and is read
+## straight; ANSWERED comes off a cache refreshed once a second.
+##
+## **READING THE CHAPTER LIVE COST 86 MILLISECONDS A FRAME.** `Chapter.read`
+## walks `world.props` to count a region's standing ore -- 62,826 props at the
+## full world -- and its own header says so: "cheap enough to ask whenever
+## something is taken rather than every frame". This asked it for every hold on
+## every frame, eleven times over, and measured 86.74 ms in `_stand` alone
+## against a main thread doing 88. It was the whole of the stutter and I shipped
+## it tonight.
+##
+## Once a second is still live in every sense that matters: a keeper falling in
+## the next valley lifts this boom without anything here being told, and nobody
+## can walk a road in the second it takes to notice.
 func closed(h: Hold.HoldSite) -> bool:
 	if bool(_broken.get(key_of(h), false)):
 		return false
-	return not bool(Chapters.of(game, h.region).get("answered", false))
+	return not bool(_answered.get(h.region, false))
+
+
+## Ask the chapters again -- once a second, and only for regions that keep a
+## hold, so the cost is the handful of places the plan is actually standing on.
+func _refresh_chapters() -> void:
+	if game == null:
+		return
+	var seen := {}
+	for h: Hold.HoldSite in sites:
+		if seen.has(h.region):
+			continue
+		seen[h.region] = true
+		_answered[h.region] = bool(Chapters.of(game, h.region).get("answered", false))
 
 
 func open_count() -> int:
@@ -254,6 +283,7 @@ func _physics_process(_delta: float) -> void:
 	_tick += 1
 	if _tick % 60 != 0:
 		return
+	_refresh_chapters()
 	_set_walls()
 
 var _tick := 0
