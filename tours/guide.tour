@@ -1,0 +1,37 @@
+# The guided opening, as a player meets it: the standing goal, the key row under
+# it, and what happens to that row when something is in front of you.
+#   tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing
+#
+# THIS TOUR EXISTS BECAUSE A SHOT CANNOT TAKE IT. `58_guide` sets
+# `_off = options.shot != ""`, so the goal and the key row are switched off in
+# every `tools/shot.sh` run and a picture of them can only ever be a tour. The
+# key row was dead for every lesson in the game and fifteen green tests sat over
+# it, because they all asked the guide and not one asked what the HUD had been
+# handed. A frame is the only instrument that ever showed it.
+#
+# `--fit=glide_wing` is deliberate: a fitted ability grants an ACTION that
+# nothing in the game named until now, so the wing is what makes that visible.
+place spawn
+
+# --- The goal stands; a lesson waits on the key row under it --------------------
+# The goal says what to WANT and names no key -- core may not read a keyboard,
+# and it said "(c)" until today. The key beside it is spelled off the live
+# InputMap, so this frame is also the proof that rebinding would move it.
+wait 2.6
+shot 01-the-goal-stands-and-a-lesson-waits-under-it
+
+# --- The goal follows the player; the lesson has not been spent yet -------------
+# Walking away from the village fire changes what to want. The lesson on the row
+# is the SAME one: the row shows the first lesson not yet retired, and the guide
+# spends one line per interval, so a goal that changed takes this turn.
+walk 1,0 2.0
+wait 3.0
+shot 02-the-goal-changes-and-the-lesson-holds-its-place
+
+# --- What is in front of you outranks a lesson on the row -----------------------
+# Standing at driftwood, the row belongs to the thing under your hand and the
+# lesson moves to the message line, still carrying its own key. Staged BY NAME,
+# so the frame survives the next change to worldgen.
+at prop:driftwood
+wait 3.0
+shot 03-what-is-in-front-of-you-takes-the-row
