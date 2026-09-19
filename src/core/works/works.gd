@@ -128,7 +128,8 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		var rows: Array = by_region.get(id, [])
 		if rows.size() < MIN_WORKS or int(region.get("tiles", 0)) < MIN_TILES:
 			continue
-		var heart := _knot(world, rows, region.get("centre", Vector2.ZERO))
+		var feed := _keeper_feed(world, region)
+		var heart := _knot(world, rows, region.get("centre", Vector2.ZERO), feed[0], feed[1])
 		if heart.is_empty():
 			continue
 		var at := stand_near(world, heart.get("pos", Vector2.ZERO))
@@ -149,9 +150,26 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 ## it, ties broken by which is nearer the region's heart so a depot is inland
 ## rather than on whatever edge GenWorks happened to lay first, and never on a
 ## village or on where the player wakes. {pos, kind, count} or {}.
-static func _knot(world: WorldData, rows: Array, centre: Vector2) -> Dictionary:
+##
+## **AND, WHERE THE REGION HAS A KEEPER, ONE THE KEEPER CAN FEEL.** Breaking a
+## yard is meant to take food out of the keeper's reach -- that is the STARVE way
+## of taking a sentinel, one of the three in `SentinelWay`. It only does so if the
+## two are near each other, and nothing here asked: a yard was chosen by what the
+## plan had been DOING in a region, and a lair by what the keeper EATS, so the two
+## sets missed entirely. Measured at the shipped size before this, seeds 4, 1 and
+## 42: six qualifying depots, six spending nothing into their keeper. The starve
+## way was open on no island.
+##
+## So reach is a RANK above busyness, not a weight added to it: among the works a
+## keeper could feel, take the busiest; if it can feel none, take the busiest
+## there is and nothing changes. A weight would have been a number to tune, and
+## the thing being asked for is not "somewhat nearer" -- it is inside a radius or
+## outside it.
+static func _knot(world: WorldData, rows: Array, centre: Vector2,
+		feeds_at := Vector2.INF, feeds_reach := 0.0) -> Dictionary:
 	var best := {}
 	var best_score := -INF
+	var best_fed := false
 	for m: Dictionary in rows:
 		var p: Vector2 = m.get("pos", Vector2.ZERO)
 		if p.distance_to(world.spawn) < CLEAR_HOME or _near_village(world, p):
@@ -161,10 +179,25 @@ static func _knot(world: WorldData, rows: Array, centre: Vector2) -> Dictionary:
 			if (other.get("pos", Vector2.ZERO) as Vector2).distance_to(p) <= CLUSTER:
 				n += 1
 		var score := float(n) - p.distance_to(centre) * 0.004
-		if score > best_score:
+		var fed := feeds_at.is_finite() and p.distance_to(feeds_at) <= feeds_reach
+		if not best.is_empty() and best_fed and not fed:
+			continue
+		if fed != best_fed or score > best_score:
 			best_score = score
+			best_fed = fed
 			best = {"pos": p, "kind": StringName(str(m.get("kind", &"depot"))), "count": n}
 	return best
+
+
+## Where this region's keeper dens and how far it feeds, or an infinite point
+## where the landscape has no keeper -- nineteen of twenty-one do not, which is
+## its own gap (docs/VISION.md §3 asks for one per landscape) and is why this
+## must degrade to "no preference" rather than to "no depot".
+static func _keeper_feed(world: WorldData, region: Dictionary) -> Array:
+	var def := Sentinels.for_land(StringName(str(region.get("type", &""))))
+	if def == null:
+		return [Vector2.INF, 0.0]
+	return [Sentinels.lair(world, region, def), def.reach * Sentinels.FEED_SHARE]
 
 
 static func _near_village(world: WorldData, p: Vector2) -> bool:
