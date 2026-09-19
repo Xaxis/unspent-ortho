@@ -119,8 +119,35 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.GRASS if gb > 0.30 else Ground.FLOOR
 
 
-## Nothing is planted. What grows came up through a joint in the slab.
+## THE RACKS ARE THE FIELD AND THE WATER IS WHY IT IS HERE. Pipe and console run
+## dense over the floor because that is the crop; the intakes and tanks stand
+## where the ground is wet, because the whole installation was sited on water it
+## could take; and the one thing on the grass is what has got in since.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.FLOOR:
+		if r < 0.034:
+			return PropKind.PIPE
+		if r < 0.052:
+			return PropKind.CONSOLE
+		if r < 0.062:
+			return PropKind.RELAY
+		if r < 0.068:
+			return PropKind.DEBRIS
+		return PropKind.STACK if r > 0.55 and r < 0.557 else BiomeScatter.NONE
+	if g == Ground.MUD:
+		if r < 0.030:
+			return PropKind.INTAKE
+		if r < 0.044:
+			return PropKind.WATER_TANK
+		return BiomeScatter.NONE
+	if g == Ground.ROAD:
+		if r < 0.020:
+			return PropKind.FENCE
+		return PropKind.PYLON if r > 0.45 and r < 0.458 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		if r < 0.018:
+			return PropKind.DEBRIS
+		return PropKind.PIPE if r < 0.026 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		return PropKind.BUSH if r < 0.01 else BiomeScatter.NONE
 	return BiomeScatter.NONE

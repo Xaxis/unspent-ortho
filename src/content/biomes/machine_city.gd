@@ -142,7 +142,32 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.SWARF if gb > 0.45 else Ground.FLOOR
 
 
-## Nothing. Not one plant, anywhere, ever — and it is the only landscape that can
-## say so, because it is the only one nobody has abandoned.
+## EVERY PIECE OF IT IS THE PLANT, and the plant is the landscape. Nothing here
+## grew: the floor carries the run of conveyors and pipe the place was laid out
+## around, the road carries what controls who is on it, and the swarf is the one
+## ground with anything untidy on it, because it is where the work is actually
+## being done rather than where it is being routed.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.FLOOR:
+		if r < 0.030:
+			return PropKind.CONVEYOR
+		if r < 0.048:
+			return PropKind.PIPE
+		if r < 0.060:
+			return PropKind.PLATFORM
+		if r < 0.068:
+			return PropKind.CONSOLE
+		return PropKind.PYLON if r > 0.50 and r < 0.508 else BiomeScatter.NONE
+	if g == Ground.ROAD:
+		if r < 0.022:
+			return PropKind.FENCE
+		return PropKind.CHECKPOINT if r > 0.60 and r < 0.609 else BiomeScatter.NONE
+	if g == Ground.SWARF:
+		if r < 0.040:
+			return PropKind.STACK
+		if r < 0.055:
+			return PropKind.WATER_TANK
+		return PropKind.RELAY if r > 0.30 and r < 0.312 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		return PropKind.PIPE if r < 0.014 else BiomeScatter.NONE
 	return BiomeScatter.NONE

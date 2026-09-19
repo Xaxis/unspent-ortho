@@ -109,6 +109,27 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.SAND if gb > 0.5 else Ground.ROCK
 
 
-## Nothing grows on glass. What is out here was dropped or left.
+## WHAT SURVIVES A PLACE THAT WAS FUSED. Nothing grows, so everything standing
+## is either older than the glassing (the stones, which is why they are the only
+## thing here anybody put up on purpose) or was caught in it. The wreckage lies
+## where the sand took it and the boulders stand where the rock still shows.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.SAND:
+		if r < 0.016:
+			return PropKind.DEBRIS
+		if r < 0.024:
+			return PropKind.WRECKAGE
+		return PropKind.STANDING_STONE if r > 0.70 and r < 0.705 else BiomeScatter.NONE
+	if g == Ground.ROCK or g == Ground.SCREE:
+		if r < 0.038:
+			return PropKind.BOULDER
+		if r < 0.050:
+			return PropKind.STONE_ORE
+		return BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		if r < 0.020:
+			return PropKind.BOULDER
+		return PropKind.SURVEY if r > 0.40 and r < 0.406 else BiomeScatter.NONE
+	if g == Ground.SALT:
+		return PropKind.DEBRIS if r < 0.010 else BiomeScatter.NONE
 	return BiomeScatter.NONE

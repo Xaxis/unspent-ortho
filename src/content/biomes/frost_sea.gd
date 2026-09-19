@@ -144,6 +144,33 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.ICE
 
 
-## Nothing grows on a frozen sea. What stands on it was put there.
+## THE SEA PUT ALL OF IT HERE. Driftwood and wrack are only ever on the shingle,
+## because that is the line the water reaches; the boulders out on the ice are
+## erratics the floe carried and dropped, which is why they stand alone rather
+## than in fields. The plan's own things are the rarest thing in the landscape.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.SHINGLE:
+		if r < 0.042:
+			return PropKind.DRIFTWOOD
+		if r < 0.062:
+			return PropKind.WRACK
+		if r < 0.070:
+			return PropKind.BOULDER
+		return BiomeScatter.NONE
+	if g == Ground.ICE:
+		if r > 0.80 and r < 0.812:
+			return PropKind.BOULDER
+		return PropKind.DEBRIS if r > 0.20 and r < 0.206 else BiomeScatter.NONE
+	if g == Ground.SNOW:
+		if r > 0.60 and r < 0.609:
+			return PropKind.BOULDER
+		return PropKind.SURVEY if r > 0.10 and r < 0.1035 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.030:
+			return PropKind.BOULDER
+		if r < 0.040:
+			return PropKind.STONE_ORE
+		return PropKind.RELAY if r > 0.50 and r < 0.505 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		return PropKind.DRIFTWOOD if r < 0.012 else BiomeScatter.NONE
 	return BiomeScatter.NONE
