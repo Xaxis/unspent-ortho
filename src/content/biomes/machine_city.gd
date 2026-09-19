@@ -139,7 +139,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.GRAVEL
 	if f & BiomeSurface.BANK != 0:
 		return Ground.GRAVEL
-	return Ground.SWARF if gb > 0.82 else Ground.FLOOR
+	return Ground.SWARF if gb > 0.45 else Ground.FLOOR
 
 
 ## Nothing. Not one plant, anywhere, ever — and it is the only landscape that can

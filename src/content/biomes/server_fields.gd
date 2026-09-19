@@ -116,7 +116,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.MUD
 	if e <= 3.2:
 		return Ground.MUD
-	return Ground.GRASS if gb > 0.72 else Ground.FLOOR
+	return Ground.GRASS if gb > 0.30 else Ground.FLOOR
 
 
 ## Nothing is planted. What grows came up through a joint in the slab.

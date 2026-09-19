@@ -42,7 +42,10 @@ static func make() -> BiomeDef:
 		Ground.GRASS: P.MOSS[3].lerp(P.SPRUCE[3], 0.3),
 		Ground.MOSS: P.SPRUCE[2].lerp(P.MOSS[2], 0.4),
 		Ground.MUD: P.EARTH[3].lerp(P.SAND[3], 0.3),
-		Ground.ASH: P.SAND[4].lerp(P.EARTH[3], 0.25),
+		# THE CRUST IS THE ONLY YELLOW IN THE GAME and it is what names the place.
+		# Sulphur off the copper ramp, knocked back with linen so it is a deposit
+		# rather than a paint.
+		Ground.ASH: P.COPPER[4].lerp(P.LINEN[3], 0.3),
 		Ground.ROCK: P.SLATE[3].lerp(P.EARTH[3], 0.3),
 		Ground.CLINKER: P.SLATE[2].lerp(P.RUST[2], 0.3),
 		Ground.NEEDLES: P.SPRUCE[2].lerp(P.EARTH[2], 0.4),
@@ -52,7 +55,7 @@ static func make() -> BiomeDef:
 	# here, so it would arrive as the loudest object in the frame. Each takes this
 	# landscape's own ash, because they only have to be in key.
 	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
-		d.grounds[g] = d.grounds[Ground.ASH]
+		d.grounds[g] = d.grounds[Ground.ROCK]
 	d.cliff_wash = P.SLATE[2].lerp(P.EARTH[2], 0.35)
 	d.strata = GroundColors.STRATA_BASALT
 	d.plain_ground = Ground.GRASS
@@ -123,12 +126,22 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.ROCK
 	if e <= 5.0:
 		return Ground.MUD
-	return Ground.ASH if gb > 0.84 else Ground.GRASS
+	return Ground.ASH if gb > 0.25 else Ground.GRASS
 
 
 ## THE THICKEST CANOPY IN THE GAME, because the ground is warm and wet and has
 ## been left alone for seventy years. Twice the coast's broadleaf rate.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	# THE VENTS STAND IN THEIR OWN CRUST, because both are dealt off the same
+	# ground. `_surface` lays ash where the blend runs high and the holes are
+	# scattered onto that ash, so the yellow ring and the thing that made it are
+	# one decision rather than two that have to be kept in step by hand -- which
+	# is how the vents came to be declared in `props` and placed nowhere for this
+	# landscape's whole life.
+	if g == Ground.ASH:
+		if r < 0.085:
+			return PropKind.VENT
+		return PropKind.VENT_CAP if r < 0.125 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		if r < 0.11:
 			return PropKind.BROADLEAF

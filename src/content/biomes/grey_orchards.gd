@@ -119,7 +119,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.MUD
 	if e <= 4.0:
 		return Ground.MUD
-	return Ground.MOSS if gb > 0.78 else Ground.GRASS
+	return Ground.MOSS if gb > 0.35 else Ground.GRASS
 
 
 ## THE ROWS ARE THE POINT. Planted on a grid the machines still keep, so the

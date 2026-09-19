@@ -137,7 +137,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	if rs > 1.6:
 		return Ground.SCREE
 	# Left to rot, and green coming up through it.
-	if gb > 0.74:
+	if gb > 0.40:
 		return Ground.GRASS
 	return Ground.FLOOR
 

@@ -132,7 +132,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.MUD
 	if e <= 2.6:
 		return Ground.MUD
-	return Ground.MOSS if gb > 0.7 else Ground.FLOOR
+	return Ground.MOSS if gb > 0.25 else Ground.FLOOR
 
 
 ## What grows here came in on the tide and stayed: reeds in the silt, nothing on
