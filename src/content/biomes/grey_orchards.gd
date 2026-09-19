@@ -59,13 +59,13 @@ static func make() -> BiomeDef:
 	d.rock_color = P.STONE[3]
 	# What grows is grafted and going over: grey-green rather than green, and the
 	# white on it is not blossom.
-	d.tree_tints = {&"crown": [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.MOSS[3], P.LINEN[3]]}
+	d.tree_tints = {&"leaf": [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.MOSS[3], P.LINEN[3], P.LINEN[2]]}
 	d.decor_tints = {&"fronds": [P.MOSS[2], P.LINEN[2], P.ASH[2]]}
 	var dress := BiomeDressing.new()
 	dress.stone = [P.STONE[3], P.ASH[3], P.LINEN[3]]
-	dress.timber = [P.EARTH[2], P.ASH[2], P.LINEN[2]]
+	dress.timber = [P.EARTH[2], P.ASH[2]]
 	dress.walling = [P.STONE[3], P.ASH[2], P.EARTH[2], P.LINEN[3]]
-	dress.crown = &"broadleaf"
+	dress.crown = &"full"
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress

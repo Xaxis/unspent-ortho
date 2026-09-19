@@ -59,7 +59,16 @@ func test_the_landscapes_that_argue_with_the_plain_stock_are_named() -> void:
 		if BiomeForms.of(land.index).stock != BiomeForms.PLAIN:
 			arguing.append(String(land.id))
 	arguing.sort()
-	eq(arguing, ["slums"],
+	# FIVE CITIES NOW, and the list is the point of the test rather than an
+	# inconvenience: declaring `built` is TERRAIN (`WorldStamp`), so it moves the
+	# id of every prop placed after the first village and invalidates every save.
+	# Each of these is a city on purpose and they argue about who a city is FOR —
+	# the slums a city people still live in, the drowned city one the sea took,
+	# the ruined metropolis one that died with people in it, the machine city one
+	# never meant for people at all, and the green towers one something else won
+	# back. A sixth name appearing here without that argument is the bug this
+	# guards against.
+	eq(arguing, ["drowned_city", "green_towers", "machine_city", "ruined_metropolis", "slums"],
 		"a landscape declaring its own `built` moves its island; say so on purpose: %s" % [arguing])
 
 
