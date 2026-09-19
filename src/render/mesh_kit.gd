@@ -1,11 +1,15 @@
 class_name MeshKit
 extends RefCounted
 ## Procedural mesh builder. Every model in the game is made from these calls:
-## boxes, prisms, cones, rocks, quads, with flat normals and per-face vertex
-## colour. No asset files.
+## boxes, prisms, cones, rocks, quads, with per-face vertex colour and a normal
+## per face UNLESS the builder welds (see smoothing, below — most do not, and
+## that is the `form` wave's remaining job). No asset files.
 ##
 ## Axes are Godot's: +Y up, +X east, +Z south. Units are tiles. Colours are the
-## palette's sRGB values; the world shader converts to linear.
+## palette's sRGB values, and what happens to them next is the RENDERER's
+## business, not this file's: `matter_albedo()` decodes on Forward+ and is the
+## identity on Compatibility. This header used to say "the world shader converts
+## to linear", which was true of one of the two renderers we ship.
 ##
 ##   var k := MeshKit.new()
 ##   k.block(0, 0, 0, 0.6, 1.2, 0.4, Palette.LINEN[2])
@@ -21,8 +25,12 @@ var uvs := PackedVector2Array()
 var uv2s := PackedVector2Array()
 var custom0 := PackedFloat32Array()
 
-## Ink channels (docs/ART.md) applied to every vertex pushed while set.
-## Hatch style ids: see src/render/ink.gdshaderinc and Ink.
+## The MATERIAL ROW applied to every vertex pushed while set. These are still
+## named for the pen: `Ink.SPARSE` reads "few long diagonals; the page does the
+## work" and there has been no page since LANTERN. What the number does now is
+## tell one landscape's ground from another's (world.gdshader unpacks it as a
+## row, CLAUDE.md says so) — so pick by what the surface IS, not by the doc
+## comment on the constant.
 var style := Ink.HAND
 var style2 := Ink.HAND
 var style_blend := 0.0
@@ -191,6 +199,22 @@ func rock(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int, 
 ##
 ## **It adds no triangles.** The same mesh, told where it curves. That is why it
 ## comes first: every other thing in this package costs something.
+##
+## **AND IT REACHES FOUR CALL SITES OUT OF SIXTY-FOUR MODEL FILES.** `rock`
+## (below), `Kit.stone`, `Kit.clump` and `Sculpt`'s walls call `smooth_range`;
+## `smooth_begin`/`smooth_end` have NO CALLERS ANYWHERE. Two independent audits
+## found this separately. So every lathe, loft, disc, tbar and cbox on every
+## machine, sentinel, house, tower, wreck, landmark, craft and settlement piece
+## is still flat-shaded, which IS "models read faceted under real light".
+##
+## Two things whoever takes that needs before they start. The welding is
+## CORRECT — `build()` passes normals straight through, `Kit.sway_by_height`
+## writes uv2s only and cannot stale a weld, and `Broken.work_down` rebuilds
+## normals itself, lerping the kept ones and giving the cut face its own hard
+## normal. And it welds within `[from, to)`, i.e. PER SHAPE: a hull emitted as
+## eight `cbox` calls still has eight hard seams. Deciding whether to bracket a
+## whole assembly or each call is a judgement about where the creases belong,
+## per model, which is why this is a wave and not a sweep.
 const CREASE := 52.0
 ## Positions closer than this are the same corner. A tenth of a screen pixel at
 ## the play camera, so nothing a model actually separates is ever welded.

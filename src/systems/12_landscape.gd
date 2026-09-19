@@ -60,14 +60,30 @@ func _tell_camera_how_tall_it_builds() -> void:
 	game.camera.clear_lift = high
 
 
+## **AN INSTRUMENT THAT CANNOT REPORT ITS OWN GAP FAILS TOWARD GREEN**, which is
+## the whole reason `unaccounted` is on this line. The mesher profiles its seven
+## stages and nothing profiled `Decor.build_arrays` or `bake_props`, which are
+## WorldView's work and not the mesher's — so the line named 36 ms of a 46 ms
+## build and read as complete. Somebody (me) then quoted those six stages as the
+## cost of a chunk and planned an afternoon against them. The residual is what
+## makes that impossible: if everything is named it is ~0, and if it is not, the
+## line says so instead of quietly summing to less than the total.
 static func stats_line(view: WorldView) -> String:
 	var n := maxf(1.0, view.build_count)
 	var pr := view.stage_usec()
-	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d, chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f), fps %d" % [
+	# prof 0,1,2,3,4,5,7 are times; 6 is the vertex count, which was collected
+	# on every chunk since the mesher was written and read by nothing.
+	var mesher_ms := (pr[0] + pr[1] + pr[2] + pr[3] + pr[4] + pr[5] + pr[7]) / 1000.0
+	var gap := view.build_ms - view.main_ms - mesher_ms - view.decor_ms - view.props_ms
+	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d (parked %d, far %d/%d avg %.1f ms), chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f decor %.1f props %.1f unaccounted %.1f), verts %d, fps %d" % [
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
-		view.chunk_count(), view.build_ms / n, view.build_ms_max, view.build_count,
+		view.chunk_count(), view.parked_count(),
+		view.far.block_count() if view.far != null else 0, view.far_wanted(),
+		view.far_ms / maxf(1.0, view.far_count),
+		view.build_ms / n, view.build_ms_max, view.build_count,
 		view.main_ms / n, view.main_ms_max,
 		pr[0] / 1000.0 / n, pr[1] / 1000.0 / n, pr[2] / 1000.0 / n, pr[7] / 1000.0 / n, pr[3] / 1000.0 / n, pr[4] / 1000.0 / n, pr[5] / 1000.0 / n,
+		view.decor_ms / n, view.props_ms / n, gap / n, int(pr[6] / n),
 		Performance.get_monitor(Performance.TIME_FPS)]

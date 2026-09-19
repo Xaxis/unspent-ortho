@@ -28,20 +28,40 @@ in any lit shader. A shader says what the surface IS and the renderer lights it,
 against a real sun with real penumbra, a sky that colours the shade, many local
 lights that can cast, volumetric air and a tonemapper. Wear accumulates by world
 position (`SkyWear`, `matter_worn`), so the same machine rusts in the bog and
-blooms on the salt. The wave runs `floor` (done), `lit` (done), then `form` /
-`depth` / `slate` in parallel, then `degrade` (the web path proven almost as
-good).
+blooms on the salt. The wave ran `floor`, `lit`, `slate`, `depth` and `degrade`,
+all landed; `form` is the only one still open, and it is narrower than it used to
+be.
 
-**Two things `lit` left for whoever is next.** Models read faceted under real
-light — they were built for 640x360 and their budgets have not risen (`form`).
-The world is still one plane seen from above; nothing passes between the camera
-and the player (`depth`). The third, the slate, is done: see below.
+**What `form` still means, measured rather than remembered.** At play zoom the
+frame is 26.67 world units across 1920 pixels — **72 pixels per world unit**, so
+a 0.02 chamfer that was half a pixel at 640x360 is 1.4 pixels now and a 4-sided
+`strut` of radius 0.04 is a 5.8-pixel square bar. Three things follow, and none
+of them is "raise the budgets": MADE geometry has ONE material row for every
+timber, thatch, cloth, rope, concrete and glass surface in the game
+(`matter_of()` returns its default for all of them, so only the mesh normal tells
+a roof from a wall); welding reaches four call sites out of sixty-four model
+files, and `MeshKit.smooth_begin`/`smooth_end` — the pair this file used to
+present as the API — have **no callers anywhere**, so every machine and every
+sentinel is flat-shaded; and 96 of 167 `strut` calls pass n=4. Two independent
+audits found the welding gap separately, which is why it is written down here.
+
+**This paragraph was wrong for weeks and nobody caught it**, because a stale
+contract reads exactly like a true one: it claimed `depth` was undone while
+`src/render/depth/` and `src/systems/13_fore.gd` were shipped, passing twenty
+tests. Check the directory before you believe a wave status.
 
 **So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
 to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
-work in. If you are adding a model, plain `MeshKit` through the existing
-`Parts.hand/ruled` state is still correct; what it writes is read as material
-now rather than as a pen, and it converts with everything else.
+work in. **If you are adding a model, use `Kit`** (`src/models/props/kit.gd`):
+it holds the three MeshKits a model needs — `made`, `found` and `leaf` — and it
+is the only one of the three idioms in this package that can carry leaves at all.
+`Parts.hand/ruled` (which this line used to send you to) flips one MeshKit's
+style and is used by five files under `src/models/settlement/`; `FoundKit`'s
+statics are the third. **And weld what you build**: `smooth_range` reaches four
+call sites out of sixty-four model files, so the default is still a flat normal
+per face under a real sun. See `mesh_kit.gd`'s smoothing block for why that is a
+wave rather than a sweep — welding is per shape, so eight `cbox` calls are
+eight hard seams whatever you bracket.
 
 **The slate is drawn in the base's own pixels** (`src/ui/ui_base.gd`, docs/ART.md
 §9): every number in `src/ui/` and `src/dev/` is in 1920x1080 pixels, no UI layer
@@ -320,7 +340,10 @@ tools print their own summaries.
   `w.ground`) **and seed 7 still lands on (143.5, 1030.5)**. Profile with
   `WorldGen.last_timings` / `last_detail` before reaching for anything: the two
   biggest stages are roads and the country score fields, and both were looked at
-  and DECLINED on exactly this rule.
+  and DECLINED on exactly this rule. **The lever that DOES pass it is general and
+  large**: a GDScript method call is about ten times an array index and `append`
+  on a Packed array copies it, so reading `w.level`/`w.ground`/`w.country`
+  directly and sizing arrays once took a coarse-world block from 480 ms to 34.
 - **A count of things built is not evidence that anything was drawn.** Far blocks
   wound backwards built cleanly, dispatched their draw calls and had their
   primitives counted -- the stats line read 121 of 121 while the world was not on

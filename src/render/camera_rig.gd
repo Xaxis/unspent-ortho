@@ -19,7 +19,19 @@ const VIEW_HEIGHT := 15.0
 ## has to clear the tallest land in front of the focus; close keeps the depth
 ## range (and the sun's shadow range, SkyLight) tight.
 @export var distance := 30.0
+## Room kept past the frame's own depth at both clip planes, for land that
+## stands UP into the picture: a thing `h` high draws `h * sin(pitch)` nearer
+## the eye than the ground it stands on. Small enough that the play camera never
+## has to stand further back than `distance` (at 15 units the frame is 4.9 deep,
+## so 28.9 < 30 and nothing about play moves).
+const DEPTH_ROOM := 24.0
 @export var follow_rate := 10.0
+## Where the camera really stood this frame, which is `distance` until the view
+## is wide enough to need more. Everything that reads a depth off the camera
+## must read THIS, never the export -- SkyLight already measures the live
+## position for its fog and its shadow range, which is why the air follows a
+## zoom without being told.
+var _back := 30.0
 
 var target := Vector3.ZERO
 
@@ -52,6 +64,7 @@ func _ready() -> void:
 	keep_aspect = KEEP_HEIGHT
 	size = view_height
 	near = 1.0
+	_back = distance
 	far = 250.0
 	rotation = Vector3(deg_to_rad(-pitch_deg), deg_to_rad(yaw_deg), 0.0)
 	_near_focus()
@@ -149,7 +162,7 @@ const NEAR_STAND_IN_REACH := 0.015
 ## stay sharp. One answer for the real blur and for the web's stand-in, so the two
 ## soften exactly the same things.
 func near_plane(shown: float) -> float:
-	var near_ground := distance - Air.frame_depth(shown, pitch_deg + _pitch)
+	var near_ground := _back - Air.frame_depth(shown, pitch_deg + _pitch)
 	var begin := near_ground - _clear_now * sin(deg_to_rad(pitch_deg + _pitch))
 	return maxf(near + 1.0, begin)
 
@@ -279,7 +292,17 @@ func _apply() -> void:
 	local.x = roundf(local.x / texel) * texel
 	local.y = roundf(local.y / texel) * texel
 	var focus := b * local
-	global_position = focus + b.z * distance
+	# THE CLIP PLANES FOLLOW THE FRAME. Orthographic depth runs with the ground:
+	# at the play pitch a point one tile further from the eye is 0.54 deeper, so
+	# a 1300-tile island spans about 700 units of depth -- while `near` and `far`
+	# were 1 and 250, constants sized for a 15-unit view. Everything outside that
+	# slab was clipped, which drew the world as a BAND across the middle of the
+	# frame with black either side of it. That is what the owner has been looking
+	# at, and neither the streamer nor the pitch was ever the cause of it.
+	var half := Air.frame_depth(size, pitch_deg + _pitch)
+	_back = maxf(distance, half + DEPTH_ROOM)
+	far = maxf(250.0, _back + half + DEPTH_ROOM)
+	global_position = focus + b.z * _back
 	# The focal plane follows the picture: a lean zooms and tilts, and a plane
 	# left where the square-on frame put it would blur the near half of a
 	# zoomed-out one. Does nothing until `size` really moves.

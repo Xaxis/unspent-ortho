@@ -12,6 +12,9 @@
 //         INSTANCE_CUSTOM, w = 1) so a stroke, or a whole burst, never changes colour midway
 //   0.0   its own colour at any hour: it carries its own light (sparks, embers)
 #include "res://src/render/sky.gdshaderinc"
+// matter.gdshaderinc's own noise is ink_hash/ink_vnoise, so ink comes first.
+#include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform sampler2D mark_backdrop : hint_screen_texture, filter_nearest;
 uniform vec3 mark_ink : source_color = vec3(0.0706, 0.0667, 0.1137);
@@ -43,6 +46,11 @@ void fragment() {
 	if (COLOR.a > 0.25 && COLOR.a < 0.75) {
 		col = mark_luma(mark_anchor, 1.0 / VIEWPORT_SIZE) > mark_pale ? mark_ink : mark_paper;
 	}
-	ALBEDO = COLOR.a < 0.25 ? col : sky_apply(col, world_pos, TIME);
+	// `sky_apply` is the AIR, not the colour door — it says what weather and
+	// distance did to a surface, and says nothing about what the value MEANS to
+	// the renderer. `col` is an instance colour off the palette, so it goes
+	// through `matter_albedo` on both branches or it is a stop and a half out on
+	// Forward+.
+	ALBEDO = matter_albedo(COLOR.a < 0.25 ? col : sky_apply(col, world_pos, TIME));
 	ALPHA = 1.0;
 }

@@ -772,11 +772,19 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	eco.fill(rx0, ry0, x1 + RING, y1 + RING, rc, rc2, rb)
 	var _t1 := Time.get_ticks_usec()
 	var shore := _shore_window(rx0, ry0, x1 + RING, y1 + RING)
+	# `has_water` is "within MARGIN of the waterline", which the DEPTH FIELD needs
+	# for the terrain shader. The water MESH needs the stronger thing: a lattice
+	# point actually wet. A chunk nine tiles inland satisfies the first and not
+	# the second, and paid `_build_water`'s whole first sweep — 4,225 points and a
+	# 4,225-entry PackedColorArray — before its own `if not any: return` fired.
+	# That early-out is the proof the skipped work produces nothing, so gating on
+	# `any_wet` is output-identical by the mesher's own argument rather than mine.
 	var has_water := false
 	for v in shore:
 		if v > -float(MARGIN):
 			has_water = true
 			break
+	var any_wet := false
 	var _t2 := Time.get_ticks_usec()
 	# The ecotone field at tile corners of the ring, as percentiles (only when
 	# any of the ring lies in a band).
@@ -982,6 +990,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			if terrace <= 0:
 				# The sea bed is never seen: one key, so it merges into runs.
 				lk[li] = Ground.WATER | _KEY_WET
+				any_wet = true
 			else:
 				# Ground under a warp, so type boundaries (and the edges of inland
 				# water) wander with the contours instead of following tiles.
@@ -1077,6 +1086,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 					extra = _shore_lift(wf) << 17
 					if wf >= WET_EDGE:
 						extra |= _KEY_WET
+						any_wet = true
 						if _WET[g] == 0:
 							g = _water_ground(wx, wy, terrace, wl, tg, rx0, ry0, rw, rh)
 				if _WET[g] == 1 and (extra & _KEY_WET) == 0:
@@ -1172,7 +1182,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 		if run_start >= 0:
 			_flat_run(ch, run_start, n, py, run_key, run_t)
 	var _t5 := Time.get_ticks_usec()
-	if has_water:
+	if has_water and any_wet:
 		_build_water(ch, depth)
 	var _t6 := Time.get_ticks_usec()
 	ch.terrain_arrays = _terrain_arrays()

@@ -13,6 +13,9 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled, blend_mix;
 
 #include "res://src/render/sky.gdshaderinc"
+// matter.gdshaderinc's own noise is ink_hash/ink_vnoise, so ink comes first.
+#include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 // 0 stroke, 1 fleck, 2 heat wave, 3 wind flick, 4 splash tick, 5 spark (a
 // small cross of light, for wisps), 6 ring spreading on standing water, 7 swirl
@@ -233,5 +236,10 @@ void fragment() {
 	if (glow > 0.5 && flick < 0.5) {
 		discard;
 	}
-	ALBEDO = mix(c, SKY_PAGE, step(0.3, sky_sun.w) * (1.0 - glow) * 0.5);
+	// `c` comes off `: source_color` uniforms, which Godot converts when they are
+	// SET — so it is already in the renderer's space. `SKY_PAGE` is a raw palette
+	// const (LINEN[5]) and was not, so this mix drove lit rain and snow toward a
+	// page colour a stop and a half too bright on Forward+ and the right one on
+	// the web. Two colours, two spaces, one mix.
+	ALBEDO = mix(c, matter_albedo(SKY_PAGE), step(0.3, sky_sun.w) * (1.0 - glow) * 0.5);
 }

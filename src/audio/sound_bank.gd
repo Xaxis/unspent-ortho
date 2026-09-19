@@ -77,7 +77,7 @@ const CATEGORIES := {
 	&"weather": {"rate": 22050, "loop": true, "bus": &"Ambience", "hp": 100.0, "window": [-3.0, 2.0]},
 	&"scatter": {"rate": 22050, "loop": false, "bus": &"Ambience", "hp": 110.0, "window": [-15.0, -3.0]},
 	&"event": {"rate": 44100, "loop": false, "bus": &"SFX", "hp": 90.0, "window": [-4.0, 5.0]},
-	&"step": {"rate": 44100, "loop": false, "bus": &"SFX", "hp": 90.0, "window": [-4.0, 5.0]},
+	&"step": {"rate": 44100, "loop": false, "bus": &"SFX", "hp": 90.0, "window": [-8.0, -5.0]},
 	&"thunder": {"rate": 22050, "loop": false, "bus": &"SFX", "hp": 55.0, "window": [6.0, 10.0]},
 	&"ui": {"rate": 44100, "loop": false, "bus": &"UI", "hp": 150.0, "window": [-18.0, -6.0]},
 	&"score_drone": {"rate": 11025, "loop": true, "stereo": false, "bus": &"Music", "hp": 130.0, "window": [-18.0, -8.0]},
@@ -156,22 +156,43 @@ const SHEET := {
 	&"arc_snap": [&"scatter", -9.5, 3],
 	&"gutter_drip": [&"scatter", -10.0, 4],
 	&"thunder_roll": [&"scatter", -5.0, 2],
-	# Footfalls, one family per ground.
-	&"step_sand": [&"step", -3.0, 4],
-	&"step_grass": [&"step", -3.0, 4],
-	&"step_heath": [&"step", -3.0, 4],
-	&"step_mud": [&"step", -3.0, 4],
-	&"step_needles": [&"step", -3.5, 4],
-	&"step_snow": [&"step", -3.0, 4],
-	&"step_ice": [&"step", -3.0, 4],
-	&"step_stone": [&"step", -3.0, 4],
-	&"step_gravel": [&"step", -2.5, 4],
-	&"step_shingle": [&"step", -2.5, 4],
-	&"step_ash": [&"step", -3.5, 4],
-	&"step_clinker": [&"step", -3.0, 4],
-	&"step_dirt": [&"step", -3.5, 4],
-	&"step_wood": [&"step", -3.0, 4],
-	&"step_water": [&"step", -2.0, 4],
+	# Footfalls, one family per ground. **THE WHOLE FAMILY CAME DOWN 4.0 dB**
+	# (owner, 2026-09-19: "way too loud by default"). They were at -3.0, which in
+	# this sheet's own units is three decibels under a RAINSTORM (weather_rain is
+	# 0.0) — for the one sound the game makes twice a second, all game, at zero
+	# distance, because the player's own feet are never attenuated. Nothing else
+	# is both that loud and that frequent: a machine's alert sits at 0.0 and
+	# happens when a machine alerts.
+	#
+	# The category window came down with them, and that is the real correction:
+	# `step` had been given `event`'s window verbatim, so the mix was declaring a
+	# footfall to be an event-loud thing. It is not. It is closer to the ambient
+	# layer, and it has its own window now.
+	#
+	# **WHY 4.0 AND NOT MORE, WHICH IS A REAL LIMIT AND NOT A PREFERENCE.**
+	# `test_interface_is_quietest_and_thunder_is_loudest` holds the interface
+	# under the quietest world sound, and the quietest UI row is -8.0. Take the
+	# steps past about -7.5 and the slate starts shouting over your own feet,
+	# which is a worse mix than the one being fixed. Going further means moving
+	# the interface too, and nobody asked for that.
+	#
+	# The ground-to-ground spread is untouched: shingle still crunches half a
+	# decibel over grass, and water is still the loudest thing to walk in.
+	&"step_sand": [&"step", -7.0, 4],
+	&"step_grass": [&"step", -7.0, 4],
+	&"step_heath": [&"step", -7.0, 4],
+	&"step_mud": [&"step", -7.0, 4],
+	&"step_needles": [&"step", -7.5, 4],
+	&"step_snow": [&"step", -7.0, 4],
+	&"step_ice": [&"step", -7.0, 4],
+	&"step_stone": [&"step", -7.0, 4],
+	&"step_gravel": [&"step", -6.5, 4],
+	&"step_shingle": [&"step", -6.5, 4],
+	&"step_ash": [&"step", -7.5, 4],
+	&"step_clinker": [&"step", -7.0, 4],
+	&"step_dirt": [&"step", -7.5, 4],
+	&"step_wood": [&"step", -7.0, 4],
+	&"step_water": [&"step", -6.0, 4],
 	# The fight.
 	&"swing": [&"event", -1.0, 3],
 	&"whiff": [&"event", -2.0, 2],

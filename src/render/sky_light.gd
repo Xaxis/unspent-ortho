@@ -119,6 +119,11 @@ const MOON_NIGHT := 0.115
 ## shadow at its foot and a soft one four tiles away, which no filter can fake
 ## and which is most of what says a shadow is cast by something standing up.
 ## Wider when the light is low, because a low sun is seen through more air.
+## Room past the frame's own depth that the sun's one shadow split keeps, so a
+## cliff standing behind the player still casts onto the ground in front. Spent
+## against the LIVE camera every frame (`_drive_environment`), because the zoom
+## moves and a constant range ends the shadows in a line across the picture.
+const SHADOW_ROOM := 15.0
 const SUN_ANGLE := 0.9
 const SUN_ANGLE_LOW := 3.2
 
@@ -400,8 +405,9 @@ func _ready() -> void:
 	# sun's angular size (SUN_ANGLE), which is the real thing rather than a
 	# filter: a fence post is sharp at its foot and soft four tiles out.
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	# From the camera (CameraRig.distance 30): the view's depth plus tall land
-	# behind it, and no further, so the atlas keeps crisp shadow texels.
+	# The view's depth plus tall land behind it, and no further, so the atlas
+	# keeps crisp shadow texels. Re-derived from the LIVE camera every frame in
+	# `_drive_environment` — this is only what it opens at.
 	sun.directional_shadow_max_distance = 50.0
 	sun.directional_shadow_blend_splits = false
 	sun.light_angular_distance = SUN_ANGLE
@@ -837,6 +843,16 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near))
 	e.fog_depth_begin = reach.x
 	e.fog_depth_end = reach.y
+	# AND SO IS THE SHADOW RANGE, for exactly the same reason. It was 50.0, set
+	# once at `_ready` and never asked again, while `--zoom` and now the player's
+	# own `+`/`-` write `view_height` directly — so past about 62 the far edge of
+	# the frame simply stopped casting, which reads as the shadows ending in a
+	# line across the picture. Every other number in this file asks the live
+	# camera; this one did not. At the play camera it comes out 49.9 where the
+	# constant said 50, which is a quarter of one per cent of the texel density.
+	if sun != null:
+		sun.directional_shadow_max_distance = _cam_distance() \
+			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(Color(1, 1, 1), 0.35)
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
