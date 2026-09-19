@@ -358,8 +358,17 @@ func _start_talk(row: Dictionary) -> void:
 	var id := StoryProps.talk_for(row, game)
 	var character := StringName(str(row.get("character", &"")))
 	if id == &"":
-		# Nobody has anything written for this one yet. Say so in the world's own
-		# flat voice rather than opening an empty page.
+		# **NOBODY SCRIPTED FOR THIS ONE, SO LET THEM TEACH.** A person who lives
+		# here with nothing written for them was a dead end -- and it stood in
+		# exactly the place docs/DESIGN.md §Safe havens wants a teacher: "a lesson
+		# is somebody who lives there... never a key prompt hung in the middle of
+		# the frame". Asked of whoever can teach rather than of a named system,
+		# the way 42_target gathers `target_rows`, so the guide can be renumbered
+		# or replaced without a line changing here.
+		if _somebody_teaches():
+			return
+		# Nothing left to teach either. Say so in the world's own flat voice
+		# rather than opening an empty page.
 		Events.hint.emit("They have nothing to say to you.", "")
 		return
 	talk = StoryTalk.start(id)
@@ -375,6 +384,15 @@ func _start_talk(row: Dictionary) -> void:
 	_hush(true)
 	Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
 	view.refresh()
+
+
+## Whether somebody who can teach had a lesson to give just now. Found by the
+## METHOD rather than by a system's name or number.
+func _somebody_teaches() -> bool:
+	for sys in game.systems:
+		if sys.has_method(&"teach_now") and bool(sys.call(&"teach_now")):
+			return true
+	return false
 
 
 func _start_reading(prop: WorldProp) -> void:
