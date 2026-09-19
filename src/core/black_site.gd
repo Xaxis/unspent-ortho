@@ -82,7 +82,7 @@ static func _look(w: WorldData) -> Vector2:
 			var out := at.distance_to(from)
 			if out < NEAREST or out > FURTHEST or out >= best_out:
 				continue
-			if not sea.has(y * w.size + x):
+			if sea[y * w.size + x] == 0:
 				continue
 			if w.ground_at(x, y) != Ground.DEEP_WATER or not _moated(w, x, y):
 				continue
@@ -92,31 +92,51 @@ static func _look(w: WorldData) -> Vector2:
 
 
 ## Every water tile joined to the edge of the map: the sea, as against a pond
-## inland that happens to be deep. Flooded once per world, which is why `site`
-## is cached.
-static func _sea(w: WorldData) -> Dictionary:
-	var seen := {}
-	var edge: Array[int] = []
-	for i in w.size:
-		for c: Vector2i in [Vector2i(i, 0), Vector2i(i, w.size - 1), Vector2i(0, i), Vector2i(w.size - 1, i)]:
-			var k := c.y * w.size + c.x
-			if not seen.has(k) and Ground.is_water(w.ground_at(c.x, c.y)):
-				seen[k] = true
+## inland that happens to be deep. One flood per world, which is why `site` is
+## cached.
+##
+## **READ THE GRIDS, NOT THE ACCESSORS.** This was a Dictionary keyed by tile
+## index and it asked `ground_at` for every neighbour, and at the full world that
+## is 1.69 million hash inserts and as many function calls: measured 3.26 SECONDS,
+## about a quarter of the whole of world generation, for a question about one
+## platform. A `PackedByteArray` the size of the grid and a direct read of
+## `w.ground` answer the same thing, tile for tile -- the site this picks is
+## unchanged, which is the point, because moving it moves every world.
+static func _sea(w: WorldData) -> PackedByteArray:
+	var size := w.size
+	var seen := PackedByteArray()
+	seen.resize(size * size)
+	var edge := PackedInt32Array()
+	var ground := w.ground
+	# One byte per ground id instead of a call per neighbour: the flood asks this
+	# about four tiles for every tile it pops, so `Ground.is_water` was three
+	# million calls at the full world.
+	var wet := PackedByteArray()
+	wet.resize(Ground.COUNT)
+	for g in Ground.COUNT:
+		wet[g] = 1 if Ground.is_water(g) else 0
+	for i in size:
+		for k: int in [i, (size - 1) * size + i, i * size, i * size + size - 1]:
+			if seen[k] == 0 and wet[ground[k]] != 0:
+				seen[k] = 1
 				edge.append(k)
 	while not edge.is_empty():
-		var k: int = edge.pop_back()
-		var x := k % w.size
-		var y := k / w.size
-		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var nx := x + d.x
-			var ny := y + d.y
-			if not w.in_bounds(nx, ny):
-				continue
-			var nk := ny * w.size + nx
-			if seen.has(nk) or not Ground.is_water(w.ground_at(nx, ny)):
-				continue
-			seen[nk] = true
-			edge.append(nk)
+		var k := edge[edge.size() - 1]
+		edge.remove_at(edge.size() - 1)
+		var x := k % size
+		var y := k / size
+		if x > 0 and seen[k - 1] == 0 and wet[ground[k - 1]] != 0:
+			seen[k - 1] = 1
+			edge.append(k - 1)
+		if x < size - 1 and seen[k + 1] == 0 and wet[ground[k + 1]] != 0:
+			seen[k + 1] = 1
+			edge.append(k + 1)
+		if y > 0 and seen[k - size] == 0 and wet[ground[k - size]] != 0:
+			seen[k - size] = 1
+			edge.append(k - size)
+		if y < size - 1 and seen[k + size] == 0 and wet[ground[k + size]] != 0:
+			seen[k + size] = 1
+			edge.append(k + size)
 	return seen
 
 
@@ -133,12 +153,14 @@ static func blocks(w: WorldData) -> Array:
 ## walks can stand within reach of the deck.
 static func _moated(w: WorldData, cx: int, cy: int) -> bool:
 	var n := ceili(MOAT)
+	var size := w.size
+	var ground := w.ground
 	for dy in range(-n, n + 1):
 		for dx in range(-n, n + 1):
-			if Vector2(dx, dy).length() > MOAT:
+			if float(dx * dx + dy * dy) > MOAT * MOAT:
 				continue
 			var x := cx + dx
 			var y := cy + dy
-			if not w.in_bounds(x, y) or w.ground_at(x, y) != Ground.DEEP_WATER:
+			if x < 0 or y < 0 or x >= size or y >= size or ground[y * size + x] != Ground.DEEP_WATER:
 				return false
 	return true
