@@ -91,6 +91,10 @@ func _read_player_settings() -> void:
 	# A shot or a tour keeps its own settings file: one that wrote the player's
 	# would change what the next run of the game looked and sounded like.
 	PlayerSettings.use_file(&"player" if _a_person_is_playing() else &"tool")
+	# BEFORE the player's own file is read, so a binding they changed still wins:
+	# these are the events the actions SHIP with, and `PlayerSettings.reset_keys`
+	# puts back what shipped.
+	MouseControls.install()
 	PlayerSettings.load_once()
 	SettingsApply.install(_a_person_is_playing())
 
