@@ -247,3 +247,33 @@ func test_the_game_teaches_the_jump_at_something_worth_jumping() -> void:
 	guide.call("_watch")
 	check((guide.get("retired") as Dictionary).has(&"jump"), "jumping retires it")
 	g.free()
+
+
+func test_the_survey_is_offered_once_the_wake_is_out_of_sight() -> void:
+	# The third of the sixteen, and the one the world's own size argues for: a
+	# 1300-tile island is not a place anybody holds in their head. Said once the
+	# wake is behind you, never before -- a survey of ground you can see is a
+	# picture of nothing, and a lesson said everywhere is the key prompt on the
+	# glass that docs/DESIGN.md forbids.
+	var g := Fx.flat(200)
+	# A few paces out, not standing ON the wake: at zero distance any threshold
+	# passes, so the first version of this could not tell a lesson that waits
+	# from one said everywhere. Five tiles is still well inside sight of home.
+	var near_home: Vector2 = g.world.spawn + Vector2(5.0, 0)
+	g.player.pos = near_home
+	if g.player.sim != null:
+		g.player.sim.hero.pos = near_home
+	var at_home := []
+	for i in 6:
+		at_home.append(Guide.hint_for(g, {}).get("id", &""))
+	check(not at_home.has(&"map"), "not while the wake is still in sight")
+	# Walk out past it.
+	var away: Vector2 = g.world.spawn + Vector2(Guide.MAP_FAR + 6.0, 0)
+	g.player.pos = away
+	if g.player.sim != null:
+		g.player.sim.hero.pos = away
+	var far := []
+	for i in 6:
+		far.append(Guide.hint_for(g, {}).get("id", &""))
+	check(far.has(&"map"), "offered once it is not, got %s" % str(far[0]))
+	Fx.done(g)

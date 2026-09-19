@@ -180,6 +180,8 @@ func _on_made(item: StringName, _n: int) -> void:
 func _on_screen(n: StringName, open: bool) -> void:
 	if open and n == &"inventory":
 		retired[&"carry"] = true
+	if open and n == &"map":
+		retired[&"map"] = true
 
 
 func _on_hit(_attacker: Object, target: Object, damage: int, plate: bool, _at: Vector3) -> void:
