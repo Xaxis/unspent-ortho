@@ -268,14 +268,87 @@ func test_a_piece_falling_apart_gives_less_away_than_one_kept_up() -> void:
 	lt(s.signature().total(), whole, "a mast held together with cord does not carry as far")
 
 
-func test_a_holding_settled_after_a_week_away_does_not_stall_the_load() -> void:
-	var s := a_place()
-	var plot := s.add(StructureKind.PLOT, Vector2(101, 100))
-	s.people.append(1)
-	plot.staffed_by = 1
-	var t0 := Time.get_ticks_msec()
+## A holding with one worked plot whose clock has already started.
+##
+## **PRIMING IT IS THE WHOLE POINT.** A holding that has never run has
+## `worked_at` at infinity, and `catch_up` takes an early-out for that -- it sets
+## the clock forward and returns without settling anything. A fresh place handed
+## straight to `catch_up` therefore does NO work, which is how the test below
+## spent its life asserting that a month settles in under 300 ms while measuring
+## two microseconds of early-out. Worse, the early-out sets `worked_at` to
+## exactly the value the clock assertion checks, so that passed for the wrong
+## reason too.
+func _a_worked_place() -> Settlement:
+	var t := a_place()
+	var p := t.add(StructureKind.PLOT, Vector2(101, 100))
+	t.people.append(1)
+	p.staffed_by = 1
 	@warning_ignore("return_value_discarded")
-	SettlementRules.catch_up(s, 60.0 * 24.0 * 30.0, ctx())
-	lt(float(Time.get_ticks_msec() - t0), 300.0 * machine_slack(), "a month away is settled in a blink")
-	near(s.worked_at, floorf(60.0 * 24.0 * 30.0 / SettlementRules.SLICE) * SettlementRules.SLICE, 1e-4,
+	SettlementRules.catch_up(t, 0.0, ctx())
+	return t
+
+
+func test_a_holding_settled_after_a_week_away_does_not_stall_the_load() -> void:
+	var day := 60.0 * 24.0
+	var month := day * 30.0
+	var slices_a_day := day / SettlementRules.SLICE
+	# **SAY THE WORK HAPPENED.** Every number below is about what settling costs,
+	# so a run that settled nothing has to fail rather than pass cheaply.
+	var a_day_of_it := SettlementRules.catch_up(_a_worked_place(), day, ctx())
+	near(float(a_day_of_it["minutes"]), day, 1e-4, "a day away settles a day")
+	var a_month_of_it := SettlementRules.catch_up(_a_worked_place(), month, ctx())
+	near(float(a_month_of_it["minutes"]), SettlementRules.MAX_SLICES * SettlementRules.SLICE, 1e-4,
+		"and a month away settles the most anyone is owed, not a month")
+
+	# **A SHARE, NOT A STOPWATCH.** This was `300 ms x machine_slack()`, which is
+	# a COST widened by a number meant for WAITING: slack clamps at 8, so on a
+	# busy machine the bar stood at 2.4 seconds and could no longer fail for a
+	# real reason. An absolute millisecond bar says nothing anyway -- it moves
+	# with the machine, and the claim is about the SHAPE of `catch_up`.
+	#
+	# What it promises is that settling is done in whole SLICEs and costs what
+	# the slices cost, and that `MAX_SLICES` is what stops a long absence being a
+	# long load. So measure both in the same run and hold the RATIO, which no
+	# processor speed can move. The places are built before the clock starts;
+	# timing the setup with them put a fixed cost in both numbers and squashed
+	# the ratio, which would have let a quadratic settle through.
+	# **NOT `best_of`, AND THE REASON IS A TRAP.** `best_of` runs a callable n
+	# times and keeps the cheapest, which is right for repeatable work and wrong
+	# here twice over. Settling is a one-shot state change, so a second call on
+	# the same holding settles nothing and costs nothing -- and the cheapest of
+	# three is then the cost of the no-op. On top of that a GDScript lambda
+	# captures locals BY VALUE, so an index advanced inside one never advances
+	# outside it, and all three runs took the same holding anyway. Both mistakes
+	# were in this test at once and it read 2 us against 2.
+	#
+	# So: a fresh primed holding per run, built before the clock starts, and the
+	# minimum taken by hand. The minimum is still the honest number -- load only
+	# ever ADDS time -- but only over runs that each did the work.
+	var runs := 3
+	var one_day := INF
+	var one_month := INF
+	for i in runs:
+		var a := _a_worked_place()
+		var t0 := Time.get_ticks_usec()
+		@warning_ignore("return_value_discarded")
+		SettlementRules.catch_up(a, day, ctx())
+		one_day = minf(one_day, float(Time.get_ticks_usec() - t0))
+		var b := _a_worked_place()
+		var t1 := Time.get_ticks_usec()
+		@warning_ignore("return_value_discarded")
+		SettlementRules.catch_up(b, month, ctx())
+		one_month = minf(one_month, float(Time.get_ticks_usec() - t1))
+	# A month is capped at `MAX_SLICES`, so it is a WEEK of slices and no more:
+	# 336 against a day's 48, which is seven. A little over double that leaves
+	# room for the cost of a call; the thirty an absent cap would cost does not
+	# fit under it, and a quadratic settle is nowhere near.
+	var capped := float(SettlementRules.MAX_SLICES) / slices_a_day
+	gt(one_day, 0.0, "a day of settling costs something measurable")
+	lt(one_month, one_day * capped * 2.2,
+		"a month costs a week of slices, not a month of them (%.0f us against %.0f)" % [one_month, one_day])
+
+	var s := _a_worked_place()
+	@warning_ignore("return_value_discarded")
+	SettlementRules.catch_up(s, month, ctx())
+	near(s.worked_at, floorf(month / SettlementRules.SLICE) * SettlementRules.SLICE, 1e-4,
 		"and the holding's clock is up to date either way")
