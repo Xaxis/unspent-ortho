@@ -75,14 +75,60 @@ static func landmark_ids(world: WorldData, region_id: int) -> Array[StringName]:
 ## the player has taken. Counted off `WorldData.depleted`, which is the save's own
 ## world-edit list, so this is the same number after a save and a load.
 static func ore_standing(world: WorldData, region_id: int) -> int:
-	var kinds := ore_kinds(world, region_id)
-	if kinds.is_empty():
-		return 0
-	var n := 0
+	return int(_standing_counts(world).get(region_id, 0))
+
+
+## What STANDS is counted once per world, for every region at once, because
+## nothing can change it: a prop never moves and worldgen never adds one, so the
+## answer is a property of the world and not of the moment it is asked in. Only
+## what has been TAKEN changes, and that is `ore_taken` off the small `depleted`
+## set. `Landmarks.sites` remembers per world for exactly this reason.
+##
+## IT WAS ASKED AS THOUGH IT WERE CHEAP. The sweep this replaces walked every
+## prop in the world, calling `region_at` on each, ONCE PER REGION that keeps a
+## hold — and `24_holds` asks every region that keeps one, once a second. Measured
+## on a 1300-tile world: 224 ms inside a single physics tick, landing as a 150 ms
+## hitch every second while the median frame stayed at 8.3 ms (#126). That is the
+## shape the owner called "laggy and jumpy", and an average cannot see it.
+##
+## Note what the earlier fix did and did not do: moving this off the per-frame
+## path (#122) took the game from 5-12 fps to a healthy median with a stall once
+## a second. The cost was rescheduled, not removed. **Work that is too expensive
+## to do every frame is usually too expensive to do at all** — the question to ask
+## is not how often to pay it, but why it is being recomputed when its inputs
+## cannot have moved.
+static var _standing_world: WorldData = null
+static var _standing: Dictionary = {}
+
+
+static func _standing_counts(world: WorldData) -> Dictionary:
+	if world == null:
+		return {}
+	if world == _standing_world:
+		return _standing
+	var kinds_of := {}
+	var out := {}
 	for p: WorldProp in world.props:
-		if kinds.has(p.kind) and world.region_at(floori(p.pos.x), floori(p.pos.y)) == region_id:
-			n += 1
-	return n
+		var r := world.region_at(floori(p.pos.x), floori(p.pos.y))
+		if r < 0:
+			continue
+		if not kinds_of.has(r):
+			kinds_of[r] = ore_kinds(world, r)
+		var kinds: Array = kinds_of[r]
+		if kinds.has(p.kind):
+			out[r] = int(out.get(r, 0)) + 1
+	# The world is held rather than keyed by instance id: an id freed and handed
+	# out again would serve another world's counts, and the realms package keeps
+	# every world it raises alive anyway, so this costs nothing.
+	_standing_world = world
+	_standing = out
+	return out
+
+
+## Only the tests want this; a running game counts once per world for its life.
+static func forget() -> void:
+	_standing_world = null
+	_standing = {}
 
 
 ## Taken, off the depleted set — which is small, so this is cheap enough to ask

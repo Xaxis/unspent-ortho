@@ -61,15 +61,60 @@ Three rules for reading it, each learned the expensive way:
 3. **Compare frames only when the world is still.** Two shots of a living world
    differ because people walked, not because anything changed.
 
-## Where we are (2026-09-19, the day the standard was written)
+## Where we are (2026-09-19)
 
-    p50   8.3 ms   PASS
-    p95  16.7 ms   FAIL  (budget 13.9)
-    p99 ~120 ms    FAIL  (budget 16.7)
-    max  150 ms    FAIL  (budget 33.3)
-    max/p50  18x   FAIL  (budget 4)
+Standing still, 400 frames, seed 1, on a BUSY machine (load 45), so the absolute
+numbers are pessimistic and the comparison is the honest half:
 
-One line passes. The median is not the problem and never was.
+                      before        after      budget
+    p50              8.3 ms        8.3 ms      8.3    PASS
+    p95             15.9 ms       12.5 ms     13.9    PASS  (was FAIL)
+    p99            114.1 ms       31.0 ms     16.7    FAIL
+    max            150.0 ms      142.4 ms     33.3    FAIL  (warm-up only)
+    over 16.7 ms   13 frames      9 frames
+
+`max` is now frames 0 and 1 — warm-up, which this file bounds separately rather
+than exempts, and 2 frames over is well inside the 12 allowed. **Excluding
+warm-up the worst frame is 36 ms, down from 150.** The periodic spike is gone.
+
+Note the judged line still prints FAIL for `max` and `max/p50`, because
+`frame_line` takes its distribution over every frame including warm-up. The
+instrument does not yet make the split this document promises.
+
+## The hitch, found
+
+**`Chapter.ore_standing` swept every prop in the world, once per hold-keeping
+region, once a second.** `24_holds._physics_process` refreshes chapters every 60
+physics ticks; `Chapter.read` asks each region what ore stands in it; the answer
+walked `world.props` calling `region_at` on every one. Measured per system, worst
+physics tick:
+
+    before: 24_holds.gd 224.6 ms, 30_mobs.gd 0.7, 40_fight.gd 0.2, ...
+    after:  24_holds.gd  12.5 ms, 30_mobs.gd 1.2, 40_fight.gd 0.2, ...
+
+A 320x gap between first and second place, which is the one shape machine load
+cannot invent — which is why this was worth measuring even at load 45.
+
+The fix is one sweep per world for every region at once, remembered the way
+`Landmarks.sites` is, because nothing can change the answer: a prop never moves
+and worldgen never adds one. Only what is TAKEN changes, and that was already
+read off the small `depleted` set.
+
+**The lesson is the scheduling, not the sweep.** An earlier fix (#122) moved this
+off the per-frame path, taking the game from 5-12 fps to a healthy median with a
+200 ms stall once a second. The cost was rescheduled, not removed — and that
+trade turns "slow", which a player forgives, into "broken", which is what the
+owner reported as *laggy and jumpy* while the median sat at 8.3 ms. Work too
+expensive to run every frame is usually too expensive to run at all; ask why it
+is recomputed when its inputs cannot have moved.
+
+**AND THIS FILE SENT PEOPLE AWAY FROM IT.** `24_holds` was listed below as
+eliminated, "under 4 ms". A probe had already printed `24_holds.gd saves
+163.6 ms` as its top row — the right answer — and it was discarded as baseline
+drift and then written up as cleared. A wrong entry on an eliminated list is
+worse than no list: it is the one place nobody looks twice. **An elimination
+needs the same evidence as a finding, and the reading that disagrees with your
+model is the one to re-run, not the one to explain away.**
 
 **What the hitches are NOT**, each eliminated by measurement and recorded so
 nobody spends the afternoon again: movement or chunk streaming (the same spikes
@@ -77,40 +122,39 @@ land at the same frame indices standing perfectly still), the renderer (0.3 ms o
 render CPU), chunk building (5 ms at worst on the main thread), the coarse far
 world (switching it off makes p99 worse), the fight simulation (worst catch-up
 0.6 ms in two slices — the twelve-slice cap its constants allow is never
-reached), `24_holds`, music, audio or sky (all under 4 ms).
+reached), music, audio or sky (all under 4 ms). Engine shader compilation at boot
+(419 variants, all served from cache, zero compiles under `--verbose`) and
+MoltenVK pipeline translation (this machine runs Godot's native **Metal** backend
+on an M3 Max, so an empty `user://vulkan/` cache directory means nothing here).
 
-**What they are: NOT ESTABLISHED. Do not plan against this paragraph yet.**
+## Two instruments that were wrong, and how each was wrong
 
-The claim that stood here — "at a 140 ms frame, process and physics account for
-44 ms, so the other ~96 ms is in no `_process` this game owns" — rests on an
-instrument that reports on the step BEFORE the one being measured, which is the
-exact trap this file's rule 1 exists to catch.
+Both were mine, both looked conclusive, and each sent the hunt somewhere else
+for hours. They are kept because the shapes recur.
 
 **`Performance.TIME_PROCESS` and `TIME_PHYSICS_PROCESS` lag by one frame.** They
-are written at the end of a frame, so a read taken during the spike frame
-describes the frame before it — a fast one. Attributing 44 ms of a 140 ms frame
-from that read compares two different frames. Until the monitors are aligned
-(read on frame N+1, attributed to frame N), the split is unproven in both
-directions: the work may be in game script after all.
+are written at the END of a frame, so a read taken during the spike frame
+describes the frame before it — a fast one. That produced "at a 140 ms frame,
+process and physics account for 44 ms, so the other ~96 ms is in no `_process`
+this game owns", which is two different frames compared, and it pointed away from
+game script when the whole cost was in a `_physics_process`. **Read them on frame
+N+1 and attribute them to frame N**, and the line reads `total 132 = proc 29 +
+phys 126` — which names the culprit immediately.
 
-A second instrument was wrong the same way and is retracted with it. A
-`frame_post_draw` probe was read as proving "the spikes are WORK, not waiting"
-(work 113-145 ms against wait 1-4 ms). Its `wait` measured only post-draw to the
-next process-start — the frame-pacing sleep — so the main thread *blocking on
-the render thread* was counted as work. The honest residue is narrow: the time
-is spent before the draw completes, and the split between script, engine and
-driver is not yet known.
+**A `frame_post_draw` probe "proved" the spikes were WORK, not waiting** (work
+113-145 ms against wait 1-4 ms). Its `wait` measured only post-draw to the next
+process-start — the frame-pacing sleep — so the main thread *blocking on the
+render thread* was counted as work. A measurement whose name promises a
+distinction it never made.
 
-**Eliminated as suspects anyway**, since these were measured directly rather
-than by subtraction: engine shader compilation at boot (419 variants, all
-served from cache, zero compiles in `--verbose`), and MoltenVK pipeline
-translation (this machine runs Godot's native **Metal** backend on an M3 Max, so
-the empty `user://vulkan/` cache directory means nothing here).
-
-The next measurement is a correctly-aligned three-way split — script, engine,
-driver — on a **quiet machine**, plus a 600-frame run to see whether the spikes
-stop after the first pass (which is what first-use compilation would predict and
-a recurring cause would not). See task #126.
+**What actually found it**: driving the systems yourself and timing each.
+12_landscape calls `set_physics_process(false)` on every system whose SCRIPT
+defines `_physics_process` — ask the script, not the node, because `has_method`
+answers true for a virtual every Node declares — then calls them in
+`game.systems` order and records each one's worst tick. Same order, same
+behaviour, one number per system. **A ratio between two things measured in the
+same run is worth taking even on a busy machine**, which is how a 320x gap was
+read at load 45 when no absolute number would have been worth printing.
 
 ## The rule this standard exists to enforce
 
