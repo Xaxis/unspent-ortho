@@ -41,6 +41,14 @@ const HINTS := {
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s lights the lamp.", [&"lamp"]],
+	# **THE CORE VERB OF AN ACTION GAME, AND IT WAS NEVER NAMED.** `side` is the
+	# only lesson that carries `swing`, it is the HELD lesson delivered after
+	# plate has already rung, and its words ("strike the side that is lit")
+	# assume you have been striking all along. Nothing anywhere told you which
+	# key does it. Said as a machine comes on, ahead of the dodge, because a
+	# player who cannot strike cannot end the fight they are being taught to
+	# survive.
+	&"fight": ["%s swings what is in your hands. Wait out its blow, then answer.", [&"swing"]],
 	&"dodge": ["It winds up before it strikes: %s gets you out of the way.", [&"dodge"]],
 	# **THE VERB THE GAME NEVER TAUGHT.** A player can press 27 things and the
 	# guide named 11 of them; targeting was one of the sixteen it did not, which
@@ -225,6 +233,7 @@ static func _applicable(game: Game) -> Array[StringName]:
 			# Said as a hunter first comes on, before it is close enough to hush the page
 			# (a line said in a fight waits until it is over, out of its moment).
 			if m.machine and not m.indifferent() and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) > Survival.THREAT_RADIUS:
+				out.append(&"fight")
 				out.append(&"dodge")
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
 			if seen and m.machine:

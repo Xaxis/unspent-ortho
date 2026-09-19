@@ -374,7 +374,13 @@ tools print their own summaries.
   ever drawn from it. The lie certified itself. The only thing that catches this
   is expecting red and getting green: **when a test you wrote to demonstrate a
   bug passes first time, the test is wrong until proven otherwise.** Put the bug
-  back and watch it fail, every time, before you believe the fix.
+  back and watch it fail, every time, before you believe the fix. **The commonest
+  way a test excuses itself is an escape hatch for a moment that did not
+  arrive**: a guide test staged a runner, and when the runner had not roused
+  itself that frame it skipped its own assertions and passed — with the entire
+  feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
+  rather than waiting for the world to produce it, or the test reports on the
+  weather.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel

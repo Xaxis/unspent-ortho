@@ -148,6 +148,11 @@ func _watch() -> void:
 	var sim := game.player.sim
 	if sim != null and not retired.has(&"dodge") and sim.hero.dodge_at > 0.0:
 		retired[&"dodge"] = true
+	# Swinging once IS learning it, the same way a dodge spends its own lesson.
+	if sim != null and not retired.has(&"fight") and sim.hero.blow_at > 0.0:
+		retired[&"fight"] = true
+	# Swinging once IS learning it, the same way a dodge spends its own lesson.
+
 	# Holding the key IS learning it: the lesson is spent the moment the player
 	# does the thing, not when a lock happens to land on something.
 	if not retired.has(&"target") and Input.is_action_pressed(&"target"):

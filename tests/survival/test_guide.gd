@@ -433,3 +433,46 @@ func test_opening_the_journal_retires_its_lesson() -> void:
 	guide.call("_on_screen", &"journal", true)
 	check((guide.get("retired") as Dictionary).has(&"journal"), "opening it spends the lesson")
 	g.free()
+
+
+func test_the_swing_is_named_before_the_dodge_when_a_machine_comes_on() -> void:
+	# **THE CORE VERB, NEVER NAMED.** `side` is the only lesson carrying `swing`,
+	# it arrives after plate has already rung, and its words assume you have been
+	# striking all along. Nothing said which key did it.
+	#
+	# The moment is STAGED, not waited for. The first version of this let the
+	# runner rouse itself and skipped its own assertions when it had not -- and
+	# it passed with the whole feature deleted. A test that excuses itself when
+	# the moment does not arrive is testing nothing at all.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--spawn=runner"])))
+	var sim := g.player.sim
+	var coming: MobState = null
+	for m in sim.mobs:
+		if m.alive and m.machine:
+			coming = m
+	check(coming != null, "a machine is on the land")
+	if coming == null:
+		g.free()
+		return
+	# Roused, hostile, and standing off past the radius that hushes the glass:
+	# the exact moment both lessons are written for.
+	coming.mood = MobState.CHASING
+	coming.disposition = &"hostile"
+	coming.pos = sim.hero.pos + Vector2(Survival.THREAT_RADIUS + 4.0, 0.0)
+	var offered := _offered(g)
+	check(offered.has(&"dodge"), "the dodge is offered at this moment, got %s" % str(offered))
+	check(offered.has(&"fight"), "and so is the swing, got %s" % str(offered))
+	check(offered.find(&"fight") < offered.find(&"dodge"), "the swing comes first: %s" % str(offered))
+	# Swinging once spends it, the way a dodge spends its own.
+	var guide: Node = g.get_node("58_guide")
+	sim.hero.blow_at = 1.0
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"fight"), "swinging retires it")
+	g.free()
+
+
+func test_the_swing_lesson_names_the_swing_key() -> void:
+	eq(Guide.HINTS[&"fight"][1], [&"swing"], "it names the action, not a letter")
+	check(not String(Guide.HINTS[&"fight"][0]).contains("J"), "and spells no key in its words")
