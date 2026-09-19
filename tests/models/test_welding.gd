@@ -105,3 +105,63 @@ func test_the_weld_stops_where_the_mass_does() -> void:
 	for i in range(mass.size(), k.made.normals.size()):
 		same = same and k.made.normals[i].is_equal_approx(face)
 	check(same, "the face ruled across it is one flat plane, not welded into the mass")
+
+## Share of a model's shared corners where two faces meet under `crease` and were
+## left unaveraged -- how much of it is still cut glass.
+static func _hard_share(v: PackedVector3Array, n: PackedVector3Array, crease: float) -> float:
+	var by_pos := {}
+	for i in v.size():
+		var p: Vector3 = v[i]
+		var key := "%.3f,%.3f,%.3f" % [p.x, p.y, p.z]
+		if not by_pos.has(key):
+			by_pos[key] = ([] as Array)
+		(by_pos[key] as Array).append(n[i])
+	var limit := cos(deg_to_rad(crease))
+	var shared := 0
+	var hard := 0
+	for key: String in by_pos:
+		var ns: Array = by_pos[key]
+		if ns.size() < 2:
+			continue
+		shared += 1
+		for a in ns.size():
+			var done := false
+			for b in range(a + 1, ns.size()):
+				if (ns[a] as Vector3).dot(ns[b]) > limit and (ns[a] as Vector3).distance_to(ns[b]) > 1e-4:
+					hard += 1
+					done = true
+					break
+			if done:
+				break
+	return 0.0 if shared == 0 else float(hard) / float(shared)
+
+
+## **NOT EVERYTHING FACETED IS WRONG, AND THIS IS THE LIST THAT SAYS SO.**
+##
+## A share of hard corners reads like a defect report, so the next person to
+## sweep for welding will find these near the top and round them off to make a
+## number go green. They are faceted because the facets ARE the thing:
+##
+##   clints          limestone pavement is clints and grikes -- blocks broken at
+##                   a stride, and the fissures between them are the landscape
+##   cairn           a cairn has edges because somebody stacked it
+##   standing stone  a quarried leaning slab and a snapped CAST machine leg;
+##                   both were cut, neither was weathered round
+##   salt ridge      plates of crust that met, buckled and tipped, standing on
+##                   edge -- "a white tick with a cut under it, never a row of
+##                   dashes", which is the builder's own note
+##   pan gate        a machine. FOUND geometry is panelled and ruled by contract
+##                   (CLAUDE.md): a seam that catches the light is the material
+##
+## If one of these ever needs welding, the argument has to be about what the
+## thing IS, not about the number below.
+const FACETED_ON_PURPOSE: Array[int] = [PropKind.CLINTS, PropKind.CAIRN,
+	PropKind.STANDING_STONE, PropKind.SALT_RIDGE, PropKind.PAN_GATE]
+
+
+func test_what_is_faceted_on_purpose_keeps_its_edges() -> void:
+	for kind: int in FACETED_ON_PURPOSE:
+		var t := PropModels.template(kind, 0, Country.COAST)
+		gt(float(t.made_v.size()), 8.0, "%s is built" % PropKind.NAMES[kind])
+		gt(_hard_share(t.made_v, t.made_n, Rocks.ROCK_CREASE), 0.15,
+			"%s keeps the edges that ARE it -- see FACETED_ON_PURPOSE before welding this" % PropKind.NAMES[kind])
