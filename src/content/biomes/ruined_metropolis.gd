@@ -142,9 +142,39 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.FLOOR
 
 
-## Nothing is planted. What grows came up through a slab in the half of the city
-## nobody keeps, so it follows the same field the ground does.
+## A CITY THAT DIED WITH PEOPLE IN IT AND IS HALF KEPT, which is two statements
+## and the landscape has to make both. The FLOOR slabs carry what fell and what
+## somebody painted; the ROAD carries what was abandoned trying to LEAVE, which
+## is why the cars and the barricades and the checkpoints are only ever on it;
+## and the lamps and the archive are the half that is still kept -- something is
+## still changing the bulbs in a city with nobody in it.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
+	if g == Ground.FLOOR:
+		if r < 0.038:
+			return PropKind.DEBRIS
+		if r < 0.052:
+			return PropKind.RUIN
+		if r < 0.060:
+			return PropKind.LAMP
+		if r > 0.55 and r < 0.5565:
+			return PropKind.MURAL
+		return PropKind.ARCHIVE if r > 0.88 and r < 0.8835 else BiomeScatter.NONE
+	if g == Ground.ROAD:
+		if r < 0.030:
+			return PropKind.VEHICLE
+		if r < 0.044:
+			return PropKind.BARRICADE
+		return PropKind.CHECKPOINT if r > 0.70 and r < 0.7065 else BiomeScatter.NONE
+	if g == Ground.SCREE or g == Ground.GRAVEL:
+		if r < 0.034:
+			return PropKind.DEBRIS
+		return PropKind.WRECKAGE if r < 0.046 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		return PropKind.BUSH if r < 0.03 else BiomeScatter.NONE
+		if r > 0.30 and r < 0.3075:
+			return PropKind.PYLON
+		return PropKind.STACK if r > 0.80 and r < 0.8055 else BiomeScatter.NONE
+	if g == Ground.ROCK or g == Ground.MUD:
+		if r < 0.024:
+			return PropKind.DEBRIS
+		return PropKind.RUIN if r < 0.034 else BiomeScatter.NONE
 	return BiomeScatter.NONE

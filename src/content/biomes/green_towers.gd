@@ -145,15 +145,39 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	return Ground.FLOOR if gb < 0.22 else Ground.GRASS
 
 
-## Thick, and it grows straight out of the streets: the second-densest canopy in
-## the game, behind the sulphur jungle only because concrete is harder than warm
-## ground to put a root through.
+## THE GREEN IS WINNING AND THE CITY IS STILL THERE UNDER IT, so both have to be
+## in the ground at once or it reads as a wood with rubble in it. The FLOOR slabs
+## are what is left standing and carry the ruins and the murals; the MOSS and the
+## GRASS over them carry the trees that broke them; the NEEDLES are where the
+## canopy has properly closed. The ore is in the ROCK, because that is the city
+## opened up rather than covered over.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
-	if g == Ground.GRASS:
-		if r < 0.095:
-			return PropKind.BROADLEAF
-		return PropKind.BUSH if r < 0.15 else BiomeScatter.NONE
-	# Even the slabs are going: something has got in at every joint.
 	if g == Ground.FLOOR:
-		return PropKind.BUSH if r < 0.015 else BiomeScatter.NONE
+		if r < 0.040:
+			return PropKind.RUIN
+		if r < 0.054:
+			return PropKind.DEBRIS
+		return PropKind.MURAL if r > 0.62 and r < 0.6275 else BiomeScatter.NONE
+	if g == Ground.NEEDLES:
+		if r < 0.110:
+			return PropKind.BROADLEAF
+		return PropKind.BUSH if r < 0.132 else BiomeScatter.NONE
+	if g == Ground.MOSS or g == Ground.GRASS:
+		if r < 0.068:
+			return PropKind.BROADLEAF
+		if r < 0.086:
+			return PropKind.BUSH
+		return PropKind.STUMP if r > 0.50 and r < 0.508 else BiomeScatter.NONE
+	if g == Ground.GRAVEL:
+		if r < 0.032:
+			return PropKind.DEBRIS
+		return PropKind.VEHICLE if r < 0.044 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.030:
+			return PropKind.IRON_ORE
+		return PropKind.COPPER_ORE if r < 0.042 else BiomeScatter.NONE
+	if g == Ground.MUD:
+		if r < 0.026:
+			return PropKind.STUMP
+		return PropKind.WRECKAGE if r < 0.036 else BiomeScatter.NONE
 	return BiomeScatter.NONE
