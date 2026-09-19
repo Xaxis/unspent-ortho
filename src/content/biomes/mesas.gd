@@ -102,9 +102,13 @@ static func make() -> BiomeDef:
 	d.village_names = ["Rimgate", "Drywater"]
 	# Nothing falls here. What the weather does is BLOW, and the dust it lifts is
 	# what takes the horizon away.
+	# Clear was 46 of 100, which is not a mesa with weather on it, it is a mesa
+	# with a forecast. Weather has to be an EVENT (tests/sky/test_weather.gd: a
+	# landscape keeps clear days between 12% and 40% of spells), and what a mesa
+	# does when it is not clear is blow dust.
 	d.weather = [
-		[Weather.CLEAR, 46, 0.0], [Weather.GREY, 10, 0.0], [Weather.DUST, 26, 0.7],
-		[Weather.HEAT, 12, 0.0], [Weather.DRY_STORM, 6, 0.6],
+		[Weather.CLEAR, 30, 0.0], [Weather.GREY, 12, 0.0], [Weather.DUST, 34, 0.7],
+		[Weather.HEAT, 16, 0.0], [Weather.DRY_STORM, 8, 0.6],
 	]
 	d.mist = 0.04
 	# The wind is not in `Hazards.IDS` and is not invented here: what a mesa

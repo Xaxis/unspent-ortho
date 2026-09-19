@@ -95,9 +95,13 @@ static func make() -> BiomeDef:
 	d.villages = 1
 	d.village_order = 21
 	d.village_names = ["Steam Row", "Yellowfoot"]
+	# It declared NO clear weather at all, so nothing here was ever an event --
+	# every spell was one of five bad ones and the player could not tell a change
+	# from the baseline. The fumes still bite whenever the air is still and wet,
+	# which is still most of the time; it is just no longer all of it.
 	d.weather = [
-		[Weather.RAIN, 30, 0.6], [Weather.FOG, 22, 0.0], [Weather.GREY, 18, 0.0],
-		[Weather.HEAT, 18, 0.0], [Weather.STORM, 12, 0.5],
+		[Weather.RAIN, 26, 0.6], [Weather.FOG, 20, 0.0], [Weather.GREY, 16, 0.0],
+		[Weather.CLEAR, 16, 0.0], [Weather.HEAT, 14, 0.0], [Weather.STORM, 8, 0.5],
 	]
 	d.mist = 0.45
 	# Declared under BITE on purpose, like the Burning's, so the WEATHER decides:

@@ -75,9 +75,12 @@ static func make() -> BiomeDef:
 	d.villages = 0
 	d.village_order = 12
 	d.village_names = []
+	# Clear was 52 of 100 -- over half of all weather was no weather, on the
+	# landscape that is meant to be crossed with gear or not crossed. The heat and
+	# the dust carry it instead.
 	d.weather = [
-		[Weather.CLEAR, 52, 0.0], [Weather.HEAT, 20, 0.0], [Weather.DUST, 18, 0.6],
-		[Weather.GREY, 6, 0.0], [Weather.DRY_STORM, 4, 0.5],
+		[Weather.CLEAR, 30, 0.0], [Weather.HEAT, 28, 0.0], [Weather.DUST, 26, 0.6],
+		[Weather.GREY, 8, 0.0], [Weather.DRY_STORM, 8, 0.5],
 	]
 	d.mist = 0.02
 	# Three at once and no shade to answer any of them: this is the landscape that

@@ -104,9 +104,12 @@ static func make() -> BiomeDef:
 	d.villages = 1
 	d.village_order = 22
 	d.village_names = ["Canopy Row", "Fallen Mile"]
+	# Clear at 10 of 100 came out just under the floor, so the wettest reading of
+	# this place was also an accidental one. Still wet, still dark under the
+	# canopy; a day in eight of it is bright.
 	d.weather = [
-		[Weather.RAIN, 34, 0.6], [Weather.GREY, 22, 0.0], [Weather.FOG, 20, 0.0],
-		[Weather.STORM, 14, 0.5], [Weather.CLEAR, 10, 0.0],
+		[Weather.RAIN, 30, 0.6], [Weather.GREY, 20, 0.0], [Weather.FOG, 18, 0.0],
+		[Weather.CLEAR, 18, 0.0], [Weather.STORM, 14, 0.5],
 	]
 	d.mist = 0.4
 	# Wet under the canopy, dark under the canopy, and the towers are still coming

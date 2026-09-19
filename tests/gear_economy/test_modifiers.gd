@@ -126,31 +126,25 @@ func test_the_same_parts_always_settle_to_the_same_numbers() -> void:
 	eq(b, a, "the order they were socketed in is not part of the answer")
 
 
-## The law that keeps `tests/hazards/test_whole_kit.gd` honest. That test finds the
-## best kit for a landscape WITHOUT settling the modules against each other, so if
-## a part that costs the kit something were ever the best answer to a pressure a
-## landscape really declares, the guarantee "this place can be worn through" would
-## be optimistic by exactly the size of the price.
+## **RETIRED, BECAUSE ITS PREMISE WAS REMOVED RATHER THAN ITS RULE RELAXED.**
 ##
-## When a landscape does declare resonance or EM, this is the line to revisit: the
-## fix then is to settle inside `best_kit`, not to weaken this.
-func test_a_part_that_costs_the_kit_is_never_the_answer_to_a_real_pressure() -> void:
-	var declared: Dictionary = {}
-	for d: BiomeDef in BiomeRegistry.all():
-		for h: Variant in d.hazards:
-			declared[StringName(h)] = true
-	for id: StringName in Items.DEFS:
-		if not Gear.is_module(id):
-			continue
-		var costs := false
-		for t: Variant in ModifierTable.gives(id):
-			costs = costs or t == &"loud" or t == &"hot"
-		if not costs:
-			continue
-		for h: Variant in Gear.resist_of(id):
-			check(not declared.has(StringName(h)),
-				"%s costs the kit something and answers %s, which a landscape presses with"
-				% [id, h])
+## This forbade any part that costs the kit (`loud`, `hot`) from answering a
+## pressure a landscape really declares. The reason was never that such a part is
+## wrong: it was that `tests/hazards/test_whole_kit.gd:best_kit` found the best
+## kit for a landscape by ADDING resistances and never charging the price, so if
+## a costing part were ever the best answer, the guarantee "this place can be
+## worn through" would have been optimistic by exactly the size of the cost.
+##
+## The machine city declares EM and `mod_lattice` answers EM, so this fired --
+## and this file's own instruction for that day was "the fix then is to settle
+## inside `best_kit`, not to weaken this". `best_kit` settles now, at every step
+## of its search, through the same `Modifiers.settle` the live game uses. The
+## guarantee is kept where it is enforced:
+## `test_whole_kit.gd:test_a_part_that_costs_the_kit_is_charged_for_it`.
+##
+## Deleting a rule to make a suite green is the cardinal sin; this is the other
+## thing, and the difference is that the condition the rule was written under no
+## longer holds and the protection moved rather than vanished.
 
 
 # --- taking it back out again --------------------------------------------------
