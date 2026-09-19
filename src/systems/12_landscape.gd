@@ -295,27 +295,61 @@ const WORST_MS := 33.3
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
 
+## How many frames a run is allowed to spend warming up, and the ceiling on any
+## one of them (docs/PERF.md: warm-up is a separate promise, not an exemption).
+const WARM_MOST := 12
+const WARM_CEILING_MS := 250.0
+
+
+## Where warm-up ends: the leading run of frames that miss the p99 budget, which
+## on a real run is the first one or two while the world lands. Capped, so a
+## pathological run cannot classify its whole self as warm-up and pass.
+##
+## **THIS EXISTS BECAUSE THE JUDGEMENT WAS WRONG WITHOUT IT, IN THE DIRECTION
+## THAT MATTERS.** docs/PERF.md has always bounded warm-up separately, and this
+## line took its percentiles over every frame including it -- so a run measuring
+## p95 9.3 and p99 12.9 in steady play, both inside budget, printed PERF FAIL on
+## the strength of frame 0. An instrument that cannot report a pass cannot be
+## used to tell you when to stop working, and it teaches the reader to discount
+## it, which is worse than printing nothing.
+static func warm_frames(ms: PackedFloat32Array) -> int:
+	var n := 0
+	while n < ms.size() and n < WARM_MOST + 1 and ms[n] > P99_MS:
+		n += 1
+	return n
+
+
 ## WHAT A PLAYER CALLS JUMPY, stated as a distribution rather than an average.
 ## The worst frames are the whole complaint: a run that sits at 8 ms and spikes
-## to 60 four times a second is unplayable and has a fine mean. Percentiles are
-## taken over every frame of the run, and the count is printed so a short run
-## cannot pretend to be evidence.
+## to 60 four times a second is unplayable and has a fine mean. The count is
+## printed so a short run cannot pretend to be evidence.
+##
+## STEADY PLAY IS JUDGED AGAINST THE BUDGETS AND WARM-UP AGAINST ITS OWN BOUND,
+## because they are different promises and a player meets them differently: the
+## warm-up frames are seen once, the rest are lived with.
 static func frame_line(ms: PackedFloat32Array) -> String:
 	if ms.size() < 4:
 		return "world frames: too few to say (%d)" % ms.size()
-	var a := Array(ms)
+	var warm := warm_frames(ms)
+	var warm_worst := 0.0
+	for i in warm:
+		warm_worst = maxf(warm_worst, ms[i])
+	var steady := ms.slice(warm)
+	if steady.size() < 4:
+		return "world frames: too few after warm-up to say (%d of %d)" % [steady.size(), ms.size()]
+	var a := Array(steady)
 	a.sort()
 	var pick := func(q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)])
 	var over := 0
 	for v: float in a:
-		if v > 16.7:
+		if v > P99_MS:
 			over += 1
 	# WHERE the slow frames fall decides what kind of problem it is: bunched at the
 	# start is warm-up a player sees once, spread through the run is a hitch they
 	# live with. An average cannot tell those apart and they want opposite fixes.
 	var where := PackedStringArray()
-	for i in ms.size():
-		if ms[i] > 16.7:
+	for i in range(warm, ms.size()):
+		if ms[i] > P99_MS:
 			where.append("%d:%.0f" % [i, ms[i]])
 	# JUDGED, not just reported. docs/PERF.md sets the budgets and the reason the
 	# headline is the WORST frame: BotW's target frame is 33.3 ms, so ours may
@@ -337,8 +371,14 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 		bad.append("worst")
 	if p50 > 0.0 and worst / p50 > WORST_OVER_P50:
 		bad.append("worst/p50")
-	return "world frames: n %d, p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over 16.7 ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
-		a.size(), p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
-		over, 100.0 * over / a.size(),
+	# Warm-up is judged too, on its own terms, so it can never be a hiding place:
+	# a loading screen that is not over is still a loading screen.
+	if warm > WARM_MOST:
+		bad.append("warm-up frames")
+	if warm_worst > WARM_CEILING_MS:
+		bad.append("warm-up ceiling")
+	return "world frames: n %d steady (+%d warm-up, worst %.0f ms), p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over %.1f ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
+		a.size(), warm, warm_worst, p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
+		P99_MS, over, 100.0 * over / a.size(),
 		("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad)),
 		" ".join(where)]
