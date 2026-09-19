@@ -55,6 +55,16 @@ const HINTS := {
 	# walking round ledges the game meant them to go over. Said standing at one,
 	# because a movement lesson given on flat ground is a sentence about nothing.
 	&"jump": ["%s clears it: up two, across two, down three, and no further.", [&"jump"]],
+	# The third of the sixteen, and the one the world's own size argues for: a
+	# 1300-tile island is not a place you hold in your head. Said once the wake
+	# is out of sight behind you, because a survey of ground you can see is a
+	# picture of nothing.
+	&"map": ["%s opens the survey: where you have walked, and what the machines have been doing to it.", [&"map"]],
+	# The fourth, and the pair to `target`: you have learned to look at a machine,
+	# now learn not to be looked at. Said with one in view that has NOT noticed
+	# you, because that is the only moment crouching is a choice rather than a
+	# regret.
+	&"crouch": ["%s keeps you low and quiet. It has not seen you yet.", [&"crouch"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -66,6 +76,12 @@ const CARRY_SHARE := 0.6
 const LAMP_NIGHTFALL := 0.4
 ## Tiles within which a body counts as seen for its hint (the camera shows about 13 across).
 const SIGHT := 13.0
+
+## How far from the wake the survey earns itself. The camera shows about 27
+## tiles of ground, so this is a little over two screens: far enough that the way
+## back is no longer a thing you can see, which is the first moment a map is
+## worth opening rather than a picture of what is already in front of you.
+const MAP_FAR := 60.0
 
 
 static func goal(game: Game) -> String:
@@ -137,6 +153,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
 			if seen and m.machine:
 				out.append(&"target")
+			if seen and m.machine and not m.roused() and not game.body.crouched:
+				out.append(&"crouch")
 			if seen and m.first_meeting and not m.roused():
 				out.append(&"runner")
 			if seen and m.patrol and m.indifferent():
@@ -145,6 +163,9 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")
+	if game.world != null and game.player != null \
+			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
+		out.append(&"map")
 	if _at_a_ledge(game):
 		out.append(&"jump")
 	if Survival.use_target(game) != null:
