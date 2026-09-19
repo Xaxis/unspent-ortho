@@ -7,13 +7,16 @@ extends Node3D
 ##
 ## THESE ARE NOT BODIES. They are not fought, not targeted, not spawned and not
 ## culled; nothing here touches `FightSim`, a `MobState` or the hero, and no
-## roster row is read. They are the plan's traffic, and what they do for the
-## picture is what LANTERN law 3 says a near thing does for a far one: they cross
-## between the camera and the place, and they lay a SHADOW on a lit street. The
-## shadow is most of it. At this camera a machine eleven units up is a small dark
-## shape near the top of the frame; the bar of shade it drags across a lit lane
-## is what the eye reads, and it is the cue that says the thing is real and how
-## high it is.
+## roster row is read. They are the plan's traffic.
+##
+## WHAT THE PLAYER ACTUALLY SEES OF ONE IS THE LIGHT IT DROPS, not the machine.
+## At this camera a thing nineteen units up is a small shape at the edge of the
+## frame and deep inside the near depth of field; the beam it puts on the street
+## is the whole of the cue, and it is what says the thing is real and how high it
+## is. Two corrections were taken off frames to get there and both are written
+## where they belong (`flier_shade.gdshader`): it began as a bar of SHADE, which
+## is right in daylight and nothing at all on a night street, and then as a soft
+## pool wide enough to read as weather.
 ##
 ## THEY FLY THE MACHINES' OWN BEARING. `GenWorks.bearing(seed)` is the line every
 ## ruled work on the island lies on — turf cut in rows, drainage, the survey
@@ -51,13 +54,17 @@ const HIGH_STEP := 3.1
 ## corner so one is never seen to appear.
 const REACH := 26.0
 
-## The pool it drops on the street, in tiles, and how strong. Not a shadow —
-## `flier_shade.gdshader` records the frame that corrected that: the city is at
-## permanent night and a dark disc on a dark street is nothing. It is the
-## machines' own cold light, and it is what a player actually sees of something
-## passing nineteen units over their head.
-const SHADE := 5.5
-const SHADE_DARK := 0.85
+## The beam it puts on the street, in tiles, and how strong.
+##
+## Measured off a frame of the city, not chosen: at 5.5 the pool was a tenth of
+## the frame across, and anything that wide and that soft is read as weather
+## whatever colour it is. A beam narrow enough to be a beam is the point — the
+## street should brighten under one spot and go dark again as it passes.
+const SHADE := 3.2
+## Raised with the narrowing, because the two are one decision: the same light
+## through a third of the area has to be stronger per tile or the machine reads
+## as further away rather than better focused.
+const SHADE_DARK := 0.95
 
 ## Material ids (matter.gdshaderinc), as `ForeKinds` names them.
 const M_SWARF := 56
