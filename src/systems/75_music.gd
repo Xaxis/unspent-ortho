@@ -334,13 +334,43 @@ func _read_ahead() -> void:
 			soon[ranked[i]] = out[ranked[i]]
 
 
+## HOW HARD THE PLAN IS HUMMING HERE, which is two things and one sound.
+##
+## The first is where you are standing: an installation's own hum, each with its
+## own reach — a pylon only underneath it, a substation over its yard.
+##
+## The second is the REGION's temperature, and it is the slow half the score had
+## no way to say. `danger` is a machine that has noticed you and is close, which
+## rises and falls in seconds; a network tightening as you strip a landscape takes
+## an hour and never comes near you at all. Without this the whole chapter loop
+## (docs/VISION.md §10) was inaudible — you could carry a region from calm to
+## hostile and the only thing that changed was how the machines behaved when you
+## happened to meet one.
+##
+## It rides the SAME stem rather than a new one, which is the fiction as well as
+## the budget: the hum you hear standing under a pylon is the plan's own power,
+## and what the network does when it is looking for you is draw more of it. No new
+## key, nothing new to bake, and a landscape that has never been touched sounds
+## exactly as it did.
 func _read_works() -> void:
 	if game.query == null:
 		_grid = 0.0
 		return
-	# Each installation's reach is its own (a pylon only underneath it, a
-	# substation over its yard): SoundMix.works_near sums them.
-	_grid = float(SoundMix.works_near(game.query, game.player.pos)["grid"])
+	var hum := float(SoundMix.works_near(game.query, game.player.pos)["grid"])
+	_grid = maxf(hum, _unrest())
+
+
+## The plan's file on the region under the player, 0..1, found by what the
+## disposition system KEEPS rather than by its name.
+func _unrest() -> float:
+	if game == null or game.world == null or game.player == null:
+		return 0.0
+	for sys in game.systems:
+		var v: Variant = sys.get("interference")
+		if v is Interference:
+			var net := Interference.network(game.world, game.player.pos)
+			return clampf((v as Interference).value(net), 0.0, 1.0)
+	return 0.0
 
 
 func _sentinel(p: Vector2) -> Dictionary:

@@ -18,33 +18,64 @@ const Sx := preload("res://tests/save/save_fixture.gd")
 ## alone, red in a gate.
 ##
 ## A TOLERANCE WOULD BE THE SAME MISTAKE ONE STEP OUT: a number small enough to
-## catch a reset today is a number a slower machine breaches tomorrow. What the
-## round trip is actually for is that the value CAME BACK -- that the key was
-## written, read and not silently reset to zero -- and a running clock can be
-## asked that exactly: it may only have gone forward.
+## catch a reset today is a number a slower machine breaches tomorrow.
+##
+## AND SO WOULD "IT ONLY EVER MOVES FORWARD", which is what stood here first and
+## was wrong for a reason worth keeping written down. It compared the reloaded
+## clock against `SaveGame.collect()` taken AFTER `save_to` — the live game a
+## moment past the instant the file was written — so the reloaded value is
+## correctly OLDER than it, and on a busy machine, where a headless play burns
+## real seconds, that shows up as a clock that "came back as 0.0242, under the
+## 0.0242 that was saved". Both halves of that sentence were false: it had not
+## gone backwards, and the thing it was held against was not what was saved.
+##
+## THE FIX IS NOT TO RELAX THE COMPARISON BUT TO COMPARE THE RIGHT TWO THINGS.
+## The round trip is about the FILE, so a running clock is held to the file's own
+## bytes — where neither side is still ticking and equality can be exact. That is
+## stronger than what it replaces, not weaker: it fails on a `_load` that drops
+## the field, on one that resets it, and now also on one that rounds it.
 const RUNNING := {"play": "seconds", "score": "clock"}
 
 
-## A clock that was saved and read back: it carries, and it only moves forward.
-func _carried(key: String, was: Variant, now: Variant) -> void:
+## A clock that was saved and read back, held to what the file actually holds.
+func _carried(key: String, wrote: Variant, now: Variant) -> void:
 	check(now != null, "key %s came back at all" % key)
 	if now == null:
 		return
+	check(wrote != null, "key %s reached the file" % key)
+	if wrote == null:
+		return
 	var field: String = RUNNING[key]
-	var a := SaveCodec.to_num((was as Dictionary).get(field), -1.0)
+	var a := SaveCodec.to_num((wrote as Dictionary).get(field), -1.0)
 	var b := SaveCodec.to_num((now as Dictionary).get(field), -1.0)
 	check(a >= 0.0 and b >= 0.0, "key %s: %s is a number on both sides" % [key, field])
-	# The one thing that can be said about a clock that never stopped: it did not
-	# go backwards, and it was not reset. A headless play runs no real seconds, so
-	# both are usually 0.0 and the value of this line is the day somebody makes
-	# `_load` drop the field -- b would come back below a, or not at all.
-	check(b >= a, "key %s: %s came back as %.4f, under the %.4f that was saved" % [key, field, b, a])
+	eq(b, a, "key %s: %s came back as %.6f, and the file holds %.6f" % [key, field, b, a])
 	# Everything else under that key is ordinary state and is held exactly.
-	for other: Variant in (was as Dictionary):
+	for other: Variant in (wrote as Dictionary):
 		if String(other) == field:
 			continue
 		eq(SaveCodec.canonical((now as Dictionary).get(other)),
-			SaveCodec.canonical((was as Dictionary)[other]), "key %s.%s:" % [key, other])
+			SaveCodec.canonical((wrote as Dictionary)[other]), "key %s.%s:" % [key, other])
+
+
+## Wind both running clocks on to a value nothing could arrive at by accident.
+## Written through the systems that own them, so if either stops keeping its clock
+## where this reaches, the test says so instead of quietly going vacuous again.
+const PLAYED := 1837.406219482
+const SCORED := 942.718360901
+
+func _wind_clocks(g: Game, saver: Object) -> void:
+	saver.set("play_seconds", PLAYED)
+	eq(float(saver.get("play_seconds")), PLAYED, "05_save still keeps play_seconds")
+	var music := Sx.system(g, "75_music")
+	check(music != null, "the score system is loaded")
+	if music == null:
+		return
+	var conductor: Variant = music.get("conductor")
+	check(conductor != null, "the conductor is where the score's clock lives")
+	if conductor == null:
+		return
+	conductor.set("time", SCORED)
 
 
 func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
@@ -58,9 +89,21 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	for k: StringName in [&"world", &"clock", &"player", &"body", &"inventory", &"survival", &"weather", &"play", &"ui"]:
 		check(keys.has(k), "key %s registered" % k)
 	eq(keys[0], &"world", "core state registers first, so it applies first")
+	# PUT A NUMBER IN BOTH CLOCKS BEFORE SAVING, or neither of them proves anything
+	# on a quiet machine. A headless play burns almost no real seconds, so both sit
+	# at 0.0, and 0.0 survives being dropped, reset, rounded or truncated — every
+	# way this could break comes back 0.0 and passes. The values are deliberately
+	# awkward: enough decimals that a snap or a float32 would show, and different
+	# from each other so one cannot stand in for the other.
+	_wind_clocks(a, saver)
 	var why: String = saver.call("save_to", 2)
 	eq(why, "", "saved to slot 2")
 	var before := SaveGame.collect()
+	# What actually went to disk, which for a clock that never stopped is NOT the
+	# same as what the game holds a moment after writing it. Read here, while the
+	# slot is known, and used only for the keys that are still ticking.
+	var wrote: Dictionary = SaveFile.read(SaveSlots.path(2)).get("data", {})
+	check(not wrote.is_empty(), "the file that was just written reads back")
 	var live := _live(a)
 	Sx.end(a)
 	eq(SaveGame.keys().size(), 0, "the registry ends with its game")
@@ -75,7 +118,7 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	var after := SaveGame.collect()
 	for k: String in before:
 		if RUNNING.has(k):
-			_carried(k, before[k], after.get(k))
+			_carried(k, wrote.get(k), after.get(k))
 			continue
 		eq(SaveCodec.canonical(after.get(k)), SaveCodec.canonical(before[k]), "key %s:" % k)
 	eq(after.keys().size(), before.keys().size(), "no key lost or gained")

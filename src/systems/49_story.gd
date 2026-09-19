@@ -51,6 +51,8 @@ var _cast: Node = null
 var journal: UiJournalScreen
 var _ui: Node
 var _journal_down := false
+## The first morning is still to be said (StoryContent.OPENING).
+var _opening := false
 
 
 func setup(g: Game) -> void:
@@ -80,6 +82,20 @@ func started() -> void:
 		journal = UiJournalScreen.new()
 		_ui.call("add_app", journal)
 	_stage()
+	# The first morning is said on the first FRAME, not here: the slate's message
+	# line is built by 90_ui, which starts after this one, and a line said into
+	# the gap is a line nobody sees.
+	_opening = not Story.began
+	Story.began = true
+
+
+## The first thing the game says, on the first morning only (StoryContent.OPENING).
+## Through the message line, which holds its words until the glass is quiet, so
+## it cannot arrive over a fight or under a page. A loaded game has heard it.
+func _open_the_game() -> void:
+	_opening = false
+	for line: String in StoryContent.OPENING:
+		Events.message.emit(line)
 
 
 ## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
@@ -160,6 +176,8 @@ func _read_journal_key() -> void:
 
 
 func _process(delta: float) -> void:
+	if _opening:
+		_open_the_game()
 	if game != null and game.clock != null:
 		Story.now = game.clock.minutes
 	if game == null or game.player == null:
@@ -299,6 +317,24 @@ func _readable_in_front() -> WorldProp:
 
 
 func _start_talk(row: Dictionary) -> void:
+	# Somebody who lives here, and this region has something to ask of him or to
+	# thank him for (StorySubarc): that comes before their trade's own words.
+	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
+		var look := subarc_look()
+		var asked := StorySubarc.talk(look, StorySubarc.raised(look))
+		if not asked.is_empty():
+			# Whoever it is, they are what their trade is: a cutter, a digger.
+			var theirs := StoryProps.talk_for(row, game)
+			if theirs != &"":
+				asked["title"] = str(StoryContent.TALKS[theirs].get("title", asked.title))
+			talk = StoryTalk.of_made(asked)
+			view.talk = talk
+			view.choice = 0
+			game.talking = true
+			_hush(true)
+			Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+			view.refresh()
+			return
 	var id := StoryProps.talk_for(row, game)
 	var character := StringName(str(row.get("character", &"")))
 	if id == &"":
@@ -598,6 +634,76 @@ func tour_place(what: String) -> Vector2:
 	return Vector2.INF
 
 
+## What the region under the player looks like to the story, for the rules that
+## decide what it asks of him (StorySubarc). Gathered here because the state is
+## the landmarks' and the works' own, and the rules may not go looking for it.
+func subarc_look() -> StorySubarcLook:
+	var look := StorySubarcLook.new()
+	if game.world == null:
+		return look
+	look.region = game.world.region_at(floori(game.player.pos.x), floori(game.player.pos.y))
+	if look.region < 0:
+		return look
+	var d := BiomeRegistry.at(game.world, game.player.pos)
+	look.land = d.id if d != null else &""
+	for w: WorksSite in Works.sites(game.world):
+		if w.region == look.region:
+			look.works = w.pos
+			look.works_name = _mark_name(w.pos)
+			var works := _system("34_works")
+			var st: WorksState = works.call("state", look.region) if works != null else null
+			look.works_dark = st != null and st.broken()
+	# What the plan has lost here, which is the only thing that ends a region's
+	# danger (docs/VISION.md §10, unspent-ortho-cb): the yard dark or the keeper down.
+	var keepers := _system("44_sentinels")
+	if keepers != null:
+		for st: SentinelState in keepers.get("_states"):
+			if st.region == look.region and st.fallen:
+				look.keeper_down = true
+	look.answered = Chapters.answered_here(game)
+	var net := Interference.network(game.world, game.player.pos)
+	var disposition := _system("32_disposition")
+	var file: Interference = disposition.get("interference") if disposition != null else null
+	look.level = file.level_name(net) if file != null else &"calm"
+	var marks := _system("22_landmarks")
+	var state: Variant = marks.get("state") if marks != null else null
+	for l: LandmarkSite in Landmarks.sites(game.world):
+		if l.region != look.region:
+			continue
+		var def := Landmarks.by_id(l.kind)
+		look.landmarks.append({"id": l.id, "kind": l.kind,
+			"name": def.display_name if def != null else String(l.kind),
+			"pos": l.pos,
+			"found": state != null and bool(state.call("is_found", l.id)),
+			"opened": state != null and bool(state.call("is_opened", l.id))})
+	return look
+
+
+## What the people here call the ground a yard works: the machines' own mark on
+## it, which worldgen already recorded beside the work (GenWorks).
+const MARK_NAMES := {&"cut": "the cut", &"scorch": "the burn", &"quarry": "the quarry", &"bores": "the bore field"}
+
+
+func _mark_name(at: Vector2) -> String:
+	var best := ""
+	var near := INF
+	for m: Dictionary in game.world.landmarks:
+		if not m.has("mark"):
+			continue
+		var d: float = (m.get("pos", Vector2.INF) as Vector2).distance_to(at)
+		if d < near and MARK_NAMES.has(m.mark):
+			near = d
+			best = str(MARK_NAMES[m.mark])
+	return best if best != "" else "the works"
+
+
+func _system(named: String) -> Node:
+	for s in game.systems:
+		if s.name == named:
+			return s
+	return null
+
+
 ## What a tour may await of the story.
 func tour_seen(what: StringName) -> bool:
 	if what == &"talking":
@@ -610,6 +716,17 @@ func tour_seen(what: StringName) -> bool:
 		return Story.landed(StringName(what.substr(5)))
 	if what.begins_with("journal:"):
 		return journal != null and journal.is_open and journal.section() == StringName(what.substr(8))
+	if what == &"asked":
+		return not StorySubarc.raised(subarc_look()).is_empty()
+	if what.begins_with("asked:"):
+		var said := StorySubarc.raised(subarc_look())
+		return not said.is_empty() and String(said.goal) == what.substr(6)
+	if what == &"heard_ask":
+		var mine := StorySubarc.raised(subarc_look())
+		return not mine.is_empty() and Story.heard(mine.id)
+	if what == &"thanked":
+		var got := StorySubarc.raised(subarc_look())
+		return not got.is_empty() and Story.heard(StringName("%s:said" % got.id))
 	if what == &"testimony":
 		var m := _locked_body()
 		return m != null and not StoryContent.testimony(m.role, m.row).is_empty()

@@ -1,0 +1,58 @@
+# The whole world map in dev mode (owner, 2026-09-18, "in dev mode you should
+# obviously be able to reveal the full world map on the map").
+#
+# The proof is the PAIR of frames, not either one: the same survey, the same seed,
+# the same scale, first as the player has walked it and then whole. A single
+# revealed map proves nothing — a map is supposed to show the world — and the
+# thing that could go wrong here is silent in one picture and obvious in two.
+#
+# Frame 3 is the other half and it is the one that matters: the fog comes back
+# exactly. A cheat that cannot be turned off is a cheat that ends up in somebody's
+# save, and this one is deliberately built so it cannot.
+#   tools/tour.sh tours/dev-map.tour --seed=4 --hour=11 --weather=clear:0 --dev=go
+coast calm
+wait 1.0
+
+# `--dev=go` stands the app up at boot, and a page on the glass holds every other
+# key, so the first thing to do is put it away.
+tap dev_toggle
+await app:none 5
+
+# --- as walked: a disc around the spawn and nothing else -------------------------------
+press map 0.2
+await app:map 6
+wait 0.4
+shot 01-as-walked with app:map
+press map 0.2
+await app:none 5
+
+# --- the whole island ------------------------------------------------------------------
+tap dev_toggle
+await app:dev 5
+choose map
+tap use
+wait 0.3
+shot 02-the-row-says-shown with app:dev
+tap dev_toggle
+await app:none 5
+press map 0.2
+await app:map 6
+wait 0.4
+shot 03-the-whole-island with app:map
+press map 0.2
+await app:none 5
+
+# --- and back, exactly -----------------------------------------------------------------
+tap dev_toggle
+await app:dev 5
+choose map
+tap use
+wait 0.3
+tap dev_toggle
+await app:none 5
+press map 0.2
+await app:map 6
+wait 0.4
+shot 04-as-walked-again with app:map
+press map 0.2
+await app:none 5

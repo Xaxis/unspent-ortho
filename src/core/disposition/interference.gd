@@ -21,6 +21,22 @@ const CAUSES := {
 	&"trespass": 0.05,
 	&"curfew": 0.06,
 	&"theft": 0.10,
+	# STRIPPING A REGION IS NOTICED, and it is the smallest cause in the list on
+	# purpose. One seam is nothing; a landscape worked out is the plan losing a
+	# resource it had surveyed, and what files it is the ACCUMULATION.
+	#
+	# This is the load-bearing half of what makes a chapter a game rather than a
+	# checklist (docs/VISION.md §10). The three demands are not three chores: a
+	# region gets more dangerous the more of it you take, so by the time you have
+	# mined what the place asks for it is wary or worse, and the only thing that
+	# ends that is taking the keeper or putting the yard dark — which is the very
+	# work you needed the mining to be equipped for. You dig yourself into the
+	# danger to earn the means of ending it.
+	#
+	# 0.04 against a chapter's ceiling of twelve seams is 0.48, which crosses
+	# `wary` and stops just under `hostile`: the place turns on you while you work
+	# it and never sends hunters for mining alone.
+	&"quarried": 0.04,
 	&"sabotage": 0.16,
 	&"filed": 0.14,
 	&"killed_machine": 0.13,

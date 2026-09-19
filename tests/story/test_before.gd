@@ -115,3 +115,18 @@ func test_what_became_of_hannah_is_june_s_to_say() -> void:
 	_walk(&"june", ["Do you know who I am?", "What happened to your mother?"])
 	check(Story.landed(&"hannah_died"), "the winter of thirty-four, the north road")
 	Story.forget()
+
+
+## In 2029 the machines' works have not risen (unspent-ortho-df): a mirrored slot
+## stands on its twin's tile whatever its own world holds, so the lab stands where
+## the yard will, in a Before with no yard in it.
+func test_a_mirrored_place_does_not_ask_its_own_world_for_its_ground() -> void:
+	var now := WorldGen.generate(SEED, SIZE)
+	var then := WorldGen.generate(SEED, SIZE, &"", Realm.ERA)
+	var placed_now := StoryPlan.cast(now)
+	# Strip the Before of every works site: the slot must not care.
+	then.props = then.props.filter(func(p: WorldProp) -> bool: return not Takes.is_plan_work(p.kind))
+	var placed_then := StoryPlan.cast(then)
+	check(placed_then.has(&"then_lab"), "the lab is cast in a Before with no works in it")
+	if placed_then.has(&"then_lab"):
+		eq(placed_then[&"then_lab"].pos as Vector2, placed_now[&"the_yard"].pos as Vector2, "where the yard will rise")

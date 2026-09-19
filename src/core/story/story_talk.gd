@@ -15,6 +15,24 @@ extends RefCounted
 var id: StringName = &""
 var node: StringName = &""
 var over := false
+## A conversation built at the moment it is had, in the shape TALKS uses: what a
+## region asks of him is about THAT region, so its words cannot be written down
+## in advance (StorySubarc). `mark` is what Story remembers having been told.
+var made: Dictionary = {}
+
+
+## A conversation nobody wrote down: its def is handed over whole.
+static func of_made(def: Dictionary) -> StoryTalk:
+	var t := StoryTalk.new()
+	if def.is_empty():
+		t.over = true
+		return t
+	t.made = def
+	t.node = StringName(str(def.get("start", &"")))
+	@warning_ignore("return_value_discarded")
+	Story.hear(StringName(str(def.get("mark", &""))))
+	t._land(t._node())
+	return t
 
 
 static func start(talk_id: StringName) -> StoryTalk:
@@ -30,7 +48,11 @@ static func start(talk_id: StringName) -> StoryTalk:
 
 
 func title() -> String:
-	return String(StoryContent.TALKS.get(id, {}).get("title", ""))
+	return String(_def().get("title", ""))
+
+
+func _def() -> Dictionary:
+	return made if not made.is_empty() else StoryContent.TALKS.get(id, {})
 
 
 func says() -> PackedStringArray:
@@ -65,7 +87,10 @@ func pick(i: int) -> bool:
 	var r: Dictionary = rs[i]
 	var said := StringName(str(r.get("pick", &"")))
 	if said != &"":
-		Story.choose(StringName("%s.%s" % [id, node]), said)
+		# A made conversation says under what name its answer is remembered, since
+		# it has no id of its own (StorySubarc: "ask.REGION:goal").
+		var where := StringName(str(_node().get("pick_at", &"")))
+		Story.choose(where if where != &"" else StringName("%s.%s" % [id, node]), said)
 	for b: StringName in r.get("beats", []):
 		Story.beat(b)
 	var to := StringName(str(r.get("to", &"")))
@@ -85,7 +110,7 @@ func _land(n: Dictionary) -> void:
 
 
 func _nodes() -> Dictionary:
-	return StoryContent.TALKS.get(id, {}).get("nodes", {})
+	return _def().get("nodes", {})
 
 
 func _node() -> Dictionary:
