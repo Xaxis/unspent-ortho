@@ -55,10 +55,33 @@ func spike(a: Vector3, b: Vector3, r: float, sides: int, col: Color) -> void:
 
 
 ## A tapered, slightly bent limb from a to b: trunks, branches, posts, logs.
-func limb(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Color, bend: Vector3 = Vector3.ZERO) -> void:
+## How far a limb turns before it keeps an edge.
+##
+## **A LIMB IS A TUBE AND ITS FACETS RAN THE WHOLE LENGTH OF IT.** The frustums
+## of an n-sided limb meet at 360/n degrees -- 72 at five sides, 60 at six --
+## and `MeshKit.CREASE` is 52, so neither rounded and every branch, spar and pole
+## in the game carried a hard seam from end to end. The driftwood measured 91% of
+## its corners hard and read as milled dowel. A long thin limb shows that seam
+## across its whole surface where a lumpy mass hides it, which is why this is the
+## single widest-reaching weld in the package: 123 call sites.
+##
+## GROWN is the default so all of them get it for nothing. SAWN is for a caller
+## whose timber was CUT -- a spar, a plank edge, a post somebody squared -- and
+## it belongs at the call site because only the builder knows which its wood is.
+## Declared here rather than discovered later by whoever wonders why a wreck's
+## timbers look like dowel.
+const GROWN := 76.0
+const SAWN := 20.0
+
+
+func limb(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Color, bend: Vector3 = Vector3.ZERO, crease: float = GROWN) -> void:
+	var start := made.vertex_count()
 	var mid := a.lerp(b, 0.5) + bend
 	_frustum(a, mid, r0, lerpf(r0, r1, 0.5), sides, col)
 	_frustum(mid, b, lerpf(r0, r1, 0.5), r1, sides, col)
+	# Both frustums in one bracket, so the joint at `mid` rounds with the rest:
+	# a branch does not have a ring round its middle.
+	made.smooth_range(start, made.vertex_count(), crease)
 
 
 func _frustum(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Color) -> void:

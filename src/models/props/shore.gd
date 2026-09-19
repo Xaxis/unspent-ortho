@@ -20,31 +20,12 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 
 
 ## Sea-worn wood is the one thing on a beach with no edges left on it, and it was
-## the hardest-faceted model in the game: 91% of its shared corners kept a
-## crease the surface does not have. The logs are `Kit.limb`s -- two frustums of
-## five or six sides, which meet at 72 and 60 degrees, so neither welds at the
-## default `MeshKit.CREASE` of 52 and a silvered trunk read as a milled post.
-##
-## Bracketed round the WHOLE build rather than per limb, because the logs lie
-## across each other and none of them shares a vertex position with another, so
-## there is nothing between them to weld by accident. The three-sided twigs meet
-## at 120 and stay hard, which is right: a twig is a stick.
-##
-## `Kit.limb` itself is left alone deliberately. It has 123 callers across ten
-## files and 77 of them are in one file another builder is working in; welding it
-## there is a change to everybody's models at once and wants asking first.
-static func driftwood(k: Kit, v: int, c: int) -> void:
-	var start := k.made.vertex_count()
-	_driftwood(k, v, c)
-	k.made.smooth_range(start, k.made.vertex_count(), SEA_WORN)
+## the hardest-faceted model in the game at 91% of its corners. The rounding now
+## comes from `Kit.limb` itself (see `Kit.GROWN`), which welds each limb
+## separately -- finer than the bracket that used to sit here, which spanned the
+## whole build.
+static func driftwood(k: Kit, v: int, _c: int) -> void:
 
-
-## How far sea-worn wood turns before it keeps an edge. Above the 72 of a
-## five-sided limb so both limb profiles round, below the 120 of a twig.
-const SEA_WORN := 76.0
-
-
-static func _driftwood(k: Kit, v: int, _c: int) -> void:
 	var s := 10000 + v * 13
 	var woods: Array[Color] = [P.LINEN[3], P.ASH[3], P.LINEN[2]]
 	if v % 3 == 2:
