@@ -35,6 +35,23 @@ const RATE := 1.55
 ## Under this the keys are doing nothing and the setting is not worth writing.
 const SETTLE := 0.0005
 
+## AT THE BOTTOM OF THE ZOOM THE CAMERA COMES DOWN OFF ITS PERCH (owner, twice:
+## "when player zooms all the way in when it reaches maximum zoom in the camera
+## should glide to third person perspective").
+##
+## Spent over the last of the zoom's own range rather than triggered when it
+## bottoms out, which is what makes it a GLIDE: the angle is a function of how
+## far in you are, so it comes down as you lean in and goes back up as you pull
+## out, and there is no state to be in and no moment where the picture jumps. A
+## press is a nudge toward it and a hold is the whole move, which is the same
+## gesture the zoom already is.
+##
+## **`THIRD_PITCH` IS THE OWNER'S TO RULE AND THIS NUMBER IS A PROPOSAL.** What
+## reads as third person is a judgement about a picture, so it was shot as a
+## sheet at several angles rather than picked here and presented as finished.
+const GLIDE_BAND := 0.16
+const THIRD_PITCH := 30.0
+
 var _level := 0.0
 var _saved := 0.0
 var _save_in := 0.0
@@ -48,6 +65,15 @@ static func height_of(level: float) -> float:
 	return lerpf(CLOSE, FAR, clampf(level, 0.0, 1.0))
 
 
+## The camera's pitch for a zoom level: the play angle everywhere except the last
+## `GLIDE_BAND` of the way in, where it eases to `THIRD_PITCH`. Smoothstepped, so
+## the tip-over has no corner in it at either end — a linear ramp reads as the
+## camera being dragged, and the whole ask was that it GLIDE.
+static func pitch_of(level: float) -> float:
+	var t := clampf(inverse_lerp(GLIDE_BAND, 0.0, level), 0.0, 1.0)
+	return lerpf(CameraRig.PITCH_DEG, THIRD_PITCH, t * t * (3.0 - 2.0 * t))
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
 	# A shot or a tour that was given `--zoom=` is staging a picture and this
@@ -57,6 +83,9 @@ func setup(g: Game) -> void:
 	else:
 		_level = float(PlayerSettings.value(&"picture.zoom"))
 		g.camera.view_height = height_of(_level)
+	# A game opening at the bottom of the zoom opens in third person, rather than
+	# snapping down to it on the first frame the keys are read.
+	g.camera.pitch_deg = pitch_of(_level)
 	_saved = _level
 
 
@@ -81,6 +110,11 @@ func _process(delta: float) -> void:
 		var by := pow(RATE, way * delta)
 		_level = level_of(height_of(_level) * by)
 		game.camera.view_height = height_of(_level)
+	# Written every frame and not only while a key is down, so the angle cannot be
+	# left behind by anything else that moves the level — and so a system that
+	# borrowed the camera and put its own pitch back (95_flyover) is corrected on
+	# the first frame this file owns it again.
+	game.camera.pitch_deg = pitch_of(_level)
 	# Written once the hand comes off the key, not on every frame of the sweep:
 	# a setting file is not a place to put sixty writes a second.
 	if absf(_level - _saved) > SETTLE:
@@ -97,4 +131,9 @@ func tour_seen(what: StringName) -> bool:
 			return game != null and game.camera != null and game.camera.view_height > CameraRig.VIEW_HEIGHT + 1.0
 		&"zoomed_in":
 			return game != null and game.camera != null and game.camera.view_height < CameraRig.VIEW_HEIGHT - 1.0
+		&"third_person":
+			# Asked of the LIVE camera and not of `_level`, so a tour proves the
+			# picture and not this file's own bookkeeping.
+			return game != null and game.camera != null \
+				and game.camera.pitch_deg < lerpf(CameraRig.PITCH_DEG, THIRD_PITCH, 0.5)
 	return false
