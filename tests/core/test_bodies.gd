@@ -270,10 +270,20 @@ func test_spread_confines_a_landscape_to_one_continent() -> void:
 	if d == null:
 		return
 	var was := d.spread
+	# **NOTHING CONFINING IT HAS TO BE SAID, NOT LEFT UNSAID.** This arm used to
+	# measure the snowfield's DECLARED spread, which is the default `(0, 0)` — and
+	# the default is not "everywhere", it is `GenBodies.MOST_BODIES`, about half
+	# the continents. At this world's continent count half rounds to ONE, so the
+	# control arm and the confined arm were measuring the same thing and the test
+	# could never fail for the reason it names. It failed for a different one:
+	# the world grew, the count changed, and 1 stopped being greater than 1.
+	var planned: int = (GenBodies.plan(1, Realm.SURFACE, 1024).bodies as Array).size()
+	d.spread = Vector2i(0, planned)
 	var wide := _continents_holding(&"snowfield", 1, 1024)
 	d.spread = Vector2i(0, 1)
 	var narrow := _continents_holding(&"snowfield", 1, 1024)
 	d.spread = was
+	gt(float(planned), 1.0, "this world plans more than one continent, or the test proves nothing")
 	gt(float(wide), 1.0, "the snowfield spans several continents when nothing confines it")
 	eq(narrow, 1, "and exactly one when spread says at most one")
 
