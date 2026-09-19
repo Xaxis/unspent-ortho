@@ -81,6 +81,34 @@ Note the judged line still prints FAIL for `max` and `max/p50`, because
 `frame_line` takes its distribution over every frame including warm-up. The
 instrument does not yet make the split this document promises.
 
+### Measuring on a machine you do not control
+
+That reading was taken at load 45 and could not be repeated: the machine sat
+between 55 and 155 for the rest of the evening and never came back down, so
+every absolute number after it was a number about the machine. **Best-of-N does
+not rescue this** — the runs themselves add load, and the floor keeps moving
+under them.
+
+What does survive is an **A/B alternated under the same conditions**: run the
+old code and the new code turn about, so drift lands on both arms equally, and
+read the DIFFERENCE rather than either number. Four runs, 300 frames each,
+alternating, at load ~60-70:
+
+              p50      p95      p99
+    before   10.2     69.0    141.5
+    after    10.3     51.1     93.4
+    before   10.1     63.7    136.8
+    after     9.7     36.5     79.4
+
+**p95 down 26-43%, p99 down 34-42%, p50 unchanged.** A median that does not move
+while the tail collapses is the exact signature of removing a periodic stall, as
+against making everything faster — which is what the fix claims to have done, and
+is the shape to look for when judging any hitch fix.
+
+It also says plainly that **the hitch is not finished**: p99 is still 79-93 ms
+here. Those are inflated by the load, but the remaining spikes are real and they
+are proc-side now that physics tops out at 4 ms.
+
 ## The hitch, found
 
 **`Chapter.ore_standing` swept every prop in the world, once per hold-keeping
