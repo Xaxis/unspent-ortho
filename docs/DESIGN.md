@@ -505,6 +505,14 @@ test can fail on rather than a hope about spawn tables.
   standing on (§10.3, `RoadHold`). So a chapter answered is also a curriculum
   finished, and the two progressions are one progression seen twice — which is
   the test of whether this is a teaching system or a tutorial bolted to a game.
+- **A REFUSAL THAT DOES NOT NAME THE ALTERNATIVE READS AS A WALL.** The road
+  holds already said the true thing — "Plate and pins, and nothing in your hands
+  will cut it" — and taught the false one, that there is no way through. VISION
+  §10.3 forbids a gate with no third option, and a player who is told only what
+  they cannot do has been given one whatever the code allows. Three ways exist
+  (cut it, answer the place, leave the road) and the lesson now names all three.
+  The general rule, because it is not only about barricades: **when the game says
+  no, it says no TO something and yes to something else, or the no is a lock.**
 - **Nothing here may gate.** A haven is safe, not compulsory. A player who walks
   out on the first minute and learns everything the hard way is playing the game
   correctly and must never be stopped, told off or rewound. The opening is a

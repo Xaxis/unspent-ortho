@@ -561,3 +561,42 @@ func test_a_teacher_with_nothing_left_to_teach_says_so() -> void:
 		retired[id] = true
 	eq(guide.call("teach_now"), false, "with every lesson spent, nobody claims to teach")
 	g.free()
+
+
+func test_a_held_road_says_all_three_ways_past_it() -> void:
+	# docs/DESIGN.md §Safe havens: "each haven teaches what the road out of it
+	# will ask for". VISION §10.3 is emphatic that a hold is NOT a lock -- cut it,
+	# answer the place, or leave the road, and all three are real. A player told
+	# none of them meets a barricade and reads it as a wall, which is the message
+	# saying no that §10.3 forbids, wearing a model.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=256"])))
+	var holds: Node = g.get_node("24_holds")
+	check(holds != null, "the holds system loads")
+	if holds == null:
+		g.free()
+		return
+	# Stand at a hold the plan still keeps. NO escape hatch if there is none:
+	# a test that excuses itself when its moment does not arrive is reporting on
+	# the weather, and this world is asserted to have one.
+	var sites: Array = holds.get("sites")
+	var closed_at := Vector2.INF
+	for h: Variant in sites:
+		if bool(holds.call("closed", h)):
+			closed_at = h.pos
+			break
+	check(closed_at.is_finite(), "seed 4 has a road the plan is standing on")
+	if not closed_at.is_finite():
+		g.free()
+		return
+	g.player.pos = closed_at + Vector2(3.0, 0.0)
+	check(_offered(g).has(&"road"), "walking up to it, the three ways are said: %s" % str(_offered(g)))
+	# And far away it has nothing to say about a road nobody is near.
+	g.player.pos = closed_at + Vector2(Guide.ROAD_NEAR + 40.0, 0.0)
+	check(not _offered(g).has(&"road"), "and not from the other end of the island")
+	# The words carry all three ways, because the whole point is that it is not a lock.
+	var line := String(Guide.HINTS[&"road"][0])
+	for way: String in ["Cut", "answer", "leave the road"]:
+		check(line.contains(way), "the lesson names the %s way: %s" % [way, line])
+	g.free()

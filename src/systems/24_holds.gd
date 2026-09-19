@@ -51,6 +51,11 @@ const TICK := 0.45
 const TICKS := 6
 ## What it takes to cut. The same edge a works housing wants, because it is the
 ## same plate.
+## What the work and the breaking SOUND like. Named for the event and mapped in
+## `SoundNames`, the way the depot's own prise and part are: a bare literal here
+## resolved to nothing and `tests/audio/test_names.gd` had been failing on it.
+const SND_CUT := &"hold_cut"
+const SND_BROKEN := &"hold_broken"
 const BREAK_STUFF := &"steel"
 const BREAK_CAUSE := &"sabotage"
 
@@ -143,6 +148,19 @@ func _refresh_chapters() -> void:
 			continue
 		seen[h.region] = true
 		_answered[h.region] = bool(Chapters.of(game, h.region).get("answered", false))
+
+
+## Whether the plan is standing on a road within `within` tiles, still closed.
+## Asked by the GUIDE so a haven can teach what the road out of it will ask for
+## (docs/DESIGN.md §Safe havens). Exposed as a METHOD rather than leaving the
+## guide to walk `RoadHold.sites` itself: this system already keeps the list, and
+## re-deriving it per frame is the mistake that cost 224 ms a tick here once
+## already.
+func held_road_near(p: Vector2, within: float) -> bool:
+	for h: Hold.HoldSite in sites:
+		if h.pos.distance_to(p) <= within and closed(h):
+			return true
+	return false
 
 
 func open_count() -> int:
@@ -260,7 +278,7 @@ func _work(delta: float) -> void:
 		return
 	_held = 0.0
 	_job.ticks = int(_job.ticks) + 1
-	Events.sfx.emit(&"work_metal", game.world.to_3d(h.pos))
+	Events.sfx.emit(SND_CUT, game.world.to_3d(h.pos))
 	if int(_job.ticks) >= TICKS:
 		_break(h)
 		_job = {}
@@ -290,7 +308,7 @@ func _break(h: Hold.HoldSite) -> void:
 	_broken[key_of(h)] = true
 	_seen[&"hold_broken"] = true
 	Events.message.emit("The barrier comes off the road. Whatever is down there, the way is open.")
-	Events.sfx.emit(&"break_metal", game.world.to_3d(h.pos))
+	Events.sfx.emit(SND_BROKEN, game.world.to_3d(h.pos))
 	var dis := game.get_node_or_null(^"32_disposition")
 	if dis != null and dis.has_method(&"raise"):
 		dis.call(&"raise", BREAK_CAUSE, h.pos)
