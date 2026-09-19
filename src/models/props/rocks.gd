@@ -78,7 +78,26 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 ## band between ring i and i + 1 in cols[i]. Pushed through a tilt, the bands
 ## run across the faces as veins and beds, bold enough to read at 640x360.
 ## radii[i] and heights[i] give ring i; the last ring closes to `apex`.
+## How far a bedded mass turns before it keeps its edge.
+##
+## **THE DEFAULT SITS ON A KNIFE EDGE AND A BUILDER CANNOT SEE IT.** The facets
+## of an n-sided ring meet at 360/n degrees: seven sides is 51.4 and the default
+## `MeshKit.CREASE` is 52, so a seven-sided mass welds with six tenths of a
+## degree to spare -- and `banded` jitters every ring, so whether any given seam
+## clears the line is decided by noise. Six sides is 60 and does not weld at all,
+## which is why the tin ore rounded up its bands and stayed hard around them.
+## Half a weld, silently, with nothing in the picture to say which half.
+##
+## So this is stated for what it builds rather than taken. Above 72, so a
+## five-sided ring rounds too and no ring count used here lands on the line;
+## `Sculpt.WALL_CREASE` picked 76 for a six-sided limb for the same reason, which
+## is the precedent. What stays hard is what the callers rule across the mass
+## AFTER this returns -- the quarried face, its beds, the wedge holes.
+const ROCK_CREASE := 76.0
+
+
 static func banded(k: Kit, radii: Array, heights: Array, cols: Array, apex: Vector3, sides: int, seed_value: int, squash: float = 1.0) -> void:
+	var start := k.made.vertex_count()
 	var rings: Array[PackedVector3Array] = []
 	var rot := Rng.hash01(seed_value, 99) * TAU
 	var jit := PackedFloat32Array()
@@ -101,6 +120,18 @@ static func banded(k: Kit, radii: Array, heights: Array, cols: Array, apex: Vect
 	var last := rings[rings.size() - 1]
 	for e in sides:
 		k.made.tri(apex, last[(e + 1) % sides], last[e], top)
+	# **THE MASS ROUNDS AND WHAT IS CUT INTO IT DOES NOT.** A bedded boss is
+	# weathered rock: under a real sun a flat normal per facet reads as cut glass
+	# (docs/LOOK.md law 1), which is what the five ores, all of them built from
+	# this, have looked like. `Kit`'s own boulder ends the same way.
+	#
+	# The bracket is HERE rather than round each caller on purpose, and that is
+	# the whole judgement: everything a caller rules across the mass afterwards --
+	# the quarried face on the stone, its beds and wedge holes, the split blocks
+	# at its foot -- is pushed after this returns and stays hard, because a cut
+	# face is flat by design. Welding the caller's whole shape would soften the
+	# one thing that says the rock was worked.
+	k.made.smooth_range(start, k.made.vertex_count(), ROCK_CREASE)
 
 
 ## Building stone: a pale bedded outcrop quarried on one side: the cut face
