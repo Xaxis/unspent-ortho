@@ -184,16 +184,64 @@ extends TestCase
 ## another reason. Count them; do not derive them from the diff.
 
 
+## RE-ACCEPTED A NINTH TIME, and the safe shape again: **only `props` moved, on
+## all five seeds; country, country2, ground, level and blend are byte-identical
+## everywhere.** That is what a scatter change must look like, because a scatter
+## decides what STANDS on a tile and never what the tile IS.
+##
+## The cause is the scatter wave: nine landscapes rewritten to place what they
+## declare, of which exactly two are in `SIX` -- the moss and the snowfield. The
+## other seven are muted out of this world and cannot have moved a byte of it.
+##
+## Proved the way the seventh asks: with the pre-wave `moss.gd` and
+## `snowfield.gd` put back and nothing else on the branch touched, this test
+## passes on the PREVIOUS hashes, all five seeds, first try.
+##
+## **And the counted number went the opposite way to the obvious reasoning, which
+## is the second time this file has caught that.** A recipe that grew from one
+## prop kind to ten must place more; it places FEWER. Per seed, island total then
+## the snowfield's own share:
+##
+##   1      3310 -> 3191   snowfield 397 -> 305
+##   3      3314 -> 3207   snowfield 384 -> 286
+##   7      3258 -> 3077   snowfield 423 -> 277
+##   42     3409 -> 3243   snowfield 455 -> 315
+##   90210  3385 -> 3255   snowfield 363 -> 262
+##
+## Because the old recipe answered `BiomeScatter.PASS` on every ground but one,
+## and PASS hands the tile to `BiomeScatter.shared` -- which is the COAST's
+## answer. Naming your own grounds is what costs you that fallback. **The picture
+## is the argument and it is not close**:
+##   tools/shot.sh shots/cb/snowfield-{before,after}.png --seed=7 --place=snowfield --hour=11 --weather=clear:0
+## Before is bare grey driftwood strewn over snow -- a lumber yard in a blizzard.
+## After is snow pines carrying snow, a few dead trees, boulders and open ground.
+## The 146 props seed 7 lost were the wrong props.
+##
+## **A third thing fell out of counting, which no amount of reasoning would have
+## produced.** Landscapes nobody touched moved too: pinewood, coast, bonelands and
+## burning, by -9 to +1. If a tile's recipe followed its COUNTRY those counts
+## would be identical. `gen_scatter.gd` picks the recipe off `recipe[i]` -- the
+## island a tile's GROUND came from -- so an ecotone tile counted under its
+## neighbour's name can be running the moss's recipe. The counts are how you find
+## that out; the dispatch is where it is written down.
+##
+## **This also owed a `WorldStamp.GEN` bump (12 -> 13) and the wave did not pay
+## it.** The stamp hashes a scatter recipe by NAME, so it read identical while
+## every prop id after the first changed tile moved. Five digests failing here is
+## the only instrument that pointed at it, and a re-acceptance that only edited
+## the table below would have buried the save bug it was reporting.
+
+
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 a0516927",
-	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b 6c137284",
-	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 43e21a46",
-	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b 71706cc7",
-	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed b5619acb",
+	1: "06fa726c d5b85d6c 7e69e93f 673b50ca fe4b52d9 86ea03fd",
+	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b 0aaa6cc8",
+	7: "4b153668 3424d5c9 66637139 1ba2d360 72103915 5d3f926d",
+	42: "e5a96b5f bef1bc39 686852f9 bc57666e 824c752b e081b44b",
+	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed 56e4195f",
 }
 
 

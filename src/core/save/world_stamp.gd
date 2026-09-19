@@ -50,7 +50,17 @@ const UNKNOWN := "unknown"
 ##    cannot see this and that is why the counter is turned by hand**: a scatter
 ##    recipe is hashed by its NAME and not by its source, so the digest was
 ##    identical before and after while every seed's Crags changed completely.
-const GEN := 12
+## 5. Eight more landscapes followed the Crags, and two of them are landscapes the
+##    parity baseline holds: the moss and the snowfield. Each used to answer
+##    `BiomeScatter.PASS` on every ground but one, which hands the tile to the
+##    SHARED table -- and the shared table is the coast's, so a snowfield was
+##    being filled with the coast's driftwood. Naming its own grounds costs it
+##    that fallback, and the island places 107 to 181 FEWER props on the five
+##    parity seeds (the snowfield alone 92 to 146). A count that falls is still a
+##    count that moved: every prop id after the first changed tile shifts, so a
+##    village is dealt different buildings. Same blindness as 4 -- the recipe is
+##    hashed by name -- which is why this is the second hand turn in a row.
+const GEN := 13
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
