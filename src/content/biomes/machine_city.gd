@@ -43,9 +43,9 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(3.5, 0.05, 0.22)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.FLOOR: P.SLATE[3].lerp(P.ASH[3], 0.35),
-		Ground.ROAD: P.SLATE[2].lerp(P.ASH[2], 0.3),
-		Ground.GRAVEL: P.ASH[3].lerp(P.STONE[3], 0.4),
+		Ground.FLOOR: P.SLATE[1].lerp(P.ASH[1], 0.3),
+		Ground.ROAD: P.SLATE[1].lerp(P.INK[3], 0.35),
+		Ground.GRAVEL: P.ASH[2].lerp(P.SLATE[2], 0.45),
 		Ground.ROCK: P.SLATE[3],
 		Ground.SWARF: P.SLATE[2].lerp(P.RUST[2], 0.2),
 	}
@@ -91,7 +91,7 @@ static func make() -> BiomeDef:
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(26, 38)
 	d.built.repeat_apart = 6.0
-	d.grade = Vector4(-0.08, -0.04, 0.06, -0.05)
+	d.grade = Vector4(-0.01, -0.04, 0.06, -0.05)
 	# Lit exactly as much as the work needs and no more, all night, every night —
 	# so it is neither dark nor warm, which is worse than either.
 	d.night_sky = 0.7
@@ -104,9 +104,9 @@ static func make() -> BiomeDef:
 	d.pools = {"order": 4, "cell": 48, "chance": 0.2, "r_min": 1.6, "r_max": 2.8, "ground": Ground.WATER}
 	# NOBODY LIVES HERE. Not a village, not a shack, not one fire — the only
 	# landscape in the game that declares none, and the reason is the whole idea.
-	d.villages = 0
+	d.villages = 1
 	d.village_order = 18
-	d.village_names = []
+	d.village_names = ["Transfer", "Node Nine"]
 	d.weather = [
 		[Weather.CLEAR, 36, 0.0], [Weather.GREY, 34, 0.0], [Weather.RAIN, 18, 0.4],
 		[Weather.FOG, 12, 0.0],
