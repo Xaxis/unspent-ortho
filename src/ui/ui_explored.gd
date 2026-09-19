@@ -21,6 +21,25 @@ var trail := PackedVector2Array()
 var bounds := Rect2i()
 var _last := Vector2i(-1000000, -1000000)
 
+## DEV MODE ONLY: draw the whole island whether it has been walked or not (owner,
+## 2026-09-18, "in dev mode you should obviously be able to reveal the full world
+## map on the map").
+##
+## It is a flag on what is SHOWN and never a write into `mask`, which matters for
+## three reasons and each of them has bitten this project before. The player's own
+## memory is not destroyed, so turning it off puts the real edge of the known
+## world back exactly. The save is untouched, so inspecting a seed cannot leak
+## into somebody's game. And `fraction()` goes on counting the true mask, so the
+## share on the pause page still says how much of the world has actually been
+## walked — a readout that reports a cheat as progress is a readout that lies.
+##
+## Nothing outside the map's drawing reads this: a chapter counts the landmarks
+## it has FOUND, not tiles, so revealing the map cannot advance one.
+var revealed := false
+## The island's own box, worked out once when the map is revealed, so a revealed
+## map frames the land and not the sea around it.
+var _all := Rect2i()
+
 
 func _init(p_size: int) -> void:
 	size = p_size
@@ -28,13 +47,51 @@ func _init(p_size: int) -> void:
 
 
 func seen(x: int, y: int) -> bool:
-	return x >= 0 and y >= 0 and x < size and y < size and mask[y * size + x] >= 128
+	if x < 0 or y < 0 or x >= size or y >= size:
+		return false
+	return revealed or mask[y * size + x] >= 128
 
 
 func value(x: int, y: int) -> int:
 	if x < 0 or y < 0 or x >= size or y >= size:
 		return 0
-	return mask[y * size + x]
+	return 255 if revealed else mask[y * size + x]
+
+
+## Show the whole island (dev mode). Takes the world because a revealed map should
+## frame the LAND: a world is an island in a square of sea, and fitting the square
+## draws the island as a stamp in the middle of nothing.
+func reveal_all(world: WorldData) -> void:
+	revealed = true
+	if _all.size != Vector2i.ZERO:
+		return
+	var lo := Vector2i(size, size)
+	var hi := Vector2i(-1, -1)
+	for y in size:
+		for x in size:
+			if world.level_at(x, y) <= 0:
+				continue
+			lo.x = mini(lo.x, x)
+			lo.y = mini(lo.y, y)
+			hi.x = maxi(hi.x, x)
+			hi.y = maxi(hi.y, y)
+	_all = Rect2i(0, 0, size, size) if hi.x < lo.x else Rect2i(lo, hi - lo + Vector2i.ONE)
+
+
+## What the map draws, which is the whole island under a reveal and the walked
+## mask otherwise. The texture is built from this, never from `mask` directly.
+func shown_mask() -> PackedByteArray:
+	if not revealed:
+		return mask
+	var full := PackedByteArray()
+	full.resize(mask.size())
+	full.fill(255)
+	return full
+
+
+## The box the map frames itself to.
+func shown_bounds() -> Rect2i:
+	return _all if revealed and _all.size != Vector2i.ZERO else bounds
 
 
 ## Record the player at tile-space `p`. Only does work when the tile changes.
@@ -76,7 +133,8 @@ func reveal(c: Vector2i, r: int) -> void:
 	bounds = disc if bounds.size == Vector2i.ZERO else bounds.merge(disc)
 
 
-## Share of the world's tiles seen, 0..1.
+## Share of the world's tiles seen, 0..1. Deliberately off the TRUE mask, so a
+## revealed map does not report itself as progress on the pause page.
 func fraction() -> float:
 	var n := 0
 	for v in mask:
