@@ -150,8 +150,8 @@ class Lay:
 	## Lay small things that can be walked through on any free tile, however
 	## close to others (the crowded ground round the spawn).
 	var tight := false
-	var _ids: Array[StringName] = []
-	var _type: PackedByteArray
+	## The registry index of `id`, or -1 while laying what every type shares.
+	var own := -1
 
 	func _init(ctx: GenContext, o: PackedByteArray, bearing_dir: Vector2) -> void:
 		c = ctx
@@ -159,24 +159,33 @@ class Lay:
 		occ = o
 		d = bearing_dir
 		nrm = Vector2(-d.y, d.x)
-		_type.resize(ctx.n)
 
 	func type_at(x: int, y: int) -> StringName:
-		var i := y * c.size + x
-		var t := _type[i]
-		if t == 0:
-			var def := BiomeRegistry.at(w, Vector2(x + 0.5, y + 0.5))
-			var k := _ids.find(def.id)
-			if k < 0:
-				_ids.append(def.id)
-				k = _ids.size() - 1
-			t = k + 1
-			_type[i] = t
-		return _ids[t - 1]
+		return BiomeRegistry.by_index(_index_at(x, y)).id
+
+	func _index_at(x: int, y: int) -> int:
+		# What `BiomeRegistry.at` does, without the Vector2: it floors a tile
+		# centre straight back to (x, y) and reads `country`.
+		return clampi(w.country[y * c.size + x], 0, BiomeRegistry.count() - 1)
 
 	## Tile (x, y) is of the type being laid.
+	##
+	## **THIS WAS THE MOST EXPENSIVE QUESTION IN THE FILE AND IT IS AN INTEGER
+	## COMPARE.** It used to ask `type_at`, which allocated a `Vector2` per tile,
+	## called `BiomeRegistry.at` (which calls `_ensure()` every time), and then ran
+	## a LINEAR `find()` over the id array to turn the answer back into a small
+	## int -- all to compare two StringNames. A per-tile byte cache was carried to
+	## soften it, `n` bytes wide, which is 1.7 MB of the full world spent hiding
+	## the cost of a lookup that was already a single array read.
+	##
+	## A landscape's index is on its own def (`BiomeDef.index`) and every tile
+	## already carries it in `w.country`, so this is `country[i] == own`. Same
+	## answer, tile for tile: `_index_at` is `BiomeRegistry.at` with the float
+	## round trip taken out, and `own` is -1 while the shared things are being
+	## laid, which no country index can equal -- exactly as the empty `id` it
+	## replaced could never match a real one.
 	func home(x: int, y: int) -> bool:
-		return type_at(x, y) == id
+		return w.country[y * c.size + x] == own
 
 
 static func place(c: GenContext, occ: PackedByteArray) -> void:
@@ -193,11 +202,13 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 		if fn == &"":
 			continue
 		lay.id = def.id
+		lay.own = def.index
 		lay.rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
 		var host: Object = row.get("host", GenWorks)
 		Callable(host, fn).call(lay)
 		c.mark(StringName("works." + String(def.id)))
 	lay.id = &""
+	lay.own = -1
 	lay.rng = Rng.make(c.s, 0x3058)
 	_villages(lay)
 	_roads(lay)
