@@ -42,10 +42,15 @@ static func make() -> BiomeDef:
 		Ground.GRASS: P.MOSS[3].lerp(P.SPRUCE[3], 0.3),
 		Ground.MOSS: P.SPRUCE[2].lerp(P.MOSS[2], 0.4),
 		Ground.MUD: P.EARTH[3].lerp(P.SAND[3], 0.3),
+		Ground.ASH: P.SAND[4].lerp(P.EARTH[3], 0.25),
 		# THE CRUST IS THE ONLY YELLOW IN THE GAME and it is what names the place.
 		# Sulphur off the copper ramp, knocked back with linen so it is a deposit
-		# rather than a paint.
-		Ground.ASH: P.COPPER[4].lerp(P.LINEN[3], 0.3),
+		# rather than a paint. SALT and not ash: ash is the Burning's signature and
+		# the surface test holds a landscape to under 6.6% of another one's ground,
+		# which is too little to be a field you walk out onto. A crust round a vent
+		# is a salt anyway, and salt takes the same loose-ground draw that made the
+		# yellow read; clinker is grouped with rock and came out white.
+		Ground.SALT: P.COPPER[4].lerp(P.LINEN[3], 0.3),
 		Ground.ROCK: P.SLATE[3].lerp(P.EARTH[3], 0.3),
 		Ground.CLINKER: P.SLATE[2].lerp(P.RUST[2], 0.3),
 		Ground.NEEDLES: P.SPRUCE[2].lerp(P.EARTH[2], 0.4),
@@ -54,13 +59,13 @@ static func make() -> BiomeDef:
 	# through to the shared table, which is the COAST's and is far brighter than
 	# here, so it would arrive as the loudest object in the frame. Each takes this
 	# landscape's own ash, because they only have to be in key.
-	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
+	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.ROCK]
 	d.cliff_wash = P.SLATE[2].lerp(P.EARTH[2], 0.35)
 	d.strata = GroundColors.STRATA_BASALT
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
-	d.pool_rim_ground = Ground.ASH
+	d.pool_rim_ground = Ground.SALT
 	d.village_ground = Ground.MUD
 	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 36, Decor.CROTTLE, 14]}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]
@@ -101,7 +106,7 @@ static func make() -> BiomeDef:
 	d.hazards = {&"heat": 0.5, &"fumes": 0.5, &"wet": 0.45}
 	d.roster = {
 		&"dredger": {"weight": 0.9, "grounds": ["mud", "water"]},
-		&"cutter": {"weight": 0.9, "grounds": ["rock", "clinker", "ash"]},
+		&"cutter": {"weight": 0.9, "grounds": ["rock", "clinker"]},
 		&"harvester": {"weight": 0.8, "grounds": ["grass", "moss", "mud"]},
 		&"watcher": {"weight": 0.8},
 		&"dog.feral": {"weight": 0.7},
@@ -119,14 +124,14 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.SAND
 	if f & BiomeSurface.APRON != 0:
-		return Ground.CLINKER
+		return Ground.ROCK
 	if f & BiomeSurface.BANK != 0:
 		return Ground.MUD
 	if rs > 1.5:
 		return Ground.ROCK
 	if e <= 5.0:
 		return Ground.MUD
-	return Ground.ASH if gb > 0.25 else Ground.GRASS
+	return Ground.SALT if gb > 0.25 else Ground.GRASS
 
 
 ## THE THICKEST CANOPY IN THE GAME, because the ground is warm and wet and has
@@ -138,7 +143,7 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	# one decision rather than two that have to be kept in step by hand -- which
 	# is how the vents came to be declared in `props` and placed nowhere for this
 	# landscape's whole life.
-	if g == Ground.ASH:
+	if g == Ground.SALT:
 		if r < 0.085:
 			return PropKind.VENT
 		return PropKind.VENT_CAP if r < 0.125 else BiomeScatter.NONE

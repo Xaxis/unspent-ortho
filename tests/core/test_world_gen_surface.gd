@@ -186,8 +186,6 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 	# ground that has really broken up still has to be caught — and what changes
 	# is how much of the sample has to clear it, plus a hard ceiling no amount of
 	# noise can reach. Same medicine df used on `test_every_landscape_holds_its_own_works`.
-	var clear := 0
-	var rows := 0
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var land := PackedFloat32Array()
