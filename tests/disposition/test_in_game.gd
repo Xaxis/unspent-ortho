@@ -229,11 +229,21 @@ func test_a_rise_is_felt_in_the_world_and_never_written_on_the_screen() -> void:
 	var horns: Array[StringName] = []
 	Events.sfx.connect(func(n: StringName, _at: Vector3) -> void: horns.append(n))
 	var f: Interference = sys.get(&"interference")
+	# **THE WINDOW HAS TO EXCLUDE WHAT THIS IS NOT ASKING ABOUT.** The story says
+	# two lines as the player wakes -- "You come up out of the water", "You do
+	# not remember the water" -- and whether they land before or after the
+	# listener above is a RACE with the frame rate. That is why this went red in
+	# one gate, red twice alone, and green in the next: nothing about it was
+	# intermittent except how long a frame took. The claim here is that a RISE in
+	# interference is felt and never written, so the waking is noise in its
+	# window and is cleared out of it rather than waited on.
+	await frames(6)
+	lines.clear()
 	f.levels[Interference.network(g.world, g.player.pos)] = Interference.THRESHOLDS[1] + 0.05
 	await frames(40)
 	check(w.look_until > sim.now or w.roused(), "the watcher turns toward the player")
 	check(horns.has(&"works_horn"), "and a horn goes off at a works over the land")
-	eq(lines.size(), 0, "nothing is said: the world says it")
+	eq(lines.size(), 0, "nothing is said about the rise: the world says it (it said: %s)" % str(lines))
 	g.queue_free()
 	await frames(1)
 
