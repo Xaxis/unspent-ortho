@@ -288,6 +288,22 @@ func _stand() -> void:
 		_stood[key] = true
 
 
+## HANDS ON A HOUSING HOLD THE KEY (the `use_spent` seam, CLAUDE.md's One use key
+## row, which already noted this system "reads `use` too and does not ask yet").
+##
+## A depot stands at the busiest knot of the plan's works, and some of those knots
+## are turf rows — which have SURVEY POSTS in them, and a survey post is readable
+## (`StoryProps.READABLE`). So a player holding `use` on a feed housing with a post
+## 2.7 tiles away opened the post's page instead, `Game.input_blocked()` went true,
+## and `_work` dropped the job on the very next frame. Held down for four hundred
+## frames it never opened once, and nothing errored: the yard simply could not be
+## broken, in the one landscape whose depot is a field of rows.
+##
+## 34 runs before 49 in name order, so the housing gets the key first and says so.
+func use_spent() -> bool:
+	return not _job.is_empty()
+
+
 func _by_region(region: int) -> WorksSite:
 	for s in sites:
 		if s.region == region:

@@ -27,6 +27,42 @@ const BALANCE_STRIDE := 4
 const ENCLAVE_TILES := 400
 ## A run of one type smaller than this (512 world) is not its own region.
 const REGION_TILES := 220
+## AND NO RUN IS A PLACE UNDER THIS, WHATEVER THE WORLD'S SIZE.
+##
+## A REGION IS A CHAPTER NOW (docs/VISION.md §10: explored, mined and defended
+## before the next opens), and it was already the unit a keeper, a depot, a
+## landmark round and an interference file key on. Measured, it could be a puddle:
+## the floor is `REGION_TILES * body_k * body_k`, and `body_k` is a BODY's scale,
+## so it came out at 220 tiles on a 512 island — 15 across, four seconds at
+## walking pace — and 31 tiles on a 192 test world, which is five tiles across.
+## Worse, it SHRANK as the world grew: 178 at 1024, because `body_k` falls when a
+## world gains continents, so the bigger the world the smaller a place was allowed
+## to be.
+##
+## That is `body_k` used for the one question it was never right for. It exists so
+## distances scale with the body a thing stands on rather than with the square,
+## which is correct for a noise wavelength and for how far apart two villages
+## sit. It is wrong for "is this a place", because a place is the same size on a
+## continent as on an island: it is measured in a body's own footsteps.
+##
+## It is stated against the WORLD (`GenContext.k`) and not against a body, so it
+## GROWS as the world grows: 1,250 tiles at 512, 5,000 at 1024, 312 at a 256 test
+## world. That direction is the whole point — a bigger world should hold bigger
+## places, not more of the same small ones, which is exactly what it did while
+## this was `body_k` (178 tiles at 1024, smaller than the 220 it allowed at 512).
+##
+## FLAT 1,250 WAS TRIED FIRST AND IS WRONG, and the suite said so in one run: the
+## scrapwood and the slums are about 5% of the land each, so on a 256 world
+## neither could raise a single region, and 16% of the land belonged to no place
+## at all. A landscape with no region has no keeper, no depot and no chapter — it
+## stops being somewhere the game happens. A floor has to be a share of the world
+## it is floored in.
+##
+## The cost, stated because it is a real one: a body too small to hold a place of
+## this size holds no region, no keeper and no chapter. For the orbital pebbles of
+## docs/WORLD.md §2 that is a design question and not a bug — a rock you cross in
+## four seconds was never going to be asked to be explored, mined and defended.
+const PLACE_TILES := 1250.0
 ## The island's climate before any relief exists, for placing a type by its
 ## envelope: north is cold, the shore is wet, the middle is dry.
 const CLIMATE_COLD := 0.78
@@ -723,7 +759,7 @@ static func regions(c: GenContext) -> void:
 	)
 	var sizes := PackedInt32Array()
 	var label := GenFields.patches(country, sea, size, sizes)
-	var min_tiles := maxi(24, roundi(REGION_TILES * c.body_k * c.body_k))
+	var min_tiles := maxi(roundi(PLACE_TILES * c.k * c.k), roundi(REGION_TILES * c.body_k * c.body_k))
 	# Biggest first, so region 0 is the largest place in the world and ids stay
 	# stable as long as the shape of the land does.
 	var order := PackedInt32Array()

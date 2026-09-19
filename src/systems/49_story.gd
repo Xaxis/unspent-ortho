@@ -617,20 +617,113 @@ func _load(v: Variant) -> void:
 ## Where a tour stands to reach a story place by name (98_tour's `at KIND:NAME`):
 ## `gate:ID` is a gate into 2029 (StoryGates), in whichever year he is in, on the
 ## nearest ground a body can stand on beside it.
+##
+## `rescue:asker` is the village of the region the plan is holding somebody in —
+## where the people who knew them live, and so where a rescue is asked for and
+## thanked for; `rescue:yard`, `rescue:yard_breaker` and `rescue:yard_coolant`
+## are that region's depot and its housings. Both sides of it are named by the
+## RECORD rather than by an index, because `place works` is the first depot
+## anywhere on the island and the plan does not take people to it out of
+## politeness.
 func tour_place(what: String) -> Vector2:
-	if not what.begins_with("gate:") or game.world == null:
+	if game.world == null:
+		return Vector2.INF
+	if what.begins_with("rescue:"):
+		var which := what.substr(7)
+		if which == "asker":
+			return _village_of(_held_region())
+		# Beside whoever of that village is nearest, close enough that the key
+		# answers them whichever way he is turned. It is a second step on purpose:
+		# a village is a place and is there at once, and the people in it are
+		# streamed, so a tour stands at the village, lets it fill, and then stands
+		# beside somebody.
+		if which == "somebody":
+			return _beside_folk()
+		if not which.begins_with("yard"):
+			return Vector2.INF
+		var region := _held_region()
+		for w: WorksSite in Works.sites(game.world):
+			if w.region != region:
+				continue
+			var part := Works.PART_NAMES.find(StringName(which.trim_prefix("yard_")))
+			return _beside(w.part(maxi(0, part)), [0.0, 0.8, 1.2])
+		return Vector2.INF
+	if not what.begins_with("gate:"):
 		return Vector2.INF
 	var id := StringName(what.substr(5))
 	for g: Dictionary in StoryGates.all(game.world):
-		if g.id != id:
+		if g.id == id:
+			return _beside(g.pos, [0.0, 0.8, 1.2])
+	return Vector2.INF
+
+
+## A spot within reach of the nearest villager, inside `StoryProps.CLOSE` so the
+## key answers them without the tour having to aim.
+func _beside_folk() -> Vector2:
+	var from: Vector2 = game.player.pos
+	var best := Vector2.INF
+	var best_d := INF
+	for row: Dictionary in _folk_rows():
+		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
-		var at: Vector2 = g.pos
-		for r: float in [0.0, 0.8, 1.2]:
-			for i in 12:
-				var p := at + Vector2.from_angle(TAU * i / 12.0) * r
-				if game.query.standable(floori(p.x), floori(p.y)):
-					return Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
-		return at
+		var at: Vector2 = row.get("pos", Vector2.INF)
+		var d := at.distance_to(from)
+		if d < best_d:
+			best_d = d
+			best = at
+	if best == Vector2.INF:
+		return Vector2.INF
+	return _beside(best, [0.9, 1.2, 1.4])
+
+
+## Somewhere a body can stand at `at`, trying each ring out in turn; `at` itself
+## when none of them is standable, because a tour that lands nowhere says so
+## better than one that silently stands somewhere else.
+func _beside(at: Vector2, rings: Array) -> Vector2:
+	for r: float in rings:
+		for i in 12:
+			var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+			if game.query.standable(floori(p.x), floori(p.y)):
+				return Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+	return at
+
+
+## Whether this region has said something of that kind to him: any goal when
+## `goal` is empty, and one named goal otherwise. `tail` is "" for the asking and
+## ":said" for the thanks.
+func _region_heard(goal: String, tail: String) -> bool:
+	var region := subarc_look().region
+	if region < 0:
+		return false
+	for g: StringName in StorySubarc.GOALS:
+		if goal != "" and String(g) != goal:
+			continue
+		if Story.heard(StringName("%d:%s%s" % [region, g, tail])):
+			return true
+	return false
+
+
+## The region the plan is holding somebody in, held or since freed: a rescue is
+## answered by the yard going dark, so by the time anybody thanks him for it
+## there is nobody being held to look for.
+func _held_region() -> int:
+	var carried := _system("45_taken")
+	var record: Taken = carried.get("taken") if carried != null else null
+	if record == null:
+		return -1
+	for t: Taken.TakenPerson in record.people:
+		return t.region
+	return -1
+
+
+## Somewhere to stand in the village of that region, if it has one.
+func _village_of(region: int) -> Vector2:
+	if region < 0:
+		return Vector2.INF
+	for v: Dictionary in game.world.villages:
+		var at: Vector2 = v.get("pos", Vector2.INF)
+		if game.world.region_at(floori(at.x), floori(at.y)) == region:
+			return _beside(at, [1.5, 2.5, 3.5])
 	return Vector2.INF
 
 
@@ -653,6 +746,16 @@ func subarc_look() -> StorySubarcLook:
 			var works := _system("34_works")
 			var st: WorksState = works.call("state", look.region) if works != null else null
 			look.works_dark = st != null and st.broken()
+	# Who the plan is holding at that yard (`src/core/taken/`, unspent-ortho-cb).
+	# The first thing a region asks about, because a yard stops being a number the
+	# moment somebody's neighbour is inside it, and the one the others wait behind.
+	var carried := _system("45_taken")
+	var record: Taken = carried.get("taken") if carried != null else null
+	if record != null:
+		for t: Taken.TakenPerson in record.held_in(look.region):
+			look.held.append(Taken.say(t))
+		for t: Taken.TakenPerson in record.freed_in(look.region):
+			look.freed.append(Taken.say(t))
 	# What the plan has lost here, which is the only thing that ends a region's
 	# danger (docs/VISION.md §10, unspent-ortho-cb): the yard dark or the keeper down.
 	var keepers := _system("44_sentinels")
@@ -721,12 +824,20 @@ func tour_seen(what: StringName) -> bool:
 	if what.begins_with("asked:"):
 		var said := StorySubarc.raised(subarc_look())
 		return not said.is_empty() and String(said.goal) == what.substr(6)
-	if what == &"heard_ask":
-		var mine := StorySubarc.raised(subarc_look())
-		return not mine.is_empty() and Story.heard(mine.id)
-	if what == &"thanked":
-		var got := StorySubarc.raised(subarc_look())
-		return not got.is_empty() and Story.heard(StringName("%s:said" % got.id))
+	# ASKED AND THANKED ARE ABOUT THE REGION, never about what it is asking NOW.
+	# A question answered out of its own existence proves nothing: the moment
+	# somebody thanks him the region goes back to wanting the next thing, so
+	# reading the thanks off `raised()` was true for one frame and then false
+	# for good — a green step that proved the opposite of its name.
+	if what == &"heard_ask" or what.begins_with("heard_ask:"):
+		return _region_heard(what.substr(10), "")
+	if what == &"thanked" or what.begins_with("thanked:"):
+		return _region_heard(what.substr(8), ":said")
+	# The region under him is holding somebody. 45_taken's `taken` is the same
+	# question of the whole world; this one is the one a sub-arc is raised from.
+	if what == &"held_here":
+		return not subarc_look().held.is_empty()
+
 	if what == &"testimony":
 		var m := _locked_body()
 		return m != null and not StoryContent.testimony(m.role, m.row).is_empty()

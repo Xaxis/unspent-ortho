@@ -59,16 +59,36 @@ extends TestCase
 ## the sea wall behind it, the land either side of it unchanged in character. It
 ## reads as infrastructure that was always meant to be there, which is the test
 ## this file actually cares about.
+##
+## RE-ACCEPTED A FOURTH TIME, for the scale work of docs/WORLD.md §7b: a region is
+## floored against the world instead of against a body, and a landscape's sites
+## are counted per REGION instead of per type across the whole island. `ground`
+## and `props` moved on all five seeds; `country`, `country2`, `level` and `blend`
+## are equal on all five, so the LAND is the same land and what stands on it is
+## what changed — which is exactly what those two changes are.
+##
+## Looked at rather than argued: seed 1 at the spawn village, wide. Coast turf, a
+## shingle beach, a standing stone on the sand, a collapsed hull, pines at the
+## edge. The world reads RICHER and not busier, which was the thing worth checking
+## — one site per 3,326 tiles against one per 9,350 is two and a half times as
+## much to walk into, and the failure mode of that change is clutter.
+##
+## Seed 42's `props` moved once more after that, and only seed 42's: a stone must
+## stand in its own circle's landscape. A circle's centre is held to its region,
+## but its stones are laid three or four tiles out, which is far enough to cross a
+## border once there are several circles in a place instead of one or two on the
+## whole island. It read as "standing stone on the Coast" — a landscape holding
+## somebody else's monument.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d1335897 8b46ae9f b3f77d2c 7b99a6e3 ce54a897 888e2e4d",
-	3: "d7a39e67 dba8792b c8e83efa 090631fd a8be1d60 e7f928b7",
-	7: "aa526bae 4ff8f6b7 03d1260a 7fb78385 be4cc1f0 feb6ebca",
-	42: "325e4566 8d16e00c eae7e32e b88a5d6e 8cce8022 ecd89d2d",
-	90210: "5b1e7401 4d0ad4be 0ddbbde8 bf578b00 ed81f772 4b9a6adf",
+	1: "d1335897 8b46ae9f 1ee81549 7b99a6e3 ce54a897 007c247b",
+	3: "d7a39e67 dba8792b c2f270dc 090631fd a8be1d60 eeca157d",
+	7: "aa526bae 4ff8f6b7 93243ecb 7fb78385 be4cc1f0 b63ba6b5",
+	42: "325e4566 8d16e00c 094afc29 b88a5d6e 8cce8022 46f5c69a",
+	90210: "5b1e7401 4d0ad4be ce1caab3 bf578b00 ed81f772 f822ec07",
 }
 
 
