@@ -95,8 +95,12 @@ const BASE_SIZE := 512
 ## an ocean; the underground follows the surface because it inherits its
 ## footprints; orbital is many small bodies in vacuum.
 const COUNT := {
-	&"surface": Vector2i(2, 4),
-	&"underground": Vector2i(2, 4),
+	# FIVE AT LEAST, and the owner asked for that by name (2026-09-18): a home
+	# continent, two in the middle of the journey, one late and one remote, which
+	# is the structure `StoryPlan.SPINE` has assumed for weeks with its `leg` per
+	# slot while this stage laid at most four.
+	&"surface": Vector2i(5, 7),
+	&"underground": Vector2i(5, 7),
 	&"orbital": Vector2i(3, 8),
 	&"era": Vector2i(1, 2),
 }
@@ -126,6 +130,24 @@ const BAND := 0.22
 ##
 ## Returns {size: int, bodies: Array[Dictionary]}, each body
 ## {id, at: Vector2 (0..1 of the square), share: float, band: Vector2 (temp, moist), home: bool}.
+## The square that makes each of `count` bodies a whole island. One body is
+## BASE_SIZE exactly; the packing below says what share of the square a body of a
+## ring of `count` actually gets, and the square grows by the inverse of it.
+static func _square_for(count: int, small: float) -> int:
+	return roundi(float(BASE_SIZE) / sqrt(maxf(_share_for(count, small), 0.0001)))
+
+
+## What share of a one-body world's land each of `count` bodies gets, from the
+## ring packing. The one place that answers it, so the square and the bodies can
+## never disagree about how big a continent is.
+static func _share_for(count: int, small: float) -> float:
+	var r := ONE_RADIUS
+	if count > 1:
+		var sn := sin(PI / float(count))
+		r = maxf((sn * (1.0 - 2.0 * FRAME) - SEA_GAP) / (2.0 * (1.0 + sn)), 0.06)
+	return small * pow(r / ONE_RADIUS, 2.0)
+
+
 static func plan(seed_value: int, realm: StringName = &"surface", want_size: int = 0) -> Dictionary:
 	var range_of: Vector2i = COUNT.get(realm, Vector2i(1, 1))
 	# A realm may lie UNDER another one, or BE it at another time: either way it is
@@ -139,13 +161,16 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	var rng := Rng.make(seed_value, 0xB0D1E5)
 	var count := range_of.x + (rng.randi() % maxi(1, range_of.y - range_of.x + 1))
 	var small: float = ORBITAL_SHARE if realm == Realm.ORBITAL else 1.0
-	# The square that holds `count` bodies of the design world's size.
-	var size := roundi(BASE_SIZE * sqrt(float(count) * small))
+	# THE SQUARE'S WIDTH DECIDES HOW MANY CONTINENTS FIT IN IT, because a continent
+	# is a whole island and not a share of one (see `share_each` below). Asked for
+	# a size, drop the count until they fit at that size rather than shrinking them
+	# to suit — never below the least this realm is allowed, because "at least five"
+	# is the shape of the journey (`StoryPlan.SPINE` walks them in order) and not a
+	# budget. A world too small for its own least count gets small continents, and
+	# that is the honest failure: it says the square is too small.
 	if want_size > 0:
-		# Drop bodies until they fit what was asked for, never below one.
-		while count > 1 and roundi(BASE_SIZE * sqrt(float(count) * small)) > want_size:
+		while count > range_of.x and _square_for(count, small) > want_size:
 			count -= 1
-		size = maxi(want_size, 64)
 	# HOW BIG A BODY CAN BE IS A PACKING PROBLEM, NOT A DIVISION. The first version
 	# of this gave each body 1/count of the land and scattered the centres, and at
 	# 1024 the four "continents" came out as ONE mass of half a million tiles with
@@ -164,14 +189,32 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	# TOTAL land of a world falls out of the packing rather than being decreed.
 	# A world of continents therefore has less land than a world of one island,
 	# which is right: the ocean has to come from somewhere.
-	var r := ONE_RADIUS
+	# `_share_for` is the one place that solves it, so the square below and the
+	# bodies laid here can never disagree about how big a continent is — which is
+	# exactly what went wrong when the square was sized by one formula and the
+	# bodies by another.
+	var share_each := _share_for(count, small)
+	var r := ONE_RADIUS * sqrt(share_each / maxf(small, 0.0001))
 	var ring := 0.0
 	if count > 1:
-		var sn := sin(PI / float(count))
-		r = (sn * (1.0 - 2.0 * FRAME) - SEA_GAP) / (2.0 * (1.0 + sn))
-		r = maxf(r, 0.06)
 		ring = 0.5 - r - FRAME
-	var share_each := small * pow(r / ONE_RADIUS, 2.0)
+	# A CONTINENT IS A WHOLE ISLAND, SO THE SQUARE GROWS TO HOLD THEM ALL.
+	#
+	# The old sizing was `BASE_SIZE * sqrt(count)`, which is the square that would
+	# hold `count` bodies IF each took a body's full share of it. The ring packing
+	# does not give them that: five bodies solve to r = 0.148 against ONE_RADIUS
+	# 0.375, so each was 15% of an island's area and a "continent" came out a
+	# tenth the size of the one island this game started with. The square was
+	# sized for the world we meant and the bodies were laid in the world we got —
+	# two numbers answering one question, and the smaller one won.
+	#
+	# `share_each` is what a body actually gets, so the square that makes a body a
+	# full island is `BASE_SIZE / sqrt(share_each)`, and it falls out of the same
+	# packing solve rather than being decreed beside it. One body is 512 exactly,
+	# which is the island this game has always had.
+	var size := _square_for(count, small)
+	if want_size > 0:
+		size = maxi(want_size, 64)
 	var bodies: Array[Dictionary] = []
 	var turn := rng.randf() * TAU
 	for i in count:
