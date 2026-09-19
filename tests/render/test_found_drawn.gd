@@ -185,16 +185,6 @@ const BACKWARDS_ALREADY := {
 	"house 7 in snowfield": 2,
 	"vehicle 0 in burning": 3,
 	"vehicle 1 in burning": 3,
-	"wreckage 2 in bonelands": 5,
-	"wreckage 2 in burning": 5,
-	"wreckage 2 in coast": 5,
-	"wreckage 2 in limestone_caves": 5,
-	"wreckage 2 in moss": 5,
-	"wreckage 2 in pinewood": 6,
-	"wreckage 2 in salt_flats": 5,
-	"wreckage 2 in scrapwood": 5,
-	"wreckage 2 in slums": 5,
-	"wreckage 2 in snowfield": 5,
 }
 
 
