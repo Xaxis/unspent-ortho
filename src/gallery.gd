@@ -122,8 +122,22 @@ func setup(o: BootOptions) -> void:
 			piece = a.trim_prefix("--piece=")
 		elif a.begins_with("--wear="):
 			wear = a.trim_prefix("--wear=").split(",", false)
+	var all_names := items
 	if filter != "":
-		items = items.filter(func(it: Dictionary) -> bool: return String(it.name).contains(filter))
+		# **THE FILTER AND THE NAMES HAVE TO AGREE ABOUT WHAT A NAME IS.** An item
+		# is named "scrap tree 0" while everything a caller reads it from -- a
+		# `PropKind`, a file, a `--put` token -- spells it `scrap_tree`, so the
+		# obvious filter matched NOTHING and the run drew an empty plinth and said
+		# ok. A shot of nothing that reports success is worse than an error,
+		# because the next person compares two empty frames and concludes the
+		# change did nothing.
+		var want := filter.to_lower().replace("_", " ")
+		items = items.filter(func(it: Dictionary) -> bool:
+			return String(it.name).to_lower().replace("_", " ").contains(want))
+		if items.is_empty():
+			printerr("gallery --filter=%s matched no item of %d. Names carry spaces (\"scrap tree 0\"); underscores and case are folded, so this really is not here." % [filter, all_names.size()])
+			get_tree().quit(1)
+			return
 
 	var spacing := 3.2
 	var cols := maxi(1, ceili(sqrt(items.size() * 1.8)))
