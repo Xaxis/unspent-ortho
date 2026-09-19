@@ -5,7 +5,8 @@ extends UiScreen
 ## regions lettered over their own land, villages, the places found on the way
 ## (landmarks), the machines' lines in the module's violet, and the way the
 ## player came. Arrows look around a step at a time (held keys repeat, per the
-## menu standard); E changes the scale; M or Esc close.
+## menu standard); the world's own zoom keys change the scale, and `confirm`
+## still does too; M or Esc close.
 ##
 ## **WALKING BUYS DETAIL, NOT EXISTENCE** (owner, 2026-09-19). This app used to
 ## draw only what had been seen, which on a 1300-tile world is a smear on an
@@ -345,32 +346,53 @@ func handle(action: StringName) -> bool:
 		&"down": _pan(Vector2i(0, PAN_STEP))
 		&"left": _pan(Vector2i(-PAN_STEP, 0))
 		&"right": _pan(Vector2i(PAN_STEP, 0))
-		&"confirm":
-			var centre := Vector2(origin_px + _anchor()) / map_scale
-			var all := steps()
-			var at := 0
-			for i in all.size():
-				if is_equal_approx(all[i], map_scale):
-					at = i
-					break
-			map_scale = all[(at + 1) % all.size()]
-			if game != null:
-				if at_whole_world():
-					# The step whose whole purpose is the world entire centres the
-					# WORLD. Centring on the player here is what the other steps
-					# want and it put a 1300-tile island in the right-hand half of
-					# the glass with the rest empty -- a picture of where he is
-					# standing, at the one scale that is not about that.
-					centre = Vector2(game.world.size, game.world.size) * 0.5
-				else:
-					# Zoom about the middle, but never leave the player off the survey.
-					var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(MARGIN, MARGIN)) / map_scale
-					centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
-			centre_on(centre)
-			Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+		&"zoom_in": _scale_by(1, false)
+		&"zoom_out": _scale_by(-1, false)
+		&"confirm": _scale_by(1, true)
 		_:
 			return super(action)
 	return true
+
+
+## ONE PAIR OF KEYS FOR ONE IDEA. The world zooms on `zoom_in`/`zoom_out` and so
+## does the flyover, on purpose (09_view.gd's header says why); the survey scaled
+## on `confirm` instead, so the same idea had two keys depending on whether a page
+## was open. Owner, 2026-09-19, and he is right that it is obvious.
+##
+## `confirm` still works and still WRAPS, because E is the page key every other
+## screen confirms with and a finger that has learnt it on the other apps must not
+## find it dead here. The zoom keys do not wrap: a zoom that jumps from nearest
+## back to the whole world because you pressed once more is not a zoom.
+func _scale_by(dir: int, wrap: bool) -> void:
+	var centre := Vector2(origin_px + _anchor()) / map_scale
+	var all := steps()
+	var at := 0
+	for i in all.size():
+		if is_equal_approx(all[i], map_scale):
+			at = i
+			break
+	# `steps()` is widest first, so zooming IN walks up the list.
+	var to := at + dir
+	if wrap:
+		to = posmod(to, all.size())
+	elif to < 0 or to >= all.size():
+		return
+	map_scale = all[to]
+	if true:
+		if game != null:
+			if at_whole_world():
+				# The step whose whole purpose is the world entire centres the
+				# WORLD. Centring on the player here is what the other steps
+				# want and it put a 1300-tile island in the right-hand half of
+				# the glass with the rest empty -- a picture of where he is
+				# standing, at the one scale that is not about that.
+				centre = Vector2(game.world.size, game.world.size) * 0.5
+			else:
+				# Zoom about the middle, but never leave the player off the survey.
+				var reach := (Vector2(MAP_RECT.size) * 0.5 - Vector2(MARGIN, MARGIN)) / map_scale
+				centre = centre.clamp(game.player.pos - reach, game.player.pos + reach)
+		centre_on(centre)
+		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
 
 
 ## --screen=map:3 opens at that scale (the survey has no rows to choose).
@@ -432,7 +454,11 @@ func _draw() -> void:
 	var here := BiomeRegistry.at(game.world, p).display_name
 	UiDraw.text(self, Vector2i(r.position.x + 100, HEADER_Y), here, UiTheme.BRIGHT)
 	UiDraw.text_right(self, r.end.x, HEADER_Y, "%s of the land seen   %s" % [UiRules.share(_seen_share), ("whole world" if at_whole_world() else "1:%d" % roundi(map_scale))], UiTheme.TEXT_DIM)
-	draw_keys([["wasd", "look"], ["e", "scale"], ["m", "close"], ["esc", "back"]])
+	# Asked for, never spelled: a player may rebind any of these and the strip has
+	# to follow (`tests/settings/test_taught_keys.gd` reads the shipped source).
+	draw_keys([[PlayerSettings.cap_of([&"move_up", &"move_left", &"move_down", &"move_right"]), "look"],
+		[PlayerSettings.cap_of([&"zoom_out", &"zoom_in"]), "scale"],
+		[PlayerSettings.cap_of(&"map"), "close"], [PlayerSettings.cap_of(&"back"), "back"]])
 
 
 func _draw_overlay() -> void:

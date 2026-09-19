@@ -216,7 +216,11 @@ func _on_closed(s: UiScreen) -> void:
 
 
 ## Keys on an app: action -> what the app is told.
-const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"], [&"drop", &"drop"]]
+## The zoom pair is here so the SURVEY can scale on the same two keys the world
+## zooms with (owner, 2026-09-19). `09_view` already stands down under
+## `input_blocked()`, so the world does not zoom behind an open page; a screen
+## that does not want them falls through to `super` and nothing happens.
+const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"confirm"], [&"inventory", &"inventory"], [&"craft", &"craft"], [&"map", &"map"], [&"drop", &"drop"], [&"zoom_in", &"zoom_in"], [&"zoom_out", &"zoom_out"]]
 ## Directions on an app: action -> what the app is told.
 const MOVE_KEYS := [[&"move_up", &"up"], [&"move_down", &"down"], [&"move_left", &"left"], [&"move_right", &"right"]]
 ## The frame the last app opened on: a direction that went down on it is not a press on it.
