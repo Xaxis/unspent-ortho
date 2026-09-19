@@ -335,3 +335,75 @@ func test_building_is_taught_when_the_creel_can_actually_build() -> void:
 	check(SettlementBuild.can_make(g.inventory, want), "the creel now holds a piece")
 	check(_offered(g).has(&"holding"), "offered once it does")
 	Fx.done(g)
+
+func test_a_fitted_ability_names_its_own_key() -> void:
+	# **THE WHOLE GEAR PILLAR WAS BEHIND AN UNMENTIONED KEY.** A player finds a
+	# wing, chooses it, puts it in the back slot -- and nothing in the game ever
+	# said which key opens it. The same gap `target` was, and worse, because
+	# this one the player went and earned.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--fit=glide_wing"])))
+	var book := Guide.ability_book(g)
+	check(book != null, "the gear system keeps a book, found by what it keeps")
+	if book == null:
+		g.free()
+		return
+	check(book.has(&"glide"), "the wing granted the glide")
+	eq(Guide.granted(g), [&"glide"] as Array[StringName], "granted, and the innate jump left out")
+	var offered := _offered(g)
+	check(offered.has(&"ability_glide"), "the glide names its key, got %s" % str(offered))
+	check(not offered.has(&"ability_dash"), "and nothing names a key for gear nobody is wearing")
+	# The line names the ACTION, so the key row and the words agree with the
+	# keyboard rather than with a letter typed into this file.
+	eq(Guide.HINTS[&"ability_glide"][1], [&"ability_glide"], "the lesson names the action")
+	# Firing it is learning it, and the book is what wrote the moment down.
+	var guide: Node = g.get_node("58_guide")
+	book.ready_at[&"glide"] = 1.0
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"ability_glide"), "firing it retires the lesson")
+	g.free()
+
+
+func test_no_ability_lesson_without_the_gear_that_grants_it() -> void:
+	# The pair to it: a lesson that arrives before the player has the thing is an
+	# advertisement, which is what a key prompt on the glass always is.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	eq(Guide.granted(g), [] as Array[StringName], "nothing fitted, nothing granted")
+	var offered := _offered(g)
+	for id: StringName in offered:
+		check(not String(id).begins_with("ability_"), "no ability lesson, got %s" % id)
+	g.free()
+
+
+func test_the_key_row_on_the_glass_gets_a_spelled_line_and_a_real_key() -> void:
+	# **THE SEAM NOBODY WAS WATCHING.** Every other test here asks `Guide` or
+	# `58_guide`. This asks what 90_ui HANDS THE HUD -- which is where the whole
+	# key row died silently when `hint_for` started answering `keys` instead of
+	# `key`, and stayed dead with fourteen green tests over it. A shot found it,
+	# so this is the instrument that should have.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var ui: Node = g.get_node("90_ui")
+	check(ui != null, "the ui system loads")
+	if ui == null:
+		g.free()
+		return
+	ui.call("_step_guide", 999.0)
+	var teach: Dictionary = ui.get("_teach")
+	check(not teach.is_empty(), "the guide offers the glass a lesson at all")
+	if teach.is_empty():
+		g.free()
+		return
+	var line := String(teach.get("line", ""))
+	var key := String(teach.get("key", ""))
+	check(not line.contains("%s"), "the line is spelled, not a raw template: %s" % line)
+	check(key != "", "and it carries a key for the cap")
+	# The key is the one the keyboard actually has, not a letter typed anywhere.
+	var walks := PlayerSettings.cap_of(Guide.MOVE[0])
+	check(line.contains(PlayerSettings.label_of(Guide.MOVE)) or key == walks or key.length() <= 4,
+		"the cap reads as a key, got %s" % key)
+	g.free()

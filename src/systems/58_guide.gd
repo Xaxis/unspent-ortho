@@ -156,6 +156,17 @@ func _watch() -> void:
 		retired[&"jump"] = true
 	if not retired.has(&"crouch") and game.body.crouched:
 		retired[&"crouch"] = true
+	# An ability is learned by FIRING it, and the book writes that moment down
+	# itself (`ready_at`, set on a successful fire and on nothing else). So this
+	# asks who recorded it rather than asking the live world afterwards -- and it
+	# is not a key press, because a key pressed and REFUSED taught nobody
+	# anything and would retire the lesson that explains why.
+	var book := Guide.ability_book(game)
+	if book != null:
+		for id: StringName in book.fitted:
+			var lesson := StringName("ability_%s" % id)
+			if not retired.has(lesson) and book.ready_at.has(id):
+				retired[lesson] = true
 
 
 func _on_took(_item: StringName, _n: int) -> void:

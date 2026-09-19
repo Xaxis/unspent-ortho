@@ -100,6 +100,28 @@ func test_a_cluster_of_keys_reads_as_one_word() -> void:
 	eq(PlayerSettings.label_of(&"nothing_is_bound_to_this"), "", "an action nobody declared names no key")
 
 
+## The standing goal line is the third road to the glass, and it goes through
+## CORE, which may not read a key at all -- `guide.gd` says so itself. So a goal
+## may not name one, and the lesson beside it carries the key instead.
+func test_no_goal_line_names_a_key() -> void:
+	# Inside the QUOTED text only. `str(n)` is not a key cap, and a regex loose
+	# enough to match it reports every single-letter argument in core.
+	# The LEGEND form a key is written in -- " (f)." -- and nothing else. Matching
+	# any parenthesised letter caught `str(n)`; matching inside a quote run
+	# caught `height_at(q), ` across the gap between two literals.
+	var spelled := RegEx.create_from_string("\\s\\([a-z]\\)\\.")
+	var bad: Array[String] = []
+	for path: String in _scripts("res://src/core/"):
+		var text := FileAccess.get_file_as_string(path)
+		for line: String in text.split("\n"):
+			if line.strip_edges().begins_with("#"):
+				continue
+			var m := spelled.search(line)
+			if m != null:
+				bad.append("%s: %s" % [path.get_file(), m.get_string()])
+	check(bad.is_empty(), "\n".join(bad))
+
+
 func _scripts(dir: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	for name: String in DirAccess.get_directories_at(dir):
