@@ -1,0 +1,31 @@
+# THE CAMERA SHEET, for the owner to rule on before any of the camera work starts
+# (#120 the targeting lean, #121 the glide to third person at full zoom in, df's
+# #42 the constrained interior, and the body facing the lock). Four asks, one
+# camera, and all four are sequenced AFTER the graphics by his own instruction —
+# so this is the BASELINE, not the work: what the camera does today, at rest, as
+# the lock takes hold, once the lean has settled, and at the nearest the zoom
+# will currently come.
+#   tools/tour.sh tours/camera_sheet.tour --seed=1 --hour=11 --weather=clear:0 --folk=8
+coast calm
+wait 0.9
+shot 01-at-rest
+
+# The lock: `hold target` is the real key held down, as targeting.tour does it.
+spawn runner
+wait 0.8
+shot 02-a-machine-in-front with mob:runner
+hold target
+await target 5
+wait 0.25
+shot 03-the-lean-begins with mob:runner
+await target_lean 5
+wait 1.1
+shot 04-the-lean-settled with mob:runner
+release target
+wait 1.0
+
+# As near as the zoom currently comes: 09_view.CLOSE is 9.0 world units of view
+# height, and the ask is that reaching it glides to third person.
+press zoom_in 2.5
+wait 0.6
+shot 05-the-nearest-the-zoom-comes with mob:runner
