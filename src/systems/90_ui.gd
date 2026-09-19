@@ -440,13 +440,17 @@ func _feed_hud() -> void:
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
+	# **THE CAP IS ASKED FOR, NOT SPELLED.** These two are the most-seen key caps
+	# in the game, and both were the letter typed here. `PlayerSettings` reads the
+	# LIVE `InputMap`, so a player who moves `use` off E is told the key that now
+	# works -- which is the whole reason the keys page exists.
 	var said := UiLink.use_hint(game)
 	if said != "":
-		hud.set_hint(said, "e")
+		hud.set_hint(said, PlayerSettings.cap_of(&"use"))
 		return
 	var here := UiLink.stations_here(game)
 	if not here.is_empty() and here[0] != &"hand":
-		hud.set_hint("%s - make" % here[0], "c")
+		hud.set_hint("%s - make" % here[0], PlayerSettings.cap_of(&"craft"))
 		return
 	# Nothing to work here: the row teaches the key the guide has not retired yet.
 	if _teach.is_empty():
@@ -478,14 +482,33 @@ func _guided() -> bool:
 	return _guide != null and not bool(_guide.get("_off"))
 
 
-## The first hint the guide would teach that names a key, or {}.
+## The first hint the guide would teach that names a key, said in the player's
+## own keys, or {}.
+##
+## **THIS ASKED FOR A FIELD THAT NO LONGER EXISTED AND SO WAS ALWAYS EMPTY.**
+## `Guide.hint_for` answers `keys` (action NAMES, resolved against the live
+## InputMap by whoever says the line); it answered a single spelled `key` until
+## the lines stopped spelling their own. Reading `h.get("key", "")` off the new
+## shape returns "" for every lesson ever taught, so this returned {} every
+## time and the guide's key row on the glass was dead for every hint in the
+## game -- with every test green, because they all ask `Guide.hint_for` or
+## `58_guide` directly and nothing asked the HUD what it had been handed.
+## A SHOT IS WHAT FOUND IT: the goal and the key row were simply not there.
+##
+## The line is a TEMPLATE. Spelling it here is not decoration: handing it over
+## unspelled draws a literal "%s opens the wing." across the glass.
 func _guide_hint() -> Dictionary:
 	if not _guided():
 		return {}
 	var retired: Dictionary = _guide.get("retired")
 	var h := Guide.hint_for(game, retired)
+	if h.is_empty():
+		return {}
 	# A line with no key of its own is said, not shown on a key row.
-	return h if not h.is_empty() and String(h.get("key", "")) != "" else {}
+	var keys: Array = h.get("keys", [])
+	if keys.is_empty():
+		return {}
+	return {"line": PlayerSettings.spell(String(h.line), keys), "key": PlayerSettings.cap_of(keys[0])}
 
 
 func _hostile_near() -> bool:

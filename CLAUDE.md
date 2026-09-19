@@ -211,6 +211,11 @@ integrating a wave, and never delete or weaken a tour to make one pass.
 **Look at the pictures.** A green test says nothing about how the game looks. After
 any visible change, shoot the affected place and Read the PNG. After any model
 change, shoot the gallery. Judge beauty, not just correctness.
+**But a SHOT cannot show the guide**: `58_guide` sets `_off = options.shot != ""`,
+so the goal line and the key row are switched off in every `tools/shot.sh` run,
+not only the single-frame ones its comment mentions. Four shots of an empty glass
+before reading that. A guide line needs a TOUR, where `options.shot` is empty —
+and `feel.tour`'s `01-wake-the-goal` is the frame for it.
 
 Never pipe a gate through `tail`/`head` in a way that hides its exit code. The
 tools print their own summaries.
@@ -362,6 +367,20 @@ tools print their own summaries.
   never inserted. **An instrument that reports on the step before the one you
   care about will report success for a failure every time.** Check the thing
   itself: read the pixels, read the file back, ask the live camera.
+  **And the worst version of this is a test that goes GREEN AGAINST THE BUG.**
+  `Events.hint(text, key)` looked like it fed the key cap, so a test was written
+  to prove five systems were lettering the wrong key onto the glass -- and it
+  passed, because `Hud.teach(text, _key)` DISCARDS that argument and no cap was
+  ever drawn from it. The lie certified itself. The only thing that catches this
+  is expecting red and getting green: **when a test you wrote to demonstrate a
+  bug passes first time, the test is wrong until proven otherwise.** Put the bug
+  back and watch it fail, every time, before you believe the fix. **The commonest
+  way a test excuses itself is an escape hatch for a moment that did not
+  arrive**: a guide test staged a runner, and when the runner had not roused
+  itself that frame it skipped its own assertions and passed — with the entire
+  feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
+  rather than waiting for the world to produce it, or the test reports on the
+  weather.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
@@ -490,7 +509,7 @@ lead with why, in short sentences.
 
 | Seam | File | Rule |
 |---|---|---|
-| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hint, hit, fight_ended, killed, took, made, time_skipped, screen_changed, saved. `hint(text, key)` is the teaching channel: said in its moment or dropped, never queued behind a fight's quiet the way `message` is, so no lesson arrives out of context. Because it is dropped, a lesson whose moment is "the fight is over" (a machine breaks off still near, still hushing the glass) must be held by whoever owns it until `Hud.can_teach()`, never emitted into the quiet, or it is lost for good. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. The bus declares signals a package does not own: the raids five (`settlement_noticed`, `attention_changed`, `raid_warned`, `raid_began`, `raid_ended`) are declared here but emitted ONLY by `48_raids`, and the settlement four (`settlement_founded`, `structure_built/damaged/destroyed`) ONLY by `46_settlements`. |
+| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hint, hit, fight_ended, killed, took, made, time_skipped, screen_changed, saved. `hint(text, key)` is the teaching channel: said in its moment or dropped, never queued behind a fight's quiet the way `message` is, so no lesson arrives out of context. Because it is dropped, a lesson whose moment is "the fight is over" (a machine breaks off still near, still hushing the glass) must be held by whoever owns it until `Hud.can_teach()`, never emitted into the quiet, or it is lost for good. **`hint`'s second argument reaches nothing today**: `Hud.teach` discards it, and the key cap on the glass is fed by `90_ui` (`set_hint`), which asks `PlayerSettings.cap_of(action)`. Every key a player is shown or told is ASKED of the live `InputMap` and never spelled -- `PlayerSettings.label_of` / `cap_of` / `spell` are the one door, held by `tests/settings/test_taught_keys.gd`, which reads the shipped source. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. The bus declares signals a package does not own: the raids five (`settlement_noticed`, `attention_changed`, `raid_warned`, `raid_began`, `raid_ended`) are declared here but emitted ONLY by `48_raids`, and the settlement four (`settlement_founded`, `structure_built/damaged/destroyed`) ONLY by `46_settlements`. |
 | Blows that are not the player's | `src/core/fight/fight_sim.gd` | `FightSim.strike(m, blow, from)` is the ONE door for anything other than the player's swing to hurt a body (a turret). It meets the swing's own rules — the plate from where it came, the hit window, flare, stall, second act, nerve — and emits `struck` instead of `hit`, so `Events.hit` still only ever means the player struck something (the guide, sabotage, the score and the hitstop all read it that way). The body turns on where the blow came from, and remembers it: `MobState.struck_from` is that point, INF when the last blow was the player's. A kill it makes still goes through `killed` (every counter of kills sees it) with `by_player` false: no hitstop, no shake, and no scrap in the creel. |
 | Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order (scripts compile on loader threads during world gen); never edit `game.gd` to add one |
 | Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load/lamp oil; the lamp action (15_lights) owns `lamp_lit`; UI only reads |

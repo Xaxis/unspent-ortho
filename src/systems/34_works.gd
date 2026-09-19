@@ -637,7 +637,11 @@ func _teach() -> void:
 		Events.message.emit("A dark yard. The mast has nothing on it.")
 		return
 	Events.message.emit(Works.says(s))
-	Events.hint.emit("Three housings hold this yard up. A steel edge, and hold E on each.", "use")
+	# The key is asked for, never spelled: the cap used to read USE, because the
+	# ACTION's name was handed to a drawer that letters what it is given.
+	Events.hint.emit(PlayerSettings.spell(
+		"Three housings hold this yard up. A steel edge, and hold %s on each.", [&"use"]),
+		PlayerSettings.cap_of(&"use"))
 
 
 # --- saving -------------------------------------------------------------------

@@ -93,7 +93,12 @@ const DARK_REACH := 0.6
 const DARK_NIGHTFALL := 0.6
 ## A fire lights the ground this far round it.
 const FIRE_LIGHT := 5.0
-const DARK_LINE := "Too dark to find anything. The lamp (f)."
+## **NO KEY IN A CORE LINE.** These two spelled "(f)" and "(i)". Core may not
+## read a key -- `guide.gd` says so where it hands its lines over as templates --
+## so a letter typed here is right only until somebody rebinds, and the settings
+## page invites exactly that. The guide's `lamp` and `carry` lessons name both
+## keys in the player's own keys, and both are offered at these same moments.
+const DARK_LINE := "Too dark to find anything. Light the lamp."
 ## Real seconds between two of the same nudge on an empty press.
 const NUDGE_SECONDS := 12.0
 ## Lamp oil, lamp and carried flasks, at or under which the player is told once.
@@ -101,7 +106,7 @@ const LAMP_LOW_MINUTES := 60.0
 const LAMP_LOW_LINE := "The lamp is low on oil."
 ## Starving on your feet: this long after the warning, a body sits down.
 const STARVING_GRACE_MINUTES := 60.0
-const HUNGRY_LINE := "You are hungry. Eat something (i)."
+const HUNGRY_LINE := "You are hungry. Eat something from what you carry."
 const STARVING_LINE := "You are weak with hunger. Eat, or you will fall."
 
 const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], PropKind.KILN: [&"kiln"],

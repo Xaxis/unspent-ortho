@@ -360,7 +360,7 @@ func _start_talk(row: Dictionary) -> void:
 	if id == &"":
 		# Nobody has anything written for this one yet. Say so in the world's own
 		# flat voice rather than opening an empty page.
-		Events.hint.emit("They have nothing to say to you.", "no_talk")
+		Events.hint.emit("They have nothing to say to you.", "")
 		return
 	talk = StoryTalk.start(id)
 	if talk.over:
@@ -380,7 +380,7 @@ func _start_talk(row: Dictionary) -> void:
 func _start_reading(prop: WorldProp) -> void:
 	var id := StoryFragments.held_by(game.world, prop)
 	if id == &"":
-		Events.hint.emit("Nothing on it that can still be read.", "no_read")
+		Events.hint.emit("Nothing on it that can still be read.", "")
 		return
 	# A thing that answers (`talk`): reading it is being spoken to.
 	var answers := StringName(str(StoryContent.FRAGMENTS[id].get("talk", &"")))

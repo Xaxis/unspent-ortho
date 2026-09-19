@@ -11,8 +11,8 @@ class_name Guide
 ##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
 ##                                            food, light; or the ore once there is a pick
 ##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
-##                                            {id: StringName, line: String, key: String} or {}
-##   HINTS                                    id -> [line, key] for every hint
+##                                            {id: StringName, line: String, keys: Array} or {}
+##   HINTS                                    id -> [line template, action names] for every hint
 ##
 ## Hints retire on use (58_guide marks them): walk (moved), take (took), fire
 ## (a fire made), make (something made at a station), carry (the carrying page
@@ -41,6 +41,14 @@ const HINTS := {
 	&"make": ["%s makes things at the fire. Long work cooks while you go.", [&"craft"]],
 	&"carry": ["%s shows what you carry. Leave what you do not need.", [&"inventory"]],
 	&"lamp": ["Night. %s lights the lamp.", [&"lamp"]],
+	# **THE CORE VERB OF AN ACTION GAME, AND IT WAS NEVER NAMED.** `side` is the
+	# only lesson that carries `swing`, it is the HELD lesson delivered after
+	# plate has already rung, and its words ("strike the side that is lit")
+	# assume you have been striking all along. Nothing anywhere told you which
+	# key does it. Said as a machine comes on, ahead of the dodge, because a
+	# player who cannot strike cannot end the fight they are being taught to
+	# survive.
+	&"fight": ["%s swings what is in your hands. Wait out its blow, then answer.", [&"swing"]],
 	&"dodge": ["It winds up before it strikes: %s gets you out of the way.", [&"dodge"]],
 	# **THE VERB THE GAME NEVER TAUGHT.** A player can press 27 things and the
 	# guide named 11 of them; targeting was one of the sixteen it did not, which
@@ -71,6 +79,24 @@ const HINTS := {
 	# before that it is an advertisement, and after the first piece goes up it
 	# has taught itself.
 	&"holding": ["%s puts a piece up out of the creel. What you build, the plan eventually hears.", [&"holding"]],
+	# **THE SIXTH, AND THE WHOLE GEAR PILLAR WAS BEHIND AN UNMENTIONED KEY.**
+	# Fitting a wing or a line or a stolen lens grants an ACTION, and nothing in
+	# the game ever named it -- the same gap `target` was, and worse, because a
+	# player went and found the piece, chose it, put it in a slot, and still had
+	# no way to know what to press. One lesson per ability rather than one about
+	# abilities: each names its own key and says what that key is FOR, because
+	# "you have an ability" teaches nobody anything.
+	&"ability_dash": ["%s throws you clear of what is coming. It costs breath.", [&"ability_dash"]],
+	&"ability_glide": ["%s opens the wing. Step off something high and ride it down.", [&"ability_glide"]],
+	&"ability_scan": ["%s reads every working part near you, and what each machine makes of you.", [&"ability_scan"]],
+	&"ability_grapple": ["%s throws a line at what you face and pulls you to it, ledges included.", [&"ability_grapple"]],
+	&"ability_spoof": ["%s answers their challenge in their own language. They read you as one of theirs.", [&"ability_spoof"]],
+	# The seventh, and the only app the guide never named. Everything found is
+	# already being written down -- pages read, beats landed, answers given -- and
+	# a player who is never told carries the whole story in their head or loses
+	# it. Offered only once there IS something in it: a lesson that opens an
+	# empty book teaches that the book is empty.
+	&"journal": ["%s opens what you have found: what you read, what you were told, what you said back.", [&"journal"]],
 	&"side": ["Plate rings. Strike the side that is lit, while it is spent.", [&"swing"]],
 	&"runner": ["A runner. It hunts. Its drive is at its back: let it bite past you, then strike behind.", []],
 	&"worker": ["A worker on its round. Keep out of its path and it leaves you be.", []],
@@ -108,7 +134,12 @@ static func goal(game: Game) -> String:
 	if not _cooking_or_has(game, &"charcoal"):
 		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
 			return "Charcoal for a pick: four driftwood or dead wood, burnt at %s." % at
-		return "Charcoal for a pick: set it going at %s (c)." % at
+		# **NO KEY IN A GOAL LINE.** This said "(c)" -- a letter typed into CORE,
+		# which this file states two screens down may not read a key at all, and
+		# which is wrong for anybody who rebinds `craft`. The goal says what to
+		# WANT; the `make` lesson says which key, in the player's own keys, and
+		# it is offered at exactly this moment.
+		return "Charcoal for a pick: set it going at %s." % at
 	if not inv.has(&"haft"):
 		return "A haft, whittled from wood."
 	if inv.count(&"scrap") == 0:
@@ -127,6 +158,41 @@ static func hint_for(game: Game, retired: Dictionary) -> Dictionary:
 
 
 ## The hints that fit the moment, most pressing first.
+## The gear system's ability book, found BY WHAT IT KEEPS and never by its name
+## -- the idiom `Chapters` uses, and the reason renumbering a system file has
+## never broken anything. Null in a fixture with no systems, which is correct:
+## nothing has been fitted there.
+static func ability_book(game: Game) -> AbilityBook:
+	if game == null:
+		return null
+	for sys: GameSystem in game.systems:
+		var book: Variant = sys.get(&"book")
+		if book is AbilityBook:
+			return book
+	return null
+
+
+## Every ability the GEAR has granted -- innate ones left out, because the jump
+## has its own lesson and is not a thing the player chose.
+static func granted(game: Game) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var book := ability_book(game)
+	if book == null:
+		return out
+	for id: StringName in book.fitted:
+		if not Abilities.INNATE.has(id):
+			out.append(id)
+	return out
+
+
+## Whether anything has been written down yet: a page read, a beat landed, or an
+## answer given. The journal only ever READS what already happened, so this asks
+## `Story` -- who WROTE IT DOWN -- rather than looking for evidence in the live
+## world, which is the rule this file's own lessons are built on.
+static func _journal_holds_something() -> bool:
+	return Story.found_count() > 0 or not Story.landed_beats().is_empty() or not Story.choices().is_empty()
+
+
 ## Whether the creel holds enough for any piece somebody has learnt to build.
 ## Asked of `SettlementBuild.can_make`, which is the same question the holding
 ## page answers, so the lesson cannot offer a key that would refuse.
@@ -167,6 +233,7 @@ static func _applicable(game: Game) -> Array[StringName]:
 			# Said as a hunter first comes on, before it is close enough to hush the page
 			# (a line said in a fight waits until it is over, out of its moment).
 			if m.machine and not m.indifferent() and m.roused() and Senses.chebyshev(m.pos, sim.hero.pos) > Survival.THREAT_RADIUS:
+				out.append(&"fight")
 				out.append(&"dodge")
 			var seen := m.pos.distance_to(sim.hero.pos) <= SIGHT
 			if seen and m.machine:
@@ -181,8 +248,12 @@ static func _applicable(game: Game) -> Array[StringName]:
 		out.append(&"lamp")
 	if game.inventory.bulk() > game.inventory.creel() * CARRY_SHARE:
 		out.append(&"carry")
+	for id: StringName in granted(game):
+		out.append(StringName("ability_%s" % id))
 	if _can_build(game):
 		out.append(&"holding")
+	if _journal_holds_something():
+		out.append(&"journal")
 	if game.world != null and game.player != null \
 			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
 		out.append(&"map")

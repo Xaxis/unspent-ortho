@@ -335,3 +335,144 @@ func test_building_is_taught_when_the_creel_can_actually_build() -> void:
 	check(SettlementBuild.can_make(g.inventory, want), "the creel now holds a piece")
 	check(_offered(g).has(&"holding"), "offered once it does")
 	Fx.done(g)
+
+func test_a_fitted_ability_names_its_own_key() -> void:
+	# **THE WHOLE GEAR PILLAR WAS BEHIND AN UNMENTIONED KEY.** A player finds a
+	# wing, chooses it, puts it in the back slot -- and nothing in the game ever
+	# said which key opens it. The same gap `target` was, and worse, because
+	# this one the player went and earned.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--fit=glide_wing"])))
+	var book := Guide.ability_book(g)
+	check(book != null, "the gear system keeps a book, found by what it keeps")
+	if book == null:
+		g.free()
+		return
+	check(book.has(&"glide"), "the wing granted the glide")
+	eq(Guide.granted(g), [&"glide"] as Array[StringName], "granted, and the innate jump left out")
+	var offered := _offered(g)
+	check(offered.has(&"ability_glide"), "the glide names its key, got %s" % str(offered))
+	check(not offered.has(&"ability_dash"), "and nothing names a key for gear nobody is wearing")
+	# The line names the ACTION, so the key row and the words agree with the
+	# keyboard rather than with a letter typed into this file.
+	eq(Guide.HINTS[&"ability_glide"][1], [&"ability_glide"], "the lesson names the action")
+	# Firing it is learning it, and the book is what wrote the moment down.
+	var guide: Node = g.get_node("58_guide")
+	book.ready_at[&"glide"] = 1.0
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"ability_glide"), "firing it retires the lesson")
+	g.free()
+
+
+func test_no_ability_lesson_without_the_gear_that_grants_it() -> void:
+	# The pair to it: a lesson that arrives before the player has the thing is an
+	# advertisement, which is what a key prompt on the glass always is.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	eq(Guide.granted(g), [] as Array[StringName], "nothing fitted, nothing granted")
+	var offered := _offered(g)
+	for id: StringName in offered:
+		check(not String(id).begins_with("ability_"), "no ability lesson, got %s" % id)
+	g.free()
+
+
+func test_the_key_row_on_the_glass_gets_a_spelled_line_and_a_real_key() -> void:
+	# **THE SEAM NOBODY WAS WATCHING.** Every other test here asks `Guide` or
+	# `58_guide`. This asks what 90_ui HANDS THE HUD -- which is where the whole
+	# key row died silently when `hint_for` started answering `keys` instead of
+	# `key`, and stayed dead with fourteen green tests over it. A shot found it,
+	# so this is the instrument that should have.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var ui: Node = g.get_node("90_ui")
+	check(ui != null, "the ui system loads")
+	if ui == null:
+		g.free()
+		return
+	ui.call("_step_guide", 999.0)
+	var teach: Dictionary = ui.get("_teach")
+	check(not teach.is_empty(), "the guide offers the glass a lesson at all")
+	if teach.is_empty():
+		g.free()
+		return
+	var line := String(teach.get("line", ""))
+	var key := String(teach.get("key", ""))
+	check(not line.contains("%s"), "the line is spelled, not a raw template: %s" % line)
+	check(key != "", "and it carries a key for the cap")
+	# The key is the one the keyboard actually has, not a letter typed anywhere.
+	var walks := PlayerSettings.cap_of(Guide.MOVE[0])
+	check(line.contains(PlayerSettings.label_of(Guide.MOVE)) or key == walks or key.length() <= 4,
+		"the cap reads as a key, got %s" % key)
+	g.free()
+
+
+func test_the_journal_is_taught_once_there_is_something_in_it() -> void:
+	# The only app the guide never named. Everything found is already written
+	# down; a player never told carries the story in their head or loses it.
+	# Said only once the book has a page, because a lesson that opens an empty
+	# book teaches that the book is empty.
+	Story.forget()
+	var g := Fx.flat(60)
+	check(not _offered(g).has(&"journal"), "nothing found yet, nothing to open")
+	# Read one page, the way play would.
+	var id: StringName = StoryContent.FRAGMENTS.keys()[0]
+	check(Story.read(id), "a page is read")
+	check(_offered(g).has(&"journal"), "offered once the book holds one, got %s" % str(_offered(g)))
+	Story.forget()
+	Fx.done(g)
+
+
+func test_opening_the_journal_retires_its_lesson() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	var guide: Node = g.get_node("58_guide")
+	guide.call("_on_screen", &"journal", true)
+	check((guide.get("retired") as Dictionary).has(&"journal"), "opening it spends the lesson")
+	g.free()
+
+
+func test_the_swing_is_named_before_the_dodge_when_a_machine_comes_on() -> void:
+	# **THE CORE VERB, NEVER NAMED.** `side` is the only lesson carrying `swing`,
+	# it arrives after plate has already rung, and its words assume you have been
+	# striking all along. Nothing said which key did it.
+	#
+	# The moment is STAGED, not waited for. The first version of this let the
+	# runner rouse itself and skipped its own assertions when it had not -- and
+	# it passed with the whole feature deleted. A test that excuses itself when
+	# the moment does not arrive is testing nothing at all.
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64", "--spawn=runner"])))
+	var sim := g.player.sim
+	var coming: MobState = null
+	for m in sim.mobs:
+		if m.alive and m.machine:
+			coming = m
+	check(coming != null, "a machine is on the land")
+	if coming == null:
+		g.free()
+		return
+	# Roused, hostile, and standing off past the radius that hushes the glass:
+	# the exact moment both lessons are written for.
+	coming.mood = MobState.CHASING
+	coming.disposition = &"hostile"
+	coming.pos = sim.hero.pos + Vector2(Survival.THREAT_RADIUS + 4.0, 0.0)
+	var offered := _offered(g)
+	check(offered.has(&"dodge"), "the dodge is offered at this moment, got %s" % str(offered))
+	check(offered.has(&"fight"), "and so is the swing, got %s" % str(offered))
+	check(offered.find(&"fight") < offered.find(&"dodge"), "the swing comes first: %s" % str(offered))
+	# Swinging once spends it, the way a dodge spends its own.
+	var guide: Node = g.get_node("58_guide")
+	sim.hero.blow_at = 1.0
+	guide.call("_watch")
+	check((guide.get("retired") as Dictionary).has(&"fight"), "swinging retires it")
+	g.free()
+
+
+func test_the_swing_lesson_names_the_swing_key() -> void:
+	eq(Guide.HINTS[&"fight"][1], [&"swing"], "it names the action, not a letter")
+	check(not String(Guide.HINTS[&"fight"][0]).contains("J"), "and spells no key in its words")

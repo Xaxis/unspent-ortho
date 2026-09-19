@@ -181,7 +181,7 @@ func _watch() -> void:
 		reachable = near
 		if not _taught.has(near.id):
 			_taught[near.id] = true
-			Events.hint.emit("A shaft, and a ladder still in it. E to go down.", "use")
+			Events.hint.emit(PlayerSettings.spell("A shaft, and a ladder still in it. %s to go down.", [&"use"]), PlayerSettings.cap_of(&"use"))
 
 
 ## Put each gate on the drawn ground once the chunk under it exists: the mesher's
@@ -269,7 +269,7 @@ func _watch_gates() -> void:
 			gate_near = g.id
 			if not _taught.has(g.id):
 				_taught[g.id] = true
-				Events.hint.emit("Another day is standing on the ground here. E to step into it.", "use")
+				Events.hint.emit(PlayerSettings.spell("Another day is standing on the ground here. %s to step into it.", [&"use"]), PlayerSettings.cap_of(&"use"))
 			return
 
 
