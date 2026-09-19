@@ -18,6 +18,10 @@ var landmarks: Array[Dictionary] = []
 ## makes of him now (calm / wary / hostile / hunted).
 var keeper_down := false
 var level: StringName = &"calm"
+## Whether the chapter is wholly answered (`Chapters.answered_here`): explored,
+## mined and defended. A villager cannot know what he has mined, so what they say
+## about it is what they have WATCHED him do, never a count of his creel.
+var answered := false
 
 
 ## The plan has lost this place: the only thing that ends the danger that working

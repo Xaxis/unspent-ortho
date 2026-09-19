@@ -2006,6 +2006,14 @@ const MOODS := {
 		"The children are out past the rows again. I keep counting them in.",
 		"I don't know what to do with a quiet like this. I'll learn.",
 	],
+	# Wholly answered. Not "we are safe now", which is the place's sentence, but
+	# "you are done here", which is his — and they know it because they have
+	# watched him, not because anybody counted what is in his creel.
+	&"done": [
+		"You've been up every track on this ground and down again.",
+		"There's not a thing here you haven't had your hands on.",
+		"People go on after that. Go on.",
+	],
 }
 
 const SUBARCS := {
