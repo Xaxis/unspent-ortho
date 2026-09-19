@@ -667,6 +667,15 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	var w: float = [2.45, 1.8, 2.7][form]
 	var d: float = [2.75, 2.35, 3.3][form]
 	var h: float = [1.45, 1.05, 1.5][form]
+	# NOT TAGGED CLAY YET, AND THAT IS THE RULE BEING KEPT RATHER THAN A GAP.
+	# A washed wall is daub and limewash over a frame, not a board, and a wall is
+	# the largest unbroken MADE surface this camera ever sees — by ENGINE.md's own
+	# "judge it at the shape it is seen on" it should be the strongest material
+	# read in the game. But I could not get a frame with one in it: the coast
+	# village builds shacks and patched shelters, and `--scene=gallery
+	# --filter=house` matches the city's TOWER forms. Tagging a surface I cannot
+	# look at is the thing that rule exists to stop, so it waits for a stage that
+	# shows this form.
 	var wash: Color = [P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form]
 	var t := walls(k, w, d, h, s, wash, GroundColors.down(wash, 0.35))
 	var moss := dress.growth
