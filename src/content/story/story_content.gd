@@ -2132,6 +2132,13 @@ const SUBARCS := {
 ## here speaks of them (`Taken.say`). A line that took two would put the writing
 ## of a sentence in the hands of whoever emits it.
 ##
+## AND NO LINE MAY OPEN WITH IT. What goes in is usually not a name but a phrase
+## — "somebody out of Oyster Row" — so a line that starts there starts in lower
+## case, and the frame at the end of tours/escort.tour said "somebody out of
+## Oyster Row went in at their own door" under a picture of them doing it. The
+## same rule is written on `SUBARCS` for the same reason; I wrote it there and
+## then broke it here, which is why a test holds it now instead of a comment.
+##
 ## The glass is not the village. These are said in the moment, in the world's own
 ## flat voice, by somebody watching it happen; what a village says about the same
 ## person is `SUBARCS` and is said later, in a doorway, by somebody who knew
@@ -2139,19 +2146,19 @@ const SUBARCS := {
 const TAKEN := {
 	"took": "They carried %s off toward the yard.",
 	# Out of the yard and nobody with them: they take the road by themselves.
-	"freed": "%s walked out of the yard and took the road home.",
+	"freed": "The yard is dark, and %s took the road home.",
 	"freed_many": "They walked out of the yard: %s.",
 	# Out of the yard and WAITING to be walked. The true half of the same
 	# sentence, and the reason it is its own line: the other one was said over a
 	# frame of that person still standing in the yard, plainly not on any road.
-	"out": "%s walked out of the yard.",
-	"home": "%s went in at their own door.",
+	"out": "The yard is dark, and %s walked out of it.",
+	"home": "The door is shut behind %s.",
 	# The walk that ended badly. Flat, and never a verdict: the glass reports what
 	# happened in the world and has no opinion about who let it. It also says the
 	# only thing that is TRUE in every case — a person left too far behind for too
 	# long may have gone down or may simply be somewhere else, and the glass was
 	# not there either. What it might have been is the village's to wonder about.
-	"lost": "%s did not get home.",
+	"lost": "There is no sign of %s.",
 	"lost_to": "They took %s back.",
 }
 

@@ -20,6 +20,11 @@ func test_every_moment_a_record_can_reach_has_a_line() -> void:
 		var line := str(StoryContent.TAKEN.get(k, ""))
 		eq(line.count("%s"), 1, "%s takes exactly one name: %s" % [k, line])
 		check(line.ends_with(".") and line.length() > 12, "%s is a sentence: %s" % [k, line])
+		# What goes in is usually a phrase and not a name, so a line that opens
+		# with it opens in lower case — and it says so under a picture of the
+		# thing happening. Caught in a real frame, held here so it cannot come
+		# back the next time somebody writes a line in a hurry.
+		check(not line.begins_with("%s"), "%s does not open on a name: %s" % [k, line])
 
 
 ## A person is never handed a verdict on the glass. The world reports; the story
@@ -41,6 +46,7 @@ func test_the_glass_and_the_village_are_not_the_same_words() -> void:
 		for part: String in ["ask", "thanks", "kept", "lost", "lost_to"]:
 			for l: String in words.get(part, []):
 				said.append(l)
+				check(not l.begins_with("%s"), "%s.%s does not open on a name: %s" % [goal, part, l])
 	for k: String in KEYS:
 		var line := str(StoryContent.TAKEN.get(k, ""))
 		check(not said.has(line), "%s is the glass's own line and nobody's dialogue" % k)
