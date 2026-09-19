@@ -128,7 +128,50 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 ## Thorn in the sheltered pockets and nothing on the tops, which is what wind and
 ## seventy years of nobody cutting it leaves.
+## WHAT IS STANDING HERE IS OLDER THAN THE MACHINES, and that is the whole of
+## this landscape. It declared ten kinds and placed ONE — a bush, on moss, at
+## three per cent — so the standing stones, the cairns and the graves that are
+## the entire idea of the Crags existed in `props` and never in the ground
+## between the landmarks. A declaration is not the act.
+##
+## Keyed to the grounds this file actually lays, because that is what makes a
+## place read as itself rather than as a spread of its own prop list: the
+## LIMESTONE is the pavement showing through and carries clints, the ROCK is
+## what broke off it, the MOSS and HEATH are the thin soil people buried into,
+## and the SCREE carries only what rolled down.
+##
+## The rare things are windowed rather than thresholded (`r > a and r < b`), so
+## a standing stone is one in a few hundred tiles instead of a third of a
+## hillside — a monument that is common is scenery.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.MOSS:
-		return PropKind.BUSH if r < 0.03 else BiomeScatter.NONE
+		if r < 0.030:
+			return PropKind.BUSH
+		if r > 0.30 and r < 0.3075:
+			return PropKind.CAIRN
+		if r > 0.50 and r < 0.5055:
+			return PropKind.STANDING_STONE
+		return PropKind.GRAVE if r > 0.70 and r < 0.7035 else BiomeScatter.NONE
+	if g == Ground.LIMESTONE:
+		if r < 0.085:
+			return PropKind.CLINTS
+		return PropKind.STANDING_STONE if r > 0.60 and r < 0.609 else BiomeScatter.NONE
+	if g == Ground.ROCK:
+		if r < 0.042:
+			return PropKind.BOULDER
+		if r < 0.056:
+			return PropKind.CLINTS
+		if r < 0.066:
+			return PropKind.STONE_ORE
+		return PropKind.RUIN if r > 0.80 and r < 0.8055 else BiomeScatter.NONE
+	if g == Ground.HEATH or g == Ground.GRASS:
+		if r < 0.028:
+			return PropKind.BUSH
+		if r < 0.038:
+			return PropKind.DEAD_TREE
+		return PropKind.MEMORIAL if r > 0.55 and r < 0.5535 else BiomeScatter.NONE
+	if g == Ground.PEAT:
+		return PropKind.BUSH if r < 0.020 else BiomeScatter.NONE
+	if g == Ground.SCREE:
+		return PropKind.BOULDER if r < 0.030 else BiomeScatter.NONE
 	return BiomeScatter.NONE

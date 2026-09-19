@@ -43,7 +43,14 @@ const UNKNOWN := "unknown"
 ##    landscape has a new id. It is the largest deliberate move of this list and
 ##    it is the landscape finally being the thing it was written to be: without
 ##    it a megacity rendered as eight one-storey huts.
-const GEN := 11
+## 4. The Crags scatters what it DECLARES. It listed ten prop kinds — standing
+##    stones, cairns, graves, ruins, clints, memorials — and its `_scatter`
+##    placed one, a bush on moss, so nine tenths of its own declaration existed
+##    in `props` and never in the ground between the landmarks. **The stamp
+##    cannot see this and that is why the counter is turned by hand**: a scatter
+##    recipe is hashed by its NAME and not by its source, so the digest was
+##    identical before and after while every seed's Crags changed completely.
+const GEN := 12
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
