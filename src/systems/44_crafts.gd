@@ -392,17 +392,19 @@ func _teach() -> void:
 		if near != null:
 			_taught[&"board"] = true
 			var line := "Strip it for its parts" if near.wrecked else "Stand on it"
-			Events.hint.emit("%s: b." % line, "b")
+			Events.hint.emit(PlayerSettings.spell("%s: %%s." %% line, [&"ride"]), PlayerSettings.cap_of(&"ride"))
 			return
 	if aboard == null and not _taught.has(&"launch") and _carried_kind() != &"":
 		var kind := _carried_kind()
 		if Crafts.launch_spot(game.world, game.query, kind, _at(), game.player.facing) != Vector2.INF:
 			_taught[&"launch"] = true
-			Events.hint.emit("Put the %s in here: b." % CraftKinds.display_name(kind), "b")
+			Events.hint.emit(PlayerSettings.spell(
+				"Put the %s in here: %%s." %% CraftKinds.display_name(kind), [&"ride"]),
+				PlayerSettings.cap_of(&"ride"))
 			return
 	if aboard != null and not _taught.has(&"leave"):
 		_taught[&"leave"] = true
-		Events.hint.emit("Step off again: b.", "b")
+		Events.hint.emit(PlayerSettings.spell("Step off again: %s.", [&"ride"]), PlayerSettings.cap_of(&"ride"))
 
 
 ## The first craft in the creel that has a place to go in, else the first at all.

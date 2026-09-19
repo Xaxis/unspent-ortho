@@ -440,13 +440,17 @@ func _feed_hud() -> void:
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
+	# **THE CAP IS ASKED FOR, NOT SPELLED.** These two are the most-seen key caps
+	# in the game, and both were the letter typed here. `PlayerSettings` reads the
+	# LIVE `InputMap`, so a player who moves `use` off E is told the key that now
+	# works -- which is the whole reason the keys page exists.
 	var said := UiLink.use_hint(game)
 	if said != "":
-		hud.set_hint(said, "e")
+		hud.set_hint(said, PlayerSettings.cap_of(&"use"))
 		return
 	var here := UiLink.stations_here(game)
 	if not here.is_empty() and here[0] != &"hand":
-		hud.set_hint("%s - make" % here[0], "c")
+		hud.set_hint("%s - make" % here[0], PlayerSettings.cap_of(&"craft"))
 		return
 	# Nothing to work here: the row teaches the key the guide has not retired yet.
 	if _teach.is_empty():

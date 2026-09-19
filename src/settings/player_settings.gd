@@ -237,6 +237,45 @@ static func key_of(action: StringName) -> int:
 	return KEY_NONE
 
 
+## What a key is CALLED, for a line said to the player and for the cap the HUD
+## draws. An Array is a cluster said as one word, so `[&"up", &"left", &"down",
+## &"right"]` reads "WASD" while those are its keys and reads whatever they are
+## rebound to after.
+##
+## **THIS IS HERE BECAUSE FOUR TEACHERS SPELLED THEIR OWN.** `Events.hint` takes
+## a line and a key, and the key is drawn VERBATIM on a cap (`UiSlate.key_cap`).
+## Two systems passed the ACTION name `"use"`, so the glass drew a cap reading
+## USE where a key belongs, and three more spelled "b." and "E" into the sentence
+## from a literal -- right until the player rebinds, after which the game tells
+## them to press a key that does nothing. The guide already asked the live
+## InputMap and was the only one that did; this is that answer, moved to where
+## every teacher can reach it.
+static func label_of(entry: Variant) -> String:
+	if entry is Array:
+		var out := ""
+		for a: StringName in entry as Array:
+			out += label_of(a)
+		return out
+	var code := key_of(entry as StringName)
+	return "" if code == KEY_NONE else OS.get_keycode_string(code)
+
+
+## The label as a cap wears it. Lowercase, because the cap letters it itself.
+static func cap_of(entry: Variant) -> String:
+	return label_of(entry).to_lower()
+
+
+## Put the live keys into a line that asked for them. A line with no `%s` comes
+## back untouched, which is how a lesson that names no key still says itself.
+static func spell(line: String, keys: Array) -> String:
+	if keys.is_empty() or not line.contains("%s"):
+		return line
+	var labels: Array = []
+	for e: Variant in keys:
+		labels.append(label_of(e))
+	return line % labels
+
+
 ## Put `action` on `keycode`. Returns the action it was taken from, or &"" — a
 ## key may only do one thing, and the page says which one it took it off.
 static func bind_key(action: StringName, keycode: int) -> StringName:

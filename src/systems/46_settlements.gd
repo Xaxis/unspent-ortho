@@ -743,7 +743,7 @@ func _announce(s: Settlement, report: Dictionary) -> void:
 	if not left.is_empty():
 		Events.message.emit("Somebody has walked away from %s." % s.name)
 	if bool(report.get("hungry", false)) and not s.people.is_empty():
-		Events.hint.emit("%s has nothing to eat." % _said(s.name), "h")
+		Events.hint.emit("%s has nothing to eat." % _said(s.name), PlayerSettings.cap_of(&"holding"))
 
 
 # --- people ------------------------------------------------------------------

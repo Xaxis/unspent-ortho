@@ -104,33 +104,20 @@ func _process(delta: float) -> void:
 	_say(_spell(String(h.line), keys), _first_label(keys))
 
 
-## The live key for one action, or for a cluster of them joined (`Guide.MOVE`
-## reads as "WASD" while those are its keys and as whatever they are rebound to).
-## Asked of `PlayerSettings`, which reads the LIVE `InputMap`, so a lesson cannot
-## disagree with the key that performs it.
+## The live key for one action, or for a cluster of them joined. `PlayerSettings`
+## reads the LIVE `InputMap`, so a lesson cannot disagree with the key that
+## performs it -- and since four other systems had to say the same thing, the
+## answer lives there rather than here.
 func _label(entry: Variant) -> String:
-	if entry is Array:
-		var out := ""
-		for a: StringName in entry as Array:
-			out += _label(a)
-		return out
-	var code := PlayerSettings.key_of(entry as StringName)
-	return "" if code == KEY_NONE else OS.get_keycode_string(code)
+	return PlayerSettings.label_of(entry)
 
 
-## Put the live keys into a line that asked for them. A line with no `%s` is
-## returned untouched, which is how a lesson that names no key still says itself.
 func _spell(line: String, keys: Array) -> String:
-	if keys.is_empty() or not line.contains("%s"):
-		return line
-	var labels: Array = []
-	for e: Variant in keys:
-		labels.append(_label(e))
-	return line % labels
+	return PlayerSettings.spell(line, keys)
 
 
 func _first_label(keys: Array) -> String:
-	return "" if keys.is_empty() else _label(keys[0]).to_lower()
+	return "" if keys.is_empty() else PlayerSettings.cap_of(keys[0])
 
 
 ## The held lesson: dropped if the player has since learned it for themselves,

@@ -697,7 +697,7 @@ func _warn(s: Settlement, stage: StringName) -> void:
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
 	if _near(s):
-		Events.hint.emit(RaidStage.says_coming(stage) % s.name, "h")
+		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
 	_seen["warned"] = true
 	_seen["warned:%s" % String(stage)] = true
@@ -797,7 +797,7 @@ func _reaim(p: RaidPlan, s: Settlement, stage: StringName) -> void:
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
 	if _near(s):
-		Events.hint.emit(RaidStage.says_coming(stage) % s.name, "h")
+		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
 	_seen["warned"] = true
 	_seen["warned:%s" % String(stage)] = true
