@@ -19,7 +19,7 @@ static func make() -> BiomeDef:
 	d.moist_range = Vector2(0.7, 1.0)
 	d.adjacency = {&"pinewood": 0.4, &"coast": 0.2}
 	d.relief = {
-		&"base": 1.3, &"hills": 0.7, &"ridge": 0.0, &"near": 1.5, &"terrace": 0.0, &"valley": 0.3,
+		&"base": 1.3, &"hills": 0.7, &"ridge": 0.0, &"terrace": 0.0, &"valley": 0.3,
 		&"rain": 1.35, &"temp": 0.46, &"moist": 0.92, &"cliff": -0.6,
 	}
 	# Long tongues of pinewood reach into the fen along drier ground, and the
