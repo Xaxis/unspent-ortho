@@ -248,19 +248,14 @@ func _folk() -> Object:
 	return null
 
 
-## The words are the STORY's. These are the plain sentences that stand in until
-## they are moved into `StoryContent.TAKEN`, as the first two were — a sentence
-## in a system file is a sentence nobody can move.
-const SAY := {
-	&"out": "%s walked out of the yard.",
-	&"home": "%s is home.",
-	&"lost": "%s did not get home.",
-	&"lost_to": "They took %s back.",
-}
-
+## Say one of the taken lines. The words are the STORY's and live in
+## `StoryContent.TAKEN`; this only knows WHEN each is true.
+##
+## It held plain fallbacks while those four keys were being written. They are
+## gone: a sentence kept in two places is the shape of nearly every long-lived
+## bug here, and a fallback that can never fire is the same thing standing still.
 func _say(key: StringName, who: String) -> void:
-	var line := str(StoryContent.TAKEN.get(key, SAY[key]))
-	Events.message.emit(line % who)
+	Events.message.emit(str(StoryContent.TAKEN[key]) % who)
 
 
 ## Whether this region is holding anybody: the question the chapter and the story

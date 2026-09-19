@@ -92,7 +92,7 @@ func _draw() -> void:
 	var mid := Vector2i(screen.x / 2, screen.y / 2)
 	for y in range(0, screen.y, STEP):
 		for x in range(0, screen.x, STEP):
-			var p := _ground_under(cam, Vector2(x, y), world)
+			var p := ground_under(cam, Vector2(x, y), world)
 			if not p.is_finite():
 				continue
 			var r := world.region_at(floori(p.x), floori(p.y))
@@ -112,7 +112,7 @@ func _draw() -> void:
 	if _under >= 0:
 		for y in range(0, screen.y, STEP):
 			for x in range(0, screen.x, STEP):
-				var p := _ground_under(cam, Vector2(x, y), world)
+				var p := ground_under(cam, Vector2(x, y), world)
 				if not p.is_finite():
 					continue
 				if world.region_at(floori(p.x), floori(p.y)) != _under:
@@ -152,12 +152,14 @@ func _name_them(world: WorldData, sums: Dictionary, n: int) -> void:
 		_labels.append({"region": r, "at": at})
 
 
-## Where a screen point meets the ground, in tiles, or INF off the world.
+## Where a screen point meets the ground, in tiles, or INF off the world. PUBLIC
+## because the flyover's mouse asks the same question — drag and zoom both need
+## to know what is under the pointer — and one answer to it is the point.
 ##
 ## The ray is walked rather than solved because the ground is terraced: a plane
 ## solve answers for a flat world and puts a border half a region away on a
 ## hillside, which is exactly the error this tool exists to make visible.
-func _ground_under(cam: Camera3D, at: Vector2, world: WorldData) -> Vector2:
+func ground_under(cam: Camera3D, at: Vector2, world: WorldData) -> Vector2:
 	var from := cam.project_ray_origin(at)
 	var dir := cam.project_ray_normal(at)
 	if absf(dir.y) < 1e-5:
