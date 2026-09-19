@@ -150,6 +150,13 @@ func place_near_player(kind: StringName, facing: float = NAN) -> MobState:
 	# before every spawn; it belongs here, where every caller gets it.
 	if game.camera != null:
 		spawner.view_height = game.camera.view_height
+		# AND ITS PITCH, or a body is placed for a camera that is not the one
+		# drawing. `head_lift` divides by tan(pitch) to work out where the top of a
+		# body lands on the ground plane, so a stale 57 while the camera has glided
+		# to third person (09_view) puts a machine's head off the top of the frame
+		# and it arrives with no warning -- which is the whole reason the zoom has a
+		# near limit at all.
+		spawner.pitch_deg = game.camera.pitch_deg
 	var row := Roster.row(kind)
 	var w := game.world
 	var hp := sim.hero.pos
