@@ -323,7 +323,7 @@ func _process(delta: float) -> void:
 		if s == null:
 			return
 		_step_axis(s, _vertical, &"move_up", &"move_down", delta, &"up", &"down")
-		_step_axis(s, _horizontal, &"move_left", &"move_right", delta, &"left", &"right")
+		_step_axis(s, _horizontal, &"move_left", &"move_right", delta, &"left", &"right", true)
 		return
 	explored.visit(game.player.pos)
 	game.hud.set_quiet(hostile)
@@ -386,11 +386,23 @@ func _step_power() -> void:
 ## held (UiMenu.hold). A tap struck and let go between two frames (a quick finger,
 ## a browser's key event, a slow frame) is never seen held, so the press is what
 ## moves and the hold only repeats.
-func _step_axis(s: UiScreen, r: UiMenu, neg_action: StringName, pos_action: StringName, delta: float, neg: StringName, pos: StringName) -> void:
+func _step_axis(s: UiScreen, r: UiMenu, neg_action: StringName, pos_action: StringName, delta: float, neg: StringName, pos: StringName, doors: bool = false) -> void:
 	var tap := int(_went_down(pos_action)) - int(_went_down(neg_action))
 	var held := _device_dir(neg_action, pos_action)
 	if tap != 0 and Engine.get_process_frames() != _opened_frame:
-		s.handle(pos if tap > 0 else neg)
+		var told: StringName = pos if tap > 0 else neg
+		# RIGHT GOES IN AND LEFT COMES OUT, but only where the page has no use of
+		# its own for the key (owner, 2026-09-18: "user should be able to arrow
+		# right into them or to change settings and arrow left out"). A row that
+		# steps a VALUE answers left and right itself and keeps them; a row that is
+		# a door answers neither, and then the direction means the door. That is
+		# why this reads `handle`'s own answer rather than asking the page what
+		# kind of row it is: the page already says so by taking the key or not.
+		#
+		# TAP ONLY, never the repeat below: a held right would otherwise walk the
+		# player down through every level it could open, one per repeat.
+		if not s.handle(told) and doors:
+			s.handle(&"back" if told == &"left" else &"confirm")
 		# The press moved it: the hold takes over from here, for repeats only.
 		r.hold(tap, 0.0)
 		if held != tap:

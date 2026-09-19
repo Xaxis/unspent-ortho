@@ -90,14 +90,15 @@ func refresh() -> void:
 	queue_redraw()
 
 
-func _on_side(dir: int) -> void:
+func _on_side(dir: int) -> bool:
 	var next := MODES[posmod(MODES.find(mode) + dir, MODES.size())]
 	if next == mode or _loading:
-		return
+		return false
 	mode = next
 	_ask_slot = -1
 	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
 	refresh()
+	return true
 
 
 func _on_confirm(row: Dictionary) -> void:

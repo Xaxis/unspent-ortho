@@ -199,7 +199,7 @@ func _dress() -> void:
 	figure.wear(look, &"", false)
 
 
-func _on_side(dir: int) -> void:
+func _on_side(dir: int) -> bool:
 	var row := menu.selected()
 	if row.has("row"):
 		look = stepped(look, row.row, dir)
@@ -209,6 +209,7 @@ func _on_side(dir: int) -> void:
 	else:
 		# Nothing to change on "someone else" or "begin": the same keys turn the body.
 		figure.nudge(dir)
+	return true
 
 
 func _on_confirm(row: Dictionary) -> void:

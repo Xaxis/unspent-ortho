@@ -29,7 +29,10 @@ wait 0.1
 tap move_right
 wait 0.3
 shot 03-config-clock-edited
-await dev_clock:10 2
+# Three steps right of the shipped rate. The number is a SECOND COPY of where
+# `rules.clock`'s options land, so it moves whenever those do -- it read 10
+# until the day the day got shorter and the near steps were made fine.
+await dev_clock:3 2
 tap pause
 wait 0.2
 

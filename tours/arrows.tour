@@ -1,0 +1,35 @@
+# ARROW RIGHT GOES IN, ARROW LEFT COMES OUT (owner, 2026-09-18: "user should be
+# able to arrow right into them or to change settings and arrow left out").
+#
+#   tools/tour.sh tours/arrows.tour --seed=4 --hour=11 --weather=clear:0
+#
+# The rule is not "the arrows are confirm and back". A row that STEPS A VALUE
+# answers left and right itself and keeps them -- the gear page turns the figure,
+# the title steps the seed, the saves page changes mode. A row that is a DOOR
+# answers neither, and only then does the direction mean the door. 90_ui reads
+# `UiScreen.handle`'s own answer to tell the two apart, which is why `_on_side`
+# had to stop saying yes to every key it was handed.
+#
+# Proved rather than asserted: the journal below cannot open at all unless right
+# opened it, and cannot close unless left closed it.
+coast calm
+wait 0.6
+
+tap pause
+await app:pause 3
+wait 0.3
+shot 01-home-with-its-rows with app:pause
+
+choose journal
+tap move_right
+await app:journal 3
+wait 0.3
+shot 02-right-opened-the-door with app:journal
+
+tap move_left
+await app:pause 3
+wait 0.3
+shot 03-left-came-back-out with app:pause
+
+tap pause
+await app:none 3

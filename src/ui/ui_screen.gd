@@ -116,8 +116,13 @@ func handle(action: StringName) -> bool:
 				queue_redraw()
 			return true
 		&"left", &"right":
-			_on_side(-1 if action == &"left" else 1)
-			return true
+			# THE ANSWER IS WHETHER IT DID ANYTHING, and it used to be an
+			# unconditional yes. 90_ui turns an unclaimed left into `back` and an
+			# unclaimed right into `confirm` (the owner's arrow-in, arrow-out), and
+			# it can only tell the two apart if a page that had no use for the key
+			# says so. A row that steps a value keeps its arrows; a row that is a
+			# door never wanted them.
+			return _on_side(-1 if action == &"left" else 1)
 		&"confirm":
 			var row := menu.selected()
 			if row.is_empty():
@@ -255,8 +260,9 @@ func _on_confirm(_row: Dictionary) -> void:
 	Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 
 
-func _on_side(_dir: int) -> void:
-	pass
+## Left or right on the chosen row. TRUE if it did something -- see `handle`.
+func _on_side(_dir: int) -> bool:
+	return false
 
 
 func _on_choice_changed() -> void:

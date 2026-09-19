@@ -158,13 +158,17 @@ func _on_confirm(row: Dictionary) -> void:
 		refresh()
 
 
-func _on_side(dir: int) -> void:
+## The dev pages' own `side` still answers nothing, so this page keeps both
+## arrows on every row and reaches its doors with `use` and `esc` as it always
+## has. Making it honest means `DevPage.side` reporting too, across ten pages.
+func _on_side(dir: int) -> bool:
 	var row := menu.selected()
 	if row.is_empty():
-		return
+		return false
 	page().side(row, dir)
 	if is_open:
 		refresh()
+	return true
 
 
 func _on_choice_changed() -> void:

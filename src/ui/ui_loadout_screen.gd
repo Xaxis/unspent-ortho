@@ -134,9 +134,12 @@ func _on_choice_changed() -> void:
 	_marks.queue_redraw()
 
 
-func _on_side(dir: int) -> void:
+## Turning the figure IS what the arrows do here, on every row, so this page
+## keeps them and never falls through to the door.
+func _on_side(dir: int) -> bool:
 	figure.nudge(dir)
 	Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+	return true
 
 
 func _process(delta: float) -> void:

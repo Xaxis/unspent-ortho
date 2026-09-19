@@ -220,10 +220,12 @@ func handle(action: StringName) -> bool:
 	return super(action)
 
 
-func _on_side(dir: int) -> void:
+func _on_side(dir: int) -> bool:
 	if menu.selected().get("id") == &"seed" and title != null:
 		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
 		title.change_seed(dir)
+		return true
+	return false
 
 
 func _on_confirm(row: Dictionary) -> void:
