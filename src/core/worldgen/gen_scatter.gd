@@ -764,22 +764,32 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 		if forms.repeats():
 			for i in houses.size():
 				var pick := -1
+				# **AND WHEN NOTHING CLEARS THE BAR, TAKE THE FURTHEST, NOT THE NEXT
+				# IN THE CYCLE.** This used to fall back on `pack[i % pack.size()]`,
+				# which is the one answer that ignores where the building stands --
+				# so a landscape whose bar the deal could not meet got no protection
+				# at all rather than the best available. Measured over five seeds:
+				# the green towers asked for 20 tiles and the cycle gave it 5.1,
+				# which is nearer than its own `apart` and is exactly the two-of-one-
+				# silhouette-side-by-side this whole deal exists to stop. The other
+				# three cities never noticed because their bars are met outright
+				# (the slums 15.0 of 15.0, the machine city 6.0 of 6.0, the drowned
+				# city 11.2 of 11.0), so the fallback almost never fired and was
+				# wrong in the dark for as long as it existed.
+				var best_gap := -1.0
 				for t in pack.size():
 					var cand: int = pack[(i + t) % pack.size()]
-					var clear := true
+					var nearest := INF
 					for j in i:
 						if houses[j].variant != cand:
 							continue
-						if houses[j].pos.distance_to(houses[i].pos) < forms.repeat_apart:
-							clear = false
-							break
-					if clear:
+						nearest = minf(nearest, houses[j].pos.distance_to(houses[i].pos))
+					if nearest >= forms.repeat_apart:
 						pick = cand
 						break
-				# Nothing clear means the street is denser than the stock can dress
-				# at that spacing: take the cycle's own answer rather than leave a
-				# building with no model, and `tests/biome/test_forms.gd` is what
-				# says whether a landscape asked for more than it can carry.
+					if nearest > best_gap:
+						best_gap = nearest
+						pick = cand
 				houses[i].variant = pick if pick >= 0 else pack[i % pack.size()]
 				# AND THE SECOND OF A KIND IS NOT THE SAME SIZE AS THE FIRST. The
 				# distance rule keeps two identical silhouettes from standing

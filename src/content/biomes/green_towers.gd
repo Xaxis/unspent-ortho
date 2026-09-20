@@ -85,11 +85,30 @@ static func make() -> BiomeDef:
 	# three, they stand scattered rather than along a street, and each reads as an
 	# individual survivor instead of a row.
 	d.built = BiomeForms.new()
-	d.built.stock = [&"tower", &"spire", &"stack"] as Array[StringName]
+	# THE CITY'S SIX, because three could not carry the rule this landscape sets
+	# itself. `repeat_apart` 20 over a stock of three is satisfiable only on a
+	# PERFECT ring: measured on Canopy Row, twelve houses between radius 5.8 and
+	# 14.9, the best any deal could manage is a 21.0 gap against a bar of 20.0 --
+	# and a village is not a perfect ring, so two of a kind stood 12.0 apart.
+	# Any four houses near the square are inside 20 of each other whatever they
+	# are dealt, so with three forms two of them must match. Six forms is the
+	# same stock the slums already deal, it moves no house and no tile (the
+	# positions are laid before the models are dealt), and a city that has been
+	# taken back by the forest has no reason to have been built out of three
+	# shapes in the first place.
+	d.built.stock = BiomeForms.RAISED.duplicate()
 	d.built.plan = &"ring"
 	d.built.apart = BiomeForms.RING_APART
 	d.built.buildings = Vector2i(8, 14)
-	d.built.repeat_apart = 20.0
+	# MEASURED, LIKE ITS SIBLINGS, AND 20 WAS NOT. Every other city sits at what
+	# its own settlements deliver -- the slums 15.0 of 15.0, the machine city
+	# 6.0 of 6.0, the drowned city 11.0 of 11.2 -- and this asked for 20 over
+	# five seeds and got 5.1, because nothing ever cleared the bar so the deal
+	# fell back on a cycle that ignores where a building stands. With the
+	# fallback taking the furthest instead, fourteen houses in this footprint
+	# deliver 14.6, and a village of radius fifteen cannot do much better: four
+	# houses near its square are inside 20 of each other whatever they are dealt.
+	d.built.repeat_apart = 14.0
 	d.grade = Vector4(-0.02, 0.05, 0.0, 0.03)
 	# Under a closed canopy at night there is nothing at all, and no machine keeps
 	# a light here.
