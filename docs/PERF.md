@@ -97,6 +97,30 @@ NOT PLAY.** A shot holds still in an empty world; play walks through a populated
 one. Any claim about frame cost has to say which it measured, and a claim that
 does not is about the empty case whether or not it says so.
 
+### Where it settled (2026-09-20, after the lights and the tracks)
+
+Steady play, populated walk, FULL quality, 697 frames:
+
+                  value   budget
+    p50           11.9     8.33   FAIL -- and it is the render tier, see below
+    p95           12.5    13.89   pass
+    p99           15.2    16.67   pass
+    worst         18.6    33.33   pass
+    worst / p50    1.6x       4   pass
+    over 16.7 ms     2 of 697 (0%)
+
+**Every row passes except the 120 Hz median, and that one is not in the game's
+code at all.** Three fixes got it here, and all three were the same species — a
+cost paid where a player is standing rather than where nobody is:
+`30_mobs._ensure_nodes` building a kind's first figure (94 ms), `15_lights`
+sweeping every light in the world four times a second (8.5 ms), and
+`TrackMarks` compiling the mark shader on the first footfall (15.2 ms).
+
+**The 140-150 ms frames in these runs are WARM-UP, not play** — `frame_line`
+reports `(+N warm-up, worst X ms)` separately and bounds it at
+`WARM_CEILING_MS`. Reading that number as a steady frame is the mistake this
+document made about itself for weeks; it is the frames a world LANDS in.
+
 ### Where this actually stands against the bar it was set
 
 The bar is the owner's and it is "better than Breath of the Wild". Measured, at
@@ -136,9 +160,19 @@ running total as well and prints `world typical frame`:
 **All 56 driven `_process` nodes plus every physics system together cost 3.2 ms
 of an 11.1 ms median frame.** Around 8 ms of the typical frame is in no game
 script at all. The dearest node by mean is `world_view` at 0.32 ms — a rounding
-error against the gap. `53_tracks` reads 11.1 ms in the worst column and **0.00
-in the mean**: it is one 15 ms lazy build of a MultiMesh at the first footstep,
-which is worth fixing on its own account and cannot move a median.
+error against the gap.
+
+**And the mean column immediately earned itself.** `53_tracks` read 11.1 ms in
+the worst column and **0.00 in the mean** — second-dearest node by the old
+reading, invisible by the new one. It was one lazy build: `TrackMarks.warm`
+built every mark's TEXTURES (it was written for exactly this reason) and never
+touched `_groups` beside them, so the first footfall of a run compiled the mark
+shader — 15.2 ms in the frame the player takes their first step, with every
+other lay of a 700-frame walk under 1 ms. Warmed at setup for the ground
+underfoot: **no lay over 0.5 ms in 700 frames, and the node is out of the top
+eight.** Worth fixing, and it could never have moved a median — which is the
+whole argument for having both columns. Without the mean it was the obvious
+place to spend an afternoon.
 
 **Second: an A/B on the tier, alternated both ways**, same seed, same walk:
 
