@@ -171,6 +171,9 @@ var lantern_light: OmniLight3D
 var reach_light: OmniLight3D
 var _reach_t := 0.0
 var _indexed := 0
+## Which cell of the world each indexed source sits in: cell key -> its places
+## in `sources`. See `_near` for why this exists.
+var _cells: Dictionary = {}
 var _assigned: Array = [] # per pool light: source Dictionary or null
 var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
@@ -572,6 +575,76 @@ static func pool_radius(reach: float, height: float, level: float = POOL_CORE) -
 	return sqrt(maxf(0.0, d * d - height * height))
 
 
+## HOW THE LIGHTS NEAR THE PLAYER ARE FOUND, AND WHY IT IS NOT A SWEEP.
+##
+## `sources` is every light in the WORLD -- 1,865 of them on seed 4 -- and the
+## three quarter-second passes below each want only the handful inside their own
+## reach (`REACH` 17, `GLOW_REACH` 24, `Glints.REACH`). Each used to walk the
+## whole array to find them, so one refresh tick was THREE full sweeps: measured
+## walking seed 4 at 21:00, 3.3 ms typical and 8.5 ms worst, and all of it in
+## ONE frame, four times a second. Against an 8.3 ms budget that is one frame in
+## fifteen given over entirely to light, which is the shape the owner felt as
+## "every second of running causes a small lurch".
+##
+## A prop never moves and worldgen never adds one, so WHICH CELL a source is in
+## is fixed for the life of a world -- bucket it once as it is indexed. Sixteen
+## tiles a cell, so even the widest reach is a 5x5 read.
+const CELL := 16
+## Keeps a cell key unique across any island this engine grows: the biggest
+## world is 1,300 tiles, which is 82 cells.
+const CELL_STRIDE := 4096
+
+
+func _bucket(p: WorldProp) -> void:
+	var key := floori(p.pos.y / float(CELL)) * CELL_STRIDE + floori(p.pos.x / float(CELL))
+	if not _cells.has(key):
+		_cells[key] = []
+	(_cells[key] as Array).append(sources.size() - 1)
+
+
+## Every source that COULD be within `reach` of `focus`. A cell straddles the
+## edge, so this over-reads by up to a cell and each caller still measures the
+## distance itself -- which they all did anyway, as their first act.
+func _near(focus: Vector2, reach: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var span := int(ceil(reach / float(CELL)))
+	var cx := floori(focus.x / float(CELL))
+	var cy := floori(focus.y / float(CELL))
+	for gy in range(cy - span, cy + span + 1):
+		for gx in range(cx - span, cx + span + 1):
+			var got: Variant = _cells.get(gy * CELL_STRIDE + gx)
+			if got == null:
+				continue
+			for i: int in (got as Array):
+				out.append(sources[i])
+	return out
+
+
+## A CROSSING HANDS THIS SYSTEM THE OTHER WORLD.
+##
+## `sources` is an index of the world just left: every entry names a prop on the
+## old island, at coordinates that mean somewhere else here, and `_indexed` is a
+## cursor into that world's prop list. Without this the new world's lights are
+## never read at all while the old world's go on lighting ground they are not
+## standing on. CLAUDE.md's realms row names "light index" as the example of a
+## cache keyed on the world; this system never had the method.
+func realm_changed(_from: StringName, _to: StringName) -> void:
+	sources.clear()
+	_cells.clear()
+	_indexed = 0
+	for i in _assigned.size():
+		_assigned[i] = null
+	for id: int in _glows.keys():
+		(_glows[id] as Node).queue_free()
+	_glows.clear()
+	_glint_near.clear()
+	_machine_near.clear()
+	_machine_srcs.clear()
+	_index_sources()
+	# The next frame does the assigning, rather than a second _update here.
+	_refresh = 0.0
+
+
 func _index_sources() -> void:
 	var props := game.world.props
 	while _indexed < props.size():
@@ -591,6 +664,7 @@ func _index_sources() -> void:
 					rgb.append(Vector3(c.r, c.g, c.b))
 				sources.append({"prop": p, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
 					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb, "blink": bool(pts[0].get("blink", false))})
+				_bucket(p)
 			continue
 		var s := {
 			"prop": p, "kind": p.kind,
@@ -647,6 +721,7 @@ func _index_sources() -> void:
 			s.power = 0.0
 			s.warm = WARM
 		sources.append(s)
+		_bucket(p)
 
 
 ## Where this house's stolen tube hangs and what colour it burns, read off the
@@ -901,7 +976,7 @@ func _points_for(p: WorldProp) -> Array:
 func _gather_glints(focus: Vector2) -> void:
 	_glint_near.clear()
 	var near: Array = []
-	for s in sources:
+	for s in _near(focus, Glints.REACH):
 		var p: WorldProp = s.prop
 		if game.world.depleted.has(p.id):
 			continue
@@ -1077,7 +1152,7 @@ static func flicker(s: Dictionary, time: float) -> float:
 ## source is still wanted, so nothing jumps as the camera walks.
 func _assign(focus: Vector2, hour: float) -> void:
 	var wanted: Array = []
-	for s in sources:
+	for s in _near(focus, REACH):
 		if float(s.range) <= 0.0:
 			continue
 		var p: WorldProp = s.prop
@@ -1114,7 +1189,7 @@ func _assign(focus: Vector2, hour: float) -> void:
 
 func _update_glows(focus: Vector2, hour: float) -> void:
 	var keep := {}
-	for s in sources:
+	for s in _near(focus, GLOW_REACH):
 		var p: WorldProp = s.prop
 		if p.pos.distance_squared_to(focus) > GLOW_REACH * GLOW_REACH or game.world.depleted.has(p.id):
 			continue
