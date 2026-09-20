@@ -469,6 +469,16 @@ func test_every_country_reachable_on_foot_from_spawn() -> void:
 				continue
 			gt(here_got[c] / maxf(1.0, here_total[c]), 0.85,
 				"seed %d %s on his own continent is walkable" % [s, BiomeRegistry.name_of(c)])
+		# **WHY THIS FAILS AND WHAT IT IS NOT.** Measured on seed 1: a LAND-ONLY
+		# flood from the spawn touches no other continent, so the landmasses really
+		# are separate and `w.continent` is not mislabelling them. The walker gets
+		# across the WATER. Deep water is only where the level field goes below
+		# zero (gen_surface.gd:205) and a body on foot is stopped by DEEP_WATER and
+		# nothing else (world_query.gd:119) -- so a strait at level 0 is wadeable,
+		# which is right for a shore and wrong for an ocean. Task #50; the fix is
+		# in worldgen and costs a parity re-acceptance, so it is not smuggled in
+		# here. Do not answer this by letting the test accept wading: the claim
+		# above is the design.
 		eq(away, 0, "seed %d: %d tiles of another continent are reachable on foot" % [s, away])
 		for v in w.villages:
 			var p: Vector2 = v.pos
