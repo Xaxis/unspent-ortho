@@ -266,6 +266,30 @@ func test_marks_ride_in_alpha_and_plain_colours_carry_none() -> void:
 		check(GroundColors.mark(gr, Country.COAST) >= 40, "%s carries a ground mark" % Ground.NAMES[gr])
 
 
+## **MEASURED 2026-09-19, AND IT IS TWO DIFFERENT FAULTS, BOTH IN FROZEN CODE.**
+## The colliding pairs, by sum of RGB difference against the 0.08 bar:
+##
+##   snowfield (snow)      vs frost_sea (ice)        0.0000
+##   moss (moss)           vs the_crags (moss)       0.0078
+##   sulphur_jungle (grass) vs green_towers (grass)  0.0133
+##   mesas (scree)         vs the_middens (swarf)    0.0690
+##   pinewood (needles)    vs mesas (scree)          0.0743
+##
+## 1. SAME GROUND, TWO LANDSCAPES. `GroundColors.wash` takes the country for
+##    exactly this reason -- two places whose home turf is moss should not be the
+##    same moss -- and it separates them by under two hundredths. That is the
+##    first three rows.
+## 2. TWO GROUNDS, ONE WASH. Snow and ICE come out byte-identical, so a landscape
+##    that chose a different ground still draws the same turf. That is not a
+##    tuning gap, it is a ground the table does not distinguish.
+##
+## The last two rows are near-misses between genuinely different grounds and are
+## the only ones a nudge would answer.
+##
+## Not fixed here: `GroundColors` is `src/render/`, frozen to the LOOK wave
+## (docs/LOOK.md), and picking these colours is that wave's work and not a test
+## author's. The measurement is written down so whoever takes it starts from the
+## two causes rather than from five numbers.
 func test_every_country_draws_its_turf_in_its_own_wash() -> void:
 	var seen: Array[Color] = []
 	for c: int in BiomeRegistry.land_indices():
