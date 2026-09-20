@@ -134,9 +134,16 @@ the MAIN THREAD 6.2 ms on average and 16.4 ms at worst, in one frame, about 1.7
 times a second while walking — 20 chunks in a 12-second walk. Most of a chunk's
 64 ms is on a worker and free; this is the tail that is not (`world_view.gd`:
 the ArrayMeshes, `_attach_props`, `add_child`, and `bake_props` itself whenever
-the worker did not already do it — props is the dearest line in the breakdown at
-12.7 ms). 16.4 ms is a dropped frame at 60 Hz and two at 120, and it fires in
-exactly the frames a player is moving through. `src/render/` is frozen to the
+the worker did not already do it). 16.4 ms is a dropped frame at 60 Hz and two
+at 120, and it fires in exactly the frames a player is moving through.
+
+**And the breakdown cannot tell you which part.** `props 12.7` there is the
+MESHER's bake — `_last_props_usec` is written only in `_build_worker` and in the
+synchronous `_build`. The third bake, the one in `_add_chunk` that runs on the
+main thread when the worker did not get there, is never timed into it: it falls
+inside `main` and disappears. So the dearest-looking line in the breakdown is
+the worker's copy, and the main thread's own bake has no line at all. Split the
+four main-thread stages before optimising any of them. `src/render/` is frozen to the
 LOOK wave, so it is written up for whoever holds it rather than fixed here.
 
 **The 140-150 ms frames in these runs are WARM-UP, not play** — `frame_line`
