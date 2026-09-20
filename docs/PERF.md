@@ -97,7 +97,82 @@ NOT PLAY.** A shot holds still in an empty world; play walks through a populated
 one. Any claim about frame cost has to say which it measured, and a claim that
 does not is about the empty case whether or not it says so.
 
-### The p50 gap, and what was actually in it
+### Where this actually stands against the bar it was set
+
+The bar is the owner's and it is "better than Breath of the Wild". Measured, at
+FULL quality (`high`, native 1920x1080, volumetric air, SSAO, SSIL), walking a
+populated world:
+
+                        this game (high)      BotW
+    median frame        11.9 ms (84 fps)      33.3 ms (30 fps) TARGET
+    worst frame         25.0 ms               33.3 ms is their TARGET, not their worst
+
+**On frame rate this game passed that bar some time ago** and nobody had said so,
+because every row of the table below it is measured against a 120 Hz stretch goal
+rather than against BotW. Our WORST frame at full quality is better than their
+TARGET frame — which is the standard this document opens by setting.
+
+So when the owner says "every second of running causes a small lurch", he is not
+describing a low frame rate; the median is 84 fps. He is describing the SPIKES,
+and that is the right thing to chase: 2 to 10 frames in 700 over 16.7 ms, plus
+the occasional chunk-streaming stall (one 141 ms frame in a 700-frame walk). A
+median nobody can feel and a spike everybody can are different problems, and only
+one of them is still open.
+
+### The p50 gap is the RENDER TIER, and the judge could not report a pass
+
+Two readings closed this, and both needed a new instrument rather than more
+optimising.
+
+**First: what does a TYPICAL frame spend?** Every number in this file until now
+was a WORST — per-node worst tick, worst frame — because the hitch work was about
+spikes, and for a spike the mean is exactly the wrong statistic. But p50 is the
+typical frame, and a worst column cannot answer it. `12_landscape` now keeps the
+running total as well and prints `world typical frame`:
+
+    world frames:        p50 11.1 ms ... PERF FAIL: p50
+    world typical frame: proc driven 2.72 over 699 frames, phys driven 0.44
+
+**All 56 driven `_process` nodes plus every physics system together cost 3.2 ms
+of an 11.1 ms median frame.** Around 8 ms of the typical frame is in no game
+script at all. The dearest node by mean is `world_view` at 0.32 ms — a rounding
+error against the gap. `53_tracks` reads 11.1 ms in the worst column and **0.00
+in the mean**: it is one 15 ms lazy build of a MultiMesh at the first footstep,
+which is worth fixing on its own account and cannot move a median.
+
+**Second: an A/B on the tier, alternated both ways**, same seed, same walk:
+
+              p50    p95    p99   worst  over 16.7
+    high      12.3   14.7   18.1   28.9   10
+    low        8.3    9.5   12.5   21.5    1
+    low        8.3    8.3    8.3   16.0    0     (reversed order)
+    high      11.9   13.4   14.6   25.0    2
+
+Script cost barely moves between them (4.61 vs 3.54 ms). p50 moves 3.6-4.0 ms and
+lands exactly on budget. **The p50 gap is GPU work the quality tier chooses** —
+render scale, MSAA, shadow size and filter, volumetrics, SSAO, SSIL — and
+`src/render/quality.gd` is frozen to the LOOK wave. Which tier is the desktop
+default is an art decision with a measured price on it, not a perf bug, and it
+belongs to whoever holds LOOK. At `low` this game is a locked 120 fps through a
+populated world.
+
+**And the judge could not say so.** 120 Hz is 8.3333 ms; `P50_MS` was `8.3`. A
+frame pacer delivering a PERFECT 120 fps failed its own 120 Hz budget by three
+hundredths of a millisecond and printed `p50 8.3 ms ... PERF FAIL: p50`, which
+reads as a broken printer rather than a bar set under its own target. `WORST_MS`
+33.3 was the same against 30 Hz's 33.333; p95 and p99 rounded the other way and
+always worked, which is why half a broken table went unseen. The budgets are
+written as `1000.0 / rate` now, and `tests/render/test_frame_budget.gd` holds
+every one of them to being reachable at the rate it names.
+
+The populated walk at `low` now reads:
+
+    p50 8.3 ms, p95 8.3, p99 9.1, worst 13.4, over 16.7 ms: 0 (0%) -- PERF OK
+
+which is the first PASS this instrument has ever reported on a real run. It was
+being told the truth and could not say it.
+
+### What was in `15_lights`
 
 `15_lights` was the worst process node in that run (18.4 ms), and the first
 guess was wrong in the usual direction: `_index_sources` LOOKS like the cost
