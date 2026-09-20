@@ -34,8 +34,8 @@ static func pairs(game: Game) -> Array:
 					aware += 1
 	var file := DevCheats.file_here(game)
 	out.append(["bodies", "%d about, %d aware  file %s" % [bodies, aware, String(file.level)]])
-	out.append(["frame", "%d fps  %.1f ms  %d draws" % [Engine.get_frames_per_second(),
-		Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))]])
+	out.append(["frame", "%s  %d draws" % [frame_line(),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))]])
 	out.append(["world", "seed %d  size %d  %d chunks due" % [w.seed_value, w.size, game.view.pending()]])
 	return out
 
@@ -60,3 +60,57 @@ static func config_line() -> String:
 	if not GameConfig.edits.is_empty():
 		line += "  %d edit%s" % [GameConfig.edits.size(), "" if GameConfig.edits.size() == 1 else "s"]
 	return line
+
+
+## The last few seconds of frames, as a DISTRIBUTION and judged against
+## docs/PERF.md -- because the row this replaces could not see the thing it was
+## being read for.
+##
+## **IT SHOWED `fps` AND A MEAN, WHICH ARE THE TWO NUMBERS THAT CANNOT SEE A
+## HITCH.** The owner booted the game and said "every second of running causes a
+## small lurch, nothing is smooth" while the median frame was 8.3 ms; a mean of
+## 8.3 with one frame in ninety at 140 ms reads as perfect and plays as broken.
+## `Engine.get_frames_per_second()` is worse still — frames in the last SECOND,
+## so a single 140 ms stall costs it about eight of sixty and it prints 52.
+##
+## And the engine's own `TIME_PROCESS` cannot stand in for a frame either: it is
+## a sample taken about twice a second, not a per-frame value (12_landscape's
+## `_driven_line` has the measurement). So this times the frames itself, the way
+## `--stats` does, and reports what a player actually feels: the worst of the
+## last few seconds, and how many times its own budget was missed.
+##
+## WINDOW is a few seconds at 120 Hz. Short enough that walking into a bad place
+## shows immediately, long enough that one frame cannot own the number.
+const WINDOW := 600
+const OVER_MS := 16.7
+
+static var _ms := PackedFloat32Array()
+static var _last_usec := 0
+
+
+## Called once a frame by whoever draws the readout, so the window fills even
+## while the panel is shut and the first look is not a blank one.
+static func tick() -> void:
+	var now := Time.get_ticks_usec()
+	if _last_usec > 0:
+		_ms.append(float(now - _last_usec) / 1000.0)
+		if _ms.size() > WINDOW:
+			_ms = _ms.slice(_ms.size() - WINDOW)
+	_last_usec = now
+
+
+static func frame_line() -> String:
+	if _ms.size() < 8:
+		return "measuring"
+	var a := Array(_ms)
+	a.sort()
+	var pick := func(q: float) -> float:
+		return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)])
+	var over := 0
+	for v: float in a:
+		if v > OVER_MS:
+			over += 1
+	var p50: float = pick.call(0.5)
+	var p95: float = pick.call(0.95)
+	var worst := float(a[-1])
+	return "%.1f p50  %.1f p95  %.1f worst  %d over %.1f" % [p50, p95, worst, over, OVER_MS]

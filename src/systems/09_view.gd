@@ -150,6 +150,25 @@ func _process(delta: float) -> void:
 			PlayerSettings.save()
 
 
+## Put the camera at a view height and KEEP it there.
+##
+## **A TOUR'S `zoom` WAS WRITING A FIELD THIS FILE OVERWRITES.** 98_tour set
+## `camera.view_height` directly, and `_process` here puts it straight back from
+## `_level` on the next frame — so `zoom 9` in a tour moved the camera for one
+## frame and then undid itself, and any frame shot after it was at whatever the
+## player setting said. A command that does nothing is worse than a missing one,
+## because the tour reads as having proved something about a zoomed camera.
+##
+## Going through the level rather than the height also means the glide comes with
+## it: a tour that zooms all the way in gets the third-person pitch a player
+## would get, instead of a close camera still looking straight down.
+func set_height(h: float) -> void:
+	_level = level_of(h)
+	if game != null and game.camera != null:
+		game.camera.view_height = height_of(_level)
+		game.camera.pitch_deg = pitch_of(_level)
+
+
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"zoomed_out":

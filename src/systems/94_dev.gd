@@ -134,6 +134,10 @@ func _apply_rules() -> void:
 
 
 func _process(delta: float) -> void:
+	# Timed every frame whether or not the readout is open, so the first look at
+	# F3 is a real distribution and not a blank one — and so a player who only
+	# opens it BECAUSE something lurched sees the lurch that made them open it.
+	DevReadout.tick()
 	if game == null or game.world == null:
 		return
 	if GameConfig.revision != _revision:
