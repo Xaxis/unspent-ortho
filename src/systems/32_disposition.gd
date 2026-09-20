@@ -237,7 +237,9 @@ func _curfew() -> void:
 		var hours: Array = m.row.get("where", {}).get("hours", [])
 		if hours.size() == 2 and Spawner.hour_in(hour, float(hours[0]), float(hours[1])):
 			sim.disturb(m, &"curfew")
-			raise(&"curfew", sim.hero.pos)
+			# The keeper's own network, so this and the `_turned` report a keeper
+			# that takes it amiss also makes are one file and not two.
+			raise(&"curfew", m.home)
 			return
 
 
@@ -258,13 +260,27 @@ func _trespass() -> void:
 ## A body that has just turned on the player reports what it took amiss, which
 ## is the one door every cause of the plan's own making goes through: blocked,
 ## trespass, curfew, theft, a blow. One report per body.
+##
+## **A BODY REPORTS TO ITS OWN NETWORK, WHICH IS WHERE IT WAS PUT OUT AND NOT
+## WHERE ITS FEET HAPPEN TO BE.** This filed at `m.pos`, so the same offence went
+## to a different file depending on how far along its round the body had walked:
+## a keeper whose post is one region and whose body is three tiles over the
+## border reported the trespass to the region it was standing in, which for a run
+## too small to be a place is not a plan network at all (`Interference.network`
+## answers `REGIONLESS - country` there, and nothing in that key runs anything).
+## Worse, `_trespass` measures the offence against `m.home` — the post — so one
+## event was weighed at the post and filed at the feet. Measured on seed 1 at
+## size 128: post in region 0, body in network -12, and the test asking the
+## player's own network found nothing. It also double-filed a curfew, which
+## `_curfew` deliberately files itself: two networks means `SAME_CAUSE_GAP` never
+## sees the second one.
 func _turned() -> void:
 	for m in sim.mobs:
 		if not m.alive or m.removed or not m.disturbed or m.turn_filed:
 			continue
 		m.turn_filed = true
 		if m.disturbed_by != &"":
-			raise(m.disturbed_by, m.pos)
+			raise(m.disturbed_by, m.home)
 
 
 func _anything_aware() -> bool:
