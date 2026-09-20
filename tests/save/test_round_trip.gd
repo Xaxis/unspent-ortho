@@ -146,6 +146,39 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	Sx.finish()
 
 
+## The prop `_take_from` last put down, so a caller's check can name it.
+static var _planted := -1
+
+
+## Plant `kind` on a bearing with nothing of the world's own nearer, face it, and
+## work it. Tries eight bearings before giving up, and says which prop the key
+## took instead if it still lost the race -- a silent "it did not happen" is the
+## thing that made this hard to read.
+func _take_from(g: Game, kind: int, said: String, done: Callable) -> void:
+	var p := g.player
+	for i in 8:
+		var ang := 0.3 + TAU * float(i) / 8.0
+		var at: Vector2 = p.pos + Vector2.from_angle(ang) * 1.1
+		if not g.query.standable(floori(at.x), floori(at.y)):
+			continue
+		# No "is this spot clear" precheck: in a real world something is almost
+		# always within a tile or two, and the question is not whether the spot is
+		# empty -- it is whether the KEY would choose what was planted. So plant
+		# and ask `use_target`, which is the same question the key asks.
+		var prop := Survival.add_prop(g, kind, at)
+		_planted = prop.id
+		Survival.face(g, (prop.pos - p.pos).angle())
+		var target := Survival.use_target(g)
+		if target == null or target.id != prop.id:
+			continue
+		check(Survival.use(g), "the key works %s" % PropKind.NAMES[kind])
+		Survival.finish_work(g)
+		check(done.call(), said)
+		return
+	fail("nowhere clear to stand a %s: every bearing had something of the world's own nearer"
+		% PropKind.NAMES[kind])
+
+
 ## Walk, take, build, make, sleep; wear the knife, wet the body, see the land.
 func _play(g: Game) -> void:
 	var p := g.player
@@ -157,17 +190,19 @@ func _play(g: Game) -> void:
 		if g.query.standable(floori(next.x), floori(next.y)):
 			_teleport(g, next)
 			(ui.get("explored") as UiExplored).visit(next)
-	Survival.face(g, 0.3)
 	# Take: a pine felled and mussels picked, both put down in play (runtime props).
-	var pine := Survival.add_prop(g, PropKind.PINE, p.pos + Vector2.from_angle(p.facing) * 1.1)
-	check(Survival.use(g), "felling")
-	Survival.finish_work(g)
-	check(g.world.depleted.has(pine.id), "the pine is down")
-	var rock := Survival.add_prop(g, PropKind.MUSSEL_ROCK, p.pos + Vector2.from_angle(p.facing + PI * 0.5) * 1.0)
-	Survival.face(g, (rock.pos - p.pos).angle())
-	check(Survival.use(g), "at the mussels")
-	Survival.finish_work(g)
-	check(g.inventory.count(&"mussels") > 0, "mussels taken")
+	#
+	# **PLANTED WHERE NOTHING ELSE IS NEARER.** These were dropped 1.1 tiles ahead
+	# on a fixed bearing, and `use` answers whatever is NEAREST and in front -- so
+	# in a REAL world, which has props everywhere, the key would sometimes take a
+	# generated prop standing closer and the planted pine was never touched. The
+	# failure then read "the pine is down" going unmet, which sounds like felling
+	# is broken; measured in a clean fixture, felling a pine with a hand axe works
+	# exactly as it should. The test was staging its subject on top of the world.
+	_take_from(g, PropKind.PINE, "the pine is down", func() -> bool:
+		return g.world.depleted.has(_planted))
+	_take_from(g, PropKind.MUSSEL_ROCK, "mussels taken", func() -> bool:
+		return g.inventory.count(&"mussels") > 0)
 	# A generated prop taken for good, somewhere else on the map.
 	for q in g.world.props:
 		if q.id < SaveCore.props_base(g) and Takes.workable(q.kind) and not g.world.depleted.has(q.id):
