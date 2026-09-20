@@ -1,0 +1,59 @@
+# THE FAILURES THIS TREE IS KNOWN TO CARRY, so the gate can say which are NEW.
+#
+# The gate has been red for so long that its exit code stopped meaning anything
+# and a real regression could sit in the pile unseen for days (#124). The cost is
+# not only hidden bugs: `break_metal` was one author's own failure sitting here
+# being read as somebody's background noise, so an unreadable gate does not just
+# hide a bug, it launders who owns it.
+#
+# `tools/check.sh` diffs the run against this list and reports:
+#   NEW     a failure not on this list -- yours, almost certainly, and the gate
+#           fails on it even though the run was red before you started
+#   FIXED   a line here that passed -- take it OUT in the same commit
+#
+# THE RULES THAT KEEP THIS FROM BECOMING A PLACE TO PUT FAILURES:
+#   1. A line goes in only with a cause written next to it in the commit
+#      message. "Known red" is not a cause.
+#   2. FIXED lines come out the same day they go green, or the list drifts and
+#      stops being able to fail.
+#   3. This list is evidence about ONE tree at ONE moment. Regenerate it, do not
+#      hand-edit it, when the suite's shape changes -- several tests grow
+#      1300-tile worlds and shard composition moves with them.
+#
+# **AND IT MUST BE REGENERATED THE WAY THE GATE RUNS: SHARDED.** The set this
+# replaced was taken from a single-process run and compared against a sharded
+# one, which is not a comparison -- different partitioning means different
+# neighbours, so an order-dependent failure differs for reasons that are nobody's
+# code. One failure moved for exactly that reason and cost an A/B to clear.
+#
+# Regenerate with:
+#   for i in 0 1 2; do godot --headless --path . -s tests/run.gd -- --shard=$i/3; done
+# collecting the FAIL lines, stripping "FAIL " and the timing, sorted unique.
+#
+# Taken 2026-09-19 at 2004 passed, 26 failed.
+test_crafts_in_game:test_a_body_on_foot_is_turned_back_by_the_same_water
+test_crafts_in_game:test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it
+test_era:test_the_before_is_the_same_land
+test_era:test_the_plan_has_not_begun_in_2029
+test_houses:test_a_lit_house_puts_its_glint_on_its_own_tube
+test_houses:test_a_village_deals_every_house_a_different_model
+test_in_game:test_a_body_cannot_walk_into_a_tower
+test_in_game:test_standing_on_the_site_a_keeper_holds_turns_it_and_is_filed
+test_locals:test_every_land_people_live_in_has_one_local
+test_marks:test_the_flash_sphere_is_a_part_of_a_body_and_not_the_body
+test_obtainable:test_a_landscapes_own_material_is_really_only_that_landscapes
+test_plan:test_the_journey_crosses_the_continents_in_order
+test_round_trip:test_every_registered_key_reads_back_the_same_after_a_played_day
+test_salt_headroom:test_the_flat_is_still_one_of_the_brightest_grounds_in_the_game
+test_score_system:test_machines_closing_in_quicken_the_score_and_a_blow_holds_it
+test_terrain:test_every_country_draws_its_turf_in_its_own_wash
+test_world:test_a_region_the_plan_is_working_has_a_depot_standing_in_it
+test_world:test_a_world_holds_landmarks_and_each_stands_on_ground_a_player_can_reach
+test_world:test_it_stands_at_its_regions_works_where_there_is_one
+test_world_gen:test_country_shares_on_twelve_seeds
+test_world_gen:test_every_country_reachable_on_foot_from_spawn
+test_world_gen:test_every_prop_kind_and_ground_is_placed
+test_world_gen:test_journey_runs_north_from_a_southern_coast
+test_world_gen:test_places_worth_walking_to
+test_world_gen:test_spawn_is_beside_a_south_coast_village_facing_open_land
+test_world_gen_works:test_every_landscape_holds_its_own_works

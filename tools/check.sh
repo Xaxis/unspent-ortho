@@ -88,15 +88,50 @@ tools/shot.sh shots/check/dusk.png --seed=2 --hour=19.5 --walk=1,-1,1.5 & pids+=
 tools/shot.sh shots/check/night.png --seed=3 --hour=23 & pids+=($!)
 tools/shot.sh shots/check/gallery.png --scene=gallery & pids+=($!)
 for p in "${pids[@]}"; do wait "$p" || fail=1; done
+# The shards' own failures, gathered before they are judged, so the run can be
+# compared against what this tree is KNOWN to carry (tests/standing.txt).
+ran="$(mktemp "${TMPDIR:-/tmp}/unspent-ran.XXXXXX")"
 for i in 0 1 2; do
-  wait "${tpids[$i]}" || fail=1
+  wait "${tpids[$i]}" || true
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
   grep -E 'passed,' "${logs[$i]}"
+  grep -E '^\s*FAIL ' "${logs[$i]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
   # A test that hits a script error stops where it was and the runner counts
   # it passed if it had recorded no failed check: the error itself fails the gate.
   if grep -qE "SCRIPT ERROR" "${logs[$i]}"; then echo "script error in shard $i"; fail=1; fi
   rm -f "${logs[$i]}"
 done
+# WHICH OF THESE ARE YOURS. A gate that has been red for weeks has an exit code
+# that means nothing, and a real regression sits in the pile unseen (#124). So
+# the run is diffed against the standing list and only the DIFFERENCE decides the
+# gate: a failure nobody has seen before fails it however red the tree already
+# was, and a standing failure that has started passing is reported so the list
+# cannot quietly drift upward and stop being able to fail.
+standing="$(dirname "$0")/../tests/standing.txt"
+if [ -f "$standing" ]; then
+  sort -u "$ran" >"$ran.s"
+  grep -vE '^\s*(#|$)' "$standing" | sort -u >"$ran.k"
+  new="$(comm -23 "$ran.s" "$ran.k")"
+  fixed="$(comm -13 "$ran.s" "$ran.k")"
+  echo "== failures: $(wc -l <"$ran.s" | tr -d ' ') ran, $(wc -l <"$ran.k" | tr -d ' ') standing"
+  if [ -n "$new" ]; then
+    echo "NEW FAILURES (not in tests/standing.txt) -- these are the ones to look at:"
+    echo "$new" | sed 's/^/  /'
+    fail=1
+  fi
+  if [ -n "$fixed" ]; then
+    echo "NOW PASSING (take these OUT of tests/standing.txt in this commit):"
+    echo "$fixed" | sed 's/^/  /'
+  fi
+  [ -z "$new" ] && [ -z "$fixed" ] && echo "   no change against the standing set"
+  rm -f "$ran.s" "$ran.k"
+else
+  # No list is not the same as nothing to say: without it the gate is back to an
+  # exit code nobody can read, and it should say so rather than pass quietly.
+  echo "tests/standing.txt is missing: cannot tell new failures from standing ones"
+  [ -s "$ran" ] && fail=1
+fi
+rm -f "$ran"
 if [ $web -eq 1 ]; then
   echo "== web (threads, full) and web (no threads, title)"
   tools/web.sh || fail=1
