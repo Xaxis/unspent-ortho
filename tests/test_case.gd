@@ -118,15 +118,29 @@ static func can_measure_cost() -> bool:
 
 ## Say the number and why it was not judged, so a skipped bar is visible in the
 ## log rather than being a test that quietly asserts nothing.
+##
+## **AS A MULTIPLE OF ITS OWN BAR, because a bare pair of numbers is not read.**
+## `Works.sites` went 1.99 ms to 10.41 against a bar of 5, and for as long as the
+## machine stayed loud this line printed the 10.41, judged nothing and the test
+## said ok — the instrument had the answer and the verdict was not allowed to use
+## it. The number and the bound were both already on the line; nobody divided
+## them. "2.1x its bar" cannot be skimmed past the way "10.41 against 5.00" can,
+## and it needs no stored baseline to go stale, since both halves come from the
+## same run.
 func unmeasured(what: String, got: float, bound: float) -> void:
-	print("  UNMEASURED %s: %.2f against %.2f, machine at %.1fx — too loaded to mean anything"
-		% [what, got, bound, machine_slack()])
+	print("  UNMEASURED %s: %.2f is %.1fx its bar of %.2f, machine at %.1fx — OVER ITS BAR AND NOT JUDGED, re-run it alone"
+		% [what, got, got / maxf(bound, 0.0001), bound, machine_slack()])
 
 
-## Assert a COST, unless the machine is too loaded for the number to mean
-## anything, in which case say so and judge nothing.
+## Assert a COST. **A number UNDER its bar is judged on any machine**, because
+## load only ever ADDS time: the quiet-machine cost is at most what was measured,
+## so under the bar here is under the bar anywhere and the machine gets no say in
+## it. Only a number OVER its bar is ambiguous — that is the one case where the
+## load might be the whole of the answer — and only then is the bar skipped, out
+## loud. Declining in both directions threw away every valid pass as well, which
+## is how a red and a green came to look the same in a busy log.
 func cost_lt(got: float, bound: float, what: String) -> void:
-	if can_measure_cost():
+	if got < bound or can_measure_cost():
 		lt(got, bound, what)
 	else:
 		unmeasured(what, got, bound)
