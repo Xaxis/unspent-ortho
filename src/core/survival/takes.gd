@@ -93,7 +93,16 @@ static func _build() -> Dictionary:
 	# A fallen roof was patched in plate: turned over by hand, a piece or two comes out of the rubble.
 	t[PropKind.RUIN] = [_o(&"break", &"stone", 2, 25.0, NEVER, {"stuff": &"iron", "uses": 2}),
 		_o(&"turn", &"scrap", 1, 30.0, 96.0, {"keep": true})]
-	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER, {"stuff": &"iron", "uses": 2})]
+	# **ON LIMESTONE, BECAUSE A CLINT ON ROCK IS NOT LIMESTONE PAVEMENT.** A clint
+	# is the block between the grikes of a limestone pavement; the same model
+	# standing on plain rock in the crags is a rock formation and gives no
+	# limestone. Measured over three seeds: 139 clints on limestone (all
+	# bonelands) and 12 on rock (all the crags). Stating the ground is also what
+	# makes `clint_spar`'s "land: bonelands" TRUE -- an elite material has one
+	# gate, and a raw three landscapes give is not a gate
+	# (tests/gear_economy/test_obtainable.gd).
+	t[PropKind.CLINTS] = [_o(&"break", &"limestone", 2, 13.0, NEVER,
+		{"stuff": &"iron", "uses": 2, "ground": [Ground.LIMESTONE]})]
 	for pair: Array in [[PropKind.COAL_ORE, &"coal", 22.0, &"iron"], [PropKind.TIN_ORE, &"tin_ore", 22.0, &"iron"],
 			[PropKind.IRON_ORE, &"iron_ore", 30.0, &"iron"], [PropKind.COPPER_ORE, &"copper_ore", 30.0, &"steel"]]:
 		t[pair[0]] = [
@@ -113,7 +122,13 @@ static func _build() -> Dictionary:
 	t[PropKind.WRECK] = [_o(&"break", &"scrap", 2, 30.0, NEVER, {"stuff": &"iron", "uses": 2})]
 	t[PropKind.POLE] = [_o(&"break", &"scrap", 1, 30.0, NEVER, {"stuff": &"iron"})]
 	t[PropKind.PYLON] = [_o(&"break", &"scrap", 2, 30.0, NEVER, {"stuff": &"steel", "uses": 3})]
-	t[PropKind.VENT] = [_o(&"dig", &"brimstone", 1, 16.0, 72.0, {"stuff": &"iron", "keep": true, "uses": 2})]
+	# **ON THE BURNING'S OWN GROUND.** Brimstone is dug out of the sulphur beds,
+	# and a vent standing on a slum floor or on salt is a vent in something else.
+	# Measured over three seeds: 97 vents on clinker or ash (96 of them in the
+	# burning) against 10 on floor or salt elsewhere. The ground is what makes
+	# `cinder_glass`'s "land: burning" true.
+	t[PropKind.VENT] = [_o(&"dig", &"brimstone", 1, 16.0, 72.0,
+		{"stuff": &"iron", "keep": true, "uses": 2, "ground": [Ground.CLINKER, Ground.ASH]})]
 	# What was lost (landscape: props/remains.gd) is salvage. Loose debris is
 	# picked up for good; a car or a barricade is broken for its plate, or picked
 	# over by hand; a beached hull gives planks and its fittings; a fence gives a
