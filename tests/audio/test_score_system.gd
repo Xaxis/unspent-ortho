@@ -115,6 +115,31 @@ func test_the_score_plays_the_landscape_underfoot_on_the_bar_lines() -> void:
 	_done(parts)
 
 
+## The nearest spot where ONE landscape really has the ear. Asked of
+## `SoundMix.land_share` itself and not of `WorldData.blend`: the share is an
+## average over rings around the listener (`EAR_RADII`), so a tile whose own
+## blend is zero can still be inside earshot of two borders and split the ear
+## between them. Using blend as the proxy made this WORSE -- 0.26 against the
+## 0.40 it started from -- which is the whole lesson of asking the thing that
+## decides rather than something that correlates with it.
+func _ear_core(g: Game, from: Vector2) -> Vector2:
+	var w := g.world
+	for r in range(0, 90, 3):
+		for a in 24:
+			var p: Vector2 = from + Vector2.from_angle(TAU * float(a) / 24.0) * float(r)
+			var x := floori(p.x)
+			var y := floori(p.y)
+			if not w.in_bounds(x, y) or w.level[y * w.size + x] <= 0 or not g.query.standable(x, y):
+				continue
+			var share := SoundMix.land_share(w, p)
+			var top := 0.0
+			for c: Variant in share:
+				top = maxf(top, float(share[c]))
+			if top >= 0.8:
+				return Vector2(x + 0.5, y + 0.5)
+	return Vector2.INF
+
+
 func test_machines_closing_in_quicken_the_score_and_a_blow_holds_it() -> void:
 	var parts := _make()
 	var sys: MusicSystem = parts[0]
@@ -132,6 +157,20 @@ func test_machines_closing_in_quicken_the_score_and_a_blow_holds_it() -> void:
 	mob.pos = g.player.pos + Vector2(5, 0)
 	_advance(sys, 5.0)
 	eq(float(sys.inputs["danger"]), 1.0, "close, it is danger")
+	# **ASKED IN A LANDSCAPE'S CORE, NOT ON ITS BORDER.** The quick pulse's level
+	# is `share * share` (ScoreConductor._targets_for), and a player standing in
+	# an ECOTONE has their ear split between two landscapes -- measured here at
+	# share 0.63, so the stem settled at 0.398 and could never reach a 0.5 bar
+	# however long the machine stood over them or however loud the danger. The
+	# claim is about what DANGER does to the score, so it is asked where one
+	# landscape has the ear: the blend field is zero in a core and rises toward a
+	# border (WorldData.blend, 0.5 on the line itself).
+	var core := _ear_core(g, g.player.pos)
+	check(core.is_finite(), "somewhere in this world one landscape has the whole ear")
+	if core.is_finite():
+		g.player.pos = core
+		mob.pos = core + Vector2(5, 0)
+		_advance(sys, 6.0)
 	var here := sys._land_id(int(SoundMix.dominant_country(g.world, g.player.pos)["country"]))
 	gt(float(sys.conductor.levels.get(ScoreStems.key_for(here, &"pulse", 1), 0.0)), 0.5, "the pulse has quickened")
 	check(sys.tour_seen("score_tense"), "and a tour hears it")
