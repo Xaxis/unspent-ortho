@@ -74,6 +74,27 @@ fi
 t0=$(date +%s)
 tools/_import.sh
 fail=0
+
+# EVERY TRACKED SCRIPT CARRIES ITS TRACKED `.uid`, and this is checked first
+# because it costs nothing and fails silently everywhere else.
+#
+# Godot mints a `.uid` beside each script on import and resolves `class_name` and
+# `preload` through it. If the script is committed and the uid is not, a FRESH
+# CLONE mints its own — different ids than the tree that made them — and the two
+# trees disagree about identity in a way no test here can see, because on this
+# machine the file is present and untracked and everything works.
+#
+# Found 2026-09-20 by counting `git ls-files` .gd against .uid after eight cast
+# scripts went in without theirs; caught by hand, not by anything failing. A
+# thing found by luck once is worth two lines so it cannot be found by luck
+# twice.
+missing="$(comm -23 <(git ls-files '*.gd' | sed 's/$/.uid/' | sort) <(git ls-files '*.gd.uid' | sort))"
+if [ -n "$missing" ]; then
+  echo "TRACKED SCRIPTS WITH NO TRACKED .uid -- git add them:"
+  echo "$missing" | sed 's/\.uid$//; s/^/  /'
+  fail=1
+fi
+
 # THE TWO HALVES RUN ONE AFTER THE OTHER, AND THEY USED TO RUN "SIDE BY SIDE".
 #
 # Three headless shards and four WINDOWED shots launched together is seven Godot
