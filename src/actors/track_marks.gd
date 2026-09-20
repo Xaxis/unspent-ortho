@@ -52,8 +52,14 @@ static var _textures: Dictionary = {}
 
 
 ## Lay a mark and answer [group key, slot]. `alpha` 0..1 is how plainly it reads.
+## The one place a group's key is spelled, so `lay` and `warm_group` cannot
+## drift into building and then missing the same group.
+static func group_key(shape: StringName, white: bool, rough: float) -> String:
+	return "%s|%s|%.2f" % [shape, "h" if white else "d", rough]
+
+
 func lay(shape: StringName, white: bool, rough: float, at: Vector3, angle: float, alpha: float) -> Array:
-	var key := "%s|%s|%.2f" % [shape, "h" if white else "d", rough]
+	var key := group_key(shape, white, rough)
 	var g: Dictionary = _groups.get(key, {})
 	if g.is_empty():
 		g = _group(key, shape, white, rough)
@@ -151,6 +157,26 @@ func _group(key: String, shape: StringName, white: bool, rough: float) -> Dictio
 ## table allows -- and `groups()` is one draw call per group, so that trades a
 ## rare 13 ms for tens of draw calls carried for the whole run. The hitch is the
 ## cheaper of the two. Left measured and named rather than silently accepted.
+## Build one mark group now, so the first footfall of a run does not.
+##
+## **`warm()` BELOW WARMS THE TEXTURES AND `lay` HAS A SECOND LAZY BUILD BESIDE
+## THEM.** That one was written because a lazily built mark is a hitch with a
+## delay on it -- and it never touched `_groups`, which is a MultiMesh and a
+## `StandardMaterial3D` per shape|white|rough. Measured walking seed 4 with a
+## probe on every lay: the FIRST footfall of the run cost **15.2 ms** and all but
+## one of the other 700 frames' worth cost under 1 ms. The material is a shader
+## variant (alpha, normal map, vertex-colour albedo) and the first group of a run
+## is what compiles it.
+##
+## So the caller pays that at load, where the owner has said the time does not
+## matter. A later group on a different ground still builds its own MultiMesh --
+## 160 instances to park -- but that is the loop alone, with no compile under it.
+func warm_group(shape: StringName, white: bool, rough: float) -> void:
+	var key := group_key(shape, white, rough)
+	if not _groups.has(key):
+		_groups[key] = _group(key, shape, white, rough)
+
+
 static func warm() -> void:
 	for shape: StringName in PIXELS:
 		@warning_ignore("return_value_discarded")

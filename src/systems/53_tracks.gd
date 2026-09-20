@@ -49,7 +49,26 @@ func setup(g: Game) -> void:
 	# Before anybody walks: see TrackMarks.warm for why a lazily built mark is a
 	# hitch at every border rather than a cost paid once at the start.
 	TrackMarks.warm()
+	# And the GROUP for the ground under the player, which the texture warm-up
+	# above does not reach: without it the first footfall of a run compiles the
+	# mark shader, measured at 15.2 ms in the frame the player takes their first
+	# step. Warming the ground they are standing on makes that step free as well
+	# as cheap.
+	var here := TrackGround.of(g.world.ground_at(floori(g.player.pos.x), floori(g.player.pos.y)))
+	if not here.is_empty():
+		marks.warm_group(foot_shape(here), bool(here.white), float(here.rough))
 	_minutes = g.clock.minutes
+
+
+## What a FOOT leaves on this ground: its own print, or the scuff or flattening
+## the ground turns one into. `_lay` and the warm-up both ask here, because a
+## warm-up that guessed a different shape would build a group nobody uses and
+## leave the one that is used to be built under a walking player -- which is the
+## bug it exists to prevent, wearing a green light.
+static func foot_shape(row: Dictionary) -> StringName:
+	if row.is_empty() or row.mark == TrackGround.PRINT:
+		return TrackPath.SHAPE_FOOT
+	return StringName(row.mark)
 
 
 func realm_changed(_from: StringName, _to: StringName) -> void:
@@ -138,8 +157,8 @@ func _lay(m: Dictionary) -> void:
 			return
 	var shape := StringName(m.shape)
 	# A boot on loose stones scuffs, on growth it only bends it down.
-	if shape == TrackPath.SHAPE_FOOT and row.mark != TrackGround.PRINT:
-		shape = StringName(row.mark)
+	if shape == TrackPath.SHAPE_FOOT:
+		shape = foot_shape(row)
 	var depth := float(row.depth)
 	var placed := marks.lay(shape, bool(row.white), float(row.rough), w.to_3d(at), float(m.angle), depth)
 	# The slot a new mark took is no longer the old mark's.

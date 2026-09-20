@@ -107,3 +107,33 @@ func test_a_crossing_leaves_the_old_worlds_prints_behind() -> void:
 	eq((sys.get("live") as Array).size(), 0, "none carried across")
 	sys.free()
 	Fx.done(g)
+
+
+## THE FIRST FOOTFALL USED TO BUILD THE THING IT NEEDED, AND IT COST 15.2 ms.
+##
+## `TrackMarks.warm()` builds every mark's TEXTURES, and was written because a
+## lazily built mark is a hitch with a delay on it. `lay` has a SECOND lazy build
+## beside them that the warm never reached: `_groups`, a MultiMesh and a
+## `StandardMaterial3D` per shape|white|rough. That material is a shader variant
+## (alpha, normal map, vertex-colour albedo) and the first group of a run is what
+## compiles it -- measured walking seed 4, **15.2 ms in the frame the player took
+## their first step**, with every other lay of a 700-frame run under 1 ms.
+##
+## setup() warms the group for the ground underfoot now. **The failure this
+## really guards is a warm-up that builds the WRONG group**: `foot_shape` has to
+## return the shape `_lay` will go on to ask for, or the warm is a green light
+## over the exact hitch it exists to remove. So one ground of each mark kind --
+## a PRINT keeps the foot's own shape, a SCUFF and a FLATTEN replace it.
+func test_the_first_footfall_finds_its_group_already_built() -> void:
+	for ground: int in [Ground.SAND, Ground.SHINGLE, Ground.GRASS]:
+		var g := _world(ground)
+		var sys := _system(g)
+		var groups: Dictionary = sys.get("marks").get("_groups")
+		var before := groups.size()
+		gt(float(before), 0.0, "setup warms a group for the ground underfoot (%d)" % ground)
+		_walk(g, sys, Vector2.RIGHT, 3.0)
+		# Without this the test passes on a ground that keeps nothing, which is
+		# the escape hatch that makes a green light mean nothing at all.
+		check(not (sys.get("live") as Array).is_empty(), "ground %d really laid marks" % ground)
+		eq(groups.size(), before,
+			"walking on %d built a group setup should already have: %s" % [ground, str(groups.keys())])
