@@ -261,6 +261,32 @@ extends TestCase
 ##   3       6 -> 6       80 -> 80     IDENTICAL         unchanged
 ##   90210   6 -> 6       81 -> 81     IDENTICAL         unchanged
 ##
+## **NINTH RE-ACCEPTANCE (2026-09-19): a per-region site could not find its own
+## region.** The tip and stone-circle loops throw 2,500 darts each and keep the
+## ones landing in the region they are filling -- at `land_rect`, the bounding
+## box of ALL the land. On a 1300 world that is 1.6 million tiles against a
+## region of a few hundred, so a small region was hit about once in a whole run
+## and a landscape that declared tips in its own file had none anywhere on the
+## island. Aimed at the region's own bounds. That made darts land near region
+## edges as often as anywhere, which surfaced a second fault the first was
+## hiding: the way-in seam laid iron and stone ore wherever it stood, and seed 42
+## put a stone seam in the machine city, which declares copper and iron and no
+## stone. `BiomeDef.ore` decides now.
+##
+## `ground` AND `props` moved, on all five seeds, and nothing else did:
+## positions 1, 2, 4 and 5 -- country, country2, level, blend -- are
+## byte-identical everywhere. `ground` because a tip lays its own ground patch,
+## which is the third re-acceptance's rule arriving again by a different road.
+##
+## CAUSATION PROVED THE WAY THIS FILE ASKS: with `gen_scatter.gd` alone put back
+## to its state at `76273a9^` and nothing else touched, all five OLD digests pass.
+## So the change is the whole cause and nothing is riding along.
+##
+## PICTURES LOOKED AT BEFORE THE NUMBERS WERE WRITTEN: `shots/parity/spawn.png`
+## and `shots/parity/tip.png` at seed 1, 1300, 11:00 clear. The spawn village,
+## its fire, the beach and the drift are as they were; the tip reads as salvage
+## strewn across the coast rather than as a heap dropped on it.
+##
 ## Exactly the seeds whose region COUNT changed are the seeds whose works changed,
 ## and exactly those are the seeds whose digests moved. Two seeds where the floor
 ## changed nothing moved nothing. That is as tight as this file has ever managed
@@ -284,11 +310,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c 3a2e2753 673b50ca fe4b52d9 cf7dfca2",
-	3: "2202ae28 60362f9d 61bff61d 63df669a 585d921b 0aaa6cc8",
-	7: "4b153668 3424d5c9 771043cf 1ba2d360 72103915 e9842620",
-	42: "e5a96b5f bef1bc39 d84bd16c bc57666e 824c752b d624c3c4",
-	90210: "c3fe6c1a a851aff1 ef15edf1 ff6eb869 b6884aed 56e4195f",
+	1: "06fa726c d5b85d6c e7ca77de 673b50ca fe4b52d9 e9428003",
+	3: "2202ae28 60362f9d 0052fb71 63df669a 585d921b 4e199d3f",
+	7: "4b153668 3424d5c9 f067f4d2 1ba2d360 72103915 820325fd",
+	42: "e5a96b5f bef1bc39 a906cda9 bc57666e 824c752b 7c9da866",
+	90210: "c3fe6c1a a851aff1 0aaf256e ff6eb869 b6884aed 3ffa790a",
 }
 
 
