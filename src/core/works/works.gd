@@ -209,20 +209,76 @@ static func _near_village(world: WorldData, p: Vector2) -> bool:
 
 ## The nearest tile to `p` with room for a yard: dry, on the map, off a road, and
 ## the ground within a step all round, so a depot is never stood astride a cliff.
+## **THE WHOLE COST OF FINDING EVERY DEPOT WAS HERE, AND IT WAS NOT THE SEARCH,
+## IT WAS THE METHOD CALLS.** Measured on a 512 world, best of four: the sweep
+## costs 9.72 ms and 9.52 of them are eight calls to this function — the knot is
+## 0.06, the keeper feed 0.27, `region_at` over every marked landmark 0.02 and
+## `GenWorks.bearing` 0.00. It went 1.99 ms to 10.41 the day the per-region site
+## loops were aimed at their own regions, which moved the hearts inland, and an
+## inland heart makes this walk further before it finds room.
+##
+## Two things were paying for it, and both are the lever CLAUDE.md already names
+## (a GDScript method call is about ten times an array index). The ring walk
+## scanned the whole (2r+1) square and threw away everything that was not the
+## perimeter — 3,654 iterations to visit 729 tiles — and `_room_at` asked
+## `ground_at` and `level_at` for all forty-nine tiles of its window, two bounds
+## checks and two method calls each, so a single call could reach seventy thousand
+## of them. Neither changes the ANSWER: the window is guaranteed in bounds before
+## it is read, so a direct index into `world.ground` and `world.level` is the same
+## number by construction, and the ring is visited in the same order it always
+## was. Proved by comparing both implementations tile for tile over a 200x200
+## block before the old one was deleted.
 static func stand_near(world: WorldData, p: Vector2) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
-	for r in 14:
-		for dy in range(-r, r + 1):
-			for dx in range(-r, r + 1):
-				if maxi(absi(dx), absi(dy)) != r:
-					continue
-				if _room_at(world, cx + dx, cy + dy):
-					return Vector2(cx + dx + 0.5, cy + dy + 0.5)
+	if _room_at(world, cx, cy):
+		return Vector2(cx + 0.5, cy + 0.5)
+	for r in range(1, 14):
+		# The perimeter of the ring, in the order the square scan visited it: the
+		# top row, then the sides of each row between, then the bottom row.
+		for dx in range(-r, r + 1):
+			if _room_at(world, cx + dx, cy - r):
+				return Vector2(cx + dx + 0.5, cy - r + 0.5)
+		for dy in range(-r + 1, r):
+			if _room_at(world, cx - r, cy + dy):
+				return Vector2(cx - r + 0.5, cy + dy + 0.5)
+			if _room_at(world, cx + r, cy + dy):
+				return Vector2(cx + r + 0.5, cy + dy + 0.5)
+		for dx in range(-r, r + 1):
+			if _room_at(world, cx + dx, cy + r):
+				return Vector2(cx + dx + 0.5, cy + r + 0.5)
 	return Vector2.INF
 
 
+## Room for a yard: dry, on the map, off a road, and the ground within a step all
+## round. Reads the fields directly because the window is proved in bounds first
+## — see `stand_near`'s header for what that is worth.
 static func _room_at(world: WorldData, x: int, y: int) -> bool:
+	var size := world.size
+	if x < 3 or y < 3 or x + 3 >= size or y + 3 >= size:
+		return false
+	var levels := world.level
+	var grounds := world.ground
+	var level: int = levels[y * size + x]
+	if level < 1:
+		return false
+	for dy in range(-3, 4):
+		var row := (y + dy) * size + x
+		for dx in range(-3, 4):
+			var i := row + dx
+			var g: int = grounds[i]
+			if Ground.is_water(g) or g == Ground.ROAD:
+				return false
+			if absi(int(levels[i]) - level) > 1:
+				return false
+	return true
+
+
+## The implementation `_room_at` replaced, kept only to be compared against it.
+## `tests/works/test_world.gd` holds the two equal over a real world, so a future
+## rewrite of the fast one has something to be checked against rather than a
+## promise in a comment.
+static func room_at_plainly(world: WorldData, x: int, y: int) -> bool:
 	if not world.in_bounds(x - 3, y - 3) or not world.in_bounds(x + 3, y + 3):
 		return false
 	var level := world.level_at(x, y)

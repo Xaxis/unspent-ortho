@@ -85,3 +85,30 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	# if it ever has to LOOK at the land the way Landmarks.sites does, this
 	# number moves by two orders and that is exactly what should be caught here.
 	cost_lt(ms, 5.0, "finding the depots is not a stage a player waits through")
+
+
+## **AND THE SPEEDUP IS HELD TO BEING ONE, TILE FOR TILE.** `Works._room_at` reads
+## `world.ground` and `world.level` by index where it used to ask `ground_at` and
+## `level_at` — ninety-eight method calls a candidate, up to seventy thousand in
+## one `stand_near` — and that is only safe because the window is proved in bounds
+## before it is read. `Works.room_at_plainly` is the version it replaced, kept for
+## this: every tile of a real world, both answers, no exceptions. A rewrite of the
+## fast one has something to be checked against instead of a promise in a header,
+## and the bounds edge (x or y under 3, or within 3 of the far side) is where an
+## off-by-one would hide, so the sweep runs to the frame rather than sampling.
+##
+## The `room` counter is what stops this being a test of nothing: two functions
+## that both answer false everywhere agree perfectly.
+func test_the_quick_room_check_answers_exactly_what_the_plain_one_did() -> void:
+	var w := WorldGen.generate(1, 512)
+	var disagreed: Array[String] = []
+	var room := 0
+	for y in w.size:
+		for x in w.size:
+			var quick := Works._room_at(w, x, y)
+			if quick:
+				room += 1
+			if quick != Works.room_at_plainly(w, x, y) and disagreed.size() < 8:
+				disagreed.append("(%d, %d)" % [x, y])
+	check(disagreed.is_empty(), "the two room checks disagree at %s" % [disagreed])
+	gt(float(room), 1000.0, "and they were asked about somewhere with room in it (%d tiles)" % room)
