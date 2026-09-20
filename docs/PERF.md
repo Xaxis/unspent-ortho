@@ -363,7 +363,7 @@ It also says plainly that **the hitch is not finished**: p99 is still 79-93 ms
 here. Those are inflated by the load, but the remaining spikes are real and they
 are proc-side now that physics tops out at 4 ms.
 
-#### The gate cannot run its own two halves at once on this machine
+#### The gate's shots sometimes all fail together, and the cause is NOT known
 
 `tools/check.sh` launches three headless test shards and four windowed shots
 together, "side by side". Measured 2026-09-20, twice, on a quiet machine and a
@@ -373,17 +373,37 @@ standing eighteen.
 
 What the logs say, and it is not a timeout in the ordinary sense: each shot's
 godot printed its banner and the Metal line and then produced NOTHING for the
-whole deadline — no `world N gen`, no error, no script error. The same four
-shots, run concurrently with each other but WITHOUT the three shards, all four
-succeed and write their PNGs. So it takes the seven together (plus whatever
-other sessions are holding, here an eleven-hour `stability_probe`), and the
-windowed half is what dies.
+whole deadline — no `world N gen`, no error, no script error.
 
-That is task #93 — nothing limits how many gates run at once — reaching the
-gate's own internals rather than two gates on one laptop. Until it is fixed, a
-gate whose test half says "no change against the standing set" and whose shots
-are all absent has not judged the shots at all: **run the two halves separately
-and read them together.**
+**AND THE CAUSE IS NOT ESTABLISHED. IT IS INTERMITTENT.** This paragraph said
+"it is the seven together, not the load", on the strength of two failures and
+one success. df then ran the OLD parallel `check.sh` at load 8.63 — seven
+processes, quiet machine — and got **four frames out of four**, one of them read
+and confirmed a real picture. That is a direct counter-example. Every
+observation, so they can be counted rather than summarised:
+
+    4 shots + 3 shards, load 21   FAIL (all four)
+    4 shots + 3 shards, load 7    FAIL (all four)
+    4 shots + 3 shards, load 8.6  PASS (all four, df's run)
+    4 shots alone,      load 26   PASS
+    shots then shards,  load 26   PASS
+
+Load does not separate them and neither does concurrency. **Intermittent is
+worse than either**, because neither of those can be held still. What would
+settle it is whether the two failures share a shard, a shot, or a minute — not
+yet looked at.
+
+I have been wrong about this twice: first "load", then "the seven together".
+Both were written down in a confident voice before they were established, which
+is the failure this file spends a section on and I committed anyway.
+
+The gate serialises its halves now (9cee8e6) — shots first, then shards, plus a
+named `MISSING FRAME` line. **That is a mitigation and not a fix**, and it
+should not be recorded as one: serialising is harmless and costs about a minute,
+but nothing has reproduced the failure on demand, so nothing has been shown to
+prevent it. What the change does buy unconditionally is the `MISSING FRAME`
+line: whatever the cause, an absent picture now says so by name instead of
+leaving an empty directory that reads like a gate with nothing to look at.
 
 Three things this cost, all of them instrument errors rather than game bugs, and
 all the same shape as the ones this document already records:
