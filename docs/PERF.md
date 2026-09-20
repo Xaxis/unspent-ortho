@@ -3,8 +3,15 @@
 The owner asked for graphics performance "at least as good as Breath of the Wild
 / Tears of the Kingdom". Taken as a framerate that is a low bar and we already
 clear it: both of those target **30 fps — a 33.3 ms frame** — and this game's
-median frame is **8.3 ms**, four times faster. Measured on the average, the job
-was finished before it started.
+median frame at FULL quality, walking a populated world, is **11.9 ms**, nearly
+three times faster; its WORST frame is 18.6 ms, better than their target.
+
+**That 11.9 is not the number this paragraph used to carry.** It said 8.3 ms,
+which was a `tools/shot.sh` run: standing still, empty world, quiet machine. A
+shot never spawns anything, so the figure at the top of this document was about
+the easiest case it could have chosen, while the body of the same document
+explains at length why that is not play. A stale headline reads exactly like a
+true one.
 
 The average was never what he was reacting to. He said **"laggy and jumpy"**, and
 jumpy is not a speed, it is a VARIANCE: at the moment he said it the median was
@@ -24,10 +31,16 @@ over a run of at least 300 frames:
 
 | | budget | why |
 |---|---|---|
-| `p50`  | **≤ 8.3 ms** | 120 Hz median. Headroom is what absorbs a busy moment. |
-| `p95`  | **≤ 13.9 ms** | 72 fps at the 95th: the common case never touches 60. |
-| `p99`  | **≤ 16.7 ms** | The hundredth frame still inside 60 Hz. |
-| `max`  | **≤ 33.3 ms** | No single frame worse than BotW's *target* frame. |
+| `p50`  | **≤ 8.3333 ms** | 120 Hz median. Headroom is what absorbs a busy moment. |
+| `p95`  | **≤ 13.8889 ms** | 72 fps at the 95th: the common case never touches 60. |
+| `p99`  | **≤ 16.6667 ms** | The hundredth frame still inside 60 Hz. |
+| `max`  | **≤ 33.3333 ms** | No single frame worse than BotW's *target* frame. |
+
+**Each is written as the interval its rate actually is, and two of them were
+not.** 120 Hz is 8.3333 ms; this table said 8.3, and so did `P50_MS`, so a frame
+pacer delivering a perfect 120 fps failed the 120 Hz budget by three hundredths
+of a millisecond. `max` 33.3 was the same against 30 Hz. Round a budget DOWN
+from the rate it names and the rate it names can never pass it.
 | `max / p50` | **≤ 4** | Relative smoothness. A frame four times its neighbours reads as a jolt however fast the neighbours were. |
 
 Both `max` rules apply. The absolute one stops a slow game hiding behind a slow
