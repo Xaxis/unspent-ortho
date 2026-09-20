@@ -31,8 +31,6 @@
 # collecting the FAIL lines, stripping "FAIL " and the timing, sorted unique.
 #
 # Taken 2026-09-19 at 2004 passed, 26 failed.
-test_crafts_in_game:test_a_body_on_foot_is_turned_back_by_the_same_water
-test_crafts_in_game:test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it
 test_era:test_the_before_is_the_same_land
 test_era:test_the_plan_has_not_begun_in_2029
 test_houses:test_a_lit_house_puts_its_glint_on_its_own_tube

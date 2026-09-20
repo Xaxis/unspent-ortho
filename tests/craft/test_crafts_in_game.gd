@@ -112,14 +112,22 @@ func test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it(
 		fail("never got on")
 		_done()
 		return
-	var from: Vector2 = game.player.hero.pos
-	# Out, whichever way the sea lies: on a deep tile it is under you already.
+	# **MEASURED PER LEG, BECAUSE THE SEARCH WALKS A BOX.** Out whichever way the
+	# sea lies: right, down, left, up until one of them crosses. Net displacement
+	# from the START of that search is the wrong number -- right then down then
+	# left then up returns the body to where it began, so a ride that worked
+	# perfectly measured 0.21 tiles and the test read it as a raft that does not
+	# move. What is being asked is that the body travelled, not that it ended up
+	# somewhere in particular.
+	var went := 0.0
 	for dir: Vector2 in [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]:
+		var leg: Vector2 = game.player.hero.pos
 		await _walk(dir, 1.2)
+		went = maxf(went, leg.distance_to(game.player.hero.pos))
 		if sys.call("tour_seen", &"ride_crossed"):
 			break
 	check(sys.call("tour_seen", &"ride_crossed"), "it carried the body over open water")
-	gt(from.distance_to(game.player.hero.pos), 1.0, "and the body went somewhere")
+	gt(went, 1.0, "and the body went somewhere on the leg that crossed")
 	# The node follows the body; it does not race it. Not exact equality: the sim
 	# steps in _physics_process and the node copies the body in _process, so a
 	# frame of the ride can always sit between them, and on a busy machine it does.
@@ -131,17 +139,38 @@ func test_it_carries_the_body_over_water_no_one_could_wade_and_the_sim_moves_it(
 	_done()
 
 
-func test_a_body_on_foot_is_turned_back_by_the_same_water() -> void:
+## **THE SEA IS NOT A WALL FOR A PLAYER, AND HAS NOT BEEN SINCE SWIMMING.** This
+## asked that a body on foot be TURNED BACK by the water a raft crosses, and
+## asserted `not beyond_a_body` after walking at it. The owner ruled otherwise on
+## 2026-09-17 and CLAUDE.md carries it: "deep water is a slow crossing for a body
+## that can take it and the wall it always was for one that cannot". `Hero.swims`
+## is `true` and NOTHING in the game ever sets it to anything else, so the player
+## is always a body that can take it.
+##
+## So the claim this file is really making about a raft is not ACCESS, it is that
+## the raft crosses without swimming: `Tuning.SWIM_FACTOR` is 0.4, so the water
+## costs a swimmer three fifths of their pace, and it is a wall only to the mobs
+## whose roster rows do not declare `crosses` (`Swim.may_cross`).
+##
+## Restated to that, because the old assertion could only pass in a build where
+## the owner's ruling had not landed.
+func test_a_body_on_foot_swims_the_water_a_raft_rides_over() -> void:
 	var sys := _boot()
 	check(sys != null)
 	if not _to_the_tideline():
 		_done()
 		return
-	# Straight at the sea with nothing under you: the shallows are as far as it goes.
+	# Straight at the sea with nothing under you.
 	var sea := Crafts.launch_spot(game.world, game.query, &"raft", game.player.hero.pos, 0.0)
 	var toward := (sea - game.player.hero.pos).normalized()
 	await _walk(toward, 2.0)
-	check(not Crafts.beyond_a_body(game.world, game.player.hero.pos), "a body cannot walk into the sea")
+	var hero := game.player.hero
+	# Out of your depth is a SWIM, not a stop: the body is in the water and the
+	# fight knows it, which is what the wake and the refused swing both read.
+	if Crafts.beyond_a_body(game.world, hero.pos):
+		check(hero.swimming, "out of its depth, the body is swimming and not standing on the sea")
+	else:
+		check(hero.swims, "a player is a body that can take deep water, so the sea is a cost and not a stop")
 	_done()
 
 
