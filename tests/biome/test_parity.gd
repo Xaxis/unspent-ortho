@@ -305,6 +305,19 @@ extends TestCase
 ## does not come.
 
 
+## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
+## KNOWS ABOUT.** The first half is written everywhere: the registry is muted to
+## `SIX`, so sixteen of the twenty-two landscapes are outside it and a change to
+## any of them moves no digest here. The second half is `SIZE`. Measured, at 256
+## every one of the five pinned seeds grows exactly ONE body of continent size --
+## seed 1 has nine landmasses and one continent, seed 42 seven and one, and so on
+## -- so this baseline pins a ONE-CONTINENT world. Everything the body stage
+## brought is therefore invisible to it: how many continents a world has, the sea
+## between them, which landscapes each was dealt, `GenCountries._rect_for` mapping
+## an anchor onto a body's bounds rather than the square, and the journey that
+## crosses them. `GenBodies.deepen_straits` moves 125 tiles at `Tuning.WORLD_SIZE`
+## and not one byte here, which is convenient and is also the warning: a green
+## run of this file is not evidence about the world a player is given.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

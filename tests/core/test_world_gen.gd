@@ -221,6 +221,40 @@ func test_journey_runs_north_from_a_southern_coast() -> void:
 				var key := b * 256 + int(w.country[i])
 				sums[key] = float(sums.get(key, 0.0)) + float(y)
 				counts[key] = float(counts.get(key, 0.0)) + 1.0
+		# **THIS IS STILL RED AND THE INSTRUMENT IS PART OF WHY — MEASURED, NOT
+		# GUESSED.** Two separate things are wrong and only one of them is the
+		# world's fault.
+		#
+		# The instrument first: every comparison below is a landscape's MEAN TILE
+		# POSITION against the COAST's mean tile position, and the coast is
+		# `coastal` — it grows along the whole shoreline, so its centroid is the
+		# middle of its continent by construction and not its south shore.
+		# Measured on the three seeds: the coast's heart is declared at v 0.87
+		# (deep south, `coast.gd` anchors) and its MASS lands at v 0.45, 0.55 and
+		# 0.69. So "north of the coast" as asked here means "north of the middle of
+		# the continent", which is not the claim in the name. An anchor places a
+		# HEART; the mean of what grew round it is a different quantity, and this
+		# is the third instrument in one day that reported on a neighbour of the
+		# thing it named.
+		#
+		# The world's half: with five continents a landscape is dealt to about
+		# half the bodies (`GenBodies.MOST_BODIES`), so the home continent no
+		# longer reliably holds the six this loop names. Seed 1's home continent
+		# holds green_towers, slums, coast, snowfield, scrapwood, mesas and
+		# salt_flats — not one of moss, pinewood or bonelands — so `tested` is 0
+		# and the loop asserts nothing at all. Naming six `Country` slots is also
+		# the thing `CLAUDE.md` forbids ("never branch on `Country`, it is only
+		# names for the first seven slots"): it was written when there were six
+		# landscapes and one island, and it is now a claim about a sixth of the
+		# content.
+		#
+		# So the honest claim is about a landscape's HEART against its own
+		# declared anchor, on the body that anchor was mapped onto
+		# (`GenCountries._rect_for`), and the CONTINENT-scale order already has a
+		# home in `tests/story/test_plan.gd`. Do not answer this by widening the
+		# bar until the means happen to sort: that would pin the wrong quantity
+		# forever.
+		#
 		# ON THE CONTINENT THE JOURNEY IS AUTHORED ON, which is the one he wakes on
 		# (`GenBodies.mark_home`). A landscape's anchors are dealt to the home body
 		# first, so that is where the south-to-north order is placed on purpose;
