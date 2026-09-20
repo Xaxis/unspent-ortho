@@ -188,6 +188,20 @@ class Lay:
 		return w.country[y * c.size + x] == own
 
 
+## **THE PLAN'S OWN PROP KINDS, WHOEVER PUTS THEM DOWN.** `place` below refuses to
+## run in a year before the machines began, and that was taken as the whole of it
+## for as long as the Before has existed — but a LANDSCAPE may scatter one of
+## these from its own recipe, and the Server Fields does: three relays stood in
+## 2029 on seed 4 because `d.scatter` returns `PropKind.RELAY` on its floor and
+## nothing between that recipe and the world asked what year it was. So the fact
+## is about the KINDS and not about who places them, and it is written down once,
+## here, where the plan is. `GenScatter.allow` clears these from every landscape's
+## mask before the plan, and `tests/core/test_era.gd` reads this list rather than
+## keeping a second copy that can drift out of agreement with it.
+const THEIRS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.DRILL_RIG,
+	PropKind.CONVEYOR, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.INTAKE]
+
+
 static func place(c: GenContext, occ: PackedByteArray) -> void:
 	# NOT IN A YEAR BEFORE THEY BEGAN. Everything this file lays is the machines'
 	# — ruled on their survey bearing, keeping their hours — and in 2029 there is

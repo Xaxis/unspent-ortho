@@ -19,12 +19,23 @@ class_name GenScatter
 
 
 ## Prop kinds each landscape's scatter may place, as bit masks by type index.
+##
+## **AND NOTHING OF THE PLAN'S IN A YEAR BEFORE THE PLAN.** `GenWorks.place`
+## refuses to lay the machines' works in the Before, which was read as the whole
+## answer; it is not, because a landscape's own recipe may return one of those
+## kinds and no year is asked between the recipe and the world. Clearing them out
+## of the mask is the one door every landscape and every recipe goes through, so
+## a landscape added later cannot reopen it by declaring a relay.
 static func allow(c: GenContext) -> PackedInt64Array:
 	var out := PackedInt64Array()
 	out.resize(c.types)
 	for cc: int in c.land_types:
 		for kind: int in c.defs[cc].props:
 			out[cc] |= 1 << kind
+	if Realm.before_the_plan(c.w.realm):
+		for cc: int in c.land_types:
+			for kind: int in GenWorks.THEIRS:
+				out[cc] &= ~(1 << kind)
 	return out
 
 

@@ -19,13 +19,14 @@ func _land_digest(w: WorldData) -> String:
 	return b.compress().hex_encode().md5_text()
 
 
-## THE SAME LAND, AND NOT THE SAME COVER. It used to be one digest over levels
-## AND ground, called "the surface's own ground, tile for tile", and that wording
-## was right only while 2029 held everything 2098 does. It does not: the machines'
-## works are not there yet (`Realm.before_the_plan`), and a work stamps the ground
-## it stands on — a quarry scar, clinker, a cut road. So the levels are the land
-## and must match to the tile, and the GROUND is what sixty-nine years did to it
-## and must not.
+## THE SAME LAND AND THE SAME COVER; THE DIFFERENCE IS WHAT STANDS ON IT. This
+## header said the opposite twice over, and each version was believed because it
+## was specific. First it was one digest over levels AND ground, "the surface's
+## own ground, tile for tile". Then it was split, on the reasoning that a work
+## stamps the ground it stands on, and demanded the ground DIFFER. Measured: it
+## never does, on any tile of any size, because `GenWorks` only ever reads
+## `w.ground` and runs after `GenSurface` has written it. Both versions were a
+## sentence about a mechanism nobody had checked.
 func test_the_before_is_the_same_land() -> void:
 	var now := WorldGen.generate(4, 192)
 	var then := WorldGen.generate(4, 192, &"", Realm.ERA)
@@ -33,15 +34,39 @@ func test_the_before_is_the_same_land() -> void:
 	eq(then.spawn, now.spawn, "he wakes in the same place in both")
 	eq(then.regions.size(), now.regions.size(), "the same land holds the same places")
 	check(then.regions.size() > 0, "and there are some")
-	# The cover differs, and only where the machines have since been: most of the
-	# coast is the same grass and the same shingle it always was.
+	# **AND THE MARK IS NOT IN THE GROUND FIELD, WHICH THIS ASKED FOR AND CANNOT
+	# HAVE.** It used to require `w.ground` to differ somewhere, on the strength of
+	# a comment saying a work stamps the ground it stands on — a quarry scar,
+	# clinker, a cut road. It does not: all eight reads of `w.ground` in
+	# `gen_works.gd` are comparisons, the stage runs inside `GenScatter.props`
+	# which is AFTER `GenSurface` has written the cover, and a work's `mark`
+	# (`&cut`/`&scorch`/`&quarry`/`&bores`) is recorded on its LANDMARK for
+	# `WorksMap` to paint. So the two years share the ground on all 36,864 tiles
+	# and always will, whatever the size, and a bar demanding otherwise could only
+	# ever be met by a feature nobody has written. Whether they SHOULD scar the
+	# ground is a real question and it is task #55, not something to smuggle in
+	# under a red test.
+	#
+	# So the claim is asked where the mark actually is. The land is the same land —
+	# levels above, and the cover here — and the sixty-nine years are entirely in
+	# what STANDS on it.
 	var moved := 0
 	for i in now.ground.size():
 		if now.ground[i] != then.ground[i]:
 			moved += 1
-	gt(float(moved), 0.0, "sixty-nine years of the plan left a mark on the ground")
-	lt(float(moved) / float(now.ground.size()), 0.25,
-		"and only where they worked: %d of %d tiles" % [moved, now.ground.size()])
+	eq(moved, 0, "the cover is the same cover: a work marks its landmark, never the ground")
+	var marked_now := 0
+	var marked_then := 0
+	for m: Dictionary in now.landmarks:
+		if m.has("mark"):
+			marked_now += 1
+	for m: Dictionary in then.landmarks:
+		if m.has("mark"):
+			marked_then += 1
+	gt(float(marked_now), 0.0, "sixty-nine years of the plan left its marks (%d)" % marked_now)
+	eq(marked_then, 0, "and 2029 carries none of them")
+	gt(float(now.props.size()), float(then.props.size()),
+		"and 2098 stands more on the same ground: %d against %d" % [now.props.size(), then.props.size()])
 
 
 func test_the_plan_has_not_begun_in_2029() -> void:
@@ -50,8 +75,10 @@ func test_the_plan_has_not_begun_in_2029() -> void:
 	# most of what makes the Before a different year rather than a redress.
 	var then := WorldGen.generate(4, 192, &"", Realm.ERA)
 	var now := WorldGen.generate(4, 192)
-	var theirs: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.DRILL_RIG,
-		PropKind.CONVEYOR, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.INTAKE]
+	# READ OFF THE PLAN'S OWN LIST, never a copy: `GenWorks.THEIRS` is what
+	# `GenScatter.allow` clears before the plan, so a kind added to one and not the
+	# other cannot pass here.
+	var theirs: Array[int] = GenWorks.THEIRS
 	var back := 0
 	var ahead := 0
 	for p: WorldProp in then.props:
