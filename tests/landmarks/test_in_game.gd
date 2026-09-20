@@ -16,25 +16,6 @@ func _game(args: PackedStringArray) -> Game:
 	return g
 
 
-## The name of a solid prop standing across the walk from `from` along `step`,
-## or "" where the way is clear of everything the world grew. A prop's own
-## `solid` and the body's radius are both counted, because either alone is not
-## what stops a body.
-static func _solid_across(g: Game, from: Vector2, step: Vector2) -> String:
-	var to := from + step
-	var along := step.length()
-	if along <= 0.0:
-		return ""
-	var dir := step / along
-	for p in g.query.props_near(from, along + 1.5):
-		if p.solid <= 0.0:
-			continue
-		var t := clampf((p.pos - from).dot(dir), 0.0, along)
-		if p.pos.distance_to(from + dir * t) < p.solid + 0.34:
-			return "%s at %s" % [PropKind.NAMES[p.kind], p.pos]
-	return ""
-
-
 func _nearest(g: Game, kind: StringName) -> LandmarkSite:
 	var sys := g.get_node("22_landmarks")
 	var best: LandmarkSite = null
@@ -50,6 +31,7 @@ func _nearest(g: Game, kind: StringName) -> LandmarkSite:
 func test_a_body_cannot_walk_into_a_tower() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0", "--place=lighthouse"]))
 	await frames(4)
+	var sys := g.get_node("22_landmarks")
 	var site := _nearest(g, &"lighthouse")
 	check(site != null, "seed 1 holds a lighthouse to walk into")
 	if site == null:
@@ -62,31 +44,38 @@ func test_a_body_cannot_walk_into_a_tower() -> void:
 		var from := site.pos + Vector2.from_angle(a) * 4.0
 		var to := g.query.move_body(from, (site.pos - from) * 1.2, 0.34)
 		gt(to.distance_to(site.pos), 1.0, "a body walks into the tower from %.1f rad" % a)
-	# AND THE GROUND BESIDE IT IS STILL GROUND — which is a claim about the
-	# LANDMARK'S MASS and not about the world's furniture. This walked two tiles
-	# in from six tiles out along one bearing, and a broadleaf grew into that one
-	# line when the eleventh landscape moved the island: 0.28 tiles against a
-	# tile, with the ground under it open grass at the same level the whole way
-	# and the lighthouse's own mass a single circle of radius 1.02. A tree is not
-	# a tower walling its neighbourhood.
+	# AND THE GROUND BESIDE IT IS STILL GROUND — a claim about the LANDMARK'S OWN
+	# MASS and about nothing else in the world, so it is asked as a CONTROL and an
+	# EXPERIMENT that differ in exactly one thing: whether the mass is registered.
+	# Walk two tiles in from six out on every bearing; take every landmark's walls
+	# off the query and walk the same lines again. A bearing the tower walls is one
+	# the body cannot make WITH the mass and can make WITHOUT it, and no reasoning
+	# about what else might be standing there is needed or trusted.
 	#
-	# So every bearing is tried, the ones the WORLD stops are set aside with their
-	# reason, and what is left must be free. A mass registered too wide still
-	# fails, on every bearing at once, and says so.
-	var walled: PackedStringArray = []
+	# **It used to ask the world instead, and got a different question back.** It
+	# set a bearing aside when the tile the body STARTS on is not standable and
+	# when a solid prop lay across the line — the start, and the furniture, and
+	# never the STEP. Measured on this seed: the lighthouse stands on a level-5
+	# knoll, so the two-tile step east falls lv5 → lv3 and the one west climbs
+	# lv1 → lv5. Both are cliffs a body may not take, neither is the tower's
+	# doing, and both were reported as its stonework walling the neighbourhood.
+	var stopped: Array[float] = []
 	for i in 8:
 		var a := TAU * i / 8.0
 		var from := site.pos + Vector2.from_angle(a) * 6.0
 		var step := (site.pos - from).normalized() * 2.0
-		if not g.query.standable(floori(from.x), floori(from.y)):
-			continue # the sea, or a step it cannot climb: not the tower's doing
+		if g.query.move_body(from, step, 0.34).distance_to(from) <= 1.0:
+			stopped.append(a)
+	var none: Array[Vector3] = []
+	g.query.set_blocks(&"landmarks", none)
+	var walled: PackedStringArray = []
+	for a: float in stopped:
+		var from := site.pos + Vector2.from_angle(a) * 6.0
+		var step := (site.pos - from).normalized() * 2.0
 		if g.query.move_body(from, step, 0.34).distance_to(from) > 1.0:
-			continue
-		var tree := _solid_across(g, from, step)
-		if tree != "":
-			continue # something standing in the way, which is the world working
-		walled.append("%.2f rad" % a)
-	check(walled.is_empty(), "the land round it is walled at %s" % [walled])
+			walled.append("%.2f rad" % a)
+	sys._set_walls()
+	check(walled.is_empty(), "a landmark's own mass walls the land round it at %s" % [walled])
 	g.queue_free()
 	await frames(1)
 

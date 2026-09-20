@@ -376,6 +376,28 @@ tools print their own summaries.
   23.5 tiles from the spawn, which is the way-in seam's signature. The
   measurement was available before the first guess. When something is wrong with
   a thing the world contains, print THAT THING and read what it is standing in.
+  **AND A REVERT THAT DOES NOT REVERT READS EXACTLY LIKE A SECOND CAUSE.**
+  `test_parity`'s re-acceptance asks you to put the change back and watch the old
+  hashes return. I reverted one file to `HEAD~3` and parity still failed, which
+  looks precisely like "something else is riding along" — and `HEAD~3` already
+  CONTAINED the change, because `HEAD~n` counts COMMITS, not changes to a file,
+  and merges let it walk sideways into a branch that already has your work. The
+  version that answers the question is the commit's own parent: `git show
+  <sha>^:path`. The same shape caught the other session the same day, running a
+  single shot by hand to reproduce a gate failure while the gate was still
+  running — control and experiment were the same condition, and it "reproduced"
+  beautifully. **And the constructive form of that rule is the instrument to
+  reach for first**: a claim about ONE thing's effect is asked by taking that ONE
+  thing away and asking again. `test_a_body_cannot_walk_into_a_tower` claimed the
+  land round a landmark is still ground, and asked it by setting aside the
+  bearings where the tile the body STARTS on is not standable and where a solid
+  prop lies across the line — the start, and the furniture, and never the STEP
+  the body was about to take. The lighthouse stands on a level-5 knoll, so two of
+  the eight steps are cliffs (lv5 → lv3 east, lv1 → lv5 west) and both were
+  reported as its stonework walling the neighbourhood. Walking each line twice,
+  once with `set_blocks(&"landmarks", ...)` and once with it emptied, needs no
+  theory about what else might be standing there and cannot be fooled by any of
+  it.
   **And the worst version of this is a test that goes GREEN AGAINST THE BUG.**
   `Events.hint(text, key)` looked like it fed the key cap, so a test was written
   to prove five systems were lettering the wrong key onto the glass -- and it
