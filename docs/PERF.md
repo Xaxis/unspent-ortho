@@ -61,7 +61,80 @@ Three rules for reading it, each learned the expensive way:
 3. **Compare frames only when the world is still.** Two shots of a living world
    differ because people walked, not because anything changed.
 
-## Where we are (2026-09-19, end of the hitch work)
+## Where we are (2026-09-20, after the owner played it)
+
+**THE MEASUREMENT BELOW IS THE ONE THAT COUNTS, AND EVERY EARLIER ONE IN THIS
+FILE WAS TAKEN THE WRONG WAY.** The owner booted the game and said "every second
+of running causes a small lurch, nothing is smooth" while this document reported
+p99 10 ms and no frame over budget. Both were true. They were about different
+things: every number here had been taken from a `tools/shot.sh` run — standing
+still, empty world, default zoom, quiet machine. **A shot never spawns anything**,
+so it could not see the cost of a body walking into view at any load.
+
+Measure walking a POPULATED world (`--walk=1,0,12 --run --folk=8 --fauna=gull:3`),
+because that is what playing is:
+
+                        reported       really was     now      budget
+    30_mobs worst tick    --            145.6 ms      0.7
+    worst frame           16.0 ms       139 ms        20.6     33.3   PASS
+    p95                    8.3          17.1          11.3     13.9   PASS
+    p99                   10.0          24.9          13.8     16.7   PASS
+    worst / p50            1.9x         12.5x         2.2x     4      PASS
+    frames over 16.7       0 (0%)       32 (5%)       2 (0%)
+
+Every line passes except `p50` at 9.3 against its 8.3 — the 120 Hz median, the
+most aggressive row in the table, left failing rather than adjusted.
+
+**What the bug was, and it is the fourth of its family today**: a body built its
+figure on the main thread the first time its kind walked into view — 94 ms for
+the script load, first mesh and first material, then 8.5 ms for every body after.
+Bodies arrive in GROUPS, so a patrol of eight cost 68 ms in the frame it
+appeared. Every kind is warmed at load now, and the rest is spread over frames
+with a 4 ms budget.
+
+**THE RULE THIS BUYS, AND IT IS ABOUT THE HARNESS AND NOT THE GAME: A SHOT IS
+NOT PLAY.** A shot holds still in an empty world; play walks through a populated
+one. Any claim about frame cost has to say which it measured, and a claim that
+does not is about the empty case whether or not it says so.
+
+### The p50 gap, and what was actually in it
+
+`15_lights` was the worst process node in that run (18.4 ms), and the first
+guess was wrong in the usual direction: `_index_sources` LOOKS like the cost
+because it walks all 63,641 props, but it is called from `setup()` and finishes
+there, so it is loading time and never a frame. **The thing that looked like the
+bug was the one piece of that file that could not be it.**
+
+Timed properly — a probe on each of the four calls, walking seed 4 at 21:00:
+
+                     before      after
+    _index_sources     0.00        0.00     (done at setup)
+    _assign            1.6  / 3.2   0.17 / 0.29
+    _update_glows      0.7  / 1.8   0.13 / 0.23
+    _gather_glints     1.2  / 3.6   0.08 / 0.15
+    the tick           3.3  / 8.5   0.35 / 0.55     typical / worst
+
+`sources` is every light in the WORLD — 1,865 of them — and all three passes
+walked the whole array, each one's first act being a distance test to throw
+almost all of it away. One tick was three full sweeps; they fire TOGETHER, four
+times a second, so a worst tick put 8.5 ms into a single frame against an 8.3 ms
+median budget: **one frame in fifteen given over entirely to light.** That is the
+owner's "every second of running causes a small lurch" in a different costume
+from the mobs one.
+
+A prop never moves and worldgen never adds one, so which cell a source is in is
+fixed for the life of a world. Bucketed once at index time; each pass reads the
+cells its own reach covers. Ten-fold, and the frames are pixel-identical.
+
+**And the file had no `realm_changed`**, which the realms row of CLAUDE.md names
+`light index` as its example of. Across a portal `sources` still described the
+world just left, so the new world's lights were never read and the old world's
+went on lighting ground they were not standing on. Found only because the grid
+had to be thrown away somewhere, and there was nowhere to throw it away from.
+`tests/render/test_light_index.gd` holds all three halves, each proved to fail
+on its own break.
+
+## Where we were (2026-09-19, end of the hitch work)
 
 Quiet machine, 300 frames, seed 1, warm-up split out of the distribution:
 
@@ -135,6 +208,39 @@ is the shape to look for when judging any hitch fix.
 It also says plainly that **the hitch is not finished**: p99 is still 79-93 ms
 here. Those are inflated by the load, but the remaining spikes are real and they
 are proc-side now that physics tops out at 4 ms.
+
+#### The gate cannot run its own two halves at once on this machine
+
+`tools/check.sh` launches three headless test shards and four windowed shots
+together, "side by side". Measured 2026-09-20, twice, on a quiet machine and a
+busy one alike: **all four shots failed together** with `shot FAILED: no image`
+and an empty `shots/check/`, while the test half came back clean at exactly the
+standing eighteen.
+
+What the logs say, and it is not a timeout in the ordinary sense: each shot's
+godot printed its banner and the Metal line and then produced NOTHING for the
+whole deadline — no `world N gen`, no error, no script error. The same four
+shots, run concurrently with each other but WITHOUT the three shards, all four
+succeed and write their PNGs. So it takes the seven together (plus whatever
+other sessions are holding, here an eleven-hour `stability_probe`), and the
+windowed half is what dies.
+
+That is task #93 — nothing limits how many gates run at once — reaching the
+gate's own internals rather than two gates on one laptop. Until it is fixed, a
+gate whose test half says "no change against the standing set" and whose shots
+are all absent has not judged the shots at all: **run the two halves separately
+and read them together.**
+
+Three things this cost, all of them instrument errors rather than game bugs, and
+all the same shape as the ones this document already records:
+
+- The gate was piped through `tail -30`, which CLAUDE.md forbids. It hid the exit
+  code AND the four `shot FAILED` lines, so the first run looked like a test
+  failure for an hour.
+- "All four failed, therefore load" was assumed, not measured. The re-run on a
+  quiet machine failed identically.
+- A "single shot by hand" that reproduced the failure was run WHILE THE GATE WAS
+  STILL UP, so it proved only that the gate was still up.
 
 ## The hitch, found
 

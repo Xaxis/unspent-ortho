@@ -358,7 +358,14 @@ func _run() -> void:
 				var day := floorf(game.clock.minutes / 1440.0)
 				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
 			"zoom":
-				game.camera.view_height = parts[1].to_float()
+				# Through the view system, which owns the height and puts its own
+				# value back every frame; writing the camera directly lasted one
+				# frame. See 09_view.set_height.
+				var view_sys := _system("09_view")
+				if view_sys != null and view_sys.has_method(&"set_height"):
+					view_sys.call(&"set_height", parts[1].to_float())
+				else:
+					game.camera.view_height = parts[1].to_float()
 			"weather":
 				var sky_sys := _system("10_sky")
 				ok = sky_sys != null and bool(sky_sys.call("apply_weather", parts[1]))
