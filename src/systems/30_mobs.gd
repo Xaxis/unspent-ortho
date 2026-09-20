@@ -45,7 +45,7 @@ func setup(g: Game) -> void:
 	for k: String in g.options.spawn:
 		var staged := Spawner.staged(k)
 		place_near_player(staged.id, staged.facing)
-	_ensure_nodes()
+	_ensure_nodes(true)
 
 
 ## EVERY KIND'S FIGURE BUILT BEFORE ANY OF THEM WALKS IN.
@@ -117,8 +117,27 @@ func _listen() -> void:
 			m.heard_told = true
 
 
-func _ensure_nodes() -> void:
+## How long standing bodies up may take in one frame before the rest wait for
+## the next. **BODIES ARRIVE IN GROUPS AND THE COST IS PER BODY**, so a patrol of
+## eight coming over the rise together built eight figures in one frame: 8.5 ms
+## each once the kind is warm, which is 68 ms in the frame they appear. Spread,
+## not skipped -- every body still gets its node, at worst a frame or two later,
+## and a body with no node yet is one the player cannot see anyway.
+##
+## Four milliseconds leaves room for the rest of the frame inside 16.7 and still
+## stands two or three bodies up a frame, so a group is whole within about a
+## tenth of a second.
+const NODE_BUDGET_MS := 4.0
+
+
+## `all` builds every waiting body whatever it costs: setup and staging want the
+## world complete before the first frame is drawn, and a shot with `--spawn`
+## must hold its subject in the frame it claims.
+func _ensure_nodes(all: bool = false) -> void:
+	var began := Time.get_ticks_usec()
 	for m in sim.mobs:
+		if not all and float(Time.get_ticks_usec() - began) / 1000.0 > NODE_BUDGET_MS:
+			return
 		if m.node == null and not m.removed:
 			var mob := Mob.new()
 			_layer.add_child(mob)
