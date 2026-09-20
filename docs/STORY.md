@@ -215,13 +215,21 @@ their own land nearest where he wakes, and what they have noticed is theirs.
 | coast | Maren | (she is the home fire) |
 | bonelands | **Esk**, stone-setter | The stones stand because they were counted, not because they are graves. He sets them up anyway. |
 | burning | **Hollis**, slag-runner | Everything the refineries make goes up the Tether |
+| drowned city | **Cass**, ferry-reader | The ferries keep the city's own timetable, from before the water |
+| green towers | **Liss**, canopy-climber | Their roads stop at the treeline and start again past it. In seventy years they have not been under the leaves. |
+| grey orchards | **Perrin**, grafter | The schedule has a harvest day in it. They come, take nothing, and go. |
 | limestone caves | **Wren**, lampwright | Something below hums like a voice counting, and never gets past its number |
+| machine city | **Sorrel**, gate-counter | More goes in than comes out, every year she has counted |
+| mesas | **Orin**, trestle-walker | Nine years of haulers on the same note. The canyon is no emptier. |
 | moss | **Ansel**, pump-watcher | The fen is a valley drowned by a dam opened on an order that checked out |
 | pinewood | **Corra**, charcoal-burner | Each square the machines cut fills with something that hums |
+| ruined metropolis | **Wick**, kerbsman | The line between the kept streets and the dead ones moves inward, a street at a time |
 | salt flats | **Mica**, brine-raker | The keeper stops at dusk and faces one way, like someone waiting for a car |
 | scrapwood | **Tamsin**, filings-reader | The battle here was two armies of the same side |
 | slums | **Pell**, clerk | Two men came out of the water before him, and the city filed them both. They had his face. |
 | snowfield | **Brannoc**, line-walker | A number on the wires gets smaller every winter. It may be the people. |
+| sulphur jungle | **Nye**, crust-cutter | The vents open and close in an order. Nothing under a mountain keeps time. |
+| the crags | **Fen**, wayfinder | The survey is ruled straight across the world and bends round the crags |
 
 ## 9. Revelations, and how they land
 

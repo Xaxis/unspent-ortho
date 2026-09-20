@@ -67,7 +67,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"vents_keep_time", &"under_the_leaves"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -141,6 +141,14 @@ const BEATS := {
 	&"stones_counted": {"short": "not graves", "arc": &"the_lands", "says": "The bonelands' stones stand because the machines have already counted them, not because they are graves."},
 	&"burning_feeds": {"short": "nothing stays", "arc": &"the_lands", "says": "Everything the Burning's refineries make is carried to the Tether. Nothing made there stays on the ground."},
 	&"plant_below": {"short": "counting below", "arc": &"the_lands", "says": "Something under the caves hums like a voice counting, and never gets past its number. The river runs toward it."},
+	&"same_weight": {"short": "the same note", "arc": &"the_lands", "says": "The haulers have crossed the mesa trestles on the same note for nine years. Whatever the plan takes out of the canyons, there is no less of it."},
+	&"old_timetable": {"short": "the old timetable", "arc": &"the_lands", "says": "The ferries in the drowned city keep the city's own timetable, from before the water. The service is still running for a city that is not there."},
+	&"harvest_day": {"short": "harvest day", "arc": &"the_lands", "says": "The orchards keep a harvest day. The machines come for it, take nothing, and go. Something used to be collected here, and the schedule has not been told."},
+	&"kerb_moves": {"short": "the line moves", "arc": &"the_lands", "says": "In the metropolis the line between the kept streets and the dead ones moves a street at a time, always inward. The plan is giving the city up by inches."},
+	&"more_goes_in": {"short": "more goes in", "arc": &"the_lands", "says": "More goes into the machine city than comes out of it, every year anyone has counted. Nothing built that clean mislays things."},
+	&"survey_bends": {"short": "the survey bends", "arc": &"the_lands", "says": "The machines' bearing is ruled straight across the whole world and bends round the crags. They surveyed everything and left that out."},
+	&"vents_keep_time": {"short": "the vents keep time", "arc": &"the_lands", "says": "The sulphur vents open and close together, in an order, and come back round. Nothing under a mountain keeps time."},
+	&"under_the_leaves": {"short": "under the leaves", "arc": &"the_lands", "says": "The machines' roads stop at the treeline of the green towers and start again on the far side. In seventy years they have not mapped what is under the canopy."},
 	&"dam_order": {"short": "the dam", "arc": &"the_lands", "says": "The moss is a drowned valley. The dam was opened in the war, on an order that checked out."},
 	&"server_fields": {"short": "the squares", "arc": &"the_lands", "says": "The machines cut the pinewood in squares and fill each one with something that hums: more of themselves."},
 	&"keeper_waits": {"short": "at a window", "arc": &"the_lands", "says": "The salt's keeper stops every dusk and faces one way, like someone at a window waiting for a car."},
@@ -1825,6 +1833,206 @@ const TALKS := {
 			},
 			&"down": {
 				"says": ["The first of them, they say. The one that woke.", "Nobody who went to look came back to say."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"orin": {
+		"cast": &"orin", "title": "a trestle-walker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Stand off the deck when one's coming. It sings before you see it.", "You get so you know them by the note."],
+				"replies": [
+					{"text": "What does the note tell you?", "pick": &"asked_note", "to": &"note"},
+					{"text": "[wait for one]", "pick": &"waited", "to": &"note"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"note": {
+				"says": ["What it's carrying. Empty sings high. Loaded sings low and long.", "Nine years I've walked this. It has been the same note every crossing.", "Same weight, out of the same canyon, and the canyon's no emptier."],
+				"beats": [&"same_weight"],
+				"replies": [
+					{"text": "What's down there?", "pick": &"asked_canyon", "to": &"canyon"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"canyon": {
+				"says": ["Nobody's road goes down. Theirs cross, mine cross, none descend.", "Whatever they're drawing up, they built the bridges so they'd never have to stand in it."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"cass": {
+		"cast": &"cass", "title": "a ferry-reader", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Quarter past. There it is. You could set a life by them.", "Nobody drives them and nobody misses one."],
+				"replies": [
+					{"text": "Who set the timetable?", "pick": &"asked_table", "to": &"table"},
+					{"text": "Where do they go?", "pick": &"asked_where", "to": &"where"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"table": {
+				"says": ["That's the thing. It's ours. The city's own, from before the water.", "Same stops, same hours. The stops are twenty feet under now.", "They're still running a service for a city that isn't there."],
+				"beats": [&"old_timetable"],
+				"replies": [
+					{"text": "Where do they go?", "pick": &"asked_where", "to": &"where"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"where": {
+				"says": ["Out past the last tower, and back empty.", "I went once, to the end of the line. I don't talk about the stop."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"perrin": {
+		"cast": &"perrin", "title": "a grafter", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Breathe through the cloth. The sprayers come round at the hour.", "They've fed these rows longer than I've been alive."],
+				"replies": [
+					{"text": "Fed them for whom?", "pick": &"asked_whom", "to": &"whom"},
+					{"text": "[take the cloth]", "pick": &"took_cloth", "to": &"whom"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"whom": {
+				"says": ["Nobody. Hasn't been anybody to eat it since my grandmother.", "But the schedule has a harvest day in it, and they keep it.", "They come, they stand in the rows, they take nothing, they go."],
+				"beats": [&"harvest_day"],
+				"replies": [
+					{"text": "Who was it for?", "pick": &"asked_for", "to": &"for"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"for": {
+				"says": ["Somebody wrote that day down once and meant it.", "Whoever they were, the orchard is still waiting on them."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"wick": {
+		"cast": &"wick", "title": "a kerbsman", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mind the kerb. That side's swept, this side's mine.", "Don't get caught the wrong one at curfew."],
+				"replies": [
+					{"text": "Who decides which side?", "pick": &"asked_side", "to": &"side"},
+					{"text": "[stay on his side]", "pick": &"stayed", "to": &"side"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"side": {
+				"says": ["They do, and they move it. I've shifted house four times.", "Always the same way. The swept part gets smaller.", "They're letting the city go, a street at a time, and nobody's said so."],
+				"beats": [&"kerb_moves"],
+				"replies": [
+					{"text": "Why give it up?", "pick": &"asked_why_go", "to": &"why_go"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"why_go": {
+				"says": ["Either they've finished with it, or they've somewhere better.", "I've never decided which of those frightens me more."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"sorrel": {
+		"cast": &"sorrel", "title": "a gate-counter", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't stand in the road. Nothing in there turns for a person.", "Two hundred and six in since dawn. I keep count."],
+				"replies": [
+					{"text": "And out?", "pick": &"asked_out", "to": &"out"},
+					{"text": "Why count?", "pick": &"asked_count", "to": &"out"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"out": {
+				"says": ["A hundred and ninety. It's never even. It's never once been even.", "Every year I've kept it, more goes in than comes back.", "Nothing built that clean mislays a thing. So it's keeping them."],
+				"beats": [&"more_goes_in"],
+				"replies": [
+					{"text": "Keeping them for what?", "pick": &"asked_keep", "to": &"keep"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"keep": {
+				"says": ["There's no gate on that side I can see from here.", "Whatever's being put away in there is being put away for later."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"fen": {
+		"cast": &"fen", "title": "a wayfinder", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Stay behind me in this. The fog takes a bearing off you.", "You'll not find their marks up here. There aren't any."],
+				"replies": [
+					{"text": "No survey at all?", "pick": &"asked_survey", "to": &"survey"},
+					{"text": "[follow her]", "pick": &"followed", "to": &"survey"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"survey": {
+				"says": ["Their line runs ruled across the world. You've seen it. Nothing bends it.", "It bends here. Goes round, picks up clean on the far side.", "They measured everything there is and left this out on purpose."],
+				"beats": [&"survey_bends"],
+				"replies": [
+					{"text": "Left it out why?", "pick": &"asked_left", "to": &"left"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"left": {
+				"says": ["Because they don't know, and they don't like not knowing.", "There's older than them in these stones. It was here for the first lot too."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"nye": {
+		"cast": &"nye", "title": "a crust-cutter", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Not the low ground, not today. That one's due.", "Sit up here and you'll keep your face."],
+				"replies": [
+					{"text": "Due? You can tell?", "pick": &"asked_due", "to": &"due"},
+					{"text": "[sit]", "pick": &"sat_high", "to": &"due"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"due": {
+				"says": ["Anyone can, if they're burnt enough times to bother learning.", "They go in an order. Round the basin and back to the start.", "The ground doesn't keep time. Something opening them does."],
+				"beats": [&"vents_keep_time"],
+				"replies": [
+					{"text": "Opening them for what?", "pick": &"asked_vent_why", "to": &"vent_why"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"vent_why": {
+				"says": ["Heat's why everything here grows twice. Cap them and it dies back.", "They let it grow and they let it cook. That's not weather, that's a crop."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"liss": {
+		"cast": &"liss", "title": "a canopy-climber", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Up is safer than along. Everything with a lamp on it stays low.", "There's a street under your feet, if you clear the roots."],
+				"replies": [
+					{"text": "They don't come in here?", "pick": &"asked_in", "to": &"in"},
+					{"text": "[climb with her]", "pick": &"climbed", "to": &"in"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"in": {
+				"says": ["Their roads stop at the first trees and start again past the far side.", "Seventy years and they've gone round every time.", "I watched a surveyor stand at the treeline a whole day and turn back."],
+				"beats": [&"under_the_leaves"],
+				"replies": [
+					{"text": "Can't they see through it?", "pick": &"asked_see", "to": &"see"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"see": {
+				"says": ["They look down. That's the whole of how they look.", "Leaves beat them. Not a war, not a weapon. Leaves."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},

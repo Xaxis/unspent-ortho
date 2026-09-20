@@ -47,12 +47,20 @@ const SPINE: Array[Dictionary] = [
 const LOCALS: Array[Dictionary] = [
 	{"id": &"local_bonelands", "needs": &"village", "land": &"bonelands", "nearest": true, "ordered": false},
 	{"id": &"local_burning", "needs": &"village", "land": &"burning", "nearest": true, "ordered": false},
+	{"id": &"local_drowned_city", "needs": &"village", "land": &"drowned_city", "nearest": true, "ordered": false},
+	{"id": &"local_green_towers", "needs": &"village", "land": &"green_towers", "nearest": true, "ordered": false},
+	{"id": &"local_grey_orchards", "needs": &"village", "land": &"grey_orchards", "nearest": true, "ordered": false},
+	{"id": &"local_machine_city", "needs": &"village", "land": &"machine_city", "nearest": true, "ordered": false},
+	{"id": &"local_mesas", "needs": &"village", "land": &"mesas", "nearest": true, "ordered": false},
 	{"id": &"local_moss", "needs": &"village", "land": &"moss", "nearest": true, "ordered": false},
 	{"id": &"local_pinewood", "needs": &"village", "land": &"pinewood", "nearest": true, "ordered": false},
+	{"id": &"local_ruined_metropolis", "needs": &"village", "land": &"ruined_metropolis", "nearest": true, "ordered": false},
 	{"id": &"local_salt_flats", "needs": &"village", "land": &"salt_flats", "nearest": true, "ordered": false},
 	{"id": &"local_scrapwood", "needs": &"village", "land": &"scrapwood", "nearest": true, "ordered": false},
 	{"id": &"local_slums", "needs": &"village", "land": &"slums", "nearest": true, "ordered": false},
 	{"id": &"local_snowfield", "needs": &"village", "land": &"snowfield", "nearest": true, "ordered": false},
+	{"id": &"local_sulphur_jungle", "needs": &"village", "land": &"sulphur_jungle", "nearest": true, "ordered": false},
+	{"id": &"local_the_crags", "needs": &"village", "land": &"the_crags", "nearest": true, "ordered": false},
 	{"id": &"local_limestone_caves", "needs": &"village", "land": &"limestone_caves", "realm": &"underground", "nearest": true, "ordered": false},
 ]
 
