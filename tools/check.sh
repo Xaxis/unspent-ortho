@@ -74,13 +74,25 @@ fi
 t0=$(date +%s)
 tools/_import.sh
 fail=0
-echo "== tests (3 shards) and shots, side by side"
-logs=()
-tpids=()
-for i in 0 1 2; do
-  log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
-  godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
-done
+# THE TWO HALVES RUN ONE AFTER THE OTHER, AND THEY USED TO RUN "SIDE BY SIDE".
+#
+# Three headless shards and four WINDOWED shots launched together is seven Godot
+# processes, four of them holding a Metal context, and on this machine every one
+# of the shots then printed its banner and produced NOTHING for its whole
+# deadline -- no `world N gen`, no error, no script error -- leaving
+# `shots/check/` empty. Measured twice, 2026-09-20, on a quiet machine and a busy
+# one, at two different commits. The same four shots run concurrently with each
+# other but WITHOUT the shards all pass and write their frames.
+#
+# So the gate was exiting 1 with a test half that read "no change against the
+# standing set", and the picture half -- the half that exists because a green
+# test says nothing about how the game looks -- had not been judged at all.
+# Nobody was told the frames were missing; the directory was just empty.
+#
+# The shots go FIRST because they are the cheap half (about a minute against the
+# shards' nine) and because a broken frame is worth knowing about before you wait
+# out the suite. Total cost of the change is roughly that minute.
+echo "== shots"
 mkdir -p shots/check
 pids=()
 tools/shot.sh shots/check/spawn.png --seed=1 & pids+=($!)
@@ -88,6 +100,20 @@ tools/shot.sh shots/check/dusk.png --seed=2 --hour=19.5 --walk=1,-1,1.5 & pids+=
 tools/shot.sh shots/check/night.png --seed=3 --hour=23 & pids+=($!)
 tools/shot.sh shots/check/gallery.png --scene=gallery & pids+=($!)
 for p in "${pids[@]}"; do wait "$p" || fail=1; done
+# An absent frame is not a silent pass: the loop above sets `fail`, but say it
+# in words too, because an empty directory reads like a gate that had nothing to
+# look at rather than one that could not look.
+for f in spawn dusk night gallery; do
+  [ -f "shots/check/$f.png" ] || { echo "MISSING FRAME: shots/check/$f.png was never written"; fail=1; }
+done
+
+echo "== tests (3 shards)"
+logs=()
+tpids=()
+for i in 0 1 2; do
+  log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
+  godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
+done
 # The shards' own failures, gathered before they are judged, so the run can be
 # compared against what this tree is KNOWN to carry (tests/standing.txt).
 ran="$(mktemp "${TMPDIR:-/tmp}/unspent-ran.XXXXXX")"
