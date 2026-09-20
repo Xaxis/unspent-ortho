@@ -672,7 +672,14 @@ static func _in_square(w: WorldData, i: int) -> bool:
 func test_villages_spread_across_countries_with_a_square() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
-		var most := GenSettle.max_villages()
+		# ASK THE CAP ABOUT THIS WORLD. `max_villages()` with no world answers off
+		# the registry alone, which is right for "what could any world hold" and
+		# wrong here: a landscape counting per region (`villages_each_region`) is
+		# allowed a borough in every place it laid, and how many places that is is
+		# a fact about THIS world. Asked the registry-only way, a correctly built
+		# city read as 27 villages against a cap of 22 — the same shape as holding
+		# a run to a bar taken from somewhere else.
+		var most := GenSettle.max_villages(w)
 		check(w.villages.size() >= most - 4 and w.villages.size() <= most, "seed %d has %d villages of at most %d" % [s, w.villages.size(), most])
 		var countries := {}
 		var q := WorldQuery.new(w)

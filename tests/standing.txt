@@ -30,7 +30,17 @@
 #   for i in 0 1 2; do godot --headless --path . -s tests/run.gd -- --shard=$i/3; done
 # collecting the FAIL lines, stripping "FAIL " and the timing, sorted unique.
 #
-# Taken 2026-09-19 at 2004 passed, 26 failed.
+# Taken 2026-09-19. **STANDING COMES DOWN ONLY AS CAUSES ARE FOUND, NEVER AS
+# BARS ARE MOVED**, and every step below was somebody naming a reason:
+# 26 -> 25 (break_metal was one author's own failure, read as background
+# noise) -> 24 (the city got its boroughs, so every landscape holds its own
+# works) -> 21 (the sea is not a wall for a body that swims, and a round
+# trip measured from where the search began rather than the leg it walked).
+#
+# THIS FILE CONFLICTS WHEN TWO PEOPLE FIX REDS AT ONCE, AND THE RESOLUTION
+# IS ALWAYS THE INTERSECTION: a line removed by EITHER side now passes, so
+# keeping it because the other side still had it would put a green test
+# back on the list and teach the gate to expect a failure that is gone.
 test_era:test_the_before_is_the_same_land
 test_era:test_the_plan_has_not_begun_in_2029
 test_houses:test_a_lit_house_puts_its_glint_on_its_own_tube
@@ -51,4 +61,3 @@ test_world_gen:test_every_country_reachable_on_foot_from_spawn
 test_world_gen:test_journey_runs_north_from_a_southern_coast
 test_world_gen:test_places_worth_walking_to
 test_world_gen:test_spawn_is_beside_a_south_coast_village_facing_open_land
-test_world_gen_works:test_every_landscape_holds_its_own_works

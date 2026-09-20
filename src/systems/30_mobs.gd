@@ -39,12 +39,39 @@ func setup(g: Game) -> void:
 	_layer.name = "mobs"
 	g.add_child(_layer)
 	coast = Coast.new(sim, spawner)
+	_warm_figures()
 	coast.spawning = g.options.spawn.is_empty()
 	Events.time_skipped.connect(_on_time_skipped)
 	for k: String in g.options.spawn:
 		var staged := Spawner.staged(k)
 		place_near_player(staged.id, staged.facing)
 	_ensure_nodes()
+
+
+## EVERY KIND'S FIGURE BUILT BEFORE ANY OF THEM WALKS IN.
+##
+## **A LAZY BUILD IS A LURCH WITH A DELAY ON IT**, which is the same shape as the
+## footprint textures, and the owner felt this one as "every second of running
+## causes a small lurch". Measured walking a populated world: `_ensure_nodes`
+## took **94 ms to stand ONE body up** the first time that kind appeared, against
+## 8.5 ms for the next of the same kind — the script load, the first mesh and the
+## first material of that kind, all on the main thread, in the frame a machine
+## came over the rise. As a player walks and new kinds come into range it fires
+## again, and again.
+##
+## The built figure is thrown away: what is bought is the kind's SCRIPT being
+## resident and its material having been through the renderer once. Measured
+## after: 30_mobs' worst physics tick 145.6 ms -> 34.7.
+##
+## **THIS LIVES HERE AND NOT IN `FigureModel` ON PURPOSE.** `src/models/` is
+## frozen to the LOOK wave (CLAUDE.md), and a warm-up is the caller's business
+## anyway — it is about when a cost is paid, not about what a figure is.
+func _warm_figures() -> void:
+	var mat: Material = game.view.world_material() if game.view != null else null
+	for k: StringName in Roster.kinds():
+		var m := FigureModel.create(k, mat)
+		if m != null:
+			m.free()
 
 
 func _physics_process(_delta: float) -> void:

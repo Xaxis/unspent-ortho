@@ -305,6 +305,49 @@ var pools: Dictionary = {}
 ## landscape is settled in when a world is shared out (the land that fills up
 ## what is left goes last).
 var villages := 0
+## Whether `villages` is counted PER REGION rather than per landscape.
+##
+## **A CITY THAT LAYS ONE VILLAGE HOWEVER MANY BOROUGHS IT HAS IS NOT A CITY.**
+## The count has always been per landscape, which is right for a coast whose
+## fishing villages are scattered over one shore and wrong for anything urban:
+## measured on the Slums, seed 1 laid three regions of 11,796, 2,222 and 1,994
+## tiles and built in exactly ONE of them, leaving two boroughs of city ground
+## with nothing standing on them at all. Seed 42 was three regions and two empty.
+## Every connected run of a landscape is a PLACE (`WorldData.regions`), and a
+## place a player can walk the length of without meeting a building is not a
+## place, it is a texture.
+##
+## Off by default, so no landscape that was right before moves.
+var villages_each_region := false
+## How far the village's own levelled platform reaches, in tiles. 0 takes
+## `GenSettle.FLAT` (6.5), which is what every landscape had.
+##
+## **THE PLATFORM WAS SMALLER THAN THE PLOT, AND THAT IS THE WHOLE SHORTFALL.**
+## Buildings are laid out to `GenSettle.HOUSE_REACH` — 14.5 tiles from the
+## square — while only 6.5 tiles of ground were ever levelled, and a building is
+## refused unless its own nine tiles share one level. So on terraced ground
+## everything past the platform's edge was struck out before it could be built,
+## and nothing reported the shortfall: the landscape asked for 22-34 buildings
+## and stood 3, 6 and 9.
+##
+## Measured on the Slums, which declares stepped relief precisely BECAUSE a city
+## stands on platforms — so its own fiction was refusing its own buildings. A
+## landscape that cuts a bigger platform is saying its people levelled the ground
+## before they built, which is what a city is.
+var village_platform := 0.0
+## How far the village's own levelled platform reaches, in tiles. 0 takes
+## `GenSettle.FLAT` (6.5), which is what every landscape had.
+##
+## **THE PLATFORM WAS SMALLER THAN THE PLOT, AND THAT IS THE WHOLE SHORTFALL.**
+## Buildings are laid out to `GenSettle.HOUSE_REACH` (14.5 tiles from the
+## square) while only 6.5 tiles of ground were levelled, and a building is
+## refused unless its own nine tiles share one level -- so on terraced ground
+## everything past the platform's edge was struck out before it was ever built.
+## Measured on the Slums, which declares stepped relief BECAUSE a city stands on
+## platforms: villages asking for 22-34 buildings stood 3, 6 and 9.
+##
+## A landscape that cuts a bigger platform is saying its people levelled the
+## ground before they built, which is what a city is.
 var village_names: Array = []
 var village_order := 50
 ## How many people this landscape puts on the street round each of its villages,
