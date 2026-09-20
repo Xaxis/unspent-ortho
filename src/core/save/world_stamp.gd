@@ -80,7 +80,14 @@ const UNKNOWN := "unknown"
 ##     whether that landscape holds them: `BiomeDef.ore` decides now, with iron
 ##     forced where a landscape claims neither, because the first seam has to
 ##     exist on every seed.
-const GEN := 16
+##  8. A strait that two continents' shelves closed. Deep water is the only thing
+##     that stops a body on foot and every coast carries twenty tiles of level-0
+##     shelf; where two continents' shelves touched, that was a dry road between
+##     them. `GenBodies.deepen_straits` cuts the watershed between two shelves.
+##     It moves 125 tiles on seed 1 and NOTHING on seeds 42 and 90210, which have
+##     no seam -- and nothing at all at 256, where a world holds one body of
+##     continent size. Turned all the same: 125 tiles is a world that moved.
+const GEN := 17
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

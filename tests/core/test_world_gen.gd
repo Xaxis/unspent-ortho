@@ -221,6 +221,40 @@ func test_journey_runs_north_from_a_southern_coast() -> void:
 				var key := b * 256 + int(w.country[i])
 				sums[key] = float(sums.get(key, 0.0)) + float(y)
 				counts[key] = float(counts.get(key, 0.0)) + 1.0
+		# **THIS IS STILL RED AND THE INSTRUMENT IS PART OF WHY — MEASURED, NOT
+		# GUESSED.** Two separate things are wrong and only one of them is the
+		# world's fault.
+		#
+		# The instrument first: every comparison below is a landscape's MEAN TILE
+		# POSITION against the COAST's mean tile position, and the coast is
+		# `coastal` — it grows along the whole shoreline, so its centroid is the
+		# middle of its continent by construction and not its south shore.
+		# Measured on the three seeds: the coast's heart is declared at v 0.87
+		# (deep south, `coast.gd` anchors) and its MASS lands at v 0.45, 0.55 and
+		# 0.69. So "north of the coast" as asked here means "north of the middle of
+		# the continent", which is not the claim in the name. An anchor places a
+		# HEART; the mean of what grew round it is a different quantity, and this
+		# is the third instrument in one day that reported on a neighbour of the
+		# thing it named.
+		#
+		# The world's half: with five continents a landscape is dealt to about
+		# half the bodies (`GenBodies.MOST_BODIES`), so the home continent no
+		# longer reliably holds the six this loop names. Seed 1's home continent
+		# holds green_towers, slums, coast, snowfield, scrapwood, mesas and
+		# salt_flats — not one of moss, pinewood or bonelands — so `tested` is 0
+		# and the loop asserts nothing at all. Naming six `Country` slots is also
+		# the thing `CLAUDE.md` forbids ("never branch on `Country`, it is only
+		# names for the first seven slots"): it was written when there were six
+		# landscapes and one island, and it is now a claim about a sixth of the
+		# content.
+		#
+		# So the honest claim is about a landscape's HEART against its own
+		# declared anchor, on the body that anchor was mapped onto
+		# (`GenCountries._rect_for`), and the CONTINENT-scale order already has a
+		# home in `tests/story/test_plan.gd`. Do not answer this by widening the
+		# bar until the means happen to sort: that would pin the wrong quantity
+		# forever.
+		#
 		# ON THE CONTINENT THE JOURNEY IS AUTHORED ON, which is the one he wakes on
 		# (`GenBodies.mark_home`). A landscape's anchors are dealt to the home body
 		# first, so that is where the south-to-north order is placed on purpose;
@@ -469,16 +503,22 @@ func test_every_country_reachable_on_foot_from_spawn() -> void:
 				continue
 			gt(here_got[c] / maxf(1.0, here_total[c]), 0.85,
 				"seed %d %s on his own continent is walkable" % [s, BiomeRegistry.name_of(c)])
-		# **WHY THIS FAILS AND WHAT IT IS NOT.** Measured on seed 1: a LAND-ONLY
-		# flood from the spawn touches no other continent, so the landmasses really
-		# are separate and `w.continent` is not mislabelling them. The walker gets
-		# across the WATER. Deep water is only where the level field goes below
-		# zero (gen_surface.gd:205) and a body on foot is stopped by DEEP_WATER and
-		# nothing else (world_query.gd:119) -- so a strait at level 0 is wadeable,
-		# which is right for a shore and wrong for an ocean. Task #50; the fix is
-		# in worldgen and costs a parity re-acceptance, so it is not smuggled in
-		# here. Do not answer this by letting the test accept wading: the claim
-		# above is the design.
+		# **AND THE OCEAN WAS NEVER THE THING THAT WAS WRONG.** This was red for
+		# 124,626 tiles and the diagnosis written here blamed the depth of the sea.
+		# It is not: 1,025,135 sea tiles are already at level -1 and the deepest
+		# water stands 456 tiles from land. What a walker crossed was the SHELF --
+		# every coast carries about twenty tiles of level-0 water, which is right
+		# for a shore and becomes a dry road where two continents' shelves touch.
+		# The whole fault was nineteen tiles wide, on one seed of three: seed 1
+		# joined continents 4 and 5 across a twelve-tile strait at (955, 454..467)
+		# and seeds 42 and 90210 had no seam at all. `GenBodies.deepen_straits`
+		# cuts the watershed between two shelves and moves 125 tiles on seed 1,
+		# none on the other two, and none at any size that holds one continent --
+		# which is why no parity baseline shifted. Had the written diagnosis been
+		# believed, the answer would have been a deeper ocean or a wider
+		# `SEA_GAP`, either of which moves every tile of every seed to fix
+		# nineteen. Do not answer a red here by letting the test accept wading:
+		# the claim above is the design.
 		eq(away, 0, "seed %d: %d tiles of another continent are reachable on foot" % [s, away])
 		for v in w.villages:
 			var p: Vector2 = v.pos
