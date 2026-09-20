@@ -85,6 +85,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	t = _mark(c, marks, &"rivers", t)
 	GenRelief.terrace(c)
 	t = _mark(c, marks, &"terrace", t)
+	# Before anything is sited: a strait that goes deep here can never drown a
+	# village, a road or a site that was put on it.
+	GenBodies.deepen_straits(c)
+	t = _mark(c, marks, &"straits", t)
 	GenWater.still(c)
 	t = _mark(c, marks, &"still", t)
 	GenSettle.villages(c)

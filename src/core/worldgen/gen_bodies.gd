@@ -78,6 +78,124 @@ static func run(c: GenContext) -> void:
 	w.continents = out
 
 
+## **THE OCEAN IS A WALL AND THE SHELF IS NOT** (docs/WORLD.md, task #50).
+## Deep water is the only thing that stops a body on foot (`WorldQuery.standable`)
+## and deep water is `level < 0`. Every coast carries a shelf of level-0 water out
+## to about twenty tiles, which is exactly right for a shore — you wade off a
+## beach — and exactly wrong where two CONTINENTS' shelves happen to touch: those
+## twenty tiles become a dry road between two landmasses that the plan, the
+## journey, the chapters and `Realm` all treat as separate places.
+##
+## **THE OCEAN WAS NEVER THE PROBLEM, WHICH IS WHY THE TASK'S OWN NAME MISLEADS.**
+## Measured at `Tuning.WORLD_SIZE`: 1,025,135 sea tiles are already at level -1
+## and the deepest water stands 456 tiles from the nearest land. The whole fault
+## is 19 tiles wide and it is on ONE seed in three — seed 1 joins continents 4
+## and 5 across a twelve-tile strait at (955, 454..467), and seeds 42 and 90210
+## have no seam at all. A change that deepened the ocean, or widened `SEA_GAP`,
+## would move every tile of every seed to fix nineteen of them.
+##
+## So the cut is the WATERSHED between two shelves and nothing else: each level-0
+## tile takes the continent of the nearest land reachable through shallow water,
+## and where two continents' shelves meet, that seam goes deep. It is widened to
+## `CHANNEL` on each side so the strait reads as a channel rather than as a ditch
+## down the middle of a beach. Where the property already holds nothing moves at
+## all, which is why no parity seed shifts: at 256 a world has one body of
+## continent size and there is no pair to separate.
+const CHANNEL := 3
+## A body is a continent rather than a skerry at this share of the biggest one.
+## Stated as a share so it cannot go stale against a world size: measured, a
+## continent is 104,000 to 146,000 tiles and the biggest thing floating in a
+## strait is under 1,000, so anything in between would do and this is the middle
+## of a two-order-of-magnitude gap. Wading out to a skerry is a thing a player
+## should be able to do; this is about the ocean between continents.
+const CONTINENT_SHARE := 0.25
+
+
+static func deepen_straits(c: GenContext) -> void:
+	var w := c.w
+	var size := c.size
+	var level := w.level
+	var most := 0
+	for row: Dictionary in w.continents:
+		most = maxi(most, int(row.get("tiles", 0)))
+	var big := {}
+	for row: Dictionary in w.continents:
+		if float(row.get("tiles", 0)) >= CONTINENT_SHARE * float(most):
+			big[int(row.get("id", 0))] = true
+	if big.size() < 2:
+		return
+	# Which shelf each patch of shallow water belongs to: the nearest land you
+	# could wade to from it.
+	var owner := PackedByteArray()
+	owner.resize(size * size)
+	var q := PackedInt32Array()
+	for i in level.size():
+		if level[i] > 0:
+			owner[i] = w.continent[i]
+			q.append(i)
+	var head := 0
+	while head < q.size():
+		var i := q[head]
+		head += 1
+		var x := i % size
+		var y := i / size
+		var own := owner[i]
+		for d: Vector2i in NEIGHBOURS:
+			var nx := x + d.x
+			var ny := y + d.y
+			if nx < 0 or ny < 0 or nx >= size or ny >= size:
+				continue
+			var j := ny * size + nx
+			if owner[j] != 0 or level[j] != 0:
+				continue
+			owner[j] = own
+			q.append(j)
+	# The seam, and then `CHANNEL` tiles either side of it.
+	var marked := PackedByteArray()
+	marked.resize(size * size)
+	var front := PackedInt32Array()
+	for i in level.size():
+		if level[i] != 0 or not big.has(int(owner[i])):
+			continue
+		var x := i % size
+		var y := i / size
+		for d: Vector2i in NEIGHBOURS:
+			var nx := x + d.x
+			var ny := y + d.y
+			if nx < 0 or ny < 0 or nx >= size or ny >= size:
+				continue
+			var j := ny * size + nx
+			if level[j] < 0 or owner[j] == owner[i] or not big.has(int(owner[j])):
+				continue
+			marked[i] = 1
+			front.append(i)
+			break
+	if front.is_empty():
+		return
+	for _step in CHANNEL:
+		var next := PackedInt32Array()
+		for i: int in front:
+			var x := i % size
+			var y := i / size
+			for d: Vector2i in NEIGHBOURS:
+				var nx := x + d.x
+				var ny := y + d.y
+				if nx < 0 or ny < 0 or nx >= size or ny >= size:
+					continue
+				var j := ny * size + nx
+				if marked[j] != 0 or level[j] != 0:
+					continue
+				marked[j] = 1
+				next.append(j)
+		front = next
+	for i in marked.size():
+		if marked[i] != 0:
+			level[i] = -1
+
+
+const NEIGHBOURS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+
 ## WHICH CONTINENT IS HOME IS RECORDED, not worked out by whoever asks. The
 ## journey is authored on it, a chapter's first demand is there, and the story's
 ## legs start there — and until now the only way to know was to find the spawn and
