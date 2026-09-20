@@ -69,7 +69,7 @@ const UNKNOWN := "unknown"
 ##     server fields and the glass desert with no chapter anywhere. `GenScatter`
 ##     iterates `w.regions` and filters props by `region_at`, so which runs
 ##     become places decides where props go -- this moves every seed.
-const GEN := 14
+const GEN := 15
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -82,6 +82,7 @@ const TERRAIN: Array[String] = [
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter",
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
+	"villages_each_region", "village_platform",
 	"spawn_home",
 ]
 

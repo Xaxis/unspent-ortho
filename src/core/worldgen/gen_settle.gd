@@ -29,11 +29,44 @@ class_name GenSettle
 ## is the authority, as `BiomeDef.hazards` is for pressure; this adds it up.
 const MIN_VILLAGES := 10
 
+## Tiles of a place per village, for a landscape counting per region
+## (`BiomeDef.villages_each_region`). **A COUNT THAT DOES NOT SCALE WITH THE
+## PLACE IS A COUNT FOR ONE SIZE OF PLACE.** The Slums lays regions from 1,994
+## to 17,352 tiles and one borough each left the big one at a building per 723
+## tiles -- a player crosses several screens of megacity between houses. A place
+## gets `villages` boroughs or one per this many tiles, whichever is more.
+const REGION_TILES_PER_VILLAGE := 2600.0
 
-static func max_villages() -> int:
+
+## Given a world, the cap knows how many PLACES each landscape actually laid.
+##
+## **A CAP THAT TRUNCATES WHAT IT IS CAPPING IS NOT A CAP.** Counting a
+## per-region landscape once (`BiomeDef.villages_each_region`) and then slicing
+## the chosen list to that number throws the extra boroughs away AFTER they were
+## correctly chosen — the city would be built and then quietly demolished, with
+## nothing anywhere saying so. Without a world it answers as it always did, which
+## is what a test asking about the registry alone wants.
+static func max_villages(w: WorldData = null) -> int:
 	var most := 0
 	for d: BiomeDef in BiomeRegistry.land():
 		most += d.villages
+	if w != null:
+		var first := {}
+		for r: Dictionary in w.regions:
+			var idx := int(r.get("index", -1))
+			var d := BiomeRegistry.by_index(idx)
+			if d == null or not d.villages_each_region:
+				continue
+			# THE SAME FORMULA THE PLACER USES, or this silently truncates what it
+			# just allowed -- a cap derived a second way is a cap that disagrees.
+			var want := maxi(d.villages,
+				roundi(float(int(r.get("tiles", 0))) / REGION_TILES_PER_VILLAGE))
+			# The landscape's first region is already counted once in the sum above.
+			if not first.has(idx):
+				first[idx] = true
+				most += want - d.villages
+				continue
+			most += want
 	return maxi(most, MIN_VILLAGES)
 const CORE := 9.5
 ## Only the square and the first ring of houses is levelled; the rest of the
@@ -156,14 +189,32 @@ static func villages(c: GenContext) -> void:
 	settle_order.assign(c.land_types)
 	settle_order.sort_custom(func(a: int, b: int) -> bool:
 		return c.defs[a].village_order < c.defs[b].village_order)
+	# A landscape that counts PER REGION keeps its own tally per place instead of
+	# one for the whole type (`BiomeDef.villages_each_region`): a city with three
+	# boroughs built in one of them and left the other two empty ground.
+	var per_region := {}
 	for pool: Array[Vector3] in [cands, relaxed, rough]:
 		for cc: int in settle_order:
+			var d := c.defs[cc]
 			for p in pool:
-				if counts[cc] >= c.defs[cc].villages:
+				# `continue`, not `break`, for a per-region landscape: being full
+				# HERE says nothing about the next place in the same pool.
+				if not d.villages_each_region and counts[cc] >= d.villages:
 					break
 				var i := int(p.y) * size + int(p.x)
 				if w.country[i] != cc or _crowded(chosen, p, gap):
 					continue
+				if d.villages_each_region:
+					var rid := w.region_at(int(p.x), int(p.y))
+					# A run too small to be a region belongs to no place and is not
+					# somewhere a borough can stand.
+					if rid < 0:
+						continue
+					var tiles := int(w.region_of(rid).get("tiles", 0))
+					var want := maxi(d.villages, roundi(float(tiles) / REGION_TILES_PER_VILLAGE))
+					if int(per_region.get(rid, 0)) >= want:
+						continue
+					per_region[rid] = int(per_region.get(rid, 0)) + 1
 				chosen.append(p)
 				counts[cc] += 1
 	for pool: Array[Vector3] in [cands, relaxed]:
@@ -174,7 +225,7 @@ static func villages(c: GenContext) -> void:
 				chosen.append(p)
 	var rng := Rng.make(c.s, 62)
 	var used := {}
-	for p: Vector3 in chosen.slice(0, max_villages()):
+	for p: Vector3 in chosen.slice(0, max_villages(w)):
 		var tx := int(p.x)
 		var ty := int(p.y)
 		var cc := w.country[ty * size + tx]
@@ -189,7 +240,7 @@ static func villages(c: GenContext) -> void:
 		})
 		# Pools keep three tiles clear of the farthest house.
 		GenWater.drain_pools(c, Vector2(tx + 0.5, ty + 0.5), HOUSE_REACH + 3.0)
-		_flatten(c, tx, ty, w.villages[id].level)
+		_flatten(c, tx, ty, w.villages[id].level, c.defs[cc].village_platform)
 
 
 static func _crowded(chosen: Array[Vector3], p: Vector3, gap: float) -> bool:
@@ -236,10 +287,14 @@ static func _level_here(c: GenContext, tx: int, ty: int) -> int:
 ## beyond it the float elevation eases from the core's level back to the land's
 ## along a smoothstep, so terraces open out round the village instead of
 ## stacking at its edge, and the grounds (read from float elevation) follow.
-static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
+static func _flatten(c: GenContext, tx: int, ty: int, lv: int, platform := 0.0) -> void:
 	var w := c.w
 	var size := c.size
-	var reach := ceili(CORE * 1.2 + APRON)
+	# The levelled middle is the landscape's to widen (`BiomeDef.village_platform`):
+	# a city cuts a platform as big as its plots. The swept reach grows with it, or
+	# the loop would stop short of the ground it was asked to level.
+	var flat := FLAT if platform <= 0.0 else platform
+	var reach := ceili(maxf(CORE, flat) * 1.2 + APRON)
 	var ph := village_phases(c.s, Vector2(tx, ty))
 	var ph3 := GenFields.h01(c.s, tx, ty, 67) * TAU
 	var elev := c.elev
@@ -258,7 +313,7 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int) -> void:
 			if d <= CORE * wander:
 				c.village[i] = 1
 				c.water[i] = 0
-			var core := FLAT * wander
+			var core := flat * wander
 			if d <= core:
 				w.level[i] = lv
 				elev[i] = lv + 0.5

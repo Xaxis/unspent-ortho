@@ -320,6 +320,15 @@ static func make() -> BiomeDef:
 	d.pools = {"order": 6, "cell": 30, "chance": 0.35, "r_min": 1.8, "r_max": 3.2, "ground": Ground.BLACKWATER}
 	d.beached_wrecks = false
 	d.villages = 1
+	# A borough each. See BiomeDef.villages_each_region: this city laid three
+	# regions on seed 1 and built in one of them.
+	d.villages_each_region = true
+	# The platform a city cuts for itself. Buildings are laid out to
+	# GenSettle.HOUSE_REACH (14.5) and only FLAT (6.5) was ever levelled, so on
+	# this landscape's own stepped relief everything past the platform's edge was
+	# refused by the nine-tile level check -- villages asking for 22-34 buildings
+	# stood 3, 6 and 9. See BiomeDef.village_platform.
+	d.village_platform = 15.0
 	d.village_names = ["Ninth Shift", "Lampway", "Cinderrow"]
 	# SETTLED FIRST OF THE LANDSCAPES, and the line this replaces ("settled late:
 	# the city takes what is left, which is what a city does") was a good sentence
