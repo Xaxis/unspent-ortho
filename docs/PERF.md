@@ -97,6 +97,30 @@ NOT PLAY.** A shot holds still in an empty world; play walks through a populated
 one. Any claim about frame cost has to say which it measured, and a claim that
 does not is about the empty case whether or not it says so.
 
+### Where it settled (2026-09-20, after the lights and the tracks)
+
+Steady play, populated walk, FULL quality, 697 frames:
+
+                  value   budget
+    p50           11.9     8.33   FAIL -- and it is the render tier, see below
+    p95           12.5    13.89   pass
+    p99           15.2    16.67   pass
+    worst         18.6    33.33   pass
+    worst / p50    1.6x       4   pass
+    over 16.7 ms     2 of 697 (0%)
+
+**Every row passes except the 120 Hz median, and that one is not in the game's
+code at all.** Three fixes got it here, and all three were the same species — a
+cost paid where a player is standing rather than where nobody is:
+`30_mobs._ensure_nodes` building a kind's first figure (94 ms), `15_lights`
+sweeping every light in the world four times a second (8.5 ms), and
+`TrackMarks` compiling the mark shader on the first footfall (15.2 ms).
+
+**The 140-150 ms frames in these runs are WARM-UP, not play** — `frame_line`
+reports `(+N warm-up, worst X ms)` separately and bounds it at
+`WARM_CEILING_MS`. Reading that number as a steady frame is the mistake this
+document made about itself for weeks; it is the frames a world LANDS in.
+
 ### Where this actually stands against the bar it was set
 
 The bar is the owner's and it is "better than Breath of the Wild". Measured, at
