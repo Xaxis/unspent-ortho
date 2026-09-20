@@ -21,6 +21,25 @@ var _driven_worst := PackedFloat32Array()
 var _pdriven: Array[Node] = []
 var _pdriven_worst := PackedFloat32Array()
 
+## THE WORST TICK CANNOT ANSWER A MEDIAN, AND p50 IS THE ROW STILL FAILING.
+##
+## The worst-per-node lines below were built for the hitch work, where the
+## question was "which system put 224 ms into one frame", and for that the mean
+## is exactly the wrong statistic (that file's own comment says why). But
+## docs/PERF.md now fails on p50 — the TYPICAL frame — and a one-off 15 ms build
+## cannot move a median however ugly it looks in a worst column. A spike and a
+## floor are different questions and they need different numbers, so these keep
+## the running total as well and `_mean_line` reports the floor.
+##
+## The sum of the means is the reading that decides where to look at all: if
+## every driven node together costs 3 ms in a typical frame while p50 is 11.7,
+## the median is NOT in this half of the engine and no amount of work here will
+## move it.
+var _pdriven_total := PackedFloat32Array()
+var _driven_total := PackedFloat32Array()
+var _driven_ticks := 0
+var _pdriven_ticks := 0
+
 
 func setup(g: Game) -> void:
 	super.setup(g)
@@ -55,8 +74,10 @@ func started() -> void:
 				_driven.append(s)
 				break
 	_driven_worst.resize(_driven.size())
+	_driven_total.resize(_driven.size())
 	_gather_process(game)
 	_pdriven_worst.resize(_pdriven.size())
+	_pdriven_total.resize(_pdriven.size())
 
 
 ## Depth-first, parent before children, which IS the order Godot runs `_process`
@@ -83,10 +104,12 @@ func _gather_process(n: Node) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_driven_ticks += 1
 	for i in _driven.size():
 		var began := Time.get_ticks_usec()
 		_driven[i].call(&"_physics_process", delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		_driven_total[i] += took
 		if took > _driven_worst[i]:
 			_driven_worst[i] = took
 
@@ -142,7 +165,33 @@ func _proc_line() -> String:
 	return "\nworld proc worst per node (ms, %d driven): " % _pdriven.size() + ", ".join(out)
 
 
+## WHAT A TYPICAL FRAME SPENDS, which is the question p50 asks and the worst
+## lines cannot answer. Sorted by mean, and the TOTAL is the headline: it says
+## how much of the median frame this instrument can see at all.
+func _mean_line() -> String:
+	if _pdriven.is_empty() or _pdriven_ticks == 0:
+		return ""
+	var rows: Array = []
+	var sum := 0.0
+	for i in _pdriven.size():
+		if not is_instance_valid(_pdriven[i]):
+			continue
+		var mean := _pdriven_total[i] / float(_pdriven_ticks)
+		sum += mean
+		rows.append([mean, (_pdriven[i].get_script() as Script).resource_path.get_file()])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	for r: Array in rows.slice(0, 8):
+		out.append("%s %.2f" % [String(r[1]), float(r[0])])
+	var phys := 0.0
+	if _driven_ticks > 0:
+		for i in _driven.size():
+			phys += _driven_total[i] / float(_driven_ticks)
+	return "\nworld typical frame (ms): proc driven %.2f over %d frames, phys driven %.2f -- " % [sum, _pdriven_ticks, phys] + ", ".join(out)
+
+
 func _process(_delta: float) -> void:
+	_pdriven_ticks += 1
 	# Driven FIRST, and before the early return, because a frame this file bails
 	# out of is still a frame every other node has to run in.
 	for i in _pdriven.size():
@@ -151,6 +200,7 @@ func _process(_delta: float) -> void:
 		var began := Time.get_ticks_usec()
 		_pdriven[i].call(&"_process", _delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
+		_pdriven_total[i] += took
 		if took > _pdriven_worst[i]:
 			_pdriven_worst[i] = took
 	if game == null or game.view == null:
@@ -182,7 +232,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms) + _driven_line() + _proc_line())
+		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
@@ -288,10 +338,21 @@ static func _render_cpu(view: WorldView) -> String:
 ## The frame budgets, and docs/PERF.md is why each one is the number it is. The
 ## headline: BotW targets a 33.3 ms frame, so OUR WORST MAY NOT EXCEED THEIR
 ## TARGET -- our worst frame no worse than their best.
-const P50_MS := 8.3
-const P95_MS := 13.9
-const P99_MS := 16.7
-const WORST_MS := 33.3
+##
+## **EACH ONE IS A REFRESH INTERVAL AND IS WRITTEN AS ONE**, because two of them
+## used to be written as the rounded decimal and rounded the WRONG WAY: 120 Hz is
+## 8.3333 ms and `P50_MS` was 8.3, so a frame pacer delivering a perfect 120 fps
+## failed the 120 Hz budget by three hundredths of a millisecond and printed
+## "p50 8.3 ms ... PERF FAIL: p50" -- which reads as a broken printer, not as a
+## bar set below its own target. `WORST_MS` 33.3 was the same against 30 Hz.
+## Measured: the populated walk at `--quality=low` holds p50 = p95 = p99 = 8.3,
+## the best thing this judge can ever be shown, and it was called a failure.
+## `tests/render/test_frame_budget.gd` holds every budget to being reachable at
+## the rate it names.
+const P50_MS := 1000.0 / 120.0
+const P95_MS := 1000.0 / 72.0
+const P99_MS := 1000.0 / 60.0
+const WORST_MS := 1000.0 / 30.0
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
 

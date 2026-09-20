@@ -61,3 +61,45 @@ func test_warm_up_is_bounded_rather_than_exempt() -> void:
 	var line := Landscape.frame_line(run)
 	check(not line.contains("PERF OK"), "a warm-up frame past the ceiling fails: %s" % line)
 	check(line.contains("warm-up ceiling"), "and is named as the warm-up's fault: %s" % line)
+
+
+## THE BUDGETS ARE REFRESH INTERVALS, AND TWO OF THEM WERE WRITTEN JUST UNDER THE
+## INTERVAL THEY NAME.
+##
+## 120 Hz is 1000/120 = 8.3333 ms, and `P50_MS` was 8.3 — so a run whose frame
+## pacer delivers a PERFECT 120 fps failed its own 120 Hz budget by three
+## hundredths of a millisecond, and printed "p50 8.3 ms ... PERF FAIL: p50",
+## which reads as a broken printer rather than a bar set below its own target.
+## `WORST_MS` 33.3 was the same against 30 Hz's 33.333.
+##
+## Measured 2026-09-20: the populated walk at `--quality=low` returns
+## p50 = p95 = p99 = 8.3 — a locked 120 Hz, the best result this judge can ever
+## be shown — and it was reported as a failure.
+##
+## p95 (13.9 against 72 Hz's 13.889) and p99 (16.7 against 60 Hz's 16.667) round
+## the other way and were always reachable, which is why this went unseen: half
+## the table worked.
+##
+## Note what a run pinned at 72 Hz SHOULD do: fail p50, because p50 names 120 Hz
+## and 72 is slower. The first version of this test asserted every rate passes
+## everything and was wrong about three of its four rows.
+func test_every_budget_is_reachable_at_the_rate_it_names() -> void:
+	# The invariant, stated against the constants rather than a run, so it holds
+	# for a budget nobody has a frame for yet. A budget that names a refresh rate
+	# has to be AT LEAST that rate's interval, or the rate it names cannot pass it.
+	for row: Array in [[Landscape.P50_MS, 120.0, "p50"], [Landscape.P95_MS, 72.0, "p95"],
+			[Landscape.P99_MS, 60.0, "p99"], [Landscape.WORST_MS, 30.0, "worst"]]:
+		var budget: float = row[0]
+		var rate: float = row[1]
+		var interval := 1000.0 / rate
+		check(budget >= interval,
+			"%s names %.0f Hz, which is %.4f ms, but the budget is %.4f -- %.0f Hz can never pass it"
+				% [String(row[2]), rate, interval, budget, rate])
+
+
+func test_a_run_pinned_at_120_hz_passes_every_budget() -> void:
+	# The best result this judge can ever be shown: a frame pacer delivering a
+	# perfect 120 fps. Measured 2026-09-20, the populated walk at --quality=low
+	# returns p50 = p95 = p99 = 8.3, and it was reported as PERF FAIL: p50.
+	var line := Landscape.frame_line(_steady(200, 1000.0 / 120.0))
+	check(line.contains("PERF OK"), "a locked 120 fps is not a failure: %s" % line)
