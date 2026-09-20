@@ -503,14 +503,59 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 		if s.get_script() == Lights:
 			lights = s
 	check(lights != null, "lights system")
+	# **THE LANDSCAPE THE HOUSE REALLY STANDS IN, ASKED OF THE WORLD.** Which
+	# forms a landscape builds, which of them are lit and where each one runs its
+	# tube are all PER LANDSCAPE (`BiomeForms.of`, `PropModels.neon_point`), and
+	# 15_lights passes the country under the prop. This named `Country.COAST` on
+	# both sides while the system named whatever the island grew there, so on a
+	# world that is not coast at the player's feet the test compared one
+	# landscape's tube against another's and called the difference a bug in the
+	# placement. The dark variant has to be one THIS landscape builds too, or
+	# "a house with nothing wired in" is a house with no model at all.
+	var here := int(g.world.country_at(floori(g.player.pos.x), floori(g.player.pos.y)))
+	var forms := BiomeForms.of(here)
+	var lit: Array[int] = forms.lit()
+	check(not lit.is_empty(), "the landscape at the spawn builds something lit (%s)" % BiomeRegistry.name_of(here))
+	# **AND EACH ONE STOOD IN THE LANDSCAPE WHOSE STOCK DEALT IT.** 15_lights reads
+	# the country under EACH PROP and asks that landscape where the tube hangs, so
+	# a form dealt from the landscape at the player's feet and then stood four
+	# tiles into the next one has no tube there and is filed `dark`. Measured at
+	# size 64, where the island is small enough that two landscapes meet beside the
+	# spawn: two of green_towers' five lit forms landed in the sulphur jungle and
+	# the test read "the lit house throws no light", which is a staging fault
+	# wearing a feature's failure. So each house is walked to the nearest tile that
+	# is really `here`, inside `Lights.REACH`, which the system needs anyway —
+	# it builds a source only for what is near the camera.
 	var houses: Array[WorldProp] = []
-	for i in _lit().size():
-		var p := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + Vector2(3.0 + i * 4.0, 1.0), 0.0, 1.0)
-		p.variant = _lit()[i]
+	for i in lit.size():
+		var want := Vector2(3.0 + float(i % 3) * 4.0, 1.0 + float(i / 3) * 4.0)
+		var off := Vector2.INF
+		for r in 5:
+			for dy in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					if off.is_finite() or maxi(absi(dx), absi(dy)) != r:
+						continue
+					var try_at := want + Vector2(dx, dy)
+					var at := g.player.pos + try_at
+					if try_at.length() >= Lights.REACH:
+						continue
+					if int(g.world.country_at(floori(at.x), floori(at.y))) == here:
+						off = try_at
+		check(off.is_finite(), "house %d has ground of its own landscape to stand on" % i)
+		if not off.is_finite():
+			continue
+		var p := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + off, 0.0, 1.0)
+		p.variant = lit[i]
 		g.world.props.append(p)
 		houses.append(p)
+	var unlit := -1
+	for v in forms.stock.size():
+		if not lit.has(v):
+			unlit = v
+			break
+	check(unlit >= 0, "and something unlit, to prove the light is the tube's")
 	var dark := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + Vector2(-3.0, 1.0), 0.0, 1.0)
-	dark.variant = 2
+	dark.variant = unlit
 	g.world.props.append(dark)
 	await frames(20)
 	var by_prop := {}
@@ -520,7 +565,7 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 	for p: WorldProp in houses:
 		var src: Dictionary = by_prop.get(p.id, {})
 		check(src.has("neon_at"), "the lit house throws its tube's light")
-		var tube := PropModels.neon_point(PropKind.HOUSE, p.variant, Country.COAST)
+		var tube := PropModels.neon_point(PropKind.HOUSE, p.variant, here)
 		var at: Vector3 = src.neon_at
 		var want := g.world.to_3d(p.pos) + (tube.at as Vector3)
 		lt((at - want).length(), 0.05, "the tube's light stands on the tube, not on the door wall")

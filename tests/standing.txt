@@ -41,7 +41,6 @@
 # IS ALWAYS THE INTERSECTION: a line removed by EITHER side now passes, so
 # keeping it because the other side still had it would put a green test
 # back on the list and teach the gate to expect a failure that is gone.
-test_houses:test_a_lit_house_puts_its_glint_on_its_own_tube
 test_plan:test_the_journey_crosses_the_continents_in_order
 test_terrain:test_every_country_draws_its_turf_in_its_own_wash
 test_world_gen:test_country_shares_on_twelve_seeds
