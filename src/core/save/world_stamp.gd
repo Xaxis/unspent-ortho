@@ -69,7 +69,18 @@ const UNKNOWN := "unknown"
 ##     server fields and the glass desert with no chapter anywhere. `GenScatter`
 ##     iterates `w.regions` and filters props by `region_at`, so which runs
 ##     become places decides where props go -- this moves every seed.
-const GEN := 15
+##  7. Two worldgen faults found together. The per-region site loops (tips, stone
+##     circles) threw their darts at `land_rect` -- the bounding box of ALL the
+##     land -- while keeping only the ones that landed in the region they were
+##     filling. On a 1300 world that is 1.6 million tiles against a region of a
+##     few hundred, so a small region was hit about once in the 2,500 darts the
+##     loop throws, and a landscape that declared tips in its own file had none
+##     anywhere on the island. Aimed at the region's own bounds now. And the
+##     way-in seam laid iron and stone ore wherever it sited, without asking
+##     whether that landscape holds them: `BiomeDef.ore` decides now, with iron
+##     forced where a landscape claims neither, because the first seam has to
+##     exist on every seed.
+const GEN := 16
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

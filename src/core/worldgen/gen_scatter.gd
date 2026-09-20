@@ -135,7 +135,7 @@ static func sites(c: GenContext) -> void:
 			for attempt in 2500:
 				if placed >= want:
 					break
-				var p := _random_tile(c, rng)
+				var p := _random_tile_in(c, rng, region.get("bounds", c.land_rect) as Rect2)
 				var i := p.y * c.size + p.x
 				if w.country[i] != cc or w.blend[i] > 0.42 or w.region_at(p.x, p.y) != here:
 					continue
@@ -154,7 +154,7 @@ static func sites(c: GenContext) -> void:
 			for attempt in 2500:
 				if placed >= circles:
 					break
-				var p := _random_tile(c, rng)
+				var p := _random_tile_in(c, rng, region.get("bounds", c.land_rect) as Rect2)
 				var i := p.y * c.size + p.x
 				if w.country[i] != cc or w.blend[i] > 0.3 or w.region_at(p.x, p.y) != here:
 					continue
@@ -242,7 +242,22 @@ static func sites(c: GenContext) -> void:
 
 
 static func _random_tile(c: GenContext, rng: RandomNumberGenerator) -> Vector2i:
-	var r := c.land_rect
+	return _random_tile_in(c, rng, c.land_rect)
+
+
+## **A TILE INSIDE A GIVEN RECT, BECAUSE A PER-REGION SITE HAS TO LOOK WHERE THE
+## REGION IS.** The site loops below throw darts and keep the ones that land in
+## the region they are filling -- and they were throwing them at `land_rect`, the
+## bounding box of ALL the land. On a 1300 world that is about 1.6 million tiles,
+## so a 700-tile region was hit about once in 2,500 darts, which is exactly the
+## number of darts the loop throws. Then that one hit still had to be clear, off
+## a road, away from a village and away from another landmark -- so small regions
+## got NOTHING, and a landscape that declared tips in its own file had none
+## anywhere on the island.
+##
+## Aimed at the region's own bounds, a dart lands inside it perhaps half the
+## time. Same loop, same rules, same count; it just looks where the thing is.
+static func _random_tile_in(c: GenContext, rng: RandomNumberGenerator, r: Rect2) -> Vector2i:
 	return Vector2i(
 		clampi(rng.randi_range(int(r.position.x), int(r.end.x)), 3, c.size - 4),
 		clampi(rng.randi_range(int(r.position.y), int(r.end.y)), 3, c.size - 4))
@@ -289,7 +304,18 @@ static func _lay_tip(c: GenContext, p: Vector2i, r: float) -> void:
 
 
 ## A lobed patch of a site's own ground.
+##
+## **IT STOPS AT THE BORDER.** The patch is what later decides which props stand
+## here, so ground laid across a border puts one landscape's props in another --
+## measured, one stone ore in the machine city, from a tip whose centre was a few
+## tiles inside its own land. It was invisible while the site loops could barely
+## find a small region at all; aiming them at their region's own bounds made them
+## land near edges as often as anywhere else, and the bleed showed.
+##
+## A scrap tip belongs to the landscape that dumped it, and its ground has no
+## business in the next one.
 static func _lay_patch(c: GenContext, p: Vector2i, r: float, ground: int) -> void:
+	var own: int = c.w.country[p.y * c.size + p.x]
 	var ri := ceili(r) + 2
 	for dy in range(-ri, ri + 1):
 		for dx in range(-ri, ri + 1):
@@ -298,6 +324,8 @@ static func _lay_patch(c: GenContext, p: Vector2i, r: float, ground: int) -> voi
 			if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
 				continue
 			var i := y * c.size + x
+			if c.w.country[i] != own:
+				continue
 			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
 				continue
 			var ang := atan2(dy, dx)
@@ -423,9 +451,48 @@ static func _way_in(c: GenContext) -> void:
 			if dx * dx + dy * dy <= edge * edge and w.level[j] == w.level[best.y * c.size + best.x] and c.water[j] == 0 and c.road[j] == 0:
 				w.ground[j] = Ground.SCREE
 	var a := GenFields.h01(c.s, best.x, best.y, 92) * TAU
-	_add(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a) * 0.9)
-	_add(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a + 2.3) * 1.1)
-	_add(c, PropKind.STONE_ORE, centre + Vector2.from_angle(a + 4.2) * 1.2)
+	# **EACH SEAM ON THE CENTRE'S OWN COUNTRY.** The three stand up to 1.2 tiles
+	# out, so a seam sited a stride inside its landscape can put one of them over
+	# the border -- measured, exactly one stone ore in the machine city, which
+	# declares no stone. The centre passing the test says nothing about where the
+	# props land, which is the same mistake as counting placements and calling
+	# them drawn.
+	var own: int = w.country[best.y * c.size + best.x]
+	var any := _declares_ore(c, own, PropKind.IRON_ORE) or _declares_ore(c, own, PropKind.STONE_ORE)
+	_seam(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a) * 0.9, not any)
+	_seam(c, PropKind.IRON_ORE, centre + Vector2.from_angle(a + 2.3) * 1.1, not any)
+	_seam(c, PropKind.STONE_ORE, centre + Vector2.from_angle(a + 4.2) * 1.2)
+
+
+## One of the way-in's seams, laid only where the landscape under it says that
+## ore is there. The machine city holds copper and iron and NO stone, and the
+## way in stood a stone seam in it on seed 42 -- one off-theme prop, of the kind
+## that reads as the world having broken rather than as a placer not asking.
+##
+## `force` is the fallback: the way in is the player's first ore and has to exist
+## on every seed, so if a landscape claims none of what this lays, the iron goes
+## down anyway rather than leaving a world with no seam near its spawn.
+static func _seam(c: GenContext, kind: int, at: Vector2, force := false) -> void:
+	var x := floori(at.x)
+	var y := floori(at.y)
+	if x < 0 or y < 0 or x >= c.size or y >= c.size:
+		return
+	if not force and not _declares_ore(c, c.w.country[y * c.size + x], kind):
+		return
+	_add(c, kind, at)
+
+
+## Whether this landscape says this ore is under it. `BiomeDef.ore` is the
+## authority on what a place holds (CLAUDE.md: a landscape's own declaration
+## outranks the shared list).
+static func _declares_ore(c: GenContext, cc: int, kind: int) -> bool:
+	if cc < 0 or cc >= c.defs.size():
+		return false
+	for row: Variant in c.defs[cc].ore:
+		var r: Array = row
+		if r.size() > 0 and int(r[0]) == kind:
+			return true
+	return false
 
 
 ## Wrecks on beaches in bays: sited once the grounds exist, on sand with sand
