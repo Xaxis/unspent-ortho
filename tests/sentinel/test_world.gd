@@ -4,7 +4,13 @@ extends TestCase
 ## so every run of a landscape has its own keeper and the second one is the same
 ## species and a different fight.
 
-const SEEDS: Array[int] = [1, 7]
+## THREE, because two stopped being enough evidence rather than because the bar
+## was too high. `test_it_stands_at_its_regions_works_where_there_is_one` counts
+## the keepers it really asked about, and once the regions whose only works lie
+## inside `CLEAR_OF_HOME` were correctly exempted, two seeds offered three of
+## them against a bar of more than three. The answer to a counter that has gone
+## thin is a bigger sample, never a smaller bar.
+const SEEDS: Array[int] = [1, 7, 3]
 const SIZE := 256
 
 
@@ -57,9 +63,20 @@ func test_it_stands_at_its_regions_works_where_there_is_one() -> void:
 		for st: SentinelState in Sentinels.states(w):
 			var def := Sentinels.by_id(st.design)
 			# Does this region hold one of the works its keeper keeps at all?
+			# **ONLY THE STATIONS THE SITING RULE COULD HAVE CHOSEN.** A keeper may
+			# never stand within `CLEAR_OF_HOME` of where the player wakes — that
+			# is a floor, not a preference, and `Sentinels.lair` drops a station
+			# inside it whatever kind it is. This asked about every station in the
+			# region, so a region whose only work is near the spawn demanded the
+			# keeper stand somewhere it is forbidden to stand: measured on seed 7
+			# at 256, region 0's one `turf_rows` is 24.4 tiles from the spawn
+			# against a floor of 48, the rule rejected it, the keeper went to the
+			# region's heart 51 tiles away, and this called that a placement bug.
+			# Two rules that genuinely conflict, and the safety one wins.
 			var station := Vector2.INF
 			var kind := &""
 			var best := INF
+			var barred := 0
 			for m: Dictionary in w.landmarks:
 				var mk := StringName(str(m.get("kind", &"")))
 				if not def.stations.has(mk):
@@ -67,15 +84,19 @@ func test_it_stands_at_its_regions_works_where_there_is_one() -> void:
 				var p: Vector2 = m.pos
 				if w.region_at(floori(p.x), floori(p.y)) != st.region:
 					continue
+				if Sentinels.stand_near(w, p).distance_to(w.spawn) < Sentinels.CLEAR_OF_HOME:
+					barred += 1
+					continue
 				var d := p.distance_to(st.lair)
 				if d < best:
 					best = d
 					station = p
 					kind = mk
 			if not station.is_finite():
-				# A run of land with none of the plan's works in it: its keeper
-				# stands at the region's heart, which is all there is to keep.
-				print("sentinel seed %d: %s keeps region %d from its heart, no works in it" % [s, st.design, st.region])
+				# A run of land with none of the plan's works its keeper may stand
+				# at: it keeps the region's heart, which is all there is to keep.
+				print("sentinel seed %d: %s keeps region %d from its heart (%d works in it, all inside CLEAR_OF_HOME)"
+					% [s, st.design, st.region, barred])
 				continue
 			at_works += 1
 			lt(station.distance_to(st.lair), 13.0,

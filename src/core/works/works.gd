@@ -132,7 +132,7 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		var heart := _knot(world, rows, region.get("centre", Vector2.ZERO), feed[0], feed[1])
 		if heart.is_empty():
 			continue
-		var at := stand_near(world, heart.get("pos", Vector2.ZERO))
+		var at := stand_near(world, heart.get("pos", Vector2.ZERO), true)
 		if not at.is_finite():
 			continue
 		var s := WorksSite.new()
@@ -228,26 +228,45 @@ static func _near_village(world: WorldData, p: Vector2) -> bool:
 ## number by construction, and the ring is visited in the same order it always
 ## was. Proved by comparing both implementations tile for tile over a 200x200
 ## block before the old one was deleted.
-static func stand_near(world: WorldData, p: Vector2) -> Vector2:
+## **AND `clear` IS WHY THE RULE HAS TO BE ASKED OF THE ANSWER.** `_knot` refuses
+## a heart within `CLEAR_VILLAGE` of a green and `CLEAR_HOME` of the spawn, and
+## for the depot's whole life that was taken as the depot keeping its distance.
+## It is not: this walks up to thirteen tiles looking for room, so a heart 20.1
+## tiles from a village hands back a yard 14.1 from it, which is what seed 4 did.
+## The test measured `site.pos` and the code measured the heart, and the two are
+## not the same place. A caller that cares about the clearance passes `clear` and
+## gets a tile that has room AND keeps it; 34_works, which is placing something
+## against a yard that already stands, does not and is unchanged.
+static func stand_near(world: WorldData, p: Vector2, clear := false) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
-	if _room_at(world, cx, cy):
+	if _room_at(world, cx, cy) and (not clear or _keeps_clear(world, Vector2(cx + 0.5, cy + 0.5))):
 		return Vector2(cx + 0.5, cy + 0.5)
 	for r in range(1, 14):
 		# The perimeter of the ring, in the order the square scan visited it: the
 		# top row, then the sides of each row between, then the bottom row.
 		for dx in range(-r, r + 1):
-			if _room_at(world, cx + dx, cy - r):
-				return Vector2(cx + dx + 0.5, cy - r + 0.5)
+			var a := Vector2(cx + dx + 0.5, cy - r + 0.5)
+			if _room_at(world, cx + dx, cy - r) and (not clear or _keeps_clear(world, a)):
+				return a
 		for dy in range(-r + 1, r):
-			if _room_at(world, cx - r, cy + dy):
-				return Vector2(cx - r + 0.5, cy + dy + 0.5)
-			if _room_at(world, cx + r, cy + dy):
-				return Vector2(cx + r + 0.5, cy + dy + 0.5)
+			var l := Vector2(cx - r + 0.5, cy + dy + 0.5)
+			if _room_at(world, cx - r, cy + dy) and (not clear or _keeps_clear(world, l)):
+				return l
+			var t := Vector2(cx + r + 0.5, cy + dy + 0.5)
+			if _room_at(world, cx + r, cy + dy) and (not clear or _keeps_clear(world, t)):
+				return t
 		for dx in range(-r, r + 1):
-			if _room_at(world, cx + dx, cy + r):
-				return Vector2(cx + dx + 0.5, cy + r + 0.5)
+			var b := Vector2(cx + dx + 0.5, cy + r + 0.5)
+			if _room_at(world, cx + dx, cy + r) and (not clear or _keeps_clear(world, b)):
+				return b
 	return Vector2.INF
+
+
+## The distances a yard must keep, asked of a real tile rather than of the heart
+## it was found from.
+static func _keeps_clear(world: WorldData, p: Vector2) -> bool:
+	return p.distance_to(world.spawn) >= CLEAR_HOME and not _near_village(world, p)
 
 
 ## Room for a yard: dry, on the map, off a road, and the ground within a step all
