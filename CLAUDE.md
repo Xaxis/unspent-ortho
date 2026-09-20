@@ -367,6 +367,15 @@ tools print their own summaries.
   never inserted. **An instrument that reports on the step before the one you
   care about will report success for a failure every time.** Check the thing
   itself: read the pixels, read the file back, ask the live camera.
+  **ASK THE OBJECT, NOT YOUR MODEL OF THE OBJECT.** One off-theme prop took
+  three clean, principled, wrong fixes -- a site's ground bleeding over a
+  border, the seam's own tile being over one, a scoring bonus -- because each
+  was reasoning about PLACERS and so could only produce a hypothesis about
+  placers. Printing the prop itself (position, ground, neighbours, distance from
+  the spawn) named the culprit in one run: iron twice and stone once on scree,
+  23.5 tiles from the spawn, which is the way-in seam's signature. The
+  measurement was available before the first guess. When something is wrong with
+  a thing the world contains, print THAT THING and read what it is standing in.
   **And the worst version of this is a test that goes GREEN AGAINST THE BUG.**
   `Events.hint(text, key)` looked like it fed the key cap, so a test was written
   to prove five systems were lettering the wrong key onto the glass -- and it
