@@ -344,6 +344,20 @@ tools print their own summaries.
   authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
   presses a body with, and a shared rule that cannot see a declaration will keep
   reporting content as breakage.
+  **AND THE SAME ROT REACHES THE TESTS AND THE BASELINES, WHERE IT IS QUIETER.**
+  Three were found in one afternoon, all still describing the world as it was at
+  six landscapes and one island. `test_journey_runs_north_from_a_southern_coast`
+  names six `Country` slots by hand — the thing this file forbids — so it is a
+  claim about a sixth of the content, and it asserts NOTHING AT ALL on a seed
+  whose home continent was dealt none of the three it asks for. `test_parity` is
+  known to be muted to six landscapes and is ALSO pinned at a size where every
+  seed grows one continent, so the body stage, the sea between continents and the
+  journey across them lie outside it entirely. And ten landscapes had the local
+  `docs/STORY.md` promises every inhabited land, while eight — every one added
+  since the six — had villages and nobody in them. A rule written against the
+  content goes on passing forever once the content outgrows it, so **when you add
+  to the registry the question is not only "does the suite still pass" but "which
+  claims now cover less than they say".**
 - **A speedup that moves a tile is not a speedup, it is a re-acceptance wearing
   one.** Worldgen output is pinned by `tests/biome/test_parity.gd` and by every
   frame in the repository, so a faster stage that lands things half a tile
