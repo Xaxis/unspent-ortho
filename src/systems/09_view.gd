@@ -46,11 +46,36 @@ const SETTLE := 0.0005
 ## press is a nudge toward it and a hold is the whole move, which is the same
 ## gesture the zoom already is.
 ##
-## **`THIRD_PITCH` IS THE OWNER'S TO RULE AND THIS NUMBER IS A PROPOSAL.** What
-## reads as third person is a judgement about a picture, so it was shot as a
-## sheet at several angles rather than picked here and presented as finished.
+## **THE ANGLE ALSO DECIDES HOW MUCH GROUND IS STREAMED, AND 38 IS WHERE THAT
+## STOPS GROWING.** `WorldView.view_half_extent` derives the near square from the
+## camera's PITCH, and its `rise` term is `6 / tan(pitch)` -- the room a
+## six-unit-high thing needs to show from behind. That term runs away as the
+## camera lowers, so a lower angle asks for MORE ground, not less. The near
+## radius in tiles at 16:9:
+##
+##     play zoom (15) at 57 degrees      19.7
+##     zoomed in (9)  at 57              13.4
+##     zoomed in (9)  at 38              18.5   <- still under play zoom
+##     zoomed in (9)  at 30              22.4   <- MORE than play zoom
+##
+## At 30 the act of leaning in asks for a wider square than standing back does,
+## which is backwards. At 38 it does not, and 38 was the sheet's other strong
+## frame -- the figure in profile, terrace faces reading as walls -- so the
+## picture and the streaming agree there.
+##
+## **WHAT THIS IS NOT: A MEASURED FIX FOR THE OWNER'S ZOOM LURCH.** That was
+## claimed here and the claim was wrong twice over. The arithmetic above is
+## sound, but the near square measured SIX chunks at both zooms, so the
+## difference bought no rebuild at the place it was tested. And the far figures
+## that looked like it confirmed something -- `far 4/121` at play against
+## `far 64/121` zoomed in -- are BUILT so far of the island's total, not wanted:
+## `far_wanted()` returns `n * n` always. A progress counter read as a demand
+## counter, which is the `drawn = 4` bug in another coat. The zoom transition
+## itself has not been measured; this number rests on the arithmetic and the
+## picture, and nothing else.
+## How much of the zoom's range the glide is spent over, from the near end.
 const GLIDE_BAND := 0.16
-const THIRD_PITCH := 30.0
+const THIRD_PITCH := 38.0
 
 var _level := 0.0
 var _saved := 0.0
