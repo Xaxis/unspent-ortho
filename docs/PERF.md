@@ -143,7 +143,22 @@ synchronous `_build`. The third bake, the one in `_add_chunk` that runs on the
 main thread when the worker did not get there, is never timed into it: it falls
 inside `main` and disappears. So the dearest-looking line in the breakdown is
 the worker's copy, and the main thread's own bake has no line at all. Split the
-four main-thread stages before optimising any of them. `src/render/` is frozen to the
+four main-thread stages before optimising any of them.
+
+**THAT THIRD BAKE HAS A TRIGGER, AND IT IS SOMETHING THE PLAYER DOES.**
+`_process` hands `_add_chunk` an empty list on purpose —
+`[] if _task_dirty else _task_props` — and `_task_dirty` is set by
+`refresh_props(prop)` when the changed prop's chunk is the one the worker is
+building right now. `refresh_props` runs when a prop is taken, worked down or
+added. So **taking something while walking into new terrain moves that whole
+chunk's prop bake onto the main thread**: chopping, mining, picking up — the
+ordinary loop — is what arms the expensive path. It is reproducible rather than
+unlucky, which is where a fix should start.
+
+(An earlier version of this paragraph called `_last_props_usec` a worker/main
+race. **It is not**: `_process` waits on the task before `_add_chunk` reads it.
+That was inferred from the shape of the variables without following the
+sequence, which is the error this whole document is about.) `src/render/` is frozen to the
 LOOK wave, so it is written up for whoever holds it rather than fixed here.
 
 **The 140-150 ms frames in these runs are WARM-UP, not play** — `frame_line`
