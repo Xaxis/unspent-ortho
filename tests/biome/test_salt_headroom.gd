@@ -125,16 +125,29 @@ func test_the_flat_is_still_one_of_the_brightest_grounds_in_the_game() -> void:
 	# lift; it must not have moved it out of the game. Drawn, its crust stands
 	# with the snowfield — ART section 3's "page itself" — and above every other
 	# landscape's plainest ground.
+	# **NAMED, NOT COUNTED.** This allowed exactly ONE landscape brighter than the
+	# flat and meant "the snowfield". The frost sea has been written since, its
+	# plain ground is ICE, and frozen water is page-white for the same reason snow
+	# is -- so the count said two where the RULE still holds. A count of how many
+	# things may be brighter is a number that goes stale the day somebody writes
+	# another white landscape; what the claim is really about is that nothing but
+	# frozen water outshines the crust.
+	const FROZEN: Array[int] = [Ground.SNOW, Ground.ICE]
 	var salt := BiomeRegistry.get_def(&"salt_flats")
 	var crust := worst(salt.grounds[Ground.SALT], SkyLight.NEON_DAY + salt.grade)
-	var brighter := 0
+	var over: Array[String] = []
 	for d in BiomeRegistry.all():
 		if d.sea or d.id == salt.id:
 			continue
 		var wash := GroundColors.wash(d.plain_ground, d.index)
-		if worst(wash, SkyLight.NEON_DAY + d.grade) >= crust:
-			brighter += 1
-	lt(float(brighter), 2.0, "only the page-white snowfield may read brighter than the flat")
+		if worst(wash, SkyLight.NEON_DAY + d.grade) < crust:
+			continue
+		if not FROZEN.has(d.plain_ground):
+			over.append("%s (%s)" % [d.id, Ground.NAMES[d.plain_ground]])
+	check(over.is_empty(), "only frozen water may read brighter than the flat, got %s" % str(over))
+	# And the claim is not vacuous the other way: the flat really is up with them,
+	# not merely unbeaten by a list that happens to be empty.
+	gt(crust, 0.85, "the crust still reads near the top of the page")
 
 
 func test_the_flat_carries_its_brightness_in_its_lift_and_not_its_washes() -> void:
