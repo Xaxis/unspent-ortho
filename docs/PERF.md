@@ -61,7 +61,43 @@ Three rules for reading it, each learned the expensive way:
 3. **Compare frames only when the world is still.** Two shots of a living world
    differ because people walked, not because anything changed.
 
-## Where we are (2026-09-19, end of the hitch work)
+## Where we are (2026-09-20, after the owner played it)
+
+**THE MEASUREMENT BELOW IS THE ONE THAT COUNTS, AND EVERY EARLIER ONE IN THIS
+FILE WAS TAKEN THE WRONG WAY.** The owner booted the game and said "every second
+of running causes a small lurch, nothing is smooth" while this document reported
+p99 10 ms and no frame over budget. Both were true. They were about different
+things: every number here had been taken from a `tools/shot.sh` run — standing
+still, empty world, default zoom, quiet machine. **A shot never spawns anything**,
+so it could not see the cost of a body walking into view at any load.
+
+Measure walking a POPULATED world (`--walk=1,0,12 --run --folk=8 --fauna=gull:3`),
+because that is what playing is:
+
+                        reported       really was     now      budget
+    30_mobs worst tick    --            145.6 ms      0.7
+    worst frame           16.0 ms       139 ms        20.6     33.3   PASS
+    p95                    8.3          17.1          11.3     13.9   PASS
+    p99                   10.0          24.9          13.8     16.7   PASS
+    worst / p50            1.9x         12.5x         2.2x     4      PASS
+    frames over 16.7       0 (0%)       32 (5%)       2 (0%)
+
+Every line passes except `p50` at 9.3 against its 8.3 — the 120 Hz median, the
+most aggressive row in the table, left failing rather than adjusted.
+
+**What the bug was, and it is the fourth of its family today**: a body built its
+figure on the main thread the first time its kind walked into view — 94 ms for
+the script load, first mesh and first material, then 8.5 ms for every body after.
+Bodies arrive in GROUPS, so a patrol of eight cost 68 ms in the frame it
+appeared. Every kind is warmed at load now, and the rest is spread over frames
+with a 4 ms budget.
+
+**THE RULE THIS BUYS, AND IT IS ABOUT THE HARNESS AND NOT THE GAME: A SHOT IS
+NOT PLAY.** A shot holds still in an empty world; play walks through a populated
+one. Any claim about frame cost has to say which it measured, and a claim that
+does not is about the empty case whether or not it says so.
+
+## Where we were (2026-09-19, end of the hitch work)
 
 Quiet machine, 300 frames, seed 1, warm-up split out of the distribution:
 
