@@ -26,7 +26,12 @@ walk 0,-1 1.6
 wait 0.4
 await tracks:ash 3
 shot 03-prints-in-ash with tracks:ash
-place moss-bonelands
+# The PEAT is the moss's own ground, not the border's: staged at the
+# moss-bonelands ecotone this asked for mud or peat where the ground can be all
+# bonelands, and found none within reach on seed 1 -- measured failing at the
+# identical tile at b05fb46, so it predates both the worldgen move and the
+# tracks warm-up. Aimed at the moss itself; the claim below is unchanged.
+place moss
 ground mud,peat
 wait 0.8
 walk 0,1 1.6
