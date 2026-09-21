@@ -291,12 +291,24 @@ static func mural(k: Kit, v: int, c: int) -> void:
 	var dress := BiomeDressing.of(c)
 	var wall: Color = dress.concrete if dress.concrete.a > 0.0 else P.STONE[2]
 	var top_col := wall.lerp(P.INK[1], 0.3)
-	k.slab(0.0, 0.0, 0.0, 0.5, WALL_H, WALL_HZ * 2.0, s, wall, top_col, 0.03)
+	# **CAST CONCRETE, LIT AS CONCRETE** (`matter_of` row 85). The mark rides in
+	# the ALPHA, and `Color.lerp` interpolates alpha — so it goes on AFTER every
+	# shade is mixed, never before, or the derived colours carry a corrupted mark.
+	# (A corrupted one is harmless here: it matches no row and falls back to the
+	# default, which is where this wall was. The dangerous direction is FOUND
+	# geometry, where alpha under 0.5 is a blinking beacon — see
+	# `GroundColors.made`. `Kit.slab` builds into `made`, so this is safe.)
+	# The PAINTING and the drips are left untagged: paint on a wall is a film,
+	# and ENAMEL is the machines' warning boards rather than somebody's mural.
+	var wall_c := GroundColors.made(wall, GroundColors.CONCRETE)
+	var top_c := GroundColors.made(top_col, GroundColors.CONCRETE)
+	k.slab(0.0, 0.0, 0.0, 0.5, WALL_H, WALL_HZ * 2.0, s, wall_c, top_c, 0.03)
 	# The ghost of what stood against it, on the BACK where it cannot fight the
 	# painting: the chimney breast and the stepped scars of three floors. This is
 	# what a real party wall shows, and it is the whole reason the wall is
 	# standing alone with room for a mural on it.
-	k.slab(-0.34, 0.0, -1.5, 0.3, WALL_H * 0.86, 1.1, s + 1, wall.lerp(P.INK[2], 0.18), top_col, 0.03)
+	k.slab(-0.34, 0.0, -1.5, 0.3, WALL_H * 0.86, 1.1, s + 1,
+		GroundColors.made(wall.lerp(P.INK[2], 0.18), GroundColors.CONCRETE), top_c, 0.03)
 	for i in 3:
 		var fy := 1.35 + i * 1.5
 		_paint(k.made, -0.26, PackedVector2Array([
@@ -304,8 +316,8 @@ static func mural(k: Kit, v: int, c: int) -> void:
 			Vector2(WALL_HZ - 0.1, fy + 0.16), Vector2(-WALL_HZ + 0.1, fy + 0.16)]),
 			wall.lerp(P.EARTH[1], 0.45), -1.0)
 	# A stepped head, so the silhouette says "a building was taken off this".
-	k.slab(0.0, WALL_H, 1.15, 0.5, 0.75, 2.1, s + 2, wall, top_col, 0.03)
-	k.slab(0.0, WALL_H + 0.75, 2.2, 0.5, 0.6, 1.0, s + 3, wall, top_col, 0.03)
+	k.slab(0.0, WALL_H, 1.15, 0.5, 0.75, 2.1, s + 2, wall_c, top_c, 0.03)
+	k.slab(0.0, WALL_H + 0.75, 2.2, 0.5, 0.6, 1.0, s + 3, wall_c, top_c, 0.03)
 	_drips(k, FACE - 0.004, WALL_HZ, WALL_H, wall, s + 4, false)
 	_painting(k, v, wall, s + 5)
 	_drips(k, FACE + 0.02, WALL_HZ, WALL_H, wall, s + 6, true)

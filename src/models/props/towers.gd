@@ -267,8 +267,18 @@ static func parapet(k: Kit, w: float, d: float, y: float, s: int, c: int) -> Arr
 	# derived from `GroundColors.wash()`, whose ALPHA carries that ground's MARK
 	# CODE — so the lit shader drew a landscape's ground stipple over every roof
 	# in the settlement. A ground wash is not a material; only a palette colour is.
-	var deck := GroundColors.down(dress.concrete, 0.2)
-	var wall := GroundColors.down(dress.concrete, 0.34)
+	# **AND IT IS CONCRETE, SO IT IS LIT AS CONCRETE.** `matter_of` has carried a
+	# row for it (85) since the made band was written, and until now nothing in
+	# the game tagged anything with one — twelve tuned rows and a single call
+	# site across sixty-four model files, so every cast deck and parapet in the
+	# world returned the one default every made surface shares. The mark rides in
+	# the ALPHA, which is why it goes on here and not on `dress.concrete` itself:
+	# a dressing colour reaches FOUND geometry too, and `found.gdshader` reads
+	# alpha under 0.5 as a beacon that BLINKS. `GroundColors.down` preserves
+	# alpha, so every shade taken off these two keeps the mark; a `lerp` would
+	# lose it and fall back to the default, which is where it was anyway.
+	var deck := GroundColors.made(GroundColors.down(dress.concrete, 0.2), GroundColors.CONCRETE)
+	var wall := GroundColors.made(GroundColors.down(dress.concrete, 0.34), GroundColors.CONCRETE)
 	k.slab(0.0, y, 0.0, w + 0.1, 0.1, d + 0.1, s, GroundColors.down(deck, 0.15), deck, 0.02)
 	# Gravel drifted into the corners, standing CLEAR of the deck. A clump wide
 	# and flat enough to read as a drift sits almost exactly in the deck's own

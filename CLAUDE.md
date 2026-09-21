@@ -36,14 +36,29 @@ be.
 frame is 26.67 world units across 1920 pixels — **72 pixels per world unit**, so
 a 0.02 chamfer that was half a pixel at 640x360 is 1.4 pixels now and a 4-sided
 `strut` of radius 0.04 is a 5.8-pixel square bar. Three things follow, and none
-of them is "raise the budgets": MADE geometry has ONE material row for every
-timber, thatch, cloth, rope, concrete and glass surface in the game
-(`matter_of()` returns its default for all of them, so only the mesh normal tells
-a roof from a wall); welding reaches four call sites out of sixty-four model
-files, and `MeshKit.smooth_begin`/`smooth_end` — the pair this file used to
-present as the API — have **no callers anywhere**, so every machine and every
-sentinel is flat-shaded; and 96 of 167 `strut` calls pass n=4. Two independent
-audits found the welding gap separately, which is why it is written down here.
+of them is "raise the budgets".
+**The material rows now EXIST and are almost entirely UNREACHED, which is a
+different problem from the one this paragraph used to describe** (it said
+`matter_of()` returns its default for every made surface; that was fixed and the
+paragraph was not). `matter.gdshaderinc` carries twelve made rows — TIMBER 80,
+THATCH 81, CLOTH 82, ROPE 83, CLAY 84, CONCRETE 85, GLASS 86, TAR 87, ENAMEL 88,
+HIDE 89, BONE 90, CUTSTONE 91 — several of them measured against real frames
+before they were believed. But counted 2026-09-20: **one model file of
+sixty-four tags anything with one**, a single `THATCH` array in `houses.gd`, and
+every other mark has ZERO call sites. So the symptom is exactly as it was — only
+the mesh normal tells a roof from a wall — while the cause has moved from "no
+rows" to "no tags", and a reader sent at the shader would find the work already
+done. `GroundColors.made(colour, kind)` is the four-line plumbing and `houses.gd`
+is the worked example. Task #61.
+**Welding** reaches five call sites in THREE files (`props/kit.gd` 3,
+`props/rocks.gd` 1, `people/sculpt.gd` 1) of sixty-four, and
+`MeshKit.smooth_begin`/`smooth_end` — the pair this file used to present as the
+API — have **no callers anywhere**, so every machine and every sentinel is
+flat-shaded. Two independent audits found that gap separately, which is why it
+is written down here.
+**And 96 of 167 `strut` calls pass n=4** — re-counted with a paren-aware parse,
+because `strut(a, b, r, n, col)` takes two `Vector3(x, y, z)` arguments and a
+comma-split of the call text answers 8.
 
 **This paragraph was wrong for weeks and nobody caught it**, because a stale
 contract reads exactly like a true one: it claimed `depth` was undone while
@@ -498,6 +513,21 @@ tools print their own summaries.
   feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
   rather than waiting for the world to produce it, or the test reports on the
   weather.
+  **AND THE SAME THING HAPPENS ONE LEVEL UP: A CONTROL THAT CANNOT FAIL IS NOT
+  EVIDENCE.** An A/B was built to ask whether one commit's leftover state broke
+  three tests, and both arms came back identical with zero failures, which reads
+  like a clean acquittal. It was not an acquittal, it was a null instrument:
+  **the runner walks its own traversal order and a filter only SELECTS, it never
+  sequences**, so two of the three victims ran *before* the suspect in both arms
+  and the exposure being tested never happened. The arms agreed; nobody had
+  checked they could have disagreed. And the execution order was printed four
+  lines above the results, in the same log the conclusion was read out of. So
+  before a run, **say what a NEGATIVE would look like** — name the failure the
+  run is capable of producing. If you cannot name it, it is not an experiment,
+  and a green from it certifies nothing. (The order itself is one command:
+  `grep -E '^ *(ok|FAIL) ' <log> | awk '{print $2}' | sed 's|:.*||' | awk
+  '!seen[$0]++'`. And beware that 12 of the 256 test files share a basename, so
+  those positions are among NAMES, not files.)
   **And a DEFAULT can do the asserting.** `here.get("answered", true)` read off
   an empty dictionary returns the caller's own `true` — so a player standing in
   no region at all reported as a finished chapter, and the test that caught it
