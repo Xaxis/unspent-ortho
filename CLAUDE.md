@@ -595,6 +595,21 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
   caught were caught by that one command, and both times the other builder was
   further along. It is also the integrator's job to say who holds a task — the two
   that were NOT caught were handed out twice without saying.
+- **A GUESS CROSSES A SESSION BOUNDARY AS A FINDING, AND LABELLING IT DOES NOT
+  STOP IT.** Four of these in one day between two sessions: a failing tour handed
+  over as "probably your ground move" that predated both of us; `Works.sites`
+  handed over as "probably more marked landmarks" when 9.52 ms of the 9.72 was
+  `stand_near`; two ground declarations handed over as "dead content, costs
+  nothing to delete" that decide how a neighbour's ground looks across 3.5-11% of
+  a landscape; and one landscape's measurement offered as evidence about another
+  landscape. **The one that matters is the second, because it WAS labelled a
+  guess and still had to be caught** — the receiver cannot see how you arrived at
+  it, so the label is a word in a message and the content is a conclusion. What
+  actually worked, all four times, is that the receiver MEASURED rather than
+  accepted. So: send the measurement, not the conclusion drawn from it, and when
+  you receive one, re-derive it before you build on it or pass it on. A peer's
+  number is worth more than a peer's answer, and a peer's answer is worth about
+  as much as your own first hypothesis — which today ran ten wrong in a day.
 - **Never rebase, reset or force-push `main`**, and never rewrite pushed history.
   Merge, and only the branches of the wave you are integrating.
 - **Do not kill stray `godot` processes.** One of them is likely another session's
