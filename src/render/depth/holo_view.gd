@@ -49,6 +49,11 @@ const MOST := 10
 const WIDE := 2.6
 const TALL := 4.4
 const LIFT := 0.7
+## The tallest roof that may carry one, in world units. Not a taste: at 57
+## degrees of pitch a column's foot spends `foot * cos(pitch)` of the half-frame
+## before it is any distance away, so past about six units of roof there is no
+## distance AHEAD of the player that puts it on the glass at all. See `hung_on`.
+const ROOF_MOST := 6.0
 ## Tiles the focus must move before the list is gathered again.
 const RESTEP := 0.5
 
@@ -62,7 +67,31 @@ var world: WorldData
 var query: WorldQuery
 ## 0..1 of this landscape's buildings that carry one. 0 builds nothing at all.
 var share := 0.0
+## How many are IN FRAME, not how many were placed. It meant the latter, and the
+## two numbers were 4 and 0: every one of them hung above the top edge while this
+## read a confident four (task #116). A count of things built is never evidence
+## that anything was drawn -- so this is now set from what the camera answers.
 var drawn := 0
+## How many buildings within `REACH` carry one at all, before the frame has its
+## say. `drawn` alone cannot tell "nothing qualifies here" from "everything that
+## qualifies is off the glass", and those want opposite fixes.
+var considered := 0
+## Every qualifying roof height found this gather, so a street that shows nothing
+## can say WHY without a second run.
+var roofs := PackedFloat32Array()
+## Where each candidate's column really landed on the glass this gather. Filled
+## only under UNSPENT_HOLO_DEBUG: it is a formatted string per candidate per
+## gather, which is not a thing to pay for in play.
+static var _debug := OS.has_environment("UNSPENT_HOLO_DEBUG")
+var spans := PackedStringArray()
+## The camera to ask. 17_holo hands it over; null in a headless run, where
+## nothing is being looked at and every candidate is kept as before.
+##
+## It is asked rather than computed from constants because the frame MOVES: the
+## zoom (`+`/`-` in play) and the target lean both change what fits, and the
+## third-person glide (#121) will drop the pitch, which lifts everything further
+## up the screen. A baked reach would be wrong the moment any of those ran.
+var cam: Camera3D = null
 
 static var _mesh: ArrayMesh = null
 
@@ -70,6 +99,9 @@ var _pool: Array[MeshInstance3D] = []
 var _live := 0
 var _mats: Array[ShaderMaterial] = []
 var _last := Vector2(INF, INF)
+## The camera's view size and pitch when the list was last gathered, because
+## what fits is the camera's answer and it changes without the player moving.
+var _last_shape := Vector2(INF, INF)
 var _keys := PackedInt64Array()
 
 
@@ -109,7 +141,23 @@ static func hung_on(p: WorldProp, seed_value: int, country: int, share_of: float
 	# Only what a landscape built UPWARD. A hologram over a cottage is a joke.
 	if not BiomeForms.FORMS.has(forms.form(v)):
 		return false
-	if forms.fact(v, BiomeForms.HIGH, 0.0) < 4.0:
+	var high := forms.fact(v, BiomeForms.HIGH, 0.0)
+	if high < 4.0:
+		return false
+	# AND NOT OVER THE TALLEST, which is the half this had no way to know. The
+	# column's foot sits `high + LIFT` up, and under a camera pitched 57 degrees
+	# height and distance BOTH carry a thing up the screen and add -- so a foot
+	# 15.0 up (a `tower`) or 17.0 (a `spire`) is above the top edge at EVERY
+	# distance ahead of the player, and a `stack` at 11.3 survives 1.6 tiles.
+	# Measured against a real camera, not derived: tests/render/test_read_reach.gd.
+	#
+	# So the fiction and the frame disagree here, and the frame wins: the city's
+	# towers are too tall to advertise on. `ROOF_MOST` keeps the ones that leave a
+	# band worth walking through -- a foot of 5.3 is in frame 5.5 tiles ahead and
+	# 12.4 behind. Raising it does not buy more advertising, it buys more of the
+	# invisible kind, which is what this cost before (#116: four placed, every one
+	# of them between 562 and 1665 pixels above the glass).
+	if high > ROOF_MOST:
 		return false
 	return Rng.hash01(seed_value, p.id, S_TAKE) < share_of
 
@@ -136,19 +184,83 @@ static func colour_of(p: WorldProp, seed_value: int) -> int:
 	return 0 if h < 0.55 else 1
 
 
+## One building's column: where its foot hangs and how far it stands up from
+## there. Kept in ONE place so the frame test below and `_place` cannot drift —
+## a filter that measured a different column from the one drawn would hide the
+## wrong ones and be very hard to see.
+func _column_of(p: WorldProp, country: int) -> Dictionary:
+	var forms := BiomeForms.of(country)
+	var v := PropModels.variant_of(p, world.seed_value, country)
+	var size := 0.8 + Rng.hash01(world.seed_value, p.id, S_SIZE) * 0.5
+	var high := forms.fact(v, BiomeForms.HIGH, 4.0)
+	return {
+		"foot": world.to_3d(p.pos) + Vector3(0.0, high + LIFT, 0.0),
+		"size": size,
+	}
+
+
+## Is any of this column inside the picture? ASKED of the camera, never worked
+## out from constants: the mesh spans 0..1 in y, so the node's origin is the
+## foot and the top is one `TALL * size` above it, and both are unprojected.
+##
+## No camera (a headless run) keeps everything, which is what this did before.
+func _in_frame(p: WorldProp, country: int) -> bool:
+	if cam == null:
+		return true
+	var vp := cam.get_viewport()
+	if vp == null:
+		return true
+	var rect := vp.get_visible_rect().size
+	var col := _column_of(p, country)
+	var foot: Vector3 = col.foot
+	var size := float(col.size)
+	var lo := cam.unproject_position(foot)
+	var hi := cam.unproject_position(foot + Vector3(0.0, TALL * size, 0.0))
+	if _debug:
+		spans.append("foot(%.0f,%.0f)top(%.0f,%.0f)of%dx%d" % [lo.x, lo.y, hi.x, hi.y, int(rect.x), int(rect.y)])
+	# Screen y grows DOWNWARD, so the column's top is the SMALLER y. It is in the
+	# picture when that span crosses the glass at all.
+	if hi.y > rect.y or lo.y < 0.0:
+		return false
+	var half_w := WIDE * size * 0.5 * (rect.y / maxf(cam.size, 1e-3))
+	return maxf(lo.x, hi.x) + half_w >= 0.0 and minf(lo.x, hi.x) - half_w <= rect.x
+
+
 func follow(focus: Vector2) -> void:
 	if world == null or query == null or share <= 0.0:
 		_hide_from(0)
 		return
-	if focus.distance_to(_last) < RESTEP:
+	# The focus is not the only thing that decides the list any more: what fits
+	# is the camera's, so a player standing still and zooming (or leaning onto a
+	# target) has to be gathered again or the street keeps the old answer.
+	var shape := Vector2(cam.size, cam.global_rotation.x) if cam != null else Vector2.ZERO
+	if focus.distance_to(_last) < RESTEP and shape.is_equal_approx(_last_shape):
 		return
 	_last = focus
+	_last_shape = shape
 	var found: Array = []
+	considered = 0
+	roofs.clear()
+	spans.clear()
 	for p: WorldProp in query.props_near(focus, REACH):
 		if world.depleted.has(p.id):
 			continue
 		var country := maxi(Country.COAST, world.country_at(floori(p.pos.x), floori(p.pos.y)))
+		if p.kind == PropKind.HOUSE:
+			var f := BiomeForms.of(country)
+			roofs.append(f.fact(PropModels.variant_of(p, world.seed_value, country),
+				BiomeForms.HIGH, 0.0))
 		if not hung_on(p, world.seed_value, country, share):
+			continue
+		considered += 1
+		# The frame decides, not the radius. A hologram's FOOT is already
+		# `high + LIFT` off the ground, and under this camera height and distance
+		# both carry a thing UP the screen and ADD -- so one over a `spire` (foot
+		# 17.0) is off the top at EVERY distance ahead of the player, and one over
+		# a `block` (foot 5.3) only survives 5.5 tiles. Measured against a real
+		# camera in tests/render/test_read_reach.gd. `REACH` still bounds the
+		# gather, because asking the world for props is the expensive half.
+		if not _in_frame(p, country):
 			continue
 		found.append([p.pos.distance_squared_to(focus), p, country])
 	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
@@ -169,6 +281,12 @@ func follow(focus: Vector2) -> void:
 	_live = want
 
 
+## The i-th standing column, for anything that wants to ask the camera where it
+## really landed rather than trust `drawn`.
+func node_at(i: int) -> MeshInstance3D:
+	return _pool[i] if i >= 0 and i < _live else null
+
+
 func _hide_from(from: int) -> void:
 	for i in range(from, _live):
 		_pool[i].visible = false
@@ -176,16 +294,13 @@ func _hide_from(from: int) -> void:
 
 
 func _place(i: int, p: WorldProp, country: int) -> void:
-	var forms := BiomeForms.of(country)
-	var v := PropModels.variant_of(p, world.seed_value, country)
-	var high := forms.fact(v, BiomeForms.HIGH, 4.0)
+	var col := _column_of(p, country)
 	var node := _slot(i)
-	var size := 0.8 + Rng.hash01(world.seed_value, p.id, S_SIZE) * 0.5
+	var size := float(col.size)
 	var turn := Rng.hash01(world.seed_value, p.id, S_TURN) * TAU
-	var base := world.to_3d(p.pos)
 	node.global_transform = Transform3D(
 		Basis(Vector3.UP, turn).scaled(Vector3(WIDE * size, TALL * size, WIDE * size)),
-		base + Vector3(0.0, high + LIFT, 0.0))
+		col.foot)
 	# The colour is the MATERIAL, dealt by the building's own id; the scan's phase
 	# comes off the instance's place in the world inside the shader, so nothing
 	# has to be set per instance at all.

@@ -372,6 +372,15 @@ static func make() -> BiomeDef:
 	# nothing holding it up, which is the one piece of a cyberpunk city this engine
 	# had in no form at all. A third of the buildings, because a street where every
 	# roof projects is a fairground and this city is supposed to be TIDY.
+	#
+	# THIS NUMBER IS NOW MEASURED AGAINST THE WRONG POPULATION AND IS LEFT ALONE
+	# DELIBERATELY. `HoloView.ROOF_MOST` cuts eligibility to the LOW roofs, because
+	# the frame cannot hold a column over a tower (#116), so a third is a third of
+	# about five buildings instead of eight. Raising it to 0.8 was tried and
+	# measured on seed 7: carriers went 2 -> 4 and IN FRAME stayed 0, because all
+	# four stood further ahead than a 5.3 foot survives (5.5 tiles). The shortage is
+	# not the share, it is how few low buildings a slums street has (#106), so the
+	# share stays where it was until that moves.
 	d.holograms = 0.34
 	# Smog weather. The cliché is rain, so rain is here and is not the most of it:
 	# what a city under a working plant really gets is haze and flat grey, and the
