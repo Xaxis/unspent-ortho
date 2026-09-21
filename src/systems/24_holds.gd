@@ -253,15 +253,64 @@ func _exit_tree() -> void:
 			sig.disconnect(_chapters_moved)
 
 
+## What each part of this tick costs, under `--stats` only and read by
+## 12_landscape the way a tour's `tour_seen` is.
+##
+## This system is the largest `_process` cost in the game (19.9 ms worst in
+## steady play) and the tick is four calls, so the total names no culprit. It
+## also already cost one wrong fix: the chapter refresh LOOKED expensive —
+## `Chapters.of` swept every system three times per region — so it was made
+## cheap first and measured second, and the whole refresh turns out to be
+## 0.44 ms. Right change, wrong reason, and the spike stayed. Hence this.
+const TICK_PARTS: Array[String] = ["refresh_chapters", "set_walls", "stand", "work"]
+var tick_worst := PackedFloat32Array()
+
+
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	if not game.options.stats:
+		if _dirty:
+			_dirty = false
+			_refresh_chapters()
+			_set_walls()
+		_stand()
+		_work(delta)
+		return
+	if tick_worst.size() != TICK_PARTS.size():
+		tick_worst.resize(TICK_PARTS.size())
+	var t := Time.get_ticks_usec()
 	if _dirty:
 		_dirty = false
 		_refresh_chapters()
+		t = _mark(0, t)
 		_set_walls()
+		t = _mark(1, t)
 	_stand()
+	t = _mark(2, t)
 	_work(delta)
+	@warning_ignore("return_value_discarded")
+	_mark(3, t)
+
+
+func _mark(i: int, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	var took := float(now - since) / 1000.0
+	if took > tick_worst[i]:
+		tick_worst[i] = took
+	return now
+
+
+## Empty until something has been timed, so a run that never reached this system
+## prints nothing rather than a row of zeroes — LOOK.md method 3, which this
+## repository already owns and which a 0.00 would quietly break.
+func stats_line() -> String:
+	if tick_worst.size() != TICK_PARTS.size():
+		return ""
+	var out := PackedStringArray()
+	for i in TICK_PARTS.size():
+		out.append("%s %.1f" % [TICK_PARTS[i], tick_worst[i]])
+	return "\nworld holds tick worst per part (ms): " + ", ".join(out)
 
 
 ## The player's hands on a barrier. `use` is one key and this is one more thing

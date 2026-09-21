@@ -158,11 +158,21 @@ func _driven_line() -> String:
 ## has nothing to add writes nothing and this file needs no list of which do.
 ## The same move as driving the pass from here in the first place: when the
 ## number you have names no culprit, go one level in rather than guessing.
+## BOTH PASSES, because a system that breaks its own tick down may live in
+## either: `_driven` is only the systems that define `_physics_process`, and the
+## first two that wanted this line were one of each (30_mobs in physics,
+## 24_holds in process). Asking only the physics half would have printed nothing
+## for the second and read exactly like a system with nothing to say.
 func _own_lines() -> String:
 	var out := ""
+	var seen := {}
 	for s: GameSystem in _driven:
 		if is_instance_valid(s) and s.has_method(&"stats_line"):
+			seen[s] = true
 			out += String(s.call(&"stats_line"))
+	for n: Node in _pdriven:
+		if is_instance_valid(n) and not seen.has(n) and n.has_method(&"stats_line"):
+			out += String(n.call(&"stats_line"))
 	return out
 
 
