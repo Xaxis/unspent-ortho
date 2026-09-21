@@ -757,8 +757,24 @@ const FLASH_SHARE := 0.24
 ## pixels of the pen's grid (a low body would otherwise flash nothing at all).
 ## Written as pixels of the 640x360 image, like the shader's widths and unlike the
 ## floors, which is why it is restored here and not with them.
+## AND NEVER MORE THAN A SHARE OF THE BODY, WHICH THE FLOOR ALONE DID NOT
+## PROMISE. The floor is four pen-pixels so a low body flashes something at all;
+## with nothing above it, that floor could exceed the body it was marking. At the
+## SHIPPED window (`project.godot` overrides 1080 to 720) a 0.8-unit body came out
+## flashing 62.5% of itself, which `tests/render/test_marks.gd` calls out by name:
+## the mark is a part of a body and not the body. It passed in isolation only
+## because nothing had started a game yet and `texel` still held its 15/1080
+## default, so the test read as order-dependent and was neither -- it was a true
+## report about the window a player actually gets.
+##
+## So the floor is a legibility minimum and this is the honest maximum, and the
+## maximum wins. 0.30 sits under the two-thirds the test bars at whatever the
+## window is, so the pair can no longer disagree on a machine nobody tried.
+const FLASH_MOST := 0.30
+
+
 static func flash_radius(height: float) -> float:
-	return maxf(height * FLASH_SHARE, pen_px(4.0))
+	return minf(maxf(height * FLASH_SHARE, pen_px(4.0)), height * FLASH_MOST)
 
 
 ## Screen pixels at the heart of a burst that never take ink, at the moment of
