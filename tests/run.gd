@@ -72,6 +72,21 @@ func _run() -> void:
 			# process, for a fraction of the memory: `tools/test.sh
 			# "test_player_settings,test_map,test_autosave"`. It proves nothing
 			# about the rest of the set, which is the price.
+			#
+			# **A FILTER CHOOSES WHICH TESTS RUN, NEVER THE ORDER THEY RUN IN.**
+			# The runner keeps its own traversal order whatever the filter says,
+			# so naming the suspect first does not make it run first. An A/B built
+			# on "the settings file immediately before its victims" was run that
+			# way and had no power at all: measured off a full run's log, the two
+			# victims sit at files 105 and 147 and the suspect at 161, so in both
+			# arms the suspect ran AFTER them. Read the real order before building
+			# an experiment on it — a full run's own log is the order, first
+			# appearance of each file name.
+			#
+			# And the match is a substring over `basename:method`, so a file name
+			# can pull in a method from ANOTHER file whose name contains it
+			# ("test_map" also takes one out of test_screens). Do not read a
+			# filtered count as a file count.
 			if filter != "" and not _wanted(id, filter):
 				continue
 			var inst: TestCase = script.new()
