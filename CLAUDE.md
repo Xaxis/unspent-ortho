@@ -408,6 +408,22 @@ tools print their own summaries.
   considered. **A header is evidence about what somebody meant, never about what
   the code does — and the more precisely it states the rule, the more it is worth
   checking that the line underneath obeys it.**
+  **AND THE COMMONEST WRONG MOVE OF ALL IS READING THE SHAPE OF THE CODE INSTEAD
+  OF THE THING IT STANDS FOR.** Ten wrong hypotheses across two sessions in one
+  day and every one had this form: an operator, a threshold, a variable name, a
+  grep pattern or a piece of git syntax was read as if the symbol were the
+  meaning. `HEAD~3` was read as "three changes back" when it counts COMMITS and
+  merges let it walk sideways. `d.grounds\[` was grepped against a file that
+  writes `d.grounds = {` and answered "declares nothing" for seven declarations.
+  `FLOOR if gb < 0.22` was read as a minority case when `gb` is massed at zero
+  and it is 80% of the band. **And the sharpest of them: consistency is not
+  evidence.** Four landscapes write `gb >` for the "more" state, so the one
+  writing `gb <` looked like a typo and was one step from being flipped with a
+  `GEN` bump behind it — until the field's own definition said `big` is "where a
+  ground GATHERS", which for a ruined city makes "slab where nothing gathered
+  over it" exactly right. The majority idiom is not the authority; the thing's
+  own declaration is. Before changing a line because it looks wrong, read what
+  the values in it actually ARE, and print them.
   **AND A REVERT THAT DOES NOT REVERT READS EXACTLY LIKE A SECOND CAUSE.**
   `test_parity`'s re-acceptance asks you to put the change back and watch the old
   hashes return. I reverted one file to `HEAD~3` and parity still failed, which
