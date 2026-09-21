@@ -286,10 +286,36 @@ func test_marks_ride_in_alpha_and_plain_colours_carry_none() -> void:
 ## The last two rows are near-misses between genuinely different grounds and are
 ## the only ones a nudge would answer.
 ##
-## Not fixed here: `GroundColors` is `src/render/`, frozen to the LOOK wave
-## (docs/LOOK.md), and picking these colours is that wave's work and not a test
-## author's. The measurement is written down so whoever takes it starts from the
-## two causes rather than from five numbers.
+## **THAT DISPOSITION WAS WRONG AND IT IS WHY THIS SAT FOR A DAY.** `GroundColors`
+## is frozen, but it does not PICK these colours -- it reads them:
+##
+##     _wash[i] = d.grounds.get(g, _base(g))
+##
+## The colour is declared in `src/content/biomes/<land>.gd`, which is content and
+## is not frozen. Only the FALLBACK is in the frozen table. So four of the five
+## were fixable today, in content, by each landscape saying what its own ground
+## is -- and three of them were not tuning gaps at all:
+##
+##   - sulphur_jungle GRASS was `P.MOSS[3].lerp(P.SPRUCE[3], 0.30)` and the green
+##     towers' is the SAME TWO COLOURS at 0.35. One landscape written twice with
+##     the t nudged. Its own header says "yellow crust round every hole", so its
+##     turf is rank and yellowed now and the two are their own places.
+##   - frost_sea ICE was `P.RIME[5]`; snowfield SNOW is `P.RIME[5]`. Byte for
+##     byte, both chosen in content. Frozen sea is harder and bluer than fallen
+##     snow, so it says so.
+##   - the_crags MOSS sat 0.0078 from the fen's. The crags are fog on OLD STONE,
+##     so what grows there is lichen: paler, greyer, drier.
+##   - mesas SCREE kept two fifths grey against "red canyons cut a thousand feet
+##     down". Less grey is truer AND further from the Middens' swarf.
+##
+## WHAT IS LEFT IS A PACKING, and that is the honest name for it. mesas vs
+## pinewood is 0.0724, and the obvious fix -- giving the pine floor the dark this
+## game has always said it has ("dark under the canopy", and NEEDLES is left to
+## the shared fallback) -- was tried and MOVED THE COLLISION: pinewood 0.0647 and
+## machine_city 0.0749, two new pairs for one closed. Twenty-three landscapes and
+## their grounds all have to sit 0.08 apart pairwise, so a nudge is not a fix, it
+## is a displacement. Solve it as a set, the way `palette.gd` solved the machine
+## ramps, or the next person trades one red for two.
 func test_every_country_draws_its_turf_in_its_own_wash() -> void:
 	var seen: Array[Color] = []
 	for c: int in BiomeRegistry.land_indices():

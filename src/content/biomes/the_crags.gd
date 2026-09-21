@@ -42,7 +42,12 @@ static func make() -> BiomeDef:
 	d.hatch = Ink.SPARSE
 	d.grounds = {
 		Ground.ROCK: P.SLATE[3].lerp(P.MOSS[2], 0.2),
-		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.45),
+		# LICHEN ON OLD STONE, not fen. This was `P.MOSS[2].lerp(P.SPRUCE[2], 0.45)`,
+		# which sat 0.0078 from the Moss's own moss -- near enough that the two
+		# landscapes drew the same turf, and the fen is what moss SHOULD look like.
+		# The crags are fog on old stone, so its moss is what grows ON that stone:
+		# paler, greyer, drier.
+		Ground.MOSS: P.MOSS[2].lerp(P.STONE[3], 0.55),
 		Ground.HEATH: P.MOSS[2].lerp(P.EARTH[2], 0.4),
 		Ground.GRASS: P.MOSS[3].lerp(P.SPRUCE[2], 0.3),
 		Ground.SCREE: P.SLATE[2].lerp(P.STONE[2], 0.4),
