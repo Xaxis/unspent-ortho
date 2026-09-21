@@ -106,6 +106,17 @@ static func part_under_a_burst(m: MachineModel, clear: float, outer: float) -> A
 ## figure is a fraction of it, because the ring holds seven thin strokes and not
 ## a disc.
 func test_a_burst_leaves_the_working_part_showing() -> void:
+	# `texel` IS A STATIC ON MobFx, so a test that sets it and walks away rewrites
+	# the pen's scale for every test that runs after it IN THE SAME PROCESS. Left
+	# set, `MobFx.flash_radius` floors at `pen_px(4.0)` and a 0.8-tall body comes
+	# out flashing 0.76 of itself -- which is `tests/render/test_marks.gd` failing
+	# in another directory for a reason nothing in its own file mentions, and only
+	# in a gate shard that happens to run this file first. It passes alone, and it
+	# passes in a full single-process run where the order differs, which is what
+	# made it look intermittent rather than caused.
+	# `tests/fight/test_mob_view.gd` already keeps this discipline (`was`, restore);
+	# this file set the global and did not put it back.
+	var was := MobFx.texel
 	MobFx.texel = TEXEL
 	var clear := MobFx.burst_clear_px(MACHINE_HIT)
 	var outer := MobFx.at_least(MACHINE_HIT, MobFx.BURST_PX) / TEXEL * 0.5
@@ -118,6 +129,7 @@ func test_a_burst_leaves_the_working_part_showing() -> void:
 		gt(float(got[0]), 4.0, "%s has a part on screen" % kid)
 		var share := float(got[1]) / float(got[0])
 		lt(share, 0.34, "%s: the mark could cover %.0f%% of its part (%d of %d px)" % [kid, share * 100.0, int(got[1]), int(got[0])])
+	MobFx.texel = was
 
 
 func test_no_mark_that_lands_on_a_body_is_bigger_than_the_body() -> void:
