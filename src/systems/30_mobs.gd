@@ -74,13 +74,60 @@ func _warm_figures() -> void:
 			m.free()
 
 
+## What each part of the tick costs, worst first, under `--stats` only. This
+## system is the largest single number in a steady frame (31.3 ms over 597 frames,
+## #131) and the tick is four calls, so the TOTAL names no culprit — the same
+## reason 12_landscape drives the whole pass itself rather than reading
+## `TIME_PHYSICS_PROCESS`, one level further in.
+##
+## `_warm_figures` already took this from 145.6 ms to 34.7 by paying for each
+## kind's script and material at load, so what is left is NOT a figure being
+## built for the first time, and the obvious suspect is already spent.
+const TICK_PARTS: Array[String] = ["read_moment", "coast.tick", "listen", "ensure_nodes"]
+var tick_worst := PackedFloat32Array()
+
+
 func _physics_process(_delta: float) -> void:
 	if sim == null:
 		return
+	if game == null or not game.options.stats:
+		_read_moment()
+		coast.tick()
+		_listen()
+		_ensure_nodes()
+		return
+	if tick_worst.size() != TICK_PARTS.size():
+		tick_worst.resize(TICK_PARTS.size())
+	var t := Time.get_ticks_usec()
 	_read_moment()
+	t = _mark(0, t)
 	coast.tick()
+	t = _mark(1, t)
 	_listen()
+	t = _mark(2, t)
 	_ensure_nodes()
+	@warning_ignore("return_value_discarded")
+	_mark(3, t)
+
+
+func _mark(i: int, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	var took := float(now - since) / 1000.0
+	if took > tick_worst[i]:
+		tick_worst[i] = took
+	return now
+
+
+## Read by 12_landscape if this system defines it, the way a tour's `tour_seen`
+## is. Returns "" until something has actually been timed, so a run that never
+## reached this system prints nothing rather than a row of zeroes.
+func stats_line() -> String:
+	if tick_worst.size() != TICK_PARTS.size():
+		return ""
+	var out := PackedStringArray()
+	for i in TICK_PARTS.size():
+		out.append("%s %.1f" % [TICK_PARTS[i], tick_worst[i]])
+	return "\nworld mobs tick worst per part (ms): " + ", ".join(out)
 
 
 func _process(delta: float) -> void:

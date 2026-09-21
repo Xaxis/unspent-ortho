@@ -150,6 +150,22 @@ func _driven_line() -> String:
 	return "\nworld physics worst per system in steady play (ms): " + ", ".join(out)
 
 
+## WHAT A SYSTEM SAYS ABOUT ITS OWN TICK, if it has anything to say. The lines
+## above name a system and a millisecond; a system whose tick is several calls
+## can break its own number down further, and only it knows where the seams are.
+##
+## Duck-typed like `tour_seen` rather than a base-class method, so a system that
+## has nothing to add writes nothing and this file needs no list of which do.
+## The same move as driving the pass from here in the first place: when the
+## number you have names no culprit, go one level in rather than guessing.
+func _own_lines() -> String:
+	var out := ""
+	for s: GameSystem in _driven:
+		if is_instance_valid(s) and s.has_method(&"stats_line"):
+			out += String(s.call(&"stats_line"))
+	return out
+
+
 ## The same for the `_process` pass, and the count is part of the reading: it
 ## says how much of the frame this line can actually see (`_gather_process`).
 func _proc_line() -> String:
@@ -252,7 +268,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line())
+		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line() + _own_lines())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
