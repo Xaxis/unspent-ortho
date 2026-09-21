@@ -80,7 +80,9 @@ func test_no_lesson_letters_a_key_into_its_words() -> void:
 ## rather than a result.
 func test_rebinding_a_key_moves_what_the_lesson_says() -> void:
 	var was := PlayerSettings.key_of(&"use")
+	var had := InputMap.action_get_events(&"use").size()
 	check(was != KEY_NONE, "use is on a key to begin with")
+	gt(float(had), 1.0, "use ships with more than one key, which is what makes the restore matter")
 	eq(PlayerSettings.label_of(&"use"), OS.get_keycode_string(was), "it is named as itself")
 	var line := "A steel edge, and hold %s on each."
 	check(PlayerSettings.spell(line, [&"use"]).contains(OS.get_keycode_string(was)), "the line names it")
@@ -89,14 +91,18 @@ func test_rebinding_a_key_moves_what_the_lesson_says() -> void:
 	eq(PlayerSettings.label_of(&"use"), "P", "rebound, it is named P")
 	eq(PlayerSettings.cap_of(&"use"), "p", "and the cap wears it lowercase")
 	check(PlayerSettings.spell(line, [&"use"]).contains("hold P on"), "and the words follow")
-	# **PUT BACK ONLY WHAT THIS TEST MOVED.** `reset_keys()` restores EVERY
-	# action and clears the whole rebind table, which is a global this test does
-	# not own -- one file reaching across the runner and resetting another's
-	# state is how a suite grows failures that only appear in a particular order.
-	# Rebinding the one key back leaves everything else exactly as it was found.
-	@warning_ignore("return_value_discarded")
-	PlayerSettings.bind_key(&"use", was)
+	# **PUT BACK ONLY WHAT THIS TEST MOVED, AND PUT BACK ALL OF IT.** `reset_keys()`
+	# restores EVERY action and clears the whole rebind table, which is a global
+	# this test does not own -- one file reaching across the runner and resetting
+	# another's state is how a suite grows failures that only appear in a
+	# particular order. But `bind_key` back to the old code was not a restore
+	# either, and the line that used to stand here said "nothing else touched"
+	# while it was untrue: `bind_key` sets an action to exactly ONE key and `use`
+	# ships with TWO, so this test quietly left `use` on one key for everything
+	# that ran after it. `reset_key` is the door that was missing.
+	PlayerSettings.reset_key(&"use")
 	eq(PlayerSettings.key_of(&"use"), was, "put back, and nothing else touched")
+	eq(InputMap.action_get_events(&"use").size(), had, "with every key it came with")
 
 
 ## A cluster is one word: WASD while those are its keys, and not after.
