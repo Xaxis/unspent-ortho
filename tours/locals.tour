@@ -6,6 +6,19 @@
 #   tools/tour.sh tours/locals.tour --seed=7 --size=1024 --hour=11 --weather=clear:0
 #
 # `at cast:NAME` asks 49_cast where that person stands, never a coordinate.
+#
+# **THIS COVERS THREE OF SEVENTEEN, AND THE COUNT IS HERE SO IT CANNOT HIDE.**
+# `StoryPlan.SPINE` holds seventeen local slots; pell, mica and brannoc below are
+# the only ones any tour in this repository walks up to. The other fourteen are
+# held by `tests/story/test_locals.gd` (every inhabited landscape has exactly one,
+# each standing in their own land) and by `test_arcs.gd` (every line fits the
+# glass, every beat has a door) — but nothing presses the one `use` key at them,
+# and there is no picture of any of them. Task #59.
+#
+# Adding one is not free: `at cast:NAME` FAILS the tour when that person is not
+# cast, and who is cast depends on which landscapes the seed dealt to which body.
+# Measured on seed 1 at 1024, fifteen of the seventeen were cast and the sulphur
+# jungle and the crags were not. So measure the seed before writing the step.
 coast calm
 wait 0.6
 
