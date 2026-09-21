@@ -441,13 +441,65 @@ static func roads(c: GenContext) -> void:
 			if hvil[k] != 0:
 				wt = 0.6
 			grid.set_point_weight_scale(Vector2i(hx, hy), wt)
-	c.mark(&"roads.grid")
+	# WHICH HALF-CELLS CAN REACH EACH OTHER AT ALL, flooded once.
+	#
+	# `_connect` asks A* for a path and takes "no path" as its answer, and A* only
+	# says that after exhausting everything reachable from the start. The rejoin
+	# loop below asks it once per candidate PAIR, in distance order, until one
+	# works -- so a village that no road can reach costs a full exhaustive sweep
+	# for every other village in the world. A world is five continents now, and
+	# the villages on the other four are exactly that case.
+	#
+	# Measured: `roads.rejoin` 3377 ms of a 14.8 s world, the dearest thing in
+	# world generation, against 0.8 ms to choose the edges and 68 ms to lay them.
+	#
+	# This changes no outcome. A path exists iff the two cells are in one
+	# component, so every A* call skipped here is one that would have returned
+	# empty; the successes, and their order, are untouched. Weight scaling during
+	# a successful connect changes costs, never solidity, so the components stay
+	# true for the whole stage.
+	var comp := PackedInt32Array()
+	comp.resize(hw * hw)
+	for i in comp.size():
+		comp[i] = -1
+	var next_comp := 0
+	var stack := PackedInt32Array()
+	for start in comp.size():
+		if comp[start] != -1 or grid.is_point_solid(Vector2i(start % hw, start / hw)):
+			continue
+		comp[start] = next_comp
+		stack.append(start)
+		while not stack.is_empty():
+			var at := stack[stack.size() - 1]
+			stack.remove_at(stack.size() - 1)
+			var ax := at % hw
+			var ay := at / hw
+			for d in 4:
+				var nx := ax + (1 if d == 0 else (-1 if d == 1 else 0))
+				var ny := ay + (1 if d == 2 else (-1 if d == 3 else 0))
+				if nx < 0 or ny < 0 or nx >= hw or ny >= hw:
+					continue
+				var ni := ny * hw + nx
+				if comp[ni] != -1 or grid.is_point_solid(Vector2i(nx, ny)):
+					continue
+				comp[ni] = next_comp
+				stack.append(ni)
+		next_comp += 1
+	c.mark(&"roads.flood")
 	var root := PackedInt32Array()
 	for j in vs.size():
 		root.append(j)
-	for e in _edges(vs, c.body_k):
-		if _connect(c, grid, hw, e.x, e.y):
+	# SPLIT, because `settle.roads` is 3.4 s of a 14.8 s world -- the dearest stage
+	# there is -- and `roads.cells` and `roads.grid` above account for 180 ms of
+	# it. Everything else was one number, which names no culprit: choosing the
+	# edges is arithmetic over villages, connecting them is A* over the half-grid,
+	# and they want opposite fixes.
+	var edges := _edges(vs, c.body_k)
+	c.mark(&"roads.edges")
+	for e in edges:
+		if _connect(c, grid, hw, e.x, e.y, comp):
 			root[GenAccess.find_root(root, e.x)] = GenAccess.find_root(root, e.y)
+	c.mark(&"roads.connect")
 	# A tree edge can fail (a loch in the way, no footing): join any village
 	# still cut off to its nearest neighbour that the road can reach.
 	for j in vs.size():
@@ -459,13 +511,15 @@ static func roads(c: GenContext) -> void:
 				others.append(Vector2((vs[k].pos as Vector2).distance_to(vs[j].pos), k))
 		others.sort()
 		for o in others:
-			if _connect(c, grid, hw, j, int(o.y)):
+			if _connect(c, grid, hw, j, int(o.y), comp):
 				root[GenAccess.find_root(root, j)] = GenAccess.find_root(root, int(o.y))
 				break
+	c.mark(&"roads.rejoin")
 	GenWater.drain_crossed(c)
 
 
-static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: int) -> bool:
+static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: int,
+		comp: PackedInt32Array = PackedInt32Array()) -> bool:
 	var vs := c.w.villages
 	var a: Vector2 = vs[from].pos
 	var b: Vector2 = vs[to].pos
@@ -473,6 +527,11 @@ static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: i
 	var hb := Vector2i(clampi(int(b.x) / 2, 0, hw - 1), clampi(int(b.y) / 2, 0, hw - 1))
 	if grid.is_point_solid(ha) or grid.is_point_solid(hb):
 		return false
+	# Would A* even have somewhere to go? Same answer, none of the search.
+	if not comp.is_empty():
+		var ca := comp[ha.y * hw + ha.x]
+		if ca < 0 or ca != comp[hb.y * hw + hb.x]:
+			return false
 	var path := grid.get_id_path(ha, hb)
 	if path.size() < 2:
 		return false
