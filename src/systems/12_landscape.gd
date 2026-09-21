@@ -110,7 +110,10 @@ func _physics_process(delta: float) -> void:
 		_driven[i].call(&"_physics_process", delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_driven_total[i] += took
-		if took > _driven_worst[i]:
+		# Steady play only, for the reason spelled out over the `_process` twin:
+		# a worst that includes the world's first ticks answers "what did loading
+		# cost" under a heading that says "what does a bad frame cost".
+		if _driven_ticks > WARM_MOST and took > _driven_worst[i]:
 			_driven_worst[i] = took
 
 
@@ -144,7 +147,7 @@ func _driven_line() -> String:
 	var out := PackedStringArray()
 	for r: Array in rows.slice(0, 6):
 		out.append("%s %.1f" % [String(r[1]), float(r[0])])
-	return "\nworld physics worst per system (ms): " + ", ".join(out)
+	return "\nworld physics worst per system in steady play (ms): " + ", ".join(out)
 
 
 ## The same for the `_process` pass, and the count is part of the reading: it
@@ -162,7 +165,7 @@ func _proc_line() -> String:
 	var out := PackedStringArray()
 	for r: Array in rows.slice(0, 8):
 		out.append("%s %.1f" % [String(r[1]), float(r[0])])
-	return "\nworld proc worst per node (ms, %d driven): " % _pdriven.size() + ", ".join(out)
+	return "\nworld proc worst per node in steady play (ms, %d driven): " % _pdriven.size() + ", ".join(out)
 
 
 ## WHAT A TYPICAL FRAME SPENDS, which is the question p50 asks and the worst
@@ -201,7 +204,24 @@ func _process(_delta: float) -> void:
 		_pdriven[i].call(&"_process", _delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_pdriven_total[i] += took
-		if took > _pdriven_worst[i]:
+		# STEADY PLAY ONLY, and the two halves of this stats block disagreed about
+		# that for as long as both have existed. `frame_line` takes `warm_frames`
+		# off the front before it reports a percentile; this worst took every frame
+		# including the world's first, so the same printout answered "what does a
+		# bad frame of PLAY cost" and "what did LOADING cost" in adjacent lines,
+		# under one heading, with nothing saying which was which.
+		#
+		# It is not a cosmetic mismatch. It sent me to fix the wrong thing: the
+		# chunk apply showed 9.8 ms worst, I cut it to 3.0 and measured no change
+		# in the spikes, because the 9.8 was the world's first frames and not a
+		# frame anybody plays. The same line put `24_holds` at 22.8 ms, which is
+		# its one chapter refresh at world entry and never happens again.
+		#
+		# `WARM_MOST` rather than `warm_frames` because that one reads a finished
+		# run and this is a live tick; it is the same allowance the warm-up is
+		# capped at, so the two lines now disagree by at most the frames the run
+		# was ALLOWED to spend landing.
+		if _pdriven_ticks > WARM_MOST and took > _pdriven_worst[i]:
 			_pdriven_worst[i] = took
 	if game == null or game.view == null:
 		return
