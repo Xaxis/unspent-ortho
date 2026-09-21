@@ -63,7 +63,16 @@ func _run() -> void:
 				methods.append(name)
 		for name in methods:
 			var id := "%s:%s" % [path.get_file().get_basename(), name]
-			if filter != "" and not id.contains(filter):
+			# **A COMMA MEANS "ANY OF THESE", AND IT IS HOW AN ORDER-DEPENDENCE IS
+			# AFFORDED ON A THIN BOX.** A leak only shows when the polluter and
+			# the victim run in ONE process, and the only way to arrange that
+			# used to be the whole suite — which on 2026-09-20 was killed by the
+			# OS four times for memory, once a tenth of the way in. Naming the
+			# suspect file and its victims keeps them in runner order, in one
+			# process, for a fraction of the memory: `tools/test.sh
+			# "test_player_settings,test_map,test_autosave"`. It proves nothing
+			# about the rest of the set, which is the price.
+			if filter != "" and not _wanted(id, filter):
 				continue
 			var inst: TestCase = script.new()
 			inst.tree = self
@@ -127,3 +136,16 @@ func _find(root: String, ext: String) -> PackedStringArray:
 		if not d.begins_with("."):
 			out.append_array(_find(root.path_join(d), ext))
 	return out
+
+
+## Does `id` ("file:method") match `filter`? One substring as it always was, or
+## several separated by commas, where any one matching is enough. Blank parts are
+## ignored so a trailing comma cannot quietly select everything.
+static func _wanted(id: String, filter: String) -> bool:
+	if not filter.contains(","):
+		return id.contains(filter)
+	for part: String in filter.split(",", false):
+		var want := part.strip_edges()
+		if want != "" and id.contains(want):
+			return true
+	return false
