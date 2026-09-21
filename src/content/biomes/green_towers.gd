@@ -41,15 +41,28 @@ static func make() -> BiomeDef:
 	d.reach_out_high = Vector4(5.0, 0.08, 0.1, 0.32)
 	d.reach_in_low = Vector3(5.0, 0.08, 0.3)
 	d.hatch = Ink.SPARSE
-	# MOSS and NEEDLES below are NOT reachable from `_surface`, and they are NOT
-	# dead. A landscape's country holds grounds its own recipe never lays --
-	# measured: pinewood's `_surface` can return only grass, gravel, heath, moss,
-	# needles, sand, scree and shingle, and its tiles carry salt, pan and swarf.
-	# Neighbours' ground crosses a border into this country, and `GroundColors`
-	# keys the wash on the country, so these two decide what a mossy or needled
-	# neighbour looks like WHERE IT REACHES IN HERE. That is the whole reason the
-	# wash takes a country. Deleting an entry because this file's own recipe
-	# cannot produce it would quietly hand the border back to the shared default.
+	# MOSS and NEEDLES below are NOT reachable from `_surface`. Keep them, but for
+	# the reason measured rather than the one it is tempting to assume.
+	#
+	# A country holds ground its own recipe never lays, because a neighbour's
+	# reaches across the border, and `GroundColors` keys the wash on the COUNTRY
+	# -- so an entry here decides what that neighbour looks like INSIDE this
+	# landscape. Counted over five seeds at 512, between **3.5% and 11%** of this
+	# landscape's tiles carry a ground `_surface` cannot return (heath, sand,
+	# shingle, river, road on every seed). The mechanism is load-bearing.
+	#
+	# **But these two particular entries are not busy, and saying so stops the
+	# next reader being surprised.** Asked of this landscape rather than another:
+	# MOSS lands on 2 tiles of one seed in five; NEEDLES on none of the five.
+	# MOSS is kept because `d.adjacency` above biases this place to lie beside the
+	# moss at 0.2, so the seed that lands that adjacency makes it real. NEEDLES
+	# has no declared adjacency to anywhere needled and nothing measured behind
+	# it -- it is kept on the rule alone.
+	#
+	# THE RULE: unreachable from its own recipe is not the same as unused. Ask the
+	# world which grounds a country's tiles really carry, not which ones its
+	# recipe returns. Deleting on the second question hands a border back to the
+	# shared default, silently, in the one case a per-country wash exists for.
 	d.grounds = {
 		Ground.GRASS: P.MOSS[3].lerp(P.SPRUCE[3], 0.35),
 		Ground.MOSS: P.SPRUCE[2].lerp(P.MOSS[2], 0.45),
