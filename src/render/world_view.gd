@@ -97,6 +97,15 @@ var main_ms_max := 0.0
 ## What the coarse world cost, all in: a block's worker plus putting it in.
 var far_ms := 0.0
 var far_count := 0
+## What COLLECTING a far block costs on the main thread, which nothing measured.
+## The near path has had `main_ms` beside its `build_ms` all along; the far path
+## timed only its worker, so the one half of it that can stall a frame was the one
+## half nobody could see. `_far_step`'s own comment says collecting "is free and
+## always worth doing" -- an assertion, never a measurement, sitting exactly where
+## a spike would hide. And the loop collects EVERY ready slot in one frame, so four
+## finishing together are four uploads in one frame.
+var far_main_ms := 0.0
+var far_main_ms_max := 0.0
 ## The two halves of a chunk's build that the MESHER's own profile cannot see,
 ## because they are this file's work and not its. Without them the stats line
 ## named 36 ms of a 46 ms build and looked perfectly healthy doing it — which is
@@ -392,7 +401,11 @@ func _far_step(near_busy: bool) -> void:
 		if _far_tasks[i] >= 0 and WorkerThreadPool.is_task_completed(_far_tasks[i]):
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
+			var t_main := Time.get_ticks_usec()
 			far.add_block(_far_keys[i], _far_out[i], _world_mat, _water_mat)
+			var main_cost := (Time.get_ticks_usec() - t_main) / 1000.0
+			far_main_ms += main_cost
+			far_main_ms_max = maxf(far_main_ms_max, main_cost)
 			_far_out[i] = []
 			# The WORKER's own microseconds, which `_far_worker` writes back. It
 			# was dispatch-to-collection: queue wait, plus however long until a
@@ -405,9 +418,18 @@ func _far_step(near_busy: bool) -> void:
 			far_count += 1
 	if far.done(world.size):
 		return
-	# Collecting a finished block above is free and always worth doing; STARTING
-	# one is what yields. So this sits here rather than at the top, or a block
-	# already paid for would hang in the pool unclaimed while the player walks.
+	# Collecting a finished block above is CHEAP ON AVERAGE and always worth doing;
+	# STARTING one is what yields. So this sits here rather than at the top, or a
+	# block already paid for would hang in the pool unclaimed while the player walks.
+	#
+	# It said "free", and that was an assertion nobody had measured -- the near path
+	# has carried `main_ms` beside its `build_ms` all along while the far path timed
+	# only its worker, so the half of it that can stall a frame was the half nobody
+	# could see. Measured over 597 frames: 0.5 ms average and **9.1 ms worst**, which
+	# is most of a 120 Hz frame on its own. The loop above also takes EVERY ready
+	# slot in one frame, so several finishing together are several uploads together.
+	# Cheap on average is not free, and an average is the wrong statistic for a
+	# stutter (docs/PERF.md).
 	if near_busy:
 		return
 	# What is already in flight is not free to ask for again.
