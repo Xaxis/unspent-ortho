@@ -48,16 +48,29 @@ func _process(delta: float) -> void:
 	if game == null or game.world == null or game.player == null:
 		return
 	_since += delta
-	var ask := _since >= RECHECK
-	if ask:
-		_since = 0.0
 	var from: Vector2 = game.player.pos
+	# BETWEEN CHECKS THERE IS NOTHING TO DECIDE, and asking anyway was 8.1 ms in
+	# the worst frame of a walking run. `RECHECK` (0.5 s) is the declaration that
+	# streaming a character in or out is a twice-a-second question; the old loop
+	# still paid `StoryCast.get_def` and `present()` for every character EVERY
+	# frame to compute `here`, then threw the answer away unless the timer had
+	# come round. At 17 cast and 120 fps that is ~2,000 `present()` calls a second
+	# -- each one through `StoryPacing.felt` and `Story.landed` -- to answer a
+	# question worth asking twice.
+	#
+	# So the cheap frame does only what must be true every frame: a dressed
+	# figure stands where they stand and faces what they face. Whether they
+	# SHOULD be dressed is settled below, on the timer that exists to settle it.
+	# Same bug as `Chapters.of` read per frame per hold (#122), in a second file.
+	if _since < RECHECK:
+		for row: Dictionary in people:
+			if row.model != null:
+				_watch(row, from)
+		return
+	_since = 0.0
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
-		if not ask and here == (row.model != null):
-			_watch(row, from)
-			continue
 		if here and row.model == null:
 			_dress(row, c)
 		elif not here and row.model != null:
