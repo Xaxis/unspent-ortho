@@ -208,8 +208,19 @@ func test_a_name_over_the_survey_clears_the_glass_under_it() -> void:
 	ci.queue_redraw()
 	await tree.process_frame
 	UiDraw.taping = false
+	# **THE TAPE IS A GLOBAL AND THIS ASKED IT ABOUT EVERYBODY.** `UiDraw.tape`
+	# collects from every CanvasItem that draws while `taping` is on, not from
+	# `ci`, so any other live UI node redrawing in that one frame lands in it —
+	# and this then asserted that ITS colours are opaque too. Alone there is no
+	# other node and it passes; in a full single-process run a node left alive by
+	# an earlier test draws a faded line and the alpha comes back 0.75, which is
+	# exactly `UiDraw.stepped()`'s three of its four steps and could never be a
+	# `UiTheme.GLASS` (a const, six-digit hex, alpha 1). `tests/ui/test_slate.gd`
+	# already filters the tape by `ci` for this reason; this is the same idiom.
 	var alphas: Array[float] = []
-	for m in UiDraw.tape:
+	for m: Dictionary in UiDraw.tape:
+		if m.ci != ci:
+			continue
 		alphas.append((m.col as Color).a)
 	UiDraw.tape.clear()
 	check(not alphas.is_empty(), "the clearing is drawn")
