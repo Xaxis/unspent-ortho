@@ -59,7 +59,11 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(7.0, 0.12, 0.4)
 	d.hatch = Ink.SPARSE
 	d.grounds = {
-		Ground.ICE: P.RIME[5],
+		# ICE IS NOT SNOW, and this was `P.RIME[5]` -- byte for byte what the
+		# snowfield gives its snow, so a landscape that chose a different ground
+		# still drew the same turf and the two were 0.0000 apart. Frozen SEA is
+		# harder and bluer than fallen snow: it is the water you are walking on.
+		Ground.ICE: P.RIME[5].lerp(P.SLATE[4], 0.20),
 		Ground.SNOW: P.RIME[4].lerp(P.LINEN[5], 0.4),
 		Ground.ROCK: P.SLATE[3].lerp(P.RIME[3], 0.5),
 		Ground.SHINGLE: P.SLATE[2].lerp(P.RIME[2], 0.4),

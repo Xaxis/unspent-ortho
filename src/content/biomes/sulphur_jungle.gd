@@ -39,7 +39,11 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(5.0, 0.09, 0.3)
 	d.hatch = Ink.SPARSE
 	d.grounds = {
-		Ground.GRASS: P.MOSS[3].lerp(P.SPRUCE[3], 0.3),
+		# RANK AND YELLOWED, because the heat that hurts you is what grows it.
+		# This was `P.MOSS[3].lerp(P.SPRUCE[3], 0.3)` and the green towers' grass is
+		# the SAME TWO COLOURS at 0.35 -- one landscape written twice with the t
+		# nudged, which is why `test_every_country_draws_its_turf_in_its_own_wash`
+		Ground.GRASS: P.MOSS[3].lerp(P.SAND[3], 0.42),
 		Ground.MOSS: P.SPRUCE[2].lerp(P.MOSS[2], 0.4),
 		Ground.MUD: P.EARTH[3].lerp(P.SAND[3], 0.3),
 		Ground.ASH: P.SAND[4].lerp(P.EARTH[3], 0.25),

@@ -60,7 +60,12 @@ static func make() -> BiomeDef:
 		Ground.GRASS: P.MOSS[2].lerp(P.SAND[3], 0.5),
 		Ground.HEATH: P.EARTH[2].lerp(P.RUST[2], 0.35),
 		Ground.ROCK: P.RUST[3].lerp(P.STONE[3], 0.25),
-		Ground.SCREE: P.RUST[2].lerp(P.STONE[2], 0.4),
+		# RED CANYONS, so the scree keeps its red. This was `.lerp(P.STONE[2], 0.4)`
+		# -- two fifths grey -- which left it 0.069 from the Middens' swarf, the same
+		# `P.RUST[2]` pulled the same distance toward SLATE instead of STONE, and two
+		# greys are not far apart. Less grey is both truer to the place and further
+		# from the other two it was crowding.
+		Ground.SCREE: P.RUST[2].lerp(P.STONE[2], 0.22),
 		Ground.GRAVEL: P.SAND[3].lerp(P.RUST[3], 0.3),
 	}
 	# Grounds this place never lays, named anyway: anything left unnamed falls
