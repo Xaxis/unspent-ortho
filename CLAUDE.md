@@ -390,6 +390,24 @@ tools print their own summaries.
   23.5 tiles from the spawn, which is the way-in seam's signature. The
   measurement was available before the first guess. When something is wrong with
   a thing the world contains, print THAT THING and read what it is standing in.
+  **AND THE COMMENT MAY BE DESCRIBING AN INTENTION RATHER THAN THE CODE — EVEN
+  WHEN IT NAMES THE EXACT RULE BEING BROKEN ONE LINE ABOVE THE BREAKING OF IT.**
+  Three of these in one day, and none was drift: all three were wrong when they
+  were written. `StoryWorld.guaranteed`'s header says "Do NOT duplicate that
+  reading here — the dealer's answer is the authority, or the two drift and the
+  gate stops meaning anything", and the next line is
+  `return land == COAST or BiomeRegistry.guaranteed(land)`, which duplicates it;
+  the dealer put the coast on about half the continents, so the player's own town
+  was cast across an ocean and the whole spine followed it. A turf test's header
+  said the colours were frozen in `src/render/` and unfixable there, while four
+  of the five were `d.grounds` in content, which is why nobody had touched them
+  for weeks. `test_era`'s header claimed a work stamps the ground it stands on,
+  in two opposite versions across its life, for a stamp that has never existed.
+  A stale contract at least used to be true; this kind never was, and it is
+  worse, because a comment that names the rule reads as proof the rule was
+  considered. **A header is evidence about what somebody meant, never about what
+  the code does — and the more precisely it states the rule, the more it is worth
+  checking that the line underneath obeys it.**
   **AND A REVERT THAT DOES NOT REVERT READS EXACTLY LIKE A SECOND CAUSE.**
   `test_parity`'s re-acceptance asks you to put the change back and watch the old
   hashes return. I reverted one file to `HEAD~3` and parity still failed, which
