@@ -329,7 +329,16 @@ static func plant(k: Kit, w: float, d: float, y: float, s: int, c: int) -> void:
 	# people who use it had, with a door in it.
 	var sx := -hw * 0.45
 	var sz := -hd * 0.3
-	k.slab(sx, y, sz, 0.58, 0.72, 0.5, s + 40, dress.walling[1], dress.walling[2], 0.025, 0.06, Kit.j(s, 2, 0.05))
+	# CUTSTONE (row 91) rather than the default, and the name overstates it: this
+	# is `BiomeDressing.walling`, "a ruin, a lean-to, a dry-stone gable", and the
+	# row is written for DRESSED block. But the default it would otherwise take is
+	# the timber/thatch/cloth/mud-render row, which is wrong about stone in every
+	# term — harder, glassier and more relieved is right for a built wall, and a
+	# rough gable reading slightly too dressed beats a stone gable lit as canvas.
+	# If dry stone ever gets a row of its own this moves to it.
+	k.slab(sx, y, sz, 0.58, 0.72, 0.5, s + 40,
+		GroundColors.made(dress.walling[1], GroundColors.CUTSTONE),
+		GroundColors.made(dress.walling[2], GroundColors.CUTSTONE), 0.025, 0.06, Kit.j(s, 2, 0.05))
 	k.plate(Vector3(sx + 0.3, y + 0.74, sz + 0.3), Vector3(sx + 0.3, y + 0.74, sz - 0.3),
 		Vector3(sx - 0.34, y + 0.86, sz - 0.3), Vector3(sx - 0.34, y + 0.86, sz + 0.3), P.PLATE[2], P.PLATE[1], P.PLATE[4])
 	# Ducting run across the deck and over the parapet, and a bundle of aerials.
@@ -656,7 +665,11 @@ static func shell(k: Kit, c: int) -> void:
 		Vector3(-hw, top + 0.34, -hd * 0.9), Vector3(-hw, top + 0.34, hd * 0.9), P.PLATE[2], P.PLATE[1], P.PLATE[4])
 	for i in 4:
 		var z := -hd * 0.7 + i * hd * 0.47
-		k.slab(Kit.j(s, i, 0.2), top + 0.3 + Kit.j(s, i + 4, 0.05), z, w * 0.7, 0.08, 0.3, s + i * 3, dress.timber[0], dress.timber[1], 0.02, 0.0, Kit.j(s, i + 8, 0.1))
+		# TIMBER (row 80), and this one is exact: `BiomeDressing.timber` is
+		# "timber that has stood out in this weather for years", which is the row.
+		k.slab(Kit.j(s, i, 0.2), top + 0.3 + Kit.j(s, i + 4, 0.05), z, w * 0.7, 0.08, 0.3, s + i * 3,
+			GroundColors.made(dress.timber[0], GroundColors.TIMBER),
+			GroundColors.made(dress.timber[1], GroundColors.TIMBER), 0.02, 0.0, Kit.j(s, i + 8, 0.1))
 	# Reinforcement standing out of the broken edge, bent where it tore.
 	for i in 6:
 		var at := Vector3(-hw + Rng.hash01(s, i, 71) * w, top + 0.3, -hd + Rng.hash01(s, i, 72) * d)

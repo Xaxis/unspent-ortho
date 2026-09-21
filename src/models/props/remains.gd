@@ -45,14 +45,35 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 ## What drifts and banks against a thing left out here (sand, peat, needles,
 ## snow, dust, ash), and a step darker. Declared as `BiomeDressing.drift`, and
 ## worked out from the landscape's own plain ground where it does not argue.
+##
+## **DELIBERATELY UNTAGGED, and it is the one here most tempting to tag.** Every
+## material it names is real and every one of them has a row — SAND 42, SNOW 44,
+## ASH 46. They are GROUND rows, in the 40..70 band that `world.gdshader` gives
+## the landscape's own ground treatment, so a drift wearing one stops being a
+## drift banked against a wreck and becomes a hole in the wreck with the land
+## showing through it. `towers.gd`'s header carries the frame where that happened
+## to a settlement's roofs. A made surface takes a made mark or none, and sand
+## lying against a hull is still a made surface.
 static func drift_of(c: int) -> Array[Color]:
 	return BiomeDressing.of(c).drift
 
 
 ## Timber as this landscape weathers it: silvered by salt, black with bog, grey
 ## with needles, bleached, or charred (`BiomeDressing.timber`).
+##
+## Tagged TIMBER here rather than in `BiomeDressing`, which would have fixed the
+## whole game in one line and is exactly why it was not done there. The dressing
+## is read by every package, this mark is only ever safe on MADE geometry, and
+## `BiomeDef.dressing` is digested by `WorldStamp` — moving an alpha there risks
+## refusing every save on disk to improve a roof. This accessor's blast radius is
+## two files and can be read in one screen: 33 uses of the returned colours,
+## every one on a MADE pen, none through a `lerp` (`Kit.slab` and `Kit.made.*`
+## both build into `made`; `Kit.tone`, `GroundColors.up`/`down` keep the alpha).
 static func wood_of(c: int) -> Array[Color]:
-	return BiomeDressing.of(c).timber
+	var out: Array[Color] = []
+	for col: Color in BiomeDressing.of(c).timber:
+		out.append(GroundColors.made(col, GroundColors.TIMBER))
+	return out
 
 
 ## Soft lumps [x, z, r, h] banked against a thing, feet sunk in the ground.
@@ -580,6 +601,16 @@ static func _stilt_hut(k: Kit, s: int, lit: bool, _d: BiomeDressing) -> void:
 
 ## A cable pulled over a thatch dome along `ang`, following the dome's own
 ## surface (`Kit.clump_top`) and pegged past the eave at both ends.
+## **NOT TAGGED ROPE, AND THE NAME IS THE TRAP.** This draws with `k.rod`, and
+## `Kit.rod` is `found.strut` — the FOUND pen. FIVE of Kit's helpers draw into
+## FOUND and `kit.gd`'s own header names them all; this line said "only two" for
+## one commit, from a grep that read two lines past each `func` and stopped,
+## which is how a sentence gets to be precise and wrong at the same time. A
+## made mark is alpha 0.314..0.361 and `found.gdshader` reads anything under 0.5
+## as a beacon that BLINKS on the machines' beat, so tagging the obvious material
+## here would put a flashing lamp over every thatch dome in the game, and nothing
+## would raise an error. Read the PEN, never the function name: the thing a
+## player sees as a rope lashed over a roof is drawn as ruled machine stock.
 static func _rope_over(k: Kit, centre: Vector3, r: float, h: float, ang: float, col: Color) -> void:
 	var dir := Vector3(cos(ang), 0.0, sin(ang))
 	var pts := PackedVector3Array()

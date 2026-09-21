@@ -54,8 +54,16 @@ static func walls(k: Kit, w: float, d: float, h: float, seed_value: int, front: 
 	for i in 4:
 		# Every corner leans its OWN way and stands its own height. One shared
 		# lean vector is a shear: it tilts the prism and leaves it a rigid box,
-		# which is what the art review saw. Budgeted in screen pixels at the play
-		# camera (24 px a world unit): 3-5 px of lean, about 3 px of height.
+		# which is what the art review saw.
+		#
+		# **THE PIXEL BUDGET HERE IS STALE BY THE FACTOR THE FLOOR MOVED.** It
+		# said "24 px a world unit: 3-5 px of lean, about 3 px of height", which
+		# was the 640x360 base. The play camera is 72 px to the unit now, and the
+		# numbers below did not change — so this lean is about 17 px, not 4. The
+		# geometry may well be right; what is certainly wrong is deriving a new
+		# value from the old budget, which is why the arithmetic is written out
+		# rather than the conclusion. See `kit.gd`'s stone rings for the same
+		# error in the same package.
 		var b := c[i]
 		var own := Vector3(Kit.j(seed_value, i + 12, 0.115), 0.0, Kit.j(seed_value, i + 16, 0.115))
 		c.append(Vector3(b.x * 0.94, h + Kit.j(seed_value, i + 8, 0.2), b.z * 0.955) + (lean + own) * h * 1.4)
@@ -370,15 +378,26 @@ static func turf_bank(k: Kit, corners: Array[Vector3], seed_value: int, c: int) 
 ## roughness, the same specular and the same relief, and only the mesh normal
 ## told them apart. Under one sun that is two roofs made of one substance.
 ## `GroundColors.made` puts the material in the alpha the shader already reads.
-## **SLATE IS DELIBERATELY NOT TAGGED, and that is a finding rather than an
-## omission.** I tagged it CUTSTONE and shot it: the roof did not move, because
-## dressed building stone is (0.84, 0.36) against the default's (0.88, 0.32) —
-## inside the 0.05 that `matter_worn` erases in a week of weather, which is the
-## band's own rule for when a row is not worth having. And slate is not dressed
-## stone anyway: it is a thin, cleaved, faintly glossy tile that should catch
-## MORE light than the default, not less. It wants a row of its own, and until
-## there is one the default is the honest answer.
-static var SLATE_ROOF: Array[Color] = ([
+## **SLATE HAS THE ROW IT ASKED FOR** (`GroundColors.SLATE`, 92). The refusal
+## that stood here was right to refuse and wrong in its arithmetic, and both
+## halves are worth keeping. It said CUTSTONE is (0.84, 0.36), inside the 0.05
+## that `matter_worn` erases in a week — but that was the SPEC value, and the
+## same commit that wrote this shipped the row at (0.80, 0.42, 0.022) for
+## exactly that reason. So the number this refusal rested on was corrected in
+## another file by the very change that prompted it, and the sentence citing it
+## went on reading true. A measurement goes stale the moment the thing it
+## measured is altered, and it never announces that it has.
+##
+## What DID earn the row is the second argument, which never depended on a
+## number: slate is not dressed stone. A block is sawn and a slate is CLEAVED,
+## the smoothest face any stone takes, so it goes the other way from dressed
+## block and should catch MORE light than a sawn board, not less. That is why
+## 92 is (0.62, 0.54) — under CUTSTONE on roughness, over it on specular.
+##
+## It is also the surface with the most to gain in the game, which only a frame
+## says: a village at the play camera is ROOFS, and the wall beneath them is a
+## sliver in the shadow of the eaves. All of this was the default until now.
+static var SLATE_ROOF: Array[Color] = _made(GroundColors.SLATE, [
 	P.SLATE[2], P.SLATE[3], P.SLATE[2], P.SLATE[4], P.SLATE[3], P.SLATE[1],
 	P.SLATE[3], P.SLATE[2], P.SLATE[1].lerp(P.EARTH[1], 0.45), P.EARTH[2], P.MOSS[2].lerp(P.SLATE[2], 0.5)])
 static var THATCH_ROOF: Array[Color] = _made(GroundColors.THATCH, [
@@ -642,7 +661,15 @@ static func hipped(k: Kit, t: Array[Vector3], over: float, rise: float, rz: floa
 	out_e = out_e.normalized()
 	var end_p := wavered(e[2], e[3], 5, s + 23, out_e, 0.11, 0.06)
 	var end_m := wavered(e[0], e[1], 5, s + 29, -out_e, 0.11, 0.06)
-	var end_mats: Array[Color] = [ends, GroundColors.down(ends, 0.18), mats[0], GroundColors.up(ends, 0.12), mats[1], ends, mats[3], mats[mats.size() - 1]]
+	# The ends of a hipped roof are the SAME ROOF as its slopes, so whatever the
+	# slopes were tagged the ends are too — and this builder is handed SLATE_ROOF
+	# by one caller and THATCH_ROOF by another, so it must not know which. It
+	# reads the mark off the bag it was given. Until it did, half of every hip
+	# end was tagged (the `mats` entries) and half was the default (the ones
+	# derived from `ends`), which is two materials on one roof face; the thatched
+	# form has been drawn that way since THATCH became the first tagged array.
+	var end: Color = GroundColors.same_matter(ends, mats[0])
+	var end_mats: Array[Color] = [end, GroundColors.down(end, 0.18), mats[0], GroundColors.up(end, 0.12), mats[1], end, mats[3], mats[mats.size() - 1]]
 	patch_slope(k, end_p, _apex(ridge[N], end_p.size()), 3, s + 23, end_mats, plate_share * 0.5)
 	patch_slope(k, end_m, _apex(ridge[0], end_m.size()), 3, s + 29, end_mats, plate_share * 0.35)
 	# The dark overhang under the eaves — wound to face UP, which is the only way
@@ -667,16 +694,27 @@ static func washed(k: Kit, c: int, form: int) -> void:
 	var w: float = [2.45, 1.8, 2.7][form]
 	var d: float = [2.75, 2.35, 3.3][form]
 	var h: float = [1.45, 1.05, 1.5][form]
-	# NOT TAGGED CLAY YET, AND THAT IS THE RULE BEING KEPT RATHER THAN A GAP.
-	# A washed wall is daub and limewash over a frame, not a board, and a wall is
-	# the largest unbroken MADE surface this camera ever sees — by ENGINE.md's own
-	# "judge it at the shape it is seen on" it should be the strongest material
-	# read in the game. But I could not get a frame with one in it: the coast
-	# village builds shacks and patched shelters, and `--scene=gallery
-	# --filter=house` matches the city's TOWER forms. Tagging a surface I cannot
-	# look at is the thing that rule exists to stop, so it waits for a stage that
-	# shows this form.
-	var wash: Color = [P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form]
+	# CLAY (84), which this refused for want of a frame — and the reason given was
+	# false. It said `--scene=gallery --filter=house` matches only the city's
+	# TOWER forms. That filter matches 58 items and the tower forms are among
+	# them, so reading the first names printed and stopping gives exactly that
+	# answer; `PropModels.gallery()` also emits `house 0`..`house 7` in the
+	# coast's dressing, and those ARE this stock. One readable plinth of this
+	# very house is `tools/shot.sh --scene=gallery --filter=house_0`. The rule
+	# invoked was the right rule. The fact underneath it was never checked, and a
+	# refusal that names the right rule reads as proof the rule was obeyed.
+	#
+	# The frame, once taken, also corrected the claim above it: the wall is NOT
+	# the largest surface this camera sees. At play pitch this form is a slate
+	# roof with a wall in its shadow, which is why SLATE got a row first.
+	#
+	# Tagged at the source colour only. `walls()` darkens it for the other three
+	# faces with `GroundColors.down`, which preserves alpha, so one tag dresses
+	# the whole house; the rubble showing through the wash stays untagged,
+	# because what shows there is broken stone and not the render over it.
+	var wash: Color = GroundColors.made(
+		[P.LINEN[4], P.LINEN[5].lerp(P.LINEN[4], 0.5), P.LINEN[4].lerp(P.SAND[4], 0.35)][form],
+		GroundColors.CLAY)
 	var t := walls(k, w, d, h, s, wash, GroundColors.down(wash, 0.35))
 	var moss := dress.growth
 	for fi in faces(t).size():

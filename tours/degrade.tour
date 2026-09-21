@@ -11,8 +11,18 @@ perf colour
 hour 12
 wait 0.6
 perf features noon frames
+# A STILL NIGHT FIRST, because the rain run below cannot answer for one.
+# Rain moves between the probe's two grabs, and the probe's floor is a
+# difference between two grabs -- measured, that floor is 8.599 and it swallows
+# sixteen of seventeen switches, `local lights` among them at 7.602, which after
+# dark is a lit village against a dark one. That run is still worth having: it
+# says what survives weather. It just cannot be read as what night costs, and
+# for months it was the only night in this tour.
 hour 22
-weather rain:0.6
+wait 1.2
 tap lamp
+wait 0.6
+perf features night-clear frames
+weather rain:0.6
 wait 1.2
 perf features night-rain frames

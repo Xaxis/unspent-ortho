@@ -269,9 +269,16 @@ static func _deck(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) ->
 	#
 	# AND WIDE. At 0.14 of a tile they were ONE PIXEL at the distance the depot
 	# exists to be seen from, and two village houses read brighter than the whole
-	# yard; a strip only carries across the land if it is thick enough to survive
-	# the downsample to 640x360. So: a band a third of a tile deep, standing proud
-	# of the web so it is lit from below as well as side on.
+	# yard. So: a band a third of a tile deep, standing proud of the web so it is
+	# lit from below as well as side on.
+	#
+	# **THE REASON GIVEN FOR THE WIDTH NO LONGER EXISTS.** It was "thick enough
+	# to survive the downsample to 640x360", and there is no such downsample: the
+	# base is 1920x1080 and `Quality.ROWS` renders `high` at scale 1.0. The
+	# observation that a one-pixel strip did not carry is still evidence; the
+	# mechanism named for it is not. Whether a third of a tile is now too generous
+	# is a frame, not a sum -- but nothing should be re-derived from a downsample
+	# the engine stopped doing.
 	for side: float in [-1.0, 1.0]:
 		var z := side * (hw + 0.03)
 		lamps.box(Vector3(-hl + 0.2, DECK_HIGH - 0.24, z - 0.08), Vector3(hl - 0.2, DECK_HIGH - 0.02, z + 0.08), W.STRIP)

@@ -57,6 +57,12 @@ const PAN := 57
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
 ## got before and is a perfectly good unpainted timber.
+##
+## SLATE (92) was the first row asked for by a surface rather than by a spec.
+## `houses.gd` refused to tag its roofs with CUTSTONE and wrote down why, and
+## the argument it gave is the one that earned the row: slate is not dressed
+## block, it is a thin cleaved tile that should catch MORE light than a sawn
+## board, not less. 93..95 are spare.
 const TIMBER := 80
 const THATCH := 81
 const CLOTH := 82
@@ -69,8 +75,9 @@ const ENAMEL := 88
 const HIDE := 89
 const BONE_MADE := 90
 const CUTSTONE := 91
+const SLATE := 92
 const MADE_FIRST := TIMBER
-const MADE_LAST := CUTSTONE
+const MADE_LAST := SLATE
 ## A face the taking has just opened: the cut through a boulder a pick has been
 ## into, a wreck cut down. Nothing has settled on it yet, so the wear the land
 ## lays on everything standing in it (`matter_worn`) is kept off this face alone
@@ -249,20 +256,37 @@ static func marked(col: Color, code: int) -> Color:
 ## this comment says so. `world.gdshader` decodes it as the MARK
 ## (`int(COLOR.a * 255.0 + 0.5)`); `found.gdshader` decodes it as a light built
 ## into the machine — under 0.98 a steady strip, and **under 0.5 a beacon that
-## blinks on the machine beat**. Every mark this function can write is 80..91,
-## which is alpha 0.314..0.357, so a made mark on a FOUND surface is not a
-## material at all: it is a lamp, flashing. Tag at the point a thing is built
-## into `k.made`, never on a shared colour that might reach either — a
+## blinks on the machine beat**. Every mark this function can write is
+## `MADE_FIRST..MADE_LAST`, which is alpha 0.314..0.361, so a made mark on a
+## FOUND surface is not a material at all: it is a lamp, flashing. Tag at the
+## point a thing is built into `k.made`, never on a shared colour that might
+## reach either — a
 ## `BiomeDressing` colour feeds both, so marking one at source would put blinking
 ## lights across every machine that dresses itself.
 ##
 ## The failure is one-sided and that is the only mercy: a mark that gets
 ## CORRUPTED (any `lerp` moves alpha; `GroundColors.up`/`down` preserve it) lands
-## outside 80..91, matches no branch in `matter_of`, and falls back to the
-## default — which is where every made surface is today. So a wrong tag degrades
-## to the status quo on MADE, and screams on FOUND.
+## outside `MADE_FIRST..MADE_LAST`, matches no branch in `matter_of`, and falls
+## back to the default — which is where most made surfaces still are. So a wrong
+## tag degrades to the status quo on MADE, and screams on FOUND. (This said
+## "80..91" until SLATE was added at 92, which is the whole argument for naming
+## the constants instead of the numbers: the range moved and the sentence did
+## not.)
 static func made(col: Color, kind: int) -> Color:
 	return marked(col, clampi(kind, MADE_FIRST, MADE_LAST))
+
+
+## The same MATTER as something already tagged, in a different colour.
+##
+## For a builder that takes a bag of tagged colours and has to mix one more in
+## beside them — the ends of a hipped roof are the same roof as its slopes, and
+## whatever the slopes were tagged the ends are too. Reading the mark back off a
+## neighbour is what lets a GENERIC builder stay generic: `Houses.hipped` is
+## handed SLATE_ROOF by one caller and THATCH_ROOF by another and needs to know
+## neither. Alpha is the whole of the mark, so this is a copy and not a guess;
+## if `like` carries no tag, neither does the answer, which is correct.
+static func same_matter(col: Color, like: Color) -> Color:
+	return Color(col.r, col.g, col.b, like.a)
 
 
 ## Glowing: embers, flames, a kiln mouth. strength 0.125..2.
