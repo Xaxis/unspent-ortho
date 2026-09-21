@@ -218,9 +218,7 @@ func test_a_name_over_the_survey_clears_the_glass_under_it() -> void:
 	# `UiTheme.GLASS` (a const, six-digit hex, alpha 1). `tests/ui/test_slate.gd`
 	# already filters the tape by `ci` for this reason; this is the same idiom.
 	var alphas: Array[float] = []
-	for m: Dictionary in UiDraw.tape:
-		if m.ci != ci:
-			continue
+	for m: Dictionary in drawn_by(ci):
 		alphas.append((m.col as Color).a)
 	UiDraw.tape.clear()
 	check(not alphas.is_empty(), "the clearing is drawn")

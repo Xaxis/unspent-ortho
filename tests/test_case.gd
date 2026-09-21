@@ -194,6 +194,30 @@ static func _load_average() -> float:
 	return 0.0
 
 
+## **WHAT THIS NODE DREW, AND NOTHING ELSE.** `UiDraw.tape` is a GLOBAL: while
+## `UiDraw.taping` is on it collects from EVERY CanvasItem that draws, so a test
+## that makes one node, taps a frame and then reads the whole tape is asserting
+## about whatever else the process happened to have on screen. Alone there is
+## nothing else and it passes; in a full single-process run a node left alive by
+## an earlier test draws into the same tape. `tests/ui/test_map.gd` failed that
+## way — it asked for opaque and got 0.75, which is three of `UiDraw.stepped()`'s
+## four steps and could never be the `UiTheme.GLASS` it draws with (a const, six
+## hex digits, alpha 1).
+##
+## Filtering was already being done by hand in several files and NOWHERE
+## consistently — measured across the eight files that read the tape: 45 reads,
+## 13 of them filtered. `test_slate.gd` applies it to 3 of its own 13. So the
+## knowledge was in the tree as scar tissue rather than as a rule, and six
+## careful edits would have left the next read to rediscover it. This is the
+## rule: ask the tape what a NODE drew, never what the process drew.
+func drawn_by(ci: CanvasItem) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for d: Dictionary in UiDraw.tape:
+		if d.get("ci") == ci:
+			out.append(d)
+	return out
+
+
 ## Advance the real scene tree by n physics frames. Most of the game is stepped
 ## on those (the fight, survival, the mobs), and most tests are written against
 ## them, so this is what "a frame" means here.
