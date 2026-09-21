@@ -435,6 +435,17 @@ tools print their own summaries.
   BEFORE forming a hypothesis, then check what they claim against the code. Both
   failures — believing a wrong comment and not reading a right one — cost an
   afternoon each, and reading first is what would have prevented either.
+  **AND "READ IT FIRST" IS NOT ENOUGH, BECAUSE THE SECOND ONE WAS READ TWICE.**
+  `slums.gd` was opened twice that afternoon and the eye went to the tunable
+  declarations both times — the naming comment sat FOUR LINES above the values
+  being edited. It was not skipped; it was read past, because the answer had
+  already been decided to be a knob, and a comment naming a different CLASS of
+  answer is invisible to someone who has committed to one. That is the same
+  failure as inferring what a teammate is doing instead of asking: both are a
+  conclusion reached before the evidence and then defended by not seeing it. So
+  the guard is not "read the file", it is **notice when you have already chosen
+  the KIND of answer** — a threshold, a constant, a knob, somebody else's bug —
+  and go looking specifically for the sentence that says it is a different kind.
   **AND THE COMMONEST WRONG MOVE OF ALL IS READING THE SHAPE OF THE CODE INSTEAD
   OF THE THING IT STANDS FOR.** Ten wrong hypotheses across two sessions in one
   day and every one had this form: an operator, a threshold, a variable name, a
