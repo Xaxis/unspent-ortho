@@ -1354,6 +1354,12 @@ static func _vignettes(L: Lay) -> void:
 	for v in w.villages:
 		_stamp(c, busy, v.pos, float(v.get("radius", 4.0)) + 6.0)
 	_stamp(c, busy, w.spawn, 5.0)
+	# SPLIT: `works.vignettes` is ~1.1 s and is the dearest thing left in props.
+	# Marking what is already known to be two different jobs -- stamping every
+	# landmark and village into a busy grid, then walking the world's cells --
+	# because a single number names no culprit, and `evidence()` was already
+	# tried and was not it (memoised, 1155 vs 1098 ms, reverted).
+	c.mark(&"vig.busy")
 	var rng := Rng.make(c.s, 0x716)
 	L.rng = Rng.make(c.s, 0x717)
 	var cell := VIGNETTE_CELL
