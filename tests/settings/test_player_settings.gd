@@ -110,6 +110,18 @@ func test_what_is_kept_comes_back_and_is_not_a_save() -> void:
 	for r: Dictionary in ConfigSchema.ROWS:
 		check(PlayerSettings.row(r.id).is_empty(),
 			"%s is the owner's to set in a build, not the player's" % r.id)
+	# **AND PUT THE GLOBAL BACK, BECAUSE THIS ONE HAS A VICTIM.** Every test in
+	# this file opens with `forget_for_test`, which protects it from whatever ran
+	# before — and protects nothing from IT. This test is the only one that leaves
+	# a setting changed AND saved, and `picture.flashes` false is read live by
+	# `MobFx.set_flash`, which then refuses to make the per-part material copy at
+	# all. Proved directly: with it left false,
+	# `test_marks.gd:test_the_flash_is_written_into_a_copy_and_never_into_a_shared_material`
+	# gets `material_override == shared` and fails, in another directory, for a
+	# reason nothing in its own file mentions. `forget_for_test` clears the values,
+	# the keys and the runner's own settings file, so it is a whole teardown and
+	# not a hopeful one.
+	PlayerSettings.forget_for_test()
 
 
 ## A key a player asked to press once must behave like one, and the two keys that
