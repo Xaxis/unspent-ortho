@@ -66,6 +66,74 @@ static func of(game: Game, region_id: int) -> Dictionary:
 		keeper_down(game, region_id), yard_broken(game, region_id))
 
 
+## SEVERAL REGIONS AT ONCE, WITH THE LIVE-STATE LOOKUPS DONE ONCE.
+##
+## `of()` walks `game.systems` three times — `found_of`, `keeper_down` and
+## `yard_broken` each sweep every system asking for a property BY NAME — so
+## asking it per region paid three sweeps per region for collections that are the
+## same every time. `24_holds` asks for every region that keeps a hold, once per
+## chapter change, and that refresh is the largest `_process` cost in the game.
+##
+## This is the same move `Chapter._standing_counts` already makes one file over:
+## what cannot change between regions is found once, for every region at once.
+##
+## `of()` is left exactly as it was and remains the one door for a single region.
+## `tests/chapter/test_chapter.gd` holds the two to giving identical answers, so
+## the door cannot drift from the bulk path — which is the whole risk of having
+## both.
+static func for_regions(game: Game, region_ids: Array) -> Dictionary:
+	var out := {}
+	if game == null or game.world == null:
+		for rid: int in region_ids:
+			out[rid] = Chapter.read(null, rid, {}, false, false)
+		return out
+	var found := found_of(game)
+	var keepers := _sentinel_states(game)
+	var yards := _works_states(game)
+	for rid: int in region_ids:
+		out[rid] = Chapter.read(game.world, rid, found,
+			_keeper_down_in(keepers, rid), _yard_broken_in(yards, rid))
+	return out
+
+
+## The keeper package's states, or an empty array if it keeps none. Finding the
+## ARRAY is what costs; asking it about a region is a walk over a handful.
+static func _sentinel_states(game: Game) -> Array:
+	for sys in game.systems:
+		var v: Variant = sys.get("_states")
+		if v is Array:
+			for st: Variant in (v as Array):
+				if st is SentinelState:
+					return v as Array
+	return []
+
+
+static func _works_states(game: Game) -> Array:
+	for sys in game.systems:
+		var v: Variant = sys.get("_states")
+		if v is Dictionary:
+			for st: Variant in (v as Dictionary).values():
+				if st is WorksState:
+					return (v as Dictionary).values()
+	return []
+
+
+## Read exactly as `keeper_down` reads it: a region the package knows nothing
+## about has no keeper, which is not the same as one that still stands.
+static func _keeper_down_in(states: Array, region_id: int) -> bool:
+	for st: Variant in states:
+		if st is SentinelState and (st as SentinelState).region == region_id:
+			return (st as SentinelState).fallen
+	return false
+
+
+static func _yard_broken_in(states: Array, region_id: int) -> bool:
+	for st: Variant in states:
+		if st is WorksState and (st as WorksState).region == region_id:
+			return (st as WorksState).broken()
+	return false
+
+
 ## The chapter the player is standing in, or an empty one out on the sea and in
 ## the gaps between regions (a run too small to be a place belongs to none).
 static func here(game: Game) -> Dictionary:

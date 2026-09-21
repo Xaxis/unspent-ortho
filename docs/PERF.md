@@ -1,17 +1,49 @@
 # PERF.md — what "smooth" means here, in numbers
 
-The owner asked for graphics performance "at least as good as Breath of the Wild
-/ Tears of the Kingdom". Taken as a framerate that is a low bar and we already
-clear it: both of those target **30 fps — a 33.3 ms frame** — and this game's
-median frame at FULL quality, walking a populated world, is **11.9 ms**, nearly
-three times faster; its WORST frame is 18.6 ms, better than their target.
+> **EVERY NUMBER BELOW IS SUSPECT UNLESS IT SAYS HOW MANY FRAMES MADE IT, AND
+> MOST OF THEM DO NOT.** `BootOptions.frames` defaults to **8**, so a plain
+> `tools/shot.sh --stats` measured five steady frames and the judge printed a
+> VERDICT off them — `PERF OK`, with `over 16.7 ms: 0 (0%)` underneath. Not low
+> confidence: success. Every figure in this document predates `JUDGE_LEAST` and
+> was taken that way unless it names its sample, which means the ones that flatter
+> us are the ones to distrust first. Re-measure with `--frames=600` before
+> quoting anything here, and write the count beside the number.
+>
+> Measured on one walking run (seed 4, `--walk=1,0,20 --run`), the same run twice:
+>
+> | sample | p50 | p95 | p99 | worst | over 16.7 ms | verdict |
+> |---|---|---|---|---|---|---|
+> | default (5 steady) | 8.3 | 8.8 | 8.8 | 11.0 | 0 (0%) | `PERF OK` |
+> | `--frames=600` (597) | 9.5 | 11.1 | 16.7 | 24.5 | 6 (1%) | `PERF FAIL` |
+>
+> Same build, same seed, same walk, opposite conclusions. The second is the game
+> the owner is playing. A third run at `--frames=600` on a loaded box gave p99
+> 28.6 and worst 53.8, so load moves these and a timing number without its
+> conditions is not evidence either.
 
-**That 11.9 is not the number this paragraph used to carry.** It said 8.3 ms,
-which was a `tools/shot.sh` run: standing still, empty world, quiet machine. A
-shot never spawns anything, so the figure at the top of this document was about
-the easiest case it could have chosen, while the body of the same document
-explains at length why that is not play. A stale headline reads exactly like a
-true one.
+The owner asked for graphics performance "at least as good as Breath of the Wild
+/ Tears of the Kingdom". Taken as a framerate that is a low bar: both of those
+target **30 fps — a 33.3 ms frame**.
+
+**We do not currently clear it.** This paragraph used to say the median frame was
+11.9 ms and the worst 18.6 ms, "better than their target". The median is roughly
+right and is not the thing that was ever wrong; the WORST-frame claim is the one
+that mattered and it cannot be supported — no sample of five frames can hold a
+worst frame, and honest 600-frame runs put it at 24.5 ms quiet and 53.8 ms under
+load, against a ceiling of 33.3. The headline below is the standard, and the game
+fails it today on p50, p95, p99, worst and worst/p50.
+
+**This headline has been wrong twice, and both times in the flattering
+direction.** It first said 8.3 ms, which was a `tools/shot.sh` run: standing
+still, empty world, quiet machine. A shot never spawns anything, so the figure at
+the top of this document was the easiest case it could have chosen, while the
+body of the same document explains at length why that is not play. It was then
+corrected to 11.9 ms with a worst of 18.6 — closer on the median, and still
+resting on a default-`frames` sample, which cannot hold a worst frame at all.
+
+A stale headline reads exactly like a true one. A headline measured with an
+instrument that cannot see the thing it claims reads like both, and survives
+being corrected, because the correction is checked with the same instrument.
 
 The average was never what he was reacting to. He said **"laggy and jumpy"**, and
 jumpy is not a speed, it is a VARIANCE: at the moment he said it the median was

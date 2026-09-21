@@ -110,7 +110,10 @@ func _physics_process(delta: float) -> void:
 		_driven[i].call(&"_physics_process", delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_driven_total[i] += took
-		if took > _driven_worst[i]:
+		# Steady play only, for the reason spelled out over the `_process` twin:
+		# a worst that includes the world's first ticks answers "what did loading
+		# cost" under a heading that says "what does a bad frame cost".
+		if _driven_ticks > WARM_MOST and took > _driven_worst[i]:
 			_driven_worst[i] = took
 
 
@@ -144,7 +147,33 @@ func _driven_line() -> String:
 	var out := PackedStringArray()
 	for r: Array in rows.slice(0, 6):
 		out.append("%s %.1f" % [String(r[1]), float(r[0])])
-	return "\nworld physics worst per system (ms): " + ", ".join(out)
+	return "\nworld physics worst per system in steady play (ms): " + ", ".join(out)
+
+
+## WHAT A SYSTEM SAYS ABOUT ITS OWN TICK, if it has anything to say. The lines
+## above name a system and a millisecond; a system whose tick is several calls
+## can break its own number down further, and only it knows where the seams are.
+##
+## Duck-typed like `tour_seen` rather than a base-class method, so a system that
+## has nothing to add writes nothing and this file needs no list of which do.
+## The same move as driving the pass from here in the first place: when the
+## number you have names no culprit, go one level in rather than guessing.
+## BOTH PASSES, because a system that breaks its own tick down may live in
+## either: `_driven` is only the systems that define `_physics_process`, and the
+## first two that wanted this line were one of each (30_mobs in physics,
+## 24_holds in process). Asking only the physics half would have printed nothing
+## for the second and read exactly like a system with nothing to say.
+func _own_lines() -> String:
+	var out := ""
+	var seen := {}
+	for s: GameSystem in _driven:
+		if is_instance_valid(s) and s.has_method(&"stats_line"):
+			seen[s] = true
+			out += String(s.call(&"stats_line"))
+	for n: Node in _pdriven:
+		if is_instance_valid(n) and not seen.has(n) and n.has_method(&"stats_line"):
+			out += String(n.call(&"stats_line"))
+	return out
 
 
 ## The same for the `_process` pass, and the count is part of the reading: it
@@ -162,7 +191,7 @@ func _proc_line() -> String:
 	var out := PackedStringArray()
 	for r: Array in rows.slice(0, 8):
 		out.append("%s %.1f" % [String(r[1]), float(r[0])])
-	return "\nworld proc worst per node (ms, %d driven): " % _pdriven.size() + ", ".join(out)
+	return "\nworld proc worst per node in steady play (ms, %d driven): " % _pdriven.size() + ", ".join(out)
 
 
 ## WHAT A TYPICAL FRAME SPENDS, which is the question p50 asks and the worst
@@ -201,7 +230,24 @@ func _process(_delta: float) -> void:
 		_pdriven[i].call(&"_process", _delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_pdriven_total[i] += took
-		if took > _pdriven_worst[i]:
+		# STEADY PLAY ONLY, and the two halves of this stats block disagreed about
+		# that for as long as both have existed. `frame_line` takes `warm_frames`
+		# off the front before it reports a percentile; this worst took every frame
+		# including the world's first, so the same printout answered "what does a
+		# bad frame of PLAY cost" and "what did LOADING cost" in adjacent lines,
+		# under one heading, with nothing saying which was which.
+		#
+		# It is not a cosmetic mismatch. It sent me to fix the wrong thing: the
+		# chunk apply showed 9.8 ms worst, I cut it to 3.0 and measured no change
+		# in the spikes, because the 9.8 was the world's first frames and not a
+		# frame anybody plays. The same line put `24_holds` at 22.8 ms, which is
+		# its one chapter refresh at world entry and never happens again.
+		#
+		# `WARM_MOST` rather than `warm_frames` because that one reads a finished
+		# run and this is a live tick; it is the same allowance the warm-up is
+		# capped at, so the two lines now disagree by at most the frames the run
+		# was ALLOWED to spend landing.
+		if _pdriven_ticks > WARM_MOST and took > _pdriven_worst[i]:
 			_pdriven_worst[i] = took
 	if game == null or game.view == null:
 		return
@@ -232,7 +278,7 @@ func _process(_delta: float) -> void:
 			Quality.current_id(), px.x, px.y, UiBase.SIZE.x, UiBase.SIZE.y,
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
-		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line())
+		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line() + _own_lines())
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
@@ -301,13 +347,15 @@ static func stats_line(view: WorldView) -> String:
 	# on every chunk since the mesher was written and read by nothing.
 	var mesher_ms := (pr[0] + pr[1] + pr[2] + pr[3] + pr[4] + pr[5] + pr[7]) / 1000.0
 	var gap := view.build_ms - view.main_ms - mesher_ms - view.decor_ms - view.props_ms
-	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d (parked %d, far %d/%d avg %.1f ms), chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f decor %.1f props %.1f unaccounted %.1f), verts %d, frame: proc %.1f ms, phys %.1f ms, render cpu %s" % [
+	return "world stats: draw calls %d, objects %d, primitives %d, chunks %d (parked %d, far %d/%d avg %.1f ms, main avg %.1f max %.1f), chunk build avg %.1f ms max %.1f ms over %d (main thread avg %.1f max %.1f; mesher fill %.1f shore %.1f tiles %.1f lattice %.1f cells %.1f water %.1f arrays %.1f decor %.1f props %.1f unaccounted %.1f), verts %d, frame: proc %.1f ms, phys %.1f ms, render cpu %s" % [
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		view.chunk_count(), view.parked_count(),
 		view.far.block_count() if view.far != null else 0, view.far_wanted(),
 		view.far_ms / maxf(1.0, view.far_count),
+		view.far_main_ms / maxf(1.0, view.far_count),
+		view.far_main_ms_max,
 		view.build_ms / n, view.build_ms_max, view.build_count,
 		view.main_ms / n, view.main_ms_max,
 		pr[0] / 1000.0 / n, pr[1] / 1000.0 / n, pr[2] / 1000.0 / n, pr[7] / 1000.0 / n, pr[3] / 1000.0 / n, pr[4] / 1000.0 / n, pr[5] / 1000.0 / n,
@@ -355,6 +403,25 @@ const P99_MS := 1000.0 / 60.0
 const WORST_MS := 1000.0 / 30.0
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
+## The fewest steady frames this line will pass JUDGEMENT on. docs/PERF.md's own
+## standard is "a run of at least 300 frames", and the numbers below are about
+## VARIANCE -- p99 is a claim about one frame in a hundred, so five frames cannot
+## contain one and `over 16.7 ms: 0 (0%)` off that sample is not a measurement,
+## it is a rounding error wearing a verdict.
+##
+## AND THE DEFAULT MADE EVERY RUN THAT SAMPLE. `BootOptions.frames` is 8, so a
+## plain `tools/shot.sh --stats` judged the game on five steady frames and printed
+## PERF OK, and every perf figure taken in this repository before this const was
+## added came off that. Measured on one walking run: at the default it reports
+## p50 8.3, worst 11.0, nothing over budget, PERF OK -- and the SAME run at
+## `--frames=600` reports p50 9.5, p99 16.7, worst 24.5 and 1% of frames over.
+## The second is the game the owner is playing; the first is the reason he was
+## told it was fine while it stuttered.
+##
+## So this reports the numbers and DECLINES the verdict, the way `cost_lt` refuses
+## to judge a cost on a busy machine. A withheld verdict sends somebody to add
+## `--frames`; a false green sends them away.
+const JUDGE_LEAST := 300
 
 ## How many frames a run is allowed to spend warming up, and the ceiling on any
 ## one of them (docs/PERF.md: warm-up is a separate promise, not an exemption).
@@ -441,5 +508,7 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 	return "world frames: n %d steady (+%d warm-up, worst %.0f ms), p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over %.1f ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
 		a.size(), warm, warm_worst, p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
 		P99_MS, over, 100.0 * over / a.size(),
-		("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad)),
+		(("UNJUDGED: %d steady frames, %d wanted -- pass --frames=600" % [a.size(), JUDGE_LEAST])
+			if a.size() < JUDGE_LEAST
+			else ("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad))),
 		" ".join(where)]

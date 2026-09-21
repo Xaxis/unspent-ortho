@@ -16,6 +16,12 @@ var view: ForeView
 var _pos: Array[Vector2] = []
 var _hostile := PackedByteArray()
 var _aware := PackedByteArray()
+## The ground under a piece, asked by the layer. Built ONCE for the same reason
+## the three arrays above are reused: a lambda written at the call site is a new
+## Callable every frame, and this one closes over `game`, which never changes.
+## The arrays were already hoisted and this was missed because an allocation
+## spelled as a function body does not look like an allocation.
+var _height := Callable()
 
 
 func setup(g: Game) -> void:
@@ -67,8 +73,9 @@ func _process(_delta: float) -> void:
 		_pos.append(p)
 		_hostile.append(0 if hostile is bool and not hostile else 1)
 		_aware.append(1 if aware is bool and aware else 0)
-	view.clear_for(here, _pos, _hostile, _aware,
-		func(p: Vector2) -> float: return game.view.surface_height(p))
+	if _height.is_null():
+		_height = func(p: Vector2) -> float: return game.view.surface_height(p)
+	view.clear_for(here, _pos, _hostile, _aware, _height)
 
 
 ## What a tour can be shown of this layer. `fore` is the honest one: there really
