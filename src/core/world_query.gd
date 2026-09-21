@@ -30,25 +30,62 @@ func _init(w: WorldData) -> void:
 ## Everything `owner` stops a body with, replacing whatever it said before. The
 ## circles are in TILE space, `(x, y, radius)`.
 func set_blocks(owner: StringName, circles: Array[Vector3]) -> void:
+	# ONLY THIS OWNER'S STAMP IS REDONE. This used to `_blocks.clear()` and
+	# restamp EVERY owner whenever any one of them changed, so a chapter turning
+	# over re-stamped the landmarks, the works yards and the holdings as well --
+	# measured at 6.8 ms of `24_holds`' 7.4 ms worst frame, all of it spent on
+	# circles that had not moved.
+	#
+	# The header above `_set_walls` says that rebuild is cheap "because a world
+	# holds tens of these, not thousands", which is true of the CALLER's circles
+	# and says nothing about everyone else's. The count was never the variable.
+	if not _block_by.has(owner) and circles.is_empty():
+		return
+	_unstamp(_block_by.get(owner, [] as Array[Vector3]))
 	if circles.is_empty():
-		if not _block_by.has(owner):
-			return
 		@warning_ignore("return_value_discarded")
 		_block_by.erase(owner)
 	else:
-		_block_by[owner] = circles
-	_blocks.clear()
-	for rows: Variant in _block_by.values():
-		for c: Vector3 in rows as Array[Vector3]:
-			var r := ceili(c.z + BLOCK_SLACK)
-			var cx := floori(c.x)
-			var cy := floori(c.y)
-			for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
-				for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
-					var k := ty * world.size + tx
-					if not _blocks.has(k):
-						_blocks[k] = []
-					(_blocks[k] as Array).append(c)
+		# Kept as OUR copy: `_unstamp` has to be handed exactly what was stamped,
+		# and a caller that reuses and mutates its own array would otherwise leave
+		# entries behind that nothing can find again.
+		_block_by[owner] = circles.duplicate()
+		_stamp(_block_by[owner])
+
+
+## Every tile a circle could stop a body in, stamped with the circle itself, so
+## `blocks_at` is one lookup.
+func _stamp(circles: Array[Vector3]) -> void:
+	for c: Vector3 in circles:
+		var r := ceili(c.z + BLOCK_SLACK)
+		var cx := floori(c.x)
+		var cy := floori(c.y)
+		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
+			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+				var k := ty * world.size + tx
+				if not _blocks.has(k):
+					_blocks[k] = []
+				(_blocks[k] as Array).append(c)
+
+
+## The exact inverse, walking the same tiles. `erase` takes ONE match, which is
+## right: `_stamp` appended one entry per circle per tile, so two owners holding
+## an identical circle keep one entry each.
+func _unstamp(circles: Array[Vector3]) -> void:
+	for c: Vector3 in circles:
+		var r := ceili(c.z + BLOCK_SLACK)
+		var cx := floori(c.x)
+		var cy := floori(c.y)
+		for ty in range(maxi(0, cy - r), mini(world.size - 1, cy + r) + 1):
+			for tx in range(maxi(0, cx - r), mini(world.size - 1, cx + r) + 1):
+				var k := ty * world.size + tx
+				var got: Variant = _blocks.get(k)
+				if got == null:
+					continue
+				(got as Array).erase(c)
+				if (got as Array).is_empty():
+					@warning_ignore("return_value_discarded")
+					_blocks.erase(k)
 
 
 ## The walls whose tile `p` stands in. One lookup: every circle is stamped into
