@@ -658,7 +658,16 @@ static func spawn(c: GenContext) -> void:
 	var v: Dictionary = w.villages[0]
 	var vp: Vector2 = v.pos
 	var lv: int = v.level
-	var best := vp + Vector2(3, 3)
+	# **AND NOT A DEFAULT NOBODY CHECKED.** This started at `vp + Vector2(3, 3)`,
+	# which is not asked whether it is dry, flat, on the island or even on the map
+	# — it is simply where the answer sits if none of the sixty-four candidates
+	# below scores. On seed 1 at 1024 none of them does: the first village is Sea
+	# Row on a spit, every ring tile fails `_dry_flat`, and three tiles south-east
+	# of its square is open water. The player woke at level -1, `continent_at` read
+	# 0, no body was marked home, and `StoryJourney.bodies` started the journey on
+	# a continent he had never stood on. One unchecked default, four symptoms, none
+	# of them anywhere near it.
+	var best := Vector2.INF
 	var best_facing := -PI * 0.5
 	var best_score := -1e9
 	# The square's fire stands at the centre (GenScatter._villages): wake where
@@ -684,8 +693,26 @@ static func spawn(c: GenContext) -> void:
 					best_score = sc
 					best = q
 					best_facing = face
-	w.spawn = best
+	# Nothing in the rings would do, so take the nearest ground that WOULD, asked
+	# of the same rule. The village stands on land, so this always has an answer,
+	# and it is the village's own square in the worst case rather than a guess.
+	w.spawn = best if best.is_finite() else _dry_near(c, vp, lv)
 	w.spawn_facing = best_facing
+
+
+## The nearest tile to `p` that a body may wake on, by the same test the rings
+## use. Falls back to `p` itself, which is a village square and therefore land.
+static func _dry_near(c: GenContext, p: Vector2, lv: int) -> Vector2:
+	var cx := floori(p.x)
+	var cy := floori(p.y)
+	for r in 24:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				if _dry_flat(c, cx + dx, cy + dy, lv):
+					return Vector2(cx + dx + 0.5, cy + dy + 0.5)
+	return p
 
 
 ## Once the grounds and houses exist, move the waking place to the spot beside
