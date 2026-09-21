@@ -13,13 +13,50 @@ const Works := preload("res://src/models/props/works.gd")
 
 ## Timber, cord and cloth. Kept as names because a builder reading a model wants
 ## to see what the thing is made of, not which step of which ramp.
-const TIMBER: Array[Color] = [P.EARTH[2], P.EARTH[3], P.EARTH[4]]
-const CORD := P.SAND[3]
-const CORD_DARK := P.SAND[2]
-const CLOTH: Array[Color] = [P.LINEN[2], P.LINEN[3], P.SAND[2]]
-const THATCH: Array[Color] = [P.SAND[3], P.EARTH[4], P.LINEN[3]]
+##
+## **AND NOW THE RENDERER IS TOLD THE SAME THING.** The names were already here
+## and already right at all 158 call sites across the five settlement files —
+## the only thing missing was that a colour reached the shader at alpha 1.0, so
+## a lashing, a rag skin and a driftwood post all came back as one material and
+## only the mesh normal told them apart. Tagging the PALETTE rather than the
+## call sites is what makes that a five-line change instead of a sweep, and it
+## cannot drift: a builder that picks from `TIMBER` gets timber by construction.
+## `GroundColors.down`/`up`/`same_matter` and `Kit.tone` all preserve the alpha,
+## and no `_found` builder in this package touches these ramps (checked: 158
+## uses, none of them in one), which matters because a MADE mark on FOUND
+## geometry is not a wrong material, it is a blinking beacon.
+##
+## `GroundColors.made`'s own rule is "never on a shared colour that might reach
+## either", and these ARE shared colours — so the measurement above is what buys
+## the exception, not the convenience. **It is also the thing that can go stale.**
+## The day somebody writes a `_found` builder in this package that reaches for
+## `Parts.TIMBER` because timber is what it wants, that piece starts blinking on
+## the machines' beat, and nothing errors. The machine's half of this vocabulary
+## is the PLATE ramps and `Works` — a `_found` builder has no business in these
+## five names, and if one ever needs a colour from here it takes
+## `GroundColors.marked(col, 0)` to strip the mark first.
+##
+## **TURF AND ASH ARE DELIBERATELY LEFT ALONE, and they are the dangerous two.**
+## Sod banked at the foot of a wall really is turf and there really is a TURF
+## row — but it is 40, a GROUND mark, and `world.gdshader` gives 40..70 the
+## landscape's own ground treatment. That is not a hypothesis: `towers.gd`
+## carries the frame where a deck drawn from a `wash()`-derived colour pulled a
+## landscape's ground stipple over every roof in the settlement. A made surface
+## takes a made mark or none.
+static var TIMBER: Array[Color] = _matter(GroundColors.TIMBER, [P.EARTH[2], P.EARTH[3], P.EARTH[4]])
+static var CORD: Color = GroundColors.made(P.SAND[3], GroundColors.ROPE)
+static var CORD_DARK: Color = GroundColors.made(P.SAND[2], GroundColors.ROPE)
+static var CLOTH: Array[Color] = _matter(GroundColors.CLOTH, [P.LINEN[2], P.LINEN[3], P.SAND[2]])
+static var THATCH: Array[Color] = _matter(GroundColors.THATCH, [P.SAND[3], P.EARTH[4], P.LINEN[3]])
 const TURF := P.MOSS[3]
 const ASH := P.ASH[1]
+
+
+static func _matter(kind: int, bag: Array[Color]) -> Array[Color]:
+	var out: Array[Color] = []
+	for c: Color in bag:
+		out.append(GroundColors.made(c, kind))
+	return out
 
 
 ## A number 0..1 from a piece's variant and a slot: every wobble, lean and

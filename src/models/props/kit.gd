@@ -5,6 +5,27 @@ extends RefCounted
 ## draw with the shapes below: nothing here makes a plain box or a smooth cone.
 ##
 ## MADE shapes jitter from a seed, so every copy differs; FOUND shapes never do.
+##
+## **WHICH OF THESE HELPERS DRAWS INTO `found`, IN FULL, BECAUSE THE ANSWER
+## DECIDES WHETHER A COLOUR IS A MATERIAL OR A LAMP.** Exactly five, and they
+## write to `found` only, never to both:
+##
+##     rod  chamfer  plate  cable  hoop
+##
+## Every other helper on this kit draws into `made`. That matters far past style:
+## `GroundColors.made` puts a material mark in a colour's ALPHA, and the two lit
+## shaders read alpha for different things — `world.gdshader` as the material,
+## `found.gdshader` as a light built into the machine, where anything under 0.5
+## is a BEACON THAT BLINKS on the machines' beat. Every made mark is
+## 0.314..0.361, so a tagged colour handed to one of these five is not a wrong
+## material, it is a flashing lamp, and nothing raises an error.
+##
+## The list is here rather than in the files that need it because the answer is
+## a property of THIS file and would go stale anywhere else. It already did: a
+## comment in `remains.gd` named two of the five, from a grep that read two lines
+## past each `func` and stopped. A helper's name is no guide either — `rod` is
+## found and `limb` is made, and `_rope_over` in `remains.gd` draws what a player
+## reads as rope entirely in found stock.
 
 var made := MeshKit.new()
 var found := MeshKit.new()
@@ -105,10 +126,29 @@ func _frustum(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Col
 const STONE_RINGS: Array[Vector2] = [Vector2(0.92, 0.0), Vector2(1.0, 0.3), Vector2(0.95, 0.58), Vector2(0.75, 0.82), Vector2(0.42, 0.95)]
 ## What a cobble gets, and what a nugget gets. **Detail follows the size a thing
 ## is actually SEEN at**, which is this package's whole answer to spending more
-## geometry: one screen pixel at the play camera is 14/360 of a tile, so a
-## 0.08-radius chip of slack on a conveyor is four pixels across and a boulder's
-## rings would be thrown away on it. That is not thrift, it is the same rule as
-## the distance LOD, applied where the shape is authored.
+## geometry: a boulder's rings would be thrown away on a chip of slack, so the
+## chip does not get them. That is not thrift, it is the same rule as the
+## distance LOD, applied where the shape is authored. The RULE is right.
+##
+## **THE NUMBER UNDER IT IS THREE TIMES OUT, AND THESE THRESHOLDS HAVE NOT BEEN
+## RE-DERIVED SINCE.** This said "one screen pixel at the play camera is 14/360
+## of a tile, so a 0.08-radius chip is four pixels across". That arithmetic is
+## self-consistent and it is the 640x360 FLOOR: 15 units over 360 pixels is 24
+## pixels to the unit. The floor moved to 1920x1080 and the play camera now shows
+## 15 units over 1080 pixels — **72 pixels to the unit**, which CLAUDE.md states
+## as measured. So the worked example is wrong by exactly the factor the floor
+## moved: that chip is 11.5 pixels across today, not four.
+##
+## What follows is a QUESTION and not a fix, because the answer is a frame and a
+## triangle budget rather than a sum. `STONE_TINY` 0.13 is a stone 0.26 units
+## wide, which was 6 pixels and is now 19; `STONE_SMALL` 0.22 is 0.44 units,
+## which was 11 pixels and is now 32. Both tiers are dropping rings from things
+## three times bigger on the glass than the comment that justifies dropping them
+## assumes, so every cobble and nugget in the game may be carrying a silhouette
+## authored for a screen nobody has. Raising them costs geometry on the commonest
+## props in the world, so it wants measuring before it is touched -- but nothing
+## should be re-derived FROM the old number, which is what this note exists to
+## stop.
 const STONE_RINGS_SMALL: Array[Vector2] = [Vector2(0.94, 0.0), Vector2(1.0, 0.42), Vector2(0.74, 0.82), Vector2(0.4, 0.96)]
 const STONE_RINGS_TINY: Array[Vector2] = [Vector2(0.95, 0.0), Vector2(1.0, 0.5), Vector2(0.5, 0.94)]
 ## Radii, in tiles, where a stone drops a ring and stops earning extra corners.

@@ -270,8 +270,16 @@ static func dead_tree(k: Kit, v: int, c: int) -> void:
 	var d := BiomeDressing.of(c)
 	var burnt := BiomeDressing.burnt(c)
 	var s := 3000 + v * 13 + c * 7
+	# TIMBER (row 80), and ONLY here among the things that grow. A snag has lost
+	# its bark; what is left is weathered wood, which is what the row is for
+	# ("sawn board, weathered post"). The living trees keep the default and that
+	# is a measurement, not an oversight: at the play camera a pine or broadleaf
+	# is its CANOPY, the trunk is occluded by leaf cards from above, and a bark
+	# row would be cost with nothing on the glass to show for it. A dead tree is
+	# the one bare trunk a player actually sees -- 0.42 units at the base, about
+	# 30 pixels at play zoom -- and it was drawn with no material identity at all.
 	var dw := BiomeDressing.tint(c, &"dead", dead_of(c))
-	var wood := dw[0]
+	var wood := GroundColors.made(dw[0], GroundColors.TIMBER)
 	var dark := dw[1]
 	var h: float = [1.7, 1.55, 0.8, 1.9][v % 4]
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.12))

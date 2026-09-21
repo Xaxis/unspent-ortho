@@ -25,10 +25,14 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 
 
 static func lamp_post(k: Kit, c: int) -> void:
-	var wood := P.EARTH[1]
+	# TIMBER (row 80) for the post and its arms only. The lantern above is copper
+	# and glass with a lamp mark already in it, and there is no made row for
+	# worked metal — FOUND owns metal and has its own shader — so the cage keeps
+	# the default rather than borrow a row that would be a lie about it.
+	var wood := GroundColors.made(P.EARTH[1], GroundColors.TIMBER)
 	k.limb(Vector3.ZERO, Vector3(0.05, 1.8, 0.0), 0.07, 0.045, 5, wood)
 	k.limb(Vector3(0.04, 1.66, 0.0), Vector3(0.4, 1.7, 0.02), 0.03, 0.022, 4, wood)
-	k.limb(Vector3(0.05, 1.38, 0.0), Vector3(0.26, 1.68, 0.02), 0.02, 0.016, 3, P.EARTH[2])
+	k.limb(Vector3(0.05, 1.38, 0.0), Vector3(0.26, 1.68, 0.02), 0.02, 0.016, 3, GroundColors.made(P.EARTH[2], GroundColors.TIMBER))
 	var lx := 0.4
 	k.made.strut(Vector3(lx, 1.7, 0.02), Vector3(lx, 1.6, 0.02), 0.008, 3, P.INK[2])
 	# The lantern: a copper cage, glass that is lit when the light goes.
@@ -85,31 +89,41 @@ static func fire(k: Kit, _c: int) -> void:
 ## The workbench: a heavy scarred top on splayed legs, a vice, tools, a saw
 ## hung on its side, and a chopping block with an axe in it.
 static func bench(k: Kit) -> void:
+	# TIMBER (row 80): the legs, shelf, top, the hammer and saw handles and the
+	# chopping block are one piece of wood each. The `P.STONE` steps in here are
+	# NOT stone — they are the vice, the hammer head, the saw plate and the axe,
+	# and the file says why they are on the made pen at all ("iron, but a smith's,
+	# so drawn by hand"). There is no made row for worked iron, so they keep the
+	# default: an honest default beats borrowing CUTSTONE to describe a vice.
+	var w2 := GroundColors.made(P.EARTH[2], GroundColors.TIMBER)
+	var w3 := GroundColors.made(P.EARTH[3], GroundColors.TIMBER)
+	var w4 := GroundColors.made(P.EARTH[4], GroundColors.TIMBER)
+	var w5 := GroundColors.made(P.EARTH[5], GroundColors.TIMBER)
 	var top := 0.74
 	for lx: float in [-0.24, 0.24]:
 		for lz: float in [-0.64, 0.64]:
-			k.limb(Vector3(lx * 1.25, 0.0, lz * 1.08), Vector3(lx, top, lz), 0.05, 0.04, 4, P.EARTH[2])
-	k.slab(0, 0.22, 0, 0.5, 0.05, 1.22, 2000, P.EARTH[2], P.EARTH[3], 0.01)
-	k.slab(0, top, 0, 0.64, 0.11, 1.54, 2001, P.EARTH[3], P.EARTH[4], 0.012, 0.0, 0.0)
-	k.made.quad(Vector3(0.3, top + 0.116, 0.74), Vector3(0.3, top + 0.116, -0.74), Vector3(0.25, top + 0.116, -0.74), Vector3(0.25, top + 0.116, 0.74), P.EARTH[3])
+			k.limb(Vector3(lx * 1.25, 0.0, lz * 1.08), Vector3(lx, top, lz), 0.05, 0.04, 4, w2)
+	k.slab(0, 0.22, 0, 0.5, 0.05, 1.22, 2000, w2, w3, 0.01)
+	k.slab(0, top, 0, 0.64, 0.11, 1.54, 2001, w3, w4, 0.012, 0.0, 0.0)
+	k.made.quad(Vector3(0.3, top + 0.116, 0.74), Vector3(0.3, top + 0.116, -0.74), Vector3(0.25, top + 0.116, -0.74), Vector3(0.25, top + 0.116, 0.74), w3)
 	# The vice at one end: iron, but a smith's, so drawn by hand.
 	k.slab(0.2, top + 0.1, -0.62, 0.14, 0.2, 0.18, 2002, P.STONE[1], P.STONE[2], 0.01)
 	k.slab(0.34, top + 0.1, -0.62, 0.08, 0.2, 0.18, 2003, P.STONE[1], P.STONE[3], 0.01)
 	k.made.strut(Vector3(0.39, top + 0.18, -0.62), Vector3(0.52, top + 0.18, -0.62), 0.02, 5, P.STONE[3])
-	k.made.strut(Vector3(0.52, top + 0.1, -0.62), Vector3(0.52, top + 0.26, -0.62), 0.015, 4, P.EARTH[3])
+	k.made.strut(Vector3(0.52, top + 0.1, -0.62), Vector3(0.52, top + 0.26, -0.62), 0.015, 4, w3)
 	# A hammer and offcuts on top.
-	k.limb(Vector3(-0.05, top + 0.14, 0.05), Vector3(0.16, top + 0.14, 0.36), 0.02, 0.018, 4, P.EARTH[4])
+	k.limb(Vector3(-0.05, top + 0.14, 0.05), Vector3(0.16, top + 0.14, 0.36), 0.02, 0.018, 4, w4)
 	k.slab(-0.06, top + 0.11, 0.03, 0.14, 0.07, 0.07, 2004, P.STONE[3], P.STONE[4], 0.005)
-	k.slab(-0.1, top + 0.11, 0.46, 0.12, 0.05, 0.3, 2005, P.EARTH[4], P.EARTH[5], 0.01)
+	k.slab(-0.1, top + 0.11, 0.46, 0.12, 0.05, 0.3, 2005, w4, w5, 0.01)
 	k.slab(0.12, top + 0.11, -0.22, 0.2, 0.03, 0.08, 2006, P.LINEN[4], P.LINEN[5], 0.005)
 	# The saw hung on the front.
 	var sx := 0.34
 	k.made.tri(Vector3(sx, top - 0.05, 0.56), Vector3(sx, top - 0.3, 0.06), Vector3(sx, top - 0.05, 0.06), P.STONE[4])
 	k.made.tri(Vector3(sx - 0.003, top - 0.05, 0.06), Vector3(sx - 0.003, top - 0.3, 0.06), Vector3(sx - 0.003, top - 0.05, 0.56), P.STONE[3])
-	k.slab(sx, top - 0.14, 0.64, 0.03, 0.14, 0.12, 2007, P.EARTH[4], P.EARTH[4], 0.005)
+	k.slab(sx, top - 0.14, 0.64, 0.03, 0.14, 0.12, 2007, w4, w4, 0.005)
 	# Chopping block with the axe in it, chips about.
-	k.made.prism(0.16, 0.0, 1.06, 0.23, 0.38, 0.21, 7, P.EARTH[2], P.EARTH[4])
-	k.limb(Vector3(0.19, 0.4, 1.0), Vector3(0.46, 0.73, 1.12), 0.024, 0.02, 4, P.EARTH[4])
+	k.made.prism(0.16, 0.0, 1.06, 0.23, 0.38, 0.21, 7, w2, w4)
+	k.limb(Vector3(0.19, 0.4, 1.0), Vector3(0.46, 0.73, 1.12), 0.024, 0.02, 4, w4)
 	k.made.push(Transform3D(Basis(Vector3.UP, 0.4) * Basis(Vector3.BACK, -0.8), Vector3(0.19, 0.41, 1.02)))
 	k.made.tri(Vector3(-0.1, -0.03, 0), Vector3(0.1, -0.05, 0), Vector3(0.1, 0.06, 0), P.STONE[4])
 	k.made.tri(Vector3(0.1, 0.06, 0.005), Vector3(0.1, -0.05, 0.005), Vector3(-0.1, -0.03, 0.005), P.STONE[3])
@@ -124,16 +138,24 @@ static func bench(k: Kit) -> void:
 ## Its mouth glows.
 static func kiln(k: Kit, v: int) -> void:
 	if v % 2 == 0:
-		var brick := P.RUST[2]
+		# CLAY (row 84) — a bottle kiln is fired clay, and the row is daub, mud
+		# render and cob, which is the same stuff before the firing. CUTSTONE was
+		# the other candidate and is wrong twice: it is written for DRESSED block,
+		# and its bump draws courses, which this model already builds as real
+		# geometry four rings of it. Two sets of courses, one in the mesh and one
+		# in the normal, is worse than none. The rubble LIME kiln in the other
+		# branch stays untagged: rubble is neither dressed block nor clay, and the
+		# honest default is the answer until a row earns itself.
+		var brick := GroundColors.made(P.RUST[2], GroundColors.CLAY)
 		k.made.prism(0, 0, 0, 0.74, 0.55, 0.72, 11, brick, brick, 0.1)
-		k.made.prism(0, 0.55, 0, 0.72, 1.25, 0.42, 11, P.RUST[3], P.RUST[3], 0.1)
+		k.made.prism(0, 0.55, 0, 0.72, 1.25, 0.42, 11, GroundColors.made(P.RUST[3], GroundColors.CLAY), GroundColors.made(P.RUST[3], GroundColors.CLAY), 0.1)
 		k.made.prism(0, 1.25, 0, 0.42, 1.72, 0.22, 11, brick, P.INK[1], 0.1)
-		k.made.prism(0, 1.72, 0, 0.27, 1.8, 0.27, 11, P.RUST[3], P.INK[0], 0.1)
+		k.made.prism(0, 1.72, 0, 0.27, 1.8, 0.27, 11, GroundColors.made(P.RUST[3], GroundColors.CLAY), P.INK[0], 0.1)
 		# Brick courses, a little uneven.
 		for i in 4:
 			var y := 0.14 + i * 0.3
 			var r := lerpf(0.74, 0.5, y / 1.4) + 0.012
-			k.made.prism(Kit.j(2090, i, 0.01), y, 0, r, y + 0.025, r, 11, P.RUST[1], P.RUST[1], 0.1)
+			k.made.prism(Kit.j(2090, i, 0.01), y, 0, r, y + 0.025, r, 11, GroundColors.made(P.RUST[1], GroundColors.CLAY), GroundColors.made(P.RUST[1], GroundColors.CLAY), 0.1)
 		# The arched mouth on the front, glowing.
 		var fx := 0.73
 		k.made.quad(Vector3(fx, 0.02, 0.24), Vector3(fx, 0.02, -0.24), Vector3(fx, 0.34, -0.24), Vector3(fx, 0.34, 0.24), P.INK[1])
@@ -143,10 +165,10 @@ static func kiln(k: Kit, v: int) -> void:
 		k.made.quad(Vector3(fx - 0.02, 0.5, 0.2), Vector3(fx - 0.02, 0.5, -0.12), Vector3(fx - 0.12, 1.1, -0.06), Vector3(fx - 0.12, 1.1, 0.12), P.INK[2])
 		# Fired pots and bricks stacked by the door.
 		for i in 3:
-			k.made.prism(0.98, 0.0, 0.56 - i * 0.27, 0.08, 0.1, 0.1, 7, P.RUST[4])
-			k.made.prism(0.98, 0.1, 0.56 - i * 0.27, 0.1, 0.22, 0.06, 7, P.RUST[4], P.RUST[3])
+			k.made.prism(0.98, 0.0, 0.56 - i * 0.27, 0.08, 0.1, 0.1, 7, GroundColors.made(P.RUST[4], GroundColors.CLAY))
+			k.made.prism(0.98, 0.1, 0.56 - i * 0.27, 0.1, 0.22, 0.06, 7, GroundColors.made(P.RUST[4], GroundColors.CLAY), GroundColors.made(P.RUST[3], GroundColors.CLAY))
 		for i in 4:
-			k.slab(0.92, i * 0.07, -0.6, 0.26, 0.07, 0.13, 2095 + i, P.RUST[3] if i % 2 else P.RUST[2], P.RUST[3], 0.01)
+			k.slab(0.92, i * 0.07, -0.6, 0.26, 0.07, 0.13, 2095 + i, GroundColors.made(P.RUST[3], GroundColors.CLAY) if i % 2 else P.RUST[2], GroundColors.made(P.RUST[3], GroundColors.CLAY), 0.01)
 	else:
 		var stone := P.LINEN[3]
 		k.hand(Ink.CROSS)
