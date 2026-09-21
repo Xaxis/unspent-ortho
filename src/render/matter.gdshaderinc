@@ -157,7 +157,7 @@ vec4 matter_of(int m) {
 	// adds up to +0.45 roughness on salt and takes 0.42 off under frost, so two
 	// rows within about 0.05 of each other are erased by a week of weather and
 	// are not worth having. Nothing here is metallic; FOUND owns metal and has
-	// its own shader. 92..95 are left spare, and 71..79 are left EMPTY on purpose
+	// its own shader. 93..95 are left spare (SLATE took 92), and 71..79 are EMPTY
 	// as a gap between this band and the cliff strata, so an off-by-one lands on
 	// nothing rather than on a material.
 	else if (m == 80) { r = vec4(0.82, 0.36, 0.006, 0.0); }   // TIMBER: sawn board, weathered post
@@ -194,6 +194,26 @@ vec4 matter_of(int m) {
 	// cannot erase it in a week of weather either way -- which is the band's own
 	// test for whether a row is worth having.
 	else if (m == 92) { r = vec4(0.62, 0.54, 0.030, 0.0); }   // SLATE: a cleaved roofing tile
+	// **BARK AND FIELDSTONE WERE PROPOSED FOR 93 AND 94 AND BOTH WERE REFUSED BY
+	// A FRAME.** Recorded because the arithmetic said yes and the pictures said
+	// no, and the next person will have the same idea.
+	//
+	// BARK cleared the admission test easily — 0.08 roughness and 0.18 specular
+	// clear of the default. It fails on OCCLUSION: at the play camera a living
+	// tree is its CANOPY, the leaf cards cover the trunk from above, and the only
+	// bare trunk a player sees is a DEAD one — which has lost its bark, is
+	// weathered wood, and therefore wants TIMBER, a row that already exists.
+	// `trees.gd` now tags exactly that and nothing else that grows.
+	//
+	// FIELDSTONE failed on its own numbers: 0.04 and 0.04 from CUTSTONE, the same
+	// pair that disqualified CUTSTONE's first spec. Its remaining case was that
+	// the default bump `matter_fbm(p * 1.1)` is one cycle per 0.909 units (65
+	// pixels), so a small prop would get under one cycle and be drawn flat.
+	// MEASURED off the models instead of estimated, the props are not small:
+	// boulder 1.9 units, bush 1.5, stump 1.0, pine 6.3 — a boulder gets about two
+	// cycles. And a frame shows rocks are carried by their GEOMETRY anyway
+	// (`Kit.stone`'s rings and its once-dealt corner wobble), not by the height
+	// field, so relief underneath buys very little.
 	return r;
 }
 
