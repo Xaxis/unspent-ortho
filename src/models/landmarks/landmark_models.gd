@@ -524,7 +524,14 @@ static func _slab(k: MeshKit, h: float, wide: float, thick: float, col: Color, t
 		var x0 := lean * h * t0
 		var x1 := lean * h * t1
 		k.quad(Vector3(x0 - w0, h * t0, d0), Vector3(x0 + w0, h * t0, d0), Vector3(x1 + w1, h * t1, d1), Vector3(x1 - w1, h * t1, d1), col)
-		k.quad(Vector3(x1 + w1, h * t1, -d1), Vector3(x1 - w1, h * t1, -d1), Vector3(x0 - w0, h * t0, -d0), Vector3(x0 + w0, h * t0, -d0), col)
+		# WOUND THE OTHER WAY ROUND FROM THE +Z FACE ABOVE, which is the whole point
+		# and was inverted for this model's entire life: `MeshKit.tri` takes its
+		# normal as `(c - b) x (a - b)`, so running this face in the same rotational
+		# order as its opposite twin gives both of them a +Z normal. The land is
+		# `cull_back`, so the -Z flank was not dark and was not z-fighting -- it was
+		# ABSENT, and every standing stone was an open shell you could see through
+		# from half the bearings on the ring. Held by tests/models/test_landmark_windings.gd.
+		k.quad(Vector3(x0 + w0, h * t0, -d0), Vector3(x0 - w0, h * t0, -d0), Vector3(x1 - w1, h * t1, -d1), Vector3(x1 + w1, h * t1, -d1), col)
 		k.quad(Vector3(x0 + w0, h * t0, -d0), Vector3(x1 + w1, h * t1, -d1), Vector3(x1 + w1, h * t1, d1), Vector3(x0 + w0, h * t0, d0), top)
 		k.quad(Vector3(x0 - w0, h * t0, d0), Vector3(x1 - w1, h * t1, d1), Vector3(x1 - w1, h * t1, -d1), Vector3(x0 - w0, h * t0, -d0), top)
 	var cw := wide * 0.66
