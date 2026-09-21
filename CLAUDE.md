@@ -570,6 +570,25 @@ tools print their own summaries.
   the life of a world. Ask what announces a change (`Events.landmark_found`,
   `took`, `sentinel_fell`, `works_broken`) and recompute then — an idle frame
   then costs nothing, which no timer can manage.
+- **A BUDGET CHECKED BEFORE EACH ITEM CAPS A COUNT, NOT A COST — AND ITS HEADER
+  WILL TELL YOU OTHERWISE.** `30_mobs._ensure_nodes` carries
+  `NODE_BUDGET_MS := 4.0` and returns once it is spent, over a header saying that
+  "stands two or three bodies up a frame". Measured, its worst call is **16.6 ms**:
+  the check runs BEFORE each creation, so a call overshoots by one whole item, and
+  one body costs about 12.6 ms — eight times what the header implies and four
+  times the budget it sits inside. A budget cannot cap a single item bigger than
+  the whole allowance, and nothing in the file said so.
+  **The trap is not the constant, it is believing it.** Asked which of that tick's
+  four calls held its 17.7 ms, I predicted the spawner and wrote the prediction
+  down first, ON THE GROUNDS THAT `_ensure_nodes` WAS ALREADY BUDGETED. It was
+  `_ensure_nodes`, by a factor of eighteen. That is the same error as trusting
+  `--stats` to judge eight frames or a `grep -A 2` to return a whole list: a number
+  written down as a guarantee is still a claim, and a guarantee is the most
+  expensive kind to take on trust because it is exactly what stops you measuring.
+  So: measure the thing the budget is meant to bound, not the budget; and when a
+  cost has to be capped rather than counted, the item has to be divisible, which
+  is the thing to check FIRST — the existing budget fails precisely because a body
+  cannot be built in pieces.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
