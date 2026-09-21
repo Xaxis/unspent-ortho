@@ -498,6 +498,21 @@ tools print their own summaries.
   feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
   rather than waiting for the world to produce it, or the test reports on the
   weather.
+  **AND THE SAME THING HAPPENS ONE LEVEL UP: A CONTROL THAT CANNOT FAIL IS NOT
+  EVIDENCE.** An A/B was built to ask whether one commit's leftover state broke
+  three tests, and both arms came back identical with zero failures, which reads
+  like a clean acquittal. It was not an acquittal, it was a null instrument:
+  **the runner walks its own traversal order and a filter only SELECTS, it never
+  sequences**, so two of the three victims ran *before* the suspect in both arms
+  and the exposure being tested never happened. The arms agreed; nobody had
+  checked they could have disagreed. And the execution order was printed four
+  lines above the results, in the same log the conclusion was read out of. So
+  before a run, **say what a NEGATIVE would look like** — name the failure the
+  run is capable of producing. If you cannot name it, it is not an experiment,
+  and a green from it certifies nothing. (The order itself is one command:
+  `grep -E '^ *(ok|FAIL) ' <log> | awk '{print $2}' | sed 's|:.*||' | awk
+  '!seen[$0]++'`. And beware that 12 of the 256 test files share a basename, so
+  those positions are among NAMES, not files.)
   **And a DEFAULT can do the asserting.** `here.get("answered", true)` read off
   an empty dictionary returns the caller's own `true` — so a player standing in
   no region at all reported as a finished chapter, and the test that caught it
