@@ -582,6 +582,7 @@ git worktree list                       # a worktree is someone's live desk
 git branch --list 'a2/*' 'm2/*'         # branches a wave is writing to
 pgrep -ix godot | wc -l                 # runs in flight (-i: the binary is "Godot"; -x godot alone counts zero)
 sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturated
+vm_stat | head -3                       # FREE PAGES x 16KB. Under ~500 MB, a full suite dies.
 ```
 
 - **Never write in another session's worktree**, commit on its branch, or delete it.
@@ -642,6 +643,21 @@ sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturate
 - **Keep total builders across all sessions to about six.** Past saturation nobody
   goes faster and the clock-watching tests start lying. If the load is already high,
   wait rather than launch.
+- **AND THE THING THAT KILLS A RUN IS MEMORY, NOT LOAD — WE READ THE WRONG NUMBER
+  ALL DAY.** Four full `tools/test.sh` runs were killed by the OS on 2026-09-20,
+  across two sessions, and every time the load average looked survivable. The one
+  that died at 215 tests of 2,038 did so at load **17.75** with the box reporting
+  45% free system-wide but only **3,593 pages actually free — about 56 MB** — and
+  20.1 million pageouts. Later, load read a comfortable **9.63** with 60 MB free:
+  the load average says go and the machine cannot hold the suite. A run that dies
+  a tenth of the way in is not a flaky run, it is a box out of memory. So **check
+  `vm_stat`'s free pages before a full suite, not `vm.loadavg`** — loadavg is the
+  right question for "will my timings lie" and the wrong one for "will this
+  finish". And when the box is thin, the cheaper decisive form of an
+  order-dependence question is a TARGETED run: the suspect file plus its victim
+  files in one process, in runner order, which costs a fraction of the memory and
+  answers the same question — at the price of not proving the rest of the set
+  unchanged.
 - **Wall-clock results lie under load, and SLACK IS FOR WAITING, NOT FOR COSTING.**
   `TestCase.machine_slack()` (and `tools/_slack.sh` for tool timeouts) is right for
   "how long may I wait for something to happen" — a job, a page, a body arriving —
