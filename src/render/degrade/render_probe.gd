@@ -402,11 +402,26 @@ static func features(tour: Node, game: Node, label: String, keep_frames: bool = 
 		% [label, _renderer(), Quality.current_id(), noise])
 	var there: Array[String] = []
 	var absent: Array[String] = []
+	## **A DIFFERENCE THE FLOOR SWALLOWED IS NOT A DIFFERENCE OF ZERO**, and this
+	## list is the whole reason it is three lists and not two. docs/LOOK.md method
+	## 3 says print UNMEASURED and never 0.00 when a clock did not run; the same
+	## rule belongs on a PICTURE that could not be resolved, and it was not here.
+	## Measured on the night-rain run: `local lights` moved the frame by 7.602
+	## against a floor of 8.599 and was printed as "no change" -- for the switch
+	## that at night is the difference between a lit village and a dark one. Six
+	## of seventeen read that way, and the summary line carried them as a bare
+	## list of names with the numbers dropped, which is the form that gets quoted
+	## later as "nothing matters at night".
+	var unresolved: Array[String] = []
+	## And a feature the ENGINE REFUSES is a fourth fact again: it is not absent
+	## because it does nothing, it is absent because it cannot be asked. Those
+	## were going into the same bucket as "measured, no effect".
+	var refused: Array[String] = []
 	for row: Array in _switches(tour, game):
 		var name: String = row[0]
 		var flip: Callable = row[1]
 		if row.size() > 2 and not bool(row[2]):
-			absent.append(name)
+			refused.append(name)
 			print("tour perf features %s: %-52s not offered by this renderer (the engine refuses it)" % [label, name])
 			continue
 		flip.call(false)
@@ -418,12 +433,33 @@ static func features(tour: Node, game: Node, label: String, keep_frames: bool = 
 		# The noise HERE: the same switch thrown off twice. A shader's clock runs
 		# while the world is held, and at night the lamp's flame and the rain do
 		# not stand still, so one floor for the whole run undercounts it.
+		#
+		# **AND THE FLOOR RISES WITH MACHINE LOAD WHILE THE SIGNAL DOES NOT**,
+		# which decides how this table may be read. Measured at one commit, two
+		# runs, the only change being a second session starting work: every
+		# `differ by` held (volumetric 9.829 -> 9.892, the grade 32.270 -> 32.276,
+		# near depth of field 12.562 -> 12.637) while the floor went 0.219 ->
+		# 0.500..1.084 and SEVEN switches changed verdict. A shader's clock is
+		# wall-clock, so a busy box puts more of it between the two grabs and the
+		# world the probe is holding still moves further. So: the DIFFERENCES are
+		# evidence and reproducible, the VERDICT is a judgement about this run's
+		# floor, and a ranking built on the verdict will reorder itself on a
+		# quieter machine. Build on the numbers.
 		var here := maxf(noise, differ(off, off2))
 		var d := differ(off, on)
 		var real := d > here * 2.0 + THERE
-		(there if real else absent).append(name)
+		# Three outcomes, not two. `d <= THERE` is quiet enough to call quiet
+		# whatever the floor was doing; anything louder than that which still
+		# fails the test failed it BECAUSE OF THE FLOOR, and the honest word for
+		# that is unresolved.
+		var verdict := "CHANGES THE FRAME"
+		if not real:
+			verdict = "no change" if d <= THERE else "UNRESOLVED (floor %.3f swallows it)" % here
+			(absent if d <= THERE else unresolved).append(name)
+		else:
+			there.append(name)
 		print("tour perf features %s: %-52s off/on differ by %6.3f (noise %.3f), luma %6.2f -> %6.2f  -> %s"
-			% [label, name, d, here, luma(off), luma(on), "CHANGES THE FRAME" if real else "no change"])
+			% [label, name, d, here, luma(off), luma(on), verdict])
 		if keep_frames:
 			var slug := name.get_slice(" (", 0).replace(" / ", "-").replace(" ", "-").to_lower()
 			_keep(tour, "probe-%s-%s-off" % [label, slug], off)
@@ -449,6 +485,19 @@ static func features(tour: Node, game: Node, label: String, keep_frames: bool = 
 	tree.paused = was_paused
 	print("tour perf features %s (%s): changes the frame: %s" % [label, _renderer(), ", ".join(there)])
 	print("tour perf features %s (%s): no change: %s" % [label, _renderer(), ", ".join(absent) if not absent.is_empty() else "none"])
+	if not unresolved.is_empty():
+		print("tour perf features %s (%s): UNRESOLVED at this noise floor -- NOT a finding of no effect: %s"
+			% [label, _renderer(), ", ".join(unresolved)])
+	if not refused.is_empty():
+		print("tour perf features %s (%s): refused by this renderer (never measured): %s"
+			% [label, _renderer(), ", ".join(refused)])
+	# A run whose floor swallowed most of what it asked has not measured the
+	# scene, it has measured the weather. Say so where the summary is read, or
+	# the three lines above get quoted as though the middle one were empty.
+	if unresolved.size() > there.size() + absent.size():
+		print("tour perf features %s (%s): THIS RUN IS MOSTLY UNRESOLVED (%d of %d). Hold the world stiller"
+			% [label, _renderer(), unresolved.size(), unresolved.size() + there.size() + absent.size()]
+			+ " -- rain, a flame or a crowd raises the floor above the thing being asked about.")
 	return true
 
 
