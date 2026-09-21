@@ -54,8 +54,16 @@ static func walls(k: Kit, w: float, d: float, h: float, seed_value: int, front: 
 	for i in 4:
 		# Every corner leans its OWN way and stands its own height. One shared
 		# lean vector is a shear: it tilts the prism and leaves it a rigid box,
-		# which is what the art review saw. Budgeted in screen pixels at the play
-		# camera (24 px a world unit): 3-5 px of lean, about 3 px of height.
+		# which is what the art review saw.
+		#
+		# **THE PIXEL BUDGET HERE IS STALE BY THE FACTOR THE FLOOR MOVED.** It
+		# said "24 px a world unit: 3-5 px of lean, about 3 px of height", which
+		# was the 640x360 base. The play camera is 72 px to the unit now, and the
+		# numbers below did not change — so this lean is about 17 px, not 4. The
+		# geometry may well be right; what is certainly wrong is deriving a new
+		# value from the old budget, which is why the arithmetic is written out
+		# rather than the conclusion. See `kit.gd`'s stone rings for the same
+		# error in the same package.
 		var b := c[i]
 		var own := Vector3(Kit.j(seed_value, i + 12, 0.115), 0.0, Kit.j(seed_value, i + 16, 0.115))
 		c.append(Vector3(b.x * 0.94, h + Kit.j(seed_value, i + 8, 0.2), b.z * 0.955) + (lean + own) * h * 1.4)

@@ -126,10 +126,29 @@ func _frustum(a: Vector3, b: Vector3, r0: float, r1: float, sides: int, col: Col
 const STONE_RINGS: Array[Vector2] = [Vector2(0.92, 0.0), Vector2(1.0, 0.3), Vector2(0.95, 0.58), Vector2(0.75, 0.82), Vector2(0.42, 0.95)]
 ## What a cobble gets, and what a nugget gets. **Detail follows the size a thing
 ## is actually SEEN at**, which is this package's whole answer to spending more
-## geometry: one screen pixel at the play camera is 14/360 of a tile, so a
-## 0.08-radius chip of slack on a conveyor is four pixels across and a boulder's
-## rings would be thrown away on it. That is not thrift, it is the same rule as
-## the distance LOD, applied where the shape is authored.
+## geometry: a boulder's rings would be thrown away on a chip of slack, so the
+## chip does not get them. That is not thrift, it is the same rule as the
+## distance LOD, applied where the shape is authored. The RULE is right.
+##
+## **THE NUMBER UNDER IT IS THREE TIMES OUT, AND THESE THRESHOLDS HAVE NOT BEEN
+## RE-DERIVED SINCE.** This said "one screen pixel at the play camera is 14/360
+## of a tile, so a 0.08-radius chip is four pixels across". That arithmetic is
+## self-consistent and it is the 640x360 FLOOR: 15 units over 360 pixels is 24
+## pixels to the unit. The floor moved to 1920x1080 and the play camera now shows
+## 15 units over 1080 pixels — **72 pixels to the unit**, which CLAUDE.md states
+## as measured. So the worked example is wrong by exactly the factor the floor
+## moved: that chip is 11.5 pixels across today, not four.
+##
+## What follows is a QUESTION and not a fix, because the answer is a frame and a
+## triangle budget rather than a sum. `STONE_TINY` 0.13 is a stone 0.26 units
+## wide, which was 6 pixels and is now 19; `STONE_SMALL` 0.22 is 0.44 units,
+## which was 11 pixels and is now 32. Both tiers are dropping rings from things
+## three times bigger on the glass than the comment that justifies dropping them
+## assumes, so every cobble and nugget in the game may be carrying a silhouette
+## authored for a screen nobody has. Raising them costs geometry on the commonest
+## props in the world, so it wants measuring before it is touched -- but nothing
+## should be re-derived FROM the old number, which is what this note exists to
+## stop.
 const STONE_RINGS_SMALL: Array[Vector2] = [Vector2(0.94, 0.0), Vector2(1.0, 0.42), Vector2(0.74, 0.82), Vector2(0.4, 0.96)]
 const STONE_RINGS_TINY: Array[Vector2] = [Vector2(0.95, 0.0), Vector2(1.0, 0.5), Vector2(0.5, 0.94)]
 ## Radii, in tiles, where a stone drops a ring and stops earning extra corners.

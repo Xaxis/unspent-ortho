@@ -84,6 +84,22 @@ is written down here.
 because `strut(a, b, r, n, col)` takes two `Vector3(x, y, z)` arguments and a
 comma-split of the call text answers 8.
 
+**AND THE MODEL PACKAGE IS FULL OF PIXEL BUDGETS THAT WERE NEVER RE-DERIVED.**
+The floor moving from 640x360 to 1920x1080 tripled the pixels a world unit gets
+(24 to 72), and a shape authored to a SCREEN-PIXEL budget is now three times what
+its own comment says it is. Found 2026-09-20, all three self-consistent at the
+old floor: `kit.gd`'s stone LOD tiers rest on "one screen pixel at the play
+camera is 14/360 of a tile", so the 0.08-radius chip its worked example calls
+four pixels is 11.5 today; `houses.gd`'s wall lean is budgeted at "24 px a world
+unit: 3-5 px of lean" and the unchanged geometry now leans about 17; and
+`works_depot.gd` sizes its light strip to "survive the downsample to 640x360",
+which the engine no longer does. Each is now marked in place. **None of them has
+been re-tuned, deliberately** — whether the geometry is wrong is a frame and a
+triangle budget, not a sum, and the numbers are the commonest props in the world.
+What is certain is that nothing may be re-derived FROM the old budget. Search for
+a pixel count in a comment before trusting it, the way you would check a wave
+status against its directory.
+
 **This paragraph was wrong for weeks and nobody caught it**, because a stale
 contract reads exactly like a true one: it claimed `depth` was undone while
 `src/render/depth/` and `src/systems/13_fore.gd` were shipped, passing twenty
