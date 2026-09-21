@@ -87,7 +87,7 @@ func _run() -> void:
 			# can pull in a method from ANOTHER file whose name contains it
 			# ("test_map" also takes one out of test_screens). Do not read a
 			# filtered count as a file count.
-			if filter != "" and not _wanted(id, filter):
+			if filter != "" and not _wanted(id, path, filter):
 				continue
 			var inst: TestCase = script.new()
 			inst.tree = self
@@ -153,14 +153,24 @@ func _find(root: String, ext: String) -> PackedStringArray:
 	return out
 
 
-## Does `id` ("file:method") match `filter`? One substring as it always was, or
-## several separated by commas, where any one matching is enough. Blank parts are
-## ignored so a trailing comma cannot quietly select everything.
-static func _wanted(id: String, filter: String) -> bool:
+## Does this test match `filter`? One substring as it always was, or several
+## separated by commas, where any one matching is enough. Blank parts are ignored
+## so a trailing comma cannot quietly select everything.
+##
+## **THE PATH IS MATCHED AS WELL AS THE ID, BECAUSE BASENAMES ARE NOT UNIQUE.**
+## The id is `basename:method`, and twelve of this suite's 256 files share a
+## basename with another — `test_in_game.gd` exists FIVE times (story, survival,
+## disposition, landmarks, works) and `test_rules.gd` and `test_world.gd` three
+## times each. So "test_in_game" as a filter drags in five files from five
+## directories that sit far apart in the traversal, which silently destroys a
+## SPAN: the whole point of naming a run of files is that they are contiguous.
+## Matching the path too means `tests/works/test_in_game` selects exactly one,
+## while the bare basename keeps working for everything that is unique.
+static func _wanted(id: String, path: String, filter: String) -> bool:
 	if not filter.contains(","):
-		return id.contains(filter)
+		return id.contains(filter) or path.contains(filter)
 	for part: String in filter.split(",", false):
 		var want := part.strip_edges()
-		if want != "" and id.contains(want):
+		if want != "" and (id.contains(want) or path.contains(want)):
 			return true
 	return false
