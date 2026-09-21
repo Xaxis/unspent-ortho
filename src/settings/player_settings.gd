@@ -292,6 +292,24 @@ static func bind_key(action: StringName, keycode: int) -> StringName:
 	return stolen
 
 
+## ONE action back to the keys it shipped with, leaving every other rebind alone.
+##
+## Without this the only way to undo a rebind was `reset_keys`, which resets
+## EVERYTHING and clears the whole table — so anyone who moved one key had a
+## choice between putting the rest of the map back too and a `bind_key` to the
+## old code, which is not a restore at all: `bind_key` sets an action to exactly
+## ONE key, and ten of this game's actions ship with two. `tests/settings/test_taught_keys.gd`
+## took that second option, wrote "put back, and nothing else touched" beside it,
+## and left `use` on one key for every test that ran after it in the suite.
+static func reset_key(action: StringName) -> void:
+	if not _keys.has(action):
+		return
+	_restore(action)
+	@warning_ignore("return_value_discarded")
+	_keys.erase(action)
+	save()
+
+
 ## Back to the keys the game shipped with, and nothing else touched. Several
 ## actions ship with two (dodge is shift AND k, carrying is tab AND i): all of
 ## them come back, not just the one the page was showing.

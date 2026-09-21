@@ -390,6 +390,40 @@ tools print their own summaries.
   23.5 tiles from the spawn, which is the way-in seam's signature. The
   measurement was available before the first guess. When something is wrong with
   a thing the world contains, print THAT THING and read what it is standing in.
+  **AND THE COMMENT MAY BE DESCRIBING AN INTENTION RATHER THAN THE CODE — EVEN
+  WHEN IT NAMES THE EXACT RULE BEING BROKEN ONE LINE ABOVE THE BREAKING OF IT.**
+  Three of these in one day, and none was drift: all three were wrong when they
+  were written. `StoryWorld.guaranteed`'s header says "Do NOT duplicate that
+  reading here — the dealer's answer is the authority, or the two drift and the
+  gate stops meaning anything", and the next line is
+  `return land == COAST or BiomeRegistry.guaranteed(land)`, which duplicates it;
+  the dealer put the coast on about half the continents, so the player's own town
+  was cast across an ocean and the whole spine followed it. A turf test's header
+  said the colours were frozen in `src/render/` and unfixable there, while four
+  of the five were `d.grounds` in content, which is why nobody had touched them
+  for weeks. `test_era`'s header claimed a work stamps the ground it stands on,
+  in two opposite versions across its life, for a stamp that has never existed.
+  A stale contract at least used to be true; this kind never was, and it is
+  worse, because a comment that names the rule reads as proof the rule was
+  considered. **A header is evidence about what somebody meant, never about what
+  the code does — and the more precisely it states the rule, the more it is worth
+  checking that the line underneath obeys it.**
+  **AND THE COMMONEST WRONG MOVE OF ALL IS READING THE SHAPE OF THE CODE INSTEAD
+  OF THE THING IT STANDS FOR.** Ten wrong hypotheses across two sessions in one
+  day and every one had this form: an operator, a threshold, a variable name, a
+  grep pattern or a piece of git syntax was read as if the symbol were the
+  meaning. `HEAD~3` was read as "three changes back" when it counts COMMITS and
+  merges let it walk sideways. `d.grounds\[` was grepped against a file that
+  writes `d.grounds = {` and answered "declares nothing" for seven declarations.
+  `FLOOR if gb < 0.22` was read as a minority case when `gb` is massed at zero
+  and it is 80% of the band. **And the sharpest of them: consistency is not
+  evidence.** Four landscapes write `gb >` for the "more" state, so the one
+  writing `gb <` looked like a typo and was one step from being flipped with a
+  `GEN` bump behind it — until the field's own definition said `big` is "where a
+  ground GATHERS", which for a ruined city makes "slab where nothing gathered
+  over it" exactly right. The majority idiom is not the authority; the thing's
+  own declaration is. Before changing a line because it looks wrong, read what
+  the values in it actually ARE, and print them.
   **AND A REVERT THAT DOES NOT REVERT READS EXACTLY LIKE A SECOND CAUSE.**
   `test_parity`'s re-acceptance asks you to put the change back and watch the old
   hashes return. I reverted one file to `HEAD~3` and parity still failed, which
