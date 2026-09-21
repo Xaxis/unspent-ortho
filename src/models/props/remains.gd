@@ -602,8 +602,10 @@ static func _stilt_hut(k: Kit, s: int, lit: bool, _d: BiomeDressing) -> void:
 ## A cable pulled over a thatch dome along `ang`, following the dome's own
 ## surface (`Kit.clump_top`) and pegged past the eave at both ends.
 ## **NOT TAGGED ROPE, AND THE NAME IS THE TRAP.** This draws with `k.rod`, and
-## `Kit.rod` is `found.strut` — the FOUND pen. `Kit.rod` and `Kit.plate` are the
-## only two of Kit's helpers that build into FOUND; everything else is `made`. A
+## `Kit.rod` is `found.strut` — the FOUND pen. FIVE of Kit's helpers draw into
+## FOUND and `kit.gd`'s own header names them all; this line said "only two" for
+## one commit, from a grep that read two lines past each `func` and stopped,
+## which is how a sentence gets to be precise and wrong at the same time. A
 ## made mark is alpha 0.314..0.361 and `found.gdshader` reads anything under 0.5
 ## as a beacon that BLINKS on the machines' beat, so tagging the obvious material
 ## here would put a flashing lamp over every thatch dome in the game, and nothing

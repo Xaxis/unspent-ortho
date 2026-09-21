@@ -5,6 +5,27 @@ extends RefCounted
 ## draw with the shapes below: nothing here makes a plain box or a smooth cone.
 ##
 ## MADE shapes jitter from a seed, so every copy differs; FOUND shapes never do.
+##
+## **WHICH OF THESE HELPERS DRAWS INTO `found`, IN FULL, BECAUSE THE ANSWER
+## DECIDES WHETHER A COLOUR IS A MATERIAL OR A LAMP.** Exactly five, and they
+## write to `found` only, never to both:
+##
+##     rod  chamfer  plate  cable  hoop
+##
+## Every other helper on this kit draws into `made`. That matters far past style:
+## `GroundColors.made` puts a material mark in a colour's ALPHA, and the two lit
+## shaders read alpha for different things — `world.gdshader` as the material,
+## `found.gdshader` as a light built into the machine, where anything under 0.5
+## is a BEACON THAT BLINKS on the machines' beat. Every made mark is
+## 0.314..0.361, so a tagged colour handed to one of these five is not a wrong
+## material, it is a flashing lamp, and nothing raises an error.
+##
+## The list is here rather than in the files that need it because the answer is
+## a property of THIS file and would go stale anywhere else. It already did: a
+## comment in `remains.gd` named two of the five, from a grep that read two lines
+## past each `func` and stopped. A helper's name is no guide either — `rod` is
+## found and `limb` is made, and `_rope_over` in `remains.gd` draws what a player
+## reads as rope entirely in found stock.
 
 var made := MeshKit.new()
 var found := MeshKit.new()
