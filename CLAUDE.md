@@ -421,6 +421,20 @@ tools print their own summaries.
   considered. **A header is evidence about what somebody meant, never about what
   the code does — and the more precisely it states the rule, the more it is worth
   checking that the line underneath obeys it.**
+  **AND THE OPPOSITE COSTS THE SAME AFTERNOON: A COMMENT THAT IS RIGHT, READ
+  AFTER THE WORK INSTEAD OF BEFORE IT.** The slums' house count was chased
+  through five levers — more boroughs, a tighter repeat, a wider platform — and
+  four were rejected after measuring, one of them taking three tests red on the
+  way. `slums.gd` line 78 had said where the cap actually was the whole time:
+  "The rest of the cap is in GenScatter's row placement, not in this file." The
+  same day, a test's header said a strait was wadeable because the ocean was
+  shallow, which was false, and another said a landscape's turf colours were
+  frozen in `src/render/`, which was also false. So the files in this repository
+  are neither trustworthy nor worthless: they are EVIDENCE, and the cheapest
+  possible move is to read the ones nearest the thing you are about to change
+  BEFORE forming a hypothesis, then check what they claim against the code. Both
+  failures — believing a wrong comment and not reading a right one — cost an
+  afternoon each, and reading first is what would have prevented either.
   **AND THE COMMONEST WRONG MOVE OF ALL IS READING THE SHAPE OF THE CODE INSTEAD
   OF THE THING IT STANDS FOR.** Ten wrong hypotheses across two sessions in one
   day and every one had this form: an operator, a threshold, a variable name, a
