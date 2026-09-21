@@ -89,6 +89,30 @@ static func run(c: GenContext) -> void:
 	lf.resize(hn)
 	var inner := PackedByteArray()
 	inner.resize(hn)
+	# THE BODIES, OUT OF THE INNERMOST LOOP. These were five Dictionary lookups
+	# and five Variant casts per body per cell, on a grid of hw squared -- about
+	# ten million of them. CLAUDE.md's own note: a GDScript method call is ten
+	# times an array index, and reading packed arrays directly is what took a
+	# coarse-world block from 480 ms to 34.
+	#
+	# Float64 and not Float32 on purpose: `float(sh.ct)` is a float64, and
+	# narrowing it here would move every coastline in the game by a rounding
+	# error while looking like a tidy-up.
+	var shape_n := shapes.size()
+	var sh_ax_ := PackedFloat64Array()
+	var sh_ay_ := PackedFloat64Array()
+	var sh_ct := PackedFloat64Array()
+	var sh_st := PackedFloat64Array()
+	var sh_rx := PackedFloat64Array()
+	var sh_ry := PackedFloat64Array()
+	for sh: Dictionary in shapes:
+		var at: Vector2 = sh.at
+		sh_ax_.append(at.x)
+		sh_ay_.append(at.y)
+		sh_ct.append(float(sh.ct))
+		sh_st.append(float(sh.st))
+		sh_rx.append(float(sh.ax))
+		sh_ry.append(float(sh.ay))
 	GenFields.rows(hw, func(g0: int, g1: int) -> void:
 		for gy in range(g0, g1):
 			var ty := GenFields.cell_centre(gy, hs)
@@ -104,14 +128,16 @@ static func run(c: GenContext) -> void:
 				# The nearest body wins the cell: the void between them is simply
 				# where no body reaches, which is what makes an ocean an ocean and
 				# not a hole cut in one.
-				var r := 1e9
-				for sh: Dictionary in shapes:
-					var at: Vector2 = sh.at
-					var wu := u + warp_u[i] * 0.05 - at.x
-					var wv := v + warp_v[i] * 0.05 - at.y
-					var pu := absf((wu * float(sh.ct) - wv * float(sh.st)) / float(sh.ax))
-					var pv := absf((wu * float(sh.st) + wv * float(sh.ct)) / float(sh.ay))
-					r = minf(r, pow(pow(pu, BODY_POWER) + pow(pv, BODY_POWER), 1.0 / BODY_POWER))
+				var smin := INF
+				for si in shape_n:
+					var wu := u + warp_u[i] * 0.05 - sh_ax_[si]
+					var wv := v + warp_v[i] * 0.05 - sh_ay_[si]
+					var pu := absf((wu * sh_ct[si] - wv * sh_st[si]) / sh_rx[si])
+					var pv := absf((wu * sh_st[si] + wv * sh_ct[si]) / sh_ry[si])
+					smin = minf(smin, pow(pu, BODY_POWER) + pow(pv, BODY_POWER))
+				# The root ONCE per cell rather than once per body: it is
+				# monotonic, so it commutes with the min exactly.
+				var r := minf(1e9, pow(smin, 1.0 / BODY_POWER))
 				var h := (1.0 - r) * 1.1
 				# Bays bite hardest near the rim, where the coast is.
 				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
