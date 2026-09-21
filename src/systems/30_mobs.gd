@@ -171,9 +171,28 @@ func _listen() -> void:
 ## not skipped -- every body still gets its node, at worst a frame or two later,
 ## and a body with no node yet is one the player cannot see anyway.
 ##
-## Four milliseconds leaves room for the rest of the frame inside 16.7 and still
-## stands two or three bodies up a frame, so a group is whole within about a
-## tenth of a second.
+## **AND THIS BUDGET CAPS A COUNT, NOT A COST, WHICH THE NEXT LINE USED TO DENY.**
+## It said four milliseconds "stands two or three bodies up a frame" -- eight
+## lines under the 8.5 ms a body costs, in the same header, and both cannot be
+## true. The check runs BEFORE each creation, so a call overshoots by one whole
+## item: at 8.5 ms this stands exactly ONE body and lands on 8.5, not 4. A budget
+## can only cap a count; capping a COST needs the item to be divisible, and a
+## body cannot be built in pieces.
+##
+## Measured since, best-of-5 per kind on a quiet box: a machine's `build()` is
+## 2.6-5.1 ms and is over 99% of standing one up -- script load and instantiation
+## are 0.01 ms, so `_warm_figures` above is doing its job and what is left is
+## per-instance geometry. `_ensure_nodes` was 16.6 ms of this system's 17.7 ms
+## worst frame.
+##
+## Written here rather than in CLAUDE.md on purpose. The rule was mis-stated in
+## this header, and a reader reaching for this constant stands HERE; a paragraph
+## in another file is what everyone walked past all evening (docs/LOOK.md already
+## carries two rules that two sessions each rediscovered the hard way).
+##
+## The real fix is reuse, not a smaller number: two builds of one machine kind are
+## byte-identical -- machines take no seed, only `AnimalModel.spawn` does -- so
+## the mesh belongs to the KIND, and `PropModels.template` is the precedent (#131).
 const NODE_BUDGET_MS := 4.0
 
 
