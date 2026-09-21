@@ -570,25 +570,31 @@ tools print their own summaries.
   the life of a world. Ask what announces a change (`Events.landmark_found`,
   `took`, `sentinel_fell`, `works_broken`) and recompute then — an idle frame
   then costs nothing, which no timer can manage.
-- **A BUDGET CHECKED BEFORE EACH ITEM CAPS A COUNT, NOT A COST — AND ITS HEADER
-  WILL TELL YOU OTHERWISE.** `30_mobs._ensure_nodes` carries
-  `NODE_BUDGET_MS := 4.0` and returns once it is spent, over a header saying that
-  "stands two or three bodies up a frame". Measured, its worst call is **16.6 ms**:
-  the check runs BEFORE each creation, so a call overshoots by one whole item, and
-  one body costs about 12.6 ms — eight times what the header implies and four
-  times the budget it sits inside. A budget cannot cap a single item bigger than
-  the whole allowance, and nothing in the file said so.
+- **A BUDGET CHECKED BEFORE EACH ITEM CAPS A COUNT, NOT A COST — AND
+  `30_mobs`'s SAYS SO TWICE, DIFFERENTLY, EIGHT LINES APART.** Its header states
+  that a figure is "8.5 ms each once the kind is warm", and then that
+  `NODE_BUDGET_MS := 4.0` "stands two or three bodies up a frame". Both cannot be
+  true: the check runs BEFORE each creation, so at 8.5 ms a 4 ms budget stands
+  exactly ONE body and overshoots to 8.5. The constant was chosen against the
+  wrong half of its own paragraph. Measured since, best-of-5 on a quiet box, a
+  machine's `build()` is 2.6-5.1 ms and is >99% of standing one up — script load
+  and instantiation are 0.01 ms, so `_warm_figures` is doing its job and what is
+  left is per-instance geometry.
   **The trap is not the constant, it is believing it.** Asked which of that tick's
   four calls held its 17.7 ms, I predicted the spawner and wrote the prediction
   down first, ON THE GROUNDS THAT `_ensure_nodes` WAS ALREADY BUDGETED. It was
-  `_ensure_nodes`, by a factor of eighteen. That is the same error as trusting
-  `--stats` to judge eight frames or a `grep -A 2` to return a whole list: a number
+  `_ensure_nodes`, by a factor of eighteen — and the budget's own header had the
+  disproof sitting in it the whole time, in the line I had not read. A number
   written down as a guarantee is still a claim, and a guarantee is the most
   expensive kind to take on trust because it is exactly what stops you measuring.
-  So: measure the thing the budget is meant to bound, not the budget; and when a
-  cost has to be capped rather than counted, the item has to be divisible, which
-  is the thing to check FIRST — the existing budget fails precisely because a body
-  cannot be built in pieces.
+  So: measure the thing the budget is meant to bound, not the budget; read the
+  WHOLE header before trusting any line of it; and when a cost must be capped
+  rather than counted, the item has to be divisible — which is the thing to check
+  FIRST, because this budget fails precisely in that a body cannot be built in
+  pieces. The fix that follows from the measurement is not a smaller budget but
+  reuse: two builds of one machine kind are byte-identical (machines take no seed;
+  only `AnimalModel.spawn` does), so the mesh belongs to the KIND and
+  `PropModels.template` is the precedent.
 - Comments say *why* and give the contract. No narration of what the next line does.
 
 ## Working in parallel
