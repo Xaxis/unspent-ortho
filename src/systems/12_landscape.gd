@@ -355,6 +355,25 @@ const P99_MS := 1000.0 / 60.0
 const WORST_MS := 1000.0 / 30.0
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
+## The fewest steady frames this line will pass JUDGEMENT on. docs/PERF.md's own
+## standard is "a run of at least 300 frames", and the numbers below are about
+## VARIANCE -- p99 is a claim about one frame in a hundred, so five frames cannot
+## contain one and `over 16.7 ms: 0 (0%)` off that sample is not a measurement,
+## it is a rounding error wearing a verdict.
+##
+## AND THE DEFAULT MADE EVERY RUN THAT SAMPLE. `BootOptions.frames` is 8, so a
+## plain `tools/shot.sh --stats` judged the game on five steady frames and printed
+## PERF OK, and every perf figure taken in this repository before this const was
+## added came off that. Measured on one walking run: at the default it reports
+## p50 8.3, worst 11.0, nothing over budget, PERF OK -- and the SAME run at
+## `--frames=600` reports p50 9.5, p99 16.7, worst 24.5 and 1% of frames over.
+## The second is the game the owner is playing; the first is the reason he was
+## told it was fine while it stuttered.
+##
+## So this reports the numbers and DECLINES the verdict, the way `cost_lt` refuses
+## to judge a cost on a busy machine. A withheld verdict sends somebody to add
+## `--frames`; a false green sends them away.
+const JUDGE_LEAST := 300
 
 ## How many frames a run is allowed to spend warming up, and the ceiling on any
 ## one of them (docs/PERF.md: warm-up is a separate promise, not an exemption).
@@ -441,5 +460,7 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 	return "world frames: n %d steady (+%d warm-up, worst %.0f ms), p50 %.1f ms, p95 %.1f, p99 %.1f, worst %.1f, worst/p50 %.1fx, over %.1f ms: %d (%.0f%%) -- %s\nworld slow frames (index:ms): %s" % [
 		a.size(), warm, warm_worst, p50, p95, p99, worst, (worst / p50 if p50 > 0.0 else 0.0),
 		P99_MS, over, 100.0 * over / a.size(),
-		("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad)),
+		(("UNJUDGED: %d steady frames, %d wanted -- pass --frames=600" % [a.size(), JUDGE_LEAST])
+			if a.size() < JUDGE_LEAST
+			else ("PERF OK" if bad.is_empty() else "PERF FAIL: " + ", ".join(bad))),
 		" ".join(where)]

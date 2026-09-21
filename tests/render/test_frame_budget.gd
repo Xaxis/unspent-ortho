@@ -23,7 +23,7 @@ static func _steady(n: int, ms: float) -> PackedFloat32Array:
 
 
 func test_the_frames_a_world_lands_in_are_warm_up_and_not_the_run() -> void:
-	var run := _steady(200, 8.0)
+	var run := _steady(400, 8.0)
 	run[0] = 150.0
 	run[1] = 120.0
 	check(Landscape.warm_frames(run) == 2,
@@ -35,7 +35,7 @@ func test_the_frames_a_world_lands_in_are_warm_up_and_not_the_run() -> void:
 
 func test_a_spike_in_the_body_of_the_run_is_never_warm_up() -> void:
 	# The same 150 ms frame, moved off the head. A player lives with this one.
-	var run := _steady(200, 8.0)
+	var run := _steady(400, 8.0)
 	run[120] = 150.0
 	check(Landscape.warm_frames(run) == 0, "nothing at the head is nothing to forgive")
 	var line := Landscape.frame_line(run)
@@ -46,7 +46,7 @@ func test_a_spike_in_the_body_of_the_run_is_never_warm_up() -> void:
 func test_a_run_cannot_call_itself_warm_up_all_the_way_through() -> void:
 	# The escape hatch this rule needs, or a wholly broken run passes by being
 	# classified as one long warm-up. A prefix past the allowance is a failure.
-	var run := _steady(200, 40.0)
+	var run := _steady(400, 40.0)
 	check(Landscape.warm_frames(run) <= Landscape.WARM_MOST + 1,
 		"the warm-up prefix is capped, got %d" % Landscape.warm_frames(run))
 	var line := Landscape.frame_line(run)
@@ -56,7 +56,7 @@ func test_a_run_cannot_call_itself_warm_up_all_the_way_through() -> void:
 func test_warm_up_is_bounded_rather_than_exempt() -> void:
 	# docs/PERF.md: no more than WARM_MOST frames over, and none over the ceiling.
 	# A loading screen that is not over is still a loading screen.
-	var run := _steady(200, 8.0)
+	var run := _steady(400, 8.0)
 	run[0] = Landscape.WARM_CEILING_MS + 50.0
 	var line := Landscape.frame_line(run)
 	check(not line.contains("PERF OK"), "a warm-up frame past the ceiling fails: %s" % line)
@@ -101,5 +101,31 @@ func test_a_run_pinned_at_120_hz_passes_every_budget() -> void:
 	# The best result this judge can ever be shown: a frame pacer delivering a
 	# perfect 120 fps. Measured 2026-09-20, the populated walk at --quality=low
 	# returns p50 = p95 = p99 = 8.3, and it was reported as PERF FAIL: p50.
-	var line := Landscape.frame_line(_steady(200, 1000.0 / 120.0))
+	var line := Landscape.frame_line(_steady(400, 1000.0 / 120.0))
 	check(line.contains("PERF OK"), "a locked 120 fps is not a failure: %s" % line)
+
+
+## A VERDICT ON FIVE FRAMES IS NOT A VERDICT, and for most of this project's life
+## every one of them was. docs/PERF.md asks for a run of at least 300 frames
+## because these numbers are about VARIANCE -- p99 is a claim about one frame in
+## a hundred, which five frames cannot contain -- while `BootOptions.frames`
+## defaults to 8. So a plain `tools/shot.sh --stats` judged the game on five
+## steady frames and printed PERF OK, and the owner was told the game was smooth
+## while he was watching it stutter. Measured on one walking run: the default
+## sample says p50 8.3, worst 11.0, nothing over budget; the SAME run at
+## --frames=600 says p50 9.5, p99 16.7, worst 24.5, 1% over.
+##
+## Both halves are asserted here on purpose. Withholding the verdict is only
+## right if the line still REPORTS, and only safe if a long run is still JUDGED
+## -- a guard that made everything unjudgeable would be the same silence from the
+## other end.
+func test_a_sample_too_short_to_hold_a_p99_is_not_judged() -> void:
+	var line := Landscape.frame_line(_steady(40, 8.0))
+	check(line.contains("UNJUDGED"), "40 frames cannot carry a p99: %s" % line)
+	check(not line.contains("PERF OK") and not line.contains("PERF FAIL"),
+		"so it says neither word: %s" % line)
+	check(line.contains("p50") and line.contains("worst"),
+		"but it still reports what it saw: %s" % line)
+	var long_line := Landscape.frame_line(_steady(Landscape.JUDGE_LEAST + 20, 8.0))
+	check(long_line.contains("PERF OK"),
+		"and a run long enough to judge is still judged: %s" % long_line)
