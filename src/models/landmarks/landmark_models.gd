@@ -37,15 +37,32 @@ const PLATE := Color(0.2536, 0.2892, 0.3655)
 const PLATE_TOP := Color(0.3511, 0.3906, 0.4811)
 const PLATE_DARK := Color(0.1687, 0.1962, 0.2518)
 const SHADOW := Color(0.0892, 0.1064, 0.1412)
+## ENAMEL is the row this file looks like it should use and must not: there IS
+## an ENAMEL row (88, a painted sign) and these are the only constants whose
+## name matches an unused one exactly — and all 8 uses are on the FOUND pen,
+## where the mark would be a blinking lamp rather than paint. The name matched;
+## the pen decided.
 const ENAMEL := Color(0.2290, 0.1981, 0.3137)
 const ENAMEL_TOP := Color(0.3176, 0.2695, 0.4413)
 ## What people built and what is left of them.
 const STONE := Color(0.2902, 0.3333, 0.4000)
 const STONE_TOP := Color(0.4275, 0.4784, 0.5490)
+## **LIME MUST NEVER BE TAGGED, and it is the clearest case in the codebase of
+## the rule `GroundColors.made` states.** It is used on the MADE pen twice and
+## the FOUND pen twice — one colour, both pens. The two lit shaders read vertex
+## alpha for different things, so no mark can be right for it: whatever says
+## "poured lime" on the made pen says "a lamp, blinking on the machines' beat"
+## on the found one. This is a third category beside tagged and untagged —
+## UNTAGGABLE — and the fix, if it is ever worth one, is two constants and not
+## a mark.
 const LIME := Color(0.5882, 0.5412, 0.4627)
-const TIMBER := Color(0.3098, 0.2118, 0.1529)
-const TIMBER_PALE := Color(0.4353, 0.3020, 0.1922)
-const SACKING := Color(0.4353, 0.3961, 0.3490)
+## TIMBER (row 80) on both: 7 uses and 11 uses, every one of them on the MADE
+## pen and none on FOUND, counted rather than assumed. The fire watch is a
+## timber frame and the tallest thing a player walks to.
+static var TIMBER: Color = GroundColors.made(Color(0.3098, 0.2118, 0.1529), GroundColors.TIMBER)
+static var TIMBER_PALE: Color = GroundColors.made(Color(0.4353, 0.3020, 0.1922), GroundColors.TIMBER)
+## CLOTH (row 82): sacking over a doorway is canvas, and it is one made use.
+static var SACKING: Color = GroundColors.made(Color(0.4353, 0.3961, 0.3490), GroundColors.CLOTH)
 const PAPER := Color(0.7529, 0.7020, 0.5804)
 const PAPER_DARK := Color(0.5882, 0.5412, 0.4627)
 const RUST := Color(0.4314, 0.2000, 0.1255)

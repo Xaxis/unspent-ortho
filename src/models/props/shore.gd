@@ -27,7 +27,10 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 static func driftwood(k: Kit, v: int, _c: int) -> void:
 
 	var s := 10000 + v * 13
-	var woods: Array[Color] = [P.LINEN[3], P.ASH[3], P.LINEN[2]]
+	# TIMBER (row 80): sea-silvered wood is still sawn and split wood, and the
+	# grain the row draws is what a stripped log on a tide line is all surface of.
+	var woods: Array[Color] = [GroundColors.made(P.LINEN[3], GroundColors.TIMBER),
+		GroundColors.made(P.ASH[3], GroundColors.TIMBER), GroundColors.made(P.LINEN[2], GroundColors.TIMBER)]
 	if v % 3 == 2:
 		# One big trunk, silvered, with its root plate.
 		k.limb(Vector3(-0.8, 0.1, 0.1), Vector3(0.7, 0.07, -0.15), 0.13, 0.06, 6, woods[0], Vector3(0, 0.04, 0.08))
@@ -83,8 +86,11 @@ static func wrack(k: Kit, v: int, _c: int) -> void:
 
 
 static func bones(k: Kit, v: int, c: int) -> void:
+	# BONE (row 90) — the one row named for exactly the thing using it, drawing
+	# the long fibre of it and the odd pit. `pale` is what this landscape
+	# bleaches, and every use below is a limb or a slab on the MADE pen.
 	var pale := BiomeDressing.of(c).pale
-	var bone := pale[0]
+	var bone := GroundColors.made(pale[0], GroundColors.BONE_MADE)
 	var old := pale[1]
 	var s := 10400 + v * 3
 	k.hand(Ink.hand_of(c))

@@ -37,19 +37,43 @@ frame is 26.67 world units across 1920 pixels — **72 pixels per world unit**, 
 a 0.02 chamfer that was half a pixel at 640x360 is 1.4 pixels now and a 4-sided
 `strut` of radius 0.04 is a 5.8-pixel square bar. Three things follow, and none
 of them is "raise the budgets".
-**The material rows now EXIST and are almost entirely UNREACHED, which is a
-different problem from the one this paragraph used to describe** (it said
-`matter_of()` returns its default for every made surface; that was fixed and the
-paragraph was not). `matter.gdshaderinc` carries twelve made rows — TIMBER 80,
-THATCH 81, CLOTH 82, ROPE 83, CLAY 84, CONCRETE 85, GLASS 86, TAR 87, ENAMEL 88,
-HIDE 89, BONE 90, CUTSTONE 91 — several of them measured against real frames
-before they were believed. But counted 2026-09-20: **one model file of
-sixty-four tags anything with one**, a single `THATCH` array in `houses.gd`, and
-every other mark has ZERO call sites. So the symptom is exactly as it was — only
-the mesh normal tells a roof from a wall — while the cause has moved from "no
-rows" to "no tags", and a reader sent at the shader would find the work already
-done. `GroundColors.made(colour, kind)` is the four-line plumbing and `houses.gd`
-is the worked example. Task #61.
+**The material rows exist and are now REACHED across most of what a player looks
+at** — this paragraph has been rewritten twice for being behind the code, which
+is itself the warning. It first said `matter_of()` returns its default for every
+made surface (fixed, paragraph not); then that the rows were almost entirely
+untagged, one model file of sixty-four. `matter.gdshaderinc` carries THIRTEEN
+made rows — TIMBER 80, THATCH 81, CLOTH 82, ROPE 83, CLAY 84, CONCRETE 85,
+GLASS 86, TAR 87, ENAMEL 88, HIDE 89, BONE 90, CUTSTONE 91, SLATE 92 — several
+measured against real frames before they were believed. Counted 2026-09-20 after
+the tagging wave: six model files tag directly, but two of those are PALETTES, so
+the reach is about thirteen files and every building, roof, wall, station, fence,
+wreck, bone, landmark and holding in the game; nine of the thirteen marks have
+call sites. GLASS, TAR, ENAMEL and HIDE are the four still waiting, and ENAMEL is
+the instructive one: `landmark_models.gd` has constants literally called ENAMEL,
+and all eight of their uses are on the FOUND pen, so the row stays unreached
+because the name matched and the PEN decided. `GroundColors.made(colour, kind)` is the four-line
+plumbing; `settle_parts.gd` is the worked example, because tagging a PALETTE
+fixes every call site at once and cannot drift.
+
+**Three things about tagging that cost a frame each to learn.** (1) The mark
+rides in ALPHA, and `found.gdshader` reads that same alpha as a lamp — under 0.5
+a BEACON THAT BLINKS. Every made mark is 0.314..0.361 and `works.gd`'s BEACON is
+0.36, so the same number means "slate" on one pen and "blinking lamp" on the
+other. **Read the PEN, never the function name**: `Kit.rod`, `chamfer`, `plate`,
+`cable` and `hoop` are the five that build into FOUND (named in `kit.gd`'s
+header), `_rope_over` draws what a player reads as rope entirely in found stock,
+and the landmark builders take a first parameter called `k` that is the FOUND
+kit, unlike every other file in the package. (2) **A GROUND mark (40..70) on made
+geometry pulls the landscape's own ground treatment over it** — `towers.gd`
+carries the frame where that drew a landscape's stipple across every roof in a
+settlement. So turf, ash, sand and snow stay untagged on made surfaces however
+right the material name looks. (3) **A relief profile whose edge is narrower than
+a pixel cannot be seen however deep it is.** SLATE's first cut used CUTSTONE's
+plateau idiom, but at fourteen courses per world unit a `smoothstep(0.0, 0.09)`
+edge is 0.46 of ONE pixel and `dFdx` cannot resolve it, so TIGHTENING the edge
+made it worse; a bare `fract` ramp spreads the gradient over the whole five
+pixels. CUTSTONE keeps its plateau because 3.2 courses per unit is 22 pixels.
+Task #61.
 **Welding** reaches five call sites in THREE files (`props/kit.gd` 3,
 `props/rocks.gd` 1, `people/sculpt.gd` 1) of sixty-four, and
 `MeshKit.smooth_begin`/`smooth_end` — the pair this file used to present as the
