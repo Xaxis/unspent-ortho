@@ -185,6 +185,15 @@ vec4 matter_of(int m) {
 	// a slate roof with it moved nothing at all and the row did not exist. A
 	// dressed block IS harder and glassier than a sawn board, so it says so now.
 	else if (m == 91) { r = vec4(0.80, 0.42, 0.022, 0.0); }   // CUTSTONE: dressed building stone
+	// SLATE is the roof, and it is the largest MADE surface the play camera ever
+	// holds -- a village is roofs seen from above, and every one of them was the
+	// default until this row. It is not CUTSTONE: a block is sawn and a slate is
+	// CLEAVED, which is the smoothest face any stone takes, so it goes the other
+	// way from dressed block on both terms. Against the default (0.88, 0.32) it
+	// is 0.26 and 0.22 clear, and against CUTSTONE 0.18 and 0.12, so `matter_worn`
+	// cannot erase it in a week of weather either way -- which is the band's own
+	// test for whether a row is worth having.
+	else if (m == 92) { r = vec4(0.62, 0.54, 0.030, 0.0); }   // SLATE: a cleaved roofing tile
 	return r;
 }
 
@@ -304,6 +313,64 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// CUTSTONE: courses, with the face of each block dressed.
 		float course = smoothstep(0.0, 0.10, abs(fract(p.y * 3.2) - 0.5));
 		h = course * 0.55 + matter_fbm(p * 5.5) * 0.45;
+	} else if (m == 92) {
+		// SLATE: courses of thin tiles, each lapped over the one below, and the
+		// lap is the only hard edge on the roof -- a cleaved face is flat, so
+		// what sits on it is fine and shallow and never a lump.
+		//
+		// 14 COURSES PER WORLD UNIT, by THATCH's arithmetic and not by taste: a
+		// slate laps about 150 mm, a world unit is a tile and a house 2.3 of
+		// them across is a small house, so a unit is roughly 2.2 m and 14 laps
+		// fall in it. At 72 pixels to the unit that is a five-pixel step, which
+		// is a step. Double it and the roof averages back to the flat sheet the
+		// THATCH note was written about.
+		//
+		// The joints ACROSS the slope are half the frequency and a third the
+		// depth, and every other course is offset half a tile, because slate is
+		// laid in broken bond -- a lattice of aligned joints is the one pattern
+		// that reads as a texture rather than as a roof.
+		//
+		// ON A SLOPE THE TWO CAN SWAP, and this is deliberate rather than fixed.
+		// `matter_bump` picks `p` off the face's dominant axis, so a roof shallow
+		// enough to stay y-dominant gets `wp.xz` whichever way it faces: on two
+		// slopes of a hip the laps run across the fall and on the other two they
+		// run down it. Carrying the true downslope here would mean threading the
+		// face normal through `matter_height` and every branch in it. Instead the
+		// two frequencies are close enough (14 and 7) that a swap draws a tile
+		// twice as wide as tall instead of twice as tall as wide -- still slate,
+		// with its grain turned. A material that degrades into itself needs no
+		// special case.
+		//
+		// **A PROFILE WHOSE EDGE IS NARROWER THAN A PIXEL CANNOT BE SEEN, HOWEVER
+		// DEEP IT IS** — and that is a different trap from the one THATCH records
+		// two branches up. THATCH is about the FREQUENCY of the feature; this is
+		// about the WIDTH OF ITS EDGE, and it cost two frames that came back
+		// looking untouched. The first cut used CUTSTONE's idiom, a plateau with
+		// `smoothstep(0.0, 0.09, ...)` walls. A course here is 1/14 of a world
+		// unit, which is five pixels at the play camera, so that edge is 0.46 OF
+		// ONE PIXEL. `matter_bump` takes its gradient with `dFdx`/`dFdy`, which
+		// cannot resolve a transition inside a pixel: the slope came back as
+		// aliasing rather than as a roof, and tightening the edge from 0.14 to
+		// 0.09 made it strictly worse. Proved by cranking relief to 0.200, where
+		// the bump is unmistakable — so the plumbing was always fine and the
+		// profile was the bug.
+		//
+		// CUTSTONE gets away with a plateau because 3.2 courses per unit is 22
+		// pixels and its edge lands on two of them. At fourteen courses the only
+		// profile that survives is a RAMP: `fract` rises across the whole course,
+		// so the gradient is spread over all five pixels instead of hidden in
+		// half of one. That is why THATCH and TAR, the other two lapped
+		// materials, both use a bare `fract` — it reads as the lap turning away
+		// from the sky, which is the whole drawing of a roof.
+		//
+		// The noise is deliberately COARSER than the course (five per unit, about
+		// a slate): a slate roof varies BETWEEN slates, each lifting and
+		// weathering a little differently, not inside one. At 18 per unit it was
+		// a four-pixel fuzz on a five-pixel course and ate what was left.
+		float lap = fract(p.y * 14.0);
+		float bond = floor(p.y * 14.0) * 0.5;
+		float joint = fract(p.x * 7.0 + bond);
+		h = lap * 0.55 + joint * 0.17 + matter_fbm(p * 5.0) * 0.28;
 	} else {
 		h = matter_fbm(p * 1.1);
 	}
