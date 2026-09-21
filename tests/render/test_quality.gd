@@ -115,3 +115,35 @@ func test_both_settings_doors_offer_every_tier_and_invent_none() -> void:
 		player_side.append(String(v))
 	eq(player_side, want, "the player's picture settings offer the same list")
 	eq(PlayerSettings.default_of(&"picture.quality"), &"auto", "and start on auto")
+
+
+## Volumetric fog, SSAO and SSIL are Forward+ only. A row that does NOT declare
+## `forward_only` is a row a Compatibility machine can land on, so it may not ask
+## for any of them.
+##
+## This is not a tidy-up. `detect()` hands `medium` to every Compatibility
+## desktop, and `apply()` STEPS DOWN to `medium` whenever a Forward+-only tier is
+## chosen on a machine without it -- for the reason its own comment gives, that
+## asking for volumetrics and SSAO which silently do nothing "would read as a
+## broken build rather than an unavailable one". `medium` then asked for exactly
+## those, so the step-down landed on the thing it was written to avoid, and the
+## comment naming the rule sat four lines above the row breaking it.
+##
+## The knock-on was worse than the two features: `camera_rig.gd` only builds the
+## screen-space shaft pass when `volumetric` is FALSE, so a Compatibility desktop
+## got no volumetric air (the renderer cannot) AND no shaft pass standing in for
+## it (the row claimed it had the real thing) -- and `air_stand_in` at 0.0 meant
+## the depth fog did not take the landscape's bank either. Three ways to have no
+## air at once.
+func test_no_tier_a_compatibility_machine_can_land_on_asks_for_forward_plus() -> void:
+	for r: Dictionary in Quality.ROWS:
+		if bool(r.forward_only):
+			continue
+		var id: StringName = r.id
+		check(not bool(r.volumetric), "tier %s is reachable on Compatibility and asks for volumetric fog" % id)
+		check(not bool(r.ssao), "tier %s is reachable on Compatibility and asks for SSAO" % id)
+		check(not bool(r.ssil), "tier %s is reachable on Compatibility and asks for SSIL" % id)
+		# Having refused the real thing, it has to ask for the stand-in, or the
+		# air is simply gone rather than degraded (docs/LOOK.md's whole rule).
+		gt(float(r.air_stand_in), 0.0,
+			"tier %s has no volumetric air and no depth-fog stand-in either, so its landscapes lose their air entirely" % id)

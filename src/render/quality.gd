@@ -131,7 +131,17 @@ const ROWS: Array[Dictionary] = [
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4, "lamps": 16,
 		"fore": 14, "near_focus": false, "near_stand_in": false,
-		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": false,
+		# COMPATIBILITY COLUMNS, because this is the tier a Compatibility desktop
+		# LANDS on: `detect()` returns it whenever the renderer is not Forward+,
+		# and `apply()` steps every Forward+-only tier down to it. It used to ask
+		# for volumetric fog and SSAO -- the exact two things `apply()`'s own
+		# comment says a step-down exists to avoid, four lines above the row that
+		# asked for them. The cost was three ways to have no air at once: the
+		# renderer cannot do volumetrics, `camera_rig` only builds the screen-space
+		# shaft pass when `volumetric` is FALSE so the stand-in was never built
+		# either, and `air_stand_in` at 0.0 meant the depth fog did not take the
+		# landscape's bank. `web` had the right shape all along.
+		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
 		"id": &"low", "label": "low",
@@ -139,7 +149,11 @@ const ROWS: Array[Dictionary] = [
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2, "lamps": 12,
 		"fore": 9, "near_focus": false, "near_stand_in": false,
-		"volumetric": false, "air_stand_in": 0.0, "ssao": false, "ssil": false, "forward_only": false,
+		# The stand-in is a FOG DENSITY, not a cost, so refusing volumetrics is no
+		# reason to refuse it too: at 0.0 this tier's landscapes lost their air
+		# rather than degrading it, which is the one thing docs/LOOK.md's whole
+		# degradation table exists to prevent.
+		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
 		"id": &"web", "label": "web",
