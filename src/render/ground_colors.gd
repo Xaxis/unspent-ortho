@@ -243,6 +243,24 @@ static func marked(col: Color, code: int) -> Color:
 ## the one default every made thing shared. Thatch stops reflecting like a mud
 ## wall, a pane reads as glass beside the timber holding it, and wet clay, dry
 ## straw and oiled board separate in a single frame.
+##
+## **ONLY EVER ON MADE GEOMETRY. ON FOUND IT IS A BLINKING BEACON.** The two lit
+## shaders read vertex alpha for completely different things, and nothing but
+## this comment says so. `world.gdshader` decodes it as the MARK
+## (`int(COLOR.a * 255.0 + 0.5)`); `found.gdshader` decodes it as a light built
+## into the machine — under 0.98 a steady strip, and **under 0.5 a beacon that
+## blinks on the machine beat**. Every mark this function can write is 80..91,
+## which is alpha 0.314..0.357, so a made mark on a FOUND surface is not a
+## material at all: it is a lamp, flashing. Tag at the point a thing is built
+## into `k.made`, never on a shared colour that might reach either — a
+## `BiomeDressing` colour feeds both, so marking one at source would put blinking
+## lights across every machine that dresses itself.
+##
+## The failure is one-sided and that is the only mercy: a mark that gets
+## CORRUPTED (any `lerp` moves alpha; `GroundColors.up`/`down` preserve it) lands
+## outside 80..91, matches no branch in `matter_of`, and falls back to the
+## default — which is where every made surface is today. So a wrong tag degrades
+## to the status quo on MADE, and screams on FOUND.
 static func made(col: Color, kind: int) -> Color:
 	return marked(col, clampi(kind, MADE_FIRST, MADE_LAST))
 
