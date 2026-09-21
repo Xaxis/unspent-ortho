@@ -63,12 +63,42 @@ static func ore_kinds(world: WorldData, region_id: int) -> Array[int]:
 
 
 ## Every site id the region holds, in `Landmarks.sites`' own order.
-static func landmark_ids(world: WorldData, region_id: int) -> Array[StringName]:
-	var out: Array[StringName] = []
+## THE SAME FIX AS `_standing_counts`, WHICH IS TWENTY LINES BELOW AND WAS NEVER
+## APPLIED HERE. `Landmarks.sites` is already remembered per world, but this
+## SCANNED all of it per region — so a refresh over R regions walked S sites R
+## times, for an answer that cannot change: which region a landmark stands in is
+## a property of the world, exactly like how much ore stands in it.
+##
+## The returned array is the CACHED one and must not be mutated. Nothing does
+## today (`Chapter.read` takes its size and iterates; the three tests iterate),
+## and a copy per call would put back a slice of what this removes.
+static var _ids_world: WorldData = null
+static var _ids: Dictionary = {}
+
+
+static func _ids_by_region(world: WorldData) -> Dictionary:
+	if world == null:
+		return {}
+	if world == _ids_world:
+		return _ids
+	var out := {}
 	for s: LandmarkSite in Landmarks.sites(world):
-		if s.region == region_id:
-			out.append(s.id)
+		if not out.has(s.region):
+			out[s.region] = [] as Array[StringName]
+		(out[s.region] as Array[StringName]).append(s.id)
+	# Held by reference rather than keyed by instance id, for the reason
+	# `_standing_counts` gives: a freed id handed out again would serve another
+	# world's landmarks.
+	_ids_world = world
+	_ids = out
 	return out
+
+
+static func landmark_ids(world: WorldData, region_id: int) -> Array[StringName]:
+	var got: Variant = _ids_by_region(world).get(region_id)
+	if got == null:
+		return [] as Array[StringName]
+	return got as Array[StringName]
 
 
 ## How many of this region's ore props stand in it at all, and how many of them

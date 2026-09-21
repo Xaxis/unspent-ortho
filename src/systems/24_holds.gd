@@ -143,11 +143,24 @@ func _refresh_chapters() -> void:
 	if game == null:
 		return
 	var seen := {}
+	var want: Array = []
 	for h: Hold.HoldSite in sites:
 		if seen.has(h.region):
 			continue
 		seen[h.region] = true
-		_answered[h.region] = bool(Chapters.of(game, h.region).get("answered", false))
+		want.append(h.region)
+	# ONE set of system sweeps for every region rather than three per region.
+	# `Chapters.of` walks `game.systems` three times asking for properties by
+	# name, so asking it in a loop paid that per region for collections that are
+	# the same every time; this refresh is the largest `_process` cost in the
+	# game and it is the only caller that asks about many regions at once.
+	var chapters := Chapters.for_regions(game, want)
+	for rid: int in want:
+		# Read, not `get(..., false)`. `Chapter.read` sets `answered` on both its
+		# return paths, so a default here could only ever hide a real breakage by
+		# reporting an unfinished chapter as finished -- the exact shape CLAUDE.md
+		# names, where the caller supplies the evidence and then believes it.
+		_answered[rid] = bool((chapters[rid] as Dictionary)["answered"])
 
 
 ## Whether the plan is standing on a road within `within` tiles, still closed.
