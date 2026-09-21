@@ -344,6 +344,19 @@ tools print their own summaries.
   authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
   presses a body with, and a shared rule that cannot see a declaration will keep
   reporting content as breakage.
+  **AND UNREACHABLE FROM ITS OWN RECIPE IS NOT THE SAME AS UNUSED.** A landscape
+  declares a wash for a ground its `_surface` can never return, and it looks like
+  dead content that costs nothing to delete. It is not: a COUNTRY's tiles carry
+  its neighbours' grounds wherever a border reaches in, and `GroundColors` keys
+  the wash on the country, so that declaration is what decides how a neighbour's
+  ground looks INSIDE this landscape — which is the whole reason the wash takes a
+  country at all. Measured on the green towers, five seeds at 512: between 145
+  and 546 of its four thousand tiles carry a ground its own recipe cannot lay,
+  up to 11% of the landscape. Deleting the entries would hand those borders back
+  to the shared default silently, in the exact case the per-country rule exists
+  for, and it would have read as a tidy-up forever. The check is one grep away
+  and it is the wrong grep: **ask the world which grounds a country's tiles
+  really carry, not which ones its recipe returns.**
   **AND THE SAME ROT REACHES THE TESTS AND THE BASELINES, WHERE IT IS QUIETER.**
   Three were found in one afternoon, all still describing the world as it was at
   six landscapes and one island. `test_journey_runs_north_from_a_southern_coast`
