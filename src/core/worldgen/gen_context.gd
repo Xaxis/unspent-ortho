@@ -60,6 +60,21 @@ var soft: Array[PackedFloat32Array] = []
 var soft_flat: PackedFloat32Array = PackedFloat32Array()
 ## Type index -> Vector2 heart of its largest site.
 var hearts: Array[Vector2] = []
+## WHICH TYPES EACH BODY MAY CARRY, as `GenBodies.deal` decided: `allow[id *
+## types + cc]` is 1 where body `id` was dealt type `cc`. EMPTY means every type
+## everywhere, which is what a one-body world is and why it costs nothing there.
+## Read through `may_stand`, never directly: sites and territory both ask it, and
+## the deal was once asked only where a SITE went, so a continent's land came out
+## up to 70% landscapes it had never been dealt.
+var allow: PackedByteArray = PackedByteArray()
+## Each type's share of the land it is ALLOWED to hold, as a share of all land
+## (`GenCountries.allowed_targets`). Both balancing passes aim at this.
+var share_target: PackedFloat32Array = PackedFloat32Array()
+## The coarse layout's final additive weight per slot and type
+## (`slot * types + cc`), kept so a probe can read how hard the balancer pulled.
+var layout_weight: PackedFloat32Array = PackedFloat32Array()
+## Which weight slot each coarse cell balanced in (`GenCountries._weight_slots`).
+var weight_slot: PackedByteArray = PackedByteArray()
 ## The type that carries a caldera, or -1. Its rim warp is rim_warp.
 var caldera_type := -1
 
@@ -107,6 +122,12 @@ var pool_ground: PackedByteArray
 
 var timings: Dictionary = {}
 var _tick := 0
+
+
+## May type `cc` hold land on body `id`? True everywhere until the deal is made,
+## and on any mass it did not deal to (a skerry, and the void).
+func may_stand(cc: int, id: int) -> bool:
+	return allow.is_empty() or allow[id * types + cc] != 0
 
 
 ## Profile marks inside a stage: accumulates microseconds since the last mark.

@@ -160,21 +160,42 @@ static func villages(c: GenContext) -> void:
 	# the sea that the first frame holds the square and the water together (a
 	# village deep inland wakes the player in a field). Ground that needs a
 	# little levelling counts too (its score is lower); wider only if none fits.
+	#
+	# ON THE PLAN'S HOME BODY, when there is more than one (docs/WORLD.md §8.4:
+	# home "holds the coast, the spawn village"), and south on THAT body. Asked of
+	# the whole land this woke the player on whichever continent's coast reached
+	# furthest south: seed 1 woke on a western continent while the home the plan
+	# and the deal had made ready lay east of it. Anywhere is the fallback only if
+	# home has no coast village site at all. One body: the old search, unchanged.
+	var home := GenBodies.home_id(c)
 	var r := c.land_rect
 	var best := Vector3(-1, -1, -1e9)
-	for far: float in [14.0, 20.0, 40.0]:
-		for pool: Array[Vector3] in [cands, relaxed]:
-			for p in pool:
-				var i := int(p.y) * size + int(p.x)
-				if not c.defs[w.country[i]].spawn_home:
-					continue
-				var d_in := c.inland[i]
-				if d_in < 8.0 or d_in > far:
-					continue
-				var south := (p.y - r.position.y) / r.size.y
-				var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 10.0) * 0.08 + _sea_below(c, p.x, p.y) * 4.0
-				if sc > best.z:
-					best = Vector3(p.x, p.y, sc)
+	# Three asks, in order: flat coast on home, then home's rough coast levelled
+	# (seed 90210's home coast is terraced upland: 101 rough spots and no flat
+	# one, while other bodies had flat coast to spare), and only then any body.
+	var asks: Array = [[false, [cands, relaxed]]]
+	if home >= 0:
+		asks = [[true, [cands, relaxed]], [true, [rough]], [false, [cands, relaxed]]]
+	for ask: Array in asks:
+		var on_home: bool = ask[0]
+		r = GenBodies.bounds_of(w, home) if on_home else c.land_rect
+		for far: float in [14.0, 20.0, 40.0]:
+			for pool: Array[Vector3] in ask[1]:
+				for p in pool:
+					var i := int(p.y) * size + int(p.x)
+					if not c.defs[w.country[i]].spawn_home:
+						continue
+					if on_home and int(w.continent[i]) != home:
+						continue
+					var d_in := c.inland[i]
+					if d_in < 8.0 or d_in > far:
+						continue
+					var south := (p.y - r.position.y) / r.size.y
+					var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 10.0) * 0.08 + _sea_below(c, p.x, p.y) * 4.0
+					if sc > best.z:
+						best = Vector3(p.x, p.y, sc)
+			if best.x >= 0.0:
+				break
 		if best.x >= 0.0:
 			break
 	if best.x < 0.0:

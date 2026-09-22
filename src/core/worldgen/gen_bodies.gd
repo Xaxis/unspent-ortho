@@ -419,11 +419,8 @@ static func deal(c: GenContext) -> void:
 		bodies[0]["types"] = PackedInt32Array(c.land_types)
 		return
 	var rng := Rng.make(c.s, 0xDEA1)
-	var home := 0
-	for i in bodies.size():
-		if bool((c.bodies[i] as Dictionary).get("home", false)) if i < c.bodies.size() else false:
-			home = i
 	planned = mini(planned, bodies.size())
+	var home := _home_row(c, planned)
 	var got: Array[PackedInt32Array] = []
 	for i in planned:
 		got.append(PackedInt32Array())
@@ -448,12 +445,21 @@ static func deal(c: GenContext) -> void:
 		# A guaranteed type goes on the HOME body first: the spine of the game
 		# lives there (docs/WORLD.md §8.4) and a player who never crosses water
 		# must still meet everything something depends on.
+		#
+		# **TWO MEANINGS SHARE `spread.x >= 1` AND THEY MUST NOT BE MERGED.** `(1, 0)`
+		# is DEPENDENCY: something the spine needs lies here, so it goes on the
+		# home body where a player who never crosses water will meet it. `(1, 1)`
+		# is EXISTENCE: the guaranteed twin of `(0, 1)`, "the rare thing you cross
+		# an ocean for" -- exactly one body, and never home while there is another,
+		# or the ocean it is the reward for crossing is not crossed. `frost_sea`
+		# says the second in its own words. Home-first read both as the first.
+		var rare := sp.x >= 1 and sp.y == 1 and planned > 1
 		var order: Array[int] = []
-		if sp.x >= 1:
+		if sp.x >= 1 and not rare:
 			order.append(home)
 		var rest: Array[int] = []
 		for i in planned:
-			if i != home or sp.x < 1:
+			if i != home or (sp.x < 1 and not rare):
 				rest.append(i)
 		while not rest.is_empty():
 			order.append(rest.pop_at(rng.randi() % rest.size()))
@@ -465,6 +471,73 @@ static func deal(c: GenContext) -> void:
 			got[i].append(c.land_types[rng.randi() % c.land_types.size()])
 	for i in planned:
 		bodies[i]["types"] = got[i]
+	# THE DEAL IS A RULE ABOUT LAND, NOT ABOUT WHERE A SITE GOES. It was asked only
+	# when a site was placed, and a territory then grew by distance across the
+	# strait onto whatever body was nearer: measured at 1300, 70.6% of one
+	# continent of seed 42 was landscapes it had never been dealt, and the coast
+	# lost its own heart on the home body while it held a body it was not dealt.
+	# Everything that decides whose land a tile is asks `GenContext.may_stand`.
+	# It cannot draw a new line across open ground: a continent's edge is water.
+	fill_allow(c)
+
+
+## Fill `GenContext.allow` from what `w.continents` records was dealt. The one
+## place the table is written, so a finished world (a test, a probe) can ask the
+## same question world gen asked. A world whose rows carry no deal (one body, or
+## nothing dealt yet) restricts nothing and is left empty.
+static func fill_allow(c: GenContext) -> void:
+	c.allow = PackedByteArray()
+	var dealt := 0
+	for row: Dictionary in c.w.continents:
+		if row.has("types"):
+			dealt += 1
+	if dealt < 2:
+		return
+	c.allow.resize(256 * c.types)
+	c.allow.fill(1)
+	for row: Dictionary in c.w.continents:
+		if not row.has("types"):
+			continue
+		var id := int(row.get("id", 0))
+		for cc in c.types:
+			c.allow[id * c.types + cc] = 0
+		for cc: int in (row.get("types") as PackedInt32Array):
+			c.allow[id * c.types + cc] = 1
+
+
+## The id of the continent the PLAN calls home, or -1 on a world of one body
+## (where there is nothing to choose between). Settling asks it so the spawn
+## village stands on the body the deal made ready.
+static func home_id(c: GenContext) -> int:
+	if c.bodies.size() <= 1 or c.w.continents.is_empty():
+		return -1
+	var planned := mini(c.bodies.size(), c.w.continents.size())
+	return int(c.w.continents[_home_row(c, planned)].get("id", -1))
+
+
+## The row of `w.continents` the PLAN calls home, matched by identity: the row
+## whose land holds the plan's home centre. Rows are ranked by size and the plan
+## lists its bodies in the order it placed them, so position in one list says
+## nothing about the other -- reading `home` off the plan's index sent the home
+## guarantee to a different continent on every seed measured (1, 42, 90210).
+static func _home_row(c: GenContext, planned: int) -> int:
+	var at := Vector2.ZERO
+	for b: Dictionary in c.bodies:
+		if bool(b.get("home", false)):
+			at = (b.at as Vector2) * c.size
+	var id := c.w.continent_at(clampi(floori(at.x), 0, c.size - 1), clampi(floori(at.y), 0, c.size - 1))
+	var best := 0
+	var best_d := INF
+	for i in planned:
+		var row: Dictionary = c.w.continents[i]
+		if int(row.get("id", -1)) == id:
+			return i
+		# The centre fell in a bay: the nearest continent's centre is the body.
+		var d := (row.centre as Vector2).distance_to(at)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
 
 
 ## The tile rect a body occupies, for placing anything within it.

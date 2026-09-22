@@ -12,6 +12,17 @@ static func make() -> BiomeDef:
 	d.order = 1
 	d.style_note = "Soft broken edges, stippled dots, mist lying in the hollows."
 	d.share = Vector2(0.11, 0.15)
+	# ON HOME, ALWAYS: the first step north of the coast, so the journey can be
+	# READ from where he wakes (docs/WORLD.md §4: `least` is so a beat never
+	# strands "a player who never crosses the ocean") and the coast-moss border is
+	# a promise rather than a leak. Home is "not dealt the harshest or rarest
+	# types" (§8.4), and harshest is read as the top of the landscapes' own table
+	# of declared hazards, about 0.7 and up (snowfield, glass desert, the drowned
+	# city, the Burning, the salt, the frost sea, the caves). The moss's wet at 0.6
+	# bites, but it is thirteenth of twenty-three, a mid-pack bog and not a
+	# destination; "anything that bites" would bar thirteen landscapes, a rule
+	# nobody wrote.
+	d.spread = Vector2i(1, 0)
 	# One of the three that cross the island's waist. Two of the belt trade
 	# places with the seed, so no world lays it in the same order.
 	d.anchors = [{"seq": 3, "u": 0.17, "v": 0.53, "band": &"middle", "slot": 0, "swap": 0.4}]

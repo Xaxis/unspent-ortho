@@ -12,6 +12,13 @@ static func make() -> BiomeDef:
 	d.order = 0
 	d.style_note = "Calm long contours, fast cloud shadows, everything leaning off the sea."
 	d.share = Vector2(0.32, 0.38)
+	# ON HOME, ALWAYS (docs/WORLD.md §8.4: home "holds the coast, the spawn village
+	# and a full starting economy"). The player wakes on a coast village, so a home
+	# continent without a coast wakes him on another body -- measured on seeds 1
+	# and 42 at 1300, where home grew no coast at all. `(1, 0)` is DEPENDENCY: the
+	# dealer puts it on home first (`GenBodies.deal`). `StoryWorld.guaranteed`
+	# once guaranteed it by the spawn instead; its header says why that ended.
+	d.spread = Vector2i(1, 0)
 	# The journey starts here: the south shore, with two arms round the bays.
 	d.anchors = [
 		{"seq": 0, "u": 0.5, "v": 0.87},

@@ -166,11 +166,17 @@ func _check_shares(size: int) -> void:
 	print("       layouts for %d seeds at %d: %d ms" % [SHARE_SEEDS.size(), size, Time.get_ticks_msec() - t])
 
 
+## A SHARE IS A SHARE OF THE LAND A TYPE MAY HOLD. Every continent is dealt its
+## own landscapes, so a type dealt one body of five can never reach a share of the
+## whole square; it only ever did by spreading onto bodies it was never dealt,
+## which is the leak the deal now closes. So the target is the one the balancer
+## aims at, worked out from the deal this world recorded (`allowed_targets`). On a
+## world of one body it is the registry's share exactly, as it always was.
 func test_full_worlds_keep_their_shares() -> void:
 	for s in WORLD_SEEDS:
 		var w := world(s)
 		var shares := _shares(w)
-		var target := _targets(w)
+		var target := allowed_targets(w)
 		for c: int in BiomeRegistry.land_indices():
 			check(shares[c] >= target[c] * 0.7 and shares[c] <= target[c] * 1.4,
 				"seed %d %s share %.3f, wanted %.3f" % [s, BiomeRegistry.name_of(c), shares[c], target[c]])
@@ -179,6 +185,18 @@ func test_full_worlds_keep_their_shares() -> void:
 ## Each land type's share of the land as the registry asks for it.
 static func _targets(w: WorldData) -> PackedFloat32Array:
 	return GenCountries.targets(GenContext.new(w))
+
+
+## Each land type's share of the land it was dealt, from the deal `w` recorded.
+static func allowed_targets(w: WorldData) -> PackedFloat32Array:
+	var c := GenContext.new(w)
+	GenBodies.fill_allow(c)
+	var land := PackedByteArray()
+	land.resize(w.level.size())
+	for i in land.size():
+		# The same land `_shares` counts, so the two sides divide by one number.
+		land[i] = 0 if w.country[i] == Country.SEA else 1
+	return GenCountries.allowed_targets(c, land, w.continent)
 
 
 static func _shares(w: WorldData) -> PackedFloat32Array:
@@ -917,15 +935,52 @@ func test_sea_rim_on_every_edge() -> void:
 			check(w.level[i * w.size] <= 0 and w.level[i * w.size + w.size - 1] <= 0, "seed %d west/east rim is land" % s)
 
 
+## EVERY LANDSCAPE THE WORLD HOLDS, AND A BORDER IT REALLY HAS, RESOLVE BY NAME.
+## This named six landscapes and the coast-moss border by hand, which is a claim
+## about the world as it was at six landscapes on one island: once a continent
+## holds only what it was dealt, the coast and the moss need not share a shore,
+## and seed 1's coast-moss border had only ever existed where the moss leaked onto
+## a body it was never dealt. So the names are ASKED OF THE WORLD: each landscape
+## with land in it, and the border with the most blended ground in it.
 func test_places_resolve() -> void:
 	var w := world(WORLD_SEEDS[0])
-	for name: String in ["spawn", "coast", "moss", "pinewood", "snowfield", "bonelands", "burning", "coast-moss", "tip", "river"]:
+	var names: Array[String] = ["spawn", "tip", "river"]
+	var held := {}
+	for c in w.country:
+		held[c] = true
+	var lands: Array[int] = []
+	for cc: int in BiomeRegistry.land_indices():
+		if held.has(cc):
+			lands.append(cc)
+			names.append(String(BiomeRegistry.by_index(cc).id))
+	gt(float(lands.size()), 4.0, "the world holds a good few landscapes to find")
+	var pairs := {}
+	for y in range(10, w.size - 10, 3):
+		for x in range(10, w.size - 10, 3):
+			var i := y * w.size + x
+			var a := int(w.country[i])
+			var b := int(w.country2[i])
+			if a == Country.SEA or b == Country.SEA or a == b or w.blend[i] < 0.35:
+				continue
+			var key := mini(a, b) * 256 + maxi(a, b)
+			pairs[key] = int(pairs.get(key, 0)) + 1
+	var widest := -1
+	for key: int in pairs:
+		if widest < 0 or int(pairs[key]) > int(pairs[widest]):
+			widest = key
+	check(widest >= 0, "the world has a border at all")
+	if widest >= 0:
+		names.append("%s-%s" % [BiomeRegistry.by_index(widest / 256).id, BiomeRegistry.by_index(widest % 256).id])
+	for name: String in names:
 		var p := GenPlaces.find(w, name)
 		check(p.x >= 0.0, "place %s not found" % name)
 		if p.x >= 0.0:
 			check(not Ground.is_water(w.ground_at(floori(p.x), floori(p.y))), "place %s is in water" % name)
-	var moss := GenPlaces.find(w, "moss")
-	eq(w.country_at(floori(moss.x), floori(moss.y)), Country.MOSS, "moss sample country")
+	# A landscape's own sample stands in that landscape.
+	for cc: int in lands:
+		var at := GenPlaces.find(w, String(BiomeRegistry.by_index(cc).id))
+		if at.x >= 0.0:
+			eq(w.country_at(floori(at.x), floori(at.y)), cc, "%s sample country" % BiomeRegistry.name_of(cc))
 	eq(GenPlaces.find(w, "nowhere"), Vector2(-1, -1), "unknown place")
 
 

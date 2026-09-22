@@ -22,6 +22,11 @@ class_name GenCountries
 ## sample's stride in tiles.
 const BALANCE_PASSES := 3
 const BALANCE_STRIDE := 4
+## The distance a type is put at from land its body was not dealt: past any
+## weight the balance can reach, so it can never win a cell there.
+const OUT_OF_REACH := 1.0e9
+## Weight slots: one per body id a world can carry (`GenBodies` caps ids at 255).
+const SLOTS := 256
 ## A piece of a type cut off inside another and smaller than this (512 world)
 ## joins the type round it: a blot of ash in the limestone is noise, not a place.
 const ENCLAVE_TILES := 400
@@ -167,6 +172,45 @@ static func targets(c: GenContext) -> PackedFloat32Array:
 	return out
 
 
+## Each type's share of the land it is ALLOWED to hold, stated as a share of all
+## land so the balancer can aim at it. On a body, the types it was dealt split its
+## land by their own `share`; a type's target is what it gets summed over its
+## bodies. A share was a target over the whole square, and with the deal enforced
+## that asks a type dealt one body of five to reach a world-wide share its own
+## deal forbids -- the balancer then pulls its weight without bound until it has
+## eaten that body. A mass nobody dealt (a skerry) is open to every type.
+##
+## A world of one body has nothing to split and returns `targets` itself, not a
+## sum that equals it: the same number by a different order of float additions
+## moves a balance pass, and every pinned world with it.
+static func allowed_targets(c: GenContext, landc: PackedByteArray, cell_body: PackedByteArray) -> PackedFloat32Array:
+	if c.allow.is_empty():
+		return targets(c)
+	var land_of := {}
+	var total := 0.0
+	for k in landc.size():
+		if landc[k] == 0:
+			continue
+		var id := int(cell_body[k])
+		land_of[id] = float(land_of.get(id, 0.0)) + 1.0
+		total += 1.0
+	var out := PackedFloat32Array()
+	out.resize(c.types)
+	for id: int in land_of:
+		var sum := 0.0
+		for cc: int in c.land_types:
+			if c.may_stand(cc, id):
+				sum += c.defs[cc].share_target()
+		if sum <= 0.0:
+			continue
+		for cc: int in c.land_types:
+			if c.may_stand(cc, id):
+				out[cc] += float(land_of[id]) * c.defs[cc].share_target() / sum
+	for cc: int in c.land_types:
+		out[cc] /= maxf(1.0, total)
+	return out
+
+
 ## A landscape that lies where the island lets it (no anchor) is only placed if
 ## the island has room for it to be a place: its share of the land must come to
 ## a region's worth of tiles at walking scale, not a share of a tiny island. A
@@ -245,25 +289,75 @@ static func coarse(c: GenContext) -> void:
 				for cc in range(1, types):
 					dist[cc * cn + k] += ownf[cc * cn + k] * oamp
 	)
-	# Balance additive weights so shares hit the registry's targets: coarse
-	# passes on every other cell, then fine passes on every land cell.
+	# A land cell on a dealt body is out of reach of every type it was not dealt.
+	# Put into the DISTANCE, so the balance, the scores and the soft memberships
+	# all see it without a second rule to keep in step.
+	var cell_body := PackedByteArray()
+	cell_body.resize(cn)
+	for k in cn:
+		if landc[k] == 0:
+			continue
+		var ix := clampi(roundi(GenFields.cell_centre(k % cw, step)), 0, size - 1)
+		var iy := clampi(roundi(GenFields.cell_centre(k / cw, step)), 0, size - 1)
+		cell_body[k] = c.w.continent[iy * size + ix]
+	if not c.allow.is_empty():
+		for k in cn:
+			if landc[k] == 0:
+				continue
+			for cc in range(1, types):
+				if not c.may_stand(cc, cell_body[k]):
+					dist[cc * cn + k] = OUT_OF_REACH
+	target = allowed_targets(c, landc, cell_body)
+	c.share_target = target
+	# ONE WEIGHT PER TYPE PER BODY (docs/WORLD.md §4: "`share` normalises across
+	# the types dealt to this body"). A single weight per type was set by every
+	# body the type holds at once, so where its neighbours differed from body to
+	# body it could not hold its share on all of them: measured, the coast's one
+	# weight sat 250-500 under glass_desert's and drowned_city's and it lost its
+	# OWN heart on the home continent of seeds 1 and 42. A world of one body has
+	# one slot, 0, and the arithmetic below is the arithmetic it always had.
+	var wslot := _weight_slots(c, landc, cell_body)
+	c.weight_slot = wslot
+	var slot_target := _slot_targets(c, target)
 	var weight := PackedFloat32Array()
-	weight.resize(types)
+	weight.resize(SLOTS * types)
+	# A BODY OSCILLATES WHERE THE WHOLE LAND DID NOT. One body is a fifth of the
+	# land, so the same gain that settles a world-wide share throws a body's share
+	# from nothing to far too much and back: measured on seed 90210, the home
+	# body's coast swung between 0 and 0.28 for all forty passes. So on a world of
+	# several bodies each (body, type) halves its own step whenever its error
+	# changes sign -- the loop still aims where it did, it just stops overshooting.
+	# One body keeps the undamped arithmetic it always had.
+	var damp := PackedFloat32Array()
+	damp.resize(SLOTS * types)
+	damp.fill(1.0)
+	var last_err := PackedFloat32Array()
+	last_err.resize(SLOTS * types)
+	var damped := not c.allow.is_empty()
 	var full_passes := 0
 	var it := 0
 	while it < 40:
 		var sparse := it < 30
 		var gain := size * (0.5 if sparse else 0.3)
-		var counts := _assign_counts(dist, weight, landc, cw, types, sparse)
-		var total := 0.0
-		for cc in types:
-			total += counts[cc]
-		total = maxf(1.0, total)
+		var counts := _assign_counts(dist, weight, wslot, landc, cw, types, sparse)
 		var worst := 0.0
-		for cc: int in c.land_types:
-			var err := target[cc] - counts[cc] / total
-			worst = maxf(worst, absf(err))
-			weight[cc] += err * gain
+		for sl: int in slot_target:
+			var want: PackedFloat32Array = slot_target[sl]
+			var at := sl * types
+			var total := 0.0
+			for cc in types:
+				total += counts[at + cc]
+			total = maxf(1.0, total)
+			for cc: int in c.land_types:
+				var err := want[cc] - counts[at + cc] / total
+				worst = maxf(worst, absf(err))
+				if damped:
+					if err * last_err[at + cc] < 0.0:
+						damp[at + cc] = maxf(0.02, damp[at + cc] * 0.5)
+					last_err[at + cc] = err
+					weight[at + cc] += err * gain * damp[at + cc]
+				else:
+					weight[at + cc] += err * gain
 		# Close enough on the sample: go on to every cell. The tiles are
 		# balanced again after their borders wander (fine()).
 		if sparse and worst < 0.006 and it >= 8:
@@ -273,6 +367,7 @@ static func coarse(c: GenContext) -> void:
 			if worst < 0.004 and full_passes >= 3:
 				break
 		it += 1
+	c.layout_weight = weight
 	c.scores.clear()
 	c.soft.clear()
 	var flat := PackedFloat32Array()
@@ -285,13 +380,14 @@ static func coarse(c: GenContext) -> void:
 	GenFields.rows(cw, func(g0: int, g1: int) -> void:
 		for k in range(g0 * cw, g1 * cw):
 			var top := -1e9
+			var at := wslot[k] * types
 			for cc in range(1, types):
-				var v := weight[cc] - dist[cc * cn + k]
+				var v := weight[at + cc] - dist[cc * cn + k]
 				flat[cc * cn + k] = v
 				top = maxf(top, v)
 			var sum := 0.0
 			for cc in range(1, types):
-				var e := exp((weight[cc] - dist[cc * cn + k] - top) / temp)
+				var e := exp((weight[at + cc] - dist[cc * cn + k] - top) / temp)
 				softm[cc * cn + k] = e
 				sum += e
 			for cc in range(1, types):
@@ -311,14 +407,14 @@ static func coarse(c: GenContext) -> void:
 
 ## Land cells each type would win with these weights (every other cell in each
 ## direction when sparse).
-static func _assign_counts(dist: PackedFloat32Array, weight: PackedFloat32Array, landc: PackedByteArray, cw: int, types: int, sparse: bool) -> PackedInt32Array:
+static func _assign_counts(dist: PackedFloat32Array, weight: PackedFloat32Array, wslot: PackedByteArray, landc: PackedByteArray, cw: int, types: int, sparse: bool) -> PackedInt32Array:
 	var cn := cw * cw
 	var band := 12
 	var parts: Array[PackedInt32Array] = []
 	parts.resize(ceili(float(cw) / band))
 	GenFields.rows(cw, func(g0: int, g1: int) -> void:
 		var counts := PackedInt32Array()
-		counts.resize(types)
+		counts.resize(SLOTS * types)
 		for gy in range(g0, g1):
 			if sparse and gy % 2 != 0:
 				continue
@@ -327,22 +423,86 @@ static func _assign_counts(dist: PackedFloat32Array, weight: PackedFloat32Array,
 				var k := gy * cw + gx
 				if landc[k] == 0:
 					continue
+				var at := wslot[k] * types
 				var best := 1
 				var best_v := -1e12
 				for cc in range(1, types):
-					var v := weight[cc] - dist[cc * cn + k]
+					var v := weight[at + cc] - dist[cc * cn + k]
 					if v > best_v:
 						best_v = v
 						best = cc
-				counts[best] += 1
+				counts[at + best] += 1
 		parts[g0 / band] = counts
 	, band)
 	var total := PackedInt32Array()
-	total.resize(types)
+	total.resize(SLOTS * types)
 	for part in parts:
-		for cc in types:
-			total[cc] += part[cc]
+		for j in part.size():
+			total[j] += part[j]
 	return total
+
+
+## Which weight slot each coarse cell balances in: its body's id, and for a sea
+## cell the body of the nearest land cell, so a shore's upsampled scores mix one
+## body's weights and never a body's with nothing's. All 0 on a world of one body.
+static func _weight_slots(c: GenContext, landc: PackedByteArray, cell_body: PackedByteArray) -> PackedByteArray:
+	var cw := c.cw
+	var slot := PackedByteArray()
+	slot.resize(cw * cw)
+	if c.allow.is_empty():
+		return slot
+	var seen := PackedByteArray()
+	seen.resize(cw * cw)
+	var q := PackedInt32Array()
+	for k in cw * cw:
+		if landc[k] != 0:
+			slot[k] = cell_body[k]
+			seen[k] = 1
+			q.append(k)
+	var head := 0
+	while head < q.size():
+		var k := q[head]
+		head += 1
+		var x := k % cw
+		var y := k / cw
+		for d: Vector2i in GenBodies.NEIGHBOURS:
+			var nx := x + d.x
+			var ny := y + d.y
+			if nx < 0 or ny < 0 or nx >= cw or ny >= cw:
+				continue
+			var j := ny * cw + nx
+			if seen[j] != 0:
+				continue
+			seen[j] = 1
+			slot[j] = slot[k]
+			q.append(j)
+	return slot
+
+
+## What each balanced slot aims at: slot -> each type's share of THAT slot's land.
+## One body: slot 0 and `target` itself. Several: every DEALT body splits its land
+## among the types it was dealt by their `share`; a mass nobody dealt is not
+## balanced at all and keeps a weight of 0, which leaves a skerry to distance.
+static func _slot_targets(c: GenContext, target: PackedFloat32Array) -> Dictionary:
+	var out := {}
+	if c.allow.is_empty():
+		out[0] = target
+		return out
+	for row: Dictionary in c.w.continents:
+		if not row.has("types"):
+			continue
+		var id := int(row.get("id", 0))
+		var want := PackedFloat32Array()
+		want.resize(c.types)
+		var sum := 0.0
+		for cc: int in c.land_types:
+			if c.may_stand(cc, id):
+				sum += c.defs[cc].share_target()
+		for cc: int in c.land_types:
+			if c.may_stand(cc, id) and sum > 0.0:
+				want[cc] = c.defs[cc].share_target() / sum
+		out[id] = want
+	return out
 
 
 ## Where every type's sites go: x, y in tiles, z the type index.
@@ -404,7 +564,61 @@ static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
 		var r := _rect_for(c, cc, nth)
 		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, cc))
 	_envelope_sites(c, rng, out)
+	_site_every_dealt_body(c, mirror, out)
 	return out
+
+
+## A SITE ON EVERY BODY A TYPE WAS DEALT. Territory is distance to a type's
+## nearest site, and with the deal enforced a type can hold nothing on a body
+## where it has none -- the balancer then raises its weight on that body without
+## end and the land goes to whoever does have a site there. A type with one
+## anchor dealt three bodies had a site on one of them (`_rect_for` takes them in
+## turn) and a type placed by climate took its sites wherever it fitted best,
+## which need not be every body it was dealt. Measured before this: shares missed
+## their per-body target by up to 148% on seed 42.
+##
+## An anchored type repeats its anchors onto the bodies still without one, in
+## the same mirror; a climate type takes the land on that body its envelope fits
+## best. No random draws, so nothing after it shifts. One body: nothing to do.
+static func _site_every_dealt_body(c: GenContext, mirror: bool, out: Array[Vector3]) -> void:
+	if c.allow.is_empty():
+		return
+	for row: Dictionary in c.w.continents:
+		if not row.has("types"):
+			continue
+		var id := int(row.get("id", 0))
+		var bounds: Rect2 = row.bounds
+		for cc: int in (row.get("types") as PackedInt32Array):
+			var has := false
+			for s: Vector3 in out:
+				if int(s.z) == cc and c.w.continent_at(floori(s.x), floori(s.y)) == id:
+					has = true
+					break
+			if has:
+				continue
+			var d := c.defs[cc]
+			if not d.anchors.is_empty():
+				var a: Dictionary = d.anchors[0]
+				var u := float(a.u)
+				if mirror:
+					u = 1.0 - u
+				out.append(Vector3(bounds.position.x + u * bounds.size.x, bounds.position.y + float(a.v) * bounds.size.y, cc))
+				continue
+			var best := Vector2(-1, -1)
+			var best_fit := -1.0
+			var y := bounds.position.y + 4.0
+			while y < bounds.end.y:
+				var x := bounds.position.x + 4.0
+				while x < bounds.end.x:
+					if c.w.continent_at(floori(x), floori(y)) == id:
+						var f := _fit(c, d, Vector2(x, y), bounds)
+						if f > best_fit:
+							best_fit = f
+							best = Vector2(x, y)
+					x += 8.0
+				y += 8.0
+			if best.x >= 0.0:
+				out.append(Vector3(best.x, best.y, cc))
 
 
 ## Types with no anchor find their own ground: the island's latitude and its
@@ -439,15 +653,10 @@ static func _dealt_here(c: GenContext, cc: int, p: Vector2) -> bool:
 	var id := c.w.continent_at(floori(p.x), floori(p.y))
 	if id == GenBodies.VOID:
 		return false
-	for b: Dictionary in c.w.continents:
-		if int(b.id) != id:
-			continue
-		# A mass nobody dealt is a skerry, not a continent: whatever washed up on
-		# it is welcome. Only a DEALT body turns a type away.
-		if not b.has("types"):
-			return true
-		return (b.get("types") as PackedInt32Array).has(cc)
-	return false
+	# A mass nobody dealt is a skerry, not a continent: whatever washed up on it
+	# is welcome. Only a DEALT body turns a type away -- the same answer the
+	# territory gets, from the same table.
+	return c.may_stand(cc, id)
 
 
 static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Array[Vector3]) -> void:
@@ -653,14 +862,18 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 			finger_amp[lo * types + hi] = amp.y
 	# Tiles each type's borders are pushed out by (negative: pulled in), found
 	# by balancing on a sparse sample below.
+	# Per slot and type, the same slots the coarse weights balanced in: a land tile
+	# pushes in its own body's slot, and on one body every tile is slot 0.
 	var push := PackedFloat32Array()
-	push.resize(types)
+	push.resize(SLOTS * types)
 	# stride 1 writes every tile; a larger stride only counts a sample, by type,
 	# into parts (one count per band).
+	var restricted := not c.allow.is_empty()
+	var body := w.continent
 	var assign := func(stride: int, parts: Array[PackedInt32Array]) -> void:
 		GenFields.rows(size, func(y0: int, y1: int) -> void:
 			var counts := PackedInt32Array()
-			counts.resize(types)
+			counts.resize(SLOTS * types)
 			for y in range(y0, y1):
 				if y % stride != 0:
 					continue
@@ -691,6 +904,15 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						elif v > sb:
 							b = cc
 							sb = v
+					if restricted and not (c.may_stand(a, body[i]) and c.may_stand(b, body[i])):
+						# The coarse cells round a thin neck of land can be sea, which
+						# no deal restricts, so the upsampled scores may still offer a
+						# type this body was not dealt. Pick again among those it was.
+						var got := _best_two(flat, n, i, types, c, body[i])
+						a = got.x
+						b = got.y
+						sa = flat[(a - 1) * n + i]
+						sb = flat[(b - 1) * n + i]
 					var lo := mini(a, b)
 					var hi := maxi(a, b)
 					var bl := (lo - 1) * n
@@ -730,13 +952,14 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 							gx -= sgn * (elev_smooth[ib] - elev_smooth[ia])
 							gy -= sgn * (elev_smooth[jb] - elev_smooth[ja])
 						var grad := maxf(0.25, sqrt(gx * gx + gy * gy) / float(maxi(1, xb - xa + yb - ya) / 2))
-						var d := m / grad + finger[i] * amp + bend[i] * 22.0 + push[lo] - push[hi]
+						var pat := (body[i] * types) if restricted else 0
+						var d := m / grad + finger[i] * amp + bend[i] * 22.0 + push[pat + lo] - push[pat + hi]
 						win = hi if d < 0.0 else lo
 					if stride == 1:
 						country[i] = win
 						country2[i] = hi if win == lo else lo
 					else:
-						counts[win] += 1
+						counts[((body[i] * types) if restricted else 0) + win] += 1
 			if stride > 1:
 				parts[y0 / 12] = counts
 		)
@@ -744,21 +967,25 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	# and the climbing borders then move every border. Measure the shares that
 	# result on a sample, push each border out or in by the error, and measure
 	# again, so every seed keeps its landscapes near their targets.
-	var target := targets(c)
+	var target := c.share_target if not c.share_target.is_empty() else targets(c)
+	var slot_target := _slot_targets(c, target)
 	var parts: Array[PackedInt32Array] = []
 	parts.resize(ceili(float(size) / 12))
 	var gain := 60.0 * size / 512.0
 	for it in BALANCE_PASSES:
 		assign.call(BALANCE_STRIDE, parts)
-		var counts := PackedFloat32Array()
-		counts.resize(types)
-		var total := 0.0
-		for part in parts:
-			for cc in types:
-				counts[cc] += part[cc]
-				total += part[cc]
-		for cc: int in c.land_types:
-			push[cc] = clampf(push[cc] + (target[cc] - counts[cc] / maxf(1.0, total)) * gain, -12.0, 12.0)
+		for sl: int in slot_target:
+			var want: PackedFloat32Array = slot_target[sl]
+			var at := sl * types
+			var counts := PackedFloat32Array()
+			counts.resize(types)
+			var total := 0.0
+			for part in parts:
+				for cc in types:
+					counts[cc] += part[at + cc]
+					total += part[at + cc]
+			for cc: int in c.land_types:
+				push[at + cc] = clampf(push[at + cc] + (want[cc] - counts[cc] / maxf(1.0, total)) * gain, -12.0, 12.0)
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
@@ -769,6 +996,31 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.blend")
 	regions(c)
 	c.mark(&"tiles.regions")
+
+
+## The two best-scoring types body `id` was dealt, at tile `i`, best first. Only
+## asked where the plain best two include a type the body may not hold, so its
+## cost is paid on a strip of coast and not on the world.
+static func _best_two(flat: PackedFloat32Array, n: int, i: int, types: int, c: GenContext, id: int) -> Vector2i:
+	var a := -1
+	var b := -1
+	var sa := -INF
+	var sb := -INF
+	for cc in range(1, types):
+		if not c.may_stand(cc, id):
+			continue
+		var v := flat[(cc - 1) * n + i]
+		if v > sa:
+			b = a
+			sb = sa
+			a = cc
+			sa = v
+		elif v > sb:
+			b = cc
+			sb = v
+	# A body dealt one type has no second: the border rules need a pair, and a
+	# pair of the same type draws no border.
+	return Vector2i(maxi(a, 1), b if b >= 1 else maxi(a, 1))
 
 
 ## Pieces of a type smaller than min_tiles take the land type most common along

@@ -87,7 +87,16 @@ const UNKNOWN := "unknown"
 ##     It moves 125 tiles on seed 1 and NOTHING on seeds 42 and 90210, which have
 ##     no seam -- and nothing at all at 256, where a world holds one body of
 ##     continent size. Turned all the same: 125 tiles is a world that moved.
-const GEN := 17
+##  9. The deal holds LAND, not only sites, and home is the plan's home. Which
+##     landscapes a continent was dealt was asked only where a site went, so a
+##     territory grew across the strait onto a nearer body: up to 70.6% of a
+##     continent (seed 42) was landscapes it was never dealt. `GenContext.may_stand`
+##     is asked by the layout now, and `deal` finds home by the continent that
+##     holds the plan's home centre instead of by list position. Every seed at the
+##     shipped size moves; NOTHING moves at 256, where a world is one body and the
+##     deal restricts nothing, so `test_parity` stays green over it and cannot be
+##     the evidence. The counter is the only thing that knows.
+const GEN := 18
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

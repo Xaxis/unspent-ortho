@@ -8,20 +8,27 @@ class_name StoryWorld
 ## given world does not have.
 
 ## The one landscape a world cannot be without. The player wakes beside a coast
-## village and that is a hard requirement of the opening hour, not a coincidence
-## (`GenSettle.spawn`). It is guaranteed by that and not by a `spread` floor, and
-## the worldgen session offered to set one and was told not to: a floor spends a
-## landscape's worth of the variety continents exist to buy, and the opening hour
-## already pays for this one (unspent-ortho-df, 2026-09-18).
+## village and that is a hard requirement of the opening hour.
+##
+## **IT WAS ONCE GUARANTEED BY THE SPAWN AND NOT BY A `spread` FLOOR, AND THAT
+## ENDED ON 2026-09-22.** unspent-ortho-df ruled on 2026-09-18 (`d7de7a7`) that a
+## floor would spend a landscape's worth of variety and that "the opening hour
+## already pays for this one", so this file answered yes for the coast by name.
+## The premise was that `GenSettle.spawn` guarantees HOME a coast. Measured at
+## 1300, it did not: on seeds 1 and 42 the home continent grew 0 coast tiles and
+## the player woke on another body, because the spawn follows the coast wherever
+## it happened to grow. And a floor spends no variety for the one landscape every
+## world must already hold. So the coast declares `spread (1, 0)` in its own file
+## and the dealer is the single authority, as `guaranteed` below demands.
 const COAST := &"coast"
 
 
 ## Whether EVERY world of this realm is guaranteed to contain this landscape, so
 ## the spine may rest a required beat on it.
 ##
-## Two things guarantee a landscape, and this answers yes to either: the opening
-## hour (the coast, above), or the dealer's own floor, `BiomeRegistry.guaranteed`,
-## which reads `BiomeDef.spread.x >= 1` and nothing else. Do NOT duplicate that
+## One thing guarantees a landscape: the dealer's own floor,
+## `BiomeRegistry.guaranteed`, which reads `BiomeDef.spread.x >= 1` and nothing
+## else (the coast declares one; see `COAST` above). Do NOT duplicate that
 ## reading here — the dealer's answer is the authority, or the two drift and the
 ## gate stops meaning anything. And never ask "is it exclusive?" instead: that is a
 ## proxy, false exactly when an ordinary landscape is left out of a small world, and
@@ -31,7 +38,7 @@ const COAST := &"coast"
 ## worlds that were really grown, so a promise here that the world does not keep
 ## fails the gate rather than a player.
 static func guaranteed(land: StringName) -> bool:
-	return land == COAST or BiomeRegistry.guaranteed(land)
+	return BiomeRegistry.guaranteed(land)
 
 
 ## How near the old THRESHOLD site a readable thing must stand to be one of its
