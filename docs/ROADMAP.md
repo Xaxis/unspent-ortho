@@ -2,6 +2,24 @@
 
 Destination: `docs/VISION.md`.
 
+## WAITING ON THE OWNER (2026-09-22) -- each a sentence to answer, detail below
+
+**The look (LANTERN) is decided and none of these reopens it.** Each is already
+built or measured, so an answer costs a word, not a wave.
+
+1. **Ship the second projection?** Held Z switches to a perspective lens
+   (`--config=held-z`, or dev mode's rules page). Off by default. It shows about
+   5x the buildings; measured cost so far is small (see PROJECTIONS).
+2. **The horizon fork** -- keep sky out of frame (`fov/2 < pitch`), as now?
+3. **Should machines get out of the player's way in the orthographic game too?**
+   Built, inert under ortho; one word switches it on.
+4. **Should a cottage open when it hides the player** under the lens?
+5. **How big a place must be** (your `BODY_SHARE` 0.35). Your rule and the code
+   drifted when continents became dealt. Recommended: 0.25.
+6. **Deal each prop's model by position, not id.** Today any world change
+   reshuffles most of the island's models, and it now moves the canon's own neon
+   frame -- **this one blocks the canon and the web light refit.**
+
 Milestones end in something a person can play. Work inside a milestone runs as
 parallel packages, each in its own worktree with its own directories, merged
 one at a time behind `tools/check.sh`.
