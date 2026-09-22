@@ -92,7 +92,7 @@ func _measured_behind(cam: Camera3D, foot: float, limit := 60.0, step := 0.05) -
 
 
 ## The camera the LENS makes, exactly as `CameraRig._ready` and `_apply_lens`
-## build it: perspective, its own fov and pitch, and stood `LENS_BACK` back along
+## build it: perspective, its own fov and pitch, and stood `lens_back()` back along
 ## its own axis from the focus -- which for a perspective camera is not a free
 ## choice the way it is above, because where the eye sits decides the picture.
 func _lens_camera() -> Camera3D:
@@ -113,7 +113,7 @@ func _lens_camera() -> Camera3D:
 	cam.far = 500.0
 	cam.rotation = Vector3(deg_to_rad(-CameraRig.LENS_PITCH), deg_to_rad(45.0), 0.0)
 	vp.add_child(cam)
-	cam.position = cam.global_transform.basis.z * CameraRig.LENS_BACK
+	cam.position = cam.global_transform.basis.z * CameraRig.lens_back()
 	return cam
 
 
@@ -183,7 +183,7 @@ func test_the_lens_holds_ground_the_orthographic_frame_cannot() -> void:
 	print("ortho vh %.1f pitch %.0f -> ahead %6.2f  behind %6.2f tiles"
 		% [CameraRig.VIEW_HEIGHT, CameraRig.PITCH_DEG, o_ahead, o_behind])
 	print("lens  fov %.0f pitch %.0f back %.1f -> ahead %6.2f  behind %6.2f tiles"
-		% [CameraRig.LENS_FOV, CameraRig.LENS_PITCH, CameraRig.LENS_BACK, ahead, behind])
+		% [CameraRig.LENS_FOV, CameraRig.LENS_PITCH, CameraRig.lens_back(), ahead, behind])
 	# The negative this run has to be able to produce: if the frustum were built
 	# wrong, the lens would answer somewhere near the orthographic 8.9 and every
 	# claim below would be false.
@@ -287,19 +287,84 @@ func test_one_door_answers_for_both_projections() -> void:
 	near(CameraRig.units_per_pixel_of(ortho, rows), was, 1e-9,
 		"the orthographic answer is the division it replaces, to the bit")
 	var lens := _lens_camera()
+	# A DELIBERATELY MISMATCHED LENS, because the shipped one no longer can be.
+	# `lens_back` derives the distance so the two projections agree at the focal
+	# plane, which means the door's answer and the stale `size / rows` are now
+	# equal for the shipped constants -- and an assertion that they DIFFER was
+	# really an assertion that the lens was still broken. So the claim is made
+	# where it can be made: a lens standing somewhere the invariant does not put
+	# it, where the frustum and the property genuinely disagree.
+	# The lever is the FOV, not the position: for a bare Camera3D the door uses
+	# the lens's own resting distance by design (it is not a rig and cannot be
+	# asked where it stands), so moving it changes nothing and would have proved
+	# nothing. Widening the frustum changes what a pixel covers and leaves `size`
+	# exactly where `_ready` put it.
+	lens.fov = 90.0
 	var got := CameraRig.units_per_pixel_of(lens, rows)
 	var stale := lens.size / rows
 	# What the lens really shows per pixel at the focal plane, from its own fov
 	# and how far back it stands -- and what the old arithmetic would have said.
-	var rule := 2.0 * tan(deg_to_rad(CameraRig.LENS_FOV) * 0.5) * CameraRig.LENS_BACK / rows
+	var rule := 2.0 * tan(deg_to_rad(90.0) * 0.5) * CameraRig.lens_back() / rows
 	print("units per pixel: ortho %.6f | lens %.6f (rule %.6f), `size / rows` would say %.6f"
 		% [was, got, rule, stale])
 	near(got, rule, 1e-9, "the lens answers from its own frustum")
 	check(absf(got - stale) > 1e-4,
 		"the lens answer must differ from the stale `size / rows`, or nothing was fixed")
 	# And the sharpest part of it: the stale answer is not nonsense, it is the
-	# ORTHOGRAPHIC answer exactly. Under the lens the five old sites would have
-	# gone on returning the play camera's own texel, to the bit, for ever.
-	near(stale, was, 1e-9, "the stale reading under the lens is the orthographic one, unchanged")
+	# ORTHOGRAPHIC answer exactly, whatever the lens is really doing. `size` is
+	# set from `view_height` in `_ready` and nothing writes it again, so the five
+	# old sites would have gone on returning the play camera's own texel, to the
+	# bit, for a camera standing anywhere at all.
+	near(stale, was, 1e-9, "the stale reading is the orthographic one wherever the lens stands")
 	ortho.get_parent().queue_free()
+	lens.get_parent().queue_free()
+
+
+## THE SWITCH MAY NOT POP, and this is the only thing standing between that and
+## somebody retuning the lens for a nicer frame.
+##
+## A projection cannot be lerped. At the instant `lens` changes, a subject at the
+## focal plane keeps its size if and only if the two cameras agree about world
+## units per pixel, which is `2 * tan(fov/2) * back == view_height`. The lens
+## shipped with fov 55 and a spelled back of 9.0, which is 9.37 against 15.0 -- a
+## body the player was holding Z on would have jumped 1.60x larger on the key
+## press. `CameraRig.lens_back` derives the distance so that cannot be written.
+func test_the_two_projections_agree_about_size_at_the_focal_plane() -> void:
+	var rows := float(UiBase.SIZE.y)
+	var ortho := _camera()
+	var lens := _lens_camera()
+	var a := CameraRig.units_per_pixel_of(ortho, rows)
+	var b := CameraRig.units_per_pixel_of(lens, rows)
+	print("units per pixel: ortho %.6f | lens %.6f -> a subject at the focal plane changes by x%.4f"
+		% [a, b, a / b])
+	near(b, a, 1e-9, "the lens and the frame it replaces agree, so the switch is invisible")
+	# The invariant itself, stated as the two sides rather than as the ratio.
+	near(2.0 * tan(deg_to_rad(CameraRig.LENS_FOV) * 0.5) * CameraRig.lens_back(),
+		CameraRig.VIEW_HEIGHT, 1e-9, "2 * tan(fov/2) * back == view_height")
+	# AND AT EVERY ZOOM, for nothing: `size` and `_back` both carry `_zoom`.
+	for zoom: float in [0.6, 1.0, 2.2]:
+		var o := CameraRig.VIEW_HEIGHT * zoom / rows
+		var l := 2.0 * tan(deg_to_rad(CameraRig.LENS_FOV) * 0.5) * CameraRig.lens_back() * zoom / rows
+		near(l, o, 1e-9, "zoom %.1f keeps the match" % zoom)
+	# And a view height the player moved (09_view, dev mode) keeps it too.
+	near(2.0 * tan(deg_to_rad(CameraRig.LENS_FOV) * 0.5) * CameraRig.lens_back(26.0), 26.0, 1e-9,
+		"a zoomed-out view height is matched by the distance derived from it")
+	ortho.get_parent().queue_free()
+	lens.get_parent().queue_free()
+
+
+## THE HORIZON IS A DECISION, NOT A SIDE EFFECT. Past `fov/2 < pitch` the top
+## edge clears the horizon: the frame holds sky, the ground runs to infinity and
+## the streamer's cap always binds. Which side of that line the game sits on is
+## the owner's call; this holds it to the side that keeps the horizon out until
+## he rules, so nobody crosses it by widening a fov for a nicer frame.
+func test_the_lens_keeps_the_horizon_out_of_the_frame() -> void:
+	lt(CameraRig.LENS_FOV * 0.5, CameraRig.LENS_PITCH,
+		"half the fov (%.1f) must stay under the pitch (%.1f) or the frame holds sky"
+			% [CameraRig.LENS_FOV * 0.5, CameraRig.LENS_PITCH])
+	var lens := _lens_camera()
+	var ahead := _measured_ahead(lens, 0.0, 400.0, 0.5)
+	gt(ahead, 0.0, "the ground really does meet the top edge somewhere ahead")
+	print("top edge %.1f deg under the horizon -> the lens holds ground to %.1f tiles ahead"
+		% [CameraRig.LENS_PITCH - CameraRig.LENS_FOV * 0.5, ahead])
 	lens.get_parent().queue_free()
