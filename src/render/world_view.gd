@@ -479,8 +479,19 @@ func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
 
 
 ## Half the side, in tiles, of the square around the focus that the camera sees.
+##
+## **A PROJECTION IT DOES NOT KNOW IS NOT A REASON TO ANSWER FOR THE OTHER ONE.**
+## This used to fall through to a 15-unit view pitched 57 whenever the camera was
+## not orthographic, which is a confident wrong answer rather than no answer: the
+## lens (`CameraRig` persp) reaches 95.2 tiles ahead and 4.9 behind, measured in
+## `tests/render/test_read_reach.gd`, so the square it was given was a sixth of
+## the ground in the picture. `_wanted` caps whatever comes back at `near_limit`
+## (110) and the coarse `world_far` stands past that, so telling the truth here
+## costs nothing and lying costs the near half of the frame.
 func view_half_extent() -> float:
 	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam != null and cam.projection == Camera3D.PROJECTION_PERSPECTIVE:
+		return _lens_half_extent(cam)
 	var vh := 15.0
 	var aspect := 16.0 / 9.0
 	var pitch := deg_to_rad(57.0)
@@ -490,6 +501,32 @@ func view_half_extent() -> float:
 		aspect = r.x / maxf(1.0, r.y)
 		pitch = absf(cam.global_rotation.x)
 	return half_extent_for(vh, aspect, pitch)
+
+
+## The same square for a LENS, asked of the camera instead of derived: its own
+## four corner rays, dropped onto the ground the focus stands on.
+##
+## A frustum has no `size` to divide, and no single half-extent describes its
+## shape -- the top edge runs a couple of degrees under the horizon while the
+## bottom is a few tiles behind the player. So this asks for the four corners and
+## takes the furthest, which is the only figure a SQUARE streamer can use.
+##
+## A corner that never meets the ground (level with the horizon or above it)
+## answers `near_limit`, because that is where `_wanted` would clamp it anyway
+## and a ray running to infinity must not become an infinite square.
+func _lens_half_extent(cam: Camera3D) -> float:
+	var rect := get_viewport().get_visible_rect().size
+	var plane_y := world.height_at(focus) if world != null else 0.0
+	var far_seen := 0.0
+	for c: Vector2 in [Vector2.ZERO, Vector2(rect.x, 0.0), Vector2(0.0, rect.y), rect]:
+		var from := cam.project_ray_origin(c)
+		var dir := cam.project_ray_normal(c)
+		var d := near_limit
+		if dir.y < -0.0001:
+			d = minf((from.y - plane_y) / -dir.y, near_limit)
+		var hit := from + dir * d
+		far_seen = maxf(far_seen, maxf(absf(hit.x - focus.x), absf(hit.z - focus.y)))
+	return far_seen
 
 
 ## The ground footprint of an orthographic view (height vh, yaw 45) as a square

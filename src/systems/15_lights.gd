@@ -211,11 +211,9 @@ const MACHINE_POOL := Vector2(2.6, 1.0)
 ## and must reach the ground they are in at every hour (docs/ART.md §3).
 const VENT_DAY := 1.5
 ## How far inside the frame a machine must stand for `await machine` to say the
-## shot holds it: a fifth of the screen in from every edge.
+## shot holds it: an eighth of the screen in from every edge. (The comment here
+## said a fifth, for a number that has been 0.12 all along.)
 const TOUR_MARGIN := 0.12
-## The game's frame, which is fixed however big the window on it is.
-static var FRAME_ASPECT := float(ProjectSettings.get_setting("display/window/size/viewport_width", 640)) \
-	/ maxf(1.0, float(ProjectSettings.get_setting("display/window/size/viewport_height", 360)))
 ## Which buildings wired a machine's light in used to be written down twice — a
 ## bare [1, 4] here and the same [1, 4] in `GenScatter.HOUSE_NEON` — because
 ## world gen holds no rendering and could not read a model. It is one answer in
@@ -1073,11 +1071,20 @@ func _framed(mob: Node3D) -> bool:
 		return false
 	# The body's own middle, not its feet: a tall machine standing at the bottom
 	# edge is a machine the frame holds.
-	var local := cam.global_transform.affine_inverse() * (mob.global_position + Vector3(0, 0.6, 0))
-	if local.z > -0.5:
+	var at := mob.global_position + Vector3(0, 0.6, 0)
+	if (cam.global_transform.affine_inverse() * at).z > -0.5:
 		return false
-	var half_h := cam.size * 0.5 * (1.0 - TOUR_MARGIN * 2.0)
-	return absf(local.y) < half_h and absf(local.x) < half_h * FRAME_ASPECT
+	# ASK THE CAMERA WHERE IT LANDS. This was a half-extent off `cam.size` and a
+	# spelled aspect, which is an ORTHOGRAPHIC pair of numbers: under the lens
+	# `size` is a property the projection ignores and would answer 15.0 for ever.
+	# `unproject_position` is right under either projection and follows a zoom and
+	# a lean for free -- and under the play camera it is the same test, because
+	# the inset is the same fraction of the same 16:9 frame.
+	var rect: Vector2 = cam.get_viewport().get_visible_rect().size
+	var s := cam.unproject_position(at)
+	var in_x := rect.x * TOUR_MARGIN
+	var in_y := rect.y * TOUR_MARGIN
+	return s.x > in_x and s.x < rect.x - in_x and s.y > in_y and s.y < rect.y - in_y
 
 
 static func neon_colour(s: Dictionary) -> Vector3:

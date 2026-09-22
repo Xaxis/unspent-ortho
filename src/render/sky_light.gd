@@ -607,7 +607,7 @@ func compose() -> void:
 		var cam := get_viewport().get_camera_3d()
 		var rows := get_viewport().get_visible_rect().size.y
 		if cam != null and rows > 0.0:
-			texel = cam.size / rows
+			texel = CameraRig.units_per_pixel_of(cam, rows)
 	RenderingServer.global_shader_parameter_set("sky_view", Vector4(texel, night, ground_scale, glow_reach))
 	# The blue floor under the washes comes on under a roof; the skyglow does not,
 	# because there is no sky up there to be glowing.

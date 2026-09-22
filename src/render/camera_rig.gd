@@ -256,6 +256,43 @@ func _near_focus() -> void:
 ## The yaw the screen is actually at, lean and all: screen-relative input and
 ## anything else drawn in screen space must ask for this, not the fixed angle,
 ## or the keys stop matching the picture while the camera leans.
+## WORLD UNITS PER SCREEN PIXEL, at the plane the camera is focused on. The one
+## door for everything that used to divide `cam.size` by the viewport's height.
+##
+## Under the orthographic projection it is exactly that and nothing has moved.
+## Under the lens it cannot be: `size` is a property Godot keeps on every
+## Camera3D and the perspective projection ignores, `_ready` sets it from
+## `view_height` and `_apply_lens` never writes it, so dividing it would answer
+## 15.0 for the life of the game -- a confident wrong answer, which is worse than
+## no answer because nothing anywhere would say so.
+##
+## A frustum has no single figure at all, so this one is stated AT THE FOCAL
+## PLANE: the ground the camera is looking at, `_back` away along its own axis,
+## which is where the player is standing and where every caller's mark, texel or
+## pool is being sized. Anything nearer is bigger on screen than this says and
+## anything further is smaller, and that is a property of the lens rather than an
+## error in the number.
+static func units_per_pixel_of(cam: Camera3D, rows: float) -> float:
+	var h := maxf(1.0, rows)
+	if cam == null:
+		return VIEW_HEIGHT / h
+	if cam.projection != PROJECTION_PERSPECTIVE:
+		return cam.size / h
+	# The only camera in this game that is ever perspective is this rig, which
+	# knows how far back it stands; a bare Camera3D that somehow got here is
+	# answered with the lens's own resting distance rather than with a guess
+	# dressed up as a measurement.
+	var rig := cam as CameraRig
+	var focal := rig._back if rig != null else LENS_BACK
+	return 2.0 * tan(deg_to_rad(cam.fov) * 0.5) * maxf(focal, 0.001) / h
+
+
+## The rig's own, for the viewport it is drawing into.
+func units_per_pixel() -> float:
+	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)
+	return units_per_pixel_of(self, rows)
+
+
 func yaw_now() -> float:
 	return yaw_deg + _yaw
 

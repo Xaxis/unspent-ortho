@@ -58,16 +58,63 @@ func _away(cam: Camera3D) -> Vector3:
 
 ## The furthest AHEAD (up-screen) a point `foot` units off the ground is still
 ## inside the top edge. Stepped finely and read off the camera.
-func _measured_ahead(cam: Camera3D, foot: float) -> float:
+func _measured_ahead(cam: Camera3D, foot: float, limit := 40.0, step := 0.05) -> float:
 	var away := _away(cam)
 	var last := -1.0
 	var d := 0.0
-	while d < 40.0:
+	while d < limit:
 		if cam.unproject_position(away * d + Vector3(0.0, foot, 0.0)).y < 0.0:
 			break
 		last = d
-		d += 0.05
+		d += step
 	return last
+
+
+## The furthest BEHIND the focus (down-screen) a point is still inside the bottom
+## edge. Stops the moment the point passes behind the camera's own near plane,
+## because `unproject_position` mirrors what is behind it and would answer
+## confidently with nonsense -- the exact failure this file exists to avoid.
+func _measured_behind(cam: Camera3D, foot: float, limit := 60.0, step := 0.05) -> float:
+	var away := _away(cam)
+	var rows: float = cam.get_viewport().get_visible_rect().size.y
+	var inv := cam.global_transform.affine_inverse()
+	var last := -1.0
+	var d := 0.0
+	while d < limit:
+		var at := away * -d + Vector3(0.0, foot, 0.0)
+		if (inv * at).z > -cam.near:
+			break
+		if cam.unproject_position(at).y > rows:
+			break
+		last = d
+		d += step
+	return last
+
+
+## The camera the LENS makes, exactly as `CameraRig._ready` and `_apply_lens`
+## build it: perspective, its own fov and pitch, and stood `LENS_BACK` back along
+## its own axis from the focus -- which for a perspective camera is not a free
+## choice the way it is above, because where the eye sits decides the picture.
+func _lens_camera() -> Camera3D:
+	var vp := SubViewport.new()
+	vp.size = UiBase.SIZE
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	tree.root.add_child(vp)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	cam.fov = CameraRig.LENS_FOV
+	# `_ready` sets this from `view_height` whatever the lens is, and NOTHING
+	# writes it afterwards -- so a lens camera really is carrying 15.0 in a
+	# property its projection ignores, and leaving it at Godot's default 1.0 here
+	# would have this file print a stale value the game never actually holds.
+	cam.size = CameraRig.VIEW_HEIGHT
+	cam.near = 1.0
+	cam.far = 500.0
+	cam.rotation = Vector3(deg_to_rad(-CameraRig.LENS_PITCH), deg_to_rad(45.0), 0.0)
+	vp.add_child(cam)
+	cam.position = cam.global_transform.basis.z * CameraRig.LENS_BACK
+	return cam
 
 
 func test_a_lifted_foot_loses_its_reach_ahead_of_the_player() -> void:
@@ -112,3 +159,147 @@ func test_a_hologram_over_a_tall_roof_is_never_in_frame_ahead() -> void:
 	check(not never.is_empty(),
 		"expected some raised forms to hang a hologram the frame can never hold ahead; none did")
 	print("forms whose hologram is never in frame ahead of the player: %s" % ", ".join(never))
+
+
+## WHAT THE SECOND PROJECTION REACHES, and the reason the spawner cannot follow
+## it with a corrected constant.
+##
+## The orthographic frame is SYMMETRIC about the player -- `half / sin p` ahead
+## and the same behind -- which is the shape `Spawner.in_view` is built on and
+## the reason its ring has always been safely outside the picture. A frustum has
+## no such shape: pitched shallow, its top edge runs nearly level with the
+## horizon and the ground it holds runs away an order of magnitude further, while
+## the bottom edge is only a few tiles behind the player.
+##
+## Both numbers are read off `unproject_position`, never derived, because the
+## whole value of this file is that it asks the object.
+func test_the_lens_holds_ground_the_orthographic_frame_cannot() -> void:
+	var lens := _lens_camera()
+	var ahead := _measured_ahead(lens, 0.0, 260.0, 0.1)
+	var behind := _measured_behind(lens, 0.0, 60.0, 0.1)
+	var ortho := _camera()
+	var o_ahead := _measured_ahead(ortho, 0.0)
+	var o_behind := _measured_behind(ortho, 0.0)
+	print("ortho vh %.1f pitch %.0f -> ahead %6.2f  behind %6.2f tiles"
+		% [CameraRig.VIEW_HEIGHT, CameraRig.PITCH_DEG, o_ahead, o_behind])
+	print("lens  fov %.0f pitch %.0f back %.1f -> ahead %6.2f  behind %6.2f tiles"
+		% [CameraRig.LENS_FOV, CameraRig.LENS_PITCH, CameraRig.LENS_BACK, ahead, behind])
+	# The negative this run has to be able to produce: if the frustum were built
+	# wrong, the lens would answer somewhere near the orthographic 8.9 and every
+	# claim below would be false.
+	gt(ahead, 40.0, "the lens holds only %.2f tiles ahead, which is the orthographic answer wearing a fov" % ahead)
+	gt(ahead, o_ahead * 5.0, "the lens reaches %.2f ahead against the frame's %.2f" % [ahead, o_ahead])
+	# And it is NOT symmetric, which is the whole of why a box cannot stand in.
+	lt(behind, ahead * 0.25, "the lens holds %.2f behind against %.2f ahead" % [behind, ahead])
+	near(o_ahead, o_behind, 0.2, "the orthographic frame is symmetric: %.2f ahead, %.2f behind" % [o_ahead, o_behind])
+	lens.get_parent().queue_free()
+	ortho.get_parent().queue_free()
+
+
+## THE HEADLINE, asked of both objects rather than argued: under the lens, every
+## tile the spawner is allowed to put a machine on is in the picture.
+##
+## `Spawner.in_view` is what decides where a body may land, and `30_mobs` feeds
+## it `camera.view_height` and `camera.pitch_deg` before every spawn. Neither is
+## written by `_apply_lens` -- it rotates from `LENS_PITCH` and leaves both
+## exports alone -- so under the lens the spawner scores a 15-unit box pitched 57
+## against a picture taken at 30 with a 55 degree fov, and answers confidently.
+func test_under_the_lens_every_spawn_ring_tile_is_on_screen() -> void:
+	var cam := _lens_camera()
+	var rows: float = cam.get_viewport().get_visible_rect().size.y
+	var cols: float = cam.get_viewport().get_visible_rect().size.x
+	# What 30_mobs hands the spawner while the lens is drawing: the rig's own
+	# exports, untouched by `_apply_lens`.
+	var sp := Spawner.new()
+	sp.view_height = CameraRig.VIEW_HEIGHT
+	sp.pitch_deg = CameraRig.PITCH_DEG
+	var yaw := deg_to_rad(sp.yaw_deg)
+	var up := Vector2(-sin(yaw), -cos(yaw))
+	var drawn_tiles := 0
+	var on_screen_but_unseen := 0
+	for ring in range(Spawner.RING_MIN, Spawner.RING_MAX + 1):
+		var tile := up * float(ring)
+		var at := Vector3(tile.x, 0.0, tile.y)
+		var s := cam.unproject_position(at)
+		var drawn := s.y >= 0.0 and s.y <= rows and s.x >= 0.0 and s.x <= cols
+		var hidden := not sp.in_view(Vector2.ZERO, tile)
+		if drawn:
+			drawn_tiles += 1
+		if drawn and hidden:
+			on_screen_but_unseen += 1
+		print("ring %2d ahead -> screen (%6.0f,%6.0f) drawn %s, spawner calls it unseen %s"
+			% [ring, s.x, s.y, drawn, hidden])
+	var span := Spawner.RING_MAX - Spawner.RING_MIN + 1
+	eq(drawn_tiles, span, "every tile of the spawn ring ahead of the player is in the lens's picture")
+	# ALL BUT THE NEAREST. The box reaches `half / sin 57` plus its 2-tile margin,
+	# which is 9.5 tiles along the view, so ring 11 (9.22 along it) is the one
+	# distance it still catches -- and the first version of this test asserted all
+	# eight, which is the claim being one tile larger than the evidence. The shape
+	# is what is wrong; the boundary is exactly where the arithmetic puts it.
+	eq(on_screen_but_unseen, span - 1,
+		"every ring tile past the nearest is drawn by the lens and called unseen by the spawner")
+	cam.get_parent().queue_free()
+
+
+## THE SPAWNER'S FALLBACK IS THE RIG'S, and this is the only thing holding the
+## two together: `src/core/mobs/spawner.gd` may not import `CameraRig`, because
+## core is pure rules and the rig is a node in `src/render`. So the number is
+## spelled there and asserted here.
+##
+## It read 14.0 for the life of the file, under a comment saying "(CameraRig
+## defaults)". In play nothing moved -- `30_mobs` overwrites it at setup and
+## before every spawn -- so the delta is entirely in headless callers, and it is
+## exactly one tile of the ring: along the view axis a ring tile sits
+## `r * sin 57` out, the box reaches `half + 2.0`, so ring 11 (9.22) was OUTSIDE
+## a 14-unit box (9.0) and is INSIDE a 15-unit one (9.5). Ring 11 directly ahead
+## of the player stopped being somewhere a test may put a machine.
+func test_the_spawners_camera_fallback_is_the_rigs() -> void:
+	var sp := Spawner.new()
+	eq(sp.view_height, CameraRig.VIEW_HEIGHT, "the spawner falls back to the rig's own view height")
+	eq(sp.pitch_deg, CameraRig.PITCH_DEG, "and to its pitch")
+	# The tile the change moved, stated as the boundary rather than as a count:
+	# the 14-unit box did not hold it and the 15-unit box does.
+	var yaw := deg_to_rad(sp.yaw_deg)
+	var up := Vector2(-sin(yaw), -cos(yaw))
+	var ring := up * float(Spawner.RING_MIN)
+	check(sp.in_view(Vector2.ZERO, ring), "ring %d ahead is inside the frame the rig really has" % Spawner.RING_MIN)
+	var was := Spawner.new()
+	was.view_height = 14.0
+	check(not was.in_view(Vector2.ZERO, ring),
+		"and was outside the 14-unit box this file's own delta is about")
+	print("ring %d ahead: %.2f tiles along the view; box reaches %.2f at vh 14, %.2f at vh %.1f"
+		% [Spawner.RING_MIN, float(Spawner.RING_MIN) * sin(deg_to_rad(sp.pitch_deg)),
+			14.0 * 0.5 + 2.0, CameraRig.VIEW_HEIGHT * 0.5 + 2.0, CameraRig.VIEW_HEIGHT])
+
+
+## THE ONE DOOR for world units per screen pixel, which five sites used to open
+## by dividing `cam.size` by the viewport height.
+##
+## Under the orthographic projection it must still be exactly that division, or
+## every mark, texel and hatch offset in the game moves. Under the lens it must
+## NOT be: `size` is a property Godot keeps on any Camera3D and a perspective
+## projection ignores, so the old arithmetic answers 15.0 for ever -- confidently,
+## which is the failure this whole thread is about.
+func test_one_door_answers_for_both_projections() -> void:
+	var rows := float(UiBase.SIZE.y)
+	var ortho := _camera()
+	var was := ortho.size / rows
+	near(CameraRig.units_per_pixel_of(ortho, rows), was, 1e-9,
+		"the orthographic answer is the division it replaces, to the bit")
+	var lens := _lens_camera()
+	var got := CameraRig.units_per_pixel_of(lens, rows)
+	var stale := lens.size / rows
+	# What the lens really shows per pixel at the focal plane, from its own fov
+	# and how far back it stands -- and what the old arithmetic would have said.
+	var rule := 2.0 * tan(deg_to_rad(CameraRig.LENS_FOV) * 0.5) * CameraRig.LENS_BACK / rows
+	print("units per pixel: ortho %.6f | lens %.6f (rule %.6f), `size / rows` would say %.6f"
+		% [was, got, rule, stale])
+	near(got, rule, 1e-9, "the lens answers from its own frustum")
+	check(absf(got - stale) > 1e-4,
+		"the lens answer must differ from the stale `size / rows`, or nothing was fixed")
+	# And the sharpest part of it: the stale answer is not nonsense, it is the
+	# ORTHOGRAPHIC answer exactly. Under the lens the five old sites would have
+	# gone on returning the play camera's own texel, to the bit, for ever.
+	near(stale, was, 1e-9, "the stale reading under the lens is the orthographic one, unchanged")
+	ortho.get_parent().queue_free()
+	lens.get_parent().queue_free()

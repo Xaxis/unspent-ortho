@@ -132,8 +132,7 @@ func _keep_texel() -> void:
 	if not game.camera.is_inside_tree():
 		MobFx.texel = game.camera.view_height / float(UiBase.SIZE.y)
 		return
-	var h := game.camera.get_viewport().get_visible_rect().size.y
-	MobFx.texel = game.camera.size / maxf(1.0, h)
+	MobFx.texel = game.camera.units_per_pixel()
 
 
 ## The camera's up on screen, as a world direction (a tell stands above a body along it).

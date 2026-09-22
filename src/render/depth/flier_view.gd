@@ -200,9 +200,10 @@ func _in_frame(p: Vector2, high: float) -> bool:
 	if vp == null:
 		return true
 	var rect := vp.get_visible_rect().size
-	# Pixels per world unit, asked of the camera: the view's height in units maps
-	# to the viewport's height in pixels, and a zoom moves it.
-	var px := rect.y / maxf(camera.size, 1e-3)
+	# Pixels per world unit, asked of the camera through the one door that is
+	# correct under both projections: under the lens `size` is a number the
+	# projection ignores and would answer 15.0 forever (CameraRig).
+	var px := 1.0 / maxf(CameraRig.units_per_pixel_of(camera, rect.y), 1e-6)
 	var ground := world.height_at(p)
 	var seen := false
 	for k in 2:
