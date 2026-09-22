@@ -1367,6 +1367,31 @@ the rule's comment should be rewritten to say which count it divides by, so the
 words and the code agree again. It moves the world: `GEN` bump, re-probe, canon
 re-accept.
 
+### A SIXTH, SMALLER DECISION: EVERY WORLDGEN CHANGE RESHUFFLES EVERY PROP'S MODEL (2026-09-22)
+
+Measured by 57 re-shooting the canon after the river fix (`2452b75`): 14 of 18
+frames changed and **not one change was a river**. Every changed pixel was on a
+PROP. Dumped per canon place on seed 7, before and after: 0 props moved, but most
+got a new id and a different DEALT model -- the pinewood 105 of 145 new ids and 79
+different variants, 30 tiles from any river.
+
+The cause is by design, not a bug: `PropModels.variant_of` hashes the prop's ID,
+and ids are dealt in placement order, so a change that adds or drops ONE prop
+anywhere (the river fix added 70) renumbers every prop after it and re-deals most
+of the island's models. Nobody chose any of it: which pine stands where changed
+three times today.
+
+Two costs. The canon cannot show what a worldgen change did, because every frame
+differs; and the look of a place is reshuffled by unrelated work.
+
+**Proposal, not done:** deal a prop's model by its POSITION and kind rather than
+its id. Then a worldgen change re-deals only props it actually moved, and canon
+diffs mean something again. It is one door (`variant_of`, which lights and neon
+already read), so what is drawn and what is lit cannot disagree. Its cost is one
+last reshuffle of which variant stands where -- no model, colour or light changes,
+only the arrangement -- and it sits in `src/models/`, frozen to the look, which is
+why it waits for the owner rather than landing quietly.
+
 ### THE RETIRED FLOOR IS STILL SPELLED IN THREE LIVE PIXEL BUDGETS (2026-09-22)
 
 CLAUDE.md warns about pixel budgets never re-derived after the floor moved from
