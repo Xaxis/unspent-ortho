@@ -1277,6 +1277,115 @@ before guessing; toggle a layer inside ONE run rather than across runs; print
   non-integer resample where it used to be an exact 3x. The lever is the capture
   size, not the draw rect. Owner's call.
 
+## PROJECTIONS — the camera is the constraint on "detailed and beautiful" (open, 2026-09-22)
+
+The owner's words are that this is not the detailed, beautiful open world with
+multiple projections we set out to build. Measured, the camera is most of why,
+and the finding reorders the work rather than adding to it.
+
+**The case, against a real Camera3D** (`tests/render/test_read_reach.gd`, which
+asks `unproject_position` rather than deriving):
+
+- the orthographic play frame holds 26.67 x 17.9 tiles of ground, and only
+  **8.95 tiles AHEAD of the player**, whatever a thing's height
+- a pitched orthographic camera has **no horizon**, so backing away from a tower
+  loses its **top** first and its feet last. Height never buys view distance; it
+  only buys more of the thing being cut off
+- exactly: a face is seen from some bearing only while
+  `cos(p) * hypot(n.x, n.z) + sin(p) * n.y > 0`, and a thing whose foot is
+  `f` units up is in frame ahead only to `(half - f * cos p) / sin p`
+
+So a `spire` (16.3) and a `tower` (14.3) can never stand whole in the frame; a
+flier at 19-26 units is never overhead; a hologram over a tall roof is off the
+top at every distance ahead. Those are not bugs in those features. They are the
+frame.
+
+**The proof.** One instant of one seed, shot both ways, nothing added between:
+
+| | orthographic | `--lens=persp` |
+|---|---|---|
+| slums, seed 7, 23:00 | no people at all; two buildings clipped at the top edge | a crowd of about twelve at a lit stall, buildings with interiors and shelves, a workbench, scaffolding, a forge, signage, a wet street |
+| coast, seed 1, 08:00 | the flat green sheet the owner called ugly | a village: houses, a fire under its frame, a water tower, villagers, terraced land to trees, gulls over the beach |
+
+**The crowd was always standing there.** The world is already more detailed than
+any picture ever taken of it.
+
+**So the art record is suspect where it was read off an orthographic frame.**
+Every judgement about a landscape being EMPTY or FLAT, about silhouette, about
+how far a thing reads — and the twelve rejected directions, all judged on frames
+with no depth cue — wants re-reading before more content is built to answer them.
+`docs/PROJECTION_REJUDGE.md` is that pass. Do not edit `docs/LOOK.md` or
+`docs/ART.md` to match: the direction of record is the owner's to move.
+
+### What landed
+
+`0738a51` — `CameraRig.lens` (`&"ortho"` default, `&"persp"`), `--lens=ortho|persp`,
+`_apply` branching to `_apply_lens`. Shares the focus, yaw, smoothing and lean;
+does NOT share the texel snap, which is an orthographic device (`size` is world
+units per screen height and a perspective frame has none). Near blur off under
+the lens for the same reason — `near_plane` is `_back - frame_depth(size, pitch)`
+and every number in it is orthographic. The first lens shot was that mistake.
+
+`f43adeb` — `tall_floor` is the CAMERA's number now, a uniform defaulting to 3.0.
+Not derived from the live lean, which was the obvious move and is wrong:
+`42_target.LOCK_PITCH` is -4.5, so a lock flattens the ortho camera to 52.5 and a
+lean-derived floor would fall under the steading's 2.8 and stipple a village the
+moment the player held Z.
+
+### What the lens has already found, which was never wrong before
+
+Every one of these is an orthographic assumption that was correct until there was
+a second projection. Expect more; this is the shape of the work.
+
+- **The spawner puts machines on screen.** `Spawner.in_view` is a SYMMETRIC box
+  (`|d.right| <= 13.33+m`, `|d.up|*sin(pitch) <= 7.5+m`). Under ortho the frame
+  reaches 8.94 tiles either way and the spawn ring is 11-18, so every ring tile is
+  outside it — correct by construction, which is why it has never broken. Under
+  the lens (fov 55, pitch 30, back 9) the top edge sits 2.5 degrees below the
+  horizon and meets the ground about **95 tiles ahead**, so the whole ring is
+  visible and machines materialise in full view, every time. A symmetric box has
+  no meaning against a frustum; this wants a projection test, not a new constant.
+  **This is the blocker on wiring the lens to a held Z.**
+- **Nothing fails loudly**, because both ortho numbers stay live-looking: under
+  the lens `cam.size` still reads 15.0 and `cam.pitch_deg` still reads 57.0. Five
+  sites and everything downstream get a confident wrong answer rather than a null.
+- **`WorldView.view_half_extent()`** requires `PROJECTION_ORTHOGONAL` and falls
+  back to `vh 15 / pitch 57`, so the streamer asks for the ortho footprint while
+  the frame reaches far past it — the same symptom `camera_rig`'s clip-plane
+  comment records as the world drawn "as a BAND across the middle of the frame".
+- **`cam.size` is two questions wearing one number.** World-units-per-pixel at a
+  plane is real under both projections and wants one door; "is this in frame" is a
+  PREDICATE and the codebase already has the right idiom — `flier_view._in_frame`
+  and `17_holo` ask `camera.unproject_position()`, which survives a zoom, a lean
+  and a projection change for free.
+- **FOUND geometry never stipples.** `found.gdshader` has no `tall_cut`, no
+  `crown_cut` and no stipple of any kind, so a pole, a pylon or a machine can
+  stand through the player forever. `flier_view.gd`'s header says `tall_cut`
+  "opens anything BUILT above 3.0 that would cover the player"; that is MADE only.
+- `spawner.gd:28` bakes `view_height := 14.0` under a comment reading
+  "(CameraRig defaults)", and the rig says 15.0.
+
+### Staging
+
+1. done — the lens exists, opt-in, default byte-identical
+2. make the rig the single source: the frustum questions above, the two `cam.size`
+   questions split, the bakers found
+3. answer a held Z with it (the owner's #120: Zelda-like for close combat,
+   Diablo-style orthographic for open battle). The easing is already there and
+   `42_target` already drives `lean_yaw/pitch/zoom` on lock. Note the projection
+   **cannot be lerped** — ORTHOGONAL to PERSPECTIVE is a discrete switch, so the
+   crossover wants fov and distance chosen to match the subject's projected size
+   and hide the pop
+4. re-judge the art record, then the density and form work with a camera that can
+   show what it is judging
+
+### Open, for the owner
+
+- `LENS_PITCH` 30, `LENS_BACK` 9, `fov` 55 are a first guess, not a tuned answer
+- is the lens for combat only, or a mode the player chooses?
+- a lamppost stands through the player in every slums frame (see FOUND, above)
+
+
 ## M3 — The landscapes
 
 Grow to at least 20 landscape types, each with its own props, decor, life, weather,
