@@ -16,10 +16,18 @@ class_name FoundKit
 ## All helpers draw through the MeshKit transform stack (k.push / k.at).
 
 const UP := Vector3.UP
-## One screen pixel at the camera players have (camera_rig: 14 world units over
-## 360 px). Every mark in the daylight vocabulary below is budgeted in these, not
-## in world units: a 0.02-wide scribed line is exact, and it is also half a pixel,
-## which is why a machine drawn entirely in them says nothing at noon.
+## THE UNIT EVERY MARK BELOW IS BUDGETED IN -- A FIXED WORLD-UNIT SIZE, NOT A
+## SCREEN PIXEL, WHATEVER ITS NAME SAYS. It was one screen pixel when the floor was
+## 640x360 (14 world units over 360 rows). The floor is 1920x1080 now, 72 pixels a
+## world unit, so one PX draws at 2.8 real pixels and the marks come out 2.2..14 px.
+##
+## DO NOT "CORRECT" IT TO 15/1080. That was measured, not argued (docs/ROADMAP.md,
+## the retired floor): at one real pixel the 31 budgeted marks would draw at
+## 0.8..5 px, one under a pixel and five as hairlines, and a before/after of four
+## machines at play scale showed only the scribed seams thinning. The machines as
+## drawn at THIS value are the look the owner approved. The earlier comment here
+## called a 0.02-wide line "half a pixel" -- true at 640x360 and false ever since,
+## and the exact sentence that would have sent somebody to fix the number.
 const PX := 14.0 / 360.0
 
 
