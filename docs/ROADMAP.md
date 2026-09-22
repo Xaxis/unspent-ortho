@@ -1310,12 +1310,14 @@ frame.
 **The crowd was always standing there.** The world is already more detailed than
 any picture ever taken of it.
 
-**So the art record is suspect where it was read off an orthographic frame.**
-Every judgement about a landscape being EMPTY or FLAT, about silhouette, about
-how far a thing reads — and the twelve rejected directions, all judged on frames
-with no depth cue — wants re-reading before more content is built to answer them.
-`docs/PROJECTION_REJUDGE.md` is that pass. Do not edit `docs/LOOK.md` or
-`docs/ART.md` to match: the direction of record is the owner's to move.
+**THE ART DIRECTION IS DECIDED AND IS NOT REOPENED BY ANY OF THIS.** LANTERN is
+the answer, the owner has ruled, and the twelve rejected directions are closed
+history. An earlier draft of this section read the finding as a licence to
+re-judge the art record and it was wrong to: "a frame showed more than we
+thought" is a fact about the CAMERA, not an argument about the direction drawn
+with it. What follows is correctness work — quantities that are meaningless
+under a projection they were not derived for — and nothing in it is a reason to
+revisit a settled look.
 
 ### What landed
 
@@ -1376,8 +1378,8 @@ a second projection. Expect more; this is the shape of the work.
    **cannot be lerped** — ORTHOGONAL to PERSPECTIVE is a discrete switch, so the
    crossover wants fov and distance chosen to match the subject's projected size
    and hide the pop
-4. re-judge the art record, then the density and form work with a camera that can
-   show what it is judging
+4. the density and form work, judged with a camera that can show what it is
+   judging — the LOOK is settled, the question is only how much world there is
 
 ### Open, for the owner
 
