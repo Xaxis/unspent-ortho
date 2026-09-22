@@ -1371,6 +1371,19 @@ state what it draws at now. The same reasoning covers the hit marks and the fire
 leave the numbers, fix the words, and re-author only if a gallery sheet shows a
 mark that fails. That is still the owner's call, but it is now a much smaller one.
 
+**The sheet was shot and it agrees (2026-09-22).** Four machines (harvester,
+watcher, hauler, sweeper) at the play camera's 72 px per unit, before and after
+`PX = 15/1080`, `found_kit.gd` restored byte for byte afterwards. Pixels changed
+by more than 12/255: harvester 1336, watcher 428, sweeper 345, hauler 5 -- an
+upper bound, since the grass stipple differs between processes and some of each
+count is that. Every change is on a scribed mark (deck seams, hazard stripes,
+head-plate seams, an outline); silhouette, lamps, colour and mass are unchanged
+and no mark disappears. So the constant stays and `found_kit.gd`'s header now
+says what `PX` really is (`98de606`). Frames: `shots/fk/diff_closeup.png`
+(untracked). Not examined: a band across each model where the gallery drew a
+name tag, although `machine_gallery.gd`'s header promises that frame unlabelled
+-- a comment stating something the code does not do.
+
 ### WHAT THE LENS FOUND IN THE EXISTING CODE (all fixed unless marked)
 
 A second projection is an instrument for finding orthographic assumptions, and it
