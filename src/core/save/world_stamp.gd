@@ -101,7 +101,11 @@ const UNKNOWN := "unknown"
 ##     after a drop left water a level above the water beside it and a line that
 ##     climbed. `GenWater._cut_loops` takes the loops out; every river's mouth and
 ##     count are unchanged, and ground, level and props move on every seed.
-const GEN := 19
+## 11. A repeated building is checked for still water at the size it will be.
+##     A city's repeats are dealt a size band AFTER they are placed, so a tower
+##     checked at its form's reach grew past the ring and stood with a pool at its
+##     door. The placer asks the largest band now; cities move at 1300.
+const GEN := 20
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

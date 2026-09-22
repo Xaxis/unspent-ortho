@@ -742,7 +742,16 @@ static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 			# down with a bog pool at its door and nothing refused it. It showed as
 			# one blackwater beside one house on one seed, which is what a rule
 			# that was true for small buildings looks like when buildings grow.
-			if not _dry_around(c, hp, forms.widest() + 3.0):
+			#
+			# **AND AT THE SIZE THE BUILDING WILL BE, NOT THE SIZE IT IS NOW.** A
+			# landscape whose forms repeat deals each repeat a size band AFTER this
+			# (`REPEAT_BANDS`, the repeats pass below), and `solid` is reach times
+			# that band -- so a slums tower checked at `widest() + 3` came out at
+			# 1.26x with a pool 5.83 tiles off: past the 5.40 asked here, inside the
+			# 6.02 its own footprint needs (seed 1 at 1300, 772.5,374.5). Ask the
+			# most it can become.
+			var grows: float = REPEAT_BANDS.max() if forms.repeats() else 1.0
+			if not _dry_around(c, hp, forms.widest() * grows + 3.0):
 				continue
 			var house := _add(c, PropKind.HOUSE, hp)
 			houses.append(house)
