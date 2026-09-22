@@ -1,0 +1,32 @@
+# A HELD Z ANSWERED WITH THE LENS (#120: close combat behind the player, open
+# battle on the flat camera), behind `rules.lock_lens`, which is OFF by default
+# and ON in `configs/held-z.json`. The same moment as tours/camera_sheet.tour, the
+# baseline #120 was asked against, so the two can be held side by side.
+#
+#   tools/tour.sh tours/held_z.tour --seed=1 --hour=11 --weather=clear:0 --folk=8 --config=held-z
+#
+# What it proves, from a normal game start, through the real key: a machine in
+# front on the flat camera; the lock takes the lens -- asked of the camera's
+# `lens` AND its `projection`, which disagreed before the setter existed -- and
+# the machine is still in the picture under it; letting go gives the flat camera
+# back. The switch is continuous in pitch, so the first frame after the key goes
+# down is not a jump; tests/target/test_lock_lens.gd measures that.
+coast calm
+wait 0.9
+spawn runner
+wait 0.8
+await target_flat 2
+shot 01-a-machine-in-front-on-the-flat-camera with mob:runner
+
+hold target
+await target 5
+await target_lens 3
+# The pitch glides home at the lean's rate; give it the time a player would.
+await target_lean 5
+wait 1.1
+shot 02-held-z-the-machine-under-the-lens with mob:runner
+
+release target
+await target_flat 3
+wait 1.2
+shot 03-let-go-the-flat-camera-again with mob:runner

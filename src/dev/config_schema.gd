@@ -98,6 +98,8 @@ const ROWS: Array[Dictionary] = [
 	{"id": "rules.works", "group": "rules", "label": "the works work", "kind": "choice", "default": 1.0,
 		"options": [0.0, 0.5, 1.0, 2.0, 4.0], "applies": "live",
 		"note": "How busy a region's depot is: how often it puts one of its own out and sends a round along the survey. None: it stands lit and sends nothing."},
+	{"id": "rules.lock_lens", "group": "rules", "label": "held Z lens", "kind": "bool", "default": false, "applies": "live",
+		"note": "Yes: holding Z puts the camera behind the player in perspective, and letting go puts it back. The owner's call."},
 	{"id": "rules.raids", "group": "rules", "label": "machines raid", "kind": "bool", "default": true, "applies": "live",
 		"note": "No: a holding is still read and still files, and nothing is ever sent for it."},
 	{"id": "rules.raid_pace", "group": "rules", "label": "raids come", "kind": "choice", "default": 1.0,

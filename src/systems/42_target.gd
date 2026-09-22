@@ -36,6 +36,10 @@ const READ_EVERY := 0.1
 
 ## What is locked — a fight body or a person — or null; the field a sweep reads.
 var locked: TargetSubject = null
+## The lens the camera had before a lock took it, or &"" when a lock has not
+## (`_hold_lens`). Remembered rather than assumed ortho, so a game booted with
+## `--lens=persp` is handed back what it had.
+var _lens_was: StringName = &""
 var sweeping := false
 var field: Array[TargetSubject] = []
 var read: Dictionary = {}
@@ -265,6 +269,8 @@ func _lean() -> void:
 		cam.lean_pitch = SWEEP_PITCH
 		cam.lean_zoom = SWEEP_ZOOM
 		cam.lean_bias = game.world.to_3d(at) - game.world.to_3d(here)
+		# A sweep reads a FIELD and stands back, which is the flat camera's job.
+		_hold_lens(false)
 		return
 	if locked == null:
 		_square()
@@ -275,6 +281,30 @@ func _lean() -> void:
 	cam.lean_zoom = LOCK_ZOOM
 	var at := Targeting.focus_between(here, locked.here(), LOCK_SHARE, LOCK_MOST)
 	cam.lean_bias = game.world.to_3d(at) - game.world.to_3d(here)
+	_hold_lens(true)
+
+
+## A HELD LOCK ANSWERED WITH THE LENS, when the owner's row says so (#120: close
+## combat behind the player, open battle on the flat camera). `rules.lock_lens` is
+## OFF by default, and off this does nothing at all, so a held Z is exactly the
+## orthographic lean it has always been. It is his call because play under the
+## lens settles questions that are still open: whether a cottage opens when it
+## hides you, and whether FOUND cuts.
+##
+## Read live, so the row can be flipped from dev mode mid-lock and the camera
+## follows. Everything else is `CameraRig.lens`'s job: the projection, and the
+## pitch carried across so the switch does not tip the picture.
+func _hold_lens(on: bool) -> void:
+	var cam := game.camera
+	if cam == null or not is_instance_valid(cam):
+		return
+	if on and bool(GameConfig.value("rules.lock_lens")):
+		if _lens_was == &"":
+			_lens_was = cam.lens
+			cam.lens = &"persp"
+	elif _lens_was != &"":
+		cam.lens = _lens_was
+		_lens_was = &""
 
 
 ## How far round to lean, -1..1: the body's bearing against the screen's own
@@ -289,6 +319,7 @@ func _yaw_share(to: Vector2) -> float:
 
 
 func _square() -> void:
+	_hold_lens(false)
 	var cam := game.camera
 	cam.lean_yaw = 0.0
 	cam.lean_pitch = 0.0
@@ -331,4 +362,13 @@ func tour_seen(what: StringName) -> bool:
 			return sweeping and pages > 1
 		&"target_none":
 			return locked == null and not sweeping and not game.camera.leaning()
+		# Which lens is drawing, asked of BOTH halves of it, so a frame named for
+		# the lens cannot pass on a camera whose `lens` and `projection` disagree
+		# -- which is exactly what they did before `CameraRig.lens` had a setter.
+		&"target_lens":
+			return game.camera.lens == &"persp" \
+					and game.camera.projection == Camera3D.PROJECTION_PERSPECTIVE
+		&"target_flat":
+			return game.camera.lens == &"ortho" \
+					and game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
 	return false

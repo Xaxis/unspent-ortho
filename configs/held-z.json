@@ -1,0 +1,6 @@
+{
+	"base": "dev",
+	"settings": {
+		"rules.lock_lens": true
+	}
+}

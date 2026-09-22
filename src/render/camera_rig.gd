@@ -48,7 +48,38 @@ var _back := 30.0
 ## DEFAULT IS UNCHANGED, deliberately: `--lens=persp` is opt-in, so every frame,
 ## tour and canon picture in the repository is exactly what it was, and the two
 ## can be shot side by side at one place before anything is decided.
-@export var lens: StringName = &"ortho"
+##
+## **IT CAN BE CHANGED IN A RUNNING GAME NOW, AND IT COULD NOT BEFORE.** The
+## projection was chosen once, in `_ready`, while `_apply` branched on `lens`
+## every frame -- so setting `lens` mid-game built a perspective camera's
+## transform under an ORTHOGRAPHIC projection, and the readers split: 18_crowns
+## asks `lens`, while 30_mobs, WorldView, SkyLight, the fire and
+## `units_per_pixel_of` ask `projection`. This setter is the one door, so the two
+## can never disagree.
+##
+## THE SWITCH IS CONTINUOUS IN PITCH. The two lenses stand at different pitches
+## (`pitch_deg`, `LENS_PITCH`), and a switch that took the new one at once would
+## tip the whole picture seventeen degrees in a frame. So the difference is
+## carried in `_pitch`, the lean's own eased offset: the frame after a switch is
+## at the pitch the frame before was, and `_ease_lean` glides it home at the
+## lean's rate. The projection itself cannot be eased; `lens_back` is what keeps
+## a subject at the focal plane the same size across it.
+##
+## Before the rig is in the tree (boot: `game.gd` sets `--lens` first) there is
+## no previous frame to be continuous with, so nothing is carried.
+@export var lens: StringName = &"ortho":
+	set(v):
+		if v == lens:
+			return
+		var was := LENS_PITCH if lens == &"persp" else pitch_deg
+		lens = v
+		projection = PROJECTION_PERSPECTIVE if lens == &"persp" else PROJECTION_ORTHOGONAL
+		if is_inside_tree():
+			_pitch += was - (LENS_PITCH if lens == &"persp" else pitch_deg)
+			# The near focus is orthographic arithmetic and is switched off under
+			# the lens; coming back, it must rebuild rather than trust the last
+			# size it saw, which was measured before the lens took over.
+			_dof_size = -1.0
 ## The lens, when it is asked for. Pitched far shallower than the play camera
 ## because the whole point is to SEE height: at 30 degrees a 16-unit spire is a
 ## spire, where at 57 it is a lid.
