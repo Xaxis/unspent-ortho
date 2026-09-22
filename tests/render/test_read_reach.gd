@@ -187,10 +187,16 @@ func test_the_lens_holds_ground_the_orthographic_frame_cannot() -> void:
 	# The negative this run has to be able to produce: if the frustum were built
 	# wrong, the lens would answer somewhere near the orthographic 8.9 and every
 	# claim below would be false.
-	gt(ahead, 40.0, "the lens holds only %.2f tiles ahead, which is the orthographic answer wearing a fov" % ahead)
-	gt(ahead, o_ahead * 5.0, "the lens reaches %.2f ahead against the frame's %.2f" % [ahead, o_ahead])
+	# The bars are stated against the ORTHOGRAPHIC frame rather than as absolute
+	# tile counts, because the pitch is a live choice: at 30 the lens reached 152
+	# tiles and at 40 it reaches 31, and a bar of "40 tiles" would have been a bar
+	# on the pitch wearing a bar on the projection.
+	gt(ahead, o_ahead * 2.0, "the lens reaches %.2f ahead against the frame's %.2f" % [ahead, o_ahead])
 	# And it is NOT symmetric, which is the whole of why a box cannot stand in.
-	lt(behind, ahead * 0.25, "the lens holds %.2f behind against %.2f ahead" % [behind, ahead])
+	lt(behind, ahead * 0.4, "the lens holds %.2f behind against %.2f ahead" % [behind, ahead])
+	# Inside the streamer's cap, which is what the pitch was chosen for: past it
+	# the near square is capped and `world_far` carries the rest.
+	lt(ahead, 110.0, "the lens reaches %.2f, past WorldView.near_limit" % ahead)
 	near(o_ahead, o_behind, 0.2, "the orthographic frame is symmetric: %.2f ahead, %.2f behind" % [o_ahead, o_behind])
 	lens.get_parent().queue_free()
 	ortho.get_parent().queue_free()

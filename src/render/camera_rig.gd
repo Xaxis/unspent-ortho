@@ -59,7 +59,14 @@ const LENS_FOV := 55.0
 ## `near_limit` cap always binds. That is a decision about whether this game has
 ## a horizon in frame rather than a side effect of a field of view, and it is the
 ## owner's. Until he rules, this stays on the side that keeps it out.
-const LENS_PITCH := 30.0
+##
+## 40 rather than the 30 this shipped with, and the reason is the STREAMER, not
+## the picture: at the matched distance a pitch of 30 holds ground to 152 tiles,
+## past `WorldView.near_limit` (110), so the near square is capped and the coarse
+## far world papers over the difference. At 40 the frame reaches 30.7 and needs
+## no fallback at all -- and it leaves 12.5 degrees between the top edge and the
+## horizon instead of 2.5, which is more than a lean can spend by accident.
+const LENS_PITCH := 40.0
 
 ## HOW FAR BACK THE EYE STANDS, DERIVED AND NEVER SPELLED — the one number that
 ## decides whether the switch into the lens is invisible or a jump.
