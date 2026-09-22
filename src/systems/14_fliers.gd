@@ -55,3 +55,18 @@ func _process(_delta: float) -> void:
 		return
 	var f3: Vector3 = game.camera.target if game.camera != null else game.player.position
 	view.follow(Vector2(f3.x, f3.z), game.clock.minutes if game.clock != null else 0.0)
+
+
+## What the traffic layer really put on the glass, for `--stats`.
+##
+## `drawn` used to be how many were PLACED, and the two numbers are not the same
+## one: every lane flies 19 to 26.6 units up, and at this pitch height and
+## distance both carry a thing UP the screen and add, so a hull ahead of the
+## player is above the top edge at any distance (#138). Printing the budget, what
+## was in reach and what the camera actually holds is what tells "no traffic near"
+## apart from "all of it off the glass" -- the distinction #116 cost a whole
+## diagnosis for want of.
+func stats_line() -> String:
+	if view == null or view.budget <= 0:
+		return ""
+	return "\nworld fliers: %d of %d in reach on the glass (%d of them the HULL, not just its beam), budget %d" % [view.drawn, view.considered, view.hulls, view.budget]
