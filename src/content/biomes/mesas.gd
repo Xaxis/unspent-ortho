@@ -65,7 +65,17 @@ static func make() -> BiomeDef:
 		# `P.RUST[2]` pulled the same distance toward SLATE instead of STONE, and two
 		# greys are not far apart. Less grey is both truer to the place and further
 		# from the other two it was crowding.
-		Ground.SCREE: P.RUST[2].lerp(P.STONE[2], 0.22),
+		#
+		# And a tenth, not the 0.22 it was cut to next: at 0.22 it sat 0.0724 from the
+		# pine floor, under the 0.08 every home turf must keep from every other. This
+		# was SOLVED AS A SET rather than nudged, because nudging the pine floor darker
+		# was tried and only moved the collision onto two new pairs. All 22 home turfs
+		# were measured off `GroundColors.wash`, and nothing else in the game is red:
+		# every other turf is green, grey, blue, bone or white. So redder scree moves
+		# into empty space. At 0.10 its nearest neighbour is 0.108 away and the
+		# tightest pair left anywhere is pine floor against the Middens at 0.0865,
+		# which this does not touch. `tests/render/test_terrain.gd` holds all of it.
+		Ground.SCREE: P.RUST[2].lerp(P.STONE[2], 0.10),
 		Ground.GRAVEL: P.SAND[3].lerp(P.RUST[3], 0.3),
 	}
 	# Grounds this place never lays, named anyway: anything left unnamed falls

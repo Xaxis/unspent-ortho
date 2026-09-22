@@ -308,14 +308,22 @@ func test_marks_ride_in_alpha_and_plain_colours_carry_none() -> void:
 ##   - mesas SCREE kept two fifths grey against "red canyons cut a thousand feet
 ##     down". Less grey is truer AND further from the Middens' swarf.
 ##
-## WHAT IS LEFT IS A PACKING, and that is the honest name for it. mesas vs
-## pinewood is 0.0724, and the obvious fix -- giving the pine floor the dark this
+## WHAT WAS LEFT WAS A PACKING, and that is the honest name for it. mesas vs
+## pinewood was 0.0724, and the obvious fix -- giving the pine floor the dark this
 ## game has always said it has ("dark under the canopy", and NEEDLES is left to
 ## the shared fallback) -- was tried and MOVED THE COLLISION: pinewood 0.0647 and
-## machine_city 0.0749, two new pairs for one closed. Twenty-three landscapes and
-## their grounds all have to sit 0.08 apart pairwise, so a nudge is not a fix, it
-## is a displacement. Solve it as a set, the way `palette.gd` solved the machine
-## ramps, or the next person trades one red for two.
+## machine_city 0.0749, two new pairs for one closed. The home turfs all have to
+## sit 0.08 apart pairwise, so a nudge is not a fix, it is a displacement.
+##
+## **SOLVED AS A SET, 2026-09-22.** All 22 home turfs were measured off
+## `GroundColors.wash` and the whole matrix read, not just the failing pair.
+## Nothing else in the game is RED -- every other turf is green, grey, blue, bone
+## or white -- so the mesas scree going redder moves into empty space instead of
+## onto a neighbour: its grey share went 0.22 to 0.10 (`mesas.gd` says why), its
+## nearest turf is now 0.108 away, and the tightest pair anywhere is pinewood vs
+## the Middens at 0.0865, which that change does not touch. Before moving another
+## turf, read the matrix again: the next collision is a pair, and it is in the
+## brown cluster (pine floor, Middens swarf, mesas scree).
 func test_every_country_draws_its_turf_in_its_own_wash() -> void:
 	var seen: Array[Color] = []
 	for c: int in BiomeRegistry.land_indices():
