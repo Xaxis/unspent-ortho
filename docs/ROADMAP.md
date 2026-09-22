@@ -13,7 +13,7 @@ decided and none of these reopens it.** Detail for each stays in its section bel
    with seeing the sky?", and nothing is: a horizon is the more beautiful picture
    and it is what `docs/VISION.md` asks of landmarks read from afar, which the
    orthographic frame caps at 11-13 tiles. Built as its own wave, not a constant:
-   land to the horizon (`WorldFar`), fog that holds the world's edge, `Air`'s depth
+   land to the horizon (`src/render/world_far.gd`, reached by preload -- it has no class name), fog that holds the world's edge, `Air`'s depth
    given a real far limit in place of today's horizon clamp, measured for cost and
    judged on frames before it is the default.
 3. **Machines get out of the player's way under the orthographic camera too** --
