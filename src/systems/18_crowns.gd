@@ -85,8 +85,41 @@ func _set_tall_floor() -> void:
 	if OS.has_environment("UNSPENT_TALL_FLOOR"):
 		floor_now = float(OS.get_environment("UNSPENT_TALL_FLOOR"))
 	_mat.set_shader_parameter("tall_floor", floor_now)
+	RenderingServer.global_shader_parameter_set(&"found_floor", floor_now)
 	if _leaf != null:
 		_leaf.set_shader_parameter("tall_floor", floor_now)
+
+
+## The same subjects, handed to FOUND geometry (found.gdshader), which has no
+## material handle to write a uniform into -- see that shader's `found_cut`.
+## Only the first FOUR slots: the player and the three bodies `choose()` ranks
+## highest.
+##
+## OFF UNLESS THE LENS IS ON. FOUND does not cut in the shipped orthographic
+## game and never has, which is a gap against law 5 but also a change to frames
+## the owner has already decided; so this writes real slots only under the lens
+## and zero otherwise, and an ortho frame is byte-identical.
+##
+## `Projection()` IS THE IDENTITY, NOT ZERO. Passing the default would put 1.0
+## in three slots' `w`, which the shader reads as a reach of one tile and
+## switches the cut ON in the projection it is meant to be absent from.
+func _write_found() -> void:
+	var cam := game.camera if game != null else null
+	RenderingServer.global_shader_parameter_set(&"found_clear",
+		found_matrix(_slots, cam != null and cam.lens == &"persp"))
+
+
+## PURE, so it can be asked BOTH WAYS. The end-to-end version of this test was a
+## null instrument: headless there is no world material, `_process` returns early,
+## `_write_found` never runs, and the global sits at its project.godot default of
+## zero -- so "assert it is zero under ortho" passed with the identity bug
+## deliberately put back. A test that only asserts an absence is satisfied by
+## nothing having happened. Asking for the FILLED matrix as well is what makes it
+## able to fail.
+static func found_matrix(slots: PackedVector4Array, persp: bool) -> Projection:
+	if not persp or slots.size() < 4:
+		return Projection(Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO)
+	return Projection(slots[0], slots[1], slots[2], slots[3])
 
 
 func _process(_delta: float) -> void:
@@ -117,6 +150,7 @@ func _process(_delta: float) -> void:
 	_mat.set_shader_parameter("crown_clear", _slots)
 	if _leaf != null:
 		_leaf.set_shader_parameter("crown_clear", _slots)
+	_write_found()
 
 
 ## Which bodies get a clearing when more are near than there are slots. The

@@ -98,3 +98,31 @@ func test_among_equals_the_nearest_wins() -> void:
 	var got := Crowns.choose(pos, hostile, aware, Vector2.ZERO, 2)
 	near(got[0].x, 2.0, 0.001, "nearest first")
 	near(got[1].x, 6.0, 0.001, "then the next")
+
+
+## THE FOUND CUT IS OFF IN THE SHIPPED ORTHOGRAPHIC GAME. FOUND geometry has
+## never cut and closing that gap changes frames the owner has decided, so the
+## capability lands inert and he rules on a picture.
+##
+## ASKED BOTH WAYS ON PURPOSE. The first version of this test ran a real game and
+## asserted the global was zero -- and PASSED with the bug deliberately put back,
+## because headless there is no world material, `_process` returns early, the
+## writer never runs, and the global sits at its project.godot default of zero.
+## An assertion of absence is satisfied by nothing having happened. The filled
+## case is what gives the test the ability to fail.
+##
+## The bug it guards is a DEFAULT: Godot's `Projection()` is the IDENTITY, so a
+## zeroing that forgets to spell its four Vector4.ZERO columns puts 1.0 into
+## three slots' `w`, which found.gdshader reads as a one-tile reach and switches
+## the cut on in the very projection it must be absent from.
+func test_found_geometry_does_not_cut_under_the_orthographic_camera() -> void:
+	var s := _slots()
+	Crowns.fill(s, Vector2(10, 4), [Vector2(12, 4)] as Array[Vector2],
+		func(_p: Vector2) -> float: return 1.5)
+	var off := Crowns.found_matrix(s, false)
+	for i in 4:
+		eq(off[i], Vector4.ZERO, "ortho slot %d is zero, so found.gdshader skips it" % i)
+	var on := Crowns.found_matrix(s, true)
+	near(on[0].x, 10.0, 0.001, "under the lens slot 0 carries the player")
+	gt(on[0].w, 0.0, "and a reach the shader will act on")
+	gt(on[1].w, 0.0, "and the body beside them")

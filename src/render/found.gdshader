@@ -37,6 +37,11 @@ uniform float wear_take = 1.0;
 // How deep its panel relief runs. A pylon's plate is heavier than a salvage kit.
 uniform float relief = 1.0;
 
+// Written once a frame by 18_crowns. Four (x, the ground's own height there,
+// z, reach in tiles); reach 0 is an unused slot. Zero = the cut is off.
+global uniform mat4 found_clear;
+global uniform float found_floor;
+
 // A blow's paper-white, as a sphere in world space (docs/ART.md section 7).
 // Only the part that was struck goes white: a machine that whites out whole
 // proves nothing about where the blow landed, hides its own amber working part
@@ -108,7 +113,71 @@ void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
+// A FIGHT IS NEVER HIDDEN (docs/ART.md law 5), and until now that was only true
+// of MADE geometry. `world.gdshader` has cut timber and thatch out of the way
+// for as long as the law has existed; a pylon, a mast, a machine's plate or a
+// lamppost has stood straight through the player the whole time. Nobody fixed
+// it because the mechanism could not reach here: 18_crowns writes `crown_clear`
+// every frame through two material handles, and FOUND has no handle -- it is
+// built in eight places (prop_models, machine_model, skin_rig twice,
+// survival_marks, gallery, craft and structure models). So the subjects arrive
+// as GLOBALS instead, packed into a mat4 the way `sky_lamps` already packs four
+// lamps, written once a frame by 18_crowns.
+//
+// FOUR slots, not world.gdshader's six: the player and the three bodies that
+// rank highest by 18_crowns' own `choose()`. A second mat4 for the other two is
+// a change nothing has asked for.
+//
+// NO MATTER MARK IS READ HERE, and that is deliberate rather than an omission.
+// `world.gdshader`'s cut takes one so it can refuse the ground band and never
+// open the land. On this shader the SAME `COLOR.a` byte is a LAMP -- under 0.5 a
+// beacon that blinks -- so reading it as a mark would have every machine's
+// beacon voting on whether that machine cuts. FOUND is never the land, so the
+// guard is not needed and the argument must not be taken.
+//
+// INERT UNTIL SOMETHING FILLS IT: every slot defaults to zero, so `w <= 0`
+// everywhere, the cut is 0.0 and the discard is unreachable. 18_crowns fills
+// real slots only under the perspective lens, so an orthographic frame is
+// unchanged. Whether FOUND should cut in the shipped orthographic game too is a
+// change to frames the owner has already decided once, and it is his to make.
+float found_cut(vec3 wp, vec3 camz, vec3 eye, bool persp) {
+	float cut = 0.0;
+	for (int i = 0; i < 4; i++) {
+		vec4 p = found_clear[i];
+		if (p.w <= 0.0 || wp.y < p.y + found_floor) {
+			continue;
+		}
+		// Where THIS fragment's own ray meets the subject's ground -- the same
+		// per-fragment form world.gdshader uses, including both its guards. See
+		// `tall_cut` there for why `s` is negative and why a fragment at or above
+		// the eye is skipped rather than left to the distance test.
+		vec2 g;
+		if (persp) {
+			if (wp.y >= eye.y - 0.05) {
+				continue;
+			}
+			float s = (p.y - wp.y) / max(eye.y - wp.y, 0.05);
+			g = wp.xz + s * (eye.xz - wp.xz);
+		} else {
+			g = wp.xz - camz.xz * (wp.y - p.y) / max(0.05, abs(camz.y));
+		}
+		float d = length(g - p.xz);
+		float r = p.w * 1.4;
+		cut = max(cut, 1.0 - smoothstep(r * 0.58, r, d));
+	}
+	return cut;
+}
+
 void fragment() {
+	// The subjects that must not be hidden. Read INSIDE the stage function
+	// because INV_VIEW_MATRIX and PROJECTION_MATRIX do not exist outside one.
+	vec3 camz = INV_VIEW_MATRIX[2].xyz;
+	vec3 eye = INV_VIEW_MATRIX[3].xyz;
+	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
+	float cut = found_cut(world_pos, camz, eye, persp);
+	if (cut > 0.0 && ink_hash(world_pos.xz * 64.0 + vec2(53.0, 11.0)) < cut) {
+		discard;
+	}
 	vec3 c = COLOR.rgb;
 	// The hour, the weather and what has settled in the air. Nothing LIES on a
 	// machine (SKY_FOUND), and its wash is dimmed less than the land's: they
