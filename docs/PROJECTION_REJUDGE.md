@@ -143,10 +143,32 @@ the top edge". Some of that is the frame's top edge; some of it may be this
 shader deliberately cutting them. **A cure written for the projection may be
 subtracting the thing the projection was already failing to show.**
 
-**What would settle it:** one persp frame of the same slums moment with
-`tall_cut` forced off, against the same moment with it on. Cheap, and it needs a
-lane. Note the two guards are unaffected and still right either way: the ground
-band 40..70 is refused, and no `BiomeForms.PLAIN` form reaches 3.0.
+**MEASURED, AND IT CAME BACK NULL — 2026-09-22.** The frame was run
+(unspent-ortho-0c): same slums moment, `--lens=persp`, `UNSPENT_TALL_FLOOR=999`
+so the floor sits above everything and the cut is off entirely. **The frame is
+indistinguishable from the one with the cut on.** At that location `tall_cut`
+subtracts nothing.
+
+The null is information and it is not a verdict for either side. It does not
+confirm my suspicion that the cut eats the city's verticality, and it does not
+confirm the opposite claim that lowering the floor under the lens (f43adeb)
+rescues a lamppost standing through the player. What it establishes is a third
+thing neither of us had measured: **the cut's REACH is narrower than both of us
+assumed.** It only bites near a `crown_clear` point, and at this spot the
+buildings are across the street from the player, so the shader was never in a
+position to remove anything.
+
+So the entry stays open, with the question sharpened. What would test it is the
+player standing DIRECTLY IN FRONT OF a tall city building — which this seed's
+spawn does not provide, so it wants `--place` or a staged position and is a
+second frame. A null at one location is not a null everywhere, and reading this
+one as an acquittal would be the same error as reading it as a conviction.
+
+`UNSPENT_TALL_FLOOR=<n>` is now a permanent door (`18_crowns._set_tall_floor`),
+999 turning the cut off, so the second frame costs nothing to stage.
+
+Note the two guards are unaffected and still right either way: the ground band
+40..70 is refused, and no `BiomeForms.PLAIN` form reaches 3.0.
 
 ### 4. "'Flat' was not missing layers" — the premise is an ortho measurement
 
@@ -303,10 +325,19 @@ be read from far enough away"* is scoped to one projection.
 
 ## What this list is worth
 
-Nine of the ten entries are open QUESTIONS, not corrections. Two of them (3 and
-5) name a specific, cheap experiment that could be run in a single frame each;
-one (1) is the owner's to answer and cannot be measured; the rest are magnitudes
-that need re-taking before they are quoted again.
+Nine of the ten entries are open QUESTIONS, not corrections, and that is the
+correct output rather than a weakness: LOOK.md and ART.md are the direction of
+record, and moving them is the owner's call and not a finding's.
+
+Entry 3's experiment has been RUN and returned a null, which narrowed the
+question instead of answering it and is written up in place. Entry 5's is still
+outstanding and still costs one frame. Entry 1 is the owner's to answer and
+cannot be measured at all. The rest are magnitudes that need re-taking before
+they are quoted again.
+
+**Keep this file honest about its own state.** Every entry here is a claim about
+the evidence available on 2026-09-22, and the whole point of the document is that
+claims outlive the conditions they were made under.
 
 The one structural claim the list does make is this: **LOOK.md diagnosed a
 flatness complaint by removing one floor, while a second floor — the projection —
