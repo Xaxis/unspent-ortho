@@ -398,17 +398,27 @@ func tour_forget(what: StringName) -> void:
 func _in_frame(s: LandmarkSite) -> bool:
 	if not _nodes.has(s.id) or game.camera == null:
 		return false
-	var yaw := deg_to_rad(game.camera.yaw_now())
-	var right := Vector2(cos(yaw), -sin(yaw))
-	var up := Vector2(-sin(yaw), -cos(yaw))
-	var d := s.pos - sim.hero.pos
-	# 16:9, the low-res viewport's own shape (640x360), as the spawner reads it.
-	var half_h := game.camera.size * 0.5
-	if absf(d.dot(right)) > half_h * (16.0 / 9.0):
+	# ASKED OF THE CAMERA, never derived. This was a half-extent off `cam.size`, a
+	# spelled 16:9 and `pitch_deg` -- three orthographic numbers, and under the
+	# lens all three keep answering for a camera that is not drawing (`size` is
+	# ignored by a perspective projection and `_apply_lens` writes neither it nor
+	# `pitch_deg`). The rule it was built on is unchanged and is still the point:
+	# up the screen the BASE has to be in frame, down the screen the HEAD carries
+	# it, so both are asked for and either one being on the glass is enough.
+	var cam := game.camera
+	var node := _nodes[s.id] as Node3D
+	if node == null or not cam.is_inside_tree():
 		return false
-	var pitch := deg_to_rad(game.camera.pitch_deg)
-	var base := d.dot(up) * sin(pitch)
-	return base <= half_h and base + LandmarkModels.high_of(s.kind) * cos(pitch) >= -half_h
+	var foot := node.global_position
+	var head := foot + Vector3(0.0, LandmarkModels.high_of(s.kind), 0.0)
+	if (cam.global_transform.affine_inverse() * foot).z > -0.5:
+		return false
+	var rect: Vector2 = cam.get_viewport().get_visible_rect().size
+	var a := cam.unproject_position(foot)
+	var b := cam.unproject_position(head)
+	if minf(a.x, b.x) > rect.x or maxf(a.x, b.x) < 0.0:
+		return false
+	return minf(a.y, b.y) <= rect.y and maxf(a.y, b.y) >= 0.0
 
 
 ## The sites, for a test, for dev mode and for whoever wants the list.
