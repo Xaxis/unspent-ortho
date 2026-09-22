@@ -1297,6 +1297,13 @@ wave. Frames are in `shots/lens/`.
    OFF main on purpose: it answered a one-time question, grows three worlds and
    costs about 15 s, which is a poor trade on every gate. Its header predates the
    depth-view guards on main, so read it as a record of that evening.
+   **The second projection can now be PLAYED, not only shot (`d7cd9a7`).** A held Z
+   takes the lens and letting go gives the flat camera back, behind the master
+   configuration row `rules.lock_lens`, OFF by default so this stays his decision:
+   `--config=held-z`, or flip "held Z lens" on dev mode's rules page, and press Z.
+   The switch is matched (subject size x1.0000 at the focal plane) and continuous
+   in pitch. Frames: `tools/tour.sh tours/held_z.tour --seed=1 --hour=11
+   --weather=clear:0 --folk=8 --config=held-z`.
 2. **The horizon fork.** `fov/2 < pitch` keeps sky out of frame. It stands at
    27.5 < 40, with 12.5 degrees of margin. Crossing it is a different game and
    nobody should cross it by widening a fov for a prettier frame.
@@ -1395,12 +1402,19 @@ found eight. Six are fixed: five `cam.size` readers plus a sixth spelled as a
 ratio, a hologram cache key that could never invalidate on zoom, `tall_cut`'s
 whole-screen shear (a parallel-ray intersection used per fragment), two depth
 views counting what is BEHIND the camera, and the cut's floor scaling with pitch
-(which would have stippled away every cottage in the game). **Still open, each a
-decision rather than a rename**: `Air`'s frame-depth model in `sky_light.gd`
-(the fog's begin and end are an orthographic frame depth), `fire_model.gd`'s
-pixel budget (14.0 and 360.0, two retired numbers in one line), and
-`render_probe.gd`'s measuring quad — which is the instrument, so the worst place
-for it to be latent.
+(which would have stippled away every cottage in the game). **The three this
+section used to list as still open are closed (2026-09-22)**, and it said so here
+for a while after they were, which is how a list like this sends the next session
+to redo landed work: `Air`'s frame depth is measured for the lens it is under
+(`02fa0bd`, the derived span agreeing with the one measured off the camera's
+edges to 0.01, clamped as an angle at the horizon fork); `render_probe.gd`'s quad
+is sized from the frame it measures (`51fe7b9`); and `fire_model.gd`'s budget
+keeps its number and says what it is (`b1e30fa`: 3 real pixels per `n` at every
+zoom, and its 14.0 is taken by every perspective camera, not only a missing one).
+Two more the lens made necessary are on main too: the spawner asks the camera
+under the lens instead of a box (`5c2c8e8`, the #120 blocker), and `CameraRig.lens`
+became the one writer of `projection` (`d7cd9a7`). CLAUDE.md's contracts table
+has the rules as "The camera's two projections".
 
 
 The owner's words are that this is not the detailed, beautiful open world with
