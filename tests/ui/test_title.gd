@@ -27,9 +27,16 @@ func _title() -> UiTitle:
 	return t
 
 
+## `seconds` is TITLE time, stepped by hand, but what it waits for is a coast
+## built by a WORKER thread in real time -- so the step budget is really a fixed
+## wall-clock budget of about 4 ms a step. That fits on a quiet box (2 s alone)
+## and runs out under load: at load 76-112 the worker was several times slower
+## and the gate failed "a coast is drawn" on code that passed alone. Waiting is
+## exactly what `machine_slack` is for, so the budget stretches with the box.
 func _run(t: UiTitle, seconds: float, until: Callable) -> bool:
 	var dt := 0.1
 	var waited := 0.0
+	seconds *= machine_slack()
 	while waited < seconds:
 		if not is_instance_valid(t) or until.call():
 			return true
