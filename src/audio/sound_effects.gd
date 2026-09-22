@@ -20,7 +20,15 @@ const STEP_FAMILY := {
 	Ground.NEEDLES: &"needles", Ground.SNOW: &"snow", Ground.ICE: &"ice",
 	Ground.ROCK: &"stone", Ground.LIMESTONE: &"stone", Ground.BONE: &"stone",
 	Ground.GRAVEL: &"gravel", Ground.SCREE: &"gravel", Ground.SHINGLE: &"shingle",
-	Ground.ASH: &"ash", Ground.CLINKER: &"clinker", Ground.ROAD: &"dirt", Ground.FLOOR: &"wood",
+	# FLOOR IS A HARD MINERAL SLAB AND USED TO SOUND LIKE FLOORBOARDS. Four things
+	# describe this ground and three of them always agreed: `GroundColors._base`
+	# gives it `P.STONE[2]`, its mark is ROAD (asphalt and paving), and
+	# `stealth_noise` scores it 1.15, the LOUDEST ground in the game, which is a
+	# slab and not timber. The slums calls it "poured concrete that has been walked
+	# on for a lifetime" and the green towers is 35-46% of it as ruined city slab
+	# (measured over five seeds, task #130) -- so both landscapes that lay it mean
+	# concrete, and the sound was the only dissenter.
+	Ground.ASH: &"ash", Ground.CLINKER: &"clinker", Ground.ROAD: &"dirt", Ground.FLOOR: &"stone",
 }
 
 const FAMILIES: Array[StringName] = [
