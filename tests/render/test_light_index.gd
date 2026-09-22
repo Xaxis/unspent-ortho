@@ -23,6 +23,13 @@ extends TestCase
 const Lights := preload("res://src/systems/15_lights.gd")
 
 
+## EVERY CALLER MUST FREE WHAT THIS HANDS BACK. The Game is parented and set
+## up, so its systems connect to the `Events` AUTOLOAD, which outlives the
+## test. Three tests here leaked three Games and three live guide systems, and
+## the damage landed on somebody ELSE: `test_guide`'s first-kill test heard the
+## one kill four times and failed, 72 files later in the same shard, green on
+## its own. TestCase has no teardown hook, so the free is the caller's.
+
 func _world_with_lights() -> Array:
 	var o := BootOptions.new()
 	o.size = 96
@@ -60,6 +67,8 @@ func test_the_grid_holds_every_light_the_sweep_would_have_found() -> void:
 				if p.pos.distance_to(focus) <= reach and not held.has(p.id):
 					missed += 1
 			check(missed == 0, "reach %.0f at %s: the grid dropped %d lights the sweep finds" % [reach, focus, missed])
+	g.queue_free()
+	await frames(1)
 
 
 func test_the_grid_answers_by_PLACE_and_not_with_the_whole_world() -> void:
@@ -68,6 +77,7 @@ func test_the_grid_answers_by_PLACE_and_not_with_the_whole_world() -> void:
 	# the one call with negative coordinates in it, which is where a cell key
 	# worked out by integer division rather than a floor would go wrong.
 	var pair := _world_with_lights()
+	var g: Game = pair[0]
 	var lights: Node = pair[1]
 	check(lights != null, "lights system")
 	await frames(20)
@@ -75,6 +85,8 @@ func test_the_grid_answers_by_PLACE_and_not_with_the_whole_world() -> void:
 	check(all.size() > 0, "lights to not find")
 	var near: Array = lights.call(&"_near", Vector2(-400.0, -400.0), Lights.GLOW_REACH)
 	check(near.is_empty(), "nowhere near the island holds no lights, got %d of %d" % [near.size(), all.size()])
+	g.queue_free()
+	await frames(1)
 
 
 func test_a_crossing_rebuilds_the_index_instead_of_piling_a_second_world_on_it() -> void:
@@ -83,6 +95,7 @@ func test_a_crossing_rebuilds_the_index_instead_of_piling_a_second_world_on_it()
 	# away and reads the new world. Run against the SAME world, the honest
 	# proof is that re-indexing gives the same count and not twice it.
 	var pair := _world_with_lights()
+	var g: Game = pair[0]
 	var lights: Node = pair[1]
 	check(lights != null, "lights system")
 	await frames(20)
@@ -96,3 +109,5 @@ func test_a_crossing_rebuilds_the_index_instead_of_piling_a_second_world_on_it()
 	for key: int in cells.keys():
 		filed += (cells[key] as Array).size()
 	check(filed == now, "every source filed in exactly one cell: %d sources, %d filed" % [now, filed])
+	g.queue_free()
+	await frames(1)
