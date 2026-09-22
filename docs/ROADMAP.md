@@ -2,23 +2,29 @@
 
 Destination: `docs/VISION.md`.
 
-## WAITING ON THE OWNER (2026-09-22) -- each a sentence to answer, detail below
+## DECIDED (owner, 2026-09-22: "Keep the held z camera ... You decide all of it")
 
-**The look (LANTERN) is decided and none of these reopens it.** Each is already
-built or measured, so an answer costs a word, not a wave.
+The owner kept the held-Z camera and delegated the rest. **The look (LANTERN) is
+decided and none of these reopens it.** Detail for each stays in its section below.
 
-1. **Ship the second projection?** Held Z switches to a perspective lens
-   (`--config=held-z`, or dev mode's rules page). Off by default. It shows about
-   5x the buildings; measured cost so far is small (see PROJECTIONS).
-2. **The horizon fork** -- keep sky out of frame (`fov/2 < pitch`), as now?
-3. **Should machines get out of the player's way in the orthographic game too?**
-   Built, inert under ortho; one word switches it on.
-4. **Should a cottage open when it hides the player** under the lens?
-5. **How big a place must be** (your `BODY_SHARE` 0.35). Your rule and the code
-   drifted when continents became dealt. Recommended: 0.25.
-6. **Deal each prop's model by position, not id.** Today any world change
-   reshuffles most of the island's models, and it now moves the canon's own neon
-   frame -- **this one blocks the canon and the web light refit.**
+1. **The held-Z lens stays, and becomes the default** (`rules.lock_lens` on) once
+   a quiet re-run of its cost clears the slums and the works depot.
+2. **The sky comes into frame under the lens** -- the owner asked "what's wrong
+   with seeing the sky?", and nothing is: a horizon is the more beautiful picture
+   and it is what `docs/VISION.md` asks of landmarks read from afar, which the
+   orthographic frame caps at 11-13 tiles. Built as its own wave, not a constant:
+   land to the horizon (`WorldFar`), fog that holds the world's edge, `Air`'s depth
+   given a real far limit in place of today's horizon clamp, measured for cost and
+   judged on frames before it is the default.
+3. **Machines get out of the player's way under the orthographic camera too** --
+   "a fight is never hidden" (docs/ART.md law 5) is the game's own rule.
+4. **Under the lens a cottage opens when it hides the player** -- the same law.
+   Only the one between the eye and the player, only round that line; the
+   orthographic game keeps its 3.0 fence exactly as it is.
+5. **A place's floor: `BODY_SHARE` 0.25**, its comment rewritten so its words and
+   the code agree about what it divides by.
+6. **A prop's model is dealt by its position**, so a world change stops
+   reshuffling the island and the canon's neon frame stops moving.
 
 Milestones end in something a person can play. Work inside a milestone runs as
 parallel packages, each in its own worktree with its own directories, merged
