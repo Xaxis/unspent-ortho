@@ -182,3 +182,24 @@ func test_a_pasted_configuration_is_exactly_what_was_pasted() -> void:
 	eq(str(GameConfig.value("dev.access")), "off", "and dev mode is off in it")
 	DirAccess.remove_absolute(GameConfig.user_dir().path_join(name + ".json"))
 	GameConfig.clear()
+
+
+## EVERY FILE IN `configs/` IS A CONFIGURATION ANYBODY CAN LOAD. A name outside
+## `GameConfig.NAME_RULE` (an underscore, a capital) is not refused out loud: it
+## is SKIPPED by `GameConfig.names()`, so it is invisible to `--config` and to the
+## test above, which checks only the files it can see. `configs/held_z.json` was
+## that file -- a tour asked for it, got the defaults, and the only sign was one
+## warning line in its log.
+func test_every_file_in_configs_has_a_name_that_can_be_loaded() -> void:
+	var dir := DirAccess.open(GameConfig.DIR)
+	check(dir != null, "configs/ can be read")
+	if dir == null:
+		return
+	var seen := 0
+	for f in dir.get_files():
+		if not f.ends_with(".json"):
+			continue
+		seen += 1
+		check(GameConfig.valid_name(f.get_basename()),
+			"configs/%s is named outside %s, so nothing can load it and no test sees it" % [f, GameConfig.NAME_RULE])
+	gt(seen, 0, "there are configuration files to check")
