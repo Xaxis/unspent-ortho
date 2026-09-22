@@ -1318,6 +1318,55 @@ wave. Frames are in `shots/lens/`.
    and law 5 says a fight is never hidden. Both cannot be true. The fence is
    currently held, which is why no building dissolves in `village_lens.png`.
 
+### A FIFTH DECISION FOR THE OWNER: HOW BIG A PLACE MUST BE, NOW THAT CONTINENTS ARE DEALT (2026-09-22)
+
+**This one is his number, verified**: `GenCountries.BODY_SHARE` 0.35 is marked
+"(owner, 2026-09-19, chosen from measurement rather than taste)", and his rule is
+that a run of one landscape is a PLACE -- a region, with a keeper, a depot, a
+landmark and a sub-arc -- when it holds at least 0.35 of *"body tiles / how many
+landscapes share THAT body"*.
+
+**The rule and the code have drifted apart.** When he set it any landscape could
+reach any continent, so "how many share that body" was all 21, which is what the
+code divides by. Since `abd628f` each continent holds only what it was DEALT, so
+his words, read literally, now mean the dealt count -- and the code still divides
+by 21. Nobody can make the two agree without choosing one.
+
+**What moved:** seed 7's land in some region went from 0.9105 to 0.8993, under the
+test's 0.9 bar (`test_regions`, on `tests/standing.txt` with this cause). Not
+allocation -- every dealt landscape holds more than 2.5x its floor in TOTAL -- but
+FRAGMENTATION: its land lies in several runs, each just under the floor, so about
+7,000 more tiles are land nothing claims. The world is unchanged until he rules.
+
+Measured on seeds 1 / 42 / 90210 / 7 (a5, on `ec5bd55`'s world):
+
+```
+                                   coverage                      regions
+as today (divide by 21)            0.925 0.902 0.914 0.899       64 71 71 67
+(3) his rule read literally        0.910 0.860 0.859 0.866       60 62 59 60
+(4) fold fragments into neighbour  0.983 0.979 0.975 0.976       63 68 68 66
+(5) BODY_SHARE 0.25                0.947 0.936 0.946 0.933       72 83 83 79
+(5) BODY_SHARE 0.18                0.965 0.953 0.967 0.964       81 91 93 94
+```
+
+- **(3)** is what his words say, and loses the most.
+- **(4)** keeps every region one landscape but repaints 7-10% of all land into its
+  neighbour's landscape, whole islands included (10,095 tiles of moss became crags
+  on seed 90210). `a5`'s before/after at seed 7: a ruined-metropolis fragment in
+  the orchards -- standing walls, a paved slab, rubble -- becomes plain orchard turf
+  with one shack. The detail his bar asks for is exactly what it deletes.
+- **(5)** keeps every patch and makes the fragments places. The smallest region is
+  unchanged (440-653 tiles), no region falls under a keeper's 240, every region
+  still holds a landmark (one exception at 0.18), and keepers rise from about 8 to
+  10-15 per world. It lowers his number.
+
+**Recommendation (fc's, not his): (5) at 0.25.** It is the only option that clears
+0.9 on every seed WITHOUT deleting variety, the fragments it promotes all hold a
+landmark, and it is the smallest move of his number that does. Whichever he picks,
+the rule's comment should be rewritten to say which count it divides by, so the
+words and the code agree again. It moves the world: `GEN` bump, re-probe, canon
+re-accept.
+
 ### THE RETIRED FLOOR IS STILL SPELLED IN THREE LIVE PIXEL BUDGETS (2026-09-22)
 
 CLAUDE.md warns about pixel budgets never re-derived after the floor moved from
