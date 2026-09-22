@@ -301,7 +301,16 @@ func _toward_eye() -> Vector3:
 	return game.camera.global_transform.basis.z if game.camera != null else Vector3(0.39, 0.84, 0.39)
 
 
-## World units across `n` screen pixels at the camera's zoom.
+## World units across `n` of the RETIRED FLOOR's pixels -- 1/360 of the view
+## height, from when the frame was 640x360 -- and NOT the screen's, whatever this
+## used to say. At the 1920x1080 base that is 3 real pixels per `n` at every zoom,
+## because the height divides back out, and the same under the lens at the focal
+## plane, which `CameraRig.lens_back` keeps matched. The hit marks have been drawn
+## at that size since the floor moved and it is part of the look the owner
+## approved: switching to `units_per_pixel_of` would draw them three times
+## thinner, which is his call and not a cleanup (docs/ROADMAP.md, the retired
+## floor). A target lean's zoom is not in `view_height`, so a mark does not shrink
+## with a lean. 14.0 is the old view height, used only when there is no camera.
 func _px(n: float) -> float:
 	var h := game.camera.view_height if game.camera != null else 14.0
 	return n * h / 360.0

@@ -18,9 +18,14 @@ extends RefCounted
 ##                                          ground: what a player has to tell apart
 ##                                          across a field. Shoot it at noon and at
 ##                                          23 and hold the two side by side.
-##   ... --filter=disposed_harvester_hostile              one of them alone and
-##                                          unlabelled, which is the frame to count
-##                                          lit pixels in.
+##   ... --filter=disposed_harvester_hostile              one of them alone, which
+##                                          is the frame to count lit pixels in --
+##                                          but NOT unlabelled, whatever this said:
+##                                          the gallery draws the item's name tag
+##                                          across the model unless the frame is
+##                                          aimed (`--piece`, gallery.gd `named`),
+##                                          so count inside the model's own box or
+##                                          crop round the tag.
 
 const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
 const SHOWN: Array[StringName] = [&"stand", &"alert", &"windup", &"dead"]

@@ -120,7 +120,17 @@ func build(world_mat: Material, seed_value: int, hearth: bool = true) -> void:
 	_draw()
 
 
-## World units across `n` screen pixels under the camera drawing this fire.
+## World units across `n` of the RETIRED FLOOR's pixels -- 1/360 of the view
+## height, from the 640x360 floor -- in this fire's own units (`/ SIZE`), and NOT
+## the screen's, whatever this used to say. Under the orthographic camera that is
+## 3 real pixels per `n` at every zoom, because the height divides back out. The
+## smoke and sparks have been drawn at that size since the floor moved and it is
+## part of the approved look: switching to `units_per_pixel_of` would draw them
+## three times thinner, which is the owner's call and not a cleanup.
+## 14.0 is the old view height, and it is used with no camera AND UNDER THE
+## PERSPECTIVE LENS, where `size` means nothing -- so it is not only a headless
+## fallback. There it comes to 2.8 real pixels per `n` at the focal plane, close
+## enough to leave, but it is a remembered number and not a measurement.
 func _px(n: float) -> float:
 	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
 	var h := cam.size if cam != null and cam.projection == Camera3D.PROJECTION_ORTHOGONAL else 14.0
