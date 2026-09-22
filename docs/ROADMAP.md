@@ -1279,6 +1279,49 @@ before guessing; toggle a layer inside ONE run rather than across runs; print
 
 ## PROJECTIONS — the camera is the constraint on "detailed and beautiful" (open, 2026-09-22)
 
+### FOUR DECISIONS THAT ARE THE OWNER'S, WAITING ON HIS WORD (2026-09-22)
+
+None of these is an art-direction question. **THE LOOK (LANTERN) IS DECIDED AND
+IS NOT REOPENED BY ANY OF THIS.** These are four narrow consequences of a second
+projection existing, each already built so the answer costs a sentence and not a
+wave. Frames are in `shots/lens/`.
+
+1. **Does the game ship a second projection at all**, or is `--lens=persp` a tool
+   for seeing what the world contains? `village_ortho.png` against
+   `village_lens.png`, same seed, same hour, same weather: the lens holds about
+   twice the village. Measured separately over 112 standpoints, 14 landscapes and
+   3 seeds, a walking player sees **1.07 buildings per screen under the
+   orthographic frame and 5.18 under the lens — 4.8x**. The buildings were always
+   laid; the frame did not reach them.
+2. **The horizon fork.** `fov/2 < pitch` keeps sky out of frame. It stands at
+   27.5 < 40, with 12.5 degrees of margin. Crossing it is a different game and
+   nobody should cross it by widening a fov for a prettier frame.
+3. **Should FOUND geometry get out of the player's way in the ORTHOGRAPHIC game
+   too?** It does not today and never has: a pylon, mast or lamppost stands
+   straight through the player, which is a gap against docs/ART.md law 5. The
+   capability is built and is INERT under ortho, so this costs only the word.
+   `works_lens.png` against `works_lens_nocut.png` is the same frame with the cut
+   on and off.
+4. **Should a COTTAGE open when it stands between the eye and the player?** At a
+   flatter pitch one genuinely does hide you. The fence (3.0) says do not open it,
+   and law 5 says a fight is never hidden. Both cannot be true. The fence is
+   currently held, which is why no building dissolves in `village_lens.png`.
+
+### WHAT THE LENS FOUND IN THE EXISTING CODE (all fixed unless marked)
+
+A second projection is an instrument for finding orthographic assumptions, and it
+found eight. Six are fixed: five `cam.size` readers plus a sixth spelled as a
+ratio, a hologram cache key that could never invalidate on zoom, `tall_cut`'s
+whole-screen shear (a parallel-ray intersection used per fragment), two depth
+views counting what is BEHIND the camera, and the cut's floor scaling with pitch
+(which would have stippled away every cottage in the game). **Still open, each a
+decision rather than a rename**: `Air`'s frame-depth model in `sky_light.gd`
+(the fog's begin and end are an orthographic frame depth), `fire_model.gd`'s
+pixel budget (14.0 and 360.0, two retired numbers in one line), and
+`render_probe.gd`'s measuring quad — which is the instrument, so the worst place
+for it to be latent.
+
+
 The owner's words are that this is not the detailed, beautiful open world with
 multiple projections we set out to build. Measured, the camera is most of why,
 and the finding reorders the work rather than adding to it.
