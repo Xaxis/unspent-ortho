@@ -435,6 +435,8 @@ func _run() -> void:
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "lens":
+					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "foliage":
 					ok = await FoliagePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:
