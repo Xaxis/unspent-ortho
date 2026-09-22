@@ -206,9 +206,19 @@ func _in_frame(p: Vector2, high: float) -> bool:
 	var px := 1.0 / maxf(CameraRig.units_per_pixel_of(camera, rect.y), 1e-6)
 	var ground := world.height_at(p)
 	var seen := false
+	# BEHIND THE EYE IS NOT IN FRAME, and `unproject_position` will not say so:
+	# a perspective projection maps a point behind the camera to a MIRRORED
+	# screen position that can land inside the rect, so an unguarded count
+	# inflates -- and it inflates in the direction we are hoping for, which is
+	# the worst kind of instrument error. Inert under the orthographic camera,
+	# which stands thirty units back and has nothing in the world behind it.
+	var inv := camera.global_transform.affine_inverse()
 	for k in 2:
 		var at_y := (ground + high) if k == 0 else (ground + 0.06)
-		var s := camera.unproject_position(Vector3(p.x, at_y, p.y))
+		var at := Vector3(p.x, at_y, p.y)
+		if (inv * at).z > -camera.near:
+			continue
+		var s := camera.unproject_position(at)
 		if s.y >= 0.0 and s.y <= rect.y and s.x >= -SHADE * px and s.x <= rect.x + SHADE * px:
 			seen = true
 			if k == 0:

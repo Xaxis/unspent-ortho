@@ -214,6 +214,10 @@ func _in_frame(p: WorldProp, country: int) -> bool:
 	var col := _column_of(p, country)
 	var foot: Vector3 = col.foot
 	var size := float(col.size)
+	# Behind the eye is not in frame, and `unproject_position` answers anyway with
+	# a mirrored position that can land inside the rect (flier_view says the rest).
+	if (cam.global_transform.affine_inverse() * foot).z > -cam.near:
+		return false
 	var lo := cam.unproject_position(foot)
 	var hi := cam.unproject_position(foot + Vector3(0.0, TALL * size, 0.0))
 	if _debug:
@@ -222,7 +226,10 @@ func _in_frame(p: WorldProp, country: int) -> bool:
 	# picture when that span crosses the glass at all.
 	if hi.y > rect.y or lo.y < 0.0:
 		return false
-	var half_w := WIDE * size * 0.5 * (rect.y / maxf(cam.size, 1e-3))
+	# Pixels per world unit through the one door, not off `cam.size`: this is a
+	# sixth site of that division and neither audit of them caught it, because it
+	# is spelled as a ratio rather than as a texel.
+	var half_w := WIDE * size * 0.5 / maxf(CameraRig.units_per_pixel_of(cam, rect.y), 1e-6)
 	return maxf(lo.x, hi.x) + half_w >= 0.0 and minf(lo.x, hi.x) - half_w <= rect.x
 
 
@@ -233,7 +240,13 @@ func follow(focus: Vector2) -> void:
 	# The focus is not the only thing that decides the list any more: what fits
 	# is the camera's, so a player standing still and zooming (or leaning onto a
 	# target) has to be gathered again or the street keeps the old answer.
-	var shape := Vector2(cam.size, cam.global_rotation.x) if cam != null else Vector2.ZERO
+	# Keyed on what a PIXEL covers rather than on `cam.size`, for the same reason
+	# as the width above: under the lens `size` never moves, so a zoom would not
+	# invalidate this and the street would keep an answer gathered for a frame
+	# that no longer exists. The pitch half already caught a lean; the zoom half
+	# did not, and only under a projection nothing ships yet.
+	var shape := Vector2(CameraRig.units_per_pixel_of(cam, 1080.0), cam.global_rotation.x) \
+			if cam != null else Vector2.ZERO
 	if focus.distance_to(_last) < RESTEP and shape.is_equal_approx(_last_shape):
 		return
 	_last = focus
