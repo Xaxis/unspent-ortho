@@ -35,6 +35,13 @@ const LIST := {
 		"grounds": [Ground.WATER, Ground.DEEP_WATER, Ground.RIVER, Ground.BLACKWATER],
 		# Water is water: the sea floor under it is nothing a float has to climb.
 		"levels": 6,
+		# WHAT IT SOUNDS LIKE UNDERFOOT. Lashed timber, so a step on the deck is
+		# timber and not the water it is floating on -- which is what you heard
+		# before, because a footfall was keyed on the TILE and a raft is not one
+		# (task #140). Unset on a craft means the ground shows through, which is
+		# the right answer for a sled that hovers over it rather than a deliberate
+		# gap: declare one only where the body is really standing on the craft.
+		"step": &"wood",
 		"walk": 2.2, "run": 3.2,
 		"hull": 100.0,
 		"wear": {Ground.WATER: 0.4, Ground.RIVER: 0.3, Ground.DEEP_WATER: 0.08, Ground.BLACKWATER: 0.25},
@@ -116,6 +123,12 @@ static func sit(kind: StringName) -> float:
 ## walker rig is nothing: a body stands inside that one, on its own feet.
 static func stand(kind: StringName) -> float:
 	return float(row(kind).get("stand", 0.0))
+
+
+## The footfall family a body standing on this craft's deck makes, or &"" when
+## the craft has not claimed one and the ground underneath should be heard.
+static func step_family(kind: StringName) -> StringName:
+	return row(kind).get("step", &"")
 
 
 static func afloat(kind: StringName) -> bool:

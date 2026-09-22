@@ -368,3 +368,46 @@ func test_a_machine_sounds_the_same_every_time_and_a_blow_does_not() -> void:
 			flesh[v.pitch_scale] = true
 	gt(float(flesh.size()), 1.0, "blows land a little differently")
 	_done(parts)
+
+
+## A body standing on a craft hears the DECK, not the tile it is floating over.
+##
+## Before this, every footfall was keyed on the ground under the player's feet
+## and nothing else, so crossing a river on a raft played WATER — the sound of
+## wading, while standing on lashed timber (task #140). The raft is the first
+## craft to claim a deck; a craft that claims none still lets the ground through,
+## which is the right answer for a sled that hovers over it.
+func test_a_raft_is_heard_underfoot_and_not_the_water_it_floats_on() -> void:
+	var parts := _make()
+	var sys: AudioSystem = parts[0]
+	var g: Game = parts[1]
+	# Stand in real water, so the ground and the deck cannot possibly agree.
+	var wet := Vector2(-1.0, -1.0)
+	for y in g.world.size:
+		for x in g.world.size:
+			if g.world.ground_at(x, y) == Ground.WATER:
+				wet = Vector2(x + 0.5, y + 0.5)
+				break
+		if wet.x >= 0.0:
+			break
+	check(wet.x >= 0.0, "seed 11 has open water to stand in")
+	if wet.x < 0.0:
+		_done(parts)
+		return
+	g.player.pos = wet
+	eq(sys._step_family_now(), &"step_water", "off a craft, the tile is what is heard")
+
+	var ride := CraftKinds.ride(&"raft")
+	check(ride != null, "a raft can be ridden")
+	g.player.ride = ride
+	eq(sys._step_family_now(), &"step_wood",
+		"on a raft's deck, the timber is what is heard and not the water under it")
+
+	# A craft that claims no deck is not a gap: the ground shows through.
+	var bare := CraftRide.new()
+	bare.kind = &"nothing_declares_this"
+	g.player.ride = bare
+	eq(sys._step_family_now(), &"step_water",
+		"a craft with no declared deck lets the ground through")
+	g.player.ride = null
+	_done(parts)

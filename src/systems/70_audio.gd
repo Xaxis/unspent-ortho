@@ -128,7 +128,7 @@ func setup(g: Game) -> void:
 	_read_weather()
 	targets = SoundMix.bed_levels(game.world, game.player.pos, weather, sea, river, seconds, _extra())
 	# What the first seconds need, first: this ground's footfalls, the beds here.
-	var family := SoundEffects.step_name(_ground())
+	var family := _step_family_now()
 	for v in SoundBank.variants(family):
 		bank.request(SoundBank.key_for(family, v), true)
 	# Loudest bed here first: it is most of what the first seconds sound like.
@@ -394,7 +394,7 @@ func footfalls(delta: float) -> void:
 		_stride = fmod(_stride, stride)
 		_last_step = _foot_clock
 		steps += 1
-		var family := SoundEffects.step_name(_ground())
+		var family := _step_family_now()
 		if family != _step_family:
 			# New ground: every take of it, now, so the next steps have a choice.
 			_step_family = family
@@ -405,6 +405,23 @@ func footfalls(delta: float) -> void:
 
 func _ground() -> int:
 	return game.world.ground_at(floori(game.player.pos.x), floori(game.player.pos.y))
+
+
+## The footfall for what is really under the foot: a craft's deck if the body is
+## standing on one, otherwise the tile.
+##
+## THE ONE DOOR, and both call sites take it, because they have to agree: the
+## warm-up (`setup`) asks which takes to bake first and `footfalls` asks which to
+## play, and a body that baked the ground and then played the deck would get its
+## first step off an empty bank. A craft that declares no deck falls through to
+## the ground, so nothing about walking on land moves.
+func _step_family_now() -> StringName:
+	var ride: CraftRide = game.player.ride if game.player != null else null
+	if ride != null:
+		var deck := CraftKinds.step_family(ride.kind)
+		if deck != &"":
+			return StringName("step_" + String(deck))
+	return SoundEffects.step_name(_ground())
 
 
 # ----------------------------------------------------------------------- beds
