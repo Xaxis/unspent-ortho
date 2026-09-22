@@ -12,6 +12,8 @@ class_name GenPlaces
 ##                             every depot: room to fight in with nothing built
 ##                             in shot, in the landscape the player wakes in or
 ##                             in the one named
+##   "lit_village"             the square of the village nearest where the player
+##                             wakes that wired a machine's light into a house
 ##   "typical", "typical_moss" the most CHARACTERISTIC standing ground of a
 ##                             landscape, clear of everything built: what the
 ##                             place looks like, where `open` is where there is
@@ -23,6 +25,9 @@ static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
 	if key == "spawn":
 		return w.spawn
+	if key == "lit_village":
+		var sq := lit_village_square(w)
+		return _stand_near(w, sq) if sq.x >= 0.0 else Vector2(-1, -1)
 	var ci := BiomeRegistry.index_of(StringName(key))
 	if ci > 0:
 		return country_sample(w, ci)
@@ -444,6 +449,44 @@ static func _mainland(w: WorldData, x: int, y: int) -> bool:
 
 
 ## The nearest standable tile to p (searching outward), or p itself.
+## The square of the village nearest the spawn that wired a machine's light into a
+## house, or (-1, -1) when none did.
+##
+## ONLY A SHARE OF VILLAGES ARE LIT, and which share is a hash of each village's
+## POSITION (GenScatter.LIT_SHARE). So moving the spawn re-rolls which village is
+## nearest it and whether that one is lit: the canon stood at `spawn` and assumed
+## it was, and a spawn moved home put its village frame somewhere with no tube in
+## it at all. The ruling was to find a lit village, not to make the spawn's always
+## lit -- neon is a situational accent, and the owner has corrected it being
+## applied everywhere once already.
+##
+## Asked of the HOUSES THE WORLD LAID, never of the hash: in a lit village the lit
+## house is the one nearest the square (GenScatter deals it that way), so that is
+## the house checked, against the forms that landscape counts as lit. If the rule
+## for which villages light ever changes, this goes on telling the truth.
+static func lit_village_square(w: WorldData) -> Vector2:
+	var order: Array[Dictionary] = w.villages.duplicate()
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a.pos as Vector2).distance_to(w.spawn) < (b.pos as Vector2).distance_to(w.spawn))
+	for v: Dictionary in order:
+		var vp: Vector2 = v.pos
+		var lit := BiomeForms.of(int(v.get("country", 0))).lit()
+		if lit.is_empty():
+			continue
+		var nearest: WorldProp = null
+		var near := INF
+		for p: WorldProp in w.props:
+			if p.kind != PropKind.HOUSE or p.variant < 0:
+				continue
+			var d := p.pos.distance_to(vp)
+			if d <= 18.0 and d < near:
+				near = d
+				nearest = p
+		if nearest != null and lit.has(nearest.variant):
+			return vp
+	return Vector2(-1, -1)
+
+
 static func _stand_near(w: WorldData, p: Vector2) -> Vector2:
 	var solid := solid_mask(w)
 	var px := floori(p.x)

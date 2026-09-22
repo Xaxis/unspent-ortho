@@ -672,17 +672,16 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 
 func test_the_canon_stands_where_a_tube_burns() -> void:
 	# Art review 11: the two canon frames meant to protect the stolen neon held
-	# zero pixels of any tube colour. The canon shoots seed 7 from the spawn, so
-	# the village the player wakes in has to be one of the lit ones, and the lit
-	# house has to be the one it looks at.
+	# zero pixels of any tube colour. The canon's village frame now stands at
+	# `place lit_village`, so this follows what the canon actually does: that
+	# name must resolve on seed 7, and the house nearest its square must be lit.
+	# It used to take the village nearest the SPAWN and assume it was lit, which
+	# held only until the spawn moved -- lit is a hash of each village's position,
+	# so moving the spawn re-rolled it (abd628f).
 	var w := WorldGen.generate(7)
-	var vp := Vector2.ZERO
-	var best := INF
-	for v: Dictionary in w.villages:
-		var d: float = (v.pos as Vector2).distance_to(w.spawn)
-		if d < best:
-			best = d
-			vp = v.pos
+	var vp := GenPlaces.lit_village_square(w)
+	check(vp.x >= 0.0, "seed 7 has a lit village for the canon to stand in")
+	check(GenPlaces.find(w, "lit_village").x >= 0.0, "and `place lit_village` resolves to it")
 	var nearest := -1
 	var near := INF
 	for p: WorldProp in w.props:
@@ -692,4 +691,6 @@ func test_the_canon_stands_where_a_tube_burns() -> void:
 		if d < near:
 			near = d
 			nearest = PropModels.variant_of(p, w.seed_value)
+	# Checked against the RENDERER's own answer (`PropModels.variant_of`), not the
+	# dealt index core read, so the place and the picture cannot disagree.
 	check(_lit().has(nearest), "the village the canon stands in has its stolen light on the square")
