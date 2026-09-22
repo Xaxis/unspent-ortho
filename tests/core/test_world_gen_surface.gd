@@ -461,6 +461,17 @@ func test_props_keep_to_their_country() -> void:
 		for p in w.props:
 			if p.kind in GenScatter.PLACED:
 				continue
+			# THE BLACK SITE IS THE STORY'S, AND IT STANDS IN THE SEA ON PURPOSE
+			# (`black_site.gd`: "an offshore structure in the sea off the HOME
+			# coast"). Its growth tank, consoles and archive are no landscape's
+			# scatter, so asked of the country under them they read as off-theme
+			# props in the sea -- seed 42 did exactly that until home moved and
+			# the site moved with it, which is a green that proved nothing. Asked
+			# of the story's own door, not by widening `PLACED`: the grey orchards
+			# and the server fields scatter tanks and consoles of their own, and
+			# those still have to be checked everywhere else.
+			if StoryWorld.place_of(w, p.pos) == StorySlot.BLACK_SITE:
+				continue
 			var px := floori(p.pos.x)
 			var py := floori(p.pos.y)
 			var i := py * w.size + px if w.in_bounds(px, py) else 0
