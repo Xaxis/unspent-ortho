@@ -1332,7 +1332,11 @@ than fallbacks:
 
 ```
 truth today                 15.0 / 1080 = 0.01389 world units per screen pixel
-what these compute          15.0 /  360 = 0.04167          -> 3.0x too large
+
+found_kit     a FIXED world size, 14/360 = 0.0389 units: 2.8 real px at view 15,
+              and it scales with zoom like the geometry it is (1.6 at 26, 5.3 at 8)
+52, fire      n x (LIVE view height) / 360: the height divides back out, so every
+              n is exactly 3.00 real px at every zoom -- a screen-constant mark
 
 src/models/machines/found_kit.gd:23   const PX := 14.0 / 360.0     26 uses
 src/systems/52_survival_fx.gd:307     n * h / 360.0                hit marks
