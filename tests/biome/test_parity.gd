@@ -303,6 +303,26 @@ extends TestCase
 ## SCATTER change, and it is the wrong expectation for a REGION change.** A region
 ## decides who stamps the ground. Expect `ground` with it, and be suspicious if it
 ## does not come.
+##
+## RE-ACCEPTED AN ELEVENTH TIME (2026-09-22): a river is a simple path. The
+## traced line folded back over tiles it had already crossed -- 3 to 9 of the
+## rivers on each pinned seed, and 10 or 11 of 11 at 1300 -- and a tile keeps the
+## lowest bed of its visits, so a fold after a drop left water standing a level
+## above the water beside it. `GenWater._cut_loops` drops the loop between two
+## visits of one tile before the beds are set.
+##
+## `ground`, `level` and `props` moved on all five seeds; `country`, `country2`
+## and `blend` are byte-identical, so the landscapes lie where they did. `level`
+## and `ground` because the tiles of a cut loop are dry land now and a tile's bed
+## is its one visit's; `props` because scatter follows the ground. Measured with
+## the digests, not argued: every river's MOUTH is the same tile before and after
+## on every seed at both sizes, and the river counts are unchanged, so a cut never
+## shortened or stranded one. Causation: with `gen_water.gd` as it was, this test
+## passed on the previous hashes in the same session.
+##
+## The picture was looked at before the numbers were written: seed 90210 at
+## 982,281, 1300, 11:00 clear, where river 4 folded. Before, the frozen river
+## there broke into chips stepping over a terrace edge; after, it is one channel.
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -323,11 +343,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c e7ca77de 673b50ca fe4b52d9 e9428003",
-	3: "2202ae28 60362f9d 0052fb71 63df669a 585d921b 4e199d3f",
-	7: "4b153668 3424d5c9 f067f4d2 1ba2d360 72103915 820325fd",
-	42: "e5a96b5f bef1bc39 a906cda9 bc57666e 824c752b 7c9da866",
-	90210: "c3fe6c1a a851aff1 0aaf256e ff6eb869 b6884aed 3ffa790a",
+	1: "06fa726c d5b85d6c 14f90f4f de6e52ab fe4b52d9 e528ad00",
+	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b a6e1a6cf",
+	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 08fed106",
+	42: "e5a96b5f bef1bc39 17aa074a b4709b8b 824c752b 47b683b9",
+	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 40affb5e",
 }
 
 

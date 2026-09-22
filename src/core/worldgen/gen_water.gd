@@ -254,6 +254,10 @@ static func _lay(c: GenContext, pts: PackedVector2Array, accs: PackedFloat32Arra
 			normals.append(nrm)
 			last = i
 		arc += seg
+	var simple := _cut_loops(tiles, widths, normals)
+	tiles = simple[0]
+	widths = simple[1]
+	normals = simple[2]
 	# Bed: never rises downstream, at least level 1 until the sea.
 	var beds := PackedFloat32Array()
 	beds.resize(tiles.size())
@@ -293,6 +297,40 @@ static func _lay(c: GenContext, pts: PackedVector2Array, accs: PackedFloat32Arra
 				_wet(c, _side_tile(c, side, normals[j]), bed)
 	c.rivers.append(line)
 	return true
+
+
+## A RIVER IS A SIMPLE PATH: where the traced line folds back onto a tile it has
+## already crossed, the loop between the two visits is cut out. The meander noise
+## and the corner fill make almost every line fold somewhere (10 or 11 of 11 rivers
+## a seed at 1300), and a tile keeps ONE bed -- the lowest of its visits -- so a
+## fold after a drop left a tile the river had passed at the higher bed and then
+## returned to: water standing a level above the water beside it, and a line that
+## climbs (seed 90210, river 4, at 982,280: beds 7.3 then 5.8 then 7.3 again). With
+## one visit per tile, a tile's bed is its visit's bed, and the beds never rise.
+## Only the interior is cut: the source and the mouth are where they were, since
+## a loop closes on a tile the path already holds. The wider of the two visits'
+## widths is kept. Packed arrays are values here, so the simple path is RETURNED.
+static func _cut_loops(tiles: PackedInt32Array, widths: PackedByteArray, normals: PackedVector2Array) -> Array:
+	var at := {}
+	var t := PackedInt32Array()
+	var wd := PackedByteArray()
+	var nm := PackedVector2Array()
+	for k in tiles.size():
+		var i := tiles[k]
+		if at.has(i):
+			var keep: int = at[i]
+			for m in range(keep + 1, t.size()):
+				at.erase(t[m])
+			t.resize(keep + 1)
+			wd.resize(keep + 1)
+			nm.resize(keep + 1)
+			wd[keep] = maxi(wd[keep], widths[k])
+			continue
+		at[i] = t.size()
+		t.append(i)
+		wd.append(widths[k])
+		nm.append(normals[k])
+	return [t, wd, nm]
 
 
 static func _wet(c: GenContext, i: int, bed: float) -> void:

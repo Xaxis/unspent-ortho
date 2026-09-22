@@ -96,7 +96,12 @@ const UNKNOWN := "unknown"
 ##     shipped size moves; NOTHING moves at 256, where a world is one body and the
 ##     deal restricts nothing, so `test_parity` stays green over it and cannot be
 ##     the evidence. The counter is the only thing that knows.
-const GEN := 18
+## 10. A river is a simple path. The traced line folded back over tiles it had
+##     already crossed and a tile keeps the lowest bed of its visits, so a fold
+##     after a drop left water a level above the water beside it and a line that
+##     climbed. `GenWater._cut_loops` takes the loops out; every river's mouth and
+##     count are unchanged, and ground, level and props move on every seed.
+const GEN := 19
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
