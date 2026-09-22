@@ -197,7 +197,8 @@ static func colour(tour: Node, game: Node) -> bool:
 	var scale_was := vp.scaling_3d_scale
 	var quad := MeshInstance3D.new()
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(cam.size * 8.0, cam.size * 8.0)
+	var frame_high := CameraRig.units_per_pixel_of(cam, 1080.0) * 1080.0
+	mesh.size = Vector2(frame_high * 8.0, frame_high * 8.0)
 	quad.mesh = mesh
 	var sh := Shader.new()
 	sh.code = "shader_type spatial;\nrender_mode unshaded, fog_disabled, cull_disabled, shadows_disabled;\nuniform vec3 c;\nvoid fragment() { ALBEDO = c; }\n"
@@ -638,7 +639,8 @@ static func sun_path(tour: Node, game: Node) -> bool:
 	for vname: String in variants:
 		var quad := MeshInstance3D.new()
 		var mesh := QuadMesh.new()
-		mesh.size = Vector2(cam.size * 8.0, cam.size * 8.0)
+		var frame_high := CameraRig.units_per_pixel_of(cam, 1080.0) * 1080.0
+		mesh.size = Vector2(frame_high * 8.0, frame_high * 8.0)
 		quad.mesh = mesh
 		var sh := Shader.new()
 		sh.code = "shader_type spatial;\n" + String(variants[vname]) + "\n"
