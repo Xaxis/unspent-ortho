@@ -187,7 +187,21 @@ for i in 0 1 2; do
   # A test that hits a script error stops where it was and the runner counts
   # it passed if it had recorded no failed check: the error itself fails the gate.
   if grep -qE "SCRIPT ERROR" "${logs[$i]}"; then echo "script error in shard $i"; fail=1; fi
-  rm -f "${logs[$i]}"
+  # A FAILING SHARD KEEPS ITS WHOLE LOG. The print above is a filter -- lines with
+  # FAIL or seven leading spaces -- so a message that runs onto a second line
+  # arrives as a bare colon (test_plan's list of slots is joined with two spaces
+  # and vanished entirely), and the log itself used to be deleted even when it
+  # held the only copy of a failure. Someone then had to ask for a whole rerun
+  # to read five lines. Kept only when there is something to read, and the old
+  # copy is cleared first, so a stale log from an earlier red can never sit next
+  # to a green run and be read as this one.
+  keep="shots/check/shard-$i.log"
+  rm -f "$keep"
+  if [ "$code" != "0" ] || ! grep -qE 'passed,' "${logs[$i]}" || grep -qE "SCRIPT ERROR" "${logs[$i]}"; then
+    mkdir -p shots/check && mv "${logs[$i]}" "$keep" && echo "   full log of shard $i: $keep"
+  else
+    rm -f "${logs[$i]}"
+  fi
 done
 # WHICH OF THESE ARE YOURS. A gate that has been red for weeks has an exit code
 # that means nothing, and a real regression sits in the pile unseen (#124). So
