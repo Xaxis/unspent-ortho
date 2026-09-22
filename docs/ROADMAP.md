@@ -1307,6 +1307,41 @@ wave. Frames are in `shots/lens/`.
    and law 5 says a fight is never hidden. Both cannot be true. The fence is
    currently held, which is why no building dissolves in `village_lens.png`.
 
+### THE RETIRED FLOOR IS STILL SPELLED IN THREE LIVE PIXEL BUDGETS (2026-09-22)
+
+CLAUDE.md warns about pixel budgets never re-derived after the floor moved from
+640x360 to 1920x1080, and says to search for a pixel count in a comment before
+trusting it. Searched. **There is already a correct, projection-aware door --
+`CameraRig.units_per_pixel_of(cam, rows)` -- and exactly ONE caller uses it**
+(`sky_light.gd`, which asks it for the sky texel). Three more still spell the
+retired floor, and all three are live paths rather than fallbacks:
+
+```
+truth today                 15.0 / 1080 = 0.01389 world units per screen pixel
+what these compute          15.0 /  360 = 0.04167          -> 3.0x too large
+
+src/models/machines/found_kit.gd:23   const PX := 14.0 / 360.0     26 uses
+src/systems/52_survival_fx.gd:307     n * h / 360.0                hit marks
+src/systems/survival_fx/fire_model.gd:127  n * h / 360.0 / SIZE    smoke, sparks
+```
+
+`found_kit.gd` is the consequential one: `PX` is a const with no live path, its
+header says "14 world units over 360 px" in as many words, and **every mark in
+the FOUND daylight vocabulary is budgeted in it** -- so every machine in the game
+is drawn with its scribing three times the width its own file claims. That
+header's worked example ("a 0.02-wide scribed line ... is also half a pixel") is
+now false twice over: 0.02 world units at 72 px per unit is 1.44 pixels.
+
+Two further sites spell the same number but only as a FALLBACK, with a correct
+live path beside them, so they are cosmetic: `weather_view.gd:182` and
+`sky_light.gd:605`.
+
+**This is a decision, not a fix.** Correcting the divisor makes every machine's
+scribing, every hit mark and every fire's smoke three times finer, which is a
+change to shipped frames. `src/models/` is frozen to the LOOK wave. The numbers
+are written down here so nobody re-derives FROM the old budget; whether to spend
+them is the owner's, and it wants a gallery sheet beside it.
+
 ### WHAT THE LENS FOUND IN THE EXISTING CODE (all fixed unless marked)
 
 A second projection is an instrument for finding orthographic assumptions, and it
