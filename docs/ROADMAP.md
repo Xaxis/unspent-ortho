@@ -1392,6 +1392,16 @@ last reshuffle of which variant stands where -- no model, colour or light change
 only the arrangement -- and it sits in `src/models/`, frozen to the look, which is
 why it waits for the owner rather than landing quietly.
 
+**And it now blocks the canon, not just its diffs** (measured the same day, after
+`c55195f`). `GenWorks` records the stolen-light shack as the FIRST shack whose id
+hash says lit, so when ids renumber, frame 18's subject moves to a different
+shack. It moved into the MOSS, and there the mist carries the tube to the screen
+darker than its colour -- brightest pixel (104,176,80), grass green -- so the
+pixel claim refuses a frame that plainly holds a burning tube. Loosening the
+matcher to accept a darker tube would accept the moss turf, so it cannot be the
+fix. Until models are dealt by position, the canon's neon frame changes subject
+with every worldgen change.
+
 ### THE RETIRED FLOOR IS STILL SPELLED IN THREE LIVE PIXEL BUDGETS (2026-09-22)
 
 CLAUDE.md warns about pixel budgets never re-derived after the floor moved from
