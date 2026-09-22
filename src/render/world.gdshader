@@ -1403,7 +1403,7 @@ float crown_cut(vec3 wp, float sway) {
 // `toward` and `lean` are handed in rather than read here: a Godot built-in like
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
-float tall_cut(vec3 wp, int m, vec2 toward, float lean) {
+float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
 	if (m >= 40 && m <= 70) {
 		return 0.0;
 	}
@@ -1413,7 +1413,35 @@ float tall_cut(vec3 wp, int m, vec2 toward, float lean) {
 		if (p.w <= 0.0 || wp.y < p.y + tall_floor) {
 			continue;
 		}
-		vec2 g = wp.xz - toward * (wp.y - p.y) * lean;
+		// WHERE THIS FRAGMENT'S OWN RAY MEETS THE SUBJECT'S GROUND. It used to be
+		// one shear for the whole screen -- `toward * (wp.y - p.y) * lean`, which
+		// is exactly this intersection for PARALLEL rays and so is right only
+		// under an orthographic projection. Under the lens every fragment has its
+		// own ray from the eye, and one direction for all of them puts the hole
+		// beside the subject everywhere but the middle of the picture.
+		vec2 g;
+		if (persp) {
+			// A fragment at or above the eye has no forward ground intersection at
+			// all: the ray through it goes UP. It is drawn above the subject and
+			// cannot be covering it. Leaving this to the distance test below would
+			// be a guard that works by accident -- the kind that holds for a year
+			// and then does not.
+			if (wp.y >= eye.y - 0.05) {
+				continue;
+			}
+			// `s` is NEGATIVE on purpose: the loop only runs where the plane is at
+			// least `tall_floor` BELOW the fragment, so the ray carries on past it,
+			// away from the eye. Anything that forces `s` positive is travelling
+			// back through the camera.
+			float s = (p.y - wp.y) / max(eye.y - wp.y, 0.05);
+			g = wp.xz + s * (eye.xz - wp.xz);
+		} else {
+			// The shipped expression, rearranged: `toward * lean` IS `camz.xz /
+			// camz.y`, so an orthographic frame is identical term for term. The
+			// abs() is the shipped guard and stays -- without it a camera pitched
+			// the other way clamps to 0.05 instead of using its own slope.
+			g = wp.xz - camz.xz * (wp.y - p.y) / max(0.05, abs(camz.y));
+		}
 		float d = length(g - p.xz);
 		float r = p.w * TALL_WIDEN;
 		cut = max(cut, 1.0 - smoothstep(r * 0.58, r, d));
@@ -1435,11 +1463,12 @@ void fragment() {
 	// own Z over its vertical part is exactly 1/tan(pitch), with no trigonometry
 	// and no assumption about the rig it was built with.
 	vec3 camz = INV_VIEW_MATRIX[2].xyz;
-	vec2 cam_flat = vec2(camz.x, camz.z);
-	float cam_fl = max(length(cam_flat), 1e-4);
-	vec2 cam_toward = cam_flat / cam_fl;
-	float cam_lean = cam_fl / max(0.05, abs(camz.y));
-	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, cam_toward, cam_lean));
+	// The eye itself, and which projection drew this: PROJECTION_MATRIX[3][3] is
+	// 1.0 orthographic and 0.0 perspective, it is uniform across the draw, so the
+	// branch below costs nothing to divergence.
+	vec3 eye = INV_VIEW_MATRIX[3].xyz;
+	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
+	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
