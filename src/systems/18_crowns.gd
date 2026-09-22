@@ -2,9 +2,11 @@ extends GameSystem
 ## A fight is never hidden by a tree. Crowns and leaves standing over the player,
 ## or over any body near enough for the player to be dealing with, thin out to
 ## stipple and then go (world.gdshader `crown_clear`, cut by a world-pinned
-## stipple, never a fade). Trunks, walls and the land stay: only geometry that
-## sways and stands clear of the ground can open up, so a wood still reads as a
-## wood from a step away.
+## stipple, never a fade). This line used to say trunks, walls and the land stay.
+## The LAND does -- `tall_cut` refuses the ground band outright. Trunks do not:
+## a pine's own timber reaches 4.40 and whatever of it stands above the fence
+## opens like anything else. Measured across every kind and country, so the
+## sentence is no longer describing the system as it was before `tall_cut`.
 ##
 ## Written every frame on the world material WorldView hands out, and on its leaf
 ## material, which cuts a canopy's cards by the same rule (leaf.gdshader). A slot
@@ -47,12 +49,14 @@ func setup(g: Game) -> void:
 ## the player -- and it is a FENCE, not a measurement, which is the whole of why
 ## it does not scale with the eye.
 ##
-## 3.0 is not a threshold anybody derived. It sits in the empty band between the
-## tallest thing a village raises (BiomeForms.PLAIN, steading 2.8) and the
-## shortest thing a city raises (BiomeForms.RAISED, block 4.6); there is nothing
-## in the game between them. tests/render/test_depth.gd asserts that BAND rather
-## than the number, so a new cottage or a shorter city block fails the gate
-## instead of quietly crossing it.
+## 3.0 is not a threshold anybody derived. It sits between the tallest thing a
+## village raises (BiomeForms.PLAIN, steading 2.8) and the shortest thing a city
+## raises (BiomeForms.RAISED, block 4.6). tests/render/test_depth.gd asserts that
+## BAND rather than the number, so a new cottage or a shorter city block fails
+## the gate instead of quietly crossing it -- and that test carries the measured
+## list of what ELSE stands in the gap, because the band is empty of BUILDINGS
+## and not of everything. Trees, a pylon, a fire tower and a mural are all cut
+## by this fence today and none of them is what it was placed between.
 ##
 ## This function used to scale the floor by the ratio of the two pitches' 1/tan,
 ## on the reasoning that a flatter eye needs a shorter thing to cover you. That

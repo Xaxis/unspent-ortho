@@ -327,17 +327,32 @@ func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 	gt(floor_v, 0.0, "and is a number (%f)" % floor_v)
 	# THE FLOOR IS A FENCE, NOT A MEASUREMENT, and that is why this test asserts
 	# a BAND and never the number. 3.0 is not a threshold anybody derived: it
-	# sits in the empty gap between the tallest thing a village raises (steading
-	# 2.8) and the shortest thing a city raises (block 4.6), and there is nothing
-	# in the game between them. The `float` and the geometric-sounding name are
-	# what disguise that -- the genuinely geometric answer is the subject's own
-	# height, about 1.8, in BOTH projections, because the eye-to-head ray is
-	# lowest at the subject where it is exactly the subject's head; it carries no
-	# pitch term at all. Deriving the floor from geometry would therefore put it
-	# UNDER every village form and open the cottages, with a derivation that made
-	# it look correct. So the fence is policy, it does not scale with the eye,
-	# and a new cottage or a shorter city block has to fail HERE rather than
-	# silently cross it.
+	# sits between the tallest thing a village raises (steading 2.8) and the
+	# shortest thing a city raises (block 4.6). The `float` and the
+	# geometric-sounding name are what disguise that -- the genuinely geometric
+	# answer is the subject's own height, about 1.8, in BOTH projections, because
+	# the eye-to-head ray is lowest at the subject where it is exactly the
+	# subject's head; it carries no pitch term at all. Deriving the floor from
+	# geometry would therefore put it UNDER every village form and open the
+	# cottages, with a derivation that made it look correct. So the fence is
+	# policy, it does not scale with the eye, and a new cottage or a shorter city
+	# block has to fail HERE rather than silently cross it.
+	#
+	# BUT THE GAP IS EMPTY OF BUILDINGS ONLY, AND THIS COMMENT SAID OTHERWISE
+	# FOR ONE COMMIT. `tall_cut` reaches every MADE thing, so measuring the
+	# BUILDING table and concluding "nothing in the game stands between them" was
+	# evidence about houses answering a question about everything. Measured
+	# instead, every kind and all 23 countries, by mesh extent:
+	#
+	#   in the gap, OVER the fence, so these open today: pine and snow pine
+	#   2.83..4.40, scrap tree 2.96..3.27, pylon 4.12
+	#   in the gap, UNDER it, so these never do: house 2.97..2.98, pole 2.98
+	#   over 4.6 and not a building at all: fire tower 5.01..5.51, mural 7.54
+	#
+	# So the fence has always had a second job nobody wrote down, and the village
+	# claim below is the half of its meaning that happens to be testable from a
+	# table. A COAST-only sweep misses the pylon, and scale is not applied here,
+	# so read these as model extents rather than as what stands in a world.
 	var tallest := 0.0
 	var worst := &""
 	for id: StringName in BiomeForms.PLAIN:
