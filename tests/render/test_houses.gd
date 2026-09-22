@@ -672,25 +672,31 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 
 func test_the_canon_stands_where_a_tube_burns() -> void:
 	# Art review 11: the two canon frames meant to protect the stolen neon held
-	# zero pixels of any tube colour. The canon's village frame now stands at
-	# `place lit_village`, so this follows what the canon actually does: that
-	# name must resolve on seed 7, and the house nearest its square must be lit.
-	# It used to take the village nearest the SPAWN and assume it was lit, which
-	# held only until the spawn moved -- lit is a hash of each village's position,
-	# so moving the spawn re-rolled it (abd628f).
+	# zero pixels of any tube colour. The neon is now frame 18's job alone and it
+	# stands at `place stolen_light` -- frame 17 is wet ground at the coast spawn,
+	# because that is where it rains. A house there may carry a tube too (one
+	# does on seed 7 as of abd628f), but nothing holds it to that, so no claim
+	# of neon rests on 17. So this follows frame 18: the name must resolve on
+	# seed 7, and the shack GenWorks
+	# recorded there must be one the RENDERER draws a tube on. Asked the way
+	# 15_lights asks it (`variant_of` with the tile's country, then the model's
+	# `glow_points`), not through GenWorks' own hash, so the place and the picture
+	# cannot disagree. A shack declares its tube as a glow point marked `neon`;
+	# `neon_point` reads the NEON mark a HOUSE carries in its geometry and answers
+	# nothing for a shack, lit or not.
 	var w := WorldGen.generate(7)
-	var vp := GenPlaces.lit_village_square(w)
-	check(vp.x >= 0.0, "seed 7 has a lit village for the canon to stand in")
-	check(GenPlaces.find(w, "lit_village").x >= 0.0, "and `place lit_village` resolves to it")
-	var nearest := -1
-	var near := INF
+	check(GenPlaces.find(w, "stolen_light").x >= 0.0, "`place stolen_light` resolves on seed 7")
+	var at := Vector2(-1, -1)
+	for m: Dictionary in w.landmarks:
+		if m.kind == &"stolen_light":
+			at = m.pos
+	check(at.x >= 0.0, "seed 7 recorded a shack with stolen light")
+	var tubes := 0
 	for p: WorldProp in w.props:
-		if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > 18.0:
+		if p.kind != PropKind.SHACK or p.pos.distance_to(at) > 0.01:
 			continue
-		var d := p.pos.distance_to(vp)
-		if d < near:
-			near = d
-			nearest = PropModels.variant_of(p, w.seed_value)
-	# Checked against the RENDERER's own answer (`PropModels.variant_of`), not the
-	# dealt index core read, so the place and the picture cannot disagree.
-	check(_lit().has(nearest), "the village the canon stands in has its stolen light on the square")
+		var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+		for g: Dictionary in PropModels.glow_points(p.kind, PropModels.variant_of(p, w.seed_value, country), country):
+			if bool(g.get("neon", false)):
+				tubes += 1
+	eq(tubes, 1, "a tube burns on the shack frame 18 stands at")

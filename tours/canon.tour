@@ -1,3 +1,4 @@
+#   tools/tour.sh tours/canon.tour --seed=7          (what tools/canon.sh runs)
 # The canon: fixed frames that say what the game looks like. tools/canon.sh shoots
 # them (seed 7) and lays them beside the accepted set on one contact sheet.
 #
@@ -35,6 +36,27 @@
 # the deepest dawn mist in the game (BiomeDef.mist 1.0) and Weather.mist is a
 # function of minutes, so 03-moss alone still drifted 2.31 of its 3 allowance on
 # the clock. Anything added here that is about a MOMENT must pin its hour too.
+#
+# EVERY BORDER NAMED BELOW EXISTS ONLY AS LONG AS WORLDGEN KEEPS IT ON SEED 7. A
+# landscape added, a region rule changed, a continent enforced: any of them moves
+# the island, and a `place a-b` that no longer resolves does not skip its frame,
+# it STOPS THE TOUR there -- the runner fails fast, which is right everywhere
+# else. It has happened twice. The eleventh landscape took coast-pinewood away
+# (2253621 repointed it to pinewood-slums); later pinewood-slums AND
+# pinewood-snowfield went, and the canon ran seven of its eighteen frames for as
+# long as nobody counted what it had shot. The continent enforcement (abd628f)
+# brought every border here back. So after ANY change to worldgen, resolve every
+# `place` line on seed 7 before trusting this tour (the place probe does exactly
+# that, and says whether it read the seed from the file), and when a border is
+# gone, repoint it to one seed 7 still holds -- never move the canon to another
+# seed, because its whole value is one place over time.
+#
+# THE THIN ONES GO FIRST. Measured on seed 7 (samples on a stride-3 grid where
+# the blend is 0.35 or more): pinewood-snowfield 218, pinewood-slums 62,
+# coast-moss 17. The widest borders seed 7 holds are over 800. So frames 08 and
+# 11 are the ones the next worldgen change is likeliest to lose, and if 11 reads
+# poorly it is because seventeen samples is barely a border at all.
+# tours/degrade_fit.tour follows this file line for line and breaks with it.
 weather clear:0
 hour 8
 place spawn
@@ -113,11 +135,11 @@ hour 22
 weather rain:0.45
 wait 1.2
 shot 17-village-wet-night
-# Thin rain, not a downpour: the ground still mirrors the tube, and the frame
-# stops moving. At rain:1 and this zoom the streaks alone walked two runs 2.9
-# apart, against the sheet's tolerance of 3 -- a reference frame one bad roll
-# from crying regression.
 place stolen_light
+# Thin rain, not a downpour: the ground under the shack still mirrors its tube,
+# and the frame stops moving. At rain:1 and this zoom the streaks alone walked
+# two runs 2.9 apart, against the sheet's tolerance of 3 -- a reference frame one
+# bad roll from crying regression.
 weather rain:0.45
 zoom 9
 wait 1.2
