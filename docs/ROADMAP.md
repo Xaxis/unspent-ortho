@@ -1346,11 +1346,26 @@ Two further sites spell the same number but only as a FALLBACK, with a correct
 live path beside them, so they are cosmetic: `weather_view.gd:182` and
 `sky_light.gd:605`.
 
-**This is a decision, not a fix.** Correcting the divisor makes every machine's
-scribing, every hit mark and every fire's smoke three times finer, which is a
-change to shipped frames. `src/models/` is frozen to the LOOK wave. The numbers
-are written down here so nobody re-derives FROM the old budget; whether to spend
-them is the owner's, and it wants a gallery sheet beside it.
+**And the obvious fix is the wrong one.** "Three times too large" invites
+correcting the divisor. Measured, over all 31 budgeted marks in `found_kit.gd`:
+
+```
+one authored "px" is drawn today at      2.80 real pixels
+as drawn today                           2.2 .. 14.0 real px
+after a literal correction               0.8 .. 5.0 real px
+   under one pixel                       1 of 31   -- would shimmer or vanish
+   1.0 .. 1.5 px                         5 of 31   -- hairlines
+```
+
+The machines as they are drawn TODAY are part of the look the owner approved
+(LANTERN). So the geometry is not the error -- the HEADER is: it has claimed
+half-pixel marks since the floor moved while the file drew them at 2.8x, and a
+reader who believes it will "fix" the number and quietly redraw every machine in
+the game. **Recommended: correct the comment, not the constant** -- say that `PX`
+is a fixed world-unit budget that happens to be named after a retired screen, and
+state what it draws at now. The same reasoning covers the hit marks and the fire:
+leave the numbers, fix the words, and re-author only if a gallery sheet shows a
+mark that fails. That is still the owner's call, but it is now a much smaller one.
 
 ### WHAT THE LENS FOUND IN THE EXISTING CODE (all fixed unless marked)
 
