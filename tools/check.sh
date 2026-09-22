@@ -172,8 +172,14 @@ for i in 0 1 2; do
   # had not run either. A dead gate said green AND asked you to throw away the
   # list that lets the next gate go red. Measured 2026-09-22 by killing a shard.
   # Both halves are needed: the exit code catches a kill, the summary line
-  # catches a runner that exits 0 without finishing.
-  if [ "$code" != "0" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; fi
+  # catches a runner that exits 0 without finishing. The runner exits 1 for ANY
+  # failed test (tests/run.gd `quit`), which is a finished run with reds in it
+  # and is judged by the FAIL lines below -- so only a code other than 0 or 1 is
+  # a death (128+n is a signal: 137 OOM, 143 terminated, 139 a crash). The first
+  # version of this check called every red gate DEAD, because it was tested
+  # against a killed shard and a truncated one and never against the ordinary
+  # case of a run that finished with failures.
+  if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; fi
   if ! grep -qE 'passed,' "${logs[$i]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; fi
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
   grep -E 'passed,' "${logs[$i]}"
