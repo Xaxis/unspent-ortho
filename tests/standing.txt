@@ -45,6 +45,7 @@
 # keeping it because the other side still had it would put a green test
 # back on the list and teach the gate to expect a failure that is gone.
 test_plan:test_the_journey_crosses_the_continents_in_order
+test_regions:test_the_shipped_world_puts_every_landscape_somewhere
 test_world_gen:test_country_shares_on_twelve_seeds
 test_world_gen:test_rivers_run_downhill_to_the_sea
 test_world_gen_surface:test_pools_are_round_rimmed_and_clear_of_houses

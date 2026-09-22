@@ -124,6 +124,10 @@ func test_every_tip_and_wreck_near_the_player_gets_its_own_flock() -> void:
 	f.call("_stream", false)
 	var key: int = int(f.get("REFUSE_KEY")) - tip.id
 	var gulls := (f.get("queue") as Array).filter(func(q: Dictionary) -> bool: return q.kind == &"gull" and q.village == key)
+	# Said, not inferred: a flock that came up short records placed against dealt.
+	var short: Dictionary = f.get("refuse_short")
+	check(not short.has(key), "the tip's flock was dealt %s gulls and placed %s" % [
+		(short.get(key, Vector2i.ZERO) as Vector2i).y, (short.get(key, Vector2i.ZERO) as Vector2i).x])
 	gt(gulls.size(), 2, "a flock came for the tip")
 	for q: Dictionary in gulls:
 		lt((q.pos as Vector2).distance_to(at), tip.solid + 2.0, "working the heap, not the tideline")

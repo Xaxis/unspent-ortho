@@ -35,9 +35,15 @@ var _spawned: Dictionary = {}
 ## SITE_JOIN of each other. Keys are REFUSE_KEY - the first prop's id, so they
 ## share _spawned and a beast's `village` with the villages (which are >= 0).
 var sites: Array[Dictionary] = []
+## Refuse whose flock came up short of what it was dealt: key -> Vector2i(placed,
+## dealt). A heap walled in by water or cliff cannot always stand three gulls
+## beside it, and a flock that quietly shrank read as nothing at all.
+var refuse_short: Dictionary = {}
 var _props_seen := 0
 const REFUSE_KEY := -1000
 const SITE_JOIN := 7.0
+## How far past a heap's edge a gull may stand and still be working it.
+const REFUSE_REACH := 1.9
 ## Half a period behind 35_folk, so the two never stream in the same frame.
 var _check := 0.25
 
@@ -184,20 +190,48 @@ func _populate_refuse(key: int, centre: Vector2) -> void:
 	if heaps.is_empty():
 		return
 	var n_gulls := 3 + int(Rng.hash01(s, key, 5) * 3.0)
+	var taken: Array[Vector2] = []
 	for n in n_gulls:
-		var spot := _beside(heaps[n % heaps.size()], Rng.hash01(s, key, n, 6), Rng.hash01(s, key, n, 7))
+		var spot := _beside(heaps[n % heaps.size()], Rng.hash01(s, key, n, 6), Rng.hash01(s, key, n, 7), taken)
 		if spot.x > -1.0:
+			taken.append(spot)
 			_enqueue(&"gull", spot, key, s * 19 + absi(key) * 3 + n)
+	if taken.size() < n_gulls:
+		refuse_short[key] = Vector2i(taken.size(), n_gulls)
 
 
 ## A standable spot beside a heap, starting `turn` (0..1) of the way round it and
-## `out` (0..1) further off than its edge; (-1, -1) if it is walled in.
-func _beside(p: WorldProp, turn: float, out: float) -> Vector2:
+## `out` (0..1) further off than its edge, and not on top of a gull already
+## `taken` there; (-1, -1) if it is walled in.
+##
+## ONE RING OF EIGHT BEARINGS DROPPED A GULL WHEREVER THE LAND WAS NARROW. A tip on
+## seed 5 stands on a spit one tile wide with shelf water on both sides, and the
+## eight bearings at one radius found two of its three standable neighbours: the
+## flock "three to five" came out as two and nothing said so. So the search goes
+## round again finer and at every distance still BESIDE the heap -- never further
+## than `REFUSE_REACH` past its edge, or a gull is working the tideline and not
+## the refuse.
+func _beside(p: WorldProp, turn: float, out: float, taken: Array[Vector2] = []) -> Vector2:
+	var first := p.solid + 0.5 + out * 1.2
 	for i in 8:
-		var spot := p.pos + Vector2.from_angle(TAU * (turn + i / 8.0)) * (p.solid + 0.5 + out * 1.2)
-		if _ok(spot):
+		var spot := p.pos + Vector2.from_angle(TAU * (turn + i / 8.0)) * first
+		if _ok(spot) and _clear_of(spot, taken):
 			return spot
+	var r := p.solid + 0.5
+	while r <= p.solid + REFUSE_REACH:
+		for i in 16:
+			var spot := p.pos + Vector2.from_angle(TAU * (turn + i / 16.0)) * r
+			if _ok(spot) and _clear_of(spot, taken):
+				return spot
+		r += 0.35
 	return Vector2(-1, -1)
+
+
+func _clear_of(spot: Vector2, taken: Array[Vector2]) -> bool:
+	for t in taken:
+		if t.distance_squared_to(spot) < 0.25:
+			return false
+	return true
 
 
 ## A standable tile near `at` (within r) whose ground is one of `grounds` (any if empty).

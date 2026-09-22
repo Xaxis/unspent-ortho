@@ -292,12 +292,35 @@ func test_spread_confines_a_landscape_to_one_continent() -> void:
 	eq(narrow, 1, "and exactly one when spread says at most one")
 
 
+## CONTINENTS AS `GenBodies` DEFINES THEM, NOT BY A NUMBER OF THIS TEST'S OWN.
+## A continent is a mass at least `GenBodies.CONTINENT_SHARE` of the biggest one;
+## anything smaller is a skerry. This counted any mass holding 400 tiles of the
+## landscape, which never read that declaration, and seed 1 at 1024 has a
+## 676-tile skerry -- 0.5% of the biggest body -- that it then called a second
+## continent once the deal was enforced (abd628f).
+##
+## THE CONSEQUENCE, WRITTEN DOWN SO NOBODY REDISCOVERS IT: the deal governs the
+## planned continents and a skerry is open to every type (`_dealt_here`), so a
+## `(0, 1)` landscape -- "the rare thing you cross an ocean for" -- may also
+## stand on a skerry near some other continent. That skerry's 676 tiles were
+## snowfield. It is deliberate and small; if the owner wants a skerry to take its
+## nearest continent's deal, that is a world change with its own GEN bump.
 static func _continents_holding(id: StringName, seed_value: int, size: int) -> int:
 	var w := WorldGen.generate(seed_value, size)
+	var most := 0
+	for row: Dictionary in w.continents:
+		most = maxi(most, int(row.get("tiles", 0)))
+	var continent := {}
+	for row: Dictionary in w.continents:
+		if float(row.get("tiles", 0)) >= GenBodies.CONTINENT_SHARE * float(most):
+			continent[int(row.get("id", 0))] = true
 	var per := {}
 	for i in w.country.size():
-		if w.continent[i] != GenBodies.VOID and BiomeRegistry.name_of(w.country[i]) == String(id):
-			per[w.continent[i]] = int(per.get(w.continent[i], 0)) + 1
+		if BiomeRegistry.name_of(w.country[i]) != String(id):
+			continue
+		var b := w.continent_at(i % w.size, i / w.size)
+		if continent.has(b):
+			per[b] = int(per.get(b, 0)) + 1
 	var n := 0
 	for b: int in per:
 		if int(per[b]) > 400:
