@@ -1312,9 +1312,19 @@ wave. Frames are in `shots/lens/`.
 CLAUDE.md warns about pixel budgets never re-derived after the floor moved from
 640x360 to 1920x1080, and says to search for a pixel count in a comment before
 trusting it. Searched. **There is already a correct, projection-aware door --
-`CameraRig.units_per_pixel_of(cam, rows)` -- and exactly ONE caller uses it**
-(`sky_light.gd`, which asks it for the sky texel). Three more still spell the
-retired floor, and all three are live paths rather than fallbacks:
+`CameraRig.units_per_pixel_of(cam, rows)` -- with five call sites in four files**:
+`sky_light.gd` (the sky texel), `holo_view.gd` twice (the hologram's width and
+its street cache key), `flier_view.gd`, and `40_fight.gd` through the instance
+wrapper, which feeds `MobFx.texel`. It is load-bearing, not spare.
+
+(This paragraph first said "exactly ONE caller", which was not grepped -- it was
+inferred from the single call site I had happened to read while looking at
+something else. An UNDERCOUNT here is the dangerous direction: a door that reads
+as unused invites the next person to rework or delete it. The three findings
+below were grepped and are unaffected.)
+
+Three sites still spell the retired floor, and all three are live paths rather
+than fallbacks:
 
 ```
 truth today                 15.0 / 1080 = 0.01389 world units per screen pixel
