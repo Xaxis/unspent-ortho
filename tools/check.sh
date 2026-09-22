@@ -164,7 +164,17 @@ done
 # compared against what this tree is KNOWN to carry (tests/standing.txt).
 ran="$(mktemp "${TMPDIR:-/tmp}/unspent-ran.XXXXXX")"
 for i in 0 1 2; do
-  wait "${tpids[$i]}" || true
+  wait "${tpids[$i]}"; code=$?
+  # A SHARD THAT DIED IS NOT A SHARD THAT PASSED, and this used to be `|| true`.
+  # A killed or OOM-killed shard writes no FAIL lines, so the diff below saw an
+  # empty run, found nothing new, and printed CHECK OK -- then listed every
+  # standing failure as NOW PASSING and asked for it to be deleted, because it
+  # had not run either. A dead gate said green AND asked you to throw away the
+  # list that lets the next gate go red. Measured 2026-09-22 by killing a shard.
+  # Both halves are needed: the exit code catches a kill, the summary line
+  # catches a runner that exits 0 without finishing.
+  if [ "$code" != "0" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; fi
+  if ! grep -qE 'passed,' "${logs[$i]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; fi
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
   grep -E 'passed,' "${logs[$i]}"
   grep -E '^\s*FAIL ' "${logs[$i]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
