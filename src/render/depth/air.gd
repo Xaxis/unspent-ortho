@@ -175,8 +175,10 @@ static func at(shares: Dictionary) -> Dictionary:
 ## screen, resolved onto the view axis: (size/2) / tan(pitch). Everything else
 ## here is that number times a constant, which is why a change of rig cannot put
 ## the air outside the picture again.
-static func reach(distance: float, view_size: float, pitch_deg: float, near_k: float = 1.0) -> Vector2:
-	var half := frame_depth(view_size, pitch_deg)
+static func reach(distance: float, view_size: float, pitch_deg: float, near_k: float = 1.0,
+		fov_deg: float = 0.0) -> Vector2:
+	var half := frame_depth(view_size, pitch_deg) if fov_deg <= 0.0 \
+			else frame_depth_lens(distance, pitch_deg, fov_deg)
 	return Vector2(distance - half * BEGIN_K * near_k, distance + half * END_K)
 
 
@@ -186,6 +188,42 @@ static func reach(distance: float, view_size: float, pitch_deg: float, near_k: f
 static func frame_depth(view_size: float, pitch_deg: float) -> float:
 	var t := tan(deg_to_rad(clampf(pitch_deg, 5.0, 89.0)))
 	return maxf(0.5, view_size * 0.5 / maxf(0.05, t))
+
+
+## HOW FAR THE TOP EDGE MAY RUN BEFORE THE AIR STOPS MEANING ANYTHING, as the
+## angle between it and the horizon. This is the horizon fork again, in a third
+## place: the streamer caps its reach for it, `CameraRig` asserts `fov/2 < pitch`
+## for it, and here it stops the far intersection running away. Measured, at the
+## shipped lens: margin 12.5 deg gives a half-span of 14.5, margin 0.5 gives 340
+## and margin 0.01 gives 16907 -- at which point the fog's begin and end are past
+## everything in the world and the air silently ceases to exist, which is exactly
+## the failure `lit` was built to fix, arrived at from the other side.
+##
+## 2 degrees is loose enough that the shipped pitch is nowhere near it and tight
+## enough that a configuration walking toward the horizon DEGRADES rather than
+## deletes. It is not a taste.
+const LENS_TOP_LEAST := 2.0
+
+
+## The same half-span for a LENS, which has no `view_size` to halve.
+##
+## Same quantity, same definition, derived rather than assumed: half the
+## view-axis depth between where the BOTTOM edge and the TOP edge meet the plane
+## the focus stands on. The eye is `distance * sin(pitch)` above that plane, and
+## a ray at `t` below the horizontal meets it at view-axis depth
+## `E * cos(t - pitch) / sin(t)`, so the span is the difference of the two edges.
+##
+## It agrees with the orthographic form where both apply: the orthographic
+## expression is this one for parallel rays, and the two were checked equal to
+## 1.78e-15 at two view heights before this was written.
+static func frame_depth_lens(distance: float, pitch_deg: float, fov_deg: float) -> float:
+	var half_fov := clampf(fov_deg, 1.0, 170.0) * 0.5
+	var top := deg_to_rad(maxf(pitch_deg - half_fov, LENS_TOP_LEAST))
+	var bot := deg_to_rad(minf(pitch_deg + half_fov, 89.0))
+	var eye := maxf(distance, 0.1) * sin(deg_to_rad(clampf(pitch_deg, 1.0, 89.0)))
+	var span := eye * cos(deg_to_rad(half_fov)) * 0.5 \
+			* (1.0 / maxf(sin(top), 0.001) - 1.0 / maxf(sin(bot), 0.001))
+	return maxf(0.5, span)
 
 
 ## The colour the distance is carried toward: the hour's own horizon, bent by

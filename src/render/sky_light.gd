@@ -744,6 +744,15 @@ func _cam_size() -> float:
 	return c.size if c != null else 15.0
 
 
+## The fov when a LENS is drawing, and 0 when it is not -- which is how `Air`
+## tells the two apart without knowing what a CameraRig is. `_cam_size()` still
+## answers for an orthographic camera and is meaningless under a perspective one,
+## so nothing may read it without asking this first.
+func _cam_fov() -> float:
+	var c := _cam()
+	return c.fov if c != null and c.projection == Camera3D.PROJECTION_PERSPECTIVE else 0.0
+
+
 func _cam_pitch() -> float:
 	var c := _cam()
 	return absf(rad_to_deg(c.rotation.x)) if c != null else 57.0
@@ -840,7 +849,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
 	# ten units deep, so two numbers written for the loaded chunks left the air
 	# entirely outside the picture (Air's header has the measurement).
-	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near))
+	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near), _cam_fov())
 	e.fog_depth_begin = reach.x
 	e.fog_depth_end = reach.y
 	# AND SO IS THE SHADOW RANGE, for exactly the same reason. It was 50.0, set

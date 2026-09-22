@@ -374,3 +374,48 @@ func test_the_lens_keeps_the_horizon_out_of_the_frame() -> void:
 	print("top edge %.1f deg under the horizon -> the lens holds ground to %.1f tiles ahead"
 		% [CameraRig.LENS_PITCH - CameraRig.LENS_FOV * 0.5, ahead])
 	lens.get_parent().queue_free()
+
+
+## THE AIR MEASURES THE FRAME IT IS ACTUALLY IN (`Air.frame_depth_lens`).
+##
+## Every constant in `Air` is stated as a multiple of the frame's own depth
+## half-span, which is what makes the header's promise -- "a change of rig cannot
+## put the air outside the picture again" -- survive a change of PROJECTION too,
+## once that number is computed honestly instead of from a `view_size` a frustum
+## does not have.
+##
+## Checked two independent ways, because a formula agreeing with itself proves
+## nothing: the derived span against the one measured off the camera's own edges.
+func test_the_air_measures_the_frame_it_is_actually_in() -> void:
+	# The orthographic path is unchanged BY CONSTRUCTION -- `fov_deg` defaults to
+	# 0, which means orthographic -- so this pins that rather than trusting it.
+	var half := Air.frame_depth(CameraRig.VIEW_HEIGHT, CameraRig.PITCH_DEG)
+	var r := Air.reach(30.0, CameraRig.VIEW_HEIGHT, CameraRig.PITCH_DEG)
+	# 1e-5 and not 1e-9: `reach` hands back a Vector2, whose components are
+	# 32-bit, so this compares a rounded value against a 64-bit recomputation.
+	# At 1e-9 it failed by one part in ten million and read exactly like a real
+	# difference -- "expected 37.890302, got 37.890301".
+	near(r.x, 30.0 - half * Air.BEGIN_K, 1e-5, "the orthographic reach is what it always was")
+	near(r.y, 30.0 + half * Air.END_K, 1e-5, "at both ends")
+
+	# The lens, derived from its own geometry...
+	var back := CameraRig.lens_back()
+	var derived := Air.frame_depth_lens(back, CameraRig.LENS_PITCH, CameraRig.LENS_FOV)
+	# ...and the same span measured off the camera's edges: the ground the frame
+	# holds, resolved onto the view axis. Two derivations that share no arithmetic.
+	var lens := _lens_camera()
+	var span := (_measured_ahead(lens, 0.0, 260.0, 0.1) + _measured_behind(lens, 0.0, 60.0, 0.1)) \
+			* cos(deg_to_rad(CameraRig.LENS_PITCH)) * 0.5
+	print("frame depth: ortho %.2f | lens derived %.2f, measured off its edges %.2f"
+		% [half, derived, span])
+	near(derived, span, 0.1, "the derived half-span is the one the camera really has")
+	gt(derived, half * 2.0, "and the lens frame is deeper than the orthographic one")
+
+	# THE CLAMP, which is the horizon fork: walking the pitch down toward the top
+	# edge must DEGRADE the air, never delete it. Unclamped this runs to 16907 at
+	# a hundredth of a degree, which puts the fog's begin and end past everything
+	# in the world -- the failure `lit` was built to fix, from the other side.
+	var at_horizon := Air.frame_depth_lens(back, CameraRig.LENS_FOV * 0.5 + 0.01, CameraRig.LENS_FOV)
+	lt(at_horizon, half * 40.0, "a pitch at the horizon is capped, not infinite: %.1f" % at_horizon)
+	print("pitch a hundredth of a degree off the horizon -> half-span %.1f (capped)" % at_horizon)
+	lens.get_parent().queue_free()
