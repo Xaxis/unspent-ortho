@@ -230,3 +230,47 @@ static func _def_of(world: WorldData, region_id: int) -> BiomeDef:
 		if int(r.get("id", -1)) == region_id:
 			return BiomeRegistry.get_def(StringName(str(r.get("type", &""))))
 	return null
+
+
+## What this place is still asking, in ONE line, for the slate to say out loud.
+##
+## `read`'s own header says "the rest is what a place is still asking, which
+## somebody has to be able to say out loud" — and until now nobody did. No UI
+## read this file at all, so a player could walk into a held road, be told
+## "Plate and pins, and nothing in your hands will cut it", and have no way to
+## learn what the plan is holding the place FOR (docs/VISION.md §10.4, task #112
+## step 4).
+##
+## IT IS THE MACHINES' FILE, NOT A CHECKLIST. The slate is a hacked machine
+## tablet, so this reads as the plan's own note on a region — what it still has
+## here — and §10 forbids a list with a percentage on it. So: one demand, the
+## nearest one, in the order a player meets them (walk it, work it, take it off
+## them), and no counts. A player who wants the numbers has the world.
+##
+## `Attention.pressure` is the shape this follows: a pure function in core
+## turning state into one word for the glass, so the slate invents nothing.
+static func asking(chapter: Dictionary) -> String:
+	if chapter.is_empty() or not chapter.has("answered"):
+		return ""
+	if bool(chapter["answered"]):
+		return "Nothing here is on the plan's books any more."
+	if not bool(chapter.get("explored", false)):
+		return "Sections of this file have never been walked."
+	if not bool(chapter.get("mined", false)):
+		return "The seams here are still being worked."
+	# DEFENDED is last because it is the one that needs the other two: a keeper
+	# feeds off what its yard takes, so a place walked and stripped is a place
+	# whose keeper is already weaker (Sentinels.FEED_SHARE, 34_works).
+	#
+	# AND IT DOES NOT NAME WHICH OF THE TWO IS STANDING, deliberately. `defended`
+	# is `keeper_down or yard_broken`, so reaching here means BOTH are false —
+	# and `read` reports whether each is DOWN, never whether the region has one
+	# at all, so a line naming the keeper would be a guess on any region that has
+	# no keeper. Either route answers it and the world is what says which is
+	# there; this says only that the plan has not been put out.
+	#
+	# (The first draft of this ended `if not keeper_down: ... else: "the yard is
+	# still running"`, and that else could never run: keeper_down makes
+	# `defended` true, which with explored and mined makes `answered` true, which
+	# returns three branches earlier.)
+	return "The plan still works this place."

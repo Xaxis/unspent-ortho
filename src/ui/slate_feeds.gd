@@ -20,6 +20,9 @@ class_name SlateFeeds
 ##
 ## reads (disposition, interference):
 ##   {interference: float 0..1 (or -1 unknown), network: String,
+##    asking: String — the plan's own note on what this REGION is still being
+##      held for, one line, never a checklist (`Chapter.asking`, VISION §10.4);
+##      "" where nothing has a file on the place,
 ##    scans: [{id: StringName, kind: StringName, name: String, pos: Vector2,
 ##             disposition: StringName (hostile wary observant indifferent), note: String}]}
 ##   default: every living machine (roster `machine: true`) within READ_RADIUS
@@ -133,4 +136,8 @@ static func default_reads(game: Game) -> Dictionary:
 			scans.append({"id": StringName("scan_%d" % m.get_instance_id()), "kind": kind, "name": String(kind).get_slice(".", 0).replace("_", " "), "pos": mp,
 				"disposition": &"hostile" if hostile == null or bool(hostile) else &"indifferent", "note": ""})
 		scans.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a.pos as Vector2).distance_to(p) < (b.pos as Vector2).distance_to(p))
-	return {"interference": -1.0, "network": "", "scans": scans}
+	# `asking` is empty rather than missing: a slate with no feed behind it must
+	# be the same SHAPE as one with, or every reader needs a default and a
+	# default on a "what is this place asking" question is the caller inventing
+	# the answer and then believing it (CLAUDE.md).
+	return {"interference": -1.0, "network": "", "asking": "", "scans": scans}

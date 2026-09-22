@@ -82,6 +82,8 @@ func setup(g: Game) -> void:
 	Events.hit.connect(_on_hit)
 	Events.works_broken.connect(_on_plant_lost)
 	Events.sentinel_fell.connect(_on_keeper_fell)
+	# The fourth thing that can change a chapter; the other three are above.
+	Events.landmark_found.connect(_on_landmark_found)
 	SaveGame.register(&"disposition", _save, _load)
 	SlateFeeds.provide(&"reads", _reads)
 	_resync()
@@ -315,6 +317,7 @@ func _body_at(kind: StringName, p: Vector2) -> MobState:
 ## worker near enough turns on whoever is stripping their plan (VISION §2).
 func _on_took(_item: StringName, _count: int) -> void:
 	_noise(&"work")
+	_asking_dirty = true
 
 
 func _on_made(_item: StringName, _count: int) -> void:
@@ -332,11 +335,13 @@ func _on_made(_item: StringName, _count: int) -> void:
 func _on_plant_lost(region: int, _land: StringName) -> void:
 	interference.lose(region)
 	_apply_dispositions()
+	_asking_dirty = true
 
 
 func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
 	interference.lose(region)
 	_apply_dispositions()
+	_asking_dirty = true
 
 
 ## A blow the player struck. `Events.hit` carries NODES, not fighters: the
@@ -536,8 +541,27 @@ func _spot_for(kind: StringName) -> Vector2:
 
 ## The reads app: what the network makes of the player, and what every machine
 ## in range makes of them (SlateFeeds).
+## The plan's own note on the region the player is standing in, for the reads
+## app (docs/VISION.md §10.4). KEPT rather than asked every frame: `Chapters.of`
+## sweeps `game.systems` three times, and an open page is a page drawn every
+## frame — which is the exact shape that took play to 5-12 fps when `24_holds`
+## asked it once per hold (#122). Only four things can change a chapter and this
+## file hears all four, so an idle frame costs nothing, which no timer manages.
+var _asking := ""
+var _asking_region := -2
+var _asking_dirty := true
+
+
+func _on_landmark_found(_id: StringName, _land: StringName, _at: Vector2) -> void:
+	_asking_dirty = true
+
+
 func _reads(_g: Game) -> Dictionary:
 	var net := Interference.network(game.world, sim.hero.pos)
+	if _asking_dirty or net != _asking_region:
+		_asking_region = net
+		_asking_dirty = false
+		_asking = Chapter.asking(Chapters.of(game, net))
 	var scans: Array = []
 	for m in sim.mobs:
 		if not m.alive or m.removed or not m.machine:
@@ -547,7 +571,7 @@ func _reads(_g: Game) -> Dictionary:
 		scans.append({"id": StringName("m%d" % m.id), "kind": m.kind, "name": String(m.kind),
 			"pos": m.pos, "disposition": m.disposition, "note": _note(m)})
 	return {"interference": interference.value(net),
-		"network": _network_name(net), "scans": scans}
+		"network": _network_name(net), "scans": scans, "asking": _asking}
 
 
 ## What the slate calls the network the player is standing in. A region, so two

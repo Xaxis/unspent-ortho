@@ -212,8 +212,15 @@ func _draw() -> void:
 	# pane has the room. One machine in reach used to blank the whole ground
 	# read and leave nine tenths of the list pane empty glass.
 	var after_list := LIST_TOP + maxi(menu.rows.size(), 2) * UiTheme.LINE + 40
+	var under_works := after_list
 	if after_list + WORKS_H <= L.end.y - 8:
 		_draw_works(read, x0, right, after_list)
+		under_works = after_list + WORKS_H + 20
+	# The plan's note on this place goes UNDER what they did here, in the wide
+	# column, because it is a sentence and the spare pane is two narrow ones —
+	# put there first, it ran straight through the ground read and the sweep.
+	if under_works + 40 <= L.end.y - 8:
+		_draw_asking(Rect2i(x0, under_works, right - x0, 56))
 	var lines := UiSlate.line_count(LIST_TOP, mini(after_list - 40, L.end.y - 8))
 	keep_in_view(lines)
 	for n in mini(lines, menu.rows.size() - scroll):
@@ -371,6 +378,46 @@ func _draw_interference(r: Rect2i) -> void:
 		UiDraw.rect(self, Rect2i(x, mini(last, y), UiBase.PITCH, absi(y - last) + UiBase.PITCH), UiTheme.MACHINE[3] if level < UiRules.PRESSURE_WARN else UiTheme.WARN)
 		last = y
 	UiDraw.text_right(self, box.end.x - 8, box.position.y + 4, "%d%%  %s" % [roundi(level * 100.0), String(_feed.get("network", ""))], UiTheme.MACHINE[3])
+
+
+## What the plan still holds this REGION for, under the interference trace
+## because it is a note on the same network that trace is of (docs/VISION.md
+## §10.4, task #112 step 4).
+##
+## Until this, `Chapter` knew what every place was still asking and NOTHING read
+## it — a player could walk into a held road, be told "Plate and pins, and
+## nothing in your hands will cut it", and have no way to learn what the place
+## wanted. The words are `Chapter.asking`'s and are decided in core beside the
+## rule that produces them, the way `Attention.pressure` is; this only puts them
+## on the glass. One line, the machines' own register, and never a checklist
+## with a percentage on it — which is a rule §10 states and which
+## `tests/chapter/test_chapter_asking.gd` holds by reading the lines back.
+func _draw_asking(r: Rect2i) -> void:
+	var line := String(_feed.get("asking", ""))
+	if line.is_empty():
+		return
+	UiSlate.heading(self, r.position, "this place", r.end.x, UiTheme.MACHINE[2])
+	var y := r.position.y + 26
+	for row: String in _wrapped(line, r.size.x):
+		UiDraw.text(self, Vector2i(r.position.x, y), row, UiTheme.MACHINE[3])
+		y += UiFont.SIZE + 2
+
+
+## Broken to the panel's width on WORDS, because the slate has no wrapping
+## drawer and a line that runs off the glass says less than no line at all.
+func _wrapped(line: String, width: int) -> PackedStringArray:
+	var out := PackedStringArray()
+	var row := ""
+	for word: String in line.split(" ", false):
+		var try := word if row.is_empty() else row + " " + word
+		if UiFont.width(try) > width and not row.is_empty():
+			out.append(row)
+			row = word
+		else:
+			row = try
+	if not row.is_empty():
+		out.append(row)
+	return out
 
 
 ## Where the machines stand, north up, the player in the middle, a sweep going
