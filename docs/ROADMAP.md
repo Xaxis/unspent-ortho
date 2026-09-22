@@ -1292,7 +1292,11 @@ wave. Frames are in `shots/lens/`.
    twice the village. Measured separately over 112 standpoints, 14 landscapes and
    3 seeds, a walking player sees **1.07 buildings per screen under the
    orthographic frame and 5.18 under the lens — 4.8x**. The buildings were always
-   laid; the frame did not reach them.
+   laid; the frame did not reach them. The probe that measured it is
+   `tests/render/test_density_probe.gd` on branch `m3/broken` (`10a24c3`), kept
+   OFF main on purpose: it answered a one-time question, grows three worlds and
+   costs about 15 s, which is a poor trade on every gate. Its header predates the
+   depth-view guards on main, so read it as a record of that evening.
 2. **The horizon fork.** `fov/2 < pitch` keeps sky out of frame. It stands at
    27.5 < 40, with 12.5 degrees of margin. Crossing it is a different game and
    nobody should cross it by widening a fov for a prettier frame.
