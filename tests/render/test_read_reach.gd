@@ -419,3 +419,33 @@ func test_the_air_measures_the_frame_it_is_actually_in() -> void:
 	lt(at_horizon, half * 40.0, "a pitch at the horizon is capped, not infinite: %.1f" % at_horizon)
 	print("pitch a hundredth of a degree off the horizon -> half-span %.1f (capped)" % at_horizon)
 	lens.get_parent().queue_free()
+
+
+## THE FIX FOR THE CASE ABOVE, asked the same way: under the lens, with the
+## spawner handed the camera's own question, not one tile of the ring the lens
+## draws is called unseen -- where the box, measured in the test above, calls
+## seven of eight unseen. The two tests together are the before and the after.
+func test_under_the_lens_the_spawner_asks_the_camera() -> void:
+	var cam := _lens_camera()
+	var rows: float = cam.get_viewport().get_visible_rect().size.y
+	var cols: float = cam.get_viewport().get_visible_rect().size.x
+	var sp := Spawner.new()
+	sp.sees = func(p: Vector2, margin: float) -> Variant:
+		return CameraRig.sees_ground(cam, Vector3(p.x, 0.0, p.y), margin)
+	var yaw := deg_to_rad(sp.yaw_deg)
+	var up := Vector2(-sin(yaw), -cos(yaw))
+	var drawn_tiles := 0
+	var wrong := 0
+	for ring in range(Spawner.RING_MIN, Spawner.RING_MAX + 1):
+		var tile := up * float(ring)
+		var s := cam.unproject_position(Vector3(tile.x, 0.0, tile.y))
+		var drawn := s.y >= 0.0 and s.y <= rows and s.x >= 0.0 and s.x <= cols
+		if drawn:
+			drawn_tiles += 1
+			if not sp.in_view(Vector2.ZERO, tile):
+				wrong += 1
+	gt(drawn_tiles, 0, "the lens draws the ring, or this asks nothing")
+	eq(wrong, 0, "no tile the lens draws is called unseen once the spawner asks the camera")
+	# And behind the camera is not "seen", however the projection mirrors it.
+	check(not sp.in_view(Vector2.ZERO, -up * 30.0), "thirty tiles behind the eye is not on the picture")
+	cam.get_parent().queue_free()

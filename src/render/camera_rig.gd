@@ -326,6 +326,46 @@ static func units_per_pixel_of(cam: Camera3D, rows: float) -> float:
 	return 2.0 * tan(deg_to_rad(cam.fov) * 0.5) * maxf(focal, 0.001) / h
 
 
+## How tall a body is for the question below: a point this far above the ground
+## is its head. Two is the height of most of the roster's walkers; it only has to
+## be tall enough that a machine whose feet are just off the bottom of the frame
+## but whose head is on it is counted as seen, because that is a machine that
+## would pop into view.
+const SEEN_HEAD := 2.0
+
+
+## IS THIS PLACE ON THE PICTURE, asked of the camera that is drawing it. True when
+## the ground at `foot`, or a head `SEEN_HEAD` above it, lands inside the rect
+## grown by `margin` world units (negative shrinks it, which is how a caller asks
+## "well inside"). The margin is converted at the focal plane, `units_per_pixel_of`,
+## so far out, where a world unit is fewer pixels, the same margin covers MORE than
+## `margin` world units. For "not seen" that pushes spawns further away, which is
+## the right way for it to be wrong: toward no pop-in. Converting per point would
+## be more exact and would make far spawns land closer to the edge of the frame.
+##
+## A point behind the camera's near plane is skipped rather than projected:
+## `unproject_position` mirrors what is behind the eye to a position that can land
+## inside the rect, and an unguarded test counts it as seen.
+##
+## Correct under either projection. The spawner only asks it under the lens,
+## because under the orthographic camera its own box is exactly this question
+## already and changing the answer there would move the shipped game.
+static func sees_ground(cam: Camera3D, foot: Vector3, margin: float, head := SEEN_HEAD) -> bool:
+	if cam == null or not cam.is_inside_tree():
+		return false
+	var rect: Vector2 = cam.get_viewport().get_visible_rect().size
+	var out := margin / maxf(units_per_pixel_of(cam, rect.y), 1e-6)
+	var inv := cam.global_transform.affine_inverse()
+	for lift: float in [0.0, head]:
+		var at := foot + Vector3(0.0, lift, 0.0)
+		if (inv * at).z > -cam.near:
+			continue
+		var s := cam.unproject_position(at)
+		if s.x >= -out and s.x <= rect.x + out and s.y >= -out and s.y <= rect.y + out:
+			return true
+	return false
+
+
 ## The rig's own, for the viewport it is drawing into.
 func units_per_pixel() -> float:
 	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)

@@ -35,6 +35,7 @@ func setup(g: Game) -> void:
 	g.player.sim = sim
 	spawner = Spawner.new()
 	spawner.view_height = g.camera.view_height
+	spawner.sees = _lens_sees
 	_layer = Node3D.new()
 	_layer.name = "mobs"
 	g.add_child(_layer)
@@ -147,6 +148,17 @@ func _process(delta: float) -> void:
 			mob.queue_free()
 			continue
 		mob.sync_view(0.0 if frozen else delta, sim.now, sim.hero.holder == mob.state)
+
+
+## What the spawner asks when a LENS is drawing, and null otherwise, which tells
+## it to keep its own box. Asked live, not decided at setup, because the lens can
+## be switched on in a running game (held Z) and the world under the player can
+## change (a realm crossing points `game.world` somewhere else).
+func _lens_sees(p: Vector2, margin: float) -> Variant:
+	var cam := game.camera
+	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		return null
+	return CameraRig.sees_ground(cam, Vector3(p.x, game.world.height_at(p), p.y), margin)
 
 
 ## A machine heard and not yet seen: say so, once (Racket).

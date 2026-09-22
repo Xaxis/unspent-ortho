@@ -189,8 +189,32 @@ static func is_rise(world: WorldData, tx: int, ty: int) -> bool:
 	return lower >= 6
 
 
-## Is a point on the ground within the camera's view of a player at `centre`, with margin?
+## THE REAL QUESTION, when whoever owns the camera can ask it: `sees.call(p,
+## margin)` answers true or false for a ground tile, or anything else to mean "ask
+## the box". Empty by default, so every headless caller and every test gets the
+## box, which is what this file has always been.
+##
+## It exists because the box is SYMMETRIC about the player and a perspective frame
+## is not. Measured under the lens: 95.2 tiles ahead and 4.9 behind, against the
+## box's 8.9 either way, and every distance of the 11..18 spawn ring lands at
+## screen Y 160..232 of 1080 -- so the box called on-screen tiles unseen and
+## machines materialised in full view (tests/render/test_read_reach.gd). A
+## corrected constant cannot fix a wrong shape; asking the camera can. Core stays
+## pure because it only ever holds a Callable, never a camera.
+var sees: Callable = Callable()
+
+
+## Is a point on the ground within the camera's view of a player at `centre`, with
+## margin? Every caller in the game comes through here -- the roll, the patrol's
+## start, the first meeting, the coast's "gone", the racket's "heard, not seen" and
+## the staged spawn -- so spawning and culling cannot disagree about what is on
+## the picture, which is the difference between a body that arrives and one that
+## pops.
 func in_view(centre: Vector2, p: Vector2, margin: float = 2.0) -> bool:
+	if sees.is_valid():
+		var asked: Variant = sees.call(p, margin)
+		if asked is bool:
+			return asked
 	var yaw := deg_to_rad(yaw_deg)
 	var right := Vector2(cos(yaw), -sin(yaw))
 	var up := Vector2(-sin(yaw), -cos(yaw))
