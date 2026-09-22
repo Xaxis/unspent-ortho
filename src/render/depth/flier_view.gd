@@ -79,6 +79,16 @@ var camera: Camera3D
 ## How many may stand in the air at once. 0 turns the layer off entirely, which
 ## is every landscape that has not asked for it.
 var budget := 0
+## How many were within REACH at all, before the frame had its say. `drawn` on
+## its own could not tell "no traffic near" from "all of it off the glass", and
+## those want opposite fixes -- the same lie #116 was.
+var considered := 0
+## How many had the HULL ITSELF on the glass, not just the beam it lays on the
+## street. The two differ by the whole of #138: the shade sits at ground level so
+## it carries no height term, while a hull 19 to 26.6 units up is above the top
+## edge at every distance ahead. Counting them apart is what says whether
+## "crosses overhead" is a thing a player ever actually sees.
+var hulls := 0
 var drawn := 0
 
 static var _mesh: ArrayMesh = null
@@ -140,6 +150,8 @@ func follow(focus: Vector2, minutes: float) -> void:
 	var lane_mid := roundi(focus.dot(across) / LANE)
 	var lanes := ceili(REACH / LANE)
 	var n := 0
+	considered = 0
+	hulls = 0
 	for dl in range(-lanes, lanes + 1):
 		if n >= budget:
 			break
@@ -153,11 +165,54 @@ func follow(focus: Vector2, minutes: float) -> void:
 			var p := at(world.seed_value, lane, index, minutes)
 			if p.distance_to(focus) > REACH:
 				continue
+			considered += 1
+			# A radius is not the frame. Every lane class flies 19 to 26.6 units
+			# up, and at 57 degrees of pitch height and away-distance BOTH carry a
+			# thing up the screen and add, so no lane has a hull inside the top
+			# edge at any distance AHEAD of the player (task #138, and the rule is
+			# measured in tests/render/test_read_reach.gd). Slots used to go to
+			# whatever lane order reached first, so most of the budget was spent on
+			# traffic nobody could see.
+			if not _in_frame(p, high_of(world.seed_value, lane)):
+				continue
 			_place(n, p, high_of(world.seed_value, lane), b)
 			n += 1
 	_hide_from(n)
 	drawn = n
 	_live = n
+
+
+## Is any of this one in the picture -- the hull, OR the shade it lays on the
+## ground? BOTH, and the second is not a nicety: the shade sits at ground level,
+## so its screen position carries no height term and it is still in frame long
+## after the hull has left the top edge. This file's own header says the beam on
+## the street "is the whole of the cue", so a filter that asked only about the
+## hull would throw away the cue along with it.
+##
+## Asked of the camera this view was already handed at `setup` rather than worked
+## out from constants, because the frame moves: zoom, the target lean, and the
+## third-person glide (#121) all change it. No camera (a headless run) keeps
+## everything, which is what this did before.
+func _in_frame(p: Vector2, high: float) -> bool:
+	if camera == null or world == null:
+		return true
+	var vp := camera.get_viewport()
+	if vp == null:
+		return true
+	var rect := vp.get_visible_rect().size
+	# Pixels per world unit, asked of the camera: the view's height in units maps
+	# to the viewport's height in pixels, and a zoom moves it.
+	var px := rect.y / maxf(camera.size, 1e-3)
+	var ground := world.height_at(p)
+	var seen := false
+	for k in 2:
+		var at_y := (ground + high) if k == 0 else (ground + 0.06)
+		var s := camera.unproject_position(Vector3(p.x, at_y, p.y))
+		if s.y >= 0.0 and s.y <= rect.y and s.x >= -SHADE * px and s.x <= rect.x + SHADE * px:
+			seen = true
+			if k == 0:
+				hulls += 1
+	return seen
 
 
 func _hide_from(from: int) -> void:
