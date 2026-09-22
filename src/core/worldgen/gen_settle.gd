@@ -185,7 +185,7 @@ static func villages(c: GenContext) -> void:
 					var i := int(p.y) * size + int(p.x)
 					if not c.defs[w.country[i]].spawn_home:
 						continue
-					if on_home and int(w.continent[i]) != home:
+					if on_home and w.continent_at(int(p.x), int(p.y)) != home:
 						continue
 					var d_in := c.inland[i]
 					if d_in < 8.0 or d_in > far:

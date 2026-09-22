@@ -299,7 +299,7 @@ static func coarse(c: GenContext) -> void:
 			continue
 		var ix := clampi(roundi(GenFields.cell_centre(k % cw, step)), 0, size - 1)
 		var iy := clampi(roundi(GenFields.cell_centre(k / cw, step)), 0, size - 1)
-		cell_body[k] = c.w.continent[iy * size + ix]
+		cell_body[k] = c.w.continent_at(ix, iy)
 	if not c.allow.is_empty():
 		for k in cn:
 			if landc[k] == 0:

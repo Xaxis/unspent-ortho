@@ -55,8 +55,12 @@ func test_gen_bodies_is_the_only_thing_that_writes_a_body_id() -> void:
 	check(dir != null, "src/ exists")
 	_walk("res://src", writers)
 	for f: String in writers:
+		# Reads count too, on purpose: an index read is how a write starts, and
+		# the accessor is the idiom everything else already uses. The message
+		# said "writes" of two plain reads once and sent someone hunting for a
+		# write that did not exist.
 		check(f.ends_with("gen_bodies.gd") or f.ends_with("world_data.gd"),
-			"%s writes WorldData.continent; GenBodies is its one writer" % f)
+			"%s reads or writes WorldData.continent directly; use continent_at (GenBodies is its one writer)" % f)
 
 
 static func _walk(path: String, out: PackedStringArray) -> void:
