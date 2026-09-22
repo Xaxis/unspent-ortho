@@ -163,6 +163,7 @@ done
 # The shards' own failures, gathered before they are judged, so the run can be
 # compared against what this tree is KNOWN to carry (tests/standing.txt).
 ran="$(mktemp "${TMPDIR:-/tmp}/unspent-ran.XXXXXX")"
+unfinished=0
 for i in 0 1 2; do
   wait "${tpids[$i]}"; code=$?
   # A SHARD THAT DIED IS NOT A SHARD THAT PASSED, and this used to be `|| true`.
@@ -179,8 +180,8 @@ for i in 0 1 2; do
   # version of this check called every red gate DEAD, because it was tested
   # against a killed shard and a truncated one and never against the ordinary
   # case of a run that finished with failures.
-  if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; fi
-  if ! grep -qE 'passed,' "${logs[$i]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; fi
+  if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; unfinished=1; fi
+  if ! grep -qE 'passed,' "${logs[$i]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
   grep -E 'passed,' "${logs[$i]}"
   grep -E '^\s*FAIL ' "${logs[$i]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
@@ -221,7 +222,16 @@ if [ -f "$standing" ]; then
     echo "$new" | sed 's/^/  /'
     fail=1
   fi
-  if [ -n "$fixed" ]; then
+  # A STANDING FAILURE THAT DID NOT RUN HAS NOT STARTED PASSING. With a shard dead
+  # this used to list every standing line as NOW PASSING and ask for it to be
+  # deleted -- after the verdict was already fixed to say FAILED, which is why the
+  # first real run of that fix (a gate stopped by hand, 2026-09-22) still printed
+  # the advice. Following it would empty the list that lets the next gate go red.
+  if [ -n "$fixed" ] && [ "$unfinished" = "1" ]; then
+    echo "NOT JUDGED: a shard did not finish, so these standing lines did not run --"
+    echo "  keep them in tests/standing.txt and run the gate again:"
+    echo "$fixed" | sed 's/^/  /'
+  elif [ -n "$fixed" ]; then
     echo "NOW PASSING (take these OUT of tests/standing.txt in this commit):"
     echo "$fixed" | sed 's/^/  /'
   fi
