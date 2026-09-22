@@ -9,6 +9,8 @@ extends RefCounted
 ## --village=N         start beside village N (overrides --at)
 ## --hour=H            world clock hour at start (default Tuning.START_HOUR)
 ## --zoom=F            camera view height in world units
+## --lens=ortho|persp   which projection the play camera uses; persp is a
+##                     third-person perspective lens, off by default
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -112,6 +114,10 @@ var at := Vector2(-1, -1)
 var village := -1
 var hour := Tuning.START_HOUR
 var zoom := 0.0
+## Which PROJECTION the play camera uses: &"ortho" (the game as it ships) or
+## &"persp", a third-person perspective lens. Opt-in and off by default, so
+## every frame, tour and canon picture in the repository is unchanged.
+var lens: StringName = &"ortho"
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -207,6 +213,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"village": o.village = v.to_int()
 			"hour": o.hour = v.to_float()
 			"zoom": o.zoom = v.to_float()
+			"lens": o.lens = StringName(v)
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

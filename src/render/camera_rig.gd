@@ -33,6 +33,29 @@ const DEPTH_ROOM := 24.0
 ## zoom without being told.
 var _back := 30.0
 
+## A SECOND PROJECTION, off by default (the owner's "multiple projections /
+## perspectives"; #120 wants it under a held Z for close combat while open
+## battle keeps the Diablo-style orthographic).
+##
+## WHY IT EXISTS AT ALL, measured rather than argued. The orthographic frame
+## shows 26.67 x 17.9 tiles of ground and only 8.95 tiles AHEAD of the player,
+## whatever the thing's height -- and because a pitched orthographic camera has
+## NO HORIZON, backing away from a tower loses its TOP first and its feet last.
+## So a `spire` (16.3) or a `tower` (14.3) can never stand whole in the frame, a
+## flier nineteen units up is never overhead, and a city cannot read as a city.
+## `tests/render/test_read_reach.gd` measures all of it against a real camera.
+##
+## DEFAULT IS UNCHANGED, deliberately: `--lens=persp` is opt-in, so every frame,
+## tour and canon picture in the repository is exactly what it was, and the two
+## can be shot side by side at one place before anything is decided.
+@export var lens: StringName = &"ortho"
+## The lens, when it is asked for. Pitched far shallower than the play camera
+## because the whole point is to SEE height: at 30 degrees a 16-unit spire is a
+## spire, where at 57 it is a lid.
+const LENS_FOV := 55.0
+const LENS_PITCH := 30.0
+const LENS_BACK := 9.0
+
 var target := Vector3.ZERO
 
 ## What a target lock does to the camera (42_target, docs/DESIGN.md §Targeting):
@@ -60,7 +83,8 @@ var _bias := Vector3.ZERO
 
 
 func _ready() -> void:
-	projection = PROJECTION_ORTHOGONAL
+	projection = PROJECTION_PERSPECTIVE if lens == &"persp" else PROJECTION_ORTHOGONAL
+	fov = LENS_FOV
 	keep_aspect = KEEP_HEIGHT
 	size = view_height
 	near = 1.0
@@ -175,6 +199,17 @@ func near_plane(shown: float) -> float:
 ## the screen-space pass it already runs for shafts (shafts.gdshader), which
 ## blurs what is nearer than it out of the frame it already reads.
 func _near_focus() -> void:
+	# NO NEAR BLUR UNDER THE LENS. Every number this function works from is an
+	# ORTHOGRAPHIC one -- `near_plane` is `_back - Air.frame_depth(size, pitch)`,
+	# and `size` is world units per screen height, which a perspective frame does
+	# not have. Left on, it focused on a plane that means nothing and blurred most
+	# of the picture. It is also not wanted: the near blur exists to stop a bough
+	# at the edge of a FLAT frame dominating it, which is not a problem a camera
+	# standing behind the player has.
+	if lens == &"persp":
+		attributes = null
+		_dof_size = -1.0
+		return
 	if not bool(Quality.current().get("near_focus", false)):
 		attributes = null
 		if _outline != null and bool(Quality.current().get("near_stand_in", false)):
@@ -273,6 +308,21 @@ func _process(delta: float) -> void:
 
 ## Each part of the lean eased toward what the system asked for: in at LEAN_IN,
 ## back to square at LEAN_OUT.
+## The perspective lens. It shares the rig's yaw, its smoothing and its lean, so
+## a target lock still turns the head; what it does not share is the texel snap,
+## which is an ORTHOGRAPHIC device -- `size` is world units per screen height and
+## a perspective frame has no single one, so snapping to it would pin the picture
+## to a number that no longer means anything.
+func _apply_lens() -> void:
+	rotation = Vector3(deg_to_rad(-(LENS_PITCH + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
+	var b := Basis.from_euler(rotation)
+	_back = LENS_BACK * _zoom
+	far = 500.0
+	if attributes != null:
+		_near_focus()
+	global_position = (_smoothed + _bias) + b.z * _back
+
+
 func _ease_lean(delta: float) -> void:
 	var to_in := 1.0 - exp(-LEAN_IN * delta)
 	var to_out := 1.0 - exp(-LEAN_OUT * delta)
@@ -283,6 +333,9 @@ func _ease_lean(delta: float) -> void:
 
 
 func _apply() -> void:
+	if lens == &"persp":
+		_apply_lens()
+		return
 	size = view_height * _zoom
 	rotation = Vector3(deg_to_rad(-(pitch_deg + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
 	var b := Basis.from_euler(rotation)

@@ -74,6 +74,8 @@ func setup(o: BootOptions) -> void:
 		player.facing = world.spawn_facing
 
 	camera = CameraRig.new()
+	# Set BEFORE it enters the tree: `_ready` chooses the projection from it.
+	camera.lens = o.lens
 	camera.name = "camera"
 	if o.zoom > 0.0:
 		camera.view_height = o.zoom
