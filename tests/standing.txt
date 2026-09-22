@@ -30,7 +30,10 @@
 #   for i in 0 1 2; do godot --headless --path . -s tests/run.gd -- --shard=$i/3; done
 # collecting the FAIL lines, stripping "FAIL " and the timing, sorted unique.
 #
-# Taken 2026-09-19. **STANDING COMES DOWN ONLY AS CAUSES ARE FOUND, NEVER AS
+# Taken 2026-09-19. Regenerated sharded on 51fe7b9 (2026-09-22), the first gate
+# that can tell a dead shard from a finished one (tools/check.sh): the same five,
+# and nothing else. The one other red that run, test_title, passed alone and was
+# a wait budgeted in wall clock rather than a failure -- fixed, not listed. **STANDING COMES DOWN ONLY AS CAUSES ARE FOUND, NEVER AS
 # BARS ARE MOVED**, and every step below was somebody naming a reason:
 # 26 -> 25 (break_metal was one author's own failure, read as background
 # noise) -> 24 (the city got its boroughs, so every landscape holds its own
