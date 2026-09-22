@@ -38,8 +38,31 @@ func setup(g: Game) -> void:
 	_leaf = g.view.leaf_material() if g.view != null else null
 	if _mat != null:
 		_mat.set_shader_parameter("crown_clear", _slots)
+	_set_tall_floor()
 	if _leaf != null:
 		_leaf.set_shader_parameter("crown_clear", _slots)
+
+
+## How short a BUILT thing has to be before it may stand between the camera and
+## the player. The world does not decide this, the CAMERA does: at the play
+## pitch of 57 the eye sees over a two-metre post, and under the third-person
+## lens at 30 it does not. Written here because this file already holds the
+## world material; the shader defaults to 3.0, so the orthographic game is
+## unchanged whether this runs or not.
+func _set_tall_floor() -> void:
+	var cam := game.camera if game != null else null
+	if cam == null or _mat == null:
+		return
+	var floor_now := 3.0
+	if cam.lens == &"persp":
+		# The flatter the eye, the shorter a thing has to be to cover you:
+		# 3.0 scaled by the ratio of the two pitches' 1/tan, which is what the
+		# shader's own `cam_lean` measures.
+		floor_now = 3.0 * (1.0 / tan(deg_to_rad(CameraRig.PITCH_DEG))) \
+			/ (1.0 / tan(deg_to_rad(CameraRig.LENS_PITCH)))
+	_mat.set_shader_parameter("tall_floor", floor_now)
+	if _leaf != null:
+		_leaf.set_shader_parameter("tall_floor", floor_now)
 
 
 func _process(_delta: float) -> void:

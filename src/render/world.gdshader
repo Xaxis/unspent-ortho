@@ -70,7 +70,18 @@ const float CROWN_SWAY = 0.25;
 //   form in `BiomeForms.PLAIN` is the steading at 2.8, so no village in the game
 //   changes by a pixel and only the city's forms, the landmarks and the machines'
 //   own works can ever stipple.
-const float TALL_FLOOR = 3.0;
+//   AND IT IS THE CAMERA'S NUMBER, NOT THE WORLD'S, so the lens moves it. 3.0
+//   is right for a camera pitched 57 degrees, which sees OVER a two-metre post;
+//   a third-person lens at 30 looks along the street and that same post stands
+//   squarely between the eye and the player. So it is a uniform the camera sets
+//   and it DEFAULTS TO 3.0, which is the shipped game unchanged.
+//
+//   It is NOT derived from the live lean, though that was the obvious move and
+//   it is wrong: `42_target.LOCK_PITCH` is -4.5, so a target lock FLATTENS the
+//   orthographic camera to 52.5 and a lean-derived floor would fall to about
+//   2.54 -- under the steading's 2.8, stippling a village the moment the player
+//   held Z, and breaking the guarantee three lines above this one.
+uniform float tall_floor = 3.0;
 // Wider than a crown's hole for the same reason ForeView's CLEAR_REACH is wider
 // than 18_crowns': the higher the thing, the further off its own ground it draws.
 const float TALL_WIDEN = 1.4;
@@ -1399,7 +1410,7 @@ float tall_cut(vec3 wp, int m, vec2 toward, float lean) {
 	float cut = 0.0;
 	for (int i = 0; i < CROWN_CLEAR; i++) {
 		vec4 p = crown_clear[i];
-		if (p.w <= 0.0 || wp.y < p.y + TALL_FLOOR) {
+		if (p.w <= 0.0 || wp.y < p.y + tall_floor) {
 			continue;
 		}
 		vec2 g = wp.xz - toward * (wp.y - p.y) * lean;
