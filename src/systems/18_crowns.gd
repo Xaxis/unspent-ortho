@@ -60,6 +60,13 @@ func _set_tall_floor() -> void:
 		# shader's own `cam_lean` measures.
 		floor_now = 3.0 * (1.0 / tan(deg_to_rad(CameraRig.PITCH_DEG))) \
 			/ (1.0 / tan(deg_to_rad(CameraRig.LENS_PITCH)))
+	# A door for asking what the cut is COSTING: `UNSPENT_TALL_FLOOR=999` puts the
+	# floor above everything and turns the cut off entirely, so a frame can be
+	# taken with and without it. Written because the cut may be subtracting the
+	# upper part of exactly the buildings that carry a city's verticality, and
+	# that is a frame rather than an argument.
+	if OS.has_environment("UNSPENT_TALL_FLOOR"):
+		floor_now = float(OS.get_environment("UNSPENT_TALL_FLOOR"))
 	_mat.set_shader_parameter("tall_floor", floor_now)
 	if _leaf != null:
 		_leaf.set_shader_parameter("tall_floor", floor_now)
