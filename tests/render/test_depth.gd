@@ -317,14 +317,27 @@ func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
 	check(src.contains("float tall_cut("), "the tall cut exists")
 	check(src.contains("if (m >= 40 && m <= 70) {"), "and the ground band is refused: the land never opens")
-	# The floor, read out of the shader so the two cannot drift apart.
-	var at := src.find("const float TALL_FLOOR = ")
+	# Read out of the shader so the two cannot drift apart. It is a UNIFORM now
+	# rather than a const (18_crowns can put it out of reach to ask what the cut
+	# COSTS), so what is pinned here is the DEFAULT the shipped game draws with.
+	var decl := "uniform float tall_floor = "
+	var at := src.find(decl)
 	gt(float(at), 0.0, "the floor is named")
-	var floor_v := src.substr(at + 25, 8).to_float()
+	var floor_v := src.substr(at + decl.length(), 8).to_float()
 	gt(floor_v, 0.0, "and is a number (%f)" % floor_v)
-	# Nothing a village raises may reach it. `PLAIN` is the eight one-storey forms
-	# every landscape built before `built` existed, so this is the whole of "no
-	# village in the game changes".
+	# THE FLOOR IS A FENCE, NOT A MEASUREMENT, and that is why this test asserts
+	# a BAND and never the number. 3.0 is not a threshold anybody derived: it
+	# sits in the empty gap between the tallest thing a village raises (steading
+	# 2.8) and the shortest thing a city raises (block 4.6), and there is nothing
+	# in the game between them. The `float` and the geometric-sounding name are
+	# what disguise that -- the genuinely geometric answer is the subject's own
+	# height, about 1.8, in BOTH projections, because the eye-to-head ray is
+	# lowest at the subject where it is exactly the subject's head; it carries no
+	# pitch term at all. Deriving the floor from geometry would therefore put it
+	# UNDER every village form and open the cottages, with a derivation that made
+	# it look correct. So the fence is policy, it does not scale with the eye,
+	# and a new cottage or a shorter city block has to fail HERE rather than
+	# silently cross it.
 	var tallest := 0.0
 	var worst := &""
 	for id: StringName in BiomeForms.PLAIN:
@@ -333,8 +346,14 @@ func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 			tallest = high
 			worst = id
 	lt(tallest, floor_v, "the tallest village form (%s at %.1f) stands under the cut's floor %.1f" % [worst, tallest, floor_v])
-	# And something a CITY raises has to reach it, or the cut is dead code.
-	var city := 0.0
+	# And EVERY city form has to reach it, not merely the tallest -- the old
+	# version took the maximum, which a sixteen-metre spire satisfies on its own
+	# while a four-metre block quietly falls through.
+	var lowest := INF
+	var least := &""
 	for id: StringName in BiomeForms.RAISED:
-		city = maxf(city, float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0)))
-	gt(city, floor_v, "a city form (%.1f) is tall enough to be cut" % city)
+		var high := float((BiomeForms.FORMS[id] as Dictionary).get(BiomeForms.HIGH, 0.0))
+		if high < lowest:
+			lowest = high
+			least = id
+	gt(lowest, floor_v, "the shortest city form (%s at %.1f) still reaches the floor %.1f" % [least, lowest, floor_v])

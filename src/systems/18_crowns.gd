@@ -44,22 +44,35 @@ func setup(g: Game) -> void:
 
 
 ## How short a BUILT thing has to be before it may stand between the camera and
-## the player. The world does not decide this, the CAMERA does: at the play
-## pitch of 57 the eye sees over a two-metre post, and under the third-person
-## lens at 30 it does not. Written here because this file already holds the
-## world material; the shader defaults to 3.0, so the orthographic game is
-## unchanged whether this runs or not.
+## the player -- and it is a FENCE, not a measurement, which is the whole of why
+## it does not scale with the eye.
+##
+## 3.0 is not a threshold anybody derived. It sits in the empty band between the
+## tallest thing a village raises (BiomeForms.PLAIN, steading 2.8) and the
+## shortest thing a city raises (BiomeForms.RAISED, block 4.6); there is nothing
+## in the game between them. tests/render/test_depth.gd asserts that BAND rather
+## than the number, so a new cottage or a shorter city block fails the gate
+## instead of quietly crossing it.
+##
+## This function used to scale the floor by the ratio of the two pitches' 1/tan,
+## on the reasoning that a flatter eye needs a shorter thing to cover you. That
+## is true of geometry and false of this number: it put the floor at 1.125 under
+## the lens at pitch 30 and 1.635 at pitch 40, BELOW all eight village forms, so
+## every cottage between the eye and the player would have stippled away --
+## silently repealing the invariant the fence exists to state. Nor does deriving
+## it honestly help: the geometric answer is the subject's own head height,
+## about 1.8, identical in both projections (the eye-to-head ray is lowest at
+## the subject, where it IS the subject's head, so there is no pitch term), and
+## that is under every village form too. A derivation would have opened the
+## villages while looking correct, which is worse than the pitch ratio did.
+##
+## So the floor is written once, the same in every projection, and whether a
+## cottage SHOULD open under a flatter eye is a shipped-look question for the
+## owner and not a constant for this file to decide.
 func _set_tall_floor() -> void:
-	var cam := game.camera if game != null else null
-	if cam == null or _mat == null:
+	if _mat == null:
 		return
 	var floor_now := 3.0
-	if cam.lens == &"persp":
-		# The flatter the eye, the shorter a thing has to be to cover you:
-		# 3.0 scaled by the ratio of the two pitches' 1/tan, which is what the
-		# shader's own `cam_lean` measures.
-		floor_now = 3.0 * (1.0 / tan(deg_to_rad(CameraRig.PITCH_DEG))) \
-			/ (1.0 / tan(deg_to_rad(CameraRig.LENS_PITCH)))
 	# A door for asking what the cut is COSTING: `UNSPENT_TALL_FLOOR=999` puts the
 	# floor above everything and turns the cut off entirely, so a frame can be
 	# taken with and without it. Written because the cut may be subtracting the
