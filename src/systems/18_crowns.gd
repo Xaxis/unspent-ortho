@@ -2,9 +2,11 @@ extends GameSystem
 ## A fight is never hidden by a tree. Crowns and leaves standing over the player,
 ## or over any body near enough for the player to be dealing with, thin out to
 ## stipple and then go (world.gdshader `crown_clear`, cut by a world-pinned
-## stipple, never a fade). Trunks, walls and the land stay: only geometry that
-## sways and stands clear of the ground can open up, so a wood still reads as a
-## wood from a step away.
+## stipple, never a fade). This line used to say trunks, walls and the land stay.
+## The LAND does -- `tall_cut` refuses the ground band outright. Trunks do not:
+## a pine's own timber reaches 4.40 and whatever of it stands above the fence
+## opens like anything else. Measured across every kind and country, so the
+## sentence is no longer describing the system as it was before `tall_cut`.
 ##
 ## Written every frame on the world material WorldView hands out, and on its leaf
 ## material, which cuts a canopy's cards by the same rule (leaf.gdshader). A slot
@@ -38,8 +40,53 @@ func setup(g: Game) -> void:
 	_leaf = g.view.leaf_material() if g.view != null else null
 	if _mat != null:
 		_mat.set_shader_parameter("crown_clear", _slots)
+	_set_tall_floor()
 	if _leaf != null:
 		_leaf.set_shader_parameter("crown_clear", _slots)
+
+
+## How short a BUILT thing has to be before it may stand between the camera and
+## the player -- and it is a FENCE, not a measurement, which is the whole of why
+## it does not scale with the eye.
+##
+## 3.0 is not a threshold anybody derived. It sits between the tallest thing a
+## village raises (BiomeForms.PLAIN, steading 2.8) and the shortest thing a city
+## raises (BiomeForms.RAISED, block 4.6). tests/render/test_depth.gd asserts that
+## BAND rather than the number, so a new cottage or a shorter city block fails
+## the gate instead of quietly crossing it -- and that test carries the measured
+## list of what ELSE stands in the gap, because the band is empty of BUILDINGS
+## and not of everything. Trees, a pylon, a fire tower and a mural are all cut
+## by this fence today and none of them is what it was placed between.
+##
+## This function used to scale the floor by the ratio of the two pitches' 1/tan,
+## on the reasoning that a flatter eye needs a shorter thing to cover you. That
+## is true of geometry and false of this number: it put the floor at 1.125 under
+## the lens at pitch 30 and 1.635 at pitch 40, BELOW all eight village forms, so
+## every cottage between the eye and the player would have stippled away --
+## silently repealing the invariant the fence exists to state. Nor does deriving
+## it honestly help: the geometric answer is the subject's own head height,
+## about 1.8, identical in both projections (the eye-to-head ray is lowest at
+## the subject, where it IS the subject's head, so there is no pitch term), and
+## that is under every village form too. A derivation would have opened the
+## villages while looking correct, which is worse than the pitch ratio did.
+##
+## So the floor is written once, the same in every projection, and whether a
+## cottage SHOULD open under a flatter eye is a shipped-look question for the
+## owner and not a constant for this file to decide.
+func _set_tall_floor() -> void:
+	if _mat == null:
+		return
+	var floor_now := 3.0
+	# A door for asking what the cut is COSTING: `UNSPENT_TALL_FLOOR=999` puts the
+	# floor above everything and turns the cut off entirely, so a frame can be
+	# taken with and without it. Written because the cut may be subtracting the
+	# upper part of exactly the buildings that carry a city's verticality, and
+	# that is a frame rather than an argument.
+	if OS.has_environment("UNSPENT_TALL_FLOOR"):
+		floor_now = float(OS.get_environment("UNSPENT_TALL_FLOOR"))
+	_mat.set_shader_parameter("tall_floor", floor_now)
+	if _leaf != null:
+		_leaf.set_shader_parameter("tall_floor", floor_now)
 
 
 func _process(_delta: float) -> void:

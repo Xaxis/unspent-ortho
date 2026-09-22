@@ -22,10 +22,19 @@ const RISE_RADIUS := 3
 ## Wind above this grounds the flock.
 const CALM_WIND := 0.35
 
-## The camera the view test assumes (CameraRig defaults).
+## The camera `in_view` scores against, as a FALLBACK. A running game overwrites
+## the height and the pitch before every spawn (`30_mobs`), so these decide
+## nothing in play and everything in a headless test.
+##
+## `view_height` read 14.0 under a comment saying "(CameraRig defaults)", and the
+## rig's `VIEW_HEIGHT` is 15.0 -- a header naming the rule one line above
+## breaking it, which this repository has three recorded cases of. It is spelled
+## rather than imported because this is `src/core`: a pure rules file may not
+## reach into `src/render` for a constant, so `tests/render/test_read_reach.gd`
+## holds the two equal instead, and will fail here if the rig ever moves.
 var yaw_deg := 45.0
 var pitch_deg := 57.0
-var view_height := 14.0
+var view_height := 15.0
 var aspect := 16.0 / 9.0
 ## A dart (warden, flock, clerk, gulls) comes to take and go; nothing to fight,
 ## so it counts this share of its weight in the gate and the pick. At the full

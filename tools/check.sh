@@ -7,6 +7,17 @@
 set -uo pipefail
 web=0
 for a in "$@"; do [ "$a" = "--web" ] && web=1; done
+# --serial: run the SAME coverage one process at a time. The gate's shape, not
+# its work, is what makes it unrunnable on a thin machine -- four windowed shots
+# and three headless shards launched together is seven Godot processes, and the
+# thing that kills them is FREE SWAP rather than load or free pages. Measured
+# 2026-09-22: four gates OOM-killed across two sessions while `vm.loadavg` read
+# as survivable every time, and `sysctl vm.swapusage` showed under 1 GB free.
+# Serially the same suite and the same four frames fit in one process at a time,
+# so a thin box gets a real gate instead of none.
+#   sysctl -n vm.swapusage    # free under ~2 GB: use --serial
+serial=0
+for a in "$@"; do [ "$a" = "--serial" ] && serial=1; done
 cd "$(dirname "$0")/.."
 
 # A MACHINE-WIDE limit on how many gates run at once, because the gate measures
@@ -115,12 +126,22 @@ fi
 # out the suite. Total cost of the change is roughly that minute.
 echo "== shots"
 mkdir -p shots/check
-pids=()
-tools/shot.sh shots/check/spawn.png --seed=1 & pids+=($!)
-tools/shot.sh shots/check/dusk.png --seed=2 --hour=19.5 --walk=1,-1,1.5 & pids+=($!)
-tools/shot.sh shots/check/night.png --seed=3 --hour=23 & pids+=($!)
-tools/shot.sh shots/check/gallery.png --scene=gallery & pids+=($!)
-for p in "${pids[@]}"; do wait "$p" || fail=1; done
+if [ "$serial" = "1" ]; then
+  # One at a time. The 4th concurrent shot is the one that dies on a thin box:
+  # measured 2026-09-21, gallery.png exited 1 and wrote nothing as the last of
+  # four at loadavg 51, then passed alone at the same commit with no edit.
+  tools/shot.sh shots/check/spawn.png --seed=1 || fail=1
+  tools/shot.sh shots/check/dusk.png --seed=2 --hour=19.5 --walk=1,-1,1.5 || fail=1
+  tools/shot.sh shots/check/night.png --seed=3 --hour=23 || fail=1
+  tools/shot.sh shots/check/gallery.png --scene=gallery || fail=1
+else
+  pids=()
+  tools/shot.sh shots/check/spawn.png --seed=1 & pids+=($!)
+  tools/shot.sh shots/check/dusk.png --seed=2 --hour=19.5 --walk=1,-1,1.5 & pids+=($!)
+  tools/shot.sh shots/check/night.png --seed=3 --hour=23 & pids+=($!)
+  tools/shot.sh shots/check/gallery.png --scene=gallery & pids+=($!)
+  for p in "${pids[@]}"; do wait "$p" || fail=1; done
+fi
 # An absent frame is not a silent pass: the loop above sets `fail`, but say it
 # in words too, because an empty directory reads like a gate that had nothing to
 # look at rather than one that could not look.
@@ -128,12 +149,16 @@ for f in spawn dusk night gallery; do
   [ -f "shots/check/$f.png" ] || { echo "MISSING FRAME: shots/check/$f.png was never written"; fail=1; }
 done
 
-echo "== tests (3 shards)"
+if [ "$serial" = "1" ]; then echo "== tests (3 shards, one at a time)"; else echo "== tests (3 shards)"; fi
 logs=()
 tpids=()
 for i in 0 1 2; do
   log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
   godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
+  # Serial: wait for this shard before starting the next, so only one Godot
+  # holds memory at a time. The shards stay THREE so the sharding itself, and
+  # anything order-dependent in it, is exactly what the parallel gate runs.
+  [ "$serial" = "1" ] && wait "${tpids[$i]}"
 done
 # The shards' own failures, gathered before they are judged, so the run can be
 # compared against what this tree is KNOWN to carry (tests/standing.txt).

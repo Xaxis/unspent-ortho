@@ -53,8 +53,47 @@ var _back := 30.0
 ## because the whole point is to SEE height: at 30 degrees a 16-unit spire is a
 ## spire, where at 57 it is a lid.
 const LENS_FOV := 55.0
-const LENS_PITCH := 30.0
-const LENS_BACK := 9.0
+## Pitched shallower than the play camera, and it may not be pitched shallower
+## than HALF THE FOV: past `fov/2 < pitch` the top edge clears the horizon, the
+## frame holds sky and the ground it covers runs to infinity, so the streamer's
+## `near_limit` cap always binds. That is a decision about whether this game has
+## a horizon in frame rather than a side effect of a field of view, and it is the
+## owner's. Until he rules, this stays on the side that keeps it out.
+##
+## 40 rather than the 30 this shipped with, and the reason is the STREAMER, not
+## the picture: at the matched distance a pitch of 30 holds ground to 152 tiles,
+## past `WorldView.near_limit` (110), so the near square is capped and the coarse
+## far world papers over the difference. At 40 the frame reaches 30.7 and needs
+## no fallback at all -- and it leaves 12.5 degrees between the top edge and the
+## horizon instead of 2.5, which is more than a lean can spend by accident.
+const LENS_PITCH := 40.0
+
+## HOW FAR BACK THE EYE STANDS, DERIVED AND NEVER SPELLED — the one number that
+## decides whether the switch into the lens is invisible or a jump.
+##
+## A projection cannot be lerped: at the instant `lens` changes, a subject keeps
+## its size if and only if the two cameras agree about world units per screen
+## pixel, and at the focal plane that is
+##
+##     2 * tan(fov/2) * back  ==  view_height
+##
+## The constants this shipped with (fov 55, back 9.0) give 9.37 against a view
+## height of 15.0, so a body the player was holding Z on would have jumped 1.60x
+## larger the instant the key went down. Deriving `back` instead of writing it
+## down makes that unrepresentable: the free choices are the fov and the pitch,
+## and the distance follows from them.
+##
+## It holds at every zoom for nothing, because `_apply` scales `size` by `_zoom`
+## and `_apply_lens` scales this by the same `_zoom`, so both sides carry it
+## linearly and the ratio cannot drift.
+##
+## MATCHING AT THE FOCAL PLANE IS THE ONLY MATCH THERE IS. Everything nearer is
+## bigger under the lens and everything further is smaller — that is what
+## perspective IS and it is the whole reason to switch. So "no pop" means "no pop
+## for the subject the player is holding Z on", which is the thing worth holding
+## still; anything else moving is the feature.
+static func lens_back(height := VIEW_HEIGHT, degrees := LENS_FOV) -> float:
+	return height / maxf(0.001, 2.0 * tan(deg_to_rad(degrees) * 0.5))
 
 var target := Vector3.ZERO
 
@@ -256,6 +295,43 @@ func _near_focus() -> void:
 ## The yaw the screen is actually at, lean and all: screen-relative input and
 ## anything else drawn in screen space must ask for this, not the fixed angle,
 ## or the keys stop matching the picture while the camera leans.
+## WORLD UNITS PER SCREEN PIXEL, at the plane the camera is focused on. The one
+## door for everything that used to divide `cam.size` by the viewport's height.
+##
+## Under the orthographic projection it is exactly that and nothing has moved.
+## Under the lens it cannot be: `size` is a property Godot keeps on every
+## Camera3D and the perspective projection ignores, `_ready` sets it from
+## `view_height` and `_apply_lens` never writes it, so dividing it would answer
+## 15.0 for the life of the game -- a confident wrong answer, which is worse than
+## no answer because nothing anywhere would say so.
+##
+## A frustum has no single figure at all, so this one is stated AT THE FOCAL
+## PLANE: the ground the camera is looking at, `_back` away along its own axis,
+## which is where the player is standing and where every caller's mark, texel or
+## pool is being sized. Anything nearer is bigger on screen than this says and
+## anything further is smaller, and that is a property of the lens rather than an
+## error in the number.
+static func units_per_pixel_of(cam: Camera3D, rows: float) -> float:
+	var h := maxf(1.0, rows)
+	if cam == null:
+		return VIEW_HEIGHT / h
+	if cam.projection != PROJECTION_PERSPECTIVE:
+		return cam.size / h
+	# The only camera in this game that is ever perspective is this rig, which
+	# knows how far back it stands; a bare Camera3D that somehow got here is
+	# answered with the lens's own resting distance rather than with a guess
+	# dressed up as a measurement.
+	var rig := cam as CameraRig
+	var focal := rig._back if rig != null else lens_back()
+	return 2.0 * tan(deg_to_rad(cam.fov) * 0.5) * maxf(focal, 0.001) / h
+
+
+## The rig's own, for the viewport it is drawing into.
+func units_per_pixel() -> float:
+	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)
+	return units_per_pixel_of(self, rows)
+
+
 func yaw_now() -> float:
 	return yaw_deg + _yaw
 
@@ -316,7 +392,10 @@ func _process(delta: float) -> void:
 func _apply_lens() -> void:
 	rotation = Vector3(deg_to_rad(-(LENS_PITCH + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
 	var b := Basis.from_euler(rotation)
-	_back = LENS_BACK * _zoom
+	# Derived from the fov and the height the orthographic frame would show, so
+	# the switch cannot pop (`lens_back`). Reads the LIVE `view_height` and `fov`
+	# rather than the constants, because 09_view and dev mode both move the first.
+	_back = lens_back(view_height, fov) * _zoom
 	far = 500.0
 	if attributes != null:
 		_near_focus()
