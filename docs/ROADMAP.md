@@ -1700,7 +1700,7 @@ A landscape is **four layers, each caused by the one before**. So its detail is 
 
 - **L0: make declared content reach the world** (in flight, unspent-ortho-a5). The roll cap, the 64-bit mask, declared ore, fumaroles and vents gated by the landscape's declaration, the snowfield's depot mark. One `GEN` bump. It lands before anything below, because every later wave's frames would otherwise be judged on content that silently never appears.
 - **L1: the depth test and the size rule.** `test_landscape_depth` lands with today's failures listed as its baseline (a standing list that only shrinks). Density becomes rates per area, and the shares are set to the 40-frame target. One `GEN` bump.
-- **L2: the thinnest first**, one builder per landscape, each owning its biome file, its models under `src/models/props/` (built with `Kit`, welded), its sentinel design and its tour:
+- **L2: the thinnest first**, specced layer by layer in `docs/LANDSCAPES.md`, one builder per landscape, each owning its biome file, its models under `src/models/props/` (built with `Kit`, welded), its sentinel design and its tour:
   1. the crags
   2. the frost sea
   3. the glass desert
